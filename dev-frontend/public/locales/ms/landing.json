@@ -552,6 +552,8 @@
   "features.floor_plan.desc": "Editor susun atur meja seret dan lepas",
   "features.mobile_ordering.title": "Pesanan Mudah Alih",
   "features.mobile_ordering.desc": "Biarkan pelanggan memesan terus dari telefon melalui kod QR",
+  "features.reservations.title": "Tempahan",
+  "features.reservations.desc": "Tempahan meja layan diri mudah alih dengan jadual masa kakitangan, peringatan 24j/2j dan kendalian tidak hadir automatik",
   "features.recipe_management.title": "Pengurusan Resipi",
   "features.recipe_management.desc": "Cipta dan urus resipi dengan penjejakan kos bahan",
   "features.inventory_management.title": "Pengurusan Inventori & Pembekal",

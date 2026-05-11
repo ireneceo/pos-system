@@ -81,6 +81,9 @@ const ReferralProfilePage = React.lazy(() => import('./pages/Referral/ReferralPr
 const ReferralManagementPage = React.lazy(() => import('./pages/Admin/ReferralManagementPage'));
 const ReferralLandingPage = React.lazy(() => import('./pages/Landing/ReferralLandingPage'));
 const LiveOrdersPage = React.lazy(() => import('./pages/LiveOrders/LiveOrdersPage'));
+const ReservationsTimelinePage = React.lazy(() => import('./pages/Reservations/ReservationsTimelinePage'));
+const ReservationPage = React.lazy(() => import('./mobile/pages/ReservationPage'));
+const ReservationsListPage = React.lazy(() => import('./mobile/pages/ReservationsListPage'));
 const POSTerminalPage = React.lazy(() => import('./pages/POSTerminal/POSTerminalPage'));
 const KitchenDisplayPage = React.lazy(() => import('./pages/KitchenDisplay/KitchenDisplayPage'));
 const CustomerDisplayPage = React.lazy(() => import('./pages/CustomerDisplay/CustomerDisplayPage'));
@@ -1124,6 +1127,11 @@ function App() {
                       <Route path="/restaurant/:restaurantId/live-orders" element={
                         <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin', 'Staff']}>
                           <LiveOrdersPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/restaurant/:restaurantId/reservations" element={
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin', 'Staff']}>
+                          <ReservationsTimelinePage />
                         </ProtectedRoute>
                       } />
                       <Route path="/restaurant/:restaurantId/menu" element={

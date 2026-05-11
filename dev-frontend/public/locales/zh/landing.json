@@ -552,6 +552,8 @@
   "features.floor_plan.desc": "拖放式桌位布局编辑器",
   "features.mobile_ordering.title": "移动点餐",
   "features.mobile_ordering.desc": "让顾客通过QR码用手机直接点餐",
+  "features.reservations.title": "预订",
+  "features.reservations.desc": "顾客手机自助预订配合员工时间表、24小时/2小时自动提醒和自动失约处理",
   "features.recipe_management.title": "食谱管理",
   "features.recipe_management.desc": "创建和管理带食材成本跟踪的食谱",
   "features.inventory_management.title": "库存与供应商管理",

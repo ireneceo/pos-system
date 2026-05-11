@@ -384,6 +384,147 @@ function defineMobileTests({ customerToken, member, restId }) {
 // ============================================
 // 카테고리 5: 결제 라우트 (위변조 방어)
 // ============================================
+// ============================================
+// 카테고리: 예약 시스템 (R1 customer_id 회귀 가드)
+// ============================================
+function defineReservationTests({ customerToken }) {
+  // R1 결함 회귀 가드: 신규 mobile 예약은 항상 customer_id NOT NULL 이어야 한다.
+  // 첫 예약(RestaurantCustomer 없음)에서도 trans 안에서 findOrCreate → /me 에 보여야 한다.
+  test('reservation', '신규 customer 예약 → customer_id NOT NULL + /me 포함', async () => {
+    const Reservation = require('../models/Reservation');
+    const RestaurantCustomer = require('../models/RestaurantCustomer');
+    const { Restaurant } = require('../models');
+
+    const all = await Restaurant.findAll({ limit: 200 });
+    const enabled = all.find((r) => r.reservation_settings && r.reservation_settings.enabled);
+    if (!enabled) return true; // 활성화된 매장 없으면 skip (의미 있는 회귀 검증 불가)
+
+    const future = new Date(Date.now() + 7 * 86400000);
+    future.setHours(20, 30, 0, 0);
+    const phone = 'HC-' + Date.now();
+
+    const createRes = await request(
+      'POST',
+      '/reservations',
+      {
+        restaurant_id: enabled.id,
+        reserved_at: future.toISOString(),
+        party_size: 2,
+        guest_name: 'Health-Check',
+        guest_phone: phone,
+        notes: 'health-check'
+      },
+      { Authorization: `Bearer ${customerToken}` }
+    );
+    if (createRes.status !== 200 || !createRes.body?.success) return false;
+    const id = createRes.body.data.id;
+
+    let pass = false;
+    try {
+      const row = await Reservation.findByPk(id);
+      const customerIdSet = !!(row && row.customer_id);
+
+      const listRes = await request('GET', '/reservations/me', null, { Authorization: `Bearer ${customerToken}` });
+      const listIncludes = listRes.status === 200 && Array.isArray(listRes.body?.data) && listRes.body.data.some((r) => r.id === id);
+
+      pass = customerIdSet && listIncludes;
+    } finally {
+      // 트랜잭션 일관성 확인 후 정리. RestaurantCustomer 는 보존 (기존 데이터 가능성).
+      await Reservation.destroy({ where: { id }, force: true });
+    }
+    return pass;
+  });
+
+  // 익명 차단 가드
+  test('reservation', '익명 POST /reservations → 401', async () => {
+    return (await request('POST', '/reservations', { restaurant_id: 1, reserved_at: new Date().toISOString(), party_size: 2, guest_name: 'x', guest_phone: 'x' })).status === 401;
+  });
+
+  // Cross-token 차단 가드 (admin token 으로 customer 엔드포인트 호출 → 401)
+  test('reservation', 'admin token 으로 POST /reservations → 401 (customer 엔드포인트)', async () => {
+    const { User } = require('../models');
+    const admin = await User.findOne({ where: { role: 'System Admin' } });
+    if (!admin) return true;
+    const adminTok = jwt.sign({ userId: admin.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    return (await request('POST', '/reservations', { restaurant_id: 1, reserved_at: new Date().toISOString(), party_size: 2, guest_name: 'x', guest_phone: 'x' }, { Authorization: `Bearer ${adminTok}` })).status === 401;
+  });
+
+  // R1 후속 결함: completed 시 reservation_count 가 이중 증가하던 버그
+  test('reservation', 'completed 후 reservation_count 정확히 1 (이중계산 차단)', async () => {
+    const Reservation = require('../models/Reservation');
+    const RestaurantCustomer = require('../models/RestaurantCustomer');
+    const { Restaurant, User } = require('../models');
+
+    const all = await Restaurant.findAll({ limit: 200 });
+    const enabled = all.find((r) => r.reservation_settings && r.reservation_settings.enabled);
+    if (!enabled) return true;
+    const admin = await User.findOne({ where: { role: 'System Admin' } });
+    if (!admin) return true;
+    const adminTok = jwt.sign({ userId: admin.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+
+    const future = new Date(Date.now() + 7 * 86400000);
+    future.setHours(15, 30, 0, 0);
+    const createRes = await request(
+      'POST', '/reservations',
+      { restaurant_id: enabled.id, reserved_at: future.toISOString(), party_size: 2, guest_name: 'HC-cnt', guest_phone: 'HC-cnt-' + Date.now() },
+      { Authorization: `Bearer ${customerToken}` }
+    );
+    if (createRes.status !== 200) return false;
+    const id = createRes.body.data.id;
+    const rcAfterPost = await RestaurantCustomer.findByPk(createRes.body.data.customer_id);
+    const countAfterPost = rcAfterPost.reservation_count;
+
+    let pass = false;
+    try {
+      // confirmed → arrived → seated → completed
+      for (const s of ['confirmed', 'arrived', 'seated', 'completed']) {
+        await request('PATCH', `/reservations/${id}/status`, { status: s }, { Authorization: `Bearer ${adminTok}` });
+      }
+      await rcAfterPost.reload();
+      // 이중계산이 없으면 카운트 변화 없음 (POST 시 이미 +1)
+      pass = rcAfterPost.reservation_count === countAfterPost;
+    } finally {
+      await Reservation.destroy({ where: { id }, force: true });
+    }
+    return pass;
+  });
+
+  // R1 후속 결함: PATCH /me/:id 가 party_size 검증/슬롯 캐파 무시하던 버그
+  test('reservation', 'PATCH /me/:id party_size > max_party 차단', async () => {
+    const Reservation = require('../models/Reservation');
+    const { Restaurant } = require('../models');
+
+    const all = await Restaurant.findAll({ limit: 200 });
+    const enabled = all.find((r) => r.reservation_settings && r.reservation_settings.enabled);
+    if (!enabled) return true;
+    const maxParty = enabled.reservation_settings?.slot?.max_party || 20;
+
+    const future = new Date(Date.now() + 7 * 86400000);
+    future.setHours(14, 0, 0, 0);
+    const createRes = await request(
+      'POST', '/reservations',
+      { restaurant_id: enabled.id, reserved_at: future.toISOString(), party_size: 2, guest_name: 'HC-cap', guest_phone: 'HC-cap-' + Date.now() },
+      { Authorization: `Bearer ${customerToken}` }
+    );
+    if (createRes.status !== 200) return false;
+    const id = createRes.body.data.id;
+
+    let pass = false;
+    try {
+      const patchRes = await request(
+        'PATCH', `/reservations/me/${id}`,
+        { party_size: maxParty + 50 },
+        { Authorization: `Bearer ${customerToken}` }
+      );
+      const reloaded = await Reservation.findByPk(id);
+      pass = patchRes.status >= 400 && reloaded.party_size === 2; // 차단 + DB 안 변함
+    } finally {
+      await Reservation.destroy({ where: { id }, force: true });
+    }
+    return pass;
+  });
+}
+
 function definePaymentTests() {
   test('payment', '없는 주문 create-payment-intent → 404', async () => {
     return (await request('POST', '/orders/99999999/create-payment-intent', {})).status === 404;
@@ -559,6 +700,7 @@ async function runTests(allTests, category) {
   defineSecurityTests(ctx);
   definePosTests(ctx);
   defineMobileTests(ctx);
+  defineReservationTests(ctx);
   definePaymentTests();
   defineReferralTests(ctx);
 

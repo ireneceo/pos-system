@@ -518,7 +518,11 @@ const CustomersPage: React.FC = () => {
   return (
     <>
       <CustomersContainer>
-        <PageHeader title="Customers">
+        <PageHeader
+          title="Customers"
+          settingsHref={user?.restaurantId ? `/restaurant/${user.restaurantId}/settings?tab=membership` : undefined}
+          settingsLabel="Membership settings"
+        >
           <Button onClick={handleAddCustomer} variant="primary">
             Add Customer
           </Button>

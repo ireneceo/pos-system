@@ -79,6 +79,8 @@ export interface SubscriptionFormFieldsProps {
     hideTrial?: boolean;
     hideActivateNow?: boolean;
     hideDiscount?: boolean;
+    hideCurrency?: boolean;
+    hideSectionHeader?: boolean;
     readOnlyEndDate?: boolean;
   };
 }
@@ -169,17 +171,19 @@ const SubscriptionFormFields: React.FC<SubscriptionFormFieldsProps> = ({
   return (
     <FormGrid>
       {/* 1. Currency */}
-      <FormGroup>
-        <FormLabel>{t('currency', 'Currency')} *</FormLabel>
-        <FormSelect
-          value={values.currency}
-          onChange={(e) => onChange({ currency: e.target.value })}
-        >
-          {planCurrencies.map(cur => (
-            <option key={cur} value={cur}>{cur}</option>
-          ))}
-        </FormSelect>
-      </FormGroup>
+      {!options.hideCurrency && (
+        <FormGroup>
+          <FormLabel>{t('currency', 'Currency')} *</FormLabel>
+          <FormSelect
+            value={values.currency}
+            onChange={(e) => onChange({ currency: e.target.value })}
+          >
+            {planCurrencies.map(cur => (
+              <option key={cur} value={cur}>{cur}</option>
+            ))}
+          </FormSelect>
+        </FormGroup>
+      )}
 
       {/* 2. Plan Type */}
       <FormGroup>
@@ -215,9 +219,11 @@ const SubscriptionFormFields: React.FC<SubscriptionFormFieldsProps> = ({
       )}
 
       {/* Section header */}
-      <SectionHeader>
-        <h3>{t('settingsHeader', 'Subscription Settings')}</h3>
-      </SectionHeader>
+      {!options.hideSectionHeader && (
+        <SectionHeader>
+          <h3>{t('settingsHeader', 'Subscription Settings')}</h3>
+        </SectionHeader>
+      )}
 
       {/* 4. Activate now */}
       {!options.hideActivateNow && (

@@ -18,6 +18,9 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import ReservationPage from './pages/ReservationPage';
+import ReservationsListPage from './pages/ReservationsListPage';
+import ReservationDetailPage from './pages/ReservationDetailPage';
 
 const MobileApp: React.FC = () => {
   return (
@@ -41,6 +44,9 @@ const MobileApp: React.FC = () => {
         <Route path="/:slug/register" element={<RegisterPage />} />
         <Route path="/:slug/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/:slug/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/:slug/reservation" element={<ReservationPage />} />
+        <Route path="/:slug/reservations" element={<ReservationsListPage />} />
+        <Route path="/:slug/reservations/:id" element={<ReservationDetailPage />} />
       </Routes>
         </MobileOrderProvider>
       </StaffProvider>

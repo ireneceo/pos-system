@@ -1084,9 +1084,10 @@ router.post('/:id/reset-password', authenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, error: { message: 'User not found', code: 'NOT_FOUND' } });
     }
 
-    // 데모/테스트 계정 비밀번호 리셋 차단
-    if (user.is_demo || user.is_test) {
-      return res.status(403).json({ success: false, error: `${user.is_demo ? 'Demo' : 'Test'} account passwords cannot be changed.` });
+    // 데모 계정만 비밀번호 리셋 차단 (자정마다 자동 리셋되는 계정이라 의미 없음).
+    // is_test 는 통계 제외용 표시일 뿐 — 실제 staff 계정이므로 admin 이 비번 리셋 가능해야 함.
+    if (user.is_demo) {
+      return res.status(403).json({ success: false, error: 'Demo account passwords cannot be changed.' });
     }
 
     // 권한 체크 (계층):

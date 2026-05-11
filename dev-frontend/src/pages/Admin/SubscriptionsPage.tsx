@@ -408,8 +408,8 @@ const SubscriptionsPage: React.FC = () => {
         } as any);
       });
 
-      // 2. Brand General / Foodcourt General / Restaurant Owner subscriptions
-      users.filter((u: any) => ['Brand General', 'Foodcourt General', 'Restaurant Owner'].includes(u.role)).forEach((u: any) => {
+      // 2. User-based subscriptions (Brand/Foodcourt General + Manager + Restaurant Owner + Supplier Admin)
+      users.filter((u: any) => ['Brand General', 'Brand Manager', 'Foodcourt General', 'Foodcourt Manager', 'Restaurant Owner', 'Supplier Admin'].includes(u.role)).forEach((u: any) => {
         let planType = '';
         let planAmount = 0;
         let billingCycle = 'monthly';
@@ -418,31 +418,15 @@ const SubscriptionsPage: React.FC = () => {
         let subStart = '';
         let subEnd = '';
 
-        if (u.role === 'Brand General') {
-          planType = u.brand_plan_type || u.plan_type || '';
-          planAmount = parseFloat(u.brand_plan_amount || u.plan_amount) || 0;
-          billingCycle = u.brand_billing_cycle || u.billing_cycle || 'monthly';
-          currency = u.brand_currency || u.currency || 'MYR';
-          subStatus = u.brand_subscription_status || u.subscription_status || 'active';
-          subStart = u.brand_subscription_start || u.subscription_start || '';
-          subEnd = u.brand_subscription_end || u.subscription_end || '';
-        } else if (u.role === 'Foodcourt General') {
-          planType = u.fc_plan_type || u.plan_type || '';
-          planAmount = parseFloat(u.fc_plan_amount || u.plan_amount) || 0;
-          billingCycle = u.fc_billing_cycle || u.billing_cycle || 'monthly';
-          currency = u.fc_currency || u.currency || 'MYR';
-          subStatus = u.fc_subscription_status || u.subscription_status || 'active';
-          subStart = u.fc_subscription_start || u.subscription_start || '';
-          subEnd = u.fc_subscription_end || u.subscription_end || '';
-        } else if (u.role === 'Restaurant Owner') {
-          planType = u.plan_type || '';
-          planAmount = parseFloat(u.plan_amount) || 0;
-          billingCycle = u.billing_cycle || 'monthly';
-          currency = u.currency || 'MYR';
-          subStatus = u.subscription_status || 'active';
-          subStart = u.subscription_start || '';
-          subEnd = u.subscription_end || '';
-        }
+        // 모든 user-based role 은 user 테이블의 plan_type/plan_amount/... 직접 사용 (통일).
+        // Brand 의 brand_plan_* / Foodcourt 의 fc_plan_* 컬럼은 legacy fallback 으로만.
+        planType = u.plan_type || u.brand_plan_type || u.fc_plan_type || '';
+        planAmount = parseFloat(u.plan_amount || u.brand_plan_amount || u.fc_plan_amount) || 0;
+        billingCycle = u.billing_cycle || u.brand_billing_cycle || u.fc_billing_cycle || 'monthly';
+        currency = u.currency || u.brand_currency || u.fc_currency || 'MYR';
+        subStatus = u.subscription_status || u.brand_subscription_status || u.fc_subscription_status || 'active';
+        subStart = u.subscription_start || u.brand_subscription_start || u.fc_subscription_start || '';
+        subEnd = u.subscription_end || u.brand_subscription_end || u.fc_subscription_end || '';
 
         if (!planType) return; // No plan assigned, skip
 
@@ -472,7 +456,7 @@ const SubscriptionsPage: React.FC = () => {
           discountType: 'none',
           discountValue: 0,
           discountReason: '',
-          entityType: u.role === 'Brand General' ? 'brand' : u.role === 'Foodcourt General' ? 'foodcourt' : 'owner',
+          entityType: u.role.includes('Brand') ? 'brand' : u.role.includes('Foodcourt') ? 'foodcourt' : u.role === 'Supplier Admin' ? 'supplier' : 'owner',
           userRole: u.role,
           isDemo: u.is_demo || false,
           isTest: u.is_test || false
@@ -583,14 +567,21 @@ const SubscriptionsPage: React.FC = () => {
     setSearchQuery(query);
     setShowSearchDropdown(true);
 
-    // Filter managers by userType
+    // Filter managers by userType — 구독 대상은 General + Owner + Supplier Admin (SUBSCRIBING_ROLES).
+    // Manager 들(Brand Manager, Foodcourt Manager)은 산하 사용자라 own subscription 없음 — 검색 결과에서 제외.
+    // 이미 plan_type 있는 user 도 제외 — 중복 등록 방지 (변경하려면 list 에서 Edit).
+    const hasActiveSubscription = (m: any) =>
+      !!(m.plan_type || m.brand_plan_type || m.fc_plan_type);
     const roleFilter = (manager: any) => {
+      if (hasActiveSubscription(manager)) return false;
       if (userType === 'brand') {
-        return manager.role === 'Brand Manager' || manager.role === 'Brand General';
+        return manager.role === 'Brand General';
       } else if (userType === 'foodcourt') {
-        return manager.role === 'Foodcourt Manager' || manager.role === 'Foodcourt General';
+        return manager.role === 'Foodcourt General';
       } else if (userType === 'owner') {
         return manager.role === 'Restaurant Owner';
+      } else if (userType === 'supplier') {
+        return manager.role === 'Supplier Admin';
       }
       return true;
     };
@@ -837,33 +828,29 @@ const SubscriptionsPage: React.FC = () => {
           discount_reason: newSubscription.discountReason || null
         };
 
-        if (role === 'Brand General' || role === 'Brand Manager') {
-          const brandId = selectedTarget.data.brand_id;
-          if (brandId) {
-            const resp = await fetch(`/api/brands/${brandId}/subscription`, {
-              method: 'PUT',
-              headers: authHeaders,
-              body: JSON.stringify(subscriptionData)
-            });
-            if (!resp.ok) throw new Error('Failed to update brand subscription');
-          }
-        } else if (role === 'Foodcourt General' || role === 'Foodcourt Manager') {
-          const foodcourtId = selectedTarget.data.foodcourt_id;
-          if (foodcourtId) {
-            const resp = await fetch(`/api/foodcourts/${foodcourtId}/subscription`, {
-              method: 'PUT',
-              headers: authHeaders,
-              body: JSON.stringify(subscriptionData)
-            });
-            if (!resp.ok) throw new Error('Failed to update foodcourt subscription');
-          }
-        } else if (role === 'Restaurant Owner') {
+        // Brand General / Foodcourt General / Restaurant Owner / Supplier Admin 모두 User 자체에 구독 저장.
+        // Brand/Foodcourt entity 의 subscription 은 별도 (entity 운영용 — 여기선 user 단위 통합).
+        if (['Brand General', 'Brand Manager', 'Foodcourt General', 'Foodcourt Manager', 'Restaurant Owner', 'Supplier Admin'].includes(role)) {
           const resp = await fetch(`/api/users/${selectedTarget.data.id}`, {
             method: 'PUT',
             headers: authHeaders,
             body: JSON.stringify(subscriptionData)
           });
-          if (!resp.ok) throw new Error('Failed to update owner subscription');
+          if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            throw new Error(err.message || err.error?.message || `Failed to update ${role} subscription`);
+          }
+
+          // entity (Brand/Foodcourt) 에도 동기화 — entity 연결 있을 때만
+          const entityId = role.includes('Brand') ? selectedTarget.data.brand_id : selectedTarget.data.foodcourt_id;
+          if (entityId && (role.includes('Brand') || role.includes('Foodcourt'))) {
+            const entityPath = role.includes('Brand') ? `brands` : `foodcourts`;
+            await fetch(`/api/${entityPath}/${entityId}/subscription`, {
+              method: 'PUT',
+              headers: authHeaders,
+              body: JSON.stringify(subscriptionData)
+            }).catch(() => {});  // entity sync 는 best-effort
+          }
         }
       }
 
@@ -1194,7 +1181,10 @@ const SubscriptionsPage: React.FC = () => {
                         )}
                       </RestaurantName>
                       <RestaurantMeta>
-                        {(subscription as any).userRole || subscription.managerName}{subscription.location ? ` • ${subscription.location}` : ''}
+                        {(subscription as any).userRole
+                          ? `${(subscription as any).userRole} • ${subscription.managerName}`
+                          : subscription.managerName}
+                        {subscription.location ? ` • ${subscription.location}` : ''}
                       </RestaurantMeta>
                     </RestaurantInfo>
                   </MobileValue>

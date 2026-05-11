@@ -114,7 +114,9 @@ router.get('/store/:slug', async (req, res) => {
         friday: '10:00 - 23:00',
         saturday: '10:00 - 23:00',
         sunday: '10:00 - 22:00'
-      }
+      },
+      // Reservation availability flag — used by mobile to show/hide "Reserve a Table"
+      reservationsEnabled: !!(restaurant.reservation_settings && restaurant.reservation_settings.enabled)
     };
 
     res.json({ success: true, data: store });

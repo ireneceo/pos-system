@@ -12,6 +12,7 @@ import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import PhoneInput from '../../components/Common/PhoneInput';
 import PageHeader from '../../components/Common/PageHeader';
 import AutoSaveField, { AutoSaveHandle } from '../../components/Common/AutoSaveField';
+import ReservationSettingsTab from '../../components/Settings/ReservationSettingsTab';
 import AddressFields from '../../components/Form/AddressFields';
 import ConfirmModal from '../../components/ConfirmModal';
 import { useTabParam } from '../../hooks/useTabParam';
@@ -363,7 +364,7 @@ const ActionButton = styled.button`
 `;
 
 // 타입 정의
-type TabType = 'store' | 'operations' | 'payment' | 'printer' | 'kitchenStations' | 'mobileOrder' | 'company' | 'brands' | 'billing' | 'managers' | 'membership';
+type TabType = 'store' | 'operations' | 'payment' | 'printer' | 'kitchenStations' | 'mobileOrder' | 'reservation' | 'company' | 'brands' | 'billing' | 'managers' | 'membership';
 
 interface Table {
   id: string;
@@ -2141,6 +2142,9 @@ const SettingsPage: React.FC = () => {
                 </Tab>
                 <Tab active={activeTab === 'mobileOrder'} onClick={() => handleTabChange('mobileOrder')}>
                   Mobile Order
+                </Tab>
+                <Tab active={activeTab === 'reservation'} onClick={() => handleTabChange('reservation')}>
+                  Reservation
                 </Tab>
                 <Tab active={activeTab === 'managers'} onClick={() => handleTabChange('managers')}>
                   Managers
@@ -4001,6 +4005,10 @@ const SettingsPage: React.FC = () => {
 
               </SettingsGrid>
             </>
+          )}
+
+          {activeTab === 'reservation' && (
+            <ReservationSettingsTab />
           )}
 
           {activeTab === 'printer' && (

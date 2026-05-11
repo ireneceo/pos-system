@@ -183,6 +183,7 @@
     "dashboard": "Dashboard",
     "orders": "Orders",
     "liveOrders": "Live Orders",
+    "reservations": "Reservations",
     "orderHistory": "Order History",
     "menu": "Menu",
     "categories": "Categories",

@@ -54,8 +54,14 @@ Order.init({
     defaultValue: 'awaiting_payment'
   },
   order_type: {
-    type: DataTypes.ENUM('dine_in', 'takeaway', 'delivery', 'pickup'),
+    type: DataTypes.ENUM('dine_in', 'takeaway', 'delivery', 'pickup', 'reservation_deposit'),
     defaultValue: 'dine_in'
+  },
+  reservation_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: { model: 'reservations', key: 'id' },
+    comment: 'FK to Reservation when this order is a deposit prepayment or a reservation-attached order'
   },
   source: {
     type: DataTypes.ENUM('pos', 'mobile', 'kiosk'),

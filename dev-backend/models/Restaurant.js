@@ -447,6 +447,30 @@ Restaurant.init({
       }
     }
   },
+  reservation_settings: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'JSON settings for reservations (slot, deposit, cancellation, no-show policy, closed dates)',
+    get() {
+      const rawValue = this.getDataValue('reservation_settings');
+      if (!rawValue) {
+        return {
+          enabled: false,
+          auto_confirm: false,
+          slot: { duration_minutes: 30, turn_time_minutes: 90, advance_booking_days: 60, min_advance_hours: 1, min_party: 1, max_party: 20, max_covers_per_slot: 40 },
+          deposit: { enabled: false, type: 'fixed', amount: 0, min_party_for_deposit: 6 },
+          cancellation_policy: { free_until_hours: 24, partial_refund_pct: 50, no_refund_after_hours: 2 },
+          no_show_policy: { grace_minutes: 15, auto_cancel_after_minutes: 30, block_after_count: 3 },
+          closed_dates: []
+        };
+      }
+      try { return JSON.parse(rawValue); } catch (e) { return null; }
+    },
+    set(value) {
+      if (!value) { this.setDataValue('reservation_settings', null); }
+      else { this.setDataValue('reservation_settings', typeof value === 'string' ? value : JSON.stringify(value)); }
+    }
+  },
   floor_plan: {
     type: DataTypes.TEXT('medium'),
     allowNull: true,

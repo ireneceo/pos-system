@@ -152,6 +152,38 @@ import {
 </MainLayout>
 ```
 
+### 2.3 페이지 헤더 ⚙️ Settings 단축 (산업 표준 — 2026-05-11 도입)
+
+Stripe/Toast/Square 패턴: 페이지 우상단 ⚙️ 아이콘 → 관련 Settings 페이지/탭으로 deep link. 모든 페이지에서 일관된 UX.
+
+```jsx
+// PageHeader 에 settingsHref + settingsLabel 전달
+<PageHeader
+  title="Reservations"
+  settingsHref={`/restaurant/${restaurantId}/settings?tab=reservation`}
+  settingsLabel="Reservation settings"
+>
+  <Button onClick={handleNew}>+ New</Button>
+</PageHeader>
+```
+
+**또는 어디서든 단독 사용:**
+```jsx
+import { PageSettingsLink } from '../components/Common/PageHeader';
+<PageSettingsLink to="/restaurant/1/settings?tab=membership" label="Membership settings" />
+```
+
+**원칙:**
+- 관련 Settings 탭이 **실제 존재**하고 **의미적으로 적합**할 때만 추가. 부적합한 deep link 보다 ⚙️ 없는 게 정직.
+- 신규 사용자 안내는 별도 — v3.27 Walkthrough 시스템이 담당. 가이드 패널 중복 금지.
+- 동작: 36×36 button, `#6B7280` → `#635BFF` hover, `transition: all 0.15s`, focus-visible 2px outline.
+
+**현재 적용 (4 페이지):**
+- Reservations → `?tab=reservation`
+- LiveOrders → `?tab=operations`
+- KitchenDisplay → `?tab=kitchenStations`
+- Customers → `?tab=membership`
+
 ---
 
 ## 3. 컬러 팔레트

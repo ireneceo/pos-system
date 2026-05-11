@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
 import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
 import { formatEntityAddress, AppLocale } from '../../utils/formatAddress';
@@ -30,12 +30,13 @@ import { Tabs, Tab, Badge } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import { useAuth } from '../../contexts/AuthContext';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
-import { formatCurrency } from '../../utils/currency';
+import { formatCurrency, getActivePlanCurrencies } from '../../utils/currency';
 import { useStore } from '../../contexts/StoreContext';
 import PhoneInput from '../../components/Common/PhoneInput';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
+import SubscriptionFormFields, { type BillingCycle, type PaymentModel, type DiscountType } from '../../components/Subscription/SubscriptionFormFields';
 // Auth header helper for API calls
 const getAuthHeaders = () => {
   const token = getAuthToken();
@@ -69,41 +70,10 @@ interface Staff {
 // Page-specific styled components below
 
 // 페이지별 반응형 테이블 헤더 (StaffManagement 전용)
-const StaffTableHeader = styled(CommonTableHeader)`
-  @media (max-width: 1400px) {
-    & > span:nth-child(4),
-    & > span:nth-child(5) {
-      display: none;
-    }
-  }
-
-  @media (max-width: 1024px) {
-    & > span:nth-child(3),
-    & > span:nth-child(4),
-    & > span:nth-child(5) {
-      display: none;
-    }
-  }
-`;
-
-// 페이지별 반응형 테이블 행 (StaffManagement 전용)
-const StaffTableRow = styled(CommonTableRow)`
-
-  @media (max-width: 1400px) {
-    & > div:nth-child(4),
-    & > div:nth-child(5) {
-      display: none;
-    }
-  }
-
-  @media (max-width: 1024px) {
-    & > div:nth-child(3),
-    & > div:nth-child(4),
-    & > div:nth-child(5) {
-      display: none;
-    }
-  }
-`;
+// 1024px 이하에서는 CommonTableRow 가 display:block 으로 변환되어 MobileGrid 가 자동 카드 배치.
+// 데스크탑(>=1024px)에서는 6 column grid 그대로 유지. 컬럼 숨김 hack 제거.
+const StaffTableHeader = styled(CommonTableHeader)``;
+const StaffTableRow = styled(CommonTableRow)``;
 
 const StaffInfo = styled.div`
   display: flex;
@@ -415,13 +385,40 @@ const AdminStaffManagementPage: React.FC = () => {
     department: '',
     restaurantId: '',
     companyName: '',
-    pin_code: ''
+    pin_code: '',
+    // v3.27 unified subscription form (Brand/Foodcourt General + Restaurant Owner + Supplier Admin)
+    currency: 'MYR',
+    planType: '',
+    planAmount: '0',
+    billingCycle: '' as '' | 'monthly' | 'annual',
+    paymentModel: 'self_pay' as 'self_pay' | 'brand_pays' | 'foodcourt_pays',
+    subscriptionStart: '',
+    subscriptionEnd: '',
+    autoRenew: true,
+    treatAsTrial: false,
+    activateNow: true,
+    discountType: 'none' as 'none' | 'percentage' | 'fixed',
+    discountValue: '0',
+    discountReason: ''
   });
   const [formError, setFormError] = useState('');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [successPassword, setSuccessPassword] = useState('');
   const [passwordCopied, setPasswordCopied] = useState(false);
+  const [availablePlans, setAvailablePlans] = useState<any[]>([]);
+  const planCurrencies = useMemo(() => getActivePlanCurrencies(availablePlans), [availablePlans]);
+
+  useEffect(() => {
+    fetch('/api/plans', { headers: { Authorization: `Bearer ${getAuthToken()}` } })
+      .then(r => r.ok ? r.json() : [])
+      .then(j => {
+        // /api/plans 는 array 직접 반환 (ManagersPage 와 동일 패턴)
+        const arr = Array.isArray(j) ? j : (Array.isArray(j?.data) ? j.data : []);
+        setAvailablePlans(arr);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const fetchStaff = async () => {
@@ -640,7 +637,20 @@ const AdminStaffManagementPage: React.FC = () => {
       department: '',
       restaurantId: '',
       companyName: '',
-      pin_code: ''
+      pin_code: '',
+      currency: 'MYR',
+      planType: '',
+      planAmount: '0',
+      billingCycle: '' as '' | 'monthly' | 'annual',
+      paymentModel: 'self_pay' as 'self_pay' | 'brand_pays' | 'foodcourt_pays',
+      subscriptionStart: '',
+      subscriptionEnd: '',
+      autoRenew: true,
+      treatAsTrial: false,
+      activateNow: true,
+      discountType: 'none' as 'none' | 'percentage' | 'fixed',
+      discountValue: '0',
+      discountReason: ''
     });
   };
 
@@ -695,8 +705,23 @@ const AdminStaffManagementPage: React.FC = () => {
         restaurant_id: newStaff.restaurantId ? parseInt(newStaff.restaurantId) : null,
         manager_id: null
       };
-      if (newStaff.pin_code && newStaff.pin_code.length === 4) {
+      if ((newStaff.pin_code || '').length === 4) {
         staffUserData.pin_code = newStaff.pin_code;
+      }
+
+      // Subscription fields — Brand/Foodcourt General + Restaurant Owner + Supplier Admin
+      const SUBSCRIBING_ROLES = ['Brand General', 'Foodcourt General', 'Restaurant Owner', 'Supplier Admin'];
+      if (SUBSCRIBING_ROLES.includes(newStaff.role) && newStaff.planType && newStaff.subscriptionStart) {
+        staffUserData.plan_type = newStaff.planType;
+        staffUserData.plan_amount = parseFloat(newStaff.planAmount) || 0;
+        staffUserData.billing_cycle = newStaff.billingCycle || 'monthly';
+        staffUserData.currency = newStaff.currency || 'MYR';
+        staffUserData.subscription_start = newStaff.subscriptionStart;
+        staffUserData.subscription_end = newStaff.subscriptionEnd || null;
+        staffUserData.auto_renew = newStaff.autoRenew;
+        staffUserData.discount_type = newStaff.discountType || 'none';
+        staffUserData.discount_value = newStaff.discountType === 'none' ? 0 : (parseFloat(newStaff.discountValue) || 0);
+        staffUserData.discount_reason = newStaff.discountType === 'none' ? null : (newStaff.discountReason || null);
       }
 
       console.log('🔄 [Admin] Creating new staff user:', staffUserData);
@@ -1417,7 +1442,7 @@ const AdminStaffManagementPage: React.FC = () => {
           </FilterBar>
 
           <Table>
-            <StaffTableHeader columns="2fr 2fr 1.2fr 1.2fr 0.8fr 1fr 200px">
+            <StaffTableHeader columns="2.2fr 2fr 1.3fr 1.2fr 0.9fr 220px">
               <span className="col-info">{t('admin:staffManagementPage.staffMember')}</span>
               <span className="col-info">{t('admin:staffManagementPage.companyLocation')}</span>
               <span>{t('admin:staffManagementPage.role')}</span>
@@ -1437,7 +1462,7 @@ const AdminStaffManagementPage: React.FC = () => {
               </EmptyState>
             ) : (
               filteredStaff.map(staff => (
-                <StaffTableRow columns="2fr 2fr 1.2fr 1.2fr 0.8fr 1fr 200px" key={staff.id}>
+                <StaffTableRow columns="2.2fr 2fr 1.3fr 1.2fr 0.9fr 220px" key={staff.id}>
                   <StaffInfo className="col-info">
                     <StaffAvatar role={staff.role}>
                       {getInitials(staff.name)}
@@ -1525,10 +1550,12 @@ const AdminStaffManagementPage: React.FC = () => {
                   <option value="">{t('admin:staffManagementPage.selectRole')}</option>
                   <option value="Staff">{t('admin:staffManagementPage.staff')}</option>
                   <option value="Restaurant Admin">{t('admin:staffManagementPage.restaurantAdmin')}</option>
+                  <option value="Restaurant Owner">Restaurant Owner</option>
                   <option value="Foodcourt Manager">{t('admin:staffManagementPage.foodcourtManager')}</option>
                   <option value="Foodcourt General">{t('admin:staffManagementPage.foodcourtGeneral')}</option>
                   <option value="Brand Manager">{t('admin:staffManagementPage.brandManager')}</option>
                   <option value="Brand General">{t('admin:staffManagementPage.brandGeneral')}</option>
+                  <option value="Supplier Admin">Supplier Admin</option>
                   <option value="System Admin">{t('admin:staffManagementPage.systemAdmin')}</option>
                 </Select>
               </FormGroup>
@@ -1696,6 +1723,51 @@ const AdminStaffManagementPage: React.FC = () => {
                   <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
                     Used for quick cashier switch at POS terminal
                   </div>
+                </FormGroup>
+              )}
+
+              {/* v3.27 unified subscription form — Brand/Foodcourt General + Restaurant Owner + Supplier Admin */}
+              {['Brand General', 'Foodcourt General', 'Restaurant Owner', 'Supplier Admin'].includes(newStaff.role) && (
+                <FormGroup style={{ gridColumn: '1 / -1', marginTop: '8px', paddingTop: '16px', borderTop: '1px solid #E6EBF1' }}>
+                  <SubscriptionFormFields
+                    userType={
+                      newStaff.role === 'Brand General' ? 'brand' :
+                      newStaff.role === 'Foodcourt General' ? 'foodcourt' :
+                      newStaff.role === 'Supplier Admin' ? 'supplier' : 'owner'
+                    }
+                    mode="add"
+                    availablePlans={availablePlans}
+                    planCurrencies={planCurrencies}
+                    values={{
+                      currency: newStaff.currency,
+                      plan_type: newStaff.planType,
+                      plan_amount: newStaff.planAmount || '0',
+                      billing_cycle: newStaff.billingCycle as BillingCycle,
+                      payment_model: newStaff.paymentModel as PaymentModel,
+                      subscription_start: newStaff.subscriptionStart,
+                      subscription_end: newStaff.subscriptionEnd,
+                      auto_renew: newStaff.autoRenew,
+                      treat_as_trial: newStaff.treatAsTrial,
+                      activate_now: newStaff.activateNow,
+                      discount_type: newStaff.discountType as DiscountType,
+                      discount_value: newStaff.discountValue,
+                      discount_reason: newStaff.discountReason
+                    }}
+                    onChange={(patch) => {
+                      const map: Record<string, string> = {
+                        currency: 'currency', plan_type: 'planType', plan_amount: 'planAmount',
+                        billing_cycle: 'billingCycle', payment_model: 'paymentModel',
+                        subscription_start: 'subscriptionStart', subscription_end: 'subscriptionEnd',
+                        auto_renew: 'autoRenew', treat_as_trial: 'treatAsTrial',
+                        activate_now: 'activateNow', discount_type: 'discountType',
+                        discount_value: 'discountValue', discount_reason: 'discountReason'
+                      };
+                      Object.entries(patch).forEach(([k, v]) => {
+                        const target = map[k];
+                        if (target) setNewStaff(prev => ({ ...prev, [target]: v }));
+                      });
+                    }}
+                  />
                 </FormGroup>
               )}
 

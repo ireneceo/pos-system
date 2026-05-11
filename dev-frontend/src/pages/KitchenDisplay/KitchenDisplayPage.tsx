@@ -2406,7 +2406,11 @@ const KitchenDisplayPage: React.FC = () => {
 
   return (
     <Container>
-      <PageHeader title="Kitchen Display">
+      <PageHeader
+        title="Kitchen Display"
+        settingsHref={user?.restaurantId ? `/restaurant/${user.restaurantId}/settings?tab=kitchenStations` : undefined}
+        settingsLabel="Kitchen station settings"
+      >
         <HeaderInfo>
           {viewMode === 'item' && (
             <a href={`/restaurant/${user?.restaurantId}/settings?tab=kitchenStations`} target="_blank" rel="noopener noreferrer" style={{

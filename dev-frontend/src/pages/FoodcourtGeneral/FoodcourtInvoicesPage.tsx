@@ -520,7 +520,8 @@ const FoodcourtInvoicesPage: React.FC = () => {
       let allManagers: Manager[] = [];
       for (const res of [managerRes, foodcourtRes, brandRes]) {
         if (res.ok) {
-          const data = await res.json();
+          const raw = await res.json();
+          const data = Array.isArray(raw) ? raw : (Array.isArray(raw?.data) ? raw.data : []);
           const transformed = data.map((user: any) => ({
             id: user.id.toString(),
             fullName: user.full_name || user.username,

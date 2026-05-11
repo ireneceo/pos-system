@@ -52,6 +52,7 @@ const subscriptionScheduler = require('./services/subscriptionScheduler');
 const demoResetScheduler = require('./services/demoResetScheduler');
 const dailyStatsScheduler = require('./services/dailyStatsScheduler');
 const invoiceOverdueScheduler = require('./services/invoiceOverdueScheduler');
+const reservationScheduler = require('./services/reservationScheduler');
 const { startSoaCron } = require('./services/soaScheduler');
 const { errorHandler } = require('./middleware/errorHandler');
 const { initSocketServer } = require('./services/socketService');
@@ -334,6 +335,11 @@ app.use('/api/public', publicRouter);
 app.use('/api/contents', contentsRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/referrals', require('./routes/referrals'));  // Referral System — mount EARLY (before /api fall-through routers) so public validate-code/track-click are not gated by another router's middleware
+
+// Reservations (v3.29) — staff first (more specific path-level guards), then public.
+// Both mount under /api/reservations; express routes by definition order within each.
+app.use('/api/reservations', require('./routes/reservations-staff'));
+app.use('/api/reservations', require('./routes/reservations-public'));
 app.use('/api/menu', menuRouter);
 app.use('/api/mobile', mobileRouter);
 app.use('/api/invoices', invoicesRouter);
@@ -513,6 +519,9 @@ async function startServer() {
     // Start invoice overdue scheduler — runs daily at 02:30 UTC, transitions
     // non-subscription invoices past due_date to 'overdue' status.
     invoiceOverdueScheduler.start();
+
+    // Start reservation scheduler — runs hourly (24h/2h reminders + no_show auto)
+    reservationScheduler.start();
 
     // 포트 충돌 체크 - PM2 환경에서는 더 유연하게 처리
     server.listen(PORT, '0.0.0.0', () => {

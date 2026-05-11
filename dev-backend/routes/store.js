@@ -79,6 +79,7 @@ router.get('/settings', authenticateToken, async (req, res) => {
         printer_settings: restaurant.printer_settings || null,
         mobile_settings: restaurant.mobile_settings || { show_featured: true, show_popular: true },
         table_settings: restaurant.table_settings || {},
+        reservation_settings: restaurant.reservation_settings || { enabled: false },
         plan_type: restaurant.plan_type,
         status: restaurant.status
       }
@@ -150,6 +151,22 @@ router.put('/settings', authenticateToken, async (req, res) => {
 
     console.log('✓ Restaurant found:', restaurant.name);
 
+    // Module gate: reservation_settings.enabled=true 토글 시 'reservations' 모듈 보유 검증.
+    // System Admin / demo 매장은 bypass. 모듈 미포함 plan 매장이 직접 enable 못 하게 backend 강제.
+    if (req.body.reservation_settings?.enabled === true && req.user.role !== 'System Admin' && !restaurant.is_demo) {
+      const PlanTemplate = require('../models/PlanTemplate');
+      const { Op } = require('sequelize');
+      const planType = restaurant.plan_type;
+      if (!planType) {
+        return res.status(403).json({ success: false, code: 'MODULE_NOT_INCLUDED', message: 'Reservations require an active subscription.', required_module: 'reservations' });
+      }
+      const plan = await PlanTemplate.findOne({ where: { [Op.or]: [{ display_name: planType }, { name: planType }], plan_target: 'restaurant' } });
+      const modules = plan?.included_modules || [];
+      if (!modules.includes('reservations')) {
+        return res.status(403).json({ success: false, code: 'MODULE_NOT_INCLUDED', message: `Reservations module is not included in the current plan (${planType}).`, required_module: 'reservations' });
+      }
+    }
+
     // Update allowed fields. address_line_2 is part of the canonical 6-field
     // address schema unified in v3.17 — Settings page now sends it via the
     // shared <AddressFields> component and we must accept it here.
@@ -158,7 +175,7 @@ router.put('/settings', authenticateToken, async (req, res) => {
       'postal_code', 'country', 'website', 'logo_url',
       'business_registration', 'tax_id',
       'payment_settings', 'operation_settings', 'table_settings', 'mobile_settings',
-      'printer_settings',
+      'printer_settings', 'reservation_settings',
       'currency', 'cash_rounding', 'rounding_apply_to',
       'kitchen_item_merge'
     ];
@@ -170,7 +187,7 @@ router.put('/settings', authenticateToken, async (req, res) => {
           ? `[JSON ${typeof req.body[field]}]`
           : req.body[field]);
 
-        if (field === 'payment_settings' || field === 'operation_settings' || field === 'table_settings' || field === 'mobile_settings' || field === 'printer_settings') {
+        if (field === 'payment_settings' || field === 'operation_settings' || field === 'table_settings' || field === 'mobile_settings' || field === 'printer_settings' || field === 'reservation_settings') {
           // Migrate legacy payment method keys on save
           if (field === 'payment_settings' && req.body[field]) {
             const ps = req.body[field];

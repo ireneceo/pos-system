@@ -124,6 +124,9 @@ const WebhookEvent = require('./WebhookEvent');
 const PushSubscription = require('./PushSubscription');
 const PushLog = require('./PushLog');
 
+// Reservations (v3.29+)
+const Reservation = require('./Reservation');
+
 // Define associations
 // Brand - Restaurant associations
 Brand.hasMany(Restaurant, { foreignKey: 'brand_id', as: 'restaurants' });
@@ -788,6 +791,14 @@ Invoice.hasMany(ReferralCommission, { foreignKey: 'invoice_id', as: 'referralCom
 // Payment gateway associations (v3.24+)
 Invoice.belongsTo(Subscription, { foreignKey: 'subscription_id', as: 'subscription', constraints: false });
 
+// Reservations (v3.29+)
+Reservation.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
+Reservation.belongsTo(RestaurantCustomer, { foreignKey: 'customer_id', as: 'customer', constraints: false });
+Reservation.belongsTo(Order, { foreignKey: 'deposit_order_id', as: 'depositOrder', constraints: false });
+Restaurant.hasMany(Reservation, { foreignKey: 'restaurant_id', as: 'reservations' });
+RestaurantCustomer.hasMany(Reservation, { foreignKey: 'customer_id', as: 'reservations', constraints: false });
+Order.hasOne(Reservation, { foreignKey: 'deposit_order_id', as: 'reservation', constraints: false });
+
 // Web Push notifications (v3.28+)
 User.hasMany(PushSubscription, { foreignKey: 'user_id', as: 'pushSubscriptions' });
 PushSubscription.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
@@ -945,5 +956,7 @@ module.exports = {
   WebhookEvent,
   // Web Push notifications (v3.28+)
   PushSubscription,
-  PushLog
+  PushLog,
+  // Reservations (v3.29+)
+  Reservation
 };

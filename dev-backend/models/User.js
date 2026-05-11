@@ -167,6 +167,12 @@ User.init({
     type: DataTypes.DATE,
     allowNull: true
   },
+  auto_renew: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true,
+    comment: 'Auto-renew subscription for subscribing roles (BG/FG/Owner/Supplier)'
+  },
   trial_end_date: {
     type: DataTypes.DATE,
     allowNull: true,

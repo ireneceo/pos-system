@@ -135,6 +135,7 @@ interface StoreData {
     pickup: boolean;
     delivery: boolean;
   };
+  reservationsEnabled?: boolean;
 }
 
 const OrderTypePage: React.FC = () => {
@@ -177,7 +178,8 @@ const OrderTypePage: React.FC = () => {
                 takeaway: true,
                 pickup: false,
                 delivery: false
-              }
+              },
+              reservationsEnabled: !!result.data.reservationsEnabled
             });
           }
         }
@@ -386,6 +388,12 @@ const OrderTypePage: React.FC = () => {
                 <OptionCard onClick={() => handleOrderTypeSelection('delivery')}>
                   <OptionIcon>🚚</OptionIcon>
                   <OptionTitle>Delivery</OptionTitle>
+                </OptionCard>
+              )}
+              {storeData?.reservationsEnabled && (
+                <OptionCard onClick={() => navigate(`/mobile/${slug}/reservation`)}>
+                  <OptionIcon>📅</OptionIcon>
+                  <OptionTitle>Reserve a Table</OptionTitle>
                 </OptionCard>
               )}
             </>

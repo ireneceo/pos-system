@@ -541,6 +541,8 @@
   "features.floor_plan.desc": "Visual floor plan editor with drag-and-drop table layout",
   "features.mobile_ordering.title": "Mobile Ordering",
   "features.mobile_ordering.desc": "Let customers order directly from their phones via QR code",
+  "features.reservations.title": "Reservations",
+  "features.reservations.desc": "Mobile self-service table booking with staff timeline, 24h/2h reminders, and auto no-show handling",
   "features.recipe_management.title": "Recipe Management",
   "features.recipe_management.desc": "Create and manage recipes with ingredient cost tracking",
   "features.inventory_management.title": "Inventory & Supplier Management",

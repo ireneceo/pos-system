@@ -1359,7 +1359,11 @@ const LiveOrdersPage: React.FC = () => {
       )}
 
       <Container className="no-print">
-        <PageHeader title="Live Orders">
+        <PageHeader
+          title="Live Orders"
+          settingsHref={user?.restaurantId ? `/restaurant/${user.restaurantId}/settings?tab=operations` : undefined}
+          settingsLabel="Order settings"
+        >
           {selectMode && (
             <>
               <MergeButton onClick={handleMergeOrders} disabled={selectedOrderIds.length < 2 || isMerging}>

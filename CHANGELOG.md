@@ -6,6 +6,110 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+### Reservation 모듈화 + Settings UI 통일 (2026-05-11)
+
+**Backend 모듈 시스템 등록**:
+- AddonModule 신규: `reservations` (target='restaurant', category='advanced', sort_order=235 — 모바일오더 230 다음, price=$0.00 시장 진입용)
+- PlanTemplate Basic/Professional/Enterprise `included_modules` 에 reservations 추가 (모든 tier 무료 제공)
+- `middleware/requireModule.js`: `requireRestaurantModule(moduleCode)` 신규 (Restaurant.plan_type → PlanTemplate.included_modules 검사, System Admin/demo bypass)
+- `routes/store.js` PUT /settings: `reservation_settings.enabled=true` 토글 시 module 보유 검증 — 미포함 plan 매장 자동 403 차단
+
+**Frontend 모듈화**:
+- `MainLayout.tsx` Reservations NavItem 에 `hasModule('reservations')` gate
+- `RestaurantsPage` 매장 카드에 보라색 'Reservations' 배지 (reservation_settings.enabled=true 일 때)
+- 추가 fix: `routes/restaurants-crud.js` GET `/` transform 함수에 `reservation_settings` 명시 추가 — list 응답에서 누락되어 배지 데이터가 안 오던 결함 (검증 중 발견)
+
+**랜딩 (4언어)**:
+- `FeaturesPage` Restaurant 탭에 Reservations 카드 (모바일오더 다음, 6 bullet features)
+- `PricingPage` 모듈 라벨 매핑에 reservations 추가
+- `landing.json` 4언어: features.reservations.title/desc
+
+**Settings UI 통일 (산업 표준)**:
+- `PageHeader.tsx` 에 `settingsHref` + `settingsLabel` prop, `<PageSettingsLink>` 재사용 컴포넌트 export
+- 페이지 우상단 ⚙️ 아이콘 → 관련 Settings 탭 deep link (Stripe/Toast/Square 패턴)
+- 적용 6 페이지: Reservations, LiveOrders, KitchenDisplay, Customers, Promotions, Reports
+- 신규 가입자 안내는 v3.27 Walkthrough 가 담당 — 가이드 패널 중복 제거
+
+**검증**: 모듈 gating 9/9 + health-check 78/78 + 빌드 main.70ff1b26.js 0 new warning.
+
+### Reservation R1 3가지 결함 fix (2026-05-11)
+
+**검증 중 3개의 추가 결함 발견 및 수정 (단순 customer_id fix 만이 아니었음):**
+
+**결함 A — customer_id NULL (사용자 차단)**:
+- POST `/reservations` 가 첫 예약 (RestaurantCustomer 없는 경우) 시 `customer_id: null` 로 저장 → 본인 `/me` 에 안 보이고 취소/수정 불가
+- 수정: `sequelize.transaction` 안에서 `findOrCreate` → `Reservation.create` → `reservation_count++` 원자적 실행
+
+**결함 B — reservation_count 이중 증가 (데이터 부정확)**:
+- `routes/reservations-staff.js` PATCH `/:id/status` 의 `status='completed'` 분기가 `reservation_count++` 수행
+- POST 단계에서도 +1 → 한 예약 완료 시 카운트 2 가 됨 (통계 부정확, 사실상 운영 배포된 상태로 dev DB 손상 가능)
+- 수정: completed 분기는 `last_reservation_at` 만 업데이트, count 증가 제거
+
+**결함 C — PATCH /me/:id 정책 우회 (비즈니스 룰 무력화)**:
+- 고객이 본인 예약 수정 시 `party_size`, `reserved_at` 변경에 검증 부재 → `party_size: 100` (max=20) 같은 입력 통과
+- 새 슬롯 캐파 / min_advance_hours 도 재검증 안 함 → 슬롯 우회 가능
+- 수정: POST 와 동일한 정책 적용 (min/max party, min_advance, slot capacity). 자기 자신 기존 예약은 캐파 계산에서 제외 (이중 차감 방지).
+
+**Tooling**:
+- `scripts/backfill-reservation-customer-id.js`: 운영 안전망 (Customer.phone 매칭 복구, `--dry-run`).
+- `scripts/health-check.js` reservation 카테고리 신규 **5건**: customer_id NOT NULL + /me 포함, 익명 차단, cross-token 차단, **이중계산 차단**, **PATCH party_size 차단**. health 73 → **78**.
+
+**검증**:
+- R1 결함 probe 4/4 (이중계산 발견·수정·재검증, party_size=100 차단 검증)
+- health-check 전체 78/78
+- 운영 배포 시 backfill 스크립트 실행 권장 (이중계산은 PATCH 코드 fix 로 미래 차단, 과거 손상은 별도 정정 필요 시 SQL 보정)
+
+**known-WONTFIX (별도 sprint)**:
+- RestaurantCustomer 모델 vs DB 컬럼 불일치 (name/phone/email silently dropped, 데이터 손실 없음 — Customer 모델이 권원)
+- 동시 booking race window (slot check ↔ INSERT 사이) — advisory lock 필요
+- 과거 손상된 reservation_count 값 정정 (필요 시 SQL: `UPDATE restaurant_customers SET reservation_count = (SELECT COUNT(*) FROM reservations WHERE customer_id = restaurant_customers.id)` — 미실행, Irene 확인 후)
+
+### ManagersPage Edit SubscriptionFormFields 통합 + User.auto_renew 컬럼 추가 (2026-05-11)
+- **목적**: v3.27 sprint 4 의 Add 모달 통일을 Edit 모달까지 확장. BG/FG/Owner 의 Edit 폼에서도 Discount/Auto-renew/Trial/Summary 사용 가능.
+- **ManagersPage Edit 모달**: Currency/Plan/BillingCycle/Period 5 필드 → `<SubscriptionFormFields userType="brand|foodcourt|owner" mode="edit" hideActivateNow hidePaymentModel>` 1 컴포넌트. Discount 등 추가 기능 자동 노출.
+- **Manager interface 확장**: discountType/discountValue/discountReason/treatAsTrial 필드 추가.
+- **handleUpdateManager 보강**: discount_type/value/reason + subscription_status 전송 추가.
+- **Pre-existing bug 발견 + 수정**: User 모델에 `auto_renew` 컬럼 부재 → Sequelize silently drop → BG/FG/Owner 의 auto_renew 데이터 손실. User.js 모델에 `auto_renew BOOLEAN NOT NULL DEFAULT true` 추가 + dev DB ALTER TABLE 적용. 운영 배포 시 sync-database.js 가 자동 적용.
+- **부산물**: `formatPlanPrice`, `DateField` 미사용 import 제거. ManagersPage.tsx 1650 → 1613줄 (-37줄).
+- **검증**: PUT BG 9/9 (plan_type/billing_cycle/currency/auto_renew/discount_*/subscription_end auto-calc). health-check 73/73. 빌드 main.cfcf20e4.js 0 new warning.
+- **범위**: SubscriptionsPage Edit 는 통합 X — Status dropdown + "others" custom plan 같은 고유 기능 보존 위해 별도 design 필요.
+
+### RestaurantsPage SubscriptionFormFields 통합 (2026-05-11)
+- **목적**: v3.27 sprint 4 의 4 페이지 구독 form 통일을 RestaurantsPage Add/Edit 모달까지 확장. 4 caller 모두 동일 9-필드 UX 도달.
+- **`SubscriptionFormFields` 컴포넌트에 옵션 2개 추가**: `hideCurrency`, `hideSectionHeader` (backward-compatible — 기존 3 caller 영향 없음, default false)
+- **`RestaurantsPage.tsx` Add/Edit 모달 통합**: plan/billing/period/auto-renew/trial/payment_model/discount/summary 8 종 필드 → `<SubscriptionFormFields userType="restaurant">` 1 컴포넌트 (-321줄)
+- **외부 유지**: Currency 필드, Activate Subscription 토글, Self-managed banner, "Subscription Settings" 헤더 (2026-05-10 backstage cleanup 산출물 보존)
+- **어댑터 함수**: `toSubscriptionValues()`, `fromSubscriptionPatch()` — legacy camelCase ↔ snake_case `SubscriptionValues`. submit payload 형식은 그대로 유지 (백엔드 contract 변경 없음).
+- **Backend POST 핸들러 보강** (`routes/restaurants-crud.js`): `discount_type/value/reason` 필드 처리 (기존엔 PUT 만 처리, POST 누락이었음) + `subscription_end` auto-calc fallback (frontend 미전송 시 start + cycle - 1 day)
+- **부산물**: 미사용 import 제거 (`DateRangeField`, `formatPlanPrice`)
+- **검증**: API 실호출 25/25 — POST activate=true (plan + 10% discount + auto-end) → DB readback / PUT active→self-managed (plan NULL wipe) / PUT self-managed→active (annual + fixed discount). Health-check 73/73 PASS. 빌드 main.3eca6803.js 93초 0 new warning.
+
+### 레스토랑 예약 시스템 R1 MVP (2026-05-10)
+- **목적**: 모바일 메뉴에서 고객 직접 예약 + 운영 페이지에서 직원이 승인/체크인하는 single-property 예약 워크플로우
+- **상태 머신**: `pending → confirmed → arrived → seated → completed / cancelled / no_show` (7-state ENUM, 잘못된 전이 차단)
+- **신규 모델 1개**: `Reservation` (FK: restaurant_id, customer_id, deposit_order_id) + 3 인덱스 (restaurant+date / restaurant+status+date / customer+date)
+- **모델 확장 (3개)**:
+  - `Restaurant.reservation_settings` JSON (enabled, auto_confirm, slot, cancellation_policy, no_show_policy, closed_dates)
+  - `RestaurantCustomer` 6 컬럼 추가 (reservation_count, no_show_count, last_reservation_at, allergies, birthday, vip_notes)
+  - `Order.order_type` ENUM 에 `reservation_deposit` + `reservation_id` FK (deposit = 선결제 Order — 별도 모델 X)
+- **백엔드 라우트 12 endpoint**:
+  - `routes/reservations-public.js` 6개 (GET availability + customer me CRUD + cancel) — Customer JWT
+  - `routes/reservations-staff.js` 6개 (list, pending, staff-create, status transition, table assign, delete) — POS Admin JWT + checkRestaurantAccess
+- **알림 인프라 재사용**:
+  - `services/reservationNotificationService.js` (notifyCreated / notifyStatusChanged / notifyReminder / notifyNoShow) — 기존 pushService + emailService + emailLayout 활용
+  - `routes/notification-settings.js` 4 카테고리 추가 (reservation_new / reservation_status_changed / reservation_reminder / reservation_no_show)
+- **스케줄러 1개**: `services/reservationScheduler.js` (매시간 cron) — 24h/2h 리마인드 발송 + grace 지난 confirmed 예약 자동 no_show 전환 + SchedulerRun 모니터링
+- **운영 페이지 1개**: `pages/Reservations/ReservationsTimelinePage.tsx` (Pending 큐 상단 + 오늘 timeline + staff 직접 생성 모달 + 상태 전이 버튼)
+- **모바일 페이지 3개**: `mobile/pages/ReservationPage.tsx` (3-step stepper) / `ReservationsListPage.tsx` (내 예약) / `ReservationDetailPage.tsx` (상세 + share + cancel)
+- **공유 컴포넌트**: `mobile/components/common/ReservationShare.tsx` — `ReceiptShare` 패턴 그대로 (WhatsApp wa.me + Telegram + navigator.share + .ics 캘린더 다운로드, 말레이시아 base — 한국 특정 통합 X)
+- **Settings 12번째 탭**: `components/Settings/ReservationSettingsTab.tsx` — AutoSaveField 패턴 9 필드 (enabled / auto_confirm / min·max party / turn time / advance hours / cancel hours / grace minutes / block after N)
+- **mobile/store API 확장**: `reservationsEnabled` 플래그 노출 → OrderTypePage 의 dine-in/takeaway/pickup/delivery 옆에 "Reserve a Table" 옵션 자동 표시
+- **AccountPage 진입점**: "My Reservations" 메뉴 추가
+- **store/settings 통합**: `reservation_settings` GET/PUT 통합 — Settings 탭 1회 저장으로 끝
+- **사이드바**: Restaurant Admin/Staff 사이드바에 NavItem 추가 (Live Orders 아래)
+- **i18n 4언어**: `public/locales/{en,ko,zh,ms}/reservation.json` (status, actions, mobile stepper, settings 키 ~50개씩)
+- **검증**: API 12/12 (생성/조회/수정/취소, state machine, IDOR, 익명 차단) + store/settings PUT/GET readback 3/3 + health-check 73/73 + 빌드 88초 OK
+
 ---
 
 ## [v3.28] — 2026-05-10 배포

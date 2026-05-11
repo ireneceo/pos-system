@@ -191,7 +191,14 @@
       "Bash(find /var/www/dev-frontend/src/pages/Brand* -name \"*Sub*\")",
       "Bash(echo \"운영: $\\(curl -s https://purplehere.com/)",
       "Bash(echo \"운영 hash: $\\(curl -s https://purplehere.com/)",
-      "Bash(echo \"dev hash: $\\(curl -s https://dev.purplehere.com/)"
+      "Bash(echo \"dev hash: $\\(curl -s https://dev.purplehere.com/)",
+      "Bash(awk '{print \"운영 main:\", $0}')",
+      "Bash(awk '{print \"dev 새 main:\", $0}')",
+      "Bash(awk '{print \"운영 새 main:\", $0}')",
+      "Bash(mv /tmp/test-restaurants-rbac.js /var/www/dev-backend/test-rbac.js)",
+      "Bash(sed -i \"s|require\\('dotenv'\\).config\\({ path: '/var/www/dev-backend/.env' }\\)|require\\('dotenv'\\).config\\(\\)|; s|require\\('/var/www/dev-backend/|require\\('./|g\" test-rbac.js)",
+      "Bash(awk '{print $5}')",
+      "Bash(awk '{print $9, $5, $6, $7, $8}')"
     ],
     "deny": [],
     "ask": []

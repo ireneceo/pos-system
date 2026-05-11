@@ -905,7 +905,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   // 단, 인보이스/프로필 페이지는 접근 허용 (결제/정보 확인 필요)
   const subscriptionExemptPaths = ['/pos/brand/invoices', '/pos/foodcourt/invoices', '/pos/owner/invoices', '/pos/profile', '/invoices'];
   const isExemptPath = subscriptionExemptPaths.some(p => location.pathname.startsWith(p));
-  const needsSubscription = !routesLoading && !hasActiveSubscription && !isExemptPath &&
+  // user 자체에 구독이 있으면 (entity 미연결이어도) 통과시킨다.
+  // 예: Foodcourt General + foodcourt_id NULL 상태에서 system admin 이 user 에 plan 부여한 경우.
+  const userHasOwnPlan = user?.subscriptionStatus === 'active' || user?.subscriptionStatus === 'trial';
+  const needsSubscription = !routesLoading && !hasActiveSubscription && !userHasOwnPlan && !isExemptPath &&
     (user?.role === 'Brand General' || user?.role === 'Brand Manager' ||
      user?.role === 'Foodcourt General' || user?.role === 'Foodcourt Manager' ||
      user?.role === 'Restaurant Owner');
@@ -1784,6 +1787,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon hasPending={badgeCounts.pendingOrders > 0}>◉</NavIcon>
                   {t("nav.liveOrders")}
                 </NavItem>
+                {hasModule('reservations') && (
+                  <NavItem to={`/restaurant/${restaurantId}/reservations`} active={isActive(`/restaurant/${restaurantId}/reservations`)} onClick={closeSidebar}>
+                    <NavIcon>◐</NavIcon>
+                    {t("nav.reservations", "Reservations")}
+                  </NavItem>
+                )}
               </>
             )}
           </NavSection>

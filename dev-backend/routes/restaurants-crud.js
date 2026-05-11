@@ -293,6 +293,7 @@ router.get('/', authenticateToken, async (req, res) => {
         discount_type: restaurantData.discount_type || 'none',
         discount_value: restaurantData.discount_value ? parseFloat(restaurantData.discount_value) : 0,
         discount_reason: restaurantData.discount_reason || null,
+        reservation_settings: restaurantData.reservation_settings || null,
         is_demo: restaurantData.is_demo || false,
         is_test: restaurantData.is_test || false
       };
@@ -1003,13 +1004,26 @@ router.post('/', authenticateToken, requireRole(
         ? (req.body.subscriptionStart ? new Date(req.body.subscriptionStart) : new Date())
         : null,
       subscription_end: activateSubscription
-        ? (req.body.subscriptionEnd ? new Date(req.body.subscriptionEnd) : null)
+        ? (() => {
+            if (req.body.subscriptionEnd) return new Date(req.body.subscriptionEnd);
+            // Auto-calc end = start + cycle - 1 day when frontend didn't supply it
+            const start = req.body.subscriptionStart ? new Date(req.body.subscriptionStart) : new Date();
+            const cycle = req.body.billingCycle || req.body.billing_cycle || 'monthly';
+            const end = new Date(start);
+            if (cycle === 'annual') end.setFullYear(end.getFullYear() + 1);
+            else end.setMonth(end.getMonth() + 1);
+            end.setDate(end.getDate() - 1);
+            return end;
+          })()
         : null,
       subscription_snapshot: activateSubscription ? planSnapshot : null,
       brand_id: req.body.brand_id || null,
       foodcourt_id: req.body.foodcourt_id || null,
       branch_id: req.body.branch_id || null,
       payment_model: req.body.payment_model || 'restaurant',
+      discount_type: req.body.discount_type || 'none',
+      discount_value: req.body.discount_value !== undefined ? (parseFloat(req.body.discount_value) || 0) : 0,
+      discount_reason: req.body.discount_reason || null,
       ...(activateSubscription ? planLimits : { order_limit: null, menu_item_limit: null, staff_limit: null })
     };
 

@@ -344,9 +344,10 @@ Brand General/Manager: 접근 불가 (표시 안됨)
 | 15 | `activity_logs` | Change History | advanced | Change History |
 | 16 | `floor_plan` | Floor Plan & Table Management | advanced | Floor Plan, Floor Plan Editor |
 | 17 | `mobile_ordering` | Mobile Ordering | advanced | Mobile Order |
-| 18 | `recipe_management` | Recipe Management | advanced | Recipe |
-| 19 | `inventory_management` | Inventory & Supplier Management | advanced | Inventory, Suppliers |
-| 20 | `advanced_inventory` | Advanced Inventory | advanced | (Inventory upgrade) |
+| 18 | `reservations` | Reservations | advanced | Reservations (모바일 self-booking + staff timeline) |
+| 19 | `recipe_management` | Recipe Management | advanced | Recipe |
+| 20 | `inventory_management` | Inventory & Supplier Management | advanced | Inventory, Suppliers |
+| 21 | `advanced_inventory` | Advanced Inventory | advanced | (Inventory upgrade) |
 
 (*) **Operation Inquiry 조건부 노출:**
 - Brand/Foodcourt 소속 레스토랑만 사용 가능

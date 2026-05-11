@@ -449,6 +449,7 @@ const MODULE_NAMES: Record<string, string> = {
   activity_logs: 'Change History',
   floor_plan: 'Floor Plan & Table Management',
   mobile_ordering: 'Mobile Ordering',
+  reservations: 'Reservations',
   recipe_management: 'Recipe Management',
   inventory_management: 'Inventory & Supplier Management',
   advanced_inventory: 'Advanced Inventory',

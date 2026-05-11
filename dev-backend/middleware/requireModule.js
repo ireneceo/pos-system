@@ -169,9 +169,67 @@ function requireSupplierModule(moduleCode) {
   };
 }
 
+/**
+ * Check a restaurant's subscription plan for a module code.
+ * Resolves modules from Restaurant.plan_type → PlanTemplate.included_modules.
+ *
+ * Use for routes that gate Restaurant-tier addon features (e.g. reservations).
+ * `restaurantIdParam` defaults to 'restaurant_id' but accepts 'id' for routes
+ * like `/restaurants/:id/...`.
+ */
+function requireRestaurantModule(moduleCode, restaurantIdParam = 'restaurant_id') {
+  const Restaurant = require('../models/Restaurant');
+  return async (req, res, next) => {
+    if (!req.user) return res.status(401).json({ success: false, message: 'Not authenticated' });
+    if (req.user.role === 'System Admin') return next();
+
+    const restaurantId =
+      req.params[restaurantIdParam] ||
+      req.params.id ||
+      req.body?.restaurant_id ||
+      req.user.restaurant_id;
+
+    if (!restaurantId) {
+      return res.status(400).json({ success: false, message: 'restaurant_id required for module check' });
+    }
+
+    const restaurant = await Restaurant.findByPk(restaurantId);
+    if (!restaurant) return res.status(404).json({ success: false, message: 'Restaurant not found' });
+
+    // Demo / Enterprise → bypass (consistent with other entity gates)
+    if (restaurant.is_demo) return next();
+
+    const planType = restaurant.plan_type;
+    if (!planType) {
+      return res.status(403).json({
+        success: false, code: 'MODULE_NOT_INCLUDED',
+        message: `This feature (${moduleCode}) requires an active subscription.`,
+        required_module: moduleCode
+      });
+    }
+
+    const PlanTemplate = require('../models/PlanTemplate');
+    const { Op } = require('sequelize');
+    const plan = await PlanTemplate.findOne({
+      where: { [Op.or]: [{ display_name: planType }, { name: planType }], plan_target: 'restaurant' }
+    });
+    const modules = plan?.included_modules || [];
+
+    if (!modules.includes(moduleCode)) {
+      return res.status(403).json({
+        success: false, code: 'MODULE_NOT_INCLUDED',
+        message: `This feature (${moduleCode}) is not included in the current subscription plan (${planType}).`,
+        required_module: moduleCode
+      });
+    }
+    next();
+  };
+}
+
 module.exports = {
   requireBrandModule,
   requireFoodcourtModule,
+  requireRestaurantModule,
   requireContractEntityModule,
   requireSupplierModule,
   resolveEntityModules,

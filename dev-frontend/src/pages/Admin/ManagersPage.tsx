@@ -20,11 +20,10 @@ import {
 , Modal as CommonModal } from '../../components/UI';
 import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
-import { formatCurrency, getPlanPrice, formatPlanPrice, getActivePlanCurrencies, normalizeCurrencyCode } from '../../utils/currency';
+import { formatCurrency, getPlanPrice, getActivePlanCurrencies, normalizeCurrencyCode } from '../../utils/currency';
 import SubscriptionFormFields, { type SubscriptionValues, type UserType as SubUserType, type BillingCycle, type PaymentModel, type DiscountType } from '../../components/Subscription/SubscriptionFormFields';
 import { formatPhoneForDisplay } from '../../utils/phoneUtils';
 import PhoneInput from '../../components/Common/PhoneInput';
-import DateField from '../../components/Common/DateField';
 import { useStore } from '../../contexts/StoreContext';
 import { useTranslation } from 'react-i18next';
 
@@ -55,6 +54,10 @@ interface Manager {
   subscriptionEnd?: string;
   subscriptionStatus?: string;
   currency?: string;
+  discountType?: 'none' | 'percentage' | 'fixed';
+  discountValue?: number;
+  discountReason?: string;
+  treatAsTrial?: boolean;
   is_demo?: boolean;
   is_test?: boolean;
 }
@@ -667,7 +670,11 @@ const ManagersPage: React.FC = () => {
       autoRenew: manager.autoRenew !== undefined ? manager.autoRenew : true,
       subscriptionStart: manager.subscriptionStart || new Date().toISOString().split('T')[0],
       subscriptionEnd: manager.subscriptionEnd || '',
-      currency: manager.currency || 'MYR'
+      currency: manager.currency || 'MYR',
+      discountType: manager.discountType || 'none',
+      discountValue: Number(manager.discountValue) || 0,
+      discountReason: manager.discountReason || '',
+      treatAsTrial: manager.subscriptionStatus === 'trial'
     });
     setShowEditModal(true);
   };
@@ -708,6 +715,12 @@ const ManagersPage: React.FC = () => {
         updateData.subscription_start = editingManager.subscriptionStart;
         updateData.subscription_end = editingManager.subscriptionEnd;
         updateData.auto_renew = (editingManager as any).autoRenew !== false;
+        updateData.discount_type = editingManager.discountType || 'none';
+        updateData.discount_value = editingManager.discountType && editingManager.discountType !== 'none' ? (Number(editingManager.discountValue) || 0) : 0;
+        updateData.discount_reason = editingManager.discountReason || null;
+        if (editingManager.treatAsTrial !== undefined) {
+          updateData.subscription_status = editingManager.treatAsTrial ? 'trial' : 'active';
+        }
       }
 
       console.log('📝 Update data:', updateData);
@@ -1481,97 +1494,47 @@ const ManagersPage: React.FC = () => {
                   </FormGroup>
                 )}
 
-                {/* Subscription Settings - Show for General roles and Owner */}
+                {/* Subscription Settings - unified SubscriptionFormFields (v3.27) */}
                 {(editingManager.role === 'Foodcourt General' || editingManager.role === 'Brand General' || editingManager.role === 'Restaurant Owner') && (
-                  <>
-                    <FormGroup style={{gridColumn: '1 / -1', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #E6EBF1'}}>
-                      <h3 style={{fontSize: '14px', fontWeight: '600', color: '#0A2540', marginBottom: '12px'}}>{t('admin:managersPage.subscriptionSettings')}</h3>
-                    </FormGroup>
-
-                    <FormGroup>
-                      <FormLabel>Currency *</FormLabel>
-                      <FilterSelect
-                        value={normalizeCurrencyCode((editingManager as any).currency || 'MYR')}
-                        onChange={(e) => {
-                          const cur = e.target.value;
-                          const selectedPlan = getFilteredPlans(editingManager.role).find(p => p.display_name === editingManager.planType);
-                          setEditingManager({
-                            ...editingManager,
-                            currency: cur,
-                            planAmount: selectedPlan ? String(getPlanPrice(selectedPlan, cur)) : editingManager.planAmount
-                          } as any);
-                        }}
-                      >
-                        {planCurrencies.map(cur => (
-                          <option key={cur} value={cur}>{cur}</option>
-                        ))}
-                      </FilterSelect>
-                    </FormGroup>
-
-                    <FormGroup>
-                      <FormLabel>Subscription Plan *</FormLabel>
-                      <FilterSelect
-                        value={editingManager.planType || ''}
-                        onChange={(e) => {
-                          const selectedPlan = getFilteredPlans(editingManager.role).find(p => p.display_name === e.target.value);
-                          const cur = normalizeCurrencyCode((editingManager as any).currency || 'MYR');
-                          setEditingManager({
-                            ...editingManager,
-                            planType: e.target.value,
-                            planAmount: selectedPlan ? String(getPlanPrice(selectedPlan, cur)) : editingManager.planAmount
-                          });
-                        }}
-                      >
-                        <option value="">{t('admin:managersPage.selectPlan')}</option>
-                        {getFilteredPlans(editingManager.role).map(plan => (
-                          <option key={plan.id} value={plan.display_name}>
-                            {plan.display_name} ({formatPlanPrice(plan, normalizeCurrencyCode((editingManager as any).currency || 'MYR'))}/month)
-                          </option>
-                        ))}
-                      </FilterSelect>
-                    </FormGroup>
-
-                    <FormGroup>
-                      <FormLabel>Billing Cycle *</FormLabel>
-                      <FilterSelect
-                        value={editingManager.billingCycle || 'monthly'}
-                        onChange={(e) => {
-                          const cycle = e.target.value as 'monthly' | 'annual';
-                          setEditingManager({
-                            ...editingManager,
-                            billingCycle: cycle,
-                            subscriptionEnd: calcSubscriptionEnd(editingManager.subscriptionStart || '', cycle)
-                          });
-                        }}
-                      >
-                        <option value="monthly">{t('admin:managersPage.monthly')}</option>
-                        <option value="annual">{t('admin:managersPage.annual')}</option>
-                      </FilterSelect>
-                    </FormGroup>
-
-                    <FormGroup>
-                      <FormLabel>Subscription Start Date *</FormLabel>
-                      <DateField
-                        value={editingManager.subscriptionStart || new Date().toISOString().split('T')[0]}
-                        onChange={(v) => {
-                          setEditingManager({
-                            ...editingManager,
-                            subscriptionStart: v,
-                            subscriptionEnd: calcSubscriptionEnd(v, editingManager.billingCycle || 'monthly')
-                          });
-                        }}
-                      />
-                    </FormGroup>
-
-                    <FormGroup>
-                      <FormLabel>{t('admin:managersPage.subscriptionEndDateAuto')}</FormLabel>
-                      <DateField
-                        value={editingManager.subscriptionEnd || ''}
-                        onChange={() => {}}
-                        disabled
-                      />
-                    </FormGroup>
-                  </>
+                  <div style={{ gridColumn: '1 / -1', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #E6EBF1' }}>
+                    <SubscriptionFormFields
+                      userType={editingManager.role === 'Brand General' ? 'brand' : editingManager.role === 'Foodcourt General' ? 'foodcourt' : 'owner'}
+                      mode="edit"
+                      availablePlans={availablePlans}
+                      planCurrencies={planCurrencies}
+                      values={{
+                        currency: normalizeCurrencyCode((editingManager as any).currency || 'MYR'),
+                        plan_type: editingManager.planType || '',
+                        plan_amount: String(editingManager.planAmount ?? '0'),
+                        billing_cycle: (editingManager.billingCycle === 'annual' ? 'annual' : editingManager.billingCycle === 'monthly' ? 'monthly' : '') as BillingCycle,
+                        payment_model: ((editingManager.paymentModel as PaymentModel) || (editingManager.role === 'Brand General' ? 'brand_manager' : editingManager.role === 'Foodcourt General' ? 'foodcourt_manager' : 'restaurant')),
+                        subscription_start: editingManager.subscriptionStart || new Date().toISOString().split('T')[0],
+                        subscription_end: editingManager.subscriptionEnd || '',
+                        auto_renew: editingManager.autoRenew !== false,
+                        treat_as_trial: !!editingManager.treatAsTrial,
+                        activate_now: true,
+                        discount_type: (editingManager.discountType || 'none') as DiscountType,
+                        discount_value: Number(editingManager.discountValue) || 0,
+                        discount_reason: editingManager.discountReason || ''
+                      }}
+                      onChange={(patch) => setEditingManager(prev => prev ? ({
+                        ...prev,
+                        ...(patch.currency !== undefined ? { currency: patch.currency } : {}),
+                        ...(patch.plan_type !== undefined ? { planType: patch.plan_type } : {}),
+                        ...(patch.plan_amount !== undefined ? { planAmount: patch.plan_amount } : {}),
+                        ...(patch.billing_cycle !== undefined ? { billingCycle: patch.billing_cycle as 'monthly' | 'annual' } : {}),
+                        ...(patch.payment_model !== undefined ? { paymentModel: patch.payment_model } : {}),
+                        ...(patch.subscription_start !== undefined ? { subscriptionStart: patch.subscription_start } : {}),
+                        ...(patch.subscription_end !== undefined ? { subscriptionEnd: patch.subscription_end } : {}),
+                        ...(patch.auto_renew !== undefined ? { autoRenew: patch.auto_renew } : {}),
+                        ...(patch.treat_as_trial !== undefined ? { treatAsTrial: patch.treat_as_trial } : {}),
+                        ...(patch.discount_type !== undefined ? { discountType: patch.discount_type } : {}),
+                        ...(patch.discount_value !== undefined ? { discountValue: patch.discount_value } : {}),
+                        ...(patch.discount_reason !== undefined ? { discountReason: patch.discount_reason } : {})
+                      }) : null)}
+                      options={{ hideActivateNow: true, hidePaymentModel: true }}
+                    />
+                  </div>
                 )}
               </FormGrid>
               {editModalWarning && (

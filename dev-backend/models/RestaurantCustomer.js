@@ -59,6 +59,12 @@ RestaurantCustomer.init({
     allowNull: true,
     comment: '포인트 만료 예정일'
   },
+  reservation_count: { type: DataTypes.INTEGER, defaultValue: 0, comment: '누적 예약 수' },
+  no_show_count: { type: DataTypes.INTEGER, defaultValue: 0, comment: '누적 노쇼 수 — block_after_count 정책 기준' },
+  last_reservation_at: { type: DataTypes.DATE, allowNull: true },
+  allergies: { type: DataTypes.TEXT, allowNull: true, comment: '알레르기 정보 (예약 시 매장에 공유)' },
+  birthday: { type: DataTypes.DATEONLY, allowNull: true },
+  vip_notes: { type: DataTypes.TEXT, allowNull: true, comment: '매장이 작성하는 VIP 메모' },
   created_at: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW,

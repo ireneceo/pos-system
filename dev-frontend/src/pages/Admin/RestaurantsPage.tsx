@@ -20,11 +20,11 @@ import ConfirmModal from '../../components/ConfirmModal';
 // Using page-specific filter components instead of common ones
 import { useStore } from '../../contexts/StoreContext';
 import { formatDateTime } from '../../utils/timezone';
-import { formatCurrency, getPlanPrice, formatPlanPrice, getActivePlanCurrencies, COUNTRY_TO_CURRENCY, normalizeCurrencyCode } from '../../utils/currency';
+import { formatCurrency, getPlanPrice, getActivePlanCurrencies, COUNTRY_TO_CURRENCY, normalizeCurrencyCode } from '../../utils/currency';
 import { formatPhoneForDisplay } from '../../utils/phoneUtils';
 import PhoneInput from '../../components/Common/PhoneInput';
-import DateRangeField from '../../components/Common/DateRangeField';
 import { AddressFields } from '../../components/Form';
+import SubscriptionFormFields, { SubscriptionValues } from '../../components/Subscription/SubscriptionFormFields';
 import { formatAddress, AppLocale, type Address } from '../../utils/formatAddress';
 import { COUNTRIES } from '../../constants/countries';
 import { useTranslation } from 'react-i18next';
@@ -84,6 +84,7 @@ interface Restaurant {
   discount_type?: 'none' | 'percentage' | 'fixed';
   discount_value?: number;
   discount_reason?: string;
+  reservation_settings?: { enabled?: boolean; [k: string]: any };
   is_demo?: boolean;
   is_test?: boolean;
 }
@@ -601,6 +602,43 @@ const ActiveButton = styled.button`
     margin-right: 0;
   }
 `;
+
+// Adapter: legacy camelCase form state ↔ snake_case SubscriptionValues used by
+// the unified <SubscriptionFormFields> component (v3.27).
+function toSubscriptionValues(r: any): SubscriptionValues {
+  return {
+    currency: normalizeCurrencyCode(r.currency || 'MYR'),
+    plan_type: r.planType || '',
+    plan_amount: String(r.planAmount ?? '0'),
+    billing_cycle: (r.billingCycle === 'annual' ? 'annual' : r.billingCycle === 'monthly' ? 'monthly' : '') as SubscriptionValues['billing_cycle'],
+    payment_model: (r.paymentModel || 'restaurant') as SubscriptionValues['payment_model'],
+    subscription_start: r.subscriptionStart || new Date().toISOString().split('T')[0],
+    subscription_end: r.subscriptionEnd || '',
+    auto_renew: r.autoRenew !== undefined ? !!r.autoRenew : true,
+    treat_as_trial: r.status === 'trial',
+    activate_now: true, // hidden — outer activateSubscription toggle owns this
+    discount_type: (r.discount_type || 'none') as SubscriptionValues['discount_type'],
+    discount_value: Number(r.discount_value) || 0,
+    discount_reason: r.discount_reason || ''
+  };
+}
+
+function fromSubscriptionPatch(patch: Partial<SubscriptionValues>): any {
+  const merged: any = {};
+  if (patch.currency !== undefined) merged.currency = patch.currency;
+  if (patch.plan_type !== undefined) merged.planType = patch.plan_type;
+  if (patch.plan_amount !== undefined) merged.planAmount = patch.plan_amount;
+  if (patch.billing_cycle !== undefined) merged.billingCycle = patch.billing_cycle;
+  if (patch.payment_model !== undefined) merged.paymentModel = patch.payment_model;
+  if (patch.subscription_start !== undefined) merged.subscriptionStart = patch.subscription_start;
+  if (patch.subscription_end !== undefined) merged.subscriptionEnd = patch.subscription_end;
+  if (patch.auto_renew !== undefined) merged.autoRenew = patch.auto_renew;
+  if (patch.treat_as_trial !== undefined) merged.status = patch.treat_as_trial ? 'trial' : 'active';
+  if (patch.discount_type !== undefined) merged.discount_type = patch.discount_type;
+  if (patch.discount_value !== undefined) merged.discount_value = patch.discount_value;
+  if (patch.discount_reason !== undefined) merged.discount_reason = patch.discount_reason;
+  return merged;
+}
 
 const RestaurantsPage: React.FC = () => {
   const { t, i18n } = useTranslation('admin');
@@ -1796,7 +1834,7 @@ const RestaurantsPage: React.FC = () => {
             <RestaurantCard key={restaurant.id} onClick={() => handleViewRestaurant(restaurant)}>
               <RestaurantHeader>
                 <RestaurantInfo>
-                  <RestaurantName>{restaurant.name} {restaurant.branch_name && <BranchBadge>{restaurant.branch_name}</BranchBadge>}{restaurant.currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{restaurant.currency}</span>}{!restaurant.planType && <span style={{ fontSize: '10px', fontWeight: 600, color: '#374151', background: '#E5E7EB', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{t('admin:restaurantsPage.selfManaged.badge')}</span>}{restaurant.is_demo && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#F59E0B', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{t('admin:restaurantsPage.demo')}</span>}{restaurant.is_test && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#8B5CF6', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{t('admin:restaurantsPage.test')}</span>}</RestaurantName>
+                  <RestaurantName>{restaurant.name} {restaurant.branch_name && <BranchBadge>{restaurant.branch_name}</BranchBadge>}{restaurant.currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{restaurant.currency}</span>}{!restaurant.planType && <span style={{ fontSize: '10px', fontWeight: 600, color: '#374151', background: '#E5E7EB', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{t('admin:restaurantsPage.selfManaged.badge')}</span>}{restaurant.reservation_settings?.enabled && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#635BFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }} title={t('admin:restaurantsPage.reservationsEnabled', 'Reservations enabled') as string}>{t('admin:restaurantsPage.reservationsBadge', 'Reservations')}</span>}{restaurant.is_demo && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#F59E0B', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{t('admin:restaurantsPage.demo')}</span>}{restaurant.is_test && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#8B5CF6', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{t('admin:restaurantsPage.test')}</span>}</RestaurantName>
                   <RestaurantMeta>
                     Admin: {restaurant.admin ? `${restaurant.admin.name} (${restaurant.admin.email})` : 'No Admin Assigned'}
                   </RestaurantMeta>
@@ -2182,71 +2220,6 @@ const RestaurantsPage: React.FC = () => {
                     </FormSelect>
                   </FormGroup>
 
-                  {newRestaurant.activateSubscription && (
-                    <FormGroup>
-                      <FormLabel>Plan Type *</FormLabel>
-                      <FormSelect
-                        value={newRestaurant.planType}
-                        onChange={(e) => {
-                          const selectedPlan = availablePlans.find(p => p.display_name === e.target.value);
-                          setNewRestaurant({
-                            ...newRestaurant,
-                            planType: e.target.value,
-                            planAmount: selectedPlan ? String(getPlanPrice(selectedPlan, newRestaurant.currency)) : '0'
-                          });
-                        }}
-                      >
-                        {availablePlans.filter(p => p.plan_target === 'restaurant').map(plan => (
-                          <option key={plan.id} value={plan.display_name}>
-                            {plan.display_name} ({formatPlanPrice(plan, newRestaurant.currency)}/month)
-                          </option>
-                        ))}
-                      </FormSelect>
-                    </FormGroup>
-                  )}
-
-                  {newRestaurant.activateSubscription && (
-                    <FormGroup style={{gridColumn: '1 / -1'}}>
-                      <label style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        padding: '16px 20px',
-                        background: newRestaurant.status === 'trial' ? '#F0EFFF' : '#F9FAFB',
-                        borderRadius: '12px',
-                        border: newRestaurant.status === 'trial' ? '2px solid #635BFF' : '2px solid #E5E7EB',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s'
-                      }}>
-                        <input
-                          type="checkbox"
-                          checked={newRestaurant.status === 'trial'}
-                          onChange={(e) => {
-                            setNewRestaurant({
-                              ...newRestaurant,
-                              status: e.target.checked ? 'trial' : 'active'
-                            });
-                          }}
-                          style={{
-                            width: '20px',
-                            height: '20px',
-                            accentColor: '#635BFF',
-                            cursor: 'pointer'
-                          }}
-                        />
-                        <div>
-                          <div style={{fontWeight: '600', color: '#1F2937', fontSize: '15px'}}>
-                            Treat as trial until subscription starts
-                          </div>
-                          <div style={{fontSize: '13px', color: '#6B7280', marginTop: '2px'}}>
-                            If Subscription Start Date is in the future, the restaurant is in trial until then.
-                            Trial length = days until subscription start (e.g., 20 days if start is 20 days from today).
-                          </div>
-                        </div>
-                      </label>
-                    </FormGroup>
-                  )}
-
                   {/* Subscription Settings 섹션 */}
                   <div style={{gridColumn: '1 / -1', marginTop: '20px', marginBottom: '10px'}}>
                     <h3 style={{margin: 0, fontSize: '18px', fontWeight: '600', color: '#0A2540', borderBottom: '2px solid #635BFF', paddingBottom: '8px'}}>
@@ -2306,110 +2279,18 @@ const RestaurantsPage: React.FC = () => {
                   )}
 
                   {newRestaurant.activateSubscription && (
-                    <FormGroup>
-                      <FormLabel>Billing Cycle *</FormLabel>
-                      <FormSelect
-                        value={newRestaurant.billingCycle}
-                        onChange={(e) => {
-                          const cycle = e.target.value as 'monthly' | 'annual';
-                          const selectedPlan = availablePlans.find((p: any) => p.display_name === newRestaurant.planType);
-                          const price = selectedPlan ? getPlanPrice(selectedPlan, newRestaurant.currency, cycle) : 0;
-
-                          // Recalculate end date based on new cycle
-                          let newEnd = newRestaurant.subscriptionEnd;
-                          if (newRestaurant.subscriptionStart) {
-                            const [y, m, d] = String(newRestaurant.subscriptionStart).slice(0, 10).split('-').map(Number);
-                            const endD = new Date(y, m - 1, d);
-                            if (cycle === 'annual') {
-                              endD.setFullYear(endD.getFullYear() + 1);
-                            } else {
-                              endD.setMonth(endD.getMonth() + 1);
-                            }
-                            endD.setDate(endD.getDate() - 1);
-                            newEnd = `${endD.getFullYear()}-${String(endD.getMonth() + 1).padStart(2, '0')}-${String(endD.getDate()).padStart(2, '0')}`;
-                          }
-
-                          setNewRestaurant({
-                            ...newRestaurant,
-                            billingCycle: cycle,
-                            planAmount: price.toFixed(2),
-                            subscriptionEnd: newEnd
-                          });
-                        }}
-                      >
-                        <option value="monthly">{t('admin:restaurantsPage.monthly')}</option>
-                        <option value="annual">{t('admin:restaurantsPage.annual')}</option>
-                      </FormSelect>
-                    </FormGroup>
-                  )}
-
-                  {newRestaurant.activateSubscription && (
-                    <FormGroup>
-                      <FormLabel>Payment Model *</FormLabel>
-                      <FormSelect
-                        value={newRestaurant.paymentModel}
-                        onChange={(e) => setNewRestaurant({...newRestaurant, paymentModel: e.target.value as any})}
-                      >
-                        <option value="restaurant">{t('admin:restaurantsPage.restaurantAdmin')}</option>
-                        <option value="foodcourt_manager">{t('admin:restaurantsPage.foodcourtManager')}</option>
-                        <option value="brand_manager">{t('admin:restaurantsPage.brandManager')}</option>
-                      </FormSelect>
-                    </FormGroup>
-                  )}
-
-                  {newRestaurant.activateSubscription && (
-                    <FormGroup style={{ gridColumn: 'span 2' }}>
-                      <FormLabel>Subscription Period * (end auto-calculated)</FormLabel>
-                      <DateRangeField
-                        startDate={newRestaurant.subscriptionStart}
-                        endDate={newRestaurant.subscriptionEnd}
-                        onChange={(start, _end) => {
-                          // Auto-calculate end date: start + cycle - 1 day
-                          let end = '';
-                          if (start) {
-                            const [y, m, d] = String(start).slice(0, 10).split('-').map(Number);
-                            const endD = new Date(y, m - 1, d);
-                            if (newRestaurant.billingCycle === 'annual') {
-                              endD.setFullYear(endD.getFullYear() + 1);
-                            } else {
-                              endD.setMonth(endD.getMonth() + 1);
-                            }
-                            endD.setDate(endD.getDate() - 1);
-                            end = `${endD.getFullYear()}-${String(endD.getMonth() + 1).padStart(2, '0')}-${String(endD.getDate()).padStart(2, '0')}`;
-                          }
-                          setNewRestaurant({...newRestaurant, subscriptionStart: start, subscriptionEnd: end});
-                        }}
+                    <div style={{gridColumn: '1 / -1'}}>
+                      <SubscriptionFormFields
+                        userType="restaurant"
+                        mode="add"
+                        values={toSubscriptionValues(newRestaurant)}
+                        onChange={(patch) => setNewRestaurant({ ...newRestaurant, ...fromSubscriptionPatch(patch) })}
+                        availablePlans={availablePlans}
+                        planCurrencies={planCurrencies}
+                        options={{ hideActivateNow: true, hideCurrency: true, hideSectionHeader: true }}
                       />
-                    </FormGroup>
+                    </div>
                   )}
-
-                  {newRestaurant.activateSubscription && (
-                    <FormGroup style={{gridColumn: '1 / -1'}}>
-                      <label style={{display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer'}}>
-                        <input
-                          type="checkbox"
-                          checked={newRestaurant.autoRenew}
-                          onChange={(e) => setNewRestaurant({...newRestaurant, autoRenew: e.target.checked})}
-                          style={{width: '16px', height: '16px'}}
-                        />
-                        <span style={{fontSize: '14px', color: '#374151'}}>
-                          Auto-renew subscription
-                        </span>
-                      </label>
-                    </FormGroup>
-                  )}
-
-                  <div style={{gridColumn: '1 / -1', padding: '16px', background: '#F3F4F6', borderRadius: '8px', marginTop: '10px'}}>
-                    <div style={{fontSize: '14px', color: '#6B7280', marginBottom: '8px'}}>
-                      <strong>Summary:</strong>
-                    </div>
-                    <div style={{fontSize: '16px', fontWeight: '600', color: '#0A2540'}}>
-                      {newRestaurant.planType} - {formatCurrency(parseFloat(newRestaurant.planAmount) || 0, newRestaurant.currency || 'MYR')} ({newRestaurant.billingCycle})
-                    </div>
-                    <div style={{fontSize: '12px', color: '#6B7280', marginTop: '4px'}}>
-                      Paid by: {newRestaurant.paymentModel === 'brand_manager' ? 'Brand Manager' : newRestaurant.paymentModel === 'foodcourt_manager' ? 'Foodcourt Manager' : 'Restaurant Admin'}
-                    </div>
-                  </div>
                 </FormGrid>
                 {addModalWarning && (
                   <ModalWarning>{addModalWarning}</ModalWarning>
@@ -2737,30 +2618,6 @@ const RestaurantsPage: React.FC = () => {
                     </FormSelect>
                   </FormGroup>
 
-                  {editingRestaurant.activateSubscription && (
-                    <FormGroup>
-                      <FormLabel>Plan Type *</FormLabel>
-                      <FormSelect
-                        value={editingRestaurant.planType || 'Basic Plan'}
-                        onChange={(e) => {
-                          const selectedPlan = availablePlans.find(p => p.display_name === e.target.value);
-                          const cur = normalizeCurrencyCode(editingRestaurant.currency || 'MYR');
-                          setEditingRestaurant({
-                            ...editingRestaurant,
-                            planType: e.target.value,
-                            planAmount: selectedPlan ? String(getPlanPrice(selectedPlan, cur)) : '0'
-                          });
-                        }}
-                      >
-                        {availablePlans.filter(p => p.plan_target === 'restaurant').map(plan => (
-                          <option key={plan.id} value={plan.display_name}>
-                            {plan.display_name} ({formatPlanPrice(plan, normalizeCurrencyCode(editingRestaurant.currency || 'MYR'))}/month)
-                          </option>
-                        ))}
-                      </FormSelect>
-                    </FormGroup>
-                  )}
-
                   {/* Subscription Settings 섹션 */}
                   <div style={{gridColumn: '1 / -1', marginTop: '20px', marginBottom: '10px'}}>
                     <h3 style={{margin: 0, fontSize: '18px', fontWeight: '600', color: '#0A2540', borderBottom: '2px solid #635BFF', paddingBottom: '8px'}}>
@@ -2820,195 +2677,17 @@ const RestaurantsPage: React.FC = () => {
                   )}
 
                   {editingRestaurant.activateSubscription && (
-                    <FormGroup>
-                      <FormLabel>Billing Cycle *</FormLabel>
-                      <FormSelect
-                        value={editingRestaurant.billingCycle || 'monthly'}
-                        onChange={(e) => {
-                          const cycle = e.target.value as 'monthly' | 'annual';
-                          const selectedPlan = availablePlans.find((p: any) => p.display_name === (editingRestaurant.planType || 'Basic Plan'));
-                          const cur = normalizeCurrencyCode(editingRestaurant.currency || 'MYR');
-                          const price = selectedPlan ? getPlanPrice(selectedPlan, cur, cycle) : 0;
-
-                          // Recalculate end date based on new cycle
-                          let newEnd = editingRestaurant.subscriptionEnd;
-                          if (editingRestaurant.subscriptionStart) {
-                            const [y, m, d] = String(editingRestaurant.subscriptionStart).slice(0, 10).split('-').map(Number);
-                            const endD = new Date(y, m - 1, d);
-                            if (cycle === 'annual') endD.setFullYear(endD.getFullYear() + 1);
-                            else endD.setMonth(endD.getMonth() + 1);
-                            endD.setDate(endD.getDate() - 1);
-                            newEnd = `${endD.getFullYear()}-${String(endD.getMonth() + 1).padStart(2, '0')}-${String(endD.getDate()).padStart(2, '0')}`;
-                          }
-
-                          setEditingRestaurant({
-                            ...editingRestaurant,
-                            billingCycle: cycle,
-                            planAmount: price.toFixed(2),
-                            subscriptionEnd: newEnd
-                          });
-                        }}
-                      >
-                        <option value="monthly">{t('admin:restaurantsPage.monthly')}</option>
-                        <option value="annual">{t('admin:restaurantsPage.annual')}</option>
-                      </FormSelect>
-                    </FormGroup>
-                  )}
-
-                  {editingRestaurant.activateSubscription && (
-                    <FormGroup>
-                      <FormLabel>Payment Model *</FormLabel>
-                      <FormSelect
-                        value={editingRestaurant.paymentModel || 'restaurant'}
-                        onChange={(e) => setEditingRestaurant({...editingRestaurant, paymentModel: e.target.value as any})}
-                      >
-                        <option value="restaurant">{t('admin:restaurantsPage.restaurantAdmin')}</option>
-                        <option value="foodcourt_manager">{t('admin:restaurantsPage.foodcourtManager')}</option>
-                        <option value="brand_manager">{t('admin:restaurantsPage.brandManager')}</option>
-                      </FormSelect>
-                    </FormGroup>
-                  )}
-
-                  {editingRestaurant.activateSubscription && (
-                    <FormGroup style={{ gridColumn: 'span 2' }}>
-                      <FormLabel>Subscription Period * (end auto-calculated)</FormLabel>
-                      <DateRangeField
-                        startDate={editingRestaurant.subscriptionStart || new Date().toISOString().split('T')[0]}
-                        endDate={editingRestaurant.subscriptionEnd || ''}
-                        onChange={(start, _end) => {
-                          let end = '';
-                          if (start) {
-                            const [y, m, d] = String(start).slice(0, 10).split('-').map(Number);
-                            const endD = new Date(y, m - 1, d);
-                            const cycle = editingRestaurant.billingCycle || 'monthly';
-                            if (cycle === 'annual') endD.setFullYear(endD.getFullYear() + 1);
-                            else endD.setMonth(endD.getMonth() + 1);
-                            endD.setDate(endD.getDate() - 1);
-                            end = `${endD.getFullYear()}-${String(endD.getMonth() + 1).padStart(2, '0')}-${String(endD.getDate()).padStart(2, '0')}`;
-                          }
-                          setEditingRestaurant({...editingRestaurant, subscriptionStart: start, subscriptionEnd: end});
-                        }}
+                    <div style={{gridColumn: '1 / -1'}}>
+                      <SubscriptionFormFields
+                        userType="restaurant"
+                        mode="edit"
+                        values={toSubscriptionValues(editingRestaurant)}
+                        onChange={(patch) => setEditingRestaurant({ ...editingRestaurant, ...fromSubscriptionPatch(patch) })}
+                        availablePlans={availablePlans}
+                        planCurrencies={planCurrencies}
+                        options={{ hideActivateNow: true, hideCurrency: true, hideSectionHeader: true }}
                       />
-                    </FormGroup>
-                  )}
-
-                  {editingRestaurant.activateSubscription && (
-                    <FormGroup style={{gridColumn: '1 / -1'}}>
-                      <label style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        padding: '16px 20px',
-                        background: editingRestaurant.status === 'trial' ? '#F0EFFF' : '#F9FAFB',
-                        borderRadius: '12px',
-                        border: editingRestaurant.status === 'trial' ? '2px solid #635BFF' : '2px solid #E5E7EB',
-                        cursor: 'pointer'
-                      }}>
-                        <input
-                          type="checkbox"
-                          checked={editingRestaurant.status === 'trial'}
-                          onChange={(e) => setEditingRestaurant({
-                            ...editingRestaurant,
-                            status: e.target.checked ? 'trial' : 'active'
-                          })}
-                          style={{ width: '20px', height: '20px', accentColor: '#635BFF', cursor: 'pointer' }}
-                        />
-                        <div>
-                          <div style={{fontWeight: '600', color: '#1F2937', fontSize: '15px'}}>
-                            Treat as trial until subscription starts
-                          </div>
-                          <div style={{fontSize: '13px', color: '#6B7280', marginTop: '2px'}}>
-                            If Subscription Start Date is in the future, the restaurant is in trial until then.
-                          </div>
-                        </div>
-                      </label>
-                    </FormGroup>
-                  )}
-
-                  {editingRestaurant.activateSubscription && (
-                    <FormGroup style={{gridColumn: '1 / -1'}}>
-                      <label style={{display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer'}}>
-                        <input
-                          type="checkbox"
-                          checked={editingRestaurant.autoRenew || true}
-                          onChange={(e) => setEditingRestaurant({...editingRestaurant, autoRenew: e.target.checked})}
-                          style={{width: '16px', height: '16px'}}
-                        />
-                        <span style={{fontSize: '14px', color: '#374151'}}>
-                          Auto-renew subscription
-                        </span>
-                      </label>
-                    </FormGroup>
-                  )}
-
-                  {editingRestaurant.activateSubscription && (
-                    <>
-                      {/* Subscription Discount */}
-                      <div style={{gridColumn: '1 / -1', marginTop: '16px', marginBottom: '6px'}}>
-                        <h4 style={{margin: 0, fontSize: '15px', fontWeight: '600', color: '#0A2540'}}>
-                          Subscription Discount
-                        </h4>
-                        <p style={{margin: '4px 0 0', fontSize: '12px', color: '#6B7280'}}>
-                          Applied automatically to System Admin subscription invoices
-                        </p>
-                      </div>
-
-                      <FormGroup>
-                        <FormLabel>{t('admin:restaurantsPage.discountType')}</FormLabel>
-                        <FormSelect
-                          value={editingRestaurant.discount_type || 'none'}
-                          onChange={(e) => setEditingRestaurant({...editingRestaurant, discount_type: e.target.value as any, discount_value: e.target.value === 'none' ? 0 : editingRestaurant.discount_value})}
-                        >
-                          <option value="none">{t('admin:restaurantsPage.none')}</option>
-                          <option value="percentage">Percentage (%)</option>
-                          <option value="fixed">{t('admin:restaurantsPage.fixedAmount')}</option>
-                        </FormSelect>
-                      </FormGroup>
-
-                      {editingRestaurant.discount_type && editingRestaurant.discount_type !== 'none' && (
-                        <FormGroup>
-                          <FormLabel>Discount Value {editingRestaurant.discount_type === 'percentage' ? '(%)' : '(Amount)'}</FormLabel>
-                          <FormInput
-                            type="number"
-                            min="0"
-                            max={editingRestaurant.discount_type === 'percentage' ? '100' : undefined}
-                            step="0.01"
-                            value={editingRestaurant.discount_value || ''}
-                            onChange={(e) => setEditingRestaurant({...editingRestaurant, discount_value: parseFloat(e.target.value) || 0})}
-                            placeholder={editingRestaurant.discount_type === 'percentage' ? 'e.g. 10' : 'e.g. 5.00'}
-                          />
-                        </FormGroup>
-                      )}
-
-                      {editingRestaurant.discount_type && editingRestaurant.discount_type !== 'none' && (
-                        <FormGroup style={{gridColumn: '1 / -1'}}>
-                          <FormLabel>{t('admin:restaurantsPage.discountReason')}</FormLabel>
-                          <FormInput
-                            type="text"
-                            value={editingRestaurant.discount_reason || ''}
-                            onChange={(e) => setEditingRestaurant({...editingRestaurant, discount_reason: e.target.value})}
-                            placeholder="e.g. Early bird discount, Loyalty discount"
-                          />
-                        </FormGroup>
-                      )}
-
-                      <div style={{gridColumn: '1 / -1', padding: '16px', background: '#F3F4F6', borderRadius: '8px', marginTop: '10px'}}>
-                        <div style={{fontSize: '14px', color: '#6B7280', marginBottom: '8px'}}>
-                          <strong>Summary:</strong>
-                        </div>
-                        <div style={{fontSize: '16px', fontWeight: '600', color: '#0A2540'}}>
-                          {editingRestaurant.planType || 'Basic Plan'} - {formatCurrency(parseFloat(editingRestaurant.planAmount || '0'), editingRestaurant.currency || 'MYR')} ({editingRestaurant.billingCycle || 'monthly'})
-                          {editingRestaurant.discount_type && editingRestaurant.discount_type !== 'none' && (editingRestaurant.discount_value || 0) > 0 && (
-                            <span style={{color: '#15803D', fontSize: '14px', marginLeft: '8px'}}>
-                              (-{editingRestaurant.discount_type === 'percentage' ? `${editingRestaurant.discount_value}%` : formatCurrency(editingRestaurant.discount_value || 0, editingRestaurant.currency || 'MYR')})
-                            </span>
-                          )}
-                        </div>
-                        <div style={{fontSize: '12px', color: '#6B7280', marginTop: '4px'}}>
-                          Paid by: {editingRestaurant.paymentModel === 'brand_manager' ? 'Brand Manager' : editingRestaurant.paymentModel === 'foodcourt_manager' ? 'Foodcourt Manager' : 'Restaurant Admin'}
-                        </div>
-                      </div>
-                    </>
+                    </div>
                   )}
                 </FormGrid>
                 {editModalWarning && (

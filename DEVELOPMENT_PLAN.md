@@ -1,9 +1,149 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-05-10 (v3.28 운영 배포 — PWA Push + Self-managed Restaurant + 모바일 반응형)
+> **최종 업데이트:** 2026-05-11 (Reservation 모듈화 + Settings UI 통일 + R1 결함 4건 fix — 미배포)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
-> **현재 버전:** **v3.28** (2026-05-10 운영 배포)
+> **현재 버전:** **v3.28** (2026-05-10 운영 배포 + Unreleased 누적)
+
+## ✅ 완료: Reservation R1 customer_id 결함 fix (2026-05-11, 미배포 / 버전 미상승)
+
+**R1 MVP 의 critical defect 수정: 첫 예약(prior visit 없음) 시 `customer_id NULL` 로 저장되어 본인이 /me 에서 못 보고 취소/수정 불가능했던 결함.**
+
+### 근본 원인
+- POST `/reservations` 가 `customer_id: customer?.id || null` 로 fallback (silent failure)
+- RestaurantCustomer 가 없으면 NULL → `/me` 가 RestaurantCustomer.id 로만 조회하므로 안 보임
+- `loadOwnReservation` (PATCH/DELETE /me/:id) 도 403 → 취소 불가
+
+| 작업 | 설명 | 상태 |
+|------|------|:---:|
+| POST 핸들러 트랜잭션 재작성 | `routes/reservations-public.js` — `sequelize.transaction` 안에서 `RestaurantCustomer.findOrCreate` → `Reservation.create` → `reservation_count` 증가. customer_id NULL 가능성 원천 차단 | ✓ |
+| 백필 스크립트 | `scripts/backfill-reservation-customer-id.js` — `source='customer_mobile' AND customer_id IS NULL` 데이터 `Customer.phone` 매칭 복구. `--dry-run` 지원. 운영 배포 시 점검용 | ✓ |
+| health-check reservation 카테고리 | 3 신규 케이스 — 신규 customer 예약 회귀 가드, 익명/admin token 차단. 73 → **76** | ✓ |
+| reservation_count auto-increment | RestaurantCustomer 통계 누락 버그 동시 수정 | ✓ |
+
+### 검증
+- R1 fix flow 14/14 — sanity (RC 없음) → 첫 POST → 자동 생성 → customer_id NOT NULL → /me 포함 → DELETE 성공 → 두 번째 POST count=2 → no_show=5 시 403 차단
+- **health-check 76/76 통과** (전체 회귀 + 신규 3 케이스)
+
+### Known-WONTFIX (별도 sprint 분리)
+- **RestaurantCustomer 모델 vs DB 불일치**: `name/phone/email` 필드가 모델에는 있지만 DB 컬럼 없음. Sequelize silently drops. 데이터 손실 없음 (Customer 모델이 신원 권원). 모델 정리는 별도 cleanup sprint.
+- **동시 booking race window**: slot capacity check 와 INSERT 사이 race 가능. advisory lock 또는 SERIALIZABLE 트랜잭션 필요. 별도 sprint.
+
+### 수정된 파일
+
+**Backend (3)**
+- `dev-backend/routes/reservations-public.js` — POST 트랜잭션 재작성, sequelize import 추가, 노쇼 차단 위치 트랜잭션 안으로 이동
+- `dev-backend/scripts/backfill-reservation-customer-id.js` — 신규 (운영 안전망)
+- `dev-backend/scripts/health-check.js` — reservation 카테고리 + 3 신규 케이스
+
+---
+
+## ✅ 완료: ManagersPage Edit SubscriptionFormFields 통합 + User.auto_renew 추가 (2026-05-11, 미배포 / 버전 미상승)
+
+**v3.27 sprint 4 의 Add 모달 통일을 Edit 모달까지 확장. BG/FG/Owner 의 Edit 폼에서도 Discount/Auto-renew/Trial/Summary 사용 가능.**
+
+| 작업 | 설명 | 상태 |
+|------|------|:---:|
+| ManagersPage Edit 모달 | Currency/Plan/BillingCycle/Period 5 필드 → `<SubscriptionFormFields userType="brand|foodcourt|owner" mode="edit" hideActivateNow hidePaymentModel>`. Discount/Auto-renew/Trial/Summary 자동 노출 | ✓ |
+| Manager interface 확장 | discountType/discountValue/discountReason/treatAsTrial 필드 추가 | ✓ |
+| handleEditManager | discount 초기값 + treatAsTrial 매핑 | ✓ |
+| handleUpdateManager | discount_type/value/reason + subscription_status 전송 추가 | ✓ |
+| User 모델 auto_renew 컬럼 | BOOLEAN NOT NULL DEFAULT true AFTER subscription_end. 기존 BG/FG/Owner auto_renew 데이터 손실 버그 수정 | ✓ |
+| dev DB ALTER TABLE | 컬럼 추가 적용 (sync-database.js 가 운영 배포 시 자동 처리) | ✓ |
+| 부산물 정리 | 미사용 import 제거 (formatPlanPrice, DateField). 1650 → 1613줄 (-37줄) | ✓ |
+
+### 검증
+- API 실호출 9/9 — PUT BG 에 plan_type/billing_cycle/currency/auto_renew/discount_*/subscription_end auto-calc 전부 DB 저장 확인
+- health-check 73/73
+- 빌드 main.cfcf20e4.js (exit 0, 0 new warning)
+- RestaurantsPage 통합 회귀 없음
+
+### 범위 결정
+- **SubscriptionsPage Edit 는 통합 X** — Status dropdown + "others" custom plan name + "current vs latest amount" diff 같은 고유 기능 있어서 단순 교체 시 기능 회귀. 별도 design sprint 사안.
+
+### 수정된 파일
+
+**Backend (1)**
+- `dev-backend/models/User.js` — auto_renew BOOLEAN 컬럼 추가
+
+**Frontend (1)**
+- `dev-frontend/src/pages/Admin/ManagersPage.tsx` — Manager interface 확장 + Edit 모달 통합 + handleUpdateManager 보강 + 미사용 import 제거
+
+---
+
+## ✅ 완료: RestaurantsPage SubscriptionFormFields 통합 (2026-05-11, 미배포 / 버전 미상승)
+
+**v3.27 sprint 4 의 4 페이지 구독 form 통일을 RestaurantsPage Add/Edit 모달까지 확장. 4 caller (StaffManagementPage, ManagersPage, SubscriptionsPage, RestaurantsPage Add/Edit) 모두 동일 9-필드 UX 도달.**
+
+| 작업 | 설명 | 상태 |
+|------|------|:---:|
+| SubscriptionFormFields 옵션 추가 | `hideCurrency`, `hideSectionHeader` (backward-compatible default false) | ✓ |
+| RestaurantsPage Add 모달 | Plan/Trial/BillingCycle/PaymentModel/Period/Auto-renew/Summary 7 필드 → `<SubscriptionFormFields hideActivateNow hideCurrency hideSectionHeader>`. Discount 자동 포함 (이전 Add 누락이었음) | ✓ |
+| RestaurantsPage Edit 모달 | 같은 7 필드 + 기존 Discount 섹션 → `<SubscriptionFormFields>` 1 컴포넌트. Self-managed 토글 + banner 외부 유지 | ✓ |
+| 어댑터 함수 | `toSubscriptionValues()`, `fromSubscriptionPatch()` — legacy camelCase ↔ snake_case 매핑. 백엔드 contract 변경 없음 | ✓ |
+| Backend POST 보강 | `routes/restaurants-crud.js` POST 에 `discount_type/value/reason` 처리 + `subscription_end` auto-calc fallback (PUT 은 이미 있었음, POST 누락이었음) | ✓ |
+| 부산물 정리 | 미사용 import 제거 (`DateRangeField`, `formatPlanPrice`) | ✓ |
+| 라인 수 | 3188 → 2867 (-321줄) | ✓ |
+
+### 검증
+- API 실호출 25/25 — POST activate=true (plan + 10% discount + auto-end) → DB readback / PUT active→self-managed (plan NULL wipe) / PUT self-managed→active (annual + fixed discount)
+- health-check 73/73 PASS
+- 빌드 main.3eca6803.js (93초, exit 0, 0 new warning)
+- 기존 3 caller 새 옵션 미사용 → 영향 없음 확인
+
+### 수정된 파일
+
+**Backend (1)**
+- `dev-backend/routes/restaurants-crud.js` — POST 핸들러에 discount_* + subscription_end auto-calc 추가
+
+**Frontend (2)**
+- `dev-frontend/src/components/Subscription/SubscriptionFormFields.tsx` — `hideCurrency` / `hideSectionHeader` 옵션 추가
+- `dev-frontend/src/pages/Admin/RestaurantsPage.tsx` — 어댑터 + Add/Edit 모달 통합 + 미사용 import 제거
+
+---
+
+## ✅ 완료: Reservation System R1 MVP (2026-05-10 운영 배포, 버전 미상승)
+
+**모바일 메뉴에서 고객이 직접 예약 + 운영 페이지에서 직원이 승인/체크인하는 single-property 예약 워크플로우. 7-state state machine + 24h/2h 자동 리마인드 + auto no_show. 모델 1개 신규 (Reservation), 기존 Restaurant/RestaurantCustomer/Order 확장으로 deposit/table/waitlist 별도 모델 안 만듦.**
+
+**시장 base**: 말레이시아 (WhatsApp wa.me + Telegram + navigator.share + .ics 캘린더 — 한국 특정 통합 X)
+
+### 산출물
+- Backend: 모델 1개 신규 + 3개 확장, 12 endpoint (public 6 / staff 6), 4 카테고리 push, 4 이메일 템플릿, hourly scheduler
+- Frontend: 운영 1 페이지 + 모바일 3 페이지 + Settings 12번째 탭 + 진입점 (OrderType/Account/Sidebar) + Share 컴포넌트
+- i18n: 4언어 reservation.json (~50 키)
+
+### R2+ 분리 (의도적 비범위)
+- deposit 결제 흐름 UI (모델 준비됨, payment integration 은 R2)
+- 캘린더 monthly view, 좌석 평면도 drag, WaitingList, 보증금 자동 환불 cron, 본사 분석 dashboard, WhatsApp Business API/SMS
+
+### 검증
+- Backend API 12/12 (생성/조회/수정/취소, state machine, IDOR, 익명 차단)
+- store/settings PUT/GET readback 3/3
+- Health-check 73/73
+- Frontend 빌드 88초 + Reservation chunks 분리 (3694 + 8137 + share 4670)
+- SPA 라우팅 정상
+
+### 신규 파일 (12)
+- `models/Reservation.js`
+- `routes/reservations-public.js`, `routes/reservations-staff.js`
+- `services/reservationScheduler.js`, `services/reservationNotificationService.js`
+- `pages/Reservations/ReservationsTimelinePage.tsx`
+- `mobile/pages/ReservationPage.tsx`, `ReservationsListPage.tsx`, `ReservationDetailPage.tsx`
+- `mobile/components/common/ReservationShare.tsx`
+- `components/Settings/ReservationSettingsTab.tsx`
+- `public/locales/{en,ko,zh,ms}/reservation.json` (4)
+
+### 수정된 파일
+- `models/Restaurant.js` (reservation_settings JSON), `models/RestaurantCustomer.js` (6 컬럼), `models/Order.js` (reservation_id FK + ENUM)
+- `models/index.js` (associations)
+- `server.js` (라우트 + scheduler mount)
+- `routes/store.js` (reservation_settings GET/PUT 통합), `routes/mobile-public.js` (reservationsEnabled 플래그), `routes/notification-settings.js` (4 카테고리)
+- `pages/Settings/SettingsPage.tsx` (12번째 탭), `App.tsx` (lazy import), `mobile/MobileApp.tsx` (3 라우트), `components/Layout/MainLayout.tsx` (NavItem)
+- `mobile/pages/OrderTypePage.tsx` (Reserve 옵션), `mobile/pages/AccountPage.tsx` (My Reservations 진입)
+- `public/locales/{en,ko,zh,ms}/common.json` (nav.reservations), `i18n.ts` (namespace 등록)
+
+---
 
 ## ✅ 완료: Self-managed Restaurant 모드 (2026-05-10, 미배포 / 버전 미상승)
 

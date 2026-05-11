@@ -33,7 +33,13 @@ const NOTIFICATION_CATEGORIES = [
   { key: 'order_status', label: 'Order Status Changes', description: 'When an order is paid, cancelled, or refunded', section: 'POS Operations', roles: ['Restaurant Admin', 'Staff'], push_only: true },
   { key: 'kitchen_alert', label: 'Kitchen Time Alert', description: 'When an order exceeds the kitchen station prep time', section: 'POS Operations', roles: ['Restaurant Admin', 'Staff'], push_only: true },
   { key: 'inventory_low', label: 'Low Stock Alert', description: 'When inventory drops below the configured threshold', section: 'POS Operations', roles: ['Restaurant Admin', 'Brand General', 'Foodcourt General'], push_only: true },
-  { key: 'staff_call', label: 'Staff Call from Customer', description: 'When a customer presses the call-staff button at the table', section: 'POS Operations', roles: ['Restaurant Admin', 'Staff'], push_only: true }
+  { key: 'staff_call', label: 'Staff Call from Customer', description: 'When a customer presses the call-staff button at the table', section: 'POS Operations', roles: ['Restaurant Admin', 'Staff'], push_only: true },
+
+  // Reservation system (v3.29+)
+  { key: 'reservation_new', label: 'New Reservation Request', description: 'When a customer submits a new reservation', section: 'Reservations', roles: ['Restaurant Admin', 'Staff'], push_only: true },
+  { key: 'reservation_status_changed', label: 'Reservation Status Changed', description: 'Confirmation, cancellation, or no-show updates on your reservation', section: 'Reservations', roles: ['Restaurant Admin', 'Staff'] },
+  { key: 'reservation_reminder', label: 'Reservation Reminder (24h/2h)', description: 'Reminders sent to customers before their reservation', section: 'Reservations', roles: ['Restaurant Admin'] },
+  { key: 'reservation_no_show', label: 'Reservation No-Show', description: 'When a reservation is auto-marked as no-show', section: 'Reservations', roles: ['Restaurant Admin', 'Staff'], push_only: true }
 ];
 
 // GET - User notification preferences
