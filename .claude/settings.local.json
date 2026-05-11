@@ -198,7 +198,9 @@
       "Bash(mv /tmp/test-restaurants-rbac.js /var/www/dev-backend/test-rbac.js)",
       "Bash(sed -i \"s|require\\('dotenv'\\).config\\({ path: '/var/www/dev-backend/.env' }\\)|require\\('dotenv'\\).config\\(\\)|; s|require\\('/var/www/dev-backend/|require\\('./|g\" test-rbac.js)",
       "Bash(awk '{print $5}')",
-      "Bash(awk '{print $9, $5, $6, $7, $8}')"
+      "Bash(awk '{print $9, $5, $6, $7, $8}')",
+      "Bash(awk NR>=20 && NR<=37 *)",
+      "Bash(awk 'NR>=1 && NR<=20' /tmp/claude-1000/-var-www/5fa708f1-753b-4c55-8f8c-001a610f2b88/tasks/bqxisau1c.output)"
     ],
     "deny": [],
     "ask": []

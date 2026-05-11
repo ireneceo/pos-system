@@ -7,7 +7,10 @@ const Header = styled.div`
   padding: 16px 32px;
   border-bottom: 1px solid #E6EBF1;
   margin-bottom: 0;
-  height: 56px;
+  height: 80px;
+  min-height: 80px;
+  max-height: 80px;
+  box-sizing: border-box;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -16,6 +19,7 @@ const Header = styled.div`
     padding: 12px 16px;
     height: auto;
     min-height: 48px;
+    max-height: none;
     flex-direction: row;
     align-items: center;
     gap: 8px;
@@ -84,7 +88,6 @@ const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, children, sett
     <Header>
       <div>
         <HeaderTitle>{title}</HeaderTitle>
-        {subtitle && <div style={{ fontSize: 13, color: '#6B7280', marginTop: 2 }}>{subtitle}</div>}
       </div>
       {(children || settingsHref) && (
         <HeaderActions>

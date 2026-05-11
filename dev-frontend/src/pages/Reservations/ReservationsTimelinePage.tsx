@@ -88,7 +88,6 @@ export default function ReservationsTimelinePage() {
     <Container>
       <PageHeader
         title="Reservations"
-        subtitle="Manage incoming reservations and seating"
         settingsHref={restaurantId ? `/restaurant/${restaurantId}/settings?tab=reservation` : undefined}
         settingsLabel="Reservation settings"
       >

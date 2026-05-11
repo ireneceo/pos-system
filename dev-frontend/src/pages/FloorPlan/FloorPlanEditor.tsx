@@ -40,7 +40,10 @@ const Header = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 56px;
+  height: 80px;
+  min-height: 80px;
+  max-height: 80px;
+  box-sizing: border-box;
 
   @media (max-width: 768px) {
     padding: 12px 16px;

@@ -186,6 +186,42 @@ import { PageSettingsLink } from '../components/Common/PageHeader';
 
 ---
 
+### 2.4 사이드바 2단 구조 (2026-05-11 도입)
+
+모든 역할(System Admin / Brand / Foodcourt / Owner / Supplier / Restaurant Admin)이 동일한 2단 사이드바 사용 (Sentry / Stripe / Linear 패턴).
+
+**구조**:
+- **1뎁스 (좌측 카테고리 rail)**: 220px (collapsed 64px), 배경 `#EEF0F4`, lucide-react 라인 아이콘 + 라벨
+- **2뎁스 (sub-menu panel)**: 220px white, 텍스트만 (아이콘 없음). collapse 가능 (`ChevronsLeft`) → localStorage 저장. collapsed 상태에서 1뎁스 hover → floating popover
+- **헤더 통일**: SidebarHeader / SecondaryHeader / PageHeader 모두 `height: 80px / box-sizing: border-box / padding: 16px` strict (회색 라인 한 줄 정렬)
+
+**Active / Hover**:
+- 1뎁스 active: 흰 배경 (`#FFFFFF`) + 좌측 3px 보라 라인 + 글자 보라 (`#635BFF`, font-weight 600)
+- 2뎁스 active: `#F0F4FF` 배경 + 좌측 3px 보라 라인 + 글자 보라
+- Hover: 글자만 보라 (배경 없음) — active 일 때 hover 시에도 active 배경 유지
+
+**카테고리 데이터 구조** (`MainLayout.tsx` 의 `AdminCategory`):
+```ts
+type AdminCategory = {
+  id: string;
+  label: string;
+  icon: React.ReactNode;
+  path?: string;                 // 단독 메뉴 (sub-menu 없음)
+  items?: AdminSubItem[];        // 2뎁스 sub-menu
+  hasPending?: boolean;          // 알림 dot
+  visible?: boolean;             // 권한 가시성
+  openInNewTab?: boolean;        // 풀화면 메뉴 (POS Terminal, Floor Plan 등)
+  mobileOrder?: boolean;         // Mobile Order 전용 (slug fetch 후 새 창)
+};
+```
+
+**규칙**:
+- 풀화면 메뉴 (POS Terminal / Floor Plan / Kitchen Display / Customer Display / Mobile Order) 는 1뎁스 단독 + `openInNewTab: true`
+- Reports 같이 페이지 안 탭이 명확한 메뉴는 1뎁스 카테고리 + 탭을 2뎁스 sub-menu 로 (`/path?tab=xxx` URL)
+- Settings 카테고리는 실제 설정 페이지만 (Company Info / Site Settings / Notifications / System Config 등). 다른 의미의 페이지는 별도 카테고리
+
+---
+
 ## 3. 컬러 팔레트
 
 ### 3.1 기본 색상

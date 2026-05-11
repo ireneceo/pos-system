@@ -30,7 +30,10 @@ const Header = styled.div`
   background: white;
   padding: 16px 32px;
   border-bottom: 1px solid #E6EBF1;
-  height: 56px;
+  height: 80px;
+  min-height: 80px;
+  max-height: 80px;
+  box-sizing: border-box;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -852,7 +855,6 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
       <Header>
         <div>
           <Title>{tNs('orders.title', 'Live Orders')}</Title>
-          <Subtitle>{tNs('orders.subtitle', '')}</Subtitle>
         </div>
         <AudioToggleButton
           enabled={soundEnabled}

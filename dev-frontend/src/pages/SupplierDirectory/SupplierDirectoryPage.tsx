@@ -106,7 +106,10 @@ const Card = styled.button`
 
 const LogoBox = styled.div`
   width: 56px;
-  height: 56px;
+  height: 80px;
+  min-height: 80px;
+  max-height: 80px;
+  box-sizing: border-box;
   border-radius: 10px;
   background: #F8FAFC;
   border: 1px solid #E6EBF1;

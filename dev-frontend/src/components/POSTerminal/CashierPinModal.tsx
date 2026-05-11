@@ -88,7 +88,10 @@ const Keypad = styled.div`
 `;
 
 const KeyBtn = styled.button<{ variant?: 'action' }>`
-  height: 56px;
+  height: 80px;
+  min-height: 80px;
+  max-height: 80px;
+  box-sizing: border-box;
   border: 1px solid #E6EBF1;
   border-radius: 10px;
   font-size: ${props => props.variant === 'action' ? '14px' : '22px'};

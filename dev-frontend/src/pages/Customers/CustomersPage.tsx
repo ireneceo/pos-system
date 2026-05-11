@@ -520,7 +520,7 @@ const CustomersPage: React.FC = () => {
       <CustomersContainer>
         <PageHeader
           title="Customers"
-          settingsHref={user?.restaurantId ? `/restaurant/${user.restaurantId}/settings?tab=membership` : undefined}
+          settingsHref={restaurantId ? `/restaurant/${restaurantId}/settings?tab=membership` : undefined}
           settingsLabel="Membership settings"
         >
           <Button onClick={handleAddCustomer} variant="primary">

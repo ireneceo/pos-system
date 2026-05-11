@@ -17,7 +17,10 @@ const Header = styled.div`
   padding: 16px 32px;
   border-bottom: 1px solid #E6EBF1;
   margin-bottom: 0;
-  height: 56px;
+  height: 80px;
+  min-height: 80px;
+  max-height: 80px;
+  box-sizing: border-box;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -321,7 +324,6 @@ const FoodcourtManagement: React.FC = () => {
         <Header>
           <div>
             <Title>{'Foodcourt Management'}</Title>
-            <Subtitle>{'Integrated management and operational optimization for entire foodcourt network'}</Subtitle>
           </div>
           <ActionSection>
             <ThemedButton variant="outline">{'Export Data'}</ThemedButton>

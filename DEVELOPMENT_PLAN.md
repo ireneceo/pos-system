@@ -1,9 +1,56 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-05-11 (Reservation 모듈화 + Settings UI 통일 + R1 결함 4건 fix — 미배포)
+> **최종 업데이트:** 2026-05-11 (사이드바 2단 구조 전면 리디자인 + 헤더 80px 통일 — 운영 배포 완료)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 > **현재 버전:** **v3.28** (2026-05-10 운영 배포 + Unreleased 누적)
+
+## ✅ 완료: 사이드바 2단 구조 전면 리디자인 + 헤더 80px 통일 (2026-05-11, 운영 배포 완료)
+
+**모든 역할 사이드바를 Sentry/Stripe/Linear 패턴의 2단 구조로 통일** — 1뎁스 카테고리 rail + 2뎁스 sub-menu panel. 헤더(좌측 로고 / 가운데 2뎁스 헤더 / 우측 페이지 헤더) 80px strict 정렬.
+
+### 적용 6 역할
+| 역할 | 1뎁스 카테고리 |
+|------|---------------|
+| System Admin | Dashboard / Management / Suppliers / Operations / Communication / Plans & Payments / Settings (7) |
+| Brand General | Dashboard / Live Orders / Franchise / Management / Products & Inventory / Operations (PO 통합) / Reports (탭) / Communication / Plans & Payments / Settings (10) |
+| Foodcourt General | Brand 와 동일 + Floor Plan 1뎁스 단독 (새 창) |
+| Restaurant Owner | Dashboard / Restaurants / Operations / Reports / Communication / Settings (6) |
+| Supplier Admin | Dashboard / Live Orders / Operations / Plans & Payments / Communication / Settings (6) |
+| Restaurant Admin | Dashboard / Live Orders / Reservations / POS Terminal · Floor Plan · Kitchen Display · Customer Display · Mobile Order (모두 새 창) / Products / Operations / Reports (탭) / Team & Marketing / Communication / Settings (12) |
+
+### 핵심 변경
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| lucide-react 아이콘 도입 | 유니코드 기하문자(■◯◐◆◉) → 통일 라인 아이콘 (stroke 1.5) | ✅ |
+| 1뎁스 카테고리 rail | 220px expanded / 64px collapsed, `#EEF0F4` 배경, active 흰배경+좌측 보라 라인 | ✅ |
+| 2뎁스 sub-menu panel | 220px white, 텍스트만, collapse 가능 + localStorage 저장 | ✅ |
+| Hover popover | 2뎁스 collapsed 시 1뎁스 hover → floating popover (shadow 0 8px 24px) | ✅ |
+| 헤더 80px 통일 | SidebarHeader / SecondaryHeader / PageHeader 모두 box-sizing border-box + 80px strict. 65개 페이지 `height: 56px;` 일괄 → 80px | ✅ |
+| Operations 카테고리 통합 | Purchase Order / Order History / Supplier Contracts 를 별도 Order 카테고리에서 → Operations 안 | ✅ |
+| Reports 1뎁스 + 6 탭 sub | Sales Ranking / Sales Report / Sales Details / Menu Analysis / Customer Insights / Operations 탭 각각 `?tab=xxx` URL | ✅ |
+| 풀화면 메뉴 새 창 | POS Terminal / Floor Plan / Kitchen / Customer Display / Mobile Order — AdminCategory.openInNewTab + mobileOrder slug fetch popup blocker fix | ✅ |
+| Subtitle 제거 | Live Orders / Foodcourt Management / Reservations Timeline 단순 설명 부제목 hide + PageHeader subtitle prop 무력화 | ✅ |
+| 알림 dot propagation | 2뎁스 카테고리 안 pending 자식 있으면 1뎁스 카테고리도 dot + blink | ✅ |
+| 버그 fix | `/restaurant/:rid/customers` ReferenceError user is not defined fix, styled-components #12 keyframe css helper | ✅ |
+
+### 검증
+- 0단계 state hydration 0 warnings
+- 빌드 main.94886590.js 0 new warning
+- health-check 78/78 통과
+- Playwright 측정: System Admin 8 RailItems / Foodcourt 10 / Supplier 7, 헤더 80px strict 정렬 확인
+- SPA 라우팅 12 경로 200
+
+### 수정된 파일 (78건)
+- **핵심**: `dev-frontend/src/components/Layout/MainLayout.tsx` (역할별 categories + RailItem/SecondaryNavItem/Popover/CollapseBtn 추가)
+- **헤더 공통**: `dev-frontend/src/components/Common/PageHeader.tsx`, `dev-frontend/src/components/UI/PageComponents.tsx` (Header height 56 → 80)
+- **CustomersPage 버그 fix**: `dev-frontend/src/pages/Customers/CustomersPage.tsx`
+- **65개 페이지 일괄**: `dev-frontend/src/pages/**/*.tsx` 의 styled Header `height: 56px;` → 80px strict
+- **Subtitle 제거**: IncomingOrders / FoodcourtManagement / ReservationsTimeline
+- **ReferralManagementPage**: PageComponents Header 통합
+- **CHANGELOG.md, DEVELOPMENT_PLAN.md, session-state.md**
+
+---
 
 ## ✅ 완료: Reservation R1 customer_id 결함 fix (2026-05-11, 미배포 / 버전 미상승)
 

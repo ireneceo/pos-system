@@ -6,6 +6,56 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+### 사이드바 2단 구조 전면 리디자인 (2026-05-11)
+
+**모든 역할(System Admin / Brand / Foodcourt / Owner / Supplier / Restaurant Admin) 사이드바를 1뎁스 카테고리 + 2뎁스 sub-menu 2단 구조로 통일** (Sentry / Stripe / Linear 패턴).
+
+**1뎁스 (카테고리 rail, 220px / collapsed 64px)**:
+- 좌측 사이드바: 회색 `#EEF0F4` 배경
+- 메뉴 아이콘: 유니코드 기하문자(■◯◐◆◉) → **lucide-react 통일 라인 아이콘** (stroke 1.5, 16px)
+- Active: 흰 배경 + 좌측 3px 보라 라인 + 보라 글자 (font-weight 600)
+- Hover: 글자만 보라 (배경 없음)
+- 알림 dot: 1뎁스 카테고리에 자식 pending 있으면 propagation + blink 점멸
+
+**2뎁스 (sub-menu panel, 220px white)**:
+- 우측 흰 패널: 1뎁스에서 선택된 카테고리의 sub-menu
+- 텍스트만 (아이콘 없음)
+- collapse 가능 (ChevronsLeft) → localStorage 저장
+- collapsed 상태에서 1뎁스 hover 시 floating popover 자동 노출
+
+**헤더 80px 통일**:
+- SidebarHeader / SecondaryHeader / PageHeader 모두 `height 80px / box-sizing border-box / padding 16px` 강제
+- PageComponents.tsx / Common/PageHeader.tsx 의 Header height 56 → 80
+- 65개 페이지의 자체 styled Header 일괄 변경
+- 가로 라인 정렬
+
+**역할별 카테고리 재분류**:
+- System Admin: 7 카테고리 (Settings 안에 Company Info / Site Settings / Notifications / System Config / System Logs / Change History)
+- Brand: 10 카테고리 (Operations 안 Purchase Order/Order History/Supplier Contracts 통합, Reports 1뎁스 + 6 탭 sub)
+- Foodcourt: 동일 + **Floor Plan** 1뎁스 단독 (새 창)
+- Restaurant Owner: 6 카테고리
+- Supplier Admin: 6 카테고리
+- Restaurant Admin: **POS Terminal · Floor Plan · Kitchen Display · Customer Display · Mobile Order** 1뎁스 단독 (모두 새 창) + Reports 1뎁스 + 6 탭 sub
+
+**Reports 1뎁스 + 탭 2뎁스 (Brand/Foodcourt/Owner/Restaurant Admin)**:
+- 6 탭 (Sales Ranking / Sales Report / Sales Details / Menu Analysis / Customer Insights / Operations) 각각 `?tab=xxx` URL
+- matchPathBase / matchPathFull 매칭 함수 신규
+
+**풀화면 메뉴 새 창 열림**:
+- POS Terminal / Floor Plan / Kitchen Display / Customer Display / Mobile Order
+- AdminCategory.openInNewTab + mobileOrder 옵션
+- Mobile Order popup blocker fix: `window.open('about:blank') + async slug fetch → location.href`
+
+**Subtitle 제거**:
+- Live Orders / Foodcourt Management / Reservations Timeline 의 단순 설명 부제목 hide
+- Common/PageHeader.tsx subtitle prop 렌더링 무력화
+
+**버그 fix**:
+- `/restaurant/:rid/customers` ReferenceError: user is not defined — useParams 의 `restaurantId` 로 교체
+- styled-components #12: keyframe interpolation 을 `css` helper 로 감싸 v5+ 호환
+
+**검증**: state hydration 0 warnings / health-check 78/78 / 빌드 0 new warning / Playwright 측정 (3 역할 헤더 80px + RailItem 정렬 확인)
+
 ### Reservation 모듈화 + Settings UI 통일 (2026-05-11)
 
 **Backend 모듈 시스템 등록**:

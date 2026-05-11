@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-import styled from 'styled-components';
+import styled, { keyframes, css } from 'styled-components';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useStaff } from '../../contexts/StaffContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -16,6 +16,13 @@ import { useRoleDisplayName } from '../../utils/roleDisplay';
 import { useAllowedRoutes } from '../../hooks/useAllowedRoutes';
 
 import { getAuthToken } from '../../utils/auth';
+import { LayoutDashboard, Users, Truck, Briefcase, MessageSquare, CreditCard, Settings as SettingsIcon, ChevronsLeft, ChevronsRight, LogOut, Activity, Store, Package, ShoppingCart, FileText, Monitor, LayoutGrid, ChefHat, Tv, Smartphone, TrendingUp } from 'lucide-react';
+
+// System Admin 2-tier sidebar widths
+const SIDEBAR_ADMIN_EXPANDED = 220;
+const SIDEBAR_ADMIN_COLLAPSED = 64;
+const SECONDARY_PANEL_W = 220;
+
 const LayoutContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background-color: #FAFBFC;
@@ -25,14 +32,17 @@ const LayoutContainer = styled.div`
   min-height: 100vh;
 `;
 
-const Sidebar = styled.div<{ isOpen?: boolean; isCollapsed?: boolean }>`
+const Sidebar = styled.div<{ isOpen?: boolean; isCollapsed?: boolean; $isSystemAdmin?: boolean }>`
   position: fixed;
   top: 0;
   left: 0;
-  width: ${props => props.isCollapsed ? '0px' : '220px'};
+  width: ${props => {
+    if (props.isCollapsed) return props.$isSystemAdmin ? `${SIDEBAR_ADMIN_COLLAPSED}px` : '0px';
+    return '220px';
+  }};
   height: 100vh;
-  background: #FAFBFC;
-  border-right: ${props => props.isCollapsed ? 'none' : '1px solid #E6EBF1'};
+  background: #EEF0F4;
+  border-right: ${props => (props.isCollapsed && !props.$isSystemAdmin) ? 'none' : '1px solid #E6EBF1'};
   z-index: 1000;
   display: flex;
   flex-direction: column;
@@ -45,11 +55,14 @@ const Sidebar = styled.div<{ isOpen?: boolean; isCollapsed?: boolean }>`
   }
 `;
 
-const SidebarHeader = styled.div<{ isCollapsed?: boolean }>`
+const SidebarHeader = styled.div<{ isCollapsed?: boolean; $isSystemAdmin?: boolean }>`
   padding: ${props => props.isCollapsed ? '16px 8px' : '16px'};
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: none;
   flex-shrink: 0;
-  height: 56px;
+  height: ${p => p.$isSystemAdmin ? '80px' : '56px'};
+  min-height: ${p => p.$isSystemAdmin ? '80px' : 'auto'};
+  max-height: ${p => p.$isSystemAdmin ? '80px' : 'none'};
+  box-sizing: ${p => p.$isSystemAdmin ? 'border-box' : 'content-box'};
   display: flex;
   align-items: center;
   justify-content: ${props => props.isCollapsed ? 'center' : 'space-between'};
@@ -78,7 +91,7 @@ const SidebarToggleButton = styled.button`
   }
 `;
 
-const SidebarOpenButton = styled.button<{ isCollapsed?: boolean }>`
+const SidebarOpenButton = styled.button<{ isCollapsed?: boolean; $isSystemAdmin?: boolean }>`
   position: fixed;
   top: 16px;
   left: 16px;
@@ -88,7 +101,7 @@ const SidebarOpenButton = styled.button<{ isCollapsed?: boolean }>`
   border-radius: 8px;
   padding: 12px;
   cursor: pointer;
-  display: ${props => props.isCollapsed ? 'flex' : 'none'};
+  display: ${props => (props.isCollapsed && !props.$isSystemAdmin) ? 'flex' : 'none'};
   align-items: center;
   justify-content: center;
   color: #6B7C93;
@@ -278,8 +291,13 @@ const DisabledNavIcon = styled.span`
   flex-shrink: 0;
 `;
 
-const MainContent = styled.div<{ isCollapsed?: boolean }>`
-  margin-left: ${props => props.isCollapsed ? '0px' : '220px'};
+const MainContent = styled.div<{ isCollapsed?: boolean; $sidebarW?: number; $extraLeft?: number }>`
+  margin-left: ${props => {
+    if (props.isCollapsed && !props.$sidebarW) return '0px';
+    const sw = props.$sidebarW || 220;
+    const extra = props.$extraLeft || 0;
+    return `${sw + extra}px`;
+  }};
   min-height: 100vh;
   background: #FAFBFC;
   transition: margin-left 0.3s ease;
@@ -289,13 +307,276 @@ const MainContent = styled.div<{ isCollapsed?: boolean }>`
   }
 `;
 
+// ========== System Admin 2-tier sidebar ==========
+const blinkKf = keyframes`
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+`;
+
+const RailItem = styled(Link)<{ $active?: boolean; $collapsed?: boolean; $hasPending?: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: ${p => p.$collapsed ? '0' : '10px'};
+  padding: ${p => p.$collapsed ? '8px 0' : '6px 14px'};
+  justify-content: ${p => p.$collapsed ? 'center' : 'flex-start'};
+  color: #6B7C93;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 450;
+  min-height: 36px;
+  position: relative;
+  border-left: 3px solid transparent;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+  overflow: hidden;
+
+  svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+  &:hover {
+    background: ${p => p.$active ? '#FFFFFF' : 'transparent'};
+    color: #635BFF;
+    svg { color: #635BFF; }
+  }
+
+  ${p => p.$active && `
+    background: #FFFFFF;
+    color: #635BFF;
+    border-left-color: #635BFF;
+    font-weight: 600;
+    svg { color: #635BFF; }
+  `}
+
+  ${p => p.$hasPending && p.$collapsed && css`
+    &::after {
+      content: '';
+      position: absolute;
+      top: 6px;
+      right: 10px;
+      width: 8px;
+      height: 8px;
+      background: #FF6B6B;
+      border-radius: 50%;
+      animation: ${blinkKf} 1s infinite;
+    }
+  `}
+  ${p => p.$hasPending && !p.$collapsed && css`
+    &::after {
+      content: '';
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 8px;
+      height: 8px;
+      background: #FF6B6B;
+      border-radius: 50%;
+      animation: ${blinkKf} 1s infinite;
+    }
+  `}
+`;
+
+const RailButton = styled.button<{ $collapsed?: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: ${p => p.$collapsed ? '0' : '10px'};
+  padding: ${p => p.$collapsed ? '8px 0' : '6px 14px'};
+  justify-content: ${p => p.$collapsed ? 'center' : 'flex-start'};
+  color: #6B7C93;
+  background: none;
+  border: none;
+  font-size: 13px;
+  font-weight: 450;
+  min-height: 36px;
+  position: relative;
+  border-left: 3px solid transparent;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+  overflow: hidden;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  width: 100%;
+
+  svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+  &:hover {
+    background: transparent;
+    color: #635BFF;
+    svg { color: #635BFF; }
+  }
+`;
+
+const RailLabel = styled.span<{ $collapsed?: boolean }>`
+  ${p => p.$collapsed && `display: none;`}
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+const SecondaryPanel = styled.aside<{ $sidebarW: number }>`
+  position: fixed;
+  top: 0;
+  left: ${p => p.$sidebarW}px;
+  width: ${SECONDARY_PANEL_W}px;
+  height: 100vh;
+  background: #FFFFFF;
+  border-right: 1px solid #E6EBF1;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  transition: left 0.3s ease;
+  @media (max-width: 768px) { display: none; }
+`;
+
+const SecondaryHeader = styled.div`
+  background: #FFFFFF;
+  padding: 16px;
+  border-bottom: 1px solid #E6EBF1;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  height: 80px;
+  min-height: 80px;
+  max-height: 80px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  font-size: 16px;
+  font-weight: 600;
+  color: #0A2540;
+  line-height: 1;
+`;
+
+const CollapseSecondaryBtn = styled.button`
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6B7C93;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+  &:hover { background: #F4F5F8; color: #0A2540; }
+  svg { width: 16px; height: 16px; }
+`;
+
+const SecondaryPopover = styled.div<{ $top: number; $left: number }>`
+  position: fixed;
+  top: ${p => p.$top}px;
+  left: ${p => p.$left}px;
+  width: ${SECONDARY_PANEL_W}px;
+  max-height: calc(100vh - 16px);
+  background: #FFFFFF;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  @media (max-width: 768px) { display: none; }
+`;
+
+const SecondaryPopoverHeader = styled.div`
+  padding: 12px 16px;
+  border-bottom: 1px solid #E6EBF1;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0A2540;
+  flex-shrink: 0;
+`;
+
+const SecondaryPopoverNav = styled.nav`
+  padding: 6px 0;
+  overflow-y: auto;
+`;
+
+const ExpandSecondaryBtn = styled.button<{ $sidebarW: number }>`
+  position: fixed;
+  top: 24px;
+  left: ${p => p.$sidebarW - 14}px;
+  z-index: 1200;
+  background: #FFFFFF;
+  border: 1px solid #E6EBF1;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6B7C93;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  transition: all 0.15s;
+  &:hover { color: #635BFF; border-color: #635BFF; }
+  svg { width: 14px; height: 14px; }
+  @media (max-width: 768px) { display: none; }
+`;
+
+const SecondaryNav = styled.nav`
+  padding: 8px 0;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  &::-webkit-scrollbar { width: 6px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+`;
+
+const SecondaryNavItem = styled(Link)<{ $active?: boolean; $hasPending?: boolean }>`
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  color: #6B7C93;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 450;
+  min-height: 32px;
+  border-left: 3px solid transparent;
+  transition: background 0.15s, color 0.15s;
+  position: relative;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  &:hover {
+    background: ${p => p.$active ? '#F0F4FF' : 'transparent'};
+    color: #635BFF;
+  }
+
+  ${p => p.$active && `
+    background: #F0F4FF;
+    color: #635BFF;
+    border-left-color: #635BFF;
+    font-weight: 600;
+  `}
+
+  ${p => p.$hasPending && css`
+    &::after {
+      content: '';
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 8px;
+      height: 8px;
+      background: #FF6B6B;
+      border-radius: 50%;
+      animation: ${blinkKf} 1s infinite;
+    }
+  `}
+`;
+
 const MobileHeader = styled.div`
   display: none;
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  height: 56px;
+  height: 80px;
+  min-height: 80px;
+  max-height: 80px;
+  box-sizing: border-box;
   background: white;
   border-bottom: 1px solid #E6EBF1;
   z-index: 999;
@@ -755,6 +1036,576 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     return user?.permissions?.includes(permissionKey) || false;
   };
 
+  // ========== 2-tier sidebar (role-aware) ==========
+  const isSystemAdmin = user?.role === 'System Admin';
+  const isBrand = user?.role === 'Brand General' || user?.role === 'Brand Manager';
+  const isFoodcourt = user?.role === 'Foodcourt General' || user?.role === 'Foodcourt Manager';
+  const isOwner = user?.role === 'Restaurant Owner';
+  const isSupplier = user?.role === 'Supplier Admin' || user?.role === 'Supplier Staff';
+  const isRestaurantUser = user?.role === 'Restaurant Admin' || user?.role === 'Staff';
+  const useTwoTier = isSystemAdmin || isBrand || isFoodcourt || isOwner || isSupplier || isRestaurantUser;
+
+  type AdminSubItem = { path: string; label: string; hasPending?: boolean; visible?: boolean; openInNewTab?: boolean };
+  type AdminCategory = { id: string; label: string; icon: React.ReactNode; path?: string; items?: AdminSubItem[]; hasPending?: boolean; visible?: boolean; openInNewTab?: boolean; mobileOrder?: boolean };
+
+  const adminCategories: AdminCategory[] = useMemo(() => !isSystemAdmin ? [] : [
+    {
+      id: 'dashboard',
+      label: t('nav.dashboard'),
+      icon: <LayoutDashboard />,
+      path: '/pos/admin/dashboard'
+    },
+    {
+      id: 'management',
+      label: t('nav.section.management'),
+      icon: <Users />,
+      items: [
+        { path: '/pos/admin/managers', label: t('nav.managers') },
+        { path: '/pos/admin/restaurants', label: t('nav.restaurants') },
+        { path: '/pos/admin/staff', label: t('nav.staff') }
+      ]
+    },
+    {
+      id: 'suppliers',
+      label: t('nav.section.suppliers', 'Suppliers'),
+      icon: <Truck />,
+      items: [
+        { path: '/pos/admin/supplier-companies', label: t('nav.supplierCompanies', 'Supplier Companies') },
+        { path: '/pos/admin/supplier-invitations', label: t('nav.supplierInvitations', 'Supplier Invitations') },
+        { path: '/pos/admin/carriers', label: t('nav.carriers', 'Carriers') },
+        { path: '/pos/admin/carrier-webhooks', label: t('nav.carrierWebhooks', 'Carrier Webhooks') }
+      ]
+    },
+    {
+      id: 'operations',
+      label: t('nav.section.operations'),
+      icon: <Briefcase />,
+      items: [
+        { path: '/pos/admin/invoices', label: t('nav.invoices'), hasPending: badgeCounts.invoices > 0 },
+        { path: '/pos/admin/subscriptions', label: t('nav.subscriptions') },
+        { path: '/pos/admin/system-products', label: t('nav.systemProducts') },
+        { path: '/pos/admin/report', label: t('nav.report') },
+        { path: '/pos/admin/scheduler-monitor', label: t('nav.schedulerMonitor', 'Scheduler Monitor') }
+      ]
+    },
+    {
+      id: 'communication',
+      label: t('nav.section.communication'),
+      icon: <MessageSquare />,
+      items: [
+        { path: '/pos/admin/notices', label: t('nav.notices'), hasPending: badgeCounts.notices > 0 || (badgeCounts.unreadComments?.notices || 0) > 0 },
+        { path: '/pos/admin/work-manuals', label: t('nav.workManuals') },
+        { path: '/pos/admin/support', label: t('nav.inquiryManagement'), hasPending: badgeCounts.systemInquiry > 0 || (badgeCounts.unreadComments?.systemInquiry || 0) > 0 },
+        { path: '/pos/admin/contact-inquiries', label: t('nav.contactInquiries') },
+        { path: '/pos/admin/hardware-quotes', label: t('nav.hardwareQuotes') },
+        { path: '/pos/admin/content', label: t('nav.content', 'Content') }
+      ]
+    },
+    {
+      id: 'plans',
+      label: t('nav.section.plansPayments'),
+      icon: <CreditCard />,
+      items: [
+        { path: '/pos/admin/plans', label: t('nav.subscriptionPlans') },
+        { path: '/pos/admin/payment-settings', label: t('nav.paymentSettings') },
+        { path: '/pos/admin/referrals', label: t('nav.referrals', 'Referrals') }
+      ]
+    },
+    {
+      id: 'settings',
+      label: t('nav.section.settings', 'Settings'),
+      icon: <SettingsIcon />,
+      items: [
+        { path: '/pos/admin/settings', label: t('nav.companyInfo', 'Company Info') },
+        { path: '/pos/admin/site-settings', label: t('nav.siteSettings', 'Site Settings') },
+        { path: '/pos/admin/notification-settings', label: t('nav.notifications', 'Notifications') },
+        { path: '/pos/admin/system-config', label: t('nav.systemConfig', 'System Config') },
+        { path: '/pos/admin/logs', label: t('nav.systemLogs', 'System Logs') },
+        { path: '/pos/admin/history', label: t('nav.changeHistory', 'Change History') }
+      ]
+    }
+  ], [isSystemAdmin, t, badgeCounts]);
+
+  // Brand General/Manager categories
+  const brandCategories: AdminCategory[] = useMemo(() => {
+    if (!isBrand) return [];
+    const items: AdminCategory[] = [
+      {
+        id: 'dashboard', label: t('nav.dashboard'), icon: <LayoutDashboard />,
+        path: '/pos/brand/general/dashboard',
+        visible: hasManagerPermission('dashboard') && isRouteAllowed('/pos/brand/general/dashboard')
+      },
+      {
+        id: 'live-orders', label: t('nav.liveOrders', 'Live Orders'), icon: <Activity />,
+        path: '/pos/brand/general/incoming-orders',
+        hasPending: badgeCounts.livePoCount > 0,
+        visible: true
+      },
+      {
+        id: 'franchise', label: t('nav.section.franchise', 'Franchise'), icon: <Store />,
+        items: [
+          { path: '/pos/brand/franchise', label: t('nav.franchise'), visible: isRouteAllowed('/pos/brand/franchise') },
+          { path: '/pos/brand/franchise-map', label: t('nav.franchiseMap', 'Franchise Map'), visible: isRouteAllowed('/pos/brand/franchise-map') }
+        ].filter(i => i.visible !== false),
+        visible: isRouteAllowed('/pos/brand/franchise') || isRouteAllowed('/pos/brand/franchise-map')
+      },
+      {
+        id: 'management', label: t('nav.section.management'), icon: <Users />,
+        items: [
+          { path: '/pos/brand/general/management', label: t('nav.brands'), visible: isRouteAllowed('/pos/brand/general/management') },
+          { path: '/pos/manager/restaurants', label: t('nav.restaurants'), visible: isRouteAllowed('/pos/manager/restaurants') },
+          { path: '/pos/manager/admins', label: t('nav.restaurantAdmins'), visible: isRouteAllowed('/pos/manager/staff') },
+          { path: '/pos/brand/manager', label: t('nav.managers'), visible: user?.role === 'Brand General' && isRouteAllowed('/pos/brand/manager') }
+        ].filter(i => i.visible !== false),
+        visible: hasManagerPermission('management') && (
+          isRouteAllowed('/pos/brand/general/management') ||
+          isRouteAllowed('/pos/manager/restaurants') ||
+          isRouteAllowed('/pos/manager/staff') ||
+          isRouteAllowed('/pos/brand/manager')
+        )
+      },
+      {
+        id: 'products', label: t('nav.section.productsInventory'), icon: <Package />,
+        items: [
+          { path: '/pos/brand-products', label: t('nav.products'), visible: isRouteAllowed('/pos/brand-products') },
+          { path: '/pos/recipes', label: t('nav.brandRecipes'), visible: isRouteAllowed('/pos/recipes') },
+          { path: '/pos/brand-product-recipes', label: t('nav.productRecipes'), visible: isRouteAllowed('/pos/brand-product-recipes') },
+          { path: '/pos/brand-ingredients', label: t('nav.ingredients'), visible: isRouteAllowed('/pos/brand-ingredients') },
+          { path: '/pos/suppliers', label: t('nav.suppliers'), visible: isRouteAllowed('/pos/suppliers') },
+          { path: '/pos/brand-inventory', label: t('nav.inventory'), visible: isRouteAllowed('/pos/brand-inventory') }
+        ].filter(i => i.visible !== false),
+        visible: hasManagerPermission('products') && (
+          isRouteAllowed('/pos/brand-products') ||
+          isRouteAllowed('/pos/recipes') ||
+          isRouteAllowed('/pos/brand-product-recipes') ||
+          isRouteAllowed('/pos/brand-ingredients') ||
+          isRouteAllowed('/pos/brand-inventory')
+        )
+      },
+      {
+        id: 'operations', label: t('nav.section.operations'), icon: <Briefcase />,
+        items: [
+          { path: '/pos/brand/invoices', label: t('nav.invoices'), hasPending: badgeCounts.invoices > 0, visible: isRouteAllowed('/pos/brand/invoices') },
+          { path: '/pos/brand/trade-invoices', label: t('nav.tradeInvoices', 'Trade Invoices'), visible: isRouteAllowed('/pos/brand/trade-invoices') },
+          { path: '/pos/brand/general/performance', label: t('nav.performance'), visible: isRouteAllowed('/pos/brand/general/performance') },
+          { path: '/pos/manager/coupons', label: t('nav.coupons'), visible: isRouteAllowed('/pos/manager/coupons') },
+          { path: '/pos/purchase-orders', label: t('nav.purchaseOrder', 'Purchase Order'), visible: hasManagerPermission('products') && isRouteAllowed('/pos/purchase-orders') },
+          { path: '/pos/purchase-orders/history', label: t('nav.orderHistory', 'Order History'), visible: hasManagerPermission('products') && isRouteAllowed('/pos/purchase-orders') },
+          { path: '/pos/suppliers/contracts', label: t('nav.supplierContracts', 'Supplier Contracts'), visible: hasManagerPermission('products') && (isRouteAllowed('/pos/suppliers/contracts') || isRouteAllowed('/pos/suppliers/directory')) }
+        ].filter(i => i.visible !== false),
+        visible: hasManagerPermission('operations') || hasManagerPermission('products')
+      },
+      {
+        id: 'reports', label: t('nav.reports', 'Reports'), icon: <TrendingUp />,
+        items: [
+          { path: '/pos/brand/general/reports?tab=ranking', label: t('brand:brandReportsPage.salesRanking', 'Sales Ranking'), visible: true },
+          { path: '/pos/brand/general/reports?tab=sales', label: t('brand:brandReportsPage.salesReport', 'Sales Report'), visible: true },
+          { path: '/pos/brand/general/reports?tab=details', label: t('brand:brandReportsPage.salesDetails', 'Sales Details'), visible: true },
+          { path: '/pos/brand/general/reports?tab=menu', label: t('brand:brandReportsPage.menuAnalysis', 'Menu Analysis'), visible: true },
+          { path: '/pos/brand/general/reports?tab=customers', label: t('brand:brandReportsPage.customerInsights', 'Customer Insights'), visible: true },
+          { path: '/pos/brand/general/reports?tab=operations', label: t('brand:brandReportsPage.operations', 'Operations'), visible: true }
+        ].filter(i => i.visible !== false),
+        visible: isRouteAllowed('/pos/brand/general/reports')
+      },
+      {
+        id: 'communication', label: t('nav.section.communication'), icon: <MessageSquare />,
+        items: [
+          { path: '/pos/brand/general/notices', label: t('nav.notices'), hasPending: badgeCounts.notices > 0 || (badgeCounts.unreadComments?.notices || 0) > 0, visible: isRouteAllowed('/pos/brand/general/notices') },
+          { path: '/pos/brand/general/work-manuals', label: t('nav.workManuals'), visible: isRouteAllowed('/pos/brand/general/work-manuals') },
+          { path: '/pos/brand/general/system-inquiry', label: t('nav.systemInquiry'), hasPending: badgeCounts.systemInquiry > 0 || (badgeCounts.unreadComments?.systemInquiry || 0) > 0, visible: isRouteAllowed('/pos/brand/general/system-inquiry') },
+          { path: '/pos/brand/general/operation-inquiry', label: t('nav.inquiryManagement'), hasPending: badgeCounts.operationInquiry > 0 || (badgeCounts.unreadComments?.operationInquiry || 0) > 0, visible: isRouteAllowed('/pos/brand/general/operation-inquiry') }
+        ].filter(i => i.visible !== false),
+        visible: hasManagerPermission('communication') && (
+          isRouteAllowed('/pos/brand/general/notices') ||
+          isRouteAllowed('/pos/brand/general/work-manuals') ||
+          isRouteAllowed('/pos/brand/general/system-inquiry') ||
+          isRouteAllowed('/pos/brand/general/operation-inquiry')
+        )
+      },
+      {
+        id: 'plans', label: t('nav.section.plansPayments'), icon: <CreditCard />,
+        items: [
+          { path: '/pos/brand/plans', label: t('nav.brandPlans'), visible: isRouteAllowed('/pos/brand/plans') },
+          { path: '/pos/brand/general/subscriptions', label: t('nav.brandSubscriptions'), visible: isRouteAllowed('/pos/brand/general/subscriptions') },
+          { path: '/pos/brand/payment-settings', label: t('nav.paymentSettings'), visible: isRouteAllowed('/pos/brand/payment-settings') }
+        ].filter(i => i.visible !== false),
+        visible: hasManagerPermission('plans_payments') && (
+          isRouteAllowed('/pos/brand/plans') ||
+          isRouteAllowed('/pos/brand/general/subscriptions') ||
+          isRouteAllowed('/pos/brand/payment-settings')
+        )
+      },
+      {
+        id: 'settings', label: t('nav.section.settings', 'Settings'), icon: <SettingsIcon />,
+        items: [
+          { path: '/pos/profile', label: t('nav.myProfile', 'My Profile'), visible: true },
+          { path: '/pos/brand/company-info', label: t('nav.companyInfo', 'Company Info'), visible: true },
+          { path: '/pos/manager/notification-settings', label: t('nav.notifications', 'Notifications'), visible: true },
+          { path: '/pos/brand/history', label: t('nav.changeHistory', 'Change History'), visible: isRouteAllowed('/pos/brand/history') }
+        ].filter(i => i.visible !== false),
+        visible: true
+      }
+    ];
+    return items.filter(c => c.visible !== false).map(c => ({
+      ...c,
+      items: c.items?.filter(i => i.visible !== false)
+    }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isBrand, user?.role, t, badgeCounts, isRouteAllowed, routesLoading]);
+
+  // Foodcourt categories
+  const foodcourtCategories: AdminCategory[] = useMemo(() => {
+    if (!isFoodcourt) return [];
+    const items: AdminCategory[] = [
+      { id: 'dashboard', label: t('nav.dashboard'), icon: <LayoutDashboard />, path: '/pos/foodcourt/general/dashboard', visible: hasManagerPermission('dashboard') && isRouteAllowed('/pos/foodcourt/general/dashboard') },
+      { id: 'live-orders', label: t('nav.liveOrders', 'Live Orders'), icon: <Activity />, path: '/pos/foodcourt/general/incoming-orders', hasPending: badgeCounts.livePoCount > 0, visible: true },
+      {
+        id: 'tenancy', label: t('nav.section.tenancy', 'Tenancy'), icon: <Store />,
+        items: [
+          { path: '/pos/foodcourt/tenancy', label: t('nav.tenancy'), visible: isRouteAllowed('/pos/foodcourt/tenancy') },
+          { path: '/pos/foodcourt/tenancy-map', label: t('nav.branchMap', 'Branch Map'), visible: isRouteAllowed('/pos/foodcourt/tenancy-map') }
+        ].filter(i => i.visible !== false),
+        visible: isRouteAllowed('/pos/foodcourt/tenancy') || isRouteAllowed('/pos/foodcourt/tenancy-map')
+      },
+      // Floor Plan — 풀화면 새 창
+      { id: 'floor-plan', label: t('nav.floorPlan', 'Floor Plan'), icon: <LayoutGrid />, path: '/pos/foodcourt/floor-plan', openInNewTab: true, visible: isRouteAllowed('/pos/foodcourt/floor-plan') },
+      {
+        id: 'management', label: t('nav.section.management'), icon: <Users />,
+        items: [
+          { path: '/pos/foodcourt/branches', label: t('nav.branches', 'Branches'), visible: user?.role === 'Foodcourt General' && isRouteAllowed('/pos/foodcourt/branches') },
+          { path: '/pos/manager/restaurants', label: t('nav.restaurants'), visible: isRouteAllowed('/pos/manager/restaurants') },
+          { path: '/pos/manager/admins', label: t('nav.restaurantAdmins'), visible: isRouteAllowed('/pos/manager/staff') },
+          { path: '/pos/foodcourt/manager', label: t('nav.managers'), visible: user?.role === 'Foodcourt General' && isRouteAllowed('/pos/foodcourt/manager') },
+          { path: '/pos/foodcourt/general/products', label: t('nav.products'), visible: isRouteAllowed('/pos/foodcourt/general/products') },
+          { path: '/pos/foodcourt/general/inventory', label: t('nav.inventory'), visible: isRouteAllowed('/pos/foodcourt/general/inventory') }
+        ].filter(i => i.visible !== false),
+        visible: hasManagerPermission('management')
+      },
+      {
+        id: 'operations', label: t('nav.section.operations'), icon: <Briefcase />,
+        items: [
+          { path: '/pos/foodcourt/invoices', label: t('nav.invoices'), hasPending: badgeCounts.invoices > 0, visible: isRouteAllowed('/pos/foodcourt/invoices') },
+          { path: '/pos/foodcourt/trade-invoices', label: t('nav.tradeInvoices', 'Trade Invoices'), visible: isRouteAllowed('/pos/foodcourt/trade-invoices') },
+          { path: '/pos/manager/coupons', label: t('nav.coupons'), visible: isRouteAllowed('/pos/manager/coupons') },
+          { path: '/pos/purchase-orders', label: t('nav.purchaseOrder', 'Purchase Order'), visible: hasManagerPermission('management') && isRouteAllowed('/pos/purchase-orders') },
+          { path: '/pos/purchase-orders/history', label: t('nav.orderHistory', 'Order History'), visible: hasManagerPermission('management') && isRouteAllowed('/pos/purchase-orders') },
+          { path: '/pos/suppliers/contracts', label: t('nav.supplierContracts', 'Supplier Contracts'), visible: hasManagerPermission('management') && (isRouteAllowed('/pos/suppliers/contracts') || isRouteAllowed('/pos/suppliers/directory')) }
+        ].filter(i => i.visible !== false),
+        visible: hasManagerPermission('operations') || hasManagerPermission('management')
+      },
+      {
+        id: 'reports', label: t('nav.reports', 'Reports'), icon: <TrendingUp />,
+        items: [
+          { path: '/pos/foodcourt/general/reports?tab=ranking', label: t('foodcourt:foodcourtReportsPage.salesRanking', 'Sales Ranking'), visible: true },
+          { path: '/pos/foodcourt/general/reports?tab=sales', label: t('foodcourt:foodcourtReportsPage.salesReport', 'Sales Report'), visible: true },
+          { path: '/pos/foodcourt/general/reports?tab=details', label: t('foodcourt:foodcourtReportsPage.salesDetails', 'Sales Details'), visible: true },
+          { path: '/pos/foodcourt/general/reports?tab=menu', label: t('foodcourt:foodcourtReportsPage.menuAnalysis', 'Menu Analysis'), visible: true },
+          { path: '/pos/foodcourt/general/reports?tab=customers', label: t('foodcourt:foodcourtReportsPage.customerInsights', 'Customer Insights'), visible: true },
+          { path: '/pos/foodcourt/general/reports?tab=operations', label: t('foodcourt:foodcourtReportsPage.operations', 'Operations'), visible: true }
+        ].filter(i => i.visible !== false),
+        visible: isRouteAllowed('/pos/foodcourt/general/reports')
+      },
+      {
+        id: 'communication', label: t('nav.section.communication'), icon: <MessageSquare />,
+        items: [
+          { path: '/pos/foodcourt/general/notices', label: t('nav.notices'), hasPending: badgeCounts.notices > 0 || (badgeCounts.unreadComments?.notices || 0) > 0, visible: isRouteAllowed('/pos/foodcourt/general/notices') },
+          { path: '/pos/foodcourt/general/work-manuals', label: t('nav.workManuals'), visible: isRouteAllowed('/pos/foodcourt/general/work-manuals') },
+          { path: '/pos/foodcourt/general/system-inquiry', label: t('nav.systemInquiry'), hasPending: badgeCounts.systemInquiry > 0 || (badgeCounts.unreadComments?.systemInquiry || 0) > 0, visible: isRouteAllowed('/pos/foodcourt/general/system-inquiry') },
+          { path: '/pos/foodcourt/general/operation-inquiry', label: t('nav.inquiryManagement'), hasPending: badgeCounts.operationInquiry > 0 || (badgeCounts.unreadComments?.operationInquiry || 0) > 0, visible: isRouteAllowed('/pos/foodcourt/general/operation-inquiry') }
+        ].filter(i => i.visible !== false),
+        visible: hasManagerPermission('communication')
+      },
+      {
+        id: 'plans', label: t('nav.section.plansPayments'), icon: <CreditCard />,
+        items: [
+          { path: '/pos/foodcourt/plans', label: t('nav.foodcourtPlans'), visible: isRouteAllowed('/pos/foodcourt/plans') },
+          { path: '/pos/foodcourt/general/subscriptions', label: t('nav.foodcourtSubscriptions'), visible: isRouteAllowed('/pos/foodcourt/general/subscriptions') },
+          { path: '/pos/foodcourt/payment-settings', label: t('nav.paymentSettings'), visible: isRouteAllowed('/pos/foodcourt/payment-settings') }
+        ].filter(i => i.visible !== false),
+        visible: hasManagerPermission('plans_payments')
+      },
+      {
+        id: 'settings', label: t('nav.section.settings', 'Settings'), icon: <SettingsIcon />,
+        items: [
+          { path: '/pos/profile', label: t('nav.myProfile', 'My Profile'), visible: true },
+          { path: '/pos/foodcourt/company-info', label: t('nav.companyInfo', 'Company Info'), visible: true },
+          { path: '/pos/manager/notification-settings', label: t('nav.notifications', 'Notifications'), visible: true },
+          { path: '/pos/foodcourt/history', label: t('nav.changeHistory', 'Change History'), visible: isRouteAllowed('/pos/foodcourt/history') }
+        ].filter(i => i.visible !== false),
+        visible: true
+      }
+    ];
+    return items.filter(c => c.visible !== false && (!c.items || c.items.length > 0 || c.path)).map(c => ({ ...c, items: c.items?.filter(i => i.visible !== false) }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFoodcourt, user?.role, t, badgeCounts, isRouteAllowed, routesLoading]);
+
+  // Restaurant Owner categories
+  const ownerCategories: AdminCategory[] = useMemo(() => {
+    if (!isOwner) return [];
+    const items: AdminCategory[] = [
+      { id: 'dashboard', label: t('nav.dashboard'), icon: <LayoutDashboard />, path: '/pos/owner/dashboard', visible: isRouteAllowed('/pos/owner/dashboard') },
+      { id: 'restaurants', label: t('nav.restaurants'), icon: <Store />, path: '/pos/owner/restaurants', visible: isRouteAllowed('/pos/owner/restaurants') },
+      {
+        id: 'operations', label: t('nav.section.operations'), icon: <Briefcase />,
+        items: [
+          { path: '/pos/owner/invoices', label: t('nav.invoices'), hasPending: badgeCounts.invoices > 0, visible: isRouteAllowed('/pos/owner/invoices') },
+          { path: '/pos/owner/performance', label: t('nav.performance'), visible: isRouteAllowed('/pos/owner/performance') },
+          { path: '/pos/purchase-orders', label: t('nav.purchaseOrder', 'Purchase Order'), visible: isRouteAllowed('/pos/purchase-orders') },
+          { path: '/pos/purchase-orders/history', label: t('nav.orderHistory', 'Order History'), visible: isRouteAllowed('/pos/purchase-orders') },
+          { path: '/pos/suppliers/contracts', label: t('nav.supplierContracts', 'Supplier Contracts'), visible: isRouteAllowed('/pos/suppliers/contracts') || isRouteAllowed('/pos/suppliers/directory') }
+        ].filter(i => i.visible !== false),
+        visible: isRouteAllowed('/pos/owner/invoices') || isRouteAllowed('/pos/owner/performance') || isRouteAllowed('/pos/purchase-orders')
+      },
+      {
+        id: 'reports', label: t('nav.reports', 'Reports'), icon: <TrendingUp />,
+        items: [
+          { path: '/pos/owner/reports?tab=ranking', label: t('owner:ownerReportsPage.salesRanking', 'Sales Ranking'), visible: true },
+          { path: '/pos/owner/reports?tab=sales', label: t('owner:ownerReportsPage.salesReport', 'Sales Report'), visible: true },
+          { path: '/pos/owner/reports?tab=details', label: t('owner:ownerReportsPage.salesDetails', 'Sales Details'), visible: true },
+          { path: '/pos/owner/reports?tab=menu', label: t('owner:ownerReportsPage.menuAnalysis', 'Menu Analysis'), visible: true },
+          { path: '/pos/owner/reports?tab=customers', label: t('owner:ownerReportsPage.customerInsights', 'Customer Insights'), visible: true },
+          { path: '/pos/owner/reports?tab=operations', label: t('owner:ownerReportsPage.operations', 'Operations'), visible: true }
+        ].filter(i => i.visible !== false),
+        visible: isRouteAllowed('/pos/owner/reports')
+      },
+      {
+        id: 'communication', label: t('nav.section.communication'), icon: <MessageSquare />,
+        items: [
+          { path: '/pos/owner/notices', label: t('nav.notices'), hasPending: badgeCounts.notices > 0 || (badgeCounts.unreadComments?.notices || 0) > 0, visible: isRouteAllowed('/pos/owner/notices') },
+          { path: '/pos/owner/work-manuals', label: t('nav.workManuals'), visible: isRouteAllowed('/pos/owner/work-manuals') },
+          { path: '/pos/owner/system-inquiry', label: t('nav.systemInquiry'), hasPending: badgeCounts.systemInquiry > 0 || (badgeCounts.unreadComments?.systemInquiry || 0) > 0, visible: isRouteAllowed('/pos/owner/system-inquiry') },
+          { path: '/pos/owner/operation-inquiry', label: t('nav.operationInquiry'), hasPending: badgeCounts.operationInquiry > 0 || (badgeCounts.unreadComments?.operationInquiry || 0) > 0, visible: isRouteAllowed('/pos/owner/operation-inquiry') }
+        ].filter(i => i.visible !== false),
+        visible: isRouteAllowed('/pos/owner/notices') || isRouteAllowed('/pos/owner/work-manuals') || isRouteAllowed('/pos/owner/system-inquiry') || isRouteAllowed('/pos/owner/operation-inquiry')
+      },
+      {
+        id: 'settings', label: t('nav.section.settings', 'Settings'), icon: <SettingsIcon />,
+        items: [
+          { path: '/pos/profile', label: t('nav.myProfile', 'My Profile'), visible: true },
+          { path: '/pos/owner/history', label: t('nav.changeHistory', 'Change History'), visible: isRouteAllowed('/pos/owner/history') }
+        ].filter(i => i.visible !== false),
+        visible: true
+      }
+    ];
+    return items.filter(c => c.visible !== false).map(c => ({ ...c, items: c.items?.filter(i => i.visible !== false) }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOwner, t, badgeCounts, isRouteAllowed, routesLoading]);
+
+  // Supplier Admin categories
+  const supplierCategories: AdminCategory[] = useMemo(() => {
+    if (!isSupplier) return [];
+    const items: AdminCategory[] = [
+      { id: 'dashboard', label: t('nav.dashboard'), icon: <LayoutDashboard />, path: '/pos/supplier/dashboard', visible: true },
+      { id: 'live-orders', label: t('nav.liveOrders', 'Live Orders'), icon: <Activity />, path: '/pos/supplier/orders', hasPending: badgeCounts.livePoCount > 0, visible: true },
+      {
+        id: 'operations', label: t('nav.section.operations'), icon: <Briefcase />,
+        items: [
+          { path: '/pos/supplier/products', label: t('nav.products'), visible: isRouteAllowed('/pos/supplier/products') },
+          { path: '/pos/supplier/inventory', label: t('nav.inventory'), visible: isRouteAllowed('/pos/supplier/inventory') },
+          { path: '/pos/supplier/customers', label: t('nav.customers', 'Customers'), visible: true },
+          { path: '/pos/supplier/staff', label: t('nav.staff', 'Staff'), visible: hasModule('supplier_admin_staff') },
+          { path: '/pos/supplier/contracts', label: t('nav.contracts', 'Contracts'), visible: true }
+        ].filter(i => i.visible !== false),
+        visible: true
+      },
+      {
+        id: 'plans', label: t('nav.section.plansPayments'), icon: <CreditCard />,
+        items: [
+          { path: '/pos/supplier/trade-invoices', label: t('nav.tradeInvoices', 'Trade Invoices'), visible: true },
+          { path: '/pos/supplier/invoices', label: t('nav.invoices'), hasPending: badgeCounts.invoices > 0, visible: true }
+        ].filter(i => i.visible !== false),
+        visible: true
+      },
+      {
+        id: 'communication', label: t('nav.section.communication'), icon: <MessageSquare />,
+        items: [
+          { path: '/pos/supplier/notices', label: t('nav.notices'), hasPending: badgeCounts.notices > 0 || (badgeCounts.unreadComments?.notices || 0) > 0, visible: true },
+          { path: '/pos/supplier/system-inquiry', label: t('nav.systemInquiry'), hasPending: badgeCounts.systemInquiry > 0 || (badgeCounts.unreadComments?.systemInquiry || 0) > 0, visible: true }
+        ].filter(i => i.visible !== false),
+        visible: true
+      },
+      {
+        id: 'settings', label: t('nav.section.settings', 'Settings'), icon: <SettingsIcon />,
+        items: [
+          { path: '/pos/profile', label: t('nav.myProfile', 'My Profile'), visible: true },
+          { path: '/pos/supplier/company-info', label: t('nav.companyInfo', 'Company Info'), visible: isRouteAllowed('/pos/supplier/company-info') },
+          { path: '/pos/supplier/payment-settings', label: t('nav.paymentSettings'), visible: isRouteAllowed('/pos/supplier/payment-settings') },
+          { path: '/pos/supplier/invoice-settings', label: t('nav.invoiceSettings', 'Invoice Settings'), visible: isRouteAllowed('/pos/supplier/invoice-settings') }
+        ].filter(i => i.visible !== false),
+        visible: true
+      }
+    ];
+    return items.filter(c => c.visible !== false).map(c => ({ ...c, items: c.items?.filter(i => i.visible !== false) }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSupplier, t, badgeCounts, isRouteAllowed, hasModule, routesLoading]);
+
+  // Restaurant Admin/Staff categories
+  const restaurantCategories: AdminCategory[] = useMemo(() => {
+    if (!isRestaurantUser || !restaurantId) return [];
+    const rid = restaurantId;
+    const items: AdminCategory[] = [
+      { id: 'dashboard', label: t('nav.dashboard'), icon: <LayoutDashboard />, path: `/restaurant/${rid}/dashboard`, visible: true },
+      { id: 'live-orders', label: t('nav.liveOrders'), icon: <Activity />, path: `/restaurant/${rid}/live-orders`, hasPending: badgeCounts.pendingOrders > 0, visible: true },
+      { id: 'reservations', label: t('nav.reservations', 'Reservations'), icon: <FileText />, path: `/restaurant/${rid}/reservations`, visible: hasModule('reservations') },
+      // System Access — 각각 1뎁스 단독, 새 창으로 열림 (좌측 메뉴 없는 풀화면)
+      { id: 'pos-terminal', label: t('nav.posTerminal', 'POS Terminal'), icon: <Monitor />, path: `/restaurant/${rid}/pos-terminal`, openInNewTab: true, visible: isRouteAllowed(`/restaurant/${rid}/pos-terminal`) },
+      { id: 'floor-plan', label: t('nav.floorPlan', 'Floor Plan'), icon: <LayoutGrid />, path: `/restaurant/${rid}/floor-plan`, openInNewTab: true, visible: isRouteAllowed(`/restaurant/${rid}/floor-plan`) },
+      { id: 'kitchen', label: t('nav.kitchenDisplay', 'Kitchen Display'), icon: <ChefHat />, path: `/restaurant/${rid}/kitchen`, openInNewTab: true, visible: isRouteAllowed(`/restaurant/${rid}/kitchen`) },
+      { id: 'customer-display', label: t('nav.customerDisplay', 'Customer Display'), icon: <Tv />, path: `/restaurant/${rid}/display`, openInNewTab: true, visible: isRouteAllowed(`/restaurant/${rid}/display`) },
+      { id: 'mobile-order', label: t('nav.mobileOrder', 'Mobile Order'), icon: <Smartphone />, path: '/mobile', openInNewTab: true, mobileOrder: true, visible: isRouteAllowed('/mobile/:slug/menu') },
+      {
+        id: 'products', label: t('nav.section.products'), icon: <Package />,
+        items: [
+          { path: `/restaurant/${rid}/menu`, label: t('nav.menu'), visible: isRouteAllowed(`/restaurant/${rid}/menu`) },
+          { path: `/restaurant/${rid}/categories`, label: t('nav.categories'), visible: isRouteAllowed(`/restaurant/${rid}/categories`) },
+          { path: `/restaurant/${rid}/options`, label: t('nav.options'), visible: isRouteAllowed(`/restaurant/${rid}/options`) },
+          { path: `/restaurant/${rid}/recipe-management`, label: t('nav.recipes'), visible: isRouteAllowed(`/restaurant/${rid}/recipe-management`) }
+        ].filter(i => i.visible !== false),
+        visible: hasMenuPermission('menu_management')
+      },
+      {
+        id: 'operations', label: t('nav.section.operations'), icon: <Briefcase />,
+        items: [
+          { path: `/restaurant/${rid}/invoices`, label: t('nav.invoices'), hasPending: badgeCounts.invoices > 0, visible: hasMenuPermission('support') && isRouteAllowed(`/restaurant/${rid}/invoices`) },
+          { path: '/pos/purchase-orders', label: t('nav.purchaseOrder', 'Purchase Order'), visible: hasMenuPermission('inventory') && isRouteAllowed('/pos/purchase-orders') },
+          { path: '/pos/purchase-orders/history', label: t('nav.orderHistory', 'Order History'), visible: hasMenuPermission('inventory') && isRouteAllowed('/pos/purchase-orders') },
+          { path: '/pos/suppliers/contracts', label: t('nav.supplierContracts', 'Supplier Contracts'), visible: hasMenuPermission('inventory') && (isRouteAllowed('/pos/suppliers/contracts') || isRouteAllowed('/pos/suppliers/directory')) },
+          { path: `/restaurant/${rid}/ingredients`, label: t('nav.stockItems', 'Stock Items'), visible: hasMenuPermission('inventory') && isRouteAllowed(`/restaurant/${rid}/ingredients`) },
+          { path: `/restaurant/${rid}/inventory`, label: t('nav.inventory'), visible: hasMenuPermission('inventory') && isRouteAllowed(`/restaurant/${rid}/inventory`) },
+          { path: `/restaurant/${rid}/suppliers`, label: t('nav.suppliers'), visible: hasMenuPermission('inventory') && isRouteAllowed(`/restaurant/${rid}/suppliers`) }
+        ].filter(i => i.visible !== false),
+        visible: hasMenuPermission('support') || hasMenuPermission('reports') || hasMenuPermission('inventory')
+      },
+      {
+        id: 'reports', label: t('nav.reports', 'Reports'), icon: <TrendingUp />,
+        items: [
+          { path: `/restaurant/${rid}/reports?tab=sales`, label: t('reports:reportsPage.salesReport', 'Sales Report'), visible: true },
+          { path: `/restaurant/${rid}/reports?tab=details`, label: t('reports:reportsPage.salesDetails', 'Sales Details'), visible: true },
+          { path: `/restaurant/${rid}/reports?tab=payment`, label: t('reports:reportsPage.paymentAnalysis', 'Payment Analysis'), visible: true },
+          { path: `/restaurant/${rid}/reports?tab=menu`, label: t('reports:reportsPage.menuAnalysis', 'Menu Analysis'), visible: true },
+          { path: `/restaurant/${rid}/reports?tab=customers`, label: t('reports:reportsPage.customerInsights', 'Customer Insights'), visible: true },
+          { path: `/restaurant/${rid}/reports?tab=operations`, label: t('reports:reportsPage.operations', 'Operations'), visible: true }
+        ].filter(i => i.visible !== false),
+        visible: isRouteAllowed(`/restaurant/${rid}/reports`)
+      },
+      {
+        id: 'team-marketing', label: t('nav.section.teamMarketing'), icon: <Users />,
+        items: [
+          { path: `/restaurant/${rid}/staff`, label: t('nav.staff'), visible: user?.role === 'Restaurant Admin' && isRouteAllowed(`/restaurant/${rid}/staff`) },
+          { path: `/restaurant/${rid}/customers`, label: t('nav.customers'), visible: hasMenuPermission('marketing') && isRouteAllowed(`/restaurant/${rid}/customers`) },
+          { path: `/restaurant/${rid}/coupons`, label: t('nav.coupons'), visible: hasMenuPermission('marketing') && isRouteAllowed(`/restaurant/${rid}/coupons`) }
+        ].filter(i => i.visible !== false),
+        visible: user?.role === 'Restaurant Admin' || hasMenuPermission('marketing')
+      },
+      {
+        id: 'communication', label: t('nav.section.communication'), icon: <MessageSquare />,
+        items: [
+          { path: `/restaurant/${rid}/notices`, label: t('nav.notices'), hasPending: badgeCounts.notices > 0 || (badgeCounts.unreadComments?.notices || 0) > 0, visible: isRouteAllowed(`/restaurant/${rid}/notices`) },
+          { path: `/restaurant/${rid}/work-manuals`, label: t('nav.workManuals'), visible: isRouteAllowed(`/restaurant/${rid}/work-manuals`) },
+          { path: `/restaurant/${rid}/support`, label: t('nav.systemInquiry'), hasPending: (badgeCounts.unreadComments?.systemInquiry || 0) > 0, visible: isRouteAllowed(`/restaurant/${rid}/support`) },
+          { path: `/restaurant/${rid}/operation-inquiry`, label: t('nav.operationInquiry'), hasPending: (badgeCounts.unreadComments?.operationInquiry || 0) > 0, visible: isRouteAllowed(`/restaurant/${rid}/operation-inquiry`) }
+        ].filter(i => i.visible !== false),
+        visible: hasMenuPermission('support')
+      },
+      {
+        id: 'settings', label: t('nav.section.settings', 'Settings'), icon: <SettingsIcon />,
+        items: [
+          { path: `/restaurant/${rid}/profile`, label: t('nav.myProfile', 'My Profile'), visible: true },
+          { path: `/restaurant/${rid}/company-information`, label: t('nav.companyInfo'), visible: hasMenuPermission('settings') },
+          { path: `/restaurant/${rid}/settings`, label: t('nav.storeSettings'), visible: hasMenuPermission('settings') },
+          { path: `/restaurant/${rid}/notification-settings`, label: t('nav.systemSettings'), visible: hasMenuPermission('settings') },
+          { path: `/restaurant/${rid}/history`, label: t('nav.changeHistory'), visible: hasMenuPermission('reports') && isRouteAllowed(`/restaurant/${rid}/history`) }
+        ].filter(i => i.visible !== false),
+        visible: true
+      }
+    ];
+    return items.filter(c => c.visible !== false).map(c => ({ ...c, items: c.items?.filter(i => i.visible !== false) }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isRestaurantUser, restaurantId, user?.role, t, badgeCounts, isRouteAllowed, hasMenuPermission, hasModule, routesLoading]);
+
+  // 통합 categories — 사용자 역할에 따라 선택
+  const currentCategories: AdminCategory[] = isSystemAdmin ? adminCategories
+    : isBrand ? brandCategories
+    : isFoodcourt ? foodcourtCategories
+    : isOwner ? ownerCategories
+    : isSupplier ? supplierCategories
+    : isRestaurantUser ? restaurantCategories
+    : [];
+
+  // 각 카테고리의 items 중 하나라도 hasPending 이면 카테고리에 propagate
+  const adminCategoriesWithPending = useMemo(() =>
+    currentCategories.map(cat => ({
+      ...cat,
+      hasPending: cat.items?.some(it => it.hasPending) || cat.hasPending || false
+    })),
+    [currentCategories]
+  );
+
+  // 쿼리스트링 포함 path 매칭 (Reports 의 ?tab=xxx 같은 경우)
+  const matchPathBase = (itemPath: string) => {
+    const [base] = itemPath.split('?');
+    return location.pathname.startsWith(base);
+  };
+  const matchPathFull = (itemPath: string) => {
+    const [base, qs] = itemPath.split('?');
+    if (location.pathname !== base) return false;
+    if (!qs) return location.search === '' || true;
+    const expected = new URLSearchParams(qs);
+    const actual = new URLSearchParams(location.search);
+    for (const [k, v] of expected) if (actual.get(k) !== v) return false;
+    return true;
+  };
+
+  const activeAdminCategory = useMemo(() => {
+    if (!useTwoTier) return null;
+    for (const cat of adminCategoriesWithPending) {
+      if (cat.path && matchPathBase(cat.path)) return cat;
+      if (cat.items?.some(it => matchPathBase(it.path))) return cat;
+    }
+    return null;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [useTwoTier, location.pathname, adminCategoriesWithPending]);
+
+  const showSecondaryPanel = !!(useTwoTier && activeAdminCategory?.items);
+  const adminSidebarW = isSidebarCollapsed ? SIDEBAR_ADMIN_COLLAPSED : SIDEBAR_ADMIN_EXPANDED;
+
+  // ===== 2뎁스 collapse + hover popover =====
+  const LS_SECONDARY_COLLAPSED = 'pos.admin.secondaryCollapsed';
+  const [isSecondaryCollapsed, setIsSecondaryCollapsed] = useState<boolean>(() => {
+    try { return localStorage.getItem(LS_SECONDARY_COLLAPSED) === 'true'; } catch { return false; }
+  });
+  const toggleSecondaryCollapse = useCallback(() => {
+    setIsSecondaryCollapsed(v => {
+      const next = !v;
+      try { localStorage.setItem(LS_SECONDARY_COLLAPSED, String(next)); } catch {}
+      return next;
+    });
+  }, []);
+
+  const [hoveredCatId, setHoveredCatId] = useState<string | null>(null);
+  const [hoveredCatTop, setHoveredCatTop] = useState<number>(80);
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearHoverTimer = () => { if (hoverTimerRef.current) { clearTimeout(hoverTimerRef.current); hoverTimerRef.current = null; } };
+  const handleRailEnter = (catId: string, e: React.MouseEvent<HTMLElement>) => {
+    if (!isSecondaryCollapsed) return;
+    clearHoverTimer();
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setHoveredCatTop(Math.max(8, rect.top));
+    setHoveredCatId(catId);
+  };
+  const handleRailLeave = () => {
+    if (!isSecondaryCollapsed) return;
+    clearHoverTimer();
+    hoverTimerRef.current = setTimeout(() => setHoveredCatId(null), 180);
+  };
+  const handlePopoverEnter = () => { clearHoverTimer(); };
+  const handlePopoverLeave = () => {
+    clearHoverTimer();
+    hoverTimerRef.current = setTimeout(() => setHoveredCatId(null), 120);
+  };
+  const hoveredCategory = hoveredCatId ? adminCategoriesWithPending.find(c => c.id === hoveredCatId) : null;
+  const showPopover = useTwoTier && isSecondaryCollapsed && !!hoveredCategory?.items;
+
   // Helper function to get initials from name
   const getInitials = (name: string) => {
     if (!name) return '?';
@@ -1035,8 +1886,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
       <Overlay isOpen={isSidebarOpen} onClick={closeSidebar} />
       
-      <Sidebar isOpen={isSidebarOpen} isCollapsed={isSidebarCollapsed}>
-        <SidebarHeader isCollapsed={isSidebarCollapsed}>
+      <Sidebar isOpen={isSidebarOpen} isCollapsed={isSidebarCollapsed} $isSystemAdmin={useTwoTier}>
+        <SidebarHeader isCollapsed={isSidebarCollapsed} $isSystemAdmin={useTwoTier}>
           {!isSidebarCollapsed && (
             <Logo onClick={() => navigate(getDashboardPath())} style={{ cursor: 'pointer' }}>
               {brandLogo && (
@@ -1059,91 +1910,59 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
         <SidebarNav ref={sidebarNavRef}>
           <NavSection>
-            {/* ========== SYSTEM ADMIN ========== */}
-            {user?.role === 'System Admin' && (
-              <>
-                <NavItem to="/pos/admin/dashboard" active={isActive('/pos/admin/dashboard')} onClick={closeSidebar}>
-                  <NavIcon>■</NavIcon>
-                  {t("nav.dashboard")}
-                </NavItem>
-
-                <NavTitle>{t("nav.section.management")}</NavTitle>
-                <NavItem to="/pos/admin/managers" active={isActive('/pos/admin/managers')} onClick={closeSidebar}>
-                  <NavIcon>◯</NavIcon>
-                  {t("nav.managers")}
-                </NavItem>
-                <NavItem to="/pos/admin/restaurants" active={isActive('/pos/admin/restaurants')} onClick={closeSidebar}>
-                  <NavIcon>◐</NavIcon>
-                  {t("nav.restaurants")}
-                </NavItem>
-                <NavItem to="/pos/admin/staff" active={isActive('/pos/admin/staff')} onClick={closeSidebar}>
-                  <NavIcon>◆</NavIcon>
-                  {t("nav.staff")}
-                </NavItem>
-
-                <NavTitle>{t("nav.section.suppliers", "Suppliers")}</NavTitle>
-                <NavItem to="/pos/admin/supplier-companies" active={isActive('/pos/admin/supplier-companies')} onClick={closeSidebar}>
-                  <NavIcon>◉</NavIcon>
-                  {t("nav.supplierCompanies", "Supplier Companies")}
-                </NavItem>
-                <NavItem to="/pos/admin/supplier-invitations" active={isActive('/pos/admin/supplier-invitations')} onClick={closeSidebar}>
-                  <NavIcon>@</NavIcon>
-                  {t("nav.supplierInvitations", "Supplier Invitations")}
-                </NavItem>
-
-                <NavTitle>{t("nav.section.operations")}</NavTitle>
-                <NavItem to="/pos/admin/invoices" active={isActive('/pos/admin/invoices')} hasPending={badgeCounts.invoices > 0} onClick={closeSidebar}>
-                  <NavIcon hasPending={badgeCounts.invoices > 0}>▦</NavIcon>
-                  {t("nav.invoices")}
-                </NavItem>
-                <NavItem to="/pos/admin/subscriptions" active={isActive('/pos/admin/subscriptions')} onClick={closeSidebar}>
-                  <NavIcon>◈</NavIcon>
-                  {t("nav.subscriptions")}
-                </NavItem>
-                <NavItem to="/pos/admin/system-products" active={isActive('/pos/admin/system-products')} onClick={closeSidebar}>
-                  <NavIcon>▣</NavIcon>
-                  {t("nav.systemProducts")}
-                </NavItem>
-                <NavItem to="/pos/admin/report" active={isActive('/pos/admin/report')} onClick={closeSidebar}>
-                  <NavIcon>☰</NavIcon>
-                  {t("nav.report")}
-                </NavItem>
-                <NavTitle>{t("nav.section.communication")}</NavTitle>
-                <NavItem to="/pos/admin/notices" active={isActive('/pos/admin/notices')} hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0} onClick={closeSidebar}>
-                  <NavIcon hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0}>◈</NavIcon>
-                  {t("nav.notices")}
-                </NavItem>
-                <NavItem to="/pos/admin/work-manuals" active={isActive('/pos/admin/work-manuals')} onClick={closeSidebar}>
-                  <NavIcon>◆</NavIcon>
-                  {t("nav.workManuals")}
-                </NavItem>
-                <NavItem to="/pos/admin/support" active={isActive('/pos/admin/support')} hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0} onClick={closeSidebar}>
-                  <NavIcon hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0}>◎</NavIcon>
-                  {t("nav.inquiryManagement")}
-                </NavItem>
-                <NavItem to="/pos/admin/contact-inquiries" active={isActive('/pos/admin/contact-inquiries')} onClick={closeSidebar}>
-                  <NavIcon>@</NavIcon>
-                  {t("nav.contactInquiries")}
-                </NavItem>
-                <NavItem to="/pos/admin/hardware-quotes" active={isActive('/pos/admin/hardware-quotes')} onClick={closeSidebar}>
-                  <NavIcon>✎</NavIcon>
-                  {t("nav.hardwareQuotes")}
-                </NavItem>
-
-                <NavTitle>{t("nav.section.plansPayments")}</NavTitle>
-                <NavItem data-tour="sidebar-admin-plans" to="/pos/admin/plans" active={isActive('/pos/admin/plans')} onClick={closeSidebar}>
-                  <NavIcon>≡</NavIcon>
-                  {t("nav.subscriptionPlans")}
-                </NavItem>
-                <NavItem data-tour="sidebar-admin-payment" to="/pos/admin/payment-settings" active={isActive('/pos/admin/payment-settings')} onClick={closeSidebar}>
-                  <NavIcon>$</NavIcon>
-                  {t("nav.paymentSettings")}
-                </NavItem>
-              </>
-            )}
+            {/* ========== SYSTEM ADMIN — 2-tier rail (1뎁스) ========== */}
+            {useTwoTier && adminCategoriesWithPending.map(cat => (
+              <RailItem
+                key={cat.id}
+                to={cat.path || cat.items?.[0]?.path || '#'}
+                $active={activeAdminCategory?.id === cat.id}
+                $collapsed={isSidebarCollapsed}
+                $hasPending={cat.hasPending}
+                onClick={(e) => {
+                  if (cat.openInNewTab && cat.path) {
+                    e.preventDefault();
+                    closeSidebar();
+                    if (cat.mobileOrder && user?.restaurantId) {
+                      // popup blocker 회피 — 즉시 빈 창 열고 fetch 후 URL 변경
+                      const newWin = window.open('about:blank', '_blank');
+                      const fallbackUrl = `/mobile/restaurant-${user.restaurantId}`;
+                      (async () => {
+                        try {
+                          const token = getAuthToken();
+                          const r = await fetch(`/api/restaurants/${user.restaurantId}`, {
+                            credentials: 'include',
+                            headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) }
+                          });
+                          let url = fallbackUrl;
+                          if (r.ok) {
+                            const result = await r.json();
+                            const data = result.success ? result.data : result;
+                            if (data.slug) url = `/mobile/${data.slug}`;
+                          }
+                          if (newWin) newWin.location.href = url;
+                        } catch {
+                          if (newWin) newWin.location.href = fallbackUrl;
+                        }
+                      })();
+                      return;
+                    }
+                    window.open(cat.path, '_blank');
+                    return;
+                  }
+                  closeSidebar();
+                }}
+                onMouseEnter={(e) => handleRailEnter(cat.id, e)}
+                onMouseLeave={handleRailLeave}
+                title={cat.label}
+                data-tour={cat.id === 'plans' ? 'sidebar-admin-plans' : undefined}
+              >
+                {cat.icon}
+                <RailLabel $collapsed={isSidebarCollapsed}>{cat.label}</RailLabel>
+              </RailItem>
+            ))}
 
             {/* ========== BRAND GENERAL / BRAND MANAGER ========== */}
-            {(user?.role === 'Brand General' || user?.role === 'Brand Manager') && (
+            {!isBrand && (user?.role === 'Brand General' || user?.role === 'Brand Manager') && (
               <>
                 {hasManagerPermission('dashboard') && isRouteAllowed('/pos/brand/general/dashboard') && (
                   <NavItem to="/pos/brand/general/dashboard" active={isActive('/pos/brand/general/dashboard')} onClick={closeSidebar}>
@@ -1391,8 +2210,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               </>
             )}
 
-            {/* ========== FOODCOURT GENERAL / FOODCOURT MANAGER ========== */}
-            {(user?.role === 'Foodcourt General' || user?.role === 'Foodcourt Manager') && (
+            {/* ========== FOODCOURT GENERAL / FOODCOURT MANAGER (1뎁스 RailItem 으로 이동) ========== */}
+            {!isFoodcourt && (user?.role === 'Foodcourt General' || user?.role === 'Foodcourt Manager') && (
               <>
                 {hasManagerPermission('dashboard') && isRouteAllowed('/pos/foodcourt/general/dashboard') && (
                   <NavItem to="/pos/foodcourt/general/dashboard" active={isActive('/pos/foodcourt/general/dashboard')} onClick={closeSidebar}>
@@ -1615,8 +2434,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               </>
             )}
 
-            {/* ========== RESTAURANT OWNER ========== */}
-            {user?.role === 'Restaurant Owner' && (
+            {/* ========== RESTAURANT OWNER (1뎁스 RailItem 으로 이동) ========== */}
+            {!isOwner && user?.role === 'Restaurant Owner' && (
               <>
                 {isRouteAllowed('/pos/owner/dashboard') && (
                   <NavItem to="/pos/owner/dashboard" active={isActive('/pos/owner/dashboard')} onClick={closeSidebar}>
@@ -1712,8 +2531,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               </>
             )}
 
-            {/* ========== SUPPLIER ADMIN ========== */}
-            {user?.role === 'Supplier Admin' && (
+            {/* ========== SUPPLIER ADMIN (1뎁스 RailItem 으로 이동) ========== */}
+            {!isSupplier && user?.role === 'Supplier Admin' && (
               <>
                 <NavItem to="/pos/supplier/dashboard" active={isActive('/pos/supplier/dashboard')} onClick={closeSidebar}>
                   <NavIcon>■</NavIcon>
@@ -1776,8 +2595,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               </>
             )}
 
-            {/* ========== RESTAURANT ADMIN & STAFF ========== */}
-            {(user?.role === 'Restaurant Admin' || user?.role === 'Staff') && (
+            {/* ========== RESTAURANT ADMIN & STAFF (1뎁스 RailItem 으로 이동) ========== */}
+            {!isRestaurantUser && (user?.role === 'Restaurant Admin' || user?.role === 'Staff') && (
               <>
                 <NavItem to={`/restaurant/${restaurantId}/dashboard`} active={isActive(`/restaurant/${restaurantId}/dashboard`)} onClick={closeSidebar}>
                   <NavIcon>■</NavIcon>
@@ -1797,8 +2616,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             )}
           </NavSection>
           
-          {/* System Access - Only for Restaurant Admin & Staff */}
-          {(user?.role === 'Restaurant Admin' || user?.role === 'Staff') && (
+          {/* System Access - Only for Restaurant Admin & Staff (1뎁스 RailItem 으로 이동) */}
+          {!isRestaurantUser && (user?.role === 'Restaurant Admin' || user?.role === 'Staff') && (
             isRouteAllowed(`/restaurant/${restaurantId}/pos-terminal`) ||
             isRouteAllowed(`/restaurant/${restaurantId}/floor-plan`) ||
             isRouteAllowed(`/restaurant/${restaurantId}/kitchen`) ||
@@ -1919,8 +2738,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             </NavSection>
           )}
           
-          {/* Restaurant Admin & Staff - Operations */}
-          {(hasMenuPermission('support') || hasMenuPermission('reports') || hasMenuPermission('inventory')) && (
+          {/* Restaurant Admin & Staff - Operations (1뎁스 RailItem 으로 이동) */}
+          {!isRestaurantUser && (hasMenuPermission('support') || hasMenuPermission('reports') || hasMenuPermission('inventory')) && (
             (hasMenuPermission('support') && isRouteAllowed(`/restaurant/${restaurantId}/invoices`)) ||
             (hasMenuPermission('reports') && isRouteAllowed(`/restaurant/${restaurantId}/reports`)) ||
             (hasMenuPermission('inventory') && isRouteAllowed(`/restaurant/${restaurantId}/inventory`)) ||
@@ -1961,8 +2780,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             </NavSection>
           )}
 
-          {/* Restaurant Admin & Staff - Suppliers Directory + Contracts (buyer-side) */}
-          {(user?.role === 'Restaurant Admin' || user?.role === 'Staff') && hasMenuPermission('inventory') && (
+          {/* Restaurant Admin & Staff - Suppliers Directory + Contracts (1뎁스 RailItem 으로 이동) */}
+          {!isRestaurantUser && (user?.role === 'Restaurant Admin' || user?.role === 'Staff') && hasMenuPermission('inventory') && (
             isRouteAllowed('/pos/suppliers/directory') ||
             isRouteAllowed('/pos/suppliers/contracts') ||
             isRouteAllowed('/pos/purchase-orders') ||
@@ -1991,8 +2810,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             </NavSection>
           )}
 
-          {/* Restaurant Admin & Staff - Communication */}
-          {hasMenuPermission('support') && (
+          {/* Restaurant Admin & Staff - Communication (1뎁스 RailItem 으로 이동) */}
+          {!isRestaurantUser && hasMenuPermission('support') && (
             isRouteAllowed(`/restaurant/${restaurantId}/notices`) ||
             isRouteAllowed(`/restaurant/${restaurantId}/work-manuals`) ||
             isRouteAllowed(`/restaurant/${restaurantId}/support`) ||
@@ -2027,8 +2846,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             </NavSection>
           )}
 
-          {/* Restaurant Admin & Staff (with permission) - Products */}
-          {hasMenuPermission('menu_management') && (
+          {/* Restaurant Admin & Staff (with permission) - Products (1뎁스 RailItem 으로 이동) */}
+          {!isRestaurantUser && hasMenuPermission('menu_management') && (
             isRouteAllowed(`/restaurant/${restaurantId}/menu`) ||
             isRouteAllowed(`/restaurant/${restaurantId}/categories`) ||
             isRouteAllowed(`/restaurant/${restaurantId}/options`) ||
@@ -2064,8 +2883,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             </NavSection>
           )}
 
-          {/* Restaurant Admin & Staff - Team & Marketing */}
-          {(user?.role === 'Restaurant Admin' || hasMenuPermission('marketing')) && (
+          {/* Restaurant Admin & Staff - Team & Marketing (1뎁스 RailItem 으로 이동) */}
+          {!isRestaurantUser && (user?.role === 'Restaurant Admin' || hasMenuPermission('marketing')) && (
             (user?.role === 'Restaurant Admin' && isRouteAllowed(`/restaurant/${restaurantId}/staff`)) ||
             (hasMenuPermission('marketing') && isRouteAllowed(`/restaurant/${restaurantId}/customers`)) ||
             (hasMenuPermission('marketing') && isRouteAllowed(`/restaurant/${restaurantId}/coupons`))
@@ -2095,10 +2914,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           
           {/* Settings Section - Role-based */}
           <NavSection>
-            <NavTitle>{t("nav.section.settings")}</NavTitle>
+            {!useTwoTier && <NavTitle>{t("nav.section.settings")}</NavTitle>}
 
-            {/* Profile for all users */}
-            {(user?.role === 'Restaurant Admin' || user?.role === 'Staff') ? (
+            {/* Profile for all users (2단 사이드바 역할은 1뎁스 Settings 카테고리로 이동) */}
+            {!useTwoTier && ((user?.role === 'Restaurant Admin' || user?.role === 'Staff') ? (
               <NavItem to={`/restaurant/${restaurantId}/profile`} active={isActive(`/restaurant/${restaurantId}/profile`)} onClick={closeSidebar}>
                 <NavIcon>◯</NavIcon>
                 {t("nav.myProfile")}
@@ -2108,64 +2927,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 <NavIcon>◯</NavIcon>
                 {t("nav.myProfile")}
               </NavItem>
-            )}
+            ))}
 
-            {/* System Admin Settings */}
-            {user?.role === 'System Admin' && (
-              <>
-                <NavItem data-tour="sidebar-admin-settings" to="/pos/admin/settings" active={isActive('/pos/admin/settings')} onClick={closeSidebar}>
-                  <NavIcon>⚙</NavIcon>
-                  {t("nav.companyInfo")}
-                </NavItem>
-                <NavItem data-tour="sidebar-admin-site-settings" to="/pos/admin/site-settings" active={isActive('/pos/admin/site-settings')} onClick={closeSidebar}>
-                  <NavIcon>◈</NavIcon>
-                  {t("nav.siteSettings")}
-                </NavItem>
-                <NavItem to="/pos/admin/carriers" active={isActive('/pos/admin/carriers')} onClick={closeSidebar}>
-                  <NavIcon>▦</NavIcon>
-                  {t("nav.carriers", "Carriers")}
-                </NavItem>
-                <NavItem to="/pos/admin/carrier-webhooks" active={isActive('/pos/admin/carrier-webhooks')} onClick={closeSidebar}>
-                  <NavIcon>⊕</NavIcon>
-                  {t("nav.carrierWebhooks", "Carrier Webhooks")}
-                </NavItem>
-                <NavItem to="/pos/admin/notification-settings" active={isActive('/pos/admin/notification-settings')} onClick={closeSidebar}>
-                  <NavIcon>✉</NavIcon>
-                  {t("nav.notifications")}
-                </NavItem>
-                <NavItem to="/pos/admin/system-config" active={isActive('/pos/admin/system-config')} onClick={closeSidebar}>
-                  <NavIcon>⚙</NavIcon>
-                  {t("nav.systemConfig")}
-                </NavItem>
-                <NavItem to="/pos/admin/scheduler-monitor" active={isActive('/pos/admin/scheduler-monitor')} onClick={closeSidebar}>
-                  <NavIcon>⊙</NavIcon>
-                  {t("nav.schedulerMonitor", "Scheduler Monitor")}
-                </NavItem>
-                <NavItem to="/pos/admin/referrals" active={isActive('/pos/admin/referrals')} onClick={closeSidebar}>
-                  <NavIcon>↗</NavIcon>
-                  {t("nav.referrals", "Referrals")}
-                </NavItem>
-                <NavItem to="/pos/admin/content" active={isActive('/pos/admin/content')} onClick={closeSidebar}>
-                  <NavIcon>☰</NavIcon>
-                  {t("nav.content")}
-                </NavItem>
-                <DisabledNavItem title="Coming Soon">
-                  <DisabledNavIcon>⊘</DisabledNavIcon>
-                  {t("nav.security")}
-                </DisabledNavItem>
-                <DisabledNavItem title="Coming Soon">
-                  <DisabledNavIcon>⊘</DisabledNavIcon>
-                  {t("nav.backupRestore")}
-                </DisabledNavItem>
-                <NavItem to="/pos/admin/logs" active={isActive('/pos/admin/logs')} onClick={closeSidebar}>
-                  <NavIcon>☰</NavIcon>
-                  {t("nav.systemLogs")}
-                </NavItem>
-              </>
-            )}
+            {/* System Admin Settings — 1뎁스 Settings 카테고리로 이동 (RailItem) */}
 
-            {/* Brand General Settings */}
-            {(user?.role === 'Brand General' || user?.role === 'Brand Manager') && (
+            {/* Brand General Settings — Brand 도 1뎁스 Settings 카테고리로 이동 */}
+            {!isBrand && (user?.role === 'Brand General' || user?.role === 'Brand Manager') && (
               <>
                 <NavItem data-tour="sidebar-bg-company-info" to="/pos/brand/company-info" active={isActive('/pos/brand/company-info')} onClick={closeSidebar}>
                   <NavIcon>◐</NavIcon>
@@ -2178,8 +2945,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               </>
             )}
 
-            {/* Foodcourt General Settings */}
-            {(user?.role === 'Foodcourt General' || user?.role === 'Foodcourt Manager') && (
+            {/* Foodcourt General Settings (1뎁스 Settings 카테고리로 이동) */}
+            {!isFoodcourt && (user?.role === 'Foodcourt General' || user?.role === 'Foodcourt Manager') && (
               <>
                 <NavItem data-tour="sidebar-company-info" to="/pos/foodcourt/company-info" active={isActive('/pos/foodcourt/company-info')} onClick={closeSidebar}>
                   <NavIcon>◐</NavIcon>
@@ -2192,8 +2959,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               </>
             )}
 
-            {/* Supplier Admin Settings */}
-            {user?.role === 'Supplier Admin' && (
+            {/* Supplier Admin Settings (1뎁스 Settings 카테고리로 이동) */}
+            {!isSupplier && user?.role === 'Supplier Admin' && (
               <>
                 <NavItem data-tour="sidebar-supplier-company-info" to="/pos/supplier/company-info" active={isActive('/pos/supplier/company-info')} onClick={closeSidebar}>
                   <NavIcon>◐</NavIcon>
@@ -2210,8 +2977,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               </>
             )}
 
-            {/* Restaurant Admin & Staff (with permission) Settings */}
-            {hasMenuPermission('settings') && (
+            {/* Restaurant Admin & Staff (with permission) Settings (1뎁스 Settings 카테고리로 이동) */}
+            {!isRestaurantUser && hasMenuPermission('settings') && (
               <>
                 <NavItem data-tour="sidebar-ra-company-info" to={`/restaurant/${restaurantId}/company-information`} active={isActive(`/restaurant/${restaurantId}/company-information`)} onClick={closeSidebar}>
                   <NavIcon>◐</NavIcon>
@@ -2228,51 +2995,56 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               </>
             )}
 
-            {/* Restaurant Admin & Staff - Change History */}
-            {hasMenuPermission('reports') && (user?.role === 'Restaurant Admin' || user?.role === 'Staff') && isRouteAllowed(`/restaurant/${restaurantId}/history`) && (
+            {/* Restaurant Admin & Staff - Change History (1뎁스 Settings 카테고리로 이동) */}
+            {!isRestaurantUser && hasMenuPermission('reports') && (user?.role === 'Restaurant Admin' || user?.role === 'Staff') && isRouteAllowed(`/restaurant/${restaurantId}/history`) && (
               <NavItem to={`/restaurant/${restaurantId}/history`} active={isActive(`/restaurant/${restaurantId}/history`)} onClick={closeSidebar}>
                 <NavIcon>≡</NavIcon>
                 {t("nav.changeHistory")}
               </NavItem>
             )}
 
-            {/* System Admin - Change History */}
-            {user?.role === 'System Admin' && (
-              <NavItem to="/pos/admin/history" active={isActive('/pos/admin/history')} onClick={closeSidebar}>
-                <NavIcon>≡</NavIcon>
-                {t("nav.changeHistory")}
-              </NavItem>
-            )}
+            {/* System Admin - Change History (1뎁스 Settings 카테고리로 이동) */}
 
-            {/* Brand General/Manager - Change History */}
-            {(user?.role === 'Brand General' || user?.role === 'Brand Manager') && isRouteAllowed('/pos/brand/history') && (
+            {/* Brand General/Manager - Change History (Brand 1뎁스 Settings 로 이동) */}
+            {!isBrand && (user?.role === 'Brand General' || user?.role === 'Brand Manager') && isRouteAllowed('/pos/brand/history') && (
               <NavItem to="/pos/brand/history" active={isActive('/pos/brand/history')} onClick={closeSidebar}>
                 <NavIcon>≡</NavIcon>
                 {t("nav.changeHistory")}
               </NavItem>
             )}
 
-            {/* Foodcourt General/Manager - Change History */}
-            {(user?.role === 'Foodcourt General' || user?.role === 'Foodcourt Manager') && isRouteAllowed('/pos/foodcourt/history') && (
+            {/* Foodcourt General/Manager - Change History (1뎁스 Settings 카테고리로 이동) */}
+            {!isFoodcourt && (user?.role === 'Foodcourt General' || user?.role === 'Foodcourt Manager') && isRouteAllowed('/pos/foodcourt/history') && (
               <NavItem to="/pos/foodcourt/history" active={isActive('/pos/foodcourt/history')} onClick={closeSidebar}>
                 <NavIcon>≡</NavIcon>
                 {t("nav.changeHistory")}
               </NavItem>
             )}
 
-            {/* Restaurant Owner - Change History */}
-            {user?.role === 'Restaurant Owner' && isRouteAllowed('/pos/owner/history') && (
+            {/* Restaurant Owner - Change History (1뎁스 Settings 카테고리로 이동) */}
+            {!isOwner && user?.role === 'Restaurant Owner' && isRouteAllowed('/pos/owner/history') && (
               <NavItem to="/pos/owner/history" active={isActive('/pos/owner/history')} onClick={closeSidebar}>
                 <NavIcon>≡</NavIcon>
                 {t("nav.changeHistory")}
               </NavItem>
             )}
 
-            {/* Logout for all */}
-            <NavItem to="#" onClick={(e) => { e.preventDefault(); handleLogout(); }}>
-              <NavIcon>↩</NavIcon>
-              {t("nav.logout")}
-            </NavItem>
+            {/* Logout — 2단 사이드바 (System Admin/Brand) 는 RailButton, 그 외는 기존 NavItem */}
+            {useTwoTier ? (
+              <RailButton
+                $collapsed={isSidebarCollapsed}
+                onClick={handleLogout}
+                title={t("nav.logout")}
+              >
+                <LogOut />
+                <RailLabel $collapsed={isSidebarCollapsed}>{t("nav.logout")}</RailLabel>
+              </RailButton>
+            ) : (
+              <NavItem to="#" onClick={(e) => { e.preventDefault(); handleLogout(); }}>
+                <NavIcon>↩</NavIcon>
+                {t("nav.logout")}
+              </NavItem>
+            )}
           </NavSection>
         </SidebarNav>
 
@@ -2345,9 +3117,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         </SidebarFooter>
       </Sidebar>
 
-      {/* Sidebar Open Button (shown when sidebar is collapsed) */}
+      {/* Sidebar Open Button (shown when sidebar is collapsed; hidden for System Admin since rail stays visible) */}
       <SidebarOpenButton
         isCollapsed={isSidebarCollapsed}
+        $isSystemAdmin={useTwoTier}
         onClick={toggleSidebarCollapse}
         title="Open Sidebar"
       >
@@ -2356,7 +3129,86 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         </svg>
       </SidebarOpenButton>
 
-      <MainContent isCollapsed={isSidebarCollapsed}>
+      {/* System Admin 2-tier secondary panel (expanded mode) */}
+      {showSecondaryPanel && activeAdminCategory?.items && !isSecondaryCollapsed && (
+        <SecondaryPanel $sidebarW={adminSidebarW}>
+          <SecondaryHeader>
+            {activeAdminCategory.label}
+            <CollapseSecondaryBtn onClick={toggleSecondaryCollapse} title="Collapse panel">
+              <ChevronsLeft />
+            </CollapseSecondaryBtn>
+          </SecondaryHeader>
+          <SecondaryNav>
+            {activeAdminCategory.items.map(item => (
+              <SecondaryNavItem
+                key={item.path}
+                to={item.path}
+                $active={matchPathFull(item.path)}
+                $hasPending={item.hasPending}
+                onClick={(e) => {
+                  if (item.openInNewTab) {
+                    e.preventDefault();
+                    closeSidebar();
+                    window.open(item.path, '_blank');
+                    return;
+                  }
+                  closeSidebar();
+                }}
+              >
+                {item.label}
+              </SecondaryNavItem>
+            ))}
+          </SecondaryNav>
+        </SecondaryPanel>
+      )}
+
+      {/* Hover popover (collapsed mode) */}
+      {showPopover && hoveredCategory?.items && (
+        <SecondaryPopover
+          $top={hoveredCatTop}
+          $left={adminSidebarW + 4}
+          onMouseEnter={handlePopoverEnter}
+          onMouseLeave={handlePopoverLeave}
+        >
+          <SecondaryPopoverHeader>{hoveredCategory.label}</SecondaryPopoverHeader>
+          <SecondaryPopoverNav>
+            {hoveredCategory.items.map(item => (
+              <SecondaryNavItem
+                key={item.path}
+                to={item.path}
+                $active={matchPathFull(item.path)}
+                $hasPending={item.hasPending}
+                onClick={(e) => {
+                  if (item.openInNewTab) {
+                    e.preventDefault();
+                    setHoveredCatId(null);
+                    closeSidebar();
+                    window.open(item.path, '_blank');
+                    return;
+                  }
+                  setHoveredCatId(null);
+                  closeSidebar();
+                }}
+              >
+                {item.label}
+              </SecondaryNavItem>
+            ))}
+          </SecondaryPopoverNav>
+        </SecondaryPopover>
+      )}
+
+      {/* Expand 2뎁스 button (collapsed mode) */}
+      {useTwoTier && isSecondaryCollapsed && (
+        <ExpandSecondaryBtn $sidebarW={adminSidebarW} onClick={toggleSecondaryCollapse} title="Expand panel">
+          <ChevronsRight />
+        </ExpandSecondaryBtn>
+      )}
+
+      <MainContent
+        isCollapsed={isSidebarCollapsed}
+        $sidebarW={useTwoTier ? adminSidebarW : undefined}
+        $extraLeft={(showSecondaryPanel && !isSecondaryCollapsed) ? SECONDARY_PANEL_W : 0}
+      >
         <MobileContent>
           {children}
         </MobileContent>

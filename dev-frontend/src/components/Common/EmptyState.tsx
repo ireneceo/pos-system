@@ -20,7 +20,10 @@ const Wrap = styled.div`
 
 const IconWrap = styled.div`
   width: 56px;
-  height: 56px;
+  height: 80px;
+  min-height: 80px;
+  max-height: 80px;
+  box-sizing: border-box;
   border-radius: 16px;
   background: #F1F0FF;
   display: flex;

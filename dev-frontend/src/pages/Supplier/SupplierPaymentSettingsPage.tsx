@@ -62,7 +62,10 @@ const Header = styled.div`
   background: white;
   padding: 16px 32px;
   border-bottom: 1px solid #E6EBF1;
-  height: 56px;
+  height: 80px;
+  min-height: 80px;
+  max-height: 80px;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
 `;

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import styled from 'styled-components';
+import { Header as StdHeader, Title as StdTitle } from '../../components/UI/PageComponents';
 import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
 import { useTranslation } from 'react-i18next';
 import { useRoleDisplayName } from '../../utils/roleDisplay';
@@ -546,8 +547,9 @@ const ReferralManagementPage: React.FC = () => {
   };
 
   return (
-    <Page>
-      <Header><Title>{t('admin.title', 'Referral Program')}</Title></Header>
+    <>
+      <StdHeader><StdTitle>{t('admin.title', 'Referral Program')}</StdTitle></StdHeader>
+      <Page>
       <Tabs>
         <TabBtn type="button" $active={tab === 'overview'} onClick={() => setTab('overview')}>{t('admin.tabs.overview', 'Overview')}</TabBtn>
         <TabBtn type="button" $active={tab === 'partners'} onClick={() => setTab('partners')}>{t('admin.tabs.partners', 'Partners')}</TabBtn>
@@ -1132,6 +1134,7 @@ const ReferralManagementPage: React.FC = () => {
         </Backdrop>
       )}
     </Page>
+    </>
   );
 };
 
