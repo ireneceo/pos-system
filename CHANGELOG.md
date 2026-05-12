@@ -6,6 +6,19 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+### 2026-05-12
+
+- 예약 페이지 (ReservationsTimelinePage) 에 Source 컬럼 + 필터 chip (All / Customer / Staff) 추가 — 고객이 직접 넣은 예약과 직원이 입력한 예약 구분
+- 예약 액션 버튼 LiveOrders 정렬 — 단계 전환은 destination status 색 + 흰 글자 (Confirm 녹 / Arrived 브랜드 메인 / Seated 보라 / Completed 회색), No-show + Cancel × 는 LiveOrders 연회색
+- 예약 STATUS_COLOR Tailwind 팔레트 정렬 (ORDER_STATUS_STYLE_GUIDE 시스템 일치)
+- 예약 Pending approval 과 Today 섹션 중복 제거 — pending 항목은 Pending approval 에만 노출
+- 버튼 / 뱃지 라벨 대문자화 (Confirm / Arrived / No-show 등)
+- PwaInstallBanner Dismiss 텍스트 버튼 → × 아이콘 버튼
+- 앱 아이콘 (favicon / logo192 / logo512 / apple-touch-icon / favicon.ico) 새 SVG 기반으로 일괄 교체. manifest.json SVG 우선 + PNG fallback 등록
+- **site-settings SVG 파비콘 업로드 버그 fix** — imageProcessor.js base64 mime regex `\w+` → `[a-zA-Z0-9.+-]+` (svg+xml 의 `+` 미매칭으로 SVG 업로드 시 favicon 이 wipe 되던 결함). SVG 는 벡터 보존 (.svg 그대로 저장)
+- favicon 즉시 갱신 UX — 저장 후 응답 기반 state 갱신 + cache-bust 토큰으로 LogoPreview / link[rel~='icon'] / apple-touch-icon 모두 무효화. App.tsx 글로벌 favicon 적용도 동일 처리
+- UI_DESIGN_GUIDE 4.2.1 신규 — 상태 전환 액션 버튼 strict 규칙 (LiveOrders 4 색 팔레트 + 공용 컴포넌트 import + Material 진한색 / 파스텔 채움 금지)
+
 ### 사이드바 2단 구조 전면 리디자인 (2026-05-11)
 
 **모든 역할(System Admin / Brand / Foodcourt / Owner / Supplier / Restaurant Admin) 사이드바를 1뎁스 카테고리 + 2뎁스 sub-menu 2단 구조로 통일** (Sentry / Stripe / Linear 패턴).

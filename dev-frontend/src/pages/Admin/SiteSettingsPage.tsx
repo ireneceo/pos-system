@@ -196,6 +196,10 @@ const SiteSettingsPage: React.FC = () => {
   const [isDraggingFavicon, setIsDraggingFavicon] = useState(false);
   const [isDraggingLogo, setIsDraggingLogo] = useState(false);
   const [isDraggingOG, setIsDraggingOG] = useState(false);
+  const [cacheBust, setCacheBust] = useState(Date.now());
+
+  const withCacheBust = (url: string) =>
+    !url || url.startsWith('data:') ? url : `${url}${url.includes('?') ? '&' : '?'}v=${cacheBust}`;
 
   // Currency settings
   const [, setCurrencyConfig] = useState<CurrencyConfig>({});
@@ -282,12 +286,27 @@ const SiteSettingsPage: React.FC = () => {
     });
 
     if (!response.ok) {
-      const data = await response.json();
-      throw new Error(data.error || 'Failed to save settings');
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.message || data.error || 'Failed to save settings');
+    }
+
+    // Backend converts base64 → /uploads/...svg etc. State 가 base64 상태로 남으면
+    // 다음 저장 시 다시 처리되어 deleteOldImages 가 잘못된 비교를 함. 응답으로 갱신.
+    const json = await response.json().catch(() => null);
+    const saved = json?.settings;
+    if (saved) {
+      setSettings(prev => ({
+        ...prev,
+        favicon_url: saved.favicon_url || '',
+        brand_logo: saved.brand_logo || '',
+        og_image_url: saved.og_image_url || prev.og_image_url
+      }));
+      // 동일 path 덮어쓰기 후 preview 갱신을 위한 cache-bust 토큰 증가
+      setCacheBust(Date.now());
     }
 
     // Trigger brand logo update event if logo changed
-    if (settingsRef.current.brand_logo) {
+    if (saved?.brand_logo || settingsRef.current.brand_logo) {
       window.dispatchEvent(new Event('brandLogoUpdated'));
     }
 
@@ -295,8 +314,9 @@ const SiteSettingsPage: React.FC = () => {
     if (settingsRef.current.seo_title) {
       document.title = settingsRef.current.seo_title;
     }
-    if (settingsRef.current.favicon_url) {
-      updateFavicon(settingsRef.current.favicon_url);
+    const newFaviconUrl = saved?.favicon_url || settingsRef.current.favicon_url;
+    if (newFaviconUrl) {
+      updateFavicon(newFaviconUrl);
     }
   };
 
@@ -364,13 +384,16 @@ const SiteSettingsPage: React.FC = () => {
   };
 
   const updateFavicon = (url: string) => {
-    let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
-    if (!link) {
-      link = document.createElement('link');
-      link.rel = 'icon';
-      document.head.appendChild(link);
-    }
-    link.href = url;
+    // Cache-bust 동일 파일명(favicon.svg 등) 덮어쓰기 후 브라우저 캐시 무효화
+    const bustUrl = url.startsWith('data:')
+      ? url
+      : `${url}${url.includes('?') ? '&' : '?'}v=${Date.now()}`;
+    document.querySelectorAll("link[rel~='icon']").forEach(el => {
+      (el as HTMLLinkElement).href = bustUrl;
+    });
+    // apple-touch-icon 도 같이 갱신
+    const apple = document.getElementById('apple-touch-icon') as HTMLLinkElement | null;
+    if (apple) apple.href = bustUrl;
   };
 
   if (loading) {
@@ -450,7 +473,7 @@ const SiteSettingsPage: React.FC = () => {
                       onDrop={(e) => handleDrop(e, 'favicon_url', setIsDraggingFavicon, faviconAutoSaveRef)}
                     >
                       {settings.favicon_url ? (
-                        <LogoPreview src={settings.favicon_url} alt="Favicon" />
+                        <LogoPreview src={withCacheBust(settings.favicon_url)} alt="Favicon" />
                       ) : (
                         <div>
                           <div style={{ fontSize: '14px', color: '#6B7280', fontWeight: 500, marginBottom: '8px' }}>
@@ -484,7 +507,7 @@ const SiteSettingsPage: React.FC = () => {
                       onDrop={(e) => handleDrop(e, 'brand_logo', setIsDraggingLogo, brandLogoAutoSaveRef)}
                     >
                       {settings.brand_logo ? (
-                        <LogoPreview src={settings.brand_logo} alt="Brand Logo" />
+                        <LogoPreview src={withCacheBust(settings.brand_logo)} alt="Brand Logo" />
                       ) : (
                         <div>
                           <div style={{ fontSize: '14px', color: '#6B7280', fontWeight: 500, marginBottom: '8px' }}>
@@ -606,7 +629,7 @@ const SiteSettingsPage: React.FC = () => {
                     onDrop={(e) => handleDrop(e, 'og_image_url', setIsDraggingOG, ogImageAutoSaveRef)}
                   >
                     {settings.og_image_url ? (
-                      <LogoPreview src={settings.og_image_url} alt="OG Image" />
+                      <LogoPreview src={withCacheBust(settings.og_image_url)} alt="OG Image" />
                     ) : (
                       <div>
                         <div style={{ fontSize: '14px', color: '#6B7280', fontWeight: 500, marginBottom: '8px' }}>

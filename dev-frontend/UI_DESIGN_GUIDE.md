@@ -272,6 +272,60 @@ type AdminCategory = {
 <Button size="large">Large</Button>   // padding: 16px 28px
 ```
 
+### 4.2.1 상태 전환 액션 버튼 (테이블/리스트 인라인)
+
+**규칙:** 테이블 행 안의 상태 전환 액션 버튼은 LiveOrders 패턴을 그대로 따른다. **새 색 발명 금지** — LiveOrders 에서 이미 쓰는 색만 사용.
+
+**공용 컴포넌트** (모든 페이지에서 import):
+- `ActionButton`, `ActionButtons`, `IconButton` from `components/UI/TableComponents`
+
+**LiveOrders 색 팔레트 (이것 외 사용 금지):**
+| 색 | 값 | 용도 |
+|----|----|------|
+| Green | `#10B981` | 단계 전환 (advance to next status) — Confirm / Arrived / Seated / Completed / Mark Ready 등 |
+| Gray  | `#9CA3AF` | 중립 부정 상태 — No-show / Served 등 단계전환은 아니지만 진행이 아닌 상태 |
+| Amber | `#F59E0B` | 결제 경고 — Proceed Without Payment 등 |
+| Red   | `#FF6B6B` | 모달 내 destructive — Delete confirm, Cancel confirm |
+
+**3 종 분류:**
+| 종류 | 컴포넌트 + 색 | 용도 |
+|------|--------------|------|
+| **단계 전환 (Forward)** | `<ActionButton style={{ background: '#10B981', borderColor: '#10B981', color: 'white' }}>` | 다음 단계로 진행 |
+| **Cancel / Decline** | `<IconButton variant="delete">×</IconButton>` (변형은 `delete`) | 취소 — compact, 비파괴적 |
+| **No-show / 중립 부정** | `<ActionButton style={{ background: '#9CA3AF', borderColor: '#9CA3AF', color: 'white' }}>` | cancel 과 구분 필요한 중립 상태 |
+
+```jsx
+import { ActionButton, ActionButtons, IconButton } from 'components/UI/TableComponents';
+
+<ActionButtons>
+  {/* ✅ 단계 전환 */}
+  <ActionButton
+    onClick={() => changeStatus(id, 'confirmed')}
+    style={{ background: '#10B981', borderColor: '#10B981', color: 'white' }}
+  >Confirm</ActionButton>
+
+  {/* ✅ No-show */}
+  <ActionButton
+    onClick={() => markNoShow(id)}
+    style={{ background: '#9CA3AF', borderColor: '#9CA3AF', color: 'white' }}
+  >No-show</ActionButton>
+
+  {/* ✅ Cancel - 아이콘 버튼 */}
+  <IconButton variant="delete" onClick={() => cancel(id)} title="Cancel">×</IconButton>
+</ActionButtons>
+
+// ❌ 금지 — 새 색 발명 (status badge fg 같은 진한 Material 색)
+<ActionButton style={{ background: '#2E7D32', color: 'white' }}>Confirm</ActionButton>
+
+// ❌ 금지 — 파스텔 bg 채움
+<ActionButton style={{ background: '#E8F5E9', color: '#2E7D32' }}>Confirm</ActionButton>
+
+// ❌ 금지 — 자체 styled-component (공용 컴포넌트 import 해서 사용)
+const MyActionBtn = styled.button`...`;
+```
+
+**참조 구현:** `pages/LiveOrders/LiveOrdersPage.tsx` (정본), `pages/Reservations/ReservationsTimelinePage.tsx`
+
 ### 4.3 주요 액션 버튼 배치 (필수)
 
 **규칙:** 상세 페이지의 주요 진행 액션 (예: Proceed, Submit, Save & Continue) 버튼은 **반드시 상단과 하단 양쪽에 배치**한다.

@@ -1,9 +1,61 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-05-11 (사이드바 2단 구조 전면 리디자인 + 헤더 80px 통일 — 운영 배포 완료)
+> **최종 업데이트:** 2026-05-12 (예약 UI Source 컬럼/액션버튼 LiveOrders 정렬 + SVG favicon 업로드 버그 fix + 앱 아이콘 교체)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 > **현재 버전:** **v3.28** (2026-05-10 운영 배포 + Unreleased 누적)
+
+## ✅ 완료: 예약 UI 정렬 + SVG favicon 버그 fix + 앱 아이콘 교체 (2026-05-12, 미배포)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Source 컬럼 + 필터 chips | `ReservationsTimelinePage` Today/Pending 양쪽에 source 뱃지 (Customer/Staff/Walk-in). 필터: All / Customer / Staff (staff_phone+walk_in 합산) | ✅ |
+| 액션 버튼 LiveOrders 패턴 정렬 | 공용 `ActionButton`/`IconButton` import. 단계 전환은 dest status 가족 색 + 흰글자 (Confirm `#10B981`, Arrived `#635BFF` 브랜드 메인, Seated `#8B5CF6`, Completed `#9CA3AF`). No-show + Cancel × 는 LiveOrders 연회색 (`#F6F9FC`/`#6B7C93`/`#E6EBF1`) | ✅ |
+| STATUS_COLOR Tailwind 정렬 | 기존 Material 톤(`#FFF7E6`/`#B97D00` 등) → Tailwind 팔레트 (ORDER_STATUS_STYLE_GUIDE 와 동일 시스템). pending amber / confirmed emerald / arrived blue / seated violet / completed gray / cancelled red / no_show light-gray | ✅ |
+| ACTION_LABEL + STATUS_LABEL 대문자화 | 버튼 라벨 (Confirm/Arrived/Seated/Completed/No-show/Cancel) + 뱃지 (No-show 등) 첫 글자 대문자 | ✅ |
+| Pending vs Today 중복 제거 | Today 섹션에서 `status='pending'` 필터 아웃 — 위쪽 "Pending approval" 섹션에만 노출 (workflow 분리) | ✅ |
+| UI_DESIGN_GUIDE 4.2.1 신규 | 상태 전환 액션 버튼 규칙: LiveOrders 4 색 팔레트 strict (#10B981/#9CA3AF/#F59E0B/#FF6B6B) + 공용 컴포넌트 import 강제. Material 진한색/파스텔 채움 금지 명시 | ✅ |
+| PwaInstallBanner Dismiss → × 아이콘 | 텍스트 Dismiss 버튼 → 우측 상단 × 아이콘 (28x28, white bg, gray glyph). Install 버튼 hover opacity 0.85 | ✅ |
+| 앱 아이콘 교체 (Irene 제공 SVG) | `/tmp/app_icon.svg` → sharp 로 PNG 변환 (192/512/180/48 + 64-px ICO). `manifest.json` 에 SVG 우선 + PNG fallback. `index.html` `apple-touch-icon` href 명시 | ✅ |
+| **Site-settings SVG 업로드 버그 fix** | `imageProcessor.js:320` regex `\w+` (svg+xml `+` 미매칭) → `[a-zA-Z0-9.+-]+`. SVG 는 sharp 변환 안 거치고 벡터 그대로 `.svg` 저장. 실패 시 기존 favicon wipe 방지 (400 반환) | ✅ |
+| Favicon 즉시 갱신 UX 개선 | 저장 후 응답 `settings` 로 state 갱신 (base64 → URL). cache-bust 토큰 (`?v=Date.now()`) 으로 `LogoPreview` + `link[rel~='icon']` + `apple-touch-icon` 모두 무효화. App.tsx 도 동일 cache-bust 적용 | ✅ |
+
+### 검증
+- API 실호출: SVG `data:image/svg+xml;base64,...` PUT → 200 → DB 저장 → 파일 `/var/www/uploads/logos/favicon.svg` (572 bytes) 디스크 확인
+- 예약 API source 정상: Restaurant 5 — customer_mobile 3 / staff_phone 1 / walk_in 1 + pending 1
+- Health-check 78/78 통과 (favicon backend 변경 후)
+- 빌드 main.6471d9fd.js (exit 0, 0 신규 경고)
+
+### 수정된 파일
+
+**Backend (2)**
+- `dev-backend/utils/imageProcessor.js` — base64 mime regex 확장 + SVG 벡터 보존 분기
+- `dev-backend/routes/siteSettings.js` — 저장 실패 시 wipe 방지 (null 시 400 반환)
+
+**Frontend (5 + 1 가이드)**
+- `dev-frontend/src/pages/Reservations/ReservationsTimelinePage.tsx` — Source 컬럼/필터, 액션 버튼 LiveOrders 정렬, STATUS_COLOR Tailwind, Pending 분리
+- `dev-frontend/src/pages/Admin/SiteSettingsPage.tsx` — 저장 응답 기반 state 갱신, cache-bust 토큰, updateFavicon 다중 icon 링크 갱신
+- `dev-frontend/src/App.tsx` — 글로벌 favicon 적용에 cache-bust + 모든 icon 링크 갱신
+- `dev-frontend/src/components/Common/PwaInstallBanner.tsx` — Dismiss 텍스트 버튼 → × 아이콘
+- `dev-frontend/UI_DESIGN_GUIDE.md` — 4.2.1 액션 버튼 규칙 신규
+
+**Public assets (8)**
+- `dev-frontend/public/app-icon.svg` — Irene 제공 신규 SVG 원본
+- `dev-frontend/public/apple-touch-icon.png` — 180×180 (신규)
+- `dev-frontend/public/logo192.png` — 192×192 (교체)
+- `dev-frontend/public/logo512.png` — 512×512 (교체)
+- `dev-frontend/public/favicon-48.png` — 48×48 (교체)
+- `dev-frontend/public/favicon.ico` — 64×64 PNG (교체)
+- `dev-frontend/public/manifest.json` — SVG 우선 + PNG fallback 등록
+- `dev-frontend/public/index.html` — `apple-touch-icon` href 설정
+
+### Known Issue / R2 분리
+- 예약 timezone 표시 — `at(19,30)` 서버 UTC 기준이라 MY (+8) 표시 시 +1day 03:30 으로 보임. 시드 데이터 한정 이슈, 실제 customer/staff 입력은 ISO 변환 정상. 별도 cleanup 필요 시 R2.
+- 운영 배포는 별도 `/배포` 명령. 현재 v3.28 유지 / 미배포 누적.
+
+---
 
 ## ✅ 완료: 사이드바 2단 구조 전면 리디자인 + 헤더 80px 통일 (2026-05-11, 운영 배포 완료)
 

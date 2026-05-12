@@ -47,9 +47,21 @@ const PwaInstallBanner: React.FC = () => {
       border: '1px solid #E6EBF1',
       padding: 16
     }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, position: 'relative' }}>
+        <button
+          type="button"
+          onClick={handleDismiss}
+          title={t('common:pwa.installBanner.dismissButton')}
+          aria-label={t('common:pwa.installBanner.dismissButton')}
+          style={{
+            position: 'absolute', top: -4, right: -4, width: 28, height: 28,
+            borderRadius: 6, border: '1px solid #E6EBF1', background: 'white', color: '#6B7C93',
+            fontSize: 18, lineHeight: 1, cursor: 'pointer',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center'
+          }}
+        >×</button>
         <img src="/logo192.png" alt="" width={40} height={40} style={{ borderRadius: 8 }} />
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ flex: 1, minWidth: 0, paddingRight: 28 }}>
           <div style={{ fontSize: 15, fontWeight: 600, color: '#0A2540', marginBottom: 4 }}>
             {t('common:pwa.installBanner.title')}
           </div>
@@ -61,41 +73,29 @@ const PwaInstallBanner: React.FC = () => {
               : t('common:pwa.installBanner.androidDesktopGuide')}
           </div>
 
-          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-            {canInstall && !isIOS && (
+          {canInstall && !isIOS && (
+            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
               <button
                 type="button"
                 onClick={handleInstall}
                 style={{
                   background: '#635BFF',
                   color: '#fff',
-                  border: 'none',
+                  border: '1px solid #635BFF',
                   padding: '8px 14px',
                   borderRadius: 8,
                   fontSize: 13,
                   fontWeight: 600,
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  transition: 'opacity 0.15s'
                 }}
+                onMouseEnter={e => { e.currentTarget.style.opacity = '0.85'; }}
+                onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
               >
                 {t('common:pwa.installBanner.installButton')}
               </button>
-            )}
-            <button
-              type="button"
-              onClick={handleDismiss}
-              style={{
-                background: 'transparent',
-                color: '#6B7C93',
-                border: '1px solid #E6EBF1',
-                padding: '8px 14px',
-                borderRadius: 8,
-                fontSize: 13,
-                cursor: 'pointer'
-              }}
-            >
-              {t('common:pwa.installBanner.dismissButton')}
-            </button>
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

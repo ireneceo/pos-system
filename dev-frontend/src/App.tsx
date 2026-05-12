@@ -394,15 +394,16 @@ function App() {
             document.title = settings.seo_title;
           }
 
-          // Update favicon
+          // Update favicon — cache-bust 으로 동일 path 덮어쓰기 후 브라우저 캐시 무효화
           if (settings.favicon_url) {
-            const favicon = document.getElementById('favicon') as HTMLLinkElement;
-            if (favicon) {
-              favicon.href = settings.favicon_url;
-            }
+            const url = settings.favicon_url;
+            const bustUrl = url.startsWith('data:') ? url : `${url}${url.includes('?') ? '&' : '?'}v=${Date.now()}`;
+            document.querySelectorAll("link[rel~='icon']").forEach(el => {
+              (el as HTMLLinkElement).href = bustUrl;
+            });
             const appleTouchIcon = document.getElementById('apple-touch-icon') as HTMLLinkElement;
             if (appleTouchIcon) {
-              appleTouchIcon.href = settings.favicon_url;
+              appleTouchIcon.href = bustUrl;
             }
           }
 

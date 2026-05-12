@@ -69,10 +69,18 @@ router.put('/', authenticateToken, requireRole('System Admin'), async (req, res)
     let savedBrandLogo = brand_logo;
 
     if (favicon_url && favicon_url.startsWith('data:image/')) {
-      savedFavicon = await saveImageToFile(favicon_url, 'favicon', { maxWidth: 64, maxHeight: 64 });
+      const result = await saveImageToFile(favicon_url, 'favicon', { maxWidth: 64, maxHeight: 64 });
+      if (!result) {
+        return res.status(400).json({ success: false, message: 'Favicon 저장 실패 — 형식을 확인해주세요 (PNG/JPG/SVG)' });
+      }
+      savedFavicon = result;
     }
     if (brand_logo && brand_logo.startsWith('data:image/')) {
-      savedBrandLogo = await saveImageToFile(brand_logo, 'brand-logo', { maxWidth: 400, maxHeight: 400 });
+      const result = await saveImageToFile(brand_logo, 'brand-logo', { maxWidth: 400, maxHeight: 400 });
+      if (!result) {
+        return res.status(400).json({ success: false, message: 'Logo 저장 실패 — 형식을 확인해주세요 (PNG/JPG/SVG)' });
+      }
+      savedBrandLogo = result;
     }
 
     let settings = await CompanySettings.findOne();

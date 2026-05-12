@@ -200,7 +200,13 @@
       "Bash(awk '{print $5}')",
       "Bash(awk '{print $9, $5, $6, $7, $8}')",
       "Bash(awk NR>=20 && NR<=37 *)",
-      "Bash(awk 'NR>=1 && NR<=20' /tmp/claude-1000/-var-www/5fa708f1-753b-4c55-8f8c-001a610f2b88/tasks/bqxisau1c.output)"
+      "Bash(awk 'NR>=1 && NR<=20' /tmp/claude-1000/-var-www/5fa708f1-753b-4c55-8f8c-001a610f2b88/tasks/bqxisau1c.output)",
+      "Bash(command -v convert)",
+      "Bash(command -v magick)",
+      "Bash(command -v rsvg-convert)",
+      "Bash(command -v inkscape)",
+      "Bash(command -v sharp)",
+      "Bash(npm ls *)"
     ],
     "deny": [],
     "ask": []

@@ -7,6 +7,7 @@ import PageHeader from '../../components/Common/PageHeader';
 import { formatDateTime } from '../../utils/timezone';
 import { useTranslation } from 'react-i18next';
 import DateField from '../../components/Common/DateField';
+import { ActionButton, ActionButtons, IconButton } from '../../components/UI/TableComponents';
 
 interface Reservation {
   id: number;
@@ -32,15 +33,56 @@ const ALLOWED: Record<string, string[]> = {
   completed: [], cancelled: [], no_show: []
 };
 
+// Status badge colors — aligned with ORDER_STATUS_STYLE_GUIDE.md (Tailwind palette)
 const STATUS_COLOR: Record<string, { bg: string; fg: string }> = {
-  pending:   { bg: '#FFF7E6', fg: '#B97D00' },
-  confirmed: { bg: '#E8F5E9', fg: '#2E7D32' },
-  arrived:   { bg: '#E3F2FD', fg: '#1565C0' },
-  seated:    { bg: '#EDE7F6', fg: '#4527A0' },
-  completed: { bg: '#ECEFF1', fg: '#37474F' },
-  cancelled: { bg: '#FFEBEE', fg: '#C62828' },
-  no_show:   { bg: '#FCE4EC', fg: '#AD1457' }
+  pending:   { bg: '#FEF3C7', fg: '#92400E' },  // amber (same as LiveOrders pending)
+  confirmed: { bg: '#D1FAE5', fg: '#065F46' },  // emerald (same as LiveOrders ready)
+  arrived:   { bg: '#DBEAFE', fg: '#1E40AF' },  // blue (same as LiveOrders preparing)
+  seated:    { bg: '#EDE9FE', fg: '#5B21B6' },  // violet
+  completed: { bg: '#E5E7EB', fg: '#374151' },  // gray (same as LiveOrders completed)
+  cancelled: { bg: '#FEE2E2', fg: '#991B1B' },  // red (same as LiveOrders cancelled)
+  no_show:   { bg: '#F3F4F6', fg: '#6B7280' }   // light gray
 };
+
+// Forward-action button colors — LiveOrders 500-level palette (mid-shade, not dark fg)
+const FORWARD_BTN_COLOR: Record<string, string> = {
+  confirmed: '#10B981',  // emerald-500 — LiveOrders' forward action color
+  arrived:   '#635BFF',  // brand purple — main action color
+  seated:    '#8B5CF6',  // violet-500 — exists in LiveOrders codebase
+  completed: '#9CA3AF'   // LiveOrders' served/neutral gray
+};
+
+const ACTION_LABEL: Record<string, string> = {
+  confirmed: 'Confirm',
+  arrived:   'Arrived',
+  seated:    'Seated',
+  completed: 'Completed',
+  no_show:   'No-show',
+  cancelled: 'Cancel'
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  pending:   'Pending',
+  confirmed: 'Confirmed',
+  arrived:   'Arrived',
+  seated:    'Seated',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
+  no_show:   'No-show'
+};
+
+const SOURCE_META: Record<Reservation['source'], { label: string; bg: string; fg: string }> = {
+  customer_mobile: { label: 'Customer',  bg: '#F0EEFF', fg: '#635BFF' },
+  staff_phone:     { label: 'Staff',     bg: '#ECEFF1', fg: '#37474F' },
+  walk_in:         { label: 'Walk-in',   bg: '#FFF3E0', fg: '#E65100' }
+};
+
+type SourceFilter = 'all' | 'customer_mobile' | 'staff';
+const SOURCE_FILTER_OPTIONS: Array<{ key: SourceFilter; label: string }> = [
+  { key: 'all',             label: 'All' },
+  { key: 'customer_mobile', label: 'Customer' },
+  { key: 'staff',           label: 'Staff' }
+];
 
 export default function ReservationsTimelinePage() {
   const { user } = useAuth();
@@ -54,6 +96,21 @@ export default function ReservationsTimelinePage() {
   const [pendingList, setPendingList] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
+
+  // Pending 항목은 위쪽 "Pending approval" 섹션에 이미 노출되므로 Today 에서는 제외
+  const nonPendingList = list.filter(r => r.status !== 'pending');
+  const filteredList = nonPendingList.filter(r => {
+    if (sourceFilter === 'all') return true;
+    if (sourceFilter === 'customer_mobile') return r.source === 'customer_mobile';
+    if (sourceFilter === 'staff') return r.source === 'staff_phone' || r.source === 'walk_in';
+    return true;
+  });
+  const sourceCounts = {
+    all: nonPendingList.length,
+    customer_mobile: nonPendingList.filter(r => r.source === 'customer_mobile').length,
+    staff: nonPendingList.filter(r => r.source === 'staff_phone' || r.source === 'walk_in').length
+  };
 
   const reload = useCallback(async () => {
     if (!restaurantId) return;
@@ -110,7 +167,9 @@ export default function ReservationsTimelinePage() {
                 </tr>
               </thead>
               <tbody>
-                {pendingList.map(r => (
+                {pendingList.map(r => {
+                  const src = SOURCE_META[r.source];
+                  return (
                   <tr key={r.id}>
                     <Td>{formatDateTime(r.reserved_at, tz)}</Td>
                     <Td>
@@ -118,37 +177,60 @@ export default function ReservationsTimelinePage() {
                       <Hint>{r.guest_phone}</Hint>
                     </Td>
                     <Td>{r.party_size}</Td>
-                    <Td>{r.source.replace('_', ' ')}</Td>
+                    <Td><SourceBadge style={{ background: src.bg, color: src.fg }}>{src.label}</SourceBadge></Td>
                     <Td><Hint>{r.notes || '—'}</Hint></Td>
                     <Td>
-                      <ActionBtn variant="primary" onClick={() => changeStatus(r.id, 'confirmed')}>Confirm</ActionBtn>
-                      <ActionBtn onClick={() => changeStatus(r.id, 'cancelled')}>Decline</ActionBtn>
+                      <ActionButtons>
+                        <ActionButton
+                          onClick={() => changeStatus(r.id, 'confirmed')}
+                          style={{ background: FORWARD_BTN_COLOR.confirmed, borderColor: FORWARD_BTN_COLOR.confirmed, color: 'white' }}
+                        >Confirm</ActionButton>
+                        <IconButton onClick={() => changeStatus(r.id, 'cancelled')} title="Decline">×</IconButton>
+                      </ActionButtons>
                     </Td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </Table>
           </Section>
         )}
 
         <Section>
-          <SectionTitle>
-            {date === today ? 'Today' : date} <Badge>{list.length}</Badge>
-          </SectionTitle>
+          <SectionHeader>
+            <SectionTitle>
+              {date === today ? 'Today' : date} <Badge>{filteredList.length}</Badge>
+            </SectionTitle>
+            <FilterChips>
+              {SOURCE_FILTER_OPTIONS.map(opt => (
+                <FilterChip
+                  key={opt.key}
+                  active={sourceFilter === opt.key}
+                  onClick={() => setSourceFilter(opt.key)}
+                >
+                  {opt.label}
+                  <ChipCount>{sourceCounts[opt.key]}</ChipCount>
+                </FilterChip>
+              ))}
+            </FilterChips>
+          </SectionHeader>
           {loading ? (
             <Empty>Loading…</Empty>
           ) : list.length === 0 ? (
             <Empty>No reservations on this date.</Empty>
+          ) : filteredList.length === 0 ? (
+            <Empty>No reservations match this filter.</Empty>
           ) : (
             <Table>
               <thead>
                 <tr>
-                  <Th>Time</Th><Th>Guest</Th><Th>Party</Th><Th>Status</Th><Th>Table</Th><Th>Actions</Th>
+                  <Th>Time</Th><Th>Guest</Th><Th>Party</Th><Th>Source</Th><Th>Status</Th><Th>Table</Th><Th>Actions</Th>
                 </tr>
               </thead>
               <tbody>
-                {list.map(r => {
+                {filteredList.map(r => {
                   const color = STATUS_COLOR[r.status];
+                  const src = SOURCE_META[r.source];
                   const next = ALLOWED[r.status] || [];
                   return (
                     <tr key={r.id}>
@@ -159,15 +241,36 @@ export default function ReservationsTimelinePage() {
                       </Td>
                       <Td>{r.party_size}</Td>
                       <Td>
-                        <StatusBadge style={{ background: color.bg, color: color.fg }}>{r.status}</StatusBadge>
+                        <SourceBadge style={{ background: src.bg, color: src.fg }}>{src.label}</SourceBadge>
+                      </Td>
+                      <Td>
+                        <StatusBadge style={{ background: color.bg, color: color.fg }}>{STATUS_LABEL[r.status] || r.status}</StatusBadge>
                       </Td>
                       <Td>{r.table_number || '—'}</Td>
                       <Td>
-                        {next.map(s => (
-                          <ActionBtn key={s} onClick={() => changeStatus(r.id, s)} variant={s === 'cancelled' || s === 'no_show' ? undefined : 'primary'}>
-                            {s.replace('_', ' ')}
-                          </ActionBtn>
-                        ))}
+                        <ActionButtons>
+                          {next.filter(s => s !== 'cancelled' && s !== 'no_show').map(s => {
+                            const color = FORWARD_BTN_COLOR[s];
+                            return (
+                              <ActionButton
+                                key={s}
+                                onClick={() => changeStatus(r.id, s)}
+                                style={{ background: color, borderColor: color, color: 'white' }}
+                              >
+                                {ACTION_LABEL[s] || s}
+                              </ActionButton>
+                            );
+                          })}
+                          {next.includes('no_show') && (
+                            <ActionButton
+                              onClick={() => changeStatus(r.id, 'no_show')}
+                              style={{ background: '#F6F9FC', borderColor: '#E6EBF1', color: '#6B7C93' }}
+                            >{ACTION_LABEL.no_show}</ActionButton>
+                          )}
+                          {next.includes('cancelled') && (
+                            <IconButton onClick={() => changeStatus(r.id, 'cancelled')} title="Cancel reservation">×</IconButton>
+                          )}
+                        </ActionButtons>
                       </Td>
                     </tr>
                   );
@@ -257,19 +360,31 @@ const Container = styled.div`background:#FAFBFC;min-height:100vh;`;
 const PrimaryBtn = styled.button`padding:8px 16px;background:#635BFF;color:white;border:none;border-radius:6px;font-size:14px;font-weight:500;cursor:pointer;&:hover{background:#5A51E6;}`;
 const Content = styled.main`padding:24px 32px;@media(max-width:768px){padding:16px;}`;
 const Section = styled.section`background:white;border:1px solid #E6EBF1;border-radius:12px;padding:20px 24px;margin-bottom:24px;`;
-const SectionTitle = styled.h2`font-size:16px;font-weight:600;color:#0A2540;margin:0 0 16px;display:flex;align-items:center;gap:8px;`;
+const SectionHeader = styled.div`display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px;flex-wrap:wrap;`;
+const SectionTitle = styled.h2`font-size:16px;font-weight:600;color:#0A2540;margin:0 0 16px;display:flex;align-items:center;gap:8px;${SectionHeader} &{margin:0;}`;
 const Badge = styled.span`background:#F0EEFF;color:#635BFF;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:600;`;
+const FilterChips = styled.div`display:flex;gap:6px;`;
+const FilterChip = styled.button<{ active?: boolean }>`
+  display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:18px;font-size:13px;font-weight:500;cursor:pointer;
+  background:${p => p.active ? '#635BFF' : 'white'};
+  color:${p => p.active ? 'white' : '#6B7C93'};
+  border:1px solid ${p => p.active ? '#635BFF' : '#E6EBF1'};
+  &:hover{background:${p => p.active ? '#5A51E6' : '#F6F9FC'};}
+`;
+const ChipCount = styled.span`display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:600;background:rgba(0,0,0,0.08);color:inherit;`;
+const SourceBadge = styled.span`display:inline-block;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;`;
 const Table = styled.table`width:100%;border-collapse:collapse;`;
 const Th = styled.th`text-align:left;font-size:12px;font-weight:600;color:#6B7C93;text-transform:uppercase;letter-spacing:0.04em;padding:10px 12px;border-bottom:1px solid #E6EBF1;`;
 const Td = styled.td`padding:14px 12px;border-bottom:1px solid #F0F4F8;font-size:14px;color:#0A2540;vertical-align:top;`;
 const Hint = styled.div`color:#6B7C93;font-size:12px;margin-top:2px;`;
 const StatusBadge = styled.span`display:inline-block;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;text-transform:capitalize;`;
 const ActionBtn = styled.button<{ variant?: 'primary' }>`
-  padding:6px 12px;margin-right:6px;border-radius:6px;border:1px solid #E6EBF1;font-size:13px;cursor:pointer;
+  padding:6px 12px;margin-right:6px;border-radius:6px;border:1px solid #E6EBF1;font-size:13px;font-weight:500;cursor:pointer;
   background:${p => p.variant === 'primary' ? '#635BFF' : 'white'};
   color:${p => p.variant === 'primary' ? 'white' : '#6B7C93'};
   border-color:${p => p.variant === 'primary' ? '#635BFF' : '#E6EBF1'};
-  &:hover{background:${p => p.variant === 'primary' ? '#5A51E6' : '#F6F9FC'};}
+  text-transform:capitalize;transition:opacity 0.15s;
+  &:hover{opacity:0.85;}
   &:disabled{opacity:0.5;cursor:not-allowed;}
 `;
 const Empty = styled.div`text-align:center;padding:48px 20px;color:#6B7C93;font-size:14px;`;

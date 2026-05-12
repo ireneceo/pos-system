@@ -240,20 +240,45 @@ Step 6: 확정 → ReservationShare (wa.me + navigator.share) + 푸시 + 이메�
 ### 4-D. ReservationsTimelinePage (운영)
 
 ```
-┌─ Pending 큐 (sticky 상단) ──────────────────────┐
+┌─ Pending approval (status='pending', 날짜 무관) ┐
 │ [예약 대기 3건]                                  │
-│ ┌─ 김철수 / 4명 / 19:00 / "VIP" ────────[승인][거절] ┐
+│ ┌─ 김철수 / 4명 / 19:00 / "VIP" ────[Confirm][×] ┐
 │ ┌─ ...                                           ┘
 └─────────────────────────────────────────────────┘
-┌─ 오늘 timeline (시간순) ────────────────────────┐
-│ 17:00  ──────────────────────────────           │
-│   김미나 / 2명 / T-3 / arrived  [seated]        │
-│ 18:00  ──────────────────────────────           │
-│   박지훈 / 6명 / 미배정 / confirmed [check-in] │
+┌─ Today (날짜 선택) [All|Customer|Staff 필터chip] ┐
+│ 17:00  Source: Customer                          │
+│   김미나 / 2명 / T-3 / arrived  [Seated][No-show][×] │
+│ 18:00  Source: Staff                             │
+│   박지훈 / 6명 / 미배정 / confirmed [Arrived][No-show][×] │
 └─────────────────────────────────────────────────┘
 ```
 
-상태 색상: pending=노랑 / confirmed=초록 / arrived=파랑 / seated=보라 / no_show=회색.
+#### 4-D-1. 색상 (Tailwind 팔레트, ORDER_STATUS_STYLE_GUIDE 와 동일 시스템)
+
+| status | badge bg | badge fg | forward 액션 버튼 색 |
+|--------|----------|----------|----------------------|
+| pending   | `#FEF3C7` amber-100  | `#92400E` amber-900   | (Confirm) → `#10B981` emerald-500 |
+| confirmed | `#D1FAE5` emerald-100 | `#065F46` emerald-900 | (Arrived) → `#635BFF` 브랜드 메인 |
+| arrived   | `#DBEAFE` blue-100   | `#1E40AF` blue-900    | (Seated) → `#8B5CF6` violet-500 |
+| seated    | `#EDE9FE` violet-100 | `#5B21B6` violet-900  | (Completed) → `#9CA3AF` gray |
+| completed | `#E5E7EB` gray-100   | `#374151` gray-700    | — |
+| cancelled | `#FEE2E2` red-100    | `#991B1B` red-900     | — |
+| no_show   | `#F3F4F6` lightgray  | `#6B7280` gray-500    | — |
+
+**Cancel / No-show 버튼**: LiveOrders 연회색 (`#F6F9FC` bg / `#6B7C93` fg / `#E6EBF1` border) — Cancel 은 `IconButton variant=default` `×`, No-show 는 `ActionButton` 인라인 style.
+
+#### 4-D-2. Source 컬럼 + 필터
+
+Source 뱃지: Customer (보라) / Staff (회색) / Walk-in (주황). 필터 chip 3 종 (All / Customer / Staff — staff_phone + walk_in 합산 카운트).
+
+#### 4-D-3. Pending 분리 규칙
+
+Today 섹션은 `status='pending'` 항목 필터 아웃. Pending 은 위쪽 "Pending approval" 섹션에서만 처리 (날짜 무관 cross-date). 같은 row 중복 노출 방지.
+
+#### 4-D-4. 라벨
+
+ACTION_LABEL: `confirmed→Confirm` / `arrived→Arrived` / `seated→Seated` / `completed→Completed` / `no_show→No-show` / `cancelled→Cancel`.
+STATUS_LABEL: 동일 + `pending→Pending` / `cancelled→Cancelled`. underscore 처리 (`no_show → No-show`).
 
 ### 4-E. Settings 'reservation' 탭
 
