@@ -78,8 +78,11 @@ export default function ReservationPage() {
     setLoading(true); setError(null);
     try {
       // Guest 경로: customer record 와 token 을 즉석에서 생성 (전자상거래 표준 guest checkout).
-      // mobileToken 이 없으면 /api/customers/register 로 type='guest' Customer 생성 + 토큰 발급.
-      let token = getMobileToken();
+      // OrderTypePage 가 설정하는 'guest_xxxxx' 로컬 토큰은 customer JWT 가 아니라 backend 가
+      // 거부 (401) 하므로, JWT 형식이 아니면 토큰이 없는 것으로 간주하고 register 흐름 진입.
+      const existing = getMobileToken();
+      const isCustomerJwt = existing && existing.split('.').length === 3 && !existing.startsWith('guest_');
+      let token = isCustomerJwt ? existing : null;
       if (!token && activeTab === 'guest' && !currentCustomer) {
         const regRes = await mobileFetch('/api/customers/register', {
           method: 'POST',
