@@ -10,6 +10,7 @@ const Reservation = require('../models/Reservation');
 const Restaurant = require('../models/Restaurant');
 const RestaurantCustomer = require('../models/RestaurantCustomer');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
+const { getRestaurantTimezone, getDateBounds, getCurrentLocalDate } = require('../utils/dateTimeHelper');
 
 // ────────────────────────────────────────────────────────────────────────────
 // GET /restaurant/:restaurant_id?date=&status=
@@ -17,14 +18,18 @@ const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth
 router.get('/restaurant/:restaurant_id', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const restaurantId = parseInt(req.params.restaurant_id);
-    const date = req.query.date || new Date().toISOString().slice(0, 10);
+    const restaurant = await Restaurant.findByPk(restaurantId);
+    if (!restaurant) return res.status(404).json({ success: false, message: 'Restaurant not found' });
+
+    const tz = getRestaurantTimezone(restaurant);
+    const date = req.query.date || getCurrentLocalDate(tz);
     const status = req.query.status;
     const where = { restaurant_id: restaurantId };
     if (status) where.status = status;
     if (!status || status === 'today') {
-      where.reserved_at = {
-        [Op.between]: [new Date(date + 'T00:00:00'), new Date(date + 'T23:59:59')]
-      };
+      // 레스토랑 timezone 기준 하루의 UTC bounds 로 검색
+      const { startOfDay, endOfDay } = getDateBounds(date, tz);
+      where.reserved_at = { [Op.between]: [startOfDay, endOfDay] };
     }
     const list = await Reservation.findAll({ where, order: [['reserved_at', 'ASC']] });
     res.json({ success: true, data: list });

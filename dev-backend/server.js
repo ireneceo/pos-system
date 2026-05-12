@@ -480,16 +480,65 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 3000;
 
 async function startServer() {
-  try {
-    // DB sync with 10 second timeout
-    await Promise.race([
-      syncDatabase(),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Database sync timeout after 10s')), 10000))
-    ]);
-    console.log('✓ Database synchronized successfully');
-  } catch (error) {
-    console.error('⚠️  Database sync failed, but continuing to start server:', error.message);
-    console.log('📝 Note: Database sync error is expected due to MySQL key limit issue or network timeout');
+  // sequelize.sync() 가 매 실행마다 중복 unique 인덱스를 누적해 64-key 한도를
+  // 터뜨리는 결함이 있어, 기본적으로 startup sync 를 끄고 인덱스 정리만 수행한다.
+  // 스키마 변경이 필요하면 `node sync-database.js --alter` 를 명시적으로 실행.
+  const RUN_STARTUP_SYNC = process.env.STARTUP_DB_SYNC === 'true';
+  if (RUN_STARTUP_SYNC) {
+    try {
+      await Promise.race([
+        syncDatabase(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Database sync timeout after 10s')), 10000))
+      ]);
+      console.log('✓ Database synchronized successfully');
+    } catch (error) {
+      console.error('⚠️  Database sync failed, but continuing to start server:', error.message);
+    }
+  } else {
+    // sync 는 건너뛰되, 누적된 중복 인덱스만 정리.
+    try {
+      const { sequelize: seq } = require('./config/database');
+      const [rows] = await seq.query(`
+        SELECT TABLE_NAME, INDEX_NAME, NON_UNIQUE,
+               GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX) AS cols
+        FROM information_schema.STATISTICS
+        WHERE TABLE_SCHEMA = DATABASE() AND INDEX_NAME <> 'PRIMARY'
+        GROUP BY TABLE_NAME, INDEX_NAME, NON_UNIQUE
+      `);
+      const groups = new Map();
+      for (const r of rows) {
+        const key = `${r.TABLE_NAME}::${r.cols}::${r.NON_UNIQUE}`;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(r);
+      }
+      const dropsByTable = {};
+      for (const indexes of groups.values()) {
+        if (indexes.length <= 1) continue;
+        indexes.sort((a, b) => {
+          const aN = /_\d+$/.test(a.INDEX_NAME);
+          const bN = /_\d+$/.test(b.INDEX_NAME);
+          if (aN !== bN) return aN ? 1 : -1;
+          return a.INDEX_NAME.length - b.INDEX_NAME.length;
+        });
+        const [, ...dupes] = indexes;
+        for (const d of dupes) {
+          if (!dropsByTable[d.TABLE_NAME]) dropsByTable[d.TABLE_NAME] = [];
+          dropsByTable[d.TABLE_NAME].push(d.INDEX_NAME);
+        }
+      }
+      if (Object.keys(dropsByTable).length > 0) {
+        await seq.query('SET FOREIGN_KEY_CHECKS = 0');
+        let total = 0;
+        for (const [table, indexes] of Object.entries(dropsByTable)) {
+          const clauses = indexes.map(i => `DROP INDEX \`${i}\``).join(', ');
+          try { await seq.query(`ALTER TABLE \`${table}\` ${clauses}`); total += indexes.length; } catch (_) {}
+        }
+        await seq.query('SET FOREIGN_KEY_CHECKS = 1');
+        if (total > 0) console.log(`✓ 중복 인덱스 ${total}개 자동 정리`);
+      }
+    } catch (e) {
+      console.warn('⚠️ 중복 인덱스 정리 스킵:', e.message);
+    }
   }
 
   try {

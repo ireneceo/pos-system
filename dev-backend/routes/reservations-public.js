@@ -13,6 +13,7 @@ const Restaurant = require('../models/Restaurant');
 const RestaurantCustomer = require('../models/RestaurantCustomer');
 const { authenticateCustomer } = require('../middleware/customerAuth');
 const { requireRestaurantModule } = require('../middleware/requireModule');
+const { getRestaurantTimezone, getDateBounds, localClockToUTC, formatTimeInTZ } = require('../utils/dateTimeHelper');
 
 // ────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -26,15 +27,17 @@ function isWithinPolicy(reservedAt, hoursBefore) {
 }
 
 async function calcSlotAvailability(restaurant, date, partySize) {
-  // R1 MVP: 단순 계산 — 같은 시간대 (turn_time 윈도우) 의 confirmed/pending 합 + 본 예약 < max_covers_per_slot
+  // R1 MVP: 같은 시간대 (turn_time 윈도우) 의 confirmed/pending 합 + 본 예약 < max_covers_per_slot
+  // 모든 시각은 레스토랑 timezone(operation_settings.timeZone) 의 local clock 으로 해석.
   const settings = getReservationSettings(restaurant);
   const slot = settings?.slot || {};
   const turnMin = slot.turn_time_minutes || 90;
   const slotMin = slot.duration_minutes || 30;
   const maxCovers = slot.max_covers_per_slot || 40;
 
-  const dayStart = new Date(date + 'T00:00:00');
-  const dayEnd = new Date(date + 'T23:59:59');
+  const tz = getRestaurantTimezone(restaurant);
+  const { startOfDay: dayStart, endOfDay: dayEnd } = getDateBounds(date, tz);
+
   const existing = await Reservation.findAll({
     where: {
       restaurant_id: restaurant.id,
@@ -45,16 +48,14 @@ async function calcSlotAvailability(restaurant, date, partySize) {
     raw: true
   });
 
-  // 영업시간 — operation_settings.openingTime / closingTime (HH:MM) fallback
+  // 영업시간 — operation_settings.openingTime / closingTime (HH:MM) — restaurant local clock
   const op = restaurant.operation_settings || {};
   const open = op.openingTime || '11:00';
   const close = op.closingTime || '22:00';
-  const [oh, om] = open.split(':').map(Number);
-  const [ch, cm] = close.split(':').map(Number);
 
   const slots = [];
-  let cur = new Date(date + 'T' + open + ':00');
-  const end = new Date(date + 'T' + close + ':00');
+  let cur = localClockToUTC(date, open, tz);
+  const end = localClockToUTC(date, close, tz);
   while (cur < end) {
     const slotEnd = new Date(cur.getTime() + slotMin * 60000);
     const overlapping = existing.filter(r => {
@@ -66,7 +67,7 @@ async function calcSlotAvailability(restaurant, date, partySize) {
     const available = maxCovers - covers;
     slots.push({
       time: cur.toISOString(),
-      label: `${String(cur.getHours()).padStart(2, '0')}:${String(cur.getMinutes()).padStart(2, '0')}`,
+      label: formatTimeInTZ(cur, tz),
       available_covers: available,
       can_book: available >= partySize,
       status: available <= 0 ? 'full' : available < 5 ? 'few_left' : 'open'
@@ -138,8 +139,9 @@ router.post('/', authenticateCustomer, async (req, res) => {
       return res.status(400).json({ success: false, message: `Reservation must be at least ${minHours}h in advance` });
     }
 
-    // 슬롯 캐파 검증
-    const date = String(reserved_at).slice(0, 10);
+    // 슬롯 캐파 검증 — 레스토랑 timezone 기준 local date 로 슬롯 생성
+    const tz = getRestaurantTimezone(restaurant);
+    const date = new Date(reserved_at).toLocaleDateString('en-CA', { timeZone: tz });
     const slots = await calcSlotAvailability(restaurant, date, party_size);
     const targetTime = new Date(reserved_at).toISOString().slice(0, 16);
     const matched = slots.find(s => s.time.slice(0, 16) === targetTime);

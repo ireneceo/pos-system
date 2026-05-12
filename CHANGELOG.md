@@ -6,6 +6,18 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+### 2026-05-12 — backend 안정화 + 예약 timezone 정상화
+
+- **DB 중복 unique 인덱스 일괄 정리** — `users` 64-key 한도 임박 (`username_2`/`email_3`/...). 전체 19 테이블 521건 정리 (`scripts/cleanup-duplicate-indexes.js` 신규)
+- **`sequelize.sync()` startup 비활성화** — 매 재시작마다 unique 인덱스 누적 추가 결함. 기본 OFF, `STARTUP_DB_SYNC=true` 로만 활성. 미실행 시 인덱스 정리만 자동 수행
+- `node sync-database.js` 안전 모드 추가 — `--alter` 명시 시에만 실행, 직후 자동 중복 정리
+- **`push.js` IPv6 rate-limit** — `keyGenerator` 가 `req.ip` 그대로 사용 → `ipKeyGenerator(req.ip)` 로 IPv6 정규화. 미적용 시 라우트 등록 실패
+- **Foodcourt General Reports 라우트 차단 버그 fix** — `fc_stats` 모듈 ui_routes 가 `/pos/foodcourt/general/stats` (미존재) 였던 결함. React route 매칭 `/pos/foodcourt/general/reports` 로 갱신
+- **예약 슬롯 생성 timezone 정상화** — `calcSlotAvailability` 가 server-local (UTC) 로 시간을 해석하던 결함. 레스토랑 `operation_settings.timeZone` 으로 일자/슬롯 산출. `dateTimeHelper` 에 `localClockToUTC` / `formatTimeInTZ` 추가
+- 예약 스태프 list API (`GET /reservations/restaurant/:id`) 일자 필터도 동일하게 레스토랑 timezone 기준 UTC bounds 사용
+- 예약 시드 데이터 (restaurant_id=5, KR) 5건 정상화 — `at(19,30)` UTC → 10:30 UTC (KST 19:30 표시)
+- health-check.js — DB 카테고리 추가 (인덱스 ≤ 15, 동일 컬럼 중복 0건). 총 78 → 80 케이스
+
 ### 2026-05-12
 
 - 예약 페이지 (ReservationsTimelinePage) 에 Source 컬럼 + 필터 chip (All / Customer / Staff) 추가 — 고객이 직접 넣은 예약과 직원이 입력한 예약 구분

@@ -525,6 +525,39 @@ function defineReservationTests({ customerToken }) {
   });
 }
 
+// DB 무결성 — Sequelize sync 가 누적 추가하는 중복 unique index 조기 감지.
+// 한 컬럼당 unique 인덱스가 2 개 이상 쌓이면 MySQL 64-key 한도가 임박.
+function defineDbTests() {
+  test('db', 'users 테이블 인덱스 수 ≤ 15 (중복 unique 누적 차단)', async () => {
+    const { sequelize } = require('../config/database');
+    const [rows] = await sequelize.query(`
+      SELECT COUNT(*) AS n FROM information_schema.STATISTICS
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND INDEX_NAME <> 'PRIMARY'
+    `);
+    return rows[0]?.n <= 15;
+  });
+
+  test('db', '동일 컬럼·uniqueness 중복 인덱스 0건', async () => {
+    const { sequelize } = require('../config/database');
+    const [rows] = await sequelize.query(`
+      SELECT TABLE_NAME, INDEX_NAME, NON_UNIQUE,
+             GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX) AS cols
+      FROM information_schema.STATISTICS
+      WHERE TABLE_SCHEMA = DATABASE() AND INDEX_NAME <> 'PRIMARY'
+      GROUP BY TABLE_NAME, INDEX_NAME, NON_UNIQUE
+    `);
+    const seen = new Map();
+    for (const r of rows) {
+      const key = `${r.TABLE_NAME}::${r.cols}::${r.NON_UNIQUE}`;
+      seen.set(key, (seen.get(key) || 0) + 1);
+    }
+    for (const [, n] of seen) {
+      if (n > 1) return false;
+    }
+    return true;
+  });
+}
+
 function definePaymentTests() {
   test('payment', '없는 주문 create-payment-intent → 404', async () => {
     return (await request('POST', '/orders/99999999/create-payment-intent', {})).status === 404;
@@ -703,6 +736,7 @@ async function runTests(allTests, category) {
   defineReservationTests(ctx);
   definePaymentTests();
   defineReferralTests(ctx);
+  defineDbTests();
 
   const allPass = await runTests(tests, opts.category);
   process.exit(allPass ? 0 : 1);

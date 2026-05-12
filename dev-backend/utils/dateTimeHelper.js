@@ -216,6 +216,36 @@ function formatMonthKey(date) {
 }
 
 /**
+ * Convert a local-clock moment (YYYY-MM-DD + HH:mm) in a given timezone
+ * to a UTC Date suitable for DB storage / comparison.
+ *
+ *   localClockToUTC('2026-05-13', '19:30', 'Asia/Kuala_Lumpur')
+ *   → Date for 2026-05-13T11:30:00.000Z
+ *
+ * Used by reservation slot generation where openingTime/closingTime are
+ * expressed in the restaurant's local clock.
+ */
+function localClockToUTC(dateStr, hhmm, timeZone = DEFAULT_TZ) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const [hh, mm] = hhmm.split(':').map(Number);
+  return _localToUTC(y, m - 1, d, hh, mm, 0, 0, timeZone);
+}
+
+/**
+ * Format a Date (or ISO string) as HH:mm in a given timezone.
+ *   formatTimeInTZ(new Date('2026-05-13T11:30Z'), 'Asia/Kuala_Lumpur') → '19:30'
+ */
+function formatTimeInTZ(dateOrIso, timeZone = DEFAULT_TZ) {
+  const d = dateOrIso instanceof Date ? dateOrIso : new Date(dateOrIso);
+  return d.toLocaleTimeString('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone
+  });
+}
+
+/**
  * Get timezone from restaurant operation settings
  */
 function getRestaurantTimezone(restaurant) {
@@ -262,6 +292,8 @@ module.exports = {
   getPeriodBounds,
   formatDateISO,
   formatMonthKey,
+  localClockToUTC,
+  formatTimeInTZ,
   getRestaurantTimezone,
   getSiteTimezone
 };

@@ -13,6 +13,7 @@
 const express = require('express');
 const router = express.Router();
 const rateLimit = require('express-rate-limit');
+const { ipKeyGenerator } = require('express-rate-limit');
 const { Op, fn, col, literal } = require('sequelize');
 const { authenticateToken, requireRole } = require('../middleware/auth');
 const PushSubscription = require('../models/PushSubscription');
@@ -24,7 +25,7 @@ const pushService = require('../services/pushService');
 const testLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 5,
-  keyGenerator: (req) => (req.user && req.user.id) ? `push-test-${req.user.id}` : req.ip,
+  keyGenerator: (req) => (req.user && req.user.id) ? `push-test-${req.user.id}` : ipKeyGenerator(req.ip),
   message: { success: false, message: 'Too many test pushes, max 5/min' },
   standardHeaders: true,
   legacyHeaders: false

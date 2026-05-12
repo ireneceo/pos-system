@@ -1,11 +1,60 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-05-12 (예약 UI Source 컬럼/액션버튼 LiveOrders 정렬 + SVG favicon 업로드 버그 fix + 앱 아이콘 교체)
+> **최종 업데이트:** 2026-05-12 (Backend 안정화: DB 중복 인덱스 521건 정리 + sequelize.sync OFF + 예약 timezone 정상화)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 > **현재 버전:** **v3.28** (2026-05-10 운영 배포 + Unreleased 누적)
 
-## ✅ 완료: 예약 UI 정렬 + SVG favicon 버그 fix + 앱 아이콘 교체 (2026-05-12, 미배포)
+## ✅ 완료: Backend 안정화 + 예약 timezone 정상화 (2026-05-12 후반, 미배포)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| **DB 중복 unique 인덱스 521건 정리** | `users` 64-key 한도 임박 (`username_2`/`email_3`/... 19 테이블 누적). `scripts/cleanup-duplicate-indexes.js` (dry-run + apply) | ✓ |
+| **`sequelize.sync()` startup OFF** | 매 재시작마다 unique 인덱스 누적 추가하던 결함. 기본 비활성 + 인덱스 자동 정리 (`STARTUP_DB_SYNC=true` 옵트인) | ✓ |
+| **`sync-database.js` 안전 모드** | `--alter` 명시 시에만 ALTER + 직후 자동 중복 정리 | ✓ |
+| **push.js IPv6 rate-limit fix** | `keyGenerator` → `ipKeyGenerator(req.ip)`. 미적용 시 push 라우트 등록 실패 (express-rate-limit 8+) | ✓ |
+| **Foodcourt Reports 라우트 차단 버그 fix** | `addon_modules.fc_stats.ui_routes` 매핑 오류 (`/stats` → `/reports`) | ✓ |
+| **예약 슬롯 생성 timezone 정상화** | `calcSlotAvailability` 가 server-local (UTC) 로 영업시간 해석하던 결함. 레스토랑 timezone 으로 모두 변환 | ✓ |
+| `dateTimeHelper.localClockToUTC` / `formatTimeInTZ` 헬퍼 추가 | (YYYY-MM-DD, HH:mm, tz) → UTC, Date → HH:mm in tz | ✓ |
+| 예약 스태프 list API timezone 정상화 | `GET /reservations/restaurant/:id` 일자 필터 → `getDateBounds(date, tz)` | ✓ |
+| 예약 시드 데이터 정상화 | restaurant_id=5 (KR) 5건 — UTC 19:30 → 10:30 (KST 19:30 표시) | ✓ |
+| health-check.js DB 카테고리 신규 | 인덱스 ≤ 15, 동일 컬럼·uniqueness 중복 0건. 78 → 80 케이스 | ✓ |
+| Test3 (kdine-korean) reservation_settings 활성화 | 모바일 OrderTypePage 에 "📅 Reserve a Table" 카드 노출 | ✓ |
+
+### 검증
+- 빌드 main.6471d9fd.js (exit 0, 0 신규 경고)
+- Health-check 80/80 통과
+- /api/reservations/availability/8?date=2026-05-13&party=2 → 26 슬롯, label 09:00 (= 01:00 UTC + 8h MY) 정상
+- pm2 restart 후 ER_TOO_MANY_KEYS 사라짐, 인덱스 정상 유지 (auto-purge 동작)
+- DB 사전 백업 `backups/dev-daily/20260512/purple_dev_db_pre_index_cleanup.sql` (8.8M)
+
+### 수정된 파일
+
+**Backend (6)**
+- `dev-backend/db.js` — `purgeDuplicateIndexes()` 추가
+- `dev-backend/server.js` — startup sync 기본 OFF + 인덱스 정리
+- `dev-backend/sync-database.js` — 안전 모드 (`--alter` 옵트인) + 자동 정리
+- `dev-backend/routes/push.js` — `ipKeyGenerator` 적용
+- `dev-backend/routes/reservations-public.js` — 슬롯 생성 timezone
+- `dev-backend/routes/reservations-staff.js` — list API timezone
+- `dev-backend/utils/dateTimeHelper.js` — `localClockToUTC` / `formatTimeInTZ` 추가
+- `dev-backend/scripts/health-check.js` — DB 카테고리 신규
+- `dev-backend/scripts/cleanup-duplicate-indexes.js` — 신규 (dry-run / --apply)
+
+**DB**
+- `addon_modules.fc_stats.ui_routes` → `/pos/foodcourt/general/reports`
+- `restaurants[5].reservation_settings` 활성화 (kdine-korean)
+- `reservations[105-109]` reserved_at -9h 시프트 (KST 정상화)
+
+### Known Issue / 후속
+- 운영 DB 도 동일 정리 필요 (배포 명령 시 cleanup-duplicate-indexes.js 실행)
+- `_localToUTC` 가 `now` 기준 offset 사용 → DST 전환 시점 ±1h 오차 가능 (MY/KR/SG 무영향)
+
+---
+
+## ✅ 완료: 예약 UI 정렬 + SVG favicon 버그 fix + 앱 아이콘 교체 (2026-05-12 전반, 미배포)
 
 ### 완료된 작업
 
