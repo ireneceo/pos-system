@@ -84,19 +84,39 @@ const SOURCE_FILTER_OPTIONS: Array<{ key: SourceFilter; label: string }> = [
   { key: 'staff',           label: 'Staff' }
 ];
 
+interface FloorTable {
+  id: string;
+  tableNumber: string;
+  label: string;
+  seats: number;
+  tableType?: string;
+}
+
+function todayInTz(tz: string): string {
+  return new Date().toLocaleDateString('en-CA', { timeZone: tz });
+}
+function tomorrowInTz(tz: string): string {
+  const t = new Date();
+  t.setDate(t.getDate() + 1);
+  return t.toLocaleDateString('en-CA', { timeZone: tz });
+}
+
 export default function ReservationsTimelinePage() {
   const { user } = useAuth();
   const { storeInfo } = useStore();
   const { t } = useTranslation();
   const tz = storeInfo?.timeZone || 'Asia/Kuala_Lumpur';
   const restaurantId = user?.restaurantId ? Number(user.restaurantId) : undefined;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayInTz(tz);
+  const tomorrow = tomorrowInTz(tz);
   const [date, setDate] = useState(today);
   const [list, setList] = useState<Reservation[]>([]);
   const [pendingList, setPendingList] = useState<Reservation[]>([]);
+  const [tables, setTables] = useState<FloorTable[]>([]);
   const [loading, setLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
+  const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
 
   // Pending 항목은 위쪽 "Pending approval" 섹션에 이미 노출되므로 Today 에서는 제외
   const nonPendingList = list.filter(r => r.status !== 'pending');
@@ -131,6 +151,20 @@ export default function ReservationsTimelinePage() {
 
   useEffect(() => { reload(); }, [reload]);
 
+  // FloorPlan 의 정의된 테이블을 로드하여 예약 생성 / 배정 시 선택지로 제공
+  useEffect(() => {
+    if (!restaurantId) return;
+    const token = getAuthToken();
+    fetch(`/api/restaurants/${restaurantId}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(j => {
+        const fp = j?.data?.floor_plan || j?.floor_plan;
+        const arr = (fp?.tables || []).filter((t: any) => !t.tableType || t.tableType === 'table');
+        setTables(arr);
+      })
+      .catch(() => setTables([]));
+  }, [restaurantId]);
+
   const changeStatus = async (id: number, status: string) => {
     const token = getAuthToken();
     const res = await fetch(`/api/reservations/${id}/status`, {
@@ -141,6 +175,25 @@ export default function ReservationsTimelinePage() {
     if (res.ok) reload();
   };
 
+  const deleteReservation = async (id: number) => {
+    const token = getAuthToken();
+    const res = await fetch(`/api/reservations/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (res.ok) { setConfirmDelete(null); reload(); }
+  };
+
+  // X 버튼: cancelled 가 아니면 cancel, cancelled 면 두 번째 클릭으로 영구 삭제
+  const handleXClick = (r: Reservation) => {
+    if (r.status !== 'cancelled') {
+      changeStatus(r.id, 'cancelled');
+    } else {
+      // cancelled → confirm delete
+      setConfirmDelete(r.id);
+    }
+  };
+
   return (
     <Container>
       <PageHeader
@@ -148,9 +201,13 @@ export default function ReservationsTimelinePage() {
         settingsHref={restaurantId ? `/restaurant/${restaurantId}/settings?tab=reservation` : undefined}
         settingsLabel="Reservation settings"
       >
-        <div style={{ minWidth: 180 }}>
-          <DateField value={date} onChange={setDate} />
-        </div>
+        <DateChips>
+          <DateChip active={date === today} onClick={() => setDate(today)}>Today</DateChip>
+          <DateChip active={date === tomorrow} onClick={() => setDate(tomorrow)}>Tomorrow</DateChip>
+          <div style={{ minWidth: 160 }}>
+            <DateField value={date} onChange={setDate} />
+          </div>
+        </DateChips>
         <PrimaryBtn onClick={() => setShowCreate(true)}>+ New Reservation</PrimaryBtn>
       </PageHeader>
 
@@ -199,7 +256,7 @@ export default function ReservationsTimelinePage() {
         <Section>
           <SectionHeader>
             <SectionTitle>
-              {date === today ? 'Today' : date} <Badge>{filteredList.length}</Badge>
+              {date === today ? 'Today' : date === tomorrow ? 'Tomorrow' : date} <Badge>{filteredList.length}</Badge>
             </SectionTitle>
             <FilterChips>
               {SOURCE_FILTER_OPTIONS.map(opt => (
@@ -267,8 +324,13 @@ export default function ReservationsTimelinePage() {
                               style={{ background: '#F6F9FC', borderColor: '#E6EBF1', color: '#6B7C93' }}
                             >{ACTION_LABEL.no_show}</ActionButton>
                           )}
-                          {next.includes('cancelled') && (
-                            <IconButton onClick={() => changeStatus(r.id, 'cancelled')} title="Cancel reservation">×</IconButton>
+                          {/* X 버튼 — 첫 클릭: cancel (status 변경), cancelled 행에서 두 번째 클릭: 영구 삭제 */}
+                          {(next.includes('cancelled') || r.status === 'cancelled') && (
+                            <IconButton
+                              onClick={() => handleXClick(r)}
+                              title={r.status === 'cancelled' ? 'Delete permanently' : 'Cancel reservation'}
+                              style={r.status === 'cancelled' ? { color: '#DC2626', borderColor: '#FEE2E2' } : undefined}
+                            >×</IconButton>
                           )}
                         </ActionButtons>
                       </Td>
@@ -285,9 +347,28 @@ export default function ReservationsTimelinePage() {
         <CreateModal
           restaurantId={restaurantId}
           defaultDate={date}
+          tables={tables}
           onClose={() => setShowCreate(false)}
           onCreated={() => { setShowCreate(false); reload(); }}
         />
+      )}
+
+      {confirmDelete !== null && (
+        <Backdrop onClick={() => setConfirmDelete(null)}>
+          <Dialog onClick={e => e.stopPropagation()}>
+            <h2 style={{ margin: '0 0 12px', fontSize: '18px', color: '#0A2540' }}>Delete reservation?</h2>
+            <p style={{ margin: '0 0 20px', color: '#6B7C93', fontSize: '14px' }}>
+              This cancelled reservation will be permanently removed and cannot be recovered.
+            </p>
+            <DialogActions>
+              <ActionBtn onClick={() => setConfirmDelete(null)}>Keep</ActionBtn>
+              <ActionBtn
+                onClick={() => deleteReservation(confirmDelete)}
+                style={{ background: '#DC2626', color: 'white', borderColor: '#DC2626' }}
+              >Delete</ActionBtn>
+            </DialogActions>
+          </Dialog>
+        </Backdrop>
       )}
     </Container>
   );
@@ -296,8 +377,12 @@ export default function ReservationsTimelinePage() {
 // ────────────────────────────────────────────────────────────────────────────
 // Create modal — staff direct create
 // ────────────────────────────────────────────────────────────────────────────
-function CreateModal({ restaurantId, defaultDate, onClose, onCreated }: {
-  restaurantId: number; defaultDate: string; onClose: () => void; onCreated: () => void;
+function CreateModal({ restaurantId, defaultDate, tables, onClose, onCreated }: {
+  restaurantId: number;
+  defaultDate: string;
+  tables: FloorTable[];
+  onClose: () => void;
+  onCreated: () => void;
 }) {
   const [form, setForm] = useState({
     reserved_date: defaultDate,
@@ -307,7 +392,8 @@ function CreateModal({ restaurantId, defaultDate, onClose, onCreated }: {
     guest_phone: '',
     guest_email: '',
     notes: '',
-    table_number: ''
+    table_number: '',
+    source: 'staff_phone' as 'staff_phone' | 'walk_in'
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -333,11 +419,37 @@ function CreateModal({ restaurantId, defaultDate, onClose, onCreated }: {
     <Backdrop onClick={onClose}>
       <Dialog onClick={e => e.stopPropagation()}>
         <h2 style={{ margin: '0 0 16px', fontSize: '18px', color: '#0A2540' }}>New Reservation</h2>
+
+        <SourceSwitch>
+          <SourceSwitchOption
+            active={form.source === 'staff_phone'}
+            onClick={() => setForm({ ...form, source: 'staff_phone' })}
+          >Phone reservation</SourceSwitchOption>
+          <SourceSwitchOption
+            active={form.source === 'walk_in'}
+            onClick={() => setForm({ ...form, source: 'walk_in' })}
+          >Walk-in</SourceSwitchOption>
+        </SourceSwitch>
+
         <FormGrid>
           <Field><Label>Date *</Label><DateField value={form.reserved_date} onChange={v => setForm({ ...form, reserved_date: v })} /></Field>
           <Field><Label>Time *</Label><Input type="time" value={form.reserved_time} onChange={e => setForm({ ...form, reserved_time: e.target.value })} /></Field>
           <Field><Label>Party *</Label><Input type="number" min={1} max={20} value={form.party_size} onChange={e => setForm({ ...form, party_size: parseInt(e.target.value) || 1 })} /></Field>
-          <Field><Label>Table</Label><Input value={form.table_number} onChange={e => setForm({ ...form, table_number: e.target.value })} placeholder="optional" /></Field>
+          <Field>
+            <Label>Table</Label>
+            {tables.length === 0 ? (
+              <Input value={form.table_number} onChange={e => setForm({ ...form, table_number: e.target.value })} placeholder="optional" />
+            ) : (
+              <Select value={form.table_number} onChange={e => setForm({ ...form, table_number: e.target.value })}>
+                <option value="">— No table —</option>
+                {tables.map(t => (
+                  <option key={t.id} value={t.tableNumber}>
+                    {t.label || `Table ${t.tableNumber}`} ({t.seats} seats)
+                  </option>
+                ))}
+              </Select>
+            )}
+          </Field>
           <FieldFull><Label>Guest name *</Label><Input value={form.guest_name} onChange={e => setForm({ ...form, guest_name: e.target.value })} /></FieldFull>
           <Field><Label>Phone *</Label><Input value={form.guest_phone} onChange={e => setForm({ ...form, guest_phone: e.target.value })} /></Field>
           <Field><Label>Email</Label><Input type="email" value={form.guest_email} onChange={e => setForm({ ...form, guest_email: e.target.value })} /></Field>
@@ -395,6 +507,23 @@ const Field = styled.div`display:flex;flex-direction:column;`;
 const FieldFull = styled(Field)`grid-column:1 / -1;`;
 const Label = styled.label`font-size:12px;color:#6B7C93;margin-bottom:6px;font-weight:500;`;
 const Input = styled.input`padding:8px 12px;border:1px solid #E6EBF1;border-radius:6px;font-size:14px;color:#0A2540;&:focus{outline:none;border-color:#635BFF;box-shadow:0 0 0 3px rgba(99,91,255,0.1);}`;
+const Select = styled.select`padding:8px 12px;border:1px solid #E6EBF1;border-radius:6px;font-size:14px;color:#0A2540;background:white;cursor:pointer;&:focus{outline:none;border-color:#635BFF;box-shadow:0 0 0 3px rgba(99,91,255,0.1);}`;
+const DateChips = styled.div`display:flex;align-items:center;gap:8px;`;
+const DateChip = styled.button<{ active?: boolean }>`
+  padding:8px 14px;border-radius:18px;font-size:13px;font-weight:500;cursor:pointer;
+  background:${p => p.active ? '#635BFF' : 'white'};
+  color:${p => p.active ? 'white' : '#6B7C93'};
+  border:1px solid ${p => p.active ? '#635BFF' : '#E6EBF1'};
+  &:hover{background:${p => p.active ? '#5A51E6' : '#F6F9FC'};}
+`;
+const SourceSwitch = styled.div`display:flex;background:#F6F9FC;border-radius:8px;padding:4px;margin-bottom:16px;`;
+const SourceSwitchOption = styled.button<{ active?: boolean }>`
+  flex:1;padding:8px 12px;border:none;background:${p => p.active ? 'white' : 'transparent'};
+  border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;
+  color:${p => p.active ? '#635BFF' : '#6B7C93'};
+  box-shadow:${p => p.active ? '0 1px 3px rgba(0,0,0,0.08)' : 'none'};
+  transition:all 0.15s;
+`;
 const Textarea = styled.textarea`padding:8px 12px;border:1px solid #E6EBF1;border-radius:6px;font-size:14px;color:#0A2540;resize:vertical;font-family:inherit;&:focus{outline:none;border-color:#635BFF;box-shadow:0 0 0 3px rgba(99,91,255,0.1);}`;
 const ErrorMsg = styled.div`margin-top:12px;padding:8px 12px;background:#FFEBEE;color:#C62828;border-radius:6px;font-size:13px;`;
 const DialogActions = styled.div`display:flex;justify-content:flex-end;gap:8px;margin-top:20px;`;
