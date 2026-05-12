@@ -60,7 +60,7 @@ router.get('/restaurant/:restaurant_id/pending', authenticateToken, checkRestaur
 router.post('/restaurant/:restaurant_id', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const restaurantId = parseInt(req.params.restaurant_id);
-    const { reserved_at, party_size, guest_name, guest_phone, guest_email, notes, table_number, source } = req.body;
+    const { reserved_at, party_size, guest_name, guest_phone, guest_email, notes, table_number } = req.body;
     if (!reserved_at || !party_size || !guest_name || !guest_phone) {
       return res.status(400).json({ success: false, message: 'reserved_at, party_size, guest_name, guest_phone required' });
     }
@@ -68,11 +68,6 @@ router.post('/restaurant/:restaurant_id', authenticateToken, checkRestaurantAcce
     if (!restaurant) return res.status(404).json({ success: false, message: 'Restaurant not found' });
     const settings = restaurant.reservation_settings || {};
     const slot = settings.slot || {};
-
-    // Staff 가 만드는 예약은 phone(예약 받음) 또는 walk_in(자리 잡으면서 기록).
-    // Walk-in 의 경우 보통 손님이 도착한 상태라 'seated' 가 자연스럽지만
-    // R1 에서는 둘 다 'confirmed' 로 통일하여 후속 상태 머신 정상 동작.
-    const resolvedSource = (source === 'walk_in') ? 'walk_in' : 'staff_phone';
 
     const reservation = await Reservation.create({
       restaurant_id: restaurantId,
@@ -85,7 +80,7 @@ router.post('/restaurant/:restaurant_id', authenticateToken, checkRestaurantAcce
       table_number: table_number || null,
       status: 'confirmed',                        // staff 직접 생성은 즉시 확정
       notes: notes || null,
-      source: resolvedSource,
+      source: 'staff_phone',                      // staff 가 만든 모든 예약 (전화·내방·등록 모두 동일)
       confirmation_sent_at: new Date()
     });
 

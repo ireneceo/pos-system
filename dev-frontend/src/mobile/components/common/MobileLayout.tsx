@@ -203,7 +203,7 @@ interface MobileLayoutProps {
   title?: string;
   showBack?: boolean;
   onBack?: () => void;
-  currentPage?: 'home' | 'menu' | 'cart' | 'orders';
+  currentPage?: 'home' | 'menu' | 'cart' | 'orders' | 'reserve';
   cartItemCount?: number;
 }
 
@@ -290,6 +290,10 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
       <Content>{children}</Content>
 
       <BottomNav>
+        {/* 컨텍스트별 하단 nav 분리:
+            - reserve 페이지: Home + Reserve + Account (Menu/Cart 미노출 — 주문 흐름과 무관)
+            - 주문 페이지 / 그 외: Home + Menu + Cart + Account (Reserve 미노출 — 주문 중 혼동 방지)
+            홈(OrderTypePage) 에서 Reserve 카드를 클릭해야 reserve 흐름에 진입. */}
         <NavItem
           active={currentPage === 'home'}
           onClick={() => handleNavigation(`/mobile/${slug}`)}
@@ -301,29 +305,46 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
           <span>Home</span>
         </NavItem>
 
-        <NavItem
-          active={currentPage === 'menu'}
-          onClick={() => handleNavigation(`/mobile/${slug}/menu`)}
-        >
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M4 6H20M4 12H20M4 18H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-          </svg>
-          <span>Menu</span>
-        </NavItem>
+        {currentPage !== 'reserve' && (
+          <>
+            <NavItem
+              active={currentPage === 'menu'}
+              onClick={() => handleNavigation(`/mobile/${slug}/menu`)}
+            >
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M4 6H20M4 12H20M4 18H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+              <span>Menu</span>
+            </NavItem>
 
-        <NavItem
-          active={currentPage === 'cart'}
-          style={{ position: 'relative' }}
-          onClick={() => handleNavigation(`/mobile/${slug}/cart`)}
-        >
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M9 22C9.55228 22 10 21.5523 10 21C10 20.4477 9.55228 20 9 20C8.44772 20 8 20.4477 8 21C8 21.5523 8.44772 22 9 22Z" stroke="currentColor" strokeWidth="2"/>
-            <path d="M20 22C20.5523 22 21 21.5523 21 21C21 20.4477 20.5523 20 20 20C19.4477 20 19 20.4477 19 21C19 21.5523 19.4477 22 20 22Z" stroke="currentColor" strokeWidth="2"/>
-            <path d="M1 1H5L7.68 14.39C7.77144 14.8504 8.02191 15.264 8.38755 15.5583C8.75318 15.8526 9.2107 16.009 9.68 16H19.4C19.8693 16.009 20.3268 15.8526 20.6925 15.5583C21.0581 15.264 21.3086 14.8504 21.4 14.39L23 6H6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-          {cartItemCount > 0 && <CartBadge>{cartItemCount}</CartBadge>}
-          <span>Cart</span>
-        </NavItem>
+            <NavItem
+              active={currentPage === 'cart'}
+              style={{ position: 'relative' }}
+              onClick={() => handleNavigation(`/mobile/${slug}/cart`)}
+            >
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9 22C9.55228 22 10 21.5523 10 21C10 20.4477 9.55228 20 9 20C8.44772 20 8 20.4477 8 21C8 21.5523 8.44772 22 9 22Z" stroke="currentColor" strokeWidth="2"/>
+                <path d="M20 22C20.5523 22 21 21.5523 21 21C21 20.4477 20.5523 20 20 20C19.4477 20 19 20.4477 19 21C19 21.5523 19.4477 22 20 22Z" stroke="currentColor" strokeWidth="2"/>
+                <path d="M1 1H5L7.68 14.39C7.77144 14.8504 8.02191 15.264 8.38755 15.5583C8.75318 15.8526 9.2107 16.009 9.68 16H19.4C19.8693 16.009 20.3268 15.8526 20.6925 15.5583C21.0581 15.264 21.3086 14.8504 21.4 14.39L23 6H6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              {cartItemCount > 0 && <CartBadge>{cartItemCount}</CartBadge>}
+              <span>Cart</span>
+            </NavItem>
+          </>
+        )}
+
+        {currentPage === 'reserve' && (
+          <NavItem
+            active
+            onClick={() => handleNavigation(`/mobile/${slug}/reservations`)}
+          >
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="2"/>
+              <path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+            <span>Reserve</span>
+          </NavItem>
+        )}
 
         <NavItem
           active={currentPage === 'orders'}

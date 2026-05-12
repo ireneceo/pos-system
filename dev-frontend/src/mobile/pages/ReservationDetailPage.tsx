@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { mobileFetch, getMobileToken } from '../utils/mobileApi';
 import ReservationShare from '../components/common/ReservationShare';
+import MobileLayout from '../components/common/MobileLayout';
 
 interface Reservation {
   id: number;
@@ -84,8 +85,8 @@ export default function ReservationDetailPage() {
     } finally { setCancelling(false); }
   };
 
-  if (loading) return <Container><Empty>Loading…</Empty></Container>;
-  if (error || !r) return <Container><Empty>{error || 'Reservation not found'}</Empty></Container>;
+  if (loading) return <MobileLayout title="Reservation" showBack onBack={() => navigate(`/mobile/${slug}/reservations`)} currentPage="reserve"><Empty>Loading…</Empty></MobileLayout>;
+  if (error || !r) return <MobileLayout title="Reservation" showBack onBack={() => navigate(`/mobile/${slug}/reservations`)} currentPage="reserve"><Empty>{error || 'Reservation not found'}</Empty></MobileLayout>;
 
   const s = STATUS_LABEL[r.status];
   const dt = new Date(r.reserved_at);
@@ -95,12 +96,7 @@ export default function ReservationDetailPage() {
   const publicUrl = typeof window !== 'undefined' ? `${window.location.origin}/mobile/${slug}/reservations/${r.id}` : '';
 
   return (
-    <Container>
-      <Header>
-        <BackBtn onClick={() => navigate(`/mobile/${slug}/reservations`)}>‹</BackBtn>
-        <Title>Reservation</Title>
-      </Header>
-
+    <MobileLayout title="Reservation" showBack onBack={() => navigate(`/mobile/${slug}/reservations`)} currentPage="reserve">
       <Body>
         <StatusCard style={{ background: s.bg, color: s.color }}>
           <StatusLabel>{s.label}</StatusLabel>
@@ -142,15 +138,11 @@ export default function ReservationDetailPage() {
           </CancelBtn>
         )}
       </Body>
-    </Container>
+    </MobileLayout>
   );
 }
 
-const Container = styled.div`min-height:100vh;background:#FAFBFC;padding-bottom:32px;`;
-const Header = styled.header`background:white;padding:14px 16px;border-bottom:1px solid #E6EBF1;display:flex;align-items:center;gap:12px;position:sticky;top:0;`;
-const BackBtn = styled.button`background:none;border:none;font-size:24px;color:#6B7C93;cursor:pointer;padding:0;`;
-const Title = styled.h1`font-size:17px;font-weight:600;color:#0A2540;margin:0;`;
-const Body = styled.main`padding:16px;display:flex;flex-direction:column;gap:14px;`;
+const Body = styled.div`display:flex;flex-direction:column;gap:14px;`;
 const StatusCard = styled.div`padding:16px 20px;border-radius:12px;`;
 const StatusLabel = styled.div`font-size:15px;font-weight:600;`;
 const StatusHint = styled.div`font-size:13px;margin-top:4px;opacity:0.85;`;

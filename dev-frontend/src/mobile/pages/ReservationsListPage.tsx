@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { mobileFetch, getMobileToken } from '../utils/mobileApi';
+import MobileLayout from '../components/common/MobileLayout';
 
 interface Reservation {
   id: number;
@@ -44,12 +45,11 @@ export default function ReservationsListPage() {
   }, [navigate, slug]);
 
   return (
-    <Container>
-      <Header>
-        <BackBtn onClick={() => navigate(-1)}>‹</BackBtn>
-        <Title>My Reservations</Title>
-      </Header>
-      <Body>
+    <MobileLayout title="My Reservations" showBack onBack={() => navigate(`/mobile/${slug}`)} currentPage="reserve">
+      <Inner>
+        {list.length > 0 && (
+          <BookCta onClick={() => navigate(`/mobile/${slug}/reservation`)}>+ New Reservation</BookCta>
+        )}
         {loading ? <Empty>Loading…</Empty> :
          list.length === 0 ? (
           <Empty>
@@ -80,16 +80,13 @@ export default function ReservationsListPage() {
             })}
           </List>
          )}
-      </Body>
-    </Container>
+      </Inner>
+    </MobileLayout>
   );
 }
 
-const Container = styled.div`min-height:100vh;background:#FAFBFC;`;
-const Header = styled.header`background:white;padding:14px 16px;border-bottom:1px solid #E6EBF1;display:flex;align-items:center;gap:12px;position:sticky;top:0;`;
-const BackBtn = styled.button`background:none;border:none;font-size:24px;color:#6B7C93;cursor:pointer;padding:0;`;
-const Title = styled.h1`font-size:17px;font-weight:600;color:#0A2540;margin:0;`;
-const Body = styled.main`padding:20px 16px;`;
+const Inner = styled.div`display:flex;flex-direction:column;gap:14px;`;
+const BookCta = styled.button`width:100%;padding:12px;background:#635BFF;color:white;border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;&:hover{background:#5A51E6;}`;
 const Empty = styled.div`text-align:center;padding:60px 24px;color:#6B7C93;`;
 const EmptyTitle = styled.div`font-size:16px;font-weight:600;color:#0A2540;margin-bottom:6px;`;
 const EmptyHint = styled.div`font-size:14px;color:#6B7C93;margin-bottom:24px;`;

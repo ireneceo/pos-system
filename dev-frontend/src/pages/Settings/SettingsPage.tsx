@@ -616,6 +616,10 @@ const SettingsPage: React.FC = () => {
   const mobileOrderShowPopularRef = useRef<AutoSaveHandle>(null);
   const mobileOrderCategorySchedulesRef = useRef<AutoSaveHandle>(null);
   const mobileOrderDeliveryEnabledRef = useRef<AutoSaveHandle>(null);
+  const mobileOrderReservationRef = useRef<AutoSaveHandle>(null);
+  // Reservation 활성 토글은 reservation_settings.enabled 와 동일한 필드 (Reservation 탭과 sync).
+  // mobileOrder Order Types 섹션에서 빠르게 on/off 할 수 있도록 노출.
+  const [reservationEnabled, setReservationEnabled] = useState<boolean>(false);
 
   // Payment / Printer / KitchenStations / Membership / Company tab AutoSave refs
   // Payment tab: dynamic refs for each payment method's toggles/fields
@@ -1138,6 +1142,9 @@ const SettingsPage: React.FC = () => {
                 externalQRs: Array.isArray(restaurant.table_settings.externalQRs) ? restaurant.table_settings.externalQRs : []
               });
             }
+
+            // Reservation enabled 토글 — Reservation 탭의 enabled 와 동일 source
+            setReservationEnabled(!!(restaurant.reservation_settings && restaurant.reservation_settings.enabled));
 
             // Load mobile settings from DB
             if (restaurant.mobile_settings) {
@@ -3739,6 +3746,45 @@ const SettingsPage: React.FC = () => {
                       <ToggleSwitch>
                         <ToggleInput type="checkbox" checked={operationSettings.orderTypes?.delivery ?? false}
                           onChange={(e) => { setOperationSettings(prev => ({ ...prev, orderTypes: { ...prev.orderTypes, delivery: e.target.checked } })); mobileOrderDeliveryRef.current?.triggerSave(); }} />
+                        <ToggleSlider />
+                      </ToggleSwitch>
+                      </AutoSaveField>
+                    </Toggle>
+                  <Toggle>
+                      <ToggleLabel>
+                        Reservation
+                        <span style={{ fontSize: 12, color: '#9CA3AF', fontWeight: 400, marginLeft: 8 }}>
+                          (Customers can book a table from mobile order page)
+                        </span>
+                      </ToggleLabel>
+                      <AutoSaveField
+                        ref={mobileOrderReservationRef}
+                        onSave={async () => {
+                          const token = getAuthToken();
+                          // 현재 reservation_settings 가져와서 enabled 만 갱신 (다른 필드 보존)
+                          const cur = await fetch(`/api/store/settings?restaurantId=${user?.restaurantId}`, {
+                            headers: { Authorization: `Bearer ${token}` }
+                          }).then(r => r.json()).catch(() => null);
+                          const existing = cur?.data?.reservation_settings || {};
+                          await fetch(`/api/store/settings?restaurantId=${user?.restaurantId}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                            body: JSON.stringify({
+                              reservation_settings: { ...existing, enabled: reservationEnabled }
+                            })
+                          });
+                        }}
+                        type="toggle"
+                      >
+                      <ToggleSwitch>
+                        <ToggleInput
+                          type="checkbox"
+                          checked={reservationEnabled}
+                          onChange={(e) => {
+                            setReservationEnabled(e.target.checked);
+                            mobileOrderReservationRef.current?.triggerSave();
+                          }}
+                        />
                         <ToggleSlider />
                       </ToggleSwitch>
                       </AutoSaveField>

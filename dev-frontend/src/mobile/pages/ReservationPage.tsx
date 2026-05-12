@@ -2,36 +2,46 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { mobileFetch, getMobileToken } from '../utils/mobileApi';
+import { useCustomer } from '../../contexts/CustomerContext';
 import DateField from '../../components/Common/DateField';
-
-interface Slot {
-  time: string;
-  label: string;
-  can_book: boolean;
-  status: 'open' | 'few_left' | 'full';
-}
+import MobileLayout from '../components/common/MobileLayout';
+import PhoneInput from '../components/common/PhoneInput';
 
 interface Restaurant {
   id: number;
   name: string;
   slug: string;
+  country?: string;
 }
 
 export default function ReservationPage() {
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
-  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
+  const { currentCustomer, guestInfo, setGuestInfo, logoutCustomer, loginCustomer } = useCustomer();
 
+  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const today = new Date().toISOString().slice(0, 10);
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+
+  // Reservation details
   const [date, setDate] = useState(today);
-  const [partySize, setPartySize] = useState(2);
-  const [slots, setSlots] = useState<Slot[]>([]);
-  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
-  const [guestName, setGuestName] = useState('');
-  const [guestPhone, setGuestPhone] = useState('');
-  const [guestEmail, setGuestEmail] = useState('');
+  const [time, setTime] = useState('18:00');
+  const [partySize, setPartySize] = useState<number>(2);
+
+  // Customer 식별 — PaymentPage 와 동일한 Guest/Member 패턴
+  const [activeTab, setActiveTab] = useState<'guest' | 'member' | null>(currentCustomer ? null : null);
+  const [showGuestForm, setShowGuestForm] = useState(false);
+  const [showMemberForm, setShowMemberForm] = useState(false);
+  const [memberLoginType, setMemberLoginType] = useState<'phone' | 'email'>('phone');
+  const [memberPhone, setMemberPhone] = useState('');
+  const [memberEmail, setMemberEmail] = useState('');
+  const [memberPassword, setMemberPassword] = useState('');
+  const [memberLoginError, setMemberLoginError] = useState('');
+
+  const [guestName, setGuestName] = useState(guestInfo?.name && guestInfo.name !== 'Guest' ? guestInfo.name : '');
+  const [guestPhone, setGuestPhone] = useState(guestInfo?.phone || '');
+  const [guestEmail, setGuestEmail] = useState<string>((guestInfo as any)?.email || '');
   const [notes, setNotes] = useState('');
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,39 +51,46 @@ export default function ReservationPage() {
       const res = await mobileFetch(`/api/mobile/store/${slug}`, { skipAuth: true });
       const json = await res.json();
       if (json?.success && json.data) {
-        setRestaurant({ id: Number(json.data.id), name: json.data.name, slug: json.data.slug });
+        setRestaurant({
+          id: Number(json.data.id),
+          name: json.data.name,
+          slug: json.data.slug,
+          country: json.data.country
+        });
       }
     })().catch(() => {});
   }, [slug]);
 
-  useEffect(() => {
-    if (step !== 2 || !restaurant) return;
-    setLoading(true); setError(null);
-    mobileFetch(`/api/reservations/availability/${restaurant.id}?date=${date}&party=${partySize}`, { skipAuth: true })
-      .then(r => r.json())
-      .then(j => {
-        if (j.success) setSlots(j.data.slots || []);
-        else setError(j.message || 'Could not load availability');
-      })
-      .catch(() => setError('Network error'))
-      .finally(() => setLoading(false));
-  }, [step, restaurant, date, partySize]);
+  const resolvedName = currentCustomer?.name || (activeTab === 'guest' ? guestName : '');
+  const resolvedPhone = currentCustomer?.phone || (activeTab === 'guest' ? guestPhone : '');
+  const resolvedEmail = currentCustomer?.email || (activeTab === 'guest' ? guestEmail : '');
 
   const submit = async () => {
-    if (!restaurant || !selectedSlot) return;
-    if (!guestName || !guestPhone) { setError('Name and phone required'); return; }
-    if (!getMobileToken()) { navigate(`/mobile/${slug}/login?next=reservation`); return; }
+    if (!restaurant) return;
+    if (!resolvedName || !resolvedPhone) {
+      setError('Please provide name and phone (login as member or fill in as guest)');
+      return;
+    }
+    if (!getMobileToken()) {
+      // Persist guest info before login redirect (token required to submit)
+      if (activeTab === 'guest') {
+        setGuestInfo({ name: guestName, phone: guestPhone, email: guestEmail } as any);
+      }
+      navigate(`/mobile/${slug}/login?next=reservation`);
+      return;
+    }
+    const reserved_at = new Date(`${date}T${time}:00`).toISOString();
     setLoading(true); setError(null);
     try {
       const res = await mobileFetch('/api/reservations', {
         method: 'POST',
         body: JSON.stringify({
           restaurant_id: restaurant.id,
-          reserved_at: selectedSlot,
+          reserved_at,
           party_size: partySize,
-          guest_name: guestName,
-          guest_phone: guestPhone,
-          guest_email: guestEmail || undefined,
+          guest_name: resolvedName,
+          guest_phone: resolvedPhone,
+          guest_email: resolvedEmail || undefined,
           notes: notes || undefined
         })
       });
@@ -85,123 +102,264 @@ export default function ReservationPage() {
     } finally { setLoading(false); }
   };
 
-  if (!restaurant) return <Container><Empty>Loading…</Empty></Container>;
+  const handleMemberLogin = async () => {
+    setMemberLoginError('');
+    const identifier = memberLoginType === 'phone' ? memberPhone : memberEmail;
+    if (!identifier.trim()) {
+      setMemberLoginError(memberLoginType === 'phone' ? 'Please enter your phone number.' : 'Please enter your email.');
+      return;
+    }
+    if (!memberPassword.trim()) {
+      setMemberLoginError('Please enter your password.');
+      return;
+    }
+    try {
+      const customer = await loginCustomer(identifier, memberPassword, restaurant?.id);
+      if (customer) {
+        setShowMemberForm(false);
+        setMemberPassword('');
+        setMemberPhone('');
+        setMemberEmail('');
+      } else {
+        setMemberLoginError('Login failed. Please check your credentials and try again.');
+      }
+    } catch {
+      setMemberLoginError('Login failed. Please try again.');
+    }
+  };
+
+  if (!restaurant) {
+    return (
+      <MobileLayout title="Reserve a Table" showBack onBack={() => navigate(`/mobile/${slug}/reservations`)} currentPage="reserve">
+        <Empty>Loading…</Empty>
+      </MobileLayout>
+    );
+  }
 
   return (
-    <Container>
-      <Header>
-        <BackBtn onClick={() => step === 1 ? navigate(-1) : setStep((step - 1) as 1 | 2)}>‹</BackBtn>
-        <Title>Reserve a Table</Title>
-        <Subtitle>{restaurant.name}</Subtitle>
-        <Steps>
-          <StepDot active={step >= 1}>1</StepDot>
-          <Bar />
-          <StepDot active={step >= 2}>2</StepDot>
-          <Bar />
-          <StepDot active={step >= 3}>3</StepDot>
-        </Steps>
-      </Header>
+    <MobileLayout title="Reserve a Table" showBack onBack={() => navigate(`/mobile/${slug}/reservations`)} currentPage="reserve">
+      <Inner>
+        <RestaurantName>{restaurant.name}</RestaurantName>
 
-      {step === 1 && (
-        <Body>
-          <Section>
-            <Label>When?</Label>
-            <DateField value={date} onChange={setDate} />
-          </Section>
-          <Section>
-            <Label>How many guests?</Label>
+        {/* 1) Reservation details */}
+        <Section>
+          <SectionTitle>When</SectionTitle>
+          <Row>
+            <FormGroup>
+              <Label>Date</Label>
+              <DateField value={date} onChange={setDate} />
+            </FormGroup>
+            <FormGroup>
+              <Label>Time</Label>
+              <Input type="time" value={time} onChange={e => setTime(e.target.value)} />
+            </FormGroup>
+          </Row>
+          <FormGroup>
+            <Label>Guests</Label>
             <PartyRow>
-              {[1, 2, 3, 4, 5, 6, 8, 10].map(n => (
-                <PartyBtn key={n} active={partySize === n} onClick={() => setPartySize(n)}>{n}</PartyBtn>
-              ))}
+              <PartyBtn type="button" onClick={() => setPartySize(Math.max(1, partySize - 1))} disabled={partySize <= 1}>−</PartyBtn>
+              <Input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={30}
+                value={partySize}
+                onChange={e => setPartySize(Math.min(30, Math.max(1, parseInt(e.target.value) || 1)))}
+                style={{ textAlign: 'center' }}
+              />
+              <PartyBtn type="button" onClick={() => setPartySize(Math.min(30, partySize + 1))} disabled={partySize >= 30}>+</PartyBtn>
             </PartyRow>
-          </Section>
-          <PrimaryBtn onClick={() => setStep(2)}>Next: Pick a Time</PrimaryBtn>
-        </Body>
-      )}
+          </FormGroup>
+        </Section>
 
-      {step === 2 && (
-        <Body>
-          <Section>
-            <Label>Available times — {date}, {partySize} guests</Label>
-            {loading ? <Empty>Loading slots…</Empty> :
-             error ? <ErrorMsg>{error}</ErrorMsg> :
-             slots.length === 0 ? <Empty>No times available on this date.</Empty> : (
-              <SlotGrid>
-                {slots.map(s => (
-                  <SlotBtn key={s.time}
-                    disabled={!s.can_book}
-                    active={selectedSlot === s.time}
-                    onClick={() => setSelectedSlot(s.time)}>
-                    {s.label}
-                    {s.status === 'few_left' && <Few>few left</Few>}
-                  </SlotBtn>
-                ))}
-              </SlotGrid>
-            )}
-          </Section>
-          <PrimaryBtn disabled={!selectedSlot} onClick={() => setStep(3)}>Next: Your Details</PrimaryBtn>
-        </Body>
-      )}
+        {/* 2) Customer identification — PaymentPage Guest/Member 와 동일 */}
+        <Section>
+          <SectionTitle>Your details</SectionTitle>
 
-      {step === 3 && (
-        <Body>
-          <Section>
-            <Label>Name *</Label>
-            <Input value={guestName} onChange={e => setGuestName(e.target.value)} placeholder="Full name" />
-          </Section>
-          <Section>
-            <Label>Phone *</Label>
-            <Input type="tel" value={guestPhone} onChange={e => setGuestPhone(e.target.value)} placeholder="+60..." />
-          </Section>
-          <Section>
-            <Label>Email (for confirmation)</Label>
-            <Input type="email" value={guestEmail} onChange={e => setGuestEmail(e.target.value)} placeholder="optional" />
-          </Section>
-          <Section>
-            <Label>Notes (allergies, occasion, etc.)</Label>
-            <Textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} />
-          </Section>
-          {error && <ErrorMsg>{error}</ErrorMsg>}
-          <PrimaryBtn disabled={loading} onClick={submit}>{loading ? 'Submitting…' : 'Submit Reservation'}</PrimaryBtn>
-        </Body>
-      )}
-    </Container>
+          {!currentCustomer && (
+            <CustomerChoiceContainer>
+              <CustomerChoiceButton
+                selected={activeTab === 'guest'}
+                onClick={() => {
+                  setActiveTab('guest');
+                  setShowGuestForm(true);
+                  setShowMemberForm(false);
+                }}
+              >
+                <ChoiceTitle>Guest</ChoiceTitle>
+                <ChoiceSubtitle>Continue without signing in</ChoiceSubtitle>
+              </CustomerChoiceButton>
+              <CustomerChoiceButton
+                selected={activeTab === 'member'}
+                onClick={() => {
+                  setActiveTab('member');
+                  setShowMemberForm(true);
+                  setShowGuestForm(false);
+                }}
+              >
+                <ChoiceTitle>Member</ChoiceTitle>
+                <ChoiceSubtitle>Login</ChoiceSubtitle>
+              </CustomerChoiceButton>
+            </CustomerChoiceContainer>
+          )}
+
+          {/* Guest form (no register option per request) */}
+          {!currentCustomer && showGuestForm && activeTab === 'guest' && (
+            <div style={{ marginTop: 16 }}>
+              <FormGroup>
+                <Label>Name *</Label>
+                <Input type="text" placeholder="Enter your name" value={guestName} onChange={e => setGuestName(e.target.value)} />
+              </FormGroup>
+              <FormGroup>
+                <Label>Phone Number *</Label>
+                <PhoneInput value={guestPhone} onChange={setGuestPhone} defaultCountryCode={restaurant.country} placeholder="Phone number" />
+              </FormGroup>
+              <FormGroup>
+                <Label>Email (Optional)</Label>
+                <Input type="email" placeholder="your.email@example.com" value={guestEmail} onChange={e => setGuestEmail(e.target.value)} />
+              </FormGroup>
+            </div>
+          )}
+
+          {/* Member login form (inline, no navigation away) */}
+          {!currentCustomer && showMemberForm && activeTab === 'member' && (
+            <div style={{ marginTop: 16 }}>
+              <LoginTypeTabs>
+                <LoginTypeTab type="button" active={memberLoginType === 'phone'} onClick={() => { setMemberLoginType('phone'); setMemberLoginError(''); }}>Phone</LoginTypeTab>
+                <LoginTypeTab type="button" active={memberLoginType === 'email'} onClick={() => { setMemberLoginType('email'); setMemberLoginError(''); }}>Email</LoginTypeTab>
+              </LoginTypeTabs>
+
+              {memberLoginType === 'phone' ? (
+                <FormGroup>
+                  <Label>Phone Number *</Label>
+                  <PhoneInput value={memberPhone} onChange={setMemberPhone} defaultCountryCode={restaurant.country} placeholder="Phone number" />
+                </FormGroup>
+              ) : (
+                <FormGroup>
+                  <Label>Email Address *</Label>
+                  <Input type="email" placeholder="Enter your email" value={memberEmail} onChange={e => setMemberEmail(e.target.value)} />
+                </FormGroup>
+              )}
+              <FormGroup>
+                <Label>Password *</Label>
+                <Input type="password" placeholder="Enter your password" value={memberPassword} onChange={e => setMemberPassword(e.target.value)} />
+              </FormGroup>
+              {memberLoginError && <ErrorMsg>{memberLoginError}</ErrorMsg>}
+              <LoginBtn type="button" onClick={handleMemberLogin}>Login as Member</LoginBtn>
+              <CenterText>
+                <Link onClick={() => navigate(`/mobile/${slug}/forgot-password`)}>Forgot password?</Link>
+              </CenterText>
+              <CenterText>
+                Not a member yet?{' '}
+                <Link onClick={() => navigate(`/mobile/${slug}/register?next=reservation`)}>Sign up here</Link>
+              </CenterText>
+            </div>
+          )}
+
+          {/* Logged-in member info */}
+          {currentCustomer && (
+            <CustomerInfoBox>
+              <CustomerInfoContent>
+                <CustomerInfoName>{currentCustomer.name}</CustomerInfoName>
+                <CustomerInfoDetails>
+                  {currentCustomer.phone}
+                  {currentCustomer.email && ` • ${currentCustomer.email}`}
+                </CustomerInfoDetails>
+              </CustomerInfoContent>
+              <ClearButton type="button" onClick={() => { logoutCustomer(); setActiveTab(null); setShowGuestForm(false); setShowMemberForm(false); }} title="Clear customer info">×</ClearButton>
+            </CustomerInfoBox>
+          )}
+        </Section>
+
+        {/* 3) Notes */}
+        <Section>
+          <SectionTitle>Notes</SectionTitle>
+          <Textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder="Allergies, occasion, special requests…" />
+        </Section>
+
+        {error && <ErrorMsg>{error}</ErrorMsg>}
+
+        <PrimaryBtn type="button" disabled={loading} onClick={submit}>
+          {loading ? 'Submitting…' : 'Confirm Reservation'}
+        </PrimaryBtn>
+      </Inner>
+    </MobileLayout>
   );
 }
 
-const Container = styled.div`min-height:100vh;background:#FAFBFC;padding-bottom:24px;`;
-const Header = styled.header`background:white;padding:16px 20px;border-bottom:1px solid #E6EBF1;position:sticky;top:0;z-index:10;`;
-const BackBtn = styled.button`background:none;border:none;font-size:24px;color:#6B7C93;cursor:pointer;position:absolute;top:12px;left:12px;`;
-const Title = styled.h1`font-size:18px;font-weight:600;color:#0A2540;margin:0;text-align:center;`;
-const Subtitle = styled.div`font-size:13px;color:#6B7C93;margin-top:2px;text-align:center;`;
-const Steps = styled.div`display:flex;align-items:center;justify-content:center;margin-top:14px;gap:6px;`;
-const StepDot = styled.div<{ active: boolean }>`
-  width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-  font-size:13px;font-weight:600;
-  background:${p => p.active ? '#635BFF' : '#E6EBF1'};color:${p => p.active ? 'white' : '#6B7C93'};
+const Inner = styled.div`display:flex;flex-direction:column;gap:16px;`;
+const RestaurantName = styled.div`font-size:14px;color:#6B7C93;text-align:center;`;
+const Section = styled.section`background:white;border:1px solid #E5E7EB;border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:12px;`;
+const SectionTitle = styled.h3`font-size:14px;font-weight:600;color:#1F2937;margin:0 0 4px 0;`;
+const Row = styled.div`display:grid;grid-template-columns:1fr 1fr;gap:12px;`;
+const FormGroup = styled.div`display:flex;flex-direction:column;gap:6px;`;
+const Label = styled.label`font-size:13px;font-weight:600;color:#374151;`;
+const Input = styled.input`
+  width:100%;padding:10px 12px;border:1px solid #E5E7EB;border-radius:6px;
+  font-size:16px;box-sizing:border-box;background:white;color:#0A2540;
+  &:focus{outline:none;border-color:#635BFF;}
+  &::placeholder{color:#9CA3AF;}
 `;
-const Bar = styled.div`width:32px;height:2px;background:#E6EBF1;`;
-const Body = styled.main`padding:20px;`;
-const Section = styled.section`margin-bottom:20px;`;
-const Label = styled.label`display:block;font-size:13px;font-weight:500;color:#6B7C93;margin-bottom:8px;`;
-const PartyRow = styled.div`display:grid;grid-template-columns:repeat(4,1fr);gap:8px;`;
-const PartyBtn = styled.button<{ active?: boolean }>`
-  padding:14px 0;border-radius:8px;border:1px solid ${p => p.active ? '#635BFF' : '#E6EBF1'};
-  background:${p => p.active ? '#635BFF' : 'white'};color:${p => p.active ? 'white' : '#0A2540'};
-  font-size:15px;font-weight:600;cursor:pointer;
+const Textarea = styled.textarea`
+  width:100%;padding:10px 12px;border:1px solid #E5E7EB;border-radius:6px;
+  font-size:16px;color:#0A2540;resize:vertical;font-family:inherit;box-sizing:border-box;
+  &:focus{outline:none;border-color:#635BFF;}
 `;
-const SlotGrid = styled.div`display:grid;grid-template-columns:repeat(3,1fr);gap:8px;`;
-const SlotBtn = styled.button<{ active?: boolean }>`
-  position:relative;padding:14px 8px;border-radius:8px;
-  border:1px solid ${p => p.active ? '#635BFF' : '#E6EBF1'};
-  background:${p => p.active ? '#635BFF' : 'white'};color:${p => p.active ? 'white' : '#0A2540'};
-  font-size:14px;font-weight:600;cursor:pointer;
-  &:disabled{opacity:0.3;cursor:not-allowed;text-decoration:line-through;}
+const PartyRow = styled.div`display:grid;grid-template-columns:48px 1fr 48px;gap:8px;align-items:center;`;
+const PartyBtn = styled.button`
+  height:44px;border-radius:6px;border:1px solid #E5E7EB;background:white;
+  color:#0A2540;font-size:20px;font-weight:600;cursor:pointer;
+  &:disabled{opacity:0.3;cursor:not-allowed;}
+  &:not(:disabled):hover{background:#F6F9FC;}
 `;
-const Few = styled.div`font-size:10px;opacity:0.8;margin-top:2px;font-weight:400;`;
-const Input = styled.input`width:100%;padding:14px 12px;border:1px solid #E6EBF1;border-radius:8px;font-size:16px;color:#0A2540;`;
-const Textarea = styled.textarea`width:100%;padding:14px 12px;border:1px solid #E6EBF1;border-radius:8px;font-size:15px;color:#0A2540;resize:vertical;font-family:inherit;`;
-const PrimaryBtn = styled.button`width:100%;padding:16px;background:#635BFF;color:white;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;&:disabled{opacity:0.5;cursor:not-allowed;}&:hover:not(:disabled){background:#5A51E6;}`;
-const Empty = styled.div`text-align:center;padding:40px 20px;color:#6B7C93;font-size:14px;`;
-const ErrorMsg = styled.div`background:#FFEBEE;color:#C62828;padding:12px;border-radius:6px;font-size:13px;margin-bottom:14px;`;
+
+// PaymentPage CustomerChoice — 동일
+const CustomerChoiceContainer = styled.div`display:grid;grid-template-columns:1fr 1fr;gap:8px;`;
+const CustomerChoiceButton = styled.button<{ selected?: boolean }>`
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:16px 12px;border:1px solid ${p => p.selected ? '#635BFF' : '#E5E7EB'};
+  border-radius:6px;cursor:pointer;transition:all 0.2s;
+  background:${p => p.selected ? 'rgba(99,91,255,0.05)' : 'white'};
+  width:100%;gap:6px;
+  &:hover{border-color:#635BFF;background:rgba(99,91,255,0.05);}
+  &:active{transform:scale(0.98);}
+`;
+const ChoiceTitle = styled.div`font-size:14px;font-weight:600;color:#1F2937;text-align:center;`;
+const ChoiceSubtitle = styled.div`font-size:11px;color:#6B7280;text-align:center;`;
+
+const LoginTypeTabs = styled.div`display:flex;background:#F3F4F6;border-radius:10px;padding:4px;margin-bottom:16px;`;
+const LoginTypeTab = styled.button<{ active?: boolean }>`
+  flex:1;padding:8px;border:none;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;
+  background:${p => p.active ? 'white' : 'transparent'};
+  color:${p => p.active ? '#1F2937' : '#6B7280'};
+  box-shadow:${p => p.active ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'};
+`;
+const LoginBtn = styled.button`
+  width:100%;padding:12px;background:#635BFF;color:white;border:none;border-radius:8px;
+  font-size:14px;font-weight:600;cursor:pointer;margin-bottom:12px;
+  &:hover{background:#5A51E6;}
+`;
+const CenterText = styled.div`font-size:13px;color:#6B7280;text-align:center;margin-top:8px;`;
+const Link = styled.span`color:#635BFF;cursor:pointer;text-decoration:underline;`;
+
+const CustomerInfoBox = styled.div`
+  display:flex;justify-content:space-between;align-items:center;
+  background:#F0EEFF;border-radius:6px;padding:12px;
+`;
+const CustomerInfoContent = styled.div`flex:1;`;
+const CustomerInfoName = styled.div`font-size:14px;font-weight:600;color:#0A2540;`;
+const CustomerInfoDetails = styled.div`font-size:12px;color:#6B7280;margin-top:4px;`;
+const ClearButton = styled.button`
+  background:none;border:none;color:#6B7280;cursor:pointer;font-size:18px;
+  width:28px;height:28px;border-radius:50%;
+  &:hover{background:rgba(0,0,0,0.05);color:#1F2937;}
+`;
+
+const PrimaryBtn = styled.button`
+  width:100%;padding:14px;background:#635BFF;color:white;border:none;border-radius:6px;
+  font-size:16px;font-weight:600;cursor:pointer;
+  &:disabled{opacity:0.5;cursor:not-allowed;}
+  &:hover:not(:disabled){background:#5A51E6;}
+`;
+const Empty = styled.div`text-align:center;padding:24px 12px;color:#6B7C93;font-size:14px;background:#F6F9FC;border-radius:6px;`;
+const ErrorMsg = styled.div`background:#FFEBEE;color:#C62828;padding:12px;border-radius:6px;font-size:13px;`;
