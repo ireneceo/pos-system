@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import styled from 'styled-components';
-import { mobileFetch, getMobileToken } from '../utils/mobileApi';
+import { mobileFetch, getMobileToken, setMobileToken } from '../utils/mobileApi';
 import { useCustomer } from '../../contexts/CustomerContext';
 import DateField from '../../components/Common/DateField';
 import MobileLayout from '../components/common/MobileLayout';
@@ -98,7 +98,8 @@ export default function ReservationPage() {
         if (!regJson.success) throw new Error(regJson.message || 'Failed to register guest');
         // /api/customers/register 응답 구조: { data: { id, phone, name, email, type, token } }
         token = regJson.data?.token || regJson.data?.customerToken || regJson.customerToken;
-        if (token) localStorage.setItem('mobileToken', token);
+        // setMobileToken 은 slug-aware 키 (mobile_token:kdine-korean) 사용 — mobileFetch 가 읽는 위치와 일치
+        if (token) setMobileToken(token);
         // Persist guest profile for future visits
         setGuestInfo({ name: guestName, phone: guestPhone, email: guestEmail } as any);
       }
