@@ -32,11 +32,15 @@ export default function ReservationsListPage() {
   const [tz, setTz] = useState<string>('Asia/Kuala_Lumpur');
 
   useEffect(() => {
-    if (!getMobileToken()) { navigate(`/mobile/${slug}/login?next=reservations`); return; }
-    Promise.all([
-      mobileFetch('/api/reservations/me').then(r => r.json()),
-      slug ? mobileFetch(`/api/mobile/store/${slug}`, { skipAuth: true }).then(r => r.json()).catch(() => null) : null
-    ])
+    const tasks: Promise<any>[] = [];
+    // Token 없으면 list 는 비우고, store 정보만 가져옴 (empty 상태 + Book a Table CTA 노출)
+    if (getMobileToken()) {
+      tasks.push(mobileFetch('/api/reservations/me').then(r => r.json()).catch(() => null));
+    } else {
+      tasks.push(Promise.resolve(null));
+    }
+    tasks.push(slug ? mobileFetch(`/api/mobile/store/${slug}`, { skipAuth: true }).then(r => r.json()).catch(() => null) : Promise.resolve(null));
+    Promise.all(tasks)
       .then(([list, store]) => {
         if (list?.success) setList(list.data || []);
         if (store?.data?.timeZone) setTz(store.data.timeZone);

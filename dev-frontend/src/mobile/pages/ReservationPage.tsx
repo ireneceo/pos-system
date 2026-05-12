@@ -67,21 +67,43 @@ export default function ReservationPage() {
 
   const submit = async () => {
     if (!restaurant) return;
+    if (!activeTab && !currentCustomer) {
+      setError('Please choose Guest or Member to continue');
+      return;
+    }
     if (!resolvedName || !resolvedPhone) {
-      setError('Please provide name and phone (login as member or fill in as guest)');
+      setError('Name and phone are required');
       return;
     }
-    if (!getMobileToken()) {
-      // Persist guest info before login redirect (token required to submit)
-      if (activeTab === 'guest') {
-        setGuestInfo({ name: guestName, phone: guestPhone, email: guestEmail } as any);
-      }
-      navigate(`/mobile/${slug}/login?next=reservation`);
-      return;
-    }
-    const reserved_at = new Date(`${date}T${time}:00`).toISOString();
     setLoading(true); setError(null);
     try {
+      // Guest 경로: customer record 와 token 을 즉석에서 생성 (전자상거래 표준 guest checkout).
+      // mobileToken 이 없으면 /api/customers/register 로 type='guest' Customer 생성 + 토큰 발급.
+      let token = getMobileToken();
+      if (!token && activeTab === 'guest' && !currentCustomer) {
+        const regRes = await mobileFetch('/api/customers/register', {
+          method: 'POST',
+          skipAuth: true,
+          body: JSON.stringify({
+            name: guestName,
+            phone: guestPhone,
+            email: guestEmail || undefined,
+            restaurantId: restaurant.id
+          })
+        });
+        const regJson = await regRes.json();
+        if (!regJson.success) throw new Error(regJson.message || 'Failed to register guest');
+        // /api/customers/register 응답 구조: { data: { id, phone, name, email, type, token } }
+        token = regJson.data?.token || regJson.data?.customerToken || regJson.customerToken;
+        if (token) localStorage.setItem('mobileToken', token);
+        // Persist guest profile for future visits
+        setGuestInfo({ name: guestName, phone: guestPhone, email: guestEmail } as any);
+      }
+      if (!token) {
+        navigate(`/mobile/${slug}/login?next=reservation`);
+        return;
+      }
+      const reserved_at = new Date(`${date}T${time}:00`).toISOString();
       const res = await mobileFetch('/api/reservations', {
         method: 'POST',
         body: JSON.stringify({
@@ -96,7 +118,8 @@ export default function ReservationPage() {
       });
       const json = await res.json();
       if (!json.success) throw new Error(json.message);
-      navigate(`/mobile/${slug}/reservations/${json.data.id}`);
+      // ?new=1 → ReservationDetailPage 에서 "Submitted" 성공 배너 노출
+      navigate(`/mobile/${slug}/reservations/${json.data.id}?new=1`);
     } catch (e: any) {
       setError(e.message || 'Failed');
     } finally { setLoading(false); }
@@ -205,7 +228,7 @@ export default function ReservationPage() {
 
           {/* Guest form (no register option per request) */}
           {!currentCustomer && showGuestForm && activeTab === 'guest' && (
-            <div style={{ marginTop: 16 }}>
+            <Stack>
               <FormGroup>
                 <Label>Name *</Label>
                 <Input type="text" placeholder="Enter your name" value={guestName} onChange={e => setGuestName(e.target.value)} />
@@ -218,12 +241,12 @@ export default function ReservationPage() {
                 <Label>Email (Optional)</Label>
                 <Input type="email" placeholder="your.email@example.com" value={guestEmail} onChange={e => setGuestEmail(e.target.value)} />
               </FormGroup>
-            </div>
+            </Stack>
           )}
 
           {/* Member login form (inline, no navigation away) */}
           {!currentCustomer && showMemberForm && activeTab === 'member' && (
-            <div style={{ marginTop: 16 }}>
+            <Stack>
               <LoginTypeTabs>
                 <LoginTypeTab type="button" active={memberLoginType === 'phone'} onClick={() => { setMemberLoginType('phone'); setMemberLoginError(''); }}>Phone</LoginTypeTab>
                 <LoginTypeTab type="button" active={memberLoginType === 'email'} onClick={() => { setMemberLoginType('email'); setMemberLoginError(''); }}>Email</LoginTypeTab>
@@ -253,7 +276,7 @@ export default function ReservationPage() {
                 Not a member yet?{' '}
                 <Link onClick={() => navigate(`/mobile/${slug}/register?next=reservation`)}>Sign up here</Link>
               </CenterText>
-            </div>
+            </Stack>
           )}
 
           {/* Logged-in member info */}
@@ -334,9 +357,10 @@ const LoginTypeTab = styled.button<{ active?: boolean }>`
   color:${p => p.active ? '#1F2937' : '#6B7280'};
   box-shadow:${p => p.active ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'};
 `;
+const Stack = styled.div`display:flex;flex-direction:column;gap:14px;margin-top:16px;`;
 const LoginBtn = styled.button`
   width:100%;padding:12px;background:#635BFF;color:white;border:none;border-radius:8px;
-  font-size:14px;font-weight:600;cursor:pointer;margin-bottom:12px;
+  font-size:14px;font-weight:600;cursor:pointer;margin-top:4px;
   &:hover{background:#5A51E6;}
 `;
 const CenterText = styled.div`font-size:13px;color:#6B7280;text-align:center;margin-top:8px;`;

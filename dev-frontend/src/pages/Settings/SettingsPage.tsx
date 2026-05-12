@@ -619,7 +619,12 @@ const SettingsPage: React.FC = () => {
   const mobileOrderReservationRef = useRef<AutoSaveHandle>(null);
   // Reservation 활성 토글은 reservation_settings.enabled 와 동일한 필드 (Reservation 탭과 sync).
   // mobileOrder Order Types 섹션에서 빠르게 on/off 할 수 있도록 노출.
-  const [reservationEnabled, setReservationEnabled] = useState<boolean>(false);
+  // 새로고침 시 false → true 깜빡임 방지를 위해 restaurant 별 localStorage 캐시에서 초기값 복원.
+  const reservationCacheKey = `mobile_reservation_enabled_${user?.restaurantId || 'unknown'}`;
+  const [reservationEnabled, setReservationEnabled] = useState<boolean>(() => {
+    try { return localStorage.getItem(reservationCacheKey) === 'true'; }
+    catch { return false; }
+  });
 
   // Payment / Printer / KitchenStations / Membership / Company tab AutoSave refs
   // Payment tab: dynamic refs for each payment method's toggles/fields
@@ -1144,7 +1149,12 @@ const SettingsPage: React.FC = () => {
             }
 
             // Reservation enabled 토글 — Reservation 탭의 enabled 와 동일 source
-            setReservationEnabled(!!(restaurant.reservation_settings && restaurant.reservation_settings.enabled));
+            // localStorage 캐시도 동기화하여 다음 새로고침 시 깜빡임 0
+            {
+              const enabled = !!(restaurant.reservation_settings && restaurant.reservation_settings.enabled);
+              setReservationEnabled(enabled);
+              try { localStorage.setItem(reservationCacheKey, String(enabled)); } catch (_) {}
+            }
 
             // Load mobile settings from DB
             if (restaurant.mobile_settings) {
@@ -3773,6 +3783,7 @@ const SettingsPage: React.FC = () => {
                               reservation_settings: { ...existing, enabled: reservationEnabled }
                             })
                           });
+                          try { localStorage.setItem(reservationCacheKey, String(reservationEnabled)); } catch (_) {}
                         }}
                         type="toggle"
                       >
@@ -3782,6 +3793,7 @@ const SettingsPage: React.FC = () => {
                           checked={reservationEnabled}
                           onChange={(e) => {
                             setReservationEnabled(e.target.checked);
+                            try { localStorage.setItem(reservationCacheKey, String(e.target.checked)); } catch (_) {}
                             mobileOrderReservationRef.current?.triggerSave();
                           }}
                         />

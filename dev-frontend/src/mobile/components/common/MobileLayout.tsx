@@ -224,6 +224,24 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
     return cleanup;
   }, []);
 
+  // 하단 nav 컨텍스트 영속화 — Account 등 공유 페이지를 reserve 흐름에서 진입해도
+  // 그 흐름에 맞는 nav 가 유지되도록 sessionStorage 에 마지막 컨텍스트를 저장.
+  useEffect(() => {
+    if (currentPage === 'reserve') {
+      sessionStorage.setItem('mobile_nav_context', 'reserve');
+    } else if (currentPage === 'menu' || currentPage === 'cart') {
+      sessionStorage.setItem('mobile_nav_context', 'order');
+    }
+    // 'home' 또는 'orders' (Account) 는 컨텍스트 변경 안 함 — 직전 흐름 유지
+  }, [currentPage]);
+
+  // 효과적인 nav 컨텍스트 결정 — 현재 페이지가 명시적이면 그것, 아니면 sessionStorage
+  const lastContext = typeof window !== 'undefined' ? sessionStorage.getItem('mobile_nav_context') : null;
+  const navContext: 'reserve' | 'order' =
+    currentPage === 'reserve' ? 'reserve' :
+    (currentPage === 'menu' || currentPage === 'cart') ? 'order' :
+    (lastContext === 'reserve' ? 'reserve' : 'order');
+
   // Get order type label
   const getOrderTypeLabel = (type: string | null) => {
     switch (type) {
@@ -305,7 +323,7 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
           <span>Home</span>
         </NavItem>
 
-        {currentPage !== 'reserve' && (
+        {navContext === 'order' && (
           <>
             <NavItem
               active={currentPage === 'menu'}
@@ -333,9 +351,9 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
           </>
         )}
 
-        {currentPage === 'reserve' && (
+        {navContext === 'reserve' && (
           <NavItem
-            active
+            active={currentPage === 'reserve'}
             onClick={() => handleNavigation(`/mobile/${slug}/reservations`)}
           >
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
