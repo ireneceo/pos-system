@@ -1,11 +1,42 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-05-12 (Backend 안정화: DB 중복 인덱스 521건 정리 + sequelize.sync OFF + 예약 timezone 정상화)
+> **최종 업데이트:** 2026-05-12 (v3.29 운영 배포 완료 — Reservation R1 + 사이드바 2단 리디자인 + Backend 안정화)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
-> **현재 버전:** **v3.28** (2026-05-10 운영 배포 + Unreleased 누적)
+> **현재 버전:** **v3.29** (2026-05-12 운영 배포 완료)
 
-## ✅ 완료: Backend 안정화 + 예약 timezone 정상화 (2026-05-12 후반, 미배포)
+## ✅ 완료: v3.29 운영 배포 (2026-05-12)
+
+### 배포 결과
+
+| 항목 | 결과 |
+|------|------|
+| 빌드 | main.f00fad6b.js (716 파일 sync) |
+| Backend rsync | 19 파일 sync |
+| DB 스키마 | dev/prod 일치 (130 tables) |
+| Migration | sprint4/5/6/7 + supplier-staff + soa-invoice + referral + cleanup × 3 |
+| Seed sync | 97 updated |
+| Smoke 테스트 | 10/10 PASS |
+| 운영 health | OK (production) |
+| 백업 | `/var/www/backups/20260512_205708` |
+| 릴리즈 콘텐츠 | 블로그 `release-v3.29` + 공지 id=56 (운영 5 수신자) |
+
+### 포함된 변경 (Unreleased → v3.29)
+
+- 레스토랑 예약 시스템 R1 MVP (12 endpoint + 7-state machine + 모바일 3 페이지 + 운영 Timeline + 이메일/푸시 알림)
+- 사이드바 2단 구조 전면 리디자인 (전 6 역할 통일, lucide 라인 아이콘, 헤더 80px)
+- Backend 안정화 (DB 중복 인덱스 521건 정리 + `sequelize.sync()` startup OFF + 예약 timezone 정상화)
+- 모바일 홈 라인 아이콘 + Guest 예약 자동 등록 + 컨텍스트별 nav
+- Reservation 모듈화 (AddonModule + plan template + requireRestaurantModule middleware)
+- R1 결함 4건 fix (customer_id NULL, reservation_count 이중 증가, PATCH /me 정책 우회, IPv6 rate-limit)
+- SubscriptionFormFields 4 페이지 통합 (Restaurants/Managers/Brands/Foodcourts)
+- 예약 페이지 Source 컬럼 + 필터 + 액션 버튼 LiveOrders 정렬
+- 앱 아이콘/파비콘 전면 교체 + SVG 업로드 버그 fix
+- 관리자 테이블 배정 + 예약 lifecycle 간소화
+
+---
+
+## ✅ 완료: Backend 안정화 + 예약 timezone 정상화 (2026-05-12 후반)
 
 ### 완료된 작업
 

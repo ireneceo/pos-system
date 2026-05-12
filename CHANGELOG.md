@@ -6,6 +6,10 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+---
+
+## [v3.29] — 2026-05-12 배포
+
 ### 2026-05-12 — backend 안정화 + 예약 timezone 정상화
 
 - **DB 중복 unique 인덱스 일괄 정리** — `users` 64-key 한도 임박 (`username_2`/`email_3`/...). 전체 19 테이블 521건 정리 (`scripts/cleanup-duplicate-indexes.js` 신규)

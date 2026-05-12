@@ -2,8 +2,8 @@
 
 ## 현재 작업 상태
 **마지막 업데이트:** 2026-05-12
-**버전:** **v3.28** (Unreleased 누적 / 미배포)
-**작업 상태:** 완료
+**버전:** **v3.29** (2026-05-12 운영 배포 완료 / smoke 10/10)
+**작업 상태:** 배포 완료
 
 ---
 
@@ -18,45 +18,40 @@ session-state.md 읽고 이어서 개발해.
 ### 진행 중인 작업
 - 없음
 
-### 완료된 작업 (이번 세션 2026-05-12 후반)
+### 완료된 작업 (이번 세션 2026-05-12)
 
-**Backend 안정화 + 예약 timezone 정상화 (미배포)**
+**v3.29 운영 배포 완료 (smoke 10/10, 빌드 main.f00fad6b.js)**
 
-- **DB 중복 unique 인덱스 521건 일괄 정리** — `users` 64-key 한도 임박. `username_2`/`email_3`/... 19 테이블에 누적. `scripts/cleanup-duplicate-indexes.js` 신규 (dry-run + apply)
-- **`sequelize.sync()` startup OFF** — 매 재시작마다 unique 인덱스 누적 추가 결함. 기본 비활성, `STARTUP_DB_SYNC=true` 로만 활성. 미실행 시 인덱스 정리만 자동 (`server.js`)
-- **`sync-database.js` 안전 모드** — `--alter` 명시 시에만 실행 + 직후 자동 중복 정리
-- **`push.js` IPv6 rate-limit fix** — `keyGenerator` 가 `req.ip` 그대로 → `ipKeyGenerator(req.ip)` 로 IPv6 정규화. 미적용 시 push 라우트 등록 실패 (express-rate-limit 8+ validation)
-- **Foodcourt General Reports 라우트 차단 버그 fix** — `addon_modules.fc_stats.ui_routes` 가 `/pos/foodcourt/general/stats` (미존재 React route) 였던 매핑 오류. `/pos/foodcourt/general/reports` 로 갱신
-- **예약 슬롯 생성 timezone 정상화** — `reservations-public.js calcSlotAvailability` 가 server-local (UTC) 로 영업시간 / 슬롯 일자 산출하던 결함. 레스토랑 `operation_settings.timeZone` 으로 모두 변환. `dateTimeHelper` 에 `localClockToUTC` / `formatTimeInTZ` 헬퍼 추가
-- 예약 스태프 list API (`GET /reservations/restaurant/:id`) 일자 필터도 동일하게 `getDateBounds(date, tz)` 적용
-- 예약 시드 데이터 (restaurant_id=5 Test3/KR) 5건 정상화 — UTC 19:30 → 10:30 (KST 19:30 표시)
-- health-check.js — `db` 카테고리 추가 (인덱스 ≤ 15, 동일 컬럼·uniqueness 중복 0건). 78 → 80 케이스
-- Test3 (`kdine-korean`) reservation_settings 활성화 — 모바일 OrderTypePage 에 "📅 Reserve a Table" 카드 노출
+- 배포 스크립트 `/var/www/deploy-to-production.sh --auto` 실행
+- DB 스키마 dev/prod 일치 (130 tables, post-sync 재확인)
+- Backend 19 파일 rsync + Frontend 716 파일 rsync
+- Migration 자동 실행: sprint4/5/6/7 + supplier-staff + soa-invoice + referral + cleanup × 3 (users/restaurants/sequelize duplicate indexes)
+- Seed sync 97 updated
+- PM2 production-backend 재시작 + Nginx reload
+- 운영 health 정상 (production env, uptime 3s confirmed)
+- 백업 `/var/www/backups/20260512_205708`
 
-### 검증
-- 빌드 main.6471d9fd.js (exit 0, 0 신규 경고)
-- Health-check 80/80 통과 (db 카테고리 신규)
-- /api/reservations/availability/8?date=2026-05-13&party=2 → 26 슬롯, label 09:00 (= 01:00 UTC + 8h MY) 정상
-- pm2 restart 후 ER_TOO_MANY_KEYS 사라짐, 인덱스 정상 유지 (auto-purge 동작)
-- DB 사전 백업 `/var/www/backups/dev-daily/20260512/purple_dev_db_pre_index_cleanup.sql` (8.8M)
+**v3.29 릴리즈 콘텐츠 자동 등록**
 
-### 이전 누적 작업 (2026-05-12 전반)
-- 예약 UI 정렬 + SVG favicon 버그 fix + 앱 아이콘 교체 (commit 3e74a2a2)
-- 사이드바 2단 구조 전면 리디자인 + 헤더 80px 통일 (2026-05-11, 운영 배포 완료)
-- Reservation R1 customer_id fix + 백필 스크립트
-- ManagersPage / RestaurantsPage SubscriptionFormFields 통합
-- User.auto_renew 컬럼 추가
+- 랜딩 블로그 `release-v3.29` (id=88, /blog/release-v3.29 → 200)
+- System Admin 공지 id=56 (운영 5 수신자 자동 생성)
+- 왓츠앱용 릴리즈 노트 ko + en 출력 완료
+
+**문서 업데이트**
+
+- CHANGELOG.md — `[Unreleased]` → `[v3.29] — 2026-05-12 배포` 이동
+- DEVELOPMENT_PLAN.md — v3.29 배포 결과 + 포함 변경 섹션 상단 추가
+- session-state.md — 본 파일 갱신
 
 ### 다음 할 일
 
-1. **버전 결정** — 사이드바 UX + backend 안정화 큰 변경 → v3.29 올릴지 (CHANGELOG Unreleased → v3.29 이동 + 릴리즈 노트 + 블로그)
-2. 후속 후보 (우선순위):
-   - 운영 DB 도 동일하게 중복 인덱스 정리 + sync OFF 배포 (배포 명령 시)
-   - Reservation R2 — deposit 결제 UI / 캘린더 monthly view / WaitingList / 보증금 자동 환불 cron
-   - Reservation 동시 booking race window — advisory lock 또는 SERIALIZABLE 트랜잭션
-   - SubscriptionsPage Edit SubscriptionFormFields 통합 검토 (Status dropdown + custom plan 보존 설계)
-   - PageSettingsLink i18n 4언어
-   - 운영 demo 시드 ID 파라미터화
+1. 후속 후보 (우선순위):
+   - **Reservation R2** — deposit 결제 UI / 캘린더 monthly view / WaitingList / 보증금 자동 환불 cron
+   - **Reservation 동시 booking race window** — advisory lock 또는 SERIALIZABLE 트랜잭션 (Known WONTFIX, R1에서 후속 명시)
+   - **SubscriptionsPage Edit SubscriptionFormFields 통합** — Status dropdown + "others" custom plan 보존 설계 필요
+   - **PageSettingsLink i18n** — `<PageSettingsLink>` 라벨 4언어 (현재 영어 고정)
+   - **`_localToUTC` DST 보정** — 현재 `now` 기준 offset 사용. MY/KR/SG 무영향이지만 미래 대비
+   - **운영 demo 시드 ID 파라미터화** — 데모 계정 마킹 스크립트 하드코딩 정리
 
 ---
 
