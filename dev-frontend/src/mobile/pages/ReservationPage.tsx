@@ -20,11 +20,21 @@ export default function ReservationPage() {
   const { currentCustomer, guestInfo, setGuestInfo, logoutCustomer, loginCustomer } = useCustomer();
 
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
-  const today = new Date().toISOString().slice(0, 10);
+
+  // 기본 date/time: 현재시각 + 2시간 (min_advance_hours=1 + 1h buffer), 30분 단위 올림.
+  // 무조건 백엔드 advance-policy 통과하도록.
+  const defaultDateTime = (() => {
+    const t = new Date(Date.now() + 2 * 60 * 60 * 1000);
+    t.setMinutes(t.getMinutes() < 30 ? 30 : 60, 0, 0);
+    const date = t.toISOString().slice(0, 10);
+    const hh = String(t.getHours()).padStart(2, '0');
+    const mm = String(t.getMinutes()).padStart(2, '0');
+    return { date, time: `${hh}:${mm}` };
+  })();
 
   // Reservation details
-  const [date, setDate] = useState(today);
-  const [time, setTime] = useState('18:00');
+  const [date, setDate] = useState(defaultDateTime.date);
+  const [time, setTime] = useState(defaultDateTime.time);
   const [partySize, setPartySize] = useState<number>(2);
 
   // Customer 식별 — PaymentPage 와 동일한 Guest/Member 패턴

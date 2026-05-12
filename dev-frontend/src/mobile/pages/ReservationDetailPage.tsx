@@ -26,19 +26,18 @@ interface RestaurantPublic {
   timeZone?: string;
 }
 
-// 진행 단계 (cancelled/no_show 는 별도 처리)
+// 진행 단계 — 'Arrived' 가 종착점. 그 이후는 주문 영역 책임.
+// (cancelled/no_show 는 별도 terminal card)
 const STEPS: Array<{ key: Reservation['status']; label: string }> = [
   { key: 'pending',   label: 'Submitted' },
   { key: 'confirmed', label: 'Confirmed' },
-  { key: 'arrived',   label: 'Arrived' },
-  { key: 'seated',    label: 'Seated' },
-  { key: 'completed', label: 'Completed' }
+  { key: 'arrived',   label: 'Arrived' }
 ];
 
 const STATUS_HINT: Record<Reservation['status'], string> = {
   pending:   'Your reservation has been submitted. Waiting for the restaurant to confirm.',
   confirmed: 'Your table is confirmed. See you on the day!',
-  arrived:   'Welcome — staff are seating you now.',
+  arrived:   'Welcome — enjoy your meal.',
   seated:    'Enjoy your meal!',
   completed: 'Thank you for visiting. We hope to see you again.',
   cancelled: 'This reservation was cancelled.',

@@ -41,12 +41,14 @@ interface FloorTable {
   tableType?: string;
 }
 
+// Reservation lifecycle 은 'arrived' 가 종착점.
+// 손님이 도착한 후 자리/식사는 주문 영역 (POS Terminal / Floor Plan) 책임.
+// 레거시 seated/completed enum 값은 DB 호환 목적으로 남기지만 UI 전이 버튼은 노출 안 함.
 const ALLOWED: Record<string, string[]> = {
   pending:   ['confirmed', 'cancelled'],
   confirmed: ['arrived', 'cancelled', 'no_show'],
-  arrived:   ['seated', 'cancelled'],
-  seated:    ['completed', 'cancelled'],
-  completed: [], cancelled: [], no_show: []
+  arrived:   [],
+  seated:    [], completed: [], cancelled: [], no_show: []
 };
 
 const STATUS_COLOR: Record<string, { bg: string; fg: string }> = {
@@ -82,14 +84,13 @@ const SOURCE_LABEL: Record<Reservation['source'], string> = {
   walk_in:         'Staff'
 };
 
-type StatusTabKey = 'all' | 'pending' | 'confirmed' | 'arrived' | 'seated' | 'completed' | 'cancelled' | 'no_show';
+// Status tabs — Arrived 가 종착점. Seated/Completed 는 더 이상 reservation lifecycle 에서 사용 안 함.
+type StatusTabKey = 'all' | 'pending' | 'confirmed' | 'arrived' | 'cancelled' | 'no_show';
 const STATUS_TABS: Array<{ key: StatusTabKey; label: string }> = [
   { key: 'all',       label: 'All' },
   { key: 'pending',   label: 'Pending' },
   { key: 'confirmed', label: 'Confirmed' },
   { key: 'arrived',   label: 'Arrived' },
-  { key: 'seated',    label: 'Seated' },
-  { key: 'completed', label: 'Completed' },
   { key: 'cancelled', label: 'Cancelled' },
   { key: 'no_show',   label: 'No-show' }
 ];
@@ -168,8 +169,6 @@ export default function ReservationsTimelinePage() {
       pending: pendingList.length,
       confirmed: list.filter(r => r.status === 'confirmed').length,
       arrived:   list.filter(r => r.status === 'arrived').length,
-      seated:    list.filter(r => r.status === 'seated').length,
-      completed: list.filter(r => r.status === 'completed').length,
       cancelled: list.filter(r => r.status === 'cancelled').length,
       no_show:   list.filter(r => r.status === 'no_show').length
     };
@@ -193,6 +192,16 @@ export default function ReservationsTimelinePage() {
       headers: { Authorization: `Bearer ${token}` }
     });
     if (res.ok) { setConfirmDelete(null); reload(); }
+  };
+
+  const assignTable = async (id: number, table_number: string | null) => {
+    const token = getAuthToken();
+    const res = await fetch(`/api/reservations/${id}/table`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ table_number })
+    });
+    if (res.ok) reload();
   };
 
   const handleXClick = (r: Reservation) => {
@@ -263,7 +272,24 @@ export default function ReservationsTimelinePage() {
                       {STATUS_LABEL[r.status] || r.status}
                     </StatusPill>
                   </DataTableCell>
-                  <DataTableCell>{r.table_number || '—'}</DataTableCell>
+                  <DataTableCell>
+                    {tables.length === 0 ? (
+                      <span>{r.table_number || '—'}</span>
+                    ) : (
+                      <TableSelect
+                        value={r.table_number || ''}
+                        onChange={e => assignTable(r.id, e.target.value || null)}
+                        title="Assign table"
+                      >
+                        <option value="">—</option>
+                        {tables.map(t => (
+                          <option key={t.id} value={t.tableNumber}>
+                            {t.label || `Table ${t.tableNumber}`}{t.seats ? ` (${t.seats})` : ''}
+                          </option>
+                        ))}
+                      </TableSelect>
+                    )}
+                  </DataTableCell>
                   <DataTableCell><Hint>{r.notes || '—'}</Hint></DataTableCell>
                   <DataTableCell>
                     <ActionButtons>
@@ -458,3 +484,10 @@ const DateButton = styled.button<{ active?: boolean }>`
 const Hint = styled.div`color:#6B7C93;font-size:12px;margin-top:2px;`;
 const StatusPill = styled.span`display:inline-block;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;`;
 const ErrorMsg = styled.div`margin-top:12px;padding:8px 12px;background:#FFEBEE;color:#C62828;border-radius:6px;font-size:13px;`;
+// Inline 테이블 배정 — 빈 셀 호버 시 회색, 값 있으면 보라 강조
+const TableSelect = styled.select`
+  padding:4px 8px;border:1px solid #E6EBF1;border-radius:4px;
+  font-size:13px;background:white;color:#0A2540;cursor:pointer;min-width:90px;
+  &:hover{border-color:#635BFF;}
+  &:focus{outline:none;border-color:#635BFF;box-shadow:0 0 0 2px rgba(99,91,255,0.1);}
+`;

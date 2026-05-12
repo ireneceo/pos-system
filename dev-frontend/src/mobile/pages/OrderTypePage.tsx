@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import {
+  Utensils, ShoppingBag, Clock, Truck, CalendarDays, ChevronRight
+} from 'lucide-react';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { API_BASE_URL } from '../../config/api';
 import MobileAlertModal from '../components/common/MobileAlertModal';
@@ -72,23 +75,25 @@ const OptionsContainer = styled.div`
   }
 `;
 
+// 라인 아이콘 + 좌측 정렬 row 카드 (POS 사이드바와 동일한 lucide line 스타일)
 const OptionCard = styled.button`
   background: white;
   border: 1px solid #E6EBF1;
   border-radius: 12px;
-  padding: 32px 24px;
+  padding: 18px 20px;
   cursor: pointer;
   transition: all 0.15s;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 12px;
-  text-align: center;
+  gap: 16px;
+  text-align: left;
+  width: 100%;
 
   &:hover {
     border-color: #635BFF;
-    transform: translateY(-2px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    background: #FAFBFF;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(99, 91, 255, 0.08);
   }
 
   &:active {
@@ -97,15 +102,67 @@ const OptionCard = styled.button`
 `;
 
 const OptionIcon = styled.div`
-  font-size: 48px;
-  margin-bottom: 4px;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: #F4F2FF;
+  color: #635BFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s;
+
+  ${OptionCard}:hover & {
+    background: #635BFF;
+    color: white;
+  }
+
+  svg {
+    width: 22px;
+    height: 22px;
+    stroke-width: 1.75;
+  }
+`;
+
+const OptionBody = styled.div`
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 `;
 
 const OptionTitle = styled.h3`
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 600;
   color: #0A2540;
   margin: 0;
+`;
+
+const OptionSubtitle = styled.div`
+  font-size: 12px;
+  color: #6B7C93;
+  font-weight: 400;
+`;
+
+const OptionChevron = styled.div`
+  color: #9CA3AF;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+
+  ${OptionCard}:hover & {
+    color: #635BFF;
+    transform: translateX(2px);
+  }
+
+  svg {
+    width: 18px;
+    height: 18px;
+    stroke-width: 2;
+    transition: all 0.15s;
+  }
 `;
 
 const Footer = styled.div`
@@ -368,32 +425,52 @@ const OrderTypePage: React.FC = () => {
             <>
               {orderTypes.dineIn && (
                 <OptionCard onClick={() => handleOrderTypeSelection('dine-in')}>
-                  <OptionIcon>🍽️</OptionIcon>
-                  <OptionTitle>Dine In</OptionTitle>
+                  <OptionIcon><Utensils /></OptionIcon>
+                  <OptionBody>
+                    <OptionTitle>Dine In</OptionTitle>
+                    <OptionSubtitle>Order from your table</OptionSubtitle>
+                  </OptionBody>
+                  <OptionChevron><ChevronRight /></OptionChevron>
                 </OptionCard>
               )}
               {orderTypes.takeaway && (
                 <OptionCard onClick={() => handleOrderTypeSelection('takeaway')}>
-                  <OptionIcon>🥡</OptionIcon>
-                  <OptionTitle>Takeaway</OptionTitle>
+                  <OptionIcon><ShoppingBag /></OptionIcon>
+                  <OptionBody>
+                    <OptionTitle>Takeaway</OptionTitle>
+                    <OptionSubtitle>Order and pick up at counter</OptionSubtitle>
+                  </OptionBody>
+                  <OptionChevron><ChevronRight /></OptionChevron>
                 </OptionCard>
               )}
               {orderTypes.pickup && (
                 <OptionCard onClick={() => handleOrderTypeSelection('pickup')}>
-                  <OptionIcon>📦</OptionIcon>
-                  <OptionTitle>Pre-order Pickup</OptionTitle>
+                  <OptionIcon><Clock /></OptionIcon>
+                  <OptionBody>
+                    <OptionTitle>Pre-order Pickup</OptionTitle>
+                    <OptionSubtitle>Schedule a pickup time</OptionSubtitle>
+                  </OptionBody>
+                  <OptionChevron><ChevronRight /></OptionChevron>
                 </OptionCard>
               )}
               {orderTypes.delivery && (
                 <OptionCard onClick={() => handleOrderTypeSelection('delivery')}>
-                  <OptionIcon>🚚</OptionIcon>
-                  <OptionTitle>Delivery</OptionTitle>
+                  <OptionIcon><Truck /></OptionIcon>
+                  <OptionBody>
+                    <OptionTitle>Delivery</OptionTitle>
+                    <OptionSubtitle>Order delivered to your address</OptionSubtitle>
+                  </OptionBody>
+                  <OptionChevron><ChevronRight /></OptionChevron>
                 </OptionCard>
               )}
               {storeData?.reservationsEnabled && (
                 <OptionCard onClick={() => navigate(`/mobile/${slug}/reservation`)}>
-                  <OptionIcon>📅</OptionIcon>
-                  <OptionTitle>Reserve a Table</OptionTitle>
+                  <OptionIcon><CalendarDays /></OptionIcon>
+                  <OptionBody>
+                    <OptionTitle>Reserve a Table</OptionTitle>
+                    <OptionSubtitle>Book a table in advance</OptionSubtitle>
+                  </OptionBody>
+                  <OptionChevron><ChevronRight /></OptionChevron>
                 </OptionCard>
               )}
             </>
