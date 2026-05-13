@@ -60,16 +60,16 @@ function isValidEndpoint(endpoint) {
 }
 
 function isCategoryEnabled(user, category) {
-  // null/undefined preferences → all ON by default (except marketing/owner_report which are opt-in)
-  const OPT_IN_CATEGORIES = ['marketing', 'owner_report'];
-  const prefs = user.push_preferences;
-  if (!prefs || !prefs.categories) {
-    return !OPT_IN_CATEGORIES.includes(category);
-  }
-  const explicit = prefs.categories[category];
-  if (explicit === false) return false;
-  if (explicit === true) return true;
-  return !OPT_IN_CATEGORIES.includes(category);
+  // 알림 규칙 단일 source of truth — `notification_preferences` (NotificationSettings UI 가 저장).
+  // 사용자가 UI 에서 토글한 카테고리는 이메일 + 푸시 모두 동시 반영.
+  // `push_preferences.categories` 는 레거시 — 양쪽 다 확인하여 하나라도 false 면 차단 (기존 데이터 호환).
+  // 카테고리 정의 (label/description/role visibility) 는 routes/notification-settings.js NOTIFICATION_CATEGORIES.
+  // 기본 동작: 키가 없거나 undefined 면 ON (사용자가 명시적으로 OFF 한 적 없으면 보냄).
+  const np = user.notification_preferences || {};
+  if (np[category] === false) return false;
+  const pp = user.push_preferences && user.push_preferences.categories;
+  if (pp && pp[category] === false) return false;
+  return true;
 }
 
 function isMutedNow(user) {
@@ -125,7 +125,7 @@ async function sendPushToUser(userId, payload) {
   if (!payload || !payload.category) throw new Error('payload.category is required');
   ensureInit();
 
-  const user = await User.findByPk(userId, { attributes: ['id', 'push_enabled', 'push_preferences', 'push_muted_hours'] });
+  const user = await User.findByPk(userId, { attributes: ['id', 'push_enabled', 'push_preferences', 'push_muted_hours', 'notification_preferences'] });
   if (!user) return { sent: 0, failed: 0, skipped: 1, reason: 'no_user' };
 
   if (user.push_enabled === false) {

@@ -8,6 +8,23 @@
 
 ---
 
+## [v3.30] — 2026-05-13 배포
+
+- **PWA 데스크탑/모바일 앱 빈 화면 fix** — `manifest.json` start_url 이 `/pos/login?utm_source=pwa` 였는데 App.tsx 에 `/pos/login` 라우트 자체가 없어서 PWA 설치 후 빈 화면. `/pos?utm_source=pwa` 로 교정 (LoginPage 가 useEffect 로 역할별 dashboard 자동 redirect)
+- **알림 우리 규칙 정확 반영** — NotificationSettings UI 토글이 `user.notification_preferences` 에 저장되는데 푸시 발송은 `push_preferences.categories` 만 검사하던 결함. UI 토글 OFF 해도 푸시 계속 받던 문제. `pushService.isCategoryEnabled` 통합 — `notification_preferences` 우선 검사 + `push_preferences` 도 fallback (둘 중 하나라도 false 면 차단). 단일 source of truth = NotificationSettings UI
+- pushService `User.findByPk` attributes 에 `notification_preferences` 추가. 미사용 OPT_IN_CATEGORIES (`marketing`, `owner_report`) 제거
+- **Stock Items 페이지 응답 3.15MB → 7.4KB (425배 감소)** — `ingredients.image_url` 컬럼에 base64 PNG 인라인 저장(각 1.5MB) 되던 결함. IngredientsPage 는 image_url 을 사용도 안 하는데 매 진입마다 전체 다운로드 → 페이지 로딩 전반 느림의 진짜 원인
+- DB 마이그레이션 스크립트 신규 — `scripts/migrate-base64-images.js`: ingredients 6건 base64 → 파일 (sharp 600×600 압축 75KB), company_settings.og_image_url 1건 (153KB → 33KB), products.image 누락 1건 (product_14 `/uploads/products/*.jpg 404`) NULL 처리
+- 백엔드 신규 입력 가드 — `routes/restaurants-ingredients.js`, `routes/ingredients.js` POST/PUT 핸들러에 `normalizeIngredientImage` 추가. base64 들어오면 자동 디스크 저장 + URL 변환. 같은 안티패턴 재발 차단
+- `utils/imageProcessor.saveImageToFile` — `subdir` 옵션 추가 (logos/ 외 ingredients/, site/ 등 임의 dir)
+- **MenuManagement onError TypeError fix** — `e.currentTarget.parentElement.innerHTML` 직접 교체하던 React 안티패턴이 null.style TypeError + 무한 루프 가능성. `<MenuItemImageWithFallback>` 컴포넌트 + useState 분리 패턴으로 교체
+- **햄버거 메뉴 모바일 2뎁스 펼침** — `SecondaryPanel` 이 `@media (max-width: 768px) { display: none }` 라서 모바일에서 1뎁스만 노출되던 결함. `MobileSubmenu` styled-component 추가 (RailItem 바로 아래 inline accordion, 흰배경, ≤768px 만 표시) + `mobileExpandedCatId` state. 현재 location active 카테고리는 자동 펼침. 적용 6 역할(useTwoTier) 모두
+- `deploy-dev.sh` 견고화 — 다중 user (irene/lua) 번갈아 빌드 시 chmod fail 로 배포 중단되던 결함. `find -not -user CURRENT_USER` 로 다른 user 소유 파일도 자동 chown
+- 개발서버 lua 사용자 ACL 부여 — `/var/www/dev-frontend`, `/var/www/dev-backend`, `/var/www/dev-frontend-build` 에 `setfacl -R -m u:lua:rwX` + default ACL. 운영 영향 없음 (개발서버 환경 변화)
+- 운영 배포 main.44e0d72d.js, smoke 10/10 PASS, 백업 `/var/www/backups/20260513_074418`
+
+---
+
 ## [v3.29] — 2026-05-12 배포
 
 ### 2026-05-12 — backend 안정화 + 예약 timezone 정상화

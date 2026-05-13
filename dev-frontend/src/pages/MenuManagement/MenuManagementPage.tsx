@@ -721,6 +721,23 @@ interface Recipe {
   total_ingredient_cost: number;
 }
 
+const MenuItemImageWithFallback: React.FC<{ src?: string | null; alt?: string; emoji?: string | null }> = ({ src, alt, emoji }) => {
+  const [errored, setErrored] = useState(false);
+  const hasSrc = typeof src === 'string' && src.trim() !== '';
+  if (!hasSrc || errored) {
+    return <span style={{ fontSize: '48px' }}>{emoji || '🍽️'}</span>;
+  }
+  return (
+    <img
+      src={src!}
+      alt={alt || ''}
+      loading="lazy"
+      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+      onError={() => setErrored(true)}
+    />
+  );
+};
+
 const MenuManagementPage: React.FC = () => {
   const { t } = useTranslation('menu');
   const { categories, menuItems, optionGroups, updateMenuItem, addMenuItem, removeMenuItem, toggleItemSoldOut } = useMenu();
@@ -1283,27 +1300,7 @@ const MenuManagementPage: React.FC = () => {
                 <MenuImage>
                   {item.is_set_menu && <SetBadge>{t('menu:menuManagementPage.set')}</SetBadge>}
                   {item.is_featured && <SetBadge style={{ background: '#635BFF', left: item.is_set_menu ? '52px' : '8px' }}>{t('menu:menuManagementPage.featured')}</SetBadge>}
-                  {item.image && item.image.trim() !== '' ? (
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      loading="lazy"
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      onError={(e) => {
-                        // Fallback to emoji if image fails to load
-                        e.currentTarget.style.display = 'none';
-                        if (e.currentTarget.parentElement) {
-                          e.currentTarget.parentElement.innerHTML = item.emoji || '🍽️';
-                          e.currentTarget.parentElement.style.fontSize = '48px';
-                          e.currentTarget.parentElement.style.display = 'flex';
-                          e.currentTarget.parentElement.style.alignItems = 'center';
-                          e.currentTarget.parentElement.style.justifyContent = 'center';
-                        }
-                      }}
-                    />
-                  ) : (
-                    <span style={{ fontSize: '48px' }}>{item.emoji || '🍽️'}</span>
-                  )}
+                  <MenuItemImageWithFallback src={item.image} alt={item.name} emoji={item.emoji} />
                 </MenuImage>
                 <MenuContent>
                   <MenuCategory>

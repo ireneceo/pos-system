@@ -1,9 +1,37 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-05-12 (v3.29 운영 배포 완료 — Reservation R1 + 사이드바 2단 리디자인 + Backend 안정화)
+> **최종 업데이트:** 2026-05-13 (v3.30 운영 배포 완료 — PWA 빈 화면 fix + 알림 우리 규칙 정확 반영 + 페이지 로딩 성능 + 모바일 햄버거 2뎁스)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
-> **현재 버전:** **v3.29** (2026-05-12 운영 배포 완료)
+> **현재 버전:** **v3.30** (2026-05-13 운영 배포 완료)
+
+## ✅ 완료: v3.30 운영 배포 (2026-05-13)
+
+### 배포 결과
+
+| 항목 | 결과 |
+|------|------|
+| 빌드 | main.44e0d72d.js (713 파일 sync) |
+| Backend rsync | 7 파일 |
+| DB 스키마 | dev/prod 일치 (130 tables) |
+| Migration | sprint4/5/6/7 + supplier-staff + soa-invoice + referral + cleanup × 3 |
+| Seed sync | 97 updated |
+| Smoke 테스트 | 10/10 PASS |
+| 운영 health | OK (production) |
+| 백업 | `/var/www/backups/20260513_074418` |
+
+### 포함된 변경 (Unreleased → v3.30)
+
+- PWA 데스크탑/모바일 앱 빈 화면 fix (manifest start_url `/pos/login` → `/pos`)
+- 알림 우리 규칙 정확 반영 — NotificationSettings UI 토글이 푸시 즉시 차단 (notification_preferences 단일 source)
+- Stock Items 페이지 로딩 성능 425배 (API 3.15MB → 7.4KB, ingredients.image_url base64 → 파일 마이그레이션)
+- 백엔드 base64 입력 자동 변환 가드 (restaurants-ingredients, ingredients 라우트)
+- MenuManagement onError TypeError fix
+- 햄버거 메뉴 모바일 2뎁스 펼침 (RailItem 아래 흰배경 accordion, 6 역할)
+- deploy-dev.sh 견고화 (다중 user 빌드 권한 fail fix)
+- 개발서버 lua ACL (운영 영향 없음)
+
+---
 
 ## ✅ 완료: v3.29 운영 배포 (2026-05-12)
 

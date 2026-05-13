@@ -43,7 +43,7 @@ sendPushToFoodcourt(foodcourtId, payload)
 sendPushToSupplier(supplierCompanyId, payload)
 ```
 
-각 호출은 (1) push_enabled 마스터 토글, (2) `push_preferences.categories[category]`, (3) `push_muted_hours`(OS 만), (4) PushLog 기록, (5) 410/404 시 expired_at 마크 자동 처리. **In-app socket emit 은 muted_hours 무시** — 토스트는 항상 표시, OS 알림만 야간 무음.
+각 호출은 (1) push_enabled 마스터 토글, (2) **`notification_preferences[category]` 우선 + `push_preferences.categories[category]` fallback** (v3.30+ 통합 — NotificationSettings UI 의 단일 source of truth. 둘 중 하나라도 false 면 차단), (3) `push_muted_hours`(OS 만), (4) PushLog 기록, (5) 410/404 시 expired_at 마크 자동 처리. **In-app socket emit 은 muted_hours 무시** — 토스트는 항상 표시, OS 알림만 야간 무음.
 
 ### Endpoint host 화이트리스트 (PlanQ 개선)
 
@@ -92,7 +92,8 @@ sendPushToSupplier(supplierCompanyId, payload)
 | 컬럼 | 타입 | Default | 설명 |
 |---|---|---|---|
 | push_enabled | BOOLEAN | TRUE | 마스터 토글 |
-| push_preferences | JSON | NULL | `{ categories: { order_new: true, ... } }` (NULL = ALL_ON 기본) |
+| push_preferences | JSON | NULL | (레거시) `{ categories: { order_new: true, ... } }`. v3.30+ 에서 `notification_preferences` 가 우선 source. 둘 다 검사 — 어느 쪽이든 false 면 차단 (호환). |
+| notification_preferences | JSON | NULL | (v3.30+ 통합) NotificationSettings UI 가 저장. 푸시·이메일 공통 카테고리 토글. NULL = ALL_ON 기본. |
 | push_muted_hours | JSON | NULL | `{ enabled, start, end, timezone }` (start=end 면 미적용, wrap 자정 OK) |
 
 ### NOTIFICATION_CATEGORIES 신규 5개 (push 전용)

@@ -17,14 +17,15 @@ CURRENT_USER=$(whoami)
 
 echo -e "${BLUE}Dev Frontend 배포 시작...${NC}"
 
-# 0. 권한 문제 자동 해결
+# 0. 권한 문제 자동 해결 — 디렉터리 내 한 파일이라도 CURRENT_USER 가 아닌 소유면 전체 chown.
+# 다중 개발자 (irene/lua) 가 번갈아 빌드할 때 chmod fail 방지.
 fix_ownership() {
     local dir=$1
     local name=$2
     if [ -d "$dir" ]; then
-        local owner=$(stat -c '%U' "$dir" 2>/dev/null || echo "unknown")
-        if [ "$owner" = "root" ] && [ "$CURRENT_USER" != "root" ]; then
-            echo -e "${YELLOW}$name 권한 문제 감지 - 자동 수정 중...${NC}"
+        local mismatched=$(find "$dir" -not -user "$CURRENT_USER" -print -quit 2>/dev/null)
+        if [ -n "$mismatched" ]; then
+            echo -e "${YELLOW}$name 소유자 불일치 감지 - 자동 수정 중...${NC}"
             if sudo -n chown -R "$CURRENT_USER":"$CURRENT_USER" "$dir" 2>/dev/null; then
                 echo -e "${GREEN}$name 권한 수정 완료${NC}"
             else

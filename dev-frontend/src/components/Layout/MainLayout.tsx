@@ -16,7 +16,7 @@ import { useRoleDisplayName } from '../../utils/roleDisplay';
 import { useAllowedRoutes } from '../../hooks/useAllowedRoutes';
 
 import { getAuthToken } from '../../utils/auth';
-import { LayoutDashboard, Users, Truck, Briefcase, MessageSquare, CreditCard, Settings as SettingsIcon, ChevronsLeft, ChevronsRight, LogOut, Activity, Store, Package, ShoppingCart, FileText, Monitor, LayoutGrid, ChefHat, Tv, Smartphone, TrendingUp } from 'lucide-react';
+import { LayoutDashboard, Users, Truck, Briefcase, MessageSquare, CreditCard, Settings as SettingsIcon, ChevronsLeft, ChevronsRight, LogOut, Activity, Store, Package, ShoppingCart, FileText, Monitor, LayoutGrid, ChefHat, Tv, Smartphone, TrendingUp, Download } from 'lucide-react';
 
 // System Admin 2-tier sidebar widths
 const SIDEBAR_ADMIN_EXPANDED = 220;
@@ -565,6 +565,25 @@ const SecondaryNavItem = styled(Link)<{ $active?: boolean; $hasPending?: boolean
       animation: ${blinkKf} 1s infinite;
     }
   `}
+`;
+
+// 모바일 (≤768px) 햄버거 메뉴 모드 — RailItem 아래로 펼쳐지는 2뎁스 accordion 패널.
+// 데스크탑 (>768px) 에서는 숨김 (SecondaryPanel/Popover 사용).
+const MobileSubmenu = styled.div`
+  display: none;
+  background: #FFFFFF;
+  border-top: 1px solid #E6EBF1;
+  border-bottom: 1px solid #E6EBF1;
+  padding: 4px 0;
+
+  @media (max-width: 768px) {
+    display: block;
+  }
+
+  ${SecondaryNavItem} {
+    padding-left: 32px;
+    font-size: 13px;
+  }
 `;
 
 const MobileHeader = styled.div`
@@ -1582,6 +1601,15 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     });
   }, []);
 
+  // 모바일 (햄버거 메뉴) 에서 펼쳐진 1뎁스 카테고리 ID. null 이면 모두 접힘.
+  // 현재 active 카테고리는 진입 시 자동으로 펼쳐둠 — 사용자가 현재 위치 컨텍스트를 바로 봄.
+  const [mobileExpandedCatId, setMobileExpandedCatId] = useState<string | null>(null);
+  useEffect(() => {
+    if (activeAdminCategory?.id && activeAdminCategory.items) {
+      setMobileExpandedCatId(activeAdminCategory.id);
+    }
+  }, [activeAdminCategory?.id, activeAdminCategory?.items]);
+
   const [hoveredCatId, setHoveredCatId] = useState<string | null>(null);
   const [hoveredCatTop, setHoveredCatTop] = useState<number>(80);
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1912,8 +1940,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           <NavSection>
             {/* ========== SYSTEM ADMIN — 2-tier rail (1뎁스) ========== */}
             {useTwoTier && adminCategoriesWithPending.map(cat => (
+              <React.Fragment key={cat.id}>
               <RailItem
-                key={cat.id}
                 to={cat.path || cat.items?.[0]?.path || '#'}
                 $active={activeAdminCategory?.id === cat.id}
                 $collapsed={isSidebarCollapsed}
@@ -1949,6 +1977,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                     window.open(cat.path, '_blank');
                     return;
                   }
+                  // 모바일 (≤768px) + sub items 있으면: 페이지 이동 대신 accordion 토글
+                  if (cat.items && cat.items.length > 0 && typeof window !== 'undefined' && window.innerWidth <= 768) {
+                    e.preventDefault();
+                    setMobileExpandedCatId(prev => prev === cat.id ? null : cat.id);
+                    return;
+                  }
                   closeSidebar();
                 }}
                 onMouseEnter={(e) => handleRailEnter(cat.id, e)}
@@ -1959,6 +1993,30 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 {cat.icon}
                 <RailLabel $collapsed={isSidebarCollapsed}>{cat.label}</RailLabel>
               </RailItem>
+              {cat.items && cat.items.length > 0 && mobileExpandedCatId === cat.id && (
+                <MobileSubmenu>
+                  {cat.items.map(item => (
+                    <SecondaryNavItem
+                      key={item.path}
+                      to={item.path}
+                      $active={matchPathFull(item.path)}
+                      $hasPending={item.hasPending}
+                      onClick={(e) => {
+                        if (item.openInNewTab) {
+                          e.preventDefault();
+                          closeSidebar();
+                          window.open(item.path, '_blank');
+                          return;
+                        }
+                        closeSidebar();
+                      }}
+                    >
+                      {item.label}
+                    </SecondaryNavItem>
+                  ))}
+                </MobileSubmenu>
+              )}
+              </React.Fragment>
             ))}
 
             {/* ========== BRAND GENERAL / BRAND MANAGER ========== */}
@@ -3089,6 +3147,32 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 return `${sym}${referralBalance.balance.toFixed(decimals)}`;
               })()}
             </span>
+          </a>
+          {/* Install App link — permanent re-entry path for users who dismissed the PWA banner.
+              Opens /install in a new tab so the user's POS context is preserved. */}
+          <a
+            href="/install"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: '10px 14px',
+              margin: '0 8px 12px',
+              borderRadius: 8,
+              background: '#F6F9FC',
+              color: '#0A2540',
+              textDecoration: 'none',
+              fontSize: 13,
+              fontWeight: 500,
+              border: '1px solid #E6EBF1'
+            }}
+            title={t('nav.installApp', 'Install Desktop / Mobile App') || ''}
+            onClick={() => closeSidebar?.()}
+          >
+            <Download size={16} strokeWidth={1.75} />
+            <span style={{ flex: 1 }}>{t('nav.installApp', 'Install App')}</span>
           </a>
           <LanguageSelectorWrapper>
             <LanguageSelector variant="sidebar" />

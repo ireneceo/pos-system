@@ -310,14 +310,11 @@ async function deleteOldImages(oldUrls) {
 async function saveImageToFile(base64Image, fixedFilename, options = {}) {
   if (!base64Image || typeof base64Image !== 'string') return null;
 
-  // 이미 파일 경로인 경우 그대로 반환
   if (base64Image.startsWith('/uploads/')) return base64Image;
 
-  // base64가 아닌 경우 무시
   if (!base64Image.startsWith('data:image/')) return null;
 
   try {
-    // 허용 MIME: png, jpeg, jpg, gif, webp, svg+xml — `+` 문자 포함 위해 `\w+` 대신 `[a-zA-Z0-9.+-]+`
     const matches = base64Image.match(/^data:image\/([a-zA-Z0-9.+-]+);base64,(.+)$/);
     if (!matches) return null;
 
@@ -325,34 +322,24 @@ async function saveImageToFile(base64Image, fixedFilename, options = {}) {
     const base64Data = matches[2];
     const buffer = Buffer.from(base64Data, 'base64');
 
-    const dir = '/var/www/uploads/logos';
+    const { subdir = 'logos', maxWidth = 400, maxHeight = 400, quality = 90 } = options;
+    const dir = `/var/www/uploads/${subdir}`;
     await fs.mkdir(dir, { recursive: true });
 
-    // SVG 는 vector 보존 위해 sharp 변환 없이 원본 그대로 저장
     if (mimeSubtype === 'svg+xml' || mimeSubtype === 'svg') {
       const filePath = path.join(dir, `${fixedFilename}.svg`);
       await fs.writeFile(filePath, buffer);
-      const urlPath = `/uploads/logos/${fixedFilename}.svg`;
-      console.log(`Saved SVG to ${filePath} (${Math.round(buffer.length / 1024)}KB)`);
-      return urlPath;
+      return `/uploads/${subdir}/${fixedFilename}.svg`;
     }
 
-    const { maxWidth = 400, maxHeight = 400, quality = 90 } = options;
-
     const processedBuffer = await sharp(buffer)
-      .resize(maxWidth, maxHeight, {
-        fit: 'inside',
-        withoutEnlargement: true
-      })
+      .resize(maxWidth, maxHeight, { fit: 'inside', withoutEnlargement: true })
       .png({ quality })
       .toBuffer();
 
     const filePath = path.join(dir, `${fixedFilename}.png`);
     await fs.writeFile(filePath, processedBuffer);
-
-    const urlPath = `/uploads/logos/${fixedFilename}.png`;
-    console.log(`Saved image to ${filePath} (${Math.round(processedBuffer.length / 1024)}KB)`);
-    return urlPath;
+    return `/uploads/${subdir}/${fixedFilename}.png`;
   } catch (error) {
     console.error('saveImageToFile error:', error);
     return null;

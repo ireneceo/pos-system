@@ -2,7 +2,7 @@
   "name": "Purple POS — Cloud Restaurant Management",
   "short_name": "Purple POS",
   "description": "Run your restaurant, brand, foodcourt, or supply business — installable on desktop and mobile.",
-  "start_url": "/pos/login?utm_source=pwa",
+  "start_url": "/pos?utm_source=pwa",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",

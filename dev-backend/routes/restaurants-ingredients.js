@@ -21,7 +21,23 @@ const { authenticateToken, checkRestaurantAccess, requireRole } = require('../mi
 const { validateRestaurantCreation } = require('../middleware/validation');
 const jwt = require('jsonwebtoken');
 const { getTodayBounds, getRestaurantTimezone } = require('../utils/dateTimeHelper');
-const { deleteOldImages } = require('../utils/imageProcessor');
+const { deleteOldImages, saveImageToFile } = require('../utils/imageProcessor');
+
+// base64 data URL이 들어오면 디스크 파일로 저장하고 URL 반환.
+// 이미 URL이면 그대로, 빈/null이면 null. ingredient image_url 표준화.
+async function normalizeIngredientImage(value, scopeId) {
+  if (value == null) return null;
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith('/uploads/')) return trimmed;
+  if (trimmed.startsWith('data:image/')) {
+    const filename = `ingredient_${scopeId}_${Date.now()}`;
+    const url = await saveImageToFile(trimmed, filename, { subdir: 'ingredients', maxWidth: 600, maxHeight: 600 });
+    return url || null;
+  }
+  return null;
+}
 
 router.get('/:restaurantId/ingredients', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
@@ -189,13 +205,14 @@ router.post('/:restaurantId/ingredients', authenticateToken, checkRestaurantAcce
       code, name, image_url, category, ingredient_category_id, unit,
       base_quantity, unit_cost, supplier_name, supplier_id, min_stock, track_stock
     } = req.body;
+    const normalizedImage = await normalizeIngredientImage(image_url, restaurantId);
     const ingredient = await Ingredient.create({
       owner_type: 'restaurant',
       brand_id: null,
       restaurant_id: restaurantId,
       code: code || null,
       name,
-      image_url: image_url || null,
+      image_url: normalizedImage,
       category,
       ingredient_category_id: ingredient_category_id || null,
       unit,
@@ -349,10 +366,11 @@ router.put('/:restaurantId/ingredients/:ingredientId', authenticateToken, checkR
     if (supplier_name !== undefined) updateData.supplier_name = supplier_name;
     if (min_stock !== undefined) updateData.min_stock = min_stock;
     if (image_url !== undefined) {
-      if (image_url && ingredient.image_url && image_url !== ingredient.image_url) {
+      const normalized = await normalizeIngredientImage(image_url, ingredient.restaurant_id);
+      if (normalized && ingredient.image_url && normalized !== ingredient.image_url) {
         await deleteOldImages(ingredient.image_url);
       }
-      updateData.image_url = image_url;
+      updateData.image_url = normalized;
     }
     if (ingredient_category_id !== undefined) updateData.ingredient_category_id = ingredient_category_id;
     if (base_quantity !== undefined) updateData.base_quantity = base_quantity;

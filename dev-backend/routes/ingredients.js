@@ -5,7 +5,21 @@ const { Op } = require('sequelize');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const { isBrandManager } = require('../middleware/recipeAuth');
 const { generateIngredientCode } = require('../utils/codeGenerator');
-const { deleteOldImages } = require('../utils/imageProcessor');
+const { deleteOldImages, saveImageToFile } = require('../utils/imageProcessor');
+
+async function normalizeIngredientImage(value, scopeId) {
+  if (value == null) return null;
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith('/uploads/')) return trimmed;
+  if (trimmed.startsWith('data:image/')) {
+    const filename = `ingredient_brand${scopeId}_${Date.now()}`;
+    const url = await saveImageToFile(trimmed, filename, { subdir: 'ingredients', maxWidth: 600, maxHeight: 600 });
+    return url || null;
+  }
+  return null;
+}
 
 // ============================================
 // Brand Ingredients
@@ -267,6 +281,7 @@ router.post('/brands/:brandId/ingredients', authenticateToken, isBrandManager, a
     // Auto-generate code if not provided
     const finalCode = code || await generateIngredientCode(Ingredient, 'brand', brandId);
 
+    const normalizedImage = await normalizeIngredientImage(image_url, brandId);
     const ingredient = await Ingredient.create({
       owner_type: 'brand',
       brand_id,
@@ -274,7 +289,7 @@ router.post('/brands/:brandId/ingredients', authenticateToken, isBrandManager, a
       ingredient_category_id: ingredient_category_id || null,
       code: finalCode,
       name,
-      image_url: image_url || null,
+      image_url: normalizedImage,
       category: 'other', // Use default - category is managed via ingredient_category_id
       unit,
       base_quantity: base_quantity || 1,
@@ -313,10 +328,11 @@ router.put('/brands/:brandId/ingredients/:ingredientId', authenticateToken, isBr
     if (code !== undefined) updateData.code = code;
     if (name !== undefined) updateData.name = name;
     if (image_url !== undefined) {
-      if (image_url && ingredient.image_url && image_url !== ingredient.image_url) {
+      const normalized = await normalizeIngredientImage(image_url, ingredient.brand_id || ingredient.restaurant_id);
+      if (normalized && ingredient.image_url && normalized !== ingredient.image_url) {
         await deleteOldImages(ingredient.image_url);
       }
-      updateData.image_url = image_url;
+      updateData.image_url = normalized;
     }
     if (ingredient_category_id !== undefined) updateData.ingredient_category_id = ingredient_category_id;
     if (unit !== undefined) updateData.unit = unit;
@@ -614,10 +630,11 @@ router.put('/restaurants/:restaurantId/ingredients/:ingredientId', authenticateT
     if (code !== undefined) updateData.code = code;
     if (name !== undefined) updateData.name = name;
     if (image_url !== undefined) {
-      if (image_url && ingredient.image_url && image_url !== ingredient.image_url) {
+      const normalized = await normalizeIngredientImage(image_url, ingredient.brand_id || ingredient.restaurant_id);
+      if (normalized && ingredient.image_url && normalized !== ingredient.image_url) {
         await deleteOldImages(ingredient.image_url);
       }
-      updateData.image_url = image_url;
+      updateData.image_url = normalized;
     }
     if (ingredient_category_id !== undefined) updateData.ingredient_category_id = ingredient_category_id;
     if (unit !== undefined) updateData.unit = unit;
