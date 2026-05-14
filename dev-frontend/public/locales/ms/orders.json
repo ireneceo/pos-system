@@ -54,5 +54,25 @@
   "liveOrdersPage.noKeepOrder": "Tidak, Kekalkan Pesanan",
   "liveOrdersPage.yesCancelOrder": "Yes, Batal Pesanan",
   "liveOrdersPage.reject": "Tolak",
-  "liveOrdersPage.customerSubmittedProof": "Bukti Dikemukakan Pelanggan"
+  "liveOrdersPage.customerSubmittedProof": "Bukti Dikemukakan Pelanggan",
+  "liveOrdersPage": {
+    "takeawayCharge": "Caj Bungkus"
+  },
+  "brandMenuUpdatesPage.title": "Kemas Kini Menu Jenama",
+  "brandMenuUpdatesPage.allSyncedTitle": "Semua disegerakkan",
+  "brandMenuUpdatesPage.allSyncedDesc": "Tiada kemas kini menunggu dari jenama anda.",
+  "brandMenuUpdatesPage.noBrand": "Restoran ini tidak dipautkan ke jenama.",
+  "brandMenuUpdatesPage.confirmSyncAll": "Segerakkan semua kemas kini menu jenama yang menunggu?",
+  "brandMenuUpdatesPage.syncAllNow": "Segerakkan Semua Sekarang",
+  "brandMenuUpdatesPage.syncThisMenu": "Segerakkan Menu Ini",
+  "brandMenuUpdatesPage.skipThisVersion": "Langkau Versi Ini",
+  "brandMenuUpdatesPage.addMenu": "Tambah Menu",
+  "brandMenuUpdatesPage.firstTimePush": "Menu baharu dihantar buat kali pertama.",
+  "brandMenuUpdatesPage.newMenuLabel": "BAHARU",
+  "brandMenuUpdatesPage.lockedByBrand": "Dikunci oleh Jenama",
+  "brandMenuUpdatesPage.willBeEnforced": "akan dikuatkuasakan",
+  "brandMenuUpdatesPage.optionGroupOnly": "Kumpulan pilihan berubah — segerakkan untuk gunakan.",
+  "brandMenuUpdatesPage.imageChanged": "(imej berubah)",
+  "brandMenuUpdatesPage.category": "Kategori",
+  "brandMenuUpdatesPage.price": "Harga"
 }

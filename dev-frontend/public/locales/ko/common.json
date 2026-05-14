@@ -164,7 +164,11 @@
   "orderType": {
     "dineIn": "매장식사",
     "takeaway": "포장",
-    "delivery": "배달"
+    "delivery": "배달",
+    "pickup": "픽업",
+    "change": "변경",
+    "changeOrderType": "주문방식 변경",
+    "pinFallback": "{{orderType}} 은 현재 매장에서 사용할 수 없습니다. 다른 옵션을 선택하세요."
   },
   "role": {
     "systemAdmin": "시스템 관리자",
@@ -253,6 +257,7 @@
     "purchaseOrders": "발주",
     "content": "콘텐츠",
     "report": "리포트",
+    "installApp": "앱 설치",
     "logout": "로그아웃",
     "section": {
       "management": "관리",
@@ -266,7 +271,9 @@
       "settings": "설정",
       "analytics": "분석",
       "teamMarketing": "팀 및 마케팅",
-      "systemAccess": "시스템 접근"
+      "systemAccess": "시스템 접근",
+      "brandManagement": "브랜드 관리",
+      "franchise": "프랜차이즈"
     },
     "franchiseManagement": "가맹점 관리",
     "tenancyManagement": "입점 관리",
@@ -277,7 +284,17 @@
     "tenancyMap": "입점 지도",
     "branchMap": "지점 지도",
     "incomingOrders": "라이브 오더",
-    "carriers": "운송업체"
+    "carriers": "운송업체",
+    "paymentMethods": "결제수단",
+    "printer": "프린터",
+    "kitchenStations": "키친 스테이션",
+    "reservationSettings": "예약 설정",
+    "membership": "멤버십",
+    "reservation": "예약",
+    "brandMenus": "브랜드 메뉴",
+    "brandMenuCategories": "메뉴 카테고리",
+    "brandMenuOptions": "메뉴 옵션",
+    "brandMenuUpdates": "브랜드 메뉴 업데이트"
   },
   "language": {
     "en": "English",

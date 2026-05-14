@@ -207,6 +207,11 @@ const OrderTypePage: React.FC = () => {
   const [showCartResetModal, setShowCartResetModal] = useState(false);
   const [pendingOrderType, setPendingOrderType] = useState<'dine-in' | 'takeaway' | 'pickup' | 'delivery' | null>(null);
 
+  // Set when the URL pins to an unavailable order type — surface as a notice on the picker.
+  const [pinFallbackNotice, setPinFallbackNotice] = useState<string | null>(null);
+  // True once we've consumed the URL pin so the user is free to override via the picker.
+  const autoSkippedRef = React.useRef(false);
+
   // Load store data on mount
   useEffect(() => {
     const loadStoreData = async () => {
@@ -360,6 +365,55 @@ const OrderTypePage: React.FC = () => {
     }
   }, [searchParams, slug]);
 
+  // Auto-skip the picker when the URL pins an order type (or implies one via ?table=).
+  // Runs after storeData is loaded so we can validate against enabled order types.
+  // Triggers exactly once — if the user reaches the picker again (via Change chip on Menu),
+  // we don't loop back into auto-skip.
+  useEffect(() => {
+    if (!storeData || autoSkippedRef.current) return;
+    if (showCartResetModal) return;
+
+    const isPickerNav = searchParams.get('picker') === '1';
+    if (isPickerNav) {
+      autoSkippedRef.current = true;
+      return;
+    }
+
+    const enabled = storeData.orderTypes;
+    if (!enabled) return;
+
+    const explicit = searchParams.get('order_type');
+    const validKeys: Record<string, keyof typeof enabled> = {
+      'dine-in': 'dineIn', 'takeaway': 'takeaway', 'pickup': 'pickup', 'delivery': 'delivery'
+    };
+
+    let resolved: 'dine-in' | 'takeaway' | 'pickup' | 'delivery' | null = null;
+
+    if (explicit && validKeys[explicit]) {
+      if (enabled[validKeys[explicit]]) {
+        resolved = explicit as any;
+      } else {
+        setPinFallbackNotice(
+          getOrderTypeDisplayName(explicit) + ' is not currently available at this restaurant. Please choose another option.'
+        );
+        autoSkippedRef.current = true;
+        return;
+      }
+    } else if (!explicit && searchParams.get('table')) {
+      // Table-only QR → dine-in is the only sensible interpretation.
+      if (enabled.dineIn) {
+        resolved = 'dine-in';
+      }
+    }
+
+    if (resolved) {
+      autoSkippedRef.current = true;
+      // Reuse the existing flow so cart-reset modal still triggers if needed.
+      handleOrderTypeSelection(resolved);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storeData, searchParams, showCartResetModal]);
+
   const orderTypes = storeData?.orderTypes || null;
 
   return (
@@ -392,6 +446,23 @@ const OrderTypePage: React.FC = () => {
           border: '1px solid #C7D2FE'
         }}>
           {tableFromQR}
+        </div>
+      )}
+
+      {pinFallbackNotice && (
+        <div style={{
+          margin: '0 0 24px 0',
+          padding: '12px 20px',
+          background: '#FEF3C7',
+          borderRadius: '8px',
+          color: '#92400E',
+          fontSize: '14px',
+          fontWeight: '500',
+          textAlign: 'center',
+          border: '1px solid #FCD34D',
+          maxWidth: '400px'
+        }}>
+          {pinFallbackNotice}
         </div>
       )}
 

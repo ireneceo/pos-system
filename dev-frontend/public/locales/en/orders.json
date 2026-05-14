@@ -54,5 +54,25 @@
   "liveOrdersPage.noKeepOrder": "No, Keep Order",
   "liveOrdersPage.yesCancelOrder": "Yes, Cancel Order",
   "liveOrdersPage.reject": "Reject",
-  "liveOrdersPage.customerSubmittedProof": "Customer Submitted Proof"
+  "liveOrdersPage.customerSubmittedProof": "Customer Submitted Proof",
+  "liveOrdersPage": {
+    "takeawayCharge": "Takeaway Charge"
+  },
+  "brandMenuUpdatesPage.title": "Brand Menu Updates",
+  "brandMenuUpdatesPage.allSyncedTitle": "All synced",
+  "brandMenuUpdatesPage.allSyncedDesc": "No pending updates from your brand.",
+  "brandMenuUpdatesPage.noBrand": "This restaurant is not linked to a brand.",
+  "brandMenuUpdatesPage.confirmSyncAll": "Sync all pending brand menu updates?",
+  "brandMenuUpdatesPage.syncAllNow": "Sync All Now",
+  "brandMenuUpdatesPage.syncThisMenu": "Sync This Menu",
+  "brandMenuUpdatesPage.skipThisVersion": "Skip This Version",
+  "brandMenuUpdatesPage.addMenu": "Add Menu",
+  "brandMenuUpdatesPage.firstTimePush": "New menu pushed for the first time.",
+  "brandMenuUpdatesPage.newMenuLabel": "NEW",
+  "brandMenuUpdatesPage.lockedByBrand": "Locked by Brand",
+  "brandMenuUpdatesPage.willBeEnforced": "will be enforced",
+  "brandMenuUpdatesPage.optionGroupOnly": "Option group(s) changed — sync to apply.",
+  "brandMenuUpdatesPage.imageChanged": "(image changed)",
+  "brandMenuUpdatesPage.category": "Category",
+  "brandMenuUpdatesPage.price": "Price"
 }

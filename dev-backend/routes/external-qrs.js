@@ -27,9 +27,13 @@ async function ensureRestaurantAccess(req, restaurantId) {
 }
 
 /**
- * Normalize externalQRs entries to {name, coupon_id?} objects.
+ * Normalize externalQRs entries to {name, coupon_id?, order_type?} objects.
  * Accepts legacy string form for backward compatibility.
  */
+// 'reservation' is a meta-pin (routes to /reservation, not a menu order_type).
+// Storing it here keeps external-QR config in one place; mobile entry handles the routing.
+const VALID_ORDER_TYPES = ['dine-in', 'takeaway', 'pickup', 'delivery', 'reservation'];
+
 function normalizeEntries(raw) {
   if (!Array.isArray(raw)) return [];
   return raw
@@ -39,6 +43,9 @@ function normalizeEntries(raw) {
         const out = { name: e.name };
         if (e.coupon_id != null && Number.isInteger(Number(e.coupon_id))) {
           out.coupon_id = Number(e.coupon_id);
+        }
+        if (typeof e.order_type === 'string' && VALID_ORDER_TYPES.includes(e.order_type)) {
+          out.order_type = e.order_type;
         }
         return out;
       }
@@ -99,19 +106,24 @@ router.get('/:id/external-qr-coupon', async (req, res) => {
       ? JSON.parse(r.table_settings || '{}') : (r.table_settings || {});
     const entries = normalizeEntries(ts.externalQRs);
     const match = entries.find(e => e.name === name);
-    if (!match || !match.coupon_id) {
+    if (!match) {
       return res.json({ success: true, data: { linked: false } });
+    }
+    // Order type pin always returned when present (even if no coupon).
+    const orderType = match.order_type || null;
+    if (!match.coupon_id) {
+      return res.json({ success: true, data: { linked: false, order_type: orderType } });
     }
 
     const coupon = await Coupon.findOne({
       where: { id: match.coupon_id, restaurant_id: restaurantId }
     });
     if (!coupon || !isCouponCurrentlyValid(coupon)) {
-      return res.json({ success: true, data: { linked: false } });
+      return res.json({ success: true, data: { linked: false, order_type: orderType } });
     }
     return res.json({
       success: true,
-      data: { linked: true, coupon: publicCoupon(coupon) }
+      data: { linked: true, coupon: publicCoupon(coupon), order_type: orderType }
     });
   } catch (e) {
     console.error('[external-qrs] coupon lookup failed', e);

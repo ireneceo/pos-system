@@ -791,10 +791,15 @@ const PaymentPage: React.FC = () => {
 
       // Only show enabled methods that are available in mobile
       if (method.enabled && method.availableIn && method.availableIn.includes('mobile')) {
-        // Exclude "Pay at Counter" for delivery orders
-        if (orderType === 'delivery' && key === 'payAtCounter') {
-          console.log(`❌ ${key} excluded - Pay at Counter not allowed for delivery`);
-          return;
+        // Per-order-type filter (data-driven, replaces the old hardcoded `delivery ≠ payAtCounter` rule).
+        // Missing/empty `allowed_order_types` → allowed for all order types (backward compatible).
+        if (Array.isArray(method.allowed_order_types) && method.allowed_order_types.length > 0) {
+          const canonical = orderType === 'dine_in' ? 'dine-in' : orderType;
+          const normalizedAllowed = method.allowed_order_types.map((t: string) => t === 'dine_in' ? 'dine-in' : t);
+          if (!canonical || !normalizedAllowed.includes(canonical)) {
+            console.log(`❌ ${key} excluded — not allowed for order_type=${orderType}`);
+            return;
+          }
         }
 
         console.log(`✅ ${key} passed filter - adding to available methods`);
@@ -813,7 +818,21 @@ const PaymentPage: React.FC = () => {
     return methods;
   }, [paymentMethods, orderType]);
 
-  const [paymentMethod, setPaymentMethod] = useState<string>(''); // No default - user must select
+  const [paymentMethod, setPaymentMethod] = useState<string>(''); // No default - user must select (unless only 1 option remains)
+
+  // Auto-select when filter leaves only 1 method (eliminates choice paralysis for pinned
+  // order types like "takeaway → counter only"). Also clears the selection if the previously
+  // chosen method got filtered out (order_type change mid-flow).
+  React.useEffect(() => {
+    if (!availableMethods || availableMethods.length === 0) return;
+    if (availableMethods.length === 1 && paymentMethod !== availableMethods[0].key) {
+      setPaymentMethod(availableMethods[0].key);
+      return;
+    }
+    if (paymentMethod && !availableMethods.some(m => m.key === paymentMethod)) {
+      setPaymentMethod('');
+    }
+  }, [availableMethods, paymentMethod]);
 
   // Load restaurant info from slug
   React.useEffect(() => {
@@ -2602,7 +2621,21 @@ const PaymentPage: React.FC = () => {
         
         <Section>
           <SectionTitle>Payment Method *</SectionTitle>
-          {!paymentMethod && (
+          {availableMethods.length === 0 && paymentMethods && (
+            <div style={{
+              fontSize: '13px',
+              color: '#92400E',
+              marginBottom: '12px',
+              padding: '12px 16px',
+              background: '#FEF3C7',
+              borderRadius: '8px',
+              border: '1px solid #FCD34D',
+              lineHeight: 1.5
+            }}>
+              No payment method is configured for {orderType ? orderType.replace('-', ' ') : 'this'} orders. Please contact the restaurant.
+            </div>
+          )}
+          {availableMethods.length > 1 && !paymentMethod && (
             <div style={{
               fontSize: '13px',
               color: '#DC2626',

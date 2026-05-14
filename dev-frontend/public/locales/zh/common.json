@@ -164,7 +164,11 @@
   "orderType": {
     "dineIn": "堂食",
     "takeaway": "外卖",
-    "delivery": "配送"
+    "delivery": "配送",
+    "pickup": "自取",
+    "change": "更改",
+    "changeOrderType": "更改订单类型",
+    "pinFallback": "{{orderType}} 当前不可用，请选择其他选项。"
   },
   "role": {
     "systemAdmin": "系统管理员",
@@ -253,6 +257,7 @@
     "purchaseOrders": "采购订单",
     "content": "内容",
     "report": "报告",
+    "installApp": "安装应用",
     "logout": "退出",
     "section": {
       "management": "管理",
@@ -266,7 +271,9 @@
       "settings": "设置",
       "analytics": "数据分析",
       "teamMarketing": "团队与营销",
-      "systemAccess": "系统访问"
+      "systemAccess": "系统访问",
+      "brandManagement": "品牌管理",
+      "franchise": "加盟"
     },
     "franchiseManagement": "加盟管理",
     "tenancyManagement": "入驻管理",
@@ -277,7 +284,17 @@
     "tenancyMap": "入驻地图",
     "branchMap": "分店地图",
     "incomingOrders": "实时订单",
-    "carriers": "承运商"
+    "carriers": "承运商",
+    "paymentMethods": "支付方式",
+    "printer": "打印机",
+    "kitchenStations": "厨房工位",
+    "reservationSettings": "预订设置",
+    "membership": "会员",
+    "reservation": "预订",
+    "brandMenus": "品牌菜单",
+    "brandMenuCategories": "菜单分类",
+    "brandMenuOptions": "菜单选项",
+    "brandMenuUpdates": "品牌菜单更新"
   },
   "language": {
     "en": "English",

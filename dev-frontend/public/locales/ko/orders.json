@@ -54,5 +54,25 @@
   "liveOrdersPage.noKeepOrder": "아니오, 주문 유지",
   "liveOrdersPage.yesCancelOrder": "네, 주문 취소",
   "liveOrdersPage.reject": "거절",
-  "liveOrdersPage.customerSubmittedProof": "고객 제출 증빙"
+  "liveOrdersPage.customerSubmittedProof": "고객 제출 증빙",
+  "liveOrdersPage": {
+    "takeawayCharge": "포장료"
+  },
+  "brandMenuUpdatesPage.title": "브랜드 메뉴 업데이트",
+  "brandMenuUpdatesPage.allSyncedTitle": "모두 동기화됨",
+  "brandMenuUpdatesPage.allSyncedDesc": "브랜드에서 대기 중인 업데이트가 없습니다.",
+  "brandMenuUpdatesPage.noBrand": "이 매장은 브랜드에 연결되어 있지 않습니다.",
+  "brandMenuUpdatesPage.confirmSyncAll": "대기 중인 모든 브랜드 메뉴 업데이트를 적용하시겠습니까?",
+  "brandMenuUpdatesPage.syncAllNow": "지금 모두 동기화",
+  "brandMenuUpdatesPage.syncThisMenu": "이 메뉴 동기화",
+  "brandMenuUpdatesPage.skipThisVersion": "이 버전 건너뛰기",
+  "brandMenuUpdatesPage.addMenu": "메뉴 추가",
+  "brandMenuUpdatesPage.firstTimePush": "최초로 푸시된 신규 메뉴입니다.",
+  "brandMenuUpdatesPage.newMenuLabel": "신규",
+  "brandMenuUpdatesPage.lockedByBrand": "브랜드 잠금",
+  "brandMenuUpdatesPage.willBeEnforced": "강제 적용됩니다",
+  "brandMenuUpdatesPage.optionGroupOnly": "옵션 그룹이 변경되었습니다 — 동기화하여 적용하세요.",
+  "brandMenuUpdatesPage.imageChanged": "(이미지 변경됨)",
+  "brandMenuUpdatesPage.category": "카테고리",
+  "brandMenuUpdatesPage.price": "가격"
 }

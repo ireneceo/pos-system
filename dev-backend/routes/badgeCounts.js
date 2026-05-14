@@ -51,12 +51,41 @@ router.get('/', authenticateToken, async (req, res) => {
       invoices: 0,
       pendingOrders: 0,
       livePoCount: 0,  // Sprint 6: Live Orders (incoming PO submissions)
+      brandMenuPending: 0,  // v3.32: Brand Menu sync updates awaiting restaurant action
       unreadComments: {
         notices: 0,
         systemInquiry: 0,
         operationInquiry: 0
       }
     };
+
+    // --- Brand Menu pending updates ---
+    // Restaurant-side count of Products with link_status='pending_update', plus
+    // brand menus that have no local product yet (first-time push).
+    if (restaurantId && (role === 'Restaurant Admin' || role === 'Staff' || role === 'Restaurant Owner')) {
+      try {
+        const Product = require('../models/Product');
+        const BrandMenu = require('../models/BrandMenu');
+        const restaurant = await Restaurant.findByPk(restaurantId, { attributes: ['id', 'brand_id'] });
+        if (restaurant?.brand_id) {
+          const pending = await Product.count({
+            where: { restaurant_id: restaurantId, brand_menu_link_status: 'pending_update' }
+          });
+          // Count brand menus with no local product (new menus)
+          const allBrandMenus = await BrandMenu.findAll({
+            where: { brand_id: restaurant.brand_id, is_active: true },
+            attributes: ['id']
+          });
+          const linked = await Product.findAll({
+            where: { restaurant_id: restaurantId, brand_menu_id: { [Op.in]: allBrandMenus.map(m => m.id) } },
+            attributes: ['brand_menu_id']
+          });
+          const linkedIds = new Set(linked.map(p => p.brand_menu_id));
+          const newOnes = allBrandMenus.filter(m => !linkedIds.has(m.id)).length;
+          counts.brandMenuPending = pending + newOnes;
+        }
+      } catch (e) { /* silent — non-critical */ }
+    }
 
     // --- System Inquiry ---
     // 배지: open 상태 티켓만 카운트 (in-progress는 이미 처리 중이므로 제외)

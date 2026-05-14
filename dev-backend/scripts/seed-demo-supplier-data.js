@@ -1,13 +1,19 @@
 /**
  * Demo data seed for demo-supplier@purplehere.com
  * - 3 categories, 6 products with stock
- * - Active SupplierContract with Restaurant#38 (MY)
+ * - Active SupplierContract with the demo restaurant
  * - 4 IngredientSellerProduct mappings
  * - 4 PurchaseOrders (submitted / confirmed / shipped / received)
  * - 1 Trade Invoice from received PO
+ *
+ * IDs are resolved at runtime from stable identifiers (email/role) so this
+ * script ports cleanly between dev / staging / production without manual
+ * ID edits. Override via env vars if the defaults don't match:
+ *   DEMO_SUPPLIER_EMAIL    (default: demo-supplier@purplehere.com)
+ *   DEMO_RESTAURANT_EMAIL  (default: demo-restaurant@purplehere.com)
  */
 const {
-  SupplierProductCategory, SupplierProduct,
+  User, SupplierProductCategory, SupplierProduct,
   SupplierContract, SupplierCompany,
   IngredientSellerProduct, Ingredient, Restaurant,
   PurchaseOrder, PurchaseOrderItem,
@@ -15,12 +21,32 @@ const {
 } = require('../models');
 const { sequelize } = require('../db');
 
-const SUPPLIER_COMPANY_ID = 20;
-const SUPPLIER_OWNER_USER_ID = 227;
-const RESTAURANT_ID = 38;
-const RESTAURANT_OWNER_USER_ID = 23;
+const DEMO_SUPPLIER_EMAIL = process.env.DEMO_SUPPLIER_EMAIL || 'demo-supplier@purplehere.com';
+const DEMO_RESTAURANT_EMAIL = process.env.DEMO_RESTAURANT_EMAIL || 'demo-restaurant@purplehere.com';
+
+async function resolveDemoIds() {
+  const supplierUser = await User.findOne({ where: { email: DEMO_SUPPLIER_EMAIL } });
+  if (!supplierUser) throw new Error(`Demo supplier user not found: ${DEMO_SUPPLIER_EMAIL}`);
+  const supplierCompany = await SupplierCompany.findOne({ where: { owner_id: supplierUser.id } });
+  if (!supplierCompany) throw new Error(`SupplierCompany not found for owner_id=${supplierUser.id} (${DEMO_SUPPLIER_EMAIL})`);
+
+  const restaurantUser = await User.findOne({ where: { email: DEMO_RESTAURANT_EMAIL } });
+  if (!restaurantUser) throw new Error(`Demo restaurant user not found: ${DEMO_RESTAURANT_EMAIL}`);
+  const restaurant = await Restaurant.findOne({ where: { admin_id: restaurantUser.id } });
+  if (!restaurant) throw new Error(`Restaurant not found for admin_id=${restaurantUser.id} (${DEMO_RESTAURANT_EMAIL})`);
+
+  return {
+    SUPPLIER_COMPANY_ID: supplierCompany.id,
+    SUPPLIER_OWNER_USER_ID: supplierUser.id,
+    RESTAURANT_ID: restaurant.id,
+    RESTAURANT_OWNER_USER_ID: restaurantUser.id
+  };
+}
 
 (async () => {
+  const { SUPPLIER_COMPANY_ID, SUPPLIER_OWNER_USER_ID, RESTAURANT_ID, RESTAURANT_OWNER_USER_ID } = await resolveDemoIds();
+  console.log(`Resolved demo IDs: supplier_company=${SUPPLIER_COMPANY_ID}, supplier_user=${SUPPLIER_OWNER_USER_ID}, restaurant=${RESTAURANT_ID}, restaurant_user=${RESTAURANT_OWNER_USER_ID}`);
+
   const t = await sequelize.transaction();
   try {
     // 1. Categories

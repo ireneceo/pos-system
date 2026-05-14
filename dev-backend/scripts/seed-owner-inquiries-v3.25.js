@@ -1,15 +1,30 @@
 /**
- * v3.25 — Link demo_owner (id=289) to restaurants 1,2,3 + seed operation/system tickets
+ * v3.25 — Link demo_owner to the first N restaurants + seed operation/system tickets
+ *
+ * IDs resolved at runtime. Override via env vars:
+ *   DEMO_OWNER_EMAIL          (default: demo-owner@purplehere.com)
+ *   DEMO_OWNER_RESTAURANT_COUNT (default: 3 — first N restaurants by id)
  *
  * Idempotent.
  */
 const { OperationTicket, RestaurantManager, Restaurant, User } = require('../models');
 const database = require('../config/database');
 
-const DEMO_OWNER_ID = 289;
-const TARGET_RESTAURANT_IDS = [1, 2, 3];
+const DEMO_OWNER_EMAIL = process.env.DEMO_OWNER_EMAIL || 'demo-owner@purplehere.com';
+const DEMO_OWNER_RESTAURANT_COUNT = parseInt(process.env.DEMO_OWNER_RESTAURANT_COUNT || '3');
+
+async function resolveOwnerIds() {
+  const owner = await User.findOne({ where: { email: DEMO_OWNER_EMAIL } });
+  if (!owner) throw new Error(`Demo owner user not found: ${DEMO_OWNER_EMAIL}`);
+  const rests = await Restaurant.findAll({ order: [['id', 'ASC']], limit: DEMO_OWNER_RESTAURANT_COUNT });
+  if (rests.length === 0) throw new Error('No restaurants available to link.');
+  return { DEMO_OWNER_ID: owner.id, TARGET_RESTAURANT_IDS: rests.map(r => r.id) };
+}
 
 (async () => {
+  const { DEMO_OWNER_ID, TARGET_RESTAURANT_IDS } = await resolveOwnerIds();
+  console.log(`Resolved IDs: demo_owner=${DEMO_OWNER_ID}, restaurants=[${TARGET_RESTAURANT_IDS.join(',')}]`);
+
   const t = await database.sequelize.transaction();
   try {
     // 1. Ensure ownership links

@@ -184,7 +184,12 @@ router.get('/', checkRestaurantAccess, async (req, res) => {
         // 활성화 상태
         is_active: prod.is_active !== false,  // 기본값 true
         // Kitchen Station 배정
-        kitchen_station_id: prod.kitchen_station_id || null
+        kitchen_station_id: prod.kitchen_station_id || null,
+        // Brand Menu linkage (v3.32+)
+        brand_menu_id: prod.brand_menu_id || null,
+        brand_menu_locks_snapshot: prod.brand_menu_locks_snapshot || null,
+        brand_menu_synced_version: prod.brand_menu_synced_version || null,
+        brand_menu_status: prod.brand_menu_link_status || null
       };
     });
 
@@ -466,6 +471,38 @@ router.put('/product/:id', checkProductTenant, async (req, res) => {
 
     if (!product) {
       return res.status(404).json({ success: false, error: { message: 'Product not found', code: 'NOT_FOUND' } });
+    }
+
+    // Brand Menu Lock guard — block edits to fields locked by the linked BrandMenu.
+    // soldOut / is_active / stock / is_featured / kitchen_station_id / image_thumbnail
+    // are always RA-owned even when linked (品절 등 운영 자율).
+    if (product.brand_menu_id && product.brand_menu_locks_snapshot) {
+      const locks = typeof product.brand_menu_locks_snapshot === 'string'
+        ? JSON.parse(product.brand_menu_locks_snapshot) : product.brand_menu_locks_snapshot;
+      const fieldToLockKey = {
+        name: 'name', price: 'price', category: 'category', image: 'image',
+        optionGroups: 'options'
+      };
+      const locked = [];
+      for (const [field, lockKey] of Object.entries(fieldToLockKey)) {
+        if (req.body[field] !== undefined && locks[lockKey] === true) {
+          const cur = product[field];
+          const next = req.body[field];
+          // optionGroups is an array — compare via JSON
+          const changed = JSON.stringify(cur ?? null) !== JSON.stringify(next ?? null);
+          if (changed) locked.push(field);
+        }
+      }
+      if (locked.length > 0) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            message: `These fields are locked by the linked Brand Menu and cannot be changed: ${locked.join(', ')}`,
+            code: 'PRODUCT_FIELD_LOCKED_BY_BRAND',
+            locked_fields: locked
+          }
+        });
+      }
     }
 
     // Set menu validation (if updating to set menu or already is set menu)

@@ -1,9 +1,84 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-05-13 (v3.30 운영 배포 완료 — PWA 빈 화면 fix + 알림 우리 규칙 정확 반영 + 페이지 로딩 성능 + 모바일 햄버거 2뎁스)
+> **최종 업데이트:** 2026-05-14 (v3.32-dev — Brand Menu System / 운영 미배포)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
-> **현재 버전:** **v3.30** (2026-05-13 운영 배포 완료)
+> **현재 버전:** **v3.32-dev** (Brand Menu System 개발 완료, E2E 21/21 · health-check 80/80, 운영 배포 대기)
+
+## ✅ 완료: v3.32-dev — Brand Menu System (2026-05-14, 미배포)
+
+### 변경 요약
+
+| 항목 | 결과 |
+|------|------|
+| 빌드 | main.c679b6ef.js (62초, Brand Menu 관련 에러 0) |
+| Backend 재시작 | OK |
+| DB 마이그 | brand_menus / brand_menu_categories / brand_menu_option_groups / brand_menu_options / brand_menu_option_group_links 5 신규 테이블 + products 5 컬럼 + option_groups 2 컬럼 |
+| API E2E | 21/21 PASS (Auth/IDOR/lock guard/version bump propagation/sync 복귀) |
+| Health-check | **80/80 PASS** |
+| State-hydration | 0 warning |
+
+### 기능
+
+BG (Brand General) 가 메뉴 템플릿을 만들어 가맹점 매장에 푸시 + 잠금/버전 동기화.
+
+- **BG 페이지 3개**: Brand Menus (CRUD + push + 잠금 5플래그 + distribution_mode), Menu Categories, Menu Options (옵션 그룹 + 옵션 inline)
+- **RA 페이지 1개**: Brand Menu Updates (pending 카드 + diff + Sync/Skip)
+- **MenuManagement (RA)**: BRAND 뱃지 + 잠금 개수 + pending dot, Edit 모달 잠긴 필드 disabled + 자물쇠 아이콘
+- **사이드바 재구성**: 기존 Management → Brand Management (Brands / Brand Menus / Menu Categories / Menu Options / Brand Recipes) + Franchise (Restaurants / Restaurant Admins / Managers)
+
+### 핵심 아키텍처
+
+1. **잠금 스냅샷 가드**: products.brand_menu_locks_snapshot JSON. PUT /api/menu/product/:id 미들웨어가 변경 필드 검사 → 400 PRODUCT_FIELD_LOCKED_BY_BRAND.
+2. **버전 propagation**: BG 가 BrandMenu / BrandMenuOptionGroup 수정 시 version++ + 사용 Product 일괄 `pending_update` 마킹.
+3. **옵션 그룹 미러**: BrandMenuOptionGroup → 매장 OptionGroup (양쪽 entity). RA 가 추가한 자체 옵션 보존.
+4. **distribution_mode**: `auto` (생성/수정 즉시 push) vs `manual` (BG 가 Push to All Now 버튼).
+
+### 수정/추가된 파일
+
+**Backend (16)**:
+- 모델 5 (신규): `BrandMenu.js`, `BrandMenuCategory.js`, `BrandMenuOptionGroup.js`, `BrandMenuOption.js`, `BrandMenuOptionGroupLink.js`
+- 라우트 4 (신규): `brand-menus.js`, `brand-menu-categories.js`, `brand-menu-option-groups.js`, `restaurant-brand-menus.js`
+- 서비스 1 (신규): `brandMenuSyncService.js`
+- 마이그 1 (신규): `scripts/migrate-brand-menu-system.js`
+- 수정: `models/Product.js` (5 컬럼), `models/index.js` (5 association), `routes/menu.js` (lock guard + GET 응답), `server.js` (4 mount)
+
+**Frontend (5)**:
+- 페이지 4 (신규): `BrandMenusPage.tsx`, `BrandMenuCategoriesPage.tsx`, `BrandMenuOptionGroupsPage.tsx`, `BrandMenuUpdatesPage.tsx`
+- 수정: `MainLayout.tsx` (사이드바 재구성), `App.tsx` (4 라우트), `MenuContext.tsx` (MenuItem 4 필드), `MenuManagementPage.tsx` (BRAND 뱃지 + 잠금 UI)
+
+**Docs / i18n**:
+- `docs/BRAND_MENU_SYSTEM.md` (신규)
+- 4언어 키 71개: `common.json` (nav 6) + `brand.json` (51) + `orders.json` (16) + `menu.json` (5)
+
+---
+
+## ✅ 완료: v3.31-dev backlog cleanup (2026-05-14, 미배포)
+
+### 변경 요약
+
+| 항목 | 결과 |
+|------|------|
+| 빌드 | main.f9073f14.js (62~64초, 신규 경고 0) |
+| Backend 재시작 | OK (sweep scheduler 등록 확인 로그) |
+| DB 마이그 | `users.push_preferences` DROP COLUMN, `brand_products#7` base64 → 파일 |
+| Health-check | **80/80 PASS** |
+| 새 cron | `base64_image_sweep` (매주 일요일 04:00 UTC) |
+
+### 포함된 변경 (7건)
+
+1. **push_preferences 컬럼 deprecate** — notification_preferences 단일 source. 마이그레이션 + fallback 코드 제거.
+2. **Reservation 동시 booking race window** — Restaurant row SELECT FOR UPDATE 잠금 패턴. 실제 동시성 테스트 PASS.
+3. **_localToUTC DST 보정** — Intl.DateTimeFormat 기반 target-date offset. NY/Berlin/Sydney 양 시즌 정확.
+4. **base64 이미지 sweep cron** — 28 컬럼 자동 감시 + System Admin alert + `normalizeImageField` 헬퍼 + brand_products 가드.
+5. **SubscriptionsPage Edit SubscriptionFormFields 통합** — `hidePlan` 옵션 추가. "others" custom plan 입력 사라지던 결함 fix.
+6. **PageSettingsLink i18n** — `t('nav.settings')` 사용 (4언어 키 기존재).
+7. **운영 demo 시드 ID 파라미터화** — 3 스크립트 모두 email lookup 기반.
+
+### 제외 (별도 사이클 필요)
+- **Reservation 후속** (deposit/WaitingList/monthly view/환불 cron) — 신규 모델 다수, `/기능설계` 필요.
+
+---
 
 ## ✅ 완료: v3.30 운영 배포 (2026-05-13)
 

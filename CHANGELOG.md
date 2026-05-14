@@ -6,6 +6,19 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+### 2026-05-14
+- **Brand Menu System (v3.32-dev)** — Brand General(본부) 이 메뉴 템플릿을 만들어 산하 가맹점 매장에 푸시. 잠금/버전 동기화 지원.
+- BG 페이지 3개 — Brand Menus (CRUD + push + 잠금 5플래그 + Auto/Manual distribution), Menu Categories, Menu Options (옵션 그룹 + 옵션 inline)
+- RA 페이지 1개 — Brand Menu Updates (pending 카드 + diff + Sync This / Skip / Sync All Now)
+- MenuManagement (RA) — BRAND 뱃지 + 잠금 개수 + pending dot, Edit 모달 잠긴 필드 disabled + 자물쇠 아이콘
+- 사이드바 재구성 — 기존 Management → Brand Management (Brands / Brand Menus / Menu Categories / Menu Options / Brand Recipes) + Franchise (Restaurants / Restaurant Admins / Managers) 2개로 분리
+- 잠금 가드 — products.brand_menu_locks_snapshot JSON. PUT /api/menu/product/:id 가 잠긴 필드 수정 시 400 PRODUCT_FIELD_LOCKED_BY_BRAND
+- 버전 propagation — BG 가 메뉴/옵션그룹 수정 시 version++ + 사용 매장 Product 자동 pending_update 마킹. RA "Skip This Version" 으로 특정 버전 건너뛰기 가능
+- 옵션 그룹 미러 — BrandMenuOptionGroup → 매장 OptionGroup 양쪽 entity (RA 자체 옵션은 보존)
+- DB — 5 신규 테이블 (brand_menus, brand_menu_categories, brand_menu_option_groups, brand_menu_options, brand_menu_option_group_links) + products 5 컬럼 + option_groups 2 컬럼. 마이그레이션 idempotent
+- i18n 4언어 (en/ko/zh/ms) 71 키 추가
+- 설계 문서 `docs/BRAND_MENU_SYSTEM.md`. 검증: E2E 21/21 PASS, health-check 80/80, state-hydration 0 warning
+
 ---
 
 ## [v3.30] — 2026-05-13 배포

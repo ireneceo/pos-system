@@ -12,14 +12,12 @@ import {
 /**
  * Push notification preferences card.
  * - Master toggle (push_enabled)
- * - Category toggles (POS Operations 5 categories)
  * - Muted hours (start/end + enabled)
  * - Test button (rate-limited 5/min on server)
+ *
+ * Category toggles live in NotificationSettingsPage (single source of truth =
+ * `notification_preferences`, shared between email + push).
  */
-const POS_OPS_CATEGORIES = [
-  'order_new', 'order_status', 'kitchen_alert', 'inventory_low', 'staff_call'
-];
-
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
   <div style={{ marginBottom: 24 }}>
     <h3 style={{ fontSize: 16, fontWeight: 600, color: '#0A2540', marginBottom: 12 }}>{title}</h3>
@@ -46,7 +44,6 @@ const PushPreferencesCard: React.FC = () => {
   const [busy, setBusy] = useState(false);
   const [prefs, setPrefs] = useState<{
     push_enabled: boolean;
-    categories: Record<string, boolean>;
     muted_hours: { enabled: boolean; start: number; end: number; timezone?: string };
   } | null>(null);
   const [testStatus, setTestStatus] = useState<string>('');
@@ -81,14 +78,6 @@ const PushPreferencesCard: React.FC = () => {
     } finally {
       setBusy(false);
     }
-  };
-
-  const handleCategoryChange = async (key: string, value: boolean) => {
-    if (!prefs) return;
-    const next = { ...prefs.categories, [key]: value };
-    setPrefs({ ...prefs, categories: next });
-    try { await updatePreferences({ categories: { [key]: value } }); }
-    catch { /* revert silently */ }
   };
 
   const handleMutedChange = async (patch: Partial<{ enabled: boolean; start: number; end: number }>) => {
@@ -161,27 +150,6 @@ const PushPreferencesCard: React.FC = () => {
           </button>
           {testStatus && <span style={{ marginLeft: 12, fontSize: 13, color: '#6B7C93' }}>{testStatus}</span>}
         </div>
-      </Section>
-
-      <Section title="Categories">
-        {POS_OPS_CATEGORIES.map(key => {
-          const enabled = prefs?.categories?.[key] !== false;
-          return (
-            <Row
-              key={key}
-              label={key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
-              right={
-                <input
-                  type="checkbox"
-                  checked={enabled}
-                  onChange={(e) => handleCategoryChange(key, e.target.checked)}
-                  disabled={!prefs?.push_enabled}
-                  style={{ width: 18, height: 18, accentColor: '#635BFF' }}
-                />
-              }
-            />
-          );
-        })}
       </Section>
 
       <Section title="Muted hours">

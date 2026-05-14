@@ -15,6 +15,7 @@ const { authenticateToken, optionalAuthenticateToken } = require('../middleware/
 const ActivityLog = require('../models/ActivityLog');
 const { logActivity } = require('../utils/activityLogger');
 const { getTodayBounds, getOrderDatePrefix, getRestaurantTimezone } = require('../utils/dateTimeHelper');
+const { checkPaymentMethodAllowed } = require('../utils/paymentMethodGuard');
 
 router.get('/', authenticateToken, async (req, res) => {
   try {
@@ -315,6 +316,19 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Restaurant not found' });
     }
     const timezone = getRestaurantTimezone(restaurant);
+
+    // Defence: payment_method × order_type. Only enforced for mobile-sourced orders —
+    // POS staff sees all enabled methods regardless of order_type (operator judgment).
+    if (orderData.source === 'mobile') {
+      const guard = checkPaymentMethodAllowed({
+        paymentSettings: restaurant.payment_settings,
+        paymentMethod: orderData.payment_method,
+        orderType: orderData.order_type
+      });
+      if (!guard.ok) {
+        return res.status(400).json({ success: false, message: guard.message, code: guard.code });
+      }
+    }
 
     // Auto-merge: Check if there's an existing order to merge into
     // Rules: same table + payment_method + source group + (mobile: same customer)

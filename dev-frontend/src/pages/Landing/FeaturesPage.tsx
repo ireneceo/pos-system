@@ -203,6 +203,7 @@ const SliderImage = styled.img`
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: top;
   display: block;
 `;
 
@@ -579,7 +580,7 @@ const ROLE_TABS: RoleTab[] = [
       // Communication
       { code: 'fc_notices', title: 'Notice Management', description: 'Send notices and announcements to foodcourt tenants', points: ['Broadcast notices', 'Targeted communication', 'Read tracking', 'Attachment support'], category: 'basic', images: getImages('fc_notices', 1) },
       // Advanced
-      { code: 'fc_floor_plan', title: 'Floor Plan & Store Management', description: 'Drag-and-drop visual floor plan with store placement and status overlay', points: ['Drag-and-drop store placement', '4 shape options (rectangle, rounded, circle, triangle)', 'Resize handles and undo/redo', 'Unplaced stores panel for new units', 'Click-to-view contract and tenant info'], category: 'advanced', images: getImages('fc_floor_plan', 0) },
+      { code: 'fc_floor_plan', title: 'Floor Plan & Store Management', description: 'Drag-and-drop visual floor plan with store placement and status overlay', points: ['Drag-and-drop store placement', '4 shape options (rectangle, rounded, circle, triangle)', 'Resize handles and undo/redo', 'Unplaced stores panel for new units', 'Click-to-view contract and tenant info'], category: 'advanced', images: getImages('fc_floor_plan', 1) },
       { code: 'fc_products', title: 'Product Management', description: 'Foodcourt-level product catalog (common service items, rental products)', points: ['Foodcourt-wide product catalog', 'Pricing and unit setup', 'Tenant-shared catalog', 'Active/inactive toggle'], category: 'advanced', images: getImages('fc_products', 0) },
       { code: 'fc_inventory', title: 'Inventory Management', description: 'Stock tracking for foodcourt-owned inventory', points: ['Common stock tracking', 'Low-stock alerts', 'Receipt and dispatch logs', 'Multi-branch inventory'], category: 'advanced', images: getImages('fc_inventory', 0) },
       { code: 'buyer_supplier_directory', title: 'Supplier Directory', description: 'Browse and search PurpleHere\'s supplier network with full product catalogs and pricing', points: ['Supplier search by category and region', 'Public profile and product catalog browse', 'Lead inquiry to suppliers', 'Saved suppliers shortlist'], category: 'advanced', images: getImages('buyer_supplier_directory', 1) },
@@ -628,7 +629,7 @@ const ROLE_TABS: RoleTab[] = [
     features: [
       // Operations
       { code: 'supplier_dashboard', title: 'Dashboard', description: 'Eight KPI overview — pending/confirmed/shipped orders, revenue trend, outstanding receivables, active customers, low stock, monthly receipts', points: ['8 KPIs at a glance', '6-month revenue line chart', 'Alerts panel with deep links', 'Recent orders & trade invoices side by side', 'Subscription status'], category: 'basic', images: getImages('supplier_dashboard', 1) },
-      { code: 'supplier_live_orders', title: 'Live Orders', description: 'Real-time incoming purchase orders from buyers with sound alerts and lifecycle actions', points: ['Socket.IO live arrival + chime', 'Confirm / Ship (carrier dropdown) / Reject', 'Carrier catalog with auto tracking URL (Lalamove, Grab, J&T, Ninja Van, Pos Laju)', 'Edit tracking after ship', 'Mark delivered → Buyer receives', 'Returns approve/reject with auto Credit Note'], category: 'basic', images: getImages('supplier_live_orders', 0) },
+      { code: 'supplier_live_orders', title: 'Live Orders', description: 'Real-time incoming purchase orders from buyers with sound alerts and lifecycle actions', points: ['Socket.IO live arrival + chime', 'Confirm / Ship (carrier dropdown) / Reject', 'Carrier catalog with auto tracking URL (Lalamove, Grab, J&T, Ninja Van, Pos Laju)', 'Edit tracking after ship', 'Mark delivered → Buyer receives', 'Returns approve/reject with auto Credit Note'], category: 'basic', images: getImages('supplier_live_orders', 1) },
       { code: 'supplier_products', title: 'Product Catalog', description: 'Manage the seller catalog of ingredients you sell, with per-buyer pricing and unit conversion', points: ['Ingredient catalog you sell', 'Per-customer pricing', 'Unit conversion (case ↔ unit)', 'Active/inactive toggle'], category: 'basic', images: getImages('supplier_products', 1) },
       { code: 'supplier_inventory', title: 'Inventory & Transactions', description: 'Stock-level tracking with full transaction history (receive, adjust, ship, return)', points: ['Stock list with low-stock alerts', 'Transaction history tab', 'Auto-decrement on PO ship', 'Return reversal'], category: 'basic', images: getImages('supplier_inventory', 1) },
       { code: 'supplier_customers', title: 'Customers (Buyers)', description: 'Directory of restaurant, brand, and foodcourt customers with order history and AR balance', points: ['Buyer profiles', 'Per-customer order history', 'Outstanding receivable per customer', 'Activity timeline'], category: 'basic', images: getImages('supplier_customers', 1) },

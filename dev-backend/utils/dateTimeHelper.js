@@ -10,24 +10,35 @@
 const DEFAULT_TZ = 'Asia/Kuala_Lumpur';
 
 /**
- * Core: Calculate UTC offset for a given timezone at the current moment.
- * Returns milliseconds to ADD to a local-constructed Date to get the true UTC moment.
+ * Compute the IANA timezone's UTC offset (in ms) AT a specific UTC instant.
  *
- * Example: Asia/Kuala_Lumpur is UTC+8
- * - Server UTC: 2026-03-16 00:00
- * - Local time: 2026-03-16 08:00
- * - localNow = Date("2026-03-16 08:00") parsed as local = some UTC value
- * - utcOffset = now.getTime() - localNow.getTime()
- * - Adding utcOffset to a "local midnight as if UTC" gives the true UTC midnight
+ * Uses Intl.DateTimeFormat to read what the wall-clock components would be in
+ * the target timezone, then derives the offset. Correct across DST boundaries
+ * because the offset is evaluated at the target moment — not at process start
+ * or `now` (which is the bug this replaces).
  */
-function _getUTCOffset(timezone) {
-  const now = new Date();
-  const localNow = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
-  return now.getTime() - localNow.getTime();
+function _tzOffsetAt(timezone, utcDate) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-GB', {
+      timeZone: timezone,
+      hourCycle: 'h23',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit'
+    }).formatToParts(utcDate).map(p => [p.type, p.value])
+  );
+  const asUTC = Date.UTC(+parts.year, +parts.month - 1, +parts.day,
+    +parts.hour, +parts.minute, +parts.second);
+  return asUTC - utcDate.getTime();
 }
 
 /**
- * Core: Convert a local date+time to UTC Date object
+ * Core: Convert a wall-clock moment in `timezone` to the corresponding UTC Date.
+ *
+ * DST-correct: resolves the offset at the *target* moment, so dates near
+ * DST transitions or far from `now` (e.g. yearly reports, future bookings)
+ * return the right UTC instant. Two iterations resolve the ±1h discrepancy
+ * that can occur right at a DST boundary.
+ *
  * @param {number} year - Full year
  * @param {number} month - 0-based month
  * @param {number} day - Day of month
@@ -39,9 +50,12 @@ function _getUTCOffset(timezone) {
  * @returns {Date} UTC Date object
  */
 function _localToUTC(year, month, day, hours, minutes, seconds, ms, timezone) {
-  const offset = _getUTCOffset(timezone);
-  const localAsDate = new Date(year, month, day, hours, minutes, seconds, ms);
-  return new Date(localAsDate.getTime() + offset);
+  const naive = Date.UTC(year, month, day, hours, minutes, seconds, ms);
+  // First pass: assume the wall-clock is UTC, look up offset at that moment.
+  let utc = naive - _tzOffsetAt(timezone, new Date(naive));
+  // Second pass: re-evaluate at the candidate UTC — converges around DST jumps.
+  utc = naive - _tzOffsetAt(timezone, new Date(utc));
+  return new Date(utc);
 }
 
 /**

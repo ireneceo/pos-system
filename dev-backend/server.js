@@ -53,6 +53,7 @@ const demoResetScheduler = require('./services/demoResetScheduler');
 const dailyStatsScheduler = require('./services/dailyStatsScheduler');
 const invoiceOverdueScheduler = require('./services/invoiceOverdueScheduler');
 const reservationScheduler = require('./services/reservationScheduler');
+const base64ImageSweep = require('./services/base64ImageSweep');
 const { startSoaCron } = require('./services/soaScheduler');
 const { errorHandler } = require('./middleware/errorHandler');
 const { initSocketServer } = require('./services/socketService');
@@ -249,6 +250,11 @@ const recipeCategoriesRouter = require('./routes/recipe-categories');
 const ingredientCategoriesRouter = require('./routes/ingredient-categories');
 const currenciesRouter = require('./routes/currencies');
 const brandProductsRouter = require('./routes/brand-products');
+// Brand Menu System (v3.32+)
+const brandMenusRouter = require('./routes/brand-menus');
+const brandMenuCategoriesRouter = require('./routes/brand-menu-categories');
+const brandMenuOptionGroupsRouter = require('./routes/brand-menu-option-groups');
+const restaurantBrandMenusRouter = require('./routes/restaurant-brand-menus');
 const suppliersRouter = require('./routes/suppliers');
 const inventoryRouter = require('./routes/inventory-routes');
 const brandInventoryRouter = require('./routes/brand-inventory');
@@ -372,6 +378,11 @@ app.use('/api/site-settings', siteSettingsRouter);
 app.use('/api/notification-settings', notificationSettingsRouter);
 app.use('/api/push', pushRouter);
 app.use('/api', brandProductsRouter);  // Brand products routes (must be before /api/brands to handle /api/brands/:id/product-categories)
+// Brand Menu System (v3.32+)
+app.use('/api/brand-menus', brandMenusRouter);
+app.use('/api/brand-menu-categories', brandMenuCategoriesRouter);
+app.use('/api/brand-menu-option-groups', brandMenuOptionGroupsRouter);
+app.use('/api/restaurant/:restaurantId/brand-menus', restaurantBrandMenusRouter);
 app.use('/api/brands', brandsRouter);
 app.use('/api/foodcourts', foodcourtsRouter);
 app.use('/api', recipesRouter);
@@ -571,6 +582,10 @@ async function startServer() {
 
     // Start reservation scheduler — runs hourly (24h/2h reminders + no_show auto)
     reservationScheduler.start();
+
+    // Start base64 image sweep — weekly Sunday 04:00 UTC, detects inline base64
+    // images in DB columns and alerts System Admins (v3.30 perf incident guard).
+    base64ImageSweep.start();
 
     // 포트 충돌 체크 - PM2 환경에서는 더 유연하게 처리
     server.listen(PORT, '0.0.0.0', () => {

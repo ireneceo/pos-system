@@ -26,6 +26,54 @@ function isWithinPolicy(reservedAt, hoursBefore) {
   return (new Date(reservedAt) - Date.now()) / (1000 * 3600) >= hoursBefore;
 }
 
+/**
+ * Race-safe capacity check.
+ *
+ * When called with `transaction`, uses SELECT ... FOR UPDATE so a concurrent
+ * INSERT into the same slot window is forced to wait until this transaction
+ * commits. Gap locks under InnoDB REPEATABLE READ also block phantom inserts
+ * within the same date range.
+ *
+ * Without `transaction`, behaves as a read-only fast-fail check (used at the
+ * top of POST handlers to short-circuit obviously-full slots before opening
+ * a transaction).
+ */
+async function checkSlotCapacity({ restaurant, reservedAt, partySize, transaction, excludeReservationId }) {
+  const settings = getReservationSettings(restaurant);
+  const slot = settings.slot || {};
+  const slotMin = slot.duration_minutes || 30;
+  const turnMin = slot.turn_time_minutes || 90;
+  const maxCovers = slot.max_covers_per_slot || 40;
+  const tz = getRestaurantTimezone(restaurant);
+
+  const requested = new Date(reservedAt);
+  const dateStr = requested.toLocaleDateString('en-CA', { timeZone: tz });
+  const { startOfDay, endOfDay } = getDateBounds(dateStr, tz);
+
+  const where = {
+    restaurant_id: restaurant.id,
+    reserved_at: { [Op.between]: [startOfDay, endOfDay] },
+    status: { [Op.in]: ['pending', 'confirmed', 'arrived', 'seated'] }
+  };
+  if (excludeReservationId) where.id = { [Op.ne]: excludeReservationId };
+
+  const opts = { where, attributes: ['id', 'reserved_at', 'party_size', 'turn_minutes'], raw: true };
+  if (transaction) {
+    opts.transaction = transaction;
+    opts.lock = transaction.LOCK.UPDATE;
+  }
+  const existing = await Reservation.findAll(opts);
+
+  const requestedEnd = new Date(requested.getTime() + slotMin * 60000);
+  const overlapping = existing.filter(r => {
+    const rStart = new Date(r.reserved_at);
+    const rEnd = new Date(rStart.getTime() + (r.turn_minutes || turnMin) * 60000);
+    return rStart < requestedEnd && rEnd > requested;
+  });
+  const covers = overlapping.reduce((s, r) => s + (r.party_size || 0), 0);
+  return { fits: covers + partySize <= maxCovers, available_covers: maxCovers - covers, max_covers: maxCovers };
+}
+
 async function calcSlotAvailability(restaurant, date, partySize) {
   // R1 MVP: 같은 시간대 (turn_time 윈도우) 의 confirmed/pending 합 + 본 예약 < max_covers_per_slot
   // 모든 시각은 레스토랑 timezone(operation_settings.timeZone) 의 local clock 으로 해석.
@@ -139,13 +187,10 @@ router.post('/', authenticateCustomer, async (req, res) => {
       return res.status(400).json({ success: false, message: `Reservation must be at least ${minHours}h in advance` });
     }
 
-    // 슬롯 캐파 검증 — 레스토랑 timezone 기준 local date 로 슬롯 생성
-    const tz = getRestaurantTimezone(restaurant);
-    const date = new Date(reserved_at).toLocaleDateString('en-CA', { timeZone: tz });
-    const slots = await calcSlotAvailability(restaurant, date, party_size);
-    const targetTime = new Date(reserved_at).toISOString().slice(0, 16);
-    const matched = slots.find(s => s.time.slice(0, 16) === targetTime);
-    if (matched && !matched.can_book) {
+    // 빠른 사전 체크 — 명백히 풀이면 트랜잭션 열기 전에 400 (DB 부담 절감).
+    // 실제 race-safe 결정은 트랜잭션 내부 SELECT FOR UPDATE 체크.
+    const preCheck = await checkSlotCapacity({ restaurant, reservedAt: reserved_at, partySize: party_size });
+    if (!preCheck.fits) {
       return res.status(400).json({ success: false, message: 'Slot fully booked at this time' });
     }
 
@@ -154,6 +199,11 @@ router.post('/', authenticateCustomer, async (req, res) => {
     // 본인 /me 목록·취소가 불가능했던 R1 결함을 차단.
     // 신원(name/phone/email)은 Customer 글로벌 모델이 권원 — RestaurantCustomer 는 per-restaurant 통계만.
     const reservation = await sequelize.transaction(async (t) => {
+      // Race serialization point — lock the Restaurant row so concurrent booking
+      // attempts on the same restaurant wait until this transaction commits.
+      // Cheaper and more predictable than relying on gap locks over date ranges.
+      await Restaurant.findByPk(restaurant_id, { lock: t.LOCK.UPDATE, transaction: t });
+
       const [restaurantCustomer, created] = await RestaurantCustomer.findOrCreate({
         where: { restaurant_id, customer_id: req.customer.id },
         defaults: { restaurant_id, customer_id: req.customer.id },
@@ -165,6 +215,16 @@ router.post('/', authenticateCustomer, async (req, res) => {
       if (!created && restaurantCustomer.no_show_count >= blockAfter) {
         const err = new Error('Reservation blocked due to no-show history. Please contact the restaurant.');
         err.statusCode = 403;
+        throw err;
+      }
+
+      // 잠금 직후 재검증 — 직전 트랜잭션이 동일 슬롯에 인서트하고 막 커밋했을 가능성 차단.
+      const lockedCheck = await checkSlotCapacity({
+        restaurant, reservedAt: reserved_at, partySize: party_size, transaction: t
+      });
+      if (!lockedCheck.fits) {
+        const err = new Error('Slot fully booked — another reservation was just placed.');
+        err.statusCode = 409;
         throw err;
       }
 
@@ -197,8 +257,8 @@ router.post('/', authenticateCustomer, async (req, res) => {
 
     res.json({ success: true, data: reservation });
   } catch (e) {
-    if (e.statusCode === 403) {
-      return res.status(403).json({ success: false, message: e.message });
+    if (e.statusCode === 403 || e.statusCode === 409) {
+      return res.status(e.statusCode).json({ success: false, message: e.message });
     }
     console.error('[Reservation] create error:', e);
     res.status(500).json({ success: false, message: 'Failed to create reservation' });
@@ -245,53 +305,67 @@ router.get('/me/:id', authenticateCustomer, async (req, res) => {
 });
 
 router.patch('/me/:id', authenticateCustomer, async (req, res) => {
-  const r = await loadOwnReservation(req, res);
-  if (!r) return;
-  if (!['pending', 'confirmed'].includes(r.status)) {
-    return res.status(400).json({ success: false, message: 'Cannot modify reservation in current state' });
-  }
-  const restaurant = await Restaurant.findByPk(r.restaurant_id);
-  const settings = getReservationSettings(restaurant);
-  const freeUntil = settings.cancellation_policy?.free_until_hours || 24;
-  if (!isWithinPolicy(r.reserved_at, freeUntil)) {
-    return res.status(400).json({ success: false, message: `Cannot modify within ${freeUntil}h of reservation` });
-  }
-
-  // 변경 후 값 계산 (POST 와 동일한 정책 강제)
-  const slot = settings.slot || {};
-  const newPartySize = req.body.party_size !== undefined ? Number(req.body.party_size) : r.party_size;
-  const newReservedAt = req.body.reserved_at !== undefined ? new Date(req.body.reserved_at) : r.reserved_at;
-
-  if (newPartySize < (slot.min_party || 1) || newPartySize > (slot.max_party || 20)) {
-    return res.status(400).json({ success: false, message: 'Party size out of allowed range' });
-  }
-
-  // reserved_at 또는 party_size 가 변경되면 새 슬롯에서 최소 advance + 슬롯 캐파 재검증
-  const reservedAtChanged = req.body.reserved_at !== undefined && String(newReservedAt) !== String(r.reserved_at);
-  const partySizeChanged = req.body.party_size !== undefined && newPartySize !== r.party_size;
-  if (reservedAtChanged || partySizeChanged) {
-    const minHours = slot.min_advance_hours || 1;
-    if (!isWithinPolicy(newReservedAt, minHours)) {
-      return res.status(400).json({ success: false, message: `Reservation must be at least ${minHours}h in advance` });
+  try {
+    const r = await loadOwnReservation(req, res);
+    if (!r) return;
+    if (!['pending', 'confirmed'].includes(r.status)) {
+      return res.status(400).json({ success: false, message: 'Cannot modify reservation in current state' });
     }
-    const date = newReservedAt.toISOString().slice(0, 10);
-    const slots = await calcSlotAvailability(restaurant, date, newPartySize);
-    const targetTime = newReservedAt.toISOString().slice(0, 16);
-    const matched = slots.find(s => s.time.slice(0, 16) === targetTime);
-    if (matched && !matched.can_book) {
-      // 본인 기존 예약이 같은 슬롯이라면 자기 자신을 제외하고 재계산
-      const others = matched.available_covers + r.party_size;  // 본인 제외 가용
-      if (others < newPartySize) {
-        return res.status(400).json({ success: false, message: 'Slot fully booked at this time' });
+    const restaurant = await Restaurant.findByPk(r.restaurant_id);
+    const settings = getReservationSettings(restaurant);
+    const freeUntil = settings.cancellation_policy?.free_until_hours || 24;
+    if (!isWithinPolicy(r.reserved_at, freeUntil)) {
+      return res.status(400).json({ success: false, message: `Cannot modify within ${freeUntil}h of reservation` });
+    }
+
+    // 변경 후 값 계산 (POST 와 동일한 정책 강제)
+    const slot = settings.slot || {};
+    const newPartySize = req.body.party_size !== undefined ? Number(req.body.party_size) : r.party_size;
+    const newReservedAt = req.body.reserved_at !== undefined ? new Date(req.body.reserved_at) : r.reserved_at;
+
+    if (newPartySize < (slot.min_party || 1) || newPartySize > (slot.max_party || 20)) {
+      return res.status(400).json({ success: false, message: 'Party size out of allowed range' });
+    }
+
+    const reservedAtChanged = req.body.reserved_at !== undefined && String(newReservedAt) !== String(r.reserved_at);
+    const partySizeChanged = req.body.party_size !== undefined && newPartySize !== r.party_size;
+    const allowed = ['reserved_at', 'party_size', 'notes'];
+    const update = {};
+    for (const k of allowed) if (req.body[k] !== undefined) update[k] = req.body[k];
+
+    // 시간/인원 변경 시 race-safe 캐파 재검증, 동일 트랜잭션 안에서 update.
+    if (reservedAtChanged || partySizeChanged) {
+      const minHours = slot.min_advance_hours || 1;
+      if (!isWithinPolicy(newReservedAt, minHours)) {
+        return res.status(400).json({ success: false, message: `Reservation must be at least ${minHours}h in advance` });
       }
+      await sequelize.transaction(async (t) => {
+        await Restaurant.findByPk(restaurant.id, { lock: t.LOCK.UPDATE, transaction: t });
+        const lockedCheck = await checkSlotCapacity({
+          restaurant,
+          reservedAt: newReservedAt,
+          partySize: newPartySize,
+          transaction: t,
+          excludeReservationId: r.id
+        });
+        if (!lockedCheck.fits) {
+          const err = new Error('Slot fully booked at this time');
+          err.statusCode = 409;
+          throw err;
+        }
+        await r.update(update, { transaction: t });
+      });
+    } else {
+      // notes 만 변경 — 캐파 재검증 불필요
+      await r.update(update);
     }
-  }
 
-  const allowed = ['reserved_at', 'party_size', 'notes'];
-  const update = {};
-  for (const k of allowed) if (req.body[k] !== undefined) update[k] = req.body[k];
-  await r.update(update);
-  res.json({ success: true, data: r });
+    res.json({ success: true, data: r });
+  } catch (e) {
+    if (e.statusCode === 409) return res.status(409).json({ success: false, message: e.message });
+    console.error('[Reservation] patch /me error:', e);
+    res.status(500).json({ success: false, message: 'Failed to update reservation' });
+  }
 });
 
 router.delete('/me/:id', authenticateCustomer, async (req, res) => {

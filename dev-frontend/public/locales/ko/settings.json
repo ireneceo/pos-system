@@ -526,5 +526,22 @@
   "restaurantDashboard.pickupNumber": "픽업 번호",
   "restaurantDashboard.customerOrdering": "고객 주문",
   "restaurantDashboard.monitorAllOrders": "전체 주문 모니터",
-  "restaurantDashboard.editMenuItems": "메뉴 항목 수정"
+  "restaurantDashboard.editMenuItems": "메뉴 항목 수정",
+  "settingsPage": {
+    "orderTypePin": {
+      "allowedOrderTypes": "허용 주문방식",
+      "allowedOrderTypesHelp": "모두 선택된 상태는 이 결제수단이 모든 모바일 주문방식에 허용됨을 의미합니다.",
+      "orderTypeQrSection": "주문방식별 QR 코드",
+      "orderTypeQrHelp": "이 QR 을 스캔하면 주문방식 선택 화면을 건너뛰고 바로 해당 모드의 메뉴로 진입합니다.",
+      "takeawayQrLabel": "포장 QR",
+      "takeawayQrDesc": "포장 카운터에 부착.",
+      "pickupQrLabel": "픽업 QR",
+      "pickupQrDesc": "픽업대에 부착.",
+      "deliveryQrLabel": "배달 QR",
+      "deliveryQrDesc": "전단지·배달 영수증 인쇄용.",
+      "externalQROrderTypePin": "주문방식 고정",
+      "externalQRNoPin": "고객이 선택 (고정 없음)",
+      "copyUrl": "복사"
+    }
+  }
 }

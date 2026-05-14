@@ -134,7 +134,7 @@ export async function getPreferences() {
   return j.data;
 }
 
-export async function updatePreferences(patch: { push_enabled?: boolean; categories?: Record<string, boolean>; muted_hours?: { enabled: boolean; start: number; end: number; timezone?: string } }) {
+export async function updatePreferences(patch: { push_enabled?: boolean; muted_hours?: { enabled: boolean; start: number; end: number; timezone?: string } }) {
   const r = await fetch('/api/push/preferences', {
     method: 'PUT',
     headers: authHeaders(),

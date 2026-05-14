@@ -578,6 +578,33 @@ const SetBadge = styled.div`
   z-index: 1;
 `;
 
+const BrandLinkedBadge = styled.div`
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #FFFFFF;
+  color: #635BFF;
+  border: 1px solid #635BFF;
+  padding: 3px 7px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  z-index: 1;
+`;
+
+const PendingDot = styled.span`
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #F59E0B;
+  margin-left: 2px;
+`;
+
 const SetItemsList = styled.div`
   background: #F6F9FC;
   border-radius: 8px;
@@ -1300,6 +1327,21 @@ const MenuManagementPage: React.FC = () => {
                 <MenuImage>
                   {item.is_set_menu && <SetBadge>{t('menu:menuManagementPage.set')}</SetBadge>}
                   {item.is_featured && <SetBadge style={{ background: '#635BFF', left: item.is_set_menu ? '52px' : '8px' }}>{t('menu:menuManagementPage.featured')}</SetBadge>}
+                  {item.brand_menu_id && (() => {
+                    const locks = item.brand_menu_locks_snapshot || {};
+                    const lockCount = Object.values(locks).filter(Boolean).length;
+                    const pending = item.brand_menu_status === 'pending_update';
+                    return (
+                      <BrandLinkedBadge title={pending ? t('menu:menuManagementPage.brandPendingUpdate', 'Brand update available') : t('menu:menuManagementPage.brandLinked', 'Linked to Brand Menu')}>
+                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        </svg>
+                        BRAND{lockCount > 0 ? ` ${lockCount}` : ''}
+                        {pending && <PendingDot />}
+                      </BrandLinkedBadge>
+                    );
+                  })()}
                   <MenuItemImageWithFallback src={item.image} alt={item.name} emoji={item.emoji} />
                 </MenuImage>
                 <MenuContent>
@@ -1639,6 +1681,19 @@ const MenuManagementPage: React.FC = () => {
             </>
           }
         >
+          {editingItem?.brand_menu_id && (() => {
+            const locks = editingItem.brand_menu_locks_snapshot || {};
+            const lockedList = Object.entries(locks).filter(([, v]) => v).map(([k]) => k);
+            return (
+              <div style={{ background: '#F4F1FF', border: '1px solid #635BFF', borderRadius: 8, padding: '10px 12px', marginBottom: 12, fontSize: 12, color: '#0A2540', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#635BFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+                <span><strong>{t('menu:menuManagementPage.brandLinkedTitle', 'Linked to a Brand Menu')}.</strong> {lockedList.length > 0 ? t('menu:menuManagementPage.brandLockedFields', 'Locked fields: {{fields}}', { fields: lockedList.join(', ') }) : t('menu:menuManagementPage.brandNoLocks', 'No fields are locked.')}</span>
+              </div>
+            );
+          })()}
           <UIFormGroup>
             <FormLabel>{t('menu:menuManagementPage.itemCode')}</FormLabel>
             <FormInput
@@ -1650,17 +1705,18 @@ const MenuManagementPage: React.FC = () => {
           </UIFormGroup>
 
           <UIFormGroup>
-            <FormLabel>Item Name *</FormLabel>
+            <FormLabel>Item Name * {editingItem?.brand_menu_locks_snapshot?.name && <span style={{ color: '#635BFF', fontSize: 11 }}>🔒</span>}</FormLabel>
             <FormInput
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               placeholder="e.g., Chicken Rice"
+              disabled={!!editingItem?.brand_menu_locks_snapshot?.name}
             />
           </UIFormGroup>
 
           <UIFormGroup>
-            <FormLabel>Price (RM) *</FormLabel>
+            <FormLabel>Price (RM) * {editingItem?.brand_menu_locks_snapshot?.price && <span style={{ color: '#635BFF', fontSize: 11 }}>🔒</span>}</FormLabel>
             <FormInput
               type="number"
               value={formData.price}
@@ -1672,14 +1728,16 @@ const MenuManagementPage: React.FC = () => {
               }}
               step="0.01"
               min="0"
+              disabled={!!editingItem?.brand_menu_locks_snapshot?.price}
             />
           </UIFormGroup>
 
           <UIFormGroup>
-            <FormLabel>Category *</FormLabel>
+            <FormLabel>Category * {editingItem?.brand_menu_locks_snapshot?.category && <span style={{ color: '#635BFF', fontSize: 11 }}>🔒</span>}</FormLabel>
             <FormSelect
               value={formData.category}
               onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              disabled={!!editingItem?.brand_menu_locks_snapshot?.category}
             >
               <option value="">-- Select Category --</option>
               {categories.map(cat => (

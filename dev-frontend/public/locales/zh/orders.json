@@ -54,5 +54,25 @@
   "liveOrdersPage.noKeepOrder": "不，保留订单",
   "liveOrdersPage.yesCancelOrder": "是的，取消订单",
   "liveOrdersPage.reject": "拒绝",
-  "liveOrdersPage.customerSubmittedProof": "顾客提交的证明"
+  "liveOrdersPage.customerSubmittedProof": "顾客提交的证明",
+  "liveOrdersPage": {
+    "takeawayCharge": "外带费"
+  },
+  "brandMenuUpdatesPage.title": "品牌菜单更新",
+  "brandMenuUpdatesPage.allSyncedTitle": "已全部同步",
+  "brandMenuUpdatesPage.allSyncedDesc": "品牌方暂无待处理的更新。",
+  "brandMenuUpdatesPage.noBrand": "本餐厅未连接到品牌。",
+  "brandMenuUpdatesPage.confirmSyncAll": "同步所有待处理的品牌菜单更新?",
+  "brandMenuUpdatesPage.syncAllNow": "立即全部同步",
+  "brandMenuUpdatesPage.syncThisMenu": "同步此菜单",
+  "brandMenuUpdatesPage.skipThisVersion": "跳过此版本",
+  "brandMenuUpdatesPage.addMenu": "添加菜单",
+  "brandMenuUpdatesPage.firstTimePush": "首次推送的新菜单。",
+  "brandMenuUpdatesPage.newMenuLabel": "新",
+  "brandMenuUpdatesPage.lockedByBrand": "品牌锁定",
+  "brandMenuUpdatesPage.willBeEnforced": "将强制应用",
+  "brandMenuUpdatesPage.optionGroupOnly": "选项组已变更 — 同步以应用。",
+  "brandMenuUpdatesPage.imageChanged": "(图片已变更)",
+  "brandMenuUpdatesPage.category": "分类",
+  "brandMenuUpdatesPage.price": "价格"
 }

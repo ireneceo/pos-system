@@ -80,6 +80,7 @@ export interface SubscriptionFormFieldsProps {
     hideActivateNow?: boolean;
     hideDiscount?: boolean;
     hideCurrency?: boolean;
+    hidePlan?: boolean;                 // skip plan dropdown — caller renders its own
     hideSectionHeader?: boolean;
     readOnlyEndDate?: boolean;
   };
@@ -186,20 +187,22 @@ const SubscriptionFormFields: React.FC<SubscriptionFormFieldsProps> = ({
       )}
 
       {/* 2. Plan Type */}
-      <FormGroup>
-        <FormLabel>{t('planType', 'Plan Type')} *</FormLabel>
-        <FormSelect
-          value={values.plan_type}
-          onChange={(e) => onChange({ plan_type: e.target.value })}
-        >
-          <option value="">{t('selectPlan', 'Select a plan')}</option>
-          {filteredPlans.map(plan => (
-            <option key={plan.id} value={plan.display_name}>
-              {plan.display_name} ({formatPlanPrice(plan as any, values.currency)}/month)
-            </option>
-          ))}
-        </FormSelect>
-      </FormGroup>
+      {!options.hidePlan && (
+        <FormGroup>
+          <FormLabel>{t('planType', 'Plan Type')} *</FormLabel>
+          <FormSelect
+            value={values.plan_type}
+            onChange={(e) => onChange({ plan_type: e.target.value })}
+          >
+            <option value="">{t('selectPlan', 'Select a plan')}</option>
+            {filteredPlans.map(plan => (
+              <option key={plan.id} value={plan.display_name}>
+                {plan.display_name} ({formatPlanPrice(plan as any, values.currency)}/month)
+              </option>
+            ))}
+          </FormSelect>
+        </FormGroup>
+      )}
 
       {/* 3. Treat as trial */}
       {!options.hideTrial && (

@@ -76,7 +76,7 @@ export const PwaInstallProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     } catch { return 0; }
   });
 
-  const dismissBanner = useCallback((days = 7) => {
+  const dismissBanner = useCallback((days = 3) => {
     const until = Date.now() + days * 24 * 3600 * 1000;
     try { localStorage.setItem(DISMISS_KEY, String(until)); } catch {}
     setDismissedUntil(until);

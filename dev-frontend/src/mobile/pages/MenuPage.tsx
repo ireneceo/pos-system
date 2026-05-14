@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import styled from 'styled-components';
 import { useParams, useNavigate } from 'react-router-dom';
+import { Utensils, ShoppingBag, Clock, Truck, ChevronRight } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import MobileLayout from '../components/common/MobileLayout';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { formatCurrency } from '../../utils/currency';
@@ -86,6 +88,39 @@ const StoreStatus = styled.div<{ isOpen: boolean }>`
   font-size: 14px;
   color: ${props => props.isOpen ? '#10B981' : '#EF4444'};
   font-weight: 500;
+`;
+
+// Order-type chip — shows current selection, tap to change.
+// Subtle but discoverable (Stripe/Toast-style inline chip). Always visible so the
+// affordance is consistent regardless of how the user landed on this page.
+const OrderTypeChip = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px 6px 12px;
+  margin-top: 8px;
+  background: #F0EFFF;
+  border: 1px solid #DDD9FF;
+  border-radius: 999px;
+  color: #635BFF;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &:hover { background: #E4E1FF; }
+  &:active { transform: translateY(1px); }
+  &:focus-visible { outline: 2px solid #635BFF; outline-offset: 2px; }
+
+  .chip-icon { display: inline-flex; }
+  .chip-icon svg { width: 14px; height: 14px; stroke-width: 2; }
+  .chip-change {
+    color: #6B7280;
+    font-weight: 400;
+    border-left: 1px solid #DDD9FF;
+    padding-left: 8px;
+    margin-left: 2px;
+  }
 `;
 
 const SearchSection = styled.div`
@@ -368,7 +403,22 @@ const LoadTrigger = styled.div`
 
 const ITEMS_PER_PAGE = 20;
 
+const ORDER_TYPE_I18N_KEY: Record<string, string> = {
+  'dine-in': 'common:orderType.dineIn', 'dine_in': 'common:orderType.dineIn',
+  'takeaway': 'common:orderType.takeaway',
+  'pickup': 'common:orderType.pickup',
+  'delivery': 'common:orderType.delivery'
+};
+
+const ORDER_TYPE_ICON: Record<string, React.ReactElement> = {
+  'dine-in': <Utensils />, 'dine_in': <Utensils />,
+  'takeaway': <ShoppingBag />,
+  'pickup': <Clock />,
+  'delivery': <Truck />
+};
+
 const MenuPage: React.FC = () => {
+  const { t } = useTranslation();
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const {
@@ -378,8 +428,12 @@ const MenuPage: React.FC = () => {
     currency,
     isLoading,
     setIsLoading,
-    setError
+    setError,
+    orderType
   } = useMobileOrder();
+
+  // Preserve table number across the picker round-trip so dine-in QR stays sticky.
+  const tableNumber = typeof window !== 'undefined' ? sessionStorage.getItem('tableNumber') : null;
 
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -805,6 +859,21 @@ const MenuPage: React.FC = () => {
           <StoreStatus isOpen={currentStore.isOpen}>
             {currentStore.isOpen ? '✓ Open Now' : '✗ Closed'}
           </StoreStatus>
+          {orderType && (
+            <OrderTypeChip
+              type="button"
+              aria-label={t('common:orderType.changeOrderType', { defaultValue: 'Change order type' })}
+              onClick={() => {
+                // Force the picker even though pinned URL was the entry point.
+                const qs = tableNumber ? `?table=${encodeURIComponent(tableNumber)}&picker=1` : '?picker=1';
+                navigate(`/mobile/${slug}/order-type${qs}`);
+              }}
+            >
+              <span className="chip-icon">{ORDER_TYPE_ICON[orderType]}</span>
+              {t(ORDER_TYPE_I18N_KEY[orderType] || 'common:orderType.dineIn')}
+              <span className="chip-change">{t('common:orderType.change', { defaultValue: 'Change' })} <ChevronRight style={{ width: 12, height: 12, verticalAlign: -1 }} /></span>
+            </OrderTypeChip>
+          )}
         </StoreHeader>
       )}
 

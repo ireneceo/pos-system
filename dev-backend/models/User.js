@@ -337,11 +337,6 @@ User.init({
     defaultValue: true,
     comment: 'Master toggle for OS-level web push notifications'
   },
-  push_preferences: {
-    type: DataTypes.JSON,
-    allowNull: true,
-    comment: '{ "categories": { "order_new": true, "kitchen_alert": true, ... } } — null = ALL_ON defaults'
-  },
   push_muted_hours: {
     type: DataTypes.JSON,
     allowNull: true,

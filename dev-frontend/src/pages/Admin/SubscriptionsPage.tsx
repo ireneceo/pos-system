@@ -284,6 +284,9 @@ const SubscriptionsPage: React.FC = () => {
   const [confirmAction, setConfirmAction] = useState<'delete' | 'suspend' | 'activate' | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingSubscription, setEditingSubscription] = useState<RestaurantSubscription | null>(null);
+  // Custom plan name input — separate from planType so typing doesn't make the
+  // "others" branch disappear (legacy bug: planType was overwritten on first keystroke).
+  const [editCustomPlanName, setEditCustomPlanName] = useState('');
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewingSubscription, setViewingSubscription] = useState<RestaurantSubscription | null>(null);
   const [newSubscription, setNewSubscription] = useState({
@@ -659,7 +662,17 @@ const SubscriptionsPage: React.FC = () => {
   };
 
   const handleEditSubscription = (subscription: RestaurantSubscription) => {
-    setEditingSubscription(subscription);
+    // planType이 availablePlans에 없으면 사용자 정의 plan으로 간주 — 입력란에 prefill.
+    const matchedPlan = availablePlans.find(
+      p => p.plan_target === 'restaurant' && p.display_name === subscription.planType
+    );
+    if (!matchedPlan && subscription.planType) {
+      setEditingSubscription({ ...subscription, planType: 'custom' });
+      setEditCustomPlanName(subscription.planType);
+    } else {
+      setEditingSubscription(subscription);
+      setEditCustomPlanName('');
+    }
     setShowEditModal(true);
   };
 
@@ -889,8 +902,11 @@ const SubscriptionsPage: React.FC = () => {
     try {
       console.log('🔄 Updating subscription:', editingSubscription);
 
-      // Use the plan name as-is (display_name from PlanTemplate)
-      const planName = editingSubscription.planType || 'Custom Plan';
+      // Use the plan name as-is (display_name from PlanTemplate).
+      // For "others"/custom plans, the user-typed name lives in editCustomPlanName.
+      const planName = editingSubscription.planType === 'custom'
+        ? (editCustomPlanName || 'Custom Plan')
+        : (editingSubscription.planType || 'Custom Plan');
 
       const updateData = {
         name: editingSubscription.restaurantName,
@@ -1525,7 +1541,9 @@ const SubscriptionsPage: React.FC = () => {
             </CommonModal>
           )}
 
-          {/* Edit Subscription Modal - Only for Custom Subscriptions */}
+          {/* Edit Subscription Modal — uses SubscriptionFormFields for shared subscription fields,
+              with Plan select + Status dropdown rendered externally (Status is edit-only, and the
+              Plan picker preserves the legacy "others" custom plan name affordance). */}
           {showEditModal && editingSubscription && (
                         <CommonModal isOpen={true} onClose={() => setShowEditModal(false)} title="Edit Custom Subscription" footer={<><ThemedButton variant="cancel" onClick={() => setShowEditModal(false)}>{t('admin:subscriptionsPage.cancel')}</ThemedButton><ThemedButton variant="primary" onClick={handleUpdateSubscription}>{t('admin:subscriptionsPage.updateSubscription')}</ThemedButton></>}>
 
@@ -1540,10 +1558,12 @@ const SubscriptionsPage: React.FC = () => {
                       />
                     </FormGroup>
 
+                    {/* Plan select — rendered outside SubscriptionFormFields so we can offer
+                        the legacy "Others" option that lets admins type a custom plan name. */}
                     <FormGroup style={{gridColumn: '1 / -1'}}>
                       <FormLabel>Subscription Plan *</FormLabel>
                       <FormSelect
-                        value={editingSubscription.planType}
+                        value={editingSubscription.planType === 'custom' ? 'others' : editingSubscription.planType}
                         onChange={(e) => {
                           const selectedValue = e.target.value;
                           if (selectedValue === 'others') {
@@ -1584,19 +1604,20 @@ const SubscriptionsPage: React.FC = () => {
                       </FormSelect>
                     </FormGroup>
 
-                    {editingSubscription.planType === 'others' && (
+                    {editingSubscription.planType === 'custom' && (
                       <FormGroup style={{gridColumn: '1 / -1'}}>
                         <FormLabel>Custom Plan Name *</FormLabel>
                         <FormInput
                           type="text"
-                          value=""
-                          onChange={(e) => setEditingSubscription({...editingSubscription, planType: e.target.value as any})}
+                          value={editCustomPlanName}
+                          onChange={(e) => setEditCustomPlanName(e.target.value)}
                           placeholder="Enter custom plan name"
                           required
                         />
                       </FormGroup>
                     )}
 
+                    {/* Monthly Fee — kept editable for custom plans (auto-set when picking a template). */}
                     <FormGroup>
                       <FormLabel>Monthly Fee ({editingSubscription.currency || 'MYR'}) *</FormLabel>
                       <FormInput
@@ -1610,6 +1631,7 @@ const SubscriptionsPage: React.FC = () => {
                       />
                     </FormGroup>
 
+                    {/* Status — admin-driven state transition, edit-only (Add uses treat_as_trial / activate_now). */}
                     <FormGroup>
                       <FormLabel>Status *</FormLabel>
                       <FormSelect
@@ -1624,110 +1646,47 @@ const SubscriptionsPage: React.FC = () => {
                       </FormSelect>
                     </FormGroup>
 
-                    {/* Subscription Settings Section */}
-                    <div style={{gridColumn: '1 / -1', marginTop: '20px', marginBottom: '10px'}}>
-                      <h3 style={{margin: 0, fontSize: '18px', fontWeight: '600', color: '#0A2540', borderBottom: '2px solid #635BFF', paddingBottom: '8px'}}>
-                        Subscription Settings
-                      </h3>
-                    </div>
-
-                    <FormGroup>
-                      <FormLabel>Billing Cycle *</FormLabel>
-                      <FormSelect
-                        value={editingSubscription.billingCycle || 'monthly'}
-                        onChange={(e) => setEditingSubscription({...editingSubscription, billingCycle: e.target.value as 'monthly' | 'annual'})}
-                      >
-                        <option value="monthly">{t('admin:subscriptionsPage.monthly')}</option>
-                        <option value="annual">{t('admin:subscriptionsPage.annual')}</option>
-                      </FormSelect>
-                    </FormGroup>
-
-                    <FormGroup style={{ gridColumn: 'span 2' }}>
-                      <FormLabel>Subscription Start — End Date *</FormLabel>
-                      <DateRangeField
-                        startDate={editingSubscription.startDate}
-                        endDate={editingSubscription.endDate}
-                        onChange={(s, e) => setEditingSubscription({...editingSubscription, startDate: s, endDate: e})}
+                    {/* Unified subscription fields — same component the Add modal uses.
+                        Plan, Trial, Activate-now are hidden because Edit handles them externally / not applicable. */}
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <SubscriptionFormFields
+                        userType="restaurant"
+                        mode="edit"
+                        availablePlans={availablePlans}
+                        planCurrencies={getActivePlanCurrencies(availablePlans)}
+                        options={{ hidePlan: true, hideTrial: true, hideActivateNow: true }}
+                        values={{
+                          currency: editingSubscription.currency || 'MYR',
+                          plan_type: editingSubscription.planType || '',
+                          plan_amount: String(editingSubscription.monthlyFee || 0),
+                          billing_cycle: (editingSubscription.billingCycle || 'monthly') as BillingCycle,
+                          payment_model: (editingSubscription.paymentModel as PaymentModel) || 'restaurant',
+                          subscription_start: editingSubscription.startDate,
+                          subscription_end: editingSubscription.endDate,
+                          auto_renew: editingSubscription.autoRenew ?? true,
+                          treat_as_trial: false,
+                          activate_now: false,
+                          discount_type: (editingSubscription.discountType || 'none') as DiscountType,
+                          discount_value: editingSubscription.discountValue || 0,
+                          discount_reason: editingSubscription.discountReason || ''
+                        }}
+                        onChange={(patch) => setEditingSubscription(prev => prev ? {
+                          ...prev,
+                          ...(patch.currency !== undefined ? { currency: patch.currency } : {}),
+                          ...(patch.plan_amount !== undefined ? { monthlyFee: parseFloat(patch.plan_amount) || 0 } : {}),
+                          ...(patch.billing_cycle !== undefined ? { billingCycle: patch.billing_cycle as 'monthly' | 'annual' } : {}),
+                          ...(patch.payment_model !== undefined ? { paymentModel: patch.payment_model as any } : {}),
+                          ...(patch.subscription_start !== undefined ? { startDate: patch.subscription_start } : {}),
+                          ...(patch.subscription_end !== undefined ? { endDate: patch.subscription_end } : {}),
+                          ...(patch.auto_renew !== undefined ? { autoRenew: patch.auto_renew } : {}),
+                          ...(patch.discount_type !== undefined ? { discountType: patch.discount_type as any } : {}),
+                          ...(patch.discount_value !== undefined ? { discountValue: patch.discount_value } : {}),
+                          ...(patch.discount_reason !== undefined ? { discountReason: patch.discount_reason } : {}),
+                        } : prev)}
                       />
-                    </FormGroup>
-
-                    <FormGroup style={{gridColumn: '1 / -1'}}>
-                      <label style={{display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer'}}>
-                        <input
-                          type="checkbox"
-                          checked={editingSubscription.autoRenew || false}
-                          onChange={(e) => setEditingSubscription({...editingSubscription, autoRenew: e.target.checked})}
-                          style={{width: '16px', height: '16px'}}
-                        />
-                        <span style={{fontSize: '14px', color: '#374151'}}>
-                          Auto-renew subscription
-                        </span>
-                      </label>
-                    </FormGroup>
-
-                    {/* Discount Section */}
-                    <div style={{gridColumn: '1 / -1', marginTop: '20px', marginBottom: '10px'}}>
-                      <h3 style={{margin: 0, fontSize: '18px', fontWeight: '600', color: '#0A2540', borderBottom: '2px solid #635BFF', paddingBottom: '8px'}}>
-                        Discount
-                      </h3>
                     </div>
-
-                    <FormGroup>
-                      <FormLabel>{t('admin:subscriptionsPage.discountType')}</FormLabel>
-                      <FormSelect
-                        value={editingSubscription.discountType || 'none'}
-                        onChange={(e) => setEditingSubscription({...editingSubscription, discountType: e.target.value as 'none' | 'percentage' | 'fixed', discountValue: e.target.value === 'none' ? 0 : editingSubscription.discountValue})}
-                      >
-                        <option value="none">{t('admin:subscriptionsPage.none')}</option>
-                        <option value="percentage">Percentage (%)</option>
-                        <option value="fixed">{t('admin:subscriptionsPage.fixedAmountRm')}</option>
-                      </FormSelect>
-                    </FormGroup>
-
-                    {editingSubscription.discountType !== 'none' && (
-                      <FormGroup>
-                        <FormLabel>{editingSubscription.discountType === 'percentage' ? 'Discount Rate (%)' : 'Discount Amount (RM)'}</FormLabel>
-                        <FormInput
-                          type="number"
-                          step={editingSubscription.discountType === 'percentage' ? '1' : '0.01'}
-                          min="0"
-                          max={editingSubscription.discountType === 'percentage' ? '100' : undefined}
-                          value={editingSubscription.discountValue}
-                          onChange={(e) => setEditingSubscription({...editingSubscription, discountValue: parseFloat(e.target.value) || 0})}
-                          placeholder={editingSubscription.discountType === 'percentage' ? 'e.g. 10' : 'e.g. 50.00'}
-                        />
-                      </FormGroup>
-                    )}
-
-                    {editingSubscription.discountType !== 'none' && (
-                      <FormGroup style={{gridColumn: '1 / -1'}}>
-                        <FormLabel>{t('admin:subscriptionsPage.discountReason')}</FormLabel>
-                        <FormInput
-                          type="text"
-                          value={editingSubscription.discountReason || ''}
-                          onChange={(e) => setEditingSubscription({...editingSubscription, discountReason: e.target.value})}
-                          placeholder="e.g. Opening promotion, Loyalty discount"
-                        />
-                      </FormGroup>
-                    )}
-
-                    {editingSubscription.discountType !== 'none' && editingSubscription.discountValue > 0 && (
-                      <div style={{gridColumn: '1 / -1', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '8px', padding: '12px 16px'}}>
-                        <div style={{fontSize: '12px', color: '#166534', fontWeight: '600', marginBottom: '4px'}}>{t('admin:subscriptionsPage.discountPreview')}</div>
-                        <div style={{fontSize: '13px', color: '#15803D'}}>
-                          Monthly Fee: RM {editingSubscription.monthlyFee.toFixed(2)} →{' '}
-                          <strong>
-                            RM {(editingSubscription.discountType === 'percentage'
-                              ? editingSubscription.monthlyFee * (1 - editingSubscription.discountValue / 100)
-                              : Math.max(0, editingSubscription.monthlyFee - editingSubscription.discountValue)
-                            ).toFixed(2)}
-                          </strong>
-                          {' '}(-{editingSubscription.discountType === 'percentage' ? `${editingSubscription.discountValue}%` : `RM ${editingSubscription.discountValue.toFixed(2)}`})
-                        </div>
-                      </div>
-                    )}
                   </FormGrid>
-                
+
             </CommonModal>
           )}
 

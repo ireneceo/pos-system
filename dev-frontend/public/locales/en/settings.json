@@ -526,5 +526,22 @@
   "restaurantDashboard.pickupNumber": "Pickup number",
   "restaurantDashboard.customerOrdering": "Customer ordering",
   "restaurantDashboard.monitorAllOrders": "Monitor all orders",
-  "restaurantDashboard.editMenuItems": "Edit menu items"
+  "restaurantDashboard.editMenuItems": "Edit menu items",
+  "settingsPage": {
+    "orderTypePin": {
+      "allowedOrderTypes": "Available order types",
+      "allowedOrderTypesHelp": "Leave all selected to allow this method for every mobile order type.",
+      "orderTypeQrSection": "Order-type QR codes",
+      "orderTypeQrHelp": "Scanning these QR codes skips the order-type picker and takes the customer straight to the menu in the pinned mode.",
+      "takeawayQrLabel": "Takeaway QR",
+      "takeawayQrDesc": "Display at the takeaway counter.",
+      "pickupQrLabel": "Pickup QR",
+      "pickupQrDesc": "Display at the pickup shelf.",
+      "deliveryQrLabel": "Delivery QR",
+      "deliveryQrDesc": "Print on flyers or delivery slips.",
+      "externalQROrderTypePin": "Order type pin",
+      "externalQRNoPin": "Customer picks (no pin)",
+      "copyUrl": "Copy"
+    }
+  }
 }

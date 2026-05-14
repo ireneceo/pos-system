@@ -16,7 +16,7 @@ import { useRoleDisplayName } from '../../utils/roleDisplay';
 import { useAllowedRoutes } from '../../hooks/useAllowedRoutes';
 
 import { getAuthToken } from '../../utils/auth';
-import { LayoutDashboard, Users, Truck, Briefcase, MessageSquare, CreditCard, Settings as SettingsIcon, ChevronsLeft, ChevronsRight, LogOut, Activity, Store, Package, ShoppingCart, FileText, Monitor, LayoutGrid, ChefHat, Tv, Smartphone, TrendingUp, Download } from 'lucide-react';
+import { LayoutDashboard, Users, Truck, Briefcase, MessageSquare, CreditCard, Settings as SettingsIcon, ChevronsLeft, ChevronsRight, LogOut, Activity, Store, Package, ShoppingCart, FileText, Monitor, LayoutGrid, ChefHat, Tv, Smartphone, TrendingUp, Download, Building2 } from 'lucide-react';
 
 // System Admin 2-tier sidebar widths
 const SIDEBAR_ADMIN_EXPANDED = 220;
@@ -1169,15 +1169,28 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         visible: isRouteAllowed('/pos/brand/franchise') || isRouteAllowed('/pos/brand/franchise-map')
       },
       {
-        id: 'management', label: t('nav.section.management'), icon: <Users />,
+        id: 'brand-management', label: t('nav.section.brandManagement', 'Brand Management'), icon: <Building2 />,
         items: [
           { path: '/pos/brand/general/management', label: t('nav.brands'), visible: isRouteAllowed('/pos/brand/general/management') },
+          { path: '/pos/brand-menus', label: t('nav.brandMenus', 'Brand Menus'), visible: isRouteAllowed('/pos/brand-menus') },
+          { path: '/pos/brand-menu-categories', label: t('nav.brandMenuCategories', 'Menu Categories'), visible: isRouteAllowed('/pos/brand-menu-categories') },
+          { path: '/pos/brand-menu-option-groups', label: t('nav.brandMenuOptions', 'Menu Options'), visible: isRouteAllowed('/pos/brand-menu-option-groups') },
+          { path: '/pos/recipes', label: t('nav.brandRecipes'), visible: isRouteAllowed('/pos/recipes') }
+        ].filter(i => i.visible !== false),
+        visible: hasManagerPermission('products') && (
+          isRouteAllowed('/pos/brand/general/management') ||
+          isRouteAllowed('/pos/brand-menus') ||
+          isRouteAllowed('/pos/recipes')
+        )
+      },
+      {
+        id: 'franchise', label: t('nav.section.franchise', 'Franchise'), icon: <Users />,
+        items: [
           { path: '/pos/manager/restaurants', label: t('nav.restaurants'), visible: isRouteAllowed('/pos/manager/restaurants') },
           { path: '/pos/manager/admins', label: t('nav.restaurantAdmins'), visible: isRouteAllowed('/pos/manager/staff') },
           { path: '/pos/brand/manager', label: t('nav.managers'), visible: user?.role === 'Brand General' && isRouteAllowed('/pos/brand/manager') }
         ].filter(i => i.visible !== false),
         visible: hasManagerPermission('management') && (
-          isRouteAllowed('/pos/brand/general/management') ||
           isRouteAllowed('/pos/manager/restaurants') ||
           isRouteAllowed('/pos/manager/staff') ||
           isRouteAllowed('/pos/brand/manager')
@@ -1187,7 +1200,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         id: 'products', label: t('nav.section.productsInventory'), icon: <Package />,
         items: [
           { path: '/pos/brand-products', label: t('nav.products'), visible: isRouteAllowed('/pos/brand-products') },
-          { path: '/pos/recipes', label: t('nav.brandRecipes'), visible: isRouteAllowed('/pos/recipes') },
           { path: '/pos/brand-product-recipes', label: t('nav.productRecipes'), visible: isRouteAllowed('/pos/brand-product-recipes') },
           { path: '/pos/brand-ingredients', label: t('nav.ingredients'), visible: isRouteAllowed('/pos/brand-ingredients') },
           { path: '/pos/suppliers', label: t('nav.suppliers'), visible: isRouteAllowed('/pos/suppliers') },
@@ -1195,7 +1207,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         ].filter(i => i.visible !== false),
         visible: hasManagerPermission('products') && (
           isRouteAllowed('/pos/brand-products') ||
-          isRouteAllowed('/pos/recipes') ||
           isRouteAllowed('/pos/brand-product-recipes') ||
           isRouteAllowed('/pos/brand-ingredients') ||
           isRouteAllowed('/pos/brand-inventory')
@@ -1476,6 +1487,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         id: 'products', label: t('nav.section.products'), icon: <Package />,
         items: [
           { path: `/restaurant/${rid}/menu`, label: t('nav.menu'), visible: isRouteAllowed(`/restaurant/${rid}/menu`) },
+          // Brand Menu Updates — shown only when there are pending updates
+          { path: `/restaurant/${rid}/brand-menu-updates`, label: t('nav.brandMenuUpdates', 'Brand Menu Updates'),
+            hasPending: (badgeCounts as any).brandMenuPending > 0,
+            visible: (badgeCounts as any).brandMenuPending > 0 },
           { path: `/restaurant/${rid}/categories`, label: t('nav.categories'), visible: isRouteAllowed(`/restaurant/${rid}/categories`) },
           { path: `/restaurant/${rid}/options`, label: t('nav.options'), visible: isRouteAllowed(`/restaurant/${rid}/options`) },
           { path: `/restaurant/${rid}/recipe-management`, label: t('nav.recipes'), visible: isRouteAllowed(`/restaurant/${rid}/recipe-management`) }
@@ -1531,7 +1546,16 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         items: [
           { path: `/restaurant/${rid}/profile`, label: t('nav.myProfile', 'My Profile'), visible: true },
           { path: `/restaurant/${rid}/company-information`, label: t('nav.companyInfo'), visible: hasMenuPermission('settings') },
-          { path: `/restaurant/${rid}/settings`, label: t('nav.storeSettings'), visible: hasMenuPermission('settings') },
+          // Core Store Settings (Store Info / Operations / Managers) — single landing with 3 tabs.
+          // Use explicit ?tab=store so the active-state matcher disambiguates from siblings below.
+          { path: `/restaurant/${rid}/settings?tab=store`, label: t('nav.storeSettings'), visible: hasMenuPermission('settings') },
+          // 2-depth siblings that previously lived as tabs inside Store Settings
+          { path: `/restaurant/${rid}/settings?tab=payment`, label: t('nav.paymentMethods', 'Payment Methods'), visible: hasMenuPermission('settings') },
+          { path: `/restaurant/${rid}/settings?tab=printer`, label: t('nav.printer', 'Printer'), visible: hasMenuPermission('settings') },
+          { path: `/restaurant/${rid}/settings?tab=kitchenStations`, label: t('nav.kitchenStations', 'Kitchen Stations'), visible: hasMenuPermission('settings') },
+          { path: `/restaurant/${rid}/settings?tab=mobileOrder`, label: t('nav.mobileOrder', 'Mobile Order'), visible: hasMenuPermission('settings') },
+          { path: `/restaurant/${rid}/settings?tab=reservation`, label: t('nav.reservation', 'Reservation'), visible: hasMenuPermission('settings') },
+          { path: `/restaurant/${rid}/settings?tab=membership`, label: t('nav.membership', 'Membership'), visible: hasMenuPermission('settings') },
           { path: `/restaurant/${rid}/notification-settings`, label: t('nav.systemSettings'), visible: hasMenuPermission('settings') },
           { path: `/restaurant/${rid}/history`, label: t('nav.changeHistory'), visible: hasMenuPermission('reports') && isRouteAllowed(`/restaurant/${rid}/history`) }
         ].filter(i => i.visible !== false),

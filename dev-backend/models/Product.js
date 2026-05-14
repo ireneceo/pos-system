@@ -129,6 +129,31 @@ Product.init({
     type: DataTypes.BOOLEAN,
     defaultValue: false,
     comment: 'Featured item for mobile order display'
+  },
+  // Brand Menu System (v3.32+) — linkage with a BG-owned BrandMenu template.
+  brand_menu_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'FK → brand_menus.id. NULL means standalone (not linked).'
+  },
+  brand_menu_synced_version: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'BrandMenu.version at last sync.'
+  },
+  brand_menu_synced_at: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
+  brand_menu_locks_snapshot: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    comment: 'Snapshot of BrandMenu lock flags at sync time — {name,price,category,image,options}.'
+  },
+  brand_menu_link_status: {
+    type: DataTypes.ENUM('in_sync', 'pending_update', 'unlinked'),
+    allowNull: true,
+    comment: 'Current sync state with the linked BrandMenu. NULL = never synced.'
   }
 }, {
   sequelize: database.sequelize,

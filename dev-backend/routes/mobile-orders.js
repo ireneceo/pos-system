@@ -10,6 +10,7 @@ const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
 const { getTodayBounds, getOrderDatePrefix, getRestaurantTimezone } = require('../utils/dateTimeHelper');
 const { generateOrderNumber } = require('./mobile-helpers');
+const { checkPaymentMethodAllowed, checkOrderTypeEnabled } = require('../utils/paymentMethodGuard');
 
 router.post('/cart/validate', async (req, res) => {
   try {
@@ -92,11 +93,34 @@ router.post('/order', async (req, res) => {
     console.log('  - restaurantId (parsed):', restaurantId, typeof restaurantId);
 
     const actualTableNumber = tableNumber || customerInfo?.tableNumber || null;
-    const actualOrderType = orderType || 'dine_in';
+    // Frontend uses dash form ('dine-in'); DB ENUM uses underscore ('dine_in'). Normalize at the API boundary.
+    const rawOrderType = orderType || 'dine_in';
+    const actualOrderType = rawOrderType === 'dine-in' ? 'dine_in' : rawOrderType;
 
-    // Get restaurant timezone for date calculations
-    const restaurant = await Restaurant.findByPk(restaurantId, { attributes: ['id', 'operation_settings'] });
+    // Get restaurant timezone + payment settings for date calculations & validation
+    const restaurant = await Restaurant.findByPk(restaurantId, { attributes: ['id', 'operation_settings', 'payment_settings'] });
     const tz = getRestaurantTimezone(restaurant);
+
+    // Defence A: order_type must be enabled on restaurant's operation_settings.
+    // Catches stale-QR-on-phone scenario where operator disabled an order type after the customer saved the QR.
+    const otGuard = checkOrderTypeEnabled({
+      operationSettings: restaurant?.operation_settings,
+      orderType: actualOrderType
+    });
+    if (!otGuard.ok) {
+      return res.status(400).json({ success: false, error: { message: otGuard.message, code: otGuard.code } });
+    }
+
+    // Defence B: payment_method must match the method's allowed_order_types for the chosen order_type.
+    // The mobile frontend already filters disallowed methods, but a crafted request must not bypass.
+    const guard = checkPaymentMethodAllowed({
+      paymentSettings: restaurant?.payment_settings,
+      paymentMethod,
+      orderType: actualOrderType
+    });
+    if (!guard.ok) {
+      return res.status(400).json({ success: false, error: { message: guard.message, code: guard.code } });
+    }
 
     // Auto-merge: Check if there's an existing order to merge into
     if (!skipAutoMerge && actualTableNumber) {

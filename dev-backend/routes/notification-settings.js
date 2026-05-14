@@ -39,7 +39,10 @@ const NOTIFICATION_CATEGORIES = [
   { key: 'reservation_new', label: 'New Reservation Request', description: 'When a customer submits a new reservation', section: 'Reservations', roles: ['Restaurant Admin', 'Staff'], push_only: true },
   { key: 'reservation_status_changed', label: 'Reservation Status Changed', description: 'Confirmation, cancellation, or no-show updates on your reservation', section: 'Reservations', roles: ['Restaurant Admin', 'Staff'] },
   { key: 'reservation_reminder', label: 'Reservation Reminder (24h/2h)', description: 'Reminders sent to customers before their reservation', section: 'Reservations', roles: ['Restaurant Admin'] },
-  { key: 'reservation_no_show', label: 'Reservation No-Show', description: 'When a reservation is auto-marked as no-show', section: 'Reservations', roles: ['Restaurant Admin', 'Staff'], push_only: true }
+  { key: 'reservation_no_show', label: 'Reservation No-Show', description: 'When a reservation is auto-marked as no-show', section: 'Reservations', roles: ['Restaurant Admin', 'Staff'], push_only: true },
+
+  // System health alerts (v3.31+) — admin-only, fires on automated checks
+  { key: 'system_health', label: 'System Health Alerts', description: 'Automated alerts from scheduled health checks (base64 image sweep, etc.)', section: 'System', roles: ['System Admin'] }
 ];
 
 // GET - User notification preferences

@@ -164,7 +164,11 @@
   "orderType": {
     "dineIn": "Makan Di Sini",
     "takeaway": "Bungkus",
-    "delivery": "Penghantaran"
+    "delivery": "Penghantaran",
+    "pickup": "Ambil sendiri",
+    "change": "Tukar",
+    "changeOrderType": "Tukar jenis pesanan",
+    "pinFallback": "{{orderType}} tidak tersedia di restoran ini sekarang. Sila pilih pilihan lain."
   },
   "role": {
     "systemAdmin": "Pentadbir Sistem",
@@ -253,6 +257,7 @@
     "purchaseOrders": "Pesanan Belian",
     "content": "Kandungan",
     "report": "Laporan",
+    "installApp": "Pasang Aplikasi",
     "logout": "Log Keluar",
     "section": {
       "management": "Pengurusan",
@@ -266,7 +271,9 @@
       "settings": "Tetapan",
       "analytics": "Analitik",
       "teamMarketing": "Pasukan & Pemasaran",
-      "systemAccess": "Akses Sistem"
+      "systemAccess": "Akses Sistem",
+      "brandManagement": "Pengurusan Jenama",
+      "franchise": "Francais"
     },
     "franchiseManagement": "Pengurusan Francais",
     "tenancyManagement": "Pengurusan Penyewaan",
@@ -277,7 +284,17 @@
     "tenancyMap": "Peta Penyewaan",
     "branchMap": "Peta Cawangan",
     "incomingOrders": "Pesanan Langsung",
-    "carriers": "Pembawa"
+    "carriers": "Pembawa",
+    "paymentMethods": "Kaedah Pembayaran",
+    "printer": "Pencetak",
+    "kitchenStations": "Stesen Dapur",
+    "reservationSettings": "Tetapan Tempahan",
+    "membership": "Keahlian",
+    "reservation": "Tempahan",
+    "brandMenus": "Menu Jenama",
+    "brandMenuCategories": "Kategori Menu",
+    "brandMenuOptions": "Pilihan Menu",
+    "brandMenuUpdates": "Kemas Kini Menu Jenama"
   },
   "language": {
     "en": "English",

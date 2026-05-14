@@ -164,7 +164,11 @@
   "orderType": {
     "dineIn": "Dine-in",
     "takeaway": "Takeaway",
-    "delivery": "Delivery"
+    "delivery": "Delivery",
+    "pickup": "Pickup",
+    "change": "Change",
+    "changeOrderType": "Change order type",
+    "pinFallback": "{{orderType}} is not currently available at this restaurant. Please choose another option."
   },
   "role": {
     "systemAdmin": "System Admin",
@@ -253,6 +257,7 @@
     "purchaseOrders": "Purchase Orders",
     "content": "Content",
     "report": "Report",
+    "installApp": "Install App",
     "logout": "Logout",
     "section": {
       "management": "Management",
@@ -266,7 +271,9 @@
       "settings": "Settings",
       "analytics": "Analytics",
       "teamMarketing": "Team & Marketing",
-      "systemAccess": "System Access"
+      "systemAccess": "System Access",
+      "brandManagement": "Brand Management",
+      "franchise": "Franchise"
     },
     "franchiseManagement": "Franchise Management",
     "tenancyManagement": "Tenancy Management",
@@ -277,7 +284,17 @@
     "tenancyMap": "Tenancy Map",
     "branchMap": "Branch Map",
     "incomingOrders": "Live Orders",
-    "carriers": "Carriers"
+    "carriers": "Carriers",
+    "paymentMethods": "Payment Methods",
+    "printer": "Printer",
+    "kitchenStations": "Kitchen Stations",
+    "reservationSettings": "Reservation Settings",
+    "membership": "Membership",
+    "reservation": "Reservation",
+    "brandMenus": "Brand Menus",
+    "brandMenuCategories": "Menu Categories",
+    "brandMenuOptions": "Menu Options",
+    "brandMenuUpdates": "Brand Menu Updates"
   },
   "language": {
     "en": "English",

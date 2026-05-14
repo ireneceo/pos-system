@@ -1,25 +1,54 @@
 /**
  * v3.25 — Brand buyer-side seed
  *
- * 대상: with MIN Cafe (restaurant_id=10, brand_id=4) — test_brand_general 의 brand
- *   - Active SupplierContract with Demo Supplier (id=20)
+ * 대상: Brand 의 'with MIN Cafe' 레스토랑 — test_brand_general 의 brand
+ *   - Active SupplierContract with the demo supplier
  *   - 3 PurchaseOrders (submitted / confirmed / received)
  *   - 1 Trade Invoice for received PO
+ *
+ * IDs resolved at runtime from stable identifiers (email/restaurant name).
+ * Override via env vars if needed:
+ *   DEMO_SUPPLIER_EMAIL    (default: demo-supplier@purplehere.com)
+ *   BUYER_RESTAURANT_NAME  (default: with MIN Cafe)
+ *   BUYER_USER_EMAIL       (default: test-brand@purplehere.com)
  *
  * Idempotent.
  */
 const {
+  User, Restaurant, SupplierCompany,
   SupplierContract, SupplierProduct, IngredientSellerProduct, Ingredient,
   PurchaseOrder, PurchaseOrderItem, Invoice, InvoiceItem
 } = require('../models');
 const database = require('../config/database');
 
-const SUPPLIER_COMPANY_ID = 20;
-const SUPPLIER_OWNER_USER_ID = 227;
-const BUYER_RESTAURANT_ID = 10;          // with MIN Cafe
-const BUYER_USER_ID = 6;                  // test_brand_general (brand owner)
+const DEMO_SUPPLIER_EMAIL = process.env.DEMO_SUPPLIER_EMAIL || 'demo-supplier@purplehere.com';
+const BUYER_RESTAURANT_NAME = process.env.BUYER_RESTAURANT_NAME || 'with MIN Cafe';
+const BUYER_USER_EMAIL = process.env.BUYER_USER_EMAIL || 'test-brand@purplehere.com';
+
+async function resolveBuyerIds() {
+  const supplierUser = await User.findOne({ where: { email: DEMO_SUPPLIER_EMAIL } });
+  if (!supplierUser) throw new Error(`Demo supplier user not found: ${DEMO_SUPPLIER_EMAIL}`);
+  const supplierCompany = await SupplierCompany.findOne({ where: { owner_id: supplierUser.id } });
+  if (!supplierCompany) throw new Error(`SupplierCompany not found for owner_id=${supplierUser.id}`);
+
+  const buyerRest = await Restaurant.findOne({ where: { name: BUYER_RESTAURANT_NAME } });
+  if (!buyerRest) throw new Error(`Buyer restaurant not found: ${BUYER_RESTAURANT_NAME}`);
+
+  const buyerUser = await User.findOne({ where: { email: BUYER_USER_EMAIL } });
+  if (!buyerUser) throw new Error(`Buyer user not found: ${BUYER_USER_EMAIL}`);
+
+  return {
+    SUPPLIER_COMPANY_ID: supplierCompany.id,
+    SUPPLIER_OWNER_USER_ID: supplierUser.id,
+    BUYER_RESTAURANT_ID: buyerRest.id,
+    BUYER_USER_ID: buyerUser.id
+  };
+}
 
 (async () => {
+  const { SUPPLIER_COMPANY_ID, SUPPLIER_OWNER_USER_ID, BUYER_RESTAURANT_ID, BUYER_USER_ID } = await resolveBuyerIds();
+  console.log(`Resolved IDs: supplier_company=${SUPPLIER_COMPANY_ID}, supplier_user=${SUPPLIER_OWNER_USER_ID}, buyer_restaurant=${BUYER_RESTAURANT_ID}, buyer_user=${BUYER_USER_ID}`);
+
   const t = await database.sequelize.transaction();
   try {
     // 1. Active contract

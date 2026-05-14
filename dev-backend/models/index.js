@@ -36,6 +36,12 @@ const BrandProductOption = require('./BrandProductOption');
 const BrandProductOptionIngredient = require('./BrandProductOptionIngredient');
 const BrandProductBrand = require('./BrandProductBrand');
 const BrandProductOptionGroupProduct = require('./BrandProductOptionGroupProduct');
+// Brand Menu System (v3.32+) — Brand-level menu templates pushed to franchise restaurants
+const BrandMenu = require('./BrandMenu');
+const BrandMenuCategory = require('./BrandMenuCategory');
+const BrandMenuOptionGroup = require('./BrandMenuOptionGroup');
+const BrandMenuOption = require('./BrandMenuOption');
+const BrandMenuOptionGroupLink = require('./BrandMenuOptionGroupLink');
 const Supplier = require('./Supplier');
 const SupplierCategory = require('./SupplierCategory');
 const SupplierBrand = require('./SupplierBrand');
@@ -831,6 +837,47 @@ Foodcourt.addHook('afterUpdate', async (foodcourt) => {
   await syncIssuerToContracts('foodcourt', foodcourt.id, foodcourt);
 });
 
+// ──────────────────────────────────────────────────────────────────────────
+// Brand Menu System (v3.32+) — associations
+// Brand 1:N BrandMenu, BrandMenu N:M BrandMenuOptionGroup, BrandMenu → Product (sync target)
+// ──────────────────────────────────────────────────────────────────────────
+Brand.hasMany(BrandMenu, { foreignKey: 'brand_id', as: 'brandMenus' });
+BrandMenu.belongsTo(Brand, { foreignKey: 'brand_id', as: 'brand' });
+
+Brand.hasMany(BrandMenuCategory, { foreignKey: 'brand_id', as: 'brandMenuCategories' });
+BrandMenuCategory.belongsTo(Brand, { foreignKey: 'brand_id', as: 'brand' });
+BrandMenuCategory.hasMany(BrandMenu, { foreignKey: 'category_id', as: 'menus' });
+BrandMenu.belongsTo(BrandMenuCategory, { foreignKey: 'category_id', as: 'category' });
+
+Brand.hasMany(BrandMenuOptionGroup, { foreignKey: 'brand_id', as: 'brandMenuOptionGroups' });
+BrandMenuOptionGroup.belongsTo(Brand, { foreignKey: 'brand_id', as: 'brand' });
+BrandMenuOptionGroup.hasMany(BrandMenuOption, { foreignKey: 'group_id', as: 'options' });
+BrandMenuOption.belongsTo(BrandMenuOptionGroup, { foreignKey: 'group_id', as: 'group' });
+
+BrandMenu.belongsTo(ProductRecipe, { foreignKey: 'product_recipe_id', as: 'recipe' });
+ProductRecipe.hasMany(BrandMenu, { foreignKey: 'product_recipe_id', as: 'brandMenus' });
+
+BrandMenu.belongsToMany(BrandMenuOptionGroup, {
+  through: BrandMenuOptionGroupLink,
+  foreignKey: 'brand_menu_id',
+  otherKey: 'option_group_id',
+  as: 'optionGroups'
+});
+BrandMenuOptionGroup.belongsToMany(BrandMenu, {
+  through: BrandMenuOptionGroupLink,
+  foreignKey: 'option_group_id',
+  otherKey: 'brand_menu_id',
+  as: 'menus'
+});
+
+// Restaurant.Product → BrandMenu (sync target)
+BrandMenu.hasMany(Product, { foreignKey: 'brand_menu_id', as: 'linkedProducts' });
+Product.belongsTo(BrandMenu, { foreignKey: 'brand_menu_id', as: 'brandMenu' });
+
+// Restaurant.OptionGroup → BrandMenuOptionGroup (mirror sync)
+BrandMenuOptionGroup.hasMany(OptionGroup, { foreignKey: 'brand_menu_option_group_id', as: 'mirrors' });
+OptionGroup.belongsTo(BrandMenuOptionGroup, { foreignKey: 'brand_menu_option_group_id', as: 'sourceGroup' });
+
 module.exports = {
   User,
   Restaurant,
@@ -870,6 +917,12 @@ module.exports = {
   BrandProductOptionIngredient,
   BrandProductBrand,
   BrandProductOptionGroupProduct,
+  // Brand Menu System (v3.32+)
+  BrandMenu,
+  BrandMenuCategory,
+  BrandMenuOptionGroup,
+  BrandMenuOption,
+  BrandMenuOptionGroupLink,
   Supplier,
   SupplierCategory,
   SupplierBrand,

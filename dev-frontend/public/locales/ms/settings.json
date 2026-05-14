@@ -526,5 +526,22 @@
   "restaurantDashboard.pickupNumber": "Nombor pengambilan",
   "restaurantDashboard.customerOrdering": "Pesanan pelanggan",
   "restaurantDashboard.monitorAllOrders": "Pantau semua pesanan",
-  "restaurantDashboard.editMenuItems": "Sunting item menu"
+  "restaurantDashboard.editMenuItems": "Sunting item menu",
+  "settingsPage": {
+    "orderTypePin": {
+      "allowedOrderTypes": "Jenis pesanan dibenarkan",
+      "allowedOrderTypesHelp": "Biarkan semua dipilih untuk membenarkan kaedah ini bagi setiap jenis pesanan mudah alih.",
+      "orderTypeQrSection": "Kod QR jenis pesanan",
+      "orderTypeQrHelp": "Imbas kod QR ini akan melangkau pemilih jenis pesanan dan terus ke menu mod yang dikunci.",
+      "takeawayQrLabel": "QR Bungkus",
+      "takeawayQrDesc": "Paparkan di kaunter bungkus.",
+      "pickupQrLabel": "QR Ambil Sendiri",
+      "pickupQrDesc": "Paparkan di rak ambil sendiri.",
+      "deliveryQrLabel": "QR Penghantaran",
+      "deliveryQrDesc": "Cetak pada risalah atau slip penghantaran.",
+      "externalQROrderTypePin": "Pin jenis pesanan",
+      "externalQRNoPin": "Pelanggan pilih (tiada pin)",
+      "copyUrl": "Salin"
+    }
+  }
 }

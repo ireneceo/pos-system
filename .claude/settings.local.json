@@ -222,7 +222,14 @@
       "Bash(sudo -n setfacl -R -d -m u:lua:rwX /var/www/dev-frontend)",
       "Bash(getfacl /var/www/dev-frontend/public/images/features/dashboard)",
       "Bash(sudo *)",
-      "Bash(xargs ls -lhS)"
+      "Bash(xargs ls -lhS)",
+      "Bash(awk '/const OrderTypeChip/,/^`;$/' /var/www/dev-frontend/src/mobile/pages/MenuPage.tsx)",
+      "Bash(awk 'NR==3699,NR==3715' /var/www/dev-frontend/src/pages/Settings/SettingsPage.tsx)",
+      "Bash(awk '/Order-type QR codes — independent/,/^\\\\s*}\\\\\\)\\\\\\(\\\\\\)\\\\}$/' /var/www/dev-frontend/src/pages/Settings/SettingsPage.tsx)",
+      "Bash(awk 'NR <= 3412' /var/www/dev-frontend/src/pages/Settings/SettingsPage.tsx)",
+      "Bash(awk 'NR > 1050 && NR < 1300' /var/www/dev-backend/routes/dashboard.js)",
+      "Bash(awk '/brandCategories.*useMemo/,/^\\\\s+\\\\}/' /var/www/dev-frontend/src/components/Layout/MainLayout.tsx)",
+      "Bash(awk '{print $6,$7,$8,$5}')"
     ],
     "deny": [],
     "ask": []

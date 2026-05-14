@@ -526,5 +526,22 @@
   "restaurantDashboard.pickupNumber": "取餐号码",
   "restaurantDashboard.customerOrdering": "顾客点餐",
   "restaurantDashboard.monitorAllOrders": "监控所有订单",
-  "restaurantDashboard.editMenuItems": "编辑菜单项目"
+  "restaurantDashboard.editMenuItems": "编辑菜单项目",
+  "settingsPage": {
+    "orderTypePin": {
+      "allowedOrderTypes": "可用订单类型",
+      "allowedOrderTypesHelp": "全部勾选表示该方式适用于所有移动订单类型。",
+      "orderTypeQrSection": "订单类型二维码",
+      "orderTypeQrHelp": "扫描这些二维码会跳过订单类型选择，直接进入对应模式的菜单。",
+      "takeawayQrLabel": "外卖二维码",
+      "takeawayQrDesc": "展示在外卖柜台。",
+      "pickupQrLabel": "自取二维码",
+      "pickupQrDesc": "展示在自取架。",
+      "deliveryQrLabel": "配送二维码",
+      "deliveryQrDesc": "印于传单或送货单据。",
+      "externalQROrderTypePin": "订单类型固定",
+      "externalQRNoPin": "由顾客选择（不固定）",
+      "copyUrl": "复制"
+    }
+  }
 }

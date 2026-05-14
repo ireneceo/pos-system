@@ -346,6 +346,32 @@ async function saveImageToFile(base64Image, fixedFilename, options = {}) {
   }
 }
 
+/**
+ * Normalize an incoming image field value for routes that store a URL.
+ *
+ * - `data:image/...` base64 → written to disk via saveImageToFile, URL returned.
+ * - `/uploads/...` → returned as-is (no-op, allows passthrough on update).
+ * - `undefined` → returned as-is so callers can detect "field not present".
+ * - Empty string / null → returns null so callers can clear the column.
+ *
+ * Routes should call this for every image-bearing field on POST/PUT to keep
+ * base64 from being persisted into TEXT/MEDIUMTEXT columns (v3.30 perf incident
+ * guard — see base64ImageSweep for the detection backstop).
+ */
+async function normalizeImageField(value, { subdir, filename, maxWidth, maxHeight, quality } = {}) {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (typeof value !== 'string') return value;
+  const trimmed = value.trim();
+  if (trimmed === '') return null;
+  if (trimmed.startsWith('/uploads/')) return trimmed;
+  if (trimmed.startsWith('data:image/')) {
+    const url = await saveImageToFile(trimmed, filename, { subdir, maxWidth, maxHeight, quality });
+    return url || null;
+  }
+  return trimmed;
+}
+
 module.exports = {
   processImage,
   createThumbnail,
@@ -353,6 +379,7 @@ module.exports = {
   getImageUrl,
   deleteOldImages,
   saveImageToFile,
+  normalizeImageField,
   IMAGE_SIZES,
   QUALITY_SETTINGS
 };

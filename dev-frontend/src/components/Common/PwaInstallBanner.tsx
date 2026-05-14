@@ -7,10 +7,8 @@ import { usePwaInstall } from '../../contexts/PwaInstallContext';
  * PWA Install Banner
  * - Android/Chromium: uses beforeinstallprompt event → "Install" CTA.
  * - iOS Safari: shows step-by-step guide (Share → Add to Home Screen).
- * - Hidden when already running standalone or dismissed within 7 days (localStorage).
- *
- * Improvement over PlanQ: localStorage-based 7-day dismiss instead of sessionStorage,
- * so users who dismissed do not see it on every new tab.
+ * - Hidden when already running standalone or dismissed within 3 days (localStorage).
+ * - Sidebar footer always has an "Install App" link → permanent re-entry path.
  */
 const PwaInstallBanner: React.FC = () => {
   const { t } = useTranslation();
@@ -30,7 +28,7 @@ const PwaInstallBanner: React.FC = () => {
     }
   };
 
-  const handleDismiss = () => dismissBanner(7);
+  const handleDismiss = () => dismissBanner();
 
   const oldIos = isIOS && iosVersion !== null && iosVersion < 16;
 

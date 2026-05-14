@@ -113,13 +113,12 @@ router.delete('/subscribe', authenticateToken, async (req, res) => {
 router.get('/preferences', authenticateToken, async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id, {
-      attributes: ['id', 'push_enabled', 'push_preferences', 'push_muted_hours']
+      attributes: ['id', 'push_enabled', 'push_muted_hours']
     });
     res.json({
       success: true,
       data: {
         push_enabled: user.push_enabled,
-        categories: user.push_preferences && user.push_preferences.categories ? user.push_preferences.categories : {},
         muted_hours: user.push_muted_hours || { enabled: false, start: 22, end: 8, timezone: 'Asia/Kuala_Lumpur' }
       }
     });
@@ -134,16 +133,11 @@ router.get('/preferences', authenticateToken, async (req, res) => {
 // ────────────────────────────────────────────────────────────────────────────
 router.put('/preferences', authenticateToken, async (req, res) => {
   try {
-    const { push_enabled, categories, muted_hours } = req.body || {};
+    const { push_enabled, muted_hours } = req.body || {};
     const user = await User.findByPk(req.user.id);
     const update = {};
 
     if (push_enabled !== undefined) update.push_enabled = !!push_enabled;
-    if (categories && typeof categories === 'object') {
-      const merged = (user.push_preferences && user.push_preferences.categories) || {};
-      for (const [k, v] of Object.entries(categories)) merged[k] = !!v;
-      update.push_preferences = { ...(user.push_preferences || {}), categories: merged };
-    }
     if (muted_hours) {
       const start = Number(muted_hours.start);
       const end = Number(muted_hours.end);
@@ -162,7 +156,6 @@ router.put('/preferences', authenticateToken, async (req, res) => {
       success: true,
       data: {
         push_enabled: user.push_enabled,
-        categories: (user.push_preferences && user.push_preferences.categories) || {},
         muted_hours: user.push_muted_hours
       }
     });

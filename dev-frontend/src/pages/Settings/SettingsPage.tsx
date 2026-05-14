@@ -1666,25 +1666,38 @@ const SettingsPage: React.FC = () => {
   // orders record it as `order.table_number` exactly the same way.
   // When coupon_id is set, mobile order entry auto-applies that coupon (partner discount).
   const externalQRRef = useRef<AutoSaveHandle>(null);
-  const externalQRUrl = (name: string) =>
-    `${tableSettings.qrCodeBaseUrl}/mobile/${restaurantSlug}?table=${encodeURIComponent(name)}`;
+  // 'reservation' is a special-case pin — it doesn't take the menu path, it routes
+  // to /reservation directly. The partner name still saves to DB for operator labeling
+  // but is not passed in the URL (no order is created).
+  const VALID_EXT_ORDER_TYPES = ['dine-in', 'takeaway', 'pickup', 'delivery', 'reservation'] as const;
+  type ExtOrderType = typeof VALID_EXT_ORDER_TYPES[number];
+  const externalQRUrl = (name: string, orderType?: string | null) => {
+    if (orderType === 'reservation') {
+      return `${tableSettings.qrCodeBaseUrl}/mobile/${restaurantSlug}/reservation`;
+    }
+    const base = `${tableSettings.qrCodeBaseUrl}/mobile/${restaurantSlug}?table=${encodeURIComponent(name)}`;
+    return orderType ? `${base}&order_type=${orderType}` : base;
+  };
 
-  // Normalize: string → {name}; pass-through {name, coupon_id?}
-  const normalizeQREntries = (raw: any): Array<{ name: string; coupon_id?: number }> => {
+  // Normalize: string → {name}; pass-through {name, coupon_id?, order_type?}
+  const normalizeQREntries = (raw: any): Array<{ name: string; coupon_id?: number; order_type?: ExtOrderType }> => {
     if (!Array.isArray(raw)) return [];
     return raw
       .map((e: any) => {
         if (typeof e === 'string') return { name: e };
         if (e && typeof e === 'object' && typeof e.name === 'string') {
-          const out: { name: string; coupon_id?: number } = { name: e.name };
+          const out: { name: string; coupon_id?: number; order_type?: ExtOrderType } = { name: e.name };
           if (e.coupon_id != null && Number.isInteger(Number(e.coupon_id))) {
             out.coupon_id = Number(e.coupon_id);
+          }
+          if (typeof e.order_type === 'string' && (VALID_EXT_ORDER_TYPES as readonly string[]).includes(e.order_type)) {
+            out.order_type = e.order_type as ExtOrderType;
           }
           return out;
         }
         return null;
       })
-      .filter((e: any): e is { name: string; coupon_id?: number } => e !== null);
+      .filter((e: any): e is { name: string; coupon_id?: number; order_type?: ExtOrderType } => e !== null);
   };
 
   const handleAddExternalQR = () => {
@@ -1723,6 +1736,20 @@ const SettingsPage: React.FC = () => {
         return rest;
       }
       return { ...e, coupon_id: couponId };
+    });
+    setTableSettings({ ...tableSettings, externalQRs: next });
+    externalQRRef.current?.triggerSave();
+  };
+
+  const handleChangeExternalQROrderType = (name: string, orderType: ExtOrderType | null) => {
+    const current = normalizeQREntries(tableSettings.externalQRs);
+    const next = current.map(e => {
+      if (e.name !== name) return e;
+      if (orderType == null) {
+        const { order_type, ...rest } = e;
+        return rest;
+      }
+      return { ...e, order_type: orderType };
     });
     setTableSettings({ ...tableSettings, externalQRs: next });
     externalQRRef.current?.triggerSave();
@@ -1869,6 +1896,40 @@ const SettingsPage: React.FC = () => {
       ...prev,
       [methodKey]: { ...prev[methodKey], [field]: value }
     }));
+  };
+
+  // Per-order-type allow toggle on a payment method. `null` allowed_order_types ≡ all allowed;
+  // we materialize the full list on first toggle so unchecking one creates a meaningful restriction.
+  // 'reservation' is treated as a virtual order-type for deposit eligibility configuration.
+  const handlePaymentOrderTypeToggle = (methodKey: string, orderType: 'dine-in' | 'takeaway' | 'pickup' | 'delivery' | 'reservation', refKey?: string) => {
+    setPaymentMethods((prev: any) => {
+      const m = prev[methodKey] || {};
+      const allTypes = ['dine-in', 'takeaway', 'pickup', 'delivery', 'reservation'];
+      const current: string[] = Array.isArray(m.allowed_order_types) && m.allowed_order_types.length > 0
+        ? [...m.allowed_order_types]
+        : [...allTypes];
+      const idx = current.indexOf(orderType);
+      let next;
+      if (idx >= 0) {
+        next = current.filter(t => t !== orderType);
+      } else {
+        next = [...current, orderType];
+      }
+      // Empty array would block all order types — disallow. Treat as "no restriction" (delete field).
+      const update = { ...m };
+      if (next.length === 0 || next.length === allTypes.length) {
+        delete update.allowed_order_types;
+      } else {
+        update.allowed_order_types = next;
+      }
+      return { ...prev, [methodKey]: update };
+    });
+    if (refKey) paymentRefsMap.current.get(refKey)?.triggerSave();
+  };
+
+  const isOrderTypeAllowed = (method: any, orderType: string): boolean => {
+    if (!Array.isArray(method?.allowed_order_types) || method.allowed_order_types.length === 0) return true;
+    return method.allowed_order_types.includes(orderType);
   };
 
   const handlePaymentConfigChange = (methodKey: string, configField: string, value: any) => {
@@ -2120,58 +2181,65 @@ const SettingsPage: React.FC = () => {
     }
   };
 
+  // Page header title — defaults to "Store Settings" for the 3 core RA tabs (and the BG/FG branch).
+  // Sub-pages (Payment / Printer / KitchenStations / MobileOrder / Reservation / Membership) get
+  // their own title so the standalone landing reads as a dedicated page, not as a tab.
+  const PAGE_TITLE_BY_TAB: Partial<Record<TabType, string>> = {
+    payment: 'Payment Methods',
+    printer: 'Printer',
+    kitchenStations: 'Kitchen Stations',
+    mobileOrder: 'Mobile Order',
+    reservation: 'Reservation',
+    membership: 'Membership'
+  };
+  const pageTitle = PAGE_TITLE_BY_TAB[activeTab] || 'Store Settings';
+
   return (
     <>
       <SettingsContainer>
-        <PageHeader title="Store Settings" />
+        <PageHeader title={pageTitle} />
 
         <Content>
 
-          <TabContainer>
-            {['Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager'].includes(user?.role || '') ? (
-              <>
-                <Tab active={activeTab === 'company'} onClick={() => handleTabChange('company')}>
-                  Company Info
-                </Tab>
-                <Tab active={activeTab === 'brands'} onClick={() => handleTabChange('brands')}>
-                  Brand Management
-                </Tab>
-                <Tab active={activeTab === 'billing'} onClick={() => handleTabChange('billing')}>
-                  Billing & Subscriptions
-                </Tab>
-              </>
-            ) : (
-              <>
-                <Tab active={activeTab === 'store'} onClick={() => handleTabChange('store')}>
-                  Store Info
-                </Tab>
-                <Tab active={activeTab === 'operations'} onClick={() => handleTabChange('operations')}>
-                  Operations
-                </Tab>
-                <Tab active={activeTab === 'payment'} onClick={() => handleTabChange('payment')}>
-                  Payment Methods
-                </Tab>
-                <Tab active={activeTab === 'printer'} onClick={() => handleTabChange('printer')}>
-                  Printer
-                </Tab>
-                <Tab active={activeTab === 'kitchenStations'} onClick={() => handleTabChange('kitchenStations')}>
-                  Kitchen Stations
-                </Tab>
-                <Tab active={activeTab === 'mobileOrder'} onClick={() => handleTabChange('mobileOrder')}>
-                  Mobile Order
-                </Tab>
-                <Tab active={activeTab === 'reservation'} onClick={() => handleTabChange('reservation')}>
-                  Reservation
-                </Tab>
-                <Tab active={activeTab === 'managers'} onClick={() => handleTabChange('managers')}>
-                  Managers
-                </Tab>
-                <Tab active={activeTab === 'membership'} onClick={() => handleTabChange('membership')}>
-                  Membership
-                </Tab>
-              </>
-            )}
-          </TabContainer>
+          {/* Tab bar shows only the 3 core tabs for Restaurant Admin (Store Info / Operations / Managers).
+              Other sections (Payment, Printer, KitchenStations, MobileOrder, Reservation, Membership)
+              are accessed via dedicated sidebar entries — when those URLs are active, the tab bar hides
+              entirely so each section looks like a standalone page. */}
+          {(() => {
+            const isMgrRole = ['Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager'].includes(user?.role || '');
+            const CORE_RA_TABS: TabType[] = ['store', 'operations', 'managers'];
+            const showTabs = isMgrRole || CORE_RA_TABS.includes(activeTab);
+            if (!showTabs) return null;
+            return (
+              <TabContainer>
+                {isMgrRole ? (
+                  <>
+                    <Tab active={activeTab === 'company'} onClick={() => handleTabChange('company')}>
+                      Company Info
+                    </Tab>
+                    <Tab active={activeTab === 'brands'} onClick={() => handleTabChange('brands')}>
+                      Brand Management
+                    </Tab>
+                    <Tab active={activeTab === 'billing'} onClick={() => handleTabChange('billing')}>
+                      Billing & Subscriptions
+                    </Tab>
+                  </>
+                ) : (
+                  <>
+                    <Tab active={activeTab === 'store'} onClick={() => handleTabChange('store')}>
+                      Store Info
+                    </Tab>
+                    <Tab active={activeTab === 'operations'} onClick={() => handleTabChange('operations')}>
+                      Operations
+                    </Tab>
+                    <Tab active={activeTab === 'managers'} onClick={() => handleTabChange('managers')}>
+                      Managers
+                    </Tab>
+                  </>
+                )}
+              </TabContainer>
+            );
+          })()}
 
 
           {activeTab === 'payment' && (
@@ -2264,6 +2332,74 @@ const SettingsPage: React.FC = () => {
                       </div>
                     </div>
                   </div>
+
+                  {/* Per-order-type filter for mobile-enabled methods.
+                      Progressive disclosure: only renders when Mobile = ON. Chips hidden for order types
+                      the restaurant has disabled (operation_settings.orderTypes), so operators don't see
+                      orphan options. All-on (or all-off) = no restriction stored (back-compat). */}
+                  {method.availableIn?.includes('mobile') && !['cash', 'card', 'staffMeal'].includes(key) && (() => {
+                    // Order types + reservation (deposit). Reservation appears when reservationEnabled —
+                    // currently informational (deposit flow not yet wired) but operator can pre-configure
+                    // which payment methods will be eligible once deposit lands.
+                    type ChipKey = 'dine-in' | 'takeaway' | 'pickup' | 'delivery' | 'reservation';
+                    const orderTypeChips: Array<{ key: ChipKey; label: string; enabled: boolean }> = [
+                      { key: 'dine-in',     label: 'Dine In',     enabled: !!operationSettings.orderTypes?.dineIn },
+                      { key: 'takeaway',    label: 'Takeaway',    enabled: !!operationSettings.orderTypes?.takeaway },
+                      { key: 'pickup',      label: 'Pickup',      enabled: !!operationSettings.orderTypes?.pickup },
+                      { key: 'delivery',    label: 'Delivery',    enabled: !!operationSettings.orderTypes?.delivery },
+                      { key: 'reservation', label: 'Reservation', enabled: !!reservationEnabled }
+                    ].filter(c => c.enabled);
+                    if (orderTypeChips.length === 0) return null;
+                    return (
+                      <div style={{
+                        borderTop: '1px solid #E6EBF1',
+                        paddingTop: '14px',
+                        marginTop: '14px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '8px'
+                      }}>
+                        <div style={{ fontSize: '12px', color: '#6B7C93', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                          Available order types
+                          <span
+                            style={{ marginLeft: '6px', color: '#9CA3AF', fontWeight: 400, textTransform: 'none', letterSpacing: 0, cursor: 'help' }}
+                            title="Leave all selected to allow this method for every mobile order type. External QR scans inherit the pinned order type's settings — no separate config. Reservation deposits are not yet collected by this system."
+                          >ⓘ</span>
+                        </div>
+                        <AutoSaveField ref={(h: AutoSaveHandle | null) => { if (h) paymentRefsMap.current.set(`${key}-ot`, h); }} onSave={handleSave} type="toggle">
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                            {orderTypeChips.map(c => {
+                              const active = isOrderTypeAllowed(method, c.key);
+                              return (
+                                <button
+                                  key={c.key}
+                                  type="button"
+                                  onClick={() => handlePaymentOrderTypeToggle(key, c.key, `${key}-ot`)}
+                                  aria-pressed={active}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    padding: '6px 12px',
+                                    borderRadius: '999px',
+                                    border: '1px solid ' + (active ? '#635BFF' : '#E6EBF1'),
+                                    background: active ? '#F0EFFF' : '#FAFBFC',
+                                    color: active ? '#635BFF' : '#6B7C93',
+                                    fontSize: '13px',
+                                    fontWeight: 500,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s'
+                                  }}
+                                >
+                                  {active ? '✓' : ''} {c.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </AutoSaveField>
+                      </div>
+                    );
+                  })()}
 
                   {/* Card - POS only, no PG config needed (online payments use Online Payment method) */}
 
@@ -3582,6 +3718,7 @@ const SettingsPage: React.FC = () => {
                     })}
                   </TablesGrid>
                 </div>
+
                 </>
                 )}
                 {tableSettings.qrMode === 'session' && (
@@ -3591,12 +3728,124 @@ const SettingsPage: React.FC = () => {
                 )}
               </SettingsCard>
 
+              {/* Quick-entry QR codes — direct-deep-link QRs that skip the order-type picker.
+                  Independent of table QR (works regardless of qrMode or table usage). Includes:
+                  - Dine-in: walk-in customers who haven't picked a specific table yet
+                  - Takeaway / Pickup / Delivery: order-type-pinned menu entry
+                  - Reservation: direct entry to the booking flow (no menu)
+                  Each card auto-hides when its prerequisite setting is off. Empty grid → whole card hidden. */}
+              {(() => {
+                type EntryCard = { key: string; label: string; description: string; url: string };
+                const cards: EntryCard[] = [];
+                const baseUrl = `${tableSettings.qrCodeBaseUrl}/mobile/${restaurantSlug}`;
+
+                if (operationSettings.orderTypes?.dineIn) {
+                  cards.push({
+                    key: 'dine-in',
+                    label: 'Dine-in QR',
+                    description: 'Walk-in customers — no specific table.',
+                    url: `${baseUrl}?order_type=dine-in`
+                  });
+                }
+                if (operationSettings.orderTypes?.takeaway) {
+                  cards.push({
+                    key: 'takeaway',
+                    label: 'Takeaway QR',
+                    description: 'Display at the takeaway counter.',
+                    url: `${baseUrl}?order_type=takeaway`
+                  });
+                }
+                if (operationSettings.orderTypes?.pickup) {
+                  cards.push({
+                    key: 'pickup',
+                    label: 'Pickup QR',
+                    description: 'Display at the pickup shelf.',
+                    url: `${baseUrl}?order_type=pickup`
+                  });
+                }
+                if (operationSettings.orderTypes?.delivery) {
+                  cards.push({
+                    key: 'delivery',
+                    label: 'Delivery QR',
+                    description: 'Print on flyers or delivery slips.',
+                    url: `${baseUrl}?order_type=delivery`
+                  });
+                }
+                if (reservationEnabled) {
+                  cards.push({
+                    key: 'reservation',
+                    label: 'Reservation QR',
+                    description: 'Direct entry to the booking flow.',
+                    url: `${baseUrl}/reservation`
+                  });
+                }
+
+                if (cards.length === 0) return null;
+                return (
+                  <SettingsCard style={{ gridColumn: '1 / -1' }}>
+                    <CardTitle>Quick-entry QR codes</CardTitle>
+                    <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
+                      Independent of table QR. Scanning each takes the customer straight to the right flow — order-type-pinned menu, walk-in dine-in, or reservation booking.
+                      <br /><span style={{ color: '#9CA3AF' }}>Payment methods available follow the per-order-type settings on the Payment tab. Cards for disabled order types and disabled reservations are hidden automatically.</span>
+                    </p>
+                    <TablesGrid>
+                      {cards.map(card => {
+                        const idSafe = `qe-${card.key}`;
+                        return (
+                          <TableItem key={idSafe}>
+                            <TableNumber>{card.label}</TableNumber>
+                            <div style={{ fontSize: '11px', color: '#9CA3AF', textAlign: 'center', marginBottom: '6px' }}>{card.description}</div>
+                            <QRContainer>
+                              <QRCodeCanvas id={`qr-${idSafe}`} value={card.url} size={100} level="H" includeMargin={true} style={{ display: 'none' }} />
+                              <QRCodeSVG id={`qr-svg-${idSafe}`} value={card.url} size={100} level="H" includeMargin={true} />
+                            </QRContainer>
+                            <TableActions>
+                              <ActionButton onClick={() => { navigator.clipboard?.writeText(card.url).catch(() => {}); }} title="Copy URL">Copy</ActionButton>
+                              <ActionButton
+                                onClick={() => {
+                                  const svg = document.getElementById(`qr-svg-${idSafe}`);
+                                  if (!svg) return;
+                                  const svgData = new XMLSerializer().serializeToString(svg);
+                                  const blob = new Blob([svgData], { type: 'image/svg+xml' });
+                                  const a = document.createElement('a');
+                                  a.href = URL.createObjectURL(blob);
+                                  a.download = `${card.key}-qr.svg`;
+                                  a.click();
+                                  URL.revokeObjectURL(a.href);
+                                }}
+                                title="Download SVG"
+                              >SVG</ActionButton>
+                              <ActionButton
+                                onClick={() => {
+                                  const canvas = document.getElementById(`qr-${idSafe}`) as HTMLCanvasElement;
+                                  if (!canvas) return;
+                                  const a = document.createElement('a');
+                                  a.href = canvas.toDataURL('image/png');
+                                  a.download = `${card.key}-qr.png`;
+                                  a.click();
+                                }}
+                                title="Download PNG"
+                              >PNG</ActionButton>
+                            </TableActions>
+                          </TableItem>
+                        );
+                      })}
+                    </TablesGrid>
+                  </SettingsCard>
+                );
+              })()}
+
               {/* External QR — custom-named QR codes for partner shops, hotel lobbies, etc. */}
               <SettingsCard style={{ gridColumn: '1 / -1' }}>
                 <CardTitle>External QR</CardTitle>
                 <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
                   Create QR codes with custom names (e.g. "Cafe Maru", "Lobby") for partner locations.
                   Orders will be recorded with this name in place of a table number.
+                  <br />
+                  <span style={{ color: '#9CA3AF' }}>
+                    Optional <strong>order type pin</strong> and <strong>partner discount</strong> are set per row below.
+                    Payment methods available follow the pinned order type's settings on the Payment tab — no separate config.
+                  </span>
                 </p>
 
                 <FormGroup>
@@ -3635,8 +3884,9 @@ const SettingsPage: React.FC = () => {
                       <TablesGrid>
                         {normalizeQREntries(tableSettings.externalQRs).map((entry, idx) => {
                           const name = entry.name;
-                          const qrUrl = externalQRUrl(name);
+                          const qrUrl = externalQRUrl(name, entry.order_type);
                           const hasCoupon = !!entry.coupon_id;
+                          const hasOrderTypePin = !!entry.order_type;
                           // Fallback option when the linked coupon is no longer in the active list
                           // (deactivated/expired). Avoids select value-mismatch and avoids a separate
                           // "Coupon unavailable" badge that would flicker while activeCoupons loads.
@@ -3680,6 +3930,7 @@ const SettingsPage: React.FC = () => {
                                     background: hasCoupon ? '#FFFBEB' : '#fff',
                                     borderRadius: '4px', fontSize: '12px'
                                   }}
+                                  title="Optional partner discount auto-applied when this QR is scanned"
                                 >
                                   <option value="">No discount</option>
                                   {activeCoupons.map(c => (
@@ -3692,6 +3943,27 @@ const SettingsPage: React.FC = () => {
                                       Linked coupon (inactive)
                                     </option>
                                   )}
+                                </select>
+                              </AutoSaveField>
+                              <AutoSaveField onSave={handleSave}>
+                                <select
+                                  value={entry.order_type ?? ''}
+                                  onChange={(e) => handleChangeExternalQROrderType(name, e.target.value ? (e.target.value as ExtOrderType) : null)}
+                                  style={{
+                                    width: '100%', padding: '6px 8px',
+                                    border: '1px solid ' + (hasOrderTypePin ? '#635BFF' : '#E6EBF1'),
+                                    background: hasOrderTypePin ? '#F0EFFF' : '#fff',
+                                    borderRadius: '4px', fontSize: '12px',
+                                    marginTop: '6px'
+                                  }}
+                                  title="When set, scanning this QR pins the order type — the customer skips the order-type picker."
+                                >
+                                  <option value="">Customer picks (no pin)</option>
+                                  <option value="dine-in" disabled={!operationSettings.orderTypes?.dineIn}>Dine In</option>
+                                  <option value="takeaway" disabled={!operationSettings.orderTypes?.takeaway}>Takeaway</option>
+                                  <option value="pickup" disabled={!operationSettings.orderTypes?.pickup}>Pickup</option>
+                                  <option value="delivery" disabled={!operationSettings.orderTypes?.delivery}>Delivery</option>
+                                  <option value="reservation" disabled={!reservationEnabled}>Reservation (booking)</option>
                                 </select>
                               </AutoSaveField>
                               <TableActions style={{ marginTop: '12px' }}>

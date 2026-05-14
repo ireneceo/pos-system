@@ -28,6 +28,10 @@ export interface MenuItem {
   recipe_id?: number | null;
   kitchen_station_id?: number | null;
   is_featured?: boolean;
+  brand_menu_id?: number | null;
+  brand_menu_locks_snapshot?: Record<string, boolean> | null;
+  brand_menu_synced_version?: number | null;
+  brand_menu_status?: 'in_sync' | 'pending_update' | 'unlinked' | null;
 }
 
 export interface MenuOption {
@@ -258,7 +262,13 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
             set_items: item.set_items || undefined,
             set_display_order: item.set_display_order || 0,
             recipe_id: item.recipe_id || null,
-            kitchen_station_id: item.kitchen_station_id || null
+            kitchen_station_id: item.kitchen_station_id || null,
+            brand_menu_id: item.brand_menu_id || null,
+            brand_menu_locks_snapshot: typeof item.brand_menu_locks_snapshot === 'string'
+              ? (() => { try { return JSON.parse(item.brand_menu_locks_snapshot); } catch { return null; } })()
+              : (item.brand_menu_locks_snapshot || null),
+            brand_menu_synced_version: item.brand_menu_synced_version || null,
+            brand_menu_status: item.brand_menu_status || null
           };
         });
 

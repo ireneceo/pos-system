@@ -17,6 +17,7 @@ const {
 const { authenticateToken } = require('../middleware/auth');
 const { isBrandManager } = require('../middleware/recipeAuth');
 const { requireBGScope, applyBGFilter, assertBGOwnsRow } = require('../middleware/brandScope');
+const { normalizeImageField } = require('../utils/imageProcessor');
 
 /**
  * Generate unique product SKU
@@ -654,6 +655,13 @@ router.post('/brand-products', authenticateToken, requireBGScope, async (req, re
     // Auto-generate SKU if not provided
     const finalSku = sku || await generateProductSKU();
 
+    // base64 inline → 디스크 파일 변환 (DB MEDIUMTEXT 비대화 방지)
+    const normalizedImage = await normalizeImageField(image_url, {
+      subdir: 'brand-products',
+      filename: `brand_product_${req.bgOwnerId}_${Date.now()}`,
+      maxWidth: 800, maxHeight: 800
+    });
+
     // Create product
     const product = await BrandProduct.create({
       owner_user_id: req.bgOwnerId,
@@ -665,7 +673,7 @@ router.post('/brand-products', authenticateToken, requireBGScope, async (req, re
       base_quantity: base_quantity || 1,
       unit_price: unit_price || 0,
       min_order_quantity: min_order_quantity || 1,
-      image_url: image_url || null,
+      image_url: normalizedImage,
       emoji: emoji || null,
       is_active: is_active !== false,
       is_set_menu: is_set_menu || false,
@@ -784,6 +792,13 @@ router.put('/brand-products/:productId', authenticateToken, requireBGScope, asyn
       }
     }
 
+    // base64 inline → 디스크 파일 변환 (DB MEDIUMTEXT 비대화 방지)
+    const normalizedImage = await normalizeImageField(image_url, {
+      subdir: 'brand-products',
+      filename: `brand_product_${product.id}_${Date.now()}`,
+      maxWidth: 800, maxHeight: 800
+    });
+
     // Update product
     await product.update({
       name: name !== undefined ? name.trim() : product.name,
@@ -793,7 +808,7 @@ router.put('/brand-products/:productId', authenticateToken, requireBGScope, asyn
       base_quantity: base_quantity !== undefined ? base_quantity : product.base_quantity,
       unit_price: unit_price !== undefined ? unit_price : product.unit_price,
       min_order_quantity: min_order_quantity !== undefined ? min_order_quantity : product.min_order_quantity,
-      image_url: image_url !== undefined ? image_url : product.image_url,
+      image_url: normalizedImage !== undefined ? normalizedImage : product.image_url,
       emoji: emoji !== undefined ? emoji : product.emoji,
       category_id: category_id !== undefined ? category_id : product.category_id,
       is_active: is_active !== undefined ? is_active : product.is_active,

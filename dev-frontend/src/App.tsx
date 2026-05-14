@@ -203,6 +203,11 @@ const BrandInvoicesPage = React.lazy(() => import('./pages/BrandGeneral/BrandInv
 const BrandTradeInvoicesPage = React.lazy(() => import('./pages/BrandGeneral/BrandTradeInvoicesPage'));
 const BrandPlansPage = React.lazy(() => import('./pages/BrandGeneral/BrandPlansPage'));
 const BrandPaymentSettingsPage = React.lazy(() => import('./pages/BrandGeneral/BrandPaymentSettingsPage'));
+// Brand Menu System (v3.32+)
+const BrandMenusPage = React.lazy(() => import('./pages/BrandGeneral/BrandMenusPage'));
+const BrandMenuCategoriesPage = React.lazy(() => import('./pages/BrandGeneral/BrandMenuCategoriesPage'));
+const BrandMenuOptionGroupsPage = React.lazy(() => import('./pages/BrandGeneral/BrandMenuOptionGroupsPage'));
+const RestaurantBrandMenuUpdatesPage = React.lazy(() => import('./pages/Restaurant/BrandMenuUpdatesPage'));
 const FranchiseManagementPage = React.lazy(() => import('./pages/BrandGeneral/FranchiseManagementPage'));
 const BrandFranchiseMapStandalone = React.lazy(() => import('./pages/BrandGeneral/BrandFranchiseMapStandalone'));
 const TenancyManagementPage = React.lazy(() => import('./pages/FoodcourtGeneral/TenancyManagementPage'));
@@ -977,6 +982,30 @@ function App() {
                       <Route path="/pos/brand-products" element={
                         <ProtectedRoute requiredRole={['Brand General', 'Brand Manager', 'System Admin']}>
                           <BrandProductManagementPage />
+                        </ProtectedRoute>
+                      } />
+
+                      {/* Brand Menu System (v3.32+) — BG side */}
+                      <Route path="/pos/brand-menus" element={
+                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager', 'System Admin']}>
+                          <BrandMenusPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/brand-menu-categories" element={
+                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager', 'System Admin']}>
+                          <BrandMenuCategoriesPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/brand-menu-option-groups" element={
+                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager', 'System Admin']}>
+                          <BrandMenuOptionGroupsPage />
+                        </ProtectedRoute>
+                      } />
+
+                      {/* Brand Menu System — Restaurant side */}
+                      <Route path="/restaurant/:restaurantId/brand-menu-updates" element={
+                        <ProtectedRoute requiredRole={['Restaurant Admin', 'Staff', 'Brand General', 'Brand Manager', 'Foodcourt General', 'System Admin', 'Restaurant Owner']}>
+                          <RestaurantBrandMenuUpdatesPage />
                         </ProtectedRoute>
                       } />
 
