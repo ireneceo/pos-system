@@ -1563,8 +1563,7 @@ const MenuManagementPage: React.FC = () => {
             value={formData.image || ''}
             onChange={(base64) => setFormData({ ...formData, image: base64 })}
             label="Menu Item Image"
-            helpText="Upload an image for this menu item (PNG, JPG, GIF up to 2MB)"
-            maxSize={2}
+            helpText="Upload an image for this menu item (PNG, JPG, GIF — phone photos OK, auto-compressed)"
             showRemoveButton={true}
           />
 
@@ -1785,8 +1784,7 @@ const MenuManagementPage: React.FC = () => {
             value={formData.image || ''}
             onChange={(base64) => setFormData({ ...formData, image: base64 })}
             label="Menu Item Image"
-            helpText="Upload an image for this menu item (PNG, JPG, GIF up to 2MB)"
-            maxSize={2}
+            helpText="Upload an image for this menu item (PNG, JPG, GIF — phone photos OK, auto-compressed)"
             showRemoveButton={true}
           />
 

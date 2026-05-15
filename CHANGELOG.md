@@ -6,6 +6,51 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+### 2026-05-15 (v3.31 배포 후 추가 개발)
+
+- **운영 매장 메뉴 긴급 복구 hotfix** — v3.31 배포 시 `migrate-brand-menu-system.js` 자동 실행 누락으로 신규 컬럼 (`brand_menu_link_status` 등) 부재 → API 500 → 매장 메뉴 안 보임. 마이그레이션 + backend 재시작으로 즉시 복구 (데이터 손실 0). 운영 직접 조회로 490건 매장 product 모두 자체 메뉴 (brand_menu_id=NULL) 보존 확인
+- `deploy-to-production.sh` 의 sprint migrations 목록에 `migrate-brand-menu-system.js` 추가 — 같은 누락 재발 방지
+- `brandMenuSyncService.js` push 정책 — BG push 메뉴는 매장에 `is_active=false` 로 도착 (사용자가 활성화 결정). 매장 자체 메뉴 (brand_menu_id=NULL) 영향 0, recipe-style 공존
+- Brand Menu System 통합 검증 27/27 PASS — BG push + Lock guard (PRODUCT_FIELD_LOCKED_BY_BRAND) + Version bump propagation (OG → BM) + Sync (RA `pending_update` → `in_sync`) + Soft unlink (BM 삭제 시 매장 product 보존 + status='unlinked') + 자체 메뉴 자유
+
+- **Customer Display 전화번호 토글** — Settings → Printer 탭 Customer Display 카드에 토글 추가. `operation_settings.checkout_display.show_phone_input` 매장 단위 저장. 멤버십 안 쓰는 매장 OFF 시 LeftPanel 미표시 — 우측 주문 내역 풀 너비. 디폴트 ON (회귀 0). i18n 4언어
+- 식재료 이미지 업로드 fix — `IngredientsTab.tsx` (RA) + `ProductIngredientsTab.tsx` (BG) 가 `<input type="file">` + 직접 FileReader 패턴 → ImageUploadDropzone 으로 교체. 큰 사진 업로드 silent fail 해소
+
+- **buildVersionWatcher 자동 reload** — Cloudflare 5분 캐시 우회. 4분마다 백그라운드 `/index.html` fetch → main bundle hash 비교 → 새 빌드 발견 시 30초 grace 후 자동 reload. 사용자 입력 중 (form/textarea/modal/active fetch) + 탭 hidden 안전 대기. localStorage 60초 throttle 로 reload 루프 방지. 탭 visible 전환 시 즉시 한 번 더 체크. 향후 모든 배포에서 직원 캐시 문제 영구 해소
+
+- **/install 페이지 정리** — 디자인 빈약 + 사용 동선 적음. 페이지 자체 삭제 + `/install` → `/` redirect (옛 URL 호환). LandingHeader/LandingFooter Install nav 제거. PWA 설치는 브라우저 native + PwaInstallBanner 로 충분
+- 사이드바 Install 버튼 promptInstall 직접 호출 방식 복원 — MainLayout 사이드바 하단. 데스크탑 (Chrome/Edge `canInstall=true`) + iOS Safari ("Share → 홈화면 추가" 안내 alert). standalone 모드 자동 숨김
+
+- **i18n 안정화 (RA 한국어 핵심)** — ko/settings 11 + ko/orders 2 + ko/notifications 1 + ko/menu 2 + ko/pos 1 + ko/floorplan 1 = 18건 한국어 번역 누락 fix (영수증 안내 / 카테고리별 포장 추가금 설명 / 옵션그룹 빈상태 등). 글로서리 자동 fix 16건
+- 신규 i18n 도구 — `auto-fix-glossary.js` (글로서리 mismatch `--apply` 자동 fix), `i18n-find-english-leaks.js` (heatmap + drill-in `--file <lang>/<name>.json`)
+
+- **운영 디버그 패턴 메모리** — `feedback_debug_real_calls.md`: 운영 버그 보고 시 SSH read-only + API 직접 호출로 진단 (dev 코드 추정 금지)
+- **운영 배포 룰 강화** — `feedback_deploy_only_irene.md`: frontend rsync 포함 모든 운영 변경 = Irene 직접 실행. 룰 위반 사례 기록
+
+---
+
+## [v3.31] — 2026-05-15 배포
+
+### 2026-05-15
+
+- **Customer Display 듀얼 모니터 자동 표시** — POS Terminal 헤더 "Customer Display" 버튼 강화. Window Management API (Chrome 100+/Edge 100+) 로 보조 모니터 자동 감지 + 풀스크린 popup. 첫 클릭 후 localStorage 에 위치 저장 → 다음 POS 진입 시 첫 user gesture 에 자동 재오픈
+- Settings → Printer 탭에 Customer Display 카드 추가 — Open Now + Auto-reopen 토글 + Windows 부팅 시 100% 자동 (Chrome `--kiosk --new-window` 4-step 가이드)
+- 신규 utility `src/utils/customerDisplay.ts` — 다른 페이지에서도 호출 가능
+- i18n 4언어 11키 신규 (settingsPage.customerDisplay.*)
+
+- **메뉴 이미지 업로드 차단 fix** — `ImageUploadDropzone` 의 `maxSize=2MB` 가드가 핸드폰 카메라 사진 (3-7MB) alert 차단하던 결함. canvas 가 어차피 1200x1200 + JPEG 0.85 자동 압축하므로 원본 size 체크 무의미
+- maxSize 디폴트 2 → 10MB, hard limit 15MB, HEIC/HEIF silent fail 명확 alert 로 변경, file.type 가드에 HEIC/HEIF 포함
+- MenuManagementPage × 3곳 + GeneralStockFormModal `maxSize={2}` prop 제거 → 디폴트 적용
+- BG BrandMenusPage 텍스트 input → ImageUploadDropzone 교체 (BG가 brand menu 이미지 업로드 자체가 안되던 누락 결함 동시 fix)
+- 운영 backend `/api/upload/image` 직접 검증: 4000x4000 JPG 까지 200, sharp/nginx/디렉토리 모두 정상 — 차단 원인은 100% frontend
+
+- **i18n 안정화 (한국어 핵심 18건 + 글로서리 자동 16건)**
+- 신규 도구 `dev-frontend/scripts/auto-fix-glossary.js` — `--apply` 로 글로서리 mismatch 자동 fix
+- 신규 도구 `dev-frontend/scripts/i18n-find-english-leaks.js` — heatmap + drill-in (`--file <lang>/<name>.json`)
+- ko/settings.json 11건 + ko/orders.json 2건 + ko/notifications.json 1건 + ko/menu.json 2건 + ko/pos.json 1건 + ko/floorplan.json 1건 한국어 번역 (영수증 안내 / 카테고리별 포장 추가금 설명 / 옵션그룹 빈상태 등)
+
+- **RA / BG 전수 기능 검사 (실제 데이터)** — RA GET 26/26 + CRUD 13/13 = 39/39 PASS. BG GET 24/25 + CRUD 4/4 = 28/29 (1 known-by-design: coupon 모델은 restaurant 단위만 지원). 다음 주 유료 고객 운영 대비 안정성 확보
+
 ### 2026-05-14
 - **Brand Menu System (v3.32-dev)** — Brand General(본부) 이 메뉴 템플릿을 만들어 산하 가맹점 매장에 푸시. 잠금/버전 동기화 지원.
 - BG 페이지 3개 — Brand Menus (CRUD + push + 잠금 5플래그 + Auto/Manual distribution), Menu Categories, Menu Options (옵션 그룹 + 옵션 inline)

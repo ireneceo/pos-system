@@ -174,7 +174,7 @@ const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
   onChange,
   label = 'Logo Upload',
   helpText = 'Upload an image for your logo',
-  maxSize = 2,
+  maxSize = 10,
   previewSize = 150,
   showRemoveButton = true,
   changeButtonText = 'Change Image',
@@ -215,15 +215,24 @@ const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
   };
 
   const validateAndProcessFile = async (file: File) => {
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
+    // Validate file type — accept HEIC too (iPhone), browsers report as image/heic or image/heif
+    const isImage = file.type.startsWith('image/') || /\.(heic|heif)$/i.test(file.name);
+    if (!isImage) {
       alert('Please upload an image file');
       return;
     }
 
-    // Validate file size
-    if (file.size > maxSize * 1024 * 1024) {
-      alert(`Image size should be less than ${maxSize}MB`);
+    // Hard upper bound only — canvas downscale + JPEG 0.85 compresses 7MB phone photos to ~150KB.
+    // nginx client_max_body_size is 10M, base64 expands ~1.33×, so original ≤ 7MB is always safe.
+    const HARD_LIMIT_MB = Math.max(maxSize, 15);
+    if (file.size > HARD_LIMIT_MB * 1024 * 1024) {
+      alert(`Image too large (max ${HARD_LIMIT_MB}MB)`);
+      return;
+    }
+
+    // HEIC/HEIF: browsers can't decode in canvas — surface a clear message instead of silent fail
+    if (/\.(heic|heif)$/i.test(file.name) || /heic|heif/i.test(file.type)) {
+      alert('HEIC/HEIF format is not supported. Please convert to JPG or PNG and try again.');
       return;
     }
 

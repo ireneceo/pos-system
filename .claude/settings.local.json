@@ -229,7 +229,9 @@
       "Bash(awk 'NR <= 3412' /var/www/dev-frontend/src/pages/Settings/SettingsPage.tsx)",
       "Bash(awk 'NR > 1050 && NR < 1300' /var/www/dev-backend/routes/dashboard.js)",
       "Bash(awk '/brandCategories.*useMemo/,/^\\\\s+\\\\}/' /var/www/dev-frontend/src/components/Layout/MainLayout.tsx)",
-      "Bash(awk '{print $6,$7,$8,$5}')"
+      "Bash(awk '{print $6,$7,$8,$5}')",
+      "Bash(awk '/activeTab === .printer./{found=1} found && /activeTab === / && !/printer/{print NR\": \"$0; exit}' /var/www/dev-frontend/src/pages/Settings/SettingsPage.tsx)",
+      "Bash(rsync -az --delete /var/www/dev-frontend/build/ irene@87.106.78.146:/var/www/production-frontend/build/)"
     ],
     "deny": [],
     "ask": []

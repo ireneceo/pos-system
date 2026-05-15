@@ -16,6 +16,7 @@ import PageHeader from '../../components/Common/PageHeader';
 import { Modal as CommonModal } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
+import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import { getAuthToken } from '../../utils/auth';
 import { formatCurrency } from '../../utils/currency';
 
@@ -646,8 +647,13 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
               <Input value={emoji} onChange={(e) => setEmoji(e.target.value)} maxLength={4} placeholder="🍶" />
             </FormGroup>
             <FormGroup>
-              <Label>{t('brand:brandMenusPage.imageUrl', 'Image URL or upload')}</Label>
-              <Input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="/uploads/brand-menus/..." />
+              <Label>{t('brand:brandMenusPage.image', 'Image')}</Label>
+              <ImageUploadDropzone
+                value={imageUrl}
+                onChange={setImageUrl}
+                label=""
+                helpText={t('brand:brandMenusPage.imageHelp', 'Upload an image for this brand menu (auto-compressed)')}
+              />
             </FormGroup>
             <FormGroup>
               <Label>{t('brand:brandMenusPage.linkedRecipe', 'Linked Recipe (optional)')}</Label>

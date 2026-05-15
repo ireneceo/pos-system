@@ -19,7 +19,7 @@
   "checkoutDisplayPage.subtotal": "소계",
   "checkoutDisplayPage.discount": "할인",
   "checkoutDisplayPage.total": "합계",
-  "checkoutDisplayPage.waitingForOrder": "Waiting order...",
+  "checkoutDisplayPage.waitingForOrder": "주문 대기 중...",
   "checkoutDisplayPage.itemsWillAppearHereAsTheCashierAddsThem": "캐셔가 항목을 추가하면 여기에 표시됩니다",
   "customerDisplayPage.orderStatus": "주문 상태",
   "customerDisplayPage.pleaseCheckYourPickupNumber": "픽업 번호를 확인하세요",

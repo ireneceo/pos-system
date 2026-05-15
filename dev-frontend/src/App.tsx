@@ -16,7 +16,6 @@ import CookieConsentBanner from './components/Common/CookieConsentBanner';
 import PosLayout from './components/Layout/PosLayout';
 // Landing Pages (keep static - first load)
 import HomePage from './pages/Landing/HomePage';
-import InstallPage from './pages/Landing/InstallPage';
 import AboutPage from './pages/Landing/AboutPage';
 import { PwaInstallProvider } from './contexts/PwaInstallContext';
 import NotificationToaster from './components/Common/NotificationToaster';
@@ -478,7 +477,7 @@ function App() {
                       <Routes>
                       {/* ===== PUBLIC ROUTES (No MainLayout) ===== */}
                       <Route path="/" element={<HomePage />} />
-                      <Route path="/install" element={<InstallPage />} />
+                      <Route path="/install" element={<Navigate to="/" replace />} />
                       <Route path="/about" element={<AboutPage />} />
                       <Route path="/features" element={<FeaturesPage />} />
                       <Route path="/service" element={<Navigate to="/features" replace />} />

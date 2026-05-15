@@ -1,9 +1,163 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-05-14 (v3.32-dev — Brand Menu System / 운영 미배포)
+> **최종 업데이트:** 2026-05-15 (v3.31 운영 + 매장 메뉴 긴급 복구 + dev 만 누적: Install 버튼 promptInstall)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
-> **현재 버전:** **v3.32-dev** (Brand Menu System 개발 완료, E2E 21/21 · health-check 80/80, 운영 배포 대기)
+> **현재 버전:** **v3.31** (Brand Menu System + Customer Display 자동화 + 이미지 업로드 fix + i18n 안정화 + RA/BG 전수 검사)
+
+## ✅ 완료: Customer Display 전화번호 토글 + Install 버튼 정리 + 매장 메뉴 긴급 복구 (2026-05-15 막바지, dev 변경 미배포)
+
+### 작업 요약
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 운영 매장 메뉴 긴급 복구 | v3.31 배포 시 `migrate-brand-menu-system.js` 자동 실행 누락으로 신규 컬럼 (`brand_menu_link_status` 등) 부재 → API 500 → 메뉴 안 보임. 마이그레이션 + backend 재시작으로 즉시 복구 (데이터 손실 0) | ✅ 완료 |
+| `deploy-to-production.sh` 마이그 자동화 | sprint migrations 목록에 `migrate-brand-menu-system.js` 추가 — 같은 누락 재발 방지 | ✅ 완료 |
+| `brandMenuSyncService.js` 정책 | BG push 메뉴는 매장에 `is_active=false` 로 도착 — 매장이 활성화 결정 (사용자 명시 정책) | ✅ 완료 |
+| Brand Menu System 통합 검증 | BG push + Lock guard + Version bump + Sync + Soft unlink + 자체 메뉴 자유 — 27/27 PASS (8 시나리오) | ✅ 완료 |
+| RA/BG 전수 기능 검사 | RA GET 26/26 + CRUD 13/13 = 39/39, BG GET 24/25 + CRUD 20/20 (5 메뉴) | ✅ 완료 |
+| Customer Display 전화번호 토글 (신규) | Settings → Printer 탭 Customer Display 카드에 토글 추가. `operation_settings.checkout_display.show_phone_input` 매장 단위 저장. 멤버십 안 쓰는 매장 OFF 시 LeftPanel 미표시, 우측 주문 내역 풀 너비 | ✅ 완료 |
+| /install 페이지 정리 | 디자인 빈약 + 사용 동선 적음. 페이지 삭제 + `/install` → `/` redirect (옛 URL 호환) + Header/Footer 메뉴 제거. PWA 설치는 브라우저 native + PwaInstallBanner 로 충분 | ✅ 완료 |
+| 사이드바 Install 버튼 복원 | MainLayout 사이드바 하단에 promptInstall 직접 호출 버튼. 데스크탑 (Chrome/Edge canInstall) + 모바일 (iOS Safari "Share → 홈화면 추가" 안내). 이미 standalone 인 경우 자동 숨김 | ✅ 완료 |
+| 식재료 이미지 업로드 fix | `IngredientsTab.tsx` (RA) + `ProductIngredientsTab.tsx` (BG) 가 `<input type="file">` + 직접 FileReader 패턴 → ImageUploadDropzone 으로 교체 (canvas 압축 + size 가드 + HEIC alert) | ✅ 완료 |
+| 메뉴 이미지 업로드 차단 fix | `ImageUploadDropzone.tsx` maxSize 디폴트 2 → 10MB, hard limit 15MB, HEIC/HEIF 명확 alert. MenuManagement / GeneralStock `maxSize={2}` prop 제거. BG `BrandMenusPage` 텍스트 input → ImageUploadDropzone 교체 | ✅ 완료 |
+| Customer Display 자동화 (Window Management API) | POSTerminal 헤더 "Customer Display" 버튼 강화 + Settings Customer Display 카드 + Windows kiosk 4-step 가이드 | ✅ 완료 |
+| buildVersionWatcher 자동 reload | 4분마다 백그라운드 build hash 비교 → 새 빌드 발견 시 30초 grace 후 자동 reload (사용자 입력 중/탭 hidden 안전 대기). Cloudflare 5분 캐시 우회. 향후 모든 배포에서 직원 캐시 문제 영구 해소 | ✅ 완료 |
+| i18n 안정화 (RA 한국어 핵심) | ko/settings 11 + ko/orders 2 + ko/notifications 1 + ko/menu 2 + ko/pos 1 + ko/floorplan 1 = 18건 한국어 번역. 글로서리 자동 fix 16건 | ✅ 완료 |
+| 신규 i18n 도구 | `auto-fix-glossary.js` (글로서리 mismatch 자동 fix), `i18n-find-english-leaks.js` (heatmap + drill-in) | ✅ 완료 |
+| 운영 디버그 패턴 메모리 | `feedback_debug_real_calls.md` — 운영 버그 보고 시 SSH read-only + API 직접 호출 진단 패턴 | ✅ 완료 |
+| 운영 배포 룰 강화 | `feedback_deploy_only_irene.md` — frontend rsync 포함 모든 운영 변경 = Irene 직접 실행. 룰 위반 사례 기록 | ✅ 완료 |
+
+### 운영 적용 상태
+
+| Bundle | 운영 | dev 만 |
+|--------|------|--------|
+| 매장 메뉴 복구 (DB 마이그) | ✅ | — |
+| brandMenuSyncService is_active=false | ✅ | — |
+| 식재료 이미지 fix (main.77617fea.js) | ✅ | — |
+| buildVersionWatcher (main.aa92fa35.js) | ✅ | — |
+| Customer Display 전화번호 토글 (main.1d82abb3.js) | ✅ | — |
+| /install 정리 (main.5fc98455.js) | ✅ | — |
+| **Install 버튼 promptInstall 복원 (main.30919f86.js)** | ❌ | ✅ |
+
+### 수정/신규 파일 (이번 세션 누적)
+- Backend: `services/brandMenuSyncService.js`, `deploy-to-production.sh`
+- Frontend (수정): `App.tsx`, `index.tsx`, `MainLayout.tsx`, `LandingHeader.tsx`, `LandingFooter.tsx`, `ImageUploadDropzone.tsx`, `MenuManagementPage.tsx`, `POSTerminalPage.tsx`, `SettingsPage.tsx`, `BrandMenusPage.tsx`, `ProductIngredientsTab.tsx`, `CheckoutDisplayPage.tsx`, `IngredientsTab.tsx`, `GeneralStockFormModal.tsx`
+- Frontend (신규): `utils/customerDisplay.ts`, `utils/buildVersionWatcher.ts`
+- Frontend (삭제): `pages/Landing/InstallPage.tsx`
+- Tools (신규): `scripts/auto-fix-glossary.js`, `scripts/i18n-find-english-leaks.js`
+- i18n: en/ko/zh/ms (settings/brand/menu/orders/notifications/pos/floorplan/admin/inventory/recipes)
+- Memory: `feedback_debug_real_calls.md` (신규), `feedback_deploy_only_irene.md` (강화)
+
+---
+
+## ✅ 완료: Customer Display 자동화 + i18n + RA/BG 전수 검사 (2026-05-15 후반, 미배포)
+
+### 사용자 요청 (다음 주 유료 고객 사용 대비)
+1. POS 뒤 듀얼 모니터에 Customer Display 자동 표시 (1+2번 안)
+2. i18n 한국어 영어 잔존 전수 안정화
+3. Restaurant Admin 전수 기능 검사 (실제 데이터)
+4. Brand General 전수 기능 검사
+
+### Phase 1 — Customer Display 자동화
+
+| 파일 | 변경 |
+|------|------|
+| `src/utils/customerDisplay.ts` | 신규. `getScreenDetails()` 보조 모니터 자동 감지 + popup 위치 잡기 + localStorage `cd.autoOpen` / `cd.lastBounds` |
+| `POSTerminalPage.tsx` | 헤더 버튼 강화 (auto 모드 시 보라 점 표시), useEffect `tryAutoReopen` 으로 첫 user gesture 자동 재오픈 |
+| `SettingsPage.tsx` (Printer 탭) | Customer Display 카드 추가 — Open Now 버튼 + Auto-reopen 토글 + Windows kiosk 4-step 가이드 |
+| i18n 4언어 (settings.json) | 11 키 (title/description/openNow/autoOpenLabel/popupBlocked + kioskGuide 4 step) |
+
+### Phase 2 — i18n 안정화
+
+| 도구/파일 | 변경 |
+|-----------|------|
+| `scripts/auto-fix-glossary.js` | 신규. 글로서리 mismatch 자동 fix (16건 적용) |
+| `scripts/i18n-find-english-leaks.js` | 신규. 한국어/중국어/말레이어 파일 영어 잔존 heatmap + drill-in |
+| `ko/settings.json` | 11건 한국어 번역 (subscriptionTab/invoicesPage/settingsPage/tableManagementPage) |
+| `ko/orders.json` | 2건 (thankYouForYourPurchase / pleaseKeepThisReceiptForYourRecords) |
+| `ko/notifications.json` | 1건 (noNotificationCategoriesAvailableForYourRole) |
+| `ko/menu.json` | 2건 (setMenuOptionsOptionsForEntireSet / noOptionGroupsYet) |
+| `ko/pos.json` | 1건 (waitingForOrder) |
+| `ko/floorplan.json` | 1건 (printQrToGenerate...) |
+
+zh/ms 는 영어 fallback 안전 — 다음 사이클로 이연.
+
+### Phase 3 — RA 전수 검사
+
+**GET API 26/26 PASS**: Dashboard / Live Orders / Reservations / Menu / Categories / Options / Recipes / Brand Menu Updates / Invoices / Purchase Orders / Suppliers / Stock / Inventory / Customers / Coupons / Staff / Notices / Manuals / 2 Inquiries / Profile / Company / Notifications / Activity / Subscription / Badge Counts
+
+**CRUD 왕복 13/13 PASS**:
+- Categories: POST → GET 일치
+- Menu Item: POST → GET → PUT 가격 수정 → DELETE
+- Option Group: POST → GET → DELETE
+- Coupon: POST → GET → DELETE
+- Customer: GET (POST 는 모바일 등록 전담 — RA scope 아님)
+
+### Phase 4 — BG 전수 검사
+
+**GET API 24/25 PASS**: Brands / Brand Menus / Brand Menu Categories / Brand Menu Options / Brand Products / Suppliers / Restaurants / Plans / Subscriptions / Invoices / Trade Invoices / Purchase Orders / Notices / Work Manuals / 2 Inquiries / Profile / Notifications / Activity / Reports
+
+**1 known fail**: `/coupons?brand_id=1` → 400 (의도된 design — coupons 모델은 restaurant 단위만 지원, BG sidebar 의 coupons 항목은 manager 권한일 때 특정 매장 쿠폰 보기 용도)
+
+**CRUD 왕복 4/4 PASS**: Brand Menu Category — POST → GET → PUT → DELETE
+
+### 검증
+
+| 항목 | 결과 |
+|------|------|
+| 빌드 | main.* (Customer Display + i18n 통합) |
+| Health-check | **80/80 PASS** |
+| State-hydration | 0 warning |
+| Dev API 직접 호출 | RA 26+13, BG 24+4 = 67/68 PASS |
+
+---
+
+## ✅ 완료: 메뉴 이미지 업로드 차단 fix (2026-05-15, 미배포)
+
+### 사용자 보고
+운영서버 RA(Restaurant Admin)가 메뉴 등록 시 이미지 업로드 안됨 → 점심시간 배포 보류, 다음 운영 배포에 함께 반영.
+
+### 진단 (운영 직접 SSH + API 호출)
+
+| 검증 | 결과 |
+|------|------|
+| 운영 backend `/api/upload/image` (RA 토큰 직접) | 4000x4000 JPG / 3000x3000 PNG 까지 모두 200 |
+| 운영 nginx (`client_max_body_size 10M`) | 외부 HTTPS 통과 OK |
+| 운영 sharp / libvips | 정상 |
+| 운영 `/uploads/` 디렉토리 권한 | irene:irene 775 |
+| 운영 `/uploads/<file>.png` GET | 200, image/png |
+| production-backend pm2 에러 로그 | 사용자 image upload 실패 흔적 0건 = 요청 backend 도달 X |
+
+### 진짜 원인
+
+`ImageUploadDropzone.tsx:225` — `if (file.size > maxSize * 1024 * 1024) alert(...)` 차단.
+`MenuManagementPage` 가 `maxSize={2}` 로 호출. 핸드폰 카메라 사진 (3-7MB) 이 alert 후 차단됨.
+canvas 가 1200x1200 + JPEG 0.85 로 자동 압축하므로 원본 size 체크는 무의미. HEIC/HEIF 도 silent fail.
+
+### Fix
+
+| 파일 | 변경 |
+|------|------|
+| `ImageUploadDropzone.tsx` | maxSize 디폴트 2 → 10MB, hard limit 15MB, HEIC/HEIF 명확 alert, file.type 가드에 HEIC/HEIF 포함 |
+| `MenuManagementPage.tsx` × 3곳 | `maxSize={2}` 제거 → 디폴트(10MB) 사용 |
+| `GeneralStockFormModal.tsx` | `maxSize={2}` 제거 |
+| `BrandMenusPage.tsx` (BG) | 텍스트 input → `<ImageUploadDropzone>` 교체 (BG가 brand menu 이미지 업로드 자체가 안되던 누락 결함도 동시 fix) |
+| `public/locales/{en,ko,zh,ms}/brand.json` | `brandMenusPage.image` / `.imageHelp` 4언어 추가 |
+
+기타 25개 ImageUploadDropzone 사용처는 maxSize prop 미지정 → 디폴트 10MB 자동 적용.
+
+### 검증
+
+| 항목 | 결과 |
+|------|------|
+| 빌드 | main.67f74178.js (63초, exit 0) |
+| HEIC/HEIF 가드 코드 bundle 포함 | 확인 |
+| Health-check | **80/80 PASS** |
+| Dev API 직접 호출 (RA upload+menu POST / BG brand-menu POST / `/uploads/` GET) | 모두 정상 |
+| 운영 직접 호출 4000x4000 JPG | 200 (frontend fix 만 다음 배포에 함께 가면 됨) |
+
+---
 
 ## ✅ 완료: v3.32-dev — Brand Menu System (2026-05-14, 미배포)
 

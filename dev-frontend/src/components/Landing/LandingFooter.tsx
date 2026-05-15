@@ -175,7 +175,6 @@ const LandingFooter: React.FC = () => {
               <li><FooterLink onClick={() => navigate('/features')}>{t('nav.features')}</FooterLink></li>
               <li><FooterLink onClick={() => navigate('/pricing')}>{t('nav.pricing')}</FooterLink></li>
               <li><FooterLink onClick={() => navigate('/demo')}>{t('footer.demo')}</FooterLink></li>
-              <li><FooterLink onClick={() => navigate('/install')}>{t('nav.install', 'Install App')}</FooterLink></li>
               <li><FooterLink onClick={() => navigate('/referral-program')}>{t('nav.referral', 'Referral')}</FooterLink></li>
             </LinkList>
           </FooterSection>

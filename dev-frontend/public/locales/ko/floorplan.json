@@ -51,7 +51,7 @@
   "tableDetailPanel.reprintQr": "QR 재인쇄",
   "tableDetailPanel.thisTableIsAvailable": "이 테이블은 사용 가능합니다",
   "tableDetailPanel.printQr": "QR 인쇄",
-  "tableDetailPanel.printQrToGenerateASessionbasedOrderingCodeForThisTable": "Print QR to generate a session-based ordering code this table.",
+  "tableDetailPanel.printQrToGenerateASessionbasedOrderingCodeForThisTable": "이 테이블의 세션 기반 주문 코드를 생성하려면 QR을 인쇄하세요.",
   "tableDetailPanel.cancel": "취소",
   "tableDetailPanel.confirm": "확인",
   "tableNode.staff": "직원"

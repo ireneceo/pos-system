@@ -150,6 +150,8 @@ async function syncBrandMenuToRestaurant({ brandMenuId, restaurantId, transactio
   }
 
   // Create new Product on Restaurant side
+  // Policy: pushed menus arrive INACTIVE — restaurant decides when to turn them on.
+  // Existing restaurant menus and per-store edits stay untouched (recipe-style co-existence).
   product = await Product.create({
     restaurant_id: restaurantId,
     name: brandMenu.name,
@@ -160,7 +162,7 @@ async function syncBrandMenuToRestaurant({ brandMenuId, restaurantId, transactio
     emoji: brandMenu.emoji || null,
     optionGroups: localOptionGroupIds,
     product_recipe_id: brandMenu.product_recipe_id || null,
-    is_active: brandMenu.is_active,
+    is_active: false,
     soldOut: false,
     // Sync tracking
     brand_menu_id: brandMenu.id,

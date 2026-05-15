@@ -3,7 +3,7 @@
   "notificationSettingsPage.loading": "불러오는 중...",
   "notificationSettingsPage.profileSettings": "프로필 설정",
   "notificationSettingsPage.loadingPreferences": "환경설정 불러오는 중...",
-  "notificationSettingsPage.noNotificationCategoriesAvailableForYourRole": "notification categories available your role.",
+  "notificationSettingsPage.noNotificationCategoriesAvailableForYourRole": "현재 역할에서 사용 가능한 알림 카테고리가 없습니다.",
   "notificationSettingsPage.smtpServer": "SMTP 서버",
   "notificationSettingsPage.smtpPort": "SMTP 포트",
   "notificationSettingsPage.typically587TlsOr465Ssl": "일반적으로 587 (TLS) 또는 465 (SSL)",

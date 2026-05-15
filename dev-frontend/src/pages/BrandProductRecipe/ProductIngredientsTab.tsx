@@ -6,6 +6,7 @@ import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/Fi
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormRow as UIFormRow } from '../../components/UI/Modal';
 import ConfirmModal from '../../components/ConfirmModal';
 import { fetchAPI } from '../../utils/api';
+import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
 
@@ -754,25 +755,12 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
         size="medium"
       >
         <form onSubmit={(e) => { e.preventDefault(); handleSave(); }} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <UIFormGroup>
-            <FormLabel>{'Image'}</FormLabel>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleImageUpload}
-              style={{ display: 'none' }}
-              id="ingredient-image-upload"
-            />
-            <ImagePreview
-              onClick={() => document.getElementById('ingredient-image-upload')?.click()}
-            >
-              {formData.image_url ? (
-                <img src={formData.image_url} alt="Ingredient" />
-              ) : (
-                <ImagePlaceholder>{'Click to upload image'}</ImagePlaceholder>
-              )}
-            </ImagePreview>
-          </UIFormGroup>
+          <ImageUploadDropzone
+            value={formData.image_url || ''}
+            onChange={(url) => setFormData({ ...formData, image_url: url })}
+            label="Image"
+            helpText="Drag & drop or click to upload (auto-compressed)"
+          />
 
           <UIFormRow>
             <UIFormGroup>

@@ -572,6 +572,8 @@
   "brandMenusPage.description": "설명",
   "brandMenusPage.emoji": "이모지",
   "brandMenusPage.imageUrl": "이미지 URL 또는 업로드",
+  "brandMenusPage.image": "이미지",
+  "brandMenusPage.imageHelp": "브랜드 메뉴 이미지 업로드 (자동 압축)",
   "brandMenusPage.category": "카테고리",
   "brandMenusPage.recommendedPrice": "권장 가격 (RM)",
   "brandMenusPage.linkedRecipe": "연결된 레시피 (선택)",

@@ -17,7 +17,7 @@
   "stockTakePage.howToCompleteStockTake": "如何完成盘点",
   "stockTakePage.physicallyCountEachIngredientInYourInventory": "实际清点库存中的每种食材",
   "stockTakePage.ifTheresAVarianceSelectAReasonFromTheDropdown": "如有差异，请从下拉菜单中选择原因",
-  "stockTakePage.ingredient": "Ingredient",
+  "stockTakePage.ingredient": "食材",
   "stockTakePage.unit": "单位",
   "stockTakePage.theoreticalStock": "理论库存",
   "stockTakePage.actualStock": "实际库存",

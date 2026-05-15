@@ -115,6 +115,9 @@ const CheckoutDisplayPage: React.FC = () => {
   const [showThankYou, setShowThankYou] = useState(false);
   const [connected, setConnected] = useState(false);
   const [storeName, setStoreName] = useState('');
+  // Membership phone collection — defaults to ON (preserves existing behavior).
+  // Toggle off in Settings → Printer → Customer Display card if membership isn't used.
+  const [showPhoneInput, setShowPhoneInput] = useState(true);
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
@@ -126,6 +129,11 @@ const CheckoutDisplayPage: React.FC = () => {
       const restCountry = rest.country || 'MY';
       if (COUNTRIES.find(c => c.code === restCountry)) {
         setCountryCode(restCountry);
+      }
+      // Read checkout-display settings (defaults to true if unset)
+      const cd = rest.operation_settings?.checkout_display;
+      if (cd && typeof cd.show_phone_input === 'boolean') {
+        setShowPhoneInput(cd.show_phone_input);
       }
     }).catch(() => {});
   }, [restaurantId]);
@@ -234,7 +242,8 @@ const CheckoutDisplayPage: React.FC = () => {
       </Header>
 
       <Main>
-        {/* ===== LEFT: 전화번호 + 고객정보 ===== */}
+        {/* ===== LEFT: 전화번호 + 고객정보 (Settings 토글로 hide 가능) ===== */}
+        {showPhoneInput && (
         <LeftPanel>
           <div style={{ fontSize: '13px', color: '#6B7C93', marginBottom: '8px', textAlign: 'center' }}>
             Enter phone number for points
@@ -305,6 +314,7 @@ const CheckoutDisplayPage: React.FC = () => {
             </button>
           )}
         </LeftPanel>
+        )}
 
         {/* ===== RIGHT: 주문 내역 ===== */}
         <RightPanel>

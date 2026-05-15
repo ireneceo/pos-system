@@ -17,6 +17,7 @@ import { useAllowedRoutes } from '../../hooks/useAllowedRoutes';
 
 import { getAuthToken } from '../../utils/auth';
 import { LayoutDashboard, Users, Truck, Briefcase, MessageSquare, CreditCard, Settings as SettingsIcon, ChevronsLeft, ChevronsRight, LogOut, Activity, Store, Package, ShoppingCart, FileText, Monitor, LayoutGrid, ChefHat, Tv, Smartphone, TrendingUp, Download, Building2 } from 'lucide-react';
+import { usePwaInstall } from '../../contexts/PwaInstallContext';
 
 // System Admin 2-tier sidebar widths
 const SIDEBAR_ADMIN_EXPANDED = 220;
@@ -843,6 +844,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const { logout, currentStaff, isLoggedIn } = useStaff();
   const { user, logout: authLogout } = useAuth();
   const { t } = useTranslation();
+  const { canInstall, isStandalone, isIOS, promptInstall } = usePwaInstall();
+  const showInstallButton = !isStandalone && (canInstall || isIOS);
   const displayRole = useRoleDisplayName();
   const { paymentStatus, canAccess } = usePaymentStatus();
   // Get restaurantId from URL or user context
@@ -3172,32 +3175,42 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               })()}
             </span>
           </a>
-          {/* Install App link — permanent re-entry path for users who dismissed the PWA banner.
-              Opens /install in a new tab so the user's POS context is preserved. */}
-          <a
-            href="/install"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              padding: '10px 14px',
-              margin: '0 8px 12px',
-              borderRadius: 8,
-              background: '#F6F9FC',
-              color: '#0A2540',
-              textDecoration: 'none',
-              fontSize: 13,
-              fontWeight: 500,
-              border: '1px solid #E6EBF1'
-            }}
-            title={t('nav.installApp', 'Install Desktop / Mobile App') || ''}
-            onClick={() => closeSidebar?.()}
-          >
-            <Download size={16} strokeWidth={1.75} />
-            <span style={{ flex: 1 }}>{t('nav.installApp', 'Install App')}</span>
-          </a>
+          {/* Install App — visible on desktop (Chrome/Edge canInstall) + mobile (iOS shows guide).
+              Hidden when already running standalone (already installed). Triggers PWA prompt
+              directly — no separate /install landing page. */}
+          {showInstallButton && (
+            <button
+              type="button"
+              onClick={async () => {
+                if (canInstall) {
+                  await promptInstall();
+                } else if (isIOS) {
+                  alert(t('common:pwa.installBanner.iosGuide', 'On iPhone/iPad: tap the Share button in Safari, then "Add to Home Screen".'));
+                }
+                closeSidebar?.();
+              }}
+              title={t('nav.installApp', 'Install App') || ''}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: '10px 14px',
+                margin: '0 8px 12px',
+                borderRadius: 8,
+                background: '#F6F9FC',
+                color: '#0A2540',
+                cursor: 'pointer',
+                fontSize: 13,
+                fontWeight: 500,
+                border: '1px solid #E6EBF1',
+                width: 'calc(100% - 16px)',
+                textAlign: 'left'
+              }}
+            >
+              <Download size={16} strokeWidth={1.75} />
+              <span style={{ flex: 1 }}>{t('nav.installApp', 'Install App')}</span>
+            </button>
+          )}
           <LanguageSelectorWrapper>
             <LanguageSelector variant="sidebar" />
           </LanguageSelectorWrapper>

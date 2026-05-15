@@ -22,6 +22,8 @@ import { normalizeCustomerName } from '../../utils/orderUtils';
 import { getCurrencySymbol } from '../../utils/currency';
 import { formatDateTime, formatTime } from '../../utils/timezone';
 import { useRestaurantId } from '../../hooks/useRestaurantId';
+import { openCustomerDisplay, tryAutoReopen, isAutoOpenEnabled } from '../../utils/customerDisplay';
+import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
 const POSContainer = styled.div`
@@ -1190,6 +1192,12 @@ const POSTerminalPage: React.FC = () => {
       window.removeEventListener('brandLogoUpdated', handleBrandLogoUpdate);
     };
   }, []);
+
+  // Customer Display auto-reopen (one-shot on next user gesture if pref enabled)
+  useEffect(() => {
+    if (!user?.restaurantId) return;
+    return tryAutoReopen(user.restaurantId);
+  }, [user?.restaurantId]);
 
   // activeCashier 제거 - PIN 전환 시 AuthContext user가 직접 교체됨
 
@@ -2363,16 +2371,23 @@ const POSTerminalPage: React.FC = () => {
           </StaffInfo>
           <DateTime>{formatDateTimeLocal(currentDateTime)}</DateTime>
           <button
-            onClick={() => window.open(`/restaurant/${user?.restaurantId}/checkout-display`, '_blank')}
-            title="Open Customer Checkout Display"
+            type="button"
+            onClick={async () => {
+              const ok = await openCustomerDisplay(user?.restaurantId || '');
+              if (!ok) alert('Customer Display window blocked. Allow popups for this site and try again.');
+            }}
+            title={isAutoOpenEnabled() ? 'Customer Display (auto-open enabled)' : 'Open Customer Display on secondary monitor'}
             style={{
               padding: '6px 12px', fontSize: '12px', fontWeight: 500,
               border: '1px solid #E6EBF1', borderRadius: '6px',
-              background: '#F6F9FC', color: '#6B7C93', cursor: 'pointer',
+              background: isAutoOpenEnabled() ? '#F0EFFF' : '#F6F9FC',
+              color: isAutoOpenEnabled() ? '#635BFF' : '#6B7C93',
+              cursor: 'pointer',
               display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '8px'
             }}
           >
-            Customer Screen
+            {isAutoOpenEnabled() && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#635BFF', display: 'inline-block' }} />}
+            Customer Display
           </button>
         </HeaderInfo>
       </Header>

@@ -21,6 +21,7 @@ import { getCurrencySymbol } from '../../utils/currency';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
+import { openCustomerDisplay, isAutoOpenEnabled, setAutoOpenEnabled } from '../../utils/customerDisplay';
 // 스타일 컴포넌트
 const SettingsContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -5046,6 +5047,93 @@ QZ Tray (installed on this device)
                     .receipt-col-right { padding-left: 0 !important; padding-top: 20px !important; }
                   }
                 `}</style>
+              </SettingsCard>
+
+              {/* Customer Display (Dual Monitor) Card */}
+              <SettingsCard style={{ marginTop: '24px' }}>
+                <CardTitle>{t('settings:settingsPage.customerDisplay.title', 'Customer Display (Dual Monitor)')}</CardTitle>
+                <p style={{ color: '#6B7C93', marginBottom: '20px', fontSize: '14px', lineHeight: 1.5 }}>
+                  {t('settings:settingsPage.customerDisplay.description', 'Show order details on a second monitor facing the customer (POS rear screen). Click Open Now after connecting the secondary monitor — your browser will ask once for permission, then remember it.')}
+                </p>
+
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const ok = await openCustomerDisplay(user?.restaurantId || '');
+                      if (!ok) alert(t('settings:settingsPage.customerDisplay.popupBlocked', 'Popup blocked. Allow popups for this site in your browser settings and try again.'));
+                    }}
+                    style={{
+                      padding: '10px 20px', fontSize: '14px', fontWeight: 500,
+                      background: '#635BFF', color: 'white', border: 'none',
+                      borderRadius: '6px', cursor: 'pointer'
+                    }}
+                  >
+                    {t('settings:settingsPage.customerDisplay.openNow', 'Open Now')}
+                  </button>
+
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14, color: '#0A2540' }}>
+                    <input
+                      type="checkbox"
+                      defaultChecked={isAutoOpenEnabled()}
+                      onChange={(e) => setAutoOpenEnabled(e.target.checked)}
+                      style={{ width: 16, height: 16, accentColor: '#635BFF' }}
+                    />
+                    {t('settings:settingsPage.customerDisplay.autoOpenLabel', 'Auto-reopen when POS Terminal starts (after first click)')}
+                  </label>
+                </div>
+
+                {/* Phone-input visibility toggle — for membership use only.
+                    If a restaurant doesn't run a points/membership program, hide the keypad
+                    so the customer screen shows only the order summary. */}
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', fontSize: 14, color: '#0A2540', padding: '12px 14px', background: '#FAFBFC', border: '1px solid #E6EBF1', borderRadius: 8 }}>
+                  <input
+                    type="checkbox"
+                    defaultChecked={(operationSettings as any)?.checkout_display?.show_phone_input !== false}
+                    onChange={async (e) => {
+                      const enabled = e.target.checked;
+                      const rid = user?.restaurantId;
+                      if (!rid) return;
+                      try {
+                        const token = getAuthToken();
+                        const r = await fetch(`/api/restaurants/${rid}`, { headers: { Authorization: `Bearer ${token}` } });
+                        const j = await r.json();
+                        const cur = (j.data || j)?.operation_settings || {};
+                        const nextOp = { ...cur, checkout_display: { ...(cur.checkout_display || {}), show_phone_input: enabled } };
+                        await fetch(`/api/restaurants/${rid}`, {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                          body: JSON.stringify({ operation_settings: nextOp })
+                        });
+                        setOperationSettings(prev => ({ ...prev, ...(nextOp as any) } as any));
+                      } catch { /* silent — toggle stays in DOM, retry next change */ }
+                    }}
+                    style={{ width: 16, height: 16, accentColor: '#635BFF', marginTop: 2 }}
+                  />
+                  <span>
+                    <span style={{ display: 'block', fontWeight: 500 }}>
+                      {t('settings:settingsPage.customerDisplay.showPhoneInputLabel', 'Show phone number entry on customer screen (for membership)')}
+                    </span>
+                    <span style={{ display: 'block', fontSize: 12, color: '#6B7C93', marginTop: 4 }}>
+                      {t('settings:settingsPage.customerDisplay.showPhoneInputHelp', 'Off = customer screen shows only order summary. Turn on if you collect customer phone for points/membership.')}
+                    </span>
+                  </span>
+                </label>
+
+                <div style={{ background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: '8px', padding: '16px', marginTop: 8 }}>
+                  <div style={{ fontWeight: 600, color: '#075985', marginBottom: 10, fontSize: 14 }}>
+                    {t('settings:settingsPage.customerDisplay.kioskGuideTitle', 'Want it 100% automatic on Windows boot? (Optional setup)')}
+                  </div>
+                  <div style={{ fontSize: 13, color: '#0C4A6E', lineHeight: 1.7 }}>
+                    <div>{t('settings:settingsPage.customerDisplay.kioskStep1', '1. Right-click your desktop → New → Shortcut')}</div>
+                    <div style={{ background: 'white', border: '1px solid #BAE6FD', borderRadius: 4, padding: '8px 10px', margin: '6px 0', fontFamily: 'monospace', fontSize: 12, wordBreak: 'break-all' }}>
+                      {`"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --kiosk --new-window --window-position=1920,0 https://purplehere.com/restaurant/${user?.restaurantId || 'YOUR_ID'}/checkout-display`}
+                    </div>
+                    <div>{t('settings:settingsPage.customerDisplay.kioskStep2', '2. Adjust --window-position=X,Y to your second monitor coordinates (X = primary monitor width, Y = 0 for top-left)')}</div>
+                    <div>{t('settings:settingsPage.customerDisplay.kioskStep3', '3. Press Win+R → type shell:startup → drag the shortcut into that folder')}</div>
+                    <div>{t('settings:settingsPage.customerDisplay.kioskStep4', '4. Reboot — Chrome will launch the customer display fullscreen on the rear monitor automatically')}</div>
+                  </div>
+                </div>
               </SettingsCard>
 
             </>

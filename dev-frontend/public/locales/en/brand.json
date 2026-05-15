@@ -572,6 +572,8 @@
   "brandMenusPage.description": "Description",
   "brandMenusPage.emoji": "Emoji",
   "brandMenusPage.imageUrl": "Image URL or upload",
+  "brandMenusPage.image": "Image",
+  "brandMenusPage.imageHelp": "Upload an image for this brand menu (auto-compressed)",
   "brandMenusPage.category": "Category",
   "brandMenusPage.recommendedPrice": "Recommended Price (RM)",
   "brandMenusPage.linkedRecipe": "Linked Recipe (optional)",

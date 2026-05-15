@@ -82,7 +82,6 @@ const GeneralStockFormModal: React.FC<Props> = ({
           onChange={(base64) => onFormChange({ ...form, image_url: base64 })}
           label="Image (Optional)"
           helpText="Drag & drop or click to upload item image"
-          maxSize={2}
         />
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
