@@ -586,7 +586,7 @@ const SupportTicketsPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>{t('settings:supportTicketsPage.supportTickets')}</Title>
+          <Title>{t('nav.systemInquiry', 'System Inquiry')}</Title>
           <ActionSection>
             <Button variant="secondary" onClick={handleExportReports}>{t('settings:supportTicketsPage.export')}</Button>
             <Button variant="primary" onClick={handleCreateTicket}>{t('settings:supportTicketsPage.createTicket')}</Button>

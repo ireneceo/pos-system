@@ -6,7 +6,56 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
-### 2026-05-18
+### 2026-05-18 (v3.33 배포 후 추가 — Recipe 시급 hotfix + 안정화)
+
+- **RA Recipe Management 5 탭 ReferenceError 시급 fix** — v3.32 alert→Modal sweep 작업에서 `setInfoModal()` 호출과 `<ConfirmModal isOpen={infoModal.open}>` JSX 를 추가했지만 `const [infoModal, setInfoModal] = useState(...)` 선언을 누락. 운영 매장 (16/5/8/10) 의 RA가 Recipe Management 탭 진입 즉시 `ReferenceError` → ErrorBoundary 폴백 화면. 5 파일에 useState 한 줄씩 추가 (CategoriesTab / GeneralStockCategoriesTab / IngredientCategoriesTab / RecipeCategoriesTab / IngredientsTab). 전수 sweep 으로 동등 결함 0건 확인. **운영 hotfix 시급**
+- **모바일 OrderTypePage Footer 링크** — 모바일 첫 화면 하단에 로그인 상태 분기 (POS Admin/Staff → "Back to Dashboard", 그 외 → "Visit PurpleHere homepage"). i18n `common:visitHomepage` 4언어 신규
+- **BG/FG/Owner Reports `/api/menu` 호출 fix** — restaurantId 없이 호출하던 결함 (BG/FG/Owner 는 own `restaurant_id` 없음). `allowedRestaurantIds` 순회 + 카테고리 dedup 패턴으로 변경. Owner 운영 검증 OK, BG/FG 는 backend `checkRestaurantAccess` 미들웨어가 BG/FG scope 미지원 (별도 사이클 작업)
+- **헤드리스 자동 mount sweep 도구 작성** — Playwright 기반. RA(47) + BG(23) + Admin(28) + FG(26) + Owner(15) + Supplier(14) + FCM(6) + BM(6) = 95 페이지 mount + console error 캡처. 안정화 사이클 표준 도구로 정착. 운영 hotfix 전 검증 가능
+
+---
+
+## [v3.33] — 2026-05-18 배포 (v3.32 직후 누적)
+
+- **Kitchen Display 정확성 보완 4건** — 30년차 개발자 수준 전수 검증 후 잠재 결함 제거.
+  - `formatPickupTimeRange` 가 브라우저 로컬 timezone 사용하던 결함 → `Intl.DateTimeFormat({ timeZone })` 으로 매장 timezone 기준 표시 (`KitchenDisplayPage.tsx:14-30`, 호출 2곳 `operationSettings?.timeZone` 전달). CLAUDE.md 룰 위반 정정
+  - Pickup 주문 정렬이 `orderTime` 만 사용하여 14:00 pickup 이 13:45 dine-in 뒤에 표시되던 문제 → `ordersByStatus` 정렬 키 분기 (pickup → `scheduled_pickup_time`, 그 외 → `orderTime`). ASAP pickup 은 orderTime fallback
+  - URL `?station={index}` 1-based index 가 station 재정렬 시 잘못된 station 활성화 → stationId 우선 매칭, index fallback 유지 (구 bookmark 호환). 토글 클릭 시 URL 에 stationId 저장
+  - Backend `/api/orders/restaurant/:id?status=` 가 단일 status 만 지원 → 콤마 구분 다중 status 지원 (`pending,preparing,ready`). KDS fetch URL 에 status param 추가하여 cancelled/served 응답 페이로드 제외 (효율). 단일 status / 빈 status / 미지정 모두 호환
+  - 운영 영향: 4개 활성 매장 모두 1-station / pickup 미사용 / merge disabled — 즉시 영향 0. 향후 pickup 활성화 / 멀티 station 도입 시 안전망 작용
+
+- **PWA standalone 데스크탑 앱 풀화면 메뉴 새 창 → 같은 창 전환** — 사이드바의 POS Terminal / Floor Plan / Kitchen Display / Customer Display / Mobile Order 가 `window.open(_, '_blank')` 사용하던 결함. PWA standalone 명세상 외부 브라우저로 빠짐 → 데스크탑 앱 사용자 경험 깨짐.
+  - `src/utils/runtime.ts` 신규 (`isStandalone()` helper, 추후 다른 페이지에서도 활용)
+  - `MainLayout.tsx` `openSecondaryWindow(path)` 헬퍼 추가 — standalone → `navigate(path)` 같은 창 라우팅, 브라우저 → 기존 새 탭 (멀티 모니터 운영 패턴 보존)
+  - 사이드바 + dashboard quick-launch + mobile-order popup-blocker 회피 패턴 모든 호출 일괄 교체
+
+- **4개 풀화면 페이지 Back 버튼 표준화** — Customer Display 에 Back 버튼이 없어 데스크탑 앱에서 빠져나갈 수 없던 문제. POS Terminal 의 inline Back 패턴을 공용화.
+  - `components/Common/PageHeader.tsx` 에 `backHref` / `backLabel` prop 추가 + 좌측 Back 버튼 렌더링 (디자인 토큰 일치, hover/focus ring, a11y title)
+  - Kitchen Display: `PageHeader` 에 `backHref` 전달
+  - Customer Display: 자체 Header 좌측 inline Back 버튼 추가 (POS Terminal 동일 패턴)
+  - Floor Plan: 기존 "← Back" 라벨 → "← Dashboard" 통일
+  - i18n `common:backToDashboard` 4언어 신규 (Back to Dashboard / 대시보드로 돌아가기 / 返回仪表盘 / Kembali ke Papan Pemuka)
+
+- **System Admin Invoices — Cancel + Revert to Draft 버튼 추가** — 운영 매장이 발행한 invoice 를 결제 전에 취소할 방법이 없던 문제. `pending_payment` / `overdue` 상태에 **"Revert to Draft"** 버튼 (invoice_number 유지, 매장 수정/재발송/삭제 자유, modification history 자동 기록) + **"Cancel"** 버튼 (영구 무효, 회계 audit trail 보존) 추가. `payment_submitted` 상태에는 Cancel 만 (손님 결제 정보 제출 후 draft 복귀 부적절). 기존 dead 코드였던 Cancel 모달 trigger 연결 + Revert 모달 신규. backend `PATCH /invoices/:id/status` 는 이미 자유 status 변경 지원하여 backend 변경 없음. i18n 4언어 5 키 × 4 = 20 추가
+
+- **RA `/restaurant/:id/support` 페이지 타이틀 = 사이드바 라벨** — 메뉴는 "System Inquiry" 인데 페이지 타이틀이 "Support Tickets" 로 미스매치였던 문제. `Restaurant/SupportTicketsPage.tsx` 의 Title 만 `t('nav.systemInquiry')` 로 변경. 4언어 common.json 에 이미 존재. Manager/Admin/BG/FG/Supplier 동등 페이지는 이미 systemInquiry 키 사용 — RA 만 outlier 였음
+
+---
+
+## [v3.32] — 2026-05-18 배포
+
+- **테이블 QR 무조건 dine-in 고정** — 플로어 플랜에서 프린트되는 테이블 QR이 매장 설정의 dineIn 토글 상태에 따라 picker가 떠 takeaway/delivery 로 새는 문제. `/api/restaurants/:id/tables/:num/qr` POST/GET 응답의 `qr_url` 끝에 `&order_type=dine-in` 강제 추가 + Settings → Table QR generator (1451/1472) 2곳 동일 처리. master QR 4종(`?order_type=takeaway` 등)은 의도된 모드 선택용이라 미변경
+- **Reservation 기능 base 격상 (paywall 제거)** — RA 사이드바 Reservation 메뉴가 `hasModule('reservations')` 에 묶여 plan 모듈 보유 여부에 따라 메뉴가 사라졌다 나타났다 하던 문제. `MainLayout.tsx` 두 곳의 `hasModule` 제거 → 사이드바 항상 표시. `store.js` 의 `reservation_settings.enabled=true` 시 plan 모듈 검증 paywall block 제거. `promote-reservations-to-base.js` 신규 마이그(AddonModule category `advanced`→`basic` + 3개 restaurant plan에 `reservations` 보장, idempotent). 모바일 손님 가시성은 Settings 토글이 단독 제어
+- **Mobile Order Settings 탭 전수 보강 (7개 카드)** —
+  - Order Types 4개 토글에 hint span 추가 (Dine-in/Takeaway/Pickup/Delivery — Reservation 패턴 일관). "Popular Menu Categories" → "Popular Menu — Source Categories" + 의미 명확 설명. Quick Order ON 시 callout 박스(픽업 번호 호출 운영 안내)
+  - **Mobile Order Entry 카드 신규** (탭 최상단) — 매장 모바일 URL + Copy URL 버튼 + 미니 QR + Store Settings 의 Quick-entry QR codes 페이지로 이동 링크
+  - **Pickup Settings 카드 신규** (orderTypes.pickup ON 시) — 평균 준비 시간 + 픽업 위치 안내 + 직원 확정 필요 토글. operation_settings JSON 확장
+  - **Takeaway Settings 카드 신규** (orderTypes.takeaway ON 시) — 평균 준비 시간 + 포장 안내
+  - **모바일 주문 일시 중단 카드 신규** — `mobile_settings.pause_ordering` 토글 + `pause_message` 커스텀 메시지. 활성화 시 빨간 좌측 4px border 강조. 모바일 OrderTypePage 에서 메뉴 픽커 대신 빨간 일시 중단 박스 + 커스텀 메시지 표시
+  - 모바일 OrderTypePage: Pickup/Takeaway OptionSubtitle 에 "Ready in ~X min · pick up at counter" 동적 표시. backend mobile-public.js 에 pickupSettings/takeawaySettings/pauseOrdering/pauseMessage 노출
+  - i18n 4언어 신규 27 키 (orderTypeHint × 4 + quickOrderCallout + popularMenuCategoriesHint + pauseOrdering + pauseMessageLabel/Placeholder + pickupSettings + takeawaySettings + prepMinutes + pickupLocationNote/Placeholder + packagingNote/Placeholder + confirmationRequired + mobileOrderAccess/Hint + copyUrl/urlCopied/openQrManager)
+  - state-hydration 안전성: `popular_excluded_category_ids.includes` unsafe access 동시 fix
+- **RA `/restaurant/:id/support` 페이지 타이틀 = 사이드바 라벨** — 메뉴는 "System Inquiry" 인데 페이지 타이틀이 "Support Tickets" 미스매치. `Restaurant/SupportTicketsPage.tsx` 의 Title 만 `t('nav.systemInquiry')` 로 변경 (4언어 common.json 에 이미 존재: System Inquiry / 시스템 문의 / 系统咨询 / Pertanyaan Sistem). Manager/Admin/BG/FG/Supplier 동등 페이지는 이미 systemInquiry 키 사용 — RA 만 outlier 였음
 
 - **QZ Tray 프린터 설정 가이드 시나리오 분기** — Settings → Printer → "View Setup Guide" 모달에 "기존 LAN 프린터 (다른 POS에서 이전)" / "프린터 새로 설치 (신규 세팅)" 토글 추가. 시나리오별 step list (마이그 3단계 / 신규 5단계 + 공통 "브라우저 연결 허용" 1단계). 마이그 Step 1 에 "이미 설치돼 있는지 확인" 보조 hint (시스템 트레이 QZ Tray 아이콘 — 다른 web POS 도 사용 가능성). 데스크탑 앱 설치 시 동일 작동 안내 박스 추가. 네트워크 다이어그램에 "Browser 또는 Desktop App (POS)" 명시. 토글 button 접근성 `type="button"` + `aria-pressed`. 4언어 (en/ko/zh/ms) 17 신규 키 × 4 = 68 entries
 - **전수 alert() → 표준 Modal sweep** — 24 페이지 70+ 건의 브라우저 `alert()` 호출을 통일 패턴 (`infoModal` state + `<ConfirmModal singleButton type="info">`) 또는 페이지 자체 `setSuccessMessage + setShowSuccessModal` 재사용 으로 일괄 교체. 전체 pages 의 `alert()` 잔존 0건. 주요 페이지: MenuManagement / Customers / Settings / BrandInvoices (15건) / BrandProducts / BrandProductRecipe (Ingredients · Categories · RecipeCategories) / Suppliers / SystemInquiry (Brand/Restaurant/Foodcourt) / CategoryManagement / POSTerminal (4건, 매장 운영 핵심 화면) / ProductRecipe / NewPurchaseOrder (styled overlay → UIModal 컴포넌트) / FoodcourtInvoices (15건) / Admin (Invoices 14 · Staff 11 · Subscriptions 5 · RestaurantSubscriptions 6 · Content 3 · SystemConfig 4 · BackupRestore 1 · SystemProductManagement 9 · Security 2) / Manager (Plans · ManagerSubscriptions · Signup) / RecipeManagement (5 tabs)
@@ -37,7 +86,7 @@
 
 ---
 
-## [v3.31] — 2026-05-15 배포
+## [v3.31] — 2026-05-15 배포 (이전 사이클)
 
 ### 2026-05-15
 

@@ -846,6 +846,19 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const { t } = useTranslation();
   const { canInstall, isStandalone, isIOS, promptInstall } = usePwaInstall();
   const showInstallButton = !isStandalone && (canInstall || isIOS);
+
+  // Fullscreen pages (POS Terminal / Floor Plan / Kitchen / Customer Display / Mobile Order)
+  // are sidebar entries marked openInNewTab. In a PWA standalone window,
+  // window.open(_, '_blank') pops out to the external browser by spec — which
+  // breaks the desktop-app experience. Branch: standalone → same-window navigate,
+  // browser → keep new tab (multi-monitor workflow).
+  const openSecondaryWindow = (path: string) => {
+    if (isStandalone) {
+      navigate(path);
+    } else {
+      window.open(path, '_blank');
+    }
+  };
   const displayRole = useRoleDisplayName();
   const { paymentStatus, canAccess } = usePaymentStatus();
   // Get restaurantId from URL or user context
@@ -1474,7 +1487,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     const items: AdminCategory[] = [
       { id: 'dashboard', label: t('nav.dashboard'), icon: <LayoutDashboard />, path: `/restaurant/${rid}/dashboard`, visible: true },
       { id: 'live-orders', label: t('nav.liveOrders'), icon: <Activity />, path: `/restaurant/${rid}/live-orders`, hasPending: badgeCounts.pendingOrders > 0, visible: true },
-      { id: 'reservations', label: t('nav.reservations', 'Reservations'), icon: <FileText />, path: `/restaurant/${rid}/reservations`, visible: hasModule('reservations') },
+      // Reservations is a base feature — sidebar always visible for RA/Staff.
+      // Mobile customer-facing visibility is controlled by reservation_settings.enabled.
+      { id: 'reservations', label: t('nav.reservations', 'Reservations'), icon: <FileText />, path: `/restaurant/${rid}/reservations`, visible: true },
       // System Access — 각각 1뎁스 단독, 새 창으로 열림 (좌측 메뉴 없는 풀화면)
       { id: 'pos-terminal', label: t('nav.posTerminal', 'POS Terminal'), icon: <Monitor />, path: `/restaurant/${rid}/pos-terminal`, openInNewTab: true, visible: isRouteAllowed(`/restaurant/${rid}/pos-terminal`) },
       { id: 'floor-plan', label: t('nav.floorPlan', 'Floor Plan'), icon: <LayoutGrid />, path: `/restaurant/${rid}/floor-plan`, openInNewTab: true, visible: isRouteAllowed(`/restaurant/${rid}/floor-plan`) },
@@ -1972,9 +1987,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                     e.preventDefault();
                     closeSidebar();
                     if (cat.mobileOrder && user?.restaurantId) {
-                      // popup blocker 회피 — 즉시 빈 창 열고 fetch 후 URL 변경
-                      const newWin = window.open('about:blank', '_blank');
+                      // Standalone PWA: navigate in-app (no new window needed).
+                      // Browser mode: popup-blocker workaround — open blank window
+                      // immediately then resolve URL via fetch and set location.
                       const fallbackUrl = `/mobile/restaurant-${user.restaurantId}`;
+                      const newWin = isStandalone ? null : window.open('about:blank', '_blank');
                       (async () => {
                         try {
                           const token = getAuthToken();
@@ -1988,14 +2005,16 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                             const data = result.success ? result.data : result;
                             if (data.slug) url = `/mobile/${data.slug}`;
                           }
-                          if (newWin) newWin.location.href = url;
+                          if (isStandalone) navigate(url);
+                          else if (newWin) newWin.location.href = url;
                         } catch {
-                          if (newWin) newWin.location.href = fallbackUrl;
+                          if (isStandalone) navigate(fallbackUrl);
+                          else if (newWin) newWin.location.href = fallbackUrl;
                         }
                       })();
                       return;
                     }
-                    window.open(cat.path, '_blank');
+                    openSecondaryWindow(cat.path);
                     return;
                   }
                   // 모바일 (≤768px) + sub items 있으면: 페이지 이동 대신 accordion 토글
@@ -2026,7 +2045,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                         if (item.openInNewTab) {
                           e.preventDefault();
                           closeSidebar();
-                          window.open(item.path, '_blank');
+                          openSecondaryWindow(item.path);
                           return;
                         }
                         closeSidebar();
@@ -2321,7 +2340,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                     onClick={(e) => {
                       e.preventDefault();
                       closeSidebar();
-                      window.open('/pos/foodcourt/floor-plan', '_blank');
+                      openSecondaryWindow('/pos/foodcourt/floor-plan');
                     }}
                   >
                     <NavIcon>▦</NavIcon>
@@ -2687,12 +2706,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon hasPending={badgeCounts.pendingOrders > 0}>◉</NavIcon>
                   {t("nav.liveOrders")}
                 </NavItem>
-                {hasModule('reservations') && (
-                  <NavItem to={`/restaurant/${restaurantId}/reservations`} active={isActive(`/restaurant/${restaurantId}/reservations`)} onClick={closeSidebar}>
-                    <NavIcon>◐</NavIcon>
-                    {t("nav.reservations", "Reservations")}
-                  </NavItem>
-                )}
+                <NavItem to={`/restaurant/${restaurantId}/reservations`} active={isActive(`/restaurant/${restaurantId}/reservations`)} onClick={closeSidebar}>
+                  <NavIcon>◐</NavIcon>
+                  {t("nav.reservations", "Reservations")}
+                </NavItem>
               </>
             )}
           </NavSection>
@@ -2714,7 +2731,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   onClick={(e) => {
                     e.preventDefault();
                     closeSidebar();
-                    window.open(`/restaurant/${restaurantId}/pos-terminal`, '_blank');
+                    openSecondaryWindow(`/restaurant/${restaurantId}/pos-terminal`);
                   }}
                 >
                   <NavIcon>▦</NavIcon>
@@ -2728,7 +2745,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   onClick={(e) => {
                     e.preventDefault();
                     closeSidebar();
-                    window.open(`/restaurant/${restaurantId}/floor-plan`, '_blank');
+                    openSecondaryWindow(`/restaurant/${restaurantId}/floor-plan`);
                   }}
                 >
                   <NavIcon>&#x25A6;</NavIcon>
@@ -2742,7 +2759,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   onClick={(e) => {
                     e.preventDefault();
                     closeSidebar();
-                    window.open(`/restaurant/${restaurantId}/kitchen`, '_blank');
+                    openSecondaryWindow(`/restaurant/${restaurantId}/kitchen`);
                   }}
                 >
                   <NavIcon>◐</NavIcon>
@@ -2756,7 +2773,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   onClick={(e) => {
                     e.preventDefault();
                     closeSidebar();
-                    window.open(`/restaurant/${restaurantId}/display`, '_blank');
+                    openSecondaryWindow(`/restaurant/${restaurantId}/display`);
                   }}
                 >
                   <NavIcon>□</NavIcon>
@@ -2799,16 +2816,16 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                       const data = result.success ? result.data : result;
                       const slug = data.slug || `restaurant-${restaurantId}`;
                       console.log('Using slug:', slug);
-                      window.open(`/mobile/${slug}`, '_blank');
+                      openSecondaryWindow(`/mobile/${slug}`);
                     } else {
                       console.error('Failed to fetch restaurant, status:', response.status);
                       // Fallback to default slug format
-                      window.open(`/mobile/restaurant-${restaurantId}`, '_blank');
+                      openSecondaryWindow(`/mobile/restaurant-${restaurantId}`);
                     }
                   } catch (error) {
                     console.error('Error fetching restaurant slug:', error);
                     // Fallback to default slug format
-                    window.open(`/mobile/restaurant-${restaurantId}`, '_blank');
+                    openSecondaryWindow(`/mobile/restaurant-${restaurantId}`);
                   }
                 }}
               >

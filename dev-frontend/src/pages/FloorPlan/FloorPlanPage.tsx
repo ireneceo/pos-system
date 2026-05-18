@@ -652,7 +652,7 @@ const FloorPlanPage: React.FC = () => {
       <Header>
         <HeaderLeft>
           <BackBtn onClick={() => navigate(`/restaurant/${restaurantId}/dashboard`)}>
-            &larr; Back
+            &larr; {t('nav.dashboard', 'Dashboard')}
           </BackBtn>
           <HeaderTitle>{t('floorplan:floorPlanPage.floorPlan')}</HeaderTitle>
           <ConnectionStatus>

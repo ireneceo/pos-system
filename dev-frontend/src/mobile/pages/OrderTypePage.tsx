@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { useAuth } from '../../contexts/AuthContext';
 import {
   Utensils, ShoppingBag, Clock, Truck, CalendarDays, ChevronRight
 } from 'lucide-react';
@@ -174,6 +176,26 @@ const Footer = styled.div`
   color: #8898AA;
 `;
 
+const FooterLinks = styled.div`
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+`;
+
+const FooterLink = styled.button`
+  background: none;
+  border: none;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: #635BFF;
+  cursor: pointer;
+  text-decoration: none;
+  transition: opacity 0.15s;
+  &:hover { opacity: 0.75; }
+`;
+
 interface StoreData {
   id: string;
   slug: string;
@@ -193,10 +215,23 @@ interface StoreData {
     delivery: boolean;
   };
   reservationsEnabled?: boolean;
+  pickupSettings?: {
+    prepMinutes?: number;
+    locationNote?: string;
+    confirmationRequired?: boolean;
+  };
+  takeawaySettings?: {
+    prepMinutes?: number;
+    packagingNote?: string;
+  };
+  pauseOrdering?: boolean;
+  pauseMessage?: string;
 }
 
 const OrderTypePage: React.FC = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
+  const { user } = useAuth();
   const { slug } = useParams<{ slug: string }>();
   const [searchParams] = useSearchParams();
   const { setCurrentStore, setIsLoading, clearCart, orderType: currentOrderType, setOrderType, cartItems } = useMobileOrder();
@@ -241,7 +276,11 @@ const OrderTypePage: React.FC = () => {
                 pickup: false,
                 delivery: false
               },
-              reservationsEnabled: !!result.data.reservationsEnabled
+              reservationsEnabled: !!result.data.reservationsEnabled,
+              pickupSettings: result.data.pickupSettings || undefined,
+              takeawaySettings: result.data.takeawaySettings || undefined,
+              pauseOrdering: !!result.data.pauseOrdering,
+              pauseMessage: result.data.pauseMessage || ''
             });
           }
         }
@@ -469,6 +508,23 @@ const OrderTypePage: React.FC = () => {
       <OptionsContainer>
         {!orderTypes ? (
           <div style={{ textAlign: 'center', padding: '40px 0', color: '#9CA3AF', fontSize: '14px' }}>Loading...</div>
+        ) : storeData?.pauseOrdering ? (
+          <div style={{
+            textAlign: 'center',
+            padding: '40px 24px',
+            background: '#FEF2F2',
+            border: '1px solid #FCA5A5',
+            borderRadius: '12px',
+            color: '#7F1D1D'
+          }}>
+            <div style={{ fontSize: '40px', marginBottom: '12px' }}>⏸</div>
+            <div style={{ fontSize: '16px', fontWeight: 600, color: '#0A2540', marginBottom: '8px' }}>
+              Mobile ordering paused
+            </div>
+            <div style={{ fontSize: '14px', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+              {storeData.pauseMessage || `${storeData?.name || 'This restaurant'} is not accepting mobile orders right now. Please order in person at the counter, or check back later.`}
+            </div>
+          </div>
         ) : (() => {
           const anyEnabled = orderTypes.dineIn || orderTypes.takeaway || orderTypes.pickup || orderTypes.delivery;
           if (!anyEnabled) {
@@ -509,7 +565,11 @@ const OrderTypePage: React.FC = () => {
                   <OptionIcon><ShoppingBag /></OptionIcon>
                   <OptionBody>
                     <OptionTitle>Takeaway</OptionTitle>
-                    <OptionSubtitle>Order and pick up at counter</OptionSubtitle>
+                    <OptionSubtitle>
+                      {storeData?.takeawaySettings?.prepMinutes
+                        ? `Ready in ~${storeData.takeawaySettings.prepMinutes} min · pick up at counter`
+                        : 'Order and pick up at counter'}
+                    </OptionSubtitle>
                   </OptionBody>
                   <OptionChevron><ChevronRight /></OptionChevron>
                 </OptionCard>
@@ -519,7 +579,11 @@ const OrderTypePage: React.FC = () => {
                   <OptionIcon><Clock /></OptionIcon>
                   <OptionBody>
                     <OptionTitle>Pre-order Pickup</OptionTitle>
-                    <OptionSubtitle>Schedule a pickup time</OptionSubtitle>
+                    <OptionSubtitle>
+                      {storeData?.pickupSettings?.prepMinutes
+                        ? `Schedule a pickup · prep time ~${storeData.pickupSettings.prepMinutes} min`
+                        : 'Schedule a pickup time'}
+                    </OptionSubtitle>
                   </OptionBody>
                   <OptionChevron><ChevronRight /></OptionChevron>
                 </OptionCard>
@@ -550,6 +614,17 @@ const OrderTypePage: React.FC = () => {
       </OptionsContainer>
 
       <Footer>
+        <FooterLinks>
+          {user?.restaurantId ? (
+            <FooterLink type="button" onClick={() => navigate(`/restaurant/${user.restaurantId}/dashboard`)}>
+              ← {t('common:backToDashboard', 'Back to Dashboard')}
+            </FooterLink>
+          ) : (
+            <FooterLink type="button" onClick={() => navigate('/')}>
+              {t('common:visitHomepage', 'Visit PurpleHere homepage')}
+            </FooterLink>
+          )}
+        </FooterLinks>
         Powered by Purple Here POS
       </Footer>
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import styled, { keyframes, css } from 'styled-components';
 import { theme } from '../../styles/theme';
 import { useAuth } from '../../contexts/AuthContext';
@@ -261,6 +262,7 @@ const NoOrdersMessage = styled.div`
 const CustomerDisplayPage: React.FC = () => {
   const { t } = useTranslation('pos');
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { operationSettings } = useStore();
   const [dbOrders, setDbOrders] = useState<DbOrder[]>([]);
   const [orders, setOrders] = useState<DisplayOrder[]>([]);
@@ -462,7 +464,27 @@ const CustomerDisplayPage: React.FC = () => {
   return (
     <Container>
       <Header>
-        <div style={{ minWidth: 180 }} />
+        <div style={{ minWidth: 180, display: 'flex', alignItems: 'center' }}>
+          <button
+            type="button"
+            onClick={() => navigate(`/restaurant/${user?.restaurantId}/dashboard`)}
+            title={t('common:backToDashboard', 'Back to Dashboard')}
+            style={{
+              background: 'none',
+              border: '1px solid #E6EBF1',
+              borderRadius: '6px',
+              padding: '6px 12px',
+              cursor: 'pointer',
+              color: '#6B7C93',
+              fontSize: '13px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+          >
+            ← {t('common:dashboard', 'Dashboard')}
+          </button>
+        </div>
         <HeaderCenter>
           <Title>{t('pos:customerDisplayPage.orderStatus')}</Title>
           <Subtitle>{t('pos:customerDisplayPage.pleaseCheckYourPickupNumber')}</Subtitle>

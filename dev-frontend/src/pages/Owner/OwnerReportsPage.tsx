@@ -454,15 +454,33 @@ const OwnerReportsPage: React.FC = () => {
           setOrders(allOrders);
         }
 
-        // Fetch menu items for category mapping
-        const menuResponse = await fetch('/api/menu?excludeImage=true', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (menuResponse.ok) {
-          const menuData = await menuResponse.json();
-          if (menuData.data?.items) setMenuItems(menuData.data.items);
-          if (menuData.data?.categories) setCategories(menuData.data.categories);
+        // Fetch menu items for category mapping. /api/menu requires a
+        // restaurantId; aggregate over all allowed restaurants (or the single
+        // selected one) since Owner-scope users have no own restaurant_id.
+        const targetRestaurantIds = selectedRestaurant !== 'all'
+          ? [selectedRestaurant]
+          : allowedRestaurantIds;
+        const aggregatedItems: any[] = [];
+        const aggregatedCats: any[] = [];
+        const seenCatIds = new Set<string>();
+        for (const rid of targetRestaurantIds) {
+          try {
+            const menuResponse = await fetch(`/api/menu?restaurantId=${rid}&excludeImage=true`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!menuResponse.ok) continue;
+            const menuData = await menuResponse.json();
+            if (menuData.data?.items) aggregatedItems.push(...menuData.data.items);
+            if (menuData.data?.categories) {
+              for (const c of menuData.data.categories) {
+                const key = String(c.id);
+                if (!seenCatIds.has(key)) { seenCatIds.add(key); aggregatedCats.push(c); }
+              }
+            }
+          } catch { /* skip a failing restaurant, keep others */ }
         }
+        setMenuItems(aggregatedItems);
+        setCategories(aggregatedCats);
 
       } catch (error) {
         console.error('Error fetching data:', error);

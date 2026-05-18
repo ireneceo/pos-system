@@ -151,21 +151,8 @@ router.put('/settings', authenticateToken, async (req, res) => {
 
     console.log('✓ Restaurant found:', restaurant.name);
 
-    // Module gate: reservation_settings.enabled=true 토글 시 'reservations' 모듈 보유 검증.
-    // System Admin / demo 매장은 bypass. 모듈 미포함 plan 매장이 직접 enable 못 하게 backend 강제.
-    if (req.body.reservation_settings?.enabled === true && req.user.role !== 'System Admin' && !restaurant.is_demo) {
-      const PlanTemplate = require('../models/PlanTemplate');
-      const { Op } = require('sequelize');
-      const planType = restaurant.plan_type;
-      if (!planType) {
-        return res.status(403).json({ success: false, code: 'MODULE_NOT_INCLUDED', message: 'Reservations require an active subscription.', required_module: 'reservations' });
-      }
-      const plan = await PlanTemplate.findOne({ where: { [Op.or]: [{ display_name: planType }, { name: planType }], plan_target: 'restaurant' } });
-      const modules = plan?.included_modules || [];
-      if (!modules.includes('reservations')) {
-        return res.status(403).json({ success: false, code: 'MODULE_NOT_INCLUDED', message: `Reservations module is not included in the current plan (${planType}).`, required_module: 'reservations' });
-      }
-    }
+    // Reservations is a base feature (no module gate). Toggle controls only mobile
+    // customer-facing visibility; staff sidebar/management is always available.
 
     // Update allowed fields. address_line_2 is part of the canonical 6-field
     // address schema unified in v3.17 — Settings page now sends it via the

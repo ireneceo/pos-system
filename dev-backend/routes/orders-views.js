@@ -104,9 +104,16 @@ router.get('/restaurant/:restaurantId', authenticateToken, checkRestaurantAccess
       };
     }
 
-    // Filter by status if provided
+    // Filter by status if provided. Supports a single value ('pending') or a
+    // comma-separated list ('pending,preparing,ready') so callers like the
+    // Kitchen Display can fetch only the statuses they need.
     if (status) {
-      whereCondition.status = status;
+      const statuses = String(status).split(',').map(s => s.trim()).filter(Boolean);
+      if (statuses.length > 1) {
+        whereCondition.status = { [Op.in]: statuses };
+      } else if (statuses.length === 1) {
+        whereCondition.status = statuses[0];
+      }
     }
 
     // By default, exclude completed orders unless explicitly requested

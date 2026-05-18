@@ -344,7 +344,7 @@ Brand General/Manager: 접근 불가 (표시 안됨)
 | 15 | `activity_logs` | Change History | advanced | Change History |
 | 16 | `floor_plan` | Floor Plan & Table Management | advanced | Floor Plan, Floor Plan Editor |
 | 17 | `mobile_ordering` | Mobile Ordering | advanced | Mobile Order |
-| 18 | `reservations` | Reservations | advanced | Reservations (모바일 self-booking + staff timeline) |
+| 18 | `reservations` | Reservations | **basic (v3.32+)** | Reservations (사이드바 항상 표시, 모바일 손님 가시성은 `reservation_settings.enabled` 토글로 제어. 이전 `advanced` paywall 제거) |
 | 19 | `recipe_management` | Recipe Management | advanced | Recipe |
 | 20 | `inventory_management` | Inventory & Supplier Management | advanced | Inventory, Suppliers |
 | 21 | `advanced_inventory` | Advanced Inventory | advanced | (Inventory upgrade) |

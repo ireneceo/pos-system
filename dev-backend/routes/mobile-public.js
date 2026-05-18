@@ -116,7 +116,13 @@ router.get('/store/:slug', async (req, res) => {
         sunday: '10:00 - 22:00'
       },
       // Reservation availability flag — used by mobile to show/hide "Reserve a Table"
-      reservationsEnabled: !!(restaurant.reservation_settings && restaurant.reservation_settings.enabled)
+      reservationsEnabled: !!(restaurant.reservation_settings && restaurant.reservation_settings.enabled),
+      // Pickup / Takeaway informational settings — shown as hints on the OrderTypePage
+      pickupSettings: operationSettings.pickupSettings || { prepMinutes: 30, locationNote: '', confirmationRequired: true },
+      takeawaySettings: operationSettings.takeawaySettings || { prepMinutes: 15, packagingNote: '' },
+      // Temporary ordering pause — when enabled, mobile page shows the message instead of menu
+      pauseOrdering: !!(restaurant.mobile_settings && restaurant.mobile_settings.pause_ordering),
+      pauseMessage: (restaurant.mobile_settings && restaurant.mobile_settings.pause_message) || ''
     };
 
     res.json({ success: true, data: store });

@@ -57,7 +57,25 @@ interface PageHeaderProps {
   children?: React.ReactNode;
   settingsHref?: string;       // 산업 표준 ⚙️ 단축 — 클릭 시 관련 Settings 페이지/탭으로 이동
   settingsLabel?: string;       // aria-label 및 tooltip (기본: 'Settings')
+  backHref?: string;           // 풀화면 페이지(Kitchen/Customer Display 등)에서 Dashboard 등으로 빠져나가는 단축
+  backLabel?: string;          // 버튼 라벨 (기본: 'Dashboard' 또는 nav.dashboard)
 }
+
+const BackButton = styled(Link)`
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: 1px solid #E6EBF1;
+  border-radius: 6px;
+  padding: 6px 12px;
+  color: #6B7C93;
+  font-size: 13px;
+  text-decoration: none;
+  transition: all 0.15s;
+  &:hover { background: #F0F4FF; color: #635BFF; border-color: #C7D2FE; }
+  &:focus-visible { outline: 2px solid #635BFF; outline-offset: 2px; }
+`;
 
 const SettingsIconLink = styled(Link)`
   display: inline-flex;
@@ -89,11 +107,18 @@ export const PageSettingsLink: React.FC<{ to: string; label?: string }> = ({ to,
   );
 };
 
-const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, children, settingsHref, settingsLabel }) => {
+const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, children, settingsHref, settingsLabel, backHref, backLabel }) => {
+  const { t } = useTranslation();
+  const resolvedBackLabel = backLabel || t('nav.dashboard', 'Dashboard');
   return (
     <Header>
-      <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
         <HeaderTitle>{title}</HeaderTitle>
+        {backHref && (
+          <BackButton to={backHref} title={t('common:backToDashboard', 'Back to Dashboard')}>
+            ← {resolvedBackLabel}
+          </BackButton>
+        )}
       </div>
       {(children || settingsHref) && (
         <HeaderActions>

@@ -511,6 +511,17 @@ interface OperationSettings {
     pickup: boolean;
     delivery: boolean;
   };
+  // Informational settings shown to mobile customers when they select Pickup/Takeaway.
+  // Independent of takeawayPricing (which controls per-item packaging fees, not used in UI yet).
+  pickupSettings: {
+    prepMinutes: number;
+    locationNote: string;
+    confirmationRequired: boolean;
+  };
+  takeawaySettings: {
+    prepMinutes: number;
+    packagingNote: string;
+  };
   allowQuickOrder: boolean;
   breakTimes: BreakTime[];
 }
@@ -618,6 +629,13 @@ const SettingsPage: React.FC = () => {
   const mobileOrderCategorySchedulesRef = useRef<AutoSaveHandle>(null);
   const mobileOrderDeliveryEnabledRef = useRef<AutoSaveHandle>(null);
   const mobileOrderReservationRef = useRef<AutoSaveHandle>(null);
+  const mobileOrderPickupPrepRef = useRef<AutoSaveHandle>(null);
+  const mobileOrderPickupLocationRef = useRef<AutoSaveHandle>(null);
+  const mobileOrderPickupConfirmRef = useRef<AutoSaveHandle>(null);
+  const mobileOrderTakeawayPrepRef = useRef<AutoSaveHandle>(null);
+  const mobileOrderTakeawayPackagingRef = useRef<AutoSaveHandle>(null);
+  const mobileOrderPauseRef = useRef<AutoSaveHandle>(null);
+  const mobileOrderPauseMessageRef = useRef<AutoSaveHandle>(null);
   // Reservation 활성 토글은 reservation_settings.enabled 와 동일한 필드 (Reservation 탭과 sync).
   // mobileOrder Order Types 섹션에서 빠르게 on/off 할 수 있도록 노출.
   // 새로고침 시 false → true 깜빡임 방지를 위해 restaurant 별 localStorage 캐시에서 초기값 복원.
@@ -787,6 +805,15 @@ const SettingsPage: React.FC = () => {
           pickup: false,
           delivery: false
         },
+        pickupSettings: {
+          prepMinutes: 30,
+          locationNote: '',
+          confirmationRequired: true
+        },
+        takeawaySettings: {
+          prepMinutes: 15,
+          packagingNote: ''
+        },
         allowQuickOrder: true,
         breakTimes: []
       }
@@ -843,6 +870,14 @@ const SettingsPage: React.FC = () => {
               ...defaultSettings.operations.orderTypes,
               ...((parsed.operations && parsed.operations.orderTypes) || {})
             },
+            pickupSettings: {
+              ...defaultSettings.operations.pickupSettings,
+              ...((parsed.operations && parsed.operations.pickupSettings) || {})
+            },
+            takeawaySettings: {
+              ...defaultSettings.operations.takeawaySettings,
+              ...((parsed.operations && parsed.operations.takeawaySettings) || {})
+            },
             breakTimes: parsed.operations?.breakTimes || defaultSettings.operations.breakTimes
           }
         };
@@ -860,7 +895,9 @@ const SettingsPage: React.FC = () => {
     show_popular: boolean;
     popular_excluded_category_ids: number[];
     category_schedules: Array<{ category_id: number; start_time: string; end_time: string }>;
-  }>({ show_featured: true, show_popular: true, popular_excluded_category_ids: [], category_schedules: [] });
+    pause_ordering: boolean;
+    pause_message: string;
+  }>({ show_featured: true, show_popular: true, popular_excluded_category_ids: [], category_schedules: [], pause_ordering: false, pause_message: '' });
   const [brandInfo, setBrandInfo] = useState<{
     brand_id: number | null;
     brand_name: string | null;
@@ -1099,6 +1136,14 @@ const SettingsPage: React.FC = () => {
                 ...defaultOps.orderTypes,
                 ...(restaurant.operation_settings.orderTypes || {})
               },
+              pickupSettings: {
+                ...defaultOps.pickupSettings,
+                ...(restaurant.operation_settings.pickupSettings || {})
+              },
+              takeawaySettings: {
+                ...defaultOps.takeawaySettings,
+                ...(restaurant.operation_settings.takeawaySettings || {})
+              },
               allowQuickOrder: restaurant.operation_settings.allowQuickOrder !== undefined
                 ? restaurant.operation_settings.allowQuickOrder : defaultOps.allowQuickOrder,
               breakTimes: restaurant.operation_settings.breakTimes || defaultOps.breakTimes
@@ -1164,8 +1209,10 @@ const SettingsPage: React.FC = () => {
               setMobileSettings({
                 show_featured: restaurant.mobile_settings.show_featured ?? true,
                 show_popular: restaurant.mobile_settings.show_popular ?? true,
-                popular_excluded_category_ids: restaurant.mobile_settings.popular_excluded_category_ids || [],
-                category_schedules: restaurant.mobile_settings.category_schedules || []
+                popular_excluded_category_ids: Array.isArray(restaurant.mobile_settings.popular_excluded_category_ids) ? restaurant.mobile_settings.popular_excluded_category_ids : [],
+                category_schedules: Array.isArray(restaurant.mobile_settings.category_schedules) ? restaurant.mobile_settings.category_schedules : [],
+                pause_ordering: !!restaurant.mobile_settings.pause_ordering,
+                pause_message: restaurant.mobile_settings.pause_message || ''
               });
             }
           }
@@ -1444,11 +1491,12 @@ const SettingsPage: React.FC = () => {
   useEffect(() => {
     if (!restaurantSlug) return;
 
-    // Generate tables with correct slug-based URLs
+    // Generate tables with correct slug-based URLs.
+    // Table QRs are physically attached to tables → always dine-in.
     const newTables: Table[] = [];
     for (let i = 1; i <= tableSettings.totalTables; i++) {
       const tableNumber = `${tableSettings.tablePrefix}${String(i).padStart(3, '0')}`;
-      const qrData = `${tableSettings.qrCodeBaseUrl}/mobile/${restaurantSlug}?table=${tableNumber}`;
+      const qrData = `${tableSettings.qrCodeBaseUrl}/mobile/${restaurantSlug}?table=${tableNumber}&order_type=dine-in`;
       newTables.push({
         id: `table-${i}`,
         number: i,
@@ -1460,7 +1508,7 @@ const SettingsPage: React.FC = () => {
   }, [restaurantSlug, tableSettings.totalTables, tableSettings.tablePrefix, tableSettings.qrCodeBaseUrl]);
 
   // generateTables function removed - not used
-  
+
   const handleGenerateQRCodes = () => {
     if (!restaurantSlug) {
       console.error('Restaurant slug not available for QR code generation');
@@ -1469,7 +1517,7 @@ const SettingsPage: React.FC = () => {
     const newTables: Table[] = [];
     for (let i = 1; i <= tableSettings.totalTables; i++) {
       const tableNumber = `${tableSettings.tablePrefix}${String(i).padStart(3, '0')}`;
-      const qrData = `${tableSettings.qrCodeBaseUrl}/mobile/${restaurantSlug}?table=${tableNumber}`;
+      const qrData = `${tableSettings.qrCodeBaseUrl}/mobile/${restaurantSlug}?table=${tableNumber}&order_type=dine-in`;
       newTables.push({
         id: `table-${i}`,
         number: i,
@@ -3990,13 +4038,91 @@ const SettingsPage: React.FC = () => {
           {activeTab === 'mobileOrder' && (
             <>
               <SettingsGrid>
+                {restaurantSlug && (
+                  <SettingsCard style={{ gridColumn: '1 / -1' }}>
+                    <CardTitle>{t('settings:settingsPage.mobileOrderAccess')}</CardTitle>
+                    <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
+                      {t('settings:settingsPage.mobileOrderAccessHint')}
+                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1, minWidth: 280 }}>
+                        <Input
+                          readOnly
+                          value={`${tableSettings.qrCodeBaseUrl}/mobile/${restaurantSlug}`}
+                          style={{ fontSize: '13px', fontFamily: 'monospace', background: '#F8F9FC' }}
+                        />
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const url = `${tableSettings.qrCodeBaseUrl}/mobile/${restaurantSlug}`;
+                              navigator.clipboard?.writeText(url).then(() => {
+                                setInfoModal({ open: true, title: t('common:done', 'Done'), message: t('settings:settingsPage.urlCopied') });
+                              }).catch(() => {});
+                            }}
+                            style={{ padding: '8px 14px', background: '#635BFF', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
+                          >
+                            {t('settings:settingsPage.copyUrl')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { window.location.href = `/restaurant/${user?.restaurantId}/settings?tab=store`; }}
+                            style={{ padding: '8px 14px', background: '#EEF2FF', color: '#635BFF', border: '1px solid #C7D2FE', borderRadius: '6px', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
+                          >
+                            {t('settings:settingsPage.openQrManager')} →
+                          </button>
+                        </div>
+                      </div>
+                      <div style={{ padding: '8px', background: 'white', border: '1px solid #E6EBF1', borderRadius: '8px' }}>
+                        <QRCodeSVG value={`${tableSettings.qrCodeBaseUrl}/mobile/${restaurantSlug}`} size={104} level="H" includeMargin={true} />
+                      </div>
+                    </div>
+                  </SettingsCard>
+                )}
+
+                <SettingsCard style={{ gridColumn: '1 / -1', borderLeft: mobileSettings.pause_ordering ? '4px solid #DC2626' : undefined }}>
+                  <CardTitle>{t('settings:settingsPage.pauseOrdering')}</CardTitle>
+                  <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
+                    {t('settings:settingsPage.pauseOrderingHint')}
+                  </p>
+                  <Toggle>
+                    <ToggleLabel>
+                      {t('settings:settingsPage.pauseOrderingActive')}
+                    </ToggleLabel>
+                    <AutoSaveField ref={mobileOrderPauseRef} onSave={handleSave} type="toggle">
+                      <ToggleSwitch>
+                        <ToggleInput type="checkbox" checked={mobileSettings.pause_ordering}
+                          onChange={(e) => { setMobileSettings(prev => ({ ...prev, pause_ordering: e.target.checked })); mobileOrderPauseRef.current?.triggerSave(); }} />
+                        <ToggleSlider />
+                      </ToggleSwitch>
+                    </AutoSaveField>
+                  </Toggle>
+                  {mobileSettings.pause_ordering && (
+                    <FormGroup style={{ marginTop: '16px' }}>
+                      <Label>{t('settings:settingsPage.pauseMessageLabel')}</Label>
+                      <AutoSaveField ref={mobileOrderPauseMessageRef} onSave={handleSave}>
+                        <Input type="text"
+                          placeholder={t('settings:settingsPage.pauseMessagePlaceholder')}
+                          value={mobileSettings.pause_message}
+                          onChange={(e) => { setMobileSettings(prev => ({ ...prev, pause_message: e.target.value })); }} />
+                      </AutoSaveField>
+                      <HelpText style={{ marginTop: '6px' }}>{t('settings:settingsPage.pauseMessageDefaultPreview')}</HelpText>
+                    </FormGroup>
+                  )}
+                </SettingsCard>
+
                 <SettingsCard>
                   <CardTitle>{t('settings:settingsPage.orderTypes')}</CardTitle>
                   <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
                     Enable or disable order types for mobile ordering
                   </p>
                   <Toggle>
-                      <ToggleLabel>{t('settings:settingsPage.dineIn')}</ToggleLabel>
+                      <ToggleLabel>
+                        {t('settings:settingsPage.dineIn')}
+                        <span style={{ fontSize: 12, color: '#9CA3AF', fontWeight: 400, marginLeft: 8 }}>
+                          ({t('settings:settingsPage.orderTypeHintDineIn')})
+                        </span>
+                      </ToggleLabel>
                       <AutoSaveField ref={mobileOrderDineInRef} onSave={handleSave} type="toggle">
                       <ToggleSwitch>
                         <ToggleInput type="checkbox" checked={operationSettings.orderTypes?.dineIn ?? true}
@@ -4006,7 +4132,12 @@ const SettingsPage: React.FC = () => {
                       </AutoSaveField>
                     </Toggle>
                   <Toggle>
-                      <ToggleLabel>{t('settings:settingsPage.takeaway')}</ToggleLabel>
+                      <ToggleLabel>
+                        {t('settings:settingsPage.takeaway')}
+                        <span style={{ fontSize: 12, color: '#9CA3AF', fontWeight: 400, marginLeft: 8 }}>
+                          ({t('settings:settingsPage.orderTypeHintTakeaway')})
+                        </span>
+                      </ToggleLabel>
                       <AutoSaveField ref={mobileOrderTakeawayRef} onSave={handleSave} type="toggle">
                       <ToggleSwitch>
                         <ToggleInput type="checkbox" checked={operationSettings.orderTypes?.takeaway ?? true}
@@ -4016,7 +4147,12 @@ const SettingsPage: React.FC = () => {
                       </AutoSaveField>
                     </Toggle>
                   <Toggle>
-                      <ToggleLabel>{t('settings:settingsPage.preorderPickup')}</ToggleLabel>
+                      <ToggleLabel>
+                        {t('settings:settingsPage.preorderPickup')}
+                        <span style={{ fontSize: 12, color: '#9CA3AF', fontWeight: 400, marginLeft: 8 }}>
+                          ({t('settings:settingsPage.orderTypeHintPickup')})
+                        </span>
+                      </ToggleLabel>
                       <AutoSaveField ref={mobileOrderPickupRef} onSave={handleSave} type="toggle">
                       <ToggleSwitch>
                         <ToggleInput type="checkbox" checked={operationSettings.orderTypes?.pickup ?? false}
@@ -4026,7 +4162,12 @@ const SettingsPage: React.FC = () => {
                       </AutoSaveField>
                     </Toggle>
                   <Toggle>
-                      <ToggleLabel>{t('settings:settingsPage.delivery')}</ToggleLabel>
+                      <ToggleLabel>
+                        {t('settings:settingsPage.delivery')}
+                        <span style={{ fontSize: 12, color: '#9CA3AF', fontWeight: 400, marginLeft: 8 }}>
+                          ({t('settings:settingsPage.orderTypeHintDelivery')})
+                        </span>
+                      </ToggleLabel>
                       <AutoSaveField ref={mobileOrderDeliveryRef} onSave={handleSave} type="toggle">
                       <ToggleSwitch>
                         <ToggleInput type="checkbox" checked={operationSettings.orderTypes?.delivery ?? false}
@@ -4095,6 +4236,76 @@ const SettingsPage: React.FC = () => {
                   )}
                 </SettingsCard>
 
+                {operationSettings.orderTypes?.pickup && (
+                  <SettingsCard>
+                    <CardTitle>{t('settings:settingsPage.pickupSettings')}</CardTitle>
+                    <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
+                      {t('settings:settingsPage.pickupSettingsHint')}
+                    </p>
+                    <FormGroup>
+                      <Label>{t('settings:settingsPage.prepMinutes')}</Label>
+                      <AutoSaveField ref={mobileOrderPickupPrepRef} onSave={handleSave}>
+                        <Input type="number" min="0" step="5"
+                          value={operationSettings.pickupSettings?.prepMinutes ?? 30}
+                          onChange={(e) => { setOperationSettings(prev => ({ ...prev, pickupSettings: { ...prev.pickupSettings, prepMinutes: Number(e.target.value) } })); }} />
+                      </AutoSaveField>
+                      <span style={{ color: '#6B7C93', fontSize: '14px', marginLeft: '8px' }}>{t('settings:settingsPage.prepMinutesUnit')}</span>
+                    </FormGroup>
+                    <FormGroup>
+                      <Label>{t('settings:settingsPage.pickupLocationNote')}</Label>
+                      <AutoSaveField ref={mobileOrderPickupLocationRef} onSave={handleSave}>
+                        <Input type="text"
+                          placeholder={t('settings:settingsPage.pickupLocationPlaceholder')}
+                          value={operationSettings.pickupSettings?.locationNote || ''}
+                          onChange={(e) => { setOperationSettings(prev => ({ ...prev, pickupSettings: { ...prev.pickupSettings, locationNote: e.target.value } })); }} />
+                      </AutoSaveField>
+                    </FormGroup>
+                    <Toggle>
+                      <ToggleLabel>
+                        {t('settings:settingsPage.confirmationRequired')}
+                        <span style={{ fontSize: 12, color: '#9CA3AF', fontWeight: 400, marginLeft: 8 }}>
+                          ({t('settings:settingsPage.confirmationRequiredHint')})
+                        </span>
+                      </ToggleLabel>
+                      <AutoSaveField ref={mobileOrderPickupConfirmRef} onSave={handleSave} type="toggle">
+                        <ToggleSwitch>
+                          <ToggleInput type="checkbox"
+                            checked={operationSettings.pickupSettings?.confirmationRequired ?? true}
+                            onChange={(e) => { setOperationSettings(prev => ({ ...prev, pickupSettings: { ...prev.pickupSettings, confirmationRequired: e.target.checked } })); mobileOrderPickupConfirmRef.current?.triggerSave(); }} />
+                          <ToggleSlider />
+                        </ToggleSwitch>
+                      </AutoSaveField>
+                    </Toggle>
+                  </SettingsCard>
+                )}
+
+                {operationSettings.orderTypes?.takeaway && (
+                  <SettingsCard>
+                    <CardTitle>{t('settings:settingsPage.takeawaySettings')}</CardTitle>
+                    <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
+                      {t('settings:settingsPage.takeawaySettingsHint')}
+                    </p>
+                    <FormGroup>
+                      <Label>{t('settings:settingsPage.prepMinutes')}</Label>
+                      <AutoSaveField ref={mobileOrderTakeawayPrepRef} onSave={handleSave}>
+                        <Input type="number" min="0" step="5"
+                          value={operationSettings.takeawaySettings?.prepMinutes ?? 15}
+                          onChange={(e) => { setOperationSettings(prev => ({ ...prev, takeawaySettings: { ...prev.takeawaySettings, prepMinutes: Number(e.target.value) } })); }} />
+                      </AutoSaveField>
+                      <span style={{ color: '#6B7C93', fontSize: '14px', marginLeft: '8px' }}>{t('settings:settingsPage.prepMinutesUnit')}</span>
+                    </FormGroup>
+                    <FormGroup>
+                      <Label>{t('settings:settingsPage.packagingNote')}</Label>
+                      <AutoSaveField ref={mobileOrderTakeawayPackagingRef} onSave={handleSave}>
+                        <Input type="text"
+                          placeholder={t('settings:settingsPage.packagingPlaceholder')}
+                          value={operationSettings.takeawaySettings?.packagingNote || ''}
+                          onChange={(e) => { setOperationSettings(prev => ({ ...prev, takeawaySettings: { ...prev.takeawaySettings, packagingNote: e.target.value } })); }} />
+                      </AutoSaveField>
+                    </FormGroup>
+                  </SettingsCard>
+                )}
+
                 <SettingsCard>
                   <CardTitle>{t('settings:settingsPage.quickOrder')}</CardTitle>
                   <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
@@ -4118,6 +4329,20 @@ const SettingsPage: React.FC = () => {
                       ? 'Customers can place orders without entering their name or phone number'
                       : 'Customers must sign in as Guest or Member to place an order'}
                   </p>
+                  {operationSettings.allowQuickOrder !== false && (
+                    <div style={{
+                      marginTop: '12px',
+                      padding: '12px 14px',
+                      background: '#EEF2FF',
+                      border: '1px solid #C7D2FE',
+                      borderRadius: '8px',
+                      color: '#3730A3',
+                      fontSize: '13px',
+                      lineHeight: 1.5
+                    }}>
+                      {t('settings:settingsPage.quickOrderCallout')}
+                    </div>
+                  )}
                 </SettingsCard>
 
                 <SettingsCard>
@@ -4157,10 +4382,10 @@ const SettingsPage: React.FC = () => {
                   <SettingsCard>
                     <CardTitle>{t('settings:settingsPage.popularMenuCategories')}</CardTitle>
                     <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
-                      Turn off categories you don't want in the Popular section
+                      {t('settings:settingsPage.popularMenuCategoriesHint')}
                     </p>
                     {categories.map((cat: any) => {
-                      const isExcluded = mobileSettings.popular_excluded_category_ids.includes(cat.id);
+                      const isExcluded = (mobileSettings.popular_excluded_category_ids || []).includes(cat.id);
                       return (
                         <Toggle key={cat.id}>
                             <ToggleLabel style={{ fontSize: '13px' }}>{cat.emoji || '🍽️'} {cat.name}</ToggleLabel>

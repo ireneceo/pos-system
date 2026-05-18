@@ -1,9 +1,50 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-05-18 (v3.31 운영 + dev 누적: 프린터 안내 + 전수 alert→Modal sweep + 4언어 i18n)
+> **최종 업데이트:** 2026-05-18 (v3.33 운영 배포 — KDS 정확성 보완 4건 + PWA standalone 같은 창 전환 + 4 풀화면 Back 버튼 표준화 + Admin Invoices Cancel/Revert + RA support 타이틀 fix)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
-> **현재 버전:** **v3.31** (Brand Menu System + Customer Display 자동화 + 이미지 업로드 fix + i18n 안정화 + RA/BG 전수 검사)
+> **현재 버전:** **v3.33** (KDS 정확성 보완 — pickup timezone + 정렬 / station URL 정합화 / multi-status filter / PWA 데스크탑 앱 같은 창 전환 / Back 버튼 표준화 / Admin Invoices Cancel·Revert)
+
+## ✅ 완료: v3.33 누적 — KDS 정확성 + PWA standalone + Reports 안정화 + 전수 헤드리스 sweep (2026-05-18)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 테이블 QR 무조건 dine-in 고정 | Floor Plan + Settings table QR 의 qr_url 에 `&order_type=dine-in` 강제 | ✅ 운영 v3.32 |
+| Reservation paywall 제거 | RA 사이드바 항상 표시 + backend module gate 제거 + AddonModule basic 격상 + 마이그 | ✅ 운영 v3.32 |
+| Mobile Order Settings 탭 전수 보강 | 7 카드 (Mobile Order Entry / Order Types hint / Popular 라벨 / Quick Order callout / Pickup·Takeaway 후속 설정 / Pause Ordering) + 27 신규 i18n 키 × 4 langs | ✅ 운영 v3.32 |
+| RA support 페이지 타이틀 fix | `t('nav.systemInquiry')` 로 사이드바와 일치 (4언어 자동 적용) | ✅ 운영 v3.32 |
+| Admin Invoices Cancel / Revert to Draft | dead 코드 Cancel modal trigger 연결 + Revert 모달 신규 + 버튼 3 상태(pending_payment/overdue/payment_submitted)에 추가 | ✅ 운영 v3.33 |
+| PWA standalone 같은 창 전환 | `utils/runtime.isStandalone()` + `openSecondaryWindow` helper. POS Terminal / Floor Plan / Kitchen / Customer Display / Mobile Order 모든 호출 분기 | ✅ 운영 v3.33 |
+| 4 풀화면 페이지 Back 버튼 표준화 | PageHeader 에 backHref/backLabel prop 추가, Customer Display / Kitchen Display / Floor Plan 적용 + i18n `common:backToDashboard` 4 langs | ✅ 운영 v3.33 |
+| KDS 정확성 보완 4건 | formatPickupTimeRange timezone / Pickup `scheduled_pickup_time` 정렬 / URL station stationId 우선 / Backend `status=` 콤마 다중 필터 | ✅ 운영 v3.33 |
+| 모바일 OrderTypePage Footer 링크 | 로그인 상태에 따라 Back to Dashboard 또는 Visit Homepage 표시 + i18n `visitHomepage` 4 langs | ✅ dev (미배포) |
+| RA Recipe Management 5 탭 ReferenceError fix | `infoModal` useState 선언 누락 (alert sweep 잔여 결함) — 5 파일에 useState 한 줄씩 추가. 운영 hotfix 시급 | ✅ dev (미배포, **시급**) |
+| Reports 3 페이지 /api/menu aggregation | BG/FG/Owner Reports 가 restaurantId 없이 `/api/menu` 호출 → 400. `allowedRestaurantIds` 순회 + 카테고리 dedup 패턴으로 변경 | ✅ dev (미배포) |
+| 전수 헤드리스 sweep 도구 작성 | Playwright 기반 RA(47) + BG(23) + Admin(28) + FG(26) + Owner(15) + Supplier(14) + FCM(6) + BM(6) = 95 페이지 mount 검증. `scripts/headless-page-sweep.js`, `scripts/headless-roles-sweep.js` 재사용 가능 | ✅ 도구화 완료 |
+
+### 발견 + fix 한 잠재 결함 sweep
+
+- 정적 분석으로 `setXxxModal` 호출/선언 불일치 사이드 — Recipe 5 파일 외 0건 (이미 sweep clean)
+- 라우트 누락 / 컴포넌트 import 누락 — 0건
+- 헤드리스 sweep 95 페이지 — 진입 즉시 크래시 페이지 0건 (Recipe fix 효과 검증 + 추가 없음)
+- 발견된 부수 결함: BG/FG/Owner Reports `/api/menu` 호출 (3 파일) → fix 완료
+
+### 별도 사이클 후보 (사용자 결정)
+
+- Backend `checkRestaurantAccess` 미들웨어에 BG/FG brand_id/foodcourt_id scope 분기 추가 → BG/FG 가 산하 매장 `/api/menu?restaurantId=X` 403 해소
+- OrderContext `/api/orders?limit=100` 자동 호출 — BM/Supplier 권한 분기 (현재 console error 노출, mount 영향 0)
+
+### 수정된 파일 (이번 세션 누적)
+
+- **Backend (5)**: `routes/store.js` `routes/table-qr.js` `routes/mobile-public.js` `routes/orders-views.js` + `scripts/promote-reservations-to-base.js` 신규
+- **Frontend (대규모)**: `pages/Admin/InvoicesPage.tsx` · `pages/Settings/SettingsPage.tsx` · `pages/KitchenDisplay/KitchenDisplayPage.tsx` · `pages/FloorPlan/FloorPlanPage.tsx` · `pages/CustomerDisplay/CustomerDisplayPage.tsx` · `pages/Restaurant/SupportTicketsPage.tsx` · `pages/RecipeManagement/{Categories,GeneralStockCategories,IngredientCategories,RecipeCategories,Ingredients}Tab.tsx` · `pages/BrandGeneral/BrandReportsPage.tsx` · `pages/FoodcourtGeneral/FoodcourtReportsPage.tsx` · `pages/Owner/OwnerReportsPage.tsx` · `components/Layout/MainLayout.tsx` · `components/Common/PageHeader.tsx` · `mobile/pages/OrderTypePage.tsx` · `utils/runtime.ts` 신규
+- **i18n**: 4 langs × admin.json / common.json / settings.json (약 35 신규 키)
+- **scripts (신규)**: `scripts/headless-page-sweep.js` · `scripts/headless-roles-sweep.js`
+- **deploy**: `deploy-to-production.sh` (마이그 등록)
+
+---
 
 ## ✅ 완료: 프린터 설정 안내 시나리오 분기 + 전수 alert sweep (2026-05-18, 미배포)
 

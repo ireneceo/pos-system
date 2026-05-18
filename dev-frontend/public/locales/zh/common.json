@@ -1,4 +1,6 @@
 {
+  "backToDashboard": "返回仪表盘",
+  "visitHomepage": "前往 PurpleHere 主页",
   "button": {
     "save": "保存",
     "cancel": "取消",

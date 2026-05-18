@@ -238,6 +238,7 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
   const { user } = useAuth();
   // URL 파라미터의 restaurantId가 우선, 없으면 user.restaurant_id 사용
   const effectiveRestaurantId = propsRestaurantId || user?.restaurant_id || (user as any)?.restaurantId;
+  const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   const [categories, setCategories] = useState<Category[]>([]);
   const [brandCategories, setBrandCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);

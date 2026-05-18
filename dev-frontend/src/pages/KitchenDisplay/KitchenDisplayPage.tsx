@@ -11,27 +11,21 @@ import { printKitchenTicketViaRawBT, getPrinterSettings as getBillPrinterSetting
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
-// Helper function to format pickup time as range (e.g., "9:00 - 9:30 AM")
-const formatPickupTimeRange = (dateString: string): string => {
+// Helper function to format pickup time as range (e.g., "9:00 - 9:30 AM").
+// Uses restaurant timezone so the time matches the kitchen's local clock
+// regardless of where the browser is opened from.
+const formatPickupTimeRange = (dateString: string, timeZone?: string): string => {
   const date = new Date(dateString);
   const endDate = new Date(date.getTime() + 30 * 60 * 1000);
-
-  const formatTimeSlot = (d: Date) => {
-    const hours = d.getHours();
-    const minutes = d.getMinutes();
-    const period = hours >= 12 ? 'PM' : 'AM';
-    const displayHour = hours % 12 || 12;
-    const displayMin = minutes.toString().padStart(2, '0');
-    return { time: `${displayHour}:${displayMin}`, period };
-  };
-
-  const start = formatTimeSlot(date);
-  const end = formatTimeSlot(endDate);
-
-  if (start.period === end.period) {
-    return `${start.time} - ${end.time} ${end.period}`;
+  const opts: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit', hour12: true, timeZone };
+  const startStr = date.toLocaleString('en-US', opts); // e.g. "9:00 AM"
+  const endStr = endDate.toLocaleString('en-US', opts);
+  const startParts = startStr.split(' ');
+  const endParts = endStr.split(' ');
+  if (startParts.length === 2 && endParts.length === 2 && startParts[1] === endParts[1]) {
+    return `${startParts[0]} - ${endParts[0]} ${endParts[1]}`;
   }
-  return `${start.time} ${start.period} - ${end.time} ${end.period}`;
+  return `${startStr} - ${endStr}`;
 };
 
 // ─── Styled Components ────────────────────────────────────────
@@ -695,7 +689,7 @@ const KitchenDisplayPage: React.FC = () => {
       // Only fetch today's orders based on restaurant timezone
       const tz = operationSettings?.timeZone || 'Asia/Kuala_Lumpur';
       const today = new Date().toLocaleDateString('en-CA', { timeZone: tz }); // YYYY-MM-DD
-      const response = await fetch(`/api/orders/restaurant/${user.restaurantId}?startDate=${today}&endDate=${today}`, {
+      const response = await fetch(`/api/orders/restaurant/${user.restaurantId}?startDate=${today}&endDate=${today}&status=pending,preparing,ready`, {
         credentials: 'include',
         headers: apiHeaders()
       });
@@ -764,9 +758,18 @@ const KitchenDisplayPage: React.FC = () => {
   // Apply URL station parameter after stations are loaded
   useEffect(() => {
     if (urlStationApplied.current || !urlStationParam || kitchenStations.length === 0) return;
-    const idx = parseInt(urlStationParam);
-    if (!isNaN(idx) && idx >= 1 && idx <= kitchenStations.length) {
-      setSelectedStation(kitchenStations[idx - 1].id);
+    const target = parseInt(urlStationParam);
+    if (isNaN(target)) return;
+    // Prefer direct stationId match (stable across station re-ordering).
+    // Fallback to 1-based index for legacy bookmarks created before this fix.
+    const byId = kitchenStations.find(s => s.id === target);
+    if (byId) {
+      setSelectedStation(byId.id);
+      urlStationApplied.current = true;
+      return;
+    }
+    if (target >= 1 && target <= kitchenStations.length) {
+      setSelectedStation(kitchenStations[target - 1].id);
       urlStationApplied.current = true;
     }
   }, [kitchenStations, urlStationParam]);
@@ -1380,12 +1383,19 @@ const KitchenDisplayPage: React.FC = () => {
     }
   };
 
-  // Memoized order lists by status (recalculates when orders or station filter changes)
+  // Memoized order lists by status (recalculates when orders or station filter changes).
+  // Sort key: pickup orders sort by scheduled_pickup_time (so the next-due pickup
+  // surfaces first regardless of when it was placed), everything else sorts by
+  // orderTime ascending. ASAP pickups (no scheduled time) fall back to orderTime.
   const ordersByStatus = useMemo(() => {
+    const sortKey = (o: KitchenOrder) =>
+      (o.orderType === 'pickup' && o.scheduledPickupTime
+        ? new Date(o.scheduledPickupTime).getTime()
+        : o.orderTime.getTime());
     const sorted = (status: string) => orders
       .filter(order => order.status === status)
       .filter(orderHasStationItems)
-      .sort((a, b) => a.orderTime.getTime() - b.orderTime.getTime());
+      .sort((a, b) => sortKey(a) - sortKey(b));
     return {
       pending: sorted('pending'),
       preparing: sorted('preparing'),
@@ -1503,7 +1513,7 @@ const KitchenDisplayPage: React.FC = () => {
             )}
             {order.orderType === 'pickup' && (
               <OrderTypeBadge variant="pickup">
-                PICKUP {order.scheduledPickupTime ? formatPickupTimeRange(order.scheduledPickupTime) : 'ASAP'}
+                PICKUP {order.scheduledPickupTime ? formatPickupTimeRange(order.scheduledPickupTime, operationSettings?.timeZone) : 'ASAP'}
               </OrderTypeBadge>
             )}
             {order.orderType === 'delivery' && (
@@ -2281,7 +2291,7 @@ const KitchenDisplayPage: React.FC = () => {
               {order.orderType === 'takeaway' && <OrderTypeBadge>{t('kitchen:kitchenDisplayPage.takeaway')}</OrderTypeBadge>}
               {order.orderType === 'pickup' && (
                 <OrderTypeBadge variant="pickup">
-                  PICKUP {order.scheduledPickupTime ? formatPickupTimeRange(order.scheduledPickupTime) : 'ASAP'}
+                  PICKUP {order.scheduledPickupTime ? formatPickupTimeRange(order.scheduledPickupTime, operationSettings?.timeZone) : 'ASAP'}
                 </OrderTypeBadge>
               )}
               {order.orderType === 'delivery' && <OrderTypeBadge variant="delivery">{t('kitchen:kitchenDisplayPage.delivery')}</OrderTypeBadge>}
@@ -2408,6 +2418,7 @@ const KitchenDisplayPage: React.FC = () => {
     <Container>
       <PageHeader
         title="Kitchen Display"
+        backHref={user?.restaurantId ? `/restaurant/${user.restaurantId}/dashboard` : undefined}
         settingsHref={user?.restaurantId ? `/restaurant/${user.restaurantId}/settings?tab=kitchenStations` : undefined}
         settingsLabel="Kitchen station settings"
       >
@@ -2434,8 +2445,8 @@ const KitchenDisplayPage: React.FC = () => {
           {kitchenStations.length > 0 && (
             <ViewToggle>
               <ViewToggleBtn active={selectedStation === 'all'} onClick={() => { setSelectedStation('all'); setSearchParams({}); }}>{t('kitchen:kitchenDisplayPage.all')}</ViewToggleBtn>
-              {kitchenStations.map((s, idx) => (
-                <ViewToggleBtn key={s.id} active={selectedStation === s.id} onClick={() => { setSelectedStation(s.id); setSearchParams({ station: String(idx + 1) }); }}>{s.name}</ViewToggleBtn>
+              {kitchenStations.map((s) => (
+                <ViewToggleBtn key={s.id} active={selectedStation === s.id} onClick={() => { setSelectedStation(s.id); setSearchParams({ station: String(s.id) }); }}>{s.name}</ViewToggleBtn>
               ))}
             </ViewToggle>
           )}

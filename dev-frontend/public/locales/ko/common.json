@@ -1,4 +1,6 @@
 {
+  "backToDashboard": "대시보드로 돌아가기",
+  "visitHomepage": "PurpleHere 홈페이지로",
   "button": {
     "save": "저장",
     "cancel": "취소",

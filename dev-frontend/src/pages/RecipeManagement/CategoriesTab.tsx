@@ -242,6 +242,7 @@ const BrandCategoriesHeader = styled.div`
 const CategoriesTab: React.FC<CategoriesTabProps> = ({ brandId, restaurantId, onCountChange }) => {
   const { t } = useTranslation('recipes');
   const { user } = useAuth();
+  const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   const [recipeCategories, setRecipeCategories] = useState<Category[]>([]);
   const [ingredientCategories, setIngredientCategories] = useState<Category[]>([]);
   const [brandRecipeCategories, setBrandRecipeCategories] = useState<Category[]>([]);

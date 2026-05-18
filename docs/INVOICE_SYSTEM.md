@@ -257,11 +257,15 @@ Brand와 동일 구조. `issuer_type: 'foodcourt'`, 인보이스 번호 `INV-FC{
 | 상태 | 설명 | 전이 가능 |
 |------|------|----------|
 | `draft` | 생성됨, 미발송 | → pending_payment |
-| `pending_payment` | 발송됨, 결제 대기 | → payment_submitted, overdue, cancelled |
-| `payment_submitted` | 결제 증빙 제출됨 | → paid, rejected |
+| `pending_payment` | 발송됨, 결제 대기 | → payment_submitted, overdue, cancelled, **draft (Revert to Draft, v3.33+)** |
+| `payment_submitted` | 결제 증빙 제출됨 | → paid, rejected, **cancelled (v3.33+)** |
 | `paid` | 결제 확인 완료 | (최종 상태) |
-| `overdue` | 마감일 초과 | → payment_submitted, cancelled |
-| `cancelled` | 취소됨 | (최종 상태) |
+| `overdue` | 마감일 초과 | → payment_submitted, cancelled, **draft (Revert to Draft, v3.33+)** |
+| `cancelled` | 취소됨 | (최종 상태, audit trail 보존) |
+
+**Revert to Draft (v3.33)**: System Admin Invoices 페이지에서 발행한 인보이스를 결제 전(`pending_payment` / `overdue`)에 드래프트로 되돌릴 수 있음. `invoice_number` 보존, 변경 이력은 modification history 에 자동 기록. 매장 수정/재발송/삭제 자유.
+
+**Cancel (v3.33)**: `pending_payment` / `overdue` / `payment_submitted` 에서 영구 무효 처리. `invoice_number` 보존, 회계 audit trail 유지. 재발행 시 새 invoice 발급 필요.
 
 ### 3.1.1 Free 인보이스 (100% 할인, total_amount=0)
 

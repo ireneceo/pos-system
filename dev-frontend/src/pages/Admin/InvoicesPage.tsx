@@ -79,6 +79,7 @@ const InvoicesPage: React.FC = () => {
   const [showSendConfirmModal, setShowSendConfirmModal] = useState(false);
   const [showResendConfirmModal, setShowResendConfirmModal] = useState(false);
   const [showCancelConfirmModal, setShowCancelConfirmModal] = useState(false);
+  const [showRevertConfirmModal, setShowRevertConfirmModal] = useState(false);
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [emailRecipient, setEmailRecipient] = useState('');
@@ -1416,6 +1417,40 @@ const InvoicesPage: React.FC = () => {
     setShowDeleteConfirmModal(true);
   };
 
+  const handleCancelInvoice = (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+    setShowCancelConfirmModal(true);
+  };
+
+  const handleRevertToDraft = (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+    setShowRevertConfirmModal(true);
+  };
+
+  const confirmRevertToDraft = async () => {
+    if (!selectedInvoice) return;
+    try {
+      const token = getAuthToken();
+      const response = await fetch(`/api/invoices/${selectedInvoice.id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ status: 'draft' })
+      });
+      if (response.ok) {
+        await fetchInvoices();
+        setShowRevertConfirmModal(false);
+        setSelectedInvoice(null);
+        window.dispatchEvent(new Event('refreshBadgeCounts'));
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        setSuccessMessage(`Failed to revert invoice: ${errorData.error?.message || errorData.error || 'Unknown error'}`); setShowSuccessModal(true);
+      }
+    } catch (error) {
+      console.error('Error reverting invoice to draft:', error);
+      setSuccessMessage('Error reverting invoice. Please try again.'); setShowSuccessModal(true);
+    }
+  };
+
   const confirmCancelInvoice = async () => {
     if (!selectedInvoice) return;
     try {
@@ -1622,6 +1657,8 @@ const InvoicesPage: React.FC = () => {
                         <>
                           <LocalActionButton onClick={() => handleEditInvoice(invoice)}>{t('admin:invoicesPage.edit')}</LocalActionButton>
                           {Number(invoice.total) === 0 && <LocalActionButton variant="primary" onClick={() => handleConfirmPayment(invoice)}>{t('admin:invoicesPage.markPaid')}</LocalActionButton>}
+                          <LocalActionButton onClick={() => handleRevertToDraft(invoice)} title={t('admin:invoicesPage.revertHint', 'Revert to draft to edit or resend')}>{t('admin:invoicesPage.revertToDraft', 'Revert to Draft')}</LocalActionButton>
+                          <LocalActionButton variant="cancel" onClick={() => handleCancelInvoice(invoice)} title={t('admin:invoicesPage.cancelInvoiceTooltip', 'Mark as cancelled (preserved for records)')}>{t('admin:invoicesPage.cancel', 'Cancel')}</LocalActionButton>
                           <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></LocalActionButton>
                           <LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></LocalActionButton>
                           <LocalActionButton variant="email" onClick={() => handleOpenEmailModal(invoice)} title="Send Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></LocalActionButton>
@@ -1631,6 +1668,7 @@ const InvoicesPage: React.FC = () => {
                       {invoice.status === 'payment_submitted' && (
                         <>
                           {invoice.hasPaymentInfo && <LocalActionButton variant="primary" onClick={() => handleConfirmPayment(invoice)}>{t('admin:invoicesPage.confirm')}</LocalActionButton>}
+                          <LocalActionButton variant="cancel" onClick={() => handleCancelInvoice(invoice)} title={t('admin:invoicesPage.cancelInvoiceTooltip', 'Mark as cancelled (preserved for records)')}>{t('admin:invoicesPage.cancel', 'Cancel')}</LocalActionButton>
                           <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></LocalActionButton>
                           <LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></LocalActionButton>
                           <LocalActionButton variant="email" onClick={() => handleOpenEmailModal(invoice)} title="Resend Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></LocalActionButton>
@@ -1640,6 +1678,8 @@ const InvoicesPage: React.FC = () => {
                         <>
                           <LocalActionButton onClick={() => handleEditInvoice(invoice)}>{t('admin:invoicesPage.edit')}</LocalActionButton>
                           {Number(invoice.total) === 0 && <LocalActionButton variant="primary" onClick={() => handleConfirmPayment(invoice)}>{t('admin:invoicesPage.markPaid')}</LocalActionButton>}
+                          <LocalActionButton onClick={() => handleRevertToDraft(invoice)} title={t('admin:invoicesPage.revertHint', 'Revert to draft to edit or resend')}>{t('admin:invoicesPage.revertToDraft', 'Revert to Draft')}</LocalActionButton>
+                          <LocalActionButton variant="cancel" onClick={() => handleCancelInvoice(invoice)} title={t('admin:invoicesPage.cancelInvoiceTooltip', 'Mark as cancelled (preserved for records)')}>{t('admin:invoicesPage.cancel', 'Cancel')}</LocalActionButton>
                           <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></LocalActionButton>
                           <LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></LocalActionButton>
                           <LocalActionButton variant="email" onClick={() => handleOpenEmailModal(invoice)} title="Resend Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></LocalActionButton>
@@ -1933,6 +1973,25 @@ const InvoicesPage: React.FC = () => {
               </p>
               <div style={{ background: '#FEF3C7', padding: '12px', borderRadius: '6px', border: '1px solid #F59E0B', fontSize: '13px', color: '#92400E' }}>
                 This will send another copy of the invoice to the manager's email.
+              </div>
+            </div>
+          </CommonModal>
+        )}
+
+        {/* Revert to Draft Confirmation Modal */}
+        {showRevertConfirmModal && selectedInvoice && (
+          <CommonModal isOpen={true} onClose={() => setShowRevertConfirmModal(false)} title={t('admin:invoicesPage.revertToDraft', 'Revert to Draft')} footer={<><Button variant="secondary" onClick={() => setShowRevertConfirmModal(false)}>{t('common:cancel', 'Cancel')}</Button><Button variant="primary" onClick={confirmRevertToDraft}>{t('admin:invoicesPage.revertToDraft', 'Revert to Draft')}</Button></>}>
+            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#0A2540', marginBottom: '12px' }}>{t('admin:invoicesPage.revertToDraft', 'Revert to Draft')}</h3>
+              <p style={{ fontSize: '14px', color: '#6B7280', marginBottom: '20px', lineHeight: '1.6' }}>
+                {t('admin:invoicesPage.revertConfirm', 'Revert invoice')} <strong>{selectedInvoice.invoiceNumber}</strong> {t('admin:invoicesPage.revertConfirmTail', 'back to draft?')}
+              </p>
+              <div style={{ background: '#EEF2FF', padding: '16px', borderRadius: '8px', border: '1px solid #C7D2FE', marginBottom: '16px' }}>
+                <p style={{ margin: 0, color: '#3730A3', fontSize: '14px', fontWeight: '500' }}>{t('admin:invoicesPage.revertHint', 'The invoice will be editable again. Invoice number is preserved, and the change is recorded in modification history.')}</p>
+              </div>
+              <div style={{ background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E6EBF1' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span style={{ color: '#6B7280' }}>{t('admin:invoicesPage.invoice', 'Invoice')}:</span><span style={{ fontWeight: '500' }}>{selectedInvoice.invoiceNumber}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6B7280' }}>{t('admin:invoicesPage.amount', 'Amount')}:</span><span style={{ fontWeight: '600' }}>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</span></div>
               </div>
             </div>
           </CommonModal>

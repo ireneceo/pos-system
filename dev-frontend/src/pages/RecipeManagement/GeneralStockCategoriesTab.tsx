@@ -237,6 +237,7 @@ const GeneralStockCategoriesTab: React.FC<GeneralStockCategoriesTabProps> = ({ i
   const { t } = useTranslation('recipes');
   const { user } = useAuth();
   const effectiveRestaurantId = propsRestaurantId || user?.restaurant_id || (user as any)?.restaurantId;
+  const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   const [categories, setCategories] = useState<Category[]>([]);
   const [brandCategories, setBrandCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
