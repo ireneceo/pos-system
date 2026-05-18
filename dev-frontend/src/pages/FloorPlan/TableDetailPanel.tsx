@@ -530,6 +530,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
   // ─── QR Session state ───
   const [qrSession, setQrSession] = useState<{ token: string; qr_url: string; remaining_minutes: number; expires_at: string; created_at: string } | null>(null);
   const [qrLoading, setQrLoading] = useState(false);
+  const [qrError, setQrError] = useState<string | null>(null);
 
   // ─── QR Session: fetch status ───
   const fetchQRStatus = useCallback(async () => {
@@ -987,12 +988,12 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
         await QRCode.toCanvas(canvas, qrData.qr_url, { width: 200, margin: 2 });
         const printed = await printTableQR(tableNumber, canvas, storeName, qrData.expires_at, timezone);
         if (!printed) {
-          window.alert('Print failed. Please allow pop-ups for this site and try again.');
+          setQrError('Print failed. Please allow pop-ups for this site and try again.');
         }
       }
     } catch (err) {
       console.error('Failed to print QR:', err);
-      window.alert('Failed to print QR. Please try again.');
+      setQrError('Failed to print QR. Please try again.');
     }
     setQrLoading(false);
   };
@@ -1022,6 +1023,12 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
 
   return (
     <Panel>
+      {qrError && (
+        <div style={{ padding: 12, background: '#FEE2E2', color: '#DC2626', borderRadius: 8, margin: '8px 12px', fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>{qrError}</span>
+          <button type="button" onClick={() => setQrError(null)} style={{ background: 'transparent', border: 0, color: '#DC2626', cursor: 'pointer', fontSize: 16 }} aria-label="Dismiss">×</button>
+        </div>
+      )}
       {/* Payment Proof Verification Modal */}
       <Modal
         isOpen={!!showPaymentProofModal}

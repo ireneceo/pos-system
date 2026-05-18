@@ -350,40 +350,7 @@ const MySuppliersPage: React.FC = () => {
 
   return (
     <Container>
-      <Header>
-        <div>
-          <Title>{t('myContracts.title')}</Title>
-        </div>
-        <HeaderActions>
-          <ThemedButton
-            variant="outline"
-            onClick={() => navigate('/pos/suppliers/directory')}
-          >
-            {t('myContracts.findSuppliers')}
-          </ThemedButton>
-        </HeaderActions>
-      </Header>
-
       <Content>
-        <StatsGrid>
-          <StatCard color="#635BFF">
-            <StatValue>{stats.total}</StatValue>
-            <StatLabel>{t('myContracts.stats.total')}</StatLabel>
-          </StatCard>
-          <StatCard color="#10B981">
-            <StatValue>{stats.active}</StatValue>
-            <StatLabel>{t('myContracts.stats.active')}</StatLabel>
-          </StatCard>
-          <StatCard color="#F59E0B">
-            <StatValue>{stats.pending}</StatValue>
-            <StatLabel>{t('myContracts.stats.pending')}</StatLabel>
-          </StatCard>
-          <StatCard color="#6B7280">
-            <StatValue>{stats.ended}</StatValue>
-            <StatLabel>{t('myContracts.stats.ended')}</StatLabel>
-          </StatCard>
-        </StatsGrid>
-
         <FilterBar>
           <SearchInput
             type="text"
@@ -401,6 +368,14 @@ const MySuppliersPage: React.FC = () => {
             <option value="rejected">{t('myContracts.filter.rejected')}</option>
             <option value="terminated">{t('myContracts.filter.terminated')}</option>
           </FilterSelect>
+          <div style={{ marginLeft: 'auto' }}>
+            <ThemedButton
+              variant="outline"
+              onClick={() => navigate('/pos/suppliers?tab=find')}
+            >
+              {t('myContracts.findSuppliers')}
+            </ThemedButton>
+          </div>
         </FilterBar>
 
         <DataTableContainer>

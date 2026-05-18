@@ -539,6 +539,8 @@ const ROLE_TABS: RoleTab[] = [
       { code: 'brand_reports', title: 'Reports', description: 'Comprehensive reporting across all brand locations', points: ['Consolidated sales reports', 'Location comparison', 'Revenue breakdown', 'Export capabilities'], category: 'basic', images: getImages('brand_reports', 5) },
       // Communication
       { code: 'brand_notices', title: 'Notice Management', description: 'Send announcements and notices to all brand restaurants', points: ['Broadcast to all locations', 'Targeted notices', 'Read receipts', 'Comment threads'], category: 'basic', images: getImages('brand_notices', 3) },
+      // Menu standardization
+      { code: 'brand_menus', title: 'Brand Menu Management', description: 'Centralized menu templates pushed to all franchise restaurants with field-level locks and version synchronization', points: ['Menu, categories, and option templates', 'Push to all outlets or selected restaurants', 'Field-level locks (price, name, image, options)', 'Auto version bump with sync notifications', 'Mirror to restaurant POS with pending review'], category: 'basic', images: getImages('brand_menus', 3) },
       // Advanced
       { code: 'brand_products', title: 'Product Management', description: 'Centralized product and menu management for the brand', points: ['Global product catalog', 'Menu standardization', 'Price management', 'Product distribution to outlets'], category: 'advanced', images: getImages('brand_products', 4) },
       { code: 'brand_recipes', title: 'Recipe Management', description: 'Standardized recipe management across all franchises', points: ['Central recipe database', 'Ingredient standardization', 'Cost tracking', 'Recipe distribution'], category: 'advanced', images: getImages('brand_recipes', 3) },

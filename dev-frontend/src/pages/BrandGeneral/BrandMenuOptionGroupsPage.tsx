@@ -6,14 +6,14 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
-import { Plus, Edit2, Trash2, ChevronDown, ChevronRight, Building2 } from 'lucide-react';
-import PageHeader from '../../components/Common/PageHeader';
+import { Edit2, Trash2, ChevronDown, ChevronRight, Layers } from 'lucide-react';
 import { Modal as CommonModal } from '../../components/UI';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
+import ConfirmModal from '../../components/ConfirmModal';
+import ListControlsBar from '../../components/Common/ListControlsBar';
 import { getAuthToken } from '../../utils/auth';
 
-const Container = styled.div` min-height: 100vh; background: #FAFBFC; `;
-const Content = styled.main` padding: 24px 32px; @media (max-width: 768px) { padding: 16px; } `;
+const Wrapper = styled.div``;
 const GroupCard = styled.div` background: white; border: 1px solid #E6EBF1; border-radius: 12px; padding: 16px; margin-bottom: 12px; `;
 const GroupHeader = styled.div` display: flex; align-items: center; gap: 12px; cursor: pointer; `;
 const GroupName = styled.div` font-size: 14px; font-weight: 600; color: #0A2540; flex: 1; `;
@@ -42,7 +42,6 @@ const Toggle = styled.label`
 `;
 const EmptyState = styled.div` background: white; border: 1px dashed #E6EBF1; border-radius: 12px; padding: 48px; text-align: center; color: #6B7C93; `;
 
-interface Brand { id: number; name: string; }
 interface BMOption { id?: number; name: string; extra_price: number; sort_order?: number; }
 interface BMGroup {
   id: number; brand_id: number; name: string; description: string | null;
@@ -55,13 +54,10 @@ const authHeaders = () => {
   return t ? { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` } : { 'Content-Type': 'application/json' };
 };
 
-const BrandMenuOptionGroupsPage: React.FC = () => {
+interface Props { brandId: number | null; }
+
+const BrandMenuOptionGroupsPage: React.FC<Props> = ({ brandId }) => {
   const { t } = useTranslation(['brand', 'common']);
-  const [brands, setBrands] = useState<Brand[]>([]);
-  const [brandId, setBrandId] = useState<number | null>(() => {
-    const saved = localStorage.getItem('bg.selectedBrandId');
-    return saved ? Number(saved) : null;
-  });
   const [groups, setGroups] = useState<BMGroup[]>([]);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [editing, setEditing] = useState<BMGroup | null>(null);
@@ -70,24 +66,11 @@ const BrandMenuOptionGroupsPage: React.FC = () => {
     name: '', min: 0, max: 1, required: false, options: [{ name: '', extra_price: 0 }]
   });
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    (async () => {
-      const r = await fetch('/api/brands?owner=me', { headers: authHeaders() });
-      if (!r.ok) return;
-      const j = await r.json();
-      const list: Brand[] = (j.data || j || []).map((b: any) => ({ id: b.id, name: b.name }));
-      setBrands(list);
-      if (!brandId && list.length > 0) {
-        setBrandId(list[0].id);
-        localStorage.setItem('bg.selectedBrandId', String(list[0].id));
-      }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const [deleteConfirm, setDeleteConfirm] = useState<BMGroup | null>(null);
+  const [inUseInfo, setInUseInfo] = useState<{ name: string; count: number } | null>(null);
 
   const load = useCallback(async () => {
-    if (!brandId) return;
+    if (!brandId) { setGroups([]); return; }
     const r = await fetch(`/api/brand-menu-option-groups?brand_id=${brandId}`, { headers: authHeaders() });
     if (!r.ok) return;
     const j = await r.json();
@@ -135,13 +118,19 @@ const BrandMenuOptionGroupsPage: React.FC = () => {
     } catch (e: any) { setError(e.message); }
   };
 
-  const remove = async (g: BMGroup) => {
+  const askRemove = (g: BMGroup) => {
     if (g.menu_count > 0) {
-      window.alert(t('brand:brandMenuOptionGroupsPage.cannotDeleteInUse', { count: g.menu_count, defaultValue: `Used by ${g.menu_count} menus. Remove from menus first.` }));
+      setInUseInfo({ name: g.name, count: g.menu_count });
       return;
     }
-    if (!window.confirm(t('brand:brandMenusPage.confirmDelete', { name: g.name, defaultValue: `Delete "${g.name}"?` }))) return;
-    const r = await fetch(`/api/brand-menu-option-groups/${g.id}`, { method: 'DELETE', headers: authHeaders() });
+    setDeleteConfirm(g);
+  };
+
+  const confirmRemove = async () => {
+    if (!deleteConfirm) return;
+    const target = deleteConfirm;
+    setDeleteConfirm(null);
+    const r = await fetch(`/api/brand-menu-option-groups/${target.id}`, { method: 'DELETE', headers: authHeaders() });
     if (r.ok) load();
   };
 
@@ -152,26 +141,23 @@ const BrandMenuOptionGroupsPage: React.FC = () => {
   };
 
   return (
-    <Container>
-      <PageHeader title={t('brand:brandMenuOptionGroupsPage.title', 'Menu Options')} />
-      <Content>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-          {brands.length > 1 && (
-            <select value={brandId || ''} onChange={(e) => { const v = Number(e.target.value); setBrandId(v); localStorage.setItem('bg.selectedBrandId', String(v)); }}
-              style={{ padding: '8px 12px', border: '1px solid #E6EBF1', borderRadius: 8, fontSize: 14, background: 'white' }}>
-              {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-            </select>
-          )}
-          <div style={{ flex: 1 }} />
+    <Wrapper>
+      <ListControlsBar>
+        <div data-controls-trailing>
           <ThemedButton variant="primary" onClick={openCreate} disabled={!brandId}>
-            <Plus style={{ width: 14, height: 14, marginRight: 4 }} />
             {t('brand:brandMenuOptionGroupsPage.addGroup', 'Add Option Group')}
           </ThemedButton>
         </div>
+      </ListControlsBar>
         {groups.length === 0 ? (
           <EmptyState>
-            <Building2 style={{ width: 32, height: 32, color: '#9CA3AF', marginBottom: 8 }} />
-            <div>{t('brand:brandMenuOptionGroupsPage.empty', 'No option groups yet')}</div>
+            <Layers style={{ width: 32, height: 32, color: '#9CA3AF', marginBottom: 8 }} />
+            <div style={{ fontWeight: 500, color: '#0A2540', marginBottom: 4 }}>
+              {t('brand:brandMenuOptionGroupsPage.empty', 'No option groups yet')}
+            </div>
+            <div style={{ fontSize: 13 }}>
+              {t('brand:brandMenuOptionGroupsPage.emptyHint', 'Add-ons and variations like "Size" (S/M/L) or "Spice level". Reuse across multiple menus.')}
+            </div>
           </EmptyState>
         ) : groups.map(g => (
           <GroupCard key={g.id}>
@@ -187,7 +173,7 @@ const BrandMenuOptionGroupsPage: React.FC = () => {
               </GroupMeta>
               <Actions onClick={(e) => e.stopPropagation()}>
                 <IconBtn type="button" onClick={() => openEdit(g)} title={t('common:button.edit')}><Edit2 /></IconBtn>
-                <IconBtn type="button" onClick={() => remove(g)} title={t('common:button.delete')}><Trash2 /></IconBtn>
+                <IconBtn type="button" onClick={() => askRemove(g)} title={t('common:button.delete')}><Trash2 /></IconBtn>
               </Actions>
             </GroupHeader>
             {expanded.has(g.id) && (
@@ -238,7 +224,6 @@ const BrandMenuOptionGroupsPage: React.FC = () => {
                 </Row>
               ))}
               <ThemedButton variant="secondary" onClick={() => setForm({ ...form, options: [...form.options, { name: '', extra_price: 0 }] })}>
-                <Plus style={{ width: 14, height: 14, marginRight: 4 }} />
                 {t('brand:brandMenuOptionGroupsPage.addOption', 'Add Option')}
               </ThemedButton>
             </FormGroup>
@@ -249,8 +234,27 @@ const BrandMenuOptionGroupsPage: React.FC = () => {
             )}
           </CommonModal>
         )}
-      </Content>
-    </Container>
+      <ConfirmModal
+        isOpen={!!deleteConfirm}
+        type="danger"
+        title={t('brand:brandMenuOptionGroupsPage.confirmDeleteTitle', 'Delete option group')}
+        message={t('brand:brandMenusPage.confirmDelete', { name: deleteConfirm?.name || '', defaultValue: `Delete "${deleteConfirm?.name}"?` })}
+        confirmText={t('common:button.delete', 'Delete')}
+        cancelText={t('common:button.cancel', 'Cancel')}
+        onConfirm={confirmRemove}
+        onCancel={() => setDeleteConfirm(null)}
+      />
+      <ConfirmModal
+        isOpen={!!inUseInfo}
+        type="warning"
+        singleButton
+        title={t('brand:brandMenuOptionGroupsPage.cannotDeleteTitle', 'Cannot delete option group')}
+        message={t('brand:brandMenuOptionGroupsPage.cannotDeleteInUse', { count: inUseInfo?.count || 0, defaultValue: `"${inUseInfo?.name}" is used by ${inUseInfo?.count || 0} menus. Remove from those menus first.` })}
+        confirmText={t('common:button.ok', 'OK')}
+        onConfirm={() => setInUseInfo(null)}
+        onCancel={() => setInUseInfo(null)}
+      />
+    </Wrapper>
   );
 };
 

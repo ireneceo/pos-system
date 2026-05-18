@@ -199,6 +199,7 @@ const ProductIngredientCategoriesTab: React.FC<ProductIngredientCategoriesTabPro
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -282,11 +283,11 @@ const ProductIngredientCategoriesTab: React.FC<ProductIngredientCategoriesTabPro
         fetchCategories();
         onCategoryChange?.();
       } else {
-        alert(response.error || 'Failed to save category');
+        setInfoModal({ open: true, title: t('brand:productIngredientCategoriesTab.saveFailedTitle', 'Save Failed'), message: response.error || t('brand:productIngredientCategoriesTab.saveFailedMessage', 'Failed to save category. Please try again.') });
       }
     } catch (error) {
       console.error('Failed to save category:', error);
-      alert('Failed to save category');
+      setInfoModal({ open: true, title: t('brand:productIngredientCategoriesTab.saveFailedTitle', 'Save Failed'), message: t('brand:productIngredientCategoriesTab.saveFailedMessage', 'Failed to save category. Please try again.') });
     } finally {
       setSaving(false);
     }
@@ -311,11 +312,11 @@ const ProductIngredientCategoriesTab: React.FC<ProductIngredientCategoriesTabPro
         fetchCategories();
         onCategoryChange?.();
       } else {
-        alert(response.error || 'Failed to delete category');
+        setInfoModal({ open: true, title: t('brand:productIngredientCategoriesTab.deleteFailedTitle', 'Delete Failed'), message: response.error || t('brand:productIngredientCategoriesTab.deleteFailedMessage', 'Failed to delete category. Please try again.') });
       }
     } catch (error) {
       console.error('Failed to delete category:', error);
-      alert('Failed to delete category');
+      setInfoModal({ open: true, title: t('brand:productIngredientCategoriesTab.deleteFailedTitle', 'Delete Failed'), message: t('brand:productIngredientCategoriesTab.deleteFailedMessage', 'Failed to delete category. Please try again.') });
     }
   };
 
@@ -510,6 +511,16 @@ const ProductIngredientCategoriesTab: React.FC<ProductIngredientCategoriesTabPro
         confirmText="Delete"
         cancelText="Cancel"
         type="danger"
+      />
+      <ConfirmModal
+        isOpen={infoModal.open}
+        title={infoModal.title}
+        message={infoModal.message}
+        onConfirm={() => setInfoModal({ open: false, title: '', message: '' })}
+        onCancel={() => setInfoModal({ open: false, title: '', message: '' })}
+        confirmText={t('common:ok', 'OK')}
+        type="info"
+        singleButton
       />
     </Container>
   );

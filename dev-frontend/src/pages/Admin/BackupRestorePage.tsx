@@ -415,6 +415,7 @@ const BackupListSize = styled.div`
 const BackupRestorePage: React.FC = () => {
   const { t } = useTranslation('admin');
   const [activeTab, handleTabChange] = useTabParam<'backups' | 'restore' | 'schedule'>('backups');
+  const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   const [backups, setBackups] = useState<BackupRecord[]>([]);
   const [restoreOperations, setRestoreOperations] = useState<RestoreOperation[]>([]);
   const [showCreateBackupModal, setShowCreateBackupModal] = useState(false);
@@ -798,7 +799,7 @@ const BackupRestorePage: React.FC = () => {
                 Cancel
               </ModalButton>
               <ModalButton variant="primary" onClick={() => {
-                alert('Backup schedule created successfully!');
+                setInfoModal({ open: true, title: 'Schedule Created', message: 'Backup schedule created successfully.' });
                 setShowAddScheduleModal(false);
               }}>
                 Create Schedule
@@ -851,6 +852,16 @@ const BackupRestorePage: React.FC = () => {
         confirmText="Delete"
         cancelText="Cancel"
         type="warning"
+      />
+      <ConfirmModal
+        isOpen={infoModal.open}
+        title={infoModal.title}
+        message={infoModal.message}
+        onConfirm={() => setInfoModal({ open: false, title: '', message: '' })}
+        onCancel={() => setInfoModal({ open: false, title: '', message: '' })}
+        confirmText="OK"
+        type="info"
+        singleButton
       />
     </>
   );

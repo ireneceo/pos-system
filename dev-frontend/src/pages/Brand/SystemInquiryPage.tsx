@@ -8,6 +8,7 @@ import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/Fi
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import { StatsGrid, StatCard, StatValue, StatLabel, Modal as CommonModal } from '../../components/UI';
+import ConfirmModal from '../../components/ConfirmModal';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
@@ -356,6 +357,7 @@ const SystemInquiryPage: React.FC = () => {
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [activeTab, setActiveTab] = useTabParam<'active' | 'closed'>('active');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
   const [detailStatus, setDetailStatus] = useState<string>('open');
@@ -490,7 +492,7 @@ const SystemInquiryPage: React.FC = () => {
 
   const handleSubmitTicket = async () => {
     if (!newTicket.subject.trim() || !newTicket.description.trim()) {
-      alert('Please fill in all required fields.');
+      setInfoModal({ open: true, title: t('common:systemInquiryPage.validationTitle', 'Required Fields'), message: t('common:systemInquiryPage.validationMessage', 'Please fill in all required fields.') });
       return;
     }
 
@@ -524,11 +526,11 @@ const SystemInquiryPage: React.FC = () => {
         setNewAttachments([]);
         setShowCreateModal(false);
       } else {
-        alert('Failed to create ticket. Please try again.');
+        setInfoModal({ open: true, title: t('common:systemInquiryPage.createFailedTitle', 'Submission Failed'), message: t('common:systemInquiryPage.createFailedMessage', 'Failed to create ticket. Please try again.') });
       }
     } catch (error) {
       console.error('Error creating ticket:', error);
-      alert('Error creating ticket. Please try again.');
+      setInfoModal({ open: true, title: t('common:systemInquiryPage.createFailedTitle', 'Submission Failed'), message: t('common:systemInquiryPage.createFailedMessage', 'Failed to create ticket. Please try again.') });
     }
   };
 
@@ -809,6 +811,17 @@ const SystemInquiryPage: React.FC = () => {
           )}
         </Content>
       </Container>
+
+      <ConfirmModal
+        isOpen={infoModal.open}
+        title={infoModal.title}
+        message={infoModal.message}
+        onConfirm={() => setInfoModal({ open: false, title: '', message: '' })}
+        onCancel={() => setInfoModal({ open: false, title: '', message: '' })}
+        confirmText={t('common:ok', 'OK')}
+        type="info"
+        singleButton
+      />
     </>
   );
 };

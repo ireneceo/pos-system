@@ -290,6 +290,12 @@ Brand.init({
     defaultValue: false,
     allowNull: false,
     comment: 'Test brand flag - excluded from statistics, shown with TEST badge'
+  },
+  menu_settings: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: null,
+    comment: 'Brand-level defaults applied to new BrandMenus — { default_distribution_mode, default_locks: { name, price, category, image, options }, default_push_target: "all" | "selected" }'
   }
 }, {
   sequelize: database.sequelize,

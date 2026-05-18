@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ConfirmModal from '../../components/ConfirmModal';
 import styled from 'styled-components';
 import { Modal as CommonModal, StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
 import { RestaurantSubscription } from '../../interfaces/RestaurantSubscription';
@@ -398,6 +399,7 @@ const TextArea = styled.textarea`
 const RestaurantSubscriptionsPage: React.FC = () => {
   const { t } = useTranslation('admin');
   const [subscriptions, setSubscriptions] = useState<RestaurantSubscription[]>([]);
+  const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterPlan, setFilterPlan] = useState('all');
@@ -480,7 +482,7 @@ const RestaurantSubscriptionsPage: React.FC = () => {
         ? { ...sub, status: 'active', updatedAt: new Date().toISOString().split('T')[0] }
         : sub
     ));
-    alert('Subscription reactivated successfully!');
+    setInfoModal({ open: true, title: 'Reactivated', message: 'Subscription reactivated successfully.' });
   };
   
   const confirmChangePlan = () => {
@@ -508,7 +510,7 @@ const RestaurantSubscriptionsPage: React.FC = () => {
     ));
     
     setShowPlanModal(false);
-    alert('Plan changed successfully!');
+    setInfoModal({ open: true, title: 'Plan Changed', message: 'Plan changed successfully.' });
   };
   
   const confirmSwitchPayment = () => {
@@ -525,7 +527,7 @@ const RestaurantSubscriptionsPage: React.FC = () => {
     ));
     
     setShowPaymentModal(false);
-    alert('Payment method updated successfully!');
+    setInfoModal({ open: true, title: 'Payment Updated', message: 'Payment method updated successfully.' });
   };
   
   const confirmSuspend = () => {
@@ -542,7 +544,7 @@ const RestaurantSubscriptionsPage: React.FC = () => {
     ));
     
     setShowSuspendModal(false);
-    alert('Subscription suspended successfully!');
+    setInfoModal({ open: true, title: 'Suspended', message: 'Subscription suspended successfully.' });
   };
   
   // Export functionality
@@ -588,7 +590,7 @@ const RestaurantSubscriptionsPage: React.FC = () => {
   
   const confirmAddRestaurant = () => {
     if (!newRestaurant.name || !newRestaurant.managerName) {
-      alert('Please fill in all required fields');
+      setInfoModal({ open: true, title: 'Required Fields', message: 'Please fill in all required fields.' });
       return;
     }
     
@@ -633,7 +635,7 @@ const RestaurantSubscriptionsPage: React.FC = () => {
     
     setSubscriptions(prev => [newSubscription, ...prev]);
     setShowAddRestaurantModal(false);
-    alert('Restaurant added successfully with 30-day trial!');
+    setInfoModal({ open: true, title: 'Restaurant Added', message: 'Restaurant added successfully with 30-day trial.' });
   };
   return (
     <>
@@ -974,6 +976,16 @@ const RestaurantSubscriptionsPage: React.FC = () => {
         )}
         </Content>
       </Container>
+      <ConfirmModal
+        isOpen={infoModal.open}
+        title={infoModal.title}
+        message={infoModal.message}
+        onConfirm={() => setInfoModal({ open: false, title: '', message: '' })}
+        onCancel={() => setInfoModal({ open: false, title: '', message: '' })}
+        confirmText="OK"
+        type="info"
+        singleButton
+      />
     </>
   );
 };

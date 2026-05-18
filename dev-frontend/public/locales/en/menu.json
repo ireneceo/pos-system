@@ -57,5 +57,18 @@
   "promotionsPage.targetAudience": "Target Audience",
   "promotionsPage.loadingCustomers": "Loading customers...",
   "promotionsPage.noCustomersFound": "No customers found",
-  "promotionsPage.description": "Description"
+  "promotionsPage.description": "Description",
+  "menuManagementPage.brandHelperTitle": "Some menus come from your brand",
+  "menuManagementPage.brandHelperLine1": "Look for the",
+  "menuManagementPage.brandHelperLine1b": "tag on a card — those are pushed from your brand. A",
+  "menuManagementPage.brandHelperLine1c": "icon shows fields that are locked by the brand and cannot be edited here.",
+  "menuManagementPage.brandHelperLine2": "You can still freely add your own restaurant-only menus with the",
+  "menuManagementPage.brandHelperLine2b": "button — non-brand menus have no tag and are fully editable.",
+  "menuManagementPage.brandHelperPendingLink": "{{count}} brand updates waiting — review",
+  "menuManagement.copyFailedTitle": "Copy Failed",
+  "menuManagement.copyFailedMessage": "Failed to copy menu item. Please try again.",
+  "menuManagement.toggleFailedTitle": "Update Failed",
+  "menuManagement.toggleFailedMessage": "Failed to toggle menu item status. Please try again.",
+  "menuManagement.setMenuRequiredTitle": "Set Menu Validation",
+  "menuManagement.setMenuRequiredMessage": "Set menu must contain at least one menu item."
 }

@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import SortDropdown, { SortKey, sortItems } from '../../components/Common/SortDropdown';
 import {
   Modal,
   ModalButton,
@@ -132,6 +133,11 @@ const ProductName = styled.h3`
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
 `;
 
 const ProductSku = styled.div`
@@ -401,6 +407,7 @@ const SupplierProductsTab: React.FC<Props> = ({
   const [optionGroups, setOptionGroups] = useState<SupplierProductOptionGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortKey, setSortKey] = useState<SortKey>('newest');
   const [appliedSearch, setAppliedSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'inactive'>('all');
@@ -796,6 +803,7 @@ const SupplierProductsTab: React.FC<Props> = ({
             <option value="active">Active Only</option>
             <option value="inactive">Inactive Only</option>
           </FilterSelect>
+          <SortDropdown value={sortKey} onChange={setSortKey} />
         </FilterBar>
         <ThemedButton onClick={() => handleOpenModal()} style={{ flexShrink: 0 }}>
           {t('products.addProduct', 'Add Product')}
@@ -826,7 +834,7 @@ const SupplierProductsTab: React.FC<Props> = ({
       ) : (
         <>
           <ProductsGrid>
-            {products.map((product) => (
+            {sortItems(products, sortKey).map((product) => (
               <ProductCard
                 key={product.id}
                 isActive={product.is_active}

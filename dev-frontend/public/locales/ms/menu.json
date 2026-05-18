@@ -57,5 +57,18 @@
   "promotionsPage.targetAudience": "Khalayak Sasaran",
   "promotionsPage.loadingCustomers": "Memuatkan pelanggan...",
   "promotionsPage.noCustomersFound": "Tidak Pelanggan found",
-  "promotionsPage.description": "Keterangan"
+  "promotionsPage.description": "Keterangan",
+  "menuManagementPage.brandHelperTitle": "Beberapa menu datang daripada jenama anda",
+  "menuManagementPage.brandHelperLine1": "Cari tag",
+  "menuManagementPage.brandHelperLine1b": "pada kad — ini ditolak daripada jenama anda. Ikon",
+  "menuManagementPage.brandHelperLine1c": "menunjukkan medan yang dikunci oleh jenama dan tidak boleh disunting di sini.",
+  "menuManagementPage.brandHelperLine2": "Anda masih boleh menambah menu khusus restoran anda dengan butang",
+  "menuManagementPage.brandHelperLine2b": "— menu bukan jenama tiada tag dan boleh disunting sepenuhnya.",
+  "menuManagementPage.brandHelperPendingLink": "{{count}} kemas kini jenama menunggu — semak",
+  "menuManagement.copyFailedTitle": "Salin Gagal",
+  "menuManagement.copyFailedMessage": "Gagal menyalin item menu. Sila cuba lagi.",
+  "menuManagement.toggleFailedTitle": "Kemas Kini Gagal",
+  "menuManagement.toggleFailedMessage": "Gagal menukar status item menu. Sila cuba lagi.",
+  "menuManagement.setMenuRequiredTitle": "Pengesahan Set Menu",
+  "menuManagement.setMenuRequiredMessage": "Set menu mesti mengandungi sekurang-kurangnya satu item menu."
 }

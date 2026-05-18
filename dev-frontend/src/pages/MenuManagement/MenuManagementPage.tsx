@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Info, Lock as LockIcon, ArrowRight } from 'lucide-react';
+import SortDropdown, { SortKey, sortItems } from '../../components/Common/SortDropdown';
 // Updated with new UI components
 import styled from 'styled-components';
 import { useMenu, MenuItem as MenuItemType, SetMenuItem } from '../../contexts/MenuContext';
 import ConfirmDialog from '../../components/Common/ConfirmDialog';
+import ConfirmModal from '../../components/ConfirmModal';
 import NumberInputModal from '../../components/Common/NumberInputModal';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 // Common UI components
@@ -25,6 +28,62 @@ import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
 // Styled Components
+const BrandMenuHelper = styled.div`
+  background: linear-gradient(135deg, #F8F7FF 0%, #FFFFFF 100%);
+  border: 1px solid #E6E3FF;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  @media (max-width: 768px) { padding: 14px; gap: 10px; }
+`;
+
+const HelperIco = styled.div`
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #F0EFFF;
+  color: #635BFF;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  svg { width: 16px; height: 16px; }
+`;
+
+const HelperTtl = styled.div`
+  font-size: 14px;
+  font-weight: 600;
+  color: #0A2540;
+  margin-bottom: 4px;
+`;
+
+const HelperBody = styled.div`
+  font-size: 12.5px;
+  color: #4B5563;
+  line-height: 1.6;
+  strong { color: #635BFF; font-weight: 600; }
+  svg.inline-lock { width: 12px; height: 12px; vertical-align: -2px; color: #635BFF; }
+`;
+
+const HelperLnk = styled.button`
+  margin-top: 8px;
+  background: transparent;
+  border: 0;
+  color: #635BFF;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  &:hover { text-decoration: underline; }
+  svg { width: 12px; height: 12px; }
+`;
+
 const Container = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background-color: #FAFBFC;
@@ -262,8 +321,10 @@ const MenuContent = styled.div`
 const MenuHeader = styled.div`
   display: flex;
   justify-content: space-between;
-  align-items: start;
+  align-items: flex-start;
+  gap: 8px;
   margin-bottom: 8px;
+  min-width: 0;
 `;
 
 const MenuName = styled.h3`
@@ -271,12 +332,24 @@ const MenuName = styled.h3`
   font-weight: 600;
   color: #0A2540;
   margin: 0;
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  line-height: 1.3;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
 `;
 
 const MenuPrice = styled.div`
   font-size: 18px;
   font-weight: 600;
   color: #635BFF;
+  white-space: nowrap;
+  flex-shrink: 0;
 `;
 
 const MenuDescription = styled.p`
@@ -284,6 +357,12 @@ const MenuDescription = styled.p`
   color: #6B7C93;
   margin: 8px 0;
   line-height: 1.4;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 `;
 
 const RecipeLink = styled.span`
@@ -771,6 +850,8 @@ const MenuManagementPage: React.FC = () => {
   const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortKey, setSortKey] = useState<SortKey>('newest');
+  const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItemType | null>(null);
@@ -931,7 +1012,10 @@ const MenuManagementPage: React.FC = () => {
     return items;
   };
 
-  const filteredItems = getFilteredItems();
+  const filteredItems = sortItems(
+    getFilteredItems().map((it: any) => ({ ...it, createdAt: it.createdAt || it.created_at })),
+    sortKey
+  );
 
   // Progressive rendering - only activate for large lists (50+ items)
   const useProgressive = filteredItems.length > PROGRESSIVE_THRESHOLD;
@@ -1123,11 +1207,11 @@ const MenuManagementPage: React.FC = () => {
         // Reload menu to get the new item
         window.location.reload();
       } else {
-        alert(data.error || 'Failed to copy menu item');
+        setInfoModal({ open: true, title: t('menu:menuManagement.copyFailedTitle', 'Copy Failed'), message: data.error || t('menu:menuManagement.copyFailedMessage', 'Failed to copy menu item.') });
       }
     } catch (error) {
       console.error('Error copying menu item:', error);
-      alert('Failed to copy menu item');
+      setInfoModal({ open: true, title: t('menu:menuManagement.copyFailedTitle', 'Copy Failed'), message: t('menu:menuManagement.copyFailedMessage', 'Failed to copy menu item.') });
     }
   };
 
@@ -1152,11 +1236,11 @@ const MenuManagementPage: React.FC = () => {
         // Update local state
         updateMenuItem({ ...item, is_active: data.data.is_active });
       } else {
-        alert(data.error || 'Failed to toggle menu item status');
+        setInfoModal({ open: true, title: t('menu:menuManagement.toggleFailedTitle', 'Update Failed'), message: data.error || t('menu:menuManagement.toggleFailedMessage', 'Failed to toggle menu item status.') });
       }
     } catch (error) {
       console.error('Error toggling menu item status:', error);
-      alert('Failed to toggle menu item status');
+      setInfoModal({ open: true, title: t('menu:menuManagement.toggleFailedTitle', 'Update Failed'), message: t('menu:menuManagement.toggleFailedMessage', 'Failed to toggle menu item status.') });
     }
   };
 
@@ -1188,7 +1272,7 @@ const MenuManagementPage: React.FC = () => {
 
   const handleSaveSetMenu = () => {
     if (setMenuItems.length === 0) {
-      alert('Set menu must contain at least one menu item.');
+      setInfoModal({ open: true, title: t('menu:menuManagement.setMenuRequiredTitle', 'Set Menu Validation'), message: t('menu:menuManagement.setMenuRequiredMessage', 'Set menu must contain at least one menu item.') });
       return;
     }
 
@@ -1259,6 +1343,28 @@ const MenuManagementPage: React.FC = () => {
         </Header>
 
         <Content>
+          {menuItems.some(m => m.brand_menu_id) && (() => {
+            const brandPendingCount = menuItems.filter(m => m.brand_menu_id && m.brand_menu_status === 'pending_update').length;
+            const restaurantId = window.location.pathname.split('/')[2];
+            return (
+              <BrandMenuHelper>
+                <HelperIco><Info /></HelperIco>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <HelperTtl>{t('menu:menuManagementPage.brandHelperTitle', 'Some menus come from your brand')}</HelperTtl>
+                  <HelperBody>
+                    {t('menu:menuManagementPage.brandHelperLine1', 'Look for the')} <strong>BRAND</strong> {t('menu:menuManagementPage.brandHelperLine1b', 'tag on a card — those are pushed from your brand. A')} <LockIcon className="inline-lock" /> {t('menu:menuManagementPage.brandHelperLine1c', 'icon shows fields that are locked by the brand and cannot be edited here.')}
+                    <br />
+                    {t('menu:menuManagementPage.brandHelperLine2', 'You can still freely add your own restaurant-only menus with the')} <strong>{t('menu:menuManagementPage.addNewItem', '+ Add New Item')}</strong> {t('menu:menuManagementPage.brandHelperLine2b', 'button — non-brand menus have no tag and are fully editable.')}
+                  </HelperBody>
+                  {brandPendingCount > 0 && (
+                    <HelperLnk type="button" onClick={() => navigate(`/restaurant/${restaurantId}/brand-menu-updates`)}>
+                      {t('menu:menuManagementPage.brandHelperPendingLink', { count: brandPendingCount, defaultValue: `${brandPendingCount} brand updates waiting — review` })} <ArrowRight />
+                    </HelperLnk>
+                  )}
+                </div>
+              </BrandMenuHelper>
+            );
+          })()}
           <SearchSection>
             <SearchInputContainer>
               <SearchIcon>🔍</SearchIcon>
@@ -1277,6 +1383,7 @@ const MenuManagementPage: React.FC = () => {
                 </ClearSearchBtn>
               )}
             </SearchInputContainer>
+            <SortDropdown value={sortKey} onChange={setSortKey} />
           </SearchSection>
 
           {searchQuery && filteredItems.length > 0 && (
@@ -1609,7 +1716,7 @@ const MenuManagementPage: React.FC = () => {
                     if (ing) setDirectIngredients(prev => [...prev, { ingredient_id: ing.id, name: ing.name, quantity: 1, unit: ing.unit, unit_cost: Number(ing.unit_cost || 0) }]);
                   }
                 }}
-                placeholder="+ Add ingredient..."
+                placeholder="Add ingredient..."
                 allowClear={false}
                 noOptionsMessage="No ingredients available"
               />
@@ -1830,7 +1937,7 @@ const MenuManagementPage: React.FC = () => {
                     if (ing) setDirectIngredients(prev => [...prev, { ingredient_id: ing.id, name: ing.name, quantity: 1, unit: ing.unit, unit_cost: Number(ing.unit_cost || 0) }]);
                   }
                 }}
-                placeholder="+ Add ingredient..."
+                placeholder="Add ingredient..."
                 allowClear={false}
                 noOptionsMessage="No ingredients available"
               />
@@ -2138,6 +2245,16 @@ const MenuManagementPage: React.FC = () => {
           suffix=" RM"
           confirmText="Update Price"
           cancelText="Cancel"
+        />
+        <ConfirmModal
+          isOpen={infoModal.open}
+          title={infoModal.title}
+          message={infoModal.message}
+          onConfirm={() => setInfoModal({ open: false, title: '', message: '' })}
+          onCancel={() => setInfoModal({ open: false, title: '', message: '' })}
+          confirmText={t('common:ok', 'OK')}
+          type="info"
+          singleButton
         />
       </Container>
     </>

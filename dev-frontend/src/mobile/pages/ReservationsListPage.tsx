@@ -52,7 +52,7 @@ export default function ReservationsListPage() {
     <MobileLayout title="My Reservations" showBack onBack={() => navigate(`/mobile/${slug}`)} currentPage="reserve">
       <Inner>
         {list.length > 0 && (
-          <BookCta onClick={() => navigate(`/mobile/${slug}/reservation`)}>+ New Reservation</BookCta>
+          <BookCta onClick={() => navigate(`/mobile/${slug}/reservation`)}>New Reservation</BookCta>
         )}
         {loading ? <Empty>Loading…</Empty> :
          list.length === 0 ? (

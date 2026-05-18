@@ -7,6 +7,7 @@ import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import CustomerModal from '../../components/Customer/CustomerModal';
 import Modal, { ModalButton } from '../../components/UI/Modal';
+import ConfirmModal from '../../components/ConfirmModal';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
 import { formatPhoneForDisplay } from '../../utils/phoneUtils';
@@ -378,6 +379,7 @@ const CustomersPage: React.FC = () => {
   const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -486,11 +488,11 @@ const CustomersPage: React.FC = () => {
         // 성공 시 Context에서 고객 제거 (CustomerContext refresh 필요)
         window.location.reload(); // 임시로 리로드, 나중에 Context 업데이트 함수로 대체 가능
       } else {
-        alert(data.message || 'Failed to delete customer');
+        setInfoModal({ open: true, title: t('customers:customersPage.deleteFailedTitle', 'Delete Failed'), message: data.message || t('customers:customersPage.deleteFailedMessage', 'Failed to delete customer.') });
       }
     } catch (error) {
       console.error('Delete customer error:', error);
-      alert('Failed to delete customer');
+      setInfoModal({ open: true, title: t('customers:customersPage.deleteFailedTitle', 'Delete Failed'), message: t('customers:customersPage.deleteFailedMessage', 'Failed to delete customer.') });
     } finally {
       setIsDeleting(false);
       setShowDeleteModal(false);
@@ -946,7 +948,18 @@ const CustomersPage: React.FC = () => {
           </div>
         </Modal>
       </CustomersContainer>
-      
+
+      <ConfirmModal
+        isOpen={infoModal.open}
+        title={infoModal.title}
+        message={infoModal.message}
+        onConfirm={() => setInfoModal({ open: false, title: '', message: '' })}
+        onCancel={() => setInfoModal({ open: false, title: '', message: '' })}
+        confirmText={t('common:ok', 'OK')}
+        type="info"
+        singleButton
+      />
+
       <style>{`
         @media (max-width: 768px) {
           .desktop-only { display: none !important; }

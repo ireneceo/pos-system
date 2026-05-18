@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import ConfirmModal from '../../components/ConfirmModal';
 import { useParams } from 'react-router-dom';
 import styled from 'styled-components';
 import {
@@ -110,6 +111,11 @@ const ProductName = styled.div`
   font-weight: 600;
   color: #0A2540;
   margin-bottom: 4px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
 `;
 
 const ProductMeta = styled.div`
@@ -178,6 +184,7 @@ const ProductRecipePage: React.FC = () => {
   const { restaurantId: urlRestaurantId } = useParams<{ restaurantId: string }>();
   const { defaultCurrency } = useBrandCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
+  const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState<ProductRecipeStatus[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -306,15 +313,15 @@ const ProductRecipePage: React.FC = () => {
       });
 
       if (response.success) {
-        alert(selectedRecipeId ? 'Recipe linked successfully' : 'Recipe unlinked successfully');
+        setInfoModal({ open: true, title: selectedRecipeId ? 'Recipe Linked' : 'Recipe Unlinked', message: selectedRecipeId ? 'Recipe linked successfully.' : 'Recipe unlinked successfully.' });
         setShowLinkModal(false);
         fetchData();
       } else {
-        alert(response.message || 'Failed to update recipe link');
+        setInfoModal({ open: true, title: 'Update Failed', message: response.message || 'Failed to update recipe link.' });
       }
     } catch (error) {
       console.error('Failed to link recipe:', error);
-      alert('Failed to update recipe link');
+      setInfoModal({ open: true, title: 'Update Failed', message: 'Failed to update recipe link.' });
     } finally {
       setSaving(false);
     }
@@ -370,11 +377,11 @@ const ProductRecipePage: React.FC = () => {
         });
 
         if (response.success) {
-          alert('Recipe updated successfully');
+          setInfoModal({ open: true, title: 'Recipe Updated', message: 'Recipe updated successfully.' });
           setShowRecipeModal(false);
           fetchData();
         } else {
-          alert(response.message || 'Failed to update recipe');
+          setInfoModal({ open: true, title: 'Update Failed', message: response.message || 'Failed to update recipe.' });
         }
       } else {
         // Create new recipe and link
@@ -392,16 +399,16 @@ const ProductRecipePage: React.FC = () => {
         });
 
         if (response.success) {
-          alert('Recipe created and linked successfully');
+          setInfoModal({ open: true, title: 'Recipe Created', message: 'Recipe created and linked successfully.' });
           setShowRecipeModal(false);
           fetchData();
         } else {
-          alert(response.message || 'Failed to create recipe');
+          setInfoModal({ open: true, title: 'Create Failed', message: response.message || 'Failed to create recipe.' });
         }
       }
     } catch (error) {
       console.error('Failed to save recipe:', error);
-      alert('Failed to save recipe');
+      setInfoModal({ open: true, title: 'Save Failed', message: 'Failed to save recipe.' });
     } finally {
       setSaving(false);
     }
@@ -708,6 +715,16 @@ const ProductRecipePage: React.FC = () => {
           </>
         )}
       </Modal>
+      <ConfirmModal
+        isOpen={infoModal.open}
+        title={infoModal.title}
+        message={infoModal.message}
+        onConfirm={() => setInfoModal({ open: false, title: '', message: '' })}
+        onCancel={() => setInfoModal({ open: false, title: '', message: '' })}
+        confirmText="OK"
+        type="info"
+        singleButton
+      />
     </>
   );
 };

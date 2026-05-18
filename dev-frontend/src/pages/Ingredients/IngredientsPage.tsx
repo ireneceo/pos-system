@@ -15,6 +15,7 @@ import {
   Content
 } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import SortDropdown, { SortKey, sortItems } from '../../components/Common/SortDropdown';
 import { useAuth } from '../../contexts/AuthContext';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormRow as UIFormRow } from '../../components/UI/Modal';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
@@ -52,6 +53,8 @@ const IngredientCard = styled.div<{ isActive?: boolean }>`
   transition: all 0.2s;
   opacity: ${props => props.isActive ? 1 : 0.6};
   cursor: pointer;
+  display: flex;
+  flex-direction: column;
 
   &:hover {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
@@ -72,6 +75,11 @@ const IngredientName = styled.h3`
   font-weight: 600;
   color: #0A2540;
   margin-bottom: 4px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
 `;
 
 const IngredientCategory = styled.div`
@@ -116,7 +124,8 @@ const InfoValue = styled.span`
 const IngredientActions = styled.div`
   display: flex;
   gap: 8px;
-  margin-top: 16px;
+  margin-top: auto;
+  padding-top: 16px;
 `;
 
 const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
@@ -182,6 +191,7 @@ const IngredientsPage: React.FC = () => {
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortKey, setSortKey] = useState<SortKey>('newest');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedIngredient, setSelectedIngredient] = useState<Ingredient | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -375,11 +385,11 @@ const IngredientsPage: React.FC = () => {
     }
   };
 
-  const filteredIngredients = ingredients.filter(ingredient => {
+  const filteredIngredients = sortItems(ingredients.filter(ingredient => {
     const matchesSearch = ingredient.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || ingredient.category === selectedCategory;
     return matchesSearch && matchesCategory;
-  });
+  }), sortKey);
 
   const categories = ['all', ...Array.from(new Set(ingredients.map(i => i.category)))];
   const activeIngredients = ingredients.filter(i => i.is_active).length;
@@ -448,6 +458,7 @@ const IngredientsPage: React.FC = () => {
               </option>
             ))}
           </FilterSelect>
+          <SortDropdown value={sortKey} onChange={setSortKey} />
         </FilterBar>
 
         <Content>

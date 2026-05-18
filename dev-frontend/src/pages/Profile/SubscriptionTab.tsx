@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
+import { Check } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Modal, ModalButton } from '../../components/UI/Modal';
 import { formatCurrency } from '../../utils/currency';
@@ -468,6 +469,10 @@ const CheckItem = styled.div`
   font-size: 13px;
   color: #059669;
   padding: 3px 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  svg { flex-shrink: 0; margin-top: 2px; }
 `;
 
 const WarningItem = styled.div`
@@ -912,9 +917,9 @@ const SubscriptionTab: React.FC = () => {
             <>
               <p style={{ color: '#6B7280', fontSize: '14px' }}>You're currently on a free trial ({current.plan_type}).</p>
               <SummaryBox>
-                <CheckItem>✓ {selectedPlan.display_name} features available immediately</CheckItem>
-                <CheckItem>✓ No charge during your trial period</CheckItem>
-                <CheckItem>✓ First invoice ({formatCurrency(getEffectivePrice(selectedPlan, selectedCycle), current.currency)}/{selectedCycle === 'annual' ? 'year' : 'month'}) after trial ends on {formatDate(current.subscription_end)}</CheckItem>
+                <CheckItem><Check size={14} />{selectedPlan.display_name} features available immediately</CheckItem>
+                <CheckItem><Check size={14} />No charge during your trial period</CheckItem>
+                <CheckItem><Check size={14} />First invoice ({formatCurrency(getEffectivePrice(selectedPlan, selectedCycle), current.currency)}/{selectedCycle === 'annual' ? 'year' : 'month'}) after trial ends on {formatDate(current.subscription_end)}</CheckItem>
               </SummaryBox>
             </>
           ) : (
@@ -951,9 +956,9 @@ const SubscriptionTab: React.FC = () => {
                   </>
                 )}
               </SummaryBox>
-              <CheckItem>✓ New features available immediately</CheckItem>
-              <CheckItem>✓ Invoice due by {formatDate(current.next_billing_date)} (next billing date)</CheckItem>
-              <CheckItem>✓ Next regular billing: {formatDate(current.next_billing_date)} at {formatCurrency(getEffectivePrice(selectedPlan, selectedCycle), current.currency)}/{selectedCycle === 'annual' ? 'yr' : 'mo'}</CheckItem>
+              <CheckItem><Check size={14} />New features available immediately</CheckItem>
+              <CheckItem><Check size={14} />Invoice due by {formatDate(current.next_billing_date)} (next billing date)</CheckItem>
+              <CheckItem><Check size={14} />Next regular billing: {formatDate(current.next_billing_date)} at {formatCurrency(getEffectivePrice(selectedPlan, selectedCycle), current.currency)}/{selectedCycle === 'annual' ? 'yr' : 'mo'}</CheckItem>
             </>
           )}
           {formError && (
@@ -1094,8 +1099,8 @@ const SubscriptionTab: React.FC = () => {
       >
         {changeResult?.change_type === 'upgrade' ? (
           <>
-            <CheckItem>✓ Plan upgraded to {changeResult.new_plan}</CheckItem>
-            <CheckItem>✓ New features are now available</CheckItem>
+            <CheckItem><Check size={14} />Plan upgraded to {changeResult.new_plan}</CheckItem>
+            <CheckItem><Check size={14} />New features are now available</CheckItem>
             {changeResult.proration_invoice && (
               <div style={{ marginTop: '12px', padding: '12px 16px', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '8px', fontSize: '13px', color: '#1E40AF' }}>
                 A prorated invoice of {formatCurrency(changeResult.proration_invoice.amount, data.current.currency)} has been created (due by {formatDate(changeResult.proration_invoice.due_date)}).
@@ -1104,7 +1109,7 @@ const SubscriptionTab: React.FC = () => {
           </>
         ) : (
           <>
-            <CheckItem>✓ {changeResult?.message}</CheckItem>
+            <CheckItem><Check size={14} />{changeResult?.message}</CheckItem>
             <div style={{ marginTop: '8px', fontSize: '13px', color: '#6B7280' }}>
               Your current features remain available until the change takes effect.
             </div>

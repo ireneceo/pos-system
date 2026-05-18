@@ -9,17 +9,17 @@ Supplier.init({
     primaryKey: true,
     autoIncrement: true
   },
-  // Owner type (brand or restaurant)
+  // Owner type (brand, restaurant, or foodcourt)
   owner_type: {
-    type: DataTypes.ENUM('brand', 'restaurant'),
+    type: DataTypes.ENUM('brand', 'restaurant', 'foodcourt'),
     allowNull: false,
     defaultValue: 'restaurant',
-    comment: 'Owner type: brand (BG-shared) or restaurant (location-specific)'
+    comment: 'Owner type: brand (BG-shared) / restaurant (location-specific) / foodcourt (FG-shared)'
   },
   owner_user_id: {
     type: DataTypes.INTEGER,
     allowNull: true,
-    comment: 'Brand General user id — scope owner for owner_type=brand'
+    comment: 'Brand/Foodcourt General user id — scope owner for owner_type=brand or foodcourt'
   },
   // Owner
   brand_id: {
@@ -29,6 +29,11 @@ Supplier.init({
   restaurant_id: {
     type: DataTypes.INTEGER,
     allowNull: true
+  },
+  foodcourt_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Foodcourt id for owner_type=foodcourt (kept for indexability; main scope via owner_user_id)'
   },
   // Category
   supplier_category_id: {

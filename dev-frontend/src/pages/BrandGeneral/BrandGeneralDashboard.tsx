@@ -35,14 +35,20 @@ const Header = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
 
   @media (max-width: 768px) {
-    padding: 16px;
+    padding: 12px 16px;
     height: auto;
     min-height: 56px;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
+    max-height: none;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    & > h1 { flex: 1; min-width: 0; }
   }
 `;
 
@@ -52,7 +58,7 @@ const Content = styled.div`
   min-height: calc(100vh - 120px);
 
   @media (max-width: 768px) {
-    padding: 20px;
+    padding: 16px;
   }
 `;
 
@@ -75,6 +81,12 @@ const Subtitle = styled.div`
   font-size: 14px;
   color: #6B7C93;
   margin-top: 4px;
+  flex-wrap: wrap;
+  @media (max-width: 768px) {
+    width: 100%;
+    margin-top: 0;
+    font-size: 12.5px;
+  }
 `;
 
 const SubscriptionBadge = styled.span<{ variant: 'trial' | 'active' | 'expiring' | 'expired' }>`

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import ConfirmModal from '../../components/ConfirmModal';
 import styled from 'styled-components';
+import { Carrot, UtensilsCrossed } from 'lucide-react';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { useAuth } from '../../contexts/AuthContext';
@@ -406,11 +408,11 @@ const CategoriesTab: React.FC<CategoriesTabProps> = ({ brandId, restaurantId, on
         handleCloseModal();
         fetchCategories();
       } else {
-        alert(data.error || 'Failed to save');
+        setInfoModal({ open: true, title: 'Save Failed', message: data.error || 'Failed to save. Please try again.' });
       }
     } catch (error) {
       console.error('Failed to save category:', error);
-      alert('Failed to save');
+      setInfoModal({ open: true, title: 'Save Failed', message: 'Failed to save. Please try again.' });
     }
   };
 
@@ -448,11 +450,11 @@ const CategoriesTab: React.FC<CategoriesTabProps> = ({ brandId, restaurantId, on
         setCategoryToDelete(null);
         fetchCategories();
       } else {
-        alert(data.error || 'Failed to delete');
+        setInfoModal({ open: true, title: 'Delete Failed', message: data.error || 'Failed to delete. Please try again.' });
       }
     } catch (error) {
       console.error('Failed to delete category:', error);
-      alert('Failed to delete');
+      setInfoModal({ open: true, title: 'Delete Failed', message: 'Failed to delete. Please try again.' });
     }
   };
 
@@ -512,7 +514,7 @@ const CategoriesTab: React.FC<CategoriesTabProps> = ({ brandId, restaurantId, on
             disableDown={index === categories.length - 1}
           />
         )}
-        <CategoryIcon>{category.emoji || '🍽️'}</CategoryIcon>
+        <CategoryIcon>{category.emoji || <UtensilsCrossed size={20} />}</CategoryIcon>
         <CategoryInfo>
           <CategoryName>
             {category.name}
@@ -614,7 +616,7 @@ const CategoriesTab: React.FC<CategoriesTabProps> = ({ brandId, restaurantId, on
 
       {ingredientCategories.length === 0 ? (
         <EmptyState>
-          <EmptyIcon>🥕</EmptyIcon>
+          <EmptyIcon><Carrot size={32} /></EmptyIcon>
           <EmptyTitle>{t('recipes:categoriesTab.noIngredientCategoriesYet')}</EmptyTitle>
           <EmptyDescription>
             Create categories to organize your ingredients
@@ -698,6 +700,16 @@ const CategoriesTab: React.FC<CategoriesTabProps> = ({ brandId, restaurantId, on
         confirmText="Delete"
         cancelText="Cancel"
         variant="danger"
+      />
+      <ConfirmModal
+        isOpen={infoModal.open}
+        title={infoModal.title}
+        message={infoModal.message}
+        onConfirm={() => setInfoModal({ open: false, title: '', message: '' })}
+        onCancel={() => setInfoModal({ open: false, title: '', message: '' })}
+        confirmText="OK"
+        type="info"
+        singleButton
       />
     </Container>
   );

@@ -37,6 +37,65 @@ async function assertBrandOwnership(req, brandId) {
   return brand.owner_id === req.bgOwnerId;
 }
 
+// ──────────────────────────────────────────────────────────────────────────
+// Brand-level menu defaults (Settings tab) — must come BEFORE /:id routes
+// so the literal "/settings" path is not interpreted as :id.
+// ──────────────────────────────────────────────────────────────────────────
+const DEFAULT_MENU_SETTINGS = {
+  default_distribution_mode: 'manual',
+  default_locks: { name: false, price: false, category: false, image: false, options: false },
+  default_push_target: 'all'
+};
+
+function mergeMenuSettings(stored) {
+  const s = stored || {};
+  return {
+    default_distribution_mode: s.default_distribution_mode === 'auto' ? 'auto' : 'manual',
+    default_locks: {
+      name: !!(s.default_locks?.name),
+      price: !!(s.default_locks?.price),
+      category: !!(s.default_locks?.category),
+      image: !!(s.default_locks?.image),
+      options: !!(s.default_locks?.options)
+    },
+    default_push_target: s.default_push_target === 'selected' ? 'selected' : 'all'
+  };
+}
+
+router.get('/settings', authenticateToken, requireBGScope, async (req, res) => {
+  try {
+    const brandId = parseInt(req.query.brand_id, 10);
+    if (!brandId) return res.status(400).json({ success: false, message: 'brand_id required' });
+    if (!(await assertBrandOwnership(req, brandId))) {
+      return res.status(403).json({ success: false, message: 'Brand not owned' });
+    }
+    const brand = await Brand.findByPk(brandId, { attributes: ['id', 'menu_settings'] });
+    if (!brand) return res.status(404).json({ success: false, message: 'Brand not found' });
+    res.json({ success: true, data: mergeMenuSettings(brand.menu_settings) });
+  } catch (e) {
+    console.error('[brand-menus] settings GET error:', e);
+    res.status(500).json({ success: false, message: 'Failed to fetch settings' });
+  }
+});
+
+router.put('/settings', authenticateToken, requireBGScope, async (req, res) => {
+  try {
+    const brandId = parseInt(req.body.brand_id, 10);
+    if (!brandId) return res.status(400).json({ success: false, message: 'brand_id required' });
+    if (!(await assertBrandOwnership(req, brandId))) {
+      return res.status(403).json({ success: false, message: 'Brand not owned' });
+    }
+    const brand = await Brand.findByPk(brandId);
+    if (!brand) return res.status(404).json({ success: false, message: 'Brand not found' });
+    const merged = mergeMenuSettings(req.body.settings);
+    await brand.update({ menu_settings: merged });
+    res.json({ success: true, data: merged });
+  } catch (e) {
+    console.error('[brand-menus] settings PUT error:', e);
+    res.status(500).json({ success: false, message: 'Failed to save settings' });
+  }
+});
+
 async function loadMenuWithIncludes(id) {
   return BrandMenu.findByPk(id, {
     include: [
@@ -142,6 +201,17 @@ router.post('/', authenticateToken, requireBGScope, async (req, res) => {
       return res.status(403).json({ success: false, message: 'Brand not owned' });
     }
 
+    // Apply brand-level menu_settings defaults for any unspecified field.
+    // Client may omit distribution_mode / lock_* on create — the brand's Settings tab
+    // values fill in. Explicit per-menu values always win over brand defaults.
+    const brand = await Brand.findByPk(brand_id, { attributes: ['menu_settings'], transaction: t });
+    const defaults = mergeMenuSettings(brand?.menu_settings);
+    const resolvedDistribution = distribution_mode === 'auto' || distribution_mode === 'manual'
+      ? distribution_mode
+      : defaults.default_distribution_mode;
+    const resolvedLock = (explicit, key) =>
+      explicit === true || explicit === false ? explicit : defaults.default_locks[key];
+
     // base64 image → file
     const normalizedImage = await normalizeImageField(image_url, {
       subdir: 'brand-menus',
@@ -157,9 +227,12 @@ router.post('/', authenticateToken, requireBGScope, async (req, res) => {
       recommended_price: recommended_price || 0, currency: currency || 'MYR',
       is_active: is_active !== false, sort_order: sort_order || 0,
       version: 1,
-      distribution_mode: distribution_mode === 'auto' ? 'auto' : 'manual',
-      lock_name: !!lock_name, lock_price: !!lock_price, lock_category: !!lock_category,
-      lock_image: !!lock_image, lock_options: !!lock_options
+      distribution_mode: resolvedDistribution,
+      lock_name: resolvedLock(lock_name, 'name'),
+      lock_price: resolvedLock(lock_price, 'price'),
+      lock_category: resolvedLock(lock_category, 'category'),
+      lock_image: resolvedLock(lock_image, 'image'),
+      lock_options: resolvedLock(lock_options, 'options')
     }, { transaction: t });
 
     // Option group links
@@ -393,3 +466,5 @@ router.get('/:id/distribution', authenticateToken, requireBGScope, async (req, r
 });
 
 module.exports = router;
+module.exports.DEFAULT_MENU_SETTINGS = DEFAULT_MENU_SETTINGS;
+module.exports.mergeMenuSettings = mergeMenuSettings;

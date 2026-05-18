@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { FilterBar, SearchInput } from '../../components/Common/FilterComponents';
+import SortDropdown, { SortKey, sortItems } from '../../components/Common/SortDropdown';
 import { Modal } from '../../components/UI/Modal';
 
 import { getAuthToken } from '../../utils/auth';
@@ -261,6 +262,7 @@ const BrandProductOptionsTab: React.FC<Props> = ({ onCountChange }) => {
   const [optionGroups, setOptionGroups] = useState<OptionGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortKey, setSortKey] = useState<SortKey>('newest');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<OptionGroup | null>(null);
@@ -416,9 +418,9 @@ const BrandProductOptionsTab: React.FC<Props> = ({ onCountChange }) => {
     }
   };
 
-  const filteredGroups = optionGroups.filter(group =>
+  const filteredGroups = sortItems(optionGroups.filter(group =>
     group.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  ), sortKey);
 
   if (loading) {
     return <div style={{ padding: '40px', textAlign: 'center', color: '#6B7280' }}>{'Loading...'}</div>;
@@ -436,6 +438,7 @@ const BrandProductOptionsTab: React.FC<Props> = ({ onCountChange }) => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
+          <SortDropdown value={sortKey} onChange={setSortKey} options={['newest','oldest','name_asc','name_desc']} />
         </FilterBar>
         <ThemedButton onClick={() => handleOpenModal()} style={{ flexShrink: 0 }}>
           Add Option Group

@@ -12,6 +12,8 @@ interface ConfirmModalProps {
   confirmText?: string;
   cancelText?: string;
   type?: 'danger' | 'warning' | 'info';
+  // Information-only mode — hides the cancel button (single primary button only).
+  singleButton?: boolean;
 }
 
 const Modal = styled.div`
@@ -108,7 +110,8 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   onCancel,
   confirmText = 'Confirm',
   cancelText = 'Cancel',
-  type = 'warning'
+  type = 'warning',
+  singleButton = false
 }) => {
   const handleOverlayClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
@@ -127,9 +130,11 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
         </Header>
 
         <Footer>
-          <Button variant="secondary" onClick={onCancel}>
-            {cancelText}
-          </Button>
+          {!singleButton && (
+            <Button variant="secondary" onClick={onCancel}>
+              {cancelText}
+            </Button>
+          )}
           <Button variant="primary" type={type} onClick={onConfirm}>
             {confirmText}
           </Button>

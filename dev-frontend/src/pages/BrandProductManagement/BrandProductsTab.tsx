@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import SortDropdown, { SortKey, sortItems } from '../../components/Common/SortDropdown';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormTextArea } from '../../components/UI/Modal';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import ConfirmModal from '../../components/ConfirmModal';
@@ -131,6 +132,11 @@ const ProductName = styled.h3`
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
 `;
 
 const ProductSku = styled.div`
@@ -352,12 +358,14 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
   const [productRecipes, setProductRecipes] = useState<ProductRecipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortKey, setSortKey] = useState<SortKey>('newest');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [brandFilter, setBrandFilter] = useState('all');
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
 
   const [formData, setFormData] = useState({
     name: '',
@@ -375,9 +383,12 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
     set_items: [] as SetMenuItem[],
     set_display_order: '0',
     product_recipe_id: null as number | null,
+    distribution_mode: 'specific_brands' as 'all' | 'specific_brands' | 'specific_restaurants',
     brand_ids: [] as number[],
+    restaurant_ids: [] as number[],
     option_group_ids: [] as number[]
   });
+  const [restaurants, setRestaurants] = useState<Array<{ id: number; name: string; brand_name?: string }>>([]);
   const [setMenuSearchQuery, setSetMenuSearchQuery] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -475,6 +486,15 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
           setProductIngredientsList((piData.data || piData || []).map((pi: any) => ({ id: pi.id, name: pi.name, unit: pi.unit, unit_cost: Number(pi.unit_cost || 0) })));
         }
       } catch (e) { console.error('Failed to fetch product ingredients:', e); }
+      // Fetch restaurants of BG's brands (for specific_restaurants distribution)
+      try {
+        const token = getAuthToken();
+        const restRes = await fetch('/api/brand-products/restaurants', { headers: { 'Authorization': `Bearer ${token}` } });
+        if (restRes.ok) {
+          const rd = await restRes.json();
+          setRestaurants(rd.data || []);
+        }
+      } catch (e) { console.error('Failed to fetch restaurants:', e); }
       setLoading(false);
     };
     loadData();
@@ -511,7 +531,9 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         set_items: product.set_items || [],
         set_display_order: (product.set_display_order || 0).toString(),
         product_recipe_id: (product.product_recipe_id && product.productRecipe?.name?.endsWith('(auto)')) ? null : (product.product_recipe_id || null),
+        distribution_mode: (product as any).distribution_mode || 'specific_brands',
         brand_ids: product.brands?.map(b => b.id) || [],
+        restaurant_ids: (product as any).restaurants?.map((r: any) => r.id) || [],
         option_group_ids: product.optionGroups?.map(og => og.id) || []
       });
       // Load directIngredients from auto recipe
@@ -552,7 +574,9 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         set_items: [],
         set_display_order: '0',
         product_recipe_id: null,
+        distribution_mode: 'specific_brands',
         brand_ids: [],
+        restaurant_ids: [],
         option_group_ids: []
       });
       setDirectIngredients([]);
@@ -613,7 +637,9 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
           set_items: formData.is_set_menu ? formData.set_items : null,
           set_display_order: parseInt(formData.set_display_order) || 0,
           product_recipe_id: formData.product_recipe_id,
-          brand_ids: formData.brand_ids,
+          distribution_mode: formData.distribution_mode,
+          brand_ids: formData.distribution_mode === 'specific_brands' ? formData.brand_ids : [],
+          restaurant_ids: formData.distribution_mode === 'specific_restaurants' ? formData.restaurant_ids : [],
           option_group_ids: formData.option_group_ids,
           directIngredients: !formData.product_recipe_id ? directIngredients : undefined
         })
@@ -735,11 +761,11 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         setProductToDelete(null);
         fetchProducts();
       } else {
-        alert(data.error || 'Failed to delete product');
+        setInfoModal({ open: true, title: t('brand:brandProductsTab.deleteFailedTitle', 'Delete Failed'), message: data.error || t('brand:brandProductsTab.deleteFailedMessage', 'Failed to delete product.') });
       }
     } catch (error) {
       console.error('Failed to delete product:', error);
-      alert('Failed to delete product');
+      setInfoModal({ open: true, title: t('brand:brandProductsTab.deleteFailedTitle', 'Delete Failed'), message: t('brand:brandProductsTab.deleteFailedMessage', 'Failed to delete product.') });
     }
   };
 
@@ -762,13 +788,13 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
   };
 
   // Filter products
-  const filteredProducts = products.filter(product => {
+  const filteredProducts = sortItems(products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesCategory = categoryFilter === 'all' || product.category_id?.toString() === categoryFilter;
     const matchesBrand = brandFilter === 'all' || product.brands?.some(b => b.id.toString() === brandFilter);
     return matchesSearch && matchesCategory && matchesBrand;
-  });
+  }), sortKey);
 
   if (loading) {
     return (
@@ -810,6 +836,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
               </option>
             ))}
           </FilterSelect>
+          <SortDropdown value={sortKey} onChange={setSortKey} />
         </FilterBar>
         <ThemedButton onClick={() => handleOpenModal()} style={{ flexShrink: 0 }}>
           {t('productsTab.addProduct')}
@@ -1094,20 +1121,84 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
             )}
 
             <UIFormGroup>
-              <FormLabel>{'Linked Brands'}</FormLabel>
-              <CheckboxGroup>
-                {brands.map(brand => (
-                  <CheckboxItem key={brand.id}>
-                    <input
-                      type="checkbox"
-                      checked={formData.brand_ids.includes(brand.id)}
-                      onChange={() => handleBrandToggle(brand.id)}
-                    />
-                    <span>{brand.name}</span>
-                  </CheckboxItem>
-                ))}
-              </CheckboxGroup>
+              <FormLabel>{'판매 범위 (Distribution)'}</FormLabel>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '8px 0' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                  <input
+                    type="radio"
+                    name="distmode"
+                    checked={formData.distribution_mode === 'all'}
+                    onChange={() => setFormData(prev => ({ ...prev, distribution_mode: 'all' }))}
+                  />
+                  <span><strong>전체 가맹점</strong> — 내 모든 브랜드의 모든 가맹점에 자동 노출</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                  <input
+                    type="radio"
+                    name="distmode"
+                    checked={formData.distribution_mode === 'specific_brands'}
+                    onChange={() => setFormData(prev => ({ ...prev, distribution_mode: 'specific_brands' }))}
+                  />
+                  <span><strong>특정 브랜드만</strong> — 선택한 브랜드의 모든 가맹점</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                  <input
+                    type="radio"
+                    name="distmode"
+                    checked={formData.distribution_mode === 'specific_restaurants'}
+                    onChange={() => setFormData(prev => ({ ...prev, distribution_mode: 'specific_restaurants' }))}
+                  />
+                  <span><strong>특정 지점만</strong> — 선택한 가맹점만 발주 가능</span>
+                </label>
+              </div>
             </UIFormGroup>
+
+            {formData.distribution_mode === 'specific_brands' && (
+              <UIFormGroup>
+                <FormLabel>{'대상 브랜드'}</FormLabel>
+                <CheckboxGroup>
+                  {brands.map(brand => (
+                    <CheckboxItem key={brand.id}>
+                      <input
+                        type="checkbox"
+                        checked={formData.brand_ids.includes(brand.id)}
+                        onChange={() => handleBrandToggle(brand.id)}
+                      />
+                      <span>{brand.name}</span>
+                    </CheckboxItem>
+                  ))}
+                </CheckboxGroup>
+              </UIFormGroup>
+            )}
+
+            {formData.distribution_mode === 'specific_restaurants' && (
+              <UIFormGroup>
+                <FormLabel>{'대상 가맹점'}</FormLabel>
+                {restaurants.length === 0 ? (
+                  <div style={{ padding: 12, background: '#F9FAFB', borderRadius: 8, color: '#6B7280', fontSize: 13 }}>
+                    No restaurants available.
+                  </div>
+                ) : (
+                  <CheckboxGroup>
+                    {restaurants.map(r => (
+                      <CheckboxItem key={r.id}>
+                        <input
+                          type="checkbox"
+                          checked={(formData.restaurant_ids || []).includes(r.id)}
+                          onChange={() => setFormData(prev => ({
+                            ...prev,
+                            restaurant_ids: (prev.restaurant_ids || []).includes(r.id)
+                              ? (prev.restaurant_ids || []).filter(id => id !== r.id)
+                              : [...(prev.restaurant_ids || []), r.id]
+                          }))}
+                        />
+                        <span>{r.name}{r.brand_name ? ` (${r.brand_name})` : ''}</span>
+                      </CheckboxItem>
+                    ))}
+                  </CheckboxGroup>
+                )}
+              </UIFormGroup>
+            )}
 
             <UIFormGroup>
               <FormLabel>{'Option Groups'}</FormLabel>
@@ -1175,7 +1266,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                       if (ing) setDirectIngredients(prev => [...prev, { ingredient_id: ing.id, name: ing.name, quantity: 1, unit: ing.unit, unit_cost: Number(ing.unit_cost || 0) }]);
                     }
                   }}
-                  placeholder="+ Add ingredient..."
+                  placeholder="Add ingredient..."
                   allowClear={false}
                   noOptionsMessage="No ingredients available"
                 />
@@ -1231,6 +1322,16 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         message={`Are you sure you want to delete "${productToDelete?.name}"? This action cannot be undone.`}
         confirmText="Delete"
         cancelText="Cancel"
+      />
+      <ConfirmModal
+        isOpen={infoModal.open}
+        title={infoModal.title}
+        message={infoModal.message}
+        onConfirm={() => setInfoModal({ open: false, title: '', message: '' })}
+        onCancel={() => setInfoModal({ open: false, title: '', message: '' })}
+        confirmText={t('common:ok', 'OK')}
+        type="info"
+        singleButton
       />
     </div>
   );

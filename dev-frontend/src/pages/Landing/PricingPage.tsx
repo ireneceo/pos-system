@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
+import { Check, Minus } from 'lucide-react';
 import { LandingLayout } from '../../components/Landing';
 import SEOHead, { generateBreadcrumbSchema, generateLocalBusinessSchema } from '../../components/Common/SEOHead';
 import { useTranslation } from 'react-i18next';
@@ -912,7 +913,7 @@ const PricingPage: React.FC = () => {
                             <ModulesList>
                               {plan.included_modules.map((code, i) => (
                                 <ModuleItem key={i} included>
-                                  <ModuleCheck included>✓</ModuleCheck>
+                                  <ModuleCheck included><Check size={14} /></ModuleCheck>
                                   {MODULE_NAMES[code] || code}
                                 </ModuleItem>
                               ))}
@@ -931,7 +932,7 @@ const PricingPage: React.FC = () => {
                             {basicMods.map((m) => (
                               <ModuleItem key={m.module_code} included={includedSet.has(m.module_code)}>
                                 <ModuleCheck included={includedSet.has(m.module_code)}>
-                                  {includedSet.has(m.module_code) ? '✓' : '—'}
+                                  {includedSet.has(m.module_code) ? <Check size={14} /> : <Minus size={14} />}
                                 </ModuleCheck>
                                 {MODULE_NAMES[m.module_code] || m.name}
                               </ModuleItem>
@@ -942,7 +943,7 @@ const PricingPage: React.FC = () => {
                             {advancedMods.map((m) => (
                               <ModuleItem key={m.module_code} included={includedSet.has(m.module_code)}>
                                 <ModuleCheck included={includedSet.has(m.module_code)}>
-                                  {includedSet.has(m.module_code) ? '✓' : '—'}
+                                  {includedSet.has(m.module_code) ? <Check size={14} /> : <Minus size={14} />}
                                 </ModuleCheck>
                                 {MODULE_NAMES[m.module_code] || m.name}
                               </ModuleItem>
@@ -956,7 +957,7 @@ const PricingPage: React.FC = () => {
                       <FeaturesList>
                         {plan.features.filter(f => f && f.trim()).map((feature, index) => (
                           <FeatureItem key={index}>
-                            <FeatureCheck>✓</FeatureCheck>
+                            <FeatureCheck><Check size={14} /></FeatureCheck>
                             {feature}
                           </FeatureItem>
                         ))}

@@ -289,6 +289,11 @@
     "allCategories": "All",
     "vendors": "vendors",
     "linked": "Linked",
+    "brandBadge": "BRAND",
+    "foodcourtBadge": "FOODCOURT",
+    "connectCta": "Click to connect supplier →",
+    "connecting": "Connecting",
+    "connectHelp": "click any catalog item below to link this ingredient to a supplier",
     "cartEmpty": "Click a card to add to cart.",
     "empty": {
       "mine": {
@@ -302,7 +307,17 @@
     },
     "toast": {
       "added": "\"{{name}}\" added to cart",
-      "linked": "\"{{name}}\" added to your inventory"
+      "linked": "\"{{name}}\" added to your inventory",
+      "connected": "\"{{name}}\" connected to a supplier ✓",
+      "connectHint": "Pick a catalog item to connect \"{{name}}\"",
+      "addedAsSeparate": "Added as a separate ingredient (different unit/spec)."
+    },
+    "showUntracked": "Show untracked",
+    "conversion": {
+      "title": "Unit conversion",
+      "help": "Example — a 10kg box of an ingredient measured in kg: enter 10. A 30-piece tray measured in piece: enter 30.",
+      "connect": "Connect",
+      "asSeparate": "+ Add as separate ingredient"
     }
   }
 }

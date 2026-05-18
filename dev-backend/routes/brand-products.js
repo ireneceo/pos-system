@@ -503,6 +503,34 @@ router.delete('/brand-product-option-groups/:groupId', authenticateToken, requir
  * GET /api/brand-products
  * 제품 전체 목록 조회
  */
+// GET /api/brand-products/restaurants — list restaurants of BG-owned brands
+// (used by 상품 등록 UI 의 specific_restaurants distribution selector)
+router.get('/brand-products/restaurants', authenticateToken, requireBGScope, async (req, res) => {
+  try {
+    if (req.bgOwnerId == null) return res.json({ success: true, data: [] });
+    const { Restaurant, Brand } = require('../models');
+    const brands = await Brand.findAll({
+      where: { owner_id: req.bgOwnerId },
+      attributes: ['id', 'name']
+    });
+    const brandIds = brands.map(b => b.id);
+    if (brandIds.length === 0) return res.json({ success: true, data: [] });
+    const restaurants = await Restaurant.findAll({
+      where: { brand_id: brandIds },
+      attributes: ['id', 'name', 'brand_id'],
+      order: [['name', 'ASC']]
+    });
+    const brandNameMap = Object.fromEntries(brands.map(b => [b.id, b.name]));
+    res.json({
+      success: true,
+      data: restaurants.map(r => ({ id: r.id, name: r.name, brand_id: r.brand_id, brand_name: brandNameMap[r.brand_id] || null }))
+    });
+  } catch (err) {
+    console.error('GET /api/brand-products/restaurants error:', err);
+    res.status(500).json({ success: false, error: { message: 'Failed to load restaurants', code: 'INTERNAL_ERROR' } });
+  }
+});
+
 router.get('/brand-products', authenticateToken, requireBGScope, async (req, res) => {
   try {
     const { category_id, is_active } = req.query;
@@ -525,6 +553,13 @@ router.get('/brand-products', authenticateToken, requireBGScope, async (req, res
           as: 'brands',
           attributes: ['id', 'name', 'code'],
           through: { attributes: [] }
+        },
+        {
+          model: require('../models').Restaurant,
+          as: 'restaurants',
+          attributes: ['id', 'name', 'brand_id'],
+          through: { attributes: [] },
+          required: false
         },
         {
           model: BrandProductOptionGroup,
@@ -574,6 +609,13 @@ router.get('/brand-products/:productId', authenticateToken, requireBGScope, asyn
           through: { attributes: [] }
         },
         {
+          model: require('../models').Restaurant,
+          as: 'restaurants',
+          attributes: ['id', 'name', 'brand_id'],
+          through: { attributes: [] },
+          required: false
+        },
+        {
           model: BrandProductOptionGroup,
           as: 'optionGroups',
           through: { attributes: [] },
@@ -610,7 +652,8 @@ router.post('/brand-products', authenticateToken, requireBGScope, async (req, re
     const {
       name, description, sku, unit, base_quantity, unit_price,
       min_order_quantity, image_url, category_id, emoji,
-      is_active, product_recipe_id, sort_order, brand_ids, option_group_ids,
+      is_active, product_recipe_id, sort_order, brand_ids, restaurant_ids,
+      distribution_mode, option_group_ids,
       is_set_menu, set_items, set_display_order
     } = req.body;
 
@@ -662,6 +705,13 @@ router.post('/brand-products', authenticateToken, requireBGScope, async (req, re
       maxWidth: 800, maxHeight: 800
     });
 
+    // distribution_mode 결정 — 명시 또는 brand_ids/restaurant_ids 로 추론
+    const VALID_MODES = ['all', 'specific_brands', 'specific_restaurants'];
+    let finalMode = VALID_MODES.includes(distribution_mode) ? distribution_mode :
+      (Array.isArray(restaurant_ids) && restaurant_ids.length > 0 ? 'specific_restaurants'
+        : Array.isArray(brand_ids) && brand_ids.length > 0 ? 'specific_brands'
+        : 'specific_brands');
+
     // Create product
     const product = await BrandProduct.create({
       owner_user_id: req.bgOwnerId,
@@ -676,12 +726,27 @@ router.post('/brand-products', authenticateToken, requireBGScope, async (req, re
       image_url: normalizedImage,
       emoji: emoji || null,
       is_active: is_active !== false,
+      distribution_mode: finalMode,
       is_set_menu: is_set_menu || false,
       set_items: is_set_menu ? set_items : null,
       set_display_order: set_display_order || 0,
       product_recipe_id: product_recipe_id || null,
       sort_order: sort_order || 0
     });
+
+    // brand_ids → BrandProductBrand 매핑 (specific_brands 모드)
+    const { BrandProductBrand, BrandProductRestaurant } = require('../models');
+    if (finalMode === 'specific_brands' && Array.isArray(brand_ids) && brand_ids.length > 0) {
+      for (const bid of brand_ids) {
+        await BrandProductBrand.findOrCreate({ where: { product_id: product.id, brand_id: bid } });
+      }
+    }
+    // restaurant_ids → BrandProductRestaurant 매핑 (specific_restaurants 모드)
+    if (finalMode === 'specific_restaurants' && Array.isArray(restaurant_ids) && restaurant_ids.length > 0) {
+      for (const rid of restaurant_ids) {
+        await BrandProductRestaurant.findOrCreate({ where: { product_id: product.id, restaurant_id: rid } });
+      }
+    }
 
     // 옵션 그룹 연결
     if (option_group_ids && option_group_ids.length > 0) {
@@ -764,7 +829,8 @@ router.put('/brand-products/:productId', authenticateToken, requireBGScope, asyn
     const {
       name, description, sku, unit, base_quantity, unit_price,
       min_order_quantity, image_url, category_id, emoji,
-      is_active, product_recipe_id, sort_order, brand_ids, option_group_ids,
+      is_active, product_recipe_id, sort_order, brand_ids, restaurant_ids,
+      distribution_mode, option_group_ids,
       is_set_menu, set_items, set_display_order
     } = req.body;
 
@@ -799,6 +865,13 @@ router.put('/brand-products/:productId', authenticateToken, requireBGScope, asyn
       maxWidth: 800, maxHeight: 800
     });
 
+    // distribution_mode resolution — 명시 또는 ids 로 추론, 기존 유지
+    const VALID_MODES = ['all', 'specific_brands', 'specific_restaurants'];
+    const finalMode = VALID_MODES.includes(distribution_mode) ? distribution_mode :
+      (restaurant_ids !== undefined && Array.isArray(restaurant_ids) && restaurant_ids.length > 0 ? 'specific_restaurants'
+        : brand_ids !== undefined && Array.isArray(brand_ids) && brand_ids.length > 0 ? 'specific_brands'
+        : product.distribution_mode);
+
     // Update product
     await product.update({
       name: name !== undefined ? name.trim() : product.name,
@@ -812,6 +885,7 @@ router.put('/brand-products/:productId', authenticateToken, requireBGScope, asyn
       emoji: emoji !== undefined ? emoji : product.emoji,
       category_id: category_id !== undefined ? category_id : product.category_id,
       is_active: is_active !== undefined ? is_active : product.is_active,
+      distribution_mode: finalMode,
       is_set_menu: is_set_menu !== undefined ? is_set_menu : product.is_set_menu,
       set_items: set_items !== undefined ? (finalIsSet ? set_items : null) : product.set_items,
       set_display_order: set_display_order !== undefined ? set_display_order : product.set_display_order,
@@ -819,7 +893,32 @@ router.put('/brand-products/:productId', authenticateToken, requireBGScope, asyn
       sort_order: sort_order !== undefined ? sort_order : product.sort_order
     });
 
-    // 브랜드 연결 업데이트
+    // 브랜드/지점 매핑 업데이트 — mode 별로 적절한 테이블만 갱신
+    const { BrandProductBrand: BPB, BrandProductRestaurant: BPR } = require('../models');
+    if (brand_ids !== undefined) {
+      await BPB.destroy({ where: { product_id: productId } });
+      if (finalMode === 'specific_brands' && Array.isArray(brand_ids)) {
+        for (const bid of brand_ids) await BPB.create({ product_id: productId, brand_id: bid });
+      }
+    }
+    if (restaurant_ids !== undefined) {
+      await BPR.destroy({ where: { product_id: productId } });
+      if (finalMode === 'specific_restaurants' && Array.isArray(restaurant_ids)) {
+        for (const rid of restaurant_ids) await BPR.create({ product_id: productId, restaurant_id: rid });
+      }
+    }
+    // mode 만 specific 으로 바뀌었는데 ids 안 보낸 경우, 다른 테이블 매핑 정리 (clean)
+    if (distribution_mode === 'specific_brands' && restaurant_ids === undefined) {
+      await BPR.destroy({ where: { product_id: productId } });
+    }
+    if (distribution_mode === 'specific_restaurants' && brand_ids === undefined) {
+      await BPB.destroy({ where: { product_id: productId } });
+    }
+    if (distribution_mode === 'all') {
+      await BPB.destroy({ where: { product_id: productId } });
+      await BPR.destroy({ where: { product_id: productId } });
+    }
+
     // Update option group links
     if (option_group_ids !== undefined) {
       await BrandProductOptionGroupProduct.destroy({ where: { product_id: productId } });

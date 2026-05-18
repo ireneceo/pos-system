@@ -5,6 +5,7 @@ import CommentSection from '../../components/Common/CommentSection';
 import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
 import AttachmentList from '../../components/Common/AttachmentList';
 import { StatsGrid, StatCard, StatValue, StatLabel, Modal as CommonModal } from '../../components/UI';
+import ConfirmModal from '../../components/ConfirmModal';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
@@ -435,6 +436,7 @@ const SupportTicketsPage: React.FC = () => {
   const [filterPriority, setFilterPriority] = useState('all');
   const [filterCategory, setFilterCategory] = useState('all');
   const [showCreateTicketModal, setShowCreateTicketModal] = useState(false);
+  const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   const [showViewTicketModal, setShowViewTicketModal] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
   const [detailStatus, setDetailStatus] = useState<SupportTicket['status']>('open');
@@ -593,10 +595,10 @@ const SupportTicketsPage: React.FC = () => {
         }
         setShowCreateTicketModal(false);
       } else {
-        alert('Failed to create support ticket. Please try again.');
+        setInfoModal({ open: true, title: 'Submission Failed', message: 'Failed to create support ticket. Please try again.' });
       }
     } catch (error) {
-      alert('Error creating support ticket. Please try again.');
+      setInfoModal({ open: true, title: 'Submission Failed', message: 'Error creating support ticket. Please try again.' });
     }
     setNewTicket({
       subject: '',
@@ -968,6 +970,17 @@ const SupportTicketsPage: React.FC = () => {
           )}
         </Content>
       </Container>
+
+      <ConfirmModal
+        isOpen={infoModal.open}
+        title={infoModal.title}
+        message={infoModal.message}
+        onConfirm={() => setInfoModal({ open: false, title: '', message: '' })}
+        onCancel={() => setInfoModal({ open: false, title: '', message: '' })}
+        confirmText="OK"
+        type="info"
+        singleButton
+      />
     </>
   );
 };

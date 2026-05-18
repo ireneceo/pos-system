@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ConfirmModal from '../../components/ConfirmModal';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
@@ -313,6 +314,7 @@ const ManagerSignupPage: React.FC = () => {
   const { t } = useTranslation('admin');
   const navigate = useNavigate();
   const [formData, setFormData] = useState<SignupFormData>({
+  const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
     name: '',
     email: '',
     password: '',
@@ -390,7 +392,7 @@ const ManagerSignupPage: React.FC = () => {
         selectedPlan: restaurantCountOptions.find(opt => opt.count === formData.restaurantCount)
       });
 
-      alert(`Manager account created successfully!\nRestaurants: ${formData.restaurantCount}\nMonthly Fee: RM ${calculateTotalPrice()}`);
+      setInfoModal({ open: true, title: 'Account Created', message: `Manager account created successfully. Restaurants: ${formData.restaurantCount}. Monthly Fee: RM ${calculateTotalPrice()}.` });
       navigate('/pos');
 
     } catch (error) {
@@ -575,7 +577,17 @@ const ManagerSignupPage: React.FC = () => {
             Already have an account? <a href="/pos">{t('admin:signupPage.signInHere')}</a>
           </LoginLink>
         </Content>
-      </SignupBox>
+      </SignupBox>      <ConfirmModal
+        isOpen={infoModal.open}
+        title={infoModal.title}
+        message={infoModal.message}
+        onConfirm={() => setInfoModal({ open: false, title: '', message: '' })}
+        onCancel={() => setInfoModal({ open: false, title: '', message: '' })}
+        confirmText="OK"
+        type="info"
+        singleButton
+      />
+
     </Container>
   );
 };

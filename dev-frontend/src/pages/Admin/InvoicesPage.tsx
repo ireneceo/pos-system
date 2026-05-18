@@ -259,11 +259,11 @@ const InvoicesPage: React.FC = () => {
         setCategoryToDelete(null);
         fetchInvoiceCategories();
       } else {
-        alert(data.error || 'Failed to delete category');
+        setSuccessMessage(data.error || 'Failed to delete category. Please try again.'); setShowSuccessModal(true);
       }
     } catch (error) {
       console.error('Failed to delete category:', error);
-      alert('Failed to delete category');
+      setSuccessMessage('Failed to delete category. Please try again.'); setShowSuccessModal(true);
     }
   };
 
@@ -1114,11 +1114,11 @@ const InvoicesPage: React.FC = () => {
         setShowSuccessModal(true);
       } else {
         const errorData = await response.json();
-        alert(`Failed to link account: ${errorData.message || 'Unknown error'}`);
+        setSuccessMessage(`Failed to link account: ${errorData.message || 'Unknown error'}`); setShowSuccessModal(true);
       }
     } catch (error) {
       console.error('Error linking account:', error);
-      alert('Error linking account. Please try again.');
+      setSuccessMessage('Error linking account. Please try again.'); setShowSuccessModal(true);
     }
   };
 
@@ -1259,11 +1259,11 @@ const InvoicesPage: React.FC = () => {
 
   const handleSubmitInvoice = async () => {
     if (payerMode === 'member' && (!selectedTarget || !newInvoice.amount || !newInvoice.dueDate)) {
-      alert('Please select a manager/restaurant, enter amount, and set due date.');
+      setSuccessMessage('Please select a manager/restaurant, enter amount, and set due date.'); setShowSuccessModal(true);
       return;
     }
     if (payerMode === 'external' && (!externalPayer.name || !externalPayer.email || !newInvoice.amount || !newInvoice.dueDate)) {
-      alert('Please fill in name, email, amount, and due date.');
+      setSuccessMessage('Please fill in name, email, amount, and due date.'); setShowSuccessModal(true);
       return;
     }
     try {
@@ -1368,11 +1368,11 @@ const InvoicesPage: React.FC = () => {
         resetInvoiceForm();
       } else {
         const errorData = await response.json();
-        alert(`Failed to create invoice: ${errorData.error || 'Unknown error'}`);
+        setSuccessMessage(`Failed to create invoice: ${errorData.error || 'Unknown error'}`); setShowSuccessModal(true);
       }
     } catch (error) {
       console.error('Error creating invoice:', error);
-      alert('Error creating invoice. Please try again.');
+      setSuccessMessage('Error creating invoice. Please try again.'); setShowSuccessModal(true);
     }
   };
 
@@ -1397,11 +1397,11 @@ const InvoicesPage: React.FC = () => {
         window.dispatchEvent(new Event('refreshBadgeCounts'));
       } else {
         const errorData = await response.json();
-        alert(`Failed to update payment status: ${errorData.error || 'Unknown error'}`);
+        setSuccessMessage(`Failed to update payment status: ${errorData.error || 'Unknown error'}`); setShowSuccessModal(true);
       }
     } catch (error) {
       console.error('Error updating payment status:', error);
-      alert('Error updating payment status. Please try again.');
+      setSuccessMessage('Error updating payment status. Please try again.'); setShowSuccessModal(true);
     }
   };
 
@@ -1432,11 +1432,11 @@ const InvoicesPage: React.FC = () => {
         window.dispatchEvent(new Event('refreshBadgeCounts'));
       } else {
         const errorData = await response.json();
-        alert(`Failed to cancel invoice: ${errorData.error || 'Unknown error'}`);
+        setSuccessMessage(`Failed to cancel invoice: ${errorData.error || 'Unknown error'}`); setShowSuccessModal(true);
       }
     } catch (error) {
       console.error('Error cancelling invoice:', error);
-      alert('Error cancelling invoice. Please try again.');
+      setSuccessMessage('Error cancelling invoice. Please try again.'); setShowSuccessModal(true);
     }
   };
 
@@ -1455,11 +1455,11 @@ const InvoicesPage: React.FC = () => {
         window.dispatchEvent(new Event('refreshBadgeCounts'));
       } else {
         const errorData = await response.json();
-        alert(`Failed to delete invoice: ${errorData.error || 'Unknown error'}`);
+        setSuccessMessage(`Failed to delete invoice: ${errorData.error || 'Unknown error'}`); setShowSuccessModal(true);
       }
     } catch (error) {
       console.error('Error deleting invoice:', error);
-      alert('Error deleting invoice. Please try again.');
+      setSuccessMessage('Error deleting invoice. Please try again.'); setShowSuccessModal(true);
     }
   };
 

@@ -186,6 +186,7 @@ const BrandProductCategoriesTab: React.FC<BrandProductCategoriesTabProps> = ({
   onCategoryChange
 }) => {
   const [categories, setCategories] = useState<Category[]>([]);
+  const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -287,11 +288,11 @@ const BrandProductCategoriesTab: React.FC<BrandProductCategoriesTabProps> = ({
         fetchCategories();
         onCategoryChange?.();
       } else {
-        alert(data.error || 'Failed to save');
+        setInfoModal({ open: true, title: 'Save Failed', message: data.error || 'Failed to save. Please try again.' });
       }
     } catch (error) {
       console.error('Failed to save category:', error);
-      alert('Failed to save');
+      setInfoModal({ open: true, title: 'Save Failed', message: 'Failed to save. Please try again.' });
     }
   };
 
@@ -318,11 +319,11 @@ const BrandProductCategoriesTab: React.FC<BrandProductCategoriesTabProps> = ({
         fetchCategories();
         onCategoryChange?.();
       } else {
-        alert(data.error || 'Failed to delete');
+        setInfoModal({ open: true, title: 'Delete Failed', message: data.error || 'Failed to delete. Please try again.' });
       }
     } catch (error) {
       console.error('Failed to delete category:', error);
-      alert('Failed to delete');
+      setInfoModal({ open: true, title: 'Delete Failed', message: 'Failed to delete. Please try again.' });
     }
   };
 
@@ -343,7 +344,7 @@ const BrandProductCategoriesTab: React.FC<BrandProductCategoriesTabProps> = ({
       if (data.success) {
         fetchCategories();
       } else {
-        alert(data.error || 'Failed to reorder');
+        setInfoModal({ open: true, title: 'Reorder Failed', message: data.error || 'Failed to reorder. Please try again.' });
       }
     } catch (error) {
       console.error('Failed to reorder category:', error);
@@ -493,6 +494,16 @@ const BrandProductCategoriesTab: React.FC<BrandProductCategoriesTabProps> = ({
         message={`Are you sure you want to delete "${categoryToDelete?.name}"? This action cannot be undone.`}
         confirmText="Delete"
         cancelText="Cancel"
+      />
+      <ConfirmModal
+        isOpen={infoModal.open}
+        title={infoModal.title}
+        message={infoModal.message}
+        onConfirm={() => setInfoModal({ open: false, title: '', message: '' })}
+        onCancel={() => setInfoModal({ open: false, title: '', message: '' })}
+        confirmText="OK"
+        type="info"
+        singleButton
       />
     </Container>
   );

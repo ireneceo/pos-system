@@ -16,7 +16,7 @@ import { useRoleDisplayName } from '../../utils/roleDisplay';
 import { useAllowedRoutes } from '../../hooks/useAllowedRoutes';
 
 import { getAuthToken } from '../../utils/auth';
-import { LayoutDashboard, Users, Truck, Briefcase, MessageSquare, CreditCard, Settings as SettingsIcon, ChevronsLeft, ChevronsRight, LogOut, Activity, Store, Package, ShoppingCart, FileText, Monitor, LayoutGrid, ChefHat, Tv, Smartphone, TrendingUp, Download, Building2 } from 'lucide-react';
+import { LayoutDashboard, Users, Truck, Briefcase, MessageSquare, CreditCard, Settings as SettingsIcon, ChevronsLeft, ChevronsRight, LogOut, Activity, Store, Package, ShoppingCart, FileText, Monitor, LayoutGrid, ChefHat, Tv, Smartphone, TrendingUp, Download, Building2, MapPin } from 'lucide-react';
 import { usePwaInstall } from '../../contexts/PwaInstallContext';
 
 // System Admin 2-tier sidebar widths
@@ -1158,26 +1158,21 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         visible: hasManagerPermission('dashboard') && isRouteAllowed('/pos/brand/general/dashboard')
       },
       {
-        id: 'live-orders', label: t('nav.liveOrders', 'Live Orders'), icon: <Activity />,
+        id: 'live-orders', label: t('nav.salesOrders', 'Sales Orders'), icon: <Activity />,
         path: '/pos/brand/general/incoming-orders',
         hasPending: badgeCounts.livePoCount > 0,
         visible: true
       },
       {
-        id: 'franchise', label: t('nav.section.franchise', 'Franchise'), icon: <Store />,
-        items: [
-          { path: '/pos/brand/franchise', label: t('nav.franchise'), visible: isRouteAllowed('/pos/brand/franchise') },
-          { path: '/pos/brand/franchise-map', label: t('nav.franchiseMap', 'Franchise Map'), visible: isRouteAllowed('/pos/brand/franchise-map') }
-        ].filter(i => i.visible !== false),
-        visible: isRouteAllowed('/pos/brand/franchise') || isRouteAllowed('/pos/brand/franchise-map')
+        id: 'franchise-map', label: t('nav.franchiseMap', 'Franchise Map'), icon: <MapPin />,
+        path: '/pos/brand/franchise-map',
+        visible: isRouteAllowed('/pos/brand/franchise-map')
       },
       {
-        id: 'brand-management', label: t('nav.section.brandManagement', 'Brand Management'), icon: <Building2 />,
+        id: 'brands', label: t('nav.section.brands', 'Brands'), icon: <Building2 />,
         items: [
-          { path: '/pos/brand/general/management', label: t('nav.brands'), visible: isRouteAllowed('/pos/brand/general/management') },
+          { path: '/pos/brand/general/management', label: t('nav.allBrands', 'All Brands'), visible: isRouteAllowed('/pos/brand/general/management') },
           { path: '/pos/brand-menus', label: t('nav.brandMenus', 'Brand Menus'), visible: isRouteAllowed('/pos/brand-menus') },
-          { path: '/pos/brand-menu-categories', label: t('nav.brandMenuCategories', 'Menu Categories'), visible: isRouteAllowed('/pos/brand-menu-categories') },
-          { path: '/pos/brand-menu-option-groups', label: t('nav.brandMenuOptions', 'Menu Options'), visible: isRouteAllowed('/pos/brand-menu-option-groups') },
           { path: '/pos/recipes', label: t('nav.brandRecipes'), visible: isRouteAllowed('/pos/recipes') }
         ].filter(i => i.visible !== false),
         visible: hasManagerPermission('products') && (
@@ -1187,17 +1182,19 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         )
       },
       {
-        id: 'franchise', label: t('nav.section.franchise', 'Franchise'), icon: <Users />,
+        id: 'franchise', label: t('nav.section.franchise', 'Franchise'), icon: <Store />,
         items: [
+          { path: '/pos/brand/franchise', label: t('nav.franchise'), visible: isRouteAllowed('/pos/brand/franchise') },
           { path: '/pos/manager/restaurants', label: t('nav.restaurants'), visible: isRouteAllowed('/pos/manager/restaurants') },
           { path: '/pos/manager/admins', label: t('nav.restaurantAdmins'), visible: isRouteAllowed('/pos/manager/staff') },
           { path: '/pos/brand/manager', label: t('nav.managers'), visible: user?.role === 'Brand General' && isRouteAllowed('/pos/brand/manager') }
         ].filter(i => i.visible !== false),
-        visible: hasManagerPermission('management') && (
-          isRouteAllowed('/pos/manager/restaurants') ||
-          isRouteAllowed('/pos/manager/staff') ||
-          isRouteAllowed('/pos/brand/manager')
-        )
+        visible: isRouteAllowed('/pos/brand/franchise') ||
+                 (hasManagerPermission('management') && (
+                   isRouteAllowed('/pos/manager/restaurants') ||
+                   isRouteAllowed('/pos/manager/staff') ||
+                   isRouteAllowed('/pos/brand/manager')
+                 ))
       },
       {
         id: 'products', label: t('nav.section.productsInventory'), icon: <Package />,
@@ -1224,7 +1221,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           { path: '/pos/manager/coupons', label: t('nav.coupons'), visible: isRouteAllowed('/pos/manager/coupons') },
           { path: '/pos/purchase-orders', label: t('nav.purchaseOrder', 'Purchase Order'), visible: hasManagerPermission('products') && isRouteAllowed('/pos/purchase-orders') },
           { path: '/pos/purchase-orders/history', label: t('nav.orderHistory', 'Order History'), visible: hasManagerPermission('products') && isRouteAllowed('/pos/purchase-orders') },
-          { path: '/pos/suppliers/contracts', label: t('nav.supplierContracts', 'Supplier Contracts'), visible: hasManagerPermission('products') && (isRouteAllowed('/pos/suppliers/contracts') || isRouteAllowed('/pos/suppliers/directory')) }
         ].filter(i => i.visible !== false),
         visible: hasManagerPermission('operations') || hasManagerPermission('products')
       },
@@ -1291,17 +1287,17 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     if (!isFoodcourt) return [];
     const items: AdminCategory[] = [
       { id: 'dashboard', label: t('nav.dashboard'), icon: <LayoutDashboard />, path: '/pos/foodcourt/general/dashboard', visible: hasManagerPermission('dashboard') && isRouteAllowed('/pos/foodcourt/general/dashboard') },
-      { id: 'live-orders', label: t('nav.liveOrders', 'Live Orders'), icon: <Activity />, path: '/pos/foodcourt/general/incoming-orders', hasPending: badgeCounts.livePoCount > 0, visible: true },
+      { id: 'live-orders', label: t('nav.salesOrders', 'Sales Orders'), icon: <Activity />, path: '/pos/foodcourt/general/incoming-orders', hasPending: badgeCounts.livePoCount > 0, visible: true },
+      { id: 'branch-map', label: t('nav.branchMap', 'Branch Map'), icon: <MapPin />, path: '/pos/foodcourt/tenancy-map', visible: isRouteAllowed('/pos/foodcourt/tenancy-map') },
+      // Floor Plan — 풀화면 새 창
+      { id: 'floor-plan', label: t('nav.floorPlan', 'Floor Plan'), icon: <LayoutGrid />, path: '/pos/foodcourt/floor-plan', openInNewTab: true, visible: isRouteAllowed('/pos/foodcourt/floor-plan') },
       {
         id: 'tenancy', label: t('nav.section.tenancy', 'Tenancy'), icon: <Store />,
         items: [
-          { path: '/pos/foodcourt/tenancy', label: t('nav.tenancy'), visible: isRouteAllowed('/pos/foodcourt/tenancy') },
-          { path: '/pos/foodcourt/tenancy-map', label: t('nav.branchMap', 'Branch Map'), visible: isRouteAllowed('/pos/foodcourt/tenancy-map') }
+          { path: '/pos/foodcourt/tenancy', label: t('nav.tenancy'), visible: isRouteAllowed('/pos/foodcourt/tenancy') }
         ].filter(i => i.visible !== false),
-        visible: isRouteAllowed('/pos/foodcourt/tenancy') || isRouteAllowed('/pos/foodcourt/tenancy-map')
+        visible: isRouteAllowed('/pos/foodcourt/tenancy')
       },
-      // Floor Plan — 풀화면 새 창
-      { id: 'floor-plan', label: t('nav.floorPlan', 'Floor Plan'), icon: <LayoutGrid />, path: '/pos/foodcourt/floor-plan', openInNewTab: true, visible: isRouteAllowed('/pos/foodcourt/floor-plan') },
       {
         id: 'management', label: t('nav.section.management'), icon: <Users />,
         items: [
@@ -1310,7 +1306,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           { path: '/pos/manager/admins', label: t('nav.restaurantAdmins'), visible: isRouteAllowed('/pos/manager/staff') },
           { path: '/pos/foodcourt/manager', label: t('nav.managers'), visible: user?.role === 'Foodcourt General' && isRouteAllowed('/pos/foodcourt/manager') },
           { path: '/pos/foodcourt/general/products', label: t('nav.products'), visible: isRouteAllowed('/pos/foodcourt/general/products') },
-          { path: '/pos/foodcourt/general/inventory', label: t('nav.inventory'), visible: isRouteAllowed('/pos/foodcourt/general/inventory') }
+          { path: '/pos/foodcourt/general/inventory', label: t('nav.inventory'), visible: isRouteAllowed('/pos/foodcourt/general/inventory') },
+          { path: '/pos/suppliers', label: t('nav.suppliers'), visible: isRouteAllowed('/pos/suppliers') }
         ].filter(i => i.visible !== false),
         visible: hasManagerPermission('management')
       },
@@ -1322,7 +1319,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           { path: '/pos/manager/coupons', label: t('nav.coupons'), visible: isRouteAllowed('/pos/manager/coupons') },
           { path: '/pos/purchase-orders', label: t('nav.purchaseOrder', 'Purchase Order'), visible: hasManagerPermission('management') && isRouteAllowed('/pos/purchase-orders') },
           { path: '/pos/purchase-orders/history', label: t('nav.orderHistory', 'Order History'), visible: hasManagerPermission('management') && isRouteAllowed('/pos/purchase-orders') },
-          { path: '/pos/suppliers/contracts', label: t('nav.supplierContracts', 'Supplier Contracts'), visible: hasManagerPermission('management') && (isRouteAllowed('/pos/suppliers/contracts') || isRouteAllowed('/pos/suppliers/directory')) }
         ].filter(i => i.visible !== false),
         visible: hasManagerPermission('operations') || hasManagerPermission('management')
       },
@@ -1385,7 +1381,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           { path: '/pos/owner/performance', label: t('nav.performance'), visible: isRouteAllowed('/pos/owner/performance') },
           { path: '/pos/purchase-orders', label: t('nav.purchaseOrder', 'Purchase Order'), visible: isRouteAllowed('/pos/purchase-orders') },
           { path: '/pos/purchase-orders/history', label: t('nav.orderHistory', 'Order History'), visible: isRouteAllowed('/pos/purchase-orders') },
-          { path: '/pos/suppliers/contracts', label: t('nav.supplierContracts', 'Supplier Contracts'), visible: isRouteAllowed('/pos/suppliers/contracts') || isRouteAllowed('/pos/suppliers/directory') }
         ].filter(i => i.visible !== false),
         visible: isRouteAllowed('/pos/owner/invoices') || isRouteAllowed('/pos/owner/performance') || isRouteAllowed('/pos/purchase-orders')
       },
@@ -1429,7 +1424,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     if (!isSupplier) return [];
     const items: AdminCategory[] = [
       { id: 'dashboard', label: t('nav.dashboard'), icon: <LayoutDashboard />, path: '/pos/supplier/dashboard', visible: true },
-      { id: 'live-orders', label: t('nav.liveOrders', 'Live Orders'), icon: <Activity />, path: '/pos/supplier/orders', hasPending: badgeCounts.livePoCount > 0, visible: true },
+      { id: 'live-orders', label: t('nav.salesOrders', 'Sales Orders'), icon: <Activity />, path: '/pos/supplier/orders', hasPending: badgeCounts.livePoCount > 0, visible: true },
       {
         id: 'operations', label: t('nav.section.operations'), icon: <Briefcase />,
         items: [
@@ -1490,13 +1485,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         id: 'products', label: t('nav.section.products'), icon: <Package />,
         items: [
           { path: `/restaurant/${rid}/menu`, label: t('nav.menu'), visible: isRouteAllowed(`/restaurant/${rid}/menu`) },
-          // Brand Menu Updates — shown only when there are pending updates
-          { path: `/restaurant/${rid}/brand-menu-updates`, label: t('nav.brandMenuUpdates', 'Brand Menu Updates'),
-            hasPending: (badgeCounts as any).brandMenuPending > 0,
-            visible: (badgeCounts as any).brandMenuPending > 0 },
           { path: `/restaurant/${rid}/categories`, label: t('nav.categories'), visible: isRouteAllowed(`/restaurant/${rid}/categories`) },
           { path: `/restaurant/${rid}/options`, label: t('nav.options'), visible: isRouteAllowed(`/restaurant/${rid}/options`) },
-          { path: `/restaurant/${rid}/recipe-management`, label: t('nav.recipes'), visible: isRouteAllowed(`/restaurant/${rid}/recipe-management`) }
+          { path: `/restaurant/${rid}/recipe-management`, label: t('nav.recipes'), visible: isRouteAllowed(`/restaurant/${rid}/recipe-management`) },
+          // Brand Menu Updates — Brand 산하 매장만, 항상 노출 (pending 시 빨간 점). 보조 도구라 섹션 맨 아래.
+          { path: `/restaurant/${rid}/brand-menu-updates`, label: t('nav.brandMenuUpdates', 'Brand Menu Updates'),
+            hasPending: (badgeCounts as any).brandMenuPending > 0,
+            visible: isRouteAllowed(`/restaurant/${rid}/brand-menu-updates`) }
         ].filter(i => i.visible !== false),
         visible: hasMenuPermission('menu_management')
       },
@@ -1506,10 +1501,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           { path: `/restaurant/${rid}/invoices`, label: t('nav.invoices'), hasPending: badgeCounts.invoices > 0, visible: hasMenuPermission('support') && isRouteAllowed(`/restaurant/${rid}/invoices`) },
           { path: '/pos/purchase-orders', label: t('nav.purchaseOrder', 'Purchase Order'), visible: hasMenuPermission('inventory') && isRouteAllowed('/pos/purchase-orders') },
           { path: '/pos/purchase-orders/history', label: t('nav.orderHistory', 'Order History'), visible: hasMenuPermission('inventory') && isRouteAllowed('/pos/purchase-orders') },
-          { path: '/pos/suppliers/contracts', label: t('nav.supplierContracts', 'Supplier Contracts'), visible: hasMenuPermission('inventory') && (isRouteAllowed('/pos/suppliers/contracts') || isRouteAllowed('/pos/suppliers/directory')) },
           { path: `/restaurant/${rid}/ingredients`, label: t('nav.stockItems', 'Stock Items'), visible: hasMenuPermission('inventory') && isRouteAllowed(`/restaurant/${rid}/ingredients`) },
           { path: `/restaurant/${rid}/inventory`, label: t('nav.inventory'), visible: hasMenuPermission('inventory') && isRouteAllowed(`/restaurant/${rid}/inventory`) },
-          { path: `/restaurant/${rid}/suppliers`, label: t('nav.suppliers'), visible: hasMenuPermission('inventory') && isRouteAllowed(`/restaurant/${rid}/suppliers`) }
+          { path: '/pos/suppliers', label: t('nav.suppliers'), visible: hasMenuPermission('inventory') && isRouteAllowed('/pos/suppliers') }
         ].filter(i => i.visible !== false),
         visible: hasMenuPermission('support') || hasMenuPermission('reports') || hasMenuPermission('inventory')
       },
@@ -2059,20 +2053,21 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 {/* Sprint 6: Live Orders right under Dashboard */}
                 <NavItem to="/pos/brand/general/incoming-orders" active={isActive('/pos/brand/general/incoming-orders')} hasPending={badgeCounts.livePoCount > 0} onClick={closeSidebar}>
                   <NavIcon hasPending={badgeCounts.livePoCount > 0}>▤</NavIcon>
-                  {t("nav.liveOrders", "Live Orders")}
+                  {t("nav.salesOrders", "Sales Orders")}
 
                 </NavItem>
 
-                {isRouteAllowed('/pos/brand/franchise') && (
-                  <NavItem to="/pos/brand/franchise" active={isActive('/pos/brand/franchise') && !isActive('/pos/brand/franchise-map')} onClick={closeSidebar}>
-                    <NavIcon>◇</NavIcon>
-                    {t("nav.franchise")}
-                  </NavItem>
-                )}
                 {isRouteAllowed('/pos/brand/franchise-map') && (
                   <NavItem to="/pos/brand/franchise-map" active={isActive('/pos/brand/franchise-map')} onClick={closeSidebar}>
                     <NavIcon>◉</NavIcon>
                     {t("nav.franchiseMap", "Franchise Map")}
+                  </NavItem>
+                )}
+
+                {isRouteAllowed('/pos/brand/franchise') && (
+                  <NavItem to="/pos/brand/franchise" active={isActive('/pos/brand/franchise')} onClick={closeSidebar}>
+                    <NavIcon>◇</NavIcon>
+                    {t("nav.franchise")}
                   </NavItem>
                 )}
 
@@ -2180,7 +2175,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                       </NavItem>
                     )}
                     {(isRouteAllowed('/pos/suppliers/contracts') || isRouteAllowed('/pos/suppliers/directory')) && (
-                      <NavItem to="/pos/suppliers/contracts" active={isActive('/pos/suppliers/contracts') || isActive('/pos/suppliers/directory')} onClick={closeSidebar}>
+                      <NavItem to="/pos/suppliers" active={isActive('/pos/suppliers/contracts') || isActive('/pos/suppliers/directory')} onClick={closeSidebar}>
                         <NavIcon>◇</NavIcon>
                         {t("nav.suppliers", "Suppliers")}
                       </NavItem>
@@ -2308,16 +2303,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 {/* Sprint 6: Live Orders right under Dashboard */}
                 <NavItem to="/pos/foodcourt/general/incoming-orders" active={isActive('/pos/foodcourt/general/incoming-orders')} hasPending={badgeCounts.livePoCount > 0} onClick={closeSidebar}>
                   <NavIcon hasPending={badgeCounts.livePoCount > 0}>▤</NavIcon>
-                  {t("nav.liveOrders", "Live Orders")}
+                  {t("nav.salesOrders", "Sales Orders")}
 
                 </NavItem>
 
-                {isRouteAllowed('/pos/foodcourt/tenancy') && (
-                  <NavItem data-tour="sidebar-tenancy" to="/pos/foodcourt/tenancy" active={isActive('/pos/foodcourt/tenancy') && !isActive('/pos/foodcourt/tenancy-map')} onClick={closeSidebar}>
-                    <NavIcon>◇</NavIcon>
-                    {t("nav.tenancy")}
-                  </NavItem>
-                )}
                 {isRouteAllowed('/pos/foodcourt/tenancy-map') && (
                   <NavItem to="/pos/foodcourt/tenancy-map" active={isActive('/pos/foodcourt/tenancy-map')} onClick={closeSidebar}>
                     <NavIcon>◉</NavIcon>
@@ -2337,6 +2326,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   >
                     <NavIcon>▦</NavIcon>
                     {t("nav.floorPlan", "Floor Plan")}
+                  </NavItem>
+                )}
+
+                {isRouteAllowed('/pos/foodcourt/tenancy') && (
+                  <NavItem data-tour="sidebar-tenancy" to="/pos/foodcourt/tenancy" active={isActive('/pos/foodcourt/tenancy')} onClick={closeSidebar}>
+                    <NavIcon>◇</NavIcon>
+                    {t("nav.tenancy")}
                   </NavItem>
                 )}
 
@@ -2411,7 +2407,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                       </NavItem>
                     )}
                     {(isRouteAllowed('/pos/suppliers/contracts') || isRouteAllowed('/pos/suppliers/directory')) && (
-                      <NavItem to="/pos/suppliers/contracts" active={isActive('/pos/suppliers/contracts') || isActive('/pos/suppliers/directory')} onClick={closeSidebar}>
+                      <NavItem to="/pos/suppliers" active={isActive('/pos/suppliers/contracts') || isActive('/pos/suppliers/directory')} onClick={closeSidebar}>
                         <NavIcon>◇</NavIcon>
                         {t("nav.suppliers", "Suppliers")}
                       </NavItem>
@@ -2552,7 +2548,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                       </NavItem>
                     )}
                     {(isRouteAllowed('/pos/suppliers/contracts') || isRouteAllowed('/pos/suppliers/directory')) && (
-                      <NavItem to="/pos/suppliers/contracts" active={isActive('/pos/suppliers/contracts') || isActive('/pos/suppliers/directory')} onClick={closeSidebar}>
+                      <NavItem to="/pos/suppliers" active={isActive('/pos/suppliers/contracts') || isActive('/pos/suppliers/directory')} onClick={closeSidebar}>
                         <NavIcon>◇</NavIcon>
                         {t("nav.suppliers", "Suppliers")}
                       </NavItem>
@@ -2626,7 +2622,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 {/* Sprint 6: Live Orders right under Dashboard for visibility */}
                 <NavItem data-tour="sidebar-supplier-orders" to="/pos/supplier/orders" active={isActive('/pos/supplier/orders')} hasPending={badgeCounts.livePoCount > 0} onClick={closeSidebar}>
                   <NavIcon hasPending={badgeCounts.livePoCount > 0}>▤</NavIcon>
-                  {t("nav.liveOrders", "Live Orders")}
+                  {t("nav.salesOrders", "Sales Orders")}
 
                 </NavItem>
 
@@ -2887,7 +2883,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 </NavItem>
               )}
               {(isRouteAllowed('/pos/suppliers/contracts') || isRouteAllowed('/pos/suppliers/directory')) && (
-                <NavItem to="/pos/suppliers/contracts" active={isActive('/pos/suppliers/contracts') || isActive('/pos/suppliers/directory')} onClick={closeSidebar}>
+                <NavItem to="/pos/suppliers" active={isActive('/pos/suppliers/contracts') || isActive('/pos/suppliers/directory')} onClick={closeSidebar}>
                   <NavIcon>◇</NavIcon>
                   {t("nav.suppliers", "Suppliers")}
                 </NavItem>
@@ -3158,22 +3154,22 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             onClick={() => closeSidebar?.()}
           >
             <span style={{ fontSize: 16, lineHeight: 1 }}>↗</span>
-            <span style={{ flex: 1 }}>{t('nav.referralProgram', 'Refer & Earn')}</span>
-            <span style={{ fontSize: 11, opacity: 0.85 }}>
-              {(() => {
-                if (referralBalance === null) return '';
-                if (referralBalance === 'empty') return t('nav.referralStartEarning', 'Start earning!');
-                const sym = referralBalance.currency === 'MYR' ? 'RM'
-                          : referralBalance.currency === 'USD' ? '$'
-                          : referralBalance.currency === 'KRW' ? '₩'
-                          : referralBalance.currency === 'SGD' ? 'S$'
-                          : referralBalance.currency === 'JPY' ? '¥'
-                          : referralBalance.currency === 'VND' ? '₫'
-                          : referralBalance.currency + ' ';
-                const decimals = ['KRW', 'JPY', 'VND'].includes(referralBalance.currency) ? 0 : 2;
-                return `${sym}${referralBalance.balance.toFixed(decimals)}`;
-              })()}
-            </span>
+            <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t('nav.referralProgram', 'Refer & Earn')}</span>
+            {referralBalance && referralBalance !== 'empty' && (
+              <span style={{ fontSize: 11, opacity: 0.85, whiteSpace: 'nowrap' }}>
+                {(() => {
+                  const sym = referralBalance.currency === 'MYR' ? 'RM'
+                            : referralBalance.currency === 'USD' ? '$'
+                            : referralBalance.currency === 'KRW' ? '₩'
+                            : referralBalance.currency === 'SGD' ? 'S$'
+                            : referralBalance.currency === 'JPY' ? '¥'
+                            : referralBalance.currency === 'VND' ? '₫'
+                            : referralBalance.currency + ' ';
+                  const decimals = ['KRW', 'JPY', 'VND'].includes(referralBalance.currency) ? 0 : 2;
+                  return `${sym}${referralBalance.balance.toFixed(decimals)}`;
+                })()}
+              </span>
+            )}
           </a>
           {/* Install App — visible on desktop (Chrome/Edge canInstall) + mobile (iOS shows guide).
               Hidden when already running standalone (already installed). Triggers PWA prompt

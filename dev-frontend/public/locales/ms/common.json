@@ -187,6 +187,7 @@
     "dashboard": "Papan Pemuka",
     "orders": "Pesanan",
     "liveOrders": "Pesanan Langsung",
+    "salesOrders": "Pesanan Jualan",
     "reservations": "Tempahan",
     "orderHistory": "Sejarah Pesanan",
     "menu": "Menu",
@@ -273,12 +274,13 @@
       "teamMarketing": "Pasukan & Pemasaran",
       "systemAccess": "Akses Sistem",
       "brandManagement": "Pengurusan Jenama",
+      "brands": "Jenama",
       "franchise": "Francais"
     },
     "franchiseManagement": "Pengurusan Francais",
     "tenancyManagement": "Pengurusan Penyewaan",
-    "franchise": "Francais",
-    "tenancy": "Penyewaan",
+    "franchise": "Pemegang Francais",
+    "tenancy": "Penyewa",
     "branches": "Cawangan",
     "franchiseMap": "Peta Francais",
     "tenancyMap": "Peta Penyewaan",
@@ -294,7 +296,8 @@
     "brandMenus": "Menu Jenama",
     "brandMenuCategories": "Kategori Menu",
     "brandMenuOptions": "Pilihan Menu",
-    "brandMenuUpdates": "Kemas Kini Menu Jenama"
+    "brandMenuUpdates": "Kemas Kini Menu Jenama",
+    "allBrands": "Semua Jenama"
   },
   "language": {
     "en": "English",
@@ -665,5 +668,13 @@
       "received": "Diterima",
       "delivered": "Sampai"
     }
-  }
+  },
+  "sort.newest": "Terbaru dahulu",
+  "sort.oldest": "Lama dahulu",
+  "sort.nameAsc": "Nama A → Z",
+  "sort.nameDesc": "Nama Z → A",
+  "sort.priceAsc": "Harga rendah → tinggi",
+  "sort.priceDesc": "Harga tinggi → rendah",
+  "sort.category": "Kumpulkan ikut kategori",
+  "sort.ariaLabel": "Susun"
 }

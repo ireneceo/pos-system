@@ -20,13 +20,16 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useTabParam } from '../../hooks/useTabParam';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import DateField from '../../components/Common/DateField';
 import { useAuth } from '../../contexts/AuthContext';
 import { getAuthToken } from '../../utils/auth';
 import SupplierOptionModal, { SupplierOptionGroup, SelectedOption } from './SupplierOptionModal';
+import ConnectSellerModal from '../../components/Common/ConnectSellerModal';
 import ConfirmDialog from '../../components/Common/ConfirmDialog';
+import { Modal as UIModal } from '../../components/UI/Modal';
 
 type SellerType = 'system_admin' | 'brand' | 'foodcourt' | 'supplier';
 
@@ -52,6 +55,7 @@ interface MyIngredientRow {
   ingredient_category_id?: number | null;
   ingredientCategory?: { id: number; name: string; emoji?: string | null } | null;
   sellers: SellerOpt[];
+  track_stock?: boolean;
 }
 
 interface CatalogRow {
@@ -60,10 +64,11 @@ interface CatalogRow {
   sku?: string | null;
   unit?: string | null;
   unit_price: number;
+  min_order_quantity?: number;
   image_url?: string | null;
   category_id?: number | null;
   category_name?: string | null;
-  supplier?: { id: number; name: string } | null;
+  supplier?: { id: number; name: string; seller_type?: 'supplier' | 'brand' | 'foodcourt' } | null;
   already_mapped: boolean;
   mapped_ingredient_id?: number | null;
   has_options?: boolean;
@@ -187,6 +192,7 @@ const FilterRow = styled.div`
 const SearchBox = styled.input`
   flex: 1;
   min-width: 220px;
+  max-width: 280px;
   padding: 9px 14px;
   border: 1px solid #E6EBF1;
   border-radius: 8px;
@@ -304,10 +310,17 @@ const CardPrice = styled.div`
   margin-top: 4px;
 `;
 
-const Badge = styled.span<{ $variant?: 'success' | 'cart' | 'warning' | 'options' }>`
-  position: absolute;
-  top: 8px;
-  right: 8px;
+const BadgeRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  min-height: 18px;
+`;
+
+const Badge = styled.span<{ $variant?: 'success' | 'cart' | 'warning' | 'options' | 'brand' | 'foodcourt' }>`
+  display: inline-flex;
+  align-items: center;
   padding: 2px 8px;
   border-radius: 999px;
   font-size: 10px;
@@ -317,6 +330,8 @@ const Badge = styled.span<{ $variant?: 'success' | 'cart' | 'warning' | 'options
       case 'success': return '#DCFCE7';
       case 'warning': return '#FEF3C7';
       case 'options': return '#7C3AED';
+      case 'brand': return '#EDE9FE';
+      case 'foodcourt': return '#FCE7F3';
       default: return '#EEF2FF';
     }
   }};
@@ -325,10 +340,11 @@ const Badge = styled.span<{ $variant?: 'success' | 'cart' | 'warning' | 'options
       case 'success': return '#166534';
       case 'warning': return '#92400E';
       case 'options': return 'white';
+      case 'brand': return '#6D28D9';
+      case 'foodcourt': return '#9D174D';
       default: return '#635BFF';
     }
   }};
-  z-index: 1;
 `;
 
 const Empty = styled.div`
@@ -484,6 +500,7 @@ const sellerKey = (s: { seller_type: string; seller_entity_id: number | null }) 
 const NewPurchaseOrderPage: React.FC = () => {
   const { t } = useTranslation(['purchaseOrders', 'common']);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
 
   // Buyer entity 결정 — Restaurant Admin / Brand General / Foodcourt General 모두 발주 가능
@@ -505,10 +522,12 @@ const NewPurchaseOrderPage: React.FC = () => {
   const restaurantId = buyerEntity?.id;
   const buyerApiBase = buyerEntity ? `/api/${buyerEntity.type}/${buyerEntity.id}` : null;
 
-  const [tab, setTab] = useState<'mine' | 'catalog'>('mine');
+  const [tab, setTab] = useTabParam<'mine' | 'catalog'>('mine');
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [supplierFilter, setSupplierFilter] = useState<string>('all');
+  // mine 탭 발주처(seller) 필터 — 'type:id' 형식 (예: 'supplier:14', 'brand:1', 'all')
+  const [mineSellerFilter, setMineSellerFilter] = useState<string>('all');
 
   const [myList, setMyList] = useState<MyIngredientRow[]>([]);
   const [loadingMine, setLoadingMine] = useState(false);
@@ -526,6 +545,20 @@ const NewPurchaseOrderPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [optionModal, setOptionModal] = useState<{ row: CatalogRow; product: any } | null>(null);
+  // Connect mode — mine 탭의 unlinked ingredient 를 catalog 항목과 연결할 때 사용
+  const [connectTarget, setConnectTarget] = useState<{ id: number; name: string; unit?: string } | null>(null);
+  // mine 탭에 untracked (track_stock=false) ingredient 표시 여부. 기본은 숨김 — 양념같이 추적 안 하는 건 발주 흐름 분리.
+  const [showUntracked, setShowUntracked] = useState(false);
+  // unit_conversion 입력 modal — connect 시 1 seller_unit = ? ingredient_unit
+  const [conversionModal, setConversionModal] = useState<{
+    row: CatalogRow;
+    selectedOptions: SelectedOption[];
+    adjustedUnitPrice: number;
+    qty?: number;
+    ingredientUnit: string;
+    suggested: number;
+    note?: string;
+  } | null>(null);
 
   const buildCartKey = (ingredientId: number, optionIds: number[] = []) =>
     `ing-${ingredientId}` + (optionIds.length ? '-opt-' + [...optionIds].sort((a, b) => a - b).join('-') : '');
@@ -579,6 +612,15 @@ const NewPurchaseOrderPage: React.FC = () => {
     else fetchCatalog();
   }, [tab, fetchMine, fetchCatalog]);
 
+  // Deep-link from /restaurant/:id/ingredients — auto-enter connect mode for a specific ingredient.
+  useEffect(() => {
+    const cid = parseInt(searchParams.get('connect_ingredient_id') || '', 10);
+    if (!Number.isFinite(cid) || connectTarget?.id === cid) return;
+    // Deep-link 진입 — modal 자동 오픈 (catalog 탭 이동 / 자동 검색 prefill 없음)
+    const row = myList.find(m => m.id === cid);
+    setConnectTarget({ id: cid, name: row?.name || `#${cid}`, unit: row?.unit || '' });
+  }, [searchParams, myList, connectTarget]);
+
   const myCategories = useMemo(() => {
     const map = new Map<number, { id: number; name: string; emoji?: string | null }>();
     for (const r of myList) {
@@ -590,7 +632,15 @@ const NewPurchaseOrderPage: React.FC = () => {
   const filteredMy = useMemo(() => {
     const q = search.trim().toLowerCase();
     return myList.filter(r => {
+      // Track in Inventory 토글 OFF 이면 mine 탭에서 숨김 (showUntracked=true 일 때만 노출)
+      if (!showUntracked && r.track_stock === false) return false;
       if (categoryFilter !== 'all' && String(r.ingredient_category_id || '') !== categoryFilter) return false;
+      // 발주처 필터 — 해당 seller 매핑된 ingredient만
+      if (mineSellerFilter !== 'all') {
+        const [t, idStr] = mineSellerFilter.split(':');
+        const sid = parseInt(idStr, 10);
+        if (!(r.sellers || []).some(s => s.seller_type === t && s.seller_entity_id === sid)) return false;
+      }
       if (!q) return true;
       const haystack: string[] = [
         r.name,
@@ -600,7 +650,24 @@ const NewPurchaseOrderPage: React.FC = () => {
       ];
       return haystack.some(s => s.toLowerCase().includes(q));
     });
-  }, [myList, search, categoryFilter]);
+  }, [myList, search, categoryFilter, showUntracked, mineSellerFilter]);
+
+  // mine 탭 발주처(seller) 목록 — myList의 모든 sellers union (중복 제거)
+  const mineSellers = useMemo(() => {
+    const seen = new Map<string, { key: string; type: string; id: number; name: string; count: number }>();
+    for (const r of myList) {
+      for (const s of (r.sellers || [])) {
+        if (s.seller_entity_id == null) continue;
+        const key = `${s.seller_type}:${s.seller_entity_id}`;
+        const ex = seen.get(key);
+        if (ex) ex.count++;
+        else seen.set(key, { key, type: s.seller_type, id: s.seller_entity_id, name: s.seller_name || '—', count: 1 });
+      }
+    }
+    return Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [myList]);
+
+  const untrackedCount = useMemo(() => (myList || []).filter(r => r.track_stock === false).length, [myList]);
 
   // isInCart / cartQtyOf — 옵션 없는 row 만 빠른 lookup (옵션 있으면 항상 새 row)
   const isInCart = (ingredientId: number) =>
@@ -609,7 +676,14 @@ const NewPurchaseOrderPage: React.FC = () => {
     cart.filter(r => r.ingredient_id === ingredientId).reduce((s, r) => s + r.quantity, 0);
 
   const addMineToCart = (row: MyIngredientRow) => {
-    const preferred = row.sellers.find(s => s.is_preferred) || row.sellers[0];
+    // 발주처 필터가 활성화돼 있으면 그 seller로 발주. 아니면 preferred → 첫 항목.
+    let preferred: SellerOpt | undefined;
+    if (mineSellerFilter !== 'all') {
+      const [t2, idStr] = mineSellerFilter.split(':');
+      const sid = parseInt(idStr, 10);
+      preferred = row.sellers.find(s => s.seller_type === t2 && s.seller_entity_id === sid);
+    }
+    if (!preferred) preferred = row.sellers.find(s => s.is_preferred) || row.sellers[0];
     if (!preferred) {
       setToast(t('newPo.toast.needLink', { name: row.name, defaultValue: '"{{name}}" needs to be linked to a supplier first' }) as string);
       return;
@@ -669,14 +743,67 @@ const NewPurchaseOrderPage: React.FC = () => {
     setOptionModal({ row: catalogShape, product: catalogShape });
   };
 
-  const ensureIngredientAndAddToCart = async (row: CatalogRow, selectedOptions: SelectedOption[], adjustedUnitPrice: number, qty?: number) => {
+  // 단위 호환성 그룹 + 자동 변환 계수 계산.
+  // 호환되면 정확한 conversion (예: kg↔g = 0.001/1000) 반환, 비호환이면 null (사용자 입력 강제).
+  const UNIT_WEIGHT = ['kg', 'g'];
+  const UNIT_VOLUME = ['L', 'ml'];
+  const UNIT_COUNT = ['piece', 'pack', 'can', 'bottle'];
+  const detectConversion = (ingredientUnit: string, sellerUnit: string): { auto: number | null; compatible: boolean; note?: string } => {
+    if (!ingredientUnit || !sellerUnit) return { auto: 1, compatible: true };
+    const a = ingredientUnit, b = sellerUnit;
+    if (a === b) return { auto: 1, compatible: true };
+    // weight
+    if (UNIT_WEIGHT.includes(a) && UNIT_WEIGHT.includes(b)) {
+      if (a === 'kg' && b === 'g') return { auto: 0.001, compatible: true, note: '1g = 0.001 kg' };
+      if (a === 'g' && b === 'kg') return { auto: 1000, compatible: true, note: '1 kg = 1000 g' };
+    }
+    // volume
+    if (UNIT_VOLUME.includes(a) && UNIT_VOLUME.includes(b)) {
+      if (a === 'L' && b === 'ml') return { auto: 0.001, compatible: true, note: '1 ml = 0.001 L' };
+      if (a === 'ml' && b === 'L') return { auto: 1000, compatible: true, note: '1 L = 1000 ml' };
+    }
+    // count→count: 같은 ENUM 안에서도 변환 모름 (piece vs pack 등) — 사용자 입력
+    if (UNIT_COUNT.includes(a) && UNIT_COUNT.includes(b)) {
+      return { auto: null, compatible: false, note: `${a} ↔ ${b}: 수량 단위 차이 — 수동 입력 필요` };
+    }
+    // cross-group (weight ↔ volume ↔ count): 호환 안 됨
+    return { auto: null, compatible: false, note: `${a}와 ${b}는 호환되지 않습니다. 수동 입력하거나 별도 재료로 추가 권장` };
+  };
+
+  const ensureIngredientAndAddToCart = async (row: CatalogRow, selectedOptions: SelectedOption[], adjustedUnitPrice: number, qty?: number, overrideConversion?: number) => {
     if (!buyerApiBase) return;
     try {
       const token = getAuthToken();
+      // Seller type 분기 — supplier / brand / foodcourt 모두 동일 endpoint, body 키만 다름
+      const sellerType = (row.supplier as any)?.seller_type || 'supplier';
+      const body: any =
+        sellerType === 'brand' ? { brand_product_id: row.id }
+        : sellerType === 'foodcourt' ? { foodcourt_product_id: row.id }
+        : { supplier_product_id: row.id };
+      // Connect mode — 기존 ingredient 에 매핑만 추가 + unit_conversion 결정
+      let autoConvNote: string | null = null;
+      if (connectTarget?.id) {
+        body.existing_ingredient_id = connectTarget.id;
+        const ingUnit = connectTarget.unit || (myList.find(m => m.id === connectTarget.id)?.unit) || '';
+        const sellerUnit = row.unit || '';
+        if (overrideConversion != null) {
+          body.unit_conversion = overrideConversion;
+        } else {
+          const conv = detectConversion(ingUnit, sellerUnit);
+          if (conv.auto != null && conv.compatible) {
+            body.unit_conversion = conv.auto;
+            if (conv.note) autoConvNote = conv.note; // 자동 변환 알림용
+          } else {
+            // 호환 안 됨 → modal 띄워 사용자 입력 받기
+            setConversionModal({ row, selectedOptions, adjustedUnitPrice, qty, ingredientUnit: ingUnit, suggested: 1, note: conv.note });
+            return; // 사용자 입력 대기
+          }
+        }
+      }
       const res = await fetch(`${buyerApiBase}/ingredients/from-catalog`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ supplier_product_id: row.id })
+        body: JSON.stringify(body)
       });
       const j = await res.json();
       if (!res.ok || !j.success) {
@@ -717,7 +844,14 @@ const NewPurchaseOrderPage: React.FC = () => {
           adjusted_unit_price: selectedOptions.length ? adjustedUnitPrice : undefined
         }]);
       }
-      if (j.data.created) {
+      if (j.data.connected) {
+        const baseMsg = t('newPo.toast.connected', { name: ing.name, defaultValue: '"{{name}}" connected to a supplier ✓' }) as string;
+        setToast(autoConvNote ? `${baseMsg} — ${autoConvNote}` : baseMsg);
+        setConnectTarget(null);
+        fetchMine();
+        // Switch back to mine tab so the user sees the now-linked ingredient ready to order
+        setTab('mine');
+      } else if (j.data.created) {
         setToast(t('newPo.toast.linked', { name: ing.name, defaultValue: '"{{name}}" added to your inventory' }) as string);
         if (tab === 'mine') fetchMine();
       } else {
@@ -832,6 +966,27 @@ const NewPurchaseOrderPage: React.FC = () => {
             </TabBtn>
           </TabBar>
 
+          {connectTarget && tab === 'catalog' && (
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              gap: 12, padding: '10px 14px', margin: '0 0 12px',
+              background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 8,
+              fontSize: 13, color: '#92400E'
+            }}>
+              <div>
+                <strong>{t('newPo.connecting', 'Connecting')}:</strong> {connectTarget.name} —{' '}
+                {t('newPo.connectHelp', 'click any catalog item below to link this ingredient to a supplier')}
+              </div>
+              <button
+                type="button"
+                onClick={() => { setConnectTarget(null); setSearch(''); }}
+                style={{ background: 'transparent', border: '1px solid #92400E', color: '#92400E', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
+              >
+                {t('common.cancel', 'Cancel')}
+              </button>
+            </div>
+          )}
+
           <FilterRow>
             <SearchBox
               type="text"
@@ -844,6 +999,34 @@ const NewPurchaseOrderPage: React.FC = () => {
                 <option value="all">{t('newPo.allSuppliers', 'All suppliers')}</option>
                 {catalogSuppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
               </FilterSel>
+            )}
+            {tab === 'mine' && mineSellers.length > 0 && (
+              <FilterSel value={mineSellerFilter} onChange={(e) => setMineSellerFilter(e.target.value)}>
+                <option value="all">{t('newPo.allSellers', 'All sellers')}</option>
+                {mineSellers.map(s => (
+                  <option key={s.key} value={s.key}>
+                    {s.type === 'brand' ? '🏢 ' : s.type === 'foodcourt' ? '🏬 ' : '📦 '}
+                    {s.name} ({s.count})
+                  </option>
+                ))}
+              </FilterSel>
+            )}
+            {tab === 'mine' && untrackedCount > 0 && (
+              <label style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 10px',
+                background: showUntracked ? '#EEF2FF' : '#F8FAFC',
+                border: `1px solid ${showUntracked ? '#C7D2FE' : '#E6EBF1'}`,
+                borderRadius: 6, fontSize: 12, fontWeight: 600,
+                color: showUntracked ? '#3730A3' : '#6B7C93', cursor: 'pointer'
+              }}>
+                <input
+                  type="checkbox"
+                  checked={showUntracked}
+                  onChange={(e) => setShowUntracked(e.target.checked)}
+                  style={{ margin: 0 }}
+                />
+                {t('newPo.showUntracked', 'Show untracked')} ({untrackedCount})
+              </label>
             )}
           </FilterRow>
 
@@ -894,12 +1077,23 @@ const NewPurchaseOrderPage: React.FC = () => {
                       <Card
                         key={row.id}
                         type="button"
-                        onClick={() => addMineToCart(row)}
+                        onClick={() => {
+                          if (!hasSeller) {
+                            // 발주처 미연결 — inline modal 띄움 (페이지 이동 X, catalog 탭 자동 검색 X)
+                            setConnectTarget({ id: row.id, name: row.name, unit: row.unit || '' });
+                            return;
+                          }
+                          addMineToCart(row);
+                        }}
                         onDoubleClick={() => hasSeller && incCartQty(row.id, 1)}
-                        $disabled={!hasSeller}
                       >
-                        {inCart && <Badge $variant="cart">×{qInCart}</Badge>}
-                        {!inCart && !hasSeller && <Badge $variant="warning">{t('newPo.unlinked', 'Unlinked')}</Badge>}
+                        <BadgeRow>
+                          {inCart && <Badge $variant="cart">×{qInCart}</Badge>}
+                          {!inCart && !hasSeller && <Badge $variant="warning">{t('newPo.connectCta', 'Click to connect supplier →')}</Badge>}
+                          {!inCart && hasSeller && <Badge $variant="success">{t('newPo.linked', 'Linked')}</Badge>}
+                          {hasSeller && row.sellers.some(s => s.seller_type === 'brand') && <Badge $variant="brand">{t('newPo.brandBadge', 'BRAND')}</Badge>}
+                          {hasSeller && row.sellers.some(s => s.seller_type === 'foodcourt') && <Badge $variant="foodcourt">{t('newPo.foodcourtBadge', 'FOODCOURT')}</Badge>}
+                        </BadgeRow>
                         <CardName>{row.name}</CardName>
                         <CardMeta>
                           {cat ? `${cat.emoji ? cat.emoji + ' ' : ''}${cat.name}` : t('newPo.uncategorized', 'Uncategorized')}
@@ -908,10 +1102,29 @@ const NewPurchaseOrderPage: React.FC = () => {
                         {hasSeller ? (
                           <>
                             <CardPrice>
-                              {row.sellers.length === 1 ? minPrice.toFixed(2) : `from ${minPrice.toFixed(2)}`}
+                              {(() => {
+                                // 환산 단가 (per ingredient unit) = unit_price / unit_conversion
+                                // 발주처 필터 활성 시 그 seller 가격만, 아니면 minPrice (또는 from)
+                                let pricedSellers = row.sellers;
+                                if (mineSellerFilter !== 'all') {
+                                  const [tt, idStr] = mineSellerFilter.split(':');
+                                  const sid = parseInt(idStr, 10);
+                                  pricedSellers = row.sellers.filter(s => s.seller_type === tt && s.seller_entity_id === sid);
+                                }
+                                const perUnit = pricedSellers.map(s => (parseFloat(String(s.unit_price)) || 0) / (parseFloat(String(s.unit_conversion)) || 1));
+                                const minPer = perUnit.length ? Math.min(...perUnit) : 0;
+                                return pricedSellers.length === 1 || mineSellerFilter !== 'all' ? minPer.toFixed(2) : `from ${minPer.toFixed(2)}`;
+                              })()}
                             </CardPrice>
                             <CardMeta>
+                              /{row.unit || 'unit'}
+                              {' · '}
                               {row.sellers.length === 1 ? row.sellers[0].seller_name : `${row.sellers.length} ${t('newPo.vendors', 'vendors')}`}
+                              {(() => {
+                                // 여러 seller 면 최대 min_order (가장 큰 제약) 표시
+                                const minOrder = Math.max(1, ...row.sellers.map(s => Number(s.min_order_quantity) || 1));
+                                return minOrder > 1 ? ` · ${t('newPo.minOrder', 'Min')} ${minOrder}` : '';
+                              })()}
                             </CardMeta>
                             {(row.sellers.find(s => s.is_preferred) || row.sellers[0])?.has_options && (
                               <button
@@ -979,9 +1192,12 @@ const NewPurchaseOrderPage: React.FC = () => {
                         onClick={() => addCatalogToCart(p)}
                         onDoubleClick={() => !p.has_options && p.mapped_ingredient_id && incCartQty(p.mapped_ingredient_id, 1)}
                       >
-                        {inCart && <Badge $variant="cart">×{qInCart}</Badge>}
-                        {!inCart && p.already_mapped && <Badge $variant="success">{t('newPo.linked', 'Linked')}</Badge>}
-                        {!inCart && !p.already_mapped && <Badge $variant="warning">{t('newPo.notLinked', 'Not linked')}</Badge>}
+                        <BadgeRow>
+                          {p.supplier?.seller_type === 'brand' && <Badge $variant="brand">{t('newPo.brandBadge', 'BRAND')}</Badge>}
+                          {p.supplier?.seller_type === 'foodcourt' && <Badge $variant="foodcourt">{t('newPo.foodcourtBadge', 'FOODCOURT')}</Badge>}
+                          {inCart && <Badge $variant="cart">×{qInCart}</Badge>}
+                          {!inCart && p.already_mapped && <Badge $variant="success">{t('newPo.linked', 'Linked')}</Badge>}
+                        </BadgeRow>
                         {p.image_url && (
                           <ProductImage>
                             <img src={p.image_url} alt={p.name} loading="lazy" />
@@ -990,6 +1206,7 @@ const NewPurchaseOrderPage: React.FC = () => {
                         <CardName>{p.name}</CardName>
                         <CardMeta>
                           {p.category_name ? `${p.category_name} · ` : ''}{p.unit || ''}
+                          {(p.min_order_quantity || 1) > 1 ? ` · ${t('newPo.minOrder', 'Min')} ${p.min_order_quantity}` : ''}
                         </CardMeta>
                         <CardPrice>{p.unit_price.toFixed(2)}</CardPrice>
                         <CardMeta>{p.supplier?.name || ''}{p.sku ? ` · ${p.sku}` : ''}</CardMeta>
@@ -1154,6 +1371,89 @@ const NewPurchaseOrderPage: React.FC = () => {
           }}
         />
       )}
+      {/* Mine 탭에서 미연결 ingredient 클릭 시 inline 매핑 modal */}
+      <ConnectSellerModal
+        open={!!connectTarget}
+        ingredient={connectTarget ? { id: connectTarget.id, name: connectTarget.name, unit: connectTarget.unit } : null}
+        buyerApiBase={buyerApiBase || ''}
+        onClose={() => setConnectTarget(null)}
+        onConnected={() => { fetchMine(); }}
+      />
+
+      <UIModal
+        isOpen={!!conversionModal}
+        onClose={() => setConversionModal(null)}
+        title={t('newPo.conversion.title', 'Unit conversion')}
+        maxWidth="480px"
+        footer={conversionModal ? (
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => setConversionModal(null)}
+              style={{ padding: '8px 16px', background: '#F1F5F9', border: '1px solid #E2E8F0', color: '#475569', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}
+            >
+              {t('common.cancel', 'Cancel')}
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                const { row, selectedOptions, adjustedUnitPrice, qty } = conversionModal;
+                setConversionModal(null);
+                setConnectTarget(null);
+                await ensureIngredientAndAddToCart(row, selectedOptions, adjustedUnitPrice, qty);
+                setToast(t('newPo.toast.addedAsSeparate', { defaultValue: 'Added as a separate ingredient (different unit/spec).' }) as string);
+              }}
+              style={{ padding: '8px 16px', background: '#FEF3C7', border: '1px solid #FDE68A', color: '#92400E', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }}
+            >
+              {t('newPo.conversion.asSeparate', '+ Add as separate ingredient')}
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                const { row, selectedOptions, adjustedUnitPrice, qty, suggested } = conversionModal;
+                if (!suggested || suggested <= 0) return;
+                setConversionModal(null);
+                await ensureIngredientAndAddToCart(row, selectedOptions, adjustedUnitPrice, qty, suggested);
+              }}
+              disabled={!conversionModal.suggested || conversionModal.suggested <= 0}
+              style={{
+                padding: '8px 16px',
+                background: conversionModal.suggested > 0 ? '#635BFF' : '#CBD5E1',
+                border: 'none', color: 'white', borderRadius: 6, fontWeight: 600,
+                cursor: conversionModal.suggested > 0 ? 'pointer' : 'not-allowed'
+              }}
+            >
+              {t('newPo.conversion.connect', 'Connect')}
+            </button>
+          </div>
+        ) : null}
+      >
+        {conversionModal && (
+          <>
+            <p style={{ margin: '0 0 16px', color: '#475569', fontSize: 13, lineHeight: 1.5 }}>
+              <strong>{conversionModal.row.name}</strong> (1 {conversionModal.row.unit || '?'}) =
+              {' '}<input
+                type="number"
+                step="0.001"
+                min="0.001"
+                value={conversionModal.suggested}
+                onChange={(e) => setConversionModal(prev => prev ? { ...prev, suggested: parseFloat(e.target.value) || 0 } : prev)}
+                style={{ width: 100, padding: '4px 8px', border: '1px solid #C7D2FE', borderRadius: 6, fontSize: 14, fontWeight: 600 }}
+              />
+              {' '}<strong>{conversionModal.ingredientUnit || '?'}</strong>
+            </p>
+            {conversionModal.note && (
+              <div style={{ padding: 10, background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 6, color: '#92400E', fontSize: 12, marginBottom: 16, lineHeight: 1.5 }}>
+                {conversionModal.note}
+              </div>
+            )}
+            <p style={{ margin: 0, fontSize: 12, color: '#64748B', lineHeight: 1.5 }}>
+              {t('newPo.conversion.help', 'Example — a 10kg box of an ingredient measured in kg: enter 10. A 30-piece tray measured in piece: enter 30.')}
+            </p>
+          </>
+        )}
+      </UIModal>
+
       <ConfirmDialog
         isOpen={!!currencyConfirm}
         onClose={() => setCurrencyConfirm(null)}

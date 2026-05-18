@@ -138,6 +138,8 @@ const CardActions = styled.div`
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  margin-top: auto;
+  padding-top: 12px;
 `;
 
 const Empty = styled.div`

@@ -164,6 +164,7 @@ const RestaurantIngredientsPage = React.lazy(() => import('./pages/RecipeManagem
 const RecipesPage = React.lazy(() => import('./pages/Recipes/RecipesPage'));
 const IngredientsPage = React.lazy(() => import('./pages/Ingredients/IngredientsPage'));
 const SuppliersPage = React.lazy(() => import('./pages/Suppliers/SuppliersPage'));
+const UnifiedSuppliersPage = React.lazy(() => import('./pages/Suppliers/UnifiedSuppliersPage'));
 
 // Inventory Management
 const InventoryPage = React.lazy(() => import('./pages/Inventory/InventoryPage'));
@@ -204,8 +205,6 @@ const BrandPlansPage = React.lazy(() => import('./pages/BrandGeneral/BrandPlansP
 const BrandPaymentSettingsPage = React.lazy(() => import('./pages/BrandGeneral/BrandPaymentSettingsPage'));
 // Brand Menu System (v3.32+)
 const BrandMenusPage = React.lazy(() => import('./pages/BrandGeneral/BrandMenusPage'));
-const BrandMenuCategoriesPage = React.lazy(() => import('./pages/BrandGeneral/BrandMenuCategoriesPage'));
-const BrandMenuOptionGroupsPage = React.lazy(() => import('./pages/BrandGeneral/BrandMenuOptionGroupsPage'));
 const RestaurantBrandMenuUpdatesPage = React.lazy(() => import('./pages/Restaurant/BrandMenuUpdatesPage'));
 const FranchiseManagementPage = React.lazy(() => import('./pages/BrandGeneral/FranchiseManagementPage'));
 const BrandFranchiseMapStandalone = React.lazy(() => import('./pages/BrandGeneral/BrandFranchiseMapStandalone'));
@@ -990,16 +989,9 @@ function App() {
                           <BrandMenusPage />
                         </ProtectedRoute>
                       } />
-                      <Route path="/pos/brand-menu-categories" element={
-                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager', 'System Admin']}>
-                          <BrandMenuCategoriesPage />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/pos/brand-menu-option-groups" element={
-                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager', 'System Admin']}>
-                          <BrandMenuOptionGroupsPage />
-                        </ProtectedRoute>
-                      } />
+                      {/* Legacy redirects — Categories / OptionGroups are now tabs inside /pos/brand-menus */}
+                      <Route path="/pos/brand-menu-categories" element={<Navigate to="/pos/brand-menus?tab=categories" replace />} />
+                      <Route path="/pos/brand-menu-option-groups" element={<Navigate to="/pos/brand-menus?tab=options" replace />} />
 
                       {/* Brand Menu System — Restaurant side */}
                       <Route path="/restaurant/:restaurantId/brand-menu-updates" element={
@@ -1041,8 +1033,8 @@ function App() {
 
                       {/* Suppliers Management */}
                       <Route path="/pos/suppliers" element={
-                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager', 'System Admin']}>
-                          <SuppliersPage />
+                        <ProtectedRoute requiredRole={['Restaurant Admin','Restaurant Owner','Staff','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
+                          <UnifiedSuppliersPage />
                         </ProtectedRoute>
                       } />
 
@@ -1398,9 +1390,7 @@ function App() {
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/suppliers/contracts" element={
-                        <ProtectedRoute requiredRole={['Restaurant Admin','Restaurant Owner','Staff','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
-                          <MySuppliersPage />
-                        </ProtectedRoute>
+                        <Navigate to="/pos/suppliers?tab=contracts" replace />
                       } />
                       <Route path="/pos/suppliers/contracts/:contractId" element={
                         <ProtectedRoute requiredRole={['Restaurant Admin','Restaurant Owner','Staff','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>

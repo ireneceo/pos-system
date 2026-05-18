@@ -192,14 +192,15 @@ router.get('/stats', async (req, res) => {
     }
     const baseWhere = where || {};
 
-    const [pending, confirmed, shipped, cancelled] = await Promise.all([
+    const [pending, confirmed, shipped, received, cancelled] = await Promise.all([
       PurchaseOrder.count({ where: { ...baseWhere, status: 'submitted' } }),
       PurchaseOrder.count({ where: { ...baseWhere, status: 'confirmed' } }),
       PurchaseOrder.count({ where: { ...baseWhere, status: 'shipped' } }),
+      PurchaseOrder.count({ where: { ...baseWhere, status: { [Op.in]: ['received', 'partial_received', 'closed'] } } }),
       PurchaseOrder.count({ where: { ...baseWhere, status: 'cancelled' } })
     ]);
 
-    // received_this_month: count POs received this month
+    // received_this_month: count POs received this month (KPI separate from counts)
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
@@ -218,7 +219,15 @@ router.get('/stats', async (req, res) => {
         confirmed,
         shipped,
         received_this_month: receivedThisMonth,
-        cancelled
+        cancelled,
+        // Tab counts (used by incoming-orders TabBadge — submitted/confirmed/shipped/received total/cancelled)
+        counts: {
+          submitted: pending,
+          confirmed,
+          shipped,
+          received,
+          cancelled
+        }
       }
     });
   } catch (err) {

@@ -1,18 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { Container, Header, Title, Content } from '../../components/UI';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { FilterBar, SearchInput } from '../../components/Common/FilterComponents';
 import { useAuth } from '../../contexts/AuthContext';
-import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormTextArea, FormRow as UIFormRow } from '../../components/UI/Modal';
 import ConfirmModal from '../../components/ConfirmModal';
-import { formatEntityAddress, AppLocale } from '../../utils/formatAddress';
+import SupplierFormModal from '../../components/Suppliers/SupplierFormModal';
+import SupplierViewModal from '../../components/Suppliers/SupplierViewModal';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
-import { AddressFields } from '../../components/Form';
-import type { Address } from '../../utils/formatAddress';
 interface Brand {
   id: number;
   name: string;
@@ -130,7 +129,7 @@ const InfoRow = styled.div`
 const CardActions = styled.div`
   display: flex;
   gap: 8px;
-  margin-top: 16px;
+  margin-top: auto;
   padding-top: 16px;
   border-top: 1px solid #E6EBF1;
 `;
@@ -243,30 +242,21 @@ const SuppliersPage: React.FC = () => {
   const { t, i18n } = useTranslation('suppliers');
   const { user } = useAuth();
   const effectiveRestaurantId = user?.restaurant_id || (user as any)?.restaurantId;
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [brandSuppliers, setBrandSuppliers] = useState<Supplier[]>([]);
+  // 가맹본부 / 푸드코트 본부 / 계약된 supplier_company — 자동 fetch 후 list 에 추가 섹션
+  const [parentSellers, setParentSellers] = useState<Array<any>>([]);
+  const [contractSellers, setContractSellers] = useState<Array<any>>([]);
   const [, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
+  const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   const [showModal, setShowModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewSupplier, setViewSupplier] = useState<Supplier | null>(null);
-  const [formData, setFormData] = useState({
-    code: '',
-    name: '',
-    contact_name: '',
-    phone: '',
-    email: '',
-    address: '',
-    business_number: '',
-    bank_name: '',
-    bank_account: '',
-    payment_terms: '',
-    notes: '',
-    brand_ids: [] as number[]
-  });
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; supplierId: number | null; supplierName: string }>({
     isOpen: false,
     supplierId: null,
@@ -277,6 +267,58 @@ const SuppliersPage: React.FC = () => {
   const isBrandUser = user?.role === 'Brand General' || user?.role === 'Brand Manager';
 
   const getToken = useCallback(() => getAuthToken(), []);
+
+  // Parent BG/FG + 계약된 supplier_company 추가 fetch — Direct 탭에 표시.
+  useEffect(() => {
+    const token = getToken();
+    const auth = { headers: { Authorization: `Bearer ${token}` } };
+    const loadExtras = async () => {
+      try {
+        // 1) Parent BG/FG — Restaurant Admin 한정 (가맹점이 자기 본부를 공급처로 표시)
+        const parents: any[] = [];
+        if (isRestaurantAdmin && effectiveRestaurantId) {
+          const restRes = await fetch(`/api/restaurants/${effectiveRestaurantId}`, auth).then(r => r.json()).catch(() => null);
+          const rest = restRes?.data || restRes;
+          if (rest?.brand_id) {
+            const brRes = await fetch(`/api/brands/${rest.brand_id}`, auth).then(r => r.json()).catch(() => null);
+            const br = brRes?.data || brRes;
+            if (br?.id) parents.push({
+              id: `bg-${br.id}`, name: br.name, email: br.email || null,
+              phone: br.phone || null, contact_name: null,
+              _source: 'brand_parent', _label: 'BRAND HQ', _category: { name: '가맹본부', color: '#6D28D9' }
+            });
+          }
+          if (rest?.foodcourt_id) {
+            const fcRes = await fetch(`/api/foodcourts/${rest.foodcourt_id}`, auth).then(r => r.json()).catch(() => null);
+            const fc = fcRes?.data || fcRes;
+            if (fc?.id) parents.push({
+              id: `fg-${fc.id}`, name: fc.name, email: fc.email || null,
+              phone: fc.phone || null, contact_name: null,
+              _source: 'foodcourt_parent', _label: 'FOODCOURT', _category: { name: '푸드코트 본부', color: '#9D174D' }
+            });
+          }
+        }
+        setParentSellers(parents);
+
+        // 2) 계약된 supplier_company — 자동 정보 가져오기 (이름/email/phone 등)
+        const contractsRes = await fetch('/api/supplier-contracts?status=active', auth).then(r => r.json()).catch(() => null);
+        const contracts = contractsRes?.data || [];
+        const contractItems = contracts.map((c: any) => {
+          const sc = c.supplierCompany || {};
+          return {
+            id: `c-${sc.id || c.supplier_company_id}`,
+            name: sc.name || '—', email: sc.email || null,
+            phone: sc.phone || null, contact_name: null,
+            _source: 'contract', _label: 'CONTRACTED', _category: { name: '계약', color: '#166534' }
+          };
+        });
+        setContractSellers(contractItems);
+      } catch (e) {
+        console.error('Failed to load parent/contract sellers:', e);
+      }
+    };
+    loadExtras();
+  }, [isRestaurantAdmin, effectiveRestaurantId, getToken]);
 
   // Fetch brands for Brand General/Manager
   useEffect(() => {
@@ -348,59 +390,13 @@ const SuppliersPage: React.FC = () => {
   };
 
   const handleOpenModal = (supplier?: Supplier) => {
-    if (supplier) {
-      setSelectedSupplier(supplier);
-      setFormData({
-        code: supplier.code || '',
-        name: supplier.name,
-        contact_name: supplier.contact_name || '',
-        phone: supplier.phone || '',
-        email: supplier.email || '',
-        address: supplier.address || '',
-        business_number: supplier.business_number || '',
-        bank_name: supplier.bank_name || '',
-        bank_account: supplier.bank_account || '',
-        payment_terms: supplier.payment_terms || '',
-        notes: supplier.notes || '',
-        brand_ids: supplier.connectedBrands?.map(b => b.id) || []
-      });
-    } else {
-      setSelectedSupplier(null);
-      setFormData({
-        code: '',
-        name: '',
-        contact_name: '',
-        phone: '',
-        email: '',
-        address: '',
-        business_number: '',
-        bank_name: '',
-        bank_account: '',
-        payment_terms: '',
-        notes: '',
-        brand_ids: []
-      });
-    }
+    setSelectedSupplier(supplier || null);
     setShowModal(true);
   };
 
   const handleCloseModal = () => {
     setShowModal(false);
     setSelectedSupplier(null);
-    setFormData({
-      code: '',
-      name: '',
-      contact_name: '',
-      phone: '',
-      email: '',
-      address: '',
-      business_number: '',
-      bank_name: '',
-      bank_account: '',
-      payment_terms: '',
-      notes: '',
-      brand_ids: []
-    });
   };
 
   const handleViewSupplier = (supplier: Supplier) => {
@@ -408,53 +404,33 @@ const SuppliersPage: React.FC = () => {
     setShowViewModal(true);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.name.trim()) return;
-
-    try {
-      const token = getToken();
-      let url = '';
-      const method = selectedSupplier ? 'PUT' : 'POST';
-
-      if (isBrandUser) {
-        // Use new unified API
-        url = selectedSupplier
-          ? `/api/suppliers/${selectedSupplier.id}`
-          : '/api/suppliers';
-      } else if (isRestaurantAdmin && effectiveRestaurantId) {
-        url = selectedSupplier
-          ? `/api/restaurants/${effectiveRestaurantId}/suppliers/${selectedSupplier.id}`
-          : `/api/restaurants/${effectiveRestaurantId}/suppliers`;
-      }
-
-      if (!url) return;
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(formData)
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        handleCloseModal();
-        if (isBrandUser) {
-          fetchSuppliers();
-        } else {
-          fetchRestaurantSuppliers();
-        }
-      } else {
-        alert(data.error || 'Failed to save');
-      }
-    } catch (error) {
-      console.error('Failed to save supplier:', error);
-      alert('Failed to save');
+  // Deep link: ?supplier=ID — AllSuppliersView 카드에서 Edit/View 클릭 시 자동 모달 open.
+  // own 은 edit 모달, brand_shared(owner_type='brand') 는 view 모달.
+  useEffect(() => {
+    const supplierIdParam = searchParams.get('supplier');
+    if (!supplierIdParam) return;
+    if (loading) return;
+    const id = parseInt(supplierIdParam, 10);
+    if (isNaN(id)) return;
+    const found = [...suppliers, ...brandSuppliers].find(s => s.id === id);
+    if (!found) return;
+    if (found.owner_type === 'brand' && isRestaurantAdmin) {
+      handleViewSupplier(found);
+    } else {
+      handleOpenModal(found);
     }
+    // 쿼리 제거 — 모달 닫고 재오픈 방지
+    const next = new URLSearchParams(searchParams);
+    next.delete('supplier');
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [suppliers, brandSuppliers, loading]);
+
+  // 저장은 SupplierFormModal 자체에서 처리. 성공 시 onSaved 콜백으로 list 재 fetch.
+  const handleFormSaved = () => {
+    handleCloseModal();
+    if (isBrandUser) fetchSuppliers();
+    else fetchRestaurantSuppliers();
   };
 
   const handleDelete = async () => {
@@ -487,11 +463,11 @@ const SuppliersPage: React.FC = () => {
           fetchRestaurantSuppliers();
         }
       } else {
-        alert(data.error || 'Failed to delete');
+        setInfoModal({ open: true, title: t('suppliers:deleteFailedTitle', 'Delete Failed'), message: data.error || t('suppliers:deleteFailedMessage', 'Failed to delete. Please try again.') });
       }
     } catch (error) {
       console.error('Failed to delete supplier:', error);
-      alert('Failed to delete');
+      setInfoModal({ open: true, title: t('suppliers:deleteFailedTitle', 'Delete Failed'), message: t('suppliers:deleteFailedMessage', 'Failed to delete. Please try again.') });
     }
   };
 
@@ -641,15 +617,6 @@ const SuppliersPage: React.FC = () => {
   return (
     <>
       <Container>
-        <Header>
-          <Title>{t('suppliers:suppliersPage.suppliers')}</Title>
-          <HeaderActions>
-            <ThemedButton variant="primary" onClick={() => handleOpenModal()}>
-              Add Supplier
-            </ThemedButton>
-          </HeaderActions>
-        </Header>
-
         <Content>
           <FilterSection>
             <FilterBar style={{ marginBottom: 0, flex: 1 }}>
@@ -659,6 +626,11 @@ const SuppliersPage: React.FC = () => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
+              <div style={{ marginLeft: 'auto' }}>
+                <ThemedButton variant="primary" onClick={() => handleOpenModal()}>
+                  Add Supplier
+                </ThemedButton>
+              </div>
             </FilterBar>
           </FilterSection>
 
@@ -701,246 +673,18 @@ const SuppliersPage: React.FC = () => {
           )}
         </Content>
 
-        <Modal
+        <SupplierFormModal
           isOpen={showModal}
           onClose={handleCloseModal}
-          title={selectedSupplier ? 'Edit Supplier' : 'New Supplier'}
-          size="large"
-          footer={
-            <>
-              <ModalButton variant="secondary" onClick={handleCloseModal}>{t('suppliers:suppliersPage.cancel')}</ModalButton>
-              <ModalButton variant="primary" onClick={handleSubmit} disabled={!formData.name.trim()}>
-                {selectedSupplier ? 'Update' : 'Create'}
-              </ModalButton>
-            </>
-          }
-        >
-          <form onSubmit={handleSubmit}>
-            <UIFormRow>
-              <UIFormGroup>
-                <FormLabel>Supplier Name *</FormLabel>
-                <FormInput
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Company name"
-                  required
-                />
-              </UIFormGroup>
-              <UIFormGroup>
-                <FormLabel>{t('suppliers:suppliersPage.code')}</FormLabel>
-                <FormInput
-                  type="text"
-                  value={formData.code}
-                  onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                  placeholder="Internal code"
-                />
-              </UIFormGroup>
-            </UIFormRow>
+          onSaved={handleFormSaved}
+          supplier={selectedSupplier}
+        />
 
-            {/* Brand connection removed - suppliers are shared across all brands automatically */}
-
-            <UIFormRow>
-              <UIFormGroup>
-                <FormLabel>{t('suppliers:suppliersPage.contactPerson')}</FormLabel>
-                <FormInput
-                  type="text"
-                  value={formData.contact_name}
-                  onChange={(e) => setFormData({ ...formData, contact_name: e.target.value })}
-                  placeholder="Contact name"
-                />
-              </UIFormGroup>
-              <UIFormGroup>
-                <FormLabel>{t('suppliers:suppliersPage.phone')}</FormLabel>
-                <FormInput
-                  type="text"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  placeholder="Phone number"
-                />
-              </UIFormGroup>
-            </UIFormRow>
-
-            <UIFormRow>
-              <UIFormGroup>
-                <FormLabel>{t('suppliers:suppliersPage.email')}</FormLabel>
-                <FormInput
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="Email address"
-                />
-              </UIFormGroup>
-              <UIFormGroup>
-                <FormLabel>{t('suppliers:suppliersPage.businessNumber')}</FormLabel>
-                <FormInput
-                  type="text"
-                  value={formData.business_number}
-                  onChange={(e) => setFormData({ ...formData, business_number: e.target.value })}
-                  placeholder="Business registration number"
-                />
-              </UIFormGroup>
-            </UIFormRow>
-
-            <AddressFields
-              value={{
-                address: formData.address || '',
-                address_line_2: (formData as any).address_line_2 || '',
-                city: (formData as any).city || '',
-                state: (formData as any).state || '',
-                postal_code: (formData as any).postal_code || '',
-                country: (formData as any).country || 'MY'
-              }}
-              onChange={(a: Address) => setFormData({
-                ...formData,
-                address: a.address || '',
-                address_line_2: a.address_line_2 || '',
-                city: a.city || '',
-                state: a.state || '',
-                postal_code: a.postal_code || '',
-                country: (a.country || (formData as any).country || 'MY').toUpperCase()
-              } as any)}
-              defaultCountry={(formData as any).country || 'MY'}
-            />
-
-            <UIFormRow>
-              <UIFormGroup>
-                <FormLabel>{t('suppliers:suppliersPage.paymentTerms')}</FormLabel>
-                <FormInput
-                  type="text"
-                  value={formData.payment_terms}
-                  onChange={(e) => setFormData({ ...formData, payment_terms: e.target.value })}
-                  placeholder="e.g., Net 30, COD"
-                />
-              </UIFormGroup>
-            </UIFormRow>
-
-            <UIFormRow>
-              <UIFormGroup>
-                <FormLabel>{t('suppliers:suppliersPage.bankName')}</FormLabel>
-                <FormInput
-                  type="text"
-                  value={formData.bank_name}
-                  onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
-                  placeholder="Bank name"
-                />
-              </UIFormGroup>
-              <UIFormGroup>
-                <FormLabel>{t('suppliers:suppliersPage.bankAccount')}</FormLabel>
-                <FormInput
-                  type="text"
-                  value={formData.bank_account}
-                  onChange={(e) => setFormData({ ...formData, bank_account: e.target.value })}
-                  placeholder="Account number"
-                />
-              </UIFormGroup>
-            </UIFormRow>
-
-            <UIFormGroup>
-              <FormLabel>{t('suppliers:suppliersPage.notes')}</FormLabel>
-              <FormTextArea
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="Additional notes..."
-                rows={3}
-              />
-            </UIFormGroup>
-          </form>
-        </Modal>
-
-        <Modal
+        <SupplierViewModal
           isOpen={showViewModal}
           onClose={() => { setShowViewModal(false); setViewSupplier(null); }}
-          title="Supplier Details"
-          size="large"
-          footer={
-            <ModalButton variant="secondary" onClick={() => { setShowViewModal(false); setViewSupplier(null); }}>{t('suppliers:suppliersPage.close')}</ModalButton>
-          }
-        >
-          {viewSupplier && (
-            <ViewSection>
-              <ViewRow>
-                <ViewField>
-                  <ViewLabel>{t('suppliers:suppliersPage.supplierName')}</ViewLabel>
-                  <ViewValue>{viewSupplier.name}</ViewValue>
-                </ViewField>
-                <ViewField>
-                  <ViewLabel>{t('suppliers:suppliersPage.code')}</ViewLabel>
-                  <ViewValue>{viewSupplier.code || '-'}</ViewValue>
-                </ViewField>
-              </ViewRow>
-
-              <ViewDivider />
-
-              <ViewRow>
-                <ViewField>
-                  <ViewLabel>{t('suppliers:suppliersPage.contactPerson')}</ViewLabel>
-                  <ViewValue>{viewSupplier.contact_name || '-'}</ViewValue>
-                </ViewField>
-                <ViewField>
-                  <ViewLabel>{t('suppliers:suppliersPage.phone')}</ViewLabel>
-                  <ViewValue>{viewSupplier.phone || '-'}</ViewValue>
-                </ViewField>
-              </ViewRow>
-
-              <ViewRow>
-                <ViewField>
-                  <ViewLabel>{t('suppliers:suppliersPage.email')}</ViewLabel>
-                  <ViewValue>{viewSupplier.email || '-'}</ViewValue>
-                </ViewField>
-                <ViewField>
-                  <ViewLabel>{t('suppliers:suppliersPage.businessNumber')}</ViewLabel>
-                  <ViewValue>{viewSupplier.business_number || '-'}</ViewValue>
-                </ViewField>
-              </ViewRow>
-
-              <ViewDivider />
-
-              <ViewField>
-                <ViewLabel>{t('suppliers:suppliersPage.address')}</ViewLabel>
-                <ViewValue>{formatEntityAddress(viewSupplier, (i18n.language as AppLocale) || 'en') || '-'}</ViewValue>
-              </ViewField>
-
-              <ViewRow>
-                <ViewField>
-                  <ViewLabel>{t('suppliers:suppliersPage.paymentTerms')}</ViewLabel>
-                  <ViewValue>{viewSupplier.payment_terms || '-'}</ViewValue>
-                </ViewField>
-                <ViewField>
-                  <ViewLabel>{t('suppliers:suppliersPage.status')}</ViewLabel>
-                  <ViewValue>
-                    <StatusBadge active={viewSupplier.is_active} style={{ marginLeft: 0 }}>
-                      {viewSupplier.is_active ? 'Active' : 'Inactive'}
-                    </StatusBadge>
-                  </ViewValue>
-                </ViewField>
-              </ViewRow>
-
-              <ViewDivider />
-
-              <ViewRow>
-                <ViewField>
-                  <ViewLabel>{t('suppliers:suppliersPage.bankName')}</ViewLabel>
-                  <ViewValue>{viewSupplier.bank_name || '-'}</ViewValue>
-                </ViewField>
-                <ViewField>
-                  <ViewLabel>{t('suppliers:suppliersPage.bankAccount')}</ViewLabel>
-                  <ViewValue>{viewSupplier.bank_account || '-'}</ViewValue>
-                </ViewField>
-              </ViewRow>
-
-              {viewSupplier.notes && (
-                <>
-                  <ViewDivider />
-                  <ViewField>
-                    <ViewLabel>{t('suppliers:suppliersPage.notes')}</ViewLabel>
-                    <ViewValue style={{ whiteSpace: 'pre-wrap' }}>{viewSupplier.notes}</ViewValue>
-                  </ViewField>
-                </>
-              )}
-            </ViewSection>
-          )}
-        </Modal>
+          supplier={viewSupplier}
+        />
 
         <ConfirmModal
           isOpen={deleteConfirm.isOpen}
@@ -951,6 +695,16 @@ const SuppliersPage: React.FC = () => {
           confirmText="Delete"
           cancelText="Cancel"
           type="danger"
+        />
+        <ConfirmModal
+          isOpen={infoModal.open}
+          title={infoModal.title}
+          message={infoModal.message}
+          onConfirm={() => setInfoModal({ open: false, title: '', message: '' })}
+          onCancel={() => setInfoModal({ open: false, title: '', message: '' })}
+          confirmText={t('common:ok', 'OK')}
+          type="info"
+          singleButton
         />
       </Container>
     </>

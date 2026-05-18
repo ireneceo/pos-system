@@ -35,6 +35,8 @@ const BrandProductOptionGroup = require('./BrandProductOptionGroup');
 const BrandProductOption = require('./BrandProductOption');
 const BrandProductOptionIngredient = require('./BrandProductOptionIngredient');
 const BrandProductBrand = require('./BrandProductBrand');
+const BrandProductRestaurant = require('./BrandProductRestaurant');
+const FoodcourtProductRestaurant = require('./FoodcourtProductRestaurant');
 const BrandProductOptionGroupProduct = require('./BrandProductOptionGroupProduct');
 // Brand Menu System (v3.32+) — Brand-level menu templates pushed to franchise restaurants
 const BrandMenu = require('./BrandMenu');
@@ -320,6 +322,22 @@ Brand.belongsToMany(BrandProduct, {
 // BrandProductBrand associations for direct access
 BrandProductBrand.belongsTo(BrandProduct, { foreignKey: 'product_id', as: 'product' });
 BrandProductBrand.belongsTo(Brand, { foreignKey: 'brand_id', as: 'brand' });
+
+// BrandProduct ↔ Restaurant (N:M for distribution_mode='specific_restaurants')
+BrandProduct.belongsToMany(Restaurant, {
+  through: BrandProductRestaurant,
+  foreignKey: 'product_id',
+  otherKey: 'restaurant_id',
+  as: 'restaurants'
+});
+Restaurant.belongsToMany(BrandProduct, {
+  through: BrandProductRestaurant,
+  foreignKey: 'restaurant_id',
+  otherKey: 'product_id',
+  as: 'sellingBrandProducts'
+});
+BrandProductRestaurant.belongsTo(BrandProduct, { foreignKey: 'product_id', as: 'product' });
+BrandProductRestaurant.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
 
 // BrandProduct - OptionGroup (N:M through BrandProductOptionGroupProduct)
 BrandProduct.belongsToMany(BrandProductOptionGroup, {
@@ -741,6 +759,22 @@ FoodcourtProductOptionGroup.belongsTo(Foodcourt, { foreignKey: 'foodcourt_id', a
 FoodcourtProductOptionGroup.hasMany(FoodcourtProductOption, { foreignKey: 'option_group_id', as: 'options' });
 FoodcourtProductOption.belongsTo(FoodcourtProductOptionGroup, { foreignKey: 'option_group_id', as: 'group' });
 
+// FoodcourtProduct ↔ Restaurant (N:M for distribution_mode='specific_restaurants')
+FoodcourtProduct.belongsToMany(Restaurant, {
+  through: FoodcourtProductRestaurant,
+  foreignKey: 'product_id',
+  otherKey: 'restaurant_id',
+  as: 'restaurants'
+});
+Restaurant.belongsToMany(FoodcourtProduct, {
+  through: FoodcourtProductRestaurant,
+  foreignKey: 'restaurant_id',
+  otherKey: 'product_id',
+  as: 'sellingFoodcourtProducts'
+});
+FoodcourtProductRestaurant.belongsTo(FoodcourtProduct, { foreignKey: 'product_id', as: 'product' });
+FoodcourtProductRestaurant.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
+
 // Sprint 2 — SupplierContract
 SupplierContract.belongsTo(SupplierCompany, { foreignKey: 'supplier_company_id', as: 'supplierCompany' });
 SupplierCompany.hasMany(SupplierContract, { foreignKey: 'supplier_company_id', as: 'contracts' });
@@ -916,6 +950,8 @@ module.exports = {
   BrandProductOption,
   BrandProductOptionIngredient,
   BrandProductBrand,
+  BrandProductRestaurant,
+  FoodcourtProductRestaurant,
   BrandProductOptionGroupProduct,
   // Brand Menu System (v3.32+)
   BrandMenu,

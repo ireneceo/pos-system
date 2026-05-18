@@ -289,6 +289,11 @@
     "allCategories": "全部",
     "vendors": "供应商",
     "linked": "已链接",
+    "brandBadge": "总部",
+    "foodcourtBadge": "美食广场",
+    "connectCta": "点击连接供应商 →",
+    "connecting": "连接中",
+    "connectHelp": "点击下方目录项目以将此食材连接到供应商",
     "cartEmpty": "点击卡片加入购物车。",
     "empty": {
       "mine": {
@@ -302,7 +307,17 @@
     },
     "toast": {
       "added": "\"{{name}}\"已加入购物车",
-      "linked": "\"{{name}}\"已加入库存"
+      "linked": "\"{{name}}\"已加入库存",
+      "connected": "\"{{name}}\" 已连接供应商 ✓",
+      "connectHint": "点击目录项目以连接 \"{{name}}\"",
+      "addedAsSeparate": "已作为独立食材添加 (单位/规格不同)。"
+    },
+    "showUntracked": "显示未追踪",
+    "conversion": {
+      "title": "单位换算",
+      "help": "示例 — 食材以kg为单位时,10kg箱装商品输入10。以piece为单位时,30件装托盘输入30。",
+      "connect": "连接",
+      "asSeparate": "+ 作为独立食材添加"
     }
   }
 }

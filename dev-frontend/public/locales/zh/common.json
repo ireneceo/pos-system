@@ -187,6 +187,7 @@
     "dashboard": "仪表盘",
     "orders": "订单",
     "liveOrders": "实时订单",
+    "salesOrders": "销售订单",
     "reservations": "预约",
     "orderHistory": "订单记录",
     "menu": "菜单",
@@ -273,12 +274,13 @@
       "teamMarketing": "团队与营销",
       "systemAccess": "系统访问",
       "brandManagement": "品牌管理",
+      "brands": "品牌",
       "franchise": "加盟"
     },
     "franchiseManagement": "加盟管理",
     "tenancyManagement": "入驻管理",
-    "franchise": "加盟",
-    "tenancy": "入驻",
+    "franchise": "加盟商",
+    "tenancy": "入驻商户",
     "branches": "分店",
     "franchiseMap": "加盟地图",
     "tenancyMap": "入驻地图",
@@ -294,7 +296,8 @@
     "brandMenus": "品牌菜单",
     "brandMenuCategories": "菜单分类",
     "brandMenuOptions": "菜单选项",
-    "brandMenuUpdates": "品牌菜单更新"
+    "brandMenuUpdates": "品牌菜单更新",
+    "allBrands": "所有品牌"
   },
   "language": {
     "en": "English",
@@ -665,5 +668,13 @@
       "received": "已收货",
       "delivered": "已送达"
     }
-  }
+  },
+  "sort.newest": "最新优先",
+  "sort.oldest": "最早优先",
+  "sort.nameAsc": "名称 A → Z",
+  "sort.nameDesc": "名称 Z → A",
+  "sort.priceAsc": "价格由低到高",
+  "sort.priceDesc": "价格由高到低",
+  "sort.category": "按分类分组",
+  "sort.ariaLabel": "排序"
 }

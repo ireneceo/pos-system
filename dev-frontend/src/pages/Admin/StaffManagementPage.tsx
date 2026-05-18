@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import ConfirmModal from '../../components/ConfirmModal';
 import styled from 'styled-components';
 import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
 import { formatEntityAddress, AppLocale } from '../../utils/formatAddress';
@@ -355,6 +356,7 @@ const AdminStaffManagementPage: React.FC = () => {
   const { user: currentUser } = useAuth();
   const { operationSettings } = useStore();
   const [activeTab, handleTabChange] = useTabParam<'all' | 'System Admin' | 'Restaurant Admin' | 'Staff' | 'Managers'>('all');
+  const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
@@ -957,7 +959,7 @@ const AdminStaffManagementPage: React.FC = () => {
       if (!response.ok) {
         const errorData = await response.json();
         console.error('❌ [Admin] Failed to update permissions:', errorData);
-        alert(`권한 업데이트 실패: ${errorData.error || 'Unknown error'}`);
+        setInfoModal({ open: true, title: 'Permission Update Failed', message: `Failed to update permission: ${errorData.error || 'Unknown error'}` });
         return;
       }
 
@@ -1104,7 +1106,7 @@ const AdminStaffManagementPage: React.FC = () => {
           setStaffList(prev => prev.map(staff =>
             staff.id === selectedStaff.id ? { ...staff, status: newStatus } : staff
           ));
-          alert(`Staff ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`);
+          setInfoModal({ open: true, title: 'Status Updated', message: `Staff ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully.` });
         } else {
           const errorData = await response.json();
           throw new Error(errorData.error || 'Status update failed');
@@ -1128,7 +1130,7 @@ const AdminStaffManagementPage: React.FC = () => {
       }
     } catch (error) {
       console.error('❌ Action failed:', error);
-      alert(`Action failed: ${error.message}. Please try again.`);
+      setInfoModal({ open: true, title: 'Action Failed', message: `Action failed: ${error.message}. Please try again.` });
     }
 
     setShowConfirmModal(false);
@@ -1151,10 +1153,10 @@ const AdminStaffManagementPage: React.FC = () => {
         setDeletingStaff(null);
       } else {
         const errorData = await response.json().catch(() => ({}));
-        alert(`Failed to delete: ${errorData.error || errorData.message || `HTTP ${response.status}`}`);
+        setInfoModal({ open: true, title: 'Delete Failed', message: `Failed to delete: ${errorData.error || errorData.message || `HTTP ${response.status}`}` });
       }
     } catch (error: any) {
-      alert(`Error deleting staff: ${error.message || error}`);
+      setInfoModal({ open: true, title: 'Delete Failed', message: `Error deleting staff: ${error.message || error}` });
     }
   };
 
@@ -1168,24 +1170,24 @@ const AdminStaffManagementPage: React.FC = () => {
 
     // Validate required fields
     if (!editingStaff.name || editingStaff.name.trim() === '') {
-      alert('Full Name is required');
+      setInfoModal({ open: true, title: 'Required Fields', message: 'Full Name is required.' });
       return;
     }
 
     if (!editingStaff.email || editingStaff.email.trim() === '') {
-      alert('Email is required');
+      setInfoModal({ open: true, title: 'Required Fields', message: 'Email is required.' });
       return;
     }
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(editingStaff.email)) {
-      alert('Please enter a valid email address');
+      setInfoModal({ open: true, title: 'Invalid Email', message: 'Please enter a valid email address.' });
       return;
     }
 
     if (!editingStaff.role) {
-      alert('Role is required');
+      setInfoModal({ open: true, title: 'Required Fields', message: 'Role is required.' });
       return;
     }
 
@@ -1216,7 +1218,7 @@ const AdminStaffManagementPage: React.FC = () => {
       if (!response.ok) {
         const errorData = await response.json();
         console.error('❌ [Admin] Failed to update staff:', errorData);
-        alert(`Failed to update staff: ${errorData.error || 'Unknown error'}`);
+        setInfoModal({ open: true, title: 'Update Failed', message: `Failed to update staff: ${errorData.error || 'Unknown error'}` });
         return;
       }
 
@@ -1299,7 +1301,7 @@ const AdminStaffManagementPage: React.FC = () => {
 
     } catch (error) {
       console.error('❌ [Admin] Error updating staff:', error);
-      alert(`스탭 정보 업데이트 에러: ${error.message}`);
+      setInfoModal({ open: true, title: 'Update Failed', message: `Staff update error: ${error.message}` });
     }
   };
 
@@ -2153,6 +2155,16 @@ const AdminStaffManagementPage: React.FC = () => {
         </CommonModal>
         )}
       </Container>
+      <ConfirmModal
+        isOpen={infoModal.open}
+        title={infoModal.title}
+        message={infoModal.message}
+        onConfirm={() => setInfoModal({ open: false, title: '', message: '' })}
+        onCancel={() => setInfoModal({ open: false, title: '', message: '' })}
+        confirmText="OK"
+        type="info"
+        singleButton
+      />
     </>
   );
 };

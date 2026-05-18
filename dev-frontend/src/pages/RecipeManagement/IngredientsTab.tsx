@@ -1,16 +1,20 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
-import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import { SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import ListControlsBar from '../../components/Common/ListControlsBar';
+import SortDropdown, { SortKey, sortItems } from '../../components/Common/SortDropdown';
 import { useAuth } from '../../contexts/AuthContext';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormRow as UIFormRow } from '../../components/UI/Modal';
 import ConfirmModal from '../../components/ConfirmModal';
 import SearchableSelect from '../../components/Common/SearchableSelect';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
+import ConnectSellerModal from '../../components/Common/ConnectSellerModal';
+import AutoSaveField from '../../components/Common/AutoSaveField';
+import Toggle from '../../components/Common/Toggle';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
-
 import { getAuthToken } from '../../utils/auth';
 interface IngredientsTabProps {
   brandId: number | null;
@@ -67,6 +71,14 @@ interface Ingredient {
   min_stock?: number;
   current_stock?: number;
   track_stock?: boolean;
+  sellers?: Array<{
+    id: number;
+    seller_type: 'supplier' | 'brand' | 'foodcourt';
+    seller_entity_id: number | null;
+    seller_name?: string;
+    unit_price?: number;
+    is_preferred?: boolean;
+  }>;
 }
 
 const IngredientsGrid = styled.div`
@@ -106,6 +118,11 @@ const IngredientName = styled.h3`
   font-weight: 600;
   color: #0A2540;
   margin-bottom: 4px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
 `;
 
 const IngredientCategoryBadge = styled.div`
@@ -471,8 +488,12 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
   }, [defaultCurrency]);
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [ingredientCategories, setIngredientCategories] = useState<IngredientCategory[]>([]);
+  const [connectTarget, setConnectTarget] = useState<Ingredient | null>(null);
+  // Track Stock pending value (AutoSaveField onSave 가 onChange 직후 호출됨)
+  const trackPendingRef = useRef<Record<number, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortKey, setSortKey] = useState<SortKey>('newest');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [viewMode, setViewMode] = useState<'compact' | 'image'>(() => {
     const saved = localStorage.getItem('ingredientsViewMode');
@@ -512,6 +533,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
   const [savingCost, setSavingCost] = useState(false);
 
   const isRestaurantAdmin = user?.role === 'Restaurant Admin';
+  const isBrandRole = user?.role === 'Brand General' || user?.role === 'Brand Manager';
   // Restaurant Admin은 자신의 재료만 수정/삭제 가능 (브랜드 재료는 읽기전용)
   const isItemReadOnly = (item: Ingredient) => isRestaurantAdmin && item.owner_type === 'brand';
 
@@ -534,11 +556,11 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
         let ingredientsUrl = '', categoriesUrl = '', suppliersUrl = '';
 
         if (isBrandRole && brandId) {
-          ingredientsUrl = `/api/brands/${brandId}/ingredients`;
+          ingredientsUrl = `/api/brands/${brandId}/ingredients?include=sellers`;
           categoriesUrl = `/api/brands/${brandId}/ingredient-categories`;
           suppliersUrl = `/api/brands/${brandId}/suppliers`;
         } else if (isRestaurantAdmin && effectiveRestaurantId) {
-          ingredientsUrl = `/api/restaurants/${effectiveRestaurantId}/ingredients`;
+          ingredientsUrl = `/api/restaurants/${effectiveRestaurantId}/ingredients?include=sellers`;
           categoriesUrl = `/api/restaurants/${effectiveRestaurantId}/ingredient-categories`;
           suppliersUrl = `/api/restaurants/${effectiveRestaurantId}/all-suppliers`;
         }
@@ -850,7 +872,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
     if (isSubmitting) return;
 
     if (!formData.name || !formData.ingredient_category_id || !formData.unit || !formData.unit_cost) {
-      alert('Please fill in all required fields');
+      setInfoModal({ open: true, title: 'Required Fields', message: 'Please fill in all required fields.' });
       return;
     }
 
@@ -870,7 +892,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
           ? `/api/restaurants/${effectiveRestaurantId}/ingredients/${selectedIngredient.id}`
           : `/api/restaurants/${effectiveRestaurantId}/ingredients`;
       } else {
-        alert('Cannot determine save context (missing restaurant or brand id). Please reload the page.');
+        setInfoModal({ open: true, title: 'Save Context Missing', message: 'Cannot determine save context (missing restaurant or brand id). Please reload the page.' });
         return;
       }
 
@@ -909,12 +931,12 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
       } else {
         const msg = data?.error || data?.message || `Save failed (HTTP ${response.status})`;
         console.error('Ingredient save failed:', response.status, text.slice(0, 300));
-        alert(msg);
+        setInfoModal({ open: true, title: 'Save Failed', message: msg });
         setIsSubmitting(false);
       }
     } catch (error: any) {
       console.error('Failed to save ingredient:', error);
-      alert('Network error: ' + (error?.message || 'unable to reach server'));
+      setInfoModal({ open: true, title: 'Network Error', message: 'Network error: ' + (error?.message || 'unable to reach server') });
       setIsSubmitting(false);
     }
   };
@@ -956,24 +978,24 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
       const data = await response.json();
 
       if (data.success) {
-        // 로컬 상태 업데이트
         setIngredients(prev => prev.map(ing =>
           ing.id === ingredient.id ? { ...ing, track_stock: newValue } : ing
         ));
       } else {
-        alert(data.error || 'Failed to update track stock');
+        throw new Error(data.error || 'Failed to update track stock');
       }
     } catch (error) {
       console.error('Failed to toggle track stock:', error);
+      throw error; // AutoSaveField 가 error indicator 표시
     }
   };
 
-  const filteredIngredients = ingredients.filter(ingredient => {
+  const filteredIngredients = sortItems(ingredients.filter(ingredient => {
     const matchesSearch = ingredient.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'all' ||
       ingredient.ingredient_category_id?.toString() === selectedCategory;
     return matchesSearch && matchesCategory;
-  });
+  }), sortKey);
 
   // Get categories for filter dropdown
   const filterCategories = [
@@ -988,26 +1010,25 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
 
   return (
     <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
-        <FilterBar style={{ marginBottom: 0, flex: 1 }}>
-          <SearchInput
-            type="text"
-            placeholder="Search ingredients..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-          <FilterSelect
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-          >
-            {filterCategories.map(cat => (
-              <option key={cat.id} value={cat.id}>
-                {cat.name}
-              </option>
-            ))}
-          </FilterSelect>
-        </FilterBar>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
+      <ListControlsBar>
+        <SearchInput
+          type="text"
+          placeholder="Search ingredients..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        <FilterSelect
+          value={selectedCategory}
+          onChange={(e) => setSelectedCategory(e.target.value)}
+        >
+          {filterCategories.map(cat => (
+            <option key={cat.id} value={cat.id}>
+              {cat.name}
+            </option>
+          ))}
+        </FilterSelect>
+        <SortDropdown value={sortKey} onChange={setSortKey} />
+        <div data-controls-trailing>
           <div style={{ display: 'flex', background: '#F3F4F6', borderRadius: '6px', padding: '2px' }}>
             <button onClick={() => { setViewMode('compact'); localStorage.setItem('ingredientsViewMode', 'compact'); }} style={{ padding: '5px 14px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'compact' ? 'white' : 'transparent', color: viewMode === 'compact' ? '#0A2540' : '#6B7C93', boxShadow: viewMode === 'compact' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
               Compact
@@ -1020,7 +1041,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
             New Ingredient
           </ThemedButton>
         </div>
-      </div>
+      </ListControlsBar>
 
       {loading ? (
         <EmptyState>
@@ -1182,6 +1203,53 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                     <InfoValue>{ingredient.supplier?.name || ingredient.supplier_name}</InfoValue>
                   </InfoRow>
                 )}
+                {/* 발주처(seller) 연결 — 같은 재료를 여러 셀러에서 살 수 있음 (1상품 ↔ N셀러).
+                    seller_product_id 가 셀러별 상품 변종을 가리킴. 매핑 0 → CTA, ≥1 → 리스트 + "Add seller". */}
+                {(() => {
+                  const sellers = Array.isArray(ingredient.sellers) ? ingredient.sellers : [];
+                  const goConnect = (e: any) => {
+                    e?.stopPropagation?.();
+                    // Inline modal — 페이지 이동 없이 catalog 검색 + 선택 + 매핑.
+                    setConnectTarget(ingredient);
+                  };
+                  return (
+                    <InfoRow>
+                      <InfoLabel>{'Sellers'}</InfoLabel>
+                      <InfoValue style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
+                        {sellers.length > 0 && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                            {sellers.map(s => (
+                              <span key={s.id} style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 4,
+                                padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 600,
+                                background: s.seller_type === 'brand' ? '#EDE9FE' : s.seller_type === 'foodcourt' ? '#FCE7F3' : '#DCFCE7',
+                                color: s.seller_type === 'brand' ? '#6D28D9' : s.seller_type === 'foodcourt' ? '#9D174D' : '#166534'
+                              }}>
+                                {s.seller_type === 'brand' ? 'BRAND' : s.seller_type === 'foodcourt' ? 'FC' : 'SUP'}
+                                {s.seller_name ? ` · ${s.seller_name}` : ''}
+                                {s.unit_price != null ? ` · RM${Number(s.unit_price).toFixed(2)}` : ''}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={goConnect}
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 6,
+                            padding: '4px 10px', borderRadius: 6,
+                            background: sellers.length === 0 ? '#FEF3C7' : '#EEF2FF',
+                            border: `1px solid ${sellers.length === 0 ? '#FDE68A' : '#C7D2FE'}`,
+                            color: sellers.length === 0 ? '#92400E' : '#3730A3',
+                            fontSize: 12, fontWeight: 600, cursor: 'pointer'
+                          }}
+                        >
+                          {sellers.length === 0 ? 'No seller — click to connect →' : '+ Add another seller'}
+                        </button>
+                      </InfoValue>
+                    </InfoRow>
+                  );
+                })()}
                 {ingredient.code && (
                   <InfoRow>
                     <InfoLabel>{'Code'}</InfoLabel>
@@ -1191,19 +1259,27 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
               </IngredientInfo>
               {/* Track Stock 토글 - Restaurant Admin만 표시 (브랜드 재료도 재고 연동은 가능) */}
               {isRestaurantAdmin && (
-                <TrackStockRow>
+                <TrackStockRow
+                  onClick={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                >
                   <TrackStockLabel>{'Track in Inventory'}</TrackStockLabel>
-                  <ToggleSwitch>
-                    <ToggleInput
-                      type="checkbox"
+                  <AutoSaveField
+                    type="toggle"
+                    onSave={async () => {
+                      const next = trackPendingRef.current[ingredient.id];
+                      if (next === undefined) return;
+                      await handleTrackStockToggle(ingredient, next);
+                    }}
+                  >
+                    <Toggle
                       checked={ingredient.track_stock || false}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        handleTrackStockToggle(ingredient, e.target.checked);
+                      onChange={(checked) => {
+                        trackPendingRef.current[ingredient.id] = checked;
                       }}
+                      ariaLabel="Track in Inventory"
                     />
-                    <ToggleSlider />
-                  </ToggleSwitch>
+                  </AutoSaveField>
                 </TrackStockRow>
               )}
 
@@ -1485,6 +1561,52 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
           )}
         </Modal>
       )}
+
+      <ConnectSellerModal
+        open={!!connectTarget}
+        ingredient={connectTarget ? { id: connectTarget.id, name: connectTarget.name, unit: connectTarget.unit } : null}
+        buyerApiBase={
+          isBrandRole && brandId
+            ? `/api/brands/${brandId}`
+            : (isRestaurantAdmin && effectiveRestaurantId ? `/api/restaurants/${effectiveRestaurantId}` : '/api/restaurants/0')
+        }
+        onClose={() => setConnectTarget(null)}
+        onConnected={() => {
+          // Inline reload — 카드 즉시 갱신. categoryRefreshKey 트릭으로 useEffect 재실행 유도.
+          const token = getAuthToken();
+          const url = isBrandRole && brandId
+            ? `/api/brands/${brandId}/ingredients?include=sellers`
+            : `/api/restaurants/${effectiveRestaurantId}/ingredients?include=sellers`;
+          fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+            .then(r => r.json())
+            .then(j => {
+              const newList = Array.isArray(j?.data) ? j.data : [];
+              if (isRestaurantAdmin && effectiveRestaurantId) {
+                // 브랜드 재료 합치기 (기존 fetch와 동일 로직)
+                fetch(`/api/restaurants/${effectiveRestaurantId}/brand-ingredients`, { headers: { Authorization: `Bearer ${token}` } })
+                  .then(r => r.json())
+                  .then(bj => {
+                    const brandList = Array.isArray(bj?.data) ? bj.data : [];
+                    setIngredients([...brandList, ...newList]);
+                  })
+                  .catch(() => setIngredients(newList));
+              } else {
+                setIngredients(newList);
+              }
+            })
+            .catch(() => {});
+        }}
+      />
+      <ConfirmModal
+        isOpen={infoModal.open}
+        title={infoModal.title}
+        message={infoModal.message}
+        onConfirm={() => setInfoModal({ open: false, title: '', message: '' })}
+        onCancel={() => setInfoModal({ open: false, title: '', message: '' })}
+        confirmText="OK"
+        type="info"
+        singleButton
+      />
     </>
   );
 };

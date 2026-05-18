@@ -57,5 +57,18 @@
   "promotionsPage.targetAudience": "대상 고객",
   "promotionsPage.loadingCustomers": "고객 불러오는 중...",
   "promotionsPage.noCustomersFound": "고객이 없습니다",
-  "promotionsPage.description": "설명"
+  "promotionsPage.description": "설명",
+  "menuManagementPage.brandHelperTitle": "일부 메뉴는 본사 브랜드에서 내려옵니다",
+  "menuManagementPage.brandHelperLine1": "카드의",
+  "menuManagementPage.brandHelperLine1b": "태그는 브랜드에서 푸시된 메뉴입니다.",
+  "menuManagementPage.brandHelperLine1c": "아이콘은 브랜드가 잠근 필드 — 매장에서 수정 불가.",
+  "menuManagementPage.brandHelperLine2": "매장 자체 메뉴는",
+  "menuManagementPage.brandHelperLine2b": "버튼으로 자유롭게 추가 가능합니다. 태그 없는 메뉴는 모든 필드 수정 가능.",
+  "menuManagementPage.brandHelperPendingLink": "브랜드 업데이트 {{count}}건 대기 중 — 확인하기",
+  "menuManagement.copyFailedTitle": "복사 실패",
+  "menuManagement.copyFailedMessage": "메뉴 복사에 실패했습니다. 다시 시도해 주세요.",
+  "menuManagement.toggleFailedTitle": "변경 실패",
+  "menuManagement.toggleFailedMessage": "메뉴 상태 변경에 실패했습니다. 다시 시도해 주세요.",
+  "menuManagement.setMenuRequiredTitle": "세트메뉴 확인",
+  "menuManagement.setMenuRequiredMessage": "세트메뉴는 최소 1개 이상의 메뉴를 포함해야 합니다."
 }

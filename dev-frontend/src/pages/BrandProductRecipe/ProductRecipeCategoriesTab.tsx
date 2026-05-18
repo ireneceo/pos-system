@@ -199,6 +199,7 @@ const EmojiOption = styled.button<{ selected?: boolean }>`
 const ProductRecipeCategoriesTab: React.FC<ProductRecipeCategoriesTabProps> = ({ brandId, onCountChange, onCategoryChange }) => {
   const { t } = useTranslation('brand');
   const [categories, setCategories] = useState<Category[]>([]);
+  const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -288,11 +289,11 @@ const ProductRecipeCategoriesTab: React.FC<ProductRecipeCategoriesTabProps> = ({
         fetchCategories();
         onCategoryChange?.();
       } else {
-        alert(response.error || 'Failed to save category');
+        setInfoModal({ open: true, title: 'Save Failed', message: response.error || 'Failed to save category. Please try again.' });
       }
     } catch (error) {
       console.error('Failed to save category:', error);
-      alert('Failed to save category');
+      setInfoModal({ open: true, title: 'Save Failed', message: 'Failed to save category. Please try again.' });
     } finally {
       setSaving(false);
     }
@@ -317,11 +318,11 @@ const ProductRecipeCategoriesTab: React.FC<ProductRecipeCategoriesTabProps> = ({
         fetchCategories();
         onCategoryChange?.();
       } else {
-        alert(response.error || 'Failed to delete category');
+        setInfoModal({ open: true, title: 'Delete Failed', message: response.error || 'Failed to delete category. Please try again.' });
       }
     } catch (error) {
       console.error('Failed to delete category:', error);
-      alert('Failed to delete category');
+      setInfoModal({ open: true, title: 'Delete Failed', message: 'Failed to delete category. Please try again.' });
     }
   };
 
@@ -516,6 +517,16 @@ const ProductRecipeCategoriesTab: React.FC<ProductRecipeCategoriesTabProps> = ({
         confirmText="Delete"
         cancelText="Cancel"
         type="danger"
+      />
+      <ConfirmModal
+        isOpen={infoModal.open}
+        title={infoModal.title}
+        message={infoModal.message}
+        onConfirm={() => setInfoModal({ open: false, title: '', message: '' })}
+        onCancel={() => setInfoModal({ open: false, title: '', message: '' })}
+        confirmText="OK"
+        type="info"
+        singleButton
       />
     </Container>
   );

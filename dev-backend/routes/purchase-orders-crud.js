@@ -56,15 +56,32 @@ async function fireSellerSubmittedNotification(po) {
       userIds = await getFoodcourtManagerIds(po.seller_entity_id);
     }
     if (userIds.length === 0) return;
-    const subject = `[Purple POS] New Purchase Order ${po.po_number}`;
-    const link = `${FRONTEND_URL}/pos/seller-orders`;
-    const html = `
-      <p>You have received a new purchase order.</p>
-      <p><strong>PO #:</strong> ${po.po_number}</p>
-      <p><strong>Total:</strong> ${po.currency || 'MYR'} ${parseFloat(po.total_amount || 0).toFixed(2)}</p>
-      <p><a href="${link}">Open in Purple POS</a></p>
-    `;
-    await sendNotificationBatch(userIds, 'seller_order_received', { subject, html });
+    // Buyer 이름 resolve — Restaurant / Brand / Foodcourt
+    let buyerName = 'A buyer';
+    try {
+      const Restaurant = require('../models/Restaurant');
+      const Brand = require('../models/Brand');
+      const Foodcourt = require('../models/Foodcourt');
+      if (po.entity_type === 'restaurant') {
+        const r = await Restaurant.findByPk(po.entity_id, { attributes: ['name'] });
+        if (r?.name) buyerName = r.name;
+      } else if (po.entity_type === 'brand') {
+        const b = await Brand.findByPk(po.entity_id, { attributes: ['name'] });
+        if (b?.name) buyerName = b.name;
+      } else if (po.entity_type === 'foodcourt') {
+        const f = await Foodcourt.findByPk(po.entity_id, { attributes: ['name'] });
+        if (f?.name) buyerName = f.name;
+      }
+    } catch (_) { /* keep default */ }
+    const { sellerOrderReceivedEmail } = require('../utils/notificationTemplates');
+    const mail = sellerOrderReceivedEmail({
+      buyerName,
+      poNumber: po.po_number,
+      total: po.total_amount,
+      currency: po.currency || 'MYR',
+      link: `${FRONTEND_URL}/pos/seller-orders`
+    });
+    await sendNotificationBatch(userIds, 'seller_order_received', mail);
   } catch (e) {
     console.error('[purchase-orders] fireSellerSubmittedNotification error:', e.message);
   }

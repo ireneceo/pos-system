@@ -136,7 +136,7 @@ const ConditionListEditor: React.FC<Props> = ({ value, onChange, onSave, disable
     return (
       <Wrapper>
         <EmptyState>{emptyLabel || 'No conditions'}</EmptyState>
-        {!disabled && <AddBtn type="button" onClick={add}>{addLabel || '+ Add First Condition'}</AddBtn>}
+        {!disabled && <AddBtn type="button" onClick={add}>{addLabel || 'Add First Condition'}</AddBtn>}
       </Wrapper>
     );
   }
@@ -167,7 +167,7 @@ const ConditionListEditor: React.FC<Props> = ({ value, onChange, onSave, disable
           </AutoSaveField>
         </Card>
       ))}
-      {!disabled && <AddBtn type="button" onClick={add}>{addLabel || '+ Add Condition'}</AddBtn>}
+      {!disabled && <AddBtn type="button" onClick={add}>{addLabel || 'Add Condition'}</AddBtn>}
     </Wrapper>
   );
 };

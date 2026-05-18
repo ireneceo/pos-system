@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ConfirmModal from '../../components/ConfirmModal';
 import styled from 'styled-components';
 import { Container, Header, Title, ActionSection, Content } from '../../components/UI/PageComponents';
 import { BaseButton } from '../../components/UI/CommonStyles';
@@ -250,6 +251,7 @@ const WarningText = styled.div`
 const SystemConfigPage: React.FC = () => {
   const { t } = useTranslation('admin');
   const [configs, setConfigs] = useState<SystemConfig[]>([]);
+  const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   const [tempValues, setTempValues] = useState<{ [key: string]: string }>({});
   const [changedConfigs, setChangedConfigs] = useState<Set<string>>(new Set());
   const [showImportModal, setShowImportModal] = useState(false);
@@ -375,10 +377,10 @@ const SystemConfigPage: React.FC = () => {
             return config;
           });
           setConfigs(updatedConfigs);
-          alert('Configuration imported successfully!');
+          setInfoModal({ open: true, title: 'Import Complete', message: 'Configuration imported successfully.' });
         }
       } catch (error) {
-        alert('Error parsing configuration file. Please check the file format.');
+        setInfoModal({ open: true, title: 'Import Failed', message: 'Error parsing configuration file. Please check the file format.' });
       }
     };
     reader.readAsText(importFile);
@@ -391,10 +393,10 @@ const SystemConfigPage: React.FC = () => {
   };
 
   const handleConfirmRestart = () => {
-    alert('System restart initiated. This may take a few minutes...');
+    setInfoModal({ open: true, title: 'Restart Initiated', message: 'System restart initiated. This may take a few minutes…' });
     setShowRestartModal(false);
     setTimeout(() => {
-      alert('System restart completed successfully!');
+      setInfoModal({ open: true, title: 'Restart Complete', message: 'System restart completed successfully.' });
     }, 3000);
   };
 
@@ -556,6 +558,16 @@ const SystemConfigPage: React.FC = () => {
           )}
         </Content>
       </Container>
+      <ConfirmModal
+        isOpen={infoModal.open}
+        title={infoModal.title}
+        message={infoModal.message}
+        onConfirm={() => setInfoModal({ open: false, title: '', message: '' })}
+        onCancel={() => setInfoModal({ open: false, title: '', message: '' })}
+        confirmText="OK"
+        type="info"
+        singleButton
+      />
     </>
   );
 };

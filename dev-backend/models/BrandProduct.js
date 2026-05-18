@@ -62,6 +62,12 @@ const BrandProduct = sequelize.define('BrandProduct', {
     type: DataTypes.BOOLEAN,
     defaultValue: true
   },
+  distribution_mode: {
+    type: DataTypes.ENUM('all', 'specific_brands', 'specific_restaurants'),
+    allowNull: false,
+    defaultValue: 'specific_brands',
+    comment: 'all=BG 소유 모든 brand 가맹점 노출, specific_brands=brand_product_brands, specific_restaurants=brand_product_restaurants'
+  },
   sync_to_ingredients: {
     type: DataTypes.BOOLEAN,
     defaultValue: true,

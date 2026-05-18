@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ConfirmModal from '../../components/ConfirmModal';
 import styled from 'styled-components';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
@@ -274,6 +275,7 @@ const FormSelect = styled.select`
 const SubscriptionsPage: React.FC = () => {
   const { t, i18n } = useTranslation('admin');
   const [subscriptions, setSubscriptions] = useState<RestaurantSubscription[]>([]);
+  const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -735,7 +737,7 @@ const SubscriptionsPage: React.FC = () => {
   const handleSubmit = async () => {
     try {
       if (!selectedTarget) {
-        alert('Please select a manager or restaurant');
+        setInfoModal({ open: true, title: 'Required Field', message: 'Please select a manager or restaurant.' });
         return;
       }
 
@@ -892,7 +894,7 @@ const SubscriptionsPage: React.FC = () => {
       await fetchSubscriptions();
     } catch (error) {
       console.error('Error adding subscription:', error);
-      alert('Error adding subscription. Please try again.');
+      setInfoModal({ open: true, title: 'Add Failed', message: 'Error adding subscription. Please try again.' });
     }
   };
 
@@ -977,11 +979,11 @@ const SubscriptionsPage: React.FC = () => {
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
         console.error('❌ Failed to update subscription:', errorData);
-        alert(`Error updating subscription: ${errorData.error || 'Please try again.'}`);
+        setInfoModal({ open: true, title: 'Update Failed', message: `Error updating subscription: ${errorData.error || 'Please try again.'}` });
       }
     } catch (error) {
       console.error('❌ Error updating subscription:', error);
-      alert('Error updating subscription. Please check your connection and try again.');
+      setInfoModal({ open: true, title: 'Update Failed', message: 'Error updating subscription. Please check your connection and try again.' });
     }
   };
 
@@ -1044,7 +1046,7 @@ const SubscriptionsPage: React.FC = () => {
       await fetchSubscriptions();
     } catch (error: any) {
       console.error('Action failed:', error);
-      alert(`Action failed: ${error.message || 'Unknown error'}. Please try again.`);
+      setInfoModal({ open: true, title: 'Action Failed', message: `Action failed: ${error.message || 'Unknown error'}. Please try again.` });
     }
 
     setShowConfirmModal(false);
@@ -1878,6 +1880,16 @@ const SubscriptionsPage: React.FC = () => {
 
         </Content>
       </Container>
+      <ConfirmModal
+        isOpen={infoModal.open}
+        title={infoModal.title}
+        message={infoModal.message}
+        onConfirm={() => setInfoModal({ open: false, title: '', message: '' })}
+        onCancel={() => setInfoModal({ open: false, title: '', message: '' })}
+        confirmText="OK"
+        type="info"
+        singleButton
+      />
     </>
   );
 };

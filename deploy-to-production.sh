@@ -288,7 +288,9 @@ for SPRINT_MIG in \
     scripts/migrate-supplier-staff.js \
     scripts/migrate-soa-invoice.js \
     scripts/migrate-referral.js \
-    scripts/migrate-brand-menu-system.js; do
+    scripts/migrate-brand-menu-system.js \
+    scripts/register-brand-menus-module.js \
+    scripts/migrate-brand-menu-settings.js; do
     if ssh $PROD_SERVER "test -f $REMOTE_PROD_BACKEND/$SPRINT_MIG"; then
         log "Running $(basename $SPRINT_MIG)..."
         SPRINT_OUTPUT=$(ssh $PROD_SERVER "cd $REMOTE_PROD_BACKEND && node $SPRINT_MIG 2>&1") || true

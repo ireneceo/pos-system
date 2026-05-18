@@ -2,7 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
-import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import { SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import ListControlsBar from '../../components/Common/ListControlsBar';
+import SortDropdown, { SortKey, sortItems } from '../../components/Common/SortDropdown';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormRow as UIFormRow } from '../../components/UI/Modal';
 import ConfirmModal from '../../components/ConfirmModal';
 import { fetchAPI } from '../../utils/api';
@@ -94,6 +96,11 @@ const IngredientName = styled.h3`
   font-weight: 600;
   color: #0A2540;
   margin-bottom: 4px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
 `;
 
 const IngredientCategoryBadge = styled.div`
@@ -328,11 +335,13 @@ const StockBadge = styled.span<{ status: 'normal' | 'low' | 'out' }>`
 
 const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountChange, categoryRefreshKey }) => {
   const { defaultCurrency } = useBrandCurrency();
+  const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortKey, setSortKey] = useState<SortKey>('newest');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [showModal, setShowModal] = useState(false);
   const [editingIngredient, setEditingIngredient] = useState<Ingredient | null>(null);
@@ -461,7 +470,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
 
   const handleSave = async () => {
     if (!formData.name.trim() || !formData.unit.trim()) {
-      alert('Name and Unit are required');
+      setInfoModal({ open: true, title: 'Required Fields', message: 'Name and Unit are required.' });
       return;
     }
 
@@ -493,11 +502,11 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
         handleCloseModal();
         fetchData();
       } else {
-        alert(response.error || 'Failed to save ingredient');
+        setInfoModal({ open: true, title: 'Save Failed', message: response.error || 'Failed to save ingredient. Please try again.' });
       }
     } catch (error) {
       console.error('Failed to save ingredient:', error);
-      alert('Failed to save ingredient');
+      setInfoModal({ open: true, title: 'Save Failed', message: 'Failed to save ingredient. Please try again.' });
     } finally {
       setSaving(false);
     }
@@ -531,7 +540,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
           ing.id === ingredient.id ? { ...ing, track_stock: newValue } : ing
         ));
       } else {
-        alert(response.error || 'Failed to update track stock');
+        setInfoModal({ open: true, title: 'Update Failed', message: response.error || 'Failed to update track stock. Please try again.' });
       }
     } catch (error) {
       console.error('Failed to toggle track stock:', error);
@@ -557,11 +566,11 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
       if (response.success) {
         fetchData();
       } else {
-        alert(response.error || 'Failed to delete ingredient');
+        setInfoModal({ open: true, title: 'Delete Failed', message: response.error || 'Failed to delete ingredient. Please try again.' });
       }
     } catch (error) {
       console.error('Failed to delete ingredient:', error);
-      alert('Failed to delete ingredient');
+      setInfoModal({ open: true, title: 'Delete Failed', message: 'Failed to delete ingredient. Please try again.' });
     } finally {
       setDeleteConfirm({ isOpen: false, ingredientId: null, ingredientName: '' });
     }
@@ -578,13 +587,13 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
     return 'normal';
   };
 
-  const filteredIngredients = ingredients.filter(item => {
+  const filteredIngredients = sortItems(ingredients.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          item.code.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = categoryFilter === 'all' ||
                            (item.category_id?.toString() === categoryFilter);
     return matchesSearch && matchesCategory;
-  });
+  }), sortKey);
 
   const filterCategories = [
     { id: 'all', name: 'All Categories' },
@@ -601,26 +610,25 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
 
   return (
     <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
-        <FilterBar style={{ marginBottom: 0, flex: 1 }}>
-          <SearchInput
-            type="text"
-            placeholder="Search ingredients..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-          <FilterSelect
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-          >
-            {filterCategories.map(cat => (
-              <option key={cat.id} value={cat.id}>
-                {cat.name}
-              </option>
-            ))}
-          </FilterSelect>
-        </FilterBar>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
+      <ListControlsBar>
+        <SearchInput
+          type="text"
+          placeholder="Search ingredients..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        <FilterSelect
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+        >
+          {filterCategories.map(cat => (
+            <option key={cat.id} value={cat.id}>
+              {cat.name}
+            </option>
+          ))}
+        </FilterSelect>
+        <SortDropdown value={sortKey} onChange={setSortKey} />
+        <div data-controls-trailing>
           <div style={{ display: 'flex', background: '#F3F4F6', borderRadius: '6px', padding: '2px' }}>
             <button onClick={() => { setViewMode('compact'); localStorage.setItem('brandIngredientsViewMode', 'compact'); }} style={{ padding: '5px 14px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'compact' ? 'white' : 'transparent', color: viewMode === 'compact' ? '#0A2540' : '#6B7C93', boxShadow: viewMode === 'compact' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
               Compact
@@ -633,7 +641,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
             New Ingredient
           </ThemedButton>
         </div>
-      </div>
+      </ListControlsBar>
 
       {filteredIngredients.length === 0 ? (
         <EmptyState>
@@ -935,6 +943,17 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
           </div>
         </Modal>
       )}
+
+      <ConfirmModal
+        isOpen={infoModal.open}
+        title={infoModal.title}
+        message={infoModal.message}
+        onConfirm={() => setInfoModal({ open: false, title: '', message: '' })}
+        onCancel={() => setInfoModal({ open: false, title: '', message: '' })}
+        confirmText="OK"
+        type="info"
+        singleButton
+      />
     </>
   );
 };

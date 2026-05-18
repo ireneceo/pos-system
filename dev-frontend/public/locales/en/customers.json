@@ -36,5 +36,7 @@
   "customersPage.favoriteItems": "Favorite Items",
   "customersPage.loading": "Loading...",
   "customersPage.noCouponsAvailableOrUsed": "No coupons available or used",
-  "customersPage.noCouponData": "No coupon data"
+  "customersPage.noCouponData": "No coupon data",
+  "customersPage.deleteFailedTitle": "Delete Failed",
+  "customersPage.deleteFailedMessage": "Failed to delete customer. Please try again."
 }

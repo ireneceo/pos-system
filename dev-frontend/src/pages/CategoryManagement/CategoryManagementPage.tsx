@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { useMenu } from '../../contexts/MenuContext';
 import ConfirmDialog from '../../components/Common/ConfirmDialog';
+import ConfirmModal from '../../components/ConfirmModal';
 import { Modal as UIModal, ModalButton } from '../../components/UI/Modal';
 import { OrderControls } from '../../components/UI';
 
@@ -326,6 +327,7 @@ const CategoryManagementPage: React.FC = () => {
   const { categories, menuItems, addCategory, updateCategory, deleteCategory, reorderCategories } = useMenu();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   const [categoryToDelete, setCategoryToDelete] = useState<{ id: string; name: string; itemCount: number } | null>(null);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [formData, setFormData] = useState({
@@ -397,7 +399,7 @@ const CategoryManagementPage: React.FC = () => {
       handleCloseModal();
     } catch (error) {
       console.error('Failed to save category:', error);
-      alert('Failed to save category. Please try again.');
+      setInfoModal({ open: true, title: 'Save Failed', message: 'Failed to save category. Please try again.' });
     }
   };
 
@@ -423,7 +425,7 @@ const CategoryManagementPage: React.FC = () => {
       setCategoryToDelete(null);
     } catch (error) {
       console.error('Failed to delete category:', error);
-      alert('Failed to delete category. Please try again.');
+      setInfoModal({ open: true, title: 'Delete Failed', message: 'Failed to delete category. Please try again.' });
     }
   };
 
@@ -621,6 +623,16 @@ const CategoryManagementPage: React.FC = () => {
           confirmText="Delete"
           cancelText="Cancel"
           variant="danger"
+        />
+        <ConfirmModal
+          isOpen={infoModal.open}
+          title={infoModal.title}
+          message={infoModal.message}
+          onConfirm={() => setInfoModal({ open: false, title: '', message: '' })}
+          onCancel={() => setInfoModal({ open: false, title: '', message: '' })}
+          confirmText="OK"
+          type="info"
+          singleButton
         />
       </Container>
     </>

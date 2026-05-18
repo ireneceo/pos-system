@@ -110,7 +110,7 @@ const RepresentativeField: React.FC<Props> = ({ value, onChange, onSave, disable
     return (
       <Wrapper>
         <EmptyState>No representatives</EmptyState>
-        {!disabled && <AddBtn type="button" onClick={add}>+ Add Representative</AddBtn>}
+        {!disabled && <AddBtn type="button" onClick={add}>Add Representative</AddBtn>}
       </Wrapper>
     );
   }
@@ -140,7 +140,7 @@ const RepresentativeField: React.FC<Props> = ({ value, onChange, onSave, disable
           <IconBtn type="button" onClick={() => remove(i)} disabled={disabled} title="Remove">✕</IconBtn>
         </Row>
       ))}
-      {!disabled && <AddBtn type="button" onClick={add}>+ Add Representative</AddBtn>}
+      {!disabled && <AddBtn type="button" onClick={add}>Add Representative</AddBtn>}
     </Wrapper>
   );
 };

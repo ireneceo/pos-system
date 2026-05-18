@@ -409,11 +409,11 @@ const GeneralStockCategoriesTab: React.FC<GeneralStockCategoriesTabProps> = ({ i
         fetchCategories();
         onCategoryChange?.();
       } else {
-        alert(data.error || 'Failed to save');
+        setInfoModal({ open: true, title: 'Save Failed', message: data.error || 'Failed to save. Please try again.' });
       }
     } catch (error) {
       console.error('Failed to save category:', error);
-      alert('Failed to save');
+      setInfoModal({ open: true, title: 'Save Failed', message: 'Failed to save. Please try again.' });
     }
   };
 
@@ -451,11 +451,11 @@ const GeneralStockCategoriesTab: React.FC<GeneralStockCategoriesTabProps> = ({ i
         fetchCategories();
         onCategoryChange?.();
       } else {
-        alert(data.error || 'Failed to delete');
+        setInfoModal({ open: true, title: 'Delete Failed', message: data.error || 'Failed to delete. Please try again.' });
       }
     } catch (error) {
       console.error('Failed to delete category:', error);
-      alert('Failed to delete');
+      setInfoModal({ open: true, title: 'Delete Failed', message: 'Failed to delete. Please try again.' });
     }
   };
 
@@ -655,6 +655,16 @@ const GeneralStockCategoriesTab: React.FC<GeneralStockCategoriesTabProps> = ({ i
         confirmText="Delete"
         cancelText="Cancel"
         type="danger"
+      />
+      <ConfirmModal
+        isOpen={infoModal.open}
+        title={infoModal.title}
+        message={infoModal.message}
+        onConfirm={() => setInfoModal({ open: false, title: '', message: '' })}
+        onCancel={() => setInfoModal({ open: false, title: '', message: '' })}
+        confirmText="OK"
+        type="info"
+        singleButton
       />
     </Container>
   );

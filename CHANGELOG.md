@@ -6,6 +6,14 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+### 2026-05-18
+
+- **QZ Tray 프린터 설정 가이드 시나리오 분기** — Settings → Printer → "View Setup Guide" 모달에 "기존 LAN 프린터 (다른 POS에서 이전)" / "프린터 새로 설치 (신규 세팅)" 토글 추가. 시나리오별 step list (마이그 3단계 / 신규 5단계 + 공통 "브라우저 연결 허용" 1단계). 마이그 Step 1 에 "이미 설치돼 있는지 확인" 보조 hint (시스템 트레이 QZ Tray 아이콘 — 다른 web POS 도 사용 가능성). 데스크탑 앱 설치 시 동일 작동 안내 박스 추가. 네트워크 다이어그램에 "Browser 또는 Desktop App (POS)" 명시. 토글 button 접근성 `type="button"` + `aria-pressed`. 4언어 (en/ko/zh/ms) 17 신규 키 × 4 = 68 entries
+- **전수 alert() → 표준 Modal sweep** — 24 페이지 70+ 건의 브라우저 `alert()` 호출을 통일 패턴 (`infoModal` state + `<ConfirmModal singleButton type="info">`) 또는 페이지 자체 `setSuccessMessage + setShowSuccessModal` 재사용 으로 일괄 교체. 전체 pages 의 `alert()` 잔존 0건. 주요 페이지: MenuManagement / Customers / Settings / BrandInvoices (15건) / BrandProducts / BrandProductRecipe (Ingredients · Categories · RecipeCategories) / Suppliers / SystemInquiry (Brand/Restaurant/Foodcourt) / CategoryManagement / POSTerminal (4건, 매장 운영 핵심 화면) / ProductRecipe / NewPurchaseOrder (styled overlay → UIModal 컴포넌트) / FoodcourtInvoices (15건) / Admin (Invoices 14 · Staff 11 · Subscriptions 5 · RestaurantSubscriptions 6 · Content 3 · SystemConfig 4 · BackupRestore 1 · SystemProductManagement 9 · Security 2) / Manager (Plans · ManagerSubscriptions · Signup) / RecipeManagement (5 tabs)
+- **신규 i18n 키** — menu: copyFailed/toggleFailed/setMenuRequired (6키), customers: deleteFailed (2키), brand: brandProductsTab deleteFailed (2키), settings: featureInDevelopment/addBrandComingSoon/billingComingSoon/externalQR* (7키) — 모두 4언어
+- 알림 이메일 카테고리 + 역할별 분리 검증 — NOTIFICATION_CATEGORIES single source, RA 21 cats / BG 14 cats / FG/Admin/Supplier 각 의도된 분리 확인. sendNotification 호출 18곳 일관
+- BG → RA Brand Menu 동기화 검증 — rest=5 에 5개 메뉴 `brand_menu_link_status='in_sync'` propagation 정상. BG → 다른 brand / RA → 다른 brand-menus cross-access 모두 403 차단
+
 ### 2026-05-15 (v3.31 배포 후 추가 개발)
 
 - **운영 매장 메뉴 긴급 복구 hotfix** — v3.31 배포 시 `migrate-brand-menu-system.js` 자동 실행 누락으로 신규 컬럼 (`brand_menu_link_status` 등) 부재 → API 500 → 매장 메뉴 안 보임. 마이그레이션 + backend 재시작으로 즉시 복구 (데이터 손실 0). 운영 직접 조회로 490건 매장 product 모두 자체 메뉴 (brand_menu_id=NULL) 보존 확인

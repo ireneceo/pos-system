@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useSearchParams, useParams } from 'react-router-dom';
-import { Container, Header, Title, Content } from '../../components/UI';
+import { Container, Content } from '../../components/UI';
+import PageHeader from '../../components/Common/PageHeader';
 import { Tabs, Tab, Badge } from '../../components/Common/TabComponents';
+import { Building2, ChevronDown } from 'lucide-react';
 import { useTabParam } from '../../hooks/useTabParam';
 import { useAuth } from '../../contexts/AuthContext';
 import RecipesTab from './RecipesTab';
@@ -10,30 +12,53 @@ import RecipeCategoriesTab from './RecipeCategoriesTab';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
-const HeaderActions = styled.div`
+// Mirrors BrandMenusPage layout: ActionRow + BrandSwitch chip-button + dropdown.
+const ActionRow = styled.div`
   display: flex;
   gap: 12px;
   align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  @media (max-width: 480px) { gap: 8px; }
 `;
 
-const BrandSelect = styled.select`
-  padding: 10px 16px;
+const BrandSwitch = styled.button`
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: white;
   border: 1px solid #E6EBF1;
   border-radius: 8px;
   font-size: 14px;
+  font-weight: 500;
   color: #0A2540;
-  background: white;
   cursor: pointer;
-  min-width: 200px;
+  &:hover { border-color: #635BFF; }
+  svg { width: 14px; height: 14px; color: #6B7C93; }
+`;
 
-  &:hover {
-    border-color: #CBD5E1;
-  }
+const Dropdown = styled.div`
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 100%;
+  background: white;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  z-index: 100;
+  overflow: hidden;
+`;
 
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-  }
+const DropdownItem = styled.div<{ $active?: boolean }>`
+  padding: 8px 12px;
+  font-size: 14px;
+  color: ${p => p.$active ? '#635BFF' : '#0A2540'};
+  background: ${p => p.$active ? '#F0EFFF' : 'white'};
+  cursor: pointer;
+  &:hover { background: #F0EFFF; }
 `;
 
 interface Brand {
@@ -61,6 +86,8 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
 
   const brandIdFromUrl = searchParams.get('brandId');
   const selectedBrand = brandIdFromUrl ? Number(brandIdFromUrl) : (brands.length > 0 ? brands[0].id : null);
+  const [showBrandDropdown, setShowBrandDropdown] = useState(false);
+  const currentBrand = brands.find(b => b.id === selectedBrand);
 
   useEffect(() => {
     if (user && user.role === 'Brand General') {
@@ -111,84 +138,92 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
     setSearchParams({ tab: activeTab, brandId: String(brandId) });
   };
 
+  const pageTitle = user?.role === 'Brand General' || user?.role === 'Brand Manager'
+    ? t('recipes:recipeManagementPage.brandRecipes', 'Brand Recipes')
+    : t('recipes:recipeManagementPage.recipes');
+
   if (loading) {
     return (
-      <>
-        <Container>
-          <Header>
-            <Title>{user?.role === 'Brand General' || user?.role === 'Brand Manager' ? 'Brand Recipes' : 'Recipes'}</Title>
-          </Header>
-          <Content>
-            <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
-              Loading...
-            </div>
-          </Content>
-        </Container>
-      </>
+      <Container>
+        <PageHeader title={pageTitle} />
+        <Content>
+          <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>Loading...</div>
+        </Content>
+      </Container>
     );
   }
 
   if (user?.role === 'Brand General' && brands.length === 0) {
     return (
-      <>
-        <Container>
-          <Header>
-            <Title>{user?.role === 'Brand General' || user?.role === 'Brand Manager' ? 'Brand Recipes' : 'Recipes'}</Title>
-          </Header>
-          <Content>
-            <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
-              No brands found. Please create a brand first.
-            </div>
-          </Content>
-        </Container>
-      </>
+      <Container>
+        <PageHeader title={pageTitle} />
+        <Content>
+          <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
+            No brands found. Please create a brand first.
+          </div>
+        </Content>
+      </Container>
     );
   }
 
   return (
-    <>
-      <Container>
-        <Header>
-          <Title>{t('recipes:recipeManagementPage.recipes')}</Title>
-          {user?.role === 'Brand General' && brands.length > 0 && (
-            <HeaderActions>
-              <BrandSelect
-                value={selectedBrand || ''}
-                onChange={(e) => handleBrandChange(Number(e.target.value))}
-              >
-                {brands.map(brand => (
-                  <option key={brand.id} value={brand.id}>
-                    {brand.name}
-                  </option>
-                ))}
-              </BrandSelect>
-            </HeaderActions>
-          )}
-        </Header>
-
-        <Content>
-          <Tabs>
-            <Tab active={activeTab === 'recipes'} onClick={() => handleTabChange('recipes')}>
-              Recipes <Badge count={recipesCount} showZero />
-            </Tab>
-            <Tab active={activeTab === 'recipe-categories'} onClick={() => handleTabChange('recipe-categories')}>
-              Recipe Categories <Badge count={recipeCategoriesCount} showZero />
-            </Tab>
-          </Tabs>
-
-          {(selectedBrand || user?.role !== 'Brand General') && (
-            <>
-              <div style={{ display: activeTab === 'recipes' ? 'block' : 'none' }}>
-                <RecipesTab brandId={selectedBrand} restaurantId={urlRestaurantId ? Number(urlRestaurantId) : null} onCountChange={setRecipesCount} categoryRefreshKey={recipeCategoryRefreshKey} />
+    <Container>
+      <PageHeader title={pageTitle} />
+      <Content>
+        {user?.role === 'Brand General' && brands.length > 0 && (
+          <ActionRow>
+            {brands.length > 1 ? (
+              <div style={{ position: 'relative' }}>
+                <BrandSwitch type="button" onClick={() => setShowBrandDropdown(!showBrandDropdown)}>
+                  <Building2 />
+                  {currentBrand?.name || t('recipes:recipeManagementPage.selectBrand', 'Select Brand')}
+                  <ChevronDown />
+                </BrandSwitch>
+                {showBrandDropdown && (
+                  <Dropdown>
+                    {brands.map(b => (
+                      <DropdownItem
+                        key={b.id}
+                        $active={b.id === selectedBrand}
+                        onClick={() => { handleBrandChange(b.id); setShowBrandDropdown(false); }}
+                      >
+                        {b.name}
+                      </DropdownItem>
+                    ))}
+                  </Dropdown>
+                )}
               </div>
-              <div style={{ display: activeTab === 'recipe-categories' ? 'block' : 'none' }}>
-                <RecipeCategoriesTab brandId={selectedBrand} restaurantId={urlRestaurantId ? Number(urlRestaurantId) : null} onCountChange={setRecipeCategoriesCount} onCategoryChange={() => setRecipeCategoryRefreshKey(k => k + 1)} />
-              </div>
-            </>
-          )}
-        </Content>
-      </Container>
-    </>
+            ) : (
+              <BrandSwitch as="div" style={{ cursor: 'default' }}>
+                <Building2 />
+                {currentBrand?.name}
+              </BrandSwitch>
+            )}
+            <div style={{ flex: 1 }} />
+          </ActionRow>
+        )}
+
+        <Tabs>
+          <Tab active={activeTab === 'recipes'} onClick={() => handleTabChange('recipes')}>
+            Recipes <Badge count={recipesCount} showZero />
+          </Tab>
+          <Tab active={activeTab === 'recipe-categories'} onClick={() => handleTabChange('recipe-categories')}>
+            Recipe Categories <Badge count={recipeCategoriesCount} showZero />
+          </Tab>
+        </Tabs>
+
+        {(selectedBrand || user?.role !== 'Brand General') && (
+          <>
+            <div style={{ display: activeTab === 'recipes' ? 'block' : 'none' }}>
+              <RecipesTab brandId={selectedBrand} restaurantId={urlRestaurantId ? Number(urlRestaurantId) : null} onCountChange={setRecipesCount} categoryRefreshKey={recipeCategoryRefreshKey} />
+            </div>
+            <div style={{ display: activeTab === 'recipe-categories' ? 'block' : 'none' }}>
+              <RecipeCategoriesTab brandId={selectedBrand} restaurantId={urlRestaurantId ? Number(urlRestaurantId) : null} onCountChange={setRecipeCategoriesCount} onCategoryChange={() => setRecipeCategoryRefreshKey(k => k + 1)} />
+            </div>
+          </>
+        )}
+      </Content>
+    </Container>
   );
 };
 

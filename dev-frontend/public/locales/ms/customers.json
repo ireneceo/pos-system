@@ -36,5 +36,7 @@
   "customersPage.favoriteItems": "Favorite Item",
   "customersPage.loading": "Memuatkan...",
   "customersPage.noCouponsAvailableOrUsed": "Tiada kupon tersedia atau digunakan",
-  "customersPage.noCouponData": "Tidak Kupon Data"
+  "customersPage.noCouponData": "Tidak Kupon Data",
+  "customersPage.deleteFailedTitle": "Padam Gagal",
+  "customersPage.deleteFailedMessage": "Gagal memadam pelanggan. Sila cuba lagi."
 }

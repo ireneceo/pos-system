@@ -187,6 +187,7 @@
     "dashboard": "Dashboard",
     "orders": "Orders",
     "liveOrders": "Live Orders",
+    "salesOrders": "Sales Orders",
     "reservations": "Reservations",
     "orderHistory": "Order History",
     "menu": "Menu",
@@ -273,12 +274,13 @@
       "teamMarketing": "Team & Marketing",
       "systemAccess": "System Access",
       "brandManagement": "Brand Management",
+      "brands": "Brands",
       "franchise": "Franchise"
     },
     "franchiseManagement": "Franchise Management",
     "tenancyManagement": "Tenancy Management",
-    "franchise": "Franchise",
-    "tenancy": "Tenancy",
+    "franchise": "Franchisees",
+    "tenancy": "Tenants",
     "branches": "Branches",
     "franchiseMap": "Franchise Map",
     "tenancyMap": "Tenancy Map",
@@ -294,7 +296,8 @@
     "brandMenus": "Brand Menus",
     "brandMenuCategories": "Menu Categories",
     "brandMenuOptions": "Menu Options",
-    "brandMenuUpdates": "Brand Menu Updates"
+    "brandMenuUpdates": "Brand Menu Updates",
+    "allBrands": "All Brands"
   },
   "language": {
     "en": "English",
@@ -665,5 +668,13 @@
       "received": "Received",
       "delivered": "Delivered"
     }
-  }
+  },
+  "sort.newest": "Newest first",
+  "sort.oldest": "Oldest first",
+  "sort.nameAsc": "Name A → Z",
+  "sort.nameDesc": "Name Z → A",
+  "sort.priceAsc": "Price low → high",
+  "sort.priceDesc": "Price high → low",
+  "sort.category": "Group by category",
+  "sort.ariaLabel": "Sort"
 }

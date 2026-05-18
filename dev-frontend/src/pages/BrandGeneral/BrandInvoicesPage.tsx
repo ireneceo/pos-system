@@ -482,11 +482,13 @@ const BrandInvoicesPage: React.FC = () => {
         setCategoryToDelete(null);
         fetchInvoiceCategories();
       } else {
-        alert(data.error || 'Failed to delete category');
+        setSuccessMessage(data.error || 'Failed to delete category');
+        setShowSuccessModal(true);
       }
     } catch (error) {
       console.error('Failed to delete category:', error);
-      alert('Failed to delete category');
+      setSuccessMessage('Failed to delete category. Please try again.');
+      setShowSuccessModal(true);
     }
   };
 
@@ -1128,11 +1130,13 @@ const BrandInvoicesPage: React.FC = () => {
         setSuccessMessage('Invoice linked to member account successfully.'); setShowSuccessModal(true);
       } else {
         const errorData = await response.json();
-        alert(`Failed to link account: ${errorData.message || 'Unknown error'}`);
+        setSuccessMessage(`Failed to link account: ${errorData.message || 'Unknown error'}`);
+        setShowSuccessModal(true);
       }
     } catch (error) {
       console.error('Error linking account:', error);
-      alert('Error linking account. Please try again.');
+      setSuccessMessage('Error linking account. Please try again.');
+      setShowSuccessModal(true);
     }
   };
 
@@ -1172,8 +1176,16 @@ const BrandInvoicesPage: React.FC = () => {
         body: JSON.stringify({ status: 'pending_payment' })
       });
       if (response.ok) { await fetchInvoices(); setShowSendConfirmModal(false); setSelectedInvoice(null); }
-      else { const errorData = await response.json(); alert(`Failed to send invoice: ${errorData.error || 'Unknown error'}`); }
-    } catch (error) { console.error('Error sending invoice:', error); alert('Error sending invoice. Please try again.'); }
+      else {
+        const errorData = await response.json();
+        setSuccessMessage(`Failed to send invoice: ${errorData.error || 'Unknown error'}`);
+        setShowSuccessModal(true);
+      }
+    } catch (error) {
+      console.error('Error sending invoice:', error);
+      setSuccessMessage('Error sending invoice. Please try again.');
+      setShowSuccessModal(true);
+    }
   };
 
   const handleSaveEdit = async () => {
@@ -1202,8 +1214,8 @@ const BrandInvoicesPage: React.FC = () => {
   };
 
   const handleSubmitInvoice = async () => {
-    if (payerMode === 'member' && (!selectedTarget || !newInvoice.amount || !newInvoice.dueDate)) { alert('Please select a restaurant, enter amount, and set due date.'); return; }
-    if (payerMode === 'external' && (!externalPayer.name || !externalPayer.email || !newInvoice.amount || !newInvoice.dueDate)) { alert('Please fill in name, email, amount, and due date.'); return; }
+    if (payerMode === 'member' && (!selectedTarget || !newInvoice.amount || !newInvoice.dueDate)) { setSuccessMessage('Please select a restaurant, enter amount, and set due date.'); setShowSuccessModal(true); return; }
+    if (payerMode === 'external' && (!externalPayer.name || !externalPayer.email || !newInvoice.amount || !newInvoice.dueDate)) { setSuccessMessage('Please fill in name, email, amount, and due date.'); setShowSuccessModal(true); return; }
     try {
       const amount = parseFloat(newInvoice.amount);
       const discountVal = parseFloat(newInvoice.discountValue) || 0;
@@ -1256,8 +1268,8 @@ const BrandInvoicesPage: React.FC = () => {
       const token = getAuthToken();
       const response = await fetch('/api/invoices', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ invoice_data: invoiceData, items }) });
       if (response.ok) { await fetchInvoices(); setShowCreateInvoiceModal(false); resetInvoiceForm(); }
-      else { const errorData = await response.json(); alert(`Failed to create invoice: ${errorData.error || 'Unknown error'}`); }
-    } catch (error) { console.error('Error creating invoice:', error); alert('Error creating invoice. Please try again.'); }
+      else { const errorData = await response.json(); setSuccessMessage(`Failed to create invoice: ${errorData.error || 'Unknown error'}`); setShowSuccessModal(true); }
+    } catch (error) { console.error('Error creating invoice:', error); setSuccessMessage('Error creating invoice. Please try again.'); setShowSuccessModal(true); }
   };
 
   const handleConfirmPayment = (invoice: Invoice) => { setSelectedInvoice(invoice); setShowPaymentConfirmModal(true); };
@@ -1271,8 +1283,8 @@ const BrandInvoicesPage: React.FC = () => {
         body: JSON.stringify({ status: 'paid', paid_at: new Date().toISOString() })
       });
       if (response.ok) { await fetchInvoices(); setShowPaymentConfirmModal(false); setSelectedInvoice(null); window.dispatchEvent(new Event('refreshBadgeCounts')); }
-      else { const errorData = await response.json(); alert(`Failed to update payment status: ${errorData.error || 'Unknown error'}`); }
-    } catch (error) { console.error('Error updating payment status:', error); alert('Error updating payment status. Please try again.'); }
+      else { const errorData = await response.json(); setSuccessMessage(`Failed to update payment status: ${errorData.error || 'Unknown error'}`); setShowSuccessModal(true); }
+    } catch (error) { console.error('Error updating payment status:', error); setSuccessMessage('Error updating payment status. Please try again.'); setShowSuccessModal(true); }
   };
 
   const confirmResendInvoice = () => { if (!selectedInvoice) return; setShowResendConfirmModal(false); setSelectedInvoice(null); };
@@ -1288,8 +1300,8 @@ const BrandInvoicesPage: React.FC = () => {
         body: JSON.stringify({ status: 'cancelled' })
       });
       if (response.ok) { await fetchInvoices(); setShowCancelConfirmModal(false); setSelectedInvoice(null); window.dispatchEvent(new Event('refreshBadgeCounts')); }
-      else { const errorData = await response.json(); alert(`Failed to cancel invoice: ${errorData.error || 'Unknown error'}`); }
-    } catch (error) { console.error('Error cancelling invoice:', error); alert('Error cancelling invoice. Please try again.'); }
+      else { const errorData = await response.json(); setSuccessMessage(`Failed to cancel invoice: ${errorData.error || 'Unknown error'}`); setShowSuccessModal(true); }
+    } catch (error) { console.error('Error cancelling invoice:', error); setSuccessMessage('Error cancelling invoice. Please try again.'); setShowSuccessModal(true); }
   };
 
   const confirmDeleteInvoice = async () => {
@@ -1300,8 +1312,8 @@ const BrandInvoicesPage: React.FC = () => {
         method: 'DELETE', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) { await fetchInvoices(); setShowDeleteConfirmModal(false); setSelectedInvoice(null); window.dispatchEvent(new Event('refreshBadgeCounts')); }
-      else { const errorData = await response.json(); alert(`Failed to delete invoice: ${errorData.error || 'Unknown error'}`); }
-    } catch (error) { console.error('Error deleting invoice:', error); alert('Error deleting invoice. Please try again.'); }
+      else { const errorData = await response.json(); setSuccessMessage(`Failed to delete invoice: ${errorData.error || 'Unknown error'}`); setShowSuccessModal(true); }
+    } catch (error) { console.error('Error deleting invoice:', error); setSuccessMessage('Error deleting invoice. Please try again.'); setShowSuccessModal(true); }
   };
 
   // Render helper for invoice action buttons

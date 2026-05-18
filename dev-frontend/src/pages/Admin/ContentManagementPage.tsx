@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ConfirmModal from '../../components/ConfirmModal';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
@@ -249,6 +250,7 @@ const ContentManagementPage: React.FC = () => {
   const { t } = useTranslation('admin');
   const [activeTab, setTabParam] = useTabParam<'blog' | 'blog-categories' | 'faq' | 'faq-categories'>('blog');
   const [categories, setCategories] = useState<ContentCategory[]>([]);
+  const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   const [contents, setContents] = useState<ContentItem[]>([]);
   const [, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -348,7 +350,7 @@ const ContentManagementPage: React.FC = () => {
         setTimeout(() => setSuccessMessage(''), 3000);
       } else {
         const error = await response.json();
-        alert(error.error || 'Failed to save category');
+        setInfoModal({ open: true, title: 'Save Failed', message: error.error || 'Failed to save category. Please try again.' });
       }
     } catch (error) {
       console.error('Error saving category:', error);
@@ -374,7 +376,7 @@ const ContentManagementPage: React.FC = () => {
             setTimeout(() => setSuccessMessage(''), 3000);
           } else {
             const error = await response.json();
-            alert(error.error || 'Failed to delete category');
+            setInfoModal({ open: true, title: 'Delete Failed', message: error.error || 'Failed to delete category. Please try again.' });
           }
         } catch (error) {
           console.error('Error deleting category:', error);
@@ -386,7 +388,7 @@ const ContentManagementPage: React.FC = () => {
 
   const handleSaveContent = async () => {
     if (!editingContent?.title || !editingContent?.content || !editingContent?.category_id) {
-      alert('Please fill in all required fields');
+      setInfoModal({ open: true, title: 'Required Fields', message: 'Please fill in all required fields.' });
       return;
     }
 
@@ -894,6 +896,16 @@ const ContentManagementPage: React.FC = () => {
         confirmText="Delete"
         cancelText="Cancel"
         variant="danger"
+      />
+      <ConfirmModal
+        isOpen={infoModal.open}
+        title={infoModal.title}
+        message={infoModal.message}
+        onConfirm={() => setInfoModal({ open: false, title: '', message: '' })}
+        onCancel={() => setInfoModal({ open: false, title: '', message: '' })}
+        confirmText="OK"
+        type="info"
+        singleButton
       />
     </>
   );

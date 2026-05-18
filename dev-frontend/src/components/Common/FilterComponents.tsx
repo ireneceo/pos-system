@@ -35,10 +35,12 @@ const CommonFilterBar = styled.div`
 `;
 
 // Common Search Input
+// 검색창 표준 폭 — LiveOrders FilterToolbar 패턴 일치 (220-280px), 모바일 풀폭.
+// 길게 늘이지 않아서 같은 줄에 카테고리/뷰토글/액션버튼 여유 있게 들어감.
 const CommonSearchInput = styled.input`
   flex: 1;
-  min-width: 320px;
-  max-width: 480px;
+  min-width: 220px;
+  max-width: 280px;
   padding: 12px 16px;
   border: 1px solid #E6EBF1;
   border-radius: 8px;
@@ -55,16 +57,6 @@ const CommonSearchInput = styled.input`
     box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
   }
 
-  @media (max-width: 1024px) {
-    min-width: 280px;
-    max-width: 400px;
-  }
-
-  @media (max-width: 768px) {
-    min-width: 240px;
-    max-width: 320px;
-  }
-
   @media (max-width: 600px) {
     width: 100%;
     min-width: 100%;
@@ -76,18 +68,8 @@ const SearchInputWrapper = styled.div`
   position: relative;
   display: inline-flex;
   flex: 1;
-  min-width: 320px;
-  max-width: 480px;
-
-  @media (max-width: 1024px) {
-    min-width: 280px;
-    max-width: 400px;
-  }
-
-  @media (max-width: 768px) {
-    min-width: 240px;
-    max-width: 320px;
-  }
+  min-width: 220px;
+  max-width: 280px;
 
   @media (max-width: 600px) {
     width: 100%;

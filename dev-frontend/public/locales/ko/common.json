@@ -187,6 +187,7 @@
     "dashboard": "대시보드",
     "orders": "주문",
     "liveOrders": "라이브 오더",
+    "salesOrders": "판매 주문",
     "reservations": "예약",
     "orderHistory": "주문 내역",
     "menu": "메뉴",
@@ -273,12 +274,13 @@
       "teamMarketing": "팀 및 마케팅",
       "systemAccess": "시스템 접근",
       "brandManagement": "브랜드 관리",
+      "brands": "브랜드",
       "franchise": "프랜차이즈"
     },
     "franchiseManagement": "가맹점 관리",
     "tenancyManagement": "입점 관리",
-    "franchise": "가맹점",
-    "tenancy": "입점",
+    "franchise": "가맹점 목록",
+    "tenancy": "입점 매장",
     "branches": "지점",
     "franchiseMap": "가맹 지도",
     "tenancyMap": "입점 지도",
@@ -294,7 +296,8 @@
     "brandMenus": "브랜드 메뉴",
     "brandMenuCategories": "메뉴 카테고리",
     "brandMenuOptions": "메뉴 옵션",
-    "brandMenuUpdates": "브랜드 메뉴 업데이트"
+    "brandMenuUpdates": "브랜드 메뉴 업데이트",
+    "allBrands": "전체 브랜드"
   },
   "language": {
     "en": "English",
@@ -665,5 +668,13 @@
       "received": "수령",
       "delivered": "도착"
     }
-  }
+  },
+  "sort.newest": "최신 순",
+  "sort.oldest": "오래된 순",
+  "sort.nameAsc": "이름 A → Z",
+  "sort.nameDesc": "이름 Z → A",
+  "sort.priceAsc": "가격 낮은 순",
+  "sort.priceDesc": "가격 높은 순",
+  "sort.category": "카테고리별",
+  "sort.ariaLabel": "정렬"
 }

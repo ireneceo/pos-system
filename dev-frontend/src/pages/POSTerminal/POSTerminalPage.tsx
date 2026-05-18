@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ConfirmModal from '../../components/ConfirmModal';
 import styled from 'styled-components';
 import { io, Socket } from 'socket.io-client';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -367,6 +368,11 @@ const MenuName = styled.div`
   color: #0A2540;
   margin-bottom: 4px;
   line-height: 1.3;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
 `;
 
 const MenuPrice = styled.div`
@@ -524,6 +530,11 @@ const ItemName = styled.div`
   font-weight: 500;
   color: #0A2540;
   margin-bottom: 4px;
+  overflow: hidden;
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 `;
 
 const ItemOptions = styled.div`
@@ -1124,6 +1135,7 @@ const POSTerminalPage: React.FC = () => {
   } = useCustomer();
   const { currentStaff, updateStaff } = useStaff();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   const [previousCategory, setPreviousCategory] = useState<string | null>(null); // 검색 전 카테고리 저장
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchMode, setIsSearchMode] = useState(false); // 검색 모드 여부
@@ -1703,7 +1715,7 @@ const POSTerminalPage: React.FC = () => {
           });
           setDiscount(0); // Clear fixed discount when applying percentage
         } else {
-          alert('Invalid manager code. Discount not applied.');
+          setInfoModal({ open: true, title: 'Invalid Code', message: 'Invalid manager code. Discount not applied.' });
           return;
         }
       } else {
@@ -1893,7 +1905,7 @@ const POSTerminalPage: React.FC = () => {
       console.log('POS - Order added without payment:', savedOrder?.orderNumber);
     } catch (error) {
       console.error('POS - Error adding order:', error);
-      alert('Failed to create order. Please try again.');
+      setInfoModal({ open: true, title: 'Order Failed', message: 'Failed to create order. Please try again.' });
     } finally {
       setIsProcessingPayment(false);
     }
@@ -2104,7 +2116,7 @@ const POSTerminalPage: React.FC = () => {
       console.log('POS - Payment processing completed:', savedOrder?.orderNumber);
     } catch (error) {
       console.error('POS - Error processing payment:', error);
-      alert('Failed to process payment. Please try again.');
+      setInfoModal({ open: true, title: 'Payment Failed', message: 'Failed to process payment. Please try again.' });
     } finally {
       setIsProcessingPayment(false);
     }
@@ -2374,7 +2386,7 @@ const POSTerminalPage: React.FC = () => {
             type="button"
             onClick={async () => {
               const ok = await openCustomerDisplay(user?.restaurantId || '');
-              if (!ok) alert('Customer Display window blocked. Allow popups for this site and try again.');
+              if (!ok) setInfoModal({ open: true, title: 'Popup Blocked', message: 'Customer Display window blocked. Allow popups for this site and try again.' });
             }}
             title={isAutoOpenEnabled() ? 'Customer Display (auto-open enabled)' : 'Open Customer Display on secondary monitor'}
             style={{
@@ -2984,6 +2996,16 @@ const POSTerminalPage: React.FC = () => {
         }}
         onLogout={handleLogout}
         currentCashierName={user?.name}
+      />
+      <ConfirmModal
+        isOpen={infoModal.open}
+        title={infoModal.title}
+        message={infoModal.message}
+        onConfirm={() => setInfoModal({ open: false, title: '', message: '' })}
+        onCancel={() => setInfoModal({ open: false, title: '', message: '' })}
+        confirmText="OK"
+        type="info"
+        singleButton
       />
     </POSContainer>
   );

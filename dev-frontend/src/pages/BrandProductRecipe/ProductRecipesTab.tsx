@@ -2,7 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
-import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import { SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import ListControlsBar from '../../components/Common/ListControlsBar';
+import SortDropdown, { SortKey, sortItems } from '../../components/Common/SortDropdown';
 import { useAuth } from '../../contexts/AuthContext';
 import { Modal, ModalButton, ModalWarning, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormTextArea } from '../../components/UI/Modal';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
@@ -140,6 +142,11 @@ const RecipeName = styled.h3`
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
 `;
 
 const RecipeCategoryBadge = styled.div`
@@ -791,6 +798,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ brandId: brandIdP
   const [categories, setCategories] = useState<ProductRecipeCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortKey, setSortKey] = useState<SortKey>('newest');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [linkedProducts, setLinkedProducts] = useState<Record<number, string[]>>({});
   const [viewMode, setViewMode] = useState<'compact' | 'image'>(() => {
@@ -1141,13 +1149,13 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ brandId: brandIdP
     setDeletingRecipe(null);
   };
 
-  const filteredRecipes = recipes.filter(item => {
+  const filteredRecipes = sortItems(recipes.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (item.code?.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesCategory = categoryFilter === 'all' ||
                            (item.category_id?.toString() === categoryFilter);
     return matchesSearch && matchesCategory;
-  });
+  }), sortKey);
 
   if (loading) {
     return <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>{'Loading...'}</div>;
@@ -1155,25 +1163,24 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ brandId: brandIdP
 
   return (
     <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
-        <FilterBar style={{ marginBottom: 0, flex: 1 }}>
-          <SearchInput
-            type="text"
-            placeholder="Search recipes..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-          <FilterSelect
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-          >
-            <option value="all">{'All Categories'}</option>
-            {categories.map(cat => (
-              <option key={cat.id} value={cat.id}>{cat.emoji} {cat.name}</option>
-            ))}
-          </FilterSelect>
-        </FilterBar>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
+      <ListControlsBar>
+        <SearchInput
+          type="text"
+          placeholder="Search recipes..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        <FilterSelect
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+        >
+          <option value="all">{'All Categories'}</option>
+          {categories.map(cat => (
+            <option key={cat.id} value={cat.id}>{cat.emoji} {cat.name}</option>
+          ))}
+        </FilterSelect>
+        <SortDropdown value={sortKey} onChange={setSortKey} />
+        <div data-controls-trailing>
           <div style={{ display: 'flex', background: '#F3F4F6', borderRadius: '6px', padding: '2px' }}>
             <button onClick={() => { setViewMode('compact'); localStorage.setItem('brandProductRecipesViewMode', 'compact'); }} style={{ padding: '5px 14px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'compact' ? 'white' : 'transparent', color: viewMode === 'compact' ? '#0A2540' : '#6B7C93', boxShadow: viewMode === 'compact' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
               Compact
@@ -1186,7 +1193,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ brandId: brandIdP
             Add Recipe
           </ThemedButton>
         </div>
-      </div>
+      </ListControlsBar>
 
       {filteredRecipes.length === 0 ? (
         <EmptyState>

@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { Supplier, Restaurant, SupplierCategory, Brand } = require('../models');
+const { Supplier, Restaurant, SupplierCategory, Brand, Foodcourt } = require('../models');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
-const { isBrandManager } = require('../middleware/recipeAuth');
+const { isBrandManager, isFoodcourtManager } = require('../middleware/recipeAuth');
 const { requireBGScope, applyBGFilter, assertBGOwnsRow } = require('../middleware/brandScope');
 const { generateSupplierCode } = require('../utils/codeGenerator');
 
@@ -80,7 +80,7 @@ router.get('/suppliers', authenticateToken, requireBGScope, async (req, res) => 
  */
 router.post('/suppliers', authenticateToken, requireBGScope, async (req, res) => {
   try {
-    const { code, name, contact_name, phone, email, address, business_number, bank_name, bank_account, payment_terms, notes, supplier_category_id } = req.body;
+    const { code, name, contact_name, phone, email, address, address_line_2, city, state, postal_code, country, business_number, bank_name, bank_account, payment_terms, notes, supplier_category_id } = req.body;
 
     if (!name) {
       return res.status(400).json({ success: false, message: 'Supplier name required' });
@@ -103,6 +103,11 @@ router.post('/suppliers', authenticateToken, requireBGScope, async (req, res) =>
       phone,
       email,
       address,
+      address_line_2,
+      city,
+      state,
+      postal_code,
+      country,
       business_number,
       bank_name,
       bank_account,
@@ -131,7 +136,7 @@ router.put('/suppliers/:supplierId', authenticateToken, requireBGScope, async (r
   try {
     const { supplierId } = req.params;
 
-    const { code, name, contact_name, phone, email, address, business_number, bank_name, bank_account, payment_terms, notes, is_active, supplier_category_id } = req.body;
+    const { code, name, contact_name, phone, email, address, address_line_2, city, state, postal_code, country, business_number, bank_name, bank_account, payment_terms, notes, is_active, supplier_category_id } = req.body;
 
     const supplier = await Supplier.findByPk(supplierId);
     if (!supplier || supplier.owner_type !== 'brand') {
@@ -146,6 +151,11 @@ router.put('/suppliers/:supplierId', authenticateToken, requireBGScope, async (r
       phone,
       email,
       address,
+      address_line_2,
+      city,
+      state,
+      postal_code,
+      country,
       business_number,
       bank_name,
       bank_account,
@@ -204,7 +214,7 @@ router.delete('/suppliers/:supplierId', authenticateToken, requireBGScope, async
 router.post('/brands/:brandId/suppliers', authenticateToken, isBrandManager, async (req, res) => {
   try {
     const { brandId } = req.params;
-    const { code, name, contact_name, phone, email, address, business_number, bank_name, bank_account, payment_terms, notes, supplier_category_id } = req.body;
+    const { code, name, contact_name, phone, email, address, address_line_2, city, state, postal_code, country, business_number, bank_name, bank_account, payment_terms, notes, supplier_category_id } = req.body;
 
     if (!name) {
       return res.status(400).json({ success: false, message: 'Supplier name required' });
@@ -228,6 +238,11 @@ router.post('/brands/:brandId/suppliers', authenticateToken, isBrandManager, asy
       phone,
       email,
       address,
+      address_line_2,
+      city,
+      state,
+      postal_code,
+      country,
       business_number,
       bank_name,
       bank_account,
@@ -249,7 +264,7 @@ router.post('/brands/:brandId/suppliers', authenticateToken, isBrandManager, asy
 router.put('/brands/:brandId/suppliers/:supplierId', authenticateToken, isBrandManager, async (req, res) => {
   try {
     const { supplierId } = req.params;
-    const { code, name, contact_name, phone, email, address, business_number, bank_name, bank_account, payment_terms, notes, is_active, supplier_category_id } = req.body;
+    const { code, name, contact_name, phone, email, address, address_line_2, city, state, postal_code, country, business_number, bank_name, bank_account, payment_terms, notes, is_active, supplier_category_id } = req.body;
 
     const supplier = await Supplier.findByPk(supplierId);
     if (!supplier || supplier.owner_type !== 'brand') {
@@ -267,6 +282,11 @@ router.put('/brands/:brandId/suppliers/:supplierId', authenticateToken, isBrandM
       phone,
       email,
       address,
+      address_line_2,
+      city,
+      state,
+      postal_code,
+      country,
       business_number,
       bank_name,
       bank_account,
@@ -360,13 +380,8 @@ router.get('/restaurants/:restaurantId/brand-suppliers', authenticateToken, chec
       return res.json({ success: true, data: [] });
     }
 
-    // 브랜드 공급업체 조회 (owner의 모든 브랜드 통합)
-    const brand = await Brand.findByPk(restaurant.brand_id);
-    let allBrandIds = [restaurant.brand_id];
-    if (brand?.owner_id) {
-      const ownerBrands = await Brand.findAll({ where: { owner_id: brand.owner_id }, attributes: ['id'] });
-      allBrandIds = ownerBrands.map(b => b.id);
-    }
+    // 브랜드 공급업체 조회 — 이 Restaurant 의 brand_id 에 명시적으로 연결된 supplier 만.
+    // BG owner 가 여러 brand 를 가져도 brand 별로 supplier 공유 분리 (브랜드끼리 자동 통합 X).
     const brandSuppliers = await Supplier.findAll({
       where: { owner_type: 'brand' },
       include: [
@@ -375,7 +390,7 @@ router.get('/restaurants/:restaurantId/brand-suppliers', authenticateToken, chec
           as: 'connectedBrands',
           attributes: [],
           through: { attributes: [] },
-          where: { id: allBrandIds },
+          where: { id: restaurant.brand_id },
           required: true
         },
         {
@@ -458,7 +473,7 @@ router.get('/restaurants/:restaurantId/all-suppliers', authenticateToken, checkR
 router.post('/restaurants/:restaurantId/suppliers', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId } = req.params;
-    const { code, name, contact_name, phone, email, address, business_number, bank_name, bank_account, payment_terms, notes, supplier_category_id } = req.body;
+    const { code, name, contact_name, phone, email, address, address_line_2, city, state, postal_code, country, business_number, bank_name, bank_account, payment_terms, notes, supplier_category_id } = req.body;
 
     if (!name) {
       return res.status(400).json({ success: false, error: { message: '공급업체 이름은 필수입니다', code: 'VALIDATION_ERROR' } });
@@ -478,6 +493,11 @@ router.post('/restaurants/:restaurantId/suppliers', authenticateToken, checkRest
       phone,
       email,
       address,
+      address_line_2,
+      city,
+      state,
+      postal_code,
+      country,
       business_number,
       bank_name,
       bank_account,
@@ -499,7 +519,7 @@ router.post('/restaurants/:restaurantId/suppliers', authenticateToken, checkRest
 router.put('/restaurants/:restaurantId/suppliers/:supplierId', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { supplierId } = req.params;
-    const { code, name, contact_name, phone, email, address, business_number, bank_name, bank_account, payment_terms, notes, is_active, supplier_category_id } = req.body;
+    const { code, name, contact_name, phone, email, address, address_line_2, city, state, postal_code, country, business_number, bank_name, bank_account, payment_terms, notes, is_active, supplier_category_id } = req.body;
 
     const supplier = await Supplier.findByPk(supplierId);
     if (!supplier) {
@@ -518,6 +538,11 @@ router.put('/restaurants/:restaurantId/suppliers/:supplierId', authenticateToken
       phone,
       email,
       address,
+      address_line_2,
+      city,
+      state,
+      postal_code,
+      country,
       business_number,
       bank_name,
       bank_account,
@@ -817,6 +842,114 @@ router.delete('/restaurants/:restaurantId/supplier-categories/:categoryId', auth
   } catch (error) {
     console.error('Delete restaurant supplier category error:', error);
     res.status(500).json({ success: false, error: { message: '카테고리 삭제 실패', code: 'INTERNAL_ERROR' } });
+  }
+});
+
+// ============================================
+// Foodcourt Suppliers (FG own supplier flow — mirror of brand pattern)
+// ============================================
+
+/**
+ * GET /api/foodcourts/:foodcourtId/suppliers — FG own supplier 목록
+ */
+router.get('/foodcourts/:foodcourtId/suppliers', authenticateToken, isFoodcourtManager, async (req, res) => {
+  try {
+    const { foodcourtId } = req.params;
+    const fc = await Foodcourt.findByPk(foodcourtId, { attributes: ['owner_id'] });
+    const ownerUserId = fc?.owner_id || req.user.id;
+    const suppliers = await Supplier.findAll({
+      where: { owner_type: 'foodcourt', owner_user_id: ownerUserId },
+      include: [{ model: SupplierCategory, as: 'supplierCategory', attributes: ['id', 'name', 'color'] }],
+      order: [['name', 'ASC']]
+    });
+    res.json({ success: true, data: suppliers });
+  } catch (error) {
+    console.error('Get foodcourt suppliers error:', error);
+    res.status(500).json({ success: false, message: 'Failed to load foodcourt suppliers' });
+  }
+});
+
+/**
+ * POST /api/foodcourts/:foodcourtId/suppliers — FG own supplier 생성
+ */
+router.post('/foodcourts/:foodcourtId/suppliers', authenticateToken, isFoodcourtManager, async (req, res) => {
+  try {
+    const { foodcourtId } = req.params;
+    const { code, name, contact_name, phone, email, address, address_line_2, city, state, postal_code, country, business_number, bank_name, bank_account, payment_terms, notes, supplier_category_id } = req.body;
+
+    if (!name) return res.status(400).json({ success: false, message: 'Supplier name required' });
+
+    const fc = await Foodcourt.findByPk(foodcourtId, { attributes: ['owner_id'] });
+    const ownerUserId = fc?.owner_id || req.user.id;
+    const finalCode = code || await generateSupplierCode(Supplier);
+
+    const supplier = await Supplier.create({
+      owner_type: 'foodcourt',
+      owner_user_id: ownerUserId,
+      brand_id: null,
+      restaurant_id: null,
+      foodcourt_id: parseInt(foodcourtId, 10),
+      supplier_category_id: supplier_category_id || null,
+      code: finalCode,
+      name, contact_name, phone, email, address, address_line_2, city, state, postal_code, country,
+      business_number, bank_name, bank_account, payment_terms, notes
+    });
+
+    res.json({ success: true, data: supplier });
+  } catch (error) {
+    console.error('Create foodcourt supplier error:', error);
+    res.status(500).json({ success: false, message: 'Failed to create supplier' });
+  }
+});
+
+/**
+ * PUT /api/foodcourts/:foodcourtId/suppliers/:supplierId — FG own supplier 수정
+ */
+router.put('/foodcourts/:foodcourtId/suppliers/:supplierId', authenticateToken, isFoodcourtManager, async (req, res) => {
+  try {
+    const { supplierId } = req.params;
+    const { code, name, contact_name, phone, email, address, address_line_2, city, state, postal_code, country, business_number, bank_name, bank_account, payment_terms, notes, is_active, supplier_category_id } = req.body;
+
+    const supplier = await Supplier.findByPk(supplierId);
+    if (!supplier || supplier.owner_type !== 'foodcourt') {
+      return res.status(404).json({ success: false, message: 'Supplier not found' });
+    }
+    if (req.user.role !== 'System Admin' && supplier.owner_user_id !== req.user.id) {
+      return res.status(404).json({ success: false, message: 'Supplier not found' });
+    }
+
+    await supplier.update({
+      code, name, contact_name, phone, email, address, address_line_2, city, state, postal_code, country,
+      business_number, bank_name, bank_account, payment_terms, notes,
+      is_active: is_active !== undefined ? is_active : supplier.is_active,
+      supplier_category_id: supplier_category_id !== undefined ? supplier_category_id : supplier.supplier_category_id
+    });
+
+    res.json({ success: true, data: supplier });
+  } catch (error) {
+    console.error('Update foodcourt supplier error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update supplier' });
+  }
+});
+
+/**
+ * DELETE /api/foodcourts/:foodcourtId/suppliers/:supplierId — FG own supplier 삭제
+ */
+router.delete('/foodcourts/:foodcourtId/suppliers/:supplierId', authenticateToken, isFoodcourtManager, async (req, res) => {
+  try {
+    const { supplierId } = req.params;
+    const supplier = await Supplier.findByPk(supplierId);
+    if (!supplier || supplier.owner_type !== 'foodcourt') {
+      return res.status(404).json({ success: false, message: 'Supplier not found' });
+    }
+    if (req.user.role !== 'System Admin' && supplier.owner_user_id !== req.user.id) {
+      return res.status(404).json({ success: false, message: 'Supplier not found' });
+    }
+    await supplier.destroy();
+    res.json({ success: true, message: 'Supplier deleted' });
+  } catch (error) {
+    console.error('Delete foodcourt supplier error:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete supplier' });
   }
 });
 

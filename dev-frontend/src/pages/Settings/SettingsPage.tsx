@@ -693,6 +693,8 @@ const SettingsPage: React.FC = () => {
   const [qzTrayStatus, setQzTrayStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
   const [qzTrayPrinters, setQzTrayPrinters] = useState<string[]>([]);
   const [showQzGuide, setShowQzGuide] = useState(false);
+  const [qzScenario, setQzScenario] = useState<'migration' | 'fresh'>('migration');
+  const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
 
   // Kitchen Stations state
   const [kitchenStations, setKitchenStations] = useState<any[]>([]);
@@ -1705,12 +1707,12 @@ const SettingsPage: React.FC = () => {
     const name = newExternalQR.trim();
     if (!name) return;
     if (name.length > 20) {
-      alert('Name must be 20 characters or less');
+      setInfoModal({ open: true, title: t('settings:settingsPage.externalQRInvalidTitle', 'Invalid Name'), message: t('settings:settingsPage.externalQRTooLong', 'Name must be 20 characters or less.') });
       return;
     }
     const current = normalizeQREntries(tableSettings.externalQRs);
     if (current.some(e => e.name === name)) {
-      alert('This name already exists');
+      setInfoModal({ open: true, title: t('settings:settingsPage.externalQRDuplicateTitle', 'Duplicate Name'), message: t('settings:settingsPage.externalQRDuplicate', 'This name already exists.') });
       return;
     }
     const newEntry: { name: string; coupon_id?: number } = { name };
@@ -2653,11 +2655,11 @@ const SettingsPage: React.FC = () => {
                       </ThemedButton>
                     )}
                     {user?.role === 'Restaurant Admin' ? (
-                      <ThemedButton onClick={() => alert('Add Brand functionality coming soon')}>
+                      <ThemedButton onClick={() => setInfoModal({ open: true, title: t('settings:settingsPage.featureInDevelopmentTitle', 'Coming Soon'), message: t('settings:settingsPage.addBrandComingSoon', 'Add Brand functionality is currently in development and will be available in an upcoming release.') })}>
                         Add Brand
                       </ThemedButton>
                     ) : (
-                      <Button onClick={() => alert('Add Brand functionality coming soon')}>
+                      <Button onClick={() => setInfoModal({ open: true, title: t('settings:settingsPage.featureInDevelopmentTitle', 'Coming Soon'), message: t('settings:settingsPage.addBrandComingSoon', 'Add Brand functionality is currently in development and will be available in an upcoming release.') })}>
                         Add Brand
                       </Button>
                     )}
@@ -2883,7 +2885,7 @@ const SettingsPage: React.FC = () => {
                     <span>12 / 15</span>
                   </div>
                 </div>
-                <Button onClick={() => alert('Billing management functionality coming soon')}>{t('settings:settingsPage.manageBilling')}</Button>
+                <Button onClick={() => setInfoModal({ open: true, title: t('settings:settingsPage.featureInDevelopmentTitle', 'Coming Soon'), message: t('settings:settingsPage.billingComingSoon', 'Billing management is currently in development and will be available in an upcoming release.') })}>{t('settings:settingsPage.manageBilling')}</Button>
               </SettingsCard>
               <SettingsCard>
                 <CardTitle>{t('settings:settingsPage.usageStatistics')}</CardTitle>
@@ -4497,8 +4499,7 @@ const SettingsPage: React.FC = () => {
                       <div style={{ marginBottom: '24px' }}>
                         <h3 style={{ fontSize: '15px', color: '#374151', marginBottom: '8px' }}>{t('settings:settingsPage.whatIsQzTray')}</h3>
                         <p style={{ fontSize: '14px', color: '#6B7C93', lineHeight: '1.7', margin: 0 }}>
-                          QZ Tray is a small program that runs in the background on your POS device. It acts as a bridge between your web browser and your network printers.
-                          Without it, browsers cannot send print data directly to LAN printers.
+                          {t('settings:settingsPage.whatIsQzTrayDesc')}
                         </p>
                       </div>
 
@@ -4506,10 +4507,43 @@ const SettingsPage: React.FC = () => {
                       <div style={{ marginBottom: '24px', padding: '14px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '8px' }}>
                         <h3 style={{ fontSize: '15px', color: '#92400E', marginBottom: '8px', marginTop: 0 }}>{t('settings:settingsPage.whereToInstall')}</h3>
                         <p style={{ fontSize: '14px', color: '#92400E', lineHeight: '1.7', margin: 0 }}>
-                          Install QZ Tray on your <strong>main POS device only</strong> &mdash; the PC or tablet where you process orders and payments.
-                          This device must be connected to the same network (router/WiFi) as your printers.
+                          {t('settings:settingsPage.whereToInstallDesc1')}
                           <br /><br />
-                          Kitchen display tablets, customer displays, and other secondary devices do <strong>not</strong> need QZ Tray installed.
+                          {t('settings:settingsPage.whereToInstallDesc2')}
+                        </p>
+                      </div>
+
+                      {/* Scenario selector */}
+                      <div style={{ marginBottom: '20px' }}>
+                        <h3 style={{ fontSize: '15px', color: '#374151', marginBottom: '10px' }}>{t('settings:settingsPage.qzChooseScenario')}</h3>
+                        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                          {[
+                            { key: 'migration' as const, label: t('settings:settingsPage.qzScenarioMigration') },
+                            { key: 'fresh' as const, label: t('settings:settingsPage.qzScenarioFresh') },
+                          ].map(opt => {
+                            const active = qzScenario === opt.key;
+                            return (
+                              <button
+                                key={opt.key}
+                                type="button"
+                                aria-pressed={active}
+                                onClick={() => setQzScenario(opt.key)}
+                                style={{
+                                  flex: 1, padding: '10px 14px', fontSize: '13px', fontWeight: 600,
+                                  border: active ? '2px solid #635BFF' : '1px solid #D1D5DB', borderRadius: '8px',
+                                  background: active ? '#EEF2FF' : '#fff', color: active ? '#635BFF' : '#374151',
+                                  cursor: 'pointer', textAlign: 'left', lineHeight: 1.4
+                                }}
+                              >
+                                {opt.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <p style={{ fontSize: '13px', color: '#6B7C93', lineHeight: 1.6, margin: 0 }}>
+                          {qzScenario === 'migration'
+                            ? t('settings:settingsPage.qzScenarioMigrationDesc')
+                            : t('settings:settingsPage.qzScenarioFreshDesc')}
                         </p>
                       </div>
 
@@ -4517,19 +4551,42 @@ const SettingsPage: React.FC = () => {
                       <div style={{ marginBottom: '24px' }}>
                         <h3 style={{ fontSize: '15px', color: '#374151', marginBottom: '12px' }}>{t('settings:settingsPage.setupSteps')}</h3>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                          {[
-                            { step: '1', title: 'Download & Install QZ Tray', desc: 'Download from qz.io and install on your POS device. Available for Windows, Mac, and Linux.', action: <button onClick={() => window.open('https://qz.io/download/', '_blank')} style={{ marginTop: '8px', padding: '6px 16px', fontSize: '13px', border: '1px solid #635BFF', borderRadius: '6px', background: '#635BFF', color: '#fff', cursor: 'pointer' }}>{t('settings:settingsPage.downloadQzTray')}</button> },
-                            { step: '2', title: 'Start QZ Tray', desc: 'After installation, QZ Tray runs automatically in the system tray (bottom-right on Windows, top menu bar on Mac). It starts automatically when your device boots up.' },
-                            { step: '3', title: 'Allow Browser Connection', desc: 'When you first connect from this page, QZ Tray will ask for permission. Click "Allow" or "Remember this decision" to avoid being asked again.' },
-                            { step: '4', title: 'Find Your Printer IP Addresses', desc: 'Each network printer has an IP address assigned by your router (e.g. 192.168.1.100). You can find it by: printing a network status page from the printer itself, or checking your router\'s connected devices list. The standard print port is 9100.' },
-                            { step: '5', title: 'Enter Printer Addresses', desc: 'Enter the IP:Port for each printer in the Bill Printer and Kitchen Printer fields below (e.g. 192.168.1.100:9100). Use "Test Print" to verify each connection.' },
-                            { step: '6', title: 'Save & Done', desc: 'Click "Save Printer Settings" at the bottom. Your existing LAN printers will now work with the POS system through your browser.' }
-                          ].map(({ step, title, desc, action }) => (
-                            <div key={step} style={{ display: 'flex', gap: '14px' }}>
+                          {(qzScenario === 'migration'
+                            ? [
+                                {
+                                  title: t('settings:settingsPage.qzMigStep1Title'),
+                                  desc: t('settings:settingsPage.qzMigStep1Desc'),
+                                  action: (
+                                    <>
+                                      <button onClick={() => window.open('https://qz.io/download/', '_blank')} style={{ marginTop: '8px', padding: '6px 16px', fontSize: '13px', border: '1px solid #635BFF', borderRadius: '6px', background: '#635BFF', color: '#fff', cursor: 'pointer' }}>{t('settings:settingsPage.downloadQzTray')}</button>
+                                      <div style={{ marginTop: '6px', fontSize: '12px', color: '#10B981', fontStyle: 'italic' }}>
+                                        {t('settings:settingsPage.qzMigStep1AlreadyInstalledHint')}
+                                      </div>
+                                    </>
+                                  )
+                                },
+                                { title: t('settings:settingsPage.qzMigStep2Title'), desc: t('settings:settingsPage.qzMigStep2Desc') },
+                                { title: t('settings:settingsPage.qzCommonAllowBrowserTitle'), desc: t('settings:settingsPage.qzCommonAllowBrowserDesc') },
+                                { title: t('settings:settingsPage.qzMigStep3Title'), desc: t('settings:settingsPage.qzMigStep3Desc') },
+                              ]
+                            : [
+                                { title: t('settings:settingsPage.qzFreshStep1Title'), desc: t('settings:settingsPage.qzFreshStep1Desc') },
+                                { title: t('settings:settingsPage.qzFreshStep2Title'), desc: t('settings:settingsPage.qzFreshStep2Desc') },
+                                { title: t('settings:settingsPage.qzFreshStep3Title'), desc: t('settings:settingsPage.qzFreshStep3Desc') },
+                                {
+                                  title: t('settings:settingsPage.qzFreshStep4Title'),
+                                  desc: t('settings:settingsPage.qzFreshStep4Desc'),
+                                  action: <button onClick={() => window.open('https://qz.io/download/', '_blank')} style={{ marginTop: '8px', padding: '6px 16px', fontSize: '13px', border: '1px solid #635BFF', borderRadius: '6px', background: '#635BFF', color: '#fff', cursor: 'pointer' }}>{t('settings:settingsPage.downloadQzTray')}</button>
+                                },
+                                { title: t('settings:settingsPage.qzCommonAllowBrowserTitle'), desc: t('settings:settingsPage.qzCommonAllowBrowserDesc') },
+                                { title: t('settings:settingsPage.qzFreshStep5Title'), desc: t('settings:settingsPage.qzFreshStep5Desc') },
+                              ]
+                          ).map(({ title, desc, action }, idx) => (
+                            <div key={idx} style={{ display: 'flex', gap: '14px' }}>
                               <div style={{
                                 width: '28px', height: '28px', borderRadius: '50%', background: '#635BFF', color: '#fff',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 600, flexShrink: 0
-                              }}>{step}</div>
+                              }}>{idx + 1}</div>
                               <div style={{ flex: 1 }}>
                                 <div style={{ fontSize: '14px', fontWeight: 600, color: '#1F2937', marginBottom: '4px' }}>{title}</div>
                                 <div style={{ fontSize: '13px', color: '#6B7C93', lineHeight: '1.6' }}>{desc}</div>
@@ -4540,22 +4597,30 @@ const SettingsPage: React.FC = () => {
                         </div>
                       </div>
 
+                      {/* Desktop app note */}
+                      <div style={{ marginBottom: '20px', padding: '12px 14px', background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: '8px' }}>
+                        <p style={{ fontSize: '13px', color: '#075985', lineHeight: '1.7', margin: 0 }}>
+                          <strong>{t('settings:settingsPage.qzDesktopAppNoteTitle')}</strong>{' '}
+                          {t('settings:settingsPage.qzDesktopAppNoteDesc')}
+                        </p>
+                      </div>
+
                       {/* Network diagram */}
                       <div style={{ marginBottom: '24px', padding: '16px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px' }}>
                         <h3 style={{ fontSize: '15px', color: '#374151', marginBottom: '10px', marginTop: 0 }}>{t('settings:settingsPage.howItWorks')}</h3>
                         <div style={{ fontSize: '13px', color: '#6B7C93', fontFamily: 'monospace', lineHeight: '1.8', whiteSpace: 'pre-wrap' }}>
-{`Your Browser (POS)
+{`${t('settings:settingsPage.qzDiagramPos')}
     │
     ▼
-QZ Tray (installed on this device)
+${t('settings:settingsPage.qzDiagramBridge')}
     │
-    ▼  (via your existing LAN network)
+    ▼  ${t('settings:settingsPage.qzDiagramVia')}
     │
-    ├── 192.168.x.x:9100 → Bill Printer
-    └── 192.168.x.x:9100 → Kitchen Printer`}
+    ├── 192.168.x.x:9100 → ${t('settings:settingsPage.billPrinter')}
+    └── 192.168.x.x:9100 → ${t('settings:settingsPage.kitchenPrinter')}`}
                         </div>
                         <p style={{ fontSize: '12px', color: '#9CA3AF', margin: '10px 0 0 0' }}>
-                          Your existing LAN cables and network setup remain unchanged. QZ Tray simply enables the browser to send data through the same network.
+                          {t('settings:settingsPage.qzDiagramFooter')}
                         </p>
                       </div>
 
@@ -4563,9 +4628,9 @@ QZ Tray (installed on this device)
                       <div style={{ marginBottom: '24px' }}>
                         <h3 style={{ fontSize: '15px', color: '#374151', marginBottom: '8px' }}>{t('settings:settingsPage.troubleshooting')}</h3>
                         <div style={{ fontSize: '13px', color: '#6B7C93', lineHeight: '1.8' }}>
-                          <strong>"Not Connected" status:</strong> Make sure QZ Tray is running (check system tray icon).<br />
-                          <strong>"Test Print" fails:</strong> Verify the printer IP address is correct and the printer is turned on and connected to the network.<br />
-                          <strong>No printers detected:</strong> QZ Tray shows OS-registered printers. For network printers, manually enter the IP:Port address.
+                          <strong>{t('settings:settingsPage.qzTroubleNotConnectedLabel')}</strong> {t('settings:settingsPage.qzTroubleNotConnectedDesc')}<br />
+                          <strong>{t('settings:settingsPage.qzTroubleTestPrintLabel')}</strong> {t('settings:settingsPage.qzTroubleTestPrintDesc')}<br />
+                          <strong>{t('settings:settingsPage.qzTroubleNoPrintersLabel')}</strong> {t('settings:settingsPage.qzTroubleNoPrintersDesc')}
                         </div>
                       </div>
 
@@ -4576,7 +4641,7 @@ QZ Tray (installed on this device)
                           border: 'none', borderRadius: '8px', background: '#635BFF', color: '#fff', cursor: 'pointer'
                         }}
                       >
-                        Got it
+                        {t('settings:settingsPage.qzGotIt')}
                       </button>
                     </div>
                   </div>
@@ -6038,6 +6103,17 @@ QZ Tray (installed on this device)
 
         </Content>
       </SettingsContainer>
+
+      <ConfirmModal
+        isOpen={infoModal.open}
+        title={infoModal.title}
+        message={infoModal.message}
+        onConfirm={() => setInfoModal({ open: false, title: '', message: '' })}
+        onCancel={() => setInfoModal({ open: false, title: '', message: '' })}
+        confirmText={t('common:ok', 'OK')}
+        type="info"
+        singleButton
+      />
     </>
   );
 };

@@ -632,7 +632,13 @@ router.get('/:id', authenticateToken, async (req, res, next) => {
         {
           model: Brand,
           as: 'brand',
-          attributes: ['id', 'name', 'logo_url']
+          attributes: ['id', 'name', 'logo_url', 'email', 'phone']
+        },
+        {
+          model: Foodcourt,
+          as: 'foodcourt',
+          attributes: ['id', 'name', 'logo_url', 'email', 'phone'],
+          required: false
         }
       ]
     });

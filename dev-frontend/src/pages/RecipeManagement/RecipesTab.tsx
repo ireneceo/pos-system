@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
-import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import { SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import ListControlsBar from '../../components/Common/ListControlsBar';
+import SortDropdown, { SortKey, sortItems } from '../../components/Common/SortDropdown';
 import { useAuth } from '../../contexts/AuthContext';
 import { Modal as CommonModal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormTextArea } from '../../components/UI';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
@@ -133,6 +136,11 @@ const RecipeName = styled.h3`
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
 `;
 
 const RecipeCategoryBadge = styled.div`
@@ -760,6 +768,7 @@ const RecipeDetailText = styled.div`
 `;
 
 const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRestaurantId, onCountChange, categoryRefreshKey }) => {
+  const { t } = useTranslation(['recipes', 'common']);
   const { user } = useAuth();
   const { defaultCurrency } = useBrandCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
@@ -782,6 +791,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
     return urlParams.get('search') || '';
   };
   const [searchTerm, setSearchTerm] = useState(getInitialSearchTerm);
+  const [sortKey, setSortKey] = useState<SortKey>('newest');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [viewMode, setViewMode] = useState<'compact' | 'image'>(() => {
     const saved = localStorage.getItem('recipesViewMode');
@@ -819,6 +829,49 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
     recipeName: ''
   });
   const [formError, setFormError] = useState<string | null>(null);
+  // Recipe Copy modal state (target brand selector)
+  const [copyTarget, setCopyTarget] = useState<{ recipeId: number; recipeName: string } | null>(null);
+  const [copyToBrandId, setCopyToBrandId] = useState<number | null>(null);
+  const [copying, setCopying] = useState(false);
+  const [allBrands, setAllBrands] = useState<Array<{ id: number; name: string }>>([]);
+
+  // Fetch brands list once when Copy modal opens (BG may own multiple brands).
+  // getAuthToken is imported statically (line ~16) to avoid dynamic import races.
+  useEffect(() => {
+    if (!copyTarget || allBrands.length > 0) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = getAuthToken();
+        const r = await fetch('/api/brands?owner=me', { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+        if (!r.ok) return;
+        const j = await r.json();
+        const raw = Array.isArray(j) ? j : (Array.isArray(j?.data) ? j.data : []);
+        if (!cancelled) setAllBrands(raw.map((b: any) => ({ id: b.id, name: b.name })));
+      } catch { /* silent */ }
+    })();
+    return () => { cancelled = true; };
+  }, [copyTarget, allBrands.length]);
+
+  const confirmCopyRecipe = async () => {
+    if (!copyTarget || !copyToBrandId || !brandId) return;
+    setCopying(true);
+    try {
+      const token = getAuthToken();
+      const r = await fetch(`/api/brands/${brandId}/recipes/${copyTarget.recipeId}/copy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ target_brand_id: copyToBrandId })
+      });
+      const j = await r.json();
+      if (!r.ok || !j.success) throw new Error(j.error?.message || j.message || 'Copy failed');
+      setCopyTarget(null); setCopyToBrandId(null);
+    } catch (e: any) {
+      setFormError(e?.message || 'Failed to copy recipe');
+    } finally {
+      setCopying(false);
+    }
+  };
   const [isViewMode, setIsViewMode] = useState(false);
   const [showRecipeModal, setShowRecipeModal] = useState(false);
   const [recipeModalData, setRecipeModalData] = useState<Recipe | null>(null);
@@ -1113,7 +1166,8 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
         instructions_detail: recipe.instructions_detail || '',
         suggested_price: recipe.suggested_price?.toString() || ''
       });
-      setTags(recipe.category ? recipe.category.split(',').map(t => t.trim()) : []);
+      // Use `tag` param name to avoid minifier collision with outer i18n `t` (cache-buster v2)
+      setTags(recipe.category ? recipe.category.split(',').map(function(tag) { return tag.trim(); }) : []);
       setRecipeIngredients(recipe.recipeIngredients?.map(ri => ({
         ingredient_id: ri.ingredient_id,
         quantity: ri.quantity.toString(),
@@ -1311,13 +1365,13 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
   };
 
   // Filter recipes
-  const filteredRecipes = recipes.filter(recipe => {
+  const filteredRecipes = sortItems(recipes.filter(recipe => {
     const matchesSearch = recipe.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'all' ||
       recipe.recipe_category_id?.toString() === selectedCategory ||
       recipe.category === selectedCategory;
     return matchesSearch && matchesCategory;
-  });
+  }) as any[], sortKey) as typeof recipes;
 
   // Get unique categories from recipeCategories list
   const filterCategories = [
@@ -1332,26 +1386,25 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
 
   return (
     <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
-        <FilterBar style={{ marginBottom: 0, flex: 1 }}>
-          <SearchInput
-            type="text"
-            placeholder="Search recipes..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-          <FilterSelect
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-          >
-            {filterCategories.map(cat => (
-              <option key={cat.id} value={cat.id}>
-                {cat.name}
-              </option>
-            ))}
-          </FilterSelect>
-        </FilterBar>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
+      <ListControlsBar>
+        <SearchInput
+          type="text"
+          placeholder="Search recipes..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        <FilterSelect
+          value={selectedCategory}
+          onChange={(e) => setSelectedCategory(e.target.value)}
+        >
+          {filterCategories.map(cat => (
+            <option key={cat.id} value={cat.id}>
+              {cat.name}
+            </option>
+          ))}
+        </FilterSelect>
+        <SortDropdown value={sortKey} onChange={setSortKey} options={['newest','oldest','name_asc','name_desc','category']} />
+        <div data-controls-trailing>
           <div style={{ display: 'flex', background: '#F3F4F6', borderRadius: '6px', padding: '2px' }}>
             <button onClick={() => { setViewMode('compact'); localStorage.setItem('recipesViewMode', 'compact'); }} style={{ padding: '5px 14px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'compact' ? 'white' : 'transparent', color: viewMode === 'compact' ? '#0A2540' : '#6B7C93', boxShadow: viewMode === 'compact' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
               Compact
@@ -1364,7 +1417,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
             New Recipe
           </ThemedButton>
         </div>
-      </div>
+      </ListControlsBar>
 
       {loading ? (
         <EmptyState>
@@ -1537,6 +1590,15 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                     >
                       Edit
                     </ActionButton>
+                    {recipe.owner_type === 'brand' && (
+                      <ActionButton
+                        variant="secondary"
+                        onClick={() => setCopyTarget({ recipeId: recipe.id, recipeName: recipe.name })}
+                        title={t('recipes:recipesTab.copyToBrand', 'Copy to another brand') as string}
+                      >
+                        Copy
+                      </ActionButton>
+                    )}
                     <ActionButton
                       variant="danger"
                       onClick={() => handleDeleteClick(recipe)}
@@ -1995,6 +2057,44 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
         cancelText="Cancel"
         type="danger"
       />
+
+      {copyTarget && (
+        <CommonModal
+          isOpen={true}
+          onClose={() => { setCopyTarget(null); setCopyToBrandId(null); }}
+          title={t('recipes:recipesTab.copyRecipeTitle', { name: copyTarget.recipeName, defaultValue: `Copy "${copyTarget.recipeName}" to another brand` }) as string}
+          size="small"
+          footer={
+            <>
+              <ModalButton variant="secondary" onClick={() => { setCopyTarget(null); setCopyToBrandId(null); }}>
+                {t('common:button.cancel', 'Cancel')}
+              </ModalButton>
+              <ModalButton variant="primary" onClick={confirmCopyRecipe}
+                disabled={!copyToBrandId || copying || copyToBrandId === brandId}>
+                {copying ? t('common:label.saving', 'Saving...') : t('recipes:recipesTab.copyAction', 'Copy Recipe')}
+              </ModalButton>
+            </>
+          }
+        >
+          <div style={{ padding: '10px 12px', background: '#F8F7FF', border: '1px solid #E6E3FF', borderRadius: 8, marginBottom: 16, fontSize: 12, color: '#4B5563' }}>
+            {t('recipes:recipesTab.copyIntro', 'A new recipe will be created in the target brand with all ingredients. Category will be unset — re-assign in the target brand.')}
+          </div>
+          <UIFormGroup>
+            <FormLabel>{t('recipes:recipesTab.copyTargetBrand', 'Target brand')} *</FormLabel>
+            <FormSelect value={copyToBrandId || ''} onChange={(e) => setCopyToBrandId(Number(e.target.value) || null)}>
+              <option value="">— {t('recipes:recipesTab.copyTargetPlaceholder', 'Select a different brand')} —</option>
+              {allBrands.filter(b => b.id !== brandId).map(b => (
+                <option key={b.id} value={b.id}>{b.name}</option>
+              ))}
+            </FormSelect>
+            {allBrands.length > 0 && allBrands.filter(b => b.id !== brandId).length === 0 && (
+              <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 6 }}>
+                {t('recipes:recipesTab.copyOnlyOneBrand', 'You only have one brand. Create another brand first to copy recipes between them.')}
+              </div>
+            )}
+          </UIFormGroup>
+        </CommonModal>
+      )}
 
       {/* Recipe Modal (Cooking-focused popup) */}
       <CommonModal

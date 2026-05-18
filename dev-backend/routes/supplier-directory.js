@@ -568,13 +568,11 @@ router.get('/supplier-catalog', async (req, res) => {
       attributes: ['supplier_company_id']
     });
     const supplierIds = [...new Set(contracts.map(c => c.supplier_company_id))];
-    if (supplierIds.length === 0) {
-      return res.json({ success: true, data: [], filters: { categories: [], suppliers: [] } });
-    }
+    // No early-return when supplier contracts are empty — Brand/Foodcourt seller catalog may still apply.
 
     // 2. 필터 + 검색 (이름/SKU/설명/단위/카테고리/공급사 이름까지 매칭)
     const where = {
-      supplier_company_id: { [Op.in]: supplierIds },
+      supplier_company_id: { [Op.in]: supplierIds.length > 0 ? supplierIds : [-1] },
       is_active: true
     };
     const search = (req.query.search || '').trim();
@@ -629,19 +627,28 @@ router.get('/supplier-catalog', async (req, res) => {
     });
 
     // 3. 매핑 여부 lookup — 내 ingredient 와 IngredientSellerProduct 매핑된 supplier_product_id 모음
-    const myIngs = (req.buyerEntity.type === 'restaurant')
-      ? await Ingredient.findAll({ where: { restaurant_id: req.buyerEntity.id }, attributes: ['id'] })
-      : [];
+    // ingredient 매핑 lookup — buyer entity 별로 적용 + 3 seller_type (supplier/brand/foodcourt) 모두
+    const myIngsWhere = req.buyerEntity.type === 'restaurant'
+      ? { restaurant_id: req.buyerEntity.id }
+      : req.buyerEntity.type === 'brand'
+      ? { brand_id: req.buyerEntity.id }
+      : req.buyerEntity.type === 'foodcourt'
+      ? { foodcourt_id: req.buyerEntity.id }
+      : null;
+    const myIngs = myIngsWhere ? await Ingredient.findAll({ where: myIngsWhere, attributes: ['id'] }) : [];
     const myIngIds = myIngs.map(i => i.id);
-    const mapRows = myIngIds.length === 0 ? [] : await IngredientSellerProduct.findAll({
-      where: {
-        ingredient_id: { [Op.in]: myIngIds },
-        seller_type: 'supplier',
-        seller_product_id: { [Op.in]: products.map(p => p.id) }
-      },
-      attributes: ['ingredient_id', 'seller_product_id']
+    const allMapRows = myIngIds.length === 0 ? [] : await IngredientSellerProduct.findAll({
+      where: { ingredient_id: { [Op.in]: myIngIds }, is_active: true },
+      attributes: ['ingredient_id', 'seller_type', 'seller_product_id']
     });
-    const mappedMap = Object.fromEntries(mapRows.map(m => [m.seller_product_id, m.ingredient_id]));
+    const mappedMap = {};
+    const mappedBrandMap = {};
+    const mappedFoodcourtMap = {};
+    for (const m of allMapRows) {
+      if (m.seller_type === 'supplier') mappedMap[m.seller_product_id] = m.ingredient_id;
+      else if (m.seller_type === 'brand') mappedBrandMap[m.seller_product_id] = m.ingredient_id;
+      else if (m.seller_type === 'foodcourt') mappedFoodcourtMap[m.seller_product_id] = m.ingredient_id;
+    }
 
     // 4. supplier 회사명 lookup
     const suppliers = await SupplierCompany.findAll({
@@ -681,10 +688,11 @@ router.get('/supplier-catalog', async (req, res) => {
         sku: p.sku,
         unit: p.unit,
         unit_price: parseFloat(p.unit_price) || 0,
+        min_order_quantity: parseInt(p.min_order_quantity, 10) || 1,
         image_url: p.image_url,
         category_id: p.category_id,
         category_name: p.category?.name || null,
-        supplier: sp ? { id: sp.id, name: sp.name, code: sp.code, logo_url: sp.logo_url } : null,
+        supplier: sp ? { id: sp.id, name: sp.name, code: sp.code, logo_url: sp.logo_url, seller_type: 'supplier' } : null,
         already_mapped: !!mappedMap[p.id],
         mapped_ingredient_id: mappedMap[p.id] || null,
         option_groups: groups,
@@ -692,12 +700,151 @@ router.get('/supplier-catalog', async (req, res) => {
       };
     });
 
+    // 6. Brand/Foodcourt seller catalog 통합 — Restaurant buyer 가 가맹/입점된 BG/FG 의 판매 상품도 포함
+    //    BG/FG 는 공급업체와 동등한 seller 역할. brand_products / foodcourt_products 가 catalog 항목.
+    //    검색어 (search) 는 supplier 와 동일하게 name/sku/description/unit 에 LIKE 적용.
+    let extraData = [];
+    const extraSellers = []; // 필터 후보에 추가될 seller (brand/foodcourt 그룹). i18n 라벨은 프론트에서 처리.
+    if (req.buyerEntity.type === 'restaurant') {
+      const BrandProduct = require('../models/BrandProduct');
+      const BrandProductCategory = require('../models/BrandProductCategory');
+      const FoodcourtProduct = require('../models/FoodcourtProduct');
+      const FoodcourtProductCategory = require('../models/FoodcourtProductCategory');
+      const searchLike = search ? `%${search}%` : null;
+      const brandLikeWhere = searchLike ? {
+        [Op.or]: [
+          { name: { [Op.like]: searchLike } },
+          { sku: { [Op.like]: searchLike } },
+          { description: { [Op.like]: searchLike } },
+          { unit: { [Op.like]: searchLike } }
+        ]
+      } : {};
+      const rest = await Restaurant.findByPk(req.buyerEntity.id, { attributes: ['id', 'brand_id', 'foodcourt_id'] });
+      // Brand seller — 내 가맹본부 (Restaurant.brand_id) 의 brand_products 중 distribution_mode 별 노출 규칙:
+      //   all                  → BG owner 의 모든 brand_products (가맹점 brand가 BG 소유 brand면 자동 노출)
+      //   specific_brands      → brand_product_brands 매핑된 brand 가맹점
+      //   specific_restaurants → brand_product_restaurants 매핑된 Restaurant 만
+      if (rest?.brand_id) {
+        const brand = await Brand.findByPk(rest.brand_id, { attributes: ['id', 'name', 'code', 'logo_url', 'owner_id'] });
+        if (brand) {
+          // 3 OR 조건 union — Sequelize OR with includes is complex; 3개 쿼리 후 dedupe.
+          const BrandProductRestaurant = require('../models/BrandProductRestaurant');
+          const baseWhere = { is_active: true, ...brandLikeWhere };
+          // (1) all: owner 의 모든 product
+          const allModeRows = brand.owner_id ? await BrandProduct.findAll({
+            include: [{ model: BrandProductCategory, as: 'category', attributes: ['id', 'name', 'emoji'], required: false }],
+            where: { ...baseWhere, distribution_mode: 'all', owner_user_id: brand.owner_id },
+            order: [['sort_order', 'ASC'], ['name', 'ASC']],
+            limit: 200
+          }) : [];
+          // (2) specific_brands
+          const specificBrandRows = await BrandProduct.findAll({
+            include: [
+              { model: BrandProductCategory, as: 'category', attributes: ['id', 'name', 'emoji'], required: false },
+              { model: Brand, as: 'brands', where: { id: brand.id }, through: { attributes: [] }, required: true, attributes: [] }
+            ],
+            where: { ...baseWhere, distribution_mode: 'specific_brands' },
+            order: [['sort_order', 'ASC'], ['name', 'ASC']],
+            limit: 200
+          });
+          // (3) specific_restaurants
+          const specificRestaurantRows = await BrandProduct.findAll({
+            include: [
+              { model: BrandProductCategory, as: 'category', attributes: ['id', 'name', 'emoji'], required: false },
+              { model: Restaurant, as: 'restaurants', where: { id: rest.id }, through: { attributes: [] }, required: true, attributes: [] }
+            ],
+            where: { ...baseWhere, distribution_mode: 'specific_restaurants' },
+            order: [['sort_order', 'ASC'], ['name', 'ASC']],
+            limit: 200
+          });
+          // Dedupe by id
+          const seen = new Set();
+          const bpRows = [...allModeRows, ...specificBrandRows, ...specificRestaurantRows].filter(p => {
+            if (seen.has(p.id)) return false;
+            seen.add(p.id);
+            return true;
+          });
+          for (const p of bpRows) {
+            extraData.push({
+              id: p.id,
+              name: p.name,
+              sku: p.sku,
+              unit: p.unit,
+              unit_price: parseFloat(p.unit_price) || 0,
+              min_order_quantity: parseInt(p.min_order_quantity, 10) || 1,
+              image_url: p.image_url,
+              category_id: p.category_id,
+              category_name: p.category?.name || null,
+              supplier: { id: brand.id, name: brand.name, code: brand.code, logo_url: brand.logo_url, seller_type: 'brand' },
+              already_mapped: !!mappedBrandMap[p.id],
+              mapped_ingredient_id: mappedBrandMap[p.id] || null,
+              option_groups: [],
+              has_options: false
+            });
+          }
+          if (bpRows.length) extraSellers.push({ id: brand.id, name: brand.name, seller_type: 'brand' });
+        }
+      }
+      // Foodcourt seller — 내 푸드코트 의 foodcourt_products 중 distribution_mode 별 노출:
+      //   all                  → 전체 매장
+      //   specific_restaurants → foodcourt_product_restaurants 매핑된 Restaurant 만
+      if (rest?.foodcourt_id) {
+        const fc = await Foodcourt.findByPk(rest.foodcourt_id, { attributes: ['id', 'name', 'code', 'logo_url'] });
+        if (fc) {
+          const baseFpWhere = { foodcourt_id: fc.id, is_active: true, ...brandLikeWhere };
+          const allFpRows = await FoodcourtProduct.findAll({
+            include: [{ model: FoodcourtProductCategory, as: 'category', attributes: ['id', 'name', 'emoji'], required: false }],
+            where: { ...baseFpWhere, distribution_mode: 'all' },
+            order: [['sort_order', 'ASC'], ['name', 'ASC']],
+            limit: 200
+          });
+          const specificFpRows = await FoodcourtProduct.findAll({
+            include: [
+              { model: FoodcourtProductCategory, as: 'category', attributes: ['id', 'name', 'emoji'], required: false },
+              { model: Restaurant, as: 'restaurants', where: { id: rest.id }, through: { attributes: [] }, required: true, attributes: [] }
+            ],
+            where: { ...baseFpWhere, distribution_mode: 'specific_restaurants' },
+            order: [['sort_order', 'ASC'], ['name', 'ASC']],
+            limit: 200
+          });
+          const fpSeen = new Set();
+          const fpRows = [...allFpRows, ...specificFpRows].filter(p => {
+            if (fpSeen.has(p.id)) return false;
+            fpSeen.add(p.id);
+            return true;
+          });
+          for (const p of fpRows) {
+            extraData.push({
+              id: p.id,
+              name: p.name,
+              sku: p.sku,
+              unit: p.unit,
+              unit_price: parseFloat(p.unit_price) || 0,
+              min_order_quantity: parseInt(p.min_order_quantity, 10) || 1,
+              image_url: p.image_url,
+              category_id: p.category_id,
+              category_name: p.category?.name || null,
+              supplier: { id: fc.id, name: fc.name, code: fc.code, logo_url: fc.logo_url, seller_type: 'foodcourt' },
+              already_mapped: !!mappedFoodcourtMap[p.id],
+              mapped_ingredient_id: mappedFoodcourtMap[p.id] || null,
+              option_groups: [],
+              has_options: false
+            });
+          }
+          if (fpRows.length) extraSellers.push({ id: fc.id, name: fc.name, seller_type: 'foodcourt' });
+        }
+      }
+    }
+
     res.json({
       success: true,
-      data,
+      data: [...data, ...extraData],
       filters: {
         categories: categories.map(c => ({ id: c.id, name: c.name, emoji: c.emoji })),
-        suppliers: suppliers.map(s => ({ id: s.id, name: s.name }))
+        suppliers: [
+          ...suppliers.map(s => ({ id: s.id, name: s.name, seller_type: 'supplier' })),
+          ...extraSellers
+        ]
       }
     });
   } catch (err) {

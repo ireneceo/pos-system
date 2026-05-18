@@ -56,15 +56,31 @@ async function fireSellerSubmittedNotification(po) {
       userIds = await getFoodcourtManagerIds(po.seller_entity_id);
     }
     if (userIds.length === 0) return;
-    const subject = `[Purple POS] New Purchase Order ${po.po_number}`;
-    const link = `${FRONTEND_URL}/pos/seller-orders`;
-    const html = `
-      <p>You have received a new purchase order.</p>
-      <p><strong>PO #:</strong> ${po.po_number}</p>
-      <p><strong>Total:</strong> ${po.currency || 'MYR'} ${parseFloat(po.total_amount || 0).toFixed(2)}</p>
-      <p><a href="${link}">Open in Purple POS</a></p>
-    `;
-    await sendNotificationBatch(userIds, 'seller_order_received', { subject, html });
+    let buyerName = 'A buyer';
+    try {
+      const Restaurant = require('../models/Restaurant');
+      const Brand = require('../models/Brand');
+      const Foodcourt = require('../models/Foodcourt');
+      if (po.entity_type === 'restaurant') {
+        const r = await Restaurant.findByPk(po.entity_id, { attributes: ['name'] });
+        if (r?.name) buyerName = r.name;
+      } else if (po.entity_type === 'brand') {
+        const b = await Brand.findByPk(po.entity_id, { attributes: ['name'] });
+        if (b?.name) buyerName = b.name;
+      } else if (po.entity_type === 'foodcourt') {
+        const f = await Foodcourt.findByPk(po.entity_id, { attributes: ['name'] });
+        if (f?.name) buyerName = f.name;
+      }
+    } catch (_) { /* keep default */ }
+    const { sellerOrderReceivedEmail } = require('../utils/notificationTemplates');
+    const mail = sellerOrderReceivedEmail({
+      buyerName,
+      poNumber: po.po_number,
+      total: po.total_amount,
+      currency: po.currency || 'MYR',
+      link: `${FRONTEND_URL}/pos/seller-orders`
+    });
+    await sendNotificationBatch(userIds, 'seller_order_received', mail);
   } catch (e) {
     console.error('[purchase-orders] fireSellerSubmittedNotification error:', e.message);
   }
@@ -410,29 +426,105 @@ router.post('/purchase-orders/:id/upload-invoice', async (req, res) => {
 //   /receive 는 품목별 수량 검증 + GeneralStock 업데이트가 있어 무거움. 단순 수령 확인용.
 // ============================================
 router.post('/purchase-orders/:id/mark-received', async (req, res) => {
+  const t = await database.sequelize.transaction();
   try {
     const id = parseInt(req.params.id, 10);
-    if (!Number.isFinite(id)) return res.status(404).json({ success: false, message: 'Not found' });
+    if (!Number.isFinite(id)) { await t.rollback(); return res.status(404).json({ success: false, message: 'Not found' }); }
 
-    const po = await PurchaseOrder.findByPk(id);
-    if (!po) return res.status(404).json({ success: false, message: 'Not found' });
-    if (!checkPOOwnership(po, req)) return res.status(404).json({ success: false, message: 'Not found' });
-
+    const po = await PurchaseOrder.findByPk(id, { transaction: t });
+    if (!po) { await t.rollback(); return res.status(404).json({ success: false, message: 'Not found' }); }
+    if (!checkPOOwnership(po, req)) { await t.rollback(); return res.status(404).json({ success: false, message: 'Not found' }); }
     if (po.status === 'received' || po.status === 'cancelled') {
+      await t.rollback();
       return res.status(400).json({ success: false, message: `Already ${po.status}` });
+    }
+
+    // Stock 흐름 — items 별로 ingredient.current_stock += quantity_ordered × unit_conversion + InventoryBatch + InventoryTransaction 기록.
+    // 정식 /receive 의 lite 버전: split (damaged/short 등) 없이 quantity_ordered 전량 정상 수령으로 처리.
+    const items = await PurchaseOrderItem.findAll({ where: { purchase_order_id: po.id }, transaction: t });
+    const Ingredient = require('../models/Ingredient');
+    for (const item of items) {
+      if (!item.ingredient_id) continue;
+      const ingredient = await Ingredient.findByPk(item.ingredient_id, { transaction: t });
+      if (!ingredient) continue;
+      // track_stock=false 인 ingredient 는 재고 추적 안 함 — InventoryBatch/Transaction 만 기록, current_stock 변경 안 함
+      const conv = parseFloat(item.unit_conversion) || 1;
+      const qty = parseFloat(item.quantity_ordered) || 0;
+      if (qty <= 0) continue;
+      const stockDelta = Math.round(qty * conv * 100) / 100;
+      const currentStock = parseFloat(ingredient.current_stock) || 0;
+      const newStock = ingredient.track_stock !== false
+        ? Math.round((currentStock + stockDelta) * 100) / 100
+        : currentStock;
+      const unitCost = parseFloat(item.unit_price) || 0;
+
+      await InventoryBatch.create({
+        entity_type: po.entity_type, entity_id: po.entity_id,
+        ingredient_id: item.ingredient_id,
+        batch_number: null,
+        initial_quantity: stockDelta, remaining_quantity: stockDelta,
+        unit: ingredient.unit, unit_cost: unitCost,
+        expiry_date: null, received_date: new Date(), status: 'active',
+        purchase_order_id: po.id, created_by: req.user.id
+      }, { transaction: t });
+
+      await InventoryTransaction.create({
+        entity_type: po.entity_type, entity_id: po.entity_id,
+        ingredient_id: item.ingredient_id,
+        transaction_type: 'purchase',
+        quantity_change: stockDelta,
+        unit: ingredient.unit, stock_after: newStock,
+        purchase_order_id: po.id,
+        notes: `PO ${po.po_number} mark-received`,
+        created_by: req.user.id
+      }, { transaction: t });
+
+      if (ingredient.track_stock !== false) {
+        await ingredient.update({ current_stock: newStock, last_stock_take_at: new Date() }, { transaction: t });
+      }
+
+      // Restaurant buyer 가중평균 cost (정식 /receive 와 동일 로직)
+      if (po.entity_type === 'restaurant') {
+        const incomingCostPerIng = (parseFloat(item.unit_price) || 0) / conv;
+        const existingCostRow = await RestaurantIngredientCost.findOne({
+          where: { restaurant_id: po.entity_id, ingredient_id: item.ingredient_id },
+          transaction: t
+        });
+        const oldCost = existingCostRow
+          ? parseFloat(existingCostRow.unit_cost) || 0
+          : (parseFloat(ingredient.unit_cost) || 0);
+        const weighted = currentStock > 0 && newStock > 0
+          ? (currentStock * oldCost + stockDelta * incomingCostPerIng) / newStock
+          : incomingCostPerIng;
+        const newAvg = Math.round(weighted * 10000) / 10000;
+        if (existingCostRow) {
+          await existingCostRow.update({
+            unit_cost: newAvg,
+            notes: `PO ${po.po_number} mark-received`,
+            updated_by: req.user.id
+          }, { transaction: t });
+        } else {
+          await RestaurantIngredientCost.create({
+            restaurant_id: po.entity_id,
+            ingredient_id: item.ingredient_id,
+            unit_cost: newAvg,
+            notes: `PO ${po.po_number} mark-received`,
+            updated_by: req.user.id
+          }, { transaction: t });
+        }
+      }
     }
 
     const now = new Date();
     const newTracking = appendTrackingEvent(po, 'received', null, { source: 'mark_received_action' });
     await po.update({
-      status: 'received',
-      received_at: now,
-      actual_delivery_date: now,
-      tracking_info: newTracking
-    });
+      status: 'received', received_at: now, actual_delivery_date: now, tracking_info: newTracking
+    }, { transaction: t });
 
+    await t.commit();
     res.json({ success: true, data: po });
   } catch (err) {
+    if (!t.finished) await t.rollback();
     console.error('mark-received error:', err);
     res.status(500).json({ success: false, message: 'Failed to mark received' });
   }

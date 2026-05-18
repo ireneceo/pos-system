@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ConfirmModal from '../../components/ConfirmModal';
 import styled from 'styled-components';
 import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI/StatCard';
 import { useAuth } from '../../contexts/AuthContext';
@@ -332,6 +333,7 @@ const ManagerSubscriptionsPage: React.FC = () => {
   const { t } = useTranslation('admin');
   const { user } = useAuth();
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   const { defaultCurrency } = useBrandCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
 
@@ -427,15 +429,15 @@ const ManagerSubscriptionsPage: React.FC = () => {
   };
 
   const handleUpgradePlan = (subscriptionId: string) => {
-    alert(`Upgrade plan functionality for ${subscriptionId} will be implemented`);
+    setInfoModal({ open: true, title: 'Coming Soon', message: `Upgrade plan functionality for ${subscriptionId} will be available in an upcoming release.` });
   };
 
   const handleManageSubscription = (subscriptionId: string) => {
-    alert(`Manage subscription functionality for ${subscriptionId} will be implemented`);
+    setInfoModal({ open: true, title: 'Coming Soon', message: `Manage subscription functionality for ${subscriptionId} will be available in an upcoming release.` });
   };
 
   const handleSuspendSubscription = (subscriptionId: string) => {
-    alert(`Suspend subscription functionality for ${subscriptionId} will be implemented`);
+    setInfoModal({ open: true, title: 'Coming Soon', message: `Suspend subscription functionality for ${subscriptionId} will be available in an upcoming release.` });
   };
 
   const handleExportData = () => {
@@ -467,7 +469,7 @@ const ManagerSubscriptionsPage: React.FC = () => {
   };
 
   const handleBulkBilling = () => {
-    alert('Bulk billing management functionality will be implemented');
+    setInfoModal({ open: true, title: 'Coming Soon', message: 'Bulk billing management will be available in an upcoming release.' });
   };
 
   return (
@@ -590,6 +592,16 @@ const ManagerSubscriptionsPage: React.FC = () => {
           </SubscriptionGrid>
         </Content>
       </Container>
+      <ConfirmModal
+        isOpen={infoModal.open}
+        title={infoModal.title}
+        message={infoModal.message}
+        onConfirm={() => setInfoModal({ open: false, title: '', message: '' })}
+        onCancel={() => setInfoModal({ open: false, title: '', message: '' })}
+        confirmText="OK"
+        type="info"
+        singleButton
+      />
     </>
   );
 };

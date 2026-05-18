@@ -1,46 +1,60 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-05-15
-**버전:** **v3.31** (운영 배포 완료) + dev 누적 (Install 버튼 promptInstall 복원, 운영 미반영)
-**작업 상태:** 완료 (health-check 80/80, hydration 0 warning), Irene `/배포` 명령 대기
+**마지막 업데이트:** 2026-05-18
+**버전:** **v3.31** (운영 배포 완료) + dev 누적 (Install 버튼 + Brand Menu 모듈 등록 + 프린터 안내 시나리오 분기 + 전수 alert→Modal sweep, 운영 미반영)
+**작업 상태:** 완료 (health-check 80/80, 빌드 안정), Irene `/배포` 명령 대기
 
 ### 진행 중인 작업
 - 없음
 
-### 완료된 작업 (이번 세션, 2026-05-15)
+### 완료된 작업 (이번 세션, 2026-05-18)
 
-**v3.31 운영 배포 + 배포 후 추가 개발 + 매장 메뉴 긴급 복구**
+**프린터 설정 안내 시나리오 분기 + 전수 alert→Modal sweep**
 
-- v3.31 운영 배포 (Brand Menu System + Customer Display 자동화 + 메뉴 이미지 fix + i18n RA 한국어 18건 + RA/BG 전수 검사)
-- **운영 매장 메뉴 긴급 복구** — 배포 시 `migrate-brand-menu-system.js` 자동 실행 누락으로 매장 메뉴 안 보이던 결함. 마이그 + backend restart 로 즉시 복구. 데이터 손실 0
-- `deploy-to-production.sh` 에 brand menu 마이그 자동 단계 추가 (재발 방지)
-- `brandMenuSyncService.js` push 정책 — BG push 메뉴 매장에 `is_active=false` 도착, 매장이 활성화 결정
-- Brand Menu System 통합 검증 27/27 PASS (push + lock + version bump + sync + soft unlink + 자체 메뉴 자유)
-- RA/BG 전수 기능 검사 — RA GET 26 + CRUD 13, BG GET 24 + CRUD 20
-- **Customer Display 전화번호 토글** (신규) — Settings → Printer 카드. 매장 단위 `operation_settings.checkout_display.show_phone_input` 저장. 멤버십 안 쓰는 매장 OFF
-- /install 페이지 정리 — 페이지 삭제 + `/install` → `/` redirect, Header/Footer 메뉴 제거
-- 사이드바 Install 버튼 promptInstall 직접 호출 복원 — 데스크탑 + iOS 모두
-- 식재료 이미지 업로드 fix — IngredientsTab + ProductIngredientsTab → ImageUploadDropzone 교체
-- 메뉴 이미지 업로드 fix — maxSize 디폴트 10MB, HEIC alert, BG BrandMenusPage 텍스트 input → 컴포넌트 교체
-- Customer Display 자동화 (Window Management API + Settings 가이드)
-- buildVersionWatcher 자동 reload (CF 5분 캐시 우회)
-- i18n RA 한국어 18건 fix + 글로서리 자동 16건 + 신규 도구 2개
-- 운영 진단 패턴 + 운영 배포 룰 강화 메모리
+- **QZ Tray 가이드 시나리오 분기 (SettingsPage)**
+  - "기존 LAN 프린터 (다른 POS에서 이전)" vs "프린터 새로 설치" 보라색 토글 (active 시 #635BFF border 2px + #EEF2FF bg)
+  - 마이그 4단계 (QZ Tray 설치 → 기존 IP 확인 → 브라우저 연결 허용 → POS 입력) / 신규 6단계 (LAN 연결 → IP 확인 → 고정 IP → QZ Tray 설치 → 브라우저 허용 → POS 입력)
+  - 마이그 Step 1 에 "이미 설치돼 있는지 확인" 보조 hint (#10B981 초록 이탤릭) — 다른 web POS 도 QZ Tray 가능성
+  - 데스크탑 앱(PWA) 설치 시 동일 작동 안내 박스
+  - 네트워크 다이어그램에 "Browser 또는 Desktop App (POS)" 명시
+  - 토글 button 접근성 `type="button"` + `aria-pressed={active}` 보강
+  - 4언어 17 신규 키 × 4 langs = 68 entries (qzScenario*, qzMigStep*, qzFreshStep*, qzCommon*, qzDesktop*, qzDiagram*, qzTrouble*, whatIsQzTrayDesc, whereToInstallDesc1/2)
+- **전수 alert() sweep — 24 페이지 70+ 건 → 표준 Modal**
+  - RA/BG critical: MenuManagement, Customers, Settings, BrandInvoices (15건), BrandProducts, BrandProductRecipe (Ingredients/IngredientCategories/RecipeCategories), Suppliers (2 view), Brand/SystemInquiry, CategoryManagement, Restaurant/SystemInquiry, POSTerminal (4건, 매장 핵심), ProductRecipe, NewPurchaseOrder (styled overlay → UIModal)
+  - FG/Admin/Manager: FoodcourtInvoices (15건), Foodcourt/SystemInquiry, Admin Invoices (14)/Staff (11)/Subscriptions (5)/RestaurantSubscriptions (6)/Content (3)/SystemConfig (4)/BackupRestore (1)/SystemProductManagement (9 in 3 tabs)/Security (2), Manager (Plans/ManagerSubscriptions/Signup), RecipeManagement (5 tabs)
+  - 통일 패턴: `infoModal` state + `<ConfirmModal isOpen title message onConfirm onCancel confirmText="OK" type="info" singleButton />` 또는 페이지 자체 `setSuccessMessage + setShowSuccessModal` 재사용 (BrandInvoices/FoodcourtInvoices/Admin/Invoices)
+  - 빌드 시 JSX inject 위치 오류 2회 발견 → fragment 안쪽 / 부모 element 안쪽으로 즉시 fix
+- **신규 i18n 17 키 × 4 langs = 68/68 PASS**
+  - menu: copyFailed/toggleFailed/setMenuRequired (6키)
+  - customers: deleteFailed (2키)
+  - brand: brandProductsTab deleteFailed (2키)
+  - settings: featureInDevelopment/addBrandComingSoon/billingComingSoon/externalQR* (7키)
+- **알림 이메일 카테고리 + 역할별 검증**: NOTIFICATION_CATEGORIES single source (notification-settings.js). RA 21 cats / BG 14 cats / FG/Admin/Supplier 각 의도된 분리. sendNotification 호출 18곳 일관 (invoiceScheduler/soaScheduler/referralService 등)
+- **BG → RA Brand Menu 동기화**: rest=5 에 5개 메뉴 `brand_menu_link_status='in_sync'` 정상 propagation. BG → 다른 brand_id=99 / RA → 다른 brand-menus cross-access **403** 차단
+- **POS 주문 흐름 영향 검증**: POSTerminal 4 alert 모두 catch/finally 또는 return 직전 호출 → alert→Modal 비동기 전환해도 데이터 무결성 안전. `setIsProcessingPayment(false)` finally 가 인디케이터 해제
+
+**검증**
+- 빌드: `main.5c3da699.js` (1.6MB, 70초)
+- Health-check: **80/80 PASS** (회귀 0)
+- state-hydration: **0 warning**
+- alert() 전체 페이지 잔존: **0건**
+- nginx 반영 + 4언어 locale fetch: 200 응답 정상
 
 ### 다음 확정 작업
 - 없음 — 지시 대기
-  (참고: dev 누적 변경 운영 반영은 Irene `/배포` 명령 시점)
+  (Irene: dev 누적 변경 운영 반영은 오늘 밤 `/배포` 명령 시점 예정)
 
 ### 후속 후보 (아이디어 메모, 확정 X)
 > 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.
 
-- dev 누적 변경 운영 반영 (Install 버튼 promptInstall 복원 — main.30919f86.js)
-- IDOR 보안 sweep — RA 가 다른 매장 GET 시 200 반환 결함 (이번 세션 검증 중 발견, preexisting)
-- BG 가 산하 매장 operation_settings PUT 200 — 의도 design 인지 보안 결함인지 비즈니스 결정 필요
-- zh/ms i18n 영어 잔존 (RA 사용 페이지 외 — Admin/Brand/Foodcourt namespace) 전수 fix
-- `nav.install` / `nav.installApp` / `installPage.*` i18n dead key 4언어 정리
-- Cloudflare API 토큰 추가 + `deploy-to-production.sh` 에 CF cache purge 자동화 (buildVersionWatcher 의 4분 대기 즉시 단축)
+- dev 누적 변경 운영 반영 (Install 버튼 promptInstall + brand_menus 모듈 마이그 + 프린터 시나리오 안내 + 전수 alert sweep) — 오늘 밤 `/배포`
+- Brand plan template basic 모듈 누락 fix — dev 에서 v3.32-dev 보강됨, 배포 시 자동 적용
+- zh/ms i18n 영어 잔존 690건 전수 fix (운영 critical 아님, fallback 동작)
+- nav.install dead key 정리 (검증 결과 false positive — 실제 사용 중, 메모리 정정 필요)
+- Cloudflare API 토큰 추가 + `deploy-to-production.sh` 에 CF cache purge 자동화 (buildVersionWatcher 가 4분 후 자동 reload하므로 critical 아님)
+- BG → 산하 매장 operation_settings PUT 200 — design vs 결함 비즈니스 결정 필요
+- BG `trial_expiry_reminder` 카테고리 visibility 정책 — 카테고리 정의엔 BG 포함이나 응답 14건에 missing (BG가 trial 상태 아닐 때 필터링 가능성)
 - BG → RA 가격 자동 재계산 (재료 cost 기반), Bulk push 페이지, Menu Template 라이브러리
 - Reservation 후속 — deposit / 캘린더 monthly view / WaitingList / 환불 cron (스프린트 규모, `/기능설계` 필요)
 

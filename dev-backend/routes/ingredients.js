@@ -165,50 +165,94 @@ router.post('/brands/:brandId/ingredients/from-catalog', authenticateToken, isBr
   const t = await Ingredient.sequelize.transaction();
   try {
     const { brandId } = req.params;
-    const supplierProductId = parseInt(req.body?.supplier_product_id, 10);
-    if (!Number.isFinite(supplierProductId)) {
-      await t.rollback();
-      return res.status(400).json({ success: false, message: 'supplier_product_id is required' });
-    }
-
+    const bid = parseInt(brandId, 10);
+    const body = req.body || {};
+    const supplierProductId = parseInt(body.supplier_product_id, 10);
+    const brandProductId = parseInt(body.brand_product_id, 10);
+    const foodcourtProductId = parseInt(body.foodcourt_product_id, 10);
     const SupplierProduct = require('../models/SupplierProduct');
     const SupplierContract = require('../models/SupplierContract');
     const IngredientSellerProduct = require('../models/IngredientSellerProduct');
+    const BrandProduct = require('../models/BrandProduct');
+    const FoodcourtProduct = require('../models/FoodcourtProduct');
 
-    const sp = await SupplierProduct.findByPk(supplierProductId, { transaction: t });
-    if (!sp) {
+    let sellerType, sellerProductRow, sellerEntityId, productName, productUnit, productPrice, productMinQty;
+    if (Number.isFinite(supplierProductId)) {
+      const sp = await SupplierProduct.findByPk(supplierProductId, { transaction: t });
+      if (!sp) { await t.rollback(); return res.status(404).json({ success: false, message: 'Supplier product not found' }); }
+      const contract = await SupplierContract.findOne({
+        where: { entity_type: 'brand', entity_id: bid, supplier_company_id: sp.supplier_company_id, status: 'active' },
+        transaction: t
+      });
+      if (!contract) { await t.rollback(); return res.status(403).json({ success: false, message: 'No active contract with this supplier' }); }
+      sellerType = 'supplier'; sellerProductRow = sp; sellerEntityId = sp.supplier_company_id;
+      productName = sp.name; productUnit = sp.unit; productPrice = sp.unit_price; productMinQty = sp.min_order_quantity;
+    } else if (Number.isFinite(brandProductId)) {
+      // BG → 다른 BG 의 product 매핑 (non-standard but supported for symmetry)
+      const bp = await BrandProduct.findByPk(brandProductId, { transaction: t });
+      if (!bp) { await t.rollback(); return res.status(404).json({ success: false, message: 'Brand product not found' }); }
+      sellerType = 'brand'; sellerProductRow = bp; sellerEntityId = bp.owner_user_id ? bid : bid;
+      productName = bp.name; productUnit = bp.unit; productPrice = bp.unit_price; productMinQty = bp.min_order_quantity;
+    } else if (Number.isFinite(foodcourtProductId)) {
+      const fp = await FoodcourtProduct.findByPk(foodcourtProductId, { transaction: t });
+      if (!fp) { await t.rollback(); return res.status(404).json({ success: false, message: 'Foodcourt product not found' }); }
+      sellerType = 'foodcourt'; sellerProductRow = fp; sellerEntityId = fp.foodcourt_id;
+      productName = fp.name; productUnit = fp.unit; productPrice = fp.unit_price; productMinQty = fp.min_order_quantity;
+    } else {
       await t.rollback();
-      return res.status(404).json({ success: false, message: 'Supplier product not found' });
+      return res.status(400).json({ success: false, message: 'supplier_product_id, brand_product_id, or foodcourt_product_id is required' });
     }
 
-    // Active contract 검증 (entity_type='brand')
-    const contract = await SupplierContract.findOne({
-      where: {
-        entity_type: 'brand', entity_id: brandId,
-        supplier_company_id: sp.supplier_company_id,
-        status: 'active'
-      },
-      transaction: t
-    });
-    if (!contract) {
-      await t.rollback();
-      return res.status(403).json({ success: false, message: 'No active contract with this supplier' });
+    // Connect mode — 기존 ingredient 에 매핑만 추가
+    const existingIngredientId = parseInt(body.existing_ingredient_id, 10);
+    const unitConversion = parseFloat(body.unit_conversion) > 0 ? parseFloat(body.unit_conversion) : 1;
+    if (Number.isFinite(existingIngredientId)) {
+      const targetIng = await Ingredient.findByPk(existingIngredientId, { transaction: t });
+      if (!targetIng || targetIng.owner_type !== 'brand' || targetIng.brand_id !== bid) {
+        await t.rollback();
+        return res.status(404).json({ success: false, message: 'Target ingredient not found in this brand' });
+      }
+      const dup = await IngredientSellerProduct.findOne({
+        where: {
+          ingredient_id: targetIng.id, seller_type: sellerType,
+          seller_entity_id: sellerEntityId, seller_product_id: sellerProductRow.id
+        },
+        transaction: t
+      });
+      if (dup) {
+        await t.commit();
+        return res.json({ success: true, data: { ingredient: targetIng, mapping: dup, created: false, connected: true } });
+      }
+      const otherCount = await IngredientSellerProduct.count({
+        where: { ingredient_id: targetIng.id, is_active: true }, transaction: t
+      });
+      const mapping = await IngredientSellerProduct.create({
+        ingredient_id: targetIng.id,
+        seller_type: sellerType, seller_entity_id: sellerEntityId, seller_product_id: sellerProductRow.id,
+        unit_price: parseFloat(productPrice) || 0,
+        unit_conversion: unitConversion,
+        min_order_quantity: parseInt(productMinQty, 10) || 1,
+        lead_time_days: 0,
+        is_preferred: otherCount === 0,
+        is_active: true
+      }, { transaction: t });
+      await t.commit();
+      return res.status(201).json({ success: true, data: { ingredient: targetIng, mapping, created: false, connected: true } });
     }
 
     // Idempotent — 이미 매핑된 ingredient 가 이 brand 의 것이면 그대로 반환
     const existing = await IngredientSellerProduct.findOne({
-      where: { seller_type: 'supplier', seller_entity_id: sp.supplier_company_id, seller_product_id: sp.id },
+      where: { seller_type: sellerType, seller_entity_id: sellerEntityId, seller_product_id: sellerProductRow.id },
       transaction: t
     });
     if (existing) {
       const ing = await Ingredient.findByPk(existing.ingredient_id, { transaction: t });
-      if (ing && ing.owner_type === 'brand' && ing.brand_id === parseInt(brandId, 10)) {
+      if (ing && ing.owner_type === 'brand' && ing.brand_id === bid) {
         await t.commit();
         return res.json({ success: true, data: { ingredient: ing, mapping: existing, created: false } });
       }
     }
 
-    // Unit ENUM 매핑 (restaurants/from-catalog 와 동일)
     const UNIT_ENUM = ['kg', 'g', 'L', 'ml', 'piece', 'pack', 'can', 'bottle'];
     const UNIT_MAP = {
       kg: 'kg', kgs: 'kg', kilogram: 'kg', kilograms: 'kg',
@@ -227,16 +271,16 @@ router.post('/brands/:brandId/ingredients/from-catalog', authenticateToken, isBr
       const mapped = UNIT_MAP[String(u).toLowerCase().trim()];
       return mapped || 'piece';
     };
-    const finalUnit = req.body?.unit && UNIT_ENUM.includes(req.body.unit) ? req.body.unit : normalizeUnit(sp.unit);
+    const finalUnit = body.unit && UNIT_ENUM.includes(body.unit) ? body.unit : normalizeUnit(productUnit);
 
     const ingredient = await Ingredient.create({
       owner_type: 'brand',
-      brand_id: brandId,
+      brand_id: bid,
       restaurant_id: null,
-      name: req.body?.name || sp.name,
+      name: body.name || productName,
       unit: finalUnit,
       base_quantity: 1,
-      unit_cost: parseFloat(sp.unit_price) || 0,
+      unit_cost: parseFloat(productPrice) || 0,
       supplier_name: null,
       supplier_id: null,
       min_stock: 0,
@@ -248,12 +292,10 @@ router.post('/brands/:brandId/ingredients/from-catalog', authenticateToken, isBr
 
     const mapping = await IngredientSellerProduct.create({
       ingredient_id: ingredient.id,
-      seller_type: 'supplier',
-      seller_entity_id: sp.supplier_company_id,
-      seller_product_id: sp.id,
-      unit_price: parseFloat(sp.unit_price) || 0,
-      unit_conversion: 1,
-      min_order_quantity: parseInt(sp.min_order_quantity, 10) || 1,
+      seller_type: sellerType, seller_entity_id: sellerEntityId, seller_product_id: sellerProductRow.id,
+      unit_price: parseFloat(productPrice) || 0,
+      unit_conversion: unitConversion,
+      min_order_quantity: parseInt(productMinQty, 10) || 1,
       lead_time_days: 0,
       is_preferred: true,
       is_active: true
@@ -937,38 +979,74 @@ router.post('/foodcourts/:foodcourtId/ingredients/from-catalog', authenticateTok
   const t = await Ingredient.sequelize.transaction();
   try {
     const { foodcourtId } = req.params;
-    const supplierProductId = parseInt(req.body?.supplier_product_id, 10);
-    if (!Number.isFinite(supplierProductId)) {
-      await t.rollback();
-      return res.status(400).json({ success: false, message: 'supplier_product_id is required' });
-    }
-
+    const fcid = parseInt(foodcourtId, 10);
+    const body = req.body || {};
+    const supplierProductId = parseInt(body.supplier_product_id, 10);
+    const brandProductId = parseInt(body.brand_product_id, 10);
+    const foodcourtProductId = parseInt(body.foodcourt_product_id, 10);
     const SupplierProduct = require('../models/SupplierProduct');
     const SupplierContract = require('../models/SupplierContract');
     const IngredientSellerProduct = require('../models/IngredientSellerProduct');
+    const BrandProduct = require('../models/BrandProduct');
+    const FoodcourtProduct = require('../models/FoodcourtProduct');
 
-    const sp = await SupplierProduct.findByPk(supplierProductId, { transaction: t });
-    if (!sp) {
+    let sellerType, sellerProductRow, sellerEntityId, productName, productUnit, productPrice, productMinQty;
+    if (Number.isFinite(supplierProductId)) {
+      const sp = await SupplierProduct.findByPk(supplierProductId, { transaction: t });
+      if (!sp) { await t.rollback(); return res.status(404).json({ success: false, message: 'Supplier product not found' }); }
+      const contract = await SupplierContract.findOne({
+        where: { entity_type: 'foodcourt', entity_id: fcid, supplier_company_id: sp.supplier_company_id, status: 'active' },
+        transaction: t
+      });
+      if (!contract) { await t.rollback(); return res.status(403).json({ success: false, message: 'No active contract with this supplier' }); }
+      sellerType = 'supplier'; sellerProductRow = sp; sellerEntityId = sp.supplier_company_id;
+      productName = sp.name; productUnit = sp.unit; productPrice = sp.unit_price; productMinQty = sp.min_order_quantity;
+    } else if (Number.isFinite(brandProductId)) {
+      const bp = await BrandProduct.findByPk(brandProductId, { transaction: t });
+      if (!bp) { await t.rollback(); return res.status(404).json({ success: false, message: 'Brand product not found' }); }
+      sellerType = 'brand'; sellerProductRow = bp; sellerEntityId = bp.owner_user_id || 0;
+      productName = bp.name; productUnit = bp.unit; productPrice = bp.unit_price; productMinQty = bp.min_order_quantity;
+    } else if (Number.isFinite(foodcourtProductId)) {
+      const fp = await FoodcourtProduct.findByPk(foodcourtProductId, { transaction: t });
+      if (!fp) { await t.rollback(); return res.status(404).json({ success: false, message: 'Foodcourt product not found' }); }
+      sellerType = 'foodcourt'; sellerProductRow = fp; sellerEntityId = fp.foodcourt_id;
+      productName = fp.name; productUnit = fp.unit; productPrice = fp.unit_price; productMinQty = fp.min_order_quantity;
+    } else {
       await t.rollback();
-      return res.status(404).json({ success: false, message: 'Supplier product not found' });
+      return res.status(400).json({ success: false, message: 'supplier_product_id, brand_product_id, or foodcourt_product_id is required' });
     }
 
-    const contract = await SupplierContract.findOne({
-      where: { entity_type: 'foodcourt', entity_id: foodcourtId, supplier_company_id: sp.supplier_company_id, status: 'active' },
-      transaction: t
-    });
-    if (!contract) {
-      await t.rollback();
-      return res.status(403).json({ success: false, message: 'No active contract with this supplier' });
+    const existingIngredientId = parseInt(body.existing_ingredient_id, 10);
+    const unitConversion = parseFloat(body.unit_conversion) > 0 ? parseFloat(body.unit_conversion) : 1;
+    if (Number.isFinite(existingIngredientId)) {
+      const targetIng = await Ingredient.findByPk(existingIngredientId, { transaction: t });
+      if (!targetIng || targetIng.owner_type !== 'foodcourt' || targetIng.foodcourt_id !== fcid) {
+        await t.rollback();
+        return res.status(404).json({ success: false, message: 'Target ingredient not found in this foodcourt' });
+      }
+      const dup = await IngredientSellerProduct.findOne({
+        where: { ingredient_id: targetIng.id, seller_type: sellerType, seller_entity_id: sellerEntityId, seller_product_id: sellerProductRow.id },
+        transaction: t
+      });
+      if (dup) { await t.commit(); return res.json({ success: true, data: { ingredient: targetIng, mapping: dup, created: false, connected: true } }); }
+      const otherCount = await IngredientSellerProduct.count({ where: { ingredient_id: targetIng.id, is_active: true }, transaction: t });
+      const mapping = await IngredientSellerProduct.create({
+        ingredient_id: targetIng.id, seller_type: sellerType, seller_entity_id: sellerEntityId,
+        seller_product_id: sellerProductRow.id, unit_price: parseFloat(productPrice) || 0,
+        unit_conversion: unitConversion, min_order_quantity: parseInt(productMinQty, 10) || 1,
+        lead_time_days: 0, is_preferred: otherCount === 0, is_active: true
+      }, { transaction: t });
+      await t.commit();
+      return res.status(201).json({ success: true, data: { ingredient: targetIng, mapping, created: false, connected: true } });
     }
 
     const existing = await IngredientSellerProduct.findOne({
-      where: { seller_type: 'supplier', seller_entity_id: sp.supplier_company_id, seller_product_id: sp.id },
+      where: { seller_type: sellerType, seller_entity_id: sellerEntityId, seller_product_id: sellerProductRow.id },
       transaction: t
     });
     if (existing) {
       const ing = await Ingredient.findByPk(existing.ingredient_id, { transaction: t });
-      if (ing && ing.owner_type === 'foodcourt' && ing.foodcourt_id === parseInt(foodcourtId, 10)) {
+      if (ing && ing.owner_type === 'foodcourt' && ing.foodcourt_id === fcid) {
         await t.commit();
         return res.json({ success: true, data: { ingredient: ing, mapping: existing, created: false } });
       }
@@ -983,8 +1061,7 @@ router.post('/foodcourts/:foodcourtId/ingredients/from-catalog', authenticateTok
       piece: 'piece', pcs: 'piece', pc: 'piece', ea: 'piece', each: 'piece', unit: 'piece',
       pack: 'pack', pkt: 'pack', packet: 'pack', bag: 'pack', sack: 'pack',
       box: 'pack', case: 'pack', carton: 'pack', ctn: 'pack',
-      can: 'can', tin: 'can',
-      bottle: 'bottle', btl: 'bottle'
+      can: 'can', tin: 'can', bottle: 'bottle', btl: 'bottle'
     };
     const normalizeUnit = (u) => {
       if (!u) return 'piece';
@@ -992,35 +1069,20 @@ router.post('/foodcourts/:foodcourtId/ingredients/from-catalog', authenticateTok
       const mapped = UNIT_MAP[String(u).toLowerCase().trim()];
       return mapped || 'piece';
     };
-    const finalUnit = req.body?.unit && UNIT_ENUM.includes(req.body.unit) ? req.body.unit : normalizeUnit(sp.unit);
+    const finalUnit = body.unit && UNIT_ENUM.includes(body.unit) ? body.unit : normalizeUnit(productUnit);
 
     const ingredient = await Ingredient.create({
-      owner_type: 'foodcourt',
-      foodcourt_id: foodcourtId,
-      brand_id: null,
-      restaurant_id: null,
-      name: req.body?.name || sp.name,
-      unit: finalUnit,
-      base_quantity: 1,
-      unit_cost: parseFloat(sp.unit_price) || 0,
-      min_stock: 0,
-      current_stock: 0,
-      track_stock: true,
-      is_active: true,
-      code: ''
+      owner_type: 'foodcourt', foodcourt_id: fcid, brand_id: null, restaurant_id: null,
+      name: body.name || productName, unit: finalUnit,
+      base_quantity: 1, unit_cost: parseFloat(productPrice) || 0,
+      min_stock: 0, current_stock: 0, track_stock: true, is_active: true, code: ''
     }, { transaction: t });
 
     const mapping = await IngredientSellerProduct.create({
-      ingredient_id: ingredient.id,
-      seller_type: 'supplier',
-      seller_entity_id: sp.supplier_company_id,
-      seller_product_id: sp.id,
-      unit_price: parseFloat(sp.unit_price) || 0,
-      unit_conversion: 1,
-      min_order_quantity: parseInt(sp.min_order_quantity, 10) || 1,
-      lead_time_days: 0,
-      is_preferred: true,
-      is_active: true
+      ingredient_id: ingredient.id, seller_type: sellerType, seller_entity_id: sellerEntityId,
+      seller_product_id: sellerProductRow.id, unit_price: parseFloat(productPrice) || 0,
+      unit_conversion: unitConversion, min_order_quantity: parseInt(productMinQty, 10) || 1,
+      lead_time_days: 0, is_preferred: true, is_active: true
     }, { transaction: t });
 
     await t.commit();

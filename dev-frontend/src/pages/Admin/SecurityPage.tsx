@@ -7,6 +7,7 @@ import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI/S
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import { Modal, ModalButton } from '../../components/UI/Modal';
+import ConfirmModal from '../../components/ConfirmModal';
 import { useTranslation } from 'react-i18next';
 import { formatDateTime as formatDateTimeTz } from '../../utils/timezone';
 
@@ -357,6 +358,7 @@ const SecurityPage: React.FC = () => {
   const [events, setEvents] = useState<SecurityEvent[]>([]);
   const [policies, setPolicies] = useState<SecurityPolicy[]>([]);
   const [showConfigureModal, setShowConfigureModal] = useState(false);
+  const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   const [selectedPolicy, setSelectedPolicy] = useState<SecurityPolicy | null>(null);
   const [showLockSessionsModal, setShowLockSessionsModal] = useState(false);
 
@@ -429,7 +431,7 @@ const SecurityPage: React.FC = () => {
 
   const handleConfirmLockSessions = () => {
     // In a real app, this would call an API to lock all active sessions
-    alert('All user sessions have been locked. Users will be required to re-authenticate.');
+    setInfoModal({ open: true, title: 'Sessions Locked', message: 'All user sessions have been locked. Users will be required to re-authenticate.' });
     setShowLockSessionsModal(false);
     
     // Simulate adding a security event
@@ -611,7 +613,7 @@ const SecurityPage: React.FC = () => {
                   Cancel
                 </ModalButton>
                 <ModalButton onClick={() => {
-                  alert('Policy configuration updated successfully!');
+                  setInfoModal({ open: true, title: 'Configuration Saved', message: 'Policy configuration updated successfully.' });
                   setShowConfigureModal(false);
                 }}>
                   Save Configuration
@@ -694,6 +696,17 @@ const SecurityPage: React.FC = () => {
         )}
         </Content>
       </Container>
+
+      <ConfirmModal
+        isOpen={infoModal.open}
+        title={infoModal.title}
+        message={infoModal.message}
+        onConfirm={() => setInfoModal({ open: false, title: '', message: '' })}
+        onCancel={() => setInfoModal({ open: false, title: '', message: '' })}
+        confirmText={t('common:ok', 'OK')}
+        type="info"
+        singleButton
+      />
     </>
   );
 };

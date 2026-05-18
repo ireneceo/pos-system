@@ -2,6 +2,7 @@ import React from 'react';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { InboxItem, TYPE_COLORS, SEVERITY_COLORS, relativeTime } from './inboxApi';
+import { formatDateTime } from '../../utils/dateFormat';
 
 interface Props {
   item: InboxItem;
@@ -30,7 +31,7 @@ const InboxItemCard: React.FC<Props> = ({ item, onClick, showTypeBadge = true })
       tabIndex={0}
       onClick={() => onClick(item)}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(item); } }}
-      title={new Date(item.timestamp).toLocaleString(i18n.language)}
+      title={formatDateTime(item.timestamp, undefined, i18n.language)}
     >
       <UnreadStripe $color={colors.dot} $visible={isUnread} />
       <IconCircle $bg={colors.bg} $fg={colors.fg}>

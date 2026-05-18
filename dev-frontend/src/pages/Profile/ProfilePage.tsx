@@ -305,6 +305,7 @@ const ProfilePage: React.FC = () => {
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<any>(null);
   const [savedSuccessfully, setSavedSuccessfully] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   // State for actual user data from database (single source of truth)
@@ -520,8 +521,8 @@ const ProfilePage: React.FC = () => {
     } catch (error: any) {
       console.error('Failed to update profile:', error);
       setSavedSuccessfully(false);
-      setFormData(prev => ({ ...prev })); // force re-render
-      window.alert(error.message || 'Failed to save profile');
+      setSaveError(error?.message || 'Failed to save profile');
+      setFormData(prev => ({ ...prev }));
     } finally {
       setSaving(false);
     }
@@ -733,6 +734,12 @@ const ProfilePage: React.FC = () => {
         <PageHeader title="My Profile" />
 
         <Content>
+          {saveError && (
+            <div style={{ padding: 12, background: '#FEE2E2', color: '#DC2626', borderRadius: 8, marginBottom: 16, fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>{saveError}</span>
+              <button type="button" onClick={() => setSaveError(null)} style={{ background: 'transparent', border: 0, color: '#DC2626', cursor: 'pointer', fontSize: 16 }} aria-label="Dismiss">×</button>
+            </div>
+          )}
           <ProfileHeader>
             <StaffAvatar role={currentUser.role}>
               {getInitials(currentUser.name)}

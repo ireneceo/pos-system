@@ -1755,7 +1755,7 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
           onChange={v => updateField('special_conditions', v)}
           onSave={handleAutoSave}
           disabled={!isEditable}
-          addLabel={t('detail.addCondition', '+ Add Condition') as string}
+          addLabel={t('detail.addCondition', 'Add Condition') as string}
           emptyLabel={t('detail.noSpecialConditions', 'No special conditions') as string}
         />
       </Section>

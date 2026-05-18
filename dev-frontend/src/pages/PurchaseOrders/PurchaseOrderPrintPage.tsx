@@ -7,7 +7,7 @@
  */
 import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
 
@@ -164,6 +164,9 @@ const formatMoney = (v: number | string | null | undefined, ccy = 'MYR') => {
 
 const PurchaseOrderPrintPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  // ?as=seller — incoming-orders 페이지에서 BG/FG/Supplier 가 print 할 때 seller endpoint 사용
+  const isSellerView = searchParams.get('as') === 'seller';
   const { t } = useTranslation('purchaseOrders');
   const [data, setData] = useState<PODetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -174,7 +177,8 @@ const PurchaseOrderPrintPage: React.FC = () => {
     (async () => {
       try {
         const token = getAuthToken();
-        const r = await fetch(`/api/purchase-orders/${id}`, {
+        const url = isSellerView ? `/api/seller-orders/${id}` : `/api/purchase-orders/${id}`;
+        const r = await fetch(url, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const d = await r.json();
@@ -191,7 +195,7 @@ const PurchaseOrderPrintPage: React.FC = () => {
       }
     })();
     return () => { cancelled = true; };
-  }, [id]);
+  }, [id, isSellerView]);
 
   // Auto-trigger print once data loaded (small delay so DOM is painted)
   useEffect(() => {

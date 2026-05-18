@@ -6,6 +6,7 @@ import { useTabParam } from '../../hooks/useTabParam';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import SortDropdown, { SortKey, sortItems } from '../../components/Common/SortDropdown';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormTextArea } from '../../components/UI/Modal';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import ConfirmModal from '../../components/ConfirmModal';
@@ -172,6 +173,11 @@ const ProductName = styled.h3`
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
 `;
 
 const ProductSku = styled.div`
@@ -865,6 +871,7 @@ const getDefaultFormData = (): ProductFormData => ({
 const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefreshKey, optionRefreshKey }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   const [supportedCurrencies, setSupportedCurrencies] = useState<SupportedCurrency[]>([]);
   const [supportedCountries, setSupportedCountries] = useState<SupportedCountry[]>([]);
   const [systemOptionGroups, setSystemOptionGroups] = useState<OptionGroup[]>([]);
@@ -872,6 +879,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
   const [currencyFilter, setCurrencyFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortKey, setSortKey] = useState<SortKey>('newest');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -1158,7 +1166,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
           setTimeout(() => setHighlightedProductId(null), 3000);
         }
       } else {
-        alert(data.message || data.error || 'Failed to copy product');
+        setInfoModal({ open: true, title: 'Copy Failed', message: data.message || data.error || 'Failed to copy product.' });
       }
     } catch (error) {
       console.error('Failed to copy product:', error);
@@ -1202,11 +1210,11 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
         setProductToDelete(null);
         fetchProducts();
       } else {
-        alert(data.message || data.error || 'Failed to delete product');
+        setInfoModal({ open: true, title: 'Delete Failed', message: data.message || data.error || 'Failed to delete product.' });
       }
     } catch (error) {
       console.error('Failed to delete product:', error);
-      alert('Failed to delete product');
+      setInfoModal({ open: true, title: 'Delete Failed', message: 'Failed to delete product. Please try again.' });
     }
   };
 
@@ -1324,12 +1332,12 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
   };
 
   // Filter
-  const filteredProducts = products.filter(product => {
+  const filteredProducts = sortItems(products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesCategory = categoryFilter === 'all' || product.category_id?.toString() === categoryFilter;
     return matchesSearch && matchesCategory;
-  });
+  }), sortKey);
 
   if (loading) {
     return (
@@ -1372,6 +1380,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
               ))}
             </FilterSelect>
           )}
+          <SortDropdown value={sortKey} onChange={setSortKey} />
         </FilterBar>
         <ThemedButton onClick={() => handleOpenModal()} style={{ flexShrink: 0 }}>
           Add Product
@@ -1880,6 +1889,16 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
         confirmText="Delete"
         cancelText="Cancel"
       />
+      <ConfirmModal
+        isOpen={infoModal.open}
+        title={infoModal.title}
+        message={infoModal.message}
+        onConfirm={() => setInfoModal({ open: false, title: '', message: '' })}
+        onCancel={() => setInfoModal({ open: false, title: '', message: '' })}
+        confirmText="OK"
+        type="info"
+        singleButton
+      />
     </div>
   );
 };
@@ -1893,6 +1912,7 @@ interface CategoriesTabProps {
 
 const CategoriesTab: React.FC<CategoriesTabProps> = ({ onCountChange, onCategoryChange }) => {
   const [categories, setCategories] = useState<Category[]>([]);
+  const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -1991,11 +2011,11 @@ const CategoriesTab: React.FC<CategoriesTabProps> = ({ onCountChange, onCategory
         fetchCategories();
         onCategoryChange?.();
       } else {
-        alert(data.message || data.error || 'Failed to save');
+        setInfoModal({ open: true, title: 'Save Failed', message: data.message || data.error || 'Failed to save. Please try again.' });
       }
     } catch (error) {
       console.error('Failed to save category:', error);
-      alert('Failed to save');
+      setInfoModal({ open: true, title: 'Save Failed', message: 'Failed to save. Please try again.' });
     }
   };
 
@@ -2021,11 +2041,11 @@ const CategoriesTab: React.FC<CategoriesTabProps> = ({ onCountChange, onCategory
         fetchCategories();
         onCategoryChange?.();
       } else {
-        alert(data.message || data.error || 'Failed to delete');
+        setInfoModal({ open: true, title: 'Delete Failed', message: data.message || data.error || 'Failed to delete. Please try again.' });
       }
     } catch (error) {
       console.error('Failed to delete category:', error);
-      alert('Failed to delete');
+      setInfoModal({ open: true, title: 'Delete Failed', message: 'Failed to delete. Please try again.' });
     }
   };
 
@@ -2045,7 +2065,7 @@ const CategoriesTab: React.FC<CategoriesTabProps> = ({ onCountChange, onCategory
       if (data.success) {
         fetchCategories();
       } else {
-        alert(data.message || data.error || 'Failed to reorder');
+        setInfoModal({ open: true, title: 'Reorder Failed', message: data.message || data.error || 'Failed to reorder. Please try again.' });
       }
     } catch (error) {
       console.error('Failed to reorder category:', error);
@@ -2194,6 +2214,16 @@ const CategoriesTab: React.FC<CategoriesTabProps> = ({ onCountChange, onCategory
         confirmText="Delete"
         cancelText="Cancel"
       />
+      <ConfirmModal
+        isOpen={infoModal.open}
+        title={infoModal.title}
+        message={infoModal.message}
+        onConfirm={() => setInfoModal({ open: false, title: '', message: '' })}
+        onCancel={() => setInfoModal({ open: false, title: '', message: '' })}
+        confirmText="OK"
+        type="info"
+        singleButton
+      />
     </CategoryContainer>
   );
 };
@@ -2207,6 +2237,7 @@ interface OptionsTabProps {
 
 const OptionsTab: React.FC<OptionsTabProps> = ({ onCountChange, onOptionChange }) => {
   const [optionGroups, setOptionGroups] = useState<OptionGroup[]>([]);
+  const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -2341,7 +2372,7 @@ const OptionsTab: React.FC<OptionsTabProps> = ({ onCountChange, onOptionChange }
         onOptionChange?.();
       } else {
         const data = await response.json();
-        alert(data.message || data.error || 'Failed to delete option group');
+        setInfoModal({ open: true, title: 'Delete Failed', message: data.message || data.error || 'Failed to delete option group. Please try again.' });
       }
     } catch (error) {
       console.error('Error deleting option group:', error);
@@ -2519,6 +2550,16 @@ const OptionsTab: React.FC<OptionsTabProps> = ({ onCountChange, onOptionChange }
           <OptionFormButton type="button" variant="danger" onClick={handleConfirmDelete}>{'Delete'}</OptionFormButton>
         </div>
       </Modal>
+      <ConfirmModal
+        isOpen={infoModal.open}
+        title={infoModal.title}
+        message={infoModal.message}
+        onConfirm={() => setInfoModal({ open: false, title: '', message: '' })}
+        onCancel={() => setInfoModal({ open: false, title: '', message: '' })}
+        confirmText="OK"
+        type="info"
+        singleButton
+      />
     </>
   );
 };

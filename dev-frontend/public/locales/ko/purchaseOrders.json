@@ -289,6 +289,11 @@
     "allCategories": "전체",
     "vendors": "공급처",
     "linked": "연결됨",
+    "brandBadge": "본부",
+    "foodcourtBadge": "푸드코트",
+    "connectCta": "클릭해 발주처 연결 →",
+    "connecting": "연결 중",
+    "connectHelp": "카탈로그에서 항목을 클릭해 이 재료를 발주처와 연결하세요",
     "cartEmpty": "카드를 클릭해 cart에 추가하세요.",
     "empty": {
       "mine": {
@@ -302,7 +307,17 @@
     },
     "toast": {
       "added": "\"{{name}}\" cart에 추가됨",
-      "linked": "\"{{name}}\"이(가) 내 재고에 추가됨"
+      "linked": "\"{{name}}\"이(가) 내 재고에 추가됨",
+      "connected": "\"{{name}}\" 발주처 연결 완료 ✓",
+      "connectHint": "카탈로그에서 항목을 클릭해 \"{{name}}\"를 연결하세요",
+      "addedAsSeparate": "별도 재료로 추가됨 (단위/규격 다름)."
+    },
+    "showUntracked": "추적 안함 표시",
+    "conversion": {
+      "title": "단위 변환",
+      "help": "예 — 우리 재료가 kg일 때 10kg 박스 상품: 10 입력. piece일 때 30개 트레이: 30 입력.",
+      "connect": "연결",
+      "asSeparate": "+ 별도 재료로 추가"
     }
   }
 }

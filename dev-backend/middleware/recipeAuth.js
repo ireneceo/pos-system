@@ -157,9 +157,33 @@ function isRestaurantManager(req, res, next) {
   return res.status(403).json({ success: false, error: { message: 'Restaurant admin access only', code: 'FORBIDDEN' } });
 }
 
+/**
+ * Foodcourt manager permission check (mirror of isBrandManager)
+ */
+async function isFoodcourtManager(req, res, next) {
+  const user = req.user;
+  if (user.role === 'System Admin') return next();
+  if (user.role !== 'Foodcourt General' && user.role !== 'Foodcourt Manager') {
+    return res.status(403).json({ success: false, message: 'Foodcourt manager access only' });
+  }
+  const foodcourt_id = req.params.foodcourtId || req.params.foodcourt_id;
+  if (foodcourt_id) {
+    const Foodcourt = require('../models/Foodcourt');
+    const fc = await Foodcourt.findByPk(foodcourt_id);
+    if (!fc) return res.status(404).json({ success: false, message: 'Foodcourt not found' });
+    if (fc.owner_id !== user.id) return res.status(404).json({ success: false, message: 'Foodcourt not found' });
+    return next();
+  }
+  const Foodcourt = require('../models/Foodcourt');
+  const ownsAny = await Foodcourt.count({ where: { owner_id: user.id } });
+  if (ownsAny === 0) return res.status(403).json({ success: false, message: 'No foodcourt owned by user' });
+  return next();
+}
+
 module.exports = {
   canEditRecipe,
   canViewRecipe,
   isBrandManager,
+  isFoodcourtManager,
   isRestaurantManager
 };

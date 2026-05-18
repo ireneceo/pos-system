@@ -377,20 +377,6 @@ const SupplierDirectoryPage: React.FC = () => {
 
   return (
     <Container>
-      <Header>
-        <Title>{t('supplierMenu.title', 'Suppliers')}</Title>
-        <ThemedButton variant="primary" onClick={() => setShowExternalModal(true)}>
-          {t('directory.addExternal', 'External Supplier')}
-        </ThemedButton>
-      </Header>
-      <PageTabBar>
-        <PageTab $active={false} type="button" onClick={() => navigate('/pos/suppliers/contracts')}>
-          {t('supplierMenu.tab.mine', 'My Suppliers')}
-        </PageTab>
-        <PageTab $active={true} type="button">
-          {t('supplierMenu.tab.find', 'Find Suppliers')}
-        </PageTab>
-      </PageTabBar>
       <Content>
         <FilterBar>
           <SearchInput
@@ -421,6 +407,11 @@ const SupplierDirectoryPage: React.FC = () => {
               ))}
             </FilterSelect>
           )}
+          <div style={{ marginLeft: 'auto' }}>
+            <ThemedButton variant="primary" onClick={() => setShowExternalModal(true)}>
+              {t('directory.addExternal', 'External Supplier')}
+            </ThemedButton>
+          </div>
         </FilterBar>
 
         {loading ? (

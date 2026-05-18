@@ -225,7 +225,7 @@ const RentScheduleEditor: React.FC<Props> = ({ value, onChange, onSave, disabled
     return (
       <Wrapper>
         <EmptyState>No rent schedule rows</EmptyState>
-        {!disabled && <AddBtn type="button" onClick={add}>+ Add First Year</AddBtn>}
+        {!disabled && <AddBtn type="button" onClick={add}>Add First Year</AddBtn>}
       </Wrapper>
     );
   }
@@ -284,7 +284,7 @@ const RentScheduleEditor: React.FC<Props> = ({ value, onChange, onSave, disabled
         ))}
       </CardList>
 
-      {!disabled && <AddBtn type="button" onClick={add}>+ Add Year</AddBtn>}
+      {!disabled && <AddBtn type="button" onClick={add}>Add Year</AddBtn>}
     </Wrapper>
   );
 };

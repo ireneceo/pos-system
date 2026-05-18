@@ -50,6 +50,8 @@ const Card = styled.div`
   padding: 20px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
 
   &:hover {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -94,6 +96,8 @@ const Pill = styled.span<{ type: 'required' | 'optional' }>`
 const CardActions = styled.div`
   display: flex;
   gap: 8px;
+  margin-top: auto;
+  padding-top: 12px;
 `;
 
 const IconButton = styled.button`

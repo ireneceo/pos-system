@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { getAuthToken } from '../../utils/auth';
+import { formatDate } from '../../utils/dateFormat';
 
 async function authedFetch(path: string, options: RequestInit = {}) {
   const token = getAuthToken();
@@ -155,7 +156,7 @@ const ErrorMsg = styled.div`
 
 function fmtDate(s: string | null) {
   if (!s) return '—';
-  try { return new Date(s).toLocaleDateString(); } catch { return s; }
+  try { return formatDate(s); } catch { return s; }
 }
 
 export default function SubscriptionPanel({ payerType, payerId, hideWhenEmpty }: Props) {

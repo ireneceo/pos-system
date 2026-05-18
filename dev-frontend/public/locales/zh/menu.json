@@ -57,5 +57,18 @@
   "promotionsPage.targetAudience": "目标受众",
   "promotionsPage.loadingCustomers": "加载顾客中...",
   "promotionsPage.noCustomersFound": "未找到顾客",
-  "promotionsPage.description": "描述"
+  "promotionsPage.description": "描述",
+  "menuManagementPage.brandHelperTitle": "部分菜单来自您的品牌",
+  "menuManagementPage.brandHelperLine1": "卡片上的",
+  "menuManagementPage.brandHelperLine1b": "标签是品牌推送的菜单。",
+  "menuManagementPage.brandHelperLine1c": "图标表示品牌锁定的字段,无法在此编辑。",
+  "menuManagementPage.brandHelperLine2": "您仍可使用",
+  "menuManagementPage.brandHelperLine2b": "按钮自由添加门店专属菜单 — 无标签菜单可完整编辑。",
+  "menuManagementPage.brandHelperPendingLink": "{{count}} 项品牌更新等待中 — 查看",
+  "menuManagement.copyFailedTitle": "复制失败",
+  "menuManagement.copyFailedMessage": "复制菜单项失败。请重试。",
+  "menuManagement.toggleFailedTitle": "更新失败",
+  "menuManagement.toggleFailedMessage": "切换菜单项状态失败。请重试。",
+  "menuManagement.setMenuRequiredTitle": "套餐验证",
+  "menuManagement.setMenuRequiredMessage": "套餐必须包含至少一个菜单项。"
 }

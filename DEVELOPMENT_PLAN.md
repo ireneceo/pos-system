@@ -1,9 +1,62 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-05-15 (v3.31 운영 + 매장 메뉴 긴급 복구 + dev 만 누적: Install 버튼 promptInstall)
+> **최종 업데이트:** 2026-05-18 (v3.31 운영 + dev 누적: 프린터 안내 + 전수 alert→Modal sweep + 4언어 i18n)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 > **현재 버전:** **v3.31** (Brand Menu System + Customer Display 자동화 + 이미지 업로드 fix + i18n 안정화 + RA/BG 전수 검사)
+
+## ✅ 완료: 프린터 설정 안내 시나리오 분기 + 전수 alert sweep (2026-05-18, 미배포)
+
+기존 매장 마이그레이션 / 신규 세팅 두 시나리오로 분기한 QZ Tray 설정 가이드 + 24개 페이지 70+ 건의 `alert()` 호출을 표준 `ConfirmModal singleButton` 또는 `setSuccessMessage` 패턴으로 일괄 통일.
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| QZ Tray 가이드 시나리오 분기 | "기존 LAN 마이그" vs "신규 세팅" 토글, 데스크탑 앱 작동 노트, "이미 설치 확인" hint | ✅ 완료 |
+| 프린터 가이드 i18n 17 신규 키 × 4 언어 = 68 entries | en/ko/zh/ms settings.json — qzScenario*, qzMigStep*, qzFreshStep*, qzCommon*, qzDesktop*, qzDiagram*, qzTrouble*, whatIsQzTrayDesc, whereToInstallDesc1/2 | ✅ 완료 |
+| 토글 button 접근성 보강 | `type="button"` + `aria-pressed` 명시 | ✅ 완료 |
+| 전수 alert sweep (RA/BG critical) | MenuManagement / Customers / Settings / BrandInvoices / BrandProducts / BrandProductCategories / BrandProductRecipe (Ingredients/IngredientCategories/RecipeCategories) / Suppliers / Brand/SystemInquiry / CategoryManagement / Restaurant/SystemInquiry / POSTerminal / ProductRecipe / NewPurchaseOrder (styled overlay → UIModal) | ✅ 완료 |
+| 전수 alert sweep (FG/Admin/Manager) | FoodcourtInvoices / Foodcourt/SystemInquiry / Admin (Invoices/Staff/Subscriptions/RestaurantSubscriptions/Content/SystemConfig/BackupRestore/SystemProduct/Security) / Manager (Plans/ManagerSubscriptions/Signup) / RecipeManagement (5 tabs) | ✅ 완료 |
+| 일관 패턴 정착 | `infoModal` state + `<ConfirmModal singleButton>` + `t('common:ok','OK')` 또는 페이지 자체 `setSuccessMessage + setShowSuccessModal` 재사용 | ✅ 완료 |
+| 알림 이메일 카테고리 + 역할별 검증 | RA 21 cats / BG 14 cats / FG/Admin/Supplier 각각 의도된 분리. NOTIFICATION_CATEGORIES single source. sendNotification 호출 18곳 일관 | ✅ 검증 |
+| BG → RA Brand Menu 동기화 검증 | rest=5 에 5개 메뉴 `brand_menu_link_status='in_sync'` 정상 propagation. BG/RA cross-access 403 차단 | ✅ 검증 |
+| 신규 i18n 17 키 × 4 langs (menu/customers/brand/settings) | 68/68 PASS — copyFailed/toggleFailed/setMenuRequired (menu) · deleteFailed (customers/brand) · featureInDevelopment/addBrandComingSoon/billingComingSoon/externalQR* (settings) | ✅ 완료 |
+
+### 검증
+
+| 항목 | 결과 |
+|------|------|
+| 빌드 | `main.5c3da699.js` (1.6MB), 70초 |
+| Health-check | **80/80 PASS** |
+| state-hydration | **0 warning** |
+| 전체 pages 의 `alert()` 잔존 | **0건** |
+| nginx 반영 + 4언어 locale fetch | 200 응답 (en/ko/zh/ms × 17 keys 정상) |
+| POS 주문 흐름 영향 검증 | catch/finally 패턴이라 alert→Modal 비동기 전환 무관, 데이터 무결성 안전 |
+
+### 수정된 파일 (24 페이지 + 4언어 × 5 namespace)
+
+- Frontend: `SettingsPage.tsx`, `MenuManagementPage.tsx`, `CustomersPage.tsx`, `BrandInvoicesPage.tsx`, `BrandProductsTab.tsx`, `BrandProductCategoriesTab.tsx`, `ProductIngredientsTab.tsx`, `ProductIngredientCategoriesTab.tsx`, `ProductRecipeCategoriesTab.tsx`, `Suppliers/SuppliersPage.tsx`, `Suppliers/AllSuppliersView.tsx`, `Brand/SystemInquiryPage.tsx`, `Restaurant/SystemInquiryPage.tsx`, `Foodcourt/SystemInquiryPage.tsx`, `CategoryManagement/CategoryManagementPage.tsx`, `POSTerminal/POSTerminalPage.tsx`, `ProductRecipe/ProductRecipePage.tsx`, `NewPurchaseOrderPage.tsx`, `FoodcourtInvoicesPage.tsx`, `Admin/InvoicesPage.tsx`, `Admin/StaffManagementPage.tsx`, `Admin/SubscriptionsPage.tsx`, `Admin/RestaurantSubscriptionsPage.tsx`, `Admin/ContentManagementPage.tsx`, `Admin/SystemConfigPage.tsx`, `Admin/BackupRestorePage.tsx`, `Admin/SystemProductManagementPage.tsx`, `Admin/SecurityPage.tsx`, `Manager/PlansPage.tsx`, `Manager/ManagerSubscriptionsPage.tsx`, `Manager/SignupPage.tsx`, `RecipeManagement/{CategoriesTab,GeneralStockCategoriesTab,IngredientCategoriesTab,RecipeCategoriesTab,IngredientsTab}.tsx`
+- i18n: en/ko/zh/ms `settings.json` (44 키), `menu.json` (6 키), `customers.json` (2 키), `brand.json` (2 키)
+
+---
+
+## ✅ 완료: Brand Menu System AddonModule 등록 (2026-05-17, 미배포)
+
+v3.32-dev Brand Menu System 작업 때 누락된 모듈 등록 보강. BG plan 보유 사용자가 사이드바에서 Brand Menus / Menu Categories / Menu Options 3개 항목을 보지 못하던 결함 fix.
+
+| 작업 | 상태 |
+|------|:----:|
+| `addon_modules` 신규 row: brand_menus / basic / target=brand / 3 ui_routes | ✅ |
+| `plan_templates` brand_basic / brand_professional / brand_enterprise 3 plan included_modules 에 brand_menus 추가 | ✅ |
+| `menu_management` (id 67) ui_routes 에 `/restaurant/*/brand-menu-updates` 추가 (RA pending 페이지) | ✅ |
+| 마이그 스크립트 `scripts/register-brand-menus-module.js` (idempotent) | ✅ |
+| `deploy-to-production.sh` sprint migrations 등록 | ✅ |
+| BG (real Enterprise) + Demo BG + RA = 7/7 PASS, health-check 80/80 | ✅ |
+
+다음 배포 시 자동으로 운영 적용. 별도 후속 — brand_basic / brand_professional 의 다른 9개 basic 모듈 누락 (brand_dashboard 등) sweep.
+
+
 
 ## ✅ 완료: Customer Display 전화번호 토글 + Install 버튼 정리 + 매장 메뉴 긴급 복구 (2026-05-15 막바지, dev 변경 미배포)
 

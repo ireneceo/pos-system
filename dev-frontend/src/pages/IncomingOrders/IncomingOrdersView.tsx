@@ -16,6 +16,7 @@ import { ThemedButton } from '../../components/Theme/ThemedButton';
 import DateField from '../../components/Common/DateField';
 import { getAuthToken } from '../../utils/auth';
 import { formatDate } from '../../utils/timezone';
+import { useTabParam } from '../../hooks/useTabParam';
 
 // Layout / Form / ModalButton primitives are inlined here on purpose.
 // Importing them across chunks from `components/UI` triggered a TDZ runtime
@@ -144,7 +145,7 @@ const ModalButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger'
 
 type POStatus = 'submitted' | 'confirmed' | 'shipped' | 'delivered' | 'received' | 'cancelled';
 
-type TabKey = 'submitted' | 'confirmed' | 'shipped' | 'received' | 'cancelled';
+type TabKey = 'all' | 'submitted' | 'confirmed' | 'shipped' | 'received' | 'cancelled';
 
 interface IncomingOrderItem {
   id: number;
@@ -369,18 +370,20 @@ function timeAgo(iso: string | null | undefined): string {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
+// 단계별 색상 — Restaurant LiveOrders / Reservation 패턴과 일치.
+// 대기(주황) → 진행(파랑) → 완료(녹색) / 취소(빨강).
 const StatusVariantMap: Record<string, 'success' | 'warning' | 'error' | 'info'> = {
-  submitted: 'warning',
-  confirmed: 'warning',
-  shipped: 'info',
-  delivered: 'info',
-  received: 'success',
+  submitted: 'warning',      // 대기 — seller 가 confirm 해야
+  confirmed: 'info',         // seller 수락 — 진행 시작
+  shipped: 'info',           // 배송 중 — 진행
+  delivered: 'info',         // 도착 — buyer 가 received 마크 대기
+  received: 'success',       // 완료
   partial_received: 'warning',
   cancelled: 'error',
   draft: 'info'
 };
 
-const TAB_KEYS: TabKey[] = ['submitted', 'confirmed', 'shipped', 'received', 'cancelled'];
+const TAB_KEYS: TabKey[] = ['all', 'submitted', 'confirmed', 'shipped', 'received', 'cancelled'];
 
 function asNumber(v: unknown): number {
   const n = Number(v);
@@ -416,13 +419,14 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
   // re-use the supplier orders namespace so we don't duplicate strings.
   const { t } = useTranslation([i18nNamespace, 'supplier', 'common']);
 
-  const [activeTab, setActiveTab] = useState<TabKey>('submitted');
+  // URL ?tab=<key> 동기화 — 다른 페이지(Suppliers / Trade Invoices 등)와 동일 패턴
+  const [activeTab, setActiveTab] = useTabParam<TabKey>('all');
   const [rows, setRows] = useState<IncomingOrderRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [stats, setStats] = useState<SellerOrderStats>({});
   const [counts, setCounts] = useState<Record<TabKey, number>>({
-    submitted: 0, confirmed: 0, shipped: 0, received: 0, cancelled: 0
+    all: 0, submitted: 0, confirmed: 0, shipped: 0, received: 0, cancelled: 0
   });
 
   // Modal state
@@ -531,10 +535,21 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
     try {
       const token = getAuthToken();
       const params = new URLSearchParams();
-      params.set('status', status);
-      // Sprint 6: date range filter
-      if (dateRange?.start) params.set('from', new Date(dateRange.start).toISOString());
-      if (dateRange?.end) params.set('to', new Date(dateRange.end).toISOString());
+      // 'all' 탭: status param 안 보내고 cancelled 만 클라이언트에서 제외
+      if (status !== 'all') params.set('status', status);
+      // Sprint 6: date range filter — calendar date(YYYY-MM-DD) 를 day-start / day-end 로 확장.
+      // calculatePeriodDateRange 가 같은 day 면 start===end 인 calendar date 만 반환하므로,
+      // new Date().toISOString() 그대로 쓰면 from===to=00:00 0초 윈도우라 모든 PO 가 제외됨.
+      if (dateRange?.start) {
+        const d = new Date(dateRange.start);
+        d.setHours(0, 0, 0, 0);
+        params.set('from', d.toISOString());
+      }
+      if (dateRange?.end) {
+        const d = new Date(dateRange.end);
+        d.setHours(23, 59, 59, 999);
+        params.set('to', d.toISOString());
+      }
       const res = await fetch(`/api/seller-orders?${params.toString()}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -545,13 +560,15 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
       }
       // Sprint 6: normalize buyer object → buyer_name + item_count
       const list = Array.isArray(data.data) ? data.data : [];
-      const normalized = list.map((p: any) => ({
+      let normalized = list.map((p: any) => ({
         ...p,
         buyer_name: p.buyer?.name || p.buyer_name || null,
         buyer_entity_type: p.buyer?.type || p.entity_type || null,
         buyer_entity_id: p.buyer?.id || p.entity_id || null,
         item_count: Array.isArray(p.items) ? p.items.length : (p.item_count ?? 0)
       }));
+      // 'all' 탭은 cancelled 제외
+      if (status === 'all') normalized = normalized.filter((p: any) => p.status !== 'cancelled');
       setRows(normalized);
     } catch (err) {
       console.error('Failed to fetch incoming orders:', err);
@@ -577,13 +594,14 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
         received_this_month: payload.received_this_month ?? payload.received ?? 0
       });
       if (payload.counts) {
-        setCounts({
+        const c = {
           submitted: payload.counts.submitted ?? 0,
           confirmed: payload.counts.confirmed ?? 0,
           shipped: payload.counts.shipped ?? 0,
           received: payload.counts.received ?? 0,
           cancelled: payload.counts.cancelled ?? 0
-        });
+        };
+        setCounts({ ...c, all: c.submitted + c.confirmed + c.shipped + c.received });
       }
     } catch (err) {
       console.error('Failed to fetch seller order stats:', err);
@@ -907,7 +925,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
               onClick={() => setActiveTab(tab)}
               type="button"
             >
-              {tNs(`orders.tabs.${tab}`, tab)}
+              {tNs(`orders.tabs.${tab}`, tab.charAt(0).toUpperCase() + tab.slice(1))}
               <RLTabBadge>{counts[tab] ?? 0}</RLTabBadge>
             </RLStatusTab>
           ))}
@@ -1023,6 +1041,12 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                       </DataTableCell>
                       <DataTableCell align="right" mobileFullWidth onClick={(e: React.MouseEvent) => e.stopPropagation()}>
                         <DataTableActions>
+                          <ThemedButton size="small" variant="outline" onClick={() => openDetail(row)}>
+                            {tNs('orders.actions.view', 'View')}
+                          </ThemedButton>
+                          <ThemedButton size="small" variant="outline" onClick={() => window.open(`/pos/purchase-orders/${row.id}/print?as=seller`, '_blank')}>
+                            {tNs('orders.actions.print', 'Print')}
+                          </ThemedButton>
                           {row.status === 'submitted' && (
                             <>
                               <ThemedButton size="small" variant="primary" onClick={() => { setConfirmModalRow(row); setErrorMessage(null); }}>

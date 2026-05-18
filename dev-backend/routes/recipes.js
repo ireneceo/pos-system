@@ -664,4 +664,103 @@ router.post('/restaurants/:restaurantId/products/create-from-recipe', authentica
   }
 });
 
+/**
+ * POST /api/brands/:brandId/recipes/:recipeId/copy
+ * Copy a brand recipe (with ingredients) to another brand the BG owns.
+ *
+ * body: { target_brand_id: number, name?: string }
+ *
+ * - Source brand ownership is enforced by `isBrandManager` middleware.
+ * - Target brand ownership re-checked inside handler.
+ * - recipe_category_id is NOT carried — categories are brand-scoped, re-link in target.
+ * - Image URL is reused as-is (uploaded files survive a reference copy).
+ */
+router.post('/brands/:brandId/recipes/:recipeId/copy', authenticateToken, isBrandManager, async (req, res) => {
+  try {
+    const sourceBrandId = parseInt(req.params.brandId, 10);
+    const sourceRecipeId = parseInt(req.params.recipeId, 10);
+    const targetBrandId = parseInt(req.body.target_brand_id, 10);
+
+    if (!Number.isFinite(targetBrandId) || targetBrandId === sourceBrandId) {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'Valid target_brand_id required (must differ from source)', code: 'VALIDATION_ERROR' }
+      });
+    }
+
+    // Target brand ownership check — re-use Brand model
+    const { Brand } = require('../models');
+    const targetBrand = await Brand.findByPk(targetBrandId);
+    if (!targetBrand) {
+      return res.status(404).json({ success: false, error: { message: 'Target brand not found', code: 'NOT_FOUND' } });
+    }
+    // System Admin skips ownership; otherwise the BG must own the target brand too
+    if (req.user.role !== 'System Admin' && targetBrand.owner_id !== req.user.id) {
+      return res.status(403).json({ success: false, error: { message: 'Target brand not owned by you', code: 'FORBIDDEN' } });
+    }
+
+    // Source recipe (with ingredients)
+    const source = await Recipe.findByPk(sourceRecipeId, {
+      include: [{ model: RecipeIngredient, as: 'recipeIngredients' }]
+    });
+    if (!source || source.brand_id !== sourceBrandId) {
+      return res.status(404).json({ success: false, error: { message: 'Source recipe not found', code: 'NOT_FOUND' } });
+    }
+
+    const newCode = await generateRecipeCode(Recipe, 'brand', targetBrandId);
+
+    const copy = await Recipe.create({
+      owner_type: 'brand',
+      brand_id: targetBrandId,
+      restaurant_id: null,
+      code: newCode,
+      name: req.body.name || `${source.name} (Copy)`,
+      description: source.description,
+      category: null,                // brand-scoped — drop
+      recipe_category_id: null,      // brand-scoped — drop
+      emoji: source.emoji,
+      image: source.image,           // image URL is reusable
+      option_groups: source.option_groups,
+      yield_amount: source.yield_amount,
+      yield_unit: source.yield_unit,
+      prep_time: source.prep_time,
+      cook_time: source.cook_time,
+      instructions: source.instructions,
+      instructions_summary: source.instructions_summary,
+      instructions_detail: source.instructions_detail,
+      suggested_price: source.suggested_price,
+      total_ingredient_cost: source.total_ingredient_cost,
+      is_active: source.is_active
+    });
+
+    // Copy ingredients
+    let totalCost = 0;
+    for (const ri of (source.recipeIngredients || [])) {
+      await RecipeIngredient.create({
+        recipe_id: copy.id,
+        ingredient_id: ri.ingredient_id,
+        quantity: ri.quantity,
+        unit: ri.unit,
+        cost: ri.cost,
+        notes: ri.notes
+      });
+      totalCost += Number(ri.cost || 0);
+    }
+    if (totalCost !== Number(source.total_ingredient_cost)) {
+      await copy.update({ total_ingredient_cost: totalCost });
+    }
+
+    const result = await Recipe.findByPk(copy.id, {
+      include: [
+        { model: RecipeIngredient, as: 'recipeIngredients', include: [{ model: Ingredient, as: 'ingredient' }] }
+      ]
+    });
+
+    res.status(201).json({ success: true, data: result });
+  } catch (error) {
+    console.error('Copy brand recipe error:', error);
+    res.status(500).json({ success: false, error: { message: 'Failed to copy recipe', code: 'INTERNAL_ERROR' } });
+  }
+});
+
 module.exports = router;

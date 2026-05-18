@@ -241,44 +241,125 @@ router.post('/:restaurantId/ingredients/from-catalog', authenticateToken, checkR
   const t = await Ingredient.sequelize.transaction();
   try {
     const { restaurantId } = req.params;
-    const supplierProductId = parseInt(req.body?.supplier_product_id, 10);
-    if (!Number.isFinite(supplierProductId)) {
-      await t.rollback();
-      return res.status(400).json({ success: false, message: 'supplier_product_id is required' });
-    }
-
+    const rid = parseInt(restaurantId, 10);
+    // Seller resolution — supplier (legacy) / brand / foodcourt
+    const body = req.body || {};
+    const supplierProductId = parseInt(body.supplier_product_id, 10);
+    const brandProductId = parseInt(body.brand_product_id, 10);
+    const foodcourtProductId = parseInt(body.foodcourt_product_id, 10);
+    let sellerType, sellerProductRow, sellerEntityId, productName, productUnit, productPrice, productMinQty;
     const SupplierProduct = require('../models/SupplierProduct');
     const SupplierContract = require('../models/SupplierContract');
     const IngredientSellerProduct = require('../models/IngredientSellerProduct');
+    const BrandProduct = require('../models/BrandProduct');
+    const FoodcourtProduct = require('../models/FoodcourtProduct');
+    const BrandProductBrand = require('../models/BrandProductBrand');
+    const Restaurant = require('../models/Restaurant');
 
-    const sp = await SupplierProduct.findByPk(supplierProductId, { transaction: t });
-    if (!sp) {
+    if (Number.isFinite(supplierProductId)) {
+      const sp = await SupplierProduct.findByPk(supplierProductId, { transaction: t });
+      if (!sp) { await t.rollback(); return res.status(404).json({ success: false, message: 'Supplier product not found' }); }
+      // Active contract 검증
+      const contract = await SupplierContract.findOne({
+        where: { entity_type: 'restaurant', entity_id: rid, supplier_company_id: sp.supplier_company_id, status: 'active' },
+        transaction: t
+      });
+      if (!contract) { await t.rollback(); return res.status(403).json({ success: false, message: 'No active contract with this supplier' }); }
+      sellerType = 'supplier'; sellerProductRow = sp; sellerEntityId = sp.supplier_company_id;
+      productName = sp.name; productUnit = sp.unit; productPrice = sp.unit_price; productMinQty = sp.min_order_quantity;
+    } else if (Number.isFinite(brandProductId)) {
+      const bp = await BrandProduct.findByPk(brandProductId, { transaction: t });
+      if (!bp) { await t.rollback(); return res.status(404).json({ success: false, message: 'Brand product not found' }); }
+      // distribution_mode 별 가맹 관계 검증
+      const rest = await Restaurant.findByPk(rid, { attributes: ['id', 'brand_id'], transaction: t });
+      if (!rest?.brand_id) { await t.rollback(); return res.status(403).json({ success: false, message: 'Restaurant has no parent brand' }); }
+      let allowed = false;
+      if (bp.distribution_mode === 'all') {
+        const ownerBrand = await require('../models').Brand.findByPk(rest.brand_id, { attributes: ['owner_id'], transaction: t });
+        allowed = ownerBrand && bp.owner_user_id === ownerBrand.owner_id;
+      } else if (bp.distribution_mode === 'specific_brands') {
+        const link = await BrandProductBrand.findOne({ where: { product_id: bp.id, brand_id: rest.brand_id }, transaction: t });
+        allowed = !!link;
+      } else if (bp.distribution_mode === 'specific_restaurants') {
+        const BrandProductRestaurant = require('../models/BrandProductRestaurant');
+        const rlink = await BrandProductRestaurant.findOne({ where: { product_id: bp.id, restaurant_id: rid }, transaction: t });
+        allowed = !!rlink;
+      }
+      if (!allowed) { await t.rollback(); return res.status(403).json({ success: false, message: 'This brand product is not available for your restaurant' }); }
+      sellerType = 'brand'; sellerProductRow = bp; sellerEntityId = rest.brand_id;
+      productName = bp.name; productUnit = bp.unit; productPrice = bp.unit_price; productMinQty = bp.min_order_quantity;
+    } else if (Number.isFinite(foodcourtProductId)) {
+      const fp = await FoodcourtProduct.findByPk(foodcourtProductId, { transaction: t });
+      if (!fp) { await t.rollback(); return res.status(404).json({ success: false, message: 'Foodcourt product not found' }); }
+      const rest = await Restaurant.findByPk(rid, { attributes: ['id', 'foodcourt_id'], transaction: t });
+      if (!rest?.foodcourt_id || rest.foodcourt_id !== fp.foodcourt_id) {
+        await t.rollback(); return res.status(403).json({ success: false, message: 'This foodcourt product is not available for your foodcourt' });
+      }
+      // distribution_mode='specific_restaurants' 이면 추가로 매핑 검증
+      if (fp.distribution_mode === 'specific_restaurants') {
+        const FoodcourtProductRestaurant = require('../models/FoodcourtProductRestaurant');
+        const flink = await FoodcourtProductRestaurant.findOne({ where: { product_id: fp.id, restaurant_id: rid }, transaction: t });
+        if (!flink) { await t.rollback(); return res.status(403).json({ success: false, message: 'This foodcourt product is not available for your restaurant' }); }
+      }
+      sellerType = 'foodcourt'; sellerProductRow = fp; sellerEntityId = fp.foodcourt_id;
+      productName = fp.name; productUnit = fp.unit; productPrice = fp.unit_price; productMinQty = fp.min_order_quantity;
+    } else {
       await t.rollback();
-      return res.status(404).json({ success: false, message: 'Supplier product not found' });
+      return res.status(400).json({ success: false, message: 'supplier_product_id, brand_product_id, or foodcourt_product_id is required' });
     }
 
-    // Active contract 검증 — 임의 supplier 의 상품 매핑 금지
-    const contract = await SupplierContract.findOne({
-      where: {
-        entity_type: 'restaurant', entity_id: restaurantId,
-        supplier_company_id: sp.supplier_company_id,
-        status: 'active'
-      },
-      transaction: t
-    });
-    if (!contract) {
-      await t.rollback();
-      return res.status(403).json({ success: false, message: 'No active contract with this supplier' });
+    // Connect mode — 기존 ingredient 에 매핑만 추가 (새 ingredient 생성 안 함). body.unit_conversion 우선, 기본 1.
+    const existingIngredientId = parseInt(body.existing_ingredient_id, 10);
+    const bodyConversion = parseFloat(body.unit_conversion) > 0 ? parseFloat(body.unit_conversion) : 1;
+    if (Number.isFinite(existingIngredientId)) {
+      const targetIng = await Ingredient.findByPk(existingIngredientId, { transaction: t });
+      if (!targetIng || targetIng.restaurant_id !== rid) {
+        await t.rollback();
+        return res.status(404).json({ success: false, message: 'Target ingredient not found in this restaurant' });
+      }
+      // 같은 (seller_type, seller_entity_id, seller_product_id) 매핑 이미 있으면 idempotent
+      const dup = await IngredientSellerProduct.findOne({
+        where: {
+          ingredient_id: targetIng.id,
+          seller_type: sellerType,
+          seller_entity_id: sellerEntityId,
+          seller_product_id: sellerProductRow.id
+        },
+        transaction: t
+      });
+      if (dup) {
+        await t.commit();
+        return res.json({ success: true, data: { ingredient: targetIng, mapping: dup, created: false, connected: true } });
+      }
+      // is_preferred — 기존 매핑 없으면 true
+      const hasOtherMappings = await IngredientSellerProduct.count({
+        where: { ingredient_id: targetIng.id, is_active: true },
+        transaction: t
+      });
+      const mapping = await IngredientSellerProduct.create({
+        ingredient_id: targetIng.id,
+        seller_type: sellerType,
+        seller_entity_id: sellerEntityId,
+        seller_product_id: sellerProductRow.id,
+        unit_price: parseFloat(productPrice) || 0,
+        unit_conversion: bodyConversion,
+        min_order_quantity: parseInt(productMinQty, 10) || 1,
+        lead_time_days: 0,
+        is_preferred: hasOtherMappings === 0,
+        is_active: true
+      }, { transaction: t });
+      await t.commit();
+      return res.status(201).json({ success: true, data: { ingredient: targetIng, mapping, created: false, connected: true } });
     }
 
-    // 이미 매핑됐으면 idempotent
+    // 이미 매핑됐으면 idempotent (기본: 새 ingredient 생성 흐름 진입 전 체크)
     const existing = await IngredientSellerProduct.findOne({
-      where: { seller_type: 'supplier', seller_entity_id: sp.supplier_company_id, seller_product_id: sp.id },
+      where: { seller_type: sellerType, seller_entity_id: sellerEntityId, seller_product_id: sellerProductRow.id },
       transaction: t
     });
     if (existing) {
       const ing = await Ingredient.findByPk(existing.ingredient_id, { transaction: t });
-      if (ing && ing.restaurant_id === parseInt(restaurantId, 10)) {
+      if (ing && ing.restaurant_id === rid) {
         await t.commit();
         return res.json({ success: true, data: { ingredient: ing, mapping: existing, created: false } });
       }
@@ -306,17 +387,17 @@ router.post('/:restaurantId/ingredients/from-catalog', authenticateToken, checkR
     };
     const finalUnit = req.body?.unit && UNIT_ENUM.includes(req.body.unit)
       ? req.body.unit
-      : normalizeUnit(sp.unit);
+      : normalizeUnit(productUnit);
 
     // ingredient 생성
     const ingredient = await Ingredient.create({
       owner_type: 'restaurant',
-      restaurant_id: restaurantId,
+      restaurant_id: rid,
       brand_id: null,
-      name: req.body?.name || sp.name,
+      name: req.body?.name || productName,
       unit: finalUnit,
       base_quantity: 1,
-      unit_cost: parseFloat(sp.unit_price) || 0,
+      unit_cost: parseFloat(productPrice) || 0,
       supplier_name: null,
       supplier_id: null,
       min_stock: 0,
@@ -329,12 +410,12 @@ router.post('/:restaurantId/ingredients/from-catalog', authenticateToken, checkR
     // 매핑 생성
     const mapping = await IngredientSellerProduct.create({
       ingredient_id: ingredient.id,
-      seller_type: 'supplier',
-      seller_entity_id: sp.supplier_company_id,
-      seller_product_id: sp.id,
-      unit_price: parseFloat(sp.unit_price) || 0,
+      seller_type: sellerType,
+      seller_entity_id: sellerEntityId,
+      seller_product_id: sellerProductRow.id,
+      unit_price: parseFloat(productPrice) || 0,
       unit_conversion: 1,
-      min_order_quantity: parseInt(sp.min_order_quantity, 10) || 1,
+      min_order_quantity: parseInt(productMinQty, 10) || 1,
       lead_time_days: 0,
       is_preferred: true,
       is_active: true

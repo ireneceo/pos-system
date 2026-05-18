@@ -58,7 +58,7 @@ router.get('/', checkRestaurantAccess, async (req, res) => {
       where: {
         restaurant_id: restaurantId
       },
-      order: [['displayOrder', 'ASC'], ['name', 'ASC']]
+      order: [['displayOrder', 'ASC'], ['createdAt', 'DESC']]
     });
 
     // Build product query
@@ -71,9 +71,10 @@ router.get('/', checkRestaurantAccess, async (req, res) => {
     const totalCount = await Product.count({ where: productWhere });
 
     // Get products (with pagination if limit > 0)
+    // Sort: newest-added on top (Product has no manual displayOrder column).
     const queryOptions = {
       where: productWhere,
-      order: [['id', 'ASC']]
+      order: [['createdAt', 'DESC'], ['id', 'DESC']]
     };
 
     if (limitNum > 0) {
@@ -210,8 +211,8 @@ router.get('/', checkRestaurantAccess, async (req, res) => {
         return a.set_display_order - b.set_display_order;
       }
 
-      // 3순위: 일반 메뉴끼리는 ID 순서 (생성 순)
-      return a.id - b.id;
+      // 3순위: 일반 메뉴끼리는 최근 추가가 위로 (newest first)
+      return b.id - a.id;
     });
 
     // Build response with pagination info if limit was specified
@@ -255,7 +256,7 @@ router.get('/categories', checkRestaurantAccess, async (req, res) => {
         restaurant_id: restaurantId,
         isActive: true
       },
-      order: [['displayOrder', 'ASC'], ['name', 'ASC']]
+      order: [['displayOrder', 'ASC'], ['createdAt', 'DESC']]
     });
 
     const categories = dbCategories.map(cat => ({

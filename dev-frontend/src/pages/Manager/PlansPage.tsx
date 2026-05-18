@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
+import ConfirmModal from '../../components/ConfirmModal';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { Check } from 'lucide-react';
+import { renderFeatureFlag } from '../../utils/featureFlagIcon';
 
 interface Plan {
   id: string;
@@ -345,6 +348,7 @@ const PlansPage: React.FC = () => {
   // const { } = useAuth();
   const navigate = useNavigate();
   const [isAnnual, setIsAnnual] = useState(false);
+  const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
 
   const plans: Plan[] = [
     {
@@ -420,7 +424,7 @@ const PlansPage: React.FC = () => {
   ];
 
   const handleSelectPlan = (planId: string) => {
-    alert(`Selected plan: ${planId}. This would normally open a subscription form or payment page.`);
+    setInfoModal({ open: true, title: 'Coming Soon', message: `Selected plan: ${planId}. Subscription form will be available in an upcoming release.` });
   };
 
   const formatPrice = (price: number) => {
@@ -479,7 +483,7 @@ const PlansPage: React.FC = () => {
                 <FeaturesList>
                   {plan.features.map((feature, index) => (
                     <FeatureItem key={index}>
-                      <CheckIcon>✓</CheckIcon>
+                      <CheckIcon><Check size={14} /></CheckIcon>
                       {feature}
                     </FeatureItem>
                   ))}
@@ -508,27 +512,25 @@ const PlansPage: React.FC = () => {
               {comparisonFeatures.map((item, index) => (
                 <TableRow key={index}>
                   <TableCell>{item.feature}</TableCell>
-                  <TableCell>
-                    {item.basic === '✓' ? <CheckMark>✓</CheckMark> : 
-                     item.basic === '✗' ? <CrossMark>✗</CrossMark> : 
-                     item.basic}
-                  </TableCell>
-                  <TableCell>
-                    {item.professional === '✓' ? <CheckMark>✓</CheckMark> : 
-                     item.professional === '✗' ? <CrossMark>✗</CrossMark> : 
-                     item.professional}
-                  </TableCell>
-                  <TableCell>
-                    {item.enterprise === '✓' ? <CheckMark>✓</CheckMark> : 
-                     item.enterprise === '✗' ? <CrossMark>✗</CrossMark> : 
-                     item.enterprise}
-                  </TableCell>
+                  <TableCell>{renderFeatureFlag(item.basic)}</TableCell>
+                  <TableCell>{renderFeatureFlag(item.professional)}</TableCell>
+                  <TableCell>{renderFeatureFlag(item.enterprise)}</TableCell>
                 </TableRow>
               ))}
             </ComparisonTable>
           </ComparisonSection>
         </Content>
       </Container>
+      <ConfirmModal
+        isOpen={infoModal.open}
+        title={infoModal.title}
+        message={infoModal.message}
+        onConfirm={() => setInfoModal({ open: false, title: '', message: '' })}
+        onCancel={() => setInfoModal({ open: false, title: '', message: '' })}
+        confirmText="OK"
+        type="info"
+        singleButton
+      />
     </>
   );
 };

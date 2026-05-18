@@ -30,6 +30,25 @@ async function resolveReceiverSmtp(user) {
       entityType = 'foodcourt';
       entityId = user.foodcourt_id;
       break;
+    case 'Supplier Admin': {
+      // Supplier Admin → 자기 supplier_company 의 entity SMTP 우선.
+      // notification_settings.entity_type='supplier_company' 등록 시 동작. 없으면 platform fallback.
+      try {
+        const sup = await sequelize.query(
+          `SELECT id FROM supplier_companies WHERE owner_id = :uid LIMIT 1`,
+          { replacements: { uid: user.id }, type: QueryTypes.SELECT }
+        );
+        if (sup[0]?.id) {
+          entityType = 'supplier_company';
+          entityId = sup[0].id;
+        } else {
+          entityType = null;
+        }
+      } catch {
+        entityType = null;
+      }
+      break;
+    }
     case 'System Admin':
       entityType = 'admin';
       entityId = user.id;

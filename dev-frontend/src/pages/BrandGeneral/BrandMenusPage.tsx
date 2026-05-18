@@ -8,17 +8,264 @@
  * Distinct from BrandProducts (BG's supply catalog). Names follow the Brand Menu
  * terminology — never "Product" in this domain.
  */
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
-import { Lock, Building2, Plus, Edit2, Copy, Trash2, Send, ChevronDown } from 'lucide-react';
+import { Lock, Building2, Edit2, Copy, Trash2, Send, ChevronDown, UtensilsCrossed, Clock, Info, ArrowRight } from 'lucide-react';
 import PageHeader from '../../components/Common/PageHeader';
-import { Modal as CommonModal } from '../../components/UI';
-import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import { Modal as CommonModal, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormTextArea } from '../../components/UI';
+import { SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import ListControlsBar from '../../components/Common/ListControlsBar';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import { getAuthToken } from '../../utils/auth';
 import { formatCurrency } from '../../utils/currency';
+import BrandMenuCategoriesPage from './BrandMenuCategoriesPage';
+import BrandMenuOptionGroupsPage from './BrandMenuOptionGroupsPage';
+import ConfirmModal from '../../components/ConfirmModal';
+import AutoSaveField from '../../components/Common/AutoSaveField';
+import SortDropdown, { SortKey, sortItems } from '../../components/Common/SortDropdown';
+
+type Tab = 'menus' | 'categories' | 'options' | 'settings';
+
+interface MenuSettings {
+  default_distribution_mode: 'auto' | 'manual';
+  default_locks: { name: boolean; price: boolean; category: boolean; image: boolean; options: boolean };
+  default_push_target: 'all' | 'selected';
+}
+
+const SettingsCard = styled.div`
+  background: white;
+  border: 1px solid #E6EBF1;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 16px;
+  @media (max-width: 768px) { padding: 16px; }
+`;
+
+const IntroCard = styled.div`
+  background: linear-gradient(135deg, #F8F7FF 0%, #FFFFFF 100%);
+  border: 1px solid #E6E3FF;
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-bottom: 16px;
+  @media (max-width: 768px) { padding: 16px; }
+`;
+
+const IntroTitle = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #0A2540;
+  margin-bottom: 6px;
+  svg { width: 16px; height: 16px; color: #635BFF; }
+`;
+
+const IntroBody = styled.p`
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #4B5563;
+`;
+
+const Glossary = styled.dl`
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 6px 12px;
+  margin: 12px 0 0 0;
+  font-size: 12px;
+  dt { color: #635BFF; font-weight: 600; }
+  dd { color: #6B7280; margin: 0; }
+  @media (max-width: 480px) {
+    grid-template-columns: 1fr;
+    gap: 2px 0;
+    dt { margin-top: 6px; }
+  }
+`;
+
+const WarningBox = styled.div`
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  background: #FFFBEB;
+  border: 1px solid #FDE68A;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: #92400E;
+  line-height: 1.5;
+  svg { width: 14px; height: 14px; color: #D97706; flex-shrink: 0; margin-top: 1px; }
+`;
+
+const ScenarioHint = styled.div`
+  font-size: 11px;
+  color: #635BFF;
+  background: #F0EFFF;
+  border-radius: 6px;
+  padding: 6px 10px;
+  margin-top: 6px;
+  line-height: 1.5;
+  display: inline-block;
+`;
+
+const SettingsSectionTitle = styled.h3`
+  font-size: 14px;
+  font-weight: 600;
+  color: #0A2540;
+  margin: 0 0 4px 0;
+`;
+
+const SettingsSectionHint = styled.p`
+  font-size: 12px;
+  color: #6B7C93;
+  margin: 0 0 16px 0;
+`;
+
+const ToggleRow = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #F3F4F6;
+  cursor: pointer;
+  &:last-child { border-bottom: 0; }
+  @media (max-width: 480px) { gap: 8px; }
+`;
+
+const ToggleInfo = styled.div`
+  flex: 1;
+  font-size: 13px;
+  color: #0A2540;
+  strong { font-weight: 500; }
+  div { font-size: 12px; color: #6B7C93; margin-top: 2px; }
+`;
+
+const Switch = styled.input`
+  appearance: none;
+  width: 36px;
+  height: 20px;
+  border-radius: 999px;
+  background: #E6EBF1;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.15s;
+  flex-shrink: 0;
+  &:checked { background: #635BFF; }
+  &::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: white;
+    top: 2px;
+    left: 2px;
+    transition: transform 0.15s;
+  }
+  &:checked::after { transform: translateX(16px); }
+`;
+
+const RadioRow = styled.label`
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: #0A2540;
+  &:hover { border-color: #635BFF; }
+  input { accent-color: #635BFF; margin-top: 2px; flex-shrink: 0; }
+  @media (max-width: 480px) { padding: 10px; }
+`;
+
+const TabBar = styled.div`
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid #E6EBF1;
+  margin-bottom: 20px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  &::-webkit-scrollbar { display: none; }
+`;
+
+const TabBtn = styled.button<{ $active: boolean }>`
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid ${p => p.$active ? '#635BFF' : 'transparent'};
+  color: ${p => p.$active ? '#635BFF' : '#6B7C93'};
+  font-size: 14px;
+  font-weight: ${p => p.$active ? 600 : 500};
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-bottom: -1px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  &:hover { color: #635BFF; }
+`;
+
+const HelperCard = styled.div`
+  background: linear-gradient(135deg, #F8F7FF 0%, #FFFFFF 100%);
+  border: 1px solid #E6E3FF;
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  @media (max-width: 768px) { padding: 16px; gap: 12px; }
+`;
+
+const HelperIcon = styled.div`
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: #F0EFFF;
+  color: #635BFF;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  svg { width: 18px; height: 18px; }
+`;
+
+const HelperTitle = styled.div`
+  font-size: 14px;
+  font-weight: 600;
+  color: #0A2540;
+  margin-bottom: 6px;
+`;
+
+const HelperList = styled.ol`
+  margin: 0 0 12px 0;
+  padding-left: 20px;
+  color: #4B5563;
+  font-size: 13px;
+  line-height: 1.7;
+  li { margin-bottom: 2px; }
+`;
+
+const HelperLink = styled.button`
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: #635BFF;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  &:hover { text-decoration: underline; }
+  svg { width: 12px; height: 12px; }
+`;
 
 const Container = styled.div`
   min-height: 100vh;
@@ -36,6 +283,7 @@ const ActionRow = styled.div`
   align-items: center;
   margin-bottom: 16px;
   flex-wrap: wrap;
+  @media (max-width: 480px) { gap: 8px; }
 `;
 
 const BrandPill = styled.div`
@@ -72,15 +320,16 @@ const Card = styled.div`
   &:hover { border-color: #635BFF; box-shadow: 0 2px 8px rgba(99, 91, 255, 0.06); }
 `;
 
-const CardImage = styled.div<{ $src?: string | null; $emoji?: string | null }>`
+const CardImage = styled.div<{ $src?: string | null }>`
   width: 100%;
   aspect-ratio: 16 / 9;
-  background: ${p => p.$src ? `url(${p.$src})` : '#F0EFFF'} center/cover no-repeat;
+  background: ${p => p.$src ? `url(${p.$src})` : '#F4F5F8'} center/cover no-repeat;
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 56px;
+  color: #9CA3AF;
+  svg { width: 32px; height: 32px; }
 `;
 
 const CardTitle = styled.h3`
@@ -89,6 +338,10 @@ const CardTitle = styled.h3`
   color: #0A2540;
   margin: 0;
   line-height: 1.3;
+  min-width: 0;
+  flex: 1;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 `;
 
 const CardRow = styled.div`
@@ -109,6 +362,9 @@ const LockBadge = styled.span`
   border-radius: 999px;
   font-size: 12px;
   font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: help;
   svg { width: 12px; height: 12px; }
 `;
 
@@ -116,14 +372,31 @@ const DistributionLine = styled.div`
   font-size: 12px;
   color: #6B7C93;
   display: flex;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
+  flex-wrap: wrap;
+`;
+
+const DistItem = styled.span<{ $color: string }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: ${p => p.$color};
+  font-weight: 500;
+`;
+
+const DistDot = styled.span<{ $bg: string }>`
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: ${p => p.$bg};
+  display: inline-block;
 `;
 
 const CardActions = styled.div`
   display: flex;
   gap: 8px;
-  margin-top: 8px;
+  margin-top: auto;
   border-top: 1px solid #F3F4F6;
   padding-top: 12px;
 `;
@@ -215,6 +488,23 @@ const authHeaders = () => {
 
 const BrandMenusPage: React.FC = () => {
   const { t } = useTranslation(['brand', 'common']);
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = (searchParams.get('tab') as Tab) || 'menus';
+  const [tab, setTab] = useState<Tab>(
+    initialTab === 'categories' || initialTab === 'options' || initialTab === 'settings' ? initialTab : 'menus'
+  );
+
+  const switchTab = (next: Tab) => {
+    setTab(next);
+    if (next === 'menus') {
+      searchParams.delete('tab');
+    } else {
+      searchParams.set('tab', next);
+    }
+    setSearchParams(searchParams, { replace: true });
+  };
+
   const [brands, setBrands] = useState<Brand[]>([]);
   const [selectedBrandId, setSelectedBrandId] = useState<number | null>(() => {
     const saved = localStorage.getItem('bg.selectedBrandId');
@@ -222,12 +512,22 @@ const BrandMenusPage: React.FC = () => {
   });
   const [showBrandDropdown, setShowBrandDropdown] = useState(false);
   const [menus, setMenus] = useState<BrandMenu[]>([]);
+  const [sortKey, setSortKey] = useState<SortKey>('newest');
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingMenu, setEditingMenu] = useState<BrandMenu | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pushConfirm, setPushConfirm] = useState<{ menuId: number; menuName: string } | null>(null);
+  const [pushPicker, setPushPicker] = useState<{ menuId: number; menuName: string } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ menuId: number; menuName: string } | null>(null);
+  const [pushResult, setPushResult] = useState<{ menuId: number; pushed: number; created: number; updated: number } | null>(null);
+  const [copyTarget, setCopyTarget] = useState<{ menuId: number; menuName: string } | null>(null);
+  const [copyToBrandId, setCopyToBrandId] = useState<number | null>(null);
+  const [copyIncludeLocks, setCopyIncludeLocks] = useState(false);
+  const [copying, setCopying] = useState(false);
+  const [menuSettings, setMenuSettings] = useState<MenuSettings | null>(null);
 
   // Load brands BG owns
   useEffect(() => {
@@ -268,29 +568,82 @@ const BrandMenusPage: React.FC = () => {
 
   useEffect(() => { loadMenus(); }, [loadMenus]);
 
+  // Cache brand-level menu defaults so handlePushClick can decide which modal to open.
+  useEffect(() => {
+    if (!selectedBrandId) { setMenuSettings(null); return; }
+    (async () => {
+      try {
+        const r = await fetch(`/api/brand-menus/settings?brand_id=${selectedBrandId}`, { headers: authHeaders() });
+        const j = await r.json();
+        if (r.ok && j.success) setMenuSettings(j.data);
+      } catch { /* silent — fallback to 'all' */ }
+    })();
+  }, [selectedBrandId]);
+
   const handleBrandChange = (id: number) => {
     setSelectedBrandId(id);
     localStorage.setItem('bg.selectedBrandId', String(id));
     setShowBrandDropdown(false);
   };
 
-  const handlePush = async (menuId: number) => {
-    if (!window.confirm(t('brand:brandMenusPage.confirmPushAll', 'Push this menu to all franchise restaurants?'))) return;
+  const handlePushClick = (menu: BrandMenu) => {
+    // Branch by Settings tab → default_push_target
+    if (menuSettings?.default_push_target === 'selected') {
+      setPushPicker({ menuId: menu.id, menuName: menu.name });
+    } else {
+      setPushConfirm({ menuId: menu.id, menuName: menu.name });
+    }
+  };
+
+  const performPush = async (menuId: number, restaurantIds: number[] | 'all') => {
     try {
       const r = await fetch(`/api/brand-menus/${menuId}/push`, {
         method: 'POST', headers: authHeaders(),
-        body: JSON.stringify({ restaurant_ids: 'all' })
+        body: JSON.stringify({ restaurant_ids: restaurantIds })
       });
       const j = await r.json();
       if (!r.ok || !j.success) throw new Error(j.message || 'Push failed');
+      const d = j.data || {};
+      setPushResult({ menuId, pushed: d.pushed || 0, created: d.created || 0, updated: d.updated || 0 });
       loadMenus();
     } catch (e: any) {
       setError(e?.message || 'Failed to push');
     }
   };
 
-  const handleDelete = async (menuId: number, menuName: string) => {
-    if (!window.confirm(t('brand:brandMenusPage.confirmDelete', { name: menuName, defaultValue: `Delete "${menuName}"? Linked restaurant products will be soft-unlinked but preserved.` }))) return;
+  const confirmPush = async () => {
+    if (!pushConfirm) return;
+    const { menuId } = pushConfirm;
+    setPushConfirm(null);
+    await performPush(menuId, 'all');
+  };
+
+  const handleDeleteClick = (menuId: number, menuName: string) => setDeleteConfirm({ menuId, menuName });
+
+  const confirmCopy = async () => {
+    if (!copyTarget || !copyToBrandId) return;
+    setCopying(true);
+    try {
+      const r = await fetch(`/api/brand-menus/${copyTarget.menuId}/copy`, {
+        method: 'POST', headers: authHeaders(),
+        body: JSON.stringify({ target_brand_id: copyToBrandId, include_locks: copyIncludeLocks })
+      });
+      const j = await r.json();
+      if (!r.ok || !j.success) throw new Error(j.message || 'Copy failed');
+      setCopyTarget(null); setCopyToBrandId(null); setCopyIncludeLocks(false);
+      // If copied to current brand list, refresh
+      if (copyToBrandId === selectedBrandId) loadMenus();
+    } catch (e: any) {
+      setError(e?.message || 'Failed to copy');
+    } finally {
+      setCopying(false);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm) return;
+    const { menuId } = deleteConfirm;
+    setDeleteConfirm(null);
     try {
       const r = await fetch(`/api/brand-menus/${menuId}`, { method: 'DELETE', headers: authHeaders() });
       const j = await r.json();
@@ -308,6 +661,7 @@ const BrandMenusPage: React.FC = () => {
     <Container>
       <PageHeader title={t('brand:brandMenusPage.title', 'Brand Menus')} />
       <Content>
+        {/* Top row: brand selector (shared across all tabs) */}
         <ActionRow>
           {brands.length > 1 && (
             <div style={{ position: 'relative' }}>
@@ -327,21 +681,51 @@ const BrandMenusPage: React.FC = () => {
               )}
             </div>
           )}
+          {brands.length === 1 && currentBrand && (
+            <BrandSwitch as="div" style={{ cursor: 'default' }}>
+              <Building2 />
+              {currentBrand.name}
+            </BrandSwitch>
+          )}
           <div style={{ flex: 1 }} />
-          <ThemedButton variant="primary" onClick={() => setShowAddModal(true)} disabled={!selectedBrandId}>
-            <Plus style={{ width: 14, height: 14, marginRight: 4 }} />
-            {t('brand:brandMenusPage.addMenu', 'Add Brand Menu')}
-          </ThemedButton>
         </ActionRow>
 
-        <FilterBar>
+        {/* Tab navigation */}
+        <TabBar>
+          <TabBtn type="button" $active={tab === 'menus'} onClick={() => switchTab('menus')}>
+            {t('brand:brandMenusPage.tabMenus', 'Menus')}
+          </TabBtn>
+          <TabBtn type="button" $active={tab === 'categories'} onClick={() => switchTab('categories')}>
+            {t('brand:brandMenusPage.tabCategories', 'Categories')}
+          </TabBtn>
+          <TabBtn type="button" $active={tab === 'options'} onClick={() => switchTab('options')}>
+            {t('brand:brandMenusPage.tabOptions', 'Option Groups')}
+          </TabBtn>
+          <TabBtn type="button" $active={tab === 'settings'} onClick={() => switchTab('settings')}>
+            {t('brand:brandMenusPage.tabSettings', 'Settings')}
+          </TabBtn>
+        </TabBar>
+
+        {tab === 'categories' && <BrandMenuCategoriesPage brandId={selectedBrandId} />}
+        {tab === 'options' && <BrandMenuOptionGroupsPage brandId={selectedBrandId} />}
+        {tab === 'settings' && <MenuSettingsTab brandId={selectedBrandId} brandName={currentBrand?.name || ''} />}
+
+        {tab === 'menus' && (
+        <>
+        <ListControlsBar>
           <SearchInput
             type="text"
             placeholder={t('brand:brandMenusPage.searchPlaceholder', 'Search by name...')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-        </FilterBar>
+          <SortDropdown value={sortKey} onChange={setSortKey} />
+          <div data-controls-trailing>
+            <ThemedButton variant="primary" onClick={() => setShowAddModal(true)} disabled={!selectedBrandId}>
+              {t('brand:brandMenusPage.addMenu', 'Add Brand Menu')}
+            </ThemedButton>
+          </div>
+        </ListControlsBar>
 
         {error && (
           <div style={{ padding: 12, background: '#FEE2E2', color: '#DC2626', borderRadius: 8, marginBottom: 16, fontSize: 13 }}>{error}</div>
@@ -350,8 +734,24 @@ const BrandMenusPage: React.FC = () => {
         {loading ? (
           <EmptyState>{t('common:label.loading', 'Loading...')}</EmptyState>
         ) : menus.length === 0 ? (
+          <>
+          <HelperCard>
+            <HelperIcon><Info /></HelperIcon>
+            <div style={{ flex: 1 }}>
+              <HelperTitle>{t('brand:brandMenusPage.helperTitle', 'How Brand Menus work')}</HelperTitle>
+              <HelperList>
+                <li>{t('brand:brandMenusPage.helperStep1', 'Create Categories (e.g. Mains, Drinks) — under the Categories tab.')}</li>
+                <li>{t('brand:brandMenusPage.helperStep2', 'Create Option Groups (e.g. Size, Spice Level) — under the Option Groups tab.')}</li>
+                <li>{t('brand:brandMenusPage.helperStep3', 'Add Brand Menus and link them to categories & option groups.')}</li>
+                <li>{t('brand:brandMenusPage.helperStep4', 'Push to franchise restaurants. Locked fields cannot be edited by restaurants.')}</li>
+              </HelperList>
+              <HelperLink type="button" onClick={() => switchTab('settings')}>
+                {t('brand:brandMenusPage.helperMenuSettings', 'Open menu settings')} <ArrowRight />
+              </HelperLink>
+            </div>
+          </HelperCard>
           <EmptyState>
-            <Building2 style={{ width: 32, height: 32, color: '#9CA3AF', marginBottom: 8 }} />
+            <UtensilsCrossed style={{ width: 32, height: 32, color: '#9CA3AF', marginBottom: 8 }} />
             <div style={{ fontWeight: 500, color: '#0A2540', marginBottom: 4 }}>
               {t('brand:brandMenusPage.emptyTitle', 'No brand menus yet')}
             </div>
@@ -359,37 +759,56 @@ const BrandMenusPage: React.FC = () => {
               {t('brand:brandMenusPage.emptyDesc', 'Create menu templates here and push them to franchise restaurants.')}
             </div>
           </EmptyState>
+          </>
         ) : (
           <Grid>
-            {menus.map(m => (
+            {sortItems(menus.map(m => ({ ...m, price: m.recommended_price })), sortKey).map(m => (
               <Card key={m.id}>
                 <CardImage $src={m.image_url}>
-                  {!m.image_url && <span>{m.emoji || '🍽️'}</span>}
+                  {!m.image_url && <UtensilsCrossed />}
                 </CardImage>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                   <CardTitle>{m.name}</CardTitle>
                   {lockCount(m) > 0 && (
-                    <LockBadge><Lock />{lockCount(m)}</LockBadge>
+                    <LockBadge title={t('brand:brandMenusPage.lockBadgeHint', { count: lockCount(m), defaultValue: `${lockCount(m)} field(s) locked — franchise restaurants cannot edit these` })}>
+                      <Lock />{lockCount(m)}
+                    </LockBadge>
                   )}
                 </div>
                 <CardRow>
                   <span style={{ fontWeight: 600, color: '#0A2540' }}>{formatCurrency(Number(m.recommended_price), m.currency || 'MYR')}</span>
                   <span>{m.category?.name || '—'}</span>
                 </CardRow>
-                <DistributionLine>
-                  <span style={{ color: m.distribution.in_sync > 0 ? '#10B981' : '#9CA3AF' }}>✓ {m.distribution.in_sync}</span>
-                  {m.distribution.pending_update > 0 && <span style={{ color: '#F59E0B' }}>⏳ {m.distribution.pending_update}</span>}
-                  {m.distribution.unlinked > 0 && <span style={{ color: '#6B7C93' }}>— {m.distribution.unlinked}</span>}
+                <DistributionLine title={t('brand:brandMenusPage.distributionHint', 'Synced (green) = restaurants on the latest version · Pending (orange) = has older version, needs push · Unlinked (grey) = restaurant has its own version, brand updates ignored')}>
+                  <DistItem $color={m.distribution.in_sync > 0 ? '#10B981' : '#9CA3AF'}>
+                    <DistDot $bg={m.distribution.in_sync > 0 ? '#10B981' : '#D1D5DB'} />
+                    {m.distribution.in_sync}
+                  </DistItem>
+                  {m.distribution.pending_update > 0 && (
+                    <DistItem $color="#F59E0B">
+                      <Clock style={{ width: 11, height: 11 }} />
+                      {m.distribution.pending_update}
+                    </DistItem>
+                  )}
+                  {m.distribution.unlinked > 0 && (
+                    <DistItem $color="#6B7C93">
+                      <DistDot $bg="#D1D5DB" />
+                      {m.distribution.unlinked}
+                    </DistItem>
+                  )}
                   <span style={{ color: '#9CA3AF', marginLeft: 'auto' }}>v{m.version}</span>
                 </DistributionLine>
                 <CardActions>
                   <IconBtn type="button" onClick={() => setEditingMenu(m)} title={t('common:button.edit')}>
                     <Edit2 /> {t('common:button.edit')}
                   </IconBtn>
-                  <IconBtn type="button" onClick={() => handlePush(m.id)} title={t('brand:brandMenusPage.pushToAllNow', 'Push to All Now')}>
+                  <IconBtn type="button" onClick={() => handlePushClick(m)} title={t('brand:brandMenusPage.pushToAllNow', 'Push to All Now')}>
                     <Send /> {t('brand:brandMenusPage.push', 'Push')}
                   </IconBtn>
-                  <IconBtn type="button" onClick={() => handleDelete(m.id, m.name)} title={t('common:button.delete')} style={{ marginLeft: 'auto' }}>
+                  <IconBtn type="button" onClick={() => setCopyTarget({ menuId: m.id, menuName: m.name })} title={t('brand:brandMenusPage.copyToBrand', 'Copy to another brand')}>
+                    <Copy />
+                  </IconBtn>
+                  <IconBtn type="button" onClick={() => handleDeleteClick(m.id, m.name)} title={t('common:button.delete')} style={{ marginLeft: 'auto' }}>
                     <Trash2 />
                   </IconBtn>
                 </CardActions>
@@ -415,6 +834,113 @@ const BrandMenusPage: React.FC = () => {
             onSaved={() => { setEditingMenu(null); loadMenus(); }}
           />
         )}
+        </>
+        )}
+
+        {pushPicker && (
+          <PushPickerModal
+            menuId={pushPicker.menuId}
+            menuName={pushPicker.menuName}
+            onClose={() => setPushPicker(null)}
+            onConfirm={async (ids) => {
+              const id = pushPicker.menuId;
+              setPushPicker(null);
+              await performPush(id, ids);
+            }}
+          />
+        )}
+
+        <ConfirmModal
+          isOpen={!!pushConfirm}
+          type="info"
+          title={t('brand:brandMenusPage.confirmPushTitle', 'Push to franchise restaurants')}
+          message={t('brand:brandMenusPage.confirmPushMessage', {
+            name: pushConfirm?.menuName || '',
+            defaultValue: `Push "${pushConfirm?.menuName}" to all franchise restaurants? Linked restaurants will receive the latest version.`
+          })}
+          confirmText={t('brand:brandMenusPage.pushNow', 'Push Now')}
+          cancelText={t('common:button.cancel', 'Cancel')}
+          onConfirm={confirmPush}
+          onCancel={() => setPushConfirm(null)}
+        />
+
+        <ConfirmModal
+          isOpen={!!deleteConfirm}
+          type="danger"
+          title={t('brand:brandMenusPage.confirmDeleteTitle', 'Delete brand menu')}
+          message={t('brand:brandMenusPage.confirmDelete', {
+            name: deleteConfirm?.menuName || '',
+            defaultValue: `Delete "${deleteConfirm?.menuName}"? Linked restaurant products will be soft-unlinked but preserved.`
+          })}
+          confirmText={t('common:button.delete', 'Delete')}
+          cancelText={t('common:button.cancel', 'Cancel')}
+          onConfirm={confirmDelete}
+          onCancel={() => setDeleteConfirm(null)}
+        />
+
+        {copyTarget && (
+          <CommonModal
+            isOpen={true}
+            onClose={() => { setCopyTarget(null); setCopyToBrandId(null); setCopyIncludeLocks(false); }}
+            title={t('brand:brandMenusPage.copyMenuTitle', { name: copyTarget.menuName, defaultValue: `Copy "${copyTarget.menuName}" to another brand` })}
+            footer={
+              <>
+                <ThemedButton variant="cancel" onClick={() => { setCopyTarget(null); setCopyToBrandId(null); setCopyIncludeLocks(false); }}>
+                  {t('common:button.cancel')}
+                </ThemedButton>
+                <ThemedButton variant="primary" onClick={confirmCopy}
+                  disabled={!copyToBrandId || copying || copyToBrandId === selectedBrandId}>
+                  {copying ? t('common:label.saving', 'Saving...') : t('brand:brandMenusPage.copyAction', 'Copy Menu')}
+                </ThemedButton>
+              </>
+            }
+          >
+            <div style={{ padding: '10px 12px', background: '#F8F7FF', border: '1px solid #E6E3FF', borderRadius: 8, marginBottom: 16, fontSize: 12, color: '#4B5563' }}>
+              {t('brand:brandMenusPage.copyIntro', 'A new draft will be created in the target brand. Categories and recipes stay with the original brand — re-link in the target brand if needed.')}
+            </div>
+            <UIFormGroup>
+              <FormLabel>{t('brand:brandMenusPage.copyTargetBrand', 'Target brand')} *</FormLabel>
+              <FormSelect value={copyToBrandId || ''} onChange={(e) => setCopyToBrandId(Number(e.target.value) || null)}>
+                <option value="">— {t('brand:brandMenusPage.copyTargetBrandPlaceholder', 'Select a different brand')} —</option>
+                {brands.filter(b => b.id !== selectedBrandId).map(b => (
+                  <option key={b.id} value={b.id}>{b.name}</option>
+                ))}
+              </FormSelect>
+              {brands.filter(b => b.id !== selectedBrandId).length === 0 && (
+                <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 6 }}>
+                  {t('brand:brandMenusPage.copyOnlyOneBrand', 'You only have one brand. Create another brand first to copy menus between them.')}
+                </div>
+              )}
+            </UIFormGroup>
+            <UIFormGroup style={{ marginTop: 16 }}>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer', fontSize: 13, color: '#0A2540' }}>
+                <input type="checkbox" checked={copyIncludeLocks} onChange={(e) => setCopyIncludeLocks(e.target.checked)} style={{ marginTop: 3, accentColor: '#635BFF' }} />
+                <span>
+                  <strong>{t('brand:brandMenusPage.copyIncludeLocks', 'Carry over field locks')}</strong>
+                  <div style={{ fontSize: 11, color: '#6B7C93', marginTop: 2 }}>
+                    {t('brand:brandMenusPage.copyIncludeLocksHint', 'If on, locked fields (name/price/image/etc.) stay locked on the copy. Otherwise the copy starts with no locks so you can edit freely.')}
+                  </div>
+                </span>
+              </label>
+            </UIFormGroup>
+          </CommonModal>
+        )}
+
+        <ConfirmModal
+          isOpen={!!pushResult}
+          type="info"
+          singleButton
+          title={t('brand:brandMenusPage.pushResultTitle', 'Push complete')}
+          message={t('brand:brandMenusPage.pushResultMessage', {
+            pushed: pushResult?.pushed || 0,
+            created: pushResult?.created || 0,
+            updated: pushResult?.updated || 0,
+            defaultValue: `Pushed to ${pushResult?.pushed || 0} restaurants — ${pushResult?.created || 0} created, ${pushResult?.updated || 0} updated.`
+          })}
+          confirmText={t('common:button.ok', 'OK')}
+          onConfirm={() => setPushResult(null)}
+          onCancel={() => setPushResult(null)}
+        />
       </Content>
     </Container>
   );
@@ -423,6 +949,45 @@ const BrandMenusPage: React.FC = () => {
 // ──────────────────────────────────────────────────────────────────────────
 // Edit modal (Create + Edit unified)
 // ──────────────────────────────────────────────────────────────────────────
+// ── Option group chip components (mirrored from RA MenuManagement for visual parity) ──
+const OptionGroupSelectStyled = styled.select`
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #0A2540;
+  background: white;
+  cursor: pointer;
+  transition: all 0.15s;
+  &:focus { outline: none; border-color: #635BFF; box-shadow: 0 0 0 3px rgba(99,91,255,0.1); }
+`;
+const SelectedChipsContainer = styled.div`
+  display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; min-height: 36px;
+`;
+const OptionGroupChip = styled.div`
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 12px; background: #F0F4FF; border: 1px solid #C7D2FE;
+  border-radius: 20px; font-size: 13px; color: #4338CA;
+`;
+const ChipOrderBadge = styled.span`
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; background: #635BFF; color: white;
+  border-radius: 50%; font-size: 11px; font-weight: 600;
+`;
+const ChipName = styled.span` font-weight: 500; `;
+const ChipBadge = styled.span<{ type: 'required' | 'optional' }>`
+  font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 500;
+  ${p => p.type === 'required' ? 'background:#FEE2E2; color:#DC2626;' : 'background:#DCFCE7; color:#16A34A;'}
+`;
+const ChipRemoveButton = styled.button`
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; background: transparent; border: 0;
+  cursor: pointer; color: #6B7280; border-radius: 50%; padding: 0;
+  transition: all 0.15s;
+  &:hover { background: #E0E7FF; color: #4338CA; }
+`;
+
 const ModalGrid = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -527,18 +1092,12 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
   const [emoji, setEmoji] = useState(menu?.emoji || '');
   const [imageUrl, setImageUrl] = useState(menu?.image_url || '');
   const [categoryId, setCategoryId] = useState<string>(menu?.category_id ? String(menu.category_id) : '');
-  const [distribution, setDistribution] = useState<'auto' | 'manual'>(menu?.distribution_mode || 'manual');
-  const [locks, setLocks] = useState({
-    name: menu?.locks?.name || false,
-    price: menu?.locks?.price || false,
-    category: menu?.locks?.category || false,
-    image: menu?.locks?.image || false,
-    options: menu?.locks?.options || false
-  });
+  // Locks + distribution_mode are no longer set per-menu — they follow the brand
+  // defaults configured in the Settings tab. Backend fills them on create.
   const [categories, setCategories] = useState<Array<{ id: number; name: string }>>([]);
   const [recipes, setRecipes] = useState<Array<{ id: number; name: string }>>([]);
   const [recipeId, setRecipeId] = useState<string>(menu?.recipe?.id ? String(menu.recipe.id) : '');
-  const [optionGroups, setOptionGroups] = useState<Array<{ id: number; name: string }>>([]);
+  const [optionGroups, setOptionGroups] = useState<Array<{ id: number; name: string; is_required: boolean; max_select: number }>>([]);
   const [selectedOptionGroupIds, setSelectedOptionGroupIds] = useState<number[]>([]);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -553,7 +1112,7 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
           fetch(`/api/brand-product-recipes?brand_id=${brandId}`, { headers: authHeaders() }).then(r => r.ok ? r.json() : { data: [] })
         ]);
         setCategories((c.data || []).map((x: any) => ({ id: x.id, name: x.name })));
-        setOptionGroups((og.data || []).map((x: any) => ({ id: x.id, name: x.name })));
+        setOptionGroups((og.data || []).map((x: any) => ({ id: x.id, name: x.name, is_required: !!x.is_required, max_select: x.max_select || 1 })));
         setRecipes((r.data || []).map((x: any) => ({ id: x.id, name: x.name })));
       } catch (e) { /* silent */ }
     })();
@@ -584,9 +1143,8 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
         recommended_price: parseFloat(price) || 0,
         category_id: categoryId ? parseInt(categoryId, 10) : null,
         product_recipe_id: recipeId ? parseInt(recipeId, 10) : null,
-        distribution_mode: distribution,
-        lock_name: locks.name, lock_price: locks.price, lock_category: locks.category,
-        lock_image: locks.image, lock_options: locks.options,
+        // distribution_mode + lock_* are omitted on purpose — the backend fills
+        // them from brand.menu_settings defaults (Settings tab is the single source).
         option_group_ids: selectedOptionGroupIds
       };
       const url = isEdit ? `/api/brand-menus/${menu!.id}` : '/api/brand-menus';
@@ -619,125 +1177,441 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
       {saveError && (
         <div style={{ padding: 12, background: '#FEE2E2', color: '#DC2626', borderRadius: 8, marginBottom: 16, fontSize: 13 }}>{saveError}</div>
       )}
-      <ModalGrid>
-        <div>
-          <Section>
-            <SectionTitle>{t('brand:brandMenusPage.menuDetails', 'Menu Details')}</SectionTitle>
-            <FormGroup>
-              <Label>{t('brand:brandMenusPage.name', 'Name')} *</Label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Soju Set" />
-            </FormGroup>
-            <FormGroup>
-              <Label>{t('brand:brandMenusPage.description', 'Description')}</Label>
-              <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="..." />
-            </FormGroup>
-            <FormGroup>
-              <Label>{t('brand:brandMenusPage.category', 'Category')}</Label>
-              <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-                <option value="">—</option>
-                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </Select>
-            </FormGroup>
-            <FormGroup>
-              <Label>{t('brand:brandMenusPage.recommendedPrice', 'Recommended Price (RM)')} *</Label>
-              <Input type="number" step="0.01" min="0" value={price} onChange={(e) => setPrice(e.target.value)} />
-            </FormGroup>
-            <FormGroup>
-              <Label>{t('brand:brandMenusPage.emoji', 'Emoji')}</Label>
-              <Input value={emoji} onChange={(e) => setEmoji(e.target.value)} maxLength={4} placeholder="🍶" />
-            </FormGroup>
-            <FormGroup>
-              <Label>{t('brand:brandMenusPage.image', 'Image')}</Label>
-              <ImageUploadDropzone
-                value={imageUrl}
-                onChange={setImageUrl}
-                label=""
-                helpText={t('brand:brandMenusPage.imageHelp', 'Upload an image for this brand menu (auto-compressed)')}
-              />
-            </FormGroup>
-            <FormGroup>
-              <Label>{t('brand:brandMenusPage.linkedRecipe', 'Linked Recipe (optional)')}</Label>
-              <Select value={recipeId} onChange={(e) => setRecipeId(e.target.value)}>
-                <option value="">—</option>
-                {recipes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-              </Select>
-            </FormGroup>
-            <FormGroup>
-              <Label>{t('brand:brandMenusPage.optionGroups', 'Option Groups')}</Label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 160, overflowY: 'auto', padding: 8, border: '1px solid #E6EBF1', borderRadius: 6, background: 'white' }}>
-                {optionGroups.length === 0 ? (
-                  <div style={{ fontSize: 13, color: '#9CA3AF' }}>{t('brand:brandMenusPage.noOptionGroups', 'No option groups available — create in Menu Options.')}</div>
-                ) : optionGroups.map(g => (
-                  <label key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={selectedOptionGroupIds.includes(g.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) setSelectedOptionGroupIds([...selectedOptionGroupIds, g.id]);
-                        else setSelectedOptionGroupIds(selectedOptionGroupIds.filter(x => x !== g.id));
-                      }}
-                    />
-                    {g.name}
-                  </label>
-                ))}
-              </div>
-            </FormGroup>
-          </Section>
+
+      {isEdit && (
+        <div style={{ padding: '10px 12px', background: '#F8F7FF', border: '1px solid #E6E3FF', borderRadius: 8, marginBottom: 16, fontSize: 12, color: '#4B5563', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+          <span>
+            {t('brand:brandMenusPage.version', 'Version')}: <strong style={{ color: '#0A2540' }}>v{menu!.version}</strong> ·{' '}
+            {t('brand:brandMenusPage.syncedTo', { count: menu!.distribution.in_sync, total: menu!.distribution.in_sync + menu!.distribution.pending_update + menu!.distribution.unlinked, defaultValue: `Synced to ${menu!.distribution.in_sync} restaurants` })}
+          </span>
+          <span style={{ color: '#635BFF' }}>{t('brand:brandMenusPage.brandDefaultsHint', 'Field locks and push mode follow the brand defaults set in the Settings tab.')}</span>
         </div>
+      )}
 
-        <div>
-          <Section style={{ marginBottom: 16 }}>
-            <SectionTitle>
-              <Lock style={{ width: 12, height: 12, verticalAlign: -2, marginRight: 4 }} />
-              {t('brand:brandMenusPage.lockSettings', 'Lock Settings')}
-            </SectionTitle>
-            <div style={{ fontSize: 12, color: '#6B7C93', marginBottom: 12 }}>
-              {t('brand:brandMenusPage.lockSettingsHelp', "Once locked, restaurants can't change these fields.")}
-            </div>
-            {(['name','price','category','image','options'] as const).map(k => (
-              <LockRow key={k}>
-                <span style={{ fontSize: 13, color: '#0A2540' }}>{t(`brand:brandMenusPage.lock_${k}`, k.charAt(0).toUpperCase() + k.slice(1))}</span>
-                <Toggle>
-                  <input type="checkbox" checked={locks[k]} onChange={(e) => setLocks({ ...locks, [k]: e.target.checked })} />
-                  <span />
-                </Toggle>
-              </LockRow>
-            ))}
-          </Section>
+      <UIFormGroup>
+        <FormLabel>{t('brand:brandMenusPage.name', 'Name')} *</FormLabel>
+        <FormInput type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Soju Set" />
+      </UIFormGroup>
 
-          <Section>
-            <SectionTitle>
-              <Send style={{ width: 12, height: 12, verticalAlign: -2, marginRight: 4 }} />
-              {t('brand:brandMenusPage.distribution', 'Distribution')}
-            </SectionTitle>
-            <FormGroup>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {(['manual','auto'] as const).map(m => (
-                  <label key={m} style={{
-                    flex: 1, padding: 10, border: '1px solid ' + (distribution === m ? '#635BFF' : '#E6EBF1'),
-                    borderRadius: 6, cursor: 'pointer', background: distribution === m ? '#F0EFFF' : 'white',
-                    textAlign: 'center'
-                  }}>
-                    <input type="radio" name="distribution" checked={distribution === m} onChange={() => setDistribution(m)} style={{ display: 'none' }} />
-                    <div style={{ fontWeight: 500, fontSize: 13 }}>{m === 'auto' ? t('brand:brandMenusPage.distributionAuto', 'Auto') : t('brand:brandMenusPage.distributionManual', 'Manual')}</div>
-                    <div style={{ fontSize: 11, color: '#6B7C93', marginTop: 2 }}>
-                      {m === 'auto' ? t('brand:brandMenusPage.distributionAutoHelp', 'Push immediately') : t('brand:brandMenusPage.distributionManualHelp', 'Push when ready')}
-                    </div>
-                  </label>
+      <UIFormGroup>
+        <FormLabel>{t('brand:brandMenusPage.recommendedPrice', 'Recommended Price (RM)')} *</FormLabel>
+        <FormInput type="number" step="0.01" min="0" value={price} onChange={(e) => setPrice(e.target.value)}
+          onFocus={(e: any) => { if (parseFloat(e.target.value) === 0) e.target.select(); }} />
+      </UIFormGroup>
+
+      <UIFormGroup>
+        <FormLabel>{t('brand:brandMenusPage.category', 'Category')}</FormLabel>
+        <FormSelect value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+          <option value="">— {t('brand:brandMenusPage.selectCategoryPlaceholder', 'Select Category')} —</option>
+          {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </FormSelect>
+      </UIFormGroup>
+
+      <UIFormGroup>
+        <FormLabel>{t('brand:brandMenusPage.emoji', 'Emoji')}</FormLabel>
+        <FormInput type="text" value={emoji} onChange={(e) => setEmoji(e.target.value)} maxLength={4} placeholder="🍶" />
+      </UIFormGroup>
+
+      <UIFormGroup>
+        <FormLabel>{t('brand:brandMenusPage.description', 'Description')}</FormLabel>
+        <FormTextArea value={description} onChange={(e) => setDescription(e.target.value)}
+          placeholder={t('brand:brandMenusPage.descriptionPlaceholder', 'Brief description of this menu...') as string} />
+      </UIFormGroup>
+
+      <ImageUploadDropzone
+        value={imageUrl}
+        onChange={setImageUrl}
+        label={t('brand:brandMenusPage.image', 'Image') as string}
+        helpText={t('brand:brandMenusPage.imageHelp', 'Upload an image for this brand menu (auto-compressed)')}
+        showRemoveButton={true}
+      />
+
+      <UIFormGroup style={{ marginTop: 24 }}>
+        <FormLabel>{t('brand:brandMenusPage.linkedRecipe', 'Linked Recipe (optional)')}</FormLabel>
+        <FormSelect value={recipeId} onChange={(e) => setRecipeId(e.target.value)}>
+          <option value="">— {t('brand:brandMenusPage.selectRecipePlaceholder', 'Select Recipe')} —</option>
+          {recipes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+        </FormSelect>
+      </UIFormGroup>
+
+      <UIFormGroup style={{ marginTop: 24 }}>
+        <FormLabel>
+          {t('brand:brandMenusPage.optionGroups', 'Option Groups')}
+          {selectedOptionGroupIds.length > 0 && ` (${selectedOptionGroupIds.length} ${t('common:selected', 'selected')})`}
+        </FormLabel>
+        {optionGroups.length === 0 ? (
+          <div style={{ fontSize: 13, color: '#9CA3AF', padding: '10px 14px', border: '1px dashed #E6EBF1', borderRadius: 8 }}>
+            {t('brand:brandMenusPage.noOptionGroups', 'No option groups available — create in the Option Groups tab.')}
+          </div>
+        ) : (
+          <>
+            <OptionGroupSelectStyled
+              value=""
+              onChange={(e) => {
+                const id = parseInt(e.target.value, 10);
+                if (id && !selectedOptionGroupIds.includes(id)) {
+                  setSelectedOptionGroupIds([...selectedOptionGroupIds, id]);
+                }
+              }}
+            >
+              <option value="">{t('brand:brandMenusPage.selectOptionGroupToAdd', 'Select option group to add...')}</option>
+              {optionGroups
+                .filter(g => !selectedOptionGroupIds.includes(g.id))
+                .map(g => (
+                  <option key={g.id} value={g.id}>
+                    {g.name} ({g.is_required ? t('brand:brandMenusPage.required', 'Required') : t('brand:brandMenusPage.optional', 'Optional')}, {g.max_select > 1 ? t('brand:brandMenusPage.multi', 'Multi') : t('brand:brandMenusPage.single', 'Single')})
+                  </option>
                 ))}
-              </div>
-            </FormGroup>
-            {isEdit && (
-              <div style={{ marginTop: 16, fontSize: 13, color: '#6B7C93' }}>
-                <div>{t('brand:brandMenusPage.version', 'Version')}: <strong style={{ color: '#0A2540' }}>v{menu!.version}</strong></div>
-                <div style={{ marginTop: 4 }}>
-                  {t('brand:brandMenusPage.syncedTo', { count: menu!.distribution.in_sync, total: menu!.distribution.in_sync + menu!.distribution.pending_update + menu!.distribution.unlinked, defaultValue: `Synced to ${menu!.distribution.in_sync} restaurants` })}
-                </div>
-              </div>
+            </OptionGroupSelectStyled>
+            <SelectedChipsContainer>
+              {selectedOptionGroupIds.map((groupId, index) => {
+                const group = optionGroups.find(g => g.id === groupId);
+                if (!group) return null;
+                return (
+                  <OptionGroupChip key={groupId}>
+                    <ChipOrderBadge>{index + 1}</ChipOrderBadge>
+                    <ChipName>{group.name}</ChipName>
+                    <ChipBadge type={group.is_required ? 'required' : 'optional'}>
+                      {group.is_required ? t('brand:brandMenusPage.required', 'Required') : t('brand:brandMenusPage.optional', 'Optional')}
+                    </ChipBadge>
+                    <ChipRemoveButton
+                      onClick={() => setSelectedOptionGroupIds(selectedOptionGroupIds.filter(id => id !== groupId))}
+                      title={t('common:button.remove', 'Remove') as string}
+                    >
+                      ×
+                    </ChipRemoveButton>
+                  </OptionGroupChip>
+                );
+              })}
+            </SelectedChipsContainer>
+          </>
+        )}
+      </UIFormGroup>
+    </CommonModal>
+  );
+};
+
+// ──────────────────────────────────────────────────────────────────────────
+// Menu Settings tab — brand-level defaults applied to new menus
+// ──────────────────────────────────────────────────────────────────────────
+const MenuSettingsTab: React.FC<{ brandId: number | null; brandName: string }> = ({ brandId, brandName }) => {
+  const { t } = useTranslation(['brand', 'common']);
+  const [settings, setSettings] = useState<MenuSettings | null>(null);
+  const [restaurantCount, setRestaurantCount] = useState<number>(0);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  // Always-fresh ref so AutoSaveField onSave (debounced) reads the latest state, not a stale closure.
+  const settingsRef = useRef<MenuSettings | null>(null);
+  settingsRef.current = settings;
+
+  useEffect(() => {
+    if (!brandId) { setSettings(null); return; }
+    (async () => {
+      setLoading(true);
+      try {
+        const [sRes, rRes] = await Promise.all([
+          fetch(`/api/brand-menus/settings?brand_id=${brandId}`, { headers: authHeaders() }),
+          fetch(`/api/brands/${brandId}/restaurants`, { headers: authHeaders() })
+        ]);
+        const sJson = await sRes.json();
+        if (!sRes.ok || !sJson.success) throw new Error(sJson.message || 'Load failed');
+        setSettings(sJson.data);
+        if (rRes.ok) {
+          const rJson = await rRes.json();
+          setRestaurantCount(Array.isArray(rJson.data) ? rJson.data.length : 0);
+        }
+        setErr(null);
+      } catch (e: any) {
+        setErr(e?.message || 'Load failed');
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [brandId]);
+
+  const persist = useCallback(async () => {
+    if (!brandId || !settingsRef.current) return;
+    const r = await fetch(`/api/brand-menus/settings`, {
+      method: 'PUT', headers: authHeaders(),
+      body: JSON.stringify({ brand_id: brandId, settings: settingsRef.current })
+    });
+    const j = await r.json();
+    if (!r.ok || !j.success) throw new Error(j.message || 'Save failed');
+  }, [brandId]);
+
+  if (!brandId) {
+    return <EmptyState>{t('brand:brandMenusPage.selectBrandFirst', 'Select a brand first')}</EmptyState>;
+  }
+  if (loading || !settings) {
+    return <EmptyState>{t('common:label.loading', 'Loading...')}</EmptyState>;
+  }
+
+  const lockKeys: Array<keyof MenuSettings['default_locks']> = ['name', 'price', 'category', 'image', 'options'];
+  const lockLabels: Record<string, string> = {
+    name: t('brand:brandMenusPage.lockLabelName', 'Menu name'),
+    price: t('brand:brandMenusPage.lockLabelPrice', 'Recommended price'),
+    category: t('brand:brandMenusPage.lockLabelCategory', 'Category'),
+    image: t('brand:brandMenusPage.lockLabelImage', 'Image'),
+    options: t('brand:brandMenusPage.lockLabelOptions', 'Option groups')
+  };
+
+  const lockScenarios: Record<string, string> = {
+    name: t('brand:brandMenusPage.lockScenario.name', 'When ON: every franchise sees the exact menu name you set here. They cannot rename it (e.g. localize, abbreviate, or add suffixes).'),
+    price: t('brand:brandMenusPage.lockScenario.price', 'When ON: franchises must sell at the price you set. Useful for brand-wide promotions. Leave OFF if rent/labor differs by location.'),
+    category: t('brand:brandMenusPage.lockScenario.category', 'When ON: the menu always appears under the same category at every restaurant. Helps menu structure stay consistent.'),
+    image: t('brand:brandMenusPage.lockScenario.image', 'When ON: every restaurant displays the official brand photo. Recommended for visual consistency.'),
+    options: t('brand:brandMenusPage.lockScenario.options', 'When ON: option groups (e.g. Size, Add-ons) and their prices stay identical across all restaurants.')
+  };
+
+  return (
+    <div>
+      {err && (
+        <div style={{ padding: 12, background: '#FEE2E2', color: '#DC2626', borderRadius: 8, marginBottom: 16, fontSize: 13 }}>{err}</div>
+      )}
+
+      <IntroCard>
+        <IntroTitle>
+          <Info />
+          {t('brand:brandMenusPage.settingsIntroTitle', { name: brandName, defaultValue: `Defaults for new menus${brandName ? ` — ${brandName}` : ''}` })}
+        </IntroTitle>
+        <IntroBody>
+          {t('brand:brandMenusPage.settingsIntroBody', 'These values are pre-filled every time you create a new menu in the Menus tab. You can still change them per menu in the edit dialog. Settings save automatically.')}
+        </IntroBody>
+        <Glossary>
+          <dt>{t('brand:brandMenusPage.glossaryPushTerm', 'Push')}</dt>
+          <dd>{t('brand:brandMenusPage.glossaryPushDef', 'Send this brand menu to franchise restaurant menus so customers can see and order it.')}</dd>
+          <dt>{t('brand:brandMenusPage.glossarySyncTerm', 'Sync')}</dt>
+          <dd>{t('brand:brandMenusPage.glossarySyncDef', 'After a push, the restaurant menu mirrors the brand version. "Synced v3" means the restaurant has the latest version 3.')}</dd>
+          <dt>{t('brand:brandMenusPage.glossaryLockTerm', 'Lock')}</dt>
+          <dd>{t('brand:brandMenusPage.glossaryLockDef', 'Restaurant admins cannot edit locked fields after sync. Useful for prices, brand name, and brand photos.')}</dd>
+        </Glossary>
+      </IntroCard>
+
+      <SettingsCard>
+        <SettingsSectionTitle>{t('brand:brandMenusPage.settingsDistributionTitle', 'How changes reach restaurants')}</SettingsSectionTitle>
+        <SettingsSectionHint>
+          {t('brand:brandMenusPage.settingsDistributionHint', 'When you edit a brand menu (price, name, image), should the change wait, or roll out instantly?')}
+        </SettingsSectionHint>
+        <RadioRow>
+          <AutoSaveField onSave={persist} type="toggle">
+            <input type="radio" name="distmode" checked={settings.default_distribution_mode === 'manual'}
+              onChange={() => setSettings({ ...settings, default_distribution_mode: 'manual' })} />
+          </AutoSaveField>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 500 }}>{t('brand:brandMenusPage.distributionManual', 'Manual — review before sending')}</div>
+            <div style={{ fontSize: 12, color: '#6B7C93' }}>{t('brand:brandMenusPage.distributionManualHint', 'Your edits stay on the brand side. Restaurants see a "pending update" badge until you click Push on the menu card.')}</div>
+            <ScenarioHint>{t('brand:brandMenusPage.distributionManualScenario', 'Recommended for most brands — gives you a chance to batch changes before they go live.')}</ScenarioHint>
+          </div>
+        </RadioRow>
+        <RadioRow>
+          <AutoSaveField onSave={persist} type="toggle">
+            <input type="radio" name="distmode" checked={settings.default_distribution_mode === 'auto'}
+              onChange={() => setSettings({ ...settings, default_distribution_mode: 'auto' })} />
+          </AutoSaveField>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 500 }}>{t('brand:brandMenusPage.distributionAuto', 'Auto — push as you save')}</div>
+            <div style={{ fontSize: 12, color: '#6B7C93' }}>{t('brand:brandMenusPage.distributionAutoHint', 'Every save instantly updates all linked restaurants. No manual push needed.')}</div>
+            {settings.default_distribution_mode === 'auto' && (
+              <WarningBox>
+                <Info />
+                <span>{t('brand:brandMenusPage.distributionAutoWarning', 'Heads up: every edit reaches all your franchise restaurants the moment you click Save. Use Manual if you want a confirmation step.')}</span>
+              </WarningBox>
             )}
-          </Section>
+          </div>
+        </RadioRow>
+      </SettingsCard>
+
+      <SettingsCard>
+        <SettingsSectionTitle>{t('brand:brandMenusPage.settingsLocksTitle', 'What franchises cannot change')}</SettingsSectionTitle>
+        <SettingsSectionHint>
+          {t('brand:brandMenusPage.settingsLocksHint', 'Pre-check the fields that should stay identical across every restaurant. These become the starting locks for any new menu — you can still override per menu later.')}
+        </SettingsSectionHint>
+        {lockKeys.map(k => (
+          <ToggleRow key={k}>
+            <ToggleInfo>
+              <strong>{lockLabels[k]}</strong>
+              <div>{lockScenarios[k]}</div>
+            </ToggleInfo>
+            <AutoSaveField onSave={persist} type="toggle">
+              <Switch type="checkbox" role="switch" aria-checked={settings.default_locks[k]}
+                checked={settings.default_locks[k]}
+                onChange={(e) => setSettings({ ...settings, default_locks: { ...settings.default_locks, [k]: e.target.checked } })} />
+            </AutoSaveField>
+          </ToggleRow>
+        ))}
+      </SettingsCard>
+
+      <SettingsCard>
+        <SettingsSectionTitle>{t('brand:brandMenusPage.settingsPushTargetTitle', 'Who receives the menu when you click Push')}</SettingsSectionTitle>
+        <SettingsSectionHint>
+          {t('brand:brandMenusPage.settingsPushTargetHint', 'Each menu card has a Push button. Decide what happens when you click it.')}
+        </SettingsSectionHint>
+        <RadioRow>
+          <AutoSaveField onSave={persist} type="toggle">
+            <input type="radio" name="pushtarget" checked={settings.default_push_target === 'all'}
+              onChange={() => setSettings({ ...settings, default_push_target: 'all' })} />
+          </AutoSaveField>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 500 }}>{t('brand:brandMenusPage.pushTargetAll', 'Send to all restaurants')}</div>
+            <div style={{ fontSize: 12, color: '#6B7C93' }}>{t('brand:brandMenusPage.pushTargetAllHint', 'A short "Are you sure?" confirm appears, then the menu rolls out to every restaurant under this brand.')}</div>
+            <ScenarioHint>{t('brand:brandMenusPage.pushTargetAllScenario', 'Best when every restaurant should always serve every menu (single-concept brand).')}</ScenarioHint>
+          </div>
+        </RadioRow>
+        <RadioRow>
+          <AutoSaveField onSave={persist} type="toggle">
+            <input type="radio" name="pushtarget" checked={settings.default_push_target === 'selected'}
+              onChange={() => setSettings({ ...settings, default_push_target: 'selected' })} />
+          </AutoSaveField>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 500 }}>{t('brand:brandMenusPage.pushTargetSelected', 'Pick restaurants each time')}</div>
+            <div style={{ fontSize: 12, color: '#6B7C93' }}>{t('brand:brandMenusPage.pushTargetSelectedHint', 'Clicking Push opens a dialog listing your franchise restaurants. You tick the ones that receive this menu (e.g. only Seoul stores get a regional special).')}</div>
+            <ScenarioHint>{t('brand:brandMenusPage.pushTargetSelectedScenario', 'Best when some menus are seasonal, regional, or test-launched at a single location first.')}</ScenarioHint>
+          </div>
+        </RadioRow>
+      </SettingsCard>
+    </div>
+  );
+};
+
+// ──────────────────────────────────────────────────────────────────────────
+// Push picker — restaurant selector for "Choose each time" mode
+// ──────────────────────────────────────────────────────────────────────────
+interface DistributionRow {
+  restaurant_id: number;
+  restaurant_name: string;
+  branch_name: string | null;
+  link_status: 'in_sync' | 'pending_update' | 'unlinked' | 'never_synced';
+  synced_version: number | null;
+}
+
+const PickerRow = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  &:hover { border-color: #635BFF; }
+  input { accent-color: #635BFF; flex-shrink: 0; }
+`;
+
+const StatusBadge = styled.span<{ $color: string; $bg: string }>`
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  color: ${p => p.$color};
+  background: ${p => p.$bg};
+  white-space: nowrap;
+`;
+
+const PushPickerModal: React.FC<{
+  menuId: number;
+  menuName: string;
+  onClose: () => void;
+  onConfirm: (ids: number[]) => void;
+}> = ({ menuId, menuName, onClose, onConfirm }) => {
+  const { t } = useTranslation(['brand', 'common']);
+  const [rows, setRows] = useState<DistributionRow[]>([]);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch(`/api/brand-menus/${menuId}/distribution`, { headers: authHeaders() });
+        const j = await r.json();
+        if (!r.ok || !j.success) throw new Error(j.message || 'Load failed');
+        setRows(j.data || []);
+        // Pre-select restaurants that are not yet in_sync (sensible default).
+        const pre = new Set<number>((j.data || [])
+          .filter((x: DistributionRow) => x.link_status !== 'in_sync')
+          .map((x: DistributionRow) => x.restaurant_id));
+        setSelected(pre);
+      } catch (e: any) {
+        setErr(e?.message || 'Load failed');
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [menuId]);
+
+  const toggle = (rid: number) => {
+    const next = new Set(selected);
+    if (next.has(rid)) next.delete(rid); else next.add(rid);
+    setSelected(next);
+  };
+
+  const toggleAll = () => {
+    if (selected.size === rows.length) setSelected(new Set());
+    else setSelected(new Set(rows.map(r => r.restaurant_id)));
+  };
+
+  const statusBadge = (s: DistributionRow['link_status'], v: number | null) => {
+    if (s === 'in_sync') return <StatusBadge $color="#059669" $bg="#ECFDF5">{t('brand:brandMenusPage.statusSynced', { v, defaultValue: `Synced v${v}` })}</StatusBadge>;
+    if (s === 'pending_update') return <StatusBadge $color="#92400E" $bg="#FEF3C7">{t('brand:brandMenusPage.statusPending', 'Pending update')}</StatusBadge>;
+    if (s === 'unlinked') return <StatusBadge $color="#6B7280" $bg="#F3F4F6">{t('brand:brandMenusPage.statusUnlinked', 'Unlinked')}</StatusBadge>;
+    return <StatusBadge $color="#6B7280" $bg="#F3F4F6">{t('brand:brandMenusPage.statusNeverSynced', 'Never synced')}</StatusBadge>;
+  };
+
+  return (
+    <CommonModal
+      isOpen={true}
+      onClose={onClose}
+      title={t('brand:brandMenusPage.pushPickerTitle', { name: menuName, defaultValue: `Push "${menuName}" to selected restaurants` })}
+      footer={
+        <>
+          <ThemedButton variant="cancel" onClick={onClose}>{t('common:button.cancel', 'Cancel')}</ThemedButton>
+          <ThemedButton variant="primary" onClick={() => onConfirm(Array.from(selected))} disabled={selected.size === 0}>
+            {t('brand:brandMenusPage.pushNSelected', { count: selected.size, defaultValue: `Push to ${selected.size} selected` })}
+          </ThemedButton>
+        </>
+      }
+    >
+      {err && <div style={{ padding: 12, background: '#FEE2E2', color: '#DC2626', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>{err}</div>}
+      <div style={{
+        background: '#F8F7FF', border: '1px solid #E6E3FF', borderRadius: 8,
+        padding: '10px 12px', marginBottom: 12, fontSize: 12, color: '#4B5563', lineHeight: 1.5
+      }}>
+        {t('brand:brandMenusPage.pushPickerIntro', 'Tick the restaurants that should receive this menu. The status badge on the right shows whether the restaurant already has the latest version.')}
+        <div style={{ marginTop: 6, display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 11 }}>
+          <span><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#10B981', marginRight: 4 }}></span>{t('brand:brandMenusPage.legendSynced', 'Synced — already up to date')}</span>
+          <span><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#F59E0B', marginRight: 4 }}></span>{t('brand:brandMenusPage.legendPending', 'Pending — has an older version')}</span>
+          <span><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#D1D5DB', marginRight: 4 }}></span>{t('brand:brandMenusPage.legendNever', 'Never synced — first push')}</span>
         </div>
-      </ModalGrid>
+      </div>
+      {loading ? (
+        <div style={{ padding: 24, textAlign: 'center', color: '#6B7C93' }}>{t('common:label.loading', 'Loading...')}</div>
+      ) : rows.length === 0 ? (
+        <div style={{ padding: 24, textAlign: 'center', color: '#6B7C93' }}>
+          {t('brand:brandMenusPage.pushPickerEmpty', 'No franchise restaurants under this brand yet. Add restaurants in All Brands or Franchise tab first.')}
+        </div>
+      ) : (
+        <>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', fontSize: 13, fontWeight: 500, color: '#0A2540', marginBottom: 8, cursor: 'pointer' }}>
+            <input type="checkbox" checked={selected.size === rows.length} onChange={toggleAll} style={{ accentColor: '#635BFF' }} />
+            {selected.size === rows.length
+              ? t('brand:brandMenusPage.deselectAll', 'Deselect all')
+              : t('brand:brandMenusPage.selectAll', { count: rows.length, defaultValue: `Select all (${rows.length})` })}
+          </label>
+          {rows.map(r => (
+            <PickerRow key={r.restaurant_id}>
+              <input type="checkbox" checked={selected.has(r.restaurant_id)} onChange={() => toggle(r.restaurant_id)} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 500, color: '#0A2540' }}>{r.restaurant_name}</div>
+                {r.branch_name && <div style={{ fontSize: 12, color: '#6B7C93' }}>{r.branch_name}</div>}
+              </div>
+              {statusBadge(r.link_status, r.synced_version)}
+            </PickerRow>
+          ))}
+        </>
+      )}
     </CommonModal>
   );
 };

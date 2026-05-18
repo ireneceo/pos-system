@@ -289,6 +289,11 @@
     "allCategories": "Semua",
     "vendors": "pembekal",
     "linked": "Dipautkan",
+    "brandBadge": "JENAMA",
+    "foodcourtBadge": "FOODCOURT",
+    "connectCta": "Klik untuk pautkan pembekal →",
+    "connecting": "Memautkan",
+    "connectHelp": "klik item katalog untuk memautkan bahan ini ke pembekal",
     "cartEmpty": "Klik kad untuk masuk troli.",
     "empty": {
       "mine": {
@@ -302,7 +307,17 @@
     },
     "toast": {
       "added": "\"{{name}}\" ditambah ke troli",
-      "linked": "\"{{name}}\" ditambah ke inventori"
+      "linked": "\"{{name}}\" ditambah ke inventori",
+      "connected": "\"{{name}}\" dipautkan ke pembekal ✓",
+      "connectHint": "Klik item katalog untuk memautkan \"{{name}}\"",
+      "addedAsSeparate": "Ditambah sebagai bahan berasingan (unit/spesifikasi berbeza)."
+    },
+    "showUntracked": "Tunjuk yang tidak dijejak",
+    "conversion": {
+      "title": "Penukaran unit",
+      "help": "Contoh — bahan dalam kg, kotak 10kg: masukkan 10. Bahan dalam piece, dulang 30: masukkan 30.",
+      "connect": "Pautkan",
+      "asSeparate": "+ Tambah sebagai bahan berasingan"
     }
   }
 }

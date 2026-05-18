@@ -15,6 +15,12 @@ const FoodcourtProduct = sequelize.define('FoodcourtProduct', {
   image_url: { type: DataTypes.TEXT('medium'), allowNull: true },
   image_thumbnail: { type: DataTypes.TEXT, allowNull: true },
   is_active: { type: DataTypes.BOOLEAN, defaultValue: true },
+  distribution_mode: {
+    type: DataTypes.ENUM('all', 'specific_restaurants'),
+    allowNull: false,
+    defaultValue: 'all',
+    comment: 'all=foodcourt 모든 입점 매장 노출, specific_restaurants=foodcourt_product_restaurants 매핑된 지점만'
+  },
   sort_order: { type: DataTypes.INTEGER, defaultValue: 0 },
   current_stock: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
   low_stock_threshold: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
