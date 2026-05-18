@@ -19,9 +19,9 @@
 | PWA standalone 같은 창 전환 | `utils/runtime.isStandalone()` + `openSecondaryWindow` helper. POS Terminal / Floor Plan / Kitchen / Customer Display / Mobile Order 모든 호출 분기 | ✅ 운영 v3.33 |
 | 4 풀화면 페이지 Back 버튼 표준화 | PageHeader 에 backHref/backLabel prop 추가, Customer Display / Kitchen Display / Floor Plan 적용 + i18n `common:backToDashboard` 4 langs | ✅ 운영 v3.33 |
 | KDS 정확성 보완 4건 | formatPickupTimeRange timezone / Pickup `scheduled_pickup_time` 정렬 / URL station stationId 우선 / Backend `status=` 콤마 다중 필터 | ✅ 운영 v3.33 |
-| 모바일 OrderTypePage Footer 링크 | 로그인 상태에 따라 Back to Dashboard 또는 Visit Homepage 표시 + i18n `visitHomepage` 4 langs | ✅ dev (미배포) |
-| RA Recipe Management 5 탭 ReferenceError fix | `infoModal` useState 선언 누락 (alert sweep 잔여 결함) — 5 파일에 useState 한 줄씩 추가. 운영 hotfix 시급 | ✅ dev (미배포, **시급**) |
-| Reports 3 페이지 /api/menu aggregation | BG/FG/Owner Reports 가 restaurantId 없이 `/api/menu` 호출 → 400. `allowedRestaurantIds` 순회 + 카테고리 dedup 패턴으로 변경 | ✅ dev (미배포) |
+| 모바일 OrderTypePage Footer 링크 | 로그인 상태에 따라 Back to Dashboard 또는 Visit Homepage 표시 + i18n `visitHomepage` 4 langs | ✅ 운영 hotfix |
+| RA Recipe Management 5 탭 ReferenceError fix | `infoModal` useState 선언 누락 (alert sweep 잔여 결함) — 5 파일에 useState 한 줄씩 추가. 운영 매장 4곳 Recipe 페이지 복구 | ✅ 운영 hotfix |
+| Reports 3 페이지 /api/menu aggregation | BG/FG/Owner Reports 가 restaurantId 없이 `/api/menu` 호출 → 400. `allowedRestaurantIds` 순회 + 카테고리 dedup 패턴으로 변경 | ✅ 운영 hotfix |
 | 전수 헤드리스 sweep 도구 작성 | Playwright 기반 RA(47) + BG(23) + Admin(28) + FG(26) + Owner(15) + Supplier(14) + FCM(6) + BM(6) = 95 페이지 mount 검증. `scripts/headless-page-sweep.js`, `scripts/headless-roles-sweep.js` 재사용 가능 | ✅ 도구화 완료 |
 
 ### 발견 + fix 한 잠재 결함 sweep

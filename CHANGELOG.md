@@ -6,16 +6,20 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
-### 2026-05-18 (v3.33 배포 후 추가 — Recipe 시급 hotfix + 안정화)
+---
 
-- **RA Recipe Management 5 탭 ReferenceError 시급 fix** — v3.32 alert→Modal sweep 작업에서 `setInfoModal()` 호출과 `<ConfirmModal isOpen={infoModal.open}>` JSX 를 추가했지만 `const [infoModal, setInfoModal] = useState(...)` 선언을 누락. 운영 매장 (16/5/8/10) 의 RA가 Recipe Management 탭 진입 즉시 `ReferenceError` → ErrorBoundary 폴백 화면. 5 파일에 useState 한 줄씩 추가 (CategoriesTab / GeneralStockCategoriesTab / IngredientCategoriesTab / RecipeCategoriesTab / IngredientsTab). 전수 sweep 으로 동등 결함 0건 확인. **운영 hotfix 시급**
+## [v3.33] — 2026-05-18 배포 (v3.32 직후 누적 + hotfix 2건)
+
+### 2026-05-18 hotfix (v3.33 같은 날 세 번째 배포, 버전 유지)
+
+- **RA Recipe Management 5 탭 ReferenceError 시급 fix** — v3.32 alert→Modal sweep 작업에서 `setInfoModal()` 호출과 `<ConfirmModal isOpen={infoModal.open}>` JSX 를 추가했지만 `const [infoModal, setInfoModal] = useState(...)` 선언을 누락. 운영 매장 (16/5/8/10) 의 RA가 Recipe Management 탭 진입 즉시 `ReferenceError` → ErrorBoundary 폴백 화면. 5 파일에 useState 한 줄씩 추가 (CategoriesTab / GeneralStockCategoriesTab / IngredientCategoriesTab / RecipeCategoriesTab / IngredientsTab). 전수 sweep 으로 동등 결함 0건 확인
 - **모바일 OrderTypePage Footer 링크** — 모바일 첫 화면 하단에 로그인 상태 분기 (POS Admin/Staff → "Back to Dashboard", 그 외 → "Visit PurpleHere homepage"). i18n `common:visitHomepage` 4언어 신규
 - **BG/FG/Owner Reports `/api/menu` 호출 fix** — restaurantId 없이 호출하던 결함 (BG/FG/Owner 는 own `restaurant_id` 없음). `allowedRestaurantIds` 순회 + 카테고리 dedup 패턴으로 변경. Owner 운영 검증 OK, BG/FG 는 backend `checkRestaurantAccess` 미들웨어가 BG/FG scope 미지원 (별도 사이클 작업)
 - **헤드리스 자동 mount sweep 도구 작성** — Playwright 기반. RA(47) + BG(23) + Admin(28) + FG(26) + Owner(15) + Supplier(14) + FCM(6) + BM(6) = 95 페이지 mount + console error 캡처. 안정화 사이클 표준 도구로 정착. 운영 hotfix 전 검증 가능
 
 ---
 
-## [v3.33] — 2026-05-18 배포 (v3.32 직후 누적)
+### 2026-05-18 (v3.32 직후 누적 — KDS / PWA standalone / Back 버튼 / Admin Invoices / RA support)
 
 - **Kitchen Display 정확성 보완 4건** — 30년차 개발자 수준 전수 검증 후 잠재 결함 제거.
   - `formatPickupTimeRange` 가 브라우저 로컬 timezone 사용하던 결함 → `Intl.DateTimeFormat({ timeZone })` 으로 매장 timezone 기준 표시 (`KitchenDisplayPage.tsx:14-30`, 호출 2곳 `operationSettings?.timeZone` 전달). CLAUDE.md 룰 위반 정정
