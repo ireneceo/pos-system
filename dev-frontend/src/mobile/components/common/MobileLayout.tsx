@@ -293,8 +293,10 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
             <HeaderAction />
           )}
           <Title>{title}</Title>
-          {/* Order Type - show in header right side */}
-          {orderType && currentPage !== 'home' && getOrderTypeLabel(orderType) ? (
+          {/* Order Type chip on right — hidden on menu page (duplicated by StoreHeader chip
+              with explicit Change action). Kept on cart/checkout/etc. where there is no
+              StoreHeader so the user still sees their selection. */}
+          {orderType && currentPage !== 'home' && currentPage !== 'menu' && getOrderTypeLabel(orderType) ? (
             <OrderTypeLabel orderType={orderType}>
               <span>{getOrderTypeIcon(orderType)}</span>
               <span>{getOrderTypeLabel(orderType)}</span>

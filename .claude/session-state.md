@@ -1,14 +1,27 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-05-18
-**버전:** **v3.33** (운영 배포 완료, 같은 날 v3.32 + v3.33 + v3.33 hotfix 세 번 배포)
-**작업 상태:** 완료 (모든 dev 누적 운영 반영). 새 지시 대기
+**마지막 업데이트:** 2026-05-19
+**버전:** **v3.35** (SNS 정식 로고 + 모바일 메뉴 헤더 정리 운영 배포 완료, 당일 v3.34 + v3.35 두 번 배포)
+**작업 상태:** 완료. 새 지시 대기
 
 ### 진행 중인 작업
 - 없음
 
-### 완료된 작업 (이번 세션 누적, 2026-05-18)
+### 완료된 작업 (2026-05-19 — v3.35)
+
+**v3.35 운영 배포**
+- SNS 썸네일 OG 이미지 정식 로고 적용 (1200×630 표준 + "Solving Real F&B Problems" 슬로건 + URL 푸터, 351KB → 19.6KB)
+- `color_logo-slogan.svg` 신규 추가 (17.6KB, 향후 다른 곳에서도 활용 가능)
+- 모바일 메뉴 헤더 정리 (상단 우측 "🍽️ Dine-In" 중복 라벨 제거, 매장 카드 한 줄 flex 정렬, 상태 도트화)
+
+### 완료된 작업 (2026-05-19 — v3.34)
+
+**v3.34 운영 배포**
+- 모바일 메뉴 "How to order" 3-step 안내 배너 제거 (`FirstVisitHint` 컴포넌트 + 사용처 둘 다 삭제)
+- 모바일 메뉴 카테고리 idle prefetch (`requestIdleCallback` 으로 init 완료 후 백그라운드 데이터+썸네일 prefetch, 두 번째 탭부터 즉시 표시). 추가 only · 기존 컴포넌트 무수정 · 실패 시 fallback
+
+### 완료된 작업 (이전 세션 누적, 2026-05-18)
 
 **v3.32 운영 배포 (점심)**
 - 테이블 QR 무조건 dine-in 고정
@@ -30,6 +43,38 @@
 
 ### 다음 확정 작업
 - 없음 — 지시 대기
+
+### 다음 확정 작업 (전수 점검 결과 — 2026-05-19 audit)
+
+> 2026-05-19 보안 + 코드 품질 전수 audit 완료. 결과 priority 순서.
+
+**1. IDOR 결함 전수 재검증 + fix (운영 critical, 반나절)**
+- Agent 주장: 43건 IDOR (Type A — `:id` 라우트에 `checkRestaurantAccess` 누락) + 9건 RBAC (Type C — DELETE/status 변경에 `requireRole` 누락)
+- 직접 검증 시 일부 false positive 발견 (`restaurants-crud.js:1787 DELETE /:id` 는 이미 `requireRole('System Admin')` 보호됨)
+- **실제 결함 확정 sample**: `orders-crud.js:112 GET /:id` (authenticateToken 만), `invoices-crud.js:580 DELETE /:id` (Foodcourt Manager 만 branch scope, 타 역할 무방어)
+- 작업 절차: 각 보고된 라우트 직접 검증 → true positive 만 fix → 메모리 `reference_idor_sweep` 패턴 (`authenticateToken + checkRestaurantAccess` 동시) 적용 → health-check 에 영구 케이스 추가
+- 핵심 파일: orders-crud.js / invoices-crud.js / contracts.js / users.js
+
+**2. alert() / window.confirm() 18건 sweep (UX, 1시간)**
+- v3.32 alert sweep 후에도 잔존
+- alert(): BrandFranchiseMapPage(614), FoodcourtTenancyMapPage(736), FoodcourtFloorPlanPage(689), CheckoutDisplayPage(207), FoodcourtInvoicesPage(416), NotificationSettings(256), BrandProductsTab(676), HardwareQuotesPage(962), MainLayout(2794)
+- window.confirm(): FoodcourtFloorPlanPage(678), Manager/RestaurantsPage(2436), IncomingOrdersView(513), FoodcourtSubscriptionsPage(488), BrandSubscriptionsPage(529), BrandFranchiseMapPage(603), ImportDataTab(152), Admin/CarriersPage(234), BrandMenuUpdatesPage(132)
+- 패턴: ConfirmModal singleButton 또는 setSuccessMessage 적용
+
+**3. API 응답 표준화 (일관성, 중)**
+- 비표준 ~144건, 상위 8 파일에 집중: invoices-list.js(16) / brands-core.js(17) / foodcourts-core.js(17) / contents.js(15) / restaurants-crud.js(14) / public.js(8) / plans.js(7) / addon-modules.js(5)
+- 표준: `{ success: true, data }` / `{ success: false, message }`. 비표준 `res.json({ error })` 또는 raw object 잔존
+- 수정하는 파일 범위 내에서 정리 (CLAUDE.md 점진 적용 룰)
+
+**4. 거대 파일 분리 (유지보수, 대)**
+- backend 23개 > 500줄, 최대 `restaurants-crud.js` 2064줄
+- frontend 102개 > 800줄, **최대 `SettingsPage.tsx` 6349줄** (압도적)
+- 우선순위: SettingsPage > MainLayout(3370) > POSTerminalPage(3013) > MenuManagementPage(2263)
+- 신규 작업 시 함께 분리 (대규모 리팩토링 별도 권장 X)
+
+### 자동 검증 도구 (현재 통과 상태)
+- health-check 80/80 ✅ · state-hydration 0 warning ✅ · headless mount sweep 95 페이지 0 크래시 ✅
+- npm audit: backend moderate 1 (socket.io transitive, 영향 미미) / frontend high 1 (babel transitive, 빌드 only 런타임 무영향)
 
 ### 후속 후보 (아이디어 메모, 확정 X)
 > 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.

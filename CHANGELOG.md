@@ -8,6 +8,20 @@
 
 ---
 
+## [v3.35] — 2026-05-19 배포 (SNS 썸네일 정식 로고 + 모바일 메뉴 헤더 정리)
+
+- **SNS 썸네일 OG 이미지 정식 로고 적용** — 기존 `og-image.png` 가 단순 "PurpleHere" 텍스트 + 그라데이션이라 SNS 공유 시 브랜드 인식 떨어지던 문제. 정식 색상 로고(`color_logo-slogan.svg`, 17.6KB) 를 1200×630 OG 표준 사이즈에 중앙 배치 + "Solving Real F&B Problems" 슬로건 + `purplehere.com` URL 푸터. 파일 사이즈 351KB → 19.6KB (95% 감소). Facebook/Twitter scraper 캐시 무효화를 위해 운영 배포 후 Facebook Debugger / Twitter Card Validator 에서 "Scrape Again" 한 번 필요
+- **모바일 메뉴 헤더 정리** — 같은 정보가 두 곳에 중복 표시되던 문제. 상단 헤더 우측의 단순 표시용 "🍽️ Dine-In" 라벨을 메뉴 페이지에 한해 제거 (Cart/Checkout 등 StoreHeader 없는 페이지는 유지), 매장 카드 안의 변경 가능한 chip 만 남김. 매장 카드는 세 줄(매장명/상태/chip) → **한 줄 flex 정렬** (좌측 매장명+branch+작은 상태 도트, 우측 Dine-in chip). 모바일 좁은 화면은 자동 wrap. 상태 표시도 큰 글씨 "✓ Open Now / ✗ Closed" → 작은 컬러 도트 + 라벨로 슬림화
+
+---
+
+## [v3.34] — 2026-05-19 배포 (모바일 오더 UX 정리 + 탭 전환 즉시화)
+
+- **모바일 메뉴 "How to order" 배너 제거** — 모바일 오더 메뉴 페이지 상단의 3-step 안내 배너 (`FirstVisitHint` 컴포넌트) 가 의미가 적고 매번 작은 노이즈가 되던 문제. 컴포넌트 정의 + 사용처 모두 제거. 헤더 직후 검색바 즉시 시작
+- **모바일 메뉴 카테고리 idle prefetch** — 첫 탭 후 다른 카테고리 전환 시마다 데이터/이미지를 새로 다운로드하던 문제. `requestIdleCallback` 으로 init 완료 후 백그라운드 순차 prefetch 추가 (데이터 → `categoryCacheRef` 적재 + 썸네일 → `new Image().src` 로 브라우저 HTTP 캐시 적재). 두 번째 탭부터 즉시 표시. **추가 only — 기존 `LazyImage` / `handleCategoryChange` / `categoryCacheRef` 무수정**, 실패해도 기존 동작 그대로 fallback. 안전 가드: `cancelled` flag + cleanup, 첫 카테고리 cache hit 가드, `try/catch silent`
+
+---
+
 ## [v3.33] — 2026-05-18 배포 (v3.32 직후 누적 + hotfix 2건)
 
 ### 2026-05-18 hotfix (v3.33 같은 날 세 번째 배포, 버전 유지)

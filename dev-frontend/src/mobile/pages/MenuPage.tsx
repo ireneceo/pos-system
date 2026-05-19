@@ -35,46 +35,33 @@ interface PaginationInfo {
   hasMore: boolean;
 }
 
-// First-visit hint (3-step) — dismissable, remembers via localStorage.
-const FirstVisitHint: React.FC = () => {
-  const [dismissed, setDismissed] = React.useState(() => localStorage.getItem('mobile_menu_hint_dismissed') === 'true');
-  if (dismissed) return null;
-  return (
-    <div style={{
-      margin: '0 16px 16px', padding: '12px 14px',
-      background: 'linear-gradient(135deg, #F1F0FF 0%, #E0DDFF 100%)',
-      border: '1px solid #D4D0FF', borderRadius: 10, position: 'relative',
-      fontSize: 13, color: '#0A2540', lineHeight: 1.6
-    }}>
-      <button
-        type="button"
-        onClick={() => { localStorage.setItem('mobile_menu_hint_dismissed', 'true'); setDismissed(true); }}
-        aria-label="Dismiss"
-        style={{ position: 'absolute', top: 6, right: 8, background: 'none', border: 'none', color: '#6B7C93', fontSize: 18, cursor: 'pointer', padding: 4, lineHeight: 1 }}
-      >×</button>
-      <div style={{ fontWeight: 600, marginBottom: 4, color: '#635BFF' }}>How to order</div>
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 12.5 }}>
-        <div><strong style={{ color: '#635BFF' }}>1</strong> Browse menu</div>
-        <div><strong style={{ color: '#635BFF' }}>2</strong> Add items to cart</div>
-        <div><strong style={{ color: '#635BFF' }}>3</strong> Checkout & pay</div>
-      </div>
-    </div>
-  );
-};
-
 const StoreHeader = styled.div`
   background: white;
-  padding: 16px;
+  padding: 14px 16px;
   margin: 0 0 16px 0;
   border-bottom: 1px solid #E5E7EB;
   border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+`;
+
+const StoreInfo = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 auto;
 `;
 
 const StoreName = styled.h2`
-  font-size: 20px;
+  font-size: 17px;
   font-weight: 600;
   color: #1F2937;
-  margin: 0 0 4px 0;
+  margin: 0;
+  line-height: 1.3;
 `;
 
 const StoreBranch = styled.span`
@@ -84,10 +71,28 @@ const StoreBranch = styled.span`
   margin-left: 6px;
 `;
 
-const StoreStatus = styled.div<{ isOpen: boolean }>`
-  font-size: 14px;
-  color: ${props => props.isOpen ? '#10B981' : '#EF4444'};
+const StoreStatus = styled.span<{ isOpen: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: ${props => props.isOpen ? '#10B981' : '#9CA3AF'};
   font-weight: 500;
+
+  &::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: ${props => props.isOpen ? '#10B981' : '#9CA3AF'};
+  }
+`;
+
+const StoreRight = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
 `;
 
 // Order-type chip — shows current selection, tap to change.
@@ -98,7 +103,6 @@ const OrderTypeChip = styled.button`
   align-items: center;
   gap: 8px;
   padding: 6px 10px 6px 12px;
-  margin-top: 8px;
   background: #F0EFFF;
   border: 1px solid #DDD9FF;
   border-radius: 999px;
@@ -726,6 +730,58 @@ const MenuPage: React.FC = () => {
     } catch { /* silent — 기존 리스트 유지 */ }
   }, [isSearchMode, allMenuItems, slug, transformItems]);
 
+  // Idle prefetch — 다른 카테고리 데이터 + 썸네일을 백그라운드로 미리 적재.
+  // 추가 only · requestIdleCallback 으로 메인 스레드 비점유 · 실패해도 기존 동작 그대로.
+  useEffect(() => {
+    if (!slug || categories.length === 0) return;
+    const w = window as any;
+    const idle: (cb: () => void) => any = typeof w.requestIdleCallback === 'function'
+      ? (cb) => w.requestIdleCallback(cb, { timeout: 3000 })
+      : (cb) => setTimeout(cb, 200);
+    const cancelIdle: (h: any) => void = typeof w.cancelIdleCallback === 'function'
+      ? (h) => w.cancelIdleCallback(h)
+      : (h) => clearTimeout(h);
+
+    let cancelled = false;
+    const handles: any[] = [];
+    const heldImages: HTMLImageElement[] = []; // GC 방지
+
+    const prefetchOne = async (catId: string) => {
+      if (cancelled) return;
+      if (categoryCacheRef.current.has(catId)) return;
+      try {
+        const res = await fetch(`/api/mobile/menu/${slug}?page=1&limit=${ITEMS_PER_PAGE}&categoryId=${catId}`);
+        if (!res.ok || cancelled) return;
+        const r = await res.json();
+        if (!r.success || !r.data || cancelled) return;
+        const items = transformItems(r.data.items || []);
+        categoryCacheRef.current.set(catId, items);
+        items.forEach((item: MenuItem) => {
+          if (item.image && !cancelled) {
+            const img = new Image();
+            img.src = item.image;
+            heldImages.push(img);
+          }
+        });
+      } catch { /* silent */ }
+    };
+
+    const queue = categories.map(c => c.id.toString());
+    const runNext = () => {
+      if (cancelled || queue.length === 0) return;
+      const catId = queue.shift()!;
+      prefetchOne(catId).finally(() => {
+        if (!cancelled) handles.push(idle(runNext));
+      });
+    };
+    handles.push(idle(runNext));
+
+    return () => {
+      cancelled = true;
+      handles.forEach(h => { try { cancelIdle(h); } catch { /* noop */ } });
+    };
+  }, [slug, categories.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // 검색어 입력 처리
   const handleSearchChange = useCallback((query: string) => {
     setSearchQuery(query);
@@ -855,29 +911,31 @@ const MenuPage: React.FC = () => {
     >
       {currentStore && (
         <StoreHeader>
-          <StoreName>{currentStore.name}{currentStore.branchName && <StoreBranch>{currentStore.branchName}</StoreBranch>}</StoreName>
-          <StoreStatus isOpen={currentStore.isOpen}>
-            {currentStore.isOpen ? '✓ Open Now' : '✗ Closed'}
-          </StoreStatus>
+          <StoreInfo>
+            <StoreName>{currentStore.name}{currentStore.branchName && <StoreBranch>{currentStore.branchName}</StoreBranch>}</StoreName>
+            <StoreStatus isOpen={currentStore.isOpen}>
+              {currentStore.isOpen ? 'Open Now' : 'Closed'}
+            </StoreStatus>
+          </StoreInfo>
           {orderType && (
-            <OrderTypeChip
-              type="button"
-              aria-label={t('common:orderType.changeOrderType', { defaultValue: 'Change order type' })}
-              onClick={() => {
-                // Force the picker even though pinned URL was the entry point.
-                const qs = tableNumber ? `?table=${encodeURIComponent(tableNumber)}&picker=1` : '?picker=1';
-                navigate(`/mobile/${slug}/order-type${qs}`);
-              }}
-            >
-              <span className="chip-icon">{ORDER_TYPE_ICON[orderType]}</span>
-              {t(ORDER_TYPE_I18N_KEY[orderType] || 'common:orderType.dineIn')}
-              <span className="chip-change">{t('common:orderType.change', { defaultValue: 'Change' })} <ChevronRight style={{ width: 12, height: 12, verticalAlign: -1 }} /></span>
-            </OrderTypeChip>
+            <StoreRight>
+              <OrderTypeChip
+                type="button"
+                aria-label={t('common:orderType.changeOrderType', { defaultValue: 'Change order type' })}
+                onClick={() => {
+                  // Force the picker even though pinned URL was the entry point.
+                  const qs = tableNumber ? `?table=${encodeURIComponent(tableNumber)}&picker=1` : '?picker=1';
+                  navigate(`/mobile/${slug}/order-type${qs}`);
+                }}
+              >
+                <span className="chip-icon">{ORDER_TYPE_ICON[orderType]}</span>
+                {t(ORDER_TYPE_I18N_KEY[orderType] || 'common:orderType.dineIn')}
+                <span className="chip-change">{t('common:orderType.change', { defaultValue: 'Change' })} <ChevronRight style={{ width: 12, height: 12, verticalAlign: -1 }} /></span>
+              </OrderTypeChip>
+            </StoreRight>
           )}
         </StoreHeader>
       )}
-
-      <FirstVisitHint />
 
       <SearchSection>
         <SearchInputContainer>

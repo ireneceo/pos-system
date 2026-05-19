@@ -1,9 +1,52 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-05-18 (v3.33 운영 배포 — KDS 정확성 보완 4건 + PWA standalone 같은 창 전환 + 4 풀화면 Back 버튼 표준화 + Admin Invoices Cancel/Revert + RA support 타이틀 fix)
+> **최종 업데이트:** 2026-05-19 (v3.35 운영 배포 — SNS 정식 로고 OG 이미지 + 모바일 메뉴 헤더 정리)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
-> **현재 버전:** **v3.33** (KDS 정확성 보완 — pickup timezone + 정렬 / station URL 정합화 / multi-status filter / PWA 데스크탑 앱 같은 창 전환 / Back 버튼 표준화 / Admin Invoices Cancel·Revert)
+> **현재 버전:** **v3.35** (SNS 썸네일 정식 로고 + 모바일 메뉴 헤더 중복 정리)
+
+## ✅ 완료: v3.35 — SNS 정식 로고 + 모바일 메뉴 헤더 정리 (2026-05-19, 당일 두 번째 배포)
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| SNS OG 이미지 정식 로고 | `og-image.png` 가 단순 텍스트 + 그라데이션이라 SNS 공유 시 브랜드 인식 떨어지던 문제. 정식 색상 로고(`color_logo-slogan.svg`, Dropbox 원본) 를 1200×630 표준에 중앙 배치 + 슬로건 + URL 푸터. sharp + SVG 합성으로 자동 생성 (`scripts/gen-og-image.js`). 351KB → 19.6KB | ✅ 운영 |
+| 모바일 메뉴 헤더 정리 | 상단 우측 "🍽️ Dine-In" 라벨과 매장 카드 안 Dine-in chip 이 같은 정보 중복 표시. 메뉴 페이지에 한해 상단 라벨 제거 (Cart/Checkout 등은 유지), 매장 카드 세 줄 → 한 줄 flex 정렬, 상태 표시 큰 글씨 → 작은 도트 | ✅ 운영 |
+
+### 검증
+
+| 항목 | 결과 |
+|------|------|
+| 빌드 | `main.e589e375.js` (1.6M) |
+| 배포 smoke | 10/10 PASS |
+| 운영 og-image.png | HTTP 200, 19573 bytes |
+| 운영 color_logo-slogan.svg | HTTP 200, image/svg+xml |
+| 운영 mobile menu | HTTP 200 |
+| 블로그/공지 동기화 | 50 rows updated |
+
+---
+
+## ✅ 완료: v3.34 — 모바일 오더 UX 정리 + 탭 전환 즉시화 (2026-05-19)
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| "How to order" 배너 제거 | 모바일 메뉴 상단의 3-step 안내 배너 (`FirstVisitHint` 컴포넌트) 가 의미 적고 노이즈가 되던 문제. 컴포넌트 정의 + JSX 사용처 모두 삭제 | ✅ 운영 |
+| 카테고리 idle prefetch | 두 번째 탭 클릭 시마다 데이터/이미지 cold load 되던 문제. `requestIdleCallback` 으로 init 완료 후 백그라운드 순차 prefetch — 데이터는 `categoryCacheRef` 에, 썸네일은 `new Image().src` 로 브라우저 HTTP 캐시에 미리 적재. 두 번째 탭부터 즉시 표시. 추가 only · 기존 `LazyImage`/`handleCategoryChange`/`categoryCacheRef` 무수정 · 실패 시 fallback (현재 동작 그대로) | ✅ 운영 |
+
+### 검증
+
+| 항목 | 결과 |
+|------|------|
+| 빌드 | `main.ea8b193b.js` (1.6M), 67초 |
+| state-hydration | 0 warning |
+| Health-check | 80/80 PASS |
+| 배포 smoke | 10/10 PASS |
+| 운영 API | `/api/mobile/menu/the-fire-korean-restaurant` 200 + 15 cats |
+
+### 수정된 파일
+
+- `src/mobile/pages/MenuPage.tsx` — 단일 파일 변경. `FirstVisitHint` 컴포넌트 정의 (24줄) + `<FirstVisitHint />` 사용처 (1줄) 제거, `useEffect` (53줄) 추가
+
+---
 
 ## ✅ 완료: v3.33 누적 — KDS 정확성 + PWA standalone + Reports 안정화 + 전수 헤드리스 sweep (2026-05-18)
 
