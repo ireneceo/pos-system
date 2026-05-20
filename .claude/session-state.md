@@ -1,12 +1,190 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-05-19
-**버전:** **v3.35** (SNS 정식 로고 + 모바일 메뉴 헤더 정리 운영 배포 완료, 당일 v3.34 + v3.35 두 번 배포)
-**작업 상태:** 완료. 새 지시 대기
+**마지막 업데이트:** 2026-05-20 (저녁, v3.36 운영 배포 완료)
+**버전:** **v3.36** 운영 (Customer Display 3차 hotfix + 10-12" POS 반응형 + 사이드바 폭 220→180 + 2뎁스 hover popover + 푸터 icon rail + 동적 resize)
+**작업 상태:** 운영 배포 완료 (Smoke 10/10, Backup `/var/www/backups/20260520_164354`, `main.53ed5199.js`). 블로그 `release-v3.36` + 공지 v3.36 dev/prod 양쪽 등록. 매장 Customer Display 실환경 검증은 매장 재개점 시 확인 1순위 잔존.
 
-### 진행 중인 작업
-- 없음
+---
+
+## 🚨 매장 CRITICAL 메모 (다음 세션 절대 잊지 말 것)
+
+> **"POS 에서 POS (Customer Display) 가 안 열리는 건 절대 일어나면 안 되는 일"** — Irene 2026-05-20 명시.
+> Customer Display 는 우리 서비스 기본 기능. 매장이 다음에 켰을 때 또 안 되면 신뢰 큰 손상.
+
+- 매장 (한 매장, 운영 사용 중) 이 2026-05-20 Customer Display 안 뜨는 문제 호소
+- 우리가 같은 날 3 hotfix 운영 배포까지 진행했지만 **매장에서 실제 동작 확인 못 함** (Irene 매장 떠남)
+- 매장 환경 정보 미파악: PWA 새 설치 여부 / 두 번째 모니터 변경 이력 / Chrome 버전 / Windows 버전
+- 가능 시나리오: 매장이 내일 켰을 때 fix 가 작동 → 해결 / 또는 여전히 안 됨 → AnyDesk 원격 진단 필요
+
+---
+
+## 진행 중인 작업
+
+- **없음** — Customer Display 3차 운영 배포 완료. 10-13" POS 반응형 dev 완료 (미배포). 매장 실환경 검증만 미수행.
+
+### 10-13" POS 반응형 (2026-05-20 저녁, dev 완료, 미배포)
+
+**Irene 지시**: "반응형 10-13인치까지 포스, 설정들, 랜딩페이지 헤더까지. 좌측 메뉴 가로 사이즈 줄이면 안돼? 메뉴길이보다 우측 공백 불필요. 1뎁스 2뎁스 모두."
+
+**변경**:
+- `MainLayout.tsx`: SIDEBAR_ADMIN_EXPANDED 220→**180**, SECONDARY_PANEL_W 220→**180** (Irene 재요청으로 196→180 한 번 더 축소), `SIDEBAR_AUTOCOLLAPSE_BREAKPOINT=1366` 신규
+- RailItem/RailButton padding 14→10, gap 10→8 (BG "Products & Inventory" 20글자 ellipsis 해결 — 가용 130→136px)
+- 초기 mount 시 `window.innerWidth <= 1366` 이면 자동 collapsed (일반 사용자: 0px + open 버튼 / 2단 구조 역할: 64px 아이콘 only)
+- `SettingsPage.tsx` Printer 탭: QZ Tray 상태 행 flexWrap, Bill/Kitchen Printer/Station input+버튼 행 flexWrap + `flex: '1 1 180px'`, Network diagram overflowX:auto
+
+**검증**:
+- 빌드: main.* 1.6M, dev 반영 (총 3 라운드 — 220→196, 196→180, padding 추가 축소)
+- Playwright 18 페이지 (1280×800 / 1366×768 / 1920×1080 × 6 페이지 RA): overflow 0 + 콘솔 에러 0
+- Playwright 7 역할 × 2 viewport (1280×800 / 1920×1080): 1280 사이드바 64px / 1920 사이드바 180px 일관, mount 에러 0 (Supplier/BM 의 API 403 은 별개 권한 이슈, mount 영향 0). Owner 만 dev DB 미존재 → 코드 자동 적용
+- health-check 80/80 PASS · state-hydration 0 warning
+- 캡처 도구 추가: `dev-frontend/scripts/capture-responsive.js` (향후 반응형 회귀 점검용으로 정착)
+
+**남은 작업**:
+- 운영 배포 (Irene `/배포` 명령 시)
+- Customer Display 매장 실환경 검증 1순위 잔존
+
+### 3차 운영 배포 결과 (2026-05-20 08:23 UTC)
+
+- Deployment Complete, 10/10 smoke
+- Backup: `/var/www/backups/20260520_082207`
+- 운영 `main.a8abd661.js` 200 / chunk `3694.242148d4` 200 / chunk `9641.29520257` 200
+- 4 langs settings.json `resetPosition` 키 모두 운영에 반영 (en/ko/zh/ms)
+
+---
+
+## 다음 세션 (2026-05-21~) 첫 작업 — 우선순위 순
+
+### 1. 매장 상태 재확인 (1순위, 가장 시급)
+
+- 매장에 3차 hotfix 적용 (Ctrl+R 새로고침 또는 PWA 재시작) 후 Customer Display 정상 작동 여부 확인
+- **안 되면 AnyDesk / TeamViewer 원격 접속 진단** (Irene 가 매장에 사전 동의 받기) — 매장 실환경 직접 보는 게 유일하게 100% 확실한 방법
+- 매장 환경 정보 수집:
+  - PWA 데스크탑 앱 새로 설치/재설치한 적 있나?
+  - 두 번째 모니터 분리/재연결/해상도/위치 변경한 적 있나?
+  - Chrome 버전 / Windows 버전 / 모니터 모델
+  - 작업관리자에 떠도는 PurpleHereCustomerDisplay popup 있나?
+
+### 2. 매장 안내 가이드 작성 (Irene 명시 — "혼선없게")
+
+> "포스나 시스템 설정을 제대로 안내해서 혼선없게 하던지" — Irene 2026-05-20
+
+**작성 대상 (우선 결정 필요)**:
+- (A) Settings 페이지 안의 안내 카드 — Customer Display 카드 안에 단계별 setup 가이드 (Window Management 권한 / 모니터 배치 / popup 드래그 / Reset Position 사용법)
+- (B) FAQ / 블로그 포스트 — "Customer Display 가 안 뜨면" 문제 해결 가이드 (4 langs)
+- (C) 매장 초기 onboarding wizard — 가맹 시 1회 setup 마법사
+- 추천: A + B 동시 (in-app 안내 + 검색 가능한 문서)
+- 형식 결정 + 4 langs 작성
+
+**가이드 핵심 콘텐츠**:
+- 두 번째 모니터 연결 + Windows/macOS Display 설정 ("Extend" 모드)
+- Customer Display 첫 클릭 시 Chrome 의 "Window Management" 권한 prompt → "허용" 안내
+- popup 떴는데 메인에 있으면 두 번째 모니터로 드래그 (또는 Win + Shift + → / ←)
+- 모니터 환경 변경 후 안 뜨면 → Settings → "Reset Position" 버튼 / 또는 F12 콘솔 명령
+- AutoOpen 토글 안내
+
+### 3. 잔존 미해결 / 추가 보강
+
+- **Chrome PWA standalone 의 `window.open` 좌표 무시** 알려진 제약 web search (Chromium 버그 트래커, Stack Overflow)
+- **Window Management API permission 명시적 요청 UI** 추가 (Settings 의 안내 카드 안에 "Grant Permission" 버튼)
+- **Sentry / 에러 트래킹** 추가 — Customer Display 호출 결과 (reason 별 카운트) 익명 수집해서 운영 매장 패턴 파악 (PII 0)
+
+### 4. 이번 사이클 행정 정리
+
+- 버전 표기: v3.36 hotfix 로 올림 (매장 critical fix 라 backstage 분류 아님)
+- CHANGELOG / DEVELOPMENT_PLAN 업데이트 (3 hotfix 통합 항목)
+- 공지 포스트: "Customer Display 안정성 강화 + Reset Position 추가" (4 langs)
+- git commit: 미커밋 7 파일 (utils + 2 page + 4 i18n) — 3 hotfix 가 누적되어 한 커밋이 자연스러움
+- 매장 안내 메시지 최종본 (Ctrl+R + Reset Position 사용법)
+
+---
+
+## 미커밋 파일 (이번 사이클 3 hotfix 누적, 다른 작업 섞이지 않음)
+
+```
+M dev-frontend/src/utils/customerDisplay.ts                   # 1차+2차+3차 누적
+M dev-frontend/src/pages/POSTerminal/POSTerminalPage.tsx      # 1차 (OpenResult 호출자 update)
+M dev-frontend/src/pages/Settings/SettingsPage.tsx            # 1차 (alert→setInfoModal) + 3차 (Reset Position 버튼)
+M dev-frontend/public/locales/en/settings.json                # 3차 (resetPosition 4키 추가 + popupBlocked dead key 제거)
+M dev-frontend/public/locales/ko/settings.json                # 3차 (동일)
+M dev-frontend/public/locales/zh/settings.json                # 3차 (동일)
+M dev-frontend/public/locales/ms/settings.json                # 3차 (동일)
+```
+
+---
+
+## 완료된 작업 (2026-05-20 — Customer Display 안정성 hotfix 3차 누적)
+
+### 문제 흐름 (시간순)
+
+1. 매장 보고: "POS Terminal 우측 상단 Customer Display 버튼 눌러도 두 번째 모니터에 안 뜸"
+2. 1차 fix 운영 배포 후: 매장 재시도 → "새 데스크탑앱(popup)으로 열렸는데 다른 모니터에는 안 뜸. 모달도 안 뜸"
+3. 추가 보고: "이제 기존 메인 모니터에 뜨던 것도 아무리 눌러도 표시 안되고 안 올라옴" (Windows 환경)
+4. 2차 fix 운영 배포 후: 매장 응답 전 Irene "여전히 앱 켜도 화면 안 나와. 잘 나오던 게 안 나옴"
+5. 3차 fix 운영 배포 진행 중 — Irene 매장 떠남, 검증 못 함
+
+### root cause 2가지 (분석 완료)
+
+- **(A) localStorage `cd.lastBounds` stale**: 매장이 이전에 popup 을 두 번째 모니터로 드래그 → 그 좌표 저장됨. 두 번째 모니터 disconnect / 해상도 변경 / PWA 새 설치 등으로 좌표가 stale 됨 → popup 이 더 이상 존재하지 않는 모니터 영역에 뜸 → 화면 영역 밖.
+- **(B) `openedWindow.focus()` early return silent fail**: 한 번 popup 잃어버리면 `openedWindow` 변수에 그 참조가 살아있어서, 다시 클릭해도 `focus()` + URL 변경만 시도. popup 이 hidden/minimize/화면 밖에 있으면 시각적 변화 없음 → 매장 입장 "아무 반응 없음" 무한 반복.
+- A + B 시너지로 stuck.
+
+### 3개 hotfix 누적
+
+**1차 — Silent fail → 안내 모달** (운영 배포 완료, main.9ca490f0.js, 2026-05-20 07:51 UTC)
+- `openCustomerDisplay()` 가 `Promise<boolean>` → `Promise<OpenResult>` 로 변경
+- 5 시나리오별 안내 모달 (`permission-denied` / `no-secondary-screen` / `popup-blocked` / `opened-fallback` (Firefox/Safari) / `opened`)
+- Window Management permission API 명시 체크
+- 호출자 2곳 (POSTerminalPage:2387, SettingsPage:5352) update
+- SettingsPage 의 `alert()` → `setInfoModal()` ([Standard modal components] 메모리 준수)
+- 효과: silent fail 제거. 단 매장은 "popup 떴는데 모달 안 떴고 두 번째 모니터에도 안 뜸" 보고 → reason 이 'opened' 라 모달 없음 (Chrome PWA 좌표 무시 케이스).
+
+**2차 — Hidden popup reuse 제거** (운영 배포 완료, main.5fcee7a5.js, 2026-05-20 08:13 UTC)
+- `openedWindow.focus()` early return 제거 → 매번 `window.open()` 재호출 + 즉시 `moveTo` + `resizeTo` + `focus` 강제
+- `forcePlacement` 헬퍼: immediate + addEventListener('load') 양쪽에서 호출
+- 효과: root cause B 완전 해결. 단 root cause A (stale bounds) 잔존 → Irene "여전히 안 나옴".
+
+**3차 — Stale bounds 자동 검증 + Reset Position UI** (운영 배포 진행 중, main.a8abd661.js)
+- `isBoundsOnAttachedScreen()` 추가: `getScreenDetails()` 로 모든 모니터 영역과 비교. fallback: 현재 `window.screen` 영역과 비교.
+- `getValidatedStoredBounds()`: stale 이면 localStorage 자동 삭제 + null 리턴
+- `resetCustomerDisplayPosition()` export: 매장 자가 해결 수단
+- SettingsPage Customer Display 카드에 "Reset Position" 버튼 추가 (보라 outline 버튼)
+- i18n 4 langs (en/ko/zh/ms) — `resetPosition`/`resetPositionTitle`/`resetDoneTitle`/`resetDoneMessage` 4 키 × 4 langs = 16 entries
+- Dead i18n key `popupBlocked` 4 langs 모두 cleanup (이번 fix 로 사용처 0건)
+- 효과: root cause A 자동 해결. 매장이 직접 리셋 가능.
+
+### 미해결 / 미검증
+
+- **매장 실환경에서 fix 작동 확인** (Irene 매장 떠남) — 가장 큰 위험
+- **Chrome PWA standalone 의 `window.open` 좌표 무시** 케이스 — web search 미수행. 알려진 제약이면 우리 코드만으론 100% 해결 불가, 매장이 popup 드래그 1회 필수
+- **매장 환경 정보** (PWA 새 설치 여부, 모니터 변경 이력) 미파악
+
+### 매장 우회 안내 (3차 배포 전 Irene 가 매장에 제공한 메시지)
+
+```
+PWA 안에서 F12 또는 Ctrl+Shift+I → Console 탭 →
+localStorage.removeItem('cd.lastBounds'); location.reload();
+```
+
+또는 일반 Chrome 으로 https://purplehere.com 접속 → 같은 명령 (PWA 와 일반 Chrome localStorage 도메인 공유).
+
+3차 배포 후엔: **Settings → Customer Display → "Reset Position" 버튼** 으로 가능 (매장 직원도 가능, console 불필요).
+
+### 참고 코드 위치 / 키 [reference]
+
+- `utils/customerDisplay.ts` — 모든 hotfix 의 중심
+- `KEY_BOUNDS` = `'cd.lastBounds'` (localStorage)
+- `KEY_AUTO` = `'cd.autoOpen'` (localStorage)
+- `WINDOW_NAME` = `'PurpleHereCustomerDisplay'`
+- routes: `/restaurant/:id/display` (CustomerDisplayPage) + `/restaurant/:id/checkout-display` (CheckoutDisplayPage)
+- 호출자: POSTerminalPage.tsx (line 2385~2395) + SettingsPage.tsx (line 5352~5395)
+- i18n 키: `settings:settingsPage.customerDisplay.*`
+
+### 메모리 새로 만들 후보 (다음 세션 결정)
+
+- `[Customer Display popup pattern]` — popup window + Window Management API + stale bounds validation + Reset 버튼 패턴. 향후 다른 보조 모니터 페이지 (Kitchen Display 등) 에도 적용 가능
+
+### 완료된 작업 (2026-05-19 — v3.35)
 
 ### 완료된 작업 (2026-05-19 — v3.35)
 

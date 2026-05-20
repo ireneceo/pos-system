@@ -2385,8 +2385,10 @@ const POSTerminalPage: React.FC = () => {
           <button
             type="button"
             onClick={async () => {
-              const ok = await openCustomerDisplay(user?.restaurantId || '');
-              if (!ok) setInfoModal({ open: true, title: 'Popup Blocked', message: 'Customer Display window blocked. Allow popups for this site and try again.' });
+              const result = await openCustomerDisplay(user?.restaurantId || '');
+              if (result.title && result.message) {
+                setInfoModal({ open: true, title: result.title, message: result.message });
+              }
             }}
             title={isAutoOpenEnabled() ? 'Customer Display (auto-open enabled)' : 'Open Customer Display on secondary monitor'}
             style={{

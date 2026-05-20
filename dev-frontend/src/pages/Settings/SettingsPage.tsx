@@ -21,7 +21,7 @@ import { getCurrencySymbol } from '../../utils/currency';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
-import { openCustomerDisplay, isAutoOpenEnabled, setAutoOpenEnabled } from '../../utils/customerDisplay';
+import { openCustomerDisplay, isAutoOpenEnabled, setAutoOpenEnabled, resetCustomerDisplayPosition } from '../../utils/customerDisplay';
 // 스타일 컴포넌트
 const SettingsContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -4639,17 +4639,17 @@ const SettingsPage: React.FC = () => {
                 {/* QZ Tray Connection Status & Guide */}
                 {!printerSettingsLoading && printerMode === 'qztray' && (
                   <div style={{ marginTop: '16px', padding: '14px 16px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
                         <div style={{
-                          width: '8px', height: '8px', borderRadius: '50%',
+                          width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0,
                           background: qzTrayStatus === 'connected' ? '#10B981' : qzTrayStatus === 'connecting' ? '#F59E0B' : '#EF4444'
                         }} />
                         <span style={{ fontSize: '14px', fontWeight: 500, color: '#374151' }}>
                           {qzTrayStatus === 'connected' ? 'Connected to QZ Tray' : qzTrayStatus === 'connecting' ? 'Connecting...' : 'QZ Tray Not Connected'}
                         </span>
                       </div>
-                      <div style={{ display: 'flex', gap: '8px' }}>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                         <button
                           onClick={() => setShowQzGuide(true)}
                           style={{
@@ -4833,7 +4833,7 @@ const SettingsPage: React.FC = () => {
                       {/* Network diagram */}
                       <div style={{ marginBottom: '24px', padding: '16px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px' }}>
                         <h3 style={{ fontSize: '15px', color: '#374151', marginBottom: '10px', marginTop: 0 }}>{t('settings:settingsPage.howItWorks')}</h3>
-                        <div style={{ fontSize: '13px', color: '#6B7C93', fontFamily: 'monospace', lineHeight: '1.8', whiteSpace: 'pre-wrap' }}>
+                        <div style={{ fontSize: '13px', color: '#6B7C93', fontFamily: 'monospace', lineHeight: '1.8', whiteSpace: 'pre', overflowX: 'auto' }}>
 {`${t('settings:settingsPage.qzDiagramPos')}
     │
     ▼
@@ -4919,8 +4919,8 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                           <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>
                             Printer Address
                           </label>
-                          <div style={{ display: 'flex', gap: '8px' }}>
-                            <AutoSaveField onSave={handleSave}>
+                          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                            <AutoSaveField onSave={handleSave} style={{ flex: '1 1 180px', minWidth: 0 }}>
                             <input
                               type="text"
                               value={printerSettings.billPrinter.address || ''}
@@ -4930,8 +4930,8 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                               }))}
                               placeholder="192.168.1.100:9100"
                               style={{
-                                flex: 1, padding: '8px 12px', border: '1px solid #D1D5DB', borderRadius: '6px',
-                                fontSize: '14px', fontFamily: 'monospace'
+                                width: '100%', padding: '8px 12px', border: '1px solid #D1D5DB', borderRadius: '6px',
+                                fontSize: '14px', fontFamily: 'monospace', boxSizing: 'border-box'
                               }}
                             />
                             </AutoSaveField>
@@ -5066,8 +5066,8 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                                     <div style={{ fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
                                       {station.name}
                                     </div>
-                                    <div style={{ display: 'flex', gap: '8px' }}>
-                                      <AutoSaveField onSave={handleSave}>
+                                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                      <AutoSaveField onSave={handleSave} style={{ flex: '1 1 160px', minWidth: 0 }}>
                                       <input
                                         type="text"
                                         value={printerSettings.kitchenStationPrinters?.[station.id]?.address || ''}
@@ -5084,8 +5084,8 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                                         }))}
                                         placeholder="192.168.1.101:9100"
                                         style={{
-                                          flex: 1, padding: '7px 10px', border: '1px solid #D1D5DB', borderRadius: '6px',
-                                          fontSize: '13px', fontFamily: 'monospace'
+                                          width: '100%', padding: '7px 10px', border: '1px solid #D1D5DB', borderRadius: '6px',
+                                          fontSize: '13px', fontFamily: 'monospace', boxSizing: 'border-box'
                                         }}
                                       />
                                       </AutoSaveField>
@@ -5122,8 +5122,8 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                               <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>
                                 Printer Address
                               </label>
-                              <div style={{ display: 'flex', gap: '8px' }}>
-                                <AutoSaveField onSave={handleSave}>
+                              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                <AutoSaveField onSave={handleSave} style={{ flex: '1 1 180px', minWidth: 0 }}>
                                 <input
                                   type="text"
                                   value={printerSettings.kitchenPrinter.address || ''}
@@ -5133,8 +5133,8 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                                   }))}
                                   placeholder="192.168.1.101:9100"
                                   style={{
-                                    flex: 1, padding: '8px 12px', border: '1px solid #D1D5DB', borderRadius: '6px',
-                                    fontSize: '14px', fontFamily: 'monospace'
+                                    width: '100%', padding: '8px 12px', border: '1px solid #D1D5DB', borderRadius: '6px',
+                                    fontSize: '14px', fontFamily: 'monospace', boxSizing: 'border-box'
                                   }}
                                 />
                                 </AutoSaveField>
@@ -5350,8 +5350,10 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                   <button
                     type="button"
                     onClick={async () => {
-                      const ok = await openCustomerDisplay(user?.restaurantId || '');
-                      if (!ok) alert(t('settings:settingsPage.customerDisplay.popupBlocked', 'Popup blocked. Allow popups for this site in your browser settings and try again.'));
+                      const result = await openCustomerDisplay(user?.restaurantId || '');
+                      if (result.title && result.message) {
+                        setInfoModal({ open: true, title: result.title, message: result.message });
+                      }
                     }}
                     style={{
                       padding: '10px 20px', fontSize: '14px', fontWeight: 500,
@@ -5360,6 +5362,26 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                     }}
                   >
                     {t('settings:settingsPage.customerDisplay.openNow', 'Open Now')}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      resetCustomerDisplayPosition();
+                      setInfoModal({
+                        open: true,
+                        title: t('settings:settingsPage.customerDisplay.resetDoneTitle', 'Position Reset'),
+                        message: t('settings:settingsPage.customerDisplay.resetDoneMessage', 'Saved Customer Display position has been cleared. The next time you open Customer Display, the popup will appear in the center of the main screen. Drag it to your second monitor — the new position will be remembered.'),
+                      });
+                    }}
+                    title={t('settings:settingsPage.customerDisplay.resetPositionTitle', 'Use this if the popup opens off-screen after disconnecting or rearranging monitors')}
+                    style={{
+                      padding: '10px 20px', fontSize: '14px', fontWeight: 500,
+                      background: 'white', color: '#635BFF', border: '1px solid #E6EBF1',
+                      borderRadius: '6px', cursor: 'pointer'
+                    }}
+                  >
+                    {t('settings:settingsPage.customerDisplay.resetPosition', 'Reset Position')}
                   </button>
 
                   <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14, color: '#0A2540' }}>

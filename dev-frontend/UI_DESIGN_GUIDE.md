@@ -190,10 +190,13 @@ import { PageSettingsLink } from '../components/Common/PageHeader';
 
 모든 역할(System Admin / Brand / Foodcourt / Owner / Supplier / Restaurant Admin)이 동일한 2단 사이드바 사용 (Sentry / Stripe / Linear 패턴).
 
-**구조**:
-- **1뎁스 (좌측 카테고리 rail)**: 220px (collapsed 64px), 배경 `#EEF0F4`, lucide-react 라인 아이콘 + 라벨
-- **2뎁스 (sub-menu panel)**: 220px white, 텍스트만 (아이콘 없음). collapse 가능 (`ChevronsLeft`) → localStorage 저장. collapsed 상태에서 1뎁스 hover → floating popover
-- **헤더 통일**: SidebarHeader / SecondaryHeader / PageHeader 모두 `height: 80px / box-sizing: border-box / padding: 16px` strict (회색 라인 한 줄 정렬)
+**구조** (v3.36 폭 축소 + 동적 반응형):
+- **1뎁스 (좌측 카테고리 rail)**: **180px** (collapsed 64px), 배경 `#EEF0F4`, lucide-react 라인 아이콘 + 라벨. RailItem padding `6px 10px` + gap 8px
+- **2뎁스 (sub-menu panel)**: **180px** white, 텍스트만 (아이콘 없음). collapse 가능 (`ChevronsLeft`) → localStorage 저장. collapsed 상태에서 1뎁스 hover → floating popover
+- **2뎁스 자동 접힘 (v3.36+)**: 윈도우 가로 폭 **≤1280px** (10-12" POS) 진입 시 자동 collapsed 강제 (localStorage 옛 값 무시). >1280px 일 때만 사용자 토글값 존중. `useEffect` resize listener (120ms debounce) 로 동적 폭 변경 시 즉시 반응 — 리프레시 불필요. ≤768px 에서 1뎁스도 CSS @media translateX(-100%) 햄버거 모드
+- **사이드바 헤더**: 로고 max 100×40px, padding `14px 14px`, gap 10px (로고 ↔ 토글 사이 여백)
+- **푸터 4요소 (Refer & Earn / Install App / Language / Profile)**: 펼침 상태는 풀폭 카드. 1뎁스 수동 접힘(64px) 시 40×40 icon rail 자동 재배치 — Gift+잔액 dot, Download, 깃발 이모지, 이니셜 아바타. hover translateY(-1px) + shadow + tooltip
+- **헤더 통일**: SidebarHeader / SecondaryHeader / PageHeader 모두 `height: 80px / box-sizing: border-box` strict (회색 라인 한 줄 정렬)
 
 **Active / Hover**:
 - 1뎁스 active: 흰 배경 (`#FFFFFF`) + 좌측 3px 보라 라인 + 글자 보라 (`#635BFF`, font-weight 600)

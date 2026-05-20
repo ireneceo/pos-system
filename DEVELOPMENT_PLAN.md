@@ -1,9 +1,31 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-05-19 (v3.35 운영 배포 — SNS 정식 로고 OG 이미지 + 모바일 메뉴 헤더 정리)
+> **최종 업데이트:** 2026-05-20 (v3.36 운영 배포 — Customer Display 안정성 3차 + 10-12" POS 반응형 + 사이드바 폭 축소)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
-> **현재 버전:** **v3.35** (SNS 썸네일 정식 로고 + 모바일 메뉴 헤더 중복 정리)
+> **현재 버전:** **v3.36** (Customer Display hotfix 3차 + 10-12" POS 반응형 + 사이드바 단계별 동적 반응)
+
+## ✅ 완료: v3.36 — Customer Display 3차 hotfix + 10-12" POS 반응형 + 사이드바 폭 축소 (2026-05-20 배포)
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Customer Display 3차 hotfix | 매장 critical 이슈. 1차: silent fail → 안내 모달 (OpenResult 5 reason). 2차: hidden popup reuse 제거 (forcePlacement). 3차: stale bounds 자동 검증 + Reset Position 버튼 + i18n 4 langs | ✅ 운영 |
+| 사이드바 폭 220→180 | 1뎁스 + 2뎁스 일관 축소. RailItem padding 14→10, gap 10→8. "Products & Inventory" 같은 긴 메뉴 ellipsis 해소 | ✅ 운영 |
+| 2뎁스 자동 접힘 (≤1280px) | 10-12" 진입 시 자동 접힘 + hover popover (Stripe/Notion 패턴). 13"(1366) 이상 유지. localStorage 옛 값 무시하고 작은 화면이면 무조건 접힘 강제 | ✅ 운영 |
+| 동적 resize 즉시 반응 | `useEffect` resize listener (120ms debounce). 브라우저 폭 줄이면/키우면 즉시 단계별 반응 (리프레시 불필요) | ✅ 운영 |
+| 1뎁스 수동 접힘 푸터 icon rail | 사용자 « 토글로 사이드바 접으면 Refer/Install/Language/Avatar 4 요소가 40×40 icon rail 로 재배치. hover translateY + tooltip. Gift 아이콘 통일 | ✅ 운영 |
+| 로고 + 헤더 여백 | LogoImage 140×60 → 100×40. SidebarHeader gap 10px 명시. 로고 ↔ « 토글 사이 명확한 여백 | ✅ 운영 |
+| Settings Printer 탭 flex-wrap | Bill/Kitchen Printer + Station 의 input+버튼 행 flex-wrap + flex: '1 1 180px'. QZ Tray 상태 행 flexWrap. Network diagram overflowX:auto | ✅ 운영 |
+| 반응형 회귀 점검 도구 | `dev-frontend/scripts/capture-responsive.js` 신규. Playwright 기반 3 viewport × 6 페이지 검증 | ✅ 도구화 |
+
+### 검증
+- 빌드 `main.53ed5199.js` (1.58MB) · health-check **80/80** · state-hydration **0 warning**
+- Playwright 18 페이지 (1280×800 / 1366×768 / 1920×1080 × 6) overflow 0 + 에러 0
+- 7 역할 × 2 viewport = 14 캡처 overflow 0 + pageerror 0
+- 동적 resize 4 단계 (1600→1200→700→1500) 즉시 반응 확인
+- 운영 배포 Smoke **10/10 PASS**, Backup `/var/www/backups/20260520_164354`
+
+---
 
 ## ✅ 완료: v3.35 — SNS 정식 로고 + 모바일 메뉴 헤더 정리 (2026-05-19, 당일 두 번째 배포)
 

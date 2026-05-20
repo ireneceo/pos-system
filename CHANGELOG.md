@@ -8,6 +8,32 @@
 
 ---
 
+## [v3.36] — 2026-05-20 배포 (Customer Display 안정성 hotfix 3차 + 10-12" POS 반응형 + 사이드바 폭 축소)
+
+- **Customer Display 안정성 hotfix 3차 누적** — 매장에서 "POS Customer Display 가 두 번째 모니터에 안 뜬다" 보고로 시작된 critical 이슈 대응. 같은 날 3 hotfix 운영 배포.
+  - **1차 (silent fail → 안내 모달)**: `openCustomerDisplay()` 반환을 `Promise<boolean>` → `Promise<OpenResult>` 로 변경. 5 시나리오(permission-denied / no-secondary-screen / popup-blocked / opened-fallback / opened) 별 안내 모달. Window Management permission API 명시 체크. 호출자 2곳 (POSTerminalPage, SettingsPage) update. SettingsPage 의 `alert()` → `setInfoModal()` ([Standard modal components] 메모리 준수)
+  - **2차 (Hidden popup reuse 제거)**: `openedWindow.focus()` early return 제거 → 매번 `window.open()` 재호출 + 즉시 `moveTo` + `resizeTo` + `focus` 강제. `forcePlacement` 헬퍼 (immediate + addEventListener('load') 양쪽 호출). 한 번 popup 잃어버린 상태에서 다시 클릭해도 시각적 변화 없던 결함 해소
+  - **3차 (Stale bounds 자동 검증 + Reset Position UI)**: `isBoundsOnAttachedScreen()` 추가 — `getScreenDetails()` 로 모든 모니터 영역과 비교, fallback 으로 `window.screen` 영역과 비교. `getValidatedStoredBounds()` 가 stale 이면 localStorage 자동 삭제. `resetCustomerDisplayPosition()` export. Settings → Customer Display 카드에 "Reset Position" 버튼 추가 (보라 outline). i18n 4 langs `resetPosition`/`resetPositionTitle`/`resetDoneTitle`/`resetDoneMessage` 4 키 × 4 = 16 entries. Dead key `popupBlocked` 4 langs 모두 cleanup
+
+- **10-12" POS 모니터 반응형 + 사이드바 단계별 동적 반응** — 작은 POS 모니터(1280×800) 에서 사이드바가 컨텐츠를 너무 많이 차지하던 문제. Stripe/Notion 표준 패턴으로 단계별 반응형 적용.
+  - **사이드바 폭 220→180px** — 1뎁스 (`SIDEBAR_ADMIN_EXPANDED`) + 2뎁스 (`SECONDARY_PANEL_W`) 일관 축소. RailItem padding 14→10, gap 10→8 → "Products & Inventory" 같은 긴 메뉴 ellipsis 해소
+  - **2뎁스 자동 접힘 (≤1280px)** — `SECONDARY_AUTOCOLLAPSE_BREAKPOINT=1280`. 10-12" 진입 시 2뎁스 접고 hover popover 표시 (이미 있던 SecondaryPopover 활용). 13" (1366×768) 이상은 둘 다 펼침 유지 — 컨텐츠 폭 1006px+ 충분
+  - **localStorage 우선순위 반전** — 기존 옛 토글값(`false`) 저장된 사용자도 작은 화면 진입 시 자동 접힘 강제. 큰 화면(>1280px) 일 때만 사용자 토글값 존중
+  - **동적 resize 즉시 반응 (120ms debounce)** — `useEffect` 안 `window.addEventListener('resize')` → 브라우저 가로 폭 줄이면 즉시 접힘, 키우면 즉시 펼침. 리프레시 불필요
+  - **단계별 breakpoint** — >1280 둘 다 펼침 / 1280~769 2뎁스 접힘(popover) / ≤768 1뎁스도 햄버거 모드 (기존 CSS @media 활용)
+  - **1뎁스 수동 접힘(64px) 시 푸터 icon rail** — 사용자가 « 토글 클릭해 1뎁스 완전 접으면 Refer & Earn / Install App / Language / Profile 4 요소가 깨져 보이던 문제. 40×40 정사각형 icon rail 로 일관 재디자인 (`FooterRailButton`/`FooterRailDot`/`FooterRailAvatar`/`FooterRailLang`). Gift 아이콘(보라 그라데이션) + 잔액 dot indicator, Download 아이콘, 깃발 이모지, 이니셜 아바타. hover translateY(-1px) + shadow + tooltip. 펼친 상태 Refer & Earn 의 ↗ 도 Gift 아이콘으로 통일
+  - **로고 100×40 + 사이드바 헤더 여백** — `LogoImage max-width: 140→100, max-height: 60→40`. `SidebarHeader padding 16→14` + `gap: 10px` 명시. 로고와 « 토글 버튼 사이 명확한 여백 확보
+  - **Settings Printer 탭 안전 가드** — Bill/Kitchen Printer + Station 의 IP input + Test Print 버튼 행에 `flexWrap: 'wrap'` + `flex: '1 1 180px'`. QZ Tray 상태 행 flexWrap. Network diagram `overflowX:auto`. 좁은 폭에서 자동 줄바꿈
+  - **반응형 회귀 점검 도구 추가** — `dev-frontend/scripts/capture-responsive.js` (Playwright). 향후 반응형 회귀 검증 표준 도구
+
+### 검증
+- 빌드 `main.53ed5199.js` (1.58MB) · health-check 80/80 · state-hydration 0 warning
+- Playwright 검증: 1280×800 / 1366×768 / 1920×1080 × 6 페이지 = 18 캡처 overflow 0 + 에러 0
+- 7 역할 × 2 viewport = 14 캡처 overflow 0 + pageerror 0 (Owner 만 dev DB 미존재 → 코드 자동 적용)
+- 동적 resize 4 단계 검증 (1600→1200→700→1500) 즉시 반응 확인
+
+---
+
 ## [v3.35] — 2026-05-19 배포 (SNS 썸네일 정식 로고 + 모바일 메뉴 헤더 정리)
 
 - **SNS 썸네일 OG 이미지 정식 로고 적용** — 기존 `og-image.png` 가 단순 "PurpleHere" 텍스트 + 그라데이션이라 SNS 공유 시 브랜드 인식 떨어지던 문제. 정식 색상 로고(`color_logo-slogan.svg`, 17.6KB) 를 1200×630 OG 표준 사이즈에 중앙 배치 + "Solving Real F&B Problems" 슬로건 + `purplehere.com` URL 푸터. 파일 사이즈 351KB → 19.6KB (95% 감소). Facebook/Twitter scraper 캐시 무효화를 위해 운영 배포 후 Facebook Debugger / Twitter Card Validator 에서 "Scrape Again" 한 번 필요

@@ -16,13 +16,17 @@ import { useRoleDisplayName } from '../../utils/roleDisplay';
 import { useAllowedRoutes } from '../../hooks/useAllowedRoutes';
 
 import { getAuthToken } from '../../utils/auth';
-import { LayoutDashboard, Users, Truck, Briefcase, MessageSquare, CreditCard, Settings as SettingsIcon, ChevronsLeft, ChevronsRight, LogOut, Activity, Store, Package, ShoppingCart, FileText, Monitor, LayoutGrid, ChefHat, Tv, Smartphone, TrendingUp, Download, Building2, MapPin } from 'lucide-react';
+import { LayoutDashboard, Users, Truck, Briefcase, MessageSquare, CreditCard, Settings as SettingsIcon, ChevronsLeft, ChevronsRight, LogOut, Activity, Store, Package, ShoppingCart, FileText, Monitor, LayoutGrid, ChefHat, Tv, Smartphone, TrendingUp, Download, Building2, MapPin, Gift } from 'lucide-react';
 import { usePwaInstall } from '../../contexts/PwaInstallContext';
 
 // System Admin 2-tier sidebar widths
-const SIDEBAR_ADMIN_EXPANDED = 220;
+const SIDEBAR_ADMIN_EXPANDED = 180;
 const SIDEBAR_ADMIN_COLLAPSED = 64;
-const SECONDARY_PANEL_W = 220;
+const SECONDARY_PANEL_W = 180;
+// On 10-12" POS monitors (≤1280px wide, e.g. 1280×800) the 2nd tier panel auto-collapses
+// into a hover popover (Stripe/Notion pattern). 13" (1366px) and above keep both tiers expanded —
+// content width (1006px+ on 1366) is sufficient.
+const SECONDARY_AUTOCOLLAPSE_BREAKPOINT = 1280;
 
 const LayoutContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -39,7 +43,7 @@ const Sidebar = styled.div<{ isOpen?: boolean; isCollapsed?: boolean; $isSystemA
   left: 0;
   width: ${props => {
     if (props.isCollapsed) return props.$isSystemAdmin ? `${SIDEBAR_ADMIN_COLLAPSED}px` : '0px';
-    return '220px';
+    return `${SIDEBAR_ADMIN_EXPANDED}px`;
   }};
   height: 100vh;
   background: #EEF0F4;
@@ -57,7 +61,7 @@ const Sidebar = styled.div<{ isOpen?: boolean; isCollapsed?: boolean; $isSystemA
 `;
 
 const SidebarHeader = styled.div<{ isCollapsed?: boolean; $isSystemAdmin?: boolean }>`
-  padding: ${props => props.isCollapsed ? '16px 8px' : '16px'};
+  padding: ${props => props.isCollapsed ? '16px 8px' : '14px 14px'};
   border-bottom: none;
   flex-shrink: 0;
   height: ${p => p.$isSystemAdmin ? '80px' : '56px'};
@@ -67,6 +71,7 @@ const SidebarHeader = styled.div<{ isCollapsed?: boolean; $isSystemAdmin?: boole
   display: flex;
   align-items: center;
   justify-content: ${props => props.isCollapsed ? 'center' : 'space-between'};
+  gap: 10px;
 `;
 
 const SidebarToggleButton = styled.button`
@@ -134,9 +139,10 @@ const Logo = styled.div`
 `;
 
 const LogoImage = styled.img`
-  max-width: 140px;
-  max-height: 60px;
+  max-width: 100px;
+  max-height: 40px;
   object-fit: contain;
+  display: block;
 `;
 
 const SidebarNav = styled.nav`
@@ -295,7 +301,7 @@ const DisabledNavIcon = styled.span`
 const MainContent = styled.div<{ isCollapsed?: boolean; $sidebarW?: number; $extraLeft?: number }>`
   margin-left: ${props => {
     if (props.isCollapsed && !props.$sidebarW) return '0px';
-    const sw = props.$sidebarW || 220;
+    const sw = props.$sidebarW || SIDEBAR_ADMIN_EXPANDED;
     const extra = props.$extraLeft || 0;
     return `${sw + extra}px`;
   }};
@@ -317,8 +323,8 @@ const blinkKf = keyframes`
 const RailItem = styled(Link)<{ $active?: boolean; $collapsed?: boolean; $hasPending?: boolean }>`
   display: flex;
   align-items: center;
-  gap: ${p => p.$collapsed ? '0' : '10px'};
-  padding: ${p => p.$collapsed ? '8px 0' : '6px 14px'};
+  gap: ${p => p.$collapsed ? '0' : '8px'};
+  padding: ${p => p.$collapsed ? '8px 0' : '6px 10px'};
   justify-content: ${p => p.$collapsed ? 'center' : 'flex-start'};
   color: #6B7C93;
   text-decoration: none;
@@ -379,8 +385,8 @@ const RailItem = styled(Link)<{ $active?: boolean; $collapsed?: boolean; $hasPen
 const RailButton = styled.button<{ $collapsed?: boolean }>`
   display: flex;
   align-items: center;
-  gap: ${p => p.$collapsed ? '0' : '10px'};
-  padding: ${p => p.$collapsed ? '8px 0' : '6px 14px'};
+  gap: ${p => p.$collapsed ? '0' : '8px'};
+  padding: ${p => p.$collapsed ? '8px 0' : '6px 10px'};
   justify-content: ${p => p.$collapsed ? 'center' : 'flex-start'};
   color: #6B7C93;
   background: none;
@@ -746,8 +752,15 @@ const Overlay = styled.div<{ isOpen?: boolean }>`
   }
 `;
 
-const SidebarFooter = styled.div`
+const SidebarFooter = styled.div<{ $collapsed?: boolean }>`
   margin-top: auto;
+  ${p => p.$collapsed && `
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 0 12px;
+  `}
 `;
 
 const LanguageSelectorWrapper = styled.div`
@@ -759,6 +772,102 @@ const UserInfo = styled.div`
   border-top: 1px solid #E6EBF1;
   background: #F8FAFC;
 `;
+
+// ───── Collapsed (64px rail) footer components ─────
+const FooterRailButton = styled.button<{ $accent?: boolean }>`
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: ${p => p.$accent ? 'none' : '1px solid #E6EBF1'};
+  background: ${p => p.$accent ? 'linear-gradient(120deg, #635BFF, #8775FF)' : '#FFFFFF'};
+  color: ${p => p.$accent ? '#FFFFFF' : '#6B7C93'};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  text-decoration: none;
+  font-family: inherit;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
+  box-shadow: ${p => p.$accent ? '0 2px 6px rgba(99,91,255,0.25)' : 'none'};
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px ${p => p.$accent ? 'rgba(99,91,255,0.32)' : 'rgba(99,91,255,0.15)'};
+    color: ${p => p.$accent ? '#FFFFFF' : '#635BFF'};
+    border-color: ${p => p.$accent ? 'transparent' : '#C7D2FE'};
+    background: ${p => p.$accent ? 'linear-gradient(120deg, #5A51E6, #7D6BFF)' : '#F0F4FF'};
+  }
+`;
+
+const FooterRailDot = styled.span`
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  background: #10B981;
+  border: 2px solid #FFFFFF;
+  border-radius: 50%;
+  box-sizing: content-box;
+`;
+
+const FooterRailAvatar = styled.button`
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+  margin-top: 4px;
+
+  &:hover {
+    border-color: #C7D2FE;
+    transform: translateY(-1px);
+  }
+
+  > div {
+    width: 32px;
+    height: 32px;
+    font-size: 12px;
+  }
+`;
+
+const FooterRailLang = styled.div`
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid #E6EBF1;
+  background: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(99,91,255,0.15);
+    border-color: #C7D2FE;
+  }
+
+  /* Fill wrapper with the inner LanguageSelector icon-variant button */
+  > div, > div > button {
+    width: 100%;
+    height: 100%;
+  }
+  > div > button {
+    font-size: 22px;
+    line-height: 1;
+    border-radius: 10px;
+  }
+`;
+
 
 const UserCard = styled.div`
   display: flex;
@@ -1627,7 +1736,18 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   // ===== 2뎁스 collapse + hover popover =====
   const LS_SECONDARY_COLLAPSED = 'pos.admin.secondaryCollapsed';
   const [isSecondaryCollapsed, setIsSecondaryCollapsed] = useState<boolean>(() => {
-    try { return localStorage.getItem(LS_SECONDARY_COLLAPSED) === 'true'; } catch { return false; }
+    // Small POS monitors (10-13", ≤1366px): always start collapsed regardless of saved preference.
+    // User can still toggle expand within session (localStorage updated by toggle); the override
+    // applies on each fresh mount/reload so the small-screen default matches the design intent.
+    if (typeof window !== 'undefined' && window.innerWidth <= SECONDARY_AUTOCOLLAPSE_BREAKPOINT) {
+      return true;
+    }
+    // Wider screens: honor saved preference, default expanded.
+    try {
+      const ls = localStorage.getItem(LS_SECONDARY_COLLAPSED);
+      if (ls !== null) return ls === 'true';
+    } catch {}
+    return false;
   });
   const toggleSecondaryCollapse = useCallback(() => {
     setIsSecondaryCollapsed(v => {
@@ -1635,6 +1755,24 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       try { localStorage.setItem(LS_SECONDARY_COLLAPSED, String(next)); } catch {}
       return next;
     });
+  }, []);
+  // Sync 2nd tier collapse state with window width changes (live resize).
+  // ≤1280px → collapsed; >1280px → expanded. User can override within session via toggle,
+  // but the next resize crossing the threshold re-applies the design intent.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const handleResize = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        setIsSecondaryCollapsed(window.innerWidth <= SECONDARY_AUTOCOLLAPSE_BREAKPOINT);
+      }, 120);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => {
+      if (timer) clearTimeout(timer);
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
 
   // 모바일 (햄버거 메뉴) 에서 펼쳐진 1뎁스 카테고리 ID. null 이면 모두 접힘.
@@ -3146,107 +3284,169 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           </NavSection>
         </SidebarNav>
 
-        <SidebarFooter>
-          {/* Referral program link — visible to every role (Phase 3).
-              Opens in a new tab so the user's POS context is preserved. */}
-          <a
-            href="/referral/dashboard"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              padding: '10px 14px',
-              margin: '0 8px 12px',
-              borderRadius: 8,
-              background: 'linear-gradient(120deg, #635BFF, #8775FF)',
-              color: 'white',
-              textDecoration: 'none',
-              fontSize: 13,
-              fontWeight: 500,
-              boxShadow: '0 2px 8px rgba(99,91,255,0.25)'
-            }}
-            title={t('nav.referralProgram', 'Refer & earn — open referral dashboard') || ''}
-            onClick={() => closeSidebar?.()}
-          >
-            <span style={{ fontSize: 16, lineHeight: 1 }}>↗</span>
-            <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t('nav.referralProgram', 'Refer & Earn')}</span>
-            {referralBalance && referralBalance !== 'empty' && (
-              <span style={{ fontSize: 11, opacity: 0.85, whiteSpace: 'nowrap' }}>
-                {(() => {
-                  const sym = referralBalance.currency === 'MYR' ? 'RM'
-                            : referralBalance.currency === 'USD' ? '$'
-                            : referralBalance.currency === 'KRW' ? '₩'
-                            : referralBalance.currency === 'SGD' ? 'S$'
-                            : referralBalance.currency === 'JPY' ? '¥'
-                            : referralBalance.currency === 'VND' ? '₫'
-                            : referralBalance.currency + ' ';
-                  const decimals = ['KRW', 'JPY', 'VND'].includes(referralBalance.currency) ? 0 : 2;
-                  return `${sym}${referralBalance.balance.toFixed(decimals)}`;
-                })()}
-              </span>
-            )}
-          </a>
-          {/* Install App — visible on desktop (Chrome/Edge canInstall) + mobile (iOS shows guide).
-              Hidden when already running standalone (already installed). Triggers PWA prompt
-              directly — no separate /install landing page. */}
-          {showInstallButton && (
-            <button
-              type="button"
-              onClick={async () => {
-                if (canInstall) {
-                  await promptInstall();
-                } else if (isIOS) {
-                  alert(t('common:pwa.installBanner.iosGuide', 'On iPhone/iPad: tap the Share button in Safari, then "Add to Home Screen".'));
-                }
-                closeSidebar?.();
-              }}
-              title={t('nav.installApp', 'Install App') || ''}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                padding: '10px 14px',
-                margin: '0 8px 12px',
-                borderRadius: 8,
-                background: '#F6F9FC',
-                color: '#0A2540',
-                cursor: 'pointer',
-                fontSize: 13,
-                fontWeight: 500,
-                border: '1px solid #E6EBF1',
-                width: 'calc(100% - 16px)',
-                textAlign: 'left'
-              }}
-            >
-              <Download size={16} strokeWidth={1.75} />
-              <span style={{ flex: 1 }}>{t('nav.installApp', 'Install App')}</span>
-            </button>
-          )}
-          <LanguageSelectorWrapper>
-            <LanguageSelector variant="sidebar" />
-          </LanguageSelectorWrapper>
-          {/* User Information */}
-          {user && (
-            <UserInfo>
-            <UserCard onClick={() => {
-              if (user.role === 'Restaurant Admin' || user.role === 'Staff') {
-                navigate(`/restaurant/${restaurantId}/profile`);
-              } else {
-                navigate('/pos/profile');
-              }
-            }}>
-              <UserAvatar role={user.role}>
-                {getInitials(user.full_name || user.name || user.email)}
-              </UserAvatar>
-              <UserDetails>
-                <UserName>{user.full_name || user.name || 'User'}</UserName>
-                <UserRole>{displayRole(user.role)}</UserRole>
-                <UserEmail>{user.email}</UserEmail>
-              </UserDetails>
-            </UserCard>
-          </UserInfo>
+        <SidebarFooter $collapsed={isSidebarCollapsed}>
+          {isSidebarCollapsed ? (
+            <>
+              {/* Refer & Earn — icon rail */}
+              <FooterRailButton
+                as="a"
+                href="/referral/dashboard"
+                target="_blank"
+                rel="noopener noreferrer"
+                $accent
+                title={t('nav.referralProgram', 'Refer & Earn') || ''}
+                onClick={() => closeSidebar?.()}
+              >
+                <Gift size={18} strokeWidth={2} />
+                {referralBalance && referralBalance !== 'empty' && <FooterRailDot />}
+              </FooterRailButton>
+
+              {/* Install App — icon rail */}
+              {showInstallButton && (
+                <FooterRailButton
+                  type="button"
+                  onClick={async () => {
+                    if (canInstall) {
+                      await promptInstall();
+                    } else if (isIOS) {
+                      alert(t('common:pwa.installBanner.iosGuide', 'On iPhone/iPad: tap the Share button in Safari, then "Add to Home Screen".'));
+                    }
+                    closeSidebar?.();
+                  }}
+                  title={t('nav.installApp', 'Install App') || ''}
+                >
+                  <Download size={18} strokeWidth={2} />
+                </FooterRailButton>
+              )}
+
+              {/* Language — flag only */}
+              <FooterRailLang>
+                <LanguageSelector variant="icon" />
+              </FooterRailLang>
+
+              {/* User avatar */}
+              {user && (
+                <FooterRailAvatar
+                  type="button"
+                  onClick={() => {
+                    if (user.role === 'Restaurant Admin' || user.role === 'Staff') {
+                      navigate(`/restaurant/${restaurantId}/profile`);
+                    } else {
+                      navigate('/pos/profile');
+                    }
+                  }}
+                  title={`${user.full_name || user.name || 'User'} • ${user.email}`}
+                >
+                  <UserAvatar role={user.role}>
+                    {getInitials(user.full_name || user.name || user.email)}
+                  </UserAvatar>
+                </FooterRailAvatar>
+              )}
+            </>
+          ) : (
+            <>
+              {/* Referral program link — visible to every role (Phase 3).
+                  Opens in a new tab so the user's POS context is preserved. */}
+              <a
+                href="/referral/dashboard"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '10px 14px',
+                  margin: '0 8px 12px',
+                  borderRadius: 8,
+                  background: 'linear-gradient(120deg, #635BFF, #8775FF)',
+                  color: 'white',
+                  textDecoration: 'none',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  boxShadow: '0 2px 8px rgba(99,91,255,0.25)'
+                }}
+                title={t('nav.referralProgram', 'Refer & earn — open referral dashboard') || ''}
+                onClick={() => closeSidebar?.()}
+              >
+                <Gift size={16} strokeWidth={2} />
+                <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t('nav.referralProgram', 'Refer & Earn')}</span>
+                {referralBalance && referralBalance !== 'empty' && (
+                  <span style={{ fontSize: 11, opacity: 0.85, whiteSpace: 'nowrap' }}>
+                    {(() => {
+                      const sym = referralBalance.currency === 'MYR' ? 'RM'
+                                : referralBalance.currency === 'USD' ? '$'
+                                : referralBalance.currency === 'KRW' ? '₩'
+                                : referralBalance.currency === 'SGD' ? 'S$'
+                                : referralBalance.currency === 'JPY' ? '¥'
+                                : referralBalance.currency === 'VND' ? '₫'
+                                : referralBalance.currency + ' ';
+                      const decimals = ['KRW', 'JPY', 'VND'].includes(referralBalance.currency) ? 0 : 2;
+                      return `${sym}${referralBalance.balance.toFixed(decimals)}`;
+                    })()}
+                  </span>
+                )}
+              </a>
+              {/* Install App — visible on desktop (Chrome/Edge canInstall) + mobile (iOS shows guide).
+                  Hidden when already running standalone (already installed). Triggers PWA prompt
+                  directly — no separate /install landing page. */}
+              {showInstallButton && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (canInstall) {
+                      await promptInstall();
+                    } else if (isIOS) {
+                      alert(t('common:pwa.installBanner.iosGuide', 'On iPhone/iPad: tap the Share button in Safari, then "Add to Home Screen".'));
+                    }
+                    closeSidebar?.();
+                  }}
+                  title={t('nav.installApp', 'Install App') || ''}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '10px 14px',
+                    margin: '0 8px 12px',
+                    borderRadius: 8,
+                    background: '#F6F9FC',
+                    color: '#0A2540',
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    border: '1px solid #E6EBF1',
+                    width: 'calc(100% - 16px)',
+                    textAlign: 'left'
+                  }}
+                >
+                  <Download size={16} strokeWidth={1.75} />
+                  <span style={{ flex: 1 }}>{t('nav.installApp', 'Install App')}</span>
+                </button>
+              )}
+              <LanguageSelectorWrapper>
+                <LanguageSelector variant="sidebar" />
+              </LanguageSelectorWrapper>
+              {/* User Information */}
+              {user && (
+                <UserInfo>
+                <UserCard onClick={() => {
+                  if (user.role === 'Restaurant Admin' || user.role === 'Staff') {
+                    navigate(`/restaurant/${restaurantId}/profile`);
+                  } else {
+                    navigate('/pos/profile');
+                  }
+                }}>
+                  <UserAvatar role={user.role}>
+                    {getInitials(user.full_name || user.name || user.email)}
+                  </UserAvatar>
+                  <UserDetails>
+                    <UserName>{user.full_name || user.name || 'User'}</UserName>
+                    <UserRole>{displayRole(user.role)}</UserRole>
+                    <UserEmail>{user.email}</UserEmail>
+                  </UserDetails>
+                </UserCard>
+              </UserInfo>
+              )}
+            </>
           )}
         </SidebarFooter>
       </Sidebar>

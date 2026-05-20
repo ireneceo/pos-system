@@ -1,15 +1,15 @@
 /**
  * Customer Display Window Manager
  *
- * Opens the customer-facing checkout-display page on a secondary monitor when one is detected.
- * Falls back to a regular new window when:
- *   - Window Management API is unavailable (older browsers)
- *   - User denies the window-management permission
- *   - Only one screen is connected
+ * Opens the customer-facing display on a secondary monitor when one is detected.
  *
- * Browser security requires a user gesture (click) to open a popup, so this MUST be called
- * from a click handler. The first click each session also surfaces the permission prompt;
- * subsequent calls reuse the granted permission silently.
+ * Returns a structured OpenResult so the caller can show actionable guidance for each
+ * failure / fallback mode (popup blocked, permission denied, no second monitor, etc.)
+ * — silent failures left staff thinking "the button doesn't work".
+ *
+ * Browser security requires a user gesture (click) to open a popup, so this MUST be
+ * called from a click handler. The first click each session also surfaces the
+ * Window Management permission prompt (Chrome/Edge); subsequent calls reuse silently.
  *
  * Persistence: localStorage keys
  *   - cd.autoOpen   = '1' | '0'   (re-open on next POS session via tryAutoReopen)
@@ -19,6 +19,9 @@
 const KEY_AUTO = 'cd.autoOpen';
 const KEY_BOUNDS = 'cd.lastBounds';
 const WINDOW_NAME = 'PurpleHereCustomerDisplay';
+
+const DEFAULT_WIDTH = 1280;
+const DEFAULT_HEIGHT = 800;
 
 interface ScreenLike {
   left: number;
@@ -33,6 +36,22 @@ interface ScreenLike {
 interface ScreenDetailsLike {
   screens: ScreenLike[];
   currentScreen?: ScreenLike;
+}
+
+export type OpenResultReason =
+  | 'opened'              // success, placed on secondary screen
+  | 'focused'             // success, existing popup re-focused
+  | 'opened-fallback'     // success, but on primary screen (no Window Management API)
+  | 'permission-denied'   // opened on primary; Window Management permission denied
+  | 'no-secondary-screen' // opened on primary; no second monitor detected
+  | 'popup-blocked';      // failed — browser blocked window.open
+
+export interface OpenResult {
+  ok: boolean;
+  reason: OpenResultReason;
+  /** Present whenever the caller should surface guidance to the user. */
+  title?: string;
+  message?: string;
 }
 
 let openedWindow: Window | null = null;
@@ -56,70 +75,246 @@ function getStoredBounds(): { left: number; top: number; width: number; height: 
   } catch { return null; }
 }
 
+function clearStoredBounds(): void {
+  try { localStorage.removeItem(KEY_BOUNDS); } catch { /* ignore */ }
+}
+
+/**
+ * Manual reset for the saved Customer Display popup position.
+ * Used by Settings → Customer Display → "Reset Position" so staff can
+ * recover when the stored bounds point to a disconnected monitor or
+ * an off-screen area for any reason.
+ */
+export function resetCustomerDisplayPosition(): void {
+  clearStoredBounds();
+}
+
+/**
+ * Validate that `b` lies inside at least one currently-attached screen.
+ * Without this, a stale entry (e.g. second monitor was unplugged after the
+ * last save) would snap the popup off-screen — the well-known "click does
+ * nothing" failure.
+ *
+ * Uses getScreenDetails() when permitted; otherwise falls back to checking
+ * the current window's screen rectangle, which still catches the most common
+ * disconnect cases on a single-monitor setup.
+ */
+async function isBoundsOnAttachedScreen(b: { left: number; top: number; width: number; height: number }): Promise<boolean> {
+  if (!(b.width >= 100 && b.height >= 100 && b.width <= 20000 && b.height <= 20000)) return false;
+  const cx = b.left + b.width / 2;
+  const cy = b.top + b.height / 2;
+
+  const w = window as any;
+  if (typeof w.getScreenDetails === 'function') {
+    try {
+      const perm = await getWindowManagementPermission();
+      if (perm !== 'denied') {
+        const details: ScreenDetailsLike = await w.getScreenDetails();
+        if (details?.screens?.length) {
+          return details.screens.some(s =>
+            cx >= s.left && cx < s.left + s.availWidth &&
+            cy >= s.top && cy < s.top + s.availHeight
+          );
+        }
+      }
+    } catch { /* permission denied or API failure — fall through */ }
+  }
+
+  // Fallback: validate against the current window's screen only. Catches the
+  // common case where the user was on a 2-monitor setup, popup was on monitor 2,
+  // and monitor 2 has been disconnected — the stale bounds no longer overlap the
+  // remaining (primary) screen.
+  try {
+    const sw = window.screen.availWidth || 0;
+    const sh = window.screen.availHeight || 0;
+    const sLeft = (window.screen as any).availLeft ?? 0;
+    const sTop = (window.screen as any).availTop ?? 0;
+    return cx >= sLeft && cx < sLeft + sw && cy >= sTop && cy < sTop + sh;
+  } catch { return false; }
+}
+
+/**
+ * Returns stored bounds only if they still point at an attached screen.
+ * Stale entries are auto-deleted to prevent repeat off-screen openings.
+ */
+async function getValidatedStoredBounds(): Promise<{ left: number; top: number; width: number; height: number } | null> {
+  const b = getStoredBounds();
+  if (!b) return null;
+  const ok = await isBoundsOnAttachedScreen(b);
+  if (!ok) { clearStoredBounds(); return null; }
+  return b;
+}
+
 function storeBounds(b: { left: number; top: number; width: number; height: number }): void {
   try { localStorage.setItem(KEY_BOUNDS, JSON.stringify(b)); } catch { /* ignore */ }
 }
 
-async function pickSecondaryScreen(): Promise<ScreenLike | null> {
+async function getWindowManagementPermission(): Promise<'granted' | 'denied' | 'prompt' | 'unsupported'> {
+  try {
+    if (!('permissions' in navigator)) return 'unsupported';
+    const res = await (navigator.permissions as any).query({ name: 'window-management' });
+    const state = res?.state;
+    if (state === 'granted' || state === 'denied' || state === 'prompt') return state;
+    return 'unsupported';
+  } catch {
+    return 'unsupported';
+  }
+}
+
+type PickReason = 'ok' | 'permission-denied' | 'single-screen' | 'unsupported';
+
+async function pickSecondaryScreen(): Promise<{ screen: ScreenLike | null; reason: PickReason }> {
   const w = window as any;
-  if (typeof w.getScreenDetails !== 'function') return null;
+  if (typeof w.getScreenDetails !== 'function') return { screen: null, reason: 'unsupported' };
+  const perm = await getWindowManagementPermission();
+  if (perm === 'denied') return { screen: null, reason: 'permission-denied' };
   try {
     const details: ScreenDetailsLike = await w.getScreenDetails();
-    if (!details?.screens || details.screens.length < 2) return null;
+    if (!details?.screens || details.screens.length < 2) {
+      return { screen: null, reason: 'single-screen' };
+    }
     const current = details.currentScreen;
-    // Prefer the first screen that is NOT current and NOT internal (laptop builtin).
     const external = details.screens.find(s => s !== current && s.isInternal === false);
-    if (external) return external;
-    // Otherwise pick any screen that is not the current one.
-    return details.screens.find(s => s !== current) || null;
+    if (external) return { screen: external, reason: 'ok' };
+    return { screen: details.screens.find(s => s !== current) || null, reason: 'ok' };
   } catch {
-    // Permission denied or API failure — fall back to single window
-    return null;
+    return { screen: null, reason: 'permission-denied' };
+  }
+}
+
+function fallbackBounds(): { left: number; top: number; width: number; height: number } {
+  try {
+    const sw = window.screen.availWidth || DEFAULT_WIDTH;
+    const sh = window.screen.availHeight || DEFAULT_HEIGHT;
+    const w = Math.min(DEFAULT_WIDTH, Math.max(640, sw - 40));
+    const h = Math.min(DEFAULT_HEIGHT, Math.max(480, sh - 40));
+    const left = Math.max(0, Math.floor((sw - w) / 2));
+    const top = Math.max(0, Math.floor((sh - h) / 2));
+    return { left, top, width: w, height: h };
+  } catch {
+    return { left: 0, top: 0, width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT };
   }
 }
 
 /**
  * Open (or focus) the customer display window. Must be called from a user gesture.
- * Returns true if a window was opened/focused, false on popup block or error.
+ * Returns a structured OpenResult — callers should always surface `title`/`message`
+ * when present so staff know what to do.
  */
-export async function openCustomerDisplay(restaurantId: number | string): Promise<boolean> {
-  const url = `/restaurant/${restaurantId}/checkout-display`;
+export async function openCustomerDisplay(
+  restaurantId: number | string,
+  kind: 'checkout-display' | 'display' = 'checkout-display'
+): Promise<OpenResult> {
+  const url = `/restaurant/${restaurantId}/${kind}`;
 
-  // Already open and not closed → just focus.
-  if (openedWindow && !openedWindow.closed) {
-    try { openedWindow.focus(); openedWindow.location.href = url; return true; } catch { /* fall through */ }
-  }
+  const { screen: secondary, reason: pickReason } = await pickSecondaryScreen();
 
-  const secondary = await pickSecondaryScreen();
-  let features = 'noopener=no,popup=yes';
+  let placement: { left: number; top: number; width: number; height: number };
+  let placedOnSecondary = false;
 
   if (secondary) {
-    const left = secondary.left;
-    const top = secondary.top;
-    const width = secondary.availWidth;
-    const height = secondary.availHeight;
-    features = `popup=yes,left=${left},top=${top},width=${width},height=${height}`;
-    storeBounds({ left, top, width, height });
+    placement = {
+      left: secondary.left,
+      top: secondary.top,
+      width: secondary.availWidth,
+      height: secondary.availHeight,
+    };
+    storeBounds(placement);
+    placedOnSecondary = true;
   } else {
-    // Fall back to last-known bounds if any (user may have moved the window manually before)
-    const b = getStoredBounds();
-    if (b) features = `popup=yes,left=${b.left},top=${b.top},width=${b.width},height=${b.height}`;
+    placement = (await getValidatedStoredBounds()) || fallbackBounds();
   }
 
-  const win = window.open(url, WINDOW_NAME, features);
-  if (!win) return false; // popup blocked
+  const features = `popup=yes,noopener=no,left=${placement.left},top=${placement.top},width=${placement.width},height=${placement.height}`;
+
+  // window.open() with a fixed WINDOW_NAME reuses any existing popup of the same name
+  // (navigates it to `url`) or opens a fresh one. We deliberately do NOT early-return
+  // on a cached `openedWindow.focus()` because that pattern silently fails when the
+  // popup is minimized / behind / on a disconnected monitor — staff click the button
+  // and "nothing happens". Always re-resolve, then forcibly reposition and focus.
+  let win: Window | null = null;
+  try {
+    win = window.open(url, WINDOW_NAME, features);
+  } catch {
+    win = null;
+  }
+
+  if (!win) {
+    return {
+      ok: false,
+      reason: 'popup-blocked',
+      title: 'Popup Blocked',
+      message:
+        'Your browser blocked the Customer Display popup.\n\n' +
+        '1. Look for a popup icon in the address bar (or a banner at the top).\n' +
+        '2. Choose "Always allow popups from this site".\n' +
+        '3. Click the Customer Display button again.',
+    };
+  }
+
   openedWindow = win;
 
-  // Best-effort: try to enter fullscreen on the secondary screen once it loads.
-  // (Browsers ignore programmatic fullscreen without a user gesture inside the new window;
-  // this remains a hint — most setups keep the popup borderless across the second monitor anyway.)
+  // Force the window into a visible position+size, both immediately (covers reused
+  // hidden popups) and again on load (covers fresh popups before content paints).
+  // moveTo/resizeTo only work for same-origin windows opened via window.open — true here.
+  const forcePlacement = () => {
+    try {
+      (win as any).moveTo?.(placement.left, placement.top);
+      (win as any).resizeTo?.(placement.width, placement.height);
+      win!.focus();
+    } catch { /* ignore cross-origin / minimized-state guards */ }
+  };
   try {
-    win.addEventListener('load', () => {
-      try { (win as any).moveTo?.(features.match(/left=(\d+)/)?.[1] || 0, features.match(/top=(\d+)/)?.[1] || 0); } catch { /* ignore */ }
-    });
-  } catch { /* ignore cross-origin if any */ }
+    win.focus();
+    forcePlacement();
+    win.addEventListener('load', forcePlacement);
+  } catch { /* ignore */ }
 
-  return true;
+  if (placedOnSecondary) {
+    return { ok: true, reason: 'opened' };
+  }
+
+  // Window opened but on the primary screen — explain why and what to do next.
+  if (pickReason === 'permission-denied') {
+    return {
+      ok: true,
+      reason: 'permission-denied',
+      title: 'Allow "Window Management" for Second Monitor',
+      message:
+        'Customer Display opened on this screen because the browser blocked the "Window Management" permission needed to place it on the second monitor.\n\n' +
+        'To fix:\n' +
+        '1. Click the lock icon (left of the address bar).\n' +
+        '2. Find "Window Management" and set it to "Allow".\n' +
+        '3. Reload this page, then click Customer Display again.\n\n' +
+        'For now, drag the popup to your second monitor manually — the position is saved for next time.',
+    };
+  }
+
+  if (pickReason === 'single-screen') {
+    return {
+      ok: true,
+      reason: 'no-secondary-screen',
+      title: 'No Second Monitor Detected',
+      message:
+        'Customer Display opened on this screen because no second monitor was detected.\n\n' +
+        'Check:\n' +
+        '1. The second monitor is powered on and the cable is connected.\n' +
+        '2. Windows: Settings → System → Display → set "Extend these displays".\n' +
+        '3. macOS: System Settings → Displays → arrange screens (not mirrored).\n\n' +
+        'Once the second monitor is detected, close this popup and try again.',
+    };
+  }
+
+  // Browser does not support the Window Management API (Firefox / Safari / older).
+  return {
+    ok: true,
+    reason: 'opened-fallback',
+    title: 'Drag to Second Monitor',
+    message:
+      'Customer Display opened on this screen. Your browser does not support automatic placement on the second monitor.\n\n' +
+      'Drag the popup window by its title bar to your second monitor — the position is saved for next time.\n\n' +
+      '(For automatic placement, use Google Chrome or Microsoft Edge.)',
+  };
 }
 
 /**
@@ -129,7 +324,6 @@ export async function openCustomerDisplay(restaurantId: number | string): Promis
  */
 export function tryAutoReopen(restaurantId: number | string): () => void {
   if (!isAutoOpenEnabled()) return () => {};
-  // If a previous popup is still open across a SPA route change, focus it instead.
   if (openedWindow && !openedWindow.closed) {
     try { openedWindow.focus(); } catch { /* ignore */ }
     return () => {};
