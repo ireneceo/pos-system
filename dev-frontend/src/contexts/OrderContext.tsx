@@ -158,7 +158,10 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
           menuItem: item.menuItem,
           is_set_menu: (item.menuItem as any).is_set_menu || false,
           set_items: (item.menuItem as any).set_items || []
-        }))
+        })),
+        // Backend Phase 1 — 명시 선택 머지: forceMergeIntoOrderId 가 있으면 그 주문에 머지.
+        // 없으면 POS 의 default skipAutoMerge 로 별도 주문 생성.
+        forceMergeIntoOrderId: (order as any).forceMergeIntoOrderId || undefined
       };
 
       const response = await fetch('/api/orders', getFetchOptions({

@@ -1,4 +1,6 @@
 {
+  "storeBadge.cashless": "无现金",
+  "storeBadge.cashlessHint": "本店不接受现金支付",
   "backToDashboard": "返回仪表盘",
   "visitHomepage": "前往 PurpleHere 主页",
   "button": {
@@ -289,6 +291,7 @@
     "branchMap": "分店地图",
     "incomingOrders": "实时订单",
     "carriers": "承运商",
+    "tablesQr": "桌台 & QR",
     "paymentMethods": "支付方式",
     "printer": "打印机",
     "kitchenStations": "厨房工位",
@@ -299,7 +302,8 @@
     "brandMenuCategories": "菜单分类",
     "brandMenuOptions": "菜单选项",
     "brandMenuUpdates": "品牌菜单更新",
-    "allBrands": "所有品牌"
+    "allBrands": "所有品牌",
+    "pickupDisplay": "取餐显示"
   },
   "language": {
     "en": "English",

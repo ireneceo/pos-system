@@ -10,5 +10,21 @@
   "kitchenDisplayPage.items": "Item",
   "kitchenDisplayPage.menus": "Menu",
   "kitchenDisplayPage.preparing": "Sedang Disediakan",
-  "kitchenDisplayPage.ready": "Sedia"
+  "kitchenDisplayPage.ready": "Sedia",
+  "pin.title": "Log masuk Kitchen Display",
+  "pin.subtitle": "Masukkan PIN 4-digit anda",
+  "pin.subtitleStation": "Masukkan PIN 4-digit — {{station}}",
+  "pin.invalid": "PIN tidak sah. Sila cuba lagi.",
+  "pin.connectionError": "Ralat sambungan. Sila cuba lagi.",
+  "pin.exit": "Keluar",
+  "pin.logout": "Log keluar",
+  "history.viewLink": "Lihat sejarah",
+  "history.title": "Sejarah Pesanan",
+  "history.close": "Tutup",
+  "pin.switchStaff": "Tukar staf",
+  "pin.switchStaffTitle": "Log masuk sebagai kakitangan dapur lain untuk log audit yang tepat",
+  "pin.close": "Tutup",
+  "mergeLabel": "Cantum",
+  "mergeNoLimit": "Tiada had",
+  "mergeTooltip": "Tetapan gabungan item"
 }

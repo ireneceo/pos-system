@@ -7,12 +7,22 @@ import FloorPlanCanvas from './FloorPlanCanvas';
 import TableDetailPanel from './TableDetailPanel';
 import FloorPlanStatsBar from './FloorPlanStatsBar';
 import PaymentModal from '../../components/POSTerminal/PaymentModal';
+import { Modal as CommonModal } from '../../components/UI';
 import { getRestaurantTimezone } from '../../utils/timezone';
 import DailySettlementPrint from '../Reports/DailySettlementPrint';
 import io from 'socket.io-client';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
+import { openCustomerDisplay, isAutoOpenEnabled } from '../../utils/customerDisplay';
+
+// Prefetch POS Terminal chunk on Floor Plan mount — clicking a table to start
+// a new order triggers an immediate navigate to /pos-terminal. Pulling the chunk
+// down ahead of time saves the network round-trip on click.
+const prefetchPosTerminal = () => {
+  import('../POSTerminal/POSTerminalPage').catch(() => { /* no-op */ });
+};
+
 // ─── Styled Components ───
 
 const PageContainer = styled.div`
@@ -230,6 +240,14 @@ const FloorPlanPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
+  // Prefetch is intentionally disabled here. Initial implementation triggered
+  // POS Terminal chunk download during Floor Plan idle, but the observed effect
+  // was the opposite of what we wanted — concurrent download + parse while the
+  // user was still interacting with Floor Plan slowed the perceived navigation
+  // time. POS Terminal's own mount cost (16 API calls, ~4s) dominates, so
+  // prefetching the chunk produces no measurable win and adds CPU pressure.
+  // Future fix: deduplicate the POS Terminal mount fetches first, then revisit.
+
   const [floorPlan, setFloorPlan] = useState<FloorPlanData>(DEFAULT_FLOOR_PLAN);
   const [activeZoneFilter, setActiveZoneFilter] = useState<string>('all');  // Zone filter chip (all | zone.id)
 
@@ -264,6 +282,7 @@ const FloorPlanPage: React.FC = () => {
 
   // Daily Settlement
   const [showSettlement, setShowSettlement] = useState(false);
+  const [cdInfoModal, setCdInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
 
   // POS overlay (for New Order only)
   const [showPOS, setShowPOS] = useState(false);
@@ -702,10 +721,10 @@ const FloorPlanPage: React.FC = () => {
 
       <Header>
         <HeaderLeft>
+          <HeaderTitle>{t('floorplan:floorPlanPage.floorPlan')}</HeaderTitle>
           <BackBtn onClick={() => navigate(`/restaurant/${restaurantId}/dashboard`)}>
             &larr; {t('nav.dashboard', 'Dashboard')}
           </BackBtn>
-          <HeaderTitle>{t('floorplan:floorPlanPage.floorPlan')}</HeaderTitle>
           <ConnectionStatus>
             <ConnectionDot $connected={connected} />
             {connected ? 'Live' : 'Offline'}
@@ -713,6 +732,27 @@ const FloorPlanPage: React.FC = () => {
         </HeaderLeft>
         <HeaderRight>
           <Clock>{clock}</Clock>
+          <button
+            type="button"
+            onClick={async () => {
+              const result = await openCustomerDisplay(restaurantId || '');
+              if (result.title && result.message) {
+                setCdInfoModal({ open: true, title: result.title, message: result.message });
+              }
+            }}
+            title={isAutoOpenEnabled() ? 'Customer Display (auto-open enabled)' : 'Open Customer Display on secondary monitor'}
+            style={{
+              padding: '6px 12px', fontSize: 12, fontWeight: 500,
+              border: '1px solid #E6EBF1', borderRadius: 6,
+              background: isAutoOpenEnabled() ? '#F0EFFF' : '#F6F9FC',
+              color: isAutoOpenEnabled() ? '#635BFF' : '#6B7C93',
+              cursor: 'pointer',
+              display: 'inline-flex', alignItems: 'center', gap: 4
+            }}
+          >
+            {isAutoOpenEnabled() && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#635BFF', display: 'inline-block' }} />}
+            Customer Display
+          </button>
           <EditBtn onClick={() => setShowSettlement(true)}>
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '14px', height: '14px', verticalAlign: 'middle', marginRight: '4px' }}>
               <path d="M6 9V2H18V9M6 18H4C2.89543 18 2 17.1046 2 16V11C2 9.89543 2.89543 9 4 9H20C21.1046 9 22 9.89543 22 11V16C22 17.1046 21.1046 18 20 18H18M6 14H18V22H6V14Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -785,6 +825,7 @@ const FloorPlanPage: React.FC = () => {
             selectedOrderIndex={safeOrderIndex}
             onOrderIndexChange={setSelectedOrderIndex}
             qrMode={qrMode}
+            floorPlan={floorPlan}
           />
         )}
       </MainContent>
@@ -796,7 +837,20 @@ const FloorPlanPage: React.FC = () => {
         restaurantId={Number(restaurantId)}
       />
 
-      {/* Payment Modal — same as LiveOrders */}
+      {/* Customer Display 안내 모달 (POS Terminal 과 동일 패턴) */}
+      {cdInfoModal.open && (
+        <CommonModal
+          isOpen={cdInfoModal.open}
+          onClose={() => setCdInfoModal({ open: false, title: '', message: '' })}
+          title={cdInfoModal.title}
+        >
+          <div style={{ padding: 24, whiteSpace: 'pre-line', color: '#0A2540', lineHeight: 1.6 }}>
+            {cdInfoModal.message}
+          </div>
+        </CommonModal>
+      )}
+
+      {/* Payment Modal — same as LiveOrders + Split bill (Phase 2) */}
       {showPaymentModal && selectedStatusInfo && (
         <PaymentModal
           isOpen={showPaymentModal}
@@ -805,13 +859,27 @@ const FloorPlanPage: React.FC = () => {
           subtotal={Number(selectedStatusInfo.subtotal || selectedStatusInfo.totalAmount || 0)}
           tax={Number(selectedStatusInfo.tax || 0)}
           serviceCharge={Number(selectedStatusInfo.serviceCharge || 0)}
+          takeawayCharge={Number(selectedStatusInfo.takeawayCharge || 0)}
           discountAmount={Number(selectedStatusInfo.discount || 0)}
           couponDiscount={Number(selectedStatusInfo.couponDiscount || 0)}
+          discountPolicyAmount={Number((selectedStatusInfo as any).discountPolicyAmount || 0)}
+          pointDiscount={Number((selectedStatusInfo as any).pointDiscount || 0)}
           onConfirmPayment={handlePaymentConfirm}
           paymentMethods={paymentMethods}
           customerId={selectedStatusInfo.customerId || undefined}
           restaurantId={Number(restaurantId)}
           membershipSettings={membershipSettings}
+          // Split bill (Phase 2)
+          orderId={selectedStatusInfo.orderId ? Number(selectedStatusInfo.orderId) : undefined}
+          orderItems={Array.isArray(selectedStatusInfo.orderItems) ? selectedStatusInfo.orderItems : []}
+          existingAmountPaid={Number((selectedStatusInfo as any).amountPaid || 0)}
+          onPartialPaymentComplete={(_p, remaining) => {
+            if (remaining <= 0.005) {
+              setShowPaymentModal(false);
+            }
+            // 새로 결제된 row 반영 — 다음 mergeable / table status refresh
+            // (FloorPlan socket 으로 자동 — 별도 fetch 불필요)
+          }}
         />
       )}
 

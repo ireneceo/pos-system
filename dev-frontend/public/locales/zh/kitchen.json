@@ -10,5 +10,21 @@
   "kitchenDisplayPage.items": "项目",
   "kitchenDisplayPage.menus": "菜单",
   "kitchenDisplayPage.preparing": "准备中",
-  "kitchenDisplayPage.ready": "已准备好"
+  "kitchenDisplayPage.ready": "已准备好",
+  "pin.title": "登录厨房显示",
+  "pin.subtitle": "请输入 4 位 PIN",
+  "pin.subtitleStation": "请输入 4 位 PIN — {{station}}",
+  "pin.invalid": "PIN 不正确，请重试。",
+  "pin.connectionError": "连接错误，请重试。",
+  "pin.exit": "退出",
+  "pin.logout": "登出",
+  "history.viewLink": "查看历史",
+  "history.title": "订单历史",
+  "history.close": "关闭",
+  "pin.switchStaff": "切换员工",
+  "pin.switchStaffTitle": "切换为其他厨房员工以记录操作",
+  "pin.close": "关闭",
+  "mergeLabel": "合并",
+  "mergeNoLimit": "无限制",
+  "mergeTooltip": "配置项目合并设置"
 }

@@ -249,6 +249,15 @@ interface PaymentModalProps {
   // 이 값이 truthy면 포인트 섹션을 항상 표시 (0 pts여도 안내 보임)
   selectedCustomerId?: number;
   onPointsChange?: (pointsUsed: number, discount: number) => void;
+  // Split bill — 한 주문 아이템 나눠서 결제 (Phase 2).
+  orderId?: number;                         // 부분 결제 endpoint 호출용
+  orderItems?: Array<{ name: string; quantity: number; price: number; menuItem?: any }>;
+  existingAmountPaid?: number;              // 이미 누적 결제된 금액 (남은 결제 자동 계산용)
+  // 모든 비례 분할 대상 변수 (split bill 정확한 금액 계산용).
+  // originalTotal 안에 이미 적용되어 있어 splitTotal 합산은 정확하지만, breakdown UI 노출을 위해 전달.
+  discountPolicyAmount?: number;            // 할인 정책 (별개)
+  pointDiscount?: number;                   // 포인트 결제
+  onPartialPaymentComplete?: (payment: any, remaining: number) => void;  // 부분 결제 1회 완료 콜백
 }
 
 const PaymentModal: React.FC<PaymentModalProps> = ({
@@ -274,7 +283,13 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   customerTier: propCustomerTier = 'Bronze',
   membershipSettings: propMembershipSettings,
   selectedCustomerId,
-  onPointsChange
+  onPointsChange,
+  orderId,
+  orderItems = [],
+  existingAmountPaid = 0,
+  discountPolicyAmount = 0,
+  pointDiscount: pointDiscountProp = 0,
+  onPartialPaymentComplete
 }) => {
   const { operationSettings } = useStore();
 
@@ -384,6 +399,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   }, [isOpen]);
 
   // Adjusted total after point discount
+  // total = full payment 모드일 때 결제할 금액 (point discount 적용)
+  // splitMode 면 선택 아이템 합계가 결제 amount
   const total = originalTotal - pointDiscount;
 
   // Get available payment methods for POS
@@ -430,6 +447,121 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   const [cashAmount, setCashAmount] = useState('');
   const [cardType, setCardType] = useState<string>('');
 
+  // ─── Split bill state ───
+  const splitEligible = !!(orderId && orderItems.length > 0);
+  // 이미 결제 진행 중인 주문이면 Split mode 기본 ON — cashier 가 토글 안 켜도 즉시 paid items 가시.
+  const [splitMode, setSplitMode] = useState(() => splitEligible && existingAmountPaid > 0);
+  // 체크된 아이템 인덱스 (orderItems 기준)
+  const [splitSelected, setSplitSelected] = useState<Set<number>>(new Set());
+  const [splitSubmitting, setSplitSubmitting] = useState(false);
+  const [splitError, setSplitError] = useState<string | null>(null);
+  // 부분 결제 후 모달 안 닫음 → 누적 결제 표시
+  const [localPaidExtra, setLocalPaidExtra] = useState(0);
+  // 이미 결제된 아이템 인덱스 (paid_items 의 idx 기반)
+  const [paidItemIndices, setPaidItemIndices] = useState<Set<number>>(new Set());
+  // 부분 결제 history — 각 receipt 의 method + amount (cashier 즉시 확인용)
+  const [paidReceipts, setPaidReceipts] = useState<Array<{ receipt_number: string; payment_method: string; card_type?: string; amount: number }>>([]);
+  // amount_paid 누적 (DB 값) — overpaid 가능
+  const totalReceived = existingAmountPaid + localPaidExtra;
+  // 표시용 — PAID items 정확 비례 기반. 옛 결제 amount 가 비례 안 맞는 경우 (cashier 가 정확
+  // 비례 외 임의 amount 입력) 안 PAID items 합과 표시 remaining 일치 보장.
+  const paidSubtotalFromItems = orderItems.reduce((sum, item, idx) => {
+    if (!paidItemIndices.has(idx)) return sum;
+    return sum + (Number(item.price) || 0) * (Number(item.quantity) || 1);
+  }, 0);
+  const paidPortion = subtotal > 0 ? paidSubtotalFromItems * (originalTotal / subtotal) : 0;
+  // 표시: PAID items 비례 (옛 cashier 가 더 받은 부분 무시) vs 실제 received (db amount_paid)
+  // 둘 다 노출해서 매장 cashier 가 차이 인지.
+  const totalPaidAlready = paidPortion > 0 ? paidPortion : totalReceived;
+  const remainingAmount = Math.max(0, originalTotal - totalPaidAlready);
+  // 옛 결제가 비례 보다 더 받았는지 (overpaid 표시용)
+  const overpaidAmount = Math.max(0, totalReceived - paidPortion);
+
+  // 이미 결제된 아이템 + receipts fetch (split UI 표시용)
+  // idx 매칭 (신규 결제 형식) + id/name 매칭 (옛 결제 형식 fallback) 둘 다 처리.
+  useEffect(() => {
+    if (!isOpen || !orderId) return;
+    (async () => {
+      try {
+        const res = await fetch(`/api/orders/${orderId}/payments`);
+        const json = await res.json();
+        const paid = new Set<number>();
+        const receipts: Array<any> = [];
+        const allPaidItems: any[] = [];
+        (json?.data || []).forEach((p: any) => {
+          if (Array.isArray(p.items_paid)) {
+            p.items_paid.forEach((it: any) => {
+              if (typeof it?.idx === 'number') paid.add(it.idx);
+              allPaidItems.push(it);
+            });
+          }
+          receipts.push({
+            receipt_number: p.receipt_number,
+            payment_method: p.payment_method,
+            card_type: p.card_type,
+            amount: Number(p.amount) || 0
+          });
+        });
+        // id 또는 name+price 기반 fallback (옛 receipt 처리)
+        const usedItemIds = new Set<string | number>();
+        orderItems.forEach((item, idx) => {
+          if (paid.has(idx)) return;
+          for (const paidItem of allPaidItems) {
+            if (usedItemIds.has(paidItem._matchedKey)) continue;
+            const sameId = paidItem.id && item.id && String(paidItem.id) === String(item.id);
+            const sameNamePrice = !sameId
+              && paidItem.name === item.name
+              && Number(paidItem.price) === Number(item.price)
+              && Number(paidItem.quantity || 1) === Number(item.quantity || 1);
+            if (sameId || sameNamePrice) {
+              paid.add(idx);
+              paidItem._matchedKey = `${paidItem.id || paidItem.name}_${idx}`;
+              usedItemIds.add(paidItem._matchedKey);
+              break;
+            }
+          }
+        });
+        setPaidItemIndices(paid);
+        setPaidReceipts(receipts);
+      } catch { /* ignore */ }
+    })();
+  }, [isOpen, orderId, localPaidExtra, orderItems]);
+
+  // Split 선택 — 비례 계산. 단순 item price 합이 아니라 tax/service/discount/coupon/takeaway 비례 적용.
+  const splitSubtotal = orderItems.reduce((sum, item, idx) => {
+    if (!splitSelected.has(idx)) return sum;
+    return sum + (Number(item.price) || 0) * (Number(item.quantity) || 1);
+  }, 0);
+  const ratio = subtotal > 0 ? splitSubtotal / subtotal : 0;
+  const splitDiscount = (Number(discountAmount) || 0) * ratio;
+  const splitCoupon = (Number(couponDiscount) || 0) * ratio;
+  const splitDiscountPolicy = (Number(discountPolicyAmount) || 0) * ratio;
+  const splitPointDiscount = (Number(pointDiscountProp) || 0) * ratio;
+  const splitTax = (Number(tax) || 0) * ratio;
+  const splitService = (Number(serviceCharge) || 0) * ratio;
+  const splitTakeaway = (Number(takeawayCharge) || 0) * ratio;
+  // 핵심 항등식: splitTotal === splitSubtotal × (originalTotal / subtotal)
+  // → 모든 변수 (tax/service/discount/coupon/policy/point/takeaway) 자동 비례.
+  // splitTotal = originalTotal × ratio 와 동일.
+  const splitTotal = Math.max(0,
+    splitSubtotal - splitDiscount - splitCoupon - splitDiscountPolicy - splitPointDiscount
+    + splitTax + splitService + splitTakeaway
+  );
+
+  useEffect(() => {
+    if (!isOpen) {
+      setSplitMode(false);
+      setSplitSelected(new Set());
+      setSplitError(null);
+      setLocalPaidExtra(0);
+      setPaidItemIndices(new Set());
+      setPaidReceipts([]);
+    } else if (splitEligible && existingAmountPaid > 0) {
+      // 진입 시 이미 결제된 상태면 자동 Split mode
+      setSplitMode(true);
+    }
+  }, [isOpen, splitEligible, existingAmountPaid]);
+
   const quickAmounts = [50, 100, 150, 200];
   
   // paymentMethod 초기화 (availableMethods가 변경되면)
@@ -451,7 +583,69 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     return Math.max(0, amount - total);
   };
   
+  // Split bill — 선택 아이템만 부분 결제 (POST /api/orders/:id/payments)
+  // splitTotal 을 그대로 보냄 (정확한 비례 결제). backend 가 amount_paid 를 order.total
+  // 로 cap. order_payments row 의 amount 는 실제 받은 그대로 (통계/회계 정확).
+  const handleSplitConfirm = async () => {
+    if (!orderId || splitSelected.size === 0) return;
+    const amount = splitTotal;
+    if (paymentMethod === 'cash') {
+      const received = parseFloat(cashAmount) || 0;
+      if (received < amount) {
+        setSplitError(`Received amount must be at least ${amount.toFixed(2)}`);
+        return;
+      }
+    }
+    setSplitSubmitting(true);
+    setSplitError(null);
+    try {
+      // idx 포함 — 다음 split 결제 시 paid items 추적 + disabled UI 용
+      const itemsPaid = orderItems
+        .map((item, idx) => splitSelected.has(idx) ? { idx, ...item } : null)
+        .filter(Boolean);
+      const body: any = {
+        amount,
+        payment_method: paymentMethod,
+        items_paid: itemsPaid,
+        cashier_name: cashierName
+      };
+      if (paymentMethod === 'cash') {
+        body.amount_received = parseFloat(cashAmount) || amount;
+        body.change_amount = Math.max(0, body.amount_received - amount);
+      }
+      if (paymentMethod === 'card' && cardType) body.card_type = cardType;
+
+      const res = await fetch(`/api/orders/${orderId}/payments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        setSplitError(json.message || 'Payment failed');
+        return;
+      }
+      const payment = json.data.payment;
+      const orderInfo = json.data.order;
+      const newRemaining = Number(orderInfo.remaining);
+      setLocalPaidExtra(prev => prev + amount);
+      setSplitSelected(new Set());
+      setCashAmount('');
+      onPartialPaymentComplete && onPartialPaymentComplete(payment, newRemaining);
+      // 완전 결제면 모달 닫기
+      if (newRemaining <= 0.005) onClose();
+    } catch (e: any) {
+      setSplitError(e?.message || 'Network error');
+    } finally {
+      setSplitSubmitting(false);
+    }
+  };
+
   const handleConfirm = () => {
+    if (splitMode) {
+      handleSplitConfirm();
+      return;
+    }
     if (paymentMethod === 'cash') {
       const amount = parseFloat(cashAmount) || 0;
       if (amount >= total) {
@@ -468,6 +662,14 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 
   const canConfirm = () => {
     if (!paymentMethods || availableMethods.length === 0) return false;
+    if (splitMode) {
+      if (splitSelected.size === 0 || splitTotal <= 0) return false;
+      if (paymentMethod === 'cash') {
+        const amount = parseFloat(cashAmount) || 0;
+        return amount >= splitTotal;
+      }
+      return true;
+    }
     if (paymentMethod === 'cash') {
       const amount = parseFloat(cashAmount) || 0;
       return amount >= total;
@@ -496,6 +698,200 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       title="Payment"
       footer={footer}
     >
+      {/* Split bill toggle + UI (Phase 2) */}
+      {splitEligible && (
+        <div style={{
+          padding: '12px 16px',
+          background: splitMode ? '#F0F4FF' : '#F8FAFC',
+          border: `1px solid ${splitMode ? '#DDD9FF' : '#E6EBF1'}`,
+          borderRadius: 8,
+          marginBottom: 16
+        }}>
+          <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#0A2540' }}>
+                Split bill (pay by items)
+              </div>
+              <div style={{ fontSize: 11, color: '#6B7C93', marginTop: 2 }}>
+                Select items to pay this round. Remaining items can be paid separately.
+                {totalPaidAlready > 0 && (
+                  <>
+                    <span style={{ color: '#3B30D9', fontWeight: 600 }}>
+                      {' · Paid: '}{formatCurrency(totalPaidAlready, operationSettings.currency)}
+                    </span>
+                    <span style={{ color: remainingAmount > 0.005 ? '#F59E0B' : '#059669', fontWeight: 600 }}>
+                      {' · Remaining: '}{formatCurrency(remainingAmount, operationSettings.currency)}
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+            <input
+              type="checkbox"
+              role="switch"
+              checked={splitMode}
+              onChange={(e) => { setSplitMode(e.target.checked); setSplitSelected(new Set()); setCashAmount(''); setSplitError(null); }}
+              style={{ width: 18, height: 18, cursor: 'pointer' }}
+            />
+          </label>
+
+          {splitMode && paidReceipts.length > 0 && (
+            <div style={{
+              marginTop: 12, padding: '8px 10px',
+              background: 'white',
+              border: '1px solid #E6EBF1', borderRadius: 6,
+              fontSize: 11
+            }}>
+              <div style={{ fontWeight: 600, color: '#0A2540', marginBottom: 4 }}>
+                Already paid ({paidReceipts.length} receipt{paidReceipts.length > 1 ? 's' : ''})
+              </div>
+              {paidReceipts.map((r, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', color: '#6B7C93', padding: '2px 0' }}>
+                  <span>
+                    <span style={{ color: '#3B30D9', fontWeight: 600 }}>{r.receipt_number}</span>
+                    {' · '}{r.payment_method}{r.card_type ? ` (${r.card_type})` : ''}
+                  </span>
+                  <span style={{ color: '#0A2540', fontWeight: 600 }}>
+                    {formatCurrency(r.amount, operationSettings.currency)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {splitMode && (
+            <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {orderItems.map((item, idx) => {
+                const itemTotal = (Number(item.price) || 0) * (Number(item.quantity) || 1);
+                const alreadyPaid = paidItemIndices.has(idx);
+                const checked = alreadyPaid || splitSelected.has(idx);
+                return (
+                  <label
+                    key={idx}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '8px 10px',
+                      background: alreadyPaid ? '#F0F2F5' : (checked ? 'white' : 'transparent'),
+                      border: `1px solid ${alreadyPaid ? '#D1D5DB' : (checked ? '#635BFF' : '#E6EBF1')}`,
+                      borderRadius: 6,
+                      cursor: alreadyPaid ? 'not-allowed' : 'pointer',
+                      opacity: alreadyPaid ? 0.6 : 1
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        disabled={alreadyPaid}
+                        onChange={(e) => {
+                          if (alreadyPaid) return;
+                          const next = new Set(splitSelected);
+                          if (e.target.checked) next.add(idx); else next.delete(idx);
+                          setSplitSelected(next);
+                        }}
+                        style={{ width: 16, height: 16, cursor: alreadyPaid ? 'not-allowed' : 'pointer' }}
+                      />
+                      <div style={{ fontSize: 13, color: '#0A2540', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: alreadyPaid ? 'line-through' : 'none' }}>
+                        {item.name} × {item.quantity}
+                      </div>
+                      {alreadyPaid && (
+                        <span style={{
+                          fontSize: 10, fontWeight: 700, color: '#059669',
+                          background: '#D1FAE5', padding: '2px 6px', borderRadius: 4,
+                          letterSpacing: 0.3
+                        }}>
+                          PAID
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: alreadyPaid ? '#6B7C93' : '#0A2540', whiteSpace: 'nowrap', textDecoration: alreadyPaid ? 'line-through' : 'none' }}>
+                      {formatCurrency(itemTotal, operationSettings.currency)}
+                    </div>
+                  </label>
+                );
+              })}
+
+              {/* Breakdown — 비례 적용 결과 명시 (cashier 가 손님에게 정확한 금액 안내) */}
+              {splitSelected.size > 0 && (
+                <div style={{
+                  marginTop: 8, padding: '10px 12px',
+                  background: 'white',
+                  border: '1px solid #E6EBF1',
+                  borderRadius: 6,
+                  fontSize: 12
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#6B7C93', marginBottom: 4 }}>
+                    <span>Items subtotal</span>
+                    <span>{formatCurrency(splitSubtotal, operationSettings.currency)}</span>
+                  </div>
+                  {splitDiscount > 0.005 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#6B7C93', marginBottom: 4 }}>
+                      <span>Discount (proportional)</span>
+                      <span>−{formatCurrency(splitDiscount, operationSettings.currency)}</span>
+                    </div>
+                  )}
+                  {splitCoupon > 0.005 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#6B7C93', marginBottom: 4 }}>
+                      <span>Coupon (proportional)</span>
+                      <span>−{formatCurrency(splitCoupon, operationSettings.currency)}</span>
+                    </div>
+                  )}
+                  {splitDiscountPolicy > 0.005 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#6B7C93', marginBottom: 4 }}>
+                      <span>Discount policy (proportional)</span>
+                      <span>−{formatCurrency(splitDiscountPolicy, operationSettings.currency)}</span>
+                    </div>
+                  )}
+                  {splitPointDiscount > 0.005 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#6B7C93', marginBottom: 4 }}>
+                      <span>Points (proportional)</span>
+                      <span>−{formatCurrency(splitPointDiscount, operationSettings.currency)}</span>
+                    </div>
+                  )}
+                  {splitTakeaway > 0.005 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#6B7C93', marginBottom: 4 }}>
+                      <span>Takeaway charge</span>
+                      <span>+{formatCurrency(splitTakeaway, operationSettings.currency)}</span>
+                    </div>
+                  )}
+                  {splitService > 0.005 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#6B7C93', marginBottom: 4 }}>
+                      <span>Service ({serviceChargeRate}%)</span>
+                      <span>+{formatCurrency(splitService, operationSettings.currency)}</span>
+                    </div>
+                  )}
+                  {splitTax > 0.005 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#6B7C93', marginBottom: 4 }}>
+                      <span>Tax ({taxRate}%)</span>
+                      <span>+{formatCurrency(splitTax, operationSettings.currency)}</span>
+                    </div>
+                  )}
+                  <div style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    marginTop: 6, paddingTop: 8, borderTop: '1px solid #E6EBF1'
+                  }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#0A2540' }}>This payment</span>
+                    <span style={{ fontSize: 16, fontWeight: 700, color: splitTotal - remainingAmount > 0.01 ? '#DC2626' : '#3B30D9' }}>
+                      {formatCurrency(splitTotal, operationSettings.currency)}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {splitError && (
+                <div style={{
+                  marginTop: 4, padding: '6px 8px',
+                  background: '#FEE2E2', color: '#B91C1C',
+                  fontSize: 12, borderRadius: 6
+                }}>
+                  {splitError}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       <OrderSummary>
         {cashierName && (
           <SummaryRow>
@@ -546,9 +942,33 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       </OrderSummary>
 
       <TotalSection>
-        <TotalLabel>Total Amount</TotalLabel>
+        <TotalLabel>{splitEligible && totalPaidAlready > 0 ? 'Order Total' : 'Total Amount'}</TotalLabel>
         <TotalPrice>{formatCurrency(total, operationSettings.currency)}</TotalPrice>
       </TotalSection>
+
+      {/* Partial 결제 진행 중 — Paid + Remaining 명확 표시 (Total Amount 와 시각 분리) */}
+      {splitEligible && totalPaidAlready > 0 && (
+        <div style={{
+          marginTop: 8, marginBottom: 20, padding: '10px 14px',
+          background: '#FEF3C7', border: '1px solid #FDE68A',
+          borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 4
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#92400E' }}>
+            <span>Already paid (proportional)</span>
+            <span style={{ fontWeight: 600 }}>{formatCurrency(totalPaidAlready, operationSettings.currency)}</span>
+          </div>
+          {overpaidAmount > 0.01 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#92400E', fontStyle: 'italic' }}>
+              <span>Received over proportional</span>
+              <span>+{formatCurrency(overpaidAmount, operationSettings.currency)}</span>
+            </div>
+          )}
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 700, color: '#92400E' }}>
+            <span>Remaining to pay</span>
+            <span>{formatCurrency(remainingAmount, operationSettings.currency)}</span>
+          </div>
+        </div>
+      )}
 
       {/* Points Section - Show loading state or points info */}
       {isLoadingPoints && customerId && (

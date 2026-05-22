@@ -6,6 +6,8 @@ const router = express.Router();
 const Order = require('../models/Order');
 const Restaurant = require('../models/Restaurant');
 const Coupon = require('../models/Coupon');
+const { logOrderActionSafe } = require('../services/orderAuditLog');
+const OrderAction = require('../models/OrderAction');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
 const { executeQuery, executeTransaction } = require('../utils/queryWrapper');
@@ -125,6 +127,53 @@ router.get('/:id', authenticateToken, async (req, res, next) => {
   } catch (error) {
     console.error('✗ Order 조회 실패:', error.message);
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/orders/mergeable
+// 같은 테이블에 진행 중인 머지 가능 주문 리스트 조회.
+// POS UI 가 결제 진행 전에 호출하여, 결과가 있으면 "기존 주문에 추가 vs 별도 생성" 모달을 띄움.
+router.get('/mergeable', authenticateToken, async (req, res) => {
+  try {
+    const restaurantId = parseInt(req.query.restaurant_id, 10);
+    const tableNumber = req.query.table_number;
+    const orderType = req.query.order_type || 'dine_in';
+    const paymentMethod = req.query.payment_method || null; // null = 결제 방식 무관 매칭
+    if (!restaurantId || !tableNumber) {
+      return res.status(400).json({ success: false, message: 'restaurant_id and table_number required' });
+    }
+    const restaurant = await Restaurant.findByPk(restaurantId);
+    if (!restaurant) return res.status(404).json({ success: false, message: 'Restaurant not found' });
+    const timezone = getRestaurantTimezone(restaurant);
+    const { startOfDay: todayStart, endOfDay: todayEnd } = getTodayBounds(timezone);
+
+    const list = await Order.findAll({
+      where: {
+        restaurant_id: restaurantId,
+        table_number: tableNumber,
+        order_type: orderType,
+        payment_status: 'pending',
+        status: { [Op.notIn]: ['served', 'completed', 'cancelled'] },
+        createdAt: { [Op.between]: [todayStart, todayEnd] },
+        is_deleted: { [Op.not]: true },
+        // payment_method: 요청한 값이 있으면 해당값 OR null 매칭, 없으면 무관
+        ...(paymentMethod ? {} : {}),
+        [Op.and]: [
+          paymentMethod
+            ? { [Op.or]: [{ payment_method: paymentMethod }, { payment_method: null }] }
+            : {},
+          // POS source only (mobile 은 자동 머지 자체 흐름 — UI 노출 불필요)
+          { [Op.or]: [{ source: { [Op.ne]: 'mobile' } }, { source: null }] }
+        ]
+      },
+      order: [['createdAt', 'DESC']],
+      limit: 10
+    });
+
+    res.json({ success: true, data: list });
+  } catch (error) {
+    console.error('✗ GET /mergeable:', error.message);
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
@@ -330,9 +379,47 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
       }
     }
 
-    // Auto-merge: Check if there's an existing order to merge into
-    // Rules: same table + payment_method + source group + (mobile: same customer)
-    const skipAutoMerge = orderData.skipAutoMerge === true;
+    // Auto-merge policy:
+    //   - Mobile: 안전 (customer 검사) → default 자동 머지 유지
+    //   - POS:   default 자동 머지 OFF (skipAutoMerge=true). POS UI 가 사전에 mergeable 조회 후
+    //            사용자가 "기존 추가" 선택했을 때만 명시적으로 `forceMergeIntoOrderId` 또는
+    //            `skipAutoMerge=false` 보낸다.
+    const orderSource = (orderData.source || 'pos').toLowerCase();
+    const isMobileSource = orderSource === 'mobile';
+    // POS 면 기본 skipAutoMerge. 명시적으로 skipAutoMerge=false 보내야만 자동 머지.
+    let skipAutoMerge = orderData.skipAutoMerge === true;
+    if (!isMobileSource && orderData.skipAutoMerge === undefined) {
+      skipAutoMerge = true;
+    }
+
+    // Force merge into a specific existing order (POS UI 의 "기존 주문에 추가" 선택)
+    if (orderData.forceMergeIntoOrderId) {
+      const force = await Order.findByPk(orderData.forceMergeIntoOrderId);
+      if (force && force.restaurant_id === orderData.restaurant_id) {
+        const newItems = orderData.order_items || orderData.items || [];
+        const mergeResult = await mergeItemsIntoOrder(force, newItems);
+        const io = req.app.get('io');
+        if (io) {
+          const room = `restaurant_${force.restaurant_id}`;
+          const plainMerged = mergeResult.order.get ? mergeResult.order.get({ plain: true }) : mergeResult.order;
+          if (typeof plainMerged.order_items === 'string') {
+            try { plainMerged.order_items = JSON.parse(plainMerged.order_items); } catch (_e) { plainMerged.order_items = []; }
+          }
+          io.of('/orders').to(room).emit('order-updated', plainMerged);
+          io.of('/orders').to(room).emit('order-items-added', {
+            orderId: force.id, orderNumber: force.order_number,
+            tableNumber: force.table_number, orderGroup: mergeResult.orderGroup,
+            addedItems: mergeResult.addedItems, itemCount: mergeResult.addedItems.length
+          });
+        }
+        return res.status(200).json({
+          success: true, data: mergeResult.order, merged: true,
+          mergeInfo: { originalOrderId: force.id, orderGroup: mergeResult.orderGroup, forced: true }
+        });
+      }
+      return res.status(404).json({ success: false, message: 'forceMergeIntoOrderId not found or not in this restaurant' });
+    }
+
     if (!skipAutoMerge && orderData.restaurant_id && orderData.table_number) {
       const mergeableOrder = await findMergeableOrder(
         orderData.restaurant_id,
@@ -689,6 +776,22 @@ router.patch('/:id', authenticateToken, async (req, res) => {
       io.of('/orders').to(`restaurant_${result.restaurant_id}`).emit('order-updated', plainResult);
     }
 
+    // ── Audit log — order created ────────────────
+    logOrderActionSafe({
+      orderId: result.id, restaurantId: result.restaurant_id,
+      actionType: 'created', toStatus: result.status,
+      performedByUserId: req.user?.id,
+      performedByName: req.user?.full_name || req.user?.username || (orderData.source === 'mobile' ? 'Mobile Customer' : 'POS Staff'),
+      performedByRole: orderData.source === 'mobile' ? 'customer' : 'staff',
+      source: orderData.source === 'mobile' ? 'mobile' : 'pos',
+      metadata: {
+        order_number: result.order_number,
+        total_amount: result.total_amount,
+        item_count: Array.isArray(result.order_items) ? result.order_items.length : 0,
+        order_type: result.order_type
+      }
+    });
+
     res.json({ success: true, data: result });
   } catch (error) {
     if (error.message === 'Order not found') {
@@ -748,9 +851,38 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
     // Track if status changed to completed (for inventory deduction)
     const wasCompleted = order.status === 'completed';
     const willBeCompleted = finalStatus === 'completed';
+    const prevStatus = order.status;  // audit log 용 snapshot
 
     await order.update(updateData);
     await order.reload(); // Ensure we have the latest data
+
+    // ── Order Action audit log — fire-and-forget (실패해도 메인 흐름 영향 0) ─────
+    // KDS PIN staff 정보 — req.body.kds_staff_id / kds_staff_name 으로 전달 (KDS PIN 흐름)
+    const kdsStaffId = req.body.kds_staff_id;
+    const kdsStaffName = req.body.kds_staff_name;
+    const auditSource = req.body.source || (kdsStaffId ? 'kds' : 'pos');  // KDS PIN 있으면 source=kds
+    const auditPerformerId = kdsStaffId || req.user?.id;
+    const auditPerformerName = kdsStaffName || req.user?.full_name || req.user?.username || 'Unknown';
+    const auditRole = req.user?.role === 'System Admin' || req.user?.role === 'Restaurant Admin'
+      ? 'admin' : (kdsStaffId ? 'staff' : (req.user?.role === 'Staff' ? 'staff' : 'admin'));
+
+    if (finalStatus === 'cancelled') {
+      logOrderActionSafe({
+        orderId: order.id, restaurantId: order.restaurant_id,
+        actionType: 'cancelled', fromStatus: prevStatus, toStatus: 'cancelled',
+        performedByUserId: auditPerformerId, performedByName: auditPerformerName, performedByRole: auditRole,
+        source: auditSource,
+        reason: (req.body.reason && String(req.body.reason).trim()) || 'No reason provided',
+        metadata: { previous_status: prevStatus }
+      });
+    } else if (prevStatus !== finalStatus) {
+      logOrderActionSafe({
+        orderId: order.id, restaurantId: order.restaurant_id,
+        actionType: 'status_change', fromStatus: prevStatus, toStatus: finalStatus,
+        performedByUserId: auditPerformerId, performedByName: auditPerformerName, performedByRole: auditRole,
+        source: auditSource
+      });
+    }
 
     // Deduct inventory when order is completed (only if it wasn't already completed)
     // Note: deductInventoryForOrder uses its own transaction internally
@@ -857,6 +989,13 @@ router.patch('/:id/items', authenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, error: { message: 'Order not found', code: 'NOT_FOUND' } });
     }
 
+    // snapshot for audit diff
+    let _prevItemsForAudit = order.order_items;
+    if (typeof _prevItemsForAudit === 'string') {
+      try { _prevItemsForAudit = JSON.parse(_prevItemsForAudit); } catch (_e) { _prevItemsForAudit = []; }
+    }
+    if (!Array.isArray(_prevItemsForAudit)) _prevItemsForAudit = [];
+
     // Note: Don't use JSON.stringify - Sequelize setter handles it automatically
     const updateData = {
       order_items: order_items
@@ -886,6 +1025,29 @@ router.patch('/:id/items', authenticateToken, async (req, res) => {
       }
       io.of('/orders').to(`restaurant_${order.restaurant_id}`).emit('order-updated', plainItemsOrder);
     }
+
+    // ── Audit log — items modified (item_modified) ────────────────
+    const _newItemsArr = Array.isArray(order_items) ? order_items : [];
+    const _prevCount = _prevItemsForAudit.length;
+    const _newCount = _newItemsArr.length;
+    const _kdsStaffIdMod = req.body.kds_staff_id;
+    const _kdsStaffNameMod = req.body.kds_staff_name;
+    let _modActionType = 'item_modified';
+    if (_newCount > _prevCount) _modActionType = 'item_added';
+    else if (_newCount < _prevCount) _modActionType = 'item_removed';
+    logOrderActionSafe({
+      orderId: order.id, restaurantId: order.restaurant_id,
+      actionType: _modActionType,
+      performedByUserId: _kdsStaffIdMod || req.user?.id,
+      performedByName: _kdsStaffNameMod || req.user?.full_name || req.user?.username,
+      performedByRole: _kdsStaffIdMod ? 'staff' : (['System Admin','Restaurant Admin'].includes(req.user?.role) ? 'admin' : 'staff'),
+      source: req.body.source || (_kdsStaffIdMod ? 'kds' : 'pos'),
+      metadata: {
+        previous_item_count: _prevCount,
+        new_item_count: _newCount,
+        total_changed: !!recalculateTotal
+      }
+    });
 
     res.json({ success: true, data: order });
   } catch (error) {
@@ -1187,6 +1349,23 @@ router.post('/:id/add-items', authenticateToken, async (req, res) => {
       io.of('/orders').to(`restaurant_${order.restaurant_id}`).emit('order-updated', plainAddOrder);
     }
 
+    // ── Audit log — items added ────────────────
+    const _kdsStaffIdAdd = req.body.kds_staff_id;
+    const _kdsStaffNameAdd = req.body.kds_staff_name;
+    logOrderActionSafe({
+      orderId: order.id, restaurantId: order.restaurant_id,
+      actionType: 'item_added',
+      performedByUserId: _kdsStaffIdAdd || req.user?.id,
+      performedByName: _kdsStaffNameAdd || req.user?.full_name || req.user?.username,
+      performedByRole: _kdsStaffIdAdd ? 'staff' : (['System Admin','Restaurant Admin'].includes(req.user?.role) ? 'admin' : 'staff'),
+      source: req.body.source || (_kdsStaffIdAdd ? 'kds' : 'pos'),
+      metadata: {
+        added_count: newItemsWithTimestamp.length,
+        added_items: newItemsWithTimestamp.map(i => ({ name: i.name, qty: i.quantity, price: i.price })),
+        new_total: newTotal
+      }
+    });
+
     res.json({
       success: true,
       data: order,
@@ -1420,6 +1599,23 @@ router.delete('/:id/items/:itemIndex', authenticateToken, async (req, res) => {
       // Don't fail the operation if logging fails
     }
 
+    // ── Order Action audit (정규화 trail) ────────────────
+    const _kdsStaffIdDel = req.body.kds_staff_id;
+    const _kdsStaffNameDel = req.body.kds_staff_name;
+    logOrderActionSafe({
+      orderId: order.id, restaurantId: order.restaurant_id,
+      actionType: 'item_removed',
+      performedByUserId: _kdsStaffIdDel || req.user?.id,
+      performedByName: _kdsStaffNameDel || req.user?.full_name || req.user?.username,
+      performedByRole: _kdsStaffIdDel ? 'staff' : (['System Admin','Restaurant Admin'].includes(req.user?.role) ? 'admin' : 'staff'),
+      source: req.body.source || (_kdsStaffIdDel ? 'kds' : 'pos'),
+      reason: req.body.reason || null,
+      metadata: {
+        removed_item: { name: removedItem.name, price: removedItem.price, quantity: removedItem.quantity },
+        new_total: newTotal
+      }
+    });
+
     console.log(`✓ [DELETE-ITEM] Item removed successfully. New total: ${newTotal}`);
 
     // Emit socket event for real-time update
@@ -1486,5 +1682,36 @@ function isPaymentAllowed(order) {
 }
 
 // Create Stripe PaymentIntent for an order
+
+// ─────────────────────────────────────────────────────────
+// GET /api/orders/:id/actions — Order Action History
+// 자세한 사양: docs/ORDER_MANAGEMENT_IMPROVEMENTS.md § 7
+// ─────────────────────────────────────────────────────────
+router.get('/:id/actions', authenticateToken, async (req, res) => {
+  try {
+    const order = await Order.findByPk(req.params.id, { attributes: ['id', 'restaurant_id'] });
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    // restaurant access — same restaurant 만 조회 (Owner/RA/BG/FG 공통)
+    const userRestaurantId = req.user?.restaurant_id;
+    const role = req.user?.role;
+    const isAdminLike = ['System Admin'].includes(role);
+    if (!isAdminLike && userRestaurantId && Number(userRestaurantId) !== Number(order.restaurant_id)) {
+      return res.status(403).json({ success: false, message: 'Forbidden' });
+    }
+
+    const actions = await OrderAction.findAll({
+      where: { order_id: order.id },
+      order: [['created_at', 'ASC']]
+    });
+
+    res.json({ success: true, data: actions });
+  } catch (error) {
+    console.error('✗ [GET /:id/actions] error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 module.exports = router;

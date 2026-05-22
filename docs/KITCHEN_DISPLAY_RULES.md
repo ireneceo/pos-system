@@ -235,5 +235,50 @@
 
 | 날짜 | 변경 |
 |------|------|
+| 2026-05-22 | KDS PIN 직원 로그인 + Order Action History 연동 (이 문서 § 8 참조) |
 | 2026-03-17 | Item View 전면 재구현: 낙관적 업데이트 단순화, debounce 제거, 배치 시스템 안정화 |
 | 2026-03-17 | 규칙서 초판 작성 |
+
+---
+
+## 8. KDS 직원 PIN 로그인 (2026-05-22 추가)
+
+### 목적
+주방마다 서로 다른 직원이 작업. 누가 어느 ticket 을 진행했는지 추적 필요 (Order Action History 와 연동).
+
+### 흐름
+1. KDS 페이지 진입 → PIN 로그인 화면 표시 (POS 와 동일 패턴)
+2. 직원이 PIN 입력 → `/api/auth/pin` 호출 → User 식별
+3. **`sessionStorage`** 에 staff 정보 저장 (`kds_staff_id`, `kds_staff_name`, `kds_login_at`)
+4. 모든 KDS 액션 (status 변경, item 완료, ticket 재인쇄) → 백엔드로 staff 정보 전달
+5. Backend 가 OrderAction 에 `performed_by_id` + `performed_by_name` 기록
+
+### 저장 단위
+- **기기별** — 같은 매장 안 KDS 1 (그릴) / KDS 2 (튀김) 다른 staff 가능
+- localStorage X — sessionStorage 만 (다른 탭 격리, 브라우저 종료 시 자동 만료)
+
+### 타임아웃
+- **30분 idle timeout** — 마지막 액션 후 30분 무활동 시 자동 logout
+- 명시적 logout 버튼 (헤더 우상단)
+- KDS 페이지 재진입 시 PIN 재입력
+
+### 보안
+- PIN 은 매장 admin 이 staff 등록 시 발급 (User.pin 필드, 4-6자 숫자)
+- PIN 인증 backend endpoint — rate limit (10/min per IP)
+- PIN 매장 admin 만 reset 가능
+
+### Order Action History 연동
+모든 KDS 액션이 OrderAction 에 자동 기록 (자세한 사양은 `ORDER_MANAGEMENT_IMPROVEMENTS.md` § 7 참조).
+
+| KDS 액션 | OrderAction.action_type | source |
+|----------|------------------------|--------|
+| status 변경 (pending→preparing 등) | `status_change` | `kds` |
+| item 완료 표시 | `item_modified` | `kds` |
+| ticket 재인쇄 | `printed` | `kds` |
+| 주문 취소 (KDS 에서) | `cancelled` (reason 필수) | `kds` |
+
+### UI/UX 원칙
+- PIN 입력 화면 — POS 와 동일 디자인 (사용자 친숙)
+- 로그인된 staff 이름 헤더 표시 — 우상단 작은 텍스트 + logout 버튼
+- 30분 idle 경고 — 25분 시점 toast 알림 (5분 전 경고)
+- PIN 화면은 매장 critical — TDZ 안전, mount 검증 필수 (메모리 `feedback_debug_real_calls`)

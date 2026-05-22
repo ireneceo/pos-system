@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal as CommonModal } from '../../components/UI';
+import OrderActionHistory from './OrderActionHistory';
 import { formatCurrency } from '../../utils/currency';
 import { formatPaymentDisplay } from '../../constants';
 import { formatDateTime as formatDateTimeUtil } from '../../utils/timezone';
@@ -94,6 +95,12 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   formatStatusDisplay
 }) => {
   const { t } = useTranslation('orders');
+  // History 는 본문 끝 작은 링크 + popover. 탭 분리 안 함 (공간 차지 회피).
+  // cancelled 주문이면 popover 자동 열기 — 취소 시점/단계/사유 즉시 부각.
+  const [showHistory, setShowHistory] = useState(false);
+  useEffect(() => {
+    setShowHistory(selectedOrder?.status === 'cancelled');
+  }, [selectedOrder?.id, selectedOrder?.status]);
 
   if (!isModalOpen || !selectedOrder) return null;
 
@@ -790,6 +797,62 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               <span>{formatCurrency(Number(selectedOrder.total_amount), operationSettings.currency)}</span>
             </TotalRow>
           </TotalSection>
+
+          {/* History — 본문 끝 작은 링크. Floor Plan 우측 패널처럼 심플. */}
+          <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              onClick={() => setShowHistory(true)}
+              style={{
+                background: 'transparent', border: 'none', cursor: 'pointer',
+                color: selectedOrder.status === 'cancelled' ? '#DC2626' : '#6B7C93',
+                fontSize: 11, fontWeight: 500, padding: '2px 4px',
+                display: 'inline-flex', alignItems: 'center', gap: 4
+              }}
+            >
+              {selectedOrder.status === 'cancelled'
+                ? t('liveOrdersPage.viewCancellationHistory', 'View cancellation history')
+                : t('liveOrdersPage.viewOrderHistory', 'View order history')}
+              <span aria-hidden="true">›</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showHistory && (
+        <div
+          onClick={() => setShowHistory(false)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+            zIndex: 9100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#fff', borderRadius: 12, padding: 24,
+              width: 560, maxWidth: 'calc(100vw - 32px)',
+              maxHeight: '80vh', overflow: 'auto',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#0A2540' }}>
+                {t('history.title', 'Order History')}
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowHistory(false)}
+                style={{
+                  border: 'none', background: '#F0F2F5', color: '#0A2540',
+                  borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer'
+                }}
+              >
+                {t('history.close', 'Close')}
+              </button>
+            </div>
+            <OrderActionHistory orderId={selectedOrder.id} timeZone={operationSettings?.timeZone} />
+          </div>
         </div>
       )}
 

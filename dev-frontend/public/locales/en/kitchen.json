@@ -10,5 +10,21 @@
   "kitchenDisplayPage.items": "Items",
   "kitchenDisplayPage.menus": "Menus",
   "kitchenDisplayPage.preparing": "Preparing",
-  "kitchenDisplayPage.ready": "Ready"
+  "kitchenDisplayPage.ready": "Ready",
+  "pin.title": "Sign in to Kitchen Display",
+  "pin.subtitle": "Enter your 4-digit PIN",
+  "pin.subtitleStation": "Enter your 4-digit PIN — {{station}}",
+  "pin.invalid": "Invalid PIN. Please try again.",
+  "pin.connectionError": "Connection error. Please try again.",
+  "pin.exit": "Exit",
+  "pin.logout": "Sign out",
+  "history.viewLink": "View history",
+  "history.title": "Order History",
+  "history.close": "Close",
+  "pin.switchStaff": "Switch staff",
+  "pin.switchStaffTitle": "Sign in as a different kitchen staff for accurate audit logs",
+  "pin.close": "Close",
+  "mergeLabel": "Merge",
+  "mergeNoLimit": "No limit",
+  "mergeTooltip": "Configure item merge settings"
 }

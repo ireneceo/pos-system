@@ -99,6 +99,23 @@ const StoreStatus = styled.span<{ isOpen: boolean }>`
   }
 `;
 
+// Cashless badge — 매장이 현금 결제 받지 않을 때 표시.
+// 30년차 UX: 절제된 outlined pill, primary purple subtle. 이모지 X, 텍스트만.
+const CashlessBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  background: #F0EFFF;
+  border: 1px solid #DDD9FF;
+  border-radius: 999px;
+  color: #635BFF;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  cursor: default;
+`;
+
 const StoreRight = styled.div`
   display: flex;
   align-items: center;
@@ -591,10 +608,15 @@ const MenuPage: React.FC = () => {
         if (storeRes.ok) {
           const r = await storeRes.json();
           if (r.success && r.data) {
+            // Cashless 판정 — payment_settings.cash.enabled === false 또는 cash method 자체 미존재
+            const ps = r.data.payment_settings || {};
+            const cashMethod = ps.cash;
+            const cashless = !!cashMethod && cashMethod.enabled === false;
             setCurrentStore({
               id: r.data.id.toString(), name: r.data.name, branchName: r.data.branch_name || null,
               slug: r.data.slug, description: r.data.description || '', logo: r.data.logo_url || '',
-              isOpen: r.data.status === 'active', openingHours: r.data.opening_hours || {}
+              isOpen: r.data.status === 'active', openingHours: r.data.opening_hours || {},
+              cashless
             });
           }
         }
@@ -942,9 +964,16 @@ const MenuPage: React.FC = () => {
           <StoreInfo>
             <StoreName>{currentStore.name}</StoreName>
             {currentStore.branchName && <StoreBranch>{currentStore.branchName}</StoreBranch>}
-            <StoreStatus isOpen={currentStore.isOpen}>
-              {currentStore.isOpen ? 'Open Now' : 'Closed'}
-            </StoreStatus>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+              <StoreStatus isOpen={currentStore.isOpen}>
+                {currentStore.isOpen ? 'Open Now' : 'Closed'}
+              </StoreStatus>
+              {currentStore.cashless && (
+                <CashlessBadge title={t('common:storeBadge.cashlessHint', { defaultValue: 'This store does not accept cash payments' })}>
+                  {t('common:storeBadge.cashless', { defaultValue: 'Cashless' })}
+                </CashlessBadge>
+              )}
+            </div>
           </StoreInfo>
           {orderType && (
             <StoreRight>

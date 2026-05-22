@@ -8,6 +8,94 @@
 
 ---
 
+## [v3.38 hotfix #1] — 2026-05-22 배포 (Customer Display 매장 입점 준비 + 멤버십 UX + Floor Plan 통합)
+
+### Customer Display (Dual Monitor) 매장 입점 critical 보강
+- **force placement timer 4회**: 첫 popup 의 moveTo/resizeTo 가 Chromium PWA standalone 에서 좌표 무시되던 결함 → immediate + load 이벤트 + 100ms + 500ms + 1500ms 4 패스로 강제. 매장 setup 1회 드래그 → localStorage 저장 후 모든 재오픈에 자동 적용
+- **Floor Plan Customer Display 버튼**: POS Terminal 헤더 와 동일 위치/플로우에 추가. 결제 흐름 안 들어가도 빈 매장 모니터에 안내 화면 즉시 띄울 수 있음
+- **사이드바 라벨 정리**: 좌측 메뉴 "Customer Display" → "Pickup Display" (실제 픽업 안내 화면, Floor Plan/POS 의 Customer Display 와 명칭 충돌 해소)
+- **Customer Display 멤버십 키패드 토글 위치 정정**: Settings → Printer 탭 → Membership 탭으로 이동 (의미상 올바른 위치)
+- **토글 컴포넌트 일관화**: 멤버십 키패드 표시 ToggleSwitch + AutoSaveField wrap → 다른 멤버십 토글들과 동일 자동저장 인디케이터
+
+### 테이블 풀라벨 통일
+- LiveOrders / Floor Plan / 머지 모달 / 주문 상세 모두 `utils/tableLabel.ts` 통합 — "Zone / A1" 형식
+- 그룹 prefix 자동 결합 (A + 4 → A4, hyphen 제거)
+- "Main / Tables · T002" verbose 제거 → "Main / T002"
+
+---
+
+## [v3.38] — 2026-05-22 배포 (Split bill + Order History + Auto-merge 선택 + 통계 row 별 + 성능 -52%)
+
+### Split bill — 한 주문 아이템 나눠서 결제 (Phase 2)
+- 1 order → N 결제 row (`order_payments` 신규 테이블). 각 row 별로 method (cash/card/qrpay/mobile/bank_transfer 등) 와 amount 독립 저장 → 통계도 row 별 정확 분배
+- PaymentModal 에 "Split bill" 토글 + 아이템 체크박스 + 선택 합계 자동 비례 계산 (모든 변수: discount/coupon/discount_policy/point_discount/takeaway/service/tax 모두 비례)
+- 영수증 자동 분리 (-P1/-P2/-P3 …) — payment row 단위
+- 이미 결제된 아이템 자동 disabled + PAID 라벨 (idx/id/name+price 3-tier 매칭, 옛 receipt 호환)
+- 부분 결제 후 모달 안 닫고 남은 결제 가능 — `payment_status='partial'` 자동
+- LiveOrders 행: `(Partial X.XX / Y.YY)` 라벨 + "Continue Payment" 버튼 + 보라색 partial 뱃지
+- Floor Plan TableDetailPanel: 보라 partial 상태 + 결제 가능
+- 옛 데이터 결함 흡수: `order.amount_paid` 는 `total` 로 cap, `order_payments.amount` 는 실제 received 그대로 (통계/회계 정확)
+
+### Auto-merge → 매번 묻기 (cashier 명시 선택)
+- POS 같은 테이블 새 주문 시 backend default `skipAutoMerge=true` (자동 머지 OFF)
+- 새 endpoint `GET /api/orders/mergeable` (진행 중 주문 리스트)
+- POS 결제 진행 직전 mergeable 발견 시 모달: "기존 주문 #X 에 추가" vs "별도 새 주문" — cashier 명시 선택
+- `forceMergeIntoOrderId` 옵션으로 명시 머지
+- Mobile 흐름은 기존 (customer 검사) 그대로 유지
+
+### Order Action History — 주문 audit trail
+- 신규 `order_actions` 테이블 + `services/orderAuditLog.js` helper
+- 모든 주문 액션 추적: created / status_change / item_added / item_removed / item_modified / cancelled / payment_received / printed / merged / note_added 등 17 action types
+- 자동 기록 위치: orders-crud (POST/PATCH 6곳) + orders-payment (Stripe/PayPal capture) + mobile-orders (POST/cancel)
+- 신규 endpoint `GET /api/orders/:id/actions` (restaurant scope 가드)
+- 주문 상세 모달 / Floor Plan 우측 패널 / KDS ticket — 본문 끝 "View history ›" 작은 링크 → floating popover
+- cancelled 주문은 모달 진입 시 자동 popover 열림 (취소 시점/단계/사유 즉시 부각)
+- i18n 4언어 (17 action types + History UI + Switch staff PIN)
+
+### POS Terminal Compact + Sort + 검색
+- 검색박스 우측에 segmented View toggle (Image / Compact) — 모드 localStorage 저장 (per-device)
+- Compact mode = 텍스트 only 그리드 + 더 조밀 + 자동 "All" 카테고리 노출 + 카드 옵션 버튼 하단 정렬
+- Sort dropdown: Newest (기본) / Name A-Z / Price ↑ / Price ↓ — 모든 카테고리/모드/검색결과에 일관 적용, localStorage 저장
+- All 탭은 Compact 모드 전용 (사진 모드는 카테고리별 — 메뉴 많은 매장 속도 보호)
+- 카드 액션 버튼 하단 정렬 (제목 1줄/2줄 차이 무관)
+- menu API 응답에 `createdAt` 포함 (Newest sort 정확)
+
+### KDS PIN + 헤더 정돈 + 반응형
+- KDS 진입 시 RA 로그인 그대로 사용 (자동 차단 X). 헤더 우상단 staff 뱃지 (2줄: 이름 / Switch staff) — 다른 주방 직원 audit 시 Switch staff → PIN modal
+- 헤더 레이아웃 정돈: Merge (item view 전용) 2줄 → Order/Item → Station chips (overflow-x scroll) → Staff (2줄) → Sound (작게, 끝) → Live · Time (2줄, 끝)
+- 10/13인치 태블릿 반응형: HeaderInfo `flex-wrap`, PageHeader 1180px wrap 허용, Station chip 가로 스크롤
+
+### 성능 최적화
+- main.js 1.58MB → **757KB (-52%)** — Landing 18 페이지 + MobileApp `React.lazy()` 마이그
+- gzip 482KB → **242KB (-50%)**
+- Global fetch dedupe util (`utils/fetchDedupe.ts` + `utils/httpClient.ts`) — 동일 GET URL in-flight Promise / 2초 TTL cache 공유. POS Terminal mount fetch 16건 → 11건 (-31%). 라이브 데이터 (orders/notifications/badge/dashboard) opt-out
+- POS Terminal `useTranslation('pos')` 추가 (TDZ fix)
+- 다음 사이클 후보 — React Query 도입 + Backend composite endpoints (`docs/PERFORMANCE_OPTIMIZATION_PLAN.md`)
+
+### 통계 정확성
+- Dashboard `reports-summary` paymentMethodSales / cardTypeSales 가 `order_payments` row 별 method × amount 로 정확 분배. split bill 다중 method 정확 반영. 옛 단일 결제 주문은 fallback `order.payment_method` 사용 (회귀 0)
+- 통계 검증: cash 10 + card 12 + qrpay 8 (split 30) → 통계 행 정확 ✓
+
+### Floor Plan ↔ POS Terminal
+- Floor Plan → POS 진입 시 `table_number` 강제 setTableNumber (v2 group prefix 호환). 빈 table 로 주문 생성 결함 해소
+- Floor Plan prefetch 제거 — CPU 점유 부작용 차단
+- 테이블 풀라벨 helper `utils/tableLabel.ts`: Zone/Group 정보 + tableNumber 결합 (예: "Indoor / Main Hall · T001"). LiveOrders 행 / 머지 모달 / Floor Plan 헤더 모두 통일
+
+### DB schema 변경 (운영 적용 완료, 옛 데이터 100% 보존)
+- `orders.payment_status` ENUM 확장 (`partial` 추가)
+- `orders.amount_paid` DECIMAL(10,2) default 0 신규 컬럼
+- `order_payments` 신규 테이블 (16 컬럼, idx: order_id+paid_at, restaurant_id+paid_at)
+- `order_actions` 신규 테이블 (13 컬럼, immutable audit log)
+- 운영 검증: orders 10,676 건 그대로, payment_status 분포 (completed 10,321 / pending 341 / 기타) 100% 보존
+- `migrate-add-partial-payment.js` idempotent 마이그레이션 + `deploy-to-production.sh` 자동 실행 등록
+
+### 기타 fix
+- POS Terminal `'all'` 가상 카테고리 reset 버그 fix (categories.find(id==='all')=false → reset 발동 무한루프 차단)
+- LiveOrders payment_status='partial' 처리 8군데 (canOrderBeMerged / SelectAll / merge invalid / PaymentMethod cell / Pay 버튼 / Mark Completed 차단 등)
+- 모달 안의 History 링크 simplify (선 제거 + 여백 최소, Floor Plan 우측 패널 스타일과 통일)
+
+---
+
 ## [v3.37] — 2026-05-22 배포 (쿠폰 dine-in 매칭 hotfix + Settings 조건부 표시 + 모바일 메뉴 UX)
 
 - **쿠폰 validate `dine-in`/`dine_in` 표기 정규화 hotfix** — POS Terminal 은 `'dine-in'` (kebab), DB `applicable_order_types` 는 `'dine_in'` (snake) 저장. `routes/coupons.js` validate 매칭 시 양쪽 모두 snake_case 로 정규화 후 비교. 데모/실매장에서 POS dine-in 쿠폰이 "not applicable for dine-in orders" 로 거부되던 운영 결함 즉시 해소. 운영 실 API 검증: BBQ30 (DB `['dine_in']`) + `order_type='dine-in'` → 400 → **200 valid=true discount=30** ✓

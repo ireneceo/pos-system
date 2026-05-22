@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from '../config/api';
 import { getAuthToken, clearAuthToken } from './auth';
+import { shouldDedupe, buildDedupeKey, tryReuse, trackInflight } from './fetchDedupe';
 
 // POS 관리자 인증을 건너뛸 경로
 // - 토큰 자동 주입 안 함
@@ -50,6 +51,7 @@ export function installFetchInterceptor(): void {
 
     // 2) POS 관리자 토큰 자동 주입
     let resolvedInit = init;
+    let injectedAuth = '';
     if (includesApi && !isBypass) {
       const token = getAuthToken();
       if (token) {
@@ -58,12 +60,39 @@ export function installFetchInterceptor(): void {
           headers.set('Authorization', `Bearer ${token}`);
         }
         resolvedInit = { ...(init || {}), headers };
+        injectedAuth = headers.get('Authorization') || '';
       }
+    }
+
+    // 3) GET dedupe — 같은 endpoint 가 짧은 시간 내 여러 useEffect 에서 호출되면
+    //    단 1회만 네트워크로 보내고 응답을 공유한다. (페이지별 코드 변경 0)
+    const method = (resolvedInit?.method || (typeof input !== 'string' && !(input instanceof URL) && (input as Request).method) || 'GET').toUpperCase();
+    const resolvedUrl = typeof resolvedInput === 'string' ? resolvedInput : resolvedInput.toString();
+    if (method === 'GET' && shouldDedupe(resolvedUrl)) {
+      const key = buildDedupeKey(resolvedUrl, injectedAuth);
+      const reused = tryReuse(key);
+      if (reused) return reused;
+
+      const fresh = originalFetch(resolvedInput as RequestInfo, resolvedInit);
+      trackInflight(key, fresh);
+      // dedupe path 는 401 핸들링 도 동일하게 적용해야 함.
+      const response = await fresh;
+      if (response.status === 401 && includesApi && !isBypass && getAuthToken()) {
+        const isCustomerOrMembership =
+          urlString.includes('/api/customers/') || urlString.includes('/api/membership/');
+        if (!isCustomerOrMembership) {
+          console.log('[httpClient] 401 auto-logout. URL:', urlString);
+          clearAuthToken();
+          localStorage.removeItem('user');
+          if (on401Handler) on401Handler();
+        }
+      }
+      return response.clone();
     }
 
     const response = await originalFetch(resolvedInput as RequestInfo, resolvedInit);
 
-    // 3) 401 POS 자동 로그아웃 (POS 관리자 API 한정)
+    // 4) 401 POS 자동 로그아웃 (POS 관리자 API 한정)
     if (response.status === 401 && includesApi && !isBypass && getAuthToken()) {
       // customer/* 와 membership/* 은 POS 세션을 건드리지 않음 (모바일 고객 전용)
       const isCustomerOrMembership =

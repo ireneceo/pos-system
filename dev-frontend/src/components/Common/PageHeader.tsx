@@ -15,6 +15,16 @@ const Header = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 16px;
+
+  /* 10–11" tablets / small laptops: allow header to grow & actions to wrap */
+  @media (max-width: 1180px) {
+    height: auto;
+    min-height: 80px;
+    max-height: none;
+    padding: 12px 20px;
+    flex-wrap: wrap;
+  }
 
   @media (max-width: 768px) {
     padding: 12px 16px;

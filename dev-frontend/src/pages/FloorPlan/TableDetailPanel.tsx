@@ -8,6 +8,9 @@ import { formatDateTime } from '../../utils/timezone';
 import { printBillViaRawBT, printKitchenTicketViaRawBT, printTableQR } from '../../utils/billPrint';
 import OptionModal from '../../components/POSTerminal/OptionModal';
 import { Modal, ModalButton } from '../../components/UI';
+import OrderActionHistory from '../LiveOrders/OrderActionHistory';
+import { useTranslation } from 'react-i18next';
+import { getTableLabel } from '../../utils/tableLabel';
 
 import { getAuthToken } from '../../utils/auth';
 // Helper: payment_proof 호환 — { current, history } 구조 또는 기존 단일 객체 모두 지원
@@ -43,6 +46,8 @@ interface TableDetailPanelProps {
   onOrderIndexChange?: (index: number) => void;
   // QR mode
   qrMode?: 'static' | 'session';
+  // Floor plan v2 — zone/group 풀라벨 매핑용
+  floorPlan?: any;
 }
 
 // ─── Styled Components ───
@@ -522,10 +527,13 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
   orders = [],
   selectedOrderIndex = 0,
   onOrderIndexChange,
-  qrMode = 'static'
+  qrMode = 'static',
+  floorPlan
 }) => {
   const [loading, setLoading] = useState(false);
   const { getStoreInfo, paymentSettings } = useStore();
+  const { t } = useTranslation('orders');
+  const [showHistory, setShowHistory] = useState(false);
 
   // ─── QR Session state ───
   const [qrSession, setQrSession] = useState<{ token: string; qr_url: string; remaining_minutes: number; expires_at: string; created_at: string } | null>(null);
@@ -686,6 +694,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
   const paymentStatusColors = (() => {
     switch (paymentStatus) {
       case 'completed': case 'paid': return { color: '#059669', bg: '#ECFDF5' };
+      case 'partial': return { color: '#3B30D9', bg: '#F0F4FF' };
       case 'failed': return { color: '#DC2626', bg: '#FEE2E2' };
       case 'rejected': return { color: '#DC2626', bg: '#FEE2E2' };
       case 'payment_verification_pending': return { color: '#D97706', bg: '#FEF3C7' };
@@ -1123,7 +1132,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
 
       <PanelHeader>
         <TableTitle>
-          <h3>Table {tableNumber}</h3>
+          <h3>Table {getTableLabel(tableNumber, floorPlan).display}</h3>
           <TableMeta>
             {statusInfo?.guestCount ? (
               <span>{statusInfo.guestCount} guests</span>
@@ -1344,11 +1353,26 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
             <PanelBody>
               {/* Customer & Order Info */}
               <Section>
-                <SectionTitle>
-                  Order {statusInfo!.orderNumber || ''}
-                  {statusInfo!.customerName && statusInfo!.customerName !== 'Walk-in Customer'
-                    ? ` — ${statusInfo!.customerName}`
-                    : ''}
+                <SectionTitle style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <span>
+                    Order {statusInfo!.orderNumber || ''}
+                    {statusInfo!.customerName && statusInfo!.customerName !== 'Walk-in Customer'
+                      ? ` — ${statusInfo!.customerName}`
+                      : ''}
+                  </span>
+                  {statusInfo!.orderId && (
+                    <button
+                      type="button"
+                      onClick={() => setShowHistory(true)}
+                      style={{
+                        background: 'transparent', border: 'none', cursor: 'pointer',
+                        color: '#6B7C93', fontSize: 11, padding: '2px 4px', fontWeight: 500
+                      }}
+                      title={t('history.viewLink', 'View history')}
+                    >
+                      {t('history.viewLink', 'View history')}
+                    </button>
+                  )}
                 </SectionTitle>
                 <InfoGrid>
                   <InfoItem>
@@ -1740,6 +1764,43 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
             </ConfirmActions>
           </ConfirmBox>
         </ConfirmOverlay>
+      )}
+
+      {showHistory && statusInfo?.orderId && (
+        <div
+          onClick={() => setShowHistory(false)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+            zIndex: 9100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#fff', borderRadius: 12, padding: 24,
+              width: 560, maxWidth: 'calc(100vw - 32px)',
+              maxHeight: '80vh', overflow: 'auto',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#0A2540' }}>
+                {t('history.title', 'Order History')}
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowHistory(false)}
+                style={{
+                  border: 'none', background: '#F0F2F5', color: '#0A2540',
+                  borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer'
+                }}
+              >
+                {t('history.close', 'Close')}
+              </button>
+            </div>
+            <OrderActionHistory orderId={statusInfo.orderId} timeZone={timezone} />
+          </div>
+        </div>
       )}
     </Panel>
   );

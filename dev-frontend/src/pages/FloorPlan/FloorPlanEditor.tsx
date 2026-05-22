@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import styled from 'styled-components';
-import { useParams } from 'react-router-dom';
-import { FloorPlanData, FloorTable, DEFAULT_FLOOR_PLAN, TABLE_SHAPES, FIXTURE_PRESETS } from './types';
+import { useParams, useNavigate } from 'react-router-dom';
+import { FloorPlanData, FloorTable, DEFAULT_FLOOR_PLAN, TABLE_SHAPES, FIXTURE_PRESETS, computeTableLabel } from './types';
 import FloorPlanCanvas from './FloorPlanCanvas';
 import { useTranslation } from 'react-i18next';
 
@@ -284,6 +284,7 @@ const StatusMsg = styled.div<{ $type: 'success' | 'info' }>`
 const FloorPlanEditor: React.FC = () => {
   const { t } = useTranslation('floorplan');
   const { restaurantId } = useParams<{ restaurantId: string }>();
+  const navigate = useNavigate();
   const canvasRef = useRef<HTMLDivElement>(null);
 
   const [floorPlan, setFloorPlan] = useState<FloorPlanData>(DEFAULT_FLOOR_PLAN);
@@ -362,16 +363,21 @@ const FloorPlanEditor: React.FC = () => {
     }
   };
 
-  // Add table
+  // Add table — v2 호환: 첫 그룹에 자동 배정 + group prefix 라벨 (예: I-1, O-3).
   const addTable = (shape: FloorTable['shape'], shapeConfig?: { defaultWidth: number; defaultHeight: number }) => {
     const nextNumber = unusedTableNumbers[0];
     if (!nextNumber) return;
+
+    // v2 — 첫 group 에 자동 배정. group 미존재 시 fallback (예: 옛 매장 처음 진입).
+    const firstGroup = (floorPlan.table_groups || [])[0];
+    const groupId = firstGroup?.id;
+    const prefix = firstGroup?.prefix || 'T';
 
     const config = shapeConfig || TABLE_SHAPES.find(s => s.value === shape)!;
     const newTable: FloorTable = {
       id: `ft-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       tableNumber: nextNumber,
-      label: nextNumber,
+      label: computeTableLabel(prefix, nextNumber),
       shape,
       x: floorPlan.canvasWidth / 2,
       y: floorPlan.canvasHeight / 2,
@@ -379,7 +385,8 @@ const FloorPlanEditor: React.FC = () => {
       height: config.defaultHeight,
       rotation: 0,
       seats: shape === 'square' ? 2 : 4,
-      tableType: 'table'
+      tableType: 'table',
+      ...(groupId ? { group_id: groupId } : {})
     };
 
     pushUndo();
@@ -573,7 +580,19 @@ const FloorPlanEditor: React.FC = () => {
   return (
     <PageContainer>
       <Header>
-        <HeaderTitle>{t('floorplan:floorPlanEditor.floorPlanEditor')}</HeaderTitle>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <HeaderTitle>{t('floorplan:floorPlanEditor.floorPlanEditor')}</HeaderTitle>
+          <Btn
+            $variant="secondary"
+            onClick={() => {
+              if (hasChanges && !window.confirm('Unsaved changes will be lost. Leave anyway?')) return;
+              navigate(`/restaurant/${restaurantId}/floor-plan`);
+            }}
+            title="Back to Floor Plan"
+          >
+            ← {t('nav.back', 'Back')}
+          </Btn>
+        </div>
         <HeaderActions>
           {statusMsg && <StatusMsg $type="success">{statusMsg}</StatusMsg>}
           {hasChanges && <StatusMsg $type="info">{t('floorplan:floorPlanEditor.unsavedChanges')}</StatusMsg>}

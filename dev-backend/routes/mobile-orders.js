@@ -11,6 +11,7 @@ const { sequelize } = require('../config/database');
 const { getTodayBounds, getOrderDatePrefix, getRestaurantTimezone } = require('../utils/dateTimeHelper');
 const { generateOrderNumber } = require('./mobile-helpers');
 const { checkPaymentMethodAllowed, checkOrderTypeEnabled } = require('../utils/paymentMethodGuard');
+const { logOrderActionSafe } = require('../services/orderAuditLog');
 
 router.post('/cart/validate', async (req, res) => {
   try {
@@ -340,6 +341,25 @@ router.post('/order', async (req, res) => {
       });
     }
 
+    // ── Audit log — order created via mobile ────────────────
+    logOrderActionSafe({
+      orderId: order.id, restaurantId: order.restaurant_id,
+      actionType: 'created',
+      toStatus: order.status,
+      performedByUserId: null,
+      performedByName: customerInfo?.name || 'Mobile Customer',
+      performedByRole: 'customer',
+      source: 'mobile',
+      metadata: {
+        order_number: orderNumber,
+        total_amount: total,
+        item_count: Array.isArray(items) ? items.length : 0,
+        order_type: actualOrderType,
+        payment_method: paymentMethod || 'counter',
+        table_number: actualTableNumber || null
+      }
+    });
+
     res.json({ success: true, data: orderResponse });
     console.log('📤 Order response sent to client');
   } catch (error) {
@@ -579,9 +599,23 @@ router.post('/order/:orderId/cancel', async (req, res) => {
       });
     }
     
+    const _prevStatusMC = order.status;
     await order.update({ status: 'cancelled' });
-    
-    const orderItems = typeof order.order_items === 'string' ? 
+
+    // ── Audit log — cancelled by customer (mobile) ────────────────
+    logOrderActionSafe({
+      orderId: order.id, restaurantId: order.restaurant_id,
+      actionType: 'cancelled',
+      fromStatus: _prevStatusMC, toStatus: 'cancelled',
+      performedByUserId: null,
+      performedByName: order.customer_name || 'Mobile Customer',
+      performedByRole: 'customer',
+      source: 'mobile',
+      reason: (req.body && req.body.reason && String(req.body.reason).trim()) || 'Cancelled by customer (mobile)',
+      metadata: { order_number: order.order_number, previous_status: _prevStatusMC }
+    });
+
+    const orderItems = typeof order.order_items === 'string' ?
       JSON.parse(order.order_items) : order.order_items || {};
     const refundStatus = orderItems.paymentStatus === 'completed' ? 'processing' : 'not_required';
     

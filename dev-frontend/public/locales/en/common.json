@@ -1,4 +1,6 @@
 {
+  "storeBadge.cashless": "Cashless",
+  "storeBadge.cashlessHint": "This store does not accept cash payments",
   "backToDashboard": "Back to Dashboard",
   "visitHomepage": "Visit PurpleHere homepage",
   "button": {
@@ -289,6 +291,7 @@
     "branchMap": "Branch Map",
     "incomingOrders": "Live Orders",
     "carriers": "Carriers",
+    "tablesQr": "Tables & QR",
     "paymentMethods": "Payment Methods",
     "printer": "Printer",
     "kitchenStations": "Kitchen Stations",
@@ -299,7 +302,8 @@
     "brandMenuCategories": "Menu Categories",
     "brandMenuOptions": "Menu Options",
     "brandMenuUpdates": "Brand Menu Updates",
-    "allBrands": "All Brands"
+    "allBrands": "All Brands",
+    "pickupDisplay": "Pickup Display"
   },
   "language": {
     "en": "English",

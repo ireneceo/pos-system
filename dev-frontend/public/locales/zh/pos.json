@@ -32,5 +32,22 @@
   "pOSTerminalPage.subtotal": "小计",
   "pOSTerminalPage.takeawayCharge": "外卖费",
   "pOSTerminalPage.discount": "折扣",
-  "pOSTerminalPage.total": "总计"
+  "pOSTerminalPage.total": "总计",
+  "terminal.categoryAll": "全部",
+  "terminal.simpleMode": "紧凑",
+  "terminal.photoMode": "图片",
+  "terminal.switchToSimple": "切换为紧凑模式",
+  "terminal.switchToPhoto": "切换为图片模式",
+  "terminal.options": "选项",
+  "terminal.viewMode": "视图模式",
+  "terminal.sortLabel": "排序",
+  "terminal.sortNewest": "最新",
+  "terminal.sortName": "名称",
+  "terminal.sortPriceAsc": "价格 ↑",
+  "terminal.sortPriceDesc": "价格 ↓",
+  "mergeChoice.title": "此餐桌已有进行中的订单",
+  "mergeChoice.subtitle": "餐桌 {{table}} 已有 {{count}} 笔待结订单。添加到现有订单或创建新订单？",
+  "mergeChoice.addToThis": "加入此订单 →",
+  "mergeChoice.cancel": "取消",
+  "mergeChoice.separate": "创建独立订单"
 }

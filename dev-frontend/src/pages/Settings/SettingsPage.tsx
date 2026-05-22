@@ -366,7 +366,7 @@ const ActionButton = styled.button`
 `;
 
 // 타입 정의
-type TabType = 'store' | 'operations' | 'payment' | 'printer' | 'kitchenStations' | 'mobileOrder' | 'reservation' | 'company' | 'brands' | 'billing' | 'managers' | 'membership';
+type TabType = 'store' | 'operations' | 'tablesQr' | 'payment' | 'printer' | 'kitchenStations' | 'mobileOrder' | 'reservation' | 'company' | 'brands' | 'billing' | 'managers' | 'membership';
 
 interface Table {
   id: string;
@@ -666,6 +666,7 @@ const SettingsPage: React.FC = () => {
   const printCancellationTicketRef = useRef<AutoSaveHandle>(null);
   const receiptMembershipToggleRef = useRef<AutoSaveHandle>(null);
   const membershipActiveToggleRef = useRef<AutoSaveHandle>(null);
+  const checkoutDisplayPhoneRef = useRef<AutoSaveHandle>(null);
   const qrPositionRef = useRef<AutoSaveHandle>(null);
   const qrModeRef = useRef<AutoSaveHandle>(null);
   const qrModeSessionRef = useRef<AutoSaveHandle>(null);
@@ -3422,8 +3423,8 @@ const SettingsPage: React.FC = () => {
                             }}
                             style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#635BFF' }}
                           />
-                          Exclude takeaway orders
-                          <span style={{ color: '#9CA3AF', fontSize: '12px' }}>(common practice — dine-in only)</span>
+                          {t('settings:operations.excludeTakeawayLabel')}
+                          <span style={{ color: '#9CA3AF', fontSize: '12px' }}>{t('settings:operations.excludeTakeawayHint')}</span>
                         </label>
                       </AutoSaveField>
                     </FormGroup>
@@ -3680,6 +3681,14 @@ const SettingsPage: React.FC = () => {
                 )}
               </SettingsCard>
 
+              </SettingsGrid>
+            </>
+          )}
+
+          {/* ───── Tables & QR 탭 — Zones/Groups + Table Management + Quick-entry QR + External QR ───── */}
+          {activeTab === 'tablesQr' && (
+            <>
+              <SettingsGrid>
               {user?.restaurantId && (
                 <div style={{ gridColumn: '1 / -1' }}>
                   <ZonesAndGroupsCard
@@ -3729,8 +3738,7 @@ const SettingsPage: React.FC = () => {
                   </div>
                   <div>
                     <div style={{ padding: '14px', background: '#FAFBFC', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '13px', color: '#6B7C93', lineHeight: 1.5 }}>
-                      Table prefixes and numbers are managed per <strong>Table Group</strong> above (in the Zones &amp; Table Groups card).
-                      Each group has its own prefix (e.g., I, O, P) and table count.
+                      {t('settings:zonesGroups.legacyHint')}
                     </div>
                   </div>
                 </SettingsGrid>
@@ -3854,8 +3862,8 @@ const SettingsPage: React.FC = () => {
                   <SettingsCard style={{ gridColumn: '1 / -1' }}>
                     <CardTitle>Quick-entry QR codes</CardTitle>
                     <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
-                      Independent of table QR. Scanning each takes the customer straight to the right flow — order-type-pinned menu, walk-in dine-in, or reservation booking.
-                      <br /><span style={{ color: '#9CA3AF' }}>Cards for disabled order types and disabled reservations are hidden automatically. To enable/disable order types, go to <button type="button" onClick={() => handleTabChange('mobileOrder')} style={{ background: 'none', border: 'none', color: '#635BFF', textDecoration: 'underline', cursor: 'pointer', padding: 0, font: 'inherit' }}>Mobile Order tab</button>. Payment methods follow the per-order-type settings on the Payment tab.</span>
+                      {t('settings:operations.quickEntryQrDesc')}
+                      <br /><span style={{ color: '#9CA3AF' }}>{t('settings:operations.quickEntryQrHintPrefix')}<button type="button" onClick={() => handleTabChange('mobileOrder')} style={{ background: 'none', border: 'none', color: '#635BFF', textDecoration: 'underline', cursor: 'pointer', padding: 0, font: 'inherit' }}>{t('settings:operations.quickEntryQrHintLink')}</button>{t('settings:operations.quickEntryQrHintSuffix')}</span>
                     </p>
                     <TablesGrid>
                       {cards.map(card => {
@@ -4255,16 +4263,16 @@ const SettingsPage: React.FC = () => {
                 </SettingsCard>
 
                 <SettingsCard>
-                  <CardTitle>Order Processing Flow</CardTitle>
+                  <CardTitle>{t('settings:mobileOrder.orderProcessingTitle')}</CardTitle>
                   <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
-                    Control when mobile orders are sent to the kitchen / KDS.
+                    {t('settings:mobileOrder.orderProcessingDesc')}
                   </p>
                   <Toggle>
                     <div style={{ flex: 1 }}>
-                      <ToggleLabel style={{ marginBottom: '4px' }}>Require payment before sending to kitchen</ToggleLabel>
+                      <ToggleLabel style={{ marginBottom: '4px' }}>{t('settings:mobileOrder.requirePaymentLabel')}</ToggleLabel>
                       <p style={{ fontSize: '12px', color: '#6B7C93', margin: 0 }}>
-                        OFF (default): Mobile orders are sent to the kitchen immediately on submission, even if payment is still pending — faster.<br/>
-                        ON: Unpaid mobile orders wait for staff approval (or payment confirmation) before reaching the kitchen — safer, recommended for cash-on-pickup or counter-pay setups.
+                        {t('settings:mobileOrder.requirePaymentDescOff')}<br/>
+                        {t('settings:mobileOrder.requirePaymentDescOn')}
                       </p>
                     </div>
                     <AutoSaveField ref={requirePaymentBeforeKitchenRef} onSave={handleSave} type="toggle">
@@ -4627,7 +4635,7 @@ const SettingsPage: React.FC = () => {
               <SettingsCard style={{ marginBottom: '24px' }}>
                 <CardTitle>{t('settings:settingsPage.printerMode')}</CardTitle>
                 <p style={{ color: '#6B7C93', marginBottom: '20px', fontSize: '14px' }}>
-                  Select how to connect to your thermal printer
+                  {t('settings:printer.modeDescription')}
                 </p>
 
                 {printerSettingsLoading ? (
@@ -4637,9 +4645,9 @@ const SettingsPage: React.FC = () => {
                 ) : (
                   <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                   {([
-                    { key: 'rawbt', label: 'RawBT (Android)', desc: 'For Android tablets with RawBT app' },
-                    { key: 'browser', label: 'Browser Print (PC)', desc: 'For Windows/Mac computers' },
-                    { key: 'qztray', label: 'QZ Tray (Network)', desc: 'For LAN network printers' },
+                    { key: 'rawbt', label: t('settings:printer.modeRawbtLabel'), desc: t('settings:printer.modeRawbtDesc') },
+                    { key: 'browser', label: t('settings:printer.modeBrowserLabel'), desc: t('settings:printer.modeBrowserDesc') },
+                    { key: 'qztray', label: t('settings:printer.modeQztrayLabel'), desc: t('settings:printer.modeQztrayDesc') },
                   ] as const).map(opt => (
                     <AutoSaveField key={opt.key} ref={(h: AutoSaveHandle | null) => { if (h) printerModeRefs.current.set(opt.key, h); }} onSave={handleSave} type="toggle" style={{ flex: 1, minWidth: 150 }}>
                     <label style={{
@@ -4749,7 +4757,7 @@ const SettingsPage: React.FC = () => {
                     </div>
                     {qzTrayPrinters.length > 0 && (
                       <div style={{ marginTop: '10px', fontSize: '12px', color: '#6B7C93' }}>
-                        <strong>Detected printers:</strong> {qzTrayPrinters.join(', ')}
+                        <strong>{t('settings:printer.detectedPrinters')}</strong> {qzTrayPrinters.join(', ')}
                       </div>
                     )}
                   </div>
@@ -4931,7 +4939,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                 <SettingsCard>
                   <CardTitle>{t('settings:settingsPage.billPrinter')}</CardTitle>
                   <p style={{ color: '#6B7C93', marginBottom: '20px', fontSize: '14px' }}>
-                    Configure receipt printer for customer bills
+                    {t('settings:printer.billPrinterDesc')}
                   </p>
 
                   <Toggle>
@@ -5058,7 +5066,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                 <SettingsCard>
                   <CardTitle>{t('settings:settingsPage.kitchenPrinter')}</CardTitle>
                   <p style={{ color: '#6B7C93', marginBottom: '20px', fontSize: '14px' }}>
-                    Configure printer for kitchen order tickets
+                    {t('settings:printer.kitchenPrinterDesc')}
                   </p>
 
                   <Toggle>
@@ -5266,14 +5274,14 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                 <SettingsCard style={{ marginTop: '24px' }}>
                   <CardTitle>{t('settings:settingsPage.kitchenTicketOptions')}</CardTitle>
                   <p style={{ color: '#6B7C93', marginBottom: '20px', fontSize: '14px' }}>
-                    Configure how kitchen order tickets are printed
+                    {t('settings:printer.kitchenTicketOptionsDesc')}
                   </p>
 
                   <Toggle>
                     <div style={{ flex: 1 }}>
                       <ToggleLabel style={{ marginBottom: '4px' }}>{t('settings:settingsPage.printSeparateTicketForEachItem')}</ToggleLabel>
                       <p style={{ fontSize: '12px', color: '#6B7C93', margin: 0 }}>
-                        When enabled, each menu item will print on a separate ticket instead of one combined ticket per order
+                        {t('settings:printer.printPerItemDesc')}
                       </p>
                     </div>
                     <AutoSaveField ref={printPerItemToggleRef} onSave={handleSave} type="toggle">
@@ -5296,9 +5304,9 @@ ${t('settings:settingsPage.qzDiagramBridge')}
 
                   <Toggle style={{ marginTop: '16px' }}>
                     <div style={{ flex: 1 }}>
-                      <ToggleLabel style={{ marginBottom: '4px' }}>Also print on counter (bill) printer</ToggleLabel>
+                      <ToggleLabel style={{ marginBottom: '4px' }}>{t('settings:printer.mirrorToBillLabel')}</ToggleLabel>
                       <p style={{ fontSize: '12px', color: '#6B7C93', margin: 0 }}>
-                        Mirror every kitchen ticket to the counter (bill) printer. Useful for small shops where counter staff also needs the order.
+                        {t('settings:printer.mirrorToBillDesc')}
                       </p>
                     </div>
                     <AutoSaveField ref={mirrorToBillPrinterRef} onSave={handleSave} type="toggle">
@@ -5321,9 +5329,9 @@ ${t('settings:settingsPage.qzDiagramBridge')}
 
                   <Toggle style={{ marginTop: '16px' }}>
                     <div style={{ flex: 1 }}>
-                      <ToggleLabel style={{ marginBottom: '4px' }}>Print cancellation ticket when an order is cancelled</ToggleLabel>
+                      <ToggleLabel style={{ marginBottom: '4px' }}>{t('settings:printer.printCancellationLabel')}</ToggleLabel>
                       <p style={{ fontSize: '12px', color: '#6B7C93', margin: 0 }}>
-                        Automatically print a CANCELLED ticket to the kitchen when an already-sent order is cancelled, so cooks can stop preparation.
+                        {t('settings:printer.printCancellationDesc')}
                       </p>
                     </div>
                     <AutoSaveField ref={printCancellationTicketRef} onSave={handleSave} type="toggle">
@@ -5350,7 +5358,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
               <SettingsCard style={{ marginTop: '24px' }}>
                 <CardTitle>{t('settings:settingsPage.receiptCustomization')}</CardTitle>
                 <p style={{ color: '#6B7C93', marginBottom: '20px', fontSize: '14px' }}>
-                  Customize the customer receipt with your logo, message, and promotions
+                  {t('settings:receipt.description')}
                 </p>
 
                 <div className="receipt-grid" style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '0' }}>
@@ -5361,8 +5369,8 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                     <ImageUploadDropzone
                       value={receiptSettings.receiptLogo}
                       onChange={(value) => { setReceiptSettings(prev => ({ ...prev, receiptLogo: value })); receiptLogoRef.current?.triggerSave(); }}
-                      label="Receipt Logo (B&W)"
-                      helpText="Printed at the top of receipt"
+                      label={t('settings:printer.receiptLogo')}
+                      helpText={t('settings:printer.receiptLogoHint')}
                     />
                     </AutoSaveField>
 
@@ -5371,7 +5379,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                       <div style={{ flex: 1 }}>
                         <ToggleLabel style={{ marginBottom: '4px' }}>{t('settings:settingsPage.membershipInfoOnReceipt')}</ToggleLabel>
                         <p style={{ fontSize: '12px', color: '#6B7C93', margin: 0 }}>
-                          QR code linking to mobile order page with points earning message
+                          {t('settings:receipt.membershipHelpText')}
                         </p>
                       </div>
                       <AutoSaveField ref={receiptMembershipToggleRef} onSave={handleSave} type="toggle">
@@ -5389,7 +5397,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                     <div>
                       <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#6B7C93', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{t('settings:settingsPage.footerMessage')}</label>
                       <AutoSaveField onSave={handleSave}>
-                      <input type="text" value={receiptSettings.footerMessage} onChange={(e) => setReceiptSettings(prev => ({ ...prev, footerMessage: e.target.value }))} placeholder="Thank you for dining with us!" maxLength={100} style={{ width: '100%', padding: '8px 12px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }} />
+                      <input type="text" value={receiptSettings.footerMessage} onChange={(e) => setReceiptSettings(prev => ({ ...prev, footerMessage: e.target.value }))} placeholder={t('settings:receipt.footerMessagePlaceholder')} maxLength={100} style={{ width: '100%', padding: '8px 12px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }} />
                       </AutoSaveField>
                     </div>
                   </div>
@@ -5403,8 +5411,8 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                     <ImageUploadDropzone
                       value={receiptSettings.customQrImage}
                       onChange={(value) => { setReceiptSettings(prev => ({ ...prev, customQrImage: value })); customQrImageRef.current?.triggerSave(); }}
-                      label="Custom QR / Promotion"
-                      helpText="Print your own QR or promo image on receipt"
+                      label={t('settings:receipt.customQrLabel')}
+                      helpText={t('settings:receipt.customQrHelpText')}
                     />
                     </AutoSaveField>
 
@@ -5412,7 +5420,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                       <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#6B7C93', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{t('settings:settingsPage.guideText')}</label>
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                         <AutoSaveField onSave={handleSave}>
-                        <input type="text" value={receiptSettings.customQrText} onChange={(e) => setReceiptSettings(prev => ({ ...prev, customQrText: e.target.value }))} placeholder="e.g. Follow us on Instagram!" maxLength={100} style={{ flex: 1, padding: '8px 12px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }} />
+                        <input type="text" value={receiptSettings.customQrText} onChange={(e) => setReceiptSettings(prev => ({ ...prev, customQrText: e.target.value }))} placeholder={t('settings:receipt.customQrTextPlaceholder')} maxLength={100} style={{ flex: 1, padding: '8px 12px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }} />
                         </AutoSaveField>
                         <AutoSaveField ref={qrPositionRef} onSave={handleSave} type="toggle">
                         <div style={{ display: 'flex', gap: '8px' }}>
@@ -5497,42 +5505,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                   </label>
                 </div>
 
-                {/* Phone-input visibility toggle — for membership use only.
-                    If a restaurant doesn't run a points/membership program, hide the keypad
-                    so the customer screen shows only the order summary. */}
-                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', fontSize: 14, color: '#0A2540', padding: '12px 14px', background: '#FAFBFC', border: '1px solid #E6EBF1', borderRadius: 8 }}>
-                  <input
-                    type="checkbox"
-                    defaultChecked={(operationSettings as any)?.checkout_display?.show_phone_input !== false}
-                    onChange={async (e) => {
-                      const enabled = e.target.checked;
-                      const rid = user?.restaurantId;
-                      if (!rid) return;
-                      try {
-                        const token = getAuthToken();
-                        const r = await fetch(`/api/restaurants/${rid}`, { headers: { Authorization: `Bearer ${token}` } });
-                        const j = await r.json();
-                        const cur = (j.data || j)?.operation_settings || {};
-                        const nextOp = { ...cur, checkout_display: { ...(cur.checkout_display || {}), show_phone_input: enabled } };
-                        await fetch(`/api/restaurants/${rid}`, {
-                          method: 'PUT',
-                          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                          body: JSON.stringify({ operation_settings: nextOp })
-                        });
-                        setOperationSettings(prev => ({ ...prev, ...(nextOp as any) } as any));
-                      } catch { /* silent — toggle stays in DOM, retry next change */ }
-                    }}
-                    style={{ width: 16, height: 16, accentColor: '#635BFF', marginTop: 2 }}
-                  />
-                  <span>
-                    <span style={{ display: 'block', fontWeight: 500 }}>
-                      {t('settings:settingsPage.customerDisplay.showPhoneInputLabel', 'Show phone number entry on customer screen (for membership)')}
-                    </span>
-                    <span style={{ display: 'block', fontSize: 12, color: '#6B7C93', marginTop: 4 }}>
-                      {t('settings:settingsPage.customerDisplay.showPhoneInputHelp', 'Off = customer screen shows only order summary. Turn on if you collect customer phone for points/membership.')}
-                    </span>
-                  </span>
-                </label>
+                {/* Phone-input visibility toggle moved to Membership tab — 멤버십 기능 분류 자연. */}
 
                 <div style={{ background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: '8px', padding: '16px', marginTop: 8 }}>
                   <div style={{ fontWeight: 600, color: '#075985', marginBottom: 10, fontSize: 14 }}>
@@ -6113,6 +6086,49 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                 </SettingsCard>
               ) : (
                 <>
+                  {/* Customer Display Membership Entry — phone keypad on customer-facing screen */}
+                  <SettingsCard style={{ marginBottom: 24 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, gap: 16 }}>
+                      <div style={{ flex: 1 }}>
+                        <CardTitle style={{ marginBottom: 4 }}>{t('settings:settingsPage.membershipDisplayEntry.title', 'Customer Display — Membership Entry')}</CardTitle>
+                        <p style={{ color: '#6B7C93', margin: 0, fontSize: 13, lineHeight: 1.5 }}>
+                          {t('settings:settingsPage.membershipDisplayEntry.description', 'Show a phone-number keypad on the customer-facing screen (Customer Display) so guests can enter their phone for points / membership.')}
+                        </p>
+                      </div>
+                      <AutoSaveField ref={checkoutDisplayPhoneRef} onSave={async () => {
+                        const rid = user?.restaurantId;
+                        if (!rid) return;
+                        const enabled = (operationSettings as any)?.checkout_display?.show_phone_input !== false;
+                        const token = getAuthToken();
+                        const r = await fetch(`/api/restaurants/${rid}`, { headers: { Authorization: `Bearer ${token}` } });
+                        const j = await r.json();
+                        const cur = (j.data || j)?.operation_settings || {};
+                        const nextOp = { ...cur, checkout_display: { ...(cur.checkout_display || {}), show_phone_input: enabled } };
+                        await fetch(`/api/restaurants/${rid}`, {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                          body: JSON.stringify({ operation_settings: nextOp })
+                        });
+                      }} type="toggle">
+                      <ToggleSwitch>
+                        <ToggleInput
+                          type="checkbox"
+                          checked={(operationSettings as any)?.checkout_display?.show_phone_input !== false}
+                          onChange={(e) => {
+                            const enabled = e.target.checked;
+                            setOperationSettings((prev: any) => ({
+                              ...prev,
+                              checkout_display: { ...((prev as any)?.checkout_display || {}), show_phone_input: enabled }
+                            } as any));
+                            checkoutDisplayPhoneRef.current?.triggerSave();
+                          }}
+                        />
+                        <ToggleSlider />
+                      </ToggleSwitch>
+                      </AutoSaveField>
+                    </div>
+                  </SettingsCard>
+
                   <SettingsGrid>
                     {/* Points Settings */}
                     <SettingsCard>

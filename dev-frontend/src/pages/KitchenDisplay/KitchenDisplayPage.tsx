@@ -11,6 +11,9 @@ import { printKitchenTicketViaRawBT, getPrinterSettings as getBillPrinterSetting
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
+import KdsPinGate from './KdsPinGate';
+import { useKdsStaff } from './useKdsStaff';
+import OrderActionHistory from '../LiveOrders/OrderActionHistory';
 // Helper function to format pickup time as range (e.g., "9:00 - 9:30 AM").
 // Uses restaurant timezone so the time matches the kitchen's local clock
 // regardless of where the browser is opened from.
@@ -43,8 +46,15 @@ const ContentArea = styled.div`
 
 const HeaderInfo = styled.div`
   display: flex;
-  gap: 24px;
+  gap: 12px;
   align-items: center;
+  flex-wrap: wrap;
+  row-gap: 8px;
+  justify-content: flex-end;
+
+  @media (max-width: 1180px) {
+    gap: 10px;
+  }
 `;
 
 const Clock = styled.div`
@@ -81,6 +91,11 @@ const KanbanBoard = styled.div`
   grid-template-columns: repeat(3, 1fr);
   gap: 16px;
   height: calc(100vh - 140px);
+
+  /* Header wraps below 1180px (PageHeader breakpoint) — relax fixed height. */
+  @media (max-width: 1180px) {
+    height: calc(100vh - 180px);
+  }
 
   @media (max-width: 1024px) {
     grid-template-columns: 1fr;
@@ -526,6 +541,8 @@ const ViewToggleBtn = styled.button<{ active: boolean }>`
   background: ${props => props.active ? 'white' : 'transparent'};
   color: ${props => props.active ? '#0A2540' : '#6B7C93'};
   box-shadow: ${props => props.active ? '0 1px 2px rgba(0,0,0,0.08)' : 'none'};
+  flex-shrink: 0;
+  white-space: nowrap;
 `;
 
 // ─── Item View Styles ────────────────────────────────────────
@@ -676,11 +693,31 @@ const KitchenDisplayPage: React.FC = () => {
     return true;
   };
 
+  // ─── KDS PIN Staff session (per-station staff login on top of RA JWT) ───
+  const { staff: kdsStaff, login: kdsLogin, logout: kdsLogout } = useKdsStaff();
+
+  // ─── Order History popover (floating panel anchored from KDS card) ───
+  const [historyOrderId, setHistoryOrderId] = useState<number | null>(null);
+
+  // ─── KDS PIN gate (opt-in, opened via "Switch staff" header button) ───
+  const [showPinGate, setShowPinGate] = useState(false);
+
   // ─── API helper ───
   const apiHeaders = () => {
     const token = getAuthToken();
     return { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) };
   };
+
+  // Helper to attach KDS staff identity to mutating requests.
+  // If a per-station PIN staff is signed in, use that; otherwise fall back to the
+  // current logged-in user (RA). Always tag source='kds' so the audit trail
+  // can distinguish KDS actions from POS actions.
+  const kdsBody = useCallback((extra: Record<string, any> = {}) => {
+    if (kdsStaff) {
+      return { ...extra, kds_staff_id: kdsStaff.id, kds_staff_name: kdsStaff.name, source: 'kds' };
+    }
+    return { ...extra, source: 'kds' };
+  }, [kdsStaff]);
 
   // ─── Fetch all orders (source of truth) ───
   const fetchOrders = useCallback(async () => {
@@ -1130,7 +1167,7 @@ const KitchenDisplayPage: React.FC = () => {
         method: 'PATCH',
         credentials: 'include',
         headers: apiHeaders(),
-        body: JSON.stringify({ status: newStatus })
+        body: JSON.stringify(kdsBody({ status: newStatus }))
       });
       const result = await response.json();
       if (!result.success) fetchOrders();
@@ -1226,7 +1263,7 @@ const KitchenDisplayPage: React.FC = () => {
         method: 'PATCH',
         credentials: 'include',
         headers: apiHeaders(),
-        body: JSON.stringify({ order_items: updatedItems })
+        body: JSON.stringify(kdsBody({ order_items: updatedItems }))
       });
       const result = await response.json();
       if (!result.success) { fetchOrders(); return; }
@@ -1267,7 +1304,7 @@ const KitchenDisplayPage: React.FC = () => {
         method: 'PATCH',
         credentials: 'include',
         headers: apiHeaders(),
-        body: JSON.stringify({ order_items: updatedItems })
+        body: JSON.stringify(kdsBody({ order_items: updatedItems }))
       });
       const result = await response.json();
       if (!result.success) { fetchOrders(); return; }
@@ -1300,7 +1337,7 @@ const KitchenDisplayPage: React.FC = () => {
     try {
       const res = await fetch(`/api/orders/${orderId}/items`, {
         method: 'PATCH', credentials: 'include', headers: apiHeaders(),
-        body: JSON.stringify({ order_items: updatedItems })
+        body: JSON.stringify(kdsBody({ order_items: updatedItems }))
       });
       const result = await res.json();
       if (!result.success) { fetchOrders(); return; }
@@ -1337,7 +1374,7 @@ const KitchenDisplayPage: React.FC = () => {
     try {
       const res = await fetch(`/api/orders/${orderId}/items`, {
         method: 'PATCH', credentials: 'include', headers: apiHeaders(),
-        body: JSON.stringify({ order_items: updatedItems })
+        body: JSON.stringify(kdsBody({ order_items: updatedItems }))
       });
       const result = await res.json();
       if (!result.success) { fetchOrders(); return; }
@@ -1370,7 +1407,7 @@ const KitchenDisplayPage: React.FC = () => {
     try {
       const res = await fetch(`/api/orders/${orderId}/items`, {
         method: 'PATCH', credentials: 'include', headers: apiHeaders(),
-        body: JSON.stringify({ order_items: updatedItems })
+        body: JSON.stringify(kdsBody({ order_items: updatedItems }))
       });
       const result = await res.json();
       if (!result.success) { fetchOrders(); return; }
@@ -1648,6 +1685,21 @@ const KitchenDisplayPage: React.FC = () => {
             </ActionBtn>
           </ActionRow>
         )}
+        <div style={{
+          display: 'flex', justifyContent: 'flex-end',
+          padding: '4px 12px 8px', fontSize: 11
+        }}>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setHistoryOrderId(Number(order.id)); }}
+            style={{
+              background: 'transparent', border: 'none', cursor: 'pointer',
+              color: '#6B7C93', fontSize: 11, padding: '2px 4px', fontWeight: 500
+            }}
+          >
+            {t('history.viewLink', 'View history')}
+          </button>
+        </div>
       </OrderCard>
     );
   };
@@ -1961,7 +2013,7 @@ const KitchenDisplayPage: React.FC = () => {
             'Content-Type': 'application/json',
             ...(token ? { 'Authorization': `Bearer ${token}` } : {})
           },
-          body: JSON.stringify({ order_items: updatedItems.map(item => ({ ...item, status: item.status })) })
+          body: JSON.stringify(kdsBody({ order_items: updatedItems.map(item => ({ ...item, status: item.status })) }))
         }).then(r => r.json())
       ));
       if (results.some(r => !r.success)) { fetchOrders(); return; }
@@ -2359,7 +2411,7 @@ const KitchenDisplayPage: React.FC = () => {
                             const response = await fetch(`/api/orders/${order.id}/items`, {
                               method: 'PATCH', credentials: 'include',
                               headers: apiHeaders(),
-                              body: JSON.stringify({ order_items: updatedItems })
+                              body: JSON.stringify(kdsBody({ order_items: updatedItems }))
                             });
                             const result = await response.json();
                             if (!result.success) { fetchOrders(); return; }
@@ -2414,6 +2466,10 @@ const KitchenDisplayPage: React.FC = () => {
     });
   };
 
+  // Active KDS performer — uses the per-station PIN staff if signed in, otherwise
+  // falls back to the currently logged-in user (RA). audit log uses this identity.
+  const activePerformerName = kdsStaff?.name || user?.name || user?.full_name || user?.username || 'Staff';
+
   return (
     <Container>
       <PageHeader
@@ -2423,38 +2479,93 @@ const KitchenDisplayPage: React.FC = () => {
         settingsLabel="Kitchen station settings"
       >
         <HeaderInfo>
+          {/* 1) Merge meta — 가장 앞 (item view 전용, order view 에서는 자리 차지 X
+                 → tab 위치 흔들림 방지를 위해 가장 앞으로 두어 다른 요소들이 흔들리지 않음) */}
           {viewMode === 'item' && (
-            <a href={`/restaurant/${user?.restaurantId}/settings?tab=kitchenStations`} target="_blank" rel="noopener noreferrer" style={{
-              display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px',
-              background: '#F0F0FF',
-              color: '#635BFF',
-              borderRadius: '8px', fontSize: '12px', fontWeight: 500, textDecoration: 'none', whiteSpace: 'nowrap',
-              border: 'none'
-            }}>
-              {(itemMergeSettings.time_limit > 0 || itemMergeSettings.max_count > 0)
-                ? `Merge: ${itemMergeSettings.time_limit > 0 ? itemMergeSettings.time_limit + 'min' : ''}${itemMergeSettings.time_limit > 0 && itemMergeSettings.max_count > 0 ? ', ' : ''}${itemMergeSettings.max_count > 0 ? 'max ' + itemMergeSettings.max_count : ''}`
-                : 'Merge: No limit'
-              }
-              <span style={{ fontSize: '14px' }}>⚙</span>
+            <a
+              href={`/restaurant/${user?.restaurantId}/settings?tab=kitchenStations`}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={t('kitchen:mergeTooltip', 'Configure item merge settings')}
+              style={{
+                display: 'inline-flex', flexDirection: 'column',
+                alignItems: 'flex-start', lineHeight: 1.2,
+                padding: '4px 10px',
+                background: '#F0F0FF', color: '#635BFF',
+                borderRadius: 8, textDecoration: 'none', border: 'none'
+              }}
+            >
+              <span style={{ fontSize: 10, fontWeight: 500, opacity: 0.75, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                {t('kitchen:mergeLabel', 'Merge')}
+              </span>
+              <span style={{ fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                {(itemMergeSettings.time_limit > 0 || itemMergeSettings.max_count > 0)
+                  ? `${itemMergeSettings.time_limit > 0 ? itemMergeSettings.time_limit + 'min' : ''}${itemMergeSettings.time_limit > 0 && itemMergeSettings.max_count > 0 ? ' · ' : ''}${itemMergeSettings.max_count > 0 ? 'max ' + itemMergeSettings.max_count : ''}`
+                  : t('kitchen:mergeNoLimit', 'No limit')}
+                {' ⚙'}
+              </span>
             </a>
           )}
+
+          {/* 2) View toggle (Order / Item) */}
           <ViewToggle>
             <ViewToggleBtn active={viewMode === 'order'} onClick={() => { setViewMode('order'); localStorage.setItem('kitchenDisplayViewMode', 'order'); }}>{t('kitchen:kitchenDisplayPage.order')}</ViewToggleBtn>
             <ViewToggleBtn active={viewMode === 'item'} onClick={() => { setViewMode('item'); localStorage.setItem('kitchenDisplayViewMode', 'item'); }}>{t('kitchen:kitchenDisplayPage.item')}</ViewToggleBtn>
           </ViewToggle>
+
+          {/* 3) Station chips — many stations on small tablets: overflow-x scroll */}
           {kitchenStations.length > 0 && (
-            <ViewToggle>
+            <ViewToggle style={{
+              maxWidth: 'min(440px, 36vw)',
+              overflowX: 'auto',
+              flexWrap: 'nowrap'
+            }}>
               <ViewToggleBtn active={selectedStation === 'all'} onClick={() => { setSelectedStation('all'); setSearchParams({}); }}>{t('kitchen:kitchenDisplayPage.all')}</ViewToggleBtn>
               {kitchenStations.map((s) => (
                 <ViewToggleBtn key={s.id} active={selectedStation === s.id} onClick={() => { setSelectedStation(s.id); setSearchParams({ station: String(s.id) }); }}>{s.name}</ViewToggleBtn>
               ))}
             </ViewToggle>
           )}
+
+          {/* 4) Staff badge — 2 lines: name / Switch staff or Sign out */}
+          <div style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
+            padding: '4px 12px',
+            background: kdsStaff ? '#F0F4FF' : '#F8FAFC',
+            borderRadius: 8,
+            border: `1px solid ${kdsStaff ? '#DDD9FF' : '#E6EBF1'}`,
+            lineHeight: 1.2
+          }}>
+            <span style={{
+              fontSize: 12, fontWeight: 600,
+              color: kdsStaff ? '#3B30D9' : '#0A2540',
+              whiteSpace: 'nowrap', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis'
+            }}>
+              {activePerformerName}
+            </span>
+            <button
+              type="button"
+              onClick={kdsStaff ? kdsLogout : () => setShowPinGate(true)}
+              title={kdsStaff
+                ? t('pin.logout', 'Sign out staff')
+                : t('pin.switchStaffTitle', 'Sign in as a different kitchen staff for accurate audit logs')}
+              style={{
+                border: 'none', background: 'transparent', cursor: 'pointer',
+                color: kdsStaff ? '#3B30D9' : '#6B7C93',
+                fontWeight: 500, fontSize: 10, padding: 0,
+                marginTop: 2, textAlign: 'left', whiteSpace: 'nowrap'
+              }}
+            >
+              {kdsStaff ? t('pin.logout', 'Sign out') : t('pin.switchStaff', 'Switch staff')}
+            </button>
+          </div>
+
+          {/* 5) Sound toggle */}
           <button
             onClick={() => { setAudioEnabled(prev => { const next = !prev; localStorage.setItem('sound_enabled', String(next)); return next; }); }}
             title={audioEnabled ? 'Sound ON' : 'Sound OFF'}
             style={{
-              width: '40px', height: '40px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+              width: 32, height: 32, borderRadius: 8, border: 'none', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
               background: audioEnabled ? '#635BFF' : '#E6EBF1',
               transition: 'all 0.15s'
@@ -2464,16 +2575,25 @@ const KitchenDisplayPage: React.FC = () => {
               src={audioEnabled ? '/speaker-on.svg' : '/speaker-off.svg'}
               alt={audioEnabled ? 'Sound ON' : 'Sound OFF'}
               style={{
-                width: '22px', height: '22px',
+                width: 16, height: 16,
                 filter: audioEnabled ? 'invert(1)' : 'opacity(0.4)'
               }}
             />
           </button>
-          <ConnectionStatus connected={isConnected}>
-            <ConnectionDot connected={isConnected} />
-            {isConnected ? 'Live' : 'Offline'}
-          </ConnectionStatus>
-          <LiveClock operationSettings={operationSettings} />
+
+          {/* 6) Live + Time — 끝쪽, Settings ⚙ 직전. 2줄 컴팩트. */}
+          <div style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
+            lineHeight: 1.15, marginLeft: 4
+          }}>
+            <ConnectionStatus connected={isConnected} style={{ padding: '2px 8px', fontSize: 11 }}>
+              <ConnectionDot connected={isConnected} />
+              {isConnected ? 'Live' : 'Offline'}
+            </ConnectionStatus>
+            <div style={{ marginTop: 4 }}>
+              <LiveClock operationSettings={operationSettings} />
+            </div>
+          </div>
         </HeaderInfo>
       </PageHeader>
 
@@ -2543,6 +2663,51 @@ const KitchenDisplayPage: React.FC = () => {
         </Column>
       </KanbanBoard>
       </ContentArea>
+
+      {showPinGate && (
+        <KdsPinGate
+          onAuthenticated={(s) => { kdsLogin(s); setShowPinGate(false); }}
+          onCancel={() => setShowPinGate(false)}
+          stationName={selectedStation === 'all' ? undefined : kitchenStations.find(s => s.id === selectedStation)?.name}
+        />
+      )}
+
+      {historyOrderId !== null && (
+        <div
+          onClick={() => setHistoryOrderId(null)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+            zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#fff', borderRadius: 12, padding: 24,
+              width: 560, maxWidth: 'calc(100vw - 32px)',
+              maxHeight: '80vh', overflow: 'auto',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#0A2540' }}>
+                {t('history.title', 'Order History')}
+              </div>
+              <button
+                type="button"
+                onClick={() => setHistoryOrderId(null)}
+                style={{
+                  border: 'none', background: '#F0F2F5', color: '#0A2540',
+                  borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer'
+                }}
+              >
+                {t('history.close', 'Close')}
+              </button>
+            </div>
+            <OrderActionHistory orderId={historyOrderId} timeZone={operationSettings?.timeZone} />
+          </div>
+        </div>
+      )}
     </Container>
   );
 };

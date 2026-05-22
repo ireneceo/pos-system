@@ -934,12 +934,32 @@ router.get('/restaurant/:restaurantId/reports-summary', authenticateToken, check
       },
       attributes: [
         'id', 'order_date', 'total_amount', 'order_items', 'order_type',
-        'payment_method', 'card_type', 'source',
+        'payment_method', 'card_type', 'source', 'amount_paid',
         'subtotal', 'tax', 'tax_rate', 'service_charge', 'service_charge_rate',
         'discount', 'discount_policy_amount', 'coupon_discount', 'point_discount',
         'takeaway_charge', 'delivery_fee'
       ]
     });
+
+    // Fetch all order_payments for these orders — split bill row 별 method 정확 집계.
+    // 한 order 에 여러 payment row (다른 method) 가 있을 수 있어서 group by 가 order 가 아니라 payment row.
+    const OrderPayment = require('../models/OrderPayment');
+    const orderIds = orders.map(o => o.id);
+    const paymentsByOrderId = new Map();
+    if (orderIds.length > 0) {
+      const payments = await OrderPayment.findAll({
+        where: { order_id: { [Op.in]: orderIds } },
+        attributes: ['order_id', 'payment_method', 'card_type', 'amount']
+      });
+      payments.forEach(p => {
+        if (!paymentsByOrderId.has(p.order_id)) paymentsByOrderId.set(p.order_id, []);
+        paymentsByOrderId.get(p.order_id).push({
+          method: p.payment_method,
+          card_type: p.card_type,
+          amount: Number(p.amount) || 0
+        });
+      });
+    }
 
     // Fetch cancelled orders (separate query for settlement tracking)
     const cancelledOrders = await Order.findAll({
@@ -1088,23 +1108,43 @@ router.get('/restaurant/:restaurantId/reports-summary', authenticateToken, check
       orderTypeSales[orderType].revenue += orderAmount;
       orderTypeSales[orderType].orders += 1;
 
-      // Payment method aggregation (merge bankTransfer + bank_transfer)
-      let paymentMethod = order.payment_method || 'unknown';
-      if (paymentMethod === 'bank_transfer') paymentMethod = 'bankTransfer';
-      if (!paymentMethodSales[paymentMethod]) {
-        paymentMethodSales[paymentMethod] = { revenue: 0, orders: 0 };
-      }
-      paymentMethodSales[paymentMethod].revenue += orderAmount;
-      paymentMethodSales[paymentMethod].orders += 1;
-
-      // Card type aggregation (when payment_method is card)
-      if (paymentMethod === 'card') {
-        const ct = order.card_type || 'unspecified';
-        if (!cardTypeSales[ct]) {
-          cardTypeSales[ct] = { revenue: 0, orders: 0 };
+      // Payment method aggregation — split bill 정확 반영.
+      // order_payments 에 row 가 있으면 row 별 method × amount 로 집계 (한 주문에 여러 method 가능).
+      // 없으면 order.payment_method 기반 (구 데이터 / 단일 결제 fallback).
+      const paymentRows = paymentsByOrderId.get(order.id) || [];
+      const aggregateMethodSale = (method, amount, cardType) => {
+        let pm = method || 'unknown';
+        if (pm === 'bank_transfer') pm = 'bankTransfer';
+        if (!paymentMethodSales[pm]) paymentMethodSales[pm] = { revenue: 0, orders: 0 };
+        paymentMethodSales[pm].revenue += amount;
+        // orders 카운트는 row 가 아닌 order 단위. 첫 row 에서만 +1 (아래 별도 처리).
+        if (pm === 'card') {
+          const ct = cardType || 'unspecified';
+          if (!cardTypeSales[ct]) cardTypeSales[ct] = { revenue: 0, orders: 0 };
+          cardTypeSales[ct].revenue += amount;
         }
-        cardTypeSales[ct].revenue += orderAmount;
-        cardTypeSales[ct].orders += 1;
+      };
+
+      if (paymentRows.length > 0) {
+        // Split bill / 명시 결제 row → row 별 amount 로 분배
+        paymentRows.forEach(p => aggregateMethodSale(p.method, p.amount, p.card_type));
+        // orders 카운트: 첫 row 의 method 에 +1 (split 주문도 1건)
+        const headlinePm = (paymentRows[0].method === 'bank_transfer') ? 'bankTransfer' : (paymentRows[0].method || 'unknown');
+        if (paymentMethodSales[headlinePm]) paymentMethodSales[headlinePm].orders += 1;
+        if (paymentRows[0].method === 'card') {
+          const ct = paymentRows[0].card_type || 'unspecified';
+          if (cardTypeSales[ct]) cardTypeSales[ct].orders += 1;
+        }
+      } else {
+        // Fallback — order.payment_method (단일 결제 또는 옛 주문)
+        aggregateMethodSale(order.payment_method, orderAmount, order.card_type);
+        let pm = order.payment_method || 'unknown';
+        if (pm === 'bank_transfer') pm = 'bankTransfer';
+        if (paymentMethodSales[pm]) paymentMethodSales[pm].orders += 1;
+        if (pm === 'card') {
+          const ct = order.card_type || 'unspecified';
+          if (cardTypeSales[ct]) cardTypeSales[ct].orders += 1;
+        }
       }
 
       // Category and menu item aggregation

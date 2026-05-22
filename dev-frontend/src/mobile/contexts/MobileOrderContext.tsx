@@ -31,6 +31,7 @@ interface Store {
   country?: string;
   orderTypes?: OrderTypes;
   breakTimes?: BreakTime[];
+  cashless?: boolean;  // 매장이 cash method 끔 (payment_settings.cash.enabled === false)
 }
 
 interface SetMenuItem {

@@ -25,6 +25,20 @@
     </script>
     <link rel="icon" type="image/png" sizes="48x48" href="%PUBLIC_URL%/favicon-48.png" />
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" id="favicon" />
+    <script>
+      // 깜빡임 차단 — system favicon URL 을 localStorage 에서 즉시 복원 (App mount 전).
+      // 첫 접속만 default favicon 표시, 그 이후 캐시된 system favicon 즉시 적용.
+      (function() {
+        try {
+          var url = localStorage.getItem('site_favicon_url');
+          if (url) {
+            document.querySelectorAll("link[rel~='icon']").forEach(function(el) { el.href = url; });
+            var appleTouch = document.getElementById('apple-touch-icon');
+            if (appleTouch) appleTouch.href = url;
+          }
+        } catch (e) { /* silent */ }
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#635BFF" />
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />

@@ -78,8 +78,14 @@ Order.init({
     comment: 'Card type when payment_method is card: visa, master, amex, other'
   },
   payment_status: {
-    type: DataTypes.ENUM('pending', 'completed', 'failed', 'payment_verification_pending', 'rejected'),
+    type: DataTypes.ENUM('pending', 'partial', 'completed', 'failed', 'payment_verification_pending', 'rejected'),
     defaultValue: 'pending'
+  },
+  // Split bill 누적 결제액. amount_paid >= total_amount 이면 payment_status='completed'.
+  amount_paid: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0,
+    allowNull: false
   },
   payment_intent_id: {
     type: DataTypes.STRING(255),

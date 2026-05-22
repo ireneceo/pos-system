@@ -15,6 +15,7 @@ const { authenticateToken, optionalAuthenticateToken } = require('../middleware/
 const ActivityLog = require('../models/ActivityLog');
 const { logActivity } = require('../utils/activityLogger');
 const { getTodayBounds, getOrderDatePrefix, getRestaurantTimezone } = require('../utils/dateTimeHelper');
+const { logOrderActionSafe } = require('../services/orderAuditLog');
 
 // 보안 정책: 모바일 게스트 고객도 결제하므로 authenticateToken 강제 불가
 // 대신 다음 제약으로 위변조 방어:
@@ -185,8 +186,31 @@ router.post('/:id/capture-paypal-order', async (req, res) => {
         transaction_id: captureId || orderId
       };
       // 결제 완료 → "Require payment before kitchen" 토글로 awaiting_payment 였던 주문을 키친 진입(pending)으로 전환.
+      const _prevStatusPP = order.status;
       if (order.status === 'awaiting_payment') updatePayload.status = 'pending';
       await order.update(updatePayload);
+
+      // ── Audit log — payment_received (+ status_change if awaiting_payment → pending) ────────────────
+      logOrderActionSafe({
+        orderId: order.id, restaurantId: order.restaurant_id,
+        actionType: 'payment_received',
+        performedByUserId: null,
+        performedByName: 'Customer',
+        performedByRole: 'customer',
+        source: 'mobile',
+        metadata: { provider: 'paypal', transaction_id: captureId || orderId, amount: order.total_amount }
+      });
+      if (_prevStatusPP === 'awaiting_payment' && updatePayload.status === 'pending') {
+        logOrderActionSafe({
+          orderId: order.id, restaurantId: order.restaurant_id,
+          actionType: 'status_change',
+          fromStatus: 'awaiting_payment', toStatus: 'pending',
+          performedByName: 'Payment Webhook',
+          performedByRole: 'system',
+          source: 'auto',
+          metadata: { trigger: 'payment_completed', provider: 'paypal' }
+        });
+      }
 
       res.json({ success: true, status: 'COMPLETED', captureId });
     } else {
@@ -225,8 +249,32 @@ router.post('/:id/confirm-stripe-payment', async (req, res) => {
         transaction_id: paymentIntent.id
       };
       // 결제 완료 → awaiting_payment 주문을 키친 진입(pending) 으로 전환.
+      const _prevStatusSt = order.status;
       if (order.status === 'awaiting_payment') updatePayload.status = 'pending';
       await order.update(updatePayload);
+
+      // ── Audit log — payment_received (+ status_change if awaiting_payment → pending) ────────────────
+      logOrderActionSafe({
+        orderId: order.id, restaurantId: order.restaurant_id,
+        actionType: 'payment_received',
+        performedByUserId: null,
+        performedByName: 'Customer',
+        performedByRole: 'customer',
+        source: 'mobile',
+        metadata: { provider: 'stripe', transaction_id: paymentIntent.id, amount: order.total_amount }
+      });
+      if (_prevStatusSt === 'awaiting_payment' && updatePayload.status === 'pending') {
+        logOrderActionSafe({
+          orderId: order.id, restaurantId: order.restaurant_id,
+          actionType: 'status_change',
+          fromStatus: 'awaiting_payment', toStatus: 'pending',
+          performedByName: 'Payment Webhook',
+          performedByRole: 'system',
+          source: 'auto',
+          metadata: { trigger: 'payment_completed', provider: 'stripe' }
+        });
+      }
+
       res.json({ success: true, status: 'succeeded' });
     } else {
       res.json({ success: true, status: paymentIntent.status });
@@ -237,5 +285,145 @@ router.post('/:id/confirm-stripe-payment', async (req, res) => {
   }
 });
 
+
+// ─────────────────────────────────────────────────────────
+// Split bill — partial payment endpoints (POS only)
+// 1 order → N OrderPayment rows. order.amount_paid 누적.
+// amount_paid >= total_amount 이면 payment_status='completed', 아니면 'partial'.
+// ─────────────────────────────────────────────────────────
+const OrderPayment = require('../models/OrderPayment');
+
+// GET /api/orders/:id/payments — payment history for receipts / audit
+router.get('/:id/payments', authenticateToken, async (req, res) => {
+  try {
+    const order = await Order.findByPk(req.params.id, { attributes: ['id', 'restaurant_id'] });
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+    if (req.user?.restaurant_id && Number(req.user.restaurant_id) !== Number(order.restaurant_id)
+        && !['System Admin'].includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Forbidden' });
+    }
+    const payments = await OrderPayment.findAll({
+      where: { order_id: order.id },
+      order: [['paid_at', 'ASC']]
+    });
+    res.json({ success: true, data: payments });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// POST /api/orders/:id/payments — record a (possibly partial) payment
+// Body: { amount, payment_method, items_paid?, amount_received?, change_amount?, card_type?, transaction_id?, cashier_name? }
+router.post('/:id/payments', authenticateToken, async (req, res) => {
+  try {
+    const order = await Order.findByPk(req.params.id);
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+    if (req.user?.restaurant_id && Number(req.user.restaurant_id) !== Number(order.restaurant_id)
+        && !['System Admin'].includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Forbidden' });
+    }
+    if (order.payment_status === 'completed') {
+      return res.status(400).json({ success: false, message: 'Order is already fully paid' });
+    }
+
+    const { amount, payment_method, items_paid, amount_received, change_amount, card_type, transaction_id, cashier_name } = req.body || {};
+    const parsedAmount = parseFloat(amount);
+    if (!parsedAmount || parsedAmount <= 0) {
+      return res.status(400).json({ success: false, message: 'amount must be > 0' });
+    }
+    if (!payment_method) {
+      return res.status(400).json({ success: false, message: 'payment_method required' });
+    }
+
+    const total = parseFloat(order.total_amount || 0);
+    const prevPaid = parseFloat(order.amount_paid || 0);
+    const rawNewPaid = prevPaid + parsedAmount;
+    // amount_paid 는 order.total 로 cap (overpaid 시 시스템 정합성 보호).
+    // 단 order_payments 의 amount 는 실제 받은 값 그대로 (통계/회계 정확).
+    const newPaid = Math.min(rawNewPaid, total);
+
+    // 영수증 번호: ORDxx-Px (1st partial, 2nd, ...)
+    const existingPayments = await OrderPayment.count({ where: { order_id: order.id } });
+    const receiptNumber = `${order.order_number || `ORD${order.id}`}-P${existingPayments + 1}`;
+
+    const payment = await OrderPayment.create({
+      order_id: order.id,
+      restaurant_id: order.restaurant_id,
+      amount: parsedAmount,
+      payment_method,
+      card_type: card_type || null,
+      transaction_id: transaction_id || null,
+      items_paid: items_paid || null,
+      amount_received: amount_received != null ? parseFloat(amount_received) : null,
+      change_amount: change_amount != null ? parseFloat(change_amount) : null,
+      receipt_number: receiptNumber,
+      cashier_id: req.user?.id || null,
+      cashier_name: cashier_name || req.user?.full_name || req.user?.username || null,
+      paid_at: new Date()
+    });
+
+    // Update order amount_paid + payment_status
+    // newPaid 가 total 에 cap 되었으므로 (overpaid 도 total) — fullyPaid 판단 정확.
+    const fullyPaid = Math.abs(newPaid - total) < 0.01 || rawNewPaid >= total;
+    const updateData = {
+      amount_paid: newPaid,
+      payment_status: fullyPaid ? 'completed' : 'partial'
+    };
+    // First payment defines headline payment_method for backward compat queries (POS report 등)
+    if (existingPayments === 0) {
+      updateData.payment_method = payment_method;
+    }
+    // awaiting_payment → pending (kitchen 진입) — fully paid 일 때만
+    if (fullyPaid && order.status === 'awaiting_payment') {
+      updateData.status = 'pending';
+    }
+    await order.update(updateData);
+
+    // Audit log
+    logOrderActionSafe({
+      orderId: order.id, restaurantId: order.restaurant_id,
+      actionType: 'payment_received',
+      performedByUserId: req.user?.id || null,
+      performedByName: cashier_name || req.user?.full_name || req.user?.username || 'Cashier',
+      performedByRole: ['System Admin', 'Restaurant Admin'].includes(req.user?.role) ? 'admin' : 'staff',
+      source: 'pos',
+      metadata: {
+        amount: parsedAmount,
+        method: payment_method,
+        partial: !fullyPaid,
+        receipt_number: receiptNumber,
+        items_paid: items_paid ? items_paid.length || 0 : 0,
+        new_total_paid: newPaid,
+        order_total: total
+      }
+    });
+
+    // Real-time emit
+    const io = req.app.get('io');
+    if (io && order.restaurant_id) {
+      const plain = (await order.reload()).get({ plain: true });
+      if (typeof plain.order_items === 'string') {
+        try { plain.order_items = JSON.parse(plain.order_items); } catch { plain.order_items = []; }
+      }
+      io.of('/orders').to(`restaurant_${order.restaurant_id}`).emit('order-updated', plain);
+    }
+
+    res.status(201).json({
+      success: true,
+      data: {
+        payment,
+        order: {
+          id: order.id,
+          payment_status: updateData.payment_status,
+          amount_paid: newPaid,
+          remaining: Math.max(0, total - newPaid)
+        }
+      }
+    });
+  } catch (e) {
+    console.error('✗ POST /:id/payments:', e);
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
 
 module.exports = router;

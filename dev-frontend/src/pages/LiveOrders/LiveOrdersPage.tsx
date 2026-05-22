@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import { io, Socket } from 'socket.io-client';
 import PageHeader from '../../components/Common/PageHeader';
 import { useAuth } from '../../contexts/AuthContext';
+import { getTableLabel, FloorPlanLike } from '../../utils/tableLabel';
 import PaymentModal from '../../components/POSTerminal/PaymentModal';
 import OptionModal from '../../components/POSTerminal/OptionModal';
 import { useStore } from '../../contexts/StoreContext';
@@ -527,6 +528,9 @@ const LiveOrdersPage: React.FC = () => {
     document.body.removeChild(link);
   };
 
+  // Floor plan (v2 zone/group) — table_number 의 풀라벨 매핑용
+  const [floorPlan, setFloorPlan] = useState<FloorPlanLike | null>(null);
+
   // Load company information for bill printing
   useEffect(() => {
     const loadCompanyInfo = async () => {
@@ -538,6 +542,7 @@ const LiveOrdersPage: React.FC = () => {
 
         if (result.success || response.ok) {
           const data = result.data || result;
+          if (data.floor_plan) setFloorPlan(data.floor_plan);
           setCompanyInfo({
             companyName: data.name || '',
             address: data.address || '',
@@ -730,7 +735,7 @@ const LiveOrdersPage: React.FC = () => {
   const handleSelectAll = () => {
     const mergeableOrders = getFilteredOrdersByTab()
       .slice((currentPage - 1) * 50, currentPage * 50)
-      .filter(order => order.payment_status === 'pending' && !['served', 'completed', 'cancelled'].includes(order.status));
+      .filter(order => (order.payment_status === 'pending' || order.payment_status === 'partial') && !['served', 'completed', 'cancelled'].includes(order.status));
 
     if (selectedOrderIds.length === mergeableOrders.length) {
       setSelectedOrderIds([]);
@@ -751,7 +756,7 @@ const LiveOrdersPage: React.FC = () => {
     }
     const selectedOrders = orders.filter(o => selectedOrderIds.includes(o.id));
     const invalidOrders = selectedOrders.filter(o =>
-      o.payment_status !== 'pending' || ['served', 'completed', 'cancelled'].includes(o.status)
+      (o.payment_status !== 'pending' && o.payment_status !== 'partial') || ['served', 'completed', 'cancelled'].includes(o.status)
     );
     if (invalidOrders.length > 0) {
       showToast('Cannot merge orders that are already paid, served, completed, or cancelled.', 'error');
@@ -794,7 +799,9 @@ const LiveOrdersPage: React.FC = () => {
   };
 
   const canOrderBeMerged = (order: DbOrder): boolean => {
-    return order.payment_status === 'pending' && !['served', 'completed', 'cancelled'].includes(order.status);
+    // 일부 결제 중 (partial) 도 머지 가능 — 같은 테이블 + 같은 손님 그룹일 수 있음
+    return (order.payment_status === 'pending' || order.payment_status === 'partial')
+      && !['served', 'completed', 'cancelled'].includes(order.status);
   };
 
   // Fetch menu items for Add Items modal
@@ -1544,7 +1551,7 @@ const LiveOrdersPage: React.FC = () => {
                       <CustomerInfo>
                         {order.customer_name || 'Guest'}
                         {order.customer_phone && <><br />{order.customer_phone}</>}
-                        {order.table_number && (<><br /><span style={{ color: '#635BFF', fontWeight: 500 }}>Table: {order.table_number}{order.guest_count ? ` (${order.guest_count}p)` : ''}</span></>)}
+                        {order.table_number && (<><br /><span style={{ color: '#635BFF', fontWeight: 500 }}>Table: {getTableLabel(order.table_number, floorPlan).display}{order.guest_count ? ` (${order.guest_count}p)` : ''}</span></>)}
                         {order.pager_number && (<><br />Pager: {order.pager_number}</>)}
                         {order.order_type === 'pickup' && (<><br /><span style={{ color: '#8B5CF6', fontWeight: 500 }}>Pickup: {order.scheduled_pickup_time ? formatPickupTimeRange(order.scheduled_pickup_time) : 'ASAP'}</span></>)}
                         {order.cashier_name && (<><br /><span style={{ color: '#8898AA', fontSize: '11px' }}>Cashier: {order.cashier_name}</span></>)}
@@ -1593,9 +1600,10 @@ const LiveOrdersPage: React.FC = () => {
                         {Number((order as any).coupon_discount) > 0 && (
                           <div style={{ fontSize: '11px', color: '#F59E0B' }}>(Coupon)</div>
                         )}
-                        <PaymentMethod isPending={order.payment_status === 'pending'} isVerificationPending={order.payment_status === 'payment_verification_pending'}>
+                        <PaymentMethod isPending={order.payment_status === 'pending' || order.payment_status === 'partial'} isVerificationPending={order.payment_status === 'payment_verification_pending'}>
                           {formatPaymentDisplay(order.payment_method, (order as any).card_type, paymentSettings || undefined)}
                           {order.payment_status === 'pending' && ' (Pending)'}
+                          {order.payment_status === 'partial' && ` (Partial ${Number((order as any).amount_paid || 0).toFixed(2)} / ${Number(order.total_amount || 0).toFixed(2)})`}
                           {order.payment_status === 'payment_verification_pending' && ' (Verifying)'}
                         </PaymentMethod>
                       </div>
@@ -1622,15 +1630,17 @@ const LiveOrdersPage: React.FC = () => {
                             else { const previousStatus = getPreviousStatus(order.status); if (previousStatus) handleStatusChange(order.id, previousStatus); }
                           }} title="Revert to previous status">↺</ActionButton>
                         )}
-                        {order.payment_status === 'pending' && (
+                        {(order.payment_status === 'pending' || order.payment_status === 'partial') && (
                           <ActionButton onClick={(e) => handlePaymentClick(order, e)}
-                            style={order.status === 'served' ? { background: '#10B981', borderColor: '#10B981', color: 'white' } : { background: '#F6F9FC', color: '#6B7C93', border: '1px solid #E6EBF1' }}>Payment</ActionButton>
+                            style={order.status === 'served' ? { background: '#10B981', borderColor: '#10B981', color: 'white' } : { background: '#F6F9FC', color: '#6B7C93', border: '1px solid #E6EBF1' }}>
+                            {order.payment_status === 'partial' ? 'Continue Payment' : 'Payment'}
+                          </ActionButton>
                         )}
                         {(order.payment_status as any) === 'payment_verification_pending' && (
                           <ActionButton onClick={(e) => { e.stopPropagation(); setVerifyOrder(order); }}
                             style={{ background: '#10B981', borderColor: '#10B981', color: 'white' }}>Confirm Payment</ActionButton>
                         )}
-                        {order.status !== 'completed' && order.status !== 'cancelled' && order.payment_status !== 'pending' && (order.payment_status as any) !== 'payment_verification_pending' && (
+                        {order.status !== 'completed' && order.status !== 'cancelled' && order.payment_status !== 'pending' && order.payment_status !== 'partial' && (order.payment_status as any) !== 'payment_verification_pending' && (
                           <IconButton onClick={(e) => { e.stopPropagation(); handleStatusChange(order.id, 'completed'); }} title="Mark as Completed">
                             <IconSymbol>✓</IconSymbol>
                           </IconButton>
@@ -1771,11 +1781,35 @@ const LiveOrdersPage: React.FC = () => {
             serviceCharge={Number((orderForPayment as any).service_charge || 0)}
             discountAmount={Number((orderForPayment as any).discount || 0)}
             couponDiscount={Number((orderForPayment as any).coupon_discount || 0)}
+            discountPolicyAmount={Number((orderForPayment as any).discount_policy_amount || 0)}
+            pointDiscount={Number((orderForPayment as any).point_discount || 0)}
             onConfirmPayment={handlePaymentConfirm}
             paymentMethods={paymentMethods}
             customerId={(orderForPayment as any).customer_id || undefined}
             restaurantId={user?.restaurantId ? Number(user.restaurantId) : undefined}
             membershipSettings={membershipSettings}
+            // Phase 2 — Split bill: 기존 주문이라 orderId/items 전달 가능
+            orderId={Number(orderForPayment.id)}
+            orderItems={Array.isArray(orderForPayment.order_items)
+              ? orderForPayment.order_items
+              : (typeof orderForPayment.order_items === 'string'
+                ? (() => { try { return JSON.parse(orderForPayment.order_items as any); } catch { return []; } })()
+                : [])}
+            takeawayCharge={Number((orderForPayment as any).takeaway_charge || 0)}
+            taxRate={Number((orderForPayment as any).tax_rate || 6)}
+            serviceChargeRate={Number((orderForPayment as any).service_charge_rate || 10)}
+            existingAmountPaid={Number((orderForPayment as any).amount_paid || 0)}
+            onPartialPaymentComplete={(_payment, remaining) => {
+              if (remaining <= 0.005) {
+                // Fully paid → close + refresh
+                setShowPaymentModal(false);
+                setTimeout(() => setOrderForPayment(null), 100);
+                fetchOrders();
+              } else {
+                // Stay open for next partial — refresh order data
+                fetchOrders();
+              }
+            }}
           />
         )}
 
@@ -1818,7 +1852,7 @@ const LiveOrdersPage: React.FC = () => {
                         <div>
                           <div style={{ fontWeight: 600, fontSize: '16px', color: '#0A2540' }}>{order.order_number}</div>
                           <div style={{ fontSize: '13px', color: '#6B7C93', marginTop: '4px' }}>
-                            {order.table_number ? `Table ${order.table_number}${order.guest_count ? ` (${order.guest_count}p)` : ''}` : ''}
+                            {order.table_number ? `${getTableLabel(order.table_number, floorPlan).display}${order.guest_count ? ` (${order.guest_count}p)` : ''}` : ''}
                             {order.table_number && order.pager_number ? ' / ' : ''}
                             {order.pager_number ? `Pager ${order.pager_number}` : ''}
                             {!order.table_number && !order.pager_number ? 'No Table/Pager' : ''}

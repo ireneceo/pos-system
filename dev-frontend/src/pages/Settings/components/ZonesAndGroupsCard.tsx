@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
+import { useTranslation } from 'react-i18next';
 import { QRCodeCanvas, QRCodeSVG } from 'qrcode.react';
 import { FloorPlanData, FloorZone, FloorTableGroup, FloorTable, DEFAULT_FLOOR_PLAN, computeTableLabel } from '../../FloorPlan/types';
 import Modal from '../../../components/UI/Modal';
@@ -304,6 +305,7 @@ const uid = (prefix: string) => `${prefix}_${Date.now().toString(36)}${Math.rand
 const sanitizePrefix = (s: string) => String(s || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 3);
 
 const ZonesAndGroupsCard: React.FC<ZonesAndGroupsCardProps> = ({ restaurantId, restaurantName, authToken, qrCodeBaseUrl, restaurantSlug }) => {
+  const { t } = useTranslation('settings');
   const [floorPlan, setFloorPlan] = useState<FloorPlanData>(DEFAULT_FLOOR_PLAN);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -349,11 +351,11 @@ const ZonesAndGroupsCard: React.FC<ZonesAndGroupsCardProps> = ({ restaurantId, r
       if (!res.ok) throw new Error('Save failed');
       setFloorPlan(next);
     } catch (e: any) {
-      setInfoModalMsg(`Save failed: ${e?.message || 'unknown error'}. Please try again.`);
+      setInfoModalMsg(t('zonesGroups.saveFailed', { error: e?.message || 'unknown' }));
     } finally {
       setSaving(false);
     }
-  }, [restaurantId, restaurantName, authToken]);
+  }, [restaurantId, restaurantName, authToken, t]);
 
   // ── All hooks declared here BEFORE any early return (React rules-of-hooks) ─────────────────
   const [zoneModal, setZoneModal] = useState<{ open: boolean; mode: 'add' | 'rename'; zoneId?: string; name: string }>({
@@ -446,7 +448,7 @@ const ZonesAndGroupsCard: React.FC<ZonesAndGroupsCardProps> = ({ restaurantId, r
       g.id !== groupModal.groupId
     );
     if (dup) {
-      setInfoModalMsg(`Prefix "${prefix}" is already used in this zone. Choose a different prefix.`);
+      setInfoModalMsg(t('zonesGroups.prefixDuplicate', { prefix }));
       return;
     }
 
@@ -513,14 +515,11 @@ const ZonesAndGroupsCard: React.FC<ZonesAndGroupsCardProps> = ({ restaurantId, r
 
   return (
     <Card>
-      <CardTitle>Zones &amp; Table Groups</CardTitle>
-      <CardDesc>
-        Organize tables by zone (e.g., Indoor / Outdoor) and group (each with its own prefix like I, P, O).
-        Table numbers will be labeled as <code>prefix-number</code> (e.g., I-1, O-3) and used everywhere — QR codes, KDS, bills.
-      </CardDesc>
+      <CardTitle>{t('zonesGroups.title')}</CardTitle>
+      <CardDesc>{t('zonesGroups.desc')}</CardDesc>
 
       {loading && (
-        <div style={{ padding: '24px', textAlign: 'center', color: '#9CA3AF', fontSize: '13px' }}>Loading…</div>
+        <div style={{ padding: '24px', textAlign: 'center', color: '#9CA3AF', fontSize: '13px' }}>{t('zonesGroups.loading')}</div>
       )}
       {errorMsg && !loading && (
         <div style={{ padding: '14px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '6px', color: '#B91C1C', fontSize: '13px', marginBottom: '12px' }}>
@@ -530,7 +529,7 @@ const ZonesAndGroupsCard: React.FC<ZonesAndGroupsCardProps> = ({ restaurantId, r
 
       {!loading && zones.length === 0 && (
         <div style={{ padding: '24px', textAlign: 'center', background: '#FAFBFC', borderRadius: '8px', color: '#6B7C93', fontSize: '13px', marginBottom: '12px' }}>
-          No zones yet. Add your first zone to organize tables.
+          {t('zonesGroups.noZones')}
         </div>
       )}
 
@@ -541,46 +540,48 @@ const ZonesAndGroupsCard: React.FC<ZonesAndGroupsCardProps> = ({ restaurantId, r
             <ZoneHeader>
               <ZoneName>{zone.name}</ZoneName>
               <ZoneActions>
-                <IconBtn type="button" onClick={() => openRenameZone(zone)}>Rename</IconBtn>
-                <DangerBtn type="button" onClick={() => setDeleteZone(zone)}>Delete</DangerBtn>
+                <IconBtn type="button" onClick={() => openRenameZone(zone)}>{t('zonesGroups.rename')}</IconBtn>
+                <DangerBtn type="button" onClick={() => setDeleteZone(zone)}>{t('zonesGroups.delete')}</DangerBtn>
               </ZoneActions>
             </ZoneHeader>
 
             {zoneGroups.length === 0 && (
               <div style={{ padding: '12px', textAlign: 'center', color: '#9CA3AF', fontSize: '12px' }}>
-                No table groups in this zone yet.
+                {t('zonesGroups.noGroupsInZone')}
               </div>
             )}
 
             {zoneGroups.map(group => {
-              const count = floorPlan.tables.filter(t => t.group_id === group.id).length;
+              const count = floorPlan.tables.filter(t2 => t2.group_id === group.id && (!t2.tableType || t2.tableType === 'table')).length;
               return (
                 <GroupRow key={group.id}>
                   <GroupName>
                     <PrefixBadge>{group.prefix}</PrefixBadge>
                     {group.name}
                   </GroupName>
-                  <GroupMeta>{count} table{count !== 1 ? 's' : ''}</GroupMeta>
-                  <IconBtn type="button" onClick={() => openEditGroup(zone, group)}>Edit</IconBtn>
-                  <DangerBtn type="button" onClick={() => setDeleteGroup({ zone, group })}>Delete</DangerBtn>
+                  <GroupMeta>{t('zonesGroups.tableCount', { count })}</GroupMeta>
+                  <IconBtn type="button" onClick={() => openEditGroup(zone, group)}>{t('zonesGroups.edit')}</IconBtn>
+                  <DangerBtn type="button" onClick={() => setDeleteGroup({ zone, group })}>{t('zonesGroups.delete')}</DangerBtn>
                 </GroupRow>
               );
             })}
 
-            <AddBtn type="button" onClick={() => openAddGroup(zone.id)}>+ Add table group</AddBtn>
+            <AddBtn type="button" onClick={() => openAddGroup(zone.id)}>{t('zonesGroups.addTableGroup')}</AddBtn>
           </ZoneBlock>
         );
       })}
 
-      <AddBtnPrimary type="button" onClick={openAddZone}>+ Add zone</AddBtnPrimary>
+      <AddBtnPrimary type="button" onClick={openAddZone}>{t('zonesGroups.addZone')}</AddBtnPrimary>
 
       {/* ── Table QR Codes section — zone filter + per-table QR ─────────── */}
-      {floorPlan.tables.length > 0 && (
+      {floorPlan.tables.filter(tt => !tt.tableType || tt.tableType === 'table').length > 0 && (() => {
+        const realCount = floorPlan.tables.filter(tt => !tt.tableType || tt.tableType === 'table').length;
+        return (
         <QRSection>
           <QRSectionHeader>
-            <QRSectionTitle>Table QR Codes</QRSectionTitle>
+            <QRSectionTitle>{t('zonesGroups.tableQrCodes')}</QRSectionTitle>
             <span style={{ fontSize: 12, color: '#9CA3AF' }}>
-              {floorPlan.tables.length} table{floorPlan.tables.length !== 1 ? 's' : ''}
+              {t('zonesGroups.tableCount', { count: realCount })}
             </span>
           </QRSectionHeader>
 
@@ -591,11 +592,11 @@ const ZonesAndGroupsCard: React.FC<ZonesAndGroupsCardProps> = ({ restaurantId, r
                 active={activeZoneFilter === 'all'}
                 onClick={() => setActiveZoneFilter('all')}
               >
-                All ({floorPlan.tables.length})
+                {t('zonesGroups.allZones', { count: realCount })}
               </ZoneFilterChip>
               {zones.map(zone => {
                 const groupIds = (floorPlan.table_groups || []).filter(g => g.zone_id === zone.id).map(g => g.id);
-                const count = floorPlan.tables.filter(t => t.group_id && groupIds.includes(t.group_id)).length;
+                const count = floorPlan.tables.filter(tt => tt.group_id && groupIds.includes(tt.group_id) && (!tt.tableType || tt.tableType === 'table')).length;
                 return (
                   <ZoneFilterChip
                     key={zone.id}
@@ -603,7 +604,7 @@ const ZonesAndGroupsCard: React.FC<ZonesAndGroupsCardProps> = ({ restaurantId, r
                     active={activeZoneFilter === zone.id}
                     onClick={() => setActiveZoneFilter(zone.id)}
                   >
-                    {zone.name} ({count})
+                    {t('zonesGroups.zoneCount', { name: zone.name, count })}
                   </ZoneFilterChip>
                 );
               })}
@@ -616,66 +617,68 @@ const ZonesAndGroupsCard: React.FC<ZonesAndGroupsCardProps> = ({ restaurantId, r
             activeZoneFilter={activeZoneFilter}
             qrCodeBaseUrl={qrCodeBaseUrl || ''}
             restaurantSlug={restaurantSlug || ''}
+            t={t}
           />
         </QRSection>
-      )}
+        );
+      })()}
 
       {/* Zone add/rename modal */}
-      <Modal isOpen={zoneModal.open} onClose={closeZoneModal} title={zoneModal.mode === 'add' ? 'Add Zone' : 'Rename Zone'} size="small">
+      <Modal isOpen={zoneModal.open} onClose={closeZoneModal} title={zoneModal.mode === 'add' ? t('zonesGroups.addZoneTitle') : t('zonesGroups.renameZoneTitle')} size="small">
         <FormRow>
-          <Label htmlFor="zone-name">Zone name</Label>
+          <Label htmlFor="zone-name">{t('zonesGroups.zoneName')}</Label>
           <Input
             id="zone-name"
             type="text"
             value={zoneModal.name}
             onChange={(e) => setZoneModal(s => ({ ...s, name: e.target.value }))}
-            placeholder="e.g., Indoor Hall, Outdoor Patio"
+            placeholder={t('zonesGroups.zoneNamePlaceholder')}
             maxLength={50}
             autoFocus
           />
-          <HintText>Examples: "Indoor Hall", "Outdoor Patio", "VIP Lounge"</HintText>
+          <HintText>{t('zonesGroups.zoneNameExamples')}</HintText>
         </FormRow>
         <Footer>
-          <SecondaryBtn type="button" onClick={closeZoneModal}>Cancel</SecondaryBtn>
+          <SecondaryBtn type="button" onClick={closeZoneModal}>{t('zonesGroups.cancel')}</SecondaryBtn>
           <PrimaryBtn type="button" onClick={saveZone} disabled={!zoneModal.name.trim()}>
-            {zoneModal.mode === 'add' ? 'Add' : 'Save'}
+            {zoneModal.mode === 'add' ? t('zonesGroups.add') : t('zonesGroups.save')}
           </PrimaryBtn>
         </Footer>
       </Modal>
 
       {/* Group add/edit modal */}
-      <Modal isOpen={groupModal.open} onClose={closeGroupModal} title={groupModal.mode === 'add' ? 'Add Table Group' : 'Edit Table Group'} size="small">
+      <Modal isOpen={groupModal.open} onClose={closeGroupModal} title={groupModal.mode === 'add' ? t('zonesGroups.addGroupTitle') : t('zonesGroups.editGroupTitle')} size="small">
         <FormRow>
-          <Label htmlFor="group-name">Group name</Label>
+          <Label htmlFor="group-name">{t('zonesGroups.groupName')}</Label>
           <Input
             id="group-name"
             type="text"
             value={groupModal.name}
             onChange={(e) => setGroupModal(s => ({ ...s, name: e.target.value }))}
-            placeholder="e.g., Main Hall, Private Rooms"
+            placeholder={t('zonesGroups.groupNamePlaceholder')}
             maxLength={50}
             autoFocus
           />
         </FormRow>
         <FormRow>
-          <Label htmlFor="group-prefix">Prefix (1-3 letters)</Label>
+          <Label htmlFor="group-prefix">{t('zonesGroups.prefixLabel')}</Label>
           <Input
             id="group-prefix"
             type="text"
             value={groupModal.prefix}
             onChange={(e) => setGroupModal(s => ({ ...s, prefix: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 3) }))}
-            placeholder="I, O, P, VIP"
+            placeholder={t('zonesGroups.prefixPlaceholder')}
             maxLength={3}
             style={{ textTransform: 'uppercase', maxWidth: '160px' }}
           />
           <HintText>
-            Tables will be labeled as <strong>{groupModal.prefix || 'X'}-1, {groupModal.prefix || 'X'}-2, …</strong>
+            <strong>{t('zonesGroups.tablesLabeledAs', { prefix: groupModal.prefix || 'X' })}</strong>
           </HintText>
         </FormRow>
         {groupModal.mode === 'add' && (
           <>
             <FormRow>
-              <Label htmlFor="group-count">Number of tables to create</Label>
+              <Label htmlFor="group-count">{t('zonesGroups.numberOfTables')}</Label>
               <Input
                 id="group-count"
                 type="number"
@@ -684,10 +687,10 @@ const ZonesAndGroupsCard: React.FC<ZonesAndGroupsCardProps> = ({ restaurantId, r
                 onChange={(e) => setGroupModal(s => ({ ...s, tableCount: e.target.value }))}
                 style={{ maxWidth: '160px' }}
               />
-              <HintText>Auto-positioned in a grid. Drag to rearrange in the Floor Plan page later.</HintText>
+              <HintText>{t('zonesGroups.autoPositioned')}</HintText>
             </FormRow>
             <FormRow>
-              <Label htmlFor="group-seats">Default seats per table</Label>
+              <Label htmlFor="group-seats">{t('zonesGroups.defaultSeats')}</Label>
               <Input
                 id="group-seats"
                 type="number"
@@ -700,12 +703,12 @@ const ZonesAndGroupsCard: React.FC<ZonesAndGroupsCardProps> = ({ restaurantId, r
           </>
         )}
         {groupModal.mode === 'edit' && (
-          <HintText>Existing table labels will update automatically when the prefix changes.</HintText>
+          <HintText>{t('zonesGroups.labelUpdateDesc')}</HintText>
         )}
         <Footer>
-          <SecondaryBtn type="button" onClick={closeGroupModal}>Cancel</SecondaryBtn>
+          <SecondaryBtn type="button" onClick={closeGroupModal}>{t('zonesGroups.cancel')}</SecondaryBtn>
           <PrimaryBtn type="button" onClick={saveGroup} disabled={!groupModal.name.trim() || !sanitizePrefix(groupModal.prefix)}>
-            {groupModal.mode === 'add' ? 'Create' : 'Save'}
+            {groupModal.mode === 'add' ? t('zonesGroups.create') : t('zonesGroups.save')}
           </PrimaryBtn>
         </Footer>
       </Modal>
@@ -715,13 +718,9 @@ const ZonesAndGroupsCard: React.FC<ZonesAndGroupsCardProps> = ({ restaurantId, r
         isOpen={!!deleteZone}
         onCancel={() => setDeleteZone(null)}
         onConfirm={confirmDeleteZone}
-        title="Delete zone?"
-        message={
-          deleteZone
-            ? `Delete "${deleteZone.name}" and all its table groups and tables? This cannot be undone.`
-            : ''
-        }
-        confirmText="Delete"
+        title={t('zonesGroups.deleteZoneConfirm')}
+        message={deleteZone ? t('zonesGroups.deleteZoneMessage', { name: deleteZone.name }) : ''}
+        confirmText={t('zonesGroups.delete')}
         type="danger"
       />
 
@@ -730,13 +729,13 @@ const ZonesAndGroupsCard: React.FC<ZonesAndGroupsCardProps> = ({ restaurantId, r
         isOpen={!!deleteGroup}
         onCancel={() => setDeleteGroup(null)}
         onConfirm={confirmDeleteGroup}
-        title="Delete table group?"
-        message={
-          deleteGroup
-            ? `Delete "${deleteGroup.group.name}" (prefix ${deleteGroup.group.prefix}) and all ${floorPlan.tables.filter(t => t.group_id === deleteGroup.group.id).length} tables in it? This cannot be undone.`
-            : ''
-        }
-        confirmText="Delete"
+        title={t('zonesGroups.deleteGroupConfirm')}
+        message={deleteGroup ? t('zonesGroups.deleteGroupMessage', {
+          name: deleteGroup.group.name,
+          prefix: deleteGroup.group.prefix,
+          count: floorPlan.tables.filter(t2 => t2.group_id === deleteGroup.group.id).length
+        }) : ''}
+        confirmText={t('zonesGroups.delete')}
         type="danger"
       />
 
@@ -745,14 +744,14 @@ const ZonesAndGroupsCard: React.FC<ZonesAndGroupsCardProps> = ({ restaurantId, r
         isOpen={!!infoModalMsg}
         onCancel={() => setInfoModalMsg(null)}
         onConfirm={() => setInfoModalMsg(null)}
-        title="Notice"
+        title={t('zonesGroups.notice')}
         message={infoModalMsg || ''}
-        confirmText="OK"
+        confirmText={t('zonesGroups.ok')}
         singleButton
       />
 
       {saving && (
-        <div style={{ position: 'fixed', top: 12, right: 12, background: '#0A2540', color: '#fff', padding: '8px 14px', borderRadius: 6, fontSize: 13, zIndex: 9999 }}>Saving…</div>
+        <div style={{ position: 'fixed', top: 12, right: 12, background: '#0A2540', color: '#fff', padding: '8px 14px', borderRadius: 6, fontSize: 13, zIndex: 9999 }}>{t('zonesGroups.saving')}</div>
       )}
     </Card>
   );
@@ -766,14 +765,16 @@ interface TableQRGridContentProps {
   activeZoneFilter: string;
   qrCodeBaseUrl: string;
   restaurantSlug: string;
+  t: (key: string, options?: any) => string;
 }
 
-const TableQRGridContent: React.FC<TableQRGridContentProps> = ({ tables, groups, activeZoneFilter, qrCodeBaseUrl, restaurantSlug }) => {
-  // Filter tables by selected zone
+const TableQRGridContent: React.FC<TableQRGridContentProps> = ({ tables, groups, activeZoneFilter, qrCodeBaseUrl, restaurantSlug, t }) => {
+  // Filter tables by selected zone + EXCLUDE fixtures (counter/entrance/kitchen are not seating).
   const filteredTables = useMemo(() => {
-    if (activeZoneFilter === 'all') return tables;
+    const realTables = tables.filter(t => !t.tableType || t.tableType === 'table');
+    if (activeZoneFilter === 'all') return realTables;
     const groupIdsInZone = new Set(groups.filter(g => g.zone_id === activeZoneFilter).map(g => g.id));
-    return tables.filter(t => t.group_id && groupIdsInZone.has(t.group_id));
+    return realTables.filter(t => t.group_id && groupIdsInZone.has(t.group_id));
   }, [tables, groups, activeZoneFilter]);
 
   const buildQrUrl = (table: FloorTable) => {
@@ -809,7 +810,7 @@ const TableQRGridContent: React.FC<TableQRGridContentProps> = ({ tables, groups,
   };
 
   if (filteredTables.length === 0) {
-    return <EmptyMsg>No tables in this zone yet. Add a table group above to auto-create tables.</EmptyMsg>;
+    return <EmptyMsg>{t('zonesGroups.noTablesInZone')}</EmptyMsg>;
   }
 
   // Sort by label for stable display
@@ -832,9 +833,9 @@ const TableQRGridContent: React.FC<TableQRGridContentProps> = ({ tables, groups,
               <QRCodeSVG id={`table-qr-svg-${label}`} value={url} size={100} level="H" includeMargin={true} />
             </TableQRContainer>
             <TableQRActions>
-              <QRActionBtn type="button" onClick={() => handleCopy(url)} title="Copy URL">Copy</QRActionBtn>
-              <QRActionBtn type="button" onClick={() => handleDownloadSVG(label)} title="Download SVG">SVG</QRActionBtn>
-              <QRActionBtn type="button" onClick={() => handleDownloadPNG(label)} title="Download PNG">PNG</QRActionBtn>
+              <QRActionBtn type="button" onClick={() => handleCopy(url)} title={t('zonesGroups.copyTitle')}>{t('zonesGroups.copy')}</QRActionBtn>
+              <QRActionBtn type="button" onClick={() => handleDownloadSVG(label)} title={t('zonesGroups.downloadSvgTitle')}>{t('zonesGroups.downloadSvg')}</QRActionBtn>
+              <QRActionBtn type="button" onClick={() => handleDownloadPNG(label)} title={t('zonesGroups.downloadPngTitle')}>{t('zonesGroups.downloadPng')}</QRActionBtn>
             </TableQRActions>
           </TableQRItem>
         );

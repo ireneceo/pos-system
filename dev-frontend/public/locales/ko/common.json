@@ -1,4 +1,6 @@
 {
+  "storeBadge.cashless": "캐시리스",
+  "storeBadge.cashlessHint": "이 매장은 현금 결제를 받지 않습니다",
   "backToDashboard": "대시보드로 돌아가기",
   "visitHomepage": "PurpleHere 홈페이지로",
   "button": {
@@ -289,6 +291,7 @@
     "branchMap": "지점 지도",
     "incomingOrders": "라이브 오더",
     "carriers": "운송업체",
+    "tablesQr": "테이블 & QR",
     "paymentMethods": "결제수단",
     "printer": "프린터",
     "kitchenStations": "키친 스테이션",
@@ -299,7 +302,8 @@
     "brandMenuCategories": "메뉴 카테고리",
     "brandMenuOptions": "메뉴 옵션",
     "brandMenuUpdates": "브랜드 메뉴 업데이트",
-    "allBrands": "전체 브랜드"
+    "allBrands": "전체 브랜드",
+    "pickupDisplay": "픽업 안내"
   },
   "language": {
     "en": "English",

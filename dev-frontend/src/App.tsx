@@ -14,31 +14,32 @@ import ProtectedRoute from './components/ProtectedRoute';
 import ScrollToTop from './components/ScrollToTop';
 import CookieConsentBanner from './components/Common/CookieConsentBanner';
 import PosLayout from './components/Layout/PosLayout';
-// Landing Pages (keep static - first load)
-import HomePage from './pages/Landing/HomePage';
-import AboutPage from './pages/Landing/AboutPage';
 import { PwaInstallProvider } from './contexts/PwaInstallContext';
 import NotificationToaster from './components/Common/NotificationToaster';
 import PwaInstallBanner from './components/Common/PwaInstallBanner';
-import FeaturesPage from './pages/Landing/FeaturesPage';
-import PricingPage from './pages/Landing/PricingPage';
-import PackagesPage from './pages/Landing/PackagesPage';
-import ContactPage from './pages/Landing/ContactPage';
-import DemoPage from './pages/Landing/DemoPage';
-import SignupPage from './pages/Landing/SignupPage';
-import ForgotPasswordPage from './pages/Landing/ForgotPasswordPage';
-import ResetPasswordPage from './pages/Landing/ResetPasswordPage';
-import CompanyPage from './pages/Landing/CompanyPage';
-import PrivacyPolicyPage from './pages/Landing/PrivacyPolicyPage';
-import TermsOfServicePage from './pages/Landing/TermsOfServicePage';
-import FAQPage from './pages/Landing/FAQPage';
-import BlogPage from './pages/Landing/BlogPage';
-import NewsPage from './pages/Landing/NewsPage';
-import BlogPostPage from './pages/Landing/BlogPostPage';
-// Login Page (keep static - frequently used)
+// Login Page (keep static - frequently used, first contact)
 import LoginPage from './pages/Login/LoginPage';
-// Mobile App (keep static - separate entry point)
-import MobileApp from './mobile/MobileApp';
+
+// Landing Pages — lazy (logged-in users never hit these; visitors see "Loading…" once)
+const HomePage = React.lazy(() => import('./pages/Landing/HomePage'));
+const AboutPage = React.lazy(() => import('./pages/Landing/AboutPage'));
+const FeaturesPage = React.lazy(() => import('./pages/Landing/FeaturesPage'));
+const PricingPage = React.lazy(() => import('./pages/Landing/PricingPage'));
+const PackagesPage = React.lazy(() => import('./pages/Landing/PackagesPage'));
+const ContactPage = React.lazy(() => import('./pages/Landing/ContactPage'));
+const DemoPage = React.lazy(() => import('./pages/Landing/DemoPage'));
+const SignupPage = React.lazy(() => import('./pages/Landing/SignupPage'));
+const ForgotPasswordPage = React.lazy(() => import('./pages/Landing/ForgotPasswordPage'));
+const ResetPasswordPage = React.lazy(() => import('./pages/Landing/ResetPasswordPage'));
+const CompanyPage = React.lazy(() => import('./pages/Landing/CompanyPage'));
+const PrivacyPolicyPage = React.lazy(() => import('./pages/Landing/PrivacyPolicyPage'));
+const TermsOfServicePage = React.lazy(() => import('./pages/Landing/TermsOfServicePage'));
+const FAQPage = React.lazy(() => import('./pages/Landing/FAQPage'));
+const BlogPage = React.lazy(() => import('./pages/Landing/BlogPage'));
+const NewsPage = React.lazy(() => import('./pages/Landing/NewsPage'));
+const BlogPostPage = React.lazy(() => import('./pages/Landing/BlogPostPage'));
+// Mobile App — lazy (separate entry, heavy customer-facing bundle)
+const MobileApp = React.lazy(() => import('./mobile/MobileApp'));
 
 // Loading Component
 const PageLoader = () => (
@@ -397,7 +398,7 @@ function App() {
             document.title = settings.seo_title;
           }
 
-          // Update favicon — cache-bust 으로 동일 path 덮어쓰기 후 브라우저 캐시 무효화
+          // Update favicon — cache-bust + localStorage 캐싱 (다음 접속 시 inline script 가 즉시 적용 → 깜빡임 차단)
           if (settings.favicon_url) {
             const url = settings.favicon_url;
             const bustUrl = url.startsWith('data:') ? url : `${url}${url.includes('?') ? '&' : '?'}v=${Date.now()}`;
@@ -408,6 +409,10 @@ function App() {
             if (appleTouchIcon) {
               appleTouchIcon.href = bustUrl;
             }
+            try { localStorage.setItem('site_favicon_url', settings.favicon_url); } catch(e) { /* silent */ }
+          } else {
+            // System 관리자가 favicon 제거한 경우 캐시도 제거
+            try { localStorage.removeItem('site_favicon_url'); } catch(e) { /* silent */ }
           }
 
           // Update meta description
@@ -540,6 +545,12 @@ function App() {
                       <Route path="/restaurant/:restaurantId/floor-plan" element={
                         <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin', 'Staff']}>
                           <FloorPlanPage />
+                        </ProtectedRoute>
+                      } />
+                      {/* Floor Plan Editor — standalone (no MainLayout sidebar), Floor Plan 에서만 진입 */}
+                      <Route path="/restaurant/:restaurantId/floor-plan-editor" element={
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin']}>
+                          <FloorPlanEditor />
                         </ProtectedRoute>
                       } />
 
@@ -1235,11 +1246,7 @@ function App() {
                           <SettingsPage />
                         </ProtectedRoute>
                       } />
-                      <Route path="/restaurant/:restaurantId/floor-plan-editor" element={
-                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin']}>
-                          <FloorPlanEditor />
-                        </ProtectedRoute>
-                      } />
+                      {/* floor-plan-editor moved to standalone (above) — Floor Plan 본 페이지와 동일 풀화면 */}
                       <Route path="/restaurant/:restaurantId/company-information" element={
                         <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin', 'Staff']}>
                           <CompanyInformationPage />

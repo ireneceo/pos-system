@@ -32,6 +32,7 @@ export interface MenuItem {
   brand_menu_locks_snapshot?: Record<string, boolean> | null;
   brand_menu_synced_version?: number | null;
   brand_menu_status?: 'in_sync' | 'pending_update' | 'unlinked' | null;
+  createdAt?: string | null;
 }
 
 export interface MenuOption {
@@ -268,8 +269,9 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
               ? (() => { try { return JSON.parse(item.brand_menu_locks_snapshot); } catch { return null; } })()
               : (item.brand_menu_locks_snapshot || null),
             brand_menu_synced_version: item.brand_menu_synced_version || null,
-            brand_menu_status: item.brand_menu_status || null
-          };
+            brand_menu_status: item.brand_menu_status || null,
+            createdAt: item.createdAt || item.created_at || null
+          } as any;
         });
 
         // Sort items: newest first within each category

@@ -209,7 +209,8 @@ const TableNode: React.FC<TableNodeProps> = React.memo(({
         textOrientation: 'mixed',
         letterSpacing: '1px',
       } as React.CSSProperties : undefined}>
-        {table.label || table.tableNumber}
+        {/* prefix-number 형식 (A-1) → prefix+number (A1) 정규화 — LiveOrders 와 통일 */}
+        {(table.label || table.tableNumber).replace(/-(?=\d)/, '')}
       </TableLabel>
       {!isFixture && (
         <>

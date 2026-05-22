@@ -10,5 +10,21 @@
   "kitchenDisplayPage.items": "항목",
   "kitchenDisplayPage.menus": "메뉴",
   "kitchenDisplayPage.preparing": "준비중",
-  "kitchenDisplayPage.ready": "준비완료"
+  "kitchenDisplayPage.ready": "준비완료",
+  "pin.title": "키친 디스플레이 로그인",
+  "pin.subtitle": "4자리 PIN을 입력하세요",
+  "pin.subtitleStation": "4자리 PIN을 입력하세요 — {{station}}",
+  "pin.invalid": "PIN이 올바르지 않습니다. 다시 시도하세요.",
+  "pin.connectionError": "연결 오류. 다시 시도하세요.",
+  "pin.exit": "나가기",
+  "pin.logout": "로그아웃",
+  "history.viewLink": "이력 보기",
+  "history.title": "주문 이력",
+  "history.close": "닫기",
+  "pin.switchStaff": "직원 전환",
+  "pin.switchStaffTitle": "정확한 액션 기록을 위해 다른 주방 직원으로 전환",
+  "pin.close": "닫기",
+  "mergeLabel": "병합",
+  "mergeNoLimit": "제한 없음",
+  "mergeTooltip": "아이템 병합 설정"
 }

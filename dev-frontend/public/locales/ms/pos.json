@@ -32,5 +32,22 @@
   "pOSTerminalPage.subtotal": "Jumlah Kecil",
   "pOSTerminalPage.takeawayCharge": "Bungkus Charge",
   "pOSTerminalPage.discount": "Diskaun",
-  "pOSTerminalPage.total": "Jumlah"
+  "pOSTerminalPage.total": "Jumlah",
+  "terminal.categoryAll": "Semua",
+  "terminal.simpleMode": "Padat",
+  "terminal.photoMode": "Imej",
+  "terminal.switchToSimple": "Tukar ke mod padat",
+  "terminal.switchToPhoto": "Tukar ke mod imej",
+  "terminal.options": "Pilihan",
+  "terminal.viewMode": "Mod paparan",
+  "terminal.sortLabel": "Susun",
+  "terminal.sortNewest": "Terbaru",
+  "terminal.sortName": "Nama A–Z",
+  "terminal.sortPriceAsc": "Harga ↑",
+  "terminal.sortPriceDesc": "Harga ↓",
+  "mergeChoice.title": "Pesanan sedia ada di meja ini",
+  "mergeChoice.subtitle": "Meja {{table}} sudah mempunyai {{count}} pesanan belum selesai. Tambah ke satu, atau buat pesanan berasingan?",
+  "mergeChoice.addToThis": "Tambah ke ini →",
+  "mergeChoice.cancel": "Batal",
+  "mergeChoice.separate": "Buat pesanan berasingan"
 }

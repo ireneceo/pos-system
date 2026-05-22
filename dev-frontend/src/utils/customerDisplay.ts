@@ -254,9 +254,10 @@ export async function openCustomerDisplay(
 
   openedWindow = win;
 
-  // Force the window into a visible position+size, both immediately (covers reused
-  // hidden popups) and again on load (covers fresh popups before content paints).
-  // moveTo/resizeTo only work for same-origin windows opened via window.open — true here.
+  // Force the window into a visible position+size.
+  // PWA standalone (Windows desktop app) 의 window.open 좌표 무시 우회 위해
+  // 여러 timer 로 재시도. Chromium 가 popup 을 처음에 primary 모니터로 띄워도
+  // 곧 moveTo() 로 secondary 로 강제 이동.
   const forcePlacement = () => {
     try {
       (win as any).moveTo?.(placement.left, placement.top);
@@ -268,6 +269,11 @@ export async function openCustomerDisplay(
     win.focus();
     forcePlacement();
     win.addEventListener('load', forcePlacement);
+    // 추가 재시도 — Chrome PWA standalone 의 window.open 좌표 무시 우회.
+    // 일부 환경에서 popup 컨텐츠가 paint 후에야 moveTo() 가 적용됨.
+    setTimeout(forcePlacement, 100);
+    setTimeout(forcePlacement, 500);
+    setTimeout(forcePlacement, 1500);
   } catch { /* ignore */ }
 
   if (placedOnSecondary) {

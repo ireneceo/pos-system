@@ -144,6 +144,29 @@ const SearchSection = styled.div`
   gap: 12px;
 `;
 
+// Segmented toggle (KDS Order/Item 토글과 동일 스타일 — 시스템 통일).
+const ViewToggle = styled.div`
+  display: flex;
+  background: #F3F4F6;
+  border-radius: 6px;
+  padding: 2px;
+`;
+
+const ViewToggleBtn = styled.button<{ active: boolean }>`
+  padding: 5px 14px;
+  border: none;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: ${props => props.active ? 'white' : 'transparent'};
+  color: ${props => props.active ? '#0A2540' : '#6B7C93'};
+  box-shadow: ${props => props.active ? '0 1px 2px rgba(0,0,0,0.08)' : 'none'};
+  flex-shrink: 0;
+  white-space: nowrap;
+`;
+
 const SearchInputContainer = styled.div`
   flex: 1;
   position: relative;
@@ -284,6 +307,7 @@ const MenuGrid = styled.div`
   padding: 24px;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  grid-auto-rows: max-content;
   gap: 16px;
   overflow-y: auto;
   align-content: start;
@@ -311,7 +335,12 @@ const MenuItem = styled.div<{ soldOut?: boolean }>`
   transition: all 0.15s;
   text-align: center;
   position: relative;
-  
+  display: flex;
+  flex-direction: column;
+  /* height:100% 제거 — grid auto-rows 가 stretch 시키지 않도록.
+     같은 row 카드 옵션 일치는 grid default align-self:stretch 로 자연 처리.
+     단일 카드 카테고리에서 카드가 grid container 까지 stretch 되는 부작용 차단. */
+
   &:hover {
     border-color: #C7D2FE;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
@@ -406,7 +435,8 @@ const SetItemsPreview = styled.div`
 
 const MenuItemActions = styled.div`
   display: flex;
-  margin-top: 12px;
+  margin-top: auto;   /* 카드 하단 정렬 — 제목 1줄/2줄 관계 없이 옵션 버튼 같은 위치 */
+  padding-top: 12px;
   width: 100%;
 `;
 
@@ -1115,6 +1145,7 @@ interface OrderItemType {
 }
 
 const POSTerminalPage: React.FC = () => {
+  const { t } = useTranslation('pos');
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const fromParam = searchParams.get('from') || '';
@@ -1142,6 +1173,12 @@ const POSTerminalPage: React.FC = () => {
   const [orderItems, setOrderItems] = useState<OrderItemType[]>([]);
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+
+  // Auto-merge → 명시 선택 흐름: 결제 진행 시 같은 테이블에 진행 중 주문이 있으면
+  // "기존 추가 / 별도 생성" 모달. POS default 는 별도 (백엔드 skipAutoMerge 자동).
+  const [mergeableOrders, setMergeableOrders] = useState<any[]>([]);
+  const [showMergeChoiceModal, setShowMergeChoiceModal] = useState(false);
+  const [forceMergeOrderId, setForceMergeOrderId] = useState<number | null>(null);
   const [showOptionModal, setShowOptionModal] = useState(false);
   const [showOrderCompleteModal, setShowOrderCompleteModal] = useState(false);
   const [completedOrderData, setCompletedOrderData] = useState<any>(null);
@@ -1184,6 +1221,43 @@ const POSTerminalPage: React.FC = () => {
   const [customerPoints, setCustomerPoints] = useState(0);
   const [customerTier, setCustomerTier] = useState('Bronze');
 
+  // Display mode: 'photo' (default — image card grid) vs 'simple' (text-only, denser grid)
+  // Per-device toggle, saved to localStorage. Default per Irene 2026-05-22 = photo.
+  const [displayMode, setDisplayMode] = useState<'photo' | 'simple'>(() => {
+    try { return localStorage.getItem('pos_display_mode') === 'simple' ? 'simple' : 'photo'; }
+    catch { return 'photo'; }
+  });
+
+  // Sort order applied to every category / mode / search result. Default = newest.
+  type SortKey = 'newest' | 'name' | 'price_asc' | 'price_desc';
+  const [sortBy, setSortBy] = useState<SortKey>(() => {
+    try {
+      const saved = localStorage.getItem('pos_sort_by') as SortKey | null;
+      if (saved && ['newest', 'name', 'price_asc', 'price_desc'].includes(saved)) return saved;
+    } catch { /* ignore */ }
+    return 'newest';
+  });
+  const setSortByPersistent = (s: SortKey) => {
+    setSortBy(s);
+    try { localStorage.setItem('pos_sort_by', s); } catch { /* ignore */ }
+  };
+  const setDisplayModePersistent = (m: 'photo' | 'simple') => {
+    setDisplayMode(m);
+    try { localStorage.setItem('pos_display_mode', m); } catch { /* ignore */ }
+    if (m === 'simple') {
+      // Compact 모드 = 텍스트 only = 한꺼번에 다 보기 좋음. 자동 All 선택.
+      if (!isSearchMode) {
+        setSelectedCategory('all');
+        loadMenuByCategory('all');
+      }
+    } else if (m === 'photo' && selectedCategory === 'all' && !isSearchMode && categories.length > 0) {
+      // Image 모드 = 카테고리별 (사진 동시 로딩 비용). 'all' 이면 첫 카테고리로.
+      const firstCategoryId = categories[0].id;
+      setSelectedCategory(firstCategoryId);
+      loadMenuByCategory(firstCategoryId);
+    }
+  };
+
   // Progressive rendering state
   const PROGRESSIVE_THRESHOLD = 50;
   const INITIAL_RENDER_COUNT = 40;
@@ -1213,14 +1287,30 @@ const POSTerminalPage: React.FC = () => {
 
   // activeCashier 제거 - PIN 전환 시 AuthContext user가 직접 교체됨
 
-  // 초기 카테고리 설정: 첫 번째 카테고리 선택 및 해당 메뉴만 로딩
+  // 초기 카테고리 설정: displayMode 따라 분기.
+  // Compact 모드는 항상 'all' (텍스트 only — 메뉴 다 보기 자연스러움).
+  // Image 모드는 첫 카테고리 (사진 동시 로딩 비용 회피).
   useEffect(() => {
-    if (categories.length > 0 && selectedCategory === null) {
+    if (categories.length === 0 || selectedCategory !== null) return;
+    if (displayMode === 'simple') {
+      setSelectedCategory('all');
+      loadMenuByCategory('all');
+    } else {
       const firstCategoryId = categories[0].id;
       setSelectedCategory(firstCategoryId);
       loadMenuByCategory(firstCategoryId);
     }
-  }, [categories, selectedCategory, loadMenuByCategory]);
+  }, [categories, selectedCategory, displayMode, loadMenuByCategory]);
+
+  // Photo 모드는 "All" 카테고리 미지원 (이미지 동시 로드 비용). 만약 Simple→Photo 전환 시
+  // 'all' 이 선택되어 있으면 첫 카테고리로 자동 폴백.
+  useEffect(() => {
+    if (displayMode === 'photo' && selectedCategory === 'all' && !isSearchMode && categories.length > 0) {
+      const firstCategoryId = categories[0].id;
+      setSelectedCategory(firstCategoryId);
+      loadMenuByCategory(firstCategoryId);
+    }
+  }, [displayMode, selectedCategory, isSearchMode, categories, loadMenuByCategory]);
 
   // 카테고리 변경 시 해당 카테고리 메뉴 로딩
   const handleCategorySelect = (categoryId: string) => {
@@ -1269,8 +1359,9 @@ const POSTerminalPage: React.FC = () => {
   };
 
   // 선택된 카테고리가 삭제된 경우 처리
+  // 단 'all' 은 가상 카테고리 (Compact 모드 전용) — 실제 카테고리 목록에 없어도 유효.
   useEffect(() => {
-    if (categories.length > 0 && selectedCategory && !isSearchMode && !categories.find(cat => cat.id === selectedCategory)) {
+    if (categories.length > 0 && selectedCategory && selectedCategory !== 'all' && !isSearchMode && !categories.find(cat => cat.id === selectedCategory)) {
       setSelectedCategory(categories[0]?.id || null);
     }
   }, [categories, selectedCategory, isSearchMode]);
@@ -1313,13 +1404,18 @@ const POSTerminalPage: React.FC = () => {
     loadTableSettings();
   }, [user?.restaurantId]);
 
-  // Set initial table from floor plan URL param
+  // Set initial table from floor plan URL param.
+  // v3.37 Floor Plan v2 (group prefixes O/I/P 등) 는 매장 옛 table_settings.tablePrefix
+  // 로 생성된 availableTables 와 mismatch 가능. fromFloorPlan 일 때는 사용자가 직접 클릭한
+  // 식별자를 신뢰하고 강제 setTableNumber 한다 — 그렇지 않으면 주문이 빈 table 로 생성되어
+  // Floor Plan 에 attach 되지 않는 버그가 재현됨.
   useEffect(() => {
-    if (initialTableFromUrl && availableTables.length > 0 && availableTables.includes(initialTableFromUrl)) {
+    if (!initialTableFromUrl) return;
+    if (fromFloorPlan || availableTables.length === 0 || availableTables.includes(initialTableFromUrl)) {
       setTableNumber(initialTableFromUrl);
       setOrderType('dine-in');
     }
-  }, [initialTableFromUrl, availableTables]);
+  }, [initialTableFromUrl, availableTables, fromFloorPlan]);
 
   // Load payment settings and currency settings from restaurant API
   useEffect(() => {
@@ -1414,12 +1510,40 @@ const POSTerminalPage: React.FC = () => {
         (item.code && item.code.toLowerCase().includes(query)) ||
         (item.description && item.description.toLowerCase().includes(query))
       );
+    } else if (selectedCategory === 'all') {
+      // All 탭: 모든 활성 카테고리 메뉴 합치기
+      items = menuItems.filter(item => !item.isInactive);
     } else if (selectedCategory) {
       // 일반 모드: 선택된 카테고리 메뉴만 표시
       items = getItemsByCategory(selectedCategory);
     }
 
-    return items;
+    // 정렬 적용 — 모든 카테고리 / 검색 / All 결과에 일관 적용.
+    // mutate 회피 위해 slice() 로 카피.
+    const sorted = items.slice();
+    switch (sortBy) {
+      case 'name':
+        sorted.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        break;
+      case 'price_asc':
+        sorted.sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0));
+        break;
+      case 'price_desc':
+        sorted.sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0));
+        break;
+      case 'newest':
+      default: {
+        // createdAt DESC (최신순). createdAt 없으면 id DESC fallback.
+        sorted.sort((a, b) => {
+          const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          if (tb !== ta) return tb - ta;
+          return (Number(b.id) || 0) - (Number(a.id) || 0);
+        });
+        break;
+      }
+    }
+    return sorted;
   };
   
   const filteredMenuItems = getFilteredItems();
@@ -1849,7 +1973,9 @@ const POSTerminalPage: React.FC = () => {
       guest_count: orderType === 'dine-in' && guestCount > 0 ? guestCount : null,
       pagerNumber: pagerNumber || undefined,
       cashier_id: user?.id ? Number(user.id) : null,
-      cashier_name: user?.name || null
+      cashier_name: user?.name || null,
+      // 사용자가 "기존 주문에 추가" 선택했으면 명시 머지.
+      forceMergeIntoOrderId: forceMergeOrderId || undefined
     };
 
       console.log('🟡 Calling addOrder with orderNumber:', newOrder.orderNumber);
@@ -1911,8 +2037,33 @@ const POSTerminalPage: React.FC = () => {
     }
   };
 
-  const handlePayment = () => {
+  const handlePayment = async () => {
     if (orderItems.length === 0) return;
+
+    // 같은 테이블에 진행 중 주문이 있으면 "기존 추가 / 별도 생성" 사용자 선택.
+    if (orderType === 'dine-in' && tableNumber && user?.restaurantId) {
+      try {
+        const params = new URLSearchParams({
+          restaurant_id: String(user.restaurantId),
+          table_number: tableNumber,
+          order_type: 'dine_in'
+        });
+        const res = await fetch(`/api/orders/mergeable?${params.toString()}`);
+        if (res.ok) {
+          const data = await res.json();
+          const list: any[] = (data && data.data) || [];
+          if (list.length > 0) {
+            setMergeableOrders(list);
+            setShowMergeChoiceModal(true);
+            return;
+          }
+        }
+      } catch (e) {
+        // Network 오류 시엔 기본 흐름 (별도 주문) 으로 진행 — 안전 fallback.
+        console.warn('[POS] mergeable check failed, proceeding as separate order', e);
+      }
+    }
+    setForceMergeOrderId(null);
     setShowPaymentModal(true);
   };
 
@@ -2016,7 +2167,8 @@ const POSTerminalPage: React.FC = () => {
       guest_count: orderType === 'dine-in' && guestCount > 0 ? guestCount : null,
       pagerNumber: pagerNumber || undefined,
       cashier_id: user?.id ? Number(user.id) : null,
-      cashier_name: user?.name || null
+      cashier_name: user?.name || null,
+      forceMergeIntoOrderId: forceMergeOrderId || undefined
     };
 
       const savedOrder: any = await addOrder(newOrder, user?.restaurantId ? Number(user.restaurantId) : undefined);
@@ -2415,7 +2567,7 @@ const POSTerminalPage: React.FC = () => {
       <MainLayout>
         <MenuSection>
           <SearchSection>
-            <SearchInputContainer>
+            <SearchInputContainer style={{ maxWidth: 360 }}>
               <SearchIcon>🔍</SearchIcon>
               <SearchInput
                 type="text"
@@ -2432,9 +2584,68 @@ const POSTerminalPage: React.FC = () => {
                 </ClearSearchBtn>
               )}
             </SearchInputContainer>
+
+            {/* Sort dropdown — applied to every category / mode / search result.
+                Default = newest. localStorage persists per-device. */}
+            <select
+              aria-label={t('pos:terminal.sortLabel', 'Sort by')}
+              value={sortBy}
+              onChange={(e) => setSortByPersistent(e.target.value as SortKey)}
+              style={{
+                height: 36, padding: '0 28px 0 12px',
+                border: '1px solid #E6EBF1',
+                borderRadius: 6,
+                background: 'white',
+                fontSize: 13,
+                fontWeight: 500,
+                color: '#0A2540',
+                cursor: 'pointer',
+                appearance: 'none',
+                backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 12 12\' fill=\'none\'%3E%3Cpath d=\'M3 4.5L6 7.5L9 4.5\' stroke=\'%236B7C93\' stroke-width=\'1.5\' stroke-linecap=\'round\' stroke-linejoin=\'round\'/%3E%3C/svg%3E")',
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'right 8px center'
+              }}
+            >
+              <option value="newest">{t('pos:terminal.sortNewest', 'Newest')}</option>
+              <option value="name">{t('pos:terminal.sortName', 'Name A–Z')}</option>
+              <option value="price_asc">{t('pos:terminal.sortPriceAsc', 'Price ↑')}</option>
+              <option value="price_desc">{t('pos:terminal.sortPriceDesc', 'Price ↓')}</option>
+            </select>
+
+            {/* View mode segmented toggle — Image (default, with photos)
+                vs Compact (text-only, denser, surfaces the "All" tab). */}
+            <div style={{ flex: 1 }} />
+            <ViewToggle role="group" aria-label={t('pos:terminal.viewMode', 'View mode')}>
+              <ViewToggleBtn
+                type="button"
+                active={displayMode === 'photo'}
+                onClick={() => setDisplayModePersistent('photo')}
+                title={t('pos:terminal.switchToPhoto', 'Switch to image mode')}
+              >
+                {t('pos:terminal.photoMode', 'Image')}
+              </ViewToggleBtn>
+              <ViewToggleBtn
+                type="button"
+                active={displayMode === 'simple'}
+                onClick={() => setDisplayModePersistent('simple')}
+                title={t('pos:terminal.switchToSimple', 'Switch to compact mode')}
+              >
+                {t('pos:terminal.simpleMode', 'Compact')}
+              </ViewToggleBtn>
+            </ViewToggle>
           </SearchSection>
 
           <CategoryTabs>
+            {/* "All" tab is only available in Simple mode — text rendering scales,
+                but loading every category's images at once is too slow for large menus. */}
+            {displayMode === 'simple' && (
+              <CategoryTab
+                active={selectedCategory === 'all' && !isSearchMode}
+                onClick={() => handleCategorySelect('all')}
+              >
+                {t('pos:terminal.categoryAll', 'All')}
+              </CategoryTab>
+            )}
             {categories.map(category => (
               <CategoryTab
                 key={category.id}
@@ -2463,12 +2674,39 @@ const POSTerminalPage: React.FC = () => {
             </div>
           )}
 
-          <MenuGrid>
+          <MenuGrid style={displayMode === 'simple'
+            ? { gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }
+            : undefined}>
             {filteredMenuItems.length > 0 ? (
               <>
                 {(useProgressive ? filteredMenuItems.slice(0, visibleCount) : filteredMenuItems).map(item => {
                   // Check if item has option groups defined in menu data
                   const hasOptions = item.optionGroups && item.optionGroups.length > 0;
+
+                  if (displayMode === 'simple') {
+                    return (
+                      <MenuItem
+                        key={item.id}
+                        soldOut={item.soldOut}
+                        onClick={() => handleAddItemDirectly(item)}
+                        style={{ padding: '10px 12px', textAlign: 'left' }}
+                      >
+                        {item.is_set_menu && <SetBadge>{'SET'}</SetBadge>}
+                        <MenuName style={{ marginBottom: 2 }}>{item.code ? `${item.code} ` : ''}{item.name}</MenuName>
+                        <MenuPrice style={{ fontSize: 14 }}>{currency} {item.price.toFixed(2)}</MenuPrice>
+                        {hasOptions && (
+                          <MenuItemActions>
+                            <OptionButton
+                              onClick={(e) => handleShowOptions(item, e)}
+                              disabled={item.soldOut}
+                            >
+                              {t('pos:terminal.options', 'Options')}
+                            </OptionButton>
+                          </MenuItemActions>
+                        )}
+                      </MenuItem>
+                    );
+                  }
 
                   return (
                     <MenuItem
@@ -2479,7 +2717,7 @@ const POSTerminalPage: React.FC = () => {
                       {item.is_set_menu && <SetBadge>{'SET'}</SetBadge>}
                       <MenuImage hasImage={!!item.image}>
                         {item.image ? (
-                          <img src={item.image} alt={item.name} loading="lazy" />
+                          <img src={item.image} alt={item.name} loading="lazy" decoding="async" />
                         ) : (
                           item.emoji
                         )}
@@ -2947,6 +3185,97 @@ const POSTerminalPage: React.FC = () => {
         cancelText="Cancel"
         variant="warning"
       />
+
+      {showMergeChoiceModal && (
+        <div
+          onClick={() => setShowMergeChoiceModal(false)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+            zIndex: 9200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#fff', borderRadius: 12, padding: 24,
+              width: 480, maxWidth: 'calc(100vw - 32px)',
+              maxHeight: '80vh', overflow: 'auto',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+            }}
+          >
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#0A2540', marginBottom: 4 }}>
+              {t('pos:mergeChoice.title', 'Existing order on this table')}
+            </div>
+            <div style={{ fontSize: 13, color: '#6B7C93', marginBottom: 16 }}>
+              {t('pos:mergeChoice.subtitle', { defaultValue: 'Table {{table}} already has {{count}} pending order(s). Add to one, or create a separate order?', table: tableNumber, count: mergeableOrders.length })}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+              {mergeableOrders.map((o) => (
+                <button
+                  key={o.id}
+                  type="button"
+                  onClick={() => {
+                    setForceMergeOrderId(Number(o.id));
+                    setShowMergeChoiceModal(false);
+                    setShowPaymentModal(true);
+                  }}
+                  style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '12px 14px',
+                    border: '1px solid #DDD9FF',
+                    background: '#F0F4FF',
+                    borderRadius: 8, cursor: 'pointer', textAlign: 'left',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#3B30D9' }}>
+                      #{o.order_number || o.id} {o.customer_name ? '— ' + o.customer_name : ''}
+                    </div>
+                    <div style={{ fontSize: 11, color: '#6B7C93', marginTop: 2 }}>
+                      {new Date(o.createdAt).toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                      {' · '}{currency} {Number(o.total_amount).toFixed(2)}
+                    </div>
+                  </div>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#3B30D9' }}>
+                    {t('pos:mergeChoice.addToThis', 'Add to this →')}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => setShowMergeChoiceModal(false)}
+                style={{
+                  flex: 1, padding: '10px 14px', border: '1px solid #E6EBF1',
+                  background: 'white', color: '#6B7C93', borderRadius: 8,
+                  fontSize: 13, fontWeight: 500, cursor: 'pointer'
+                }}
+              >
+                {t('pos:mergeChoice.cancel', 'Cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setForceMergeOrderId(null);
+                  setShowMergeChoiceModal(false);
+                  setShowPaymentModal(true);
+                }}
+                style={{
+                  flex: 2, padding: '10px 14px', border: 'none',
+                  background: '#635BFF', color: 'white', borderRadius: 8,
+                  fontSize: 13, fontWeight: 600, cursor: 'pointer'
+                }}
+              >
+                {t('pos:mergeChoice.separate', 'Create separate order')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
       <AlertDialog
         isOpen={showFeatureAlert}

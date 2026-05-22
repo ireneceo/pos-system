@@ -1,4 +1,6 @@
 {
+  "storeBadge.cashless": "Tanpa Tunai",
+  "storeBadge.cashlessHint": "Kedai ini tidak menerima pembayaran tunai",
   "backToDashboard": "Kembali ke Papan Pemuka",
   "visitHomepage": "Lawat laman utama PurpleHere",
   "button": {
@@ -289,6 +291,7 @@
     "branchMap": "Peta Cawangan",
     "incomingOrders": "Pesanan Langsung",
     "carriers": "Pembawa",
+    "tablesQr": "Meja & QR",
     "paymentMethods": "Kaedah Pembayaran",
     "printer": "Pencetak",
     "kitchenStations": "Stesen Dapur",
@@ -299,7 +302,8 @@
     "brandMenuCategories": "Kategori Menu",
     "brandMenuOptions": "Pilihan Menu",
     "brandMenuUpdates": "Kemas Kini Menu Jenama",
-    "allBrands": "Semua Jenama"
+    "allBrands": "Semua Jenama",
+    "pickupDisplay": "Paparan Ambil"
   },
   "language": {
     "en": "English",

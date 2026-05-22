@@ -1603,7 +1603,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       { id: 'pos-terminal', label: t('nav.posTerminal', 'POS Terminal'), icon: <Monitor />, path: `/restaurant/${rid}/pos-terminal`, openInNewTab: true, visible: isRouteAllowed(`/restaurant/${rid}/pos-terminal`) },
       { id: 'floor-plan', label: t('nav.floorPlan', 'Floor Plan'), icon: <LayoutGrid />, path: `/restaurant/${rid}/floor-plan`, openInNewTab: true, visible: isRouteAllowed(`/restaurant/${rid}/floor-plan`) },
       { id: 'kitchen', label: t('nav.kitchenDisplay', 'Kitchen Display'), icon: <ChefHat />, path: `/restaurant/${rid}/kitchen`, openInNewTab: true, visible: isRouteAllowed(`/restaurant/${rid}/kitchen`) },
-      { id: 'customer-display', label: t('nav.customerDisplay', 'Customer Display'), icon: <Tv />, path: `/restaurant/${rid}/display`, openInNewTab: true, visible: isRouteAllowed(`/restaurant/${rid}/display`) },
+      { id: 'pickup-display', label: t('nav.pickupDisplay', 'Pickup Display'), icon: <Tv />, path: `/restaurant/${rid}/display`, openInNewTab: true, visible: isRouteAllowed(`/restaurant/${rid}/display`) },
       { id: 'mobile-order', label: t('nav.mobileOrder', 'Mobile Order'), icon: <Smartphone />, path: '/mobile', openInNewTab: true, mobileOrder: true, visible: isRouteAllowed('/mobile/:slug/menu') },
       {
         id: 'products', label: t('nav.section.products'), icon: <Package />,
@@ -1671,6 +1671,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           // Use explicit ?tab=store so the active-state matcher disambiguates from siblings below.
           { path: `/restaurant/${rid}/settings?tab=store`, label: t('nav.storeSettings'), visible: hasMenuPermission('settings') },
           // 2-depth siblings that previously lived as tabs inside Store Settings
+          { path: `/restaurant/${rid}/settings?tab=tablesQr`, label: t('nav.tablesQr', 'Tables & QR'), visible: hasMenuPermission('settings') },
           { path: `/restaurant/${rid}/settings?tab=payment`, label: t('nav.paymentMethods', 'Payment Methods'), visible: hasMenuPermission('settings') },
           { path: `/restaurant/${rid}/settings?tab=printer`, label: t('nav.printer', 'Printer'), visible: hasMenuPermission('settings') },
           { path: `/restaurant/${rid}/settings?tab=kitchenStations`, label: t('nav.kitchenStations', 'Kitchen Stations'), visible: hasMenuPermission('settings') },

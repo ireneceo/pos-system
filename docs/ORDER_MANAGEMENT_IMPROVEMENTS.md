@@ -752,3 +752,110 @@ module.exports = {
 - [DEVELOPMENT_PLAN.md](/DEVELOPMENT_PLAN.md) - 전체 개발 현황
 - [MEMBERSHIP_SYSTEM_PLAN.md](/docs/MEMBERSHIP_SYSTEM_PLAN.md) - 멤버십/포인트 시스템
 - [PURCHASE_ORDER_SYSTEM.md](/docs/PURCHASE_ORDER_SYSTEM.md) - Phase 4 Purchase Order (다음 개발)
+- [KITCHEN_DISPLAY_RULES.md](/docs/KITCHEN_DISPLAY_RULES.md) - KDS PIN 로그인 (이 문서 § 7 Order Action History 와 연동)
+
+---
+
+## 7. Order Action History (2026-05-22 추가)
+
+### 목적
+모든 주문 단계 이동 + 주문 관리 액션을 정규화 audit trail. **특히 주문 취소 — 어느 단계에서 누가 취소했는지 추적 critical**.
+
+### DB 모델 — `order_actions` 신규 테이블 (정규화)
+
+```javascript
+// models/OrderAction.js
+{
+  id: PK,
+  order_id: FK orders.id (idx),
+  restaurant_id: FK restaurants.id (idx — RLS),
+  action_type: ENUM (
+    'created', 'status_change', 'item_added', 'item_removed', 'item_modified',
+    'payment_received', 'payment_method_changed', 'payment_refunded',
+    'discount_applied', 'discount_removed', 'coupon_applied', 'coupon_removed',
+    'cancelled', 'printed', 'reprinted', 'merged', 'note_added'
+  ),
+  from_status: STRING nullable (전 상태 — status_change 만),
+  to_status: STRING nullable (후 상태 — status_change/cancelled),
+  performed_by_id: FK users.id nullable (customer/system 시 null),
+  performed_by_name: STRING (직원 이름 snapshot — 직원 삭제돼도 history 보존),
+  performed_by_role: ENUM ('admin','staff','customer','system'),
+  source: ENUM ('pos','kds','mobile','admin','api','auto','scheduler'),
+  reason: TEXT nullable (cancellation 필수 — 빈 reason 허용 X),
+  metadata: JSON (변경 detail — items, amount, coupon 코드, 옛/새 값 등),
+  created_at: DATETIME (idx)
+}
+```
+
+**인덱스**: `(order_id, created_at DESC)`, `(restaurant_id, created_at DESC)`, `(action_type, created_at)`.
+
+### 액션 종류 + 자동 기록 위치
+
+| 액션 | 트리거 위치 | source | 필수 필드 |
+|------|------------|--------|----------|
+| `created` | Order.create() 후크 | pos/mobile/api | metadata.items, metadata.total |
+| `status_change` | PATCH `/orders/:id/status` | pos/kds/admin | from_status, to_status |
+| `item_added` | POST `/orders/:id/add-items` | pos/kds | metadata.added_items |
+| `item_removed` | DELETE `/orders/:id/items/:idx` | pos/kds | metadata.removed_item |
+| `item_modified` | PATCH `/orders/:id/items` | pos/kds | metadata.changes |
+| `payment_received` | 결제 완료 (Stripe/PayPal capture, 직원 cash 처리) | api/pos | metadata.method, amount |
+| `payment_method_changed` | Payment method 직원 변경 | pos | metadata.from/to method |
+| `payment_refunded` | 환불 처리 | admin | metadata.amount, reason |
+| `discount_applied` | discount 적용 | pos | metadata.policy, amount |
+| `coupon_applied` | 쿠폰 적용 (POS / mobile) | pos/mobile | metadata.code, discount |
+| `coupon_removed` | 쿠폰 제거 | pos | metadata.code |
+| `cancelled` | PATCH `/orders/:id/status` (cancelled) | pos/kds/admin/customer | **reason 필수** |
+| `printed` | 영수증 인쇄 (자동/수동) | pos/auto | metadata.type (receipt/kitchen) |
+| `reprinted` | 재인쇄 (직원 명시 액션) | pos/kds | metadata.type |
+| `merged` | Auto-merge 또는 manual merge | auto/pos | metadata.merged_into_order_id |
+| `note_added` | 직원 메모 추가 | pos | metadata.note |
+
+### 표시 위치
+
+#### A) Live Orders 주문 detail panel — "History" 탭 (신규)
+- 기본: timeline 형식 (가장 최근 위)
+- 각 항목: 시각 + 액션 라벨 + by [staff 이름] + (필요 시 reason/metadata 한 줄)
+- **취소 액션 강조**: 빨간 좌측 border + reason 항상 표시
+
+#### B) KDS ticket
+- ticket 하단 작은 메타 한 줄: `Last by Kim · 10:15`
+- 클릭 시 floating panel 로 history (최근 5건)
+
+#### C) Admin Audit Log (Phase 2)
+- `/admin/audit-log` — 전 매장 audit (필터: 매장 / 액션 / 직원 / 기간)
+- Phase 1 에서는 제외, 별도 사이클
+
+### Backend audit log helper
+
+`services/orderAuditLog.js` 신규:
+
+```javascript
+async function logOrderAction({
+  orderId, restaurantId, actionType,
+  fromStatus, toStatus,
+  performedByUserId, performedByName, performedByRole,
+  source, reason, metadata
+}) {
+  // 1. cancellation 인 경우 reason 필수 가드
+  if (actionType === 'cancelled' && !reason?.trim()) {
+    throw new Error('Cancellation reason is required');
+  }
+  // 2. performed_by_name snapshot — User.findByPk 로 이름 가져옴 (직원 삭제 대비)
+  // 3. OrderAction.create
+}
+```
+
+기존 라우트 (`orders-crud.js`, `mobile-orders.js`, `orders-payment.js`) 의 모든 status 변경/액션 지점에 `logOrderAction` 호출 추가.
+
+### 안전 원칙
+
+1. **Cancellation reason 필수** — 빈 reason 시 400 거부. 매장 책임 추적.
+2. **performed_by_name snapshot** — 직원 이름 column 에 직접 저장. 직원 삭제 후에도 history 보존.
+3. **System 액션** — auto-merge, scheduled cancel 등은 `performed_by_role='system'`, name='System'.
+4. **Customer 액션** — mobile order 본인 취소는 `performed_by_role='customer'`, name=customer phone/name.
+5. **옛 주문 backfill 안 함** — 새 주문부터 기록 시작. 옛 주문 detail panel 에 "이전 주문 — history 없음" 표시.
+6. **i18n** — action_type 라벨 4 langs (en/ko/zh/ms).
+7. **운영 critical** — KDS / LiveOrders 변경 시 실 브라우저 mount 검증 의무 (CLAUDE.md critical 룰).
+
+### KDS PIN 로그인 (관련)
+주방 staff 식별은 KDS PIN 로그인 시스템. 자세한 사양은 `KITCHEN_DISPLAY_RULES.md` § 8 참조.

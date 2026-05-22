@@ -190,7 +190,9 @@ router.get('/', checkRestaurantAccess, async (req, res) => {
         brand_menu_id: prod.brand_menu_id || null,
         brand_menu_locks_snapshot: prod.brand_menu_locks_snapshot || null,
         brand_menu_synced_version: prod.brand_menu_synced_version || null,
-        brand_menu_status: prod.brand_menu_link_status || null
+        brand_menu_status: prod.brand_menu_link_status || null,
+        // POS Terminal sort 기준 (Newest)
+        createdAt: prod.createdAt || null
       };
     });
 

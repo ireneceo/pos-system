@@ -7,6 +7,8 @@ const InvoiceItem = require('./InvoiceItem');
 const InvoiceSettings = require('./InvoiceSettings');
 const InvoiceCategory = require('./InvoiceCategory');
 const Order = require('./Order');
+const OrderAction = require('./OrderAction');
+const OrderPayment = require('./OrderPayment');
 const RestaurantDailyStats = require('./RestaurantDailyStats');
 const PlanTemplate = require('./PlanTemplate');
 const OperationTicket = require('./OperationTicket');
@@ -922,6 +924,8 @@ module.exports = {
   InvoiceSettings,
   InvoiceCategory,
   Order,
+  OrderAction,
+  OrderPayment,
   RestaurantDailyStats,
   PlanTemplate,
   OperationTicket,

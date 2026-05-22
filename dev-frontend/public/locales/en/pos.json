@@ -32,5 +32,22 @@
   "pOSTerminalPage.subtotal": "Subtotal",
   "pOSTerminalPage.takeawayCharge": "Takeaway Charge",
   "pOSTerminalPage.discount": "Discount",
-  "pOSTerminalPage.total": "Total"
+  "pOSTerminalPage.total": "Total",
+  "terminal.categoryAll": "All",
+  "terminal.simpleMode": "Compact",
+  "terminal.photoMode": "Image",
+  "terminal.switchToSimple": "Switch to compact mode",
+  "terminal.switchToPhoto": "Switch to image mode",
+  "terminal.options": "Options",
+  "terminal.viewMode": "View mode",
+  "terminal.sortLabel": "Sort by",
+  "terminal.sortNewest": "Newest",
+  "terminal.sortName": "Name A–Z",
+  "terminal.sortPriceAsc": "Price ↑",
+  "terminal.sortPriceDesc": "Price ↓",
+  "mergeChoice.title": "Existing order on this table",
+  "mergeChoice.subtitle": "Table {{table}} already has {{count}} pending order(s). Add to one, or create a separate order?",
+  "mergeChoice.addToThis": "Add to this →",
+  "mergeChoice.cancel": "Cancel",
+  "mergeChoice.separate": "Create separate order"
 }
