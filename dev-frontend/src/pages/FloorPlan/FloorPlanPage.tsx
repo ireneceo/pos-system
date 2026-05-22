@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import styled from 'styled-components';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -22,6 +22,46 @@ const PageContainer = styled.div`
   display: flex;
   flex-direction: column;
   overflow: hidden;
+`;
+
+// Zone filter chip row — appears below header when restaurant has 2+ zones.
+const ZoneFilterBar = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: #fff;
+  border-bottom: 1px solid #E6EBF1;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+
+  @media (max-width: 768px) {
+    padding: 10px 16px;
+  }
+`;
+const ZoneChip = styled.button<{ active: boolean }>`
+  background: ${p => p.active ? '#635BFF' : '#fff'};
+  color: ${p => p.active ? '#fff' : '#6B7C93'};
+  border: 1px solid ${p => p.active ? '#635BFF' : '#E6EBF1'};
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  &:hover { background: ${p => p.active ? '#514DD6' : '#F5F7FA'}; }
+  &:focus-visible { outline: 2px solid #635BFF; outline-offset: 2px; }
+`;
+const ZoneChipCount = styled.span`
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.75;
 `;
 
 const Header = styled.div`
@@ -191,6 +231,17 @@ const FloorPlanPage: React.FC = () => {
   const { user } = useAuth();
 
   const [floorPlan, setFloorPlan] = useState<FloorPlanData>(DEFAULT_FLOOR_PLAN);
+  const [activeZoneFilter, setActiveZoneFilter] = useState<string>('all');  // Zone filter chip (all | zone.id)
+
+  // Filtered floor plan — tables restricted to selected zone.
+  const filteredFloorPlan = useMemo<FloorPlanData>(() => {
+    if (activeZoneFilter === 'all' || !floorPlan.zones || floorPlan.zones.length <= 1) return floorPlan;
+    const groupIdsInZone = new Set((floorPlan.table_groups || []).filter(g => g.zone_id === activeZoneFilter).map(g => g.id));
+    return {
+      ...floorPlan,
+      tables: floorPlan.tables.filter(t => t.group_id && groupIdsInZone.has(t.group_id))
+    };
+  }, [floorPlan, activeZoneFilter]);
   const [tableStatuses, setTableStatuses] = useState<Record<string, TableStatusInfo>>({});
   const [connected, setConnected] = useState(false);
   const [clock, setClock] = useState('');
@@ -676,10 +727,37 @@ const FloorPlanPage: React.FC = () => {
         </HeaderRight>
       </Header>
 
+      {/* Zone filter chips — visible only when 2+ zones exist (single-zone matches old UI). */}
+      {(floorPlan.zones || []).length > 1 && (
+        <ZoneFilterBar>
+          <ZoneChip
+            type="button"
+            active={activeZoneFilter === 'all'}
+            onClick={() => setActiveZoneFilter('all')}
+          >
+            All Zones <ZoneChipCount>{floorPlan.tables.length}</ZoneChipCount>
+          </ZoneChip>
+          {(floorPlan.zones || []).slice().sort((a, b) => a.sort_order - b.sort_order).map(zone => {
+            const groupIds = (floorPlan.table_groups || []).filter(g => g.zone_id === zone.id).map(g => g.id);
+            const count = floorPlan.tables.filter(t => t.group_id && groupIds.includes(t.group_id)).length;
+            return (
+              <ZoneChip
+                key={zone.id}
+                type="button"
+                active={activeZoneFilter === zone.id}
+                onClick={() => setActiveZoneFilter(zone.id)}
+              >
+                {zone.name} <ZoneChipCount>{count}</ZoneChipCount>
+              </ZoneChip>
+            );
+          })}
+        </ZoneFilterBar>
+      )}
+
       <MainContent>
         <CanvasWrapper>
           <FloorPlanCanvas
-            floorPlan={floorPlan}
+            floorPlan={filteredFloorPlan}
             tableStatuses={tableStatuses}
             onTableClick={handleTableClick}
             selectedTableId={selectedTable ? floorPlan.tables.find(t => t.tableNumber === selectedTable)?.id : null}
@@ -712,7 +790,7 @@ const FloorPlanPage: React.FC = () => {
       </MainContent>
 
       <FloorPlanStatsBar
-        tables={floorPlan.tables}
+        tables={filteredFloorPlan.tables}
         tableStatuses={tableStatuses}
         currency={currency}
         restaurantId={Number(restaurantId)}

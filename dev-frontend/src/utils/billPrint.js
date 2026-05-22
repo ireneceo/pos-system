@@ -1567,6 +1567,20 @@ export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerNa
       return true; // Return success but skip printing
     }
 
+    // Mirror to counter (bill) printer if enabled — fire-and-forget, 키친 인쇄 큐와 분리.
+    // 실패해도 메인 키친 인쇄에는 영향 없음 (silent catch).
+    if (settings.kitchenPrinter.mirrorToBillPrinter && settings.billPrinter && settings.billPrinter.enabled) {
+      setTimeout(() => {
+        try {
+          printBillViaRawBT(orderData, storeInfo).catch(e =>
+            console.warn('Kitchen → counter mirror print failed:', e && e.message)
+          );
+        } catch (e) {
+          console.warn('Kitchen → counter mirror trigger failed:', e && e.message);
+        }
+      }, 600);
+    }
+
     // QZ Tray mode
     if (shouldUseQZTray()) {
       console.log('🖨️ QZ Tray mode - sending kitchen ticket to network printer');
@@ -2517,6 +2531,199 @@ function generateStationKitchenTicket(orderData, storeInfo, stationName, ticketI
   content += CMD.CUT;
 
   return content;
+}
+
+// ============================================
+// CANCELLATION TICKET — 주문 취소 시 키친에 인쇄 (선택)
+// ============================================
+
+/**
+ * Generate ESCPOS for a CANCELLED kitchen ticket.
+ * 큰 "CANCELLED" 헤더 + 원본 주문 번호 + items 요약 + "STOP PREPARATION" 푸터.
+ */
+function generateCancellationTicketContent(orderData, storeInfo, reason) {
+  let content = '';
+  content += CMD.INIT;
+  content += CMD.ALIGN_CENTER;
+  content += CMD.REVERSE_ON + CMD.TEXT_DOUBLE + CMD.BOLD_ON;
+  content += ' *** CANCELLED *** ';
+  content += CMD.LINE_FEED + CMD.LINE_FEED;
+  content += CMD.REVERSE_OFF + CMD.TEXT_NORMAL + CMD.BOLD_OFF;
+
+  content += CMD.TEXT_DOUBLE_HEIGHT + CMD.BOLD_ON;
+  content += 'Order #' + (orderData.orderNumber || orderData.order_number || '') + CMD.LINE_FEED;
+  content += CMD.TEXT_NORMAL + CMD.BOLD_OFF;
+  content += CMD.LINE_FEED;
+
+  content += CMD.ALIGN_LEFT;
+  if (orderData.tableNumber || orderData.table_number) {
+    content += 'Table: ' + (orderData.tableNumber || orderData.table_number) + CMD.LINE_FEED;
+  }
+  const orderType = orderData.orderType || orderData.order_type || '';
+  if (orderType) content += 'Type:  ' + String(orderType).replace(/_/g, '-') + CMD.LINE_FEED;
+  if (reason) content += 'Reason: ' + reason + CMD.LINE_FEED;
+  content += CMD.DASHED_LINE + CMD.LINE_FEED;
+
+  // Items to stop preparing
+  const items = orderData.items || [];
+  items.forEach(it => {
+    const qty = (it.quantity != null ? it.quantity : 1);
+    const name = it.name || (it.menuItem && it.menuItem.name) || '';
+    content += qty + 'x  ' + name + CMD.LINE_FEED;
+  });
+  content += CMD.DASHED_LINE + CMD.LINE_FEED;
+
+  content += CMD.ALIGN_CENTER + CMD.BOLD_ON + CMD.TEXT_DOUBLE_HEIGHT;
+  content += '>> STOP PREPARATION <<' + CMD.LINE_FEED;
+  content += CMD.TEXT_NORMAL + CMD.BOLD_OFF;
+  content += CMD.LINE_FEED;
+
+  // Timestamp
+  try {
+    const tz = (storeInfo && storeInfo.timeZone) || undefined;
+    const now = new Date();
+    const ts = tz
+      ? now.toLocaleString('en-MY', { timeZone: tz, hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })
+      : now.toLocaleString();
+    content += ts + CMD.LINE_FEED;
+  } catch (e) { /* silent */ }
+
+  content += CMD.LINE_FEED + CMD.LINE_FEED + CMD.LINE_FEED;
+  content += CMD.CUT_PARTIAL;
+  return content;
+}
+
+/**
+ * Generate HTML version of cancellation ticket (browser/QZ Tray HTML mode).
+ */
+function generateHTMLCancellationTicket(orderData, storeInfo, reason) {
+  const items = orderData.items || [];
+  const itemRows = items.map(it => {
+    const qty = (it.quantity != null ? it.quantity : 1);
+    const name = it.name || (it.menuItem && it.menuItem.name) || '';
+    return '<tr><td style="padding:2px 4px;">' + qty + 'x</td><td style="padding:2px 4px;">' + escapeHtml(name) + '</td></tr>';
+  }).join('');
+  const orderType = String(orderData.orderType || orderData.order_type || '').replace(/_/g, '-');
+  const tableNum = orderData.tableNumber || orderData.table_number || '';
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>CANCELLED</title>
+    <style>
+      @media print { @page { size: 80mm auto; margin: 0; } body { width: 76mm; } }
+      body { font-family: 'Courier New', monospace; font-size: 11px; margin: 4mm; }
+      .cancel-banner { background:#000; color:#fff; font-size:22px; font-weight:bold; text-align:center; padding:8px 0; margin-bottom:8px; letter-spacing:2px; }
+      .order-num { font-size:18px; font-weight:bold; text-align:center; margin-bottom:8px; }
+      .meta { margin-bottom:8px; }
+      table { width:100%; border-top:1px dashed #000; border-bottom:1px dashed #000; margin:8px 0; }
+      .stop { text-align:center; font-size:16px; font-weight:bold; padding:8px 0; border:2px solid #000; margin-top:8px; }
+      .ts { text-align:center; margin-top:8px; font-size:10px; color:#444; }
+    </style></head><body>
+    <div class="cancel-banner">*** CANCELLED ***</div>
+    <div class="order-num">Order #${escapeHtml(orderData.orderNumber || orderData.order_number || '')}</div>
+    <div class="meta">
+      ${tableNum ? 'Table: <strong>' + escapeHtml(String(tableNum)) + '</strong><br>' : ''}
+      ${orderType ? 'Type: <strong>' + escapeHtml(orderType) + '</strong><br>' : ''}
+      ${reason ? 'Reason: ' + escapeHtml(String(reason)) : ''}
+    </div>
+    <table>${itemRows}</table>
+    <div class="stop">&gt;&gt; STOP PREPARATION &lt;&lt;</div>
+    <div class="ts">${new Date().toLocaleString()}</div>
+    </body></html>`;
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/**
+ * Print a cancellation ticket to the kitchen printer.
+ * Returns Promise<boolean>. Silent no-op when kitchen printer disabled or option OFF.
+ */
+export async function printCancellationTicket(orderData, storeInfo, reason, printerName) {
+  try {
+    const settings = getPrinterSettings();
+    if (!settings.kitchenPrinter || !settings.kitchenPrinter.enabled) {
+      console.log('[CANCEL TICKET] Kitchen printer disabled, skip');
+      return true;
+    }
+    if (settings.kitchenPrinter.printCancellationTicket === false) {
+      console.log('[CANCEL TICKET] Option OFF, skip');
+      return true;
+    }
+
+    const escpos = generateCancellationTicketContent(orderData, storeInfo, reason);
+    const targetPrinter = printerName || settings.kitchenPrinter.name;
+
+    // Mirror to bill printer (same toggle as normal kitchen tickets)
+    if (settings.kitchenPrinter.mirrorToBillPrinter && settings.billPrinter && settings.billPrinter.enabled) {
+      setTimeout(() => {
+        printCancellationToCounter(orderData, storeInfo, reason).catch(e =>
+          console.warn('Cancellation → counter mirror failed:', e && e.message)
+        );
+      }, 600);
+    }
+
+    // QZ Tray
+    if (shouldUseQZTray()) {
+      const address = settings.kitchenPrinter.address;
+      if (!address) {
+        console.warn('[CANCEL TICKET] QZ Tray: no kitchen address');
+        return false;
+      }
+      return await sendViaQZTray(escpos, address);
+    }
+
+    // Browser print
+    if (shouldUseBrowserPrint()) {
+      const html = generateHTMLCancellationTicket(orderData, storeInfo, reason);
+      return printHTMLContent(html, 'CANCELLED - ' + (orderData.orderNumber || ''));
+    }
+
+    // RawBT (Android)
+    const base64Content = btoa(unescape(encodeURIComponent(escpos)));
+    let intentScheme = '#Intent;scheme=rawbt;';
+    if (targetPrinter) intentScheme += 'S.s=' + encodeURIComponent(targetPrinter) + ';';
+    const intentPackage = 'package=ru.a402d.rawbtprinter;end;';
+    const intentUrl = 'intent:base64,' + base64Content + intentScheme + intentPackage;
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = intentUrl;
+    document.body.appendChild(iframe);
+    setTimeout(() => { try { document.body.removeChild(iframe); } catch(e) {} }, 500);
+    return true;
+  } catch (e) {
+    console.error('[CANCEL TICKET] failed:', e && e.message);
+    return false;
+  }
+}
+
+// Mirror helper — same content to bill printer
+async function printCancellationToCounter(orderData, storeInfo, reason) {
+  const settings = getPrinterSettings();
+  const escpos = generateCancellationTicketContent(orderData, storeInfo, reason);
+
+  if (shouldUseQZTray()) {
+    const address = settings.billPrinter.address;
+    if (!address) return false;
+    return await sendViaQZTray(escpos, address);
+  }
+
+  if (shouldUseBrowserPrint()) {
+    const html = generateHTMLCancellationTicket(orderData, storeInfo, reason);
+    return printHTMLContent(html, 'CANCELLED (counter) - ' + (orderData.orderNumber || ''));
+  }
+
+  // RawBT — uses bill printer name
+  const targetPrinter = settings.billPrinter.name;
+  const base64Content = btoa(unescape(encodeURIComponent(escpos)));
+  let intentScheme = '#Intent;scheme=rawbt;';
+  if (targetPrinter) intentScheme += 'S.s=' + encodeURIComponent(targetPrinter) + ';';
+  const intentPackage = 'package=ru.a402d.rawbtprinter;end;';
+  const intentUrl = 'intent:base64,' + base64Content + intentScheme + intentPackage;
+  const iframe = document.createElement('iframe');
+  iframe.style.display = 'none';
+  iframe.src = intentUrl;
+  document.body.appendChild(iframe);
+  setTimeout(() => { try { document.body.removeChild(iframe); } catch(e) {} }, 500);
+  return true;
 }
 
 // All functions are already exported individually above

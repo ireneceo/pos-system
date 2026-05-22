@@ -13,6 +13,7 @@ import PhoneInput from '../../components/Common/PhoneInput';
 import PageHeader from '../../components/Common/PageHeader';
 import AutoSaveField, { AutoSaveHandle } from '../../components/Common/AutoSaveField';
 import ReservationSettingsTab from '../../components/Settings/ReservationSettingsTab';
+import ZonesAndGroupsCard from './components/ZonesAndGroupsCard';
 import AddressFields from '../../components/Form/AddressFields';
 import ConfirmModal from '../../components/ConfirmModal';
 import { useTabParam } from '../../hooks/useTabParam';
@@ -460,6 +461,10 @@ interface OperationSettings {
   taxRate: number;
   serviceChargeEnabled: boolean;
   serviceChargeRate: number;
+  serviceChargeExcludeTakeaway: boolean;
+  mobileOrderProcessing: {
+    requirePaymentBeforeKitchen: boolean;
+  };
   pagerSystem: {
     enabled: boolean;
     totalPagers: number;
@@ -613,6 +618,7 @@ const SettingsPage: React.FC = () => {
   const breakTimesRef = useRef<AutoSaveHandle>(null);
   const taxToggleRef = useRef<AutoSaveHandle>(null);
   const serviceChargeToggleRef = useRef<AutoSaveHandle>(null);
+  const serviceChargeExcludeTakeawayRef = useRef<AutoSaveHandle>(null);
   const takeawayChargesToggleRef = useRef<AutoSaveHandle>(null);
   const pagerSystemToggleRef = useRef<AutoSaveHandle>(null);
   const enableTableNumbersToggleRef = useRef<AutoSaveHandle>(null);
@@ -623,6 +629,7 @@ const SettingsPage: React.FC = () => {
   const mobileOrderTakeawayRef = useRef<AutoSaveHandle>(null);
   const mobileOrderPickupRef = useRef<AutoSaveHandle>(null);
   const mobileOrderDeliveryRef = useRef<AutoSaveHandle>(null);
+  const requirePaymentBeforeKitchenRef = useRef<AutoSaveHandle>(null);
   const mobileOrderQuickOrderRef = useRef<AutoSaveHandle>(null);
   const mobileOrderShowFeaturedRef = useRef<AutoSaveHandle>(null);
   const mobileOrderShowPopularRef = useRef<AutoSaveHandle>(null);
@@ -655,6 +662,8 @@ const SettingsPage: React.FC = () => {
   const kitchenPrinterAutoPrintRef = useRef<AutoSaveHandle>(null);
   const kitchenPrinterToggleRef = useRef<AutoSaveHandle>(null);
   const printPerItemToggleRef = useRef<AutoSaveHandle>(null);
+  const mirrorToBillPrinterRef = useRef<AutoSaveHandle>(null);
+  const printCancellationTicketRef = useRef<AutoSaveHandle>(null);
   const receiptMembershipToggleRef = useRef<AutoSaveHandle>(null);
   const membershipActiveToggleRef = useRef<AutoSaveHandle>(null);
   const qrPositionRef = useRef<AutoSaveHandle>(null);
@@ -685,7 +694,9 @@ const SettingsPage: React.FC = () => {
       name: '',
       autoPrint: false,
       printPerItem: false,
-      address: ''
+      address: '',
+      mirrorToBillPrinter: false,           // 키친 ticket 을 카운터(빌) 프린터에도 동시 인쇄
+      printCancellationTicket: true         // 주문 취소 시 키친에 "CANCELLED" ticket 자동 인쇄
     },
     kitchenStationPrinters: {} as Record<string, { name: string; autoPrint: boolean; address?: string }>
   });
@@ -756,6 +767,11 @@ const SettingsPage: React.FC = () => {
         taxRate: 6,
         serviceChargeEnabled: false,
         serviceChargeRate: 10,
+        serviceChargeExcludeTakeaway: true,
+        mobileOrderProcessing: {
+          // default OFF — 신규 매장 + 미설정 운영 매장은 기존 동작 그대로 (자동 키친 진입). ON 시 결제 후 키친.
+          requirePaymentBeforeKitchen: false
+        },
         currency: 'RM',
         cashRounding: 0.05,
         roundingApplyTo: 'cash_only',
@@ -1136,6 +1152,10 @@ const SettingsPage: React.FC = () => {
                 ...defaultOps.orderTypes,
                 ...(restaurant.operation_settings.orderTypes || {})
               },
+              mobileOrderProcessing: {
+                ...((defaultOps as any).mobileOrderProcessing || {}),
+                ...((restaurant.operation_settings as any).mobileOrderProcessing || {})
+              },
               pickupSettings: {
                 ...defaultOps.pickupSettings,
                 ...(restaurant.operation_settings.pickupSettings || {})
@@ -1295,7 +1315,9 @@ const SettingsPage: React.FC = () => {
                 name: dbSettings.kitchenPrinter?.name || '',
                 autoPrint: dbSettings.kitchenPrinter?.autoPrint ?? false,
                 printPerItem: dbSettings.kitchenPrinter?.printPerItem ?? false,
-                address: dbSettings.kitchenPrinter?.address || ''
+                address: dbSettings.kitchenPrinter?.address || '',
+                mirrorToBillPrinter: dbSettings.kitchenPrinter?.mirrorToBillPrinter ?? false,
+                printCancellationTicket: dbSettings.kitchenPrinter?.printCancellationTicket ?? true
               },
               kitchenStationPrinters: dbSettings.kitchenStationPrinters || {}
             });
@@ -3328,19 +3350,21 @@ const SettingsPage: React.FC = () => {
                 {operationSettings.taxEnabled && (
                   <FormGroup style={{ marginLeft: '16px', marginTop: '8px' }}>
                     <Label>Tax Rate (%)</Label>
-                    <AutoSaveField onSave={handleSave}>
-                      <FeeInput
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        max="100"
-                        value={operationSettings.taxRate}
-                        onChange={(e) => {
-                          setOperationSettings(prev => ({ ...prev, taxRate: Number(e.target.value) }));
-                        }}
-                      />
-                    </AutoSaveField>
-                    <span style={{ color: '#6B7C93', fontSize: '14px' }}>%</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <AutoSaveField onSave={handleSave}>
+                        <FeeInput
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          max="100"
+                          value={operationSettings.taxRate}
+                          onChange={(e) => {
+                            setOperationSettings(prev => ({ ...prev, taxRate: Number(e.target.value) }));
+                          }}
+                        />
+                      </AutoSaveField>
+                      <span style={{ color: '#6B7C93', fontSize: '14px' }}>%</span>
+                    </div>
                   </FormGroup>
                 )}
 
@@ -3367,22 +3391,43 @@ const SettingsPage: React.FC = () => {
                   </Toggle>
 
                 {operationSettings.serviceChargeEnabled && (
-                  <FormGroup style={{ marginLeft: '16px', marginTop: '8px' }}>
-                    <Label>Service Charge Rate (%)</Label>
-                    <AutoSaveField onSave={handleSave}>
-                      <FeeInput
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        max="100"
-                        value={operationSettings.serviceChargeRate}
-                        onChange={(e) => {
-                          setOperationSettings(prev => ({ ...prev, serviceChargeRate: Number(e.target.value) }));
-                        }}
-                      />
-                    </AutoSaveField>
-                    <span style={{ color: '#6B7C93', fontSize: '14px' }}>%</span>
-                  </FormGroup>
+                  <>
+                    <FormGroup style={{ marginLeft: '16px', marginTop: '8px' }}>
+                      <Label>Service Charge Rate (%)</Label>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <AutoSaveField onSave={handleSave}>
+                          <FeeInput
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            max="100"
+                            value={operationSettings.serviceChargeRate}
+                            onChange={(e) => {
+                              setOperationSettings(prev => ({ ...prev, serviceChargeRate: Number(e.target.value) }));
+                            }}
+                          />
+                        </AutoSaveField>
+                        <span style={{ color: '#6B7C93', fontSize: '14px' }}>%</span>
+                      </div>
+                    </FormGroup>
+                    <FormGroup style={{ marginLeft: '16px', marginTop: '4px' }}>
+                      <AutoSaveField ref={serviceChargeExcludeTakeawayRef} onSave={handleSave} type="toggle">
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', color: '#1F2937' }}>
+                          <input
+                            type="checkbox"
+                            checked={operationSettings.serviceChargeExcludeTakeaway ?? true}
+                            onChange={(e) => {
+                              setOperationSettings(prev => ({ ...prev, serviceChargeExcludeTakeaway: e.target.checked }));
+                              serviceChargeExcludeTakeawayRef.current?.triggerSave();
+                            }}
+                            style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#635BFF' }}
+                          />
+                          Exclude takeaway orders
+                          <span style={{ color: '#9CA3AF', fontSize: '12px' }}>(common practice — dine-in only)</span>
+                        </label>
+                      </AutoSaveField>
+                    </FormGroup>
+                  </>
                 )}
               </SettingsCard>
 
@@ -3478,6 +3523,7 @@ const SettingsPage: React.FC = () => {
                 </FormGroup>
               </SettingsCard>
 
+              {operationSettings.orderTypes?.takeaway && (
               <SettingsCard style={{ gridColumn: '1 / -1' }}>
                 <CardTitle>{t('settings:settingsPage.takeawayPricingSettings')}</CardTitle>
                 <Toggle>
@@ -3576,6 +3622,7 @@ const SettingsPage: React.FC = () => {
                   </>
                 )}
               </SettingsCard>
+              )}
 
               <SettingsCard style={{ gridColumn: '1 / -1' }}>
                 <CardTitle>{t('settings:settingsPage.pagerSystemSettings')}</CardTitle>
@@ -3633,6 +3680,18 @@ const SettingsPage: React.FC = () => {
                 )}
               </SettingsCard>
 
+              {user?.restaurantId && (
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <ZonesAndGroupsCard
+                    restaurantId={Number(user.restaurantId)}
+                    restaurantName={storeSettings.name}
+                    authToken={getAuthToken()}
+                    qrCodeBaseUrl={tableSettings.qrCodeBaseUrl}
+                    restaurantSlug={restaurantSlug}
+                  />
+                </div>
+              )}
+
               <SettingsCard style={{ gridColumn: '1 / -1' }}>
                 <CardTitle>{t('settings:settingsPage.tableManagement')}</CardTitle>
                 <p style={{ color: '#6B7C93', marginBottom: '20px', fontSize: '14px' }}>
@@ -3669,23 +3728,10 @@ const SettingsPage: React.FC = () => {
                     </FormGroup>
                   </div>
                   <div>
-                    <FormGroup>
-                      <Label>{t('settings:settingsPage.tablePrefix')}</Label>
-                      <AutoSaveField onSave={handleSave}>
-                        <Input type="text" value={tableSettings.tablePrefix}
-                          onChange={(e) => { setTableSettings({...tableSettings, tablePrefix: e.target.value}); }}
-                          placeholder="e.g., T, TABLE" />
-                      </AutoSaveField>
-                      <HelpText>{t('settings:settingsPage.prefixForTableNumbersEgT001Table001')}</HelpText>
-                    </FormGroup>
-                    <FormGroup>
-                      <Label>{t('settings:settingsPage.numberOfTables')}</Label>
-                      <AutoSaveField onSave={handleSave}>
-                        <Input type="number" value={tableSettings.totalTables}
-                          onChange={(e) => { setTableSettings({...tableSettings, totalTables: parseInt(e.target.value) || 1}); }}
-                          min="1" max="999" />
-                      </AutoSaveField>
-                    </FormGroup>
+                    <div style={{ padding: '14px', background: '#FAFBFC', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '13px', color: '#6B7C93', lineHeight: 1.5 }}>
+                      Table prefixes and numbers are managed per <strong>Table Group</strong> above (in the Zones &amp; Table Groups card).
+                      Each group has its own prefix (e.g., I, O, P) and table count.
+                    </div>
                   </div>
                 </SettingsGrid>
                 <FormGroup>
@@ -3738,43 +3784,15 @@ const SettingsPage: React.FC = () => {
                     <HelpText>{t('settings:settingsPage.qrCodesExpireAutomaticallyAfterThisTime')}</HelpText>
                   </FormGroup>
                 )}
-                {tableSettings.qrMode === 'static' && (
-                <>
-                <button onClick={handleGenerateQRCodes}
-                  style={{ padding: '10px 20px', background: '#E6EBF1', color: '#0A2540', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '500', cursor: 'pointer', transition: 'all 0.15s', marginTop: '16px' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = '#D1D5DB'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = '#E6EBF1'; }}>
-                  Generate QR Codes
-                </button>
-                <Divider />
-                <div style={{ marginTop: '24px' }}>
-                  <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#0A2540', marginBottom: '16px' }}>{t('settings:settingsPage.tableQrCodes')}</h4>
-                  <TablesGrid>
-                    {tables.map(table => {
-                      const tableNumber = `${tableSettings.tablePrefix}${String(table.number).padStart(3, '0')}`;
-                      return (
-                        <TableItem key={table.id}>
-                          <TableNumber>{tableNumber}</TableNumber>
-                          <QRContainer>
-                            <QRCodeCanvas id={`qr-${table.id}`} value={table.qrCode} size={100} level="H" includeMargin={true} style={{ display: 'none' }} />
-                            <QRCodeSVG id={`qr-svg-${table.id}`} value={table.qrCode} size={100} level="H" includeMargin={true} />
-                          </QRContainer>
-                          <TableActions>
-                            <ActionButton onClick={() => handleDownloadSVG(table)} title="Download SVG (recommended for print)">{t('settings:settingsPage.svg')}</ActionButton>
-                            <ActionButton onClick={() => handleDownloadQR(table)} title="Download PNG">{t('settings:settingsPage.png')}</ActionButton>
-                            <ActionButton onClick={() => handlePrintQR(table)}>{t('settings:settingsPage.print')}</ActionButton>
-                          </TableActions>
-                        </TableItem>
-                      );
-                    })}
-                  </TablesGrid>
-                </div>
-
-                </>
-                )}
                 {tableSettings.qrMode === 'session' && (
                   <div style={{ marginTop: '24px', padding: '16px', background: '#F0F0FF', borderRadius: '8px', color: '#635BFF', fontSize: '14px' }}>
                     Session mode is active. QR codes are generated per visit from the <strong>{t('settings:settingsPage.floorPlan')}</strong> page.
+                    Static QR codes per table are shown in the <strong>Zones &amp; Table Groups</strong> card above.
+                  </div>
+                )}
+                {tableSettings.qrMode === 'static' && (
+                  <div style={{ marginTop: '16px', padding: '12px 14px', background: '#FAFBFC', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '13px', color: '#6B7C93' }}>
+                    Static QR codes per table are shown in the <strong>Zones &amp; Table Groups</strong> card above.
                   </div>
                 )}
               </SettingsCard>
@@ -3837,7 +3855,7 @@ const SettingsPage: React.FC = () => {
                     <CardTitle>Quick-entry QR codes</CardTitle>
                     <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
                       Independent of table QR. Scanning each takes the customer straight to the right flow — order-type-pinned menu, walk-in dine-in, or reservation booking.
-                      <br /><span style={{ color: '#9CA3AF' }}>Payment methods available follow the per-order-type settings on the Payment tab. Cards for disabled order types and disabled reservations are hidden automatically.</span>
+                      <br /><span style={{ color: '#9CA3AF' }}>Cards for disabled order types and disabled reservations are hidden automatically. To enable/disable order types, go to <button type="button" onClick={() => handleTabChange('mobileOrder')} style={{ background: 'none', border: 'none', color: '#635BFF', textDecoration: 'underline', cursor: 'pointer', padding: 0, font: 'inherit' }}>Mobile Order tab</button>. Payment methods follow the per-order-type settings on the Payment tab.</span>
                     </p>
                     <TablesGrid>
                       {cards.map(card => {
@@ -4236,6 +4254,38 @@ const SettingsPage: React.FC = () => {
                   )}
                 </SettingsCard>
 
+                <SettingsCard>
+                  <CardTitle>Order Processing Flow</CardTitle>
+                  <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
+                    Control when mobile orders are sent to the kitchen / KDS.
+                  </p>
+                  <Toggle>
+                    <div style={{ flex: 1 }}>
+                      <ToggleLabel style={{ marginBottom: '4px' }}>Require payment before sending to kitchen</ToggleLabel>
+                      <p style={{ fontSize: '12px', color: '#6B7C93', margin: 0 }}>
+                        OFF (default): Mobile orders are sent to the kitchen immediately on submission, even if payment is still pending — faster.<br/>
+                        ON: Unpaid mobile orders wait for staff approval (or payment confirmation) before reaching the kitchen — safer, recommended for cash-on-pickup or counter-pay setups.
+                      </p>
+                    </div>
+                    <AutoSaveField ref={requirePaymentBeforeKitchenRef} onSave={handleSave} type="toggle">
+                      <ToggleSwitch>
+                        <ToggleInput
+                          type="checkbox"
+                          checked={operationSettings.mobileOrderProcessing?.requirePaymentBeforeKitchen ?? false}
+                          onChange={(e) => {
+                            setOperationSettings(prev => ({
+                              ...prev,
+                              mobileOrderProcessing: { ...prev.mobileOrderProcessing, requirePaymentBeforeKitchen: e.target.checked }
+                            }));
+                            requirePaymentBeforeKitchenRef.current?.triggerSave();
+                          }}
+                        />
+                        <ToggleSlider />
+                      </ToggleSwitch>
+                    </AutoSaveField>
+                  </Toggle>
+                </SettingsCard>
+
                 {operationSettings.orderTypes?.pickup && (
                   <SettingsCard>
                     <CardTitle>{t('settings:settingsPage.pickupSettings')}</CardTitle>
@@ -4491,6 +4541,7 @@ const SettingsPage: React.FC = () => {
                   </AutoSaveField>
                 </SettingsCard>
 
+                {operationSettings.orderTypes?.delivery && (
                 <SettingsCard>
                   <CardTitle>{t('settings:settingsPage.deliveryPricingSettings')}</CardTitle>
                   <Toggle>
@@ -4560,6 +4611,7 @@ const SettingsPage: React.FC = () => {
                     </>
                   )}
                 </SettingsCard>
+                )}
 
               </SettingsGrid>
             </>
@@ -5235,6 +5287,56 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                             kitchenPrinter: { ...prev.kitchenPrinter, printPerItem: e.target.checked }
                           }));
                           printPerItemToggleRef.current?.triggerSave();
+                        }}
+                      />
+                      <ToggleSlider />
+                    </ToggleSwitch>
+                    </AutoSaveField>
+                  </Toggle>
+
+                  <Toggle style={{ marginTop: '16px' }}>
+                    <div style={{ flex: 1 }}>
+                      <ToggleLabel style={{ marginBottom: '4px' }}>Also print on counter (bill) printer</ToggleLabel>
+                      <p style={{ fontSize: '12px', color: '#6B7C93', margin: 0 }}>
+                        Mirror every kitchen ticket to the counter (bill) printer. Useful for small shops where counter staff also needs the order.
+                      </p>
+                    </div>
+                    <AutoSaveField ref={mirrorToBillPrinterRef} onSave={handleSave} type="toggle">
+                    <ToggleSwitch>
+                      <ToggleInput
+                        type="checkbox"
+                        checked={printerSettings.kitchenPrinter.mirrorToBillPrinter ?? false}
+                        onChange={(e) => {
+                          setPrinterSettings(prev => ({
+                            ...prev,
+                            kitchenPrinter: { ...prev.kitchenPrinter, mirrorToBillPrinter: e.target.checked }
+                          }));
+                          mirrorToBillPrinterRef.current?.triggerSave();
+                        }}
+                      />
+                      <ToggleSlider />
+                    </ToggleSwitch>
+                    </AutoSaveField>
+                  </Toggle>
+
+                  <Toggle style={{ marginTop: '16px' }}>
+                    <div style={{ flex: 1 }}>
+                      <ToggleLabel style={{ marginBottom: '4px' }}>Print cancellation ticket when an order is cancelled</ToggleLabel>
+                      <p style={{ fontSize: '12px', color: '#6B7C93', margin: 0 }}>
+                        Automatically print a CANCELLED ticket to the kitchen when an already-sent order is cancelled, so cooks can stop preparation.
+                      </p>
+                    </div>
+                    <AutoSaveField ref={printCancellationTicketRef} onSave={handleSave} type="toggle">
+                    <ToggleSwitch>
+                      <ToggleInput
+                        type="checkbox"
+                        checked={printerSettings.kitchenPrinter.printCancellationTicket ?? true}
+                        onChange={(e) => {
+                          setPrinterSettings(prev => ({
+                            ...prev,
+                            kitchenPrinter: { ...prev.kitchenPrinter, printCancellationTicket: e.target.checked }
+                          }));
+                          printCancellationTicketRef.current?.triggerSave();
                         }}
                       />
                       <ToggleSlider />

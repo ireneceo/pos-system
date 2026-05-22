@@ -1,6 +1,60 @@
 const { DataTypes, Model } = require('sequelize');
 const database = require('../config/database');
 
+/**
+ * Floor plan v1 → v2 lazy migration.
+ * v1: { version: 1, canvasWidth, canvasHeight, gridSize, showGrid, tables: [{id, tableNumber, label, ...}] }
+ * v2: v1 fields + zones[] + table_groups[] + tables 에 group_id 추가.
+ * 옛 매장은 default zone "Main" + default group (prefix=table_settings.tablePrefix||'T') 자동 생성.
+ * @param {object} v1 — parsed v1 floor_plan
+ * @param {string|null} rawTableSettings — raw table_settings JSON string (옛 prefix 추출용)
+ * @returns {object} v2 floor_plan (in-memory, DB 저장은 다음 update 때 자동)
+ */
+function migrateFloorPlanV1ToV2(v1, rawTableSettings) {
+  if (!v1 || typeof v1 !== 'object') return v1;
+  // Extract legacy prefix from table_settings for default group.
+  let defaultPrefix = 'T';
+  try {
+    if (rawTableSettings) {
+      const ts = typeof rawTableSettings === 'string' ? JSON.parse(rawTableSettings) : rawTableSettings;
+      if (ts && typeof ts.tablePrefix === 'string' && ts.tablePrefix.trim()) {
+        defaultPrefix = ts.tablePrefix.trim();
+      }
+    }
+  } catch (e) { /* keep default */ }
+
+  const zoneId = 'z_main';
+  const groupId = 'g_main';
+  const oldTables = Array.isArray(v1.tables) ? v1.tables : [];
+
+  return {
+    version: 2,
+    canvasWidth: v1.canvasWidth || 1200,
+    canvasHeight: v1.canvasHeight || 800,
+    gridSize: v1.gridSize || 20,
+    showGrid: v1.showGrid !== false,
+    zones: [{
+      id: zoneId,
+      name: 'Main',
+      sort_order: 1,
+      manager_user_ids: []
+    }],
+    table_groups: [{
+      id: groupId,
+      zone_id: zoneId,
+      name: 'Tables',
+      prefix: defaultPrefix,
+      sort_order: 1
+    }],
+    tables: oldTables.map(t => ({
+      ...t,
+      group_id: t.group_id || groupId
+    })),
+    // Preserve any extra v1 keys (fixtures, etc.) for safety
+    ...(v1.fixtures ? { fixtures: v1.fixtures } : {})
+  };
+}
+
 class Restaurant extends Model {}
 
 Restaurant.init({
@@ -474,11 +528,16 @@ Restaurant.init({
   floor_plan: {
     type: DataTypes.TEXT('medium'),
     allowNull: true,
-    comment: 'JSON floor plan layout data (table positions, shapes, sizes)',
+    comment: 'JSON floor plan layout data v2 (zones, table_groups, tables). v1 lazy migrate on read.',
     get() {
       const rawValue = this.getDataValue('floor_plan');
       if (!rawValue) return null;
-      try { return JSON.parse(rawValue); } catch (e) { return null; }
+      try {
+        const parsed = JSON.parse(rawValue);
+        // Lazy migrate v1 → v2 — 옛 매장 read 시 자동 변환. DB save 는 다음 update 때 자동 (UI 가 갱신 시).
+        if (!parsed || parsed.version === 2) return parsed;
+        return migrateFloorPlanV1ToV2(parsed, this.getDataValue('table_settings'));
+      } catch (e) { return null; }
     },
     set(value) {
       this.setDataValue('floor_plan', value ? JSON.stringify(value) : null);

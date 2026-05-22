@@ -1,9 +1,28 @@
+// Zone — top-level 영역 (e.g., Indoor Hall / Outdoor Patio). 한 매장에 여러 zone 가능.
+export interface FloorZone {
+  id: string;                    // stable id (e.g., 'z_main', 'z_indoor')
+  name: string;                  // display label
+  sort_order: number;
+  manager_user_ids?: number[];   // Phase 2 — Zone 별 manager 권한 (현재 미사용)
+}
+
+// Table Group — Zone 안의 테이블 묶음 + prefix. 같은 zone 안에 여러 group 가능 (e.g., I, P).
+export interface FloorTableGroup {
+  id: string;                    // stable id (e.g., 'g_main', 'g_indoor_main')
+  zone_id: string;               // FK -> FloorZone.id
+  name: string;                  // display label (e.g., "Main Hall")
+  prefix: string;                // 1-3 letters (e.g., "I", "P", "VIP") — table label = `${prefix}-${number}`
+  sort_order: number;
+}
+
 export interface FloorPlanData {
-  version: 1;
+  version: 1 | 2;                // v1 = legacy (zones/groups 미존재), v2 = 신규 구조
   canvasWidth: number;
   canvasHeight: number;
   gridSize: number;
   showGrid: boolean;
+  zones?: FloorZone[];           // v2 only — 옛 매장은 undefined
+  table_groups?: FloorTableGroup[];  // v2 only
   tables: FloorTable[];
 }
 
@@ -21,6 +40,7 @@ export interface FloorTable {
   rotation: number;
   seats: number;
   tableType?: FixtureType;
+  group_id?: string;             // v2 only — FK -> FloorTableGroup.id (v1 데이터에는 없을 수 있음)
 }
 
 export type TableStatus = 'available' | 'occupied' | 'ready' | 'needs-attention' | 'completed';
@@ -79,14 +99,30 @@ export interface TableStatusInfo {
   orders?: TableStatusInfo[];
 }
 
+// Default v2 floor plan — 새 매장 진입 시 사용. 옛 매장은 backend lazy migrate 가 v1→v2 변환.
 export const DEFAULT_FLOOR_PLAN: FloorPlanData = {
-  version: 1,
+  version: 2,
   canvasWidth: 1200,
   canvasHeight: 800,
   gridSize: 20,
   showGrid: true,
+  zones: [{ id: 'z_main', name: 'Main', sort_order: 1, manager_user_ids: [] }],
+  table_groups: [{ id: 'g_main', zone_id: 'z_main', name: 'Tables', prefix: 'T', sort_order: 1 }],
   tables: []
 };
+
+// Helper — get default group_id for a new table (first group). 미정의 시 'g_main' fallback.
+export function getDefaultGroupId(fp: FloorPlanData | null | undefined): string {
+  if (fp && fp.table_groups && fp.table_groups.length > 0) return fp.table_groups[0].id;
+  return 'g_main';
+}
+
+// Helper — compute table label from group prefix + number.
+export function computeTableLabel(prefix: string, number: string | number): string {
+  const p = String(prefix || 'T').trim();
+  const n = String(number).trim();
+  return p ? `${p}-${n}` : n;
+}
 
 export const TABLE_SHAPES: { value: FloorTable['shape']; label: string; defaultWidth: number; defaultHeight: number; variant?: string }[] = [
   { value: 'round', label: 'Round', defaultWidth: 70, defaultHeight: 70 },

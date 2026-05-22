@@ -235,15 +235,25 @@ router.post('/order', async (req, res) => {
           console.log('  - Generated orderNumber:', orderNumber);
           console.log('  - Generated pickupNumber:', pickupNumber);
 
+          // Decide order status based on restaurant's "Require payment before kitchen" setting.
+          // - OFF (default): payment-pending orders go straight to kitchen ('pending') — current behavior preserved.
+          // - ON: payment-pending orders hold at 'awaiting_payment' — staff confirms before KDS sees it.
+          // 결제 즉시 완료(prepaid) 흐름은 토글 무관 'pending' (키친 진입). undefined setting → false (현재 동작 유지).
+          const reqPayBeforeKitchen = !!(restaurant.operation_settings &&
+            restaurant.operation_settings.mobileOrderProcessing &&
+            restaurant.operation_settings.mobileOrderProcessing.requirePaymentBeforeKitchen);
+          // POST /order 진입 시점은 결제 전 — payment_status 항상 pending. 결제 완료 시 별도 라우트가 status 'pending' 로 update.
+          const initialStatus = reqPayBeforeKitchen ? 'awaiting_payment' : 'pending';
+
           // Create order in database
-          console.log('  - Creating order with data:');
+          console.log('  - Creating order with data: status=' + initialStatus + ' (reqPay=' + reqPayBeforeKitchen + ')');
           const orderData = {
             restaurant_id: restaurantId,
             table_number: actualTableNumber,
             customer_name: customerInfo?.name || 'Mobile Guest',
             customer_phone: customerInfo?.phone || null,
             total_amount: total,
-            status: 'pending',
+            status: initialStatus,
             order_type: actualOrderType,
             payment_method: paymentMethod || 'counter',
             payment_status: 'pending',

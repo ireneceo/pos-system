@@ -1,9 +1,30 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-05-20 (v3.36 운영 배포 — Customer Display 안정성 3차 + 10-12" POS 반응형 + 사이드바 폭 축소)
+> **최종 업데이트:** 2026-05-22 (Floor Plan Zone/Group + /검증 11단계 + CLAUDE.md critical 박제 — dev 완료)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
-> **현재 버전:** **v3.36** (Customer Display hotfix 3차 + 10-12" POS 반응형 + 사이드바 단계별 동적 반응)
+> **현재 버전:** **v3.37** 운영 (dev 누적, 다음 배포 시 v3.38 후보)
+
+## ✅ 완료 (dev 미배포): Floor Plan Zone & Table Group + 검증 체계 강화 (2026-05-22)
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Floor Plan Zone & Table Group | Restaurant.floor_plan JSON v2 확장 + Settings UI ZonesAndGroupsCard 신규 + Floor Plan zone filter | ✅ dev |
+| 기존 자동생성 grid 제거 | tablePrefix/totalTables 입력 + Tables Grid 자동생성 → 새 카드 단일 source 통합 | ✅ |
+| /검증 skill 10·11단계 추가 | 10단계 운영 critical 페이지 실 브라우저 mount, 11단계 옵션 --e2e Multi-step UI 회귀 | ✅ |
+| CLAUDE.md critical 박제 | Build 통과 ≠ Runtime 안전 (v3.37 TDZ 교훈) + e2e 정책 | ✅ |
+
+**검증 결과**: state-hydration 0 / health 80/80 / 실 API 7/7 / Playwright UI 6/6 / 운영 critical 8 페이지 mount ALL CLEAN
+
+**변경 파일**: backend `models/Restaurant.js` · frontend `pages/FloorPlan/types.ts` `FloorPlanPage.tsx` `Settings/SettingsPage.tsx` + 신규 `Settings/components/ZonesAndGroupsCard.tsx` + 도구 `scripts/test-zones-ui.js` `test-critical-mount.js` · 문서 `docs/RESTAURANT_FLOOR_PLAN_ZONE_DESIGN.md` `commands/검증.md` `CLAUDE.md`
+
+---
+
+## ✅ 완료: v3.37 — 모바일 오더 UX 정리 + Tax/SC + 키친 미러링 + 결제 토글 + critical hotfix (2026-05-22 운영)
+
+[기존 v3.37 항목들 + v3.36 이력은 아래 섹션 유지]
+
+---
 
 ## ✅ 완료: v3.36 — Customer Display 3차 hotfix + 10-12" POS 반응형 + 사이드바 폭 축소 (2026-05-20 배포)
 

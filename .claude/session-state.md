@@ -1,9 +1,41 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-05-20 (저녁, v3.36 운영 배포 완료)
-**버전:** **v3.36** 운영 (Customer Display 3차 hotfix + 10-12" POS 반응형 + 사이드바 폭 220→180 + 2뎁스 hover popover + 푸터 icon rail + 동적 resize)
-**작업 상태:** 운영 배포 완료 (Smoke 10/10, Backup `/var/www/backups/20260520_164354`, `main.53ed5199.js`). 블로그 `release-v3.36` + 공지 v3.36 dev/prod 양쪽 등록. 매장 Customer Display 실환경 검증은 매장 재개점 시 확인 1순위 잔존.
+**마지막 업데이트:** 2026-05-22 (Floor Plan Zone/Group + /검증 11단계 + CLAUDE.md critical 박제 — 미배포 dev 완료)
+**버전:** **v3.37** 운영 (이후 dev 누적). 다음 배포 시 v3.38 후보.
+**작업 상태:** dev 완료 (Settings UI + Floor Plan zone filter + backend lazy migrate). 운영 미배포.
+
+## 🚨 새로 박제된 CRITICAL 룰 (다음 세션 절대 잊지 말 것)
+
+**Build 통과 ≠ Runtime 안전** — v3.37 TDZ 크래시 교훈 영구 박제:
+- CLAUDE.md 에 critical 섹션 추가
+- /검증 skill 에 10단계 (운영 critical 페이지 mount) + 11단계 (옵션 --e2e) 추가
+- 운영 critical 페이지 (POS/모바일/KDS/Floor Plan/결제) 변경 시 **실 브라우저 mount 의무**
+- e2e 룰: flaky 100% (95% X), auto-fix selector/waitFor 만, 결제 sandbox만, 운영 데이터 e2e 절대 금지
+
+## 미배포 dev 변경 (2026-05-22)
+
+**Floor Plan Zone & Table Group 시스템 (대규모)**
+- DB: Restaurant.floor_plan JSON v1→v2 lazy migrate (zones, table_groups, tables.group_id)
+- Settings UI: `ZonesAndGroupsCard` 신규 — Zone CRUD + Table Group CRUD (prefix 자동, table 자동생성) + Zone filter Table QR Grid (group prefix 사용)
+- Settings UI: 기존 자동생성 grid + tablePrefix/totalTables 입력 제거 (single source of truth = floor_plan.tables)
+- Floor Plan 페이지: Zone filter chip (All Zones / Zone별)
+- 설계 문서: `docs/RESTAURANT_FLOOR_PLAN_ZONE_DESIGN.md`
+
+**검증 — 모든 단계 PASS**:
+- state-hydration 0 warning · health-check 80/80 · 빌드 OK
+- 실 API 7/7 PASS (lazy migrate / PUT-GET roundtrip / cross-group dup number / order with new label / 옛 QR 호환)
+- Playwright UI 6/6 PASS (Settings zone+group CRUD + Floor Plan zone filter + Cleanup)
+- 운영 critical 8 페이지 mount ALL CLEAN (TDZ/ReferenceError 0)
+
+**운영 v1 매장 영향 (다음 배포 시)**: with-min-cafe, demo-korean-bbq, luatest — lazy migrate 자동, 매장 입장 변화 0 (default zone "Main" + 옛 prefix 보존)
+
+## 🚨 critical 보고 (다음 세션 잊지 말 것)
+- 2026-05-22 v3.37 1차 배포 (`main.201da990.js`) — 모바일 메뉴 페이지 TDZ 크래시. Cancel access 'K' before initialization.
+- 원인: `useEffect(() => ..., [updateCatInUrl])` 가 `updateCatInUrl` const 선언보다 위 → JavaScript TDZ.
+- 운영 영향: 모바일 메뉴 진입 시 즉시 ErrorBoundary fallback. 매장 모바일 주문 차단.
+- 같은 날 hotfix 배포로 복구 (`main.adc11a78.js`).
+- 교훈: **state-hydration / health-check 통과해도 runtime TDZ 잡지 못함**. 운영 critical 페이지(모바일 메뉴/POS) 변경 시 dev 브라우저 실 mount 검증 필수.
 
 ---
 

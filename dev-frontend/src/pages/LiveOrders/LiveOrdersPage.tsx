@@ -18,7 +18,7 @@ import {
   DataTableAmount,
   Modal as CommonModal
 } from '../../components/UI';
-import { printBillViaRawBT, printKitchenTicketViaRawBT } from '../../utils/billPrint';
+import { printBillViaRawBT, printKitchenTicketViaRawBT, printCancellationTicket } from '../../utils/billPrint';
 import { formatDateTime as formatDateTimeUtil } from '../../utils/timezone';
 import ConfirmModal from '../../components/ConfirmModal';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
@@ -1219,6 +1219,8 @@ const LiveOrdersPage: React.FC = () => {
 
   const confirmCancelOrder = async () => {
     if (!orderToCancel) return;
+    // Snapshot order BEFORE marking cancelled — used for cancellation ticket print.
+    const orderSnapshot = orders.find(o => o.id === orderToCancel);
     setOrders(prev => prev.map(order => order.id === orderToCancel ? { ...order, status: 'cancelled' as any } : order));
     setShowCancelConfirm(false);
     if (selectedOrder?.id === orderToCancel) handleCloseModal();
@@ -1227,7 +1229,33 @@ const LiveOrdersPage: React.FC = () => {
         method: 'PATCH', body: JSON.stringify({ status: 'cancelled' })
       }));
       const result = await response.json();
-      if (!result.success) fetchOrders();
+      if (!result.success) {
+        fetchOrders();
+      } else if (orderSnapshot) {
+        // Cancellation ticket — 키친 진입 가능성 있는 상태에서만 (pending/awaiting_payment 는 키친 미진입 추정).
+        // Setting toggle (printCancellationTicket) OFF 또는 키친 프린터 disabled 면 함수 내부에서 skip.
+        const wasInKitchen = !['awaiting_payment', 'pending'].includes(String(orderSnapshot.status || ''));
+        if (wasInKitchen) {
+          try {
+            const printData: any = {
+              orderNumber: (orderSnapshot as any).order_number || (orderSnapshot as any).orderNumber,
+              order_number: (orderSnapshot as any).order_number,
+              tableNumber: (orderSnapshot as any).table_number || (orderSnapshot as any).tableNumber,
+              orderType: (orderSnapshot as any).order_type || (orderSnapshot as any).orderType,
+              items: ((orderSnapshot as any).items || (orderSnapshot as any).order_items || []).map((it: any) => ({
+                quantity: it.quantity || 1,
+                name: it.name || it.menu_item_name || (it.menuItem && it.menuItem.name) || ''
+              }))
+            };
+            const sInfo = (typeof getStoreInfo === 'function') ? getStoreInfo() : {};
+            printCancellationTicket(printData, sInfo, 'Cancelled by staff').catch(e =>
+              console.warn('Cancellation print failed:', e && e.message)
+            );
+          } catch (e) {
+            console.warn('Cancellation ticket trigger error:', (e as any) && (e as any).message);
+          }
+        }
+      }
     } catch (error) { console.error('Failed to cancel order:', error); fetchOrders(); }
     finally { setOrderToCancel(null); }
   };

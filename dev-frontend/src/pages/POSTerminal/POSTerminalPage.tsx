@@ -1782,7 +1782,7 @@ const POSTerminalPage: React.FC = () => {
         coupon: appliedCoupon ? { code: appliedCoupon.code, discount: appliedCoupon.discount } : null,
         takeawayCharge,
         serviceCharge,
-        serviceChargeRate: operationSettings.serviceChargeRate,
+        serviceChargeRate: effectiveServiceChargeRate,
         tax,
         taxRate: operationSettings.taxRate,
         total,
@@ -1835,7 +1835,7 @@ const POSTerminalPage: React.FC = () => {
       tax,
       taxRate: operationSettings.taxRate,
       serviceCharge,
-      serviceChargeRate: operationSettings.serviceChargeRate,
+      serviceChargeRate: effectiveServiceChargeRate,
       discount: discountAmount,
       coupon: appliedCoupon ? { code: appliedCoupon.code, amount: appliedCoupon.discount } : undefined,
       discountPolicy: appliedDiscountPolicy ? { name: appliedDiscountPolicy.name, amount: appliedDiscountPolicy.discount } : undefined,
@@ -1942,7 +1942,7 @@ const POSTerminalPage: React.FC = () => {
         coupon: appliedCoupon ? { code: appliedCoupon.code, discount: appliedCoupon.discount } : null,
         takeawayCharge,
         serviceCharge,
-        serviceChargeRate: operationSettings.serviceChargeRate,
+        serviceChargeRate: effectiveServiceChargeRate,
         tax,
         taxRate: operationSettings.taxRate,
         total: adjustedTotal,
@@ -1999,7 +1999,7 @@ const POSTerminalPage: React.FC = () => {
       tax,
       taxRate: operationSettings.taxRate,
       serviceCharge,
-      serviceChargeRate: operationSettings.serviceChargeRate,
+      serviceChargeRate: effectiveServiceChargeRate,
       discount: discountAmount,
       coupon: appliedCoupon ? { code: appliedCoupon.code, amount: appliedCoupon.discount } : undefined,
       discountPolicy: appliedDiscountPolicy ? { name: appliedDiscountPolicy.name, amount: appliedDiscountPolicy.discount } : undefined,
@@ -2155,8 +2155,11 @@ const POSTerminalPage: React.FC = () => {
     const policyDiscount = appliedDiscountPolicy ? appliedDiscountPolicy.discount : 0;
     const afterDiscount = Math.max(0, subtotalWithTakeaway - discountAmount - couponDiscount - policyDiscount);
 
-    // Apply service charge and tax in parallel (both on afterDiscount amount)
-    const serviceCharge = operationSettings.serviceChargeEnabled
+    // Apply service charge and tax in parallel (both on afterDiscount amount).
+    // SC 는 보통 매장 식사에만 부과 — Settings 의 "Exclude takeaway" 토글 (default true) 시 takeaway 면 0.
+    const scExcludeTakeaway = operationSettings.serviceChargeExcludeTakeaway ?? true;
+    const scApplies = operationSettings.serviceChargeEnabled && !(orderType === 'takeaway' && scExcludeTakeaway);
+    const serviceCharge = scApplies
       ? afterDiscount * (operationSettings.serviceChargeRate / 100)
       : 0;
 
@@ -2172,10 +2175,13 @@ const POSTerminalPage: React.FC = () => {
       total = Math.round(totalBeforeRounding / cashRounding) * cashRounding;
     }
 
-    return { subtotal, tax, total, discountAmount, couponDiscount, policyDiscount, takeawayCharge, serviceCharge };
+    // SC rate: scApplies=false 시 0 으로 일관 전송. backend 주문 수정 재계산 시 안전.
+    const effectiveServiceChargeRate = scApplies ? operationSettings.serviceChargeRate : 0;
+
+    return { subtotal, tax, total, discountAmount, couponDiscount, policyDiscount, takeawayCharge, serviceCharge, effectiveServiceChargeRate };
   };
 
-  const { subtotal, tax, total, discountAmount, couponDiscount, policyDiscount, takeawayCharge, serviceCharge } = calculateTotal();
+  const { subtotal, tax, total, discountAmount, couponDiscount, policyDiscount, takeawayCharge, serviceCharge, effectiveServiceChargeRate } = calculateTotal();
 
   // Checkout Display: WebSocket connection for customer-facing screen
   const checkoutSocketRef = useRef<Socket | null>(null);
@@ -2233,7 +2239,7 @@ const POSTerminalPage: React.FC = () => {
       tax,
       taxRate: operationSettings.taxEnabled ? operationSettings.taxRate : 0,
       serviceCharge,
-      serviceChargeRate: operationSettings.serviceChargeEnabled ? operationSettings.serviceChargeRate : 0,
+      serviceChargeRate: effectiveServiceChargeRate,
       discount: discountAmount + couponDiscount + policyDiscount,
       total,
       currency: operationSettings.currency || 'MYR'

@@ -729,8 +729,11 @@ const PaymentPage: React.FC = () => {
   // Apply tax from operation settings (on discounted amount - consistent with POS)
   const tax = operationSettings.taxEnabled ? discountedSubtotal * (operationSettings.taxRate / 100) : 0;
 
-  // Apply service charge from operation settings (on discounted amount - consistent with POS)
-  const serviceCharge = operationSettings.serviceChargeEnabled ? discountedSubtotal * (operationSettings.serviceChargeRate / 100) : 0;
+  // Apply service charge from operation settings (on discounted amount - consistent with POS).
+  // SC 는 보통 매장 식사에만 — Settings "Exclude takeaway" 토글 (default true) 시 takeaway 면 0.
+  const scExcludeTakeaway = (operationSettings as any).serviceChargeExcludeTakeaway ?? true;
+  const scApplies = operationSettings.serviceChargeEnabled && !(orderType === 'takeaway' && scExcludeTakeaway);
+  const serviceCharge = scApplies ? discountedSubtotal * (operationSettings.serviceChargeRate / 100) : 0;
 
   const totalBeforeRounding = discountedSubtotal + tax + serviceCharge + takeawayCharge + deliveryFee;
 
@@ -1305,7 +1308,7 @@ const PaymentPage: React.FC = () => {
               tax: tax,
               tax_rate: operationSettings.taxEnabled ? operationSettings.taxRate : 0,
               service_charge: serviceCharge,
-              service_charge_rate: operationSettings.serviceChargeEnabled ? operationSettings.serviceChargeRate : 0,
+              service_charge_rate: scApplies ? operationSettings.serviceChargeRate : 0,
               takeaway_charge: takeawayCharge,
               delivery_fee: deliveryFee,
               points_used: !useGuest && pointsToUse > 0 ? pointsToUse : null,
@@ -1469,7 +1472,7 @@ const PaymentPage: React.FC = () => {
             tax: tax,
             tax_rate: operationSettings.taxEnabled ? operationSettings.taxRate : 0,
             service_charge: serviceCharge,
-            service_charge_rate: operationSettings.serviceChargeEnabled ? operationSettings.serviceChargeRate : 0,
+            service_charge_rate: scApplies ? operationSettings.serviceChargeRate : 0,
             takeaway_charge: takeawayCharge,
             delivery_fee: deliveryFee,
             points_used: !useGuest && pointsToUse > 0 ? pointsToUse : null,
@@ -1571,7 +1574,7 @@ const PaymentPage: React.FC = () => {
               tax: tax,
               tax_rate: operationSettings.taxEnabled ? operationSettings.taxRate : 0,
               service_charge: serviceCharge,
-              service_charge_rate: operationSettings.serviceChargeEnabled ? operationSettings.serviceChargeRate : 0,
+              service_charge_rate: scApplies ? operationSettings.serviceChargeRate : 0,
               takeaway_charge: takeawayCharge,
               delivery_fee: deliveryFee,
               points_used: !useGuest && pointsToUse > 0 ? pointsToUse : null,

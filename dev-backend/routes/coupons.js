@@ -162,7 +162,10 @@ router.post('/validate', optionalAuthenticateToken, async (req, res) => {
     const finalRestaurantId = restaurantId || restaurant_id;
     const finalCustomerId = customerId || customer_id;
     const finalOrderTotal = parseFloat(orderTotal || order_total || order_amount || 0);
-    const finalOrderType = orderType || order_type || 'dine_in';
+    // POS Terminal/Mobile 은 'dine-in' (kebab), DB applicable_order_types 는 보통 'dine_in' (snake).
+    // 둘 다 수용하기 위해 매칭 시 양쪽 모두 snake_case 로 정규화. (시스템 전체 통일은 별도 사이클.)
+    const normalizeOrderType = (s) => String(s || '').trim().toLowerCase().replace(/-/g, '_');
+    const finalOrderType = normalizeOrderType(orderType || order_type || 'dine_in');
 
     if (!code || !finalRestaurantId) {
       return res.status(400).json({ success: false, error: { message: 'Coupon code and restaurant ID are required', code: 'VALIDATION_ERROR' } });
@@ -248,9 +251,10 @@ router.post('/validate', optionalAuthenticateToken, async (req, res) => {
       });
     }
 
-    // Check applicable order types
+    // Check applicable order types — DB 값도 동일하게 정규화 후 매칭 (kebab/snake 혼용 안전)
     if (coupon.applicable_order_types && coupon.applicable_order_types.length > 0) {
-      if (!coupon.applicable_order_types.includes(finalOrderType)) {
+      const allowedNormalized = coupon.applicable_order_types.map(normalizeOrderType);
+      if (!allowedNormalized.includes(finalOrderType)) {
         return res.status(400).json({
           success: false,
           error: `This coupon is not applicable for ${finalOrderType} orders`,

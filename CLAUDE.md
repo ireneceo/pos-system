@@ -40,6 +40,37 @@
 6. **연관 페이지 영향 확인**: 수정한 공통 컴포넌트를 사용하는 다른 페이지에 부작용이 없는지 확인
 7. **검증 결과 보고**: 실제 API 호출 결과 포함하여 Irene에게 보고. 문제가 있으면 즉시 수정
 
+### 🚨 CRITICAL — Build 통과 ≠ Runtime 안전 (v3.37 TDZ 크래시 교훈)
+
+**state-hydration / health-check / build / lint / type check 다 통과해도 실제 runtime 에서 크래시 가능.**
+TDZ (Temporal Dead Zone) / hydration error / lazy chunk 초기화 순서 / SSR mismatch 는 **정적 분석으로 못 잡음**.
+
+**운영 critical 페이지 변경 시 실 브라우저 mount 검증 의무**:
+- POS Terminal / 모바일 메뉴 / KDS / Floor Plan / 결제 흐름 / 매장 설정
+- 검증 방법: Playwright headless 자동 (`scripts/headless-page-sweep.js` 또는 신규 spec)
+- 기준: 진입 즉시 크래시 0 + `console.error` 0 + ErrorBoundary fallback 0
+- **2026-05-22 사례**: v3.37 운영 배포 모바일 메뉴 TDZ 크래시 → 매장 모바일 주문 차단. state-hydration 0 + health-check 80/80 + build success 다 통과했지만 mount 안 해서 못 잡음. hotfix 즉시 배포.
+
+### E2E (Multi-step UI) 정책
+
+**대상**: 큰 변경 (UI 흐름 추가/변경, 신규 페이지, 결제 흐름 변경) 시 `/검증 --e2e` 실행.
+
+**6 핵심 시나리오**:
+a) auth roles — RA/BG/FG/Owner/Supplier/Manager 로그인 + 권한 분기
+b) mobile order full flow — 메뉴 → 장바구니 → 결제 → 주문 생성
+c) POS Terminal — 주문 + sandbox 결제 + 영수증
+d) Floor Plan zone — zone filter chip + 테이블 클릭
+e) Settings zones & groups — zone/group CRUD + table QR
+f) KDS 자동 진입 — 결제 후 키친 ticket 자동
+
+**필수 룰** (절대 금지 포함):
+- **Flaky rate 100%** — 3회 연속 돌려 100% 통과. 95% 기준 X (false negative = 매장 신뢰 손상)
+- **LLM auto-fix 범위 한정**: selector / waitFor / locator timing 만. assertion text / network mock drift / 비즈니스 로직 자동 수정 **절대 금지**
+- **결제 sandbox 만**: Stripe test card / PayPal sandbox. 운영 webhook URL e2e **절대 금지**
+- **운영 데이터 e2e 절대 금지**: demo restaurant (dev: id=38) 만 사용. 운영 매장 주문/결제/재고 변경 차단
+- **e2e 통과 ≠ 운영 배포 자동**: 운영 배포는 사람 `/배포` 명시 지시만
+- **backward compat 자동 검증**: 옛 데이터 형식 (v1) + 새 코드 → 자동 마이그 검증 시나리오 포함
+
 **API 테스트 패턴** (Node.js 스크립트로 실행):
 ```bash
 # 임시 테스트 파일 생성 → 실행 → 결과 확인 → 파일 삭제

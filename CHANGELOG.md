@@ -8,6 +8,18 @@
 
 ---
 
+## [v3.37] — 2026-05-22 배포 (쿠폰 dine-in 매칭 hotfix + Settings 조건부 표시 + 모바일 메뉴 UX)
+
+- **쿠폰 validate `dine-in`/`dine_in` 표기 정규화 hotfix** — POS Terminal 은 `'dine-in'` (kebab), DB `applicable_order_types` 는 `'dine_in'` (snake) 저장. `routes/coupons.js` validate 매칭 시 양쪽 모두 snake_case 로 정규화 후 비교. 데모/실매장에서 POS dine-in 쿠폰이 "not applicable for dine-in orders" 로 거부되던 운영 결함 즉시 해소. 운영 실 API 검증: BBQ30 (DB `['dine_in']`) + `order_type='dine-in'` → 400 → **200 valid=true discount=30** ✓
+- **모바일 메뉴 매장 카드 매장명 2줄 제한** — 매장명 + 지점명이 길면 3줄까지 늘어나던 문제. `-webkit-line-clamp: 2` + `text-overflow: ellipsis` + `word-break: break-word` 적용. 짧으면 1줄, 길면 2줄로 잘림. 시각 노이즈 정리
+- **Settings 조건부 표시 보강 (베이스 토글 OFF 시 세부 카드 자동 숨김)**
+  - Takeaway Pricing Settings (Operations 탭): `orderTypes.takeaway` OFF 시 카드 숨김
+  - Delivery Pricing Settings (Mobile Order 탭): `orderTypes.delivery` OFF 시 카드 숨김
+  - Quick-entry QR (Operations 탭) 안내문에 "Mobile Order tab" 인라인 링크 추가 — 토글-결과 카드 분리 혼동 해소
+- **모바일 메뉴 탭 URL persistence** — 새로고침/뒤로가기 시 카테고리 탭 reset 되던 문제. `?cat=ID` 쿼리에 `history.replaceState` 로 카테고리 유지 (기존 `?table=X&order_type=Y` 쿼리 보존). Featured 탭은 `?cat=__featured__`. 잘못된 cat ID는 첫 카테고리 fallback. 카테고리 직접 공유 URL 가능
+
+---
+
 ## [v3.36] — 2026-05-20 배포 (Customer Display 안정성 hotfix 3차 + 10-12" POS 반응형 + 사이드바 폭 축소)
 
 - **Customer Display 안정성 hotfix 3차 누적** — 매장에서 "POS Customer Display 가 두 번째 모니터에 안 뜬다" 보고로 시작된 critical 이슈 대응. 같은 날 3 hotfix 운영 배포.

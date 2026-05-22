@@ -178,12 +178,15 @@ router.post('/:id/capture-paypal-order', async (req, res) => {
 
     if (capture.result.status === 'COMPLETED') {
       const captureId = capture.result.purchase_units?.[0]?.payments?.captures?.[0]?.id;
-      await order.update({
+      const updatePayload = {
         payment_status: 'completed',
         payment_method: 'online',
         payment_provider: 'paypal',
         transaction_id: captureId || orderId
-      });
+      };
+      // 결제 완료 → "Require payment before kitchen" 토글로 awaiting_payment 였던 주문을 키친 진입(pending)으로 전환.
+      if (order.status === 'awaiting_payment') updatePayload.status = 'pending';
+      await order.update(updatePayload);
 
       res.json({ success: true, status: 'COMPLETED', captureId });
     } else {
@@ -215,12 +218,15 @@ router.post('/:id/confirm-stripe-payment', async (req, res) => {
     const paymentIntent = await stripe.paymentIntents.retrieve(order.payment_intent_id);
 
     if (paymentIntent.status === 'succeeded') {
-      await order.update({
+      const updatePayload = {
         payment_status: 'completed',
         payment_method: 'online',
         payment_provider: 'stripe',
         transaction_id: paymentIntent.id
-      });
+      };
+      // 결제 완료 → awaiting_payment 주문을 키친 진입(pending) 으로 전환.
+      if (order.status === 'awaiting_payment') updatePayload.status = 'pending';
+      await order.update(updatePayload);
       res.json({ success: true, status: 'succeeded' });
     } else {
       res.json({ success: true, status: paymentIntent.status });

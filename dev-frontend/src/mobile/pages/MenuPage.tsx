@@ -57,18 +57,29 @@ const StoreInfo = styled.div`
 `;
 
 const StoreName = styled.h2`
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 600;
   color: #1F2937;
   margin: 0;
   line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-word;
 `;
 
-const StoreBranch = styled.span`
-  font-size: 13px;
+const StoreBranch = styled.div`
+  font-size: 12px;
   font-weight: 500;
   color: #6B7C93;
-  margin-left: 6px;
+  margin-top: 1px;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
 `;
 
 const StoreStatus = styled.span<{ isOpen: boolean }>`
@@ -101,8 +112,8 @@ const StoreRight = styled.div`
 const OrderTypeChip = styled.button`
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 10px 6px 12px;
+  gap: 6px;
+  padding: 6px 8px 6px 10px;
   background: #F0EFFF;
   border: 1px solid #DDD9FF;
   border-radius: 999px;
@@ -111,6 +122,7 @@ const OrderTypeChip = styled.button`
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s;
+  white-space: nowrap;
 
   &:hover { background: #E4E1FF; }
   &:active { transform: translateY(1px); }
@@ -118,13 +130,7 @@ const OrderTypeChip = styled.button`
 
   .chip-icon { display: inline-flex; }
   .chip-icon svg { width: 14px; height: 14px; stroke-width: 2; }
-  .chip-change {
-    color: #6B7280;
-    font-weight: 400;
-    border-left: 1px solid #DDD9FF;
-    padding-left: 8px;
-    margin-left: 2px;
-  }
+  .chip-arrow { color: #635BFF; display: inline-flex; opacity: 0.7; }
 `;
 
 const SearchSection = styled.div`
@@ -606,15 +612,20 @@ const MenuPage: React.FC = () => {
             }
 
             if (cats.length > 0) {
-              firstCatId = cats[0].id.toString();
-              setSelectedCategory(cats[0].id);
-              // 첫 카테고리 아이템만 fetch + 캐시 저장
+              // URL ?cat= 우선 적용 (있고 valid 한 경우). 새로고침 시 탭 유지.
+              const urlCat = new URLSearchParams(window.location.search).get('cat') || '';
+              const validCatIds = new Set(cats.map((c: any) => c.id.toString()));
+              const isUrlCatValid = urlCat && (validCatIds.has(urlCat) || urlCat === '__featured__');
+              const useCat = isUrlCatValid ? urlCat : cats[0].id.toString();
+              setSelectedCategory(useCat);
+              // backend fetch: normal cat 이면 그 cat, featured 면 첫 normal cat 만 prefetch (cache용)
+              firstCatId = (useCat === '__featured__') ? cats[0].id.toString() : useCat;
               const firstCatRes = await fetch(`/api/mobile/menu/${slug}?page=1&limit=${ITEMS_PER_PAGE}&categoryId=${firstCatId}`);
               if (firstCatRes.ok) {
                 const cr = await firstCatRes.json();
                 if (cr.success && cr.data) {
                   const firstItems = transformItems(cr.data.items || []);
-                  setMenuItems(firstItems);
+                  if (useCat !== '__featured__') setMenuItems(firstItems);
                   categoryCacheRef.current.set(firstCatId, firstItems);
                 }
               }
@@ -660,6 +671,22 @@ const MenuPage: React.FC = () => {
     init();
   }, [slug]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // URL persistence — 탭 변경 시 ?cat= 갱신 (기존 쿼리 보존, replaceState 라 history 노이즈 0).
+  // ⚠ 반드시 아래 useEffect / handleCategoryChange 보다 위에 선언 — TDZ 회피.
+  const updateCatInUrl = useCallback((catId: string) => {
+    try {
+      const url = new URL(window.location.href);
+      if (catId) url.searchParams.set('cat', catId); else url.searchParams.delete('cat');
+      window.history.replaceState({}, '', url.toString());
+    } catch { /* silent — URL API 미지원 환경 */ }
+  }, []);
+
+  // URL ?cat 동기화 — selectedCategory 변경(직접 클릭/검색 종료/Featured 자동/init 등) 모든 경로 커버.
+  // 검색 모드 중에는 selectedCategory 가 '' 이라 URL cat 제거됨 (검색 종료 후 복원 시 재설정).
+  useEffect(() => {
+    if (!isLoading) updateCatInUrl(selectedCategory);
+  }, [selectedCategory, isLoading, updateCatInUrl]);
+
   // 검색용 전체 메뉴 lazy load — 검색창에 처음 포커스/입력 시 한 번만
   const loadAllMenuItemsForSearch = useCallback(async () => {
     if (!slug || allMenuItems.length > 0) return;
@@ -694,6 +721,7 @@ const MenuPage: React.FC = () => {
       setSearchQuery('');
     }
     setSelectedCategory(categoryId);
+    updateCatInUrl(categoryId);
     setPagination(null);
     const catId = categoryId.toString();
 
@@ -912,7 +940,8 @@ const MenuPage: React.FC = () => {
       {currentStore && (
         <StoreHeader>
           <StoreInfo>
-            <StoreName>{currentStore.name}{currentStore.branchName && <StoreBranch>{currentStore.branchName}</StoreBranch>}</StoreName>
+            <StoreName>{currentStore.name}</StoreName>
+            {currentStore.branchName && <StoreBranch>{currentStore.branchName}</StoreBranch>}
             <StoreStatus isOpen={currentStore.isOpen}>
               {currentStore.isOpen ? 'Open Now' : 'Closed'}
             </StoreStatus>
@@ -930,7 +959,7 @@ const MenuPage: React.FC = () => {
               >
                 <span className="chip-icon">{ORDER_TYPE_ICON[orderType]}</span>
                 {t(ORDER_TYPE_I18N_KEY[orderType] || 'common:orderType.dineIn')}
-                <span className="chip-change">{t('common:orderType.change', { defaultValue: 'Change' })} <ChevronRight style={{ width: 12, height: 12, verticalAlign: -1 }} /></span>
+                <span className="chip-arrow" aria-hidden="true"><ChevronRight style={{ width: 14, height: 14 }} /></span>
               </OrderTypeChip>
             </StoreRight>
           )}

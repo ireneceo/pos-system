@@ -295,7 +295,13 @@
       "Bash(sed -n '108,135p' /var/www/dev-backend/routes/orders-crud.js)",
       "Bash(sed -n '575,605p' /var/www/dev-backend/routes/invoices-crud.js)",
       "Bash(sed -n '1782,1815p' /var/www/dev-backend/routes/restaurants-crud.js)",
-      "Bash(TOKEN='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjksImlhdCI6MTc3OTI5MDY2NiwiZXhwIjoxNzc5MjkxNTY2fQ.DA1i62PChxc1kk26k88PFbZGAAS4gtJYM9QOGk8qaJM' RID=5 node scripts/capture-responsive.js)"
+      "Bash(TOKEN='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjksImlhdCI6MTc3OTI5MDY2NiwiZXhwIjoxNzc5MjkxNTY2fQ.DA1i62PChxc1kk26k88PFbZGAAS4gtJYM9QOGk8qaJM' RID=5 node scripts/capture-responsive.js)",
+      "Bash(awk 'NR==3481,/^[[:space:]]*<\\\\/SettingsCard>/ {print NR\": \"$0; if \\(/^[[:space:]]*<\\\\/SettingsCard>/\\) exit}' /var/www/dev-frontend/src/pages/Settings/SettingsPage.tsx)",
+      "Bash(awk 'NR==4494,/^[[:space:]]*<\\\\/SettingsCard>/ {if \\(NR==4494 || /^[[:space:]]*<\\\\/SettingsCard>/\\) print NR\": \"$0; if \\(NR>4494 && /^[[:space:]]*<\\\\/SettingsCard>/\\) exit}' /var/www/dev-frontend/src/pages/Settings/SettingsPage.tsx)",
+      "Bash(sed -i 's|waitUntil: '\"'\"'networkidle'\"'\"', timeout: 30000|waitUntil: \"domcontentloaded\", timeout: 60000|g' /var/www/dev-frontend/scripts/test-zones-ui.js)",
+      "Bash(sed -i 's|waitUntil: '\"'\"'networkidle'\"'\"' }|waitUntil: \"domcontentloaded\" }|g' /var/www/dev-frontend/scripts/test-zones-ui.js)",
+      "Bash(sed -i \"s|localStorage.setItem\\('token', tok\\)|localStorage.setItem\\('auth_token', tok\\)|\" /var/www/dev-frontend/scripts/test-zones-ui.js)",
+      "Bash(sed -i \"s|localStorage.setItem\\('user'.*|// skip user inject — AuthContext fetches from /api/auth/me|\" /var/www/dev-frontend/scripts/test-zones-ui.js)"
     ],
     "deny": [],
     "ask": []
