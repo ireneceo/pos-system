@@ -682,6 +682,9 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
       if (typeof plainOrder.order_items === 'string') {
         try { plainOrder.order_items = JSON.parse(plainOrder.order_items); } catch(e) { plainOrder.order_items = []; }
       }
+      // Always emit source so frontend can route the new-order banner correctly.
+      // 'mobile' from /api/mobile/order; anything else (POS terminal, KDS) defaults to 'pos'.
+      plainOrder.source = plainOrder.source || 'pos';
       io.of('/orders').to(`restaurant_${order.restaurant_id}`).emit('order-created', plainOrder);
       console.log(`✓ Socket event emitted successfully`);
     } else {
@@ -1108,7 +1111,14 @@ router.get('/:id/actions', authenticateToken, async (req, res) => {
     });
     res.json({ success: true, data: actions });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error('GET /orders/:id/actions error:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        message: process.env.NODE_ENV === 'production' ? 'Failed to load order actions' : error.message,
+        code: 'INTERNAL_ERROR'
+      }
+    });
   }
 });
 
@@ -1295,6 +1305,16 @@ router.post('/:id/add-items', authenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, error: { message: 'Order not found', code: 'NOT_FOUND' } });
     }
 
+    // Tenant guard (IDOR defence): order must belong to the requester's restaurant.
+    // Privileged roles (multi-restaurant scope) bypass; they have their own scope filter elsewhere.
+    {
+      const userRid = req.user?.restaurant_id || req.user?.restaurantId;
+      const privileged = ['System Admin', 'Brand General', 'Brand Manager', 'Foodcourt General', 'Foodcourt Manager', 'Restaurant Owner'].includes(req.user?.role);
+      if (!privileged && Number(order.restaurant_id) !== Number(userRid)) {
+        return res.status(403).json({ success: false, error: { message: 'Forbidden — order belongs to a different restaurant', code: 'FORBIDDEN' } });
+      }
+    }
+
     // Validate order can accept new items
     if (order.payment_status === 'completed') {
       return res.status(400).json({ success: false, error: { message: 'Cannot add items to a paid order', code: 'VALIDATION_ERROR' } });
@@ -1424,6 +1444,15 @@ router.post('/:id/merge-items', authenticateToken, async (req, res) => {
 
     if (!order) {
       return res.status(404).json({ success: false, error: { message: 'Order not found', code: 'NOT_FOUND' } });
+    }
+
+    // Tenant guard (IDOR defence)
+    {
+      const userRid = req.user?.restaurant_id || req.user?.restaurantId;
+      const privileged = ['System Admin', 'Brand General', 'Brand Manager', 'Foodcourt General', 'Foodcourt Manager', 'Restaurant Owner'].includes(req.user?.role);
+      if (!privileged && Number(order.restaurant_id) !== Number(userRid)) {
+        return res.status(403).json({ success: false, error: { message: 'Forbidden — order belongs to a different restaurant', code: 'FORBIDDEN' } });
+      }
     }
 
     // Validate order can accept new items

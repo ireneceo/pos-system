@@ -115,5 +115,9 @@
   "history.source.auto": "自动",
   "history.source.scheduler": "调度器",
   "liveOrdersPage.viewOrderHistory": "查看订单历史",
-  "liveOrdersPage.viewCancellationHistory": "查看取消记录"
+  "liveOrdersPage.viewCancellationHistory": "查看取消记录",
+  "liveOrdersPage.options": "选项",
+  "liveOrdersPage.noItemsFound": "未找到菜单项",
+  "liveOrdersPage.itemsToAdd": "要添加的项目",
+  "liveOrdersPage.searchAndSelectItems": "搜索并选择要添加的菜单项"
 }

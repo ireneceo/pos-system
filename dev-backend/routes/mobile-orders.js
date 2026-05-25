@@ -89,9 +89,15 @@ router.post('/order', async (req, res) => {
     // Calculate total
     const total = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
-    // Convert storeId to integer, default to 1 if not provided
-    const restaurantId = storeId ? parseInt(storeId, 10) : 1;
-    console.log('  - restaurantId (parsed):', restaurantId, typeof restaurantId);
+    // storeId must be explicit and valid — no silent fallback to id=1 (anonymous endpoint defence).
+    if (!storeId) {
+      return res.status(400).json({ success: false, error: { message: 'storeId is required', code: 'VALIDATION_ERROR' } });
+    }
+    const restaurantId = parseInt(storeId, 10);
+    if (!Number.isFinite(restaurantId) || restaurantId <= 0) {
+      return res.status(400).json({ success: false, error: { message: 'storeId must be a positive integer', code: 'VALIDATION_ERROR' } });
+    }
+    console.log('  - restaurantId (parsed):', restaurantId);
 
     const actualTableNumber = tableNumber || customerInfo?.tableNumber || null;
     // Frontend uses dash form ('dine-in'); DB ENUM uses underscore ('dine_in'). Normalize at the API boundary.
@@ -99,7 +105,14 @@ router.post('/order', async (req, res) => {
     const actualOrderType = rawOrderType === 'dine-in' ? 'dine_in' : rawOrderType;
 
     // Get restaurant timezone + payment settings for date calculations & validation
-    const restaurant = await Restaurant.findByPk(restaurantId, { attributes: ['id', 'operation_settings', 'payment_settings'] });
+    const restaurant = await Restaurant.findByPk(restaurantId, { attributes: ['id', 'operation_settings', 'payment_settings', 'is_active'] });
+    // Restaurant must exist and be active — prevents anonymous orders against unknown/disabled stores.
+    if (!restaurant) {
+      return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
+    }
+    if (restaurant.is_active === false) {
+      return res.status(403).json({ success: false, error: { message: 'Restaurant is not accepting orders', code: 'INACTIVE_STORE' } });
+    }
     const tz = getRestaurantTimezone(restaurant);
 
     // Defence A: order_type must be enabled on restaurant's operation_settings.

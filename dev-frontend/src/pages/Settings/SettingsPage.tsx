@@ -2458,7 +2458,7 @@ const SettingsPage: React.FC = () => {
                             {orderTypeChips.map(c => {
                               const active = isOrderTypeAllowed(method, c.key);
                               return (
-                                <button
+                                <button type="button"
                                   key={c.key}
                                   type="button"
                                   onClick={() => handlePaymentOrderTypeToggle(key, c.key, `${key}-ot`)}
@@ -3133,7 +3133,7 @@ const SettingsPage: React.FC = () => {
                         rows={3}
                         style={{
                           width: '100%',
-                          padding: '10px 12px',
+                          padding: '12px 16px',
                           border: '1px solid #E6EBF1',
                           borderRadius: 8,
                           fontSize: 13,
@@ -3154,7 +3154,7 @@ const SettingsPage: React.FC = () => {
                   <CardTitle>{t('settings:settingsPage.brand')}</CardTitle>
                   <FormGroup>
                     <div style={{
-                      padding: '10px 12px',
+                      padding: '12px 16px',
                       background: '#F6F9FC',
                       borderRadius: '6px',
                       fontSize: '14px',
@@ -3255,7 +3255,7 @@ const SettingsPage: React.FC = () => {
                         }}
                         style={{ flex: 1 }}
                       />
-                      <button
+                      <button type="button"
                         onClick={() => {
                           const newBreakTimes = operationSettings.breakTimes.filter((_, i) => i !== index);
                           setOperationSettings(prev => ({ ...prev, breakTimes: newBreakTimes }));
@@ -3275,7 +3275,7 @@ const SettingsPage: React.FC = () => {
                       </button>
                     </div>
                   ))}
-                  <button
+                  <button type="button"
                     onClick={() => {
                       const newBreakTime: BreakTime = {
                         id: Date.now().toString(),
@@ -3772,7 +3772,7 @@ const SettingsPage: React.FC = () => {
                                               key={item.id}
                                               onClick={() => addOverride(item)}
                                               style={{
-                                                padding: '10px 14px',
+                                                padding: '12px 16px',
                                                 cursor: 'pointer',
                                                 fontSize: '13px',
                                                 color: '#0A2540',
@@ -3825,7 +3825,7 @@ const SettingsPage: React.FC = () => {
                                         display: 'flex',
                                         alignItems: 'center',
                                         gap: '12px',
-                                        padding: '10px 14px',
+                                        padding: '12px 16px',
                                         borderBottom: '1px solid #F3F4F6',
                                         background: takeawayJustAddedId === prod.id ? '#EEF2FF' : 'white',
                                         transition: 'background 1.2s ease'
@@ -3862,7 +3862,7 @@ const SettingsPage: React.FC = () => {
                                         />
                                       </AutoSaveField>
                                       <span style={{ color: '#6B7C93', fontSize: '13px', minWidth: '24px' }}>{currencySymbol}</span>
-                                      <button
+                                      <button type="button"
                                         type="button"
                                         title={t('settings:settingsPage.removeOverride', 'Remove custom fee (use default)') as string}
                                         onClick={async () => {
@@ -4208,7 +4208,7 @@ const SettingsPage: React.FC = () => {
                         maxLength={20}
                       />
                     </AutoSaveField>
-                    <button
+                    <button type="button"
                       type="button"
                       onClick={handleAddExternalQR}
                       style={{ padding: '10px 20px', background: '#635BFF', color: 'white', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }}
@@ -4245,7 +4245,7 @@ const SettingsPage: React.FC = () => {
                               position: 'relative',
                               borderLeft: hasCoupon ? '4px solid #F59E0B' : undefined
                             }}>
-                              <button
+                              <button type="button"
                                 type="button"
                                 onClick={() => handleRemoveExternalQR(name)}
                                 title="Delete"
@@ -4348,7 +4348,7 @@ const SettingsPage: React.FC = () => {
                           style={{ fontSize: '13px', fontFamily: 'monospace', background: '#F8F9FC' }}
                         />
                         <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-                          <button
+                          <button type="button"
                             type="button"
                             onClick={() => {
                               const url = `${tableSettings.qrCodeBaseUrl}/mobile/${restaurantSlug}`;
@@ -4360,7 +4360,7 @@ const SettingsPage: React.FC = () => {
                           >
                             {t('settings:settingsPage.copyUrl')}
                           </button>
-                          <button
+                          <button type="button"
                             type="button"
                             onClick={() => { window.location.href = `/restaurant/${user?.restaurantId}/settings?tab=store`; }}
                             style={{ padding: '8px 14px', background: '#EEF2FF', color: '#635BFF', border: '1px solid #C7D2FE', borderRadius: '6px', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
@@ -4441,7 +4441,7 @@ const SettingsPage: React.FC = () => {
                             <option value="deep">Deep</option>
                           </Select>
                         </AutoSaveField>
-                        <button
+                        <button type="button"
                           type="button"
                           onClick={async () => {
                             const { playPresetSound } = await import('../../utils/notificationSound');
@@ -4830,7 +4830,7 @@ const SettingsPage: React.FC = () => {
                           <div key={index} style={{ background: '#FAFBFC', padding: '16px', borderRadius: '8px', marginBottom: '12px', border: '1px solid #E6EBF1' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                               <Label style={{ margin: 0 }}>{cat ? `${cat.emoji || '🍽️'} ${cat.name}` : `Category #${sched.category_id}`}</Label>
-                              <button onClick={() => {
+                              <button type="button" onClick={() => {
                                 setMobileSettings(prev => ({ ...prev, category_schedules: prev.category_schedules.filter((_, i) => i !== index) }));
                                 mobileOrderCategorySchedulesRef.current?.triggerSave();
                               }} style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', fontSize: '14px', padding: '4px 8px' }}>{t('settings:settingsPage.remove')}</button>
@@ -4874,13 +4874,13 @@ const SettingsPage: React.FC = () => {
                           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                             <select
                               id="add-schedule-cat"
-                              style={{ flex: 1, padding: '10px 12px', border: '1px solid #E6EBF1', borderRadius: '8px', fontSize: '14px', background: 'white' }}
+                              style={{ flex: 1, padding: '12px 16px', border: '1px solid #E6EBF1', borderRadius: '8px', fontSize: '14px', background: 'white' }}
                             >
                               {availableCats.map((cat: any) => (
                                 <option key={cat.id} value={cat.id}>{cat.emoji || '🍽️'} {cat.name}</option>
                               ))}
                             </select>
-                            <button onClick={() => {
+                            <button type="button" onClick={() => {
                               const sel = document.getElementById('add-schedule-cat') as HTMLSelectElement;
                               if (!sel?.value) return;
                               const catId = parseInt(sel.value);
@@ -4941,7 +4941,7 @@ const SettingsPage: React.FC = () => {
                             <div key={index} style={{ background: '#FAFBFC', padding: '16px', borderRadius: '8px', marginBottom: '12px', border: '1px solid #E6EBF1' }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                                 <Label style={{ margin: 0 }}>Zone {index + 1}</Label>
-                                <button onClick={() => {
+                                <button type="button" onClick={() => {
                                   const zones = [...(operationSettings.deliveryPricing.zones || [])]; zones.splice(index, 1);
                                   setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, zones } }));
                                   setTimeout(() => handleSave(), 300);
@@ -4959,7 +4959,7 @@ const SettingsPage: React.FC = () => {
                                 <span style={{ color: '#6B7C93', fontSize: '14px' }}>{getCurrencySymbol(currencySettings.currency)}</span></FormGroup>
                             </div>
                           ))}
-                          <button onClick={() => {
+                          <button type="button" onClick={() => {
                             const zones = [...(operationSettings.deliveryPricing.zones || [])]; zones.push({ id: `zone-${Date.now()}`, name: '', description: '', fee: 0 });
                             setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, zones } }));
                             setTimeout(() => handleSave(), 300);
@@ -5060,7 +5060,7 @@ const SettingsPage: React.FC = () => {
                         </span>
                       </div>
                       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                        <button
+                        <button type="button"
                           onClick={() => setShowQzGuide(true)}
                           style={{
                             padding: '6px 14px', fontSize: '13px', border: '1px solid #635BFF', borderRadius: '6px',
@@ -5069,7 +5069,7 @@ const SettingsPage: React.FC = () => {
                         >
                           Setup Guide
                         </button>
-                        <button
+                        <button type="button"
                           onClick={async () => {
                             setQzTrayStatus('connecting');
                             try {
@@ -5094,7 +5094,7 @@ const SettingsPage: React.FC = () => {
                       </div>
                     </div>
 
-                    <div style={{ padding: '10px 12px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '6px', fontSize: '13px', color: '#92400E', lineHeight: '1.6', marginBottom: '10px' }}>
+                    <div style={{ padding: '12px 16px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '6px', fontSize: '13px', color: '#92400E', lineHeight: '1.6', marginBottom: '10px' }}>
                       <strong>Important:</strong> QZ Tray must be installed on the <strong>main POS device only</strong> (the PC or tablet that runs your POS).
                       Kitchen display tablets or other devices do not need QZ Tray.
                     </div>
@@ -5127,7 +5127,7 @@ const SettingsPage: React.FC = () => {
                     }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
                         <h2 style={{ margin: 0, fontSize: '20px', color: '#1F2937' }}>{t('settings:settingsPage.qzTraySetupGuide')}</h2>
-                        <button onClick={() => setShowQzGuide(false)} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#6B7C93', padding: '4px' }}>&times;</button>
+                        <button type="button" onClick={() => setShowQzGuide(false)} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#6B7C93', padding: '4px' }}>&times;</button>
                       </div>
 
                       {/* What is QZ Tray */}
@@ -5158,13 +5158,13 @@ const SettingsPage: React.FC = () => {
                           ].map(opt => {
                             const active = qzScenario === opt.key;
                             return (
-                              <button
+                              <button type="button"
                                 key={opt.key}
                                 type="button"
                                 aria-pressed={active}
                                 onClick={() => setQzScenario(opt.key)}
                                 style={{
-                                  flex: 1, padding: '10px 14px', fontSize: '13px', fontWeight: 600,
+                                  flex: 1, padding: '12px 16px', fontSize: '13px', fontWeight: 600,
                                   border: active ? '2px solid #635BFF' : '1px solid #D1D5DB', borderRadius: '8px',
                                   background: active ? '#EEF2FF' : '#fff', color: active ? '#635BFF' : '#374151',
                                   cursor: 'pointer', textAlign: 'left', lineHeight: 1.4
@@ -5193,7 +5193,7 @@ const SettingsPage: React.FC = () => {
                                   desc: t('settings:settingsPage.qzMigStep1Desc'),
                                   action: (
                                     <>
-                                      <button onClick={() => window.open('https://qz.io/download/', '_blank')} style={{ marginTop: '8px', padding: '6px 16px', fontSize: '13px', border: '1px solid #635BFF', borderRadius: '6px', background: '#635BFF', color: '#fff', cursor: 'pointer' }}>{t('settings:settingsPage.downloadQzTray')}</button>
+                                      <button type="button" onClick={() => window.open('https://qz.io/download/', '_blank')} style={{ marginTop: '8px', padding: '6px 16px', fontSize: '13px', border: '1px solid #635BFF', borderRadius: '6px', background: '#635BFF', color: '#fff', cursor: 'pointer' }}>{t('settings:settingsPage.downloadQzTray')}</button>
                                       <div style={{ marginTop: '6px', fontSize: '12px', color: '#10B981', fontStyle: 'italic' }}>
                                         {t('settings:settingsPage.qzMigStep1AlreadyInstalledHint')}
                                       </div>
@@ -5211,7 +5211,7 @@ const SettingsPage: React.FC = () => {
                                 {
                                   title: t('settings:settingsPage.qzFreshStep4Title'),
                                   desc: t('settings:settingsPage.qzFreshStep4Desc'),
-                                  action: <button onClick={() => window.open('https://qz.io/download/', '_blank')} style={{ marginTop: '8px', padding: '6px 16px', fontSize: '13px', border: '1px solid #635BFF', borderRadius: '6px', background: '#635BFF', color: '#fff', cursor: 'pointer' }}>{t('settings:settingsPage.downloadQzTray')}</button>
+                                  action: <button type="button" onClick={() => window.open('https://qz.io/download/', '_blank')} style={{ marginTop: '8px', padding: '6px 16px', fontSize: '13px', border: '1px solid #635BFF', borderRadius: '6px', background: '#635BFF', color: '#fff', cursor: 'pointer' }}>{t('settings:settingsPage.downloadQzTray')}</button>
                                 },
                                 { title: t('settings:settingsPage.qzCommonAllowBrowserTitle'), desc: t('settings:settingsPage.qzCommonAllowBrowserDesc') },
                                 { title: t('settings:settingsPage.qzFreshStep5Title'), desc: t('settings:settingsPage.qzFreshStep5Desc') },
@@ -5269,7 +5269,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                         </div>
                       </div>
 
-                      <button
+                      <button type="button"
                         onClick={() => setShowQzGuide(false)}
                         style={{
                           width: '100%', padding: '12px', fontSize: '15px', fontWeight: 600,
@@ -5314,7 +5314,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
 
                   {printerSettings.billPrinter.enabled && (
                     <>
-                      <div style={{ marginTop: '16px', padding: '10px 12px', background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: '6px', fontSize: '13px', color: '#075985', lineHeight: '1.5' }}>
+                      <div style={{ marginTop: '16px', padding: '12px 16px', background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: '6px', fontSize: '13px', color: '#075985', lineHeight: '1.5' }}>
                         {printerMode === 'qztray' ? (
                           <>{t('settings:settingsPage.sendReceiptsDirectlyToANetworkPrinterViaQzTray')}<br />{t('settings:settingsPage.enterThePrintersNetworkIpAddressBelow')}</>
                         ) : printerMode === 'rawbt' ? (
@@ -5345,7 +5345,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                               }}
                             />
                             </AutoSaveField>
-                            <button
+                            <button type="button"
                               onClick={async () => {
                                 const addr = printerSettings.billPrinter.address;
                                 if (!addr) return;
@@ -5441,7 +5441,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
 
                   {printerSettings.kitchenPrinter.enabled && (
                     <>
-                      <div style={{ marginTop: '16px', padding: '10px 12px', background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: '6px', fontSize: '13px', color: '#075985', lineHeight: '1.5' }}>
+                      <div style={{ marginTop: '16px', padding: '12px 16px', background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: '6px', fontSize: '13px', color: '#075985', lineHeight: '1.5' }}>
                         {printerMode === 'qztray' ? (
                           <>{t('settings:settingsPage.sendKitchenTicketsDirectlyToANetworkPrinterViaQzTray')}<br />{t('settings:settingsPage.enterTheKitchenPrintersNetworkIpAddressBelow')}</>
                         ) : printerMode === 'browser' ? (
@@ -5472,7 +5472,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                               </label>
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                 {kitchenStations.map((station: any) => (
-                                  <div key={station.id} style={{ padding: '10px 12px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '6px' }}>
+                                  <div key={station.id} style={{ padding: '12px 16px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '6px' }}>
                                     <div style={{ fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
                                       {station.name}
                                     </div>
@@ -5499,7 +5499,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                                         }}
                                       />
                                       </AutoSaveField>
-                                      <button
+                                      <button type="button"
                                         onClick={async () => {
                                           const addr = printerSettings.kitchenStationPrinters?.[station.id]?.address;
                                           if (!addr) return;
@@ -5548,7 +5548,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                                   }}
                                 />
                                 </AutoSaveField>
-                                <button
+                                <button type="button"
                                   onClick={async () => {
                                     const addr = printerSettings.kitchenPrinter.address;
                                     if (!addr) return;
@@ -5807,7 +5807,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                 </p>
 
                 <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
-                  <button
+                  <button type="button"
                     type="button"
                     onClick={async () => {
                       const result = await openCustomerDisplay(user?.restaurantId || '');
@@ -5824,7 +5824,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                     {t('settings:settingsPage.customerDisplay.openNow', 'Open Now')}
                   </button>
 
-                  <button
+                  <button type="button"
                     type="button"
                     onClick={async () => {
                       resetCustomerDisplayPosition();
@@ -6006,7 +6006,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                               )}
                             </div>
                             <div style={{ display: 'flex', gap: '8px' }}>
-                              <button
+                              <button type="button"
                                 onClick={() => {
                                   setEditingStation(station);
                                   setStationForm({
@@ -6021,7 +6021,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                               >
                                 Edit
                               </button>
-                              <button
+                              <button type="button"
                                 onClick={() => setDeleteStationConfirm({ isOpen: true, stationId: station.id, stationName: station.name })}
                                 style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #FECACA', background: '#FEF2F2', cursor: 'pointer', fontSize: '13px', color: '#EF4444' }}
                               >
@@ -6136,7 +6136,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                   maxWidth="520px"
                   footer={
                     <>
-                      <button
+                      <button type="button"
                         onClick={() => setShowStationModal(false)}
                         style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #E6EBF1', background: 'white', cursor: 'pointer', fontSize: '14px', color: '#6B7C93' }}
                       >
@@ -6217,7 +6217,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                             <option key={s.value} value={s.value}>{s.label}</option>
                           ))}
                         </select>
-                        <button
+                        <button type="button"
                           type="button"
                           onClick={() => {
                             import('../../utils/notificationSound').then(({ playPresetSound }) => {

@@ -115,5 +115,9 @@
   "history.source.auto": "Auto",
   "history.source.scheduler": "Scheduler",
   "liveOrdersPage.viewOrderHistory": "View order history",
-  "liveOrdersPage.viewCancellationHistory": "View cancellation history"
+  "liveOrdersPage.viewCancellationHistory": "View cancellation history",
+  "liveOrdersPage.options": "Options",
+  "liveOrdersPage.noItemsFound": "No items found",
+  "liveOrdersPage.itemsToAdd": "Items to Add",
+  "liveOrdersPage.searchAndSelectItems": "Search and select items to add"
 }

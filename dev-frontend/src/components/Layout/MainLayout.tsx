@@ -17,7 +17,7 @@ import { useRoleDisplayName } from '../../utils/roleDisplay';
 import { useAllowedRoutes } from '../../hooks/useAllowedRoutes';
 
 import { getAuthToken } from '../../utils/auth';
-import { LayoutDashboard, Users, Truck, Briefcase, MessageSquare, CreditCard, Settings as SettingsIcon, ChevronsLeft, ChevronsRight, LogOut, Activity, Store, Package, ShoppingCart, FileText, Monitor, LayoutGrid, ChefHat, Tv, Smartphone, TrendingUp, Download, Building2, MapPin, Gift } from 'lucide-react';
+import { LayoutDashboard, Users, Truck, Briefcase, MessageSquare, CreditCard, Settings as SettingsIcon, ChevronsLeft, ChevronsRight, LogOut, Activity, Store, Package, ShoppingCart, FileText, Monitor, LayoutGrid, ChefHat, Tv, Smartphone, TrendingUp, Download, Building2, MapPin, Gift, Bell } from 'lucide-react';
 import { usePwaInstall } from '../../contexts/PwaInstallContext';
 
 // System Admin 2-tier sidebar widths
@@ -1975,7 +1975,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           }}>
             Please contact your system administrator to reactivate your account.
           </p>
-          <button
+          <button type="button"
             onClick={handleLogout}
             style={{
               background: '#635BFF',
@@ -2050,7 +2050,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             Your account does not have an active subscription plan. Please contact your system administrator or check your invoices to activate your subscription.
           </p>
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-            <button
+            <button type="button"
               onClick={() => navigate(getInvoicePath())}
               style={{
                 padding: '12px 24px',
@@ -2065,7 +2065,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             >
               View Invoices
             </button>
-            <button
+            <button type="button"
               onClick={() => { authLogout(); navigate('/pos'); }}
               style={{
                 padding: '12px 24px',
@@ -2114,13 +2114,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               fontWeight: 500
             }}
           >
-            <span style={{ fontSize: '18px' }}>🔔</span>
+            <Bell size={18} strokeWidth={2.2} style={{ flexShrink: 0 }} />
             <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {mobileAlertOrders.length === 1
                 ? t('common:mobileOrderAlerts.oneNewOrder', '1 new mobile order') + (mobileAlertOrders[0].tableNumber ? ` · ${t('common:mobileOrderAlerts.table', 'Table')} ${mobileAlertOrders[0].tableNumber}` : '') + (mobileAlertOrders[0].orderNumber ? ` · #${mobileAlertOrders[0].orderNumber}` : '')
                 : t('common:mobileOrderAlerts.multipleNewOrders', '{{count}} new mobile orders', { count: mobileAlertOrders.length })}
             </span>
-            <button
+            <button type="button"
               type="button"
               onClick={() => {
                 const path = `/restaurant/${restaurantId || user?.restaurantId}/live-orders`;
@@ -2142,7 +2142,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             >
               {t('common:mobileOrderAlerts.view', 'View')}
             </button>
-            <button
+            <button type="button"
               type="button"
               title={t('common:mobileOrderAlerts.dismiss', 'Dismiss') as string}
               onClick={() => {
@@ -3478,7 +3478,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   display: 'flex',
                   alignItems: 'center',
                   gap: 10,
-                  padding: '10px 14px',
+                  padding: '12px 16px',
                   margin: '0 8px 12px',
                   borderRadius: 8,
                   background: 'linear-gradient(120deg, #635BFF, #8775FF)',
@@ -3513,7 +3513,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   Hidden when already running standalone (already installed). Triggers PWA prompt
                   directly — no separate /install landing page. */}
               {showInstallButton && (
-                <button
+                <button type="button"
                   type="button"
                   onClick={async () => {
                     if (canInstall) {
@@ -3528,7 +3528,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                     display: 'flex',
                     alignItems: 'center',
                     gap: 10,
-                    padding: '10px 14px',
+                    padding: '12px 16px',
                     margin: '0 8px 12px',
                     borderRadius: 8,
                     background: '#F6F9FC',

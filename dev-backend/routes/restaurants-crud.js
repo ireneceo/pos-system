@@ -1517,9 +1517,31 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
       updateData.staff_limit = req.body.staffLimit || req.body.staff_limit;
     }
 
-    // Settings objects
+    // Settings objects — whitelist nested keys to prevent rogue payload injection.
+    // operation_settings is a large JSON; we accept only known keys instead of trusting client.
+    // Update this allow-list when the schema grows (and `models/Restaurant.js`).
+    const OPERATION_SETTINGS_ALLOWED_KEYS = new Set([
+      'openingTime', 'closingTime', 'timeZone', 'orderNumberReset',
+      'defaultPreparationTime', 'taxEnabled', 'taxRate', 'serviceChargeEnabled',
+      'serviceChargeRate', 'serviceChargeExcludeTakeaway', 'currency',
+      'cashRounding', 'roundingApplyTo', 'pagerSystem', 'takeawayPricing',
+      'deliveryPricing', 'loyaltyTiers', 'orderTypes', 'pickupSettings',
+      'takeawaySettings', 'allowQuickOrder', 'breakTimes', 'mobileOrderProcessing',
+      'mobileOrderAlerts', 'requirePaymentBeforeKitchen'
+    ]);
     if (req.body.payment_settings !== undefined) updateData.payment_settings = req.body.payment_settings;
-    if (req.body.operation_settings !== undefined) updateData.operation_settings = req.body.operation_settings;
+    if (req.body.operation_settings !== undefined) {
+      const ops = req.body.operation_settings;
+      if (ops && typeof ops === 'object' && !Array.isArray(ops)) {
+        const filtered = {};
+        for (const k of Object.keys(ops)) {
+          if (OPERATION_SETTINGS_ALLOWED_KEYS.has(k)) filtered[k] = ops[k];
+        }
+        updateData.operation_settings = filtered;
+      } else {
+        updateData.operation_settings = ops;
+      }
+    }
     if (req.body.table_settings !== undefined) updateData.table_settings = req.body.table_settings;
     if (req.body.floor_plan !== undefined) updateData.floor_plan = req.body.floor_plan;
     if (req.body.printer_settings !== undefined) updateData.printer_settings = req.body.printer_settings;

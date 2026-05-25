@@ -223,7 +223,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                             {formatCurrency(parseFloat(item.price) || 0, operationSettings.currency)}
                           </span>
                           {hasOptions && (
-                            <button
+                            <button type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 // Set item for OptionModal - optionGroups contains ID array like ["6", "7"]
@@ -242,7 +242,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                                 fontWeight: 500
                               }}
                             >
-                              Options
+                              {t('orders:liveOrdersPage.options', 'Options')}
                             </button>
                           )}
                         </div>
@@ -254,7 +254,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                   (item.code && item.code.toLowerCase().includes(addItemsSearchQuery.toLowerCase()))
                 ).length === 0 && (
                   <div style={{ padding: '16px', textAlign: 'center', color: '#9CA3AF' }}>
-                    No items found
+                    {t('orders:liveOrdersPage.noItemsFound', 'No items found')}
                   </div>
                 )}
               </div>
@@ -263,11 +263,11 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
             {/* Items to Add */}
             <div>
               <h4 style={{ margin: '0 0 12px 0', fontWeight: 600, color: '#0A2540' }}>
-                Items to Add ({addItemsCart.reduce((sum: number, item: any) => sum + item.quantity, 0)})
+                {t('orders:liveOrdersPage.itemsToAdd', 'Items to Add')} ({addItemsCart.reduce((sum: number, item: any) => sum + item.quantity, 0)})
               </h4>
               {addItemsCart.length === 0 ? (
                 <div style={{ padding: '24px', textAlign: 'center', color: '#9CA3AF', background: '#F9FAFB', borderRadius: '8px' }}>
-                  Search and select items to add
+                  {t('orders:liveOrdersPage.searchAndSelectItems', 'Search and select items to add')}
                 </div>
               ) : (
                 <div style={{ border: '1px solid #E5E7EB', borderRadius: '8px', overflow: 'hidden' }}>
@@ -285,12 +285,12 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                         </div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                        <button
+                        <button type="button"
                           onClick={() => handleRemoveFromItemsCart(item.cartId)}
                           style={{ width: '32px', height: '32px', border: '1px solid #E5E7EB', borderRadius: '6px', background: 'white', cursor: 'pointer', fontSize: '18px', fontWeight: 500 }}
                         >-</button>
                         <span style={{ minWidth: '28px', textAlign: 'center', fontWeight: 600, fontSize: '15px' }}>{item.quantity}</span>
-                        <button
+                        <button type="button"
                           onClick={() => handleIncreaseCartItem(item.cartId)}
                           style={{ width: '32px', height: '32px', border: '1px solid #E5E7EB', borderRadius: '6px', background: 'white', cursor: 'pointer', fontSize: '18px', fontWeight: 500 }}
                         >+</button>
@@ -688,7 +688,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                             {formatDateTimeUtil(groupedItems[groupNum][0].added_at, operationSettings, { year: undefined, month: undefined, day: undefined, hour: '2-digit', minute: '2-digit' })}
                           </span>
                         )}
-                        <button
+                        <button type="button"
                           onClick={() => handlePrintGroupTicket(groupNum, groupedItems[groupNum])}
                           style={{
                             background: groupNum === 0 ? '#6B7280' : '#F59E0B',
@@ -723,7 +723,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                       </ItemInfo>
                       {/* Delete button - only show before payment and if more than 1 item */}
                       {selectedOrder.payment_status !== 'completed' && items.length > 1 && (
-                        <button
+                        <button type="button"
                           onClick={() => handleDeleteOrderItem(item._originalIndex, item.name || item.menuItem?.name || 'Item')}
                           style={{
                             background: 'none',
@@ -805,7 +805,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
 
           {/* History — 본문 끝 작은 링크. Floor Plan 우측 패널처럼 심플. */}
           <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end' }}>
-            <button
+            <button type="button"
               type="button"
               onClick={() => setShowHistory(true)}
               style={{
@@ -816,8 +816,8 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               }}
             >
               {selectedOrder.status === 'cancelled'
-                ? t('liveOrdersPage.viewCancellationHistory', 'View cancellation history')
-                : t('liveOrdersPage.viewOrderHistory', 'View order history')}
+                ? t('orders:liveOrdersPage.viewCancellationHistory', 'View cancellation history')
+                : t('orders:liveOrdersPage.viewOrderHistory', 'View order history')}
               <span aria-hidden="true">›</span>
             </button>
           </div>
@@ -845,7 +845,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               <div style={{ fontSize: 16, fontWeight: 700, color: '#0A2540' }}>
                 {t('history.title', 'Order History')}
               </div>
-              <button
+              <button type="button"
                 type="button"
                 onClick={() => setShowHistory(false)}
                 style={{

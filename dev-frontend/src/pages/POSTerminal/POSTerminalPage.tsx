@@ -2564,7 +2564,7 @@ const POSTerminalPage: React.FC = () => {
               <span style={{ color: '#6B7C93', fontSize: '14px', fontWeight: 500 }}>{'POS Terminal'}</span>
             )}
           </Logo>
-          <button
+          <button type="button"
             onClick={() => navigate(`/restaurant/${restaurantId}/dashboard`)}
             style={{
               background: 'none',
@@ -2589,7 +2589,7 @@ const POSTerminalPage: React.FC = () => {
             <span style={{ fontSize: '11px', color: '#8898AA', marginLeft: '4px' }}>▼</span>
           </StaffInfo>
           <DateTime>{formatDateTimeLocal(currentDateTime)}</DateTime>
-          <button
+          <button type="button"
             type="button"
             onClick={async () => {
               const result = await openCustomerDisplay(user?.restaurantId || '');
@@ -2738,7 +2738,7 @@ const POSTerminalPage: React.FC = () => {
                         key={item.id}
                         soldOut={item.soldOut}
                         onClick={() => handleAddItemDirectly(item)}
-                        style={{ padding: '10px 12px', textAlign: 'left' }}
+                        style={{ padding: '12px 16px', textAlign: 'left' }}
                       >
                         {item.is_set_menu && <SetBadge>{'SET'}</SetBadge>}
                         <MenuName style={{ marginBottom: 2 }}>{item.code ? `${item.code} ` : ''}{item.name}</MenuName>
@@ -3112,7 +3112,7 @@ const POSTerminalPage: React.FC = () => {
                                     key={c.id}
                                     onClick={() => { if (eligible) handleApplyCoupon(c.code); }}
                                     style={{
-                                      padding: '10px 14px',
+                                      padding: '12px 16px',
                                       cursor: eligible ? 'pointer' : 'not-allowed',
                                       opacity: eligible ? 1 : 0.5,
                                       fontSize: '13px',
@@ -3348,7 +3348,7 @@ const POSTerminalPage: React.FC = () => {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
               {mergeableOrders.map((o) => (
-                <button
+                <button type="button"
                   key={o.id}
                   type="button"
                   onClick={() => {
@@ -3382,18 +3382,18 @@ const POSTerminalPage: React.FC = () => {
             </div>
 
             <div style={{ display: 'flex', gap: 8 }}>
-              <button
+              <button type="button"
                 type="button"
                 onClick={() => setShowMergeChoiceModal(false)}
                 style={{
-                  flex: 1, padding: '10px 14px', border: '1px solid #E6EBF1',
+                  flex: 1, padding: '12px 16px', border: '1px solid #E6EBF1',
                   background: 'white', color: '#6B7C93', borderRadius: 8,
                   fontSize: 13, fontWeight: 500, cursor: 'pointer'
                 }}
               >
                 {t('pos:mergeChoice.cancel', 'Cancel')}
               </button>
-              <button
+              <button type="button"
                 type="button"
                 onClick={() => {
                   setForceMergeOrderId(null);
@@ -3401,7 +3401,7 @@ const POSTerminalPage: React.FC = () => {
                   setShowPaymentModal(true);
                 }}
                 style={{
-                  flex: 2, padding: '10px 14px', border: 'none',
+                  flex: 2, padding: '12px 16px', border: 'none',
                   background: '#635BFF', color: 'white', borderRadius: 8,
                   fontSize: 13, fontWeight: 600, cursor: 'pointer'
                 }}

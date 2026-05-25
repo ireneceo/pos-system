@@ -149,6 +149,15 @@ const authLimiter = rateLimit({
 });
 app.use('/api/auth/login', authLimiter);
 
+// Anonymous mobile order endpoint — IP당 15분에 60회 (한 매장에서 손님들이 동시 주문해도 60건이면 충분).
+// 익명 endpoint 이므로 brute-force / coupon validation 남용 / DoS 방어.
+const mobileOrderLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  message: { success: false, error: 'Too many orders, please try again later.' }
+});
+app.use('/api/mobile/order', mobileOrderLimiter);
+
 // Payment Gateway Webhooks (v3.24+) — Stripe + PayPal 통합 라우터, signature + dedupe + 8 종 처리
 // MUST be before express.json() for raw body signature verification
 app.use('/api/webhooks', require('./routes/webhooks-payments'));

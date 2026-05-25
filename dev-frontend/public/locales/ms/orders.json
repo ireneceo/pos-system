@@ -115,5 +115,9 @@
   "history.source.auto": "Auto",
   "history.source.scheduler": "Penjadual",
   "liveOrdersPage.viewOrderHistory": "Lihat sejarah pesanan",
-  "liveOrdersPage.viewCancellationHistory": "Lihat sejarah pembatalan"
+  "liveOrdersPage.viewCancellationHistory": "Lihat sejarah pembatalan",
+  "liveOrdersPage.options": "Pilihan",
+  "liveOrdersPage.noItemsFound": "Tiada item menu dijumpai",
+  "liveOrdersPage.itemsToAdd": "Item untuk Ditambah",
+  "liveOrdersPage.searchAndSelectItems": "Cari dan pilih item menu untuk ditambah"
 }
