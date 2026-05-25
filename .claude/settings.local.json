@@ -322,7 +322,11 @@
       "Bash(scp /var/www/dev-backend/models/OrderAction.js irene@87.106.78.146:/var/www/production-backend/models/OrderAction.js)",
       "Bash(awk 'NR==5400,NR==5455' /var/www/dev-frontend/src/pages/Settings/SettingsPage.tsx)",
       "Bash(awk 'NR>=5300 && NR<=5460' /var/www/dev-frontend/src/pages/Settings/SettingsPage.tsx)",
-      "Bash(awk 'NR>=5200 && NR<=5450 && /TabType\\\\|activeTab|=== \"/' /var/www/dev-frontend/src/pages/Settings/SettingsPage.tsx)"
+      "Bash(awk 'NR>=5200 && NR<=5450 && /TabType\\\\|activeTab|=== \"/' /var/www/dev-frontend/src/pages/Settings/SettingsPage.tsx)",
+      "Bash(xargs -I {} curl -sI \"https://dev.purplehere.com/static/js/{}\")",
+      "Bash(kill 2843238 2843130 2843141)",
+      "Bash(scp /tmp/migrate-slot-count.js irene@87.106.78.146:/var/www/production-backend/migrate-slot-count.js)",
+      "Bash(systemctl --user list-timers)"
     ],
     "deny": [],
     "ask": []

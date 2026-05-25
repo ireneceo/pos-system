@@ -671,13 +671,18 @@ const PaymentPage: React.FC = () => {
 
     let charge = 0;
     if (operationSettings.takeawayPricing.pricingType === 'per-item') {
-      // Per-item charge
+      // Flat per-item charge (same for every item)
       const totalQuantity = cartItems.reduce((sum, item) => sum + item.quantity, 0);
       charge = totalQuantity * operationSettings.takeawayPricing.perItemCharge;
     } else {
-      // Per-category charge
+      // per-category and per-item-individual: getTakeawayCharge inspects the menu item.
+      // Pass both the category (legacy per-category) and takeaway_charge (per-item-individual) via the item shim.
       cartItems.forEach(item => {
-        const itemCharge = getTakeawayCharge((item.menuItem as any).categoryId || (item.menuItem as any).category);
+        const mi = item.menuItem as any;
+        const itemCharge = getTakeawayCharge({
+          category: mi.categoryId || mi.category,
+          takeaway_charge: mi.takeaway_charge
+        });
         charge += itemCharge * item.quantity;
       });
     }

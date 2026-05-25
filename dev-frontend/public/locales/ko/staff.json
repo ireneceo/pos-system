@@ -8,6 +8,8 @@
   "staffPage.allRoles": "전체 역할",
   "staffPage.restaurantAdmin": "레스토랑 관리자",
   "staffPage.staff": "직원",
+  "staffPage.roleHintStaff": "직원: 주문 접수·취소, 테이블 관리, 라이브 오더 조회 가능. 주문 삭제, 메뉴 수정, 매장 설정 변경은 불가합니다.",
+  "staffPage.roleHintAdmin": "레스토랑 관리자: 모든 권한 (주문 삭제, 메뉴·레시피 편집, 매장 설정, 직원 관리, 전체 리포트 조회).",
   "staffPage.staffMember": "직원",
   "staffPage.role": "역할",
   "staffPage.department": "부서",

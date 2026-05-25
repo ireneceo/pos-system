@@ -8,6 +8,8 @@
   "staffPage.allRoles": "所有角色",
   "staffPage.restaurantAdmin": "餐厅管理员",
   "staffPage.staff": "员工",
+  "staffPage.roleHintStaff": "员工：可接单、取消订单、管理桌位、查看实时订单。无法删除订单、修改菜单或更改店铺设置。",
+  "staffPage.roleHintAdmin": "餐厅管理员：拥有全部权限（删除订单、编辑菜单与食谱、更改店铺设置、管理员工、查看所有报告）。",
   "staffPage.staffMember": "员工",
   "staffPage.role": "角色",
   "staffPage.department": "Department",

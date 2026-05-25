@@ -49,4 +49,16 @@ i18n
     },
   });
 
+// Keep <html lang="..."> in sync with i18n language.
+// Native browser components (e.g., <input type="time"> AM/PM, date pickers,
+// number formatting, hyphenation) read this attribute to choose their locale,
+// so leaving it stale causes Korean "오전/오후" to appear in non-Korean UIs.
+const syncHtmlLang = (lng: string) => {
+  if (typeof document !== 'undefined' && document.documentElement) {
+    document.documentElement.setAttribute('lang', lng);
+  }
+};
+i18n.on('languageChanged', syncHtmlLang);
+i18n.on('initialized', () => syncHtmlLang(i18n.language));
+
 export default i18n;

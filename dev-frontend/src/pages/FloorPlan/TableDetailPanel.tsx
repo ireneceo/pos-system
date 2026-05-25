@@ -26,7 +26,9 @@ const getProofHistory = (proof: any): any[] => {
 };
 
 interface TableDetailPanelProps {
-  tableNumber: string;
+  // null → takeaway mode (no table). String → dine-in mode for that table.
+  // Dine-in specifics (table label, seats, QR, "Leaved", Available empty-state) are hidden when null.
+  tableNumber: string | null;
   statusInfo: TableStatusInfo | undefined;
   tableInfo: FloorTable | undefined;
   currency: string;
@@ -1132,11 +1134,15 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
 
       <PanelHeader>
         <TableTitle>
-          <h3>Table {getTableLabel(tableNumber, floorPlan).display}</h3>
+          {tableNumber ? (
+            <h3>Table {getTableLabel(tableNumber, floorPlan).display}</h3>
+          ) : (
+            <h3>Takeaway · {statusInfo?.orderNumber || (statusInfo?.orderId ? `#${statusInfo.orderId}` : '')}</h3>
+          )}
           <TableMeta>
-            {statusInfo?.guestCount ? (
+            {tableNumber && statusInfo?.guestCount ? (
               <span>{statusInfo.guestCount} guests</span>
-            ) : tableInfo ? (
+            ) : tableNumber && tableInfo ? (
               <span>{tableInfo.seats} seats</span>
             ) : null}
             {isOccupied && <span>{statusInfo!.elapsedMinutes}min</span>}
@@ -1646,8 +1652,8 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                   Cancel Order
                 </ActionBtn>
               )}
-              {/* Leaved — completed 상태에서만: 테이블 비우기 */}
-              {orderStatus === 'completed' && statusInfo!.orderId && (
+              {/* Leaved — dine-in 전용: completed 상태에서 테이블 비우기. takeaway 는 비울 테이블 없음 */}
+              {tableNumber && orderStatus === 'completed' && statusInfo!.orderId && (
                 <ActionBtn
                   $variant="primary"
                   onClick={() => onClearTable(statusInfo!.orderId!)}

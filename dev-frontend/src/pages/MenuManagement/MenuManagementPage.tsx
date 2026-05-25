@@ -897,7 +897,8 @@ const MenuManagementPage: React.FC = () => {
     is_featured: false,
     set_items: [],
     set_display_order: 0,
-    recipe_id: null
+    recipe_id: null,
+    takeaway_charge: 0
   });
 
   const [directIngredients, setDirectIngredients] = useState<{ingredient_id: number; name: string; quantity: number; unit: string; unit_cost: number}[]>([]);
@@ -1058,7 +1059,8 @@ const MenuManagementPage: React.FC = () => {
       is_set_menu: false,
       set_items: [],
       set_display_order: 0,
-      recipe_id: null
+      recipe_id: null,
+      takeaway_charge: 0
     });
     setSelectedOptionGroups([]);
     setSetMenuItems([]);
@@ -1077,7 +1079,8 @@ const MenuManagementPage: React.FC = () => {
       is_set_menu: true,
       set_items: [],
       set_display_order: 0,
-      recipe_id: null
+      recipe_id: null,
+      takeaway_charge: 0
     });
     setSelectedOptionGroups([]);
     setSetMenuItems([]);
@@ -1094,7 +1097,8 @@ const MenuManagementPage: React.FC = () => {
       is_set_menu: item.is_set_menu || false,
       set_items: item.set_items || [],
       set_display_order: item.set_display_order || 0,
-      recipe_id: item.recipe_id || null
+      recipe_id: item.recipe_id || null,
+      takeaway_charge: item.takeaway_charge ?? 0
     });
     setSelectedOptionGroups(item.optionGroups || []);
     setSetMenuItems(item.set_items || []);
@@ -1262,6 +1266,7 @@ const MenuManagementPage: React.FC = () => {
       set_items: [],
       set_display_order: 0,
       recipe_id: formData.recipe_id || null,
+      takeaway_charge: formData.takeaway_charge ?? 0,
       directIngredients: !formData.recipe_id ? directIngredients : undefined
     } as any;
 
@@ -1290,7 +1295,8 @@ const MenuManagementPage: React.FC = () => {
       soldOut: false,
       is_set_menu: true,
       set_items: setMenuItems,
-      set_display_order: formData.set_display_order || 0
+      set_display_order: formData.set_display_order || 0,
+      takeaway_charge: formData.takeaway_charge ?? 0
     };
 
     if (editingItem) {
@@ -1619,6 +1625,25 @@ const MenuManagementPage: React.FC = () => {
           </UIFormGroup>
 
           <UIFormGroup>
+            <FormLabel>{t('menu:menuManagementPage.takeawayPackagingFee', 'Takeaway Packaging Fee (RM)')}</FormLabel>
+            <FormInput
+              type="number"
+              value={formData.takeaway_charge ?? 0}
+              onChange={(e) => setFormData({ ...formData, takeaway_charge: parseFloat(e.target.value) || 0 })}
+              onFocus={(e) => {
+                if (parseFloat(e.target.value) === 0) {
+                  e.target.select();
+                }
+              }}
+              step="0.10"
+              min="0"
+            />
+            <div style={{ fontSize: '12px', color: '#6B7C93', marginTop: '4px' }}>
+              {t('menu:menuManagementPage.takeawayPackagingFeeHelp', 'Only applied when takeaway pricing is set to "Per Menu Item (set individually)". Leave at 0 if no packaging fee.')}
+            </div>
+          </UIFormGroup>
+
+          <UIFormGroup>
             <FormLabel>Category *</FormLabel>
             <FormSelect
               value={formData.category}
@@ -1836,6 +1861,25 @@ const MenuManagementPage: React.FC = () => {
               min="0"
               disabled={!!editingItem?.brand_menu_locks_snapshot?.price}
             />
+          </UIFormGroup>
+
+          <UIFormGroup>
+            <FormLabel>{t('menu:menuManagementPage.takeawayPackagingFee', 'Takeaway Packaging Fee (RM)')}</FormLabel>
+            <FormInput
+              type="number"
+              value={formData.takeaway_charge ?? 0}
+              onChange={(e) => setFormData({ ...formData, takeaway_charge: parseFloat(e.target.value) || 0 })}
+              onFocus={(e) => {
+                if (parseFloat(e.target.value) === 0) {
+                  e.target.select();
+                }
+              }}
+              step="0.10"
+              min="0"
+            />
+            <div style={{ fontSize: '12px', color: '#6B7C93', marginTop: '4px' }}>
+              {t('menu:menuManagementPage.takeawayPackagingFeeHelp', 'Only applied when takeaway pricing is set to "Per Menu Item (set individually)". Leave at 0 if no packaging fee.')}
+            </div>
           </UIFormGroup>
 
           <UIFormGroup>

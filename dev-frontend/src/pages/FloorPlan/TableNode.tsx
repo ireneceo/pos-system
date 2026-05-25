@@ -111,6 +111,21 @@ const MultiOrderBadge = styled.div`
   box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 `;
 
+// Mobile order indicator: small purple dot for tables with a mobile/QR-source pending order.
+// Distinguishes self-ordered (mobile) tables from staff-entered (POS) ones at a glance.
+const MobileOrderDot = styled.div`
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #635BFF;
+  border: 2px solid white;
+  z-index: 5;
+  box-shadow: 0 0 0 1px rgba(99, 91, 255, 0.4), 0 1px 3px rgba(0, 0, 0, 0.15);
+`;
+
 const TEXT_ONLY_FIXTURES = new Set(['kitchen', 'entrance']);
 
 const FIXTURE_COLORS: Record<string, { bg: string; border: string; text: string }> = {
@@ -182,6 +197,7 @@ const TableNode: React.FC<TableNodeProps> = React.memo(({
 
   return (
     <NodeWrapper
+      data-table-node
       $x={table.x} $y={table.y}
       $w={table.width} $h={table.height}
       $shape={isTextOnly ? 'square' : table.shape}
@@ -199,6 +215,9 @@ const TableNode: React.FC<TableNodeProps> = React.memo(({
       {isStaffMeal && <StaffMealBadge>{'STAFF'}</StaffMealBadge>}
       {!isFixture && statusInfo?.orderCount && statusInfo.orderCount > 1 && (
         <MultiOrderBadge>{statusInfo.orderCount}</MultiOrderBadge>
+      )}
+      {!isFixture && statusInfo?.orderSource === 'mobile' && statusInfo?.orderStatus === 'pending' && (
+        <MobileOrderDot title="New mobile order" />
       )}
       <TableLabel $textColor={colors.text} style={isTextOnly ? {
         fontSize: '14px',

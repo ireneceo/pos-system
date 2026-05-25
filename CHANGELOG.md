@@ -8,6 +8,246 @@
 
 ---
 
+## [v3.42] — 2026-05-24 배포 (Floor Plan Takeaway 완전 재설계)
+
+### Floor Plan Takeaway View — 풍부화 + iframe overlay 통일
+- **Takeaway 카드 그리드** 색상 통일 — Floor Plan canvas 의 TableNode 와 동일한 `ORDER_STATUS_COLORS` 팔레트 (pending=yellow / preparing=purple / ready=green / served=darkgreen / completed=gray / cancelled=red / awaiting_payment=orange). 정신없던 다른 색 혼재 해소
+- **데이터 scope = 오늘 (매장 타임존)** — Floor Plan canvas 의 `/table-status` 가 오늘 기준이라 takeaway 도 동일하게 `calculatePeriodDateRange('today', timezone)` 로 맞춤. 전체 history 는 Live Orders 에서
+- **공유 가능한 URL** — `?zone=z_main`, `?view=takeaway`, `?order=123` 쿼리 쌍방향 sync. 직원 간 링크 공유 시 동일 화면 진입
+- **Takeaway 사이드 패널 풍부화** — TableDetailPanel 수준 정보 (다이닝 specific 제외):
+  - Header: 주문 번호 + "Just now" / "N min ago" 경과 시간
+  - Status / Payment 뱃지 (palette 색)
+  - Order Info 섹션: 주문 시간 (timezone) / Source (POS·Mobile) / Cashier / Payment method
+  - Customer 섹션 (있을 때만): 이름 / 전화
+  - Items 풀 리스트: 라인 합계 + 옵션 + 노란 highlight 메모
+  - Money breakdown: Subtotal / Packaging / Service Charge / Tax / Discount (− 빨간) / Total (bold) / Received + Change
+- **사이드 패널 absolute overlay** — 클릭/닫기 시 그리드 카드 reflow 없음 (Linear/Figma/Stripe 표준). 좌측 그림자로 floating 표시
+- **i18n** — `floorPlanPage.*` 19 키 × 4언어 (en/ko/zh/ms) = 76 신규 string
+
+### Walk-in Takeaway 진입 — iframe POSOverlay 통일
+- v3.41 의 walk-in 진입이 `navigate('/pos-terminal?order_type=takeaway&from=floor-plan')` 직접 라우팅이라 테이블 New Order 의 iframe overlay (검정 바 × Close) 와 비대칭이었음 — 일관성 깨짐
+- **단일 함수 `handleNewOrder(opts?: { takeaway?: boolean })`** — 테이블 New Order 와 walk-in 양쪽 모두 같은 `POSOverlay` iframe 사용. 검정 바 title 만 `Table N` vs `Walk-in Takeaway` 동적 분기
+- 닫기 = `× Close` 검정 바 하나. 주문 완료 시 `postMessage('pos-order-complete')` → Floor Plan listener 가 overlay 닫고 fetchStatuses
+- **POS Terminal 자체에 close/back 버튼 절대 추가 금지** — 검정 바가 유일한 닫기 경로 (Floor Plan state 보존)
+
+### 문서화 — POSOverlay 패턴 박제
+- `reference_floor_plan_pos_overlay.md` memory 신규 + MEMORY.md 인덱스 추가
+- `FloorPlanPage.tsx` `handleNewOrder` 위 코드 anchor 주석 — "split 금지 / navigate 직진 금지 / × Close 유일" 명시
+- 새 진입 타입 추가 시 옵션 키만 늘리면 됨
+
+### Takeaway 주문관리 패널 — TableDetailPanel 100% 재사용 (지난 작업 정정)
+- 직전 작업에서 takeaway 사이드 패널을 **별도 컴포넌트** 로 만들고 "Open in Live Orders" 한 줄짜리 액션만 둠 — 테이블 카드 클릭 패널과 비대칭. 사용자는 takeaway 패널에서 직접 Confirm/Ready/Served/Payment/Cancel 못 함
+- **올바른 fix** — `TableDetailPanel` 컴포넌트 자체에 `tableNumber: string | null` 지원 추가. null = takeaway 모드 자동 분기
+  - Header: `Table N` ↔ `Takeaway · #orderNumber` 동적
+  - Seats / Table QR / "Leaved" / "Available" 빈 상태 — tableNumber null 시 자동 숨김
+  - ActionGroup (Confirm/Ready/Served/Complete/Cancel/Payment, IconButton, Quick Complete ✓) **100% 동일** — 같은 함수, 같은 wiring
+  - `handlePaymentConfirm` 도 takeaway orderId 분기 추가 — 한 함수로 dine-in + takeaway 둘 다 처리. PaymentModal 도 같은 컴포넌트 재사용
+- **FloorPlanPage**: 별도 panel 200 줄 삭제, 같은 `<TableDetailPanel>` 호출만 2회 (dine-in + takeaway). takeaway order → TableStatusInfo 어댑터 함수 추가
+- **Zone chip active gate** — Floor 뷰일 때만 zone chip highlight (`activeView === 'floor' && activeZoneFilter === ...`). Takeaway 뷰에서 zone chip 같이 highlight 되던 시각적 모순 해소
+- **검증**: API PATCH `/orders/2173/status pending→preparing` 200 · READ-BACK status=preparing 일치 · revert 200. Mount sweep 6/6, hydration 0, i18n 0, health-check 80/80
+
+---
+
+## [v3.41 hotfix #1] — 2026-05-24 배포 (Canvas Size input UX — 같은 날 누적)
+
+### Floor Plan Editor — Canvas Size 입력 자유 타이핑
+- v3.41 의 Canvas Size 입력 필드가 `onChange` 시점에 즉시 clamp(600..5000) 하여, 사용자가 "1500" 타이핑 중 "1" 만 눌러도 600 으로 강제 변경되는 버그
+- Local string state 도입 (`canvasWidthInput` / `canvasHeightInput`) — `onChange` = 자유 string 보관, `onBlur` 또는 **Enter 키** 시점에 commit + clamp + DB state 반영
+- `useEffect([floorPlan.canvasWidth/Height])` 로 외부 변경 (load/undo) 시 자동 sync
+- Industry-standard pattern (Notion / Linear / Figma 동일)
+- 검증: clamp 로직 5/5 (정상/공백/min/max) + DB round-trip 2500x1800
+
+---
+
+## [v3.41] — 2026-05-24 배포 (Floor Plan Editor Pro + Takeaway Walk-in)
+
+### Floor Plan Editor — Pro 기능 추가 (큰 매장 + 빠른 편집)
+- **Canvas Size 조절** — Sidebar 새 카드 "Canvas Size" + Width/Height 입력 (600~5000 clamp, step 100). 대형 매장 / 다중 zone 매장 대응
+- **도형 드래그-드롭 (Drag-to-add)** — Shape 버튼 mouseDown → 캔버스 mouseup 위치에 정확 배치. 클릭만 = 기존 중앙 배치 (fallback). 드래그 중 cursor: crosshair
+- **다중 선택 (Multi-select)** —
+  - 빈 캔버스 drag = lasso 사각형 선택 (반투명 보라 박스, 1.5px dashed)
+  - Shift/Cmd/Ctrl + 테이블 클릭 = 개별 add/remove
+  - 다중 선택 + drag = anchor 기준 offset 보존하며 그룹 전체 함께 이동
+  - Delete 키 = 일괄 삭제
+  - 우상단 "N selected" 보라 뱃지
+
+### Floor Plan 운영 화면 — Takeaway Walk-in Mode pills
+- 매장에서 walk-in 손님이 takeaway 주문할 때 매번 페이지 왔다갔다 하던 흐름 해소
+- Header 아래 ModeBar 추가: `[🪑 Dine-In]` (current floor canvas) + `[📦 + Takeaway Walk-in]` (CTA 보라 테두리)
+- Takeaway pill 클릭 → `/pos-terminal?order_type=takeaway&from=floor-plan` 으로 자동 이동 + POS Terminal 첫 mount 시 takeaway 모드 자동 초기화
+- Pickup / Delivery 는 의도적 제외 — 모바일 셀프 전용 흐름
+
+### POS Terminal
+- `order_type` query param 받아서 초기 orderType 설정 (Floor Plan walk-in 흐름과 deep-link)
+
+### FloorPlanCanvas 인터페이스 확장
+- `selectedTableIds?: Set<string>` optional 추가 (back-compat — 기존 호출자 4곳 영향 없음)
+
+### i18n
+- 신규 9 키 × 4언어 (en/ko/zh/ms) — `canvasSize`, `width`, `height`, `multiSelected`, `mode`, `dineIn`, `takeawayWalkIn` 등
+
+### 검증
+- API 7/7 (canvas 3000x2000 round-trip / drag-to-add 좌표 / group move +100 / 401), mount sweep 6/6 (deep-link 포함), Health check 80/80, hydration 0 warnings
+
+---
+
+## [v3.40 hotfix #1] — 2026-05-24 배포 (Zones & Groups Pool 시각화 — 같은 날 누적)
+
+### ZonesAndGroupsCard UI 시각화 개선
+- v3.40 의 `slot_count` 도입 후 그룹 행 표시가 "0 table" 단순 카운트라 풀이 비어있는 상태와 의도적 0 의 구분이 안 됨 — 사용자가 "0/0 이면 뭐를 어떻게 해야 하는지" 모름
+- **Pool 상태 시각화** — 3가지 variant (empty / partial / full):
+  - **Empty** (slot_count=0): 회색 "Set pool size →" CTA 링크 (클릭 시 Edit 모달 직접 오픈)
+  - **Partial** (0 < placed < pool): 보라색 `placed / pool` 메트릭 + 진행바 (`▮▮▯▯▯▯▯▯▯▯▯`)
+  - **Full** (placed >= pool > 0): 초록색 메트릭 + ✓ 아이콘
+- **Zone 헤더 합계** — 각 zone 옆에 zone 전체 `{placed} placed / {pool} in pool` 표시 (tabular-nums)
+- **PrefixBadge** — prefix 없는 그룹은 회색 `—` 표시로 의도적 unset 시각화
+- **마이크로 인터랙션** — row hover 시 #FAFBFC 배경 + 6px radius + 0.15s transition, 진행바 width 0.2s transition
+- **접근성** — `type="button"` 명시, `aria-hidden` on 진행바, `aria-label="all placed"` on ✓, `font-variant-numeric: tabular-nums`
+- **i18n 4언어** (en/ko/zh/ms): `poolNotSet`, `setPoolSizeHint`, `poolMetric`, `zonePoolMeta` 신규 4 키 × 4 = 16 string
+- 검증: API variant 계산 (empty/partial/full ratio 0/0.30/1.00) ✓, mount sweep 5/5 ✓, hydration 0 warnings ✓
+
+---
+
+## [v3.40] — 2026-05-24 배포 (Floor Plan Pool-driven 재설계 — Settings = 풀 / Editor = 배치)
+
+### Pool-driven 재설계 — 테이블 데이터 단일 진리의 원천 정리
+- **문제**: Settings 의 그룹 만들기 (자동 N개 깔기) 와 Editor 의 Add Table (임의 max+1) 두 흐름이 공존 → 사용자가 "어느 게 기준?" 혼란 + Settings 풀 밖 임의 숫자 추가 가능 + 주문/결제 흐름에 따라다니는 테이블 번호 안정성 우려
+- **재설계**: Settings = 풀 정의 (`slot_count`) / Editor = 배치만
+  - `FloorTableGroup.slot_count` 신규 필드 (optional, legacy 매장은 placed count 로 fallback)
+  - Settings → Zones & Groups 그룹 모달: "Pool size" 필드. Add 시 floor 에 자동 배치 X (풀만 정의). Edit 시도 size 조정. 배치된 수 미만으로 축소 시 amber 경고
+  - Editor 의 "Place Table" 카드: 그룹 selector + `placed/total` 카운트. Shape 클릭 → 그룹의 미배치 slot 첫번째 자동 → 캔버스 배치. 풀 exhausted 시 "Edit pool in Settings" indigo 안내 + 링크 버튼
+  - 선택 테이블 Table Number: 평소 read-only display ("B-3" + "Change" 작은 링크). Change 클릭 → 입력박스 + 같은 그룹 미배치 slot 자동완성 매칭 (임의 입력 불가). 매칭 없으면 "Edit pool in Settings" 링크. ESC/Cancel 닫기
+- **운영 마이그레이션 완료**: 4 매장 / 6 그룹 — `slot_count = placed tables 수` 자동 설정 (legacy fallback 명시화)
+- **POS Terminal**: `availableTables` 도 v2 동기화 (`floor_plan.tables[].label` 우선)
+- **i18n**: 22개 신규 키 × 4언어 (en/ko/zh/ms) = 88 string 추가
+- 검증: API 10/10, Health check 80/80, mount sweep 6/6, hydration 0 warnings
+
+---
+
+## [v3.39 hotfix #2] — 2026-05-24 배포 (Floor Plan Editor 통합 정리 — 같은 날 누적 2차)
+
+### Floor Plan Editor — Zone Filter Chip 추가
+- 다중 zone 매장에서 Editor 가 모든 zone 의 테이블을 한 캔버스에 그려서 zone1 의 B 와 zone2 의 A 가 시각적으로 겹치던 문제
+- FloorPlanPage 와 동일 패턴의 zone chip 바를 Editor 헤더 아래에 추가 — All Zones (전체 카운트) + 각 zone (해당 zone 카운트)
+- 선택한 zone 만 캔버스에 표시. 저장 시에는 전체 데이터를 그대로 PUT 하므로 데이터 손실 없음
+
+### Floor Plan Editor — v1 "T001-T020" 드롭다운 완전 제거
+- 좌측 "Add Table (N left)" 카운터가 옛 `table_settings.tablePrefix + totalTables` 에서 생성된 v1 식 풀 (T001..T020) 을 보여주던 버그 — v2 Zones & Groups 와 mismatch
+- Add Table UI 재구성:
+  - 그룹 selector 드롭다운 (active zone 의 그룹만 노출)
+  - Shape 클릭 시 해당 그룹의 max(tableNumber)+1 자동 + 라벨 = `group.prefix + 번호`
+  - 그룹 없으면 "Settings → Tables & QR 에서 만들어주세요" amber 안내 박스
+- 선택된 테이블의 Table Number 편집도 드롭다운 → free-text 숫자 input 변경. 변경 시 라벨도 그룹 prefix 기반 자동 재계산
+
+### POS Terminal `availableTables` 도 v2 동기화
+- POS dine-in 모드의 테이블 선택 드롭다운도 v1 풀 사용하던 것 → `floor_plan.tables[].label` 우선
+- 옛 매장 (floor plan 미설정) 만 v1 fallback 유지
+
+### Settings Zones & Groups — 자동 테이블 생성 default 0
+- 그룹 생성 모달의 "Number of tables" default `4` → `0` 로 변경
+- 0 = 빈 그룹 생성 (사용자가 Floor Plan Editor 에서 하나씩 추가). count > 0 입력 시에만 자동 배치 (amber 안내 노출)
+- "Number of tables (optional)" 라벨 + "Leave at 0 to create an empty group" hint 노출
+
+### 운영 restaurant 16 일회성 데이터 재배치 (across zones)
+- Zone1 + Zone2 가 같은 (50,50) 시작 좌표라 All Zones 보기에서 겹치던 문제
+- zone 별로 sort_order 순회 + 이전 zone 의 max y + 60px ZONE_GAP 부터 재시작하여 reflow
+- 결과: Zone1/B (y=50..140) + Zone1/T (y=240..600) + Zone2/A (y=730..910) — All Zones 보기에서도 겹침 없음
+
+---
+
+## [v3.39 hotfix #1] — 2026-05-24 배포 (Floor Plan UX bugfix — 같은 날 누적)
+
+### Floor Plan Rect (V) 셀렉트 매핑 수정
+- 테이블 편집 패널의 Shape 셀렉트에서 Rect (H) 와 Rect (V) 둘 다 내부 `value='rectangle'` 이라 V 선택해도 H 로 매핑되던 버그 수정
+- 셀렉트 option value 를 복합 키 (`rectangle:vertical` / `rectangle:horizontal`) 로 변경 → DB 의 shape 컬럼은 `'rectangle'` 그대로 유지, orientation 은 width/height 로 식별
+- 기존 데이터 호환: 현재 width < height 인 테이블은 V 로, 아니면 H 로 자동 표시
+
+### Zones & Groups 신규 그룹 좌표 자동 충돌 회피
+- 같은 zone 에 두 번째 그룹 생성 시 두 그룹 모두 (50, 50) 부터 시작해서 시각적으로 겹치던 버그 수정
+- 새 그룹의 시작 y 좌표 = 같은 zone 에 이미 있는 테이블 max(y + height) + 30px 갭
+- 결과: B 그룹 → 위쪽 행, 새로 추가하는 T 그룹 → 자동으로 B 아래 행부터 시작
+
+### 운영 restaurant 16 일회성 좌표 재배치 (데이터 패치)
+- 기존 B + T 그룹이 같은 zone (z_main) 의 동일 좌표 (50,50) 부터 시작해서 화면에 B 가 T 에 가려 안 보이던 데이터 수동 fix
+- 사용자가 손으로 정렬한 테이블 없어서 grid 재계산 (각 그룹 sort_order 순서대로 max(y) 다음 행부터 재배치) 적용. 데이터 손실 없음
+- 결과: restaurant 16 → Table-B (y=50..140) + Tables T (y=240..600) + Table-A (별도 zone) 모두 노출
+
+---
+
+## [v3.39] — 2026-05-24 배포 (Store↔Legal 분리 + Takeaway per-menu + Floor Plan prefix + Owner 인보이스 + Bill 헤더 brand-first)
+
+### Mobile order type chip 정리
+- 모바일 카트(`/mobile/{slug}/cart`) / Orders(`/mobile/{slug}/orders`) / Account(`/mobile/{slug}/account`) 페이지 우측 상단 Order Type chip (🍽️ Dine-In / 🥡 Takeaway 등) 숨김 — 메뉴 페이지의 StoreHeader Change 버튼으로 이미 선택했고 잠긴 상태에서 chip 은 노이즈
+- Checkout / Reserve 페이지는 결제 직전 재확인 목적으로 chip 유지
+
+### 모바일 OrderType 화면 지점명 시각 분리
+- 첫 화면 (`OrderTypePage`) 의 branch name 을 location pin chip (회색 pill + MapPin 아이콘) 으로 변환 — 기존엔 회색 13px 텍스트가 Subtitle "How would you like your order?" 와 같은 색/크기로 시각 분리 안 됨
+- chip 하단 여백 22px 로 늘려 질문 텍스트와 명확한 breathing room 확보
+
+### Takeaway 포장비 — 메뉴별 개별 설정 (Per Menu Item)
+- Operations 탭 Takeaway Pricing 의 Pricing Type 에 3번째 옵션 추가: **Per Menu Item (set individually)**
+  - 기존 `per-item` (모든 아이템 동일 금액) / `per-category` (카테고리별) 와 별개
+  - 각 메뉴 아이템마다 자체 포장비 (`products.takeaway_charge`) 보유 — 동일 메뉴여도 용기 차이를 가격에 반영
+  - 0 인 메뉴는 포장비 미부과 (옵션-인)
+- DB: `products.takeaway_charge DECIMAL(10,2) NOT NULL DEFAULT 0` 컬럼 추가
+- 메뉴 편집 모달: Price 아래에 "Takeaway Packaging Fee" 입력 필드 추가 (모드 무관 항상 표시 — 데이터 영속)
+- Settings (Operations 탭): Pricing Type = per-item-individual 선택 시 카테고리 그룹화된 메뉴 일괄 편집 그리드 노출 (Settings 페이지에서 직접 일괄 관리)
+- 자동 첨부: `StoreContext.getTakeawayCharge` 가 menuItem 객체 받도록 signature 변경 + 신규 모드 분기. POS Terminal / 모바일 PaymentPage 둘 다 takeaway 주문 시 자동 가산
+- i18n 4언어 (en/ko/zh/ms) 추가
+
+### Floor Plan prefix 자동 "T" 주입 제거 + 그룹 prefix 선택 가능
+- `floor_plan` v1→v2 자동 마이그레이션 기본 prefix 를 `"T"` → 빈 문자열로 변경. 사용자가 prefix 를 설정하지 않으면 테이블 라벨은 숫자만 (1, 2, 3…)
+- Floor Plan Editor 의 add-table fallback 도 `"T"` 제거 → 그룹에 prefix 없으면 라벨 = tableNumber 단독
+- `computeTableLabel(prefix, n)` 도 fallback `"T"` 제거
+- Zones & Groups 모달의 prefix 필드 — 선택 사항으로 변경 (필수 검증 제거). 빈 prefix 도 저장 가능. 동일 zone 내 중복 검사는 비어있지 않은 prefix 만 검사
+- 결과: 옛 매장이 prefix 입력 없이 진입해도 "T-1" 같은 자동 prefix 안 붙음. 사용자가 명시 입력한 prefix 만 라벨에 반영
+
+### 인보이스 — Restaurant Owner payer 분기 추가 + 모든 4 역할 확인
+- `getPayerCompanyInfo` 에 `restaurant_owner` 분기 누락되어 있어서 추가 → User 모델의 `company_name || full_name`, `address`, `phone`, `email` 사용
+- 모든 4 역할 인보이스 청구처 회사정보 노출 검증 (RA / BG / FG / Restaurant Owner) 통과
+
+### Settings 안내 배너 + Bill/Invoice 출처 명시
+- Store Settings 탭 상단 배너: "Store info — printed on customer bills/receipts" (어디에 사용되는지 명시)
+- Company Information 페이지 배너: "Company info — printed on invoices and legal documents" + Empty field 시 store info fallback 명시
+- 각 필드별 HelpText:
+  - Mobile Phone "Used for system notifications only. Never printed on bills."
+  - Telephone "Landline shown on bills/receipts. Leave empty to hide."
+  - Store/Brand Name "The customer-facing brand printed at the top of bills and shown in mobile orders."
+- i18n 4언어 (en/ko/zh/ms) 모두 추가: 신규 storeName/telephone/mobilePhone/storeInfoBanner / companyInformationPage.banner / zonesGroups.tablesLabeledNoPrefix / liveOrdersPage.billPreview 등
+
+### Bill 헤더 추가 보강 (Phase 6 후속)
+- `OrderCompleteModal` (POS 결제 영수증) + `thermalPrinter.ts` 2곳도 동일 패턴 적용
+  (큰글씨 = tradeName||name, 작은글씨 = address / legalName 다를 때만 / telephone 있을 때만 / Reg No / Tax No)
+- 3 시나리오 검증 통과: legacy store (mobile phone 숨김 ✓) / brand≠legal (legal 노출 ✓) / brand=legal (중복 생략 ✓)
+
+### Store info ↔ Legal entity (Company) 정보 컬럼 분리 (Bill vs Invoice 출처 분리)
+- **문제**: `restaurants.name`/`address`/`phone`/`email`/`business_registration`/`tax_id` 한 세트만 있어서 Store Settings 의 "Store Name" 과 Company Info 의 "Company Name" 이 **같은 컬럼**을 편집 — 한 쪽 변경 시 다른 쪽도 바뀜. Bill 헤더와 Invoice 청구처 모두 같은 `restaurants.name` 사용 → 매장 브랜드 ≠ 법인명 인 매장이 둘 중 하나만 맞추면 다른 쪽이 어긋남.
+- **분리**: 신규 컬럼 10개 추가
+  - `telephone VARCHAR(20)` — 매장 landline (Bill 헤더 표시용)
+  - `legal_name VARCHAR(255)` — 법인명 (Invoice 청구처)
+  - `legal_address` / `legal_address_line_2` / `legal_city` / `legal_state` / `legal_postal_code` / `legal_country` — 법인 주소
+  - `legal_phone` / `legal_email` — 법인 연락처
+- **Fallback**: `legal_*` 가 NULL 이면 Invoice 가 자동으로 store 측 (`name`/`address`/`phone`/`email`) 으로 폴백 — 옛 매장 무손실 마이그레이션
+- **UI 정리**:
+  - Store Settings (`?tab=store`) — 매장 표시 정보만: Store/Brand Name, Telephone (landline, 빌 표시용), Mobile Phone (POS 알림용, 빌 표시 안 함), Email, Address, Logo. **Business Registration / Tax No 제거** (Company Info 로 이동)
+  - Company Info 페이지 — 법인 정보 편집: Company Legal Name → `legal_name`, address → `legal_address_*`, phone → `legal_phone`, email → `legal_email`. business_registration / tax_id / trade_name / website / bank / logo 는 회사 단위 메타로 유지 (Company Info 만 편집)
+- **Bill 헤더 개조** (`utils/billPrint.js` + `mobile/ReceiptShare.tsx`):
+  - 큰 글씨: `trade_name || name` (브랜드명)
+  - 작은 글씨 (있을 때만): 주소 / legal_name (브랜드와 다를 때만) / `Tel: telephone` / Reg No / Tax No
+  - **`phone` (mobile) 은 빌에 절대 표시 안 함**
+- **Invoice payer resolver** (`invoices-helpers.js`): `restaurant.legal_name || restaurant.name`, `legal_address || address` 등 모든 필드 fallback chain
+- **LiveOrders 모달 라벨**: "Receipt Preview" → "Bill Preview" (2곳)
+- 옛 데이터 보존: 신규 컬럼은 NULL 시작 → fallback 으로 기존 표시와 100% 동일. 매장이 회사 정보를 별도 입력하면 Invoice 만 그 값 사용
+- 검증: API 테스트 7/7 통과 (legal_* PUT/GET/Fallback resolve 모두 확인), Health check 80/80
+
+### 사이드바 2뎁스 active 유지 (내부 탭 이동 시)
+- `/restaurant/{id}/settings` Store Settings 항목이 내부 탭(store/operations/managers) 이동 시 사이드바 active 가 풀리던 버그 수정
+- `AdminSubItem` 에 `matchTabs?: string[]` 별칭 필드 추가 — 같은 pathname 을 공유하는 여러 탭 중 사이드바 항목이 자기 영역으로 인정할 추가 탭값 명시
+- Store Settings 항목: `matchTabs: ['operations', 'managers']` → 3개 내부 탭 어디에 있어도 사이드바 active 유지
+- 기존 Reports 의 `?tab=ranking|sales|...` 같이 각 탭이 분리된 sibling 인 케이스는 영향 없음 (별칭 미사용 시 동작 동일)
+
+---
+
 ## [v3.38 hotfix #1] — 2026-05-22 배포 (Customer Display 매장 입점 준비 + 멤버십 UX + Floor Plan 통합)
 
 ### Customer Display (Dual Monitor) 매장 입점 critical 보강

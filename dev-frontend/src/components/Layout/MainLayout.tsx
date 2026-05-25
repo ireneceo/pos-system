@@ -4,6 +4,7 @@ import styled, { keyframes, css } from 'styled-components';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useStaff } from '../../contexts/StaffContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { useStore } from '../../contexts/StoreContext';
 import { usePaymentStatus } from '../../contexts/PaymentStatusContext';
 import { BrandThemeProvider } from '../../contexts/BrandThemeContext';
 import { PaymentStatusModals } from '../PaymentStatus/PaymentStatusModals';
@@ -952,7 +953,14 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const sidebarNavRef = React.useRef<HTMLDivElement>(null);
   const { logout, currentStaff, isLoggedIn } = useStaff();
   const { user, logout: authLogout } = useAuth();
+  const { operationSettings } = useStore();
   const { t } = useTranslation();
+  // Mobile order alerts: accumulate pending notifications until staff acks
+  const [mobileAlertOrders, setMobileAlertOrders] = useState<Array<{ id: number | string; orderNumber?: string; tableNumber?: string | null; customerName?: string; total?: number; createdAt?: string }>>([]);
+  const mobileAlertOrdersRef = useRef(mobileAlertOrders);
+  useEffect(() => { mobileAlertOrdersRef.current = mobileAlertOrders; }, [mobileAlertOrders]);
+  const operationSettingsRef = useRef(operationSettings);
+  useEffect(() => { operationSettingsRef.current = operationSettings; }, [operationSettings]);
   const { canInstall, isStandalone, isIOS, promptInstall } = usePwaInstall();
   const showInstallButton = !isStandalone && (canInstall || isIOS);
 
@@ -1098,23 +1106,48 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       socket.emit('join-restaurant', userRestaurantId);
     });
 
-    const playIfNotOnSoundPage = () => {
+    const playIfNotOnSoundPage = (preset: 'bell' | 'beep' | 'triple' | 'urgent' | 'melody' | 'deep' = 'bell') => {
       const path = locationRef.current.pathname;
       // Live Orders, Kitchen Display는 자체 소리 관리
       if (path.includes('/live-orders') || path.includes('/kitchen')) return;
       const enabled = localStorage.getItem('sound_enabled') !== 'false';
       if (!enabled) return;
       import('../../utils/notificationSound').then(({ startRepeatingSound }) => {
-        startRepeatingSound('bell', 3000);
+        startRepeatingSound(preset, 3000);
       });
     };
 
-    socket.on('order-created', () => { playIfNotOnSoundPage(); fetchBadgeCounts(); });
-    socket.on('order-items-added', () => { playIfNotOnSoundPage(); fetchBadgeCounts(); });
+    socket.on('order-created', (payload: any) => {
+      fetchBadgeCounts();
+      const isMobile = payload?.source === 'mobile';
+      if (isMobile) {
+        const cfg = operationSettingsRef.current?.mobileOrderAlerts;
+        setMobileAlertOrders(prev => {
+          if (prev.some(a => String(a.id) === String(payload.id))) return prev;
+          return [...prev, {
+            id: payload.id,
+            orderNumber: payload.order_number,
+            tableNumber: payload.table_number,
+            customerName: payload.customer_name,
+            total: Number(payload.total_amount || 0),
+            createdAt: payload.order_date
+          }];
+        });
+        if (cfg?.soundEnabled !== false) {
+          playIfNotOnSoundPage((cfg?.soundType as any) || 'bell');
+        }
+      } else {
+        playIfNotOnSoundPage('bell');
+      }
+    });
+    socket.on('order-items-added', () => { playIfNotOnSoundPage('bell'); fetchBadgeCounts(); });
 
-    // 주문 상태 변경 시 소리 중지 (전역)
-    socket.on('order-updated', () => {
+    // 주문 상태 변경 시 소리 중지 + mobile alert 자동 정리
+    socket.on('order-updated', (payload: any) => {
       import('../../utils/notificationSound').then(({ stopRepeatingSound }) => stopRepeatingSound());
+      if (payload?.id) {
+        setMobileAlertOrders(prev => prev.filter(a => String(a.id) !== String(payload.id)));
+      }
       fetchBadgeCounts();
     });
 
@@ -1189,7 +1222,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const isRestaurantUser = user?.role === 'Restaurant Admin' || user?.role === 'Staff';
   const useTwoTier = isSystemAdmin || isBrand || isFoodcourt || isOwner || isSupplier || isRestaurantUser;
 
-  type AdminSubItem = { path: string; label: string; hasPending?: boolean; visible?: boolean; openInNewTab?: boolean };
+  type AdminSubItem = { path: string; label: string; hasPending?: boolean; visible?: boolean; openInNewTab?: boolean; matchTabs?: string[] };
   type AdminCategory = { id: string; label: string; icon: React.ReactNode; path?: string; items?: AdminSubItem[]; hasPending?: boolean; visible?: boolean; openInNewTab?: boolean; mobileOrder?: boolean };
 
   const adminCategories: AdminCategory[] = useMemo(() => !isSystemAdmin ? [] : [
@@ -1668,8 +1701,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           { path: `/restaurant/${rid}/profile`, label: t('nav.myProfile', 'My Profile'), visible: true },
           { path: `/restaurant/${rid}/company-information`, label: t('nav.companyInfo'), visible: hasMenuPermission('settings') },
           // Core Store Settings (Store Info / Operations / Managers) — single landing with 3 tabs.
-          // Use explicit ?tab=store so the active-state matcher disambiguates from siblings below.
-          { path: `/restaurant/${rid}/settings?tab=store`, label: t('nav.storeSettings'), visible: hasMenuPermission('settings') },
+          // Use explicit ?tab=store so the active-state matcher disambiguates from siblings below;
+          // matchTabs keeps the entry highlighted while the user switches between the 3 internal tabs.
+          { path: `/restaurant/${rid}/settings?tab=store`, label: t('nav.storeSettings'), matchTabs: ['operations', 'managers'], visible: hasMenuPermission('settings') },
           // 2-depth siblings that previously lived as tabs inside Store Settings
           { path: `/restaurant/${rid}/settings?tab=tablesQr`, label: t('nav.tablesQr', 'Tables & QR'), visible: hasMenuPermission('settings') },
           { path: `/restaurant/${rid}/settings?tab=payment`, label: t('nav.paymentMethods', 'Payment Methods'), visible: hasMenuPermission('settings') },
@@ -1711,14 +1745,28 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     const [base] = itemPath.split('?');
     return location.pathname.startsWith(base);
   };
-  const matchPathFull = (itemPath: string) => {
-    const [base, qs] = itemPath.split('?');
+  // 사이드바 item 의 활성 매칭. AdminSubItem (matchTabs 포함) 또는 plain path string 둘 다 허용.
+  // matchTabs: 같은 pathname 을 공유하는 내부 탭(예: Store Settings 의 store/operations/managers)
+  // 사이에서 사이드바 item 이 어느 탭값들을 자기 영역으로 가질지 명시.
+  const matchPathFull = (itemOrPath: AdminSubItem | string) => {
+    const item: AdminSubItem = typeof itemOrPath === 'string'
+      ? { path: itemOrPath, label: '' }
+      : itemOrPath;
+    const [base, qs] = item.path.split('?');
     if (location.pathname !== base) return false;
-    if (!qs) return location.search === '' || true;
-    const expected = new URLSearchParams(qs);
+    if (!qs) return true;
     const actual = new URLSearchParams(location.search);
-    for (const [k, v] of expected) if (actual.get(k) !== v) return false;
-    return true;
+    const expected = new URLSearchParams(qs);
+    let standardMatch = true;
+    for (const [k, v] of expected) {
+      if (actual.get(k) !== v) { standardMatch = false; break; }
+    }
+    if (standardMatch) return true;
+    if (item.matchTabs && item.matchTabs.length > 0) {
+      const actualTab = actual.get('tab');
+      if (actualTab && item.matchTabs.includes(actualTab)) return true;
+    }
+    return false;
   };
 
   const activeAdminCategory = useMemo(() => {
@@ -2043,7 +2091,81 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       <LayoutContainer>
         {/* Payment Status Modals */}
         <PaymentStatusModals />
-        
+
+        {/* Mobile Order Alert Banner — sticky top, persists until staff acknowledges */}
+        {mobileAlertOrders.length > 0 && (operationSettings?.mobileOrderAlerts?.bannerEnabled !== false) && (
+          <div
+            role="alert"
+            aria-live="polite"
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              zIndex: 9999,
+              background: 'linear-gradient(135deg, #635BFF 0%, #4F46E5 100%)',
+              color: 'white',
+              padding: '10px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              boxShadow: '0 4px 12px rgba(99, 91, 255, 0.25)',
+              fontSize: '14px',
+              fontWeight: 500
+            }}
+          >
+            <span style={{ fontSize: '18px' }}>🔔</span>
+            <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {mobileAlertOrders.length === 1
+                ? t('common:mobileOrderAlerts.oneNewOrder', '1 new mobile order') + (mobileAlertOrders[0].tableNumber ? ` · ${t('common:mobileOrderAlerts.table', 'Table')} ${mobileAlertOrders[0].tableNumber}` : '') + (mobileAlertOrders[0].orderNumber ? ` · #${mobileAlertOrders[0].orderNumber}` : '')
+                : t('common:mobileOrderAlerts.multipleNewOrders', '{{count}} new mobile orders', { count: mobileAlertOrders.length })}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                const path = `/restaurant/${restaurantId || user?.restaurantId}/live-orders`;
+                setMobileAlertOrders([]);
+                import('../../utils/notificationSound').then(({ stopRepeatingSound }) => stopRepeatingSound());
+                navigate(path);
+              }}
+              style={{
+                padding: '6px 14px',
+                background: 'white',
+                color: '#4F46E5',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              {t('common:mobileOrderAlerts.view', 'View')}
+            </button>
+            <button
+              type="button"
+              title={t('common:mobileOrderAlerts.dismiss', 'Dismiss') as string}
+              onClick={() => {
+                setMobileAlertOrders([]);
+                import('../../utils/notificationSound').then(({ stopRepeatingSound }) => stopRepeatingSound());
+              }}
+              style={{
+                width: '28px',
+                height: '28px',
+                background: 'rgba(255,255,255,0.18)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '16px',
+                cursor: 'pointer',
+                lineHeight: 1
+              }}
+            >
+              ×
+            </button>
+          </div>
+        )}
+
         <MobileHeader>
         <HamburgerButton onClick={toggleSidebar}>
           ☰
@@ -2178,7 +2300,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                     <SecondaryNavItem
                       key={item.path}
                       to={item.path}
-                      $active={matchPathFull(item.path)}
+                      $active={matchPathFull(item)}
                       $hasPending={item.hasPending}
                       onClick={(e) => {
                         if (item.openInNewTab) {
@@ -3478,7 +3600,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               <SecondaryNavItem
                 key={item.path}
                 to={item.path}
-                $active={matchPathFull(item.path)}
+                $active={matchPathFull(item)}
                 $hasPending={item.hasPending}
                 onClick={(e) => {
                   if (item.openInNewTab) {
@@ -3511,7 +3633,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               <SecondaryNavItem
                 key={item.path}
                 to={item.path}
-                $active={matchPathFull(item.path)}
+                $active={matchPathFull(item)}
                 $hasPending={item.hasPending}
                 onClick={(e) => {
                   if (item.openInNewTab) {

@@ -682,5 +682,10 @@
   "sort.priceAsc": "Harga rendah → tinggi",
   "sort.priceDesc": "Harga tinggi → rendah",
   "sort.category": "Kumpulkan ikut kategori",
-  "sort.ariaLabel": "Susun"
+  "sort.ariaLabel": "Susun",
+  "mobileOrderAlerts.oneNewOrder": "1 pesanan mudah alih baru",
+  "mobileOrderAlerts.multipleNewOrders": "{{count}} pesanan mudah alih baru",
+  "mobileOrderAlerts.table": "Meja",
+  "mobileOrderAlerts.view": "Lihat",
+  "mobileOrderAlerts.dismiss": "Tutup"
 }

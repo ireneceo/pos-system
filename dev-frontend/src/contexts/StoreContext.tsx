@@ -7,13 +7,21 @@ interface StoreSettings {
   name: string;
   branchName: string;
   businessRegistration: string;
-  phone: string;
+  phone: string;          // Mobile phone (POS notifications) — NOT printed on bills.
+  telephone: string;      // Store landline — printed on bills if provided.
   email: string;
   address: string;
+  address_line_2?: string;
+  delivery_address?: string;
   city: string;
   state: string;
   postalCode: string;
+  country?: string;
   gstRegNo: string;
+  logo?: string;
+  // Legal entity fields — surfaced for getStoreInfo so bill header can show legal name when it differs from store name.
+  tradeName?: string;
+  legalName?: string;
 }
 
 interface OperationSettings {
@@ -35,14 +43,20 @@ interface OperationSettings {
   };
   takeawayPricing: {
     enabled: boolean;
-    pricingType: 'per-item' | 'per-category';
+    pricingType: 'per-item' | 'per-category' | 'per-item-individual';
     perItemCharge: number;
+    defaultPerItemCharge: number;
     categoryCharges: {
       food: number;
       beverage: number;
       dessert: number;
       other: number;
     };
+  };
+  mobileOrderAlerts: {
+    bannerEnabled: boolean;
+    soundEnabled: boolean;
+    soundType: 'bell' | 'beep' | 'triple' | 'urgent' | 'melody' | 'deep';
   };
   deliveryPricing: {
     enabled: boolean;
@@ -65,7 +79,7 @@ interface StoreContextType {
   siteTimezone: string;
   updateSettings: (settings: Partial<{ store: StoreSettings; operations: OperationSettings }>) => void;
   getStoreInfo: () => Record<string, any>;
-  getTakeawayCharge: (category?: string) => number;
+  getTakeawayCharge: (menuItem?: { category?: string; takeaway_charge?: number | string | null } | string) => number;
 }
 
 const defaultStoreSettings: StoreSettings = {
@@ -73,12 +87,18 @@ const defaultStoreSettings: StoreSettings = {
   branchName: '',
   businessRegistration: '',
   phone: '',
+  telephone: '',
   email: '',
   address: '',
+  address_line_2: '',
   city: '',
   state: '',
   postalCode: '',
-  gstRegNo: ''
+  country: '',
+  gstRegNo: '',
+  logo: '',
+  tradeName: '',
+  legalName: ''
 };
 
 const defaultOperationSettings: OperationSettings = {
@@ -102,12 +122,18 @@ const defaultOperationSettings: OperationSettings = {
     enabled: false,
     pricingType: 'per-item',
     perItemCharge: 0.50,
+    defaultPerItemCharge: 0.50,
     categoryCharges: {
       food: 1.00,
       beverage: 0.50,
       dessert: 0.50,
       other: 0.50
     }
+  },
+  mobileOrderAlerts: {
+    bannerEnabled: true,
+    soundEnabled: true,
+    soundType: 'bell'
   },
   deliveryPricing: {
     enabled: false,
@@ -220,12 +246,18 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
             branchName: result.data.branch_name || '',
             businessRegistration: result.data.business_registration || '',
             phone: result.data.phone || '',
+            telephone: result.data.telephone || '',
             email: result.data.email || '',
             address: result.data.address || '',
+            address_line_2: result.data.address_line_2 || '',
             city: result.data.city || '',
             state: result.data.state || '',
             postalCode: result.data.postal_code || '',
-            gstRegNo: result.data.tax_id || ''
+            country: result.data.country || '',
+            gstRegNo: result.data.tax_id || '',
+            logo: result.data.logo_url || '',
+            tradeName: result.data.trade_name || '',
+            legalName: result.data.legal_name || ''
           });
 
           if (result.data.payment_settings) {
@@ -313,24 +345,39 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
     return { ...storeSettings, ...receiptInfo, slug: restaurantSlug, restaurantId: user?.restaurantId || '', timeZone: operationSettings.timeZone };
   };
 
-  const getTakeawayCharge = (category?: string): number => {
+  const getTakeawayCharge = (
+    menuItem?: { category?: string; takeaway_charge?: number | string | null } | string
+  ): number => {
     if (!operationSettings.takeawayPricing.enabled) {
       return 0;
     }
 
-    if (operationSettings.takeawayPricing.pricingType === 'per-item') {
+    // Normalize: legacy callers pass a category string; new callers pass the menu item object.
+    const itemObj = typeof menuItem === 'string' ? { category: menuItem } : (menuItem || {});
+    const pricingType = operationSettings.takeawayPricing.pricingType;
+
+    if (pricingType === 'per-item') {
       return operationSettings.takeawayPricing.perItemCharge;
     }
 
-    // Per category pricing
-    if (category) {
-      const categoryLower = category.toLowerCase();
+    if (pricingType === 'per-item-individual') {
+      // null/undefined = no override → fall back to defaultPerItemCharge.
+      // A numeric value (including 0) = explicit per-item override.
+      const override = itemObj.takeaway_charge;
+      if (override === null || override === undefined || override === '') {
+        return Number(operationSettings.takeawayPricing.defaultPerItemCharge) || 0;
+      }
+      const n = Number(override);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    // Per-category pricing
+    if (itemObj.category) {
+      const categoryLower = itemObj.category.toLowerCase();
       if (categoryLower in operationSettings.takeawayPricing.categoryCharges) {
         return operationSettings.takeawayPricing.categoryCharges[categoryLower as keyof typeof operationSettings.takeawayPricing.categoryCharges];
       }
     }
-
-    // Default to 'other' category if category not found
     return operationSettings.takeawayPricing.categoryCharges.other;
   };
 

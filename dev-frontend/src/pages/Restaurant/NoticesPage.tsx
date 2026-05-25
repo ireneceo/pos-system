@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Container, Header, Title, Content } from '../../components/UI/PageComponents';
 import { Modal as CommonModal } from '../../components/UI';
 import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI/StatCard';
@@ -358,6 +358,7 @@ const LoadingText = styled.div`
 
 const NoticesPage: React.FC = () => {
   const { t } = useTranslation('settings');
+  const navigate = useNavigate();
   useParams<{ restaurantId: string }>();
   const [notices, setNotices] = useState<Notice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -671,8 +672,16 @@ const NoticesPage: React.FC = () => {
                         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getAuthToken()}` },
                         body: JSON.stringify({ restaurant_id: restaurantId ? parseInt(restaurantId) : undefined })
                       });
-                      if ((await res.json()).success) handleCloseModal();
-                    } catch (e) { /* silent */ }
+                      const data = await res.json();
+                      if (data.success) {
+                        handleCloseModal();
+                        if (restaurantId) navigate(`/restaurant/${restaurantId}/work-manuals`);
+                      } else {
+                        console.error('Send to Work Manuals failed:', data);
+                      }
+                    } catch (e) {
+                      console.error('Send to Work Manuals error:', e);
+                    }
                   }}>
                     Send to Work Manuals
                   </Button>

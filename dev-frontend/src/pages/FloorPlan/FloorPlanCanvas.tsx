@@ -22,6 +22,9 @@ interface FloorPlanCanvasProps {
   tableStatuses?: Record<string, TableStatusInfo>;
   isEditing?: boolean;
   selectedTableId?: string | null;
+  // Multi-select support (editor lasso / Shift+click). When provided, every id in the set renders
+  // as selected. Takes precedence over `selectedTableId` if both are given.
+  selectedTableIds?: Set<string>;
   onTableClick?: (tableNumber: string) => void;
   onTableMouseDown?: (e: React.MouseEvent, tableId: string) => void;
   onTableTouchStart?: (e: React.TouchEvent, tableId: string) => void;
@@ -32,14 +35,30 @@ interface FloorPlanCanvasProps {
   renderNode?: (props: CanvasNodeRenderProps) => React.ReactNode;
 }
 
-const CanvasOuter = styled.div`
+// In edit mode the outer area gets a faint dark wrap so the canvas plotting region (white) is
+// visually distinct from the outside. This solves "I can't tell where the canvas ends" reports
+// when the user shrinks/grows the canvas via Sidebar's Canvas Size card.
+const CanvasOuter = styled.div<{ $editing?: boolean }>`
   width: 100%;
   flex: 1;
   overflow: hidden;
-  background: white;
+  background: ${p => p.$editing ? '#F5F7FA' : 'white'};
   border-radius: 8px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid ${p => p.$editing ? '#CBD5E1' : '#E6EBF1'};
   position: relative;
+`;
+const CanvasBoundsOverlay = styled.div<{ $w: number; $h: number; $scale: number; $offX: number; $offY: number }>`
+  position: absolute;
+  left: ${p => p.$offX}px;
+  top: ${p => p.$offY}px;
+  width: ${p => p.$w / p.$scale}px;
+  height: ${p => p.$h / p.$scale}px;
+  background: white;
+  border: 1.5px solid #635BFF;
+  border-radius: 4px;
+  box-shadow: 0 0 0 2px rgba(99,91,255,0.08), 0 4px 12px rgba(0,0,0,0.04);
+  pointer-events: none;
+  z-index: 1;
 `;
 
 const CanvasInner = styled.div`
@@ -83,6 +102,7 @@ const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
   tableStatuses = {},
   isEditing = false,
   selectedTableId,
+  selectedTableIds,
   onTableClick,
   onTableMouseDown,
   onTableTouchStart,
@@ -158,7 +178,7 @@ const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
   };
 
   return (
-    <CanvasOuter ref={outerRef}>
+    <CanvasOuter ref={outerRef} $editing={isEditing}>
       <CanvasInner
         ref={innerRef}
         onClick={(e) => {
@@ -167,6 +187,18 @@ const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
           }
         }}
       >
+        {/* In edit mode, render a clear white "canvas plotting region" rectangle inside the
+            darker outer area. Sits underneath the grid + ScaledLayer so tables and shapes draw on
+            top. This is the visible "edge" the user was looking for. */}
+        {isEditing && (
+          <CanvasBoundsOverlay
+            $w={floorPlan.canvasWidth}
+            $h={floorPlan.canvasHeight}
+            $scale={uniformScale}
+            $offX={0}
+            $offY={0}
+          />
+        )}
         {isEditing && floorPlan.showGrid && (
           <GridOverlay $gridSize={floorPlan.gridSize} $scale={uniformScale} />
         )}
@@ -189,7 +221,7 @@ const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
               table,
               status: getTableStatus(table.tableNumber),
               statusInfo: tableStatuses[table.tableNumber],
-              isSelected: selectedTableId === table.id,
+              isSelected: selectedTableIds ? selectedTableIds.has(table.id) : (selectedTableId === table.id),
               isEditing,
               onClick: onTableClick,
               onMouseDown: onTableMouseDown,

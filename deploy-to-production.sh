@@ -292,7 +292,8 @@ for SPRINT_MIG in \
     scripts/register-brand-menus-module.js \
     scripts/migrate-brand-menu-settings.js \
     scripts/promote-reservations-to-base.js \
-    scripts/migrate-add-partial-payment.js; do
+    scripts/migrate-add-partial-payment.js \
+    scripts/migrate-takeaway-charge-nullable.js; do
     if ssh $PROD_SERVER "test -f $REMOTE_PROD_BACKEND/$SPRINT_MIG"; then
         log "Running $(basename $SPRINT_MIG)..."
         SPRINT_OUTPUT=$(ssh $PROD_SERVER "cd $REMOTE_PROD_BACKEND && node $SPRINT_MIG 2>&1") || true

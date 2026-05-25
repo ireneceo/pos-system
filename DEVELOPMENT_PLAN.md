@@ -1,9 +1,84 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-05-22 (Floor Plan Zone/Group + /검증 11단계 + CLAUDE.md critical 박제 — dev 완료)
+> **최종 업데이트:** 2026-05-25 (v3.42 backstage 3차 배포 — 매장 직원 UX + 안정성 보강)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
-> **현재 버전:** **v3.37** 운영 (dev 누적, 다음 배포 시 v3.38 후보)
+> **현재 버전:** **v3.42** 운영 (backstage 배포 3회 — 버전 미상승)
+
+## ✅ 완료: v3.42 backstage 배포 (2026-05-25, 3회 누적)
+
+> 매장 직원 UX 개선 + 권한 분리 + 알림 시스템 강화. Irene 지시로 **버전 미상승** (CHANGELOG [Unreleased] 그대로, 릴리즈 노트 생략).
+
+### 1차 (08:36, Backup 20260525_083449)
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Takeaway per-item-individual UI 재설계 | "Per Menu Item (set individually)" 모드를 Default + Override 패턴으로 전환. inline combobox (검색 + 즉시 추가 + 보라 하이라이트). 110개 메뉴 다 깔리던 노이즈 해소 | ✅ |
+| `products.takeaway_charge` nullable | NULL = no override (defaultPerItemCharge 사용) / 숫자(0 포함) = explicit override. 운영 DB 자동 마이그 | ✅ |
+| i18n html lang sync | `<input type="time">` native AM/PM 이 한국어 '오전/오후' 로 나오던 이슈 해결. `i18n.on('languageChanged', syncHtmlLang)` 으로 `<html lang>` 동기화 | ✅ |
+| Notice [Send to Work Manuals] silent UX fix | 5개 NoticesPage (Brand/Owner/Foodcourt/Restaurant/Admin) silent catch 제거 + 성공 시 Work Manuals 페이지로 자동 navigate | ✅ |
+| POS Terminal 쿠폰 검색 UI | 쿠폰 코드 직접 타이핑만 되던 화면에 검색 input + dropdown 추가 (takeaway combobox 패턴). 발행된 active 쿠폰 자동 fetch + 클라이언트 필터링 + 클릭=즉시 apply | ✅ |
+| Mobile Order Alerts | 모바일/QR 주문 들어오면 매장 전 페이지 상단 sticky banner + 사운드(설정된 type) 반복 알림. Floor Plan dot. Settings → Mobile Order 탭에 Banner/Sound toggle + Sound type select + Test 버튼. order-updated 시 자동 정리 | ✅ |
+| 마이그 hang 방지 | migrate-takeaway-charge-nullable.js 의 `db.sequelize.close()` 후 `process.exit(0)` 추가. 배포 스크립트가 hang 되던 이슈 해결 | ✅ |
+
+### 2차 (09:32, Backup 20260525_093056)
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 주문 취소 권한 분리 | Staff = `PATCH /orders/:id/status` (cancel) 만, Restaurant Admin = `DELETE /orders/:id` 가능. backend `requireRole('Restaurant Admin', 'Restaurant Owner', 'System Admin')` + frontend Remove 버튼 role 분기 | ✅ |
+| `GET /api/orders/:id/actions` 신규 | `order_actions` 테이블 audit trail 반환. 매장 tenant 가드. from_status → to_status / performed_by / source / reason / created_at | ✅ |
+| OrderDetailModal cancelled 자동 history popover | cancelled 주문 detail 열 때 OrderActionHistory popover 자동 표시. 직원이 즉시 취소 시점/단계/사용자 인지 | ✅ |
+| Staff 추가 시 role 권한 차이 안내 | Settings → Staff → Add Staff 의 Role select 아래 helper text (보라 left border). 선택한 role 의 권한 차이 즉시 표시. i18n 4언어 | ✅ |
+
+### 3차 (10:07, Backup 20260525_100534)
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Customer Display Reset Position 자동화 | 클릭 시 좌표 클리어 + `openCustomerDisplay()` 자동 호출 + "두 번째 모니터로 드래그하세요" 명확 안내. 사용자가 "Reset 누른 다음 뭐?" 막히던 흐름 해결. i18n 4언어 | ✅ |
+
+### 검증
+
+- 검증 단계: 0단계 hydration 0 / Build OK (main hash 5회 갱신) / pm2 dev-backend uptime stable / API round-trip PASS / Playwright mount 12/12 clean (admin+staff × 6 routes) / i18n verify Errors 0 / Health-check 80/80 PASS / Smoke 10/10 PASS (3회 배포 모두)
+- 실 E2E: 모바일 주문 POST → 모든 device banner+사운드 자동 표시 + 두 번째 device Floor Plan dot 자동 갱신 (capture 됨)
+- 권한 검증: Staff DELETE → 403 / Admin DELETE → 200 / Staff PATCH cancel → 200 / order_actions audit log 정확 (from_status→to_status, by who, source, reason)
+
+### 매장 사전 점검 (rest 16 The Fire Korean Restaurant)
+
+운영 DB 직접 조회로 매장 16 설정 무결성 확인:
+
+- Category → Station 매핑 **15/15 정상** (KQ1 ← Side/Kimbab/Bibimbab, KQ2 ← Korean Chicken/Pancake/Stew/Fried Rice/Bulgogi/Ramyun/Toppokki, BARPR ← Croffle/Bingsu/Milk Shake/Korean Tea/Juice)
+- `restaurants.printer_settings.kitchenStationPrinters` 컬럼에 station 별 IP 정상 저장 (KQ1: 192.168.1.120, KQ2: 192.168.1.200, BARPR: 192.168.1.110)
+- 매장 가서 점검은 Test 버튼 1개로 진단 끝 — QZ Tray daemon / 네트워크 / IP DHCP 변경 여부만
+
+### 수정된 파일 (요약)
+
+- **Backend (8)**: routes/{coupons,mobile-orders,menu,mobile-public,orders-crud,restaurants-crud,dashboard,invoices-helpers}.js, models/{Product,Restaurant,Order,OrderAction,OrderPayment,index}.js, scripts/migrate-takeaway-charge-nullable.js, services/orderAuditLog.js
+- **Frontend (대규모)**: pages/Settings/SettingsPage.tsx (Takeaway combobox + Mobile Order Alerts card + Customer Display Reset 자동화), pages/LiveOrders/OrderDetailModal.tsx (Remove role 분기), pages/POSTerminal/POSTerminalPage.tsx (쿠폰 검색 dropdown), pages/Staff/StaffPage.tsx (role hint), components/Layout/MainLayout.tsx (sticky banner + socket source='mobile' 분기), pages/FloorPlan/TableNode.tsx (MobileOrderDot), contexts/StoreContext.tsx, i18n.ts, NoticesPage × 5 (Brand/Owner/Foodcourt/Restaurant/Admin)
+- **i18n**: 4언어 × (settings/common/pos/staff/orders) namespace. 신규 키 약 50 (× 4 = 200 entries)
+- **deploy**: deploy-to-production.sh sprint migration 리스트에 migrate-takeaway-charge-nullable.js 등록
+
+---
+
+## ✅ 완료: v3.42 — Floor Plan Takeaway 완전 재설계 (2026-05-24 배포)
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Takeaway 카드 그리드 색상 통일 | Floor Plan canvas TableNode 와 같은 `ORDER_STATUS_COLORS` palette | ✅ |
+| 데이터 scope = 오늘 + 매장 타임존 | `calculatePeriodDateRange('today', timezone)` — Floor Plan canvas 와 일치 | ✅ |
+| URL 쿼리 공유 가능 | `?zone=`, `?view=takeaway`, `?order=` 쌍방향 sync | ✅ |
+| Walk-in iframe POSOverlay 통일 | `handleNewOrder({takeaway?})` 단일 함수, 검정 바 × Close | ✅ |
+| TableDetailPanel 100% 재사용 | `tableNumber: string \| null` — null 시 takeaway 모드. ActionGroup 전체 공유 | ✅ |
+| Zone chip active gate | `activeView==='floor' &&` — takeaway 시 zone chip 비활성화 | ✅ |
+| 사이드 패널 absolute overlay | 클릭/닫기 시 카드 reflow 없음 (Linear/Figma 표준) | ✅ |
+| handlePaymentConfirm 통합 | takeaway orderId 분기 — 하나의 함수가 양쪽 처리 | ✅ |
+| 문서화 박제 | `reference_floor_plan_pos_overlay.md` memory + 코드 anchor 주석 | ✅ |
+| i18n 19 키 × 4 = 76 string | en/ko/zh/ms takeaway panel 키 추가 | ✅ |
+
+**검증 결과**: hydration 0 warning · health-check 80/80 · API PATCH `/orders/2173/status` round-trip 일치 · Mount sweep 6/6 · i18n 0 errors · 운영 smoke 10/10
+
+**백업**: `/var/www/backups/20260524_210457`
+
+---
 
 ## ✅ 완료 (dev 미배포): Floor Plan Zone & Table Group + 검증 체계 강화 (2026-05-22)
 

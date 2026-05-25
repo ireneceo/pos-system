@@ -13,7 +13,7 @@ const { sequelize } = require('../config/database');
 const { executeQuery, executeTransaction } = require('../utils/queryWrapper');
 const { deductInventoryForOrder } = require('../services/inventoryDeductionService');
 const { earnPointsForOrder, refundPointsForOrder, usePointsForOrder } = require('../services/pointService');
-const { authenticateToken, optionalAuthenticateToken } = require('../middleware/auth');
+const { authenticateToken, optionalAuthenticateToken, requireRole } = require('../middleware/auth');
 const ActivityLog = require('../models/ActivityLog');
 const { logActivity } = require('../utils/activityLogger');
 const { getTodayBounds, getOrderDatePrefix, getRestaurantTimezone } = require('../utils/dateTimeHelper');
@@ -1056,7 +1056,9 @@ router.patch('/:id/items', authenticateToken, async (req, res) => {
 });
 
 // Delete order (soft delete - preserves order number)
-router.delete('/:id', authenticateToken, async (req, res) => {
+// Hard rule: only Restaurant Admin (or higher) may permanently remove an order.
+// Staff can cancel via PATCH /:id/status with status='cancelled'.
+router.delete('/:id', authenticateToken, requireRole('Restaurant Admin', 'System Admin', 'Restaurant Owner'), async (req, res) => {
   try {
     const order = await Order.findByPk(req.params.id);
     if (!order) {
@@ -1079,6 +1081,32 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     }
 
     res.json({ success: true, message: 'Order removed successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/orders/:id/actions — audit trail (status changes, cancellation, payment events).
+// Used by Live Orders detail modal to show "Cancelled from X at HH:MM by 직원이름".
+router.get('/:id/actions', authenticateToken, async (req, res) => {
+  try {
+    const OrderAction = require('../models/OrderAction');
+    const order = await Order.findByPk(req.params.id, { attributes: ['id', 'restaurant_id'] });
+    if (!order) {
+      return res.status(404).json({ success: false, error: { message: 'Order not found', code: 'NOT_FOUND' } });
+    }
+    // Tenant guard — RA/Staff must belong to the same restaurant
+    const userRestaurantId = req.user?.restaurantId || req.user?.restaurant_id;
+    const isPrivileged = ['System Admin', 'Restaurant Owner', 'Brand General', 'Foodcourt General'].includes(req.user?.role);
+    if (!isPrivileged && Number(userRestaurantId) !== Number(order.restaurant_id)) {
+      return res.status(403).json({ success: false, error: { message: 'Forbidden', code: 'FORBIDDEN' } });
+    }
+    const actions = await OrderAction.findAll({
+      where: { order_id: order.id },
+      order: [['created_at', 'ASC']],
+      attributes: ['id', 'action_type', 'from_status', 'to_status', 'performed_by_name', 'performed_by_role', 'source', 'reason', 'created_at']
+    });
+    res.json({ success: true, data: actions });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

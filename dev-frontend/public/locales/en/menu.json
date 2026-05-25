@@ -19,6 +19,8 @@
   "menuManagementPage.itemCode": "Item Code",
   "menuManagementPage.featuredItem": "Featured Item",
   "menuManagementPage.showInMobileFeaturedTab": "Show in mobile Featured tab",
+  "menuManagementPage.takeawayPackagingFee": "Takeaway Packaging Fee (RM)",
+  "menuManagementPage.takeawayPackagingFeeHelp": "Only applied when takeaway pricing is set to \"Per Menu Item (set individually)\". Leave at 0 if no packaging fee.",
   "menuManagementPage.emojiIcon": "Emoji Icon",
   "menuManagementPage.description": "Description",
   "menuManagementPage.linkedRecipe": "Linked Recipe",

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { useAuth } from '../../contexts/AuthContext';
@@ -441,6 +442,7 @@ const ViewModalActions = styled.div`
 const NoticesPage: React.FC = () => {
   const { t } = useTranslation('common');
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   // Data state
   const [receivedNotices, setReceivedNotices] = useState<Notice[]>([]);
@@ -1096,7 +1098,7 @@ const NoticesPage: React.FC = () => {
       {/* View Notice Modal */}
       {/* ================================================================== */}
       {showViewModal && selectedNotice && (
-        <CommonModal isOpen={true} onClose={() => { setShowViewModal(false); setSelectedNotice(null); }} title={selectedNotice.title} size="large" footer={<>{selectedNotice.category === 'guide' && (<button onClick={async () => { try { const res = await fetch(`/api/work-manuals/from-notice/${selectedNotice.id}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getAuthToken()}` }, body: JSON.stringify({}) }); if ((await res.json()).success) { setShowViewModal(false); setSelectedNotice(null); } } catch (e) { /* silent */ } }} style={{ padding: '8px 16px', background: '#F0EFFF', color: '#635BFF', border: '1px solid #635BFF', borderRadius: '6px', fontSize: '12px', fontWeight: 500, cursor: 'pointer' }}>Send to Work Manuals</button>)}{String(selectedNotice.author_id) === String(user?.id) && (<ViewModalActions><DeleteNoticeButton onClick={() => handleDeleteNotice(selectedNotice.id)}>{t('common:noticesPage.deleteNotice')}</DeleteNoticeButton></ViewModalActions>)}</>}>
+        <CommonModal isOpen={true} onClose={() => { setShowViewModal(false); setSelectedNotice(null); }} title={selectedNotice.title} size="large" footer={<>{selectedNotice.category === 'guide' && (<button onClick={async () => { try { const res = await fetch(`/api/work-manuals/from-notice/${selectedNotice.id}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getAuthToken()}` }, body: JSON.stringify({}) }); const data = await res.json(); if (data.success) { setShowViewModal(false); setSelectedNotice(null); navigate('/pos/foodcourt/general/work-manuals'); } else { console.error('Send to Work Manuals failed:', data); } } catch (e) { console.error('Send to Work Manuals error:', e); } }} style={{ padding: '8px 16px', background: '#F0EFFF', color: '#635BFF', border: '1px solid #635BFF', borderRadius: '6px', fontSize: '12px', fontWeight: 500, cursor: 'pointer' }}>Send to Work Manuals</button>)}{String(selectedNotice.author_id) === String(user?.id) && (<ViewModalActions><DeleteNoticeButton onClick={() => handleDeleteNotice(selectedNotice.id)}>{t('common:noticesPage.deleteNotice')}</DeleteNoticeButton></ViewModalActions>)}</>}>
               {/* Notice metadata */}
               <NoticeDetailMeta>
                 <NoticeDetailMetaItem>

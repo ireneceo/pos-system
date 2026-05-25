@@ -330,6 +330,7 @@ router.post('/order', async (req, res) => {
         payment_status: 'pending',
         order_date: new Date().toISOString(),
         scheduled_pickup_time: scheduledPickupTime || null,
+        source: 'mobile',
         order_items: items.map(item => ({
           name: item.name,
           quantity: item.quantity,

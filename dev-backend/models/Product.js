@@ -154,6 +154,12 @@ Product.init({
     type: DataTypes.ENUM('in_sync', 'pending_update', 'unlinked'),
     allowNull: true,
     comment: 'Current sync state with the linked BrandMenu. NULL = never synced.'
+  },
+  takeaway_charge: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    defaultValue: null,
+    comment: 'Per-item packaging fee override for pricingType=per-item-individual. NULL = use defaultPerItemCharge; number (incl. 0) = explicit override.'
   }
 }, {
   sequelize: database.sequelize,

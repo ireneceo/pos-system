@@ -13,6 +13,12 @@ export interface FloorTableGroup {
   name: string;                  // display label (e.g., "Main Hall")
   prefix: string;                // 1-3 letters (e.g., "I", "P", "VIP") — table label = `${prefix}-${number}`
   sort_order: number;
+  // Pool size — total number of slots defined for this group in Settings. The actual placed
+  // tables on the floor plan are a subset (each one references its slot via tableNumber 1..slot_count).
+  // Slots are not "placed" until the user drops them onto the canvas via Floor Plan Editor.
+  // Backward-compat: when missing/undefined, fall back to the count of placed tables (the
+  // pool equals what's already on the floor — same as legacy behaviour).
+  slot_count?: number;
 }
 
 export interface FloorPlanData {
@@ -118,8 +124,9 @@ export function getDefaultGroupId(fp: FloorPlanData | null | undefined): string 
 }
 
 // Helper — compute table label from group prefix + number.
+// Empty/undefined prefix → return the number alone. Never auto-injects "T".
 export function computeTableLabel(prefix: string, number: string | number): string {
-  const p = String(prefix || 'T').trim();
+  const p = String(prefix ?? '').trim();
   const n = String(number).trim();
   return p ? `${p}-${n}` : n;
 }

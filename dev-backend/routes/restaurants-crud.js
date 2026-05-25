@@ -1339,6 +1339,19 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
       }
       updateData.logo_url = req.body.logo_url;
     }
+    // Store landline + Legal entity (company) fields — see Restaurant model comments.
+    if (req.body.telephone !== undefined) updateData.telephone = req.body.telephone;
+    if (req.body.legal_name !== undefined) updateData.legal_name = req.body.legal_name;
+    if (req.body.legal_address !== undefined) updateData.legal_address = req.body.legal_address;
+    if (req.body.legal_address_line_2 !== undefined) updateData.legal_address_line_2 = req.body.legal_address_line_2;
+    if (req.body.legal_city !== undefined) updateData.legal_city = req.body.legal_city;
+    if (req.body.legal_state !== undefined) updateData.legal_state = req.body.legal_state;
+    if (req.body.legal_postal_code !== undefined) updateData.legal_postal_code = req.body.legal_postal_code;
+    if (req.body.legal_country !== undefined) {
+      updateData.legal_country = req.body.legal_country ? String(req.body.legal_country).toUpperCase().slice(0, 2) : null;
+    }
+    if (req.body.legal_phone !== undefined) updateData.legal_phone = req.body.legal_phone;
+    if (req.body.legal_email !== undefined) updateData.legal_email = req.body.legal_email;
 
     // Subscription fields - only update if explicitly provided (prevents accidental overwrites)
     // Accept both camelCase and snake_case for plan_type and plan_amount

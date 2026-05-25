@@ -682,5 +682,10 @@
   "sort.priceAsc": "Price low → high",
   "sort.priceDesc": "Price high → low",
   "sort.category": "Group by category",
-  "sort.ariaLabel": "Sort"
+  "sort.ariaLabel": "Sort",
+  "mobileOrderAlerts.oneNewOrder": "1 new mobile order",
+  "mobileOrderAlerts.multipleNewOrders": "{{count}} new mobile orders",
+  "mobileOrderAlerts.table": "Table",
+  "mobileOrderAlerts.view": "View",
+  "mobileOrderAlerts.dismiss": "Dismiss"
 }

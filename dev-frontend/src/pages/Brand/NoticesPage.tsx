@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { useAuth } from '../../contexts/AuthContext';
@@ -434,6 +435,7 @@ const ViewModalHeaderRight = styled.div`
 const NoticesPage: React.FC = () => {
   const { t } = useTranslation('common');
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useTabParam<'received' | 'sent'>('received');
   const [receivedNotices, setReceivedNotices] = useState<Notice[]>([]);
   const [sentNotices, setSentNotices] = useState<Notice[]>([]);
@@ -1106,7 +1108,7 @@ const NoticesPage: React.FC = () => {
       {/* View Notice Modal                                                   */}
       {/* ================================================================== */}
       {showViewModal && selectedNotice && (
-        <CommonModal isOpen={true} onClose={() => { setShowViewModal(false); setSelectedNotice(null); }} title={selectedNotice.title} size="large" headerActions={<ViewModalHeaderRight><PriorityBadge priority={selectedNotice.priority}>{selectedNotice.priority}</PriorityBadge>{isOwnNotice(selectedNotice) && (<DeleteNoticeButton onClick={() => handleDeleteNotice(selectedNotice.id)}>{t('common:noticesPage.delete')}</DeleteNoticeButton>)}</ViewModalHeaderRight>} footer={<>{selectedNotice.category === 'guide' && (<Button variant="secondary" onClick={async () => { try { const res = await fetch(`/api/work-manuals/from-notice/${selectedNotice.id}`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({}) }); if ((await res.json()).success) { setShowViewModal(false); setSelectedNotice(null); } } catch (e) { /* silent */ } }}>Send to Work Manuals</Button>)}<Button variant="secondary" onClick={() => { setShowViewModal(false); setSelectedNotice(null); }}>{t('common:noticesPage.close')}</Button></>}>
+        <CommonModal isOpen={true} onClose={() => { setShowViewModal(false); setSelectedNotice(null); }} title={selectedNotice.title} size="large" headerActions={<ViewModalHeaderRight><PriorityBadge priority={selectedNotice.priority}>{selectedNotice.priority}</PriorityBadge>{isOwnNotice(selectedNotice) && (<DeleteNoticeButton onClick={() => handleDeleteNotice(selectedNotice.id)}>{t('common:noticesPage.delete')}</DeleteNoticeButton>)}</ViewModalHeaderRight>} footer={<>{selectedNotice.category === 'guide' && (<Button variant="secondary" onClick={async () => { try { const res = await fetch(`/api/work-manuals/from-notice/${selectedNotice.id}`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({}) }); const data = await res.json(); if (data.success) { setShowViewModal(false); setSelectedNotice(null); navigate('/pos/brand/general/work-manuals'); } else { console.error('Send to Work Manuals failed:', data); } } catch (e) { console.error('Send to Work Manuals error:', e); } }}>Send to Work Manuals</Button>)}<Button variant="secondary" onClick={() => { setShowViewModal(false); setSelectedNotice(null); }}>{t('common:noticesPage.close')}</Button></>}>
               {/* Meta info */}
               <ViewNoticeMeta>
                 <MetaField>

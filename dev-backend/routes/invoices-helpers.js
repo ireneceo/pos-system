@@ -251,18 +251,20 @@ async function getIssuerCompanyInfo(issuerType, issuerId, currency = 'MYR') {
 // Helper function to build payer company info
 async function getPayerCompanyInfo(payerType, payerId, restaurant) {
   if (payerType === 'restaurant' || !payerId) {
-    // Restaurant pays - use restaurant info
+    // Restaurant pays - use legal_* info, fall back to store info per field if legal_* is missing.
+    // Store info = what shows on bills (customer-facing brand); legal_* = what shows on invoices (billed party).
     if (restaurant) {
       return {
-        name: restaurant.name || 'Restaurant',
+        name: restaurant.legal_name || restaurant.name || 'Restaurant',
         logoUrl: restaurant.logo_url || null,
-        address: restaurant.address || '',
-        city: restaurant.city || '',
-        state: restaurant.state || '',
-        postalCode: restaurant.postal_code || '',
-        country: restaurant.country || 'Malaysia',
-        phone: restaurant.phone || '',
-        email: restaurant.email || '',
+        address: restaurant.legal_address || restaurant.address || '',
+        addressLine2: restaurant.legal_address_line_2 || restaurant.address_line_2 || '',
+        city: restaurant.legal_city || restaurant.city || '',
+        state: restaurant.legal_state || restaurant.state || '',
+        postalCode: restaurant.legal_postal_code || restaurant.postal_code || '',
+        country: restaurant.legal_country || restaurant.country || 'Malaysia',
+        phone: restaurant.legal_phone || restaurant.phone || '',
+        email: restaurant.legal_email || restaurant.email || '',
         taxId: restaurant.tax_id || '',
         businessRegistration: restaurant.business_registration || ''
       };
@@ -301,6 +303,28 @@ async function getPayerCompanyInfo(payerType, payerId, restaurant) {
         email: foodcourt.email || '',
         taxId: foodcourt.tax_id || '',
         businessRegistration: foodcourt.business_registration || ''
+      };
+    }
+  } else if (payerType === 'restaurant_owner' && payerId) {
+    // Restaurant Owner pays — use User-level company info. Owner accounts share one
+    // company across their owned restaurants. User model carries name/address/phone but
+    // not tax_id/business_registration (treated as personal/sole-prop billing).
+    const User = require('../models').User;
+    const owner = await User.findByPk(payerId);
+    if (owner) {
+      return {
+        name: owner.company_name || owner.full_name || 'Restaurant Owner',
+        logoUrl: null,
+        address: owner.address || '',
+        addressLine2: owner.address_line_2 || '',
+        city: owner.city || '',
+        state: owner.state || '',
+        postalCode: owner.postal_code || '',
+        country: owner.country || 'Malaysia',
+        phone: owner.phone || '',
+        email: owner.email || '',
+        taxId: '',
+        businessRegistration: ''
       };
     }
   }

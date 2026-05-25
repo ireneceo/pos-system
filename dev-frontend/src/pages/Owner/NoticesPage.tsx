@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { useAuth } from '../../contexts/AuthContext';
@@ -555,6 +556,7 @@ const RecipientTag = styled.span`
 
 const NoticesPage: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useTabParam<'received' | 'sent'>('received');
   const [receivedNotices, setReceivedNotices] = useState<Notice[]>([]);
   const [sentNotices, setSentNotices] = useState<Notice[]>([]);
@@ -1119,7 +1121,7 @@ const NoticesPage: React.FC = () => {
       {/* View Notice Modal */}
       {/* ================================================================== */}
       {showViewModal && viewNotice && (
-        <CommonModal isOpen={true} onClose={() => { setShowViewModal(false); setViewNotice(null); }} title={viewNotice.title} size="large" footer={<>{viewNotice.category === 'guide' && (<Button variant="secondary" onClick={async () => { try { const res = await fetch(`/api/work-manuals/from-notice/${viewNotice.id}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getAuthToken()}` }, body: JSON.stringify({}) }); if ((await res.json()).success) { setShowViewModal(false); setViewNotice(null); } } catch (e) { /* silent */ } }}>Send to Work Manuals</Button>)}<Button variant="secondary" onClick={() => { setShowViewModal(false); setViewNotice(null); }}>{'Close'}</Button></>}>
+        <CommonModal isOpen={true} onClose={() => { setShowViewModal(false); setViewNotice(null); }} title={viewNotice.title} size="large" footer={<>{viewNotice.category === 'guide' && (<Button variant="secondary" onClick={async () => { try { const res = await fetch(`/api/work-manuals/from-notice/${viewNotice.id}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getAuthToken()}` }, body: JSON.stringify({}) }); const data = await res.json(); if (data.success) { setShowViewModal(false); setViewNotice(null); navigate('/pos/owner/work-manuals'); } else { console.error('Send to Work Manuals failed:', data); } } catch (e) { console.error('Send to Work Manuals error:', e); } }}>Send to Work Manuals</Button>)}<Button variant="secondary" onClick={() => { setShowViewModal(false); setViewNotice(null); }}>{'Close'}</Button></>}>
               <NoticeDetailMeta>
                 <MetaItem>
                   <MetaLabel>From:</MetaLabel>

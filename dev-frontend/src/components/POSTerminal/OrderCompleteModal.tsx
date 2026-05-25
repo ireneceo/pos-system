@@ -472,13 +472,21 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
         </TotalSection>
       </Modal>
       
-      {/* Bill Print Content - Hidden until print */}
+      {/* Bill Print Content - Hidden until print. Follows the same brand-first header rule
+          as utils/billPrint.js: big line = tradeName||name, supporting lines = address,
+          legalName (only if it differs from the big line), telephone (landline; mobile is
+          never printed), then Reg No / Tax No. */}
       <BillPrintContent id="order-complete-bill-print">
         <PrintHeader>
-          <PrintTitle>{storeInfo.name}</PrintTitle>
+          <PrintTitle>{storeInfo.tradeName || storeInfo.name}</PrintTitle>
           <div style={{ fontSize: '11px', marginTop: '5px' }}>
-            {storeInfo.address}<br />
-            Tel: {storeInfo.phone}
+            {storeInfo.address}
+            {storeInfo.legalName && storeInfo.legalName.trim() && storeInfo.legalName.trim() !== (storeInfo.tradeName || storeInfo.name || '').trim() && (
+              <><br />{storeInfo.legalName}</>
+            )}
+            {storeInfo.telephone && (
+              <><br />Tel: {storeInfo.telephone}</>
+            )}
             {(storeInfo.businessRegistration || storeInfo.gstRegNo) && (
               <>
                 <br />

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { useAuth } from '../../contexts/AuthContext';
@@ -471,6 +472,7 @@ const DeleteButton = styled.button`
 const NoticesPage: React.FC = () => {
   const { t } = useTranslation('admin');
   const { user } = useAuth();
+  const navigate = useNavigate();
   // Data states
   const [notices, setNotices] = useState<Notice[]>([]);
   const [metadata, setMetadata] = useState<NoticeMetadata | null>(null);
@@ -1061,10 +1063,16 @@ const NoticesPage: React.FC = () => {
                       const res = await fetch(`/api/work-manuals/from-notice/${selectedNotice.id}`, {
                         method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({})
                       });
-                      if ((await res.json()).success) {
+                      const data = await res.json();
+                      if (data.success) {
                         setShowViewModal(false); setSelectedNotice(null);
+                        navigate('/pos/admin/work-manuals');
+                      } else {
+                        console.error('Send to Work Manuals failed:', data);
                       }
-                    } catch (e) { /* silent */ }
+                    } catch (e) {
+                      console.error('Send to Work Manuals error:', e);
+                    }
                   }}>Send to Work Manuals</Button>
                 )}
                 {String(selectedNotice.author_id) === String(user?.id) && (

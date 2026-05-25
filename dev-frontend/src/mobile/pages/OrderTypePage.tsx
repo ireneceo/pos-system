@@ -4,7 +4,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import {
-  Utensils, ShoppingBag, Clock, Truck, CalendarDays, ChevronRight
+  Utensils, ShoppingBag, Clock, Truck, CalendarDays, ChevronRight, MapPin
 } from 'lucide-react';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { API_BASE_URL } from '../../config/api';
@@ -46,12 +46,26 @@ const Title = styled.h1`
   margin: 0 0 8px 0;
 `;
 
-const BranchName = styled.p`
-  font-size: 13px;
+const BranchName = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  margin: 10px auto 22px;
+  width: fit-content;
+  background: #F3F4F6;
+  border-radius: 999px;
+  font-size: 12px;
   font-weight: 500;
-  color: #6B7C93;
-  margin: 4px 0 0 0;
-  letter-spacing: 0.3px;
+  color: #4B5563;
+  letter-spacing: 0.2px;
+
+  svg {
+    width: 12px;
+    height: 12px;
+    color: #635BFF;
+    flex-shrink: 0;
+  }
 `;
 
 const Subtitle = styled.p`
@@ -461,12 +475,20 @@ const OrderTypePage: React.FC = () => {
         {storeData?.logo && storeData.logo !== '/images/store-logo.png' ? (
           <>
             <StoreLogo src={storeData.logo} alt={storeData.name} />
-            {storeData.branchName && <BranchName>{storeData.branchName}</BranchName>}
+            {storeData.branchName && (
+              <BranchName>
+                <MapPin /> {storeData.branchName}
+              </BranchName>
+            )}
           </>
         ) : (
           <>
             <Title>{storeData?.name || 'Welcome'}</Title>
-            {storeData?.branchName && <BranchName>{storeData.branchName}</BranchName>}
+            {storeData?.branchName && (
+              <BranchName>
+                <MapPin /> {storeData.branchName}
+              </BranchName>
+            )}
           </>
         )}
         <Subtitle>How would you like your order?</Subtitle>

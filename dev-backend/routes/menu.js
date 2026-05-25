@@ -191,6 +191,10 @@ router.get('/', checkRestaurantAccess, async (req, res) => {
         brand_menu_locks_snapshot: prod.brand_menu_locks_snapshot || null,
         brand_menu_synced_version: prod.brand_menu_synced_version || null,
         brand_menu_status: prod.brand_menu_link_status || null,
+        // Per-item packaging fee override (when takeawayPricing.pricingType=per-item-individual)
+        // null = no override (use defaultPerItemCharge from operation_settings)
+        // number (incl. 0) = explicit per-item override
+        takeaway_charge: prod.takeaway_charge != null ? Number(prod.takeaway_charge) : null,
         // POS Terminal sort 기준 (Newest)
         createdAt: prod.createdAt || null
       };

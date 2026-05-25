@@ -8,6 +8,8 @@
   "staffPage.allRoles": "All Roles",
   "staffPage.restaurantAdmin": "Restaurant Admin",
   "staffPage.staff": "Staff",
+  "staffPage.roleHintStaff": "Staff can take and cancel orders, manage tables, view live orders. Cannot remove orders, change menu items, or modify store settings.",
+  "staffPage.roleHintAdmin": "Restaurant Admin has full access: remove orders, edit menu and recipes, change store settings, manage staff, view all reports.",
   "staffPage.staffMember": "Staff Member",
   "staffPage.role": "Role",
   "staffPage.department": "Department",

@@ -28,8 +28,11 @@ interface OrderData {
 
 interface StoreInfo {
   name: string;
+  tradeName?: string;       // Customer-facing brand; replaces name on the big header line if set.
+  legalName?: string;       // Legal entity name; printed below address only when it differs from name/tradeName.
   address: string;
-  phone: string;
+  phone: string;            // Mobile — never printed on bills.
+  telephone?: string;       // Landline — printed on bills if set; omitted otherwise.
   gstRegNo: string;
   businessRegistration?: string;
 }
@@ -123,18 +126,24 @@ export const generateReceiptContent = (orderData: OrderData, storeInfo: StoreInf
   // Initialize
   content += CMD.INIT;
 
-  // Header - Store name (centered, large)
+  // Header — see utils/billPrint.js for the same brand-first rule.
   content += CMD.ALIGN_CENTER;
   content += CMD.TEXT_DOUBLE;
   content += CMD.BOLD_ON;
-  content += storeInfo.name + CMD.LINE_FEED;
+  const bigName_ = storeInfo.tradeName || storeInfo.name;
+  content += bigName_ + CMD.LINE_FEED;
   content += CMD.BOLD_OFF;
   content += CMD.TEXT_NORMAL;
   content += CMD.LINE_FEED;
 
-  // Store info (centered, small)
+  // Supporting lines (centered, small).
   content += storeInfo.address + CMD.LINE_FEED;
-  content += 'Tel: ' + storeInfo.phone + CMD.LINE_FEED;
+  if (storeInfo.legalName && storeInfo.legalName.trim() && storeInfo.legalName.trim() !== (bigName_ || '').trim()) {
+    content += storeInfo.legalName + CMD.LINE_FEED;
+  }
+  if (storeInfo.telephone) {
+    content += 'Tel: ' + storeInfo.telephone + CMD.LINE_FEED;
+  }
   if (storeInfo.businessRegistration) {
     content += 'Reg No: ' + storeInfo.businessRegistration + CMD.LINE_FEED;
   }

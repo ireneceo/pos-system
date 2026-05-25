@@ -682,5 +682,10 @@
   "sort.priceAsc": "价格由低到高",
   "sort.priceDesc": "价格由高到低",
   "sort.category": "按分类分组",
-  "sort.ariaLabel": "排序"
+  "sort.ariaLabel": "排序",
+  "mobileOrderAlerts.oneNewOrder": "1 个新移动订单",
+  "mobileOrderAlerts.multipleNewOrders": "{{count}} 个新移动订单",
+  "mobileOrderAlerts.table": "桌号",
+  "mobileOrderAlerts.view": "查看",
+  "mobileOrderAlerts.dismiss": "关闭"
 }

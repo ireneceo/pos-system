@@ -240,19 +240,23 @@ const CompanyInformationPage: React.FC = () => {
           const data = await response.json();
           const restaurant = data.data || data;
 
+          // Company Info edits the LEGAL ENTITY fields. When a legal_* column is empty (old data
+          // before the store/company split), the form falls back to the store-side equivalent so
+          // the page isn't mysteriously blank — but every save writes to legal_* columns, so
+          // future Bill renderings keep showing the store info and Invoice renderings use legal info.
           const info: CompanyInfo = {
             id: restaurant.id?.toString() || '',
-            companyName: restaurant.name || '',
+            companyName: restaurant.legal_name || restaurant.name || '',
             registrationNo: restaurant.business_registration || '',
             tradeName: restaurant.trade_name || '',
-            address: restaurant.address || '',
-            address_line_2: restaurant.address_line_2 || '',
-            city: restaurant.city || '',
-            state: restaurant.state || '',
-            postcode: restaurant.postal_code || '',
-            country: restaurant.country || 'MY',
-            phone: restaurant.phone || '',
-            email: restaurant.email || '',
+            address: restaurant.legal_address || restaurant.address || '',
+            address_line_2: restaurant.legal_address_line_2 || restaurant.address_line_2 || '',
+            city: restaurant.legal_city || restaurant.city || '',
+            state: restaurant.legal_state || restaurant.state || '',
+            postcode: restaurant.legal_postal_code || restaurant.postal_code || '',
+            country: restaurant.legal_country || restaurant.country || 'MY',
+            phone: restaurant.legal_phone || restaurant.phone || '',
+            email: restaurant.legal_email || restaurant.email || '',
             website: restaurant.website || '',
             taxNo: restaurant.tax_id || '',
             bankName: restaurant.bank_name || '',
@@ -289,17 +293,19 @@ const CompanyInformationPage: React.FC = () => {
         ...(token ? { 'Authorization': `Bearer ${token}` } : {})
       },
       body: JSON.stringify({
-        name: companyInfo.companyName,
+        // Legal entity fields go to legal_* columns. business_registration / tax_id / trade_name /
+        // website / bank_* / logo_url remain shared (company-level metadata, not duplicated on store side).
+        legal_name: companyInfo.companyName,
         business_registration: companyInfo.registrationNo,
         trade_name: companyInfo.tradeName,
-        address: companyInfo.address,
-        address_line_2: companyInfo.address_line_2 || null,
-        city: companyInfo.city,
-        state: companyInfo.state,
-        postal_code: companyInfo.postcode,
-        country: companyInfo.country,
-        phone: companyInfo.phone,
-        email: companyInfo.email,
+        legal_address: companyInfo.address,
+        legal_address_line_2: companyInfo.address_line_2 || null,
+        legal_city: companyInfo.city,
+        legal_state: companyInfo.state,
+        legal_postal_code: companyInfo.postcode,
+        legal_country: companyInfo.country,
+        legal_phone: companyInfo.phone,
+        legal_email: companyInfo.email,
         website: companyInfo.website,
         tax_id: companyInfo.taxNo,
         bank_name: companyInfo.bankName,
@@ -325,7 +331,9 @@ const CompanyInformationPage: React.FC = () => {
         <Content>
           <InfoBox>
             <p>
-              Manage your restaurant's official business information. This information will be used for invoicing, legal documents, and official communications.
+              <strong>{t('settings:companyInformationPage.bannerTitle', 'Company info — printed on invoices and legal documents')}</strong>
+              <br />
+              {t('settings:companyInformationPage.bannerDesc', 'This is your legal entity (the billed party on invoices). For the customer-facing brand printed on bills/receipts, edit Store Settings instead. Leave fields empty to use store info on invoices as well.')}
             </p>
           </InfoBox>
 

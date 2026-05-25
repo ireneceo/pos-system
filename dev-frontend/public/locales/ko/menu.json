@@ -19,6 +19,8 @@
   "menuManagementPage.itemCode": "항목 코드",
   "menuManagementPage.featuredItem": "추천 항목",
   "menuManagementPage.showInMobileFeaturedTab": "모바일 추천 탭에 표시",
+  "menuManagementPage.takeawayPackagingFee": "포장 용기비 (RM)",
+  "menuManagementPage.takeawayPackagingFeeHelp": "포장 가격 유형이 \"메뉴별 (각 메뉴 개별 설정)\"일 때만 적용됩니다. 포장비가 없으면 0으로 두세요.",
   "menuManagementPage.emojiIcon": "이모지 아이콘",
   "menuManagementPage.description": "설명",
   "menuManagementPage.linkedRecipe": "연결된 레시피",

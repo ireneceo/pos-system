@@ -19,6 +19,8 @@
   "menuManagementPage.itemCode": "Kod Item",
   "menuManagementPage.featuredItem": "Item Pilihan",
   "menuManagementPage.showInMobileFeaturedTab": "Tunjuk dalam tab Pilihan mudah alih",
+  "menuManagementPage.takeawayPackagingFee": "Caj Pembungkusan Bungkus (RM)",
+  "menuManagementPage.takeawayPackagingFeeHelp": "Hanya digunakan apabila harga bungkus ditetapkan kepada \"Setiap Menu (tetapkan secara individu)\". Biarkan pada 0 jika tiada caj pembungkusan.",
   "menuManagementPage.emojiIcon": "Ikon Emoji",
   "menuManagementPage.description": "Keterangan",
   "menuManagementPage.linkedRecipe": "Resipi Dipautkan",

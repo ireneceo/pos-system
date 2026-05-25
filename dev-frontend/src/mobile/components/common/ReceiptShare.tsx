@@ -19,11 +19,14 @@ interface OrderItem {
 interface RestaurantInfo {
   name?: string;
   branchName?: string | null;
+  tradeName?: string | null;
+  legalName?: string | null;
   address?: string | null;
   city?: string | null;
   state?: string | null;
   postalCode?: string | null;
-  phone?: string | null;
+  phone?: string | null;       // Mobile — never printed on bills.
+  telephone?: string | null;   // Landline — printed on bills if present.
   businessRegistration?: string | null;
   taxId?: string | null;
   logoUrl?: string | null;
@@ -412,19 +415,29 @@ const ReceiptShare: React.FC<ReceiptShareProps> = ({ order, storeName, branchNam
               crossOrigin="anonymous"
             />
           )}
-          <ReceiptStoreName>{rest?.name || storeName}</ReceiptStoreName>
-          {rest?.branchName && <div style={{ fontSize: '12px', marginBottom: '2px' }}>{rest.branchName}</div>}
-          <ReceiptStoreInfo>
-            {addressLine && <div>{addressLine}</div>}
-            {rest?.phone && <div>Tel: {rest.phone}</div>}
-            {(rest?.businessRegistration || rest?.taxId) && (
-              <div>
-                {rest.businessRegistration && <>Reg No: {rest.businessRegistration}</>}
-                {rest.businessRegistration && rest.taxId && ' | '}
-                {rest.taxId && <>Tax No: {rest.taxId}</>}
-              </div>
-            )}
-          </ReceiptStoreInfo>
+          {(() => {
+            const bigName = rest?.tradeName || rest?.name || storeName;
+            const legal = rest?.legalName || '';
+            const showLegal = legal && legal.trim() && legal.trim() !== (bigName || '').trim();
+            return (
+              <>
+                <ReceiptStoreName>{bigName}</ReceiptStoreName>
+                {rest?.branchName && <div style={{ fontSize: '12px', marginBottom: '2px' }}>{rest.branchName}</div>}
+                <ReceiptStoreInfo>
+                  {addressLine && <div>{addressLine}</div>}
+                  {showLegal && <div>{legal}</div>}
+                  {rest?.telephone && <div>Tel: {rest.telephone}</div>}
+                  {(rest?.businessRegistration || rest?.taxId) && (
+                    <div>
+                      {rest.businessRegistration && <>Reg No: {rest.businessRegistration}</>}
+                      {rest.businessRegistration && rest.taxId && ' | '}
+                      {rest.taxId && <>Tax No: {rest.taxId}</>}
+                    </div>
+                  )}
+                </ReceiptStoreInfo>
+              </>
+            );
+          })()}
         </ReceiptHeader>
 
         <ReceiptSection>

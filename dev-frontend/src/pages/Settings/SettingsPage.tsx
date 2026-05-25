@@ -377,8 +377,8 @@ interface Table {
 
 interface StoreSettings {
   name: string;
-  businessRegistration: string;
-  phone: string;
+  phone: string;          // Mobile phone (POS notifications only — never printed on bills)
+  telephone: string;      // Store landline — printed on bills if provided
   email: string;
   address: string;
   address_line_2: string;
@@ -386,7 +386,6 @@ interface StoreSettings {
   state: string;
   postalCode: string;
   country: string;
-  gstRegNo: string;
   logo: string;
   delivery_address: string;  // empty = use store address
 }
@@ -471,14 +470,20 @@ interface OperationSettings {
   };
   takeawayPricing: {
     enabled: boolean;
-    pricingType: 'per-item' | 'per-category';
+    pricingType: 'per-item' | 'per-category' | 'per-item-individual';
     perItemCharge: number;
+    defaultPerItemCharge: number;
     categoryCharges: {
       food: number;
       beverage: number;
       dessert: number;
       other: number;
     };
+  };
+  mobileOrderAlerts: {
+    bannerEnabled: boolean;
+    soundEnabled: boolean;
+    soundType: 'bell' | 'beep' | 'triple' | 'urgent' | 'melody' | 'deep';
   };
   deliveryPricing: {
     enabled: boolean;
@@ -738,6 +743,11 @@ const SettingsPage: React.FC = () => {
   const [allCategories, setAllCategories] = useState<any[]>([]);
   const [allProducts, setAllProducts] = useState<any[]>([]);
   const [stationSaving, setStationSaving] = useState(false);
+  // Takeaway per-item-individual: combobox + highlight last-added row
+  const [showTakeawayAddModal, setShowTakeawayAddModal] = useState(false);
+  const [takeawayAddSearch, setTakeawayAddSearch] = useState('');
+  const [takeawayJustAddedId, setTakeawayJustAddedId] = useState<number | null>(null);
+  const takeawayInputRef = useRef<HTMLInputElement | null>(null);
 
   // Load settings from localStorage or use defaults
   const loadSettings = () => {
@@ -745,8 +755,8 @@ const SettingsPage: React.FC = () => {
     const defaultSettings = {
       store: {
         name: 'FOODCOURT CENTRAL',
-        businessRegistration: '000123456789',
         phone: '+60 3-1234-5678',
+        telephone: '',
         email: 'contact@foodcourt.com',
         address: '123 Main Street, City Center',
         address_line_2: '',
@@ -754,7 +764,6 @@ const SettingsPage: React.FC = () => {
         state: 'Wilayah Persekutuan',
         postalCode: '50000',
         country: 'MY',
-        gstRegNo: '000123456789',
         logo: '',
         delivery_address: ''
       },
@@ -784,12 +793,18 @@ const SettingsPage: React.FC = () => {
           enabled: false,
           pricingType: 'per-item',
           perItemCharge: 0.50,
+          defaultPerItemCharge: 0.50,
           categoryCharges: {
             food: 1.00,
             beverage: 0.50,
             dessert: 0.50,
             other: 0.50
           }
+        },
+        mobileOrderAlerts: {
+          bannerEnabled: true,
+          soundEnabled: true,
+          soundType: 'bell'
         },
         deliveryPricing: {
           enabled: false,
@@ -1054,8 +1069,8 @@ const SettingsPage: React.FC = () => {
             // Update store settings with restaurant data
             setStoreSettings({
               name: restaurant.name || '',
-              businessRegistration: restaurant.business_registration || '',
               phone: restaurant.phone || '',
+              telephone: restaurant.telephone || '',
               email: restaurant.email || '',
               address: restaurant.address || '',
               address_line_2: restaurant.address_line_2 || '',
@@ -1063,7 +1078,6 @@ const SettingsPage: React.FC = () => {
               state: restaurant.state || '',
               postalCode: restaurant.postal_code || '',
               country: (restaurant.country || 'MY').toString().toUpperCase(),
-              gstRegNo: restaurant.tax_id || '',
               logo: restaurant.logo_url || '',
               delivery_address: restaurant.delivery_address || ''
             });
@@ -2073,8 +2087,8 @@ const SettingsPage: React.FC = () => {
 
         const requestBody = {
           name: storeSettings.name,
-          business_registration: storeSettings.businessRegistration,
           phone: storeSettings.phone,
+          telephone: storeSettings.telephone,
           email: storeSettings.email,
           address: storeSettings.address,
           address_line_2: storeSettings.address_line_2,
@@ -2083,7 +2097,6 @@ const SettingsPage: React.FC = () => {
           state: storeSettings.state,
           postal_code: storeSettings.postalCode,
           country: storeSettings.country,
-          tax_id: storeSettings.gstRegNo,
           logo_url: storeSettings.logo,
           payment_settings: normalizedPaymentMethods,
           operation_settings: operationSettings,
@@ -2985,40 +2998,45 @@ const SettingsPage: React.FC = () => {
           )}
           {activeTab === 'store' && (
             <>
+              {/* Section banner — explains the Bill vs Invoice split so users know where each field lands. */}
+              <div style={{
+                background: '#F0F4FF', border: '1px solid #C7D2FE', borderRadius: 8,
+                padding: '12px 16px', marginBottom: 16, fontSize: 13, color: '#3730A3'
+              }}>
+                <strong>{t('settings:settingsPage.storeInfoBannerTitle', 'Store info — printed on customer bills/receipts')}</strong>
+                <div style={{ marginTop: 4, color: '#4F46E5' }}>
+                  {t('settings:settingsPage.storeInfoBannerDesc', 'Your customer-facing brand. For company/legal info shown on invoices, edit Company Information.')}
+                </div>
+              </div>
               <SettingsGrid>
                 <SettingsCard>
                   <CardTitle>{t('settings:settingsPage.basicInformation')}</CardTitle>
                 <FormGroup>
-                  <Label>{t('settings:settingsPage.storeName')}</Label>
+                  <Label>{t('settings:settingsPage.storeName', 'Store / Brand Name')}</Label>
                   <AutoSaveField onSave={handleSave}>
                     <Input type="text" value={storeSettings.name}
                       onChange={(e) => setStoreSettings(prev => ({ ...prev, name: e.target.value }))}
-                      placeholder="FOODCOURT CENTRAL" />
+                      placeholder="K-Dine Korean BBQ" />
                   </AutoSaveField>
+                  <HelpText>{t('settings:settingsPage.storeNameHelp', 'The customer-facing brand printed at the top of bills and shown in mobile orders.')}</HelpText>
                 </FormGroup>
                 <FormGroup>
-                  <Label>{t('settings:settingsPage.businessRegistration')}</Label>
+                  <Label>{t('settings:settingsPage.telephone', 'Store Telephone (for bills)')}</Label>
                   <AutoSaveField onSave={handleSave}>
-                    <Input type="text" value={storeSettings.businessRegistration}
-                      onChange={(e) => setStoreSettings(prev => ({ ...prev, businessRegistration: e.target.value }))}
-                      placeholder="123456789" />
+                    <PhoneInput value={storeSettings.telephone}
+                      onChange={(value) => setStoreSettings(prev => ({ ...prev, telephone: value }))}
+                      defaultCountry={storeSettings.country} />
                   </AutoSaveField>
+                  <HelpText>{t('settings:settingsPage.telephoneHelp', 'Landline shown on bills/receipts. Leave empty to hide.')}</HelpText>
                 </FormGroup>
                 <FormGroup>
-                  <Label>{t('settings:settingsPage.taxNo')}</Label>
-                  <AutoSaveField onSave={handleSave}>
-                    <Input type="text" value={storeSettings.gstRegNo}
-                      onChange={(e) => setStoreSettings(prev => ({ ...prev, gstRegNo: e.target.value }))}
-                      placeholder="Enter tax registration number (optional)" />
-                  </AutoSaveField>
-                </FormGroup>
-                <FormGroup>
-                  <Label>{t('settings:settingsPage.phoneNumber')}</Label>
+                  <Label>{t('settings:settingsPage.mobilePhone', 'Mobile Phone (for POS notifications)')}</Label>
                   <AutoSaveField onSave={handleSave}>
                     <PhoneInput value={storeSettings.phone}
                       onChange={(value) => setStoreSettings(prev => ({ ...prev, phone: value }))}
                       defaultCountry={storeSettings.country} />
                   </AutoSaveField>
+                  <HelpText>{t('settings:settingsPage.mobilePhoneHelp', 'Used for system notifications only. Never printed on bills.')}</HelpText>
                 </FormGroup>
                 <FormGroup>
                   <Label>{t('settings:settingsPage.email')}</Label>
@@ -3564,11 +3582,12 @@ const SettingsPage: React.FC = () => {
                         >
                           <option value="per-item">{t('settings:settingsPage.perItemFixedChargePerItem')}</option>
                           <option value="per-category">{t('settings:settingsPage.perCategoryDifferentChargesByCategory')}</option>
+                          <option value="per-item-individual">{t('settings:settingsPage.perItemIndividualChargePerMenu', 'Per Menu Item (set individually)')}</option>
                         </Select>
                       </AutoSaveField>
                     </FormGroup>
-                    
-                    {operationSettings.takeawayPricing.pricingType === 'per-item' ? (
+
+                    {operationSettings.takeawayPricing.pricingType === 'per-item' && (
                       <FormGroup>
                         <Label>{t('settings:settingsPage.chargePerItem')}</Label>
                         <AutoSaveField onSave={handleSave}>
@@ -3587,7 +3606,9 @@ const SettingsPage: React.FC = () => {
                         <span style={{ color: '#6B7C93', fontSize: '14px' }}>{getCurrencySymbol(currencySettings.currency)}</span>
                         <HelpText>{t('settings:settingsPage.thisAmountWillBeAddedToEachItemForTakeawayOrders')}</HelpText>
                       </FormGroup>
-                    ) : (
+                    )}
+
+                    {operationSettings.takeawayPricing.pricingType === 'per-category' && (
                       <>
                         <Label style={{ marginBottom: '16px' }}>{t('settings:settingsPage.categoryCharges')}</Label>
                         <SettingsGrid>
@@ -3620,6 +3641,255 @@ const SettingsPage: React.FC = () => {
                         <HelpText>{t('settings:settingsPage.theseAmountsWillBeAddedToItemsBasedOnTheirCategoryForTakeawayOrders')}</HelpText>
                       </>
                     )}
+
+                    {operationSettings.takeawayPricing.pricingType === 'per-item-individual' && (() => {
+                      // null = no override (use default); number (incl. 0) = explicit override.
+                      // Sort: just-added row pinned to top while highlighted, then updatedAt DESC
+                      // so the most recently added/modified row stays visible.
+                      const overrideProducts = allProducts
+                        .filter((p: any) => p.takeaway_charge !== null && p.takeaway_charge !== undefined)
+                        .slice()
+                        .sort((a: any, b: any) => {
+                          if (takeawayJustAddedId === a.id) return -1;
+                          if (takeawayJustAddedId === b.id) return 1;
+                          const ta = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+                          const tb = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+                          return tb - ta;
+                        });
+                      const currencySymbol = getCurrencySymbol(currencySettings.currency);
+                      const defaultFee = Number(operationSettings.takeawayPricing.defaultPerItemCharge ?? 0);
+                      const categoryById = new Map<string, any>(categories.map((c: any) => [String(c.id), c]));
+                      const getCatFor = (prod: any) => categoryById.get(String(prod.categoryId ?? prod.category_id ?? prod.category));
+                      return (
+                        <>
+                          {/* Default packaging fee */}
+                          <FormGroup>
+                            <Label>{t('settings:settingsPage.defaultPackagingFee', 'Default packaging fee')}</Label>
+                            <AutoSaveField onSave={handleSave}>
+                              <FeeInput
+                                type="number"
+                                step="0.10"
+                                min="0"
+                                value={operationSettings.takeawayPricing.defaultPerItemCharge}
+                                onChange={(e) => {
+                                  setOperationSettings(prev => ({
+                                    ...prev,
+                                    takeawayPricing: { ...prev.takeawayPricing, defaultPerItemCharge: Number(e.target.value) }
+                                  }));
+                                }}
+                              />
+                            </AutoSaveField>
+                            <span style={{ color: '#6B7C93', fontSize: '14px' }}>{currencySymbol}</span>
+                            <HelpText>{t('settings:settingsPage.defaultPackagingFeeHelp', 'Applied to every menu item unless a custom fee is set below.')}</HelpText>
+                          </FormGroup>
+
+                          <Divider />
+
+                          {/* Custom fee per item — override list */}
+                          {(() => {
+                            const eligibleProducts = allProducts.filter((p: any) => p.takeaway_charge === null || p.takeaway_charge === undefined);
+                            const searchLower = takeawayAddSearch.trim().toLowerCase();
+                            const filtered = searchLower
+                              ? eligibleProducts.filter((p: any) =>
+                                  (p.name && p.name.toLowerCase().includes(searchLower)) ||
+                                  (p.code && String(p.code).toLowerCase().includes(searchLower))
+                                )
+                              : eligibleProducts;
+                            const addOverride = async (prod: any) => {
+                              setAllProducts(prev => prev.map((p: any) => p.id === prod.id ? { ...p, takeaway_charge: defaultFee } : p));
+                              setTakeawayAddSearch('');
+                              setShowTakeawayAddModal(false);
+                              takeawayInputRef.current?.blur();
+                              setTakeawayJustAddedId(prod.id);
+                              setTimeout(() => setTakeawayJustAddedId((cur) => cur === prod.id ? null : cur), 1800);
+                              const token = getAuthToken();
+                              await fetch(`/api/menu/product/${prod.id}?restaurantId=${user?.restaurantId}`, {
+                                method: 'PUT',
+                                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ takeaway_charge: defaultFee })
+                              });
+                            };
+                            const dropdownOpen = showTakeawayAddModal;
+                            return (
+                              <>
+                                <Label style={{ marginBottom: '10px' }}>{t('settings:settingsPage.customFeePerItem', 'Custom fee per item')}</Label>
+                                <div style={{ position: 'relative', marginBottom: '12px' }}>
+                                  <input
+                                    ref={takeawayInputRef}
+                                    type="text"
+                                    placeholder={t('settings:settingsPage.searchMenuToAdd', 'Search menu to add custom fee...') as string}
+                                    value={takeawayAddSearch}
+                                    onChange={(e) => setTakeawayAddSearch(e.target.value)}
+                                    onFocus={() => setShowTakeawayAddModal(true)}
+                                    onBlur={() => { setTimeout(() => setShowTakeawayAddModal(false), 200); }}
+                                    onKeyDown={(e) => { if (e.key === 'Escape') { setTakeawayAddSearch(''); (e.target as HTMLInputElement).blur(); } }}
+                                    disabled={eligibleProducts.length === 0 && !takeawayAddSearch}
+                                    style={{
+                                      width: '100%',
+                                      padding: '10px 12px 10px 36px',
+                                      border: `1px solid ${dropdownOpen ? '#635BFF' : '#E5E7EB'}`,
+                                      borderRadius: '8px',
+                                      fontSize: '14px',
+                                      outline: 'none',
+                                      boxSizing: 'border-box',
+                                      background: eligibleProducts.length === 0 && !takeawayAddSearch
+                                        ? `#F9FAFB url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23B0B7C3' stroke-width='2'><circle cx='11' cy='11' r='7'/><line x1='21' y1='21' x2='16.65' y2='16.65'/></svg>") no-repeat 12px center`
+                                        : `white url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2'><circle cx='11' cy='11' r='7'/><line x1='21' y1='21' x2='16.65' y2='16.65'/></svg>") no-repeat 12px center`,
+                                      boxShadow: dropdownOpen ? '0 0 0 3px rgba(99, 91, 255, 0.1)' : 'none',
+                                      transition: 'border-color 0.15s, box-shadow 0.15s'
+                                    }}
+                                  />
+                                  {dropdownOpen && (
+                                    <div
+                                      onMouseDown={(e) => e.preventDefault()}
+                                      style={{
+                                        position: 'absolute',
+                                        top: 'calc(100% + 4px)',
+                                        left: 0,
+                                        right: 0,
+                                        maxHeight: '280px',
+                                        overflowY: 'auto',
+                                        background: 'white',
+                                        border: '1px solid #E5E7EB',
+                                        borderRadius: '8px',
+                                        boxShadow: '0 8px 16px rgba(0,0,0,0.12)',
+                                        zIndex: 100
+                                      }}
+                                    >
+                                      {eligibleProducts.length === 0 ? (
+                                        <div style={{ padding: '14px', textAlign: 'center', color: '#9CA3AF', fontSize: '13px' }}>
+                                          {t('settings:settingsPage.allMenuItemsAlreadyAdded', 'All menu items already have a custom fee.')}
+                                        </div>
+                                      ) : filtered.length === 0 ? (
+                                        <div style={{ padding: '14px', textAlign: 'center', color: '#9CA3AF', fontSize: '13px' }}>
+                                          {t('settings:settingsPage.noMatchingMenuItems', 'No matching menu items.')}
+                                        </div>
+                                      ) : (
+                                        filtered.slice(0, 20).map((item: any) => {
+                                          const cat = getCatFor(item);
+                                          return (
+                                            <div
+                                              key={item.id}
+                                              onClick={() => addOverride(item)}
+                                              style={{
+                                                padding: '10px 14px',
+                                                cursor: 'pointer',
+                                                fontSize: '13px',
+                                                color: '#0A2540',
+                                                borderBottom: '1px solid #F3F4F6',
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center',
+                                                gap: '12px',
+                                                background: 'white',
+                                                transition: 'background 0.1s'
+                                              }}
+                                              onMouseEnter={(e) => e.currentTarget.style.background = '#F5F3FF'}
+                                              onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                                            >
+                                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                {cat && <span style={{ color: '#6B7280', marginRight: '6px' }}>{cat.emoji}</span>}
+                                                <span style={{ fontWeight: 500 }}>{item.name}</span>
+                                              </span>
+                                              <span style={{ color: '#635BFF', fontWeight: 500, flexShrink: 0 }}>
+                                                + {defaultFee.toFixed(2)}{currencySymbol}
+                                              </span>
+                                            </div>
+                                          );
+                                        })
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </>
+                            );
+                          })()}
+
+                          {overrideProducts.length === 0 ? (
+                            <div style={{ padding: '24px', background: '#F9FAFB', border: '1px dashed #E5E7EB', borderRadius: '8px', textAlign: 'center', color: '#6B7280', fontSize: '13px', lineHeight: 1.5 }}>
+                              {t('settings:settingsPage.allItemsUseDefaultFee', 'All items use the default fee of {{fee}}{{currency}}.', { fee: defaultFee.toFixed(2), currency: currencySymbol })}
+                              <br />
+                              {allProducts.length === 0
+                                ? t('settings:settingsPage.noMenuItemsYet', 'No menu items yet. Add menu items first to set per-item packaging fees.')
+                                : t('settings:settingsPage.addCustomFeeHint', 'Click "Add menu item" if a specific menu needs a different packaging fee.')}
+                            </div>
+                          ) : (
+                            <>
+                              <div style={{ border: '1px solid #E5E7EB', borderRadius: '8px', overflow: 'hidden' }}>
+                                {overrideProducts.map((prod: any) => {
+                                  const cat = getCatFor(prod);
+                                  return (
+                                    <div
+                                      key={prod.id}
+                                      style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '12px',
+                                        padding: '10px 14px',
+                                        borderBottom: '1px solid #F3F4F6',
+                                        background: takeawayJustAddedId === prod.id ? '#EEF2FF' : 'white',
+                                        transition: 'background 1.2s ease'
+                                      }}
+                                    >
+                                      <div style={{ flex: 1, minWidth: 0, fontSize: '14px', color: '#0A2540' }}>
+                                        {cat && <span style={{ color: '#6B7280', marginRight: '6px' }}>{cat.emoji} {cat.name} ·</span>}
+                                        <span style={{ fontWeight: 500 }}>{prod.name}</span>
+                                      </div>
+                                      <AutoSaveField
+                                        type="list"
+                                        debounceMs={1500}
+                                        onSave={async () => {
+                                          const cur = allProducts.find((p: any) => p.id === prod.id);
+                                          const charge = cur?.takeaway_charge;
+                                          const token = getAuthToken();
+                                          await fetch(`/api/menu/product/${prod.id}?restaurantId=${user?.restaurantId}`, {
+                                            method: 'PUT',
+                                            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ takeaway_charge: charge == null ? null : Number(charge) })
+                                          });
+                                        }}
+                                      >
+                                        <FeeInput
+                                          type="number"
+                                          step="0.10"
+                                          min="0"
+                                          value={prod.takeaway_charge ?? 0}
+                                          onChange={(e) => {
+                                            const v = Number(e.target.value);
+                                            setAllProducts(prev => prev.map((p: any) => p.id === prod.id ? { ...p, takeaway_charge: v } : p));
+                                          }}
+                                          style={{ width: '90px' }}
+                                        />
+                                      </AutoSaveField>
+                                      <span style={{ color: '#6B7C93', fontSize: '13px', minWidth: '24px' }}>{currencySymbol}</span>
+                                      <button
+                                        type="button"
+                                        title={t('settings:settingsPage.removeOverride', 'Remove custom fee (use default)') as string}
+                                        onClick={async () => {
+                                          setAllProducts(prev => prev.map((p: any) => p.id === prod.id ? { ...p, takeaway_charge: null } : p));
+                                          const token = getAuthToken();
+                                          await fetch(`/api/menu/product/${prod.id}?restaurantId=${user?.restaurantId}`, {
+                                            method: 'PUT',
+                                            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ takeaway_charge: null })
+                                          });
+                                        }}
+                                        style={{ width: '28px', height: '28px', border: '1px solid #E5E7EB', borderRadius: '6px', background: 'white', cursor: 'pointer', color: '#6B7280', fontSize: '14px', lineHeight: 1 }}
+                                      >
+                                        ×
+                                      </button>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                              <HelpText style={{ marginTop: '8px' }}>
+                                {t('settings:settingsPage.overrideCount', '{{count}} item override the default fee.', { count: overrideProducts.length })}
+                              </HelpText>
+                            </>
+                          )}
+                        </>
+                      );
+                    })()}
                   </>
                 )}
               </SettingsCard>
@@ -4105,6 +4375,86 @@ const SettingsPage: React.FC = () => {
                     </div>
                   </SettingsCard>
                 )}
+
+                {/* Mobile Order Alerts — staff notification UX */}
+                <SettingsCard style={{ gridColumn: '1 / -1' }}>
+                  <CardTitle>{t('settings:settingsPage.mobileOrderAlerts', 'Mobile Order Alerts')}</CardTitle>
+                  <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
+                    {t('settings:settingsPage.mobileOrderAlertsHint', 'How staff are notified when a new mobile/QR order arrives. Sidebar badge and Floor Plan dot are always shown.')}
+                  </p>
+                  <Toggle>
+                    <ToggleLabel>{t('settings:settingsPage.alertBannerOnAllPages', 'Show notification banner on all pages')}</ToggleLabel>
+                    <AutoSaveField onSave={handleSave} type="toggle">
+                      <ToggleSwitch>
+                        <ToggleInput
+                          type="checkbox"
+                          checked={operationSettings.mobileOrderAlerts?.bannerEnabled !== false}
+                          onChange={(e) => {
+                            setOperationSettings(prev => ({
+                              ...prev,
+                              mobileOrderAlerts: { ...(prev.mobileOrderAlerts || { bannerEnabled: true, soundEnabled: true, soundType: 'bell' }), bannerEnabled: e.target.checked }
+                            }));
+                          }}
+                        />
+                        <ToggleSlider />
+                      </ToggleSwitch>
+                    </AutoSaveField>
+                  </Toggle>
+                  <Toggle>
+                    <ToggleLabel>{t('settings:settingsPage.alertSoundOnNewOrder', 'Play sound on new mobile order')}</ToggleLabel>
+                    <AutoSaveField onSave={handleSave} type="toggle">
+                      <ToggleSwitch>
+                        <ToggleInput
+                          type="checkbox"
+                          checked={operationSettings.mobileOrderAlerts?.soundEnabled !== false}
+                          onChange={(e) => {
+                            setOperationSettings(prev => ({
+                              ...prev,
+                              mobileOrderAlerts: { ...(prev.mobileOrderAlerts || { bannerEnabled: true, soundEnabled: true, soundType: 'bell' }), soundEnabled: e.target.checked }
+                            }));
+                          }}
+                        />
+                        <ToggleSlider />
+                      </ToggleSwitch>
+                    </AutoSaveField>
+                  </Toggle>
+                  {(operationSettings.mobileOrderAlerts?.soundEnabled !== false) && (
+                    <FormGroup>
+                      <Label>{t('settings:settingsPage.alertSound', 'Alert sound')}</Label>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <AutoSaveField onSave={handleSave} type="select">
+                          <Select
+                            value={operationSettings.mobileOrderAlerts?.soundType || 'bell'}
+                            onChange={(e) => {
+                              setOperationSettings(prev => ({
+                                ...prev,
+                                mobileOrderAlerts: { ...(prev.mobileOrderAlerts || { bannerEnabled: true, soundEnabled: true, soundType: 'bell' }), soundType: e.target.value as any }
+                              }));
+                            }}
+                            style={{ flex: 1, maxWidth: '240px' }}
+                          >
+                            <option value="bell">Bell</option>
+                            <option value="beep">Double Beep</option>
+                            <option value="triple">Triple</option>
+                            <option value="urgent">Urgent</option>
+                            <option value="melody">Melody</option>
+                            <option value="deep">Deep</option>
+                          </Select>
+                        </AutoSaveField>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const { playPresetSound } = await import('../../utils/notificationSound');
+                            playPresetSound((operationSettings.mobileOrderAlerts?.soundType || 'bell') as any, 0.8);
+                          }}
+                          style={{ padding: '8px 14px', background: '#EEF2FF', color: '#635BFF', border: '1px solid #C7D2FE', borderRadius: '6px', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
+                        >
+                          {t('settings:settingsPage.testSound', 'Test sound')}
+                        </button>
+                      </div>
+                    </FormGroup>
+                  )}
+                </SettingsCard>
 
                 <SettingsCard style={{ gridColumn: '1 / -1', borderLeft: mobileSettings.pause_ordering ? '4px solid #DC2626' : undefined }}>
                   <CardTitle>{t('settings:settingsPage.pauseOrdering')}</CardTitle>
@@ -5476,12 +5826,15 @@ ${t('settings:settingsPage.qzDiagramBridge')}
 
                   <button
                     type="button"
-                    onClick={() => {
+                    onClick={async () => {
                       resetCustomerDisplayPosition();
+                      // Auto-open immediately so the user doesn't have to figure out the next step.
+                      // Popup appears on the main monitor; user drags it to the second monitor and closes.
+                      await openCustomerDisplay(user?.restaurantId || '');
                       setInfoModal({
                         open: true,
-                        title: t('settings:settingsPage.customerDisplay.resetDoneTitle', 'Position Reset'),
-                        message: t('settings:settingsPage.customerDisplay.resetDoneMessage', 'Saved Customer Display position has been cleared. The next time you open Customer Display, the popup will appear in the center of the main screen. Drag it to your second monitor — the new position will be remembered.'),
+                        title: t('settings:settingsPage.customerDisplay.resetDoneTitle', 'Drag to Second Monitor'),
+                        message: t('settings:settingsPage.customerDisplay.resetDoneMessage', 'Customer Display just opened on your main screen. Drag the popup to your second monitor, then close it. The new position will be saved — next time it will open there automatically.'),
                       });
                     }}
                     title={t('settings:settingsPage.customerDisplay.resetPositionTitle', 'Use this if the popup opens off-screen after disconnecting or rearranging monitors')}
@@ -6479,6 +6832,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
         type="info"
         singleButton
       />
+
     </>
   );
 };

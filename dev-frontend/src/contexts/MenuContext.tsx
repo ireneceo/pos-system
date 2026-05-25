@@ -32,6 +32,7 @@ export interface MenuItem {
   brand_menu_locks_snapshot?: Record<string, boolean> | null;
   brand_menu_synced_version?: number | null;
   brand_menu_status?: 'in_sync' | 'pending_update' | 'unlinked' | null;
+  takeaway_charge?: number;
   createdAt?: string | null;
 }
 
@@ -270,6 +271,7 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
               : (item.brand_menu_locks_snapshot || null),
             brand_menu_synced_version: item.brand_menu_synced_version || null,
             brand_menu_status: item.brand_menu_status || null,
+            takeaway_charge: item.takeaway_charge != null ? Number(item.takeaway_charge) : 0,
             createdAt: item.createdAt || item.created_at || null
           } as any;
         });
@@ -407,7 +409,8 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
             is_set_menu: item.is_set_menu || false,
             set_items: item.set_items || undefined,
             set_display_order: item.set_display_order || 0,
-            recipe_id: item.recipe_id || null
+            recipe_id: item.recipe_id || null,
+            takeaway_charge: item.takeaway_charge != null ? Number(item.takeaway_charge) : 0
           };
         });
 
@@ -507,6 +510,7 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
         set_items: updatedItem.set_items,
         set_display_order: updatedItem.set_display_order,
         recipe_id: updatedItem.recipe_id || null,
+        takeaway_charge: updatedItem.takeaway_charge ?? 0,
         directIngredients: (updatedItem as any).directIngredients || undefined
       };
 
@@ -581,6 +585,7 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
         set_items: newItem.set_items,
         set_display_order: newItem.set_display_order,
         recipe_id: newItem.recipe_id || null,
+        takeaway_charge: newItem.takeaway_charge ?? 0,
         directIngredients: (newItem as any).directIngredients || undefined,
         ...(restaurantId && { restaurant_id: restaurantId })
       };

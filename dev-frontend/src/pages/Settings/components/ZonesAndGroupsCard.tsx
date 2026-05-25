@@ -90,11 +90,14 @@ const DangerBtn = styled(IconBtn)`
 const GroupRow = styled.div`
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 0;
+  gap: 12px;
+  padding: 10px 8px;
   border-top: 1px solid #EEF0F3;
+  border-radius: 6px;
+  transition: background 0.15s;
 
   &:first-of-type { border-top: 0; }
+  &:hover { background: #FAFBFC; }
 `;
 const GroupName = styled.div`
   flex: 1;
@@ -102,22 +105,76 @@ const GroupName = styled.div`
   font-size: 13px;
   color: #0A2540;
   font-weight: 500;
+  display: flex;
+  align-items: center;
 `;
-const GroupMeta = styled.div`
-  font-size: 12px;
-  color: #6B7C93;
-  white-space: nowrap;
-`;
-const PrefixBadge = styled.span`
-  display: inline-block;
-  background: #F0EFFF;
-  color: #635BFF;
+const PrefixBadge = styled.span<{ $unset?: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: ${p => p.$unset ? '#F3F4F6' : '#F0EFFF'};
+  color: ${p => p.$unset ? '#9CA3AF' : '#635BFF'};
   font-size: 11px;
   font-weight: 700;
   padding: 2px 8px;
+  min-width: 28px;
   border-radius: 6px;
   letter-spacing: 0.5px;
-  margin-right: 8px;
+  margin-right: 10px;
+`;
+// Pool status — compact metric + progress bar + state-coded color. Three states:
+//   empty  (slot_count=0) — gray "Pool not set" with a CTA hint
+//   partial (0 < placed < pool) — purple "{placed} / {pool}" with progress bar
+//   full   (placed >= pool > 0) — green "✓ all placed"
+const PoolStatus = styled.div<{ $variant: 'empty' | 'partial' | 'full' }>`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: ${p => p.$variant === 'empty' ? '#9CA3AF'
+    : p.$variant === 'full' ? '#15803D' : '#635BFF'};
+  white-space: nowrap;
+`;
+const PoolMetric = styled.span`
+  font-variant-numeric: tabular-nums;
+`;
+const PoolBar = styled.div<{ $ratio: number; $variant: 'partial' | 'full' }>`
+  position: relative;
+  width: 80px;
+  height: 4px;
+  background: #EEF0F3;
+  border-radius: 2px;
+  overflow: hidden;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    width: ${p => Math.max(0, Math.min(100, p.$ratio * 100))}%;
+    background: ${p => p.$variant === 'full' ? '#16A34A' : '#635BFF'};
+    transition: width 0.2s;
+  }
+`;
+const PoolEmptyHint = styled.button`
+  background: transparent;
+  border: 0;
+  color: #635BFF;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: none;
+  &:hover { text-decoration: underline; }
+`;
+// Zone header — total placed / total pool across the zone's groups.
+const ZoneMeta = styled.span`
+  font-size: 12px;
+  font-weight: 500;
+  color: #6B7C93;
+  margin-left: 12px;
+  font-variant-numeric: tabular-nums;
 `;
 const AddBtn = styled.button`
   background: transparent;
@@ -370,7 +427,7 @@ const ZonesAndGroupsCard: React.FC<ZonesAndGroupsCardProps> = ({ restaurantId, r
     prefix: string;
     tableCount: string;
     seats: string;
-  }>({ open: false, mode: 'add', zoneId: '', name: '', prefix: '', tableCount: '4', seats: '4' });
+  }>({ open: false, mode: 'add', zoneId: '', name: '', prefix: '', tableCount: '0', seats: '4' });
   const [deleteGroup, setDeleteGroup] = useState<{ zone: FloorZone; group: FloorTableGroup } | null>(null);
   const [activeZoneFilter, setActiveZoneFilter] = useState<string>('all');
 
@@ -428,67 +485,68 @@ const ZonesAndGroupsCard: React.FC<ZonesAndGroupsCardProps> = ({ restaurantId, r
 
   // ── Group modal callbacks (state declared above) ────────────────────────────────
   const openAddGroup = (zoneId: string) => setGroupModal({
-    open: true, mode: 'add', zoneId, name: '', prefix: '', tableCount: '4', seats: '4'
+    open: true, mode: 'add', zoneId, name: '', prefix: '', tableCount: '0', seats: '4'
   });
-  const openEditGroup = (zone: FloorZone, group: FloorTableGroup) => setGroupModal({
-    open: true, mode: 'edit', zoneId: zone.id, groupId: group.id,
-    name: group.name, prefix: group.prefix, tableCount: '0', seats: '4'
-  });
-  const closeGroupModal = () => setGroupModal({ open: false, mode: 'add', zoneId: '', name: '', prefix: '', tableCount: '4', seats: '4' });
+  const openEditGroup = (zone: FloorZone, group: FloorTableGroup) => {
+    // Load existing slot_count for editing. Fallback: count of placed tables (legacy data has no slot_count).
+    const placedCount = (floorPlan.tables || []).filter(t => t.group_id === group.id).length;
+    const currentSlot = group.slot_count != null ? group.slot_count : placedCount;
+    setGroupModal({
+      open: true, mode: 'edit', zoneId: zone.id, groupId: group.id,
+      name: group.name, prefix: group.prefix,
+      tableCount: String(currentSlot), seats: '4'
+    });
+  };
+  const closeGroupModal = () => setGroupModal({ open: false, mode: 'add', zoneId: '', name: '', prefix: '', tableCount: '0', seats: '4' });
 
   const saveGroup = useCallback(async () => {
     const name = groupModal.name.trim();
-    const prefix = sanitizePrefix(groupModal.prefix);
-    if (!name || !prefix) return;
+    const prefix = sanitizePrefix(groupModal.prefix);  // may be '' — that's OK now
+    if (!name) return;
 
-    // Prevent duplicate prefix within same zone
-    const dup = (floorPlan.table_groups || []).some(g =>
-      g.zone_id === groupModal.zoneId &&
-      g.prefix.toUpperCase() === prefix &&
-      g.id !== groupModal.groupId
-    );
-    if (dup) {
-      setInfoModalMsg(t('zonesGroups.prefixDuplicate', { prefix }));
-      return;
+    // Prevent duplicate prefix within the same zone — only when a non-empty prefix is set
+    // (multiple groups with no prefix are allowed since they don't collide in labels).
+    if (prefix) {
+      const dup = (floorPlan.table_groups || []).some(g =>
+        g.zone_id === groupModal.zoneId &&
+        (g.prefix || '').toUpperCase() === prefix &&
+        g.id !== groupModal.groupId
+      );
+      if (dup) {
+        setInfoModalMsg(t('zonesGroups.prefixDuplicate', { prefix }));
+        return;
+      }
     }
 
+    // v3.39 hotfix #3 redesign — group is a POOL definition. Settings stores `slot_count`; the
+    // tables themselves are NOT auto-placed on the floor. Floor Plan Editor consumes the pool
+    // (slot_count) and lets the user drop each slot onto the canvas. The old "auto-grid all N
+    // tables on the floor at (50,50)" behaviour has been removed because it surprised users.
     let next: FloorPlanData;
     if (groupModal.mode === 'add') {
-      const tableCount = Math.max(0, Math.min(200, parseInt(groupModal.tableCount, 10) || 0));
-      const seats = Math.max(1, Math.min(20, parseInt(groupModal.seats, 10) || 4));
+      const slotCount = Math.max(0, Math.min(200, parseInt(groupModal.tableCount, 10) || 0));
       const newGroupId = uid('g');
       const sortOrder = ((floorPlan.table_groups || []).filter(g => g.zone_id === groupModal.zoneId).length) + 1;
       const newGroup: FloorTableGroup = {
-        id: newGroupId, zone_id: groupModal.zoneId, name, prefix, sort_order: sortOrder
+        id: newGroupId, zone_id: groupModal.zoneId, name, prefix, sort_order: sortOrder,
+        slot_count: slotCount
       };
-      // Auto-create tables (un-positioned — Floor Plan editor 에서 배치)
-      const startNum = 1;
-      const newTables = Array.from({ length: tableCount }, (_, i) => {
-        const n = startNum + i;
-        return {
-          id: uid('t'),
-          tableNumber: String(n),
-          label: computeTableLabel(prefix, n),
-          shape: 'square' as const,
-          x: 50 + (i % 8) * 90,
-          y: 50 + Math.floor(i / 8) * 90,
-          width: 70, height: 70,
-          rotation: 0,
-          seats,
-          group_id: newGroupId
-        };
-      });
       next = {
         ...floorPlan,
-        table_groups: [...(floorPlan.table_groups || []), newGroup],
-        tables: [...floorPlan.tables, ...newTables]
+        table_groups: [...(floorPlan.table_groups || []), newGroup]
+        // tables: untouched — user adds via Floor Plan Editor
       };
     } else {
-      // Edit — name + prefix 변경 시 그 group 의 tables 의 label 도 자동 갱신
+      // Edit — name + prefix + slot_count 변경. Reducing slot_count below the number of already
+      // placed tables is prevented (user must remove tables from the Floor Plan Editor first).
+      const placedInGroup = (floorPlan.tables || []).filter(t => t.group_id === groupModal.groupId);
+      const placedCount = placedInGroup.length;
+      const wantedSlotCount = Math.max(0, Math.min(200, parseInt(groupModal.tableCount, 10) || 0));
+      const slotCount = Math.max(wantedSlotCount, placedCount);  // floor cannot lose placed tables
       next = {
         ...floorPlan,
         table_groups: (floorPlan.table_groups || []).map(g =>
-          g.id === groupModal.groupId ? { ...g, name, prefix } : g
+          g.id === groupModal.groupId ? { ...g, name, prefix, slot_count: slotCount } : g
         ),
         tables: floorPlan.tables.map(t =>
           t.group_id === groupModal.groupId
@@ -539,6 +597,22 @@ const ZonesAndGroupsCard: React.FC<ZonesAndGroupsCardProps> = ({ restaurantId, r
           <ZoneBlock key={zone.id}>
             <ZoneHeader>
               <ZoneName>{zone.name}</ZoneName>
+              {(() => {
+                // Zone-wide aggregate: total placed / total pool across this zone's groups.
+                // Helps the user see "ZONE1 — 5 placed / 44 in pool" at a glance.
+                const totalPlaced = floorPlan.tables.filter(t2 =>
+                  zoneGroups.some(g => g.id === t2.group_id) && (!t2.tableType || t2.tableType === 'table')
+                ).length;
+                const totalPool = zoneGroups.reduce((sum, g) => {
+                  const placedInG = floorPlan.tables.filter(t2 => t2.group_id === g.id && (!t2.tableType || t2.tableType === 'table')).length;
+                  const pool = g.slot_count != null ? g.slot_count : placedInG;
+                  return sum + pool;
+                }, 0);
+                if (zoneGroups.length === 0) return null;
+                return (
+                  <ZoneMeta>{t('zonesGroups.zonePoolMeta', { placed: totalPlaced, pool: totalPool, defaultValue: '{{placed}} placed / {{pool}} in pool' })}</ZoneMeta>
+                );
+              })()}
               <ZoneActions>
                 <IconBtn type="button" onClick={() => openRenameZone(zone)}>{t('zonesGroups.rename')}</IconBtn>
                 <DangerBtn type="button" onClick={() => setDeleteZone(zone)}>{t('zonesGroups.delete')}</DangerBtn>
@@ -552,14 +626,35 @@ const ZonesAndGroupsCard: React.FC<ZonesAndGroupsCardProps> = ({ restaurantId, r
             )}
 
             {zoneGroups.map(group => {
-              const count = floorPlan.tables.filter(t2 => t2.group_id === group.id && (!t2.tableType || t2.tableType === 'table')).length;
+              const placed = floorPlan.tables.filter(t2 => t2.group_id === group.id && (!t2.tableType || t2.tableType === 'table')).length;
+              const pool = group.slot_count != null ? group.slot_count : placed;
+              const isEmpty = pool === 0;
+              const isFull = pool > 0 && placed >= pool;
+              const variant: 'empty' | 'partial' | 'full' = isEmpty ? 'empty' : isFull ? 'full' : 'partial';
+              const ratio = pool > 0 ? placed / pool : 0;
               return (
                 <GroupRow key={group.id}>
                   <GroupName>
-                    <PrefixBadge>{group.prefix}</PrefixBadge>
+                    <PrefixBadge $unset={!group.prefix}>{group.prefix || '—'}</PrefixBadge>
                     {group.name}
                   </GroupName>
-                  <GroupMeta>{t('zonesGroups.tableCount', { count })}</GroupMeta>
+                  <PoolStatus $variant={variant}>
+                    {isEmpty ? (
+                      <PoolEmptyHint
+                        type="button"
+                        onClick={() => openEditGroup(zone, group)}
+                        title={t('zonesGroups.setPoolSizeHint', 'Set pool size →')}
+                      >
+                        {t('zonesGroups.poolNotSet', 'Set pool size →')}
+                      </PoolEmptyHint>
+                    ) : (
+                      <>
+                        <PoolMetric>{t('zonesGroups.poolMetric', { placed, pool, defaultValue: '{{placed}} / {{pool}}' })}</PoolMetric>
+                        <PoolBar $ratio={ratio} $variant={isFull ? 'full' : 'partial'} aria-hidden />
+                        {isFull && <span aria-label="all placed">✓</span>}
+                      </>
+                    )}
+                  </PoolStatus>
                   <IconBtn type="button" onClick={() => openEditGroup(zone, group)}>{t('zonesGroups.edit')}</IconBtn>
                   <DangerBtn type="button" onClick={() => setDeleteGroup({ zone, group })}>{t('zonesGroups.delete')}</DangerBtn>
                 </GroupRow>
@@ -672,42 +767,47 @@ const ZonesAndGroupsCard: React.FC<ZonesAndGroupsCardProps> = ({ restaurantId, r
             style={{ textTransform: 'uppercase', maxWidth: '160px' }}
           />
           <HintText>
-            <strong>{t('zonesGroups.tablesLabeledAs', { prefix: groupModal.prefix || 'X' })}</strong>
+            {groupModal.prefix
+              ? <strong>{t('zonesGroups.tablesLabeledAs', { prefix: groupModal.prefix })}</strong>
+              : <strong>{t('zonesGroups.tablesLabeledNoPrefix', 'Tables will be labeled by number only (1, 2, 3...). Set a prefix above (e.g. "A") if you want labels like A-1, A-2.')}</strong>}
           </HintText>
         </FormRow>
-        {groupModal.mode === 'add' && (
-          <>
-            <FormRow>
-              <Label htmlFor="group-count">{t('zonesGroups.numberOfTables')}</Label>
-              <Input
-                id="group-count"
-                type="number"
-                min="0" max="200"
-                value={groupModal.tableCount}
-                onChange={(e) => setGroupModal(s => ({ ...s, tableCount: e.target.value }))}
-                style={{ maxWidth: '160px' }}
-              />
-              <HintText>{t('zonesGroups.autoPositioned')}</HintText>
-            </FormRow>
-            <FormRow>
-              <Label htmlFor="group-seats">{t('zonesGroups.defaultSeats')}</Label>
-              <Input
-                id="group-seats"
-                type="number"
-                min="1" max="20"
-                value={groupModal.seats}
-                onChange={(e) => setGroupModal(s => ({ ...s, seats: e.target.value }))}
-                style={{ maxWidth: '160px' }}
-              />
-            </FormRow>
-          </>
-        )}
+        {/* Pool size — show for both add and edit. This is the single source of truth for how many
+            tables this group has. Floor Plan Editor consumes this pool. Reducing slot_count below
+            already-placed tables is silently floored to the placed count (must remove from editor first). */}
+        <FormRow>
+          <Label htmlFor="group-count">{t('zonesGroups.poolSize', 'Pool size (number of tables)')}</Label>
+          <Input
+            id="group-count"
+            type="number"
+            min="0" max="200"
+            value={groupModal.tableCount}
+            onChange={(e) => setGroupModal(s => ({ ...s, tableCount: e.target.value }))}
+            style={{ maxWidth: '160px' }}
+          />
+          <HintText>{t('zonesGroups.poolSizeHelp', 'Total tables defined for this group. Tables are NOT placed on the floor here — open Floor Plan Editor to drop each one onto the canvas.')}</HintText>
+        </FormRow>
+        {groupModal.mode === 'edit' && (() => {
+          const placedInGroup = (floorPlan.tables || []).filter(t => t.group_id === groupModal.groupId).length;
+          const wanted = parseInt(groupModal.tableCount, 10) || 0;
+          if (placedInGroup > 0 && wanted < placedInGroup) {
+            return (
+              <div style={{
+                background: '#FEF3C7', border: '1px solid #FCD34D', borderRadius: 8,
+                padding: '10px 12px', fontSize: 12, color: '#92400E', marginTop: 8
+              }}>
+                {t('zonesGroups.poolMinPlaced', { count: placedInGroup, defaultValue: 'Pool size cannot drop below {{count}} — that many tables are already on the floor plan. Remove them from Floor Plan Editor first.' })}
+              </div>
+            );
+          }
+          return null;
+        })()}
         {groupModal.mode === 'edit' && (
           <HintText>{t('zonesGroups.labelUpdateDesc')}</HintText>
         )}
         <Footer>
           <SecondaryBtn type="button" onClick={closeGroupModal}>{t('zonesGroups.cancel')}</SecondaryBtn>
-          <PrimaryBtn type="button" onClick={saveGroup} disabled={!groupModal.name.trim() || !sanitizePrefix(groupModal.prefix)}>
+          <PrimaryBtn type="button" onClick={saveGroup} disabled={!groupModal.name.trim()}>
             {groupModal.mode === 'add' ? t('zonesGroups.create') : t('zonesGroups.save')}
           </PrimaryBtn>
         </Footer>

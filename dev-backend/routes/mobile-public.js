@@ -318,7 +318,8 @@ router.get('/menu/:slug', async (req, res) => {
         is_set_menu: product.is_set_menu || false,
         set_items: product.set_items || undefined,
         set_display_order: product.set_display_order || 0,
-        is_featured: product.is_featured || false
+        is_featured: product.is_featured || false,
+        takeaway_charge: product.takeaway_charge != null ? Number(product.takeaway_charge) : null
       };
     });
 

@@ -114,7 +114,10 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
         setAddItemsCart([]);
         handleCloseModal();
       }}
-      title={showAddItemsView ? 'Add Items to Order' : showReceiptView ? 'Receipt Preview' : showKitchenTicketView ? 'Kitchen Order Ticket Preview' : `Order ${selectedOrder.order_number}`}
+      title={showAddItemsView ? t('orders:liveOrdersPage.addItemsToOrder', 'Add Items to Order')
+        : showReceiptView ? t('orders:liveOrdersPage.billPreview', 'Bill Preview')
+        : showKitchenTicketView ? t('orders:liveOrdersPage.kitchenTicketPreview', 'Kitchen Order Ticket Preview')
+        : `${t('orders:liveOrdersPage.order', 'Order')} ${selectedOrder.order_number}`}
       footer={!showAddItemsView ? (
         showReceiptView ? (
           <ActionButton onClick={() => setShowReceiptView(false)}>{t('orders:liveOrdersPage.backToOrderDetails')}</ActionButton>
@@ -122,7 +125,9 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
           <ActionButton onClick={() => setShowKitchenTicketView(false)}>{t('orders:liveOrdersPage.backToOrderDetails')}</ActionButton>
         ) : (
           <>
-            <ActionButton variant="secondary" onClick={() => handleDeleteOrder(selectedOrder.id)} style={{ background: '#6B7280', borderColor: '#6B7280', color: 'white' }}>{t('orders:liveOrdersPage.remove')}</ActionButton>
+            {['Restaurant Admin', 'Restaurant Owner', 'System Admin'].includes(user?.role) && (
+              <ActionButton variant="secondary" onClick={() => handleDeleteOrder(selectedOrder.id)} style={{ background: '#6B7280', borderColor: '#6B7280', color: 'white' }}>{t('orders:liveOrdersPage.remove')}</ActionButton>
+            )}
             {selectedOrder.status !== 'cancelled' && selectedOrder.status !== 'completed' && (
               <ActionButton onClick={() => handleCancelOrder(selectedOrder.id)} style={{ background: '#FF6B6B', borderColor: '#FF6B6B', color: 'white' }}>{t('orders:liveOrdersPage.cancelOrder')}</ActionButton>
             )}
@@ -436,7 +441,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
             return (
               <iframe
                 srcDoc={htmlContent}
-                title="Receipt Preview"
+                title="Bill Preview"
                 style={{
                   width: '320px',
                   minHeight: '500px',

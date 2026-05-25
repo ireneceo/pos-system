@@ -19,6 +19,8 @@
   "menuManagementPage.itemCode": "项目代码",
   "menuManagementPage.featuredItem": "特色项目",
   "menuManagementPage.showInMobileFeaturedTab": "在移动端特色标签中显示",
+  "menuManagementPage.takeawayPackagingFee": "外卖包装费 (RM)",
+  "menuManagementPage.takeawayPackagingFeeHelp": "仅当外卖定价设为「按菜单项（每项单独设置）」时适用。若无包装费请保持为 0。",
   "menuManagementPage.emojiIcon": "表情图标",
   "menuManagementPage.description": "描述",
   "menuManagementPage.linkedRecipe": "已关联食谱",

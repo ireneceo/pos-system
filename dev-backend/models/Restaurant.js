@@ -5,15 +5,18 @@ const database = require('../config/database');
  * Floor plan v1 → v2 lazy migration.
  * v1: { version: 1, canvasWidth, canvasHeight, gridSize, showGrid, tables: [{id, tableNumber, label, ...}] }
  * v2: v1 fields + zones[] + table_groups[] + tables 에 group_id 추가.
- * 옛 매장은 default zone "Main" + default group (prefix=table_settings.tablePrefix||'T') 자동 생성.
+ * 옛 매장은 default zone "Main" + default group (prefix=table_settings.tablePrefix or empty) 자동 생성.
+ * Empty prefix → label = number alone (no auto "T-" injection).
  * @param {object} v1 — parsed v1 floor_plan
  * @param {string|null} rawTableSettings — raw table_settings JSON string (옛 prefix 추출용)
  * @returns {object} v2 floor_plan (in-memory, DB 저장은 다음 update 때 자동)
  */
 function migrateFloorPlanV1ToV2(v1, rawTableSettings) {
   if (!v1 || typeof v1 !== 'object') return v1;
-  // Extract legacy prefix from table_settings for default group.
-  let defaultPrefix = 'T';
+  // Extract legacy prefix from table_settings for default group. Empty by default — user must opt
+  // into a prefix if they want one. Old code defaulted to "T" which surprised restaurants that
+  // never configured a prefix.
+  let defaultPrefix = '';
   try {
     if (rawTableSettings) {
       const ts = typeof rawTableSettings === 'string' ? JSON.parse(rawTableSettings) : rawTableSettings;
@@ -94,7 +97,13 @@ Restaurant.init({
   },
   phone: {
     type: DataTypes.STRING(20),
-    allowNull: true
+    allowNull: true,
+    comment: 'Mobile phone for POS notifications. NOT printed on bills.'
+  },
+  telephone: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+    comment: 'Store landline number printed on bills. Optional — omitted from header when empty.'
   },
   address: {
     type: DataTypes.TEXT,
@@ -163,6 +172,46 @@ Restaurant.init({
   },
   bank_account_name: {
     type: DataTypes.STRING(255),
+    allowNull: true
+  },
+  // Legal entity (company) info — billed party on invoices.
+  // NULL means "same as store info" — invoice resolver falls back to name/address/phone/email above.
+  // Store info (above) is the customer-facing brand printed on bills/receipts.
+  legal_name: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    comment: 'Legal company name printed on invoices. NULL = fall back to store name.'
+  },
+  legal_address: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  legal_address_line_2: {
+    type: DataTypes.STRING(255),
+    allowNull: true
+  },
+  legal_city: {
+    type: DataTypes.STRING(100),
+    allowNull: true
+  },
+  legal_state: {
+    type: DataTypes.STRING(100),
+    allowNull: true
+  },
+  legal_postal_code: {
+    type: DataTypes.STRING(20),
+    allowNull: true
+  },
+  legal_country: {
+    type: DataTypes.CHAR(2),
+    allowNull: true
+  },
+  legal_phone: {
+    type: DataTypes.STRING(20),
+    allowNull: true
+  },
+  legal_email: {
+    type: DataTypes.STRING(100),
     allowNull: true
   },
   logo_url: {

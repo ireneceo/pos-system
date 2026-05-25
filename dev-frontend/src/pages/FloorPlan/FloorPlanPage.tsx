@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import styled from 'styled-components';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { FloorPlanData, DEFAULT_FLOOR_PLAN, TableStatusInfo } from './types';
+import { FloorPlanData, DEFAULT_FLOOR_PLAN, TableStatusInfo, ORDER_STATUS_COLORS } from './types';
+import { calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import FloorPlanCanvas from './FloorPlanCanvas';
 import TableDetailPanel from './TableDetailPanel';
 import FloorPlanStatsBar from './FloorPlanStatsBar';
@@ -35,6 +36,14 @@ const PageContainer = styled.div`
 `;
 
 // Zone filter chip row — appears below header when restaurant has 2+ zones.
+// Vertical divider that separates Zone chips from view-mode chips inside the same single-row chip bar.
+const ChipSeparator = styled.div`
+  width: 1px;
+  height: 20px;
+  background: #E6EBF1;
+  margin: 0 4px;
+`;
+
 const ZoneFilterBar = styled.div`
   display: flex;
   align-items: center;
@@ -163,6 +172,7 @@ const MainContent = styled.div`
   flex: 1;
   display: flex;
   min-height: 0;
+  position: relative; /* anchor for absolute-positioned overlay panels (e.g. takeaway detail) */
 `;
 
 const CanvasWrapper = styled.div`
@@ -249,7 +259,46 @@ const FloorPlanPage: React.FC = () => {
   // Future fix: deduplicate the POS Terminal mount fetches first, then revisit.
 
   const [floorPlan, setFloorPlan] = useState<FloorPlanData>(DEFAULT_FLOOR_PLAN);
-  const [activeZoneFilter, setActiveZoneFilter] = useState<string>('all');  // Zone filter chip (all | zone.id)
+  // Tab state mirrored to the URL so each tab/zone/order is a shareable bookmark:
+  //   /floor-plan                          → All Zones, floor view
+  //   /floor-plan?zone=z_main              → specific zone, floor view
+  //   /floor-plan?view=takeaway            → takeaway view
+  //   /floor-plan?view=takeaway&order=123  → takeaway view + specific order open
+  // useSearchParams gives us bidirectional sync; we never mutate the params object directly.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeZoneFilter = searchParams.get('zone') || 'all';
+  const activeView: 'floor' | 'takeaway' = searchParams.get('view') === 'takeaway' ? 'takeaway' : 'floor';
+  const selectedTakeawayOrderId = (() => {
+    const q = searchParams.get('order');
+    return q ? parseInt(q, 10) || null : null;
+  })();
+  const setActiveZoneFilter = useCallback((zone: string) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (zone === 'all') next.delete('zone'); else next.set('zone', zone);
+      // Zone tabs imply floor view, so leaving takeaway view here is more intuitive.
+      next.delete('view');
+      next.delete('order');
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+  const setActiveView = useCallback((view: 'floor' | 'takeaway') => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (view === 'takeaway') next.set('view', 'takeaway');
+      else { next.delete('view'); next.delete('order'); }
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+  const setSelectedTakeawayOrderId = useCallback((id: number | null) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (id == null) next.delete('order'); else next.set('order', String(id));
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+  const [takeawayOrders, setTakeawayOrders] = useState<any[]>([]);
+  const [takeawayLoading, setTakeawayLoading] = useState(false);
 
   // Filtered floor plan — tables restricted to selected zone.
   const filteredFloorPlan = useMemo<FloorPlanData>(() => {
@@ -277,6 +326,8 @@ const FloorPlanPage: React.FC = () => {
 
   // Payment modal (like LiveOrders)
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  // Takeaway payment target — when set, renders PaymentModal for that takeaway order (same UI as dine-in).
+  const [paymentTakeawayOrderId, setPaymentTakeawayOrderId] = useState<number | null>(null);
   const [paymentMethods, setPaymentMethods] = useState<any>(null);
   const [membershipSettings, setMembershipSettings] = useState<any>(null);
 
@@ -327,6 +378,56 @@ const FloorPlanPage: React.FC = () => {
       console.error('Failed to fetch table statuses:', err);
     }
   }, [restaurantId]);
+
+  // Fetch active takeaway orders for the "Today" period — same boundary the dine-in canvas
+  // uses (see backend /table-status which filters createdAt to today in restaurant timezone).
+  // Floor Plan is an operational "today's work" screen, so takeaway must match that scope —
+  // not all-time history. Older orders live in Live Orders with its date filter.
+  const fetchTakeawayOrders = useCallback(async () => {
+    if (!restaurantId) return;
+    try {
+      setTakeawayLoading(true);
+      const token = getAuthToken();
+      const range = calculatePeriodDateRange('today', timezone);
+      const params = new URLSearchParams({
+        page: '1', limit: '200', includeCompleted: 'true', order_type: 'takeaway'
+      });
+      if (range.start) params.append('startDate', range.start);
+      if (range.end) params.append('endDate', range.end);
+      const res = await fetch(`/api/orders/restaurant/${restaurantId}?${params}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        // API returns `data.data`. We belt-and-suspenders filter for `order_type=takeaway` in
+        // case the server doesn't honour that param, and drop cancelled rows so the screen matches
+        // the dine-in canvas behaviour (cancelled orders never count as active work).
+        const list = Array.isArray(data.data) ? data.data : [];
+        const taList = list.filter((o: any) => {
+          const ot = (o.order_type || o.orderType || '').toString().replace(/[_\s]/g, '').toLowerCase();
+          if (ot !== 'takeaway') return false;
+          if ((o.status || '').toString() === 'cancelled') return false;
+          return true;
+        });
+        setTakeawayOrders(taList);
+      }
+    } catch (err) {
+      console.error('Failed to fetch takeaway orders:', err);
+    } finally {
+      setTakeawayLoading(false);
+    }
+  }, [restaurantId, timezone]);
+
+  // Initial takeaway fetch + refresh when entering the view + light polling while the view is open.
+  useEffect(() => {
+    fetchTakeawayOrders();
+  }, [fetchTakeawayOrders]);
+  useEffect(() => {
+    if (activeView !== 'takeaway') return;
+    fetchTakeawayOrders();
+    const id = setInterval(fetchTakeawayOrders, 15000);
+    return () => clearInterval(id);
+  }, [activeView, fetchTakeawayOrders]);
 
   const debouncedFetch = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -498,11 +599,20 @@ const FloorPlanPage: React.FC = () => {
     }
   };
 
-  // New order → POS iframe overlay
-  const handleNewOrder = () => {
-    if (!selectedTable) return;
+  // [POS Overlay pattern — SINGLE entry point for any POS launch from Floor Plan]
+  // All POS Terminal launches from Floor Plan must go through this function and the <POSOverlay> iframe below.
+  // Do NOT add `navigate('/pos-terminal?...')` direct routes from this page — the black bar header
+  // (POSOverlayHeader with × Close) is the only close path, and Floor Plan state (zone filter, statuses,
+  // socket subscription) is preserved by staying in this route.
+  // Add new launch types here as new opts keys; do not split into separate functions.
+  const handleNewOrder = (opts?: { takeaway?: boolean }) => {
     const params = new URLSearchParams();
-    params.set('table', selectedTable);
+    if (opts?.takeaway) {
+      params.set('order_type', 'takeaway');
+    } else {
+      if (!selectedTable) return;
+      params.set('table', selectedTable);
+    }
     params.set('from', 'floor-plan-overlay');
     setPosUrl(`/restaurant/${restaurantId}/pos-terminal?${params.toString()}`);
     setShowPOS(true);
@@ -538,7 +648,13 @@ const FloorPlanPage: React.FC = () => {
     }
   };
 
-  // Payment confirm (like LiveOrders handlePaymentConfirm)
+  // Trigger payment for a takeaway order (called from TableDetailPanel reused for takeaway).
+  const handleTakeawayPayment = (o: any) => {
+    setPaymentTakeawayOrderId(o.id);
+  };
+
+  // Payment confirm — shared by dine-in and takeaway. paymentTakeawayOrderId, when set,
+  // overrides selectedTable lookup so we PATCH the correct order.
   const handlePaymentConfirm = async (
     method: string,
     _amountReceived?: number,
@@ -547,9 +663,22 @@ const FloorPlanPage: React.FC = () => {
     pointDiscount?: number,
     cardType?: string
   ) => {
-    if (!selectedTable) return;
-    const statusInfo = tableStatuses[selectedTable];
-    if (!statusInfo?.orderId) return;
+    // Two sources of truth — takeaway path uses the explicit order id; dine-in path looks up the
+    // active order for the selected table.
+    let orderId: number | undefined;
+    let baseTotalAmount = 0;
+    if (paymentTakeawayOrderId) {
+      const o: any = takeawayOrders.find((x: any) => x.id === paymentTakeawayOrderId);
+      if (!o) return;
+      orderId = o.id;
+      baseTotalAmount = parseFloat(o.final_price ?? o.total_amount ?? o.total) || 0;
+    } else {
+      if (!selectedTable) return;
+      const statusInfo = tableStatuses[selectedTable];
+      if (!statusInfo?.orderId) return;
+      orderId = statusInfo.orderId;
+      baseTotalAmount = Number(statusInfo.totalAmount || 0);
+    }
 
     try {
       const token = getAuthToken();
@@ -562,10 +691,23 @@ const FloorPlanPage: React.FC = () => {
       if (pointsUsed && pointsUsed > 0 && pointDiscount && pointDiscount > 0) {
         updatePayload.points_used = pointsUsed;
         updatePayload.point_discount = pointDiscount;
-        updatePayload.total_amount = (statusInfo.totalAmount || 0) - pointDiscount;
+        updatePayload.total_amount = baseTotalAmount - pointDiscount;
       }
 
-      const res = await fetch(`/api/orders/${statusInfo.orderId}`, {
+      // For takeaway path we don't have selectedStatusInfo's orderStatus here, so we re-fetch lightly
+      // by reading the canonical row when needed. Dine-in keeps its existing optimization.
+      const dineInStatusInfo = !paymentTakeawayOrderId && selectedTable ? tableStatuses[selectedTable] : null;
+      const takeawayOrder: any = paymentTakeawayOrderId
+        ? takeawayOrders.find((x: any) => x.id === paymentTakeawayOrderId)
+        : null;
+      const currentOrderStatus = paymentTakeawayOrderId
+        ? takeawayOrder?.status
+        : dineInStatusInfo?.orderStatus;
+      const orderNumber = paymentTakeawayOrderId
+        ? (takeawayOrder?.order_number || takeawayOrder?.orderNumber || '')
+        : ((dineInStatusInfo as any)?.orderNumber || '');
+
+      const res = await fetch(`/api/orders/${orderId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -575,28 +717,33 @@ const FloorPlanPage: React.FC = () => {
       });
       if (res.ok) {
         // LiveOrders와 동일: 결제 완료 후 상태 변경
-        if (statusInfo.orderStatus === 'outstanding') {
-          await fetch(`/api/orders/${statusInfo.orderId}`, {
+        if (currentOrderStatus === 'outstanding') {
+          await fetch(`/api/orders/${orderId}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify({ status: 'pending' })
           });
-        } else if (statusInfo.orderStatus === 'served') {
-          await fetch(`/api/orders/${statusInfo.orderId}`, {
+        } else if (currentOrderStatus === 'served') {
+          await fetch(`/api/orders/${orderId}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify({ status: 'completed' })
           });
         }
-        setShowPaymentModal(false);
-        await fetchStatuses();
+        if (paymentTakeawayOrderId) {
+          setPaymentTakeawayOrderId(null);
+          await fetchTakeawayOrders();
+        } else {
+          setShowPaymentModal(false);
+          await fetchStatuses();
+        }
 
-        // Checkout Display에 결제 완료 전송
-        if (checkoutSocketRef.current) {
+        // Checkout Display 에 결제 완료 전송 (dine-in 만 — takeaway 는 카운터 픽업)
+        if (!paymentTakeawayOrderId && checkoutSocketRef.current && dineInStatusInfo) {
           checkoutSocketRef.current.emit('checkout-complete', {
             restaurantId,
-            orderNumber: (statusInfo as any).orderNumber || '',
-            total: parseFloat((statusInfo as any).totalAmount) || 0,
+            orderNumber,
+            total: parseFloat((dineInStatusInfo as any).totalAmount) || 0,
             currency: 'MYR'
           });
         }
@@ -767,12 +914,19 @@ const FloorPlanPage: React.FC = () => {
         </HeaderRight>
       </Header>
 
-      {/* Zone filter chips — visible only when 2+ zones exist (single-zone matches old UI). */}
-      {(floorPlan.zones || []).length > 1 && (
+      {/* Single chip bar — zones on the left, view-mode chips on the right.
+          - Zone chips (existing) switch the floor canvas filter.
+          - "Takeaway · N" chip switches the main view to a takeaway-orders card grid
+            (no separate page — same layout slot as the floor canvas).
+          - "+ Walk-in" chip is the quick action: navigates to POS Terminal in takeaway mode
+            with `from=floor-plan` so its Back button returns here. */}
+      {((floorPlan.zones || []).length > 1 || true) && (
         <ZoneFilterBar>
+          {/* Zone chips highlight only while in floor view. In takeaway view the active chip is the
+              Takeaway pill — having both lit simultaneously implies a filter that doesn't actually apply. */}
           <ZoneChip
             type="button"
-            active={activeZoneFilter === 'all'}
+            active={activeView === 'floor' && activeZoneFilter === 'all'}
             onClick={() => setActiveZoneFilter('all')}
           >
             All Zones <ZoneChipCount>{floorPlan.tables.length}</ZoneChipCount>
@@ -784,25 +938,129 @@ const FloorPlanPage: React.FC = () => {
               <ZoneChip
                 key={zone.id}
                 type="button"
-                active={activeZoneFilter === zone.id}
+                active={activeView === 'floor' && activeZoneFilter === zone.id}
                 onClick={() => setActiveZoneFilter(zone.id)}
               >
                 {zone.name} <ZoneChipCount>{count}</ZoneChipCount>
               </ZoneChip>
             );
           })}
+          {/* Takeaway view chip + Walk-in CTA — same row, separator visually parts them from zone chips */}
+          <ChipSeparator />
+          <ZoneChip
+            type="button"
+            active={activeView === 'takeaway'}
+            onClick={() => {
+              setActiveView(activeView === 'takeaway' ? 'floor' : 'takeaway');
+              setSelectedTable(null);
+            }}
+            title={t('floorplan:floorPlanPage.takeawayViewHint', 'View active takeaway orders')}
+          >
+            {t('floorplan:floorPlanPage.takeawayView', 'Takeaway')}
+            <ZoneChipCount>{takeawayOrders.length}</ZoneChipCount>
+          </ZoneChip>
+          <ZoneChip
+            type="button"
+            active={false}
+            onClick={() => handleNewOrder({ takeaway: true })}
+            title={t('floorplan:floorPlanPage.takeawayWalkInHint', 'Start a new walk-in takeaway order')}
+            style={{ color: '#635BFF', borderColor: '#635BFF' }}
+          >
+            {t('floorplan:floorPlanPage.takeawayWalkIn', '+ Walk-in')}
+          </ZoneChip>
         </ZoneFilterBar>
       )}
 
       <MainContent>
         <CanvasWrapper>
-          <FloorPlanCanvas
-            floorPlan={filteredFloorPlan}
-            tableStatuses={tableStatuses}
-            onTableClick={handleTableClick}
-            selectedTableId={selectedTable ? floorPlan.tables.find(t => t.tableNumber === selectedTable)?.id : null}
-            currency={currency}
-          />
+          {activeView === 'floor' ? (
+            <FloorPlanCanvas
+              floorPlan={filteredFloorPlan}
+              tableStatuses={tableStatuses}
+              onTableClick={handleTableClick}
+              selectedTableId={selectedTable ? floorPlan.tables.find(t => t.tableNumber === selectedTable)?.id : null}
+              currency={currency}
+            />
+          ) : (
+            // Takeaway view — card grid using the same look as table cards (white pill + status border).
+            // Clicking a card sets selectedTakeawayOrderId, opening the right-side OrderDetailModal —
+            // the same component LiveOrders uses, so all actions (status change, payment, cancel) work.
+            <div style={{
+              flex: 1, overflow: 'auto', padding: 20,
+              background: '#FAFBFC', border: '1px solid #E6EBF1', borderRadius: 8
+            }}>
+              {takeawayLoading && takeawayOrders.length === 0 ? (
+                <div style={{ padding: 40, textAlign: 'center', color: '#6B7C93' }}>
+                  {t('floorplan:floorPlanPage.loading', 'Loading takeaway orders...')}
+                </div>
+              ) : takeawayOrders.length === 0 ? (
+                <div style={{ padding: 40, textAlign: 'center', color: '#6B7C93' }}>
+                  <div style={{ fontSize: 14, fontWeight: 500, color: '#0A2540', marginBottom: 6 }}>
+                    {t('floorplan:floorPlanPage.noTakeaway', 'No active takeaway orders')}
+                  </div>
+                  <div style={{ fontSize: 12, marginBottom: 16 }}>
+                    {t('floorplan:floorPlanPage.noTakeawayHint', 'Start a walk-in takeaway order from the button above.')}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleNewOrder({ takeaway: true })}
+                    style={{
+                      background: '#635BFF', color: 'white', border: 0, borderRadius: 6,
+                      padding: '10px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer'
+                    }}
+                  >
+                    {t('floorplan:floorPlanPage.startTakeawayCta', '+ Start Takeaway Order')}
+                  </button>
+                </div>
+              ) : (
+                <div style={{
+                  display: 'grid', gap: 12,
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))'
+                }}>
+                  {takeawayOrders.map((o: any) => {
+                    const id = o.id;
+                    const isSelected = selectedTakeawayOrderId === id;
+                    const status = (o.status || 'pending').toString();
+                    const paymentStatus = (o.payment_status || o.paymentStatus || '').toString();
+                    // Single source of status palette — same `ORDER_STATUS_COLORS` that TableNode uses
+                    // on the floor canvas. Cards match table colors on the same screen so the user's
+                    // mental model is consistent (pending=yellow, preparing=purple, ready=green, etc.).
+                    const palette = ORDER_STATUS_COLORS[status] || ORDER_STATUS_COLORS.pending;
+                    const orderNum = o.order_number || o.orderNumber || `#${id}`;
+                    const itemCount = (o.order_items || o.orderItems || []).reduce((s: number, it: any) => s + (parseInt(it.quantity, 10) || 1), 0);
+                    const total = parseFloat(o.final_price || o.total_amount || o.total || 0).toFixed(2);
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => setSelectedTakeawayOrderId(selectedTakeawayOrderId === id ? null : id)}
+                        style={{
+                          textAlign: 'left', background: palette.bg,
+                          border: `2px solid ${isSelected ? '#635BFF' : palette.border}`,
+                          borderRadius: 8, padding: '12px 14px', cursor: 'pointer',
+                          boxShadow: isSelected ? '0 0 0 3px rgba(99,91,255,0.15)' : '0 1px 3px rgba(0,0,0,0.04)',
+                          transition: 'all 0.15s'
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: palette.text }}>{orderNum}</div>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: palette.text, textTransform: 'uppercase' }}>{status}</div>
+                        </div>
+                        <div style={{ marginTop: 6, fontSize: 12, color: palette.text, opacity: 0.85 }}>
+                          {t('floorplan:floorPlanPage.itemsCount', { count: itemCount, defaultValue: '{{count}} items' })} · {currency}{total}
+                        </div>
+                        <div style={{ marginTop: 4, fontSize: 11, color: palette.text, opacity: 0.75 }}>
+                          {paymentStatus === 'paid'
+                            ? t('floorplan:floorPlanPage.paid', 'Paid')
+                            : t('floorplan:floorPlanPage.unpaid', 'Awaiting payment')}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </CanvasWrapper>
 
         {selectedTable && (
@@ -828,6 +1086,83 @@ const FloorPlanPage: React.FC = () => {
             floorPlan={floorPlan}
           />
         )}
+
+        {/* Takeaway order panel — reuses TableDetailPanel with tableNumber=null. Same component,
+            same status-based action buttons (Confirm/Ready/Served/Payment/Cancel), same money breakdown.
+            Adapter below maps a takeaway order to TableStatusInfo shape so the panel renders identically. */}
+        {activeView === 'takeaway' && selectedTakeawayOrderId != null && (() => {
+          const o: any = takeawayOrders.find((x: any) => x.id === selectedTakeawayOrderId);
+          if (!o) return null;
+          const num = (v: any) => parseFloat(v) || 0;
+          const items: any[] = (() => {
+            const raw = o.order_items || o.orderItems || [];
+            try { return typeof raw === 'string' ? JSON.parse(raw) : raw; } catch { return []; }
+          })();
+          const orderTime = o.createdAt || o.created_at;
+          const elapsedMin = orderTime ? Math.max(0, Math.round((Date.now() - new Date(orderTime).getTime()) / 60000)) : 0;
+          const adapted: any = {
+            tableNumber: '',
+            status: (o.status === 'cancelled' || o.status === 'completed') ? o.status : 'occupied',
+            orderCount: 1,
+            totalAmount: num(o.final_price ?? o.total_amount ?? o.total),
+            elapsedMinutes: elapsedMin,
+            orderId: o.id,
+            orderNumber: o.order_number || o.orderNumber,
+            customerName: o.customer_name,
+            customerId: o.customer_id ?? null,
+            paymentStatus: o.payment_status || o.paymentStatus,
+            guestCount: null,
+            orderItems: items,
+            subtotal: num(o.subtotal),
+            tax: num(o.tax),
+            serviceCharge: num(o.service_charge),
+            discount: num(o.discount) + num(o.coupon_discount) + num(o.discount_policy_amount) + num(o.point_discount),
+            cashierName: o.cashier_name ?? null,
+            orderStatus: o.status,
+            couponCode: o.coupon_code ?? null,
+            couponDiscount: num(o.coupon_discount),
+            discountPolicyName: o.discount_policy_name ?? null,
+            discountPolicyAmount: num(o.discount_policy_amount),
+            pointDiscount: num(o.point_discount),
+            pointsUsed: o.points_used ?? 0,
+            paymentMethod: o.payment_method ?? null,
+            cardType: o.card_type ?? null,
+            orderSource: o.source,
+            customerPhone: o.customer_phone ?? null,
+            serviceChargeRate: num(o.service_charge_rate),
+            taxRate: num(o.tax_rate),
+            orderCreatedAt: orderTime,
+            notes: o.notes ?? null,
+            orderType: 'takeaway',
+            paymentProof: o.payment_proof ?? null,
+          };
+          return (
+            <TableDetailPanel
+              tableNumber={null}
+              statusInfo={adapted}
+              tableInfo={undefined}
+              currency={currency}
+              timezone={timezone}
+              restaurantId={Number(restaurantId)}
+              onClose={() => setSelectedTakeawayOrderId(null)}
+              onNewOrder={() => handleNewOrder({ takeaway: true })}
+              onStatusChange={async (orderId, newStatus) => {
+                await handleStatusChange(orderId, newStatus);
+                fetchTakeawayOrders();
+              }}
+              onPayment={() => {
+                // Pre-fill selected takeaway as the payment target — reuses table payment modal
+                handleTakeawayPayment(o);
+              }}
+              onNavigateToPOS={() => navigate(`/restaurant/${restaurantId}/pos-terminal?order=${o.id}&from=floor-plan`)}
+              onOrderUpdated={fetchTakeawayOrders}
+              onClearTable={async () => { /* no-op for takeaway */ }}
+              orders={[]}
+              floorPlan={floorPlan}
+            />
+          );
+        })()}
+
       </MainContent>
 
       <FloorPlanStatsBar
@@ -849,6 +1184,46 @@ const FloorPlanPage: React.FC = () => {
           </div>
         </CommonModal>
       )}
+
+      {/* Payment Modal for takeaway — same UI as dine-in, just sourced from a takeaway order */}
+      {paymentTakeawayOrderId && (() => {
+        const o: any = takeawayOrders.find((x: any) => x.id === paymentTakeawayOrderId);
+        if (!o) return null;
+        const num = (v: any) => parseFloat(v) || 0;
+        const items: any[] = (() => {
+          const raw = o.order_items || o.orderItems || [];
+          try { return typeof raw === 'string' ? JSON.parse(raw) : raw; } catch { return []; }
+        })();
+        return (
+          <PaymentModal
+            isOpen={true}
+            onClose={() => setPaymentTakeawayOrderId(null)}
+            total={num(o.final_price ?? o.total_amount ?? o.total)}
+            subtotal={num(o.subtotal)}
+            tax={num(o.tax)}
+            serviceCharge={num(o.service_charge)}
+            takeawayCharge={num(o.takeaway_charge)}
+            discountAmount={num(o.discount) + num(o.coupon_discount) + num(o.discount_policy_amount) + num(o.point_discount)}
+            couponDiscount={num(o.coupon_discount)}
+            discountPolicyAmount={num(o.discount_policy_amount)}
+            pointDiscount={num(o.point_discount)}
+            onConfirmPayment={handlePaymentConfirm}
+            paymentMethods={paymentMethods}
+            customerId={o.customer_id || undefined}
+            restaurantId={Number(restaurantId)}
+            membershipSettings={membershipSettings}
+            orderId={Number(o.id)}
+            orderItems={items}
+            existingAmountPaid={num(o.amount_paid)}
+            onPartialPaymentComplete={(_p, remaining) => {
+              if (remaining <= 0.005) {
+                setPaymentTakeawayOrderId(null);
+                fetchTakeawayOrders();
+              }
+            }}
+          />
+        );
+      })()}
 
       {/* Payment Modal — same as LiveOrders + Split bill (Phase 2) */}
       {showPaymentModal && selectedStatusInfo && (
@@ -887,7 +1262,7 @@ const FloorPlanPage: React.FC = () => {
       <POSOverlay $isOpen={showPOS}>
         <POSOverlayHeader>
           <POSOverlayTitle>
-            POS Terminal — Table {selectedTable}
+            POS Terminal — {posUrl.includes('order_type=takeaway') ? 'Walk-in Takeaway' : `Table ${selectedTable}`}
           </POSOverlayTitle>
           <POSOverlayCloseBtn onClick={handleClosePOS}>
             &times; Close

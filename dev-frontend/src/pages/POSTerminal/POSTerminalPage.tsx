@@ -1187,11 +1187,20 @@ const POSTerminalPage: React.FC = () => {
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<{code: string; discount: number} | null>(null);
+  // Searchable coupon combobox (Takeaway pattern)
+  const [availableCoupons, setAvailableCoupons] = useState<Array<{ id: number; code: string; name?: string; type?: string; value?: number | string; min_order?: number | string; valid_until?: string | null }>>([]);
+  const [couponsLoaded, setCouponsLoaded] = useState(false);
+  const [showCouponDropdown, setShowCouponDropdown] = useState(false);
   const [appliedDiscountPolicy, setAppliedDiscountPolicy] = useState<{name: string; discount: number; requiresApproval: boolean} | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showFeatureAlert, setShowFeatureAlert] = useState(false);
   const [showCouponError, setShowCouponError] = useState(false);
-  const [orderType, setOrderType] = useState<'dine-in' | 'takeaway'>('dine-in');
+  // Initial order type is `dine-in` unless the URL says otherwise. Floor Plan's "+ Takeaway Walk-in"
+  // pill navigates here with `?order_type=takeaway`, so we honor that on first mount.
+  const [orderType, setOrderType] = useState<'dine-in' | 'takeaway'>(() => {
+    const ot = searchParams.get('order_type');
+    return ot === 'takeaway' ? 'takeaway' : 'dine-in';
+  });
   const [tableNumber, setTableNumber] = useState('');
   const [guestCount, setGuestCount] = useState(0);
   const [availableTables, setAvailableTables] = useState<string[]>([]);
@@ -1384,12 +1393,24 @@ const POSTerminalPage: React.FC = () => {
           if (response.ok) {
             const data = await response.json();
             const restaurant = data.data || data;
-            if (restaurant.table_settings) {
-              const { enableTableNumbers, totalTables, tablePrefix } = restaurant.table_settings;
-              if (enableTableNumbers) {
+            // v3.39 hotfix #2: table identifiers come from the v2 floor_plan (each table's `label`
+            // or `tableNumber`), NOT from the legacy `table_settings.tablePrefix + totalTables`
+            // pool. Old pool was out-of-sync with Zones & Groups (prefix B/T/A 등) and produced
+            // table dropdowns that didn't match the actual floor plan.
+            const enableTableNumbers = restaurant.table_settings?.enableTableNumbers !== false;
+            if (enableTableNumbers && restaurant.floor_plan?.tables) {
+              const allTables = (restaurant.floor_plan.tables || [])
+                .filter((t) => t && (t.tableType === undefined || t.tableType === 'table'))
+                .map((t) => t.label || t.tableNumber)
+                .filter(Boolean);
+              setAvailableTables(allTables);
+            } else if (enableTableNumbers && restaurant.table_settings) {
+              // Fallback for restaurants that never set up Zones & Groups (no floor_plan.tables yet).
+              const { totalTables, tablePrefix } = restaurant.table_settings;
+              if (totalTables) {
                 const tables = [];
                 for (let i = 1; i <= totalTables; i++) {
-                  tables.push(`${tablePrefix}${String(i).padStart(3, '0')}`);
+                  tables.push(`${tablePrefix || ''}${String(i).padStart(3, '0')}`);
                 }
                 setAvailableTables(tables);
               }
@@ -1766,8 +1787,9 @@ const POSTerminalPage: React.FC = () => {
     }
   };
 
-  const handleApplyCoupon = async () => {
-    if (!couponCode) return;
+  const handleApplyCoupon = async (codeOverride?: string) => {
+    const codeToApply = (codeOverride ?? couponCode).toUpperCase();
+    if (!codeToApply) return;
 
     try {
       const response = await fetch(`${process.env.REACT_APP_API_URL}/api/coupons/validate`, {
@@ -1777,7 +1799,7 @@ const POSTerminalPage: React.FC = () => {
           'Authorization': `Bearer ${getAuthToken()}`
         },
         body: JSON.stringify({
-          code: couponCode.toUpperCase(),
+          code: codeToApply,
           restaurant_id: user?.restaurantId,
           order_amount: subtotal,
           order_type: orderType,
@@ -1793,14 +1815,40 @@ const POSTerminalPage: React.FC = () => {
       const result = await response.json();
 
       if (result.valid && result.data) {
-        setAppliedCoupon({ code: couponCode.toUpperCase(), discount: result.data.discountAmount });
+        setAppliedCoupon({ code: codeToApply, discount: result.data.discountAmount });
         setCouponCode('');
+        setShowCouponDropdown(false);
       } else {
         setShowCouponError(true);
       }
     } catch (error) {
       console.error('Coupon validation error:', error);
       setShowCouponError(true);
+    }
+  };
+
+  // Lazy-load active coupons for this restaurant on first focus.
+  const fetchAvailableCoupons = async () => {
+    if (couponsLoaded || !user?.restaurantId) return;
+    try {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/coupons?restaurantId=${user.restaurantId}&active=true`, {
+        headers: { 'Authorization': `Bearer ${getAuthToken()}` }
+      });
+      if (!res.ok) return;
+      const j = await res.json();
+      const list = Array.isArray(j.data) ? j.data : [];
+      // Only show coupons usable now (within validity, not exhausted).
+      const now = Date.now();
+      const usable = list.filter((c: any) => {
+        if (c.valid_from && new Date(c.valid_from).getTime() > now) return false;
+        if (c.valid_until && new Date(c.valid_until).getTime() < now) return false;
+        if (c.usage_limit != null && Number(c.usage_count || 0) >= Number(c.usage_limit)) return false;
+        return true;
+      });
+      setAvailableCoupons(usable);
+      setCouponsLoaded(true);
+    } catch (e) {
+      console.error('Failed to load coupons:', e);
     }
   };
 
@@ -2289,13 +2337,14 @@ const POSTerminalPage: React.FC = () => {
     let takeawayCharge = 0;
     if (orderType === 'takeaway' && operationSettings.takeawayPricing.enabled) {
       if (operationSettings.takeawayPricing.pricingType === 'per-item') {
-        // Calculate total quantity of items
+        // Same flat charge for every item
         const totalQuantity = orderItems.reduce((sum, item) => sum + item.quantity, 0);
         takeawayCharge = totalQuantity * operationSettings.takeawayPricing.perItemCharge;
       } else {
-        // Per category pricing
+        // per-category and per-item-individual both route through getTakeawayCharge,
+        // which inspects the menu item (category for per-category, takeaway_charge for per-item-individual).
         orderItems.forEach(item => {
-          const charge = getTakeawayCharge(item.menuItem.category);
+          const charge = getTakeawayCharge(item.menuItem as any);
           takeawayCharge += charge * item.quantity;
         });
       }
@@ -2996,23 +3045,110 @@ const POSTerminalPage: React.FC = () => {
                       <span>Coupon: {appliedCoupon.code} (-{currency} {appliedCoupon.discount.toFixed(2)})</span>
                       <RemoveBtn onClick={handleRemoveCoupon}>×</RemoveBtn>
                     </AppliedCoupon>
-                  ) : (
-                    <>
-                      <DiscountInput
-                        type="text"
-                        placeholder="Enter coupon code"
-                        value={couponCode}
-                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                        onKeyDown={(e) => e.key === 'Enter' && handleApplyCoupon()}
-                      />
-                      <DiscountButton
-                        onClick={handleApplyCoupon}
-                        disabled={!couponCode}
-                      >
-                        Apply Coupon
-                      </DiscountButton>
-                    </>
-                  )}
+                  ) : (() => {
+                    const searchLower = couponCode.trim().toLowerCase();
+                    const filteredCoupons = searchLower
+                      ? availableCoupons.filter(c =>
+                          (c.code && c.code.toLowerCase().includes(searchLower)) ||
+                          (c.name && c.name.toLowerCase().includes(searchLower))
+                        )
+                      : availableCoupons;
+                    const formatCouponLabel = (c: any) => {
+                      const v = Number(c.value || 0);
+                      if (c.type === 'percentage') return `${v}% off`;
+                      return `${currency} ${v.toFixed(2)} off`;
+                    };
+                    return (
+                      <div style={{ position: 'relative', flex: 1, display: 'flex', gap: '8px' }}>
+                        <DiscountInput
+                          type="text"
+                          placeholder={t('pos:pOSTerminalPage.searchOrEnterCoupon', 'Search or enter coupon code') as string}
+                          value={couponCode}
+                          onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                          onFocus={() => { fetchAvailableCoupons(); setShowCouponDropdown(true); }}
+                          onBlur={() => setTimeout(() => setShowCouponDropdown(false), 200)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') handleApplyCoupon(); if (e.key === 'Escape') { setCouponCode(''); setShowCouponDropdown(false); (e.target as HTMLInputElement).blur(); } }}
+                          style={{ flex: 1 }}
+                        />
+                        <DiscountButton
+                          onClick={() => handleApplyCoupon()}
+                          disabled={!couponCode}
+                        >
+                          {t('pos:pOSTerminalPage.applyCoupon', 'Apply Coupon')}
+                        </DiscountButton>
+                        {showCouponDropdown && (
+                          <div
+                            onMouseDown={(e) => e.preventDefault()}
+                            style={{
+                              position: 'absolute',
+                              top: 'calc(100% + 4px)',
+                              left: 0,
+                              right: 0,
+                              maxHeight: '280px',
+                              overflowY: 'auto',
+                              background: 'white',
+                              border: '1px solid #E5E7EB',
+                              borderRadius: '8px',
+                              boxShadow: '0 8px 16px rgba(0,0,0,0.12)',
+                              zIndex: 100
+                            }}
+                          >
+                            {availableCoupons.length === 0 ? (
+                              <div style={{ padding: '14px', textAlign: 'center', color: '#9CA3AF', fontSize: '13px' }}>
+                                {couponsLoaded
+                                  ? t('pos:pOSTerminalPage.noActiveCoupons', 'No active coupons. Enter a code manually if you have one.')
+                                  : t('pos:pOSTerminalPage.loadingCoupons', 'Loading...')}
+                              </div>
+                            ) : filteredCoupons.length === 0 ? (
+                              <div style={{ padding: '14px', textAlign: 'center', color: '#9CA3AF', fontSize: '13px' }}>
+                                {t('pos:pOSTerminalPage.noMatchingCoupons', 'No matching coupons.')}
+                              </div>
+                            ) : (
+                              filteredCoupons.slice(0, 20).map((c: any) => {
+                                const minOrder = Number(c.min_order || 0);
+                                const eligible = minOrder === 0 || subtotal >= minOrder;
+                                return (
+                                  <div
+                                    key={c.id}
+                                    onClick={() => { if (eligible) handleApplyCoupon(c.code); }}
+                                    style={{
+                                      padding: '10px 14px',
+                                      cursor: eligible ? 'pointer' : 'not-allowed',
+                                      opacity: eligible ? 1 : 0.5,
+                                      fontSize: '13px',
+                                      color: '#0A2540',
+                                      borderBottom: '1px solid #F3F4F6',
+                                      display: 'flex',
+                                      justifyContent: 'space-between',
+                                      alignItems: 'center',
+                                      gap: '12px',
+                                      background: 'white',
+                                      transition: 'background 0.1s'
+                                    }}
+                                    onMouseEnter={(e) => { if (eligible) e.currentTarget.style.background = '#F5F3FF'; }}
+                                    onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                                  >
+                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                                      <span style={{ fontWeight: 600, color: '#635BFF', marginRight: '8px' }}>{c.code}</span>
+                                      {c.name && <span style={{ color: '#6B7280' }}>{c.name}</span>}
+                                      {minOrder > 0 && !eligible && (
+                                        <span style={{ marginLeft: '6px', fontSize: '11px', color: '#EF4444' }}>
+                                          ({t('pos:pOSTerminalPage.minOrder', 'min')} {currency} {minOrder.toFixed(2)})
+                                        </span>
+                                      )}
+                                    </span>
+                                    <span style={{ color: '#635BFF', fontWeight: 500, flexShrink: 0 }}>
+                                      {formatCouponLabel(c)}
+                                    </span>
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </DiscountRow>
 
                 <DiscountRow>

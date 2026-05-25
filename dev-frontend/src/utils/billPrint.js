@@ -375,11 +375,13 @@ export function generateBillContent(orderData, storeInfo) {
   }
 
   // === HEADER ===
+  // See generateHTMLBill for the same field-priority rules.
   content += CMD.ALIGN_CENTER;
   content += CMD.TEXT_DOUBLE;
   content += CMD.BOLD_ON;
-  if (storeInfo.name) {
-    content += storeInfo.name + CMD.LINE_FEED;
+  const bigName_ = storeInfo.tradeName || storeInfo.name || '';
+  if (bigName_) {
+    content += bigName_ + CMD.LINE_FEED;
   }
   content += CMD.TEXT_NORMAL;
   content += CMD.BOLD_OFF;
@@ -389,8 +391,11 @@ export function generateBillContent(orderData, storeInfo) {
   if (storeInfo.address) {
     content += storeInfo.address + CMD.LINE_FEED;
   }
-  if (storeInfo.phone) {
-    content += 'Tel: ' + storeInfo.phone + CMD.LINE_FEED;
+  if (storeInfo.legalName && storeInfo.legalName.trim() && storeInfo.legalName.trim() !== bigName_.trim()) {
+    content += storeInfo.legalName + CMD.LINE_FEED;
+  }
+  if (storeInfo.telephone) {
+    content += 'Tel: ' + storeInfo.telephone + CMD.LINE_FEED;
   }
   if (storeInfo.businessRegistration) {
     content += 'Reg No: ' + storeInfo.businessRegistration + CMD.LINE_FEED;
@@ -664,10 +669,27 @@ export function generateHTMLBill(orderData, storeInfo) {
       ${orderTypeHTML}
       <div class="header">
         ${receiptLogo ? `<img src="${receiptLogo}" style="max-width: 320px; max-height: 100px; margin-bottom: 6px; filter: grayscale(100%);" />` : ''}
-        <div class="store-name">${storeInfo.name || ''}</div>
-        ${storeInfo.address ? `<div style="font-size: 12px; font-weight: 500;">${storeInfo.address}</div>` : ''}
-        ${storeInfo.phone ? `<div style="font-size: 12px; font-weight: 500;">Tel: ${storeInfo.phone}</div>` : ''}
-        ${(storeInfo.businessRegistration || storeInfo.gstRegNo) ? `<div style="font-size: 12px; font-weight: 500;">${[storeInfo.businessRegistration ? 'Reg No: ' + storeInfo.businessRegistration : '', storeInfo.gstRegNo ? 'Tax No: ' + storeInfo.gstRegNo : ''].filter(Boolean).join(' | ')}</div>` : ''}
+        ${(() => {
+          // Bill header structure:
+          //   Big: tradeName || name           ← customer-facing brand
+          //   Small: address                    ← store address
+          //   Small: legalName (only if it differs from the big-line name)
+          //   Small: Tel: telephone (landline)  ← omitted when empty; mobile phone is never printed
+          //   Small: Reg No / Tax No
+          const bigName = storeInfo.tradeName || storeInfo.name || '';
+          const legalName = storeInfo.legalName || '';
+          const showLegal = legalName && legalName.trim() && legalName.trim() !== bigName.trim();
+          const lines = [];
+          if (storeInfo.address) lines.push(storeInfo.address);
+          if (showLegal) lines.push(legalName);
+          if (storeInfo.telephone) lines.push('Tel: ' + storeInfo.telephone);
+          const regParts = [];
+          if (storeInfo.businessRegistration) regParts.push('Reg No: ' + storeInfo.businessRegistration);
+          if (storeInfo.gstRegNo) regParts.push('Tax No: ' + storeInfo.gstRegNo);
+          if (regParts.length) lines.push(regParts.join(' | '));
+          return `<div class="store-name">${bigName}</div>` +
+            lines.map(l => `<div style="font-size: 12px; font-weight: 500;">${l}</div>`).join('');
+        })()}
       </div>
 
       <div class="divider"></div>

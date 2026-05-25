@@ -293,10 +293,16 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
             <HeaderAction />
           )}
           <Title>{title}</Title>
-          {/* Order Type chip on right — hidden on menu page (duplicated by StoreHeader chip
-              with explicit Change action). Kept on cart/checkout/etc. where there is no
-              StoreHeader so the user still sees their selection. */}
-          {orderType && currentPage !== 'home' && currentPage !== 'menu' && getOrderTypeLabel(orderType) ? (
+          {/* Order Type chip on right — hidden on home/menu (StoreHeader has explicit Change
+              action) AND hidden on cart/orders/account (selection already locked, chip is noise).
+              Kept on checkout/reserve so the user re-confirms order type before payment. */}
+          {orderType
+            && currentPage !== 'home'
+            && currentPage !== 'menu'
+            && currentPage !== 'cart'
+            && currentPage !== 'orders'
+            && currentPage !== 'account'
+            && getOrderTypeLabel(orderType) ? (
             <OrderTypeLabel orderType={orderType}>
               <span>{getOrderTypeIcon(orderType)}</span>
               <span>{getOrderTypeLabel(orderType)}</span>

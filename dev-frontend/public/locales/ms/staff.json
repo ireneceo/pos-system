@@ -8,6 +8,8 @@
   "staffPage.allRoles": "Semua Roles",
   "staffPage.restaurantAdmin": "Pentadbir Restoran",
   "staffPage.staff": "Kakitangan",
+  "staffPage.roleHintStaff": "Kakitangan: boleh ambil dan batalkan pesanan, urus meja, lihat pesanan langsung. Tidak boleh padam pesanan, tukar menu, atau ubah tetapan kedai.",
+  "staffPage.roleHintAdmin": "Pentadbir Restoran: akses penuh (padam pesanan, edit menu & resipi, ubah tetapan kedai, urus kakitangan, lihat semua laporan).",
   "staffPage.staffMember": "Kakitangan Member",
   "staffPage.role": "Peranan",
   "staffPage.department": "Department",

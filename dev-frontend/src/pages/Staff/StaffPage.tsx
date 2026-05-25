@@ -885,6 +885,11 @@ const StaffPage: React.FC = () => {
                 <option value="Staff">{t('staff:staffPage.staff')}</option>
                 <option value="Restaurant Admin">{t('staff:staffPage.restaurantAdmin')}</option>
               </FormSelect>
+              <div style={{ marginTop: '8px', padding: '10px 12px', background: '#F5F3FF', borderLeft: '3px solid #635BFF', borderRadius: '6px', fontSize: '12px', color: '#4B5563', lineHeight: 1.5 }}>
+                {newStaff.role === 'Staff'
+                  ? t('staff:staffPage.roleHintStaff', 'Staff can take and cancel orders, manage tables, view live orders. Cannot remove orders, change menu items, or modify store settings.')
+                  : t('staff:staffPage.roleHintAdmin', 'Restaurant Admin has full access: remove orders, edit menu and recipes, change store settings, manage staff, view all reports.')}
+              </div>
             </FormGroup>
             <FormGroup>
               <FormLabel>{t('staff:staffPage.department')}</FormLabel>

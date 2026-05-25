@@ -682,5 +682,10 @@
   "sort.priceAsc": "가격 낮은 순",
   "sort.priceDesc": "가격 높은 순",
   "sort.category": "카테고리별",
-  "sort.ariaLabel": "정렬"
+  "sort.ariaLabel": "정렬",
+  "mobileOrderAlerts.oneNewOrder": "새 모바일 주문 1건",
+  "mobileOrderAlerts.multipleNewOrders": "새 모바일 주문 {{count}}건",
+  "mobileOrderAlerts.table": "테이블",
+  "mobileOrderAlerts.view": "확인",
+  "mobileOrderAlerts.dismiss": "닫기"
 }
