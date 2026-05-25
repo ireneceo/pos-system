@@ -1,12 +1,23 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-05-25 (v3.42 backstage 3회 배포 — 매장 직원 UX + 안정성)
-**버전:** **v3.42** 운영 (Irene 지시로 버전 미상승)
-**작업 상태:** 완료. Irene 매장 점검 외출 중. 새 작업 지시 대기.
+**마지막 업데이트:** 2026-05-25 (v3.42 backstage 4회차 배포 — 랜딩 반응형 + e-invoice 설계)
+**버전:** **v3.42** 운영 (Irene 지시로 버전 미상승, backstage 누적)
+**작업 상태:** 완료. 새 작업 지시 대기.
 
 ### 진행 중인 작업
 - 없음
+
+### 4차 배포 (2026-05-25 14:25, Backup 20260525_142329)
+- **랜딩 헤더 반응형 fix** — 1240px overflow 해결. 모바일 메뉴 breakpoint 1024→1280. 9 viewport (360~2560) 모두 overflow 0. public 9 페이지 × 4 viewport = 36 조합 mount clean
+- **/블로그초안 SOP — BRAND CONCEPT 영구 박제** — video_prompt 두 트랙(CHAOS/INTERVIEW) 맨 위에 공통 BRAND CONCEPT 박스 7 lock 섹션 (Brand/Visual/Typography/Sound/Logo/Negative/Delivery). 매 영상 동일 톤 유지 (브랜딩 일관성)
+- **E-Invoice 통합 설계 박제** — `docs/E_INVOICE_INTEGRATION_DESIGN.md` 신규. LHDN MyInvois 통합 1~4단계 + 6단계 시나리오. 신규 4 테이블 + 12 API + 7 UI + 6 테스트 시나리오. **구현은 다음 세션** (5단계 코드 작성)
+
+### 다음 확정 작업
+- **E-Invoice 5단계 구현** — `docs/E_INVOICE_INTEGRATION_DESIGN.md` 5단계 기준
+  - 사전 준비: MyInvois Portal 가입 (운영) + Sandbox 가입 + 매장 16 TIN/BRN/MSIC/SST
+  - 분량: 약 4-5주 (backend models + LHDN client + consolidated cron + frontend UI + i18n)
+  - 비즈니스 모델: 모든 plan 기본 포함 (paid 분리 X), 시장 표준 따름
 
 ### 완료된 작업 (이번 세션, v3.42 backstage 누적)
 

@@ -1,9 +1,23 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-05-25 (v3.42 backstage 3차 배포 — 매장 직원 UX + 안정성 보강)
+> **최종 업데이트:** 2026-05-25 (v3.42 backstage 4차 배포 — 랜딩 반응형 + SOP + e-invoice 설계)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
-> **현재 버전:** **v3.42** 운영 (backstage 배포 3회 — 버전 미상승)
+> **현재 버전:** **v3.42** 운영 (backstage 배포 4회 — 버전 미상승)
+
+## ✅ 완료: v3.42 backstage 4차 (2026-05-25 14:25, Backup 20260525_142329)
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 랜딩 헤더 반응형 fix | 1240px 이상에서 nav 8개 + 로고 + 2 버튼 overflow 해결. 모바일 메뉴 breakpoint 1024→1280. `overflow-x:hidden` + `min-width:0` 안전망. NavLink padding 8×10 (1440+ 만 10×14). 9 viewport (360~2560) overflow 0, public 9페이지 × 4 viewport = 36 조합 mount clean | ✅ |
+| /블로그초안 SOP — BRAND CONCEPT 영구 박제 | video_prompt CHAOS/INTERVIEW 두 트랙 맨 위에 공통 BRAND CONCEPT 박스 (7 lock 섹션: Brand identity / Visual identity / Typography / Sound design / Logo reveal / Negative prompts / Delivery checklist). 매 영상 동일 톤 유지 = 브랜드 일관성. `/tmp/ra-1-pullset/video-prompt.txt` 도 새 SOP 적용 | ✅ |
+| E-Invoice 통합 설계 박제 | `docs/E_INVOICE_INTEGRATION_DESIGN.md` 신규 (780줄). 말레이시아 LHDN MyInvois 통합 1~4단계 + 6단계 테스트 시나리오. 신규 4 테이블 + 12 API endpoint + 7 UI 페이지/모달. 5단계 구현은 다음 세션 (사전 준비: MyInvois Portal/Sandbox 가입 + 매장 16 TIN/BRN/MSIC/SST) | ✅ 설계만 |
+
+**검증**: 0단계 hydration 0 / build OK (main.aa70592b.js) / health-check 80/80 / Playwright 36 조합 mount clean / 4 step breakpoint swap 정확
+
+**운영 영향**: 랜딩 헤더만 사용자 영향 (1240px 이상에서 헤더 깔끔). SOP + 설계 문서는 내부.
+
+---
 
 ## ✅ 완료: v3.42 backstage 배포 (2026-05-25, 3회 누적)
 
