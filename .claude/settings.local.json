@@ -327,7 +327,11 @@
       "Bash(kill 2843238 2843130 2843141)",
       "Bash(scp /tmp/migrate-slot-count.js irene@87.106.78.146:/var/www/production-backend/migrate-slot-count.js)",
       "Bash(systemctl --user list-timers)",
-      "Bash(TOKEN=$\\(node -e \"require\\('dotenv'\\).config\\({path:'/var/www/dev-backend/.env'}\\); const jwt=require\\('/var/www/dev-backend/node_modules/jsonwebtoken'\\); console.log\\(jwt.sign\\({userId:9,role:'Restaurant Admin',restaurantId:5},process.env.JWT_SECRET,{expiresIn:'10m'}\\)\\)\"\\) RID=5 timeout 120 node scripts/capture-responsive.js)"
+      "Bash(TOKEN=$\\(node -e \"require\\('dotenv'\\).config\\({path:'/var/www/dev-backend/.env'}\\); const jwt=require\\('/var/www/dev-backend/node_modules/jsonwebtoken'\\); console.log\\(jwt.sign\\({userId:9,role:'Restaurant Admin',restaurantId:5},process.env.JWT_SECRET,{expiresIn:'10m'}\\)\\)\"\\) RID=5 timeout 120 node scripts/capture-responsive.js)",
+      "WebFetch(domain:www.hasil.gov.my)",
+      "WebFetch(domain:malaysia4u.com)",
+      "WebFetch(domain:einvoice.advintek.com.my)",
+      "WebFetch(domain:jomeinvoice.my)"
     ],
     "deny": [],
     "ask": []

@@ -10,16 +10,28 @@ const Header = styled.header`
   left: 0;
   right: 0;
   z-index: 1000;
-  padding: 16px 48px;
+  padding: 16px 32px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 16px;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  /* Defence: header never overflows viewport at any size (360px → 4K). */
+  overflow-x: hidden;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
 
-  @media (max-width: 1024px) {
+  @media (max-width: 1280px) {
     padding: 12px 20px;
+    gap: 12px;
+  }
+
+  @media (max-width: 768px) {
+    padding: 12px 16px;
+    gap: 8px;
   }
 `;
 
@@ -28,6 +40,8 @@ const LogoSection = styled.div`
   align-items: center;
   gap: 12px;
   cursor: pointer;
+  min-width: 0;
+  flex-shrink: 0;
 
   /* Mobile: stack tagline below logo */
   @media (max-width: 768px) {
@@ -41,7 +55,7 @@ const LogoImage = styled.img`
   height: 36px;
   width: auto;
 
-  @media (max-width: 1024px) {
+  @media (max-width: 1280px) {
     height: 28px;
   }
 
@@ -57,7 +71,7 @@ const LogoText = styled.span`
   letter-spacing: -0.3px;
   white-space: nowrap;
 
-  @media (max-width: 1024px) {
+  @media (max-width: 1280px) {
     font-size: 12px;
   }
 
@@ -70,9 +84,12 @@ const LogoText = styled.span`
 const Nav = styled.nav`
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 2px;
+  min-width: 0;
+  /* Allow nav to shrink and clip cleanly between 1281 and 1440. */
+  overflow: hidden;
 
-  @media (max-width: 1024px) {
+  @media (max-width: 1280px) {
     display: none;
   }
 `;
@@ -80,8 +97,9 @@ const Nav = styled.nav`
 const HeaderRight = styled.div`
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-shrink: 0;
+  min-width: 0;
 `;
 
 const MobileMenuButton = styled.button`
@@ -93,7 +111,7 @@ const MobileMenuButton = styled.button`
   cursor: pointer;
   padding: 8px;
 
-  @media (max-width: 1024px) {
+  @media (max-width: 1280px) {
     display: block;
   }
 `;
@@ -110,7 +128,7 @@ const MobileMenuOverlay = styled.div<{ isOpen: boolean }>`
   opacity: ${props => props.isOpen ? 1 : 0};
   transition: opacity 0.3s ease;
 
-  @media (max-width: 1024px) {
+  @media (max-width: 1280px) {
     display: ${props => props.isOpen ? 'block' : 'none'};
   }
 `;
@@ -129,7 +147,7 @@ const MobileMenu = styled.div<{ isOpen: boolean }>`
   transform: ${props => props.isOpen ? 'translateX(0)' : 'translateX(100%)'};
   transition: transform 0.3s ease;
 
-  @media (max-width: 1024px) {
+  @media (max-width: 1280px) {
     display: flex;
   }
 `;
@@ -175,16 +193,22 @@ const NavLink = styled.button<{ active?: boolean }>`
   background: none;
   border: none;
   color: ${props => props.active ? '#635BFF' : '#6B7C93'};
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  padding: 10px 16px;
+  padding: 8px 10px;
   border-radius: 8px;
+  white-space: nowrap;
   transition: all 0.2s;
 
   &:hover {
     color: #635BFF;
     background: #F0F4FF;
+  }
+
+  @media (min-width: 1440px) {
+    font-size: 15px;
+    padding: 10px 14px;
   }
 `;
 
@@ -223,7 +247,7 @@ const SignUpButton = styled.button`
     transform: translateY(-1px);
   }
 
-  @media (max-width: 1024px) {
+  @media (max-width: 1280px) {
     display: none;
   }
 `;
@@ -245,7 +269,7 @@ const LoginButton = styled.button`
     transform: translateY(-1px);
   }
 
-  @media (max-width: 1024px) {
+  @media (max-width: 1280px) {
     display: none;
   }
 `;
