@@ -1,9 +1,27 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-05-25 (v3.42 backstage 4차 배포 — 랜딩 반응형 + SOP + e-invoice 설계)
+> **최종 업데이트:** 2026-05-26 (BRAND CONCEPT v2 단일 톤 박제 + 글쓰기 스킬 통합 + 랜딩 헤더 z-index fix)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
-> **현재 버전:** **v3.42** 운영 (backstage 배포 4회 — 버전 미상승)
+> **현재 버전:** **v3.42** 운영 (backstage 누적 — 버전 미상승)
+
+## ✅ 완료: 2026-05-26 backstage (글쓰기 SOP v2 + 랜딩 z-index fix + lua 권한 ACL)
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| /글쓰기 0단계 신설 — 타깃 (Persona) 먼저 결정 | `/글쓰기` 호출 즉시 `AskUserQuestion` 으로 6 역할 (RA/BG/FG/OW/SP/ST) + Auto 받기. PERSONA_CODE 정해지기 전 1단계 진입 금지. 1단계 검색 쿼리 / 2단계 고객 DB / 3단계 매트릭스 모두 선택된 persona 한정. 주제 3건 후보도 같은 persona row 안에서 problem 만 다양화 | ✅ |
+| BRAND CONCEPT v2 영구 박제 — 단일 톤 고정 | CHAOS/INTERVIEW 두 트랙 분기 폐지. 단일 톤 ("실제 F&B 운영자가 만든 POS" / "POS 회사 아닌 운영 문제 해결 브랜드"). 5비트 구조 (HOOK / 문제 / 해결 / 결과 / CTA). 자연광 한국감성 모던 F&B + 30s 사장 + Apple 톤 + violet 절제 + "Start Your Free Trial" CTA. video_prompt **4000자 한도** 강제 | ✅ |
+| e-invoice 글 (id 78/79/80) video_prompt 재작성 | v1 (8500자) → v2 (en 3970 / ms 3992 / zh 3199 chars). 4000자 이내. dev + 운영 sync 완료 | ✅ |
+| 블로그 스킬 5개 → 1개 통합 | `/블로그초안`(5-A/5-B 템플릿) + `/블로그발행` + `/블로그감사` + `/블로그리서치` + `/블로그캘린더` 5개 git rm. `/글쓰기.md` 에 5-A video_prompt 템플릿 + 5-B social_post 템플릿 흡수. 한 파일에서 SOP 관리 (동기화 부담 해소) | ✅ |
+| 랜딩 헤더 z-index fix — 언어 드롭다운 가림 해결 | `LandingHeader` overflow-x:hidden → overflow:visible + max-width:100vw (자식 dropdown clipping 문제 해결). z-index 1000 → 1500. `LanguageSelector` GlobeDropdown/Dropdown z-index 1100 → 1600. 블로그 hero 등 어떤 sub-banner 위로도 드롭다운 떠야 함 | ✅ |
+| sync-contents-to-prod.js 영구 패치 | `video_prompt` + `social_post` 컬럼이 운영 sync payload 에서 빠져있던 버그 fix. payload + remote schema migration cols + UPDATE/INSERT 3곳 모두 추가. 향후 `/배포` 자동 sync 시 두 필드 함께 흐름 | ✅ |
+| lua 사용자 ACL 권한 부여 (Irene 직접 실행) | 5개 디렉토리에 setfacl: `.claude/commands` / `docs` / `dev-frontend/src/pages/Landing` / `dev-frontend/src/components/Landing` / `dev-frontend/public/locales`. POS 코드는 그대로 lua read-only. default ACL 도 박혀 신규 파일 자동 적용 | ✅ |
+
+**검증**: dev + 운영 DB sync 통과 (BRAND CONCEPT v2 / 5-BEAT / Apple-clean / under-4000 chars 4개 마커 모두 ✓). 빌드 (`main.3cb764c3.js`) z-index 1500/1600 반영 확인.
+
+**운영 영향**: 블로그 페이지 (운영) 의 Distribution Kit video_prompt 가 새 v2 단일 톤으로 표시. 랜딩 헤더 (운영 X — dev 만 배포) z-index 픽스는 다음 운영 배포 시 반영.
+
+---
 
 ## ✅ 완료: v3.42 backstage 4차 (2026-05-25 14:25, Backup 20260525_142329)
 

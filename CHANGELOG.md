@@ -6,6 +6,15 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+### 2026-05-26
+- /글쓰기 0단계 신설 — 타깃 (persona) 먼저 결정 (AskUserQuestion 6 역할 + Auto). PERSONA_CODE 정해진 후에만 1단계 진입
+- BRAND CONCEPT v2 영구 박제 — 단일 톤 고정 (Apple + 자연광 한국감성 모던 F&B + 5비트 HOOK/문제/해결/결과/CTA). CHAOS/INTERVIEW 두 트랙 분기 폐지. video_prompt 4000자 한도 강제
+- e-invoice 글 (id 78/79/80) video_prompt 재작성 — v1 8500자 → v2 ≤4000자 (en 3970 / ms 3992 / zh 3199). dev + 운영 sync
+- 블로그 스킬 5개 → 1개 통합 — `/블로그초안`+`/블로그발행`+`/블로그감사`+`/블로그리서치`+`/블로그캘린더` 삭제, `/글쓰기.md` 안에 5-A/5-B SOP 흡수
+- 랜딩 헤더 z-index fix — overflow-x:hidden → overflow:visible + max-width:100vw. 헤더 z-index 1000→1500, 언어 드롭다운 1100→1600. 블로그 hero 등 sub-banner 위로 드롭다운 떠야 함
+- sync-contents-to-prod.js 패치 — `video_prompt` + `social_post` 컬럼 sync payload + schema migration + UPDATE/INSERT 3곳 추가
+- lua 사용자 ACL 권한 부여 (Irene 실행) — `.claude/commands` / `docs` / Landing 코드 / locales 5개 디렉토리만. POS 코드는 lua read-only 유지
+
 ---
 
 ## [v3.42] — 2026-05-24 배포 (Floor Plan Takeaway 완전 재설계)

@@ -9,7 +9,9 @@ const Header = styled.header`
   top: 0;
   left: 0;
   right: 0;
-  z-index: 1000;
+  /* z-index above any in-page banner / hero / sticky content so language
+     dropdown can pop OUT of the header onto whatever the next section is. */
+  z-index: 1500;
   padding: 16px 32px;
   display: flex;
   justify-content: space-between;
@@ -18,10 +20,14 @@ const Header = styled.header`
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  /* Defence: header never overflows viewport at any size (360px → 4K). */
-  overflow-x: hidden;
+  /* Defence: header never overflows viewport horizontally at any size.
+     overflow-x:hidden would clip the language dropdown vertically too
+     (CSS spec: overflow-x:hidden forces overflow-y to be a non-visible
+     value), so we use width + min-width + max-width:100vw + box-sizing. */
+  overflow: visible;
   box-sizing: border-box;
   width: 100%;
+  max-width: 100vw;
   min-width: 0;
 
   @media (max-width: 1280px) {

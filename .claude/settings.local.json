@@ -331,7 +331,13 @@
       "WebFetch(domain:www.hasil.gov.my)",
       "WebFetch(domain:malaysia4u.com)",
       "WebFetch(domain:einvoice.advintek.com.my)",
-      "WebFetch(domain:jomeinvoice.my)"
+      "WebFetch(domain:jomeinvoice.my)",
+      "Bash(getent group *)",
+      "Bash(getfacl /var/www/.claude/commands)",
+      "Bash(getfacl /var/www/docs)",
+      "Bash(getfacl /var/www/dev-frontend/src/pages/Landing)",
+      "Bash(getfacl /var/www/dev-frontend/public/locales)",
+      "Bash(getfacl /var/www/dev-frontend/src/components/Landing)"
     ],
     "deny": [],
     "ask": []

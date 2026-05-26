@@ -158,6 +158,8 @@ async function fetchRows() {
       video_script: r.video_script,
       thumbnail_copy: r.thumbnail_copy,
       social_captions: r.social_captions,
+      video_prompt: r.video_prompt,
+      social_post: r.social_post,
     }))
   };
 
@@ -198,6 +200,8 @@ async function indexExists(table, idxName) {
     ['video_script',         'TEXT NULL'],
     ['thumbnail_copy',       'VARCHAR(100) NULL'],
     ['social_captions',      'JSON NULL'],
+    ['video_prompt',         'TEXT NULL'],
+    ['social_post',          'JSON NULL'],
   ];
   for (const [col, ddl] of cols) {
     if (!(await columnExists('contents', col))) {
@@ -295,6 +299,8 @@ async function indexExists(table, idxName) {
       c.language, prodGroupId, c.target_persona, c.funnel_stage, c.content_tier,
       c.problem_category, c.video_script, c.thumbnail_copy,
       c.social_captions ? JSON.stringify(c.social_captions) : null,
+      c.video_prompt,
+      c.social_post ? JSON.stringify(c.social_post) : null,
     ];
 
     if (existing.length > 0) {
@@ -305,6 +311,7 @@ async function indexExists(table, idxName) {
         ai_summary=?, faq_schema=?,
         language=?, translation_group_id=?, target_persona=?, funnel_stage=?, content_tier=?,
         problem_category=?, video_script=?, thumbnail_copy=?, social_captions=?,
+        video_prompt=?, social_post=?,
         updated_at=NOW()
         WHERE slug=? AND language=? AND type=?\`,
         { replacements: [...vals, c.slug, c.language, c.type] });
@@ -318,15 +325,18 @@ async function indexExists(table, idxName) {
          ai_summary, faq_schema,
          language, translation_group_id, target_persona, funnel_stage, content_tier,
          problem_category, video_script, thumbnail_copy, social_captions,
+         video_prompt, social_post,
          created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())\`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())\`,
         { replacements: [catId, c.type, c.slug, c.title, c.content, c.excerpt, c.thumbnail_url, c.status, c.sort_order,
           c.author_name, c.published_at,
           c.seo_title, c.seo_description, c.seo_keywords, c.og_image_url, c.canonical_url,
           c.ai_summary, c.faq_schema ? JSON.stringify(c.faq_schema) : null,
           c.language, prodGroupId, c.target_persona, c.funnel_stage, c.content_tier,
           c.problem_category, c.video_script, c.thumbnail_copy,
-          c.social_captions ? JSON.stringify(c.social_captions) : null] });
+          c.social_captions ? JSON.stringify(c.social_captions) : null,
+          c.video_prompt,
+          c.social_post ? JSON.stringify(c.social_post) : null] });
       console.log('  + created:', c.language + '/' + c.slug);
       created++;
     }

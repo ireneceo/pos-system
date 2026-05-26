@@ -190,7 +190,8 @@ const GlobeDropdown = styled.div`
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 12px;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
-  z-index: 1100;
+  /* Sits above Landing header (1500) and any in-page banner / hero. */
+  z-index: 1600;
   overflow: hidden;
   padding: 4px;
 `;
@@ -321,7 +322,8 @@ const Dropdown = styled.div<{ $direction?: 'up' | 'down' }>`
   border: 1px solid #E5E7EB;
   border-radius: 10px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
-  z-index: 1100;
+  /* Sits above Landing header (1500) and any in-page banner / hero. */
+  z-index: 1600;
   overflow: hidden;
 `;
 

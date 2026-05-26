@@ -1,65 +1,80 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-05-25 (v3.42 backstage 4회차 배포 — 랜딩 반응형 + e-invoice 설계)
+**마지막 업데이트:** 2026-05-26 (BRAND CONCEPT v2 + 글쓰기 스킬 통합 + 랜딩 z-index fix + lua ACL)
 **버전:** **v3.42** 운영 (Irene 지시로 버전 미상승, backstage 누적)
-**작업 상태:** 완료. 새 작업 지시 대기.
+**작업 상태:** 완료. 매장 점검 결과 + 새 작업 지시 대기.
 
 ### 진행 중인 작업
 - 없음
 
-### 4차 배포 (2026-05-25 14:25, Backup 20260525_142329)
-- **랜딩 헤더 반응형 fix** — 1240px overflow 해결. 모바일 메뉴 breakpoint 1024→1280. 9 viewport (360~2560) 모두 overflow 0. public 9 페이지 × 4 viewport = 36 조합 mount clean
-- **/블로그초안 SOP — BRAND CONCEPT 영구 박제** — video_prompt 두 트랙(CHAOS/INTERVIEW) 맨 위에 공통 BRAND CONCEPT 박스 7 lock 섹션 (Brand/Visual/Typography/Sound/Logo/Negative/Delivery). 매 영상 동일 톤 유지 (브랜딩 일관성)
-- **E-Invoice 통합 설계 박제** — `docs/E_INVOICE_INTEGRATION_DESIGN.md` 신규. LHDN MyInvois 통합 1~4단계 + 6단계 시나리오. 신규 4 테이블 + 12 API + 7 UI + 6 테스트 시나리오. **구현은 다음 세션** (5단계 코드 작성)
+### 오늘 (2026-05-26) 완료된 작업
+
+**1. /글쓰기 SOP v2 — 타깃 + 단일 톤 통합**
+- 0단계 신설 — AskUserQuestion 으로 타깃 (6 역할 + Auto) 먼저 결정. PERSONA_CODE 정해진 후만 1단계 진입
+- 1단계 트렌드 리서치 persona 별 쿼리 세트 분기 (RA/BG/FG/OW/SP/ST 6개 세트)
+- 2단계 고객 DB persona 매칭만 필터
+- 3단계 매트릭스 통합 — 같은 persona row 안에서 problem 만 다양화 (후보 3건 모두 동일 persona)
+- 1.5단계 영상 트랙 결정 (CHAOS vs INTERVIEW) 폐지
+
+**2. BRAND CONCEPT v2 — 단일 톤 영구 박제**
+- CHAOS/INTERVIEW 두 트랙 분기 완전 폐지 → 단일 톤 통일
+- 포지셔닝: "Built by F&B operators. Solving real problems." / "NOT a POS company — real-operations-problem-solving brand"
+- 5비트 구조 고정 (HOOK / 문제 / 해결 / 결과 / CTA)
+- 시각: Apple-clean SaaS + 자연광 + 한국감성 모던 F&B (white oak / marble / 큰 창)
+- 캐스팅: 30s 동양인 사장/매니저, 모델급 외모, 깔끔 apron
+- POS UI: 둥근 버튼 / 여백 / 3 패널 / violet 절제
+- CTA: "Start Your Free Trial" pill + purplehere.com
+- **video_prompt 4000자 한도 강제**
+
+**3. e-invoice 글 video_prompt 재작성 (id 78/79/80)**
+- v1 (8500자) → v2 (en 3970 / ms 3992 / zh 3199)
+- dev DB + 운영 DB 동기화 완료
+- pain_point: "January 1st. Receipts aren't enough." / "1 Januari. Resit tidak cukup." / "1月1日。光收据不够了。"
+- 5비트 BREAKDOWN 정확 (HOOK 0-2s / 문제 2-7s / 해결 8-10s / 결과 10-13s / CTA 13-15s)
+
+**4. 블로그 스킬 5개 → 1개 통합**
+- `/블로그초안.md` `/블로그발행.md` `/블로그감사.md` `/블로그리서치.md` `/블로그캘린더.md` git rm
+- 5-A (video_prompt BRAND CONCEPT v2 + PER-SECOND TEMPLATE) + 5-B (social_post 단일 톤) 을 `/글쓰기.md` 5단계 안에 통째 흡수
+- 한 파일에서 SOP 관리 — 동기화 부담 해소
+
+**5. 랜딩 헤더 z-index fix (언어 드롭다운 sub-banner 가림 해결)**
+- `LandingHeader.tsx`: overflow-x:hidden → overflow:visible + max-width:100vw (자식 dropdown 세로 clipping 문제 해결)
+- 헤더 z-index 1000 → 1500
+- `LanguageSelector.tsx` GlobeDropdown + Dropdown z-index 1100 → 1600
+- 빌드 (`main.3cb764c3.js`) + dev 배포 완료
+- **운영 미배포** — 다음 운영 배포 시 함께 반영
+
+**6. sync-contents-to-prod.js 영구 패치**
+- `video_prompt` + `social_post` 컬럼이 운영 sync payload 에서 빠져있던 버그 fix
+- payload + remote schema migration cols + UPDATE/INSERT 3곳 모두 추가
+- 향후 `/배포` 자동 콘텐츠 sync 시 두 필드 함께 흐름
+
+**7. lua 사용자 ACL 권한 부여 (Irene 직접 실행)**
+- 5개 디렉토리에 `setfacl -R -m u:lua:rwX` + default ACL:
+  - `/var/www/.claude/commands` (글쓰기 스킬)
+  - `/var/www/docs` (콘텐츠 매트릭스)
+  - `/var/www/dev-frontend/src/pages/Landing` (랜딩 페이지)
+  - `/var/www/dev-frontend/src/components/Landing` (랜딩 헤더/푸터)
+  - `/var/www/dev-frontend/public/locales` (i18n 번역)
+- POS 코드는 그대로 lua read-only (POS 보호)
+- 신규 파일 자동 적용 (default ACL)
+
+### 미해결 / 다음 세션 결정 필요
+
+- **lua 가 `/블로그초안.md` 재생성한 점** — 우리 정리 후 lua 가 6:25 에 다시 생성함 (소유자 `lua:lua`, 26.5KB). 정책상 폐지 결정이었지만 lua 작업 흐름이 다를 수 있음. 이번 commit 에는 untracked 로 둠. Irene 결정 필요: (a) 또 삭제, (b) 살리고 글쓰기와 역할 분리 명확히, (c) lua 가 만든 그대로 흡수
+- **매장 점검 결과 대기** — Irene 매장 가서 프린터 라인별 자동 인쇄 + Customer Display 듀얼 모니터 점검 중. 결과에 따라 hotfix 가능성
 
 ### 다음 확정 작업
-- **E-Invoice 5단계 구현** — `docs/E_INVOICE_INTEGRATION_DESIGN.md` 5단계 기준
-  - 사전 준비: MyInvois Portal 가입 (운영) + Sandbox 가입 + 매장 16 TIN/BRN/MSIC/SST
-  - 분량: 약 4-5주 (backend models + LHDN client + consolidated cron + frontend UI + i18n)
-  - 비즈니스 모델: 모든 plan 기본 포함 (paid 분리 X), 시장 표준 따름
-
-### 완료된 작업 (이번 세션, v3.42 backstage 누적)
-
-**1차 배포 (08:36, Backup 20260525_083449):**
-- Takeaway per-item-individual UI 재설계 (Default + Override + inline combobox + 보라 하이라이트)
-- i18n html lang sync (한국어 '오전/오후' AM/PM 해결)
-- Notice [Send to Work Manuals] silent UX fix (5 NoticesPage navigate to Work Manuals)
-- POS Terminal 쿠폰 검색 UI 신규 (검색 input + dropdown combobox)
-- Mobile Order Alerts (sticky banner + 사운드 + Floor Plan dot + Settings 토글)
-- 마이그 hang 방지 (`process.exit(0)`)
-
-**2차 배포 (09:32, Backup 20260525_093056):**
-- 주문 취소 권한 분리 (Staff = cancel, Restaurant Admin/Owner = delete)
-- `GET /api/orders/:id/actions` audit trail endpoint 신규
-- OrderDetailModal cancelled 자동 history popover (단계 + 시점 + 사용자 즉시 인지)
-- Staff 추가 시 role 권한 차이 helper text (보라 박스, 4언어)
-
-**3차 배포 (10:07, Backup 20260525_100534):**
-- Customer Display Reset Position 자동화 (좌표 클리어 + popup 자동 열기 + "두 번째 모니터로 드래그" 안내)
-
-**매장 사전 점검 (rest 16 The Fire Korean Restaurant):**
-- Category → Station 매핑 15/15 정상 (KQ1/KQ2/BARPR)
-- `restaurants.printer_settings.kitchenStationPrinters` 컬럼에 IP 정상 (192.168.1.120/200/110)
-- 매장 가서 Test 버튼만 누르면 진단 끝
-
-**Backstage 분류 (Irene 명시 지시):**
-- CHANGELOG [Unreleased] 그대로
-- 릴리즈 노트 / 블로그 / 공지 모두 생략
-
-### 다음 확정 작업
-- 없음 — 지시 대기
-- (다음 진입 시) 매장 16 점검 결과 (프린터 라인별 출력 + Customer Display 듀얼 모니터) 보고 받아 처리
+- 없음 — 지시 대기 (매장 점검 결과 받은 후)
 
 ### 후속 후보 (아이디어 메모, 확정 X)
 > 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.
 
-- 탭 라벨 변경: "Printer" → "Printer & Display" (Customer Display 카드가 Printer 탭 안에 있어서 의미 묶음). 카드 순서 위→아래: Customer Display → Receipt Printer → Kitchen Printer → QZ Tray 설정. (매장 점검 후 진행 여부 확정)
-- React Query 도입 (Priority A, `docs/PERFORMANCE_OPTIMIZATION_PLAN.md`)
-- Backend composite endpoints (Priority B)
-- 응답 size 최적화 (Priority C)
-- cache-bust 정리 (Priority D)
-- 서버 캐싱 (Priority E)
+- E-Invoice 5단계 구현 (`docs/E_INVOICE_INTEGRATION_DESIGN.md`, 4-5주, 사전 LHDN sandbox 가입 필요)
+- Settings "Printer" 탭 → "Printer & Display" 리네임 + 카드 순서 조정
+- React Query 도입 (Priority A)
+- 랜딩 헤더 z-index fix 운영 반영 (`/배포` 시 자동)
 
 ---
 
