@@ -22,6 +22,17 @@ class ErrorBoundary extends React.Component<
   }
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error('[ErrorBoundary]', error, info);
+    // ChunkLoadError = the browser cached an OLD main.js whose lazy-chunk hashes
+    // no longer exist after a fresh deploy. The fix is a hard reload that drops
+    // the cached main.js. Guard with sessionStorage so we don't loop if the
+    // server is genuinely missing the chunk.
+    const msg = (error && (error.message || String(error))) || '';
+    const isChunkErr = error?.name === 'ChunkLoadError' || /Loading chunk \d+ failed/.test(msg) || /Failed to fetch dynamically imported/.test(msg);
+    if (isChunkErr && !sessionStorage.getItem('__chunk_reload_done')) {
+      sessionStorage.setItem('__chunk_reload_done', '1');
+      console.warn('[ErrorBoundary] ChunkLoadError detected → hard reloading to pick up fresh main.js');
+      window.location.reload();
+    }
   }
   resetError = () => this.setState({ hasError: false, error: null });
   render() {
@@ -34,6 +45,24 @@ class ErrorBoundary extends React.Component<
 
 // 단일 fetch 인터셉터 설치 (API_BASE_URL 프리픽스 + POS 토큰 주입 + 401 자동 로그아웃)
 installFetchInterceptor();
+
+// Global ChunkLoadError catch — fires when a lazy import() rejects before any
+// React boundary sees it (e.g. while suspended). Same reload guard as the boundary.
+window.addEventListener('unhandledrejection', (e) => {
+  const r: any = e.reason;
+  const msg = (r && (r.message || String(r))) || '';
+  const isChunkErr = r?.name === 'ChunkLoadError' || /Loading chunk \d+ failed/.test(msg) || /Failed to fetch dynamically imported/.test(msg);
+  if (isChunkErr && !sessionStorage.getItem('__chunk_reload_done')) {
+    sessionStorage.setItem('__chunk_reload_done', '1');
+    console.warn('[chunk-error] hard-reloading to pick up fresh main.js');
+    window.location.reload();
+  }
+});
+
+// Clear the reload guard once the app booted successfully so the next deploy
+// can self-heal too. setTimeout deferred so a crash during initial render still
+// triggers the reload path above.
+setTimeout(() => { try { sessionStorage.removeItem('__chunk_reload_done'); } catch {} }, 5000);
 
 // Auto-detect new builds and reload — ensures every user picks up fresh code within 5 min
 // of deploy without needing Ctrl+Shift+R. Cloudflare's index.html cache is 5 min so we

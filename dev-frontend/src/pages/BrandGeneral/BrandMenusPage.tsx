@@ -528,6 +528,20 @@ const BrandMenusPage: React.FC = () => {
   const [copyIncludeLocks, setCopyIncludeLocks] = useState(false);
   const [copying, setCopying] = useState(false);
   const [menuSettings, setMenuSettings] = useState<MenuSettings | null>(null);
+  const [listCategories, setListCategories] = useState<Array<{ id: number; name: string }>>([]);
+
+  // Load categories for the brand-menu list filter dropdown.
+  useEffect(() => {
+    if (!selectedBrandId) { setListCategories([]); return; }
+    (async () => {
+      try {
+        const r = await fetch(`/api/brand-menu-categories?brand_id=${selectedBrandId}`, { headers: authHeaders() });
+        if (!r.ok) return;
+        const j = await r.json();
+        setListCategories((j.data || []).map((x: any) => ({ id: x.id, name: x.name })));
+      } catch { /* silent */ }
+    })();
+  }, [selectedBrandId]);
 
   // Load brands BG owns
   useEffect(() => {
@@ -719,6 +733,21 @@ const BrandMenusPage: React.FC = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
+          {listCategories.length > 0 && (
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              style={{
+                height: 40, padding: '0 12px', borderRadius: 8,
+                border: '1px solid #C7CED6', background: 'white', color: '#0A2540',
+                fontSize: 14, fontFamily: 'inherit', cursor: 'pointer', minWidth: 160
+              }}
+              aria-label={t('brand:brandMenusPage.filterCategory', 'Filter by category') as string}
+            >
+              <option value="">{t('brand:brandMenusPage.allCategories', 'All Categories')}</option>
+              {listCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          )}
           <SortDropdown value={sortKey} onChange={setSortKey} />
           <div data-controls-trailing>
             <ThemedButton variant="primary" onClick={() => setShowAddModal(true)} disabled={!selectedBrandId}>
@@ -1134,6 +1163,7 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
 
   const handleSave = async () => {
     if (!name.trim()) { setSaveError(t('brand:brandMenusPage.errors.nameRequired', 'Name is required')); return; }
+    if (!categoryId) { setSaveError(t('brand:brandMenusPage.errors.categoryRequired', 'Category is required')); return; }
     setSaving(true);
     setSaveError(null);
     try {
@@ -1200,8 +1230,8 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
       </UIFormGroup>
 
       <UIFormGroup>
-        <FormLabel>{t('brand:brandMenusPage.category', 'Category')}</FormLabel>
-        <FormSelect value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+        <FormLabel>{t('brand:brandMenusPage.category', 'Category')} *</FormLabel>
+        <FormSelect value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required>
           <option value="">— {t('brand:brandMenusPage.selectCategoryPlaceholder', 'Select Category')} —</option>
           {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
         </FormSelect>

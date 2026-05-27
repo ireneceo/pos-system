@@ -964,6 +964,14 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const [mobileAlertOrders, setMobileAlertOrders] = useState<Array<{ id: number | string; orderNumber?: string; tableNumber?: string | null; customerName?: string; total?: number; createdAt?: string }>>([]);
   const mobileAlertOrdersRef = useRef(mobileAlertOrders);
   useEffect(() => { mobileAlertOrdersRef.current = mobileAlertOrders; }, [mobileAlertOrders]);
+
+  // Sync body class so NotificationToaster (top-right toasts, zIndex 10000) can shift
+  // its top offset and not cover the banner's View/Dismiss buttons. CSS in index.css.
+  useEffect(() => {
+    const visible = mobileAlertOrders.length > 0 && (operationSettings?.mobileOrderAlerts?.bannerEnabled !== false);
+    document.body.classList.toggle('has-mobile-banner', visible);
+    return () => { document.body.classList.remove('has-mobile-banner'); };
+  }, [mobileAlertOrders.length, operationSettings?.mobileOrderAlerts?.bannerEnabled]);
   const operationSettingsRef = useRef(operationSettings);
   useEffect(() => { operationSettingsRef.current = operationSettings; }, [operationSettings]);
   const { canInstall, isStandalone, isIOS, promptInstall } = usePwaInstall();
@@ -2097,7 +2105,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         {/* Payment Status Modals */}
         <PaymentStatusModals />
 
-        {/* Mobile Order Alert Banner — sticky top, persists until staff acknowledges */}
+        {/* Mobile Order Alert Banner — sticky top, persists until staff acknowledges.
+            zIndex 10001 (above NotificationToaster 10000). body.has-mobile-banner class
+            pushes NotificationToaster below so right-side toasts don't cover the
+            View/Dismiss buttons. */}
         {mobileAlertOrders.length > 0 && (operationSettings?.mobileOrderAlerts?.bannerEnabled !== false) && (
           <div
             role="alert"
@@ -2107,25 +2118,26 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               top: 0,
               left: 0,
               right: 0,
-              zIndex: 9999,
-              background: 'linear-gradient(135deg, #635BFF 0%, #4F46E5 100%)',
+              zIndex: 10001,
+              background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
               color: 'white',
-              padding: '10px 16px',
+              padding: '12px 16px',
               display: 'flex',
               alignItems: 'center',
               gap: '12px',
-              boxShadow: '0 4px 12px rgba(99, 91, 255, 0.25)',
+              boxShadow: '0 4px 14px rgba(16, 185, 129, 0.35)',
               fontSize: '14px',
-              fontWeight: 500
+              fontWeight: 600,
+              minHeight: '52px'
             }}
           >
-            <Bell size={18} strokeWidth={2.2} style={{ flexShrink: 0 }} />
+            <Bell size={20} strokeWidth={2.4} style={{ flexShrink: 0 }} />
             <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {mobileAlertOrders.length === 1
                 ? t('common:mobileOrderAlerts.oneNewOrder', '1 new mobile order') + (mobileAlertOrders[0].tableNumber ? ` · ${t('common:mobileOrderAlerts.table', 'Table')} ${mobileAlertOrders[0].tableNumber}` : '') + (mobileAlertOrders[0].orderNumber ? ` · #${mobileAlertOrders[0].orderNumber}` : '')
                 : t('common:mobileOrderAlerts.multipleNewOrders', '{{count}} new mobile orders', { count: mobileAlertOrders.length })}
             </span>
-            <button type="button"
+            <button
               type="button"
               onClick={() => {
                 const path = `/restaurant/${restaurantId || user?.restaurantId}/live-orders`;
@@ -2134,36 +2146,43 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 navigate(path);
               }}
               style={{
-                padding: '6px 14px',
+                padding: '8px 18px',
                 background: 'white',
-                color: '#4F46E5',
+                color: '#047857',
                 border: 'none',
-                borderRadius: '6px',
+                borderRadius: '8px',
                 fontSize: '13px',
-                fontWeight: 600,
+                fontWeight: 700,
                 cursor: 'pointer',
-                whiteSpace: 'nowrap'
+                whiteSpace: 'nowrap',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
               }}
             >
               {t('common:mobileOrderAlerts.view', 'View')}
             </button>
-            <button type="button"
+            <button
               type="button"
               title={t('common:mobileOrderAlerts.dismiss', 'Dismiss') as string}
+              aria-label={t('common:mobileOrderAlerts.dismiss', 'Dismiss') as string}
               onClick={() => {
                 setMobileAlertOrders([]);
                 import('../../utils/notificationSound').then(({ stopRepeatingSound }) => stopRepeatingSound());
               }}
               style={{
-                width: '28px',
-                height: '28px',
-                background: 'rgba(255,255,255,0.18)',
+                width: '36px',
+                height: '36px',
+                background: 'rgba(255,255,255,0.22)',
                 color: 'white',
                 border: 'none',
-                borderRadius: '6px',
-                fontSize: '16px',
+                borderRadius: '8px',
+                fontSize: '20px',
+                fontWeight: 700,
                 cursor: 'pointer',
-                lineHeight: 1
+                lineHeight: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
               }}
             >
               ×

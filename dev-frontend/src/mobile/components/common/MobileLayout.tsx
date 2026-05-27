@@ -60,17 +60,22 @@ const BrandTopBar = styled.div`
   }
 `;
 
+// Full-width single-row header. Left = back action (or empty), center grows to
+// fit page title, right = combined context chip (table · order type). The
+// previous layout had a center-aligned title + separate right chip, which
+// shoved the title off-center whenever the chip was wider than the back button
+// and felt cramped. This balances by collapsing visually so content breathes.
 const Header = styled.header`
   background: white;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid #F1F4F8;
   position: sticky;
   top: 0;
   z-index: 100;
-  padding: 12px 16px;
-  min-height: 64px; /* Fixed height to match back button height */
+  padding: 10px 16px;
+  min-height: 56px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
   max-width: 100%;
   width: 100%;
   box-sizing: border-box;
@@ -106,21 +111,40 @@ const BackButton = styled.button`
 `;
 
 const Title = styled.h1`
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 600;
-  color: #1F2937;
+  color: #0A2540;
   margin: 0;
-  flex: 1;
-  text-align: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  padding: 0 8px;
 `;
 
-const HeaderAction = styled.div`
-  width: 40px; /* Match back button width for centering */
-  height: 40px; /* Match back button height */
+// Combined context chip — table + order type in one element so the two pieces
+// of information that belong together visually sit together. Right-aligned.
+const ContextChip = styled.div`
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #F5F3FF;
+  color: #635BFF;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  border: 1px solid #DDD6FE;
+  letter-spacing: 0.2px;
+  svg { display: block; }
+  .divider {
+    width: 1px;
+    height: 12px;
+    background: #C7BCFB;
+  }
 `;
 
 const Content = styled.main`
@@ -299,9 +323,16 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
   const tableNumber = sessionStorage.getItem('tableNumber');
 
   const handleNavigation = (path: string) => {
-    // For home page, include table parameter if exists
-    if (path === `/mobile/${slug}` && tableNumber) {
-      navigate(`${path}?table=${tableNumber}`);
+    // Home from bottom nav: explicitly show the order-type picker. Previously we
+    // only forwarded `?table=…`, which OrderTypePage auto-resolved into dine-in
+    // and immediately bounced to MenuPage — so the user could never reach the
+    // home picker to switch to takeaway/pickup mid-session. `picker=1` keeps
+    // the table context but tells OrderTypePage NOT to auto-skip.
+    if (path === `/mobile/${slug}`) {
+      const qs = tableNumber
+        ? `?table=${encodeURIComponent(tableNumber)}&picker=1`
+        : '?picker=1';
+      navigate(`${path}${qs}`);
     } else {
       navigate(path);
     }
@@ -315,21 +346,35 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
       </BrandTopBar>
       {title && (
         <Header>
-          {showBack ? (
-            <BackButton onClick={onBack}>
+          {showBack && (
+            <BackButton onClick={onBack} aria-label="Back">
               <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M15 18L9 12L15 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </BackButton>
-          ) : (
-            <HeaderAction />
           )}
           <Title>{title}</Title>
-          {/* Order Type chip on right — REMOVED. StoreHeader on the menu page already shows
-              the order type with an explicit "Change" action. Showing the same chip on every
-              other page (payment, cart, checkout, …) duplicated info and confused users
-              (e.g., reservation page wrongly displaying "Dine-In"). */}
-          <HeaderAction />
+          {/* Combined table + order type pill — sits together because the two
+              facts always travel together; previously a separate empty spacer
+              made the right side feel hollow and misaligned. */}
+          {(tableNumber || orderType) && (
+            <ContextChip title={[tableNumber && `Table ${tableNumber}`, orderType && orderType.replace('-', ' ')].filter(Boolean).join(' · ')}>
+              {tableNumber && (
+                <>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M3 10H21M5 10V18C5 18.5304 5.21 19.04 5.59 19.41C5.96 19.79 6.47 20 7 20H17C17.53 20 18.04 19.79 18.41 19.41C18.79 19.04 19 18.53 19 18V10M5 10V8C5 7.47 5.21 6.96 5.59 6.59C5.96 6.21 6.47 6 7 6H17C17.53 6 18.04 6.21 18.41 6.59C18.79 6.96 19 7.47 19 8V10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span>{tableNumber}</span>
+                </>
+              )}
+              {tableNumber && orderType && <span className="divider" />}
+              {orderType && (
+                <span style={{ textTransform: 'capitalize' }}>
+                  {orderType === 'dine-in' ? 'Dine-in' : orderType === 'takeaway' ? 'Takeaway' : orderType === 'pickup' ? 'Pickup' : orderType === 'delivery' ? 'Delivery' : orderType}
+                </span>
+              )}
+            </ContextChip>
+          )}
         </Header>
       )}
 

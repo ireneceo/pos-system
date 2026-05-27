@@ -169,6 +169,56 @@
 }
 ```
 
+## 2026-05-27 — v3.42 변경 (Mobile status override + Auto-merge 정책 완화)
+
+### A. 모바일 주문 status override (서버측 강제)
+
+**배경**: 모바일 PaymentPage 가 `status: 'outstanding'` 을 하드코딩한 채 `/api/orders` (`orders-crud.js` POST `/`) 로 호출. 백엔드에 source 분기가 없어서 매장 설정 (`requirePaymentBeforeKitchen`) 이 무시됐음.
+
+**Fix**: `dev-backend/routes/orders-crud.js:386` 의 분기 직후, `isMobileSource` 일 때 매장 setting 을 보고 status 를 강제 override.
+
+- 매장 Settings → Mobile Order 토글 **ON** → backend `requirePaymentBeforeKitchen = false` → status **`pending`** (즉시 KDS 진입)
+- 매장 Settings → Mobile Order 토글 **OFF** → backend `requirePaymentBeforeKitchen = true` → status **`outstanding`** (결제 후 KDS)
+
+> 토글 의미 반전 주의: **UI ON = DB false**, **UI OFF = DB true**. i18n 4언어 (en/ko/zh/ms) 라벨 "Send mobile orders to kitchen immediately" 로 통일.
+
+### B. Auto-merge 정책 완화 (orders-crud.js + mobile-orders.js)
+
+기존 § "Merge 조건" 의 일부 항목이 완화됨. 해당 조항은 **이 § 가 우선** (위 표는 2026-03-15 기준 스냅샷).
+
+**현행 머지 조건 (2026-05-27)**:
+
+| 조건 | 설명 |
+|------|------|
+| 같은 restaurant_id | 동일 |
+| 같은 table_number | 동일 (NULL 머지 안 함) |
+| 기존 주문 payment_status = 'pending' | 동일 |
+| 기존 주문 status notIn (`served`, `completed`, `cancelled`) | 동일 |
+| 당일 (오늘 00:00~23:59) | 동일 |
+| 같은 source family | POS↔POS, Mobile↔Mobile (cross 금지 유지) |
+| ~~같은 order_type~~ | **제거** — dine_in ↔ takeaway 무관하게 머지 |
+| ~~같은 payment_method~~ | **제거** — counter/bankTransfer/ewallet/online/card 무관 |
+| ~~Mobile→Mobile customer 매칭~~ | **제거** — guest/no-phone 도 머지 (phone/customer_id 일치 불요) |
+
+**머지 시 status preservation (`preserveOutstanding`)**:
+- 기존 `order.status === 'outstanding'` → 머지 후에도 **outstanding 유지** (결제 보호)
+- 그 외 → **pending**
+
+**머지된 신규 아이템 마킹**:
+- 신규 item 에 `order_group: nextGroup` + `added_at: now` 첨부
+- `nextGroup = Math.max(...existingGroups) + 1`. 최초 추가 라운드 = `1`, 두 번째 = `2`, …
+- KDS 의 `+ ROUND N` divider + 자동 additional-items ticket 인쇄가 이 필드를 사용 (`docs/KITCHEN_DISPLAY_RULES.md` § B/C, `docs/PRINT_RULES_MATRIX.md` § C 참조)
+
+### 관련 코드 (B)
+
+| 파일 | 함수/위치 |
+|------|----------|
+| `dev-backend/routes/orders-crud.js` | `findMergeableOrder()` — 완화된 조건 적용 + `preserveOutstanding` |
+| `dev-backend/routes/orders-crud.js` | `mergeItemsIntoOrder()` — `order_group` + `added_at` 신규 필드 첨부 |
+| `dev-backend/routes/orders-crud.js:386` | mobile source status override 분기 |
+| `dev-backend/routes/mobile-orders.js` | mobile 측 머지 진입점 (동일 정책) |
+| `dev-frontend/src/mobile/pages/PaymentPage.tsx` | `status: 'outstanding'` 하드코딩 (백엔드가 override) |
+
 ## 변경 이력
 
 | 날짜 | 변경 |
@@ -176,3 +226,4 @@
 | 2026-03-15 | Auto-merge 규칙 강화: payment_method, source, customer 매칭 추가 |
 | 2026-03-15 | Guest 정보 localStorage 복원 로직 추가 |
 | 2026-03-15 | Floor Plan 멀티주문 표시: table-status API 배열 반환 + 주문 탭 UI + 테이블 뱃지 |
+| 2026-05-27 | Mobile status override (`requirePaymentBeforeKitchen` 적용) + Auto-merge 완화 (order_type / payment_method / customer 매칭 제거) + 머지 아이템에 `order_group` / `added_at` 추가, `preserveOutstanding` 도입 |

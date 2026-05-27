@@ -16,6 +16,7 @@ import io from 'socket.io-client';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
+import { useStore } from '../../contexts/StoreContext';
 import { openCustomerDisplay, isAutoOpenEnabled } from '../../utils/customerDisplay';
 
 // Prefetch POS Terminal chunk on Floor Plan mount — clicking a table to start
@@ -275,6 +276,7 @@ const FloorPlanPage: React.FC = () => {
   const { restaurantId } = useParams<{ restaurantId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { getStoreInfo } = useStore();
 
   // Prefetch is intentionally disabled here. Initial implementation triggered
   // POS Terminal chunk download during Floor Plan idle, but the observed effect
@@ -704,8 +706,15 @@ const FloorPlanPage: React.FC = () => {
   // Add new launch types here as new opts keys; do not split into separate functions.
   const handleNewOrder = (opts?: { takeaway?: boolean }) => {
     const params = new URLSearchParams();
+    // 2026-05-27: takeaway from a selected table pins to that table's bill
+    // (e.g. a guest at T20 wants a coffee to go — staff still wants it on the
+    // T20 ticket). Walk-in takeaway (no selected table) stays counter-pickup.
     if (opts?.takeaway) {
       params.set('order_type', 'takeaway');
+      if (selectedTable && selectedTableId) {
+        params.set('table', selectedTable);
+        params.set('tableId', selectedTableId);
+      }
     } else {
       if (!selectedTable || !selectedTableId) return;
       // table = tableNumber (display) + tableId = Floor Plan v2 id (zone-isolated).
@@ -849,6 +858,82 @@ const FloorPlanPage: React.FC = () => {
             total: parseFloat((dineInStatusInfo as any).totalAmount) || 0,
             currency: 'MYR'
           });
+        }
+
+        // Auto-print bill + kitchen ticket (parity with POSTerminal:processPayment).
+        // Floor Plan / LiveOrders 결제 흐름은 그동안 자동 트리거 코드가 없었음 —
+        // POSTerminal 의 결제 흐름만 자동이라 매장이 Floor Plan 에서 결제하면
+        // 빌/주방 자동 출력이 아예 안 됨. 같은 패턴으로 추가.
+        try {
+          const billPrintMod = await import('../../utils/billPrint');
+          const printSettings = billPrintMod.getPrinterSettings();
+          const activeBill = billPrintMod.getActiveBillPrinter();
+          const printStoreInfo = getStoreInfo();
+          // Fetch latest order snapshot for accurate printData (PaymentModal closed already)
+          const oRes = await fetch(`/api/orders/${orderId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+          const oJson = await oRes.json();
+          const o = oJson?.data || oJson;
+          const items = Array.isArray(o.order_items)
+            ? o.order_items
+            : (typeof o.order_items === 'string' ? (() => { try { return JSON.parse(o.order_items); } catch { return []; } })() : []);
+          const printData = {
+            orderNumber: o.order_number || orderNumber,
+            pickupNumber: o.pickup_number || (o.order_number ? String(o.order_number).split('-')[1] : ''),
+            tableNumber: o.table_number || undefined,
+            pagerNumber: o.pager_number || undefined,
+            date: new Date(o.createdAt || Date.now()),
+            orderType: o.order_type === 'dine_in' ? 'dine-in' : (o.order_type || 'dine-in'),
+            orderSource: o.source || 'pos',
+            items: items.map((it: any) => ({
+              menuItem: { name: it.menuItem?.name || it.name || 'Item', price: parseFloat(it.price || it.menuItem?.price || '0'), emoji: it.menuItem?.emoji },
+              quantity: it.quantity || 1,
+              options: it.options || []
+            })),
+            subtotal: parseFloat(o.subtotal || '0'),
+            tax: parseFloat(o.tax || '0'),
+            serviceCharge: parseFloat(o.service_charge || '0'),
+            serviceChargeRate: parseFloat(o.service_charge_rate || '0'),
+            takeawayCharge: parseFloat(o.takeaway_charge || '0'),
+            discount: parseFloat(o.discount || '0'),
+            total: parseFloat(o.total_amount || o.total || '0'),
+            paymentMethod: method,
+            cashierName: null
+          };
+
+          // Bill auto-print (workstation-aware + copies)
+          if (activeBill?.enabled && activeBill?.autoPrint) {
+            const copies = Math.max(1, Math.min(3, parseInt(
+              (printSettings.receiptSettings && printSettings.receiptSettings.copiesAfterPayment) ||
+              (JSON.parse(localStorage.getItem('receiptSettings') || '{}').copiesAfterPayment) || 1, 10) || 1));
+            const autoOpenDrawer = (printSettings.receiptSettings && printSettings.receiptSettings.autoOpenDrawer) !== false &&
+              (JSON.parse(localStorage.getItem('receiptSettings') || '{}').autoOpenDrawer !== false);
+            (async () => {
+              await new Promise(r => setTimeout(r, 300));
+              for (let i = 0; i < copies; i++) {
+                const isLast = i === copies - 1;
+                const dataForCopy = { ...printData, __drawerPulse: !!(autoOpenDrawer && isLast) };
+                try { await billPrintMod.printBillViaRawBT(dataForCopy, printStoreInfo); }
+                catch (e: any) { console.error('FloorPlan auto bill print failed (copy ' + (i + 1) + '):', e); }
+                if (i < copies - 1) await new Promise(r => setTimeout(r, 600));
+              }
+            })();
+          }
+
+          // Kitchen auto-print master gate (2026-05-28) — kitchen autoPrint OFF
+          // must hard-block even when a station-level toggle is ON.
+          const _stationAutoPrint = Object.values(printSettings.kitchenStationPrinters || {}).some((s: any) => s?.autoPrint);
+          const _kp: any = printSettings.kitchenPrinter || {};
+          const _kpEnabled = _kp.enabled !== false;
+          const _kpAuto = !!_kp.autoPrint;
+          const _kitchenAuto = (_kpEnabled && !_kpAuto) ? false : (_kpAuto || _stationAutoPrint);
+          if (_kitchenAuto) {
+            setTimeout(() => {
+              billPrintMod.printKitchenTicketViaRawBT(printData, printStoreInfo)
+                .catch((e: any) => console.error('FloorPlan auto kitchen print failed:', e));
+            }, 800);
+          }
+        } catch (autoPrintErr) {
+          console.error('FloorPlan auto-print skipped:', autoPrintErr);
         }
       }
     } catch (err) {

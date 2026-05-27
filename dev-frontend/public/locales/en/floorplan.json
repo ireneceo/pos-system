@@ -116,5 +116,13 @@
   "tableDetailPanel.printQrToGenerateASessionbasedOrderingCodeForThisTable": "Print QR to generate a session-based ordering code for this table.",
   "tableDetailPanel.cancel": "Cancel",
   "tableDetailPanel.confirm": "Confirm",
+  "tableDetailPanel.itemStatus.queued": "Queued",
+  "tableDetailPanel.itemStatus.cooking": "Cooking",
+  "tableDetailPanel.itemStatus.ready": "Ready",
+  "tableDetailPanel.itemStatus.served": "Served",
+  "tableDetailPanel.itemStatus.markServed": "Mark as served",
+  "tableDetailPanel.itemStatus.unmarkServed": "Undo served",
+  "tableDetailPanel.itemStatus.waitingKitchen": "Waiting for kitchen",
+  "tableDetailPanel.itemStatus.servedCount": "{{served}}/{{total}} served",
   "tableNode.staff": "STAFF"
 }

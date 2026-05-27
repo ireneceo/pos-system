@@ -116,5 +116,13 @@
   "tableDetailPanel.printQrToGenerateASessionbasedOrderingCodeForThisTable": "이 테이블의 세션 기반 주문 코드를 생성하려면 QR을 인쇄하세요.",
   "tableDetailPanel.cancel": "취소",
   "tableDetailPanel.confirm": "확인",
+  "tableDetailPanel.itemStatus.queued": "대기",
+  "tableDetailPanel.itemStatus.cooking": "조리 중",
+  "tableDetailPanel.itemStatus.ready": "준비 완료",
+  "tableDetailPanel.itemStatus.served": "서빙 완료",
+  "tableDetailPanel.itemStatus.markServed": "서빙 완료로 표시",
+  "tableDetailPanel.itemStatus.unmarkServed": "서빙 취소",
+  "tableDetailPanel.itemStatus.waitingKitchen": "주방 조리 대기",
+  "tableDetailPanel.itemStatus.servedCount": "{{served}}/{{total}} 서빙됨",
   "tableNode.staff": "직원"
 }

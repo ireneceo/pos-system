@@ -180,34 +180,84 @@ const GroupHeader = styled.div<{ $isAdded?: boolean }>`
 `;
 
 const ItemRow = styled.div<{ $completed?: boolean }>`
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-  padding: 6px 0;
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
   border-bottom: 1px solid #F1F4F8;
-  opacity: ${p => p.$completed ? 0.5 : 1};
+  opacity: ${p => p.$completed ? 0.55 : 1};
+  transition: opacity 0.2s;
 
   &:last-child { border-bottom: none; }
+
+  @media (max-width: 480px) {
+    column-gap: 6px;
+    padding: 7px 0;
+  }
 `;
 
-const ServedCheckbox = styled.button<{ $checked: boolean }>`
-  width: 20px;
-  height: 20px;
-  border-radius: 4px;
-  border: 2px solid ${p => p.$checked ? '#059669' : '#6B7280'};
-  background: ${p => p.$checked ? '#059669' : 'white'};
-  color: white;
-  font-size: 11px;
-  cursor: pointer;
-  flex-shrink: 0;
-  display: flex;
+type ItemDisplayStatus = 'queued' | 'cooking' | 'ready' | 'served';
+
+const STATUS_TOKEN: Record<ItemDisplayStatus, { bg: string; text: string; border: string; dot: string }> = {
+  queued:   { bg: '#F3F4F6', text: '#6B7280', border: '#E5E7EB', dot: '#9CA3AF' },
+  cooking:  { bg: '#FEF3C7', text: '#92400E', border: '#FCD34D', dot: '#F59E0B' },
+  ready:    { bg: '#ECFDF5', text: '#047857', border: '#6EE7B7', dot: '#10B981' },
+  served:   { bg: '#059669', text: '#FFFFFF', border: '#047857', dot: '#FFFFFF' },
+};
+
+const ItemStatusPill = styled.button<{ $status: ItemDisplayStatus; $clickable: boolean }>`
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  margin-top: 1px;
-  transition: all 0.15s;
+  gap: 5px;
+  padding: 4px 9px 4px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  border: 1px solid ${p => STATUS_TOKEN[p.$status].border};
+  background: ${p => STATUS_TOKEN[p.$status].bg};
+  color: ${p => STATUS_TOKEN[p.$status].text};
+  cursor: ${p => p.$clickable ? 'pointer' : 'default'};
+  transition: filter 0.15s, transform 0.1s, box-shadow 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-height: 24px;
+  user-select: none;
+  appearance: none;
+  font-family: inherit;
+  line-height: 1;
+
+  &::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: ${p => STATUS_TOKEN[p.$status].dot};
+    flex-shrink: 0;
+  }
 
   &:hover {
-    border-color: ${p => p.$checked ? '#047857' : '#6B7280'};
+    ${p => p.$clickable && `
+      filter: brightness(0.96);
+      box-shadow: 0 0 0 3px ${STATUS_TOKEN[p.$status].border}55;
+    `}
+  }
+  &:active {
+    ${p => p.$clickable && `transform: scale(0.97);`}
+  }
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px ${p => STATUS_TOKEN[p.$status].border}aa;
+  }
+  &:disabled { cursor: default; }
+
+  @media (max-width: 480px) {
+    padding: 3px 7px 3px 6px;
+    font-size: 9px;
+    gap: 4px;
+    min-height: 22px;
   }
 `;
 
@@ -221,6 +271,12 @@ const ItemName = styled.div<{ $completed?: boolean }>`
   font-weight: 600;
   color: #0A2540;
   text-decoration: ${p => p.$completed ? 'line-through' : 'none'};
+  word-break: break-word;
+  line-height: 1.35;
+
+  @media (max-width: 480px) {
+    font-size: 12.5px;
+  }
 `;
 
 const ItemOptions = styled.div`
@@ -236,6 +292,10 @@ const ItemPrice = styled.div`
   white-space: nowrap;
   flex-shrink: 0;
   font-variant-numeric: tabular-nums;
+
+  @media (max-width: 480px) {
+    font-size: 11.5px;
+  }
 `;
 
 const ItemQty = styled.span`
@@ -534,7 +594,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const { getStoreInfo, paymentSettings } = useStore();
-  const { t } = useTranslation('orders');
+  const { t } = useTranslation(['orders', 'floorplan']);
   const [showHistory, setShowHistory] = useState(false);
 
   // ─── QR Session state ───
@@ -686,8 +746,10 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
   const paymentStatus = statusInfo?.paymentStatus || 'pending';
   const nextAction = getNextStatus(orderStatus, paymentStatus);
   const items = statusInfo?.orderItems || [];
-  // LiveOrders와 동일한 조건 패턴 사용
-  const showServedCheckbox = ['preparing', 'ready', 'served'].includes(orderStatus);
+  // 단계 dot (Queued/Cooking/Ready/Served) 는 활성 주문이면 항상 표시.
+  // 체크박스 활성 여부는 row 단위에서 displayStatus 로 판정 (ready/served 만 클릭 가능).
+  // cancelled / completed 는 표시 안 함.
+  const showServedCheckbox = ['pending', 'preparing', 'ready', 'served'].includes(orderStatus);
 
   const statusColors = isOccupied && ORDER_STATUS_COLORS[orderStatus]
     ? ORDER_STATUS_COLORS[orderStatus]
@@ -725,13 +787,21 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
 
   // ─── Handlers ───
 
+  // Floor Plan 의 hall 직원은 'ready → served' 만 토글한다.
+  // 'pending'/'preparing' 은 주방(KDS) 이 관리하는 단계이므로 여기서 건드리지 않는다.
+  // 모든 아이템이 served 가 되면 order.status='served' 로 자동 승급.
   const handleToggleItemServed = async (itemIndex: number) => {
     if (loading || !statusInfo?.orderId) return;
+    const target = items[itemIndex] as any;
+    if (!target) return;
+    const cur = target.status || 'pending';
+    if (cur !== 'ready' && cur !== 'served') return; // guard
     setLoading(true);
     try {
       const updatedItems = items.map((item, idx) => {
         if (idx === itemIndex) {
-          return { ...item, status: item.status === 'completed' ? 'pending' : 'completed' };
+          const nextStatus = (item as any).status === 'served' ? 'ready' : 'served';
+          return { ...item, status: nextStatus };
         }
         return item;
       });
@@ -744,8 +814,8 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
       });
 
       if (res.ok) {
-        const allCompleted = updatedItems.every(i => i.status === 'completed');
-        if (allCompleted && ['preparing', 'ready'].includes(orderStatus)) {
+        const allServed = updatedItems.every((i: any) => i.status === 'served');
+        if (allServed && ['preparing', 'ready'].includes(orderStatus)) {
           await fetch(`/api/orders/${statusInfo.orderId}/status`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -756,6 +826,22 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
       }
     } catch (_) { /* silently fail */ }
     setLoading(false);
+  };
+
+  // Map item.status → display token. 'completed' 는 레거시 데이터; served 와 같은 의미로 처리.
+  const toDisplayStatus = (itemStatus?: string): ItemDisplayStatus => {
+    switch (itemStatus) {
+      case 'served':
+      case 'completed':
+        return 'served';
+      case 'ready':
+        return 'ready';
+      case 'preparing':
+        return 'cooking';
+      case 'pending':
+      default:
+        return 'queued';
+    }
   };
 
   const handleDeleteItem = (itemIndex: number, itemName: string) => {
@@ -999,7 +1085,24 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
         await QRCode.toCanvas(canvas, qrData.qr_url, { width: 200, margin: 2 });
         const printed = await printTableQR(tableNumber, canvas, storeName, qrData.expires_at, timezone);
         if (!printed) {
-          setQrError('Print failed. Please allow pop-ups for this site and try again.');
+          setQrError('QR print failed via the configured printer method. Check Settings → Printer (QZ Tray / address / connection) — the QR may need a printer that supports raster images.');
+          // Auto-telemetry — silent ticket so we can see why printTableQR returned false
+          try {
+            const tok = getAuthToken();
+            if (tok) {
+              fetch('/api/qz-tray/diagnose', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${tok}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  scope: 'floor-plan-qr-fail',
+                  tableNumber, restaurantId,
+                  method: 'qztray',
+                  userAgent: navigator.userAgent, os: navigator.platform,
+                  probedAt: new Date().toISOString()
+                })
+              }).catch(()=>{});
+            }
+          } catch {}
         }
       }
     } catch (err) {
@@ -1434,8 +1537,11 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
               {/* Order Items with Served Checkbox */}
               <Section>
                 <SectionTitle>
-                  Items ({items.length})
-                  {showServedCheckbox && items.length > 0 && ` — ${items.filter(i => i.status === 'completed').length}/${items.length} served`}
+                  {t('floorplan:tableDetailPanel.items', 'Items')} ({items.length})
+                  {showServedCheckbox && items.length > 0 && ' — ' + t(
+                    'floorplan:tableDetailPanel.itemStatus.servedCount',
+                    { served: items.filter((i: any) => i.status === 'served' || i.status === 'completed').length, total: items.length }
+                  )}
                 </SectionTitle>
 
                 {groupKeys.map(groupNum => {
@@ -1457,25 +1563,37 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                       )}
                       {groupItems.map((item: any) => {
                         const originalIndex = item._originalIndex as number;
-                        const isCompleted = item.status === 'completed';
+                        const displayStatus = toDisplayStatus(item.status);
+                        const isServed = displayStatus === 'served';
+                        const clickable = displayStatus === 'ready' || displayStatus === 'served';
+                        const badgeLabel = t(`floorplan:tableDetailPanel.itemStatus.${displayStatus}`);
+                        const badgeTitle = clickable
+                          ? (isServed
+                              ? t('floorplan:tableDetailPanel.itemStatus.unmarkServed')
+                              : t('floorplan:tableDetailPanel.itemStatus.markServed'))
+                          : t('floorplan:tableDetailPanel.itemStatus.waitingKitchen');
                         const optionsStr = Array.isArray(item.options)
                           ? item.options.map((o: any) => typeof o === 'string' ? o : o?.name || '').filter(Boolean).join(', ')
                           : '';
 
                         return (
-                          <ItemRow key={originalIndex} $completed={isCompleted && showServedCheckbox}>
+                          <ItemRow key={originalIndex} $completed={isServed && showServedCheckbox}>
                             {showServedCheckbox && (
-                              <ServedCheckbox
-                                $checked={isCompleted}
-                                onClick={() => handleToggleItemServed(originalIndex)}
-                                disabled={loading}
-                                title={isCompleted ? 'Mark as not served' : 'Mark as served'}
+                              <ItemStatusPill
+                                $status={displayStatus}
+                                $clickable={clickable}
+                                onClick={() => clickable && handleToggleItemServed(originalIndex)}
+                                disabled={loading || !clickable}
+                                aria-disabled={!clickable}
+                                aria-pressed={isServed}
+                                title={badgeTitle}
                               >
-                                {isCompleted ? '\u2713' : ''}
-                              </ServedCheckbox>
+                                {isServed ? '\u2713' : null}
+                                {badgeLabel}
+                              </ItemStatusPill>
                             )}
                             <ItemInfo>
-                              <ItemName $completed={isCompleted}>
+                              <ItemName $completed={isServed}>
                                 {item.name} <ItemQty>x{item.quantity}</ItemQty>
                               </ItemName>
                               {optionsStr && <ItemOptions>{optionsStr}</ItemOptions>}

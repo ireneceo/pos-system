@@ -337,8 +337,12 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
       >
         <div style={{ textAlign: 'center' }}>
           <OrderNumber>Order {orderData.orderNumber}</OrderNumber>
+          {/* Display priority — pager > table > pickup number.
+              2026-05-27: when the order is pinned to a table (dine-in OR a
+              takeaway-on-table), the staff identifier the customer recognises
+              is the table number, not a pickup number. Pickup label only kicks
+              in for true counter-pickup orders (no table, no pager). */}
           {orderData.pagerNumber ? (
-            /* Pager Number가 있으면 Pager만 표시 */
             <div style={{
               background: '#10B981',
               color: 'white',
@@ -352,8 +356,21 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
                 {orderData.pagerNumber}
               </div>
             </div>
+          ) : orderData.tableNumber ? (
+            <div style={{
+              background: '#635BFF',
+              color: 'white',
+              borderRadius: '12px',
+              padding: '16px 24px',
+              margin: '0 auto 24px',
+              display: 'inline-block'
+            }}>
+              <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '4px' }}>Table</div>
+              <div style={{ fontSize: '36px', fontWeight: '700', lineHeight: 1 }}>
+                {orderData.tableNumber}
+              </div>
+            </div>
           ) : (
-            /* Pager Number가 없으면 Pickup Number 표시 */
             <div style={{
               background: '#635BFF',
               color: 'white',
@@ -511,8 +528,11 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
             <strong>Cashier:</strong>
             <span>{orderData.cashierName || 'POS Terminal'}</span>
           </PrintRow>
+          {/* Receipt identifier: TABLE for table-pinned orders, else PICKUP # */}
           <div style={{ fontSize: '20px', fontWeight: 'bold', textAlign: 'center', margin: '10px 0' }}>
-            PICKUP #{orderData.pickupNumber || (orderData.orderNumber?.includes('-') ? orderData.orderNumber.split('-')[1] : orderData.orderNumber) || '-'}
+            {orderData.tableNumber
+              ? `TABLE ${orderData.tableNumber}`
+              : `PICKUP #${orderData.pickupNumber || (orderData.orderNumber?.includes('-') ? orderData.orderNumber.split('-')[1] : orderData.orderNumber) || '-'}`}
           </div>
           {orderData.pagerNumber && (
             <div style={{ fontSize: '16px', fontWeight: 'bold', textAlign: 'center', margin: '5px 0' }}>

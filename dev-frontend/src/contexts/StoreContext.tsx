@@ -315,7 +315,84 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
                   }
                 }
               } catch {}
-              const fullReceiptInfo = { ...ps.receiptSettings, membershipQrDataUrl, slug };
+              // Convert receiptLogo + customQrImage URLs to base64 data URLs so the
+              // QZ Tray pixel/html print mode can render them. QZ Tray's renderer
+              // does not (or cannot reliably) fetch external HTTP resources at
+              // render time — embedding base64 makes the receipt self-contained
+              // and ensures logo / custom QR show up on every print path.
+              // Convert any image URL (incl. SVG) into a base64 *PNG* data URL.
+              // SVG kept as-is breaks on QZ Tray's pixel/html renderer (no SVG
+              // support and no external @font-face fetch), so we rasterize through
+              // a hidden canvas — guaranteed renderable everywhere (browser,
+              // QZ Tray, RawBT, OS print dialog).
+              const fetchAsDataUrl = async (url: string | undefined | null): Promise<string> => {
+                if (!url) return '';
+                if (url.startsWith('data:image/png')) return url;
+                const absoluteUrl = url.startsWith('data:')
+                  ? url
+                  : (url.startsWith('http') ? url : window.location.origin + url);
+                try {
+                  // Use an Image to let the browser decode SVG/PNG/JPG uniformly,
+                  // then redraw to a canvas so output is always PNG (raster).
+                  const img = new Image();
+                  img.crossOrigin = 'anonymous';
+                  await new Promise<void>((resolve, reject) => {
+                    img.onload = () => resolve();
+                    img.onerror = () => reject(new Error('image load failed'));
+                    img.src = absoluteUrl;
+                  });
+                  // Cap dimensions so a huge upload doesn't blow up base64 size;
+                  // 480x160 is enough for an 80mm thermal-printer header.
+                  const maxW = 480, maxH = 160;
+                  const ratio = Math.min(maxW / (img.naturalWidth || maxW), maxH / (img.naturalHeight || maxH), 1);
+                  const w = Math.max(1, Math.round((img.naturalWidth || maxW) * ratio));
+                  const h = Math.max(1, Math.round((img.naturalHeight || maxH) * ratio));
+                  const canvas = document.createElement('canvas');
+                  canvas.width = w; canvas.height = h;
+                  const ctx = canvas.getContext('2d');
+                  if (!ctx) return '';
+                  // White background for thermal print clarity
+                  ctx.fillStyle = '#ffffff';
+                  ctx.fillRect(0, 0, w, h);
+                  ctx.drawImage(img, 0, 0, w, h);
+                  return canvas.toDataURL('image/png');
+                } catch {
+                  // Last-resort fallback — return the raw base64 of the response.
+                  try {
+                    const resp = await fetch(absoluteUrl);
+                    if (!resp.ok) return '';
+                    const blob = await resp.blob();
+                    return await new Promise<string>((resolve) => {
+                      const reader = new FileReader();
+                      reader.onloadend = () => resolve(typeof reader.result === 'string' ? reader.result : '');
+                      reader.onerror = () => resolve('');
+                      reader.readAsDataURL(blob);
+                    });
+                  } catch { return ''; }
+                }
+              };
+              // Prefer the server-side PNG raster endpoint for the receipt logo —
+              // sharp converts SVG/JPG/PNG to a thermal-printer-friendly raster
+              // regardless of the upload format. Client-side canvas conversion is
+              // kept as a fallback (older builds / no-id paths).
+              const logoServerUrl = (ps.receiptSettings.receiptLogo)
+                ? `${window.location.origin}/api/restaurants/${restaurantId}/receipt-logo?v=${Date.now()}`
+                : '';
+              const [receiptLogoDataUrl, customQrDataUrl] = await Promise.all([
+                logoServerUrl
+                  ? fetchAsDataUrl(logoServerUrl).then((d) => d || fetchAsDataUrl(ps.receiptSettings.receiptLogo))
+                  : fetchAsDataUrl(ps.receiptSettings.receiptLogo),
+                fetchAsDataUrl(ps.receiptSettings.customQrImage)
+              ]);
+              const fullReceiptInfo = {
+                ...ps.receiptSettings,
+                membershipQrDataUrl,
+                slug,
+                // Keep the original URLs for the Settings UI preview, but add the
+                // base64 variants the print path will use.
+                receiptLogoDataUrl,
+                customQrImageDataUrl: customQrDataUrl
+              };
               setReceiptInfo(fullReceiptInfo);
               localStorage.setItem('receiptSettings', JSON.stringify(fullReceiptInfo));
             }

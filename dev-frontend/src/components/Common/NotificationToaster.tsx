@@ -164,16 +164,19 @@ const NotificationToaster: React.FC = () => {
   if (toasts.length === 0) return null;
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 16,
-      right: 16,
-      zIndex: 10000,
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 10,
-      maxWidth: 380
-    }}>
+    <div
+      data-notification-toaster=""
+      style={{
+        position: 'fixed',
+        top: 16,
+        right: 16,
+        zIndex: 10000,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10,
+        maxWidth: 380
+      }}
+    >
       {toasts.map(item => (
         <div
           key={item.id}

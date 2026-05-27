@@ -116,5 +116,13 @@
   "tableDetailPanel.printQrToGenerateASessionbasedOrderingCodeForThisTable": "Print QR to generate a session-based ordering code for this table.",
   "tableDetailPanel.cancel": "取消",
   "tableDetailPanel.confirm": "确认",
+  "tableDetailPanel.itemStatus.queued": "待处理",
+  "tableDetailPanel.itemStatus.cooking": "烹饪中",
+  "tableDetailPanel.itemStatus.ready": "可上菜",
+  "tableDetailPanel.itemStatus.served": "已上菜",
+  "tableDetailPanel.itemStatus.markServed": "标记为已上菜",
+  "tableDetailPanel.itemStatus.unmarkServed": "取消上菜",
+  "tableDetailPanel.itemStatus.waitingKitchen": "等待厨房",
+  "tableDetailPanel.itemStatus.servedCount": "已上菜 {{served}}/{{total}}",
   "tableNode.staff": "员工"
 }

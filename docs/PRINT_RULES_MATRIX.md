@@ -215,9 +215,111 @@ printKitchenTicketViaRawBT(orderData, storeInfo, printerName?)
 | `contexts/StoreContext.tsx` | 앱 로드 시 DB→localStorage 동기화 |
 | `pages/Settings/SettingsPage.tsx` | Printer 탭 UI + Save |
 
+## 2026-05-27 — v3.42 변경
+
+### C. Additional-items 자동 인쇄 (Auto-merge 라운드 ticket)
+
+> 관련: `docs/ORDER_MERGE_RULES.md` § "2026-05-27 — v3.42 변경" (백엔드 머지 정책), `docs/KITCHEN_DISPLAY_RULES.md` § 9 (KDS divider/socket)
+
+#### 트리거 흐름
+
+```
+backend mergeItemsIntoOrder() 성공
+  └─ socket emit 'order-items-added' (room: restaurant_{id})
+       └─ KDS 수신 (KitchenDisplayPage.tsx:~1644-1670)
+            └─ console.log '[KDS] order-items-added'
+            └─ printKitchenTicketViaRawBT(orderData, storeInfo)
+                 └─ added_at 기반 필터로 신규 아이템 추출
+                      └─ billPrint.js  generateAdditionalItemsTicketContent
+                           └─ '** ADDITIONAL ORDER **' 헤더 ticket 만 인쇄
+```
+
+#### 핵심 규칙
+
+| 항목 | 값 |
+|------|---|
+| 트리거 | socket `order-items-added` (수동 X) |
+| 필터 | item.`order_group` > 0 + item.`added_at` 기준 (latest round) |
+| 헤더 | `** ADDITIONAL ORDER **` (분기 표시) |
+| 인쇄 경로 | 기존 Kitchen Ticket 경로 (A/B/C) 그대로 — Station 분리 + printPerItem 모두 그대로 동작 |
+| 첫 주문 ticket | 기존 흐름 유지 (변경 없음) |
+
+#### 코드
+
+| 파일 | 함수 |
+|------|------|
+| `dev-backend/routes/orders-crud.js` | `mergeItemsIntoOrder()` — `order_group` + `added_at` 첨부 후 emit |
+| `dev-frontend/src/pages/KitchenDisplay/KitchenDisplayPage.tsx:1005-1054` | ItemsContainer 그룹화 + `+ ROUND N` divider |
+| `dev-frontend/src/pages/KitchenDisplay/KitchenDisplayPage.tsx:~1644-1670` | `order-items-added` listener → `printKitchenTicketViaRawBT` 자동 호출 |
+| `dev-frontend/src/utils/billPrint.js` | `generateAdditionalItemsTicketContent` — group/added_at 필터 ticket 생성 |
+
+---
+
+### D. Receipt logo 인쇄 (운영 critical fix)
+
+#### Bug 1: backend file path resolution
+
+- **파일**: `dev-backend/routes/restaurants-crud.js:34`
+- **잘못된 경로**:
+  ```js
+  path.join(__dirname, '..', logoRef.replace(/^\//, ''))
+  // = <backend>/uploads/... (존재 안 함)
+  ```
+- **Fix**: `path.resolve('/var/www/uploads', rel)` — `server.js:340` 의
+  ```js
+  app.use('/uploads', express.static('/var/www/uploads'))
+  ```
+  와 일치시킴.
+- **추가 가드**:
+  - `data:` URL 입력 시 base64 디코드 후 변환
+  - Path traversal 방어: `!filePath.startsWith(uploadsRoot)` → 403
+
+#### Bug 2: frontend img src 정규식
+
+- **파일**: `dev-frontend/src/utils/billPrint.js:1151`
+- **잘못된 정규식**:
+  ```js
+  /^https?:\/\//.test(receiptLogo) ? receiptLogo : window.location.origin + receiptLogo
+  ```
+- **문제**: StoreContext 가 만든 `receiptLogoDataUrl` (= `data:image/png;base64,...`) 은 false → `https://.../data:image/...` 깨진 URL 합성됨.
+- **Fix**:
+  ```js
+  /^(data:|https?:\/\/)/.test(receiptLogo)
+  ```
+
+#### 엔드포인트 사양
+
+| 항목 | 값 |
+|------|---|
+| 경로 | `GET /api/restaurants/:id/receipt-logo` (확장자 없음) |
+| 인증 | 익명 (no auth) — nginx 가 `.png` 확장자를 static 우선 라우팅하므로 endpoint 에는 확장자 X |
+| 변환 | sharp 가 SVG/JPG/PNG 무관 → 480x160 PNG raster + `flatten(#fff)` — 80mm thermal-friendly |
+| 입력 종류 | 파일 경로, `data:` URL 모두 처리 |
+| Path traversal | uploadsRoot 외부 → 403 |
+
+#### 자동 fix 영향 인쇄 경로
+
+- POS 빌 인쇄 (Browser / RawBT / QZ Tray)
+- LiveOrders 의 Reprint
+- OrderDetailModal "View Receipt" (주문 상세 뷰영수증)
+- 모바일 ReceiptShare
+
+#### 코드
+
+| 파일 | 함수/위치 |
+|------|----------|
+| `dev-backend/routes/restaurants-crud.js:34` | receipt-logo endpoint (path resolve + data: 가드 + traversal 방어) |
+| `dev-backend/server.js:340` | `app.use('/uploads', express.static('/var/www/uploads'))` (path 기준점) |
+| `dev-frontend/src/utils/billPrint.js:1151` | img src 정규식 `/^(data:|https?:\/\/)/.test(...)` |
+| `dev-frontend/src/contexts/StoreContext.tsx` | `receiptLogoDataUrl` 생성 (data: URL) |
+| `dev-frontend/src/mobile/components/common/ReceiptShare.tsx` | 모바일 ReceiptShare 렌더 |
+
+---
+
 ## 변경 이력
 
 | 날짜 | 변경 |
 |------|------|
 | 2026-03-17 | Kitchen Station 시스템 Phase 5: Station별 분리 인쇄 추가 |
 | 2026-03-17 | 프린팅 규칙 매트릭스 초판 작성 |
+| 2026-05-27 | § C Additional-items 자동 인쇄 (`order-items-added` socket → `generateAdditionalItemsTicketContent`) + § D Receipt logo path resolution (`/var/www/uploads` 기준) 및 img src 정규식 (`data:` 통과) fix |

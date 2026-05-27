@@ -173,10 +173,16 @@ const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
     return () => observer.disconnect();
   }, [updateScale]);
 
-  // 2026-05-27: lookup by table.id first (Floor Plan v2 unique id), fall back to
-  // tableNumber for legacy orders that pre-date the floor_plan_table_id column.
-  const getTableStatus = (tableId: string, tableNumber: string): TableStatus => {
-    const info = tableStatuses[tableId] || tableStatuses[tableNumber];
+  // 2026-05-27: status lookup priority — id (FPTI) → label → tableNumber.
+  // The label fallback catches the case where POS / mobile saved the order
+  // with table_number = "<prefix>-<num>" (e.g. "U-2") because Floor Plan now
+  // prefers label when launching POS. Without this lookup, a table whose
+  // tableNumber is the number alone ("2") never matches the order keyed by
+  // label ("U-2") and the card appears statusless.
+  const getTableStatus = (tableId: string, tableNumber: string, label?: string | null): TableStatus => {
+    const info = tableStatuses[tableId]
+      || (label ? tableStatuses[label] : undefined)
+      || tableStatuses[tableNumber];
     return (info?.status as TableStatus) || 'available';
   };
 
@@ -222,8 +228,10 @@ const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
           {floorPlan.tables.map(table => {
             const nodeProps: CanvasNodeRenderProps = {
               table,
-              status: getTableStatus(table.id, table.tableNumber),
-              statusInfo: tableStatuses[table.id] || tableStatuses[table.tableNumber],
+              status: getTableStatus(table.id, table.tableNumber, (table as any).label),
+              statusInfo: tableStatuses[table.id]
+                || ((table as any).label ? tableStatuses[(table as any).label] : undefined)
+                || tableStatuses[table.tableNumber],
               isSelected: selectedTableIds ? selectedTableIds.has(table.id) : (selectedTableId === table.id),
               isEditing,
               onClick: onTableClick,

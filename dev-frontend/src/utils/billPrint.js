@@ -366,6 +366,166 @@ export async function connectQZTray() {
 }
 
 /**
+ * Self-test the QZ Tray pipeline end-to-end. Used by the "Auto-Configure & Test"
+ * button in Settings → Printer to give the shop a 1-click pass/fail for every
+ * link in the chain. Each step returns its own status so the UI can show a row
+ * per step (▶ running → ✓ ok / ✗ failed + reason).
+ *
+ * Steps:
+ *   1. installed       — qz-tray JS SDK loaded
+ *   2. connected       — websocket to localhost handshake
+ *   3. version         — QZ Tray desktop version (proves SDK ↔ app talk)
+ *   4. signed-handshake— signed printer-list call. The TIMEOUT branch is the
+ *                        single most useful signal: if this resolves silently
+ *                        within 3 s, the cert is trusted and the user will NOT
+ *                        see a permission prompt on real prints. If it times
+ *                        out, QZ Tray is showing the "Allow / Deny" prompt
+ *                        right now (we cannot see the dialog from JS, only
+ *                        observe that the promise hangs).
+ *   5. silent-print    — optional: send a 1-byte ESC/POS init (\x1b@) to the
+ *                        default printer. Only run if step 4 was silent. Skip
+ *                        otherwise to avoid double-prompting the cashier.
+ *
+ * @returns {Promise<{ok: boolean, steps: Array<{key, label, status, detail?}>, summary: object}>}
+ */
+export async function runQZDiagnostic() {
+  const steps = [];
+  const push = (key, label, status, detail) => {
+    const step = { key, label, status, ...(detail ? { detail } : {}) };
+    steps.push(step);
+    return step;
+  };
+  const summary = {
+    qzVersion: null,
+    connected: false,
+    certHandshake: 'not-run',
+    silentPrint: 'not-run',
+    lastError: null,
+    method: 'qztray',
+    os: (typeof navigator !== 'undefined' && navigator.platform) ? navigator.platform : 'unknown',
+    userAgent: (typeof navigator !== 'undefined' && navigator.userAgent) ? navigator.userAgent : 'unknown',
+    probedAt: new Date().toISOString()
+  };
+
+  // Step 1: SDK loaded
+  if (!qz || !qz.websocket) {
+    push('installed', 'QZ Tray SDK loaded', 'failed', 'qz-tray module not available');
+    summary.lastError = 'SDK missing';
+    return { ok: false, steps, summary };
+  }
+  push('installed', 'QZ Tray SDK loaded', 'ok');
+
+  // Step 2: connect
+  try {
+    setupQZSecurity();
+    if (!qz.websocket.isActive()) {
+      await qz.websocket.connect({ retries: 1, delay: 0.5 });
+    }
+    summary.connected = true;
+    push('connected', 'QZ Tray desktop reachable', 'ok');
+  } catch (err) {
+    summary.lastError = (err && err.message) || String(err);
+    push('connected', 'QZ Tray desktop reachable', 'failed',
+      'QZ Tray app may not be running. Right-click the tray icon to start it, then retry.');
+    return { ok: false, steps, summary };
+  }
+
+  // Step 3: version
+  try {
+    const ver = await Promise.race([
+      qz.api.getVersion ? qz.api.getVersion() : Promise.reject(new Error('getVersion missing')),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('version probe timeout')), 2000))
+    ]);
+    summary.qzVersion = String(ver || '');
+    push('version', `QZ Tray version ${summary.qzVersion}`, 'ok');
+    const major = parseInt(String(ver).split('.')[0], 10);
+    const minor = parseInt(String(ver).split('.')[1] || '0', 10);
+    if (major < 2 || (major === 2 && minor < 1)) {
+      push('version-warn', 'Old QZ Tray (needs 2.1+)', 'failed',
+        `Detected ${ver}. SHA-512 signing requires QZ Tray 2.1 or newer — please update from qz.io.`);
+      summary.lastError = `outdated QZ Tray ${ver}`;
+      return { ok: false, steps, summary };
+    }
+  } catch (err) {
+    push('version', 'QZ Tray version', 'failed', (err && err.message) || 'unable to read version');
+    summary.lastError = (err && err.message) || 'version probe failed';
+  }
+
+  // Step 4: signed handshake via printers.find() — silent if cert is trusted.
+  // If the prompt is showing, the promise just hangs; treat any wait > 3 s as
+  // "prompt is up" so we can guide the user toward the installer.
+  let handshakeSilent = false;
+  try {
+    await Promise.race([
+      qz.printers.find(),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('PROMPT_TIMEOUT')), 3000))
+    ]);
+    handshakeSilent = true;
+    summary.certHandshake = 'silent';
+    push('handshake', 'Signed handshake (no permission prompt)', 'ok');
+  } catch (err) {
+    const msg = (err && err.message) || String(err);
+    if (msg === 'PROMPT_TIMEOUT') {
+      summary.certHandshake = 'prompt';
+      summary.lastError = 'permission prompt visible';
+      push('handshake', 'Signed handshake', 'failed',
+        'QZ Tray is showing an "Allow" dialog. Click "Allow" + check "Remember", or run the installer to make the cert trusted permanently.');
+    } else {
+      summary.certHandshake = 'error';
+      summary.lastError = msg;
+      push('handshake', 'Signed handshake', 'failed', msg);
+    }
+    return { ok: handshakeSilent, steps, summary };
+  }
+
+  // Step 5: silent print probe — use the workstation's actual bill printer.
+  // QZ Tray 2.2.x rejects qz.configs.create(null) with "A printer must be
+  // specified", so we must pass an explicit printer name (or LAN host:port).
+  // If the shop hasn't configured a bill printer yet, skip cleanly — that's
+  // a setup step, not a failure.
+  try {
+    const activeBill = getActiveBillPrinter();
+    const addr = (activeBill && activeBill.address) || '';
+    const name = (activeBill && activeBill.name) || '';
+    let cfg;
+    if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(addr)) {
+      // LAN thermal printer — raw TCP socket
+      const [host, port] = addr.split(':');
+      cfg = qz.configs.create(null, { host, port: parseInt(port || '9100', 10) });
+    } else if (name) {
+      cfg = qz.configs.create(name);
+    } else if (addr) {
+      cfg = qz.configs.create(addr);
+    } else {
+      summary.silentPrint = 'skipped';
+      push('silent-print', 'Silent print probe — skipped (no bill printer configured yet)', 'ok',
+        'Set the bill printer name in the workstation card below, then run this test again.');
+      return { ok: true, steps, summary };
+    }
+    await Promise.race([
+      qz.print(cfg, [{ type: 'raw', format: 'plain', data: '\x1b@' }]),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('PRINT_TIMEOUT')), 5000))
+    ]);
+    summary.silentPrint = 'ok';
+    push('silent-print', 'Silent print probe (no prompt)', 'ok');
+  } catch (err) {
+    const msg = (err && err.message) || String(err);
+    summary.silentPrint = 'failed';
+    summary.lastError = msg;
+    // Treat as warning, NOT a hard fail — handshake (step 4) is the authoritative
+    // gate. Probe failures are usually a printer-side / driver issue and the real
+    // auto-print path uses the same printer name via printBillViaRawBT.
+    push('silent-print', 'Silent print probe (optional)', 'failed',
+      (msg === 'PRINT_TIMEOUT'
+        ? 'Print did not complete within 5 s.'
+        : msg) + ' — Permission is already granted (step 4 passed); real receipts should still print.');
+    return { ok: true, steps, summary };
+  }
+
+  return { ok: true, steps, summary };
+}
+
+/**
  * QZ Tray 연결 해제
  */
 export async function disconnectQZTray() {
@@ -407,6 +567,67 @@ export async function getQZTrayPrinters() {
  *   2. OS 프린터 이름 (예: 'EPSON TM-T82') - OS에 등록된 프린터로 전송
  * @returns {Promise<boolean>}
  */
+/**
+ * Send HTML via QZ Tray using pixel/html mode — silent print + OS-driver based,
+ * so the SAME wrapPrintHTML() design that the browser shows is rendered on the
+ * thermal printer too. Unlike sendViaQZTray() (raw ESC/POS), this path:
+ *   - Goes through the OS print driver (Windows / macOS), not raw socket.
+ *   - Means the receipt design is identical across browser-print and QZ Tray.
+ *   - Renders emoji / 한글 / styled text correctly via the OS font stack.
+ *
+ * The first arg must be an OS-registered printer name (e.g. "POS-80C"). Raw
+ * IP:port LAN sockets are not supported for pixel/html — caller should fall
+ * back to network ESC/POS for those rare configurations.
+ *
+ * @param {string} htmlContent — full HTML string from generateHTMLBill / generateHTMLKitchenTicket
+ * @param {string} printerName — OS-installed printer name (empty = OS default)
+ * @returns {Promise<boolean>} true on success
+ */
+async function sendHTMLViaQZTray(htmlContent, printerName, opts) {
+  try {
+    const connected = await connectQZTray();
+    if (!connected) {
+      console.error('QZ Tray not connected (HTML print)');
+      return false;
+    }
+    let resolved = printerName;
+    if (!resolved) {
+      try { resolved = await qz.printers.getDefault(); } catch (e) { /* non-fatal */ }
+      if (!resolved) {
+        console.error('QZ Tray HTML: no printer name + no OS default');
+        return false;
+      }
+    }
+    if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(resolved)) {
+      console.error('QZ Tray HTML pixel mode requires an OS printer name, not a LAN IP. Got:', resolved);
+      return false;
+    }
+    const config = qz.configs.create(resolved, {
+      size: { width: 80, height: null, units: 'mm' },
+      units: 'mm',
+      colorType: 'blackwhite',
+      density: 203,
+      orientation: 'portrait',
+      margins: { top: 0, right: 0, bottom: 0, left: 0 }
+    });
+    const payloads = [{ type: 'pixel', format: 'html', flavor: 'plain', data: htmlContent }];
+    // 2026-05-27: Inline cash drawer pulse on the SAME print job. The previous
+    // standalone openCashDrawer() call sent a raw ESC/POS sequence to the
+    // pixel/html printer; on raster printers that produced a blank/garbage
+    // receipt (matched the user report "bill comes out 3 times instead of 2").
+    // Bundling pulse with the receipt = 1 atomic job, no orphan garbage page.
+    if (opts && opts.drawerPulse) {
+      payloads.push({ type: 'raw', format: 'base64', data: btoa('\x1B\x70\x00\x64\x64') });
+    }
+    await qz.print(config, payloads);
+    console.log('QZ Tray HTML print: sent to', resolved, opts && opts.drawerPulse ? '(+ drawer pulse)' : '');
+    return true;
+  } catch (err) {
+    console.error('QZ Tray HTML print failed:', err && err.message);
+    return false;
+  }
+}
+
 async function sendViaQZTray(escposContent, printerAddress) {
   try {
     const connected = await connectQZTray();
@@ -883,7 +1104,10 @@ export function generateHTMLBill(orderData, storeInfo) {
   const receiptCfg = getReceiptSettings();
   // Merge precedence: storeInfo (React state) > receiptCfg (localStorage) > defaults
   const showMembership = storeInfo.showMembership !== undefined ? storeInfo.showMembership : (receiptCfg.showMembership !== undefined ? receiptCfg.showMembership : false);
-  const receiptLogo = storeInfo.receiptLogo || receiptCfg.receiptLogo || '';
+  // Prefer the base64 data URL (set by StoreContext on mount). QZ Tray pixel/html
+  // render cannot fetch external HTTP resources reliably — inline base64 makes
+  // the logo render on every print path (browser + QZ Tray + RawBT).
+  const receiptLogo = storeInfo.receiptLogoDataUrl || storeInfo.receiptLogo || receiptCfg.receiptLogoDataUrl || receiptCfg.receiptLogo || '';
   const footerMsg = storeInfo.footerMessage || receiptCfg.footerMessage || 'Thank you for your purchase!';
   const customQrImage = storeInfo.customQrImage || receiptCfg.customQrImage || '';
   const customQrText = storeInfo.customQrText || receiptCfg.customQrText || '';
@@ -924,7 +1148,7 @@ export function generateHTMLBill(orderData, storeInfo) {
   if (regParts.length) infoLines.push(regParts.join(' &nbsp;|&nbsp; '));
 
   const headerHtml = `
-    ${receiptLogo ? `<img src="${escapeHtmlForPrint(receiptLogo)}" style="max-width:240px;max-height:80px;margin-bottom:4px;filter:grayscale(100%);">` : ''}
+    ${receiptLogo ? `<img src="${escapeHtmlForPrint(/^(data:|https?:\/\/)/.test(receiptLogo) ? receiptLogo : (typeof window !== 'undefined' ? window.location.origin : '') + receiptLogo)}" style="max-width:240px;max-height:80px;margin-bottom:4px;filter:grayscale(100%);">` : ''}
     <div class="store-name">${escapeHtmlForPrint(bigName)}</div>
     ${infoLines.map(l => `<p class="store-info store-info-line">${l}</p>`).join('')}
   `;
@@ -954,11 +1178,17 @@ export function generateHTMLBill(orderData, storeInfo) {
     const qty = item.quantity;
     const price = item.menuItem.price;
     const total = qty * price;
-    const optionsHtml = (item.options || []).map(o => `<div class="item-option">${escapeHtmlForPrint(o)}</div>`).join('');
+    const optionsHtml = (item.options || []).map(o => `<div class="item-option">${escapeHtmlForPrint(typeof o === 'string' ? o : (o?.name || ''))}</div>`).join('');
+    // Set menu — list every sub-item so the customer sees what's included
+    // (previously only the wrapper name printed, hiding the contents).
+    const setItemsHtml = (item.menuItem.is_set_menu && Array.isArray(item.menuItem.set_items) && item.menuItem.set_items.length > 0)
+      ? item.menuItem.set_items.map(si => `<div class="item-option">↳ ${escapeHtmlForPrint(typeof si === 'string' ? si : (si?.name || ''))}</div>`).join('')
+      : '';
     return `
       <div class="item">
         <div class="item-row"><span class="item-name">${itemName}</span><span class="item-price">${currencySymbol} ${total.toFixed(2)}</span></div>
         <div class="item-qty">${qty} × ${currencySymbol} ${price.toFixed(2)}</div>
+        ${setItemsHtml}
         ${optionsHtml}
       </div>
     `;
@@ -1031,7 +1261,7 @@ function generateHTMLKitchenTicket(orderData, storeInfo) {
       ? ` <span class="station-tag">${escapeHtmlForPrint(item.stationName.toUpperCase())}</span>`
       : '';
     const optionsHtml = (item.options || []).map(opt =>
-      `<div class="item-option" style="font-size:13px;font-weight:600;">★ ${escapeHtmlForPrint(opt)}</div>`
+      `<div class="item-option" style="font-size:13px;font-weight:600;">★ ${escapeHtmlForPrint(typeof opt === 'string' ? opt : (opt?.name || ''))}</div>`
     ).join('');
     return `
       <div class="item">
@@ -1135,7 +1365,7 @@ function generateHTMLAdditionalItemsTicket(orderData, storeInfo) {
       ? ` <span class="station-tag">${escapeHtmlForPrint(item.stationName.toUpperCase())}</span>`
       : '';
     const optionsHtml = (item.options || []).map(opt =>
-      `<div class="item-option" style="font-size:13px;font-weight:600;">★ ${escapeHtmlForPrint(opt)}</div>`
+      `<div class="item-option" style="font-size:13px;font-weight:600;">★ ${escapeHtmlForPrint(typeof opt === 'string' ? opt : (opt?.name || ''))}</div>`
     ).join('');
     return `
       <div class="item">
@@ -1264,16 +1494,24 @@ export async function printBillViaRawBT(orderData, storeInfo, printerName) {
       return true; // Return success but skip printing
     }
 
-    // QZ Tray method: send ESC/POS via QZ Tray (LAN IP or OS printer name)
+    // QZ Tray method: route HTML through OS driver for design parity with the
+    // browser-print path. Network ESC/POS (raw socket) only for LAN IP printers
+    // where pixel/html isn't supported.
     if (shouldUseQZTray('bill')) {
-      console.log('🖨️ Bill via QZ Tray');
       const address = getActiveBillPrinter().address;
       if (!address) {
         console.warn('QZ Tray: no bill printer address configured');
         return false;
       }
-      const escposContent = generateBillContent(orderData, storeInfo);
-      return await sendViaQZTray(escposContent, address);
+      const isLanIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(address);
+      if (isLanIP) {
+        console.log('🖨️ Bill via QZ Tray (LAN ESC/POS — raw socket, IP printer)');
+        return await sendViaQZTray(generateBillContent(orderData, storeInfo), address);
+      }
+      console.log('🖨️ Bill via QZ Tray (HTML, OS driver — silent, browser-style design)');
+      // `drawerPulse` opt-in via orderData — caller passes drawerPulse:true on
+      // the LAST receipt copy so the cash drawer opens once (no garbage page).
+      return await sendHTMLViaQZTray(generateHTMLBill(orderData, storeInfo), address, { drawerPulse: !!orderData.__drawerPulse });
     }
 
     // Browser method: open browser print dialog (uses OS default printer)
@@ -1720,7 +1958,7 @@ function generateHTMLMultiPageKitchenTickets(orderData, storeInfo) {
       ? ` <span class="station-tag">${escapeHtmlForPrint(item.stationName.toUpperCase())}</span>`
       : '';
     const optionsHtml = (item.options || []).map(opt =>
-      `<div class="item-option" style="font-size:13px;font-weight:600;">★ ${escapeHtmlForPrint(opt)}</div>`
+      `<div class="item-option" style="font-size:13px;font-weight:600;">★ ${escapeHtmlForPrint(typeof opt === 'string' ? opt : (opt?.name || ''))}</div>`
     ).join('');
     const isLastPage = itemIndex === totalItems;
     const notesHtml = (itemIndex === 1 && orderData.notes && orderData.notes.trim()) ? `
@@ -1777,48 +2015,77 @@ export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerNa
       }
     }
 
-    // kitchenPrinter.enabled 체크 — Station 유무 관계없이 동일
-    if (!settings.kitchenPrinter.enabled) {
-      console.log('Kitchen printer is disabled in settings');
-      return true; // Return success but skip printing
-    }
-
-    // Mirror to counter (bill) printer if enabled — fire-and-forget, 키친 인쇄 큐와 분리.
-    // 실패해도 메인 키친 인쇄에는 영향 없음 (silent catch).
-    const __bpMirror = getActiveBillPrinter(); if (settings.kitchenPrinter.mirrorToBillPrinter && __bpMirror && __bpMirror.enabled) {
+    // Mirror to counter — print the UNIFIED kitchen ticket (all items, no
+    // station split) on the bill printer so counter staff sees the whole
+    // order at a glance. Was previously calling printBillViaRawBT() which
+    // produced the customer-facing receipt format — wrong UX. Must use the
+    // kitchen ticket HTML so the counter copy looks like the kitchen copy.
+    // Runs FIRST so station routing's `return` below doesn't block it.
+    const __bpMirror = getActiveBillPrinter();
+    if (settings.kitchenPrinter?.mirrorToBillPrinter && __bpMirror && __bpMirror.enabled && __bpMirror.address) {
       setTimeout(() => {
         try {
-          printBillViaRawBT(orderData, storeInfo).catch(e =>
-            console.warn('Kitchen → counter mirror print failed:', e && e.message)
-          );
+          const billAddr = __bpMirror.address;
+          const isLanIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(billAddr);
+          const unifiedTicket = { ...orderData, groupLabel: 'COUNTER', printedAt: 'COUNTER' };
+          if (isLanIP) {
+            sendViaQZTray(generateKitchenTicketContent(unifiedTicket, storeInfo), billAddr)
+              .catch(e => console.warn('Kitchen → counter mirror print failed:', e && e.message));
+          } else {
+            sendHTMLViaQZTray(generateHTMLKitchenTicket(unifiedTicket, storeInfo), billAddr)
+              .catch(e => console.warn('Kitchen → counter mirror print failed:', e && e.message));
+          }
         } catch (e) {
           console.warn('Kitchen → counter mirror trigger failed:', e && e.message);
         }
       }, 600);
     }
 
-    // QZ Tray method: send ESC/POS via network or OS printer
+    // 2026-05-27: Station routing — if the shop configured kitchenStationPrinters,
+    // bucket items by station and send each station its own ticket. Without this
+    // branch, auto-print on payment ignored station printers entirely (only the
+    // legacy global kitchenPrinter.address received tickets), so shops that
+    // moved to station printers saw nothing print after payment even though
+    // the "Test print" button worked.
+    const stationPrinters = settings.kitchenStationPrinters;
+    const hasStationPrinters = stationPrinters && Object.keys(stationPrinters).length > 0;
+    if (hasStationPrinters && !printerName) {
+      return await printKitchenTicketsByStation(orderData, storeInfo, settings);
+    }
+
+    // kitchenPrinter.enabled 체크 — Station 유무 관계없이 동일
+    if (!settings.kitchenPrinter.enabled) {
+      console.log('Kitchen printer is disabled in settings');
+      return true; // Return success but skip printing
+    }
+
+    // QZ Tray method: HTML via OS driver for design parity (network ESC/POS for LAN IP only).
     if (shouldUseQZTray('kitchen')) {
-      console.log('🖨️ Kitchen via QZ Tray');
       const address = settings.kitchenPrinter.address;
       if (!address) {
         console.warn('QZ Tray: no kitchen printer address configured');
         return false;
       }
+      const isLanIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(address);
       const printPerItem = settings.kitchenPrinter.printPerItem || false;
       if (printPerItem && orderData.items && orderData.items.length > 0) {
         for (let i = 0; i < orderData.items.length; i++) {
           const item = orderData.items[i];
-          const escpos = generateSingleItemKitchenTicket(orderData, item, i + 1, orderData.items.length, storeInfo);
-          await sendViaQZTray(escpos, address);
-          if (i < orderData.items.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 300));
+          if (isLanIP) {
+            await sendViaQZTray(generateSingleItemKitchenTicket(orderData, item, i + 1, orderData.items.length, storeInfo), address);
+          } else {
+            await sendHTMLViaQZTray(generateHTMLKitchenTicket({ ...orderData, items: [item] }, storeInfo), address);
           }
+          if (i < orderData.items.length - 1) await new Promise(resolve => setTimeout(resolve, 300));
         }
         return true;
       }
-      const escposContent = generateKitchenTicketContent(orderData, storeInfo);
-      return await sendViaQZTray(escposContent, address);
+      if (isLanIP) {
+        console.log('🖨️ Kitchen via QZ Tray (LAN ESC/POS — raw socket)');
+        return await sendViaQZTray(generateKitchenTicketContent(orderData, storeInfo), address);
+      }
+      console.log('🖨️ Kitchen via QZ Tray (HTML, OS driver)');
+      return await sendHTMLViaQZTray(generateHTMLKitchenTicket(orderData, storeInfo), address);
     }
 
     // Use provided printerName or get from settings
@@ -2156,20 +2423,26 @@ export async function printAdditionalItemsTicketViaRawBT(orderData, storeInfo, p
       return true; // Return success but skip printing
     }
 
-    // QZ Tray mode
+    // QZ Tray mode — HTML via OS driver (design parity) for OS printer names,
+    // ESC/POS raw socket for LAN IPs.
     if (shouldUseQZTray()) {
-      console.log('🖨️ QZ Tray mode - sending additional items ticket');
       const address = settings.kitchenPrinter.address;
       if (!address) {
         console.warn('QZ Tray: no kitchen printer address configured');
         return false;
       }
-      const escposContent = generateAdditionalItemsTicketContent(orderData, storeInfo);
-      if (!escposContent) {
-        console.log('No additional items to print');
-        return true;
+      const isLanIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(address);
+      if (isLanIP) {
+        const escposContent = generateAdditionalItemsTicketContent(orderData, storeInfo);
+        if (!escposContent) { console.log('No additional items to print'); return true; }
+        return await sendViaQZTray(escposContent, address);
       }
-      return await sendViaQZTray(escposContent, address);
+      // OS driver path — reuse the kitchen HTML renderer for the new items only.
+      const newItems = (orderData.items || []).filter(it => it.is_new_item);
+      if (newItems.length === 0) { console.log('No additional items to print'); return true; }
+      const htmlContent = generateHTMLAdditionalItemsTicket(orderData, storeInfo);
+      if (!htmlContent) { console.log('No additional items to print'); return true; }
+      return await sendHTMLViaQZTray(htmlContent, address);
     }
 
     // PC: Use browser print dialog with HTML
@@ -2346,8 +2619,12 @@ export async function printTableQR(tableNumber, qrCanvas, storeName = 'Restauran
   const timeInfo = `<div class="time-info">Printed: ${printedTime}</div>` +
     (expiryTime ? `<div class="time-info">Orders accepted until ${expiryTime}</div>` : '');
 
-  // Browser method: HTML page using the shared print stylesheet
-  if (shouldUseBrowserPrint('bill') && qrCanvas) {
+  // Browser-iframe path — works in every browser, no popup blocker, no QZ setup.
+  // This is the safe fallback for the OS print dialog whenever the silent QZ/RawBT
+  // path is unavailable or fails. We try it FIRST when the user has chosen
+  // browser printing, and LAST as the universal fallback.
+  const printViaIframe = () => {
+    if (!qrCanvas) return false;
     const htmlContent = wrapPrintHTML(`Table ${tableNumber} QR`, `
       <div class="store-name" style="font-size:14px;">${escapeHtmlForPrint(storeName)}</div>
       <div class="big-number">${escapeHtmlForPrint(tableNumber)}</div>
@@ -2356,82 +2633,55 @@ export async function printTableQR(tableNumber, qrCanvas, storeName = 'Restauran
       ${timeInfo}
     `);
     return printHTMLContent(htmlContent, 'Table QR');
+  };
+
+  // Browser method: HTML page using the shared print stylesheet
+  if (shouldUseBrowserPrint('bill') && qrCanvas) {
+    return printViaIframe();
   }
 
-  // QZ Tray method: send mixed payload (ESC/POS header + raster image of the QR + footer)
-  // QZ Tray converts type:'image' PNGs into ESC/POS raster commands automatically.
+  // QZ Tray method: HTML via OS driver (silent, browser-style design). QR image
+  // embedded inside the HTML — same path as bill / kitchen for design parity.
+  // ESC/POS raw raster path was failing on stores whose thermal printer didn't
+  // accept the raster command set (matched the user report: "QR fails, Test OK").
   if (shouldUseQZTray('bill') && qrCanvas) {
-    const settings = getPrinterSettings();
     const address = getActiveBillPrinter().address;
     if (!address) {
-      console.warn('QZ Tray: bill printer address not configured for QR print');
+      console.error('QZ Tray: bill printer address not configured');
       return false;
     }
-    try {
-      const connected = await connectQZTray();
-      if (!connected) return false;
-
-      // Build the QZ Tray config (LAN IP:port or OS printer name)
-      let config;
-      if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(address)) {
+    const isLanIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(address);
+    if (isLanIP) {
+      // LAN raw socket — keep raster path (no OS driver available).
+      try {
+        const connected = await connectQZTray();
+        if (!connected) return false;
         const [host, port] = address.split(':');
-        // QZ Tray raw socket: name=null, host/port via options (was: name='IP:port' bug)
-        config = qz.configs.create(null, {
-          host: host,
-          port: parseInt(port || '9100', 10),
-          encoding: 'UTF-8'
-        });
-      } else {
-        config = qz.configs.create(address);
+        const config = qz.configs.create(null, { host, port: parseInt(port || '9100', 10), encoding: 'UTF-8' });
+        let header = CMD.INIT + CMD.ALIGN_CENTER + CMD.TEXT_DOUBLE + storeName + CMD.LINE_FEED + CMD.TEXT_NORMAL + CMD.LINE_FEED + CMD.BOLD_ON + CMD.TEXT_DOUBLE + tableNumber + CMD.LINE_FEED + CMD.TEXT_NORMAL + CMD.BOLD_OFF + CMD.LINE_FEED;
+        let footer = CMD.ALIGN_CENTER + 'Scan to order' + CMD.LINE_FEED + CMD.LINE_FEED + 'Printed: ' + printedTime + CMD.LINE_FEED + (expiryTime ? 'Orders accepted until ' + expiryTime + CMD.LINE_FEED : '') + CMD.LINE_FEED + CMD.LINE_FEED + CMD.CUT_PARTIAL;
+        await qz.print(config, [
+          { type: 'raw', format: 'base64', data: btoa(unescape(encodeURIComponent(header))) },
+          { type: 'raw', format: 'image', data: qrCanvas.toDataURL('image/png'), options: { language: 'ESCPOS', dotDensity: 'double' } },
+          { type: 'raw', format: 'base64', data: btoa(unescape(encodeURIComponent(footer))) }
+        ]);
+        console.log('🧾 Table QR printed via QZ Tray LAN raster');
+        return true;
+      } catch (err) {
+        console.error('QZ Tray QR LAN print failed:', err && err.message);
+        return false;
       }
-
-      // Header: store name + table number (centered, double-size)
-      let header = '';
-      header += CMD.INIT;
-      header += CMD.ALIGN_CENTER;
-      header += CMD.TEXT_DOUBLE;
-      header += storeName + CMD.LINE_FEED;
-      header += CMD.TEXT_NORMAL;
-      header += CMD.LINE_FEED;
-      header += CMD.BOLD_ON;
-      header += CMD.TEXT_DOUBLE;
-      header += tableNumber + CMD.LINE_FEED;
-      header += CMD.TEXT_NORMAL;
-      header += CMD.BOLD_OFF;
-      header += CMD.LINE_FEED;
-
-      // Footer: instruction + times + cut
-      let footer = '';
-      footer += CMD.ALIGN_CENTER;
-      footer += 'Scan to order' + CMD.LINE_FEED;
-      footer += CMD.LINE_FEED;
-      const printedTimeText = 'Printed: ' + printedTime;
-      footer += printedTimeText + CMD.LINE_FEED;
-      if (expiryTime) {
-        footer += 'Orders accepted until ' + expiryTime + CMD.LINE_FEED;
-      }
-      footer += CMD.LINE_FEED;
-      footer += CMD.LINE_FEED;
-      footer += CMD.CUT_PARTIAL;
-
-      // Send: ESC/POS header → QR raster image → ESC/POS footer (single print job, atomic)
-      await qz.print(config, [
-        { type: 'raw', format: 'base64', data: btoa(unescape(encodeURIComponent(header))) },
-        {
-          type: 'raw',
-          format: 'image',
-          data: qrCanvas.toDataURL('image/png'),
-          options: { language: 'ESCPOS', dotDensity: 'double' }
-        },
-        { type: 'raw', format: 'base64', data: btoa(unescape(encodeURIComponent(footer))) }
-      ]);
-
-      console.log('🧾 Table QR printed via QZ Tray (with raster image)');
-      return true;
-    } catch (err) {
-      console.error('QZ Tray QR print failed:', err);
-      return false;
     }
+    // OS driver path — HTML with embedded QR image, same wrapPrintHTML design.
+    const htmlContent = wrapPrintHTML(`Table ${tableNumber} QR`, `
+      <div class="store-name" style="font-size:14px;">${escapeHtmlForPrint(storeName)}</div>
+      <div class="big-number">${escapeHtmlForPrint(tableNumber)}</div>
+      <div class="qr-container"><img src="${qrCanvas.toDataURL('image/png')}" width="140" height="140" /></div>
+      <div class="instruction">Scan to order</div>
+      ${timeInfo}
+    `);
+    console.log('🧾 Table QR via QZ Tray (HTML, OS driver)');
+    return await sendHTMLViaQZTray(htmlContent, address);
   }
 
   // Check if RawBT is available (mobile/tablet)
@@ -2492,42 +2742,10 @@ export async function printTableQR(tableNumber, qrCanvas, storeName = 'Restauran
       return false;
     }
   } else {
-    // Desktop - use browser print with QR image
-    const printWindow = window.open('', '', 'height=600,width=400');
-    if (printWindow) {
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>Table ${tableNumber} QR Code</title>
-            <style>
-              @page { size: 80mm auto; margin: 0; }
-              body { display:flex; flex-direction:column; align-items:center; justify-content:center; margin:0; padding:8px 0; font-family:Arial,sans-serif; text-align:center; }
-              .store-name { font-size:14px; font-weight:bold; margin-bottom:2px; }
-              .table-number { font-size:24px; font-weight:bold; margin:2px 0; }
-              .qr-container { margin:4px 0; }
-              .instruction { font-size:13px; font-weight:600; color:#000; margin-top:2px; }
-              .time-info { font-size:11px; color:#000; margin-top:1px; }
-              @media print { html,body { height:auto; } }
-            </style>
-          </head>
-          <body>
-            <div class="store-name">${storeName}</div>
-            <div class="table-number">${tableNumber}</div>
-            <div class="qr-container"><img src="${qrCanvas.toDataURL('image/png')}" width="140" height="140" /></div>
-            <div class="instruction">Scan to order</div>
-            ${timeInfo}
-          </body>
-        </html>
-      `);
-
-      printWindow.document.close();
-      setTimeout(() => {
-        printWindow.print();
-      }, 250);
-
-      return true;
-    }
-    return false;
+    // Desktop fallback — was window.open (popup-blocker prone). Switched to the
+    // hidden-iframe path so the print dialog opens directly with no extra clicks
+    // and no "allow pop-ups" guidance ever needed.
+    return printViaIframe();
   }
 }
 
@@ -2618,24 +2836,30 @@ async function sendToRawBTPrinter(orderData, storeInfo, settings, printerName, s
   console.log(`🖨️ sendToRawBTPrinter: ${items.length} items, printPerItem=${printPerItem}, station=${stationName}, scope=${scope}, method=${method}`);
   console.log(`🖨️ Item names:`, items.map(i => (i.menuItem?.name || i.name) + ' x' + i.quantity));
 
-  // --- QZ Tray method (LAN IP or OS printer name) ---
-  // printerAddress takes precedence (per-station IP); falls back to single kitchenPrinter.address.
+  // --- QZ Tray method (HTML via OS driver for design parity, ESC/POS for LAN IP) ---
   if (method === 'qztray') {
     const address = printerAddress || settings.kitchenPrinter.address;
     if (!address) return false;
+    const isLanIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(address);
 
     if (printPerItem && items.length > 0) {
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
         const perItemData = { ...orderData, items: [item], groupLabel: stationName ? stationName.toUpperCase() : undefined, printedAt: stationName ? stationName.toUpperCase() : 'KITCHEN' };
-        const escpos = generateKitchenTicketContent(perItemData, storeInfo);
-        await sendViaQZTray(escpos, address);
+        if (isLanIP) {
+          await sendViaQZTray(generateKitchenTicketContent(perItemData, storeInfo), address);
+        } else {
+          await sendHTMLViaQZTray(generateHTMLKitchenTicket(perItemData, storeInfo), address);
+        }
         if (i < items.length - 1) await new Promise(r => setTimeout(r, 300));
       }
     } else {
       const ticketData = { ...orderData, groupLabel: stationName ? stationName.toUpperCase() : undefined, printedAt: stationName ? stationName.toUpperCase() : 'KITCHEN' };
-      const escpos = generateKitchenTicketContent(ticketData, storeInfo);
-      await sendViaQZTray(escpos, address);
+      if (isLanIP) {
+        await sendViaQZTray(generateKitchenTicketContent(ticketData, storeInfo), address);
+      } else {
+        await sendHTMLViaQZTray(generateHTMLKitchenTicket(ticketData, storeInfo), address);
+      }
     }
     return true;
   }
@@ -2712,8 +2936,15 @@ async function printKitchenTicketsByStation(orderData, storeInfo, settings) {
     const stationItems = {};
     const unmappedItems = [];
     (orderData.items || []).forEach(item => {
-      const itemName = item.menuItem?.name || item.name;
-      const stationId = menuStationMap[itemName];
+      // 1) Item-level kitchen_station_id (backend now resolves this from Product
+      //    or Category for mobile orders; POS already attaches it directly).
+      // 2) Fall back to the menu-name → station map (KDS localStorage), so
+      //    legacy / un-enriched items still route via the old path.
+      let stationId = item.kitchen_station_id || item.menuItem?.kitchen_station_id || null;
+      if (!stationId) {
+        const itemName = item.menuItem?.name || item.name;
+        stationId = menuStationMap[itemName];
+      }
       if (stationId && stationPrinters[stationId]) {
         if (!stationItems[stationId]) stationItems[stationId] = [];
         stationItems[stationId].push(item);
@@ -2738,7 +2969,7 @@ async function printKitchenTicketsByStation(orderData, storeInfo, settings) {
   if (shouldUseQZTray('kitchen')) {
     const { stationItems, unmappedItems } = bucketItemsByStation(loadMenuStationMap());
 
-    // No mapping: send everything to the first station
+    // No mapping at all: send everything to the first station as ONE ticket.
     if (Object.keys(stationItems).length === 0 && unmappedItems.length > 0) {
       const stationId = stationIds[0];
       const sp = stationPrinters[stationId];
@@ -2746,20 +2977,23 @@ async function printKitchenTicketsByStation(orderData, storeInfo, settings) {
       return await sendToRawBTPrinter(orderData, storeInfo, settings, sp.name, sp.stationName || 'Kitchen', sp.address, stationId);
     }
 
-    // Mapped: send each station its own items
+    // Merge unmapped items into the FIRST station's ticket so they print on the
+    // same job as that station's items (no separate ticket = no race / no drop).
+    // 매장 보고 (2026-05-27): mobile 주문 items 가 menu_item_id 없어 unmapped 가 별도
+    // ticket 으로 가다가 두 번째 print job 가 driver queue race 로 누락. 같은 ticket
+    // 에 합쳐 한 print job 으로 처리.
     const mappedStationIds = Object.keys(stationItems);
+    if (unmappedItems.length > 0 && mappedStationIds.length > 0) {
+      const firstStationId = mappedStationIds[0];
+      stationItems[firstStationId] = [...stationItems[firstStationId], ...unmappedItems];
+    }
+
+    // Mapped: send each station its own items (unmapped now in first station)
     for (const stationId of mappedStationIds) {
       const sp = stationPrinters[stationId];
       const items = stationItems[stationId];
       const stationName = sp.stationName || `Station ${stationId}`;
       await sendToRawBTPrinter({ ...orderData, items }, storeInfo, settings, sp.name, stationName, sp.address, stationId);
-    }
-
-    // Unmapped overflow → first station
-    if (unmappedItems.length > 0) {
-      const stationId = stationIds[0];
-      const sp = stationPrinters[stationId];
-      await sendToRawBTPrinter({ ...orderData, items: unmappedItems }, storeInfo, settings, sp.name, sp.stationName || 'Kitchen', sp.address, stationId);
     }
 
     return true;
@@ -2784,17 +3018,16 @@ async function printKitchenTicketsByStation(orderData, storeInfo, settings) {
   }
 
   const mappedStationIds = Object.keys(stationItems);
+  // Browser flow — merge unmapped into first station's bucket too (same fix as QZ Tray branch).
+  if (unmappedItems.length > 0 && mappedStationIds.length > 0) {
+    const firstStationId = mappedStationIds[0];
+    stationItems[firstStationId] = [...stationItems[firstStationId], ...unmappedItems];
+  }
   for (const stationId of mappedStationIds) {
     const sp = stationPrinters[stationId];
     const items = stationItems[stationId];
     const stationName = sp.stationName || `Station ${stationId}`;
     await sendToRawBTPrinter({ ...orderData, items }, storeInfo, settings, sp.name, stationName, sp.address, stationId);
-  }
-
-  if (unmappedItems.length > 0) {
-    const stationId = stationIds[0];
-    const sp = stationPrinters[stationId];
-    await sendToRawBTPrinter({ ...orderData, items: unmappedItems }, storeInfo, settings, sp.name, sp.stationName || 'Kitchen', sp.address, stationId);
   }
 
   return true;

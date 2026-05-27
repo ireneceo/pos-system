@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
+import { printHTMLContent } from '../../utils/billPrint';
 import { useSearchParams, useParams } from 'react-router-dom';
 import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import { formatAddressHtml, formatAddressLines, AppLocale } from '../../utils/formatAddress';
@@ -1018,17 +1019,9 @@ const RestaurantInvoicesPage: React.FC = () => {
     }
   };
 
-  // Print invoice - prints directly without opening modal
+  // Print invoice via hidden iframe — popup-blocker proof, no extra clicks.
   const handlePrintInvoice = (invoice: Invoice) => {
-    const invoiceHTML = generateInvoiceHTML(invoice);
-    const printWindow = window.open('', '_blank', 'width=800,height=600');
-    if (printWindow) {
-      printWindow.document.write(invoiceHTML);
-      printWindow.document.close();
-      setTimeout(() => {
-        printWindow.print();
-      }, 250);
-    }
+    printHTMLContent(generateInvoiceHTML(invoice), `Invoice ${invoice.invoiceNumber}`);
   };
 
   // Render invoice preview

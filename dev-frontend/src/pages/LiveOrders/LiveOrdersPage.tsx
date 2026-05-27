@@ -1330,10 +1330,79 @@ const LiveOrdersPage: React.FC = () => {
       }
 
       setShowPaymentModal(false);
+      const paidOrderRef = orderForPayment;
       setOrderForPayment(null);
       await fetchOrders();
 
       if (isModalOpen) { setIsModalOpen(false); setSelectedOrder(null); }
+
+      // Auto-print bill + kitchen ticket (parity with POSTerminal:processPayment).
+      // LiveOrders payment flow had no auto-trigger — only manual print button.
+      // Same workstation-aware logic so shops with multi-POS / station printers
+      // fire correctly after confirming payment here too.
+      try {
+        const billPrintMod = await import('../../utils/billPrint');
+        const printSettings = billPrintMod.getPrinterSettings();
+        const activeBill = billPrintMod.getActiveBillPrinter();
+        const printStoreInfo = getStoreInfo();
+        const items = Array.isArray(paidOrderRef.order_items) ? paidOrderRef.order_items : [];
+        const printData: any = {
+          orderNumber: paidOrderRef.order_number,
+          pickupNumber: paidOrderRef.order_number ? String(paidOrderRef.order_number).split('-')[1] : '',
+          tableNumber: paidOrderRef.table_number || undefined,
+          pagerNumber: (paidOrderRef as any).pager_number || undefined,
+          date: new Date(paidOrderRef.order_date || paidOrderRef.createdAt),
+          orderType: (paidOrderRef as any).order_type === 'dine_in' ? 'dine-in' : ((paidOrderRef as any).order_type || 'dine-in'),
+          orderSource: (paidOrderRef as any).source || 'pos',
+          items: items.map((it: any) => ({
+            menuItem: { name: it.menu_item_name || it.name || (it.menuItem && it.menuItem.name) || 'Item', price: parseFloat(it.price || (it.menuItem && it.menuItem.price) || '0') },
+            quantity: it.quantity || 1,
+            options: Array.isArray(it.options) ? it.options : []
+          })),
+          subtotal: parseFloat((paidOrderRef as any).subtotal || '0'),
+          tax: parseFloat((paidOrderRef as any).tax || '0'),
+          serviceCharge: parseFloat((paidOrderRef as any).service_charge || '0'),
+          serviceChargeRate: parseFloat((paidOrderRef as any).service_charge_rate || '0'),
+          takeawayCharge: parseFloat((paidOrderRef as any).takeaway_charge || '0'),
+          discount: parseFloat((paidOrderRef as any).discount || '0'),
+          total: parseFloat((paidOrderRef as any).total_amount || '0'),
+          paymentMethod: method,
+          cashierName: (paidOrderRef as any).cashier_name || null,
+          amountReceived: amountReceived,
+          change: change
+        };
+        if (activeBill?.enabled && activeBill?.autoPrint) {
+          const copies = Math.max(1, Math.min(3, parseInt(
+            (printSettings.receiptSettings && printSettings.receiptSettings.copiesAfterPayment) ||
+            (JSON.parse(localStorage.getItem('receiptSettings') || '{}').copiesAfterPayment) || 1, 10) || 1));
+          const autoOpenDrawer = (printSettings.receiptSettings && printSettings.receiptSettings.autoOpenDrawer) !== false &&
+            (JSON.parse(localStorage.getItem('receiptSettings') || '{}').autoOpenDrawer !== false);
+          (async () => {
+            await new Promise(r => setTimeout(r, 300));
+            for (let i = 0; i < copies; i++) {
+              const isLast = i === copies - 1;
+              const dataForCopy = { ...printData, __drawerPulse: !!(autoOpenDrawer && isLast) };
+              try { await billPrintMod.printBillViaRawBT(dataForCopy, printStoreInfo); }
+              catch (e: any) { console.error('LiveOrders auto bill print failed (copy ' + (i + 1) + '):', e); }
+              if (i < copies - 1) await new Promise(r => setTimeout(r, 600));
+            }
+          })();
+        }
+        // Master gate (2026-05-28): kitchen autoPrint OFF must hard-block.
+        const _stationAutoPrint = Object.values(printSettings.kitchenStationPrinters || {}).some((s: any) => s?.autoPrint);
+        const _kp: any = printSettings.kitchenPrinter || {};
+        const _kpEnabled = _kp.enabled !== false;
+        const _kpAuto = !!_kp.autoPrint;
+        const _kitchenAuto = (_kpEnabled && !_kpAuto) ? false : (_kpAuto || _stationAutoPrint);
+        if (_kitchenAuto) {
+          setTimeout(() => {
+            billPrintMod.printKitchenTicketViaRawBT(printData, printStoreInfo)
+              .catch((e: any) => console.error('LiveOrders auto kitchen print failed:', e));
+          }, 800);
+        }
+      } catch (autoPrintErr) {
+        console.error('LiveOrders auto-print skipped:', autoPrintErr);
+      }
     } catch (error) {
       console.error('Payment error:', error);
     }

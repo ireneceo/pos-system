@@ -17,7 +17,7 @@ import ZonesAndGroupsCard from './components/ZonesAndGroupsCard';
 import AddressFields from '../../components/Form/AddressFields';
 import ConfirmModal from '../../components/ConfirmModal';
 import { useTabParam } from '../../hooks/useTabParam';
-import { getPrinterMode, setPrinterMode, connectQZTray, disconnectQZTray, isQZTrayConnected, getQZTrayPrinters, qzTrayTestPrint, getActiveWorkstationId, setActiveWorkstationId } from '../../utils/billPrint';
+import { getPrinterMode, setPrinterMode, connectQZTray, disconnectQZTray, isQZTrayConnected, getQZTrayPrinters, qzTrayTestPrint, getActiveWorkstationId, setActiveWorkstationId, runQZDiagnostic, printHTMLContent } from '../../utils/billPrint';
 import { getCurrencySymbol } from '../../utils/currency';
 import { useTranslation } from 'react-i18next';
 
@@ -742,6 +742,14 @@ const SettingsPage: React.FC = () => {
   });
   const [printerSettingsLoading, setPrinterSettingsLoading] = useState(true);
   const [qzTrayStatus, setQzTrayStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
+  // 2026-05-27: 1-click self-test for the QZ Tray pipeline. Replaces the
+  // manual "download cert → find folder → restart → cross fingers" flow with a
+  // single button that probes every link in the chain and reports per-step status.
+  const [qzDiagSteps, setQzDiagSteps] = useState<Array<{key: string; label: string; status: 'ok'|'failed'; detail?: string}>>([]);
+  const [qzDiagSummary, setQzDiagSummary] = useState<any>(null);
+  const [qzDiagRunning, setQzDiagRunning] = useState(false);
+  const [qzDiagSending, setQzDiagSending] = useState(false);
+  const [qzDiagTicket, setQzDiagTicket] = useState<string | null>(null);
   // 2026-05-27: printer-method guide tabs — Browser first (default), QZ Tray last.
   // Replaces the QZ-Tray-only banner that hid the other two methods.
   const [printerGuideTab, setPrinterGuideTab] = useState<'browser' | 'qztray' | 'rawbt'>('browser');
@@ -1648,70 +1656,21 @@ const SettingsPage: React.FC = () => {
     const svgElement = document.getElementById(`qr-svg-${table.id}`);
 
     if (svgElement) {
-      // Use SVG for high-quality print
+      // Hidden-iframe print (popup-blocker proof — was window.open).
       const svgData = new XMLSerializer().serializeToString(svgElement);
-      const printWindow = window.open('', '_blank');
-      if (printWindow) {
-        printWindow.document.write(`
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <title>Print QR - ${tableNumber}</title>
-            <style>
-              body {
-                margin: 0;
-                padding: 20px;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                min-height: 100vh;
-                font-family: Arial, sans-serif;
-              }
-              .store-name {
-                font-size: 18px;
-                font-weight: 600;
-                color: #0A2540;
-                margin-bottom: 8px;
-              }
-              .table-number {
-                font-size: 32px;
-                font-weight: bold;
-                color: #0A2540;
-                margin-bottom: 16px;
-              }
-              .qr-container {
-                padding: 20px;
-                background: white;
-              }
-              .qr-container svg {
-                width: 200px;
-                height: 200px;
-              }
-              @media print {
-                body { padding: 0; }
-                .qr-container svg {
-                  width: 250px;
-                  height: 250px;
-                }
-              }
-            </style>
-          </head>
-          <body>
-            <div class="store-name">${storeName}</div>
-            <div class="table-number">${tableNumber}</div>
-            <div class="qr-container">${svgData}</div>
-            <script>
-              window.onload = function() {
-                window.print();
-                window.onafterprint = function() { window.close(); };
-              };
-            </script>
-          </body>
-          </html>
-        `);
-        printWindow.document.close();
-      }
+      const html = `<!DOCTYPE html><html><head><title>Print QR - ${tableNumber}</title><style>
+        body { margin:0; padding:20px; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; font-family:Arial,sans-serif; }
+        .store-name { font-size:18px; font-weight:600; color:#0A2540; margin-bottom:8px; }
+        .table-number { font-size:32px; font-weight:bold; color:#0A2540; margin-bottom:16px; }
+        .qr-container { padding:20px; background:white; }
+        .qr-container svg { width:200px; height:200px; }
+        @media print { body { padding:0; } .qr-container svg { width:250px; height:250px; } }
+      </style></head><body>
+        <div class="store-name">${storeName}</div>
+        <div class="table-number">${tableNumber}</div>
+        <div class="qr-container">${svgData}</div>
+      </body></html>`;
+      printHTMLContent(html, `QR ${tableNumber}`);
     }
   };
 
@@ -1962,33 +1921,20 @@ const SettingsPage: React.FC = () => {
     const svgElement = document.getElementById(`qr-svg-ext-${idx}`);
     if (!svgElement) return;
     const svgData = new XMLSerializer().serializeToString(svgElement);
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Print QR - ${name}</title>
-        <style>
-          body { margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; font-family: Arial, sans-serif; }
-          .store-name { font-size: 18px; font-weight: 600; color: #0A2540; margin-bottom: 8px; }
-          .ext-name { font-size: 28px; font-weight: bold; color: #0A2540; margin-bottom: 16px; }
-          .qr-container { padding: 20px; background: white; }
-          .qr-container svg { width: 200px; height: 200px; }
-          @media print { body { padding: 0; } .qr-container svg { width: 250px; height: 250px; } }
-        </style>
-      </head>
-      <body>
-        <div class="store-name">${storeName}</div>
-        <div class="ext-name">${name}</div>
-        <div class="qr-container">${svgData}</div>
-        <script>
-          window.onload = function() { window.print(); window.onafterprint = function() { window.close(); }; };
-        </script>
-      </body>
-      </html>
-    `);
-    printWindow.document.close();
+    // Hidden-iframe print (popup-blocker proof — was window.open).
+    const html = `<!DOCTYPE html><html><head><title>Print QR - ${name}</title><style>
+      body { margin:0; padding:20px; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; font-family:Arial,sans-serif; }
+      .store-name { font-size:18px; font-weight:600; color:#0A2540; margin-bottom:8px; }
+      .ext-name { font-size:28px; font-weight:bold; color:#0A2540; margin-bottom:16px; }
+      .qr-container { padding:20px; background:white; }
+      .qr-container svg { width:200px; height:200px; }
+      @media print { body { padding:0; } .qr-container svg { width:250px; height:250px; } }
+    </style></head><body>
+      <div class="store-name">${storeName}</div>
+      <div class="ext-name">${name}</div>
+      <div class="qr-container">${svgData}</div>
+    </body></html>`;
+    printHTMLContent(html, `QR ${name}`);
   };
 
   const handlePaymentToggle = (methodKey: string, platform: 'pos' | 'mobile', enabled: boolean, refKey?: string) => {
@@ -4738,15 +4684,22 @@ const SettingsPage: React.FC = () => {
                         {t('settings:mobileOrder.requirePaymentDescOn')}
                       </p>
                     </div>
+                    {/* 2026-05-27: UI 토글 의미 반전 — 매장 직원 직관에 맞춤.
+                        ON  (체크) = "즉시 키친 발송" (사용자가 자연스럽게 기대하는 방향)
+                        OFF (해제) = "결제 후 키친 발송" (안전 모드)
+                        DB 컬럼 (`requirePaymentBeforeKitchen`) 의미는 그대로 — 단지 표시만 뒤집어
+                        토글 ON 시 DB 에 false 저장. 라벨/설명도 함께 바뀜. */}
                     <AutoSaveField ref={requirePaymentBeforeKitchenRef} onSave={handleSave} type="toggle">
                       <ToggleSwitch>
                         <ToggleInput
                           type="checkbox"
-                          checked={operationSettings.mobileOrderProcessing?.requirePaymentBeforeKitchen ?? false}
+                          checked={!(operationSettings.mobileOrderProcessing?.requirePaymentBeforeKitchen ?? false)}
                           onChange={(e) => {
+                            // UI ON = 즉시 발송 = DB false
+                            const sendImmediately = e.target.checked;
                             setOperationSettings(prev => ({
                               ...prev,
-                              mobileOrderProcessing: { ...prev.mobileOrderProcessing, requirePaymentBeforeKitchen: e.target.checked }
+                              mobileOrderProcessing: { ...prev.mobileOrderProcessing, requirePaymentBeforeKitchen: !sendImmediately }
                             }));
                             requirePaymentBeforeKitchenRef.current?.triggerSave();
                           }}
@@ -5527,6 +5480,128 @@ const SettingsPage: React.FC = () => {
                       {t('settings:printer.methodGuide.qzDesc')}
                     </p>
 
+                    {/* Auto-Configure & Test — 1-click flagship. Probes every link
+                        (SDK → app → version → signed handshake → silent print)
+                        and shows per-step pass/fail so the shop knows exactly
+                        what to fix. On failure, a "Send diagnostics to support"
+                        button files a SupportTicket automatically. */}
+                    <div style={{ marginBottom: '14px', padding: '16px', background: '#FAFBFF', border: '2px solid #635BFF', borderRadius: '10px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                        <div>
+                          <div style={{ fontSize: '14px', fontWeight: 700, color: '#312E81' }}>
+                            {t('settings:printer.methodGuide.qzAutoTestTitle', 'Auto-Configure & Test')}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#4B5563' }}>
+                            {t('settings:printer.methodGuide.qzAutoTestDesc', 'One click — checks the app, certificate, and silent printing in 5 seconds.')}
+                          </div>
+                        </div>
+                        <button type="button" disabled={qzDiagRunning}
+                          onClick={async () => {
+                            setQzDiagRunning(true);
+                            setQzDiagSteps([]);
+                            setQzDiagTicket(null);
+                            try {
+                              const result = await runQZDiagnostic();
+                              setQzDiagSteps(result.steps);
+                              setQzDiagSummary(result.summary);
+                              if (result.summary?.connected) setQzTrayStatus('connected');
+                              if (result.ok) {
+                                try {
+                                  const printers = await getQZTrayPrinters();
+                                  setQzTrayPrinters(printers);
+                                } catch { /* non-fatal */ }
+                              }
+                            } catch (e: any) {
+                              setQzDiagSteps([{ key: 'crash', label: 'Diagnostic crashed', status: 'failed', detail: String(e?.message || e) }]);
+                            } finally {
+                              setQzDiagRunning(false);
+                            }
+                          }}
+                          style={{
+                            padding: '10px 20px', fontSize: '14px', fontWeight: 700,
+                            border: 'none', borderRadius: '8px',
+                            background: '#635BFF', color: '#fff',
+                            cursor: qzDiagRunning ? 'wait' : 'pointer',
+                            opacity: qzDiagRunning ? 0.6 : 1,
+                            minWidth: '200px',
+                            transition: 'opacity 0.15s'
+                          }}
+                        >{qzDiagRunning ? t('settings:printer.methodGuide.qzAutoTestRunning', 'Testing…') : t('settings:printer.methodGuide.qzAutoTestBtn', 'Auto-Configure & Test')}</button>
+                      </div>
+
+                      {qzDiagSteps.length > 0 && (
+                        <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          {qzDiagSteps.map(s => (
+                            <div key={s.key} style={{
+                              padding: '10px 12px',
+                              background: '#fff',
+                              border: `1px solid ${s.status === 'ok' ? '#A7F3D0' : '#FCA5A5'}`,
+                              borderRadius: '6px',
+                              fontSize: '13px'
+                            }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ color: s.status === 'ok' ? '#059669' : '#DC2626', fontWeight: 700, minWidth: '14px', fontSize: '15px' }}>{s.status === 'ok' ? '✓' : '✗'}</span>
+                                <span style={{ fontWeight: 600, color: '#1F2937' }}>{s.label}</span>
+                              </div>
+                              {s.detail && (
+                                <div style={{ marginLeft: '22px', fontSize: '12px', color: '#6B7280', marginTop: '4px', lineHeight: 1.5 }}>
+                                  {s.detail}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+
+                          {qzDiagSteps.every(s => s.status === 'ok') && (
+                            <div style={{ padding: '10px 12px', background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: '6px', fontSize: '13px', color: '#065F46', fontWeight: 600 }}>
+                              {t('settings:printer.methodGuide.qzAutoTestAllOk', '✓ All good — receipts will print silently with no permission prompt.')}
+                            </div>
+                          )}
+
+                          {qzDiagSteps.some(s => s.status === 'failed') && (
+                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', marginTop: '4px' }}>
+                              <button type="button" disabled={qzDiagSending || !!qzDiagTicket}
+                                onClick={async () => {
+                                  setQzDiagSending(true);
+                                  try {
+                                    const r = await fetch('/api/qz-tray/diagnose', {
+                                      method: 'POST',
+                                      headers: { 'Authorization': `Bearer ${getAuthToken()}`, 'Content-Type': 'application/json' },
+                                      body: JSON.stringify(qzDiagSummary || {})
+                                    });
+                                    const d = await r.json();
+                                    setQzDiagTicket(d?.data?.ticketNumber || 'sent');
+                                  } catch {
+                                    setQzDiagTicket('error');
+                                  } finally {
+                                    setQzDiagSending(false);
+                                  }
+                                }}
+                                style={{
+                                  padding: '8px 14px', fontSize: '13px', fontWeight: 600,
+                                  border: '1px solid #DC2626', borderRadius: '6px',
+                                  background: qzDiagTicket ? '#FEF2F2' : '#fff',
+                                  color: '#DC2626',
+                                  cursor: qzDiagSending || qzDiagTicket ? 'default' : 'pointer',
+                                  opacity: qzDiagSending ? 0.6 : 1
+                                }}
+                              >{qzDiagSending
+                                  ? t('settings:printer.methodGuide.qzSendingDiag', 'Sending…')
+                                  : qzDiagTicket === 'error'
+                                    ? t('settings:printer.methodGuide.qzSendDiagRetry', 'Send failed — retry')
+                                    : qzDiagTicket
+                                      ? t('settings:printer.methodGuide.qzSendDiagSent', 'Sent — support will reply')
+                                      : t('settings:printer.methodGuide.qzSendDiagBtn', 'Send diagnostics to support')}</button>
+                              {qzDiagTicket && qzDiagTicket !== 'error' && (
+                                <span style={{ fontSize: '12px', color: '#6B7280' }}>
+                                  {t('settings:printer.methodGuide.qzTicketRef', 'Reference')}: <code style={{ background: '#F3F4F6', padding: '2px 6px', borderRadius: '4px' }}>{qzDiagTicket}</code>
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
                     {/* Quick action row */}
                     <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '14px' }}>
                       <button type="button"
@@ -6106,6 +6181,45 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                                 <span style={{ fontSize: '13px', color: '#1F2937' }}>{t('settings:printer.workstations.autoPrintAfterPayment')}</span>
                               </label>
                               </AutoSaveField>
+
+                              {/* Auto-print sub-controls: copies + cash drawer. Shop-wide (receiptSettings),
+                                  but shown here so cashier finds them right next to the trigger toggle. */}
+                              {ws.billPrinter?.autoPrint && (
+                                <div style={{ marginTop: '10px', marginLeft: '26px', padding: '10px 12px', background: '#F8F7FF', border: '1px solid #E5E3FF', borderRadius: '6px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                                    <span style={{ fontSize: '13px', color: '#1F2937' }}>{t('settings:printer.workstations.copiesAfterPayment')}</span>
+                                    <div style={{ display: 'flex', gap: '4px' }}>
+                                      {[1, 2, 3].map(n => (
+                                        <AutoSaveField key={n} onSave={handleSave} type="toggle">
+                                        <button type="button"
+                                          onClick={() => setReceiptSettings(prev => ({ ...prev, copiesAfterPayment: n }))}
+                                          style={{
+                                            minWidth: '36px', padding: '6px 10px', fontSize: '13px', fontWeight: 600,
+                                            border: `1px solid ${receiptSettings.copiesAfterPayment === n ? '#635BFF' : '#C7CED6'}`,
+                                            background: receiptSettings.copiesAfterPayment === n ? '#635BFF' : '#fff',
+                                            color: receiptSettings.copiesAfterPayment === n ? '#fff' : '#1F2937',
+                                            borderRadius: '6px', cursor: 'pointer'
+                                          }}
+                                        >{n}</button>
+                                        </AutoSaveField>
+                                      ))}
+                                    </div>
+                                    <span style={{ fontSize: '11px', color: '#6B7280' }}>{t('settings:printer.workstations.copiesHint')}</span>
+                                  </div>
+                                  <AutoSaveField onSave={handleSave} type="toggle">
+                                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={receiptSettings.autoOpenDrawer !== false}
+                                      onChange={(e) => setReceiptSettings(prev => ({ ...prev, autoOpenDrawer: e.target.checked }))}
+                                      style={{ width: '16px', height: '16px', accentColor: '#635BFF' }}
+                                    />
+                                    <span style={{ fontSize: '13px', color: '#1F2937' }}>{t('settings:printer.workstations.autoOpenDrawer')}</span>
+                                  </label>
+                                  </AutoSaveField>
+                                  <div style={{ fontSize: '11px', color: '#9CA3AF', fontStyle: 'italic' }}>{t('settings:printer.workstations.shopWideHint')}</div>
+                                </div>
+                              )}
                             </>
                           )}
                         </div>

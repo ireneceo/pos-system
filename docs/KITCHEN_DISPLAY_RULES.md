@@ -282,3 +282,93 @@
 - 로그인된 staff 이름 헤더 표시 — 우상단 작은 텍스트 + logout 버튼
 - 30분 idle 경고 — 25분 시점 toast 알림 (5분 전 경고)
 - PIN 화면은 매장 critical — TDZ 안전, mount 검증 필수 (메모리 `feedback_debug_real_calls`)
+
+---
+
+## 9. Auto-merge 라운드 표시 (2026-05-27 추가)
+
+> 관련: `docs/ORDER_MERGE_RULES.md` § "2026-05-27 — v3.42 변경" (백엔드 정책)
+
+### 9.1 데이터 모델 (backend)
+
+같은 테이블에 후속 머지가 발생하면, 추가된 아이템에 두 필드가 첨부됨:
+
+| 필드 | 출처 | 의미 |
+|------|------|------|
+| `order_group` | `mergeItemsIntoOrder()` (orders-crud.js) | 라운드 번호 (1=최초 추가, 2=두 번째, …). 원본 아이템은 0 또는 미설정 |
+| `added_at` | 동일 | 머지 시각 (ISO). 매장 타임존 기준 표시 |
+
+`nextGroup = Math.max(...existingGroups) + 1`.
+
+### 9.2 KDS ItemsContainer 그룹화
+
+`KitchenDisplayPage.tsx:1005-1054` 의 ItemsContainer 가 아이템을 `order_group` 으로 정렬해 렌더. **`group > 0` 이고 `group !== prevGroup`** 인 첫 아이템 앞에 divider 삽입:
+
+```
+┌────────────────────────────────────────┐
+│  + ROUND N        · added HH:MM AM/PM  │   ← 노란 띠
+└────────────────────────────────────────┘
+```
+
+스타일 토큰:
+- bg `#FEF3C7`, border `#FCD34D`, color `#92400E`
+- 시각은 매장 타임존 (`storeInfo.timeZone`) 으로 포맷 — CLAUDE.md 타임존 규칙 준수
+
+### 9.3 Socket 트리거 + 자동 ticket 인쇄
+
+| 단계 | 동작 |
+|------|------|
+| 1. backend `mergeItemsIntoOrder` 성공 | socket `order-items-added` emit (room: restaurant_{id}) |
+| 2. KDS 수신 (`KitchenDisplayPage.tsx:~1644-1670`) | `console.log('[KDS] order-items-added')` |
+| 3. KDS 가 `printKitchenTicketViaRawBT` 호출 | `added_at` 기반 필터로 신규 아이템만 추출 |
+| 4. `billPrint.js`의 `generateAdditionalItemsTicketContent` | `** ADDITIONAL ORDER **` 헤더 ticket 출력 |
+
+> 인쇄 경로 상세는 `docs/PRINT_RULES_MATRIX.md` § "2026-05-27 — v3.42 변경" 의 § C 참조.
+
+### 9.4 Order View / Item View 표시
+
+| 뷰 | 표시 |
+|----|------|
+| Order View | 같은 주문 카드 내부 ItemsContainer 에 라운드 divider 삽입 |
+| Item View Pending/Preparing | 그룹핑 키에 `order_group` 영향 없음 (메뉴명 기준 유지). divider 는 Order View 만 |
+
+---
+
+## 10. Floor Plan TableDetailPanel item-level status (2026-05-27 추가, 분리 영역)
+
+> Floor Plan 의 패널에서 item 체크박스 동작이 변경됨. **KDS 의 progression (pending→preparing→ready→served) 과 의미가 분리되므로 cross-link 메모만 남김.**
+
+### 10.1 차이점 요약
+
+| 영역 | 진행 단계 | 사용자 |
+|------|----------|--------|
+| **KDS** (이 문서) | pending → preparing → ready → served (4단계, 자동전진 포함) | 주방 |
+| **Floor Plan TableDetailPanel** | `ready ↔ served` 토글만. `ready` 이전 (pending/preparing) 은 disabled + dot 표시 | 홀 서버 |
+
+### 10.2 4단계 dot 디자인 (Floor Plan 측, 참고용)
+
+| 단계 | bg | dot | 라벨 |
+|------|------|------|------|
+| queued (pending) | #F3F4F6 | #9CA3AF | Queued |
+| cooking (preparing) | #FEF3C7 | #F59E0B | Cooking |
+| ready | #ECFDF5 | #10B981 | Ready |
+| served | #059669 (solid) | white check | Served |
+
+- 모든 `item.status === 'served'` → order.status 자동 `served` 승급
+- 레거시 `completed` 데이터는 `served` 로 매핑 (`toDisplayStatus`)
+- i18n: `floorplan:tableDetailPanel.itemStatus.*` (en/ko/zh/ms)
+- 코드: `dev-frontend/src/pages/FloorPlan/TableDetailPanel.tsx`
+
+### 10.3 KDS 와의 상호작용
+
+- Floor Plan 에서 `ready → served` 토글 시 동일한 `PATCH /:id/items` 사용 → KDS Ready 컬럼에서도 즉시 반영 (소켓 broadcast).
+- KDS Ready 컬럼의 Serve 버튼과 Floor Plan 의 served 토글은 동일 endpoint, 동일 의미. UI 만 다름.
+- **KDS 흐름의 의미적 충돌 (예전 `completed ↔ pending` 토글) 은 해소됨.** 더 이상 KDS 가 Floor Plan 측 토글로 인해 역행하지 않음.
+
+---
+
+## 변경 이력 (보강)
+
+| 날짜 | 변경 |
+|------|------|
+| 2026-05-27 | § 9 Auto-merge 라운드 표시 (order_group/added_at) + `+ ROUND N` divider + `order-items-added` socket + § 10 Floor Plan item-level status (ready↔served) cross-link 메모 추가 |

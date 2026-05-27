@@ -439,8 +439,12 @@ const OrderTrackingPage: React.FC = () => {
   const getDisplayNumber = () => {
     const tableNumber = getTableNumber();
     if (tableNumber) {
-      // Format table number (remove leading T if present, then add T prefix)
-      const cleanNumber = String(tableNumber).replace(/^T/i, '');
+      const tableStr = String(tableNumber);
+      // Floor Plan v2 labels carry their own prefix (e.g. "A-7", "B-12", "VIP-1").
+      // Display as-is — adding "T" turns "A-7" into "TA-7" which is wrong.
+      // Only legacy numeric-only shops (e.g. "5", "12") get the auto T-prefix.
+      if (/[A-Za-z]/.test(tableStr)) return tableStr;
+      const cleanNumber = tableStr.replace(/^T/i, '');
       return `T${cleanNumber}`;
     }
     return getPickupNumber();

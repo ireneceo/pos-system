@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Tabs, Tab, Badge } from '../../components/Common/TabComponents';
+import { printHTMLContent } from '../../utils/billPrint';
 import { useTabParam } from '../../hooks/useTabParam';
 import { formatCurrency, normalizeCurrencyCode, getCurrencySymbol } from '../../utils/currency';
 import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
@@ -877,9 +878,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
 
   const handlePrintInvoice = (invoice: Invoice) => {
     if (!companySettings) { setSuccessMessage('Company settings not loaded. Please try again.'); setShowSuccessModal(true); return; }
-    const invoiceHTML = generateInvoiceHTML(invoice);
-    const printWindow = window.open('', '_blank', 'width=800,height=600');
-    if (printWindow) { printWindow.document.write(invoiceHTML); printWindow.document.close(); setTimeout(() => { printWindow.print(); }, 250); }
+    printHTMLContent(generateInvoiceHTML(invoice), `Invoice ${invoice.invoiceNumber}`);
   };
 
   const handleOpenEmailModal = async (invoice: Invoice) => {

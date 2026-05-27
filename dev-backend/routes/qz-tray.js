@@ -17,6 +17,11 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { authenticateToken } = require('../middleware/auth');
+const SupportTicket = require('../models/SupportTicket');
+const User = require('../models/User');
+const Restaurant = require('../models/Restaurant');
+const { sendNotificationBatch, getSystemAdminIds } = require('../utils/notificationService');
 
 const router = express.Router();
 
@@ -119,25 +124,65 @@ router.get('/installer', (req, res) => {
 
     if (os === 'windows') {
       // .bat — embed cert as `echo`'d lines. Use CRLF so Notepad shows it nicely.
+      //
+      // QZ Tray 2.2.x searches three locations for override.crt (in priority):
+      //   1. Install dir (C:\Program Files\QZ Tray\) — write-protected, skipped
+      //   2. SHARED_DIR  = %PROGRAMDATA%\qz\  — needs admin; QZ checks this FIRST after install dir
+      //   3. USER_DIR    = %APPDATA%\qz\      — per-user, writeable without admin
+      //
+      // We self-elevate via PowerShell so SHARED_DIR is also populated; then we
+      // also write USER_DIR as a fallback so the cert survives even if the user
+      // declines UAC. If UAC is declined we keep going (USER_DIR is still valid
+      // but a lower-priority hit, so the prompt may stay until QZ is restarted).
       const lines = [
         '@echo off',
-        'setlocal',
-        'echo Installing PurpleHere QZ Tray Certificate ...',
-        'set "TARGET=%APPDATA%\\qz"',
-        'if not exist "%TARGET%" mkdir "%TARGET%"',
-        '> "%TARGET%\\override.crt" (',
+        'setlocal EnableDelayedExpansion',
+        '',
+        'rem ---- Self-elevate to admin so we can write to %PROGRAMDATA% ----',
+        'net session >nul 2>&1',
+        'if %errorlevel% neq 0 (',
+        '  echo Requesting administrator permission to install system-wide ...',
+        '  powershell -Command "Start-Process -FilePath \'%~f0\' -Verb RunAs" >nul 2>&1',
+        '  if !errorlevel! neq 0 (',
+        '    echo UAC declined — installing to user folder only ^(lower priority^).',
+        '    goto :USERONLY',
+        '  )',
+        '  exit /b 0',
+        ')',
+        '',
+        'echo Installing PurpleHere QZ Tray Certificate ^(system-wide^) ...',
+        'set "SYSTARGET=%PROGRAMDATA%\\qz"',
+        'if not exist "%SYSTARGET%" mkdir "%SYSTARGET%"',
+        '> "%SYSTARGET%\\override.crt" (',
       ];
+      const certEchoLines = [];
       cert.split('\n').forEach(line => {
-        // `(` `)` `^` `&` `|` `>` `<` `%` 가 cmd 에서 reserved — 안전하게 escape
+        // `(` `)` `^` `&` `|` `>` `<` `%` `!` 가 cmd 에서 reserved — 안전하게 escape
         const escaped = line.replace(/[\^&|<>()%!]/g, '^$&');
-        lines.push(`  echo ${escaped}`);
+        certEchoLines.push(`  echo ${escaped}`);
       });
+      lines.push(...certEchoLines);
       lines.push(')');
+      lines.push('echo   wrote %SYSTARGET%\\override.crt');
+      lines.push('');
+      lines.push(':USERONLY');
+      lines.push('echo Installing user-level fallback ...');
+      lines.push('set "USRTARGET=%APPDATA%\\qz"');
+      lines.push('if not exist "%USRTARGET%" mkdir "%USRTARGET%"');
+      lines.push('> "%USRTARGET%\\override.crt" (');
+      lines.push(...certEchoLines);
+      lines.push(')');
+      lines.push('echo   wrote %USRTARGET%\\override.crt');
+      lines.push('');
       lines.push('echo.');
-      lines.push('echo Certificate installed: %TARGET%\\override.crt');
+      lines.push('echo ============================================');
+      lines.push('echo  Certificate installed.');
+      lines.push('echo ============================================');
       lines.push('echo.');
-      lines.push('echo Next step: right-click the QZ Tray tray icon, choose Exit,');
-      lines.push('echo then launch QZ Tray again from the Start menu.');
+      lines.push('echo Next: right-click the QZ Tray tray icon ^> Exit,');
+      lines.push('echo       then relaunch QZ Tray from the Start menu.');
+      lines.push('echo       After that, return to PurpleHere and press');
+      lines.push('echo       "Auto-Configure ^& Test" in Settings ^> Printer.');
       lines.push('echo.');
       lines.push('pause');
       const body = lines.join('\r\n');
@@ -147,19 +192,40 @@ router.get('/installer', (req, res) => {
     }
 
     if (os === 'mac') {
+      // QZ Tray 2.2 macOS search order:
+      //   /Library/Application Support/qz/  (SHARED_DIR — needs sudo)
+      //   ~/Library/Application Support/qz/  (USER_DIR — no sudo)
+      // Write USER_DIR always (no prompt); attempt SHARED_DIR with sudo for higher
+      // priority. Lowercase "qz" is the official DATA_DIR; older docs sometimes
+      // showed "Qz" but the constant is "qz".
       const body = [
         '#!/bin/bash',
         '# PurpleHere QZ Tray certificate installer (macOS)',
-        'set -e',
-        'TARGET="$HOME/Library/Application Support/Qz"',
-        'mkdir -p "$TARGET"',
-        'cat > "$TARGET/override.crt" <<\'PEM_EOF\'',
+        'set +e',
+        'USR="$HOME/Library/Application Support/qz"',
+        'SYS="/Library/Application Support/qz"',
+        'mkdir -p "$USR"',
+        'cat > "$USR/override.crt" <<\'PEM_EOF\'',
         cert,
         'PEM_EOF',
+        'echo "  wrote $USR/override.crt"',
         'echo ""',
-        'echo "Certificate installed: $TARGET/override.crt"',
+        'echo "Attempting system-wide install (you may be prompted for your password)..."',
+        'if sudo mkdir -p "$SYS" 2>/dev/null && sudo tee "$SYS/override.crt" >/dev/null <<\'PEM_EOF2\'',
+        cert,
+        'PEM_EOF2',
+        'then',
+        '  echo "  wrote $SYS/override.crt"',
+        'else',
+        '  echo "  (skipped system-wide — user-level cert is still valid)"',
+        'fi',
         'echo ""',
-        'echo "Next: right-click the QZ Tray menu-bar icon, choose Exit, then relaunch QZ Tray."',
+        'echo "============================================"',
+        'echo " Certificate installed."',
+        'echo "============================================"',
+        'echo ""',
+        'echo "Next: right-click the QZ Tray menu-bar icon > Exit, then relaunch QZ Tray."',
+        'echo "      Return to PurpleHere and press \"Auto-Configure & Test\" in Settings > Printer."',
         'echo ""',
         'read -p "Press Enter to close..."',
         ''
@@ -169,24 +235,41 @@ router.get('/installer', (req, res) => {
       return;
     }
 
-    // linux
+    // linux — QZ Tray search: /srv/qz/ (SHARED) → ~/.qz/ (USER)
     const body = [
       '#!/bin/bash',
       '# PurpleHere QZ Tray certificate installer (Linux)',
-      'set -e',
-      'TARGET="/usr/share/qz"',
-      'if [ ! -w "$TARGET" ] && [ "$(id -u)" -ne 0 ]; then',
-      '  echo "Need root to write to $TARGET — re-running with sudo..."',
-      '  exec sudo "$0" "$@"',
-      'fi',
-      'mkdir -p "$TARGET"',
-      'cat > "$TARGET/override.crt" <<\'PEM_EOF\'',
+      'set +e',
+      'USR="$HOME/.qz"',
+      'SYS="/srv/qz"',
+      'mkdir -p "$USR"',
+      'cat > "$USR/override.crt" <<\'PEM_EOF\'',
       cert,
       'PEM_EOF',
+      'echo "  wrote $USR/override.crt"',
       'echo ""',
-      'echo "Certificate installed: $TARGET/override.crt"',
+      'if [ "$(id -u)" -ne 0 ]; then',
+      '  echo "Attempting system-wide install (sudo)..."',
+      '  if sudo mkdir -p "$SYS" 2>/dev/null && sudo tee "$SYS/override.crt" >/dev/null <<\'PEM_EOF2\'',
+      cert,
+      'PEM_EOF2',
+      '  then echo "  wrote $SYS/override.crt"',
+      '  else echo "  (skipped system-wide — user-level cert is still valid)"',
+      '  fi',
+      'else',
+      '  mkdir -p "$SYS"',
+      '  cat > "$SYS/override.crt" <<\'PEM_EOF3\'',
+      cert,
+      'PEM_EOF3',
+      '  echo "  wrote $SYS/override.crt"',
+      'fi',
       'echo ""',
-      'echo "Next: kill the QZ Tray process and relaunch it."',
+      'echo "============================================"',
+      'echo " Certificate installed."',
+      'echo "============================================"',
+      'echo ""',
+      'echo "Next: kill the QZ Tray process and relaunch it,"',
+      'echo "      then press \"Auto-Configure & Test\" in PurpleHere."',
       ''
     ].join('\n');
     res.setHeader('Content-Disposition', 'attachment; filename="install-purplehere-cert.sh"');
@@ -194,6 +277,89 @@ router.get('/installer', (req, res) => {
   } catch (err) {
     console.error('[QZ Tray] Installer build failed:', err.message);
     res.status(500).type('text/plain').send('Installer build failed: ' + err.message);
+  }
+});
+
+/**
+ * Remote diagnostics — Settings → Printer → "Send to Support" button.
+ *
+ * The browser collects what it can see locally (QZ Tray version & connection
+ * state, cert handshake result, silent-print probe outcome, user-agent, last
+ * error) and ships it here. We file it as a SupportTicket with category
+ * `printing` so admins see it in the existing inbox, and email System Admins.
+ *
+ * No new model — SupportTicket is the canonical inbox.
+ */
+router.post('/diagnose', authenticateToken, async (req, res) => {
+  try {
+    const payload = req.body || {};
+    const timestamp = Date.now();
+    const random = Math.floor(Math.random() * 1000);
+    const ticketNumber = `QZ-${new Date().getFullYear()}-${String(timestamp % 10000)}-${String(random).padStart(3, '0')}`;
+
+    let restaurantName = null;
+    if (req.user.restaurant_id) {
+      try {
+        const r = await Restaurant.findByPk(req.user.restaurant_id, { attributes: ['name'] });
+        restaurantName = r?.name || null;
+      } catch (_) { /* non-fatal */ }
+    }
+
+    const summaryLines = [
+      `QZ Tray version: ${payload.qzVersion || 'unknown'}`,
+      `Connected:       ${payload.connected ? 'yes' : 'no'}`,
+      `Cert handshake:  ${payload.certHandshake || 'n/a'}`,
+      `Silent print:    ${payload.silentPrint || 'n/a'}`,
+      `Last error:      ${payload.lastError || '(none)'}`,
+      `Print method:    ${payload.method || 'unknown'}`,
+      `User agent:      ${payload.userAgent || req.headers['user-agent'] || 'unknown'}`,
+      `OS guess:        ${payload.os || 'unknown'}`,
+      `Probed at:       ${payload.probedAt || new Date().toISOString()}`,
+    ];
+    const description = summaryLines.join('\n') +
+      '\n\n--- raw diagnostic payload ---\n' + JSON.stringify(payload, null, 2);
+
+    const ticket = await SupportTicket.create({
+      id: `ticket-${timestamp}-${random}`,
+      ticketNumber,
+      customerId: String(req.user.id),
+      customerName: req.user.full_name || req.user.email,
+      customerEmail: req.user.email,
+      customerRole: req.user.role,
+      restaurantId: req.user.restaurant_id || null,
+      restaurantName,
+      subject: `[QZ Tray] printing diagnostic from ${restaurantName || 'shop'}`,
+      description,
+      // SupportTicket.category ENUM doesn't have 'printing' — file as 'technical'.
+      // The "[QZ Tray]" subject prefix makes printing tickets greppable in the admin inbox.
+      category: 'technical',
+      priority: payload.silentPrint === 'failed' || payload.connected === false ? 'high' : 'medium',
+      status: 'open'
+    });
+
+    // Notify System Admins (non-blocking)
+    (async () => {
+      try {
+        const adminIds = await getSystemAdminIds();
+        const filteredIds = (adminIds || []).filter(id => id !== req.user.id);
+        if (filteredIds.length > 0) {
+          await sendNotificationBatch(filteredIds, 'inquiry_received', {
+            subject: `[QZ Tray] ${restaurantName || 'Shop'} reported a printing problem`,
+            text: description,
+            html: '<pre style="font-family:monospace;white-space:pre-wrap;">' +
+                  description.replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])) +
+                  '</pre>'
+          });
+        }
+      } catch (e) {
+        console.error('[QZ Tray diagnostic notification error]', e.message);
+      }
+    })();
+
+    res.status(201).json({ success: true, data: { ticketNumber: ticket.ticketNumber, id: ticket.id } });
+  } catch (error) {
+    console.error('[QZ Tray] diagnose failed:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to file diagnostic report' });
   }
 });
 

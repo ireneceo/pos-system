@@ -60,3 +60,9 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* When the global Mobile Order Alert banner is visible, push the right-side
+   NotificationToaster below it so toasts don't cover the banner's buttons. */
+body.has-mobile-banner [data-notification-toaster] {
+  top: 68px !important;
+}

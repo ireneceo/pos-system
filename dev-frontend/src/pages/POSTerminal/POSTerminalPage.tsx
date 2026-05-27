@@ -15,7 +15,7 @@ import { useStore } from '../../contexts/StoreContext';
 import { useMenu } from '../../contexts/MenuContext';
 import { useCustomer } from '../../contexts/CustomerContext';
 import { useStaff } from '../../contexts/StaffContext';
-import { printBillViaRawBT, printKitchenTicketViaRawBT, getPrinterSettings } from '../../utils/billPrint';
+import { printBillViaRawBT, printKitchenTicketViaRawBT, getPrinterSettings, getActiveBillPrinter } from '../../utils/billPrint';
 import { useAuth } from '../../contexts/AuthContext';
 import CustomerModal from '../../components/Customer/CustomerModal';
 // StaffLoginModal removed - authentication handled by ProtectedRoute
@@ -2044,8 +2044,10 @@ const POSTerminalPage: React.FC = () => {
       paymentStatus: 'pending' as const,
       orderType: orderType,
       orderSource: 'pos' as const,
-      tableNumber: orderType === 'dine-in' && tableNumber ? tableNumber : undefined,
-      floorPlanTableId: orderType === 'dine-in' && floorPlanTableIdFromUrl ? floorPlanTableIdFromUrl : undefined,
+      // 2026-05-27: takeaway with table pins to that table's open bill — same
+      // routing as dine-in. Guest count stays dine-in-only (doesn't apply to takeaway).
+      tableNumber: (orderType === 'dine-in' || orderType === 'takeaway') && tableNumber ? tableNumber : undefined,
+      floorPlanTableId: (orderType === 'dine-in' || orderType === 'takeaway') && floorPlanTableIdFromUrl ? floorPlanTableIdFromUrl : undefined,
       guest_count: orderType === 'dine-in' && guestCount > 0 ? guestCount : null,
       pagerNumber: pagerNumber || undefined,
       cashier_id: user?.id ? Number(user.id) : null,
@@ -2104,6 +2106,69 @@ const POSTerminalPage: React.FC = () => {
       setSelectedCustomerForOrder(null);
       setCustomerSearchQuery('');
 
+      // Kitchen ticket fires on ORDER CREATION (not payment). The trigger is
+      // kitchenPrinter.autoPrint — same toggle the KDS socket listener uses.
+      // Without this branch the "Add order" button (post-paid dine-in flow)
+      // silently dropped tickets unless the shop also had KDS open on screen.
+      try {
+        const printSettings = getPrinterSettings();
+        const printStoreInfo = getStoreInfo();
+        // Master gate (2026-05-28): kitchen autoPrint OFF means no auto-print
+        // even when a station-level toggle is ON. See KDS handler.
+        const _stationPrintersMap = printSettings.kitchenStationPrinters || {};
+        const _kp: any = printSettings.kitchenPrinter || {};
+        const _kpEnabled = _kp.enabled !== false;
+        const _kpAuto = !!_kp.autoPrint;
+        const _stationAutoPrint = Object.values(_stationPrintersMap).some((s: any) => s?.autoPrint);
+        const kitchenAuto = (_kpEnabled && !_kpAuto) ? false : (_kpAuto || _stationAutoPrint);
+        // Telemetry helper — POSTs to /api/qz-tray/diagnose silently so we get a SupportTicket
+        // for every auto-print attempt on the add-order flow.
+        const _tele = (scope: string, extra: any = {}) => {
+          try {
+            const tok = getAuthToken();
+            if (!tok) return;
+            fetch('/api/qz-tray/diagnose', {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${tok}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                scope, orderNumber: savedOrder?.order_number || newOrder.orderNumber,
+                method: 'qztray',
+                userAgent: navigator.userAgent, os: navigator.platform,
+                probedAt: new Date().toISOString(),
+                kitchenEnabled: !!printSettings.kitchenPrinter?.enabled,
+                kitchenAutoPrint: !!printSettings.kitchenPrinter?.autoPrint,
+                stationCount: Object.keys(printSettings.kitchenStationPrinters || {}).length,
+                ...extra
+              })
+            }).catch(()=>{});
+          } catch {}
+        };
+        if (kitchenAuto) {
+          const printData = {
+            ...orderData,
+            orderNumber: savedOrder?.order_number || savedOrder?.orderNumber || newOrder.orderNumber,
+            pickupNumber: savedOrder?.pickup_number || savedOrder?.pickupNumber || (savedOrder?.order_number ? savedOrder.order_number.split('-')[1] : newOrder.pickupNumber),
+            tableNumber: savedOrder?.table_number || tableNumber || undefined,
+            pagerNumber: savedOrder?.pager_number || pagerNumber || undefined,
+            total: savedOrder?.total || orderData.total,
+            cashierName: user?.name || null
+          };
+          setTimeout(() => {
+            printKitchenTicketViaRawBT(printData, printStoreInfo)
+              .then((ok: any) => { if (ok === false) _tele('add-order-kitchen-fail', { reason: 'returned false' }); })
+              .catch(e => { console.error('Auto kitchen print (add-only) failed:', e); _tele('add-order-kitchen-fail', { error: String(e?.message || e) }); });
+          }, 400);
+        } else {
+          _tele('add-order-kitchen-skip', {
+            reason: !printSettings.kitchenPrinter?.enabled ? 'kitchen not enabled'
+                  : !printSettings.kitchenPrinter?.autoPrint ? 'kitchen autoPrint off'
+                  : 'unknown'
+          });
+        }
+      } catch (e) {
+        console.error('Kitchen auto-print on add-order skipped:', e);
+      }
+
       console.log('POS - Order added without payment:', savedOrder?.orderNumber);
     } catch (error) {
       console.error('POS - Error adding order:', error);
@@ -2116,21 +2181,26 @@ const POSTerminalPage: React.FC = () => {
   const handlePayment = async () => {
     if (orderItems.length === 0) return;
 
-    // 같은 테이블에 진행 중 주문이 있으면 "기존 추가 / 별도 생성" 사용자 선택.
-    if (orderType === 'dine-in' && tableNumber && user?.restaurantId) {
+    // 같은 테이블 + 결제전 주문 있으면 자동 머지 (Floor Plan 의 New Order 와 동일).
+    // 2026-05-27 변경 — 매장 카페 실 운영 reality:
+    //   - "결제전" 인 동안 = 손님이 자리에 앉아 추가 주문하는 흐름
+    //   - 별도 주문 만드는 모달은 마찰만 생김 → 항상 머지 (payment_status='pending' 만)
+    //   - 결제 완료 이후에 다시 주문 = 별도 주문 (자연스럽게 머지 후보 X)
+    // order_type 도 무관 (takeaway/dine-in 같은 테이블이면 동일 손님으로 가정).
+    if (tableNumber && user?.restaurantId) {
       try {
         const params = new URLSearchParams({
           restaurant_id: String(user.restaurantId),
-          table_number: tableNumber,
-          order_type: 'dine_in'
+          table_number: tableNumber
         });
         const res = await fetch(`/api/orders/mergeable?${params.toString()}`);
         if (res.ok) {
           const data = await res.json();
           const list: any[] = (data && data.data) || [];
           if (list.length > 0) {
-            setMergeableOrders(list);
-            setShowMergeChoiceModal(true);
+            // 가장 최근 결제전 주문에 자동 머지 — 모달 없이 즉시 진행.
+            setForceMergeOrderId(list[0].id);
+            setShowPaymentModal(true);
             return;
           }
         }
@@ -2239,8 +2309,10 @@ const POSTerminalPage: React.FC = () => {
       paymentStatus: 'completed' as const,
       orderType: orderType,
       orderSource: 'pos' as const,
-      tableNumber: orderType === 'dine-in' && tableNumber ? tableNumber : undefined,
-      floorPlanTableId: orderType === 'dine-in' && floorPlanTableIdFromUrl ? floorPlanTableIdFromUrl : undefined,
+      // 2026-05-27: takeaway with table pins to that table's open bill — same
+      // routing as dine-in. Guest count stays dine-in-only (doesn't apply to takeaway).
+      tableNumber: (orderType === 'dine-in' || orderType === 'takeaway') && tableNumber ? tableNumber : undefined,
+      floorPlanTableId: (orderType === 'dine-in' || orderType === 'takeaway') && floorPlanTableIdFromUrl ? floorPlanTableIdFromUrl : undefined,
       guest_count: orderType === 'dine-in' && guestCount > 0 ? guestCount : null,
       pagerNumber: pagerNumber || undefined,
       cashier_id: user?.id ? Number(user.id) : null,
@@ -2316,7 +2388,42 @@ const POSTerminalPage: React.FC = () => {
         cashierName: user?.name || null
       };
 
-      if (printSettings.billPrinter?.enabled && printSettings.billPrinter?.autoPrint) {
+      // Workstation-aware: use the active workstation's bill printer toggle.
+      // Falls back to legacy global billPrinter for restaurants that haven't migrated.
+      const activeBill = getActiveBillPrinter();
+
+      // Auto-telemetry helper: silently POSTs to /api/qz-tray/diagnose so we get a
+      // SupportTicket on the admin side every time an auto-print path fails or is
+      // skipped. No cashier-visible noise, just turns the silent failure into a
+      // signal we can act on.
+      const _telemetry = (scope: string, extra: any = {}) => {
+        try {
+          const tok = getAuthToken();
+          if (!tok) return;
+          fetch('/api/qz-tray/diagnose', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${tok}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              scope,
+              orderNumber: printData?.orderNumber,
+              method: activeBill?.method || 'unknown',
+              connected: true,
+              certHandshake: 'silent',
+              silentPrint: 'unknown',
+              userAgent: navigator.userAgent,
+              os: navigator.platform,
+              probedAt: new Date().toISOString(),
+              activeBillName: activeBill?.name || '(empty)',
+              activeBillAddress: activeBill?.address || '(empty)',
+              activeBillEnabled: !!activeBill?.enabled,
+              activeBillAutoPrint: !!activeBill?.autoPrint,
+              ...extra
+            })
+          }).catch(() => {});
+        } catch {}
+      };
+
+      if (activeBill?.enabled && activeBill?.autoPrint) {
         // F&B standard: counter copy + customer copy (default 2). User-configurable in Settings → Receipt.
         const copies = Math.max(1, Math.min(3, parseInt(
           (printSettings.receiptSettings && printSettings.receiptSettings.copiesAfterPayment) ||
@@ -2326,24 +2433,61 @@ const POSTerminalPage: React.FC = () => {
           (JSON.parse(localStorage.getItem('receiptSettings') || '{}').autoOpenDrawer !== false);
         (async () => {
           await new Promise(r => setTimeout(r, 300));
+          const fails: any[] = [];
           for (let i = 0; i < copies; i++) {
-            try { await printBillViaRawBT(printData, printStoreInfo); }
-            catch (e) { console.error('Auto bill print failed (copy ' + (i + 1) + '):', e); }
+            const isLast = i === copies - 1;
+            // Bundle the drawer pulse INTO the final receipt's print job so the
+            // raster printer doesn't spit out an orphan blank/garbage page.
+            const dataForCopy = { ...printData, __drawerPulse: !!(autoOpenDrawer && isLast) };
+            try {
+              const ok = await printBillViaRawBT(dataForCopy, printStoreInfo);
+              if (ok === false) fails.push({ copy: i + 1, reason: 'printBillViaRawBT returned false' });
+            } catch (e: any) {
+              console.error('Auto bill print failed (copy ' + (i + 1) + '):', e);
+              fails.push({ copy: i + 1, error: String(e?.message || e) });
+            }
             if (i < copies - 1) await new Promise(r => setTimeout(r, 600));
           }
-          // Kick the cash drawer open after the last copy (silent — only fires for QZ Tray / RawBT)
-          if (autoOpenDrawer) {
-            try { const { openCashDrawer } = await import('../../utils/billPrint'); await openCashDrawer(); }
-            catch (e) { console.warn('Cash drawer auto-open failed:', e && e.message); }
-          }
+          if (fails.length > 0) _telemetry('auto-bill-fail', { copies, fails });
         })();
+      } else {
+        // Toggle says off OR active workstation isn't pointing at an enabled bill printer.
+        // Surface the reason so the shop knows whether to flip a toggle or bind the device.
+        _telemetry('auto-bill-skip', {
+          reason: !activeBill?.enabled ? 'activeBill not enabled' :
+                  !activeBill?.autoPrint ? 'autoPrint toggle off' :
+                  'unknown',
+          workstationCount: (printSettings.workstations || []).length,
+          hasLegacyGlobal: !!(printSettings.billPrinter && printSettings.billPrinter.enabled)
+        });
       }
 
-      const kitchenAuto = printSettings.kitchenPrinter?.enabled && printSettings.kitchenPrinter?.autoPrint;
+      // Kitchen auto-print master gate (2026-05-28): kitchen autoPrint OFF must
+      // hard-block — even if a station-level toggle is ON. Operational trust.
+      const _stationPrintersMap = printSettings.kitchenStationPrinters || {};
+      const _kp: any = printSettings.kitchenPrinter || {};
+      const _kpEnabled = _kp.enabled !== false;
+      const _kpAuto = !!_kp.autoPrint;
+      const _stationAutoPrint = Object.values(_stationPrintersMap).some((s: any) => s?.autoPrint);
+      const kitchenAuto = (_kpEnabled && !_kpAuto) ? false : (_kpAuto || _stationAutoPrint);
       if (kitchenAuto) {
         setTimeout(() => {
-          printKitchenTicketViaRawBT(printData, printStoreInfo).catch(e => console.error('Auto kitchen print failed:', e));
+          printKitchenTicketViaRawBT(printData, printStoreInfo)
+            .then((ok: any) => {
+              if (ok === false) _telemetry('auto-kitchen-fail', { reason: 'returned false' });
+            })
+            .catch((e: any) => {
+              console.error('Auto kitchen print failed:', e);
+              _telemetry('auto-kitchen-fail', { error: String(e?.message || e) });
+            });
         }, 800);
+      } else {
+        _telemetry('auto-kitchen-skip', {
+          reason: 'no kitchen target — global off and no station autoPrint',
+          stationCount: Object.keys(_stationPrintersMap).length,
+          globalKitchenEnabled: !!printSettings.kitchenPrinter?.enabled,
+          globalKitchenAutoPrint: !!printSettings.kitchenPrinter?.autoPrint
+        });
       }
 
       // Clear the order
@@ -3050,19 +3194,24 @@ const POSTerminalPage: React.FC = () => {
             )}
           </CustomerSearchSection>
 
-          {orderType === 'dine-in' && availableTables.length > 0 && (
+          {/* Table input shown for BOTH dine-in AND takeaway.
+              2026-05-27: takeaway can also pin to a table — the shop wants the
+              order to land on that table's open bill (e.g. a guest at T20
+              orders a coffee to go). Guest count stays dine-in-only because
+              it doesn't apply to takeaway. */}
+          {(orderType === 'dine-in' || orderType === 'takeaway') && availableTables.length > 0 && (
             <TableNumberSection>
               <TableNumberLabel>Table Number:</TableNumberLabel>
               <TableNumberSelect
                 value={tableNumber}
                 onChange={(e) => setTableNumber(e.target.value)}
               >
-                <option value="">{'Free Seating'}</option>
+                <option value="">{orderType === 'takeaway' ? 'No table (counter pickup)' : 'Free Seating'}</option>
                 {availableTables.map(table => (
                   <option key={table} value={table}>{table}</option>
                 ))}
               </TableNumberSelect>
-              {tableNumber && (
+              {orderType === 'dine-in' && tableNumber && (
                 <>
                   <TableNumberLabel>Guests:</TableNumberLabel>
                   <TableNumberSelect

@@ -213,11 +213,17 @@ const CategoryTabs = styled.div`
   display: flex;
   gap: 24px;
   overflow-x: auto;
+  overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   margin: 0 0 16px 0;
   padding: 0;
   border-bottom: 1px solid #C7CED6;
+  /* Lock horizontal scroll — kills vertical wobble during pan. */
+  touch-action: pan-x;
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: none;
+  white-space: nowrap;
 
   &::-webkit-scrollbar {
     display: none;

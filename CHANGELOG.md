@@ -6,7 +6,38 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
-### 2026-05-27 (운영 배포 6회 누적)
+---
+
+## [v3.43] — 2026-05-27 배포 (매장 도입 직전 critical fix + 누적 backstage 정식화)
+
+### 2026-05-27 매장 도입 critical fix
+- **AutoPrint master gate** — `kitchenPrinter.autoPrint=false` 면 station-level 토글이 ON 이어도 자동 인쇄 절대 차단. 6곳 일괄 (KDS x2 / POS x2 / FloorPlan / LiveOrders). 매장 운영 신뢰: 사용자가 OFF 둔 설정이 station 토글로 우회되어 browser print dialog 가 뜨던 사례 차단
+- **신규주문 banner 개편** — 보라→emerald 그라데이션(`#10B981→#059669`), zIndex 9999→10001 (NotificationToaster 위), body.has-mobile-banner 클래스로 우측 toaster top: 68 push (View/X 버튼 안 가림), X 28x28→36x36 + type="button" 중복 제거
+- **Customer Display socket cart cache** — `services/socketService.js` 매장별 in-memory cart cache, reconnect 시 last cart-update / pos-customer-update 자동 replay. cart-clear / checkout-complete 시 evict, 60min TTL. Floor Plan/POS 표시 내용이 일정시간 후 사라지던 사례 차단
+- **Customer Display 자동오픈 default ON** — localStorage 값이 `'0'` 명시일 때만 OFF, 그 외 enable. 매장 도입 첫날 staff 가 토글 모르고 지나가도 동작
+- **Customer Display 크기 키움** — LeftPanel 360→440 / Keypad 14px→22px padding + 폰트 20→28 / 전화 24→38px (tabular-nums) / OrderInfo / Member / SummaryRow 폰트 일괄 키움 / 1024px breakpoint
+- **Receipt logo endpoint 운영 path fix** — `path.join(__dirname,'..',...)` → `path.resolve('/var/www/uploads', rel)` + path traversal 가드 + data: URL 처리. 어떤 매장의 receipt-logo 도 모두 404 반환하던 핵심 버그 fix. 매장 16 (운영) 200 OK + PNG raster 확인
+- **billPrint.js img src 정규식 fix** — `/^https?:\/\//` → `/^(data:|https?:\/\/)/`. StoreContext 의 base64 dataUrl 이 `https://.../data:image/...` broken URL 로 변환되어 로고가 모든 인쇄 경로에서 깨지던 버그 fix. POS / LiveOrders / OrderDetailModal View Receipt / 모바일 ReceiptShare 모두 자동 적용
+- **Brand Menu 카테고리 필수** — `BrandMenusPage.tsx` label `*` + select required + handleSave validation
+- **Brand Menu 카테고리 필터** — ListControlsBar 의 검색 옆 select (별도 탭 X), categories lazy load
+- **Brand Menu fully locked = View** — Restaurant MenuManagement 에서 brand-linked 이고 lock ≥ 4 면 Edit → View 라벨 (사용자 confusion 해결)
+- **Floor Plan TableDetailPanel item 단계 분리** — 체크박스 `pending↔completed` → `ready↔served`. ItemStatusPill 4단계 dot (Queued/Cooking/Ready/Served), pending/preparing 은 disabled + 단계 dot 만, 모든 item served → order.status='served' 자동 승급. legacy `completed` 도 `served` 매핑. i18n 4언어
+- **Mobile orders status override** — `routes/orders-crud.js:386` `source='mobile'` 일 때 매장 setting `requirePaymentBeforeKitchen` 으로 status 강제 override. 모바일 PaymentPage 가 `status:'outstanding'` 하드코딩으로 setting 무시하던 버그 fix
+- **KDS +Round N divider + auto-print** — `order_group` 별 노란 띠 divider (`#FEF3C7`/`#FCD34D`) + `added_at` 시각 표시. `order-items-added` socket → printKitchenTicketViaRawBT 자동 호출 (added_at 기반 필터, `** ADDITIONAL ORDER **` ticket)
+- **Auto-merge 조건 완화 + status preservation** — order_type 필터 제거 (dine_in ↔ takeaway 무관), payment_method 필터 제거, Mobile→Mobile customer 검사 제거 (guest 도 머지). 머지 시 기존 `outstanding` 보존
+- 운영 critical 페이지 mount 검증 6/6 통과 (POS / KDS / Floor Plan / Settings Printer / Live Orders / Customer Display)
+- 문서화: ORDER_MERGE_RULES / KITCHEN_DISPLAY_RULES / PRINT_RULES_MATRIX 에 오늘 변경 반영 (총 ~230줄)
+
+### 2026-05-27 backstage 누적 (정식화)
+- /글쓰기 템플릿 v3 확정 — 5비트→4비트(HOOK/문제/해결/결과), 15초→13초, CTA 제거 (로고 별도 클립)
+  - BRAND CONCEPT v3 — locked 섹션(STYLE/VISUAL/CAMERA/TYPOGRAPHY/SOUND/NEGATIVE) video_prompt 포함, 4-BEAT STORY는 Claude 참조용(video_prompt 제외)
+  - SPACE 생성규칙 — 공간 설명만 (분위기/시간대 묘사 제외, 글자수 최적화)
+  - CASTING 생성규칙 — 한국인 명시 + Model-level beautiful face + 긍정형 복장규칙만 (NO apron 같은 부정형 금지)
+  - CAMERA 생성규칙 — Slow Push-in, Pull-back, Slider Drift 등 씨댄스 호환 카메라워크
+  - POS SCENE 규칙 — side profile / over-the-shoulder / 화면 중심 금지
+  - NARRATION 규칙 — 선택적, 무음 선호
+  - 구분자 최적화 — ═══(47자) → ───(3자) 변경으로 글자수 절약
+- E-Invoice 글 (id 78/79/80) video_prompt v3 재생성 — 3,148자 (씨댄스 4000자 한도 내)
 - Floor Plan zone 격리 (orders.floor_plan_table_id) — 다중 zone 매장 같은 tableNumber 충돌 해결, label 우선 매핑
 - Customer Display 풍부화 — 주문 정보 + 회원 카드 좌측 패널, 키패드 자동 hide. POSTerminal 빈 카트 emit skip
 - Emergency Routing Mode — 매장 운영 critical 비상 토글, 빨간 카드 + Pre-flight 좌/우 비교 + Troubleshoot modal

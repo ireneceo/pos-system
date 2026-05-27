@@ -2,7 +2,59 @@
 // 마운트: /api/restaurants
 
 const express = require('express');
+const fs = require('fs');
+const path = require('path');
+const sharp = require('sharp');
 const router = express.Router();
+
+// ─── Receipt logo as PNG raster (server-side conversion) ──────────────────
+// SVG / JPG / PNG 무관 — 모두 80mm-thermal-friendly PNG raster 로 변환 응답.
+// 매장이 SVG 업로드 + QZ Tray pixel/html render 가 SVG 못 fetch 하거나 못
+// rasterize 하던 문제 (2026-05-27 매장 The Fire 영업 critical) 의 근본 해결.
+// 익명 endpoint — 영수증 인쇄 흐름 안에서 직접 fetch.
+// NOTE: no `.png` extension on the path — nginx routes `*.png` requests to the
+// static-file location *before* `/api/` proxy_pass (regex location precedence),
+// so a `.png` URL would never reach the backend. We respond with content-type
+// image/png regardless and the browser renders fine.
+router.get('/:id/receipt-logo', async (req, res) => {
+  try {
+    const r = await Restaurant.findByPk(req.params.id, { attributes: ['printer_settings'] });
+    if (!r) return res.status(404).send();
+    const ps = r.printer_settings || {};
+    const rs = ps.receiptSettings || {};
+    const logoRef = rs.receiptLogo;
+    if (!logoRef) return res.status(404).send();
+    let buf;
+    if (logoRef.startsWith('http')) {
+      const resp = await fetch(logoRef);
+      if (!resp.ok) return res.status(502).send();
+      buf = Buffer.from(await resp.arrayBuffer());
+    } else if (logoRef.startsWith('data:')) {
+      // base64 data URL — strip header, decode body. Older uploads may have stored this.
+      const comma = logoRef.indexOf(',');
+      if (comma < 0) return res.status(400).send();
+      buf = Buffer.from(logoRef.slice(comma + 1), 'base64');
+    } else {
+      // Relative path → shared uploads root (/var/www/uploads), matching server.js
+      // `app.use('/uploads', express.static('/var/www/uploads'))`. The previous
+      // `path.join(__dirname, '..', ...)` resolved to <backend>/uploads which
+      // does not exist — silently 404'd for every restaurant's receipt logo.
+      const uploadsRoot = '/var/www/uploads';
+      const rel = logoRef.replace(/^\/?uploads\//, '').replace(/^\//, '');
+      const filePath = path.resolve(uploadsRoot, rel);
+      if (!filePath.startsWith(uploadsRoot)) return res.status(403).send();
+      if (!fs.existsSync(filePath)) return res.status(404).send();
+      buf = fs.readFileSync(filePath);
+    }
+    const png = await sharp(buf, { density: 300 }).resize(480, 160, { fit: 'inside', background: { r: 255, g: 255, b: 255, alpha: 1 } }).flatten({ background: '#fff' }).png().toBuffer();
+    res.setHeader('Cache-Control', 'public, max-age=300');
+    res.type('png').send(png);
+  } catch (e) {
+    console.error('[receipt-logo.png]', e.message);
+    res.status(500).send();
+  }
+});
+
 require('../models'); // Load associations
 const Restaurant = require('../models/Restaurant');
 const User = require('../models/User');
@@ -459,7 +511,12 @@ router.get('/:id/table-status', authenticateToken, async (req, res) => {
       where: {
         restaurant_id: restaurantId,
         table_number: { [Op.ne]: null },
-        order_type: 'dine_in',
+        // 2026-05-27: order_type filter removed — a takeaway order with a table
+        // number is still "on that table" from the floor's perspective (guest
+        // grabbing something to-go from their seat). Floor Plan / TableDetail
+        // panel needs to see both dine_in AND takeaway-with-table on the same
+        // table card so staff don't print two unrelated tickets.
+        order_type: { [Op.in]: ['dine_in', 'takeaway'] },
         status: { [Op.notIn]: ['cancelled'] },
         [Op.or]: [{ is_deleted: false }, { is_deleted: null }],
         createdAt: { [Op.between]: [todayStartUTC, todayEndUTC] }

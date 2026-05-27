@@ -181,18 +181,29 @@ const AutoSaveField = forwardRef<AutoSaveHandle, AutoSaveFieldProps>(({
     return () => { mountedRef.current = false; clearTimers(); };
   }, [clearTimers]);
 
-  // Auto-intercept onChange of direct children (no ref needed for simple fields)
-  const enhancedChildren = React.Children.map(children, child => {
-    if (!React.isValidElement(child)) return child;
-    const orig = (child.props as any).onChange;
-    if (typeof orig !== 'function') return child;
-    return React.cloneElement(child as React.ReactElement<any>, {
-      onChange: (...args: any[]) => {
-        orig(...args);
-        triggerSave();
-      },
-    });
-  });
+  // Auto-intercept onChange of children — recurse into wrappers (label, div, etc.)
+  // so `<AutoSaveField><label><input onChange={...}/></label></AutoSaveField>`
+  // also auto-saves. Previously only direct-child onChange was hooked, which
+  // silently dropped saves on every label-wrapped toggle (cash drawer / copies
+  // / workstation autoPrint), so the cashier toggled them but they never
+  // persisted — autoprint conditions stayed false and nothing fired.
+  const enhance = (node: React.ReactNode): React.ReactNode => {
+    if (!React.isValidElement(node)) return node;
+    const props: any = node.props || {};
+    const orig = props.onChange;
+    if (typeof orig === 'function') {
+      return React.cloneElement(node as React.ReactElement<any>, {
+        onChange: (...args: any[]) => { orig(...args); triggerSave(); },
+      });
+    }
+    if (props.children) {
+      return React.cloneElement(node as React.ReactElement<any>, {
+        children: React.Children.map(props.children, enhance),
+      });
+    }
+    return node;
+  };
+  const enhancedChildren = React.Children.map(children, enhance);
 
   const icon = status === 'saving'
     ? <Spinner />

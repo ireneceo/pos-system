@@ -942,9 +942,19 @@ const KitchenDisplayPage: React.FC = () => {
       playNotificationSoundRef.current(orderItems);
 
       // ─── Auto-print kitchen ticket ───
+      // Master gate: if the shop uses kitchenPrinter and explicitly turned its
+      // autoPrint OFF, NEVER auto-print — even when a station-level toggle is
+      // ON. Station-only shops (no global kitchenPrinter) fall through to the
+      // station check. 2026-05-28 — master OFF + station ON was firing browser
+      // print dialogs the user did not authorize. Operational trust > convenience.
       try {
         const printerSettings = getBillPrinterSettings();
-        const shouldAutoPrint = printerSettings.kitchenPrinter?.enabled && printerSettings.kitchenPrinter?.autoPrint;
+        const kp: any = printerSettings.kitchenPrinter || {};
+        const kpEnabled = kp.enabled !== false;
+        const kpAuto = !!kp.autoPrint;
+        if (kpEnabled && !kpAuto) return; // master OFF — absolute block
+        const _stationAutoPrint = Object.values(printerSettings.kitchenStationPrinters || {}).some((s: any) => s?.autoPrint);
+        const shouldAutoPrint = kpAuto || _stationAutoPrint;
 
         if (shouldAutoPrint) {
           const storeInfo = getStoreInfo();
@@ -985,6 +995,77 @@ const KitchenDisplayPage: React.FC = () => {
         }
       } catch (err) {
         console.error('Auto-print error:', err);
+      }
+    });
+
+    // 2026-05-27: order-items-added — when an existing order gets new items
+    // merged in (POS / mobile re-order on the same table), auto-print a
+    // kitchen ticket for ONLY the newly added items. The original ticket
+    // already printed when the order was first created; reprinting everything
+    // would duplicate work. Honors the same shouldAutoPrint guard as
+    // order-created so shops that disable auto-print stay opted-out.
+    newSocket.on('order-items-added', (data: {
+      orderId: number;
+      orderNumber: string;
+      tableNumber: string | null;
+      orderGroup: number;
+      addedItems: any[];
+      itemCount: number;
+    }) => {
+      console.log('[KDS] order-items-added', data.orderId, `+Round ${data.orderGroup}`, data.addedItems?.length, 'items');
+      playNotificationSoundRef.current(data.addedItems || []);
+
+      try {
+        const printerSettings = getBillPrinterSettings();
+        // Same master-gate as the order-created handler — kitchen autoPrint OFF
+        // means OFF, regardless of station-level toggles.
+        const kp: any = printerSettings.kitchenPrinter || {};
+        const kpEnabled = kp.enabled !== false;
+        const kpAuto = !!kp.autoPrint;
+        if (kpEnabled && !kpAuto) return; // master OFF — absolute block
+        const _stationAutoPrint = Object.values(printerSettings.kitchenStationPrinters || {}).some((s: any) => s?.autoPrint);
+        const shouldAutoPrint = kpAuto || _stationAutoPrint;
+        if (!shouldAutoPrint) return;
+
+        const storeInfo = getStoreInfo();
+        // Mark every addedItem with `added_at` so generateHTMLAdditionalItemsTicket
+        // (billPrint.js) filters to just these and renders the "+ ROUND N" ticket.
+        const now = new Date().toISOString();
+        const printItems = (data.addedItems || []).map((item: any) => {
+          let opts = item.options || [];
+          if (typeof opts === 'string') { try { opts = JSON.parse(opts); } catch { opts = []; } }
+          if (!Array.isArray(opts)) opts = [];
+          return {
+            menuItem: {
+              name: item.menu_item_name || item.name || (item.menuItem && item.menuItem.name) || 'Unknown Item',
+              price: parseFloat(item.price || '0'),
+              is_set_menu: item.is_set_menu || false,
+              set_items: item.set_items || []
+            },
+            quantity: item.quantity || 1,
+            options: opts,
+            added_at: item.added_at || now,
+            order_group: item.order_group || data.orderGroup
+          };
+        });
+        const printOrderData = {
+          orderNumber: data.orderNumber,
+          pickupNumber: (data.orderNumber || '').split('-')[1] || (data.orderNumber || '').slice(-3),
+          date: new Date(),
+          orderType: 'dine_in',
+          orderSource: 'pos',
+          tableNumber: data.tableNumber || null,
+          pagerNumber: null,
+          customerName: 'Walk-in Customer',
+          groupLabel: `+Round ${data.orderGroup}`,
+          items: printItems,
+          notes: ''
+        };
+        printKitchenTicketViaRawBT(printOrderData as any, storeInfo)
+          .then((ok) => { if (ok) console.log('[KDS] additional-items ticket auto-printed for', data.orderNumber, `+Round ${data.orderGroup}`); })
+          .catch(err => console.error('[KDS] additional-items auto-print failed:', err));
+      } catch (err) {
+        console.error('[KDS] order-items-added handler error:', err);
       }
     });
 
@@ -1542,7 +1623,7 @@ const KitchenDisplayPage: React.FC = () => {
         <OrderHeader>
           <OrderLeft>
             <OrderNumber>
-              {order.tableNumber ? `T${order.tableNumber.replace(/^T/i, '')}` :
+              {order.tableNumber ? (/[A-Za-z]/.test(String(order.tableNumber)) ? String(order.tableNumber) : `T${String(order.tableNumber).replace(/^T/i, '')}`) :
                order.pagerNumber ? `P${order.pagerNumber}` : `#${order.pickupNumber}`}
             </OrderNumber>
             {order.orderType === 'takeaway' && (
@@ -1571,10 +1652,33 @@ const KitchenDisplayPage: React.FC = () => {
           <ProgressText>{completedItems}/{totalItems}</ProgressText>
         </ProgressContainer>}
 
-        {/* Items */}
+        {/* Items — grouped by order_group with a clear divider when a new
+            "+ Round" of items is added to the same order. Lets cooks see at a
+            glance which items came in later vs the original ticket so they
+            don't accidentally cook the originals again. */}
         <ItemsContainer>
-          {visibleItems.map((item) => (
+          {visibleItems.map((item, idx) => {
+            const itemGroup = (item as any).order_group || 0;
+            const prevGroup = idx > 0 ? ((visibleItems[idx - 1] as any).order_group || 0) : 0;
+            const isGroupStart = itemGroup > 0 && itemGroup !== prevGroup;
+            const addedAt = (item as any).added_at;
+            const addedAtLabel = addedAt
+              ? new Date(addedAt).toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: true })
+              : null;
+            return (
             <React.Fragment key={item.id}>
+              {isGroupStart && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                  margin: '8px 0 4px', padding: '4px 8px',
+                  background: '#FEF3C7', border: '1px solid #FCD34D',
+                  borderRadius: '6px', fontSize: '11px', fontWeight: 700,
+                  color: '#92400E', letterSpacing: '0.3px'
+                }}>
+                  <span>+ ROUND {itemGroup}</span>
+                  {addedAtLabel && <span style={{ fontWeight: 500, opacity: 0.8 }}>· added {addedAtLabel}</span>}
+                </div>
+              )}
               <ItemRow done={isItemDoneForColumn(order.status, item.status || 'pending') && order.status !== 'pending'}>
                 <ItemInfo>
                   {item.is_set_menu ? (
@@ -1613,7 +1717,15 @@ const KitchenDisplayPage: React.FC = () => {
                 {!item.is_set_menu && totalItems === 1 && order.status === 'pending' && (
                   <RevertBtn
                     style={{ padding: '6px 8px', marginRight: 4 }}
-                    onClick={() => printOrderTicket(order)}
+                    onClick={() => {
+                      // Honor the active station filter so the kitchen-only
+                      // ticket prints just the items the user is looking at,
+                      // not the entire order across all stations.
+                      const visibleItems = selectedStation === 'all'
+                        ? order.items
+                        : order.items.filter(it => isItemInSelectedStation(it.name));
+                      printOrderTicket(order, visibleItems);
+                    }}
                     title="Print Kitchen Ticket"
                   >
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
@@ -1655,13 +1767,19 @@ const KitchenDisplayPage: React.FC = () => {
                 </SetItemsWrap>
               )}
             </React.Fragment>
-          ))}
+          );
+          })}
         </ItemsContainer>
 
         {/* Actions */}
         {order.status === 'pending' && totalItems > 1 && (
           <ActionRow>
-            <RevertBtn style={{ flex: 'none', padding: '8px 10px' }} onClick={() => printOrderTicket(order)} title="Print Kitchen Ticket">
+            <RevertBtn style={{ flex: 'none', padding: '8px 10px' }} onClick={() => {
+              const visibleItems = selectedStation === 'all'
+                ? order.items
+                : order.items.filter(it => isItemInSelectedStation(it.name));
+              printOrderTicket(order, visibleItems);
+            }} title="Print Kitchen Ticket">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
             </RevertBtn>
             <ActionBtn color="#F59E0B" onClick={() => markAllItemsAndMove(order.id, 'preparing')}>
@@ -1733,7 +1851,7 @@ const KitchenDisplayPage: React.FC = () => {
     // pending/preparing 주문에서 item.status가 pending인 아이템 수집
     orders.filter(o => ['pending', 'preparing'].includes(o.status)).forEach(order => {
       const label = order.tableNumber
-        ? `T${order.tableNumber.replace(/^T/i, '')}`
+        ? (/[A-Za-z]/.test(String(order.tableNumber)) ? String(order.tableNumber) : `T${String(order.tableNumber).replace(/^T/i, '')}`)
         : order.pagerNumber
         ? `P${order.pagerNumber}`
         : `#${order.pickupNumber}`;
@@ -2149,7 +2267,7 @@ const KitchenDisplayPage: React.FC = () => {
 
       orders.filter(o => ['preparing', 'pending'].includes(o.status)).forEach(order => {
         const label = order.tableNumber
-          ? `T${order.tableNumber.replace(/^T/i, '')}`
+          ? (/[A-Za-z]/.test(String(order.tableNumber)) ? String(order.tableNumber) : `T${String(order.tableNumber).replace(/^T/i, '')}`)
           : order.pagerNumber
           ? `P${order.pagerNumber}`
           : `#${order.pickupNumber}`;
@@ -2201,7 +2319,7 @@ const KitchenDisplayPage: React.FC = () => {
     // 2) 배치에 없는 preparing 아이템 — 각각 개별 카드 (합치지 않음)
     orders.filter(o => o.status === 'preparing').forEach(order => {
       const label = order.tableNumber
-        ? `T${order.tableNumber.replace(/^T/i, '')}`
+        ? (/[A-Za-z]/.test(String(order.tableNumber)) ? String(order.tableNumber) : `T${String(order.tableNumber).replace(/^T/i, '')}`)
         : order.pagerNumber
         ? `P${order.pagerNumber}`
         : `#${order.pickupNumber}`;
@@ -2337,7 +2455,7 @@ const KitchenDisplayPage: React.FC = () => {
           <OrderHeader>
             <OrderLeft>
               <OrderNumber>
-                {order.tableNumber ? `T${order.tableNumber.replace(/^T/i, '')}` :
+                {order.tableNumber ? (/[A-Za-z]/.test(String(order.tableNumber)) ? String(order.tableNumber) : `T${String(order.tableNumber).replace(/^T/i, '')}`) :
                  order.pagerNumber ? `P${order.pagerNumber}` : `#${order.pickupNumber}`}
               </OrderNumber>
               {order.orderType === 'takeaway' && <OrderTypeBadge>{t('kitchen:kitchenDisplayPage.takeaway')}</OrderTypeBadge>}

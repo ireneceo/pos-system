@@ -1504,9 +1504,18 @@ const MenuManagementPage: React.FC = () => {
                     return null;
                   })()}
                   <MenuActions>
-                    <ActionButton onClick={() => handleEditItem(item)}>
-                      Edit
-                    </ActionButton>
+                    {(() => {
+                      const locks = item.brand_menu_locks_snapshot || {};
+                      const lockedKeys = Object.keys(locks).filter(k => locks[k]);
+                      // Fully locked = all editable fields are locked. Show "View" so staff
+                      // know it's read-only (instead of clicking Edit and finding everything disabled).
+                      const fullyLocked = !!item.brand_menu_id && lockedKeys.length >= 4;
+                      return (
+                        <ActionButton onClick={() => handleEditItem(item)}>
+                          {fullyLocked ? (t('common:button.view', 'View') as string) : 'Edit'}
+                        </ActionButton>
+                      );
+                    })()}
                     <IconButton onClick={() => handleCopyItem(item)} title="Copy">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                         <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" strokeWidth="2"/>

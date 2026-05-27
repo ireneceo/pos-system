@@ -19,7 +19,7 @@ const Container = styled.div`
 
 const Header = styled.div`
   background: white;
-  padding: 14px 32px;
+  padding: 18px 36px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -32,17 +32,22 @@ const Main = styled.div`
   overflow: hidden;
 `;
 
-// 좌측: 전화번호 + 고객정보
+// 좌측: 전화번호 + 고객정보. 1280×800 외부 모니터 기준 더 크고 명확하게.
 const LeftPanel = styled.div`
-  width: 360px;
-  min-width: 360px;
+  width: 440px;
+  min-width: 440px;
   background: white;
   border-right: 1px solid #C7CED6;
   display: flex;
   flex-direction: column;
-  padding: 20px;
+  padding: 28px;
   overflow-y: auto;
 
+  @media (max-width: 1024px) {
+    width: 340px;
+    min-width: 340px;
+    padding: 20px;
+  }
   @media (max-width: 768px) {
     width: 280px;
     min-width: 280px;
@@ -55,45 +60,66 @@ const RightPanel = styled.div`
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 20px 24px;
+  padding: 28px 36px;
   overflow-y: auto;
+
+  @media (max-width: 1024px) {
+    padding: 22px 26px;
+  }
 `;
 
 const KeypadGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
+  gap: 10px;
 `;
 
 const Key = styled.button`
-  padding: 14px;
-  font-size: 20px;
-  font-weight: 500;
+  padding: 22px 12px;
+  font-size: 28px;
+  font-weight: 600;
   background: #F4F6F9;
   border: 1px solid #C7CED6;
-  border-radius: 8px;
+  border-radius: 10px;
   color: #0A2540;
   cursor: pointer;
-  &:active { background: #635BFF; color: white; }
+  transition: background 0.08s, transform 0.08s;
+  &:hover { background: #E6EBF1; }
+  &:active { background: #635BFF; color: white; transform: scale(0.97); }
+
+  @media (max-width: 1024px) {
+    padding: 18px 10px;
+    font-size: 24px;
+  }
 `;
 
 const ItemRow = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  padding: 12px 0;
+  padding: 14px 0;
+  font-size: 17px;
   border-bottom: 1px solid #F1F4F8;
   animation: ${fadeIn} 0.2s ease;
   &:last-child { border-bottom: none; }
+
+  @media (max-width: 1024px) {
+    padding: 11px 0;
+    font-size: 15px;
+  }
 `;
 
 const SummaryRow = styled.div<{ bold?: boolean }>`
   display: flex;
   justify-content: space-between;
-  padding: 3px 0;
-  font-size: ${p => p.bold ? '18px' : '13px'};
-  font-weight: ${p => p.bold ? 700 : 400};
+  padding: 5px 0;
+  font-size: ${p => p.bold ? '24px' : '16px'};
+  font-weight: ${p => p.bold ? 700 : 500};
   color: ${p => p.bold ? '#0A2540' : '#4B5563'};
+
+  @media (max-width: 1024px) {
+    font-size: ${p => p.bold ? '20px' : '14px'};
+  }
 `;
 
 interface CartItem { name: string; quantity: number; price: number; options?: string[]; }
@@ -290,14 +316,14 @@ const CheckoutDisplayPage: React.FC = () => {
     return (
       <Container>
         <Header>
-          <h1 style={{ fontSize: '18px', fontWeight: 600, color: '#0A2540', margin: 0 }}>{storeName}</h1>
+          <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#0A2540', margin: 0 }}>{storeName}</h1>
         </Header>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
-          <div style={{ fontSize: '48px' }}>✓</div>
-          <div style={{ fontSize: '28px', fontWeight: 300, color: '#10B981' }}>{t('pos:checkoutDisplayPage.thankYou')}</div>
-          <div style={{ fontSize: '16px', color: '#4B5563' }}>Order {completedOrder.orderNumber}</div>
-          <div style={{ fontSize: '24px', fontWeight: 700, color: '#0A2540', marginTop: '8px' }}>{formatCurrency(completedOrder.total, completedOrder.currency)}</div>
-          {customer && <div style={{ fontSize: '14px', color: '#635BFF', marginTop: '4px' }}>⭐ Points earned</div>}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '18px' }}>
+          <div style={{ fontSize: '88px', color: '#10B981', lineHeight: 1 }}>✓</div>
+          <div style={{ fontSize: '44px', fontWeight: 600, color: '#10B981' }}>{t('pos:checkoutDisplayPage.thankYou')}</div>
+          <div style={{ fontSize: '22px', color: '#4B5563' }}>Order {completedOrder.orderNumber}</div>
+          <div style={{ fontSize: '40px', fontWeight: 800, color: '#0A2540', marginTop: '12px' }}>{formatCurrency(completedOrder.total, completedOrder.currency)}</div>
+          {customer && <div style={{ fontSize: '18px', color: '#635BFF', marginTop: '6px' }}>Points earned</div>}
         </div>
       </Container>
     );
@@ -306,10 +332,10 @@ const CheckoutDisplayPage: React.FC = () => {
   return (
     <Container>
       <Header>
-        <h1 style={{ fontSize: '18px', fontWeight: 600, color: '#0A2540', margin: 0 }}>{storeName || 'POS'}</h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ width: 6, height: 6, borderRadius: '50%', background: connected ? '#10B981' : '#EF4444', display: 'inline-block' }} />
-          <span style={{ fontSize: '11px', color: '#6B7280' }}>{connected ? 'Connected' : 'Connecting...'}</span>
+        <h1 style={{ fontSize: '26px', fontWeight: 700, color: '#0A2540', margin: 0, letterSpacing: '-0.2px' }}>{storeName || 'POS'}</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: connected ? '#10B981' : '#EF4444', display: 'inline-block' }} />
+          <span style={{ fontSize: '13px', color: '#6B7280', fontWeight: 500 }}>{connected ? 'Connected' : 'Connecting...'}</span>
         </div>
       </Header>
 
@@ -320,22 +346,22 @@ const CheckoutDisplayPage: React.FC = () => {
             cart 가 cleared 되거나 아직 안 받았으면 기존 phone 키패드 표시. */}
         {cart?.orderInfo ? (
           <LeftPanel>
-            <div style={{ fontSize: '12px', color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', fontWeight: 600 }}>
+            <div style={{ fontSize: '14px', color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '12px', fontWeight: 700 }}>
               {t('pos:checkoutDisplayPage.orderInfo', 'Order Details')}
             </div>
             {/* Order header */}
-            <div style={{ padding: '14px', background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: '10px', marginBottom: '12px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '10px' }}>
-                <div style={{ fontSize: '17px', fontWeight: 700, color: '#0A2540' }}>
+            <div style={{ padding: '18px', background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: '12px', marginBottom: '14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '14px' }}>
+                <div style={{ fontSize: '22px', fontWeight: 700, color: '#0A2540' }}>
                   {cart.orderInfo.orderNumber ? `#${cart.orderInfo.orderNumber}` : '—'}
                 </div>
                 {cart.tableNumber && (
-                  <div style={{ fontSize: '13px', fontWeight: 600, color: '#635BFF', padding: '4px 10px', background: '#EEF2FF', borderRadius: '6px' }}>
+                  <div style={{ fontSize: '15px', fontWeight: 700, color: '#635BFF', padding: '5px 12px', background: '#EEF2FF', borderRadius: '8px' }}>
                     {cart.tableNumber}
                   </div>
                 )}
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: '6px 10px', fontSize: '13px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '8px 12px', fontSize: '15px' }}>
                 <div style={{ color: '#6B7280' }}>{t('pos:checkoutDisplayPage.type', 'Type')}</div>
                 <div style={{ color: '#0A2540', fontWeight: 500, textTransform: 'uppercase' }}>{String(cart.orderInfo.orderType || '').replace('_', '-')}</div>
                 <div style={{ color: '#6B7280' }}>{t('pos:checkoutDisplayPage.source', 'Source')}</div>
@@ -354,39 +380,39 @@ const CheckoutDisplayPage: React.FC = () => {
             </div>
             {/* Member card (when present) */}
             {cart.customer && cart.customer.name ? (
-              <div style={{ padding: '14px', background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: '10px' }}>
-                <div style={{ fontSize: '11px', color: '#065F46', fontWeight: 700, letterSpacing: '0.5px', marginBottom: '6px' }}>{t('pos:checkoutDisplayPage.member', 'MEMBER')}</div>
-                <div style={{ fontSize: '16px', fontWeight: 700, color: '#065F46' }}>{cart.customer.name}</div>
-                {cart.customer.phone && <div style={{ fontSize: '12px', color: '#047857', marginTop: '2px' }}>{cart.customer.phone}</div>}
+              <div style={{ padding: '18px', background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: '12px' }}>
+                <div style={{ fontSize: '13px', color: '#065F46', fontWeight: 700, letterSpacing: '0.6px', marginBottom: '8px' }}>{t('pos:checkoutDisplayPage.member', 'MEMBER')}</div>
+                <div style={{ fontSize: '22px', fontWeight: 700, color: '#065F46' }}>{cart.customer.name}</div>
+                {cart.customer.phone && <div style={{ fontSize: '15px', color: '#047857', marginTop: '4px' }}>{cart.customer.phone}</div>}
                 {(typeof cart.customer.points === 'number' || cart.customer.tier || cart.customer.loyaltyTier) && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '14px' }}>
                     {typeof cart.customer.points === 'number' && (
                       <div>
-                        <div style={{ fontSize: '11px', color: '#065F46' }}>{t('pos:checkoutDisplayPage.points', 'Points')}</div>
-                        <div style={{ fontSize: '18px', fontWeight: 700, color: '#635BFF' }}>{cart.customer.points.toLocaleString()}</div>
+                        <div style={{ fontSize: '13px', color: '#065F46' }}>{t('pos:checkoutDisplayPage.points', 'Points')}</div>
+                        <div style={{ fontSize: '24px', fontWeight: 800, color: '#635BFF' }}>{cart.customer.points.toLocaleString()}</div>
                       </div>
                     )}
                     {(cart.customer.tier || cart.customer.loyaltyTier) && (
                       <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '11px', color: '#065F46' }}>{t('pos:checkoutDisplayPage.tier', 'Tier')}</div>
-                        <div style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540' }}>{cart.customer.tier || cart.customer.loyaltyTier}</div>
+                        <div style={{ fontSize: '13px', color: '#065F46' }}>{t('pos:checkoutDisplayPage.tier', 'Tier')}</div>
+                        <div style={{ fontSize: '18px', fontWeight: 700, color: '#0A2540' }}>{cart.customer.tier || cart.customer.loyaltyTier}</div>
                       </div>
                     )}
                   </div>
                 )}
               </div>
             ) : (
-              <div style={{ padding: '12px', background: '#F9FAFB', border: '1px dashed #D1D5DB', borderRadius: '10px', textAlign: 'center', fontSize: '12px', color: '#6B7280' }}>
+              <div style={{ padding: '16px', background: '#F9FAFB', border: '1px dashed #D1D5DB', borderRadius: '12px', textAlign: 'center', fontSize: '15px', color: '#6B7280' }}>
                 {t('pos:checkoutDisplayPage.walkInGuest', 'Walk-in guest (no member info)')}
               </div>
             )}
           </LeftPanel>
         ) : showPhoneInput && (
         <LeftPanel>
-          <div style={{ fontSize: '13px', color: '#4B5563', marginBottom: '8px', textAlign: 'center' }}>
-            Enter phone number for points
+          <div style={{ fontSize: '16px', color: '#4B5563', marginBottom: '12px', textAlign: 'center', fontWeight: 500 }}>
+            {t('pos:checkoutDisplayPage.enterPhone', 'Enter phone number for points')}
           </div>
-          <div style={{ fontSize: '24px', fontWeight: 600, color: '#0A2540', textAlign: 'center', padding: '10px 0', minHeight: '40px', letterSpacing: '2px' }}>
+          <div style={{ fontSize: '38px', fontWeight: 700, color: '#0A2540', textAlign: 'center', padding: '14px 0', minHeight: '56px', letterSpacing: '3px', fontVariantNumeric: 'tabular-nums' }}>
             {phoneNumber || '—'}
           </div>
 

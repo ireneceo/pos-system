@@ -40,12 +40,11 @@ router.post('/:restaurantId/tables/:tableNumber/qr', authenticateToken, checkRes
       expires_at: expiresAt
     });
 
-    // Build QR URL
+    // Build QR URL — table QRs are physically attached to tables so they always
+    // open the dine-in flow. order_type=dine-in restored 2026-05-27 per shop
+    // (each QR keeps its own order type; this one is always dine-in).
     const slug = restaurant.slug || restaurantId;
     const baseUrl = process.env.SITE_URL || process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com');
-    // Table QRs are physically attached to tables → always dine-in.
-    // Explicit order_type prevents mobile picker from falling back to
-    // takeaway/delivery when the restaurant has multiple modes enabled.
     const qrUrl = `${baseUrl}/mobile/${slug}?table=${tableNumber}&token=${token}&order_type=dine-in`;
 
     res.status(201).json({

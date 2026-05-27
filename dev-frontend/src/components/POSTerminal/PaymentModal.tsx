@@ -488,10 +488,20 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
         const paid = new Set<number>();
         const receipts: Array<any> = [];
         const allPaidItems: any[] = [];
+        // 2026-05-27: pre-mark every idx-tagged paidItem as "accounted for" so the
+        // legacy fallback below cannot re-match the same paid item against a
+        // *different* orderItem of identical name/price/quantity. The previous
+        // version did NOT pre-mark, so two identical items (e.g. two Milo Bingsu)
+        // — only one of which was paid — both ended up flagged paid in the UI.
+        // Cashier saw "all paid", clicked Done, but order.amount_paid was short by
+        // one item → payment_status stayed 'partial' and the order never closed.
         (json?.data || []).forEach((p: any) => {
           if (Array.isArray(p.items_paid)) {
             p.items_paid.forEach((it: any) => {
-              if (typeof it?.idx === 'number') paid.add(it.idx);
+              if (typeof it?.idx === 'number') {
+                paid.add(it.idx);
+                it._matchedKey = `${it.id || it.name}_${it.idx}`;
+              }
               allPaidItems.push(it);
             });
           }
@@ -502,12 +512,14 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
             amount: Number(p.amount) || 0
           });
         });
-        // id 또는 name+price 기반 fallback (옛 receipt 처리)
-        const usedItemIds = new Set<string | number>();
+        // Fallback for legacy receipts (no idx). Skip any paidItem already
+        // accounted for via idx — fixes the duplicate-name bug above.
+        const usedItemIds = new Set<string>();
+        allPaidItems.forEach((p: any) => { if (p._matchedKey) usedItemIds.add(p._matchedKey); });
         orderItems.forEach((item, idx) => {
           if (paid.has(idx)) return;
           for (const paidItem of allPaidItems) {
-            if (usedItemIds.has(paidItem._matchedKey)) continue;
+            if (paidItem._matchedKey && usedItemIds.has(paidItem._matchedKey)) continue;
             const sameId = paidItem.id && item.id && String(paidItem.id) === String(item.id);
             const sameNamePrice = !sameId
               && paidItem.name === item.name
@@ -515,8 +527,9 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
               && Number(paidItem.quantity || 1) === Number(item.quantity || 1);
             if (sameId || sameNamePrice) {
               paid.add(idx);
-              paidItem._matchedKey = `${paidItem.id || paidItem.name}_${idx}`;
-              usedItemIds.add(paidItem._matchedKey);
+              const key = `${paidItem.id || paidItem.name}_${idx}`;
+              paidItem._matchedKey = key;
+              usedItemIds.add(key);
               break;
             }
           }

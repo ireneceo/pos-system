@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { printHTMLContent } from '../../utils/billPrint';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import { formatCurrency, normalizeCurrencyCode, getCurrencySymbol } from '../../utils/currency';
 import { formatAddressHtml, AppLocale } from '../../utils/formatAddress';
@@ -961,9 +962,7 @@ const BrandInvoicesPage: React.FC = () => {
   const handlePrintInvoice = (invoice: Invoice) => {
     const hasCompanyInfo = ((activeTab === 'to_pay' || activeTab === 'paid') && invoice.issuerInfo) || companySettings;
     if (!hasCompanyInfo) { setSuccessMessage('Company settings not loaded. Please try again.'); setShowSuccessModal(true); return; }
-    const invoiceHTML = generateInvoiceHTML(invoice);
-    const printWindow = window.open('', '_blank', 'width=800,height=600');
-    if (printWindow) { printWindow.document.write(invoiceHTML); printWindow.document.close(); setTimeout(() => { printWindow.print(); }, 250); }
+    printHTMLContent(generateInvoiceHTML(invoice), `Invoice ${invoice.invoiceNumber}`);
   };
 
   const handleOpenEmailModal = async (invoice: Invoice) => {

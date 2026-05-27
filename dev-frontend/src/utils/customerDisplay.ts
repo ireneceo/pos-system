@@ -56,8 +56,10 @@ export interface OpenResult {
 
 let openedWindow: Window | null = null;
 
+// Default ON: store rollout day, staff often forgets to flip the toggle.
+// Off means the user explicitly set it to '0'. Anything else (null, '1') = enabled.
 export function isAutoOpenEnabled(): boolean {
-  try { return localStorage.getItem(KEY_AUTO) === '1'; } catch { return false; }
+  try { return localStorage.getItem(KEY_AUTO) !== '0'; } catch { return true; }
 }
 
 export function setAutoOpenEnabled(enabled: boolean): void {

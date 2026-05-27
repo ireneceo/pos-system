@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
+import { printHTMLContent } from '../../utils/billPrint';
 import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
 import { useSearchParams } from 'react-router-dom';
 import { formatCurrency, getCurrencyDecimals, normalizeCurrencyCode, getCurrencySymbol } from '../../utils/currency';
@@ -890,13 +891,7 @@ const InvoicesPage: React.FC = () => {
       setShowSuccessModal(true);
       return;
     }
-    const invoiceHTML = generateInvoiceHTML(invoice);
-    const printWindow = window.open('', '_blank', 'width=800,height=600');
-    if (printWindow) {
-      printWindow.document.write(invoiceHTML);
-      printWindow.document.close();
-      setTimeout(() => { printWindow.print(); }, 250);
-    }
+    printHTMLContent(generateInvoiceHTML(invoice), `Invoice ${invoice.invoiceNumber}`);
   };
 
   const handleOpenEmailModal = async (invoice: Invoice) => {

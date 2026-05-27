@@ -1,9 +1,50 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-05-27 (Floor Plan zone 격리 + Customer Display 풍부화 + Emergency Routing + QZ Tray SHA512 + Brand 메뉴 마이그)
+> **최종 업데이트:** 2026-05-27 (v3.43 매장 도입 직전 critical fix 운영 배포)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
-> **현재 버전:** **v3.42** 운영 (backstage 누적 — 버전 미상승)
+> **현재 버전:** **v3.43** 운영 (2026-05-27 배포, Backup 20260527_203834)
+
+## ✅ 완료: v3.43 매장 도입 직전 critical fix (2026-05-27)
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| AutoPrint master gate | kitchenPrinter.autoPrint=false 면 station 토글 ON 이어도 차단. 6곳 일괄 (KDS x2 / POS x2 / FloorPlan / LiveOrders) | ✅ |
+| 신규주문 banner | 보라→emerald, zIndex 10001, body class → NotificationToaster top:68 push, X 36x36 | ✅ |
+| Customer Display socket cart cache | services/socketService.js, restaurant 별 in-memory cache, reconnect 시 last cart/customer auto-replay, cart-clear/checkout-complete 시 evict, 60min TTL | ✅ |
+| Customer Display 자동오픈 default ON | localStorage '0' 명시일 때만 OFF | ✅ |
+| Customer Display 크기 키움 | LeftPanel 360→440, Keypad 20→28, 전화 24→38px tabular, member/order/summary 폰트 일괄 키움 | ✅ |
+| Receipt logo endpoint path fix | `/var/www/uploads` 기준 + path traversal 가드 + data: URL 처리. 어떤 매장도 404 반환하던 핵심 버그 fix | ✅ |
+| billPrint.js img src 정규식 fix | data: 도 통과. 모든 인쇄 경로 자동 적용 (POS / LiveOrders / OrderDetailModal View Receipt / 모바일 ReceiptShare) | ✅ |
+| Brand Menu 카테고리 필수 | BrandMenusPage 라벨 * + select required + handleSave validation | ✅ |
+| Brand Menu 카테고리 필터 | ListControlsBar 검색 옆 select (별도 탭 X), categories lazy load | ✅ |
+| Brand Menu fully locked = View | MenuManagement 에서 lock ≥ 4 면 Edit → View | ✅ |
+| Floor Plan TableDetailPanel | ready↔served 4단계 dot ItemStatusPill, ready 부터만 활성, i18n 4언어 | ✅ |
+| Mobile orders status override | orders-crud.js:386 source='mobile' 분기, setting 으로 강제 override | ✅ |
+| KDS +Round N divider + auto-print | order_group 별 노란 띠 + added_at, order-items-added socket → 자동 인쇄 | ✅ |
+| Auto-merge 조건 완화 | order_type / payment_method 필터 제거, guest 도 머지, outstanding preservation | ✅ |
+| 문서화 | ORDER_MERGE_RULES / KITCHEN_DISPLAY_RULES / PRINT_RULES_MATRIX 에 변경 반영 (~230줄) | ✅ |
+
+**검증** (10단계 모두 통과):
+- 0 state-hydration 0 warning · 1 빌드 main.1bf88f91.js · 2 health-check 80/80
+- 3 API 6/6 · 10 critical mount 6/6 (POS/KDS/Floor Plan/Settings Printer/Live Orders/Customer Display)
+
+**운영 배포**: Backup 20260527_203834, smoke 10/10, 매장 16 receipt-logo 200 OK + PNG raster 확인
+
+---
+
+## ✅ 완료: 2026-05-27 — 글쓰기 템플릿 v2 복원 + video_prompt 재생성
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| /글쓰기 템플릿 v2 복원 | v3 시도 (12초/4비트/COLOR GRADING) → v2 롤백 (15초/5비트/CTA 포함). git checkout a426dfb5 | ✅ |
+| 6개 블로그 video_prompt 재생성 | Staff Mistakes (57/58/59) + E-Invoice (78/79/80) v2 템플릿 기준 재작성. 모두 4000자 이내 | ✅ |
+
+**수정된 파일**: `.claude/commands/글쓰기.md`
+
+**DB 변경**: `contents` 테이블 ID 57-59, 78-80 — `video_prompt` 필드 업데이트
+
+---
 
 ## ✅ 완료: 2026-05-27 — 6차 운영 배포 (오늘 누적)
 

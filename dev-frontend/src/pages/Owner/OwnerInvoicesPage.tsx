@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import { printHTMLContent } from '../../utils/billPrint';
 import SuspendedBanner from '../../components/Common/SuspendedBanner';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSearchParams } from 'react-router-dom';
@@ -914,17 +915,9 @@ const OwnerInvoicesPage: React.FC = () => {
     }
   };
 
-  // Print invoice
+  // Print invoice via hidden iframe — popup-blocker proof.
   const handlePrintInvoice = (invoice: Invoice) => {
-    const invoiceHTML = generateInvoiceHTML(invoice);
-    const printWindow = window.open('', '_blank', 'width=800,height=600');
-    if (printWindow) {
-      printWindow.document.write(invoiceHTML);
-      printWindow.document.close();
-      setTimeout(() => {
-        printWindow.print();
-      }, 250);
-    }
+    printHTMLContent(generateInvoiceHTML(invoice), `Invoice ${invoice.invoiceNumber}`);
   };
 
   // Render table

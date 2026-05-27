@@ -352,7 +352,18 @@
       "Bash(awk '/Emergency Routing Mode|emergency mode|methodGuide|emergencyMode|emergencyEnabledAt/,/^ <SettingsCard style={{ marginBottom/' /var/www/dev-frontend/src/pages/Settings/SettingsPage.tsx)",
       "Bash(awk '$1>=700 && $1<=810')",
       "Bash(scp -q /tmp/migrate-rest16-to-brand5.js irene@87.106.78.146:/var/www/production-backend/migrate-rest16-to-brand5.js)",
-      "Bash(scp -q /tmp/lock-all.js irene@87.106.78.146:/var/www/production-backend/)"
+      "Bash(scp -q /tmp/lock-all.js irene@87.106.78.146:/var/www/production-backend/)",
+      "WebFetch(domain:qz.io)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(RA_TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjIzLCJlbWFpbCI6ImRlbW8tcmVzdGF1cmFudEBwdXJwbGVoZXJlLmNvbSIsInJvbGUiOiJSZXN0YXVyYW50IEFkbWluIiwidXNlcm5hbWUiOiJkZW1vLXJlc3RhdXJhbnQiLCJicmFuZF9pZCI6bnVsbCwiZm9vZGNvdXJ0X2lkIjpudWxsLCJicmFuY2hfaWQiOm51bGwsInJlc3RhdXJhbnRfaWQiOjM4LCJtYW5hZ2VyX2lkIjpudWxsLCJpYXQiOjE3Nzk4NzYzNzgsImV4cCI6MTc4MDQ4MTE3OH0.4Is8XrFAsF-Su08dFHfxxKOCvC8rQjoSvJSUpy_O-Wk\" RA_RID=38 BG_TOKEN=\"\" BG_BRANDID=1 timeout 180 node /var/www/dev-frontend/scripts/headless-page-sweep.js)",
+      "Bash(env)",
+      "Bash(scp /tmp/qz-check.js irene@87.106.78.146:/var/www/production-backend/_qz-check.js)",
+      "Bash(sed -n '615,660p' src/pages/FloorPlan/FloorPlanPage.tsx)",
+      "Bash(sed -n '735,775p' src/pages/FloorPlan/FloorPlanPage.tsx)",
+      "Bash(sed -n '160,235p' src/pages/CheckoutDisplay/CheckoutDisplayPage.tsx)",
+      "Bash(sed -n '580,605p' src/pages/FloorPlan/FloorPlanPage.tsx)",
+      "Bash(awk '/^## \\\\[Unreleased\\\\]/,/^## \\\\[v/' /var/www/CHANGELOG.md)"
     ],
     "deny": [],
     "ask": []

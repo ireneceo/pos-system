@@ -116,5 +116,13 @@
   "tableDetailPanel.printQrToGenerateASessionbasedOrderingCodeForThisTable": "Print QR to generate a session-based ordering code for this table.",
   "tableDetailPanel.cancel": "Batal",
   "tableDetailPanel.confirm": "Sahkan",
+  "tableDetailPanel.itemStatus.queued": "Beratur",
+  "tableDetailPanel.itemStatus.cooking": "Memasak",
+  "tableDetailPanel.itemStatus.ready": "Sedia",
+  "tableDetailPanel.itemStatus.served": "Dihidang",
+  "tableDetailPanel.itemStatus.markServed": "Tanda dihidang",
+  "tableDetailPanel.itemStatus.unmarkServed": "Batal dihidang",
+  "tableDetailPanel.itemStatus.waitingKitchen": "Menunggu dapur",
+  "tableDetailPanel.itemStatus.servedCount": "{{served}}/{{total}} dihidang",
   "tableNode.staff": "Kakitangan"
 }

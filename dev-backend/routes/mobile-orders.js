@@ -35,7 +35,14 @@ router.post('/cart/validate', async (req, res) => {
 });
 
 // Helper: Find mergeable order for auto-merge (mobile)
-// Only merges orders from the same day (based on createdAt) with payment_status = 'pending'
+// Only merges orders from the same day (based on createdAt) with payment_status = 'pending'.
+//
+// 2026-05-28: order_type intentionally NOT filtered here. If a guest is sitting
+// at table T20 and orders again via mobile — whether they pick "dine-in" or
+// "takeaway" on the picker — staff still expect the new items to land on the
+// SAME open bill for that table. Splitting takeaway-with-table into its own
+// order makes the shop print two unrelated tickets and bill twice, which is
+// exactly what the user reported. Same-table + payment pending = same bill.
 async function findMergeableOrderMobile(restaurantId, tableNumber, orderType, transaction = null, timezone = 'Asia/Kuala_Lumpur') {
   if (!restaurantId || !tableNumber) return null;
 
@@ -46,7 +53,8 @@ async function findMergeableOrderMobile(restaurantId, tableNumber, orderType, tr
     where: {
       restaurant_id: restaurantId,
       table_number: tableNumber,
-      order_type: orderType || 'dine_in',
+      // order_type filter removed — see note above. POS auto-merge in
+      // orders-crud.js applies the same rule (table + pending = one bill).
       payment_status: 'pending',
       status: {
         [Op.notIn]: ['served', 'completed', 'cancelled']
@@ -99,13 +107,16 @@ router.post('/order', async (req, res) => {
     }
     console.log('  - restaurantId (parsed):', restaurantId);
 
+    // Keep tableNumber regardless of orderType — takeaway with a tableNumber
+    // is intentionally treated as "an extra order on that table" by the shop
+    // (Floor Plan / LiveOrders show it as an additional tab on the same table).
     const actualTableNumber = tableNumber || customerInfo?.tableNumber || null;
     // Frontend uses dash form ('dine-in'); DB ENUM uses underscore ('dine_in'). Normalize at the API boundary.
     const rawOrderType = orderType || 'dine_in';
     const actualOrderType = rawOrderType === 'dine-in' ? 'dine_in' : rawOrderType;
 
     // Get restaurant timezone + payment settings for date calculations & validation
-    const restaurant = await Restaurant.findByPk(restaurantId, { attributes: ['id', 'operation_settings', 'payment_settings', 'is_active'] });
+    const restaurant = await Restaurant.findByPk(restaurantId, { attributes: ['id', 'operation_settings', 'payment_settings', 'is_active', 'floor_plan'] });
     // Restaurant must exist and be active — prevents anonymous orders against unknown/disabled stores.
     if (!restaurant) {
       return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
@@ -182,11 +193,14 @@ router.post('/order', async (req, res) => {
           return sum + (itemPrice * itemQty);
         }, 0);
 
-        // Update order - pass array directly, model setter will handle stringify
+        // Update order — preserve 'outstanding' so a shop with
+        // requirePaymentBeforeKitchen=true doesn't auto-send to the kitchen
+        // when the customer adds more items but hasn't paid yet.
+        const preserveOutstanding = mergeableOrder.status === 'outstanding';
         await mergeableOrder.update({
           order_items: mergedItems,
           total_amount: newTotal,
-          status: 'pending' // Reset to pending for kitchen
+          status: preserveOutstanding ? 'outstanding' : 'pending'
         });
         await mergeableOrder.reload();
 
@@ -257,14 +271,50 @@ router.post('/order', async (req, res) => {
             restaurant.operation_settings.mobileOrderProcessing &&
             restaurant.operation_settings.mobileOrderProcessing.requirePaymentBeforeKitchen);
           // POST /order 진입 시점은 결제 전 — payment_status 항상 pending. 결제 완료 시 별도 라우트가 status 'pending' 로 update.
-          const initialStatus = reqPayBeforeKitchen ? 'awaiting_payment' : 'pending';
+          // 'outstanding' = LiveOrders / Floor Plan 공통 상태 (Proceed Without
+          // Payment 버튼 활성). 이전엔 'awaiting_payment' 였는데 두 UI 가
+          // outstanding 만 처리해서 모바일 주문이 *버튼 없이 표시*되거나 아예
+          // 안 보였음 (라벨만 매핑돼 있었음). pending 분기는 그대로 유지.
+          const initialStatus = reqPayBeforeKitchen ? 'outstanding' : 'pending';
 
           // Create order in database
           console.log('  - Creating order with data: status=' + initialStatus + ' (reqPay=' + reqPayBeforeKitchen + ')');
+          // Resolve floor_plan_table_id from the table label so dine-in mobile
+          // orders show up on the Floor Plan canvas. Mobile frontend doesn't
+          // know the canvas ID — match by label (preferred) or tableNumber.
+          let resolvedFloorPlanTableId = floorPlanTableId || null;
+          if (!resolvedFloorPlanTableId && actualTableNumber && actualOrderType === 'dine_in') {
+            const fp = restaurant.floor_plan || {};
+            const fpTables = Array.isArray(fp.tables) ? fp.tables : [];
+            const matched = fpTables.find(t =>
+              (t && t.label != null && String(t.label) === String(actualTableNumber)) ||
+              (t && t.tableNumber != null && String(t.tableNumber) === String(actualTableNumber))
+            );
+            if (matched && matched.id) resolvedFloorPlanTableId = String(matched.id);
+          }
+
+          // Enrich each item with kitchen_station_id (Product 직접 / Category 매핑
+          // 둘 다 lookup). 매장이 카테고리 단위로 station 매핑한 경우 — 이걸 안
+          // 채우면 KDS 의 station-별 print 가 매핑 fail → unmapped → 같은 station
+          // ticket 에 합쳐서 출력. 카테고리 매핑이 *필수* 라는 매장 운영 기준
+          // (2026-05-27 매장 정정) 에 부합하게 backend 에서 자동 채움.
+          const Product = require('../models/Product');
+          const Category = require('../models/Category');
+          const productIds = items.map(i => i.menu_item_id || i.id).filter(x => x && Number.isInteger(Number(x))).map(Number);
+          const products = productIds.length > 0
+            ? await Product.findAll({ where: { id: productIds }, attributes: ['id', 'kitchen_station_id', 'category'] })
+            : [];
+          const productMap = new Map(products.map(p => [Number(p.id), p]));
+          const catIds = [...new Set(products.map(p => p.category).filter(Boolean))];
+          const cats = catIds.length > 0
+            ? await Category.findAll({ where: { id: catIds }, attributes: ['id', 'kitchen_station_id'] })
+            : [];
+          const catStationMap = new Map(cats.map(c => [Number(c.id), c.kitchen_station_id]));
+
           const orderData = {
             restaurant_id: restaurantId,
             table_number: actualTableNumber,
-            floor_plan_table_id: floorPlanTableId || null,
+            floor_plan_table_id: resolvedFloorPlanTableId,
             customer_name: customerInfo?.name || 'Mobile Guest',
             customer_phone: customerInfo?.phone || null,
             total_amount: total,
@@ -274,12 +324,20 @@ router.post('/order', async (req, res) => {
             payment_status: 'pending',
             order_number: orderNumber,
             scheduled_pickup_time: scheduledPickupTime ? new Date(scheduledPickupTime) : null,
-            order_items: items.map(item => ({
-              name: item.name,
-              quantity: item.quantity,
-              price: item.price,
-              options: item.options || []
-            }))
+            order_items: items.map(item => {
+              const pid = Number(item.menu_item_id || item.id);
+              const product = productMap.get(pid);
+              const kitchenStationId = product?.kitchen_station_id || (product?.category && catStationMap.get(Number(product.category))) || null;
+              return {
+                name: item.name,
+                menu_item_id: item.menu_item_id || item.id || null,
+                category: product?.category || null,
+                kitchen_station_id: kitchenStationId,
+                quantity: item.quantity,
+                price: item.price,
+                options: item.options || []
+              };
+            })
           };
           console.log('    restaurant_id:', orderData.restaurant_id);
           console.log('    order_number:', orderData.order_number);

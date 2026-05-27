@@ -131,13 +131,14 @@ router.get('/:id', authenticateToken, async (req, res, next) => {
 });
 
 // GET /api/orders/mergeable
-// 같은 테이블에 진행 중인 머지 가능 주문 리스트 조회.
-// POS UI 가 결제 진행 전에 호출하여, 결과가 있으면 "기존 주문에 추가 vs 별도 생성" 모달을 띄움.
+// 같은 테이블에 결제전 진행 중 주문 리스트.
+// 2026-05-27: order_type 조건 제거 — 같은 테이블 = 같은 좌석 손님 가정,
+// takeaway/dine-in 무관 머지 후보. payment_status='pending' 만 필터 (결제 후엔
+// 별도 주문). POS source 만 (모바일 흐름은 mobile-orders.js 가 자체 처리).
 router.get('/mergeable', authenticateToken, async (req, res) => {
   try {
     const restaurantId = parseInt(req.query.restaurant_id, 10);
     const tableNumber = req.query.table_number;
-    const orderType = req.query.order_type || 'dine_in';
     const paymentMethod = req.query.payment_method || null; // null = 결제 방식 무관 매칭
     if (!restaurantId || !tableNumber) {
       return res.status(400).json({ success: false, message: 'restaurant_id and table_number required' });
@@ -151,18 +152,16 @@ router.get('/mergeable', authenticateToken, async (req, res) => {
       where: {
         restaurant_id: restaurantId,
         table_number: tableNumber,
-        order_type: orderType,
+        // order_type 무관 — 같은 테이블 + 결제전 = 동일 손님 으로 통일.
         payment_status: 'pending',
         status: { [Op.notIn]: ['served', 'completed', 'cancelled'] },
         createdAt: { [Op.between]: [todayStart, todayEnd] },
         is_deleted: { [Op.not]: true },
-        // payment_method: 요청한 값이 있으면 해당값 OR null 매칭, 없으면 무관
-        ...(paymentMethod ? {} : {}),
         [Op.and]: [
           paymentMethod
             ? { [Op.or]: [{ payment_method: paymentMethod }, { payment_method: null }] }
             : {},
-          // POS source only (mobile 은 자동 머지 자체 흐름 — UI 노출 불필요)
+          // POS source only (mobile 은 자체 자동 머지 흐름)
           { [Op.or]: [{ source: { [Op.ne]: 'mobile' } }, { source: null }] }
         ]
       },
@@ -196,13 +195,18 @@ async function findMergeableOrder(restaurantId, tableNumber, orderType, newOrder
   // Get today's date range in restaurant's timezone
   const { startOfDay: todayStart, endOfDay: todayEnd } = getTodayBounds(timezone);
 
+  // 2026-05-27: order_type + payment_method filters removed to match the rule
+  // applied everywhere else (mobile-orders.js, GET /mergeable): same table +
+  // payment pending = same bill, regardless of dine_in/takeaway split or what
+  // payment method the customer ended up choosing. This is the path that
+  // mobile orders actually hit (PaymentPage POSTs to /api/orders with
+  // source:'mobile'); leaving order_type filtered here meant a takeaway-then-
+  // dine-in sequence at the same table created two separate bills.
   const queryOptions = {
     where: {
       restaurant_id: restaurantId,
       table_number: tableNumber,
-      order_type: orderType || 'dine_in',
       payment_status: 'pending',
-      payment_method: newPaymentMethod,
       status: {
         [Op.notIn]: ['served', 'completed', 'cancelled']
       },
@@ -237,28 +241,13 @@ async function findMergeableOrder(restaurantId, tableNumber, orderType, newOrder
 
   const existing = existingOrders[0];
 
-  // Mobile→Mobile: require same customer
-  if (isMobile(newSource)) {
-    const newCustId = newOrderData.customer_id;
-    const newPhone = newOrderData.customer_phone;
-    const existCustId = existing.customer_id;
-    const existPhone = existing.customer_phone;
-
-    // Both members → same customer_id
-    if (newCustId && existCustId) {
-      return newCustId == existCustId ? existing : null;
-    }
-    // One member, one guest → never
-    if (newCustId || existCustId) return null;
-    // Both guests → same phone
-    if (newPhone && existPhone) {
-      return newPhone === existPhone ? existing : null;
-    }
-    // No phone to match → don't merge
-    return null;
-  }
-
-  // POS→POS: table + payment_method match is enough
+  // 2026-05-27: removed the Mobile→Mobile "must be same customer" gate that
+  // was blocking every guest-mobile order from auto-merging. The shop's real
+  // intent is "same table + payment pending = one bill" regardless of who
+  // ordered — anonymous guest, member, or a mix. Six guest orders on table
+  // U-2 piled up as six separate bills because each was a fresh guest with
+  // no phone, so the old phone-match path returned null. Same table is the
+  // anchor; customer identity is metadata, not a merge key.
   return existing;
 }
 
@@ -323,12 +312,22 @@ async function mergeItemsIntoOrder(existingOrder, newItems, transaction = null) 
 
   // Update order
   // Note: Don't use JSON.stringify - Sequelize setter handles it automatically
+  // 2026-05-27: status preservation rule —
+  //   - If the order is still 'outstanding' (shop has requirePaymentBeforeKitchen=true
+  //     and the customer hasn't paid), DO NOT flip it to 'pending'. Doing so would
+  //     auto-send the order to the kitchen against the shop's explicit setting.
+  //     The status will transition to 'pending' on the existing pay-completion flow.
+  //   - Any other in-progress status (pending / preparing / ready / served) drops
+  //     back to 'pending' so the new items get picked up by the kitchen on the
+  //     next KDS render. Already-completed items keep their per-item 'completed'
+  //     status (the per-item status is stored on the line, not on the order).
   const updateOptions = transaction ? { transaction } : {};
+  const preserveOutstanding = existingOrder.status === 'outstanding';
   await existingOrder.update({
     order_items: mergedItems,
     subtotal: itemsSubtotal,
     total_amount: newTotal,
-    status: 'pending' // Reset to pending for kitchen
+    status: preserveOutstanding ? 'outstanding' : 'pending'
   }, updateOptions);
 
   await existingOrder.reload(updateOptions);
@@ -390,6 +389,17 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
     let skipAutoMerge = orderData.skipAutoMerge === true;
     if (!isMobileSource && orderData.skipAutoMerge === undefined) {
       skipAutoMerge = true;
+    }
+
+    // Mobile orders: status is decided by restaurant setting, not the client.
+    // requirePaymentBeforeKitchen=true → 'outstanding' (hold until paid)
+    // requirePaymentBeforeKitchen=false (default) → 'pending' (straight to kitchen)
+    // The mobile client previously hard-coded status='outstanding', ignoring the setting.
+    if (isMobileSource) {
+      const reqPayBeforeKitchen = !!(restaurant.operation_settings &&
+        restaurant.operation_settings.mobileOrderProcessing &&
+        restaurant.operation_settings.mobileOrderProcessing.requirePaymentBeforeKitchen);
+      orderData.status = reqPayBeforeKitchen ? 'outstanding' : 'pending';
     }
 
     // Force merge into a specific existing order (POS UI 의 "기존 주문에 추가" 선택)

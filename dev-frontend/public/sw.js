@@ -10,15 +10,49 @@
  * caching SPA shell would conflict. If future offline support is needed, layer Workbox separately.
  */
 
-const SW_VERSION = '3.28.0';
+const SW_VERSION = '3.43.0';
 
 self.addEventListener('install', (event) => {
-  // Activate this SW immediately, replacing any older registration.
-  event.waitUntil(self.skipWaiting());
+  event.waitUntil((async () => {
+    // 2026-05-27: any cache populated by a previous SW version is suspect —
+    // it can hand out stale lazy-chunks that don't match the freshly deployed
+    // main.js, causing ChunkLoadError. Wipe everything on every SW install.
+    try {
+      const names = await caches.keys();
+      await Promise.all(names.map((n) => caches.delete(n)));
+    } catch (_) { /* non-fatal */ }
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil((async () => {
+    await self.clients.claim();
+    // Force every open tab to reload so it picks up the fresh main.js +
+    // matching chunks via the network (now that caches are cleared). The guard
+    // on the client side (sessionStorage __chunk_reload_done) prevents loops.
+    try {
+      const wins = await self.clients.matchAll({ type: 'window' });
+      for (const w of wins) {
+        try { w.navigate(w.url); } catch (_) { /* some browsers disallow cross-origin nav */ }
+      }
+    } catch (_) { /* non-fatal */ }
+  })());
+});
+
+// Network-first fetch for the SPA shell + bundled JS/CSS — Chrome's "stale
+// disk cache 404" trap can't bite if we never hit the cache. We don't add
+// anything to caches.* here, just let the network handle it.
+self.addEventListener('fetch', (event) => {
+  const req = event.request;
+  if (req.method !== 'GET') return;
+  try {
+    const url = new URL(req.url);
+    if (url.origin !== self.location.origin) return;
+    if (url.pathname.startsWith('/static/') || url.pathname === '/' || url.pathname.endsWith('.html')) {
+      event.respondWith(fetch(req).catch(() => Response.error()));
+    }
+  } catch (_) { /* non-fatal */ }
 });
 
 /**

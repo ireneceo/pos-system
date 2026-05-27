@@ -133,13 +133,39 @@ function initSocketServer(server) {
   });
 
   // Checkout Display namespace — POS → 고객 결제 화면
+  // In-memory cart cache per restaurant. Customer Display can reconnect (PWA
+  // refresh / network blip / monitor sleep) without losing the current bill —
+  // we replay the last cart-update / pos-customer-update on join-restaurant.
+  // Cleared by cart-clear or checkout-complete. TTL 60min — auto-evict stale.
+  const cartCache = new Map(); // restaurantId(string) → { cart, customer, ts }
+  const CART_TTL_MS = 60 * 60 * 1000;
+  const cachePrune = () => {
+    const now = Date.now();
+    for (const [k, v] of cartCache.entries()) {
+      if (now - (v?.ts || 0) > CART_TTL_MS) cartCache.delete(k);
+    }
+  };
+
   io.of('/checkout-display').on('connection', (socket) => {
     socket.on('join-restaurant', (restaurantId) => {
-      socket.join(`restaurant_${restaurantId}`);
+      const rid = String(restaurantId);
+      socket.join(`restaurant_${rid}`);
+      cachePrune();
+      const cached = cartCache.get(rid);
+      if (cached) {
+        // Send a one-shot replay only to this newly-joined client.
+        if (cached.cart) socket.emit('cart-update', cached.cart);
+        if (cached.customer !== undefined) socket.emit('pos-customer-update', { customer: cached.customer });
+      }
     });
 
     // POS에서 카트 업데이트 전송
     socket.on('cart-update', (data) => {
+      if (data?.restaurantId) {
+        const rid = String(data.restaurantId);
+        const prev = cartCache.get(rid) || {};
+        cartCache.set(rid, { ...prev, cart: data, ts: Date.now() });
+      }
       // 같은 레스토랑의 checkout-display에만 전송
       socket.to(`restaurant_${data.restaurantId}`).emit('cart-update', data);
     });
@@ -149,19 +175,26 @@ function initSocketServer(server) {
       socket.to(`restaurant_${data.restaurantId}`).emit('customer-checkin', data);
     });
 
-    // POS에서 결제 완료
+    // POS에서 결제 완료 — cart 종료 + 캐시 클리어
     socket.on('checkout-complete', (data) => {
+      if (data?.restaurantId) cartCache.delete(String(data.restaurantId));
       socket.to(`restaurant_${data.restaurantId}`).emit('checkout-complete', data);
     });
 
     // Floor Plan 에서 테이블 선택 해제 → Customer Display 초기 화면으로 복귀
     socket.on('cart-clear', (data) => {
+      if (data?.restaurantId) cartCache.delete(String(data.restaurantId));
       socket.to(`restaurant_${data.restaurantId}`).emit('cart-clear', data);
     });
 
     // POS 에서 회원 선택/해제 → Customer Display 에 회원 정보 표시
     // payload: { restaurantId, customer: { id, name, phone, loyaltyTier, points } | null }
     socket.on('pos-customer-update', (data) => {
+      if (data?.restaurantId) {
+        const rid = String(data.restaurantId);
+        const prev = cartCache.get(rid) || {};
+        cartCache.set(rid, { ...prev, customer: data.customer ?? null, ts: Date.now() });
+      }
       socket.to(`restaurant_${data.restaurantId}`).emit('pos-customer-update', data);
     });
   });
