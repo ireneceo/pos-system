@@ -46,7 +46,7 @@ export const ModalContent = styled.div`
 // 모달 헤더
 export const ModalHeader = styled.div`
   padding: 24px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -70,7 +70,7 @@ export const CloseButton = styled.button`
   background: none;
   border: none;
   font-size: 24px;
-  color: #6B7C93;
+  color: #4B5563;
   cursor: pointer;
   padding: 0;
   width: 32px;
@@ -100,7 +100,7 @@ export const ModalBody = styled.div`
 // 모달 푸터
 export const ModalFooter = styled.div`
   padding: 20px 24px;
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
   display: flex;
   justify-content: flex-end;
   gap: 12px;
@@ -133,7 +133,7 @@ export const FormLabel = styled.label`
   display: block;
   font-size: 13px;
   font-weight: 500;
-  color: #6B7C93;
+  color: #4B5563;
   margin-bottom: 8px;
 `;
 
@@ -143,7 +143,7 @@ export const FormInput = styled.input`
   max-width: 100%;
   box-sizing: border-box;
   padding: 8px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   transition: all 0.15s;
@@ -156,12 +156,12 @@ export const FormInput = styled.input`
 
   &:disabled {
     background: #F9FAFB;
-    color: #6B7280;
+    color: #4B5563;
     cursor: not-allowed;
   }
 
   &::placeholder {
-    color: #9CA3AF;
+    color: #6B7280;
   }
 `;
 
@@ -171,7 +171,7 @@ export const FormSelect = styled.select`
   max-width: 100%;
   box-sizing: border-box;
   padding: 8px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   background: white;
@@ -186,7 +186,7 @@ export const FormSelect = styled.select`
 
   &:disabled {
     background: #F9FAFB;
-    color: #6B7280;
+    color: #4B5563;
     cursor: not-allowed;
   }
 `;
@@ -197,7 +197,7 @@ export const FormTextArea = styled.textarea`
   max-width: 100%;
   box-sizing: border-box;
   padding: 8px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   min-height: 100px;
@@ -211,7 +211,7 @@ export const FormTextArea = styled.textarea`
   }
 
   &::placeholder {
-    color: #9CA3AF;
+    color: #6B7280;
   }
 `;
 
@@ -240,7 +240,7 @@ export const ModalButton = styled.button<{ variant?: 'primary' | 'secondary' | '
     switch (props.variant) {
       case 'primary': return 'none';
       case 'danger': return 'none';
-      default: return '1px solid #E6EBF1';
+      default: return '1px solid #C7CED6';
     }
   }};
   background: ${props => {
@@ -254,7 +254,7 @@ export const ModalButton = styled.button<{ variant?: 'primary' | 'secondary' | '
     switch (props.variant) {
       case 'primary': return 'white';
       case 'danger': return 'white';
-      default: return '#6B7C93';
+      default: return '#4B5563';
     }
   }};
 
@@ -263,7 +263,7 @@ export const ModalButton = styled.button<{ variant?: 'primary' | 'secondary' | '
       switch (props.variant) {
         case 'primary': return '#5A51E6';
         case 'danger': return '#B91C1C';
-        default: return '#F8FAFC';
+        default: return '#F1F4F8';
       }
     }};
     transform: translateY(-1px);
@@ -274,14 +274,14 @@ export const ModalButton = styled.button<{ variant?: 'primary' | 'secondary' | '
       switch (props.variant) {
         case 'primary': return '#A5A0FF';
         case 'danger': return '#FCA5A5';
-        default: return '#F3F4F6';
+        default: return '#F1F4F8';
       }
     }};
     color: ${props => {
       switch (props.variant) {
         case 'primary': return 'rgba(255, 255, 255, 0.7)';
         case 'danger': return 'rgba(255, 255, 255, 0.7)';
-        default: return '#D1D5DB';
+        default: return '#6B7280';
       }
     }};
     cursor: not-allowed;

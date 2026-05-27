@@ -1,9 +1,52 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-05-26 (BRAND CONCEPT v2 단일 톤 박제 + 글쓰기 스킬 통합 + 랜딩 헤더 z-index fix)
+> **최종 업데이트:** 2026-05-27 (Floor Plan zone 격리 + Customer Display 풍부화 + Emergency Routing + QZ Tray SHA512 + Brand 메뉴 마이그)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 > **현재 버전:** **v3.42** 운영 (backstage 누적 — 버전 미상승)
+
+## ✅ 완료: 2026-05-27 — 6차 운영 배포 (오늘 누적)
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Floor Plan zone 격리 (orders.floor_plan_table_id) | Zone1-T20 / Zone2-A20 같은 tableNumber 다른 zone 충돌 해결. Order 모델 컬럼 + index + backfill 마이그. Floor Plan canvas/TableNode/POSTerminal URL 의 tableId 연동. label 우선 선택 (다중 zone 매장의 prefix 보존) | ✅ |
+| Customer Display 풍부화 + 자동 미러링 | Floor Plan 테이블 클릭 시 주문 정보 (orderNumber/type/source/time/payment/cashier) + 회원 (name/phone/points/tier) 좌측 패널 표시. 키패드 자동 hide. POSTerminal 빈 카트 emit skip (overlay 진입 시 사라짐 해결) | ✅ |
+| POS 회원 → CD push | pos-customer-update socket. cart-update payload 의 customer 필드. 좌측 OrderInfo + Member 카드 | ✅ |
+| Emergency Routing Mode | 매장 운영 critical 비상 토글. 모든 주문 → 캐셔 프린터. boolean flag (백업 X). 빨간 카드 + Pre-flight 좌/우 비교 박스 + Troubleshoot modal (권한 캐시 reset 6단계) | ✅ |
+| QZ Tray SHA1→SHA512 + 자동 installer | 권한 알림 / "remember" 비활성 fix. backend RSA-SHA512. frontend setSignatureAlgorithm. `/api/qz-tray/installer` OS별 .bat/.command/.sh 단일 파일 (cert text embed) — 더블클릭만 하면 설치 | ✅ |
+| Settings printer 탭 전면 개편 | "어떤 방법 선택?" 결정 매트릭스 (아코디언). Browser/RawBT/QZ Tray 3 탭. Workstations + Kitchen Printer 2-column. Customer Display 카드 → operations 탭 이동 | ✅ |
+| 반응형 헤더 (10인치) | 공용 OverflowMenu 컴포넌트. Floor Plan + POS Terminal 헤더 ≤1280px 에서 자주 안 쓰는 액션 kebab 메뉴로 collapse | ✅ |
+| i18n 4 언어 대량 확장 | 154 개 `printer.*` 키 4 언어 모두 추가 (verify 통과). Emergency / methodGuide / Workstations / Stations / Troubleshoot 전체 다국어 | ✅ |
+| LiveOrders 결제 PATCH 400 hotfix | PATCH /api/orders/:id audit log 의 `orderData` ReferenceError → 모든 결제 confirm fail. POST 코드 잘못 복붙. fix: `req.body.source` 안전 fallback | ✅ |
+| Brand 메뉴 마이그 (Restaurant 16 → Brand 5) | 110 product / 15 category / 12 option group / 41 option / 25 OG-link → BrandMenu 시스템 풀 변환. 110 Product `brand_menu_link_status='in_sync'` stamp. 모든 lock=true 일괄 적용 | ✅ |
+| 운영 DB 마이그 hotfix | floor_plan_table_id column 운영 DB 자동 sync 안 되어 모든 Order query 500. 수동 마이그 후 pm2 restart. 272 scan / 239 backfill / 1 ambiguous | ✅ |
+| Settings token 키 (workstation delete 등) | `localStorage.getItem('token')` → `getAuthToken()` (잘못된 키 이름). printer_settings workstations state hydrate 누락 fix (새로고침 시 사라짐 해결) | ✅ |
+| sync-contents-to-prod.js 영구 패치 | video_prompt + social_post 컬럼 sync 누락 해결 (payload + schema migration + UPDATE/INSERT 3곳) | ✅ |
+
+**6차 운영 배포 history:**
+- 1차 `20260525_142329` (어제 backstage 4차 — 랜딩 z-index)
+- 2차 `20260527_064446` — Floor Plan zone 격리 + CD 미러링 (DB 마이그 누락 → 운영 down)
+- 3차 `20260527_070048` — PATCH ReferenceError hotfix + setCdInfoModal fix
+- 4차 `20260527_072413` — label 우선 (multi-zone 매장)
+- 5차 `20260527_073933` — emit 풍부화 (orderInfo + customer)
+- 6차 `20260527_080403` — CD 좌측 OrderInfo 패널 + Brand lock 일괄
+
+**검증 결과**: state-hydration 0 / build OK / health-check 80/80 / production smoke 10/10 / Brand 5 BrandMenu fully locked 110/110
+
+## ✅ 완료: 2026-05-26 backstage — Social Post SOP 개편
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 블로그초안.md Social Post 섹션 전면 개편 | 6단계 본문 구조 (문제 → 문제확대 → 진단질문 → 숨겨진리스크 → **PurpleHere=해결책** → CTA). "PurpleHere POS가..." 명확 언급 필수. 기존 암시("Your POS should...") 금지 | ✅ |
+| 브랜드 톤 정의 | "전문가가 조용히 운영 문제를 알려주는 브랜드". 지적 X → 정보 공유. 위협 X → 사전 안내. 공격적/도전적 톤 금지 | ✅ |
+| 제목 톤 직관화 | 한 번에 무슨 상황인지 보인다 / 생각 안 해도 된다 / 바로 "아, 이거" 한다. 시적/추상적 표현 금지. 제도명/기능명 X → 결과/리스크 O | ✅ |
+| 기존 블로그 2개 social_post 업데이트 | e-invoice (group 8): "One receipt. RM20,000 penalty." + staff-mistakes (group 2): "Changed the menu. POS stayed the same. Three wrong orders." — 3언어 모두 적용 | ✅ DB |
+
+**수정된 파일**: `.claude/commands/블로그초안.md`
+
+**DB 변경**: `contents` 테이블 ID 57-59 (staff-mistakes), 78-80 (e-invoice) — `social_post` 필드 업데이트
+
+---
 
 ## ✅ 완료: 2026-05-26 backstage (글쓰기 SOP v2 + 랜딩 z-index fix + lua 권한 ACL)
 

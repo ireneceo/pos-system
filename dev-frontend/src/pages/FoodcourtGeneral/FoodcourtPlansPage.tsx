@@ -131,7 +131,7 @@ const PlanCard = styled.div<{ isPopular?: boolean; isActive?: boolean }>`
   background: white;
   border-radius: 16px;
   padding: 32px;
-  border: 2px solid ${props => props.isPopular ? '#635BFF' : '#E6EBF1'};
+  border: 2px solid ${props => props.isPopular ? '#635BFF' : '#C7CED6'};
   position: relative;
   transition: all 0.2s;
   opacity: ${props => props.isActive ? 1 : 0.6};
@@ -183,7 +183,7 @@ const PlanName = styled.h3`
 
 const PlanDescription = styled.p`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin-bottom: 24px;
 `;
 
@@ -207,7 +207,7 @@ const AnnualPrice = styled.div`
 
 const PricingNote = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const FeaturesList = styled.ul`
@@ -221,7 +221,7 @@ const FeatureItem = styled.li`
   align-items: center;
   margin-bottom: 8px;
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
   line-height: 1.5;
 `;
 
@@ -233,8 +233,8 @@ const PlanStats = styled.div`
   margin-bottom: 0;
   padding-top: 16px;
   padding-bottom: 16px;
-  border-top: 1px solid #E6EBF1;
-  border-bottom: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
+  border-bottom: 1px solid #C7CED6;
   flex-wrap: wrap;
   gap: 12px;
 
@@ -255,7 +255,7 @@ const StatNumber = styled.div`
 
 const StatDesc = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 2px;
 `;
 
@@ -330,9 +330,9 @@ const PlanButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' 
     &:hover { background: #FEE2E2; }
   ` : `
     background: transparent;
-    color: #6B7280;
-    border-color: #E6EBF1;
-    &:hover { background: #F8FAFC; color: #0A2540; }
+    color: #4B5563;
+    border-color: #C7CED6;
+    &:hover { background: #F1F4F8; color: #0A2540; }
   `}
 `;
 
@@ -352,7 +352,7 @@ const FormLabel = styled.label`
 const FormInput = styled.input`
   width: 100%;
   padding: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   box-sizing: border-box;
@@ -362,7 +362,7 @@ const FormInput = styled.input`
 const FormSelect = styled.select`
   width: 100%;
   padding: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   box-sizing: border-box;
@@ -374,7 +374,7 @@ const FormSelect = styled.select`
 const FormTextArea = styled.textarea`
   width: 100%;
   padding: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   resize: vertical;
@@ -411,7 +411,7 @@ const CheckboxItem = styled.div`
 
 const DetailSection = styled.div`
   margin-bottom: 24px;
-  h4 { font-size: 16px; font-weight: 600; color: #0A2540; margin: 0 0 16px 0; padding-bottom: 8px; border-bottom: 1px solid #E6EBF1; }
+  h4 { font-size: 16px; font-weight: 600; color: #0A2540; margin: 0 0 16px 0; padding-bottom: 8px; border-bottom: 1px solid #C7CED6; }
 `;
 
 const DetailRow = styled.div`
@@ -431,7 +431,7 @@ const DetailRow = styled.div`
 
 const DetailLabel = styled.span`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   font-weight: 500;
 `;
 
@@ -444,7 +444,7 @@ const DetailValue = styled.span`
 const SectionDivider = styled.div`
   margin: 20px 0;
   padding: 12px 0 4px;
-  border-top: 2px solid #E6EBF1;
+  border-top: 2px solid #C7CED6;
   font-size: 15px;
   font-weight: 600;
   color: #0A2540;
@@ -468,7 +468,7 @@ const FoodcourtChargeItem = styled.div`
 const RestaurantList = styled.div`
   max-height: 300px;
   overflow-y: auto;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
 `;
 
@@ -477,7 +477,7 @@ const RestaurantItem = styled.div<{ isAssigned?: boolean }>`
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
   background: ${props => props.isAssigned ? '#F0FDF4' : 'white'};
   flex-wrap: wrap;
   gap: 8px;
@@ -974,7 +974,7 @@ const FoodcourtPlansPage: React.FC = () => {
           <option value="additive">{t('foodcourt:foodcourtPlansPage.additive', 'Fixed Amount + % of Revenue')}</option>
           <option value="combined">{t('foodcourt:foodcourtPlansPage.combined', 'Fixed Amount or % of Revenue (whichever higher)')}</option>
         </FormSelect>
-        <div style={{ fontSize: 12, color: '#6B7C93', marginTop: 4 }}>
+        <div style={{ fontSize: 12, color: '#4B5563', marginTop: 4 }}>
           {formData.charge_type === 'fixed' && 'Flat monthly fee per currency.'}
           {formData.charge_type === 'percentage' && 'Rent = revenue × rate. No fixed base.'}
           {formData.charge_type === 'additive' && 'Rent = fixed amount + (revenue × rate). Both charged.'}
@@ -989,7 +989,7 @@ const FoodcourtPlansPage: React.FC = () => {
             {supportedCurrencies.map(code => {
               const config = currencyConfig[code];
               return (
-                <div key={code} style={{ padding: '12px', border: '1px solid #E6EBF1', borderRadius: '8px', background: '#FAFBFC' }}>
+                <div key={code} style={{ padding: '12px', border: '1px solid #C7CED6', borderRadius: '8px', background: '#F9FAFB' }}>
                   <div style={{ fontWeight: 600, marginBottom: '8px', color: '#0A2540' }}>
                     {config?.symbol || code} {code} - {config?.name || code}
                   </div>
@@ -1029,7 +1029,7 @@ const FoodcourtPlansPage: React.FC = () => {
               );
             })}
             {supportedCurrencies.length === 0 && (
-              <p style={{ color: '#6B7280', fontSize: '14px' }}>
+              <p style={{ color: '#4B5563', fontSize: '14px' }}>
                 No currencies configured. Add currencies in "Manage Currencies" first.
               </p>
             )}
@@ -1073,7 +1073,7 @@ const FoodcourtPlansPage: React.FC = () => {
           value={formData.billing_day}
           onChange={(e) => setFormData(prev => ({...prev, billing_day: e.target.value}))}
         />
-        <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+        <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '4px' }}>
           Leave empty to use subscription start date. Invoice auto-generated 14 days before billing day.
         </div>
       </FormGroup>
@@ -1146,9 +1146,9 @@ const FoodcourtPlansPage: React.FC = () => {
         </FilterBar>
 
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '60px 0', color: '#6B7280' }}>{t('foodcourt:foodcourtPlansPage.loadingPlans')}</div>
+          <div style={{ textAlign: 'center', padding: '60px 0', color: '#4B5563' }}>{t('foodcourt:foodcourtPlansPage.loadingPlans')}</div>
         ) : filteredPlans.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '60px 0', color: '#6B7280' }}>
+          <div style={{ textAlign: 'center', padding: '60px 0', color: '#4B5563' }}>
             {plans.length === 0 ? 'No plans created yet. Click "Create Plan" to get started.' : 'No plans match your filters.'}
           </div>
         ) : (
@@ -1195,7 +1195,7 @@ const FoodcourtPlansPage: React.FC = () => {
                     ) : hasCurrencyPrice(plan) ? (
                       <>
                         <MonthlyPrice>
-                          {formatPlanPrice(plan, 'monthly')}<span style={{fontSize: '16px', color: '#6B7280'}}>/month</span>
+                          {formatPlanPrice(plan, 'monthly')}<span style={{fontSize: '16px', color: '#4B5563'}}>/month</span>
                         </MonthlyPrice>
                         {getPlanPrice(plan, 'annual') > 0 && getPlanPrice(plan, 'monthly') > 0 && (
                           <AnnualPrice>
@@ -1491,7 +1491,7 @@ const FoodcourtPlansPage: React.FC = () => {
                         <RestaurantItem key={pr.id} isAssigned>
                           <div>
                             <div style={{fontWeight: 600, color: '#0A2540'}}>{pr.restaurant ? getRestaurantDisplayName(pr.restaurant) : `Restaurant #${pr.restaurant_id}`}</div>
-                            <div style={{fontSize: '12px', color: '#6B7280'}}>
+                            <div style={{fontSize: '12px', color: '#4B5563'}}>
                               Since {tzFormatDate(pr.activation_date, null)}
                             </div>
                           </div>
@@ -1500,7 +1500,7 @@ const FoodcourtPlansPage: React.FC = () => {
                       ))}
                     </RestaurantList>
                   ) : (
-                    <p style={{color: '#6B7280', fontSize: '14px'}}>{t('foodcourt:foodcourtPlansPage.noTenantsAssignedToThisPlan')}</p>
+                    <p style={{color: '#4B5563', fontSize: '14px'}}>{t('foodcourt:foodcourtPlansPage.noTenantsAssignedToThisPlan')}</p>
                   )}
                   <Button variant="secondary" style={{marginTop: '12px', width: '100%'}} onClick={() => handleManageRestaurants(selectedPlan)}>
                     Manage Tenant Assignments
@@ -1519,14 +1519,14 @@ const FoodcourtPlansPage: React.FC = () => {
                           <div key={link.id} style={{
                             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                             padding: '10px 12px', background: isOpen ? '#F0F9FF' : '#F9FAFB',
-                            borderRadius: 8, border: `1px solid ${isOpen ? '#BAE6FD' : '#E6EBF1'}`
+                            borderRadius: 8, border: `1px solid ${isOpen ? '#BAE6FD' : '#C7CED6'}`
                           }}>
                             <div>
                               <div style={{ fontWeight: 600, color: '#0A2540', fontSize: 14 }}>
                                 {c?.contract_number || `Contract #${link.contract_id}`}
-                                {c?.applicant_company_name ? <span style={{ color: '#6B7C93', fontWeight: 400, marginLeft: 6 }}>· {c.applicant_company_name}</span> : null}
+                                {c?.applicant_company_name ? <span style={{ color: '#4B5563', fontWeight: 400, marginLeft: 6 }}>· {c.applicant_company_name}</span> : null}
                               </div>
-                              <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>
+                              <div style={{ fontSize: 12, color: '#4B5563', marginTop: 2 }}>
                                 {c?.start_date ? tzFormatDate(c.start_date, null) : '—'}
                                 {c?.end_date ? ` → ${tzFormatDate(c.end_date, null)}` : ''}
                                 {c?.stage ? ` · ${c.stage}` : ''}
@@ -1534,8 +1534,8 @@ const FoodcourtPlansPage: React.FC = () => {
                             </div>
                             <span style={{
                               padding: '4px 10px', borderRadius: 12,
-                              background: isOpen ? '#DCFCE7' : '#F3F4F6',
-                              color: isOpen ? '#166534' : '#6B7280',
+                              background: isOpen ? '#DCFCE7' : '#F1F4F8',
+                              color: isOpen ? '#166534' : '#4B5563',
                               fontSize: 11, fontWeight: 600
                             }}>
                               {isOpen ? 'Open' : 'Closed'}
@@ -1554,30 +1554,30 @@ const FoodcourtPlansPage: React.FC = () => {
         {showPricesModal && selectedPlan && (
                     <CommonModal isOpen={true} onClose={() => setShowPricesModal(false)} title={`Set Prices for ${selectedPlan.name}`} footer={<><Button variant="secondary" onClick={() => setShowPricesModal(false)}>{t('foodcourt:foodcourtPlansPage.cancel')}</Button><Button variant="primary" onClick={savePlanPrices}>{t('foodcourt:foodcourtPlansPage.savePrices')}</Button></>}>
 
-                <p style={{ marginBottom: '20px', color: '#6B7280', fontSize: '14px' }}>
+                <p style={{ marginBottom: '20px', color: '#4B5563', fontSize: '14px' }}>
                   Configure pricing for each supported currency.
                 </p>
                 <div style={{ display: 'grid', gap: '16px' }}>
                   {supportedCurrencies.map(code => {
                     const config = currencyConfig[code];
                     return (
-                      <div key={code} style={{ padding: '16px', border: '1px solid #E6EBF1', borderRadius: '8px', background: '#FAFBFC' }}>
+                      <div key={code} style={{ padding: '16px', border: '1px solid #C7CED6', borderRadius: '8px', background: '#F9FAFB' }}>
                         <div style={{ fontWeight: 600, marginBottom: '12px', color: '#0A2540', display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span style={{ padding: '4px 8px', background: '#635BFF', color: 'white', borderRadius: '4px', fontSize: '12px' }}>{config?.symbol || code}</span>
                           {config?.name || code} ({code})
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                           <div>
-                            <label style={{ fontSize: '13px', color: '#6B7280', display: 'block', marginBottom: '4px' }}>{t('foodcourt:foodcourtPlansPage.monthlyPrice')}</label>
+                            <label style={{ fontSize: '13px', color: '#4B5563', display: 'block', marginBottom: '4px' }}>{t('foodcourt:foodcourtPlansPage.monthlyPrice')}</label>
                             <input type="number" value={editingPlanPrices[code]?.monthly || ''} onChange={(e) => setEditingPlanPrices({
                               ...editingPlanPrices, [code]: { ...editingPlanPrices[code], monthly: e.target.value }
-                            })} style={{ width: '100%', padding: '10px 12px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' as const }} placeholder="0.00" />
+                            })} style={{ width: '100%', padding: '10px 12px', border: '1px solid #C7CED6', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' as const }} placeholder="0.00" />
                           </div>
                           <div>
-                            <label style={{ fontSize: '13px', color: '#6B7280', display: 'block', marginBottom: '4px' }}>{t('foodcourt:foodcourtPlansPage.annualPrice')}</label>
+                            <label style={{ fontSize: '13px', color: '#4B5563', display: 'block', marginBottom: '4px' }}>{t('foodcourt:foodcourtPlansPage.annualPrice')}</label>
                             <input type="number" value={editingPlanPrices[code]?.annual || ''} onChange={(e) => setEditingPlanPrices({
                               ...editingPlanPrices, [code]: { ...editingPlanPrices[code], annual: e.target.value }
-                            })} style={{ width: '100%', padding: '10px 12px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' as const }} placeholder="0.00" />
+                            })} style={{ width: '100%', padding: '10px 12px', border: '1px solid #C7CED6', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' as const }} placeholder="0.00" />
                           </div>
                         </div>
                       </div>
@@ -1592,7 +1592,7 @@ const FoodcourtPlansPage: React.FC = () => {
         {showRestaurantModal && selectedPlan && (
                     <CommonModal isOpen={true} onClose={() => setShowRestaurantModal(false)} title={`Manage Tenants: ${selectedPlan.name}`} footer={<><Button variant="secondary" onClick={() => setShowRestaurantModal(false)}>{t('foodcourt:foodcourtPlansPage.close')}</Button></>}>
 
-                <p style={{ marginBottom: '16px', color: '#6B7280', fontSize: '14px' }}>
+                <p style={{ marginBottom: '16px', color: '#4B5563', fontSize: '14px' }}>
                   Assign or remove tenants from this plan.
                 </p>
                 <RestaurantList>
@@ -1602,7 +1602,7 @@ const FoodcourtPlansPage: React.FC = () => {
                       <RestaurantItem key={restaurant.id} isAssigned={isAssigned}>
                         <div>
                           <div style={{fontWeight: 600, color: '#0A2540'}}>{getRestaurantDisplayName(restaurant)}</div>
-                          <div style={{fontSize: '12px', color: '#6B7280'}}>{formatEntityAddress(restaurant, (i18n.language as AppLocale) || 'en') || 'No address'}</div>
+                          <div style={{fontSize: '12px', color: '#4B5563'}}>{formatEntityAddress(restaurant, (i18n.language as AppLocale) || 'en') || 'No address'}</div>
                         </div>
                         {isAssigned ? (
                           <Button variant="danger-outline" onClick={() => removeRestaurant(restaurant.id)} style={{padding: '6px 12px', fontSize: '12px'}}>{t('foodcourt:foodcourtPlansPage.remove')}</Button>
@@ -1613,7 +1613,7 @@ const FoodcourtPlansPage: React.FC = () => {
                     );
                   })}
                   {foodcourtRestaurants.length === 0 && (
-                    <div style={{padding: '20px', textAlign: 'center', color: '#6B7280'}}>{t('foodcourt:foodcourtPlansPage.noTenantsFoundInYourFoodcourt')}</div>
+                    <div style={{padding: '20px', textAlign: 'center', color: '#4B5563'}}>{t('foodcourt:foodcourtPlansPage.noTenantsFoundInYourFoodcourt')}</div>
                   )}
                 </RestaurantList>
               

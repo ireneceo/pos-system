@@ -7,7 +7,7 @@ import { getAuthToken } from '../../utils/auth';
 const ContentCard = styled.div`
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   padding: 32px;
 `;
 
@@ -30,12 +30,12 @@ const FormGroup = styled.div`
 const Label = styled.label`
   font-size: 14px;
   font-weight: 600;
-  color: #374151;
+  color: #1F2937;
 `;
 
 const Input = styled.input`
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
 
@@ -47,12 +47,12 @@ const Input = styled.input`
 
   &:disabled {
     background: #F9FAFB;
-    color: #6B7280;
+    color: #4B5563;
     cursor: not-allowed;
   }
 
   &::placeholder {
-    color: #9CA3AF;
+    color: #6B7280;
   }
 `;
 
@@ -76,7 +76,7 @@ const CheckboxLabel = styled.label`
 const HelpText = styled.small`
   display: block;
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 4px;
 `;
 
@@ -142,7 +142,7 @@ const DisabledMessage = styled.div`
   padding: 20px;
   background: #F9FAFB;
   border-radius: 8px;
-  color: #6B7280;
+  color: #4B5563;
   font-size: 14px;
   text-align: center;
 `;

@@ -77,7 +77,7 @@ const RecipesGrid = styled.div`
 const RecipeCard = styled.div<{ isActive?: boolean }>`
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   padding: 20px;
   transition: all 0.2s;
   opacity: ${props => props.isActive ? 1 : 0.6};
@@ -139,7 +139,7 @@ const RecipeCategory = styled.div`
 
 const RecipeDescription = styled.p`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 12px 0;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -153,7 +153,7 @@ const RecipeCosts = styled.div`
   gap: 12px;
   margin: 16px 0;
   padding: 12px;
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 8px;
 `;
 
@@ -161,7 +161,7 @@ const CostItem = styled.div``;
 
 const CostLabel = styled.div`
   font-size: 11px;
-  color: #6B7280;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 4px;
@@ -180,12 +180,12 @@ const CardSpacer = styled.div`
 
 const RecipeIngredients = styled.div`
   padding-top: 12px;
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
 `;
 
 const IngredientsCount = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-bottom: 8px;
 `;
 
@@ -199,8 +199,8 @@ const IngredientTags = styled.div`
 const IngredientTag = styled.span`
   display: inline-block;
   padding: 2px 8px;
-  background: #F3F4F6;
-  color: #4B5563;
+  background: #F1F4F8;
+  color: #374151;
   border-radius: 12px;
   font-size: 11px;
   font-weight: 500;
@@ -214,7 +214,7 @@ const RecipeMetaInfo = styled.div`
   background: #FAFAFA;
   border-radius: 8px;
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const MetaItem = styled.div`
@@ -225,7 +225,7 @@ const MetaItem = styled.div`
 
 const InstructionsPreview = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 8px;
   padding: 8px;
   background: #FFFBEB;
@@ -276,7 +276,7 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger
         `;
       default:
         return `
-          background: #F8FAFC;
+          background: #F1F4F8;
           border: 1px solid #E2E8F0;
           color: #475569;
           &:hover {
@@ -298,7 +298,7 @@ const EmptyTitle = styled.h3`
 
 const EmptyDescription = styled.p`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin-bottom: 24px;
 `;
 
@@ -366,7 +366,7 @@ const AddButton = styled.button`
 `;
 
 const CostSummary = styled.div`
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 8px;
   padding: 16px;
   display: flex;
@@ -376,7 +376,7 @@ const CostSummary = styled.div`
 
 const CostSummaryLabel = styled.div`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   font-weight: 600;
 `;
 

@@ -7,7 +7,7 @@ import { formatDateTime as tzFormatDateTime } from '../../utils/timezone';
 const Card = styled.div`
   background: white;
   border-radius: 8px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   padding: 24px;
   margin-bottom: 24px;
 `;
@@ -182,7 +182,7 @@ const ImportDataTab: React.FC<ImportDataTabProps> = ({ restaurantId }) => {
       {stats && (
         <Card>
           <CardTitle>Current Data in Your Restaurant</CardTitle>
-          <p style={{ color: '#6B7C93', fontSize: '13px', margin: '4px 0 16px' }}>
+          <p style={{ color: '#4B5563', fontSize: '13px', margin: '4px 0 16px' }}>
             Data currently registered in the system. Import will add order history to these.
           </p>
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
@@ -192,9 +192,9 @@ const ImportDataTab: React.FC<ImportDataTabProps> = ({ restaurantId }) => {
               { label: 'Option Groups', value: stats.options, color: '#8B5CF6' },
               { label: 'Orders', value: stats.orders, color: '#F59E0B' },
             ].map(s => (
-              <div key={s.label} style={{ padding: '12px 16px', background: '#F8FAFC', border: '1px solid #E6EBF1', borderRadius: '8px', flex: '1', minWidth: '110px' }}>
+              <div key={s.label} style={{ padding: '12px 16px', background: '#F1F4F8', border: '1px solid #C7CED6', borderRadius: '8px', flex: '1', minWidth: '110px' }}>
                 <div style={{ fontSize: '22px', fontWeight: 700, color: s.color }}>{s.value.toLocaleString()}</div>
-                <div style={{ fontSize: '11px', color: '#6B7C93', marginTop: '2px' }}>{s.label}</div>
+                <div style={{ fontSize: '11px', color: '#4B5563', marginTop: '2px' }}>{s.label}</div>
               </div>
             ))}
           </div>
@@ -204,7 +204,7 @@ const ImportDataTab: React.FC<ImportDataTabProps> = ({ restaurantId }) => {
       {/* Import Order History */}
       <Card>
         <CardTitle>Import Order History</CardTitle>
-        <p style={{ color: '#6B7C93', margin: '4px 0 20px', fontSize: '14px', lineHeight: '1.6' }}>
+        <p style={{ color: '#4B5563', margin: '4px 0 20px', fontSize: '14px', lineHeight: '1.6' }}>
           Upload order history from your previous POS system. The system will automatically match item names to your registered menu. Amounts are imported as-is from your CSV (no recalculation).
         </p>
 
@@ -231,22 +231,22 @@ const ImportDataTab: React.FC<ImportDataTabProps> = ({ restaurantId }) => {
           <div style={{ marginBottom: '20px' }}>
             <label style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              padding: '40px 32px', border: '2px dashed #D1D5DB', borderRadius: '8px', cursor: 'pointer',
-              background: file ? '#F5F3FF' : '#FAFBFC', borderColor: file ? '#635BFF' : '#D1D5DB'
+              padding: '40px 32px', border: '2px dashed #6B7280', borderRadius: '8px', cursor: 'pointer',
+              background: file ? '#F5F3FF' : '#F9FAFB', borderColor: file ? '#635BFF' : '#6B7280'
             }}>
               <input type="file" accept=".csv" onChange={handleFileUpload} style={{ display: 'none' }} />
-              <div style={{ fontSize: '14px', color: '#6B7280', textAlign: 'center' }}>
+              <div style={{ fontSize: '14px', color: '#4B5563', textAlign: 'center' }}>
                 {file ? (
                   <>
                     <div style={{ fontSize: '20px', marginBottom: '8px' }}>📄</div>
-                    <strong style={{ color: '#374151' }}>{file.name}</strong>
-                    <div style={{ fontSize: '12px', color: '#9CA3AF', marginTop: '4px' }}>{(file.size / 1024).toFixed(1)} KB — Click to change</div>
+                    <strong style={{ color: '#1F2937' }}>{file.name}</strong>
+                    <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>{(file.size / 1024).toFixed(1)} KB — Click to change</div>
                   </>
                 ) : (
                   <>
                     <div style={{ fontSize: '20px', marginBottom: '8px' }}>📤</div>
-                    <strong style={{ color: '#374151' }}>Click to upload CSV file</strong>
-                    <div style={{ fontSize: '12px', color: '#9CA3AF', marginTop: '4px' }}>Any column order. Max 5MB.</div>
+                    <strong style={{ color: '#1F2937' }}>Click to upload CSV file</strong>
+                    <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>Any column order. Max 5MB.</div>
                   </>
                 )}
               </div>
@@ -271,22 +271,22 @@ const ImportDataTab: React.FC<ImportDataTabProps> = ({ restaurantId }) => {
 
             {/* Column Mapping */}
             <div style={{ marginBottom: '20px' }}>
-              <div style={{ fontSize: '14px', fontWeight: 600, color: '#374151', marginBottom: '4px' }}>Column Mapping</div>
-              <p style={{ fontSize: '12px', color: '#9CA3AF', margin: '0 0 12px' }}>
+              <div style={{ fontSize: '14px', fontWeight: 600, color: '#1F2937', marginBottom: '4px' }}>Column Mapping</div>
+              <p style={{ fontSize: '12px', color: '#6B7280', margin: '0 0 12px' }}>
                 We auto-detected {mappedCount} columns. Adjust if needed.
               </p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '4px', alignItems: 'center', marginBottom: '8px', fontSize: '11px', color: '#9CA3AF', fontWeight: 600, textTransform: 'uppercase' as const }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '4px', alignItems: 'center', marginBottom: '8px', fontSize: '11px', color: '#6B7280', fontWeight: 600, textTransform: 'uppercase' as const }}>
                 <div>Your CSV Column</div><div></div><div>System Field</div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '8px', alignItems: 'center' }}>
                 {preview.headers.map((header: string) => (
                   <React.Fragment key={header}>
-                    <div style={{ fontSize: '13px', color: '#374151', fontWeight: 500, padding: '6px 0' }}>{header}</div>
-                    <div style={{ color: mapping[header] ? '#10B981' : '#D1D5DB', fontSize: '16px' }}>→</div>
+                    <div style={{ fontSize: '13px', color: '#1F2937', fontWeight: 500, padding: '6px 0' }}>{header}</div>
+                    <div style={{ color: mapping[header] ? '#10B981' : '#6B7280', fontSize: '16px' }}>→</div>
                     <select
                       value={mapping[header] || ''}
                       onChange={(e) => setMapping(prev => ({ ...prev, [header]: e.target.value }))}
-                      style={{ padding: '6px 10px', border: '1px solid #D1D5DB', borderRadius: '6px', fontSize: '13px', background: mapping[header] ? '#ECFDF5' : '#fff', color: mapping[header] ? '#065F46' : '#6B7280' }}
+                      style={{ padding: '6px 10px', border: '1px solid #6B7280', borderRadius: '6px', fontSize: '13px', background: mapping[header] ? '#ECFDF5' : '#fff', color: mapping[header] ? '#065F46' : '#4B5563' }}
                     >
                       <option value="">-- Skip --</option>
                       <option value="date">Order Date</option>
@@ -304,12 +304,12 @@ const ImportDataTab: React.FC<ImportDataTabProps> = ({ restaurantId }) => {
 
             {/* Preview Table */}
             <div style={{ marginBottom: '20px', overflowX: 'auto' }}>
-              <div style={{ fontSize: '14px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>Data Preview</div>
+              <div style={{ fontSize: '14px', fontWeight: 600, color: '#1F2937', marginBottom: '8px' }}>Data Preview</div>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                 <thead>
                   <tr>
                     {preview.headers.map((h: string) => (
-                      <th key={h} style={{ padding: '8px 10px', background: mapping[h] ? '#F0FDF4' : '#F3F4F6', borderBottom: '2px solid #E5E7EB', textAlign: 'left', whiteSpace: 'nowrap', fontSize: '11px' }}>
+                      <th key={h} style={{ padding: '8px 10px', background: mapping[h] ? '#F0FDF4' : '#F1F4F8', borderBottom: '2px solid #C7CED6', textAlign: 'left', whiteSpace: 'nowrap', fontSize: '11px' }}>
                         {h}
                         {mapping[h] && <span style={{ display: 'block', fontSize: '10px', color: '#10B981', marginTop: '2px' }}>→ {mapping[h]}</span>}
                       </th>
@@ -318,9 +318,9 @@ const ImportDataTab: React.FC<ImportDataTabProps> = ({ restaurantId }) => {
                 </thead>
                 <tbody>
                   {preview.rows.map((row: any, i: number) => (
-                    <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#FAFBFC' }}>
+                    <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#F9FAFB' }}>
                       {preview.headers.map((h: string) => (
-                        <td key={h} style={{ padding: '6px 10px', borderBottom: '1px solid #F3F4F6', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row[h]}</td>
+                        <td key={h} style={{ padding: '6px 10px', borderBottom: '1px solid #F1F4F8', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row[h]}</td>
                       ))}
                     </tr>
                   ))}
@@ -337,7 +337,7 @@ const ImportDataTab: React.FC<ImportDataTabProps> = ({ restaurantId }) => {
 
             {/* Confirm */}
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-              <button onClick={resetState} style={{ padding: '8px 16px', fontSize: '13px', border: '1px solid #D1D5DB', borderRadius: '6px', background: '#fff', color: '#6B7280', cursor: 'pointer' }}>
+              <button onClick={resetState} style={{ padding: '8px 16px', fontSize: '13px', border: '1px solid #6B7280', borderRadius: '6px', background: '#fff', color: '#4B5563', cursor: 'pointer' }}>
                 Cancel
               </button>
               <button
@@ -365,7 +365,7 @@ const ImportDataTab: React.FC<ImportDataTabProps> = ({ restaurantId }) => {
               {result.matched > 0 && <div><strong>{result.matched}</strong> items matched</div>}
               {(result.unmatched > 0 || unmatchedItems.length > 0) && <div style={{ color: '#92400E' }}><strong>{unmatchedItems.length || result.unmatched}</strong> items unmatched</div>}
             </div>
-            <button onClick={resetState} style={{ padding: '6px 16px', fontSize: '13px', border: '1px solid #D1D5DB', borderRadius: '6px', background: '#fff', cursor: 'pointer', color: '#374151' }}>
+            <button onClick={resetState} style={{ padding: '6px 16px', fontSize: '13px', border: '1px solid #6B7280', borderRadius: '6px', background: '#fff', cursor: 'pointer', color: '#1F2937' }}>
               Import More
             </button>
           </div>
@@ -376,22 +376,22 @@ const ImportDataTab: React.FC<ImportDataTabProps> = ({ restaurantId }) => {
       {unmatchedItems.length > 0 && (
         <Card>
           <CardTitle>Match Unrecognized Items</CardTitle>
-          <p style={{ color: '#6B7C93', margin: '4px 0 16px', fontSize: '13px', lineHeight: '1.6' }}>
+          <p style={{ color: '#4B5563', margin: '4px 0 16px', fontSize: '13px', lineHeight: '1.6' }}>
             These item names from your CSV didn't match any registered menu. Select the correct menu item for each, or leave as "Unknown" for items no longer on your menu.
           </p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '4px', alignItems: 'center', marginBottom: '8px', fontSize: '11px', color: '#9CA3AF', fontWeight: 600, textTransform: 'uppercase' as const }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '4px', alignItems: 'center', marginBottom: '8px', fontSize: '11px', color: '#6B7280', fontWeight: 600, textTransform: 'uppercase' as const }}>
             <div>CSV Item Name</div><div></div><div>Your Menu Item</div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '8px', alignItems: 'center', marginBottom: '20px' }}>
             {unmatchedItems.map(name => (
               <React.Fragment key={name}>
-                <div style={{ fontSize: '13px', color: '#374151', fontWeight: 500, padding: '6px 0' }}>{name}</div>
-                <div style={{ color: matchMap[name] ? '#10B981' : '#D1D5DB', fontSize: '16px' }}>→</div>
+                <div style={{ fontSize: '13px', color: '#1F2937', fontWeight: 500, padding: '6px 0' }}>{name}</div>
+                <div style={{ color: matchMap[name] ? '#10B981' : '#6B7280', fontSize: '16px' }}>→</div>
                 <select
                   value={matchMap[name] || ''}
                   onChange={(e) => setMatchMap(prev => ({ ...prev, [name]: parseInt(e.target.value) || 0 }))}
-                  style={{ padding: '6px 10px', border: '1px solid #D1D5DB', borderRadius: '6px', fontSize: '13px', background: matchMap[name] ? '#ECFDF5' : '#fff' }}
+                  style={{ padding: '6px 10px', border: '1px solid #6B7280', borderRadius: '6px', fontSize: '13px', background: matchMap[name] ? '#ECFDF5' : '#fff' }}
                 >
                   <option value="">-- Leave as Unknown --</option>
                   {menuList.map(m => (
@@ -403,11 +403,11 @@ const ImportDataTab: React.FC<ImportDataTabProps> = ({ restaurantId }) => {
           </div>
 
           <div style={{ display: 'flex', gap: '8px', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ fontSize: '12px', color: '#9CA3AF' }}>
+            <div style={{ fontSize: '12px', color: '#6B7280' }}>
               {Object.values(matchMap).filter(v => v).length} of {unmatchedItems.length} items matched
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={() => setUnmatchedItems([])} style={{ padding: '6px 14px', fontSize: '13px', border: '1px solid #D1D5DB', borderRadius: '6px', background: '#fff', color: '#6B7280', cursor: 'pointer' }}>
+              <button onClick={() => setUnmatchedItems([])} style={{ padding: '6px 14px', fontSize: '13px', border: '1px solid #6B7280', borderRadius: '6px', background: '#fff', color: '#4B5563', cursor: 'pointer' }}>
                 Skip
               </button>
               {Object.values(matchMap).some(v => v) && (
@@ -432,36 +432,36 @@ const ImportDataTab: React.FC<ImportDataTabProps> = ({ restaurantId }) => {
       {history.filter(h => h.import_type === 'orders').length > 0 && (
         <Card>
           <CardTitle>Import History</CardTitle>
-          <p style={{ color: '#6B7C93', fontSize: '13px', margin: '4px 0 16px' }}>
+          <p style={{ color: '#4B5563', fontSize: '13px', margin: '4px 0 16px' }}>
             Click "Undo" to remove all orders from a specific import.
           </p>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
               <thead>
                 <tr style={{ background: '#F9FAFB' }}>
-                  <th style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '1px solid #E5E7EB' }}>Date</th>
-                  <th style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '1px solid #E5E7EB' }}>File</th>
-                  <th style={{ padding: '8px 12px', textAlign: 'right', borderBottom: '1px solid #E5E7EB' }}>Imported</th>
-                  <th style={{ padding: '8px 12px', textAlign: 'right', borderBottom: '1px solid #E5E7EB' }}>Failed</th>
-                  <th style={{ padding: '8px 12px', textAlign: 'center', borderBottom: '1px solid #E5E7EB' }}>Status</th>
-                  <th style={{ padding: '8px 12px', textAlign: 'center', borderBottom: '1px solid #E5E7EB' }}></th>
+                  <th style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '1px solid #C7CED6' }}>Date</th>
+                  <th style={{ padding: '8px 12px', textAlign: 'left', borderBottom: '1px solid #C7CED6' }}>File</th>
+                  <th style={{ padding: '8px 12px', textAlign: 'right', borderBottom: '1px solid #C7CED6' }}>Imported</th>
+                  <th style={{ padding: '8px 12px', textAlign: 'right', borderBottom: '1px solid #C7CED6' }}>Failed</th>
+                  <th style={{ padding: '8px 12px', textAlign: 'center', borderBottom: '1px solid #C7CED6' }}>Status</th>
+                  <th style={{ padding: '8px 12px', textAlign: 'center', borderBottom: '1px solid #C7CED6' }}></th>
                 </tr>
               </thead>
               <tbody>
                 {history.filter(h => h.import_type === 'orders').map((h: any) => (
                   <tr key={h.id}>
-                    <td style={{ padding: '8px 12px', borderBottom: '1px solid #F3F4F6', whiteSpace: 'nowrap' }}>{tzFormatDateTime(h.createdAt, null)}</td>
-                    <td style={{ padding: '8px 12px', borderBottom: '1px solid #F3F4F6', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{h.file_name || '-'}</td>
-                    <td style={{ padding: '8px 12px', borderBottom: '1px solid #F3F4F6', textAlign: 'right', color: '#059669', fontWeight: 600 }}>{h.success_count}</td>
-                    <td style={{ padding: '8px 12px', borderBottom: '1px solid #F3F4F6', textAlign: 'right', color: h.failed_count > 0 ? '#991B1B' : '#6B7280' }}>{h.failed_count}</td>
-                    <td style={{ padding: '8px 12px', borderBottom: '1px solid #F3F4F6', textAlign: 'center' }}>
+                    <td style={{ padding: '8px 12px', borderBottom: '1px solid #F1F4F8', whiteSpace: 'nowrap' }}>{tzFormatDateTime(h.createdAt, null)}</td>
+                    <td style={{ padding: '8px 12px', borderBottom: '1px solid #F1F4F8', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{h.file_name || '-'}</td>
+                    <td style={{ padding: '8px 12px', borderBottom: '1px solid #F1F4F8', textAlign: 'right', color: '#059669', fontWeight: 600 }}>{h.success_count}</td>
+                    <td style={{ padding: '8px 12px', borderBottom: '1px solid #F1F4F8', textAlign: 'right', color: h.failed_count > 0 ? '#991B1B' : '#4B5563' }}>{h.failed_count}</td>
+                    <td style={{ padding: '8px 12px', borderBottom: '1px solid #F1F4F8', textAlign: 'center' }}>
                       <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: 600, background: h.status === 'completed' ? '#ECFDF5' : '#FEF2F2', color: h.status === 'completed' ? '#065F46' : '#991B1B' }}>
                         {h.status === 'completed' ? 'Active' : 'Undone'}
                       </span>
                     </td>
-                    <td style={{ padding: '8px 12px', borderBottom: '1px solid #F3F4F6', textAlign: 'center' }}>
+                    <td style={{ padding: '8px 12px', borderBottom: '1px solid #F1F4F8', textAlign: 'center' }}>
                       {h.status === 'completed' && (
-                        <button onClick={() => handleUndo(h.batch_id)} style={{ padding: '4px 12px', fontSize: '12px', border: '1px solid #D1D5DB', borderRadius: '4px', background: '#fff', color: '#6B7280', cursor: 'pointer' }}>
+                        <button onClick={() => handleUndo(h.batch_id)} style={{ padding: '4px 12px', fontSize: '12px', border: '1px solid #6B7280', borderRadius: '4px', background: '#fff', color: '#4B5563', cursor: 'pointer' }}>
                           Undo
                         </button>
                       )}

@@ -38,7 +38,7 @@ const PageTitle = styled.h1`
 
 const Block = styled.section`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   padding: 24px;
   margin-bottom: 20px;
@@ -53,7 +53,7 @@ const BlockTitle = styled.h2`
 
 const BlockHint = styled.p`
   font-size: 13px;
-  color: #6B7C93;
+  color: #4B5563;
   margin: 0 0 16px;
 `;
 
@@ -76,7 +76,7 @@ const FieldRow = styled.div`
 const FieldLabel = styled.div`
   font-size: 13px;
   font-weight: 500;
-  color: #6B7C93;
+  color: #4B5563;
 `;
 
 const FieldControl = styled.div`
@@ -89,7 +89,7 @@ const InputBox = styled.input`
   padding: 0 12px;
   font-size: 14px;
   color: #0A2540;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   background: white;
   outline: none;
@@ -102,7 +102,7 @@ const InputBox = styled.input`
 
   &:disabled {
     background: #F5F7FA;
-    color: #6B7C93;
+    color: #4B5563;
     cursor: not-allowed;
   }
 `;
@@ -146,8 +146,8 @@ const CodeRow = styled.div`
   align-items: center;
   justify-content: space-between;
   padding: 14px 16px;
-  background: #FAFBFC;
-  border: 1px solid #E6EBF1;
+  background: #F9FAFB;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   gap: 12px;
   flex-wrap: wrap;
@@ -163,7 +163,7 @@ const CodeText = styled.div`
 
 const Btn = styled.button`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   padding: 8px 14px;
   font-size: 13px;
@@ -176,10 +176,10 @@ const Btn = styled.button`
 const Empty = styled.div`
   padding: 24px;
   text-align: center;
-  color: #6B7C93;
+  color: #4B5563;
   font-size: 14px;
-  background: #FAFBFC;
-  border: 1px dashed #E6EBF1;
+  background: #F9FAFB;
+  border: 1px dashed #C7CED6;
   border-radius: 8px;
 `;
 

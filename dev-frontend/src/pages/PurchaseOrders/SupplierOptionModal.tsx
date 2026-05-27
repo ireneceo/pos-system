@@ -42,7 +42,7 @@ interface Props {
 }
 
 const GroupBox = styled.div`
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 10px;
   padding: 12px 14px;
   margin-bottom: 10px;
@@ -76,14 +76,14 @@ const OptionRow = styled.label<{ $selected: boolean; $disabled?: boolean }>`
   justify-content: space-between;
   padding: 8px 12px;
   border-radius: 8px;
-  border: 1px solid ${p => p.$selected ? '#635BFF' : '#E6EBF1'};
+  border: 1px solid ${p => p.$selected ? '#635BFF' : '#C7CED6'};
   background: ${p => p.$selected ? '#EEF2FF' : 'white'};
   cursor: ${p => p.$disabled ? 'not-allowed' : 'pointer'};
   margin-bottom: 4px;
   transition: all 0.15s;
   font-size: 13px;
   opacity: ${p => p.$disabled ? 0.5 : 1};
-  &:hover { border-color: ${p => p.$disabled ? '#E6EBF1' : '#635BFF'}; }
+  &:hover { border-color: ${p => p.$disabled ? '#C7CED6' : '#635BFF'}; }
 `;
 
 const QtyRow = styled.div`
@@ -91,7 +91,7 @@ const QtyRow = styled.div`
   align-items: center;
   gap: 10px;
   padding: 12px 14px;
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 10px;
   margin-bottom: 12px;
 `;
@@ -99,7 +99,7 @@ const QtyRow = styled.div`
 const QtyBtn = styled.button`
   width: 32px;
   height: 32px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   background: white;
   border-radius: 8px;
   font-size: 16px;
@@ -114,7 +114,7 @@ const QtyInput = styled.input`
   font-size: 14px;
   font-weight: 600;
   padding: 6px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   outline: none;
   &:focus { border-color: #635BFF; }
@@ -228,7 +228,7 @@ const SupplierOptionModal: React.FC<Props> = ({ open, onClose, productName, base
             <GroupName>
               {g.name}
               {g.max_selections > 1 && (
-                <span style={{ fontSize: 11, color: '#6B7280', marginLeft: 6 }}>
+                <span style={{ fontSize: 11, color: '#4B5563', marginLeft: 6 }}>
                   ({g.min_selections || 0}–{g.max_selections})
                 </span>
               )}
@@ -247,7 +247,7 @@ const SupplierOptionModal: React.FC<Props> = ({ open, onClose, productName, base
                 onClick={() => !reachedMax && toggleOption(g, opt.id)}
               >
                 <span>{opt.name}</span>
-                <span style={{ fontSize: 12, color: opt.price_adjustment > 0 ? '#635BFF' : '#9CA3AF', fontWeight: 600 }}>
+                <span style={{ fontSize: 12, color: opt.price_adjustment > 0 ? '#635BFF' : '#6B7280', fontWeight: 600 }}>
                   {opt.price_adjustment > 0 ? `+${opt.price_adjustment.toFixed(2)}`
                     : opt.price_adjustment < 0 ? `−${Math.abs(opt.price_adjustment).toFixed(2)}`
                     : '—'}
@@ -271,7 +271,7 @@ const SupplierOptionModal: React.FC<Props> = ({ open, onClose, productName, base
       </QtyRow>
 
       <TotalRow>
-        <span style={{ fontSize: 13, color: '#6B7280' }}>
+        <span style={{ fontSize: 13, color: '#4B5563' }}>
           {adjustedUnitPrice.toFixed(2)}{unit ? ` / ${unit}` : ''} × {quantity}
         </span>
         <span style={{ fontSize: 18, fontWeight: 700, color: '#0A2540' }}>

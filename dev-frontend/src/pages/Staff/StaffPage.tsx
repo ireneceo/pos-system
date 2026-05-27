@@ -41,14 +41,14 @@ const MENU_GROUPS = [
 
 const StaffContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #FAFBFC;
+  background-color: #F9FAFB;
   min-height: 100vh;
 `;
 
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -87,12 +87,12 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s;
-  border: ${props => props.variant === 'primary' ? 'none' : '1px solid #E6EBF1'};
+  border: ${props => props.variant === 'primary' ? 'none' : '1px solid #C7CED6'};
   background: ${props => props.variant === 'primary' ? '#635BFF' : 'white'};
-  color: ${props => props.variant === 'primary' ? 'white' : '#6B7C93'};
+  color: ${props => props.variant === 'primary' ? 'white' : '#4B5563'};
 
   &:hover {
-    background: ${props => props.variant === 'primary' ? '#5A51E6' : '#F6F9FC'};
+    background: ${props => props.variant === 'primary' ? '#5A51E6' : '#F4F6F9'};
     transform: translateY(-1px);
   }
 `;
@@ -108,7 +108,7 @@ const Content = styled.div`
 const TableContainer = styled.div`
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   overflow: hidden;
 
   @media (max-width: 768px) {
@@ -156,7 +156,7 @@ const StaffAvatar = styled.div<{ role: string }>`
     switch(props.role.toLowerCase()) {
       case 'restaurant admin': return '#DC2626';
       case 'staff': return '#059669';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 `;
@@ -175,7 +175,7 @@ const StaffName = styled.div`
 
 const StaffMeta = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const RoleBadge = styled.span<{ role: string }>`
@@ -189,14 +189,14 @@ const RoleBadge = styled.span<{ role: string }>`
     switch(props.role.toLowerCase()) {
       case 'restaurant admin': return '#FEE2E2';
       case 'staff': return '#ECFDF5';
-      default: return '#F3F4F6';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
     switch(props.role.toLowerCase()) {
       case 'restaurant admin': return '#DC2626';
       case 'staff': return '#059669';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 `;
@@ -221,9 +221,9 @@ const ActionGroup = styled.div`
 const ActionButton = styled.button`
   padding: 6px 12px;
   background: transparent;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
-  color: #6B7280;
+  color: #4B5563;
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
@@ -251,10 +251,10 @@ const PermissionLabel = styled.label<{ alwaysOn?: boolean }>`
   padding: 8px 10px;
   border-radius: 6px;
   background: ${props => props.alwaysOn ? '#F0FDF4' : 'white'};
-  border: 1px solid ${props => props.alwaysOn ? '#BBF7D0' : '#E6EBF1'};
+  border: 1px solid ${props => props.alwaysOn ? '#BBF7D0' : '#C7CED6'};
   cursor: ${props => props.alwaysOn ? 'default' : 'pointer'};
   font-size: 13px;
-  color: ${props => props.alwaysOn ? '#166534' : '#374151'};
+  color: ${props => props.alwaysOn ? '#166534' : '#1F2937'};
   opacity: ${props => props.alwaysOn ? 0.8 : 1};
   transition: all 0.15s;
 
@@ -622,12 +622,12 @@ const StaffPage: React.FC = () => {
     permissions: string[],
     onChange: (updated: string[]) => void
   ) => (
-    <div style={{ marginTop: '20px', padding: '16px', background: '#F8FAFC', borderRadius: '8px', border: '1px solid #E6EBF1' }}>
+    <div style={{ marginTop: '20px', padding: '16px', background: '#F1F4F8', borderRadius: '8px', border: '1px solid #C7CED6' }}>
       <div style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540', marginBottom: '4px' }}>{t('staff:staffPage.menuAccess')}</div>
-      <div style={{ fontSize: '12px', color: '#6B7C93', marginBottom: '4px' }}>
+      <div style={{ fontSize: '12px', color: '#4B5563', marginBottom: '4px' }}>
         Core menus are always visible: Dashboard, POS Terminal, Live Orders, Kitchen Display, Customer Display, Mobile Order, Profile.
       </div>
-      <div style={{ fontSize: '12px', color: '#6B7C93', marginBottom: '12px' }}>
+      <div style={{ fontSize: '12px', color: '#4B5563', marginBottom: '12px' }}>
         Toggle additional menu sections below:
       </div>
       <PermissionGrid>
@@ -763,13 +763,13 @@ const StaffPage: React.FC = () => {
                       </DataTableCell>
 
                       <DataTableCell data-label="Department" align="center">
-                        <span style={{ fontSize: '14px', color: '#6B7280' }}>
+                        <span style={{ fontSize: '14px', color: '#4B5563' }}>
                           {staff.department || '—'}
                         </span>
                       </DataTableCell>
 
                       <DataTableCell data-label="PIN" align="center">
-                        <span style={{ fontSize: '14px', color: '#6B7280', fontFamily: 'monospace', letterSpacing: '2px' }}>
+                        <span style={{ fontSize: '14px', color: '#4B5563', fontFamily: 'monospace', letterSpacing: '2px' }}>
                           {staff.pin_code ? '****' : '—'}
                         </span>
                       </DataTableCell>
@@ -778,7 +778,7 @@ const StaffPage: React.FC = () => {
                         {staff.role === 'Restaurant Admin' ? (
                           <PermissionTag style={{ background: '#FEE2E2', color: '#DC2626' }}>{t('staff:staffPage.fullAccess')}</PermissionTag>
                         ) : staff.permissions.length === 0 ? (
-                          <span style={{ fontSize: '12px', color: '#9CA3AF' }}>{t('staff:staffPage.noPermissions')}</span>
+                          <span style={{ fontSize: '12px', color: '#6B7280' }}>{t('staff:staffPage.noPermissions')}</span>
                         ) : (
                           <PermissionTags>
                             {staff.permissions.map(p => (
@@ -839,7 +839,7 @@ const StaffPage: React.FC = () => {
                 placeholder="Enter unique staff ID"
                 autoComplete="off"
               />
-              <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+              <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '4px' }}>
                 A strong password will be auto-generated
               </div>
             </FormGroup>
@@ -885,7 +885,7 @@ const StaffPage: React.FC = () => {
                 <option value="Staff">{t('staff:staffPage.staff')}</option>
                 <option value="Restaurant Admin">{t('staff:staffPage.restaurantAdmin')}</option>
               </FormSelect>
-              <div style={{ marginTop: '8px', padding: '10px 12px', background: '#F5F3FF', borderLeft: '3px solid #635BFF', borderRadius: '6px', fontSize: '12px', color: '#4B5563', lineHeight: 1.5 }}>
+              <div style={{ marginTop: '8px', padding: '10px 12px', background: '#F5F3FF', borderLeft: '3px solid #635BFF', borderRadius: '6px', fontSize: '12px', color: '#374151', lineHeight: 1.5 }}>
                 {newStaff.role === 'Staff'
                   ? t('staff:staffPage.roleHintStaff', 'Staff can take and cancel orders, manage tables, view live orders. Cannot remove orders, change menu items, or modify store settings.')
                   : t('staff:staffPage.roleHintAdmin', 'Restaurant Admin has full access: remove orders, edit menu and recipes, change store settings, manage staff, view all reports.')}
@@ -929,7 +929,7 @@ const StaffPage: React.FC = () => {
                 style={{ letterSpacing: '8px', fontSize: '18px', textAlign: 'center', fontFamily: 'monospace' }}
                 autoComplete="off"
               />
-              <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+              <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '4px' }}>
                 Used for quick cashier switch at POS terminal
               </div>
             </FormGroup>
@@ -968,7 +968,7 @@ const StaffPage: React.FC = () => {
                     type="text"
                     value={editingStaff.username}
                     disabled
-                    style={{ backgroundColor: '#F8FAFC', color: '#6B7280' }}
+                    style={{ backgroundColor: '#F1F4F8', color: '#4B5563' }}
                   />
                 </FormGroup>
                 <FormGroup>
@@ -977,7 +977,7 @@ const StaffPage: React.FC = () => {
                     type="text"
                     value={editingStaff.role}
                     disabled
-                    style={{ backgroundColor: '#F8FAFC', color: '#6B7280' }}
+                    style={{ backgroundColor: '#F1F4F8', color: '#4B5563' }}
                   />
                 </FormGroup>
               </FormRow>
@@ -1051,7 +1051,7 @@ const StaffPage: React.FC = () => {
                     style={{ letterSpacing: '8px', fontSize: '18px', textAlign: 'center', fontFamily: 'monospace' }}
                     autoComplete="off"
                   />
-                  <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                  <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '4px' }}>
                     Leave empty to keep current PIN
                   </div>
                 </FormGroup>
@@ -1094,18 +1094,18 @@ const StaffPage: React.FC = () => {
             </>
           }
         >
-          <div style={{ marginBottom: '20px', fontSize: '14px', color: '#6B7280' }}>
+          <div style={{ marginBottom: '20px', fontSize: '14px', color: '#4B5563' }}>
             Please share this password with the staff member. They should change it after first login.
           </div>
           <div style={{
-            background: '#F8FAFC',
-            border: '1px solid #E6EBF1',
+            background: '#F1F4F8',
+            border: '1px solid #C7CED6',
             borderRadius: '8px',
             padding: '16px',
             textAlign: 'center',
             marginBottom: '16px'
           }}>
-            <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '8px', fontWeight: 600 }}>
+            <div style={{ fontSize: '12px', color: '#4B5563', marginBottom: '8px', fontWeight: 600 }}>
               Temporary Password
             </div>
             <div style={{
@@ -1134,7 +1134,7 @@ const StaffPage: React.FC = () => {
             <ModalButton variant="primary" onClick={() => setErrorMessage('')}>{t('staff:staffPage.ok')}</ModalButton>
           }
         >
-          <div style={{ fontSize: '14px', color: '#374151' }}>
+          <div style={{ fontSize: '14px', color: '#1F2937' }}>
             {errorMessage}
           </div>
         </Modal>
@@ -1152,10 +1152,10 @@ const StaffPage: React.FC = () => {
             </>
           }
         >
-          <div style={{ fontSize: '14px', color: '#374151' }}>
+          <div style={{ fontSize: '14px', color: '#1F2937' }}>
             Reset the password for <strong>{resetPasswordTarget?.name}</strong>?
           </div>
-          <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '8px' }}>
+          <div style={{ fontSize: '13px', color: '#4B5563', marginTop: '8px' }}>
             A new password will be generated. The current password will no longer work.
           </div>
         </Modal>

@@ -73,7 +73,7 @@ const LogoImage = styled.img`
 const LogoText = styled.span`
   font-size: 14px;
   font-weight: 300;
-  color: #9CA3AF;
+  color: #6B7280;
   letter-spacing: -0.3px;
   white-space: nowrap;
 
@@ -163,7 +163,7 @@ const MobileMenuHeader = styled.div`
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
-  border-bottom: 1px solid #E5E7EB;
+  border-bottom: 1px solid #C7CED6;
 `;
 
 const MobileMenuLogo = styled.span`
@@ -176,7 +176,7 @@ const MobileMenuClose = styled.button`
   background: none;
   border: none;
   font-size: 28px;
-  color: #6B7280;
+  color: #4B5563;
   cursor: pointer;
   padding: 4px;
   line-height: 1;
@@ -198,7 +198,7 @@ const MobileMenuContent = styled.div`
 const NavLink = styled.button<{ active?: boolean }>`
   background: none;
   border: none;
-  color: ${props => props.active ? '#635BFF' : '#6B7C93'};
+  color: ${props => props.active ? '#635BFF' : '#4B5563'};
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;

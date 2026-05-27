@@ -77,7 +77,7 @@ const Section = styled.div`
   margin-bottom: 24px;
   padding: 20px;
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
 `;
 const SectionTitle = styled.div`
@@ -92,7 +92,7 @@ const SectionTitle = styled.div`
 `;
 const Empty = styled.div`
   font-size: 13px;
-  color: #9CA3AF;
+  color: #6B7280;
   text-align: center;
   padding: 20px;
 `;
@@ -115,7 +115,7 @@ const PlanName = styled.div`
 `;
 const PlanMeta = styled.div`
   font-size: 12px;
-  color: #6B7C93;
+  color: #4B5563;
   margin-top: 2px;
 `;
 const MismatchBadge = styled.span`
@@ -152,21 +152,21 @@ const ActionBtn = styled.button<{ $variant?: 'primary' | 'danger' | 'ghost' }>`
     background: white; color: #DC2626; border-color: #FECACA;
     &:hover { background: #FEE2E2; }
   ` : `
-    background: #F8FAFC; color: #4B5563; border-color: #E6EBF1;
-    &:hover { background: #F3F4F6; }
+    background: #F1F4F8; color: #374151; border-color: #C7CED6;
+    &:hover { background: #F1F4F8; }
   `}
 `;
 const PreviewBox = styled.div`
   margin-top: 16px;
   padding: 14px 16px;
-  background: #F8FAFC;
-  border: 1px solid #E6EBF1;
+  background: #F1F4F8;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
 `;
 const PreviewTitle = styled.div`
   font-size: 11px;
   font-weight: 600;
-  color: #6B7C93;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.3px;
   margin-bottom: 10px;
@@ -176,7 +176,7 @@ const PreviewLine = styled.div`
   justify-content: space-between;
   padding: 6px 0;
   font-size: 13px;
-  color: #4B5563;
+  color: #374151;
   b { color: #0A2540; }
 `;
 const PreviewTotal = styled.div`
@@ -184,7 +184,7 @@ const PreviewTotal = styled.div`
   justify-content: space-between;
   padding: 10px 0 0;
   margin-top: 6px;
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
   font-size: 14px;
   font-weight: 700;
   color: #0A2540;
@@ -404,7 +404,7 @@ const LinkedPlansSection: React.FC<LinkedPlansSectionPropsExt> = ({
               </div>
               <button
                 onClick={() => !linking && setShowPicker(false)}
-                style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#6B7C93' }}
+                style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#4B5563' }}
                 type="button"
               >×</button>
             </div>
@@ -416,7 +416,7 @@ const LinkedPlansSection: React.FC<LinkedPlansSectionPropsExt> = ({
               placeholder={t('detail.searchPlans', 'Search plans by name...') as string}
               style={{
                 width: '100%', padding: '10px 12px', marginBottom: 12,
-                border: '1px solid #E6EBF1', borderRadius: 6, fontSize: 14, boxSizing: 'border-box'
+                border: '1px solid #C7CED6', borderRadius: 6, fontSize: 14, boxSizing: 'border-box'
               }}
             />
 
@@ -427,11 +427,11 @@ const LinkedPlansSection: React.FC<LinkedPlansSectionPropsExt> = ({
             )}
 
             {availablePlans === null ? (
-              <div style={{ textAlign: 'center', padding: 24, color: '#6B7C93', fontSize: 13 }}>
+              <div style={{ textAlign: 'center', padding: 24, color: '#4B5563', fontSize: 13 }}>
                 {t('detail.loading', 'Loading…')}
               </div>
             ) : filteredAvailable.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: 24, color: '#9CA3AF', fontSize: 13 }}>
+              <div style={{ textAlign: 'center', padding: 24, color: '#6B7280', fontSize: 13 }}>
                 {pickerSearch ? (
                   t('detail.noPlansMatch', 'No plans match your search.')
                 ) : (
@@ -466,7 +466,7 @@ const LinkedPlansSection: React.FC<LinkedPlansSectionPropsExt> = ({
                     <div
                       key={p.id}
                       style={{
-                        padding: '12px 14px', border: '1px solid #E6EBF1', borderRadius: 8,
+                        padding: '12px 14px', border: '1px solid #C7CED6', borderRadius: 8,
                         marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                         gap: 12, background: 'white'
                       }}
@@ -475,9 +475,9 @@ const LinkedPlansSection: React.FC<LinkedPlansSectionPropsExt> = ({
                         <div style={{ fontWeight: 600, color: '#0A2540', fontSize: 14, marginBottom: 4 }}>
                           {p.name}
                         </div>
-                        <div style={{ fontSize: 12, color: '#6B7C93' }}>{priceLabel}</div>
+                        <div style={{ fontSize: 12, color: '#4B5563' }}>{priceLabel}</div>
                         {p.description && (
-                          <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {p.description}
                           </div>
                         )}
@@ -496,7 +496,7 @@ const LinkedPlansSection: React.FC<LinkedPlansSectionPropsExt> = ({
               </div>
             )}
 
-            <div style={{ marginTop: 12, fontSize: 12, color: '#9CA3AF', textAlign: 'center' }}>
+            <div style={{ marginTop: 12, fontSize: 12, color: '#6B7280', textAlign: 'center' }}>
               {t('detail.linkReplacesPrior', 'Linking a plan closes any prior open plan link on this contract.')}
             </div>
           </div>
@@ -510,7 +510,7 @@ const LinkedPlansSection: React.FC<LinkedPlansSectionPropsExt> = ({
             {t('detail.billingPreview', 'Next invoice (estimated)')}
           </PreviewTitle>
           {preview.financial_redacted ? (
-            <div style={{ fontSize: 12, color: '#9CA3AF', fontStyle: 'italic' }}>
+            <div style={{ fontSize: 12, color: '#6B7280', fontStyle: 'italic' }}>
               🔒 {t('detail.financialRedacted', 'Amounts hidden for your role')}
             </div>
           ) : (
@@ -535,7 +535,7 @@ const LinkedPlansSection: React.FC<LinkedPlansSectionPropsExt> = ({
                 <span>{t('detail.estimatedSubtotal', 'Estimated subtotal')}</span>
                 <b>{symbol} {Number(preview.subtotal || 0).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b>
               </PreviewTotal>
-              <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 8 }}>
+              <div style={{ fontSize: 11, color: '#6B7280', marginTop: 8 }}>
                 {t('detail.previewDisclaimer', 'Estimate based on linked plan(s) and last 30-day revenue. Actual invoice may include tax and additional charges set by payment settings.')}
               </div>
             </>

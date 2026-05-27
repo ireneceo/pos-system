@@ -46,7 +46,7 @@ const SettingsModal: React.FC<Props> = ({
         </InfoBox>
 
         <div style={{ marginBottom: '16px', padding: '12px', background: '#F9FAFB', borderRadius: '8px' }}>
-          <div style={{ fontSize: '13px', color: '#6B7280', marginBottom: '8px' }}>Current Prediction</div>
+          <div style={{ fontSize: '13px', color: '#4B5563', marginBottom: '8px' }}>Current Prediction</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <ConfidenceBadge level={ingredient.prediction_confidence || 'none'}>
               {getConfidenceLabel(ingredient.prediction_confidence || 'none')}
@@ -79,7 +79,7 @@ const SettingsModal: React.FC<Props> = ({
               onChange={(e) => onFormChange({ ...form, min_order: e.target.value })}
               placeholder="0"
             />
-            <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+            <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '4px' }}>
               Minimum order quantity from supplier
             </div>
           </UIFormGroup>
@@ -94,7 +94,7 @@ const SettingsModal: React.FC<Props> = ({
             onChange={(e) => onFormChange({ ...form, lead_time_days: e.target.value })}
             placeholder="1"
           />
-          <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+          <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '4px' }}>
             Time from order to delivery
           </div>
         </UIFormGroup>
@@ -109,7 +109,7 @@ const SettingsModal: React.FC<Props> = ({
             onChange={(e) => onFormChange({ ...form, safety_stock_percent: e.target.value })}
             placeholder="20"
           />
-          <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+          <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '4px' }}>
             Buffer percentage for unexpected demand
           </div>
         </UIFormGroup>
@@ -124,7 +124,7 @@ const SettingsModal: React.FC<Props> = ({
             onChange={(e) => onFormChange({ ...form, manual_daily_usage: e.target.value })}
             placeholder="Leave empty to use calculated value"
           />
-          <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+          <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '4px' }}>
             Override calculated usage when prediction confidence is low
           </div>
         </UIFormGroup>

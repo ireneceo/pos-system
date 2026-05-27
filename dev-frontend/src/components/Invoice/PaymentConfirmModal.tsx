@@ -40,7 +40,7 @@ const Modal = styled.div`
 
 const Header = styled.div`
   padding: 20px 24px;
-  border-bottom: 1px solid #E5E7EB;
+  border-bottom: 1px solid #C7CED6;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -58,12 +58,12 @@ const CloseButton = styled.button`
   border: none;
   font-size: 24px;
   cursor: pointer;
-  color: #6B7280;
+  color: #4B5563;
   padding: 0;
   line-height: 1;
 
   &:hover {
-    color: #374151;
+    color: #1F2937;
   }
 `;
 
@@ -89,7 +89,7 @@ const SummaryRow = styled.div`
 `;
 
 const Label = styled.span`
-  color: #6B7280;
+  color: #4B5563;
   font-size: 14px;
 `;
 
@@ -125,7 +125,7 @@ const PaymentDetail = styled.div`
 
 const TabContainer = styled.div`
   display: flex;
-  border-bottom: 1px solid #E5E7EB;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 16px;
 `;
 
@@ -135,7 +135,7 @@ const Tab = styled.button<{ active: boolean }>`
   background: none;
   border: none;
   border-bottom: 2px solid ${props => props.active ? '#635BFF' : 'transparent'};
-  color: ${props => props.active ? '#635BFF' : '#6B7280'};
+  color: ${props => props.active ? '#635BFF' : '#4B5563'};
   font-weight: 500;
   font-size: 14px;
   cursor: pointer;
@@ -154,14 +154,14 @@ const FormLabel = styled.label`
   display: block;
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: #1F2937;
   margin-bottom: 6px;
 `;
 
 const FormTextarea = styled.textarea`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   resize: vertical;
@@ -186,7 +186,7 @@ const RejectWarning = styled.div`
 
 const Footer = styled.div`
   padding: 16px 24px;
-  border-top: 1px solid #E5E7EB;
+  border-top: 1px solid #C7CED6;
   display: flex;
   justify-content: flex-end;
   gap: 12px;
@@ -228,8 +228,8 @@ const Button = styled.button<{ variant?: 'primary' | 'danger' | 'secondary' }>`
     }
   ` : `
     background: white;
-    color: #374151;
-    border: 1px solid #E5E7EB;
+    color: #1F2937;
+    border: 1px solid #C7CED6;
 
     &:hover {
       background: #F9FAFB;

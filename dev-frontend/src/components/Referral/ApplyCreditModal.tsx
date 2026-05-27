@@ -68,7 +68,7 @@ const Title = styled.h2`
 
 const Sub = styled.p`
   font-size: 13px;
-  color: #6B7C93;
+  color: #4B5563;
   margin: 0 0 20px;
 `;
 
@@ -84,7 +84,7 @@ const Row = styled.div`
 `;
 
 const RowLabel = styled.span`
-  color: #6B7C93;
+  color: #4B5563;
 `;
 
 const RowValue = styled.span<{ $emphasis?: boolean }>`
@@ -100,7 +100,7 @@ const Label = styled.label`
   display: block;
   font-size: 12px;
   font-weight: 600;
-  color: #6B7C93;
+  color: #4B5563;
   letter-spacing: 0.4px;
   text-transform: uppercase;
   margin-bottom: 6px;
@@ -113,7 +113,7 @@ const Input = styled.input`
   font-size: 16px;
   font-weight: 600;
   color: #0A2540;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   outline: none;
   &:focus { border-color: #635BFF; box-shadow: 0 0 0 3px rgba(99,91,255,0.1); }
@@ -121,7 +121,7 @@ const Input = styled.input`
 
 const Hint = styled.div`
   font-size: 12px;
-  color: #6B7C93;
+  color: #4B5563;
   margin-top: 6px;
 `;
 
@@ -159,7 +159,7 @@ const Actions = styled.div`
 
 const Btn = styled.button`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   padding: 10px 18px;
   font-size: 14px;
@@ -180,10 +180,10 @@ const Primary = styled(Btn)`
 const Empty = styled.div`
   padding: 24px 20px;
   text-align: center;
-  color: #6B7C93;
+  color: #4B5563;
   font-size: 14px;
-  background: #FAFBFC;
-  border: 1px dashed #E6EBF1;
+  background: #F9FAFB;
+  border: 1px dashed #C7CED6;
   border-radius: 8px;
 `;
 

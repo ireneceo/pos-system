@@ -47,7 +47,7 @@ interface WebhookEvent {
 }
 
 const Subtitle = styled.div`
-  color: #6B7280;
+  color: #4B5563;
   font-size: 14px;
   margin-top: 4px;
 `;
@@ -64,9 +64,9 @@ const StatCard = styled.div`
   min-width: 140px;
   padding: 14px 18px;
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
-  .label { font-size: 11px; color: #6B7280; text-transform: uppercase; font-weight: 600; letter-spacing: 0.4px; }
+  .label { font-size: 11px; color: #4B5563; text-transform: uppercase; font-weight: 600; letter-spacing: 0.4px; }
   .value { font-size: 24px; font-weight: 700; color: #0A2540; margin-top: 4px; }
 `;
 
@@ -80,7 +80,7 @@ const FilterBar = styled.div`
 
 const Select = styled.select`
   padding: 8px 12px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 13px;
   background: white;
@@ -101,8 +101,8 @@ const StatusBadge = styled.span<{ $status: WebhookEvent['status'] }>`
       case 'pending_apply': return '#FFFBEB';
       case 'ignored_duplicate':
       case 'ignored_regress':
-        return '#F3F4F6';
-      default: return '#F3F4F6';
+        return '#F1F4F8';
+      default: return '#F1F4F8';
     }
   }};
   color: ${p => {
@@ -110,7 +110,7 @@ const StatusBadge = styled.span<{ $status: WebhookEvent['status'] }>`
       case 'applied': return '#065F46';
       case 'failed': return '#991B1B';
       case 'pending_apply': return '#92400E';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 `;
@@ -129,7 +129,7 @@ const SimulatedBadge = styled.span`
 
 const Code = styled.code`
   font-size: 12px;
-  background: #F3F4F6;
+  background: #F1F4F8;
   padding: 2px 6px;
   border-radius: 4px;
   color: #0A2540;
@@ -258,7 +258,7 @@ const CarrierWebhookEventsPage: React.FC = () => {
         </ThemedButton>
       </Header>
       <Content>
-        <div style={{ background: '#F1F5F9', border: '1px solid #CBD5E1', borderRadius: 10, padding: '14px 18px', marginBottom: 20, fontSize: 13, color: '#334155', lineHeight: 1.6 }}>
+        <div style={{ background: '#F1F5F9', border: '1px solid #64748B', borderRadius: 10, padding: '14px 18px', marginBottom: 20, fontSize: 13, color: '#334155', lineHeight: 1.6 }}>
           <div style={{ fontWeight: 600, color: '#0A2540', marginBottom: 6 }}>
             {t('admin:carrierWebhooks.helpTitle', '이 페이지는 무엇인가요?')}
           </div>
@@ -293,7 +293,7 @@ const CarrierWebhookEventsPage: React.FC = () => {
             <option value="false">{t('admin:carrierWebhooks.filter.realOnly', 'Real only')}</option>
             <option value="true">{t('admin:carrierWebhooks.filter.simOnly', 'Simulate only')}</option>
           </Select>
-          <span style={{ color: '#6B7280', fontSize: 13, marginLeft: 'auto' }}>
+          <span style={{ color: '#4B5563', fontSize: 13, marginLeft: 'auto' }}>
             {t('admin:carrierWebhooks.totalCount', { count: total, defaultValue: `Total: ${total}` })}
           </span>
         </FilterBar>
@@ -326,18 +326,18 @@ const CarrierWebhookEventsPage: React.FC = () => {
                     {ev.simulated && <SimulatedBadge>SIM</SimulatedBadge>}
                   </DataTableCell>
                   <DataTableCell data-label="Mapped">
-                    {ev.mapped_status ? <Code>{ev.mapped_status}</Code> : <span style={{ color: '#9CA3AF' }}>—</span>}
+                    {ev.mapped_status ? <Code>{ev.mapped_status}</Code> : <span style={{ color: '#6B7280' }}>—</span>}
                   </DataTableCell>
                   <DataTableCell data-label="PO">
                     {ev.purchase_order_id ? (
                       <a href={`/pos/admin/purchase-orders/${ev.purchase_order_id}`} style={{ color: '#635BFF', fontWeight: 600, fontSize: 13 }}>#{ev.purchase_order_id}</a>
-                    ) : <span style={{ color: '#9CA3AF' }}>—</span>}
+                    ) : <span style={{ color: '#6B7280' }}>—</span>}
                   </DataTableCell>
                   <DataTableCell data-label="Status">
                     <StatusBadge $status={ev.status}>{ev.status}</StatusBadge>
                   </DataTableCell>
                   <DataTableCell data-label="Error">
-                    <div style={{ fontSize: 12, color: ev.error ? '#991B1B' : '#6B7280', maxWidth: 280, wordBreak: 'break-word' }}>
+                    <div style={{ fontSize: 12, color: ev.error ? '#991B1B' : '#4B5563', maxWidth: 280, wordBreak: 'break-word' }}>
                       {ev.error || (ev.signature_valid ? '' : t('admin:carrierWebhooks.invalidSig', 'invalid signature'))}
                     </div>
                   </DataTableCell>
@@ -375,21 +375,21 @@ const CarrierWebhookEventsPage: React.FC = () => {
         {selected && (
           <div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-              <div><strong style={{ fontSize: 12, color: '#6B7280' }}>Carrier:</strong> {selected.carrier?.name}</div>
-              <div><strong style={{ fontSize: 12, color: '#6B7280' }}>Carrier event id:</strong> {selected.carrier_event_id || '—'}</div>
-              <div><strong style={{ fontSize: 12, color: '#6B7280' }}>Received:</strong> {formatDateTime(selected.received_at)}</div>
-              <div><strong style={{ fontSize: 12, color: '#6B7280' }}>Applied:</strong> {selected.applied_at ? formatDateTime(selected.applied_at) : '—'}</div>
-              <div><strong style={{ fontSize: 12, color: '#6B7280' }}>Signature:</strong> <span style={{ color: selected.signature_valid ? '#15803D' : '#991B1B', fontWeight: 600 }}>{selected.signature_valid ? 'valid' : 'invalid'}</span></div>
-              <div><strong style={{ fontSize: 12, color: '#6B7280' }}>Source IP:</strong> <Code>{selected.source_ip || '—'}</Code></div>
-              <div><strong style={{ fontSize: 12, color: '#6B7280' }}>Status:</strong> <StatusBadge $status={selected.status}>{selected.status}</StatusBadge></div>
-              <div><strong style={{ fontSize: 12, color: '#6B7280' }}>Retry count:</strong> {selected.retry_count}</div>
+              <div><strong style={{ fontSize: 12, color: '#4B5563' }}>Carrier:</strong> {selected.carrier?.name}</div>
+              <div><strong style={{ fontSize: 12, color: '#4B5563' }}>Carrier event id:</strong> {selected.carrier_event_id || '—'}</div>
+              <div><strong style={{ fontSize: 12, color: '#4B5563' }}>Received:</strong> {formatDateTime(selected.received_at)}</div>
+              <div><strong style={{ fontSize: 12, color: '#4B5563' }}>Applied:</strong> {selected.applied_at ? formatDateTime(selected.applied_at) : '—'}</div>
+              <div><strong style={{ fontSize: 12, color: '#4B5563' }}>Signature:</strong> <span style={{ color: selected.signature_valid ? '#15803D' : '#991B1B', fontWeight: 600 }}>{selected.signature_valid ? 'valid' : 'invalid'}</span></div>
+              <div><strong style={{ fontSize: 12, color: '#4B5563' }}>Source IP:</strong> <Code>{selected.source_ip || '—'}</Code></div>
+              <div><strong style={{ fontSize: 12, color: '#4B5563' }}>Status:</strong> <StatusBadge $status={selected.status}>{selected.status}</StatusBadge></div>
+              <div><strong style={{ fontSize: 12, color: '#4B5563' }}>Retry count:</strong> {selected.retry_count}</div>
             </div>
             {selected.error && (
               <div style={{ padding: 10, background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 8, fontSize: 13, color: '#991B1B', marginBottom: 12 }}>
                 <strong>Error:</strong> {selected.error}
               </div>
             )}
-            <div style={{ fontSize: 11, color: '#6B7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: 0.4, marginBottom: 6 }}>Payload</div>
+            <div style={{ fontSize: 11, color: '#4B5563', textTransform: 'uppercase', fontWeight: 600, letterSpacing: 0.4, marginBottom: 6 }}>Payload</div>
             <PreBox>{JSON.stringify(selected.payload, null, 2)}</PreBox>
           </div>
         )}
@@ -424,7 +424,7 @@ const CarrierWebhookEventsPage: React.FC = () => {
           <textarea
             value={simPayload}
             onChange={(e) => setSimPayload(e.target.value)}
-            style={{ width: '100%', minHeight: 200, fontFamily: 'Monaco, monospace', fontSize: 12, padding: 12, border: '1px solid #D1D5DB', borderRadius: 8 }}
+            style={{ width: '100%', minHeight: 200, fontFamily: 'Monaco, monospace', fontSize: 12, padding: 12, border: '1px solid #6B7280', borderRadius: 8 }}
           />
         </FormGroup>
         {simResult && (

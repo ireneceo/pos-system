@@ -359,7 +359,7 @@ export const STATUS_COLORS = {
   [ORDER_STATUS.CONFIRMED]: '#DBEAFE',         // Blue background
   [ORDER_STATUS.PREPARING]: '#FED7AA',         // Orange background
   [ORDER_STATUS.READY]: '#BBF7D0',             // Green background
-  [ORDER_STATUS.COMPLETED]: '#E5E7EB',         // Gray background
+  [ORDER_STATUS.COMPLETED]: '#C7CED6',         // Gray background
   [ORDER_STATUS.CANCELLED]: '#FECACA',         // Red background
   [ORDER_STATUS.AWAITING_PAYMENT]: '#FEF3C7'  // Yellow background
 } as const;
@@ -372,7 +372,7 @@ export const STATUS_TEXT_COLORS = {
   [ORDER_STATUS.CONFIRMED]: '#3B82F6',
   [ORDER_STATUS.PREPARING]: '#F97316',
   [ORDER_STATUS.READY]: '#10B981',
-  [ORDER_STATUS.COMPLETED]: '#6B7280',
+  [ORDER_STATUS.COMPLETED]: '#4B5563',
   [ORDER_STATUS.CANCELLED]: '#EF4444',
   [ORDER_STATUS.AWAITING_PAYMENT]: '#F59E0B'
 } as const;
@@ -469,8 +469,8 @@ export function toFrontendOrderType(orderType: string): string {
  */
 export function getOrderStatusColor(status: string): { background: string; text: string } {
   return {
-    background: STATUS_COLORS[status as keyof typeof STATUS_COLORS] || '#E5E7EB',
-    text: STATUS_TEXT_COLORS[status as keyof typeof STATUS_TEXT_COLORS] || '#6B7280'
+    background: STATUS_COLORS[status as keyof typeof STATUS_COLORS] || '#C7CED6',
+    text: STATUS_TEXT_COLORS[status as keyof typeof STATUS_TEXT_COLORS] || '#4B5563'
   };
 }
 

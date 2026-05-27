@@ -83,11 +83,11 @@ interface ContractDetail {
 // ───── Styled (cloned from FloorPlanPage.tsx) ─────
 const PageContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #FAFBFC; height: 100vh;
+  background: #F9FAFB; height: 100vh;
   display: flex; flex-direction: column; overflow: hidden;
 `;
 const Header = styled.div`
-  background: white; padding: 12px 24px; border-bottom: 1px solid #E6EBF1;
+  background: white; padding: 12px 24px; border-bottom: 1px solid #C7CED6;
   display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;
 `;
 const HeaderLeft = styled.div`display: flex; align-items: center; gap: 16px;`;
@@ -96,9 +96,9 @@ const Clock = styled.div`font-size: 14px; font-weight: 600; color: #0A2540; font
 const HeaderRight = styled.div`display: flex; align-items: center; gap: 12px;`;
 const EditBtn = styled.button`
   padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 600;
-  cursor: pointer; transition: all .15s; border: 1px solid #E6EBF1;
-  background: white; color: #374151;
-  &:hover { background: #F3F4F6; border-color: #D1D9E0; }
+  cursor: pointer; transition: all .15s; border: 1px solid #C7CED6;
+  background: white; color: #1F2937;
+  &:hover { background: #F1F4F8; border-color: #D1D9E0; }
 `;
 const PrimaryBtn = styled(EditBtn)`
   background: #635BFF; color: white; border-color: #635BFF;
@@ -106,7 +106,7 @@ const PrimaryBtn = styled(EditBtn)`
 `;
 
 const Select = styled.select`
-  padding: 5px 10px; border: 1px solid #E6EBF1; border-radius: 6px;
+  padding: 5px 10px; border: 1px solid #C7CED6; border-radius: 6px;
   font-size: 13px; background: white; cursor: pointer;
 `;
 
@@ -120,26 +120,26 @@ const CanvasWrapper = styled.div`
 // Right-side detail panel
 const DetailPanel = styled.div`
   width: 360px; flex-shrink: 0;
-  background: white; border-left: 1px solid #E6EBF1;
+  background: white; border-left: 1px solid #C7CED6;
   display: flex; flex-direction: column; overflow: hidden;
 `;
 const PanelHeader = styled.div`
-  padding: 16px 20px; border-bottom: 1px solid #E6EBF1;
+  padding: 16px 20px; border-bottom: 1px solid #C7CED6;
   display: flex; justify-content: space-between; align-items: center;
 `;
 const PanelBody = styled.div`flex: 1; overflow-y: auto; padding: 16px 20px;`;
 const PanelClose = styled.button`
-  background: none; border: none; cursor: pointer; color: #6B7C93; font-size: 18px; padding: 0 4px;
+  background: none; border: none; cursor: pointer; color: #4B5563; font-size: 18px; padding: 0 4px;
   &:hover { color: #0A2540; }
 `;
 const Section = styled.div`margin-bottom: 20px;`;
 const SectionTitle = styled.div`
-  font-size: 11px; font-weight: 600; color: #6B7C93;
+  font-size: 11px; font-weight: 600; color: #4B5563;
   text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;
 `;
 const Row = styled.div`
   display: flex; justify-content: space-between; font-size: 13px;
-  padding: 5px 0; color: #4B5563;
+  padding: 5px 0; color: #374151;
   b { color: #0A2540; text-align: right; }
 `;
 const Badge = styled.span<{ $bg: string }>`
@@ -150,20 +150,20 @@ const BigTitle = styled.div`
   font-size: 22px; font-weight: 700; color: #0A2540; margin-bottom: 4px;
   display: flex; align-items: center; gap: 10px;
 `;
-const EmptyHint = styled.div`font-size: 13px; color: #9CA3AF; font-style: italic; padding: 8px 0;`;
+const EmptyHint = styled.div`font-size: 13px; color: #6B7280; font-style: italic; padding: 8px 0;`;
 const RestaurantCard = styled.div`
   display: flex; align-items: center; gap: 12px; padding: 10px;
-  background: #F8FAFC; border-radius: 8px; border: 1px solid #E6EBF1;
+  background: #F1F4F8; border-radius: 8px; border: 1px solid #C7CED6;
 `;
 const RestaurantLogo = styled.div<{ $src?: string }>`
   width: 42px; height: 42px; border-radius: 6px;
-  background: ${p => p.$src ? `url(${p.$src}) center/cover` : '#E6EBF1'};
+  background: ${p => p.$src ? `url(${p.$src}) center/cover` : '#C7CED6'};
   flex-shrink: 0;
 `;
 
 const LoadingScreen = styled.div`
   flex: 1; display: flex; align-items: center; justify-content: center;
-  color: #6B7C93; font-size: 14px;
+  color: #4B5563; font-size: 14px;
 `;
 
 // ───── New styled for §1-§6 panel redesign ─────
@@ -187,11 +187,11 @@ const TileGrid = styled.div`
 const Tile = styled.div<{ $color: string }>`
   padding: 10px;
   border-radius: 6px;
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-left: 3px solid ${p => p.$color};
 `;
 const TileLabel = styled.div`
-  font-size: 10px; font-weight: 600; color: #6B7C93;
+  font-size: 10px; font-weight: 600; color: #4B5563;
   text-transform: uppercase; letter-spacing: 0.3px;
   margin-bottom: 4px;
 `;
@@ -200,7 +200,7 @@ const TileValue = styled.div`
   line-height: 1.2;
 `;
 const TileUnit = styled.span`
-  font-size: 11px; font-weight: 500; color: #6B7C93;
+  font-size: 11px; font-weight: 500; color: #4B5563;
   margin-left: 3px;
 `;
 const TotalRow = styled.div`
@@ -225,14 +225,14 @@ const TimelineStep = styled.div<{ $active: boolean; $past: boolean; $last: boole
     position: absolute;
     top: 5px; left: 50%; right: -50%;
     height: 2px;
-    background: ${p => p.$past ? '#635BFF' : '#E6EBF1'};
+    background: ${p => p.$past ? '#635BFF' : '#C7CED6'};
     z-index: 0;
   }
 `;
 const TimelineDot = styled.div<{ $active: boolean; $past: boolean }>`
   width: 12px; height: 12px;
   border-radius: 50%;
-  background: ${p => p.$active ? '#635BFF' : p.$past ? '#635BFF' : '#E6EBF1'};
+  background: ${p => p.$active ? '#635BFF' : p.$past ? '#635BFF' : '#C7CED6'};
   border: 2px solid ${p => p.$active ? '#635BFF' : 'white'};
   box-shadow: ${p => p.$active ? '0 0 0 3px rgba(99, 91, 255, 0.2)' : 'none'};
   z-index: 1;
@@ -240,7 +240,7 @@ const TimelineDot = styled.div<{ $active: boolean; $past: boolean }>`
 const TimelineLabel = styled.div<{ $active: boolean; $past: boolean }>`
   font-size: 10px;
   font-weight: ${p => p.$active ? 700 : 500};
-  color: ${p => p.$active ? '#635BFF' : p.$past ? '#4B5563' : '#9CA3AF'};
+  color: ${p => p.$active ? '#635BFF' : p.$past ? '#374151' : '#6B7280'};
   margin-top: 6px;
   text-transform: uppercase;
   letter-spacing: 0.3px;
@@ -249,7 +249,7 @@ const TimelineLabel = styled.div<{ $active: boolean; $past: boolean }>`
 
 // Palette keyed by display status (matches FoodcourtUnitNode STATUS_PALETTE)
 const DISPLAY_PALETTE: Record<UnitDisplayStatus, { bg: string; border: string; text: string }> = {
-  vacant:      { bg: '#F3F4F6', border: '#9CA3AF', text: '#6B7280' },
+  vacant:      { bg: '#F1F4F8', border: '#6B7280', text: '#4B5563' },
   proposal:    { bg: '#EDE9FE', border: '#8B5CF6', text: '#5B21B6' },
   contracting: { bg: '#FFEDD5', border: '#F97316', text: '#9A3412' },
   preparing:   { bg: '#DBEAFE', border: '#3B82F6', text: '#1E40AF' },
@@ -263,7 +263,7 @@ const DEFAULT_STATUS_LABEL: Record<UnitDisplayStatus, string> = {
 };
 const STAGE_BG: Record<string, string> = {
   proposal: '#8B5CF6', contracting: '#F97316', setup: '#3B82F6',
-  active: '#16A34A', terminated: '#6B7280', expired: '#EF4444', renewed: '#7C3AED'
+  active: '#16A34A', terminated: '#4B5563', expired: '#EF4444', renewed: '#7C3AED'
 };
 
 function fmtMoney(v: any): string {
@@ -571,7 +571,7 @@ const FoodcourtFloorPlanPage: React.FC = () => {
           >
             {branches.map(b => <option key={b.id} value={b.id}>{b.name}{b.is_primary ? ' (Primary)' : ''} — {b.code}</option>)}
           </Select>
-          {currentBranch?.country && <span style={{ fontSize: 12, color: '#6B7C93' }}>{currentBranch.country}</span>}
+          {currentBranch?.country && <span style={{ fontSize: 12, color: '#4B5563' }}>{currentBranch.country}</span>}
         </HeaderLeft>
         <HeaderRight>
           <Clock>{clock}</Clock>
@@ -781,7 +781,7 @@ const FoodcourtFloorPlanPage: React.FC = () => {
                   </Row>
                   <Row>
                     <span>{t('floorPlan.contract.stage', 'Stage')}</span>
-                    <Badge $bg={STAGE_BG[contract.stage] || '#6B7280'}>
+                    <Badge $bg={STAGE_BG[contract.stage] || '#4B5563'}>
                       {t(`floorPlan.contractStage.${contract.stage}`, contract.stage)}
                     </Badge>
                   </Row>
@@ -831,10 +831,10 @@ const FoodcourtFloorPlanPage: React.FC = () => {
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 14, fontWeight: 600, color: '#0A2540', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {contract.restaurant.name}
-                          {contract.restaurant.branch_name && <span style={{ color: '#9CA3AF', fontWeight: 400 }}> · {contract.restaurant.branch_name}</span>}
+                          {contract.restaurant.branch_name && <span style={{ color: '#6B7280', fontWeight: 400 }}> · {contract.restaurant.branch_name}</span>}
                         </div>
                         {contract.applicant_company_name && contract.applicant_company_name !== contract.restaurant.name && (
-                          <div style={{ fontSize: 11, color: '#6B7C93', marginTop: 2 }}>
+                          <div style={{ fontSize: 11, color: '#4B5563', marginTop: 2 }}>
                             {t('floorPlan.tenant.legalEntity', 'Legal entity')}: {contract.applicant_company_name}
                           </div>
                         )}

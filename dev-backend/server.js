@@ -349,6 +349,10 @@ app.use('/api/upload', uploadRouter);
 app.use('/api/public', publicRouter);
 app.use('/api/contents', contentsRouter);
 app.use('/api/auth', authRouter);
+// QZ Tray request signing — public (no auth) so it works from any merchant POS device.
+// The endpoints only return a generic certificate + sign arbitrary text; they expose
+// no merchant data and the private key never leaves the server.
+app.use('/api/qz-tray', require('./routes/qz-tray'));
 app.use('/api/referrals', require('./routes/referrals'));  // Referral System — mount EARLY (before /api fall-through routers) so public validate-code/track-click are not gated by another router's middleware
 
 // Reservations (v3.29) — staff first (more specific path-level guards), then public.

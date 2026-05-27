@@ -109,7 +109,7 @@ const CardName = styled.div`
 
 const CardSub = styled.div`
   font-size: 11px;
-  color: #6B7C93;
+  color: #4B5563;
   margin-top: 1px;
   line-height: 1.35;
 `;
@@ -126,8 +126,8 @@ const CardTag = styled.span<{ bg?: string; color?: string }>`
   font-weight: 500;
   padding: 2px 8px;
   border-radius: 4px;
-  background: ${p => p.bg || '#F3F4F6'};
-  color: ${p => p.color || '#6B7C93'};
+  background: ${p => p.bg || '#F1F4F8'};
+  color: ${p => p.color || '#4B5563'};
 `;
 
 const CardRestaurant = styled.div`
@@ -140,13 +140,13 @@ const CardRestaurant = styled.div`
 const BillableRow = styled.div<{ pending: boolean }>`
   font-size: 11px;
   margin-top: 4px;
-  color: ${p => p.pending ? '#94A3B8' : '#0A2540'};
+  color: ${p => p.pending ? '#64748B' : '#0A2540'};
   font-style: ${p => p.pending ? 'italic' : 'normal'};
   line-height: 1.35;
 `;
 
 const BillableLabel = styled.span`
-  color: #6B7C93;
+  color: #4B5563;
   font-weight: 500;
 `;
 
@@ -157,7 +157,7 @@ const BillableAmount = styled.span`
 
 const BillableHint = styled.span`
   font-size: 11px;
-  color: #94A3B8;
+  color: #64748B;
   margin-left: 6px;
 `;
 
@@ -171,7 +171,7 @@ const LocationRow = styled.div`
 `;
 
 const LocationIcon = styled.span`
-  color: #64748B;
+  color: #475569;
   font-size: 11px;
 `;
 
@@ -253,7 +253,7 @@ const ContractPipeline: React.FC<ContractPipelineProps> = ({ contracts, onCardCl
                   <BillableRow pending={billable.source === 'terms'}>
                     {billable.items.map((it, i) => (
                       <React.Fragment key={i}>
-                        {i > 0 && <span style={{ color: '#CBD5E1' }}> · </span>}
+                        {i > 0 && <span style={{ color: '#64748B' }}> · </span>}
                         <BillableLabel>{it.label}:</BillableLabel>
                         <BillableAmount>{it.amount}</BillableAmount>
                       </React.Fragment>

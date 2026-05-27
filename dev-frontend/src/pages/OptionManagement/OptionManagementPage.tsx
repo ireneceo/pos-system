@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
 const Container = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #FAFBFC;
+  background-color: #F9FAFB;
   min-height: 100vh;
 `;
 
@@ -23,7 +23,7 @@ const Content = styled.div`
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -80,8 +80,8 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
       case 'secondary':
         return `
           background: white;
-          color: #6B7280;
-          border: 1px solid #E5E7EB;
+          color: #4B5563;
+          border: 1px solid #C7CED6;
           &:hover {
             background: #F9FAFB;
           }
@@ -143,7 +143,7 @@ const OptionGroupMeta = styled.div`
   display: flex;
   gap: 12px;
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
   margin-bottom: 8px;
 `;
 
@@ -167,8 +167,8 @@ const OptionGroupBadge = styled.span<{ type: 'required' | 'optional' | 'single' 
         `;
       case 'single':
         return `
-          background: #F3F4F6;
-          color: #6B7280;
+          background: #F1F4F8;
+          color: #4B5563;
         `;
       case 'multiple':
         return `
@@ -177,8 +177,8 @@ const OptionGroupBadge = styled.span<{ type: 'required' | 'optional' | 'single' 
         `;
       default:
         return `
-          background: #F3F4F6;
-          color: #6B7280;
+          background: #F1F4F8;
+          color: #4B5563;
         `;
     }
   }}
@@ -193,7 +193,7 @@ const IconButton = styled.button`
   width: 32px;
   height: 32px;
   border-radius: 6px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   background: white;
   display: flex;
   align-items: center;
@@ -203,13 +203,13 @@ const IconButton = styled.button`
   
   &:hover {
     background: #F9FAFB;
-    border-color: #D1D5DB;
+    border-color: #6B7280;
   }
   
   svg {
     width: 16px;
     height: 16px;
-    color: #6B7280;
+    color: #4B5563;
   }
 `;
 
@@ -225,7 +225,7 @@ const OptionItem = styled.div`
   padding: 8px 12px;
   background: #F9FAFB;
   border-radius: 6px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
 `;
 
 const OptionItemInfo = styled.div`
@@ -240,7 +240,7 @@ const OptionItemName = styled.span`
 
 const OptionItemPrice = styled.span`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
   margin-left: 8px;
 `;
 
@@ -257,7 +257,7 @@ const Label = styled.label`
   display: block;
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: #1F2937;
   margin-bottom: 8px;
 `;
 
@@ -266,7 +266,7 @@ const Input = styled.input`
   max-width: 100%;
   box-sizing: border-box;
   padding: 10px 12px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.2s;
@@ -290,7 +290,7 @@ const CheckboxLabel = styled.label`
   gap: 8px;
   cursor: pointer;
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
 `;
 
 const Checkbox = styled.input`
@@ -316,7 +316,7 @@ const EmptyTitle = styled.h3`
 
 const EmptyDescription = styled.p`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 0 0 24px 0;
 `;
 
@@ -329,7 +329,7 @@ const OptionItemRow = styled.div`
   align-items: center;
   gap: 12px;
   padding: 8px 0;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
   
   &:last-child {
     border-bottom: none;
@@ -658,7 +658,7 @@ const OptionManagementPage: React.FC = () => {
               <select
                 value={newOption.ingredient_id || ''}
                 onChange={(e) => setNewOption({ ...newOption, ingredient_id: e.target.value ? Number(e.target.value) : null })}
-                style={{ flex: 2, padding: '8px 12px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '13px', color: newOption.ingredient_id ? '#0A2540' : '#9CA3AF' }}
+                style={{ flex: 2, padding: '8px 12px', border: '1px solid #C7CED6', borderRadius: '6px', fontSize: '13px', color: newOption.ingredient_id ? '#0A2540' : '#6B7280' }}
               >
                 <option value="">{t('menu:optionManagementPage.linkedIngredientOptional')}</option>
                 {ingredients.map(ing => (
@@ -684,7 +684,7 @@ const OptionManagementPage: React.FC = () => {
                   <div style={{ flex: 1 }}>
                     <strong>{option.name}</strong>
                     {option.price > 0 && <span> (+RM {option.price.toFixed(2)})</span>}
-                    {option.ingredient_name && <span style={{ fontSize: '11px', color: '#6B7280', marginLeft: '8px' }}>→ {option.ingredient_name} {option.ingredient_quantity}{option.ingredient_unit}</span>}
+                    {option.ingredient_name && <span style={{ fontSize: '11px', color: '#4B5563', marginLeft: '8px' }}>→ {option.ingredient_name} {option.ingredient_quantity}{option.ingredient_unit}</span>}
                   </div>
                   <RemoveOptionButton onClick={() => handleRemoveOption(option.id)}>
                     ×

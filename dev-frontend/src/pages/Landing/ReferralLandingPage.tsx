@@ -96,7 +96,7 @@ const Section = styled.section`
 `;
 
 const SectionAlt = styled(Section)`
-  background: #FAFBFC;
+  background: #F9FAFB;
 `;
 
 const SectionTitle = styled.h2`
@@ -112,7 +112,7 @@ const SectionTitle = styled.h2`
 
 const SectionSub = styled.p`
   font-size: 16px;
-  color: #6B7C93;
+  color: #4B5563;
   text-align: center;
   max-width: 600px;
   margin: 0 auto 48px;
@@ -158,7 +158,7 @@ const StepTitle = styled.h3`
 
 const StepBody = styled.p`
   font-size: 14px;
-  color: #6B7C93;
+  color: #4B5563;
   line-height: 1.6;
   margin: 0;
 `;
@@ -175,7 +175,7 @@ const BenefitGrid = styled.div`
 
 const Benefit = styled.div`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   padding: 24px 28px;
 `;
@@ -189,7 +189,7 @@ const BenefitTitle = styled.h3`
 
 const BenefitBody = styled.p`
   font-size: 14px;
-  color: #6B7C93;
+  color: #4B5563;
   line-height: 1.6;
   margin: 0;
 `;
@@ -198,7 +198,7 @@ const SimWrap = styled.div`
   max-width: 640px;
   margin: 0 auto;
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 16px;
   padding: 32px;
   box-shadow: 0 8px 24px rgba(10, 37, 64, 0.04);
@@ -217,7 +217,7 @@ const SimRow = styled.div`
 const Label = styled.span`
   font-size: 13px;
   font-weight: 600;
-  color: #6B7C93;
+  color: #4B5563;
   letter-spacing: 0.4px;
   text-transform: uppercase;
 `;
@@ -228,7 +228,7 @@ const Select = styled.select`
   font-size: 14px;
   color: #0A2540;
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   outline: none;
   min-width: 200px;
@@ -238,7 +238,7 @@ const Select = styled.select`
 const Stepper = styled.div`
   display: inline-flex;
   align-items: center;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   background: white;
   overflow: hidden;
@@ -262,8 +262,8 @@ const StepValue = styled.div`
   font-weight: 600;
   font-size: 14px;
   color: #0A2540;
-  border-left: 1px solid #E6EBF1;
-  border-right: 1px solid #E6EBF1;
+  border-left: 1px solid #C7CED6;
+  border-right: 1px solid #C7CED6;
   padding: 0 12px;
   height: 38px;
   display: flex;
@@ -274,7 +274,7 @@ const StepValue = styled.div`
 const Result = styled.div`
   margin-top: 24px;
   padding-top: 24px;
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
@@ -291,7 +291,7 @@ const ResultBox = styled.div`
 const ResultLabel = styled.div`
   font-size: 11px;
   font-weight: 600;
-  color: #6B7C93;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.4px;
 `;
@@ -308,7 +308,7 @@ const Footer = styled.div`
   text-align: center;
   margin-top: 48px;
   font-size: 14px;
-  color: #6B7C93;
+  color: #4B5563;
 
   a {
     color: #635BFF;

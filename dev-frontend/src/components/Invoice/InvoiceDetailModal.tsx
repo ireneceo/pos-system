@@ -47,7 +47,7 @@ const ModalHeader = styled.div`
   justify-content: space-between;
   align-items: center;
   padding: 20px 24px;
-  border-bottom: 1px solid #E5E7EB;
+  border-bottom: 1px solid #C7CED6;
   position: sticky;
   top: 0;
   background: white;
@@ -69,13 +69,13 @@ const CloseButton = styled.button`
   background: none;
   border: none;
   font-size: 24px;
-  color: #6B7280;
+  color: #4B5563;
   cursor: pointer;
   padding: 4px;
   line-height: 1;
 
   &:hover {
-    color: #374151;
+    color: #1F2937;
   }
 `;
 
@@ -94,7 +94,7 @@ const InvoiceHeader = styled.div`
   align-items: flex-start;
   margin-bottom: 32px;
   padding-bottom: 24px;
-  border-bottom: 2px solid #E5E7EB;
+  border-bottom: 2px solid #C7CED6;
 `;
 
 const CompanySection = styled.div`
@@ -117,7 +117,7 @@ const CompanyName = styled.h1`
 
 const CompanyDetail = styled.p`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 0;
   line-height: 1.6;
 `;
@@ -137,7 +137,7 @@ const InvoiceTitle = styled.h2`
 
 const InvoiceNumber = styled.div`
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
   margin-bottom: 4px;
 
   strong {
@@ -152,8 +152,8 @@ const StatusBadge = styled.span<{ status: string }>`
   font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
-  background: ${props => STATUS_CONFIG[props.status as keyof typeof STATUS_CONFIG]?.bgColor || '#F3F4F6'};
-  color: ${props => STATUS_CONFIG[props.status as keyof typeof STATUS_CONFIG]?.color || '#6B7280'};
+  background: ${props => STATUS_CONFIG[props.status as keyof typeof STATUS_CONFIG]?.bgColor || '#F1F4F8'};
+  color: ${props => STATUS_CONFIG[props.status as keyof typeof STATUS_CONFIG]?.color || '#4B5563'};
   margin-top: 12px;
 `;
 
@@ -165,7 +165,7 @@ const BillingSection = styled.div`
 `;
 
 const BillingBox = styled.div`
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 8px;
   padding: 20px;
 `;
@@ -173,7 +173,7 @@ const BillingBox = styled.div`
 const BillingLabel = styled.div`
   font-size: 11px;
   font-weight: 600;
-  color: #6B7280;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 12px;
@@ -188,7 +188,7 @@ const BillingName = styled.div`
 
 const BillingDetail = styled.div`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
   line-height: 1.6;
 `;
 
@@ -202,14 +202,14 @@ const DatesSection = styled.div`
 const DateBox = styled.div`
   text-align: center;
   padding: 16px;
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 8px;
 `;
 
 const DateLabel = styled.div`
   font-size: 11px;
   font-weight: 600;
-  color: #6B7280;
+  color: #4B5563;
   text-transform: uppercase;
   margin-bottom: 4px;
 `;
@@ -248,15 +248,15 @@ const TableHeader = styled.th`
 
 const TableRow = styled.tr`
   &:nth-child(even) {
-    background: #F8FAFC;
+    background: #F1F4F8;
   }
 `;
 
 const TableCell = styled.td`
   padding: 14px 16px;
   font-size: 14px;
-  color: #374151;
-  border-bottom: 1px solid #E5E7EB;
+  color: #1F2937;
+  border-bottom: 1px solid #C7CED6;
 
   &:last-child {
     text-align: right;
@@ -280,8 +280,8 @@ const SummaryRow = styled.div<{ total?: boolean }>`
   padding: 10px 0;
   font-size: ${props => props.total ? '18px' : '14px'};
   font-weight: ${props => props.total ? '700' : '400'};
-  color: ${props => props.total ? '#0A2540' : '#6B7280'};
-  border-top: ${props => props.total ? '2px solid #E5E7EB' : 'none'};
+  color: ${props => props.total ? '#0A2540' : '#4B5563'};
+  border-top: ${props => props.total ? '2px solid #C7CED6' : 'none'};
   margin-top: ${props => props.total ? '8px' : '0'};
   padding-top: ${props => props.total ? '16px' : '10px'};
 `;
@@ -311,7 +311,7 @@ const BankItem = styled.div`
   font-size: 13px;
 
   span {
-    color: #6B7280;
+    color: #4B5563;
   }
 
   strong {
@@ -345,9 +345,9 @@ const NotesText = styled.div`
 const FooterSection = styled.div`
   text-align: center;
   padding-top: 24px;
-  border-top: 1px solid #E5E7EB;
+  border-top: 1px solid #C7CED6;
   font-size: 12px;
-  color: #9CA3AF;
+  color: #6B7280;
 `;
 
 const ModalActions = styled.div`
@@ -355,7 +355,7 @@ const ModalActions = styled.div`
   justify-content: flex-end;
   gap: 12px;
   padding: 16px 24px;
-  border-top: 1px solid #E5E7EB;
+  border-top: 1px solid #C7CED6;
   background: #F9FAFB;
 `;
 
@@ -377,8 +377,8 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' }>`
     }
   ` : `
     background: white;
-    color: #374151;
-    border: 1px solid #E5E7EB;
+    color: #1F2937;
+    border: 1px solid #C7CED6;
 
     &:hover {
       background: #F9FAFB;
@@ -580,7 +580,7 @@ const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={4} style={{ textAlign: 'center', color: '#9CA3AF' }}>
+                  <TableCell colSpan={4} style={{ textAlign: 'center', color: '#6B7280' }}>
                     No items
                   </TableCell>
                 </TableRow>

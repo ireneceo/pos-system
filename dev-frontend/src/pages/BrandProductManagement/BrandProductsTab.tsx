@@ -85,7 +85,7 @@ const ProductsGrid = styled.div`
 const ProductCard = styled.div<{ isActive?: boolean }>`
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   padding: 20px;
   transition: all 0.2s;
   opacity: ${props => props.isActive ? 1 : 0.6};
@@ -111,7 +111,7 @@ const ProductImage = styled.div<{ src?: string | null }>`
   width: 60px;
   height: 60px;
   border-radius: 8px;
-  background: ${props => props.src ? `url(${props.src}) center/cover` : '#F3F4F6'};
+  background: ${props => props.src ? `url(${props.src}) center/cover` : '#F1F4F8'};
   display: flex;
   align-items: center;
   justify-content: center;
@@ -141,7 +141,7 @@ const ProductName = styled.h3`
 
 const ProductSku = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-bottom: 4px;
 `;
 
@@ -158,7 +158,7 @@ const ProductCategory = styled.div`
 const ProductDetails = styled.div`
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
 `;
 
 const DetailRow = styled.div`
@@ -174,7 +174,7 @@ const DetailRow = styled.div`
 `;
 
 const DetailLabel = styled.span`
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const DetailValue = styled.span`
@@ -197,24 +197,24 @@ const ProductActions = styled.div`
   display: flex;
   gap: 8px;
   padding-top: 12px;
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
 `;
 
 const ActionButton = styled.button<{ variant?: 'danger' }>`
   flex: 1;
   padding: 8px 12px;
   border-radius: 6px;
-  border: 1px solid ${props => props.variant === 'danger' ? '#FEE2E2' : '#E6EBF1'};
+  border: 1px solid ${props => props.variant === 'danger' ? '#FEE2E2' : '#C7CED6'};
   background: ${props => props.variant === 'danger' ? '#FEF2F2' : '#F9FAFB'};
-  color: ${props => props.variant === 'danger' ? '#DC2626' : '#374151'};
+  color: ${props => props.variant === 'danger' ? '#DC2626' : '#1F2937'};
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
 
   &:hover {
-    background: ${props => props.variant === 'danger' ? '#FEE2E2' : '#F3F4F6'};
-    border-color: ${props => props.variant === 'danger' ? '#FECACA' : '#D1D5DB'};
+    background: ${props => props.variant === 'danger' ? '#FEE2E2' : '#F1F4F8'};
+    border-color: ${props => props.variant === 'danger' ? '#FECACA' : '#6B7280'};
   }
 `;
 
@@ -228,7 +228,7 @@ const EmptyTitle = styled.h4`
 
 const EmptyDescription = styled.p`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 0 0 20px 0;
 `;
 
@@ -242,8 +242,8 @@ const BadgeContainer = styled.div`
 const Badge = styled.span<{ color?: string }>`
   display: inline-block;
   padding: 2px 8px;
-  background: ${props => props.color || '#E5E7EB'};
-  color: #374151;
+  background: ${props => props.color || '#C7CED6'};
+  color: #1F2937;
   border-radius: 4px;
   font-size: 11px;
 `;
@@ -254,8 +254,8 @@ const BrandBadge = styled(Badge)`
 `;
 
 const OptionBadge = styled(Badge)`
-  background: #E5E7EB;
-  color: #374151;
+  background: #C7CED6;
+  color: #1F2937;
 `;
 
 const SetBadge = styled.span`
@@ -279,14 +279,14 @@ const SetItemsSummary = styled.div`
 const CopyButton = styled.button`
   padding: 8px 12px;
   border-radius: 6px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   background: #F9FAFB;
-  color: #374151;
+  color: #1F2937;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
-  &:hover { background: #F3F4F6; border-color: #D1D5DB; }
+  &:hover { background: #F1F4F8; border-color: #6B7280; }
 `;
 
 const ToggleButton = styled.button<{ isActive: boolean }>`
@@ -309,7 +309,7 @@ const CheckboxLabel = styled.label`
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: #374151;
+  color: #1F2937;
   cursor: pointer;
 `;
 
@@ -330,7 +330,7 @@ const CheckboxItem = styled.label`
   gap: 8px;
   padding: 8px 12px;
   background: white;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   cursor: pointer;
   font-size: 13px;
@@ -798,7 +798,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
 
   if (loading) {
     return (
-      <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
+      <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>
         {t('productsTab.loading')}
       </div>
     );
@@ -1081,9 +1081,9 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                     {formData.set_items.map(item => (
                       <div key={item.productId} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: '#F9FAFB', borderRadius: '6px', marginBottom: '4px' }}>
                         <span style={{ flex: 1, fontSize: '14px' }}>{item.name}</span>
-                        <button type="button" onClick={() => handleUpdateSetMenuItemQuantity(item.productId, -1)} style={{ width: '28px', height: '28px', border: '1px solid #D1D5DB', borderRadius: '4px', background: 'white', cursor: 'pointer' }}>-</button>
+                        <button type="button" onClick={() => handleUpdateSetMenuItemQuantity(item.productId, -1)} style={{ width: '28px', height: '28px', border: '1px solid #6B7280', borderRadius: '4px', background: 'white', cursor: 'pointer' }}>-</button>
                         <span style={{ minWidth: '24px', textAlign: 'center', fontWeight: 600 }}>{item.quantity}</span>
-                        <button type="button" onClick={() => handleUpdateSetMenuItemQuantity(item.productId, 1)} style={{ width: '28px', height: '28px', border: '1px solid #D1D5DB', borderRadius: '4px', background: 'white', cursor: 'pointer' }}>+</button>
+                        <button type="button" onClick={() => handleUpdateSetMenuItemQuantity(item.productId, 1)} style={{ width: '28px', height: '28px', border: '1px solid #6B7280', borderRadius: '4px', background: 'white', cursor: 'pointer' }}>+</button>
                         <button type="button" onClick={() => handleRemoveSetMenuItem(item.productId)} style={{ color: '#DC2626', background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px' }}>x</button>
                       </div>
                     ))}
@@ -1107,12 +1107,12 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                         style={{
                           padding: '8px 12px', cursor: 'pointer', borderRadius: '6px', marginBottom: '2px',
                           background: formData.set_items.some(si => si.productId === p.id) ? '#EEF2FF' : 'white',
-                          border: '1px solid #E5E7EB', fontSize: '13px',
+                          border: '1px solid #C7CED6', fontSize: '13px',
                           display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                         }}
                       >
                         <span>{p.emoji || '📦'} {p.sku ? `${p.sku} ` : ''}{p.name}</span>
-                        <span style={{ color: '#6B7280' }}>RM {(Number(p.unit_price) || 0).toFixed(2)}</span>
+                        <span style={{ color: '#4B5563' }}>RM {(Number(p.unit_price) || 0).toFixed(2)}</span>
                       </div>
                     ))
                   }
@@ -1175,7 +1175,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
               <UIFormGroup>
                 <FormLabel>{'대상 가맹점'}</FormLabel>
                 {restaurants.length === 0 ? (
-                  <div style={{ padding: 12, background: '#F9FAFB', borderRadius: 8, color: '#6B7280', fontSize: 13 }}>
+                  <div style={{ padding: 12, background: '#F9FAFB', borderRadius: 8, color: '#4B5563', fontSize: 13 }}>
                     No restaurants available.
                   </div>
                 ) : (
@@ -1216,7 +1216,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                   ))}
                 </CheckboxGroup>
               ) : (
-                <div style={{ padding: '12px', background: '#F9FAFB', borderRadius: '8px', color: '#6B7280', fontSize: '13px' }}>
+                <div style={{ padding: '12px', background: '#F9FAFB', borderRadius: '8px', color: '#4B5563', fontSize: '13px' }}>
                   No option groups available. Create option groups in the Options tab first.
                 </div>
               )}
@@ -1242,14 +1242,14 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
 
             {!formData.product_recipe_id && (
               <UIFormGroup>
-                <FormLabel>Ingredients (direct) {directIngredients.length > 0 && <span style={{ fontSize: '11px', color: '#6B7280', fontWeight: 400 }}>Cost: RM {directIngredients.reduce((sum, di) => sum + (di.unit_cost * di.quantity), 0).toFixed(2)}</span>}</FormLabel>
+                <FormLabel>Ingredients (direct) {directIngredients.length > 0 && <span style={{ fontSize: '11px', color: '#4B5563', fontWeight: 400 }}>Cost: RM {directIngredients.reduce((sum, di) => sum + (di.unit_cost * di.quantity), 0).toFixed(2)}</span>}</FormLabel>
                 {directIngredients.map((di, idx) => (
                   <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '6px', fontSize: '13px', background: '#F9FAFB', padding: '8px 12px', borderRadius: '6px' }}>
                     <span style={{ flex: 1 }}>{di.name}</span>
-                    <input type="number" value={di.quantity} min="0.01" step="0.01" style={{ width: '60px', textAlign: 'center', border: '1px solid #E6EBF1', borderRadius: '4px', padding: '2px 4px', fontSize: '13px' }}
+                    <input type="number" value={di.quantity} min="0.01" step="0.01" style={{ width: '60px', textAlign: 'center', border: '1px solid #C7CED6', borderRadius: '4px', padding: '2px 4px', fontSize: '13px' }}
                       onChange={(e) => setDirectIngredients(prev => prev.map((item, i) => i === idx ? { ...item, quantity: parseFloat(e.target.value) || 0 } : item))} />
-                    <span style={{ fontSize: '12px', color: '#6B7280', width: '30px' }}>{di.unit}</span>
-                    <span style={{ width: '70px', textAlign: 'right', color: '#6B7280', fontSize: '12px' }}>RM {(di.unit_cost * di.quantity).toFixed(2)}</span>
+                    <span style={{ fontSize: '12px', color: '#4B5563', width: '30px' }}>{di.unit}</span>
+                    <span style={{ width: '70px', textAlign: 'right', color: '#4B5563', fontSize: '12px' }}>RM {(di.unit_cost * di.quantity).toFixed(2)}</span>
                     <button type="button" onClick={() => setDirectIngredients(prev => prev.filter((_, i) => i !== idx))} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: '16px', padding: '0 4px' }}>x</button>
                   </div>
                 ))}

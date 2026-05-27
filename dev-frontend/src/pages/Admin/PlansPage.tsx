@@ -89,7 +89,7 @@ const PlanCard = styled.div<{ isPopular?: boolean; isActive?: boolean }>`
   background: white;
   border-radius: 16px;
   padding: 32px;
-  border: 2px solid ${props => props.isPopular ? '#635BFF' : '#E6EBF1'};
+  border: 2px solid ${props => props.isPopular ? '#635BFF' : '#C7CED6'};
   position: relative;
   transition: all 0.2s;
   opacity: ${props => props.isActive ? 1 : 0.6};
@@ -160,13 +160,13 @@ const AnnualPrice = styled.div`
 
 const PricingNote = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const PlanLimits = styled.div`
   margin: 8px 0;
   padding: 16px;
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 12px;
 `;
 
@@ -183,7 +183,7 @@ const LimitItem = styled.div`
 
 const LimitLabel = styled.span`
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
 `;
 
 const LimitValue = styled.span`
@@ -203,22 +203,22 @@ const FeatureItem = styled.li`
   align-items: center;
   margin-bottom: 8px;
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
   line-height: 1.5;
 `;
 
 const ModulesSection = styled.div`
   margin: 8px 0;
   padding: 12px;
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 8px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
 `;
 
 const ModulesSectionTitle = styled.div`
   font-size: 13px;
   font-weight: 600;
-  color: #6B7280;
+  color: #4B5563;
   margin-bottom: 8px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -234,10 +234,10 @@ const ModuleTag = styled.span`
   display: inline-block;
   padding: 6px 12px;
   background: #FFFFFF;
-  border: 1px solid #D1D5DB;
+  border: 1px solid #6B7280;
   border-radius: 6px;
   font-size: 13px;
-  color: #374151;
+  color: #1F2937;
   font-weight: 500;
 `;
 
@@ -249,8 +249,8 @@ const PlanStats = styled.div`
   margin-bottom: 0;
   padding-top: 16px;
   padding-bottom: 16px;
-  border-top: 1px solid #E6EBF1;
-  border-bottom: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
+  border-bottom: 1px solid #C7CED6;
   flex-wrap: wrap;
   gap: 12px;
 
@@ -271,7 +271,7 @@ const StatNumber = styled.div`
 
 const StatDesc = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 2px;
 `;
 
@@ -349,11 +349,11 @@ const PlanButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' 
     }
   ` : `
     background: transparent;
-    color: #6B7280;
-    border-color: #E6EBF1;
+    color: #4B5563;
+    border-color: #C7CED6;
     
     &:hover {
-      background: #F8FAFC;
+      background: #F1F4F8;
       color: #0A2540;
     }
   `}
@@ -375,7 +375,7 @@ const FormLabel = styled.label`
 const FormInput = styled.input`
   width: 100%;
   padding: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   box-sizing: border-box;
@@ -390,7 +390,7 @@ const FormInput = styled.input`
 const FormSelect = styled.select`
   width: 100%;
   padding: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   box-sizing: border-box;
@@ -407,7 +407,7 @@ const FormSelect = styled.select`
 const FormTextArea = styled.textarea`
   width: 100%;
   padding: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   resize: vertical;
@@ -479,7 +479,7 @@ const DetailSection = styled.div`
     color: #0A2540;
     margin: 0 0 16px 0;
     padding-bottom: 8px;
-    border-bottom: 1px solid #E6EBF1;
+    border-bottom: 1px solid #C7CED6;
   }
 `;
 
@@ -503,7 +503,7 @@ const DetailRow = styled.div`
 
 const DetailLabel = styled.span`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   font-weight: 500;
 `;
 
@@ -1371,7 +1371,7 @@ const PlansPage: React.FC = () => {
                   {hasCurrencyPrice(plan) ? (
                     <>
                       <MonthlyPrice>
-                        {formatPlanPrice(plan, 'monthly')}<span style={{fontSize: '16px', color: '#6B7280'}}>/month</span>
+                        {formatPlanPrice(plan, 'monthly')}<span style={{fontSize: '16px', color: '#4B5563'}}>/month</span>
                       </MonthlyPrice>
                       {getPlanPrice(plan, 'annual') > 0 && getPlanPrice(plan, 'monthly') > 0 && (
                         <AnnualPrice>
@@ -1577,9 +1577,9 @@ const PlansPage: React.FC = () => {
                       return (
                         <div key={code} style={{
                           padding: '12px',
-                          border: '1px solid #E6EBF1',
+                          border: '1px solid #C7CED6',
                           borderRadius: '8px',
-                          background: '#FAFBFC'
+                          background: '#F9FAFB'
                         }}>
                           <div style={{ fontWeight: 600, marginBottom: '8px', color: '#0A2540' }}>
                             {config?.symbol || code} {code} - {config?.name || code}
@@ -1620,7 +1620,7 @@ const PlansPage: React.FC = () => {
                       );
                     })}
                     {supportedCurrencies.length === 0 && (
-                      <p style={{ color: '#6B7280', fontSize: '14px' }}>
+                      <p style={{ color: '#4B5563', fontSize: '14px' }}>
                         No currencies configured. Add currencies in "Manage Currencies" first.
                       </p>
                     )}
@@ -1735,7 +1735,7 @@ const PlansPage: React.FC = () => {
                                 <label htmlFor={`module-${module.module_code}`}>
                                   <strong>{module.name}</strong>{alwaysIncluded && <span style={{color: '#635BFF', fontSize: '12px', marginLeft: '6px'}}>{t('admin:plansPage.alwaysIncluded')}</span>}
                                   <br />
-                                  <small style={{color: '#6B7280'}}>{module.description}</small>
+                                  <small style={{color: '#4B5563'}}>{module.description}</small>
                                 </label>
                               </CheckboxItem>
                             );
@@ -1778,7 +1778,7 @@ const PlansPage: React.FC = () => {
                                 <label htmlFor={`module-${module.module_code}`}>
                                   <strong>{module.name}</strong>
                                   <br />
-                                  <small style={{color: '#6B7280'}}>{module.description}</small>
+                                  <small style={{color: '#4B5563'}}>{module.description}</small>
                                 </label>
                               </CheckboxItem>
                             );
@@ -1821,7 +1821,7 @@ const PlansPage: React.FC = () => {
                                 <label htmlFor={`module-${module.module_code}`}>
                                   <strong>{module.name}</strong>
                                   <br />
-                                  <small style={{color: '#6B7280'}}>{module.description}</small>
+                                  <small style={{color: '#4B5563'}}>{module.description}</small>
                                 </label>
                               </CheckboxItem>
                             );
@@ -1864,7 +1864,7 @@ const PlansPage: React.FC = () => {
                                 <label htmlFor={`module-${module.module_code}`}>
                                   <strong>{module.name}</strong>
                                   <br />
-                                  <small style={{color: '#6B7280'}}>{module.description}</small>
+                                  <small style={{color: '#4B5563'}}>{module.description}</small>
                                 </label>
                               </CheckboxItem>
                             );
@@ -1907,7 +1907,7 @@ const PlansPage: React.FC = () => {
                                 <label htmlFor={`module-${module.module_code}`}>
                                   <strong>{module.name}</strong>
                                   <br />
-                                  <small style={{color: '#6B7280'}}>{module.description}</small>
+                                  <small style={{color: '#4B5563'}}>{module.description}</small>
                                 </label>
                               </CheckboxItem>
                             );
@@ -1964,7 +1964,7 @@ const PlansPage: React.FC = () => {
                     value={editFormData.display_name}
                     onChange={(e) => setEditFormData(prev => ({...prev, display_name: e.target.value}))}
                   />
-                  <small style={{color: '#9CA3AF', fontSize: '12px', marginTop: '4px', display: 'block'}}>
+                  <small style={{color: '#6B7280', fontSize: '12px', marginTop: '4px', display: 'block'}}>
                     Internal code: {editFormData.name}
                   </small>
                 </FormGroup>
@@ -1999,9 +1999,9 @@ const PlansPage: React.FC = () => {
                       return (
                         <div key={code} style={{
                           padding: '12px',
-                          border: '1px solid #E6EBF1',
+                          border: '1px solid #C7CED6',
                           borderRadius: '8px',
-                          background: '#FAFBFC'
+                          background: '#F9FAFB'
                         }}>
                           <div style={{ fontWeight: 600, marginBottom: '8px', color: '#0A2540' }}>
                             {config?.symbol || code} {code} - {config?.name || code}
@@ -2042,7 +2042,7 @@ const PlansPage: React.FC = () => {
                       );
                     })}
                     {supportedCurrencies.length === 0 && (
-                      <p style={{ color: '#6B7280', fontSize: '14px' }}>
+                      <p style={{ color: '#4B5563', fontSize: '14px' }}>
                         No currencies configured.
                       </p>
                     )}
@@ -2157,7 +2157,7 @@ const PlansPage: React.FC = () => {
                                   <label htmlFor={`edit-module-${module.module_code}`}>
                                     <strong>{module.name}</strong>{alwaysIncluded && <span style={{color: '#635BFF', fontSize: '12px', marginLeft: '6px'}}>{t('admin:plansPage.alwaysIncluded')}</span>}
                                     <br />
-                                    <small style={{color: '#6B7280'}}>{module.description}</small>
+                                    <small style={{color: '#4B5563'}}>{module.description}</small>
                                   </label>
                                 </CheckboxItem>
                               );
@@ -2200,7 +2200,7 @@ const PlansPage: React.FC = () => {
                                   <label htmlFor={`edit-module-${module.module_code}`}>
                                     <strong>{module.name}</strong>
                                     <br />
-                                    <small style={{color: '#6B7280'}}>{module.description}</small>
+                                    <small style={{color: '#4B5563'}}>{module.description}</small>
                                   </label>
                                 </CheckboxItem>
                               );
@@ -2243,7 +2243,7 @@ const PlansPage: React.FC = () => {
                                   <label htmlFor={`edit-module-${module.module_code}`}>
                                     <strong>{module.name}</strong>
                                     <br />
-                                    <small style={{color: '#6B7280'}}>{module.description}</small>
+                                    <small style={{color: '#4B5563'}}>{module.description}</small>
                                   </label>
                                 </CheckboxItem>
                               );
@@ -2286,7 +2286,7 @@ const PlansPage: React.FC = () => {
                                   <label htmlFor={`edit-module-${module.module_code}`}>
                                     <strong>{module.name}</strong>
                                     <br />
-                                    <small style={{color: '#6B7280'}}>{module.description}</small>
+                                    <small style={{color: '#4B5563'}}>{module.description}</small>
                                   </label>
                                 </CheckboxItem>
                               );
@@ -2329,7 +2329,7 @@ const PlansPage: React.FC = () => {
                                   <label htmlFor={`edit-module-${module.module_code}`}>
                                     <strong>{module.name}</strong>
                                     <br />
-                                    <small style={{color: '#6B7280'}}>{module.description}</small>
+                                    <small style={{color: '#4B5563'}}>{module.description}</small>
                                   </label>
                                 </CheckboxItem>
                               );
@@ -2491,7 +2491,7 @@ const PlansPage: React.FC = () => {
         {showPlanPricesModal && selectedPlan && (
                     <CommonModal isOpen={true} onClose={() => setShowPlanPricesModal(false)} title={`Set Prices for ${selectedPlan.displayName}`} footer={<><Button variant="secondary" onClick={() => setShowPlanPricesModal(false)}>{t('admin:plansPage.cancel')}</Button><Button variant="primary" onClick={savePlanPrices}>{t('admin:plansPage.savePrices')}</Button></>}>
 
-                <p style={{ marginBottom: '20px', color: '#6B7280', fontSize: '14px' }}>
+                <p style={{ marginBottom: '20px', color: '#4B5563', fontSize: '14px' }}>
                   Configure pricing for each supported currency.
                 </p>
                 <div style={{ display: 'grid', gap: '16px' }}>
@@ -2500,9 +2500,9 @@ const PlansPage: React.FC = () => {
                     return (
                       <div key={code} style={{
                         padding: '16px',
-                        border: '1px solid #E6EBF1',
+                        border: '1px solid #C7CED6',
                         borderRadius: '8px',
-                        background: '#FAFBFC'
+                        background: '#F9FAFB'
                       }}>
                         <div style={{
                           fontWeight: 600,
@@ -2523,7 +2523,7 @@ const PlansPage: React.FC = () => {
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                           <div>
-                            <label style={{ fontSize: '13px', color: '#6B7280', display: 'block', marginBottom: '4px' }}>
+                            <label style={{ fontSize: '13px', color: '#4B5563', display: 'block', marginBottom: '4px' }}>
                               Monthly Price
                             </label>
                             <input
@@ -2536,7 +2536,7 @@ const PlansPage: React.FC = () => {
                               style={{
                                 width: '100%',
                                 padding: '10px 12px',
-                                border: '1px solid #E6EBF1',
+                                border: '1px solid #C7CED6',
                                 borderRadius: '6px',
                                 fontSize: '14px',
                                 boxSizing: 'border-box' as const
@@ -2545,7 +2545,7 @@ const PlansPage: React.FC = () => {
                             />
                           </div>
                           <div>
-                            <label style={{ fontSize: '13px', color: '#6B7280', display: 'block', marginBottom: '4px' }}>
+                            <label style={{ fontSize: '13px', color: '#4B5563', display: 'block', marginBottom: '4px' }}>
                               Annual Price
                             </label>
                             <input
@@ -2558,7 +2558,7 @@ const PlansPage: React.FC = () => {
                               style={{
                                 width: '100%',
                                 padding: '10px 12px',
-                                border: '1px solid #E6EBF1',
+                                border: '1px solid #C7CED6',
                                 borderRadius: '6px',
                                 fontSize: '14px',
                                 boxSizing: 'border-box' as const
@@ -2571,7 +2571,7 @@ const PlansPage: React.FC = () => {
                     );
                   })}
                   {supportedCurrencies.length === 0 && (
-                    <p style={{ textAlign: 'center', color: '#6B7280', padding: '20px' }}>
+                    <p style={{ textAlign: 'center', color: '#4B5563', padding: '20px' }}>
                       No currencies configured. Please add currencies first.
                     </p>
                   )}

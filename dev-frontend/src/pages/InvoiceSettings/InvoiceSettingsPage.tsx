@@ -44,14 +44,14 @@ interface InvoiceSettings {
 }
 
 const Container = styled.div`
-  background: #FAFBFC;
+  background: #F9FAFB;
   min-height: 100vh;
 `;
 
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -91,11 +91,11 @@ const SaveButton = styled.button<{ hasChanges: boolean }>`
   cursor: pointer;
   transition: all 0.2s;
   border: none;
-  background: ${props => props.hasChanges ? '#635BFF' : '#E6EBF1'};
+  background: ${props => props.hasChanges ? '#635BFF' : '#C7CED6'};
   color: ${props => props.hasChanges ? 'white' : '#8898AA'};
   
   &:hover {
-    background: ${props => props.hasChanges ? '#5A51E6' : '#E6EBF1'};
+    background: ${props => props.hasChanges ? '#5A51E6' : '#C7CED6'};
     transform: ${props => props.hasChanges ? 'translateY(-2px)' : 'none'};
     box-shadow: ${props => props.hasChanges ? '0 4px 12px rgba(99, 91, 255, 0.3)' : 'none'};
   }
@@ -117,7 +117,7 @@ const Content = styled.div`
 const Section = styled.div`
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   padding: 32px;
   margin-bottom: 24px;
   
@@ -132,7 +132,7 @@ const SectionTitle = styled.h2`
   color: #0A2540;
   margin: 0 0 24px 0;
   padding-bottom: 16px;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
 `;
 
 const FormGrid = styled.div`
@@ -157,7 +157,7 @@ const Label = styled.label`
   display: block;
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: #1F2937;
   margin-bottom: 8px;
   
   span {
@@ -169,7 +169,7 @@ const Label = styled.label`
 const Input = styled.input`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   transition: all 0.2s;
@@ -181,7 +181,7 @@ const Input = styled.input`
   }
   
   &:disabled {
-    background: #F8FAFC;
+    background: #F1F4F8;
     cursor: not-allowed;
   }
 `;
@@ -191,7 +191,7 @@ const CheckboxLabel = styled.label`
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
   cursor: pointer;
   margin-bottom: 16px;
   
@@ -214,15 +214,15 @@ const RadioLabel = styled.label`
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
   cursor: pointer;
   padding: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   transition: all 0.2s;
   
   &:hover {
-    background: #F8FAFC;
+    background: #F1F4F8;
   }
   
   input {
@@ -257,12 +257,12 @@ const FeeItem = styled.div`
   align-items: center;
   gap: 16px;
   padding: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   margin-bottom: 12px;
   
   &:hover {
-    background: #F8FAFC;
+    background: #F1F4F8;
   }
 `;
 
@@ -275,7 +275,7 @@ const FeeCheckbox = styled.input`
 const FeeName = styled.input`
   flex: 1;
   padding: 8px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 4px;
   font-size: 14px;
   
@@ -288,7 +288,7 @@ const FeeName = styled.input`
 const FeeAmount = styled.input`
   width: 150px;
   padding: 8px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 4px;
   font-size: 14px;
   
@@ -313,7 +313,7 @@ const DeleteButton = styled.button`
 
 const AddButton = styled.button`
   padding: 8px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   font-weight: 500;
@@ -329,7 +329,7 @@ const AddButton = styled.button`
 `;
 
 const CalculationExample = styled.div`
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 8px;
   padding: 16px;
   margin-top: 16px;
@@ -343,14 +343,14 @@ const CalculationExample = styled.div`
   
   p {
     font-size: 13px;
-    color: #6B7280;
+    color: #4B5563;
     margin: 4px 0;
   }
   
   .total {
     margin-top: 8px;
     padding-top: 8px;
-    border-top: 1px solid #E6EBF1;
+    border-top: 1px solid #C7CED6;
     font-weight: 600;
     color: #0A2540;
   }
@@ -540,7 +540,7 @@ const InvoiceSettingsPage: React.FC = () => {
                 />
                 <div style={{ flex: 1 }}>
                   <strong>{t('invoices:invoiceSettingsPage.fixedRental')}</strong>
-                  <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                  <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '4px' }}>
                     Charge a fixed amount every month regardless of revenue
                   </div>
                 </div>
@@ -556,7 +556,7 @@ const InvoiceSettingsPage: React.FC = () => {
                 />
                 <div style={{ flex: 1 }}>
                   <strong>{t('invoices:invoiceSettingsPage.revenueShare')}</strong>
-                  <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                  <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '4px' }}>
                     Charge a percentage of monthly revenue
                   </div>
                 </div>
@@ -572,7 +572,7 @@ const InvoiceSettingsPage: React.FC = () => {
                 />
                 <div style={{ flex: 1 }}>
                   <strong>Hybrid (Fixed + Revenue Share)</strong>
-                  <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                  <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '4px' }}>
                     Charge a base amount plus a percentage of revenue
                   </div>
                 </div>
@@ -655,7 +655,7 @@ const InvoiceSettingsPage: React.FC = () => {
               placeholder="Fee name"
             />
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{ fontSize: '14px', color: '#6B7280' }}>{t('invoices:invoiceSettingsPage.rm')}</span>
+              <span style={{ fontSize: '14px', color: '#4B5563' }}>{t('invoices:invoiceSettingsPage.rm')}</span>
               <FeeAmount
                 type="number"
                 value={fee.amount}
@@ -747,7 +747,7 @@ const InvoiceSettingsPage: React.FC = () => {
                   />
                 </AutoSaveField>
                 {settings.lateFeePercentage > 0 && (
-                  <div style={{ fontSize: 12, color: '#6B7C93', marginTop: 4, lineHeight: 1.5 }}>
+                  <div style={{ fontSize: 12, color: '#4B5563', marginTop: 4, lineHeight: 1.5 }}>
                     Example: a {settings.invoicePrefix || 'INV'} of <strong>RM 1,000</strong> overdue → adds <strong>RM {(1000 * settings.lateFeePercentage / 100).toFixed(2)}</strong> per overdue cycle.
                   </div>
                 )}

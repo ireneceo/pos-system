@@ -172,8 +172,8 @@ const FilterRow = styled.div`
 const DateButton = styled.button<{ active?: boolean }>`
   padding: 8px 16px;
   background: ${props => props.active ? '#635BFF' : '#FFFFFF'};
-  color: ${props => props.active ? '#FFFFFF' : '#6B7C93'};
-  border: 1px solid ${props => props.active ? '#635BFF' : '#E6EBF1'};
+  color: ${props => props.active ? '#FFFFFF' : '#4B5563'};
+  border: 1px solid ${props => props.active ? '#635BFF' : '#C7CED6'};
   border-radius: 6px;
   font-size: 14px;
   font-weight: 500;
@@ -181,8 +181,8 @@ const DateButton = styled.button<{ active?: boolean }>`
   transition: all 0.2s;
 
   &:hover {
-    background: ${props => props.active ? '#5A51E6' : '#F8FAFC'};
-    border-color: ${props => props.active ? '#5A51E6' : '#CBD5E1'};
+    background: ${props => props.active ? '#5A51E6' : '#F1F4F8'};
+    border-color: ${props => props.active ? '#5A51E6' : '#64748B'};
   }
 
   @media (max-width: 768px) {
@@ -207,8 +207,8 @@ const DateRangeTrigger = styled.button<{ active?: boolean }>`
   gap: 8px;
   padding: 8px 14px;
   background: ${props => props.active ? '#F0EEFF' : '#FFFFFF'};
-  color: ${props => props.active ? '#635BFF' : '#374151'};
-  border: 1px solid ${props => props.active ? '#635BFF' : '#E6EBF1'};
+  color: ${props => props.active ? '#635BFF' : '#1F2937'};
+  border: 1px solid ${props => props.active ? '#635BFF' : '#C7CED6'};
   border-radius: 6px;
   font-size: 14px;
   font-weight: 500;

@@ -42,7 +42,7 @@ const PwaInstallBanner: React.FC = () => {
       background: '#fff',
       borderRadius: 12,
       boxShadow: '0 10px 30px rgba(10,37,64,0.15)',
-      border: '1px solid #E6EBF1',
+      border: '1px solid #C7CED6',
       padding: 16
     }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, position: 'relative' }}>
@@ -53,7 +53,7 @@ const PwaInstallBanner: React.FC = () => {
           aria-label={t('common:pwa.installBanner.dismissButton')}
           style={{
             position: 'absolute', top: -4, right: -4, width: 28, height: 28,
-            borderRadius: 6, border: '1px solid #E6EBF1', background: 'white', color: '#6B7C93',
+            borderRadius: 6, border: '1px solid #C7CED6', background: 'white', color: '#4B5563',
             fontSize: 18, lineHeight: 1, cursor: 'pointer',
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center'
           }}
@@ -63,7 +63,7 @@ const PwaInstallBanner: React.FC = () => {
           <div style={{ fontSize: 15, fontWeight: 600, color: '#0A2540', marginBottom: 4 }}>
             {t('common:pwa.installBanner.title')}
           </div>
-          <div style={{ fontSize: 13, color: '#6B7C93', lineHeight: 1.5 }}>
+          <div style={{ fontSize: 13, color: '#4B5563', lineHeight: 1.5 }}>
             {isIOS
               ? (oldIos
                   ? t('common:pwa.installBanner.iosOldGuide')

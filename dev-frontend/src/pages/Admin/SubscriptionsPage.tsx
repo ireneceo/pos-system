@@ -120,7 +120,7 @@ const RestaurantName = styled.div`
 
 const RestaurantMeta = styled.div`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const StatusBadge = styled.span<{ status: string }>`
@@ -137,8 +137,8 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'overdue': return '#FEF9C3';
       case 'expired': return '#FEE2E2';
       case 'suspended': return '#FEF2F2';
-      case 'cancelled': return '#F3F4F6';
-      default: return '#F3F4F6';
+      case 'cancelled': return '#F1F4F8';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
@@ -148,8 +148,8 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'overdue': return '#CA8A04';
       case 'expired': return '#DC2626';
       case 'suspended': return '#DC2626';
-      case 'cancelled': return '#6B7280';
-      default: return '#6B7280';
+      case 'cancelled': return '#4B5563';
+      default: return '#4B5563';
     }
   }};
 `;
@@ -166,21 +166,21 @@ const PlanBadge = styled.span<{ planType: string }>`
     if (pt.includes('basic')) return '#DBEAFE';
     if (pt.includes('professional')) return '#E4E7FF';
     if (pt.includes('enterprise')) return '#FEF3C7';
-    return '#F3F4F6';
+    return '#F1F4F8';
   }};
   color: ${props => {
     const pt = (props.planType || '').toLowerCase();
     if (pt.includes('basic')) return '#1E40AF';
     if (pt.includes('professional')) return '#635BFF';
     if (pt.includes('enterprise')) return '#D97706';
-    return '#6B7280';
+    return '#4B5563';
   }};
 `;
 
 const IconSymbol = styled.span`
   font-size: 14px;
   font-family: 'Lucida Console', 'Courier New', monospace;
-  color: #6B7C93;
+  color: #4B5563;
   display: inline-block;
   line-height: 1;
 `;
@@ -199,7 +199,7 @@ const SuccessIcon = styled.div`
 `;
 
 const SuccessMessage = styled.p`
-  color: #6B7280;
+  color: #4B5563;
   margin: 0 0 20px;
   line-height: 1.5;
 `;
@@ -228,12 +228,12 @@ const FormGroup = styled.div`
 const FormLabel = styled.label`
   font-size: 14px;
   font-weight: 600;
-  color: #374151;
+  color: #1F2937;
 `;
 
 const FormInput = styled.input`
   padding: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.2s;
@@ -248,15 +248,15 @@ const FormInput = styled.input`
   }
 
   &:disabled {
-    background: #F8FAFC;
-    color: #6B7280;
+    background: #F1F4F8;
+    color: #4B5563;
     cursor: not-allowed;
   }
 `;
 
 const FormSelect = styled.select`
   padding: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -1185,7 +1185,7 @@ const SubscriptionsPage: React.FC = () => {
                     <RestaurantInfo>
                       <RestaurantName>
                         {subscription.restaurantName}
-                        {subscription.branchName && <span style={{ fontSize: '12px', fontWeight: 500, color: '#6B7C93', background: '#F3F4F6', padding: '1px 8px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{subscription.branchName}</span>}
+                        {subscription.branchName && <span style={{ fontSize: '12px', fontWeight: 500, color: '#4B5563', background: '#F1F4F8', padding: '1px 8px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{subscription.branchName}</span>}
                         {(subscription as any).isDemo && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#F59E0B', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{t('admin:subscriptionsPage.demo')}</span>}
                         {(subscription as any).isTest && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#8B5CF6', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{t('admin:subscriptionsPage.test')}</span>}
                         {subscription.currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{subscription.currency}</span>}
@@ -1230,7 +1230,7 @@ const SubscriptionsPage: React.FC = () => {
                     <MobileLabel>{t('admin:subscriptionsPage.monthlyFee')}</MobileLabel>
                     {subscription.discountType !== 'none' && subscription.discountValue > 0 ? (
                       <div>
-                        <span style={{textDecoration: 'line-through', color: '#9CA3AF', fontSize: '12px'}}>RM {subscription.monthlyFee}</span>
+                        <span style={{textDecoration: 'line-through', color: '#6B7280', fontSize: '12px'}}>RM {subscription.monthlyFee}</span>
                         <div style={{color: '#15803D', fontWeight: '600'}}>
                           RM {(subscription.discountType === 'percentage'
                             ? subscription.monthlyFee * (1 - subscription.discountValue / 100)
@@ -1260,7 +1260,7 @@ const SubscriptionsPage: React.FC = () => {
                       } else if (diffDays <= 30) {
                         return <span style={{color: '#10B981', fontWeight: '500'}}>{diffDays} days</span>;
                       } else {
-                        return <span style={{color: '#6B7280'}}>{diffDays} days</span>;
+                        return <span style={{color: '#4B5563'}}>{diffDays} days</span>;
                       }
                     })()}
                   </MobileValue>
@@ -1379,7 +1379,7 @@ const SubscriptionsPage: React.FC = () => {
                             left: 0,
                             right: 0,
                             background: 'white',
-                            border: '1px solid #E6EBF1',
+                            border: '1px solid #C7CED6',
                             borderRadius: '8px',
                             maxHeight: '300px',
                             overflowY: 'auto',
@@ -1388,7 +1388,7 @@ const SubscriptionsPage: React.FC = () => {
                           }}>
                             {userType !== 'restaurant' && searchResults.managers.length > 0 && (
                               <div>
-                                <div style={{padding: '8px 12px', background: '#F8FAFC', fontSize: '12px', fontWeight: '600', color: '#6B7280'}}>
+                                <div style={{padding: '8px 12px', background: '#F1F4F8', fontSize: '12px', fontWeight: '600', color: '#4B5563'}}>
                                   {userType === 'owner' ? 'OWNERS' : 'MANAGERS'}
                                 </div>
                                 {searchResults.managers.map(manager => (
@@ -1398,21 +1398,21 @@ const SubscriptionsPage: React.FC = () => {
                                     style={{
                                       padding: '12px',
                                       cursor: 'pointer',
-                                      borderBottom: '1px solid #F3F4F6',
+                                      borderBottom: '1px solid #F1F4F8',
                                       transition: 'background 0.2s'
                                     }}
-                                    onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'}
+                                    onMouseEnter={(e) => e.currentTarget.style.background = '#F1F4F8'}
                                     onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
                                   >
                                     <div style={{fontWeight: '500', color: '#0A2540'}}>{manager.fullName || manager.full_name || manager.username}</div>
-                                    <div style={{fontSize: '13px', color: '#6B7280'}}>{manager.email}</div>
+                                    <div style={{fontSize: '13px', color: '#4B5563'}}>{manager.email}</div>
                                   </div>
                                 ))}
                               </div>
                             )}
                             {userType === 'restaurant' && searchResults.restaurants.length > 0 && (
                               <div>
-                                <div style={{padding: '8px 12px', background: '#F8FAFC', fontSize: '12px', fontWeight: '600', color: '#6B7280'}}>
+                                <div style={{padding: '8px 12px', background: '#F1F4F8', fontSize: '12px', fontWeight: '600', color: '#4B5563'}}>
                                   RESTAURANTS
                                 </div>
                                 {searchResults.restaurants.map(restaurant => {
@@ -1424,14 +1424,14 @@ const SubscriptionsPage: React.FC = () => {
                                       style={{
                                         padding: '12px',
                                         cursor: 'pointer',
-                                        borderBottom: '1px solid #F3F4F6',
+                                        borderBottom: '1px solid #F1F4F8',
                                         transition: 'background 0.2s'
                                       }}
-                                      onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'}
+                                      onMouseEnter={(e) => e.currentTarget.style.background = '#F1F4F8'}
                                       onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
                                     >
                                       <div style={{fontWeight: '500', color: '#0A2540'}}>{getRestaurantDisplayName(restaurant)}</div>
-                                      <div style={{fontSize: '13px', color: '#6B7280'}}>
+                                      <div style={{fontSize: '13px', color: '#4B5563'}}>
                                         Admin: {restaurant.admin ? `${restaurant.admin.name} (${restaurant.admin.email})` : 'No Admin'}
                                         {manager ? ` • Manager: ${manager.fullName || manager.full_name || manager.username}` : ''}
                                       </div>
@@ -1460,7 +1460,7 @@ const SubscriptionsPage: React.FC = () => {
                                 ? (selectedTarget.data.fullName || selectedTarget.data.full_name || selectedTarget.data.username)
                                 : selectedTarget.data.name}
                             </div>
-                            <div style={{fontSize: '13px', color: '#6B7280'}}>
+                            <div style={{fontSize: '13px', color: '#4B5563'}}>
                               {selectedTarget.type === 'manager'
                                 ? `Manager`
                                 : `${selectedTarget.data.admin ? `Admin: ${selectedTarget.data.admin.name}` : 'No Admin'} • ${formatEntityAddress(selectedTarget.data, (i18n.language as AppLocale) || 'en') || 'No address'}`}
@@ -1474,7 +1474,7 @@ const SubscriptionsPage: React.FC = () => {
                             style={{
                               background: 'none',
                               border: 'none',
-                              color: '#6B7280',
+                              color: '#4B5563',
                               cursor: 'pointer',
                               fontSize: '18px',
                               lineHeight: '1',
@@ -1556,7 +1556,7 @@ const SubscriptionsPage: React.FC = () => {
                         type="text"
                         value={editingSubscription.restaurantName}
                         disabled
-                        style={{background: '#F8FAFC', cursor: 'not-allowed'}}
+                        style={{background: '#F1F4F8', cursor: 'not-allowed'}}
                       />
                     </FormGroup>
 
@@ -1699,18 +1699,18 @@ const SubscriptionsPage: React.FC = () => {
                   <div style={{display: 'grid', gap: '20px'}}>
                     {/* Restaurant Info */}
                     <div>
-                      <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>{t('admin:subscriptionsPage.restaurantInformation')}</div>
-                      <div style={{background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E6EBF1'}}>
+                      <div style={{fontSize: '12px', color: '#4B5563', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>{t('admin:subscriptionsPage.restaurantInformation')}</div>
+                      <div style={{background: '#F1F4F8', padding: '16px', borderRadius: '8px', border: '1px solid #C7CED6'}}>
                         <div style={{marginBottom: '12px'}}>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('admin:subscriptionsPage.restaurantName')}</div>
+                          <div style={{fontSize: '12px', color: '#4B5563', marginBottom: '4px'}}>{t('admin:subscriptionsPage.restaurantName')}</div>
                           <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSubscription.restaurantName}</div>
                         </div>
                         <div style={{marginBottom: '12px'}}>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('admin:subscriptionsPage.manager')}</div>
+                          <div style={{fontSize: '12px', color: '#4B5563', marginBottom: '4px'}}>{t('admin:subscriptionsPage.manager')}</div>
                           <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSubscription.managerName}</div>
                         </div>
                         <div>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('admin:subscriptionsPage.location')}</div>
+                          <div style={{fontSize: '12px', color: '#4B5563', marginBottom: '4px'}}>{t('admin:subscriptionsPage.location')}</div>
                           <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSubscription.location}</div>
                         </div>
                       </div>
@@ -1718,16 +1718,16 @@ const SubscriptionsPage: React.FC = () => {
 
                     {/* Subscription Info */}
                     <div>
-                      <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>{t('admin:subscriptionsPage.subscriptionDetails')}</div>
-                      <div style={{background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E6EBF1'}}>
+                      <div style={{fontSize: '12px', color: '#4B5563', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>{t('admin:subscriptionsPage.subscriptionDetails')}</div>
+                      <div style={{background: '#F1F4F8', padding: '16px', borderRadius: '8px', border: '1px solid #C7CED6'}}>
                         <div style={{marginBottom: '12px'}}>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('admin:subscriptionsPage.planType')}</div>
+                          <div style={{fontSize: '12px', color: '#4B5563', marginBottom: '4px'}}>{t('admin:subscriptionsPage.planType')}</div>
                           <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>
                             {viewingSubscription.planType.charAt(0).toUpperCase() + viewingSubscription.planType.slice(1)}
                           </div>
                         </div>
                         <div style={{marginBottom: '12px'}}>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('admin:subscriptionsPage.status')}</div>
+                          <div style={{fontSize: '12px', color: '#4B5563', marginBottom: '4px'}}>{t('admin:subscriptionsPage.status')}</div>
                           <div>
                             <span style={{
                               display: 'inline-block',
@@ -1743,10 +1743,10 @@ const SubscriptionsPage: React.FC = () => {
                           </div>
                         </div>
                         <div style={{marginBottom: '12px'}}>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('admin:subscriptionsPage.monthlyFee')}</div>
+                          <div style={{fontSize: '12px', color: '#4B5563', marginBottom: '4px'}}>{t('admin:subscriptionsPage.monthlyFee')}</div>
                           {viewingSubscription.discountType !== 'none' && viewingSubscription.discountValue > 0 ? (
                             <div>
-                              <span style={{textDecoration: 'line-through', color: '#9CA3AF', fontSize: '13px'}}>RM {viewingSubscription.monthlyFee}</span>
+                              <span style={{textDecoration: 'line-through', color: '#6B7280', fontSize: '13px'}}>RM {viewingSubscription.monthlyFee}</span>
                               <div style={{fontSize: '16px', fontWeight: '600', color: '#15803D'}}>
                                 RM {(viewingSubscription.discountType === 'percentage'
                                   ? viewingSubscription.monthlyFee * (1 - viewingSubscription.discountValue / 100)
@@ -1762,13 +1762,13 @@ const SubscriptionsPage: React.FC = () => {
                           )}
                         </div>
                         <div style={{marginBottom: '12px'}}>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('admin:subscriptionsPage.billingCycle')}</div>
+                          <div style={{fontSize: '12px', color: '#4B5563', marginBottom: '4px'}}>{t('admin:subscriptionsPage.billingCycle')}</div>
                           <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>
                             {viewingSubscription.billingCycle.charAt(0).toUpperCase() + viewingSubscription.billingCycle.slice(1)}
                           </div>
                         </div>
                         <div style={{marginBottom: '12px'}}>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('admin:subscriptionsPage.autorenew')}</div>
+                          <div style={{fontSize: '12px', color: '#4B5563', marginBottom: '4px'}}>{t('admin:subscriptionsPage.autorenew')}</div>
                           <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>
                             {viewingSubscription.autoRenew ? (
                               <span style={{color: '#15803D'}}>✓ Enabled</span>
@@ -1783,7 +1783,7 @@ const SubscriptionsPage: React.FC = () => {
                     {/* Discount Info */}
                     {viewingSubscription.discountType !== 'none' && viewingSubscription.discountValue > 0 && (
                       <div>
-                        <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>{t('admin:subscriptionsPage.discount')}</div>
+                        <div style={{fontSize: '12px', color: '#4B5563', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>{t('admin:subscriptionsPage.discount')}</div>
                         <div style={{background: '#F0FDF4', padding: '16px', borderRadius: '8px', border: '1px solid #BBF7D0'}}>
                           <div style={{marginBottom: '12px'}}>
                             <div style={{fontSize: '12px', color: '#166534', marginBottom: '4px'}}>{t('admin:subscriptionsPage.type')}</div>
@@ -1809,22 +1809,22 @@ const SubscriptionsPage: React.FC = () => {
 
                     {/* Dates */}
                     <div>
-                      <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>{t('admin:subscriptionsPage.dates')}</div>
-                      <div style={{background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E6EBF1'}}>
+                      <div style={{fontSize: '12px', color: '#4B5563', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>{t('admin:subscriptionsPage.dates')}</div>
+                      <div style={{background: '#F1F4F8', padding: '16px', borderRadius: '8px', border: '1px solid #C7CED6'}}>
                         <div style={{marginBottom: '12px'}}>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('admin:subscriptionsPage.startDate')}</div>
+                          <div style={{fontSize: '12px', color: '#4B5563', marginBottom: '4px'}}>{t('admin:subscriptionsPage.startDate')}</div>
                           <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSubscription.startDate}</div>
                         </div>
                         <div style={{marginBottom: '12px'}}>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('admin:subscriptionsPage.endDate')}</div>
+                          <div style={{fontSize: '12px', color: '#4B5563', marginBottom: '4px'}}>{t('admin:subscriptionsPage.endDate')}</div>
                           <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSubscription.endDate}</div>
                         </div>
                         <div style={{marginBottom: '12px'}}>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('admin:subscriptionsPage.nextPayment')}</div>
+                          <div style={{fontSize: '12px', color: '#4B5563', marginBottom: '4px'}}>{t('admin:subscriptionsPage.nextPayment')}</div>
                           <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSubscription.nextPayment}</div>
                         </div>
                         <div>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('admin:subscriptionsPage.expiresIn')}</div>
+                          <div style={{fontSize: '12px', color: '#4B5563', marginBottom: '4px'}}>{t('admin:subscriptionsPage.expiresIn')}</div>
                           <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>
                             {(() => {
                               const today = new Date();
@@ -1835,7 +1835,7 @@ const SubscriptionsPage: React.FC = () => {
                               if (diffDays === 0) return <span style={{color: '#DC2626'}}>{t('admin:subscriptionsPage.today')}</span>;
                               if (diffDays <= 7) return <span style={{color: '#F59E0B'}}>{diffDays} days</span>;
                               if (diffDays <= 30) return <span style={{color: '#10B981'}}>{diffDays} days</span>;
-                              return <span style={{color: '#6B7280'}}>{diffDays} days</span>;
+                              return <span style={{color: '#4B5563'}}>{diffDays} days</span>;
                             })()}
                           </div>
                         </div>
@@ -1844,16 +1844,16 @@ const SubscriptionsPage: React.FC = () => {
 
                     {/* Usage */}
                     <div>
-                      <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>{t('admin:subscriptionsPage.usage')}</div>
-                      <div style={{background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E6EBF1'}}>
+                      <div style={{fontSize: '12px', color: '#4B5563', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>{t('admin:subscriptionsPage.usage')}</div>
+                      <div style={{background: '#F1F4F8', padding: '16px', borderRadius: '8px', border: '1px solid #C7CED6'}}>
                         <div style={{marginBottom: '12px'}}>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('admin:subscriptionsPage.menuItems')}</div>
+                          <div style={{fontSize: '12px', color: '#4B5563', marginBottom: '4px'}}>{t('admin:subscriptionsPage.menuItems')}</div>
                           <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>
                             {viewingSubscription.currentMenuItems} / {viewingSubscription.menuItemLimit === -1 ? '∞' : viewingSubscription.menuItemLimit}
                           </div>
                         </div>
                         <div>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('admin:subscriptionsPage.paymentModel')}</div>
+                          <div style={{fontSize: '12px', color: '#4B5563', marginBottom: '4px'}}>{t('admin:subscriptionsPage.paymentModel')}</div>
                           <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>
                             {viewingSubscription.paymentModel === 'restaurant' ? 'Restaurant Admin' : 'Manager'}
                           </div>

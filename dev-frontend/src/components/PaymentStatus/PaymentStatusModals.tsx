@@ -137,7 +137,7 @@ const ModalBody = styled.div`
 `;
 
 const AmountSection = styled.div`
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 8px;
   padding: 16px;
   margin-bottom: 20px;
@@ -146,7 +146,7 @@ const AmountSection = styled.div`
 
 const AmountLabel = styled.div`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin-bottom: 4px;
 `;
 
@@ -175,7 +175,7 @@ const FeatureList = styled.ul`
   li {
     position: relative;
     font-size: 14px;
-    color: #6B7280;
+    color: #4B5563;
     margin-bottom: 8px;
     padding-left: 8px;
     
@@ -252,13 +252,13 @@ const ActionButton = styled.button<{ variant: 'primary' | 'secondary' }>`
     }
   ` : `
     background: transparent;
-    color: #6B7280;
-    border: 1px solid #E6EBF1;
+    color: #4B5563;
+    border: 1px solid #C7CED6;
     
     &:hover {
-      background: #F8FAFC;
+      background: #F1F4F8;
       color: #0A2540;
-      border-color: #CBD5E1;
+      border-color: #64748B;
     }
   `}
 `;

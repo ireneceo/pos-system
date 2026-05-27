@@ -91,16 +91,16 @@ export default function ReservationsListPage() {
 
 const Inner = styled.div`display:flex;flex-direction:column;gap:14px;`;
 const BookCta = styled.button`width:100%;padding:12px;background:#635BFF;color:white;border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;&:hover{background:#5A51E6;}`;
-const Empty = styled.div`text-align:center;padding:60px 24px;color:#6B7C93;`;
+const Empty = styled.div`text-align:center;padding:60px 24px;color:#4B5563;`;
 const EmptyTitle = styled.div`font-size:16px;font-weight:600;color:#0A2540;margin-bottom:6px;`;
-const EmptyHint = styled.div`font-size:14px;color:#6B7C93;margin-bottom:24px;`;
+const EmptyHint = styled.div`font-size:14px;color:#4B5563;margin-bottom:24px;`;
 const BookBtn = styled.button`padding:12px 24px;background:#635BFF;color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;`;
 const List = styled.div`display:flex;flex-direction:column;gap:10px;`;
-const Card = styled.div`background:white;border:1px solid #E6EBF1;border-radius:12px;padding:14px 16px;cursor:pointer;&:active{background:#FAFBFC;}`;
+const Card = styled.div`background:white;border:1px solid #C7CED6;border-radius:12px;padding:14px 16px;cursor:pointer;&:active{background:#F9FAFB;}`;
 const Row = styled.div`display:flex;align-items:center;gap:14px;`;
 const DateCol = styled.div`width:48px;text-align:center;flex-shrink:0;`;
 const Month = styled.div`font-size:11px;font-weight:600;color:#635BFF;text-transform:uppercase;letter-spacing:0.06em;`;
 const Day = styled.div`font-size:22px;font-weight:700;color:#0A2540;line-height:1;margin-top:2px;`;
 const Info = styled.div`flex:1;min-width:0;`;
-const Hint = styled.div`color:#6B7C93;font-size:12px;margin-top:2px;`;
+const Hint = styled.div`color:#4B5563;font-size:12px;margin-top:2px;`;
 const StatusBadge = styled.span`padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600;`;

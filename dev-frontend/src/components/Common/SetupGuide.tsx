@@ -149,27 +149,27 @@ const GuideTitle = styled.h3`
 
 const Progress = styled.span`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const DismissButton = styled.button`
   background: none;
   border: none;
   font-size: 13px;
-  color: #9CA3AF;
+  color: #6B7280;
   cursor: pointer;
   padding: 4px 8px;
   border-radius: 4px;
 
   &:hover {
-    color: #6B7280;
-    background: #F3F4F6;
+    color: #4B5563;
+    background: #F1F4F8;
   }
 `;
 
 const ProgressBar = styled.div`
   height: 4px;
-  background: #E5E7EB;
+  background: #C7CED6;
   border-radius: 2px;
   margin-bottom: 16px;
   overflow: hidden;
@@ -201,14 +201,14 @@ const Item = styled.div<{ $locked?: boolean; $flash?: boolean }>`
   border: 1px solid ${p => p.$flash ? '#FDE68A' : 'transparent'};
 
   &:hover {
-    background: ${p => p.$flash ? '#FFFBEB' : '#F8FAFC'};
+    background: ${p => p.$flash ? '#FFFBEB' : '#F1F4F8'};
     opacity: ${p => p.$locked ? 0.75 : 1};
   }
 `;
 
 const ItemIcon = styled.span`
   font-size: 16px;
-  color: #D1D5DB;
+  color: #6B7280;
   flex-shrink: 0;
 `;
 
@@ -225,12 +225,12 @@ const ItemLabel = styled.div`
 
 const ItemDesc = styled.div`
   font-size: 12px;
-  color: #9CA3AF;
+  color: #6B7280;
   margin-top: 1px;
 `;
 
 const ItemArrow = styled.span`
   font-size: 14px;
-  color: #D1D5DB;
+  color: #6B7280;
   flex-shrink: 0;
 `;

@@ -5,7 +5,7 @@ import SEOHead from '../../components/Common/SEOHead';
 import { useTranslation } from 'react-i18next';
 
 const PageContainer = styled.div`
-  background: #FAFBFC;
+  background: #F9FAFB;
 `;
 
 const HeroSection = styled.section`
@@ -97,7 +97,7 @@ const SubSectionTitle = styled.h3`
 const Paragraph = styled.p`
   font-size: 16px;
   line-height: 1.8;
-  color: #6B7C93;
+  color: #4B5563;
   margin-bottom: 16px;
 
   &:last-child {
@@ -113,7 +113,7 @@ const List = styled.ul`
 const ListItem = styled.li`
   font-size: 16px;
   line-height: 1.8;
-  color: #6B7C93;
+  color: #4B5563;
   margin-bottom: 8px;
 
   &:last-child {

@@ -376,9 +376,9 @@
 .action-btn {
   padding: 6px 12px;
   background: transparent;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
-  color: #6B7280;
+  color: #4B5563;
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
@@ -439,8 +439,8 @@
 /* Delete button - matching other admin pages exactly */
 .action-btn.delete {
   padding: 8px;
-  background: #F6F9FC;
-  border: 1px solid #E6EBF1;
+  background: #F4F6F9;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s;
@@ -450,7 +450,7 @@
   justify-content: center;
   font-size: 14px;
   font-family: 'Lucida Console', 'Courier New', monospace;
-  color: #6B7C93;
+  color: #4B5563;
   line-height: 1;
   min-width: 32px;
   height: 32px;

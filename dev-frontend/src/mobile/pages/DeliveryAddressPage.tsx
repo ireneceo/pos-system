@@ -37,14 +37,14 @@ const Label = styled.label`
   display: block;
   font-size: 14px;
   font-weight: 600;
-  color: #374151;
+  color: #1F2937;
   margin-bottom: 8px;
 `;
 
 const Input = styled.input`
   width: 100%;
   padding: 12px 16px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 16px; /* Prevent iOS zoom on focus */
   box-sizing: border-box;
@@ -57,14 +57,14 @@ const Input = styled.input`
   }
 
   &::placeholder {
-    color: #9CA3AF;
+    color: #6B7280;
   }
 `;
 
 const TextArea = styled.textarea`
   width: 100%;
   padding: 12px 16px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 16px; /* Prevent iOS zoom on focus */
   box-sizing: border-box;
@@ -80,14 +80,14 @@ const TextArea = styled.textarea`
   }
 
   &::placeholder {
-    color: #9CA3AF;
+    color: #6B7280;
   }
 `;
 
 const ZoneCard = styled.button<{ selected: boolean }>`
   width: 100%;
   background: ${props => props.selected ? '#EFF6FF' : 'white'};
-  border: 2px solid ${props => props.selected ? '#635BFF' : '#E5E7EB'};
+  border: 2px solid ${props => props.selected ? '#635BFF' : '#C7CED6'};
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 12px;
@@ -126,7 +126,7 @@ const ZoneDetails = styled.div`
 
 const ZoneDescription = styled.div`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const ZoneFee = styled.div`
@@ -167,7 +167,7 @@ const SubmitButton = styled.button`
   }
 
   &:disabled {
-    background: #D1D5DB;
+    background: #6B7280;
     cursor: not-allowed;
   }
 `;

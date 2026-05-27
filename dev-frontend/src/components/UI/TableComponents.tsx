@@ -9,7 +9,7 @@ import styled from 'styled-components';
 export const Table = styled.div`
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   overflow: hidden;
 
   @media (max-width: 1024px) {
@@ -25,11 +25,11 @@ export const TableHeader = styled.div<{ columns: string }>`
   grid-template-columns: ${props => props.columns};
   gap: 16px;
   padding: 16px 24px;
-  background: #F8FAFC;
-  border-bottom: 1px solid #E6EBF1;
+  background: #F1F4F8;
+  border-bottom: 1px solid #C7CED6;
   font-size: 12px;
   font-weight: 600;
-  color: #6B7280;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   text-align: center;
@@ -48,7 +48,7 @@ export const TableRow = styled.div<{ columns: string }>`
   grid-template-columns: ${props => props.columns};
   gap: 16px;
   padding: 20px 24px;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
   align-items: center;
   text-align: center;
   transition: all 0.2s;
@@ -76,7 +76,7 @@ export const TableRow = styled.div<{ columns: string }>`
   }
 
   &:hover {
-    background: #F8FAFC;
+    background: #F1F4F8;
   }
 
   &:last-child {
@@ -89,7 +89,7 @@ export const TableRow = styled.div<{ columns: string }>`
     margin-bottom: 10px;
     background: white;
     border-radius: 10px;
-    border: 1px solid #E6EBF1;
+    border: 1px solid #C7CED6;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 
     /* 모바일에서는 모두 좌측 정렬 */
@@ -121,7 +121,7 @@ export const MobileLabel = styled.div`
   display: none;
   font-size: 10px;
   font-weight: 600;
-  color: #9CA3AF;
+  color: #6B7280;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 4px;
@@ -169,9 +169,9 @@ export const ActionButtons = styled.div`
 export const ActionButton = styled.button`
   padding: 6px 12px;
   background: transparent;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
-  color: #6B7280;
+  color: #4B5563;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -240,11 +240,11 @@ export const IconButton = styled.button<{ variant?: 'default' | 'edit' | 'delete
         `;
       default:
         return `
-          background: #F6F9FC;
-          border: 1px solid #E6EBF1;
-          color: #6B7280;
+          background: #F4F6F9;
+          border: 1px solid #C7CED6;
+          color: #4B5563;
           &:hover {
-            background: #E6EBF1;
+            background: #C7CED6;
             transform: translateY(-1px);
           }
         `;
@@ -266,11 +266,11 @@ export const IconButton = styled.button<{ variant?: 'default' | 'edit' | 'delete
 export const EmptyState = styled.div`
   text-align: center;
   padding: 60px 20px;
-  color: #6B7280;
+  color: #4B5563;
   grid-column: 1 / -1;
 
   h3 {
-    color: #374151;
+    color: #1F2937;
     font-size: 18px;
     font-weight: 600;
     margin-bottom: 8px;
@@ -278,7 +278,7 @@ export const EmptyState = styled.div`
 
   p {
     font-size: 14px;
-    color: #6B7280;
+    color: #4B5563;
   }
 
   @media (max-width: 1024px) {
@@ -309,8 +309,8 @@ export const DataTable = styled.table`
 
 // 테이블 헤더 (thead)
 export const DataTableHead = styled.thead`
-  background: #F8FAFC;
-  border-bottom: 1px solid #E6EBF1;
+  background: #F1F4F8;
+  border-bottom: 1px solid #C7CED6;
 
   @media (max-width: 1024px) {
     display: none;
@@ -323,18 +323,18 @@ export const DataTableTh = styled.th<{ align?: 'left' | 'center' | 'right' }>`
   text-align: center;
   font-size: 12px;
   font-weight: 600;
-  color: #6B7280;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 `;
 
 // 테이블 행 (tr)
 export const DataTableRow = styled.tr`
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
   transition: background 0.15s;
 
   &:hover {
-    background: #F8FAFC;
+    background: #F1F4F8;
   }
 
   &:last-child {
@@ -349,7 +349,7 @@ export const DataTableRow = styled.tr`
     margin-bottom: 10px;
     background: white;
     border-radius: 10px;
-    border: 1px solid #E6EBF1;
+    border: 1px solid #C7CED6;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 
     &:hover {
@@ -384,7 +384,7 @@ export const DataTableCell = styled.td<{ align?: 'left' | 'center' | 'right'; is
       display: ${props => props.isActions ? 'none' : 'block'};
       font-size: 10px;
       font-weight: 600;
-      color: #9CA3AF;
+      color: #6B7280;
       text-transform: uppercase;
       letter-spacing: 0.5px;
       margin-bottom: 4px;
@@ -393,7 +393,7 @@ export const DataTableCell = styled.td<{ align?: 'left' | 'center' | 'right'; is
     ${props => props.isActions && `
       padding-top: 10px;
       margin-top: 10px;
-      border-top: 1px solid #F3F4F6;
+      border-top: 1px solid #F1F4F8;
     `}
   }
 `;

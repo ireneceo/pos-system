@@ -29,25 +29,25 @@ export const ThemedButton = styled.button<{
       case 'secondary':
         return `
           background: white;
-          color: #6B7280;
-          border: 1px solid #E6EBF1;
+          color: #4B5563;
+          border: 1px solid #C7CED6;
 
           &:hover {
-            background: #F8FAFC;
+            background: #F1F4F8;
             color: #0A2540;
-            border-color: #CBD5E1;
+            border-color: #64748B;
           }
         `;
       case 'outline':
         return `
           background: white;
-          color: #6B7280;
-          border: 1px solid #E6EBF1;
+          color: #4B5563;
+          border: 1px solid #C7CED6;
 
           &:hover {
-            background: #F8FAFC;
+            background: #F1F4F8;
             color: #0A2540;
-            border-color: #CBD5E1;
+            border-color: #64748B;
           }
         `;
       case 'danger':
@@ -76,13 +76,13 @@ export const ThemedButton = styled.button<{
       case 'cancel':
         return `
           background: white;
-          color: #6B7280;
-          border: 1px solid #E6EBF1;
+          color: #4B5563;
+          border: 1px solid #C7CED6;
 
           &:hover {
-            background: #F8FAFC;
+            background: #F1F4F8;
             color: #0A2540;
-            border-color: #CBD5E1;
+            border-color: #64748B;
           }
         `;
       default: // primary
@@ -126,11 +126,11 @@ export const ThemedButton = styled.button<{
 
 export const ThemedSelect = styled.select`
   padding: 8px 12px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   background: white;
-  color: #374151;
+  color: #1F2937;
   min-width: 120px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -148,11 +148,11 @@ export const ThemedSelect = styled.select`
 
 export const ThemedInput = styled.input`
   padding: 8px 12px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   background: white;
-  color: #374151;
+  color: #1F2937;
   transition: all 0.2s ease;
 
   &:focus {
@@ -169,7 +169,7 @@ export const ThemedInput = styled.input`
 export const ThemedCard = styled.div<{ accent?: boolean }>`
   background: white;
   border-radius: 8px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   padding: 16px;
   transition: all 0.2s ease;
 

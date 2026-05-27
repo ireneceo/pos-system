@@ -15,7 +15,7 @@ const Container = styled.div`
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -37,7 +37,7 @@ const Header = styled.div`
 
 const Content = styled.div`
   padding: 32px;
-  background: #FAFBFC;
+  background: #F9FAFB;
   min-height: calc(100vh - 120px);
 
   @media (max-width: 768px) {
@@ -59,7 +59,7 @@ const Title = styled.h1`
 
 const Subtitle = styled.p`
   font-size: 16px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 8px 0 0;
 `;
 
@@ -69,7 +69,7 @@ const ContentCard = styled.div`
   background: white;
   border-radius: 16px;
   padding: 24px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   margin-bottom: 24px;
 `;
 
@@ -102,7 +102,7 @@ const FoodcourtItem = styled.div`
   justify-content: space-between;
   align-items: center;
   padding: 20px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   background: white;
   transition: all 0.2s;
@@ -129,7 +129,7 @@ const FoodcourtDetails = styled.div`
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 16px;
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const ActionButtons = styled.div`
@@ -165,10 +165,10 @@ const ActionButton = styled.button<{ variant: 'edit' | 'delete' | 'view' }>`
       case 'view':
       default:
         return `
-          background: #F3F4F6;
-          border-color: #9CA3AF;
-          color: #374151;
-          &:hover { background: #E5E7EB; }
+          background: #F1F4F8;
+          border-color: #6B7280;
+          color: #1F2937;
+          &:hover { background: #C7CED6; }
         `;
     }
   }}
@@ -190,7 +190,7 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'closed':
         return 'background: #FEE2E2; color: #991B1B;';
       default:
-        return 'background: #F3F4F6; color: #374151;';
+        return 'background: #F1F4F8; color: #1F2937;';
     }
   }}
 `;

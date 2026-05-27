@@ -49,7 +49,7 @@ const ToggleLabel = styled.label`
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: #374151;
+  color: #1F2937;
   cursor: pointer;
   white-space: nowrap;
   padding: 0 8px;
@@ -57,7 +57,7 @@ const ToggleLabel = styled.label`
 
 const HelpText = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 4px;
 `;
 

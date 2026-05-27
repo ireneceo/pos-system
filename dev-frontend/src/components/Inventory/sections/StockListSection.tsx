@@ -206,7 +206,7 @@ const StockListSection: React.FC<Props> = ({
                           {item.image_url ? (
                             <img src={item.image_url} alt={item.name} />
                           ) : (
-                            <span style={{ fontSize: '16px', color: '#9CA3AF' }}>📦</span>
+                            <span style={{ fontSize: '16px', color: '#6B7280' }}>📦</span>
                           )}
                         </StockItemImage>
                         <StockItemDetails>
@@ -235,18 +235,18 @@ const StockListSection: React.FC<Props> = ({
                             onBlur={() => inlineEdit.save(item.id)}
                             autoFocus
                           />
-                          <span style={{ fontSize: '13px', color: '#6B7280' }}>{item.stock_unit}</span>
+                          <span style={{ fontSize: '13px', color: '#4B5563' }}>{item.stock_unit}</span>
                         </div>
                       ) : (
                         <EditableStock onClick={() => inlineEdit.start(item.id, item.current_stock, 'general_stock')}>
                           <span style={{ fontWeight: 600, color: '#0A2540' }}>{formatStock(item.current_stock)}</span>
-                          <span style={{ fontSize: '13px', color: '#6B7280' }}>{item.stock_unit}</span>
+                          <span style={{ fontSize: '13px', color: '#4B5563' }}>{item.stock_unit}</span>
                         </EditableStock>
                       )}
                     </MobileValue>
                     <MobileValue className="col-min">
                       <MobileLabel>Min Stock</MobileLabel>
-                      <div style={{ color: '#6B7280' }}>
+                      <div style={{ color: '#4B5563' }}>
                         {formatStock(item.min_stock)} {item.stock_unit}
                       </div>
                     </MobileValue>
@@ -258,13 +258,13 @@ const StockListSection: React.FC<Props> = ({
                     </MobileValue>
                     <MobileValue className="col-supplier">
                       <MobileLabel>Supplier</MobileLabel>
-                      <div style={{ color: item.supplier_name ? '#0A2540' : '#9CA3AF', fontSize: '13px' }}>
+                      <div style={{ color: item.supplier_name ? '#0A2540' : '#6B7280', fontSize: '13px' }}>
                         {item.supplier_name || '-'}
                       </div>
                     </MobileValue>
                     <MobileValue className="col-last">
                       <MobileLabel>Last Stock Take</MobileLabel>
-                      <div style={{ color: '#6B7280' }}>
+                      <div style={{ color: '#4B5563' }}>
                         {formatDate(item.last_stock_take_at)}
                       </div>
                     </MobileValue>
@@ -396,7 +396,7 @@ const StockListSection: React.FC<Props> = ({
                           {item.image_url ? (
                             <img src={item.image_url} alt={item.name} />
                           ) : (
-                            <span style={{ fontSize: '16px', color: '#9CA3AF' }}>🥗</span>
+                            <span style={{ fontSize: '16px', color: '#6B7280' }}>🥗</span>
                           )}
                         </StockItemImage>
                         <StockItemDetails>
@@ -427,18 +427,18 @@ const StockListSection: React.FC<Props> = ({
                             onBlur={() => inlineEdit.save(item.id)}
                             autoFocus
                           />
-                          <span style={{ fontSize: '13px', color: '#6B7280' }}>{item.unit}</span>
+                          <span style={{ fontSize: '13px', color: '#4B5563' }}>{item.unit}</span>
                         </div>
                       ) : (
                         <EditableStock onClick={() => inlineEdit.start(item.id, item.current_stock, 'ingredient')}>
                           <span style={{ fontWeight: 600, color: '#0A2540' }}>{formatStock(item.current_stock)}</span>
-                          <span style={{ fontSize: '13px', color: '#6B7280' }}>{item.unit}</span>
+                          <span style={{ fontSize: '13px', color: '#4B5563' }}>{item.unit}</span>
                         </EditableStock>
                       )}
                     </MobileValue>
                     <MobileValue className="col-min">
                       <MobileLabel>Min / Prediction</MobileLabel>
-                      <div style={{ color: '#6B7280', marginBottom: '4px' }}>
+                      <div style={{ color: '#4B5563', marginBottom: '4px' }}>
                         Min: {formatStock(item.min_stock)} {item.unit}
                       </div>
                       <ConfidenceBadge level={item.prediction_confidence || 'none'}>
@@ -466,14 +466,14 @@ const StockListSection: React.FC<Props> = ({
                       ) : item.supplier_name ? (
                         <div style={{ color: '#0A2540', fontSize: '13px' }}>{item.supplier_name}</div>
                       ) : (
-                        <span style={{ display: 'inline-block', padding: '1px 6px', background: '#F3F4F6', color: '#9CA3AF', borderRadius: 999, fontWeight: 600, fontSize: 10 }}>
+                        <span style={{ display: 'inline-block', padding: '1px 6px', background: '#F1F4F8', color: '#6B7280', borderRadius: 999, fontWeight: 600, fontSize: 10 }}>
                           No mapping
                         </span>
                       )}
                     </MobileValue>
                     <MobileValue className="col-last">
                       <MobileLabel>Last Stock Take</MobileLabel>
-                      <div style={{ color: '#6B7280' }}>
+                      <div style={{ color: '#4B5563' }}>
                         {formatDate(item.last_stock_take_at)}
                       </div>
                     </MobileValue>

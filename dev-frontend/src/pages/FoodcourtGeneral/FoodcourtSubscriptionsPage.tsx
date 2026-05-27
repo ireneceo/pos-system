@@ -149,7 +149,7 @@ const RestaurantName = styled.div`
 
 const RestaurantMeta = styled.div`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const StatusBadge = styled.span<{ status: string }>`
@@ -168,8 +168,8 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'pending_payment': return '#FEF3C7';
       case 'expired': return '#FEE2E2';
       case 'suspended': return '#FEF2F2';
-      case 'cancelled': return '#F3F4F6';
-      default: return '#F3F4F6';
+      case 'cancelled': return '#F1F4F8';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
@@ -181,8 +181,8 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'pending_payment': return '#D97706';
       case 'expired': return '#DC2626';
       case 'suspended': return '#DC2626';
-      case 'cancelled': return '#6B7280';
-      default: return '#6B7280';
+      case 'cancelled': return '#4B5563';
+      default: return '#4B5563';
     }
   }};
 `;
@@ -190,7 +190,7 @@ const StatusBadge = styled.span<{ status: string }>`
 const IconSymbol = styled.span`
   font-size: 14px;
   font-family: 'Lucida Console', 'Courier New', monospace;
-  color: #6B7C93;
+  color: #4B5563;
   display: inline-block;
   line-height: 1;
 `;
@@ -219,12 +219,12 @@ const FormGroup = styled.div`
 const FormLabel = styled.label`
   font-size: 14px;
   font-weight: 600;
-  color: #374151;
+  color: #1F2937;
 `;
 
 const FormInput = styled.input`
   padding: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.2s;
@@ -239,15 +239,15 @@ const FormInput = styled.input`
   }
 
   &:disabled {
-    background: #F8FAFC;
-    color: #6B7280;
+    background: #F1F4F8;
+    color: #4B5563;
     cursor: not-allowed;
   }
 `;
 
 const FormSelect = styled.select`
   padding: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -271,19 +271,19 @@ const EmptyIcon = styled.div`
 const EmptyTitle = styled.div`
   font-size: 18px;
   font-weight: 600;
-  color: #6B7280;
+  color: #4B5563;
   margin-bottom: 8px;
 `;
 
 const EmptyDescription = styled.div`
   font-size: 14px;
-  color: #9CA3AF;
+  color: #6B7280;
 `;
 
 const LoadingSpinner = styled.div`
   text-align: center;
   padding: 40px;
-  color: #6B7280;
+  color: #4B5563;
   font-size: 14px;
 `;
 
@@ -709,7 +709,7 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
                     <MobileValue className="col-info">
                       <MobileLabel>{t('foodcourt:foodcourtSubscriptionsPage.tenant')}</MobileLabel>
                       <RestaurantInfo>
-                        <RestaurantName>{sub.restaurant_name} {sub.restaurant_branch_name && <span style={{ fontSize: '12px', fontWeight: 500, color: '#6B7C93', background: '#F3F4F6', padding: '1px 8px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{sub.restaurant_branch_name}</span>}{sub.restaurant_currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{sub.restaurant_currency}</span>}</RestaurantName>
+                        <RestaurantName>{sub.restaurant_name} {sub.restaurant_branch_name && <span style={{ fontSize: '12px', fontWeight: 500, color: '#4B5563', background: '#F1F4F8', padding: '1px 8px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{sub.restaurant_branch_name}</span>}{sub.restaurant_currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{sub.restaurant_currency}</span>}</RestaurantName>
                         <RestaurantMeta>{sub.restaurant_email}</RestaurantMeta>
                       </RestaurantInfo>
                     </MobileValue>
@@ -719,10 +719,10 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
                       {sub.plan ? (
                         <div>
                           <div style={{fontWeight: 600, color: '#0A2540', fontSize: '13px'}}>{sub.plan.name}</div>
-                          <div style={{fontSize: '12px', color: '#6B7280'}}>
+                          <div style={{fontSize: '12px', color: '#4B5563'}}>
                             {sub.plan.discount_type && sub.plan.discount_type !== 'none' && (sub.plan.discount_value || 0) > 0 ? (
                               <>
-                                <span style={{textDecoration: 'line-through', color: '#9CA3AF'}}>{formatCurrency(parseFloat(sub.plan.subscription_fee) || 0, currency)}</span>
+                                <span style={{textDecoration: 'line-through', color: '#6B7280'}}>{formatCurrency(parseFloat(sub.plan.subscription_fee) || 0, currency)}</span>
                                 {' '}
                                 <span style={{color: '#15803D', fontWeight: 600}}>
                                   {formatCurrency(
@@ -763,7 +763,7 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
                           {formatCurrency(sub.current_month.estimated_charges.totalAmount, currency)}
                         </span>
                       ) : (
-                        <span style={{color: '#9CA3AF'}}>-</span>
+                        <span style={{color: '#6B7280'}}>-</span>
                       )}
                     </MobileValue>
 
@@ -777,7 +777,7 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
                           </StatusBadge>
                         </div>
                       ) : (
-                        <span style={{color: '#9CA3AF'}}>{t('foodcourt:foodcourtSubscriptionsPage.noInvoice')}</span>
+                        <span style={{color: '#6B7280'}}>{t('foodcourt:foodcourtSubscriptionsPage.noInvoice')}</span>
                       )}
                     </MobileValue>
 
@@ -787,7 +787,7 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
                         <div style={{fontWeight: 500, color: '#0A2540'}}>
                           {formatCurrency(sub.current_month?.revenue || 0, currency)}
                         </div>
-                        <div style={{fontSize: '12px', color: '#6B7280'}}>
+                        <div style={{fontSize: '12px', color: '#4B5563'}}>
                           {sub.current_month?.order_count || 0} orders
                         </div>
                       </div>
@@ -908,14 +908,14 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
                       if (!plan) return null;
                       return (
                         <div style={{
-                          gridColumn: '1 / -1', padding: '16px', background: '#F3F4F6',
+                          gridColumn: '1 / -1', padding: '16px', background: '#F1F4F8',
                           borderRadius: '8px', marginTop: '10px'
                         }}>
-                          <div style={{fontSize: '14px', color: '#6B7280', marginBottom: '8px'}}><strong>Plan Summary:</strong></div>
+                          <div style={{fontSize: '14px', color: '#4B5563', marginBottom: '8px'}}><strong>Plan Summary:</strong></div>
                           <div style={{fontSize: '15px', fontWeight: 600, color: '#0A2540', marginBottom: '4px'}}>
                             {plan.name}
                           </div>
-                          <div style={{fontSize: '13px', color: '#374151'}}>
+                          <div style={{fontSize: '13px', color: '#1F2937'}}>
                             Management Fee: {formatCurrency(parseFloat(plan.subscription_fee) || 0, currency)}/mo
                             {parseFloat(plan.revenue_percentage) > 0 && ` | Revenue Share: ${plan.revenue_percentage}%`}
                             {plan.rent_type !== 'none' && ` | Rent: ${plan.rent_type}`}
@@ -956,18 +956,18 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
                   <div style={{display: 'grid', gap: '20px'}}>
                     {/* Tenant Info */}
                     <div>
-                      <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>{t('foodcourt:foodcourtSubscriptionsPage.tenant')}</div>
-                      <div style={{background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E6EBF1'}}>
+                      <div style={{fontSize: '12px', color: '#4B5563', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>{t('foodcourt:foodcourtSubscriptionsPage.tenant')}</div>
+                      <div style={{background: '#F1F4F8', padding: '16px', borderRadius: '8px', border: '1px solid #C7CED6'}}>
                         <div style={{marginBottom: '12px'}}>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.name')}</div>
+                          <div style={{fontSize: '12px', color: '#4B5563', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.name')}</div>
                           <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSub.restaurant_name}{viewingSub.restaurant_branch_name ? ` (${viewingSub.restaurant_branch_name})` : ''}</div>
                         </div>
                         <div style={{marginBottom: '12px'}}>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.email')}</div>
+                          <div style={{fontSize: '12px', color: '#4B5563', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.email')}</div>
                           <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSub.restaurant_email}</div>
                         </div>
                         <div>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.status')}</div>
+                          <div style={{fontSize: '12px', color: '#4B5563', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.status')}</div>
                           <StatusBadge status={viewingSub.restaurant_status}>
                             {viewingSub.restaurant_status.charAt(0).toUpperCase() + viewingSub.restaurant_status.slice(1)}
                           </StatusBadge>
@@ -977,19 +977,19 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
 
                     {/* Plan Info */}
                     <div>
-                      <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>{t('foodcourt:foodcourtSubscriptionsPage.plan')}</div>
-                      <div style={{background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E6EBF1'}}>
+                      <div style={{fontSize: '12px', color: '#4B5563', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>{t('foodcourt:foodcourtSubscriptionsPage.plan')}</div>
+                      <div style={{background: '#F1F4F8', padding: '16px', borderRadius: '8px', border: '1px solid #C7CED6'}}>
                         {viewingSub.plan ? (
                           <>
                             <div style={{marginBottom: '12px'}}>
-                              <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.planName')}</div>
+                              <div style={{fontSize: '12px', color: '#4B5563', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.planName')}</div>
                               <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSub.plan.name}</div>
                             </div>
                             <div style={{marginBottom: '12px'}}>
-                              <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.managementFee')}</div>
+                              <div style={{fontSize: '12px', color: '#4B5563', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.managementFee')}</div>
                               {viewingSub.plan.discount_type && viewingSub.plan.discount_type !== 'none' && (viewingSub.plan.discount_value || 0) > 0 ? (
                                 <div>
-                                  <span style={{textDecoration: 'line-through', color: '#9CA3AF', fontSize: '13px'}}>{formatCurrency(parseFloat(viewingSub.plan.subscription_fee) || 0, currency)}/mo</span>
+                                  <span style={{textDecoration: 'line-through', color: '#6B7280', fontSize: '13px'}}>{formatCurrency(parseFloat(viewingSub.plan.subscription_fee) || 0, currency)}/mo</span>
                                   <div style={{fontSize: '16px', fontWeight: '600', color: '#15803D'}}>
                                     {formatCurrency(
                                       viewingSub.plan.discount_type === 'percentage'
@@ -1008,13 +1008,13 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
                             </div>
                             {parseFloat(viewingSub.plan.revenue_percentage) > 0 && (
                               <div style={{marginBottom: '12px'}}>
-                                <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.revenueShare')}</div>
+                                <div style={{fontSize: '12px', color: '#4B5563', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.revenueShare')}</div>
                                 <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSub.plan.revenue_percentage}%</div>
                               </div>
                             )}
                             {viewingSub.plan.rent_type !== 'none' && (
                               <div style={{marginBottom: '12px'}}>
-                                <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.rent')}</div>
+                                <div style={{fontSize: '12px', color: '#4B5563', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.rent')}</div>
                                 <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>
                                   {viewingSub.plan.rent_type === 'fixed' ? formatCurrency(parseFloat(viewingSub.plan.rent_fixed || '0'), currency) :
                                    viewingSub.plan.rent_type === 'percentage' ? `${viewingSub.plan.rent_percentage}%` :
@@ -1023,15 +1023,15 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
                               </div>
                             )}
                             <div style={{marginBottom: '12px'}}>
-                              <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.billingCycle')}</div>
+                              <div style={{fontSize: '12px', color: '#4B5563', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.billingCycle')}</div>
                               <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSub.plan.billing_cycle}</div>
                             </div>
                             <div style={{marginBottom: '12px'}}>
-                              <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.activationDate')}</div>
+                              <div style={{fontSize: '12px', color: '#4B5563', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.activationDate')}</div>
                               <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{tzFormatDate(viewingSub.plan.activation_date, null)}</div>
                             </div>
                             <div>
-                              <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.discount')}</div>
+                              <div style={{fontSize: '12px', color: '#4B5563', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.discount')}</div>
                               {viewingSub.plan.discount_type && viewingSub.plan.discount_type !== 'none' && (viewingSub.plan.discount_value || 0) > 0 ? (
                                 <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
                                   <span style={{fontSize: '14px', fontWeight: '500', color: '#15803D'}}>
@@ -1040,10 +1040,10 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
                                       : `${formatCurrency(viewingSub.plan.discount_value || 0, currency)}`}
                                     {viewingSub.plan.discount_reason ? ` (${viewingSub.plan.discount_reason})` : ''}
                                   </span>
-                                  <button onClick={() => handleOpenDiscount(viewingSub)} style={{background: 'none', border: '1px solid #D1D5DB', borderRadius: '4px', padding: '2px 8px', fontSize: '11px', color: '#6B7280', cursor: 'pointer'}}>{t('foodcourt:foodcourtSubscriptionsPage.edit')}</button>
+                                  <button onClick={() => handleOpenDiscount(viewingSub)} style={{background: 'none', border: '1px solid #6B7280', borderRadius: '4px', padding: '2px 8px', fontSize: '11px', color: '#4B5563', cursor: 'pointer'}}>{t('foodcourt:foodcourtSubscriptionsPage.edit')}</button>
                                 </div>
                               ) : (
-                                <button onClick={() => handleOpenDiscount(viewingSub)} style={{background: 'none', border: '1px solid #D1D5DB', borderRadius: '4px', padding: '4px 12px', fontSize: '12px', color: '#635BFF', cursor: 'pointer', fontWeight: '500'}}>{t('foodcourt:foodcourtSubscriptionsPage.setDiscount')}</button>
+                                <button onClick={() => handleOpenDiscount(viewingSub)} style={{background: 'none', border: '1px solid #6B7280', borderRadius: '4px', padding: '4px 12px', fontSize: '12px', color: '#635BFF', cursor: 'pointer', fontWeight: '500'}}>{t('foodcourt:foodcourtSubscriptionsPage.setDiscount')}</button>
                               )}
                             </div>
                           </>
@@ -1055,27 +1055,27 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
 
                     {/* Current Month */}
                     <div>
-                      <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>{t('foodcourt:foodcourtSubscriptionsPage.currentMonth')}</div>
-                      <div style={{background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E6EBF1'}}>
+                      <div style={{fontSize: '12px', color: '#4B5563', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>{t('foodcourt:foodcourtSubscriptionsPage.currentMonth')}</div>
+                      <div style={{background: '#F1F4F8', padding: '16px', borderRadius: '8px', border: '1px solid #C7CED6'}}>
                         <div style={{marginBottom: '12px'}}>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.revenue')}</div>
+                          <div style={{fontSize: '12px', color: '#4B5563', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.revenue')}</div>
                           <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{formatCurrency(viewingSub.current_month?.revenue || 0, currency)}</div>
                         </div>
                         <div style={{marginBottom: '12px'}}>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.orders')}</div>
+                          <div style={{fontSize: '12px', color: '#4B5563', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.orders')}</div>
                           <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSub.current_month?.order_count || 0}</div>
                         </div>
                         {viewingSub.current_month?.estimated_charges && (
                           <>
-                            <div style={{borderTop: '1px solid #E6EBF1', paddingTop: '12px', marginTop: '8px'}}>
-                              <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '8px', fontWeight: 600}}>{t('foodcourt:foodcourtSubscriptionsPage.estimatedChargesBreakdown')}</div>
+                            <div style={{borderTop: '1px solid #C7CED6', paddingTop: '12px', marginTop: '8px'}}>
+                              <div style={{fontSize: '12px', color: '#4B5563', marginBottom: '8px', fontWeight: 600}}>{t('foodcourt:foodcourtSubscriptionsPage.estimatedChargesBreakdown')}</div>
                               {viewingSub.current_month.estimated_charges.items.map((item: any, index: number) => (
                                 <div key={index} style={{display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '13px'}}>
-                                  <span style={{color: '#374151'}}>{item.description}</span>
+                                  <span style={{color: '#1F2937'}}>{item.description}</span>
                                   <span style={{fontWeight: 500, color: '#0A2540'}}>{formatCurrency(item.total_amount, currency)}</span>
                                 </div>
                               ))}
-                              <div style={{display: 'flex', justifyContent: 'space-between', marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #E6EBF1', fontWeight: 600}}>
+                              <div style={{display: 'flex', justifyContent: 'space-between', marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #C7CED6', fontWeight: 600}}>
                                 <span style={{color: '#0A2540'}}>{t('foodcourt:foodcourtSubscriptionsPage.total')}</span>
                                 <span style={{color: '#0A2540'}}>{formatCurrency(viewingSub.current_month.estimated_charges.totalAmount, currency)}</span>
                               </div>
@@ -1088,24 +1088,24 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
                     {/* Latest Invoice */}
                     {viewingSub.latest_invoice && (
                       <div>
-                        <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>{t('foodcourt:foodcourtSubscriptionsPage.latestInvoice')}</div>
-                        <div style={{background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E6EBF1'}}>
+                        <div style={{fontSize: '12px', color: '#4B5563', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>{t('foodcourt:foodcourtSubscriptionsPage.latestInvoice')}</div>
+                        <div style={{background: '#F1F4F8', padding: '16px', borderRadius: '8px', border: '1px solid #C7CED6'}}>
                           <div style={{marginBottom: '12px'}}>
-                            <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.invoiceNumber')}</div>
+                            <div style={{fontSize: '12px', color: '#4B5563', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.invoiceNumber')}</div>
                             <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSub.latest_invoice.invoice_number}</div>
                           </div>
                           <div style={{marginBottom: '12px'}}>
-                            <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.amount')}</div>
+                            <div style={{fontSize: '12px', color: '#4B5563', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.amount')}</div>
                             <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{formatCurrency(parseFloat(viewingSub.latest_invoice.total_amount) || 0, currency)}</div>
                           </div>
                           <div style={{marginBottom: '12px'}}>
-                            <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.status')}</div>
+                            <div style={{fontSize: '12px', color: '#4B5563', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.status')}</div>
                             <StatusBadge status={viewingSub.latest_invoice.status}>
                               {viewingSub.latest_invoice.status.replace('_', ' ')}
                             </StatusBadge>
                           </div>
                           <div>
-                            <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.dueDate')}</div>
+                            <div style={{fontSize: '12px', color: '#4B5563', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.dueDate')}</div>
                             <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{tzFormatDate(viewingSub.latest_invoice.due_date, null)}</div>
                           </div>
                         </div>
@@ -1133,7 +1133,7 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
 
                   <div style={{display: 'grid', gap: '16px'}}>
                     <div>
-                      <div style={{fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '6px'}}>{t('foodcourt:foodcourtSubscriptionsPage.discountType')}</div>
+                      <div style={{fontSize: '13px', fontWeight: '500', color: '#1F2937', marginBottom: '6px'}}>{t('foodcourt:foodcourtSubscriptionsPage.discountType')}</div>
                       <FormSelect value={discountForm.discount_type} onChange={(e) => setDiscountForm({...discountForm, discount_type: e.target.value, discount_value: e.target.value === 'none' ? 0 : discountForm.discount_value})}>
                         <option value="none">{t('foodcourt:foodcourtSubscriptionsPage.none')}</option>
                         <option value="percentage">Percentage (%)</option>
@@ -1142,7 +1142,7 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
                     </div>
                     {discountForm.discount_type !== 'none' && (
                       <div>
-                        <div style={{fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '6px'}}>
+                        <div style={{fontSize: '13px', fontWeight: '500', color: '#1F2937', marginBottom: '6px'}}>
                           {discountForm.discount_type === 'percentage' ? 'Discount Rate (%)' : `Discount Amount (${currency})`}
                         </div>
                         <FormInput
@@ -1158,7 +1158,7 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
                     )}
                     {discountForm.discount_type !== 'none' && (
                       <div>
-                        <div style={{fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '6px'}}>{t('foodcourt:foodcourtSubscriptionsPage.reasonOptional')}</div>
+                        <div style={{fontSize: '13px', fontWeight: '500', color: '#1F2937', marginBottom: '6px'}}>{t('foodcourt:foodcourtSubscriptionsPage.reasonOptional')}</div>
                         <FormInput
                           type="text"
                           value={discountForm.discount_reason}
@@ -1198,7 +1198,7 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
               </>}
             >
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <div style={{ fontSize: 13, color: '#6B7C93' }}>
+                <div style={{ fontSize: 13, color: '#4B5563' }}>
                   {t('foodcourt:foodcourtSubscriptionsPage.addHint', 'Assign one of your foodcourt plans to a tenant restaurant. Creates a recurring subscription billed by your foodcourt.')}
                 </div>
 
@@ -1209,7 +1209,7 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
                   <select
                     value={addRestaurantId}
                     onChange={e => setAddRestaurantId(e.target.value ? parseInt(e.target.value) : '')}
-                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #E6EBF1', borderRadius: 6, fontSize: 14 }}
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #C7CED6', borderRadius: 6, fontSize: 14 }}
                   >
                     <option value="">{t('foodcourt:foodcourtSubscriptionsPage.selectRestaurant', 'Select a tenant…')}</option>
                     {subscriptions.filter(s => !s.plan).map(s => (
@@ -1232,7 +1232,7 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
                   <select
                     value={addPlanId}
                     onChange={e => setAddPlanId(e.target.value ? parseInt(e.target.value) : '')}
-                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #E6EBF1', borderRadius: 6, fontSize: 14 }}
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #C7CED6', borderRadius: 6, fontSize: 14 }}
                   >
                     <option value="">{t('foodcourt:foodcourtSubscriptionsPage.selectPlan', 'Select a plan…')}</option>
                     {foodcourtPlans.map(p => (

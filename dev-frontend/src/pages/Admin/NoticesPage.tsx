@@ -108,7 +108,7 @@ const NoticeCard = styled.div`
   background: white;
   border-radius: 12px;
   padding: 24px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   cursor: pointer;
   transition: all 0.2s;
 
@@ -144,7 +144,7 @@ const NoticeCardTitle = styled.div`
 
 const NoticeCardContent = styled.div`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   line-height: 1.5;
   margin-bottom: 16px;
   display: -webkit-box;
@@ -173,7 +173,7 @@ const PriorityBadge = styled.span<{ priority: string }>`
     switch (props.priority) {
       case 'urgent': return '#991B1B';
       case 'important': return '#92400E';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 `;
@@ -195,9 +195,9 @@ const NoticeCardMeta = styled.div`
   justify-content: space-between;
   align-items: center;
   padding-top: 16px;
-  border-top: 1px solid #F3F4F6;
+  border-top: 1px solid #F1F4F8;
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const MetaLeft = styled.div`
@@ -235,14 +235,14 @@ const FormLabel = styled.label`
   display: block;
   font-size: 13px;
   font-weight: 500;
-  color: #6B7C93;
+  color: #4B5563;
   margin-bottom: 8px;
 `;
 
 const FormInput = styled.input`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.15s;
@@ -258,7 +258,7 @@ const FormInput = styled.input`
 const FormSelect = styled.select`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -276,7 +276,7 @@ const FormSelect = styled.select`
 const FormTextArea = styled.textarea`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   resize: vertical;
@@ -304,10 +304,10 @@ const CheckboxLabel = styled.label`
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
   cursor: pointer;
   padding: 6px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   transition: all 0.15s;
 
@@ -328,14 +328,14 @@ const RestaurantSearchInput = styled(FormInput)`
 const RestaurantList = styled.div`
   max-height: 200px;
   overflow-y: auto;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
 `;
 
 const RestaurantItem = styled.div<{ selected: boolean }>`
   padding: 10px 14px;
   cursor: pointer;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
   transition: background 0.15s;
   display: flex;
   align-items: center;
@@ -347,7 +347,7 @@ const RestaurantItem = styled.div<{ selected: boolean }>`
   }
 
   &:hover {
-    background: ${props => props.selected ? '#F0EFFF' : '#F8FAFC'};
+    background: ${props => props.selected ? '#F0EFFF' : '#F1F4F8'};
   }
 `;
 
@@ -378,7 +378,7 @@ const ViewSection = styled.div`
 const ViewSectionTitle = styled.div`
   font-size: 13px;
   font-weight: 600;
-  color: #6B7C93;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 12px;
@@ -399,7 +399,7 @@ const ViewNoticeMeta = styled.div`
   flex-wrap: wrap;
   margin-bottom: 20px;
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
 
   & > * {
     flex-shrink: 0;
@@ -408,10 +408,10 @@ const ViewNoticeMeta = styled.div`
 
 const ViewNoticeContent = styled.div`
   font-size: 15px;
-  color: #374151;
+  color: #1F2937;
   line-height: 1.7;
   padding: 20px;
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 8px;
   border-left: 3px solid #635BFF;
   white-space: pre-wrap;
@@ -428,23 +428,23 @@ const RecipientBadge = styled.div<{ isRead?: boolean }>`
   align-items: center;
   gap: 4px;
   padding: 4px 10px;
-  background: ${props => props.isRead ? '#F0FDF4' : '#F3F4F6'};
+  background: ${props => props.isRead ? '#F0FDF4' : '#F1F4F8'};
   border-radius: 16px;
   font-size: 12px;
-  color: #374151;
-  border: 1px solid ${props => props.isRead ? '#BBF7D0' : '#E5E7EB'};
+  color: #1F2937;
+  border: 1px solid ${props => props.isRead ? '#BBF7D0' : '#C7CED6'};
 `;
 
 const RecipientRole = styled.span`
   font-size: 10px;
-  color: #9CA3AF;
+  color: #6B7280;
 `;
 
 const ReadStatus = styled.span<{ isRead?: boolean }>`
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: ${props => props.isRead ? '#10B981' : '#D1D5DB'};
+  background: ${props => props.isRead ? '#10B981' : '#6B7280'};
   flex-shrink: 0;
 `;
 
@@ -789,9 +789,9 @@ const NoticesPage: React.FC = () => {
               style={{
                 padding: '6px 16px',
                 borderRadius: '20px',
-                border: categoryFilter === cat ? '1.5px solid #635BFF' : '1px solid #E6EBF1',
+                border: categoryFilter === cat ? '1.5px solid #635BFF' : '1px solid #C7CED6',
                 background: categoryFilter === cat ? '#F0EFFF' : 'white',
-                color: categoryFilter === cat ? '#635BFF' : '#6B7280',
+                color: categoryFilter === cat ? '#635BFF' : '#4B5563',
                 fontSize: '13px',
                 fontWeight: categoryFilter === cat ? 600 : 400,
                 cursor: 'pointer',
@@ -945,7 +945,7 @@ const NoticesPage: React.FC = () => {
                   />
                   <RestaurantList>
                     {filteredRestaurants.length === 0 ? (
-                      <div style={{ padding: '16px', textAlign: 'center', color: '#9CA3AF', fontSize: '14px' }}>
+                      <div style={{ padding: '16px', textAlign: 'center', color: '#6B7280', fontSize: '14px' }}>
                         No restaurants found
                       </div>
                     ) : (
@@ -1098,7 +1098,7 @@ const NoticesPage: React.FC = () => {
                 <textarea
                   value={editForm.content}
                   onChange={(e) => setEditForm({ ...editForm, content: e.target.value })}
-                  style={{ width: '100%', minHeight: '200px', padding: '12px', borderRadius: '8px', border: '1px solid #E6EBF1', fontSize: '14px', fontFamily: 'inherit', resize: 'vertical' }}
+                  style={{ width: '100%', minHeight: '200px', padding: '12px', borderRadius: '8px', border: '1px solid #C7CED6', fontSize: '14px', fontFamily: 'inherit', resize: 'vertical' }}
                 />
               </FormGroup>
               <FormGroup>
@@ -1106,7 +1106,7 @@ const NoticesPage: React.FC = () => {
                 <select
                   value={editForm.priority}
                   onChange={(e) => setEditForm({ ...editForm, priority: e.target.value as 'normal' | 'important' | 'urgent' })}
-                  style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #E6EBF1', fontSize: '14px' }}
+                  style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #C7CED6', fontSize: '14px' }}
                 >
                   <option value="normal">{t('admin:noticesPage.normal')}</option>
                   <option value="important">{t('admin:noticesPage.important')}</option>
@@ -1156,7 +1156,7 @@ const NoticesPage: React.FC = () => {
                     ))}
                   </RecipientsList>
                 ) : (
-                  <div style={{ fontSize: '14px', color: '#9CA3AF' }}>{t('admin:noticesPage.noRecipientsDataAvailable')}</div>
+                  <div style={{ fontSize: '14px', color: '#6B7280' }}>{t('admin:noticesPage.noRecipientsDataAvailable')}</div>
                 )}
               </ViewSection>
 

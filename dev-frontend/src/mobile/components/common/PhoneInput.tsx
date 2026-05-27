@@ -72,7 +72,7 @@ const Container = styled.div`
 const CountryCodeSelect = styled.select`
   width: 110px;
   padding: 14px 8px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 10px;
   font-size: 16px;
   background: white;
@@ -93,7 +93,7 @@ const CountryCodeSelect = styled.select`
 const PhoneNumberInput = styled.input`
   flex: 1;
   padding: 14px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 10px;
   font-size: 16px;
   box-sizing: border-box;
@@ -108,7 +108,7 @@ const PhoneNumberInput = styled.input`
   }
 
   &::placeholder {
-    color: #9CA3AF;
+    color: #6B7280;
   }
 `;
 

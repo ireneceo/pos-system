@@ -54,13 +54,13 @@ const ProfileName = styled.h2`
 
 const ProfilePhone = styled.p`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 0;
 `;
 
 const ProfileEmail = styled.p`
   font-size: 13px;
-  color: #9CA3AF;
+  color: #6B7280;
   margin: 4px 0 0 0;
 `;
 
@@ -68,7 +68,7 @@ const StatsRow = styled.div`
   display: flex;
   gap: 12px;
   padding-top: 16px;
-  border-top: 1px solid #E5E7EB;
+  border-top: 1px solid #C7CED6;
 `;
 
 const StatItem = styled.div`
@@ -87,7 +87,7 @@ const StatValue = styled.div`
 
 const StatLabel = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 4px;
 `;
 
@@ -107,7 +107,7 @@ const MenuItem = styled.button`
   padding: 16px 20px;
   background: none;
   border: none;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
   cursor: pointer;
   text-align: left;
   transition: background 0.2s;
@@ -125,7 +125,7 @@ const MenuIcon = styled.div<{ color?: string }>`
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  background: ${props => props.color || '#F3F4F6'};
+  background: ${props => props.color || '#F1F4F8'};
   display: flex;
   align-items: center;
   justify-content: center;
@@ -133,7 +133,7 @@ const MenuIcon = styled.div<{ color?: string }>`
   svg {
     width: 20px;
     height: 20px;
-    color: ${props => props.color ? 'white' : '#6B7280'};
+    color: ${props => props.color ? 'white' : '#4B5563'};
   }
 `;
 
@@ -149,12 +149,12 @@ const MenuTitle = styled.div`
 
 const MenuSubtitle = styled.div`
   font-size: 13px;
-  color: #9CA3AF;
+  color: #6B7280;
   margin-top: 2px;
 `;
 
 const MenuArrow = styled.div`
-  color: #D1D5DB;
+  color: #6B7280;
 
   svg {
     width: 20px;
@@ -196,7 +196,7 @@ const GuestTitle = styled.h2`
 
 const GuestDescription = styled.p`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 0 0 24px 0;
   line-height: 1.5;
 `;
@@ -275,14 +275,14 @@ const InputLabel = styled.label`
   display: block;
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: #1F2937;
   margin-bottom: 6px;
 `;
 
 const Input = styled.input`
   width: 100%;
   padding: 12px 16px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 10px;
   font-size: 16px; /* Prevent iOS zoom on focus */
   box-sizing: border-box;
@@ -310,9 +310,9 @@ const ModalButton = styled.button<{ variant?: 'primary' | 'secondary' }>`
   transition: all 0.2s;
 
   ${props => props.variant === 'secondary' ? `
-    background: #F3F4F6;
+    background: #F1F4F8;
     border: none;
-    color: #4B5563;
+    color: #374151;
   ` : `
     background: #635BFF;
     border: none;
@@ -608,14 +608,14 @@ const AccountPage: React.FC = () => {
                 <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', background: '#F0FDF4', border: '1px dashed #86EFAC', borderRadius: '10px' }}>
                   <div>
                     <div style={{ fontSize: '15px', fontWeight: 700, color: '#059669', fontFamily: 'monospace' }}>{c.code}</div>
-                    {c.name && <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>{c.name}</div>}
+                    {c.name && <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '2px' }}>{c.name}</div>}
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: '14px', fontWeight: 600, color: '#1F2937' }}>
                       {c.type === 'percentage' ? `${c.value}% off` : formatCurrency(c.value, currency) + ' off'}
                     </div>
-                    {c.min_order > 0 && <div style={{ fontSize: '11px', color: '#6B7280' }}>Min. {formatCurrency(c.min_order, currency)}</div>}
-                    {c.valid_until && <div style={{ fontSize: '11px', color: '#6B7280' }}>Until {formatDateTz(c.valid_until, null)}</div>}
+                    {c.min_order > 0 && <div style={{ fontSize: '11px', color: '#4B5563' }}>Min. {formatCurrency(c.min_order, currency)}</div>}
+                    {c.valid_until && <div style={{ fontSize: '11px', color: '#4B5563' }}>Until {formatDateTz(c.valid_until, null)}</div>}
                   </div>
                 </div>
               ))}

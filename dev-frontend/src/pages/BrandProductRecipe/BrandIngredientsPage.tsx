@@ -17,7 +17,7 @@ const HeaderActions = styled.div`
 
 const BrandSelect = styled.select`
   padding: 10px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   color: #0A2540;
@@ -25,7 +25,7 @@ const BrandSelect = styled.select`
   cursor: pointer;
   min-width: 200px;
 
-  &:hover { border-color: #CBD5E1; }
+  &:hover { border-color: #64748B; }
   &:focus { outline: none; border-color: #635BFF; }
 `;
 
@@ -79,7 +79,7 @@ const BrandIngredientsPage: React.FC = () => {
   if (loading) {
     return (
       <Container><Header><Title>{t('brand:brandIngredientsPage.ingredients')}</Title></Header>
-        <Content><div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>{t('brand:brandIngredientsPage.loading')}</div></Content>
+        <Content><div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>{t('brand:brandIngredientsPage.loading')}</div></Content>
       </Container>
     );
   }

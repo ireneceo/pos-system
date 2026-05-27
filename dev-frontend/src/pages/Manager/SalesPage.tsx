@@ -25,13 +25,13 @@ interface RestaurantSales {
 
 const Container = styled.div`
   min-height: 100vh;
-  background: #FAFBFC;
+  background: #F9FAFB;
 `;
 
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -66,7 +66,7 @@ const PageTitle = styled.h1`
 
 const FilterSelect = styled.select`
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -118,7 +118,7 @@ const ChartCard = styled.div`
   background: white;
   border-radius: 12px;
   padding: 24px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
 `;
 
 const ChartTitle = styled.h3`
@@ -132,7 +132,7 @@ const ChartTitle = styled.h3`
 const SalesTableContainer = styled.div`
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   overflow: hidden;
 
   @media (max-width: 768px) {
@@ -159,8 +159,8 @@ const SalesTable = styled.table`
 `;
 
 const SalesTableHead = styled.thead`
-  background: #F8FAFC;
-  border-bottom: 1px solid #E6EBF1;
+  background: #F1F4F8;
+  border-bottom: 1px solid #C7CED6;
 
   @media (max-width: 768px) {
     display: none;
@@ -171,7 +171,7 @@ const SalesTableHead = styled.thead`
     text-align: left;
     font-size: 12px;
     font-weight: 600;
-    color: #6B7280;
+    color: #4B5563;
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }
@@ -182,11 +182,11 @@ const SalesTableHead = styled.thead`
 `;
 
 const SalesTableRow = styled.tr`
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
   transition: background 0.15s;
 
   &:hover {
-    background: #F8FAFC;
+    background: #F1F4F8;
   }
 
   &:last-child {
@@ -201,7 +201,7 @@ const SalesTableRow = styled.tr`
     margin-bottom: 10px;
     background: white;
     border-radius: 10px;
-    border: 1px solid #E6EBF1;
+    border: 1px solid #C7CED6;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 
     &:hover {
@@ -236,7 +236,7 @@ const SalesTableCell = styled.td`
       display: block;
       font-size: 10px;
       font-weight: 600;
-      color: #9CA3AF;
+      color: #6B7280;
       text-transform: uppercase;
       letter-spacing: 0.5px;
       margin-bottom: 4px;
@@ -246,7 +246,7 @@ const SalesTableCell = styled.td`
       flex: 1 1 100%;
       padding-top: 10px;
       margin-top: 10px;
-      border-top: 1px solid #F3F4F6;
+      border-top: 1px solid #F1F4F8;
 
       &:before {
         display: none;
@@ -268,13 +268,13 @@ const RestaurantName = styled.div`
 
 const RestaurantLocation = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const ValueCell = styled.div`
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: #1F2937;
 `;
 
 const ChangeCell = styled.div<{ positive?: boolean }>`
@@ -286,9 +286,9 @@ const ChangeCell = styled.div<{ positive?: boolean }>`
 const ActionButton = styled.button`
   padding: 6px 12px;
   background: transparent;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
-  color: #6B7280;
+  color: #4B5563;
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
@@ -418,7 +418,7 @@ const ManagerSalesPage: React.FC = () => {
         </Header>
         
         <Content>
-          <div style={{ background: '#FAFBFC', padding: '24px 0', marginBottom: '24px', display: 'flex', flexWrap: 'wrap', gap: '24px', alignItems: 'center' }}>
+          <div style={{ background: '#F9FAFB', padding: '24px 0', marginBottom: '24px', display: 'flex', flexWrap: 'wrap', gap: '24px', alignItems: 'center' }}>
             <FilterSelect
               value={selectedRestaurant}
               onChange={(e) => setSelectedRestaurant(e.target.value)}
@@ -487,7 +487,7 @@ const ManagerSalesPage: React.FC = () => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#6B7280',
+                color: '#4B5563',
                 fontSize: '14px'
               }}>
                 Chart visualization will be implemented
@@ -501,7 +501,7 @@ const ManagerSalesPage: React.FC = () => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#6B7280',
+                color: '#4B5563',
                 fontSize: '14px'
               }}>
                 🍰 Distribution chart will be implemented
@@ -516,7 +516,7 @@ const ManagerSalesPage: React.FC = () => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#6B7280',
+              color: '#4B5563',
               fontSize: '14px'
             }}>
               Bar chart comparison will be implemented

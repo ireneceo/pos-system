@@ -93,7 +93,7 @@ const NoticeCard = styled.div<{ unread?: boolean }>`
   background: white;
   border-radius: 12px;
   padding: 24px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   cursor: pointer;
   transition: all 0.2s;
   position: relative;
@@ -141,7 +141,7 @@ const NoticeTitleText = styled.div`
 
 const NoticeMeta = styled.div`
   font-size: 13px;
-  color: #6B7C93;
+  color: #4B5563;
   display: flex;
   gap: 16px;
   flex-wrap: wrap;
@@ -171,14 +171,14 @@ const PriorityBadge = styled.span<{ priority: string }>`
     switch (props.priority) {
       case 'urgent': return '#991B1B';
       case 'important': return '#92400E';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 `;
 
 const NoticePreview = styled.div`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -192,7 +192,7 @@ const NoticeFooter = styled.div`
   justify-content: space-between;
   align-items: center;
   font-size: 12px;
-  color: #9CA3AF;
+  color: #6B7280;
   flex-wrap: wrap;
   gap: 8px;
 `;
@@ -201,11 +201,11 @@ const CommentCount = styled.span`
   display: flex;
   align-items: center;
   gap: 4px;
-  color: #6B7C93;
+  color: #4B5563;
 `;
 
 const RecipientInfo = styled.span`
-  color: #6B7C93;
+  color: #4B5563;
   font-size: 12px;
 `;
 
@@ -226,14 +226,14 @@ const FormLabel = styled.label`
   display: block;
   font-size: 13px;
   font-weight: 500;
-  color: #6B7C93;
+  color: #4B5563;
   margin-bottom: 8px;
 `;
 
 const FormInput = styled.input`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.15s;
@@ -248,7 +248,7 @@ const FormInput = styled.input`
 const FormSelect = styled.select`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -265,7 +265,7 @@ const FormSelect = styled.select`
 const FormTextArea = styled.textarea`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   resize: vertical;
@@ -297,7 +297,7 @@ const FormRow = styled.div`
 const CheckboxList = styled.div`
   max-height: 200px;
   overflow-y: auto;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   padding: 8px;
 `;
@@ -310,11 +310,11 @@ const CheckboxItem = styled.label`
   cursor: pointer;
   border-radius: 6px;
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
   transition: background 0.1s;
 
   &:hover {
-    background: #F8FAFC;
+    background: #F1F4F8;
   }
 
   input[type="checkbox"] {
@@ -330,7 +330,7 @@ const SelectAllRow = styled.div`
   align-items: center;
   margin-bottom: 8px;
   padding-bottom: 8px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
 `;
 
 const SelectAllButton = styled.button`
@@ -349,7 +349,7 @@ const SelectAllButton = styled.button`
 
 const SelectedCount = styled.span`
   font-size: 13px;
-  color: #6B7C93;
+  color: #4B5563;
 `;
 
 // ============================================================================
@@ -358,14 +358,14 @@ const SelectedCount = styled.span`
 
 const NoticeDetailContent = styled.div`
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
   line-height: 1.7;
   white-space: pre-wrap;
   margin-bottom: 24px;
   padding: 16px;
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 8px;
-  border-left: 3px solid #E6EBF1;
+  border-left: 3px solid #C7CED6;
 `;
 
 const NoticeDetailMeta = styled.div`
@@ -374,7 +374,7 @@ const NoticeDetailMeta = styled.div`
   gap: 16px;
   margin-bottom: 16px;
   font-size: 13px;
-  color: #6B7C93;
+  color: #4B5563;
 `;
 
 const NoticeDetailMetaItem = styled.span`
@@ -390,7 +390,7 @@ const RecipientsSection = styled.div`
 const RecipientsSectionTitle = styled.div`
   font-size: 13px;
   font-weight: 600;
-  color: #6B7C93;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 8px;
@@ -778,7 +778,7 @@ const NoticesPage: React.FC = () => {
           <Title>{t('common:noticesPage.notices')}</Title>
         </Header>
         <Content>
-          <div style={{ textAlign: 'center', padding: '60px 20px', color: '#6B7C93' }}>
+          <div style={{ textAlign: 'center', padding: '60px 20px', color: '#4B5563' }}>
             Loading...
           </div>
         </Content>
@@ -858,9 +858,9 @@ const NoticesPage: React.FC = () => {
               style={{
                 padding: '6px 16px',
                 borderRadius: '20px',
-                border: categoryFilter === cat ? '1.5px solid #635BFF' : '1px solid #E6EBF1',
+                border: categoryFilter === cat ? '1.5px solid #635BFF' : '1px solid #C7CED6',
                 background: categoryFilter === cat ? '#F0EFFF' : 'white',
-                color: categoryFilter === cat ? '#635BFF' : '#6B7280',
+                color: categoryFilter === cat ? '#635BFF' : '#4B5563',
                 fontSize: '13px',
                 fontWeight: categoryFilter === cat ? 600 : 400,
                 cursor: 'pointer',
@@ -1060,7 +1060,7 @@ const NoticesPage: React.FC = () => {
                       </CheckboxItem>
                     ))}
                     {metadata.restaurants.length === 0 && (
-                      <div style={{ padding: '12px', textAlign: 'center', color: '#9CA3AF', fontSize: '13px' }}>
+                      <div style={{ padding: '12px', textAlign: 'center', color: '#6B7280', fontSize: '13px' }}>
                         No restaurants available
                       </div>
                     )}

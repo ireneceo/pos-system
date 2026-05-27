@@ -42,7 +42,7 @@ const Container = styled.div`
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -72,7 +72,7 @@ const Title = styled.h1`
 
 const Content = styled.div`
   padding: 32px;
-  background: #FAFBFC;
+  background: #F9FAFB;
   min-height: calc(100vh - 120px);
 
   @media (max-width: 768px) {
@@ -90,7 +90,7 @@ const FilterBar = styled.div`
 
 const SearchInput = styled.input`
   padding: 10px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   min-width: 250px;
@@ -103,7 +103,7 @@ const SearchInput = styled.input`
 
 const FilterSelect = styled.select`
   padding: 10px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -129,7 +129,7 @@ const InquiryCard = styled.div`
   background: white;
   border-radius: 12px;
   padding: 24px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   transition: all 0.2s;
   overflow: hidden;
   cursor: pointer;
@@ -175,7 +175,7 @@ const InquiryEmail = styled.div`
 
 const InquiryCompany = styled.div`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 4px;
 `;
 
@@ -191,8 +191,8 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'new': return '#FEF3C7';
       case 'in_progress': return '#DBEAFE';
       case 'resolved': return '#ECFDF5';
-      case 'closed': return '#F3F4F6';
-      default: return '#F3F4F6';
+      case 'closed': return '#F1F4F8';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
@@ -200,8 +200,8 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'new': return '#D97706';
       case 'in_progress': return '#1E40AF';
       case 'resolved': return '#059669';
-      case 'closed': return '#6B7280';
-      default: return '#6B7280';
+      case 'closed': return '#4B5563';
+      default: return '#4B5563';
     }
   }};
 `;
@@ -229,7 +229,7 @@ const InquiryTypeBadge = styled.span<{ type?: string }>`
       case 'demo': return '#DBEAFE';
       case 'support': return '#FEE2E2';
       case 'partnership': return '#F3E8FF';
-      default: return '#F3F4F6';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
@@ -239,19 +239,19 @@ const InquiryTypeBadge = styled.span<{ type?: string }>`
       case 'demo': return '#1E40AF';
       case 'support': return '#DC2626';
       case 'partnership': return '#7C3AED';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 `;
 
 const InquiryMessage = styled.div`
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
   line-height: 1.6;
   padding: 16px;
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 8px;
-  border-left: 3px solid #E6EBF1;
+  border-left: 3px solid #C7CED6;
   margin: 16px 0;
   white-space: pre-wrap;
   word-break: break-word;
@@ -259,7 +259,7 @@ const InquiryMessage = styled.div`
 
 const CardMessagePreview = styled.div`
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
   line-height: 1.5;
   margin: 12px 0;
   display: -webkit-box;
@@ -295,7 +295,7 @@ const ReplyContent = styled.div`
 
 const ReplyMeta = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 8px;
 `;
 
@@ -309,9 +309,9 @@ const InquiryMeta = styled.div`
   justify-content: space-between;
   align-items: center;
   padding-top: 16px;
-  border-top: 1px solid #F3F4F6;
+  border-top: 1px solid #F1F4F8;
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   flex-wrap: wrap;
   gap: 12px;
 `;
@@ -330,15 +330,15 @@ const CloseInquiryButton = styled.button`
   padding: 4px 12px;
   font-size: 12px;
   font-weight: 500;
-  border: 1px solid #D1D5DB;
+  border: 1px solid #6B7280;
   border-radius: 6px;
   background: #fff;
-  color: #6B7280;
+  color: #4B5563;
   cursor: pointer;
   transition: all 0.15s;
   &:hover {
-    background: #E5E7EB;
-    color: #374151;
+    background: #C7CED6;
+    color: #1F2937;
   }
 `;
 
@@ -350,14 +350,14 @@ const FormLabel = styled.label`
   display: block;
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: #1F2937;
   margin-bottom: 8px;
 `;
 
 const FormTextArea = styled.textarea`
   width: 100%;
   padding: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   min-height: 150px;
@@ -376,7 +376,7 @@ const Checkbox = styled.label`
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
   cursor: pointer;
 
   input {
@@ -399,7 +399,7 @@ const DetailItem = styled.div`
 
 const DetailItemLabel = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-bottom: 4px;
   text-transform: uppercase;
   font-weight: 600;
@@ -413,7 +413,7 @@ const DetailItemValue = styled.div`
 
 const StatusSelect = styled.select`
   padding: 6px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 13px;
   background: white;
@@ -446,9 +446,9 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger
     &:hover { background: #FEE2E2; }
   ` : `
     background: transparent;
-    color: #6B7280;
-    border-color: #E6EBF1;
-    &:hover { background: #F8FAFC; color: #0A2540; }
+    color: #4B5563;
+    border-color: #C7CED6;
+    &:hover { background: #F1F4F8; color: #0A2540; }
   `}
 
   &:disabled {
@@ -896,7 +896,7 @@ const ContactInquiriesPage: React.FC = () => {
         {showDeleteConfirm && (
                     <CommonModal isOpen={true} onClose={() => setShowDeleteConfirm(false)} title="Confirm Delete" footer={<><ActionButton onClick={() => setShowDeleteConfirm(false)}> Cancel </ActionButton><ActionButton variant="danger" onClick={deleteInquiry}> Delete </ActionButton></>}>
 
-                <p style={{ margin: 0, color: '#374151', fontSize: '14px' }}>
+                <p style={{ margin: 0, color: '#1F2937', fontSize: '14px' }}>
                   Are you sure you want to delete this inquiry from <strong>{selectedInquiry?.name}</strong>? This action cannot be undone.
                 </p>
               

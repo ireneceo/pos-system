@@ -77,7 +77,7 @@ const FiltersContainer = styled.div`
 
 const FilterSelect = styled.select`
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -95,7 +95,7 @@ const PaginationBar = styled.div`
   align-items: center;
   margin-top: 16px;
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const PageButtons = styled.div`
@@ -105,11 +105,11 @@ const PageButtons = styled.div`
 
 const PageBtn = styled.button<{ disabled?: boolean }>`
   padding: 6px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   background: white;
   border-radius: 6px;
   font-size: 13px;
-  color: #374151;
+  color: #1F2937;
   cursor: ${p => (p.disabled ? 'not-allowed' : 'pointer')};
   opacity: ${p => (p.disabled ? 0.5 : 1)};
   &:hover:not(:disabled) {
@@ -138,7 +138,7 @@ const DetailRow = styled.div`
 const DetailLabel = styled.span`
   font-size: 12px;
   font-weight: 600;
-  color: #6B7280;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.4px;
 `;
@@ -156,13 +156,13 @@ const ItemsTable = styled.table`
 
   th, td {
     padding: 10px 12px;
-    border-bottom: 1px solid #E6EBF1;
+    border-bottom: 1px solid #C7CED6;
     font-size: 13px;
     text-align: left;
   }
   th {
-    background: #F8FAFC;
-    color: #6B7280;
+    background: #F1F4F8;
+    color: #4B5563;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.4px;
@@ -175,7 +175,7 @@ const ItemsTable = styled.table`
 const TotalsBlock = styled.div`
   margin-top: 16px;
   padding-top: 12px;
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -186,7 +186,7 @@ const TotalRow = styled.div<{ highlight?: boolean }>`
   justify-content: space-between;
   font-size: ${p => (p.highlight ? '16px' : '14px')};
   font-weight: ${p => (p.highlight ? '700' : '500')};
-  color: ${p => (p.highlight ? '#0A2540' : '#374151')};
+  color: ${p => (p.highlight ? '#0A2540' : '#1F2937')};
 `;
 
 // ----- Helpers -----
@@ -494,7 +494,7 @@ const SupplierInvoicesPage: React.FC = () => {
 
             <DetailLabel style={{ marginBottom: 8, display: 'block' }}>Line Items</DetailLabel>
             {detailLoading && !selectedInvoice.items?.length ? (
-              <div style={{ padding: 16, color: '#6B7280', fontSize: 13 }}>Loading items...</div>
+              <div style={{ padding: 16, color: '#4B5563', fontSize: 13 }}>Loading items...</div>
             ) : selectedInvoice.items && selectedInvoice.items.length > 0 ? (
               <ItemsTable>
                 <thead>
@@ -521,7 +521,7 @@ const SupplierInvoicesPage: React.FC = () => {
                 </tbody>
               </ItemsTable>
             ) : (
-              <div style={{ padding: 12, color: '#6B7280', fontSize: 13 }}>No line items.</div>
+              <div style={{ padding: 12, color: '#4B5563', fontSize: 13 }}>No line items.</div>
             )}
 
             <TotalsBlock>

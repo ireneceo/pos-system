@@ -110,7 +110,7 @@ const ProductImage = styled.div<{ src?: string | null }>`
   width: 60px;
   height: 60px;
   border-radius: 8px;
-  background: ${(props) => (props.src ? `url(${props.src}) center/cover` : '#F3F4F6')};
+  background: ${(props) => (props.src ? `url(${props.src}) center/cover` : '#F1F4F8')};
   display: flex;
   align-items: center;
   justify-content: center;
@@ -218,17 +218,17 @@ const ActionButton = styled.button<{ variant?: 'danger' }>`
   flex: 1;
   padding: 8px 12px;
   border-radius: 6px;
-  border: 1px solid ${(props) => (props.variant === 'danger' ? '#FEE2E2' : '#E6EBF1')};
+  border: 1px solid ${(props) => (props.variant === 'danger' ? '#FEE2E2' : '#C7CED6')};
   background: ${(props) => (props.variant === 'danger' ? '#FEF2F2' : '#F9FAFB')};
-  color: ${(props) => (props.variant === 'danger' ? '#DC2626' : '#374151')};
+  color: ${(props) => (props.variant === 'danger' ? '#DC2626' : '#1F2937')};
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
 
   &:hover {
-    background: ${(props) => (props.variant === 'danger' ? '#FEE2E2' : '#F3F4F6')};
-    border-color: ${(props) => (props.variant === 'danger' ? '#FECACA' : '#D1D5DB')};
+    background: ${(props) => (props.variant === 'danger' ? '#FEE2E2' : '#F1F4F8')};
+    border-color: ${(props) => (props.variant === 'danger' ? '#FECACA' : '#6B7280')};
   }
 `;
 
@@ -271,7 +271,7 @@ const OptionBadge = styled.span`
   display: inline-block;
   padding: 2px 8px;
   background: #e5e7eb;
-  color: #374151;
+  color: #1F2937;
   border-radius: 4px;
   font-size: 11px;
 `;
@@ -281,7 +281,7 @@ const CheckboxLabel = styled.label`
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: #374151;
+  color: #1F2937;
   cursor: pointer;
 `;
 
@@ -363,9 +363,9 @@ const Pagination = styled.div`
 const PageButton = styled.button<{ active?: boolean }>`
   padding: 8px 14px;
   border-radius: 6px;
-  border: 1px solid ${(props) => (props.active ? '#635BFF' : '#E5E7EB')};
+  border: 1px solid ${(props) => (props.active ? '#635BFF' : '#C7CED6')};
   background: ${(props) => (props.active ? '#635BFF' : 'white')};
-  color: ${(props) => (props.active ? 'white' : '#374151')};
+  color: ${(props) => (props.active ? 'white' : '#1F2937')};
   font-size: 13px;
   cursor: pointer;
 
@@ -738,7 +738,7 @@ const SupplierProductsTab: React.FC<Props> = ({
 
   if (loading) {
     return (
-      <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
+      <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>
         Loading products...
       </div>
     );
@@ -930,7 +930,7 @@ const SupplierProductsTab: React.FC<Props> = ({
               <PageButton onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>
                 Prev
               </PageButton>
-              <span style={{ fontSize: '13px', color: '#6B7280' }}>
+              <span style={{ fontSize: '13px', color: '#4B5563' }}>
                 Page {page} of {totalPages} · {totalCount} total
               </span>
               <PageButton
@@ -1116,7 +1116,7 @@ const SupplierProductsTab: React.FC<Props> = ({
                     padding: '12px',
                     background: '#F9FAFB',
                     borderRadius: '8px',
-                    color: '#6B7280',
+                    color: '#4B5563',
                     fontSize: '13px'
                   }}
                 >

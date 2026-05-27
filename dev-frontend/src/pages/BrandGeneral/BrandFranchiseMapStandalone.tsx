@@ -14,7 +14,7 @@ interface Brand {
 
 const BrandSelect = styled.select`
   padding: 6px 10px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 13px;
   background: white;
@@ -82,7 +82,7 @@ const BrandFranchiseMapStandalone: React.FC = () => {
           ? <BrandFranchiseMapPage brandId={brandIds} />
           : typeof selection === 'number'
             ? <BrandFranchiseMapPage brandId={selection} />
-            : <div style={{ padding: 24, color: '#6B7280' }}>{t('map.noBrand', 'No brand available.')}</div>}
+            : <div style={{ padding: 24, color: '#4B5563' }}>{t('map.noBrand', 'No brand available.')}</div>}
       </Content>
     </Container>
   );

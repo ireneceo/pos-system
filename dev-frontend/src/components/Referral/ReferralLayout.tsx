@@ -7,14 +7,14 @@ import { clearAuthToken } from '../../utils/auth';
 
 const Shell = styled.div`
   min-height: 100vh;
-  background: #FAFBFC;
+  background: #F9FAFB;
   display: flex;
   flex-direction: column;
 `;
 
 const TopBar = styled.header`
   background: white;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   padding: 0 24px;
   height: 64px;
   display: flex;
@@ -56,7 +56,7 @@ const NavItem = styled(NavLink)`
   padding: 8px 14px;
   font-size: 14px;
   font-weight: 500;
-  color: #6B7C93;
+  color: #4B5563;
   text-decoration: none;
   border-radius: 8px;
   transition: background 0.15s, color 0.15s;
@@ -80,7 +80,7 @@ const RightBlock = styled.div`
 
 const UserBadge = styled.span`
   font-size: 13px;
-  color: #6B7C93;
+  color: #4B5563;
   font-weight: 500;
 
   @media (max-width: 640px) {
@@ -94,7 +94,7 @@ const IconButton = styled.button`
   padding: 8px 12px;
   font-size: 13px;
   font-weight: 500;
-  color: #6B7C93;
+  color: #4B5563;
   cursor: pointer;
   border-radius: 6px;
   transition: background 0.15s;
@@ -124,7 +124,7 @@ const MobileMenu = styled.div<{ $open: boolean }>`
   display: ${p => (p.$open ? 'flex' : 'none')};
   flex-direction: column;
   background: white;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   padding: 8px 16px 16px;
   gap: 4px;
 

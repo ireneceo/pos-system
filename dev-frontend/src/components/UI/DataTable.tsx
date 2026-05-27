@@ -14,7 +14,7 @@ import styled from 'styled-components';
 export const DataTableContainer = styled.div`
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   width: 100%;
 
   @media (max-width: 1024px) {
@@ -44,8 +44,8 @@ export const DataTable = styled.table`
 
 // 테이블 헤더
 export const DataTableHead = styled.thead`
-  background: #F8FAFC;
-  border-bottom: 1px solid #E6EBF1;
+  background: #F1F4F8;
+  border-bottom: 1px solid #C7CED6;
 
   @media (max-width: 1024px) {
     display: none;
@@ -54,11 +54,11 @@ export const DataTableHead = styled.thead`
 
 // 데이터 행
 export const DataTableRow = styled.tr`
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
   transition: background 0.15s;
 
   &:hover {
-    background: #F8FAFC;
+    background: #F1F4F8;
   }
 
   &:last-child {
@@ -73,7 +73,7 @@ export const DataTableRow = styled.tr`
     margin-bottom: 10px;
     background: white;
     border-radius: 10px;
-    border: 1px solid #E6EBF1;
+    border: 1px solid #C7CED6;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 
     &:hover {
@@ -115,7 +115,7 @@ export const DataTableCell = styled.td<{
       display: block;
       font-size: 10px;
       font-weight: 600;
-      color: #9CA3AF;
+      color: #6B7280;
       text-transform: uppercase;
       margin-bottom: 4px;
     }
@@ -123,7 +123,7 @@ export const DataTableCell = styled.td<{
     ${props => props.mobileFullWidth ? `
       padding-top: 10px;
       margin-top: 10px;
-      border-top: 1px solid #F3F4F6;
+      border-top: 1px solid #F1F4F8;
       &:before { display: none; }
     ` : ''}
   }
@@ -140,7 +140,7 @@ export const DataTableHeaderCell = styled.th<{
   text-align: ${props => props.align || 'center'};
   font-size: 12px;
   font-weight: 600;
-  color: #6B7280;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   white-space: nowrap;
@@ -166,20 +166,20 @@ export const DataTableActions = styled.div`
 export const DataTableEmpty = styled.div`
   text-align: center;
   padding: 60px 20px;
-  color: #6B7280;
+  color: #4B5563;
 
   @media (max-width: 1024px) {
     padding: 40px 20px;
     background: white;
     border-radius: 10px;
-    border: 1px solid #E6EBF1;
+    border: 1px solid #C7CED6;
   }
 `;
 
 // 금액 표시 스타일
 export const DataTableAmount = styled.span<{ highlight?: boolean }>`
   font-weight: ${props => props.highlight ? '600' : '500'};
-  color: ${props => props.highlight ? '#0A2540' : '#6B7280'};
+  color: ${props => props.highlight ? '#0A2540' : '#4B5563'};
 `;
 
 // 상태 뱃지 (래핑 허용)
@@ -219,8 +219,8 @@ export const DataTableStatus = styled.span<{
         `;
       default:
         return `
-          background: #F3F4F6;
-          color: #6B7280;
+          background: #F1F4F8;
+          color: #4B5563;
         `;
     }
   }}

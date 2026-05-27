@@ -319,7 +319,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
           position: 'fixed',
           bottom: 0, left: 0, right: 0,
           background: 'white',
-          borderTop: '1px solid #E6EBF1',
+          borderTop: '1px solid #C7CED6',
           boxShadow: '0 -4px 20px rgba(0,0,0,0.08)',
           padding: '14px 24px',
           display: 'flex',
@@ -344,7 +344,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
               type="button"
               onClick={bulk.clearSelection}
               style={{
-                background: 'transparent', border: 'none', color: '#6B7280',
+                background: 'transparent', border: 'none', color: '#4B5563',
                 fontSize: 13, cursor: 'pointer', textDecoration: 'underline'
               }}
             >Clear</button>
@@ -355,8 +355,8 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
               onClick={bulk.selectAllSuggested}
               style={{
                 padding: '8px 14px',
-                background: '#F3F4F6',
-                border: '1px solid #E6EBF1',
+                background: '#F1F4F8',
+                border: '1px solid #C7CED6',
                 borderRadius: 8,
                 color: '#0A2540',
                 fontSize: 13,

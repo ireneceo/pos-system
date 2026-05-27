@@ -102,7 +102,7 @@ const RestaurantCard = styled.div`
   background: white;
   border-radius: 12px;
   padding: 24px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   transition: all 0.2s;
   cursor: pointer;
   
@@ -134,8 +134,8 @@ const RestaurantName = styled.h3`
 const BranchBadge = styled.span`
   font-size: 12px;
   font-weight: 500;
-  color: #6B7C93;
-  background: #F3F4F6;
+  color: #4B5563;
+  background: #F1F4F8;
   padding: 1px 8px;
   border-radius: 4px;
   margin-left: 6px;
@@ -153,7 +153,7 @@ const DetailSectionTitle = styled.h4`
   color: #0A2540;
   margin: 0 0 12px 0;
   padding-bottom: 8px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
 `;
 
 const DetailRow = styled.div`
@@ -161,13 +161,13 @@ const DetailRow = styled.div`
   justify-content: space-between;
   align-items: flex-start;
   padding: 8px 0;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
   &:last-child { border-bottom: none; }
 `;
 
 const DetailLabel = styled.span`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
   min-width: 140px;
   flex-shrink: 0;
 `;
@@ -182,7 +182,7 @@ const DetailValue = styled.span`
 
 const RestaurantMeta = styled.div`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
   margin-bottom: 2px;
 `;
 
@@ -200,8 +200,8 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'trial': return '#FEF3C7';
       case 'expired': return '#FEE2E2';
       case 'suspended': return '#FEF2F2';
-      case 'cancelled': return '#F3F4F6';
-      default: return '#F3F4F6';
+      case 'cancelled': return '#F1F4F8';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
@@ -211,8 +211,8 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'trial': return '#D97706';
       case 'expired': return '#DC2626';
       case 'suspended': return '#DC2626';
-      case 'cancelled': return '#6B7280';
-      default: return '#6B7280';
+      case 'cancelled': return '#4B5563';
+      default: return '#4B5563';
     }
   }};
 `;
@@ -223,7 +223,7 @@ const MetricsGrid = styled.div`
   gap: 16px;
   margin-top: 16px;
   padding-top: 16px;
-  border-top: 1px solid #F3F4F6;
+  border-top: 1px solid #F1F4F8;
 `;
 
 const Metric = styled.div`
@@ -238,7 +238,7 @@ const MetricValue = styled.div`
 
 const MetricLabel = styled.div`
   font-size: 11px;
-  color: #6B7280;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-top: 2px;
@@ -252,7 +252,7 @@ const RatingContainer = styled.div`
 `;
 
 const Star = styled.span<{ filled: boolean }>`
-  color: ${props => props.filled ? '#FFC107' : '#E5E7EB'};
+  color: ${props => props.filled ? '#FFC107' : '#C7CED6'};
   font-size: 14px;
 `;
 
@@ -280,12 +280,12 @@ const FormGroup = styled.div`
 const FormLabel = styled.label`
   font-size: 14px;
   font-weight: 600;
-  color: #374151;
+  color: #1F2937;
 `;
 
 const FormInput = styled.input`
   padding: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.2s;
@@ -300,15 +300,15 @@ const FormInput = styled.input`
   }
 
   &:disabled {
-    background: #F8FAFC;
-    color: #6B7280;
+    background: #F1F4F8;
+    color: #4B5563;
     cursor: not-allowed;
   }
 `;
 
 const FormSelect = styled.select`
   padding: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -326,7 +326,7 @@ const FormSelect = styled.select`
 
 const FormTextarea = styled.textarea`
   padding: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   resize: vertical;
@@ -343,8 +343,8 @@ const FormTextarea = styled.textarea`
   }
 
   &:disabled {
-    background: #F8FAFC;
-    color: #6B7280;
+    background: #F1F4F8;
+    color: #4B5563;
     cursor: not-allowed;
   }
 `;
@@ -352,9 +352,9 @@ const FormTextarea = styled.textarea`
 const ActionButton = styled.button`
   padding: 6px 12px;
   background: transparent;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
-  color: #6B7280;
+  color: #4B5563;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -390,13 +390,13 @@ const PageFilterWrapper = styled.div`
 const PageSearchInput = styled.input`
   flex: 0 1 220px;
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
 
   &::placeholder {
-    color: #9CA3AF;
+    color: #6B7280;
   }
 
   &:focus {
@@ -414,7 +414,7 @@ const PageSearchInput = styled.input`
 const PageFilterSelect = styled.select`
   flex: 0 0 140px;
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -459,7 +459,7 @@ const FilterDropdownContainer = styled.div`
 const DropdownInput = styled.input`
   padding: 12px 16px;
   padding-right: 32px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -476,7 +476,7 @@ const DropdownInput = styled.input`
   }
 
   &:hover {
-    border-color: #D1D5DB;
+    border-color: #6B7280;
   }
 `;
 
@@ -487,7 +487,7 @@ const DropdownMenu = styled.div<{ show: boolean }>`
   right: 0;
   min-width: 250px;
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   max-height: 250px;
   overflow-y: auto;
@@ -503,7 +503,7 @@ const DropdownItem = styled.div`
   transition: background-color 0.2s;
 
   &:hover {
-    background: #F8FAFC;
+    background: #F1F4F8;
   }
 
   &:last-child {
@@ -519,7 +519,7 @@ const ManagerName = styled.div`
 
 const ManagerDetails = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const SelectedManagersContainer = styled.div`
@@ -535,16 +535,16 @@ const ManagerTag = styled.div`
   align-items: center;
   gap: 6px;
   padding: 6px 10px;
-  background: #F3F4F6;
+  background: #F1F4F8;
   border-radius: 6px;
   font-size: 13px;
-  color: #374151;
+  color: #1F2937;
 `;
 
 const RemoveTagButton = styled.button`
   background: none;
   border: none;
-  color: #9CA3AF;
+  color: #6B7280;
   cursor: pointer;
   padding: 0;
   font-size: 14px;
@@ -565,7 +565,7 @@ const ClearButton = styled.button`
   background: none;
   border: none;
   font-size: 16px;
-  color: #9CA3AF;
+  color: #6B7280;
   cursor: pointer;
   padding: 0;
   width: 20px;
@@ -575,7 +575,7 @@ const ClearButton = styled.button`
   justify-content: center;
 
   &:hover {
-    color: #6B7280;
+    color: #4B5563;
   }
 `;
 
@@ -1817,7 +1817,7 @@ const RestaurantsPage: React.FC = () => {
               gridColumn: '1 / -1',
               textAlign: 'center', 
               padding: '40px 20px',
-              color: '#6B7280',
+              color: '#4B5563',
               fontSize: '16px'
             }}>
               {restaurants.length === 0
@@ -1834,7 +1834,7 @@ const RestaurantsPage: React.FC = () => {
             <RestaurantCard key={restaurant.id} onClick={() => handleViewRestaurant(restaurant)}>
               <RestaurantHeader>
                 <RestaurantInfo>
-                  <RestaurantName>{restaurant.name} {restaurant.branch_name && <BranchBadge>{restaurant.branch_name}</BranchBadge>}{restaurant.currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{restaurant.currency}</span>}{!restaurant.planType && <span style={{ fontSize: '10px', fontWeight: 600, color: '#374151', background: '#E5E7EB', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{t('admin:restaurantsPage.selfManaged.badge')}</span>}{restaurant.reservation_settings?.enabled && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#635BFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }} title={t('admin:restaurantsPage.reservationsEnabled', 'Reservations enabled') as string}>{t('admin:restaurantsPage.reservationsBadge', 'Reservations')}</span>}{restaurant.is_demo && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#F59E0B', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{t('admin:restaurantsPage.demo')}</span>}{restaurant.is_test && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#8B5CF6', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{t('admin:restaurantsPage.test')}</span>}</RestaurantName>
+                  <RestaurantName>{restaurant.name} {restaurant.branch_name && <BranchBadge>{restaurant.branch_name}</BranchBadge>}{restaurant.currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{restaurant.currency}</span>}{!restaurant.planType && <span style={{ fontSize: '10px', fontWeight: 600, color: '#1F2937', background: '#C7CED6', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{t('admin:restaurantsPage.selfManaged.badge')}</span>}{restaurant.reservation_settings?.enabled && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#635BFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }} title={t('admin:restaurantsPage.reservationsEnabled', 'Reservations enabled') as string}>{t('admin:restaurantsPage.reservationsBadge', 'Reservations')}</span>}{restaurant.is_demo && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#F59E0B', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{t('admin:restaurantsPage.demo')}</span>}{restaurant.is_test && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#8B5CF6', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{t('admin:restaurantsPage.test')}</span>}</RestaurantName>
                   <RestaurantMeta>
                     Admin: {restaurant.admin ? `${restaurant.admin.name} (${restaurant.admin.email})` : 'No Admin Assigned'}
                   </RestaurantMeta>
@@ -1852,7 +1852,7 @@ const RestaurantsPage: React.FC = () => {
 
               <RatingContainer>
                 {renderStars(restaurant.rating)}
-                <span style={{ fontSize: '12px', color: '#6B7280', marginLeft: '4px' }}>
+                <span style={{ fontSize: '12px', color: '#4B5563', marginLeft: '4px' }}>
                   {restaurant.rating} • Created: {formatDateTime(restaurant.createdAt, null, { year: 'numeric', month: '2-digit', day: '2-digit' })}
                 </span>
               </RatingContainer>
@@ -1872,7 +1872,7 @@ const RestaurantsPage: React.FC = () => {
                 </Metric>
               </MetricsGrid>
               
-              <div style={{ marginTop: '16px', display: 'flex', gap: '8px', paddingTop: '16px', borderTop: '1px solid #F3F4F6', flexWrap: 'wrap' }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ marginTop: '16px', display: 'flex', gap: '8px', paddingTop: '16px', borderTop: '1px solid #F1F4F8', flexWrap: 'wrap' }} onClick={(e) => e.stopPropagation()}>
                 <ActionButton onClick={() => handleViewReport(restaurant)}>
                   Report
                 </ActionButton>
@@ -1936,7 +1936,7 @@ const RestaurantsPage: React.FC = () => {
                         display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer',
                         padding: '8px 16px', borderRadius: '8px',
                         background: adminAction === 'create' ? '#F0EFFF' : '#F9FAFB',
-                        border: adminAction === 'create' ? '2px solid #635BFF' : '2px solid #E5E7EB',
+                        border: adminAction === 'create' ? '2px solid #635BFF' : '2px solid #C7CED6',
                         transition: 'all 0.2s'
                       }}>
                         <input
@@ -1946,13 +1946,13 @@ const RestaurantsPage: React.FC = () => {
                           onChange={() => { setAdminAction('create'); setSelectedAdmin(null); }}
                           style={{ accentColor: '#635BFF' }}
                         />
-                        <span style={{fontSize: '14px', fontWeight: '500', color: '#374151'}}>{t('admin:restaurantsPage.createNewAccount')}</span>
+                        <span style={{fontSize: '14px', fontWeight: '500', color: '#1F2937'}}>{t('admin:restaurantsPage.createNewAccount')}</span>
                       </label>
                       <label style={{
                         display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer',
                         padding: '8px 16px', borderRadius: '8px',
                         background: adminAction === 'assign' ? '#F0EFFF' : '#F9FAFB',
-                        border: adminAction === 'assign' ? '2px solid #635BFF' : '2px solid #E5E7EB',
+                        border: adminAction === 'assign' ? '2px solid #635BFF' : '2px solid #C7CED6',
                         transition: 'all 0.2s'
                       }}>
                         <input
@@ -1962,7 +1962,7 @@ const RestaurantsPage: React.FC = () => {
                           onChange={() => { setAdminAction('assign'); setNewAdminData({ fullName: '', email: '', username: '', phone: '' }); }}
                           style={{ accentColor: '#635BFF' }}
                         />
-                        <span style={{fontSize: '14px', fontWeight: '500', color: '#374151'}}>{t('admin:restaurantsPage.selectExistingUser')}</span>
+                        <span style={{fontSize: '14px', fontWeight: '500', color: '#1F2937'}}>{t('admin:restaurantsPage.selectExistingUser')}</span>
                       </label>
                     </div>
                   </div>
@@ -2019,7 +2019,7 @@ const RestaurantsPage: React.FC = () => {
                         />
                         <DropdownMenu show={showAdminDropdown}>
                           {adminCandidates.length === 0 ? (
-                            <div style={{padding: '12px 16px', color: '#6B7280', fontSize: '13px'}}>
+                            <div style={{padding: '12px 16px', color: '#4B5563', fontSize: '13px'}}>
                               {adminSearchQuery.length > 0 ? 'No available users found' : 'Type to search users...'}
                             </div>
                           ) : (
@@ -2045,7 +2045,7 @@ const RestaurantsPage: React.FC = () => {
                             <div style={{fontWeight: '600', color: '#1F2937', fontSize: '14px'}}>
                               {selectedAdmin.full_name || selectedAdmin.username}
                             </div>
-                            <div style={{fontSize: '12px', color: '#6B7280'}}>
+                            <div style={{fontSize: '12px', color: '#4B5563'}}>
                               {selectedAdmin.email} • {selectedAdmin.role}
                             </div>
                           </div>
@@ -2063,10 +2063,10 @@ const RestaurantsPage: React.FC = () => {
 
                   {/* Oversight Managers (Optional) */}
                   <div style={{gridColumn: '1 / -1', marginTop: '16px', marginBottom: '4px'}}>
-                    <h3 style={{margin: 0, fontSize: '16px', fontWeight: '600', color: '#0A2540', borderBottom: '1px solid #E5E7EB', paddingBottom: '8px'}}>
+                    <h3 style={{margin: 0, fontSize: '16px', fontWeight: '600', color: '#0A2540', borderBottom: '1px solid #C7CED6', paddingBottom: '8px'}}>
                       Oversight Managers (Optional)
                     </h3>
-                    <div style={{fontSize: '12px', color: '#6B7280', marginTop: '4px'}}>
+                    <div style={{fontSize: '12px', color: '#4B5563', marginTop: '4px'}}>
                       Brand/Foodcourt managers who oversee this restaurant
                     </div>
                   </div>
@@ -2250,7 +2250,7 @@ const RestaurantsPage: React.FC = () => {
                         <div style={{fontWeight: '600', color: '#1F2937', fontSize: '15px'}}>
                           {t('admin:restaurantsPage.activateSubscription.title')}
                         </div>
-                        <div style={{fontSize: '13px', color: '#6B7280', marginTop: '2px'}}>
+                        <div style={{fontSize: '13px', color: '#4B5563', marginTop: '2px'}}>
                           {newRestaurant.activateSubscription
                             ? t('admin:restaurantsPage.activateSubscription.onHint')
                             : t('admin:restaurantsPage.activateSubscription.offHint')}
@@ -2263,10 +2263,10 @@ const RestaurantsPage: React.FC = () => {
                     <FormGroup style={{gridColumn: '1 / -1'}}>
                       <div style={{
                         padding: '16px 20px',
-                        background: '#F3F4F6',
-                        border: '1px solid #D1D5DB',
+                        background: '#F1F4F8',
+                        border: '1px solid #6B7280',
                         borderRadius: '12px',
-                        color: '#374151'
+                        color: '#1F2937'
                       }}>
                         <div style={{fontWeight: '600', fontSize: '15px', marginBottom: '6px', color: '#1F2937'}}>
                           {t('admin:restaurantsPage.selfManaged.title')}
@@ -2337,7 +2337,7 @@ const RestaurantsPage: React.FC = () => {
                           <div style={{fontWeight: '600', color: '#1F2937', fontSize: '14px'}}>
                             {editingRestaurant.admin.name}
                           </div>
-                          <div style={{fontSize: '12px', color: '#6B7280'}}>
+                          <div style={{fontSize: '12px', color: '#4B5563'}}>
                             {editingRestaurant.admin.email} {editingRestaurant.admin.phone ? `• ${editingRestaurant.admin.phone}` : ''}
                           </div>
                         </div>
@@ -2376,27 +2376,27 @@ const RestaurantsPage: React.FC = () => {
                           display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer',
                           padding: '8px 16px', borderRadius: '8px',
                           background: editAdminAction === 'create' ? '#F0EFFF' : '#F9FAFB',
-                          border: editAdminAction === 'create' ? '2px solid #635BFF' : '2px solid #E5E7EB'
+                          border: editAdminAction === 'create' ? '2px solid #635BFF' : '2px solid #C7CED6'
                         }}>
                           <input type="radio" name="editAdminAction" checked={editAdminAction === 'create'}
                             onChange={() => { setEditAdminAction('create'); setEditSelectedAdmin(null); }}
                             style={{ accentColor: '#635BFF' }} />
-                          <span style={{fontSize: '14px', fontWeight: '500', color: '#374151'}}>{t('admin:restaurantsPage.createNewAccount')}</span>
+                          <span style={{fontSize: '14px', fontWeight: '500', color: '#1F2937'}}>{t('admin:restaurantsPage.createNewAccount')}</span>
                         </label>
                         <label style={{
                           display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer',
                           padding: '8px 16px', borderRadius: '8px',
                           background: editAdminAction === 'change' ? '#F0EFFF' : '#F9FAFB',
-                          border: editAdminAction === 'change' ? '2px solid #635BFF' : '2px solid #E5E7EB'
+                          border: editAdminAction === 'change' ? '2px solid #635BFF' : '2px solid #C7CED6'
                         }}>
                           <input type="radio" name="editAdminAction" checked={editAdminAction === 'change'}
                             onChange={() => { setEditAdminAction('change'); setEditNewAdminData({ fullName: '', email: '', username: '', phone: '' }); }}
                             style={{ accentColor: '#635BFF' }} />
-                          <span style={{fontSize: '14px', fontWeight: '500', color: '#374151'}}>{t('admin:restaurantsPage.selectExistingUser')}</span>
+                          <span style={{fontSize: '14px', fontWeight: '500', color: '#1F2937'}}>{t('admin:restaurantsPage.selectExistingUser')}</span>
                         </label>
                         <button onClick={() => setEditAdminAction('keep')} style={{
-                          background: 'none', border: '1px solid #E5E7EB', borderRadius: '8px',
-                          padding: '8px 16px', cursor: 'pointer', fontSize: '13px', color: '#6B7280'
+                          background: 'none', border: '1px solid #C7CED6', borderRadius: '8px',
+                          padding: '8px 16px', cursor: 'pointer', fontSize: '13px', color: '#4B5563'
                         }}>{t('admin:restaurantsPage.cancel')}</button>
                       </div>
 
@@ -2432,7 +2432,7 @@ const RestaurantsPage: React.FC = () => {
                               onBlur={() => setTimeout(() => setShowEditAdminDropdown(false), 200)} />
                             <DropdownMenu show={showEditAdminDropdown}>
                               {adminCandidates.length === 0 ? (
-                                <div style={{padding: '12px 16px', color: '#6B7280', fontSize: '13px'}}>
+                                <div style={{padding: '12px 16px', color: '#4B5563', fontSize: '13px'}}>
                                   {editAdminSearchQuery.length > 0 ? 'No available users found' : 'Type to search users...'}
                                 </div>
                               ) : (
@@ -2455,7 +2455,7 @@ const RestaurantsPage: React.FC = () => {
                                 <div style={{fontWeight: '600', color: '#1F2937', fontSize: '14px'}}>
                                   {editSelectedAdmin.full_name || editSelectedAdmin.username}
                                 </div>
-                                <div style={{fontSize: '12px', color: '#6B7280'}}>
+                                <div style={{fontSize: '12px', color: '#4B5563'}}>
                                   {editSelectedAdmin.email} • {editSelectedAdmin.role}
                                 </div>
                               </div>
@@ -2472,10 +2472,10 @@ const RestaurantsPage: React.FC = () => {
 
                   {/* Oversight Managers (Optional) */}
                   <div style={{gridColumn: '1 / -1', marginTop: '16px', marginBottom: '4px'}}>
-                    <h3 style={{margin: 0, fontSize: '16px', fontWeight: '600', color: '#0A2540', borderBottom: '1px solid #E5E7EB', paddingBottom: '8px'}}>
+                    <h3 style={{margin: 0, fontSize: '16px', fontWeight: '600', color: '#0A2540', borderBottom: '1px solid #C7CED6', paddingBottom: '8px'}}>
                       Oversight Managers
                     </h3>
-                    <div style={{fontSize: '12px', color: '#6B7280', marginTop: '4px'}}>
+                    <div style={{fontSize: '12px', color: '#4B5563', marginTop: '4px'}}>
                       Brand/Foodcourt managers who oversee this restaurant
                     </div>
                   </div>
@@ -2648,7 +2648,7 @@ const RestaurantsPage: React.FC = () => {
                         <div style={{fontWeight: '600', color: '#1F2937', fontSize: '15px'}}>
                           {t('admin:restaurantsPage.activateSubscription.title')}
                         </div>
-                        <div style={{fontSize: '13px', color: '#6B7280', marginTop: '2px'}}>
+                        <div style={{fontSize: '13px', color: '#4B5563', marginTop: '2px'}}>
                           {editingRestaurant.activateSubscription
                             ? t('admin:restaurantsPage.activateSubscription.onHint')
                             : t('admin:restaurantsPage.activateSubscription.offHint')}
@@ -2661,10 +2661,10 @@ const RestaurantsPage: React.FC = () => {
                     <FormGroup style={{gridColumn: '1 / -1'}}>
                       <div style={{
                         padding: '16px 20px',
-                        background: '#F3F4F6',
-                        border: '1px solid #D1D5DB',
+                        background: '#F1F4F8',
+                        border: '1px solid #6B7280',
                         borderRadius: '12px',
-                        color: '#374151'
+                        color: '#1F2937'
                       }}>
                         <div style={{fontWeight: '600', fontSize: '15px', marginBottom: '6px', color: '#1F2937'}}>
                           {t('admin:restaurantsPage.selfManaged.title')}
@@ -2847,12 +2847,12 @@ const RestaurantsPage: React.FC = () => {
             {successPassword && <ThemedButton variant="secondary" onClick={() => { navigator.clipboard.writeText(successPassword); setPasswordCopied(true); setTimeout(() => setPasswordCopied(false), 2000); }}>{passwordCopied ? 'Copied!' : 'Copy Password'}</ThemedButton>}
             <ThemedButton onClick={() => setShowSuccessModal(false)}>{t('admin:restaurantsPage.done')}</ThemedButton>
           </>}>
-            <div style={{ marginBottom: '20px', fontSize: '14px', color: '#6B7280' }}>
+            <div style={{ marginBottom: '20px', fontSize: '14px', color: '#4B5563' }}>
               {successMessage} Please share this password securely. They should change it after first login.
             </div>
             {successPassword && (
-              <div style={{ background: '#F8FAFC', border: '1px solid #E6EBF1', borderRadius: '8px', padding: '16px', textAlign: 'center', marginBottom: '16px' }}>
-                <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '8px', fontWeight: 600 }}>{t('admin:restaurantsPage.temporaryPassword')}</div>
+              <div style={{ background: '#F1F4F8', border: '1px solid #C7CED6', borderRadius: '8px', padding: '16px', textAlign: 'center', marginBottom: '16px' }}>
+                <div style={{ fontSize: '12px', color: '#4B5563', marginBottom: '8px', fontWeight: 600 }}>{t('admin:restaurantsPage.temporaryPassword')}</div>
                 <div style={{ fontSize: '18px', fontWeight: 700, color: '#0A2540', fontFamily: 'monospace', letterSpacing: '1px', userSelect: 'all' as const }}>{successPassword}</div>
               </div>
             )}

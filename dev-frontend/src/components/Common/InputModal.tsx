@@ -6,7 +6,7 @@ const Input = styled.input`
   width: 100%;
   padding: 10px 12px;
   font-size: 14px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   transition: all 0.15s;
   box-sizing: border-box;
@@ -18,7 +18,7 @@ const Input = styled.input`
   }
 
   &::placeholder {
-    color: #9CA3AF;
+    color: #6B7280;
   }
 `;
 
@@ -26,7 +26,7 @@ const TextArea = styled.textarea`
   width: 100%;
   padding: 10px 12px;
   font-size: 14px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   transition: all 0.15s;
   resize: vertical;
@@ -40,7 +40,7 @@ const TextArea = styled.textarea`
   }
 
   &::placeholder {
-    color: #9CA3AF;
+    color: #6B7280;
   }
 `;
 

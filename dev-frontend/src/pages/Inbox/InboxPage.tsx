@@ -150,7 +150,7 @@ const Container = styled.div`
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   height: 80px;
   min-height: 80px;
   max-height: 80px;
@@ -186,15 +186,15 @@ const HeaderRight = styled.div`
 
 const SecondaryBtn = styled.button`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   padding: 8px 14px;
   font-size: 13px;
-  color: #4B5563;
+  color: #374151;
   font-weight: 500;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
-  &:hover { background: #F8FAFC; border-color: #CBD5E1; }
+  &:hover { background: #F1F4F8; border-color: #64748B; }
 `;
 
 const Content = styled.div`
@@ -215,7 +215,7 @@ const Toolbar = styled.div`
 const Tabs = styled.div`
   display: flex;
   gap: 4px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   overflow-x: auto;
 
   &::-webkit-scrollbar { display: none; }
@@ -228,7 +228,7 @@ const Tab = styled.button<{ $active: boolean }>`
   padding: 10px 14px;
   font-size: 14px;
   font-weight: 500;
-  color: ${p => p.$active ? '#0A2540' : '#6B7C93'};
+  color: ${p => p.$active ? '#0A2540' : '#4B5563'};
   cursor: pointer;
   position: relative;
   display: inline-flex;
@@ -249,8 +249,8 @@ const Tab = styled.button<{ $active: boolean }>`
 `;
 
 const TabCount = styled.span<{ $active: boolean }>`
-  background: ${p => p.$active ? '#635BFF' : '#E5E7EB'};
-  color: ${p => p.$active ? 'white' : '#6B7C93'};
+  background: ${p => p.$active ? '#635BFF' : '#C7CED6'};
+  color: ${p => p.$active ? 'white' : '#4B5563'};
   font-size: 11px;
   font-weight: 600;
   padding: 1px 7px;
@@ -266,7 +266,7 @@ const RightControls = styled.div`
 
 const StatusGroup = styled.div`
   display: inline-flex;
-  background: #F3F4F6;
+  background: #F1F4F8;
   border-radius: 8px;
   padding: 2px;
 `;
@@ -278,7 +278,7 @@ const SegBtn = styled.button<{ $active: boolean }>`
   padding: 6px 12px;
   font-size: 12px;
   font-weight: 500;
-  color: ${p => p.$active ? '#0A2540' : '#6B7C93'};
+  color: ${p => p.$active ? '#0A2540' : '#4B5563'};
   cursor: pointer;
   box-shadow: ${p => p.$active ? '0 1px 2px rgba(0,0,0,0.08)' : 'none'};
   transition: background 0.15s;
@@ -289,7 +289,7 @@ const SearchInput = styled.input`
   flex: 1;
   min-width: 200px;
   padding: 8px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 13px;
   &:focus {
@@ -301,7 +301,7 @@ const SearchInput = styled.input`
 
 const ResultMeta = styled.div`
   font-size: 12px;
-  color: #9CA3AF;
+  color: #6B7280;
   margin-bottom: 8px;
 `;
 
@@ -320,7 +320,7 @@ const Skeleton = styled.div`
 const SkeletonRow = styled.div`
   height: 76px;
   border-radius: 10px;
-  background: #F3F4F6;
+  background: #F1F4F8;
 `;
 
 const Empty = styled.div`
@@ -330,9 +330,9 @@ const Empty = styled.div`
   text-align: center;
   padding: 80px 24px;
   background: white;
-  border: 1px dashed #E6EBF1;
+  border: 1px dashed #C7CED6;
   border-radius: 12px;
-  color: #6B7C93;
+  color: #4B5563;
 `;
 
 const EmptyIcon = styled.div`

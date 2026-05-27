@@ -10,7 +10,7 @@ import { OrderControls } from '../../components/UI';
 import { getAuthToken } from '../../utils/auth';
 const Container = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #FAFBFC;
+  background-color: #F9FAFB;
   min-height: 100vh;
 `;
 
@@ -25,7 +25,7 @@ const Content = styled.div`
 const Header = styled.header`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -73,8 +73,8 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
       case 'secondary':
         return `
           background: white;
-          color: #6B7280;
-          border: 1px solid #E5E7EB;
+          color: #4B5563;
+          border: 1px solid #C7CED6;
           &:hover {
             background: #F9FAFB;
           }
@@ -121,7 +121,7 @@ const CategoryIcon = styled.div`
   width: 48px;
   height: 48px;
   border-radius: 8px;
-  background: #F3F4F6;
+  background: #F1F4F8;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -144,7 +144,7 @@ const CategoryMeta = styled.div`
   display: flex;
   gap: 16px;
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const CategoryActions = styled.div`
@@ -156,7 +156,7 @@ const IconButton = styled.button`
   width: 36px;
   height: 36px;
   border-radius: 8px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   background: white;
   display: flex;
   align-items: center;
@@ -166,13 +166,13 @@ const IconButton = styled.button`
   
   &:hover {
     background: #F9FAFB;
-    border-color: #D1D5DB;
+    border-color: #6B7280;
   }
   
   svg {
     width: 18px;
     height: 18px;
-    color: #6B7280;
+    color: #4B5563;
   }
 `;
 
@@ -207,7 +207,7 @@ const ToggleSlider = styled.span`
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: #E5E7EB;
+  background-color: #C7CED6;
   transition: 0.3s;
   border-radius: 24px;
 
@@ -242,7 +242,7 @@ const Label = styled.label`
   display: block;
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: #1F2937;
   margin-bottom: 8px;
 `;
 
@@ -251,7 +251,7 @@ const Input = styled.input`
   max-width: 100%;
   box-sizing: border-box;
   padding: 10px 12px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.2s;
@@ -278,8 +278,8 @@ const EmojiOption = styled.button<{ selected?: boolean }>`
   width: 100%;
   aspect-ratio: 1;
   border-radius: 4px;
-  background: ${props => props.selected ? '#E5E7EB' : 'white'};
-  border: 1px solid ${props => props.selected ? '#9CA3AF' : '#E5E7EB'};
+  background: ${props => props.selected ? '#C7CED6' : 'white'};
+  border: 1px solid ${props => props.selected ? '#6B7280' : '#C7CED6'};
   cursor: pointer;
   transition: all 0.2s;
   font-size: 20px;
@@ -288,7 +288,7 @@ const EmojiOption = styled.button<{ selected?: boolean }>`
   justify-content: center;
 
   &:hover {
-    background: ${props => props.selected ? '#E5E7EB' : '#F3F4F6'};
+    background: ${props => props.selected ? '#C7CED6' : '#F1F4F8'};
   }
 `;
 
@@ -310,7 +310,7 @@ const EmptyTitle = styled.h3`
 
 const EmptyDescription = styled.p`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 0 0 24px 0;
 `;
 

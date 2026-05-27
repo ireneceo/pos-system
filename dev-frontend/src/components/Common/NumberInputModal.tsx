@@ -6,7 +6,7 @@ const Input = styled.input`
   width: 100%;
   padding: 12px 16px;
   font-size: 16px;
-  border: 2px solid #E5E7EB;
+  border: 2px solid #C7CED6;
   border-radius: 8px;
   transition: all 0.15s;
   text-align: center;
@@ -20,7 +20,7 @@ const Input = styled.input`
   }
 
   &::placeholder {
-    color: #9CA3AF;
+    color: #6B7280;
   }
 `;
 
@@ -32,7 +32,7 @@ const ErrorMessage = styled.div`
 `;
 
 const Helper = styled.div`
-  color: #6B7C93;
+  color: #4B5563;
   font-size: 12px;
   margin-top: 8px;
   text-align: center;

@@ -67,7 +67,7 @@ const ToggleLabel = styled.label`
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: #374151;
+  color: #1F2937;
   cursor: pointer;
   white-space: nowrap;
   padding: 0 8px;
@@ -75,7 +75,7 @@ const ToggleLabel = styled.label`
 
 const HelpText = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 4px;
 `;
 
@@ -551,9 +551,9 @@ const SupplierInventoryPage: React.FC = () => {
                           {Number(tx.stock_after).toFixed(2)} {tx.unit || ''}
                         </DataTableCell>
                         <DataTableCell data-label={t('supplier:inventory.history.referenceNotes', 'Reference / Notes') as string}>
-                          {tx.reason && <span style={{ color: '#6B7280', marginRight: 8 }}>[{tx.reason}]</span>}
-                          {tx.batch_no && <span style={{ color: '#6B7280', marginRight: 8 }}>{tx.batch_no}</span>}
-                          {tx.reference_id && <span style={{ color: '#6B7280', marginRight: 8 }}>{tx.reference_type}#{tx.reference_id}</span>}
+                          {tx.reason && <span style={{ color: '#4B5563', marginRight: 8 }}>[{tx.reason}]</span>}
+                          {tx.batch_no && <span style={{ color: '#4B5563', marginRight: 8 }}>{tx.batch_no}</span>}
+                          {tx.reference_id && <span style={{ color: '#4B5563', marginRight: 8 }}>{tx.reference_type}#{tx.reference_id}</span>}
                           {tx.notes}
                         </DataTableCell>
                       </DataTableRow>
@@ -562,7 +562,7 @@ const SupplierInventoryPage: React.FC = () => {
                 </tbody>
               </DataTable>
             </DataTableContainer>
-            <div style={{ marginTop: 12, fontSize: 12, color: '#6B7280', textAlign: 'right' }}>
+            <div style={{ marginTop: 12, fontSize: 12, color: '#4B5563', textAlign: 'right' }}>
               {t('supplier:inventory.history.totalCount', '{{count}} transactions', { count: txTotal })}
             </div>
           </>

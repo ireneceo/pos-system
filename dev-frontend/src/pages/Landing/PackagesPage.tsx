@@ -147,7 +147,7 @@ const CountriesBanner = styled.div`
 
 const CountriesBannerInner = styled.div`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   padding: 16px 28px;
   display: flex;
@@ -175,7 +175,7 @@ const CountryItem = styled.span`
 
 const SoftwareNote = styled.p`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 0;
   line-height: 1.5;
 
@@ -200,13 +200,13 @@ const ContentSection = styled.section`
 
 const CurrencyLabel = styled.span`
   font-size: 14px;
-  color: #6B7C93;
+  color: #4B5563;
 `;
 
 const CurrencySelect = styled.select`
   padding: 10px 16px;
   font-size: 14px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   background: white;
   cursor: pointer;
@@ -227,7 +227,7 @@ const SectionTitle = styled.h2`
 
 const SectionSubtitle = styled.p`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 0 0 24px 0;
 `;
 
@@ -248,7 +248,7 @@ const GroupCard = styled.div<{ selected: boolean }>`
   background: white;
   border-radius: 12px;
   padding: 20px 24px;
-  border: 2px solid ${props => props.selected ? '#635BFF' : '#E6EBF1'};
+  border: 2px solid ${props => props.selected ? '#635BFF' : '#C7CED6'};
   cursor: pointer;
   transition: all 0.2s;
   display: flex;
@@ -293,7 +293,7 @@ const GroupName = styled.h3`
 
 const GroupDesc = styled.p`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 0;
   line-height: 1.4;
 `;
@@ -322,7 +322,7 @@ const PackageCard = styled.div<{ selected: boolean; recommended?: boolean }>`
   background: white;
   border-radius: 16px;
   padding: 28px;
-  border: 2px solid ${props => props.selected ? '#635BFF' : props.recommended ? '#635BFF' : '#E6EBF1'};
+  border: 2px solid ${props => props.selected ? '#635BFF' : props.recommended ? '#635BFF' : '#C7CED6'};
   position: relative;
   transition: all 0.2s;
   display: flex;
@@ -379,7 +379,7 @@ const PackageName = styled.h3`
 
 const PackageUseCase = styled.p`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 0 0 20px 0;
   text-align: center;
   min-height: 40px;
@@ -389,7 +389,7 @@ const PackageUseCase = styled.p`
 const PackagePriceSection = styled.div`
   text-align: center;
   padding: 16px;
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 12px;
   margin-bottom: 20px;
 `;
@@ -403,13 +403,13 @@ const PackagePrice = styled.div`
 const PackageCurrencySymbol = styled.span`
   font-size: 16px;
   font-weight: 600;
-  color: #6B7280;
+  color: #4B5563;
   margin-right: 4px;
 `;
 
 const SubscriptionNotice = styled.div`
   font-size: 11px;
-  color: #9CA3AF;
+  color: #6B7280;
   margin-top: 6px;
   line-height: 1.4;
 
@@ -434,8 +434,8 @@ const EquipmentItem = styled.li`
   gap: 8px;
   padding: 6px 0;
   font-size: 13px;
-  color: #374151;
-  border-bottom: 1px solid #F3F4F6;
+  color: #1F2937;
+  border-bottom: 1px solid #F1F4F8;
 
   &:last-child {
     border-bottom: none;
@@ -454,7 +454,7 @@ const EquipmentRole = styled.span`
 
 const EquipmentQty = styled.span`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-left: auto;
   white-space: nowrap;
 `;
@@ -462,7 +462,7 @@ const EquipmentQty = styled.span`
 const SetupTitle = styled.div`
   font-size: 12px;
   font-weight: 600;
-  color: #6B7280;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin: 12px 0 8px 0;
@@ -474,7 +474,7 @@ const SetupItem = styled.div`
   gap: 8px;
   padding: 4px 0;
   font-size: 13px;
-  color: #374151;
+  color: #1F2937;
 `;
 
 const SetupCheck = styled.span`
@@ -530,8 +530,8 @@ const AddonsOverlayText = styled.div`
   border-radius: 12px;
   font-size: 16px;
   font-weight: 600;
-  color: #6B7280;
-  border: 1px solid #E6EBF1;
+  color: #4B5563;
+  border: 1px solid #C7CED6;
 `;
 
 const AddonGroupTitle = styled.h4`
@@ -559,7 +559,7 @@ const AddonRow = styled.div`
   background: white;
   border-radius: 12px;
   padding: 16px 20px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   display: flex;
   align-items: center;
   gap: 16px;
@@ -597,7 +597,7 @@ const AddonPrice = styled.div`
 
 const InquiryLabel = styled.div`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
   font-style: italic;
 `;
 
@@ -612,7 +612,7 @@ const QtyButton = styled.button`
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   background: white;
   font-size: 18px;
   font-weight: 600;
@@ -629,11 +629,11 @@ const QtyButton = styled.button`
   }
 
   &:disabled {
-    color: #D1D5DB;
+    color: #6B7280;
     cursor: not-allowed;
     &:hover {
       background: white;
-      border-color: #E6EBF1;
+      border-color: #C7CED6;
     }
   }
 `;
@@ -654,7 +654,7 @@ const StickyBar = styled.div<{ visible: boolean; cookieBarVisible: boolean }>`
   left: 0;
   right: 0;
   background: white;
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
   box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
   padding: 16px 24px;
   z-index: 10000;
@@ -696,7 +696,7 @@ const StickyPackageName = styled.div`
 
 const StickyAddonsList = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 2px;
   white-space: nowrap;
   overflow: hidden;
@@ -727,7 +727,7 @@ const StickyTotal = styled.div`
 
 const StickyBreakdown = styled.div`
   font-size: 11px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 2px;
 `;
 
@@ -829,7 +829,7 @@ const Required = styled.span`
 const Input = styled.input<{ hasError?: boolean }>`
   padding: 12px 16px;
   font-size: 15px;
-  border: 1px solid ${props => props.hasError ? '#EF4444' : '#E6EBF1'};
+  border: 1px solid ${props => props.hasError ? '#EF4444' : '#C7CED6'};
   border-radius: 8px;
   transition: all 0.2s;
 
@@ -849,7 +849,7 @@ const FieldError = styled.span`
 const TextArea = styled.textarea`
   padding: 12px 16px;
   font-size: 15px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   min-height: 80px;
   resize: vertical;
@@ -887,8 +887,8 @@ const SubmitButton = styled.button`
 
 const CancelButton = styled.button`
   background: white;
-  color: #6B7280;
-  border: 1px solid #E6EBF1;
+  color: #4B5563;
+  border: 1px solid #C7CED6;
   padding: 12px 24px;
   font-size: 15px;
   font-weight: 500;
@@ -937,7 +937,7 @@ const ErrorMessage = styled.div`
 const EmptyMessage = styled.div`
   text-align: center;
   padding: 60px 20px;
-  color: #6B7280;
+  color: #4B5563;
   font-size: 16px;
   line-height: 1.6;
 
@@ -955,7 +955,7 @@ const EmptyMessage = styled.div`
 const LoadingText = styled.div`
   text-align: center;
   padding: 60px 20px;
-  color: #6B7C93;
+  color: #4B5563;
   font-size: 16px;
 `;
 
@@ -1364,7 +1364,7 @@ const PackagesPage: React.FC = () => {
           <CountriesBanner>
             <CountriesBannerInner>
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-                <span style={{ color: '#6B7280', fontWeight: 500, fontSize: '14px' }}>{t('landing:packagesPage.availableIn')}</span>
+                <span style={{ color: '#4B5563', fontWeight: 500, fontSize: '14px' }}>{t('landing:packagesPage.availableIn')}</span>
                 <CountriesList>
                   {supportedCountries.map(c => (
                     <CountryItem key={c.code}>
@@ -1554,7 +1554,7 @@ const PackagesPage: React.FC = () => {
                       </AddonsOverlay>
                     )}
                     {Object.keys(addonsByCategory).length === 0 && selectedPackage && (
-                      <div style={{ textAlign: 'center', padding: '32px', color: '#6B7280' }}>
+                      <div style={{ textAlign: 'center', padding: '32px', color: '#4B5563' }}>
                         {t('landing:packagesPage.noAdditionalEquipmentAvailableForThisPac')}
                       </div>
                     )}
@@ -1736,7 +1736,7 @@ const PackagesPage: React.FC = () => {
                   </FormGroup>
 
                   <FormGroup>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', color: '#374151' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', color: '#1F2937' }}>
                       <input
                         type="checkbox"
                         checked={formData.wants_invoice}
@@ -1774,7 +1774,7 @@ const PackagesPage: React.FC = () => {
 
                   {/* Software Subscription Option */}
                   <FormGroup>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', color: '#374151' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', color: '#1F2937' }}>
                       <input
                         type="checkbox"
                         checked={!!formData.plan_id}
@@ -1793,7 +1793,7 @@ const PackagesPage: React.FC = () => {
                           style={{
                             padding: '12px 16px',
                             fontSize: '15px',
-                            border: '1px solid #E6EBF1',
+                            border: '1px solid #C7CED6',
                             borderRadius: '8px',
                             width: '100%',
                             background: 'white',
@@ -1827,7 +1827,7 @@ const PackagesPage: React.FC = () => {
                                   alignItems: 'center',
                                   gap: '10px',
                                   padding: '12px 16px',
-                                  border: `2px solid ${isActive ? '#635BFF' : '#E6EBF1'}`,
+                                  border: `2px solid ${isActive ? '#635BFF' : '#C7CED6'}`,
                                   borderRadius: '8px',
                                   cursor: 'pointer',
                                   background: isActive ? '#F5F3FF' : 'white',
@@ -1847,7 +1847,7 @@ const PackagesPage: React.FC = () => {
                                     {cycle === 'monthly' ? 'Monthly' : 'Annual'}
                                   </div>
                                   {price ? (
-                                    <div style={{ fontSize: '12px', color: '#6B7280' }}>
+                                    <div style={{ fontSize: '12px', color: '#4B5563' }}>
                                       {currencyInfo.symbol} {formatPrice(price, selectedCurrency)}{cycle === 'annual' ? '/yr' : '/mo'}
                                     </div>
                                   ) : null}
@@ -1872,11 +1872,11 @@ const PackagesPage: React.FC = () => {
 
                   {/* Quote Summary in Modal */}
                   <div style={{
-                    background: '#F8FAFC',
+                    background: '#F1F4F8',
                     borderRadius: 8,
                     padding: 16,
                     fontSize: 13,
-                    color: '#374151',
+                    color: '#1F2937',
                   }}>
                     <div style={{ fontWeight: 700, marginBottom: 8 }}>{t('landing:packagesPage.quoteSummary')}</div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
@@ -1884,7 +1884,7 @@ const PackagesPage: React.FC = () => {
                       <span>{currencyInfo.symbol} {formatPrice(packagePrice, selectedCurrency)}</span>
                     </div>
                     {addonSummaryItems.map((item, i) => (
-                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, color: '#6B7280' }}>
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, color: '#4B5563' }}>
                         <span>{item}</span>
                       </div>
                     ))}
@@ -1897,7 +1897,7 @@ const PackagesPage: React.FC = () => {
                     <div style={{
                       display: 'flex',
                       justifyContent: 'space-between',
-                      borderTop: '1px solid #E6EBF1',
+                      borderTop: '1px solid #C7CED6',
                       paddingTop: 8,
                       marginTop: 8,
                       fontWeight: 700,
@@ -1917,11 +1917,11 @@ const PackagesPage: React.FC = () => {
                       if (!subPrice) return null;
                       return (
                         <div style={{
-                          borderTop: '1px dashed #E6EBF1',
+                          borderTop: '1px dashed #C7CED6',
                           paddingTop: 8,
                           marginTop: 8,
                         }}>
-                          <div style={{ fontSize: 11, color: '#9CA3AF', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                          <div style={{ fontSize: 11, color: '#6B7280', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                             {t('landing:packagesPage.softwareSubscription')}
                           </div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
@@ -1930,7 +1930,7 @@ const PackagesPage: React.FC = () => {
                               {currencyInfo.symbol} {formatPrice(subPrice, selectedCurrency)}{isAnnual ? '/yr' : '/mo'}
                             </span>
                           </div>
-                          <div style={{ fontSize: 11, color: '#9CA3AF', fontStyle: 'italic' }}>
+                          <div style={{ fontSize: 11, color: '#6B7280', fontStyle: 'italic' }}>
                             * {t('landing:packagesPage.softwareChargedSeparately')}
                           </div>
                         </div>

@@ -12,8 +12,8 @@ const Wrap = styled.div`
   justify-content: center;
   padding: 48px 24px;
   text-align: center;
-  background: #FAFBFC;
-  border: 1px dashed #E6EBF1;
+  background: #F9FAFB;
+  border: 1px dashed #C7CED6;
   border-radius: 12px;
   min-height: 200px;
 `;
@@ -44,7 +44,7 @@ const Title = styled.div`
 
 const Description = styled.div`
   font-size: 13.5px;
-  color: #6B7C93;
+  color: #4B5563;
   line-height: 1.6;
   max-width: 420px;
   margin-bottom: 20px;
@@ -87,10 +87,10 @@ const Steps = styled.div`
   margin-top: 18px;
   padding: 12px 16px;
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 12.5px;
-  color: #4B5563;
+  color: #374151;
   line-height: 1.7;
   max-width: 420px;
   text-align: left;

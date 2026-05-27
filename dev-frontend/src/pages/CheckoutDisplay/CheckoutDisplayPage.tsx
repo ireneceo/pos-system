@@ -10,7 +10,7 @@ const fadeIn = keyframes`from{opacity:0;transform:translateY(6px)}to{opacity:1;t
 
 const Container = styled.div`
   min-height: 100vh;
-  background: #FAFBFC;
+  background: #F9FAFB;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   display: flex;
   flex-direction: column;
@@ -23,7 +23,7 @@ const Header = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
 `;
 
 const Main = styled.div`
@@ -37,7 +37,7 @@ const LeftPanel = styled.div`
   width: 360px;
   min-width: 360px;
   background: white;
-  border-right: 1px solid #E6EBF1;
+  border-right: 1px solid #C7CED6;
   display: flex;
   flex-direction: column;
   padding: 20px;
@@ -69,8 +69,8 @@ const Key = styled.button`
   padding: 14px;
   font-size: 20px;
   font-weight: 500;
-  background: #F6F9FC;
-  border: 1px solid #E6EBF1;
+  background: #F4F6F9;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   color: #0A2540;
   cursor: pointer;
@@ -82,7 +82,7 @@ const ItemRow = styled.div`
   justify-content: space-between;
   align-items: flex-start;
   padding: 12px 0;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
   animation: ${fadeIn} 0.2s ease;
   &:last-child { border-bottom: none; }
 `;
@@ -93,11 +93,41 @@ const SummaryRow = styled.div<{ bold?: boolean }>`
   padding: 3px 0;
   font-size: ${p => p.bold ? '18px' : '13px'};
   font-weight: ${p => p.bold ? 700 : 400};
-  color: ${p => p.bold ? '#0A2540' : '#6B7C93'};
+  color: ${p => p.bold ? '#0A2540' : '#4B5563'};
 `;
 
 interface CartItem { name: string; quantity: number; price: number; options?: string[]; }
-interface CartData { restaurantId: number; items: CartItem[]; subtotal: number; tax: number; taxRate: number; serviceCharge: number; serviceChargeRate: number; discount: number; total: number; currency: string; }
+interface OrderSnapshot {
+  orderNumber?: string;
+  orderType?: string;       // dine_in / takeaway / delivery
+  sourceLabel?: string;     // pos / mobile / pos-terminal / floor-plan
+  createdAt?: string | null;
+  paymentStatus?: string;
+  paymentMethod?: string | null;
+  cashierName?: string | null;
+  orderStatus?: string | null;
+  guestCount?: number | null;
+}
+interface CartCustomer {
+  id?: number;
+  name?: string;
+  phone?: string;
+  loyaltyTier?: string;
+  tier?: string;
+  points?: number;
+}
+interface CartData {
+  restaurantId: number;
+  items: CartItem[];
+  subtotal: number; tax: number; taxRate: number;
+  serviceCharge: number; serviceChargeRate: number;
+  discount: number; total: number; currency: string;
+  tableNumber?: string | null;
+  orderNumber?: string;
+  source?: string;          // floor-plan / pos-terminal
+  orderInfo?: OrderSnapshot;
+  customer?: CartCustomer | null;
+}
 interface CustomerInfo { id: number; name: string; phone: string; points: number; tier: string; totalOrders: number; }
 
 const CheckoutDisplayPage: React.FC = () => {
@@ -144,7 +174,49 @@ const CheckoutDisplayPage: React.FC = () => {
     socketRef.current = socket;
     socket.on('connect', () => { socket.emit('join-restaurant', restaurantId); setConnected(true); });
     socket.on('disconnect', () => setConnected(false));
-    socket.on('cart-update', (data: CartData) => { setCart(data); if (showThankYou) setShowThankYou(false); });
+    socket.on('cart-update', (data: CartData) => {
+      setCart(data);
+      if (showThankYou) setShowThankYou(false);
+      // 2026-05-27 — if the payload carries customer info, light up the
+      // customer slot too so the guest sees their name / phone / tier.
+      if (data?.customer && data.customer.name) {
+        setCustomer({
+          id: data.customer.id || 0,
+          name: data.customer.name,
+          phone: data.customer.phone || '',
+          points: data.customer.points || 0,
+          tier: data.customer.tier || data.customer.loyaltyTier || 'Bronze',
+          totalOrders: 0
+        });
+        setCustomerStatus('found');
+        setPhoneNumber(data.customer.phone || '');
+      }
+    });
+    // Floor Plan deselected the table → return to idle screen
+    socket.on('cart-clear', () => { setCart(null); if (showThankYou) setShowThankYou(false); });
+    // 2026-05-27: POS picked / cleared a member — mirror it to the guest screen
+    // so they see their name, tier and points before checkout.
+    socket.on('pos-customer-update', (data: { customer: CustomerInfo | null }) => {
+      if (data?.customer) {
+        setCustomer({
+          id: data.customer.id,
+          name: data.customer.name,
+          phone: data.customer.phone,
+          points: data.customer.points || 0,
+          tier: data.customer.tier || (data.customer as any).loyaltyTier || 'Bronze',
+          totalOrders: data.customer.totalOrders || 0
+        });
+        setCustomerStatus('found');
+        setPhoneNumber(data.customer.phone || '');
+        setShowRegister(false);
+      } else {
+        setCustomer(null);
+        setCustomerStatus('idle');
+        setPhoneNumber('');
+        setShowRegister(false);
+        setRegisterName('');
+      }
+    });
     socket.on('checkout-complete', (data) => {
       setCompletedOrder(data);
       setShowThankYou(true);
@@ -223,7 +295,7 @@ const CheckoutDisplayPage: React.FC = () => {
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
           <div style={{ fontSize: '48px' }}>✓</div>
           <div style={{ fontSize: '28px', fontWeight: 300, color: '#10B981' }}>{t('pos:checkoutDisplayPage.thankYou')}</div>
-          <div style={{ fontSize: '16px', color: '#6B7C93' }}>Order {completedOrder.orderNumber}</div>
+          <div style={{ fontSize: '16px', color: '#4B5563' }}>Order {completedOrder.orderNumber}</div>
           <div style={{ fontSize: '24px', fontWeight: 700, color: '#0A2540', marginTop: '8px' }}>{formatCurrency(completedOrder.total, completedOrder.currency)}</div>
           {customer && <div style={{ fontSize: '14px', color: '#635BFF', marginTop: '4px' }}>⭐ Points earned</div>}
         </div>
@@ -237,15 +309,81 @@ const CheckoutDisplayPage: React.FC = () => {
         <h1 style={{ fontSize: '18px', fontWeight: 600, color: '#0A2540', margin: 0 }}>{storeName || 'POS'}</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span style={{ width: 6, height: 6, borderRadius: '50%', background: connected ? '#10B981' : '#EF4444', display: 'inline-block' }} />
-          <span style={{ fontSize: '11px', color: '#9CA3AF' }}>{connected ? 'Connected' : 'Connecting...'}</span>
+          <span style={{ fontSize: '11px', color: '#6B7280' }}>{connected ? 'Connected' : 'Connecting...'}</span>
         </div>
       </Header>
 
       <Main>
-        {/* ===== LEFT: 전화번호 + 고객정보 (Settings 토글로 hide 가능) ===== */}
-        {showPhoneInput && (
+        {/* ===== LEFT: cart 가 active 면 주문/회원 정보 패널, 아니면 phone 키패드 =====
+            2026-05-27: Floor Plan / POS Terminal 에서 cart-update 가 오면 orderInfo
+            가 함께 박힘. 그 시점엔 좌측에 OrderInfo 카드 표시 (키패드 hide).
+            cart 가 cleared 되거나 아직 안 받았으면 기존 phone 키패드 표시. */}
+        {cart?.orderInfo ? (
+          <LeftPanel>
+            <div style={{ fontSize: '12px', color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', fontWeight: 600 }}>
+              {t('pos:checkoutDisplayPage.orderInfo', 'Order Details')}
+            </div>
+            {/* Order header */}
+            <div style={{ padding: '14px', background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: '10px', marginBottom: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '10px' }}>
+                <div style={{ fontSize: '17px', fontWeight: 700, color: '#0A2540' }}>
+                  {cart.orderInfo.orderNumber ? `#${cart.orderInfo.orderNumber}` : '—'}
+                </div>
+                {cart.tableNumber && (
+                  <div style={{ fontSize: '13px', fontWeight: 600, color: '#635BFF', padding: '4px 10px', background: '#EEF2FF', borderRadius: '6px' }}>
+                    {cart.tableNumber}
+                  </div>
+                )}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: '6px 10px', fontSize: '13px' }}>
+                <div style={{ color: '#6B7280' }}>{t('pos:checkoutDisplayPage.type', 'Type')}</div>
+                <div style={{ color: '#0A2540', fontWeight: 500, textTransform: 'uppercase' }}>{String(cart.orderInfo.orderType || '').replace('_', '-')}</div>
+                <div style={{ color: '#6B7280' }}>{t('pos:checkoutDisplayPage.source', 'Source')}</div>
+                <div style={{ color: '#0A2540', fontWeight: 500 }}>{cart.orderInfo.sourceLabel === 'mobile' ? 'Mobile' : cart.orderInfo.sourceLabel === 'pos-terminal' ? 'POS Terminal' : cart.orderInfo.sourceLabel === 'floor-plan' ? 'Floor Plan' : 'POS'}</div>
+                {cart.orderInfo.createdAt && (<>
+                  <div style={{ color: '#6B7280' }}>{t('pos:checkoutDisplayPage.time', 'Time')}</div>
+                  <div style={{ color: '#0A2540', fontWeight: 500 }}>{new Date(cart.orderInfo.createdAt).toLocaleString()}</div>
+                </>)}
+                <div style={{ color: '#6B7280' }}>{t('pos:checkoutDisplayPage.payment', 'Payment')}</div>
+                <div style={{ color: cart.orderInfo.paymentStatus === 'completed' ? '#10B981' : '#F59E0B', fontWeight: 600, textTransform: 'capitalize' }}>{cart.orderInfo.paymentStatus || 'pending'}</div>
+                {cart.orderInfo.cashierName && (<>
+                  <div style={{ color: '#6B7280' }}>{t('pos:checkoutDisplayPage.cashier', 'Cashier')}</div>
+                  <div style={{ color: '#0A2540', fontWeight: 500 }}>{cart.orderInfo.cashierName}</div>
+                </>)}
+              </div>
+            </div>
+            {/* Member card (when present) */}
+            {cart.customer && cart.customer.name ? (
+              <div style={{ padding: '14px', background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: '10px' }}>
+                <div style={{ fontSize: '11px', color: '#065F46', fontWeight: 700, letterSpacing: '0.5px', marginBottom: '6px' }}>{t('pos:checkoutDisplayPage.member', 'MEMBER')}</div>
+                <div style={{ fontSize: '16px', fontWeight: 700, color: '#065F46' }}>{cart.customer.name}</div>
+                {cart.customer.phone && <div style={{ fontSize: '12px', color: '#047857', marginTop: '2px' }}>{cart.customer.phone}</div>}
+                {(typeof cart.customer.points === 'number' || cart.customer.tier || cart.customer.loyaltyTier) && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
+                    {typeof cart.customer.points === 'number' && (
+                      <div>
+                        <div style={{ fontSize: '11px', color: '#065F46' }}>{t('pos:checkoutDisplayPage.points', 'Points')}</div>
+                        <div style={{ fontSize: '18px', fontWeight: 700, color: '#635BFF' }}>{cart.customer.points.toLocaleString()}</div>
+                      </div>
+                    )}
+                    {(cart.customer.tier || cart.customer.loyaltyTier) && (
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '11px', color: '#065F46' }}>{t('pos:checkoutDisplayPage.tier', 'Tier')}</div>
+                        <div style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540' }}>{cart.customer.tier || cart.customer.loyaltyTier}</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div style={{ padding: '12px', background: '#F9FAFB', border: '1px dashed #D1D5DB', borderRadius: '10px', textAlign: 'center', fontSize: '12px', color: '#6B7280' }}>
+                {t('pos:checkoutDisplayPage.walkInGuest', 'Walk-in guest (no member info)')}
+              </div>
+            )}
+          </LeftPanel>
+        ) : showPhoneInput && (
         <LeftPanel>
-          <div style={{ fontSize: '13px', color: '#6B7C93', marginBottom: '8px', textAlign: 'center' }}>
+          <div style={{ fontSize: '13px', color: '#4B5563', marginBottom: '8px', textAlign: 'center' }}>
             Enter phone number for points
           </div>
           <div style={{ fontSize: '24px', fontWeight: 600, color: '#0A2540', textAlign: 'center', padding: '10px 0', minHeight: '40px', letterSpacing: '2px' }}>
@@ -258,22 +396,22 @@ const CheckoutDisplayPage: React.FC = () => {
               <div style={{ fontSize: '15px', fontWeight: 600, color: '#065F46' }}>{customer.name}</div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px' }}>
                 <div>
-                  <div style={{ fontSize: '11px', color: '#6B7C93' }}>{t('pos:checkoutDisplayPage.points')}</div>
+                  <div style={{ fontSize: '11px', color: '#4B5563' }}>{t('pos:checkoutDisplayPage.points')}</div>
                   <div style={{ fontSize: '18px', fontWeight: 700, color: '#635BFF' }}>{customer.points.toLocaleString()}</div>
                 </div>
                 <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '11px', color: '#6B7C93' }}>{t('pos:checkoutDisplayPage.tier')}</div>
+                  <div style={{ fontSize: '11px', color: '#4B5563' }}>{t('pos:checkoutDisplayPage.tier')}</div>
                   <div style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540' }}>{customer.tier}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '11px', color: '#6B7C93' }}>{t('pos:checkoutDisplayPage.orders')}</div>
+                  <div style={{ fontSize: '11px', color: '#4B5563' }}>{t('pos:checkoutDisplayPage.orders')}</div>
                   <div style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540' }}>{customer.totalOrders}</div>
                 </div>
               </div>
             </div>
           )}
           {customerStatus === 'searching' && (
-            <div style={{ textAlign: 'center', color: '#6B7C93', fontSize: '14px', padding: '12px 0' }}>{t('pos:checkoutDisplayPage.checking')}</div>
+            <div style={{ textAlign: 'center', color: '#4B5563', fontSize: '14px', padding: '12px 0' }}>{t('pos:checkoutDisplayPage.checking')}</div>
           )}
           {customerStatus === 'not_found' && !showRegister && (
             <div style={{ padding: '12px', background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: '8px', marginBottom: '12px' }}>
@@ -298,7 +436,7 @@ const CheckoutDisplayPage: React.FC = () => {
             <>
               <KeypadGrid>
                 {['1','2','3','4','5','6','7','8','9'].map(k => <Key key={k} onClick={() => handleKeyPress(k)}>{k}</Key>)}
-                <Key onClick={handleClear} style={{ fontSize: '13px', color: '#6B7C93' }}>{t('pos:checkoutDisplayPage.clear')}</Key>
+                <Key onClick={handleClear} style={{ fontSize: '13px', color: '#4B5563' }}>{t('pos:checkoutDisplayPage.clear')}</Key>
                 <Key onClick={() => handleKeyPress('0')}>0</Key>
                 <Key onClick={handleBackspace} style={{ fontSize: '16px' }}>⌫</Key>
               </KeypadGrid>
@@ -320,29 +458,29 @@ const CheckoutDisplayPage: React.FC = () => {
         <RightPanel>
           {hasItems ? (
             <>
-              <h3 style={{ fontSize: '14px', fontWeight: 500, color: '#6B7C93', margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('pos:checkoutDisplayPage.yourOrder')}</h3>
+              <h3 style={{ fontSize: '14px', fontWeight: 500, color: '#4B5563', margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('pos:checkoutDisplayPage.yourOrder')}</h3>
               <div style={{ flex: 1, overflow: 'auto' }}>
                 {cart!.items.map((item, i) => (
                   <ItemRow key={i}>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: '15px', fontWeight: 500, color: '#0A2540' }}>{item.quantity > 1 ? `${item.quantity}× ` : ''}{item.name}</div>
-                      {item.options?.map((opt, j) => <div key={j} style={{ fontSize: '12px', color: '#6B7C93', marginTop: '2px' }}>+ {opt}</div>)}
+                      {item.options?.map((opt, j) => <div key={j} style={{ fontSize: '12px', color: '#4B5563', marginTop: '2px' }}>+ {opt}</div>)}
                     </div>
                     <div style={{ fontSize: '15px', fontWeight: 600, color: '#0A2540', whiteSpace: 'nowrap', marginLeft: '16px' }}>{formatCurrency(item.price * item.quantity, currency)}</div>
                   </ItemRow>
                 ))}
               </div>
-              <div style={{ background: '#F8FAFC', borderRadius: '10px', padding: '14px', marginTop: '12px' }}>
+              <div style={{ background: '#F1F4F8', borderRadius: '10px', padding: '14px', marginTop: '12px' }}>
                 {cart!.subtotal !== cart!.total && <SummaryRow><span>{t('pos:checkoutDisplayPage.subtotal')}</span><span>{formatCurrency(cart!.subtotal, currency)}</span></SummaryRow>}
                 {cart!.tax > 0 && <SummaryRow><span>Tax ({cart!.taxRate}%)</span><span>{formatCurrency(cart!.tax, currency)}</span></SummaryRow>}
                 {cart!.serviceCharge > 0 && <SummaryRow><span>Service ({cart!.serviceChargeRate}%)</span><span>{formatCurrency(cart!.serviceCharge, currency)}</span></SummaryRow>}
                 {cart!.discount > 0 && <SummaryRow><span>{t('pos:checkoutDisplayPage.discount')}</span><span style={{ color: '#10B981' }}>-{formatCurrency(cart!.discount, currency)}</span></SummaryRow>}
-                <div style={{ borderTop: '1px solid #E6EBF1', margin: '6px 0' }} />
+                <div style={{ borderTop: '1px solid #C7CED6', margin: '6px 0' }} />
                 <SummaryRow bold><span>{t('pos:checkoutDisplayPage.total')}</span><span>{formatCurrency(cart!.total, currency)}</span></SummaryRow>
               </div>
             </>
           ) : (
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#9CA3AF' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#6B7280' }}>
               <div style={{ fontSize: '40px', marginBottom: '12px', opacity: 0.3 }}>🛒</div>
               <div style={{ fontSize: '16px' }}>{t('pos:checkoutDisplayPage.waitingForOrder')}</div>
               <div style={{ fontSize: '13px', marginTop: '4px' }}>{t('pos:checkoutDisplayPage.itemsWillAppearHereAsTheCashierAddsThem')}</div>

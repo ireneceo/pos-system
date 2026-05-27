@@ -50,7 +50,7 @@ const RemoveButton = styled.button`
 
 const ItemOptions = styled.div`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin-bottom: 8px;
 `;
 
@@ -70,7 +70,7 @@ const QuantityButton = styled.button`
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   background: white;
   display: flex;
   align-items: center;
@@ -79,7 +79,7 @@ const QuantityButton = styled.button`
   transition: all 0.2s;
   
   &:active {
-    background: #F3F4F6;
+    background: #F1F4F8;
   }
   
   &:disabled {
@@ -90,7 +90,7 @@ const QuantityButton = styled.button`
   svg {
     width: 14px;
     height: 14px;
-    color: #6B7280;
+    color: #4B5563;
   }
 `;
 
@@ -110,7 +110,7 @@ const ItemPrice = styled.div`
 
 const SpecialInstructions = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 8px;
   padding: 8px;
   background: #F9FAFB;
@@ -124,20 +124,20 @@ const EmptyCart = styled.div`
   svg {
     width: 80px;
     height: 80px;
-    color: #D1D5DB;
+    color: #6B7280;
     margin-bottom: 16px;
   }
   
   h3 {
     font-size: 18px;
     font-weight: 600;
-    color: #6B7280;
+    color: #4B5563;
     margin: 0 0 8px 0;
   }
   
   p {
     font-size: 14px;
-    color: #9CA3AF;
+    color: #6B7280;
     margin: 0 0 24px 0;
   }
 `;
@@ -175,7 +175,7 @@ const SummaryRow = styled.div`
   &:last-child {
     margin-bottom: 0;
     padding-top: 8px;
-    border-top: 1px solid #E5E7EB;
+    border-top: 1px solid #C7CED6;
     font-size: 16px;
     font-weight: 600;
   }
@@ -216,7 +216,7 @@ const CheckoutButton = styled.button`
   }
 
   &:disabled {
-    background: #D1D5DB;
+    background: #6B7280;
     cursor: not-allowed;
   }
 `;

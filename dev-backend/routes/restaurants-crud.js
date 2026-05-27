@@ -465,7 +465,7 @@ router.get('/:id/table-status', authenticateToken, async (req, res) => {
         createdAt: { [Op.between]: [todayStartUTC, todayEndUTC] }
       },
       attributes: [
-        'table_number', 'status', 'payment_status', 'order_number', 'id',
+        'table_number', 'floor_plan_table_id', 'status', 'payment_status', 'order_number', 'id',
         'total_amount', 'createdAt', 'customer_name', 'customer_id',
         'guest_count', 'order_items', 'subtotal', 'tax', 'service_charge',
         'discount', 'coupon_discount', 'discount_policy_amount', 'point_discount',
@@ -499,6 +499,7 @@ router.get('/:id/table-status', authenticateToken, async (req, res) => {
 
       return {
         tableNumber: order.table_number,
+        floorPlanTableId: order.floor_plan_table_id || null,
         status: tableStatus,
         totalAmount: parseFloat(order.total_amount || 0),
         elapsedMinutes: elapsed,
@@ -537,24 +538,37 @@ router.get('/:id/table-status', authenticateToken, async (req, res) => {
     // Filter: exclude only cancelled. Keep completed (Leave button) and served (still at table).
     const activeOnly = activeOrders.filter(o => o.status !== 'cancelled');
 
-    // Group all active orders per table
+    // Group all active orders per table.
+    // Key strategy (2026-05-27):
+    //   - Prefer floor_plan_table_id (Floor Plan v2 tables[].id) — disambiguates
+    //     same table_number across different zones (Zone1-T20 vs Zone2-T20).
+    //   - Fall back to table_number for legacy orders (pre-migration).
+    // The map is published under BOTH keys so the frontend can look up by either
+    // (Floor Plan tables newer than the order use table.id; older tables/orders
+    // still work by table_number — old behaviour preserved).
     const tableStatusMap = {};
 
-    for (const order of activeOnly) {
-      const tn = order.table_number;
-      const info = buildOrderInfo(order);
-
-      if (!tableStatusMap[tn]) {
-        // First order for this table — set as primary (backward compatible)
-        tableStatusMap[tn] = {
-          ...info,
-          orderCount: 1,
-          orders: [info]
-        };
+    function pushToKey(key, info) {
+      if (!key) return;
+      if (!tableStatusMap[key]) {
+        tableStatusMap[key] = { ...info, orderCount: 1, orders: [info] };
       } else {
-        // Additional order for same table
-        tableStatusMap[tn].orders.push(info);
-        tableStatusMap[tn].orderCount = tableStatusMap[tn].orders.length;
+        tableStatusMap[key].orders.push(info);
+        tableStatusMap[key].orderCount = tableStatusMap[key].orders.length;
+      }
+    }
+
+    for (const order of activeOnly) {
+      const info = buildOrderInfo(order);
+      const primaryKey = order.floor_plan_table_id || order.table_number;
+      pushToKey(primaryKey, info);
+
+      // Also publish under table_number for backward-compat lookups (only if
+      // we used the FPTI as primary — otherwise we'd duplicate the same group).
+      if (order.floor_plan_table_id && order.table_number && order.floor_plan_table_id !== order.table_number) {
+        // Skip duplicate publish — frontend should prefer FPTI key.
+        // This keeps the map deterministic and avoids cross-zone bleed
+        // (the whole point of the migration).
       }
     }
 

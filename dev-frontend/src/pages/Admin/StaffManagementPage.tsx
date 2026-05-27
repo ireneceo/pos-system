@@ -85,7 +85,7 @@ const StaffInfo = styled.div`
     gap: 10px;
     margin-bottom: 10px;
     padding-bottom: 10px;
-    border-bottom: 1px solid #F3F4F6;
+    border-bottom: 1px solid #F1F4F8;
   }
 `;
 
@@ -109,7 +109,7 @@ const StaffAvatar = styled.div<{ role: string }>`
       case 'Foodcourt General': return '#EA580C';
       case 'Brand Manager': return '#2563EB';
       case 'Brand General': return '#1D4ED8';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 
@@ -134,7 +134,7 @@ const StaffName = styled.div`
 
 const StaffEmail = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -164,7 +164,7 @@ const RoleBadge = styled.span<{ role: string }>`
       case 'Foodcourt General': return '#FED7AA';
       case 'Brand Manager': return '#DBEAFE';
       case 'Brand General': return '#BFDBFE';
-      default: return '#F3F4F6';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
@@ -176,7 +176,7 @@ const RoleBadge = styled.span<{ role: string }>`
       case 'Foodcourt General': return '#EA580C';
       case 'Brand Manager': return '#2563EB';
       case 'Brand General': return '#1D4ED8';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 
@@ -197,14 +197,14 @@ const StatusBadge = styled.span<{ status: string }>`
     switch(props.status) {
       case 'active': return '#ECFDF5';
       case 'inactive': return '#FEE2E2';
-      default: return '#F3F4F6';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
     switch(props.status) {
       case 'active': return '#059669';
       case 'inactive': return '#DC2626';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 
@@ -217,7 +217,7 @@ const StatusBadge = styled.span<{ status: string }>`
 const IconSymbol = styled.span`
   font-size: 16px;
   font-family: 'Lucida Console', 'Courier New', monospace;
-  color: #6B7C93;
+  color: #4B5563;
   display: inline-block;
   line-height: 1;
 
@@ -247,7 +247,7 @@ const Label = styled.label`
 
 const Input = styled.input`
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   
@@ -260,7 +260,7 @@ const Input = styled.input`
 
 const Select = styled.select`
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -272,8 +272,8 @@ const Select = styled.select`
   }
 
   &:disabled {
-    background: #F8FAFC;
-    color: #6B7280;
+    background: #F1F4F8;
+    color: #4B5563;
     cursor: not-allowed;
   }
 `;
@@ -288,7 +288,7 @@ const DropdownContainer = styled.div`
   left: 0;
   right: 0;
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   max-height: 240px;
   overflow-y: auto;
@@ -300,7 +300,7 @@ const DropdownContainer = styled.div`
 const DropdownItem = styled.div`
   padding: 12px 16px;
   cursor: pointer;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
   transition: background 0.15s;
 
   &:last-child {
@@ -308,7 +308,7 @@ const DropdownItem = styled.div`
   }
 
   &:hover {
-    background: #F8FAFC;
+    background: #F1F4F8;
   }
 `;
 
@@ -320,7 +320,7 @@ const DropdownItemTitle = styled.div`
 
 const DropdownItemSubtitle = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const SelectedBadge = styled.div`
@@ -1481,7 +1481,7 @@ const AdminStaffManagementPage: React.FC = () => {
                       <div style={{ fontSize: '13px', fontWeight: '600', color: '#0A2540', marginBottom: '2px' }}>
                         {staff.companyName}
                       </div>
-                      <div style={{ fontSize: '11px', color: '#6B7280' }}>
+                      <div style={{ fontSize: '11px', color: '#4B5563' }}>
                         {staff.restaurantName || 'Head Office'}
                       </div>
                     </MobileValue>
@@ -1495,7 +1495,7 @@ const AdminStaffManagementPage: React.FC = () => {
 
                     <MobileValue>
                       <MobileLabel>{t('admin:staffManagementPage.department')}</MobileLabel>
-                      <div style={{ fontSize: '13px', color: '#6B7280' }}>
+                      <div style={{ fontSize: '13px', color: '#4B5563' }}>
                         {staff.department}
                       </div>
                     </MobileValue>
@@ -1587,10 +1587,10 @@ const AdminStaffManagementPage: React.FC = () => {
                 />
                 <div style={{
                   fontSize: '12px',
-                  color: '#6B7280',
+                  color: '#4B5563',
                   marginTop: '6px',
                   padding: '8px',
-                  background: '#F3F4F6',
+                  background: '#F1F4F8',
                   borderRadius: '4px'
                 }}>
                   ℹ️ A strong password will be auto-generated and shown after creation
@@ -1722,7 +1722,7 @@ const AdminStaffManagementPage: React.FC = () => {
                     autoComplete="off"
                     style={{ letterSpacing: '8px', fontSize: '18px', textAlign: 'center', fontFamily: 'monospace' }}
                   />
-                  <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                  <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '4px' }}>
                     Used for quick cashier switch at POS terminal
                   </div>
                 </FormGroup>
@@ -1730,7 +1730,7 @@ const AdminStaffManagementPage: React.FC = () => {
 
               {/* v3.27 unified subscription form — Brand/Foodcourt General + Restaurant Owner + Supplier Admin */}
               {['Brand General', 'Foodcourt General', 'Restaurant Owner', 'Supplier Admin'].includes(newStaff.role) && (
-                <FormGroup style={{ gridColumn: '1 / -1', marginTop: '8px', paddingTop: '16px', borderTop: '1px solid #E6EBF1' }}>
+                <FormGroup style={{ gridColumn: '1 / -1', marginTop: '8px', paddingTop: '16px', borderTop: '1px solid #C7CED6' }}>
                   <SubscriptionFormFields
                     userType={
                       newStaff.role === 'Brand General' ? 'brand' :
@@ -1813,7 +1813,7 @@ const AdminStaffManagementPage: React.FC = () => {
                       type="text"
                       value={editingStaff.username}
                       disabled
-                      style={{ backgroundColor: '#F8FAFC', color: '#6B7280' }}
+                      style={{ backgroundColor: '#F1F4F8', color: '#4B5563' }}
                     />
                   </FormGroup>
 
@@ -1939,7 +1939,7 @@ const AdminStaffManagementPage: React.FC = () => {
                         autoComplete="off"
                         style={{ letterSpacing: '8px', fontSize: '18px', textAlign: 'center', fontFamily: 'monospace' }}
                       />
-                      <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                      <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '4px' }}>
                         Leave empty to keep current PIN
                       </div>
                     </FormGroup>
@@ -1966,7 +1966,7 @@ const AdminStaffManagementPage: React.FC = () => {
                       <div style={{ fontSize: '18px', fontWeight: '600', color: '#0A2540' }}>
                         {viewingPermissions.name}
                       </div>
-                      <div style={{ fontSize: '14px', color: '#6B7280' }}>
+                      <div style={{ fontSize: '14px', color: '#4B5563' }}>
                         {viewingPermissions.role} - {viewingPermissions.companyName}
                       </div>
                     </div>
@@ -1977,7 +1977,7 @@ const AdminStaffManagementPage: React.FC = () => {
                   <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#0A2540', marginBottom: '12px' }}>
                     Select Role
                   </h3>
-                  <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '16px' }}>
+                  <div style={{ fontSize: '12px', color: '#4B5563', marginBottom: '16px' }}>
                     Select an appropriate role. Each role includes predefined permissions.
                   </div>
 
@@ -2015,9 +2015,9 @@ const AdminStaffManagementPage: React.FC = () => {
                         }}
                         style={{ 
                           padding: '16px',
-                          backgroundColor: viewingPermissions?.role === roleData.role ? '#F0F4FF' : '#F8FAFC',
+                          backgroundColor: viewingPermissions?.role === roleData.role ? '#F0F4FF' : '#F1F4F8',
                           borderRadius: '8px',
-                          border: viewingPermissions?.role === roleData.role ? '2px solid #635BFF' : '1px solid #E6EBF1',
+                          border: viewingPermissions?.role === roleData.role ? '2px solid #635BFF' : '1px solid #C7CED6',
                           cursor: 'pointer',
                           transition: 'all 0.2s'
                         }}
@@ -2039,12 +2039,12 @@ const AdminStaffManagementPage: React.FC = () => {
                             <span style={{ marginLeft: 'auto', color: '#635BFF', fontSize: '14px' }}>✓</span>
                           )}
                         </div>
-                        <div style={{ fontSize: '13px', color: '#6B7280', marginBottom: '12px' }}>
+                        <div style={{ fontSize: '13px', color: '#4B5563', marginBottom: '12px' }}>
                           {roleData.description}
                         </div>
-                        <div style={{ fontSize: '12px', color: '#374151' }}>
+                        <div style={{ fontSize: '12px', color: '#1F2937' }}>
                           <strong>Included Permissions:</strong>
-                          <div style={{ marginTop: '4px', fontSize: '11px', color: '#6B7280' }}>
+                          <div style={{ marginTop: '4px', fontSize: '11px', color: '#4B5563' }}>
                             {roleData.permissions.join(', ')}
                           </div>
                         </div>
@@ -2070,7 +2070,7 @@ const AdminStaffManagementPage: React.FC = () => {
                       <div style={{ fontSize: '16px', fontWeight: '600', color: '#0A2540' }}>
                         {deletingStaff.name}
                       </div>
-                      <div style={{ fontSize: '14px', color: '#6B7280' }}>
+                      <div style={{ fontSize: '14px', color: '#4B5563' }}>
                         {deletingStaff.role} - {deletingStaff.companyName}
                       </div>
                     </div>
@@ -2116,18 +2116,18 @@ const AdminStaffManagementPage: React.FC = () => {
                         <div style={{ fontSize: '16px', fontWeight: '600', color: '#0A2540' }}>
                           {selectedStaff.name}
                         </div>
-                        <div style={{ fontSize: '14px', color: '#6B7280' }}>
+                        <div style={{ fontSize: '14px', color: '#4B5563' }}>
                           {selectedStaff.role} - {selectedStaff.companyName}
                         </div>
                       </div>
                     </div>
 
-                    <div style={{ padding: '16px', backgroundColor: '#F3F4F6', borderRadius: '8px' }}>
-                      <div style={{ fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
+                    <div style={{ padding: '16px', backgroundColor: '#F1F4F8', borderRadius: '8px' }}>
+                      <div style={{ fontSize: '14px', fontWeight: '600', color: '#1F2937', marginBottom: '8px' }}>
                         {confirmAction === 'toggle' && `${selectedStaff.status === 'active' ? 'Deactivate' : 'Activate'} Staff Member?`}
                         {confirmAction === 'resetPassword' && 'Reset Password?'}
                       </div>
-                      <div style={{ fontSize: '13px', color: '#6B7280', lineHeight: '1.4' }}>
+                      <div style={{ fontSize: '13px', color: '#4B5563', lineHeight: '1.4' }}>
                         {confirmAction === 'toggle' && `This will ${selectedStaff.status === 'active' ? 'deactivate' : 'activate'} ${selectedStaff.name}'s account.`}
                         {confirmAction === 'resetPassword' && `This will reset ${selectedStaff.name}'s password. A new strong password will be generated.`}
                       </div>
@@ -2142,12 +2142,12 @@ const AdminStaffManagementPage: React.FC = () => {
           {successPassword && <Button variant="secondary" onClick={() => { navigator.clipboard.writeText(successPassword); setPasswordCopied(true); setTimeout(() => setPasswordCopied(false), 2000); }}>{passwordCopied ? 'Copied!' : 'Copy Password'}</Button>}
           <Button variant="primary" onClick={() => setShowSuccessModal(false)}>{t('admin:staffManagementPage.done')}</Button>
         </>}>
-          <div style={{ marginBottom: '20px', fontSize: '14px', color: '#6B7280' }}>
+          <div style={{ marginBottom: '20px', fontSize: '14px', color: '#4B5563' }}>
             {successMessage} Please share this password securely. They should change it after first login.
           </div>
           {successPassword && (
-            <div style={{ background: '#F8FAFC', border: '1px solid #E6EBF1', borderRadius: '8px', padding: '16px', textAlign: 'center', marginBottom: '16px' }}>
-              <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '8px', fontWeight: 600 }}>{t('admin:staffManagementPage.temporaryPassword')}</div>
+            <div style={{ background: '#F1F4F8', border: '1px solid #C7CED6', borderRadius: '8px', padding: '16px', textAlign: 'center', marginBottom: '16px' }}>
+              <div style={{ fontSize: '12px', color: '#4B5563', marginBottom: '8px', fontWeight: 600 }}>{t('admin:staffManagementPage.temporaryPassword')}</div>
               <div style={{ fontSize: '18px', fontWeight: 700, color: '#0A2540', fontFamily: 'monospace', letterSpacing: '1px', userSelect: 'all' as const }}>{successPassword}</div>
             </div>
           )}

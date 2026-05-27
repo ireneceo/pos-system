@@ -57,7 +57,7 @@ const PROBLEM_LABELS: Record<string, string> = {
 const PROBLEM_ORDER = ['operations', 'customer_experience', 'data_decisions', 'management', 'organization', 'automation'];
 
 const PageContainer = styled.div`
-  background: #FAFBFC;
+  background: #F9FAFB;
 `;
 
 const HeroSection = styled.section`
@@ -131,7 +131,7 @@ const CategoryTabs = styled.div`
 
 const CategoryTab = styled.button<{ active?: boolean }>`
   padding: 12px 24px;
-  border: 2px solid ${props => props.active ? '#635BFF' : '#E5E7EB'};
+  border: 2px solid ${props => props.active ? '#635BFF' : '#C7CED6'};
   background: ${props => props.active ? '#635BFF' : 'white'};
   color: ${props => props.active ? 'white' : '#425466'};
   border-radius: 50px;
@@ -191,7 +191,7 @@ const CategoryLinkTab = styled.button<{ active?: boolean }>`
   border: none;
   padding: 4px 8px;
   font-size: 13px;
-  color: ${props => props.active ? '#4338CA' : '#9CA3AF'};
+  color: ${props => props.active ? '#4338CA' : '#6B7280'};
   font-weight: ${props => props.active ? 600 : 400};
   cursor: pointer;
   position: relative;
@@ -229,8 +229,8 @@ const TagChip = styled.button<{ active?: boolean }>`
   align-items: center;
   gap: 5px;
   padding: 6px 12px;
-  background: ${props => props.active ? '#E0E7FF' : '#F3F4F6'};
-  color: ${props => props.active ? '#4338CA' : '#374151'};
+  background: ${props => props.active ? '#E0E7FF' : '#F1F4F8'};
+  color: ${props => props.active ? '#4338CA' : '#1F2937'};
   border: none;
   border-radius: 6px;
   font-size: 13px;
@@ -240,21 +240,21 @@ const TagChip = styled.button<{ active?: boolean }>`
   font-family: inherit;
 
   &:hover {
-    background: ${props => props.active ? '#C7D2FE' : '#E5E7EB'};
+    background: ${props => props.active ? '#C7D2FE' : '#C7CED6'};
     color: ${props => props.active ? '#4338CA' : '#1F2937'};
   }
 `;
 
 const TagChipCount = styled.span<{ active?: boolean }>`
   font-size: 11px;
-  color: ${props => props.active ? '#6366F1' : '#9CA3AF'};
+  color: ${props => props.active ? '#6366F1' : '#6B7280'};
   font-weight: 500;
 `;
 
 const ClearFiltersButton = styled.button`
   background: none;
   border: none;
-  color: #6B7280;
+  color: #4B5563;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -264,7 +264,7 @@ const ClearFiltersButton = styled.button`
   align-items: center;
   gap: 2px;
 
-  &:hover { color: #374151; }
+  &:hover { color: #1F2937; }
 `;
 
 const BlogGrid = styled.div`
@@ -373,7 +373,7 @@ const FallbackNotice = styled.div`
 
 const BlogDate = styled.span`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const BlogTitle = styled.h2`
@@ -430,7 +430,7 @@ const Pagination = styled.div`
 const PageButton = styled.button<{ active?: boolean }>`
   width: 40px;
   height: 40px;
-  border: 1px solid ${props => props.active ? '#635BFF' : '#E5E7EB'};
+  border: 1px solid ${props => props.active ? '#635BFF' : '#C7CED6'};
   background: ${props => props.active ? '#635BFF' : 'white'};
   color: ${props => props.active ? 'white' : '#425466'};
   border-radius: 8px;
@@ -452,7 +452,7 @@ const PageButton = styled.button<{ active?: boolean }>`
 const LoadingSpinner = styled.div`
   text-align: center;
   padding: 60px;
-  color: #6B7280;
+  color: #4B5563;
   grid-column: 1 / -1;
 `;
 

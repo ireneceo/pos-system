@@ -104,7 +104,7 @@ const ModalBody = styled.div`
 
 const Message = styled.p`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 0;
   line-height: 1.5;
 `;
@@ -125,12 +125,12 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary'; buttonType?: s
   transition: all 0.2s;
 
   ${props => props.variant === 'secondary' ? `
-    background: #F3F4F6;
+    background: #F1F4F8;
     border: none;
-    color: #4B5563;
+    color: #374151;
 
     &:active {
-      background: #E5E7EB;
+      background: #C7CED6;
     }
   ` : `
     background: ${(() => {

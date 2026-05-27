@@ -146,9 +146,9 @@ const CurrencyFilterBar = styled.div`
 const CurrencyFilterBtn = styled.button<{ active: boolean }>`
   padding: 5px 14px;
   border-radius: 20px;
-  border: 1px solid ${props => props.active ? '#635BFF' : '#E6EBF1'};
+  border: 1px solid ${props => props.active ? '#635BFF' : '#C7CED6'};
   background: ${props => props.active ? '#635BFF' : 'white'};
-  color: ${props => props.active ? 'white' : '#6B7C93'};
+  color: ${props => props.active ? 'white' : '#4B5563'};
   font-size: 13px;
   font-weight: ${props => props.active ? '600' : '500'};
   cursor: pointer;
@@ -185,7 +185,7 @@ const Container = styled.div`
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -207,7 +207,7 @@ const Header = styled.div`
 
 const Content = styled.div`
   padding: 32px;
-  background: #FAFBFC;
+  background: #F9FAFB;
   min-height: calc(100vh - 120px);
 
   @media (max-width: 768px) {
@@ -243,7 +243,7 @@ const ChartContainer = styled.div`
   background: white;
   border-radius: 16px;
   padding: 28px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
 
   @media (max-width: 768px) {
     padding: 20px;
@@ -261,7 +261,7 @@ const AlertsPanel = styled.div`
   background: white;
   border-radius: 16px;
   padding: 20px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   display: flex;
   flex-direction: column;
 
@@ -291,7 +291,7 @@ const AlertsList = styled.div`
     background: transparent;
   }
   &::-webkit-scrollbar-thumb {
-    background: #CBD5E1;
+    background: #64748B;
     border-radius: 4px;
   }
 `;
@@ -310,7 +310,7 @@ const Alert = styled.div<{ type: 'warning' | 'error' | 'info' | 'success' }>`
       case 'warning': return '#FFFBEB';
       case 'success': return '#ECFDF5';
       case 'info': return '#EFF6FF';
-      default: return '#F8FAFC';
+      default: return '#F1F4F8';
     }
   }};
   border: 1px solid ${props => {
@@ -319,7 +319,7 @@ const Alert = styled.div<{ type: 'warning' | 'error' | 'info' | 'success' }>`
       case 'warning': return '#FDE68A';
       case 'success': return '#A7F3D0';
       case 'info': return '#BFDBFE';
-      default: return '#E6EBF1';
+      default: return '#C7CED6';
     }
   }};
   flex-shrink: 0;
@@ -343,14 +343,14 @@ const AlertTitle = styled.div<{ type: 'warning' | 'error' | 'info' | 'success' }
       case 'warning': return '#D97706';
       case 'success': return '#059669';
       case 'info': return '#2563EB';
-      default: return '#374151';
+      default: return '#1F2937';
     }
   }};
 `;
 
 const AlertDescription = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 2px;
 `;
 
@@ -380,13 +380,13 @@ const QuickActionCard = styled.div`
   padding: 24px;
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   text-align: center;
   cursor: pointer;
   transition: all 0.2s;
 
   &:hover {
-    background: #F6F9FC;
+    background: #F4F6F9;
 
     .icon {
       color: #0A2540;
@@ -400,7 +400,7 @@ const QuickActionCard = styled.div`
   .icon {
     font-size: 32px;
     margin-bottom: 12px;
-    color: #6B7C93;
+    color: #4B5563;
   }
 
   .title {
@@ -421,7 +421,7 @@ const QuickActionCard = styled.div`
 const TableContainer = styled.div`
   background: white;
   border-radius: 0 0 16px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-top: none;
   overflow: hidden;
 `;
@@ -435,7 +435,7 @@ const CompanyInfo = styled.div`
 
   .email {
     font-size: 13px;
-    color: #6B7280;
+    color: #4B5563;
   }
 `;
 
@@ -452,7 +452,7 @@ const HealthScore = styled.div<{ score: number }>`
   .bar {
     width: 60px;
     height: 6px;
-    background: #F3F4F6;
+    background: #F1F4F8;
     border-radius: 3px;
     overflow: hidden;
 
@@ -481,7 +481,7 @@ const Badge = styled.span<{ variant: string }>`
       case 'professional':
         return 'background: #DBEAFE; color: #1E40AF;';
       case 'basic':
-        return 'background: #F3F4F6; color: #6B7280;';
+        return 'background: #F1F4F8; color: #4B5563;';
       case 'active':
         return 'background: #ECFDF5; color: #059669;';
       case 'trial':
@@ -495,7 +495,7 @@ const Badge = styled.span<{ variant: string }>`
       case 'high':
         return 'background: #FEE2E2; color: #DC2626;';
       default:
-        return 'background: #F3F4F6; color: #6B7280;';
+        return 'background: #F1F4F8; color: #4B5563;';
     }
   }}
 `;
@@ -504,9 +504,9 @@ const Badge = styled.span<{ variant: string }>`
 // const ActionButton = styled.button`
 //   padding: 6px 12px;
 //   background: transparent;
-//   border: 1px solid #E6EBF1;
+//   border: 1px solid #C7CED6;
 //   border-radius: 6px;
-//   color: #6B7280;
+//   color: #4B5563;
 //   font-size: 13px;
 //   font-weight: 500;
 //   cursor: pointer;
@@ -981,7 +981,7 @@ const AdminDashboard: React.FC = () => {
           {/* Currency Filter - only show supported currencies from payment settings */}
           {supportedCurrencies.length > 0 && (
             <CurrencyFilterBar>
-              <span style={{ fontSize: '13px', color: '#6B7C93', fontWeight: 500, marginRight: '4px' }}>Currency:</span>
+              <span style={{ fontSize: '13px', color: '#4B5563', fontWeight: 500, marginRight: '4px' }}>Currency:</span>
               {supportedCurrencies.map(cur => (
                 <CurrencyFilterBtn
                   key={cur}
@@ -1123,8 +1123,8 @@ const AdminDashboard: React.FC = () => {
                   style={{
                     padding: '6px 12px',
                     background: timePeriod === 'week' ? '#635BFF' : 'transparent',
-                    color: timePeriod === 'week' ? 'white' : '#6B7280',
-                    border: '1px solid #E6EBF1',
+                    color: timePeriod === 'week' ? 'white' : '#4B5563',
+                    border: '1px solid #C7CED6',
                     borderRadius: '6px',
                     cursor: 'pointer',
                     fontSize: '13px'
@@ -1137,8 +1137,8 @@ const AdminDashboard: React.FC = () => {
                   style={{
                     padding: '6px 12px',
                     background: timePeriod === 'month' ? '#635BFF' : 'transparent',
-                    color: timePeriod === 'month' ? 'white' : '#6B7280',
-                    border: '1px solid #E6EBF1',
+                    color: timePeriod === 'month' ? 'white' : '#4B5563',
+                    border: '1px solid #C7CED6',
                     borderRadius: '6px',
                     cursor: 'pointer',
                     fontSize: '13px'
@@ -1151,8 +1151,8 @@ const AdminDashboard: React.FC = () => {
                   style={{
                     padding: '6px 12px',
                     background: timePeriod === 'quarter' ? '#635BFF' : 'transparent',
-                    color: timePeriod === 'quarter' ? 'white' : '#6B7280',
-                    border: '1px solid #E6EBF1',
+                    color: timePeriod === 'quarter' ? 'white' : '#4B5563',
+                    border: '1px solid #C7CED6',
                     borderRadius: '6px',
                     cursor: 'pointer',
                     fontSize: '13px'
@@ -1165,8 +1165,8 @@ const AdminDashboard: React.FC = () => {
                   style={{
                     padding: '6px 12px',
                     background: timePeriod === 'year' ? '#635BFF' : 'transparent',
-                    color: timePeriod === 'year' ? 'white' : '#6B7280',
-                    border: '1px solid #E6EBF1',
+                    color: timePeriod === 'year' ? 'white' : '#4B5563',
+                    border: '1px solid #C7CED6',
                     borderRadius: '6px',
                     cursor: 'pointer',
                     fontSize: '13px'
@@ -1177,7 +1177,7 @@ const AdminDashboard: React.FC = () => {
               </div>
             </div>
 
-            <div style={{ padding: '20px', background: '#F8FAFC', borderRadius: '12px', minHeight: '160px' }}>
+            <div style={{ padding: '20px', background: '#F1F4F8', borderRadius: '12px', minHeight: '160px' }}>
               {revenueData.length > 0 ? (
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', height: '120px', gap: '8px', marginBottom: '16px' }}>
@@ -1196,13 +1196,13 @@ const AdminDashboard: React.FC = () => {
                               width: '100%',
                               maxWidth: '40px',
                               height: `${maxRevenue > 0 ? Math.max(4, (barRevenue / maxRevenue) * 80) : 4}px`,
-                              background: barRevenue > 0 ? '#635BFF' : '#E5E7EB',
+                              background: barRevenue > 0 ? '#635BFF' : '#C7CED6',
                               borderRadius: '4px 4px 0 0',
                               marginBottom: '8px'
                             }}
                             title={`${data.period}: ${formatCurrency(barRevenue, selectedCurrency)}`}
                           />
-                          <div style={{ fontSize: '11px', color: '#6B7280', textAlign: 'center' }}>
+                          <div style={{ fontSize: '11px', color: '#4B5563', textAlign: 'center' }}>
                             {timePeriod === 'week'
                               ? formatDateTime(data.period, null, { month: 'short', day: 'numeric' })
                               : timePeriod === 'month'
@@ -1212,21 +1212,21 @@ const AdminDashboard: React.FC = () => {
                               : formatDateTime(data.period + '-01', null, { month: 'short', year: '2-digit' })
                             }
                           </div>
-                          <div style={{ fontSize: '10px', color: '#6B7280', textAlign: 'center' }}>
+                          <div style={{ fontSize: '10px', color: '#4B5563', textAlign: 'center' }}>
                             {barRevenue > 0
                               ? formatCurrency(barRevenue, selectedCurrency)
                               : '-'
                             }
                           </div>
-                          <div style={{ fontSize: '9px', color: '#9CA3AF', textAlign: 'center' }}>
+                          <div style={{ fontSize: '9px', color: '#6B7280', textAlign: 'center' }}>
                             {data.invoiceCount || 0} inv
                           </div>
                         </div>
                       );
                     })}
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '12px', borderTop: '1px solid #E5E7EB' }}>
-                    <div style={{ fontSize: '13px', color: '#6B7280' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '12px', borderTop: '1px solid #C7CED6' }}>
+                    <div style={{ fontSize: '13px', color: '#4B5563' }}>
                       {timePeriod === 'week' ? 'Last 7 days' :
                        timePeriod === 'month' ? 'Last 12 weeks' :
                        timePeriod === 'quarter' ? 'Last 6 months' :
@@ -1248,7 +1248,7 @@ const AdminDashboard: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                <div style={{ textAlign: 'center', color: '#6B7280', paddingTop: '40px' }}>
+                <div style={{ textAlign: 'center', color: '#4B5563', paddingTop: '40px' }}>
                   <p>Total Revenue: {formatMultiCurrency(metrics.monthlyRevenue)}</p>
                   <p>Growth Rate: +{metrics.growthRate.toFixed(1)}% YoY</p>
                   <p>{t('admin:adminDashboard.invoiceDataLoading')}</p>
@@ -1447,19 +1447,19 @@ const AdminDashboard: React.FC = () => {
           <TableContainer style={{ padding: '32px' }}>
             <h3 style={{ marginBottom: '20px', color: '#0A2540' }}>{t('admin:adminDashboard.performanceAnalytics')}</h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
-              <div style={{ padding: '20px', background: '#F8FAFC', borderRadius: '12px' }}>
+              <div style={{ padding: '20px', background: '#F1F4F8', borderRadius: '12px' }}>
                 <h4 style={{ color: '#059669', marginBottom: '10px' }}>Revenue Insights ({selectedCurrency})</h4>
                 <p>• Monthly revenue: {formatCurrency(getCurrencyTotal(metrics.monthlyRevenue, selectedCurrency), selectedCurrency)}</p>
                 <p>• Yearly revenue: {formatCurrency(getCurrencyTotal(metrics.yearlyRevenue, selectedCurrency), selectedCurrency)}</p>
                 <p>• ARPU: {formatCurrency(metrics.averageRevenuePerUser, operationSettings.currency)}</p>
               </div>
-              <div style={{ padding: '20px', background: '#F8FAFC', borderRadius: '12px' }}>
+              <div style={{ padding: '20px', background: '#F1F4F8', borderRadius: '12px' }}>
                 <h4 style={{ color: '#2563EB', marginBottom: '10px' }}>{t('admin:adminDashboard.businessOverview')}</h4>
                 <p>• Total managers: {metrics.totalManagers}</p>
                 <p>• Active subscriptions: {metrics.activeSubscriptions}</p>
                 <p>• Open support tickets: {metrics.supportTickets}</p>
               </div>
-              <div style={{ padding: '20px', background: '#F8FAFC', borderRadius: '12px' }}>
+              <div style={{ padding: '20px', background: '#F1F4F8', borderRadius: '12px' }}>
                 <h4 style={{ color: '#7C3AED', marginBottom: '10px' }}>{t('admin:adminDashboard.restaurantMetrics')}</h4>
                 <p>• Total restaurants: {metrics.totalRestaurants}</p>
                 <p>• This month activities: {metrics.totalTransactions}</p>
@@ -1475,7 +1475,7 @@ const AdminDashboard: React.FC = () => {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
               <div>
                 <h4>{t('admin:adminDashboard.healthScoreDistribution')}</h4>
-                <div style={{ padding: '20px', background: '#F8FAFC', borderRadius: '12px' }}>
+                <div style={{ padding: '20px', background: '#F1F4F8', borderRadius: '12px' }}>
                   <p>🟢 Healthy (80-100): {managers.filter(m => m.healthScore >= 80).length} accounts</p>
                   <p>🟡 At Risk (60-79): {managers.filter(m => m.healthScore >= 60 && m.healthScore < 80).length} accounts</p>
                   <p>🔴 Critical (&lt;60): {managers.filter(m => m.healthScore < 60).length} accounts</p>
@@ -1483,7 +1483,7 @@ const AdminDashboard: React.FC = () => {
               </div>
               <div>
                 <h4>{t('admin:adminDashboard.riskFactors')}</h4>
-                <div style={{ padding: '20px', background: '#F8FAFC', borderRadius: '12px' }}>
+                <div style={{ padding: '20px', background: '#F1F4F8', borderRadius: '12px' }}>
                   <p>• Payment delays: Monitor automated</p>
                   <p>• Usage decline: Real-time alerts</p>
                   <p>• Support escalations: Tracked</p>
@@ -1498,14 +1498,14 @@ const AdminDashboard: React.FC = () => {
           <TableContainer style={{ padding: '32px' }}>
             <h3 style={{ marginBottom: '20px', color: '#0A2540' }}>{t('admin:adminDashboard.systemOperations')}</h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
-              <div style={{ padding: '20px', background: '#F8FAFC', borderRadius: '12px' }}>
+              <div style={{ padding: '20px', background: '#F1F4F8', borderRadius: '12px' }}>
                 <h4 style={{ color: '#059669' }}>{t('admin:adminDashboard.invoiceSummary')}</h4>
                 <p>• Total invoices: {invoicesData.length}</p>
                 <p>• Paid: {invoicesData.filter((i: any) => i.status === 'paid' || i.status === 'completed').length}</p>
                 <p>• Pending: {invoicesData.filter((i: any) => i.status === 'pending_payment').length}</p>
                 <p>• Overdue: {invoicesData.filter((i: any) => i.status === 'overdue').length}</p>
               </div>
-              <div style={{ padding: '20px', background: '#F8FAFC', borderRadius: '12px' }}>
+              <div style={{ padding: '20px', background: '#F1F4F8', borderRadius: '12px' }}>
                 <h4 style={{ color: '#2563EB' }}>{t('admin:adminDashboard.userActivity')}</h4>
                 <p>• Total managers: {metrics.totalManagers}</p>
                 <p>• Active users: {metrics.activeUsers}</p>

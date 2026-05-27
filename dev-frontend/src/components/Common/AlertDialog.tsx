@@ -31,7 +31,7 @@ const AlertDialog: React.FC<AlertDialogProps> = ({
       footer={footer}
     >
       <div style={{ textAlign: 'center', padding: '20px 0' }}>
-        <p style={{ fontSize: '16px', color: '#4B5563', lineHeight: '1.5' }}>
+        <p style={{ fontSize: '16px', color: '#374151', lineHeight: '1.5' }}>
           {message}
         </p>
       </div>

@@ -123,7 +123,7 @@ const FiltersContainer = styled.div`
 
 const FilterSelect = styled.select`
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -137,7 +137,7 @@ const FilterSelect = styled.select`
 
 const SearchInput = styled.input`
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   flex: 1;
@@ -160,7 +160,7 @@ const SectionTitle = styled.h3`
   color: #0A2540;
   margin: 0 0 12px 0;
   padding-bottom: 8px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
 `;
 
 const DetailGrid = styled.div`
@@ -180,7 +180,7 @@ const DetailItem = styled.div`
 const DetailLabel = styled.span`
   font-size: 11px;
   font-weight: 600;
-  color: #6B7280;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.4px;
 `;
@@ -195,7 +195,7 @@ const Checkbox = styled.label`
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
   cursor: pointer;
   input { width: 16px; height: 16px; }
 `;
@@ -206,16 +206,16 @@ const PaginationBar = styled.div`
   align-items: center;
   margin-top: 16px;
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const PageBtn = styled.button<{ disabled?: boolean }>`
   padding: 6px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   background: white;
   border-radius: 6px;
   font-size: 13px;
-  color: #374151;
+  color: #1F2937;
   cursor: ${p => (p.disabled ? 'not-allowed' : 'pointer')};
   opacity: ${p => (p.disabled ? 0.5 : 1)};
   &:hover:not(:disabled) {
@@ -226,15 +226,15 @@ const PageBtn = styled.button<{ disabled?: boolean }>`
 
 const ActionLink = styled.button<{ variant?: 'danger' }>`
   background: none;
-  border: 1px solid ${p => (p.variant === 'danger' ? '#FCA5A5' : '#E6EBF1')};
-  color: ${p => (p.variant === 'danger' ? '#DC2626' : '#374151')};
+  border: 1px solid ${p => (p.variant === 'danger' ? '#FCA5A5' : '#C7CED6')};
+  color: ${p => (p.variant === 'danger' ? '#DC2626' : '#1F2937')};
   padding: 6px 12px;
   border-radius: 6px;
   font-size: 13px;
   cursor: pointer;
   transition: all 0.15s;
   &:hover {
-    background: ${p => (p.variant === 'danger' ? '#FEF2F2' : '#F8FAFC')};
+    background: ${p => (p.variant === 'danger' ? '#FEF2F2' : '#F1F4F8')};
     border-color: ${p => (p.variant === 'danger' ? '#DC2626' : '#635BFF')};
     color: ${p => (p.variant === 'danger' ? '#B91C1C' : '#635BFF')};
   }
@@ -492,7 +492,7 @@ const SupplierCompaniesPage: React.FC = () => {
             <StatValue>{trialCount}</StatValue>
             <StatLabel>Trial</StatLabel>
           </StatCard>
-          <StatCard color="#9CA3AF">
+          <StatCard color="#6B7280">
             <StatValue>{inactiveCount}</StatValue>
             <StatLabel>Inactive / Suspended</StatLabel>
           </StatCard>
@@ -580,14 +580,14 @@ const SupplierCompaniesPage: React.FC = () => {
                     {c.owner ? (
                       <div>
                         <div style={{ color: '#0A2540' }}>{c.owner.full_name || c.owner.email}</div>
-                        <div style={{ fontSize: 12, color: '#6B7280' }}>{c.owner.email}</div>
+                        <div style={{ fontSize: 12, color: '#4B5563' }}>{c.owner.email}</div>
                       </div>
                     ) : (
-                      <span style={{ color: '#9CA3AF' }}>—</span>
+                      <span style={{ color: '#6B7280' }}>—</span>
                     )}
                   </DataTableCell>
                   <DataTableCell data-label="Plan">
-                    {c.plan ? (c.plan.display_name || c.plan.name) : <span style={{ color: '#9CA3AF' }}>—</span>}
+                    {c.plan ? (c.plan.display_name || c.plan.name) : <span style={{ color: '#6B7280' }}>—</span>}
                   </DataTableCell>
                   <DataTableCell data-label="Status" align="center">
                     <DataTableStatus variant={statusVariant(c.status)}>
@@ -714,7 +714,7 @@ const SupplierCompaniesPage: React.FC = () => {
                   </DetailItem>
                 </DetailGrid>
               ) : (
-                <div style={{ color: '#9CA3AF', fontSize: 14 }}>No owner assigned</div>
+                <div style={{ color: '#6B7280', fontSize: 14 }}>No owner assigned</div>
               )}
             </Section>
 
@@ -986,7 +986,7 @@ const SupplierCompaniesPage: React.FC = () => {
                 ))}
               </FormSelect>
               {supplierAdmins.length === 0 && (
-                <div style={{ fontSize: 12, color: '#6B7280', marginTop: 6 }}>
+                <div style={{ fontSize: 12, color: '#4B5563', marginTop: 6 }}>
                   No Supplier Admin users found. Create one in User Management first.
                 </div>
               )}
@@ -1068,7 +1068,7 @@ const SupplierCompaniesPage: React.FC = () => {
               </>
             }
           >
-            <div style={{ color: '#374151', fontSize: 14, lineHeight: 1.5 }}>
+            <div style={{ color: '#1F2937', fontSize: 14, lineHeight: 1.5 }}>
               This will mark the supplier company as inactive and soft-delete it. The record can be restored from the database if needed. Continue?
             </div>
           </CommonModal>

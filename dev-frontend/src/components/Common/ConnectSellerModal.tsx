@@ -28,14 +28,14 @@ const Panel = styled.div`
   box-shadow: 0 10px 40px rgba(0,0,0,0.2);
 `;
 const Header = styled.div`
-  padding: 20px 24px 12px; border-bottom: 1px solid #E6EBF1;
+  padding: 20px 24px 12px; border-bottom: 1px solid #C7CED6;
   h3 { margin: 0 0 4px; font-size: 18px; color: #0A2540; }
-  p { margin: 0; color: #64748B; font-size: 13px; }
+  p { margin: 0; color: #475569; font-size: 13px; }
 `;
 const SearchBar = styled.div`
-  padding: 12px 24px; border-bottom: 1px solid #E6EBF1;
+  padding: 12px 24px; border-bottom: 1px solid #C7CED6;
   input {
-    width: 100%; padding: 8px 12px; border: 1px solid #E6EBF1; border-radius: 6px;
+    width: 100%; padding: 8px 12px; border: 1px solid #C7CED6; border-radius: 6px;
     font-size: 14px; color: #0A2540;
     &:focus { outline: none; border-color: #635BFF; box-shadow: 0 0 0 3px rgba(99,91,255,0.1); }
   }
@@ -47,7 +47,7 @@ const Item = styled.button<{ $selected?: boolean }>`
   display: flex; align-items: center; justify-content: space-between;
   width: 100%; padding: 10px 12px; margin: 4px 0;
   background: ${p => p.$selected ? '#EEF2FF' : 'white'};
-  border: 1px solid ${p => p.$selected ? '#C7D2FE' : '#E6EBF1'};
+  border: 1px solid ${p => p.$selected ? '#C7D2FE' : '#C7CED6'};
   border-radius: 8px; cursor: pointer; text-align: left;
   font-family: inherit;
   &:hover { border-color: #635BFF; background: #F8F7FF; }
@@ -59,7 +59,7 @@ const Badge = styled.span<{ $type: 'supplier' | 'brand' | 'foodcourt' }>`
   color: ${p => p.$type === 'brand' ? '#6D28D9' : p.$type === 'foodcourt' ? '#9D174D' : '#166534'};
 `;
 const Footer = styled.div`
-  padding: 16px 24px; border-top: 1px solid #E6EBF1;
+  padding: 16px 24px; border-top: 1px solid #C7CED6;
   display: flex; gap: 8px; justify-content: flex-end; align-items: center;
 `;
 const Btn = styled.button<{ $variant?: 'primary' | 'ghost' | 'amber' }>`
@@ -67,15 +67,15 @@ const Btn = styled.button<{ $variant?: 'primary' | 'ghost' | 'amber' }>`
   background: ${p => p.$variant === 'primary' ? '#635BFF' : p.$variant === 'amber' ? '#FEF3C7' : '#F1F5F9'};
   color: ${p => p.$variant === 'primary' ? 'white' : p.$variant === 'amber' ? '#92400E' : '#475569'};
   border: 1px solid ${p => p.$variant === 'primary' ? '#635BFF' : p.$variant === 'amber' ? '#FDE68A' : '#E2E8F0'};
-  &:disabled { background: #CBD5E1; border-color: #CBD5E1; cursor: not-allowed; }
+  &:disabled { background: #64748B; border-color: #64748B; cursor: not-allowed; }
 `;
 const ConvRow = styled.div`
-  padding: 12px 24px; background: #F8FAFC; border-top: 1px solid #E6EBF1;
+  padding: 12px 24px; background: #F1F4F8; border-top: 1px solid #C7CED6;
   display: flex; flex-direction: column; gap: 8px;
   label { font-size: 12px; color: #475569; font-weight: 600; }
   .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   input { padding: 6px 10px; border: 1px solid #C7D2FE; border-radius: 6px; font-size: 14px; width: 100px; }
-  .note { font-size: 11px; color: #64748B; }
+  .note { font-size: 11px; color: #475569; }
 `;
 
 interface CatalogItem {
@@ -243,11 +243,11 @@ export default function ConnectSellerModal({ open, ingredient, buyerApiBase, onC
         </SearchBar>
         <List>
           {loading ? (
-            <div style={{ padding: 24, textAlign: 'center', color: '#64748B', fontSize: 13 }}>
+            <div style={{ padding: 24, textAlign: 'center', color: '#475569', fontSize: 13 }}>
               {t('connect.loading', 'Loading catalog…')}
             </div>
           ) : filtered.length === 0 ? (
-            <div style={{ padding: 24, textAlign: 'center', color: '#64748B', fontSize: 13 }}>
+            <div style={{ padding: 24, textAlign: 'center', color: '#475569', fontSize: 13 }}>
               {alreadyMappedIds.size > 0
                 ? t('connect.allMapped', 'All matching items are already linked.')
                 : t('connect.noResults', 'No catalog items found.')}
@@ -263,7 +263,7 @@ export default function ConnectSellerModal({ open, ingredient, buyerApiBase, onC
                       <Badge $type={stype}>{stype === 'brand' ? 'BRAND' : stype === 'foodcourt' ? 'FC' : 'SUP'}</Badge>
                       {it.name}
                     </div>
-                    <div style={{ fontSize: 12, color: '#6B7C93' }}>
+                    <div style={{ fontSize: 12, color: '#4B5563' }}>
                       {it.supplier?.name || '—'}{it.category_name ? ` · ${it.category_name}` : ''} · {it.unit || '—'}
                     </div>
                   </div>
@@ -291,7 +291,7 @@ export default function ConnectSellerModal({ open, ingredient, buyerApiBase, onC
               {' '}{ingredient.unit || '?'}
             </label>
             {conversionInfo?.note && (
-              <div className="note" style={{ color: isIncompatible ? '#92400E' : '#64748B' }}>
+              <div className="note" style={{ color: isIncompatible ? '#92400E' : '#475569' }}>
                 {conversionInfo.note}
               </div>
             )}

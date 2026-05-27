@@ -41,7 +41,7 @@ const Container = styled.div`
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -63,7 +63,7 @@ const Header = styled.div`
 
 const Content = styled.div`
   padding: 32px;
-  background: #FAFBFC;
+  background: #F9FAFB;
   min-height: calc(100vh - 120px);
 
   @media (max-width: 768px) {
@@ -108,13 +108,13 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
     }
   ` : `
     background: white;
-    color: #6B7280;
-    border: 1px solid #E6EBF1;
+    color: #4B5563;
+    border: 1px solid #C7CED6;
 
     &:hover {
-      background: #F8FAFC;
+      background: #F1F4F8;
       color: #0A2540;
-      border-color: #CBD5E1;
+      border-color: #64748B;
     }
   `}
 `;
@@ -133,7 +133,7 @@ const TicketCard = styled.div`
   background: white;
   border-radius: 12px;
   padding: 24px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   transition: all 0.2s;
   overflow: hidden;
 
@@ -171,7 +171,7 @@ const TicketSubject = styled.div`
 
 const TicketMeta = styled.div`
   font-size: 13px;
-  color: #6B7C93;
+  color: #4B5563;
   display: flex;
   gap: 16px;
   flex-wrap: wrap;
@@ -194,8 +194,8 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'open': return '#FEF3C7';
       case 'in-progress': return '#DBEAFE';
       case 'resolved': return '#ECFDF5';
-      case 'closed': return '#F3F4F6';
-      default: return '#F3F4F6';
+      case 'closed': return '#F1F4F8';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
@@ -203,8 +203,8 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'open': return '#D97706';
       case 'in-progress': return '#1E40AF';
       case 'resolved': return '#059669';
-      case 'closed': return '#6B7280';
-      default: return '#6B7280';
+      case 'closed': return '#4B5563';
+      default: return '#4B5563';
     }
   }};
 `;
@@ -221,7 +221,7 @@ const PriorityBadge = styled.span<{ priority: string }>`
       case 'high': return '#FED7AA';
       case 'medium': return '#FEF3C7';
       case 'low': return '#E0F2FE';
-      default: return '#F3F4F6';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
@@ -230,20 +230,20 @@ const PriorityBadge = styled.span<{ priority: string }>`
       case 'high': return '#EA580C';
       case 'medium': return '#D97706';
       case 'low': return '#0891B2';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 `;
 
 const TicketDescription = styled.div`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   line-height: 1.6;
   margin: 16px 0;
   padding: 16px;
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 8px;
-  border-left: 3px solid #E6EBF1;
+  border-left: 3px solid #C7CED6;
 `;
 
 const TicketFooter = styled.div`
@@ -252,9 +252,9 @@ const TicketFooter = styled.div`
   align-items: center;
   margin-top: 16px;
   padding-top: 16px;
-  border-top: 1px solid #F3F4F6;
+  border-top: 1px solid #F1F4F8;
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   flex-wrap: wrap;
   gap: 8px;
 `;
@@ -263,15 +263,15 @@ const CloseTicketButton = styled.button`
   padding: 4px 12px;
   font-size: 12px;
   font-weight: 500;
-  border: 1px solid #D1D5DB;
+  border: 1px solid #6B7280;
   border-radius: 6px;
   background: #fff;
-  color: #6B7280;
+  color: #4B5563;
   cursor: pointer;
   transition: all 0.15s;
   &:hover {
-    background: #E5E7EB;
-    color: #374151;
+    background: #C7CED6;
+    color: #1F2937;
   }
 `;
 
@@ -294,14 +294,14 @@ const FormLabel = styled.label`
   display: block;
   font-size: 13px;
   font-weight: 500;
-  color: #6B7C93;
+  color: #4B5563;
   margin-bottom: 8px;
 `;
 
 const FormInput = styled.input`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.15s;
@@ -317,7 +317,7 @@ const FormInput = styled.input`
 const FormSelect = styled.select`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -335,7 +335,7 @@ const FormSelect = styled.select`
 const FormTextArea = styled.textarea`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   resize: vertical;
@@ -658,10 +658,10 @@ const SystemInquiryPage: React.FC = () => {
               <div style={{
                 textAlign: 'center',
                 padding: '60px 20px',
-                color: '#6B7280',
+                color: '#4B5563',
                 gridColumn: '1 / -1'
               }}>
-                <h3 style={{ color: '#374151', marginBottom: '8px' }}>{t('common:systemInquiryPage.noTicketsYet')}</h3>
+                <h3 style={{ color: '#1F2937', marginBottom: '8px' }}>{t('common:systemInquiryPage.noTicketsYet')}</h3>
                 <p>Click "New Inquiry" to submit your first support ticket to system administrator.</p>
               </div>
             )}
@@ -785,7 +785,7 @@ const SystemInquiryPage: React.FC = () => {
                       </div>
                       <div>
                         <FormLabel>{t('common:systemInquiryPage.category')}</FormLabel>
-                        <div style={{ padding: '8px 0', color: '#374151', textTransform: 'capitalize' }}>{selectedTicket.category.replace('-', ' ')}</div>
+                        <div style={{ padding: '8px 0', color: '#1F2937', textTransform: 'capitalize' }}>{selectedTicket.category.replace('-', ' ')}</div>
                       </div>
                     </div>
                     <div>
@@ -794,7 +794,7 @@ const SystemInquiryPage: React.FC = () => {
                     </div>
                     <div>
                       <FormLabel>{t('common:systemInquiryPage.description')}</FormLabel>
-                      <div style={{ padding: '12px', backgroundColor: '#F8FAFC', borderRadius: '8px', border: '1px solid #E6EBF1', minHeight: '80px', whiteSpace: 'pre-wrap', lineHeight: '1.5', color: '#374151' }}>
+                      <div style={{ padding: '12px', backgroundColor: '#F1F4F8', borderRadius: '8px', border: '1px solid #C7CED6', minHeight: '80px', whiteSpace: 'pre-wrap', lineHeight: '1.5', color: '#1F2937' }}>
                         {selectedTicket.description}
                       </div>
                     </div>
@@ -803,7 +803,7 @@ const SystemInquiryPage: React.FC = () => {
                     )}
                     <div>
                       <FormLabel>{t('common:systemInquiryPage.created')}</FormLabel>
-                      <div style={{ padding: '8px 0', color: '#6B7280' }}>{formatDateTime(selectedTicket.createdAt)}</div>
+                      <div style={{ padding: '8px 0', color: '#4B5563' }}>{formatDateTime(selectedTicket.createdAt)}</div>
                     </div>
                   </div>
                   <CommentSection entityType="support_ticket" entityId={selectedTicket.id} currentUserId={user?.id} onMarkRead={() => setUnreadCounts(prev => { const next = { ...prev }; if (next[selectedTicket.id]) next[selectedTicket.id] = { ...next[selectedTicket.id], unread_count: 0 }; return next; })} />

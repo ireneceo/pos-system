@@ -20,7 +20,7 @@ const Form = styled.form`
 const Section = styled.div`
   margin-bottom: 32px;
   padding-bottom: 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
 
   &:last-child {
     border-bottom: none;
@@ -67,7 +67,7 @@ const Label = styled.label`
 const Input = styled.input`
   width: 100%;
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.2s;
@@ -80,14 +80,14 @@ const Input = styled.input`
   }
 
   &::placeholder {
-    color: #9CA3AF;
+    color: #6B7280;
   }
 `;
 
 const TextArea = styled.textarea`
   width: 100%;
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   min-height: 100px;
@@ -103,18 +103,18 @@ const TextArea = styled.textarea`
   }
 
   &::placeholder {
-    color: #9CA3AF;
+    color: #6B7280;
   }
 `;
 
 const HelpText = styled.p`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 8px;
 `;
 
 const LogoUpload = styled.div<{ isDragging?: boolean }>`
-  border: 2px dashed #E6EBF1;
+  border: 2px dashed #C7CED6;
   border-radius: 8px;
   padding: 24px;
   text-align: center;
@@ -128,7 +128,7 @@ const LogoUpload = styled.div<{ isDragging?: boolean }>`
 
   &:hover {
     border-color: #635BFF;
-    background: #F8FAFC;
+    background: #F1F4F8;
   }
 
   ${props => props.isDragging && `
@@ -141,7 +141,7 @@ const LogoPreview = styled.img`
   max-width: 200px;
   max-height: 100px;
   border-radius: 8px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   object-fit: contain;
 `;
 
@@ -427,7 +427,7 @@ const SiteSettingsPage: React.FC = () => {
             border: '1px solid #D4D0FF',
             borderRadius: 10,
             fontSize: 13,
-            color: '#4B5563',
+            color: '#374151',
             lineHeight: 1.6
           }}>
             <div style={{ fontWeight: 600, color: '#635BFF', marginBottom: 6 }}>Where these settings appear</div>
@@ -476,10 +476,10 @@ const SiteSettingsPage: React.FC = () => {
                         <LogoPreview src={withCacheBust(settings.favicon_url)} alt="Favicon" />
                       ) : (
                         <div>
-                          <div style={{ fontSize: '14px', color: '#6B7280', fontWeight: 500, marginBottom: '8px' }}>
+                          <div style={{ fontSize: '14px', color: '#4B5563', fontWeight: 500, marginBottom: '8px' }}>
                             Click to upload or drag and drop
                           </div>
-                          <div style={{ fontSize: '12px', color: '#9CA3AF' }}>
+                          <div style={{ fontSize: '12px', color: '#6B7280' }}>
                             PNG, JPG, or SVG (Max 2MB)
                           </div>
                         </div>
@@ -510,10 +510,10 @@ const SiteSettingsPage: React.FC = () => {
                         <LogoPreview src={withCacheBust(settings.brand_logo)} alt="Brand Logo" />
                       ) : (
                         <div>
-                          <div style={{ fontSize: '14px', color: '#6B7280', fontWeight: 500, marginBottom: '8px' }}>
+                          <div style={{ fontSize: '14px', color: '#4B5563', fontWeight: 500, marginBottom: '8px' }}>
                             Click to upload or drag and drop
                           </div>
-                          <div style={{ fontSize: '12px', color: '#9CA3AF' }}>
+                          <div style={{ fontSize: '12px', color: '#6B7280' }}>
                             PNG or JPG (Max 2MB)
                           </div>
                         </div>
@@ -547,7 +547,7 @@ const SiteSettingsPage: React.FC = () => {
                       style={{
                         width: '100%',
                         padding: '12px 16px',
-                        border: '1px solid #E6EBF1',
+                        border: '1px solid #C7CED6',
                         borderRadius: '8px',
                         fontSize: '14px',
                         background: 'white',
@@ -632,10 +632,10 @@ const SiteSettingsPage: React.FC = () => {
                       <LogoPreview src={withCacheBust(settings.og_image_url)} alt="OG Image" />
                     ) : (
                       <div>
-                        <div style={{ fontSize: '14px', color: '#6B7280', fontWeight: 500, marginBottom: '8px' }}>
+                        <div style={{ fontSize: '14px', color: '#4B5563', fontWeight: 500, marginBottom: '8px' }}>
                           Click to upload or drag and drop
                         </div>
-                        <div style={{ fontSize: '12px', color: '#9CA3AF' }}>
+                        <div style={{ fontSize: '12px', color: '#6B7280' }}>
                           PNG or JPG (Max 2MB)
                         </div>
                       </div>

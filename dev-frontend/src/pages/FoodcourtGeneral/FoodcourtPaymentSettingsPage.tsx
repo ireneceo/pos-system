@@ -73,7 +73,7 @@ const Content = styled.div`
 const Section = styled.div`
   margin-bottom: 32px;
   padding-bottom: 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
 
   &:last-child {
     border-bottom: none;
@@ -90,7 +90,7 @@ const SectionTitle = styled.h2`
 `;
 
 const SectionDescription = styled.p`
-  color: #6B7C93;
+  color: #4B5563;
   font-size: 14px;
   margin-bottom: 20px;
 `;
@@ -114,14 +114,14 @@ const Label = styled.label`
   display: block;
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: #1F2937;
   margin-bottom: 8px;
 `;
 
 const Select = styled.select`
   width: 100%;
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -135,7 +135,7 @@ const Select = styled.select`
 
 const CurrencySelector = styled.div`
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   background: white;
   cursor: pointer;
@@ -151,7 +151,7 @@ const CurrencySelector = styled.div`
 `;
 
 const CurrencyTag = styled.span`
-  background: #F3F4F6;
+  background: #F1F4F8;
   padding: 4px 10px;
   border-radius: 4px;
   font-size: 13px;
@@ -159,12 +159,12 @@ const CurrencyTag = styled.span`
 `;
 
 const PlaceholderText = styled.span`
-  color: #9CA3AF;
+  color: #6B7280;
 `;
 
 const PaymentMethodCard = styled.div`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 16px;
@@ -186,7 +186,7 @@ const MethodLabel = styled.div`
 
 const MethodDescription = styled.div`
   font-size: 13px;
-  color: #6B7C93;
+  color: #4B5563;
   margin-top: 2px;
 `;
 
@@ -218,7 +218,7 @@ const ToggleSlider = styled.span`
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: #E6EBF1;
+  background-color: #C7CED6;
   transition: 0.3s;
   border-radius: 24px;
 
@@ -237,7 +237,7 @@ const ToggleSlider = styled.span`
 `;
 
 const MethodContent = styled.div`
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
   margin-top: 16px;
   padding-top: 16px;
 `;
@@ -245,7 +245,7 @@ const MethodContent = styled.div`
 const Input = styled.input`
   width: 100%;
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.2s;
@@ -258,13 +258,13 @@ const Input = styled.input`
   }
 
   &::placeholder {
-    color: #9CA3AF;
+    color: #6B7280;
   }
 `;
 
 const HelpText = styled.p`
   font-size: 12px;
-  color: #6B7C93;
+  color: #4B5563;
   margin-top: 4px;
 `;
 
@@ -273,7 +273,7 @@ const CheckboxLabel = styled.label`
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
   cursor: pointer;
 `;
 
@@ -659,7 +659,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
                   <MethodDescription>
                     {t('foodcourt:foodcourtPaymentSettingsPage.creditdebitCardPayments')}
                     {!paymentSettings.stripe.enabled && (
-                      <span style={{ display: 'block', fontSize: 12, color: '#9CA3AF', marginTop: 2 }}>
+                      <span style={{ display: 'block', fontSize: 12, color: '#6B7280', marginTop: 2 }}>
                         Disabled — tenant restaurants will not see the card option.
                       </span>
                     )}
@@ -765,7 +765,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
                         onChange={(e) => handlePayPalChange('webhookId', e.target.value)}
                       />
                     </AutoSaveField>
-                    <div style={{ fontSize: 12, color: '#6B7C93', marginTop: 4, lineHeight: 1.5 }}>
+                    <div style={{ fontSize: 12, color: '#4B5563', marginTop: 4, lineHeight: 1.5 }}>
                       From PayPal Developer Dashboard → your app → Live Webhooks → click your webhook → copy "Webhook ID".
                     </div>
                   </FormGroup>
@@ -986,7 +986,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
           </>
         }
       >
-        <p style={{ color: '#6B7280', marginBottom: '16px' }}>
+        <p style={{ color: '#4B5563', marginBottom: '16px' }}>
           Select from the currencies enabled by System Administrator.
         </p>
         {systemSupportedCurrencies.length === 0 ? (
@@ -1013,7 +1013,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
                     alignItems: 'center',
                     gap: '12px',
                     padding: '12px',
-                    border: `1px solid ${tempSelectedCurrencies.includes(code) ? '#635BFF' : '#E6EBF1'}`,
+                    border: `1px solid ${tempSelectedCurrencies.includes(code) ? '#635BFF' : '#C7CED6'}`,
                     borderRadius: '8px',
                     cursor: 'pointer',
                     background: tempSelectedCurrencies.includes(code) ? '#F0F0FF' : 'white',
@@ -1030,7 +1030,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
                     <div style={{ fontWeight: 500 }}>
                       {config.symbol} {code}
                     </div>
-                    <div style={{ fontSize: '12px', color: '#6B7280' }}>
+                    <div style={{ fontSize: '12px', color: '#4B5563' }}>
                       {config.name}
                     </div>
                   </div>

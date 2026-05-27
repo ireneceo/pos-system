@@ -42,7 +42,7 @@ const Btn = styled.button<{ $compact: boolean }>`
   background: white;
   border: 1px solid #E0E7FF;
   border-radius: 999px;
-  color: #4B5563;
+  color: #374151;
   font-size: 12.5px;
   font-weight: 500;
   cursor: pointer;

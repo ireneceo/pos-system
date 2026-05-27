@@ -74,7 +74,7 @@ const FoodcourtInvoiceViewModal: React.FC<FoodcourtInvoiceViewModalProps> = ({
       <CommonModal isOpen={true} onClose={onClose} title="Invoice Details" size="large" footer={<><Button variant="secondary" onClick={onClose}>{t('foodcourt:foodcourtInvoicesPage.close')}</Button></>}>
 
         {/* Invoice Header with Company Info */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', paddingBottom: '24px', borderBottom: '2px solid #E5E7EB' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', paddingBottom: '24px', borderBottom: '2px solid #C7CED6' }}>
           <div style={{ flex: '0 0 55%' }}>
             {companySettings?.companyLogo && (
               <img src={companySettings.companyLogo} alt="Company Logo" style={{ maxHeight: '60px', marginBottom: '8px' }} />
@@ -82,7 +82,7 @@ const FoodcourtInvoiceViewModal: React.FC<FoodcourtInvoiceViewModalProps> = ({
             <div style={{ fontSize: companySettings?.companyLogo ? '16px' : '20px', fontWeight: '700', color: '#0A2540', marginBottom: '8px' }}>
               {companySettings?.companyName || 'Company Name'}
             </div>
-            <div style={{ fontSize: '13px', color: '#6B7280', lineHeight: '1.6' }}>
+            <div style={{ fontSize: '13px', color: '#4B5563', lineHeight: '1.6' }}>
               {(() => {
                 const locale = (['en', 'ko', 'zh', 'ms'].includes(i18n.language) ? i18n.language : 'en') as AppLocale;
                 const full = formatAddress({
@@ -115,7 +115,7 @@ const FoodcourtInvoiceViewModal: React.FC<FoodcourtInvoiceViewModalProps> = ({
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px' }}>
           {/* Bill To */}
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase' }}>{t('foodcourt:foodcourtInvoicesPage.billTo')}</div>
+            <div style={{ fontSize: '12px', fontWeight: '600', color: '#4B5563', marginBottom: '8px', textTransform: 'uppercase' }}>{t('foodcourt:foodcourtInvoicesPage.billTo')}</div>
             {invoice.payerType === 'external' ? (
               <>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -123,19 +123,19 @@ const FoodcourtInvoiceViewModal: React.FC<FoodcourtInvoiceViewModalProps> = ({
                   <span style={{ padding: '2px 8px', fontSize: '11px', fontWeight: 600, color: '#7C3AED', background: '#EDE9FE', borderRadius: '4px' }}>{t('foodcourt:foodcourtInvoicesPage.nonmember')}</span>
                 </div>
                 {invoice.externalPayerCompany && (
-                  <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>Company: {invoice.externalPayerCompany}</div>
+                  <div style={{ fontSize: '13px', color: '#4B5563', marginTop: '4px' }}>Company: {invoice.externalPayerCompany}</div>
                 )}
                 {invoice.externalPayerEmail && (
-                  <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>Email: {invoice.externalPayerEmail}</div>
+                  <div style={{ fontSize: '13px', color: '#4B5563', marginTop: '4px' }}>Email: {invoice.externalPayerEmail}</div>
                 )}
                 {invoice.externalPayerPhone && (
-                  <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>Phone: {invoice.externalPayerPhone}</div>
+                  <div style={{ fontSize: '13px', color: '#4B5563', marginTop: '4px' }}>Phone: {invoice.externalPayerPhone}</div>
                 )}
                 {invoice.externalPayerAddress && (
-                  <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>{invoice.externalPayerAddress}</div>
+                  <div style={{ fontSize: '13px', color: '#4B5563', marginTop: '4px' }}>{invoice.externalPayerAddress}</div>
                 )}
                 {invoice.externalPayerTaxId && (
-                  <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>Tax ID: {invoice.externalPayerTaxId}</div>
+                  <div style={{ fontSize: '13px', color: '#4B5563', marginTop: '4px' }}>Tax ID: {invoice.externalPayerTaxId}</div>
                 )}
                 <button
                   onClick={() => { setShowLinkAccountModal(true); setLinkSearchQuery(''); setLinkSearchResults({managers: [], restaurants: []}); }}
@@ -148,10 +148,10 @@ const FoodcourtInvoiceViewModal: React.FC<FoodcourtInvoiceViewModalProps> = ({
               <>
                 <div style={{ fontSize: '15px', fontWeight: '600', color: '#0A2540' }}>{invoice.customerName}</div>
                 {invoice.customerAddress && (
-                  <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>{invoice.customerAddress}</div>
+                  <div style={{ fontSize: '13px', color: '#4B5563', marginTop: '4px' }}>{invoice.customerAddress}</div>
                 )}
                 {invoice.restaurantName && (
-                  <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>Restaurant: {invoice.restaurantName}</div>
+                  <div style={{ fontSize: '13px', color: '#4B5563', marginTop: '4px' }}>Restaurant: {invoice.restaurantName}</div>
                 )}
               </>
             )}
@@ -159,20 +159,20 @@ const FoodcourtInvoiceViewModal: React.FC<FoodcourtInvoiceViewModalProps> = ({
           {/* Dates */}
           <div style={{ textAlign: 'right' }}>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '6px', fontSize: '13px' }}>
-              <span style={{ color: '#6B7280' }}>Billing Period:</span>
+              <span style={{ color: '#4B5563' }}>Billing Period:</span>
               <span style={{ color: '#0A2540', fontWeight: '500', minWidth: '140px' }}>{invoice.billingPeriod || '-'}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '6px', fontSize: '13px' }}>
-              <span style={{ color: '#6B7280' }}>Issue Date:</span>
+              <span style={{ color: '#4B5563' }}>Issue Date:</span>
               <span style={{ color: '#0A2540', fontWeight: '500', minWidth: '140px' }}>{formatDate(invoice.issueDate)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '6px', fontSize: '13px' }}>
-              <span style={{ color: '#6B7280' }}>Due Date:</span>
+              <span style={{ color: '#4B5563' }}>Due Date:</span>
               <span style={{ color: '#0A2540', fontWeight: '500', minWidth: '140px' }}>{formatDate(invoice.dueDate)}</span>
             </div>
             {invoice.paidDate && (
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '6px', fontSize: '13px' }}>
-                <span style={{ color: '#6B7280' }}>Paid Date:</span>
+                <span style={{ color: '#4B5563' }}>Paid Date:</span>
                 <span style={{ color: '#0A2540', fontWeight: '500', minWidth: '140px' }}>{formatDate(invoice.paidDate)}</span>
               </div>
             )}
@@ -181,23 +181,23 @@ const FoodcourtInvoiceViewModal: React.FC<FoodcourtInvoiceViewModalProps> = ({
 
         {/* Items Table */}
         <div style={{ marginBottom: '24px' }}>
-          <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '12px', textTransform: 'uppercase' }}>{t('foodcourt:foodcourtInvoicesPage.items')}</div>
+          <div style={{ fontSize: '12px', fontWeight: '600', color: '#4B5563', marginBottom: '12px', textTransform: 'uppercase' }}>{t('foodcourt:foodcourtInvoicesPage.items')}</div>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ borderBottom: '2px solid #E5E7EB' }}>
-                <th style={{ textAlign: 'left', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>{t('foodcourt:foodcourtInvoicesPage.description')}</th>
-                <th style={{ textAlign: 'center', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>{t('foodcourt:foodcourtInvoicesPage.qty')}</th>
-                <th style={{ textAlign: 'right', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>{t('foodcourt:foodcourtInvoicesPage.unitPrice')}</th>
-                <th style={{ textAlign: 'right', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>{t('foodcourt:foodcourtInvoicesPage.amount')}</th>
+              <tr style={{ borderBottom: '2px solid #C7CED6' }}>
+                <th style={{ textAlign: 'left', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#4B5563' }}>{t('foodcourt:foodcourtInvoicesPage.description')}</th>
+                <th style={{ textAlign: 'center', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#4B5563' }}>{t('foodcourt:foodcourtInvoicesPage.qty')}</th>
+                <th style={{ textAlign: 'right', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#4B5563' }}>{t('foodcourt:foodcourtInvoicesPage.unitPrice')}</th>
+                <th style={{ textAlign: 'right', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#4B5563' }}>{t('foodcourt:foodcourtInvoicesPage.amount')}</th>
               </tr>
             </thead>
             <tbody>
               {invoice.items.map((item, index) => (
-                <tr key={index} style={{ borderBottom: '1px solid #F3F4F6' }}>
-                  <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151' }}>{item.description}</td>
-                  <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'center' }}>{item.quantity}</td>
-                  <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCurrency(item.unitPrice, invoice.currency || 'MYR')}</td>
-                  <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCurrency(item.total, invoice.currency || 'MYR')}</td>
+                <tr key={index} style={{ borderBottom: '1px solid #F1F4F8' }}>
+                  <td style={{ padding: '12px 8px', fontSize: '14px', color: '#1F2937' }}>{item.description}</td>
+                  <td style={{ padding: '12px 8px', fontSize: '14px', color: '#1F2937', textAlign: 'center' }}>{item.quantity}</td>
+                  <td style={{ padding: '12px 8px', fontSize: '14px', color: '#1F2937', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCurrency(item.unitPrice, invoice.currency || 'MYR')}</td>
+                  <td style={{ padding: '12px 8px', fontSize: '14px', color: '#1F2937', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCurrency(item.total, invoice.currency || 'MYR')}</td>
                 </tr>
               ))}
             </tbody>
@@ -246,9 +246,9 @@ const FoodcourtInvoiceViewModal: React.FC<FoodcourtInvoiceViewModalProps> = ({
           const swiftCode = invoice.issuerInfo?.swiftCode || companySettings?.swiftCode;
           if (!bankName) return null;
           return (
-            <div style={{ background: '#F8FAFC', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
-              <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase' }}>{t('foodcourt:foodcourtInvoicesPage.paymentDetails')}</div>
-              <div style={{ fontSize: '13px', color: '#374151', lineHeight: '1.6' }}>
+            <div style={{ background: '#F1F4F8', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
+              <div style={{ fontSize: '12px', fontWeight: '600', color: '#4B5563', marginBottom: '8px', textTransform: 'uppercase' }}>{t('foodcourt:foodcourtInvoicesPage.paymentDetails')}</div>
+              <div style={{ fontSize: '13px', color: '#1F2937', lineHeight: '1.6' }}>
                 <div><strong>Bank:</strong> {bankName}</div>
                 <div><strong>Account Name:</strong> {bankAccountName || '-'}</div>
                 <div><strong>Account Number:</strong> {bankAccount || '-'}</div>
@@ -260,7 +260,7 @@ const FoodcourtInvoiceViewModal: React.FC<FoodcourtInvoiceViewModalProps> = ({
 
         {/* Registration Info */}
         {(companySettings?.taxNumber || companySettings?.registrationNumber) && (
-          <div style={{ fontSize: '12px', color: '#9CA3AF', textAlign: 'center', marginTop: '16px' }}>
+          <div style={{ fontSize: '12px', color: '#6B7280', textAlign: 'center', marginTop: '16px' }}>
             {companySettings?.registrationNumber && <span>Reg No: {companySettings.registrationNumber}</span>}
             {companySettings?.registrationNumber && companySettings?.taxNumber && <span> | </span>}
             {companySettings?.taxNumber && <span>Tax No: {companySettings.taxNumber}</span>}
@@ -316,13 +316,13 @@ const FoodcourtInvoiceViewModal: React.FC<FoodcourtInvoiceViewModalProps> = ({
                 placeholder="Type to search for restaurants"
               />
               {showLinkSearchDropdown && linkSearchResults.restaurants.length > 0 && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #E6EBF1', borderRadius: '8px', maxHeight: '300px', overflowY: 'auto', zIndex: 1000, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #C7CED6', borderRadius: '8px', maxHeight: '300px', overflowY: 'auto', zIndex: 1000, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
                   <div>
-                    <div style={{padding: '8px 12px', background: '#F8FAFC', fontSize: '12px', fontWeight: '600', color: '#6B7280'}}>{t('foodcourt:foodcourtInvoicesPage.restaurants')}</div>
+                    <div style={{padding: '8px 12px', background: '#F1F4F8', fontSize: '12px', fontWeight: '600', color: '#4B5563'}}>{t('foodcourt:foodcourtInvoicesPage.restaurants')}</div>
                     {linkSearchResults.restaurants.map(restaurant => (
-                      <div key={restaurant.id} onClick={() => handleLinkAccount('restaurant', restaurant)} style={{ padding: '12px', cursor: 'pointer', borderBottom: '1px solid #F3F4F6' }} onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'} onMouseLeave={(e) => e.currentTarget.style.background = 'white'}>
+                      <div key={restaurant.id} onClick={() => handleLinkAccount('restaurant', restaurant)} style={{ padding: '12px', cursor: 'pointer', borderBottom: '1px solid #F1F4F8' }} onMouseEnter={(e) => e.currentTarget.style.background = '#F1F4F8'} onMouseLeave={(e) => e.currentTarget.style.background = 'white'}>
                         <div style={{fontWeight: '500', color: '#0A2540'}}>{getRestaurantDisplayName(restaurant)}</div>
-                        <div style={{fontSize: '13px', color: '#6B7280'}}>{formatEntityAddress(restaurant, (i18n.language as AppLocale) || 'en') || 'No address'}</div>
+                        <div style={{fontSize: '13px', color: '#4B5563'}}>{formatEntityAddress(restaurant, (i18n.language as AppLocale) || 'en') || 'No address'}</div>
                       </div>
                     ))}
                   </div>

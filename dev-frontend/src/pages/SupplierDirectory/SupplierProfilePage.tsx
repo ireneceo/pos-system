@@ -60,7 +60,7 @@ interface SupplierProfile {
 }
 
 const Subtitle = styled.div`
-  color: #6B7280;
+  color: #4B5563;
   font-size: 14px;
   margin-top: 4px;
 `;
@@ -78,7 +78,7 @@ const BackLink = styled.button`
 
 const HeroCard = styled.div`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   padding: 24px;
   display: flex;
@@ -96,14 +96,14 @@ const HeroLogo = styled.div`
   width: 88px;
   height: 88px;
   border-radius: 12px;
-  background: #F8FAFC;
-  border: 1px solid #E6EBF1;
+  background: #F1F4F8;
+  border: 1px solid #C7CED6;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 30px;
   font-weight: 600;
-  color: #6B7280;
+  color: #4B5563;
   flex-shrink: 0;
   overflow: hidden;
   img { width: 100%; height: 100%; object-fit: cover; }
@@ -124,7 +124,7 @@ const HeroName = styled.div`
 
 const HeroSub = styled.div`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const TagRow = styled.div`
@@ -164,7 +164,7 @@ const Badge = styled.span<{ variant?: 'success' | 'warning' | 'neutral' | 'dange
       case 'success': return '#DCFCE7';
       case 'warning': return '#FEF3C7';
       case 'danger': return '#FEE2E2';
-      default: return '#F3F4F6';
+      default: return '#F1F4F8';
     }
   }};
   color: ${(p) => {
@@ -172,14 +172,14 @@ const Badge = styled.span<{ variant?: 'success' | 'warning' | 'neutral' | 'dange
       case 'success': return '#166534';
       case 'warning': return '#92400E';
       case 'danger': return '#991B1B';
-      default: return '#374151';
+      default: return '#1F2937';
     }
   }};
 `;
 
 const Section = styled.div`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 20px;
@@ -207,7 +207,7 @@ const InfoItem = styled.div`
 
 const InfoLabel = styled.span`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 `;
@@ -219,7 +219,7 @@ const InfoValue = styled.span`
 
 const Description = styled.p`
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
   line-height: 1.6;
   margin: 0 0 14px;
   white-space: pre-wrap;
@@ -232,9 +232,9 @@ const ProductGrid = styled.div`
 `;
 
 const ProductCard = styled.div`
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 10px;
-  background: #FAFBFC;
+  background: #F9FAFB;
   padding: 12px;
   display: flex;
   flex-direction: column;
@@ -245,12 +245,12 @@ const ProductImage = styled.div`
   width: 100%;
   aspect-ratio: 1;
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #9CA3AF;
+  color: #6B7280;
   overflow: hidden;
   margin-bottom: 4px;
   img { width: 100%; height: 100%; object-fit: cover; }
@@ -265,7 +265,7 @@ const ProductName = styled.div`
 
 const ProductMeta = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const ProductPrice = styled.div`
@@ -286,18 +286,18 @@ const ErrorBox = styled.div`
 
 const InfoBox = styled.div`
   padding: 12px 16px;
-  background: #F8FAFC;
-  border: 1px solid #E6EBF1;
+  background: #F1F4F8;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 13px;
-  color: #374151;
+  color: #1F2937;
   margin-bottom: 14px;
 `;
 
 const EmptyBox = styled.div`
   text-align: center;
   padding: 40px 20px;
-  color: #6B7280;
+  color: #4B5563;
   font-size: 14px;
 `;
 
@@ -612,7 +612,7 @@ const SupplierProfilePage: React.FC = () => {
               {filteredProducts.map(p => (
                 <ProductCard key={p.id}>
                   <ProductImage>
-                    {p.image_url ? <img src={p.image_url} alt={p.name} /> : <span style={{ fontSize: 11, color: '#9CA3AF', letterSpacing: 0.4, textTransform: 'uppercase' }}>{t('profile.noImage', 'No image')}</span>}
+                    {p.image_url ? <img src={p.image_url} alt={p.name} /> : <span style={{ fontSize: 11, color: '#6B7280', letterSpacing: 0.4, textTransform: 'uppercase' }}>{t('profile.noImage', 'No image')}</span>}
                   </ProductImage>
                   <ProductName>{p.name}</ProductName>
                   {p.sku && <ProductMeta>SKU: {p.sku}</ProductMeta>}
@@ -667,7 +667,7 @@ const SupplierProfilePage: React.FC = () => {
           </UIFormGroup>
           {buyerEntity.type && (
             <InfoBox>
-              <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>
+              <div style={{ fontSize: 12, color: '#4B5563', marginBottom: 4 }}>
                 {t('request.yourCompany')}
               </div>
               <div>

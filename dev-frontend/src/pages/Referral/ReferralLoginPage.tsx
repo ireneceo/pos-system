@@ -12,7 +12,7 @@ const Card = styled.div`
   width: 100%;
   max-width: 420px;
   box-shadow: 0 8px 24px rgba(10, 37, 64, 0.06);
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
 
   @media (max-width: 480px) {
     padding: 28px 22px;
@@ -29,7 +29,7 @@ const Title = styled.h1`
 
 const Sub = styled.p`
   font-size: 14px;
-  color: #6B7C93;
+  color: #4B5563;
   margin: 0 0 24px;
 `;
 
@@ -41,7 +41,7 @@ const Label = styled.label`
   display: block;
   font-size: 12px;
   font-weight: 600;
-  color: #6B7C93;
+  color: #4B5563;
   letter-spacing: 0.4px;
   text-transform: uppercase;
   margin-bottom: 6px;
@@ -54,7 +54,7 @@ const Input = styled.input`
   padding: 0 14px;
   font-size: 14px;
   color: #0A2540;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   background: white;
   outline: none;
@@ -97,7 +97,7 @@ const Error = styled.div`
 const Footer = styled.div`
   margin-top: 22px;
   font-size: 13px;
-  color: #6B7C93;
+  color: #4B5563;
   text-align: center;
   line-height: 1.8;
 

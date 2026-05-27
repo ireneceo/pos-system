@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -76,10 +76,10 @@ const BackButton = styled(Link)`
   align-items: center;
   gap: 4px;
   background: none;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   padding: 6px 12px;
-  color: #6B7C93;
+  color: #4B5563;
   font-size: 13px;
   text-decoration: none;
   transition: all 0.15s;
@@ -94,7 +94,7 @@ const SettingsIconLink = styled(Link)`
   width: 36px;
   height: 36px;
   border-radius: 8px;
-  color: #6B7280;
+  color: #4B5563;
   text-decoration: none;
   transition: all 0.15s;
   &:hover { background: #F0EFFF; color: #635BFF; }

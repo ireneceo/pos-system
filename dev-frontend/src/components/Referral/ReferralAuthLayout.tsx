@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 
 const Shell = styled.div`
   min-height: 100vh;
-  background: linear-gradient(180deg, #FAFBFC 0%, #F1F0FF 100%);
+  background: linear-gradient(180deg, #F9FAFB 0%, #F1F0FF 100%);
   display: flex;
   flex-direction: column;
 `;
@@ -44,7 +44,7 @@ const TopRight = styled.div`
   gap: 16px;
   align-items: center;
   font-size: 13px;
-  color: #6B7C93;
+  color: #4B5563;
 
   a {
     color: #635BFF;

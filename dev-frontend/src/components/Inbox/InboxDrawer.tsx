@@ -206,7 +206,7 @@ const Header = styled.header`
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   flex-shrink: 0;
 `;
 
@@ -225,14 +225,14 @@ const HeaderActions = styled.div`
 
 const SmallBtn = styled.button`
   background: none;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   padding: 5px 10px;
   font-size: 12px;
-  color: #4B5563;
+  color: #374151;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
-  &:hover { background: #F3F4F6; border-color: #CBD5E1; }
+  &:hover { background: #F1F4F8; border-color: #64748B; }
 `;
 
 const CloseBtn = styled.button`
@@ -240,11 +240,11 @@ const CloseBtn = styled.button`
   border: none;
   font-size: 26px;
   line-height: 1;
-  color: #6B7C93;
+  color: #4B5563;
   cursor: pointer;
   padding: 4px 8px;
   border-radius: 6px;
-  &:hover { color: #0A2540; background: #F3F4F6; }
+  &:hover { color: #0A2540; background: #F1F4F8; }
   &:focus-visible {
     outline: none;
     box-shadow: 0 0 0 3px rgba(99,91,255,0.18);
@@ -263,8 +263,8 @@ const FilterBar = styled.div`
 `;
 
 const FilterPill = styled.button<{ $active: boolean }>`
-  background: ${p => p.$active ? '#0A2540' : '#F3F4F6'};
-  color: ${p => p.$active ? 'white' : '#4B5563'};
+  background: ${p => p.$active ? '#0A2540' : '#F1F4F8'};
+  color: ${p => p.$active ? 'white' : '#374151'};
   border: none;
   border-radius: 16px;
   padding: 6px 14px;
@@ -276,7 +276,7 @@ const FilterPill = styled.button<{ $active: boolean }>`
   align-items: center;
   gap: 6px;
   transition: background 0.15s;
-  &:hover { background: ${p => p.$active ? '#0A2540' : '#E5E7EB'}; }
+  &:hover { background: ${p => p.$active ? '#0A2540' : '#C7CED6'}; }
 `;
 
 const PillCount = styled.span<{ $active: boolean }>`
@@ -300,7 +300,7 @@ const ToggleLabel = styled.label`
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #6B7C93;
+  color: #4B5563;
   cursor: pointer;
   user-select: none;
 
@@ -333,7 +333,7 @@ const skeletonPulse = keyframes`
 const SkeletonCard = styled.div`
   height: 76px;
   border-radius: 10px;
-  background: linear-gradient(90deg, #F3F4F6 0%, #E5E7EB 50%, #F3F4F6 100%);
+  background: linear-gradient(90deg, #F1F4F8 0%, #C7CED6 50%, #F1F4F8 100%);
   background-size: 200px 100%;
   animation: ${skeletonPulse} 1.4s linear infinite;
 `;
@@ -344,7 +344,7 @@ const EmptyState = styled.div`
   align-items: center;
   text-align: center;
   padding: 60px 24px;
-  color: #6B7C93;
+  color: #4B5563;
 `;
 
 const EmptyIcon = styled.div`
@@ -366,7 +366,7 @@ const EmptyDesc = styled.div`
 `;
 
 const Footer = styled.footer`
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
   padding: 12px 20px;
   flex-shrink: 0;
 `;

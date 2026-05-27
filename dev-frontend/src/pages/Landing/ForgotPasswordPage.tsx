@@ -162,7 +162,7 @@ const Card = styled.div`
   border-radius: 16px;
   padding: 40px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   @media (max-width: 640px) { padding: 28px 24px; }
 `;
 
@@ -181,7 +181,7 @@ const CardTitle = styled.h2`
 
 const CardDescription = styled.p`
   font-size: 14px;
-  color: #6B7C93;
+  color: #4B5563;
   line-height: 1.5;
   margin: 0 0 24px;
   text-align: center;
@@ -209,14 +209,14 @@ const FormLabel = styled.label`
   display: block;
   font-size: 13px;
   font-weight: 500;
-  color: #6B7C93;
+  color: #4B5563;
   margin-bottom: 6px;
 `;
 
 const FormInput = styled.input`
   width: 100%;
   padding: 12px 14px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 15px;
   color: #0A2540;
@@ -228,7 +228,7 @@ const FormInput = styled.input`
     border-color: #635BFF;
     box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
   }
-  &::placeholder { color: #9CA3AF; }
+  &::placeholder { color: #6B7280; }
 `;
 
 const SubmitButton = styled.button`
@@ -259,7 +259,7 @@ const BackLink = styled.div`
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    color: #6B7C93;
+    color: #4B5563;
     text-decoration: none;
     font-size: 14px;
     font-weight: 500;
@@ -286,7 +286,7 @@ const SuccessTitle = styled.h2`
 
 const SuccessDescription = styled.p`
   font-size: 14px;
-  color: #4B5563;
+  color: #374151;
   line-height: 1.6;
   margin: 0 0 8px;
 
@@ -295,7 +295,7 @@ const SuccessDescription = styled.p`
 
 const SuccessHint = styled.p`
   font-size: 13px;
-  color: #9CA3AF;
+  color: #6B7280;
   margin: 0 0 24px;
 `;
 
@@ -308,15 +308,15 @@ const ButtonRow = styled.div`
 
 const SecondaryButton = styled.button`
   padding: 10px 20px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   background: white;
-  color: #6B7C93;
+  color: #4B5563;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
-  &:hover { background: #F8FAFC; border-color: #CBD5E1; }
+  &:hover { background: #F1F4F8; border-color: #64748B; }
 `;
 
 const PrimaryLink = styled(Link)`

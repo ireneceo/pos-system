@@ -136,10 +136,10 @@ const InputDisplay = styled.button<{ $hasValue: boolean }>`
   width: 100%;
   padding: 10px 12px;
   background: #FFFFFF;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
-  color: ${p => p.$hasValue ? '#0A2540' : '#9CA3AF'};
+  color: ${p => p.$hasValue ? '#0A2540' : '#6B7280'};
   cursor: pointer;
   transition: border-color 0.15s, box-shadow 0.15s;
   text-align: left;
@@ -156,34 +156,34 @@ const InputDisplay = styled.button<{ $hasValue: boolean }>`
   }
 
   &:disabled {
-    background: #F3F4F6;
-    color: #9CA3AF;
+    background: #F1F4F8;
+    color: #6B7280;
     cursor: not-allowed;
   }
 `;
 
 const CalendarIcon = styled.span`
-  color: #6B7280;
+  color: #4B5563;
   display: inline-flex;
   flex-shrink: 0;
 `;
 
 const DisplayText = styled.span<{ $hasValue: boolean }>`
   flex: 1;
-  color: ${p => p.$hasValue ? '#0A2540' : '#9CA3AF'};
+  color: ${p => p.$hasValue ? '#0A2540' : '#6B7280'};
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 `;
 
 const ClearButton = styled.span`
-  color: #9CA3AF;
+  color: #6B7280;
   font-size: 18px;
   line-height: 1;
   padding: 0 4px;
   cursor: pointer;
 
   &:hover {
-    color: #6B7280;
+    color: #4B5563;
   }
 `;

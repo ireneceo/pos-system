@@ -57,7 +57,7 @@ const Spinner = styled.span`
   display: inline-block;
   width: 16px;
   height: 16px;
-  border: 2px solid #E6EBF1;
+  border: 2px solid #C7CED6;
   border-top-color: #8898AA;
   border-radius: 50%;
   animation: ${spin} 0.6s linear infinite;

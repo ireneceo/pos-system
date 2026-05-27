@@ -19,7 +19,7 @@ const ItemHeader = styled.div`
 const ItemImage = styled.div<{ hasImage?: boolean }>`
   width: 100%;
   height: 250px;
-  background: #F3F4F6;
+  background: #F1F4F8;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -47,7 +47,7 @@ const ItemName = styled.h1`
 
 const ItemDescription = styled.p`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 0 0 16px 0;
   line-height: 1.5;
 `;
@@ -63,7 +63,7 @@ const DetailItem = styled.div`
   align-items: center;
   gap: 6px;
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   
   svg {
     width: 16px;
@@ -103,7 +103,7 @@ const SetMenuItem = styled.div`
   background: #F9FAFB;
   border-radius: 6px;
   font-size: 14px;
-  color: #4B5563;
+  color: #374151;
 `;
 
 const OptionSection = styled.div`
@@ -143,9 +143,9 @@ const RadioButton = styled.button<{ selected?: boolean }>`
   padding: 12px 16px;
   min-height: 44px;
   border-radius: 8px;
-  border: 1px solid ${props => props.selected ? '#635BFF' : '#E5E7EB'};
+  border: 1px solid ${props => props.selected ? '#635BFF' : '#C7CED6'};
   background: ${props => props.selected ? 'rgba(99, 91, 255, 0.1)' : 'white'};
-  color: ${props => props.selected ? '#635BFF' : '#374151'};
+  color: ${props => props.selected ? '#635BFF' : '#1F2937'};
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -169,7 +169,7 @@ const CheckboxLabel = styled.label`
   justify-content: space-between;
   padding: 12px 16px;
   min-height: 44px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.15s;
@@ -189,14 +189,14 @@ const CheckboxInput = styled.input`
 
 const CheckboxText = styled.span`
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
   margin-left: 10px;
   flex: 1;
 `;
 
 const CheckboxPrice = styled.span`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const QuantitySection = styled.div`
@@ -220,7 +220,7 @@ const QuantityButton = styled.button`
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   background: white;
   display: flex;
   align-items: center;
@@ -229,7 +229,7 @@ const QuantityButton = styled.button`
   transition: all 0.2s;
   
   &:active {
-    background: #F3F4F6;
+    background: #F1F4F8;
   }
   
   &:disabled {
@@ -240,7 +240,7 @@ const QuantityButton = styled.button`
   svg {
     width: 16px;
     height: 16px;
-    color: #6B7280;
+    color: #4B5563;
   }
 `;
 
@@ -262,7 +262,7 @@ const SpecialInstructions = styled.div`
 
 const InstructionsInput = styled.textarea`
   width: 100%;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   padding: 12px;
   font-size: 16px; /* iOS zoom 방지 */
@@ -313,7 +313,7 @@ const AddToCartButton = styled.button`
   }
 
   &:disabled {
-    background: #D1D5DB;
+    background: #6B7280;
     cursor: not-allowed;
   }
 `;
@@ -472,7 +472,7 @@ const ItemDetailPage: React.FC = () => {
   if (isLoading) {
     return (
       <MobileLayout title="Loading..." showBack onBack={() => navigate(-1)}>
-        <div style={{ padding: '40px', textAlign: 'center', color: '#9CA3AF' }}>
+        <div style={{ padding: '40px', textAlign: 'center', color: '#6B7280' }}>
           Loading item details...
         </div>
       </MobileLayout>
@@ -482,7 +482,7 @@ const ItemDetailPage: React.FC = () => {
   if (!item) {
     return (
       <MobileLayout title="Item Not Found" showBack onBack={() => navigate(-1)}>
-        <div style={{ padding: '40px', textAlign: 'center', color: '#9CA3AF' }}>
+        <div style={{ padding: '40px', textAlign: 'center', color: '#6B7280' }}>
           This item could not be found.
         </div>
       </MobileLayout>
@@ -557,7 +557,7 @@ const ItemDetailPage: React.FC = () => {
                 >
                   <div>{option.name}</div>
                   {option.price > 0 && (
-                    <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>
+                    <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '2px' }}>
                       +{formatCurrency(option.price, currency)}
                     </div>
                   )}

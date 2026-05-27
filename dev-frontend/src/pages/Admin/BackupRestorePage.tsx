@@ -46,13 +46,13 @@ interface RestoreOperation {
 const ContentSection = styled.div`
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   overflow: hidden;
 `;
 
 const SectionHeader = styled.div`
-  background: #F8FAFC;
-  border-bottom: 1px solid #E6EBF1;
+  background: #F1F4F8;
+  border-bottom: 1px solid #C7CED6;
   padding: 20px 24px;
   display: flex;
   justify-content: space-between;
@@ -89,7 +89,7 @@ const BackupCard = styled.div<{ status?: string }>`
   grid-template-columns: 1fr auto;
   gap: 20px;
   padding: 24px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   transition: all 0.2s;
 
   @media (max-width: 768px) {
@@ -107,7 +107,7 @@ const BackupCard = styled.div<{ status?: string }>`
   `}
 
   &:hover {
-    background: #FAFBFC;
+    background: #F9FAFB;
   }
 
   &:last-child {
@@ -135,7 +135,7 @@ const MetaItem = styled.div``;
 
 const MetaLabel = styled.div`
   font-size: 11px;
-  color: #6B7280;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 2px;
@@ -144,7 +144,7 @@ const MetaLabel = styled.div`
 const MetaValue = styled.div`
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: #1F2937;
 `;
 
 const BackupTags = styled.div`
@@ -165,7 +165,7 @@ const Tag = styled.span<{ variant?: string }>`
       case 'type': return '#DBEAFE';
       case 'encrypted': return '#ECFDF5';
       case 'compressed': return '#FEF3C7';
-      default: return '#F3F4F6';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
@@ -173,7 +173,7 @@ const Tag = styled.span<{ variant?: string }>`
       case 'type': return '#1E40AF';
       case 'encrypted': return '#059669';
       case 'compressed': return '#D97706';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 `;
@@ -205,7 +205,7 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'in-progress': return '#DBEAFE';
       case 'failed': return '#FEE2E2';
       case 'scheduled': return '#FEF3C7';
-      default: return '#F3F4F6';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
@@ -214,7 +214,7 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'in-progress': return '#1E40AF';
       case 'failed': return '#DC2626';
       case 'scheduled': return '#D97706';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 `;
@@ -246,11 +246,11 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'danger' }>`
     }
   ` : `
     background: transparent;
-    color: #6B7280;
-    border-color: #E6EBF1;
+    color: #4B5563;
+    border-color: #C7CED6;
     
     &:hover {
-      background: #F8FAFC;
+      background: #F1F4F8;
       color: #0A2540;
     }
   `}
@@ -262,7 +262,7 @@ const RestoreProgress = styled.div`
 
 const ProgressItem = styled.div`
   padding: 24px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
 
   &:last-child {
     border-bottom: none;
@@ -286,14 +286,14 @@ const ProgressName = styled.div`
 
 const ProgressMeta = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 2px;
 `;
 
 const ProgressBar = styled.div`
   width: 100%;
   height: 8px;
-  background: #F3F4F6;
+  background: #F1F4F8;
   border-radius: 4px;
   overflow: hidden;
   margin-bottom: 8px;
@@ -308,7 +308,7 @@ const ProgressFill = styled.div<{ percentage: number }>`
 
 const ProgressText = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   display: flex;
   justify-content: space-between;
 `;
@@ -323,14 +323,14 @@ const FormLabel = styled.label`
   display: block;
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: #1F2937;
   margin-bottom: 8px;
 `;
 
 const FormInput = styled.input`
   width: 100%;
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.2s;
@@ -345,7 +345,7 @@ const FormInput = styled.input`
 const FormTextArea = styled.textarea`
   width: 100%;
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   resize: vertical;
@@ -361,13 +361,13 @@ const FormTextArea = styled.textarea`
 
 const FormHelp = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 4px;
   line-height: 1.4;
 `;
 
 const BackupList = styled.div`
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   overflow: hidden;
 `;
@@ -377,12 +377,12 @@ const BackupListItem = styled.div`
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
   cursor: pointer;
   transition: all 0.2s;
   
   &:hover {
-    background: #F8FAFC;
+    background: #F1F4F8;
   }
   
   &:last-child {
@@ -403,7 +403,7 @@ const BackupListName = styled.div`
 
 const BackupListMeta = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const BackupListSize = styled.div`
@@ -624,7 +624,7 @@ const BackupRestorePage: React.FC = () => {
                         </MetaItem>
                       </BackupMeta>
                       {backup.description && (
-                        <div style={{ fontSize: '14px', color: '#6B7280', marginBottom: '8px' }}>
+                        <div style={{ fontSize: '14px', color: '#4B5563', marginBottom: '8px' }}>
                           {backup.description}
                         </div>
                       )}
@@ -695,7 +695,7 @@ const BackupRestorePage: React.FC = () => {
                   </ProgressItem>
                 ))}
                 {restoreOperations.length === 0 && (
-                  <div style={{ textAlign: 'center', color: '#6B7280', padding: '40px' }}>
+                  <div style={{ textAlign: 'center', color: '#4B5563', padding: '40px' }}>
                     No restore operations in progress
                   </div>
                 )}
@@ -711,7 +711,7 @@ const BackupRestorePage: React.FC = () => {
                   <BaseButton variant="primary" onClick={handleAddSchedule}>{t('admin:backupRestorePage.addSchedule')}</BaseButton>
                 </SectionActions>
               </SectionHeader>
-              <div style={{ padding: '24px', textAlign: 'center', color: '#6B7280' }}>
+              <div style={{ padding: '24px', textAlign: 'center', color: '#4B5563' }}>
                 Backup scheduling configuration will be implemented here.
                 <br />
                 Features: Daily/Weekly/Monthly schedules, retention policies, notification settings.
@@ -770,7 +770,7 @@ const BackupRestorePage: React.FC = () => {
             </ModalButton>
           }
         >
-          <p style={{ marginBottom: '20px', color: '#6B7280' }}>
+          <p style={{ marginBottom: '20px', color: '#4B5563' }}>
             Select a backup to download:
           </p>
           <BackupList>

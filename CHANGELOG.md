@@ -6,7 +6,22 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+### 2026-05-27 (운영 배포 6회 누적)
+- Floor Plan zone 격리 (orders.floor_plan_table_id) — 다중 zone 매장 같은 tableNumber 충돌 해결, label 우선 매핑
+- Customer Display 풍부화 — 주문 정보 + 회원 카드 좌측 패널, 키패드 자동 hide. POSTerminal 빈 카트 emit skip
+- Emergency Routing Mode — 매장 운영 critical 비상 토글, 빨간 카드 + Pre-flight 좌/우 비교 + Troubleshoot modal
+- QZ Tray SHA1→SHA512 + 자동 installer (.bat/.command/.sh 단일 파일)
+- Settings printer 탭 전면 개편 — 3 방법 결정 매트릭스 (아코디언), Workstations + Kitchen 2-column, Customer Display → operations 탭 이동
+- 반응형 헤더 (Floor Plan + POS Terminal, 공용 OverflowMenu)
+- i18n 4 언어 154 키 추가 (printer.* 전체 — Emergency / methodGuide / Workstations / Troubleshoot)
+- LiveOrders 결제 PATCH 400 hotfix — orderData ReferenceError, 모든 결제 확인 실패하던 버그
+- Brand 메뉴 마이그 (Restaurant 16 → Brand 5 BrandMenu 시스템 풀 변환, 110 product / 41 option / lock 일괄)
+- Settings token 키 fix (`getAuthToken()` 통일) + workstations state hydrate 누락 fix
+- sync-contents-to-prod.js video_prompt + social_post 컬럼 sync 추가
+
 ### 2026-05-26
+- Social Post SOP 개편 — 6단계 본문 구조 (문제→문제확대→진단질문→숨겨진리스크→PurpleHere=해결책→CTA). 브랜드 톤: 전문가가 조용히 알려주는 느낌. 제목 톤: 직관적 (한 번에 무슨 상황인지 보임, 제도명/기능명 X → 결과/리스크 O)
+- 기존 블로그 2개 social_post 업데이트 — e-invoice: "One receipt. RM20,000 penalty." / staff-mistakes: "Changed the menu. POS stayed the same. Three wrong orders."
 - /글쓰기 0단계 신설 — 타깃 (persona) 먼저 결정 (AskUserQuestion 6 역할 + Auto). PERSONA_CODE 정해진 후에만 1단계 진입
 - BRAND CONCEPT v2 영구 박제 — 단일 톤 고정 (Apple + 자연광 한국감성 모던 F&B + 5비트 HOOK/문제/해결/결과/CTA). CHAOS/INTERVIEW 두 트랙 분기 폐지. video_prompt 4000자 한도 강제
 - e-invoice 글 (id 78/79/80) video_prompt 재작성 — v1 8500자 → v2 ≤4000자 (en 3970 / ms 3992 / zh 3199). dev + 운영 sync

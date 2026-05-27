@@ -246,7 +246,7 @@ const Container = styled.div`min-height: 100vh;`;
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   height: 80px;
   min-height: 80px;
   max-height: 80px;
@@ -265,14 +265,14 @@ const PageTitle = styled.h1`
 `;
 const RefreshBtn = styled.button`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   padding: 8px 14px;
   font-size: 13px;
-  color: #4B5563;
+  color: #374151;
   font-weight: 500;
   cursor: pointer;
-  &:hover { background: #F8FAFC; border-color: #CBD5E1; }
+  &:hover { background: #F1F4F8; border-color: #64748B; }
   &:disabled { opacity: 0.6; cursor: not-allowed; }
 `;
 const Content = styled.div`
@@ -289,7 +289,7 @@ const SectionTitle = styled.h2`
 `;
 const HelpBox = styled.div`
   background: #F1F5F9;
-  border: 1px solid #CBD5E1;
+  border: 1px solid #64748B;
   border-radius: 10px;
   padding: 14px 18px;
   margin-bottom: 24px;
@@ -307,14 +307,14 @@ const HelpDesc = styled.div`
 `;
 const JobDesc = styled.div`
   font-size: 12px;
-  color: #6B7C93;
+  color: #4B5563;
   margin-top: 2px;
   margin-bottom: 10px;
   line-height: 1.4;
 `;
 const JobCode = styled.div`
   font-size: 11px;
-  color: #94A3B8;
+  color: #64748B;
   font-family: ui-monospace, monospace;
   margin-bottom: 10px;
 `;
@@ -325,7 +325,7 @@ const JobGrid = styled.div`
 `;
 const JobCard = styled.div`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   padding: 18px 20px;
 `;
@@ -355,18 +355,18 @@ const ErrorPill = styled.span`
   border-radius: 10px;
 `;
 const JobMeta = styled.div`display: flex; justify-content: space-between; gap: 8px; padding: 4px 0;`;
-const MetaLabel = styled.span`font-size: 12px; color: #6B7C93;`;
+const MetaLabel = styled.span`font-size: 12px; color: #4B5563;`;
 const MetaValue = styled.span`font-size: 12px; color: #0A2540; font-weight: 500;`;
 const Results = styled.div`
   margin-top: 12px;
   padding-top: 10px;
-  border-top: 1px dashed #E6EBF1;
+  border-top: 1px dashed #C7CED6;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 4px 12px;
 `;
 const ResultPair = styled.div`display: flex; justify-content: space-between; gap: 8px;`;
-const ResultKey = styled.span`font-size: 11px; color: #6B7C93; font-family: ui-monospace, monospace;`;
+const ResultKey = styled.span`font-size: 11px; color: #4B5563; font-family: ui-monospace, monospace;`;
 const ResultVal = styled.span`font-size: 11px; color: #0A2540; font-weight: 600;`;
 const ErrorBox = styled.div`
   margin-top: 12px;
@@ -387,20 +387,20 @@ const FilterRow = styled.div`
 `;
 const FilterSelect = styled.select`
   padding: 6px 10px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 13px;
   background: white;
-  color: #4B5563;
+  color: #374151;
 `;
-const ResultMeta = styled.span`font-size: 12px; color: #9CA3AF; margin-left: auto;`;
+const ResultMeta = styled.span`font-size: 12px; color: #6B7280; margin-left: auto;`;
 const Empty = styled.div`
   background: white;
-  border: 1px dashed #E6EBF1;
+  border: 1px dashed #C7CED6;
   border-radius: 12px;
   padding: 60px 24px;
   text-align: center;
-  color: #6B7C93;
+  color: #4B5563;
 `;
 const EmptyTitle = styled.div`font-size: 16px; font-weight: 600; color: #0A2540; margin-bottom: 4px;`;
-const EmptyDesc = styled.div`font-size: 13px; color: #6B7C93;`;
+const EmptyDesc = styled.div`font-size: 13px; color: #4B5563;`;

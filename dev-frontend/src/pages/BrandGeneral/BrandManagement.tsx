@@ -76,7 +76,7 @@ const FormSelect = styled.select`
   width: 100%;
   padding: 10px 12px;
   border-radius: 8px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   font-size: 14px;
   color: #0A2540;
   background: white;
@@ -100,7 +100,7 @@ const BrandName = styled.div`
 
 const BrandCode = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 
@@ -414,7 +414,7 @@ const BrandManagement: React.FC = () => {
                         <BrandCode>{brand.code}</BrandCode>
                       </BrandInfo>
                     </DataTableCell>
-                    <DataTableCell data-label={t('brand:brandManagement.description')} style={{ fontSize: '13px', color: '#6B7280' }}>{brand.description || '-'}</DataTableCell>
+                    <DataTableCell data-label={t('brand:brandManagement.description')} style={{ fontSize: '13px', color: '#4B5563' }}>{brand.description || '-'}</DataTableCell>
                     <DataTableCell data-label={t('brand:brandManagement.restaurants')}>
                       <RestaurantLink onClick={() => handleNavigateToRestaurants(brand)}>
                         {brand.restaurants?.length || 0} stores
@@ -425,7 +425,7 @@ const BrandManagement: React.FC = () => {
                         {brand.status === 'active' ? 'Active' : 'Inactive'}
                       </StatusBadge>
                     </DataTableCell>
-                    <DataTableCell data-label={t('brand:brandManagement.contact')} style={{ fontSize: '13px', color: '#6B7280' }}>
+                    <DataTableCell data-label={t('brand:brandManagement.contact')} style={{ fontSize: '13px', color: '#4B5563' }}>
                       {brand.email || brand.phone || '-'}
                     </DataTableCell>
                     <DataTableCell data-label={t('brand:brandManagement.actions')} mobileFullWidth>

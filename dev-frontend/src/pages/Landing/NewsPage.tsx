@@ -28,7 +28,7 @@ interface NewsPost {
 }
 
 const PageContainer = styled.div`
-  background: #FAFBFC;
+  background: #F9FAFB;
 `;
 
 const HeroSection = styled.section`
@@ -102,7 +102,7 @@ const CategoryTabs = styled.div`
 
 const CategoryTab = styled.button<{ active?: boolean }>`
   padding: 12px 24px;
-  border: 2px solid ${props => props.active ? '#635BFF' : '#E5E7EB'};
+  border: 2px solid ${props => props.active ? '#635BFF' : '#C7CED6'};
   background: ${props => props.active ? '#635BFF' : 'white'};
   color: ${props => props.active ? 'white' : '#425466'};
   border-radius: 50px;
@@ -196,7 +196,7 @@ const CategoryBadge = styled.span`
 
 const NewsDate = styled.span`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const NewsTitle = styled.h2`
@@ -252,7 +252,7 @@ const Pagination = styled.div`
 const PageButton = styled.button<{ active?: boolean }>`
   width: 40px;
   height: 40px;
-  border: 1px solid ${props => props.active ? '#635BFF' : '#E5E7EB'};
+  border: 1px solid ${props => props.active ? '#635BFF' : '#C7CED6'};
   background: ${props => props.active ? '#635BFF' : 'white'};
   color: ${props => props.active ? 'white' : '#425466'};
   border-radius: 8px;
@@ -274,7 +274,7 @@ const PageButton = styled.button<{ active?: boolean }>`
 const LoadingSpinner = styled.div`
   text-align: center;
   padding: 60px;
-  color: #6B7280;
+  color: #4B5563;
   grid-column: 1 / -1;
 `;
 

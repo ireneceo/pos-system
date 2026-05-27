@@ -93,7 +93,7 @@ const ManualCard = styled.div`
   background: white;
   border-radius: 12px;
   padding: 24px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   cursor: pointer;
   transition: all 0.2s;
   border-left: 4px solid #635BFF;
@@ -126,7 +126,7 @@ const CardTitle = styled.div`
 
 const CardContent = styled.div`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   line-height: 1.5;
   margin-bottom: 16px;
   display: -webkit-box;
@@ -164,9 +164,9 @@ const CardMeta = styled.div`
   justify-content: space-between;
   align-items: center;
   padding-top: 16px;
-  border-top: 1px solid #F3F4F6;
+  border-top: 1px solid #F1F4F8;
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const MetaLeft = styled.div`
@@ -195,7 +195,7 @@ const ViewSection = styled.div`
 const ViewSectionTitle = styled.div`
   font-size: 13px;
   font-weight: 600;
-  color: #6B7C93;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 12px;
@@ -216,16 +216,16 @@ const ViewMeta = styled.div`
   flex-wrap: wrap;
   margin-bottom: 20px;
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
   & > * { flex-shrink: 0; }
 `;
 
 const ViewContent = styled.div`
   font-size: 15px;
-  color: #374151;
+  color: #1F2937;
   line-height: 1.7;
   padding: 20px;
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 8px;
   border-left: 3px solid #635BFF;
   white-space: pre-wrap;
@@ -240,14 +240,14 @@ const FormLabel = styled.label`
   display: block;
   font-size: 13px;
   font-weight: 500;
-  color: #6B7C93;
+  color: #4B5563;
   margin-bottom: 8px;
 `;
 
 const FormInput = styled.input`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   box-sizing: border-box;
@@ -258,7 +258,7 @@ const FormInput = styled.input`
 const FormSelect = styled.select`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -271,7 +271,7 @@ const FormSelect = styled.select`
 const FormTextArea = styled.textarea`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   resize: vertical;
@@ -298,9 +298,9 @@ const DeleteButton = styled.button`
 const CategoryPill = styled.button<{ active: boolean }>`
   padding: 6px 16px;
   border-radius: 20px;
-  border: ${props => props.active ? '1.5px solid #635BFF' : '1px solid #E6EBF1'};
+  border: ${props => props.active ? '1.5px solid #635BFF' : '1px solid #C7CED6'};
   background: ${props => props.active ? '#F0EFFF' : 'white'};
-  color: ${props => props.active ? '#635BFF' : '#6B7280'};
+  color: ${props => props.active ? '#635BFF' : '#4B5563'};
   font-size: 13px;
   font-weight: ${props => props.active ? 600 : 400};
   cursor: pointer;
@@ -316,7 +316,7 @@ const CategoryManageRow = styled.div`
 
 const CategoryInput = styled.input`
   padding: 6px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 13px;
   flex: 1;
@@ -330,10 +330,10 @@ const SmallButton = styled.button<{ variant?: string }>`
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s;
-  border: 1px solid ${props => props.variant === 'danger' ? '#FCA5A5' : '#E6EBF1'};
-  background: ${props => props.variant === 'danger' ? 'transparent' : '#F8FAFC'};
-  color: ${props => props.variant === 'danger' ? '#DC2626' : '#374151'};
-  &:hover { background: ${props => props.variant === 'danger' ? '#FEE2E2' : '#E6EBF1'}; }
+  border: 1px solid ${props => props.variant === 'danger' ? '#FCA5A5' : '#C7CED6'};
+  background: ${props => props.variant === 'danger' ? 'transparent' : '#F1F4F8'};
+  color: ${props => props.variant === 'danger' ? '#DC2626' : '#1F2937'};
+  &:hover { background: ${props => props.variant === 'danger' ? '#FEE2E2' : '#C7CED6'}; }
 `;
 
 const RestaurantSelector = styled.div`
@@ -669,7 +669,7 @@ const WorkManualsPage: React.FC<WorkManualsPageProps> = ({
             <StatValue>{categorizedCount}</StatValue>
             <StatLabel>{t('workManuals.categorized', 'Categorized')}</StatLabel>
           </StatCard>
-          <StatCard color="#6B7280">
+          <StatCard color="#4B5563">
             <StatValue>{uncategorizedCount}</StatValue>
             <StatLabel>{t('workManuals.uncategorized', 'Uncategorized')}</StatLabel>
           </StatCard>
@@ -677,10 +677,10 @@ const WorkManualsPage: React.FC<WorkManualsPageProps> = ({
 
         {/* Category Manager */}
         {showCategoryManager && (
-          <div style={{ background: '#F8FAFC', borderRadius: '12px', padding: '20px', marginBottom: '20px', border: '1px solid #E6EBF1', position: 'relative' }}>
+          <div style={{ background: '#F1F4F8', borderRadius: '12px', padding: '20px', marginBottom: '20px', border: '1px solid #C7CED6', position: 'relative' }}>
             <button
               onClick={() => setShowCategoryManager(false)}
-              style={{ position: 'absolute', top: '12px', right: '12px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: '#9CA3AF', padding: '4px 8px', lineHeight: 1 }}
+              style={{ position: 'absolute', top: '12px', right: '12px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: '#6B7280', padding: '4px 8px', lineHeight: 1 }}
               title="Close"
             >&times;</button>
             <ViewSectionTitle>{t('workManuals.categories', 'Categories')}</ViewSectionTitle>
@@ -759,7 +759,7 @@ const WorkManualsPage: React.FC<WorkManualsPageProps> = ({
                 <CardMeta>
                   <MetaLeft>
                     <MetaItem>{formatDate(manual.createdAt)}</MetaItem>
-                    <MetaItem style={{ color: '#9CA3AF' }}>
+                    <MetaItem style={{ color: '#6B7280' }}>
                       {manual.author_name}
                     </MetaItem>
                   </MetaLeft>
@@ -921,7 +921,7 @@ const WorkManualsPage: React.FC<WorkManualsPageProps> = ({
                 <textarea
                   value={editForm.content}
                   onChange={(e) => setEditForm({ ...editForm, content: e.target.value })}
-                  style={{ width: '100%', minHeight: '200px', padding: '12px', borderRadius: '8px', border: '1px solid #E6EBF1', fontSize: '14px', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
+                  style={{ width: '100%', minHeight: '200px', padding: '12px', borderRadius: '8px', border: '1px solid #C7CED6', fontSize: '14px', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
                 />
               </FormGroup>
             </ViewSection>
@@ -933,7 +933,7 @@ const WorkManualsPage: React.FC<WorkManualsPageProps> = ({
                   {selectedManual.category && <CategoryBadge>{selectedManual.category.name}</CategoryBadge>}
                   {selectedManual.restaurant && <RestaurantBadge>{selectedManual.restaurant.name}</RestaurantBadge>}
                   <span>{formatDateTime(selectedManual.createdAt)}</span>
-                  <span style={{ color: '#9CA3AF' }}>by {selectedManual.author?.full_name || selectedManual.author_name}</span>
+                  <span style={{ color: '#6B7280' }}>by {selectedManual.author?.full_name || selectedManual.author_name}</span>
                   {selectedManual.source_notice_id && (
                     <span style={{ fontSize: '11px', padding: '2px 8px', background: '#FEF3C7', borderRadius: '4px', color: '#92400E' }}>
                       {t('workManuals.fromNotice', 'From Notice')}
@@ -995,7 +995,7 @@ const WorkManualsPage: React.FC<WorkManualsPageProps> = ({
             </>
           }
         >
-          <p style={{ marginBottom: '16px', color: '#6B7280', fontSize: '14px' }}>
+          <p style={{ marginBottom: '16px', color: '#4B5563', fontSize: '14px' }}>
             {t('workManuals.copyDescription', 'A copy of this manual will be created. You can edit it after copying.')}
           </p>
           <p style={{ fontWeight: 600, marginBottom: '16px' }}>"{selectedManual.title}"</p>

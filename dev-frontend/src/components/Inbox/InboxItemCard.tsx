@@ -66,8 +66,8 @@ const Card = styled.div<{ $unread: boolean }>`
   display: flex;
   gap: 12px;
   padding: 12px 14px 12px 18px;
-  background: ${p => p.$unread ? '#F8FAFC' : 'white'};
-  border: 1px solid #E6EBF1;
+  background: ${p => p.$unread ? '#F1F4F8' : 'white'};
+  border: 1px solid #C7CED6;
   border-radius: 10px;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s, transform 0.05s;
@@ -75,7 +75,7 @@ const Card = styled.div<{ $unread: boolean }>`
 
   &:hover {
     background: #F1F5F9;
-    border-color: #CBD5E1;
+    border-color: #64748B;
   }
 
   &:active { transform: scale(0.997); }
@@ -144,7 +144,7 @@ const SeverityDot = styled.span<{ $color: string }>`
 
 const Preview = styled.div`
   font-size: 13px;
-  color: #6B7C93;
+  color: #4B5563;
   line-height: 1.45;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -172,5 +172,5 @@ const TypeBadge = styled.span<{ $bg: string; $fg: string }>`
 
 const Meta = styled.span`
   font-size: 12px;
-  color: #9CA3AF;
+  color: #6B7280;
 `;

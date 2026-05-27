@@ -54,14 +54,14 @@ const DEFAULT_SETTINGS: PaymentSettings = {
 };
 
 const Container = styled.div`
-  background: #FAFBFC;
+  background: #F9FAFB;
   min-height: 100vh;
 `;
 
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   height: 80px;
   min-height: 80px;
   max-height: 80px;
@@ -87,7 +87,7 @@ const Content = styled.div`
 
 const Section = styled.div`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   padding: 24px;
   margin-bottom: 24px;
@@ -101,7 +101,7 @@ const SectionTitle = styled.h2`
 `;
 
 const SectionDescription = styled.p`
-  color: #6B7C93;
+  color: #4B5563;
   font-size: 14px;
   margin: 0 0 20px 0;
 `;
@@ -125,14 +125,14 @@ const Label = styled.label`
   display: block;
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: #1F2937;
   margin-bottom: 8px;
 `;
 
 const Input = styled.input`
   width: 100%;
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   box-sizing: border-box;
@@ -147,7 +147,7 @@ const Input = styled.input`
 const Select = styled.select`
   width: 100%;
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -161,7 +161,7 @@ const Select = styled.select`
 
 const PaymentMethodCard = styled.div`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 16px;
@@ -183,7 +183,7 @@ const MethodLabel = styled.div`
 
 const MethodDescription = styled.div`
   font-size: 13px;
-  color: #6B7C93;
+  color: #4B5563;
   margin-top: 2px;
 `;
 
@@ -212,7 +212,7 @@ const ToggleSlider = styled.span`
   position: absolute;
   cursor: pointer;
   top: 0; left: 0; right: 0; bottom: 0;
-  background-color: #E6EBF1;
+  background-color: #C7CED6;
   transition: 0.3s;
   border-radius: 24px;
 
@@ -231,7 +231,7 @@ const ToggleSlider = styled.span`
 `;
 
 const MethodContent = styled.div`
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
   margin-top: 16px;
   padding-top: 16px;
 `;
@@ -247,7 +247,7 @@ const NoCurrencyMessage = styled.div`
 const LoadingMessage = styled.div`
   text-align: center;
   padding: 40px;
-  color: #6B7C93;
+  color: #4B5563;
   font-size: 14px;
 `;
 
@@ -440,9 +440,9 @@ const SupplierPaymentSettingsPage: React.FC = () => {
                       onClick={() => toggleCurrency(code)}
                       style={{
                         padding: '6px 12px',
-                        border: `1px solid ${active ? '#635BFF' : '#E6EBF1'}`,
+                        border: `1px solid ${active ? '#635BFF' : '#C7CED6'}`,
                         background: active ? '#F0F0FF' : 'white',
-                        color: active ? '#635BFF' : '#374151',
+                        color: active ? '#635BFF' : '#1F2937',
                         borderRadius: 6,
                         cursor: 'pointer',
                         fontSize: 13,
@@ -572,7 +572,7 @@ const SupplierPaymentSettingsPage: React.FC = () => {
                       onChange={e => handlePayPalChange('webhookId', e.target.value)}
                     />
                   </AutoSaveField>
-                  <div style={{ fontSize: 12, color: '#6B7C93', marginTop: 4, lineHeight: 1.5 }}>
+                  <div style={{ fontSize: 12, color: '#4B5563', marginTop: 4, lineHeight: 1.5 }}>
                     From PayPal Developer Dashboard → your app → Live Webhooks → click your webhook → copy "Webhook ID".
                   </div>
                 </FormGroup>

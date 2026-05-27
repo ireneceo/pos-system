@@ -32,7 +32,7 @@ const getTypeColor = (type: string): string => {
       return '#DC2626';
     case 'stock_take':
     case 'adjustment':
-      return '#6B7280';
+      return '#4B5563';
     default:
       return '#0A2540';
   }
@@ -133,7 +133,7 @@ const TransactionHistorySection: React.FC<Props> = ({ restaurantId, isBrandGener
             </MobileValue>
             <MobileValue>
               <MobileLabel>Notes</MobileLabel>
-              <div style={{ color: '#6B7280', fontSize: '13px' }}>
+              <div style={{ color: '#4B5563', fontSize: '13px' }}>
                 {t.notes || '-'}
               </div>
             </MobileValue>

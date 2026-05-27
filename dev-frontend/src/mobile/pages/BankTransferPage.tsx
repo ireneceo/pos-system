@@ -35,8 +35,8 @@ const AmountDisplay = styled.div`
 `;
 
 const BankDetailCard = styled.div`
-  background: #FAFBFC;
-  border: 1px solid #E5E7EB;
+  background: #F9FAFB;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 16px;
@@ -47,7 +47,7 @@ const DetailRow = styled.div`
   justify-content: space-between;
   align-items: center;
   padding: 10px 0;
-  border-bottom: 1px solid #E5E7EB;
+  border-bottom: 1px solid #C7CED6;
 
   &:last-child {
     border-bottom: none;
@@ -56,7 +56,7 @@ const DetailRow = styled.div`
 
 const DetailLabel = styled.div`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   font-weight: 500;
 `;
 
@@ -118,11 +118,11 @@ const ProofSection = styled.div`
 `;
 
 const UploadArea = styled.div`
-  border: 2px dashed #E5E7EB;
+  border: 2px dashed #C7CED6;
   border-radius: 12px;
   padding: 32px 16px;
   text-align: center;
-  background: #FAFBFC;
+  background: #F9FAFB;
   cursor: pointer;
   transition: all 0.2s;
   margin-bottom: 16px;
@@ -138,7 +138,7 @@ const UploadArea = styled.div`
 
   &:after {
     content: 'Drag & Drop or Click to Upload';
-    color: #9CA3AF;
+    color: #6B7280;
     font-size: 14px;
   }
 `;
@@ -148,7 +148,7 @@ const ImagePreview = styled.div`
   border-radius: 12px;
   overflow: hidden;
   margin-bottom: 16px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
 
   img {
     width: 100%;
@@ -181,7 +181,7 @@ const RemoveImageButton = styled.button`
 const OrDivider = styled.div`
   text-align: center;
   margin: 24px 0;
-  color: #9CA3AF;
+  color: #6B7280;
   font-size: 14px;
   font-weight: 500;
   position: relative;
@@ -193,7 +193,7 @@ const OrDivider = styled.div`
     top: 50%;
     width: 42%;
     height: 1px;
-    background: #E5E7EB;
+    background: #C7CED6;
   }
 
   &:before {
@@ -208,7 +208,7 @@ const OrDivider = styled.div`
 const Input = styled.input`
   width: 100%;
   padding: 12px 16px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 16px; /* Prevents iOS/mobile auto-zoom on focus */
   box-sizing: border-box;
@@ -221,7 +221,7 @@ const Input = styled.input`
   }
 
   &::placeholder {
-    color: #9CA3AF;
+    color: #6B7280;
   }
 `;
 
@@ -255,7 +255,7 @@ const SubmitButton = styled.button`
   }
 
   &:disabled {
-    background: #D1D5DB;
+    background: #6B7280;
     cursor: not-allowed;
   }
 `;

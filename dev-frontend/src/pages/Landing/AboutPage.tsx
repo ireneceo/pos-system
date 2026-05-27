@@ -6,7 +6,7 @@ import SEOHead from '../../components/Common/SEOHead';
 import { useTranslation } from 'react-i18next';
 
 const PageContainer = styled.div`
-  background: #FAFBFC;
+  background: #F9FAFB;
 `;
 
 const HeroSection = styled.section`
@@ -109,8 +109,8 @@ const CardGrid = styled.div`
 `;
 
 const PainCard = styled.div`
-  background: #FAFBFC;
-  border: 1px solid #E6EBF1;
+  background: #F9FAFB;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   padding: 24px;
   border-left: 4px solid #EF4444;
@@ -126,7 +126,7 @@ const PainTitle = styled.h3`
 
 const PainDesc = styled.p`
   font-size: 14px;
-  color: #6B7C93;
+  color: #4B5563;
   line-height: 1.6;
   margin: 0;
 `;
@@ -140,7 +140,7 @@ const SolutionStack = styled.div`
 
 const SolutionCard = styled.div<{ tinted?: boolean }>`
   background: ${p => p.tinted ? 'linear-gradient(135deg, #FAFBFF 0%, #F4F2FF 100%)' : 'white'};
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 16px;
   padding: 36px 40px;
   display: grid;
@@ -245,7 +245,7 @@ const WhyGrid = styled.div`
 
 const WhyPoint = styled.div`
   padding: 24px 22px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   background: linear-gradient(135deg, #FFFFFF 0%, #FAFBFF 100%);
 `;
@@ -268,7 +268,7 @@ const WhyPointTitle = styled.h3`
 
 const WhyPointDesc = styled.p`
   font-size: 14px;
-  color: #6B7C93;
+  color: #4B5563;
   line-height: 1.6;
   margin: 0;
   text-wrap: pretty;
@@ -297,7 +297,7 @@ const SectionTitle = styled.h2`
 const Paragraph = styled.p`
   font-size: 16px;
   line-height: 1.8;
-  color: #6B7C93;
+  color: #4B5563;
   margin-bottom: 20px;
 `;
 
@@ -309,7 +309,7 @@ const List = styled.ul`
 const ListItem = styled.li`
   font-size: 16px;
   line-height: 1.8;
-  color: #6B7C93;
+  color: #4B5563;
   margin-bottom: 15px;
   padding-left: 28px;
   position: relative;

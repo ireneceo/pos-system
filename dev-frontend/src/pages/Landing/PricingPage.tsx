@@ -7,7 +7,7 @@ import SEOHead, { generateBreadcrumbSchema, generateLocalBusinessSchema } from '
 import { useTranslation } from 'react-i18next';
 
 const PageContainer = styled.div`
-  background: #FAFBFC;
+  background: #F9FAFB;
 `;
 
 const HeroSection = styled.section`
@@ -94,7 +94,7 @@ const PlanTabs = styled.div`
 
 const PlanTab = styled.button<{ active: boolean }>`
   padding: 12px 24px;
-  border: 2px solid ${props => props.active ? '#635BFF' : '#E5E7EB'};
+  border: 2px solid ${props => props.active ? '#635BFF' : '#C7CED6'};
   background: ${props => props.active ? '#635BFF' : 'white'};
   color: ${props => props.active ? 'white' : '#425466'};
   border-radius: 50px;
@@ -122,13 +122,13 @@ const CurrencySelector = styled.div`
 
 const CurrencyLabel = styled.span`
   font-size: 14px;
-  color: #6B7C93;
+  color: #4B5563;
 `;
 
 const CurrencySelect = styled.select`
   padding: 10px 16px;
   font-size: 14px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   background: white;
   cursor: pointer;
@@ -156,7 +156,7 @@ const PlanCard = styled.div<{ popular?: boolean }>`
   background: white;
   border-radius: 16px;
   padding: 32px;
-  border: 2px solid ${props => props.popular ? '#635BFF' : '#E6EBF1'};
+  border: 2px solid ${props => props.popular ? '#635BFF' : '#C7CED6'};
   position: relative;
   transition: all 0.2s;
   display: flex;
@@ -197,7 +197,7 @@ const PlanName = styled.h3`
 const PriceSection = styled.div`
   text-align: center;
   padding: 20px;
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 12px;
   margin-bottom: 24px;
 `;
@@ -212,14 +212,14 @@ const MonthlyPrice = styled.div`
 const CurrencySymbol = styled.span`
   font-size: 20px;
   font-weight: 600;
-  color: #6B7280;
+  color: #4B5563;
   margin-right: 4px;
 `;
 
 const PeriodText = styled.span`
   font-size: 16px;
   font-weight: 500;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const AnnualPrice = styled.div`
@@ -231,13 +231,13 @@ const AnnualPrice = styled.div`
 
 const BillingNote = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 4px;
 `;
 
 const LimitsSection = styled.div`
   padding: 16px;
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 8px;
   margin-bottom: 16px;
 `;
@@ -247,7 +247,7 @@ const LimitItem = styled.div`
   justify-content: space-between;
   align-items: center;
   padding: 8px 0;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
 
   &:last-child {
     border-bottom: none;
@@ -256,7 +256,7 @@ const LimitItem = styled.div`
 
 const LimitLabel = styled.span`
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
 `;
 
 const LimitValue = styled.span`
@@ -272,7 +272,7 @@ const ModulesSection = styled.div`
 const ModulesTitle = styled.div`
   font-size: 13px;
   font-weight: 600;
-  color: #6B7280;
+  color: #4B5563;
   text-transform: uppercase;
   margin-bottom: 12px;
 `;
@@ -293,7 +293,7 @@ const ModuleItem = styled.li<{ included?: boolean }>`
   padding: 6px 10px;
   border-radius: 6px;
   font-size: 13px;
-  color: ${props => props.included ? '#1F2937' : '#D1D5DB'};
+  color: ${props => props.included ? '#1F2937' : '#6B7280'};
   background: ${props => props.included ? '#F0FDF4' : 'transparent'};
 `;
 
@@ -306,8 +306,8 @@ const ModuleCheck = styled.span<{ included?: boolean }>`
   border-radius: 50%;
   font-size: 11px;
   flex-shrink: 0;
-  background: ${props => props.included ? '#10B981' : '#E5E7EB'};
-  color: ${props => props.included ? 'white' : '#9CA3AF'};
+  background: ${props => props.included ? '#10B981' : '#C7CED6'};
+  color: ${props => props.included ? 'white' : '#6B7280'};
 `;
 
 const ModuleCategoryLabel = styled.div`
@@ -315,7 +315,7 @@ const ModuleCategoryLabel = styled.div`
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #9CA3AF;
+  color: #6B7280;
   margin: 10px 0 4px 0;
   &:first-child {
     margin-top: 0;
@@ -335,7 +335,7 @@ const FeatureItem = styled.li`
   gap: 10px;
   padding: 8px 0;
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
 `;
 
 const FeatureCheck = styled.span`
@@ -816,7 +816,7 @@ const PricingPage: React.FC = () => {
           {loading ? (
             <div style={{ textAlign: 'center', padding: '40px' }}>{t('landing:pricingPage.loadingPlans')}</div>
           ) : displayPlans.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>
+            <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>
               {t('landing:pricingPage.noPlansAvailableForThisCategoryYet')}
             </div>
           ) : (

@@ -20,7 +20,7 @@ const Container = styled.div`
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -42,7 +42,7 @@ const Header = styled.div`
 
 const Content = styled.div`
   padding: 32px;
-  background: #FAFBFC;
+  background: #F9FAFB;
   min-height: calc(100vh - 120px);
 
   @media (max-width: 768px) {
@@ -67,7 +67,7 @@ const Subtitle = styled.div`
   align-items: center;
   gap: 12px;
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 8px 0 0 16px;
 `;
 
@@ -88,7 +88,7 @@ const ChartContainer = styled.div`
   background: white;
   border-radius: 16px;
   padding: 24px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
 
   h3 {
     margin: 0 0 20px 0;
@@ -102,7 +102,7 @@ const AlertsPanel = styled.div`
   background: white;
   border-radius: 16px;
   padding: 20px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   display: flex;
   flex-direction: column;
 
@@ -127,7 +127,7 @@ const AlertsList = styled.div`
 
   &::-webkit-scrollbar { width: 4px; }
   &::-webkit-scrollbar-track { background: transparent; }
-  &::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
+  &::-webkit-scrollbar-thumb { background: #64748B; border-radius: 4px; }
 `;
 
 const Alert = styled.div<{ type: 'warning' | 'error' | 'info' | 'success' }>`
@@ -144,7 +144,7 @@ const Alert = styled.div<{ type: 'warning' | 'error' | 'info' | 'success' }>`
       case 'warning': return '#FFFBEB';
       case 'success': return '#ECFDF5';
       case 'info': return '#EFF6FF';
-      default: return '#F8FAFC';
+      default: return '#F1F4F8';
     }
   }};
   border: 1px solid ${props => {
@@ -153,7 +153,7 @@ const Alert = styled.div<{ type: 'warning' | 'error' | 'info' | 'success' }>`
       case 'warning': return '#FDE68A';
       case 'success': return '#A7F3D0';
       case 'info': return '#BFDBFE';
-      default: return '#E6EBF1';
+      default: return '#C7CED6';
     }
   }};
   flex-shrink: 0;
@@ -175,14 +175,14 @@ const AlertTitle = styled.div<{ type: 'warning' | 'error' | 'info' | 'success' }
       case 'warning': return '#D97706';
       case 'success': return '#059669';
       case 'info': return '#2563EB';
-      default: return '#374151';
+      default: return '#1F2937';
     }
   }};
 `;
 
 const AlertDescription = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 2px;
 `;
 
@@ -191,7 +191,7 @@ const SummaryItem = styled.div`
   justify-content: space-between;
   align-items: center;
   padding: 14px 0;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
 
   &:last-child {
     border-bottom: none;
@@ -200,7 +200,7 @@ const SummaryItem = styled.div`
 
 const SummaryLabel = styled.span`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const SummaryValue = styled.span`
@@ -235,13 +235,13 @@ const QuickActionCard = styled.div`
   padding: 24px;
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   text-align: center;
   cursor: pointer;
   transition: all 0.2s;
 
   &:hover {
-    background: #F6F9FC;
+    background: #F4F6F9;
     .icon { color: #0A2540; }
     .title { color: #0A2540; }
   }
@@ -249,7 +249,7 @@ const QuickActionCard = styled.div`
   .icon {
     font-size: 32px;
     margin-bottom: 12px;
-    color: #6B7C93;
+    color: #4B5563;
     transition: color 0.2s;
     font-family: 'Lucida Console', 'Courier New', monospace;
   }
@@ -264,7 +264,7 @@ const QuickActionCard = styled.div`
 
   .description {
     font-size: 13px;
-    color: #6B7280;
+    color: #4B5563;
   }
 `;
 
@@ -276,7 +276,7 @@ const RecentOrdersSection = styled.div`
     color: #0A2540;
     font-size: 18px;
     font-weight: 600;
-    border: 1px solid #E6EBF1;
+    border: 1px solid #C7CED6;
     border-radius: 16px 16px 0 0;
   }
 `;
@@ -294,7 +294,7 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'trial': return 'background: #DBEAFE; color: #1E40AF;';
       case 'expired': return 'background: #FEE2E2; color: #991B1B;';
       case 'suspended': return 'background: #FEF3C7; color: #92400E;';
-      default: return 'background: #F3F4F6; color: #6B7280;';
+      default: return 'background: #F1F4F8; color: #4B5563;';
     }
   }}
 `;
@@ -588,7 +588,7 @@ const FoodcourtManagerDashboard: React.FC = () => {
             <tbody>
               {tenants.map((tenant) => (
                 <DataTableRow key={tenant.id} onClick={() => navigate(`/pos/manager/reports?tab=sales&restaurantId=${tenant.id}&restaurantName=${encodeURIComponent(tenant.name)}`)} style={{ cursor: 'pointer' }}>
-                  <DataTableCell data-label={t('common:foodcourtManagerDashboard.tenant')} style={{ fontWeight: 600, color: '#0A2540' }}>{tenant.name}{tenant.branch_name && <span style={{ fontSize: '12px', fontWeight: 500, color: '#6B7C93', background: '#F3F4F6', padding: '1px 8px', borderRadius: '4px', marginLeft: '6px' }}>{tenant.branch_name}</span>}</DataTableCell>
+                  <DataTableCell data-label={t('common:foodcourtManagerDashboard.tenant')} style={{ fontWeight: 600, color: '#0A2540' }}>{tenant.name}{tenant.branch_name && <span style={{ fontSize: '12px', fontWeight: 500, color: '#4B5563', background: '#F1F4F8', padding: '1px 8px', borderRadius: '4px', marginLeft: '6px' }}>{tenant.branch_name}</span>}</DataTableCell>
                   <DataTableCell data-label={t('common:foodcourtManagerDashboard.admin')}>{tenant.adminName}</DataTableCell>
                   <DataTableCell data-label={t('common:foodcourtManagerDashboard.status')} align="center">
                     <StatusBadge status={tenant.status}>{tenant.status}</StatusBadge>

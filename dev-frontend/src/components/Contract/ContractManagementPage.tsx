@@ -50,24 +50,24 @@ const STAGE_COLORS: Record<string, { bg: string; color: string }> = {
   contracting: { bg: '#FEF3C7', color: '#D97706' },
   setup: { bg: '#F5F3FF', color: '#6D28D9' },
   active: { bg: '#ECFDF5', color: '#059669' },
-  terminated: { bg: '#F3F4F6', color: '#6B7280' },
+  terminated: { bg: '#F1F4F8', color: '#4B5563' },
   renewed: { bg: '#EDE9FE', color: '#7C3AED' },
-  expired: { bg: '#F3F4F6', color: '#6B7280' }
+  expired: { bg: '#F1F4F8', color: '#4B5563' }
 };
 
 const ClickableRow = styled(DataTableRow)`
   cursor: pointer;
-  &:hover { background: #F8FAFC; }
+  &:hover { background: #F1F4F8; }
 `;
 
 const Unlinked = styled.span`
-  color: #D1D5DB;
+  color: #6B7280;
   font-size: 13px;
 `;
 
 const ViewToggle = styled.div`
   display: flex;
-  background: #F3F4F6;
+  background: #F1F4F8;
   border-radius: 6px;
   padding: 2px;
   flex-shrink: 0;
@@ -82,7 +82,7 @@ const ViewToggleBtn = styled.button<{ active: boolean }>`
   cursor: pointer;
   transition: all 0.15s;
   background: ${p => p.active ? 'white' : 'transparent'};
-  color: ${p => p.active ? '#0A2540' : '#6B7C93'};
+  color: ${p => p.active ? '#0A2540' : '#4B5563'};
   box-shadow: ${p => p.active ? '0 1px 2px rgba(0,0,0,0.08)' : 'none'};
 `;
 
@@ -91,8 +91,8 @@ const STAT_COLORS: Record<string, string> = {
   contracting: '#D97706',
   setup: '#8B5CF6',
   active: '#059669',
-  terminated: '#6B7280',
-  expired: '#6B7280',
+  terminated: '#4B5563',
+  expired: '#4B5563',
   renewed: '#7C3AED'
 };
 
@@ -397,7 +397,7 @@ const ContractManagementPage: React.FC<ContractManagementPageProps> = ({ entityT
                           <DataTableCell data-label={t('list.companyName', 'Company Name')} style={{ fontWeight: 500 }}>
                             <div>{c.applicant_company_name || c.applicant_name || '-'}</div>
                             {c.applicant_contact_person && (
-                              <div style={{ fontSize: '12px', color: '#6B7C93', marginTop: '2px' }}>
+                              <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '2px' }}>
                                 {c.applicant_contact_person}
                               </div>
                             )}

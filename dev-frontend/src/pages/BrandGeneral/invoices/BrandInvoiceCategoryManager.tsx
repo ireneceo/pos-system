@@ -64,7 +64,7 @@ const BrandInvoiceCategoryManager: React.FC<BrandInvoiceCategoryManagerProps> = 
         <HeaderRow>
           <div>
             <SectionTitle>{t('brand:brandInvoicesPage.invoiceCategories')}</SectionTitle>
-            <p style={{ color: '#6B7280', fontSize: '14px', margin: '8px 0 0 0' }}>
+            <p style={{ color: '#4B5563', fontSize: '14px', margin: '8px 0 0 0' }}>
               Manage invoice categories for organizing different types of charges.
             </p>
           </div>
@@ -80,7 +80,7 @@ const BrandInvoiceCategoryManager: React.FC<BrandInvoiceCategoryManagerProps> = 
         {invoiceCategories.length === 0 ? (
           <CategoryEmptyState>
             <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#1F2937', margin: '0 0 8px 0' }}>{t('brand:brandInvoicesPage.noCategoriesYet')}</h4>
-            <p style={{ fontSize: '14px', color: '#6B7280', margin: '0 0 16px 0' }}>{t('brand:brandInvoicesPage.createYourFirstInvoiceCategoryToOrganizeCharges')}</p>
+            <p style={{ fontSize: '14px', color: '#4B5563', margin: '0 0 16px 0' }}>{t('brand:brandInvoicesPage.createYourFirstInvoiceCategoryToOrganizeCharges')}</p>
             <Button variant="primary" onClick={() => {
               setEditingCategory(null);
               setCategoryFormData({ name: '', code: '', description: '' });
@@ -159,7 +159,7 @@ const BrandInvoiceCategoryManager: React.FC<BrandInvoiceCategoryManagerProps> = 
               required
               disabled={editingCategory?.is_system}
             />
-            <small style={{ color: '#6B7280', fontSize: '12px' }}>
+            <small style={{ color: '#4B5563', fontSize: '12px' }}>
               Unique identifier used in the system. Use lowercase letters and underscores.
             </small>
           </FormGroup>

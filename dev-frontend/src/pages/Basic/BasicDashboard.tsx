@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 
 const Container = styled.div`
   padding: 32px;
-  background: #F8FAFC;
+  background: #F1F4F8;
   min-height: 100vh;
   
   @media (max-width: 768px) {
@@ -17,7 +17,7 @@ const WelcomeCard = styled.div`
   background: white;
   border-radius: 12px;
   padding: 40px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   text-align: center;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 `;
@@ -36,7 +36,7 @@ const Title = styled.h1`
 
 const Subtitle = styled.p`
   font-size: 18px;
-  color: #6B7280;
+  color: #4B5563;
   margin-bottom: 32px;
 `;
 
@@ -53,7 +53,7 @@ const RoleBadge = styled.div<{ role: string }>`
       case 'Manager': return '#DBEAFE';
       case 'Restaurant Admin': return '#ECFDF5';
       case 'Staff': return '#FEF3C7';
-      default: return '#F3F4F6';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
@@ -62,7 +62,7 @@ const RoleBadge = styled.div<{ role: string }>`
       case 'Manager': return '#1E40AF';
       case 'Restaurant Admin': return '#059669';
       case 'Staff': return '#D97706';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 `;
@@ -78,7 +78,7 @@ const InfoCard = styled.div`
   background: white;
   border-radius: 12px;
   padding: 24px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-left: 4px solid #635BFF;
   transition: all 0.2s;
   text-align: left;
@@ -98,7 +98,7 @@ const InfoTitle = styled.h3`
 
 const InfoText = styled.p`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   line-height: 1.5;
 `;
 

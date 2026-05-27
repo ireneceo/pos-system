@@ -75,7 +75,7 @@ async function findMergeableOrderMobile(restaurantId, tableNumber, orderType, tr
 
 router.post('/order', async (req, res) => {
   try {
-    const { items, paymentMethod, customerInfo, orderType, tableNumber, storeId, scheduledPickupTime, skipAutoMerge } = req.body;
+    const { items, paymentMethod, customerInfo, orderType, tableNumber, floorPlanTableId, storeId, scheduledPickupTime, skipAutoMerge } = req.body;
 
     // Debug logging
     console.log('📝 Mobile order received:');
@@ -264,6 +264,7 @@ router.post('/order', async (req, res) => {
           const orderData = {
             restaurant_id: restaurantId,
             table_number: actualTableNumber,
+            floor_plan_table_id: floorPlanTableId || null,
             customer_name: customerInfo?.name || 'Mobile Guest',
             customer_phone: customerInfo?.phone || null,
             total_amount: total,

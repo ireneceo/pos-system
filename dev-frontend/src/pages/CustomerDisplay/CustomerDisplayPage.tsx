@@ -471,11 +471,11 @@ const CustomerDisplayPage: React.FC = () => {
             title={t('common:backToDashboard', 'Back to Dashboard')}
             style={{
               background: 'none',
-              border: '1px solid #E6EBF1',
+              border: '1px solid #C7CED6',
               borderRadius: '6px',
               padding: '6px 12px',
               cursor: 'pointer',
-              color: '#6B7C93',
+              color: '#4B5563',
               fontSize: '13px',
               display: 'flex',
               alignItems: 'center',

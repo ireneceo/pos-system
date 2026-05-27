@@ -69,7 +69,7 @@ const Container = styled.div`
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -91,7 +91,7 @@ const Header = styled.div`
 
 const Content = styled.div`
   padding: 32px;
-  background: #FAFBFC;
+  background: #F9FAFB;
   min-height: calc(100vh - 120px);
 
   @media (max-width: 768px) {
@@ -116,7 +116,7 @@ const Subtitle = styled.div`
   align-items: center;
   gap: 12px;
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 8px 0 0 16px;
 `;
 
@@ -155,7 +155,7 @@ const ChartContainer = styled.div`
   background: white;
   border-radius: 16px;
   padding: 28px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
 
   @media (max-width: 768px) {
     padding: 20px;
@@ -173,7 +173,7 @@ const AlertsPanel = styled.div`
   background: white;
   border-radius: 16px;
   padding: 20px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   display: flex;
   flex-direction: column;
 
@@ -203,7 +203,7 @@ const AlertsList = styled.div`
     background: transparent;
   }
   &::-webkit-scrollbar-thumb {
-    background: #CBD5E1;
+    background: #64748B;
     border-radius: 4px;
   }
 `;
@@ -221,7 +221,7 @@ const Alert = styled.div<{ type: 'warning' | 'error' | 'info' }>`
       case 'error': return '#FEF2F2';
       case 'warning': return '#FFFBEB';
       case 'info': return '#EFF6FF';
-      default: return '#F8FAFC';
+      default: return '#F1F4F8';
     }
   }};
   border: 1px solid ${props => {
@@ -229,7 +229,7 @@ const Alert = styled.div<{ type: 'warning' | 'error' | 'info' }>`
       case 'error': return '#FECACA';
       case 'warning': return '#FDE68A';
       case 'info': return '#BFDBFE';
-      default: return '#E6EBF1';
+      default: return '#C7CED6';
     }
   }};
   flex-shrink: 0;
@@ -253,14 +253,14 @@ const AlertTitle = styled.div<{ type: 'warning' | 'error' | 'info' }>`
       case 'error': return '#DC2626';
       case 'warning': return '#D97706';
       case 'info': return '#2563EB';
-      default: return '#374151';
+      default: return '#1F2937';
     }
   }};
 `;
 
 const AlertDescription = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 2px;
 `;
 
@@ -271,7 +271,7 @@ const OrderNumber = styled.div`
 `;
 
 const CustomerInfo = styled.div`
-  color: #6B7280;
+  color: #4B5563;
   font-size: 13px;
   line-height: 1.4;
 `;
@@ -289,7 +289,7 @@ const ItemWithOptions = styled.div`
 `;
 
 const ItemQuantity = styled.span`
-  color: #6B7280;
+  color: #4B5563;
   margin-right: 8px;
 `;
 
@@ -302,7 +302,7 @@ const ItemOptionsInline = styled.span`
 `;
 
 const TimeInfo = styled.div`
-  color: #6B7280;
+  color: #4B5563;
   font-size: 13px;
   line-height: 1.4;
 `;
@@ -313,7 +313,7 @@ const Amount = styled.div`
 `;
 
 const PaymentMethod = styled.div<{ isPending?: boolean }>`
-  color: ${props => props.isPending ? '#FF6B6B' : '#6B7280'};
+  color: ${props => props.isPending ? '#FF6B6B' : '#4B5563'};
   font-size: 13px;
   margin-top: 2px;
   font-weight: ${props => props.isPending ? '500' : 'normal'};
@@ -340,11 +340,11 @@ const Badge = styled.span<{ variant: string }>`
       case 'served':
         return 'background: #D1FAE5; color: #065F46;'; // Green for served
       case 'completed':
-        return 'background: #E5E7EB; color: #374151;'; // Gray for completed
+        return 'background: #C7CED6; color: #1F2937;'; // Gray for completed
       case 'cancelled':
         return 'background: #FEE2E2; color: #991B1B;'; // Red for cancelled
       default:
-        return 'background: #F3F4F6; color: #6B7280;';
+        return 'background: #F1F4F8; color: #4B5563;';
     }
   }}
 `;
@@ -375,13 +375,13 @@ const QuickActionCard = styled.div`
   padding: 24px;
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   text-align: center;
   cursor: pointer;
   transition: all 0.2s;
 
   &:hover {
-    background: #F6F9FC;
+    background: #F4F6F9;
 
     .icon {
       color: #0A2540;
@@ -395,7 +395,7 @@ const QuickActionCard = styled.div`
   .icon {
     font-size: 32px;
     margin-bottom: 12px;
-    color: #6B7C93;
+    color: #4B5563;
     transition: color 0.2s;
     font-family: 'Lucida Console', 'Courier New', monospace;
   }
@@ -410,14 +410,14 @@ const QuickActionCard = styled.div`
 
   .description {
     font-size: 13px;
-    color: #6B7280;
+    color: #4B5563;
   }
 `;
 
 const RecentOrdersSection = styled.div`
   background: white;
   border-radius: 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   overflow: hidden;
 
   h3 {
@@ -426,7 +426,7 @@ const RecentOrdersSection = styled.div`
     color: #0A2540;
     font-size: 18px;
     font-weight: 600;
-    border-bottom: 1px solid #F3F4F6;
+    border-bottom: 1px solid #F1F4F8;
   }
 
   /* DataTable 가 1024px 이하에서 카드 그리드로 변하므로
@@ -647,7 +647,7 @@ const RestaurantDashboard: React.FC = () => {
             <Title>{t('settings:restaurantDashboard.restaurantDashboard')}</Title>
           </Header>
           <Content>
-            <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
+            <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>
               No data available
             </div>
           </Content>
@@ -754,8 +754,8 @@ const RestaurantDashboard: React.FC = () => {
                     style={{
                       padding: '6px 12px',
                       background: timePeriod === 'week' ? '#635BFF' : 'transparent',
-                      color: timePeriod === 'week' ? 'white' : '#6B7280',
-                      border: '1px solid #E6EBF1',
+                      color: timePeriod === 'week' ? 'white' : '#4B5563',
+                      border: '1px solid #C7CED6',
                       borderRadius: '6px',
                       cursor: 'pointer',
                       fontSize: '13px'
@@ -768,8 +768,8 @@ const RestaurantDashboard: React.FC = () => {
                     style={{
                       padding: '6px 12px',
                       background: timePeriod === 'month' ? '#635BFF' : 'transparent',
-                      color: timePeriod === 'month' ? 'white' : '#6B7280',
-                      border: '1px solid #E6EBF1',
+                      color: timePeriod === 'month' ? 'white' : '#4B5563',
+                      border: '1px solid #C7CED6',
                       borderRadius: '6px',
                       cursor: 'pointer',
                       fontSize: '13px'
@@ -782,8 +782,8 @@ const RestaurantDashboard: React.FC = () => {
                     style={{
                       padding: '6px 12px',
                       background: timePeriod === 'year' ? '#635BFF' : 'transparent',
-                      color: timePeriod === 'year' ? 'white' : '#6B7280',
-                      border: '1px solid #E6EBF1',
+                      color: timePeriod === 'year' ? 'white' : '#4B5563',
+                      border: '1px solid #C7CED6',
                       borderRadius: '6px',
                       cursor: 'pointer',
                       fontSize: '13px'
@@ -813,7 +813,7 @@ const RestaurantDashboard: React.FC = () => {
                               width: '100%',
                               maxWidth: '40px',
                               height: `${Math.max(20, (data.revenue / maxRevenue) * 80)}px`,
-                              background: data.revenue === 0 ? '#E5E7EB' : '#635BFF',
+                              background: data.revenue === 0 ? '#C7CED6' : '#635BFF',
                               borderRadius: '4px 4px 0 0',
                               marginBottom: '8px',
                               cursor: 'pointer',
@@ -823,7 +823,7 @@ const RestaurantDashboard: React.FC = () => {
                             onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
                             onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
                           />
-                          <div style={{ fontSize: '11px', color: '#6B7280', textAlign: 'center' }}>
+                          <div style={{ fontSize: '11px', color: '#4B5563', textAlign: 'center' }}>
                             {timePeriod === 'week'
                               ? formatDateTime(dateObj, null, { month: 'short', day: 'numeric' })
                               : timePeriod === 'month'
@@ -831,18 +831,18 @@ const RestaurantDashboard: React.FC = () => {
                               : formatDateTime(dateObj, null, { month: 'short', year: '2-digit' })
                             }
                           </div>
-                          <div style={{ fontSize: '10px', color: '#6B7280', textAlign: 'center' }}>
+                          <div style={{ fontSize: '10px', color: '#4B5563', textAlign: 'center' }}>
                             {formatCurrency(data.revenue, selectedCurrency)}
                           </div>
-                          <div style={{ fontSize: '9px', color: '#9CA3AF', textAlign: 'center' }}>
+                          <div style={{ fontSize: '9px', color: '#6B7280', textAlign: 'center' }}>
                             {data.orders || 0} ord
                           </div>
                         </div>
                       );
                     })}
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '12px', borderTop: '1px solid #E5E7EB' }}>
-                    <div style={{ fontSize: '13px', color: '#6B7280' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '12px', borderTop: '1px solid #C7CED6' }}>
+                    <div style={{ fontSize: '13px', color: '#4B5563' }}>
                       {timePeriod === 'week' ? 'Last 7 days' : timePeriod === 'month' ? 'Last 12 weeks' : 'Last 12 months'}
                     </div>
                     <div style={{ fontSize: '13px', fontWeight: '600', color: '#059669' }}>
@@ -859,8 +859,8 @@ const RestaurantDashboard: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                <div style={{ padding: '20px', background: '#F8FAFC', borderRadius: '12px', minHeight: '160px' }}>
-                  <div style={{ textAlign: 'center', paddingTop: '40px', color: '#6B7280' }}>
+                <div style={{ padding: '20px', background: '#F1F4F8', borderRadius: '12px', minHeight: '160px' }}>
+                  <div style={{ textAlign: 'center', paddingTop: '40px', color: '#4B5563' }}>
                     <p>Total Revenue: {formatCurrency(monthly.revenue, selectedCurrency)}</p>
                     <p>{t('settings:restaurantDashboard.loadingChartData')}</p>
                   </div>
@@ -921,7 +921,7 @@ const RestaurantDashboard: React.FC = () => {
                   <div style={{
                     padding: '16px',
                     textAlign: 'center',
-                    color: '#9CA3AF',
+                    color: '#6B7280',
                     fontSize: '13px',
                     fontStyle: 'italic'
                   }}>
@@ -1013,7 +1013,7 @@ const RestaurantDashboard: React.FC = () => {
                           {(() => {
                             const items = order.items || order.order_items || [];
                             if (!Array.isArray(items) || items.length === 0) {
-                              return <span style={{ color: '#6B7280', fontSize: '13px' }}>{t('settings:restaurantDashboard.noItems')}</span>;
+                              return <span style={{ color: '#4B5563', fontSize: '13px' }}>{t('settings:restaurantDashboard.noItems')}</span>;
                             }
                             return items.map((item: any, index: number) => {
                               if (!item) return null;

@@ -83,12 +83,12 @@ interface ReceiptShareProps {
 const ShareContainer = styled.div`
   margin-top: 16px;
   padding-top: 16px;
-  border-top: 1px solid #E5E7EB;
+  border-top: 1px solid #C7CED6;
 `;
 
 const ShareLabel = styled.div`
   font-size: 12px;
-  color: #9CA3AF;
+  color: #6B7280;
   margin-bottom: 10px;
   text-align: center;
 `;
@@ -112,11 +112,11 @@ const ShareButton = styled.button`
   gap: 6px;
   padding: 8px 14px;
   border-radius: 8px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   background: white;
   font-size: 13px;
   font-weight: 500;
-  color: #374151;
+  color: #1F2937;
   cursor: pointer;
   transition: all 0.2s;
 

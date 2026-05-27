@@ -24,7 +24,7 @@ interface RoleTab {
 
 // ─── Styled Components ───
 const PageContainer = styled.div`
-  background: #FAFBFC;
+  background: #F9FAFB;
 `;
 
 const HeroSection = styled.section`
@@ -97,7 +97,7 @@ const TabBar = styled.div`
 
 const TabButton = styled.button<{ active: boolean }>`
   padding: 12px 24px;
-  border: 2px solid ${props => props.active ? '#635BFF' : '#E5E7EB'};
+  border: 2px solid ${props => props.active ? '#635BFF' : '#C7CED6'};
   background: ${props => props.active ? '#635BFF' : 'white'};
   color: ${props => props.active ? 'white' : '#425466'};
   border-radius: 50px;
@@ -132,7 +132,7 @@ const RoleHeading = styled.h2`
 
 const RoleDescription = styled.p`
   font-size: 15px;
-  color: #6B7C93;
+  color: #4B5563;
   margin: 0 0 36px;
   text-align: left;
   line-height: 1.7;
@@ -149,7 +149,7 @@ const CategoryLabel = styled.div<{ variant: string }>`
   letter-spacing: 1px;
   margin-bottom: 20px;
   padding-bottom: 8px;
-  border-bottom: 2px solid #E6EBF1;
+  border-bottom: 2px solid #C7CED6;
   color: ${props => props.variant === 'advanced' ? '#7C3AED' : '#0A2540'};
 `;
 
@@ -169,7 +169,7 @@ const FeaturesGrid = styled.div`
 const FeatureCard = styled.div`
   background: white;
   border-radius: 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   overflow: hidden;
   transition: all 0.3s;
   display: flex;
@@ -184,7 +184,7 @@ const FeatureCard = styled.div`
 
 const ImageSlider = styled.div`
   position: relative;
-  background: #F0F2F5;
+  background: #C7CED6;
   padding: 16px;
   cursor: pointer;
 `;
@@ -292,7 +292,7 @@ const FeatureTitle = styled.h3`
 
 const FeatureDescription = styled.p`
   font-size: 14px;
-  color: #6B7C93;
+  color: #4B5563;
   line-height: 1.5;
   margin: 0 0 16px 0;
 `;
@@ -306,7 +306,7 @@ const FeaturePoints = styled.ul`
 
 const FeaturePoint = styled.li`
   font-size: 13px;
-  color: #374151;
+  color: #1F2937;
   padding: 4px 0;
   padding-left: 20px;
   position: relative;

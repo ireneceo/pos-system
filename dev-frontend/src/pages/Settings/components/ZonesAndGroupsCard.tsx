@@ -25,7 +25,7 @@ interface ZonesAndGroupsCardProps {
 
 const Card = styled.div`
   background: #fff;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   padding: 20px;
   margin-bottom: 16px;
@@ -38,15 +38,15 @@ const CardTitle = styled.h3`
 `;
 const CardDesc = styled.p`
   font-size: 13px;
-  color: #6B7C93;
+  color: #4B5563;
   margin: 0 0 16px 0;
 `;
 const ZoneBlock = styled.div`
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   padding: 16px;
   margin-bottom: 12px;
-  background: #FAFBFC;
+  background: #F9FAFB;
 `;
 const ZoneHeader = styled.div`
   display: flex;
@@ -72,9 +72,9 @@ const ZoneActions = styled.div`
 `;
 const IconBtn = styled.button`
   background: transparent;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
-  color: #6B7C93;
+  color: #4B5563;
   cursor: pointer;
   padding: 4px 10px;
   font-size: 12px;
@@ -92,12 +92,12 @@ const GroupRow = styled.div`
   align-items: center;
   gap: 12px;
   padding: 10px 8px;
-  border-top: 1px solid #EEF0F3;
+  border-top: 1px solid #C7CED6;
   border-radius: 6px;
   transition: background 0.15s;
 
   &:first-of-type { border-top: 0; }
-  &:hover { background: #FAFBFC; }
+  &:hover { background: #F9FAFB; }
 `;
 const GroupName = styled.div`
   flex: 1;
@@ -112,8 +112,8 @@ const PrefixBadge = styled.span<{ $unset?: boolean }>`
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: ${p => p.$unset ? '#F3F4F6' : '#F0EFFF'};
-  color: ${p => p.$unset ? '#9CA3AF' : '#635BFF'};
+  background: ${p => p.$unset ? '#F1F4F8' : '#F0EFFF'};
+  color: ${p => p.$unset ? '#6B7280' : '#635BFF'};
   font-size: 11px;
   font-weight: 700;
   padding: 2px 8px;
@@ -133,7 +133,7 @@ const PoolStatus = styled.div<{ $variant: 'empty' | 'partial' | 'full' }>`
   min-width: 0;
   font-size: 12px;
   font-weight: 500;
-  color: ${p => p.$variant === 'empty' ? '#9CA3AF'
+  color: ${p => p.$variant === 'empty' ? '#6B7280'
     : p.$variant === 'full' ? '#15803D' : '#635BFF'};
   white-space: nowrap;
 `;
@@ -144,7 +144,7 @@ const PoolBar = styled.div<{ $ratio: number; $variant: 'partial' | 'full' }>`
   position: relative;
   width: 80px;
   height: 4px;
-  background: #EEF0F3;
+  background: #C7CED6;
   border-radius: 2px;
   overflow: hidden;
 
@@ -172,7 +172,7 @@ const PoolEmptyHint = styled.button`
 const ZoneMeta = styled.span`
   font-size: 12px;
   font-weight: 500;
-  color: #6B7C93;
+  color: #4B5563;
   margin-left: 12px;
   font-variant-numeric: tabular-nums;
 `;
@@ -210,12 +210,12 @@ const FormRow = styled.div`
 const Label = styled.label`
   font-size: 12px;
   font-weight: 500;
-  color: #6B7C93;
+  color: #4B5563;
   text-transform: uppercase;
 `;
 const Input = styled.input`
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   color: #0A2540;
@@ -229,7 +229,7 @@ const Input = styled.input`
 `;
 const HintText = styled.div`
   font-size: 11px;
-  color: #9CA3AF;
+  color: #6B7280;
   margin-top: 2px;
 `;
 const Footer = styled.div`
@@ -253,8 +253,8 @@ const PrimaryBtn = styled.button`
 `;
 const SecondaryBtn = styled.button`
   background: #fff;
-  color: #6B7C93;
-  border: 1px solid #E6EBF1;
+  color: #4B5563;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   padding: 10px 18px;
   font-size: 14px;
@@ -267,7 +267,7 @@ const SecondaryBtn = styled.button`
 const QRSection = styled.div`
   margin-top: 24px;
   padding-top: 24px;
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
 `;
 const QRSectionHeader = styled.div`
   display: flex;
@@ -289,8 +289,8 @@ const ZoneFilterRow = styled.div`
 `;
 const ZoneFilterChip = styled.button<{ active: boolean }>`
   background: ${p => p.active ? '#635BFF' : '#fff'};
-  color: ${p => p.active ? '#fff' : '#6B7C93'};
-  border: 1px solid ${p => p.active ? '#635BFF' : '#E6EBF1'};
+  color: ${p => p.active ? '#fff' : '#4B5563'};
+  border: 1px solid ${p => p.active ? '#635BFF' : '#C7CED6'};
   border-radius: 999px;
   padding: 6px 14px;
   font-size: 13px;
@@ -308,11 +308,11 @@ const TablesGrid = styled.div`
   gap: 12px;
 `;
 const TableQRItem = styled.div`
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   padding: 12px;
   text-align: center;
-  background: #FAFBFC;
+  background: #F9FAFB;
 `;
 const TableQRLabel = styled.div`
   font-size: 14px;
@@ -351,9 +351,9 @@ const QRActionBtn = styled.button`
 const EmptyMsg = styled.div`
   padding: 32px;
   text-align: center;
-  color: #9CA3AF;
+  color: #6B7280;
   font-size: 13px;
-  background: #FAFBFC;
+  background: #F9FAFB;
   border-radius: 8px;
 `;
 
@@ -577,7 +577,7 @@ const ZonesAndGroupsCard: React.FC<ZonesAndGroupsCardProps> = ({ restaurantId, r
       <CardDesc>{t('zonesGroups.desc')}</CardDesc>
 
       {loading && (
-        <div style={{ padding: '24px', textAlign: 'center', color: '#9CA3AF', fontSize: '13px' }}>{t('zonesGroups.loading')}</div>
+        <div style={{ padding: '24px', textAlign: 'center', color: '#6B7280', fontSize: '13px' }}>{t('zonesGroups.loading')}</div>
       )}
       {errorMsg && !loading && (
         <div style={{ padding: '14px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '6px', color: '#B91C1C', fontSize: '13px', marginBottom: '12px' }}>
@@ -586,7 +586,7 @@ const ZonesAndGroupsCard: React.FC<ZonesAndGroupsCardProps> = ({ restaurantId, r
       )}
 
       {!loading && zones.length === 0 && (
-        <div style={{ padding: '24px', textAlign: 'center', background: '#FAFBFC', borderRadius: '8px', color: '#6B7C93', fontSize: '13px', marginBottom: '12px' }}>
+        <div style={{ padding: '24px', textAlign: 'center', background: '#F9FAFB', borderRadius: '8px', color: '#4B5563', fontSize: '13px', marginBottom: '12px' }}>
           {t('zonesGroups.noZones')}
         </div>
       )}
@@ -620,7 +620,7 @@ const ZonesAndGroupsCard: React.FC<ZonesAndGroupsCardProps> = ({ restaurantId, r
             </ZoneHeader>
 
             {zoneGroups.length === 0 && (
-              <div style={{ padding: '12px', textAlign: 'center', color: '#9CA3AF', fontSize: '12px' }}>
+              <div style={{ padding: '12px', textAlign: 'center', color: '#6B7280', fontSize: '12px' }}>
                 {t('zonesGroups.noGroupsInZone')}
               </div>
             )}
@@ -675,7 +675,7 @@ const ZonesAndGroupsCard: React.FC<ZonesAndGroupsCardProps> = ({ restaurantId, r
         <QRSection>
           <QRSectionHeader>
             <QRSectionTitle>{t('zonesGroups.tableQrCodes')}</QRSectionTitle>
-            <span style={{ fontSize: 12, color: '#9CA3AF' }}>
+            <span style={{ fontSize: 12, color: '#6B7280' }}>
               {t('zonesGroups.tableCount', { count: realCount })}
             </span>
           </QRSectionHeader>

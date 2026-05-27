@@ -68,7 +68,7 @@ const BrandProductRecipePage: React.FC = () => {
       <Container>
         <Header><Title>{t('brand:brandProductRecipePage.productRecipes')}</Title></Header>
         <Content>
-          <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
+          <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>
             {t('brand:brandProductRecipePage.loading', 'Loading…')}
           </div>
         </Content>
@@ -81,7 +81,7 @@ const BrandProductRecipePage: React.FC = () => {
       <Container>
         <Header><Title>{t('brand:brandProductRecipePage.productRecipes')}</Title></Header>
         <Content>
-          <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
+          <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>
             {t(
               'brand:brandProductRecipePage.noBrand',
               'No brand is associated with this account. Please contact System Admin.'
@@ -104,7 +104,7 @@ const BrandProductRecipePage: React.FC = () => {
             style={{
               padding: '8px 12px',
               borderRadius: 6,
-              border: '1px solid #E6EBF1',
+              border: '1px solid #C7CED6',
               fontSize: 14,
               background: 'white',
               cursor: 'pointer'

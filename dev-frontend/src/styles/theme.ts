@@ -13,23 +13,25 @@ export const theme = {
     primaryShadow: 'rgba(99, 91, 255, 0.3)',
 
     secondary: '#0A2540',
-    secondaryLight: '#F8FAFC',
+    secondaryLight: '#F1F4F8',
 
-    // Backgrounds
-    background: '#FAFBFC',
-    backgroundAlt: '#F6F9FC',
+    // Backgrounds — 2026-05-26: slightly darker shop-floor pass for visual separation
+    background: '#F9FAFB',     // was #F9FAFB
+    backgroundAlt: '#F4F6F9',  // was #F4F6F9
     surface: '#FFFFFF',
-    surfaceHover: '#F8FAFC',
-    surfaceMuted: '#F3F4F6',
+    surfaceHover: '#F1F4F8',   // was #F1F4F8
+    surfaceMuted: '#F1F4F8',   // was #F1F4F8
 
     // Text
+    // 2026-05-26: shop-floor legibility pass — bumped greys one step darker after
+    // on-site feedback that the lighter palette washed out under shop lighting.
     text: {
       primary: '#0A2540',
-      secondary: '#6B7C93',
-      light: '#8898AA',
-      muted: '#6B7280',
-      dark: '#374151',
-      placeholder: '#9CA3AF',
+      secondary: '#374151',  // was #4B5563
+      light: '#4B5563',      // was #8898AA
+      muted: '#374151',      // was #4B5563
+      dark: '#1F2937',       // was #1F2937
+      placeholder: '#4B5563', // was #6B7280
     },
 
     // Status
@@ -56,15 +58,15 @@ export const theme = {
     dangerBorder: '#FCA5A5',
     dangerShadow: 'rgba(220, 38, 38, 0.3)',
 
-    // Borders
-    border: '#E6EBF1',
-    borderLight: '#E5E7EB',
-    borderHover: '#CBD5E1',
+    // Borders — 2026-05-26: one notch darker so cards/buttons stay legible under shop lighting
+    border: '#C7CED6',       // was #C7CED6
+    borderLight: '#6B7280',  // was #C7CED6
+    borderHover: '#6B7280',  // was #64748B
 
     // Disabled
     disabled: {
-      background: '#F3F4F6',
-      text: '#D1D5DB',
+      background: '#F1F4F8',
+      text: '#6B7280',
       primaryBg: '#A5A0FF',
       dangerBg: '#FCA5A5',
     },

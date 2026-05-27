@@ -38,13 +38,13 @@ interface ReportData {
 
 const Container = styled.div`
   min-height: 100vh;
-  background: #FAFBFC;
+  background: #F9FAFB;
 `;
 
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -106,7 +106,7 @@ const Content = styled.div`
 
 const StatTrend = styled.div<{ trend?: 'up' | 'down' }>`
   font-size: 12px;
-  color: ${props => props.trend === 'up' ? '#059669' : props.trend === 'down' ? '#DC2626' : '#6B7280'};
+  color: ${props => props.trend === 'up' ? '#059669' : props.trend === 'down' ? '#DC2626' : '#4B5563'};
   font-weight: 500;
 `;
 
@@ -114,7 +114,7 @@ const ReportSection = styled.div`
   background: white;
   border-radius: 12px;
   padding: 24px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   margin-bottom: 24px;
 `;
 
@@ -134,14 +134,14 @@ const ReportGrid = styled.div`
 
 const ChartPlaceholder = styled.div`
   height: 300px;
-  background: #F8FAFC;
-  border: 2px dashed #E6EBF1;
+  background: #F1F4F8;
+  border: 2px dashed #C7CED6;
   border-radius: 8px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #6B7280;
+  color: #4B5563;
   font-size: 14px;
   text-align: center;
 `;
@@ -149,7 +149,7 @@ const ChartPlaceholder = styled.div`
 const ProgressBar = styled.div<{ percentage: number }>`
   width: 100%;
   height: 4px;
-  background: #F3F4F6;
+  background: #F1F4F8;
   border-radius: 2px;
   overflow: hidden;
   position: relative;
@@ -449,7 +449,7 @@ const ManagerReportsPage: React.FC = () => {
                       <DataTableCell data-label={t('admin:managerReportsPage.performance')}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <ProgressBar percentage={(item.quantity / maxQuantity) * 100} />
-                          <span style={{ fontSize: '12px', color: '#6B7C93', minWidth: '40px' }}>
+                          <span style={{ fontSize: '12px', color: '#4B5563', minWidth: '40px' }}>
                             {Math.round((item.quantity / maxQuantity) * 100)}%
                           </span>
                         </div>
@@ -515,7 +515,7 @@ const ManagerReportsPage: React.FC = () => {
                     <DataTableCell data-label={t('admin:managerReportsPage.performance')}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <ProgressBar percentage={staff.efficiency} />
-                        <span style={{ fontSize: '12px', color: '#6B7C93' }}>{staff.efficiency}%</span>
+                        <span style={{ fontSize: '12px', color: '#4B5563' }}>{staff.efficiency}%</span>
                       </div>
                     </DataTableCell>
                   </DataTableRow>

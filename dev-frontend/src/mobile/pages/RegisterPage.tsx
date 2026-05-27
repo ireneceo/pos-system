@@ -26,7 +26,7 @@ const Title = styled.h1`
 
 const Subtitle = styled.p`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 0;
 `;
 
@@ -39,7 +39,7 @@ const InputGroup = styled.div<{ hasError?: boolean }>`
   margin-bottom: 16px;
 
   input, select {
-    border-color: ${props => props.hasError ? '#DC2626' : '#E5E7EB'};
+    border-color: ${props => props.hasError ? '#DC2626' : '#C7CED6'};
   }
 `;
 
@@ -47,14 +47,14 @@ const InputLabel = styled.label`
   display: block;
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: #1F2937;
   margin-bottom: 8px;
 `;
 
 const Input = styled.input`
   width: 100%;
   padding: 14px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 10px;
   font-size: 16px;
   box-sizing: border-box;
@@ -68,7 +68,7 @@ const Input = styled.input`
   }
 
   &::placeholder {
-    color: #9CA3AF;
+    color: #6B7280;
   }
 `;
 
@@ -101,7 +101,7 @@ const ErrorBox = styled.div`
 
 const PasswordHint = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 4px;
 `;
 
@@ -123,7 +123,7 @@ const SubmitButton = styled.button`
   }
 
   &:disabled {
-    background: #D1D5DB;
+    background: #6B7280;
     cursor: not-allowed;
   }
 `;
@@ -138,12 +138,12 @@ const Divider = styled.div`
     content: '';
     flex: 1;
     height: 1px;
-    background: #E5E7EB;
+    background: #C7CED6;
   }
 
   span {
     padding: 0 16px;
-    color: #9CA3AF;
+    color: #6B7280;
     font-size: 14px;
   }
 `;
@@ -152,9 +152,9 @@ const LoginLink = styled.button`
   width: 100%;
   padding: 14px;
   background: white;
-  border: 2px solid #E5E7EB;
+  border: 2px solid #C7CED6;
   border-radius: 10px;
-  color: #374151;
+  color: #1F2937;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
@@ -162,13 +162,13 @@ const LoginLink = styled.button`
 
   &:active {
     background: #F9FAFB;
-    border-color: #D1D5DB;
+    border-color: #6B7280;
   }
 `;
 
 const TermsText = styled.p`
   font-size: 12px;
-  color: #9CA3AF;
+  color: #6B7280;
   text-align: center;
   margin: 16px 0 0;
   line-height: 1.5;

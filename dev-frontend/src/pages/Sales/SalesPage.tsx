@@ -74,14 +74,14 @@ interface DetailViewState {
 // 스타일 컴포넌트
 const SalesContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #FAFBFC;
+  background-color: #F9FAFB;
   min-height: 100vh;
 `;
 
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -124,12 +124,12 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s;
-  border: ${props => props.variant === 'primary' ? 'none' : '1px solid #E6EBF1'};
+  border: ${props => props.variant === 'primary' ? 'none' : '1px solid #C7CED6'};
   background: ${props => props.variant === 'primary' ? '#635BFF' : 'white'};
-  color: ${props => props.variant === 'primary' ? 'white' : '#6B7C93'};
+  color: ${props => props.variant === 'primary' ? 'white' : '#4B5563'};
   
   &:hover {
-    background: ${props => props.variant === 'primary' ? '#5A51E6' : '#F6F9FC'};
+    background: ${props => props.variant === 'primary' ? '#5A51E6' : '#F4F6F9'};
     transform: translateY(-1px);
   }
   
@@ -170,18 +170,18 @@ const FilterGroup = styled.div`
 const FilterLabel = styled.label`
   font-size: 12px;
   font-weight: 600;
-  color: #6B7C93;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.3px;
 `;
 
 const FilterSelect = styled.select`
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   background: white;
-  color: #374151;
+  color: #1F2937;
   cursor: pointer;
   transition: all 0.2s;
   min-width: 120px;
@@ -195,11 +195,11 @@ const FilterSelect = styled.select`
 
 const DateInput = styled.input`
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   background: white;
-  color: #374151;
+  color: #1F2937;
   cursor: pointer;
   transition: all 0.2s;
   
@@ -214,7 +214,7 @@ const DateInput = styled.input`
 const TableContainer = styled.div`
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   overflow: hidden;
 `;
 
@@ -223,11 +223,11 @@ const TableHeader = styled.div`
   grid-template-columns: 1.5fr 1.2fr 1fr 1fr 1fr 0.8fr 0.5fr 0.5fr;
   gap: 16px;
   padding: 16px 20px;
-  background: #F8FAFC;
-  border-bottom: 1px solid #E6EBF1;
+  background: #F1F4F8;
+  border-bottom: 1px solid #C7CED6;
   font-size: 12px;
   font-weight: 600;
-  color: #6B7C93;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.3px;
 
@@ -265,7 +265,7 @@ const TableRow = styled.div`
   grid-template-columns: 1.5fr 1.2fr 1fr 1fr 1fr 0.8fr 0.5fr 0.5fr;
   gap: 16px;
   padding: 16px 20px;
-  border-bottom: 1px solid #F6F9FC;
+  border-bottom: 1px solid #F4F6F9;
   align-items: center;
   transition: all 0.2s;
   cursor: pointer;
@@ -279,7 +279,7 @@ const TableRow = styled.div`
   }
   
   &:hover {
-    background: #F8FAFC;
+    background: #F1F4F8;
   }
   
   &:last-child {
@@ -312,7 +312,7 @@ const MobileCard = styled.div`
   @media (max-width: 768px) {
     display: block;
     background: white;
-    border: 1px solid #E6EBF1;
+    border: 1px solid #C7CED6;
     border-radius: 8px;
     padding: 16px;
     margin-bottom: 12px;
@@ -333,7 +333,7 @@ const OrderNumber = styled.div`
 
 const DateTime = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const CustomerInfo = styled.div`
@@ -354,8 +354,8 @@ const CustomerType = styled.span<{ type: 'guest' | 'member' }>`
   border-radius: 4px;
   font-weight: 600;
   text-transform: uppercase;
-  background: ${props => props.type === 'member' ? '#ECFDF5' : '#F3F4F6'};
-  color: ${props => props.type === 'member' ? '#059669' : '#6B7280'};
+  background: ${props => props.type === 'member' ? '#ECFDF5' : '#F1F4F8'};
+  color: ${props => props.type === 'member' ? '#059669' : '#4B5563'};
 `;
 
 const Amount = styled.div`
@@ -376,7 +376,7 @@ const PaymentBadge = styled.span<{ method: string }>`
       case 'card': return '#DBEAFE';
       case 'digital_wallet': return '#ECFDF5';
       case 'points': return '#EDE9FE';
-      default: return '#F3F4F6';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
@@ -385,7 +385,7 @@ const PaymentBadge = styled.span<{ method: string }>`
       case 'card': return '#1E40AF';
       case 'digital_wallet': return '#059669';
       case 'points': return '#5B21B6';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 `;
@@ -398,18 +398,18 @@ const StatusBadge = styled.span<{ status: string }>`
   text-transform: uppercase;
   background: ${props => {
     switch(props.status) {
-      case 'completed': return '#E5E7EB';
+      case 'completed': return '#C7CED6';
       case 'refunded': return '#FEF2F2';
-      case 'cancelled': return '#F3F4F6';
-      default: return '#F3F4F6';
+      case 'cancelled': return '#F1F4F8';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
     switch(props.status) {
-      case 'completed': return '#374151';
+      case 'completed': return '#1F2937';
       case 'refunded': return '#DC2626';
-      case 'cancelled': return '#6B7280';
-      default: return '#6B7280';
+      case 'cancelled': return '#4B5563';
+      default: return '#4B5563';
     }
   }};
 `;
@@ -449,14 +449,14 @@ const BreadcrumbContainer = styled.div`
   gap: 8px;
   margin-bottom: 24px;
   padding: 12px 16px;
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 8px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
 `;
 
 const BreadcrumbItem = styled.span<{ clickable?: boolean }>`
   font-size: 14px;
-  color: ${props => props.clickable ? '#635BFF' : '#6B7280'};
+  color: ${props => props.clickable ? '#635BFF' : '#4B5563'};
   cursor: ${props => props.clickable ? 'pointer' : 'default'};
   font-weight: 500;
   
@@ -469,7 +469,7 @@ const BreadcrumbItem = styled.span<{ clickable?: boolean }>`
 `;
 
 const BreadcrumbSeparator = styled.span`
-  color: #9CA3AF;
+  color: #6B7280;
   font-size: 14px;
 `;
 
@@ -478,10 +478,10 @@ const BackButton = styled.button`
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
-  background: #F8FAFC;
-  border: 1px solid #E6EBF1;
+  background: #F1F4F8;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
-  color: #6B7280;
+  color: #4B5563;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -491,22 +491,22 @@ const BackButton = styled.button`
   &:hover {
     background: #F1F5F9;
     color: #0A2540;
-    border-color: #CBD5E1;
+    border-color: #64748B;
   }
 `;
 
 const DetailTransactionContainer = styled.div`
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   overflow: hidden;
   margin-top: 20px;
 `;
 
 const DetailHeader = styled.div`
   padding: 20px;
-  background: #F8FAFC;
-  border-bottom: 1px solid #E6EBF1;
+  background: #F1F4F8;
+  border-bottom: 1px solid #C7CED6;
 `;
 
 const DetailTitle = styled.h3`
@@ -518,7 +518,7 @@ const DetailTitle = styled.h3`
 
 const DetailSubtitle = styled.p`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const PaginationContainer = styled.div`
@@ -532,24 +532,24 @@ const PaginationContainer = styled.div`
 
 const PaginationButton = styled.button<{ disabled?: boolean }>`
   padding: 8px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
-  background: ${props => props.disabled ? '#F8FAFC' : 'white'};
-  color: ${props => props.disabled ? '#9CA3AF' : '#374151'};
+  background: ${props => props.disabled ? '#F1F4F8' : 'white'};
+  color: ${props => props.disabled ? '#6B7280' : '#1F2937'};
   font-size: 14px;
   font-weight: 500;
   cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
   transition: all 0.2s;
   
   &:hover:not(:disabled) {
-    background: #F8FAFC;
+    background: #F1F4F8;
     border-color: #635BFF;
   }
 `;
 
 const PageInfo = styled.span`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   font-weight: 500;
 `;
 
@@ -1122,19 +1122,19 @@ const SalesPage: React.FC = () => {
         body { font-family: 'Inter', Arial, sans-serif; margin: 40px; color: #333; line-height: 1.6; }
         .header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid #635BFF; padding-bottom: 20px; }
         .title { font-size: 28px; font-weight: 600; color: #0A2540; margin-bottom: 10px; }
-        .subtitle { font-size: 16px; color: #6B7C93; }
+        .subtitle { font-size: 16px; color: #4B5563; }
         .section { margin-bottom: 30px; }
-        .section-title { font-size: 20px; font-weight: 600; color: #0A2540; margin-bottom: 15px; border-bottom: 1px solid #E6EBF1; padding-bottom: 5px; }
+        .section-title { font-size: 20px; font-weight: 600; color: #0A2540; margin-bottom: 15px; border-bottom: 1px solid #C7CED6; padding-bottom: 5px; }
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 20px; }
-        .stat-card { background: #F8FAFC; border: 1px solid #E6EBF1; border-radius: 8px; padding: 20px; text-align: center; }
+        .stat-card { background: #F1F4F8; border: 1px solid #C7CED6; border-radius: 8px; padding: 20px; text-align: center; }
         .stat-value { font-size: 24px; font-weight: 600; color: #0A2540; margin-bottom: 5px; }
-        .stat-label { font-size: 14px; color: #6B7C93; text-transform: uppercase; letter-spacing: 0.5px; }
-        .breakdown { background: white; border: 1px solid #E6EBF1; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
-        .breakdown-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #F6F9FC; }
+        .stat-label { font-size: 14px; color: #4B5563; text-transform: uppercase; letter-spacing: 0.5px; }
+        .breakdown { background: white; border: 1px solid #C7CED6; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+        .breakdown-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #F4F6F9; }
         .breakdown-item:last-child { border-bottom: none; }
         .breakdown-label { font-weight: 500; }
         .breakdown-value { font-weight: 600; color: #0A2540; }
-        .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #9CA3AF; border-top: 1px solid #E6EBF1; padding-top: 20px; }
+        .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #6B7280; border-top: 1px solid #C7CED6; padding-top: 20px; }
     </style>
 </head>
 <body>
@@ -1247,19 +1247,19 @@ const SalesPage: React.FC = () => {
         body { font-family: 'Inter', Arial, sans-serif; margin: 40px; color: #333; line-height: 1.6; }
         .header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid #635BFF; padding-bottom: 20px; }
         .title { font-size: 28px; font-weight: 600; color: #0A2540; margin-bottom: 10px; }
-        .subtitle { font-size: 16px; color: #6B7C93; }
+        .subtitle { font-size: 16px; color: #4B5563; }
         .section { margin-bottom: 30px; }
-        .section-title { font-size: 20px; font-weight: 600; color: #0A2540; margin-bottom: 15px; border-bottom: 1px solid #E6EBF1; padding-bottom: 5px; }
+        .section-title { font-size: 20px; font-weight: 600; color: #0A2540; margin-bottom: 15px; border-bottom: 1px solid #C7CED6; padding-bottom: 5px; }
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 20px; }
-        .stat-card { background: #F8FAFC; border: 1px solid #E6EBF1; border-radius: 8px; padding: 20px; text-align: center; }
+        .stat-card { background: #F1F4F8; border: 1px solid #C7CED6; border-radius: 8px; padding: 20px; text-align: center; }
         .stat-value { font-size: 24px; font-weight: 600; color: #0A2540; margin-bottom: 5px; }
-        .stat-label { font-size: 14px; color: #6B7C93; text-transform: uppercase; letter-spacing: 0.5px; }
+        .stat-label { font-size: 14px; color: #4B5563; text-transform: uppercase; letter-spacing: 0.5px; }
         .period-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-        .period-table th, .period-table td { padding: 12px; text-align: left; border-bottom: 1px solid #E6EBF1; }
-        .period-table th { background: #F8FAFC; font-weight: 600; color: #0A2540; }
+        .period-table th, .period-table td { padding: 12px; text-align: left; border-bottom: 1px solid #C7CED6; }
+        .period-table th { background: #F1F4F8; font-weight: 600; color: #0A2540; }
         .growth-positive { color: #059669; font-weight: 600; }
         .growth-negative { color: #DC2626; font-weight: 600; }
-        .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #9CA3AF; border-top: 1px solid #E6EBF1; padding-top: 20px; }
+        .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #6B7280; border-top: 1px solid #C7CED6; padding-top: 20px; }
     </style>
 </head>
 <body>
@@ -1370,7 +1370,7 @@ const SalesPage: React.FC = () => {
             <EmptyStateText>
               Access Denied
             </EmptyStateText>
-            <p style={{ fontSize: '14px', color: '#9CA3AF' }}>
+            <p style={{ fontSize: '14px', color: '#6B7280' }}>
               You need admin or manager privileges to access sales management.
             </p>
           </EmptyState>
@@ -1606,7 +1606,7 @@ const SalesPage: React.FC = () => {
                             {transaction.customer.type}
                           </CustomerType>
                         </div>
-                        <div style={{ fontSize: '12px', color: '#6B7280' }}>
+                        <div style={{ fontSize: '12px', color: '#4B5563' }}>
                           Staff: {transaction.staff.name}
                         </div>
                       </CustomerInfo>
@@ -1888,7 +1888,7 @@ const SalesPage: React.FC = () => {
                                 {transaction.customer.type}
                               </CustomerType>
                             </div>
-                            <div style={{ fontSize: '12px', color: '#6B7280' }}>
+                            <div style={{ fontSize: '12px', color: '#4B5563' }}>
                               Staff: {transaction.staff.name}
                             </div>
                           </CustomerInfo>
@@ -1951,7 +1951,7 @@ const SalesPage: React.FC = () => {
                                 {aggregate.growth > 0 ? '+' : ''}{aggregate.growth.toFixed(1)}%
                               </GrowthBadge>
                             ) : (
-                              <span style={{ fontSize: '12px', color: '#9CA3AF' }}>{t('reports:salesPage.na')}</span>
+                              <span style={{ fontSize: '12px', color: '#6B7280' }}>{t('reports:salesPage.na')}</span>
                             )}
                           </div>
                           
@@ -1975,7 +1975,7 @@ const SalesPage: React.FC = () => {
                               <PeriodTitle style={{ fontSize: '16px', fontWeight: '600', marginBottom: '4px' }}>
                                 {aggregate.period}
                               </PeriodTitle>
-                              <div style={{ fontSize: '12px', color: '#6B7280' }}>
+                              <div style={{ fontSize: '12px', color: '#4B5563' }}>
                                 {aggregate.totalTransactions.toLocaleString()} transactions
                               </div>
                             </div>

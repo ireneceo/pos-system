@@ -146,11 +146,12 @@ export const FIXTURE_PRESETS: { type: FixtureType; label: string; defaultWidth: 
 ];
 
 export const STATUS_COLORS: Record<TableStatus, { bg: string; border: string; text: string }> = {
-  available: { bg: '#F3F4F6', border: '#D1D5DB', text: '#9CA3AF' },
+  // 2026-05-26: shop-floor pass — bumped text/border one shade darker for legibility
+  available: { bg: '#F1F4F8', border: '#6B7280', text: '#374151' },        // was bg #F1F4F8, border #6B7280, text #6B7280
   occupied: { bg: '#EDE9FE', border: '#7C3AED', text: '#6D28D9' },
   ready: { bg: '#DCFCE7', border: '#16A34A', text: '#15803D' },
   'needs-attention': { bg: '#FEE2E2', border: '#DC2626', text: '#B91C1C' },
-  completed: { bg: '#F3F4F6', border: '#9CA3AF', text: '#6B7280' }
+  completed: { bg: '#F1F4F8', border: '#4B5563', text: '#1F2937' }         // was bg #F1F4F8, border #6B7280, text #4B5563
 };
 
 export const STATUS_LABELS: Record<TableStatus, string> = {
@@ -168,7 +169,7 @@ export const ORDER_STATUS_COLORS: Record<string, { bg: string; text: string; bor
   preparing: { bg: '#EDE9FE', text: '#6D28D9', border: '#7C3AED' },
   ready: { bg: '#DCFCE7', text: '#15803D', border: '#16A34A' },
   served: { bg: '#D1FAE5', text: '#047857', border: '#059669' },
-  completed: { bg: '#F3F4F6', text: '#6B7280', border: '#9CA3AF' },
+  completed: { bg: '#F1F4F8', text: '#4B5563', border: '#6B7280' },
   cancelled: { bg: '#FEE2E2', text: '#B91C1C', border: '#DC2626' },
   awaiting_payment: { bg: '#FFF7ED', text: '#C2410C', border: '#F97316' }
 };

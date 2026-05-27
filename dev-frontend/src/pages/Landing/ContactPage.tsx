@@ -7,7 +7,7 @@ import PhoneInput from '../../components/Common/PhoneInput';
 import { useTranslation } from 'react-i18next';
 
 const PageContainer = styled.div`
-  background: #FAFBFC;
+  background: #F9FAFB;
 `;
 
 const HeroSection = styled.section`
@@ -81,7 +81,7 @@ const FormSection = styled.div`
   background: white;
   border-radius: 16px;
   padding: 32px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
 `;
 
 const FormTitle = styled.h2`
@@ -117,7 +117,7 @@ const Required = styled.span`
 const Input = styled.input`
   padding: 12px 16px;
   font-size: 15px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   transition: all 0.2s;
 
@@ -131,7 +131,7 @@ const Input = styled.input`
 const Select = styled.select`
   padding: 12px 16px;
   font-size: 15px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   background: white;
   cursor: pointer;
@@ -147,7 +147,7 @@ const Select = styled.select`
 const TextArea = styled.textarea`
   padding: 12px 16px;
   font-size: 15px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   min-height: 120px;
   resize: vertical;
@@ -193,7 +193,7 @@ const InfoCard = styled.div`
   background: white;
   border-radius: 16px;
   padding: 24px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
 `;
 
 const InfoTitle = styled.h3`
@@ -488,7 +488,7 @@ const ContactPage: React.FC = () => {
                           placeholder="e.g., myrestaurant (letters, numbers, underscore only)"
                           pattern="^[a-zA-Z0-9_]+$"
                         />
-                        <small style={{ color: '#6B7C93', fontSize: '12px' }}>
+                        <small style={{ color: '#4B5563', fontSize: '12px' }}>
                           {t('landing:contactPage.thisWillBeYourLoginIdOnlyLettersNumbersA')}
                         </small>
                       </FormGroup>
@@ -580,7 +580,7 @@ const ContactPage: React.FC = () => {
                     </ContactItem>
                   </>
                 ) : (
-                  <ContactValue style={{ color: '#9CA3AF' }}>{t('landing:contactPage.loading')}</ContactValue>
+                  <ContactValue style={{ color: '#6B7280' }}>{t('landing:contactPage.loading')}</ContactValue>
                 )}
               </InfoCard>
 
@@ -604,17 +604,17 @@ const ContactPage: React.FC = () => {
                     </ContactItem>
                   </>
                 ) : (
-                  <ContactValue style={{ color: '#9CA3AF' }}>{t('landing:contactPage.loading')}</ContactValue>
+                  <ContactValue style={{ color: '#6B7280' }}>{t('landing:contactPage.loading')}</ContactValue>
                 )}
               </InfoCard>
 
               <InfoCard>
                 <InfoTitle>{t('landing:contactPage.freeTrial')}</InfoTitle>
-                <p style={{ fontSize: '14px', color: '#6B7C93', lineHeight: '1.6', marginBottom: '12px' }}>
+                <p style={{ fontSize: '14px', color: '#4B5563', lineHeight: '1.6', marginBottom: '12px' }}>
                   {t('landing:contactPage.tryPurpleherePosFreeFor')}<strong style={{ color: '#635BFF' }}>7 days</strong> with full access to all features.
                   No credit card required.
                 </p>
-                <ul style={{ fontSize: '14px', color: '#6B7C93', lineHeight: '1.8', margin: 0, paddingLeft: '20px' }}>
+                <ul style={{ fontSize: '14px', color: '#4B5563', lineHeight: '1.8', margin: 0, paddingLeft: '20px' }}>
                   <li>{t('landing:contactPage.fullFeatureAccess')}</li>
                   <li>{t('landing:contactPage.dedicatedOnboardingSupport')}</li>
                   <li>{t('landing:contactPage.noCommitmentCancelAnytime')}</li>
@@ -623,7 +623,7 @@ const ContactPage: React.FC = () => {
 
               <InfoCard>
                 <InfoTitle>{t('landing:contactPage.responseTime')}</InfoTitle>
-                <p style={{ fontSize: '14px', color: '#6B7C93', lineHeight: '1.6' }}>
+                <p style={{ fontSize: '14px', color: '#4B5563', lineHeight: '1.6' }}>
                   We typically respond to all inquiries within 24 hours during business days.
                   For urgent matters, please call us directly.
                 </p>

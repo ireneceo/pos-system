@@ -64,7 +64,7 @@ const Container = styled.div`
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -86,7 +86,7 @@ const Header = styled.div`
 
 const Content = styled.div`
   padding: 32px;
-  background: #FAFBFC;
+  background: #F9FAFB;
   min-height: calc(100vh - 120px);
 
   @media (max-width: 768px) {
@@ -132,7 +132,7 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
             box-shadow: 0 4px 12px rgba(99, 91, 255, 0.3);
           }
           &:disabled {
-            background: #9CA3AF;
+            background: #6B7280;
             cursor: not-allowed;
             transform: none;
             box-shadow: none;
@@ -150,12 +150,12 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
       default:
         return `
           background: white;
-          color: #6B7280;
-          border: 1px solid #E6EBF1;
+          color: #4B5563;
+          border: 1px solid #C7CED6;
           &:hover {
-            background: #F8FAFC;
+            background: #F1F4F8;
             color: #0A2540;
-            border-color: #CBD5E1;
+            border-color: #64748B;
           }
         `;
     }
@@ -177,13 +177,13 @@ const SearchInput = styled.input`
   min-width: 320px;
   max-width: 480px;
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
 
   &::placeholder {
-    color: #9CA3AF;
+    color: #6B7280;
   }
 
   &:focus {
@@ -211,7 +211,7 @@ const SearchInput = styled.input`
 
 const FilterSelect = styled.select`
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -244,7 +244,7 @@ const NoticeCard = styled.div<{ unread?: boolean }>`
   background: white;
   border-radius: 12px;
   padding: 24px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   transition: all 0.2s;
   position: relative;
   cursor: pointer;
@@ -296,7 +296,7 @@ const NoticeTitle = styled.div`
 
 const NoticeMeta = styled.div`
   font-size: 13px;
-  color: #6B7C93;
+  color: #4B5563;
   display: flex;
   gap: 16px;
   flex-wrap: wrap;
@@ -326,14 +326,14 @@ const PriorityBadge = styled.span<{ priority: string }>`
     switch (props.priority) {
       case 'urgent': return '#991B1B';
       case 'important': return '#92400E';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 `;
 
 const NoticePreview = styled.div`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   line-height: 1.6;
   margin-top: 12px;
   display: -webkit-box;
@@ -348,9 +348,9 @@ const NoticeFooter = styled.div`
   align-items: center;
   margin-top: 16px;
   padding-top: 12px;
-  border-top: 1px solid #F3F4F6;
+  border-top: 1px solid #F1F4F8;
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   flex-wrap: wrap;
   gap: 8px;
 `;
@@ -360,12 +360,12 @@ const CommentCount = styled.span`
   align-items: center;
   gap: 4px;
   font-size: 12px;
-  color: #6B7C93;
+  color: #4B5563;
 `;
 
 const RecipientInfo = styled.span`
   font-size: 12px;
-  color: #9CA3AF;
+  color: #6B7280;
 `;
 
 // Modal
@@ -378,14 +378,14 @@ const FormLabel = styled.label`
   display: block;
   font-size: 13px;
   font-weight: 500;
-  color: #6B7C93;
+  color: #4B5563;
   margin-bottom: 8px;
 `;
 
 const FormInput = styled.input`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.15s;
@@ -400,7 +400,7 @@ const FormInput = styled.input`
 const FormSelect = styled.select`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -417,7 +417,7 @@ const FormSelect = styled.select`
 const FormTextArea = styled.textarea`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   resize: vertical;
@@ -437,7 +437,7 @@ const CheckboxRow = styled.label`
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
   cursor: pointer;
   margin-bottom: 12px;
 
@@ -452,7 +452,7 @@ const CheckboxRow = styled.label`
 const RestaurantCheckboxList = styled.div`
   max-height: 200px;
   overflow-y: auto;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   padding: 8px;
 `;
@@ -464,12 +464,12 @@ const RestaurantCheckboxItem = styled.label`
   padding: 8px 12px;
   border-radius: 6px;
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
   cursor: pointer;
   transition: background 0.15s;
 
   &:hover {
-    background: #F8FAFC;
+    background: #F1F4F8;
   }
 
   input[type="checkbox"] {
@@ -483,12 +483,12 @@ const RestaurantCheckboxItem = styled.label`
 // View Modal
 const NoticeContentBox = styled.div`
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
   line-height: 1.8;
   padding: 20px;
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 8px;
-  border-left: 3px solid #E6EBF1;
+  border-left: 3px solid #C7CED6;
   white-space: pre-wrap;
   margin-bottom: 24px;
 `;
@@ -499,7 +499,7 @@ const NoticeDetailMeta = styled.div`
   flex-wrap: wrap;
   margin-bottom: 20px;
   font-size: 13px;
-  color: #6B7C93;
+  color: #4B5563;
 `;
 
 const MetaItem = styled.div`
@@ -510,7 +510,7 @@ const MetaItem = styled.div`
 
 const MetaLabel = styled.span`
   font-weight: 600;
-  color: #6B7C93;
+  color: #4B5563;
 `;
 
 const MetaValue = styled.span`
@@ -889,9 +889,9 @@ const NoticesPage: React.FC = () => {
                 style={{
                   padding: '6px 16px',
                   borderRadius: '20px',
-                  border: categoryFilter === cat ? '1.5px solid #635BFF' : '1px solid #E6EBF1',
+                  border: categoryFilter === cat ? '1.5px solid #635BFF' : '1px solid #C7CED6',
                   background: categoryFilter === cat ? '#F0EFFF' : 'white',
-                  color: categoryFilter === cat ? '#635BFF' : '#6B7280',
+                  color: categoryFilter === cat ? '#635BFF' : '#4B5563',
                   fontSize: '13px',
                   fontWeight: categoryFilter === cat ? 600 : 400,
                   cursor: 'pointer',

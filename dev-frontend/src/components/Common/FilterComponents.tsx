@@ -42,13 +42,13 @@ const CommonSearchInput = styled.input`
   min-width: 220px;
   max-width: 280px;
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
 
   &::placeholder {
-    color: #9CA3AF;
+    color: #6B7280;
   }
 
   &:focus {
@@ -87,7 +87,7 @@ const ClearButton = styled.button`
   border: none;
   padding: 2px;
   cursor: pointer;
-  color: #9CA3AF;
+  color: #6B7280;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -95,7 +95,7 @@ const ClearButton = styled.button`
   transition: color 0.15s;
 
   &:hover {
-    color: #374151;
+    color: #1F2937;
   }
 
   svg {
@@ -107,7 +107,7 @@ const ClearButton = styled.button`
 // Common Filter Select
 const CommonFilterSelect = styled.select`
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -123,8 +123,8 @@ const CommonFilterSelect = styled.select`
   }
 
   &:disabled {
-    background: #F8FAFC;
-    color: #6B7280;
+    background: #F1F4F8;
+    color: #4B5563;
     cursor: not-allowed;
   }
 

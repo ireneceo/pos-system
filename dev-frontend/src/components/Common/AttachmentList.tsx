@@ -19,7 +19,7 @@ const Container = styled.div`
 const Label = styled.div`
   font-size: 12px;
   font-weight: 600;
-  color: #6B7280;
+  color: #4B5563;
   margin-bottom: 6px;
   text-transform: uppercase;
   letter-spacing: 0.3px;
@@ -37,7 +37,7 @@ const Item = styled.a`
   gap: 6px;
   padding: 6px 10px;
   background: #F8F9FA;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   text-decoration: none;
   color: #0A2540;
@@ -64,7 +64,7 @@ const FileName = styled.span`
 `;
 
 const FileSize = styled.span`
-  color: #9CA3AF;
+  color: #6B7280;
   flex-shrink: 0;
   font-size: 11px;
 `;
@@ -82,7 +82,7 @@ const ImageThumb = styled.a`
   height: 80px;
   border-radius: 6px;
   overflow: hidden;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   transition: all 0.15s;
 
   &:hover {

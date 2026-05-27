@@ -4,7 +4,7 @@ import styled from 'styled-components';
 // Reports 페이지 기준으로 통일된 스타일
 export const StandardSelect = styled.select`
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -19,14 +19,14 @@ export const StandardSelect = styled.select`
   }
 
   &:hover {
-    border-color: #D1D5DB;
+    border-color: #6B7280;
   }
 
   &:disabled {
     background-color: #F9FAFB;
-    color: #9CA3AF;
+    color: #6B7280;
     cursor: not-allowed;
-    border-color: #E5E7EB;
+    border-color: #C7CED6;
   }
 `;
 

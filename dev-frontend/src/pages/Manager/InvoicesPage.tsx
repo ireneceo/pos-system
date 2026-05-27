@@ -80,7 +80,7 @@ const Container = styled.div`
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -102,7 +102,7 @@ const Header = styled.div`
 
 const Content = styled.div`
   padding: 32px;
-  background: #FAFBFC;
+  background: #F9FAFB;
   min-height: calc(100vh - 120px);
   
   @media (max-width: 768px) {
@@ -156,13 +156,13 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'success' }>`
     }
   ` : `
     background: white;
-    color: #6B7280;
-    border: 1px solid #E6EBF1;
+    color: #4B5563;
+    border: 1px solid #C7CED6;
 
     &:hover {
-      background: #F8FAFC;
+      background: #F1F4F8;
       color: #0A2540;
-      border-color: #CBD5E1;
+      border-color: #64748B;
     }
   `}
 `;
@@ -180,7 +180,7 @@ const SearchInput = styled.input`
   flex: 1;
   min-width: 300px;
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
 
@@ -193,7 +193,7 @@ const SearchInput = styled.input`
 
 const FilterSelect = styled.select`
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -216,7 +216,7 @@ const InvoiceNumber = styled.div`
 
 const CompanyName = styled.div`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const StatusBadge = styled.span<{ status: string }>`
@@ -229,20 +229,20 @@ const StatusBadge = styled.span<{ status: string }>`
     switch(props.status) {
       case 'paid': return '#ECFDF5';
       case 'sent': return '#DBEAFE';
-      case 'draft': return '#F3F4F6';
+      case 'draft': return '#F1F4F8';
       case 'overdue': return '#FEE2E2';
       case 'cancelled': return '#FEF2F2';
-      default: return '#F3F4F6';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
     switch(props.status) {
       case 'paid': return '#059669';
       case 'sent': return '#1E40AF';
-      case 'draft': return '#6B7280';
+      case 'draft': return '#4B5563';
       case 'overdue': return '#DC2626';
       case 'cancelled': return '#DC2626';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 `;
@@ -282,11 +282,11 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'success' | 'danger' 
     }
   ` : `
     background: transparent;
-    color: #6B7280;
-    border-color: #E6EBF1;
+    color: #4B5563;
+    border-color: #C7CED6;
     
     &:hover {
-      background: #F8FAFC;
+      background: #F1F4F8;
       color: #0A2540;
     }
   `}
@@ -320,14 +320,14 @@ const FormLabel = styled.label`
   display: block;
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: #1F2937;
   margin-bottom: 8px;
 `;
 
 const FormInput = styled.input`
   width: 100%;
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.2s;
@@ -343,7 +343,7 @@ const FormInput = styled.input`
 const FormSelect = styled.select`
   width: 100%;
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -360,7 +360,7 @@ const FormSelect = styled.select`
 const FormTextArea = styled.textarea`
   width: 100%;
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   resize: vertical;
@@ -377,13 +377,13 @@ const FormTextArea = styled.textarea`
 
 const FormHelp = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 4px;
 `;
 
 const InvoiceSummary = styled.div`
-  background: #F8FAFC;
-  border: 1px solid #E6EBF1;
+  background: #F1F4F8;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   padding: 16px;
   margin-top: 16px;
@@ -396,7 +396,7 @@ const SummaryRow = styled.div<{ highlight?: boolean }>`
   padding: 8px 0;
   
   ${props => props.highlight ? `
-    border-top: 1px solid #E6EBF1;
+    border-top: 1px solid #C7CED6;
     margin-top: 8px;
     padding-top: 16px;
     font-size: 16px;
@@ -1086,7 +1086,7 @@ const ManagerInvoicesPage: React.FC = () => {
                 <FormGroup>
                   <FormLabel>{t('admin:invoicesPage.items')}</FormLabel>
                   {selectedInvoice.items.map((item, index) => (
-                    <div key={index} style={{ padding: '8px', background: '#F8FAFC', borderRadius: '4px', marginBottom: '8px' }}>
+                    <div key={index} style={{ padding: '8px', background: '#F1F4F8', borderRadius: '4px', marginBottom: '8px' }}>
                       {item.description} - {formatCurrency(item.total, selectedCurrency)}
                     </div>
                   ))}
@@ -1133,7 +1133,7 @@ const ManagerInvoicesPage: React.FC = () => {
                   </h3>
                   <p style={{ 
                     fontSize: '14px', 
-                    color: '#6B7280', 
+                    color: '#4B5563', 
                     marginBottom: '24px',
                     margin: '8px 0 24px 0' 
                   }}>
@@ -1206,7 +1206,7 @@ const ManagerInvoicesPage: React.FC = () => {
                 <FormGroup>
                   <FormLabel>{t('admin:invoicesPage.paymentMethod')}</FormLabel>
                   {loadingPaymentMethods ? (
-                    <div style={{ padding: '16px', textAlign: 'center', color: '#6B7280', fontSize: '14px' }}>{t('admin:invoicesPage.loadingPaymentMethods')}</div>
+                    <div style={{ padding: '16px', textAlign: 'center', color: '#4B5563', fontSize: '14px' }}>{t('admin:invoicesPage.loadingPaymentMethods')}</div>
                   ) : availablePaymentMethods.length === 0 ? (
                     <div style={{ padding: '16px', textAlign: 'center', color: '#EF4444', fontSize: '14px', background: '#FEF2F2', borderRadius: '8px' }}>
                       No payment methods configured by the invoice issuer.
@@ -1219,13 +1219,13 @@ const ManagerInvoicesPage: React.FC = () => {
                           <div key={method.id}
                             onClick={() => { setPaymentData(prev => ({ ...prev, paymentMethod: method.id })); setInlineWarning(''); }}
                             style={{
-                              padding: '12px 8px', border: `1px solid ${isSelected ? '#635BFF' : '#E6EBF1'}`,
+                              padding: '12px 8px', border: `1px solid ${isSelected ? '#635BFF' : '#C7CED6'}`,
                               borderRadius: '8px', cursor: 'pointer', textAlign: 'center',
                               background: isSelected ? 'rgba(99,91,255,0.1)' : 'white',
                               transition: 'all 0.15s'
                             }}>
-                            <div style={{ fontSize: '14px', fontWeight: 600, color: isSelected ? '#635BFF' : '#374151' }}>{method.name}</div>
-                            <div style={{ fontSize: '11px', color: '#6B7280', marginTop: '2px' }}>{method.description}</div>
+                            <div style={{ fontSize: '14px', fontWeight: 600, color: isSelected ? '#635BFF' : '#1F2937' }}>{method.name}</div>
+                            <div style={{ fontSize: '11px', color: '#4B5563', marginTop: '2px' }}>{method.description}</div>
                           </div>
                         );
                       })}
@@ -1251,7 +1251,7 @@ const ManagerInvoicesPage: React.FC = () => {
                   return m ? (
                     <div style={{ textAlign: 'center', margin: '8px 0' }}>
                       <img src={m.qrImage} alt="QR Payment" style={{ maxWidth: '200px', borderRadius: '8px' }} />
-                      {m.qrDescription && <p style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>{m.qrDescription}</p>}
+                      {m.qrDescription && <p style={{ fontSize: '13px', color: '#4B5563', marginTop: '4px' }}>{m.qrDescription}</p>}
                     </div>
                   ) : null;
                 })()}
@@ -1274,12 +1274,12 @@ const ManagerInvoicesPage: React.FC = () => {
                         placeholder="Any additional information about the payment..."
                         value={paymentData.notes}
                         onChange={(e) => setPaymentData(prev => ({ ...prev, notes: e.target.value }))}
-                        style={{ width: '100%', boxSizing: 'border-box', padding: '8px 12px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '14px', minHeight: '60px', resize: 'vertical', fontFamily: 'inherit' }}
+                        style={{ width: '100%', boxSizing: 'border-box', padding: '8px 12px', border: '1px solid #C7CED6', borderRadius: '6px', fontSize: '14px', minHeight: '60px', resize: 'vertical', fontFamily: 'inherit' }}
                       />
                     </FormGroup>
                     <FormGroup>
                       <FormLabel>{t('admin:invoicesPage.paymentReceiptImage')}</FormLabel>
-                      <div style={{ border: '2px dashed #E6EBF1', borderRadius: '8px', padding: '20px', textAlign: 'center', background: paymentData.receiptImage ? '#F0FDF4' : '#FAFBFC', cursor: 'pointer', position: 'relative' }}>
+                      <div style={{ border: '2px dashed #C7CED6', borderRadius: '8px', padding: '20px', textAlign: 'center', background: paymentData.receiptImage ? '#F0FDF4' : '#F9FAFB', cursor: 'pointer', position: 'relative' }}>
                         {paymentData.receiptImage ? (
                           <div>
                             <img src={paymentData.receiptImage} alt="Payment Receipt" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', marginBottom: '12px' }} />
@@ -1297,7 +1297,7 @@ const ManagerInvoicesPage: React.FC = () => {
                               reader.onload = (ev) => { setPaymentData(prev => ({ ...prev, receiptImage: ev.target?.result as string })); };
                               reader.readAsDataURL(file);
                             }} style={{ display: 'none' }} />
-                            <div style={{ color: '#6B7280', fontSize: '14px' }}>
+                            <div style={{ color: '#4B5563', fontSize: '14px' }}>
                               <div style={{ fontSize: '24px', marginBottom: '8px' }}>+</div>
                               <div>{t('admin:invoicesPage.clickToUploadPaymentReceipt')}</div>
                               <div style={{ fontSize: '12px', marginTop: '4px' }}>{t('admin:invoicesPage.supportsJpgPngMax5mb')}</div>

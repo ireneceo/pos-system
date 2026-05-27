@@ -8,14 +8,14 @@ import styled from 'styled-components';
 // 페이지 컨테이너
 export const Container = styled.div`
   min-height: 100vh;
-  background: #FAFBFC;
+  background: #F9FAFB;
 `;
 
 // 페이지 헤더
 export const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -90,8 +90,8 @@ export const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'dange
       case 'secondary':
         return `
           background: #F8F9FA;
-          color: #6B7C93;
-          border: 1px solid #E6EBF1;
+          color: #4B5563;
+          border: 1px solid #C7CED6;
           &:hover {
             background: #EBEEF2;
             border-color: #D1D9E0;

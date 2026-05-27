@@ -155,8 +155,8 @@ const EmojiOption = styled.button<{ selected?: boolean }>`
   width: 100%;
   aspect-ratio: 1;
   border-radius: 4px;
-  background: ${(props) => (props.selected ? '#E5E7EB' : 'white')};
-  border: 1px solid ${(props) => (props.selected ? '#9CA3AF' : '#E5E7EB')};
+  background: ${(props) => (props.selected ? '#C7CED6' : 'white')};
+  border: 1px solid ${(props) => (props.selected ? '#6B7280' : '#C7CED6')};
   cursor: pointer;
   transition: all 0.2s;
   font-size: 20px;
@@ -165,7 +165,7 @@ const EmojiOption = styled.button<{ selected?: boolean }>`
   justify-content: center;
 
   &:hover {
-    background: ${(props) => (props.selected ? '#E5E7EB' : '#F3F4F6')};
+    background: ${(props) => (props.selected ? '#C7CED6' : '#F1F4F8')};
   }
 `;
 
@@ -369,7 +369,7 @@ const SupplierProductCategoriesTab: React.FC<Props> = ({ onCountChange, onCatego
   if (loading) {
     return (
       <Wrapper>
-        <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
+        <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>
           Loading categories...
         </div>
       </Wrapper>

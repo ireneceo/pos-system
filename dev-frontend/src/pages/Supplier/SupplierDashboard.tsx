@@ -77,7 +77,7 @@ const Subtitle = styled.div`
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  color: #6B7C93;
+  color: #4B5563;
 `;
 
 const SubscriptionBadge = styled.span<{ variant: 'trial' | 'active' | 'expiring' | 'expired' | 'neutral' }>`
@@ -93,7 +93,7 @@ const SubscriptionBadge = styled.span<{ variant: 'trial' | 'active' | 'expiring'
       case 'active': return 'background: #ECFDF5; color: #065F46; border: 1px solid #A7F3D0;';
       case 'expiring': return 'background: #FFF7ED; color: #9A3412; border: 1px solid #FDBA74;';
       case 'expired': return 'background: #FEF2F2; color: #991B1B; border: 1px solid #FECACA;';
-      default: return 'background: #F3F4F6; color: #374151; border: 1px solid #E5E7EB;';
+      default: return 'background: #F1F4F8; color: #1F2937; border: 1px solid #C7CED6;';
     }
   }}
 `;
@@ -113,7 +113,7 @@ const ChartContainer = styled.div`
   background: white;
   border-radius: 16px;
   padding: 28px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
 
   @media (max-width: 768px) {
     padding: 20px;
@@ -126,7 +126,7 @@ const AlertsPanel = styled.div`
   background: white;
   border-radius: 16px;
   padding: 20px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   display: flex;
   flex-direction: column;
   h3 { margin: 0 0 16px 0; color: #0A2540; font-size: 16px; font-weight: 600; }
@@ -151,12 +151,12 @@ const AlertTitle = styled.div<{ type: 'warning' | 'error' | 'info' | 'success' }
   margin-bottom: 4px;
 `;
 
-const AlertDescription = styled.div`font-size: 12px; color: #6B7C93;`;
+const AlertDescription = styled.div`font-size: 12px; color: #4B5563;`;
 
 const NoAlerts = styled.div`
   padding: 24px;
   text-align: center;
-  color: #6B7C93;
+  color: #4B5563;
   font-size: 13px;
 `;
 
@@ -170,7 +170,7 @@ const TwoCol = styled.div`
 const TableCard = styled.div`
   background: white;
   border-radius: 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   overflow: hidden;
 `;
 
@@ -179,7 +179,7 @@ const TableHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   h3 { margin: 0; color: #0A2540; font-size: 16px; font-weight: 600; }
   a { font-size: 13px; color: #2563EB; text-decoration: none; cursor: pointer; }
   a:hover { text-decoration: underline; }
@@ -195,11 +195,11 @@ function mapSupplierStatusVariant(s: string): 'success' | 'warning' | 'error' | 
   return '';
 }
 
-const EmptyTable = styled.div`padding: 32px; text-align: center; color: #6B7C93; font-size: 13px;`;
+const EmptyTable = styled.div`padding: 32px; text-align: center; color: #4B5563; font-size: 13px;`;
 
 const SubscriptionCard = styled.div`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 16px;
   padding: 24px;
   margin-top: 24px;
@@ -209,7 +209,7 @@ const SubscriptionCard = styled.div`
 const SubscriptionRow = styled.div`display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px;`;
 
 const SubscriptionItem = styled.div`
-  .label { font-size: 12px; font-weight: 600; color: #6B7C93; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 6px; }
+  .label { font-size: 12px; font-weight: 600; color: #4B5563; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 6px; }
   .value { font-size: 16px; font-weight: 600; color: #0A2540; }
 `;
 
@@ -224,7 +224,7 @@ const LoadingSkeleton = styled.div`
 
 const SkeletonCard = styled.div`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   height: 96px;
   animation: pulse 1.5s ease-in-out infinite;
@@ -401,9 +401,9 @@ const SupplierDashboard: React.FC = () => {
                 <h3>{t('dashboard.revenueTrend6m', 'Revenue Trend (Last 6 Months)')}</h3>
                 <ResponsiveContainer width="100%" height={260}>
                   <LineChart data={data.revenue_trend_6m.map(p => ({ ...p, label: formatMonthLabel(p.month) }))}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                    <XAxis dataKey="label" stroke="#6B7C93" tick={{ fontSize: 12 }} />
-                    <YAxis stroke="#6B7C93" tick={{ fontSize: 12 }} tickFormatter={(v) => `${ccy} ${v}`} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#C7CED6" />
+                    <XAxis dataKey="label" stroke="#4B5563" tick={{ fontSize: 12 }} />
+                    <YAxis stroke="#4B5563" tick={{ fontSize: 12 }} tickFormatter={(v) => `${ccy} ${v}`} />
                     <Tooltip formatter={(v: number) => formatCurrency(v, ccy)} />
                     <Line type="monotone" dataKey="revenue" stroke="#9333EA" strokeWidth={2} dot={{ r: 4 }} />
                   </LineChart>

@@ -71,7 +71,7 @@ const CustomerChoiceButton = styled.button<{ selected?: boolean }>`
   align-items: center;
   justify-content: center;
   padding: 16px 12px;
-  border: 1px solid ${props => props.selected ? '#635BFF' : '#E5E7EB'};
+  border: 1px solid ${props => props.selected ? '#635BFF' : '#C7CED6'};
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
@@ -98,7 +98,7 @@ const ChoiceTitle = styled.div`
 
 const ChoiceSubtitle = styled.div`
   font-size: 11px;
-  color: #6B7280;
+  color: #4B5563;
   text-align: center;
 `;
 
@@ -112,7 +112,7 @@ const PaymentMethod = styled.label<{ selected: boolean }>`
   display: flex;
   align-items: center;
   padding: 12px;
-  border: 1px solid ${props => props.selected ? '#635BFF' : '#E5E7EB'};
+  border: 1px solid ${props => props.selected ? '#635BFF' : '#C7CED6'};
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
@@ -153,12 +153,12 @@ const SummaryRow = styled.div`
   justify-content: space-between;
   font-size: 14px;
   margin-bottom: 8px;
-  color: #6B7280;
+  color: #4B5563;
 
   &.total {
     margin-top: 8px;
     padding-top: 8px;
-    border-top: 1px solid #E5E7EB;
+    border-top: 1px solid #C7CED6;
     font-size: 18px;
     font-weight: 600;
     color: #1F2937;
@@ -169,7 +169,7 @@ const SummaryRow = styled.div`
 const ItemsList = styled.div`
   margin-bottom: 16px;
   padding-bottom: 16px;
-  border-bottom: 1px solid #E5E7EB;
+  border-bottom: 1px solid #C7CED6;
 `;
 
 const ItemRow = styled.div`
@@ -196,7 +196,7 @@ const ItemName = styled.div`
 
 const ItemQuantity = styled.div`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const ItemSetItems = styled.div`
@@ -223,7 +223,7 @@ const CardForm = styled.div`
 const Input = styled.input`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 16px; /* Prevents iOS auto-zoom on focus */
   box-sizing: border-box;
@@ -234,7 +234,7 @@ const Input = styled.input`
   }
 
   &::placeholder {
-    color: #9CA3AF;
+    color: #6B7280;
   }
 `;
 
@@ -289,7 +289,7 @@ const PayButton = styled.button`
   }
 
   &:disabled {
-    background: #D1D5DB;
+    background: #6B7280;
     cursor: not-allowed;
   }
 
@@ -323,7 +323,7 @@ const TableSection = styled.div`
 const TableSelect = styled.select`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   background: white;
@@ -359,13 +359,13 @@ const CustomerInfoName = styled.div`
 
 const CustomerInfoDetails = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const ClearButton = styled.button`
   background: none;
   border: none;
-  color: #9CA3AF;
+  color: #6B7280;
   font-size: 18px;
   width: 24px;
   height: 24px;
@@ -379,8 +379,8 @@ const ClearButton = styled.button`
   margin-left: 8px;
 
   &:hover {
-    background: #E5E7EB;
-    color: #6B7280;
+    background: #C7CED6;
+    color: #4B5563;
   }
 
   &:active {
@@ -391,7 +391,7 @@ const ClearButton = styled.button`
 const TextArea = styled.textarea`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 16px; /* Prevent iOS zoom on focus */
   box-sizing: border-box;
@@ -405,7 +405,7 @@ const TextArea = styled.textarea`
   }
 
   &::placeholder {
-    color: #9CA3AF;
+    color: #6B7280;
   }
 `;
 
@@ -421,14 +421,14 @@ const Label = styled.label`
   display: block;
   font-size: 13px;
   font-weight: 600;
-  color: #374151;
+  color: #1F2937;
   margin-bottom: 6px;
 `;
 
 const ZoneCard = styled.button<{ selected: boolean }>`
   width: 100%;
   background: ${props => props.selected ? '#EFF6FF' : 'white'};
-  border: 2px solid ${props => props.selected ? '#635BFF' : '#E5E7EB'};
+  border: 2px solid ${props => props.selected ? '#635BFF' : '#C7CED6'};
   border-radius: 8px;
   padding: 12px;
   margin-bottom: 8px;
@@ -466,7 +466,7 @@ const ZoneDetails = styled.div`
 
 const ZoneDescription = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const ZoneFee = styled.div`
@@ -2061,19 +2061,19 @@ const PaymentPage: React.FC = () => {
             <div style={{ marginTop: '16px' }}>
               {/* Phone / Email tab */}
               <div style={{
-                display: 'flex', background: '#F3F4F6', borderRadius: '10px',
+                display: 'flex', background: '#F1F4F8', borderRadius: '10px',
                 padding: '4px', marginBottom: '16px'
               }}>
                 <button type="button" onClick={() => { setMemberLoginType('phone'); setMemberLoginError(''); }} style={{
                   flex: 1, padding: '8px', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 500, cursor: 'pointer',
                   background: memberLoginType === 'phone' ? 'white' : 'transparent',
-                  color: memberLoginType === 'phone' ? '#1F2937' : '#6B7280',
+                  color: memberLoginType === 'phone' ? '#1F2937' : '#4B5563',
                   boxShadow: memberLoginType === 'phone' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
                 }}>Phone</button>
                 <button type="button" onClick={() => { setMemberLoginType('email'); setMemberLoginError(''); }} style={{
                   flex: 1, padding: '8px', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 500, cursor: 'pointer',
                   background: memberLoginType === 'email' ? 'white' : 'transparent',
-                  color: memberLoginType === 'email' ? '#1F2937' : '#6B7280',
+                  color: memberLoginType === 'email' ? '#1F2937' : '#4B5563',
                   boxShadow: memberLoginType === 'email' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
                 }}>Email</button>
               </div>
@@ -2160,7 +2160,7 @@ const PaymentPage: React.FC = () => {
               >
                 Login as Member
               </button>
-              <div style={{ fontSize: '13px', color: '#6B7280', textAlign: 'center', marginBottom: '8px' }}>
+              <div style={{ fontSize: '13px', color: '#4B5563', textAlign: 'center', marginBottom: '8px' }}>
                 <span
                   onClick={() => navigate(`/mobile/${slug}/forgot-password`)}
                   style={{ color: '#635BFF', cursor: 'pointer', textDecoration: 'underline' }}
@@ -2168,7 +2168,7 @@ const PaymentPage: React.FC = () => {
                   Forgot password?
                 </span>
               </div>
-              <div style={{ fontSize: '13px', color: '#6B7280', textAlign: 'center' }}>
+              <div style={{ fontSize: '13px', color: '#4B5563', textAlign: 'center' }}>
                 Not a member yet?{' '}
                 <span
                   onClick={() => {
@@ -2287,7 +2287,7 @@ const PaymentPage: React.FC = () => {
                 width: '100%',
                 padding: '16px',
                 marginBottom: '12px',
-                border: `1px solid ${isImmediatePickup ? '#635BFF' : '#E6EBF1'}`,
+                border: `1px solid ${isImmediatePickup ? '#635BFF' : '#C7CED6'}`,
                 borderRadius: '8px',
                 background: isImmediatePickup ? '#F0F4FF' : 'white',
                 color: isImmediatePickup ? '#635BFF' : '#0A2540',
@@ -2334,7 +2334,7 @@ const PaymentPage: React.FC = () => {
                     }}
                     style={{
                       padding: '12px 8px',
-                      border: `1px solid ${!isImmediatePickup && selectedPickupTime === slot ? '#635BFF' : '#E6EBF1'}`,
+                      border: `1px solid ${!isImmediatePickup && selectedPickupTime === slot ? '#635BFF' : '#C7CED6'}`,
                       borderRadius: '8px',
                       background: !isImmediatePickup && selectedPickupTime === slot ? '#F0F4FF' : 'white',
                       color: !isImmediatePickup && selectedPickupTime === slot ? '#635BFF' : '#0A2540',
@@ -2351,7 +2351,7 @@ const PaymentPage: React.FC = () => {
             </div>
 
             {availablePickupSlots.length === 0 && (
-              <div style={{ textAlign: 'center', color: '#6B7C93', padding: '20px' }}>
+              <div style={{ textAlign: 'center', color: '#4B5563', padding: '20px' }}>
                 No available pickup times for today
               </div>
             )}
@@ -2382,7 +2382,7 @@ const PaymentPage: React.FC = () => {
                   <> — {couponError}</>
                 ) : null}
               </div>
-              <div style={{ marginTop: '6px', fontSize: '12px', color: '#6B7C93' }}>
+              <div style={{ marginTop: '6px', fontSize: '12px', color: '#4B5563' }}>
                 Manual coupon input disabled while partner discount is in effect.
               </div>
             </div>
@@ -2483,7 +2483,7 @@ const PaymentPage: React.FC = () => {
                 <div style={{ fontSize: '14px', fontWeight: '600', color: '#1F2937' }}>
                   Available Points
                 </div>
-                <div style={{ fontSize: '12px', color: '#6B7280' }}>
+                <div style={{ fontSize: '12px', color: '#4B5563' }}>
                   {customerTier} Member
                 </div>
               </div>
@@ -2527,7 +2527,7 @@ const PaymentPage: React.FC = () => {
                       display: 'flex',
                       justifyContent: 'space-between',
                       fontSize: '13px',
-                      color: '#6B7280',
+                      color: '#4B5563',
                       marginBottom: '8px'
                     }}>
                       <span>{membershipSettings?.min_points_to_use || 100} pts</span>
@@ -2543,7 +2543,7 @@ const PaymentPage: React.FC = () => {
                         width: '100%',
                         height: '8px',
                         borderRadius: '4px',
-                        background: '#E5E7EB',
+                        background: '#C7CED6',
                         accentColor: '#635BFF'
                       }}
                     />
@@ -2560,7 +2560,7 @@ const PaymentPage: React.FC = () => {
                         <div style={{ fontSize: '14px', fontWeight: '600', color: '#1F2937' }}>
                           Using: {pointsToUse.toLocaleString()} pts
                         </div>
-                        <div style={{ fontSize: '12px', color: '#6B7280' }}>
+                        <div style={{ fontSize: '12px', color: '#4B5563' }}>
                           ({membershipSettings?.points_to_currency || 100} pts = {formatCurrency(1, currency)})
                         </div>
                       </div>
@@ -2574,7 +2574,7 @@ const PaymentPage: React.FC = () => {
             ) : (
               <div style={{
                 fontSize: '13px',
-                color: '#6B7280',
+                color: '#4B5563',
                 textAlign: 'center',
                 padding: '12px'
               }}>
@@ -2682,7 +2682,7 @@ const PaymentPage: React.FC = () => {
                   />
                   <MethodInfo>
                     <MethodName>{method.label}</MethodName>
-                    {hint && <div style={{ fontSize: 12, color: '#6B7C93', marginTop: 2, lineHeight: 1.5 }}>{hint}</div>}
+                    {hint && <div style={{ fontSize: 12, color: '#4B5563', marginTop: 2, lineHeight: 1.5 }}>{hint}</div>}
                   </MethodInfo>
                 </PaymentMethod>
               );

@@ -779,14 +779,19 @@ router.patch('/:id', authenticateToken, async (req, res) => {
       io.of('/orders').to(`restaurant_${result.restaurant_id}`).emit('order-updated', plainResult);
     }
 
-    // ── Audit log — order created ────────────────
+    // ── Audit log — order updated (PATCH /:id).
+    //   This is a PATCH handler; `orderData` was a POST-local variable that
+    //   leaked here from a copy/paste and used to throw ReferenceError,
+    //   bouncing every PATCH with a 400 even though the update itself
+    //   succeeded. Read role / source from req.user + req.body instead.
+    const bodySource = (req.body && req.body.source) || result.source || 'pos';
     logOrderActionSafe({
       orderId: result.id, restaurantId: result.restaurant_id,
-      actionType: 'created', toStatus: result.status,
+      actionType: 'updated', toStatus: result.status,
       performedByUserId: req.user?.id,
-      performedByName: req.user?.full_name || req.user?.username || (orderData.source === 'mobile' ? 'Mobile Customer' : 'POS Staff'),
-      performedByRole: orderData.source === 'mobile' ? 'customer' : 'staff',
-      source: orderData.source === 'mobile' ? 'mobile' : 'pos',
+      performedByName: req.user?.full_name || req.user?.username || (bodySource === 'mobile' ? 'Mobile Customer' : 'POS Staff'),
+      performedByRole: bodySource === 'mobile' ? 'customer' : 'staff',
+      source: bodySource === 'mobile' ? 'mobile' : 'pos',
       metadata: {
         order_number: result.order_number,
         total_amount: result.total_amount,
@@ -801,6 +806,7 @@ router.patch('/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, error: error.message });
     }
     console.error('✗ Order 업데이트 실패:', error.message);
+    console.error(error.stack);
     res.status(400).json({ success: false, error: error.message });
   }
 });

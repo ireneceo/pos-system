@@ -48,7 +48,7 @@ const SectionTitle = styled.h3`
 
 const SectionDivider = styled.div`
   margin: 32px 0;
-  border-top: 1px solid #E5E7EB;
+  border-top: 1px solid #C7CED6;
 `;
 
 const CategoryGrid = styled.div`
@@ -68,7 +68,7 @@ const CategoryCard = styled.div<{ isActive?: boolean; readOnly?: boolean }>`
   opacity: ${props => props.isActive !== false ? 1 : 0.6};
   ${props => props.readOnly && `
     background: #F9FAFB;
-    border: 1px dashed #D1D5DB;
+    border: 1px dashed #6B7280;
   `}
 
   &:hover {
@@ -80,7 +80,7 @@ const CategoryIcon = styled.div`
   width: 48px;
   height: 48px;
   border-radius: 8px;
-  background: #F3F4F6;
+  background: #F1F4F8;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -103,12 +103,12 @@ const CategoryMeta = styled.div`
   display: flex;
   gap: 16px;
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const CategoryDescription = styled.div`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 4px;
 `;
 
@@ -121,7 +121,7 @@ const IconButton = styled.button`
   width: 36px;
   height: 36px;
   border-radius: 8px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   background: white;
   display: flex;
   align-items: center;
@@ -131,7 +131,7 @@ const IconButton = styled.button`
 
   &:hover {
     background: #F9FAFB;
-    border-color: #D1D5DB;
+    border-color: #6B7280;
   }
 
   &:disabled {
@@ -142,7 +142,7 @@ const IconButton = styled.button`
   svg {
     width: 18px;
     height: 18px;
-    color: #6B7280;
+    color: #4B5563;
   }
 `;
 
@@ -162,7 +162,7 @@ const EmptyTitle = styled.h4`
 
 const EmptyDescription = styled.p`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 0 0 16px 0;
 `;
 
@@ -208,7 +208,7 @@ const EmojiOption = styled.button<{ selected?: boolean }>`
   aspect-ratio: 1;
   border-radius: 4px;
   background: ${props => props.selected ? '#635BFF' : 'white'};
-  border: 1px solid ${props => props.selected ? '#635BFF' : '#E5E7EB'};
+  border: 1px solid ${props => props.selected ? '#635BFF' : '#C7CED6'};
   cursor: pointer;
   transition: all 0.2s;
   font-size: 20px;
@@ -217,7 +217,7 @@ const EmojiOption = styled.button<{ selected?: boolean }>`
   justify-content: center;
 
   &:hover {
-    background: ${props => props.selected ? '#635BFF' : '#F3F4F6'};
+    background: ${props => props.selected ? '#635BFF' : '#F1F4F8'};
   }
 `;
 
@@ -549,7 +549,7 @@ const CategoriesTab: React.FC<CategoriesTabProps> = ({ brandId, restaurantId, on
   if (loading) {
     return (
       <Container>
-        <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>{t('recipes:categoriesTab.loading')}</div>
+        <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>{t('recipes:categoriesTab.loading')}</div>
       </Container>
     );
   }

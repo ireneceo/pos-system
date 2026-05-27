@@ -43,7 +43,7 @@ const AccessDeniedContainer = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #F8FAFC;
+  background: #F1F4F8;
 `;
 
 const AccessDeniedBox = styled.div`
@@ -62,7 +62,7 @@ const Title = styled.h2`
 `;
 
 const Message = styled.p`
-  color: #6B7280;
+  color: #4B5563;
   margin-bottom: 24px;
 `;
 
@@ -86,13 +86,13 @@ const LoadingContainer = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #F8FAFC;
+  background: #F1F4F8;
 `;
 
 const LoadingSpinner = styled.div`
   width: 40px;
   height: 40px;
-  border: 4px solid #E6EBF1;
+  border: 4px solid #C7CED6;
   border-top: 4px solid #635BFF;
   border-radius: 50%;
   animation: spin 1s linear infinite;

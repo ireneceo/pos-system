@@ -49,7 +49,7 @@ const PageLoader = () => (
     alignItems: 'center',
     height: '100vh',
     fontSize: '16px',
-    color: '#6B7280'
+    color: '#4B5563'
   }}>
     Loading...
   </div>
@@ -296,7 +296,7 @@ const NoRestaurantAssigned: React.FC = () => {
         textAlign: 'center'
       }}>
         <h2 style={{ color: '#0A2540', marginBottom: '12px' }}>No restaurant assigned</h2>
-        <p style={{ color: '#6B7C93', fontSize: '14px', lineHeight: 1.6, marginBottom: '24px' }}>
+        <p style={{ color: '#4B5563', fontSize: '14px', lineHeight: 1.6, marginBottom: '24px' }}>
           Your account does not have a restaurant linked yet. Please contact your
           administrator to assign a restaurant to this account before signing in.
         </p>

@@ -17,7 +17,7 @@ import ZonesAndGroupsCard from './components/ZonesAndGroupsCard';
 import AddressFields from '../../components/Form/AddressFields';
 import ConfirmModal from '../../components/ConfirmModal';
 import { useTabParam } from '../../hooks/useTabParam';
-import { getPrinterMode, setPrinterMode, connectQZTray, disconnectQZTray, isQZTrayConnected, getQZTrayPrinters, qzTrayTestPrint } from '../../utils/billPrint';
+import { getPrinterMode, setPrinterMode, connectQZTray, disconnectQZTray, isQZTrayConnected, getQZTrayPrinters, qzTrayTestPrint, getActiveWorkstationId, setActiveWorkstationId } from '../../utils/billPrint';
 import { getCurrencySymbol } from '../../utils/currency';
 import { useTranslation } from 'react-i18next';
 
@@ -26,7 +26,7 @@ import { openCustomerDisplay, isAutoOpenEnabled, setAutoOpenEnabled, resetCustom
 // 스타일 컴포넌트
 const SettingsContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #FAFBFC;
+  background-color: #F9FAFB;
   min-height: 100vh;
 
   input::placeholder, textarea::placeholder, select::placeholder {
@@ -76,7 +76,7 @@ const Button = styled.button`
   }
   
   &:disabled {
-    background: #E6EBF1;
+    background: #C7CED6;
     color: #8898AA;
     cursor: not-allowed;
   }
@@ -106,7 +106,7 @@ const SettingsCard = styled.div`
   background: white;
   padding: 24px;
   border-radius: 8px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   box-sizing: border-box;
 `;
 
@@ -132,7 +132,7 @@ const Label = styled.label`
   display: block;
   font-size: 13px;
   font-weight: 500;
-  color: #6B7C93;
+  color: #4B5563;
   margin-bottom: 8px;
   text-transform: uppercase;
   letter-spacing: 0.3px;
@@ -141,7 +141,7 @@ const Label = styled.label`
 const Input = styled.input`
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   color: #0A2540;
@@ -164,7 +164,7 @@ const Input = styled.input`
   }
 
   &:disabled {
-    background: #F6F9FC;
+    background: #F4F6F9;
     color: #8898AA;
     cursor: not-allowed;
   }
@@ -173,7 +173,7 @@ const Input = styled.input`
 const Select = styled.select`
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   color: #0A2540;
@@ -226,7 +226,7 @@ const ToggleSlider = styled.span`
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: #E6EBF1;
+  background-color: #C7CED6;
   transition: 0.3s;
   border-radius: 24px;
 
@@ -257,7 +257,7 @@ const ToggleSlider = styled.span`
 
 const Divider = styled.hr`
   border: none;
-  border-top: 1px solid #F6F9FC;
+  border-top: 1px solid #F4F6F9;
   margin: 20px 0;
 `;
 
@@ -279,11 +279,11 @@ const SaveButtonContainer = styled.div`
   align-items: flex-end;
   margin-top: 32px;
   padding-top: 24px;
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
 `;
 
 const PaymentMethodCard = styled.div`
-  background: #F6F9FC;
+  background: #F4F6F9;
   padding: 20px;
   border-radius: 6px;
   margin-bottom: 16px;
@@ -317,7 +317,7 @@ const TablesGrid = styled.div`
 `;
 
 const TableItem = styled.div`
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   padding: 16px;
   text-align: center;
@@ -352,12 +352,12 @@ const TableActions = styled.div`
 const ActionButton = styled.button`
   padding: 4px 10px;
   font-size: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   background: white;
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.15s;
-  color: #6B7C93;
+  color: #4B5563;
 
   &:hover {
     border-color: #635BFF;
@@ -687,13 +687,17 @@ const SettingsPage: React.FC = () => {
   const [paymentMethods, setPaymentMethods] = useState<any>(null);
   const [paymentOrder, setPaymentOrder] = useState<string[]>([]);
 
-  // Printer settings state
+  // Printer settings state — each printer has its own `method` (browser/qztray/rawbt).
+  // Legacy top-level `printerMode` is still used as a fallback when method is missing
+  // (see Restaurant.printer_settings.get on the backend for the migration logic).
+  type PrinterMethod = 'browser' | 'qztray' | 'rawbt';
   const [printerSettings, setPrinterSettings] = useState({
     billPrinter: {
       enabled: false,
       name: '',
       autoPrint: false,
-      address: ''
+      address: '',
+      method: 'browser' as PrinterMethod
     },
     kitchenPrinter: {
       enabled: false,
@@ -702,9 +706,17 @@ const SettingsPage: React.FC = () => {
       printPerItem: false,
       address: '',
       mirrorToBillPrinter: false,           // 키친 ticket 을 카운터(빌) 프린터에도 동시 인쇄
-      printCancellationTicket: true         // 주문 취소 시 키친에 "CANCELLED" ticket 자동 인쇄
+      printCancellationTicket: true,        // 주문 취소 시 키친에 "CANCELLED" ticket 자동 인쇄
+      method: 'qztray' as PrinterMethod
     },
-    kitchenStationPrinters: {} as Record<string, { name: string; autoPrint: boolean; address?: string }>
+    kitchenStationPrinters: {} as Record<string, { name: string; autoPrint: boolean; address?: string; method?: PrinterMethod }>,
+    workstations: [] as Array<{ id: string; name: string; billPrinter: { enabled: boolean; name: string; autoPrint: boolean; method: PrinterMethod; address: string } }>,
+    // Emergency Routing Mode — single flag, no backup/restore dance. When true,
+    // runtime print routing redirects every kitchen ticket to the active bill
+    // (counter) printer. Toggle OFF instantly restores original routing because
+    // we never mutated the kitchen routing data itself.
+    emergencyMode: false,
+    emergencyEnabledAt: null as string | null
   });
 
   // Receipt customization state
@@ -714,7 +726,11 @@ const SettingsPage: React.FC = () => {
     showMembership: false,
     customQrImage: '' as string,
     customQrText: '' as string,
-    customQrPosition: 'back' as 'front' | 'back'
+    customQrPosition: 'back' as 'front' | 'back',
+    // 2026-05-26: F&B standard — counter copy + customer copy. Default 2 (most shops).
+    copiesAfterPayment: 2 as number,
+    // 2026-05-26: cash drawer pulse after every cash payment (kicks the drawer open).
+    autoOpenDrawer: true as boolean
   });
 
   // Printer mode state (rawbt, browser, or qztray)
@@ -726,10 +742,25 @@ const SettingsPage: React.FC = () => {
   });
   const [printerSettingsLoading, setPrinterSettingsLoading] = useState(true);
   const [qzTrayStatus, setQzTrayStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
+  // 2026-05-27: printer-method guide tabs — Browser first (default), QZ Tray last.
+  // Replaces the QZ-Tray-only banner that hid the other two methods.
+  const [printerGuideTab, setPrinterGuideTab] = useState<'browser' | 'qztray' | 'rawbt'>('browser');
+  const [methodMatrixOpen, setMethodMatrixOpen] = useState(false);
+  const [emergencyEffectOpen, setEmergencyEffectOpen] = useState(false);
+  const [showPrinterTroubleshoot, setShowPrinterTroubleshoot] = useState(false);
   const [qzTrayPrinters, setQzTrayPrinters] = useState<string[]>([]);
   const [showQzGuide, setShowQzGuide] = useState(false);
   const [qzScenario, setQzScenario] = useState<'migration' | 'fresh'>('migration');
   const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
+
+  // Multi-POS: this device's bound workstation (localStorage-backed). Triggers UI re-render
+  // when `setActiveWorkstationId()` fires the 'workstation-changed' event.
+  const [activeWorkstationId, _setActiveWorkstationIdState] = useState<string | null>(() => getActiveWorkstationId());
+  useEffect(() => {
+    const handler = (e: Event) => _setActiveWorkstationIdState(((e as CustomEvent).detail?.id) || null);
+    window.addEventListener('workstation-changed', handler);
+    return () => window.removeEventListener('workstation-changed', handler);
+  }, []);
 
   // Kitchen Stations state
   const [kitchenStations, setKitchenStations] = useState<any[]>([]);
@@ -964,7 +995,7 @@ const SettingsPage: React.FC = () => {
         description: 'Traditional Malaysian cuisine',
         logo: '',
         primaryColor: '#635BFF',
-        secondaryColor: '#F8FAFC',
+        secondaryColor: '#F1F4F8',
         accentColor: '#5A51E6',
         isActive: true,
         restaurantCount: 3,
@@ -1334,8 +1365,14 @@ const SettingsPage: React.FC = () => {
                 mirrorToBillPrinter: dbSettings.kitchenPrinter?.mirrorToBillPrinter ?? false,
                 printCancellationTicket: dbSettings.kitchenPrinter?.printCancellationTicket ?? true
               },
-              kitchenStationPrinters: dbSettings.kitchenStationPrinters || {}
-            });
+              kitchenStationPrinters: dbSettings.kitchenStationPrinters || {},
+              // 2026-05-27: workstations was missing from this setState — so a refresh
+              // after Add/Edit Workstation appeared to wipe the change. Now hydrated
+              // from DB, and the next handleSave/PUT round-trips it back intact.
+              workstations: Array.isArray(dbSettings.workstations) ? dbSettings.workstations : [],
+              emergencyMode: !!dbSettings.emergencyMode,
+              emergencyEnabledAt: dbSettings.emergencyEnabledAt || null
+            } as any);
             // Load receipt customization settings (migrate legacy showQrCode/showPointsInfo → showMembership)
             if (dbSettings.receiptSettings) {
               const rs = dbSettings.receiptSettings;
@@ -2111,6 +2148,9 @@ const SettingsPage: React.FC = () => {
             billPrinter: printerSettings.billPrinter,
             kitchenPrinter: printerSettings.kitchenPrinter,
             kitchenStationPrinters: printerSettings.kitchenStationPrinters,
+            workstations: printerSettings.workstations || [],  // CRITICAL: was missing — every AutoSaveField save wiped workstations from DB
+            emergencyMode: !!(printerSettings as any).emergencyMode,
+            emergencyEnabledAt: (printerSettings as any).emergencyEnabledAt || null,
             receiptSettings: receiptSettings
           }
         };
@@ -2333,12 +2373,12 @@ const SettingsPage: React.FC = () => {
             <>
             <SettingsCard>
               <CardTitle>{t('settings:settingsPage.paymentMethods')}</CardTitle>
-              <p style={{ color: '#6B7C93', marginBottom: '24px', fontSize: '14px' }}>
+              <p style={{ color: '#4B5563', marginBottom: '24px', fontSize: '14px' }}>
                 Configure payment methods for POS Terminal and Mobile Order
               </p>
 
               {!paymentMethods ? (
-                <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>
+                <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>
                   Loading payment settings...
                 </div>
               ) : paymentOrder.map((key, index) => {
@@ -2375,7 +2415,7 @@ const SettingsPage: React.FC = () => {
                           <span style={{
                             fontSize: '13px',
                             fontWeight: '500',
-                            color: method.availableIn?.includes('pos') ? '#0A2540' : '#6B7C93',
+                            color: method.availableIn?.includes('pos') ? '#0A2540' : '#4B5563',
                             whiteSpace: 'nowrap'
                           }}>
                             POS
@@ -2399,7 +2439,7 @@ const SettingsPage: React.FC = () => {
                           <span style={{
                             fontSize: '13px',
                             fontWeight: '500',
-                            color: method.availableIn?.includes('mobile') ? '#0A2540' : '#6B7C93',
+                            color: method.availableIn?.includes('mobile') ? '#0A2540' : '#4B5563',
                             whiteSpace: 'nowrap'
                           }}>
                             Mobile
@@ -2439,17 +2479,17 @@ const SettingsPage: React.FC = () => {
                     if (orderTypeChips.length === 0) return null;
                     return (
                       <div style={{
-                        borderTop: '1px solid #E6EBF1',
+                        borderTop: '1px solid #C7CED6',
                         paddingTop: '14px',
                         marginTop: '14px',
                         display: 'flex',
                         flexDirection: 'column',
                         gap: '8px'
                       }}>
-                        <div style={{ fontSize: '12px', color: '#6B7C93', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                        <div style={{ fontSize: '12px', color: '#4B5563', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
                           Available order types
                           <span
-                            style={{ marginLeft: '6px', color: '#9CA3AF', fontWeight: 400, textTransform: 'none', letterSpacing: 0, cursor: 'help' }}
+                            style={{ marginLeft: '6px', color: '#6B7280', fontWeight: 400, textTransform: 'none', letterSpacing: 0, cursor: 'help' }}
                             title="Leave all selected to allow this method for every mobile order type. External QR scans inherit the pinned order type's settings — no separate config. Reservation deposits are not yet collected by this system."
                           >ⓘ</span>
                         </div>
@@ -2469,9 +2509,9 @@ const SettingsPage: React.FC = () => {
                                     gap: '6px',
                                     padding: '6px 12px',
                                     borderRadius: '999px',
-                                    border: '1px solid ' + (active ? '#635BFF' : '#E6EBF1'),
-                                    background: active ? '#F0EFFF' : '#FAFBFC',
-                                    color: active ? '#635BFF' : '#6B7C93',
+                                    border: '1px solid ' + (active ? '#635BFF' : '#C7CED6'),
+                                    background: active ? '#F0EFFF' : '#F9FAFB',
+                                    color: active ? '#635BFF' : '#4B5563',
                                     fontSize: '13px',
                                     fontWeight: 500,
                                     cursor: 'pointer',
@@ -2492,7 +2532,7 @@ const SettingsPage: React.FC = () => {
 
                   {/* E-Wallet Settings - QR Code Image */}
                   {key === 'ewallet' && method.enabled && (
-                    <div style={{ borderTop: '1px solid #E6EBF1', paddingTop: '16px' }}>
+                    <div style={{ borderTop: '1px solid #C7CED6', paddingTop: '16px' }}>
                       <AutoSaveField ref={ewalletQrRef} onSave={handleSave} type="image">
                         <ImageUploadDropzone
                           value={method.qrImage || ''}
@@ -2509,7 +2549,7 @@ const SettingsPage: React.FC = () => {
 
                   {/* Bank Transfer Settings */}
                   {key === 'bankTransfer' && method.enabled && (
-                    <div style={{ borderTop: '1px solid #E6EBF1', paddingTop: '16px' }}>
+                    <div style={{ borderTop: '1px solid #C7CED6', paddingTop: '16px' }}>
                       <FormGroup>
                         <Label>{t('settings:settingsPage.bankName')}</Label>
                         <AutoSaveField onSave={handleSave}>
@@ -2539,8 +2579,8 @@ const SettingsPage: React.FC = () => {
 
                   {/* Staff Meal Info */}
                   {key === 'staffMeal' && method.enabled && (
-                    <div style={{ borderTop: '1px solid #E6EBF1', paddingTop: '16px' }}>
-                      <div style={{ fontSize: '13px', color: '#6B7C93', lineHeight: '1.5' }}>
+                    <div style={{ borderTop: '1px solid #C7CED6', paddingTop: '16px' }}>
+                      <div style={{ fontSize: '13px', color: '#4B5563', lineHeight: '1.5' }}>
                         Staff meals are recorded at full price but excluded from revenue reports.
                         Use this in POS when processing staff meals to keep accurate records.
                       </div>
@@ -2549,7 +2589,7 @@ const SettingsPage: React.FC = () => {
 
                   {/* Online Payment Settings */}
                   {key === 'online' && method.enabled && (
-                    <div style={{ borderTop: '1px solid #E6EBF1', paddingTop: '16px' }}>
+                    <div style={{ borderTop: '1px solid #C7CED6', paddingTop: '16px' }}>
                       <FormGroup>
                         <Label>{t('settings:settingsPage.paymentProvider')}</Label>
                         <AutoSaveField onSave={handleSave} type="select">
@@ -2782,8 +2822,8 @@ const SettingsPage: React.FC = () => {
                         borderRadius: '4px', 
                         fontSize: '12px', 
                         fontWeight: '500',
-                        background: '#F3F4F6',
-                        color: '#6B7280'
+                        background: '#F1F4F8',
+                        color: '#4B5563'
                       }}>
                         {brand.restaurantCount} Restaurant{brand.restaurantCount !== 1 ? 's' : ''}
                       </span>
@@ -2823,7 +2863,7 @@ const SettingsPage: React.FC = () => {
                     </div>
                   </div>
                   
-                  <p style={{ color: '#6B7280', marginBottom: '20px', fontSize: '14px' }}>{brand.description}</p>
+                  <p style={{ color: '#4B5563', marginBottom: '20px', fontSize: '14px' }}>{brand.description}</p>
                   
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '20px' }}>
                     <FormGroup>
@@ -2900,7 +2940,7 @@ const SettingsPage: React.FC = () => {
 
                   <div>
                     <Label>Connected Restaurants ({brand.restaurants.length})</Label>
-                    <div style={{ background: '#F8FAFC', borderRadius: '8px', padding: '16px' }}>
+                    <div style={{ background: '#F1F4F8', borderRadius: '8px', padding: '16px' }}>
                       {brand.restaurants.length > 0 ? (
                         <div style={{ display: 'grid', gap: '8px' }}>
                           {brand.restaurants.map(restaurant => (
@@ -2917,7 +2957,7 @@ const SettingsPage: React.FC = () => {
                                 <div style={{ fontWeight: '600', fontSize: '14px', color: '#0A2540' }}>
                                   {restaurant.name}
                                 </div>
-                                <div style={{ fontSize: '13px', color: '#6B7280' }}>
+                                <div style={{ fontSize: '13px', color: '#4B5563' }}>
                                   {restaurant.branchName} • {restaurant.location}
                                 </div>
                               </div>
@@ -2931,7 +2971,7 @@ const SettingsPage: React.FC = () => {
                           ))}
                         </div>
                       ) : (
-                        <p style={{ color: '#6B7280', textAlign: 'center', margin: '20px 0' }}>{t('settings:settingsPage.noRestaurantsConnectedToThisBrand')}</p>
+                        <p style={{ color: '#4B5563', textAlign: 'center', margin: '20px 0' }}>{t('settings:settingsPage.noRestaurantsConnectedToThisBrand')}</p>
                       )}
                     </div>
                   </div>
@@ -2957,15 +2997,15 @@ const SettingsPage: React.FC = () => {
                     }}>{t('settings:settingsPage.enterprise')}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <span style={{ color: '#6B7280' }}>{t('settings:settingsPage.monthlyFee')}</span>
+                    <span style={{ color: '#4B5563' }}>{t('settings:settingsPage.monthlyFee')}</span>
                     <span style={{ fontWeight: '600' }}>{t('settings:settingsPage.rm29900')}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <span style={{ color: '#6B7280' }}>{t('settings:settingsPage.nextBillingDate')}</span>
+                    <span style={{ color: '#4B5563' }}>{t('settings:settingsPage.nextBillingDate')}</span>
                     <span>{t('settings:settingsPage.january152025')}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ color: '#6B7280' }}>{t('settings:settingsPage.activeRestaurants')}</span>
+                    <span style={{ color: '#4B5563' }}>{t('settings:settingsPage.activeRestaurants')}</span>
                     <span>12 / 15</span>
                   </div>
                 </div>
@@ -2975,19 +3015,19 @@ const SettingsPage: React.FC = () => {
                 <CardTitle>{t('settings:settingsPage.usageStatistics')}</CardTitle>
                 <div style={{ marginBottom: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                    <span style={{ color: '#6B7280' }}>{t('settings:settingsPage.totalOrdersThisMonth')}</span>
+                    <span style={{ color: '#4B5563' }}>{t('settings:settingsPage.totalOrdersThisMonth')}</span>
                     <span style={{ fontWeight: '600', fontSize: '18px' }}>8,945</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                    <span style={{ color: '#6B7280' }}>{t('settings:settingsPage.totalRevenueThisMonth')}</span>
+                    <span style={{ color: '#4B5563' }}>{t('settings:settingsPage.totalRevenueThisMonth')}</span>
                     <span style={{ fontWeight: '600', fontSize: '18px' }}>{t('settings:settingsPage.rm145230')}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                    <span style={{ color: '#6B7280' }}>{t('settings:settingsPage.activeStaffMembers')}</span>
+                    <span style={{ color: '#4B5563' }}>{t('settings:settingsPage.activeStaffMembers')}</span>
                     <span style={{ fontWeight: '600' }}>87</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ color: '#6B7280' }}>{t('settings:settingsPage.storageUsed')}</span>
+                    <span style={{ color: '#4B5563' }}>{t('settings:settingsPage.storageUsed')}</span>
                     <span style={{ fontWeight: '600' }}>2.4 GB / 10 GB</span>
                   </div>
                 </div>
@@ -3118,7 +3158,7 @@ const SettingsPage: React.FC = () => {
 
                   {storeSettings.delivery_address && storeSettings.delivery_address.trim() && (
                     <div style={{ marginTop: 10 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: '#6B7C93', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 }}>
                         {t('settings:settingsPage.deliveryAddress', 'Delivery address')}
                       </div>
                       <textarea
@@ -3134,7 +3174,7 @@ const SettingsPage: React.FC = () => {
                         style={{
                           width: '100%',
                           padding: '12px 16px',
-                          border: '1px solid #E6EBF1',
+                          border: '1px solid #C7CED6',
                           borderRadius: 8,
                           fontSize: 13,
                           fontFamily: 'inherit',
@@ -3155,11 +3195,11 @@ const SettingsPage: React.FC = () => {
                   <FormGroup>
                     <div style={{
                       padding: '12px 16px',
-                      background: '#F6F9FC',
+                      background: '#F4F6F9',
                       borderRadius: '6px',
                       fontSize: '14px',
                       color: '#0A2540',
-                      border: '1px solid #E6EBF1'
+                      border: '1px solid #C7CED6'
                     }}>
                       {brandInfo.brand_name || '-'}
                     </div>
@@ -3218,7 +3258,7 @@ const SettingsPage: React.FC = () => {
 
               <SettingsCard>
                 <CardTitle>{t('settings:settingsPage.breakTimes')}</CardTitle>
-                <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
+                <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
                   Set break times when orders cannot be picked up
                 </p>
                 <AutoSaveField ref={breakTimesRef} onSave={handleSave} type="list">
@@ -3229,7 +3269,7 @@ const SettingsPage: React.FC = () => {
                       gap: '12px',
                       marginBottom: '12px',
                       padding: '12px',
-                      background: '#F8FAFC',
+                      background: '#F1F4F8',
                       borderRadius: '8px'
                     }}>
                       <Input
@@ -3243,7 +3283,7 @@ const SettingsPage: React.FC = () => {
                         }}
                         style={{ flex: 1 }}
                       />
-                      <span style={{ color: '#6B7C93' }}>to</span>
+                      <span style={{ color: '#4B5563' }}>to</span>
                       <Input
                         type="time"
                         value={breakTime.end}
@@ -3337,13 +3377,13 @@ const SettingsPage: React.FC = () => {
                       }}
                     />
                   </AutoSaveField>
-                  <span style={{ color: '#6B7C93', fontSize: '14px' }}>minutes</span>
+                  <span style={{ color: '#4B5563', fontSize: '14px' }}>minutes</span>
                 </FormGroup>
               </SettingsCard>
 
               <SettingsCard>
                 <CardTitle>{t('settings:settingsPage.taxServiceCharge')}</CardTitle>
-                <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
+                <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
                   Configure tax and service charge applied to orders
                 </p>
                 <Toggle>
@@ -3382,7 +3422,7 @@ const SettingsPage: React.FC = () => {
                           }}
                         />
                       </AutoSaveField>
-                      <span style={{ color: '#6B7C93', fontSize: '14px' }}>%</span>
+                      <span style={{ color: '#4B5563', fontSize: '14px' }}>%</span>
                     </div>
                   </FormGroup>
                 )}
@@ -3426,7 +3466,7 @@ const SettingsPage: React.FC = () => {
                             }}
                           />
                         </AutoSaveField>
-                        <span style={{ color: '#6B7C93', fontSize: '14px' }}>%</span>
+                        <span style={{ color: '#4B5563', fontSize: '14px' }}>%</span>
                       </div>
                     </FormGroup>
                     <FormGroup style={{ marginLeft: '16px', marginTop: '4px' }}>
@@ -3442,7 +3482,7 @@ const SettingsPage: React.FC = () => {
                             style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#635BFF' }}
                           />
                           {t('settings:operations.excludeTakeawayLabel')}
-                          <span style={{ color: '#9CA3AF', fontSize: '12px' }}>{t('settings:operations.excludeTakeawayHint')}</span>
+                          <span style={{ color: '#6B7280', fontSize: '12px' }}>{t('settings:operations.excludeTakeawayHint')}</span>
                         </label>
                       </AutoSaveField>
                     </FormGroup>
@@ -3452,7 +3492,7 @@ const SettingsPage: React.FC = () => {
 
               <SettingsCard style={{ gridColumn: '1 / -1' }}>
                 <CardTitle>{t('settings:settingsPage.currencyRoundingSettings')}</CardTitle>
-                <p style={{ color: '#6B7C93', marginBottom: '24px', fontSize: '14px' }}>
+                <p style={{ color: '#4B5563', marginBottom: '24px', fontSize: '14px' }}>
                   Configure currency and cash rounding for payments
                 </p>
 
@@ -3603,7 +3643,7 @@ const SettingsPage: React.FC = () => {
                             }}
                           />
                         </AutoSaveField>
-                        <span style={{ color: '#6B7C93', fontSize: '14px' }}>{getCurrencySymbol(currencySettings.currency)}</span>
+                        <span style={{ color: '#4B5563', fontSize: '14px' }}>{getCurrencySymbol(currencySettings.currency)}</span>
                         <HelpText>{t('settings:settingsPage.thisAmountWillBeAddedToEachItemForTakeawayOrders')}</HelpText>
                       </FormGroup>
                     )}
@@ -3634,7 +3674,7 @@ const SettingsPage: React.FC = () => {
                                   }}
                                 />
                               </AutoSaveField>
-                              <span style={{ color: '#6B7C93', fontSize: '14px' }}>{getCurrencySymbol(currencySettings.currency)}</span>
+                              <span style={{ color: '#4B5563', fontSize: '14px' }}>{getCurrencySymbol(currencySettings.currency)}</span>
                             </FormGroup>
                           ))}
                         </SettingsGrid>
@@ -3679,7 +3719,7 @@ const SettingsPage: React.FC = () => {
                                 }}
                               />
                             </AutoSaveField>
-                            <span style={{ color: '#6B7C93', fontSize: '14px' }}>{currencySymbol}</span>
+                            <span style={{ color: '#4B5563', fontSize: '14px' }}>{currencySymbol}</span>
                             <HelpText>{t('settings:settingsPage.defaultPackagingFeeHelp', 'Applied to every menu item unless a custom fee is set below.')}</HelpText>
                           </FormGroup>
 
@@ -3727,7 +3767,7 @@ const SettingsPage: React.FC = () => {
                                     style={{
                                       width: '100%',
                                       padding: '10px 12px 10px 36px',
-                                      border: `1px solid ${dropdownOpen ? '#635BFF' : '#E5E7EB'}`,
+                                      border: `1px solid ${dropdownOpen ? '#635BFF' : '#C7CED6'}`,
                                       borderRadius: '8px',
                                       fontSize: '14px',
                                       outline: 'none',
@@ -3750,18 +3790,18 @@ const SettingsPage: React.FC = () => {
                                         maxHeight: '280px',
                                         overflowY: 'auto',
                                         background: 'white',
-                                        border: '1px solid #E5E7EB',
+                                        border: '1px solid #C7CED6',
                                         borderRadius: '8px',
                                         boxShadow: '0 8px 16px rgba(0,0,0,0.12)',
                                         zIndex: 100
                                       }}
                                     >
                                       {eligibleProducts.length === 0 ? (
-                                        <div style={{ padding: '14px', textAlign: 'center', color: '#9CA3AF', fontSize: '13px' }}>
+                                        <div style={{ padding: '14px', textAlign: 'center', color: '#6B7280', fontSize: '13px' }}>
                                           {t('settings:settingsPage.allMenuItemsAlreadyAdded', 'All menu items already have a custom fee.')}
                                         </div>
                                       ) : filtered.length === 0 ? (
-                                        <div style={{ padding: '14px', textAlign: 'center', color: '#9CA3AF', fontSize: '13px' }}>
+                                        <div style={{ padding: '14px', textAlign: 'center', color: '#6B7280', fontSize: '13px' }}>
                                           {t('settings:settingsPage.noMatchingMenuItems', 'No matching menu items.')}
                                         </div>
                                       ) : (
@@ -3776,7 +3816,7 @@ const SettingsPage: React.FC = () => {
                                                 cursor: 'pointer',
                                                 fontSize: '13px',
                                                 color: '#0A2540',
-                                                borderBottom: '1px solid #F3F4F6',
+                                                borderBottom: '1px solid #F1F4F8',
                                                 display: 'flex',
                                                 justifyContent: 'space-between',
                                                 alignItems: 'center',
@@ -3788,7 +3828,7 @@ const SettingsPage: React.FC = () => {
                                               onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
                                             >
                                               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                {cat && <span style={{ color: '#6B7280', marginRight: '6px' }}>{cat.emoji}</span>}
+                                                {cat && <span style={{ color: '#4B5563', marginRight: '6px' }}>{cat.emoji}</span>}
                                                 <span style={{ fontWeight: 500 }}>{item.name}</span>
                                               </span>
                                               <span style={{ color: '#635BFF', fontWeight: 500, flexShrink: 0 }}>
@@ -3806,7 +3846,7 @@ const SettingsPage: React.FC = () => {
                           })()}
 
                           {overrideProducts.length === 0 ? (
-                            <div style={{ padding: '24px', background: '#F9FAFB', border: '1px dashed #E5E7EB', borderRadius: '8px', textAlign: 'center', color: '#6B7280', fontSize: '13px', lineHeight: 1.5 }}>
+                            <div style={{ padding: '24px', background: '#F9FAFB', border: '1px dashed #C7CED6', borderRadius: '8px', textAlign: 'center', color: '#4B5563', fontSize: '13px', lineHeight: 1.5 }}>
                               {t('settings:settingsPage.allItemsUseDefaultFee', 'All items use the default fee of {{fee}}{{currency}}.', { fee: defaultFee.toFixed(2), currency: currencySymbol })}
                               <br />
                               {allProducts.length === 0
@@ -3815,7 +3855,7 @@ const SettingsPage: React.FC = () => {
                             </div>
                           ) : (
                             <>
-                              <div style={{ border: '1px solid #E5E7EB', borderRadius: '8px', overflow: 'hidden' }}>
+                              <div style={{ border: '1px solid #C7CED6', borderRadius: '8px', overflow: 'hidden' }}>
                                 {overrideProducts.map((prod: any) => {
                                   const cat = getCatFor(prod);
                                   return (
@@ -3826,13 +3866,13 @@ const SettingsPage: React.FC = () => {
                                         alignItems: 'center',
                                         gap: '12px',
                                         padding: '12px 16px',
-                                        borderBottom: '1px solid #F3F4F6',
+                                        borderBottom: '1px solid #F1F4F8',
                                         background: takeawayJustAddedId === prod.id ? '#EEF2FF' : 'white',
                                         transition: 'background 1.2s ease'
                                       }}
                                     >
                                       <div style={{ flex: 1, minWidth: 0, fontSize: '14px', color: '#0A2540' }}>
-                                        {cat && <span style={{ color: '#6B7280', marginRight: '6px' }}>{cat.emoji} {cat.name} ·</span>}
+                                        {cat && <span style={{ color: '#4B5563', marginRight: '6px' }}>{cat.emoji} {cat.name} ·</span>}
                                         <span style={{ fontWeight: 500 }}>{prod.name}</span>
                                       </div>
                                       <AutoSaveField
@@ -3861,7 +3901,7 @@ const SettingsPage: React.FC = () => {
                                           style={{ width: '90px' }}
                                         />
                                       </AutoSaveField>
-                                      <span style={{ color: '#6B7C93', fontSize: '13px', minWidth: '24px' }}>{currencySymbol}</span>
+                                      <span style={{ color: '#4B5563', fontSize: '13px', minWidth: '24px' }}>{currencySymbol}</span>
                                       <button type="button"
                                         type="button"
                                         title={t('settings:settingsPage.removeOverride', 'Remove custom fee (use default)') as string}
@@ -3874,7 +3914,7 @@ const SettingsPage: React.FC = () => {
                                             body: JSON.stringify({ takeaway_charge: null })
                                           });
                                         }}
-                                        style={{ width: '28px', height: '28px', border: '1px solid #E5E7EB', borderRadius: '6px', background: 'white', cursor: 'pointer', color: '#6B7280', fontSize: '14px', lineHeight: 1 }}
+                                        style={{ width: '28px', height: '28px', border: '1px solid #C7CED6', borderRadius: '6px', background: 'white', cursor: 'pointer', color: '#4B5563', fontSize: '14px', lineHeight: 1 }}
                                       >
                                         ×
                                       </button>
@@ -3952,6 +3992,79 @@ const SettingsPage: React.FC = () => {
               </SettingsCard>
 
               </SettingsGrid>
+
+              {/* Customer Display (Dual Monitor) — operations 탭 안에 배치.
+                  하드웨어 (프린터) 가 아니라 운영 흐름 (영업 시작 시 듀얼 모니터 켜기) 에 속하는 설정이라
+                  Operation 탭이 자연스러운 위치. 2026-05-27 이동. */}
+              <SettingsCard style={{ marginTop: '24px' }}>
+                <CardTitle>{t('settings:settingsPage.customerDisplay.title', 'Customer Display (Dual Monitor)')}</CardTitle>
+                <p style={{ color: '#4B5563', marginBottom: '20px', fontSize: '14px', lineHeight: 1.5 }}>
+                  {t('settings:settingsPage.customerDisplay.description', 'Show order details on a second monitor facing the customer (POS rear screen). Click Open Now after connecting the secondary monitor — your browser will ask once for permission, then remember it.')}
+                </p>
+
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
+                  <button type="button"
+                    onClick={async () => {
+                      const result = await openCustomerDisplay(user?.restaurantId || '');
+                      if (result.title && result.message) {
+                        setInfoModal({ open: true, title: result.title, message: result.message });
+                      }
+                    }}
+                    style={{
+                      padding: '10px 20px', fontSize: '14px', fontWeight: 500,
+                      background: '#635BFF', color: 'white', border: 'none',
+                      borderRadius: '6px', cursor: 'pointer'
+                    }}
+                  >
+                    {t('settings:settingsPage.customerDisplay.openNow', 'Open Now')}
+                  </button>
+
+                  <button type="button"
+                    onClick={async () => {
+                      resetCustomerDisplayPosition();
+                      await openCustomerDisplay(user?.restaurantId || '');
+                      setInfoModal({
+                        open: true,
+                        title: t('settings:settingsPage.customerDisplay.resetDoneTitle', 'Drag to Second Monitor'),
+                        message: t('settings:settingsPage.customerDisplay.resetDoneMessage', 'Customer Display just opened on your main screen. Drag the popup to your second monitor, then close it. The new position will be saved — next time it will open there automatically.'),
+                      });
+                    }}
+                    title={t('settings:settingsPage.customerDisplay.resetPositionTitle', 'Use this if the popup opens off-screen after disconnecting or rearranging monitors')}
+                    style={{
+                      padding: '10px 20px', fontSize: '14px', fontWeight: 500,
+                      background: 'white', color: '#635BFF', border: '1px solid #C7CED6',
+                      borderRadius: '6px', cursor: 'pointer'
+                    }}
+                  >
+                    {t('settings:settingsPage.customerDisplay.resetPosition', 'Reset Position')}
+                  </button>
+
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14, color: '#0A2540' }}>
+                    <input
+                      type="checkbox"
+                      defaultChecked={isAutoOpenEnabled()}
+                      onChange={(e) => setAutoOpenEnabled(e.target.checked)}
+                      style={{ width: 16, height: 16, accentColor: '#635BFF' }}
+                    />
+                    {t('settings:settingsPage.customerDisplay.autoOpenLabel', 'Auto-reopen when POS Terminal starts (after first click)')}
+                  </label>
+                </div>
+
+                <div style={{ background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: '8px', padding: '16px', marginTop: 8 }}>
+                  <div style={{ fontWeight: 600, color: '#075985', marginBottom: 10, fontSize: 14 }}>
+                    {t('settings:settingsPage.customerDisplay.kioskGuideTitle', 'Want it 100% automatic on Windows boot? (Optional setup)')}
+                  </div>
+                  <div style={{ fontSize: 13, color: '#0C4A6E', lineHeight: 1.7 }}>
+                    <div>{t('settings:settingsPage.customerDisplay.kioskStep1', '1. Right-click your desktop → New → Shortcut')}</div>
+                    <div style={{ background: 'white', border: '1px solid #BAE6FD', borderRadius: 4, padding: '8px 10px', margin: '6px 0', fontFamily: 'monospace', fontSize: 12, wordBreak: 'break-all' }}>
+                      {`"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --kiosk --new-window --window-position=1920,0 https://purplehere.com/restaurant/${user?.restaurantId || 'YOUR_ID'}/checkout-display`}
+                    </div>
+                    <div>{t('settings:settingsPage.customerDisplay.kioskStep2', '2. Adjust --window-position=X,Y to your second monitor coordinates (X = primary monitor width, Y = 0 for top-left)')}</div>
+                    <div>{t('settings:settingsPage.customerDisplay.kioskStep3', '3. Press Win+R → type shell:startup → drag the shortcut into that folder')}</div>
+                    <div>{t('settings:settingsPage.customerDisplay.kioskStep4', '4. Reboot — Chrome will launch the customer display fullscreen on the rear monitor automatically')}</div>
+                  </div>
+                </div>
+              </SettingsCard>
             </>
           )}
 
@@ -3973,7 +4086,7 @@ const SettingsPage: React.FC = () => {
 
               <SettingsCard style={{ gridColumn: '1 / -1' }}>
                 <CardTitle>{t('settings:settingsPage.tableManagement')}</CardTitle>
-                <p style={{ color: '#6B7C93', marginBottom: '20px', fontSize: '14px' }}>
+                <p style={{ color: '#4B5563', marginBottom: '20px', fontSize: '14px' }}>
                   Configure table numbers, QR codes, and customer seating options for your restaurant.
                 </p>
                 <SettingsGrid>
@@ -4007,7 +4120,7 @@ const SettingsPage: React.FC = () => {
                     </FormGroup>
                   </div>
                   <div>
-                    <div style={{ padding: '14px', background: '#FAFBFC', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '13px', color: '#6B7C93', lineHeight: 1.5 }}>
+                    <div style={{ padding: '14px', background: '#F9FAFB', border: '1px solid #C7CED6', borderRadius: '6px', fontSize: '13px', color: '#4B5563', lineHeight: 1.5 }}>
                       {t('settings:zonesGroups.legacyHint')}
                     </div>
                   </div>
@@ -4027,20 +4140,20 @@ const SettingsPage: React.FC = () => {
                   <Label>{t('settings:settingsPage.qrCodeMode')}</Label>
                   <div style={{ display: 'flex', gap: '12px' }}>
                     <AutoSaveField ref={qrModeRef} onSave={handleSave} type="toggle" style={{ flex: 1 }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px', border: '1px solid ' + (tableSettings.qrMode === 'static' ? '#635BFF' : '#E6EBF1'), borderRadius: '8px', cursor: 'pointer', background: tableSettings.qrMode === 'static' ? '#F0F0FF' : 'white' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px', border: '1px solid ' + (tableSettings.qrMode === 'static' ? '#635BFF' : '#C7CED6'), borderRadius: '8px', cursor: 'pointer', background: tableSettings.qrMode === 'static' ? '#F0F0FF' : 'white' }}>
                       <input type="radio" name="qrMode" value="static" checked={tableSettings.qrMode === 'static'} onChange={() => { setTableSettings({...tableSettings, qrMode: 'static'}); qrModeRef.current?.triggerSave(); }} />
                       <div>
                         <div style={{ fontWeight: 500 }}>{t('settings:settingsPage.static')}</div>
-                        <div style={{ fontSize: '12px', color: '#6B7280' }}>{t('settings:settingsPage.permanentQrNoExpiration')}</div>
+                        <div style={{ fontSize: '12px', color: '#4B5563' }}>{t('settings:settingsPage.permanentQrNoExpiration')}</div>
                       </div>
                     </label>
                     </AutoSaveField>
                     <AutoSaveField ref={qrModeSessionRef} onSave={handleSave} type="toggle" style={{ flex: 1 }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px', border: '1px solid ' + (tableSettings.qrMode === 'session' ? '#635BFF' : '#E6EBF1'), borderRadius: '8px', cursor: 'pointer', background: tableSettings.qrMode === 'session' ? '#F0F0FF' : 'white' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px', border: '1px solid ' + (tableSettings.qrMode === 'session' ? '#635BFF' : '#C7CED6'), borderRadius: '8px', cursor: 'pointer', background: tableSettings.qrMode === 'session' ? '#F0F0FF' : 'white' }}>
                       <input type="radio" name="qrMode" value="session" checked={tableSettings.qrMode === 'session'} onChange={() => { setTableSettings({...tableSettings, qrMode: 'session'}); qrModeSessionRef.current?.triggerSave(); }} />
                       <div>
                         <div style={{ fontWeight: 500 }}>{t('settings:settingsPage.session')}</div>
-                        <div style={{ fontSize: '12px', color: '#6B7280' }}>{t('settings:settingsPage.expiringQrGeneratedPerVisit')}</div>
+                        <div style={{ fontSize: '12px', color: '#4B5563' }}>{t('settings:settingsPage.expiringQrGeneratedPerVisit')}</div>
                       </div>
                     </label>
                     </AutoSaveField>
@@ -4069,7 +4182,7 @@ const SettingsPage: React.FC = () => {
                   </div>
                 )}
                 {tableSettings.qrMode === 'static' && (
-                  <div style={{ marginTop: '16px', padding: '12px 14px', background: '#FAFBFC', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '13px', color: '#6B7C93' }}>
+                  <div style={{ marginTop: '16px', padding: '12px 14px', background: '#F9FAFB', border: '1px solid #C7CED6', borderRadius: '6px', fontSize: '13px', color: '#4B5563' }}>
                     Static QR codes per table are shown in the <strong>Zones &amp; Table Groups</strong> card above.
                   </div>
                 )}
@@ -4131,9 +4244,9 @@ const SettingsPage: React.FC = () => {
                 return (
                   <SettingsCard style={{ gridColumn: '1 / -1' }}>
                     <CardTitle>Quick-entry QR codes</CardTitle>
-                    <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
+                    <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
                       {t('settings:operations.quickEntryQrDesc')}
-                      <br /><span style={{ color: '#9CA3AF' }}>{t('settings:operations.quickEntryQrHintPrefix')}<button type="button" onClick={() => handleTabChange('mobileOrder')} style={{ background: 'none', border: 'none', color: '#635BFF', textDecoration: 'underline', cursor: 'pointer', padding: 0, font: 'inherit' }}>{t('settings:operations.quickEntryQrHintLink')}</button>{t('settings:operations.quickEntryQrHintSuffix')}</span>
+                      <br /><span style={{ color: '#6B7280' }}>{t('settings:operations.quickEntryQrHintPrefix')}<button type="button" onClick={() => handleTabChange('mobileOrder')} style={{ background: 'none', border: 'none', color: '#635BFF', textDecoration: 'underline', cursor: 'pointer', padding: 0, font: 'inherit' }}>{t('settings:operations.quickEntryQrHintLink')}</button>{t('settings:operations.quickEntryQrHintSuffix')}</span>
                     </p>
                     <TablesGrid>
                       {cards.map(card => {
@@ -4141,7 +4254,7 @@ const SettingsPage: React.FC = () => {
                         return (
                           <TableItem key={idSafe}>
                             <TableNumber>{card.label}</TableNumber>
-                            <div style={{ fontSize: '11px', color: '#9CA3AF', textAlign: 'center', marginBottom: '6px' }}>{card.description}</div>
+                            <div style={{ fontSize: '11px', color: '#6B7280', textAlign: 'center', marginBottom: '6px' }}>{card.description}</div>
                             <QRContainer>
                               <QRCodeCanvas id={`qr-${idSafe}`} value={card.url} size={100} level="H" includeMargin={true} style={{ display: 'none' }} />
                               <QRCodeSVG id={`qr-svg-${idSafe}`} value={card.url} size={100} level="H" includeMargin={true} />
@@ -4185,11 +4298,11 @@ const SettingsPage: React.FC = () => {
               {/* External QR — custom-named QR codes for partner shops, hotel lobbies, etc. */}
               <SettingsCard style={{ gridColumn: '1 / -1' }}>
                 <CardTitle>External QR</CardTitle>
-                <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
+                <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
                   Create QR codes with custom names (e.g. "Cafe Maru", "Lobby") for partner locations.
                   Orders will be recorded with this name in place of a table number.
                   <br />
-                  <span style={{ color: '#9CA3AF' }}>
+                  <span style={{ color: '#6B7280' }}>
                     Optional <strong>order type pin</strong> and <strong>partner discount</strong> are set per row below.
                     Payment methods available follow the pinned order type's settings on the Payment tab — no separate config.
                   </span>
@@ -4254,11 +4367,11 @@ const SettingsPage: React.FC = () => {
                                   width: '24px', height: '24px',
                                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                                   background: 'transparent', border: 'none', borderRadius: '4px',
-                                  color: '#9CA3AF', fontSize: '16px', lineHeight: 1, cursor: 'pointer',
+                                  color: '#6B7280', fontSize: '16px', lineHeight: 1, cursor: 'pointer',
                                   transition: 'all 0.15s'
                                 }}
                                 onMouseEnter={(e) => { e.currentTarget.style.background = '#FEE2E2'; e.currentTarget.style.color = '#DC2626'; }}
-                                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#9CA3AF'; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#6B7280'; }}
                               >
                                 ✕
                               </button>
@@ -4273,7 +4386,7 @@ const SettingsPage: React.FC = () => {
                                   onChange={(e) => handleChangeExternalQRCoupon(name, e.target.value ? Number(e.target.value) : null)}
                                   style={{
                                     width: '100%', padding: '6px 8px',
-                                    border: '1px solid ' + (hasCoupon ? '#F59E0B' : '#E6EBF1'),
+                                    border: '1px solid ' + (hasCoupon ? '#F59E0B' : '#C7CED6'),
                                     background: hasCoupon ? '#FFFBEB' : '#fff',
                                     borderRadius: '4px', fontSize: '12px'
                                   }}
@@ -4298,7 +4411,7 @@ const SettingsPage: React.FC = () => {
                                   onChange={(e) => handleChangeExternalQROrderType(name, e.target.value ? (e.target.value as ExtOrderType) : null)}
                                   style={{
                                     width: '100%', padding: '6px 8px',
-                                    border: '1px solid ' + (hasOrderTypePin ? '#635BFF' : '#E6EBF1'),
+                                    border: '1px solid ' + (hasOrderTypePin ? '#635BFF' : '#C7CED6'),
                                     background: hasOrderTypePin ? '#F0EFFF' : '#fff',
                                     borderRadius: '4px', fontSize: '12px',
                                     marginTop: '6px'
@@ -4337,7 +4450,7 @@ const SettingsPage: React.FC = () => {
                 {restaurantSlug && (
                   <SettingsCard style={{ gridColumn: '1 / -1' }}>
                     <CardTitle>{t('settings:settingsPage.mobileOrderAccess')}</CardTitle>
-                    <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
+                    <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
                       {t('settings:settingsPage.mobileOrderAccessHint')}
                     </p>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
@@ -4369,7 +4482,7 @@ const SettingsPage: React.FC = () => {
                           </button>
                         </div>
                       </div>
-                      <div style={{ padding: '8px', background: 'white', border: '1px solid #E6EBF1', borderRadius: '8px' }}>
+                      <div style={{ padding: '8px', background: 'white', border: '1px solid #C7CED6', borderRadius: '8px' }}>
                         <QRCodeSVG value={`${tableSettings.qrCodeBaseUrl}/mobile/${restaurantSlug}`} size={104} level="H" includeMargin={true} />
                       </div>
                     </div>
@@ -4379,7 +4492,7 @@ const SettingsPage: React.FC = () => {
                 {/* Mobile Order Alerts — staff notification UX */}
                 <SettingsCard style={{ gridColumn: '1 / -1' }}>
                   <CardTitle>{t('settings:settingsPage.mobileOrderAlerts', 'Mobile Order Alerts')}</CardTitle>
-                  <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
+                  <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
                     {t('settings:settingsPage.mobileOrderAlertsHint', 'How staff are notified when a new mobile/QR order arrives. Sidebar badge and Floor Plan dot are always shown.')}
                   </p>
                   <Toggle>
@@ -4458,7 +4571,7 @@ const SettingsPage: React.FC = () => {
 
                 <SettingsCard style={{ gridColumn: '1 / -1', borderLeft: mobileSettings.pause_ordering ? '4px solid #DC2626' : undefined }}>
                   <CardTitle>{t('settings:settingsPage.pauseOrdering')}</CardTitle>
-                  <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
+                  <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
                     {t('settings:settingsPage.pauseOrderingHint')}
                   </p>
                   <Toggle>
@@ -4489,13 +4602,13 @@ const SettingsPage: React.FC = () => {
 
                 <SettingsCard>
                   <CardTitle>{t('settings:settingsPage.orderTypes')}</CardTitle>
-                  <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
+                  <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
                     Enable or disable order types for mobile ordering
                   </p>
                   <Toggle>
                       <ToggleLabel>
                         {t('settings:settingsPage.dineIn')}
-                        <span style={{ fontSize: 12, color: '#9CA3AF', fontWeight: 400, marginLeft: 8 }}>
+                        <span style={{ fontSize: 12, color: '#6B7280', fontWeight: 400, marginLeft: 8 }}>
                           ({t('settings:settingsPage.orderTypeHintDineIn')})
                         </span>
                       </ToggleLabel>
@@ -4510,7 +4623,7 @@ const SettingsPage: React.FC = () => {
                   <Toggle>
                       <ToggleLabel>
                         {t('settings:settingsPage.takeaway')}
-                        <span style={{ fontSize: 12, color: '#9CA3AF', fontWeight: 400, marginLeft: 8 }}>
+                        <span style={{ fontSize: 12, color: '#6B7280', fontWeight: 400, marginLeft: 8 }}>
                           ({t('settings:settingsPage.orderTypeHintTakeaway')})
                         </span>
                       </ToggleLabel>
@@ -4525,7 +4638,7 @@ const SettingsPage: React.FC = () => {
                   <Toggle>
                       <ToggleLabel>
                         {t('settings:settingsPage.preorderPickup')}
-                        <span style={{ fontSize: 12, color: '#9CA3AF', fontWeight: 400, marginLeft: 8 }}>
+                        <span style={{ fontSize: 12, color: '#6B7280', fontWeight: 400, marginLeft: 8 }}>
                           ({t('settings:settingsPage.orderTypeHintPickup')})
                         </span>
                       </ToggleLabel>
@@ -4540,7 +4653,7 @@ const SettingsPage: React.FC = () => {
                   <Toggle>
                       <ToggleLabel>
                         {t('settings:settingsPage.delivery')}
-                        <span style={{ fontSize: 12, color: '#9CA3AF', fontWeight: 400, marginLeft: 8 }}>
+                        <span style={{ fontSize: 12, color: '#6B7280', fontWeight: 400, marginLeft: 8 }}>
                           ({t('settings:settingsPage.orderTypeHintDelivery')})
                         </span>
                       </ToggleLabel>
@@ -4555,7 +4668,7 @@ const SettingsPage: React.FC = () => {
                   <Toggle>
                       <ToggleLabel>
                         Reservation
-                        <span style={{ fontSize: 12, color: '#9CA3AF', fontWeight: 400, marginLeft: 8 }}>
+                        <span style={{ fontSize: 12, color: '#6B7280', fontWeight: 400, marginLeft: 8 }}>
                           (Customers can book a table from mobile order page)
                         </span>
                       </ToggleLabel>
@@ -4614,13 +4727,13 @@ const SettingsPage: React.FC = () => {
 
                 <SettingsCard>
                   <CardTitle>{t('settings:mobileOrder.orderProcessingTitle')}</CardTitle>
-                  <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
+                  <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
                     {t('settings:mobileOrder.orderProcessingDesc')}
                   </p>
                   <Toggle>
                     <div style={{ flex: 1 }}>
                       <ToggleLabel style={{ marginBottom: '4px' }}>{t('settings:mobileOrder.requirePaymentLabel')}</ToggleLabel>
-                      <p style={{ fontSize: '12px', color: '#6B7C93', margin: 0 }}>
+                      <p style={{ fontSize: '12px', color: '#4B5563', margin: 0 }}>
                         {t('settings:mobileOrder.requirePaymentDescOff')}<br/>
                         {t('settings:mobileOrder.requirePaymentDescOn')}
                       </p>
@@ -4647,7 +4760,7 @@ const SettingsPage: React.FC = () => {
                 {operationSettings.orderTypes?.pickup && (
                   <SettingsCard>
                     <CardTitle>{t('settings:settingsPage.pickupSettings')}</CardTitle>
-                    <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
+                    <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
                       {t('settings:settingsPage.pickupSettingsHint')}
                     </p>
                     <FormGroup>
@@ -4657,7 +4770,7 @@ const SettingsPage: React.FC = () => {
                           value={operationSettings.pickupSettings?.prepMinutes ?? 30}
                           onChange={(e) => { setOperationSettings(prev => ({ ...prev, pickupSettings: { ...prev.pickupSettings, prepMinutes: Number(e.target.value) } })); }} />
                       </AutoSaveField>
-                      <span style={{ color: '#6B7C93', fontSize: '14px', marginLeft: '8px' }}>{t('settings:settingsPage.prepMinutesUnit')}</span>
+                      <span style={{ color: '#4B5563', fontSize: '14px', marginLeft: '8px' }}>{t('settings:settingsPage.prepMinutesUnit')}</span>
                     </FormGroup>
                     <FormGroup>
                       <Label>{t('settings:settingsPage.pickupLocationNote')}</Label>
@@ -4671,7 +4784,7 @@ const SettingsPage: React.FC = () => {
                     <Toggle>
                       <ToggleLabel>
                         {t('settings:settingsPage.confirmationRequired')}
-                        <span style={{ fontSize: 12, color: '#9CA3AF', fontWeight: 400, marginLeft: 8 }}>
+                        <span style={{ fontSize: 12, color: '#6B7280', fontWeight: 400, marginLeft: 8 }}>
                           ({t('settings:settingsPage.confirmationRequiredHint')})
                         </span>
                       </ToggleLabel>
@@ -4690,7 +4803,7 @@ const SettingsPage: React.FC = () => {
                 {operationSettings.orderTypes?.takeaway && (
                   <SettingsCard>
                     <CardTitle>{t('settings:settingsPage.takeawaySettings')}</CardTitle>
-                    <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
+                    <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
                       {t('settings:settingsPage.takeawaySettingsHint')}
                     </p>
                     <FormGroup>
@@ -4700,7 +4813,7 @@ const SettingsPage: React.FC = () => {
                           value={operationSettings.takeawaySettings?.prepMinutes ?? 15}
                           onChange={(e) => { setOperationSettings(prev => ({ ...prev, takeawaySettings: { ...prev.takeawaySettings, prepMinutes: Number(e.target.value) } })); }} />
                       </AutoSaveField>
-                      <span style={{ color: '#6B7C93', fontSize: '14px', marginLeft: '8px' }}>{t('settings:settingsPage.prepMinutesUnit')}</span>
+                      <span style={{ color: '#4B5563', fontSize: '14px', marginLeft: '8px' }}>{t('settings:settingsPage.prepMinutesUnit')}</span>
                     </FormGroup>
                     <FormGroup>
                       <Label>{t('settings:settingsPage.packagingNote')}</Label>
@@ -4716,13 +4829,13 @@ const SettingsPage: React.FC = () => {
 
                 <SettingsCard>
                   <CardTitle>{t('settings:settingsPage.quickOrder')}</CardTitle>
-                  <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
+                  <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
                     Allow customers to order without providing contact information
                   </p>
                   <Toggle>
                       <ToggleLabel>
                         <span>{t('settings:settingsPage.allowQuickOrder')}</span>
-                        <span style={{ fontSize: '12px', color: '#9CA3AF', fontWeight: 400, marginLeft: '8px' }}>(No customer info required)</span>
+                        <span style={{ fontSize: '12px', color: '#6B7280', fontWeight: 400, marginLeft: '8px' }}>(No customer info required)</span>
                       </ToggleLabel>
                       <AutoSaveField ref={mobileOrderQuickOrderRef} onSave={handleSave} type="toggle">
                       <ToggleSwitch>
@@ -4732,7 +4845,7 @@ const SettingsPage: React.FC = () => {
                       </ToggleSwitch>
                       </AutoSaveField>
                     </Toggle>
-                  <p style={{ color: '#9CA3AF', fontSize: '12px', marginTop: '8px' }}>
+                  <p style={{ color: '#6B7280', fontSize: '12px', marginTop: '8px' }}>
                     {operationSettings.allowQuickOrder !== false
                       ? 'Customers can place orders without entering their name or phone number'
                       : 'Customers must sign in as Guest or Member to place an order'}
@@ -4755,7 +4868,7 @@ const SettingsPage: React.FC = () => {
 
                 <SettingsCard>
                   <CardTitle>{t('settings:settingsPage.displayOptions')}</CardTitle>
-                  <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
+                  <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
                     Control which sections appear on the mobile menu
                   </p>
                   <Toggle>
@@ -4768,7 +4881,7 @@ const SettingsPage: React.FC = () => {
                       </ToggleSwitch>
                       </AutoSaveField>
                     </Toggle>
-                  <p style={{ color: '#9CA3AF', fontSize: '12px', marginTop: '4px', marginBottom: '12px' }}>
+                  <p style={{ color: '#6B7280', fontSize: '12px', marginTop: '4px', marginBottom: '12px' }}>
                     Display recommended items in a dedicated tab (set in Menu Management)
                   </p>
                   <Toggle>
@@ -4781,7 +4894,7 @@ const SettingsPage: React.FC = () => {
                       </ToggleSwitch>
                       </AutoSaveField>
                     </Toggle>
-                  <p style={{ color: '#9CA3AF', fontSize: '12px', marginTop: '4px' }}>
+                  <p style={{ color: '#6B7280', fontSize: '12px', marginTop: '4px' }}>
                     Show best-selling items based on recent order history
                   </p>
                 </SettingsCard>
@@ -4789,7 +4902,7 @@ const SettingsPage: React.FC = () => {
                 {mobileSettings.show_popular && categories.length > 0 && (
                   <SettingsCard>
                     <CardTitle>{t('settings:settingsPage.popularMenuCategories')}</CardTitle>
-                    <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
+                    <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
                       {t('settings:settingsPage.popularMenuCategoriesHint')}
                     </p>
                     {categories.map((cat: any) => {
@@ -4819,7 +4932,7 @@ const SettingsPage: React.FC = () => {
 
                 <SettingsCard>
                   <CardTitle>{t('settings:settingsPage.categoryTimeRestrictions')}</CardTitle>
-                  <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
+                  <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
                     Restrict specific categories to certain hours on mobile order only. Categories without a schedule are always visible.
                   </p>
                   <AutoSaveField ref={mobileOrderCategorySchedulesRef} onSave={handleSave} type="list">
@@ -4827,7 +4940,7 @@ const SettingsPage: React.FC = () => {
                       {(mobileSettings.category_schedules || []).map((sched, index) => {
                         const cat = categories.find((c: any) => c.id === sched.category_id || c.id?.toString() === sched.category_id?.toString());
                         return (
-                          <div key={index} style={{ background: '#FAFBFC', padding: '16px', borderRadius: '8px', marginBottom: '12px', border: '1px solid #E6EBF1' }}>
+                          <div key={index} style={{ background: '#F9FAFB', padding: '16px', borderRadius: '8px', marginBottom: '12px', border: '1px solid #C7CED6' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                               <Label style={{ margin: 0 }}>{cat ? `${cat.emoji || '🍽️'} ${cat.name}` : `Category #${sched.category_id}`}</Label>
                               <button type="button" onClick={() => {
@@ -4868,13 +4981,13 @@ const SettingsPage: React.FC = () => {
                         const scheduledIds = new Set((mobileSettings.category_schedules || []).map(s => s.category_id?.toString()));
                         const availableCats = categories.filter((c: any) => !scheduledIds.has(c.id?.toString()));
                         if (availableCats.length === 0) return (
-                          <p style={{ color: '#9CA3AF', fontSize: '13px', textAlign: 'center', padding: '12px' }}>{t('settings:settingsPage.allCategoriesHaveSchedulesAssigned')}</p>
+                          <p style={{ color: '#6B7280', fontSize: '13px', textAlign: 'center', padding: '12px' }}>{t('settings:settingsPage.allCategoriesHaveSchedulesAssigned')}</p>
                         );
                         return (
                           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                             <select
                               id="add-schedule-cat"
-                              style={{ flex: 1, padding: '12px 16px', border: '1px solid #E6EBF1', borderRadius: '8px', fontSize: '14px', background: 'white' }}
+                              style={{ flex: 1, padding: '12px 16px', border: '1px solid #C7CED6', borderRadius: '8px', fontSize: '14px', background: 'white' }}
                             >
                               {availableCats.map((cat: any) => (
                                 <option key={cat.id} value={cat.id}>{cat.emoji || '🍽️'} {cat.name}</option>
@@ -4922,7 +5035,7 @@ const SettingsPage: React.FC = () => {
                           <FeeInput type="number" step="1.00" value={operationSettings.deliveryPricing.minimumOrder}
                             onChange={(e) => { setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, minimumOrder: Number(e.target.value) } })); }} />
                         </AutoSaveField>
-                        <span style={{ color: '#6B7C93', fontSize: '14px' }}>{getCurrencySymbol(currencySettings.currency)}</span>
+                        <span style={{ color: '#4B5563', fontSize: '14px' }}>{getCurrencySymbol(currencySettings.currency)}</span>
                         <HelpText>Minimum subtotal required for delivery orders (0 = no minimum)</HelpText>
                       </FormGroup>
                       <FormGroup>
@@ -4931,14 +5044,14 @@ const SettingsPage: React.FC = () => {
                           <FeeInput type="number" step="1.00" value={operationSettings.deliveryPricing.freeAbove}
                             onChange={(e) => { setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, freeAbove: Number(e.target.value) } })); }} />
                         </AutoSaveField>
-                        <span style={{ color: '#6B7C93', fontSize: '14px' }}>{getCurrencySymbol(currencySettings.currency)}</span>
+                        <span style={{ color: '#4B5563', fontSize: '14px' }}>{getCurrencySymbol(currencySettings.currency)}</span>
                         <HelpText>Waive delivery fee if order subtotal exceeds this amount (999999 = never free)</HelpText>
                       </FormGroup>
                       <Divider />
                       <Label style={{ marginBottom: '16px' }}>{t('settings:settingsPage.deliveryZones')}</Label>
                       <HelpText style={{ marginBottom: '16px' }}>{t('settings:settingsPage.configureDeliveryZonesAndTheirCorrespondingFees')}</HelpText>
                           {(operationSettings.deliveryPricing.zones || []).map((zone: any, index: number) => (
-                            <div key={index} style={{ background: '#FAFBFC', padding: '16px', borderRadius: '8px', marginBottom: '12px', border: '1px solid #E6EBF1' }}>
+                            <div key={index} style={{ background: '#F9FAFB', padding: '16px', borderRadius: '8px', marginBottom: '12px', border: '1px solid #C7CED6' }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                                 <Label style={{ margin: 0 }}>Zone {index + 1}</Label>
                                 <button type="button" onClick={() => {
@@ -4956,7 +5069,7 @@ const SettingsPage: React.FC = () => {
                               <FormGroup><Label>{t('settings:settingsPage.deliveryFee')}</Label><AutoSaveField onSave={handleSave}><FeeInput type="number" step="0.50" value={zone.fee}
                                 onChange={(e) => { const zones = [...(operationSettings.deliveryPricing.zones || [])]; zones[index] = { ...zones[index], fee: Number(e.target.value) };
                                   setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, zones } })); }} /></AutoSaveField>
-                                <span style={{ color: '#6B7C93', fontSize: '14px' }}>{getCurrencySymbol(currencySettings.currency)}</span></FormGroup>
+                                <span style={{ color: '#4B5563', fontSize: '14px' }}>{getCurrencySymbol(currencySettings.currency)}</span></FormGroup>
                             </div>
                           ))}
                           <button type="button" onClick={() => {
@@ -4981,81 +5094,576 @@ const SettingsPage: React.FC = () => {
 
           {activeTab === 'printer' && (
             <>
-              {/* Printer Mode Card - Full Width */}
+              {/* ★ Emergency Routing Mode — top of the printer tab so it's the
+                  first thing staff see when something breaks. Red when ON. The
+                  flag is a single boolean; print routing checks it at runtime and
+                  redirects every kitchen ticket to the active bill printer. We
+                  never mutate the original kitchen station routing data, so
+                  toggling OFF restores the normal flow instantly. */}
+              {(() => {
+                const isEm = !!(printerSettings as any).emergencyMode;
+                const enabledAt = (printerSettings as any).emergencyEnabledAt;
+                const minutesOn = enabledAt ? Math.max(0, Math.round((Date.now() - new Date(enabledAt).getTime()) / 60000)) : 0;
+
+                // Detect the active workstation's cashier printer config so we
+                // can pre-flight what the user will get when they toggle ON.
+                const wsList = (printerSettings as any).workstations || [];
+                const activeWs = wsList.find((w: any) => w.id === activeWorkstationId) || wsList[0];
+                const wsName = activeWs?.name || '—';
+                const cMethod: string = activeWs?.billPrinter?.method || 'browser';
+                const cAddress: string = (activeWs?.billPrinter?.address || '').trim();
+                // Crude "LAN-ish" heuristic: an IP-or-host:port suggests LAN/Wi-Fi.
+                const looksLan = /^(\d{1,3}\.){3}\d{1,3}(:\d+)?$/.test(cAddress) || /:\d+$/.test(cAddress);
+                let envBand: 'good' | 'ok' | 'partial' = 'good';
+                let envReadyKey = 'settings:printer.emergency.row2Ready';
+                let envBehaviourKey = 'settings:printer.emergency.row2Behaviour';
+                let envMethodLabel = '';
+                if (cMethod === 'rawbt') {
+                  envBand = 'good';
+                  envReadyKey = 'settings:printer.emergency.row4Ready';
+                  envBehaviourKey = 'settings:printer.emergency.row4Behaviour';
+                  envMethodLabel = t('settings:printer.emergency.row4Method');
+                } else if (cMethod === 'qztray') {
+                  if (looksLan) {
+                    envBand = 'partial';
+                    envReadyKey = 'settings:printer.emergency.row3Ready';
+                    envBehaviourKey = 'settings:printer.emergency.row3Behaviour';
+                    envMethodLabel = t('settings:printer.emergency.row3Method');
+                  } else {
+                    envBand = 'good';
+                    envReadyKey = 'settings:printer.emergency.row2Ready';
+                    envBehaviourKey = 'settings:printer.emergency.row2Behaviour';
+                    envMethodLabel = t('settings:printer.emergency.row2Method');
+                  }
+                } else {
+                  envBand = 'ok';
+                  envReadyKey = 'settings:printer.emergency.row1Ready';
+                  envBehaviourKey = 'settings:printer.emergency.row1Behaviour';
+                  envMethodLabel = t('settings:printer.emergency.row1Method');
+                }
+                const envBg = envBand === 'good' ? '#ECFDF5' : envBand === 'partial' ? '#FFFBEB' : '#F0F9FF';
+                const envBorder = envBand === 'good' ? '#A7F3D0' : envBand === 'partial' ? '#FDE68A' : '#BAE6FD';
+                const envFg = envBand === 'good' ? '#065F46' : envBand === 'partial' ? '#92400E' : '#075985';
+
+                const toggleEmergency = async (next: boolean) => {
+                  const nowIso = new Date().toISOString();
+                  const newPS = {
+                    ...printerSettings,
+                    emergencyMode: next,
+                    emergencyEnabledAt: next ? nowIso : null
+                  };
+                  setPrinterSettings(newPS as any);
+                  if (!user?.restaurantId) return;
+                  try {
+                    const token = getAuthToken();
+                    const r = await fetch(`/api/restaurants/${user.restaurantId}`, {
+                      method: 'PUT',
+                      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ printer_settings: newPS })
+                    });
+                    const d = await r.json();
+                    if (!d.success) throw new Error('save failed');
+                    // Inform the user — Setup Modal style, NOT alert/toast.
+                    setInfoModal({
+                      open: true,
+                      title: next
+                        ? t('settings:printer.emergency.modalOnTitle', 'Emergency Mode Enabled')
+                        : t('settings:printer.emergency.modalOffTitle', 'Emergency Mode Disabled'),
+                      message: next
+                        ? t('settings:printer.emergency.modalOnMessage',
+                            'All order tickets will print from the cashier (bill) printer. Staff must hand-deliver tickets to each station.\n\nIf internet is down, connect this POS to a mobile hotspot. Old PCs without Wi-Fi: use a USB Wi-Fi dongle (TP-Link Nano / Mercusys / ASUS USB Adapter). Hotspot is for internet only — keep kitchen printers OFF the hotspot.')
+                        : t('settings:printer.emergency.modalOffMessage',
+                            'Original printer routing restored. Each station prints to its own printer again.')
+                    });
+                  } catch {
+                    setInfoModal({ open: true, title: 'Save failed', message: 'Could not update emergency mode. Try again or check your connection.' });
+                  }
+                };
+
+                const testCashierPrint = async () => {
+                  try {
+                    const { printBillViaRawBT } = await import('../../utils/billPrint');
+                    const sample = {
+                      orderNumber: 'TEST-EM',
+                      items: [{ menuItem: { name: t('settings:printer.emergency.testItem', 'Cashier Printer Test') }, quantity: 1, price: 0 }],
+                      total: 0, subtotal: 0, tax: 0,
+                      paymentMethod: 'TEST'
+                    };
+                    await printBillViaRawBT(sample as any, { name: 'PurpleHere' } as any);
+                  } catch (e: any) {
+                    setInfoModal({ open: true, title: 'Test print failed', message: e?.message || 'Could not reach the cashier printer.' });
+                  }
+                };
+
+                return (
+                  <SettingsCard
+                    style={{
+                      marginBottom: '24px',
+                      background: isEm ? '#FEF2F2' : '#FFFFFF',
+                      border: isEm ? '2px solid #DC2626' : '1px solid #C7CED6'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          width: '28px', height: '28px', borderRadius: '50%',
+                          background: isEm ? '#DC2626' : '#9CA3AF', color: '#fff',
+                          fontSize: '16px', fontWeight: 700
+                        }} aria-hidden="true">!</span>
+                        <CardTitle style={{ margin: 0, color: isEm ? '#7F1D1D' : '#0A2540' }}>
+                          {isEm
+                            ? t('settings:printer.emergency.titleOn', 'Emergency Mode — ALL ORDERS ROUTED TO CASHIER')
+                            : t('settings:printer.emergency.titleOff', 'Emergency Routing Mode')}
+                        </CardTitle>
+                        <button
+                          type="button"
+                          onClick={() => setShowPrinterTroubleshoot(true)}
+                          style={{
+                            padding: '4px 10px', fontSize: '11px', fontWeight: 600,
+                            border: '1px solid #C7CED6', borderRadius: '12px',
+                            background: '#fff', color: '#4B5563', cursor: 'pointer'
+                          }}
+                          title={t('settings:printer.troubleshoot.openTitle', 'Open the printer troubleshooting guide')}
+                        >
+                          {t('settings:printer.troubleshoot.openBtn', '문제 해결 가이드 ?')}
+                        </button>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        {!isEm && (
+                          <button
+                            type="button"
+                            onClick={testCashierPrint}
+                            style={{
+                              padding: '10px 16px', fontSize: '13px', fontWeight: 500,
+                              border: '1px solid #6B7280', borderRadius: '8px',
+                              background: '#fff', color: '#1F2937', cursor: 'pointer'
+                            }}
+                          >
+                            {t('settings:printer.emergency.testCashier', 'Test Cashier Printer')}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => toggleEmergency(!isEm)}
+                          style={{
+                            padding: '10px 20px', fontSize: '14px', fontWeight: 700,
+                            border: 'none', borderRadius: '8px', cursor: 'pointer',
+                            background: isEm ? '#DC2626' : '#10B981', color: '#fff',
+                            minWidth: '140px'
+                          }}
+                        >
+                          {isEm
+                            ? t('settings:printer.emergency.turnOff', 'Turn OFF')
+                            : t('settings:printer.emergency.turnOn', 'Turn ON')}
+                        </button>
+                      </div>
+                    </div>
+
+                    <p style={{ fontSize: '13px', color: isEm ? '#7F1D1D' : '#4B5563', lineHeight: 1.6, margin: '0 0 12px' }}>
+                      {isEm
+                        ? t('settings:printer.emergency.descOn',
+                            'Every order ticket is currently printing from the cashier (bill) printer regardless of station mapping. Staff must hand-deliver tickets to each station. Click "Turn OFF" once your kitchen printers / network are back to normal.')
+                        : t('settings:printer.emergency.descOff',
+                            'One-click escape hatch for kitchen printer or network failures. Activating reroutes every order ticket to the cashier (bill) printer. Original station routing is preserved — turning OFF restores it instantly. No manual reconfiguration.')}
+                    </p>
+
+                    {/* "How it works + recommended setup" — combined accordion.
+                        Merges the old "effect by method" table and the old prereq
+                        bullets into a single collapsed-by-default block, with the
+                        core idea + recommendation up front so most users don't
+                        need to expand the table at all. */}
+                    <div style={{ border: '1px solid #FDE68A', borderRadius: '8px', overflow: 'hidden', marginBottom: '12px' }}>
+                      <button
+                        type="button"
+                        onClick={() => setEmergencyEffectOpen(v => !v)}
+                        aria-expanded={emergencyEffectOpen}
+                        style={{
+                          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          padding: '12px 16px', background: '#FFFBEB', border: 'none', cursor: 'pointer',
+                          fontSize: '13px', fontWeight: 600, color: '#92400E', textAlign: 'left'
+                        }}
+                      >
+                        <span>{t('settings:printer.emergency.howItWorksTitle', 'How emergency mode works + recommended cashier setup')}</span>
+                        <span style={{ fontSize: '14px', color: '#92400E', transform: emergencyEffectOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
+                      </button>
+                      {emergencyEffectOpen && (
+                        <div style={{ padding: '14px 16px', background: '#FFFFFF', borderTop: '1px solid #FDE68A' }}>
+                          <p style={{ fontSize: '13px', color: '#1F2937', lineHeight: 1.7, margin: '0 0 10px' }}>
+                            <strong>{t('settings:printer.emergency.coreIdea', 'Core idea: emergency mode just redirects EVERY ticket to the cashier printer. So how reliable it is depends entirely on how the cashier printer is connected.')}</strong>
+                          </p>
+                          <p style={{ fontSize: '13px', color: '#1F2937', lineHeight: 1.7, margin: '0 0 14px' }}>
+                            {t('settings:printer.emergency.coreRecommendation', '👉 Recommended: connect the cashier printer directly via USB or Bluetooth (router-independent). Keep kitchen printers on LAN as normal. This way, even if the router or kitchen printers die, the cashier alone keeps the shop running.')}
+                          </p>
+
+                          <div style={{ fontSize: '12px', fontWeight: 600, color: '#4B5563', marginBottom: '6px' }}>
+                            {t('settings:printer.emergency.effectByMethodTitle', 'Behaviour by cashier method')}
+                          </div>
+                          <div style={{ overflowX: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', color: '#1F2937', minWidth: '480px' }}>
+                              <thead>
+                                <tr style={{ background: '#F9FAFB' }}>
+                                  <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #E5E7EB' }}>{t('settings:printer.emergency.colCashierMethod', 'Cashier printer method')}</th>
+                                  <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #E5E7EB' }}>{t('settings:printer.emergency.colBehaviour', 'Behaviour during emergency')}</th>
+                                  <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #E5E7EB' }}>{t('settings:printer.emergency.colReady', 'Emergency-ready?')}</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <tr>
+                                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top' }}>{t('settings:printer.emergency.row1Method')}</td>
+                                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top' }}>{t('settings:printer.emergency.row1Behaviour')}</td>
+                                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top' }}>{t('settings:printer.emergency.row1Ready')}</td>
+                                </tr>
+                                <tr>
+                                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top' }}>{t('settings:printer.emergency.row2Method')}</td>
+                                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top' }}>{t('settings:printer.emergency.row2Behaviour')}</td>
+                                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top', color: '#047857', fontWeight: 600 }}>{t('settings:printer.emergency.row2Ready')}</td>
+                                </tr>
+                                <tr>
+                                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top' }}>{t('settings:printer.emergency.row3Method')}</td>
+                                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top' }}>{t('settings:printer.emergency.row3Behaviour')}</td>
+                                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top', color: '#92400E', fontWeight: 600 }}>{t('settings:printer.emergency.row3Ready')}</td>
+                                </tr>
+                                <tr>
+                                  <td style={{ padding: '8px 10px', verticalAlign: 'top' }}>{t('settings:printer.emergency.row4Method')}</td>
+                                  <td style={{ padding: '8px 10px', verticalAlign: 'top' }}>{t('settings:printer.emergency.row4Behaviour')}</td>
+                                  <td style={{ padding: '8px 10px', verticalAlign: 'top', color: '#047857', fontWeight: 600 }}>{t('settings:printer.emergency.row4Ready')}</td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Live comparison — two columns showing "now" vs "ON" */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '10px', alignItems: 'stretch', marginBottom: '12px' }}>
+                      {/* LEFT — Current / Normal routing */}
+                      <div style={{
+                        padding: '12px 14px',
+                        background: isEm ? '#F9FAFB' : '#F1F4F8',
+                        border: '1px solid #D1D5DB',
+                        borderRadius: '8px',
+                        opacity: isEm ? 0.6 : 1
+                      }}>
+                        <div style={{ fontSize: '11px', fontWeight: 700, color: '#4B5563', marginBottom: '8px', letterSpacing: '0.4px' }}>
+                          {isEm
+                            ? t('settings:printer.emergency.leftLabelOn', 'NORMAL (PAUSED)')
+                            : t('settings:printer.emergency.leftLabelOff', 'NOW — NORMAL')}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#1F2937', lineHeight: 1.7 }}>
+                          <div>
+                            <strong>{t('settings:printer.emergency.activeWorkstation', 'Active workstation')}:</strong> {wsName}
+                          </div>
+                          <div>
+                            <strong>{t('settings:printer.emergency.cashierMethodLabel', 'Cashier method')}:</strong> {envMethodLabel}{cAddress ? ` · ${cAddress}` : ''}
+                          </div>
+                          <div>
+                            <strong>{t('settings:printer.emergency.routing', 'Routing')}:</strong> {t('settings:printer.emergency.routingNormal', 'Each station → its own printer (bar / kitchen / dessert separate)')}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Arrow */}
+                      <div aria-hidden="true" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', color: isEm ? '#DC2626' : '#9CA3AF', fontWeight: 700 }}>
+                        →
+                      </div>
+
+                      {/* RIGHT — Emergency routing */}
+                      <div style={{
+                        padding: '12px 14px',
+                        background: isEm ? '#FEE2E2' : envBg,
+                        border: `${isEm ? '2px' : '1px'} solid ${isEm ? '#DC2626' : envBorder}`,
+                        borderRadius: '8px'
+                      }}>
+                        <div style={{ fontSize: '11px', fontWeight: 700, color: isEm ? '#7F1D1D' : envFg, marginBottom: '8px', letterSpacing: '0.4px' }}>
+                          {isEm
+                            ? t('settings:printer.emergency.rightLabelOn', '🟢 RIGHT NOW — EMERGENCY ACTIVE')
+                            : t('settings:printer.emergency.rightLabelOff', '⚡ IF YOU TURN ON')}
+                        </div>
+                        <div style={{ fontSize: '12px', color: isEm ? '#7F1D1D' : envFg, lineHeight: 1.7 }}>
+                          <div>
+                            <strong>{t('settings:printer.emergency.routing', 'Routing')}:</strong> {t('settings:printer.emergency.routingEmergency', 'ALL stations → cashier ({{ws}})', { ws: wsName })}
+                          </div>
+                          <div>
+                            <strong>{isEm
+                              ? t('settings:printer.emergency.currentBehaviour', 'Behaviour now')
+                              : t('settings:printer.emergency.expectedBehaviour', 'If turned ON')}:</strong> {t(envBehaviourKey)}
+                          </div>
+                          <div>
+                            <strong>{t('settings:printer.emergency.fitness', 'Emergency fitness')}:</strong> {t(envReadyKey)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {isEm && enabledAt && (
+                      <div style={{ fontSize: '12px', color: '#7F1D1D', marginBottom: '10px' }}>
+                        {t('settings:printer.emergency.enabledFor', 'Active for {{minutes}} minute(s)', { minutes: minutesOn })} · {new Date(enabledAt).toLocaleString()}
+                      </div>
+                    )}
+
+                  </SettingsCard>
+                );
+              })()}
+
+              {/* Printer methods guide — 3 tabs so Browser / QZ Tray / RawBT are
+                  presented as equally valid options. Each tab explains when to
+                  pick it and shows its setup steps. The actual per-printer Method
+                  select sits on every Workstation / Kitchen card below. */}
               <SettingsCard style={{ marginBottom: '24px' }}>
-                <CardTitle>{t('settings:settingsPage.printerMode')}</CardTitle>
-                <p style={{ color: '#6B7C93', marginBottom: '20px', fontSize: '14px' }}>
-                  {t('settings:printer.modeDescription')}
+                <CardTitle>{t('settings:printer.methodGuide.title')}</CardTitle>
+                <p style={{ color: '#4B5563', marginBottom: '12px', fontSize: '14px' }}>
+                  {t('settings:printer.methodGuide.desc')}
                 </p>
 
-                {printerSettingsLoading ? (
-                  <div style={{ padding: '20px', textAlign: 'center', color: '#6B7C93' }}>
+                {/* Decision matrix — accordion (collapsed by default). Opens
+                    when user actually needs to choose. Keeps the printer tab clean. */}
+                <div style={{ marginBottom: '16px', border: '1px solid #E5E7EB', borderRadius: '8px', overflow: 'hidden' }}>
+                  <button
+                    type="button"
+                    onClick={() => setMethodMatrixOpen(v => !v)}
+                    aria-expanded={methodMatrixOpen}
+                    style={{
+                      width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '12px 16px', background: '#F9FAFB', border: 'none', cursor: 'pointer',
+                      fontSize: '13px', fontWeight: 600, color: '#1F2937', textAlign: 'left'
+                    }}
+                  >
+                    <span>{t('settings:printer.methodGuide.matrixTitle', 'Which method should I pick?')}</span>
+                    <span style={{ fontSize: '14px', color: '#6B7280', transform: methodMatrixOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
+                  </button>
+                  {methodMatrixOpen && (
+                  <div style={{ padding: '12px 16px', background: '#FFFFFF', borderTop: '1px solid #E5E7EB', overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', color: '#1F2937', minWidth: '480px' }}>
+                      <thead>
+                        <tr style={{ background: '#F1F4F8' }}>
+                          <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #E5E7EB' }}>{t('settings:printer.methodGuide.matrixColEnv', 'Your environment')}</th>
+                          <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #E5E7EB' }}>{t('settings:printer.methodGuide.matrixColPick', 'Pick')}</th>
+                          <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #E5E7EB' }}>{t('settings:printer.methodGuide.matrixColWhy', 'Why')}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top' }}>{t('settings:printer.methodGuide.matrixRow1Env', 'Windows POS + LAN/Wi-Fi kitchen printer(s)')}</td>
+                          <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top', fontWeight: 600, color: '#635BFF' }}>{t('settings:printer.methodGuide.qzLabel')}</td>
+                          <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top' }}>{t('settings:printer.methodGuide.matrixRow1Why', 'Silent + auto-print to LAN printers. One-time cert install per device.')}</td>
+                        </tr>
+                        <tr>
+                          <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top' }}>{t('settings:printer.methodGuide.matrixRow2Env', 'Windows POS + USB cashier printer (small shop, no kitchen)')}</td>
+                          <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top', fontWeight: 600, color: '#635BFF' }}>{t('settings:printer.methodGuide.browserLabel')}{t('settings:printer.methodGuide.matrixOr', ' or ')}{t('settings:printer.methodGuide.qzLabel')}</td>
+                          <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top' }}>{t('settings:printer.methodGuide.matrixRow2Why', 'Browser = simplest (OS default printer). QZ Tray if you need silent / auto-print.')}</td>
+                        </tr>
+                        <tr>
+                          <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top' }}>{t('settings:printer.methodGuide.matrixRow3Env', 'Android tablet POS + USB OTG / Bluetooth printer')}</td>
+                          <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top', fontWeight: 600, color: '#635BFF' }}>{t('settings:printer.methodGuide.rawbtLabel')}</td>
+                          <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top' }}>{t('settings:printer.methodGuide.matrixRow3Why', 'QZ Tray does not run on Android. RawBT is silent + router-independent — best for emergency.')}</td>
+                        </tr>
+                        <tr>
+                          <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top' }}>{t('settings:printer.methodGuide.matrixRow4Env', 'iPad POS')}</td>
+                          <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top', fontWeight: 600, color: '#635BFF' }}>{t('settings:printer.methodGuide.browserLabel')}</td>
+                          <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top' }}>{t('settings:printer.methodGuide.matrixRow4Why', 'AirPrint via OS print dialog. QZ Tray / RawBT not available on iOS.')}</td>
+                        </tr>
+                        <tr>
+                          <td style={{ padding: '8px 10px', verticalAlign: 'top' }}>{t('settings:printer.methodGuide.matrixRow5Env', 'Mixed shop (Windows counter + Android kitchen tablet)')}</td>
+                          <td style={{ padding: '8px 10px', verticalAlign: 'top', fontWeight: 600, color: '#635BFF' }}>{t('settings:printer.methodGuide.matrixRow5Pick', 'Mix freely')}</td>
+                          <td style={{ padding: '8px 10px', verticalAlign: 'top' }}>{t('settings:printer.methodGuide.matrixRow5Why', 'Each workstation / station card picks its own method. Windows → QZ Tray, Android → RawBT, anything else → Browser.')}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  )}
+                </div>
+
+                {/* Method tabs */}
+                <div style={{ display: 'flex', gap: '4px', marginBottom: '16px', borderBottom: '1px solid #E5E7EB' }}>
+                  {([
+                    { key: 'browser', label: t('settings:printer.methodGuide.browserLabel'), sub: t('settings:printer.methodGuide.browserSub') },
+                    { key: 'rawbt', label: t('settings:printer.methodGuide.rawbtLabel'), sub: t('settings:printer.methodGuide.rawbtSub') },
+                    { key: 'qztray', label: t('settings:printer.methodGuide.qzLabel'), sub: t('settings:printer.methodGuide.qzSub') }
+                  ] as const).map(tab => {
+                    const active = printerGuideTab === tab.key;
+                    return (
+                      <button
+                        key={tab.key}
+                        type="button"
+                        onClick={() => setPrinterGuideTab(tab.key)}
+                        style={{
+                          padding: '10px 16px', fontSize: '13px', fontWeight: 600,
+                          border: 'none', borderBottom: active ? '2px solid #635BFF' : '2px solid transparent',
+                          background: 'transparent', color: active ? '#635BFF' : '#4B5563',
+                          cursor: 'pointer', marginBottom: '-1px',
+                          display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px'
+                        }}
+                      >
+                        <span>{tab.label}</span>
+                        <span style={{ fontSize: '11px', fontWeight: 400, color: '#6B7280' }}>{tab.sub}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Browser Print panel */}
+                {printerGuideTab === 'browser' && (
+                  <div>
+                    <p style={{ fontSize: '13px', color: '#1F2937', lineHeight: 1.6, marginBottom: '12px' }}>
+                      {t('settings:printer.methodGuide.browserDesc')}
+                    </p>
+                    <div style={{ padding: '12px 16px', background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: '6px', fontSize: '12px', color: '#4B5563', lineHeight: 1.6 }}>
+                      <strong>{t('settings:printer.methodGuide.browserHowTitle')}</strong>
+                      <ol style={{ margin: '6px 0 0 18px', padding: 0 }}>
+                        <li>{t('settings:printer.methodGuide.browserStep1')}</li>
+                        <li>{t('settings:printer.methodGuide.browserStep2')}</li>
+                        <li>{t('settings:printer.methodGuide.browserStep3')}</li>
+                      </ol>
+                    </div>
+                  </div>
+                )}
+
+                {/* QZ Tray panel */}
+                {printerGuideTab === 'qztray' && (
+                  <div>
+                    <p style={{ fontSize: '13px', color: '#1F2937', lineHeight: 1.6, marginBottom: '12px' }}>
+                      {t('settings:printer.methodGuide.qzDesc')}
+                    </p>
+
+                    {/* Quick action row */}
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '14px' }}>
+                      <button type="button"
+                        onClick={async () => {
+                          setQzTrayStatus('connecting');
+                          try {
+                            if (isQZTrayConnected()) await disconnectQZTray();
+                            const ok = await connectQZTray();
+                            setQzTrayStatus(ok ? 'connected' : 'disconnected');
+                            if (ok) {
+                              const printers = await getQZTrayPrinters();
+                              setQzTrayPrinters(printers);
+                            }
+                          } catch { setQzTrayStatus('disconnected'); }
+                        }}
+                        style={{ padding: '8px 14px', fontSize: '13px', border: '1px solid #635BFF', borderRadius: '6px', background: qzTrayStatus === 'connected' ? '#fff' : '#635BFF', color: qzTrayStatus === 'connected' ? '#635BFF' : '#fff', cursor: 'pointer', fontWeight: 600 }}
+                      >{qzTrayStatus === 'connecting' ? t('settings:printer.methodGuide.qzConnectingBtn') : qzTrayStatus === 'connected' ? t('settings:printer.methodGuide.qzReconnectBtn') : t('settings:printer.methodGuide.qzTestBtn')}</button>
+                      <button type="button"
+                        onClick={() => window.open('/api/qz-tray/certificate/download', '_blank')}
+                        style={{ padding: '8px 14px', fontSize: '13px', border: '1px solid #10B981', borderRadius: '6px', background: '#ECFDF5', color: '#065F46', cursor: 'pointer', fontWeight: 600 }}
+                      >{t('settings:printer.methodGuide.qzDownloadCertBtn')}</button>
+                      <button type="button"
+                        onClick={() => setShowQzGuide(true)}
+                        style={{ padding: '8px 14px', fontSize: '13px', border: '1px solid #635BFF', borderRadius: '6px', background: '#F5F3FF', color: '#635BFF', cursor: 'pointer', fontWeight: 500 }}
+                      >{t('settings:printer.methodGuide.qzFullSetupBtn')}</button>
+                    </div>
+
+                    {/* Status line */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#1F2937', flexWrap: 'wrap' }}>
+                      <div style={{
+                        width: '8px', height: '8px', borderRadius: '50%',
+                        background: qzTrayStatus === 'connected' ? '#10B981' : qzTrayStatus === 'connecting' ? '#F59E0B' : '#9CA3AF'
+                      }} />
+                      <span style={{ fontWeight: 500 }}>
+                        {qzTrayStatus === 'connected' ? t('settings:printer.methodGuide.qzStatusConnected') : qzTrayStatus === 'connecting' ? t('settings:printer.methodGuide.qzStatusConnecting') : t('settings:printer.methodGuide.qzStatusDisconnected')}
+                      </span>
+                      {qzTrayPrinters.length > 0 && (
+                        <span style={{ color: '#4B5563' }}>
+                          {t('settings:printer.methodGuide.qzDetectedPrinters')} <strong>{qzTrayPrinters.join(', ')}</strong>
+                        </span>
+                      )}
+                    </div>
+
+                    {/* One-click auto-installer — the recommended path. Downloads
+                        a tiny script (.bat / .command / .sh) that embeds the cert,
+                        creates the QZ Tray folder if missing, and copies the cert
+                        in. User just double-clicks → done. No %APPDATA% spelunking. */}
+                    <div style={{ marginTop: '14px', padding: '14px 16px', background: '#EEF2FF', border: '2px solid #635BFF', borderRadius: '8px' }}>
+                      <div style={{ fontSize: '13px', fontWeight: 700, color: '#312E81', marginBottom: '6px' }}>
+                        {t('settings:printer.methodGuide.qzAutoInstallTitle', '★ One-click install (recommended)')}
+                      </div>
+                      <p style={{ fontSize: '12px', color: '#312E81', lineHeight: 1.6, margin: '0 0 10px' }}>
+                        {t('settings:printer.methodGuide.qzAutoInstallDesc', 'Download the installer for your operating system, double-click it, and the certificate is placed in the right folder automatically. No file paths to find, no hidden folders.')}
+                      </p>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                        <button type="button"
+                          onClick={() => window.open('/api/qz-tray/installer?os=windows', '_blank')}
+                          style={{ padding: '8px 14px', fontSize: '13px', fontWeight: 600, border: 'none', borderRadius: '6px', background: '#635BFF', color: '#fff', cursor: 'pointer' }}
+                        >{t('settings:printer.methodGuide.qzAutoInstallWindows', 'Windows installer (.bat)')}</button>
+                        <button type="button"
+                          onClick={() => window.open('/api/qz-tray/installer?os=mac', '_blank')}
+                          style={{ padding: '8px 14px', fontSize: '13px', fontWeight: 600, border: '1px solid #635BFF', borderRadius: '6px', background: '#fff', color: '#635BFF', cursor: 'pointer' }}
+                        >{t('settings:printer.methodGuide.qzAutoInstallMac', 'macOS installer (.command)')}</button>
+                        <button type="button"
+                          onClick={() => window.open('/api/qz-tray/installer?os=linux', '_blank')}
+                          style={{ padding: '8px 14px', fontSize: '13px', fontWeight: 600, border: '1px solid #635BFF', borderRadius: '6px', background: '#fff', color: '#635BFF', cursor: 'pointer' }}
+                        >{t('settings:printer.methodGuide.qzAutoInstallLinux', 'Linux installer (.sh)')}</button>
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#4338CA', marginTop: '8px', fontStyle: 'italic' }}>
+                        {t('settings:printer.methodGuide.qzAutoInstallAfter', 'After running the installer, right-click the QZ Tray tray icon → Exit, then launch QZ Tray again. Done.')}
+                      </div>
+                    </div>
+
+                    {/* Manual install (fallback) — collapsed by default visual weight. */}
+                    <div style={{ marginTop: '10px', padding: '12px 16px', background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: '6px', fontSize: '12px', color: '#4B5563', lineHeight: 1.6 }}>
+                      <strong>{t('settings:printer.methodGuide.qzManualInstallTitle', 'Manual install (advanced)')}</strong>
+                      <ol style={{ margin: '6px 0 0 18px', padding: 0 }}>
+                        <li>{t('settings:printer.methodGuide.qzCertStep1')}</li>
+                        <li>{t('settings:printer.methodGuide.qzCertStep2')}
+                          <ul style={{ margin: '2px 0 0 16px' }}>
+                            <li>Windows: <code>%APPDATA%\qz\override.crt</code> <span style={{ color: '#635BFF', fontWeight: 500 }}>({t('settings:printer.methodGuide.qzWinRHint', 'Win+R → paste %APPDATA%\\qz → Enter')})</span></li>
+                            <li>macOS: <code>~/Library/Application Support/Qz/override.crt</code></li>
+                            <li>Linux: <code>/usr/share/qz/override.crt</code></li>
+                          </ul>
+                        </li>
+                        <li>{t('settings:printer.methodGuide.qzCertStep3')}</li>
+                      </ol>
+                    </div>
+                  </div>
+                )}
+
+                {/* RawBT panel */}
+                {printerGuideTab === 'rawbt' && (
+                  <div>
+                    <p style={{ fontSize: '13px', color: '#1F2937', lineHeight: 1.6, marginBottom: '12px' }}>
+                      {t('settings:printer.methodGuide.rawbtDesc')}
+                    </p>
+                    <div style={{ padding: '12px 16px', background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: '6px', fontSize: '12px', color: '#7C2D12', lineHeight: 1.6 }}>
+                      <strong>{t('settings:printer.methodGuide.rawbtSetupTitle')}</strong>
+                      <ol style={{ margin: '6px 0 0 18px', padding: 0 }}>
+                        <li>{t('settings:printer.methodGuide.rawbtStep1')}</li>
+                        <li>{t('settings:printer.methodGuide.rawbtStep2')}</li>
+                        <li>{t('settings:printer.methodGuide.rawbtStep3')}</li>
+                        <li>{t('settings:printer.methodGuide.rawbtStep4')}</li>
+                        <li>{t('settings:printer.methodGuide.rawbtStep5')}</li>
+                      </ol>
+                    </div>
+                    <p style={{ fontSize: '12px', color: '#6B7280', marginTop: '10px', fontStyle: 'italic' }}>
+                      {t('settings:printer.methodGuide.rawbtNote')}
+                    </p>
+                  </div>
+                )}
+
+                {/* The legacy mode radio is intentionally removed — each workstation / kitchen / station card below picks its own method. */}
+                {false && printerSettingsLoading && (
+                  <div style={{ padding: '20px', textAlign: 'center', color: '#4B5563' }}>
                     Loading printer settings...
                   </div>
-                ) : (
+                )}
+                {false && (
                   <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                  {([
-                    { key: 'rawbt', label: t('settings:printer.modeRawbtLabel'), desc: t('settings:printer.modeRawbtDesc') },
-                    { key: 'browser', label: t('settings:printer.modeBrowserLabel'), desc: t('settings:printer.modeBrowserDesc') },
-                    { key: 'qztray', label: t('settings:printer.modeQztrayLabel'), desc: t('settings:printer.modeQztrayDesc') },
-                  ] as const).map(opt => (
-                    <AutoSaveField key={opt.key} ref={(h: AutoSaveHandle | null) => { if (h) printerModeRefs.current.set(opt.key, h); }} onSave={handleSave} type="toggle" style={{ flex: 1, minWidth: 150 }}>
-                    <label style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      padding: '12px 16px',
-                      border: printerMode === opt.key ? '2px solid #635BFF' : '1px solid #E2E8F0',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      background: printerMode === opt.key ? '#F5F3FF' : '#fff',
-                      minWidth: '150px'
-                    }}>
-                      <input
-                        type="radio"
-                        name="printerMode"
-                        value={opt.key}
-                        checked={printerMode === opt.key}
-                        onChange={async () => {
-                          setPrinterModeState(opt.key as any);
-                          setPrinterMode(opt.key);
-                          printerModeRefs.current.get(opt.key)?.triggerSave();
-                          if (opt.key === 'qztray') {
-                            setQzTrayStatus('connecting');
-                            try {
-                              const ok = await connectQZTray();
-                              setQzTrayStatus(ok ? 'connected' : 'disconnected');
-                              if (ok) {
-                                const printers = await getQZTrayPrinters();
-                                setQzTrayPrinters(printers);
-                              }
-                            } catch {
-                              setQzTrayStatus('disconnected');
-                            }
-                          }
-                        }}
-                        style={{ accentColor: '#635BFF' }}
-                      />
-                      <div>
-                        <div style={{ fontWeight: 500, color: '#1F2937' }}>{opt.label}</div>
-                        <div style={{ fontSize: '12px', color: '#6B7C93' }}>{opt.desc}</div>
-                      </div>
-                    </label>
-                    </AutoSaveField>
+                  {[].map((opt: any) => (
+                    <div key={opt.key}>{opt.label}</div>
                   ))}
                   </div>
                 )}
 
                 {/* QZ Tray Connection Status & Guide */}
                 {!printerSettingsLoading && printerMode === 'qztray' && (
-                  <div style={{ marginTop: '16px', padding: '14px 16px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px' }}>
+                  <div style={{ marginTop: '16px', padding: '14px 16px', background: '#F1F4F8', border: '1px solid #E2E8F0', borderRadius: '8px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
                         <div style={{
                           width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0,
                           background: qzTrayStatus === 'connected' ? '#10B981' : qzTrayStatus === 'connecting' ? '#F59E0B' : '#EF4444'
                         }} />
-                        <span style={{ fontSize: '14px', fontWeight: 500, color: '#374151' }}>
+                        <span style={{ fontSize: '14px', fontWeight: 500, color: '#1F2937' }}>
                           {qzTrayStatus === 'connected' ? 'Connected to QZ Tray' : qzTrayStatus === 'connecting' ? 'Connecting...' : 'QZ Tray Not Connected'}
                         </span>
                       </div>
@@ -5068,6 +5676,16 @@ const SettingsPage: React.FC = () => {
                           }}
                         >
                           Setup Guide
+                        </button>
+                        <button type="button"
+                          onClick={() => window.open('/api/qz-tray/certificate/download', '_blank')}
+                          title="Install this on your POS device to stop the per-print permission prompt"
+                          style={{
+                            padding: '6px 14px', fontSize: '13px', border: '1px solid #10B981', borderRadius: '6px',
+                            background: '#ECFDF5', color: '#065F46', cursor: 'pointer', fontWeight: 500
+                          }}
+                        >
+                          Download Certificate
                         </button>
                         <button type="button"
                           onClick={async () => {
@@ -5085,8 +5703,8 @@ const SettingsPage: React.FC = () => {
                             }
                           }}
                           style={{
-                            padding: '6px 14px', fontSize: '13px', border: '1px solid #D1D5DB', borderRadius: '6px',
-                            background: '#fff', color: '#374151', cursor: 'pointer'
+                            padding: '6px 14px', fontSize: '13px', border: '1px solid #6B7280', borderRadius: '6px',
+                            background: '#fff', color: '#1F2937', cursor: 'pointer'
                           }}
                         >
                           {qzTrayStatus === 'connecting' ? 'Connecting...' : 'Test Connection'}
@@ -5094,19 +5712,45 @@ const SettingsPage: React.FC = () => {
                       </div>
                     </div>
 
-                    <div style={{ padding: '12px 16px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '6px', fontSize: '13px', color: '#92400E', lineHeight: '1.6', marginBottom: '10px' }}>
-                      <strong>Important:</strong> QZ Tray must be installed on the <strong>main POS device only</strong> (the PC or tablet that runs your POS).
-                      Kitchen display tablets or other devices do not need QZ Tray.
+                    {/* Certificate install instructions — eliminates per-print permission prompt */}
+                    <div style={{ padding: '12px 16px', background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: '6px', fontSize: '13px', color: '#065F46', lineHeight: '1.6', marginBottom: '10px' }}>
+                      <strong>Stop "Allow this print?" prompts (one-time):</strong>
+                      <ol style={{ margin: '6px 0 0 18px', padding: 0 }}>
+                        <li>Click <strong>Download Certificate</strong> above → saves <code>override.crt</code>.</li>
+                        <li>Move <code>override.crt</code> into the QZ Tray folder for this OS:
+                          <ul style={{ margin: '4px 0 0 16px' }}>
+                            <li>Windows: <code>%APPDATA%\qz\override.crt</code></li>
+                            <li>macOS: <code>~/Library/Application Support/Qz/override.crt</code></li>
+                            <li>Linux: <code>/usr/share/qz/override.crt</code></li>
+                          </ul>
+                        </li>
+                        <li>Right-click the QZ Tray tray icon → <strong>Exit</strong>, then relaunch QZ Tray.</li>
+                      </ol>
+                      <div style={{ marginTop: '6px', fontSize: '12px' }}>After that, prints go through silently. No prompt.</div>
                     </div>
 
-                    <div style={{ fontSize: '12px', color: '#6B7C93', lineHeight: '1.6' }}>
+                    <div style={{ padding: '12px 16px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '6px', fontSize: '13px', color: '#92400E', lineHeight: '1.6', marginBottom: '10px' }}>
+                      <strong>Important:</strong> Install QZ Tray on <strong>every POS device</strong> that prints
+                      (main counter PC, sub counter PC, any other POS workstation). Each device
+                      uses its own QZ Tray instance.
+                      <br />
+                      <br />
+                      <strong>Multi-POS tip:</strong> leave each printer's address <em>blank</em> below to use
+                      that device's OS default printer — main POS prints to the main counter printer,
+                      sub POS prints to the sub counter printer, automatically.
+                      <br />
+                      <br />
+                      Kitchen Display tablets do not need QZ Tray (they only show orders).
+                    </div>
+
+                    <div style={{ fontSize: '12px', color: '#4B5563', lineHeight: '1.6' }}>
                       QZ Tray connects your browser to network printers via LAN.{' '}
                       <span style={{ color: '#635BFF', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => window.open('https://qz.io/download/', '_blank')}>
                         Download QZ Tray
                       </span>
                     </div>
                     {qzTrayPrinters.length > 0 && (
-                      <div style={{ marginTop: '10px', fontSize: '12px', color: '#6B7C93' }}>
+                      <div style={{ marginTop: '10px', fontSize: '12px', color: '#4B5563' }}>
                         <strong>{t('settings:printer.detectedPrinters')}</strong> {qzTrayPrinters.join(', ')}
                       </div>
                     )}
@@ -5127,13 +5771,13 @@ const SettingsPage: React.FC = () => {
                     }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
                         <h2 style={{ margin: 0, fontSize: '20px', color: '#1F2937' }}>{t('settings:settingsPage.qzTraySetupGuide')}</h2>
-                        <button type="button" onClick={() => setShowQzGuide(false)} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#6B7C93', padding: '4px' }}>&times;</button>
+                        <button type="button" onClick={() => setShowQzGuide(false)} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#4B5563', padding: '4px' }}>&times;</button>
                       </div>
 
                       {/* What is QZ Tray */}
                       <div style={{ marginBottom: '24px' }}>
-                        <h3 style={{ fontSize: '15px', color: '#374151', marginBottom: '8px' }}>{t('settings:settingsPage.whatIsQzTray')}</h3>
-                        <p style={{ fontSize: '14px', color: '#6B7C93', lineHeight: '1.7', margin: 0 }}>
+                        <h3 style={{ fontSize: '15px', color: '#1F2937', marginBottom: '8px' }}>{t('settings:settingsPage.whatIsQzTray')}</h3>
+                        <p style={{ fontSize: '14px', color: '#4B5563', lineHeight: '1.7', margin: 0 }}>
                           {t('settings:settingsPage.whatIsQzTrayDesc')}
                         </p>
                       </div>
@@ -5150,7 +5794,7 @@ const SettingsPage: React.FC = () => {
 
                       {/* Scenario selector */}
                       <div style={{ marginBottom: '20px' }}>
-                        <h3 style={{ fontSize: '15px', color: '#374151', marginBottom: '10px' }}>{t('settings:settingsPage.qzChooseScenario')}</h3>
+                        <h3 style={{ fontSize: '15px', color: '#1F2937', marginBottom: '10px' }}>{t('settings:settingsPage.qzChooseScenario')}</h3>
                         <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
                           {[
                             { key: 'migration' as const, label: t('settings:settingsPage.qzScenarioMigration') },
@@ -5165,8 +5809,8 @@ const SettingsPage: React.FC = () => {
                                 onClick={() => setQzScenario(opt.key)}
                                 style={{
                                   flex: 1, padding: '12px 16px', fontSize: '13px', fontWeight: 600,
-                                  border: active ? '2px solid #635BFF' : '1px solid #D1D5DB', borderRadius: '8px',
-                                  background: active ? '#EEF2FF' : '#fff', color: active ? '#635BFF' : '#374151',
+                                  border: active ? '2px solid #635BFF' : '1px solid #6B7280', borderRadius: '8px',
+                                  background: active ? '#EEF2FF' : '#fff', color: active ? '#635BFF' : '#1F2937',
                                   cursor: 'pointer', textAlign: 'left', lineHeight: 1.4
                                 }}
                               >
@@ -5175,7 +5819,7 @@ const SettingsPage: React.FC = () => {
                             );
                           })}
                         </div>
-                        <p style={{ fontSize: '13px', color: '#6B7C93', lineHeight: 1.6, margin: 0 }}>
+                        <p style={{ fontSize: '13px', color: '#4B5563', lineHeight: 1.6, margin: 0 }}>
                           {qzScenario === 'migration'
                             ? t('settings:settingsPage.qzScenarioMigrationDesc')
                             : t('settings:settingsPage.qzScenarioFreshDesc')}
@@ -5184,7 +5828,7 @@ const SettingsPage: React.FC = () => {
 
                       {/* Step by step */}
                       <div style={{ marginBottom: '24px' }}>
-                        <h3 style={{ fontSize: '15px', color: '#374151', marginBottom: '12px' }}>{t('settings:settingsPage.setupSteps')}</h3>
+                        <h3 style={{ fontSize: '15px', color: '#1F2937', marginBottom: '12px' }}>{t('settings:settingsPage.setupSteps')}</h3>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                           {(qzScenario === 'migration'
                             ? [
@@ -5224,7 +5868,7 @@ const SettingsPage: React.FC = () => {
                               }}>{idx + 1}</div>
                               <div style={{ flex: 1 }}>
                                 <div style={{ fontSize: '14px', fontWeight: 600, color: '#1F2937', marginBottom: '4px' }}>{title}</div>
-                                <div style={{ fontSize: '13px', color: '#6B7C93', lineHeight: '1.6' }}>{desc}</div>
+                                <div style={{ fontSize: '13px', color: '#4B5563', lineHeight: '1.6' }}>{desc}</div>
                                 {action}
                               </div>
                             </div>
@@ -5241,9 +5885,9 @@ const SettingsPage: React.FC = () => {
                       </div>
 
                       {/* Network diagram */}
-                      <div style={{ marginBottom: '24px', padding: '16px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px' }}>
-                        <h3 style={{ fontSize: '15px', color: '#374151', marginBottom: '10px', marginTop: 0 }}>{t('settings:settingsPage.howItWorks')}</h3>
-                        <div style={{ fontSize: '13px', color: '#6B7C93', fontFamily: 'monospace', lineHeight: '1.8', whiteSpace: 'pre', overflowX: 'auto' }}>
+                      <div style={{ marginBottom: '24px', padding: '16px', background: '#F1F4F8', border: '1px solid #E2E8F0', borderRadius: '8px' }}>
+                        <h3 style={{ fontSize: '15px', color: '#1F2937', marginBottom: '10px', marginTop: 0 }}>{t('settings:settingsPage.howItWorks')}</h3>
+                        <div style={{ fontSize: '13px', color: '#4B5563', fontFamily: 'monospace', lineHeight: '1.8', whiteSpace: 'pre', overflowX: 'auto' }}>
 {`${t('settings:settingsPage.qzDiagramPos')}
     │
     ▼
@@ -5254,15 +5898,15 @@ ${t('settings:settingsPage.qzDiagramBridge')}
     ├── 192.168.x.x:9100 → ${t('settings:settingsPage.billPrinter')}
     └── 192.168.x.x:9100 → ${t('settings:settingsPage.kitchenPrinter')}`}
                         </div>
-                        <p style={{ fontSize: '12px', color: '#9CA3AF', margin: '10px 0 0 0' }}>
+                        <p style={{ fontSize: '12px', color: '#6B7280', margin: '10px 0 0 0' }}>
                           {t('settings:settingsPage.qzDiagramFooter')}
                         </p>
                       </div>
 
                       {/* Troubleshooting */}
                       <div style={{ marginBottom: '24px' }}>
-                        <h3 style={{ fontSize: '15px', color: '#374151', marginBottom: '8px' }}>{t('settings:settingsPage.troubleshooting')}</h3>
-                        <div style={{ fontSize: '13px', color: '#6B7C93', lineHeight: '1.8' }}>
+                        <h3 style={{ fontSize: '15px', color: '#1F2937', marginBottom: '8px' }}>{t('settings:settingsPage.troubleshooting')}</h3>
+                        <div style={{ fontSize: '13px', color: '#4B5563', lineHeight: '1.8' }}>
                           <strong>{t('settings:settingsPage.qzTroubleNotConnectedLabel')}</strong> {t('settings:settingsPage.qzTroubleNotConnectedDesc')}<br />
                           <strong>{t('settings:settingsPage.qzTroubleTestPrintLabel')}</strong> {t('settings:settingsPage.qzTroubleTestPrintDesc')}<br />
                           <strong>{t('settings:settingsPage.qzTroubleNoPrintersLabel')}</strong> {t('settings:settingsPage.qzTroubleNoPrintersDesc')}
@@ -5285,137 +5929,223 @@ ${t('settings:settingsPage.qzDiagramBridge')}
 
               {!printerSettingsLoading && (
               <SettingsGrid>
-                {/* Bill Printer Card */}
+                {/* Workstations Section — multi-POS bill printers (replaces single Bill Printer card).
+                    2026-05-27: removed gridColumn:'1/-1' so this sits side-by-side with the
+                    Kitchen Printer card on wide screens (2-column grid). Below 768px the parent
+                    SettingsGrid collapses to a single column automatically. */}
                 <SettingsCard>
-                  <CardTitle>{t('settings:settingsPage.billPrinter')}</CardTitle>
-                  <p style={{ color: '#6B7C93', marginBottom: '20px', fontSize: '14px' }}>
-                    {t('settings:printer.billPrinterDesc')}
+                  <CardTitle>{t('settings:printer.workstations.title')}</CardTitle>
+                  <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
+                    {t('settings:printer.workstations.desc')}
                   </p>
 
-                  <Toggle>
-                    <ToggleLabel>{t('settings:settingsPage.enableBillPrinter')}</ToggleLabel>
-                    <AutoSaveField ref={billPrinterToggleRef} onSave={handleSave} type="toggle">
-                    <ToggleSwitch>
-                      <ToggleInput
-                        type="checkbox"
-                        checked={printerSettings.billPrinter.enabled}
-                        onChange={(e) => {
-                          setPrinterSettings(prev => ({
-                            ...prev,
-                            billPrinter: { ...prev.billPrinter, enabled: e.target.checked }
-                          }));
-                          billPrinterToggleRef.current?.triggerSave();
-                        }}
-                      />
-                      <ToggleSlider />
-                    </ToggleSwitch>
-                    </AutoSaveField>
-                  </Toggle>
-
-                  {printerSettings.billPrinter.enabled && (
-                    <>
-                      <div style={{ marginTop: '16px', padding: '12px 16px', background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: '6px', fontSize: '13px', color: '#075985', lineHeight: '1.5' }}>
-                        {printerMode === 'qztray' ? (
-                          <>{t('settings:settingsPage.sendReceiptsDirectlyToANetworkPrinterViaQzTray')}<br />{t('settings:settingsPage.enterThePrintersNetworkIpAddressBelow')}</>
-                        ) : printerMode === 'rawbt' ? (
-                          <>{t('settings:settingsPage.printsToRawbtDefaultPrinter')}<br />{t('settings:settingsPage.setYourBillPrinterAsDefaultInRawbtApp')}</>
-                        ) : (
-                          <>{t('settings:settingsPage.opensBrowserPrintDialogForReceipts')}<br />{t('settings:settingsPage.connectAReceiptPrinterViaUsbOrNetwork')}</>
-                        )}
-                      </div>
-
-                      {printerMode === 'qztray' && (
-                        <div style={{ marginTop: '16px' }}>
-                          <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>
-                            Printer Address
-                          </label>
-                          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                            <AutoSaveField onSave={handleSave} style={{ flex: '1 1 180px', minWidth: 0 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {(printerSettings.workstations || []).map((ws, wsIdx) => {
+                      const wsBillMethod = (ws.billPrinter?.method || 'browser') as 'browser' | 'qztray' | 'rawbt';
+                      const wsBillAddr = ws.billPrinter?.address || '';
+                      const isActiveWs = activeWorkstationId === ws.id;
+                      const canDelete = (printerSettings.workstations || []).length > 1;
+                      const updateWs = (patch: any) => {
+                        setPrinterSettings(prev => ({
+                          ...prev,
+                          workstations: (prev.workstations || []).map((w: any) => w.id === ws.id ? { ...w, ...patch, billPrinter: { ...w.billPrinter, ...(patch.billPrinter || {}) } } : w)
+                        }));
+                      };
+                      const deleteWs = async () => {
+                        if (!window.confirm(t('settings:printer.workstations.deleteConfirm', { name: ws.name }))) return;
+                        // Compute new state and persist it atomically (handleSave's closure is stale here)
+                        const newPS = {
+                          ...printerSettings,
+                          workstations: (printerSettings.workstations || []).filter((w: any) => w.id !== ws.id)
+                        };
+                        setPrinterSettings(newPS);
+                        if (user?.restaurantId) {
+                          try {
+                            const token = getAuthToken();
+                            const r = await fetch(`/api/restaurants/${user.restaurantId}`, {
+                              method: 'PUT',
+                              headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ printer_settings: newPS })
+                            });
+                            const d = await r.json();
+                            setSaveStatus({ type: d.success ? 'success' : 'error', message: d.success ? 'Workstation deleted' : 'Delete failed' });
+                          } catch { setSaveStatus({ type: 'error', message: 'Delete failed' }); }
+                          setTimeout(() => setSaveStatus(null), 2000);
+                        }
+                      };
+                      return (
+                        <div key={ws.id} style={{ padding: '16px 20px', background: isActiveWs ? '#F5F3FF' : '#FFFFFF', border: isActiveWs ? '2px solid #635BFF' : '1px solid #C7CED6', borderRadius: '10px' }}>
+                          {/* Header row: name input + active badge + action buttons.
+                              Input gets flex: 1 1 100% so it always claims its own row first,
+                              then buttons sit below in their own flex-shrink:0 row. This avoids
+                              any overflow in the 2-column SettingsGrid where each card can be
+                              ~440px wide on 10-inch tablets. */}
+                          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', rowGap: '10px' }}>
+                            <AutoSaveField onSave={handleSave} style={{ flex: '1 1 100%', minWidth: 0 }}>
                             <input
                               type="text"
-                              value={printerSettings.billPrinter.address || ''}
-                              onChange={(e) => setPrinterSettings(prev => ({
-                                ...prev,
-                                billPrinter: { ...prev.billPrinter, address: e.target.value }
-                              }))}
-                              placeholder="192.168.1.100:9100"
-                              style={{
-                                width: '100%', padding: '8px 12px', border: '1px solid #D1D5DB', borderRadius: '6px',
-                                fontSize: '14px', fontFamily: 'monospace', boxSizing: 'border-box'
-                              }}
+                              value={ws.name || ''}
+                              onChange={(e) => updateWs({ name: e.target.value })}
+                              placeholder={t('settings:printer.workstations.nameInputPlaceholder')}
+                              style={{ width: '100%', padding: '8px 12px', border: '1px solid #6B7280', borderRadius: '6px', fontSize: '14px', fontWeight: 600, boxSizing: 'border-box' }}
                             />
                             </AutoSaveField>
-                            <button type="button"
-                              onClick={async () => {
-                                const addr = printerSettings.billPrinter.address;
-                                if (!addr) return;
-                                const ok = await qzTrayTestPrint(addr);
-                                if (ok) {
-                                  setSaveStatus({ type: 'success', message: 'Test print sent to bill printer!' });
-                                } else {
-                                  setSaveStatus({ type: 'error', message: 'Failed to send test print. Check QZ Tray connection and printer address.' });
-                                }
-                                setTimeout(() => setSaveStatus(null), 3000);
-                              }}
-                              style={{
-                                padding: '8px 14px', fontSize: '13px', border: '1px solid #D1D5DB', borderRadius: '6px',
-                                background: '#fff', color: '#374151', cursor: 'pointer', whiteSpace: 'nowrap'
-                              }}
-                            >
-                              Test Print
-                            </button>
-                          </div>
-                          <div style={{ fontSize: '11px', color: '#9CA3AF', marginTop: '4px' }}>
-                            IP:Port (e.g. 192.168.1.100:9100) or OS printer name
-                          </div>
-                          {qzTrayPrinters.length > 0 && (
-                            <div style={{ marginTop: '8px' }}>
-                              <label style={{ fontSize: '12px', color: '#6B7C93', marginBottom: '4px', display: 'block' }}>Or select detected printer:</label>
-                              <AutoSaveField onSave={handleSave} type="select">
-                              <select
-                                value={printerSettings.billPrinter.address || ''}
-                                onChange={(e) => setPrinterSettings(prev => ({
-                                  ...prev,
-                                  billPrinter: { ...prev.billPrinter, address: e.target.value }
-                                }))}
-                                style={{ width: '100%', padding: '6px 10px', border: '1px solid #D1D5DB', borderRadius: '6px', fontSize: '13px' }}
-                              >
-                                <option value="">-- Select printer --</option>
-                                {qzTrayPrinters.map(p => (
-                                  <option key={p} value={p}>{p}</option>
-                                ))}
-                              </select>
-                              </AutoSaveField>
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0, flexWrap: 'wrap' }}>
+                              {isActiveWs && (
+                                <span style={{ padding: '4px 10px', fontSize: '11px', fontWeight: 700, color: '#635BFF', background: '#EDE9FE', border: '1px solid #C4B5FD', borderRadius: '12px', letterSpacing: '0.3px', whiteSpace: 'nowrap' }}>{t('settings:printer.workstations.thisDevice')}</span>
+                              )}
+                              {!isActiveWs && (
+                                <button type="button"
+                                  onClick={() => setActiveWorkstationId(ws.id)}
+                                  style={{ padding: '6px 12px', fontSize: '12px', border: '1px solid #635BFF', borderRadius: '6px', background: '#fff', color: '#635BFF', cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}
+                                >{t('settings:printer.workstations.useOnDevice')}</button>
+                              )}
+                              <button type="button"
+                                onClick={deleteWs}
+                                disabled={!canDelete}
+                                title={canDelete ? t('settings:printer.workstations.deleteConfirm', { name: ws.name }) : t('settings:printer.workstations.atLeastOneRequired')}
+                                style={{ padding: '6px 10px', fontSize: '12px', border: '1px solid #FCA5A5', borderRadius: '6px', background: '#fff', color: '#DC2626', cursor: canDelete ? 'pointer' : 'not-allowed', opacity: canDelete ? 1 : 0.4, whiteSpace: 'nowrap' }}
+                              >{t('settings:printer.workstations.deleteBtn')}</button>
                             </div>
+                          </div>
+
+                          {/* Enabled toggle */}
+                          <AutoSaveField onSave={handleSave} type="toggle">
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', cursor: 'pointer' }}>
+                            <input
+                              type="checkbox"
+                              checked={ws.billPrinter?.enabled !== false}
+                              onChange={(e) => updateWs({ billPrinter: { enabled: e.target.checked } })}
+                              style={{ width: '16px', height: '16px', accentColor: '#635BFF' }}
+                            />
+                            <span style={{ fontSize: '13px', color: '#1F2937', fontWeight: 500 }}>{t('settings:printer.workstations.billEnabled')}</span>
+                          </label>
+                          </AutoSaveField>
+
+                          {ws.billPrinter?.enabled !== false && (
+                            <>
+                              {/* Method select */}
+                              <div style={{ marginBottom: '10px' }}>
+                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#1F2937', marginBottom: '4px' }}>Connection Method</label>
+                                <AutoSaveField onSave={handleSave} type="select">
+                                <select
+                                  value={wsBillMethod}
+                                  onChange={(e) => updateWs({ billPrinter: { method: e.target.value as any } })}
+                                  style={{ width: '100%', padding: '7px 10px', border: '1px solid #6B7280', borderRadius: '6px', fontSize: '13px', background: '#fff' }}
+                                >
+                                  <option value="browser">USB / Browser print (OS default printer)</option>
+                                  <option value="qztray">Network / Local (via QZ Tray)</option>
+                                  <option value="rawbt">Android tablet (via RawBT)</option>
+                                </select>
+                                </AutoSaveField>
+                              </div>
+
+                              {/* QZ Tray: address + detected dropdown + Test */}
+                              {wsBillMethod === 'qztray' && (
+                                <div>
+                                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '6px', rowGap: '8px', alignItems: 'stretch' }}>
+                                    <AutoSaveField onSave={handleSave} style={{ flex: '1 1 240px', minWidth: 0 }}>
+                                    <input
+                                      type="text"
+                                      value={wsBillAddr}
+                                      onChange={(e) => updateWs({ billPrinter: { address: e.target.value } })}
+                                      placeholder="Leave blank = OS default printer · or 192.168.1.100:9100"
+                                      style={{ width: '100%', padding: '7px 10px', border: '1px solid #6B7280', borderRadius: '6px', fontSize: '13px', fontFamily: 'monospace', boxSizing: 'border-box' }}
+                                    />
+                                    </AutoSaveField>
+                                    <button type="button"
+                                      onClick={async () => {
+                                        const addr = wsBillAddr;
+                                        // Empty address = use OS default on this device
+                                        const ok = await qzTrayTestPrint(addr || (await (window as any).qz?.printers?.getDefault?.() || ''));
+                                        setSaveStatus({ type: ok ? 'success' : 'error', message: ok ? `Test print sent to ${ws.name}!` : `Failed to send test print to ${ws.name}.` });
+                                        setTimeout(() => setSaveStatus(null), 3000);
+                                      }}
+                                      style={{ padding: '7px 12px', fontSize: '12px', border: '1px solid #6B7280', borderRadius: '6px', background: '#fff', color: '#1F2937', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                    >{t('settings:printer.stations.testBtn')}</button>
+                                  </div>
+                                  <div style={{ fontSize: '11px', color: '#4B5563', marginBottom: '6px' }}>
+                                    Tip: leave blank so each POS device uses its own OS default printer. Or enter IP:Port for a network printer.
+                                  </div>
+                                  {qzTrayPrinters.length > 0 && (
+                                    <div>
+                                      <label style={{ fontSize: '11px', color: '#4B5563', marginBottom: '3px', display: 'block' }}>Or pick a detected printer (this device):</label>
+                                      <AutoSaveField onSave={handleSave} type="select">
+                                      <select
+                                        value={wsBillAddr}
+                                        onChange={(e) => updateWs({ billPrinter: { address: e.target.value } })}
+                                        style={{ width: '100%', padding: '6px 10px', border: '1px solid #6B7280', borderRadius: '6px', fontSize: '12px' }}
+                                      >
+                                        <option value="">-- Use OS default --</option>
+                                        {qzTrayPrinters.map(p => (
+                                          <option key={p} value={p}>{p}</option>
+                                        ))}
+                                      </select>
+                                      </AutoSaveField>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {wsBillMethod === 'browser' && (
+                                <div style={{ fontSize: '11px', color: '#4B5563' }}>Uses the OS default printer on whichever device is bound to this workstation.</div>
+                              )}
+                              {wsBillMethod === 'rawbt' && (
+                                <div style={{ fontSize: '11px', color: '#4B5563' }}>Prints to the default printer configured inside RawBT on this Android device.</div>
+                              )}
+
+                              {/* AutoPrint toggle */}
+                              <AutoSaveField onSave={handleSave} type="toggle">
+                              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '12px', cursor: 'pointer' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={!!ws.billPrinter?.autoPrint}
+                                  onChange={(e) => updateWs({ billPrinter: { autoPrint: e.target.checked } })}
+                                  style={{ width: '16px', height: '16px', accentColor: '#635BFF' }}
+                                />
+                                <span style={{ fontSize: '13px', color: '#1F2937' }}>{t('settings:printer.workstations.autoPrintAfterPayment')}</span>
+                              </label>
+                              </AutoSaveField>
+                            </>
                           )}
                         </div>
-                      )}
+                      );
+                    })}
+                  </div>
 
-                      <AutoSaveField ref={billPrinterAutoPrintRef} onSave={handleSave} type="toggle">
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '16px', cursor: 'pointer' }}>
-                        <input
-                          type="checkbox"
-                          checked={printerSettings.billPrinter.autoPrint}
-                          onChange={(e) => {
-                            setPrinterSettings(prev => ({
-                              ...prev,
-                              billPrinter: { ...prev.billPrinter, autoPrint: e.target.checked }
-                            }));
-                            billPrinterAutoPrintRef.current?.triggerSave();
-                          }}
-                          style={{ width: '18px', height: '18px', accentColor: '#635BFF' }}
-                        />
-                        <span style={{ fontSize: '14px', color: '#374151' }}>{t('settings:settingsPage.autoprintAfterPayment')}</span>
-                      </label>
-                      </AutoSaveField>
-                    </>
-                  )}
+                  {/* + Add Workstation — persist atomically with the new state */}
+                  <button type="button"
+                    onClick={async () => {
+                      const newId = 'ws_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+                      const newName = `POS ${(printerSettings.workstations || []).length + 1}`;
+                      const newPS = {
+                        ...printerSettings,
+                        workstations: [...(printerSettings.workstations || []), { id: newId, name: newName, billPrinter: { enabled: true, name: '', autoPrint: false, method: 'browser', address: '' } }]
+                      };
+                      setPrinterSettings(newPS);
+                      if (user?.restaurantId) {
+                        setSaveStatus({ type: 'success', message: 'Adding workstation…' });
+                        try {
+                          const token = getAuthToken();
+                          const r = await fetch(`/api/restaurants/${user.restaurantId}`, {
+                            method: 'PUT',
+                            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ printer_settings: newPS })
+                          });
+                          const d = await r.json();
+                          setSaveStatus({ type: d.success ? 'success' : 'error', message: d.success ? 'Workstation added' : 'Add failed' });
+                        } catch { setSaveStatus({ type: 'error', message: 'Add failed' }); }
+                        setTimeout(() => setSaveStatus(null), 2000);
+                      }
+                    }}
+                    style={{ marginTop: '12px', padding: '10px 16px', fontSize: '13px', border: '1px dashed #635BFF', borderRadius: '8px', background: '#F5F3FF', color: '#635BFF', cursor: 'pointer', fontWeight: 600, width: '100%' }}
+                  >{t('settings:printer.workstations.addBtn')}</button>
                 </SettingsCard>
 
                 {/* Kitchen Printer Card — Station 유무 관계없이 동일 */}
                 <SettingsCard>
                   <CardTitle>{t('settings:settingsPage.kitchenPrinter')}</CardTitle>
-                  <p style={{ color: '#6B7C93', marginBottom: '20px', fontSize: '14px' }}>
+                  <p style={{ color: '#4B5563', marginBottom: '20px', fontSize: '14px' }}>
                     {t('settings:printer.kitchenPrinterDesc')}
                   </p>
 
@@ -5441,17 +6171,37 @@ ${t('settings:settingsPage.qzDiagramBridge')}
 
                   {printerSettings.kitchenPrinter.enabled && (
                     <>
-                      <div style={{ marginTop: '16px', padding: '12px 16px', background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: '6px', fontSize: '13px', color: '#075985', lineHeight: '1.5' }}>
-                        {printerMode === 'qztray' ? (
+                      {/* Per-printer method selector (default for kitchen + when no stations).
+                          Each station can override below. */}
+                      {kitchenStations.length === 0 && (
+                        <div style={{ marginTop: '16px' }}>
+                          <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#1F2937', marginBottom: '6px' }}>
+                            Connection Method
+                          </label>
+                          <AutoSaveField onSave={handleSave} type="select">
+                          <select
+                            value={printerSettings.kitchenPrinter.method || 'qztray'}
+                            onChange={(e) => setPrinterSettings(prev => ({
+                              ...prev,
+                              kitchenPrinter: { ...prev.kitchenPrinter, method: e.target.value as any }
+                            }))}
+                            style={{ width: '100%', padding: '8px 12px', border: '1px solid #6B7280', borderRadius: '6px', fontSize: '14px', background: '#fff' }}
+                          >
+                            <option value="browser">USB / Browser print (OS default printer)</option>
+                            <option value="qztray">Network / Local (via QZ Tray)</option>
+                            <option value="rawbt">Android tablet (via RawBT)</option>
+                          </select>
+                          </AutoSaveField>
+                        </div>
+                      )}
+
+                      <div style={{ marginTop: '12px', padding: '12px 16px', background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: '6px', fontSize: '13px', color: '#075985', lineHeight: '1.5' }}>
+                        {kitchenStations.length > 0 ? (
+                          <>{t('settings:printer.stations.eachStationOwnMethod')}</>
+                        ) : printerSettings.kitchenPrinter.method === 'qztray' ? (
                           <>{t('settings:settingsPage.sendKitchenTicketsDirectlyToANetworkPrinterViaQzTray')}<br />{t('settings:settingsPage.enterTheKitchenPrintersNetworkIpAddressBelow')}</>
-                        ) : printerMode === 'browser' ? (
+                        ) : printerSettings.kitchenPrinter.method === 'browser' ? (
                           <>{t('settings:settingsPage.opensBrowserPrintDialogForKitchenOrderTickets')}</>
-                        ) : kitchenStations.length > 0 ? (
-                          <>
-                            Each station needs a separate device with Kitchen Display open.<br />
-                            Set RawBT default printer to the station's printer on each device.<br />
-                            Select the station filter on Kitchen Display to match.
-                          </>
                         ) : (
                           <>
                             Use a separate device for kitchen printing:<br />
@@ -5462,74 +6212,148 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                         )}
                       </div>
 
-                      {printerMode === 'qztray' && (
+                      {(kitchenStations.length > 0 || printerSettings.kitchenPrinter.method === 'qztray') && (
                         <div style={{ marginTop: '16px' }}>
                           {kitchenStations.length > 0 ? (
-                            /* Station별 프린터 IP 설정 */
+                            /* Station별 프린터: 각 station 에 method select + IP/dropdown + Test */
                             <>
-                              <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '10px' }}>
-                                Station Printer Addresses
+                              <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#1F2937', marginBottom: '10px' }}>
+                                {t('settings:printer.stations.title')}
                               </label>
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                {kitchenStations.map((station: any) => (
-                                  <div key={station.id} style={{ padding: '12px 16px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '6px' }}>
-                                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
-                                      {station.name}
-                                    </div>
-                                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                      <AutoSaveField onSave={handleSave} style={{ flex: '1 1 160px', minWidth: 0 }}>
-                                      <input
-                                        type="text"
-                                        value={printerSettings.kitchenStationPrinters?.[station.id]?.address || ''}
-                                        onChange={(e) => setPrinterSettings(prev => ({
-                                          ...prev,
-                                          kitchenStationPrinters: {
-                                            ...prev.kitchenStationPrinters,
-                                            [station.id]: {
-                                              ...(prev.kitchenStationPrinters?.[station.id] || { name: '', autoPrint: true }),
-                                              address: e.target.value,
-                                              stationName: station.name
+                                {kitchenStations.map((station: any) => {
+                                  const sp = printerSettings.kitchenStationPrinters?.[station.id] || { name: '', autoPrint: true };
+                                  const spMethod = (sp.method || 'qztray') as 'browser' | 'qztray' | 'rawbt';
+                                  return (
+                                    <div key={station.id} style={{ padding: '12px 16px', background: '#F1F4F8', border: '1px solid #E2E8F0', borderRadius: '6px' }}>
+                                      <div style={{ fontSize: '13px', fontWeight: 600, color: '#1F2937', marginBottom: '8px' }}>
+                                        {station.name}
+                                      </div>
+
+                                      {/* Method select */}
+                                      <div style={{ marginBottom: '8px' }}>
+                                        <label style={{ display: 'block', fontSize: '12px', color: '#4B5563', marginBottom: '4px' }}>Connection Method</label>
+                                        <AutoSaveField onSave={handleSave} type="select">
+                                        <select
+                                          value={spMethod}
+                                          onChange={(e) => setPrinterSettings(prev => ({
+                                            ...prev,
+                                            kitchenStationPrinters: {
+                                              ...prev.kitchenStationPrinters,
+                                              [station.id]: {
+                                                ...(prev.kitchenStationPrinters?.[station.id] || { name: '', autoPrint: true }),
+                                                method: e.target.value as any,
+                                                stationName: station.name
+                                              } as any
                                             }
-                                          }
-                                        }))}
-                                        placeholder="192.168.1.101:9100"
-                                        style={{
-                                          width: '100%', padding: '7px 10px', border: '1px solid #D1D5DB', borderRadius: '6px',
-                                          fontSize: '13px', fontFamily: 'monospace', boxSizing: 'border-box'
-                                        }}
-                                      />
-                                      </AutoSaveField>
-                                      <button type="button"
-                                        onClick={async () => {
-                                          const addr = printerSettings.kitchenStationPrinters?.[station.id]?.address;
-                                          if (!addr) return;
-                                          const ok = await qzTrayTestPrint(addr);
-                                          if (ok) {
-                                            setSaveStatus({ type: 'success', message: `Test print sent to ${station.name}!` });
-                                          } else {
-                                            setSaveStatus({ type: 'error', message: `Failed to send test print to ${station.name}.` });
-                                          }
-                                          setTimeout(() => setSaveStatus(null), 3000);
-                                        }}
-                                        style={{
-                                          padding: '7px 12px', fontSize: '12px', border: '1px solid #D1D5DB', borderRadius: '6px',
-                                          background: '#fff', color: '#374151', cursor: 'pointer', whiteSpace: 'nowrap'
-                                        }}
-                                      >
-                                        Test
-                                      </button>
+                                          }))}
+                                          style={{ width: '100%', padding: '6px 10px', border: '1px solid #6B7280', borderRadius: '6px', fontSize: '13px', background: '#fff' }}
+                                        >
+                                          <option value="browser">USB / Browser print (OS default)</option>
+                                          <option value="qztray">Network / Local (via QZ Tray)</option>
+                                          <option value="rawbt">Android tablet (via RawBT)</option>
+                                        </select>
+                                        </AutoSaveField>
+                                      </div>
+
+                                      {/* QZ Tray: IP input + detected printer dropdown + Test */}
+                                      {spMethod === 'qztray' && (
+                                        <>
+                                          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                            <AutoSaveField onSave={handleSave} style={{ flex: '1 1 160px', minWidth: 0 }}>
+                                            <input
+                                              type="text"
+                                              value={sp.address || ''}
+                                              onChange={(e) => setPrinterSettings(prev => ({
+                                                ...prev,
+                                                kitchenStationPrinters: {
+                                                  ...prev.kitchenStationPrinters,
+                                                  [station.id]: {
+                                                    ...(prev.kitchenStationPrinters?.[station.id] || { name: '', autoPrint: true }),
+                                                    address: e.target.value,
+                                                    stationName: station.name
+                                                  } as any
+                                                }
+                                              }))}
+                                              placeholder={t('settings:printer.stations.addressPlaceholder')}
+                                              style={{
+                                                width: '100%', padding: '7px 10px', border: '1px solid #6B7280', borderRadius: '6px',
+                                                fontSize: '13px', fontFamily: 'monospace', boxSizing: 'border-box'
+                                              }}
+                                            />
+                                            </AutoSaveField>
+                                            <button type="button"
+                                              onClick={async () => {
+                                                const addr = sp.address;
+                                                if (!addr) return;
+                                                const ok = await qzTrayTestPrint(addr);
+                                                if (ok) {
+                                                  setSaveStatus({ type: 'success', message: `Test print sent to ${station.name}!` });
+                                                } else {
+                                                  setSaveStatus({ type: 'error', message: `Failed to send test print to ${station.name}.` });
+                                                }
+                                                setTimeout(() => setSaveStatus(null), 3000);
+                                              }}
+                                              style={{
+                                                padding: '7px 12px', fontSize: '12px', border: '1px solid #6B7280', borderRadius: '6px',
+                                                background: '#fff', color: '#1F2937', cursor: 'pointer', whiteSpace: 'nowrap'
+                                              }}
+                                            >
+                                              Test
+                                            </button>
+                                          </div>
+                                          {qzTrayPrinters.length > 0 && (
+                                            <div style={{ marginTop: '6px' }}>
+                                              <label style={{ fontSize: '11px', color: '#4B5563', marginBottom: '3px', display: 'block' }}>Or pick a detected printer:</label>
+                                              <AutoSaveField onSave={handleSave} type="select">
+                                              <select
+                                                value={sp.address || ''}
+                                                onChange={(e) => setPrinterSettings(prev => ({
+                                                  ...prev,
+                                                  kitchenStationPrinters: {
+                                                    ...prev.kitchenStationPrinters,
+                                                    [station.id]: {
+                                                      ...(prev.kitchenStationPrinters?.[station.id] || { name: '', autoPrint: true }),
+                                                      address: e.target.value,
+                                                      stationName: station.name
+                                                    } as any
+                                                  }
+                                                }))}
+                                                style={{ width: '100%', padding: '6px 10px', border: '1px solid #6B7280', borderRadius: '6px', fontSize: '12px' }}
+                                              >
+                                                <option value="">-- Select printer --</option>
+                                                {qzTrayPrinters.map(p => (
+                                                  <option key={p} value={p}>{p}</option>
+                                                ))}
+                                              </select>
+                                              </AutoSaveField>
+                                            </div>
+                                          )}
+                                        </>
+                                      )}
+
+                                      {spMethod === 'browser' && (
+                                        <div style={{ fontSize: '11px', color: '#6B7280' }}>
+                                          Browser print uses the OS default printer. Set this device's default printer to {station.name}'s printer.
+                                        </div>
+                                      )}
+                                      {spMethod === 'rawbt' && (
+                                        <div style={{ fontSize: '11px', color: '#6B7280' }}>
+                                          RawBT prints to the default printer configured inside the RawBT Android app.
+                                        </div>
+                                      )}
                                     </div>
-                                  </div>
-                                ))}
+                                  );
+                                })}
                               </div>
-                              <div style={{ fontSize: '11px', color: '#9CA3AF', marginTop: '6px' }}>
-                                Enter the network IP:Port for each station's printer. Orders will be routed to the correct printer based on station assignment.
+                              <div style={{ fontSize: '11px', color: '#6B7280', marginTop: '6px' }}>
+                                {t('settings:printer.stations.routingHint')}
                               </div>
                             </>
                           ) : (
                             /* Station 없을 때 단일 IP */
                             <>
-                              <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>
+                              <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#1F2937', marginBottom: '6px' }}>
                                 Printer Address
                               </label>
                               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -5543,7 +6367,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                                   }))}
                                   placeholder="192.168.1.101:9100"
                                   style={{
-                                    width: '100%', padding: '8px 12px', border: '1px solid #D1D5DB', borderRadius: '6px',
+                                    width: '100%', padding: '8px 12px', border: '1px solid #6B7280', borderRadius: '6px',
                                     fontSize: '14px', fontFamily: 'monospace', boxSizing: 'border-box'
                                   }}
                                 />
@@ -5561,21 +6385,21 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                                     setTimeout(() => setSaveStatus(null), 3000);
                                   }}
                                   style={{
-                                    padding: '8px 14px', fontSize: '13px', border: '1px solid #D1D5DB', borderRadius: '6px',
-                                    background: '#fff', color: '#374151', cursor: 'pointer', whiteSpace: 'nowrap'
+                                    padding: '8px 14px', fontSize: '13px', border: '1px solid #6B7280', borderRadius: '6px',
+                                    background: '#fff', color: '#1F2937', cursor: 'pointer', whiteSpace: 'nowrap'
                                   }}
                                 >
                                   Test Print
                                 </button>
                               </div>
-                              <div style={{ fontSize: '11px', color: '#9CA3AF', marginTop: '4px' }}>
+                              <div style={{ fontSize: '11px', color: '#6B7280', marginTop: '4px' }}>
                                 IP:Port (e.g. 192.168.1.101:9100) or OS printer name
                               </div>
                             </>
                           )}
                           {qzTrayPrinters.length > 0 && kitchenStations.length === 0 && (
                             <div style={{ marginTop: '8px' }}>
-                              <label style={{ fontSize: '12px', color: '#6B7C93', marginBottom: '4px', display: 'block' }}>Or select detected printer:</label>
+                              <label style={{ fontSize: '12px', color: '#4B5563', marginBottom: '4px', display: 'block' }}>Or select detected printer:</label>
                               <AutoSaveField onSave={handleSave} type="select">
                               <select
                                 value={printerSettings.kitchenPrinter.address || ''}
@@ -5583,7 +6407,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                                   ...prev,
                                   kitchenPrinter: { ...prev.kitchenPrinter, address: e.target.value }
                                 }))}
-                                style={{ width: '100%', padding: '6px 10px', border: '1px solid #D1D5DB', borderRadius: '6px', fontSize: '13px' }}
+                                style={{ width: '100%', padding: '6px 10px', border: '1px solid #6B7280', borderRadius: '6px', fontSize: '13px' }}
                               >
                                 <option value="">-- Select printer --</option>
                                 {qzTrayPrinters.map(p => (
@@ -5610,7 +6434,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                           }}
                           style={{ width: '18px', height: '18px', accentColor: '#635BFF' }}
                         />
-                        <span style={{ fontSize: '14px', color: '#374151' }}>{t('settings:settingsPage.autoprintOnNewOrder')}</span>
+                        <span style={{ fontSize: '14px', color: '#1F2937' }}>{t('settings:settingsPage.autoprintOnNewOrder')}</span>
                       </label>
                       </AutoSaveField>
                     </>
@@ -5623,14 +6447,14 @@ ${t('settings:settingsPage.qzDiagramBridge')}
               {!printerSettingsLoading && (
                 <SettingsCard style={{ marginTop: '24px' }}>
                   <CardTitle>{t('settings:settingsPage.kitchenTicketOptions')}</CardTitle>
-                  <p style={{ color: '#6B7C93', marginBottom: '20px', fontSize: '14px' }}>
+                  <p style={{ color: '#4B5563', marginBottom: '20px', fontSize: '14px' }}>
                     {t('settings:printer.kitchenTicketOptionsDesc')}
                   </p>
 
                   <Toggle>
                     <div style={{ flex: 1 }}>
                       <ToggleLabel style={{ marginBottom: '4px' }}>{t('settings:settingsPage.printSeparateTicketForEachItem')}</ToggleLabel>
-                      <p style={{ fontSize: '12px', color: '#6B7C93', margin: 0 }}>
+                      <p style={{ fontSize: '12px', color: '#4B5563', margin: 0 }}>
                         {t('settings:printer.printPerItemDesc')}
                       </p>
                     </div>
@@ -5655,7 +6479,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                   <Toggle style={{ marginTop: '16px' }}>
                     <div style={{ flex: 1 }}>
                       <ToggleLabel style={{ marginBottom: '4px' }}>{t('settings:printer.mirrorToBillLabel')}</ToggleLabel>
-                      <p style={{ fontSize: '12px', color: '#6B7C93', margin: 0 }}>
+                      <p style={{ fontSize: '12px', color: '#4B5563', margin: 0 }}>
                         {t('settings:printer.mirrorToBillDesc')}
                       </p>
                     </div>
@@ -5680,7 +6504,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                   <Toggle style={{ marginTop: '16px' }}>
                     <div style={{ flex: 1 }}>
                       <ToggleLabel style={{ marginBottom: '4px' }}>{t('settings:printer.printCancellationLabel')}</ToggleLabel>
-                      <p style={{ fontSize: '12px', color: '#6B7C93', margin: 0 }}>
+                      <p style={{ fontSize: '12px', color: '#4B5563', margin: 0 }}>
                         {t('settings:printer.printCancellationDesc')}
                       </p>
                     </div>
@@ -5707,7 +6531,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
               {/* Receipt Customization */}
               <SettingsCard style={{ marginTop: '24px' }}>
                 <CardTitle>{t('settings:settingsPage.receiptCustomization')}</CardTitle>
-                <p style={{ color: '#6B7C93', marginBottom: '20px', fontSize: '14px' }}>
+                <p style={{ color: '#4B5563', marginBottom: '20px', fontSize: '14px' }}>
                   {t('settings:receipt.description')}
                 </p>
 
@@ -5728,7 +6552,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                     <Toggle>
                       <div style={{ flex: 1 }}>
                         <ToggleLabel style={{ marginBottom: '4px' }}>{t('settings:settingsPage.membershipInfoOnReceipt')}</ToggleLabel>
-                        <p style={{ fontSize: '12px', color: '#6B7C93', margin: 0 }}>
+                        <p style={{ fontSize: '12px', color: '#4B5563', margin: 0 }}>
                           {t('settings:receipt.membershipHelpText')}
                         </p>
                       </div>
@@ -5745,15 +6569,15 @@ ${t('settings:settingsPage.qzDiagramBridge')}
 
                     {/* Footer Message */}
                     <div>
-                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#6B7C93', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{t('settings:settingsPage.footerMessage')}</label>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#4B5563', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{t('settings:settingsPage.footerMessage')}</label>
                       <AutoSaveField onSave={handleSave}>
-                      <input type="text" value={receiptSettings.footerMessage} onChange={(e) => setReceiptSettings(prev => ({ ...prev, footerMessage: e.target.value }))} placeholder={t('settings:receipt.footerMessagePlaceholder')} maxLength={100} style={{ width: '100%', padding: '8px 12px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }} />
+                      <input type="text" value={receiptSettings.footerMessage} onChange={(e) => setReceiptSettings(prev => ({ ...prev, footerMessage: e.target.value }))} placeholder={t('settings:receipt.footerMessagePlaceholder')} maxLength={100} style={{ width: '100%', padding: '8px 12px', border: '1px solid #C7CED6', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }} />
                       </AutoSaveField>
                     </div>
                   </div>
 
                   {/* Vertical divider — hidden on mobile */}
-                  <div className="receipt-divider" style={{ width: '1px', background: '#E6EBF1', margin: '0' }} />
+                  <div className="receipt-divider" style={{ width: '1px', background: '#C7CED6', margin: '0' }} />
 
                   {/* Right column: Custom QR / Promotion */}
                   <div className="receipt-col-right" style={{ display: 'flex', flexDirection: 'column', gap: '20px', paddingLeft: '24px' }}>
@@ -5767,18 +6591,18 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                     </AutoSaveField>
 
                     <div>
-                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#6B7C93', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{t('settings:settingsPage.guideText')}</label>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#4B5563', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{t('settings:settingsPage.guideText')}</label>
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                         <AutoSaveField onSave={handleSave}>
-                        <input type="text" value={receiptSettings.customQrText} onChange={(e) => setReceiptSettings(prev => ({ ...prev, customQrText: e.target.value }))} placeholder={t('settings:receipt.customQrTextPlaceholder')} maxLength={100} style={{ flex: 1, padding: '8px 12px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }} />
+                        <input type="text" value={receiptSettings.customQrText} onChange={(e) => setReceiptSettings(prev => ({ ...prev, customQrText: e.target.value }))} placeholder={t('settings:receipt.customQrTextPlaceholder')} maxLength={100} style={{ flex: 1, padding: '8px 12px', border: '1px solid #C7CED6', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }} />
                         </AutoSaveField>
                         <AutoSaveField ref={qrPositionRef} onSave={handleSave} type="toggle">
                         <div style={{ display: 'flex', gap: '8px' }}>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '8px 10px', borderRadius: '6px', border: `1px solid ${receiptSettings.customQrPosition === 'front' ? '#635BFF' : '#E6EBF1'}`, background: receiptSettings.customQrPosition === 'front' ? '#F8F7FF' : 'white', fontSize: '12px', whiteSpace: 'nowrap' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '8px 10px', borderRadius: '6px', border: `1px solid ${receiptSettings.customQrPosition === 'front' ? '#635BFF' : '#C7CED6'}`, background: receiptSettings.customQrPosition === 'front' ? '#F8F7FF' : 'white', fontSize: '12px', whiteSpace: 'nowrap' }}>
                           <input type="radio" name="customQrPosition" checked={receiptSettings.customQrPosition === 'front'} onChange={() => { setReceiptSettings(prev => ({ ...prev, customQrPosition: 'front' })); qrPositionRef.current?.triggerSave(); }} style={{ margin: 0 }} />
                           <span style={{ fontWeight: 500, color: '#0A2540' }}>{t('settings:settingsPage.beforeQr')}</span>
                         </label>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '8px 10px', borderRadius: '6px', border: `1px solid ${receiptSettings.customQrPosition === 'back' ? '#635BFF' : '#E6EBF1'}`, background: receiptSettings.customQrPosition === 'back' ? '#F8F7FF' : 'white', fontSize: '12px', whiteSpace: 'nowrap' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '8px 10px', borderRadius: '6px', border: `1px solid ${receiptSettings.customQrPosition === 'back' ? '#635BFF' : '#C7CED6'}`, background: receiptSettings.customQrPosition === 'back' ? '#F8F7FF' : 'white', fontSize: '12px', whiteSpace: 'nowrap' }}>
                           <input type="radio" name="customQrPosition" checked={receiptSettings.customQrPosition === 'back'} onChange={() => { setReceiptSettings(prev => ({ ...prev, customQrPosition: 'back' })); qrPositionRef.current?.triggerSave(); }} style={{ margin: 0 }} />
                           <span style={{ fontWeight: 500, color: '#0A2540' }}>{t('settings:settingsPage.afterQr')}</span>
                         </label>
@@ -5793,88 +6617,95 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                   @media (max-width: 768px) {
                     .receipt-grid { grid-template-columns: 1fr !important; }
                     .receipt-divider { display: none !important; }
-                    .receipt-col-left { padding-right: 0 !important; padding-bottom: 20px !important; border-bottom: 1px solid #E6EBF1 !important; }
+                    .receipt-col-left { padding-right: 0 !important; padding-bottom: 20px !important; border-bottom: 1px solid #C7CED6 !important; }
                     .receipt-col-right { padding-left: 0 !important; padding-top: 20px !important; }
                   }
                 `}</style>
               </SettingsCard>
 
-              {/* Customer Display (Dual Monitor) Card */}
-              <SettingsCard style={{ marginTop: '24px' }}>
-                <CardTitle>{t('settings:settingsPage.customerDisplay.title', 'Customer Display (Dual Monitor)')}</CardTitle>
-                <p style={{ color: '#6B7C93', marginBottom: '20px', fontSize: '14px', lineHeight: 1.5 }}>
-                  {t('settings:settingsPage.customerDisplay.description', 'Show order details on a second monitor facing the customer (POS rear screen). Click Open Now after connecting the secondary monitor — your browser will ask once for permission, then remember it.')}
-                </p>
-
-                <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
-                  <button type="button"
-                    type="button"
-                    onClick={async () => {
-                      const result = await openCustomerDisplay(user?.restaurantId || '');
-                      if (result.title && result.message) {
-                        setInfoModal({ open: true, title: result.title, message: result.message });
-                      }
-                    }}
-                    style={{
-                      padding: '10px 20px', fontSize: '14px', fontWeight: 500,
-                      background: '#635BFF', color: 'white', border: 'none',
-                      borderRadius: '6px', cursor: 'pointer'
-                    }}
-                  >
-                    {t('settings:settingsPage.customerDisplay.openNow', 'Open Now')}
-                  </button>
-
-                  <button type="button"
-                    type="button"
-                    onClick={async () => {
-                      resetCustomerDisplayPosition();
-                      // Auto-open immediately so the user doesn't have to figure out the next step.
-                      // Popup appears on the main monitor; user drags it to the second monitor and closes.
-                      await openCustomerDisplay(user?.restaurantId || '');
-                      setInfoModal({
-                        open: true,
-                        title: t('settings:settingsPage.customerDisplay.resetDoneTitle', 'Drag to Second Monitor'),
-                        message: t('settings:settingsPage.customerDisplay.resetDoneMessage', 'Customer Display just opened on your main screen. Drag the popup to your second monitor, then close it. The new position will be saved — next time it will open there automatically.'),
-                      });
-                    }}
-                    title={t('settings:settingsPage.customerDisplay.resetPositionTitle', 'Use this if the popup opens off-screen after disconnecting or rearranging monitors')}
-                    style={{
-                      padding: '10px 20px', fontSize: '14px', fontWeight: 500,
-                      background: 'white', color: '#635BFF', border: '1px solid #E6EBF1',
-                      borderRadius: '6px', cursor: 'pointer'
-                    }}
-                  >
-                    {t('settings:settingsPage.customerDisplay.resetPosition', 'Reset Position')}
-                  </button>
-
-                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14, color: '#0A2540' }}>
-                    <input
-                      type="checkbox"
-                      defaultChecked={isAutoOpenEnabled()}
-                      onChange={(e) => setAutoOpenEnabled(e.target.checked)}
-                      style={{ width: 16, height: 16, accentColor: '#635BFF' }}
-                    />
-                    {t('settings:settingsPage.customerDisplay.autoOpenLabel', 'Auto-reopen when POS Terminal starts (after first click)')}
-                  </label>
-                </div>
-
-                {/* Phone-input visibility toggle moved to Membership tab — 멤버십 기능 분류 자연. */}
-
-                <div style={{ background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: '8px', padding: '16px', marginTop: 8 }}>
-                  <div style={{ fontWeight: 600, color: '#075985', marginBottom: 10, fontSize: 14 }}>
-                    {t('settings:settingsPage.customerDisplay.kioskGuideTitle', 'Want it 100% automatic on Windows boot? (Optional setup)')}
-                  </div>
-                  <div style={{ fontSize: 13, color: '#0C4A6E', lineHeight: 1.7 }}>
-                    <div>{t('settings:settingsPage.customerDisplay.kioskStep1', '1. Right-click your desktop → New → Shortcut')}</div>
-                    <div style={{ background: 'white', border: '1px solid #BAE6FD', borderRadius: 4, padding: '8px 10px', margin: '6px 0', fontFamily: 'monospace', fontSize: 12, wordBreak: 'break-all' }}>
-                      {`"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --kiosk --new-window --window-position=1920,0 https://purplehere.com/restaurant/${user?.restaurantId || 'YOUR_ID'}/checkout-display`}
+              {/* Printer troubleshooting modal — opened from Emergency card.
+                  Covers the most common pain points reported on the floor. */}
+              {showPrinterTroubleshoot && (
+                <div
+                  onClick={(e) => { if (e.target === e.currentTarget) setShowPrinterTroubleshoot(false); }}
+                  style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 20px', overflowY: 'auto' }}
+                >
+                  <div style={{ background: '#fff', borderRadius: '12px', maxWidth: '640px', width: '100%', padding: '28px', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                      <h2 style={{ margin: 0, fontSize: '18px', color: '#1F2937' }}>
+                        {t('settings:printer.troubleshoot.title', '프린터 문제 해결 가이드')}
+                      </h2>
+                      <button type="button" onClick={() => setShowPrinterTroubleshoot(false)} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#4B5563', padding: '4px' }}>&times;</button>
                     </div>
-                    <div>{t('settings:settingsPage.customerDisplay.kioskStep2', '2. Adjust --window-position=X,Y to your second monitor coordinates (X = primary monitor width, Y = 0 for top-left)')}</div>
-                    <div>{t('settings:settingsPage.customerDisplay.kioskStep3', '3. Press Win+R → type shell:startup → drag the shortcut into that folder')}</div>
-                    <div>{t('settings:settingsPage.customerDisplay.kioskStep4', '4. Reboot — Chrome will launch the customer display fullscreen on the rear monitor automatically')}</div>
+
+                    {/* Scenario 1 — QZ Tray prompt keeps appearing */}
+                    <div style={{ marginBottom: '20px', padding: '14px 16px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '8px' }}>
+                      <div style={{ fontSize: '14px', fontWeight: 700, color: '#92400E', marginBottom: '8px' }}>
+                        {t('settings:printer.troubleshoot.s1Title', '권한 알림이 계속 뜨거나 "다시 묻지 않기" 체크박스가 비활성')}
+                      </div>
+                      <p style={{ fontSize: '12px', color: '#92400E', lineHeight: 1.6, margin: '0 0 10px' }}>
+                        {t('settings:printer.troubleshoot.s1Why', '이전 시도의 거부 기록이 QZ Tray 에 캐시되어 있을 때 발생합니다. 새 인증서가 정상 검증되어도 옛 거부 기록이 우선합니다. 캐시를 비우고 한 번에 처음부터 다시 설치하면 됩니다.')}
+                      </p>
+                      <ol style={{ margin: '8px 0 0 18px', padding: 0, fontSize: '12px', color: '#7C2D12', lineHeight: 1.8 }}>
+                        <li>{t('settings:printer.troubleshoot.s1Step1', 'QZ Tray 트레이 아이콘 우클릭 → Tools → Manage Sites → PurpleHere / dev.purplehere.com / purplehere.com 항목 모두 "Remove"')}</li>
+                        <li>{t('settings:printer.troubleshoot.s1Step2', 'QZ Tray 트레이 아이콘 우클릭 → Exit (완전 종료)')}</li>
+                        <li>{t('settings:printer.troubleshoot.s1Step3', '브라우저에서 Ctrl+Shift+R (강력 새로고침)')}</li>
+                        <li>{t('settings:printer.troubleshoot.s1Step4', 'QZ Tray 탭의 "원클릭 설치 (.bat)" 다운로드 → 더블클릭 → "Certificate installed" 확인 후 닫기')}</li>
+                        <li>{t('settings:printer.troubleshoot.s1Step5', '시작메뉴에서 QZ Tray 다시 실행')}</li>
+                        <li>{t('settings:printer.troubleshoot.s1Step6', 'QZ Tray 탭의 "QZ Tray 연결 테스트" 클릭 → prompt 의 "remember" 체크 + Allow → 끝')}</li>
+                      </ol>
+                    </div>
+
+                    {/* Scenario 2 — Kitchen printer doesn't print */}
+                    <div style={{ marginBottom: '20px', padding: '14px 16px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px' }}>
+                      <div style={{ fontSize: '14px', fontWeight: 700, color: '#7F1D1D', marginBottom: '8px' }}>
+                        {t('settings:printer.troubleshoot.s2Title', '주방 프린터에서 티켓이 안 나옴 (캐셔는 정상)')}
+                      </div>
+                      <p style={{ fontSize: '12px', color: '#7F1D1D', lineHeight: 1.6, margin: '0 0 10px' }}>
+                        {t('settings:printer.troubleshoot.s2Why', '주방 프린터 전원/연결/IP 설정 문제일 가능성. 정상화 전까지 위의 비상 모드를 켜서 영업을 멈추지 마세요 — 모든 티켓이 캐셔 프린터로 라우팅됩니다.')}
+                      </p>
+                      <ol style={{ margin: '8px 0 0 18px', padding: 0, fontSize: '12px', color: '#7F1D1D', lineHeight: 1.8 }}>
+                        <li>{t('settings:printer.troubleshoot.s2Step1', '주방 프린터 전원 / 용지 확인')}</li>
+                        <li>{t('settings:printer.troubleshoot.s2Step2', 'POS PC 에서 명령 프롬프트 → "ping 192.168.x.x" (주방 프린터 IP) 응답 확인')}</li>
+                        <li>{t('settings:printer.troubleshoot.s2Step3', 'Settings → Printer → Kitchen Printer 카드의 "Test" 버튼')}</li>
+                        <li>{t('settings:printer.troubleshoot.s2Step4', '여전히 안 나오면 → 비상 모드 ON → 캐셔 프린터로 출력 받아 매장 운영 유지 → 영업 시간 후 점검')}</li>
+                      </ol>
+                    </div>
+
+                    {/* Scenario 3 — Network down */}
+                    <div style={{ marginBottom: '20px', padding: '14px 16px', background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: '8px' }}>
+                      <div style={{ fontSize: '14px', fontWeight: 700, color: '#075985', marginBottom: '8px' }}>
+                        {t('settings:printer.troubleshoot.s3Title', '인터넷이 끊겼거나 라우터가 다운')}
+                      </div>
+                      <p style={{ fontSize: '12px', color: '#075985', lineHeight: 1.6, margin: '0 0 10px' }}>
+                        {t('settings:printer.troubleshoot.s3Why', '캐셔 프린터를 USB / Bluetooth 직결로 사용 중이면 비상 모드 ON 만으로 운영 가능. LAN 프린터만 있다면 핫스팟 연결.')}
+                      </p>
+                      <ol style={{ margin: '8px 0 0 18px', padding: 0, fontSize: '12px', color: '#0C4A6E', lineHeight: 1.8 }}>
+                        <li>{t('settings:printer.troubleshoot.s3Step1', 'POS 를 휴대폰 모바일 핫스팟에 연결 (PurpleHere API 호출용)')}</li>
+                        <li>{t('settings:printer.troubleshoot.s3Step2', 'Wi-Fi 없는 구형 PC: USB Wi-Fi 동글 (TP-Link Nano / Mercusys / ASUS USB Adapter) 끼우고 핫스팟 연결')}</li>
+                        <li>{t('settings:printer.troubleshoot.s3Step3', '캐셔 프린터가 USB 직결이면 그대로 인쇄 가능. LAN 프린터는 라우터 복구까지 못 씀.')}</li>
+                        <li>{t('settings:printer.troubleshoot.s3Step4', '비상 모드 ON → 모든 티켓 캐셔로 라우팅 → 직원이 직접 전달')}</li>
+                      </ol>
+                    </div>
+
+                    {/* Scenario 4 — printer not silent */}
+                    <div style={{ marginBottom: '8px', padding: '14px 16px', background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: '8px' }}>
+                      <div style={{ fontSize: '14px', fontWeight: 700, color: '#1F2937', marginBottom: '8px' }}>
+                        {t('settings:printer.troubleshoot.s4Title', '인쇄할 때마다 OS 다이얼로그가 뜸 (Enter 눌러야 함)')}
+                      </div>
+                      <p style={{ fontSize: '12px', color: '#4B5563', lineHeight: 1.6, margin: 0 }}>
+                        {t('settings:printer.troubleshoot.s4Why', '현재 연결 방법이 "브라우저 인쇄"이기 때문입니다. 무음 인쇄가 필요하면 QZ Tray (Windows) 또는 RawBT (Android) 로 전환하세요. 위의 "어떤 방법을 선택해야 할까?" 표에서 매장 환경별 권장 방법 확인.')}
+                      </p>
+                    </div>
+
+                    <div style={{ marginTop: '16px', textAlign: 'right' }}>
+                      <button type="button" onClick={() => setShowPrinterTroubleshoot(false)} style={{ padding: '10px 20px', fontSize: '14px', fontWeight: 600, background: '#635BFF', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
+                        {t('settings:printer.troubleshoot.close', '닫기')}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </SettingsCard>
+              )}
 
             </>
           )}
@@ -5892,24 +6723,24 @@ ${t('settings:settingsPage.qzDiagramBridge')}
               {/* Item Merge Settings */}
               <SettingsCard style={{ marginBottom: '24px' }}>
                 <CardTitle>{t('settings:settingsPage.itemViewMergeSettings')}</CardTitle>
-                <p style={{ fontSize: '13px', color: '#6B7280', margin: '0 0 16px' }}>
+                <p style={{ fontSize: '13px', color: '#4B5563', margin: '0 0 16px' }}>
                   Control how same-name items are grouped in Kitchen Display Item View. Leave empty or 0 for unlimited merging (default).
                 </p>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', maxWidth: '400px' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>{t('settings:settingsPage.timeLimitMinutes')}</label>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#1F2937', marginBottom: '8px' }}>{t('settings:settingsPage.timeLimitMinutes')}</label>
                     <AutoSaveField onSave={handleSave}>
                     <input type="number" min="0" value={itemMergeTimeLimit || ''} placeholder="0 = unlimited"
                       onChange={(e) => setItemMergeTimeLimit(parseInt(e.target.value) || 0)}
-                      style={{ width: '100%', padding: '8px 12px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }} />
+                      style={{ width: '100%', padding: '8px 12px', border: '1px solid #C7CED6', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }} />
                     </AutoSaveField>
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>{t('settings:settingsPage.maxCountPerGroup')}</label>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#1F2937', marginBottom: '8px' }}>{t('settings:settingsPage.maxCountPerGroup')}</label>
                     <AutoSaveField onSave={handleSave}>
                     <input type="number" min="0" value={itemMergeMaxCount || ''} placeholder="0 = unlimited"
                       onChange={(e) => setItemMergeMaxCount(parseInt(e.target.value) || 0)}
-                      style={{ width: '100%', padding: '8px 12px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }} />
+                      style={{ width: '100%', padding: '8px 12px', border: '1px solid #C7CED6', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }} />
                     </AutoSaveField>
                   </div>
                 </div>
@@ -5950,13 +6781,13 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                       });
                       if (!res.ok) throw new Error('Save failed');
                     }} type="toggle" style={{ flex: 1, minWidth: 200 }}>
-                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer', padding: '12px', borderRadius: '8px', border: `1px solid ${kitchenAssignmentMode === opt.key ? '#635BFF' : '#E6EBF1'}`, background: kitchenAssignmentMode === opt.key ? '#F8F7FF' : 'white' }}>
+                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer', padding: '12px', borderRadius: '8px', border: `1px solid ${kitchenAssignmentMode === opt.key ? '#635BFF' : '#C7CED6'}`, background: kitchenAssignmentMode === opt.key ? '#F8F7FF' : 'white' }}>
                       <input type="radio" name="assignmentMode" checked={kitchenAssignmentMode === opt.key}
                         onChange={() => { setKitchenAssignmentMode(opt.key); kitchenAssignmentRefs.current.get(opt.key)?.triggerSave(); }}
                         style={{ marginTop: '2px' }} />
                       <div>
                         <div style={{ fontWeight: 600, color: '#0A2540', fontSize: '14px' }}>{opt.label}</div>
-                        <div style={{ color: '#6B7C93', fontSize: '13px', marginTop: '4px' }}>{opt.desc}</div>
+                        <div style={{ color: '#4B5563', fontSize: '13px', marginTop: '4px' }}>{opt.desc}</div>
                       </div>
                     </label>
                     </AutoSaveField>
@@ -5979,9 +6810,9 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                 </div>
 
                 {kitchenStationsLoading ? (
-                  <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>{t('settings:settingsPage.loading')}</div>
+                  <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>{t('settings:settingsPage.loading')}</div>
                 ) : kitchenStations.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>
+                  <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>
                     <div style={{ fontSize: '16px', fontWeight: 500, marginBottom: '8px' }}>{t('settings:settingsPage.noKitchenStationsYet')}</div>
                     <div style={{ fontSize: '14px' }}>{t('settings:settingsPage.addStationsToSplitOrdersByKitchenArea')}</div>
                   </div>
@@ -5993,7 +6824,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                       const hasAssignment = assignedCats.length > 0 || assignedProds.length > 0;
                       const statusColor = !station.is_active ? '#EF4444' : hasAssignment ? '#10B981' : '#F59E0B';
                       return (
-                        <div key={station.id} style={{ background: '#F6F9FC', borderRadius: '8px', padding: '16px', border: '1px solid #E6EBF1' }}>
+                        <div key={station.id} style={{ background: '#F4F6F9', borderRadius: '8px', padding: '16px', border: '1px solid #C7CED6' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                               <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColor }} />
@@ -6017,7 +6848,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                                   });
                                   setShowStationModal(true);
                                 }}
-                                style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #E6EBF1', background: 'white', cursor: 'pointer', fontSize: '13px', color: '#6B7C93' }}
+                                style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #C7CED6', background: 'white', cursor: 'pointer', fontSize: '13px', color: '#4B5563' }}
                               >
                                 Edit
                               </button>
@@ -6030,7 +6861,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                             </div>
                           </div>
                           {/* Assignment info */}
-                          <div style={{ marginTop: '8px', fontSize: '13px', color: '#6B7C93' }}>
+                          <div style={{ marginTop: '8px', fontSize: '13px', color: '#4B5563' }}>
                             {assignedCats.length > 0 && (
                               <div>Categories: {assignedCats.map((c: any) => `${c.emoji || ''} ${c.name}`.trim()).join(', ')}</div>
                             )}
@@ -6138,7 +6969,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                     <>
                       <button type="button"
                         onClick={() => setShowStationModal(false)}
-                        style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #E6EBF1', background: 'white', cursor: 'pointer', fontSize: '14px', color: '#6B7C93' }}
+                        style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #C7CED6', background: 'white', cursor: 'pointer', fontSize: '14px', color: '#4B5563' }}
                       >
                         Cancel
                       </button>
@@ -6204,7 +7035,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                         <select
                           value={stationForm.alert_sound}
                           onChange={(e) => setStationForm({ ...stationForm, alert_sound: e.target.value })}
-                          style={{ flex: 1, padding: '8px 12px', borderRadius: '6px', border: '1px solid #E6EBF1', fontSize: '14px', color: '#0A2540', background: 'white' }}
+                          style={{ flex: 1, padding: '8px 12px', borderRadius: '6px', border: '1px solid #C7CED6', fontSize: '14px', color: '#0A2540', background: 'white' }}
                         >
                           {[
                             { value: 'bell', label: 'Bell' },
@@ -6224,7 +7055,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                               playPresetSound(stationForm.alert_sound as any);
                             });
                           }}
-                          style={{ padding: '8px 14px', borderRadius: '6px', border: '1px solid #E6EBF1', background: 'white', cursor: 'pointer', fontSize: '13px', color: '#6B7C93', whiteSpace: 'nowrap' }}
+                          style={{ padding: '8px 14px', borderRadius: '6px', border: '1px solid #C7CED6', background: 'white', cursor: 'pointer', fontSize: '13px', color: '#4B5563', whiteSpace: 'nowrap' }}
                         >
                           ▶ Test
                         </button>
@@ -6242,7 +7073,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                               s.id !== editingStation?.id && (s.categories || []).some((c: any) => c.id === cat.id)
                             );
                             return (
-                              <label key={cat.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px', borderRadius: '6px', cursor: otherStation ? 'not-allowed' : 'pointer', background: isChecked ? '#F8F7FF' : 'white', border: `1px solid ${isChecked ? '#C7D2FE' : '#E6EBF1'}`, opacity: otherStation ? 0.5 : 1 }}>
+                              <label key={cat.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px', borderRadius: '6px', cursor: otherStation ? 'not-allowed' : 'pointer', background: isChecked ? '#F8F7FF' : 'white', border: `1px solid ${isChecked ? '#C7D2FE' : '#C7CED6'}`, opacity: otherStation ? 0.5 : 1 }}>
                                 <input
                                   type="checkbox"
                                   checked={isChecked}
@@ -6272,7 +7103,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                               s.id !== editingStation?.id && (s.products || []).some((p: any) => p.id === prod.id)
                             );
                             return (
-                              <label key={prod.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 8px', borderRadius: '6px', cursor: otherStation ? 'not-allowed' : 'pointer', background: isChecked ? '#F8F7FF' : 'white', border: `1px solid ${isChecked ? '#C7D2FE' : '#E6EBF1'}`, opacity: otherStation ? 0.5 : 1 }}>
+                              <label key={prod.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 8px', borderRadius: '6px', cursor: otherStation ? 'not-allowed' : 'pointer', background: isChecked ? '#F8F7FF' : 'white', border: `1px solid ${isChecked ? '#C7D2FE' : '#C7CED6'}`, opacity: otherStation ? 0.5 : 1 }}>
                                 <input
                                   type="checkbox"
                                   checked={isChecked}
@@ -6309,7 +7140,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
 
               {loadingManagers ? (
                 <SettingsCard>
-                  <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>
+                  <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>
                     Loading managers...
                   </div>
                 </SettingsCard>
@@ -6319,7 +7150,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                     <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#0A2540', marginBottom: '8px' }}>
                       No Managers Connected
                     </h3>
-                    <p style={{ color: '#6B7C93', fontSize: '14px' }}>
+                    <p style={{ color: '#4B5563', fontSize: '14px' }}>
                       No managers are currently assigned to this restaurant.
                     </p>
                   </div>
@@ -6338,7 +7169,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                         case 'Brand Manager':
                           return { bg: '#FAE8FF', color: '#A855F7', border: '#E9D5FF' };
                         default:
-                          return { bg: '#F3F4F6', color: '#6B7280', border: '#E5E7EB' };
+                          return { bg: '#F1F4F8', color: '#4B5563', border: '#C7CED6' };
                       }
                     };
 
@@ -6383,18 +7214,18 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                               )}
                             </div>
 
-                            <p style={{ margin: '0 0 4px 0', fontSize: '14px', color: '#6B7C93', wordBreak: 'break-all' }}>
+                            <p style={{ margin: '0 0 4px 0', fontSize: '14px', color: '#4B5563', wordBreak: 'break-all' }}>
                               {manager.email}
                             </p>
 
                             {manager.company && (
-                              <p style={{ margin: '0 0 4px 0', fontSize: '14px', color: '#6B7C93' }}>
+                              <p style={{ margin: '0 0 4px 0', fontSize: '14px', color: '#4B5563' }}>
                                 {manager.company}
                               </p>
                             )}
 
                             {manager.phone && (
-                              <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#6B7C93' }}>
+                              <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#4B5563' }}>
                                 {manager.phone}
                               </p>
                             )}
@@ -6433,7 +7264,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
 
               {loadingMembership ? (
                 <SettingsCard>
-                  <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>
+                  <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>
                     Loading membership settings...
                   </div>
                 </SettingsCard>
@@ -6444,7 +7275,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, gap: 16 }}>
                       <div style={{ flex: 1 }}>
                         <CardTitle style={{ marginBottom: 4 }}>{t('settings:settingsPage.membershipDisplayEntry.title', 'Customer Display — Membership Entry')}</CardTitle>
-                        <p style={{ color: '#6B7C93', margin: 0, fontSize: 13, lineHeight: 1.5 }}>
+                        <p style={{ color: '#4B5563', margin: 0, fontSize: 13, lineHeight: 1.5 }}>
                           {t('settings:settingsPage.membershipDisplayEntry.description', 'Show a phone-number keypad on the customer-facing screen (Customer Display) so guests can enter their phone for points / membership.')}
                         </p>
                       </div>
@@ -6501,7 +7332,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                             <ToggleSlider />
                           </ToggleSwitch>
                           </AutoSaveField>
-                          <span style={{ fontSize: '14px', fontWeight: '500', color: membershipSettings.is_active ? '#635BFF' : '#6B7C93' }}>
+                          <span style={{ fontSize: '14px', fontWeight: '500', color: membershipSettings.is_active ? '#635BFF' : '#4B5563' }}>
                             {membershipSettings.is_active ? 'Active' : 'Inactive'}
                           </span>
                         </div>
@@ -6531,7 +7362,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                           }}
                         />
                         </AutoSaveField>
-                        <p style={{ margin: '8px 0 0 0', fontSize: '11px', color: '#6B7C93' }}>
+                        <p style={{ margin: '8px 0 0 0', fontSize: '11px', color: '#4B5563' }}>
                           e.g., {((membershipSettings.points_per_currency / membershipSettings.points_to_currency) * 100).toFixed(1)}% earn rate:
                           {getCurrencySymbol(currencySettings.currency)} 100 spent = {Math.round(100 * membershipSettings.points_per_currency)} points = {getCurrencySymbol(currencySettings.currency)} {(100 * membershipSettings.points_per_currency / membershipSettings.points_to_currency).toFixed(2)} value
                         </p>
@@ -6551,7 +7382,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                           onChange={(e) => setMembershipSettings({ ...membershipSettings, points_to_currency: parseFloat(e.target.value) || 100 })}
                         />
                         </AutoSaveField>
-                        <p style={{ margin: '8px 0 0 0', fontSize: '11px', color: '#6B7C93' }}>
+                        <p style={{ margin: '8px 0 0 0', fontSize: '11px', color: '#4B5563' }}>
                           {membershipSettings.points_to_currency} points = {getCurrencySymbol(currencySettings.currency)} 1
                         </p>
                       </FormGroup>
@@ -6793,9 +7624,9 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                   </SettingsGrid>
 
                   {/* Point Policy Reference — info only, below save button */}
-                  <SettingsCard style={{ marginTop: '24px', background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
-                    <CardTitle style={{ fontSize: '14px', color: '#64748B' }}>{t('settings:settingsPage.pointSystemPolicyReference')}</CardTitle>
-                    <div style={{ fontSize: '13px', color: '#64748B', lineHeight: '1.8' }}>
+                  <SettingsCard style={{ marginTop: '24px', background: '#F1F4F8', border: '1px solid #E2E8F0' }}>
+                    <CardTitle style={{ fontSize: '14px', color: '#475569' }}>{t('settings:settingsPage.pointSystemPolicyReference')}</CardTitle>
+                    <div style={{ fontSize: '13px', color: '#475569', lineHeight: '1.8' }}>
                       <p style={{ marginBottom: '12px', fontWeight: '500', color: '#475569' }}>
                         These are the system rules that cannot be changed:
                       </p>
@@ -6808,7 +7639,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                         <li><strong>Tier Calculation:</strong> Customer tier is based on total spending at your restaurant</li>
                         <li><strong>Point Expiry:</strong> Expired points are automatically deducted (if expiry is set)</li>
                       </ul>
-                      <p style={{ marginTop: '12px', fontSize: '12px', color: '#94A3B8' }}>
+                      <p style={{ marginTop: '12px', fontSize: '12px', color: '#64748B' }}>
                         Current setting: {((membershipSettings.points_per_currency / membershipSettings.points_to_currency) * 100).toFixed(1)}% earn rate
                         ({membershipSettings.points_to_currency} points = {getCurrencySymbol(currencySettings.currency)} 1)
                       </p>

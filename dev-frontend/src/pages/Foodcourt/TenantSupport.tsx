@@ -17,7 +17,7 @@ const Container = styled.div`
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -39,7 +39,7 @@ const Header = styled.div`
 
 const Content = styled.div`
   padding: 32px;
-  background: #FAFBFC;
+  background: #F9FAFB;
   min-height: calc(100vh - 120px);
 
   @media (max-width: 768px) {
@@ -61,7 +61,7 @@ const Title = styled.h1`
 
 const Subtitle = styled.p`
   font-size: 16px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 8px 0 0;
 `;
 
@@ -70,7 +70,7 @@ const ContentSection = styled.div`
   background: white;
   border-radius: 0 16px 16px 16px;
   padding: 32px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   margin-bottom: 24px;
 `;
 
@@ -82,7 +82,7 @@ const RequestGrid = styled.div`
 `;
 
 const RequestCard = styled.div`
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   padding: 24px;
   background: white;
@@ -128,7 +128,7 @@ const PriorityBadge = styled.span<{ level: string }>`
       case 'low':
         return 'background: #DCFCE7; color: #166534;';
       default:
-        return 'background: #F3F4F6; color: #374151;';
+        return 'background: #F1F4F8; color: #1F2937;';
     }
   }}
 `;
@@ -151,7 +151,7 @@ const InfoRow = styled.div`
 `;
 
 const InfoLabel = styled.span`
-  color: #6B7280;
+  color: #4B5563;
   font-weight: 500;
 `;
 
@@ -177,13 +177,13 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'Pending':
         return 'background: #FEE2E2; color: #991B1B;';
       default:
-        return 'background: #F3F4F6; color: #374151;';
+        return 'background: #F1F4F8; color: #1F2937;';
     }
   }}
 `;
 
 const RequestDescription = styled.p`
-  color: #6B7280;
+  color: #4B5563;
   font-size: 14px;
   line-height: 1.6;
   margin: 16px 0;
@@ -227,8 +227,8 @@ const ActionButton = styled.button<{ variant: 'primary' | 'secondary' | 'success
       default:
         return `
           background: white;
-          border-color: #E6EBF1;
-          color: #374151;
+          border-color: #C7CED6;
+          color: #1F2937;
           &:hover { background: #F9FAFB; }
         `;
     }
@@ -249,7 +249,7 @@ const FeatureItem = styled.li`
   padding: 8px 0;
   padding-left: 24px;
   position: relative;
-  color: #6B7280;
+  color: #4B5563;
   line-height: 1.6;
 
   &:before {
@@ -266,7 +266,7 @@ const ActionBar = styled.div`
   background: white;
   border-radius: 16px;
   padding: 24px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   margin-bottom: 24px;
   display: flex;
   justify-content: space-between;
@@ -281,7 +281,7 @@ const ActionBar = styled.div`
 
 const SearchInput = styled.input`
   padding: 10px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   min-width: 300px;
@@ -301,7 +301,7 @@ const SearchInput = styled.input`
 
 const FilterSelect = styled.select`
   padding: 10px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -585,7 +585,7 @@ Announcements
             <ContentSection>
               <h3 style={{ marginBottom: '20px', color: '#0A2540', fontSize: '20px', fontWeight: '600' }}>{'Tenant Communication Management'}</h3>
               <SectionContent>
-                <p style={{ color: '#6B7280', lineHeight: 1.6, fontSize: '16px', marginBottom: '24px' }}>
+                <p style={{ color: '#4B5563', lineHeight: 1.6, fontSize: '16px', marginBottom: '24px' }}>
                   Manages various channels for smooth communication with tenants and collects feedback.
                 </p>
                 <FeatureList>
@@ -604,7 +604,7 @@ Announcements
             <ContentSection>
               <h3 style={{ marginBottom: '20px', color: '#0A2540', fontSize: '20px', fontWeight: '600' }}>{'Announcement Management'}</h3>
               <SectionContent>
-                <p style={{ color: '#6B7280', lineHeight: 1.6, fontSize: '16px', marginBottom: '24px' }}>
+                <p style={{ color: '#4B5563', lineHeight: 1.6, fontSize: '16px', marginBottom: '24px' }}>
                   Efficiently manages and delivers announcements to all foodcourt tenants.
                 </p>
                 <FeatureList>

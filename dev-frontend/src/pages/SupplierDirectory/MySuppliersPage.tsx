@@ -44,7 +44,7 @@ interface MyContractRow {
 }
 
 const Subtitle = styled.div`
-  color: #6B7280;
+  color: #4B5563;
   font-size: 14px;
   margin-top: 4px;
 `;
@@ -71,7 +71,7 @@ const ModalSection = styled.div`
 const ModalSectionTitle = styled.h4`
   font-size: 13px;
   font-weight: 600;
-  color: #6B7280;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   margin: 0 0 8px;
@@ -90,7 +90,7 @@ const KvGrid = styled.div`
 `;
 
 const KvKey = styled.div`
-  color: #6B7280;
+  color: #4B5563;
   font-size: 13px;
 `;
 
@@ -119,12 +119,12 @@ const Dot = styled.div<{ active?: boolean; variant?: 'success' | 'danger' | 'war
   margin-top: 5px;
   flex-shrink: 0;
   background: ${(p) => {
-    if (!p.active) return '#E5E7EB';
+    if (!p.active) return '#C7CED6';
     switch (p.variant) {
       case 'success': return '#10B981';
       case 'danger': return '#EF4444';
       case 'warning': return '#F59E0B';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 `;
@@ -312,7 +312,7 @@ const MySuppliersPage: React.FC = () => {
           <Dot active variant="warning" />
           <div>
             <strong>{t('contractDetail.events.requested')}</strong>
-            <div style={{ color: '#6B7280' }}>{formatDate(row.requested_at)}</div>
+            <div style={{ color: '#4B5563' }}>{formatDate(row.requested_at)}</div>
           </div>
         </TimelineItem>
         {row.approved_at && (
@@ -320,7 +320,7 @@ const MySuppliersPage: React.FC = () => {
             <Dot active variant="success" />
             <div>
               <strong>{t('contractDetail.events.approved')}</strong>
-              <div style={{ color: '#6B7280' }}>{formatDate(row.approved_at)}</div>
+              <div style={{ color: '#4B5563' }}>{formatDate(row.approved_at)}</div>
             </div>
           </TimelineItem>
         )}
@@ -329,7 +329,7 @@ const MySuppliersPage: React.FC = () => {
             <Dot active variant="danger" />
             <div>
               <strong>{t('contractDetail.events.rejected')}</strong>
-              <div style={{ color: '#6B7280' }}>{formatDate(row.rejected_at)}</div>
+              <div style={{ color: '#4B5563' }}>{formatDate(row.rejected_at)}</div>
               {row.rejection_reason && <div>{row.rejection_reason}</div>}
             </div>
           </TimelineItem>
@@ -339,7 +339,7 @@ const MySuppliersPage: React.FC = () => {
             <Dot active variant="danger" />
             <div>
               <strong>{t('contractDetail.events.terminated')}</strong>
-              <div style={{ color: '#6B7280' }}>{formatDate(row.terminated_at)}</div>
+              <div style={{ color: '#4B5563' }}>{formatDate(row.terminated_at)}</div>
               {row.termination_reason && <div>{row.termination_reason}</div>}
             </div>
           </TimelineItem>
@@ -397,7 +397,7 @@ const MySuppliersPage: React.FC = () => {
                   <td colSpan={5}>
                     <DataTableEmpty>
                       <div style={{ marginBottom: 12 }}>{t('myContracts.noContracts')}</div>
-                      <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 16 }}>
+                      <div style={{ fontSize: 13, color: '#4B5563', marginBottom: 16 }}>
                         {t('myContracts.noContractsHint')}
                       </div>
                       <ThemedButton
@@ -479,7 +479,7 @@ const MySuppliersPage: React.FC = () => {
         }
       >
         {detailLoading && !detail ? (
-          <div style={{ padding: 24, textAlign: 'center', color: '#6B7280' }}>
+          <div style={{ padding: 24, textAlign: 'center', color: '#4B5563' }}>
             {t('directory.loading')}
           </div>
         ) : detailError ? (

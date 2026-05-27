@@ -97,7 +97,7 @@ const CategoryIcon = styled.div`
   width: 48px;
   height: 48px;
   border-radius: 8px;
-  background: #F3F4F6;
+  background: #F1F4F8;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -118,7 +118,7 @@ const CategoryName = styled.div`
 
 const CategoryMeta = styled.div`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const CategoryActions = styled.div`
@@ -130,7 +130,7 @@ const IconButton = styled.button`
   width: 36px;
   height: 36px;
   border-radius: 8px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   background: white;
   display: flex;
   align-items: center;
@@ -140,13 +140,13 @@ const IconButton = styled.button`
 
   &:hover {
     background: #F9FAFB;
-    border-color: #D1D5DB;
+    border-color: #6B7280;
   }
 
   svg {
     width: 18px;
     height: 18px;
-    color: #6B7280;
+    color: #4B5563;
   }
 `;
 
@@ -163,7 +163,7 @@ const EditorHeader = styled.div`
   justify-content: space-between;
   align-items: center;
   padding: 20px 24px;
-  border-bottom: 1px solid #E5E7EB;
+  border-bottom: 1px solid #C7CED6;
 `;
 
 const EditorTitle = styled.h3`
@@ -199,7 +199,7 @@ const RichTextEditor = styled.textarea`
   width: 100%;
   min-height: 300px;
   padding: 16px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   line-height: 1.6;
@@ -213,7 +213,7 @@ const RichTextEditor = styled.textarea`
 `;
 
 const ThumbnailUpload = styled.div`
-  border: 2px dashed #E5E7EB;
+  border: 2px dashed #C7CED6;
   border-radius: 8px;
   padding: 24px;
   text-align: center;
@@ -233,7 +233,7 @@ const ThumbnailUpload = styled.div`
   }
 
   p {
-    color: #6B7280;
+    color: #4B5563;
     font-size: 14px;
     margin: 0;
   }
@@ -577,7 +577,7 @@ const ContentManagementPage: React.FC = () => {
         </FormGroup>
 
         {/* SEO/AEO Section */}
-        <div style={{ marginTop: '24px', padding: '20px', background: '#F8FAFC', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+        <div style={{ marginTop: '24px', padding: '20px', background: '#F1F4F8', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
           <h4 style={{ margin: '0 0 16px', fontSize: '14px', fontWeight: 600, color: '#0F172A' }}>
             SEO & AEO Settings
           </h4>
@@ -591,7 +591,7 @@ const ContentManagementPage: React.FC = () => {
               rows={3}
               maxLength={500}
             />
-            <small style={{ color: '#64748B', fontSize: '12px' }}>{(editingContent?.ai_summary || '').length}/500 characters</small>
+            <small style={{ color: '#475569', fontSize: '12px' }}>{(editingContent?.ai_summary || '').length}/500 characters</small>
           </FormGroup>
 
           {contentType === 'blog' && (
@@ -627,7 +627,7 @@ const ContentManagementPage: React.FC = () => {
                   rows={2}
                   maxLength={160}
                 />
-                <small style={{ color: '#64748B', fontSize: '12px' }}>{(editingContent?.seo_description || '').length}/160 characters</small>
+                <small style={{ color: '#475569', fontSize: '12px' }}>{(editingContent?.seo_description || '').length}/160 characters</small>
               </FormGroup>
 
               <FormGroup>
@@ -778,7 +778,7 @@ const ContentManagementPage: React.FC = () => {
                 <DataTableCell data-label={t('admin:contentManagementPage.title')}>
                   <strong>{item.title}</strong>
                   {contentType === 'blog' && item.view_count > 0 && (
-                    <span style={{ fontSize: '12px', color: '#6B7280', marginLeft: '8px' }}>
+                    <span style={{ fontSize: '12px', color: '#4B5563', marginLeft: '8px' }}>
                       {item.view_count} views
                     </span>
                   )}

@@ -7,7 +7,7 @@ import { setupMobileInputHandlers } from '../../utils/mobileInputFix';
 const LayoutContainer = styled.div`
   min-height: 100vh;
   min-height: 100dvh; /* Dynamic viewport height for mobile */
-  background: #F9FAFB;
+  background: #FFFFFF;
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -28,7 +28,35 @@ const LayoutContainer = styled.div`
 
   /* Tablet support - center content */
   @media (min-width: 768px) {
-    background: #E5E7EB;
+    background: #E9EDF2;
+  }
+`;
+
+/**
+ * Thin brand ribbon at the very top of every mobile page.
+ * Slogan on the left, "Visit purplehere.com →" link on the right.
+ * Subtle violet (#635BFF) so it adds brand presence without dominating.
+ */
+const BrandTopBar = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #635BFF;
+  color: #fff;
+  padding: 4px 14px;
+  font-size: 11px;
+  line-height: 1.4;
+  letter-spacing: 0.2px;
+  flex-shrink: 0;
+
+  .slogan { font-weight: 600; opacity: 0.95; }
+  a {
+    color: #fff;
+    text-decoration: none;
+    font-weight: 600;
+    opacity: 0.95;
+    white-space: nowrap;
+    &:hover { opacity: 1; text-decoration: underline; }
   }
 `;
 
@@ -67,13 +95,13 @@ const BackButton = styled.button`
   transition: background 0.2s;
 
   &:active {
-    background: #F3F4F6;
+    background: #F1F4F8;
   }
 
   svg {
     width: 24px;
     height: 24px;
-    color: #374151;
+    color: #1F2937;
   }
 `;
 
@@ -118,7 +146,7 @@ const Content = styled.main`
 
 const BottomNav = styled.nav`
   background: white;
-  border-top: 1px solid #E5E7EB;
+  border-top: 1px solid #C7CED6;
   position: fixed;
   bottom: 0;
   left: 0;
@@ -148,7 +176,7 @@ const NavItem = styled.button<{ active?: boolean }>`
   align-items: center;
   gap: 4px;
   cursor: pointer;
-  color: ${props => props.active ? '#635BFF' : '#9CA3AF'};
+  color: ${props => props.active ? '#635BFF' : '#6B7280'};
   transition: color 0.2s;
   
   &:active {
@@ -192,7 +220,7 @@ const OrderTypeLabel = styled.div<{ orderType: string }>`
       case 'takeaway': return '#D97706';
       case 'delivery': return '#2563EB';
       case 'pickup': return '#7C3AED';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
   white-space: nowrap;
@@ -281,6 +309,10 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
   
   return (
     <LayoutContainer>
+      <BrandTopBar>
+        <span className="slogan">Solving Real F&amp;B Problems</span>
+        <a href="https://purplehere.com" target="_blank" rel="noopener noreferrer">Purple Here ↗</a>
+      </BrandTopBar>
       {title && (
         <Header>
           {showBack ? (
@@ -293,23 +325,11 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
             <HeaderAction />
           )}
           <Title>{title}</Title>
-          {/* Order Type chip on right — hidden on home/menu (StoreHeader has explicit Change
-              action) AND hidden on cart/orders/account (selection already locked, chip is noise).
-              Kept on checkout/reserve so the user re-confirms order type before payment. */}
-          {orderType
-            && currentPage !== 'home'
-            && currentPage !== 'menu'
-            && currentPage !== 'cart'
-            && currentPage !== 'orders'
-            && currentPage !== 'account'
-            && getOrderTypeLabel(orderType) ? (
-            <OrderTypeLabel orderType={orderType}>
-              <span>{getOrderTypeIcon(orderType)}</span>
-              <span>{getOrderTypeLabel(orderType)}</span>
-            </OrderTypeLabel>
-          ) : (
-            <HeaderAction />
-          )}
+          {/* Order Type chip on right — REMOVED. StoreHeader on the menu page already shows
+              the order type with an explicit "Change" action. Showing the same chip on every
+              other page (payment, cart, checkout, …) duplicated info and confused users
+              (e.g., reservation page wrongly displaying "Dine-In"). */}
+          <HeaderAction />
         </Header>
       )}
 

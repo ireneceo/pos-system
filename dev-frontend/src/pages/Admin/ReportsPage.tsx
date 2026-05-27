@@ -17,14 +17,14 @@ import { getAuthToken } from '../../utils/auth';
 // Styled Components (AnalyticsPage 패턴)
 const ReportsContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #FAFBFC;
+  background-color: #F9FAFB;
   min-height: 100vh;
 `;
 
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   height: 80px;
   min-height: 80px;
   max-height: 80px;
@@ -64,7 +64,7 @@ const Content = styled.div`
 
 const CurrencySelect = styled.select`
   padding: 8px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   background: white;
@@ -75,18 +75,18 @@ const ExportButton = styled.button`
   padding: 8px 16px;
   background: white;
   color: #0A2540;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   margin-left: auto;
-  &:hover { background: #F8FAFC; }
+  &:hover { background: #F1F4F8; }
 `;
 
 const ChartCard = styled.div`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   padding: 24px;
   margin-bottom: 24px;
@@ -109,7 +109,7 @@ const ChartGrid = styled.div`
 
 const TableCard = styled.div`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   padding: 24px;
   margin-bottom: 24px;
@@ -127,9 +127,9 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'pending_payment': return '#FEF3C7';
       case 'payment_submitted': return '#DBEAFE';
       case 'overdue': return '#FEE2E2';
-      case 'draft': return '#F3F4F6';
-      case 'cancelled': return '#F3F4F6';
-      default: return '#F3F4F6';
+      case 'draft': return '#F1F4F8';
+      case 'cancelled': return '#F1F4F8';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
@@ -138,9 +138,9 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'pending_payment': return '#D97706';
       case 'payment_submitted': return '#2563EB';
       case 'overdue': return '#DC2626';
-      case 'draft': return '#6B7280';
-      case 'cancelled': return '#6B7280';
-      default: return '#6B7280';
+      case 'draft': return '#4B5563';
+      case 'cancelled': return '#4B5563';
+      default: return '#4B5563';
     }
   }};
 `;
@@ -148,14 +148,14 @@ const StatusBadge = styled.span<{ status: string }>`
 const LoadingMessage = styled.div`
   text-align: center;
   padding: 40px;
-  color: #6B7280;
+  color: #4B5563;
   font-size: 14px;
 `;
 
 const NoDataMessage = styled.div`
   text-align: center;
   padding: 40px;
-  color: #9CA3AF;
+  color: #6B7280;
   font-size: 14px;
 `;
 
@@ -477,7 +477,7 @@ const ReportsPage: React.FC = () => {
             {revenueTrend.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={revenueTrend}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E6EBF1" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#C7CED6" />
                   <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                   <YAxis tick={{ fontSize: 12 }} />
                   <Tooltip formatter={(value: number) => formatCurrency(value, currency)} />
@@ -682,7 +682,7 @@ const ReportsPage: React.FC = () => {
             {customerData.registrationTrend.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={customerData.registrationTrend}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E6EBF1" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#C7CED6" />
                   <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                   <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
                   <Tooltip />
@@ -729,7 +729,7 @@ const ReportsPage: React.FC = () => {
             <tbody>
               {customerData.topRestaurants.map((r, i) => (
                 <DataTableRow key={i}>
-                  <DataTableCell data-label="#" style={{ fontWeight: 600, color: i < 3 ? '#635BFF' : '#6B7280' }}>{i + 1}</DataTableCell>
+                  <DataTableCell data-label="#" style={{ fontWeight: 600, color: i < 3 ? '#635BFF' : '#4B5563' }}>{i + 1}</DataTableCell>
                   <DataTableCell data-label={t('admin:reportsPage.restaurant')} style={{ fontWeight: 500 }}>{r.restaurantName}</DataTableCell>
                   <DataTableCell data-label={t('admin:reportsPage.totalRevenue')} align="right">{formatCurrency(r.totalRevenue, currency)}</DataTableCell>
                   <DataTableCell data-label={t('admin:reportsPage.invoices')} align="right">{r.invoiceCount}</DataTableCell>

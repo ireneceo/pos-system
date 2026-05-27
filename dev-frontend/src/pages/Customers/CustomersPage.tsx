@@ -19,7 +19,7 @@ import { getAuthToken } from '../../utils/auth';
 // 스타일 컴포넌트
 const CustomersContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #FAFBFC;
+  background-color: #F9FAFB;
   min-height: 100vh;
 `;
 
@@ -31,12 +31,12 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s;
-  border: ${props => props.variant === 'primary' ? 'none' : '1px solid #E6EBF1'};
+  border: ${props => props.variant === 'primary' ? 'none' : '1px solid #C7CED6'};
   background: ${props => props.variant === 'primary' ? '#635BFF' : 'white'};
-  color: ${props => props.variant === 'primary' ? 'white' : '#6B7C93'};
+  color: ${props => props.variant === 'primary' ? 'white' : '#4B5563'};
   
   &:hover {
-    background: ${props => props.variant === 'primary' ? '#5A51E6' : '#F6F9FC'};
+    background: ${props => props.variant === 'primary' ? '#5A51E6' : '#F4F6F9'};
     transform: translateY(-1px);
   }
   
@@ -66,7 +66,7 @@ const SearchIcon = styled.div`
   left: 16px;
   top: 50%;
   transform: translateY(-50%);
-  color: #6B7C93;
+  color: #4B5563;
   font-size: 16px;
   pointer-events: none;
 `;
@@ -78,7 +78,7 @@ const SearchInputWithIcon = styled(SearchInput)`
 const CustomersTable = styled.div`
   background: white;
   border-radius: 8px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   overflow-x: auto;
 
   @media (max-width: 768px) {
@@ -93,11 +93,11 @@ const TableHeader = styled.div`
   grid-template-columns: minmax(180px, 2fr) minmax(140px, 1.5fr) 80px 80px 70px 100px 100px 140px 36px;
   gap: 12px;
   padding: 14px 20px;
-  background: #F8FAFC;
-  border-bottom: 1px solid #E6EBF1;
+  background: #F1F4F8;
+  border-bottom: 1px solid #C7CED6;
   font-size: 12px;
   font-weight: 600;
-  color: #6B7C93;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.3px;
   align-items: center;
@@ -119,7 +119,7 @@ const TableRow = styled.div<{ clickable?: boolean }>`
   grid-template-columns: minmax(180px, 2fr) minmax(140px, 1.5fr) 80px 80px 70px 100px 100px 140px 36px;
   gap: 12px;
   padding: 14px 20px;
-  border-bottom: 1px solid #F6F9FC;
+  border-bottom: 1px solid #F4F6F9;
   align-items: center;
   transition: all 0.2s;
   cursor: ${props => props.clickable ? 'pointer' : 'default'};
@@ -132,7 +132,7 @@ const TableRow = styled.div<{ clickable?: boolean }>`
   & > *:nth-child(8) { justify-self: end; }
 
   &:hover {
-    background: ${props => props.clickable ? '#F8FAFC' : 'transparent'};
+    background: ${props => props.clickable ? '#F1F4F8' : 'transparent'};
   }
 
   &:last-child {
@@ -151,7 +151,7 @@ const MobileTableRow = styled.div`
     display: block;
     background: white;
     border-radius: 8px;
-    border: 1px solid #E6EBF1;
+    border: 1px solid #C7CED6;
     padding: 16px;
     margin-bottom: 12px;
     cursor: pointer;
@@ -185,7 +185,7 @@ const CustomerAvatar = styled.div<{ tier: string }>`
       case 'VIP': return 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)';
       case 'Gold': return 'linear-gradient(135deg, #FFB800 0%, #FF8C00 100%)';
       case 'Silver': return 'linear-gradient(135deg, #C0C0C0 0%, #808080 100%)';
-      default: return 'linear-gradient(135deg, #6B7280 0%, #4B5563 100%)';
+      default: return 'linear-gradient(135deg, #4B5563 0%, #374151 100%)';
     }
   }};
 `;
@@ -207,7 +207,7 @@ const CustomerName = styled.div`
 
 const CustomerMeta = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -223,7 +223,7 @@ const LoyaltyBadge = styled.span<{ tier: string }>`
     switch(props.tier) {
       case 'VIP': return '#FEF3C7';
       case 'Gold': return '#FDE68A';
-      case 'Silver': return '#F3F4F6';
+      case 'Silver': return '#F1F4F8';
       default: return '#DBEAFE';
     }
   }};
@@ -231,7 +231,7 @@ const LoyaltyBadge = styled.span<{ tier: string }>`
     switch(props.tier) {
       case 'VIP': return '#92400E';
       case 'Gold': return '#D97706';
-      case 'Silver': return '#6B7280';
+      case 'Silver': return '#4B5563';
       default: return '#1E40AF';
     }
   }};
@@ -255,15 +255,15 @@ const ActionButtons = styled.div`
 const ActionButton = styled.button`
   padding: 6px 12px;
   font-size: 12px;
-  color: #6B7C93;
+  color: #4B5563;
   background: none;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.15s;
 
   &:hover {
-    background: #F6F9FC;
+    background: #F4F6F9;
     color: #0A2540;
     border-color: #C7D2FE;
   }
@@ -271,8 +271,8 @@ const ActionButton = styled.button`
 
 const DeleteButton = styled.button`
   padding: 6px;
-  background: #F6F9FC;
-  border: 1px solid #E6EBF1;
+  background: #F4F6F9;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s;
@@ -283,7 +283,7 @@ const DeleteButton = styled.button`
   min-height: 32px;
 
   &:hover {
-    background: #E6EBF1;
+    background: #C7CED6;
     transform: translateY(-1px);
   }
 
@@ -301,7 +301,7 @@ const DeleteButton = styled.button`
 const IconSymbol = styled.span`
   font-size: 14px;
   font-family: 'Lucida Console', 'Courier New', monospace;
-  color: #6B7C93;
+  color: #4B5563;
   display: inline-block;
   line-height: 1;
 `;
@@ -348,7 +348,7 @@ const DetailItem = styled.div`
 const DetailLabel = styled.span`
   font-size: 12px;
   font-weight: 500;
-  color: #6B7280;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.3px;
 `;
@@ -614,7 +614,7 @@ const CustomersPage: React.FC = () => {
                     : 'No customers registered yet'}
                 </EmptyStateText>
                 {!(searchQuery || tierFilter !== 'all' || statusFilter !== 'all') && (
-                  <div style={{ fontSize: 13, color: '#6B7C93', marginBottom: 16, textAlign: 'center', lineHeight: 1.6, maxWidth: 420 }}>
+                  <div style={{ fontSize: 13, color: '#4B5563', marginBottom: 16, textAlign: 'center', lineHeight: 1.6, maxWidth: 420 }}>
                     Customers are added automatically when they place an online order via the QR menu.<br />
                     You can also add them manually for in-store visitors.
                   </div>
@@ -647,7 +647,7 @@ const CustomersPage: React.FC = () => {
                           {formatPhoneForDisplay(customer.phone)}
                         </div>
                         {customer.email && (
-                          <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {customer.email}
                           </div>
                         )}
@@ -669,7 +669,7 @@ const CustomersPage: React.FC = () => {
                         {formatCurrency(customer.totalSpent, selectedCurrency)}
                       </div>
 
-                      <div style={{ fontSize: '12px', color: '#6B7C93', lineHeight: '1.5' }}>
+                      <div style={{ fontSize: '12px', color: '#4B5563', lineHeight: '1.5' }}>
                         {customer.couponsAvailable > 0 && <div style={{ color: '#059669', fontWeight: 500 }}>{customer.couponsAvailable} available</div>}
                         {customer.couponsUsed > 0 && <div>{customer.couponsUsed} used</div>}
                         {customer.couponsAvailable === 0 && customer.couponsUsed === 0 && <div>—</div>}
@@ -729,7 +729,7 @@ const CustomersPage: React.FC = () => {
                         </div>
                       </CustomerInfo>
 
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#6B7280' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#4B5563' }}>
                         <span>{customer.points} pts</span>
                         <span>{customer.totalOrders} orders</span>
                         <span style={{ color: '#059669', fontWeight: '600' }}>{formatCurrency(customer.totalSpent, selectedCurrency)}</span>
@@ -737,7 +737,7 @@ const CustomersPage: React.FC = () => {
                       {(customer.couponsAvailable > 0 || customer.couponsUsed > 0) && (
                         <div style={{ display: 'flex', gap: '8px', marginTop: '8px', fontSize: '12px' }}>
                           {customer.couponsAvailable > 0 && <span style={{ color: '#059669', fontWeight: 500 }}>{customer.couponsAvailable} coupons available</span>}
-                          {customer.couponsUsed > 0 && <span style={{ color: '#6B7280' }}>{customer.couponsUsed} used</span>}
+                          {customer.couponsUsed > 0 && <span style={{ color: '#4B5563' }}>{customer.couponsUsed} used</span>}
                         </div>
                       )}
                     </MobileTableRow>
@@ -834,10 +834,10 @@ const CustomersPage: React.FC = () => {
                           key={index}
                           style={{
                             padding: '4px 8px',
-                            background: '#F3F4F6',
+                            background: '#F1F4F8',
                             borderRadius: '6px',
                             fontSize: '12px',
-                            color: '#6B7280'
+                            color: '#4B5563'
                           }}
                         >
                           {itemId}
@@ -850,7 +850,7 @@ const CustomersPage: React.FC = () => {
                 <DetailSection>
                   <DetailTitle>{t('customers:customersPage.coupons')}</DetailTitle>
                   {loadingCoupons ? (
-                    <div style={{ color: '#6B7280', fontSize: '14px' }}>{t('customers:customersPage.loading')}</div>
+                    <div style={{ color: '#4B5563', fontSize: '14px' }}>{t('customers:customersPage.loading')}</div>
                   ) : customerCoupons ? (
                     <>
                       {customerCoupons.available.length > 0 && (
@@ -863,15 +863,15 @@ const CustomersPage: React.FC = () => {
                               <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '8px' }}>
                                 <div>
                                   <span style={{ fontSize: '14px', fontWeight: 700, color: '#059669', fontFamily: 'monospace', letterSpacing: '0.5px' }}>{c.code}</span>
-                                  {c.name && <span style={{ fontSize: '12px', color: '#6B7280', marginLeft: '8px' }}>{c.name}</span>}
+                                  {c.name && <span style={{ fontSize: '12px', color: '#4B5563', marginLeft: '8px' }}>{c.name}</span>}
                                 </div>
                                 <div style={{ textAlign: 'right' }}>
                                   <div style={{ fontSize: '14px', fontWeight: 600, color: '#1F2937' }}>
                                     {c.type === 'percentage' ? `${c.value}% off` : formatCurrency(c.value, selectedCurrency) + ' off'}
                                   </div>
-                                  {c.min_order > 0 && <div style={{ fontSize: '11px', color: '#6B7280' }}>Min. {formatCurrency(c.min_order, selectedCurrency)}</div>}
-                                  {c.per_user_limit && <div style={{ fontSize: '11px', color: '#6B7280' }}>{c.my_usage}/{c.per_user_limit} used</div>}
-                                  {c.valid_until && <div style={{ fontSize: '11px', color: '#6B7280' }}>Until {formatDateTime(c.valid_until, null, { year: 'numeric', month: '2-digit', day: '2-digit' })}</div>}
+                                  {c.min_order > 0 && <div style={{ fontSize: '11px', color: '#4B5563' }}>Min. {formatCurrency(c.min_order, selectedCurrency)}</div>}
+                                  {c.per_user_limit && <div style={{ fontSize: '11px', color: '#4B5563' }}>{c.my_usage}/{c.per_user_limit} used</div>}
+                                  {c.valid_until && <div style={{ fontSize: '11px', color: '#4B5563' }}>Until {formatDateTime(c.valid_until, null, { year: 'numeric', month: '2-digit', day: '2-digit' })}</div>}
                                 </div>
                               </div>
                             ))}
@@ -880,19 +880,19 @@ const CustomersPage: React.FC = () => {
                       )}
                       {customerCoupons.history.length > 0 && (
                         <div>
-                          <div style={{ fontSize: '13px', fontWeight: 600, color: '#6B7280', marginBottom: '8px' }}>
+                          <div style={{ fontSize: '13px', fontWeight: 600, color: '#4B5563', marginBottom: '8px' }}>
                             Used ({customerCoupons.history.length})
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                             {customerCoupons.history.map((h: any, i: number) => (
-                              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 14px', background: '#F8FAFC', border: '1px solid #E6EBF1', borderRadius: '8px', fontSize: '13px' }}>
+                              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 14px', background: '#F1F4F8', border: '1px solid #C7CED6', borderRadius: '8px', fontSize: '13px' }}>
                                 <div>
                                   <span style={{ fontWeight: 600, fontFamily: 'monospace' }}>{h.code}</span>
-                                  <span style={{ color: '#6B7280', marginLeft: '8px' }}>#{h.order_number}</span>
+                                  <span style={{ color: '#4B5563', marginLeft: '8px' }}>#{h.order_number}</span>
                                 </div>
                                 <div style={{ textAlign: 'right' }}>
                                   <span style={{ fontWeight: 600, color: '#DC2626' }}>-{formatCurrency(h.discount, selectedCurrency)}</span>
-                                  <span style={{ color: '#9CA3AF', marginLeft: '8px', fontSize: '12px' }}>{formatDateTime(h.used_at, null, { year: 'numeric', month: '2-digit', day: '2-digit' })}</span>
+                                  <span style={{ color: '#6B7280', marginLeft: '8px', fontSize: '12px' }}>{formatDateTime(h.used_at, null, { year: 'numeric', month: '2-digit', day: '2-digit' })}</span>
                                 </div>
                               </div>
                             ))}
@@ -900,11 +900,11 @@ const CustomersPage: React.FC = () => {
                         </div>
                       )}
                       {customerCoupons.available.length === 0 && customerCoupons.history.length === 0 && (
-                        <div style={{ color: '#6B7280', fontSize: '14px' }}>{t('customers:customersPage.noCouponsAvailableOrUsed')}</div>
+                        <div style={{ color: '#4B5563', fontSize: '14px' }}>{t('customers:customersPage.noCouponsAvailableOrUsed')}</div>
                       )}
                     </>
                   ) : (
-                    <div style={{ color: '#6B7280', fontSize: '14px' }}>{t('customers:customersPage.noCouponData')}</div>
+                    <div style={{ color: '#4B5563', fontSize: '14px' }}>{t('customers:customersPage.noCouponData')}</div>
                   )}
                 </DetailSection>
               </>
@@ -942,7 +942,7 @@ const CustomersPage: React.FC = () => {
             <p style={{ marginBottom: '16px', color: '#1F2937' }}>
               Are you sure you want to delete <strong>{customerToDelete?.name}</strong>?
             </p>
-            <p style={{ color: '#6B7280', fontSize: '14px' }}>
+            <p style={{ color: '#4B5563', fontSize: '14px' }}>
               This will permanently remove the customer and all their data from the system. This action cannot be undone.
             </p>
           </div>

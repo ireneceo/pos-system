@@ -19,7 +19,7 @@ import {
   DataTableAmount,
   Modal as CommonModal
 } from '../../components/UI';
-import { printBillViaRawBT, printKitchenTicketViaRawBT, printCancellationTicket } from '../../utils/billPrint';
+import { printBillViaRawBT, printOrderTicketToBillPrinter, printCancellationTicket } from '../../utils/billPrint';
 import { formatDateTime as formatDateTimeUtil } from '../../utils/timezone';
 import ConfirmModal from '../../components/ConfirmModal';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
@@ -1052,7 +1052,7 @@ const LiveOrdersPage: React.FC = () => {
         notes: (orderToPrint as any).notes || '',
         takeawayCharge: parseFloat((orderToPrint as any).takeaway_charge || '0')
       };
-      await printKitchenTicketViaRawBT(orderData, storeInfo);
+      await printOrderTicketToBillPrinter(orderData, storeInfo);
     }
   };
 
@@ -1119,7 +1119,7 @@ const LiveOrdersPage: React.FC = () => {
       takeawayCharge: 0
     };
 
-    const success = await printKitchenTicketViaRawBT(orderData, storeInfo);
+    const success = await printOrderTicketToBillPrinter(orderData, storeInfo);
     if (success) {
       showToast(`Kitchen ticket for ${groupNum === 0 ? 'Original Order' : `+Order ${groupNum}`} printed`, 'success');
     }
@@ -1162,7 +1162,7 @@ const LiveOrdersPage: React.FC = () => {
       notes: '', takeawayCharge: 0
     };
 
-    const success = await printKitchenTicketViaRawBT(orderData, storeInfo);
+    const success = await printOrderTicketToBillPrinter(orderData, storeInfo);
     if (success) { showToast(`Kitchen ticket for +Order ${latestGroup} printed`, 'success'); }
   };
 
@@ -1442,8 +1442,8 @@ const LiveOrdersPage: React.FC = () => {
               onClick={() => setShowSettlement(true)} title="Daily Settlement"
               style={{
                 marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px',
-                padding: '8px 16px', background: '#F6F9FC', color: '#0A2540',
-                border: '1px solid #E6EBF1', borderRadius: '6px', cursor: 'pointer',
+                padding: '8px 16px', background: '#F4F6F9', color: '#0A2540',
+                border: '1px solid #C7CED6', borderRadius: '6px', cursor: 'pointer',
                 fontSize: '14px', fontWeight: 500, flexShrink: 0
               }}
             >
@@ -1530,7 +1530,7 @@ const LiveOrdersPage: React.FC = () => {
                             onChange={() => handleSelectOrder(order.id)}
                             style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                           />
-                        ) : (<span style={{ color: '#9CA3AF', fontSize: '12px' }}>-</span>)}
+                        ) : (<span style={{ color: '#6B7280', fontSize: '12px' }}>-</span>)}
                       </DataTableCell>
                     )}
                     <DataTableCell data-label="ORDER">
@@ -1543,7 +1543,7 @@ const LiveOrdersPage: React.FC = () => {
                         {order.source === 'mobile' && (
                           order.customer_id
                             ? <OrderTypeBadge style={{ background: '#D1FAE5', color: '#059669' }}>{t('orders:liveOrdersPage.member')}</OrderTypeBadge>
-                            : <OrderTypeBadge style={{ background: '#F3F4F6', color: '#6B7280' }}>{t('orders:liveOrdersPage.guest')}</OrderTypeBadge>
+                            : <OrderTypeBadge style={{ background: '#F1F4F8', color: '#4B5563' }}>{t('orders:liveOrdersPage.guest')}</OrderTypeBadge>
                         )}
                         {order.source === 'kiosk' && (<OrderTypeBadge style={{ background: '#FEF3C7', color: '#D97706' }}>{t('orders:liveOrdersPage.kiosk')}</OrderTypeBadge>)}
                         {order.payment_method === 'staffMeal' && (<OrderTypeBadge style={{ background: '#FEE2E2', color: '#DC2626' }}>{t('orders:liveOrdersPage.staffMeal')}</OrderTypeBadge>)}
@@ -1618,7 +1618,7 @@ const LiveOrdersPage: React.FC = () => {
                             )}
                             {!isOutstanding(order) && (
                               <ActionButton onClick={() => { const nextStatus = getNextStatus(order.status, order.payment_status); if (nextStatus) handleStatusChange(order.id, nextStatus); }}
-                                style={order.status === 'ready' ? { background: '#10B981', borderColor: '#10B981', color: 'white' } : order.status === 'served' ? { background: '#9CA3AF', borderColor: '#9CA3AF', color: 'white' } : undefined}>
+                                style={order.status === 'ready' ? { background: '#10B981', borderColor: '#10B981', color: 'white' } : order.status === 'served' ? { background: '#6B7280', borderColor: '#6B7280', color: 'white' } : undefined}>
                                 {getActionLabel(order.status, order.payment_status, order.order_type)}
                               </ActionButton>
                             )}
@@ -1632,7 +1632,7 @@ const LiveOrdersPage: React.FC = () => {
                         )}
                         {(order.payment_status === 'pending' || order.payment_status === 'partial') && (
                           <ActionButton onClick={(e) => handlePaymentClick(order, e)}
-                            style={order.status === 'served' ? { background: '#10B981', borderColor: '#10B981', color: 'white' } : { background: '#F6F9FC', color: '#6B7C93', border: '1px solid #E6EBF1' }}>
+                            style={order.status === 'served' ? { background: '#10B981', borderColor: '#10B981', color: 'white' } : { background: '#F4F6F9', color: '#4B5563', border: '1px solid #C7CED6' }}>
                             {order.payment_status === 'partial' ? 'Continue Payment' : 'Payment'}
                           </ActionButton>
                         )}
@@ -1836,9 +1836,9 @@ const LiveOrdersPage: React.FC = () => {
 
         {/* Merge Target Selection Modal */}
         {showMergeModal && (
-        <CommonModal isOpen={true} onClose={() => setShowMergeModal(false)} title="Select Target Order" footer={<><ActionButton onClick={() => setShowMergeModal(false)} style={{ background: 'white', color: '#374151', border: '1px solid #E5E7EB' }}>{t('orders:liveOrdersPage.cancel')}</ActionButton><ActionButton onClick={() => mergeTargetOrderId && executeMergeOrders(mergeTargetOrderId)} disabled={!mergeTargetOrderId || isMerging} style={{ background: mergeTargetOrderId ? '#635BFF' : '#E5E7EB', color: mergeTargetOrderId ? 'white' : '#9CA3AF', cursor: mergeTargetOrderId ? 'pointer' : 'not-allowed' }}>{isMerging ? 'Merging...' : 'Merge Orders'}</ActionButton></>}>
+        <CommonModal isOpen={true} onClose={() => setShowMergeModal(false)} title="Select Target Order" footer={<><ActionButton onClick={() => setShowMergeModal(false)} style={{ background: 'white', color: '#1F2937', border: '1px solid #C7CED6' }}>{t('orders:liveOrdersPage.cancel')}</ActionButton><ActionButton onClick={() => mergeTargetOrderId && executeMergeOrders(mergeTargetOrderId)} disabled={!mergeTargetOrderId || isMerging} style={{ background: mergeTargetOrderId ? '#635BFF' : '#C7CED6', color: mergeTargetOrderId ? 'white' : '#6B7280', cursor: mergeTargetOrderId ? 'pointer' : 'not-allowed' }}>{isMerging ? 'Merging...' : 'Merge Orders'}</ActionButton></>}>
             <div>
-              <p style={{ marginBottom: '16px', color: '#6B7C93', fontSize: '14px' }}>
+              <p style={{ marginBottom: '16px', color: '#4B5563', fontSize: '14px' }}>
                 Select which order to merge INTO. The selected order's table/pager number will be kept.
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -1847,11 +1847,11 @@ const LiveOrdersPage: React.FC = () => {
                   .sort((a, b) => new Date(a.createdAt || a.order_date).getTime() - new Date(b.createdAt || b.order_date).getTime())
                   .map(order => (
                     <div key={order.id} onClick={() => setMergeTargetOrderId(order.id)}
-                      style={{ padding: '16px', border: `2px solid ${mergeTargetOrderId === order.id ? '#635BFF' : '#E6EBF1'}`, borderRadius: '8px', cursor: 'pointer', background: mergeTargetOrderId === order.id ? '#F0EEFF' : 'white', transition: 'all 0.15s' }}>
+                      style={{ padding: '16px', border: `2px solid ${mergeTargetOrderId === order.id ? '#635BFF' : '#C7CED6'}`, borderRadius: '8px', cursor: 'pointer', background: mergeTargetOrderId === order.id ? '#F0EEFF' : 'white', transition: 'all 0.15s' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
                           <div style={{ fontWeight: 600, fontSize: '16px', color: '#0A2540' }}>{order.order_number}</div>
-                          <div style={{ fontSize: '13px', color: '#6B7C93', marginTop: '4px' }}>
+                          <div style={{ fontSize: '13px', color: '#4B5563', marginTop: '4px' }}>
                             {order.table_number ? `${getTableLabel(order.table_number, floorPlan).display}${order.guest_count ? ` (${order.guest_count}p)` : ''}` : ''}
                             {order.table_number && order.pager_number ? ' / ' : ''}
                             {order.pager_number ? `Pager ${order.pager_number}` : ''}
@@ -1863,7 +1863,7 @@ const LiveOrdersPage: React.FC = () => {
                         </div>
                         <div style={{ textAlign: 'right' }}>
                           <div style={{ fontSize: '14px', fontWeight: 500, color: '#0A2540' }}>{formatCurrency(order.total_amount, operationSettings.currency)}</div>
-                          <div style={{ fontSize: '12px', color: '#6B7C93' }}>{order.order_items?.length || 0} items</div>
+                          <div style={{ fontSize: '12px', color: '#4B5563' }}>{order.order_items?.length || 0} items</div>
                         </div>
                       </div>
                       {mergeTargetOrderId === order.id && (

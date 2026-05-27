@@ -44,7 +44,7 @@ const CanvasOuter = styled.div<{ $editing?: boolean }>`
   overflow: hidden;
   background: ${p => p.$editing ? '#F5F7FA' : 'white'};
   border-radius: 8px;
-  border: 1px solid ${p => p.$editing ? '#CBD5E1' : '#E6EBF1'};
+  border: 1px solid ${p => p.$editing ? '#64748B' : '#C7CED6'};
   position: relative;
 `;
 const CanvasBoundsOverlay = styled.div<{ $w: number; $h: number; $scale: number; $offX: number; $offY: number }>`
@@ -73,8 +73,8 @@ const GridOverlay = styled.div<{ $gridSize: number; $scale: number }>`
   inset: 0;
   pointer-events: none;
   background-image:
-    linear-gradient(to right, #F0F2F5 1px, transparent 1px),
-    linear-gradient(to bottom, #F0F2F5 1px, transparent 1px);
+    linear-gradient(to right, #C7CED6 1px, transparent 1px),
+    linear-gradient(to bottom, #C7CED6 1px, transparent 1px);
   background-size:
     ${p => p.$gridSize / p.$scale}px ${p => p.$gridSize / p.$scale}px;
   opacity: 0.5;
@@ -92,7 +92,7 @@ const EmptyMessage = styled.div`
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #9CA3AF;
+  color: #6B7280;
   font-size: 14px;
   gap: 8px;
 `;
@@ -173,8 +173,11 @@ const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
     return () => observer.disconnect();
   }, [updateScale]);
 
-  const getTableStatus = (tableNumber: string): TableStatus => {
-    return (tableStatuses[tableNumber]?.status as TableStatus) || 'available';
+  // 2026-05-27: lookup by table.id first (Floor Plan v2 unique id), fall back to
+  // tableNumber for legacy orders that pre-date the floor_plan_table_id column.
+  const getTableStatus = (tableId: string, tableNumber: string): TableStatus => {
+    const info = tableStatuses[tableId] || tableStatuses[tableNumber];
+    return (info?.status as TableStatus) || 'available';
   };
 
   return (
@@ -219,8 +222,8 @@ const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
           {floorPlan.tables.map(table => {
             const nodeProps: CanvasNodeRenderProps = {
               table,
-              status: getTableStatus(table.tableNumber),
-              statusInfo: tableStatuses[table.tableNumber],
+              status: getTableStatus(table.id, table.tableNumber),
+              statusInfo: tableStatuses[table.id] || tableStatuses[table.tableNumber],
               isSelected: selectedTableIds ? selectedTableIds.has(table.id) : (selectedTableId === table.id),
               isEditing,
               onClick: onTableClick,

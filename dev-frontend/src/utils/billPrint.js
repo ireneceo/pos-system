@@ -91,21 +91,9 @@ function formatLine(left, right, width = 48) {
 // ============================================
 
 /**
- * Check if browser print mode is selected
- */
-function shouldUseBrowserPrint() {
-  return localStorage.getItem('printerMode') === 'browser';
-}
-
-/**
- * Check if QZ Tray mode is selected
- */
-function shouldUseQZTray() {
-  return localStorage.getItem('printerMode') === 'qztray';
-}
-
-/**
- * Set printer mode
+ * Set the legacy global printer mode.
+ * Kept for backwards compatibility; new code should set `method` per printer
+ * via printer_settings.{billPrinter,kitchenPrinter,kitchenStationPrinters[id]}.method.
  * @param {'rawbt' | 'browser' | 'qztray'} mode
  */
 export function setPrinterMode(mode) {
@@ -113,7 +101,8 @@ export function setPrinterMode(mode) {
 }
 
 /**
- * Get current printer mode
+ * Get the legacy global printer mode. Used as a fallback when a printer
+ * has no `method` field configured (existing stores before per-printer methods).
  * @returns {'rawbt' | 'browser' | 'qztray'}
  */
 export function getPrinterMode() {
@@ -121,6 +110,94 @@ export function getPrinterMode() {
   if (mode === 'browser') return 'browser';
   if (mode === 'qztray') return 'qztray';
   return 'rawbt';
+}
+
+/**
+ * Get this device's active workstation id (set by WorkstationSelectorModal,
+ * stored in localStorage so each POS device keeps its own choice).
+ */
+export function getActiveWorkstationId() {
+  try {
+    return typeof localStorage !== 'undefined' ? localStorage.getItem('workstation_id') : null;
+  } catch { return null; }
+}
+
+/**
+ * Set this device's active workstation id. Dispatches a `workstation-changed`
+ * event so React components can re-render.
+ */
+export function setActiveWorkstationId(id) {
+  try {
+    if (id) localStorage.setItem('workstation_id', id);
+    else localStorage.removeItem('workstation_id');
+    try { window.dispatchEvent(new CustomEvent('workstation-changed', { detail: { id } })); } catch {}
+  } catch {}
+}
+
+/**
+ * Resolve the bill-printer settings for THIS device's active workstation.
+ *
+ * Multi-POS shops: every POS device shares the Restaurant record, but each
+ * one binds itself to a workstation entry (localStorage.workstation_id).
+ * The active workstation's billPrinter is what we actually print to.
+ *
+ * Fallback chain:
+ *   active workstation → first workstation → legacy single billPrinter → defaults.
+ */
+export function getActiveBillPrinter() {
+  const settings = getPrinterSettings();
+  const wsId = getActiveWorkstationId();
+  if (wsId && Array.isArray(settings.workstations)) {
+    const ws = settings.workstations.find(w => w && w.id === wsId);
+    if (ws && ws.billPrinter) return ws.billPrinter;
+  }
+  if (Array.isArray(settings.workstations) && settings.workstations.length > 0 && settings.workstations[0].billPrinter) {
+    return settings.workstations[0].billPrinter;
+  }
+  return settings.billPrinter || { enabled: false, name: '', autoPrint: false, method: 'browser', address: '' };
+}
+
+/**
+ * Resolve the print method for a specific printer scope.
+ *
+ * Each printer (bill, kitchen, individual station) can use a different connection
+ * method. This is the single source of truth for "how do I print to printer X?".
+ *
+ * Scope values:
+ *   - 'bill'           → active workstation's billPrinter.method (multi-POS aware)
+ *   - 'kitchen'        → settings.kitchenPrinter.method  (single kitchen, no stations)
+ *   - 'station:<id>'   → settings.kitchenStationPrinters[id].method
+ *
+ * Fallback chain: scope method → kitchen method (for stations) → legacy global mode.
+ *
+ * @param {'bill' | 'kitchen' | string} scope
+ * @returns {'browser' | 'rawbt' | 'qztray'}
+ */
+export function getPrinterMethod(scope = 'bill') {
+  const settings = getPrinterSettings();
+  if (scope === 'bill') {
+    const wsBill = getActiveBillPrinter();
+    return wsBill?.method || settings.billPrinter?.method || getPrinterMode();
+  }
+  if (scope === 'kitchen') {
+    return settings.kitchenPrinter?.method || getPrinterMode();
+  }
+  if (typeof scope === 'string' && scope.startsWith('station:')) {
+    const stationId = scope.slice('station:'.length);
+    const sp = settings.kitchenStationPrinters?.[stationId];
+    return sp?.method || settings.kitchenPrinter?.method || getPrinterMode();
+  }
+  return getPrinterMode();
+}
+
+/** Internal: should this scope use the browser print dialog? */
+function shouldUseBrowserPrint(scope = 'bill') {
+  return getPrinterMethod(scope) === 'browser';
+}
+
+/** Internal: should this scope use QZ Tray (network or OS printer)? */
+function shouldUseQZTray(scope = 'bill') {
+  return getPrinterMethod(scope) === 'qztray';
 }
 
 // ============================================
@@ -131,17 +208,122 @@ let qzConnected = false;
 let qzConnecting = false;
 
 /**
- * QZ Tray 서명 콜백 설정 (보안 인증)
- * 프로덕션에서는 자체 인증서로 교체 가능
+ * Send the ESC/POS cash-drawer pulse to the active workstation's bill printer.
+ * Most receipt printers expose an RJ-11 jack on the back; this pulse fires the
+ * drawer solenoid open. Standard sequence: ESC p 0 100ms 100ms (drawer #1).
+ *
+ * Only QZ Tray / RawBT can deliver raw ESC/POS — browser print mode cannot.
+ *
+ * @returns {Promise<boolean>}
  */
+export async function openCashDrawer() {
+  try {
+    const bp = getActiveBillPrinter();
+    if (!bp || !bp.enabled) {
+      console.warn('Cash drawer: bill printer disabled — cannot send drawer pulse');
+      return false;
+    }
+    const method = getPrinterMethod('bill');
+    // ESC p 0 100 100 — drawer #1, 100ms ON pulse, 100ms OFF gap (standard sequence)
+    const pulse = '\x1B\x70\x00\x64\x64';
+
+    if (method === 'qztray') {
+      return await sendViaQZTray(pulse, bp.address);
+    }
+    if (method === 'rawbt') {
+      const targetPrinter = bp.name;
+      const base64 = btoa(unescape(encodeURIComponent(pulse)));
+      let intentScheme = '#Intent;scheme=rawbt;';
+      if (targetPrinter) intentScheme += 'S.s=' + encodeURIComponent(targetPrinter) + ';';
+      const intentUrl = 'intent:base64,' + base64 + intentScheme + 'package=ru.a402d.rawbtprinter;end;';
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = intentUrl;
+      document.body.appendChild(iframe);
+      setTimeout(() => document.body.removeChild(iframe), 1000);
+      return true;
+    }
+    console.warn('Cash drawer: browser print mode cannot send raw ESC/POS — switch to QZ Tray or RawBT to use the drawer pulse');
+    return false;
+  } catch (err) {
+    console.error('Cash drawer pulse failed:', err);
+    return false;
+  }
+}
+
+/**
+ * QZ Tray request signing.
+ *
+ * Without signing, QZ Tray asks the user to allow each print (security feature).
+ * To avoid that, we send a signed request: the public certificate is installed
+ * once in QZ Tray (as override.crt), and every print request is signed by the
+ * backend using the matching private key.
+ *
+ * Flow on each print:
+ *   1. QZ Tray asks the page for the certificate → we GET /api/qz-tray/certificate
+ *   2. QZ Tray asks the page to sign the request payload → we POST it to /api/qz-tray/sign
+ *   3. QZ Tray verifies the signature against override.crt → silent print, no prompt
+ *
+ * If the backend is unreachable, we fall back to empty cert/signature — the
+ * user will see the "Allow" prompt, which is the legacy behaviour.
+ */
+let _qzSecurityConfigured = false;
+
 function setupQZSecurity() {
-  if (qz.security.getSignatureAlgorithm() !== undefined) return;
-  qz.security.setCertificatePromise(function(resolve) {
-    resolve('');
+  if (_qzSecurityConfigured) return;
+  _qzSecurityConfigured = true;
+
+  // 2026-05-27: QZ Tray 2.2.x+ defaults to SHA512. The "Allow once / remember"
+  // checkbox stays DISABLED whenever signature verification fails — the user
+  // sees the prompt, ticks "remember", and the Allow button greys out. That was
+  // SHA1 (us) vs SHA512 (QZ Tray) algorithm mismatch. Both sides now match SHA512;
+  // backend `crypto.createSign('RSA-SHA512')` mirrors this declaration.
+  if (typeof qz.security.setSignatureAlgorithm === 'function') {
+    qz.security.setSignatureAlgorithm('SHA512');
+  }
+
+  qz.security.setCertificatePromise(function(resolve, reject) {
+    console.log('[QZ Tray] requesting certificate from /api/qz-tray/certificate');
+    fetch('/api/qz-tray/certificate', { method: 'GET', headers: { 'Accept': 'text/plain' } })
+      .then(r => {
+        if (!r.ok) return Promise.reject(new Error('cert fetch HTTP ' + r.status));
+        return r.text();
+      })
+      .then(pem => {
+        const looksLikePEM = typeof pem === 'string' && pem.indexOf('-----BEGIN CERTIFICATE-----') === 0;
+        console.log('[QZ Tray] certificate', looksLikePEM ? 'OK (' + pem.length + ' chars)' : 'INVALID FORMAT — first 60: ' + pem.slice(0, 60));
+        if (!looksLikePEM) return reject(new Error('cert not PEM'));
+        resolve(pem);
+      })
+      .catch(err => {
+        // Reject explicitly so QZ Tray surfaces a clean "no signed cert" error instead of
+        // falling into anonymous mode (which made the user see "Untrusted" every time and
+        // hid the real failure).
+        console.error('[QZ Tray] certificate load failed:', err && err.message);
+        reject(err);
+      });
   });
-  qz.security.setSignaturePromise(function() {
-    return function(resolve) {
-      resolve('');
+
+  qz.security.setSignaturePromise(function(toSign) {
+    return function(resolve, reject) {
+      console.log('[QZ Tray] signing payload (' + (toSign || '').length + ' chars)');
+      fetch('/api/qz-tray/sign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: toSign
+      })
+        .then(r => {
+          if (!r.ok) return Promise.reject(new Error('sign HTTP ' + r.status));
+          return r.text();
+        })
+        .then(sig => {
+          console.log('[QZ Tray] signature OK (' + sig.length + ' chars)');
+          resolve(sig);
+        })
+        .catch(err => {
+          console.error('[QZ Tray] signing failed:', err && err.message);
+          reject(err);
+        });
     };
   });
 }
@@ -234,15 +416,38 @@ async function sendViaQZTray(escposContent, printerAddress) {
     }
 
     let config;
-    // IP:포트 형식이면 네트워크 RAW 소켓, 아니면 OS 프린터 이름으로 전송
-    if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(printerAddress)) {
-      const [host, port] = printerAddress.split(':');
-      config = qz.configs.create(host + ':' + (port || '9100'), {
+    let resolvedAddress = printerAddress;
+
+    // Empty address → use this device's OS default printer.
+    // Lets a multi-POS shop share the same DB setting (billPrinter.method='qztray', address='')
+    // and still have each POS print to its own counter receipt printer — each PC's
+    // OS default is set locally (Control Panel → Printers → Set as Default).
+    if (!resolvedAddress) {
+      try {
+        resolvedAddress = await qz.printers.getDefault();
+      } catch (e) {
+        console.warn('QZ Tray: failed to query OS default printer:', e && e.message);
+      }
+      if (!resolvedAddress) {
+        console.error('QZ Tray: no printer address configured and no OS default printer found on this device');
+        return false;
+      }
+      console.log('QZ Tray: using OS default printer ->', resolvedAddress);
+    }
+
+    // IP:port → QZ Tray network raw socket. The first arg of qz.configs.create() is
+    // the OS printer NAME — passing "IP:port" there made QZ Tray look for an OS printer
+    // by that name (always missing). Pass null + host/port options for raw socket.
+    if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(resolvedAddress)) {
+      const [host, port] = resolvedAddress.split(':');
+      config = qz.configs.create(null, {
         host: host,
-        port: parseInt(port || '9100', 10)
+        port: parseInt(port || '9100', 10),
+        encoding: 'UTF-8'
       });
     } else {
-      config = qz.configs.create(printerAddress);
+      // OS-registered printer name (USB printer or LAN printer added via Control Panel)
+      config = qz.configs.create(resolvedAddress);
     }
 
     // ESC/POS를 Base64로 인코딩하여 전송
@@ -515,9 +720,25 @@ export function generateBillContent(orderData, storeInfo) {
   content += CMD.LINE_FEED;
 
   // === FOOTER ===
+  // Pull the custom footer message & QR text from receiptSettings so ESC/POS
+  // receipts match the look the merchant configured in Settings (which the
+  // HTML browser-print path already honours).
+  const receiptCfg = getReceiptSettings();
+  const footerMsg = storeInfo.footerMessage || receiptCfg.footerMessage || 'Thank you for your purchase!';
+  const customQrText = storeInfo.customQrText || receiptCfg.customQrText || '';
+  const customQrPosition = storeInfo.customQrPosition || receiptCfg.customQrPosition || 'back';
+
   content += CMD.LINE_FEED;
   content += CMD.ALIGN_CENTER;
-  content += 'Thank you for your purchase!' + CMD.LINE_FEED;
+  if (customQrText && customQrPosition === 'front') {
+    content += customQrText + CMD.LINE_FEED;
+    content += CMD.LINE_FEED;
+  }
+  content += footerMsg + CMD.LINE_FEED;
+  if (customQrText && customQrPosition === 'back') {
+    content += CMD.LINE_FEED;
+    content += customQrText + CMD.LINE_FEED;
+  }
   content += CMD.LINE_FEED;
   content += CMD.LINE_FEED;
 
@@ -528,8 +749,124 @@ export function generateBillContent(orderData, storeInfo) {
 }
 
 // ============================================
-// HTML Generation for PC Print
+// HTML Generation for PC Print — Single Source of Truth
 // ============================================
+//
+// All printable HTML (bill / kitchen ticket / QR / cancellation / settlement)
+// MUST use `wrapPrintHTML()` so every print job shares the same typography,
+// spacing, dividers, and totals styling.
+//
+// Design tokens live ONLY in PRINT_STYLES below. To change the look of every
+// printed document, change PRINT_STYLES — nowhere else.
+//
+// See docs/PRINT_DESIGN_GUIDE.md for the design rules and class catalog.
+
+/**
+ * Shared stylesheet for every browser-printed document.
+ * 80mm thermal width, modern sans-serif, monochrome, dashed/solid dividers,
+ * generous use of weight (not color) for hierarchy.
+ */
+const PRINT_STYLES = `
+@page { size: 80mm auto; margin: 0; }
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: #fff; color: #000; }
+body {
+  font-family: 'Noto Sans KR', 'Noto Sans', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 10px 8px 4px 8px;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.receipt { width: 100%; text-align: center; }
+
+/* Header */
+.store-name { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; line-height: 1.25; }
+.store-trade-name { font-size: 13px; font-weight: 500; margin-top: 2px; }
+.store-info { font-size: 11px; color: #111; margin-top: 4px; line-height: 1.45; }
+.store-info-line { margin: 0; }
+
+/* Section banner (TAKEAWAY / PICKUP / DELIVERY / CANCELLED) */
+.banner { display: inline-block; padding: 4px 12px; margin: 6px 0; font-weight: 700; font-size: 14px; border: 2px solid #000; letter-spacing: 0.5px; }
+.banner-strong { font-size: 16px; }
+
+/* Dividers */
+.divider { border-top: 1px dashed #000; margin: 8px 0; }
+.divider-solid { border-top: 1px solid #000; margin: 8px 0; }
+
+/* Meta rows (Order/Table/Date/Cashier) */
+.meta { text-align: left; font-size: 12px; }
+.meta-row { display: flex; justify-content: space-between; align-items: baseline; padding: 1px 0; }
+.meta-label { font-weight: 600; }
+
+/* Items */
+.items { text-align: left; margin: 4px 0; }
+.item { margin-bottom: 6px; }
+.item-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.item-name { flex: 1; font-weight: 600; word-break: break-word; }
+.item-price { white-space: nowrap; }
+.item-qty { font-size: 11px; color: #222; padding-left: 0; margin-top: 1px; }
+.item-option { font-size: 11px; padding-left: 12px; color: #222; }
+.item-option::before { content: '+ '; }
+
+/* Totals */
+.totals { text-align: left; margin-top: 6px; }
+.totals .meta-row { padding: 2px 0; }
+.total-final { display: flex; justify-content: space-between; align-items: baseline; font-size: 16px; font-weight: 700; margin-top: 4px; padding-top: 4px; border-top: 1px solid #000; }
+
+/* Big numbers (table/pickup) */
+.big-number { font-size: 28px; font-weight: 700; letter-spacing: 1px; margin: 6px 0; }
+.medium-number { font-size: 20px; font-weight: 700; letter-spacing: 0.5px; margin: 4px 0; }
+
+/* QR */
+.qr-container { display: flex; justify-content: center; margin: 8px 0 4px 0; }
+.qr-container img { display: block; image-rendering: pixelated; }
+.instruction { font-size: 13px; font-weight: 600; margin-top: 4px; }
+
+/* Footer */
+.footer { margin-top: 10px; font-size: 11px; line-height: 1.45; }
+.footer-message { font-size: 12px; font-weight: 500; }
+.time-info { font-size: 10px; color: #333; margin-top: 2px; }
+
+/* Per-station header in kitchen tickets */
+.group-label { font-size: 16px; font-weight: 700; letter-spacing: 0.5px; padding: 4px 0; margin: 4px 0; border-top: 2px solid #000; border-bottom: 2px solid #000; }
+.printed-at { display: inline-block; padding: 3px 10px; margin: 4px 0 6px 0; font-size: 13px; font-weight: 700; letter-spacing: 0.5px; background: #000; color: #fff; }
+.station-tag { display: inline-block; padding: 1px 6px; margin-left: 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.3px; border: 1px solid #000; vertical-align: middle; }
+
+/* Multi-page (kitchen per-item) */
+@media print {
+  html, body { height: auto; }
+  .page-break { page-break-after: always; }
+  .no-print { display: none !important; }
+}
+`;
+
+/**
+ * Wrap a print-ready inner-HTML body with the shared stylesheet + document chrome.
+ * EVERY printable HTML (bill / kitchen / QR / cancellation / settlement) goes
+ * through this function — there should be NO other <style> tags in this file.
+ *
+ * @param {string} title - Document title (used by browser print dialog and OS print logs)
+ * @param {string} bodyHtml - Inner HTML to render inside <div class="receipt">
+ * @returns {string} Complete HTML document
+ */
+function wrapPrintHTML(title, bodyHtml) {
+  const safeTitle = String(title || 'Print').replace(/</g, '&lt;');
+  return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>${safeTitle}</title>
+<style>${PRINT_STYLES}</style>
+</head><body><div class="receipt">${bodyHtml}</div></body></html>`;
+}
+
+/** HTML-escape user-provided strings before injecting into print HTML. */
+function escapeHtmlForPrint(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 /**
  * Generate HTML Bill for PC browser print
@@ -544,7 +881,7 @@ function getReceiptSettings() {
 
 export function generateHTMLBill(orderData, storeInfo) {
   const receiptCfg = getReceiptSettings();
-  // Merge: storeInfo (from React state) > receiptCfg (from localStorage) > defaults
+  // Merge precedence: storeInfo (React state) > receiptCfg (localStorage) > defaults
   const showMembership = storeInfo.showMembership !== undefined ? storeInfo.showMembership : (receiptCfg.showMembership !== undefined ? receiptCfg.showMembership : false);
   const receiptLogo = storeInfo.receiptLogo || receiptCfg.receiptLogo || '';
   const footerMsg = storeInfo.footerMessage || receiptCfg.footerMessage || 'Thank you for your purchase!';
@@ -552,7 +889,6 @@ export function generateHTMLBill(orderData, storeInfo) {
   const customQrText = storeInfo.customQrText || receiptCfg.customQrText || '';
   const customQrPosition = storeInfo.customQrPosition || receiptCfg.customQrPosition || 'back';
 
-  // Use pre-generated QR data URL from storeInfo (generated in React component)
   const membershipQrDataUrl = storeInfo.membershipQrDataUrl || receiptCfg.membershipQrDataUrl || '';
   let customQrDataUrl = '';
   if (customQrImage && customQrImage.startsWith('/uploads/')) {
@@ -562,317 +898,225 @@ export function generateHTMLBill(orderData, storeInfo) {
   }
   const currencySymbol = getCurrencySymbol(orderData.currency);
   const dateStr = orderData.date.toLocaleDateString('en-MY');
-  const timeStr = orderData.date.toLocaleTimeString('en-MY', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true
-  });
+  const timeStr = orderData.date.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: true });
 
-  let itemsHTML = '';
-  orderData.items.forEach(item => {
-    const itemName = item.menuItem.name;
+  // Order-type banner (PICKUP / TAKEAWAY) — uses shared .banner class
+  let bannerHtml = '';
+  if (orderData.orderType === 'pickup') {
+    const pickupTime = orderData.scheduledPickupTime ? formatPickupTimeRange(orderData.scheduledPickupTime) : 'ASAP';
+    bannerHtml = `<div class="banner banner-strong">PRE-ORDER PICKUP</div>
+      <div style="font-weight:600;margin-bottom:4px;">Pickup: ${escapeHtmlForPrint(pickupTime)}</div>`;
+  } else if (orderData.takeawayCharge && orderData.takeawayCharge > 0) {
+    bannerHtml = `<div class="banner">TAKEAWAY</div>`;
+  }
+
+  // Header (logo + brand name + store info lines)
+  const bigName = storeInfo.tradeName || storeInfo.name || '';
+  const legalName = storeInfo.legalName || '';
+  const showLegal = legalName && legalName.trim() && legalName.trim() !== bigName.trim();
+  const infoLines = [];
+  if (storeInfo.address) infoLines.push(escapeHtmlForPrint(storeInfo.address));
+  if (showLegal) infoLines.push(escapeHtmlForPrint(legalName));
+  if (storeInfo.telephone) infoLines.push('Tel: ' + escapeHtmlForPrint(storeInfo.telephone));
+  const regParts = [];
+  if (storeInfo.businessRegistration) regParts.push('Reg No: ' + escapeHtmlForPrint(storeInfo.businessRegistration));
+  if (storeInfo.gstRegNo) regParts.push('Tax No: ' + escapeHtmlForPrint(storeInfo.gstRegNo));
+  if (regParts.length) infoLines.push(regParts.join(' &nbsp;|&nbsp; '));
+
+  const headerHtml = `
+    ${receiptLogo ? `<img src="${escapeHtmlForPrint(receiptLogo)}" style="max-width:240px;max-height:80px;margin-bottom:4px;filter:grayscale(100%);">` : ''}
+    <div class="store-name">${escapeHtmlForPrint(bigName)}</div>
+    ${infoLines.map(l => `<p class="store-info store-info-line">${l}</p>`).join('')}
+  `;
+
+  // Meta rows
+  const tableMetaHtml = orderData.tableNumber
+    ? `<div class="meta-row"><span class="meta-label">Table</span><span><strong>${escapeHtmlForPrint(orderData.tableNumber)}</strong></span></div>`
+    : (orderData.pagerNumber
+      ? `<div class="meta-row"><span class="meta-label">Pager #</span><span>${escapeHtmlForPrint(orderData.pagerNumber)}</span></div>`
+      : (orderData.pickupNumber
+        ? `<div class="meta-row"><span class="meta-label">Pickup #</span><span>${escapeHtmlForPrint(orderData.pickupNumber)}</span></div>`
+        : ''));
+
+  const metaHtml = `
+    <div class="meta">
+      <div class="meta-row"><span class="meta-label">Order</span><span>${escapeHtmlForPrint(orderData.orderNumber)}</span></div>
+      ${tableMetaHtml}
+      <div class="meta-row"><span class="meta-label">Date</span><span>${dateStr}</span></div>
+      <div class="meta-row"><span class="meta-label">Time</span><span>${timeStr}</span></div>
+      ${orderData.cashierName ? `<div class="meta-row"><span class="meta-label">Cashier</span><span>${escapeHtmlForPrint(orderData.cashierName)}</span></div>` : ''}
+    </div>
+  `;
+
+  // Items
+  const itemsHtml = orderData.items.map(item => {
+    const itemName = escapeHtmlForPrint(item.menuItem.name);
     const qty = item.quantity;
     const price = item.menuItem.price;
     const total = qty * price;
-
-    itemsHTML += `
-      <tr>
-        <td style="text-align: left;">${itemName}</td>
-        <td style="text-align: right;">${currencySymbol} ${total.toFixed(2)}</td>
-      </tr>
-      <tr>
-        <td style="text-align: left; color: #000; font-size: 12px; font-weight: 600;">&nbsp;&nbsp;${qty} x ${currencySymbol} ${price.toFixed(2)}</td>
-        <td></td>
-      </tr>
+    const optionsHtml = (item.options || []).map(o => `<div class="item-option">${escapeHtmlForPrint(o)}</div>`).join('');
+    return `
+      <div class="item">
+        <div class="item-row"><span class="item-name">${itemName}</span><span class="item-price">${currencySymbol} ${total.toFixed(2)}</span></div>
+        <div class="item-qty">${qty} × ${currencySymbol} ${price.toFixed(2)}</div>
+        ${optionsHtml}
+      </div>
     `;
+  }).join('');
 
-    if (item.options && item.options.length > 0) {
-      item.options.forEach(option => {
-        itemsHTML += `<tr><td style="text-align: left; color: #000; font-size: 12px; font-weight: 600;">&nbsp;&nbsp;+ ${option}</td><td></td></tr>`;
-      });
-    }
-  });
+  // Totals
+  const totalsRows = [];
+  totalsRows.push(`<div class="meta-row"><span>Subtotal</span><span>${currencySymbol} ${orderData.subtotal.toFixed(2)}</span></div>`);
+  if (orderData.takeawayCharge && orderData.takeawayCharge > 0) totalsRows.push(`<div class="meta-row"><span>Takeaway Charge</span><span>${currencySymbol} ${orderData.takeawayCharge.toFixed(2)}</span></div>`);
+  if (orderData.discount && orderData.discount > 0) totalsRows.push(`<div class="meta-row"><span>Discount</span><span>− ${currencySymbol} ${orderData.discount.toFixed(2)}</span></div>`);
+  if (orderData.discountPolicy && orderData.discountPolicy.amount > 0) totalsRows.push(`<div class="meta-row"><span>Discount (${escapeHtmlForPrint(orderData.discountPolicy.name)})</span><span>− ${currencySymbol} ${orderData.discountPolicy.amount.toFixed(2)}</span></div>`);
+  if (orderData.coupon && orderData.coupon.discount > 0) totalsRows.push(`<div class="meta-row"><span>Coupon (${escapeHtmlForPrint(orderData.coupon.code)})</span><span>− ${currencySymbol} ${orderData.coupon.discount.toFixed(2)}</span></div>`);
+  if (orderData.pointDiscount && Number(orderData.pointDiscount) > 0) totalsRows.push(`<div class="meta-row"><span>Points (${(orderData.pointsUsed || 0).toLocaleString()} pts)</span><span>− ${currencySymbol} ${Number(orderData.pointDiscount).toFixed(2)}</span></div>`);
+  if (orderData.serviceCharge && orderData.serviceCharge > 0) totalsRows.push(`<div class="meta-row"><span>Service Charge (${orderData.serviceChargeRate || 10}%)</span><span>${currencySymbol} ${orderData.serviceCharge.toFixed(2)}</span></div>`);
+  if (orderData.tax && orderData.tax > 0) totalsRows.push(`<div class="meta-row"><span>Tax (${orderData.taxRate || 6}%)</span><span>${currencySymbol} ${orderData.tax.toFixed(2)}</span></div>`);
 
-  // Build totals section
-  let totalsHTML = `<tr><td>Subtotal:</td><td style="text-align: right;">${currencySymbol} ${orderData.subtotal.toFixed(2)}</td></tr>`;
-
-  if (orderData.takeawayCharge && orderData.takeawayCharge > 0) {
-    totalsHTML += `<tr><td>Takeaway Charge:</td><td style="text-align: right;">${currencySymbol} ${orderData.takeawayCharge.toFixed(2)}</td></tr>`;
-  }
-  if (orderData.discount && orderData.discount > 0) {
-    totalsHTML += `<tr><td>Discount:</td><td style="text-align: right;">- ${currencySymbol} ${orderData.discount.toFixed(2)}</td></tr>`;
-  }
-  if (orderData.discountPolicy && orderData.discountPolicy.amount > 0) {
-    totalsHTML += `<tr><td>Discount (${orderData.discountPolicy.name}):</td><td style="text-align: right;">- ${currencySymbol} ${orderData.discountPolicy.amount.toFixed(2)}</td></tr>`;
-  }
-  if (orderData.coupon && orderData.coupon.discount > 0) {
-    totalsHTML += `<tr><td>Coupon (${orderData.coupon.code}):</td><td style="text-align: right;">- ${currencySymbol} ${orderData.coupon.discount.toFixed(2)}</td></tr>`;
-  }
-  if (orderData.pointDiscount && Number(orderData.pointDiscount) > 0) {
-    totalsHTML += `<tr><td>Points (${(orderData.pointsUsed || 0).toLocaleString()} pts):</td><td style="text-align: right;">- ${currencySymbol} ${Number(orderData.pointDiscount).toFixed(2)}</td></tr>`;
-  }
-  if (orderData.serviceCharge && orderData.serviceCharge > 0) {
-    totalsHTML += `<tr><td>Service Charge (${orderData.serviceChargeRate || 10}%):</td><td style="text-align: right;">${currencySymbol} ${orderData.serviceCharge.toFixed(2)}</td></tr>`;
-  }
-  if (orderData.tax && orderData.tax > 0) {
-    totalsHTML += `<tr><td>Tax (${orderData.taxRate || 6}%):</td><td style="text-align: right;">${currencySymbol} ${orderData.tax.toFixed(2)}</td></tr>`;
-  }
-
-  // Order type indicator
-  let orderTypeHTML = '';
-  if (orderData.orderType === 'pickup') {
-    orderTypeHTML = `<div style="font-size: 16px; font-weight: bold; text-align: center; margin: 10px 0;">** PRE-ORDER PICKUP **</div>
-      <div style="text-align: center; font-weight: bold;">Pickup: ${orderData.scheduledPickupTime ? formatPickupTimeRange(orderData.scheduledPickupTime) : 'ASAP'}</div>`;
-  } else if (orderData.takeawayCharge && orderData.takeawayCharge > 0) {
-    orderTypeHTML = `<div style="font-size: 16px; font-weight: bold; text-align: center; margin: 10px 0;">** TAKEAWAY **</div>`;
-  }
-
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-      <title>Bill - ${orderData.orderNumber}</title>
-      <style>
-        @page { size: 80mm auto; margin: 0; }
-        @media print {
-          body { margin: 0; padding: 0; }
-          .no-print { display: none; }
-          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-        }
-        body {
-          font-family: 'Inter', Arial, Helvetica, sans-serif;
-          font-size: 14px;
-          font-weight: 600;
-          color: #000;
-          width: 80mm;
-          max-width: 80mm;
-          margin: 0 auto;
-          padding: 5mm;
-          box-sizing: border-box;
-          -webkit-font-smoothing: none;
-          letter-spacing: -0.01em;
-        }
-        .header { text-align: center; margin-bottom: 10px; }
-        .store-name { font-size: 20px; font-weight: 900; }
-        .divider { border-top: 2px dashed #000; margin: 8px 0; }
-        table { width: 100%; border-collapse: collapse; }
-        td { padding: 3px 0; font-weight: 600; }
-        .total-row { font-size: 18px; font-weight: 900; }
-        .footer { text-align: center; margin-top: 15px; font-size: 12px; font-weight: 600; }
-      </style>
-    </head>
-    <body>
-      ${orderTypeHTML}
-      <div class="header">
-        ${receiptLogo ? `<img src="${receiptLogo}" style="max-width: 320px; max-height: 100px; margin-bottom: 6px; filter: grayscale(100%);" />` : ''}
-        ${(() => {
-          // Bill header structure:
-          //   Big: tradeName || name           ← customer-facing brand
-          //   Small: address                    ← store address
-          //   Small: legalName (only if it differs from the big-line name)
-          //   Small: Tel: telephone (landline)  ← omitted when empty; mobile phone is never printed
-          //   Small: Reg No / Tax No
-          const bigName = storeInfo.tradeName || storeInfo.name || '';
-          const legalName = storeInfo.legalName || '';
-          const showLegal = legalName && legalName.trim() && legalName.trim() !== bigName.trim();
-          const lines = [];
-          if (storeInfo.address) lines.push(storeInfo.address);
-          if (showLegal) lines.push(legalName);
-          if (storeInfo.telephone) lines.push('Tel: ' + storeInfo.telephone);
-          const regParts = [];
-          if (storeInfo.businessRegistration) regParts.push('Reg No: ' + storeInfo.businessRegistration);
-          if (storeInfo.gstRegNo) regParts.push('Tax No: ' + storeInfo.gstRegNo);
-          if (regParts.length) lines.push(regParts.join(' | '));
-          return `<div class="store-name">${bigName}</div>` +
-            lines.map(l => `<div style="font-size: 12px; font-weight: 500;">${l}</div>`).join('');
-        })()}
-      </div>
-
-      <div class="divider"></div>
-
-      <table>
-        <tr><td>Order:</td><td style="text-align: right;">${orderData.orderNumber}</td></tr>
-        ${orderData.tableNumber
-          ? `<tr><td style="font-weight: 900;">Table:</td><td style="text-align: right; font-weight: 900;">${orderData.tableNumber}</td></tr>`
-          : (orderData.pagerNumber
-            ? `<tr><td>Pager #:</td><td style="text-align: right;">${orderData.pagerNumber}</td></tr>`
-            : (orderData.pickupNumber
-              ? `<tr><td>Pickup #:</td><td style="text-align: right;">${orderData.pickupNumber}</td></tr>`
-              : ''))}
-        <tr><td>Date:</td><td style="text-align: right;">${dateStr}</td></tr>
-        <tr><td>Time:</td><td style="text-align: right;">${timeStr}</td></tr>
-        ${orderData.cashierName ? `<tr><td>Cashier:</td><td style="text-align: right;">${orderData.cashierName}</td></tr>` : ''}
-      </table>
-
-      <div class="divider"></div>
-
-      <table>${itemsHTML}</table>
-
-      <div class="divider"></div>
-
-      <table>${totalsHTML}</table>
-
-      <div class="divider"></div>
-
-      <table>
-        <tr class="total-row">
-          <td>TOTAL:</td>
-          <td style="text-align: right;">${currencySymbol} ${orderData.total.toFixed(2)}</td>
-        </tr>
-      </table>
-
-      ${showMembership && membershipQrDataUrl ? `
-      <div style="text-align: center; margin-top: 12px; padding-top: 12px; border-top: 1px dashed #000;">
-        <div style="font-size: 13px; font-weight: 700; margin-bottom: 6px;">Order online & earn points!</div>
-        <img src="${membershipQrDataUrl}" style="width: 80px; height: 80px;" />
-      </div>
-      ` : ''}
-
-      ${customQrDataUrl ? `
-      <div style="text-align: center; margin-top: 12px; padding-top: 12px; border-top: 1px dashed #000;">
-        ${customQrText && customQrPosition === 'front' ? `<div style="font-size: 13px; font-weight: 700; margin-bottom: 6px;">${customQrText}</div>` : ''}
-        <img src="${customQrDataUrl}" style="width: 80px; height: 80px;" />
-        ${customQrText && customQrPosition === 'back' ? `<div style="font-size: 13px; font-weight: 700; margin-top: 6px;">${customQrText}</div>` : ''}
-      </div>
-      ` : ''}
-
-      <div class="footer">
-        ${footerMsg}
-      </div>
-    </body>
-    </html>
+  const totalsHtml = `
+    <div class="totals">
+      ${totalsRows.join('')}
+      <div class="total-final"><span>TOTAL</span><span>${currencySymbol} ${orderData.total.toFixed(2)}</span></div>
+    </div>
   `;
+
+  // Membership QR (loyalty link)
+  const membershipHtml = (showMembership && membershipQrDataUrl) ? `
+    <div class="divider"></div>
+    <div class="instruction">Order online &amp; earn points!</div>
+    <div class="qr-container"><img src="${escapeHtmlForPrint(membershipQrDataUrl)}" width="96" height="96"></div>
+  ` : '';
+
+  // Custom QR (store-defined)
+  const customQrHtml = customQrDataUrl ? `
+    <div class="divider"></div>
+    ${customQrText && customQrPosition === 'front' ? `<div class="instruction">${escapeHtmlForPrint(customQrText)}</div>` : ''}
+    <div class="qr-container"><img src="${escapeHtmlForPrint(customQrDataUrl)}" width="96" height="96"></div>
+    ${customQrText && customQrPosition === 'back' ? `<div class="instruction">${escapeHtmlForPrint(customQrText)}</div>` : ''}
+  ` : '';
+
+  const footerHtml = `<div class="footer footer-message">${escapeHtmlForPrint(footerMsg)}</div>`;
+
+  return wrapPrintHTML(`Bill - ${orderData.orderNumber || ''}`, `
+    ${bannerHtml}
+    ${headerHtml}
+    <div class="divider"></div>
+    ${metaHtml}
+    <div class="divider"></div>
+    <div class="items">${itemsHtml}</div>
+    <div class="divider"></div>
+    ${totalsHtml}
+    ${membershipHtml}
+    ${customQrHtml}
+    ${footerHtml}
+  `);
 }
 
 /**
  * Generate HTML Kitchen Ticket for PC browser print
  */
 function generateHTMLKitchenTicket(orderData, storeInfo) {
-  const timeStr = orderData.date.toLocaleTimeString('en-MY', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true
-  });
+  const timeStr = orderData.date.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: true });
   const orderSource = orderData.orderSource === 'mobile' ? 'MOBILE ORDER' : 'POS';
 
-  let itemsHTML = '';
-  orderData.items.forEach((item, index) => {
-    const itemName = item.menuItem?.name || item.name;
+  // Items — kitchen format: large qty × name + starred options + inline station tag
+  // The station tag lets POS staff (when this ticket comes out at the counter)
+  // tell at a glance which kitchen station each item belongs to.
+  const itemsHtml = orderData.items.map(item => {
+    const itemName = escapeHtmlForPrint(item.menuItem?.name || item.name);
     const qty = item.quantity;
+    const stationTagHtml = item.stationName
+      ? ` <span class="station-tag">${escapeHtmlForPrint(item.stationName.toUpperCase())}</span>`
+      : '';
+    const optionsHtml = (item.options || []).map(opt =>
+      `<div class="item-option" style="font-size:13px;font-weight:600;">★ ${escapeHtmlForPrint(opt)}</div>`
+    ).join('');
+    return `
+      <div class="item">
+        <div class="item-name" style="font-size:18px;font-weight:700;">${qty} × ${itemName}${stationTagHtml}</div>
+        ${optionsHtml}
+      </div>
+    `;
+  }).join('');
 
-    itemsHTML += `<div style="font-size: 20px; font-weight: 900; margin: 8px 0;">${qty} x ${itemName}</div>`;
+  // Printer-location banner (PRINTED AT: POS COUNTER | KQ1 | KITCHEN)
+  const printedAtHtml = orderData.printedAt
+    ? `<div class="printed-at">PRINTED AT: ${escapeHtmlForPrint(orderData.printedAt)}</div>`
+    : '';
 
-    if (item.options && item.options.length > 0) {
-      item.options.forEach(option => {
-        itemsHTML += `<div style="margin-left: 15px; color: #000; font-weight: 700;">\u2605 ${option}</div>`;
-      });
-    }
-  });
+  const groupLabelHtml = orderData.groupLabel
+    ? `<div class="group-label">${escapeHtmlForPrint(orderData.groupLabel.toUpperCase())}</div>`
+    : '';
 
-  // Group label
-  let groupLabelHTML = '';
-  if (orderData.groupLabel) {
-    groupLabelHTML = `<div style="font-size: 22px; font-weight: 900; text-align: center; margin: 10px 0; background: #000; color: #fff; padding: 5px;">** ${orderData.groupLabel.toUpperCase()} **</div>`;
-  }
-
-  // Order type
-  let orderTypeHTML = '';
+  // Order-type banner
+  let bannerHtml = '';
   if (orderData.orderType === 'pickup') {
-    orderTypeHTML = `<div style="font-size: 18px; font-weight: bold; text-align: center; margin: 10px 0;">** PRE-ORDER PICKUP **</div>
-      <div style="text-align: center; font-weight: bold;">Pickup: ${orderData.scheduledPickupTime ? formatPickupTimeRange(orderData.scheduledPickupTime) : 'ASAP'}</div>`;
-  } else if (orderData.orderType === 'takeaway' || orderData.takeawayCharge > 0) {
-    orderTypeHTML = `<div style="font-size: 18px; font-weight: bold; text-align: center; margin: 10px 0;">** TAKEAWAY **</div>`;
+    const pickupTime = orderData.scheduledPickupTime ? formatPickupTimeRange(orderData.scheduledPickupTime) : 'ASAP';
+    bannerHtml = `<div class="banner banner-strong">PRE-ORDER PICKUP</div>
+      <div style="font-weight:600;">Pickup: ${escapeHtmlForPrint(pickupTime)}</div>`;
+  } else if (orderData.orderType === 'takeaway' || (orderData.takeawayCharge && orderData.takeawayCharge > 0)) {
+    bannerHtml = `<div class="banner">TAKEAWAY</div>`;
   } else if (orderData.orderType === 'delivery') {
-    orderTypeHTML = `<div style="font-size: 18px; font-weight: bold; text-align: center; margin: 10px 0;">** DELIVERY **</div>`;
+    bannerHtml = `<div class="banner">DELIVERY</div>`;
     if (orderData.deliveryInfo) {
-      orderTypeHTML += `<div style="margin: 10px 0; padding: 5px; border: 1px dashed #000;">
-        <div style="font-weight: bold;">DELIVERY ADDRESS:</div>
-        ${orderData.deliveryInfo.address ? `<div>${orderData.deliveryInfo.address}</div>` : ''}
-        ${orderData.deliveryInfo.phone ? `<div>Phone: ${orderData.deliveryInfo.phone}</div>` : ''}
-        ${orderData.deliveryInfo.zoneName ? `<div>Zone: ${orderData.deliveryInfo.zoneName}</div>` : ''}
-        ${orderData.deliveryInfo.notes ? `<div>Notes: ${orderData.deliveryInfo.notes}</div>` : ''}
-      </div>`;
+      const di = orderData.deliveryInfo;
+      const lines = [];
+      if (di.address) lines.push(`<div>${escapeHtmlForPrint(di.address)}</div>`);
+      if (di.phone) lines.push(`<div>Phone: ${escapeHtmlForPrint(di.phone)}</div>`);
+      if (di.zoneName) lines.push(`<div>Zone: ${escapeHtmlForPrint(di.zoneName)}</div>`);
+      if (di.notes) lines.push(`<div>Notes: ${escapeHtmlForPrint(di.notes)}</div>`);
+      if (lines.length) {
+        bannerHtml += `<div style="margin:6px 0;padding:6px;border:1px dashed #000;text-align:left;font-size:12px;">
+          <div style="font-weight:700;">DELIVERY ADDRESS</div>${lines.join('')}
+        </div>`;
+      }
     }
   }
 
-  // Table, Pager, or Pickup number (priority: Table > Pager > Pickup)
-  let pickupHTML = '';
-  if (orderData.skipFooterLocation) {
-    // 그룹 프린트: 하단 위치 정보 생략
-    pickupHTML = '';
-  } else if (orderData.tableNumber) {
-    pickupHTML = `<div style="font-size: 28px; font-weight: 900; text-align: center; margin: 15px 0;">TABLE ${orderData.tableNumber}</div>`;
-  } else if (orderData.pagerNumber) {
-    pickupHTML = `<div style="font-size: 28px; font-weight: 900; text-align: center; margin: 15px 0;">PAGER ${orderData.pagerNumber}</div>`;
-  } else {
-    const pickupNum = orderData.pickupNumber || (orderData.orderNumber ? orderData.orderNumber.split('-')[1] : '000');
-    pickupHTML = `<div style="font-size: 28px; font-weight: 900; text-align: center; margin: 15px 0;">PICKUP ${pickupNum}</div>`;
+  // Table / pager / pickup big number (skipFooterLocation suppresses for group prints)
+  let pickupHtml = '';
+  if (!orderData.skipFooterLocation) {
+    if (orderData.tableNumber) {
+      pickupHtml = `<div class="big-number">TABLE ${escapeHtmlForPrint(orderData.tableNumber)}</div>`;
+    } else if (orderData.pagerNumber) {
+      pickupHtml = `<div class="big-number">PAGER ${escapeHtmlForPrint(orderData.pagerNumber)}</div>`;
+    } else {
+      const pickupNum = orderData.pickupNumber || (orderData.orderNumber ? orderData.orderNumber.split('-')[1] : '000');
+      pickupHtml = `<div class="big-number">PICKUP ${escapeHtmlForPrint(pickupNum)}</div>`;
+    }
   }
 
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <title>Kitchen Ticket - ${orderData.orderNumber}</title>
-      <style>
-        @page { size: 80mm auto; margin: 0; }
-        @media print {
-          body { margin: 0; padding: 0; }
-          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-        }
-        body {
-          font-family: 'Inter', Arial, Helvetica, sans-serif;
-          font-size: 14px;
-          font-weight: 600;
-          color: #000;
-          width: 80mm;
-          max-width: 80mm;
-          margin: 0 auto;
-          padding: 5mm;
-          box-sizing: border-box;
-          -webkit-font-smoothing: none;
-          letter-spacing: -0.01em;
-        }
-        .divider { border-top: 2px dashed #000; margin: 8px 0; }
-        table { width: 100%; border-collapse: collapse; }
-        td { padding: 3px 0; font-weight: 600; }
-      </style>
-    </head>
-    <body>
-      ${groupLabelHTML}
-
-      <div class="divider"></div>
-
-      <table>
-        <tr><td style="font-weight: 700;">Order:</td><td style="text-align: right; font-weight: 700;">${orderData.orderNumber}</td></tr>
-        <tr><td style="font-weight: 700;">Time:</td><td style="text-align: right; font-weight: 700;">${timeStr}</td></tr>
-        <tr><td style="font-weight: 700;">Source:</td><td style="text-align: right; font-weight: 700;">${orderSource}</td></tr>
-        ${orderData.customerName && orderData.customerName !== 'Walk-in Customer' ? `<tr><td style="font-weight: 700;">Customer:</td><td style="text-align: right; font-weight: 700;">${orderData.customerName}</td></tr>` : ''}
-      </table>
-
-      <div class="divider"></div>
-
-      <div style="font-size: 16px; font-weight: 900; margin: 10px 0;">ORDER ITEMS:</div>
-      ${itemsHTML}
-
-      <div class="divider"></div>
-
-      ${orderData.notes && orderData.notes.trim() ? `
-        <div style="font-weight: bold;">** SPECIAL NOTES **</div>
-        <div style="margin: 5px 0;">${orderData.notes}</div>
-        <div class="divider"></div>
-      ` : ''}
-
-      ${pickupHTML}
-      ${orderTypeHTML}
-    </body>
-    </html>
+  const metaHtml = `
+    <div class="meta">
+      <div class="meta-row"><span class="meta-label">Order</span><span>${escapeHtmlForPrint(orderData.orderNumber)}</span></div>
+      <div class="meta-row"><span class="meta-label">Time</span><span>${timeStr}</span></div>
+      <div class="meta-row"><span class="meta-label">Source</span><span>${orderSource}</span></div>
+      ${orderData.customerName && orderData.customerName !== 'Walk-in Customer'
+        ? `<div class="meta-row"><span class="meta-label">Customer</span><span>${escapeHtmlForPrint(orderData.customerName)}</span></div>`
+        : ''}
+    </div>
   `;
+
+  const notesHtml = (orderData.notes && orderData.notes.trim()) ? `
+    <div class="divider"></div>
+    <div style="font-weight:700;text-align:left;">SPECIAL NOTES</div>
+    <div style="font-size:13px;text-align:left;">${escapeHtmlForPrint(orderData.notes)}</div>
+  ` : '';
+
+  return wrapPrintHTML(`Kitchen Ticket - ${orderData.orderNumber || ''}`, `
+    ${printedAtHtml}
+    ${groupLabelHtml}
+    ${metaHtml}
+    <div class="divider"></div>
+    <div style="font-size:14px;font-weight:700;text-align:left;margin:4px 0;">ORDER ITEMS</div>
+    <div class="items">${itemsHtml}</div>
+    ${notesHtml}
+    <div class="divider"></div>
+    ${pickupHtml}
+    ${bannerHtml}
+  `);
 }
 
 /**
@@ -880,83 +1124,49 @@ function generateHTMLKitchenTicket(orderData, storeInfo) {
  */
 function generateHTMLAdditionalItemsTicket(orderData, storeInfo) {
   const addedItems = orderData.items.filter(item => item.added_at);
+  if (addedItems.length === 0) return null;
 
-  if (addedItems.length === 0) {
-    return null;
-  }
+  const timeStr = new Date().toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: true });
 
-  const timeStr = new Date().toLocaleTimeString('en-MY', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true
-  });
-
-  let itemsHTML = '';
-  addedItems.forEach((item, index) => {
-    const itemName = item.menuItem?.name || item.name;
+  const itemsHtml = addedItems.map(item => {
+    const itemName = escapeHtmlForPrint(item.menuItem?.name || item.name);
     const qty = item.quantity;
+    const stationTagHtml = item.stationName
+      ? ` <span class="station-tag">${escapeHtmlForPrint(item.stationName.toUpperCase())}</span>`
+      : '';
+    const optionsHtml = (item.options || []).map(opt =>
+      `<div class="item-option" style="font-size:13px;font-weight:600;">★ ${escapeHtmlForPrint(opt)}</div>`
+    ).join('');
+    return `
+      <div class="item">
+        <div class="item-name" style="font-size:18px;font-weight:700;">${qty} × ${itemName}${stationTagHtml}</div>
+        ${optionsHtml}
+      </div>
+    `;
+  }).join('');
 
-    itemsHTML += `<div style="font-size: 20px; font-weight: 900; margin: 8px 0;">${qty} x ${itemName}</div>`;
+  const printedAtHtml = orderData.printedAt
+    ? `<div class="printed-at">PRINTED AT: ${escapeHtmlForPrint(orderData.printedAt)}</div>`
+    : '';
 
-    if (item.options && item.options.length > 0) {
-      item.options.forEach(option => {
-        itemsHTML += `<div style="margin-left: 15px; color: #000; font-weight: 700;">\u2605 ${option}</div>`;
-      });
-    }
-  });
-
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <title>Additional Items - ${orderData.orderNumber}</title>
-      <style>
-        @page { size: 80mm auto; margin: 0; }
-        @media print {
-          body { margin: 0; padding: 0; }
-          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-        }
-        body {
-          font-family: 'Inter', Arial, Helvetica, sans-serif;
-          font-size: 14px;
-          font-weight: 600;
-          color: #000;
-          width: 80mm;
-          max-width: 80mm;
-          margin: 0 auto;
-          padding: 5mm;
-          box-sizing: border-box;
-          -webkit-font-smoothing: none;
-          letter-spacing: -0.01em;
-        }
-        .divider { border-top: 2px dashed #000; margin: 8px 0; }
-        table { width: 100%; border-collapse: collapse; }
-        td { padding: 3px 0; font-weight: 600; }
-      </style>
-    </head>
-    <body>
-      <div style="font-size: 22px; font-weight: 900; text-align: center; margin: 10px 0; background: #000; color: #fff; padding: 5px;">** ADDITIONAL ORDER **</div>
-
-      <div class="divider"></div>
-
-      <table>
-        <tr><td style="font-weight: 700;">Order:</td><td style="text-align: right; font-weight: 700;">${orderData.orderNumber}</td></tr>
-        <tr><td style="font-weight: 700;">Time:</td><td style="text-align: right; font-weight: 700;">${timeStr}</td></tr>
-        ${orderData.tableNumber ? `<tr><td style="font-weight: 900;">TABLE:</td><td style="text-align: right; font-weight: 900;">${orderData.tableNumber}</td></tr>` : ''}
-      </table>
-
-      <div class="divider"></div>
-
-      <div style="font-size: 16px; font-weight: 900; margin: 10px 0;">ADDED ITEMS:</div>
-      ${itemsHTML}
-
-      <div class="divider"></div>
-
-      <div style="font-size: 14px; font-weight: bold; text-align: center; margin: 15px 0;">ADDED TO EXISTING ORDER</div>
-    </body>
-    </html>
+  const metaHtml = `
+    <div class="meta">
+      <div class="meta-row"><span class="meta-label">Order</span><span>${escapeHtmlForPrint(orderData.orderNumber)}</span></div>
+      <div class="meta-row"><span class="meta-label">Time</span><span>${timeStr}</span></div>
+      ${orderData.tableNumber ? `<div class="meta-row"><span class="meta-label">Table</span><span><strong>${escapeHtmlForPrint(orderData.tableNumber)}</strong></span></div>` : ''}
+    </div>
   `;
+
+  return wrapPrintHTML(`Additional Items - ${orderData.orderNumber || ''}`, `
+    ${printedAtHtml}
+    <div class="group-label">ADDITIONAL ORDER</div>
+    ${metaHtml}
+    <div class="divider"></div>
+    <div style="font-size:14px;font-weight:700;text-align:left;margin:4px 0;">ADDED ITEMS</div>
+    <div class="items">${itemsHtml}</div>
+    <div class="divider"></div>
+    <div class="footer" style="font-weight:600;">ADDED TO EXISTING ORDER</div>
+  `);
 }
 
 /**
@@ -1049,15 +1259,15 @@ export async function printBillViaRawBT(orderData, storeInfo, printerName) {
   try {
     // Check if bill printer is enabled
     const settings = getPrinterSettings();
-    if (!settings.billPrinter.enabled) {
+    const __bp = getActiveBillPrinter(); if (!__bp.enabled) {
       console.log('Bill printer is disabled in settings');
       return true; // Return success but skip printing
     }
 
-    // QZ Tray mode: send ESC/POS via QZ Tray to network printer
-    if (shouldUseQZTray()) {
-      console.log('🖨️ QZ Tray mode - sending to network printer');
-      const address = settings.billPrinter.address;
+    // QZ Tray method: send ESC/POS via QZ Tray (LAN IP or OS printer name)
+    if (shouldUseQZTray('bill')) {
+      console.log('🖨️ Bill via QZ Tray');
+      const address = getActiveBillPrinter().address;
       if (!address) {
         console.warn('QZ Tray: no bill printer address configured');
         return false;
@@ -1066,18 +1276,18 @@ export async function printBillViaRawBT(orderData, storeInfo, printerName) {
       return await sendViaQZTray(escposContent, address);
     }
 
-    // Browser print mode selected in Settings
-    if (shouldUseBrowserPrint()) {
-      console.log('🖥️ Browser print mode - using browser print dialog');
+    // Browser method: open browser print dialog (uses OS default printer)
+    if (shouldUseBrowserPrint('bill')) {
+      console.log('🖥️ Bill via browser print');
       const htmlContent = generateHTMLBill(orderData, storeInfo);
       return printHTMLContent(htmlContent, 'Bill');
     }
 
-    // Default: Use RawBT (원래 동작)
-    console.log('📱 RawBT mode - using RawBT');
+    // Default: Use RawBT (Android thermal printer)
+    console.log('📱 Bill via RawBT');
 
     // Use provided printerName or get from settings
-    const targetPrinter = printerName || settings.billPrinter.name;
+    const targetPrinter = printerName || getActiveBillPrinter().name;
 
     // Generate ESC/POS content
     const escposContent = generateBillContent(orderData, storeInfo);
@@ -1110,13 +1320,13 @@ export async function printBillViaRawBT(orderData, storeInfo, printerName) {
     return true;
 
   } catch (error) {
-    console.error('❌ Print error:', error);
-    const mode = getPrinterMode();
+    console.error('❌ Bill print error:', error);
+    const method = getPrinterMethod('bill');
     alert(
       'Failed to print bill.\n\n' +
-      (mode === 'qztray'
+      (method === 'qztray'
         ? 'Please ensure:\n1. QZ Tray is running on this device\n2. Printer IP address is correct\n3. Printer is connected to the network'
-        : mode === 'browser'
+        : method === 'browser'
         ? 'Please check your browser popup settings and try again.'
         : 'Please ensure:\n1. RawBT app is installed\n2. WiFi printer is configured in RawBT\n3. Printer is connected and ready'
       ) +
@@ -1142,6 +1352,17 @@ export function generateKitchenTicketContent(orderData, storeInfo) {
 
   // Initialize printer
   content += CMD.INIT;
+
+  // === PRINTER LOCATION BANNER (where this ticket physically printed) ===
+  // POS-counter prints show 'POS COUNTER'; station prints show the station name.
+  // Lets kitchen / counter staff identify the source at a glance.
+  if (orderData.printedAt) {
+    content += CMD.ALIGN_CENTER;
+    content += CMD.BOLD_ON;
+    content += '[ PRINTED AT: ' + orderData.printedAt + ' ]' + CMD.LINE_FEED;
+    content += CMD.BOLD_OFF;
+    content += CMD.LINE_FEED;
+  }
 
   // === GROUP LABEL (for partial order printing) ===
   if (orderData.groupLabel) {
@@ -1195,6 +1416,14 @@ export function generateKitchenTicketContent(orderData, storeInfo) {
     content += qty + ' x ' + itemName + CMD.LINE_FEED;
     content += CMD.TEXT_NORMAL;
     content += CMD.BOLD_OFF;
+
+    // Inline station tag — printed on the next line at normal size so it
+    // stays readable on 32-char thermal paper even when item names are long.
+    if (item.stationName) {
+      content += CMD.BOLD_ON;
+      content += '  → ' + item.stationName.toUpperCase() + CMD.LINE_FEED;
+      content += CMD.BOLD_OFF;
+    }
 
     // Options with marker (same as Bill format)
     if (item.options && item.options.length > 0) {
@@ -1441,133 +1670,83 @@ export function generateSingleItemKitchenTicket(orderData, item, itemIndex, tota
  * Each item gets its own page with page-break
  */
 function generateHTMLMultiPageKitchenTickets(orderData, storeInfo) {
-  const timeStr = orderData.date.toLocaleTimeString('en-MY', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true
-  });
+  const timeStr = orderData.date.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: true });
   const orderSource = orderData.orderSource === 'mobile' ? 'MOBILE ORDER' : 'POS';
   const totalItems = orderData.items.length;
 
-  let pagesHTML = '';
+  // Order-type banner per page
+  let bannerHtml = '';
+  if (orderData.orderType === 'pickup') {
+    const pickupTime = orderData.scheduledPickupTime ? formatPickupTimeRange(orderData.scheduledPickupTime) : 'ASAP';
+    bannerHtml = `<div class="banner banner-strong">PRE-ORDER PICKUP</div>
+      <div style="font-weight:600;">Pickup: ${escapeHtmlForPrint(pickupTime)}</div>`;
+  } else if (orderData.orderType === 'takeaway' || (orderData.takeawayCharge && orderData.takeawayCharge > 0)) {
+    bannerHtml = `<div class="banner">TAKEAWAY</div>`;
+  } else if (orderData.orderType === 'delivery') {
+    bannerHtml = `<div class="banner">DELIVERY</div>`;
+  }
 
-  orderData.items.forEach((item, index) => {
+  // Pickup/table/pager identifier per page
+  let pickupHtml = '';
+  if (orderData.tableNumber) {
+    pickupHtml = `<div class="big-number">TABLE ${escapeHtmlForPrint(orderData.tableNumber)}</div>`;
+  } else if (orderData.pagerNumber) {
+    pickupHtml = `<div class="big-number">PAGER ${escapeHtmlForPrint(orderData.pagerNumber)}</div>`;
+  } else {
+    const pickupNum = orderData.pickupNumber || (orderData.orderNumber ? orderData.orderNumber.split('-')[1] : '000');
+    pickupHtml = `<div class="big-number">PICKUP ${escapeHtmlForPrint(pickupNum)}</div>`;
+  }
+
+  const printedAtHtml = orderData.printedAt
+    ? `<div class="printed-at">PRINTED AT: ${escapeHtmlForPrint(orderData.printedAt)}</div>`
+    : '';
+
+  const metaHtml = `
+    <div class="meta">
+      <div class="meta-row"><span class="meta-label">Order</span><span>${escapeHtmlForPrint(orderData.orderNumber)}</span></div>
+      <div class="meta-row"><span class="meta-label">Time</span><span>${timeStr}</span></div>
+      <div class="meta-row"><span class="meta-label">Source</span><span>${orderSource}</span></div>
+      ${orderData.customerName && orderData.customerName !== 'Walk-in Customer'
+        ? `<div class="meta-row"><span class="meta-label">Customer</span><span>${escapeHtmlForPrint(orderData.customerName)}</span></div>`
+        : ''}
+    </div>
+  `;
+
+  const pagesHtml = orderData.items.map((item, index) => {
     const itemIndex = index + 1;
-    const itemName = item.menuItem?.name || item.name;
+    const itemName = escapeHtmlForPrint(item.menuItem?.name || item.name);
     const qty = item.quantity;
-
-    let optionsHTML = '';
-    if (item.options && item.options.length > 0) {
-      item.options.forEach(option => {
-        optionsHTML += `<div style="margin-left: 15px; color: #000; font-weight: 700;">\u2605 ${option}</div>`;
-      });
-    }
-
-    // Table/Pager/Pickup
-    let pickupHTML = '';
-    if (orderData.tableNumber) {
-      pickupHTML = `<div style="font-size: 28px; font-weight: 900; text-align: center; margin: 15px 0;">TABLE ${orderData.tableNumber}</div>`;
-    } else if (orderData.pagerNumber) {
-      pickupHTML = `<div style="font-size: 28px; font-weight: 900; text-align: center; margin: 15px 0;">PAGER ${orderData.pagerNumber}</div>`;
-    } else {
-      const pickupNum = orderData.pickupNumber || (orderData.orderNumber ? orderData.orderNumber.split('-')[1] : '000');
-      pickupHTML = `<div style="font-size: 28px; font-weight: 900; text-align: center; margin: 15px 0;">PICKUP ${pickupNum}</div>`;
-    }
-
-    // Order type
-    let orderTypeHTML = '';
-    if (orderData.orderType === 'pickup') {
-      orderTypeHTML = `<div style="font-size: 18px; font-weight: bold; text-align: center; margin: 10px 0;">** PRE-ORDER PICKUP **</div>
-        <div style="text-align: center; font-weight: bold;">Pickup: ${orderData.scheduledPickupTime ? formatPickupTimeRange(orderData.scheduledPickupTime) : 'ASAP'}</div>`;
-    } else if (orderData.orderType === 'takeaway' || orderData.takeawayCharge > 0) {
-      orderTypeHTML = `<div style="font-size: 18px; font-weight: bold; text-align: center; margin: 10px 0;">** TAKEAWAY **</div>`;
-    } else if (orderData.orderType === 'delivery') {
-      orderTypeHTML = `<div style="font-size: 18px; font-weight: bold; text-align: center; margin: 10px 0;">** DELIVERY **</div>`;
-    }
-
-    pagesHTML += `
-      <div class="ticket-page">
+    const stationTagHtml = item.stationName
+      ? ` <span class="station-tag">${escapeHtmlForPrint(item.stationName.toUpperCase())}</span>`
+      : '';
+    const optionsHtml = (item.options || []).map(opt =>
+      `<div class="item-option" style="font-size:13px;font-weight:600;">★ ${escapeHtmlForPrint(opt)}</div>`
+    ).join('');
+    const isLastPage = itemIndex === totalItems;
+    const notesHtml = (itemIndex === 1 && orderData.notes && orderData.notes.trim()) ? `
+      <div class="divider"></div>
+      <div style="font-weight:700;text-align:left;">SPECIAL NOTES</div>
+      <div style="font-size:13px;text-align:left;">${escapeHtmlForPrint(orderData.notes)}</div>
+    ` : '';
+    return `
+      <div class="ticket-page${isLastPage ? '' : ' page-break'}">
+        ${printedAtHtml}
+        ${metaHtml}
         <div class="divider"></div>
-
-        <table>
-          <tr><td style="font-weight: 700;">Order:</td><td style="text-align: right; font-weight: 700;">${orderData.orderNumber}</td></tr>
-          <tr><td style="font-weight: 700;">Time:</td><td style="text-align: right; font-weight: 700;">${timeStr}</td></tr>
-          <tr><td style="font-weight: 700;">Source:</td><td style="text-align: right; font-weight: 700;">${orderSource}</td></tr>
-          ${orderData.customerName && orderData.customerName !== 'Walk-in Customer' ? `<tr><td style="font-weight: 700;">Customer:</td><td style="text-align: right; font-weight: 700;">${orderData.customerName}</td></tr>` : ''}
-        </table>
-
-        <div class="divider"></div>
-
-        <div style="font-size: 18px; font-weight: 900; text-align: center; margin: 12px 0; background: #000; color: #fff; padding: 8px;">
-          ITEM ${itemIndex} of ${totalItems}
+        <div class="group-label">ITEM ${itemIndex} of ${totalItems}</div>
+        <div class="item">
+          <div class="item-name" style="font-size:20px;font-weight:700;">${qty} × ${itemName}${stationTagHtml}</div>
+          ${optionsHtml}
         </div>
-
-        <div style="font-size: 22px; font-weight: 900; margin: 12px 0;">${qty} x ${itemName}</div>
-        ${optionsHTML}
-
+        ${notesHtml}
         <div class="divider"></div>
-
-        ${itemIndex === 1 && orderData.notes && orderData.notes.trim() ? `
-          <div style="font-weight: bold;">** SPECIAL NOTES **</div>
-          <div style="margin: 5px 0;">${orderData.notes}</div>
-          <div class="divider"></div>
-        ` : ''}
-
-        ${pickupHTML}
-        ${orderTypeHTML}
+        ${pickupHtml}
+        ${bannerHtml}
       </div>
     `;
-  });
+  }).join('');
 
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <title>Kitchen Tickets - ${orderData.orderNumber}</title>
-      <style>
-        @page { size: 80mm auto; margin: 0; }
-        @media print {
-          body { margin: 0; padding: 0; }
-          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-        }
-        body {
-          font-family: 'Inter', Arial, Helvetica, sans-serif;
-          font-size: 14px;
-          font-weight: 600;
-          color: #000;
-          width: 80mm;
-          max-width: 80mm;
-          margin: 0 auto;
-          padding: 0;
-          box-sizing: border-box;
-          -webkit-font-smoothing: none;
-          letter-spacing: -0.01em;
-        }
-        .ticket-page {
-          padding: 5mm;
-          min-height: 100mm;
-          page-break-after: always;
-          break-after: page;
-          border-bottom: 3px dashed #999;
-          margin-bottom: 10px;
-        }
-        .ticket-page:last-child {
-          page-break-after: avoid;
-          break-after: avoid;
-          border-bottom: none;
-          margin-bottom: 0;
-        }
-        .divider { border-top: 2px dashed #000; margin: 8px 0; }
-        table { width: 100%; border-collapse: collapse; }
-        td { padding: 3px 0; font-weight: 600; }
-      </style>
-    </head>
-    <body>
-      ${pagesHTML}
-    </body>
-    </html>
-  `;
+  return wrapPrintHTML(`Kitchen Tickets - ${orderData.orderNumber || ''}`, pagesHtml);
 }
 
 /**
@@ -1583,6 +1762,21 @@ export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerNa
     const settings = getPrinterSettings();
     console.log(`🖨️ printKitchenTicketViaRawBT: ${(orderData.items || []).length} items, printerMode=${getPrinterMode()}`);
 
+    // 2026-05-27: Emergency Routing Mode — when ON, every kitchen ticket goes
+    // to the cashier (bill) printer instead of the station-mapped printers.
+    // Original routing data is untouched; turning the mode OFF restores normal
+    // flow with no manual reconfiguration. Single-shop survival mode for
+    // kitchen-printer / LAN / internet outages.
+    if (settings.emergencyMode) {
+      try {
+        console.log('⚠️ EMERGENCY MODE: routing kitchen ticket to cashier (bill) printer');
+        return await printBillViaRawBT(orderData, storeInfo);
+      } catch (e) {
+        console.error('Emergency mode redirect failed:', e && e.message);
+        return false;
+      }
+    }
+
     // kitchenPrinter.enabled 체크 — Station 유무 관계없이 동일
     if (!settings.kitchenPrinter.enabled) {
       console.log('Kitchen printer is disabled in settings');
@@ -1591,7 +1785,7 @@ export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerNa
 
     // Mirror to counter (bill) printer if enabled — fire-and-forget, 키친 인쇄 큐와 분리.
     // 실패해도 메인 키친 인쇄에는 영향 없음 (silent catch).
-    if (settings.kitchenPrinter.mirrorToBillPrinter && settings.billPrinter && settings.billPrinter.enabled) {
+    const __bpMirror = getActiveBillPrinter(); if (settings.kitchenPrinter.mirrorToBillPrinter && __bpMirror && __bpMirror.enabled) {
       setTimeout(() => {
         try {
           printBillViaRawBT(orderData, storeInfo).catch(e =>
@@ -1603,9 +1797,9 @@ export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerNa
       }, 600);
     }
 
-    // QZ Tray mode
-    if (shouldUseQZTray()) {
-      console.log('🖨️ QZ Tray mode - sending kitchen ticket to network printer');
+    // QZ Tray method: send ESC/POS via network or OS printer
+    if (shouldUseQZTray('kitchen')) {
+      console.log('🖨️ Kitchen via QZ Tray');
       const address = settings.kitchenPrinter.address;
       if (!address) {
         console.warn('QZ Tray: no kitchen printer address configured');
@@ -1637,9 +1831,9 @@ export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerNa
       // Print separate ticket for each item
       console.log(`📋 Printing ${orderData.items.length} separate kitchen tickets (per-item mode)`);
 
-      if (shouldUseBrowserPrint()) {
+      if (shouldUseBrowserPrint('kitchen')) {
         // Browser print mode: Generate all items as pages in one document
-        console.log('🖥️ Browser mode - generating multi-page document');
+        console.log('🖥️ Kitchen via browser print (multi-page)');
         const htmlContent = generateHTMLMultiPageKitchenTickets(orderData, storeInfo);
         return printHTMLContent(htmlContent, `Kitchen Tickets - ${orderData.orderNumber}`);
       }
@@ -1679,14 +1873,14 @@ export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerNa
     }
 
     // Default: Print combined ticket (original behavior)
-    if (shouldUseBrowserPrint()) {
-      console.log('🖥️ PC detected - using browser print dialog for kitchen ticket');
+    if (shouldUseBrowserPrint('kitchen')) {
+      console.log('🖥️ Kitchen via browser print');
       const htmlContent = generateHTMLKitchenTicket(orderData, storeInfo);
       return printHTMLContent(htmlContent, 'Kitchen Ticket');
     }
 
-    // Mobile/Tablet: Use RawBT Intent
-    console.log('📱 Mobile/Tablet detected - using RawBT for kitchen ticket');
+    // Fallback: RawBT Intent
+    console.log('📱 Kitchen via RawBT');
 
     const escposContent = generateKitchenTicketContent(orderData, storeInfo);
     const base64Content = btoa(unescape(encodeURIComponent(escposContent)));
@@ -1712,12 +1906,12 @@ export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerNa
 
   } catch (error) {
     console.error('❌ Kitchen Ticket print error:', error);
-    const mode = getPrinterMode();
+    const method = getPrinterMethod('kitchen');
     alert(
       'Failed to print kitchen order ticket.\n\n' +
-      (mode === 'qztray'
+      (method === 'qztray'
         ? 'Please ensure:\n1. QZ Tray is running on this device\n2. Printer IP address is correct\n3. Printer is connected to the network'
-        : mode === 'browser'
+        : method === 'browser'
         ? 'Please check your browser popup settings and try again.'
         : 'Please ensure:\n1. RawBT app is installed\n2. WiFi printer is configured in RawBT\n3. Printer is connected and ready'
       ) +
@@ -1725,6 +1919,109 @@ export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerNa
     );
     return false;
   }
+}
+
+// ============================================
+// Order Ticket to Bill Printer
+// ============================================
+
+/**
+ * Print a kitchen-style order ticket to the BILL printer (the one next to the POS).
+ *
+ * Used when staff manually triggers a ticket print from Live Orders / Floor Plan /
+ * Order Detail Modal. UX principle: the printout should come out where the user
+ * is standing (POS counter), not in the kitchen — Kitchen Display has its own
+ * path that routes to station printers.
+ *
+ * Ticket content uses the kitchen format (cooking-focused, no prices), but the
+ * transport (browser / QZ Tray / RawBT) follows the BILL printer's configured method.
+ *
+ * @param {Object} orderData
+ * @param {Object} storeInfo
+ * @returns {Promise<boolean>}
+ */
+export async function printOrderTicketToBillPrinter(orderData, storeInfo) {
+  try {
+    const settings = getPrinterSettings();
+    const __bp = getActiveBillPrinter(); if (!__bp?.enabled) {
+      console.log('Bill printer disabled — cannot print order ticket');
+      return false;
+    }
+    const method = getPrinterMethod('bill');
+    console.log(`🧾 Order ticket → bill printer (method=${method})`);
+
+    // Tag the ticket with where it was printed AND which kitchen station each item
+    // belongs to. This lets POS staff (who triggered the print) see at a glance
+    // which station each item goes to, even though the receipt came out at the counter.
+    const tagged = tagTicketWithStations(orderData, 'POS COUNTER', settings);
+
+    // Browser: open print dialog with the kitchen-style HTML
+    if (method === 'browser') {
+      const html = generateHTMLKitchenTicket(tagged, storeInfo);
+      return printHTMLContent(html, `Order Ticket - ${tagged.orderNumber || ''}`);
+    }
+
+    // QZ Tray: send ESC/POS to the bill printer's configured address
+    if (method === 'qztray') {
+      const address = getActiveBillPrinter().address;
+      if (!address) {
+        console.warn('QZ Tray: bill printer address not configured');
+        return false;
+      }
+      const escpos = generateKitchenTicketContent(tagged, storeInfo);
+      return await sendViaQZTray(escpos, address);
+    }
+
+    // RawBT (Android): fire intent with the bill printer name
+    const targetPrinter = getActiveBillPrinter().name;
+    const escpos = generateKitchenTicketContent(tagged, storeInfo);
+    const base64 = btoa(unescape(encodeURIComponent(escpos)));
+    let intentScheme = '#Intent;scheme=rawbt;';
+    if (targetPrinter) intentScheme += 'S.s=' + encodeURIComponent(targetPrinter) + ';';
+    const intentUrl = 'intent:base64,' + base64 + intentScheme + 'package=ru.a402d.rawbtprinter;end;';
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = intentUrl;
+    document.body.appendChild(iframe);
+    setTimeout(() => document.body.removeChild(iframe), 1000);
+    return true;
+  } catch (error) {
+    console.error('❌ Order ticket print error:', error);
+    return false;
+  }
+}
+
+/**
+ * Tag an order with the printer-location label AND attach each item's target
+ * kitchen station name (resolved via the menu→station map saved by Kitchen Display).
+ *
+ * Used by printOrderTicketToBillPrinter so the printed ticket clearly shows:
+ *   - PRINTED AT: <printedAtLabel>     (header banner)
+ *   - <item name>  [STATION]            (inline tag next to each item)
+ *
+ * @param {Object} orderData
+ * @param {string} printedAtLabel - e.g. 'POS COUNTER' / 'KQ1' / 'KITCHEN'
+ * @param {Object} settings - getPrinterSettings() result (for station name lookup)
+ * @returns {Object} new orderData with printedAt + items[].stationName
+ */
+function tagTicketWithStations(orderData, printedAtLabel, settings) {
+  let menuStationMap = {};
+  try {
+    const saved = localStorage.getItem('kitchenStationMenuMap');
+    if (saved) menuStationMap = JSON.parse(saved);
+  } catch (e) {
+    console.warn('Failed to load kitchen station menu map:', e);
+  }
+  const stationPrinters = settings?.kitchenStationPrinters || {};
+  const items = (orderData.items || []).map(item => {
+    const itemName = item.menuItem?.name || item.name;
+    const stationId = menuStationMap[itemName];
+    const stationName = stationId && stationPrinters[stationId]?.stationName
+      ? stationPrinters[stationId].stationName
+      : null;
+    return stationName ? { ...item, stationName } : item;
+  });
+  return { ...orderData, items, printedAt: printedAtLabel };
 }
 
 // ============================================
@@ -2049,49 +2346,91 @@ export async function printTableQR(tableNumber, qrCanvas, storeName = 'Restauran
   const timeInfo = `<div class="time-info">Printed: ${printedTime}</div>` +
     (expiryTime ? `<div class="time-info">Orders accepted until ${expiryTime}</div>` : '');
 
-  // Browser print mode: respect user's printer setting (same as printBillViaRawBT)
-  if (shouldUseBrowserPrint() && qrCanvas) {
-    const htmlContent = `<html><head><title>Table ${tableNumber} QR Code</title>
-      <style>@page{size:80mm auto;margin:0}
-      body{display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0;padding:8px 0;font-family:Arial,sans-serif;text-align:center}
-      .store-name{font-size:14px;font-weight:bold;margin-bottom:2px}.table-number{font-size:24px;font-weight:bold;margin:2px 0}
-      .qr-container{margin:4px 0}.instruction{font-size:13px;font-weight:600;color:#000;margin-top:2px}
-      .time-info{font-size:11px;color:#000;margin-top:1px}
-      @media print{html,body{height:auto}}</style></head>
-      <body><div class="store-name">${storeName}</div><div class="table-number">${tableNumber}</div>
+  // Browser method: HTML page using the shared print stylesheet
+  if (shouldUseBrowserPrint('bill') && qrCanvas) {
+    const htmlContent = wrapPrintHTML(`Table ${tableNumber} QR`, `
+      <div class="store-name" style="font-size:14px;">${escapeHtmlForPrint(storeName)}</div>
+      <div class="big-number">${escapeHtmlForPrint(tableNumber)}</div>
       <div class="qr-container"><img src="${qrCanvas.toDataURL('image/png')}" width="140" height="140" /></div>
-      <div class="instruction">Scan to order</div>${timeInfo}</body></html>`;
+      <div class="instruction">Scan to order</div>
+      ${timeInfo}
+    `);
     return printHTMLContent(htmlContent, 'Table QR');
   }
 
-  // QZ Tray mode: send ESC/POS text (QR image not supported in ESC/POS text mode)
-  if (shouldUseQZTray()) {
+  // QZ Tray method: send mixed payload (ESC/POS header + raster image of the QR + footer)
+  // QZ Tray converts type:'image' PNGs into ESC/POS raster commands automatically.
+  if (shouldUseQZTray('bill') && qrCanvas) {
     const settings = getPrinterSettings();
-    const address = settings.billPrinter.address;
-    if (address) {
-      let content = '';
-      content += CMD.INIT;
-      content += CMD.ALIGN_CENTER;
-      content += CMD.TEXT_DOUBLE;
-      content += storeName + CMD.LINE_FEED;
-      content += CMD.TEXT_NORMAL;
-      content += CMD.LINE_FEED;
-      content += CMD.BOLD_ON;
-      content += CMD.TEXT_DOUBLE;
-      content += tableNumber + CMD.LINE_FEED;
-      content += CMD.TEXT_NORMAL;
-      content += CMD.BOLD_OFF;
-      content += CMD.LINE_FEED;
-      content += 'Scan to order' + CMD.LINE_FEED;
-      content += CMD.LINE_FEED;
-      content += CMD.DASHED_LINE + CMD.LINE_FEED;
-      content += CMD.LINE_FEED;
-      content += '1. Scan QR code with phone' + CMD.LINE_FEED;
-      content += '2. Browse menu & add items' + CMD.LINE_FEED;
-      content += '3. Place your order' + CMD.LINE_FEED;
-      content += CMD.LINE_FEED;
-      content += CMD.CUT_PARTIAL;
-      return await sendViaQZTray(content, address);
+    const address = getActiveBillPrinter().address;
+    if (!address) {
+      console.warn('QZ Tray: bill printer address not configured for QR print');
+      return false;
+    }
+    try {
+      const connected = await connectQZTray();
+      if (!connected) return false;
+
+      // Build the QZ Tray config (LAN IP:port or OS printer name)
+      let config;
+      if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(address)) {
+        const [host, port] = address.split(':');
+        // QZ Tray raw socket: name=null, host/port via options (was: name='IP:port' bug)
+        config = qz.configs.create(null, {
+          host: host,
+          port: parseInt(port || '9100', 10),
+          encoding: 'UTF-8'
+        });
+      } else {
+        config = qz.configs.create(address);
+      }
+
+      // Header: store name + table number (centered, double-size)
+      let header = '';
+      header += CMD.INIT;
+      header += CMD.ALIGN_CENTER;
+      header += CMD.TEXT_DOUBLE;
+      header += storeName + CMD.LINE_FEED;
+      header += CMD.TEXT_NORMAL;
+      header += CMD.LINE_FEED;
+      header += CMD.BOLD_ON;
+      header += CMD.TEXT_DOUBLE;
+      header += tableNumber + CMD.LINE_FEED;
+      header += CMD.TEXT_NORMAL;
+      header += CMD.BOLD_OFF;
+      header += CMD.LINE_FEED;
+
+      // Footer: instruction + times + cut
+      let footer = '';
+      footer += CMD.ALIGN_CENTER;
+      footer += 'Scan to order' + CMD.LINE_FEED;
+      footer += CMD.LINE_FEED;
+      const printedTimeText = 'Printed: ' + printedTime;
+      footer += printedTimeText + CMD.LINE_FEED;
+      if (expiryTime) {
+        footer += 'Orders accepted until ' + expiryTime + CMD.LINE_FEED;
+      }
+      footer += CMD.LINE_FEED;
+      footer += CMD.LINE_FEED;
+      footer += CMD.CUT_PARTIAL;
+
+      // Send: ESC/POS header → QR raster image → ESC/POS footer (single print job, atomic)
+      await qz.print(config, [
+        { type: 'raw', format: 'base64', data: btoa(unescape(encodeURIComponent(header))) },
+        {
+          type: 'raw',
+          format: 'image',
+          data: qrCanvas.toDataURL('image/png'),
+          options: { language: 'ESCPOS', dotDensity: 'double' }
+        },
+        { type: 'raw', format: 'base64', data: btoa(unescape(encodeURIComponent(footer))) }
+      ]);
+
+      console.log('🧾 Table QR printed via QZ Tray (with raster image)');
+      return true;
+    } catch (err) {
+      console.error('QZ Tray QR print failed:', err);
+      return false;
     }
   }
 
@@ -2203,7 +2542,7 @@ export async function printTableQR(tableNumber, qrCanvas, storeName = 'Restauran
 export async function printSettlementReport(htmlContent, escposContent) {
   try {
     const settings = getPrinterSettings();
-    if (!settings.billPrinter.enabled) {
+    const __bp = getActiveBillPrinter(); if (!__bp.enabled) {
       console.log('Bill printer is disabled in settings');
       return true;
     }
@@ -2211,7 +2550,7 @@ export async function printSettlementReport(htmlContent, escposContent) {
     // QZ Tray mode
     if (shouldUseQZTray() && escposContent) {
       console.log('🖨️ QZ Tray mode - printing settlement report');
-      const address = settings.billPrinter.address;
+      const address = getActiveBillPrinter().address;
       if (address) {
         return await sendViaQZTray(escposContent, address);
       }
@@ -2229,7 +2568,7 @@ export async function printSettlementReport(htmlContent, escposContent) {
     if (escposContent) {
       console.log('📱 RawBT mode - printing settlement report');
       const base64Content = btoa(unescape(encodeURIComponent(escposContent)));
-      const targetPrinter = settings.billPrinter.name;
+      const targetPrinter = getActiveBillPrinter().name;
 
       let intentScheme = '#Intent;scheme=rawbt;';
       if (targetPrinter) {
@@ -2257,42 +2596,57 @@ export async function printSettlementReport(htmlContent, escposContent) {
 }
 
 /**
- * RawBT 프린터로 주방 티켓 전송 (단일 프린터 대상)
+ * Send a kitchen ticket to a single printer.
+ *
+ * Chooses transport (QZ Tray / browser / RawBT) per the resolved scope:
+ *   - if stationId is given → station-specific method
+ *   - otherwise              → single kitchen printer method
+ *
+ * @param {Object} orderData
+ * @param {Object} storeInfo
+ * @param {Object} settings        — getPrinterSettings() result
+ * @param {string} printerName     — OS / RawBT printer name (for non-network transport)
+ * @param {string|null} stationName — printed as ticket header; null = no header
+ * @param {string|null} printerAddress — LAN IP:port or OS printer name (QZ Tray)
+ * @param {string|null} stationId  — used to resolve per-station method
  */
-async function sendToRawBTPrinter(orderData, storeInfo, settings, printerName, stationName, printerAddress) {
+async function sendToRawBTPrinter(orderData, storeInfo, settings, printerName, stationName, printerAddress, stationId) {
+  const scope = stationId ? `station:${stationId}` : 'kitchen';
+  const method = getPrinterMethod(scope);
   const printPerItem = settings.kitchenPrinter.printPerItem || false;
   const items = orderData.items || [];
-  console.log(`🖨️ sendToRawBTPrinter: ${items.length} items, printPerItem=${printPerItem}, station=${stationName}, mode=${getPrinterMode()}`);
+  console.log(`🖨️ sendToRawBTPrinter: ${items.length} items, printPerItem=${printPerItem}, station=${stationName}, scope=${scope}, method=${method}`);
   console.log(`🖨️ Item names:`, items.map(i => (i.menuItem?.name || i.name) + ' x' + i.quantity));
 
-  // QZ Tray mode: send ESC/POS via network
-  // printerAddress가 명시적으로 전달되면 우선 사용 (Station별 IP), 없으면 kitchenPrinter.address fallback
-  if (shouldUseQZTray()) {
+  // --- QZ Tray method (LAN IP or OS printer name) ---
+  // printerAddress takes precedence (per-station IP); falls back to single kitchenPrinter.address.
+  if (method === 'qztray') {
     const address = printerAddress || settings.kitchenPrinter.address;
     if (!address) return false;
 
     if (printPerItem && items.length > 0) {
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
-        const perItemData = { ...orderData, items: [item], groupLabel: stationName ? stationName.toUpperCase() : undefined };
+        const perItemData = { ...orderData, items: [item], groupLabel: stationName ? stationName.toUpperCase() : undefined, printedAt: stationName ? stationName.toUpperCase() : 'KITCHEN' };
         const escpos = generateKitchenTicketContent(perItemData, storeInfo);
         await sendViaQZTray(escpos, address);
         if (i < items.length - 1) await new Promise(r => setTimeout(r, 300));
       }
     } else {
-      const ticketData = { ...orderData, groupLabel: stationName ? stationName.toUpperCase() : undefined };
+      const ticketData = { ...orderData, groupLabel: stationName ? stationName.toUpperCase() : undefined, printedAt: stationName ? stationName.toUpperCase() : 'KITCHEN' };
       const escpos = generateKitchenTicketContent(ticketData, storeInfo);
       await sendViaQZTray(escpos, address);
     }
     return true;
   }
 
+  // --- Browser / RawBT method ---
   if (printPerItem && items.length > 0) {
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
-      const perItemData = { ...orderData, items: [item], groupLabel: stationName ? stationName.toUpperCase() : undefined };
+      const perItemData = { ...orderData, items: [item], groupLabel: stationName ? stationName.toUpperCase() : undefined, printedAt: stationName ? stationName.toUpperCase() : 'KITCHEN' };
 
-      if (shouldUseBrowserPrint()) {
+      if (method === 'browser') {
         const htmlContent = generateHTMLKitchenTicket(perItemData, storeInfo);
         printHTMLContent(htmlContent, `Kitchen - ${stationName || 'Ticket'} - ${item.name}`);
       } else {
@@ -2312,9 +2666,9 @@ async function sendToRawBTPrinter(orderData, storeInfo, settings, printerName, s
       }
     }
   } else {
-    const ticketData = { ...orderData, groupLabel: stationName ? stationName.toUpperCase() : undefined };
+    const ticketData = { ...orderData, groupLabel: stationName ? stationName.toUpperCase() : undefined, printedAt: stationName ? stationName.toUpperCase() : 'KITCHEN' };
 
-    if (shouldUseBrowserPrint()) {
+    if (method === 'browser') {
       const htmlContent = generateHTMLKitchenTicket(ticketData, storeInfo);
       printHTMLContent(htmlContent, `Kitchen - ${stationName || 'Ticket'}`);
     } else {
@@ -2342,29 +2696,21 @@ async function printKitchenTicketsByStation(orderData, storeInfo, settings) {
   const stationPrinters = settings.kitchenStationPrinters || {};
   const stationIds = Object.keys(stationPrinters);
 
-  // Station이 1개면 매핑 없이 해당 프린터로 전체 전송
-  if (stationIds.length === 1) {
-    const sp = stationPrinters[stationIds[0]];
-    const printerName = sp.name;
-    const stationName = sp.stationName || 'Kitchen';
-
-    console.log(`🍳 Single station — sending all to: ${printerName} (${stationName})`);
-    return await sendToRawBTPrinter(orderData, storeInfo, settings, printerName, stationName, sp.address);
-  }
-
-  // QZ Tray 모드: Station별 각각 다른 프린터 IP로 전송 가능
-  if (shouldUseQZTray()) {
-    let menuStationMap = {};
+  // Helper: read the menu→station mapping (saved by Kitchen Display)
+  const loadMenuStationMap = () => {
     try {
       const saved = localStorage.getItem('kitchenStationMenuMap');
-      if (saved) menuStationMap = JSON.parse(saved);
+      if (saved) return JSON.parse(saved);
     } catch (e) {
       console.error('Failed to load kitchen station menu map:', e);
     }
+    return {};
+  };
 
+  // Helper: bucket items by station based on the menu→station mapping
+  const bucketItemsByStation = (menuStationMap) => {
     const stationItems = {};
     const unmappedItems = [];
-
     (orderData.items || []).forEach(item => {
       const itemName = item.menuItem?.name || item.name;
       const stationId = menuStationMap[itemName];
@@ -2375,87 +2721,80 @@ async function printKitchenTicketsByStation(orderData, storeInfo, settings) {
         unmappedItems.push(item);
       }
     });
+    return { stationItems, unmappedItems };
+  };
 
-    // 매핑이 없으면 첫 번째 Station 프린터로 전부 전송
+  // Single station: send everything to it
+  if (stationIds.length === 1) {
+    const stationId = stationIds[0];
+    const sp = stationPrinters[stationId];
+    const stationName = sp.stationName || 'Kitchen';
+    console.log(`🍳 Single station — sending all to: ${sp.name} (${stationName})`);
+    return await sendToRawBTPrinter(orderData, storeInfo, settings, sp.name, stationName, sp.address, stationId);
+  }
+
+  // Multi-station, QZ Tray: route per-station to different network IPs
+  // (each station's method is resolved inside sendToRawBTPrinter via stationId)
+  if (shouldUseQZTray('kitchen')) {
+    const { stationItems, unmappedItems } = bucketItemsByStation(loadMenuStationMap());
+
+    // No mapping: send everything to the first station
     if (Object.keys(stationItems).length === 0 && unmappedItems.length > 0) {
-      const sp = stationPrinters[stationIds[0]];
-      console.log(`🍳 QZ Tray: No menu-station map — sending all to first station: ${sp.stationName}`);
-      return await sendToRawBTPrinter(orderData, storeInfo, settings, sp.name, sp.stationName || 'Kitchen', sp.address);
+      const stationId = stationIds[0];
+      const sp = stationPrinters[stationId];
+      console.log(`🍳 QZ Tray: no menu-station map — sending all to first station: ${sp.stationName}`);
+      return await sendToRawBTPrinter(orderData, storeInfo, settings, sp.name, sp.stationName || 'Kitchen', sp.address, stationId);
     }
 
-    // Station별 각각 전송
+    // Mapped: send each station its own items
     const mappedStationIds = Object.keys(stationItems);
-    for (let idx = 0; idx < mappedStationIds.length; idx++) {
-      const stationId = mappedStationIds[idx];
+    for (const stationId of mappedStationIds) {
       const sp = stationPrinters[stationId];
       const items = stationItems[stationId];
       const stationName = sp.stationName || `Station ${stationId}`;
-
-      await sendToRawBTPrinter({ ...orderData, items }, storeInfo, settings, sp.name, stationName, sp.address);
+      await sendToRawBTPrinter({ ...orderData, items }, storeInfo, settings, sp.name, stationName, sp.address, stationId);
     }
 
-    // 매핑 안 된 아이템 → 첫 번째 Station 프린터로
+    // Unmapped overflow → first station
     if (unmappedItems.length > 0) {
-      const sp = stationPrinters[stationIds[0]];
-      await sendToRawBTPrinter({ ...orderData, items: unmappedItems }, storeInfo, settings, sp.name, sp.stationName || 'Kitchen', sp.address);
+      const stationId = stationIds[0];
+      const sp = stationPrinters[stationId];
+      await sendToRawBTPrinter({ ...orderData, items: unmappedItems }, storeInfo, settings, sp.name, sp.stationName || 'Kitchen', sp.address, stationId);
     }
 
     return true;
   }
 
-  // Station 2개 이상: RawBT 모드에서는 분리하지 않고 전체 합쳐서 한 장으로 출력
-  // (RawBT는 연속 intent를 처리하지 못해서 첫 번째만 출력됨)
-  if (!shouldUseBrowserPrint()) {
-    const sp = stationPrinters[stationIds[0]];
-    console.log(`🍳 RawBT mode with ${stationIds.length} stations — sending combined ticket`);
-    return await sendToRawBTPrinter(orderData, storeInfo, settings, sp.name, null);
+  // Multi-station, RawBT: cannot fire multiple intents consecutively → collapse to one combined ticket
+  if (!shouldUseBrowserPrint('kitchen')) {
+    const stationId = stationIds[0];
+    const sp = stationPrinters[stationId];
+    console.log(`🍳 RawBT with ${stationIds.length} stations — sending combined ticket to first station`);
+    return await sendToRawBTPrinter(orderData, storeInfo, settings, sp.name, null, sp.address, stationId);
   }
 
-  // Browser 모드: Station별 분리 인쇄 (각 Station 별도 페이지)
-  let menuStationMap = {};
-  try {
-    const saved = localStorage.getItem('kitchenStationMenuMap');
-    if (saved) menuStationMap = JSON.parse(saved);
-  } catch (e) {
-    console.error('Failed to load kitchen station menu map:', e);
-  }
+  // Multi-station, Browser: separate page per station
+  const { stationItems, unmappedItems } = bucketItemsByStation(loadMenuStationMap());
 
-  const stationItems = {};
-  const unmappedItems = [];
-
-  (orderData.items || []).forEach(item => {
-    const itemName = item.menuItem?.name || item.name;
-    const stationId = menuStationMap[itemName];
-    if (stationId && stationPrinters[stationId]) {
-      if (!stationItems[stationId]) stationItems[stationId] = [];
-      stationItems[stationId].push(item);
-    } else {
-      unmappedItems.push(item);
-    }
-  });
-
-  // 매핑이 없으면 첫 번째 Station 프린터로 전부 전송
   if (Object.keys(stationItems).length === 0 && unmappedItems.length > 0) {
-    const sp = stationPrinters[stationIds[0]];
-    console.log(`🍳 No menu-station map — sending all to first station: ${sp.name}`);
-    return await sendToRawBTPrinter(orderData, storeInfo, settings, sp.name, sp.stationName || 'Kitchen');
+    const stationId = stationIds[0];
+    const sp = stationPrinters[stationId];
+    console.log(`🍳 Browser: no menu-station map — sending all to first station: ${sp.name}`);
+    return await sendToRawBTPrinter(orderData, storeInfo, settings, sp.name, sp.stationName || 'Kitchen', sp.address, stationId);
   }
 
-  // Browser 모드: Station별 인쇄 (printHTMLContent로 각각 출력)
   const mappedStationIds = Object.keys(stationItems);
-  for (let idx = 0; idx < mappedStationIds.length; idx++) {
-    const stationId = mappedStationIds[idx];
+  for (const stationId of mappedStationIds) {
     const sp = stationPrinters[stationId];
     const items = stationItems[stationId];
     const stationName = sp.stationName || `Station ${stationId}`;
-
-    await sendToRawBTPrinter({ ...orderData, items }, storeInfo, settings, sp.name, stationName);
+    await sendToRawBTPrinter({ ...orderData, items }, storeInfo, settings, sp.name, stationName, sp.address, stationId);
   }
 
-  // 매핑 안 된 아이템 → 첫 번째 Station 프린터로
   if (unmappedItems.length > 0) {
-    const sp = stationPrinters[stationIds[0]];
-    await sendToRawBTPrinter({ ...orderData, items: unmappedItems }, storeInfo, settings, sp.name, sp.stationName || 'Kitchen');
+    const stationId = stationIds[0];
+    const sp = stationPrinters[stationId];
+    await sendToRawBTPrinter({ ...orderData, items: unmappedItems }, storeInfo, settings, sp.name, sp.stationName || 'Kitchen', sp.address, stationId);
   }
 
   return true;
@@ -2620,35 +2959,39 @@ function generateCancellationTicketContent(orderData, storeInfo, reason) {
  */
 function generateHTMLCancellationTicket(orderData, storeInfo, reason) {
   const items = orderData.items || [];
-  const itemRows = items.map(it => {
+  const itemsHtml = items.map(it => {
     const qty = (it.quantity != null ? it.quantity : 1);
-    const name = it.name || (it.menuItem && it.menuItem.name) || '';
-    return '<tr><td style="padding:2px 4px;">' + qty + 'x</td><td style="padding:2px 4px;">' + escapeHtml(name) + '</td></tr>';
+    const name = escapeHtmlForPrint(it.name || (it.menuItem && it.menuItem.name) || '');
+    const stationTagHtml = it.stationName
+      ? ` <span class="station-tag">${escapeHtmlForPrint(it.stationName.toUpperCase())}</span>`
+      : '';
+    return `<div class="item"><div class="item-name" style="font-size:16px;font-weight:700;">${qty} × ${name}${stationTagHtml}</div></div>`;
   }).join('');
+
   const orderType = String(orderData.orderType || orderData.order_type || '').replace(/_/g, '-');
   const tableNum = orderData.tableNumber || orderData.table_number || '';
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>CANCELLED</title>
-    <style>
-      @media print { @page { size: 80mm auto; margin: 0; } body { width: 76mm; } }
-      body { font-family: 'Courier New', monospace; font-size: 11px; margin: 4mm; }
-      .cancel-banner { background:#000; color:#fff; font-size:22px; font-weight:bold; text-align:center; padding:8px 0; margin-bottom:8px; letter-spacing:2px; }
-      .order-num { font-size:18px; font-weight:bold; text-align:center; margin-bottom:8px; }
-      .meta { margin-bottom:8px; }
-      table { width:100%; border-top:1px dashed #000; border-bottom:1px dashed #000; margin:8px 0; }
-      .stop { text-align:center; font-size:16px; font-weight:bold; padding:8px 0; border:2px solid #000; margin-top:8px; }
-      .ts { text-align:center; margin-top:8px; font-size:10px; color:#444; }
-    </style></head><body>
-    <div class="cancel-banner">*** CANCELLED ***</div>
-    <div class="order-num">Order #${escapeHtml(orderData.orderNumber || orderData.order_number || '')}</div>
-    <div class="meta">
-      ${tableNum ? 'Table: <strong>' + escapeHtml(String(tableNum)) + '</strong><br>' : ''}
-      ${orderType ? 'Type: <strong>' + escapeHtml(orderType) + '</strong><br>' : ''}
-      ${reason ? 'Reason: ' + escapeHtml(String(reason)) : ''}
-    </div>
-    <table>${itemRows}</table>
-    <div class="stop">&gt;&gt; STOP PREPARATION &lt;&lt;</div>
-    <div class="ts">${new Date().toLocaleString()}</div>
-    </body></html>`;
+  const orderNumber = orderData.orderNumber || orderData.order_number || '';
+
+  const printedAtHtml = orderData.printedAt
+    ? `<div class="printed-at">PRINTED AT: ${escapeHtmlForPrint(orderData.printedAt)}</div>`
+    : '';
+
+  const metaRows = [];
+  if (tableNum) metaRows.push(`<div class="meta-row"><span class="meta-label">Table</span><span><strong>${escapeHtmlForPrint(String(tableNum))}</strong></span></div>`);
+  if (orderType) metaRows.push(`<div class="meta-row"><span class="meta-label">Type</span><span>${escapeHtmlForPrint(orderType)}</span></div>`);
+  if (reason) metaRows.push(`<div class="meta-row"><span class="meta-label">Reason</span><span>${escapeHtmlForPrint(String(reason))}</span></div>`);
+
+  return wrapPrintHTML(`Cancelled - ${orderNumber}`, `
+    ${printedAtHtml}
+    <div class="banner banner-strong" style="background:#000;color:#fff;border-color:#000;">*** CANCELLED ***</div>
+    <div class="medium-number">Order #${escapeHtmlForPrint(orderNumber)}</div>
+    ${metaRows.length ? `<div class="meta">${metaRows.join('')}</div>` : ''}
+    <div class="divider"></div>
+    <div class="items">${itemsHtml}</div>
+    <div class="divider-solid"></div>
+    <div class="banner banner-strong">&gt;&gt; STOP PREPARATION &lt;&lt;</div>
+    <div class="footer time-info">${new Date().toLocaleString()}</div>
+  `);
 }
 
 function escapeHtml(s) {
@@ -2670,12 +3013,24 @@ export async function printCancellationTicket(orderData, storeInfo, reason, prin
       console.log('[CANCEL TICKET] Option OFF, skip');
       return true;
     }
+    // Emergency Routing Mode — cancellation ticket also goes to the cashier
+    // printer so staff can hand-deliver the cancellation to the right station.
+    if (settings.emergencyMode) {
+      try {
+        console.log('[CANCEL TICKET] ⚠️ EMERGENCY MODE: routing to cashier (bill) printer');
+        await printCancellationToCounter(orderData, storeInfo, reason);
+        return true;
+      } catch (e) {
+        console.error('Emergency cancellation redirect failed:', e && e.message);
+        return false;
+      }
+    }
 
     const escpos = generateCancellationTicketContent(orderData, storeInfo, reason);
     const targetPrinter = printerName || settings.kitchenPrinter.name;
 
     // Mirror to bill printer (same toggle as normal kitchen tickets)
-    if (settings.kitchenPrinter.mirrorToBillPrinter && settings.billPrinter && settings.billPrinter.enabled) {
+    const __bpMirror = getActiveBillPrinter(); if (settings.kitchenPrinter.mirrorToBillPrinter && __bpMirror && __bpMirror.enabled) {
       setTimeout(() => {
         printCancellationToCounter(orderData, storeInfo, reason).catch(e =>
           console.warn('Cancellation → counter mirror failed:', e && e.message)
@@ -2723,7 +3078,7 @@ async function printCancellationToCounter(orderData, storeInfo, reason) {
   const escpos = generateCancellationTicketContent(orderData, storeInfo, reason);
 
   if (shouldUseQZTray()) {
-    const address = settings.billPrinter.address;
+    const address = getActiveBillPrinter().address;
     if (!address) return false;
     return await sendViaQZTray(escpos, address);
   }
@@ -2734,7 +3089,7 @@ async function printCancellationToCounter(orderData, storeInfo, reason) {
   }
 
   // RawBT — uses bill printer name
-  const targetPrinter = settings.billPrinter.name;
+  const targetPrinter = getActiveBillPrinter().name;
   const base64Content = btoa(unescape(encodeURIComponent(escpos)));
   let intentScheme = '#Intent;scheme=rawbt;';
   if (targetPrinter) intentScheme += 'S.s=' + encodeURIComponent(targetPrinter) + ';';

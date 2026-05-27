@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
 const Container = styled.div`
   min-height: 100vh;
-  background: #FAFBFC;
+  background: #F9FAFB;
 `;
 
 const Content = styled.div`
@@ -27,7 +27,7 @@ const Content = styled.div`
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -83,11 +83,11 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
     }
   ` : `
     background: white;
-    color: #374151;
-    border: 1px solid #E6EBF1;
+    color: #1F2937;
+    border: 1px solid #C7CED6;
     
     &:hover {
-      background: #F8FAFC;
+      background: #F1F4F8;
       border-color: #635BFF;
     }
   `}
@@ -104,7 +104,7 @@ const SubscriptionCard = styled.div`
   background: white;
   border-radius: 12px;
   padding: 24px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   transition: all 0.2s;
   
   &:hover {
@@ -135,7 +135,7 @@ const RestaurantName = styled.h3`
 // Unused styled component - kept for reference
 // const Location = styled.p`
 //   font-size: 14px;
-//   color: #6B7280;
+//   color: #4B5563;
 // `;
 
 const StatusBadge = styled.span<{ status: string }>`
@@ -149,9 +149,9 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'active': return '#ECFDF5';
       case 'trial': return '#FEF3C7';
       case 'expired': return '#FEE2E2';
-      case 'suspended': return '#F3F4F6';
+      case 'suspended': return '#F1F4F8';
       case 'cancelled': return '#FEF2F2';
-      default: return '#F3F4F6';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
@@ -159,9 +159,9 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'active': return '#059669';
       case 'trial': return '#D97706';
       case 'expired': return '#DC2626';
-      case 'suspended': return '#6B7280';
+      case 'suspended': return '#4B5563';
       case 'cancelled': return '#DC2626';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 `;
@@ -172,7 +172,7 @@ const PlanInfo = styled.div`
   align-items: center;
   margin: 16px 0;
   padding: 16px;
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 8px;
 `;
 
@@ -187,7 +187,7 @@ const PlanName = styled.div`
 
 const PlanBilling = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 2px;
 `;
 
@@ -261,11 +261,11 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'danger' | 'warning' 
     }
   ` : `
     background: transparent;
-    color: #6B7280;
-    border-color: #E6EBF1;
+    color: #4B5563;
+    border-color: #C7CED6;
     
     &:hover {
-      background: #F8FAFC;
+      background: #F1F4F8;
       color: #0A2540;
     }
   `}
@@ -277,14 +277,14 @@ const DateInfo = styled.div`
   gap: 16px;
   margin: 16px 0;
   padding-top: 16px;
-  border-top: 1px solid #F3F4F6;
+  border-top: 1px solid #F1F4F8;
 `;
 
 const DateItem = styled.div``;
 
 const DateLabel = styled.div`
   font-size: 11px;
-  color: #6B7280;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 2px;
@@ -293,12 +293,12 @@ const DateLabel = styled.div`
 const DateValue = styled.div`
   font-size: 13px;
   font-weight: 500;
-  color: #374151;
+  color: #1F2937;
 `;
 
 const ModalSubtitle = styled.p`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 0;
 `;
 
@@ -310,23 +310,23 @@ const FormLabel = styled.label`
   display: block;
   font-size: 14px;
   font-weight: 600;
-  color: #374151;
+  color: #1F2937;
   margin-bottom: 8px;
 `;
 
 const Select = styled.select`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
   background: white;
   cursor: pointer;
   transition: all 0.2s;
   
   &:hover {
-    border-color: #CBD5E1;
+    border-color: #64748B;
   }
   
   &:focus {
@@ -347,7 +347,7 @@ const RadioLabel = styled.label`
   align-items: center;
   gap: 8px;
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
@@ -371,7 +371,7 @@ const RadioInput = styled.input`
 
 const PlanCard = styled.div<{ selected: boolean }>`
   padding: 16px;
-  border: 2px solid ${props => props.selected ? '#635BFF' : '#E6EBF1'};
+  border: 2px solid ${props => props.selected ? '#635BFF' : '#C7CED6'};
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
@@ -399,7 +399,7 @@ const ModalPlanPrice = styled.div`
 
 const PlanFeatures = styled.ul`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 0;
   padding-left: 20px;
 `;
@@ -792,7 +792,7 @@ const ManagerSubscriptionsPage: React.FC = () => {
             <SubscriptionCard key={subscription.id}>
               <CardHeader>
                 <RestaurantInfo>
-                  <RestaurantName>{subscription.restaurantName} {subscription.branchName && <span style={{ fontSize: '12px', fontWeight: 500, color: '#6B7C93', background: '#F3F4F6', padding: '1px 8px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{subscription.branchName}</span>}{subscription.currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{subscription.currency}</span>}</RestaurantName>
+                  <RestaurantName>{subscription.restaurantName} {subscription.branchName && <span style={{ fontSize: '12px', fontWeight: 500, color: '#4B5563', background: '#F1F4F8', padding: '1px 8px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{subscription.branchName}</span>}{subscription.currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{subscription.currency}</span>}</RestaurantName>
                 </RestaurantInfo>
                 <StatusBadge status={subscription.status}>
                   {subscription.status}
@@ -809,7 +809,7 @@ const ManagerSubscriptionsPage: React.FC = () => {
                 <PlanPrice>
                   {(subscription as any).discountType && (subscription as any).discountType !== 'none' && ((subscription as any).discountValue || 0) > 0 ? (
                     <div style={{textAlign: 'right'}}>
-                      <div style={{textDecoration: 'line-through', color: '#9CA3AF', fontSize: '12px', fontWeight: 400}}>
+                      <div style={{textDecoration: 'line-through', color: '#6B7280', fontSize: '12px', fontWeight: 400}}>
                         {formatCurrency(subscription.billingCycle === 'monthly' ? subscription.monthlyFee : subscription.annualFee)}
                       </div>
                       <div style={{color: '#15803D'}}>
@@ -827,7 +827,7 @@ const ManagerSubscriptionsPage: React.FC = () => {
                       {formatCurrency(subscription.billingCycle === 'monthly' ? subscription.monthlyFee : subscription.annualFee)}
                     </>
                   )}
-                  {subscription.billingCycle === 'annual' && <span style={{fontSize: '12px', color: '#6B7280'}}>/year</span>}
+                  {subscription.billingCycle === 'annual' && <span style={{fontSize: '12px', color: '#4B5563'}}>/year</span>}
                 </PlanPrice>
               </PlanInfo>
 

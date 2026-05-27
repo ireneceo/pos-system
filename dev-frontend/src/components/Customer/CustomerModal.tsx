@@ -8,7 +8,7 @@ import PhoneInput from '../Common/PhoneInput';
 const TabContainer = styled.div`
   display: flex;
   gap: 24px;
-  border-bottom: 1px solid #E5E7EB;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 20px;
 `;
 
@@ -20,12 +20,12 @@ const Tab = styled.button<{ active: boolean }>`
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
-  color: ${props => props.active ? '#635BFF' : '#6B7280'};
+  color: ${props => props.active ? '#635BFF' : '#4B5563'};
   border-bottom: 2px solid ${props => props.active ? '#635BFF' : 'transparent'};
   margin-bottom: -1px;
 
   &:hover {
-    color: ${props => props.active ? '#635BFF' : '#374151'};
+    color: ${props => props.active ? '#635BFF' : '#1F2937'};
   }
 `;
 

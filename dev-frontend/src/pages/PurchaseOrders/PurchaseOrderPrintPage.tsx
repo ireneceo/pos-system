@@ -77,14 +77,14 @@ const Heading = styled.h1`
 
 const Subhead = styled.div`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 4px;
 `;
 
 const KvBox = styled.div`
   text-align: right;
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
   & strong { color: #0A2540; display: block; font-size: 14px; }
 `;
 
@@ -96,10 +96,10 @@ const TwoCol = styled.div`
 `;
 
 const InfoBox = styled.div`
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   padding: 12px 16px;
   border-radius: 8px;
-  & .lbl { font-size: 11px; color: #6B7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  & .lbl { font-size: 11px; color: #4B5563; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
   & .val { font-size: 14px; color: #0A2540; margin-top: 4px; }
 `;
 
@@ -108,8 +108,8 @@ const Table = styled.table`
   border-collapse: collapse;
   margin-bottom: 24px;
   font-size: 13px;
-  th, td { padding: 10px 12px; border-bottom: 1px solid #E6EBF1; text-align: left; }
-  th { background: #F9FAFB; font-weight: 600; color: #6B7280; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; }
+  th, td { padding: 10px 12px; border-bottom: 1px solid #C7CED6; text-align: left; }
+  th { background: #F9FAFB; font-weight: 600; color: #4B5563; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; }
   td.num, th.num { text-align: right; font-feature-settings: 'tnum'; }
 `;
 
@@ -148,7 +148,7 @@ const SecBtn = styled.button`
   padding: 8px 18px;
   background: white;
   color: #0A2540;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
@@ -240,7 +240,7 @@ const PurchaseOrderPrintPage: React.FC = () => {
           <div className="lbl">{t('print.buyer', 'Buyer')}</div>
           <div className="val">{data.buyer?.name || `${data.entity_type} #${data.entity_id}`}</div>
           {data.delivery_address && (
-            <div style={{ marginTop: 8, fontSize: 12, color: '#6B7280' }}>
+            <div style={{ marginTop: 8, fontSize: 12, color: '#4B5563' }}>
               {data.delivery_address}
             </div>
           )}
@@ -253,7 +253,7 @@ const PurchaseOrderPrintPage: React.FC = () => {
               : `${data.seller_type}${data.seller_entity_id ? ' #' + data.seller_entity_id : ''}`}
           </div>
           {data.expected_delivery_date && (
-            <div style={{ marginTop: 8, fontSize: 12, color: '#6B7280' }}>
+            <div style={{ marginTop: 8, fontSize: 12, color: '#4B5563' }}>
               {t('print.expectedDelivery', 'Expected delivery')}: {data.expected_delivery_date}
             </div>
           )}
@@ -272,7 +272,7 @@ const PurchaseOrderPrintPage: React.FC = () => {
         </thead>
         <tbody>
           {items.length === 0 ? (
-            <tr><td colSpan={5} style={{ textAlign: 'center', color: '#9CA3AF' }}>—</td></tr>
+            <tr><td colSpan={5} style={{ textAlign: 'center', color: '#6B7280' }}>—</td></tr>
           ) : items.map(it => {
             const lt = it.line_total != null
               ? Number(it.line_total)
@@ -315,7 +315,7 @@ const PurchaseOrderPrintPage: React.FC = () => {
       )}
 
       {data.tracking_info?.carrier_name && (
-        <div style={{ marginTop: 16, padding: 12, background: '#F9FAFB', borderRadius: 8, fontSize: 12, color: '#6B7280' }}>
+        <div style={{ marginTop: 16, padding: 12, background: '#F9FAFB', borderRadius: 8, fontSize: 12, color: '#4B5563' }}>
           <strong style={{ color: '#0A2540' }}>{t('print.tracking', 'Tracking')}: </strong>
           {data.tracking_info.carrier_name}
           {data.tracking_info.tracking_number && ` · ${data.tracking_info.tracking_number}`}
@@ -323,7 +323,7 @@ const PurchaseOrderPrintPage: React.FC = () => {
         </div>
       )}
 
-      <div style={{ marginTop: 32, paddingTop: 16, borderTop: '1px solid #E6EBF1', textAlign: 'center', fontSize: 11, color: '#9CA3AF' }}>
+      <div style={{ marginTop: 32, paddingTop: 16, borderTop: '1px solid #C7CED6', textAlign: 'center', fontSize: 11, color: '#6B7280' }}>
         {t('print.generated', 'Generated')} {new Date().toISOString().slice(0, 16).replace('T', ' ')}
       </div>
     </PrintRoot>

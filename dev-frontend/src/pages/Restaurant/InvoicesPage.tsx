@@ -174,7 +174,7 @@ const InvoiceNumber = styled.div`
 
 const CompanyName = styled.div`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const AutoBadge = styled.span`
@@ -246,12 +246,12 @@ const LocalActionButton = styled.button<{ variant?: 'primary' | 'danger' | 'emai
     }
   ` : `
     background: white;
-    color: #374151;
-    border-color: #D1D5DB;
+    color: #1F2937;
+    border-color: #6B7280;
 
     &:hover {
       background: #F9FAFB;
-      border-color: #9CA3AF;
+      border-color: #6B7280;
     }
   `}
 `;
@@ -265,14 +265,14 @@ const FormLabel = styled.label`
   display: block;
   font-size: 13px;
   font-weight: 500;
-  color: #374151;
+  color: #1F2937;
   margin-bottom: 6px;
 `;
 
 const FormInput = styled.input`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   color: #0A2540;
@@ -777,11 +777,11 @@ const RestaurantInvoicesPage: React.FC = () => {
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; line-height: 1.5; color: #333; background: #fff; }
         .invoice-container { max-width: 800px; margin: 0 auto; padding: 40px; }
-        .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; padding-bottom: 24px; border-bottom: 2px solid #E5E7EB; }
+        .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; padding-bottom: 24px; border-bottom: 2px solid #C7CED6; }
         .logo-section { flex: 1; max-width: 400px; }
         .company-logo { max-height: 60px; margin-bottom: 10px; }
         .company-name { font-size: 20px; font-weight: 700; color: #0A2540; margin-bottom: 8px; }
-        .company-details { font-size: 13px; color: #6B7280; line-height: 1.6; }
+        .company-details { font-size: 13px; color: #4B5563; line-height: 1.6; }
         .invoice-title { text-align: right; }
         .invoice-label { font-size: 24px; font-weight: 700; color: #635BFF; margin-bottom: 8px; }
         .invoice-number { font-size: 16px; font-weight: 600; color: #0A2540; margin-bottom: 8px; }
@@ -791,25 +791,25 @@ const RestaurantInvoicesPage: React.FC = () => {
         .status-submitted { background: #DBEAFE; color: #1E40AF; }
         .status-overdue { background: #FEE2E2; color: #DC2626; }
         .status-cancelled { background: #FEF2F2; color: #DC2626; }
-        .status-draft { background: #F3F4F6; color: #6B7280; }
+        .status-draft { background: #F1F4F8; color: #4B5563; }
 
         .billing-info { display: flex; justify-content: space-between; margin-bottom: 24px; }
         .bill-to-section { flex: 1; }
-        .section-label { font-size: 12px; font-weight: 600; color: #6B7280; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .section-label { font-size: 12px; font-weight: 600; color: #4B5563; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
         .customer-name { font-size: 15px; font-weight: 600; color: #0A2540; }
-        .customer-details { font-size: 13px; color: #6B7280; margin-top: 4px; }
+        .customer-details { font-size: 13px; color: #4B5563; margin-top: 4px; }
 
         .dates-section { text-align: right; }
         .date-row { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 6px; font-size: 13px; }
-        .date-label { color: #6B7280; }
+        .date-label { color: #4B5563; }
         .date-value { color: #0A2540; font-weight: 500; min-width: 140px; }
 
         .items-section { margin-bottom: 24px; }
         .items-table { width: 100%; border-collapse: collapse; }
-        .items-table th { text-align: left; padding: 12px 8px; font-size: 12px; font-weight: 600; color: #6B7280; text-transform: uppercase; border-bottom: 2px solid #E5E7EB; }
+        .items-table th { text-align: left; padding: 12px 8px; font-size: 12px; font-weight: 600; color: #4B5563; text-transform: uppercase; border-bottom: 2px solid #C7CED6; }
         .items-table th.text-center { text-align: center; }
         .items-table th.text-right { text-align: right; }
-        .items-table td { padding: 12px 8px; font-size: 14px; color: #374151; border-bottom: 1px solid #F3F4F6; }
+        .items-table td { padding: 12px 8px; font-size: 14px; color: #1F2937; border-bottom: 1px solid #F1F4F8; }
         .items-table td.text-center { text-align: center; }
         .items-table td.text-right { text-align: right; white-space: nowrap; }
         .items-table th.text-right { white-space: nowrap; }
@@ -817,18 +817,18 @@ const RestaurantInvoicesPage: React.FC = () => {
         .summary-section { display: flex; justify-content: flex-end; margin-bottom: 24px; }
         .summary-box { width: 280px; }
         .summary-row { display: flex; justify-content: space-between; padding: 8px 12px; font-size: 14px; white-space: nowrap; }
-        .summary-row.subtotal { color: #6B7280; }
-        .summary-row.tax { color: #6B7280; }
-        .summary-row.total { background: #F8FAFC; border-radius: 6px; font-weight: 700; font-size: 16px; color: #0A2540; margin-top: 8px; }
+        .summary-row.subtotal { color: #4B5563; }
+        .summary-row.tax { color: #4B5563; }
+        .summary-row.total { background: #F1F4F8; border-radius: 6px; font-weight: 700; font-size: 16px; color: #0A2540; margin-top: 8px; }
 
-        .bank-section { background: #F8FAFC; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
-        .bank-title { font-size: 12px; font-weight: 600; color: #6B7280; margin-bottom: 8px; text-transform: uppercase; }
-        .bank-details { font-size: 13px; color: #374151; line-height: 1.6; }
+        .bank-section { background: #F1F4F8; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+        .bank-title { font-size: 12px; font-weight: 600; color: #4B5563; margin-bottom: 8px; text-transform: uppercase; }
+        .bank-details { font-size: 13px; color: #1F2937; line-height: 1.6; }
 
-        .registration-info { font-size: 12px; color: #9CA3AF; text-align: center; margin-top: 16px; }
+        .registration-info { font-size: 12px; color: #6B7280; text-align: center; margin-top: 16px; }
 
-        .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #E5E7EB; text-align: center; }
-        .footer-text { font-size: 12px; color: #6B7280; margin-bottom: 4px; }
+        .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #C7CED6; text-align: center; }
+        .footer-text { font-size: 12px; color: #4B5563; margin-bottom: 4px; }
 
         ${INVOICE_PRINT_CSS}
     </style>
@@ -938,7 +938,7 @@ const RestaurantInvoicesPage: React.FC = () => {
                     <span>Discount${invoice.discountType === 'percentage' ? ` (${invoice.discountValue}%)` : ''}:</span>
                     <span>-${formatCurrency(invoice.discountAmount, invoice.currency || 'MYR')}</span>
                 </div>
-                ${invoice.discountReason ? `<div style="font-size: 11px; color: #6B7280; padding: 0 12px 6px; text-align: right;">${invoice.discountReason}</div>` : ''}
+                ${invoice.discountReason ? `<div style="font-size: 11px; color: #4B5563; padding: 0 12px 6px; text-align: right;">${invoice.discountReason}</div>` : ''}
                 ` : ''}
                 ${(invoice.additionalCharges || []).map(charge => `
                 <div class="summary-row tax">
@@ -1117,7 +1117,7 @@ const RestaurantInvoicesPage: React.FC = () => {
 
                     {/* SOA child indicator — replaces Pay button for bundled invoices */}
                     {showPayButton && invoice.parentSoaInvoiceId && (
-                      <span style={{ fontSize: 11, color: '#9CA3AF', alignSelf: 'center' }}>
+                      <span style={{ fontSize: 11, color: '#6B7280', alignSelf: 'center' }}>
                         Pay via SOA
                       </span>
                     )}
@@ -1286,7 +1286,7 @@ const RestaurantInvoicesPage: React.FC = () => {
             }
           >
                 {/* Invoice Header with Issuer Info */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', paddingBottom: '24px', borderBottom: '2px solid #E5E7EB' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', paddingBottom: '24px', borderBottom: '2px solid #C7CED6' }}>
                   <div style={{ flex: '0 0 55%' }}>
                     {issuerInfo?.logoUrl && (
                       <img src={issuerInfo.logoUrl} alt="Company Logo" style={{ maxHeight: '60px', marginBottom: '8px' }} />
@@ -1294,7 +1294,7 @@ const RestaurantInvoicesPage: React.FC = () => {
                     <div style={{ fontSize: issuerInfo?.logoUrl ? '16px' : '20px', fontWeight: '700', color: '#0A2540', marginBottom: '8px' }}>
                       {issuerInfo?.name || selectedInvoice.issuerName || 'Issuer'}
                     </div>
-                    <div style={{ fontSize: '13px', color: '#6B7280', lineHeight: '1.6' }}>
+                    <div style={{ fontSize: '13px', color: '#4B5563', lineHeight: '1.6' }}>
                       {formatAddressLines({
                         address: issuerInfo?.address,
                         city: issuerInfo?.city,
@@ -1320,7 +1320,7 @@ const RestaurantInvoicesPage: React.FC = () => {
                 {/* Bill To + Dates Section */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px' }}>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase' }}>{t('settings:invoicesPage.billTo')}</div>
+                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#4B5563', marginBottom: '8px', textTransform: 'uppercase' }}>{t('settings:invoicesPage.billTo')}</div>
                     <div style={{ fontSize: '15px', fontWeight: '600', color: '#0A2540' }}>{payerCompany?.name || companySettings?.companyName || 'Your Company'}</div>
                     {formatAddressLines({
                       address: payerCompany?.address || companySettings?.address,
@@ -1329,28 +1329,28 @@ const RestaurantInvoicesPage: React.FC = () => {
                       postal_code: payerCompany?.postalCode || companySettings?.postalCode,
                       country: payerCompany?.country || companySettings?.country
                     }, (i18n.language as AppLocale) || 'en').map((line, idx) => (
-                      <div key={idx} style={{ fontSize: '13px', color: '#6B7280', marginTop: idx === 0 ? '4px' : '2px' }}>{line}</div>
+                      <div key={idx} style={{ fontSize: '13px', color: '#4B5563', marginTop: idx === 0 ? '4px' : '2px' }}>{line}</div>
                     ))}
                     {(payerCompany?.email || companySettings?.email) && (
-                      <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '2px' }}>{payerCompany?.email || companySettings?.email}</div>
+                      <div style={{ fontSize: '13px', color: '#4B5563', marginTop: '2px' }}>{payerCompany?.email || companySettings?.email}</div>
                     )}
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '6px', fontSize: '13px' }}>
-                      <span style={{ color: '#6B7280' }}>Billing Period:</span>
+                      <span style={{ color: '#4B5563' }}>Billing Period:</span>
                       <span style={{ color: '#0A2540', fontWeight: '500', minWidth: '140px' }}>{selectedInvoice.billingPeriod || '-'}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '6px', fontSize: '13px' }}>
-                      <span style={{ color: '#6B7280' }}>Issue Date:</span>
+                      <span style={{ color: '#4B5563' }}>Issue Date:</span>
                       <span style={{ color: '#0A2540', fontWeight: '500', minWidth: '140px' }}>{formatDate(selectedInvoice.issueDate)}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '6px', fontSize: '13px' }}>
-                      <span style={{ color: '#6B7280' }}>Due Date:</span>
+                      <span style={{ color: '#4B5563' }}>Due Date:</span>
                       <span style={{ color: '#0A2540', fontWeight: '500', minWidth: '140px' }}>{formatDate(selectedInvoice.dueDate)}</span>
                     </div>
                     {selectedInvoice.paidDate && (
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '6px', fontSize: '13px' }}>
-                        <span style={{ color: '#6B7280' }}>Paid Date:</span>
+                        <span style={{ color: '#4B5563' }}>Paid Date:</span>
                         <span style={{ color: '#0A2540', fontWeight: '500', minWidth: '140px' }}>{formatDate(selectedInvoice.paidDate)}</span>
                       </div>
                     )}
@@ -1359,32 +1359,32 @@ const RestaurantInvoicesPage: React.FC = () => {
 
                 {/* Items Table */}
                 <div style={{ marginBottom: '24px' }}>
-                  <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '12px', textTransform: 'uppercase' }}>{t('settings:invoicesPage.items')}</div>
+                  <div style={{ fontSize: '12px', fontWeight: '600', color: '#4B5563', marginBottom: '12px', textTransform: 'uppercase' }}>{t('settings:invoicesPage.items')}</div>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
-                      <tr style={{ borderBottom: '2px solid #E5E7EB' }}>
-                        <th style={{ textAlign: 'left', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>{t('settings:invoicesPage.description')}</th>
-                        <th style={{ textAlign: 'center', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>{t('settings:invoicesPage.qty')}</th>
-                        <th style={{ textAlign: 'right', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>{t('settings:invoicesPage.unitPrice')}</th>
-                        <th style={{ textAlign: 'right', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>{t('settings:invoicesPage.amount')}</th>
+                      <tr style={{ borderBottom: '2px solid #C7CED6' }}>
+                        <th style={{ textAlign: 'left', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#4B5563' }}>{t('settings:invoicesPage.description')}</th>
+                        <th style={{ textAlign: 'center', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#4B5563' }}>{t('settings:invoicesPage.qty')}</th>
+                        <th style={{ textAlign: 'right', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#4B5563' }}>{t('settings:invoicesPage.unitPrice')}</th>
+                        <th style={{ textAlign: 'right', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#4B5563' }}>{t('settings:invoicesPage.amount')}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {selectedInvoice.items && selectedInvoice.items.length > 0 ? (
                         selectedInvoice.items.map((item, index) => (
-                          <tr key={index} style={{ borderBottom: '1px solid #F3F4F6' }}>
-                            <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151' }}>{item.description}</td>
-                            <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'center' }}>{item.quantity}</td>
-                            <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCurrency(item.unitPrice, selectedInvoice.currency || 'MYR')}</td>
-                            <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCurrency(item.total, selectedInvoice.currency || 'MYR')}</td>
+                          <tr key={index} style={{ borderBottom: '1px solid #F1F4F8' }}>
+                            <td style={{ padding: '12px 8px', fontSize: '14px', color: '#1F2937' }}>{item.description}</td>
+                            <td style={{ padding: '12px 8px', fontSize: '14px', color: '#1F2937', textAlign: 'center' }}>{item.quantity}</td>
+                            <td style={{ padding: '12px 8px', fontSize: '14px', color: '#1F2937', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCurrency(item.unitPrice, selectedInvoice.currency || 'MYR')}</td>
+                            <td style={{ padding: '12px 8px', fontSize: '14px', color: '#1F2937', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCurrency(item.total, selectedInvoice.currency || 'MYR')}</td>
                           </tr>
                         ))
                       ) : (
-                        <tr style={{ borderBottom: '1px solid #F3F4F6' }}>
-                          <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151' }}>{selectedInvoice.categoryDisplayName || selectedInvoice.planType || 'Service'}</td>
-                          <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'center' }}>1</td>
-                          <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCurrency(selectedInvoice.amount, selectedInvoice.currency || 'MYR')}</td>
-                          <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCurrency(selectedInvoice.amount, selectedInvoice.currency || 'MYR')}</td>
+                        <tr style={{ borderBottom: '1px solid #F1F4F8' }}>
+                          <td style={{ padding: '12px 8px', fontSize: '14px', color: '#1F2937' }}>{selectedInvoice.categoryDisplayName || selectedInvoice.planType || 'Service'}</td>
+                          <td style={{ padding: '12px 8px', fontSize: '14px', color: '#1F2937', textAlign: 'center' }}>1</td>
+                          <td style={{ padding: '12px 8px', fontSize: '14px', color: '#1F2937', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCurrency(selectedInvoice.amount, selectedInvoice.currency || 'MYR')}</td>
+                          <td style={{ padding: '12px 8px', fontSize: '14px', color: '#1F2937', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCurrency(selectedInvoice.amount, selectedInvoice.currency || 'MYR')}</td>
                         </tr>
                       )}
                     </tbody>
@@ -1394,7 +1394,7 @@ const RestaurantInvoicesPage: React.FC = () => {
                 {/* Summary */}
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '24px' }}>
                   <div style={{ width: '280px', whiteSpace: 'nowrap' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', fontSize: '14px', color: '#6B7280' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', fontSize: '14px', color: '#4B5563' }}>
                       <span>Subtotal:</span>
                       <span>{formatCurrency(selectedInvoice.subtotalBeforeDiscount || selectedInvoice.amount, selectedInvoice.currency || 'MYR')}</span>
                     </div>
@@ -1405,25 +1405,25 @@ const RestaurantInvoicesPage: React.FC = () => {
                           <span>-{formatCurrency(selectedInvoice.discountAmount, selectedInvoice.currency || 'MYR')}</span>
                         </div>
                         {selectedInvoice.discountReason && (
-                          <div style={{ padding: '0 12px 6px', fontSize: '11px', color: '#6B7280', textAlign: 'right' }}>
+                          <div style={{ padding: '0 12px 6px', fontSize: '11px', color: '#4B5563', textAlign: 'right' }}>
                             {selectedInvoice.discountReason}
                           </div>
                         )}
                       </>
                     )}
                     {(selectedInvoice.additionalCharges || []).map((charge: any, idx: number) => (
-                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', fontSize: '14px', color: '#6B7280' }}>
+                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', fontSize: '14px', color: '#4B5563' }}>
                         <span>{charge.name} ({charge.rate}%):</span>
                         <span>{formatCurrency(charge.amount, selectedInvoice.currency || 'MYR')}</span>
                       </div>
                     ))}
                     {(selectedInvoice.additionalCharges || []).length === 0 && selectedInvoice.tax > 0 && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', fontSize: '14px', color: '#6B7280' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', fontSize: '14px', color: '#4B5563' }}>
                         <span>Tax:</span>
                         <span>{formatCurrency(selectedInvoice.tax, selectedInvoice.currency || 'MYR')}</span>
                       </div>
                     )}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', fontSize: '16px', fontWeight: '700', color: '#0A2540', background: '#F8FAFC', borderRadius: '6px', marginTop: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', fontSize: '16px', fontWeight: '700', color: '#0A2540', background: '#F1F4F8', borderRadius: '6px', marginTop: '8px' }}>
                       <span>Total:</span>
                       <span>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</span>
                     </div>
@@ -1432,9 +1432,9 @@ const RestaurantInvoicesPage: React.FC = () => {
 
                 {/* Bank Details (from issuer) */}
                 {issuerInfo?.bankName && (
-                  <div style={{ background: '#F8FAFC', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
-                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase' }}>{t('settings:invoicesPage.paymentDetails')}</div>
-                    <div style={{ fontSize: '13px', color: '#374151', lineHeight: '1.6' }}>
+                  <div style={{ background: '#F1F4F8', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
+                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#4B5563', marginBottom: '8px', textTransform: 'uppercase' }}>{t('settings:invoicesPage.paymentDetails')}</div>
+                    <div style={{ fontSize: '13px', color: '#1F2937', lineHeight: '1.6' }}>
                       <div><strong>Bank:</strong> {issuerInfo.bankName}</div>
                       <div><strong>Account Name:</strong> {issuerInfo.bankAccountName || '-'}</div>
                       <div><strong>Account Number:</strong> {issuerInfo.bankAccount || '-'}</div>
@@ -1445,7 +1445,7 @@ const RestaurantInvoicesPage: React.FC = () => {
 
                 {/* Registration Info */}
                 {(issuerInfo?.taxId || issuerInfo?.businessRegistration) && (
-                  <div style={{ fontSize: '12px', color: '#9CA3AF', textAlign: 'center', marginTop: '16px' }}>
+                  <div style={{ fontSize: '12px', color: '#6B7280', textAlign: 'center', marginTop: '16px' }}>
                     {issuerInfo?.businessRegistration && <span>Reg No: {issuerInfo.businessRegistration}</span>}
                     {issuerInfo?.businessRegistration && issuerInfo?.taxId && <span> | </span>}
                     {issuerInfo?.taxId && <span>Tax No: {issuerInfo.taxId}</span>}
@@ -1478,14 +1478,14 @@ const RestaurantInvoicesPage: React.FC = () => {
               </>
             }
           >
-                <div style={{ marginBottom: '20px', padding: '16px', background: '#F8FAFC', borderRadius: '8px' }}>
-                  <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#6B7280' }}>Invoice: <strong>{selectedInvoice.invoiceNumber}</strong></p>
+                <div style={{ marginBottom: '20px', padding: '16px', background: '#F1F4F8', borderRadius: '8px' }}>
+                  <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#4B5563' }}>Invoice: <strong>{selectedInvoice.invoiceNumber}</strong></p>
                   <p style={{ margin: '0', fontSize: '20px', fontWeight: '700', color: '#0A2540' }}>
                     {formatCurrency(selectedInvoice.total, selectedInvoice.currency)}
                   </p>
                 </div>
 
-                <div style={{ marginBottom: '16px', padding: '12px 14px', background: '#F1F0FF', border: '1px solid #D4D0FF', borderRadius: '8px', fontSize: '13px', color: '#4B5563', lineHeight: 1.6 }}>
+                <div style={{ marginBottom: '16px', padding: '12px 14px', background: '#F1F0FF', border: '1px solid #D4D0FF', borderRadius: '8px', fontSize: '13px', color: '#374151', lineHeight: 1.6 }}>
                   <div style={{ fontWeight: 600, color: '#635BFF', marginBottom: 4 }}>How payment works</div>
                   <div style={{ fontSize: 12.5 }}>
                     <strong>Card / PayPal</strong> — paid instantly when you complete checkout.<br />
@@ -1494,7 +1494,7 @@ const RestaurantInvoicesPage: React.FC = () => {
                 </div>
 
                 {loadingPaymentMethods ? (
-                  <div style={{ textAlign: 'center', padding: '20px', color: '#6B7280' }}>{t('settings:invoicesPage.loadingPaymentMethods')}</div>
+                  <div style={{ textAlign: 'center', padding: '20px', color: '#4B5563' }}>{t('settings:invoicesPage.loadingPaymentMethods')}</div>
                 ) : availablePaymentMethods.length === 0 ? (
                   <div style={{ padding: '20px', background: '#FEF3C7', borderRadius: '8px', marginBottom: '16px' }}>
                     <p style={{ margin: '0 0 8px 0', fontWeight: '600', color: '#92400E', fontSize: '15px' }}>
@@ -1519,9 +1519,9 @@ const RestaurantInvoicesPage: React.FC = () => {
                               style={{
                                 padding: '12px 16px', minHeight: '44px',
                                 borderRadius: '8px',
-                                border: `1px solid ${isSelected ? '#635BFF' : '#E6EBF1'}`,
+                                border: `1px solid ${isSelected ? '#635BFF' : '#C7CED6'}`,
                                 background: isSelected ? 'rgba(99, 91, 255, 0.1)' : 'white',
-                                color: isSelected ? '#635BFF' : '#374151',
+                                color: isSelected ? '#635BFF' : '#1F2937',
                                 fontSize: '14px', fontWeight: '500',
                                 cursor: 'pointer', transition: 'all 0.15s',
                                 textAlign: 'center'
@@ -1561,8 +1561,8 @@ const RestaurantInvoicesPage: React.FC = () => {
                       return m ? (
                         <div style={{ padding: '16px', background: '#EFF6FF', borderRadius: '8px', marginBottom: '16px', textAlign: 'center' }}>
                           <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600', color: '#1E40AF' }}>{t('settings:invoicesPage.qrPayment')}</h4>
-                          {m.qrImage && <img src={m.qrImage} alt="Payment QR Code" style={{ maxWidth: '200px', maxHeight: '200px', border: '1px solid #E5E7EB', borderRadius: '8px' }} />}
-                          {m.qrDescription && <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#6B7280' }}>{m.qrDescription}</p>}
+                          {m.qrImage && <img src={m.qrImage} alt="Payment QR Code" style={{ maxWidth: '200px', maxHeight: '200px', border: '1px solid #C7CED6', borderRadius: '8px' }} />}
+                          {m.qrDescription && <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#4B5563' }}>{m.qrDescription}</p>}
                         </div>
                       ) : null;
                     })()}
@@ -1584,21 +1584,21 @@ const RestaurantInvoicesPage: React.FC = () => {
                             placeholder="Any additional information about the payment..."
                             value={paymentData.notes}
                             onChange={(e) => setPaymentData(prev => ({ ...prev, notes: e.target.value }))}
-                            style={{ width: '100%', boxSizing: 'border-box', padding: '8px 12px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '14px', minHeight: '60px', resize: 'vertical', fontFamily: 'inherit' }}
+                            style={{ width: '100%', boxSizing: 'border-box', padding: '8px 12px', border: '1px solid #C7CED6', borderRadius: '6px', fontSize: '14px', minHeight: '60px', resize: 'vertical', fontFamily: 'inherit' }}
                           />
                         </FormGroup>
                         <FormGroup>
                           <FormLabel>{t('settings:invoicesPage.paymentReceiptImage')}</FormLabel>
-                          <div style={{ border: '2px dashed #E6EBF1', borderRadius: '8px', padding: '20px', textAlign: 'center', cursor: 'pointer', position: 'relative' }}>
+                          <div style={{ border: '2px dashed #C7CED6', borderRadius: '8px', padding: '20px', textAlign: 'center', cursor: 'pointer', position: 'relative' }}>
                             {paymentData.receiptImage ? (
                               <div>
                                 <img src={paymentData.receiptImage} alt="Receipt" style={{ maxWidth: '200px', maxHeight: '200px', marginBottom: '8px', borderRadius: '8px' }} />
-                                <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#6B7280' }}>{t('settings:invoicesPage.clickToChangeImage')}</p>
+                                <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#4B5563' }}>{t('settings:invoicesPage.clickToChangeImage')}</p>
                               </div>
                             ) : (
                               <div>
-                                <p style={{ margin: '0', fontSize: '14px', color: '#6B7280' }}>{t('settings:invoicesPage.clickToUploadReceiptImage')}</p>
-                                <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#9CA3AF' }}>{t('settings:invoicesPage.max5mbJpgpng')}</p>
+                                <p style={{ margin: '0', fontSize: '14px', color: '#4B5563' }}>{t('settings:invoicesPage.clickToUploadReceiptImage')}</p>
+                                <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#6B7280' }}>{t('settings:invoicesPage.max5mbJpgpng')}</p>
                               </div>
                             )}
                             <input type="file" accept="image/*" onChange={handleReceiptImageUpload} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }} />

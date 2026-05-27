@@ -204,7 +204,7 @@ const StageBadge = styled.span<{ bg: string; color: string }>`
 
 const Section = styled.div`
   background: #fff;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   padding: 24px 28px;
   margin-bottom: 20px;
@@ -220,12 +220,12 @@ const SectionTitle = styled.h3`
   color: #0A2540;
   margin: 0 0 16px 0;
   padding-bottom: 10px;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
 `;
 
 const RequiredHint = styled.div`
   font-size: 12px;
-  color: #6B7C93;
+  color: #4B5563;
   background: #FEF3C7;
   border: 1px solid #FDE68A;
   border-radius: 6px;
@@ -255,8 +255,8 @@ const CheckboxInline = styled.label`
   font-size: 13px;
   color: #0A2540;
   padding: 10px 12px;
-  background: #F8FAFC;
-  border: 1px solid #E6EBF1;
+  background: #F1F4F8;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   cursor: pointer;
   user-select: none;
@@ -284,7 +284,7 @@ const FormGroup = styled.div`
 const Label = styled.label<{ required?: boolean }>`
   font-size: 12px;
   font-weight: 500;
-  color: #6B7C93;
+  color: #4B5563;
   ${p => p.required && `
     &::after {
       content: ' *';
@@ -297,37 +297,37 @@ const Label = styled.label<{ required?: boolean }>`
 const Input = styled.input`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   color: #0A2540;
   outline: none;
   box-sizing: border-box;
   &:focus { border-color: #635BFF; box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1); }
-  &:disabled { background: #F8FAFC; color: #6B7C93; }
+  &:disabled { background: #F1F4F8; color: #4B5563; }
 `;
 
 const CurrencyInputWrapper = styled.div`
   display: flex;
   align-items: stretch;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   background: #FFFFFF;
   overflow: hidden;
   transition: border-color 0.15s, box-shadow 0.15s;
   &:focus-within { border-color: #635BFF; box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1); }
-  &[data-disabled="true"] { background: #F8FAFC; }
+  &[data-disabled="true"] { background: #F1F4F8; }
 `;
 
 const CurrencyPrefix = styled.span`
   display: inline-flex;
   align-items: center;
   padding: 0 10px;
-  background: #F8FAFC;
-  border-right: 1px solid #E6EBF1;
+  background: #F1F4F8;
+  border-right: 1px solid #C7CED6;
   font-size: 13px;
   font-weight: 600;
-  color: #6B7C93;
+  color: #4B5563;
   min-width: 48px;
   justify-content: center;
 `;
@@ -342,18 +342,18 @@ const CurrencyInputInner = styled.input`
   background: transparent;
   box-sizing: border-box;
   width: 100%;
-  &:disabled { background: transparent; color: #6B7C93; cursor: not-allowed; }
+  &:disabled { background: transparent; color: #4B5563; cursor: not-allowed; }
 `;
 
 const PercentSuffix = styled.span`
   display: inline-flex;
   align-items: center;
   padding: 0 10px;
-  background: #F8FAFC;
-  border-left: 1px solid #E6EBF1;
+  background: #F1F4F8;
+  border-left: 1px solid #C7CED6;
   font-size: 14px;
   font-weight: 500;
-  color: #6B7C93;
+  color: #4B5563;
 `;
 
 interface CurrencyInputProps {
@@ -402,7 +402,7 @@ const PercentInput: React.FC<PercentInputProps> = ({ value, onChange, disabled }
 const TextArea = styled.textarea`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   color: #0A2540;
@@ -416,14 +416,14 @@ const TextArea = styled.textarea`
 const Select = styled.select`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   color: #0A2540;
   box-sizing: border-box;
   outline: none;
   &:focus { border-color: #635BFF; }
-  &:disabled { background: #F8FAFC; }
+  &:disabled { background: #F1F4F8; }
 `;
 
 const ButtonRow = styled.div`
@@ -442,7 +442,7 @@ const Btn = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
   border: none;
   transition: all 0.15s;
 
-  background: ${p => p.variant === 'danger' ? '#DC2626' : p.variant === 'secondary' ? '#F3F4F6' : '#635BFF'};
+  background: ${p => p.variant === 'danger' ? '#DC2626' : p.variant === 'secondary' ? '#F1F4F8' : '#635BFF'};
   color: ${p => p.variant === 'secondary' ? '#0A2540' : '#fff'};
 
   &:hover { opacity: 0.9; }
@@ -463,13 +463,13 @@ const CheckItem = styled.div`
   align-items: center;
   gap: 10px;
   padding: 10px 0;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
   &:last-child { border-bottom: none; }
 `;
 
 const NoteMeta = styled.span`
   font-size: 12px;
-  color: #6B7C93;
+  color: #4B5563;
 `;
 
 const DocItem = styled.div`
@@ -477,7 +477,7 @@ const DocItem = styled.div`
   justify-content: space-between;
   align-items: center;
   padding: 10px 0;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
   &:last-child { border-bottom: none; }
 `;
 
@@ -485,7 +485,7 @@ const HistoryItem = styled.div`
   display: flex;
   gap: 12px;
   padding: 10px 0;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
   &:last-child { border-bottom: none; }
 `;
 
@@ -505,7 +505,7 @@ const HistoryText = styled.div`
 
 const HistoryDate = styled.div`
   font-size: 12px;
-  color: #6B7C93;
+  color: #4B5563;
   margin-top: 2px;
 `;
 
@@ -543,7 +543,7 @@ const STAGE_COLORS: Record<string, { bg: string; color: string }> = {
   contracting: { bg: '#FEF3C7', color: '#D97706' },
   setup: { bg: '#FEF3C7', color: '#D97706' },
   active: { bg: '#ECFDF5', color: '#059669' },
-  terminated: { bg: '#F3F4F6', color: '#6B7280' },
+  terminated: { bg: '#F1F4F8', color: '#4B5563' },
   renewed: { bg: '#EDE9FE', color: '#7C3AED' }
 };
 
@@ -885,8 +885,8 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
     }));
   };
 
-  if (loading) return <DetailContainer><div style={{ padding: '40px', textAlign: 'center', color: '#6B7C93' }}>Loading...</div></DetailContainer>;
-  if (!contract) return <DetailContainer><div style={{ padding: '40px', textAlign: 'center', color: '#6B7C93' }}>Contract not found</div></DetailContainer>;
+  if (loading) return <DetailContainer><div style={{ padding: '40px', textAlign: 'center', color: '#4B5563' }}>Loading...</div></DetailContainer>;
+  if (!contract) return <DetailContainer><div style={{ padding: '40px', textAlign: 'center', color: '#4B5563' }}>Contract not found</div></DetailContainer>;
 
   // Currency: Contract.currency is the source of truth (explicit per-contract).
   // Falls back to entity default on legacy rows before backfill. entitySupported
@@ -897,7 +897,7 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
     : [entityCurrency];
   const currencyLocked: boolean = !!contract.currency_locked;
 
-  const badge = STAGE_COLORS[contract.stage] || { color: '#6B7280', bg: '#F3F4F6' };
+  const badge = STAGE_COLORS[contract.stage] || { color: '#4B5563', bg: '#F1F4F8' };
   const isEditable = ['proposal', 'contracting', 'setup'].includes(contract.stage);
 
   const nextStageMap: Record<string, string> = {
@@ -1129,7 +1129,7 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
 
       <DetailHeader>
         <TitleRow>
-          <DetailTitle>{contract.restaurant?.name || contract.applicant_company_name || contract.applicant_name}{contract.restaurant?.branch_name && <span style={{ fontSize: '14px', fontWeight: 500, color: '#6B7C93', marginLeft: '8px' }}>({contract.restaurant.branch_name})</span>}</DetailTitle>
+          <DetailTitle>{contract.restaurant?.name || contract.applicant_company_name || contract.applicant_name}{contract.restaurant?.branch_name && <span style={{ fontSize: '14px', fontWeight: 500, color: '#4B5563', marginLeft: '8px' }}>({contract.restaurant.branch_name})</span>}</DetailTitle>
           <StageBadge bg={badge.bg} color={badge.color}>{contract.stage}</StageBadge>
         </TitleRow>
         <HeaderActions>
@@ -1360,8 +1360,8 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#F0FDF4', borderRadius: '8px', border: '1px solid #BBF7D0' }}>
             <div>
               <div style={{ fontWeight: 600, color: '#0A2540', fontSize: '15px' }}>{contract.restaurant.name}</div>
-              {contract.restaurant.address && <div style={{ fontSize: '13px', color: '#6B7C93', marginTop: '2px' }}>{contract.restaurant.address}</div>}
-              {contract.restaurant.phone && <div style={{ fontSize: '13px', color: '#6B7C93' }}>{contract.restaurant.phone}</div>}
+              {contract.restaurant.address && <div style={{ fontSize: '13px', color: '#4B5563', marginTop: '2px' }}>{contract.restaurant.address}</div>}
+              {contract.restaurant.phone && <div style={{ fontSize: '13px', color: '#4B5563' }}>{contract.restaurant.phone}</div>}
             </div>
             {isEditable && (
               <Btn variant="secondary" onClick={handleUnlinkRestaurant} style={{ fontSize: '12px', padding: '6px 12px' }}>
@@ -1378,23 +1378,23 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
                 placeholder={t('detail.searchRestaurant', 'Search restaurant by name...')}
                 disabled={!isEditable}
               />
-              {searchingRestaurant && <div style={{ fontSize: '12px', color: '#6B7C93', marginTop: '4px' }}>Searching...</div>}
+              {searchingRestaurant && <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '4px' }}>Searching...</div>}
               {restaurantResults.length > 0 && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #E6EBF1', borderRadius: '8px', marginTop: '4px', maxHeight: '200px', overflowY: 'auto', zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #C7CED6', borderRadius: '8px', marginTop: '4px', maxHeight: '200px', overflowY: 'auto', zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
                   {restaurantResults.map((r: any) => (
                     <div key={r.id} onClick={() => handleLinkRestaurant(r.id)}
-                      style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid #F3F4F6', fontSize: '14px' }}
-                      onMouseEnter={e => (e.currentTarget.style.background = '#F8FAFC')}
+                      style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid #F1F4F8', fontSize: '14px' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = '#F1F4F8')}
                       onMouseLeave={e => (e.currentTarget.style.background = '#fff')}
                     >
                       <div style={{ fontWeight: 500, color: '#0A2540' }}>{r.name}</div>
-                      {r.address && <div style={{ fontSize: '12px', color: '#6B7C93' }}>{r.address}</div>}
+                      {r.address && <div style={{ fontSize: '12px', color: '#4B5563' }}>{r.address}</div>}
                     </div>
                   ))}
                 </div>
               )}
             </div>
-            <div style={{ fontSize: '12px', color: '#9CA3AF', marginTop: '6px' }}>
+            <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '6px' }}>
               {t('detail.restaurantHint', 'Link an existing restaurant or leave empty to connect later. Restaurant is required before Active stage.')}
             </div>
           </div>
@@ -1463,7 +1463,7 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
                 />
               )}
               {currencyLocked && (
-                <div style={{ fontSize: '11px', color: '#6B7280', marginTop: '4px' }}>
+                <div style={{ fontSize: '11px', color: '#4B5563', marginTop: '4px' }}>
                   🔒 {t('detail.currencyLocked', 'Currency is locked — invoices have been issued')}
                 </div>
               )}
@@ -1912,20 +1912,20 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
         }
         if (rows.length === 0) return null;
         return (
-          <div style={{ background: '#F8FAFC', border: '1px solid #E6EBF1', borderRadius: 6, padding: '12px 14px', marginBottom: 16 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 8 }}>
+          <div style={{ background: '#F1F4F8', border: '1px solid #C7CED6', borderRadius: 6, padding: '12px 14px', marginBottom: 16 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#374151', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 8 }}>
               {t('detail.negotiatedTerms', 'Negotiated Financial Terms (reference)')}
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
               {rows.map((r, i) => (
                 <div key={i} style={{ fontSize: 13 }}>
-                  <span style={{ color: '#6B7C93' }}>{r.label}:</span>
+                  <span style={{ color: '#4B5563' }}>{r.label}:</span>
                   {' '}
                   <span style={{ color: '#0A2540', fontWeight: 600 }}>{r.value}</span>
                 </div>
               ))}
             </div>
-            <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 8 }}>
+            <div style={{ fontSize: 11, color: '#6B7280', marginTop: 8 }}>
               {t('detail.negotiatedTermsHint', 'Compare with actual plans and invoices below. Differences may be intentional (discounts, partial coverage, etc.).')}
             </div>
           </div>
@@ -1953,7 +1953,7 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
       <Section>
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          gap: 12, marginBottom: 16, paddingBottom: 10, borderBottom: '1px solid #F3F4F6'
+          gap: 12, marginBottom: 16, paddingBottom: 10, borderBottom: '1px solid #F1F4F8'
         }}>
           <h3 style={{ fontSize: 14, fontWeight: 600, color: '#0A2540', margin: 0 }}>
             {t('detail.oneTimeInvoices', 'One-time Invoices')}
@@ -1967,11 +1967,11 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
               }}
               style={{
                 padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600,
-                cursor: 'pointer', border: '1px solid #E6EBF1',
-                background: '#F8FAFC', color: '#4B5563', transition: 'all 0.15s'
+                cursor: 'pointer', border: '1px solid #C7CED6',
+                background: '#F1F4F8', color: '#374151', transition: 'all 0.15s'
               }}
-              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#F3F4F6'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = '#F8FAFC'; }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#F1F4F8'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = '#F1F4F8'; }}
             >
               {t('detail.viewAllContractInvoices', 'View all invoices')}
             </button>
@@ -2005,7 +2005,7 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
         </div>
         {Array.isArray(contract.invoices) && contract.invoices.length > 0 ? (
           <div style={{ marginBottom: 12 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr 0.8fr 0.8fr 0.8fr', gap: 8, padding: '8px 12px', background: '#F3F4F6', fontWeight: 600, fontSize: 12, color: '#4B5563', borderRadius: 4 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr 0.8fr 0.8fr 0.8fr', gap: 8, padding: '8px 12px', background: '#F1F4F8', fontWeight: 600, fontSize: 12, color: '#374151', borderRadius: 4 }}>
               <div>{t('detail.invoiceNumber', 'Invoice #')}</div>
               <div>{t('detail.category', 'Category')}</div>
               <div>{t('detail.amount', 'Amount')}</div>
@@ -2013,22 +2013,22 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
               <div>{t('detail.dueDate', 'Due')}</div>
             </div>
             {contract.invoices.map((inv: any) => (
-              <div key={inv.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr 0.8fr 0.8fr 0.8fr', gap: 8, padding: '10px 12px', borderBottom: '1px solid #E6EBF1', fontSize: 13, alignItems: 'center' }}>
+              <div key={inv.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr 0.8fr 0.8fr 0.8fr', gap: 8, padding: '10px 12px', borderBottom: '1px solid #C7CED6', fontSize: 13, alignItems: 'center' }}>
                 <div style={{ fontWeight: 600, color: '#0A2540' }}>{inv.invoice_number}</div>
-                <div style={{ color: '#4B5563' }}>{inv.category_display_name || inv.invoice_category || '—'}</div>
+                <div style={{ color: '#374151' }}>{inv.category_display_name || inv.invoice_category || '—'}</div>
                 <div style={{ color: '#0A2540', fontWeight: 600 }}>{inv.currency || 'MYR'} {Number(inv.total_amount).toLocaleString('en-MY', { minimumFractionDigits: 2 })}</div>
                 <div>
                   <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600,
-                    background: inv.status === 'paid' ? '#D1FAE5' : inv.status === 'overdue' ? '#FEE2E2' : inv.status === 'pending_payment' ? '#FEF3C7' : '#E5E7EB',
-                    color: inv.status === 'paid' ? '#065F46' : inv.status === 'overdue' ? '#991B1B' : inv.status === 'pending_payment' ? '#92400E' : '#4B5563'
+                    background: inv.status === 'paid' ? '#D1FAE5' : inv.status === 'overdue' ? '#FEE2E2' : inv.status === 'pending_payment' ? '#FEF3C7' : '#C7CED6',
+                    color: inv.status === 'paid' ? '#065F46' : inv.status === 'overdue' ? '#991B1B' : inv.status === 'pending_payment' ? '#92400E' : '#374151'
                   }}>{inv.status}</span>
                 </div>
-                <div style={{ color: '#6B7C93' }}>{inv.due_date ? tzFormatDate(inv.due_date, null) : '—'}</div>
+                <div style={{ color: '#4B5563' }}>{inv.due_date ? tzFormatDate(inv.due_date, null) : '—'}</div>
               </div>
             ))}
           </div>
         ) : (
-          <div style={{ fontSize: 13, color: '#9CA3AF', textAlign: 'center', padding: 20 }}>
+          <div style={{ fontSize: 13, color: '#6B7280', textAlign: 'center', padding: 20 }}>
             {t('detail.noOneTimeInvoices', 'No one-time invoices for this contract yet.')}
           </div>
         )}
@@ -2039,7 +2039,7 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
       {/* Support Services */}
       <Section>
         <SectionTitle>{t('detail.supportServices', 'Support Services')}</SectionTitle>
-        <div style={{ fontSize: 12, color: '#6B7C93', marginBottom: 12 }}>
+        <div style={{ fontSize: 12, color: '#4B5563', marginBottom: 12 }}>
           {t('detail.supportServicesHint', 'Check services included in this contract. Checked items will auto-generate tasks when you enter the Setup stage.')}
         </div>
         <SupportServicesChecklist
@@ -2068,7 +2068,7 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
               />
               <span style={{
                 textDecoration: task.is_completed ? 'line-through' : 'none',
-                color: task.is_completed ? '#6B7C93' : '#0A2540',
+                color: task.is_completed ? '#4B5563' : '#0A2540',
                 fontSize: '14px', flex: 1
               }}>
                 {task.title}
@@ -2076,7 +2076,7 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
               {contract.stage === 'setup' && (
                 <label
                   title={isReq ? t('detail.requiredTaskTooltip', 'Required task — must be completed before Active') as string : t('detail.optionalTaskTooltip', 'Optional task — can be completed later') as string}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '11px', color: isReq ? '#92400E' : '#9CA3AF', cursor: 'pointer', padding: '2px 8px', borderRadius: 10, background: isReq ? '#FEF3C7' : '#F3F4F6', fontWeight: 600 }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '11px', color: isReq ? '#92400E' : '#6B7280', cursor: 'pointer', padding: '2px 8px', borderRadius: 10, background: isReq ? '#FEF3C7' : '#F1F4F8', fontWeight: 600 }}
                 >
                   <input
                     type="checkbox"
@@ -2111,7 +2111,7 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
         <SectionTitle>{t('detail.documents', 'Documents')}</SectionTitle>
         {isEditable && (
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '14px', fontWeight: 500, color: '#374151', cursor: 'pointer', transition: 'all 0.15s' }}>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px', border: '1px solid #C7CED6', borderRadius: '6px', fontSize: '14px', fontWeight: 500, color: '#1F2937', cursor: 'pointer', transition: 'all 0.15s' }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
               {t('detail.uploadDocument', 'Upload Document')}
               <input type="file" style={{ display: 'none' }} accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx"
@@ -2147,14 +2147,14 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
                 }}
               />
             </label>
-            <span style={{ fontSize: '12px', color: '#9CA3AF', marginLeft: '8px' }}>PDF, DOC, JPG, PNG, XLS (max 10MB)</span>
+            <span style={{ fontSize: '12px', color: '#6B7280', marginLeft: '8px' }}>PDF, DOC, JPG, PNG, XLS (max 10MB)</span>
           </div>
         )}
         {contract.documents && contract.documents.length > 0 ? (
           contract.documents.map((doc: any) => (
             <DocItem key={doc.id}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B7C93" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4B5563" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                 <a href={doc.file_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '14px', color: '#635BFF', textDecoration: 'none', fontWeight: 500 }}>
                   {doc.file_name}
                 </a>
@@ -2172,7 +2172,7 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
             </DocItem>
           ))
         ) : (
-          <div style={{ fontSize: '13px', color: '#9CA3AF', textAlign: 'center', padding: '16px' }}>
+          <div style={{ fontSize: '13px', color: '#6B7280', textAlign: 'center', padding: '16px' }}>
             {t('detail.noDocuments', 'No documents uploaded yet')}
           </div>
         )}
@@ -2246,7 +2246,7 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
         <ModalOverlay onClick={() => { setTerminateModal(false); setTerminateReason(''); }}>
           <ModalBox onClick={e => e.stopPropagation()}>
             <SectionTitle style={{ borderBottom: 'none', marginBottom: '8px' }}>{t('detail.terminateContract', 'Terminate Contract')}</SectionTitle>
-            <p style={{ fontSize: '14px', color: '#6B7C93', marginBottom: '12px' }}>{t('detail.terminationReasonPrompt', 'Enter termination reason:')}</p>
+            <p style={{ fontSize: '14px', color: '#4B5563', marginBottom: '12px' }}>{t('detail.terminationReasonPrompt', 'Enter termination reason:')}</p>
             <TextArea
               value={terminateReason}
               onChange={e => setTerminateReason(e.target.value)}

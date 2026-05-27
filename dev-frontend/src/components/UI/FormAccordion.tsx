@@ -63,12 +63,12 @@ export const FormAccordionSection: React.FC<FormAccordionSectionProps> = ({
 const Wrapper = styled.div`
   display: flex;
   flex-direction: column;
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
   margin-bottom: 20px;
 `;
 
 const SectionWrap = styled.div`
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
 `;
 
 const Header = styled.button`
@@ -82,7 +82,7 @@ const Header = styled.button`
   cursor: pointer;
   text-align: left;
 
-  &:hover { background: #F8FAFC; }
+  &:hover { background: #F1F4F8; }
 
   @media (max-width: 768px) {
     padding: 12px 4px;
@@ -98,7 +98,7 @@ const HeaderLeft = styled.div`
 const Chevron = styled.span<{ open: boolean }>`
   display: inline-block;
   font-size: 10px;
-  color: #6B7C93;
+  color: #4B5563;
   transform: rotate(${p => p.open ? '90deg' : '0deg'});
   transition: transform 0.15s ease;
   width: 10px;
@@ -122,10 +122,10 @@ const StatusBadge = styled.span<{ status: SectionStatus }>`
       case 'required':
         return `background: #FEF3C7; color: #92400E;`;
       case 'optional':
-        return `background: #F3F4F6; color: #6B7280;`;
+        return `background: #F1F4F8; color: #4B5563;`;
       case 'empty':
       default:
-        return `background: #F3F4F6; color: #6B7280;`;
+        return `background: #F1F4F8; color: #4B5563;`;
     }
   }}
 `;

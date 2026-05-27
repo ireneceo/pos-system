@@ -15,7 +15,7 @@ import { getAuthToken } from '../../utils/auth';
 
 const Wrapper = styled.div``;
 const ActionRow = styled.div` display: flex; align-items: center; gap: 12px; margin-bottom: 16px; `;
-const Card = styled.div` background: white; border: 1px solid #E6EBF1; border-radius: 12px; padding: 16px; margin-bottom: 12px; display: flex; align-items: center; gap: 12px; `;
+const Card = styled.div` background: white; border: 1px solid #C7CED6; border-radius: 12px; padding: 16px; margin-bottom: 12px; display: flex; align-items: center; gap: 12px; `;
 const IconCircle = styled.div`
   width: 40px; height: 40px; border-radius: 8px;
   background: #F0EFFF; color: #635BFF;
@@ -25,23 +25,23 @@ const IconCircle = styled.div`
 `;
 const Body = styled.div` flex: 1; min-width: 0; `;
 const Name = styled.div` font-size: 14px; font-weight: 600; color: #0A2540; `;
-const Meta = styled.div` font-size: 12px; color: #6B7C93; margin-top: 2px; `;
+const Meta = styled.div` font-size: 12px; color: #4B5563; margin-top: 2px; `;
 const Actions = styled.div` display: flex; gap: 8px; `;
 const IconBtn = styled.button`
   display: inline-flex; align-items: center; justify-content: center;
-  padding: 6px 10px; background: transparent; border: 1px solid #E6EBF1; border-radius: 6px;
-  color: #6B7C93; cursor: pointer; transition: all 0.15s;
+  padding: 6px 10px; background: transparent; border: 1px solid #C7CED6; border-radius: 6px;
+  color: #4B5563; cursor: pointer; transition: all 0.15s;
   &:hover { border-color: #635BFF; color: #635BFF; }
   svg { width: 14px; height: 14px; }
 `;
 const FormGroup = styled.div` margin-bottom: 16px; `;
 const Label = styled.label` display: block; font-size: 13px; font-weight: 500; color: #0A2540; margin-bottom: 6px; `;
 const Input = styled.input`
-  width: 100%; padding: 8px 12px; border: 1px solid #E6EBF1; border-radius: 6px;
+  width: 100%; padding: 8px 12px; border: 1px solid #C7CED6; border-radius: 6px;
   font-size: 14px; box-sizing: border-box;
   &:focus { outline: none; border-color: #635BFF; box-shadow: 0 0 0 3px rgba(99,91,255,0.1); }
 `;
-const EmptyState = styled.div` background: white; border: 1px dashed #E6EBF1; border-radius: 12px; padding: 48px; text-align: center; color: #6B7C93; `;
+const EmptyState = styled.div` background: white; border: 1px dashed #C7CED6; border-radius: 12px; padding: 48px; text-align: center; color: #4B5563; `;
 
 interface Category { id: number; brand_id: number; name: string; emoji: string | null; sort_order: number; menu_count: number; }
 
@@ -120,7 +120,7 @@ const BrandMenuCategoriesPage: React.FC<Props> = ({ brandId }) => {
       </ListControlsBar>
       {cats.length === 0 ? (
         <EmptyState>
-          <Tag style={{ width: 32, height: 32, color: '#9CA3AF', marginBottom: 8 }} />
+          <Tag style={{ width: 32, height: 32, color: '#6B7280', marginBottom: 8 }} />
           <div style={{ fontWeight: 500, color: '#0A2540', marginBottom: 4 }}>
             {t('brand:brandMenuCategoriesPage.empty', 'No categories yet')}
           </div>

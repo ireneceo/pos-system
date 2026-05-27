@@ -729,11 +729,11 @@ const InvoicesPage: React.FC = () => {
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; line-height: 1.5; color: #333; background: #fff; }
         .invoice-container { max-width: 800px; margin: 0 auto; padding: 40px; }
-        .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; padding-bottom: 24px; border-bottom: 2px solid #E5E7EB; }
+        .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; padding-bottom: 24px; border-bottom: 2px solid #C7CED6; }
         .logo-section { flex: 1; max-width: 400px; }
         .company-logo { max-height: 60px; margin-bottom: 10px; }
         .company-name { font-size: 20px; font-weight: 700; color: #0A2540; margin-bottom: 8px; }
-        .company-details { font-size: 13px; color: #6B7280; line-height: 1.6; }
+        .company-details { font-size: 13px; color: #4B5563; line-height: 1.6; }
         .invoice-title { text-align: right; }
         .invoice-label { font-size: 24px; font-weight: 700; color: #635BFF; margin-bottom: 8px; }
         .invoice-number { font-size: 16px; font-weight: 600; color: #0A2540; margin-bottom: 8px; }
@@ -743,37 +743,37 @@ const InvoicesPage: React.FC = () => {
         .status-submitted { background: #DBEAFE; color: #1E40AF; }
         .status-overdue { background: #FEE2E2; color: #DC2626; }
         .status-cancelled { background: #FEF2F2; color: #DC2626; }
-        .status-draft { background: #F3F4F6; color: #6B7280; }
+        .status-draft { background: #F1F4F8; color: #4B5563; }
         .billing-info { display: flex; justify-content: space-between; margin-bottom: 24px; }
         .bill-to-section { flex: 1; }
-        .section-label { font-size: 12px; font-weight: 600; color: #6B7280; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .section-label { font-size: 12px; font-weight: 600; color: #4B5563; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
         .customer-name { font-size: 15px; font-weight: 600; color: #0A2540; }
-        .customer-details { font-size: 13px; color: #6B7280; margin-top: 4px; }
+        .customer-details { font-size: 13px; color: #4B5563; margin-top: 4px; }
         .dates-section { text-align: right; }
         .date-row { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 6px; font-size: 13px; }
-        .date-label { color: #6B7280; }
+        .date-label { color: #4B5563; }
         .date-value { color: #0A2540; font-weight: 500; min-width: 140px; }
         .items-section { margin-bottom: 24px; }
         .items-table { width: 100%; border-collapse: collapse; }
-        .items-table th { text-align: left; padding: 12px 8px; font-size: 12px; font-weight: 600; color: #6B7280; text-transform: uppercase; border-bottom: 2px solid #E5E7EB; }
+        .items-table th { text-align: left; padding: 12px 8px; font-size: 12px; font-weight: 600; color: #4B5563; text-transform: uppercase; border-bottom: 2px solid #C7CED6; }
         .items-table th.text-center { text-align: center; }
         .items-table th.text-right { text-align: right; }
-        .items-table td { padding: 12px 8px; font-size: 14px; color: #374151; border-bottom: 1px solid #F3F4F6; }
+        .items-table td { padding: 12px 8px; font-size: 14px; color: #1F2937; border-bottom: 1px solid #F1F4F8; }
         .items-table td.text-center { text-align: center; }
         .items-table td.text-right { text-align: right; white-space: nowrap; }
         .items-table th.text-right { white-space: nowrap; }
         .summary-section { display: flex; justify-content: flex-end; margin-bottom: 24px; }
         .summary-box { width: 280px; }
         .summary-row { display: flex; justify-content: space-between; padding: 8px 12px; font-size: 14px; white-space: nowrap; }
-        .summary-row.subtotal { color: #6B7280; }
-        .summary-row.tax { color: #6B7280; }
-        .summary-row.total { background: #F8FAFC; border-radius: 6px; font-weight: 700; font-size: 16px; color: #0A2540; margin-top: 8px; }
-        .bank-section { background: #F8FAFC; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
-        .bank-title { font-size: 12px; font-weight: 600; color: #6B7280; margin-bottom: 8px; text-transform: uppercase; }
-        .bank-details { font-size: 13px; color: #374151; line-height: 1.6; }
-        .registration-info { font-size: 12px; color: #9CA3AF; text-align: center; margin-top: 16px; }
-        .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #E5E7EB; text-align: center; }
-        .footer-text { font-size: 12px; color: #6B7280; margin-bottom: 4px; }
+        .summary-row.subtotal { color: #4B5563; }
+        .summary-row.tax { color: #4B5563; }
+        .summary-row.total { background: #F1F4F8; border-radius: 6px; font-weight: 700; font-size: 16px; color: #0A2540; margin-top: 8px; }
+        .bank-section { background: #F1F4F8; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+        .bank-title { font-size: 12px; font-weight: 600; color: #4B5563; margin-bottom: 8px; text-transform: uppercase; }
+        .bank-details { font-size: 13px; color: #1F2937; line-height: 1.6; }
+        .registration-info { font-size: 12px; color: #6B7280; text-align: center; margin-top: 16px; }
+        .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #C7CED6; text-align: center; }
+        .footer-text { font-size: 12px; color: #4B5563; margin-bottom: 4px; }
         ${INVOICE_PRINT_CSS}
     </style>
 </head>
@@ -827,7 +827,7 @@ const InvoicesPage: React.FC = () => {
         <div class="summary-section">
             <div class="summary-box">
                 <div class="summary-row subtotal"><span>Subtotal:</span><span>${formatCurrency(invoice.amount, invoice.currency || 'MYR')}</span></div>
-                ${invoice.discountType && invoice.discountType !== 'none' && invoice.discountAmount && invoice.discountAmount > 0 ? `<div class="summary-row tax" style="color: #15803D;"><span>Discount${invoice.discountType === 'percentage' ? ` (${invoice.discountValue}%)` : ''}:</span><span>-${formatCurrency(invoice.discountAmount, invoice.currency || 'MYR')}</span></div>${invoice.discountReason ? `<div style="font-size: 11px; color: #6B7280; padding: 0 12px 6px; text-align: right;">${invoice.discountReason}</div>` : ''}` : ''}
+                ${invoice.discountType && invoice.discountType !== 'none' && invoice.discountAmount && invoice.discountAmount > 0 ? `<div class="summary-row tax" style="color: #15803D;"><span>Discount${invoice.discountType === 'percentage' ? ` (${invoice.discountValue}%)` : ''}:</span><span>-${formatCurrency(invoice.discountAmount, invoice.currency || 'MYR')}</span></div>${invoice.discountReason ? `<div style="font-size: 11px; color: #4B5563; padding: 0 12px 6px; text-align: right;">${invoice.discountReason}</div>` : ''}` : ''}
                 ${(invoice.additionalCharges || []).map(charge => `<div class="summary-row tax"><span>${charge.name} (${charge.rate}%):</span><span>${formatCurrency(charge.amount, invoice.currency || 'MYR')}</span></div>`).join('')}
                 <div class="summary-row total"><span>Total:</span><span>${formatCurrency(invoice.total, invoice.currency || 'MYR')}</span></div>
             </div>
@@ -1720,7 +1720,7 @@ const InvoicesPage: React.FC = () => {
               <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#1F2937', margin: '0 0 8px 0' }}>
                 Payment Confirmation Required
               </h3>
-              <p style={{ fontSize: '14px', color: '#6B7280', margin: 0 }}>
+              <p style={{ fontSize: '14px', color: '#4B5563', margin: 0 }}>
                 These invoices have payment submitted and are waiting for your confirmation.
               </p>
             </div>
@@ -1782,7 +1782,7 @@ const InvoicesPage: React.FC = () => {
                   <div style={{ fontSize: '18px', fontWeight: '600', color: '#1F2937', marginBottom: '8px' }}>
                     No Pending Confirmations
                   </div>
-                  <div style={{ fontSize: '14px', color: '#6B7280' }}>
+                  <div style={{ fontSize: '14px', color: '#4B5563' }}>
                     There are no invoices waiting for payment confirmation.
                   </div>
                 </DataTableEmpty>
@@ -1921,7 +1921,7 @@ const InvoicesPage: React.FC = () => {
                       <p style={{ margin: '0 0 8px 0', fontWeight: '600', fontSize: '14px' }}>Payment Receipt:</p>
                       <div style={{ textAlign: 'center', background: 'white', padding: '12px', borderRadius: '8px' }}>
                         <img src={selectedInvoice.receiptUrl} alt="Payment Receipt" style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '8px', cursor: 'pointer' }} onClick={() => window.open(selectedInvoice.receiptUrl, '_blank')} />
-                        <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#6B7280' }}>Click image to view full size</p>
+                        <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#4B5563' }}>Click image to view full size</p>
                       </div>
                     </div>
                   )}
@@ -1937,7 +1937,7 @@ const InvoicesPage: React.FC = () => {
             </div>
             <FormGroup>
               <FormLabel>{t('admin:invoicesPage.statusChange')}</FormLabel>
-              <div style={{ fontSize: '14px', lineHeight: '1.6', color: '#374151', background: '#F8FAFC', padding: '12px', borderRadius: '6px' }}>
+              <div style={{ fontSize: '14px', lineHeight: '1.6', color: '#1F2937', background: '#F1F4F8', padding: '12px', borderRadius: '6px' }}>
                 Payment Submitted &rarr; Paid<br />
                 Paid Date: {formatDateTime(new Date(), operationSettings, { year: 'numeric', month: '2-digit', day: '2-digit' })}
               </div>
@@ -1950,14 +1950,14 @@ const InvoicesPage: React.FC = () => {
           <CommonModal isOpen={true} onClose={() => setShowSendConfirmModal(false)} title="Send Invoice" footer={<><Button variant="secondary" onClick={() => setShowSendConfirmModal(false)}> Cancel </Button><Button variant="success" onClick={confirmSendInvoice}> Confirm </Button></>}>
             <div style={{ textAlign: 'center', padding: '20px 0' }}>
               <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#0A2540', marginBottom: '12px' }}>{t('admin:invoicesPage.sendInvoice')}</h3>
-              <p style={{ fontSize: '14px', color: '#6B7280', marginBottom: '20px', lineHeight: '1.6' }}>
+              <p style={{ fontSize: '14px', color: '#4B5563', marginBottom: '20px', lineHeight: '1.6' }}>
                 Are you sure you want to send invoice <strong>{selectedInvoice.invoiceNumber}</strong> to <strong>{selectedInvoice.managerName || selectedInvoice.customerName}</strong>?
               </p>
-              <div style={{ background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E6EBF1' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span style={{ color: '#6B7280' }}>Invoice:</span><span style={{ fontWeight: '500' }}>{selectedInvoice.invoiceNumber}</span></div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span style={{ color: '#6B7280' }}>Recipient:</span><span style={{ fontWeight: '500' }}>{selectedInvoice.managerName || selectedInvoice.customerName}</span></div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span style={{ color: '#6B7280' }}>Company:</span><span style={{ fontWeight: '500' }}>{selectedInvoice.customerName}</span></div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6B7280' }}>Amount:</span><span style={{ fontWeight: '600', color: '#059669' }}>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</span></div>
+              <div style={{ background: '#F1F4F8', padding: '16px', borderRadius: '8px', border: '1px solid #C7CED6' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span style={{ color: '#4B5563' }}>Invoice:</span><span style={{ fontWeight: '500' }}>{selectedInvoice.invoiceNumber}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span style={{ color: '#4B5563' }}>Recipient:</span><span style={{ fontWeight: '500' }}>{selectedInvoice.managerName || selectedInvoice.customerName}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span style={{ color: '#4B5563' }}>Company:</span><span style={{ fontWeight: '500' }}>{selectedInvoice.customerName}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#4B5563' }}>Amount:</span><span style={{ fontWeight: '600', color: '#059669' }}>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</span></div>
               </div>
             </div>
           </CommonModal>
@@ -1968,7 +1968,7 @@ const InvoicesPage: React.FC = () => {
           <CommonModal isOpen={true} onClose={() => setShowResendConfirmModal(false)} title="Resend Invoice" footer={<><Button variant="secondary" onClick={() => setShowResendConfirmModal(false)}> Cancel </Button><Button variant="primary" onClick={confirmResendInvoice}> Resend Invoice </Button></>}>
             <div style={{ textAlign: 'center', padding: '20px 0' }}>
               <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#0A2540', marginBottom: '12px' }}>{t('admin:invoicesPage.resendInvoice')}</h3>
-              <p style={{ fontSize: '14px', color: '#6B7280', marginBottom: '20px', lineHeight: '1.6' }}>
+              <p style={{ fontSize: '14px', color: '#4B5563', marginBottom: '20px', lineHeight: '1.6' }}>
                 Resend invoice <strong>{selectedInvoice.invoiceNumber}</strong> to <strong>{selectedInvoice.managerName}</strong>?
               </p>
               <div style={{ background: '#FEF3C7', padding: '12px', borderRadius: '6px', border: '1px solid #F59E0B', fontSize: '13px', color: '#92400E' }}>
@@ -1983,15 +1983,15 @@ const InvoicesPage: React.FC = () => {
           <CommonModal isOpen={true} onClose={() => setShowRevertConfirmModal(false)} title={t('admin:invoicesPage.revertToDraft', 'Revert to Draft')} footer={<><Button variant="secondary" onClick={() => setShowRevertConfirmModal(false)}>{t('common:cancel', 'Cancel')}</Button><Button variant="primary" onClick={confirmRevertToDraft}>{t('admin:invoicesPage.revertToDraft', 'Revert to Draft')}</Button></>}>
             <div style={{ textAlign: 'center', padding: '20px 0' }}>
               <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#0A2540', marginBottom: '12px' }}>{t('admin:invoicesPage.revertToDraft', 'Revert to Draft')}</h3>
-              <p style={{ fontSize: '14px', color: '#6B7280', marginBottom: '20px', lineHeight: '1.6' }}>
+              <p style={{ fontSize: '14px', color: '#4B5563', marginBottom: '20px', lineHeight: '1.6' }}>
                 {t('admin:invoicesPage.revertConfirm', 'Revert invoice')} <strong>{selectedInvoice.invoiceNumber}</strong> {t('admin:invoicesPage.revertConfirmTail', 'back to draft?')}
               </p>
               <div style={{ background: '#EEF2FF', padding: '16px', borderRadius: '8px', border: '1px solid #C7D2FE', marginBottom: '16px' }}>
                 <p style={{ margin: 0, color: '#3730A3', fontSize: '14px', fontWeight: '500' }}>{t('admin:invoicesPage.revertHint', 'The invoice will be editable again. Invoice number is preserved, and the change is recorded in modification history.')}</p>
               </div>
-              <div style={{ background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E6EBF1' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span style={{ color: '#6B7280' }}>{t('admin:invoicesPage.invoice', 'Invoice')}:</span><span style={{ fontWeight: '500' }}>{selectedInvoice.invoiceNumber}</span></div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6B7280' }}>{t('admin:invoicesPage.amount', 'Amount')}:</span><span style={{ fontWeight: '600' }}>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</span></div>
+              <div style={{ background: '#F1F4F8', padding: '16px', borderRadius: '8px', border: '1px solid #C7CED6' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span style={{ color: '#4B5563' }}>{t('admin:invoicesPage.invoice', 'Invoice')}:</span><span style={{ fontWeight: '500' }}>{selectedInvoice.invoiceNumber}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#4B5563' }}>{t('admin:invoicesPage.amount', 'Amount')}:</span><span style={{ fontWeight: '600' }}>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</span></div>
               </div>
             </div>
           </CommonModal>
@@ -2002,17 +2002,17 @@ const InvoicesPage: React.FC = () => {
           <CommonModal isOpen={true} onClose={() => setShowCancelConfirmModal(false)} title="Cancel Invoice" footer={<><Button variant="secondary" onClick={() => setShowCancelConfirmModal(false)}> Keep Invoice </Button><Button variant="primary" onClick={confirmCancelInvoice} style={{ background: '#EF4444', borderColor: '#EF4444' }} > Cancel Invoice </Button></>}>
             <div style={{ textAlign: 'center', padding: '20px 0' }}>
               <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#0A2540', marginBottom: '12px' }}>{t('admin:invoicesPage.cancelInvoice')}</h3>
-              <p style={{ fontSize: '14px', color: '#6B7280', marginBottom: '20px', lineHeight: '1.6' }}>
+              <p style={{ fontSize: '14px', color: '#4B5563', marginBottom: '20px', lineHeight: '1.6' }}>
                 Are you sure you want to cancel invoice <strong>{selectedInvoice.invoiceNumber}</strong>?
               </p>
               <div style={{ background: '#FEE2E2', padding: '16px', borderRadius: '8px', border: '1px solid #FCA5A5', marginBottom: '16px' }}>
                 <p style={{ margin: 0, color: '#991B1B', fontSize: '14px', fontWeight: '500' }}><strong>Warning: This action cannot be undone</strong></p>
                 <p style={{ margin: '8px 0 0 0', color: '#7F1D1D', fontSize: '13px' }}>The invoice will be marked as cancelled and cannot be sent or processed for payment.</p>
               </div>
-              <div style={{ background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E6EBF1' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span style={{ color: '#6B7280' }}>Invoice:</span><span style={{ fontWeight: '500' }}>{selectedInvoice.invoiceNumber}</span></div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span style={{ color: '#6B7280' }}>Manager:</span><span style={{ fontWeight: '500' }}>{selectedInvoice.managerName}</span></div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6B7280' }}>Amount:</span><span style={{ fontWeight: '600', color: '#DC2626' }}>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</span></div>
+              <div style={{ background: '#F1F4F8', padding: '16px', borderRadius: '8px', border: '1px solid #C7CED6' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span style={{ color: '#4B5563' }}>Invoice:</span><span style={{ fontWeight: '500' }}>{selectedInvoice.invoiceNumber}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span style={{ color: '#4B5563' }}>Manager:</span><span style={{ fontWeight: '500' }}>{selectedInvoice.managerName}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#4B5563' }}>Amount:</span><span style={{ fontWeight: '600', color: '#DC2626' }}>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</span></div>
               </div>
             </div>
           </CommonModal>
@@ -2023,7 +2023,7 @@ const InvoicesPage: React.FC = () => {
           <CommonModal isOpen={true} onClose={() => setShowDeleteConfirmModal(false)} title="Delete Invoice" footer={<><Button variant="secondary" onClick={() => setShowDeleteConfirmModal(false)}> Keep Invoice </Button><Button variant="primary" onClick={confirmDeleteInvoice} style={{ background: '#EF4444', borderColor: '#EF4444' }} > Delete Invoice </Button></>}>
             <div style={{ textAlign: 'center', padding: '20px 0' }}>
               <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#0A2540', marginBottom: '12px' }}>{t('admin:invoicesPage.deleteInvoice')}</h3>
-              <p style={{ fontSize: '14px', color: '#6B7280', lineHeight: '1.5' }}>
+              <p style={{ fontSize: '14px', color: '#4B5563', lineHeight: '1.5' }}>
                 Are you sure you want to permanently delete invoice <strong>#{selectedInvoice.invoiceNumber}</strong>?
                 <br />This action cannot be undone.
               </p>
@@ -2036,16 +2036,16 @@ const InvoicesPage: React.FC = () => {
           <CommonModal isOpen={true} onClose={() => setShowEmailModal(false)} title="Send Invoice via Email" footer={<><Button variant="secondary" onClick={() => { setShowEmailModal(false); setEmailInvoice(null); setEmailRecipient(''); }}> Cancel </Button><Button variant="primary" onClick={handleSendInvoiceEmail} disabled={!emailRecipient || !emailRecipient.includes('@')} > Send Email </Button></>}>
             <FormGroup>
               <FormLabel>{t('admin:invoicesPage.invoice')}</FormLabel>
-              <div style={{ padding: '12px', background: '#F8FAFC', borderRadius: '6px', marginBottom: '16px' }}>
+              <div style={{ padding: '12px', background: '#F1F4F8', borderRadius: '6px', marginBottom: '16px' }}>
                 <div style={{ fontWeight: '600', color: '#0A2540', marginBottom: '4px' }}>{emailInvoice.invoiceNumber}</div>
-                <div style={{ fontSize: '13px', color: '#6B7280' }}>{emailInvoice.customerName}</div>
+                <div style={{ fontSize: '13px', color: '#4B5563' }}>{emailInvoice.customerName}</div>
                 <div style={{ fontSize: '14px', fontWeight: '600', color: '#635BFF', marginTop: '8px' }}>{formatCurrency(emailInvoice.total, emailInvoice.currency || 'MYR')}</div>
               </div>
             </FormGroup>
             <FormGroup>
               <FormLabel>Recipient Email *</FormLabel>
               <FormInput type="email" value={emailRecipient} onChange={(e) => setEmailRecipient(e.target.value)} placeholder="Enter recipient email address" required style={{ maxWidth: '100%' }} />
-              <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+              <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '4px' }}>
                 {emailRecipient ? (
                   <>Default email for {emailInvoice.payerType === 'restaurant' ? 'Restaurant' : emailInvoice.payerType === 'foodcourt_manager' ? 'Foodcourt Manager' : emailInvoice.payerType === 'brand_manager' ? 'Brand Manager' : 'Customer'}</>
                 ) : (

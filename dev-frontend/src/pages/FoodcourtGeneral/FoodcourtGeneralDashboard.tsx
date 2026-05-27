@@ -25,7 +25,7 @@ const Container = styled.div`
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -47,7 +47,7 @@ const Header = styled.div`
 
 const Content = styled.div`
   padding: 32px;
-  background: #FAFBFC;
+  background: #F9FAFB;
   min-height: calc(100vh - 120px);
 
   @media (max-width: 768px) {
@@ -72,7 +72,7 @@ const Subtitle = styled.div`
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  color: #6B7C93;
+  color: #4B5563;
   margin-top: 4px;
 `;
 
@@ -119,7 +119,7 @@ const ChartContainer = styled.div`
   background: white;
   border-radius: 16px;
   padding: 28px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
 
   @media (max-width: 768px) {
     padding: 20px;
@@ -137,7 +137,7 @@ const AlertsPanel = styled.div`
   background: white;
   border-radius: 16px;
   padding: 20px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   display: flex;
   flex-direction: column;
 
@@ -162,7 +162,7 @@ const AlertsList = styled.div`
 
   &::-webkit-scrollbar { width: 4px; }
   &::-webkit-scrollbar-track { background: transparent; }
-  &::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
+  &::-webkit-scrollbar-thumb { background: #64748B; border-radius: 4px; }
 `;
 
 const Alert = styled.div<{ type: 'warning' | 'error' | 'info' | 'success' }>`
@@ -179,7 +179,7 @@ const Alert = styled.div<{ type: 'warning' | 'error' | 'info' | 'success' }>`
       case 'warning': return '#FFFBEB';
       case 'success': return '#ECFDF5';
       case 'info': return '#EFF6FF';
-      default: return '#F8FAFC';
+      default: return '#F1F4F8';
     }
   }};
   border: 1px solid ${props => {
@@ -188,7 +188,7 @@ const Alert = styled.div<{ type: 'warning' | 'error' | 'info' | 'success' }>`
       case 'warning': return '#FDE68A';
       case 'success': return '#A7F3D0';
       case 'info': return '#BFDBFE';
-      default: return '#E6EBF1';
+      default: return '#C7CED6';
     }
   }};
   flex-shrink: 0;
@@ -210,14 +210,14 @@ const AlertTitle = styled.div<{ type: 'warning' | 'error' | 'info' | 'success' }
       case 'warning': return '#D97706';
       case 'success': return '#059669';
       case 'info': return '#2563EB';
-      default: return '#374151';
+      default: return '#1F2937';
     }
   }};
 `;
 
 const AlertDescription = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 2px;
 `;
 
@@ -247,13 +247,13 @@ const QuickActionCard = styled.div`
   padding: 24px;
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   text-align: center;
   cursor: pointer;
   transition: all 0.2s;
 
   &:hover {
-    background: #F6F9FC;
+    background: #F4F6F9;
     .icon { color: #0A2540; }
     .title { color: #0A2540; }
   }
@@ -261,7 +261,7 @@ const QuickActionCard = styled.div`
   .icon {
     font-size: 32px;
     margin-bottom: 12px;
-    color: #6B7C93;
+    color: #4B5563;
     transition: color 0.2s;
     font-family: 'Lucida Console', 'Courier New', monospace;
   }
@@ -276,7 +276,7 @@ const QuickActionCard = styled.div`
 
   .description {
     font-size: 13px;
-    color: #6B7280;
+    color: #4B5563;
   }
 `;
 
@@ -295,7 +295,7 @@ const ChartCard = styled.div`
   background: white;
   border-radius: 16px;
   padding: 24px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
 `;
 
 const ChartHeader = styled.div`
@@ -315,7 +315,7 @@ const ChartTitle = styled.h3`
 const RecentOrdersSection = styled.div`
   background: white;
   border-radius: 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   overflow: hidden;
 
   h3 {
@@ -324,7 +324,7 @@ const RecentOrdersSection = styled.div`
     color: #0A2540;
     font-size: 18px;
     font-weight: 600;
-    border-bottom: 1px solid #F3F4F6;
+    border-bottom: 1px solid #F1F4F8;
   }
 
   @media (max-width: 1024px) {
@@ -353,7 +353,7 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'pending_payment': return 'background: #FEF3C7; color: #92400E;';
       case 'overdue': return 'background: #FEE2E2; color: #991B1B;';
       case 'sent': return 'background: #DBEAFE; color: #1E40AF;';
-      default: return 'background: #F3F4F6; color: #374151;';
+      default: return 'background: #F1F4F8; color: #1F2937;';
     }
   }}
 `;
@@ -363,7 +363,7 @@ const LoadingContainer = styled.div`
   justify-content: center;
   align-items: center;
   min-height: 200px;
-  color: #6B7C93;
+  color: #4B5563;
   font-size: 14px;
 `;
 
@@ -413,7 +413,7 @@ const TenancyOpsSection = styled.div`
   border-radius: 12px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   margin-bottom: 24px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
 `;
 
 const TenancyOpsHeader = styled.div`
@@ -423,7 +423,7 @@ const TenancyOpsHeader = styled.div`
 
 const TenancyOpsSubtitle = styled.div`
   font-size: 13px;
-  color: #6B7C93;
+  color: #4B5563;
 `;
 
 const FunnelRow = styled.div`
@@ -438,13 +438,13 @@ const FunnelRow = styled.div`
 
 const FunnelCell = styled.div<{ $color: string }>`
   padding: 14px 12px;
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-left: 3px solid ${p => p.$color};
   border-radius: 6px;
   .label {
     font-size: 10px;
     font-weight: 600;
-    color: #6B7C93;
+    color: #4B5563;
     text-transform: uppercase;
     letter-spacing: 0.3px;
     margin-bottom: 6px;
@@ -465,7 +465,7 @@ const FunnelTotal = styled.div`
   .label {
     font-size: 10px;
     font-weight: 600;
-    color: #6B7C93;
+    color: #4B5563;
     text-transform: uppercase;
     letter-spacing: 0.3px;
     margin-bottom: 6px;
@@ -489,8 +489,8 @@ const TenancyOpsGrid = styled.div`
 
 const OpsCard = styled.div<{ $highlight?: boolean }>`
   padding: 16px 18px;
-  background: ${p => p.$highlight ? '#F0EDFF' : '#F8FAFC'};
-  border: 1px solid ${p => p.$highlight ? '#DDD6FE' : '#E6EBF1'};
+  background: ${p => p.$highlight ? '#F0EDFF' : '#F1F4F8'};
+  border: 1px solid ${p => p.$highlight ? '#DDD6FE' : '#C7CED6'};
   border-radius: 8px;
   display: flex;
   flex-direction: column;
@@ -515,17 +515,17 @@ const OpsCardStats = styled.div`
   gap: 6px;
   font-size: 12px;
   font-weight: 600;
-  color: #4B5563;
+  color: #374151;
   small {
     font-weight: 500;
-    color: #9CA3AF;
+    color: #6B7280;
     margin-left: 2px;
   }
 `;
 
 const OpsEmpty = styled.div`
   font-size: 12px;
-  color: #9CA3AF;
+  color: #6B7280;
   font-style: italic;
   padding: 8px 0;
 `;
@@ -543,7 +543,7 @@ const OpsListItem = styled.div`
   padding: 8px 10px;
   background: white;
   border-radius: 6px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   cursor: pointer;
   transition: border-color 0.15s, box-shadow 0.15s;
   &:hover {
@@ -563,7 +563,7 @@ const OpsListItem = styled.div`
   }
   .sub {
     font-weight: 500;
-    color: #6B7C93;
+    color: #4B5563;
   }
 `;
 
@@ -588,13 +588,13 @@ const ForecastValue = styled.div`
 
 const ForecastMeta = styled.div`
   font-size: 12px;
-  color: #4B5563;
+  color: #374151;
   margin-bottom: 8px;
 `;
 
 const ForecastNote = styled.div`
   font-size: 11px;
-  color: #9CA3AF;
+  color: #6B7280;
   font-style: italic;
   line-height: 1.4;
 `;
@@ -905,8 +905,8 @@ const FoodcourtGeneralDashboard: React.FC = () => {
                     style={{
                       padding: '6px 12px',
                       background: chartPeriod === p ? '#635BFF' : 'transparent',
-                      color: chartPeriod === p ? 'white' : '#6B7280',
-                      border: '1px solid #E6EBF1',
+                      color: chartPeriod === p ? 'white' : '#4B5563',
+                      border: '1px solid #C7CED6',
                       borderRadius: '6px',
                       cursor: 'pointer',
                       fontSize: '13px'
@@ -920,13 +920,13 @@ const FoodcourtGeneralDashboard: React.FC = () => {
             {trendData.length > 0 ? (
               <ResponsiveContainer width="100%" height={240}>
                 <LineChart data={trendData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-                  <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#6B7C93' }} />
-                  <YAxis tick={{ fontSize: 12, fill: '#6B7C93' }} tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F1F4F8" />
+                  <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#4B5563' }} />
+                  <YAxis tick={{ fontSize: 12, fill: '#4B5563' }} tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v} />
                   <Tooltip
                     formatter={(value: any) => [formatCurrency(value, currency), 'Revenue']}
                     labelStyle={{ color: '#0A2540', fontWeight: 600 }}
-                    contentStyle={{ borderRadius: 8, border: '1px solid #E6EBF1' }}
+                    contentStyle={{ borderRadius: 8, border: '1px solid #C7CED6' }}
                   />
                   <Line type="monotone" dataKey="sales" stroke="#EA580C" strokeWidth={2} dot={{ r: 4, fill: '#EA580C' }} activeDot={{ r: 6 }} />
                 </LineChart>
@@ -998,7 +998,7 @@ const FoodcourtGeneralDashboard: React.FC = () => {
                 </ResponsiveContainer>
                 <div style={{ flex: 1 }}>
                   {pieData.map((item: any, idx: number) => (
-                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, fontSize: 13, color: '#374151' }}>
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, fontSize: 13, color: '#1F2937' }}>
                       <div style={{ width: 10, height: 10, borderRadius: 2, background: PIE_COLORS[idx % PIE_COLORS.length], flexShrink: 0 }} />
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{item.name}</span>
                       <span style={{ fontWeight: 600, flexShrink: 0 }}>{formatCurrency(item.value, currency)}</span>
@@ -1027,7 +1027,7 @@ const FoodcourtGeneralDashboard: React.FC = () => {
               {(['proposal', 'contracting', 'setup', 'active', 'vacant'] as const).map((stage) => {
                 const colors: Record<string, string> = {
                   proposal: '#8B5CF6', contracting: '#F97316', setup: '#3B82F6',
-                  active: '#16A34A', vacant: '#9CA3AF'
+                  active: '#16A34A', vacant: '#6B7280'
                 };
                 const labels: Record<string, string> = {
                   proposal: t('foodcourt:foodcourtGeneralDashboard.stageProposal', 'Proposal'),

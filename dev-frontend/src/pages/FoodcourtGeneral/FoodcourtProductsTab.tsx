@@ -61,7 +61,7 @@ const ProductsGrid = styled.div`
 const ProductCard = styled.div<{ isActive?: boolean }>`
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   padding: 20px;
   opacity: ${p => p.isActive ? 1 : 0.6};
   cursor: pointer;
@@ -83,7 +83,7 @@ const ProductImage = styled.div<{ src?: string | null }>`
   width: 60px;
   height: 60px;
   border-radius: 8px;
-  background: ${p => p.src ? `url(${p.src}) center/cover` : '#F3F4F6'};
+  background: ${p => p.src ? `url(${p.src}) center/cover` : '#F1F4F8'};
   display: flex;
   align-items: center;
   justify-content: center;
@@ -113,7 +113,7 @@ const ProductName = styled.h3`
 
 const ProductSku = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-bottom: 4px;
 `;
 
@@ -130,7 +130,7 @@ const ProductCategory = styled.div`
 const ProductDetails = styled.div`
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
 `;
 
 const DetailRow = styled.div`
@@ -142,7 +142,7 @@ const DetailRow = styled.div`
 `;
 
 const DetailLabel = styled.span`
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const DetailValue = styled.span`
@@ -165,22 +165,22 @@ const ProductActions = styled.div`
   display: flex;
   gap: 8px;
   padding-top: 12px;
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
 `;
 
 const ActionBtn = styled.button<{ variant?: 'danger' }>`
   flex: 1;
   padding: 8px 12px;
   border-radius: 6px;
-  border: 1px solid ${p => p.variant === 'danger' ? '#FEE2E2' : '#E6EBF1'};
+  border: 1px solid ${p => p.variant === 'danger' ? '#FEE2E2' : '#C7CED6'};
   background: ${p => p.variant === 'danger' ? '#FEF2F2' : '#F9FAFB'};
-  color: ${p => p.variant === 'danger' ? '#DC2626' : '#374151'};
+  color: ${p => p.variant === 'danger' ? '#DC2626' : '#1F2937'};
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
 
   &:hover {
-    background: ${p => p.variant === 'danger' ? '#FEE2E2' : '#F3F4F6'};
+    background: ${p => p.variant === 'danger' ? '#FEE2E2' : '#F1F4F8'};
   }
 `;
 
@@ -200,7 +200,7 @@ const CheckboxLabel = styled.label`
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: #374151;
+  color: #1F2937;
   cursor: pointer;
 `;
 
@@ -221,7 +221,7 @@ const CheckboxItem = styled.label`
   gap: 8px;
   padding: 8px 12px;
   background: white;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   cursor: pointer;
   font-size: 13px;
@@ -242,8 +242,8 @@ const EmojiOption = styled.button<{ selected?: boolean }>`
   width: 100%;
   aspect-ratio: 1;
   border-radius: 4px;
-  background: ${p => p.selected ? '#E5E7EB' : 'white'};
-  border: 1px solid ${p => p.selected ? '#9CA3AF' : '#E5E7EB'};
+  background: ${p => p.selected ? '#C7CED6' : 'white'};
+  border: 1px solid ${p => p.selected ? '#6B7280' : '#C7CED6'};
   cursor: pointer;
   font-size: 20px;
   display: flex;
@@ -494,7 +494,7 @@ const FoodcourtProductsTab: React.FC<FoodcourtProductsTabProps> = ({
   }), sortKey);
 
   if (loading) {
-    return <div style={{ padding: 40, textAlign: 'center', color: '#6B7280' }}>{t('common:loading', 'Loading...')}</div>;
+    return <div style={{ padding: 40, textAlign: 'center', color: '#4B5563' }}>{t('common:loading', 'Loading...')}</div>;
   }
 
   return (
@@ -529,7 +529,7 @@ const FoodcourtProductsTab: React.FC<FoodcourtProductsTabProps> = ({
               ? t('common:noResults', 'No products found')
               : t('foodcourt:products.noProducts', 'No products yet')}
           </h4>
-          <p style={{ fontSize: 14, color: '#6B7280', margin: '0 0 20px 0' }}>
+          <p style={{ fontSize: 14, color: '#4B5563', margin: '0 0 20px 0' }}>
             {searchTerm || categoryFilter !== 'all'
               ? t('common:adjustFilters', 'Try adjusting your search or filter criteria.')
               : t('foodcourt:products.startAdding', 'Start by adding your first product.')}
@@ -712,7 +712,7 @@ const FoodcourtProductsTab: React.FC<FoodcourtProductsTabProps> = ({
                   ))}
                 </CheckboxGroup>
               ) : (
-                <div style={{ padding: 12, background: '#F9FAFB', borderRadius: 8, color: '#6B7280', fontSize: 13 }}>
+                <div style={{ padding: 12, background: '#F9FAFB', borderRadius: 8, color: '#4B5563', fontSize: 13 }}>
                   {t('foodcourt:products.noOptionGroups', 'No option groups available. Create option groups in the Option Groups tab first.')}
                 </div>
               )}

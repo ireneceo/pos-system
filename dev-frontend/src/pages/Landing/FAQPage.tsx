@@ -21,7 +21,7 @@ interface FAQItem {
 }
 
 const PageContainer = styled.div`
-  background: #FAFBFC;
+  background: #F9FAFB;
 `;
 
 const HeroSection = styled.section`
@@ -95,7 +95,7 @@ const CategoryTabs = styled.div`
 
 const CategoryTab = styled.button<{ active?: boolean }>`
   padding: 12px 24px;
-  border: 2px solid ${props => props.active ? '#635BFF' : '#E5E7EB'};
+  border: 2px solid ${props => props.active ? '#635BFF' : '#C7CED6'};
   background: ${props => props.active ? '#635BFF' : 'white'};
   color: ${props => props.active ? 'white' : '#425466'};
   border-radius: 50px;
@@ -162,7 +162,7 @@ const FAQIcon = styled.div<{ isOpen?: boolean }>`
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: ${props => props.isOpen ? '#635BFF' : '#F3F4F6'};
+  background: ${props => props.isOpen ? '#635BFF' : '#F1F4F8'};
   display: flex;
   align-items: center;
   justify-content: center;
@@ -172,7 +172,7 @@ const FAQIcon = styled.div<{ isOpen?: boolean }>`
   svg {
     width: 16px;
     height: 16px;
-    color: ${props => props.isOpen ? 'white' : '#6B7280'};
+    color: ${props => props.isOpen ? 'white' : '#4B5563'};
     transform: ${props => props.isOpen ? 'rotate(180deg)' : 'rotate(0)'};
     transition: transform 0.3s;
   }
@@ -208,8 +208,8 @@ const FAQAnswerContent = styled.div`
 const CategoryBadge = styled.span`
   display: inline-block;
   padding: 4px 10px;
-  background: #F3F4F6;
-  color: #6B7280;
+  background: #F1F4F8;
+  color: #4B5563;
   border-radius: 4px;
   font-size: 12px;
   font-weight: 500;
@@ -258,7 +258,7 @@ const ContactButton = styled.button`
 const LoadingSpinner = styled.div`
   text-align: center;
   padding: 60px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const FAQPage: React.FC = () => {

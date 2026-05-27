@@ -47,7 +47,7 @@ const ModalContent = styled.div<{ size: 'small' | 'medium' | 'large' }>`
 
 const ModalHeader = styled.div`
   padding: 24px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -65,7 +65,7 @@ const CloseButton = styled.button`
   background: none;
   border: none;
   font-size: 24px;
-  color: #6B7C93;
+  color: #4B5563;
   cursor: pointer;
   padding: 0;
   width: 32px;
@@ -88,7 +88,7 @@ const ModalBody = styled.div`
 
 const ModalFooter = styled.div`
   padding: 20px 24px;
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
   display: flex;
   justify-content: flex-end;
   gap: 12px;

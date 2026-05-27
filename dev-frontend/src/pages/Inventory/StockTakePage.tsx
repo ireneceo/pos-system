@@ -63,7 +63,7 @@ const InfoBox = styled.div`
 const ProgressBar = styled.div`
   width: 100%;
   height: 8px;
-  background: #E5E7EB;
+  background: #C7CED6;
   border-radius: 4px;
   margin: 16px 0;
   overflow: hidden;
@@ -78,7 +78,7 @@ const ProgressFill = styled.div<{ percentage: number }>`
 
 const ProgressText = styled.div`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin-bottom: 8px;
 `;
 
@@ -88,19 +88,19 @@ const StockTable = styled.table`
   background: white;
   border-radius: 8px;
   overflow: hidden;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
 
   th, td {
     padding: 12px 16px;
     text-align: left;
-    border-bottom: 1px solid #E6EBF1;
+    border-bottom: 1px solid #C7CED6;
   }
 
   th {
     background: #F9FAFB;
     font-weight: 600;
     font-size: 13px;
-    color: #374151;
+    color: #1F2937;
   }
 
   td {
@@ -120,7 +120,7 @@ const StockTable = styled.table`
 const StockInput = styled.input`
   width: 100px;
   padding: 8px 12px;
-  border: 1px solid #D1D5DB;
+  border: 1px solid #6B7280;
   border-radius: 6px;
   font-size: 14px;
 
@@ -133,7 +133,7 @@ const StockInput = styled.input`
 
 const ReasonSelect = styled.select`
   padding: 8px 12px;
-  border: 1px solid #D1D5DB;
+  border: 1px solid #6B7280;
   border-radius: 6px;
   font-size: 14px;
   min-width: 120px;
@@ -167,7 +167,7 @@ const SummaryItem = styled.div`
 
 const SummaryLabel = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-bottom: 4px;
 `;
 
@@ -194,7 +194,7 @@ const EmptyTitle = styled.h3`
 
 const EmptyDescription = styled.p`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin-bottom: 24px;
   max-width: 500px;
   margin-left: auto;
@@ -239,7 +239,7 @@ const HistoryList = styled.div`
 const HistoryCard = styled.div<{ status: string }>`
   padding: 16px 20px;
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   display: flex;
   justify-content: space-between;
@@ -260,7 +260,7 @@ const HistoryDate = styled.div`
 
 const HistoryMeta = styled.div`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const StatusBadge = styled.span<{ status: string }>`
@@ -283,11 +283,11 @@ const StatusBadge = styled.span<{ status: string }>`
 `;
 
 const CategoryHeader = styled.tr`
-  background: #F3F4F6 !important;
+  background: #F1F4F8 !important;
 
   td {
     font-weight: 600;
-    color: #374151;
+    color: #1F2937;
     padding: 10px 16px;
   }
 `;

@@ -52,7 +52,7 @@ const IngredientsGrid = styled.div`
 const IngredientCard = styled.div<{ isActive?: boolean }>`
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   padding: 20px;
   transition: all 0.2s;
   opacity: ${props => props.isActive ? 1 : 0.6};
@@ -72,7 +72,7 @@ const IngredientImageContainer = styled.div`
   aspect-ratio: 16 / 9;
   border-radius: 8px 8px 0 0;
   overflow: hidden;
-  background: #F6F9FC;
+  background: #F4F6F9;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -120,7 +120,7 @@ const TrackStockRow = styled.div`
   justify-content: space-between;
   align-items: center;
   padding: 8px 12px;
-  background: #F6F9FC;
+  background: #F4F6F9;
   border-radius: 8px;
   margin-top: 12px;
 `;
@@ -151,7 +151,7 @@ const ToggleSlider = styled.span`
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: #E6EBF1;
+  background-color: #C7CED6;
   transition: 0.3s;
   border-radius: 22px;
 
@@ -186,7 +186,7 @@ const InfoRow = styled.div`
   justify-content: space-between;
   align-items: center;
   padding: 8px 0;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
 
   &:last-child {
     border-bottom: none;
@@ -195,7 +195,7 @@ const InfoRow = styled.div`
 
 const InfoLabel = styled.span`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const InfoValue = styled.span`
@@ -244,9 +244,9 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger
         `;
       default:
         return `
-          background: #F6F9FC;
-          border: 1px solid #E6EBF1;
-          color: #6B7280;
+          background: #F4F6F9;
+          border: 1px solid #C7CED6;
+          color: #4B5563;
           &:hover {
             border-color: #635BFF;
             color: #635BFF;
@@ -279,7 +279,7 @@ const EmptyTitle = styled.h3`
 
 const EmptyDescription = styled.p`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin-bottom: 24px;
 `;
 
@@ -287,7 +287,7 @@ const EmptyDescription = styled.p`
 const ImagePreview = styled.div`
   width: 100%;
   height: 150px;
-  border: 2px dashed #E6EBF1;
+  border: 2px dashed #C7CED6;
   border-radius: 8px;
   display: flex;
   align-items: center;
@@ -311,7 +311,7 @@ const ImagePreview = styled.div`
 
 const ImagePlaceholder = styled.div`
   text-align: center;
-  color: #9CA3AF;
+  color: #6B7280;
   font-size: 13px;
 `;
 
@@ -629,11 +629,11 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
         </FilterSelect>
         <SortDropdown value={sortKey} onChange={setSortKey} />
         <div data-controls-trailing>
-          <div style={{ display: 'flex', background: '#F3F4F6', borderRadius: '6px', padding: '2px' }}>
-            <button onClick={() => { setViewMode('compact'); localStorage.setItem('brandIngredientsViewMode', 'compact'); }} style={{ padding: '5px 14px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'compact' ? 'white' : 'transparent', color: viewMode === 'compact' ? '#0A2540' : '#6B7C93', boxShadow: viewMode === 'compact' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
+          <div style={{ display: 'flex', background: '#F1F4F8', borderRadius: '6px', padding: '2px' }}>
+            <button onClick={() => { setViewMode('compact'); localStorage.setItem('brandIngredientsViewMode', 'compact'); }} style={{ padding: '5px 14px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'compact' ? 'white' : 'transparent', color: viewMode === 'compact' ? '#0A2540' : '#4B5563', boxShadow: viewMode === 'compact' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
               Compact
             </button>
-            <button onClick={() => { setViewMode('image'); localStorage.setItem('brandIngredientsViewMode', 'image'); }} style={{ padding: '5px 14px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'image' ? 'white' : 'transparent', color: viewMode === 'image' ? '#0A2540' : '#6B7C93', boxShadow: viewMode === 'image' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
+            <button onClick={() => { setViewMode('image'); localStorage.setItem('brandIngredientsViewMode', 'image'); }} style={{ padding: '5px 14px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'image' ? 'white' : 'transparent', color: viewMode === 'image' ? '#0A2540' : '#4B5563', boxShadow: viewMode === 'image' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
               Image
             </button>
           </div>
@@ -880,7 +880,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
       {showDetailModal && detailIngredient && (
         <Modal isOpen={showDetailModal} onClose={() => setShowDetailModal(false)} title={detailIngredient.name} size="medium">
           {detailIngredient.image_url && (
-            <div style={{ width: '100%', aspectRatio: '300/180', borderRadius: '8px', overflow: 'hidden', marginBottom: '16px', background: '#F6F9FC' }}>
+            <div style={{ width: '100%', aspectRatio: '300/180', borderRadius: '8px', overflow: 'hidden', marginBottom: '16px', background: '#F4F6F9' }}>
               <img src={detailIngredient.image_url} alt={detailIngredient.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
           )}
@@ -900,21 +900,21 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '16px' }}>
             <div style={{ padding: '10px', background: '#F9FAFB', borderRadius: '8px', textAlign: 'center' }}>
-              <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '3px' }}>{'Base Qty'}</div>
+              <div style={{ fontSize: '11px', color: '#4B5563', marginBottom: '3px' }}>{'Base Qty'}</div>
               <div style={{ fontSize: '14px', fontWeight: 600 }}>{Number(detailIngredient.base_quantity || 1)} {detailIngredient.unit}</div>
             </div>
             <div style={{ padding: '10px', background: '#F9FAFB', borderRadius: '8px', textAlign: 'center' }}>
-              <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '3px' }}>{'Current Stock'}</div>
+              <div style={{ fontSize: '11px', color: '#4B5563', marginBottom: '3px' }}>{'Current Stock'}</div>
               <div style={{ fontSize: '14px', fontWeight: 600 }}>{detailIngredient.track_stock ? `${Number(detailIngredient.current_stock || 0).toFixed(1)} ${detailIngredient.unit}` : '-'}</div>
             </div>
             <div style={{ padding: '10px', background: '#F9FAFB', borderRadius: '8px', textAlign: 'center' }}>
-              <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '3px' }}>{'Min Stock'}</div>
+              <div style={{ fontSize: '11px', color: '#4B5563', marginBottom: '3px' }}>{'Min Stock'}</div>
               <div style={{ fontSize: '14px', fontWeight: 600 }}>{detailIngredient.track_stock ? `${Number(detailIngredient.min_stock || 0)} ${detailIngredient.unit}` : '-'}</div>
             </div>
           </div>
 
           {detailIngredient.supplier_name && (
-            <div style={{ marginBottom: '16px', fontSize: '13px', color: '#6B7280' }}>
+            <div style={{ marginBottom: '16px', fontSize: '13px', color: '#4B5563' }}>
               Supplier: <span style={{ color: '#0A2540', fontWeight: 500 }}>{detailIngredient.supplier_name}</span>
             </div>
           )}
@@ -923,7 +923,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
           <div style={{ padding: '12px', background: '#F0F4FF', borderRadius: '8px', border: '1px solid #DBEAFE', marginBottom: '16px' }}>
             <div style={{ fontSize: '12px', fontWeight: 600, color: '#1E40AF', marginBottom: '8px' }}>{'Used In'}</div>
             {linkedItems.recipes.length === 0 && linkedItems.products.length === 0 ? (
-              <div style={{ fontSize: '13px', color: '#6B7280' }}>{'Not linked to any recipe or product yet.'}</div>
+              <div style={{ fontSize: '13px', color: '#4B5563' }}>{'Not linked to any recipe or product yet.'}</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 {linkedItems.recipes.map((r: any) => (

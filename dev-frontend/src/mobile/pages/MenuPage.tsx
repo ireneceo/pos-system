@@ -39,7 +39,7 @@ const StoreHeader = styled.div`
   background: white;
   padding: 14px 16px;
   margin: 0 0 16px 0;
-  border-bottom: 1px solid #E5E7EB;
+  border-bottom: 1px solid #C7CED6;
   border-radius: 8px;
   display: flex;
   align-items: center;
@@ -73,7 +73,7 @@ const StoreName = styled.h2`
 const StoreBranch = styled.div`
   font-size: 12px;
   font-weight: 500;
-  color: #6B7C93;
+  color: #4B5563;
   margin-top: 1px;
   display: -webkit-box;
   -webkit-line-clamp: 1;
@@ -87,7 +87,7 @@ const StoreStatus = styled.span<{ isOpen: boolean }>`
   align-items: center;
   gap: 5px;
   font-size: 12px;
-  color: ${props => props.isOpen ? '#10B981' : '#9CA3AF'};
+  color: ${props => props.isOpen ? '#10B981' : '#6B7280'};
   font-weight: 500;
 
   &::before {
@@ -95,7 +95,7 @@ const StoreStatus = styled.span<{ isOpen: boolean }>`
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: ${props => props.isOpen ? '#10B981' : '#9CA3AF'};
+    background: ${props => props.isOpen ? '#10B981' : '#6B7280'};
   }
 `;
 
@@ -163,7 +163,7 @@ const SearchInputContainer = styled.div`
 const SearchInput = styled.input`
   width: 100%;
   padding: 10px 16px 10px 40px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 16px;
   transition: all 0.15s;
@@ -194,9 +194,9 @@ const ClearSearchBtn = styled.button`
   width: 24px;
   height: 24px;
   border: none;
-  background: #F6F9FC;
+  background: #F4F6F9;
   border-radius: 50%;
-  color: #6B7C93;
+  color: #4B5563;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -205,7 +205,7 @@ const ClearSearchBtn = styled.button`
   transition: all 0.15s;
 
   &:hover {
-    background: #E6EBF1;
+    background: #C7CED6;
   }
 `;
 
@@ -217,7 +217,7 @@ const CategoryTabs = styled.div`
   scrollbar-width: none;
   margin: 0 0 16px 0;
   padding: 0;
-  border-bottom: 1px solid #E5E7EB;
+  border-bottom: 1px solid #C7CED6;
 
   &::-webkit-scrollbar {
     display: none;
@@ -232,14 +232,14 @@ const CategoryTab = styled.button<{ active: boolean }>`
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
-  color: ${props => props.active ? '#635BFF' : '#6B7280'};
+  color: ${props => props.active ? '#635BFF' : '#4B5563'};
   border-bottom: 2px solid ${props => props.active ? '#635BFF' : 'transparent'};
   margin-bottom: -1px;
   white-space: nowrap;
   flex-shrink: 0;
 
   &:hover {
-    color: ${props => props.active ? '#635BFF' : '#374151'};
+    color: ${props => props.active ? '#635BFF' : '#1F2937'};
   }
 
   &:active {
@@ -270,7 +270,7 @@ const MenuItemCard = styled.div`
 const ItemImage = styled.div<{ hasImage?: boolean }>`
   width: 100%;
   height: 120px;
-  background: #F3F4F6;
+  background: #F1F4F8;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -359,7 +359,7 @@ const SetBadge = styled.div`
 
 const SetItemsPreview = styled.div`
   font-size: 11px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 4px;
   line-height: 1.3;
 `;
@@ -369,7 +369,7 @@ const LoadingContainer = styled.div`
   justify-content: center;
   align-items: center;
   height: 200px;
-  color: #9CA3AF;
+  color: #6B7280;
 `;
 
 const LoadingMore = styled.div`
@@ -377,14 +377,14 @@ const LoadingMore = styled.div`
   justify-content: center;
   align-items: center;
   padding: 20px;
-  color: #9CA3AF;
+  color: #6B7280;
   font-size: 14px;
 `;
 
 const EmptyState = styled.div`
   text-align: center;
   padding: 40px 0;
-  color: #9CA3AF;
+  color: #6B7280;
 
   svg {
     width: 64px;
@@ -1067,7 +1067,7 @@ const MenuPage: React.FC = () => {
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <ItemPrice>{formatCurrency(item.price, currency)}</ItemPrice>
                         {item.orderCount && (
-                          <span style={{ fontSize: '11px', color: '#6B7280' }}>{item.orderCount} sold</span>
+                          <span style={{ fontSize: '11px', color: '#4B5563' }}>{item.orderCount} sold</span>
                         )}
                       </div>
                     </ItemInfo>

@@ -39,7 +39,7 @@ const SignupBox = styled.div`
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -99,7 +99,7 @@ const SectionTitle = styled.h3`
   color: #0A2540;
   margin: 0 0 8px 0;
   padding-bottom: 8px;
-  border-bottom: 2px solid #F3F4F6;
+  border-bottom: 2px solid #F1F4F8;
 `;
 
 const Row = styled.div`
@@ -121,12 +121,12 @@ const InputGroup = styled.div`
 const Label = styled.label`
   font-size: 14px;
   font-weight: 600;
-  color: #374151;
+  color: #1F2937;
 `;
 
 const Input = styled.input`
   padding: 14px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 10px;
   font-size: 16px;
   transition: all 0.2s;
@@ -144,7 +144,7 @@ const Input = styled.input`
 
 const Select = styled.select`
   padding: 14px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 10px;
   font-size: 16px;
   background: white;
@@ -159,8 +159,8 @@ const Select = styled.select`
 `;
 
 const RestaurantCountSection = styled.div`
-  background: #F8FAFC;
-  border: 1px solid #E6EBF1;
+  background: #F1F4F8;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   padding: 24px;
   margin: 8px 0;
@@ -175,8 +175,8 @@ const CountOptions = styled.div`
 
 const CountOption = styled.div<{ selected: boolean }>`
   background: ${props => props.selected ? '#635BFF' : 'white'};
-  color: ${props => props.selected ? 'white' : '#374151'};
-  border: 2px solid ${props => props.selected ? '#635BFF' : '#E6EBF1'};
+  color: ${props => props.selected ? 'white' : '#1F2937'};
+  border: 2px solid ${props => props.selected ? '#635BFF' : '#C7CED6'};
   border-radius: 12px;
   padding: 20px;
   text-align: center;
@@ -252,20 +252,20 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
     }
     
     &:disabled {
-      background: #9CA3AF;
+      background: #6B7280;
       cursor: not-allowed;
       transform: none;
       box-shadow: none;
     }
   ` : `
     background: white;
-    color: #6B7280;
-    border: 1px solid #E6EBF1;
+    color: #4B5563;
+    border: 1px solid #C7CED6;
     
     &:hover {
-      background: #F8FAFC;
+      background: #F1F4F8;
       color: #0A2540;
-      border-color: #CBD5E1;
+      border-color: #64748B;
     }
   `}
 `;
@@ -289,7 +289,7 @@ const LoginLink = styled.div`
   text-align: center;
   margin-top: 24px;
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   
   a {
     color: #635BFF;

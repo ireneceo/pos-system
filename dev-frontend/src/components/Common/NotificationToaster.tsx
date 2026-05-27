@@ -179,7 +179,7 @@ const NotificationToaster: React.FC = () => {
           key={item.id}
           style={{
             background: '#fff',
-            border: '1px solid #E6EBF1',
+            border: '1px solid #C7CED6',
             borderLeft: '4px solid #635BFF',
             borderRadius: 10,
             boxShadow: '0 6px 20px rgba(10,37,64,0.10)',
@@ -197,7 +197,7 @@ const NotificationToaster: React.FC = () => {
                 {item.title}
               </div>
               {item.body && (
-                <div style={{ fontSize: 13, color: '#6B7C93', lineHeight: 1.45 }}>
+                <div style={{ fontSize: 13, color: '#4B5563', lineHeight: 1.45 }}>
                   {item.body}
                 </div>
               )}
@@ -207,7 +207,7 @@ const NotificationToaster: React.FC = () => {
               aria-label={t('common:close')}
               onClick={(e) => { e.stopPropagation(); removeToast(item.id); }}
               style={{
-                background: 'transparent', border: 'none', color: '#6B7C93',
+                background: 'transparent', border: 'none', color: '#4B5563',
                 cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 0
               }}
             >×</button>

@@ -1,87 +1,115 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-05-26 (BRAND CONCEPT v2 + 글쓰기 스킬 통합 + 랜딩 z-index fix + lua ACL)
-**버전:** **v3.42** 운영 (Irene 지시로 버전 미상승, backstage 누적)
-**작업 상태:** 완료. 매장 점검 결과 + 새 작업 지시 대기.
+**마지막 업데이트:** 2026-05-27 (6차 운영 배포 — Floor Plan zone + CD 미러링 + Emergency + QZ SHA512 + Brand 마이그)
+**버전:** **v3.42** 운영 (backstage 누적 6회, 버전 미상승)
+**작업 상태:** 완료. 새 작업 지시 대기.
 
 ### 진행 중인 작업
 - 없음
 
-### 오늘 (2026-05-26) 완료된 작업
+### 오늘 (2026-05-27) 완료된 6차 운영 배포 누적
 
-**1. /글쓰기 SOP v2 — 타깃 + 단일 톤 통합**
-- 0단계 신설 — AskUserQuestion 으로 타깃 (6 역할 + Auto) 먼저 결정. PERSONA_CODE 정해진 후만 1단계 진입
-- 1단계 트렌드 리서치 persona 별 쿼리 세트 분기 (RA/BG/FG/OW/SP/ST 6개 세트)
-- 2단계 고객 DB persona 매칭만 필터
-- 3단계 매트릭스 통합 — 같은 persona row 안에서 problem 만 다양화 (후보 3건 모두 동일 persona)
-- 1.5단계 영상 트랙 결정 (CHAOS vs INTERVIEW) 폐지
+**1. Floor Plan zone 격리**
+- `orders.floor_plan_table_id` (VARCHAR(64)) 컬럼 + index 신설
+- 운영 DB 마이그 — 272 scanned / 239 backfilled / 1 ambiguous
+- 다중 zone 매장 (Restaurant 16, T1~22 + A20~22 둘 다 같은 tableNumber) 격리
+- `selectedTable` derived = `label || tableNumber` (label 우선 — multi-zone 의 prefix 보존)
+- POSTerminal URL ?tableId 박힘, orders POST body 의 floor_plan_table_id
 
-**2. BRAND CONCEPT v2 — 단일 톤 영구 박제**
-- CHAOS/INTERVIEW 두 트랙 분기 완전 폐지 → 단일 톤 통일
-- 포지셔닝: "Built by F&B operators. Solving real problems." / "NOT a POS company — real-operations-problem-solving brand"
-- 5비트 구조 고정 (HOOK / 문제 / 해결 / 결과 / CTA)
-- 시각: Apple-clean SaaS + 자연광 + 한국감성 모던 F&B (white oak / marble / 큰 창)
-- 캐스팅: 30s 동양인 사장/매니저, 모델급 외모, 깔끔 apron
-- POS UI: 둥근 버튼 / 여백 / 3 패널 / violet 절제
-- CTA: "Start Your Free Trial" pill + purplehere.com
-- **video_prompt 4000자 한도 강제**
+**2. Customer Display 풍부화**
+- Floor Plan / POS Terminal → CD socket cart-update payload 에 `orderInfo` + `customer` 풍부화
+  - orderInfo: orderNumber / orderType / sourceLabel / createdAt / paymentStatus / paymentMethod / cashierName / orderStatus / guestCount
+  - customer: id / name / phone / loyaltyTier / points
+- CD 좌측: cart.orderInfo 있으면 **OrderInfo + Member 카드** (키패드 hide). 없으면 idle phone 키패드
+- POSTerminal — 빈 카트 emit skip (overlay 진입 시 CD 빈 화면 되는 버그 해결)
+- pos-customer-update 별도 socket event (선택만 변경 시)
+- cart-clear / customer-cleared 명시 cleanup
 
-**3. e-invoice 글 video_prompt 재작성 (id 78/79/80)**
-- v1 (8500자) → v2 (en 3970 / ms 3992 / zh 3199)
-- dev DB + 운영 DB 동기화 완료
-- pain_point: "January 1st. Receipts aren't enough." / "1 Januari. Resit tidak cukup." / "1月1日。光收据不够了。"
-- 5비트 BREAKDOWN 정확 (HOOK 0-2s / 문제 2-7s / 해결 8-10s / 결과 10-13s / CTA 13-15s)
+**3. Emergency Routing Mode**
+- printer_settings.emergencyMode boolean + emergencyEnabledAt timestamp
+- 빨간 강조 카드 + Pre-flight 좌/우 2-column 비교 (현재 정상 vs 비상 켜면)
+- Troubleshoot modal — 4 시나리오 (권한 캐시 reset / 주방 프린터 / 인터넷 다운 / OS 다이얼로그)
+- 캐셔 method 별 적합도 자동 감지 (USB+QZ → ✓ 최적, LAN+QZ → ⚠ 부분)
+- billPrint.js 의 printKitchenTicketViaRawBT / printCancellationTicket 진입점 emergencyMode 체크 → bill printer redirect
 
-**4. 블로그 스킬 5개 → 1개 통합**
-- `/블로그초안.md` `/블로그발행.md` `/블로그감사.md` `/블로그리서치.md` `/블로그캘린더.md` git rm
-- 5-A (video_prompt BRAND CONCEPT v2 + PER-SECOND TEMPLATE) + 5-B (social_post 단일 톤) 을 `/글쓰기.md` 5단계 안에 통째 흡수
-- 한 파일에서 SOP 관리 — 동기화 부담 해소
+**4. QZ Tray 권한 알림 영구 fix**
+- backend RSA-SHA1 → RSA-SHA512 (QZ Tray 2.2+ default)
+- frontend `qz.security.setSignatureAlgorithm('SHA512')` 활성
+- `/api/qz-tray/installer?os=windows|mac|linux` — 자동 설치 스크립트 (cert embed + 폴더 자동 생성)
+- 보라 강조 박스 + 4 언어 안내
 
-**5. 랜딩 헤더 z-index fix (언어 드롭다운 sub-banner 가림 해결)**
-- `LandingHeader.tsx`: overflow-x:hidden → overflow:visible + max-width:100vw (자식 dropdown 세로 clipping 문제 해결)
-- 헤더 z-index 1000 → 1500
-- `LanguageSelector.tsx` GlobeDropdown + Dropdown z-index 1100 → 1600
-- 빌드 (`main.3cb764c3.js`) + dev 배포 완료
-- **운영 미배포** — 다음 운영 배포 시 함께 반영
+**5. Settings Printer 탭 전면 개편**
+- "어떤 방법 선택?" 결정 매트릭스 (Windows POS / Android tablet / iPad / 혼합 5 row, **아코디언**)
+- Browser Print / RawBT / QZ Tray 3 탭 (디폴트 Browser, QZ 마지막)
+- Workstations + Kitchen Printer 2-column grid
+- Customer Display 카드 → operations 탭 이동
+- Workstation 카드 반응형 (input + 버튼 그룹 분리, minWidth:0)
+- Test Cashier Printer 버튼 → Emergency 토글 옆으로 통합
 
-**6. sync-contents-to-prod.js 영구 패치**
-- `video_prompt` + `social_post` 컬럼이 운영 sync payload 에서 빠져있던 버그 fix
-- payload + remote schema migration cols + UPDATE/INSERT 3곳 모두 추가
-- 향후 `/배포` 자동 콘텐츠 sync 시 두 필드 함께 흐름
+**6. 반응형 헤더 (10인치 fix)**
+- 공용 `OverflowMenu` 컴포넌트 (kebab + click-outside + ESC close + aria)
+- Floor Plan + POS Terminal 헤더 ≤1280px collapse
+- Customer Display 만 항상 가시
 
-**7. lua 사용자 ACL 권한 부여 (Irene 직접 실행)**
-- 5개 디렉토리에 `setfacl -R -m u:lua:rwX` + default ACL:
-  - `/var/www/.claude/commands` (글쓰기 스킬)
-  - `/var/www/docs` (콘텐츠 매트릭스)
-  - `/var/www/dev-frontend/src/pages/Landing` (랜딩 페이지)
-  - `/var/www/dev-frontend/src/components/Landing` (랜딩 헤더/푸터)
-  - `/var/www/dev-frontend/public/locales` (i18n 번역)
-- POS 코드는 그대로 lua read-only (POS 보호)
-- 신규 파일 자동 적용 (default ACL)
+**7. i18n 4 언어 대량 추가**
+- 154 개 `printer.*` 키 전체 4 언어 (en/ko/zh/ms) — verify Errors 0
+- Emergency / methodGuide / Workstations / Stations / Troubleshoot / Auto installer
+- 누락이었던 `howItWorksTitle` / `coreIdea` / `coreRecommendation` 발견 + 추가
 
-### 미해결 / 다음 세션 결정 필요
+**8. LiveOrders 결제 PATCH 400 hotfix (매장 critical)**
+- PATCH /api/orders/:id 의 audit log 안 `orderData` 변수가 PATCH 함수에 정의 안 됨 (POST 코드 복붙)
+- ReferenceError → catch → 400. DB 는 update 되지만 client 에 "결제 실패"
+- fix: `(req.body.source || result.source || 'pos')` 안전 fallback + actionType 'updated'
+- pm2 restart 후 LiveOrders 결제 정상
 
-- **lua 가 `/블로그초안.md` 재생성한 점** — 우리 정리 후 lua 가 6:25 에 다시 생성함 (소유자 `lua:lua`, 26.5KB). 정책상 폐지 결정이었지만 lua 작업 흐름이 다를 수 있음. 이번 commit 에는 untracked 로 둠. Irene 결정 필요: (a) 또 삭제, (b) 살리고 글쓰기와 역할 분리 명확히, (c) lua 가 만든 그대로 흡수
-- **매장 점검 결과 대기** — Irene 매장 가서 프린터 라인별 자동 인쇄 + Customer Display 듀얼 모니터 점검 중. 결과에 따라 hotfix 가능성
+**9. Brand 메뉴 마이그 (Restaurant 16 → Brand 5)**
+- 15 categories + 12 option groups + 41 options + 110 products + 25 OG-links → BrandMenu 시스템
+- Restaurant 16 의 모든 Product 에 `brand_menu_id` + `brand_menu_link_status='in_sync'` stamp
+- Brand 5 의 모든 BrandMenu lock = true (name/price/category/image/options), Restaurant snapshot 도 sync
+- backend lock guard (menu.js:486-513) 정상 작동 — 매장에서 lock 된 필드 PATCH 시 400 PRODUCT_FIELD_LOCKED_BY_BRAND
+
+**10. 운영 DB 마이그 hotfix (매장 영업 critical)**
+- floor_plan_table_id column 운영에 자동 sync 안 되어 모든 Order query 500 → 매장 영업 down
+- 즉시 SSH 로 운영 backend 의 마이그 스크립트 실행 + pm2 restart 복구
+- (보완 필요) deploy-to-production.sh 의 sync-database.js 다음에 우리 신규 마이그도 자동 호출
+
+**11. 기타 hotfix**
+- Settings 의 workstation delete `localStorage.getItem('token')` → `getAuthToken()`
+- printer_settings workstations state hydrate 누락 (새로고침 시 사라짐) fix
+- setCdInfoModal undefined ReferenceError → setInfoModal (SettingsPage 의 진짜 state)
+- sync-contents-to-prod.js 의 video_prompt + social_post 컬럼 sync 추가
+- AutoSave 토글 indicator 위치 (다음 turn 후속)
+
+### 6차 운영 배포 history
+| 차수 | Backup | 핵심 |
+|---|---|---|
+| 1 | 20260525_142329 (어제) | 랜딩 헤더 z-index + BRAND CONCEPT v2 |
+| 2 | 20260527_064446 | Floor Plan zone 격리 + CD 미러링 (DB 마이그 누락 → 매장 down 즉시 복구) |
+| 3 | 20260527_070048 | PATCH ReferenceError + setCdInfoModal fix |
+| 4 | 20260527_072413 | label 우선 (multi-zone 매장 prefix 보존) |
+| 5 | 20260527_073933 | emit 풍부화 (orderInfo + customer) |
+| 6 | 20260527_080403 | CD 좌측 OrderInfo 패널 + Brand lock 일괄 |
 
 ### 다음 확정 작업
-- 없음 — 지시 대기 (매장 점검 결과 받은 후)
+- 없음 — 지시 대기
 
 ### 후속 후보 (아이디어 메모, 확정 X)
-> 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.
+> 다음 사이클 결정은 Irene 지시 기준.
 
-- E-Invoice 5단계 구현 (`docs/E_INVOICE_INTEGRATION_DESIGN.md`, 4-5주, 사전 LHDN sandbox 가입 필요)
-- Settings "Printer" 탭 → "Printer & Display" 리네임 + 카드 순서 조정
-- React Query 도입 (Priority A)
-- 랜딩 헤더 z-index fix 운영 반영 (`/배포` 시 자동)
+- **deploy-to-production.sh 보완** — 우리 마이그 스크립트들도 자동 호출 (운영 DB column 누락으로 매장 down 재발 방지)
+- **검증 스킬 보완** — Multi-zone 매장 dev seed + Floor Plan → POS → addOrder e2e 자동화 (label/fpti end-to-end)
+- AutoSave 토글 indicator 위치 정렬 (Brand 페이지 등)
+- POS Terminal 헤더 단축 Emergency 토글 (운영 중 1 클릭 ON/OFF)
+- BG → 가맹점 push 흐름 자동화 + 매장 lock 정책 UI 일관성
+- Reconnect-safe Customer Display state (backend active_cart 캐시)
+- 다른 Settings 탭 i18n 잔여 (store / mobileOrder / reservation 등)
 
 ---
 
 ## 서버 재시작 후 복구 가이드
 
-새 Claude 세션 시작 시 아래 내용을 붙여넣으세요:
-
+새 Claude 세션 시작 시:
 ```
 이전 세션에서 진행하던 작업을 이어서 하고 싶어.
 /var/www/.claude/session-state.md 파일 읽어줘.

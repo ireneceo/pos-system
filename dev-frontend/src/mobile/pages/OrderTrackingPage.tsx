@@ -78,7 +78,7 @@ const StatusIcon = styled.div<{ active: boolean; completed: boolean }>`
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: ${props => props.completed ? '#10B981' : props.active ? '#635BFF' : '#E5E7EB'};
+  background: ${props => props.completed ? '#10B981' : props.active ? '#635BFF' : '#C7CED6'};
   color: white;
   display: flex;
   align-items: center;
@@ -119,13 +119,13 @@ const StatusInfo = styled.div`
 const StatusTitle = styled.div<{ active: boolean; completed: boolean }>`
   font-size: 16px;
   font-weight: 600;
-  color: ${props => props.active || props.completed ? '#1F2937' : '#9CA3AF'};
+  color: ${props => props.active || props.completed ? '#1F2937' : '#6B7280'};
   margin-bottom: 4px;
 `;
 
 const StatusTime = styled.div`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const OrderDetails = styled.div`
@@ -152,12 +152,12 @@ const DetailRow = styled.div`
 const ItemsList = styled.div`
   margin-top: 16px;
   padding-top: 16px;
-  border-top: 1px solid #E5E7EB;
+  border-top: 1px solid #C7CED6;
 `;
 
 const Item = styled.div`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin-bottom: 4px;
   
   &:last-child {
@@ -198,8 +198,8 @@ const NewOrderButton = styled(Button)`
 
 const HomeButton = styled(Button)`
   background: white;
-  color: #6B7280;
-  border: 1px solid #E5E7EB;
+  color: #4B5563;
+  border: 1px solid #C7CED6;
   
   &:active {
     background: #F9FAFB;
@@ -370,7 +370,7 @@ const OrderTrackingPage: React.FC = () => {
     return (
       <MobileLayout title="Loading Order...">
         <Container>
-          <div style={{ color: '#9CA3AF', fontSize: '16px', textAlign: 'center', padding: '48px 24px' }}>
+          <div style={{ color: '#6B7280', fontSize: '16px', textAlign: 'center', padding: '48px 24px' }}>
             Loading your order...
           </div>
         </Container>
@@ -382,7 +382,7 @@ const OrderTrackingPage: React.FC = () => {
     return (
       <MobileLayout title="Order Not Found">
         <Container>
-          <div style={{ color: '#9CA3AF', fontSize: '16px', textAlign: 'center', padding: '48px 24px' }}>
+          <div style={{ color: '#6B7280', fontSize: '16px', textAlign: 'center', padding: '48px 24px' }}>
             {error || 'This order could not be found.'}
           </div>
           <div style={{ textAlign: 'center', marginTop: '16px' }}>
@@ -537,28 +537,28 @@ const OrderTrackingPage: React.FC = () => {
         
         <OrderDetails>
           <DetailRow>
-            <span style={{ color: '#6B7280' }}>Order Number</span>
+            <span style={{ color: '#4B5563' }}>Order Number</span>
             <span style={{ fontWeight: 600 }}>{getOrderNumber()}</span>
           </DetailRow>
           <DetailRow>
-            <span style={{ color: '#6B7280' }}>Total Amount</span>
+            <span style={{ color: '#4B5563' }}>Total Amount</span>
             <span style={{ fontWeight: 600 }}>{formatCurrency(getTotalAmount(), currency)}</span>
           </DetailRow>
           {(order.point_discount || order.points_used) && Number(order.point_discount || 0) > 0 && (
             <DetailRow>
-              <span style={{ color: '#6B7280' }}>Points Used</span>
+              <span style={{ color: '#4B5563' }}>Points Used</span>
               <span style={{ fontWeight: 600, color: '#10B981' }}>
                 -{formatCurrency(Number(order.point_discount), currency)} ({order.points_used?.toLocaleString()} pts)
               </span>
             </DetailRow>
           )}
           <DetailRow>
-            <span style={{ color: '#6B7280' }}>Payment</span>
+            <span style={{ color: '#4B5563' }}>Payment</span>
             <span style={{
               fontWeight: 600,
               color: getPaymentStatus() === 'rejected' ? '#DC2626' :
                     getPaymentStatus() === 'payment_verification_pending' ? '#F59E0B' :
-                    (getPaymentStatus() === 'completed' || getPaymentStatus() === 'paid' ? '#10B981' : '#6B7280')
+                    (getPaymentStatus() === 'completed' || getPaymentStatus() === 'paid' ? '#10B981' : '#4B5563')
             }}>
               {getPaymentStatus() === 'rejected' ? 'Payment Rejected' :
                getPaymentStatus() === 'payment_verification_pending' ? 'Verifying Payment' :
@@ -582,7 +582,7 @@ const OrderTrackingPage: React.FC = () => {
                         {itemOptions.length > 0 && ` (${itemOptions.join(', ')})`}
                       </Item>
                       {specialInstructions && (
-                        <div style={{ fontSize: '12px', color: '#9CA3AF', marginTop: '2px', paddingLeft: '16px' }}>
+                        <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px', paddingLeft: '16px' }}>
                           Note: {specialInstructions}
                         </div>
                       )}
@@ -598,9 +598,9 @@ const OrderTrackingPage: React.FC = () => {
 
           {/* Delivery Info Section */}
           {order?.delivery_info && (
-            <div style={{ marginTop: '16px', padding: '12px', background: '#F3F4F6', borderRadius: '8px' }}>
-              <div style={{ fontSize: '14px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>Delivery Information</div>
-              <div style={{ fontSize: '13px', color: '#6B7280' }}>
+            <div style={{ marginTop: '16px', padding: '12px', background: '#F1F4F8', borderRadius: '8px' }}>
+              <div style={{ fontSize: '14px', fontWeight: 600, color: '#1F2937', marginBottom: '8px' }}>Delivery Information</div>
+              <div style={{ fontSize: '13px', color: '#4B5563' }}>
                 <div style={{ marginBottom: '4px' }}>{order.delivery_info.address}</div>
                 <div style={{ marginBottom: '4px' }}>Phone: {order.delivery_info.phone}</div>
                 {order.delivery_info.zoneName && (
@@ -647,7 +647,7 @@ const OrderTrackingPage: React.FC = () => {
 
                   if (reference || fileName) {
                     return (
-                      <div style={{ marginTop: '12px', padding: '8px', background: 'white', borderRadius: '6px', fontSize: '12px', color: '#6B7280' }}>
+                      <div style={{ marginTop: '12px', padding: '8px', background: 'white', borderRadius: '6px', fontSize: '12px', color: '#4B5563' }}>
                         {reference && <div>Reference: <strong>{reference}</strong></div>}
                         {fileName && <div>Receipt: {fileName}</div>}
                       </div>

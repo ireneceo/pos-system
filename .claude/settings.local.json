@@ -337,7 +337,22 @@
       "Bash(getfacl /var/www/docs)",
       "Bash(getfacl /var/www/dev-frontend/src/pages/Landing)",
       "Bash(getfacl /var/www/dev-frontend/public/locales)",
-      "Bash(getfacl /var/www/dev-frontend/src/components/Landing)"
+      "Bash(getfacl /var/www/dev-frontend/src/components/Landing)",
+      "Bash(getfacl /var/www/DEVELOPMENT_PLAN.md)",
+      "Bash(getfacl /var/www/CHANGELOG.md)",
+      "Bash(getfacl /var/www/.claude/session-state.md)",
+      "Bash(sed -n '449,540p' /var/www/dev-backend/routes/restaurants-crud.js)",
+      "Bash(sed -n '215,240p' /var/www/dev-frontend/src/pages/FloorPlan/FloorPlanCanvas.tsx)",
+      "Bash(sed -n '140,180p' /var/www/dev-frontend/src/pages/FloorPlan/TableNode.tsx)",
+      "Bash(sed -n '1,40p' /var/www/dev-frontend/src/pages/FloorPlan/TableDetailPanel.tsx)",
+      "Bash(awk '/useEffect/,/\\\\}, \\\\[.*\\\\]\\\\\\);/' /var/www/dev-frontend/src/pages/FloorPlan/FloorPlanPage.tsx)",
+      "Bash(sed -n '1789,1820p' /var/www/dev-frontend/src/utils/billPrint.js)",
+      "Bash(sed -n '1763,1780p' /var/www/dev-frontend/src/utils/billPrint.js)",
+      "Bash(sed -n '2986,3010p' /var/www/dev-frontend/src/utils/billPrint.js)",
+      "Bash(awk '/Emergency Routing Mode|emergency mode|methodGuide|emergencyMode|emergencyEnabledAt/,/^ <SettingsCard style={{ marginBottom/' /var/www/dev-frontend/src/pages/Settings/SettingsPage.tsx)",
+      "Bash(awk '$1>=700 && $1<=810')",
+      "Bash(scp -q /tmp/migrate-rest16-to-brand5.js irene@87.106.78.146:/var/www/production-backend/migrate-rest16-to-brand5.js)",
+      "Bash(scp -q /tmp/lock-all.js irene@87.106.78.146:/var/www/production-backend/)"
     ],
     "deny": [],
     "ask": []

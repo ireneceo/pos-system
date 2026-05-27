@@ -72,13 +72,13 @@ const StyledButton = styled.button<{
       case 'secondary':
         return `
           background: white;
-          color: #6B7280;
-          border-color: #E6EBF1;
+          color: #4B5563;
+          border-color: #C7CED6;
 
           &:hover:not(:disabled) {
-            background: #F8FAFC;
+            background: #F1F4F8;
             color: #0A2540;
-            border-color: #CBD5E1;
+            border-color: #64748B;
           }
         `;
       case 'danger':

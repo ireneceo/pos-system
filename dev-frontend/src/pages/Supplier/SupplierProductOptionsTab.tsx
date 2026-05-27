@@ -137,7 +137,7 @@ const OptionChip = styled.div`
   background: #f3f4f6;
   border-radius: 6px;
   font-size: 13px;
-  color: #374151;
+  color: #1F2937;
 `;
 
 const OptionPrice = styled.span`
@@ -165,7 +165,7 @@ const CheckboxLabel = styled.label`
   gap: 8px;
   cursor: pointer;
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
 `;
 
 const OptionItemRow = styled.div`
@@ -427,7 +427,7 @@ const SupplierProductOptionsTab: React.FC<Props> = ({ onCountChange, onOptionGro
 
   if (loading) {
     return (
-      <div style={{ padding: '40px', textAlign: 'center', color: '#6B7280' }}>Loading...</div>
+      <div style={{ padding: '40px', textAlign: 'center', color: '#4B5563' }}>Loading...</div>
     );
   }
 
@@ -477,10 +477,10 @@ const SupplierProductOptionsTab: React.FC<Props> = ({ onCountChange, onOptionGro
                     <Pill type={group.is_required ? 'required' : 'optional'}>
                       {group.is_required ? 'Required' : 'Optional'}
                     </Pill>
-                    <span style={{ fontSize: '13px', color: '#6B7280' }}>
+                    <span style={{ fontSize: '13px', color: '#4B5563' }}>
                       {group.options?.length || 0} options
                     </span>
-                    <span style={{ fontSize: '13px', color: '#6B7280' }}>
+                    <span style={{ fontSize: '13px', color: '#4B5563' }}>
                       {group.min_selections}-{group.max_selections} selections
                     </span>
                   </CardMeta>
@@ -620,7 +620,7 @@ const SupplierProductOptionsTab: React.FC<Props> = ({ onCountChange, onOptionGro
                 <div style={{ flex: 1 }}>
                   <strong>{option.name}</strong>
                   {Number(option.price_adjustment) !== 0 && (
-                    <span style={{ marginLeft: '8px', color: '#6B7280' }}>
+                    <span style={{ marginLeft: '8px', color: '#4B5563' }}>
                       ({Number(option.price_adjustment) > 0 ? '+' : ''}RM{' '}
                       {(Number(option.price_adjustment) || 0).toFixed(2)})
                     </span>

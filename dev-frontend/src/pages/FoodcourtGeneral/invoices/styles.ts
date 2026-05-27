@@ -47,7 +47,7 @@ export const InvoiceNumber = styled.div`
 
 export const CompanyName = styled.div`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 export const AutoBadge = styled.span`
@@ -71,7 +71,7 @@ export const StatusBadge = styled(CommonStatusBadge)`
 
 export const Amount = styled.div<{ highlight?: boolean }>`
   font-weight: ${props => props.highlight ? '700' : '500'};
-  color: #374151;
+  color: #1F2937;
 `;
 
 export const LocalActionButton = styled.button<{ variant?: 'primary' | 'success' | 'danger' | 'email' | 'cancel' }>`
@@ -119,27 +119,27 @@ export const LocalActionButton = styled.button<{ variant?: 'primary' | 'success'
       background: #FEE2E2;
     }
   ` : props.variant === 'email' ? `
-    background: #F3F4F6;
-    color: #6B7280;
-    border-color: #E5E7EB;
+    background: #F1F4F8;
+    color: #4B5563;
+    border-color: #C7CED6;
 
     &:hover {
-      background: #E5E7EB;
-      color: #374151;
+      background: #C7CED6;
+      color: #1F2937;
     }
   ` : props.variant === 'cancel' ? `
-    background: #F6F9FC;
-    color: #6B7C93;
-    border-color: #E6EBF1;
+    background: #F4F6F9;
+    color: #4B5563;
+    border-color: #C7CED6;
 
     &:hover {
-      background: #E6EBF1;
+      background: #C7CED6;
       transform: translateY(-1px);
     }
   ` : `
     background: transparent;
-    color: #6B7280;
-    border-color: #E6EBF1;
+    color: #4B5563;
+    border-color: #C7CED6;
     padding: 6px 12px;
     min-width: auto;
 
@@ -153,8 +153,8 @@ export const LocalActionButton = styled.button<{ variant?: 'primary' | 'success'
 
 export const LocalIconButton = styled.button`
   padding: 6px;
-  background: #F6F9FC;
-  border: 1px solid #E6EBF1;
+  background: #F4F6F9;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s;
@@ -164,7 +164,7 @@ export const LocalIconButton = styled.button`
   justify-content: center;
 
   &:hover {
-    background: #E6EBF1;
+    background: #C7CED6;
     transform: translateY(-1px);
   }
 
@@ -176,7 +176,7 @@ export const LocalIconButton = styled.button`
 export const IconSymbol = styled.span`
   font-size: 16px;
   font-family: 'Lucida Console', 'Courier New', monospace;
-  color: #6B7C93;
+  color: #4B5563;
   display: inline-block;
   line-height: 1;
 `;
@@ -200,14 +200,14 @@ export const FormLabel = styled.label`
   display: block;
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: #1F2937;
   margin-bottom: 8px;
 `;
 
 export const FormInput = styled.input`
   width: 100%;
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.2s;
@@ -222,7 +222,7 @@ export const FormInput = styled.input`
 export const FormTextarea = styled.textarea`
   width: 100%;
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.2s;
@@ -240,7 +240,7 @@ export const FormTextarea = styled.textarea`
 export const FormSelect = styled.select`
   width: 100%;
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -254,8 +254,8 @@ export const FormSelect = styled.select`
 `;
 
 export const InvoiceSummary = styled.div`
-  background: #F8FAFC;
-  border: 1px solid #E6EBF1;
+  background: #F1F4F8;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   padding: 16px;
   margin-top: 16px;
@@ -269,7 +269,7 @@ export const SummaryRow = styled.div<{ highlight?: boolean }>`
   white-space: nowrap;
 
   ${props => props.highlight ? `
-    border-top: 1px solid #E6EBF1;
+    border-top: 1px solid #C7CED6;
     margin-top: 8px;
     padding-top: 16px;
     font-size: 16px;

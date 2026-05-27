@@ -66,7 +66,7 @@ const BrandProductManagementPage: React.FC = () => {
             <Title>{t('brand:brandProductManagementPage.productManagement')}</Title>
           </Header>
           <Content>
-            <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
+            <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>
               Loading...
             </div>
           </Content>

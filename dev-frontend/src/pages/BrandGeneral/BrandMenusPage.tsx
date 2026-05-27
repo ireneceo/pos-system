@@ -37,7 +37,7 @@ interface MenuSettings {
 
 const SettingsCard = styled.div`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   padding: 24px;
   margin-bottom: 16px;
@@ -68,7 +68,7 @@ const IntroBody = styled.p`
   margin: 0;
   font-size: 13px;
   line-height: 1.6;
-  color: #4B5563;
+  color: #374151;
 `;
 
 const Glossary = styled.dl`
@@ -78,7 +78,7 @@ const Glossary = styled.dl`
   margin: 12px 0 0 0;
   font-size: 12px;
   dt { color: #635BFF; font-weight: 600; }
-  dd { color: #6B7280; margin: 0; }
+  dd { color: #4B5563; margin: 0; }
   @media (max-width: 480px) {
     grid-template-columns: 1fr;
     gap: 2px 0;
@@ -121,7 +121,7 @@ const SettingsSectionTitle = styled.h3`
 
 const SettingsSectionHint = styled.p`
   font-size: 12px;
-  color: #6B7C93;
+  color: #4B5563;
   margin: 0 0 16px 0;
 `;
 
@@ -130,7 +130,7 @@ const ToggleRow = styled.label`
   align-items: center;
   gap: 12px;
   padding: 10px 0;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
   cursor: pointer;
   &:last-child { border-bottom: 0; }
   @media (max-width: 480px) { gap: 8px; }
@@ -141,7 +141,7 @@ const ToggleInfo = styled.div`
   font-size: 13px;
   color: #0A2540;
   strong { font-weight: 500; }
-  div { font-size: 12px; color: #6B7C93; margin-top: 2px; }
+  div { font-size: 12px; color: #4B5563; margin-top: 2px; }
 `;
 
 const Switch = styled.input`
@@ -149,7 +149,7 @@ const Switch = styled.input`
   width: 36px;
   height: 20px;
   border-radius: 999px;
-  background: #E6EBF1;
+  background: #C7CED6;
   position: relative;
   cursor: pointer;
   transition: background 0.15s;
@@ -174,7 +174,7 @@ const RadioRow = styled.label`
   align-items: flex-start;
   gap: 10px;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   cursor: pointer;
   margin-bottom: 8px;
@@ -188,7 +188,7 @@ const RadioRow = styled.label`
 const TabBar = styled.div`
   display: flex;
   gap: 4px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 20px;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
@@ -199,7 +199,7 @@ const TabBtn = styled.button<{ $active: boolean }>`
   background: transparent;
   border: 0;
   border-bottom: 2px solid ${p => p.$active ? '#635BFF' : 'transparent'};
-  color: ${p => p.$active ? '#635BFF' : '#6B7C93'};
+  color: ${p => p.$active ? '#635BFF' : '#4B5563'};
   font-size: 14px;
   font-weight: ${p => p.$active ? 600 : 500};
   padding: 10px 16px;
@@ -246,7 +246,7 @@ const HelperTitle = styled.div`
 const HelperList = styled.ol`
   margin: 0 0 12px 0;
   padding-left: 20px;
-  color: #4B5563;
+  color: #374151;
   font-size: 13px;
   line-height: 1.7;
   li { margin-bottom: 2px; }
@@ -269,7 +269,7 @@ const HelperLink = styled.button`
 
 const Container = styled.div`
   min-height: 100vh;
-  background: #FAFBFC;
+  background: #F9FAFB;
 `;
 
 const Content = styled.main`
@@ -292,7 +292,7 @@ const BrandPill = styled.div`
   gap: 8px;
   padding: 8px 12px;
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   color: #0A2540;
   font-size: 14px;
@@ -310,7 +310,7 @@ const Grid = styled.div`
 
 const Card = styled.div`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   padding: 16px;
   display: flex;
@@ -328,7 +328,7 @@ const CardImage = styled.div<{ $src?: string | null }>`
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #9CA3AF;
+  color: #6B7280;
   svg { width: 32px; height: 32px; }
 `;
 
@@ -349,7 +349,7 @@ const CardRow = styled.div`
   justify-content: space-between;
   align-items: center;
   font-size: 13px;
-  color: #6B7C93;
+  color: #4B5563;
 `;
 
 const LockBadge = styled.span`
@@ -370,7 +370,7 @@ const LockBadge = styled.span`
 
 const DistributionLine = styled.div`
   font-size: 12px;
-  color: #6B7C93;
+  color: #4B5563;
   display: flex;
   gap: 10px;
   align-items: center;
@@ -397,7 +397,7 @@ const CardActions = styled.div`
   display: flex;
   gap: 8px;
   margin-top: auto;
-  border-top: 1px solid #F3F4F6;
+  border-top: 1px solid #F1F4F8;
   padding-top: 12px;
 `;
 
@@ -408,9 +408,9 @@ const IconBtn = styled.button`
   gap: 4px;
   padding: 6px 10px;
   background: transparent;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
-  color: #6B7C93;
+  color: #4B5563;
   font-size: 12px;
   cursor: pointer;
   transition: all 0.15s;
@@ -420,11 +420,11 @@ const IconBtn = styled.button`
 
 const EmptyState = styled.div`
   background: white;
-  border: 1px dashed #E6EBF1;
+  border: 1px dashed #C7CED6;
   border-radius: 12px;
   padding: 64px 24px;
   text-align: center;
-  color: #6B7C93;
+  color: #4B5563;
   font-size: 14px;
   margin-top: 16px;
 `;
@@ -436,14 +436,14 @@ const BrandSwitch = styled.button`
   gap: 6px;
   padding: 8px 12px;
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   font-weight: 500;
   color: #0A2540;
   cursor: pointer;
   &:hover { border-color: #635BFF; }
-  svg { width: 14px; height: 14px; color: #6B7C93; }
+  svg { width: 14px; height: 14px; color: #4B5563; }
 `;
 
 const Dropdown = styled.div`
@@ -452,7 +452,7 @@ const Dropdown = styled.div`
   left: 0;
   min-width: 100%;
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   box-shadow: 0 4px 16px rgba(0,0,0,0.08);
   z-index: 100;
@@ -751,7 +751,7 @@ const BrandMenusPage: React.FC = () => {
             </div>
           </HelperCard>
           <EmptyState>
-            <UtensilsCrossed style={{ width: 32, height: 32, color: '#9CA3AF', marginBottom: 8 }} />
+            <UtensilsCrossed style={{ width: 32, height: 32, color: '#6B7280', marginBottom: 8 }} />
             <div style={{ fontWeight: 500, color: '#0A2540', marginBottom: 4 }}>
               {t('brand:brandMenusPage.emptyTitle', 'No brand menus yet')}
             </div>
@@ -780,8 +780,8 @@ const BrandMenusPage: React.FC = () => {
                   <span>{m.category?.name || '—'}</span>
                 </CardRow>
                 <DistributionLine title={t('brand:brandMenusPage.distributionHint', 'Synced (green) = restaurants on the latest version · Pending (orange) = has older version, needs push · Unlinked (grey) = restaurant has its own version, brand updates ignored')}>
-                  <DistItem $color={m.distribution.in_sync > 0 ? '#10B981' : '#9CA3AF'}>
-                    <DistDot $bg={m.distribution.in_sync > 0 ? '#10B981' : '#D1D5DB'} />
+                  <DistItem $color={m.distribution.in_sync > 0 ? '#10B981' : '#6B7280'}>
+                    <DistDot $bg={m.distribution.in_sync > 0 ? '#10B981' : '#6B7280'} />
                     {m.distribution.in_sync}
                   </DistItem>
                   {m.distribution.pending_update > 0 && (
@@ -791,12 +791,12 @@ const BrandMenusPage: React.FC = () => {
                     </DistItem>
                   )}
                   {m.distribution.unlinked > 0 && (
-                    <DistItem $color="#6B7C93">
-                      <DistDot $bg="#D1D5DB" />
+                    <DistItem $color="#4B5563">
+                      <DistDot $bg="#6B7280" />
                       {m.distribution.unlinked}
                     </DistItem>
                   )}
-                  <span style={{ color: '#9CA3AF', marginLeft: 'auto' }}>v{m.version}</span>
+                  <span style={{ color: '#6B7280', marginLeft: 'auto' }}>v{m.version}</span>
                 </DistributionLine>
                 <CardActions>
                   <IconBtn type="button" onClick={() => setEditingMenu(m)} title={t('common:button.edit')}>
@@ -895,7 +895,7 @@ const BrandMenusPage: React.FC = () => {
               </>
             }
           >
-            <div style={{ padding: '10px 12px', background: '#F8F7FF', border: '1px solid #E6E3FF', borderRadius: 8, marginBottom: 16, fontSize: 12, color: '#4B5563' }}>
+            <div style={{ padding: '10px 12px', background: '#F8F7FF', border: '1px solid #E6E3FF', borderRadius: 8, marginBottom: 16, fontSize: 12, color: '#374151' }}>
               {t('brand:brandMenusPage.copyIntro', 'A new draft will be created in the target brand. Categories and recipes stay with the original brand — re-link in the target brand if needed.')}
             </div>
             <UIFormGroup>
@@ -907,7 +907,7 @@ const BrandMenusPage: React.FC = () => {
                 ))}
               </FormSelect>
               {brands.filter(b => b.id !== selectedBrandId).length === 0 && (
-                <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 6 }}>
+                <div style={{ fontSize: 12, color: '#6B7280', marginTop: 6 }}>
                   {t('brand:brandMenusPage.copyOnlyOneBrand', 'You only have one brand. Create another brand first to copy menus between them.')}
                 </div>
               )}
@@ -917,7 +917,7 @@ const BrandMenusPage: React.FC = () => {
                 <input type="checkbox" checked={copyIncludeLocks} onChange={(e) => setCopyIncludeLocks(e.target.checked)} style={{ marginTop: 3, accentColor: '#635BFF' }} />
                 <span>
                   <strong>{t('brand:brandMenusPage.copyIncludeLocks', 'Carry over field locks')}</strong>
-                  <div style={{ fontSize: 11, color: '#6B7C93', marginTop: 2 }}>
+                  <div style={{ fontSize: 11, color: '#4B5563', marginTop: 2 }}>
                     {t('brand:brandMenusPage.copyIncludeLocksHint', 'If on, locked fields (name/price/image/etc.) stay locked on the copy. Otherwise the copy starts with no locks so you can edit freely.')}
                   </div>
                 </span>
@@ -953,7 +953,7 @@ const BrandMenusPage: React.FC = () => {
 const OptionGroupSelectStyled = styled.select`
   width: 100%;
   padding: 10px 14px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   color: #0A2540;
@@ -983,7 +983,7 @@ const ChipBadge = styled.span<{ type: 'required' | 'optional' }>`
 const ChipRemoveButton = styled.button`
   display: inline-flex; align-items: center; justify-content: center;
   width: 18px; height: 18px; background: transparent; border: 0;
-  cursor: pointer; color: #6B7280; border-radius: 50%; padding: 0;
+  cursor: pointer; color: #4B5563; border-radius: 50%; padding: 0;
   transition: all 0.15s;
   &:hover { background: #E0E7FF; color: #4338CA; }
 `;
@@ -996,8 +996,8 @@ const ModalGrid = styled.div`
 `;
 
 const Section = styled.div`
-  background: #FAFBFC;
-  border: 1px solid #E6EBF1;
+  background: #F9FAFB;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   padding: 16px;
 `;
@@ -1005,7 +1005,7 @@ const Section = styled.div`
 const SectionTitle = styled.div`
   font-size: 12px;
   font-weight: 600;
-  color: #6B7C93;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.3px;
   margin-bottom: 12px;
@@ -1027,7 +1027,7 @@ const Label = styled.label`
 const Input = styled.input`
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   color: #0A2540;
@@ -1039,7 +1039,7 @@ const Input = styled.input`
 const Select = styled.select`
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   background: white;
@@ -1052,7 +1052,7 @@ const LockRow = styled.div`
   align-items: center;
   justify-content: space-between;
   padding: 8px 0;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
   &:last-child { border-bottom: none; }
 `;
 
@@ -1064,7 +1064,7 @@ const Toggle = styled.label`
   cursor: pointer;
   input { opacity: 0; width: 0; height: 0; }
   span {
-    position: absolute; inset: 0; background: #CBD5E1; border-radius: 20px;
+    position: absolute; inset: 0; background: #64748B; border-radius: 20px;
     transition: 0.15s;
     &::before {
       content: ''; position: absolute; left: 3px; bottom: 3px;
@@ -1179,7 +1179,7 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
       )}
 
       {isEdit && (
-        <div style={{ padding: '10px 12px', background: '#F8F7FF', border: '1px solid #E6E3FF', borderRadius: 8, marginBottom: 16, fontSize: 12, color: '#4B5563', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+        <div style={{ padding: '10px 12px', background: '#F8F7FF', border: '1px solid #E6E3FF', borderRadius: 8, marginBottom: 16, fontSize: 12, color: '#374151', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <span>
             {t('brand:brandMenusPage.version', 'Version')}: <strong style={{ color: '#0A2540' }}>v{menu!.version}</strong> ·{' '}
             {t('brand:brandMenusPage.syncedTo', { count: menu!.distribution.in_sync, total: menu!.distribution.in_sync + menu!.distribution.pending_update + menu!.distribution.unlinked, defaultValue: `Synced to ${menu!.distribution.in_sync} restaurants` })}
@@ -1240,7 +1240,7 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
           {selectedOptionGroupIds.length > 0 && ` (${selectedOptionGroupIds.length} ${t('common:selected', 'selected')})`}
         </FormLabel>
         {optionGroups.length === 0 ? (
-          <div style={{ fontSize: 13, color: '#9CA3AF', padding: '10px 14px', border: '1px dashed #E6EBF1', borderRadius: 8 }}>
+          <div style={{ fontSize: 13, color: '#6B7280', padding: '10px 14px', border: '1px dashed #C7CED6', borderRadius: 8 }}>
             {t('brand:brandMenusPage.noOptionGroups', 'No option groups available — create in the Option Groups tab.')}
           </div>
         ) : (
@@ -1399,7 +1399,7 @@ const MenuSettingsTab: React.FC<{ brandId: number | null; brandName: string }> =
           </AutoSaveField>
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 500 }}>{t('brand:brandMenusPage.distributionManual', 'Manual — review before sending')}</div>
-            <div style={{ fontSize: 12, color: '#6B7C93' }}>{t('brand:brandMenusPage.distributionManualHint', 'Your edits stay on the brand side. Restaurants see a "pending update" badge until you click Push on the menu card.')}</div>
+            <div style={{ fontSize: 12, color: '#4B5563' }}>{t('brand:brandMenusPage.distributionManualHint', 'Your edits stay on the brand side. Restaurants see a "pending update" badge until you click Push on the menu card.')}</div>
             <ScenarioHint>{t('brand:brandMenusPage.distributionManualScenario', 'Recommended for most brands — gives you a chance to batch changes before they go live.')}</ScenarioHint>
           </div>
         </RadioRow>
@@ -1410,7 +1410,7 @@ const MenuSettingsTab: React.FC<{ brandId: number | null; brandName: string }> =
           </AutoSaveField>
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 500 }}>{t('brand:brandMenusPage.distributionAuto', 'Auto — push as you save')}</div>
-            <div style={{ fontSize: 12, color: '#6B7C93' }}>{t('brand:brandMenusPage.distributionAutoHint', 'Every save instantly updates all linked restaurants. No manual push needed.')}</div>
+            <div style={{ fontSize: 12, color: '#4B5563' }}>{t('brand:brandMenusPage.distributionAutoHint', 'Every save instantly updates all linked restaurants. No manual push needed.')}</div>
             {settings.default_distribution_mode === 'auto' && (
               <WarningBox>
                 <Info />
@@ -1453,7 +1453,7 @@ const MenuSettingsTab: React.FC<{ brandId: number | null; brandName: string }> =
           </AutoSaveField>
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 500 }}>{t('brand:brandMenusPage.pushTargetAll', 'Send to all restaurants')}</div>
-            <div style={{ fontSize: 12, color: '#6B7C93' }}>{t('brand:brandMenusPage.pushTargetAllHint', 'A short "Are you sure?" confirm appears, then the menu rolls out to every restaurant under this brand.')}</div>
+            <div style={{ fontSize: 12, color: '#4B5563' }}>{t('brand:brandMenusPage.pushTargetAllHint', 'A short "Are you sure?" confirm appears, then the menu rolls out to every restaurant under this brand.')}</div>
             <ScenarioHint>{t('brand:brandMenusPage.pushTargetAllScenario', 'Best when every restaurant should always serve every menu (single-concept brand).')}</ScenarioHint>
           </div>
         </RadioRow>
@@ -1464,7 +1464,7 @@ const MenuSettingsTab: React.FC<{ brandId: number | null; brandName: string }> =
           </AutoSaveField>
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 500 }}>{t('brand:brandMenusPage.pushTargetSelected', 'Pick restaurants each time')}</div>
-            <div style={{ fontSize: 12, color: '#6B7C93' }}>{t('brand:brandMenusPage.pushTargetSelectedHint', 'Clicking Push opens a dialog listing your franchise restaurants. You tick the ones that receive this menu (e.g. only Seoul stores get a regional special).')}</div>
+            <div style={{ fontSize: 12, color: '#4B5563' }}>{t('brand:brandMenusPage.pushTargetSelectedHint', 'Clicking Push opens a dialog listing your franchise restaurants. You tick the ones that receive this menu (e.g. only Seoul stores get a regional special).')}</div>
             <ScenarioHint>{t('brand:brandMenusPage.pushTargetSelectedScenario', 'Best when some menus are seasonal, regional, or test-launched at a single location first.')}</ScenarioHint>
           </div>
         </RadioRow>
@@ -1489,7 +1489,7 @@ const PickerRow = styled.label`
   align-items: center;
   gap: 12px;
   padding: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   margin-bottom: 8px;
   cursor: pointer;
@@ -1556,8 +1556,8 @@ const PushPickerModal: React.FC<{
   const statusBadge = (s: DistributionRow['link_status'], v: number | null) => {
     if (s === 'in_sync') return <StatusBadge $color="#059669" $bg="#ECFDF5">{t('brand:brandMenusPage.statusSynced', { v, defaultValue: `Synced v${v}` })}</StatusBadge>;
     if (s === 'pending_update') return <StatusBadge $color="#92400E" $bg="#FEF3C7">{t('brand:brandMenusPage.statusPending', 'Pending update')}</StatusBadge>;
-    if (s === 'unlinked') return <StatusBadge $color="#6B7280" $bg="#F3F4F6">{t('brand:brandMenusPage.statusUnlinked', 'Unlinked')}</StatusBadge>;
-    return <StatusBadge $color="#6B7280" $bg="#F3F4F6">{t('brand:brandMenusPage.statusNeverSynced', 'Never synced')}</StatusBadge>;
+    if (s === 'unlinked') return <StatusBadge $color="#4B5563" $bg="#F1F4F8">{t('brand:brandMenusPage.statusUnlinked', 'Unlinked')}</StatusBadge>;
+    return <StatusBadge $color="#4B5563" $bg="#F1F4F8">{t('brand:brandMenusPage.statusNeverSynced', 'Never synced')}</StatusBadge>;
   };
 
   return (
@@ -1577,19 +1577,19 @@ const PushPickerModal: React.FC<{
       {err && <div style={{ padding: 12, background: '#FEE2E2', color: '#DC2626', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>{err}</div>}
       <div style={{
         background: '#F8F7FF', border: '1px solid #E6E3FF', borderRadius: 8,
-        padding: '10px 12px', marginBottom: 12, fontSize: 12, color: '#4B5563', lineHeight: 1.5
+        padding: '10px 12px', marginBottom: 12, fontSize: 12, color: '#374151', lineHeight: 1.5
       }}>
         {t('brand:brandMenusPage.pushPickerIntro', 'Tick the restaurants that should receive this menu. The status badge on the right shows whether the restaurant already has the latest version.')}
         <div style={{ marginTop: 6, display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 11 }}>
           <span><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#10B981', marginRight: 4 }}></span>{t('brand:brandMenusPage.legendSynced', 'Synced — already up to date')}</span>
           <span><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#F59E0B', marginRight: 4 }}></span>{t('brand:brandMenusPage.legendPending', 'Pending — has an older version')}</span>
-          <span><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#D1D5DB', marginRight: 4 }}></span>{t('brand:brandMenusPage.legendNever', 'Never synced — first push')}</span>
+          <span><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#6B7280', marginRight: 4 }}></span>{t('brand:brandMenusPage.legendNever', 'Never synced — first push')}</span>
         </div>
       </div>
       {loading ? (
-        <div style={{ padding: 24, textAlign: 'center', color: '#6B7C93' }}>{t('common:label.loading', 'Loading...')}</div>
+        <div style={{ padding: 24, textAlign: 'center', color: '#4B5563' }}>{t('common:label.loading', 'Loading...')}</div>
       ) : rows.length === 0 ? (
-        <div style={{ padding: 24, textAlign: 'center', color: '#6B7C93' }}>
+        <div style={{ padding: 24, textAlign: 'center', color: '#4B5563' }}>
           {t('brand:brandMenusPage.pushPickerEmpty', 'No franchise restaurants under this brand yet. Add restaurants in All Brands or Franchise tab first.')}
         </div>
       ) : (
@@ -1605,7 +1605,7 @@ const PushPickerModal: React.FC<{
               <input type="checkbox" checked={selected.has(r.restaurant_id)} onChange={() => toggle(r.restaurant_id)} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 14, fontWeight: 500, color: '#0A2540' }}>{r.restaurant_name}</div>
-                {r.branch_name && <div style={{ fontSize: 12, color: '#6B7C93' }}>{r.branch_name}</div>}
+                {r.branch_name && <div style={{ fontSize: 12, color: '#4B5563' }}>{r.branch_name}</div>}
               </div>
               {statusBadge(r.link_status, r.synced_version)}
             </PickerRow>

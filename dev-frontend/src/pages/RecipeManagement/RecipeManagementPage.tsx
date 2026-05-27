@@ -29,14 +29,14 @@ const BrandSwitch = styled.button`
   gap: 6px;
   padding: 8px 12px;
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   font-weight: 500;
   color: #0A2540;
   cursor: pointer;
   &:hover { border-color: #635BFF; }
-  svg { width: 14px; height: 14px; color: #6B7C93; }
+  svg { width: 14px; height: 14px; color: #4B5563; }
 `;
 
 const Dropdown = styled.div`
@@ -45,7 +45,7 @@ const Dropdown = styled.div`
   left: 0;
   min-width: 100%;
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   box-shadow: 0 4px 16px rgba(0,0,0,0.08);
   z-index: 100;
@@ -147,7 +147,7 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
       <Container>
         <PageHeader title={pageTitle} />
         <Content>
-          <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>Loading...</div>
+          <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>Loading...</div>
         </Content>
       </Container>
     );
@@ -158,7 +158,7 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
       <Container>
         <PageHeader title={pageTitle} />
         <Content>
-          <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
+          <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>
             No brands found. Please create a brand first.
           </div>
         </Content>

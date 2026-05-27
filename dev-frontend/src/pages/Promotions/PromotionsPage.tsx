@@ -15,7 +15,7 @@ import { formatDate as formatDateTz } from '../../utils/timezone';
 // 스타일 컴포넌트
 const CouponsContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #FAFBFC;
+  background-color: #F9FAFB;
   min-height: 100vh;
 `;
 
@@ -39,11 +39,11 @@ const Button = styled.button<{ primary?: boolean }>`
     }
   ` : `
     background: white;
-    color: #6B7C93;
-    border: 1px solid #E6EBF1;
+    color: #4B5563;
+    border: 1px solid #C7CED6;
 
     &:hover {
-      background: #F6F9FC;
+      background: #F4F6F9;
       border-color: #C7D2FE;
     }
   `}
@@ -67,7 +67,7 @@ const SectionCard = styled.div`
   background: white;
   padding: 24px;
   border-radius: 8px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   margin-bottom: 24px;
 `;
 
@@ -121,15 +121,15 @@ const ActionButtons = styled.div`
 const ActionButton = styled.button`
   padding: 4px 8px;
   font-size: 12px;
-  color: #6B7C93;
+  color: #4B5563;
   background: none;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.15s;
 
   &:hover {
-    background: #F6F9FC;
+    background: #F4F6F9;
     color: #0A2540;
     border-color: #C7D2FE;
   }
@@ -150,14 +150,14 @@ const Label = styled.label`
   display: block;
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: #1F2937;
   margin-bottom: 8px;
 `;
 
 const Input = styled.input`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.2s;
@@ -173,7 +173,7 @@ const Input = styled.input`
 const Select = styled.select`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -190,7 +190,7 @@ const Select = styled.select`
 const TextArea = styled.textarea`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.2s;
@@ -222,7 +222,7 @@ const LoadingSpinner = styled.div`
   justify-content: center;
   align-items: center;
   padding: 48px;
-  color: #6B7C93;
+  color: #4B5563;
 `;
 
 const RadioGroup = styled.div`
@@ -236,7 +236,7 @@ const RadioLabel = styled.label`
   align-items: center;
   gap: 6px;
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
   cursor: pointer;
 
   input[type="radio"] {
@@ -255,10 +255,10 @@ const CheckboxLabel = styled.label<{ checked?: boolean }>`
   align-items: center;
   gap: 6px;
   padding: 8px 12px;
-  border: 1px solid ${props => props.checked ? '#635BFF' : '#E6EBF1'};
+  border: 1px solid ${props => props.checked ? '#635BFF' : '#C7CED6'};
   border-radius: 6px;
   font-size: 13px;
-  color: ${props => props.checked ? '#635BFF' : '#374151'};
+  color: ${props => props.checked ? '#635BFF' : '#1F2937'};
   background: ${props => props.checked ? '#F4F3FF' : 'white'};
   cursor: pointer;
   transition: all 0.15s;
@@ -275,7 +275,7 @@ const CheckboxLabel = styled.label<{ checked?: boolean }>`
 const CustomerSearchInput = styled.input`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   box-sizing: border-box;
@@ -291,7 +291,7 @@ const CustomerSearchInput = styled.input`
 const CustomerList = styled.div`
   max-height: 180px;
   overflow-y: auto;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
 `;
 
@@ -301,12 +301,12 @@ const CustomerItem = styled.div<{ selected?: boolean }>`
   gap: 8px;
   padding: 8px 12px;
   cursor: pointer;
-  border-bottom: 1px solid #F6F9FC;
+  border-bottom: 1px solid #F4F6F9;
   background: ${props => props.selected ? '#F4F3FF' : 'white'};
   transition: background 0.1s;
 
   &:hover {
-    background: ${props => props.selected ? '#F4F3FF' : '#F6F9FC'};
+    background: ${props => props.selected ? '#F4F3FF' : '#F4F6F9'};
   }
 
   &:last-child {
@@ -327,12 +327,12 @@ const CustomerItemName = styled.div`
 
 const CustomerItemMeta = styled.div`
   font-size: 11px;
-  color: #6B7C93;
+  color: #4B5563;
 `;
 
 const SelectedCount = styled.div`
   font-size: 12px;
-  color: #6B7C93;
+  color: #4B5563;
   margin-top: 6px;
 `;
 

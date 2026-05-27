@@ -143,7 +143,7 @@ const DashboardSection: React.FC<Props> = ({
                 <AlertTitle>
                   {item.ingredient_name}
                   {item.batch_number && (
-                    <span style={{ fontSize: '12px', color: '#6B7280', marginLeft: '8px' }}>
+                    <span style={{ fontSize: '12px', color: '#4B5563', marginLeft: '8px' }}>
                       Batch: {item.batch_number}
                     </span>
                   )}

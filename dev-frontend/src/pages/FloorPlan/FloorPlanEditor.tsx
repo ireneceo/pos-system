@@ -26,7 +26,7 @@ function snapAxis(centerPos: number, half: number, gridSize: number, mode: SnapM
 
 const PageContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #FAFBFC;
+  background: #F9FAFB;
   height: 100vh;
   display: flex;
   flex-direction: column;
@@ -36,7 +36,7 @@ const PageContainer = styled.div`
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -86,9 +86,9 @@ const Btn = styled.button<{ $variant?: 'primary' | 'secondary' | 'danger' }>`
     color: #DC2626;
     &:hover { background: #FECACA; }
   ` : `
-    background: #F3F4F6;
-    color: #374151;
-    &:hover { background: #E5E7EB; }
+    background: #F1F4F8;
+    color: #1F2937;
+    &:hover { background: #C7CED6; }
   `}
 `;
 
@@ -112,15 +112,15 @@ const ZoneFilterBar = styled.div`
   gap: 8px;
   align-items: center;
   padding: 10px 24px;
-  background: #FAFBFC;
-  border-bottom: 1px solid #E6EBF1;
+  background: #F9FAFB;
+  border-bottom: 1px solid #C7CED6;
   flex-wrap: wrap;
   flex-shrink: 0;
 `;
 const ZoneChip = styled.button<{ $active: boolean }>`
   background: ${p => p.$active ? '#635BFF' : '#fff'};
-  color: ${p => p.$active ? '#fff' : '#6B7C93'};
-  border: 1px solid ${p => p.$active ? '#635BFF' : '#E6EBF1'};
+  color: ${p => p.$active ? '#fff' : '#4B5563'};
+  border: 1px solid ${p => p.$active ? '#635BFF' : '#C7CED6'};
   border-radius: 999px;
   padding: 6px 14px;
   font-size: 13px;
@@ -159,7 +159,7 @@ const Sidebar = styled.div`
 
 const SidebarCard = styled.div`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   padding: 16px;
 `;
@@ -167,7 +167,7 @@ const SidebarCard = styled.div`
 const CardTitle = styled.div`
   font-size: 12px;
   font-weight: 600;
-  color: #6B7C93;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 12px;
@@ -185,13 +185,13 @@ const ShapeBtn = styled.button`
   align-items: center;
   gap: 4px;
   padding: 10px 4px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   background: white;
   cursor: pointer;
   transition: all 0.15s;
   font-size: 10px;
-  color: #6B7C93;
+  color: #4B5563;
   font-weight: 500;
 
   &:hover {
@@ -237,7 +237,7 @@ const FormLabel = styled.label`
   display: block;
   font-size: 11px;
   font-weight: 500;
-  color: #6B7C93;
+  color: #4B5563;
   text-transform: uppercase;
   margin-bottom: 4px;
 `;
@@ -245,7 +245,7 @@ const FormLabel = styled.label`
 const FormInput = styled.input`
   width: 100%;
   padding: 6px 10px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 4px;
   font-size: 13px;
   box-sizing: border-box;
@@ -260,7 +260,7 @@ const FormInput = styled.input`
 const FormSelect = styled.select`
   width: 100%;
   padding: 6px 10px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 4px;
   font-size: 13px;
   background: white;
@@ -287,10 +287,10 @@ const SizeRow = styled.div`
 const SizeBtn = styled.button<{ $active?: boolean }>`
   flex: 1;
   padding: 6px 4px;
-  border: 1px solid ${p => p.$active ? '#635BFF' : '#E6EBF1'};
+  border: 1px solid ${p => p.$active ? '#635BFF' : '#C7CED6'};
   border-radius: 4px;
   background: ${p => p.$active ? 'rgba(99, 91, 255, 0.08)' : 'white'};
-  color: ${p => p.$active ? '#635BFF' : '#6B7C93'};
+  color: ${p => p.$active ? '#635BFF' : '#4B5563'};
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
@@ -303,14 +303,14 @@ const CheckboxRow = styled.label`
   align-items: center;
   gap: 8px;
   font-size: 13px;
-  color: #374151;
+  color: #1F2937;
   cursor: pointer;
   margin-top: 8px;
 `;
 
 const StatusMsg = styled.div<{ $type: 'success' | 'info' }>`
   font-size: 12px;
-  color: ${p => p.$type === 'success' ? '#059669' : '#6B7C93'};
+  color: ${p => p.$type === 'success' ? '#059669' : '#4B5563'};
   font-weight: 500;
 `;
 
@@ -738,7 +738,7 @@ const FloorPlanEditor: React.FC = () => {
     return (
       <PageContainer>
         <Header><HeaderTitle>{t('floorplan:floorPlanEditor.floorPlanEditor')}</HeaderTitle></Header>
-        <Content><div style={{ color: '#6B7C93' }}>{t('floorplan:floorPlanEditor.loading')}</div></Content>
+        <Content><div style={{ color: '#4B5563' }}>{t('floorplan:floorPlanEditor.loading')}</div></Content>
       </PageContainer>
     );
   }
@@ -853,7 +853,7 @@ const FloorPlanEditor: React.FC = () => {
                         })}
                       </FormSelect>
                       {group && (
-                        <div style={{ fontSize: 11, color: '#6B7C93', marginTop: 4 }}>
+                        <div style={{ fontSize: 11, color: '#4B5563', marginTop: 4 }}>
                           {t('floorplan:floorPlanEditor.poolStatus', { placed: placedInGroup, total: poolSize, defaultValue: 'Placed {{placed}} of {{total}}' })}
                         </div>
                       )}
@@ -998,7 +998,7 @@ const FloorPlanEditor: React.FC = () => {
                 />
               </FormGroup>
             </FormRow>
-            <div style={{ fontSize: 11, color: '#6B7C93', marginTop: 6 }}>
+            <div style={{ fontSize: 11, color: '#4B5563', marginTop: 6 }}>
               {t('floorplan:floorPlanEditor.canvasSizeHint', 'Default 1200×800. Range 600–5000 each side. Increase for large multi-zone restaurants.')}
             </div>
           </SidebarCard>
@@ -1028,8 +1028,8 @@ const FloorPlanEditor: React.FC = () => {
                         return (
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <div style={{
-                              flex: 1, padding: '8px 10px', border: '1px solid #E6EBF1',
-                              borderRadius: 6, background: '#FAFBFC', color: '#0A2540', fontSize: 13
+                              flex: 1, padding: '8px 10px', border: '1px solid #C7CED6',
+                              borderRadius: 6, background: '#F9FAFB', color: '#0A2540', fontSize: 13
                             }}>
                               {displayLabel}
                             </div>
@@ -1114,8 +1114,8 @@ const FloorPlanEditor: React.FC = () => {
                               type="button"
                               onClick={() => { setEditingTableNum(false); setTableNumQuery(''); }}
                               style={{
-                                background: 'transparent', border: '1px solid #E6EBF1',
-                                borderRadius: 6, padding: '0 10px', fontSize: 12, color: '#6B7C93',
+                                background: 'transparent', border: '1px solid #C7CED6',
+                                borderRadius: 6, padding: '0 10px', fontSize: 12, color: '#4B5563',
                                 cursor: 'pointer'
                               }}
                             >
@@ -1124,11 +1124,11 @@ const FloorPlanEditor: React.FC = () => {
                           </div>
                           {/* Always show the list (no need to type) — empty query = full pool. */}
                           <div style={{
-                            marginTop: 6, border: '1px solid #E6EBF1', borderRadius: 6,
+                            marginTop: 6, border: '1px solid #C7CED6', borderRadius: 6,
                             maxHeight: 220, overflowY: 'auto', background: 'white'
                           }}>
                             {candidates.length === 0 ? (
-                              <div style={{ padding: '10px 12px', fontSize: 12, color: '#6B7C93' }}>
+                              <div style={{ padding: '10px 12px', fontSize: 12, color: '#4B5563' }}>
                                 {t('floorplan:floorPlanEditor.noMatch', 'No matching numbers. To add more, edit the pool in Settings.')}
                                 <div style={{ marginTop: 6 }}>
                                   <button
@@ -1184,7 +1184,7 @@ const FloorPlanEditor: React.FC = () => {
                               })
                             )}
                           </div>
-                          <div style={{ marginTop: 6, fontSize: 11, color: '#6B7C93' }}>
+                          <div style={{ marginTop: 6, fontSize: 11, color: '#4B5563' }}>
                             {t('floorplan:floorPlanEditor.changeNumberHintV2', 'Pool size set in Settings → Tables & QR. Picking a number already in use will swap the two tables.')}
                           </div>
                         </div>
@@ -1314,7 +1314,7 @@ const FloorPlanEditor: React.FC = () => {
                     ⊕ Snap center
                   </Btn>
                 </SizeRow>
-                <div style={{ fontSize: 10, color: '#9CA3AF', marginTop: 8, lineHeight: 1.5 }}>
+                <div style={{ fontSize: 10, color: '#6B7280', marginTop: 8, lineHeight: 1.5 }}>
                   Drag: edge snap · Shift = center snap · Alt = free
                 </div>
                 <Btn $variant="danger" onClick={deleteSelected} style={{ width: '100%', justifyContent: 'center', marginTop: '12px' }}>

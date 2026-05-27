@@ -34,6 +34,11 @@ Order.init({
     type: DataTypes.STRING(10),
     allowNull: true
   },
+  floor_plan_table_id: {
+    type: DataTypes.STRING(64),
+    allowNull: true,
+    comment: 'Floor plan v2 tables[].id (e.g. "t_abc123"). Disambiguates same table_number across different zones. NULL for legacy orders (pre-2026-05-27).'
+  },
   guest_count: {
     type: DataTypes.INTEGER,
     allowNull: true,

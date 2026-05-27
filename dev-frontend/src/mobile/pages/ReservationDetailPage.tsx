@@ -259,11 +259,11 @@ const PartyLine = styled.div`font-size:14px;opacity:0.9;`;
 
 // Card pattern (OrderTrackingPage 와 동일 톤)
 const Card = styled.div`
-  background:white;border:1px solid #E5E7EB;border-radius:12px;
+  background:white;border:1px solid #C7CED6;border-radius:12px;
   padding:18px 20px;
 `;
 const CardTitle = styled.h3`
-  font-size:13px;font-weight:600;color:#6B7280;
+  font-size:13px;font-weight:600;color:#4B5563;
   text-transform:uppercase;letter-spacing:0.05em;
   margin:0 0 14px 0;
 `;
@@ -275,22 +275,22 @@ const StepDot = styled.div<{ completed?: boolean; active?: boolean }>`
   width:32px;height:32px;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
   font-size:13px;font-weight:600;
-  background:${p => p.completed ? '#635BFF' : p.active ? '#635BFF' : '#E5E7EB'};
-  color:${p => p.completed || p.active ? 'white' : '#9CA3AF'};
+  background:${p => p.completed ? '#635BFF' : p.active ? '#635BFF' : '#C7CED6'};
+  color:${p => p.completed || p.active ? 'white' : '#6B7280'};
   box-shadow:${p => p.active ? '0 0 0 4px rgba(99,91,255,0.15)' : 'none'};
   z-index:1;transition:all 0.15s;
 `;
 const StepLabel = styled.div<{ completed?: boolean; active?: boolean }>`
   margin-top:6px;font-size:11px;font-weight:${p => p.active ? 600 : 500};
-  color:${p => p.completed ? '#374151' : p.active ? '#635BFF' : '#9CA3AF'};
+  color:${p => p.completed ? '#1F2937' : p.active ? '#635BFF' : '#6B7280'};
   text-align:center;line-height:1.2;
 `;
 const StepConnector = styled.div<{ completed?: boolean }>`
   position:absolute;top:16px;left:50%;right:-50%;height:2px;
-  background:${p => p.completed ? '#635BFF' : '#E5E7EB'};
+  background:${p => p.completed ? '#635BFF' : '#C7CED6'};
   z-index:0;
 `;
-const StatusHint = styled.div`font-size:13px;color:#6B7280;line-height:1.5;`;
+const StatusHint = styled.div`font-size:13px;color:#4B5563;line-height:1.5;`;
 
 // Terminal (cancelled / no_show)
 const TerminalCard = styled.div<{ status: string }>`
@@ -308,11 +308,11 @@ const DetailRow = styled.div`
   &:last-child{border-bottom:none;padding-bottom:0;}
   &:first-child{padding-top:0;}
 `;
-const RowKey = styled.span`color:#6B7280;flex-shrink:0;`;
+const RowKey = styled.span`color:#4B5563;flex-shrink:0;`;
 const RowVal = styled.span`color:#0A2540;font-weight:500;text-align:right;word-break:break-word;`;
 const ExternalLink = styled.a`color:#635BFF;text-decoration:none;font-weight:500;&:hover{text-decoration:underline;}`;
 
-const Empty = styled.div`text-align:center;padding:60px 24px;color:#6B7C93;font-size:14px;`;
+const Empty = styled.div`text-align:center;padding:60px 24px;color:#4B5563;font-size:14px;`;
 
 const CancelBtn = styled.button`
   width:100%;padding:14px;border:1px solid #FCA5A5;background:white;color:#DC2626;

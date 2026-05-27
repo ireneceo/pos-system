@@ -3,7 +3,7 @@
  *
  * 디자인 가이드:
  *   - 44px × 22px (terminal 디바이스 터치 타겟 충족)
- *   - 색상: off=#E6EBF1, on=#635BFF (brand primary)
+ *   - 색상: off=#C7CED6, on=#635BFF (brand primary)
  *   - knob: 16px 흰색 원
  *   - 0.3s ease transition
  *

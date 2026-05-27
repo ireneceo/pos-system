@@ -41,7 +41,7 @@ const Container = styled.div`
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -63,7 +63,7 @@ const Header = styled.div`
 
 const Content = styled.div`
   padding: 32px;
-  background: #FAFBFC;
+  background: #F9FAFB;
   min-height: calc(100vh - 120px);
 
   @media (max-width: 768px) {
@@ -108,13 +108,13 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
     }
   ` : `
     background: white;
-    color: #6B7280;
-    border: 1px solid #E6EBF1;
+    color: #4B5563;
+    border: 1px solid #C7CED6;
 
     &:hover {
-      background: #F8FAFC;
+      background: #F1F4F8;
       color: #0A2540;
-      border-color: #CBD5E1;
+      border-color: #64748B;
     }
   `}
 `;
@@ -136,14 +136,14 @@ const FilterGroup = styled.div`
 const FilterLabel = styled.label`
   font-size: 12px;
   font-weight: 600;
-  color: #6B7280;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 `;
 
 const SearchInput = styled.input`
   padding: 8px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   width: 250px;
@@ -157,7 +157,7 @@ const SearchInput = styled.input`
 
 const Select = styled.select`
   padding: 8px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   background: white;
@@ -182,7 +182,7 @@ const TicketCard = styled.div`
   background: white;
   border-radius: 12px;
   padding: 24px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   transition: all 0.2s;
   overflow: hidden;
 
@@ -214,7 +214,7 @@ const TicketNumber = styled.div`
 const TicketSubject = styled.div`
   font-size: 18px;
   font-weight: 500;
-  color: #374151;
+  color: #1F2937;
   margin-bottom: 8px;
   line-height: 1.4;
   word-break: break-word;
@@ -223,7 +223,7 @@ const TicketSubject = styled.div`
 
 const CustomerInfo = styled.div`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -238,7 +238,7 @@ const getRoleBadgeColors = (role: string) => {
   if (r.includes('owner')) return { bg: '#FFF7ED', color: '#EA580C' };
   if (r.includes('staff') || r === 'staff') return { bg: '#ECFDF5', color: '#059669' };
   if (r === 'manager') return { bg: '#E0F2FE', color: '#0891B2' };
-  return { bg: '#F3F4F6', color: '#6B7280' };
+  return { bg: '#F1F4F8', color: '#4B5563' };
 };
 
 const RoleBadge = styled.span<{ role: string }>`
@@ -269,8 +269,8 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'open': return '#FEF3C7';
       case 'in-progress': return '#DBEAFE';
       case 'resolved': return '#ECFDF5';
-      case 'closed': return '#F3F4F6';
-      default: return '#F3F4F6';
+      case 'closed': return '#F1F4F8';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
@@ -278,8 +278,8 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'open': return '#D97706';
       case 'in-progress': return '#1E40AF';
       case 'resolved': return '#059669';
-      case 'closed': return '#6B7280';
-      default: return '#6B7280';
+      case 'closed': return '#4B5563';
+      default: return '#4B5563';
     }
   }};
 `;
@@ -296,7 +296,7 @@ const PriorityBadge = styled.span<{ priority: string }>`
       case 'high': return '#FED7AA';
       case 'medium': return '#FEF3C7';
       case 'low': return '#E0F2FE';
-      default: return '#F3F4F6';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
@@ -305,20 +305,20 @@ const PriorityBadge = styled.span<{ priority: string }>`
       case 'high': return '#EA580C';
       case 'medium': return '#D97706';
       case 'low': return '#0891B2';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 `;
 
 const TicketDescription = styled.div`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   line-height: 1.5;
   margin: 16px 0;
   padding: 16px;
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 8px;
-  border-left: 3px solid #E6EBF1;
+  border-left: 3px solid #C7CED6;
   word-break: break-word;
   overflow-wrap: break-word;
 `;
@@ -328,9 +328,9 @@ const TicketMeta = styled.div`
   justify-content: space-between;
   align-items: center;
   padding-top: 16px;
-  border-top: 1px solid #F3F4F6;
+  border-top: 1px solid #F1F4F8;
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   flex-wrap: wrap;
   gap: 12px;
 `;
@@ -348,7 +348,7 @@ const MetaLabel = styled.span`
 `;
 
 const MetaValue = styled.span`
-  color: #374151;
+  color: #1F2937;
 `;
 
 
@@ -370,14 +370,14 @@ const FormLabel = styled.label`
   display: block;
   font-size: 13px;
   font-weight: 500;
-  color: #6B7C93;
+  color: #4B5563;
   margin-bottom: 8px;
 `;
 
 const FormInput = styled.input`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.15s;
@@ -393,7 +393,7 @@ const FormInput = styled.input`
 const FormSelect = styled.select`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -411,7 +411,7 @@ const FormSelect = styled.select`
 const FormTextArea = styled.textarea`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   resize: vertical;
@@ -766,10 +766,10 @@ const SupportTicketsPage: React.FC = () => {
               <div style={{
                 textAlign: 'center',
                 padding: '60px 20px',
-                color: '#6B7280',
+                color: '#4B5563',
                 gridColumn: '1 / -1'
               }}>
-                <h3 style={{ color: '#374151', marginBottom: '8px' }}>{t('settings:systemInquiryPage.noTicketsYet')}</h3>
+                <h3 style={{ color: '#1F2937', marginBottom: '8px' }}>{t('settings:systemInquiryPage.noTicketsYet')}</h3>
                 <p>Click "Create Ticket" to submit your first support ticket to system administrator.</p>
               </div>
             )}
@@ -901,7 +901,7 @@ const SupportTicketsPage: React.FC = () => {
                       </div>
                       <div>
                         <FormLabel>{t('settings:systemInquiryPage.category')}</FormLabel>
-                        <div style={{ padding: '8px 0', color: '#374151', textTransform: 'capitalize' }}>
+                        <div style={{ padding: '8px 0', color: '#1F2937', textTransform: 'capitalize' }}>
                           {selectedTicket.category.replace('-', ' ')}
                         </div>
                       </div>
@@ -909,14 +909,14 @@ const SupportTicketsPage: React.FC = () => {
 
                     <div>
                       <FormLabel>{t('settings:systemInquiryPage.customerInformation')}</FormLabel>
-                      <div style={{ padding: '12px', backgroundColor: '#F8FAFC', borderRadius: '8px', border: '1px solid #E6EBF1' }}>
+                      <div style={{ padding: '12px', backgroundColor: '#F1F4F8', borderRadius: '8px', border: '1px solid #C7CED6' }}>
                         <div style={{ marginBottom: '4px', color: '#0A2540', fontWeight: '600' }}>
                           {selectedTicket.customerName}
                           <RoleBadge role={selectedTicket.customerRole} style={{ marginLeft: '8px' }}>
                             {selectedTicket.customerRole}
                           </RoleBadge>
                         </div>
-                        <div style={{ color: '#6B7280', fontSize: '14px' }}>
+                        <div style={{ color: '#4B5563', fontSize: '14px' }}>
                           {selectedTicket.customerEmail}
                         </div>
                       </div>
@@ -933,13 +933,13 @@ const SupportTicketsPage: React.FC = () => {
                       <FormLabel>{t('settings:systemInquiryPage.description')}</FormLabel>
                       <div style={{
                         padding: '12px',
-                        backgroundColor: '#F8FAFC',
+                        backgroundColor: '#F1F4F8',
                         borderRadius: '8px',
-                        border: '1px solid #E6EBF1',
+                        border: '1px solid #C7CED6',
                         minHeight: '100px',
                         whiteSpace: 'pre-wrap',
                         lineHeight: '1.5',
-                        color: '#374151'
+                        color: '#1F2937'
                       }}>
                         {selectedTicket.description}
                       </div>
@@ -952,13 +952,13 @@ const SupportTicketsPage: React.FC = () => {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                       <div>
                         <FormLabel>{t('settings:systemInquiryPage.createdAt')}</FormLabel>
-                        <div style={{ padding: '8px 0', color: '#6B7280' }}>
+                        <div style={{ padding: '8px 0', color: '#4B5563' }}>
                           {selectedTicket.createdAt}
                         </div>
                       </div>
                       <div>
                         <FormLabel>{t('settings:systemInquiryPage.lastUpdated')}</FormLabel>
-                        <div style={{ padding: '8px 0', color: '#6B7280' }}>
+                        <div style={{ padding: '8px 0', color: '#4B5563' }}>
                           {selectedTicket.updatedAt}
                         </div>
                       </div>

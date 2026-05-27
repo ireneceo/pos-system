@@ -139,7 +139,7 @@ const FoodcourtBranchesPage: React.FC = () => {
                 {branches.map(b => (
                   <DataTableRow key={b.id}>
                     <DataTableCell>
-                      <code style={{ background: '#F3F4F6', padding: '2px 8px', borderRadius: 4, fontSize: 13, fontWeight: 600 }}>{b.code}</code>
+                      <code style={{ background: '#F1F4F8', padding: '2px 8px', borderRadius: 4, fontSize: 13, fontWeight: 600 }}>{b.code}</code>
                       {b.is_primary && <PrimaryBadge>{t('branches.primary', 'Primary')}</PrimaryBadge>}
                     </DataTableCell>
                     <DataTableCell>{b.name}</DataTableCell>
@@ -201,7 +201,7 @@ const FoodcourtBranchesPage: React.FC = () => {
             <FormGroup>
               <FormLabel>{t('branches.code', 'Code')} *</FormLabel>
               <FormInput value={form.code || ''} onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })} placeholder="SUNWAY" disabled={editing?.is_primary} />
-              <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>{t('branches.codeHint', 'Prefix for unit full code. Example: SUNWAY-A01')}</div>
+              <div style={{ fontSize: 11, color: '#6B7280', marginTop: 4 }}>{t('branches.codeHint', 'Prefix for unit full code. Example: SUNWAY-A01')}</div>
             </FormGroup>
           </FormRow>
 
@@ -398,7 +398,7 @@ const FoodcourtBranchesPage: React.FC = () => {
                       ) : (
                         <UnitChipRow>
                           {previewNums.slice(0, 80).map(n => <UnitTag key={n}>{n}</UnitTag>)}
-                          {previewNums.length > 80 && <UnitTag style={{ color: '#9CA3AF' }}>+{previewNums.length - 80} more</UnitTag>}
+                          {previewNums.length > 80 && <UnitTag style={{ color: '#6B7280' }}>+{previewNums.length - 80} more</UnitTag>}
                         </UnitChipRow>
                       )}
                     </PreviewCard>
@@ -480,8 +480,8 @@ const FoodcourtBranchesPage: React.FC = () => {
 const UnitNumberingSection = styled.div`
   margin-top: 24px;
   padding: 20px;
-  background: #FAFBFC;
-  border: 1px solid #E6EBF1;
+  background: #F9FAFB;
+  border: 1px solid #C7CED6;
   border-radius: 10px;
 
   @media (max-width: 768px) {
@@ -503,17 +503,17 @@ const SectionTitle = styled.div`
   font-size: 14px; font-weight: 600; color: #0A2540; margin-bottom: 4px;
   display: flex; align-items: center; gap: 8px;
 `;
-const SectionHint = styled.div`font-size: 12px; color: #6B7C93; line-height: 1.5;`;
+const SectionHint = styled.div`font-size: 12px; color: #4B5563; line-height: 1.5;`;
 
 const SwitchLabel = styled.label`
   display: inline-flex; align-items: center; gap: 10px;
   cursor: pointer; user-select: none;
-  font-size: 13px; color: #374151; font-weight: 500;
+  font-size: 13px; color: #1F2937; font-weight: 500;
   input { display: none; }
 `;
 const SwitchTrack = styled.span<{ $on: boolean }>`
   width: 36px; height: 20px; border-radius: 10px; position: relative;
-  background: ${p => p.$on ? '#635BFF' : '#D1D5DB'};
+  background: ${p => p.$on ? '#635BFF' : '#6B7280'};
   transition: background 0.15s;
   &::after {
     content: '';
@@ -528,7 +528,7 @@ const ZoneGrid = styled.div`
   display: flex; flex-direction: column; gap: 10px;
 `;
 const ZoneCard = styled.div`
-  padding: 14px 16px; background: white; border: 1px solid #E6EBF1; border-radius: 8px;
+  padding: 14px 16px; background: white; border: 1px solid #C7CED6; border-radius: 8px;
   transition: border-color 0.15s;
   &:hover { border-color: #D1D9E0; }
 
@@ -550,20 +550,20 @@ const ZoneRow2 = styled.div`
 const PrefixToggleRow = styled.div`margin-bottom: 2px;`;
 const NumberTextarea = styled.textarea`
   width: 100%; box-sizing: border-box;
-  padding: 10px 12px; border: 1px solid #E6EBF1; border-radius: 6px;
+  padding: 10px 12px; border: 1px solid #C7CED6; border-radius: 6px;
   font-size: 13px; font-family: 'SF Mono', Menlo, Consolas, monospace; font-variant-numeric: tabular-nums;
   line-height: 1.5; resize: vertical;
   &:focus { outline: none; border-color: #635BFF; box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1); }
-  &::placeholder { color: #9CA3AF; white-space: pre-line; }
+  &::placeholder { color: #6B7280; white-space: pre-line; }
 `;
 const FieldLabel = styled.div`
-  font-size: 10px; font-weight: 600; color: #6B7C93;
+  font-size: 10px; font-weight: 600; color: #4B5563;
   text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;
 `;
 const RemoveZoneBtn = styled.button`
   width: 28px; height: 28px; border-radius: 50%;
-  background: #F3F4F6; border: none; cursor: pointer;
-  color: #9CA3AF; font-size: 16px; line-height: 1;
+  background: #F1F4F8; border: none; cursor: pointer;
+  color: #6B7280; font-size: 16px; line-height: 1;
   display: flex; align-items: center; justify-content: center;
   transition: all 0.15s;
   align-self: end; margin-bottom: 2px;
@@ -572,7 +572,7 @@ const RemoveZoneBtn = styled.button`
 const AddZoneBtn = styled.button`
   margin-top: 10px; padding: 10px 14px;
   background: white; border: 1px dashed #D1D9E0; border-radius: 8px;
-  font-size: 13px; font-weight: 500; color: #6B7C93; cursor: pointer;
+  font-size: 13px; font-weight: 500; color: #4B5563; cursor: pointer;
   width: 100%; text-align: center;
   transition: all 0.15s;
   &:hover { border-color: #635BFF; color: #635BFF; background: rgba(99, 91, 255, 0.02); }
@@ -580,11 +580,11 @@ const AddZoneBtn = styled.button`
 
 const PreviewCard = styled.div`
   margin-top: 16px; background: white;
-  border: 1px solid #E6EBF1; border-radius: 10px; overflow: hidden;
+  border: 1px solid #C7CED6; border-radius: 10px; overflow: hidden;
 `;
 const PreviewHead = styled.div`
   display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 16px; border-bottom: 1px solid #E6EBF1;
+  padding: 12px 16px; border-bottom: 1px solid #C7CED6;
   flex-wrap: wrap; gap: 8px;
 
   @media (max-width: 768px) {
@@ -593,24 +593,24 @@ const PreviewHead = styled.div`
   }
 `;
 const PreviewTitle = styled.div`
-  font-size: 11px; font-weight: 600; color: #6B7C93;
+  font-size: 11px; font-weight: 600; color: #4B5563;
   text-transform: uppercase; letter-spacing: 0.5px;
 `;
 const TotalBadge = styled.span`
   font-size: 12px; color: #0A2540; font-weight: 600;
-  background: #F3F4F6; padding: 3px 10px; border-radius: 10px;
+  background: #F1F4F8; padding: 3px 10px; border-radius: 10px;
 `;
 const UnitChipRow = styled.div`
   display: flex; flex-wrap: wrap; gap: 6px; padding: 14px 16px;
   max-height: 140px; overflow-y: auto;
 `;
 const UnitTag = styled.span`
-  background: #F8FAFC; border: 1px solid #E6EBF1; border-radius: 6px;
+  background: #F1F4F8; border: 1px solid #C7CED6; border-radius: 6px;
   padding: 4px 10px; font-size: 12px; font-weight: 600; color: #0A2540;
   font-variant-numeric: tabular-nums;
 `;
 const EmptyHint = styled.div`
-  padding: 24px 16px; color: #9CA3AF; font-size: 13px;
+  padding: 24px 16px; color: #6B7280; font-size: 13px;
   font-style: italic; text-align: center;
 `;
 
@@ -652,20 +652,20 @@ const StatusBadge = styled.span<{ active: boolean }>`
   border-radius: 10px;
   font-size: 12px;
   font-weight: 600;
-  background: ${p => p.active ? '#D1FAE5' : '#F3F4F6'};
-  color: ${p => p.active ? '#065F46' : '#6B7280'};
+  background: ${p => p.active ? '#D1FAE5' : '#F1F4F8'};
+  color: ${p => p.active ? '#065F46' : '#4B5563'};
   text-transform: capitalize;
 `;
 
 const Hint = styled.div`
   font-size: 11px;
-  color: #9CA3AF;
+  color: #6B7280;
 `;
 
 const Input = styled.input`
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   box-sizing: border-box;
@@ -677,7 +677,7 @@ const Input = styled.input`
 const Select = styled.select`
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   box-sizing: border-box;

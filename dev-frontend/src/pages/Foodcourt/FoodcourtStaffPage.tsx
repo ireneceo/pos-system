@@ -33,14 +33,14 @@ const PERMISSION_GROUPS = [
 
 const Container = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #FAFBFC;
+  background-color: #F9FAFB;
   min-height: 100vh;
 `;
 
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -79,7 +79,7 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
-  border: ${props => props.variant === 'primary' ? 'none' : props.variant === 'danger' ? '1px solid #EF4444' : '1px solid #E6EBF1'};
+  border: ${props => props.variant === 'primary' ? 'none' : props.variant === 'danger' ? '1px solid #EF4444' : '1px solid #C7CED6'};
   background: ${props => {
     if (props.variant === 'primary') return '#635BFF';
     if (props.variant === 'danger') return '#FEF2F2';
@@ -88,14 +88,14 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
   color: ${props => {
     if (props.variant === 'primary') return 'white';
     if (props.variant === 'danger') return '#EF4444';
-    return '#6B7C93';
+    return '#4B5563';
   }};
 
   &:hover {
     background: ${props => {
       if (props.variant === 'primary') return '#5A51E6';
       if (props.variant === 'danger') return '#FEE2E2';
-      return '#F6F9FC';
+      return '#F4F6F9';
     }};
     transform: translateY(-1px);
   }
@@ -112,7 +112,7 @@ const Content = styled.div`
 const TableContainer = styled.div`
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   overflow: hidden;
 
   @media (max-width: 768px) {
@@ -131,7 +131,7 @@ const ManagerName = styled.div`
 
 const ManagerMeta = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const PermissionTags = styled.div`
@@ -171,9 +171,9 @@ const ActionGroup = styled.div`
 const ActionButton = styled.button`
   padding: 6px 12px;
   background: transparent;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
-  color: #6B7280;
+  color: #4B5563;
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
@@ -208,10 +208,10 @@ const PermissionLabel = styled.label`
   padding: 8px 10px;
   border-radius: 6px;
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   cursor: pointer;
   font-size: 13px;
-  color: #374151;
+  color: #1F2937;
   transition: all 0.15s;
 
   &:hover {
@@ -492,9 +492,9 @@ const FoodcourtStaffPage: React.FC = () => {
     permissions: string[],
     onChange: (updated: string[]) => void
   ) => (
-    <div style={{ marginTop: '20px', padding: '16px', background: '#F8FAFC', borderRadius: '8px', border: '1px solid #E6EBF1' }}>
+    <div style={{ marginTop: '20px', padding: '16px', background: '#F1F4F8', borderRadius: '8px', border: '1px solid #C7CED6' }}>
       <div style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540', marginBottom: '4px' }}>{t('common:foodcourtStaffPage.menuAccess')}</div>
-      <div style={{ fontSize: '12px', color: '#6B7C93', marginBottom: '12px' }}>
+      <div style={{ fontSize: '12px', color: '#4B5563', marginBottom: '12px' }}>
         Select which menu sections this manager can access:
       </div>
       <PermissionGrid>
@@ -587,7 +587,7 @@ const FoodcourtStaffPage: React.FC = () => {
                       </DataTableCell>
 
                       <DataTableCell data-label="Phone" align="center">
-                        <span style={{ fontSize: '13px', color: '#6B7280' }}>
+                        <span style={{ fontSize: '13px', color: '#4B5563' }}>
                           {manager.phone || '—'}
                         </span>
                       </DataTableCell>
@@ -595,7 +595,7 @@ const FoodcourtStaffPage: React.FC = () => {
                       <DataTableCell data-label="Permissions" align="center">
                         <PermissionTags>
                           {manager.permissions.length === 0 ? (
-                            <span style={{ fontSize: '12px', color: '#9CA3AF' }}>{t('common:foodcourtStaffPage.noPermissions')}</span>
+                            <span style={{ fontSize: '12px', color: '#6B7280' }}>{t('common:foodcourtStaffPage.noPermissions')}</span>
                           ) : (
                             manager.permissions.map(p => (
                               <PermissionTag key={p}>
@@ -607,7 +607,7 @@ const FoodcourtStaffPage: React.FC = () => {
                       </DataTableCell>
 
                       <DataTableCell data-label="Joined" align="center">
-                        <span style={{ fontSize: '13px', color: '#6B7280' }}>
+                        <span style={{ fontSize: '13px', color: '#4B5563' }}>
                           {manager.joinDate || '—'}
                         </span>
                       </DataTableCell>
@@ -666,7 +666,7 @@ const FoodcourtStaffPage: React.FC = () => {
                 placeholder="Enter unique username"
                 autoComplete="off"
               />
-              <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+              <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '4px' }}>
                 A strong password will be auto-generated
               </div>
             </FormGroup>
@@ -709,7 +709,7 @@ const FoodcourtStaffPage: React.FC = () => {
                 <select
                   value={newManager.branch_id || ''}
                   onChange={(e) => setNewManager(prev => ({ ...prev, branch_id: e.target.value }))}
-                  style={{ width: '100%', padding: '8px 12px', border: '1px solid #E6EBF1', borderRadius: 6, fontSize: 14 }}
+                  style={{ width: '100%', padding: '8px 12px', border: '1px solid #C7CED6', borderRadius: 6, fontSize: 14 }}
                 >
                   <option value="">{t('common:foodcourtStaffPage.branchAll', 'All branches (Foodcourt-wide)')}</option>
                   {branches.map(b => (
@@ -718,7 +718,7 @@ const FoodcourtStaffPage: React.FC = () => {
                     </option>
                   ))}
                 </select>
-                <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>
+                <div style={{ fontSize: 11, color: '#6B7280', marginTop: 4 }}>
                   {t('common:foodcourtStaffPage.branchHint', 'Assign this manager to a specific branch (optional). Leave empty for foodcourt-wide access.')}
                 </div>
               </FormGroup>
@@ -800,7 +800,7 @@ const FoodcourtStaffPage: React.FC = () => {
                     <select
                       value={editForm.branch_id || ''}
                       onChange={(e) => setEditForm(prev => ({ ...prev, branch_id: e.target.value }))}
-                      style={{ width: '100%', padding: '8px 12px', border: '1px solid #E6EBF1', borderRadius: 6, fontSize: 14 }}
+                      style={{ width: '100%', padding: '8px 12px', border: '1px solid #C7CED6', borderRadius: 6, fontSize: 14 }}
                     >
                       <option value="">{t('common:foodcourtStaffPage.branchAll', 'All branches (Foodcourt-wide)')}</option>
                       {branches.map(b => (
@@ -849,18 +849,18 @@ const FoodcourtStaffPage: React.FC = () => {
             </>
           }
         >
-          <div style={{ marginBottom: '20px', fontSize: '14px', color: '#6B7280' }}>
+          <div style={{ marginBottom: '20px', fontSize: '14px', color: '#4B5563' }}>
             Please share this password with the manager. They should change it after first login.
           </div>
           <div style={{
-            background: '#F8FAFC',
-            border: '1px solid #E6EBF1',
+            background: '#F1F4F8',
+            border: '1px solid #C7CED6',
             borderRadius: '8px',
             padding: '16px',
             textAlign: 'center',
             marginBottom: '16px'
           }}>
-            <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '8px', fontWeight: 600 }}>
+            <div style={{ fontSize: '12px', color: '#4B5563', marginBottom: '8px', fontWeight: 600 }}>
               Temporary Password
             </div>
             <div style={{
@@ -892,7 +892,7 @@ const FoodcourtStaffPage: React.FC = () => {
             </>
           }
         >
-          <div style={{ fontSize: '14px', color: '#374151' }}>
+          <div style={{ fontSize: '14px', color: '#1F2937' }}>
             Are you sure you want to delete <strong>{deleteTarget?.name}</strong>?
           </div>
           <div style={{ fontSize: '13px', color: '#DC2626', marginTop: '8px' }}>
@@ -910,7 +910,7 @@ const FoodcourtStaffPage: React.FC = () => {
             <ModalButton variant="primary" onClick={() => setErrorMessage('')}>{t('common:foodcourtStaffPage.ok')}</ModalButton>
           }
         >
-          <div style={{ fontSize: '14px', color: '#374151' }}>
+          <div style={{ fontSize: '14px', color: '#1F2937' }}>
             {errorMessage}
           </div>
         </Modal>
@@ -928,10 +928,10 @@ const FoodcourtStaffPage: React.FC = () => {
             </>
           }
         >
-          <div style={{ fontSize: '14px', color: '#374151' }}>
+          <div style={{ fontSize: '14px', color: '#1F2937' }}>
             Reset the password for <strong>{resetPasswordTarget?.name}</strong>?
           </div>
-          <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '8px' }}>
+          <div style={{ fontSize: '13px', color: '#4B5563', marginTop: '8px' }}>
             A new password will be generated. The current password will no longer work.
           </div>
         </Modal>

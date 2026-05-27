@@ -62,7 +62,7 @@ const HelperTtl = styled.div`
 
 const HelperBody = styled.div`
   font-size: 12.5px;
-  color: #4B5563;
+  color: #374151;
   line-height: 1.6;
   strong { color: #635BFF; font-weight: 600; }
   svg.inline-lock { width: 12px; height: 12px; vertical-align: -2px; color: #635BFF; }
@@ -86,14 +86,14 @@ const HelperLnk = styled.button`
 
 const Container = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #FAFBFC;
+  background-color: #F9FAFB;
   min-height: 100vh;
 `;
 
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -150,7 +150,7 @@ const SearchInputContainer = styled.div`
 const SearchInput = styled.input`
   width: 100%;
   padding: 10px 16px 10px 40px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.15s;
@@ -180,9 +180,9 @@ const ClearSearchBtn = styled.button`
   width: 24px;
   height: 24px;
   border: none;
-  background: #F6F9FC;
+  background: #F4F6F9;
   border-radius: 50%;
-  color: #6B7C93;
+  color: #4B5563;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -191,7 +191,7 @@ const ClearSearchBtn = styled.button`
   transition: all 0.15s;
   
   &:hover {
-    background: #E6EBF1;
+    background: #C7CED6;
     color: #0A2540;
   }
 `;
@@ -214,11 +214,11 @@ const NoResultsMessage = styled.div`
   align-items: center;
   justify-content: center;
   padding: 60px 20px;
-  color: #6B7C93;
+  color: #4B5563;
   text-align: center;
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   
   .icon {
     font-size: 48px;
@@ -248,7 +248,7 @@ const MenuGrid = styled.div`
 
 const MenuCard = styled.div<{ soldOut?: boolean; inactive?: boolean }>`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   overflow: hidden;
   transition: all 0.15s;
@@ -265,7 +265,7 @@ const MenuCard = styled.div<{ soldOut?: boolean; inactive?: boolean }>`
       position: absolute;
       top: 10px;
       left: 10px;
-      background: #6B7280;
+      background: #4B5563;
       color: white;
       padding: 2px 8px;
       border-radius: 4px;
@@ -301,7 +301,7 @@ const MenuCard = styled.div<{ soldOut?: boolean; inactive?: boolean }>`
 const MenuImage = styled.div`
   width: 100%;
   aspect-ratio: 16 / 9;
-  background: #F6F9FC;
+  background: #F4F6F9;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -354,7 +354,7 @@ const MenuPrice = styled.div`
 
 const MenuDescription = styled.p`
   font-size: 13px;
-  color: #6B7C93;
+  color: #4B5563;
   margin: 8px 0;
   line-height: 1.4;
   word-break: break-word;
@@ -400,7 +400,7 @@ const MenuActions = styled.div`
   display: flex;
   gap: 8px;
   padding-top: 12px;
-  border-top: 1px solid #F6F9FC;
+  border-top: 1px solid #F4F6F9;
   margin-top: auto;
 `;
 
@@ -411,7 +411,7 @@ const ActionButton = styled.button<{ danger?: boolean }>`
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
 
   ${props => props.danger ? `
     background: #FFF4F4;
@@ -423,10 +423,10 @@ const ActionButton = styled.button<{ danger?: boolean }>`
     }
   ` : `
     background: white;
-    color: #6B7C93;
+    color: #4B5563;
 
     &:hover {
-      background: #F6F9FC;
+      background: #F4F6F9;
       color: #635BFF;
       border-color: #C7D2FE;
     }
@@ -441,7 +441,7 @@ const IconButton = styled.button<{ danger?: boolean; warning?: boolean; inactive
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -457,14 +457,14 @@ const IconButton = styled.button<{ danger?: boolean; warning?: boolean; inactive
     border-color: #FEF3C7;
     &:hover { background: #FEF3C7; }
   ` : props.inactive ? `
-    background: #F3F4F6;
-    color: #6B7280;
-    border-color: #E5E7EB;
-    &:hover { background: #E5E7EB; }
+    background: #F1F4F8;
+    color: #4B5563;
+    border-color: #C7CED6;
+    &:hover { background: #C7CED6; }
   ` : `
     background: white;
-    color: #6B7C93;
-    &:hover { background: #F6F9FC; color: #635BFF; border-color: #C7D2FE; }
+    color: #4B5563;
+    &:hover { background: #F4F6F9; color: #635BFF; border-color: #C7D2FE; }
   `}
 `;
 
@@ -508,15 +508,15 @@ const EmojiPicker = styled.div`
   max-height: 200px;
   overflow-y: auto;
   padding: 8px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
-  background: #FAFBFC;
+  background: #F9FAFB;
 `;
 
 const EmojiOption = styled.button<{ selected?: boolean }>`
   width: 48px;
   height: 48px;
-  border: 2px solid ${props => props.selected ? '#635BFF' : '#E6EBF1'};
+  border: 2px solid ${props => props.selected ? '#635BFF' : '#C7CED6'};
   border-radius: 8px;
   background: ${props => props.selected ? '#F0F4FF' : 'white'};
   font-size: 24px;
@@ -555,7 +555,7 @@ const CheckboxLabel = styled.label`
 const OptionGroupSelect = styled.select`
   width: 100%;
   padding: 10px 14px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   color: #0A2540;
@@ -626,7 +626,7 @@ const ChipRemoveButton = styled.button`
   background: transparent;
   border: none;
   cursor: pointer;
-  color: #6B7280;
+  color: #4B5563;
   border-radius: 50%;
   padding: 0;
   transition: all 0.15s;
@@ -685,7 +685,7 @@ const PendingDot = styled.span`
 `;
 
 const SetItemsList = styled.div`
-  background: #F6F9FC;
+  background: #F4F6F9;
   border-radius: 8px;
   padding: 12px;
   margin-top: 12px;
@@ -701,7 +701,7 @@ const SetItemRow = styled.div`
   background: white;
   border-radius: 6px;
   margin-bottom: 8px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
 
   &:last-child {
     margin-bottom: 0;
@@ -730,7 +730,7 @@ const SetItemQuantity = styled.div`
 const QuantityButton = styled.button`
   width: 28px;
   height: 28px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   background: white;
   border-radius: 4px;
   display: flex;
@@ -775,7 +775,7 @@ const RemoveButton = styled.button`
 `;
 
 const MenuItemSelector = styled.div`
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   max-height: 300px;
   overflow-y: auto;
@@ -783,7 +783,7 @@ const MenuItemSelector = styled.div`
 
 const MenuItemOption = styled.div<{ selected?: boolean }>`
   padding: 12px;
-  border-bottom: 1px solid #F6F9FC;
+  border-bottom: 1px solid #F4F6F9;
   cursor: pointer;
   transition: all 0.15s;
   background: ${props => props.selected ? '#F0F4FF' : 'white'};
@@ -793,7 +793,7 @@ const MenuItemOption = styled.div<{ selected?: boolean }>`
   }
 
   &:hover {
-    background: #F6F9FC;
+    background: #F4F6F9;
   }
 
   display: flex;
@@ -817,7 +817,7 @@ const MenuItemOptionName = styled.div`
 
 const MenuItemOptionPrice = styled.div`
   font-size: 12px;
-  color: #6B7C93;
+  color: #4B5563;
 `;
 
 
@@ -1638,7 +1638,7 @@ const MenuManagementPage: React.FC = () => {
               step="0.10"
               min="0"
             />
-            <div style={{ fontSize: '12px', color: '#6B7C93', marginTop: '4px' }}>
+            <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '4px' }}>
               {t('menu:menuManagementPage.takeawayPackagingFeeHelp', 'Only applied when takeaway pricing is set to "Per Menu Item (set individually)". Leave at 0 if no packaging fee.')}
             </div>
           </UIFormGroup>
@@ -1663,7 +1663,7 @@ const MenuManagementPage: React.FC = () => {
               <input type="checkbox" checked={formData.is_featured || false}
                 onChange={(e) => setFormData({ ...formData, is_featured: e.target.checked })} />
               <span style={{ fontSize: '14px', color: '#0A2540', fontWeight: 500 }}>{t('menu:menuManagementPage.featuredItem')}</span>
-              <span style={{ fontSize: '12px', color: '#6B7C93' }}>{t('menu:menuManagementPage.showInMobileFeaturedTab')}</span>
+              <span style={{ fontSize: '12px', color: '#4B5563' }}>{t('menu:menuManagementPage.showInMobileFeaturedTab')}</span>
             </label>
           </UIFormGroup>
 
@@ -1717,14 +1717,14 @@ const MenuManagementPage: React.FC = () => {
 
           {!formData.recipe_id && (
             <UIFormGroup>
-              <FormLabel>Ingredients (direct) {directIngredients.length > 0 && <span style={{ fontSize: '11px', color: '#6B7280', fontWeight: 400 }}>Cost: RM {directIngredients.reduce((sum, di) => sum + (di.unit_cost * di.quantity), 0).toFixed(2)}</span>}</FormLabel>
+              <FormLabel>Ingredients (direct) {directIngredients.length > 0 && <span style={{ fontSize: '11px', color: '#4B5563', fontWeight: 400 }}>Cost: RM {directIngredients.reduce((sum, di) => sum + (di.unit_cost * di.quantity), 0).toFixed(2)}</span>}</FormLabel>
               {directIngredients.map((di, idx) => (
                 <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '6px', fontSize: '13px', background: '#F9FAFB', padding: '8px 12px', borderRadius: '6px' }}>
                   <span style={{ flex: 1 }}>{di.name}</span>
-                  <input type="number" value={di.quantity} min="0.01" step="0.01" style={{ width: '60px', textAlign: 'center', border: '1px solid #E6EBF1', borderRadius: '4px', padding: '2px 4px', fontSize: '13px' }}
+                  <input type="number" value={di.quantity} min="0.01" step="0.01" style={{ width: '60px', textAlign: 'center', border: '1px solid #C7CED6', borderRadius: '4px', padding: '2px 4px', fontSize: '13px' }}
                     onChange={(e) => setDirectIngredients(prev => prev.map((item, i) => i === idx ? { ...item, quantity: parseFloat(e.target.value) || 0 } : item))} />
-                  <span style={{ fontSize: '12px', color: '#6B7280', width: '30px' }}>{di.unit}</span>
-                  <span style={{ width: '70px', textAlign: 'right', color: '#6B7280', fontSize: '12px' }}>RM {(di.unit_cost * di.quantity).toFixed(2)}</span>
+                  <span style={{ fontSize: '12px', color: '#4B5563', width: '30px' }}>{di.unit}</span>
+                  <span style={{ width: '70px', textAlign: 'right', color: '#4B5563', fontSize: '12px' }}>RM {(di.unit_cost * di.quantity).toFixed(2)}</span>
                   <button type="button" onClick={() => setDirectIngredients(prev => prev.filter((_, i) => i !== idx))} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: '16px', padding: '0 4px' }}>x</button>
                 </div>
               ))}
@@ -1877,7 +1877,7 @@ const MenuManagementPage: React.FC = () => {
               step="0.10"
               min="0"
             />
-            <div style={{ fontSize: '12px', color: '#6B7C93', marginTop: '4px' }}>
+            <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '4px' }}>
               {t('menu:menuManagementPage.takeawayPackagingFeeHelp', 'Only applied when takeaway pricing is set to "Per Menu Item (set individually)". Leave at 0 if no packaging fee.')}
             </div>
           </UIFormGroup>
@@ -1903,7 +1903,7 @@ const MenuManagementPage: React.FC = () => {
               <input type="checkbox" checked={formData.is_featured || false}
                 onChange={(e) => setFormData({ ...formData, is_featured: e.target.checked })} />
               <span style={{ fontSize: '14px', color: '#0A2540', fontWeight: 500 }}>{t('menu:menuManagementPage.featuredItem')}</span>
-              <span style={{ fontSize: '12px', color: '#6B7C93' }}>{t('menu:menuManagementPage.showInMobileFeaturedTab')}</span>
+              <span style={{ fontSize: '12px', color: '#4B5563' }}>{t('menu:menuManagementPage.showInMobileFeaturedTab')}</span>
             </label>
           </UIFormGroup>
 
@@ -1957,14 +1957,14 @@ const MenuManagementPage: React.FC = () => {
 
           {!formData.recipe_id && (
             <UIFormGroup>
-              <FormLabel>Ingredients (direct) {directIngredients.length > 0 && <span style={{ fontSize: '11px', color: '#6B7280', fontWeight: 400 }}>Cost: RM {directIngredients.reduce((sum, di) => sum + (di.unit_cost * di.quantity), 0).toFixed(2)}</span>}</FormLabel>
+              <FormLabel>Ingredients (direct) {directIngredients.length > 0 && <span style={{ fontSize: '11px', color: '#4B5563', fontWeight: 400 }}>Cost: RM {directIngredients.reduce((sum, di) => sum + (di.unit_cost * di.quantity), 0).toFixed(2)}</span>}</FormLabel>
               {directIngredients.map((di, idx) => (
                 <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '6px', fontSize: '13px', background: '#F9FAFB', padding: '8px 12px', borderRadius: '6px' }}>
                   <span style={{ flex: 1 }}>{di.name}</span>
-                  <input type="number" value={di.quantity} min="0.01" step="0.01" style={{ width: '60px', textAlign: 'center', border: '1px solid #E6EBF1', borderRadius: '4px', padding: '2px 4px', fontSize: '13px' }}
+                  <input type="number" value={di.quantity} min="0.01" step="0.01" style={{ width: '60px', textAlign: 'center', border: '1px solid #C7CED6', borderRadius: '4px', padding: '2px 4px', fontSize: '13px' }}
                     onChange={(e) => setDirectIngredients(prev => prev.map((item, i) => i === idx ? { ...item, quantity: parseFloat(e.target.value) || 0 } : item))} />
-                  <span style={{ fontSize: '12px', color: '#6B7280', width: '30px' }}>{di.unit}</span>
-                  <span style={{ width: '70px', textAlign: 'right', color: '#6B7280', fontSize: '12px' }}>RM {(di.unit_cost * di.quantity).toFixed(2)}</span>
+                  <span style={{ fontSize: '12px', color: '#4B5563', width: '30px' }}>{di.unit}</span>
+                  <span style={{ width: '70px', textAlign: 'right', color: '#4B5563', fontSize: '12px' }}>RM {(di.unit_cost * di.quantity).toFixed(2)}</span>
                   <button type="button" onClick={() => setDirectIngredients(prev => prev.filter((_, i) => i !== idx))} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: '16px', padding: '0 4px' }}>x</button>
                 </div>
               ))}
@@ -2116,7 +2116,7 @@ const MenuManagementPage: React.FC = () => {
               <input type="checkbox" checked={formData.is_featured || false}
                 onChange={(e) => setFormData({ ...formData, is_featured: e.target.checked })} />
               <span style={{ fontSize: '14px', color: '#0A2540', fontWeight: 500 }}>{t('menu:menuManagementPage.featuredItem')}</span>
-              <span style={{ fontSize: '12px', color: '#6B7C93' }}>{t('menu:menuManagementPage.showInMobileFeaturedTab')}</span>
+              <span style={{ fontSize: '12px', color: '#4B5563' }}>{t('menu:menuManagementPage.showInMobileFeaturedTab')}</span>
             </label>
           </UIFormGroup>
 

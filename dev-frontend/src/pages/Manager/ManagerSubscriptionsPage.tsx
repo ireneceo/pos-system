@@ -34,7 +34,7 @@ const Container = styled.div`
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -56,7 +56,7 @@ const Header = styled.div`
 
 const Content = styled.div`
   padding: 32px;
-  background: #FAFBFC;
+  background: #F9FAFB;
   min-height: calc(100vh - 120px);
   
   @media (max-width: 768px) {
@@ -105,13 +105,13 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
     }
   ` : `
     background: white;
-    color: #6B7280;
-    border: 1px solid #E6EBF1;
+    color: #4B5563;
+    border: 1px solid #C7CED6;
     
     &:hover {
-      background: #F8FAFC;
+      background: #F1F4F8;
       color: #0A2540;
-      border-color: #CBD5E1;
+      border-color: #64748B;
     }
   `}
 `;
@@ -125,7 +125,7 @@ const SubscriptionGrid = styled.div`
 const SubscriptionCard = styled.div`
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   overflow: hidden;
   transition: all 0.2s;
   
@@ -141,8 +141,8 @@ const CardHeader = styled.div<{ planType: string }>`
     switch(props.planType) {
       case 'enterprise': return 'linear-gradient(135deg, #5B21B6 0%, #7C3AED 100%)';
       case 'professional': return 'linear-gradient(135deg, #1E40AF 0%, #2563EB 100%)';
-      case 'basic': return 'linear-gradient(135deg, #6B7280 0%, #9CA3AF 100%)';
-      default: return '#F3F4F6';
+      case 'basic': return 'linear-gradient(135deg, #4B5563 0%, #6B7280 100%)';
+      default: return '#F1F4F8';
     }
   }};
   color: white;
@@ -192,7 +192,7 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'active': return '#ECFDF5';
       case 'overdue': return '#FEF2F2';
       case 'suspended': return '#FEF3C7';
-      default: return '#F3F4F6';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
@@ -200,14 +200,14 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'active': return '#059669';
       case 'overdue': return '#DC2626';
       case 'suspended': return '#D97706';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 `;
 
 const NextBilling = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const UsageSection = styled.div`
@@ -227,7 +227,7 @@ const UsageItem = styled.div`
 
 const UsageLabel = styled.div`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const UsageValue = styled.div<{ warning?: boolean }>`
@@ -239,7 +239,7 @@ const UsageValue = styled.div<{ warning?: boolean }>`
 const UsageBar = styled.div`
   width: 100%;
   height: 4px;
-  background: #F3F4F6;
+  background: #F1F4F8;
   border-radius: 2px;
   margin-top: 4px;
   overflow: hidden;
@@ -259,7 +259,7 @@ const FeaturesSection = styled.div`
 const SectionTitle = styled.div`
   font-size: 14px;
   font-weight: 600;
-  color: #374151;
+  color: #1F2937;
   margin-bottom: 12px;
 `;
 
@@ -271,7 +271,7 @@ const FeaturesList = styled.ul`
 
 const FeatureItem = styled.li`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   padding: 2px 0;
   position: relative;
   padding-left: 16px;
@@ -318,13 +318,13 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'danger' }>`
     }
   ` : `
     background: white;
-    color: #6B7280;
-    border-color: #E6EBF1;
+    color: #4B5563;
+    border-color: #C7CED6;
     
     &:hover {
-      background: #F8FAFC;
+      background: #F1F4F8;
       color: #0A2540;
-      border-color: #CBD5E1;
+      border-color: #64748B;
     }
   `}
 `;

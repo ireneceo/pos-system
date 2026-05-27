@@ -67,7 +67,7 @@ interface PartnerDetail {
 
 const Page = styled.div`
   padding: 24px;
-  background: #FAFBFC;
+  background: #F9FAFB;
   min-height: calc(100vh - 64px);
 
   @media (max-width: 640px) { padding: 16px; }
@@ -92,7 +92,7 @@ const Title = styled.h1`
 const Tabs = styled.div`
   display: flex;
   gap: 4px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 24px;
   overflow-x: auto;
 `;
@@ -104,7 +104,7 @@ const TabBtn = styled.button<{ $active: boolean }>`
   border-bottom: 2px solid ${p => (p.$active ? '#635BFF' : 'transparent')};
   font-size: 14px;
   font-weight: ${p => (p.$active ? 600 : 500)};
-  color: ${p => (p.$active ? '#635BFF' : '#6B7C93')};
+  color: ${p => (p.$active ? '#635BFF' : '#4B5563')};
   cursor: pointer;
   transition: color 0.15s, border-color 0.15s;
   white-space: nowrap;
@@ -114,7 +114,7 @@ const TabBtn = styled.button<{ $active: boolean }>`
 
 const Card = styled.div`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   padding: 24px;
   margin-bottom: 16px;
@@ -123,7 +123,7 @@ const Card = styled.div`
 const CardTitle = styled.h2`
   font-size: 14px;
   font-weight: 600;
-  color: #6B7C93;
+  color: #4B5563;
   letter-spacing: 0.4px;
   text-transform: uppercase;
   margin: 0 0 14px;
@@ -140,14 +140,14 @@ const StatGrid = styled.div`
 
 const Stat = styled.div`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   padding: 18px 20px;
 `;
 
 const StatLabel = styled.div`
   font-size: 12px;
-  color: #6B7C93;
+  color: #4B5563;
   font-weight: 600;
   letter-spacing: 0.4px;
   text-transform: uppercase;
@@ -177,11 +177,11 @@ const Th = styled.th`
   text-align: left;
   font-size: 12px;
   font-weight: 600;
-  color: #6B7C93;
+  color: #4B5563;
   letter-spacing: 0.4px;
   text-transform: uppercase;
   padding: 10px 8px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
 `;
 
 const Td = styled.td`
@@ -194,10 +194,10 @@ const Td = styled.td`
 const Empty = styled.div`
   padding: 36px 20px;
   text-align: center;
-  color: #6B7C93;
+  color: #4B5563;
   font-size: 14px;
-  background: #FAFBFC;
-  border: 1px dashed #E6EBF1;
+  background: #F9FAFB;
+  border: 1px dashed #C7CED6;
   border-radius: 8px;
 `;
 
@@ -206,7 +206,7 @@ const SearchInput = styled.input`
   padding: 0 14px;
   font-size: 14px;
   color: #0A2540;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   outline: none;
   width: 280px;
@@ -219,7 +219,7 @@ const Filter = styled.select`
   padding: 0 12px;
   font-size: 14px;
   color: #0A2540;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   background: white;
   outline: none;
@@ -228,7 +228,7 @@ const Filter = styled.select`
 
 const Btn = styled.button`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   padding: 8px 14px;
   font-size: 13px;
@@ -269,7 +269,7 @@ const StatusBadge = styled.span<{ $s: string }>`
     approved: '#1D4ED8',
     paid: '#059669',
     rejected: '#B91C1C'
-  } as Record<string, string>)[p.$s] || '#6B7C93'};
+  } as Record<string, string>)[p.$s] || '#4B5563'};
 `;
 
 const Toolbar = styled.div`
@@ -309,7 +309,7 @@ const Label = styled.label`
   display: block;
   font-size: 12px;
   font-weight: 600;
-  color: #6B7C93;
+  color: #4B5563;
   letter-spacing: 0.4px;
   text-transform: uppercase;
   margin-bottom: 6px;
@@ -321,7 +321,7 @@ const Input = styled.input`
   padding: 0 12px;
   font-size: 14px;
   color: #0A2540;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   outline: none;
   &:focus { border-color: #635BFF; box-shadow: 0 0 0 3px rgba(99,91,255,0.1); }
@@ -333,7 +333,7 @@ const Textarea = styled.textarea`
   padding: 10px 12px;
   font-size: 14px;
   color: #0A2540;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   outline: none;
   font-family: inherit;
@@ -359,7 +359,7 @@ const ToggleLabel = styled.div`
 
 const Hint = styled.div`
   font-size: 12px;
-  color: #6B7C93;
+  color: #4B5563;
   margin-top: 2px;
 `;
 
@@ -369,7 +369,7 @@ const Switch = styled.button<{ $on: boolean }>`
   height: 24px;
   border-radius: 12px;
   border: none;
-  background: ${p => (p.$on ? '#635BFF' : '#CBD5E1')};
+  background: ${p => (p.$on ? '#635BFF' : '#64748B')};
   cursor: pointer;
   transition: background 0.15s;
 
@@ -625,7 +625,7 @@ const ReferralManagementPage: React.FC = () => {
                     <div style={{ marginBottom: 12 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
                         <span style={{ color: '#0A2540', fontWeight: 500 }}>{label}</span>
-                        <span style={{ color: '#6B7C93' }}>{value.toLocaleString()}{sub ? ` · ${sub}` : ''}</span>
+                        <span style={{ color: '#4B5563' }}>{value.toLocaleString()}{sub ? ` · ${sub}` : ''}</span>
                       </div>
                       <div style={{ height: 24, background: '#F0F4FF', borderRadius: 4, overflow: 'hidden' }}>
                         <div style={{
@@ -655,9 +655,9 @@ const ReferralManagementPage: React.FC = () => {
                   <div style={{ width: '100%', height: 240 }}>
                     <ResponsiveContainer>
                       <LineChart data={overview.monthly_signups} margin={{ top: 8, right: 16, left: 0, bottom: 4 }}>
-                        <CartesianGrid stroke="#E6EBF1" strokeDasharray="3 3" />
-                        <XAxis dataKey="ym" tick={{ fontSize: 11, fill: '#6B7C93' }} />
-                        <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#6B7C93' }} />
+                        <CartesianGrid stroke="#C7CED6" strokeDasharray="3 3" />
+                        <XAxis dataKey="ym" tick={{ fontSize: 11, fill: '#4B5563' }} />
+                        <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#4B5563' }} />
                         <Tooltip />
                         <Legend wrapperStyle={{ fontSize: 12 }} />
                         <Line type="monotone" dataKey="referred" name={t('admin.overview.signups.referred', 'Referred signups')} stroke="#635BFF" strokeWidth={2} dot={{ r: 3 }} />
@@ -676,9 +676,9 @@ const ReferralManagementPage: React.FC = () => {
                   <div style={{ width: '100%', height: 240 }}>
                     <ResponsiveContainer>
                       <LineChart data={overview.monthly_commissions} margin={{ top: 8, right: 16, left: 0, bottom: 4 }}>
-                        <CartesianGrid stroke="#E6EBF1" strokeDasharray="3 3" />
-                        <XAxis dataKey="ym" tick={{ fontSize: 11, fill: '#6B7C93' }} />
-                        <YAxis tick={{ fontSize: 11, fill: '#6B7C93' }} />
+                        <CartesianGrid stroke="#C7CED6" strokeDasharray="3 3" />
+                        <XAxis dataKey="ym" tick={{ fontSize: 11, fill: '#4B5563' }} />
+                        <YAxis tick={{ fontSize: 11, fill: '#4B5563' }} />
                         <Tooltip />
                         <Legend wrapperStyle={{ fontSize: 12 }} />
                         {overview.commission_currencies.map((c, i) => {
@@ -769,14 +769,14 @@ const ReferralManagementPage: React.FC = () => {
                     >
                       <Td>
                         <div style={{ fontWeight: 500 }}>{p.name}</div>
-                        <div style={{ fontSize: 12, color: '#6B7C93' }}>{p.email}</div>
+                        <div style={{ fontSize: 12, color: '#4B5563' }}>{p.email}</div>
                       </Td>
                       <Td><code style={{ color: '#635BFF', fontWeight: 600 }}>{p.referral_code}</code></Td>
                       <Td>{displayRole(p.role)}</Td>
                       <Td>{p.referral_count}</Td>
                       <Td>
                         {Object.keys(p.total_earned).length === 0
-                          ? <span style={{ color: '#6B7C93' }}>—</span>
+                          ? <span style={{ color: '#4B5563' }}>—</span>
                           : Object.entries(p.total_earned).map(([c, a]) => fmtMoney(a, c)).join(', ')}
                       </Td>
                       <Td>{fmtDate(p.joined_at)}</Td>
@@ -823,14 +823,14 @@ const ReferralManagementPage: React.FC = () => {
                       <Td>{fmtDateTime(p.created_at)}</Td>
                       <Td>
                         <div style={{ fontWeight: 500 }}>{p.partner.name}</div>
-                        <div style={{ fontSize: 12, color: '#6B7C93' }}>{p.partner.email}</div>
+                        <div style={{ fontSize: 12, color: '#4B5563' }}>{p.partner.email}</div>
                       </Td>
                       <Td style={{ fontWeight: 600 }}>{fmtMoney(p.amount, p.currency)}</Td>
                       <Td><StatusBadge $s={p.status}>{p.status}</StatusBadge></Td>
                       <Td style={{ fontSize: 13 }}>
                         <div>{p.bank.bank_name}</div>
-                        <div style={{ color: '#6B7C93' }}>{p.bank.account_number}</div>
-                        <div style={{ color: '#6B7C93' }}>{p.bank.account_holder}</div>
+                        <div style={{ color: '#4B5563' }}>{p.bank.account_number}</div>
+                        <div style={{ color: '#4B5563' }}>{p.bank.account_holder}</div>
                       </Td>
                       <Td>
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -848,7 +848,7 @@ const ReferralManagementPage: React.FC = () => {
                             </>
                           )}
                           {p.status === 'paid' && p.transaction_reference && (
-                            <span style={{ fontSize: 12, color: '#6B7C93' }}>{t('admin.payouts.refLabel', 'Ref: {{value}}', { value: p.transaction_reference })}</span>
+                            <span style={{ fontSize: 12, color: '#4B5563' }}>{t('admin.payouts.refLabel', 'Ref: {{value}}', { value: p.transaction_reference })}</span>
                           )}
                           {p.status === 'rejected' && p.reject_reason && (
                             <span style={{ fontSize: 12, color: '#B91C1C' }}>{p.reject_reason}</span>
@@ -1001,7 +1001,7 @@ const ReferralManagementPage: React.FC = () => {
             ) : (
               <>
                 <DialogTitle>{partnerDetail.partner.name}</DialogTitle>
-                <div style={{ fontSize: 13, color: '#6B7C93', marginTop: -10, marginBottom: 16 }}>
+                <div style={{ fontSize: 13, color: '#4B5563', marginTop: -10, marginBottom: 16 }}>
                   <code style={{ color: '#635BFF', fontWeight: 600 }}>{partnerDetail.partner.referral_code}</code>
                   {' · '}{partnerDetail.partner.email}
                   {partnerDetail.partner.phone ? ` · ${partnerDetail.partner.phone}` : ''}

@@ -12,6 +12,7 @@ import { AccessBlocked } from '../PaymentStatus/AccessBlocked';
 import LanguageSelector from '../Common/LanguageSelector';
 import InboxBell from '../Inbox/InboxBell';
 import PlanBadge from './PlanBadge';
+import WorkstationChip from './WorkstationChip';
 import { useTranslation } from 'react-i18next';
 import { useRoleDisplayName } from '../../utils/roleDisplay';
 import { useAllowedRoutes } from '../../hooks/useAllowedRoutes';
@@ -31,7 +32,7 @@ const SECONDARY_AUTOCOLLAPSE_BREAKPOINT = 1280;
 
 const LayoutContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #FAFBFC;
+  background-color: #F9FAFB;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -48,7 +49,7 @@ const Sidebar = styled.div<{ isOpen?: boolean; isCollapsed?: boolean; $isSystemA
   }};
   height: 100vh;
   background: #EEF0F4;
-  border-right: ${props => (props.isCollapsed && !props.$isSystemAdmin) ? 'none' : '1px solid #E6EBF1'};
+  border-right: ${props => (props.isCollapsed && !props.$isSystemAdmin) ? 'none' : '1px solid #C7CED6'};
   z-index: 1000;
   display: flex;
   flex-direction: column;
@@ -83,12 +84,12 @@ const SidebarToggleButton = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #6B7C93;
+  color: #4B5563;
   border-radius: 6px;
   transition: all 0.2s;
 
   &:hover {
-    background: #E6EBF1;
+    background: #C7CED6;
     color: #0A2540;
   }
 
@@ -104,14 +105,14 @@ const SidebarOpenButton = styled.button<{ isCollapsed?: boolean; $isSystemAdmin?
   left: 16px;
   z-index: 1001;
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   padding: 12px;
   cursor: pointer;
   display: ${props => (props.isCollapsed && !props.$isSystemAdmin) ? 'flex' : 'none'};
   align-items: center;
   justify-content: center;
-  color: #6B7C93;
+  color: #4B5563;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: all 0.2s;
 
@@ -163,13 +164,13 @@ const SidebarNav = styled.nav`
   }
   
   &::-webkit-scrollbar-thumb {
-    background: #CBD5E1;
+    background: #64748B;
     border-radius: 3px;
     transition: background 0.2s;
   }
   
   &::-webkit-scrollbar-thumb:hover {
-    background: #94A3B8;
+    background: #64748B;
   }
   
   /* 모바일에서 스무스 스크롤 */
@@ -209,7 +210,7 @@ const NavItem = styled(Link)<{ active?: boolean; hasPending?: boolean }>`
   display: flex;
   align-items: center;
   padding: 4px 16px;
-  color: #6B7C93;
+  color: #4B5563;
   text-decoration: none;
   transition: all 0.15s;
   font-size: 13px;
@@ -260,7 +261,7 @@ const NavIcon = styled.span<{ hasPending?: boolean }>`
   transition: all 0.3s ease;
   display: inline-block;
   font-family: 'Lucida Console', 'Courier New', monospace;
-  color: #6B7C93;
+  color: #4B5563;
   flex-shrink: 0;
 
   ${props => props.hasPending && `
@@ -307,7 +308,7 @@ const MainContent = styled.div<{ isCollapsed?: boolean; $sidebarW?: number; $ext
     return `${sw + extra}px`;
   }};
   min-height: 100vh;
-  background: #FAFBFC;
+  background: #F9FAFB;
   transition: margin-left 0.3s ease;
 
   @media (max-width: 768px) {
@@ -327,7 +328,7 @@ const RailItem = styled(Link)<{ $active?: boolean; $collapsed?: boolean; $hasPen
   gap: ${p => p.$collapsed ? '0' : '8px'};
   padding: ${p => p.$collapsed ? '8px 0' : '6px 10px'};
   justify-content: ${p => p.$collapsed ? 'center' : 'flex-start'};
-  color: #6B7C93;
+  color: #4B5563;
   text-decoration: none;
   font-size: 13px;
   font-weight: 450;
@@ -389,7 +390,7 @@ const RailButton = styled.button<{ $collapsed?: boolean }>`
   gap: ${p => p.$collapsed ? '0' : '8px'};
   padding: ${p => p.$collapsed ? '8px 0' : '6px 10px'};
   justify-content: ${p => p.$collapsed ? 'center' : 'flex-start'};
-  color: #6B7C93;
+  color: #4B5563;
   background: none;
   border: none;
   font-size: 13px;
@@ -427,7 +428,7 @@ const SecondaryPanel = styled.aside<{ $sidebarW: number }>`
   width: ${SECONDARY_PANEL_W}px;
   height: 100vh;
   background: #FFFFFF;
-  border-right: 1px solid #E6EBF1;
+  border-right: 1px solid #C7CED6;
   z-index: 999;
   display: flex;
   flex-direction: column;
@@ -438,7 +439,7 @@ const SecondaryPanel = styled.aside<{ $sidebarW: number }>`
 const SecondaryHeader = styled.div`
   background: #FFFFFF;
   padding: 16px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   flex-shrink: 0;
   box-sizing: border-box;
   height: 80px;
@@ -461,7 +462,7 @@ const CollapseSecondaryBtn = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #6B7C93;
+  color: #4B5563;
   border-radius: 6px;
   transition: background 0.15s, color 0.15s;
   &:hover { background: #F4F5F8; color: #0A2540; }
@@ -470,12 +471,16 @@ const CollapseSecondaryBtn = styled.button`
 
 const SecondaryPopover = styled.div<{ $top: number; $left: number }>`
   position: fixed;
-  top: ${p => p.$top}px;
+  /* Clamp top so the popover never starts below the viewport bottom (small monitors).
+     Falls back to natural top when there's plenty of space below. */
+  top: ${p => Math.max(8, p.$top)}px;
   left: ${p => p.$left}px;
   width: ${SECONDARY_PANEL_W}px;
-  max-height: calc(100vh - 16px);
+  /* Available vertical room from this popover's actual top to the viewport bottom.
+     The Nav inside scrolls internally so long menus stay clickable on 1024×768. */
+  max-height: calc(100vh - ${p => Math.max(8, p.$top) + 16}px);
   background: #FFFFFF;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   z-index: 1100;
@@ -487,7 +492,7 @@ const SecondaryPopover = styled.div<{ $top: number; $left: number }>`
 
 const SecondaryPopoverHeader = styled.div`
   padding: 12px 16px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   font-size: 13px;
   font-weight: 600;
   color: #0A2540;
@@ -505,7 +510,7 @@ const ExpandSecondaryBtn = styled.button<{ $sidebarW: number }>`
   left: ${p => p.$sidebarW - 14}px;
   z-index: 1200;
   background: #FFFFFF;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 50%;
   width: 28px;
   height: 28px;
@@ -513,7 +518,7 @@ const ExpandSecondaryBtn = styled.button<{ $sidebarW: number }>`
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #6B7C93;
+  color: #4B5563;
   box-shadow: 0 2px 6px rgba(0,0,0,0.08);
   transition: all 0.15s;
   &:hover { color: #635BFF; border-color: #635BFF; }
@@ -528,14 +533,14 @@ const SecondaryNav = styled.nav`
   overflow-x: hidden;
   &::-webkit-scrollbar { width: 6px; }
   &::-webkit-scrollbar-track { background: transparent; }
-  &::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+  &::-webkit-scrollbar-thumb { background: #64748B; border-radius: 3px; }
 `;
 
 const SecondaryNavItem = styled(Link)<{ $active?: boolean; $hasPending?: boolean }>`
   display: flex;
   align-items: center;
   padding: 8px 16px;
-  color: #6B7C93;
+  color: #4B5563;
   text-decoration: none;
   font-size: 13px;
   font-weight: 450;
@@ -580,8 +585,8 @@ const SecondaryNavItem = styled(Link)<{ $active?: boolean; $hasPending?: boolean
 const MobileSubmenu = styled.div`
   display: none;
   background: #FFFFFF;
-  border-top: 1px solid #E6EBF1;
-  border-bottom: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
+  border-bottom: 1px solid #C7CED6;
   padding: 4px 0;
 
   @media (max-width: 768px) {
@@ -605,7 +610,7 @@ const MobileHeader = styled.div`
   max-height: 80px;
   box-sizing: border-box;
   background: white;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   z-index: 999;
   padding: 0 16px;
   align-items: center;
@@ -632,7 +637,7 @@ const HamburgerButton = styled.button`
   }
 
   &:hover {
-    background: #F6F9FC;
+    background: #F4F6F9;
     border-radius: 4px;
   }
 `;
@@ -703,7 +708,7 @@ const StaffAvatar = styled.div<{ role: string }>`
       case 'Restaurant Owner': return '#7C3AED';
       case 'Restaurant Admin': return '#059669';
       case 'Staff': return '#D97706';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 `;
@@ -727,7 +732,7 @@ const StaffName = styled.div`
 
 const StaffRole = styled.div`
   font-size: 10px;
-  color: #6B7280;
+  color: #4B5563;
   text-transform: capitalize;
   line-height: 1;
 `;
@@ -765,13 +770,13 @@ const SidebarFooter = styled.div<{ $collapsed?: boolean }>`
 `;
 
 const LanguageSelectorWrapper = styled.div`
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
 `;
 
 const UserInfo = styled.div`
   padding: 16px;
-  border-top: 1px solid #E6EBF1;
-  background: #F8FAFC;
+  border-top: 1px solid #C7CED6;
+  background: #F1F4F8;
 `;
 
 // ───── Collapsed (64px rail) footer components ─────
@@ -780,9 +785,9 @@ const FooterRailButton = styled.button<{ $accent?: boolean }>`
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  border: ${p => p.$accent ? 'none' : '1px solid #E6EBF1'};
+  border: ${p => p.$accent ? 'none' : '1px solid #C7CED6'};
   background: ${p => p.$accent ? 'linear-gradient(120deg, #635BFF, #8775FF)' : '#FFFFFF'};
-  color: ${p => p.$accent ? '#FFFFFF' : '#6B7C93'};
+  color: ${p => p.$accent ? '#FFFFFF' : '#4B5563'};
   display: flex;
   align-items: center;
   justify-content: center;
@@ -844,7 +849,7 @@ const FooterRailLang = styled.div`
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   background: #FFFFFF;
   display: flex;
   align-items: center;
@@ -905,7 +910,7 @@ const UserAvatar = styled.div<{ role: string }>`
       case 'Restaurant Owner': return '#7C3AED';
       case 'Restaurant Admin': return '#059669';
       case 'Staff': return '#D97706';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 `;
@@ -927,7 +932,7 @@ const UserName = styled.div`
 
 const UserRole = styled.div`
   font-size: 11px;
-  color: #6B7280;
+  color: #4B5563;
   font-weight: 500;
 `;
 
@@ -1941,7 +1946,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         justifyContent: 'center',
         alignItems: 'center',
         minHeight: '100vh',
-        background: '#F8FAFC',
+        background: '#F1F4F8',
         padding: '20px'
       }}>
         <div style={{
@@ -1961,7 +1966,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           }}>Restaurant Inactive</h2>
           <p style={{
             fontSize: '16px',
-            color: '#6B7280',
+            color: '#4B5563',
             marginBottom: '24px',
             lineHeight: '1.6'
           }}>
@@ -2030,7 +2035,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         justifyContent: 'center',
         alignItems: 'center',
         minHeight: '100vh',
-        background: '#F8FAFC',
+        background: '#F1F4F8',
         padding: '20px'
       }}>
         <div style={{
@@ -2046,7 +2051,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           <h2 style={{ fontSize: '22px', fontWeight: '700', color: '#1A1A2E', marginBottom: '12px' }}>
             No Active Subscription
           </h2>
-          <p style={{ color: '#6B7280', fontSize: '15px', lineHeight: '1.6', marginBottom: '32px' }}>
+          <p style={{ color: '#4B5563', fontSize: '15px', lineHeight: '1.6', marginBottom: '32px' }}>
             Your account does not have an active subscription plan. Please contact your system administrator or check your invoices to activate your subscription.
           </p>
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
@@ -2070,8 +2075,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               style={{
                 padding: '12px 24px',
                 background: 'white',
-                color: '#374151',
-                border: '1px solid #E5E7EB',
+                color: '#1F2937',
+                border: '1px solid #C7CED6',
                 borderRadius: '8px',
                 fontSize: '14px',
                 fontWeight: '600',
@@ -2177,6 +2182,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         </MobileTitle>
         <HeaderActions>
           {isLoggedIn && planType && <PlanBadgeWrapper><PlanBadge planType={planType} loading={routesLoading} /></PlanBadgeWrapper>}
+          {isLoggedIn && restaurantId && <WorkstationChip restaurantId={restaurantId} />}
           {isLoggedIn && <InboxBell />}
           <LanguageSelector variant="globe" />
           {isLoggedIn && currentStaff ? (
@@ -3531,12 +3537,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                     padding: '12px 16px',
                     margin: '0 8px 12px',
                     borderRadius: 8,
-                    background: '#F6F9FC',
+                    background: '#F4F6F9',
                     color: '#0A2540',
                     cursor: 'pointer',
                     fontSize: 13,
                     fontWeight: 500,
-                    border: '1px solid #E6EBF1',
+                    border: '1px solid #C7CED6',
                     width: 'calc(100% - 16px)',
                     textAlign: 'left'
                   }}

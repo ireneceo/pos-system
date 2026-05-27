@@ -25,21 +25,21 @@ const HeaderIconBtn = styled.button`
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   background: white;
   color: #475569;
   border-radius: 6px;
   cursor: pointer;
   padding: 0;
   transition: all 0.15s;
-  &:hover { background: #F8FAFC; border-color: #635BFF; color: #635BFF; }
+  &:hover { background: #F1F4F8; border-color: #635BFF; color: #635BFF; }
   svg { width: 18px; height: 18px; }
 `;
 
 // Embedded mode 컴팩트 타이틀 (panel body 최상단)
 const EmbeddedTitle = styled.div`
   padding: 18px 140px 14px 24px;  /* right reserves space for floating top-right icons */
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   background: white;
   display: flex;
   align-items: center;
@@ -63,7 +63,7 @@ const EmbeddedFooter = styled.div`
   left: 0;
   right: 0;
   background: white;
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
   padding: 16px 24px;
   display: flex;
   gap: 8px;
@@ -140,7 +140,7 @@ interface ReceiveLine {
 }
 
 const Subtitle = styled.div`
-  color: #6B7280;
+  color: #4B5563;
   font-size: 14px;
   margin-top: 4px;
 `;
@@ -153,7 +153,7 @@ const HeaderActions = styled.div`
 
 const Section = styled.div`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 16px;
@@ -186,7 +186,7 @@ const TimelineItem = styled.div<{ active?: boolean; done?: boolean; cancelled?: 
     border-radius: 50%;
     margin-top: 4px;
     flex-shrink: 0;
-    background: ${(p) => p.cancelled ? '#EF4444' : p.active ? '#635BFF' : p.done ? '#10B981' : '#E5E7EB'};
+    background: ${(p) => p.cancelled ? '#EF4444' : p.active ? '#635BFF' : p.done ? '#10B981' : '#C7CED6'};
     box-shadow: ${(p) => p.active ? '0 0 0 4px rgba(99, 91, 255, 0.15)' : 'none'};
   }
 `;
@@ -199,7 +199,7 @@ const TimelineContent = styled.div`
     font-size: 14px;
   }
   div.meta {
-    color: #6B7280;
+    color: #4B5563;
     font-size: 12px;
     margin-top: 2px;
   }
@@ -217,7 +217,7 @@ const KvGrid = styled.div`
 `;
 
 const KvKey = styled.div`
-  color: #6B7280;
+  color: #4B5563;
   font-size: 13px;
 `;
 
@@ -242,26 +242,26 @@ const ReceiveRow = styled.div`
   gap: 8px;
   padding: 10px 0;
   align-items: center;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
   font-size: 13px;
 
   &.header {
     font-size: 11px;
     font-weight: 600;
-    color: #6B7280;
+    color: #4B5563;
     text-transform: uppercase;
   }
 
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
-    border-bottom: 1px dashed #E6EBF1;
+    border-bottom: 1px dashed #C7CED6;
     padding: 12px 0;
   }
 `;
 
 // Sprint 7: Receive line container with splits
 const ReceiveLineCard = styled.div`
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   padding: 14px 16px;
   margin-bottom: 12px;
@@ -271,7 +271,7 @@ const ReceiveLineCard = styled.div`
     display: flex; justify-content: space-between; align-items: baseline;
     margin-bottom: 12px;
     .name { font-weight: 600; color: #0A2540; font-size: 14px; }
-    .stat { font-size: 12px; color: #6B7280; }
+    .stat { font-size: 12px; color: #4B5563; }
   }
 
   .splits-stack { display: flex; flex-direction: column; gap: 8px; }
@@ -293,7 +293,7 @@ const ReceiveLineCard = styled.div`
   .summary {
     margin-top: 10px;
     font-size: 12px;
-    color: #6B7280;
+    color: #4B5563;
     .ok { color: #15803D; font-weight: 600; }
     .warn { color: #DC2626; font-weight: 600; }
   }
@@ -325,7 +325,7 @@ const SplitRow = styled.div<{ $reason: DiscrepancyReason }>`
 const Segmented = styled.div`
   display: inline-flex;
   background: white;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   overflow: hidden;
   font-size: 12px;
@@ -336,21 +336,21 @@ const Segmented = styled.div`
     background: none;
     border: none;
     cursor: pointer;
-    color: #6B7280;
+    color: #4B5563;
     font-weight: 600;
     flex: 1;
     transition: all 0.15s;
-    border-right: 1px solid #E5E7EB;
+    border-right: 1px solid #C7CED6;
     &:last-child { border-right: none; }
     &.active { background: #635BFF; color: white; }
-    &:hover:not(.active) { background: #F3F4F6; }
+    &:hover:not(.active) { background: #F1F4F8; }
   }
 `;
 
 const SmallInput = styled.input`
   width: 100%;
   padding: 7px 10px;
-  border: 1px solid #D1D5DB;
+  border: 1px solid #6B7280;
   border-radius: 6px;
   font-size: 13px;
   &:focus { outline: none; border-color: #635BFF; box-shadow: 0 0 0 3px rgba(99,91,255,0.1); }
@@ -358,7 +358,7 @@ const SmallInput = styled.input`
 
 const RemoveSplitBtn = styled.button`
   background: none; border: none; cursor: pointer;
-  color: #9CA3AF; font-size: 18px; padding: 4px 8px;
+  color: #6B7280; font-size: 18px; padding: 4px 8px;
   &:hover { color: #DC2626; }
 `;
 
@@ -377,8 +377,8 @@ const TotalsBox = styled.div`
   flex-direction: column;
   gap: 6px;
   padding: 12px 16px;
-  background: #F8FAFC;
-  border: 1px solid #E6EBF1;
+  background: #F1F4F8;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   max-width: 320px;
@@ -388,10 +388,10 @@ const TotalsBox = styled.div`
   > div {
     display: flex;
     justify-content: space-between;
-    color: #374151;
+    color: #1F2937;
   }
   > div.total {
-    border-top: 1px solid #E6EBF1;
+    border-top: 1px solid #C7CED6;
     padding-top: 8px;
     margin-top: 4px;
     font-weight: 700;
@@ -979,7 +979,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
               {t(`status.${detail.status}`)}
             </DataTableStatus>
             {detail.seller_name && (
-              <span style={{ marginLeft: 8, color: '#6B7280', fontSize: 13 }}>· {detail.seller_name}</span>
+              <span style={{ marginLeft: 8, color: '#4B5563', fontSize: 13 }}>· {detail.seller_name}</span>
             )}
           </EmbeddedTitle>
         )
@@ -1011,7 +1011,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
         {error && <ErrorBox>{error}</ErrorBox>}
 
         {loading && !detail ? (
-          <div style={{ padding: 40, textAlign: 'center', color: '#6B7280' }}>
+          <div style={{ padding: 40, textAlign: 'center', color: '#4B5563' }}>
             {t('list.loading')}
           </div>
         ) : !detail ? null : (
@@ -1060,7 +1060,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
                             <DataTableCell data-label={t('detail.items.ingredient') as string}>
                               <strong>{it.ingredient_name}</strong>
                               {it.seller_product_name && (
-                                <div style={{ fontSize: 12, color: '#6B7280' }}>{it.seller_product_name}</div>
+                                <div style={{ fontSize: 12, color: '#4B5563' }}>{it.seller_product_name}</div>
                               )}
                             </DataTableCell>
                             <DataTableCell data-label={t('detail.items.qtyOrdered') as string} align="right">
@@ -1104,7 +1104,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
                 <h3>{t('detail.section.invoice', 'Invoice')}</h3>
                 <div style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '12px 16px', background: '#F8FAFC', border: '1px solid #E6EBF1',
+                  padding: '12px 16px', background: '#F1F4F8', border: '1px solid #C7CED6',
                   borderRadius: 8
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
@@ -1117,7 +1117,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
                           ? ((detail as any).external_invoice_filename || t('detail.invoice.uploadedFile', 'Uploaded invoice'))
                           : `${t('detail.invoice.tradeNo', 'Trade Invoice')} #${(detail as any).trade_invoice_id}`}
                       </div>
-                      <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
+                      <div style={{ fontSize: 11, color: '#4B5563', marginTop: 2 }}>
                         {(detail as any).external_invoice_url
                           ? t('detail.invoice.externalLabel', 'Uploaded by buyer (external supplier)')
                           : t('detail.invoice.systemLabel', 'Auto-issued by system')}
@@ -1175,7 +1175,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
 
             <Section>
               <h3>{t('detail.section.notes')}</h3>
-              <div style={{ fontSize: 14, color: '#374151', whiteSpace: 'pre-wrap' }}>
+              <div style={{ fontSize: 14, color: '#1F2937', whiteSpace: 'pre-wrap' }}>
                 {detail.notes || t('detail.noNotes')}
               </div>
             </Section>
@@ -1215,7 +1215,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
         }
       >
         <form id="po-receive-form" onSubmit={handleReceive}>
-          <p style={{ margin: '0 0 16px', color: '#6B7280', fontSize: 13 }}>{t('receive.subtitle')}</p>
+          <p style={{ margin: '0 0 16px', color: '#4B5563', fontSize: 13 }}>{t('receive.subtitle')}</p>
 
           {receiveLines.map(line => {
             const totalSplit = line.splits.reduce((s, sp) => s + Number(sp.quantity || 0), 0);
@@ -1229,7 +1229,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
                 <div className="line-head">
                   <div className="name">
                     {line.ingredient_name}
-                    {line.unit && <span style={{ fontWeight: 400, color: '#9CA3AF', marginLeft: 6 }}>· {line.unit}</span>}
+                    {line.unit && <span style={{ fontWeight: 400, color: '#6B7280', marginLeft: 6 }}>· {line.unit}</span>}
                   </div>
                   <div className="stat">
                     {t('receive.ordered')}: {line.ordered} · {t('receive.alreadyReceived')}: {line.alreadyReceived} · {t('receive.remaining', 'remaining')}: <strong style={{ color: overshoot ? '#DC2626' : '#0A2540' }}>{(line.remaining - totalSplit).toFixed(2)}</strong>
@@ -1383,7 +1383,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
         }
       >
         <form id="po-shipped-form" onSubmit={handleMarkShipped}>
-          <p style={{ margin: '0 0 16px', color: '#6B7280', fontSize: 13 }}>{t('markShipped.hint')}</p>
+          <p style={{ margin: '0 0 16px', color: '#4B5563', fontSize: 13 }}>{t('markShipped.hint')}</p>
           <FormGroup>
             <FormLabel>{t('markShipped.trackingLabel')}</FormLabel>
             <FormInput
@@ -1420,12 +1420,12 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
 
         {existingReturns.length > 0 && (
           <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#6B7280', marginBottom: 6 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', marginBottom: 6 }}>
               {t('detail.returns.existing', 'Existing returns')}
             </div>
             <div style={{ display: 'grid', gap: 6 }}>
               {existingReturns.map(r => (
-                <div key={r.id} style={{ padding: 8, border: '1px solid #E6EBF1', borderRadius: 6, fontSize: 12, display: 'flex', justifyContent: 'space-between' }}>
+                <div key={r.id} style={{ padding: 8, border: '1px solid #C7CED6', borderRadius: 6, fontSize: 12, display: 'flex', justifyContent: 'space-between' }}>
                   <span>#{r.id} · qty {r.quantity} {r.unit || ''} · {r.reason || '—'}</span>
                   <span style={{
                     padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 600,
@@ -1440,18 +1440,18 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
 
         <div style={{ display: 'grid', gap: 12 }}>
           {returnLines.length === 0 ? (
-            <div style={{ padding: 16, textAlign: 'center', color: '#6B7280', fontSize: 13 }}>
+            <div style={{ padding: 16, textAlign: 'center', color: '#4B5563', fontSize: 13 }}>
               {t('detail.returns.noReceived', 'No received items to return') as string}
             </div>
           ) : returnLines.map((line, idx) => {
             const item = detail?.items.find(it => it.id === line.purchase_order_item_id);
             const maxQty = item ? parseFloat(String(item.quantity_received)) : 0;
             return (
-              <div key={line.purchase_order_item_id} style={{ padding: 12, border: '1px solid #E6EBF1', borderRadius: 8 }}>
+              <div key={line.purchase_order_item_id} style={{ padding: 12, border: '1px solid #C7CED6', borderRadius: 8 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: '#0A2540', marginBottom: 8 }}>
                   {item?.ingredient_name || `Item #${line.purchase_order_item_id}`}
                 </div>
-                <div style={{ fontSize: 11, color: '#6B7280', marginBottom: 8 }}>
+                <div style={{ fontSize: 11, color: '#4B5563', marginBottom: 8 }}>
                   {t('detail.returns.received', 'Received')}: {maxQty} {item?.ingredient_unit || ''}
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 8 }}>

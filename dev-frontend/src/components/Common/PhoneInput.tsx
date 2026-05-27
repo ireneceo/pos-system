@@ -34,7 +34,7 @@ const InputWrapper = styled.div`
 const StyledInput = styled.input<{ hasError?: boolean }>`
   width: 100%;
   padding: 8px 12px 8px 80px;
-  border: 1px solid ${props => props.hasError ? '#EF4444' : '#E6EBF1'};
+  border: 1px solid ${props => props.hasError ? '#EF4444' : '#C7CED6'};
   border-radius: 6px;
   font-size: 14px;
   transition: all 0.15s;
@@ -47,11 +47,11 @@ const StyledInput = styled.input<{ hasError?: boolean }>`
   }
 
   &::placeholder {
-    color: #9CA3AF;
+    color: #6B7280;
   }
 
   &:disabled {
-    background: #F3F4F6;
+    background: #F1F4F8;
     cursor: not-allowed;
   }
 `;
@@ -64,7 +64,7 @@ const ErrorMessage = styled.div`
 
 const HelperText = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 4px;
 `;
 
@@ -85,7 +85,7 @@ const CountrySelector = styled.button`
   transition: background 0.2s;
 
   &:hover {
-    background: #F3F4F6;
+    background: #F1F4F8;
   }
 
   &:disabled {
@@ -99,7 +99,7 @@ const CountryDropdown = styled.div`
   top: calc(100% + 4px);
   left: 0;
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   max-height: 280px;
@@ -111,13 +111,13 @@ const CountryDropdown = styled.div`
 
 const SearchInputWrapper = styled.div`
   padding: 8px;
-  border-bottom: 1px solid #E5E7EB;
+  border-bottom: 1px solid #C7CED6;
 `;
 
 const SearchInput = styled.input`
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 13px;
   outline: none;
@@ -129,7 +129,7 @@ const SearchInput = styled.input`
   }
 
   &::placeholder {
-    color: #9CA3AF;
+    color: #6B7280;
   }
 `;
 
@@ -142,11 +142,11 @@ const CountryList = styled.div`
   }
 
   &::-webkit-scrollbar-track {
-    background: #F3F4F6;
+    background: #F1F4F8;
   }
 
   &::-webkit-scrollbar-thumb {
-    background: #D1D5DB;
+    background: #6B7280;
     border-radius: 3px;
   }
 `;
@@ -154,7 +154,7 @@ const CountryList = styled.div`
 const EmptyState = styled.div`
   padding: 20px;
   text-align: center;
-  color: #9CA3AF;
+  color: #6B7280;
   font-size: 13px;
 `;
 
@@ -172,11 +172,11 @@ const CountryOption = styled.button`
   transition: background 0.2s;
 
   &:hover {
-    background: #F3F4F6;
+    background: #F1F4F8;
   }
 
   &:not(:last-child) {
-    border-bottom: 1px solid #F3F4F6;
+    border-bottom: 1px solid #F1F4F8;
   }
 `;
 
@@ -197,7 +197,7 @@ const CountryName = styled.div`
 
 const CountryDialCode = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const PhoneInput: React.FC<PhoneInputProps> = ({

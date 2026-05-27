@@ -79,7 +79,7 @@ const FiltersContainer = styled.div`
 
 const FilterSelect = styled.select`
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -94,9 +94,9 @@ const FilterSelect = styled.select`
 const ActionLink = styled.button<{ variant?: 'danger' | 'success' }>`
   background: none;
   border: 1px solid ${p =>
-    p.variant === 'danger' ? '#FCA5A5' : p.variant === 'success' ? '#86EFAC' : '#E6EBF1'};
+    p.variant === 'danger' ? '#FCA5A5' : p.variant === 'success' ? '#86EFAC' : '#C7CED6'};
   color: ${p =>
-    p.variant === 'danger' ? '#DC2626' : p.variant === 'success' ? '#059669' : '#374151'};
+    p.variant === 'danger' ? '#DC2626' : p.variant === 'success' ? '#059669' : '#1F2937'};
   padding: 6px 12px;
   border-radius: 6px;
   font-size: 13px;
@@ -104,7 +104,7 @@ const ActionLink = styled.button<{ variant?: 'danger' | 'success' }>`
   transition: all 0.15s;
   &:hover {
     background: ${p =>
-      p.variant === 'danger' ? '#FEF2F2' : p.variant === 'success' ? '#F0FDF4' : '#F8FAFC'};
+      p.variant === 'danger' ? '#FEF2F2' : p.variant === 'success' ? '#F0FDF4' : '#F1F4F8'};
   }
 `;
 
@@ -141,14 +141,14 @@ const ResultLink = styled.input`
   font-size: 13px;
   font-family: monospace;
   background: white;
-  color: #374151;
+  color: #1F2937;
 `;
 
 const InlineCopyBtn = styled.button<{ copied?: boolean }>`
   padding: 6px 12px;
-  border: 1px solid ${p => (p.copied ? '#16A34A' : '#E6EBF1')};
+  border: 1px solid ${p => (p.copied ? '#16A34A' : '#C7CED6')};
   background: ${p => (p.copied ? '#16A34A' : 'white')};
-  color: ${p => (p.copied ? 'white' : '#374151')};
+  color: ${p => (p.copied ? 'white' : '#1F2937')};
   border-radius: 6px;
   font-size: 12px;
   font-weight: 600;
@@ -373,7 +373,7 @@ const SupplierInvitationsPage: React.FC = () => {
             <StatValue>{usedCount}</StatValue>
             <StatLabel>Used</StatLabel>
           </StatCard>
-          <StatCard color="#9CA3AF">
+          <StatCard color="#6B7280">
             <StatValue>{inactiveCount}</StatValue>
             <StatLabel>Expired / Revoked</StatLabel>
           </StatCard>
@@ -416,7 +416,7 @@ const SupplierInvitationsPage: React.FC = () => {
                       <strong>{inv.email}</strong>
                     </DataTableCell>
                     <DataTableCell data-label="Suggested Name">
-                      {inv.supplier_name || <span style={{ color: '#9CA3AF' }}>—</span>}
+                      {inv.supplier_name || <span style={{ color: '#6B7280' }}>—</span>}
                     </DataTableCell>
                     <DataTableCell data-label="Inviter">
                       {inv.inviter ? (inv.inviter.full_name || inv.inviter.email) : '—'}
@@ -567,7 +567,7 @@ const SupplierInvitationsPage: React.FC = () => {
               </>
             }
           >
-            <div style={{ color: '#374151', fontSize: 14, lineHeight: 1.5 }}>
+            <div style={{ color: '#1F2937', fontSize: 14, lineHeight: 1.5 }}>
               Revoking this invitation will prevent the recipient from using the link. This cannot be undone. Continue?
             </div>
           </CommonModal>

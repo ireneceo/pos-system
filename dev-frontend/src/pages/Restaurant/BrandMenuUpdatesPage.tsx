@@ -15,13 +15,13 @@ import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { getAuthToken } from '../../utils/auth';
 import { formatCurrency } from '../../utils/currency';
 
-const Container = styled.div` min-height: 100vh; background: #FAFBFC; `;
+const Container = styled.div` min-height: 100vh; background: #F9FAFB; `;
 const Content = styled.main` padding: 24px 32px; @media (max-width: 768px) { padding: 16px; } `;
 const ActionRow = styled.div` display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 12px; flex-wrap: wrap; `;
-const Summary = styled.div` font-size: 14px; color: #6B7C93; `;
+const Summary = styled.div` font-size: 14px; color: #4B5563; `;
 const Card = styled.div<{ $isNew?: boolean }>`
   background: ${p => p.$isNew ? '#F0EFFF' : 'white'};
-  border: 1px solid ${p => p.$isNew ? '#DDD9FF' : '#E6EBF1'};
+  border: 1px solid ${p => p.$isNew ? '#DDD9FF' : '#C7CED6'};
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 12px;
@@ -33,28 +33,28 @@ const NewBadge = styled.span`
   background: #635BFF; color: white; padding: 2px 8px; border-radius: 999px;
   font-size: 11px; font-weight: 600; letter-spacing: 0.3px;
 `;
-const VersionBadge = styled.span` font-size: 12px; color: #6B7C93; `;
+const VersionBadge = styled.span` font-size: 12px; color: #4B5563; `;
 const DiffList = styled.div` margin-top: 8px; `;
 const DiffRow = styled.div` font-size: 13px; color: #0A2540; padding: 4px 0; display: flex; align-items: center; gap: 8px; `;
-const FieldName = styled.span` color: #6B7C93; min-width: 80px; text-transform: capitalize; `;
-const OldValue = styled.span` color: #9CA3AF; text-decoration: line-through; `;
+const FieldName = styled.span` color: #4B5563; min-width: 80px; text-transform: capitalize; `;
+const OldValue = styled.span` color: #6B7280; text-decoration: line-through; `;
 const NewValue = styled.span` color: #635BFF; font-weight: 500; `;
-const Arrow = styled.span` color: #9CA3AF; `;
+const Arrow = styled.span` color: #6B7280; `;
 const LockChip = styled.span`
   display: inline-flex; align-items: center; gap: 4px; margin-left: 8px;
   padding: 2px 8px; background: #F0EFFF; color: #635BFF; border-radius: 999px;
   font-size: 11px; font-weight: 500;
   svg { width: 10px; height: 10px; }
 `;
-const Actions = styled.div` display: flex; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #F3F4F6; justify-content: flex-end; `;
+const Actions = styled.div` display: flex; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #F1F4F8; justify-content: flex-end; `;
 const IngredientsWarning = styled.div`
   margin-top: 8px; padding: 8px 12px; background: #FEF3C7; border-radius: 6px;
   font-size: 12px; color: #92400E; display: flex; align-items: center; gap: 6px;
   svg { width: 14px; height: 14px; }
 `;
 const EmptyState = styled.div`
-  background: white; border: 1px dashed #E6EBF1; border-radius: 12px;
-  padding: 64px 24px; text-align: center; color: #6B7C93;
+  background: white; border: 1px dashed #C7CED6; border-radius: 12px;
+  padding: 64px 24px; text-align: center; color: #4B5563;
 `;
 
 interface DiffField { field: string; old: any; new: any; will_be_locked: boolean; }
@@ -201,18 +201,18 @@ const BrandMenuUpdatesPage: React.FC = () => {
                   <div style={{ marginBottom: 4 }}>
                     {t('orders:brandMenuUpdatesPage.firstTimePush', 'New menu pushed for the first time.')}
                   </div>
-                  <div style={{ color: '#6B7C93' }}>
+                  <div style={{ color: '#4B5563' }}>
                     {t('orders:brandMenuUpdatesPage.price', 'Price')}: {formatCurrency(item.brand_menu_price, 'MYR')}
                     {item.locks.price && <LockChip><Lock /> {t('orders:brandMenuUpdatesPage.willBeEnforced', 'will be enforced')}</LockChip>}
                   </div>
                   {item.brand_menu_category && (
-                    <div style={{ color: '#6B7C93' }}>{t('orders:brandMenuUpdatesPage.category', 'Category')}: {item.brand_menu_category}</div>
+                    <div style={{ color: '#4B5563' }}>{t('orders:brandMenuUpdatesPage.category', 'Category')}: {item.brand_menu_category}</div>
                   )}
                 </div>
               ) : (
                 <DiffList>
                   {item.diff.fields.length === 0 ? (
-                    <div style={{ fontSize: 13, color: '#6B7C93' }}>{t('orders:brandMenuUpdatesPage.optionGroupOnly', 'Option group(s) changed — sync to apply.')}</div>
+                    <div style={{ fontSize: 13, color: '#4B5563' }}>{t('orders:brandMenuUpdatesPage.optionGroupOnly', 'Option group(s) changed — sync to apply.')}</div>
                   ) : item.diff.fields.map((f, i) => (
                     <DiffRow key={i}>
                       <FieldName>{f.field}:</FieldName>

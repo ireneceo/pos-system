@@ -40,7 +40,7 @@ const Container = styled.div`
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -62,7 +62,7 @@ const Header = styled.div`
 
 const Content = styled.div`
   padding: 32px;
-  background: #FAFBFC;
+  background: #F9FAFB;
   min-height: calc(100vh - 120px);
 
   @media (max-width: 768px) {
@@ -102,14 +102,14 @@ const FormLabel = styled.label`
   display: block;
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: #1F2937;
   margin-bottom: 8px;
 `;
 
 const FormInput = styled.input`
   width: 100%;
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.2s;
@@ -125,7 +125,7 @@ const FormInput = styled.input`
 const FormTextArea = styled.textarea`
   width: 100%;
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   resize: vertical;
@@ -143,7 +143,7 @@ const FormTextArea = styled.textarea`
 const FormSelect = styled.select`
   width: 100%;
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.2s;
@@ -159,7 +159,7 @@ const FormSelect = styled.select`
 `;
 
 const LogoUpload = styled.div<{ isDragging?: boolean }>`
-  border: 2px dashed #E6EBF1;
+  border: 2px dashed #C7CED6;
   border-radius: 8px;
   padding: 24px;
   text-align: center;
@@ -173,7 +173,7 @@ const LogoUpload = styled.div<{ isDragging?: boolean }>`
 
   &:hover {
     border-color: #635BFF;
-    background: #F8FAFC;
+    background: #F1F4F8;
   }
 
   ${props => props.isDragging && `
@@ -186,7 +186,7 @@ const LogoPreview = styled.img`
   max-width: 200px;
   max-height: 100px;
   border-radius: 8px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   object-fit: contain;
 `;
 
@@ -321,7 +321,7 @@ const AdminSettingsPage: React.FC = () => {
             <FormRow>
               <FormGroup>
                 <FormLabel>{t('admin:adminSettingsPage.companyLogo')}</FormLabel>
-                <div style={{ fontSize: '13px', color: '#6B7280', marginBottom: '12px', lineHeight: '1.5' }}>
+                <div style={{ fontSize: '13px', color: '#4B5563', marginBottom: '12px', lineHeight: '1.5' }}>
                   Used on invoices and documents
                 </div>
                 <AutoSaveField onSave={saveSettings} type="image">
@@ -333,10 +333,10 @@ const AdminSettingsPage: React.FC = () => {
                       <LogoPreview src={settings.companyLogo} alt="Company Logo" />
                     ) : (
                       <div>
-                        <div style={{ fontSize: '14px', color: '#6B7280', fontWeight: 500, marginBottom: '8px' }}>
+                        <div style={{ fontSize: '14px', color: '#4B5563', fontWeight: 500, marginBottom: '8px' }}>
                           Click to upload
                         </div>
-                        <div style={{ fontSize: '12px', color: '#9CA3AF' }}>
+                        <div style={{ fontSize: '12px', color: '#6B7280' }}>
                           PNG or JPG (Max 2MB)
                         </div>
                       </div>
@@ -427,7 +427,7 @@ const AdminSettingsPage: React.FC = () => {
                     defaultCountry={settings.country}
                   />
                 </AutoSaveField>
-                <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '4px' }}>
                   For Contact page and customer communication
                 </div>
               </FormGroup>

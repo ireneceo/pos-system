@@ -18,7 +18,7 @@ export const FormLabel = styled.label`
   display: block;
   font-size: 13px;
   font-weight: 500;
-  color: #6B7C93;
+  color: #4B5563;
   margin-bottom: 8px;
 `;
 
@@ -27,7 +27,7 @@ export const FormInput = styled.input`
   max-width: 100%;
   box-sizing: border-box;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.15s;
@@ -39,8 +39,8 @@ export const FormInput = styled.input`
   }
 
   &:disabled {
-    background: #F8FAFC;
-    color: #6B7C93;
+    background: #F1F4F8;
+    color: #4B5563;
     cursor: not-allowed;
   }
 `;
@@ -50,7 +50,7 @@ export const FormSelect = styled.select`
   max-width: 100%;
   box-sizing: border-box;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -64,8 +64,8 @@ export const FormSelect = styled.select`
   }
 
   &:disabled {
-    background: #F8FAFC;
-    color: #6B7C93;
+    background: #F1F4F8;
+    color: #4B5563;
     cursor: not-allowed;
   }
 `;
@@ -75,7 +75,7 @@ export const FormTextArea = styled.textarea`
   max-width: 100%;
   box-sizing: border-box;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   resize: vertical;
@@ -90,8 +90,8 @@ export const FormTextArea = styled.textarea`
   }
 
   &:disabled {
-    background: #F8FAFC;
-    color: #6B7C93;
+    background: #F1F4F8;
+    color: #4B5563;
     cursor: not-allowed;
   }
 `;
@@ -103,7 +103,7 @@ export const FormError = styled.div`
 `;
 
 export const FormHelperText = styled.div`
-  color: #6B7C93;
+  color: #4B5563;
   font-size: 12px;
   margin-top: 4px;
 `;

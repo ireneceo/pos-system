@@ -76,7 +76,7 @@ const FooterRow = styled.div`
 const ResetLink = styled.button`
   background: none;
   border: none;
-  color: #6B7280;
+  color: #4B5563;
   font-size: 13px;
   text-decoration: underline;
   cursor: pointer;

@@ -14,14 +14,14 @@ import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
 const SettingsContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #FAFBFC;
+  background-color: #F9FAFB;
   min-height: 100vh;
 `;
 
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -59,7 +59,7 @@ const SettingsCard = styled.div`
   background: white;
   padding: 24px;
   border-radius: 8px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
 `;
 
 const FormGrid = styled.div`
@@ -84,7 +84,7 @@ const Label = styled.label`
   display: block;
   font-size: 13px;
   font-weight: 500;
-  color: #6B7C93;
+  color: #4B5563;
   margin-bottom: 8px;
   text-transform: uppercase;
   letter-spacing: 0.3px;
@@ -98,7 +98,7 @@ const RequiredMark = styled.span`
 const Input = styled.input`
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   color: #0A2540;
@@ -114,12 +114,12 @@ const Input = styled.input`
 
   &:disabled {
     background: #F9FAFB;
-    color: #6B7280;
+    color: #4B5563;
     cursor: not-allowed;
   }
 
   &::placeholder {
-    color: #9CA3AF;
+    color: #6B7280;
   }
 `;
 
@@ -143,7 +143,7 @@ const CheckboxLabel = styled.label`
 const HelpText = styled.small`
   display: block;
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 4px;
 `;
 
@@ -202,7 +202,7 @@ const SecondaryButton = styled.button`
 
 const ModalText = styled.p`
   font-size: 14px;
-  color: #6B7C93;
+  color: #4B5563;
   margin: 0 0 16px 0;
 `;
 
@@ -213,13 +213,13 @@ const CancelButton = styled.button`
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  background: #F3F4F6;
-  color: #374151;
+  background: #F1F4F8;
+  color: #1F2937;
   border: none;
   transition: all 0.15s;
 
   &:hover {
-    background: #E5E7EB;
+    background: #C7CED6;
   }
 `;
 
@@ -227,12 +227,12 @@ const CancelButton = styled.button`
 const SectionTitle = styled.h3`
   font-size: 14px;
   font-weight: 600;
-  color: #6B7C93;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin: 0 0 16px 0;
   padding-bottom: 8px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
 `;
 
 const PreferenceRow = styled.div`
@@ -240,7 +240,7 @@ const PreferenceRow = styled.div`
   align-items: center;
   justify-content: space-between;
   padding: 14px 0;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
 
   &:last-child {
     border-bottom: none;
@@ -261,7 +261,7 @@ const PreferenceLabel = styled.div`
 
 const PreferenceDesc = styled.div`
   font-size: 13px;
-  color: #6B7C93;
+  color: #4B5563;
 `;
 
 const ToggleSwitch = styled.label`
@@ -280,7 +280,7 @@ const ToggleSlider = styled.span<{ checked: boolean }>`
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: ${props => props.checked ? '#635BFF' : '#D1D5DB'};
+  background-color: ${props => props.checked ? '#635BFF' : '#6B7280'};
   border-radius: 24px;
   transition: 0.2s;
 
@@ -309,7 +309,7 @@ const SectionSpacer = styled.div`
 
 const DescriptionText = styled.p`
   font-size: 14px;
-  color: #6B7C93;
+  color: #4B5563;
   margin: 0 0 24px 0;
   line-height: 1.5;
 `;

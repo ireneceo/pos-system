@@ -119,7 +119,7 @@ const ProductsGrid = styled.div`
 const ProductCard = styled.div<{ isActive?: boolean; isHighlighted?: boolean }>`
   background: white;
   border-radius: 12px;
-  border: 1px solid ${props => props.isHighlighted ? '#635BFF' : '#E6EBF1'};
+  border: 1px solid ${props => props.isHighlighted ? '#635BFF' : '#C7CED6'};
   padding: 20px;
   transition: all 0.2s;
   opacity: ${props => props.isActive ? 1 : 0.6};
@@ -152,7 +152,7 @@ const ProductImage = styled.div<{ src?: string | null }>`
   width: 60px;
   height: 60px;
   border-radius: 8px;
-  background: ${props => props.src ? `url(${props.src}) center/cover` : '#F3F4F6'};
+  background: ${props => props.src ? `url(${props.src}) center/cover` : '#F1F4F8'};
   display: flex;
   align-items: center;
   justify-content: center;
@@ -182,7 +182,7 @@ const ProductName = styled.h3`
 
 const ProductSku = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-bottom: 4px;
 `;
 
@@ -199,7 +199,7 @@ const ProductCategory = styled.div`
 const ProductDetails = styled.div`
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
 `;
 
 const DetailRow = styled.div`
@@ -222,7 +222,7 @@ const DetailRow = styled.div`
 `;
 
 const DetailLabel = styled.span`
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const PriceValue = styled.span`
@@ -240,7 +240,7 @@ const ProductActions = styled.div`
   display: flex;
   gap: 8px;
   padding-top: 12px;
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
   flex-wrap: wrap;
 
   @media (max-width: 768px) {
@@ -254,31 +254,31 @@ const ActionButton = styled.button<{ variant?: 'danger' }>`
   flex: 1;
   padding: 8px 12px;
   border-radius: 6px;
-  border: 1px solid ${props => props.variant === 'danger' ? '#FEE2E2' : '#E6EBF1'};
+  border: 1px solid ${props => props.variant === 'danger' ? '#FEE2E2' : '#C7CED6'};
   background: ${props => props.variant === 'danger' ? '#FEF2F2' : '#F9FAFB'};
-  color: ${props => props.variant === 'danger' ? '#DC2626' : '#374151'};
+  color: ${props => props.variant === 'danger' ? '#DC2626' : '#1F2937'};
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
 
   &:hover {
-    background: ${props => props.variant === 'danger' ? '#FEE2E2' : '#F3F4F6'};
-    border-color: ${props => props.variant === 'danger' ? '#FECACA' : '#D1D5DB'};
+    background: ${props => props.variant === 'danger' ? '#FEE2E2' : '#F1F4F8'};
+    border-color: ${props => props.variant === 'danger' ? '#FECACA' : '#6B7280'};
   }
 `;
 
 const CopyButton = styled.button`
   padding: 8px 12px;
   border-radius: 6px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   background: #F9FAFB;
-  color: #374151;
+  color: #1F2937;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
-  &:hover { background: #F3F4F6; border-color: #D1D5DB; }
+  &:hover { background: #F1F4F8; border-color: #6B7280; }
 `;
 
 const ToggleButton = styled.button<{ isActive: boolean }>`
@@ -319,7 +319,7 @@ const CheckboxLabel = styled.label`
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: #374151;
+  color: #1F2937;
   cursor: pointer;
 `;
 
@@ -340,7 +340,7 @@ const CheckboxItem = styled.label`
   gap: 8px;
   padding: 8px 12px;
   background: white;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   cursor: pointer;
   font-size: 13px;
@@ -364,7 +364,7 @@ const EmptyTitle = styled.h4`
 
 const EmptyDescription = styled.p`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 0 0 20px 0;
 `;
 
@@ -415,7 +415,7 @@ const CategoryIcon = styled.div`
   width: 48px;
   height: 48px;
   border-radius: 8px;
-  background: #F3F4F6;
+  background: #F1F4F8;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -438,12 +438,12 @@ const CategoryMeta = styled.div`
   display: flex;
   gap: 16px;
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const CategoryDescription = styled.div`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 4px;
 `;
 
@@ -456,8 +456,8 @@ const IconButton = styled.button`
   width: 36px;
   height: 36px;
   border-radius: 6px;
-  border: 1px solid #E6EBF1;
-  background: #F6F9FC;
+  border: 1px solid #C7CED6;
+  background: #F4F6F9;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -486,7 +486,7 @@ const IconButton = styled.button`
   svg {
     width: 18px;
     height: 18px;
-    color: #6B7280;
+    color: #4B5563;
     transition: color 0.15s;
   }
 `;
@@ -515,8 +515,8 @@ const EmojiOption = styled.button<{ selected?: boolean }>`
   width: 100%;
   aspect-ratio: 1;
   border-radius: 4px;
-  background: ${props => props.selected ? '#E5E7EB' : 'white'};
-  border: 1px solid ${props => props.selected ? '#9CA3AF' : '#E5E7EB'};
+  background: ${props => props.selected ? '#C7CED6' : 'white'};
+  border: 1px solid ${props => props.selected ? '#6B7280' : '#C7CED6'};
   cursor: pointer;
   transition: all 0.2s;
   font-size: 20px;
@@ -525,7 +525,7 @@ const EmojiOption = styled.button<{ selected?: boolean }>`
   justify-content: center;
 
   &:hover {
-    background: ${props => props.selected ? '#E5E7EB' : '#F3F4F6'};
+    background: ${props => props.selected ? '#C7CED6' : '#F1F4F8'};
   }
 `;
 
@@ -535,7 +535,7 @@ const SectionTitle = styled.h4`
   color: #0A2540;
   margin: 20px 0 12px 0;
   padding-top: 16px;
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
 `;
 
 // -- Options Tab --
@@ -620,15 +620,15 @@ const OptionChip = styled.div`
   display: inline-flex;
   align-items: center;
   padding: 6px 12px;
-  background: #F3F4F6;
+  background: #F1F4F8;
   border-radius: 6px;
   font-size: 13px;
-  color: #374151;
+  color: #1F2937;
 `;
 
 const OptionPrice = styled.span`
   margin-left: 6px;
-  color: #6B7280;
+  color: #4B5563;
   font-size: 12px;
 `;
 
@@ -640,7 +640,7 @@ const OptionFormLabel = styled.label`
   display: block;
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: #1F2937;
   margin-bottom: 8px;
 `;
 
@@ -648,7 +648,7 @@ const OptionFormInput = styled.input`
   width: 100%;
   box-sizing: border-box;
   padding: 10px 12px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
 
@@ -676,7 +676,7 @@ const OptionFormCheckboxLabel = styled.label`
   gap: 8px;
   cursor: pointer;
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
 `;
 
 const OptionItemRow = styled.div`
@@ -684,7 +684,7 @@ const OptionItemRow = styled.div`
   align-items: center;
   gap: 8px;
   padding: 8px 0;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
 
   &:last-child {
     border-bottom: none;
@@ -731,8 +731,8 @@ const OptionFormButton = styled.button<{ variant?: 'primary' | 'secondary' | 'da
       case 'secondary':
         return `
           background: white;
-          color: #6B7280;
-          border: 1px solid #E5E7EB;
+          color: #4B5563;
+          border: 1px solid #C7CED6;
           &:hover { background: #F9FAFB; }
         `;
       default:
@@ -1341,7 +1341,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
 
   if (loading) {
     return (
-      <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
+      <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>
         Loading products...
       </div>
     );
@@ -1583,7 +1583,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
                 })}
               </div>
             ) : (
-              <div style={{ padding: '12px', background: '#F9FAFB', borderRadius: '8px', color: '#6B7280', fontSize: '13px' }}>
+              <div style={{ padding: '12px', background: '#F9FAFB', borderRadius: '8px', color: '#4B5563', fontSize: '13px' }}>
                 No supported currencies found. Configure currencies first.
               </div>
             )}
@@ -1681,11 +1681,11 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
                             placeholder="Role label"
                             value={item.role_label}
                             onChange={(e) => handleUpdateSetItemLabel(item.productId, e.target.value)}
-                            style={{ width: '120px', padding: '4px 8px', border: '1px solid #D1D5DB', borderRadius: '4px', fontSize: '12px' }}
+                            style={{ width: '120px', padding: '4px 8px', border: '1px solid #6B7280', borderRadius: '4px', fontSize: '12px' }}
                           />
-                          <button type="button" onClick={() => handleUpdateSetItemQuantity(item.productId, -1)} style={{ width: '28px', height: '28px', border: '1px solid #D1D5DB', borderRadius: '4px', background: 'white', cursor: 'pointer' }}>-</button>
+                          <button type="button" onClick={() => handleUpdateSetItemQuantity(item.productId, -1)} style={{ width: '28px', height: '28px', border: '1px solid #6B7280', borderRadius: '4px', background: 'white', cursor: 'pointer' }}>-</button>
                           <span style={{ minWidth: '24px', textAlign: 'center', fontWeight: 600 }}>{item.quantity}</span>
-                          <button type="button" onClick={() => handleUpdateSetItemQuantity(item.productId, 1)} style={{ width: '28px', height: '28px', border: '1px solid #D1D5DB', borderRadius: '4px', background: 'white', cursor: 'pointer' }}>+</button>
+                          <button type="button" onClick={() => handleUpdateSetItemQuantity(item.productId, 1)} style={{ width: '28px', height: '28px', border: '1px solid #6B7280', borderRadius: '4px', background: 'white', cursor: 'pointer' }}>+</button>
                           <button type="button" onClick={() => handleRemoveSetItem(item.productId)} style={{ color: '#DC2626', background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px' }}>x</button>
                         </div>
                       ))}
@@ -1709,12 +1709,12 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
                           style={{
                             padding: '8px 12px', cursor: 'pointer', borderRadius: '6px', marginBottom: '2px',
                             background: formData.set_items.some(si => si.productId === p.id) ? '#EEF2FF' : 'white',
-                            border: '1px solid #E5E7EB', fontSize: '13px',
+                            border: '1px solid #C7CED6', fontSize: '13px',
                             display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                           }}
                         >
                           <span>{p.emoji || '📦'} {p.sku ? `${p.sku} ` : ''}{p.name}</span>
-                          <span style={{ color: '#6B7280' }}>{getDisplayPrice(p)}</span>
+                          <span style={{ color: '#4B5563' }}>{getDisplayPrice(p)}</span>
                         </div>
                       ))
                     }
@@ -1734,19 +1734,19 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
                             placeholder="Addon label"
                             value={addon.addon_label}
                             onChange={(e) => handleUpdateAddon(addon.productId, 'addon_label', e.target.value)}
-                            style={{ width: '120px', padding: '4px 8px', border: '1px solid #D1D5DB', borderRadius: '4px', fontSize: '12px' }}
+                            style={{ width: '120px', padding: '4px 8px', border: '1px solid #6B7280', borderRadius: '4px', fontSize: '12px' }}
                           />
                           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <span style={{ fontSize: '12px', color: '#6B7280' }}>Max:</span>
+                            <span style={{ fontSize: '12px', color: '#4B5563' }}>Max:</span>
                             <input
                               type="number"
                               min="0"
                               value={addon.max_quantity}
                               onChange={(e) => handleUpdateAddon(addon.productId, 'max_quantity', parseInt(e.target.value) || 0)}
-                              style={{ width: '50px', padding: '4px 6px', border: '1px solid #D1D5DB', borderRadius: '4px', fontSize: '12px' }}
+                              style={{ width: '50px', padding: '4px 6px', border: '1px solid #6B7280', borderRadius: '4px', fontSize: '12px' }}
                               title="0 = unlimited"
                             />
-                            <span style={{ fontSize: '11px', color: '#9CA3AF' }}>(0 = unlimited)</span>
+                            <span style={{ fontSize: '11px', color: '#6B7280' }}>(0 = unlimited)</span>
                           </div>
                           <CheckboxLabel style={{ fontSize: '12px' }}>
                             <input
@@ -1779,12 +1779,12 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
                           onClick={() => handleAddAddon(p.id)}
                           style={{
                             padding: '8px 12px', cursor: 'pointer', borderRadius: '6px', marginBottom: '2px',
-                            background: 'white', border: '1px solid #E5E7EB', fontSize: '13px',
+                            background: 'white', border: '1px solid #C7CED6', fontSize: '13px',
                             display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                           }}
                         >
                           <span>{p.emoji || '📦'} {p.sku ? `${p.sku} ` : ''}{p.name}</span>
-                          <span style={{ color: '#6B7280' }}>{getDisplayPrice(p)}</span>
+                          <span style={{ color: '#4B5563' }}>{getDisplayPrice(p)}</span>
                         </div>
                       ))
                     }
@@ -1832,7 +1832,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
                   ))}
                 </CheckboxGroup>
               ) : (
-                <div style={{ padding: '12px', background: '#F9FAFB', borderRadius: '8px', color: '#6B7280', fontSize: '13px' }}>
+                <div style={{ padding: '12px', background: '#F9FAFB', borderRadius: '8px', color: '#4B5563', fontSize: '13px' }}>
                   No supported countries configured. Set up countries in System Settings first.
                 </div>
               )}
@@ -2075,7 +2075,7 @@ const CategoriesTab: React.FC<CategoriesTabProps> = ({ onCountChange, onCategory
   if (loading) {
     return (
       <CategoryContainer>
-        <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
+        <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>
           Loading categories...
         </div>
       </CategoryContainer>
@@ -2387,7 +2387,7 @@ const OptionsTab: React.FC<OptionsTabProps> = ({ onCountChange, onOptionChange }
   );
 
   if (loading) {
-    return <div style={{ padding: '40px', textAlign: 'center', color: '#6B7280' }}>{'Loading...'}</div>;
+    return <div style={{ padding: '40px', textAlign: 'center', color: '#4B5563' }}>{'Loading...'}</div>;
   }
 
   return (
@@ -2427,7 +2427,7 @@ const OptionsTab: React.FC<OptionsTabProps> = ({ onCountChange, onOptionChange }
                     <OptionTypeBadge type={group.is_required ? 'required' : 'optional'}>
                       {group.is_required ? 'Required' : 'Optional'}
                     </OptionTypeBadge>
-                    <span style={{ fontSize: '13px', color: '#6B7280' }}>
+                    <span style={{ fontSize: '13px', color: '#4B5563' }}>
                       {group.options.length} options
                     </span>
                   </OptionCardMeta>
@@ -2520,7 +2520,7 @@ const OptionsTab: React.FC<OptionsTabProps> = ({ onCountChange, onOptionChange }
               <div style={{ flex: 1 }}>
                 <strong>{option.name}</strong>
                 {Number(option.price_adjustment) !== 0 && (
-                  <span style={{ marginLeft: '8px', color: '#6B7280' }}>
+                  <span style={{ marginLeft: '8px', color: '#4B5563' }}>
                     ({Number(option.price_adjustment) > 0 ? '+' : ''}{Number(option.price_adjustment).toFixed(2)})
                   </span>
                 )}

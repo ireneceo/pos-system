@@ -44,13 +44,13 @@ interface SecurityPolicy {
 const ContentSection = styled.div`
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   overflow: hidden;
 `;
 
 const SectionHeader = styled.div`
-  background: #F8FAFC;
-  border-bottom: 1px solid #E6EBF1;
+  background: #F1F4F8;
+  border-bottom: 1px solid #C7CED6;
   padding: 20px 24px;
   display: flex;
   justify-content: between;
@@ -82,11 +82,11 @@ const EventsList = styled.div`
 
 const EventItem = styled.div`
   padding: 20px 24px;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
   transition: background 0.2s;
 
   &:hover {
-    background: #FAFBFC;
+    background: #F9FAFB;
   }
 
   &:last-child {
@@ -126,7 +126,7 @@ const EventType = styled.div`
 
 const EventUser = styled.div`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const EventBadges = styled.div`
@@ -147,7 +147,7 @@ const SeverityBadge = styled.span<{ severity: string }>`
       case 'high': return '#FED7AA';
       case 'medium': return '#FEF3C7';
       case 'low': return '#E0F2FE';
-      default: return '#F3F4F6';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
@@ -156,26 +156,26 @@ const SeverityBadge = styled.span<{ severity: string }>`
       case 'high': return '#EA580C';
       case 'medium': return '#D97706';
       case 'low': return '#0891B2';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 `;
 
 const EventTimestamp = styled.div`
   font-size: 12px;
-  color: #9CA3AF;
+  color: #6B7280;
 `;
 
 const EventDescription = styled.div`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 8px 0;
   line-height: 1.4;
 `;
 
 const EventMeta = styled.div`
   font-size: 12px;
-  color: #9CA3AF;
+  color: #6B7280;
   font-family: 'Monaco', 'Menlo', monospace;
 `;
 
@@ -190,14 +190,14 @@ const PolicyItem = styled.div<{ enabled?: boolean }>`
   justify-content: space-between;
   align-items: center;
   padding: 20px 24px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   transition: all 0.2s;
   opacity: ${props => props.enabled ? 1 : 0.6};
   flex-wrap: wrap;
   gap: 12px;
 
   &:hover {
-    background: #FAFBFC;
+    background: #F9FAFB;
   }
 
   &:last-child {
@@ -224,13 +224,13 @@ const PolicyName = styled.div`
 
 const PolicyDescription = styled.div`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
   line-height: 1.4;
 `;
 
 const PolicyCategory = styled.div`
   font-size: 11px;
-  color: #9CA3AF;
+  color: #6B7280;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-top: 4px;
@@ -270,7 +270,7 @@ const ToggleSlider = styled.span`
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: #CBD5E1;
+  background-color: #64748B;
   transition: 0.3s;
   border-radius: 24px;
 
@@ -304,7 +304,7 @@ const WarningText = styled.div`
 
 const PolicyMeta = styled.div`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 12px;
   line-height: 1.5;
 `;
@@ -325,14 +325,14 @@ const FormLabel = styled.label`
   display: block;
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: #1F2937;
   margin-bottom: 8px;
 `;
 
 const FormInput = styled.input`
   width: 100%;
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.2s;
@@ -568,7 +568,7 @@ const SecurityPage: React.FC = () => {
               <SectionHeader>
                 <SectionTitle>{t('admin:securityPage.accessControlMatrix')}</SectionTitle>
               </SectionHeader>
-              <div style={{ padding: '24px', textAlign: 'center', color: '#6B7280' }}>
+              <div style={{ padding: '24px', textAlign: 'center', color: '#4B5563' }}>
                 Access Control Matrix will be implemented here with role-based permissions management.
               </div>
             </>
@@ -595,7 +595,7 @@ const SecurityPage: React.FC = () => {
           <WarningText>
             <strong>{t('admin:securityPage.areYouSureYouWantToLockAllActiveUserSessions')}</strong>
           </WarningText>
-          <p style={{ color: '#6B7280', marginBottom: '0', textAlign: 'center' }}>
+          <p style={{ color: '#4B5563', marginBottom: '0', textAlign: 'center' }}>
             This will immediately terminate all user sessions across all devices.
             Users will need to log in again to continue using the system.
           </p>

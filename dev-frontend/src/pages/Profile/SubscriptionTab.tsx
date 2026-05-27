@@ -87,7 +87,7 @@ interface MyPlanResponse {
 const SubscriptionCard = styled.div`
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   padding: 32px;
 `;
 
@@ -112,7 +112,7 @@ const PlanTitle = styled.h3`
 
 const PlanPrice = styled.div`
   font-size: 16px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const DiscountNote = styled.span`
@@ -142,7 +142,7 @@ const InfoItem = styled.div`
 
 const InfoLabel = styled.span`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const InfoValue = styled.span`
@@ -165,7 +165,7 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'trial': return '#EFF6FF';
       case 'overdue': return '#FEF3C7';
       case 'suspended': return '#FEE2E2';
-      default: return '#F3F4F6';
+      default: return '#F1F4F8';
     }
   }};
   color: ${p => {
@@ -174,7 +174,7 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'trial': return '#2563EB';
       case 'overdue': return '#D97706';
       case 'suspended': return '#DC2626';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 `;
@@ -218,7 +218,7 @@ const BlockedBox = styled.div<{ variant?: 'warning' | 'info' }>`
 const UsageSection = styled.div`
   margin-top: 24px;
   padding-top: 24px;
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
 `;
 
 const UsageSectionTitle = styled.h4`
@@ -241,15 +241,15 @@ const UsageGrid = styled.div`
 `;
 
 const UsageCard = styled.div<{ percent: number }>`
-  background: #F8FAFC;
-  border: 1px solid ${p => p.percent >= 100 ? '#FCA5A5' : p.percent >= 80 ? '#FDE68A' : '#E6EBF1'};
+  background: #F1F4F8;
+  border: 1px solid ${p => p.percent >= 100 ? '#FCA5A5' : p.percent >= 80 ? '#FDE68A' : '#C7CED6'};
   border-radius: 8px;
   padding: 16px;
 `;
 
 const UsageLabel = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   font-weight: 500;
@@ -266,7 +266,7 @@ const UsageValue = styled.div<{ percent: number }>`
 const UsageBar = styled.div`
   width: 100%;
   height: 8px;
-  background: #E5E7EB;
+  background: #C7CED6;
   border-radius: 4px;
   overflow: hidden;
 `;
@@ -280,7 +280,7 @@ const UsageBarFill = styled.div<{ percent: number }>`
 
 const UsageHint = styled.div<{ percent: number }>`
   font-size: 11px;
-  color: ${p => p.percent >= 100 ? '#DC2626' : p.percent >= 80 ? '#D97706' : '#6B7280'};
+  color: ${p => p.percent >= 100 ? '#DC2626' : p.percent >= 80 ? '#D97706' : '#4B5563'};
   margin-top: 6px;
   font-weight: ${p => p.percent >= 80 ? 600 : 400};
 `;
@@ -311,7 +311,7 @@ const ChangePlanButton = styled.button`
   transition: background 0.15s;
 
   &:hover { background: #5046E5; }
-  &:disabled { background: #D1D5DB; cursor: not-allowed; }
+  &:disabled { background: #6B7280; cursor: not-allowed; }
 `;
 
 const CancelButton = styled.button`
@@ -350,7 +350,7 @@ const PlansGrid = styled.div`
 `;
 
 const PlanCard = styled.div<{ isCurrent?: boolean; isSelected?: boolean }>`
-  border: 2px solid ${p => p.isCurrent ? '#635BFF' : p.isSelected ? '#10B981' : '#E6EBF1'};
+  border: 2px solid ${p => p.isCurrent ? '#635BFF' : p.isSelected ? '#10B981' : '#C7CED6'};
   border-radius: 12px;
   padding: 20px;
   position: relative;
@@ -393,13 +393,13 @@ const PlanCardPrice = styled.div`
   span {
     font-size: 14px;
     font-weight: 400;
-    color: #6B7280;
+    color: #4B5563;
   }
 `;
 
 const PlanCardFeature = styled.div`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
   padding: 3px 0;
 `;
 
@@ -413,7 +413,7 @@ const ChangeLabel = styled.div<{ type: string }>`
   font-weight: 500;
   color: ${p => p.type === 'upgrade' ? '#059669' : '#D97706'};
   padding-top: 12px;
-  border-top: 1px solid #F3F4F6;
+  border-top: 1px solid #F1F4F8;
 `;
 
 const ProrationAmount = styled.div`
@@ -432,9 +432,9 @@ const BillingToggle = styled.div`
 const ToggleOption = styled.button<{ active: boolean; disabled?: boolean }>`
   padding: 8px 16px;
   border-radius: 8px;
-  border: 1px solid ${p => p.active ? '#635BFF' : '#E6EBF1'};
+  border: 1px solid ${p => p.active ? '#635BFF' : '#C7CED6'};
   background: ${p => p.active ? '#F8F7FF' : 'white'};
-  color: ${p => p.disabled ? '#D1D5DB' : p.active ? '#635BFF' : '#6B7280'};
+  color: ${p => p.disabled ? '#6B7280' : p.active ? '#635BFF' : '#4B5563'};
   font-size: 14px;
   font-weight: 500;
   cursor: ${p => p.disabled ? 'not-allowed' : 'pointer'};
@@ -444,7 +444,7 @@ const ToggleOption = styled.button<{ active: boolean; disabled?: boolean }>`
 // Confirmation modal styles
 const SummaryBox = styled.div`
   background: #F9FAFB;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   padding: 20px;
   margin: 16px 0;
@@ -461,7 +461,7 @@ const SummaryRow = styled.div<{ bold?: boolean; highlight?: boolean }>`
 
 const Divider = styled.hr`
   border: none;
-  border-top: 1px dashed #D1D5DB;
+  border-top: 1px dashed #6B7280;
   margin: 8px 0;
 `;
 
@@ -483,7 +483,7 @@ const WarningItem = styled.div`
 
 const LimitChange = styled.div`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
   padding: 3px 0;
   display: flex;
   justify-content: space-between;
@@ -494,7 +494,7 @@ const LoadingSpinner = styled.div`
   align-items: center;
   justify-content: center;
   padding: 40px;
-  color: #6B7280;
+  color: #4B5563;
   font-size: 14px;
 `;
 
@@ -839,7 +839,7 @@ const SubscriptionTab: React.FC = () => {
         }
       >
         <BillingToggle>
-          <span style={{ fontSize: '14px', color: '#6B7280' }}>Billing:</span>
+          <span style={{ fontSize: '14px', color: '#4B5563' }}>Billing:</span>
           <ToggleOption active={selectedCycle === 'monthly'} disabled={false} onClick={() => setSelectedCycle('monthly')}>
             Monthly
           </ToggleOption>
@@ -854,7 +854,7 @@ const SubscriptionTab: React.FC = () => {
             Annual
           </ToggleOption>
           {current.billing_cycle === 'annual' && (
-            <span style={{ fontSize: '12px', color: '#9CA3AF' }}>{t('settings:subscriptionTab.monthlyNotAvailableForAnnualPlans')}</span>
+            <span style={{ fontSize: '12px', color: '#6B7280' }}>{t('settings:subscriptionTab.monthlyNotAvailableForAnnualPlans')}</span>
           )}
         </BillingToggle>
 
@@ -915,7 +915,7 @@ const SubscriptionTab: React.FC = () => {
         >
           {current.status === 'trial' ? (
             <>
-              <p style={{ color: '#6B7280', fontSize: '14px' }}>You're currently on a free trial ({current.plan_type}).</p>
+              <p style={{ color: '#4B5563', fontSize: '14px' }}>You're currently on a free trial ({current.plan_type}).</p>
               <SummaryBox>
                 <CheckItem><Check size={14} />{selectedPlan.display_name} features available immediately</CheckItem>
                 <CheckItem><Check size={14} />No charge during your trial period</CheckItem>
@@ -937,7 +937,7 @@ const SubscriptionTab: React.FC = () => {
                 {selectedPlan.proration_estimate && (
                   <>
                     <Divider />
-                    <div style={{ fontSize: '13px', color: '#6B7280', marginBottom: '4px' }}>
+                    <div style={{ fontSize: '13px', color: '#4B5563', marginBottom: '4px' }}>
                       Prorated charge for remaining period ({selectedPlan.proration_estimate.remaining_days} days)
                     </div>
                     <SummaryRow>
@@ -1001,8 +1001,8 @@ const SubscriptionTab: React.FC = () => {
 
           {getChangeType(selectedPlan, selectedCycle) === 'downgrade' && (
             <div style={{ marginTop: '12px' }}>
-              <div style={{ fontSize: '13px', color: '#6B7280', marginBottom: '8px' }}>• Current features available until {formatDate(current.next_billing_date)}</div>
-              <div style={{ fontSize: '13px', color: '#6B7280', marginBottom: '8px' }}>• After {formatDate(current.next_billing_date)}:</div>
+              <div style={{ fontSize: '13px', color: '#4B5563', marginBottom: '8px' }}>• Current features available until {formatDate(current.next_billing_date)}</div>
+              <div style={{ fontSize: '13px', color: '#4B5563', marginBottom: '8px' }}>• After {formatDate(current.next_billing_date)}:</div>
               <div style={{ paddingLeft: '16px' }}>
                 <LimitChange>
                   <span>{t('settings:subscriptionTab.orders')}</span>
@@ -1017,7 +1017,7 @@ const SubscriptionTab: React.FC = () => {
                   <span>{formatLimit(data?.available_plans.find(p => p.is_current)?.limits.staff ?? -1)} → {formatLimit(selectedPlan.limits.staff)}</span>
                 </LimitChange>
               </div>
-              <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '8px' }}>• You can cancel this change anytime before {formatDate(current.next_billing_date)}</div>
+              <div style={{ fontSize: '13px', color: '#4B5563', marginTop: '8px' }}>• You can cancel this change anytime before {formatDate(current.next_billing_date)}</div>
             </div>
           )}
 
@@ -1048,7 +1048,7 @@ const SubscriptionTab: React.FC = () => {
           </>
         }
       >
-        <p style={{ fontSize: '14px', color: '#374151' }}>
+        <p style={{ fontSize: '14px', color: '#1F2937' }}>
           Your current plan ({current.plan_type}, {formatCurrency(current.plan_amount, current.currency)}/{current.billing_cycle === 'annual' ? 'year' : 'month'}) will continue without changes.
         </p>
       </Modal>
@@ -1068,13 +1068,13 @@ const SubscriptionTab: React.FC = () => {
           </>
         }
       >
-        <p style={{ fontSize: '14px', color: '#374151', lineHeight: '1.6' }}>
+        <p style={{ fontSize: '14px', color: '#1F2937', lineHeight: '1.6' }}>
           Annual plans cannot be switched to monthly billing directly.
         </p>
-        <p style={{ fontSize: '14px', color: '#374151', lineHeight: '1.6', marginTop: '12px' }}>
+        <p style={{ fontSize: '14px', color: '#1F2937', lineHeight: '1.6', marginTop: '12px' }}>
           To change to monthly billing:
         </p>
-        <ol style={{ fontSize: '14px', color: '#374151', lineHeight: '1.8', paddingLeft: '20px' }}>
+        <ol style={{ fontSize: '14px', color: '#1F2937', lineHeight: '1.8', paddingLeft: '20px' }}>
           <li>{t('settings:subscriptionTab.contactSupportToRequestAFullRefundForTheRemainingAnnualPeriod')}</li>
           <li>{t('settings:subscriptionTab.onceRefundedSubscribeToAMonthlyPlan')}</li>
         </ol>
@@ -1110,7 +1110,7 @@ const SubscriptionTab: React.FC = () => {
         ) : (
           <>
             <CheckItem><Check size={14} />{changeResult?.message}</CheckItem>
-            <div style={{ marginTop: '8px', fontSize: '13px', color: '#6B7280' }}>
+            <div style={{ marginTop: '8px', fontSize: '13px', color: '#4B5563' }}>
               Your current features remain available until the change takes effect.
             </div>
           </>

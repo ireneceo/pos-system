@@ -94,7 +94,7 @@ const NoticeCard = styled.div<{ unread?: boolean }>`
   background: white;
   border-radius: 12px;
   padding: 24px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   cursor: pointer;
   transition: all 0.2s;
   position: relative;
@@ -167,7 +167,7 @@ const PriorityBadge = styled.span<{ priority: string }>`
     switch (props.priority) {
       case 'urgent': return '#991B1B';
       case 'important': return '#92400E';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 `;
@@ -183,7 +183,7 @@ const RoleBadge = styled.span`
 
 const NoticeCardPreview = styled.div`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   line-height: 1.5;
   margin-bottom: 16px;
   display: -webkit-box;
@@ -197,9 +197,9 @@ const NoticeCardFooter = styled.div`
   justify-content: space-between;
   align-items: center;
   padding-top: 12px;
-  border-top: 1px solid #F3F4F6;
+  border-top: 1px solid #F1F4F8;
   font-size: 12px;
-  color: #9CA3AF;
+  color: #6B7280;
   flex-wrap: wrap;
   gap: 8px;
 `;
@@ -245,14 +245,14 @@ const FormLabel = styled.label`
   display: block;
   font-size: 13px;
   font-weight: 500;
-  color: #6B7C93;
+  color: #4B5563;
   margin-bottom: 8px;
 `;
 
 const FormInput = styled.input`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.15s;
@@ -268,7 +268,7 @@ const FormInput = styled.input`
 const FormTextArea = styled.textarea`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   resize: vertical;
@@ -287,7 +287,7 @@ const FormTextArea = styled.textarea`
 const FormSelect = styled.select`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -317,7 +317,7 @@ const FormRow = styled.div`
 // ============================================================================
 
 const MultiSelectContainer = styled.div`
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   max-height: 200px;
   overflow-y: auto;
@@ -332,11 +332,11 @@ const MultiSelectOption = styled.label`
   border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
   transition: background 0.15s;
 
   &:hover {
-    background: #F8FAFC;
+    background: #F1F4F8;
   }
 
   input {
@@ -348,7 +348,7 @@ const MultiSelectOption = styled.label`
 
 const SelectedCount = styled.div`
   font-size: 12px;
-  color: #6B7C93;
+  color: #4B5563;
   margin-top: 6px;
 `;
 
@@ -358,12 +358,12 @@ const SelectedCount = styled.div`
 
 const ViewNoticeContent = styled.div`
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
   line-height: 1.7;
   padding: 20px;
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 8px;
-  border-left: 3px solid #E6EBF1;
+  border-left: 3px solid #C7CED6;
   margin-bottom: 20px;
   white-space: pre-wrap;
 `;
@@ -374,10 +374,10 @@ const ViewNoticeMeta = styled.div`
   gap: 16px;
   margin-bottom: 20px;
   padding: 16px;
-  background: #FAFBFC;
+  background: #F9FAFB;
   border-radius: 8px;
   font-size: 13px;
-  color: #6B7C93;
+  color: #4B5563;
 `;
 
 const MetaField = styled.div`
@@ -391,12 +391,12 @@ const MetaFieldLabel = styled.span`
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #9CA3AF;
+  color: #6B7280;
 `;
 
 const MetaFieldValue = styled.span`
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
   font-weight: 500;
 `;
 
@@ -853,9 +853,9 @@ const NoticesPage: React.FC = () => {
               style={{
                 padding: '6px 16px',
                 borderRadius: '20px',
-                border: categoryFilter === cat ? '1.5px solid #635BFF' : '1px solid #E6EBF1',
+                border: categoryFilter === cat ? '1.5px solid #635BFF' : '1px solid #C7CED6',
                 background: categoryFilter === cat ? '#F0EFFF' : 'white',
-                color: categoryFilter === cat ? '#635BFF' : '#6B7280',
+                color: categoryFilter === cat ? '#635BFF' : '#4B5563',
                 fontSize: '13px',
                 fontWeight: categoryFilter === cat ? 600 : 400,
                 cursor: 'pointer',
@@ -1067,7 +1067,7 @@ const NoticesPage: React.FC = () => {
                       </MultiSelectOption>
                     ))}
                     {metadata.restaurants.length === 0 && (
-                      <div style={{ padding: '12px', color: '#9CA3AF', fontSize: '13px', textAlign: 'center' }}>
+                      <div style={{ padding: '12px', color: '#6B7280', fontSize: '13px', textAlign: 'center' }}>
                         No restaurants available
                       </div>
                     )}

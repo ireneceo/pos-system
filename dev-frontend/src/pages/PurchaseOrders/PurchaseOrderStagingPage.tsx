@@ -35,19 +35,19 @@ interface POStaging {
 const PageHeader = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   display: flex;
   justify-content: space-between;
   align-items: center;
 `;
 const PageTitle = styled.h1` font-size: 24px; font-weight: 700; color: #0A2540; margin: 0; `;
-const PageSub = styled.div` font-size: 13px; color: #6B7280; margin-top: 4px; `;
+const PageSub = styled.div` font-size: 13px; color: #4B5563; margin-top: 4px; `;
 
 const POList = styled.div` display: flex; flex-direction: column; gap: 16px; max-width: 920px; margin: 0 auto; padding: 24px 0; `;
 
 const POCard = styled.div<{ $external: boolean }>`
   background: white;
-  border: 1px solid ${p => p.$external ? '#FBCFE8' : '#E6EBF1'};
+  border: 1px solid ${p => p.$external ? '#FBCFE8' : '#C7CED6'};
   border-radius: 12px;
   padding: 18px 22px;
   border-left: 4px solid ${p => p.$external ? '#DB2777' : '#635BFF'};
@@ -55,7 +55,7 @@ const POCard = styled.div<{ $external: boolean }>`
 const POHead = styled.div` display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; flex-wrap: wrap; gap: 10px; `;
 const POSellerBox = styled.div``;
 const POSellerName = styled.div` font-size: 16px; font-weight: 600; color: #0A2540; `;
-const POMeta = styled.div` font-size: 12px; color: #6B7280; margin-top: 3px; `;
+const POMeta = styled.div` font-size: 12px; color: #4B5563; margin-top: 3px; `;
 const POBadge = styled.span<{ $external: boolean }>`
   display: inline-block;
   padding: 3px 10px;
@@ -75,7 +75,7 @@ const ItemsBlock = styled.div`
   font-size: 13px;
   color: #475569;
   padding: 10px 12px;
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 8px;
   margin-bottom: 12px;
   line-height: 1.6;
@@ -93,7 +93,7 @@ const SubmitBar = styled.div`
   position: sticky;
   bottom: 0;
   background: white;
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
   padding: 16px 32px;
   display: flex;
   justify-content: space-between;
@@ -103,7 +103,7 @@ const SubmitBar = styled.div`
 const Empty = styled.div`
   text-align: center;
   padding: 80px 24px;
-  color: #6B7280;
+  color: #4B5563;
   font-size: 14px;
 `;
 
@@ -233,7 +233,7 @@ const PurchaseOrderStagingPage: React.FC = () => {
             <div key={it.id}>· Item #{it.ingredient_id} × {parseFloat(it.quantity_ordered).toFixed(2)} @ {parseFloat(it.unit_price).toFixed(2)}</div>
           ))}
           {(po.items || []).length > 5 && (
-            <div style={{ color: '#9CA3AF' }}>+ {(po.items || []).length - 5} more</div>
+            <div style={{ color: '#6B7280' }}>+ {(po.items || []).length - 5} more</div>
           )}
         </ItemsBlock>
       )}
@@ -310,7 +310,7 @@ const PurchaseOrderStagingPage: React.FC = () => {
       {pos.length > 0 && (
         <SubmitBar>
           <div>
-            <div style={{ fontSize: 12, color: '#6B7280' }}>
+            <div style={{ fontSize: 12, color: '#4B5563' }}>
               {t('staging.summary', { count: pos.length, defaultValue: '{{count}} POs' })}
             </div>
             <div style={{ fontSize: 22, fontWeight: 700, color: '#0A2540', marginTop: 2 }}>

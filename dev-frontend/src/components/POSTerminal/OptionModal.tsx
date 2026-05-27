@@ -205,7 +205,7 @@ const OptionModal: React.FC<OptionModalProps> = ({ isOpen, onClose, menuItem, on
                 >
                   <div>{option.name}</div>
                   {option.price > 0 && (
-                    <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>
+                    <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '2px' }}>
                       +{formatCurrency(option.price, operationSettings.currency)}
                     </div>
                   )}

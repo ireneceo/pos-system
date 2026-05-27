@@ -41,7 +41,7 @@ interface Props {
 }
 
 const STATUS_PALETTE: Record<UnitDisplayStatus, { bg: string; border: string; text: string; dot: string; dashed?: boolean }> = {
-  vacant:      { bg: '#F3F4F6', border: '#D1D5DB', text: '#6B7280', dot: '#9CA3AF' },
+  vacant:      { bg: '#F1F4F8', border: '#6B7280', text: '#4B5563', dot: '#6B7280' },
   proposal:    { bg: '#EDE9FE', border: '#8B5CF6', text: '#5B21B6', dot: '#8B5CF6' },
   contracting: { bg: '#FFEDD5', border: '#F97316', text: '#9A3412', dot: '#F97316' },
   preparing:   { bg: '#DBEAFE', border: '#3B82F6', text: '#1E40AF', dot: '#3B82F6' },

@@ -14,13 +14,13 @@ import { formatDateTime as formatDateTimeTz } from '../../utils/timezone';
 const ActivityList = styled.div`
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   overflow: hidden;
 `;
 
 const ActivityItem = styled.div`
   padding: 20px 24px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   transition: all 0.2s;
 
   &:last-child {
@@ -28,7 +28,7 @@ const ActivityItem = styled.div`
   }
 
   &:hover {
-    background: #F8FAFC;
+    background: #F1F4F8;
   }
 `;
 
@@ -64,7 +64,7 @@ const ActivityUser = styled.div`
 
 const ActivityDescription = styled.div`
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
   line-height: 1.5;
 `;
 
@@ -89,12 +89,12 @@ const PaginationContainer = styled.div`
   padding: 20px;
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
 `;
 
 const PageInfo = styled.div`
   font-size: 14px;
-  color: #6B7C93;
+  color: #4B5563;
   margin: 0 16px;
 `;
 

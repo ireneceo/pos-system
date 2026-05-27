@@ -16,7 +16,7 @@ import { formatDate as formatDateTz } from '../../utils/timezone';
 // 스타일 컴포넌트
 const ProfileContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #FAFBFC;
+  background-color: #F9FAFB;
   min-height: 100vh;
 `;
 
@@ -33,7 +33,7 @@ const Content = styled.main`
 const ProfileHeader = styled.div`
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   padding: 32px;
   display: flex;
   align-items: center;
@@ -67,7 +67,7 @@ const StaffAvatar = styled.div<{ role: string }>`
       case 'Brand Manager': return '#EF4444';
       case 'Restaurant Admin': return '#059669';
       case 'Staff': return '#D97706';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 `;
@@ -108,7 +108,7 @@ const RoleBadge = styled.span<{ role: string }>`
       case 'Brand Manager': return '#FEE2E2';
       case 'Restaurant Admin': return '#ECFDF5';
       case 'Staff': return '#FEF3C7';
-      default: return '#F3F4F6';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
@@ -120,20 +120,20 @@ const RoleBadge = styled.span<{ role: string }>`
       case 'Brand Manager': return '#EF4444';
       case 'Restaurant Admin': return '#059669';
       case 'Staff': return '#D97706';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 `;
 
 const ProfileMeta = styled.div`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const ContentCard = styled.div`
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   padding: 32px;
 `;
 
@@ -156,7 +156,7 @@ const Label = styled.label`
   display: block;
   font-size: 13px;
   font-weight: 500;
-  color: #6B7C93;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.3px;
   margin-bottom: 8px;
@@ -166,7 +166,7 @@ const Input = styled.input`
   width: 100%;
   box-sizing: border-box;
   padding: 8px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   transition: all 0.15s;
@@ -179,12 +179,12 @@ const Input = styled.input`
 
   &:disabled {
     background: #F9FAFB;
-    color: #6B7280;
+    color: #4B5563;
     cursor: not-allowed;
   }
 
   &::placeholder {
-    color: #9CA3AF;
+    color: #6B7280;
   }
 `;
 
@@ -208,9 +208,9 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
-  border: ${props => props.variant === 'primary' ? 'none' : '1px solid #E5E7EB'};
+  border: ${props => props.variant === 'primary' ? 'none' : '1px solid #C7CED6'};
   background: ${props => props.variant === 'primary' ? '#635BFF' : 'white'};
-  color: ${props => props.variant === 'primary' ? 'white' : '#6B7280'};
+  color: ${props => props.variant === 'primary' ? 'white' : '#4B5563'};
   
   &:hover {
     background: ${props => props.variant === 'primary' ? '#5A51E6' : '#F9FAFB'};
@@ -244,7 +244,7 @@ const ScheduleGrid = styled.div`
 
 const DayCard = styled.div<{ active: boolean }>`
   padding: 16px 12px;
-  border: 2px solid ${props => props.active ? '#635BFF' : '#E5E7EB'};
+  border: 2px solid ${props => props.active ? '#635BFF' : '#C7CED6'};
   border-radius: 8px;
   text-align: center;
   background: ${props => props.active ? 'rgba(99, 91, 255, 0.05)' : 'white'};
@@ -254,14 +254,14 @@ const DayCard = styled.div<{ active: boolean }>`
 const DayName = styled.div`
   font-size: 13px;
   font-weight: 600;
-  color: #374151;
+  color: #1F2937;
   margin-bottom: 8px;
   text-transform: uppercase;
 `;
 
 const DayTime = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 
@@ -699,7 +699,7 @@ const ProfilePage: React.FC = () => {
           <PageHeader title="My Profile" />
           <Content>
             <ContentCard>
-              <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
+              <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>
                 <div>{t('settings:profilePage.loadingProfile')}</div>
               </div>
             </ContentCard>
@@ -717,7 +717,7 @@ const ProfilePage: React.FC = () => {
           <PageHeader title="My Profile" />
           <Content>
             <ContentCard>
-              <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
+              <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>
                 <div style={{ fontSize: '18px', marginBottom: '8px' }}>{t('settings:profilePage.pleaseLogInToViewYourProfile')}</div>
                 <div style={{ fontSize: '14px' }}>{t('settings:profilePage.youNeedToBeLoggedInToAccessThisPage')}</div>
               </div>
@@ -750,7 +750,7 @@ const ProfilePage: React.FC = () => {
                 <RoleBadge role={currentUser.role}>
                   {currentUser.role}
                 </RoleBadge>
-                <span style={{ fontSize: '14px', color: '#6B7280', textTransform: 'capitalize' }}>
+                <span style={{ fontSize: '14px', color: '#4B5563', textTransform: 'capitalize' }}>
                   {currentUser.department}
                 </span>
               </ProfileRole>
@@ -887,13 +887,13 @@ const ProfilePage: React.FC = () => {
               </div>
               {currentUser?.role !== 'System Admin' && currentUser?.role !== 'manager' && (
                 <div style={{ 
-                  background: '#F8FAFC', 
+                  background: '#F1F4F8', 
                   border: '1px solid #E2E8F0', 
                   borderRadius: '8px', 
                   padding: '12px 16px', 
                   marginBottom: '20px',
                   fontSize: '14px',
-                  color: '#6B7280'
+                  color: '#4B5563'
                 }}>
                   ℹ️ Work schedules are managed by administrators and managers. Contact your manager to make changes.
                 </div>
@@ -948,7 +948,7 @@ const ProfilePage: React.FC = () => {
                         style={{ paddingRight: '42px' }}
                       />
                       <button type="button" onClick={() => setShowCurrentPassword(!showCurrentPassword)} tabIndex={-1}
-                        style={{ position: 'absolute', right: '14px', background: 'none', border: 'none', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', color: '#9CA3AF' }}>
+                        style={{ position: 'absolute', right: '14px', background: 'none', border: 'none', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', color: '#6B7280' }}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '20px', height: '20px' }}>
                           {showCurrentPassword ? (<><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></>) : (<><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></>)}
                         </svg>
@@ -966,7 +966,7 @@ const ProfilePage: React.FC = () => {
                         style={{ paddingRight: '42px' }}
                       />
                       <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} tabIndex={-1}
-                        style={{ position: 'absolute', right: '14px', background: 'none', border: 'none', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', color: '#9CA3AF' }}>
+                        style={{ position: 'absolute', right: '14px', background: 'none', border: 'none', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', color: '#6B7280' }}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '20px', height: '20px' }}>
                           {showNewPassword ? (<><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></>) : (<><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></>)}
                         </svg>
@@ -984,7 +984,7 @@ const ProfilePage: React.FC = () => {
                         style={{ paddingRight: '42px' }}
                       />
                       <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} tabIndex={-1}
-                        style={{ position: 'absolute', right: '14px', background: 'none', border: 'none', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', color: '#9CA3AF' }}>
+                        style={{ position: 'absolute', right: '14px', background: 'none', border: 'none', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', color: '#6B7280' }}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '20px', height: '20px' }}>
                           {showConfirmPassword ? (<><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></>) : (<><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></>)}
                         </svg>
@@ -1056,9 +1056,9 @@ const ProfilePage: React.FC = () => {
                   alignItems: 'center',
                   gap: '12px',
                   padding: '8px 0',
-                  borderBottom: '1px solid #F3F4F6'
+                  borderBottom: '1px solid #F1F4F8'
                 }}>
-                  <div style={{ fontWeight: '500', textTransform: 'capitalize', fontSize: '14px', color: '#374151' }}>
+                  <div style={{ fontWeight: '500', textTransform: 'capitalize', fontSize: '14px', color: '#1F2937' }}>
                     {day}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
@@ -1069,7 +1069,7 @@ const ProfilePage: React.FC = () => {
                         onChange={(e) => handleScheduleChange(day, 'active', e.target.checked)}
                         style={{ cursor: 'pointer' }}
                       />
-                      <span style={{ color: schedule.active ? '#059669' : '#6B7280' }}>
+                      <span style={{ color: schedule.active ? '#059669' : '#4B5563' }}>
                         {schedule.active ? 'Active' : 'Off'}
                       </span>
                     </label>
@@ -1081,20 +1081,20 @@ const ProfilePage: React.FC = () => {
                           onChange={(e) => handleScheduleChange(day, 'start', e.target.value)}
                           style={{
                             padding: '6px 8px',
-                            border: '1px solid #D1D5DB',
+                            border: '1px solid #6B7280',
                             borderRadius: '6px',
                             fontSize: '14px',
                             width: '100px'
                           }}
                         />
-                        <span style={{ color: '#9CA3AF', fontSize: '14px' }}>-</span>
+                        <span style={{ color: '#6B7280', fontSize: '14px' }}>-</span>
                         <input
                           type="time"
                           value={schedule.end}
                           onChange={(e) => handleScheduleChange(day, 'end', e.target.value)}
                           style={{
                             padding: '6px 8px',
-                            border: '1px solid #D1D5DB',
+                            border: '1px solid #6B7280',
                             borderRadius: '6px',
                             fontSize: '14px',
                             width: '100px'

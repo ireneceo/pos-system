@@ -64,7 +64,7 @@ const PageTitle = styled.h1`
 
 const Subtle = styled.span`
   font-size: 13px;
-  color: #6B7C93;
+  color: #4B5563;
 `;
 
 const TopGrid = styled.div`
@@ -108,7 +108,7 @@ const BalanceSub = styled.div`
 
 const MtdCard = styled.div`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   padding: 24px;
   display: flex;
@@ -129,7 +129,7 @@ const StatGrid = styled.div`
 
 const StatCard = styled.div`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   padding: 18px;
 
@@ -141,7 +141,7 @@ const StatCard = styled.div`
 
 const StatLabel = styled.div`
   font-size: 12px;
-  color: #6B7C93;
+  color: #4B5563;
   font-weight: 600;
   letter-spacing: 0.3px;
   text-transform: uppercase;
@@ -178,7 +178,7 @@ const StatDelta = styled.div`
 
 const Block = styled.section`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   padding: 24px;
   margin-bottom: 20px;
@@ -196,8 +196,8 @@ const CodeRow = styled.div`
   align-items: center;
   justify-content: space-between;
   padding: 14px 16px;
-  background: #FAFBFC;
-  border: 1px solid #E6EBF1;
+  background: #F9FAFB;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   margin-bottom: 10px;
   gap: 12px;
@@ -214,7 +214,7 @@ const CodeText = styled.div`
 
 const Btn = styled.button`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   padding: 8px 14px;
   font-size: 13px;
@@ -240,16 +240,16 @@ const Pill = styled.span<{ $active?: boolean }>`
   padding: 4px 10px;
   border-radius: 16px;
   background: ${p => (p.$active ? '#ECFDF5' : '#F5F7FA')};
-  color: ${p => (p.$active ? '#059669' : '#6B7C93')};
+  color: ${p => (p.$active ? '#059669' : '#4B5563')};
 `;
 
 const Empty = styled.div`
   padding: 36px 20px;
   text-align: center;
-  color: #6B7C93;
+  color: #4B5563;
   font-size: 14px;
-  background: #FAFBFC;
-  border: 1px dashed #E6EBF1;
+  background: #F9FAFB;
+  border: 1px dashed #C7CED6;
   border-radius: 8px;
 `;
 
@@ -257,7 +257,7 @@ const RulesCard = styled.div`
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 16px;
-  background: linear-gradient(180deg, #F1F0FF 0%, #FAFBFC 100%);
+  background: linear-gradient(180deg, #F1F0FF 0%, #F9FAFB 100%);
   border: 1px solid #E0DDFF;
   border-radius: 12px;
   padding: 16px 20px;
@@ -285,13 +285,13 @@ const RulesValue = styled.div`
 
 const RulesText = styled.div`
   font-size: 12px;
-  color: #4B5563;
+  color: #374151;
   line-height: 1.4;
 `;
 
 const Skeleton = styled.div`
   height: 16px;
-  background: linear-gradient(90deg, #F1F4F8 0%, #E6EBF1 50%, #F1F4F8 100%);
+  background: linear-gradient(90deg, #F1F4F8 0%, #C7CED6 50%, #F1F4F8 100%);
   background-size: 200% 100%;
   animation: shimmer 1.4s infinite;
   border-radius: 4px;

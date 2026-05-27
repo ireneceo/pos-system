@@ -25,7 +25,7 @@ const Container = styled.div`
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -47,7 +47,7 @@ const Header = styled.div`
 
 const Content = styled.div`
   padding: 32px;
-  background: #FAFBFC;
+  background: #F9FAFB;
   min-height: calc(100vh - 120px);
 
   @media (max-width: 768px) {
@@ -72,7 +72,7 @@ const Subtitle = styled.div`
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  color: #6B7C93;
+  color: #4B5563;
   margin-top: 4px;
 `;
 
@@ -112,7 +112,7 @@ const ChartContainer = styled.div`
   background: white;
   border-radius: 16px;
   padding: 28px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
 
   @media (max-width: 768px) {
     padding: 20px;
@@ -130,7 +130,7 @@ const AlertsPanel = styled.div`
   background: white;
   border-radius: 16px;
   padding: 20px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   display: flex;
   flex-direction: column;
 
@@ -155,7 +155,7 @@ const AlertsList = styled.div`
 
   &::-webkit-scrollbar { width: 4px; }
   &::-webkit-scrollbar-track { background: transparent; }
-  &::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
+  &::-webkit-scrollbar-thumb { background: #64748B; border-radius: 4px; }
 `;
 
 const Alert = styled.div<{ type: 'warning' | 'error' | 'info' | 'success' }>`
@@ -172,7 +172,7 @@ const Alert = styled.div<{ type: 'warning' | 'error' | 'info' | 'success' }>`
       case 'warning': return '#FFFBEB';
       case 'success': return '#ECFDF5';
       case 'info': return '#EFF6FF';
-      default: return '#F8FAFC';
+      default: return '#F1F4F8';
     }
   }};
   border: 1px solid ${props => {
@@ -181,7 +181,7 @@ const Alert = styled.div<{ type: 'warning' | 'error' | 'info' | 'success' }>`
       case 'warning': return '#FDE68A';
       case 'success': return '#A7F3D0';
       case 'info': return '#BFDBFE';
-      default: return '#E6EBF1';
+      default: return '#C7CED6';
     }
   }};
   flex-shrink: 0;
@@ -203,14 +203,14 @@ const AlertTitle = styled.div<{ type: 'warning' | 'error' | 'info' | 'success' }
       case 'warning': return '#D97706';
       case 'success': return '#059669';
       case 'info': return '#2563EB';
-      default: return '#374151';
+      default: return '#1F2937';
     }
   }};
 `;
 
 const AlertDescription = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 2px;
 `;
 
@@ -240,13 +240,13 @@ const QuickActionCard = styled.div`
   padding: 24px;
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   text-align: center;
   cursor: pointer;
   transition: all 0.2s;
 
   &:hover {
-    background: #F6F9FC;
+    background: #F4F6F9;
     .icon { color: #0A2540; }
     .title { color: #0A2540; }
   }
@@ -254,7 +254,7 @@ const QuickActionCard = styled.div`
   .icon {
     font-size: 32px;
     margin-bottom: 12px;
-    color: #6B7C93;
+    color: #4B5563;
     transition: color 0.2s;
     font-family: 'Lucida Console', 'Courier New', monospace;
   }
@@ -269,7 +269,7 @@ const QuickActionCard = styled.div`
 
   .description {
     font-size: 13px;
-    color: #6B7280;
+    color: #4B5563;
   }
 `;
 
@@ -288,7 +288,7 @@ const ChartCard = styled.div`
   background: white;
   border-radius: 16px;
   padding: 28px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
 
   @media (max-width: 768px) {
     padding: 20px;
@@ -319,7 +319,7 @@ const RestaurantGrid = styled.div`
 
 const RestaurantCard = styled.div`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   padding: 20px;
   cursor: pointer;
@@ -346,7 +346,7 @@ const RestaurantName = styled.div`
 
 const AdminName = styled.div`
   font-size: 12px;
-  color: #6B7C93;
+  color: #4B5563;
   margin-top: 4px;
 `;
 
@@ -362,7 +362,7 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'active': return '#ECFDF5';
       case 'trial': return '#FEF3C7';
       case 'inactive': case 'overdue': return '#FEE2E2';
-      default: return '#F3F4F6';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
@@ -370,7 +370,7 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'active': return '#059669';
       case 'trial': return '#92400E';
       case 'inactive': case 'overdue': return '#DC2626';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 `;
@@ -405,7 +405,7 @@ const LoadingContainer = styled.div`
   justify-content: center;
   align-items: center;
   min-height: 200px;
-  color: #6B7C93;
+  color: #4B5563;
   font-size: 14px;
 `;
 
@@ -748,8 +748,8 @@ const OwnerDashboardPage: React.FC = () => {
                     style={{
                       padding: '6px 12px',
                       background: chartPeriod === p ? '#635BFF' : 'transparent',
-                      color: chartPeriod === p ? 'white' : '#6B7280',
-                      border: '1px solid #E6EBF1',
+                      color: chartPeriod === p ? 'white' : '#4B5563',
+                      border: '1px solid #C7CED6',
                       borderRadius: '6px',
                       cursor: 'pointer',
                       fontSize: '13px'
@@ -763,16 +763,16 @@ const OwnerDashboardPage: React.FC = () => {
             {barData.length > 0 ? (
               <ResponsiveContainer width="100%" height={240}>
                 <BarChart data={barData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-                  <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#6B7C93' }} />
-                  <YAxis tick={{ fontSize: 12, fill: '#6B7C93' }} tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F1F4F8" />
+                  <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#4B5563' }} />
+                  <YAxis tick={{ fontSize: 12, fill: '#4B5563' }} tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v} />
                   <Tooltip
                     formatter={(value: any, name: string) => [
                       name === 'revenue' ? formatCurrency(value, currency) : value,
                       name === 'revenue' ? 'Revenue' : 'Orders'
                     ]}
                     labelStyle={{ color: '#0A2540', fontWeight: 600 }}
-                    contentStyle={{ borderRadius: 8, border: '1px solid #E6EBF1' }}
+                    contentStyle={{ borderRadius: 8, border: '1px solid #C7CED6' }}
                   />
                   <Bar dataKey="revenue" fill="#635BFF" radius={[4, 4, 0, 0]} />
                 </BarChart>
@@ -844,7 +844,7 @@ const OwnerDashboardPage: React.FC = () => {
                 </ResponsiveContainer>
                 <div style={{ flex: 1 }}>
                   {pieData.map((item: any, idx: number) => (
-                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, fontSize: 13, color: '#374151' }}>
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, fontSize: 13, color: '#1F2937' }}>
                       <div style={{ width: 10, height: 10, borderRadius: 2, background: PIE_COLORS[idx % PIE_COLORS.length], flexShrink: 0 }} />
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{item.name}</span>
                       <span style={{ fontWeight: 600, flexShrink: 0 }}>{formatCurrency(item.value, currency)}</span>
@@ -868,7 +868,7 @@ const OwnerDashboardPage: React.FC = () => {
             >
               <CardHeader>
                 <div>
-                  <RestaurantName>{restaurant.name}{restaurant.branch_name && <span style={{ fontSize: '12px', fontWeight: 500, color: '#6B7C93', background: '#F3F4F6', padding: '1px 8px', borderRadius: '4px', marginLeft: '6px' }}>{restaurant.branch_name}</span>}</RestaurantName>
+                  <RestaurantName>{restaurant.name}{restaurant.branch_name && <span style={{ fontSize: '12px', fontWeight: 500, color: '#4B5563', background: '#F1F4F8', padding: '1px 8px', borderRadius: '4px', marginLeft: '6px' }}>{restaurant.branch_name}</span>}</RestaurantName>
                   <AdminName>{restaurant.admin_name || 'No admin assigned'}</AdminName>
                 </div>
                 <StatusBadge status={restaurant.status}>{restaurant.status}</StatusBadge>

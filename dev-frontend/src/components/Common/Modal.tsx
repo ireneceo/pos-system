@@ -27,9 +27,9 @@ export const RadioButton = styled.button<{ selected?: boolean }>`
   padding: 12px 16px;
   min-height: 44px;
   border-radius: 8px;
-  border: 1px solid ${props => props.selected ? '#635BFF' : '#E6EBF1'};
+  border: 1px solid ${props => props.selected ? '#635BFF' : '#C7CED6'};
   background: ${props => props.selected ? 'rgba(99, 91, 255, 0.1)' : 'white'};
-  color: ${props => props.selected ? '#635BFF' : '#374151'};
+  color: ${props => props.selected ? '#635BFF' : '#1F2937'};
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -37,7 +37,7 @@ export const RadioButton = styled.button<{ selected?: boolean }>`
   text-align: center;
 
   &:hover {
-    border-color: ${props => props.selected ? '#635BFF' : '#D1D5DB'};
+    border-color: ${props => props.selected ? '#635BFF' : '#6B7280'};
     background: ${props => props.selected ? 'rgba(99, 91, 255, 0.1)' : '#F9FAFB'};
   }
 `;
@@ -54,14 +54,14 @@ export const CheckboxLabel = styled.label`
   justify-content: space-between;
   padding: 12px 16px;
   min-height: 44px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.15s;
 
   &:hover {
     background: #F9FAFB;
-    border-color: #D1D5DB;
+    border-color: #6B7280;
   }
 `;
 
@@ -75,14 +75,14 @@ export const CheckboxInput = styled.input`
 
 export const CheckboxText = styled.span`
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
   margin-left: 10px;
   flex: 1;
 `;
 
 export const CheckboxPrice = styled.span`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 export const QuantityControl = styled.div`
@@ -95,7 +95,7 @@ export const QuantityControl = styled.div`
 export const QuantityButton = styled.button`
   width: 40px;
   height: 40px;
-  border: 1px solid #D1D5DB;
+  border: 1px solid #6B7280;
   background: white;
   border-radius: 8px;
   display: flex;
@@ -106,7 +106,7 @@ export const QuantityButton = styled.button`
 
   &:hover {
     background: #F9FAFB;
-    border-color: #9CA3AF;
+    border-color: #6B7280;
   }
 
   &:active {
@@ -119,7 +119,7 @@ export const QuantityButton = styled.button`
 
     &:hover {
       background: white;
-      border-color: #D1D5DB;
+      border-color: #6B7280;
     }
   }
 `;
@@ -133,7 +133,7 @@ export const QuantityValue = styled.span`
 `;
 
 export const TotalSection = styled.div`
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
   padding: 16px 0 0 0;
   margin: 16px 0 0 0;
   display: flex;
@@ -163,7 +163,7 @@ export const ProductInfo = styled.div`
 export const ProductIcon = styled.div`
   width: 48px;
   height: 48px;
-  background: #F3F4F6;
+  background: #F1F4F8;
   border-radius: 8px;
   display: flex;
   align-items: center;
@@ -183,6 +183,6 @@ export const ProductName = styled.h3`
 export const ProductPrice = styled.p`
   font-size: 14px;
   font-weight: 500;
-  color: #6B7280;
+  color: #4B5563;
   margin: 0;
 `;

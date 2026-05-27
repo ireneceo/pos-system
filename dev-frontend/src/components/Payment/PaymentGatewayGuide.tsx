@@ -14,7 +14,7 @@ const GuideBox = styled.div`
   padding: 14px 16px;
   margin-bottom: 16px;
   font-size: 13px;
-  color: #4B5563;
+  color: #374151;
   line-height: 1.6;
 `;
 
@@ -52,7 +52,7 @@ const StepLabel = styled.div`
 `;
 
 const StepBody = styled.div`
-  color: #4B5563;
+  color: #374151;
   font-size: 12.5px;
 `;
 

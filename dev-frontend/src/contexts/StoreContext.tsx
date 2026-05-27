@@ -282,7 +282,9 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
             setOperationSettings({ ...defaultOperationSettings, ...currencyDefaults });
           }
 
-          // Sync printer settings to localStorage for billPrint.js
+          // Sync printer settings to localStorage for billPrint.js (non-React module).
+          // workstations[] is included so multi-POS routing can resolve this device's
+          // active workstation against the shared list.
           if (result.data.printer_settings) {
             const ps = typeof result.data.printer_settings === 'string'
               ? JSON.parse(result.data.printer_settings)
@@ -291,7 +293,8 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
             localStorage.setItem('printerSettings', JSON.stringify({
               billPrinter: ps.billPrinter || { enabled: false, name: '', autoPrint: false },
               kitchenPrinter: ps.kitchenPrinter || { enabled: false, name: '', autoPrint: false, printPerItem: false },
-              ...(ps.kitchenStationPrinters ? { kitchenStationPrinters: ps.kitchenStationPrinters } : {})
+              ...(ps.kitchenStationPrinters ? { kitchenStationPrinters: ps.kitchenStationPrinters } : {}),
+              ...(Array.isArray(ps.workstations) ? { workstations: ps.workstations } : {})
             }));
             // receiptSettings + 멤버십 QR을 state + localStorage에 저장
             if (ps.receiptSettings) {

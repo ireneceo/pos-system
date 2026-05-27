@@ -31,7 +31,7 @@ const ViewField = styled.div`
 const ViewLabel = styled.div`
   font-size: 12px;
   font-weight: 500;
-  color: #9CA3AF;
+  color: #6B7280;
   text-transform: uppercase;
   letter-spacing: 0.4px;
 `;
@@ -44,15 +44,15 @@ const ViewValue = styled.div`
 
 const ViewDivider = styled.div`
   height: 1px;
-  background: #E6EBF1;
+  background: #C7CED6;
 `;
 
 const ViewNote = styled.div`
   font-size: 13px;
-  color: #6B7C93;
+  color: #4B5563;
   line-height: 1.5;
   padding: 12px;
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 8px;
   margin-top: 8px;
 `;

@@ -31,20 +31,20 @@ const Dot = styled.div<{ isActive: boolean; isPast: boolean }>`
   font-size: 12px;
   font-weight: 600;
   flex-shrink: 0;
-  background: ${p => p.isActive ? '#635BFF' : p.isPast ? '#059669' : '#E6EBF1'};
-  color: ${p => (p.isActive || p.isPast) ? '#fff' : '#6B7C93'};
+  background: ${p => p.isActive ? '#635BFF' : p.isPast ? '#059669' : '#C7CED6'};
+  color: ${p => (p.isActive || p.isPast) ? '#fff' : '#4B5563'};
 `;
 
 const StepLabel = styled.span<{ isActive: boolean; isPast: boolean }>`
   font-size: 13px;
   font-weight: ${p => p.isActive ? 600 : 400};
-  color: ${p => p.isActive ? '#0A2540' : p.isPast ? '#059669' : '#6B7C93'};
+  color: ${p => p.isActive ? '#0A2540' : p.isPast ? '#059669' : '#4B5563'};
 `;
 
 const Line = styled.div<{ isPast: boolean }>`
   flex: 1;
   height: 2px;
-  background: ${p => p.isPast ? '#059669' : '#E6EBF1'};
+  background: ${p => p.isPast ? '#059669' : '#C7CED6'};
 `;
 
 const ContractStageBar: React.FC<ContractStageBarProps> = ({ currentStage }) => {

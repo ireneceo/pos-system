@@ -28,7 +28,7 @@ interface Carrier {
 }
 
 const Subtitle = styled.div`
-  color: #6B7280;
+  color: #4B5563;
   font-size: 14px;
   margin-top: 4px;
 `;
@@ -39,9 +39,9 @@ const StatusBadge = styled.span<{ active: boolean }>`
   border-radius: 999px;
   font-size: 11px;
   font-weight: 600;
-  background: ${p => p.active ? '#ECFDF5' : '#F3F4F6'};
-  color: ${p => p.active ? '#065F46' : '#6B7280'};
-  border: 1px solid ${p => p.active ? '#10B981' : '#E6EBF1'};
+  background: ${p => p.active ? '#ECFDF5' : '#F1F4F8'};
+  color: ${p => p.active ? '#065F46' : '#4B5563'};
+  border: 1px solid ${p => p.active ? '#10B981' : '#C7CED6'};
 `;
 
 const CarriersPage: React.FC = () => {
@@ -278,13 +278,13 @@ const CarriersPage: React.FC = () => {
                     </div>
                   </DataTableCell>
                   <DataTableCell data-label="Code">
-                    <code style={{ fontSize: 12, background: '#F3F4F6', padding: '2px 6px', borderRadius: 4, color: '#0A2540' }}>{c.code}</code>
+                    <code style={{ fontSize: 12, background: '#F1F4F8', padding: '2px 6px', borderRadius: 4, color: '#0A2540' }}>{c.code}</code>
                   </DataTableCell>
                   <DataTableCell data-label="Template">
                     {c.tracking_url_template ? (
-                      <span style={{ fontSize: 12, color: '#6B7280', fontFamily: 'monospace' }}>{c.tracking_url_template}</span>
+                      <span style={{ fontSize: 12, color: '#4B5563', fontFamily: 'monospace' }}>{c.tracking_url_template}</span>
                     ) : (
-                      <span style={{ color: '#9CA3AF', fontSize: 12 }}>—</span>
+                      <span style={{ color: '#6B7280', fontSize: 12 }}>—</span>
                     )}
                   </DataTableCell>
                   <DataTableCell data-label="Country" align="center">
@@ -337,7 +337,7 @@ const CarriersPage: React.FC = () => {
           </div>
         )}
         <FormGroup>
-          <FormLabel>{t('admin:carriers.fields.code', 'Code')} * <span style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 400 }}>({t('admin:carriers.codeHint', 'a-z, 0-9, _')})</span></FormLabel>
+          <FormLabel>{t('admin:carriers.fields.code', 'Code')} * <span style={{ fontSize: 11, color: '#6B7280', fontWeight: 400 }}>({t('admin:carriers.codeHint', 'a-z, 0-9, _')})</span></FormLabel>
           <FormInput value={form.code} onChange={(e) => setForm(f => ({ ...f, code: e.target.value }))} placeholder="lalamove" disabled={!!editing} />
         </FormGroup>
         <FormGroup>
@@ -351,7 +351,7 @@ const CarriersPage: React.FC = () => {
             onChange={(e) => setForm(f => ({ ...f, tracking_url_template: e.target.value }))}
             placeholder="https://example.com/track/{tracking_number}"
           />
-          <div style={{ marginTop: 4, fontSize: 11, color: '#6B7280' }}>
+          <div style={{ marginTop: 4, fontSize: 11, color: '#4B5563' }}>
             {t('admin:carriers.templateHint', 'Use {tracking_number} as the placeholder.')}
           </div>
         </FormGroup>
@@ -383,7 +383,7 @@ const CarriersPage: React.FC = () => {
 
         {/* Sprint 7 — Webhook Integration */}
         {!editing && (
-          <div style={{ marginTop: 18, padding: 14, background: '#F8FAFC', border: '1px dashed #CBD5E1', borderRadius: 10, fontSize: 13, color: '#475569' }}>
+          <div style={{ marginTop: 18, padding: 14, background: '#F1F4F8', border: '1px dashed #64748B', borderRadius: 10, fontSize: 13, color: '#475569' }}>
             <strong style={{ color: '#0A2540' }}>{t('admin:carriers.webhook.title', 'Webhook Integration')}</strong>
             <div style={{ marginTop: 6 }}>
               {t('admin:carriers.webhook.addModeHint', 'Carrier를 먼저 저장한 뒤 다시 열어서 webhook을 설정하세요. (저장 직후 자동으로 편집 모드로 전환됩니다.)')}
@@ -391,7 +391,7 @@ const CarriersPage: React.FC = () => {
           </div>
         )}
         {editing && (
-          <details style={{ marginTop: 18, border: '1px solid #E6EBF1', borderRadius: 10, padding: '12px 16px' }} open>
+          <details style={{ marginTop: 18, border: '1px solid #C7CED6', borderRadius: 10, padding: '12px 16px' }} open>
             <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#0A2540' }}>
               {t('admin:carriers.webhook.title', 'Webhook Integration')}
               {editing.webhook_secret_set && (
@@ -402,8 +402,8 @@ const CarriersPage: React.FC = () => {
             </summary>
 
             <div style={{ marginTop: 14 }}>
-              <div style={{ marginBottom: 14, padding: 10, background: '#F8FAFC', border: '1px solid #E6EBF1', borderRadius: 8 }}>
-                <div style={{ fontSize: 11, color: '#6B7280', textTransform: 'uppercase', fontWeight: 600 }}>
+              <div style={{ marginBottom: 14, padding: 10, background: '#F1F4F8', border: '1px solid #C7CED6', borderRadius: 8 }}>
+                <div style={{ fontSize: 11, color: '#4B5563', textTransform: 'uppercase', fontWeight: 600 }}>
                   {t('admin:carriers.webhook.endpointUrl', 'Endpoint URL')}
                 </div>
                 <code style={{ display: 'block', marginTop: 4, fontSize: 12, color: '#635BFF', wordBreak: 'break-all' }}>
@@ -411,16 +411,16 @@ const CarriersPage: React.FC = () => {
                 </code>
               </div>
 
-              <div style={{ marginBottom: 14, padding: 10, background: '#F8FAFC', border: '1px solid #E6EBF1', borderRadius: 8 }}>
+              <div style={{ marginBottom: 14, padding: 10, background: '#F1F4F8', border: '1px solid #C7CED6', borderRadius: 8 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
-                    <div style={{ fontSize: 11, color: '#6B7280', textTransform: 'uppercase', fontWeight: 600 }}>
+                    <div style={{ fontSize: 11, color: '#4B5563', textTransform: 'uppercase', fontWeight: 600 }}>
                       {t('admin:carriers.webhook.secret', 'Webhook Secret')}
                     </div>
                     <div style={{ marginTop: 4, fontSize: 13, color: '#0A2540' }}>
                       {editing.webhook_secret_set
                         ? <span style={{ fontFamily: 'monospace' }}>●●●●●●●●●●●●●●●●●●●●●●●●●●●●</span>
-                        : <span style={{ color: '#9CA3AF' }}>{t('admin:carriers.webhook.notSet', 'Not configured')}</span>}
+                        : <span style={{ color: '#6B7280' }}>{t('admin:carriers.webhook.notSet', 'Not configured')}</span>}
                     </div>
                   </div>
                   <ThemedButton size="small" variant="outline" onClick={() => setSecretConfirm(true)}>
@@ -474,9 +474,9 @@ const CarriersPage: React.FC = () => {
                   value={webhookForm.webhook_status_map}
                   onChange={(e) => setWebhookForm(f => ({ ...f, webhook_status_map: e.target.value }))}
                   placeholder='{"PICKED_UP":"in_transit","DELIVERED":"delivered","FAILED":"delivery_failed"}'
-                  style={{ width: '100%', minHeight: 100, fontFamily: 'Monaco, monospace', fontSize: 12, padding: 10, border: '1px solid #D1D5DB', borderRadius: 8 }}
+                  style={{ width: '100%', minHeight: 100, fontFamily: 'Monaco, monospace', fontSize: 12, padding: 10, border: '1px solid #6B7280', borderRadius: 8 }}
                 />
-                <div style={{ fontSize: 11, color: '#6B7280', marginTop: 4 }}>
+                <div style={{ fontSize: 11, color: '#4B5563', marginTop: 4 }}>
                   {t('admin:carriers.webhook.statusMapHint', 'Map carrier raw status values to PO status. Allowed targets: in_transit, delivered, delivery_failed, returned, cancelled')}
                 </div>
               </FormGroup>

@@ -19,13 +19,13 @@ interface Plan {
 
 const Container = styled.div`
   min-height: 100vh;
-  background: #FAFBFC;
+  background: #F9FAFB;
 `;
 
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -57,17 +57,17 @@ const BackButton = styled.button`
   top: 32px;
   padding: 8px 16px;
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   cursor: pointer;
   transition: all 0.2s;
   
   &:hover {
-    background: #F8FAFC;
+    background: #F1F4F8;
     color: #0A2540;
-    border-color: #CBD5E1;
+    border-color: #64748B;
   }
 `;
 
@@ -80,7 +80,7 @@ const Title = styled.h1`
 
 const Subtitle = styled.p`
   font-size: 18px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 0;
 `;
 
@@ -103,7 +103,7 @@ const BillingToggle = styled.div`
 const BillingLabel = styled.span<{ active?: boolean }>`
   font-size: 16px;
   font-weight: ${props => props.active ? '600' : '400'};
-  color: ${props => props.active ? '#0A2540' : '#6B7280'};
+  color: ${props => props.active ? '#0A2540' : '#4B5563'};
   transition: all 0.2s;
 `;
 
@@ -151,7 +151,7 @@ const PlanCard = styled.div<{ recommended?: boolean }>`
   background: white;
   border-radius: 12px;
   padding: 32px;
-  border: ${props => props.recommended ? '2px solid #635BFF' : '1px solid #E6EBF1'};
+  border: ${props => props.recommended ? '2px solid #635BFF' : '1px solid #C7CED6'};
   position: relative;
   transition: all 0.2s;
   
@@ -198,13 +198,13 @@ const PlanPrice = styled.div`
   span {
     font-size: 18px;
     font-weight: 400;
-    color: #6B7280;
+    color: #4B5563;
   }
 `;
 
 const PlanDescription = styled.p`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 0;
 `;
 
@@ -220,7 +220,7 @@ const FeatureItem = styled.li`
   gap: 12px;
   padding: 8px 0;
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
 `;
 
 const CheckIcon = styled.div`
@@ -282,21 +282,21 @@ const ComparisonTable = styled.div`
   background: white;
   border-radius: 12px;
   overflow: hidden;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
 `;
 
 const TableHeader = styled.div`
   display: grid;
   grid-template-columns: 2fr repeat(3, 1fr);
-  background: #F8FAFC;
-  border-bottom: 1px solid #E6EBF1;
+  background: #F1F4F8;
+  border-bottom: 1px solid #C7CED6;
 `;
 
 const TableHeaderCell = styled.div`
   padding: 16px;
   font-size: 14px;
   font-weight: 600;
-  color: #374151;
+  color: #1F2937;
   text-align: center;
   text-transform: capitalize;
   
@@ -308,17 +308,17 @@ const TableHeaderCell = styled.div`
 const TableRow = styled.div`
   display: grid;
   grid-template-columns: 2fr repeat(3, 1fr);
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
   
   &:hover {
-    background: #FAFBFC;
+    background: #F9FAFB;
   }
 `;
 
 const TableCell = styled.div`
   padding: 16px;
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
   text-align: center;
   display: flex;
   align-items: center;

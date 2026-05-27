@@ -99,7 +99,7 @@ const PayPalButtonWrapper = styled.div`
 const LoadingBox = styled.div`
   padding: 24px;
   text-align: center;
-  color: #6B7280;
+  color: #4B5563;
   font-size: 14px;
 `;
 

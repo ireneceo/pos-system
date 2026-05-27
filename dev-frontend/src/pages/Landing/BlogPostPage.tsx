@@ -47,7 +47,7 @@ interface BlogPost {
 }
 
 const PageContainer = styled.div`
-  background: #FAFBFC;
+  background: #F9FAFB;
 `;
 
 const HeroSection = styled.section`
@@ -77,7 +77,7 @@ const BackButton = styled.button`
   gap: 8px;
   padding: 8px 16px;
   background: white;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   color: #425466;
   font-size: 14px;
@@ -245,7 +245,7 @@ const MultiFormatTitle = styled.h2`
 
 const MultiFormatHint = styled.p`
   font-size: 13px;
-  color: #6B7C93;
+  color: #4B5563;
   margin: 0 0 20px;
   line-height: 1.5;
 `;
@@ -283,7 +283,7 @@ const UsageGuide = styled.div`
     border-top: 1px dashed #F59E0B;
     font-style: normal;
     font-size: 12px;
-    color: #6B7C93;
+    color: #4B5563;
   }
 
   b {
@@ -301,11 +301,11 @@ const AssetTip = styled.div`
 `;
 
 const AssetBlock = styled.div`
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   margin-bottom: 12px;
   overflow: hidden;
-  background: #FAFBFC;
+  background: #F9FAFB;
 
   &:last-child {
     margin-bottom: 0;
@@ -318,7 +318,7 @@ const AssetHeader = styled.div`
   align-items: center;
   padding: 10px 14px;
   background: white;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   font-size: 13px;
   font-weight: 600;
   color: #0A2540;
@@ -341,7 +341,7 @@ const AssetBody = styled.div`
 
 const CopyButton = styled.button`
   padding: 5px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   background: white;
   color: #635BFF;
   border-radius: 6px;
@@ -359,7 +359,7 @@ const CopyButton = styled.button`
 const SocialField = styled.div`
   margin-bottom: 14px;
   padding-bottom: 14px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
 
   &:last-child {
     margin-bottom: 0;
@@ -375,14 +375,14 @@ const SocialFieldHeader = styled.div`
   margin-bottom: 6px;
   font-size: 11px;
   font-weight: 700;
-  color: #6B7C93;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 `;
 
 const CopyButtonSmall = styled.button`
   padding: 3px 8px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   background: white;
   color: #635BFF;
   border-radius: 4px;
@@ -457,7 +457,7 @@ const ArticleContent = styled.div`
   }
 
   code {
-    background: #F3F4F6;
+    background: #F1F4F8;
     padding: 2px 8px;
     border-radius: 4px;
     font-family: monospace;
@@ -466,7 +466,7 @@ const ArticleContent = styled.div`
 
   pre {
     background: #1F2937;
-    color: #E5E7EB;
+    color: #C7CED6;
     padding: 24px;
     border-radius: 8px;
     overflow-x: auto;
@@ -496,7 +496,7 @@ const RelatedTitle = styled.h3`
   color: #0A2540;
   margin: 0 0 24px;
   padding-top: 48px;
-  border-top: 1px solid #E5E7EB;
+  border-top: 1px solid #C7CED6;
 `;
 
 const RelatedGrid = styled.div`
@@ -533,13 +533,13 @@ const RelatedCardTitle = styled.h4`
 
 const RelatedCardDate = styled.span`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const LoadingState = styled.div`
   text-align: center;
   padding: 120px 20px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const NotFoundState = styled.div`
@@ -553,7 +553,7 @@ const NotFoundState = styled.div`
   }
 
   p {
-    color: #6B7280;
+    color: #4B5563;
     margin: 0 0 24px;
   }
 `;

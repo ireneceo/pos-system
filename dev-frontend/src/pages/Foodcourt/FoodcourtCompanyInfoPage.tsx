@@ -55,14 +55,14 @@ const TIMEZONES = [
 ];
 
 const Container = styled.div`
-  background: #FAFBFC;
+  background: #F9FAFB;
   min-height: 100vh;
 `;
 
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   height: 80px;
   min-height: 80px;
   max-height: 80px;
@@ -98,7 +98,7 @@ const Content = styled.div`
 const Section = styled.div`
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   padding: 32px;
   margin-bottom: 24px;
 `;
@@ -109,7 +109,7 @@ const SectionTitle = styled.h2`
   color: #0A2540;
   margin: 0 0 24px 0;
   padding-bottom: 16px;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
 `;
 
 const FormGrid = styled.div`
@@ -134,7 +134,7 @@ const Label = styled.label`
   display: block;
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: #1F2937;
   margin-bottom: 8px;
 
   span {
@@ -146,7 +146,7 @@ const Label = styled.label`
 const Input = styled.input`
   width: 100%;
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.2s;
@@ -160,14 +160,14 @@ const Input = styled.input`
 
   &:disabled {
     background: #F9FAFB;
-    color: #6B7280;
+    color: #4B5563;
   }
 `;
 
 const Select = styled.select`
   width: 100%;
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;

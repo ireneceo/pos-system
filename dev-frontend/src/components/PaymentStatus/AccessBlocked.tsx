@@ -106,7 +106,7 @@ const PayButton = styled.button`
 `;
 
 const HelpSection = styled.div`
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 8px;
   padding: 20px;
   margin-top: 32px;
@@ -122,7 +122,7 @@ const HelpTitle = styled.h3`
 
 const ContactInfo = styled.div`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   line-height: 1.6;
   
   strong {
@@ -133,8 +133,8 @@ const ContactInfo = styled.div`
 
 const LogoutButton = styled.button`
   background: transparent;
-  color: #6B7280;
-  border: 1px solid #E6EBF1;
+  color: #4B5563;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   padding: 12px 24px;
   font-size: 14px;
@@ -142,9 +142,9 @@ const LogoutButton = styled.button`
   transition: all 0.2s;
   
   &:hover {
-    background: #F8FAFC;
+    background: #F1F4F8;
     color: #0A2540;
-    border-color: #CBD5E1;
+    border-color: #64748B;
   }
 `;
 

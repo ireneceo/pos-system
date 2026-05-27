@@ -88,7 +88,7 @@ const BrandInvoiceEditModal: React.FC<BrandInvoiceEditModalProps> = ({
               left: 0,
               right: 0,
               background: 'white',
-              border: '1px solid #E6EBF1',
+              border: '1px solid #C7CED6',
               borderRadius: '8px',
               maxHeight: '300px',
               overflowY: 'auto',
@@ -97,7 +97,7 @@ const BrandInvoiceEditModal: React.FC<BrandInvoiceEditModalProps> = ({
             }}>
               {editSearchResults.managers.length > 0 && (
                 <div>
-                  <div style={{padding: '8px 12px', background: '#F8FAFC', fontSize: '12px', fontWeight: '600', color: '#6B7280'}}>
+                  <div style={{padding: '8px 12px', background: '#F1F4F8', fontSize: '12px', fontWeight: '600', color: '#4B5563'}}>
                     MANAGERS
                   </div>
                   {editSearchResults.managers.map(manager => (
@@ -107,21 +107,21 @@ const BrandInvoiceEditModal: React.FC<BrandInvoiceEditModalProps> = ({
                       style={{
                         padding: '12px',
                         cursor: 'pointer',
-                        borderBottom: '1px solid #F3F4F6',
+                        borderBottom: '1px solid #F1F4F8',
                         transition: 'background 0.2s'
                       }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#F1F4F8'}
                       onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
                     >
                       <div style={{fontWeight: '500', color: '#0A2540'}}>{manager.fullName}</div>
-                      <div style={{fontSize: '13px', color: '#6B7280'}}>{manager.companyName || manager.email}</div>
+                      <div style={{fontSize: '13px', color: '#4B5563'}}>{manager.companyName || manager.email}</div>
                     </div>
                   ))}
                 </div>
               )}
               {editSearchResults.restaurants.length > 0 && (
                 <div>
-                  <div style={{padding: '8px 12px', background: '#F8FAFC', fontSize: '12px', fontWeight: '600', color: '#6B7280'}}>
+                  <div style={{padding: '8px 12px', background: '#F1F4F8', fontSize: '12px', fontWeight: '600', color: '#4B5563'}}>
                     RESTAURANTS
                   </div>
                   {editSearchResults.restaurants.map(restaurant => {
@@ -133,14 +133,14 @@ const BrandInvoiceEditModal: React.FC<BrandInvoiceEditModalProps> = ({
                         style={{
                           padding: '12px',
                           cursor: 'pointer',
-                          borderBottom: '1px solid #F3F4F6',
+                          borderBottom: '1px solid #F1F4F8',
                           transition: 'background 0.2s'
                         }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#F1F4F8'}
                         onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
                       >
                         <div style={{fontWeight: '500', color: '#0A2540'}}>{getRestaurantDisplayName(restaurant)}</div>
-                        <div style={{fontSize: '13px', color: '#6B7280'}}>
+                        <div style={{fontSize: '13px', color: '#4B5563'}}>
                           {manager ? `Manager: ${manager.fullName}` : 'No manager assigned'} • {formatEntityAddress(restaurant, (i18n.language as AppLocale) || 'en') || 'No address'}
                         </div>
                       </div>
@@ -168,7 +168,7 @@ const BrandInvoiceEditModal: React.FC<BrandInvoiceEditModalProps> = ({
                   ? (editSelectedTarget.data as Manager).fullName
                   : (editSelectedTarget.data as Restaurant).name}
               </div>
-              <div style={{fontSize: '13px', color: '#6B7280'}}>
+              <div style={{fontSize: '13px', color: '#4B5563'}}>
                 {editSelectedTarget.type === 'manager'
                   ? `${(editSelectedTarget.data as Manager).companyName} • Manager`
                   : `${formatEntityAddress(editSelectedTarget.data as Restaurant, (i18n.language as AppLocale) || 'en') || 'No address'} • Restaurant`}
@@ -182,7 +182,7 @@ const BrandInvoiceEditModal: React.FC<BrandInvoiceEditModalProps> = ({
               style={{
                 background: 'none',
                 border: 'none',
-                color: '#6B7280',
+                color: '#4B5563',
                 cursor: 'pointer',
                 fontSize: '16px',
                 padding: '4px'

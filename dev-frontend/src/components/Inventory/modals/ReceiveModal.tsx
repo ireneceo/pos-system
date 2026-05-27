@@ -79,7 +79,7 @@ const ReceiveModal: React.FC<Props> = ({
           />
         </UIFormGroup>
 
-        <div style={{ borderTop: '1px solid #E5E7EB', margin: '16px 0', paddingTop: '16px' }}>
+        <div style={{ borderTop: '1px solid #C7CED6', margin: '16px 0', paddingTop: '16px' }}>
           <div style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540', marginBottom: '12px' }}>
             Batch Details (Optional)
           </div>
@@ -107,7 +107,7 @@ const ReceiveModal: React.FC<Props> = ({
               value={expiryDate}
               onChange={(v) => onExpiryDateChange(v)}
             />
-            <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+            <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '4px' }}>
               Items with earlier expiry dates will be used first (FIFO)
             </div>
           </UIFormGroup>

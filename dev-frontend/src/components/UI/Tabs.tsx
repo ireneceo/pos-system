@@ -7,7 +7,7 @@ export const TabContainer = styled.div`
   display: flex;
   gap: 24px;
   margin-bottom: 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 
@@ -16,16 +16,16 @@ export const TabContainer = styled.div`
   }
 
   &::-webkit-scrollbar-track {
-    background: #F8FAFC;
+    background: #F1F4F8;
   }
 
   &::-webkit-scrollbar-thumb {
-    background: #CBD5E1;
+    background: #64748B;
     border-radius: 3px;
   }
 
   &::-webkit-scrollbar-thumb:hover {
-    background: #94A3B8;
+    background: #64748B;
   }
 
   @media (max-width: 768px) {
@@ -44,7 +44,7 @@ export const Tab = styled.button<{ active?: boolean }>`
   padding: 12px 0;
   font-size: 14px;
   font-weight: 500;
-  color: ${props => props.active ? '#635BFF' : '#6B7C93'};
+  color: ${props => props.active ? '#635BFF' : '#4B5563'};
   background: none;
   border: none;
   cursor: pointer;

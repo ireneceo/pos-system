@@ -97,7 +97,7 @@ export default InvoiceHistoryModal;
 const Empty = styled.div`
   text-align: center;
   padding: 60px 24px;
-  color: #6B7C93;
+  color: #4B5563;
 `;
 const EmptyIcon = styled.div`font-size: 48px; opacity: 0.6; margin-bottom: 12px;`;
 const EmptyTitle = styled.div`font-size: 16px; font-weight: 600; color: #0A2540; margin-bottom: 6px;`;
@@ -133,7 +133,7 @@ const Dot = styled.div`
 const Line = styled.div`
   width: 2px;
   flex: 1;
-  background: #E6EBF1;
+  background: #C7CED6;
   margin-top: 4px;
   min-height: 20px;
 `;
@@ -161,16 +161,16 @@ const Author = styled.div`
 
 const Time = styled.div`
   font-size: 12px;
-  color: #6B7C93;
+  color: #4B5563;
 `;
 
 const Reason = styled.div`
   font-size: 13px;
-  color: #4B5563;
+  color: #374151;
   font-style: italic;
   margin-bottom: 8px;
   padding: 6px 10px;
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-left: 3px solid #635BFF;
   border-radius: 4px;
 `;
@@ -179,8 +179,8 @@ const ChangeList = styled.div`
   display: flex;
   flex-direction: column;
   gap: 6px;
-  background: #FAFBFC;
-  border: 1px solid #E6EBF1;
+  background: #F9FAFB;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   padding: 10px 12px;
 `;
@@ -221,7 +221,7 @@ const From = styled.span`
 `;
 
 const Arrow = styled.span`
-  color: #9CA3AF;
+  color: #6B7280;
   font-size: 12px;
 `;
 
@@ -234,6 +234,6 @@ const To = styled.span`
 
 const Subtle = styled.div`
   font-size: 12px;
-  color: #9CA3AF;
+  color: #6B7280;
   font-style: italic;
 `;

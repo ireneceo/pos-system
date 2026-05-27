@@ -6,7 +6,7 @@ import { useMobileOrder } from '../contexts/MobileOrderContext';
 
 const Container = styled.div`
   min-height: 100vh;
-  background: #FAFBFC;
+  background: #F9FAFB;
   display: flex;
   flex-direction: column;
   padding: 24px;
@@ -44,7 +44,7 @@ const Title = styled.h1`
 
 const Subtitle = styled.p`
   font-size: 15px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 0;
   line-height: 1.5;
 `;
@@ -63,14 +63,14 @@ const InputLabel = styled.label`
   display: block;
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: #1F2937;
   margin-bottom: 8px;
 `;
 
 const Input = styled.input`
   width: 100%;
   padding: 16px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   font-size: 16px;
   box-sizing: border-box;
@@ -84,7 +84,7 @@ const Input = styled.input`
   }
 
   &::placeholder {
-    color: #9CA3AF;
+    color: #6B7280;
   }
 `;
 
@@ -106,7 +106,7 @@ const SubmitButton = styled.button`
   }
 
   &:disabled {
-    background: #D1D5DB;
+    background: #6B7280;
     cursor: not-allowed;
   }
 `;
@@ -142,7 +142,7 @@ const SuccessTitle = styled.h2`
 
 const SuccessMessage = styled.p`
   font-size: 15px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 0 0 32px 0;
   line-height: 1.6;
 `;
@@ -178,7 +178,7 @@ const ErrorTitle = styled.h2`
 
 const ErrorMessage = styled.p`
   font-size: 15px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 0 0 32px 0;
   line-height: 1.6;
 `;

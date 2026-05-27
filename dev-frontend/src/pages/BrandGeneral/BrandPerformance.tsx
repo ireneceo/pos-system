@@ -46,7 +46,7 @@ const DropdownContainer = styled.div`
 
 const DropdownInput = styled.input`
   padding: 8px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   background: white;
@@ -61,7 +61,7 @@ const DropdownInput = styled.input`
   }
 
   &:hover {
-    border-color: #D1D5DB;
+    border-color: #6B7280;
   }
 `;
 
@@ -71,7 +71,7 @@ const DropdownMenu = styled.div<{ show: boolean }>`
   left: 0;
   right: 0;
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   max-height: 200px;
   overflow-y: auto;
@@ -87,7 +87,7 @@ const DropdownItem = styled.div`
   transition: background-color 0.2s;
 
   &:hover {
-    background: #F8FAFC;
+    background: #F1F4F8;
   }
 
   &:last-child {
@@ -104,7 +104,7 @@ const ItemName = styled.div`
 
 const ItemDetails = styled.div`
   font-size: 11px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const ClearButton = styled.button`
@@ -115,7 +115,7 @@ const ClearButton = styled.button`
   background: none;
   border: none;
   font-size: 16px;
-  color: #9CA3AF;
+  color: #6B7280;
   cursor: pointer;
   padding: 0;
   width: 20px;
@@ -125,13 +125,13 @@ const ClearButton = styled.button`
   justify-content: center;
 
   &:hover {
-    color: #6B7280;
+    color: #4B5563;
   }
 `;
 
 const SortSelect = styled.select`
   padding: 8px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 13px;
   background: white;
@@ -147,7 +147,7 @@ const SortSelect = styled.select`
 const SortLabel = styled.span`
   font-size: 13px;
   font-weight: 500;
-  color: #6B7280;
+  color: #4B5563;
   margin-right: 4px;
 `;
 
@@ -162,7 +162,7 @@ const RestaurantCard = styled.div`
   background: white;
   border-radius: 12px;
   padding: 24px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   transition: all 0.2s;
 
   &:hover {
@@ -187,8 +187,8 @@ const RestaurantName = styled.h3`
 
 const BrandBadge = styled.span`
   font-size: 12px;
-  color: #6B7280;
-  background: #F3F4F6;
+  color: #4B5563;
+  background: #F1F4F8;
   padding: 4px 8px;
   border-radius: 4px;
 `;
@@ -198,7 +198,7 @@ const MetricRow = styled.div`
   justify-content: space-between;
   align-items: center;
   padding: 10px 0;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
 
   &:last-child {
     border-bottom: none;
@@ -207,7 +207,7 @@ const MetricRow = styled.div`
 
 const MetricLabel = styled.span`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const MetricValue = styled.div`
@@ -232,7 +232,7 @@ const RankingSection = styled.div`
   background: white;
   border-radius: 12px;
   padding: 24px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
 `;
 
 const SectionTitle = styled.h2`
@@ -246,7 +246,7 @@ const RankingItem = styled.div`
   display: flex;
   align-items: center;
   padding: 16px 0;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
 
   &:last-child {
     border-bottom: none;
@@ -261,9 +261,9 @@ const RankNumber = styled.div<{ rank: number }>`
     if (props.rank === 1) return '#FFD700';
     if (props.rank === 2) return '#C0C0C0';
     if (props.rank === 3) return '#CD7F32';
-    return '#E5E7EB';
+    return '#C7CED6';
   }};
-  color: ${props => props.rank <= 3 ? 'white' : '#6B7280'};
+  color: ${props => props.rank <= 3 ? 'white' : '#4B5563'};
   display: flex;
   align-items: center;
   justify-content: center;
@@ -290,7 +290,7 @@ const RankStats = styled.div`
   flex-wrap: wrap;
   gap: 12px;
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const RankStat = styled.span`
@@ -935,7 +935,7 @@ const BrandPerformance: React.FC = () => {
                 {sortedRestaurants.map((restaurant) => (
                   <RestaurantCard key={restaurant.id}>
                     <RestaurantHeader>
-                      <RestaurantName>{restaurant.name}{restaurant.branch_name && <span style={{ fontSize: '12px', fontWeight: 500, color: '#6B7C93', marginLeft: '6px' }}>({restaurant.branch_name})</span>}</RestaurantName>
+                      <RestaurantName>{restaurant.name}{restaurant.branch_name && <span style={{ fontSize: '12px', fontWeight: 500, color: '#4B5563', marginLeft: '6px' }}>({restaurant.branch_name})</span>}</RestaurantName>
                       <BrandBadge>{restaurant.brandCode}</BrandBadge>
                     </RestaurantHeader>
                     <MetricRow>

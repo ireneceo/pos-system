@@ -46,7 +46,7 @@ const Container = styled.div`
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -68,7 +68,7 @@ const Header = styled.div`
 
 const Content = styled.div`
   padding: 32px;
-  background: #FAFBFC;
+  background: #F9FAFB;
   min-height: calc(100vh - 120px);
 
   @media (max-width: 768px) {
@@ -113,13 +113,13 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
     }
   ` : `
     background: white;
-    color: #6B7280;
-    border: 1px solid #E6EBF1;
+    color: #4B5563;
+    border: 1px solid #C7CED6;
 
     &:hover {
-      background: #F8FAFC;
+      background: #F1F4F8;
       color: #0A2540;
-      border-color: #CBD5E1;
+      border-color: #64748B;
     }
   `}
 `;
@@ -134,7 +134,7 @@ const RestaurantCard = styled.div`
   background: white;
   border-radius: 12px;
   padding: 24px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   transition: all 0.2s;
   cursor: pointer;
   display: flex;
@@ -168,8 +168,8 @@ const RestaurantName = styled.h3`
 const BranchBadge = styled.span`
   font-size: 12px;
   font-weight: 500;
-  color: #6B7C93;
-  background: #F3F4F6;
+  color: #4B5563;
+  background: #F1F4F8;
   padding: 1px 8px;
   border-radius: 4px;
   margin-left: 6px;
@@ -178,7 +178,7 @@ const BranchBadge = styled.span`
 
 const RestaurantMeta = styled.div`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
   margin-bottom: 2px;
 `;
 
@@ -195,9 +195,9 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'trial': return '#DBEAFE';
       case 'expired': return '#FEF2F2';
       case 'suspended': return '#FEF3C7';
-      case 'cancelled': return '#F3F4F6';
+      case 'cancelled': return '#F1F4F8';
       case 'inactive': return '#FEF2F2';
-      default: return '#F3F4F6';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
@@ -206,9 +206,9 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'trial': return '#1E40AF';
       case 'expired': return '#DC2626';
       case 'suspended': return '#D97706';
-      case 'cancelled': return '#6B7280';
+      case 'cancelled': return '#4B5563';
       case 'inactive': return '#DC2626';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 `;
@@ -234,7 +234,7 @@ const ContractBadge = styled.span<{ $bg: string; $text: string }>`
 
 const ContractMeta = styled.div`
   font-size: 11px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 4px;
   letter-spacing: 0.2px;
   span.num { color: #635BFF; font-weight: 600; }
@@ -253,16 +253,16 @@ const PlanBadge = styled.span<{ plan: string }>`
     switch(props.plan) {
       case 'enterprise': return '#EDE9FE';
       case 'professional': return '#DBEAFE';
-      case 'basic': return '#F3F4F6';
-      default: return '#F3F4F6';
+      case 'basic': return '#F1F4F8';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
     switch(props.plan) {
       case 'enterprise': return '#5B21B6';
       case 'professional': return '#1E40AF';
-      case 'basic': return '#6B7280';
-      default: return '#6B7280';
+      case 'basic': return '#4B5563';
+      default: return '#4B5563';
     }
   }};
 `;
@@ -273,7 +273,7 @@ const MetricsGrid = styled.div`
   gap: 16px;
   margin-top: 16px;
   padding-top: 16px;
-  border-top: 1px solid #F3F4F6;
+  border-top: 1px solid #F1F4F8;
 `;
 
 const Metric = styled.div`
@@ -288,7 +288,7 @@ const MetricValue = styled.div`
 
 const MetricLabel = styled.div`
   font-size: 11px;
-  color: #6B7280;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-top: 2px;
@@ -302,7 +302,7 @@ const RatingContainer = styled.div`
 `;
 
 const Star = styled.span<{ filled: boolean }>`
-  color: ${props => props.filled ? '#FFC107' : '#E5E7EB'};
+  color: ${props => props.filled ? '#FFC107' : '#C7CED6'};
   font-size: 14px;
 `;
 
@@ -317,9 +317,9 @@ const ActionButton = styled.button`
   flex: 1;
   padding: 8px 12px;
   background: transparent;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
-  color: #6B7280;
+  color: #4B5563;
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
@@ -348,13 +348,13 @@ const PageFilterWrapper = styled.div`
 const PageSearchInput = styled.input`
   flex: 0 1 250px;
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
 
   &::placeholder {
-    color: #9CA3AF;
+    color: #6B7280;
   }
 
   &:focus {
@@ -372,7 +372,7 @@ const PageSearchInput = styled.input`
 const PageFilterSelect = styled.select`
   flex: 0 0 150px;
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -406,12 +406,12 @@ const FormGroup = styled.div`
 const FormLabel = styled.label`
   font-size: 14px;
   font-weight: 600;
-  color: #374151;
+  color: #1F2937;
 `;
 
 const FormInput = styled.input`
   padding: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.2s;
@@ -424,13 +424,13 @@ const FormInput = styled.input`
 
   &:disabled {
     background: #F9FAFB;
-    color: #6B7280;
+    color: #4B5563;
   }
 `;
 
 const FormSelect = styled.select`
   padding: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -445,7 +445,7 @@ const FormSelect = styled.select`
 
 const FormTextarea = styled.textarea`
   padding: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   resize: vertical;
@@ -470,7 +470,7 @@ const DropdownContainer = styled.div`
 
 const DropdownInput = styled.input`
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -491,7 +491,7 @@ const DropdownMenu = styled.div<{ show: boolean }>`
   left: 0;
   right: 0;
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   max-height: 200px;
   overflow-y: auto;
@@ -507,7 +507,7 @@ const DropdownItem = styled.div`
   transition: background-color 0.2s;
 
   &:hover {
-    background: #F8FAFC;
+    background: #F1F4F8;
   }
 
   &:last-child {
@@ -523,7 +523,7 @@ const ItemName = styled.div`
 
 const ItemDetails = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const OwnerRestaurantsPage: React.FC = () => {
@@ -1008,7 +1008,7 @@ const OwnerRestaurantsPage: React.FC = () => {
 
                   <RatingContainer>
                     {renderStars(restaurant.rating)}
-                    <span style={{ fontSize: '12px', color: '#6B7280', marginLeft: '4px' }}>
+                    <span style={{ fontSize: '12px', color: '#4B5563', marginLeft: '4px' }}>
                       {restaurant.rating} &middot; Last order: {restaurant.lastOrder}
                     </span>
                   </RatingContainer>
@@ -1065,23 +1065,23 @@ const OwnerRestaurantsPage: React.FC = () => {
                       display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer',
                       padding: '8px 16px', borderRadius: '8px',
                       background: adminAction === 'create' ? '#F0EFFF' : '#F9FAFB',
-                      border: adminAction === 'create' ? '2px solid #635BFF' : '2px solid #E5E7EB'
+                      border: adminAction === 'create' ? '2px solid #635BFF' : '2px solid #C7CED6'
                     }}>
                       <input type="radio" name="adminActionOwner" checked={adminAction === 'create'}
                         onChange={() => { setAdminAction('create'); setSelectedAdmin(null); }}
                         style={{ accentColor: '#635BFF' }} />
-                      <span style={{fontSize: '14px', fontWeight: '500', color: '#374151'}}>{t('owner:ownerRestaurantsPage.createNewAccount')}</span>
+                      <span style={{fontSize: '14px', fontWeight: '500', color: '#1F2937'}}>{t('owner:ownerRestaurantsPage.createNewAccount')}</span>
                     </label>
                     <label style={{
                       display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer',
                       padding: '8px 16px', borderRadius: '8px',
                       background: adminAction === 'assign' ? '#F0EFFF' : '#F9FAFB',
-                      border: adminAction === 'assign' ? '2px solid #635BFF' : '2px solid #E5E7EB'
+                      border: adminAction === 'assign' ? '2px solid #635BFF' : '2px solid #C7CED6'
                     }}>
                       <input type="radio" name="adminActionOwner" checked={adminAction === 'assign'}
                         onChange={() => { setAdminAction('assign'); setNewAdminData({ fullName: '', email: '', username: '', password: '', phone: '' }); }}
                         style={{ accentColor: '#635BFF' }} />
-                      <span style={{fontSize: '14px', fontWeight: '500', color: '#374151'}}>{t('owner:ownerRestaurantsPage.selectExistingUser')}</span>
+                      <span style={{fontSize: '14px', fontWeight: '500', color: '#1F2937'}}>{t('owner:ownerRestaurantsPage.selectExistingUser')}</span>
                     </label>
                   </div>
                 </div>
@@ -1132,7 +1132,7 @@ const OwnerRestaurantsPage: React.FC = () => {
                         onBlur={() => setTimeout(() => setShowAdminDropdown(false), 200)} />
                       <DropdownMenu show={showAdminDropdown}>
                         {adminCandidates.length === 0 ? (
-                          <div style={{padding: '12px 16px', color: '#6B7280', fontSize: '13px'}}>
+                          <div style={{padding: '12px 16px', color: '#4B5563', fontSize: '13px'}}>
                             {adminSearchQuery.length > 0 ? 'No available users found' : 'Type to search users...'}
                           </div>
                         ) : (
@@ -1155,7 +1155,7 @@ const OwnerRestaurantsPage: React.FC = () => {
                           <div style={{fontWeight: '600', color: '#1F2937', fontSize: '14px'}}>
                             {selectedAdmin.full_name || selectedAdmin.username}
                           </div>
-                          <div style={{fontSize: '12px', color: '#6B7280'}}>
+                          <div style={{fontSize: '12px', color: '#4B5563'}}>
                             {selectedAdmin.email} &middot; {selectedAdmin.role}
                           </div>
                         </div>
@@ -1327,7 +1327,7 @@ const OwnerRestaurantsPage: React.FC = () => {
                 <h3 style={{ margin: '0 0 12px', fontSize: '18px', fontWeight: '600', color: '#0A2540' }}>
                   Are you sure you want to remove this restaurant?
                 </h3>
-                <p style={{ margin: 0, fontSize: '14px', color: '#6B7280', lineHeight: '1.5' }}>
+                <p style={{ margin: 0, fontSize: '14px', color: '#4B5563', lineHeight: '1.5' }}>
                   <strong style={{ color: '#DC2626' }}>{restaurantToDelete.name}</strong> will be unlinked from your account.
                   <br />The restaurant itself will not be deleted.
                 </p>

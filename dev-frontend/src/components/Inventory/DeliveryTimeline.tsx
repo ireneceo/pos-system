@@ -21,7 +21,7 @@ export interface DeliveryTimelineProps {
 
 const Wrap = styled.div<{ compact?: boolean }>`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   padding: ${p => p.compact ? '16px' : '20px 24px'};
 `;
@@ -88,9 +88,9 @@ const Step = styled.div<{ done?: boolean; active?: boolean; cancelled?: boolean 
     width: 14px;
     height: 14px;
     border-radius: 50%;
-    background: ${p => p.cancelled ? '#DC2626' : p.done ? '#10B981' : p.active ? '#635BFF' : '#E6EBF1'};
+    background: ${p => p.cancelled ? '#DC2626' : p.done ? '#10B981' : p.active ? '#635BFF' : '#C7CED6'};
     border: 2px solid white;
-    box-shadow: 0 0 0 2px ${p => p.cancelled ? '#DC2626' : p.done ? '#10B981' : p.active ? '#635BFF' : '#E6EBF1'};
+    box-shadow: 0 0 0 2px ${p => p.cancelled ? '#DC2626' : p.done ? '#10B981' : p.active ? '#635BFF' : '#C7CED6'};
     z-index: 1;
   }
 
@@ -101,7 +101,7 @@ const Step = styled.div<{ done?: boolean; active?: boolean; cancelled?: boolean 
     left: 50%;
     width: 100%;
     height: 2px;
-    background: ${p => p.done ? '#10B981' : '#E6EBF1'};
+    background: ${p => p.done ? '#10B981' : '#C7CED6'};
     z-index: 0;
 
     @media (max-width: 768px) {
@@ -121,12 +121,12 @@ const Step = styled.div<{ done?: boolean; active?: boolean; cancelled?: boolean 
 const StepLabel = styled.div<{ active?: boolean; done?: boolean; cancelled?: boolean }>`
   font-size: 12px;
   font-weight: ${p => p.active || p.done ? 600 : 500};
-  color: ${p => p.cancelled ? '#DC2626' : p.done ? '#0A2540' : p.active ? '#635BFF' : '#9CA3AF'};
+  color: ${p => p.cancelled ? '#DC2626' : p.done ? '#0A2540' : p.active ? '#635BFF' : '#6B7280'};
 `;
 
 const StepTime = styled.div`
   font-size: 11px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 4px;
 `;
 
@@ -134,18 +134,18 @@ const NotesList = styled.ul`
   list-style: none;
   margin: 16px 0 0;
   padding: 0;
-  border-top: 1px dashed #E6EBF1;
+  border-top: 1px dashed #C7CED6;
   padding-top: 12px;
 
   li {
     display: flex;
     gap: 12px;
     font-size: 12px;
-    color: #6B7280;
+    color: #4B5563;
     padding: 4px 0;
   }
   li time {
-    color: #9CA3AF;
+    color: #6B7280;
     flex-shrink: 0;
     width: 130px;
     font-feature-settings: 'tnum';
@@ -240,7 +240,7 @@ const DeliveryTimeline: React.FC<DeliveryTimelineProps> = ({
       )}
 
       {estimated_arrival && (
-        <div style={{ marginTop: 14, fontSize: 12, color: '#6B7280', textAlign: 'center' }}>
+        <div style={{ marginTop: 14, fontSize: 12, color: '#4B5563', textAlign: 'center' }}>
           {t('delivery.estimatedArrival', 'Estimated arrival:')} <strong style={{ color: '#0A2540' }}>{estimated_arrival}</strong>
         </div>
       )}

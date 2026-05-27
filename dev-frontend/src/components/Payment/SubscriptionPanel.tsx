@@ -43,7 +43,7 @@ interface Props {
 
 const Card = styled.div`
   background: #fff;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   padding: 24px;
   margin-bottom: 16px;
@@ -67,7 +67,7 @@ const HeaderTitle = styled.h3`
 const HeaderSub = styled.p`
   margin: 0;
   font-size: 13px;
-  color: #6B7C93;
+  color: #4B5563;
 `;
 
 const StatusBadge = styled.span<{ $status: Subscription['status'] }>`
@@ -80,11 +80,11 @@ const StatusBadge = styled.span<{ $status: Subscription['status'] }>`
   letter-spacing: 0.5px;
   background: ${p => ({
     active: '#DCFCE7', trialing: '#DBEAFE', past_due: '#FEF3C7',
-    canceled: '#F3F4F6', paused: '#F3F4F6', incomplete: '#FEE2E2'
+    canceled: '#F1F4F8', paused: '#F1F4F8', incomplete: '#FEE2E2'
   } as any)[p.$status]};
   color: ${p => ({
     active: '#15803D', trialing: '#1E40AF', past_due: '#92400E',
-    canceled: '#6B7280', paused: '#6B7280', incomplete: '#B91C1C'
+    canceled: '#4B5563', paused: '#4B5563', incomplete: '#B91C1C'
   } as any)[p.$status]};
 `;
 
@@ -96,7 +96,7 @@ const InfoGrid = styled.dl`
   font-size: 13px;
 `;
 const Label = styled.dt`
-  color: #6B7C93;
+  color: #4B5563;
   font-weight: 500;
 `;
 const Value = styled.dd`
@@ -125,8 +125,8 @@ const Button = styled.button<{ $variant?: 'primary' | 'secondary' | 'danger' }>`
     background: #fff; color: #B91C1C; border-color: #FECACA;
     &:hover:not(:disabled) { background: #FEF2F2; }
   ` : p.$variant === 'secondary' ? `
-    background: #fff; color: #0A2540; border-color: #E6EBF1;
-    &:hover:not(:disabled) { background: #F6F9FC; }
+    background: #fff; color: #0A2540; border-color: #C7CED6;
+    &:hover:not(:disabled) { background: #F4F6F9; }
   ` : `
     background: #635BFF; color: #fff; border-color: #635BFF;
     &:hover:not(:disabled) { opacity: 0.92; }
@@ -137,10 +137,10 @@ const Button = styled.button<{ $variant?: 'primary' | 'secondary' | 'danger' }>`
 
 const Empty = styled.div`
   padding: 24px;
-  background: #F6F9FC;
+  background: #F4F6F9;
   border-radius: 8px;
   text-align: center;
-  color: #6B7C93;
+  color: #4B5563;
   font-size: 14px;
 `;
 

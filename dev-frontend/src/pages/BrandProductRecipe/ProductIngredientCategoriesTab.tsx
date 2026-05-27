@@ -52,7 +52,7 @@ const CategoryIcon = styled.div`
   width: 48px;
   height: 48px;
   border-radius: 8px;
-  background: #F3F4F6;
+  background: #F1F4F8;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -75,12 +75,12 @@ const CategoryMeta = styled.div`
   display: flex;
   gap: 16px;
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const CategoryDescription = styled.div`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 4px;
 `;
 
@@ -93,8 +93,8 @@ const IconButton = styled.button`
   width: 36px;
   height: 36px;
   border-radius: 6px;
-  border: 1px solid #E6EBF1;
-  background: #F6F9FC;
+  border: 1px solid #C7CED6;
+  background: #F4F6F9;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -123,7 +123,7 @@ const IconButton = styled.button`
   svg {
     width: 18px;
     height: 18px;
-    color: #6B7280;
+    color: #4B5563;
     transition: color 0.15s;
   }
 `;
@@ -147,7 +147,7 @@ const EmptyTitle = styled.h4`
 
 const EmptyDescription = styled.p`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 0 0 16px 0;
 `;
 
@@ -180,8 +180,8 @@ const EmojiOption = styled.button<{ selected?: boolean }>`
   width: 100%;
   aspect-ratio: 1;
   border-radius: 4px;
-  background: ${props => props.selected ? '#E5E7EB' : 'white'};
-  border: 1px solid ${props => props.selected ? '#9CA3AF' : '#E5E7EB'};
+  background: ${props => props.selected ? '#C7CED6' : 'white'};
+  border: 1px solid ${props => props.selected ? '#6B7280' : '#C7CED6'};
   cursor: pointer;
   transition: all 0.2s;
   font-size: 20px;
@@ -190,7 +190,7 @@ const EmojiOption = styled.button<{ selected?: boolean }>`
   justify-content: center;
 
   &:hover {
-    background: ${props => props.selected ? '#E5E7EB' : '#F3F4F6'};
+    background: ${props => props.selected ? '#C7CED6' : '#F1F4F8'};
   }
 `;
 
@@ -365,7 +365,7 @@ const ProductIngredientCategoriesTab: React.FC<ProductIngredientCategoriesTabPro
 
   return (
       <Container>
-        <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>{t('brand:productIngredientCategoriesTab.loading')}</div>
+        <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>{t('brand:productIngredientCategoriesTab.loading')}</div>
       </Container>
     );
   }

@@ -288,7 +288,7 @@ const Title = styled.h3`
 const Desc = styled.div`
   font-size: 13px;
   line-height: 1.55;
-  color: #4B5563;
+  color: #374151;
   margin-bottom: 16px;
 `;
 
@@ -317,15 +317,15 @@ const baseBtn = `
 const SkipBtn = styled.button`
   ${baseBtn}
   background: transparent;
-  color: #9CA3AF;
-  &:hover { color: #4B5563; }
+  color: #6B7280;
+  &:hover { color: #374151; }
 `;
 
 const SecondaryBtn = styled.button`
   ${baseBtn}
-  background: #F3F4F6;
-  color: #4B5563;
-  &:hover { background: #E5E7EB; }
+  background: #F1F4F8;
+  color: #374151;
+  &:hover { background: #C7CED6; }
 `;
 
 const PrimaryBtn = styled.button`

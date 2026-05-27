@@ -40,6 +40,8 @@ export interface Order {
   orderSource: 'pos' | 'mobile';
   notes?: string;
   tableNumber?: string;
+  // 2026-05-27: Floor Plan v2 tables[].id — disambiguates same tableNumber across zones
+  floorPlanTableId?: string;
 }
 
 interface OrderContextType {
@@ -124,6 +126,7 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
         customer_name: order.customer.name,
         customer_phone: order.customer.phone,
         table_number: order.tableNumber || null,
+        floor_plan_table_id: order.floorPlanTableId || null,
         pager_number: (order as any).pagerNumber || null,
         total_amount: order.total,
         subtotal: order.subtotal,

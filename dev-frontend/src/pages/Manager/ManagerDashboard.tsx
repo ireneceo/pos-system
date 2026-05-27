@@ -33,7 +33,7 @@ const Container = styled.div`
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -55,7 +55,7 @@ const Header = styled.div`
 
 const Content = styled.div`
   padding: 32px;
-  background: #FAFBFC;
+  background: #F9FAFB;
   min-height: calc(100vh - 120px);
   
   @media (max-width: 768px) {
@@ -95,7 +95,7 @@ const RestaurantCard = styled.div`
   background: white;
   border-radius: 12px;
   padding: 24px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   transition: all 0.2s;
   cursor: pointer;
   
@@ -124,7 +124,7 @@ const RestaurantName = styled.h3`
 
 const RestaurantLocation = styled.p`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const StatusBadge = styled.span<{ status: string }>`
@@ -137,7 +137,7 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'active': return '#ECFDF5';
       case 'inactive': return '#FEF2F2';
       case 'maintenance': return '#FEF3C7';
-      default: return '#F3F4F6';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
@@ -145,7 +145,7 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'active': return '#059669';
       case 'inactive': return '#DC2626';
       case 'maintenance': return '#D97706';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 `;
@@ -156,7 +156,7 @@ const RestaurantStats = styled.div`
   gap: 16px;
   margin-top: 20px;
   padding-top: 20px;
-  border-top: 1px solid #F3F4F6;
+  border-top: 1px solid #F1F4F8;
 `;
 
 const RestaurantStat = styled.div`
@@ -172,7 +172,7 @@ const RestaurantDashboardStatValue = styled.div`
 
 const RestaurantDashboardStatLabel = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const RatingContainer = styled.div`
@@ -183,7 +183,7 @@ const RatingContainer = styled.div`
 `;
 
 const Star = styled.span<{ filled: boolean }>`
-  color: ${props => props.filled ? '#FFC107' : '#E5E7EB'};
+  color: ${props => props.filled ? '#FFC107' : '#C7CED6'};
   font-size: 16px;
 `;
 
@@ -214,7 +214,7 @@ const QuickActions = styled.div`
 
 const QuickActionCard = styled.div`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   padding: 16px;
   text-align: center;
@@ -241,7 +241,7 @@ const QuickActionIcon = styled.div`
   svg {
     width: 32px;
     height: 32px;
-    fill: #6B7280;
+    fill: #4B5563;
     transition: fill 0.2s;
   }
 `;
@@ -249,7 +249,7 @@ const QuickActionIcon = styled.div`
 const QuickActionText = styled.div`
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: #1F2937;
 `;
 
 const ManagerDashboard: React.FC = () => {
@@ -410,7 +410,7 @@ const ManagerDashboard: React.FC = () => {
             <RestaurantCard key={restaurant.id} onClick={() => handleRestaurantClick(restaurant.id)}>
               <RestaurantHeader>
                 <RestaurantInfo>
-                  <RestaurantName>{restaurant.name}{restaurant.branchName && <span style={{ fontSize: '12px', fontWeight: 500, color: '#6B7C93', background: '#F3F4F6', padding: '1px 8px', borderRadius: '4px', marginLeft: '6px' }}>{restaurant.branchName}</span>}</RestaurantName>
+                  <RestaurantName>{restaurant.name}{restaurant.branchName && <span style={{ fontSize: '12px', fontWeight: 500, color: '#4B5563', background: '#F1F4F8', padding: '1px 8px', borderRadius: '4px', marginLeft: '6px' }}>{restaurant.branchName}</span>}</RestaurantName>
                   <RestaurantLocation>{restaurant.location}</RestaurantLocation>
                 </RestaurantInfo>
                 <StatusBadge status={restaurant.status}>
@@ -420,7 +420,7 @@ const ManagerDashboard: React.FC = () => {
               
               <RatingContainer>
                 {renderStars(restaurant.rating)}
-                <span style={{ fontSize: '14px', color: '#6B7280', marginLeft: '8px' }}>
+                <span style={{ fontSize: '14px', color: '#4B5563', marginLeft: '8px' }}>
                   {restaurant.rating}
                 </span>
               </RatingContainer>

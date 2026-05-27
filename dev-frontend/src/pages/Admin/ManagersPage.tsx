@@ -75,7 +75,7 @@ const CompanyName = styled.div`
 
 const ContactInfo = styled.div`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const StatusBadge = styled.span<{ status: string }>`
@@ -89,14 +89,14 @@ const StatusBadge = styled.span<{ status: string }>`
     switch(props.status) {
       case 'active': return '#ECFDF5';
       case 'inactive': return '#FEE2E2';
-      default: return '#F3F4F6';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
     switch(props.status) {
       case 'active': return '#059669';
       case 'inactive': return '#DC2626';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 `;
@@ -105,7 +105,7 @@ const IconSymbol = styled.span`
   font-size: 13px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   font-weight: 500;
-  color: #6B7C93;
+  color: #4B5563;
   display: inline-block;
   line-height: 1;
 `;
@@ -132,7 +132,7 @@ const FormLabel = styled.label`
   display: block;
   font-size: 13px;
   font-weight: 500;
-  color: #6B7C93;
+  color: #4B5563;
   margin-bottom: 8px;
 `;
 
@@ -141,7 +141,7 @@ const FormInput = styled.input`
   max-width: 100%;
   box-sizing: border-box;
   padding: 8px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   transition: all 0.15s;
@@ -154,12 +154,12 @@ const FormInput = styled.input`
 
   &:disabled {
     background: #F9FAFB;
-    color: #6B7280;
+    color: #4B5563;
     cursor: not-allowed;
   }
 
   &::placeholder {
-    color: #9CA3AF;
+    color: #6B7280;
   }
 `;
 
@@ -168,7 +168,7 @@ const FormTextarea = styled.textarea`
   max-width: 100%;
   box-sizing: border-box;
   padding: 8px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   min-height: 80px;
@@ -1064,13 +1064,13 @@ const ManagersPage: React.FC = () => {
                   </DataTableCell>
 
                   <DataTableCell data-label={t('admin:managersPage.revenueRm')} align="right">
-                    <div style={{ fontSize: '14px', color: '#374151', fontWeight: '600' }}>
+                    <div style={{ fontSize: '14px', color: '#1F2937', fontWeight: '600' }}>
                       {manager.totalRevenue.toLocaleString()}
                     </div>
                   </DataTableCell>
 
                   <DataTableCell data-label={t('admin:managersPage.lastActive')}>
-                    <div style={{ fontSize: '14px', color: '#6B7280' }}>
+                    <div style={{ fontSize: '14px', color: '#4B5563' }}>
                       {manager.lastActive}
                     </div>
                   </DataTableCell>
@@ -1260,7 +1260,7 @@ const ManagersPage: React.FC = () => {
 
                 {/* Subscription Settings - Show for General roles and Owner (unified v3.27) */}
                 {(newManager.role === 'Foodcourt General' || newManager.role === 'Brand General' || newManager.role === 'Restaurant Owner') && (
-                  <FormGroup style={{ gridColumn: '1 / -1', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #E6EBF1' }}>
+                  <FormGroup style={{ gridColumn: '1 / -1', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #C7CED6' }}>
                     <SubscriptionFormFields
                       userType={newManager.role === 'Brand General' ? 'brand' : newManager.role === 'Foodcourt General' ? 'foodcourt' : 'owner'}
                       mode="add"
@@ -1314,12 +1314,12 @@ const ManagersPage: React.FC = () => {
           {successPassword && <Button variant="secondary" onClick={() => { navigator.clipboard.writeText(successPassword); setPasswordCopied(true); setTimeout(() => setPasswordCopied(false), 2000); }}>{passwordCopied ? 'Copied!' : 'Copy Password'}</Button>}
           <Button variant="primary" onClick={() => setShowSuccessModal(false)}>{t('admin:managersPage.done')}</Button>
         </>}>
-          <div style={{ marginBottom: '20px', fontSize: '14px', color: '#6B7280' }}>
+          <div style={{ marginBottom: '20px', fontSize: '14px', color: '#4B5563' }}>
             {successMessage} Please share this password securely. They should change it after first login.
           </div>
           {successPassword && (
-            <div style={{ background: '#F8FAFC', border: '1px solid #E6EBF1', borderRadius: '8px', padding: '16px', textAlign: 'center', marginBottom: '16px' }}>
-              <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '8px', fontWeight: 600 }}>{t('admin:managersPage.temporaryPassword')}</div>
+            <div style={{ background: '#F1F4F8', border: '1px solid #C7CED6', borderRadius: '8px', padding: '16px', textAlign: 'center', marginBottom: '16px' }}>
+              <div style={{ fontSize: '12px', color: '#4B5563', marginBottom: '8px', fontWeight: 600 }}>{t('admin:managersPage.temporaryPassword')}</div>
               <div style={{ fontSize: '18px', fontWeight: 700, color: '#0A2540', fontFamily: 'monospace', letterSpacing: '1px', userSelect: 'all' as const }}>{successPassword}</div>
             </div>
           )}
@@ -1400,7 +1400,7 @@ const ManagersPage: React.FC = () => {
                     type="text"
                     value={editingManager.managerId}
                     disabled
-                    style={{ backgroundColor: '#F8FAFC', color: '#6B7280' }}
+                    style={{ backgroundColor: '#F1F4F8', color: '#4B5563' }}
                   />
                 </FormGroup>
                 <FormGroup>
@@ -1496,7 +1496,7 @@ const ManagersPage: React.FC = () => {
 
                 {/* Subscription Settings - unified SubscriptionFormFields (v3.27) */}
                 {(editingManager.role === 'Foodcourt General' || editingManager.role === 'Brand General' || editingManager.role === 'Restaurant Owner') && (
-                  <div style={{ gridColumn: '1 / -1', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #E6EBF1' }}>
+                  <div style={{ gridColumn: '1 / -1', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #C7CED6' }}>
                     <SubscriptionFormFields
                       userType={editingManager.role === 'Brand General' ? 'brand' : editingManager.role === 'Foodcourt General' ? 'foodcourt' : 'owner'}
                       mode="edit"

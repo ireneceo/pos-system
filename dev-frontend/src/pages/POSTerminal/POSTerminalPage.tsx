@@ -24,12 +24,13 @@ import { getCurrencySymbol } from '../../utils/currency';
 import { formatDateTime, formatTime } from '../../utils/timezone';
 import { useRestaurantId } from '../../hooks/useRestaurantId';
 import { openCustomerDisplay, tryAutoReopen, isAutoOpenEnabled } from '../../utils/customerDisplay';
+import OverflowMenu, { OverflowMenuItem } from '../../components/UI/OverflowMenu';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
 const POSContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #FAFBFC;
+  background-color: #F9FAFB;
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -41,7 +42,7 @@ const POSContainer = styled.div`
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -84,8 +85,31 @@ const LogoImage = styled.img`
 const HeaderInfo = styled.div`
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 16px;
   color: #0A2540;
+
+  @media (max-width: 1280px) {
+    gap: 10px;
+  }
+`;
+
+/* POS Terminal right-side buttons that collapse into kebab on narrow screens. */
+const HeaderDesktopActions = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  @media (max-width: 1280px) {
+    display: none;
+  }
+`;
+
+const HeaderCompactActions = styled.div`
+  display: none;
+
+  @media (max-width: 1280px) {
+    display: inline-flex;
+  }
 `;
 
 const StaffInfo = styled.div<{ clickable?: boolean }>`
@@ -97,18 +121,18 @@ const StaffInfo = styled.div<{ clickable?: boolean }>`
   padding: ${props => props.clickable ? '8px 12px' : '0'};
   border-radius: ${props => props.clickable ? '8px' : '0'};
   transition: all 0.2s;
-  color: #6B7C93;
+  color: #4B5563;
 
   &:hover {
-    background: ${props => props.clickable ? '#F6F9FC' : 'transparent'};
-    color: ${props => props.clickable ? '#0A2540' : '#6B7C93'};
+    background: ${props => props.clickable ? '#F4F6F9' : 'transparent'};
+    color: ${props => props.clickable ? '#0A2540' : '#4B5563'};
   }
 `;
 
 const DateTime = styled.div`
   font-size: 14px;
   font-weight: 500;
-  color: #6B7C93;
+  color: #4B5563;
   font-variant-numeric: tabular-nums;
   min-width: 200px;
   text-align: right;
@@ -129,7 +153,7 @@ const MainLayout = styled.div`
 
 const MenuSection = styled.div`
   flex: 1;
-  background: #FAFBFC;
+  background: #F9FAFB;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -138,7 +162,7 @@ const MenuSection = styled.div`
 const SearchSection = styled.div`
   background: white;
   padding: 16px 24px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -147,7 +171,7 @@ const SearchSection = styled.div`
 // Segmented toggle (KDS Order/Item 토글과 동일 스타일 — 시스템 통일).
 const ViewToggle = styled.div`
   display: flex;
-  background: #F3F4F6;
+  background: #F1F4F8;
   border-radius: 6px;
   padding: 2px;
 `;
@@ -161,7 +185,7 @@ const ViewToggleBtn = styled.button<{ active: boolean }>`
   cursor: pointer;
   transition: all 0.15s;
   background: ${props => props.active ? 'white' : 'transparent'};
-  color: ${props => props.active ? '#0A2540' : '#6B7C93'};
+  color: ${props => props.active ? '#0A2540' : '#4B5563'};
   box-shadow: ${props => props.active ? '0 1px 2px rgba(0,0,0,0.08)' : 'none'};
   flex-shrink: 0;
   white-space: nowrap;
@@ -177,7 +201,7 @@ const SearchInputContainer = styled.div`
 const SearchInput = styled.input`
   width: 100%;
   padding: 10px 16px 10px 40px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.15s;
@@ -208,9 +232,9 @@ const ClearSearchBtn = styled.button`
   width: 24px;
   height: 24px;
   border: none;
-  background: #F6F9FC;
+  background: #F4F6F9;
   border-radius: 50%;
-  color: #6B7C93;
+  color: #4B5563;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -219,7 +243,7 @@ const ClearSearchBtn = styled.button`
   transition: all 0.15s;
   
   &:hover {
-    background: #E6EBF1;
+    background: #C7CED6;
     color: #0A2540;
   }
 `;
@@ -230,7 +254,7 @@ const NoResultsMessage = styled.div`
   align-items: center;
   justify-content: center;
   padding: 60px 20px;
-  color: #6B7C93;
+  color: #4B5563;
   text-align: center;
   
   .icon {
@@ -254,7 +278,7 @@ const NoResultsMessage = styled.div`
 const CategoryTabs = styled.div`
   display: flex;
   background: white;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   padding: 0 24px;
   gap: 24px;
   overflow-x: auto;
@@ -264,7 +288,7 @@ const CategoryTabs = styled.div`
   }
 
   &::-webkit-scrollbar-track {
-    background: #F6F9FC;
+    background: #F4F6F9;
   }
 
   &::-webkit-scrollbar-thumb {
@@ -283,7 +307,7 @@ const CategoryTab = styled.button<{ active: boolean }>`
   transition: all 0.15s;
   white-space: nowrap;
   position: relative;
-  color: ${props => props.active ? '#635BFF' : '#6B7C93'};
+  color: ${props => props.active ? '#635BFF' : '#4B5563'};
 
   &:hover {
     color: #635BFF;
@@ -317,7 +341,7 @@ const MenuGrid = styled.div`
   }
   
   &::-webkit-scrollbar-track {
-    background: #F6F9FC;
+    background: #F4F6F9;
   }
   
   &::-webkit-scrollbar-thumb {
@@ -328,7 +352,7 @@ const MenuGrid = styled.div`
 
 const MenuItem = styled.div<{ soldOut?: boolean }>`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   padding: 16px;
   cursor: pointer;
@@ -374,7 +398,7 @@ const MenuItem = styled.div<{ soldOut?: boolean }>`
 const MenuImage = styled.div<{ hasImage?: boolean }>`
   width: 100%;
   height: 80px;
-  background: #F6F9FC;
+  background: #F4F6F9;
   border-radius: 6px;
   margin-bottom: 12px;
   display: flex;
@@ -427,7 +451,7 @@ const SetBadge = styled.div`
 
 const SetItemsPreview = styled.div`
   font-size: 10px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 4px;
   line-height: 1.3;
   font-weight: 500;
@@ -442,8 +466,8 @@ const MenuItemActions = styled.div`
 
 const OptionButton = styled.button`
   flex: 1;
-  background: linear-gradient(135deg, #F8FAFC 0%, #F0F4FF 100%);
-  border: 1px solid #E6EBF1;
+  background: linear-gradient(135deg, #F1F4F8 0%, #F0F4FF 100%);
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   padding: 10px 16px;
   font-size: 13px;
@@ -477,7 +501,7 @@ const OptionButton = styled.button`
 const OrderSection = styled.div`
   width: 400px;
   background: white;
-  border-left: 1px solid #E6EBF1;
+  border-left: 1px solid #C7CED6;
   display: flex;
   flex-direction: column;
 `;
@@ -485,7 +509,7 @@ const OrderSection = styled.div`
 const TableNumberSection = styled.div`
   padding: 16px 24px;
   background: #F7F9FC;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -494,12 +518,12 @@ const TableNumberSection = styled.div`
 const TableNumberLabel = styled.label`
   font-size: 14px;
   font-weight: 500;
-  color: #6B7C93;
+  color: #4B5563;
 `;
 
 const TableNumberSelect = styled.select`
   padding: 8px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   width: 160px;
@@ -521,7 +545,7 @@ const ScrollableOrderContent = styled.div`
   }
 
   &::-webkit-scrollbar-track {
-    background: #F6F9FC;
+    background: #F4F6F9;
   }
 
   &::-webkit-scrollbar-thumb {
@@ -537,10 +561,10 @@ const OrderItems = styled.div`
 const OrderItemsHeader = styled.div`
   font-size: 13px;
   font-weight: 600;
-  color: #6B7C93;
+  color: #4B5563;
   margin-bottom: 12px;
   padding-bottom: 8px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
 `;
 
 const OrderItem = styled.div`
@@ -548,7 +572,7 @@ const OrderItem = styled.div`
   justify-content: space-between;
   align-items: center;
   padding: 12px 0;
-  border-bottom: 1px solid #F6F9FC;
+  border-bottom: 1px solid #F4F6F9;
 `;
 
 const ItemInfo = styled.div`
@@ -569,7 +593,7 @@ const ItemName = styled.div`
 
 const ItemOptions = styled.div`
   font-size: 12px;
-  color: #6B7C93;
+  color: #4B5563;
 `;
 
 const ItemControls = styled.div`
@@ -587,7 +611,7 @@ const QuantityControl = styled.div`
 const QuantityBtn = styled.button`
   width: 24px;
   height: 24px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   background: white;
   border-radius: 4px;
   cursor: pointer;
@@ -595,7 +619,7 @@ const QuantityBtn = styled.button`
   align-items: center;
   justify-content: center;
   font-size: 14px;
-  color: #6B7C93;
+  color: #4B5563;
   transition: all 0.15s;
   
   &:hover {
@@ -645,7 +669,7 @@ const DeleteBtn = styled.button`
 
 const OrderSummary = styled.div`
   padding: 20px 24px;
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
 `;
 
 const SummaryRow = styled.div`
@@ -660,7 +684,7 @@ const SummaryRow = styled.div`
 `;
 
 const SummaryLabel = styled.span`
-  color: #6B7C93;
+  color: #4B5563;
 `;
 
 const SummaryValue = styled.span`
@@ -672,7 +696,7 @@ const TotalRow = styled(SummaryRow)`
   font-size: 18px;
   font-weight: 600;
   padding-top: 12px;
-  border-top: 1px solid #F6F9FC;
+  border-top: 1px solid #F4F6F9;
   
   ${SummaryLabel} {
     color: #0A2540;
@@ -685,7 +709,7 @@ const TotalRow = styled(SummaryRow)`
 
 const OrderActions = styled.div`
   padding: 24px;
-  background: #FAFBFC;
+  background: #F9FAFB;
   display: flex;
   gap: 12px;
 `;
@@ -729,8 +753,8 @@ const ActionBtn = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }
       default:
         return `
           background: white;
-          color: #6B7C93;
-          border: 1px solid #E6EBF1;
+          color: #4B5563;
+          border: 1px solid #C7CED6;
           
           &:hover {
             border-color: #C7D2FE;
@@ -747,7 +771,7 @@ const EmptyOrder = styled.div`
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #6B7C93;
+  color: #4B5563;
   padding: 40px;
   text-align: center;
 `;
@@ -759,8 +783,8 @@ const EmptyText = styled.div`
 
 const DiscountSection = styled.div`
   padding: 16px 24px;
-  background: #FAFBFC;
-  border-top: 1px solid #E6EBF1;
+  background: #F9FAFB;
+  border-top: 1px solid #C7CED6;
 `;
 
 const DiscountRow = styled.div`
@@ -776,7 +800,7 @@ const DiscountRow = styled.div`
 const DiscountInput = styled.input`
   flex: 1;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   transition: all 0.15s;
@@ -821,8 +845,8 @@ const QuickDiscountButtons = styled.div`
 const QuickDiscountBtn = styled.button<{ active?: boolean }>`
   padding: 8px 12px;
   background: ${props => props.active ? 'rgba(99, 91, 255, 0.1)' : 'white'};
-  color: ${props => props.active ? '#635BFF' : '#374151'};
-  border: 1px solid ${props => props.active ? '#635BFF' : '#E6EBF1'};
+  color: ${props => props.active ? '#635BFF' : '#1F2937'};
+  border: 1px solid ${props => props.active ? '#635BFF' : '#C7CED6'};
   border-radius: 6px;
   font-size: 13px;
   font-weight: 500;
@@ -830,7 +854,7 @@ const QuickDiscountBtn = styled.button<{ active?: boolean }>`
   transition: all 0.15s;
 
   &:hover {
-    border-color: ${props => props.active ? '#635BFF' : '#D1D5DB'};
+    border-color: ${props => props.active ? '#635BFF' : '#6B7280'};
     background: ${props => props.active ? 'rgba(99, 91, 255, 0.1)' : '#F9FAFB'};
   }
 `;
@@ -852,7 +876,7 @@ const OrderTypeToggle = styled.div`
   gap: 8px;
   padding: 16px 24px;
   background: #F7F9FC;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
 `;
 
 const OrderTypeBtn = styled.button<{ active: boolean }>`
@@ -860,8 +884,8 @@ const OrderTypeBtn = styled.button<{ active: boolean }>`
   padding: 12px 16px;
   min-height: 44px;
   background: ${props => props.active ? 'rgba(99, 91, 255, 0.1)' : 'white'};
-  color: ${props => props.active ? '#635BFF' : '#374151'};
-  border: 1px solid ${props => props.active ? '#635BFF' : '#E6EBF1'};
+  color: ${props => props.active ? '#635BFF' : '#1F2937'};
+  border: 1px solid ${props => props.active ? '#635BFF' : '#C7CED6'};
   border-radius: 8px;
   font-size: 14px;
   font-weight: 500;
@@ -874,7 +898,7 @@ const OrderTypeBtn = styled.button<{ active: boolean }>`
   text-align: center;
 
   &:hover {
-    border-color: ${props => props.active ? '#635BFF' : '#D1D5DB'};
+    border-color: ${props => props.active ? '#635BFF' : '#6B7280'};
     background: ${props => props.active ? 'rgba(99, 91, 255, 0.1)' : '#F9FAFB'};
   }
 
@@ -899,7 +923,7 @@ const RemoveBtn = styled.button`
 const CustomerSearchSection = styled.div`
   padding: 16px 24px;
   background: #F7F9FC;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
 `;
 
 const CustomerSearchContainer = styled.div`
@@ -909,7 +933,7 @@ const CustomerSearchContainer = styled.div`
 const CustomerSearchInput = styled.input`
   width: 100%;
   padding: 12px 16px 12px 40px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -924,7 +948,7 @@ const CustomerSearchInput = styled.input`
   }
 
   &:hover {
-    border-color: #D1D5DB;
+    border-color: #6B7280;
   }
 
   &::placeholder {
@@ -948,7 +972,7 @@ const CustomerSearchDropdown = styled.div<{ show: boolean }>`
   left: 0;
   right: 0;
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   max-height: 200px;
   overflow-y: auto;
@@ -965,7 +989,7 @@ const CustomerSearchItem = styled.div`
   transition: background-color 0.2s;
 
   &:hover {
-    background: #F8FAFC;
+    background: #F1F4F8;
   }
 
   &:last-child {
@@ -982,7 +1006,7 @@ const CustomerItemName = styled.div`
 
 const CustomerItemDetails = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const SelectedCustomerDisplay = styled.div`
@@ -1009,7 +1033,7 @@ const SelectedCustomerName = styled.div`
 
 const SelectedCustomerMeta = styled.div`
   font-size: 12px;
-  color: #6B7C93;
+  color: #4B5563;
 `;
 
 // Pager Search Components (same style as Customer Search)
@@ -1021,7 +1045,7 @@ const PagerSearchContainer = styled.div`
 const PagerSearchInput = styled.input`
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   background: white;
@@ -1036,7 +1060,7 @@ const PagerSearchInput = styled.input`
   }
 
   &:hover {
-    border-color: #D1D5DB;
+    border-color: #6B7280;
   }
 
   &::placeholder {
@@ -1050,7 +1074,7 @@ const PagerSearchDropdown = styled.div<{ show: boolean }>`
   left: 0;
   right: 0;
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   max-height: 200px;
   overflow-y: auto;
@@ -1088,7 +1112,7 @@ const PagerSearchItem = styled.div`
   color: #0A2540;
 
   &:hover {
-    background: #F8FAFC;
+    background: #F1F4F8;
   }
 
   &:last-child {
@@ -1152,6 +1176,9 @@ const POSTerminalPage: React.FC = () => {
   const fromFloorPlan = fromParam === 'floor-plan' || fromParam === 'floor-plan-overlay';
   const isFloorPlanOverlay = fromParam === 'floor-plan-overlay';
   const initialTableFromUrl = searchParams.get('table');
+  // 2026-05-27: tableId (Floor Plan v2 tables[].id) disambiguates same tableNumber across zones.
+  // Bound to the order as floor_plan_table_id when creating dine-in orders from Floor Plan.
+  const floorPlanTableIdFromUrl = searchParams.get('tableId');
   const { user, switchUser, logout: authLogout } = useAuth();
   const restaurantId = useRestaurantId();
   const { addOrder } = useOrders();
@@ -2018,6 +2045,7 @@ const POSTerminalPage: React.FC = () => {
       orderType: orderType,
       orderSource: 'pos' as const,
       tableNumber: orderType === 'dine-in' && tableNumber ? tableNumber : undefined,
+      floorPlanTableId: orderType === 'dine-in' && floorPlanTableIdFromUrl ? floorPlanTableIdFromUrl : undefined,
       guest_count: orderType === 'dine-in' && guestCount > 0 ? guestCount : null,
       pagerNumber: pagerNumber || undefined,
       cashier_id: user?.id ? Number(user.id) : null,
@@ -2212,6 +2240,7 @@ const POSTerminalPage: React.FC = () => {
       orderType: orderType,
       orderSource: 'pos' as const,
       tableNumber: orderType === 'dine-in' && tableNumber ? tableNumber : undefined,
+      floorPlanTableId: orderType === 'dine-in' && floorPlanTableIdFromUrl ? floorPlanTableIdFromUrl : undefined,
       guest_count: orderType === 'dine-in' && guestCount > 0 ? guestCount : null,
       pagerNumber: pagerNumber || undefined,
       cashier_id: user?.id ? Number(user.id) : null,
@@ -2288,9 +2317,26 @@ const POSTerminalPage: React.FC = () => {
       };
 
       if (printSettings.billPrinter?.enabled && printSettings.billPrinter?.autoPrint) {
-        setTimeout(() => {
-          printBillViaRawBT(printData, printStoreInfo).catch(e => console.error('Auto bill print failed:', e));
-        }, 300);
+        // F&B standard: counter copy + customer copy (default 2). User-configurable in Settings → Receipt.
+        const copies = Math.max(1, Math.min(3, parseInt(
+          (printSettings.receiptSettings && printSettings.receiptSettings.copiesAfterPayment) ||
+          (printStoreInfo as any).copiesAfterPayment ||
+          (JSON.parse(localStorage.getItem('receiptSettings') || '{}').copiesAfterPayment) || 1, 10) || 1));
+        const autoOpenDrawer = (printSettings.receiptSettings && printSettings.receiptSettings.autoOpenDrawer) !== false &&
+          (JSON.parse(localStorage.getItem('receiptSettings') || '{}').autoOpenDrawer !== false);
+        (async () => {
+          await new Promise(r => setTimeout(r, 300));
+          for (let i = 0; i < copies; i++) {
+            try { await printBillViaRawBT(printData, printStoreInfo); }
+            catch (e) { console.error('Auto bill print failed (copy ' + (i + 1) + '):', e); }
+            if (i < copies - 1) await new Promise(r => setTimeout(r, 600));
+          }
+          // Kick the cash drawer open after the last copy (silent — only fires for QZ Tray / RawBT)
+          if (autoOpenDrawer) {
+            try { const { openCashDrawer } = await import('../../utils/billPrint'); await openCashDrawer(); }
+            catch (e) { console.warn('Cash drawer auto-open failed:', e && e.message); }
+          }
+        })();
       }
 
       const kitchenAuto = printSettings.kitchenPrinter?.enabled && printSettings.kitchenPrinter?.autoPrint;
@@ -2427,6 +2473,11 @@ const POSTerminalPage: React.FC = () => {
   // Emit cart updates to checkout display
   useEffect(() => {
     if (!checkoutSocketRef.current || !user?.restaurantId) return;
+    // 2026-05-27: don't blank the Customer Display when the cart is empty —
+    // that erased the Floor-Plan-pushed order snapshot the second the cashier
+    // entered POS Terminal. Only emit once the cart actually has items. The
+    // explicit cart-clear event still resets the display when needed.
+    if (!orderItems.length) return;
     const items = orderItems.map(item => ({
       name: item.menuItem.name,
       quantity: item.quantity,
@@ -2435,6 +2486,7 @@ const POSTerminalPage: React.FC = () => {
     }));
     checkoutSocketRef.current.emit('cart-update', {
       restaurantId: user.restaurantId,
+      tableNumber: tableNumber || null,
       items,
       subtotal,
       tax,
@@ -2443,9 +2495,61 @@ const POSTerminalPage: React.FC = () => {
       serviceChargeRate: effectiveServiceChargeRate,
       discount: discountAmount + couponDiscount + policyDiscount,
       total,
-      currency: operationSettings.currency || 'MYR'
+      currency: operationSettings.currency || 'MYR',
+      source: 'pos-terminal',
+      orderInfo: {
+        orderType: orderType,
+        sourceLabel: 'pos',
+        paymentStatus: 'pending',
+        cashierName: user?.name || null
+      },
+      customer: selectedCustomerForOrder ? {
+        id: selectedCustomerForOrder.id,
+        name: selectedCustomerForOrder.name,
+        phone: selectedCustomerForOrder.phone,
+        loyaltyTier: selectedCustomerForOrder.loyaltyTier || 'Bronze',
+        points: typeof selectedCustomerForOrder.points === 'number' ? selectedCustomerForOrder.points : 0
+      } : null
     });
-  }, [orderItems, subtotal, tax, total, discountAmount, couponDiscount, policyDiscount, serviceCharge, user?.restaurantId, operationSettings]);
+  }, [orderItems, subtotal, tax, total, discountAmount, couponDiscount, policyDiscount, serviceCharge, user?.restaurantId, user?.name, operationSettings, tableNumber, orderType, selectedCustomerForOrder]);
+
+  // 2026-05-27: Push selected member to Customer Display so the guest sees
+  // their name / tier / points the moment the cashier picks them. Cleared
+  // automatically when the cashier removes the selection or leaves POS.
+  useEffect(() => {
+    if (!checkoutSocketRef.current || !user?.restaurantId) return;
+    if (selectedCustomerForOrder) {
+      checkoutSocketRef.current.emit('pos-customer-update', {
+        restaurantId: user.restaurantId,
+        customer: {
+          id: selectedCustomerForOrder.id,
+          name: selectedCustomerForOrder.name,
+          phone: selectedCustomerForOrder.phone,
+          loyaltyTier: selectedCustomerForOrder.loyaltyTier || 'Bronze',
+          points: typeof selectedCustomerForOrder.points === 'number' ? selectedCustomerForOrder.points : 0,
+          totalOrders: selectedCustomerForOrder.totalOrders || 0
+        }
+      });
+    } else {
+      checkoutSocketRef.current.emit('pos-customer-update', {
+        restaurantId: user.restaurantId,
+        customer: null
+      });
+    }
+  }, [selectedCustomerForOrder, user?.restaurantId]);
+
+  // Cleanup on unmount — leaving POS Terminal clears the member view as well.
+  useEffect(() => {
+    return () => {
+      if (checkoutSocketRef.current && user?.restaurantId) {
+        checkoutSocketRef.current.emit('pos-customer-update', {
+          restaurantId: user.restaurantId,
+          customer: null
+        });
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.restaurantId]);
 
   const formatDateTimeLocal = (date: Date) => {
     const dateStr = formatDateTime(date, operationSettings, {
@@ -2558,21 +2662,21 @@ const POSTerminalPage: React.FC = () => {
             {brandLogo ? (
               <>
                 <LogoImage src={brandLogo} alt="Brand Logo" />
-                <span style={{ color: '#6B7C93', fontSize: '14px', fontWeight: 500 }}>{'POS Terminal'}</span>
+                <span style={{ color: '#4B5563', fontSize: '14px', fontWeight: 500 }}>{'POS Terminal'}</span>
               </>
             ) : (
-              <span style={{ color: '#6B7C93', fontSize: '14px', fontWeight: 500 }}>{'POS Terminal'}</span>
+              <span style={{ color: '#4B5563', fontSize: '14px', fontWeight: 500 }}>{'POS Terminal'}</span>
             )}
           </Logo>
           <button type="button"
             onClick={() => navigate(`/restaurant/${restaurantId}/dashboard`)}
             style={{
               background: 'none',
-              border: '1px solid #E6EBF1',
+              border: '1px solid #C7CED6',
               borderRadius: '6px',
               padding: '6px 12px',
               cursor: 'pointer',
-              color: '#6B7C93',
+              color: '#4B5563',
               fontSize: '13px',
               display: 'flex',
               alignItems: 'center',
@@ -2589,8 +2693,9 @@ const POSTerminalPage: React.FC = () => {
             <span style={{ fontSize: '11px', color: '#8898AA', marginLeft: '4px' }}>▼</span>
           </StaffInfo>
           <DateTime>{formatDateTimeLocal(currentDateTime)}</DateTime>
+          {/* Customer Display — always visible. Cashiers re-open the secondary
+              monitor view often, keep one-click access regardless of width. */}
           <button type="button"
-            type="button"
             onClick={async () => {
               const result = await openCustomerDisplay(user?.restaurantId || '');
               if (result.title && result.message) {
@@ -2600,16 +2705,73 @@ const POSTerminalPage: React.FC = () => {
             title={isAutoOpenEnabled() ? 'Customer Display (auto-open enabled)' : 'Open Customer Display on secondary monitor'}
             style={{
               padding: '6px 12px', fontSize: '12px', fontWeight: 500,
-              border: '1px solid #E6EBF1', borderRadius: '6px',
-              background: isAutoOpenEnabled() ? '#F0EFFF' : '#F6F9FC',
-              color: isAutoOpenEnabled() ? '#635BFF' : '#6B7C93',
+              border: '1px solid #C7CED6', borderRadius: '6px',
+              background: isAutoOpenEnabled() ? '#F0EFFF' : '#F4F6F9',
+              color: isAutoOpenEnabled() ? '#635BFF' : '#4B5563',
               cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '8px'
+              display: 'flex', alignItems: 'center', gap: '4px'
             }}
           >
             {isAutoOpenEnabled() && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#635BFF', display: 'inline-block' }} />}
             Customer Display
           </button>
+
+          {/* Wide screens — full toolbar. Open Drawer manual button is here. */}
+          <HeaderDesktopActions>
+            <button type="button"
+              onClick={async () => {
+                try {
+                  const { openCashDrawer } = await import('../../utils/billPrint');
+                  const ok = await openCashDrawer();
+                  if (!ok) {
+                    setInfoModal({
+                      open: true,
+                      title: 'Drawer did not open',
+                      message: 'Cash drawer pulse needs QZ Tray or RawBT (not Browser print mode).\nCheck Settings → Workstations → Method.'
+                    });
+                  }
+                } catch (e: any) {
+                  setInfoModal({ open: true, title: 'Drawer error', message: e?.message || 'Unknown error' });
+                }
+              }}
+              title="Send open-drawer pulse to the bill printer"
+              style={{
+                padding: '6px 12px', fontSize: '12px', fontWeight: 500,
+                border: '1px solid #C7CED6', borderRadius: '6px',
+                background: '#F4F6F9', color: '#1F2937', cursor: 'pointer'
+              }}
+            >
+              Open Drawer
+            </button>
+          </HeaderDesktopActions>
+
+          {/* Narrow screens (≤1280px) — kebab menu collects secondary actions. */}
+          <HeaderCompactActions>
+            <OverflowMenu
+              ariaLabel="More POS terminal actions"
+              items={[
+                {
+                  id: 'open-drawer',
+                  label: 'Open Drawer',
+                  onClick: async () => {
+                    try {
+                      const { openCashDrawer } = await import('../../utils/billPrint');
+                      const ok = await openCashDrawer();
+                      if (!ok) {
+                        setInfoModal({
+                          open: true,
+                          title: 'Drawer did not open',
+                          message: 'Cash drawer pulse needs QZ Tray or RawBT (not Browser print mode).\nCheck Settings → Workstations → Method.'
+                        });
+                      }
+                    } catch (e: any) {
+                      setInfoModal({ open: true, title: 'Drawer error', message: e?.message || 'Unknown error' });
+                    }
+                  }
+                }
+              ] as OverflowMenuItem[]}
+            />
+          </HeaderCompactActions>
         </HeaderInfo>
       </Header>
 
@@ -2642,7 +2804,7 @@ const POSTerminalPage: React.FC = () => {
               onChange={(e) => setSortByPersistent(e.target.value as SortKey)}
               style={{
                 height: 36, padding: '0 28px 0 12px',
-                border: '1px solid #E6EBF1',
+                border: '1px solid #C7CED6',
                 borderRadius: 6,
                 background: 'white',
                 fontSize: 13,
@@ -2875,12 +3037,12 @@ const POSTerminalPage: React.FC = () => {
                   ))}
                 </CustomerSearchDropdown>
                 <CustomerSearchDropdown show={showCustomerDropdown && customerSearchQuery.trim().length > 0 && filteredCustomers.length === 0 && !isSearchingCustomers}>
-                  <CustomerSearchItem style={{ cursor: 'default', color: '#6B7C93' }}>
+                  <CustomerSearchItem style={{ cursor: 'default', color: '#4B5563' }}>
                     No customers found
                   </CustomerSearchItem>
                 </CustomerSearchDropdown>
                 <CustomerSearchDropdown show={showCustomerDropdown && isSearchingCustomers}>
-                  <CustomerSearchItem style={{ cursor: 'default', color: '#6B7C93' }}>
+                  <CustomerSearchItem style={{ cursor: 'default', color: '#4B5563' }}>
                     Searching...
                   </CustomerSearchItem>
                 </CustomerSearchDropdown>
@@ -3087,20 +3249,20 @@ const POSTerminalPage: React.FC = () => {
                               maxHeight: '280px',
                               overflowY: 'auto',
                               background: 'white',
-                              border: '1px solid #E5E7EB',
+                              border: '1px solid #C7CED6',
                               borderRadius: '8px',
                               boxShadow: '0 8px 16px rgba(0,0,0,0.12)',
                               zIndex: 100
                             }}
                           >
                             {availableCoupons.length === 0 ? (
-                              <div style={{ padding: '14px', textAlign: 'center', color: '#9CA3AF', fontSize: '13px' }}>
+                              <div style={{ padding: '14px', textAlign: 'center', color: '#6B7280', fontSize: '13px' }}>
                                 {couponsLoaded
                                   ? t('pos:pOSTerminalPage.noActiveCoupons', 'No active coupons. Enter a code manually if you have one.')
                                   : t('pos:pOSTerminalPage.loadingCoupons', 'Loading...')}
                               </div>
                             ) : filteredCoupons.length === 0 ? (
-                              <div style={{ padding: '14px', textAlign: 'center', color: '#9CA3AF', fontSize: '13px' }}>
+                              <div style={{ padding: '14px', textAlign: 'center', color: '#6B7280', fontSize: '13px' }}>
                                 {t('pos:pOSTerminalPage.noMatchingCoupons', 'No matching coupons.')}
                               </div>
                             ) : (
@@ -3117,7 +3279,7 @@ const POSTerminalPage: React.FC = () => {
                                       opacity: eligible ? 1 : 0.5,
                                       fontSize: '13px',
                                       color: '#0A2540',
-                                      borderBottom: '1px solid #F3F4F6',
+                                      borderBottom: '1px solid #F1F4F8',
                                       display: 'flex',
                                       justifyContent: 'space-between',
                                       alignItems: 'center',
@@ -3130,7 +3292,7 @@ const POSTerminalPage: React.FC = () => {
                                   >
                                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                                       <span style={{ fontWeight: 600, color: '#635BFF', marginRight: '8px' }}>{c.code}</span>
-                                      {c.name && <span style={{ color: '#6B7280' }}>{c.name}</span>}
+                                      {c.name && <span style={{ color: '#4B5563' }}>{c.name}</span>}
                                       {minOrder > 0 && !eligible && (
                                         <span style={{ marginLeft: '6px', fontSize: '11px', color: '#EF4444' }}>
                                           ({t('pos:pOSTerminalPage.minOrder', 'min')} {currency} {minOrder.toFixed(2)})
@@ -3229,7 +3391,7 @@ const POSTerminalPage: React.FC = () => {
                       </PagerSearchItem>
                     ))
                   ) : (
-                    <PagerSearchItem style={{ cursor: 'default', color: '#6B7C93' }}>
+                    <PagerSearchItem style={{ cursor: 'default', color: '#4B5563' }}>
                       No matching pagers
                     </PagerSearchItem>
                   )}
@@ -3342,7 +3504,7 @@ const POSTerminalPage: React.FC = () => {
             <div style={{ fontSize: 16, fontWeight: 700, color: '#0A2540', marginBottom: 4 }}>
               {t('pos:mergeChoice.title', 'Existing order on this table')}
             </div>
-            <div style={{ fontSize: 13, color: '#6B7C93', marginBottom: 16 }}>
+            <div style={{ fontSize: 13, color: '#4B5563', marginBottom: 16 }}>
               {t('pos:mergeChoice.subtitle', { defaultValue: 'Table {{table}} already has {{count}} pending order(s). Add to one, or create a separate order?', table: tableNumber, count: mergeableOrders.length })}
             </div>
 
@@ -3369,7 +3531,7 @@ const POSTerminalPage: React.FC = () => {
                     <div style={{ fontSize: 13, fontWeight: 600, color: '#3B30D9' }}>
                       #{o.order_number || o.id} {o.customer_name ? '— ' + o.customer_name : ''}
                     </div>
-                    <div style={{ fontSize: 11, color: '#6B7C93', marginTop: 2 }}>
+                    <div style={{ fontSize: 11, color: '#4B5563', marginTop: 2 }}>
                       {new Date(o.createdAt).toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: false })}
                       {' · '}{currency} {Number(o.total_amount).toFixed(2)}
                     </div>
@@ -3386,8 +3548,8 @@ const POSTerminalPage: React.FC = () => {
                 type="button"
                 onClick={() => setShowMergeChoiceModal(false)}
                 style={{
-                  flex: 1, padding: '12px 16px', border: '1px solid #E6EBF1',
-                  background: 'white', color: '#6B7C93', borderRadius: 8,
+                  flex: 1, padding: '12px 16px', border: '1px solid #C7CED6',
+                  background: 'white', color: '#4B5563', borderRadius: 8,
                   fontSize: 13, fontWeight: 500, cursor: 'pointer'
                 }}
               >

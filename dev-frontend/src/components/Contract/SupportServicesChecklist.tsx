@@ -54,8 +54,8 @@ const GroupTitle = styled.h5`
 
 const CountBadge = styled.span`
   font-size: 11px;
-  color: #6B7C93;
-  background: #F3F4F6;
+  color: #4B5563;
+  background: #F1F4F8;
   padding: 2px 8px;
   border-radius: 10px;
 `;
@@ -65,7 +65,7 @@ const Row = styled.div<{ checked: boolean }>`
   grid-template-columns: 28px 1fr 1.2fr;
   gap: 12px;
   padding: 10px 12px;
-  border: 1px solid ${p => p.checked ? '#C7D2FE' : '#E6EBF1'};
+  border: 1px solid ${p => p.checked ? '#C7D2FE' : '#C7CED6'};
   background: ${p => p.checked ? '#F5F3FF' : '#fff'};
   border-radius: 6px;
   align-items: center;
@@ -86,14 +86,14 @@ const Checkbox = styled.input.attrs({ type: 'checkbox' })`
 
 const TitleCell = styled.div<{ checked: boolean }>`
   font-size: 14px;
-  color: ${p => p.checked ? '#0A2540' : '#6B7C93'};
+  color: ${p => p.checked ? '#0A2540' : '#4B5563'};
   font-weight: ${p => p.checked ? 500 : 400};
 `;
 
 const NotesInput = styled.input`
   width: 100%;
   padding: 8px 10px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 13px;
   color: #0A2540;
@@ -101,15 +101,15 @@ const NotesInput = styled.input`
   background: #fff;
   box-sizing: border-box;
   &:focus { border-color: #635BFF; box-shadow: 0 0 0 3px rgba(99,91,255,0.1); }
-  &:disabled { background: #F8FAFC; color: #6B7C93; }
+  &:disabled { background: #F1F4F8; color: #4B5563; }
 `;
 
 const EmptyState = styled.div`
   font-size: 13px;
-  color: #9CA3AF;
+  color: #6B7280;
   text-align: center;
   padding: 16px;
-  border: 1px dashed #E6EBF1;
+  border: 1px dashed #C7CED6;
   border-radius: 8px;
 `;
 

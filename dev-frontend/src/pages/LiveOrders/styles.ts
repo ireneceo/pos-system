@@ -3,7 +3,7 @@ import { ModalButton } from '../../components/UI';
 
 export const Container = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #FAFBFC;
+  background-color: #F9FAFB;
   min-height: 100vh;
 `;
 
@@ -20,7 +20,7 @@ export const AudioToggleButton = styled.button<{ enabled: boolean }>`
   align-items: center;
   justify-content: center;
   padding: 0;
-  background: ${props => props.enabled ? '#635BFF' : '#E6EBF1'};
+  background: ${props => props.enabled ? '#635BFF' : '#C7CED6'};
 
   img {
     width: 22px;
@@ -42,7 +42,7 @@ export const SelectModeButton = styled.button<{ active: boolean }>`
   transition: all 0.15s;
   background: ${props => props.active ? '#635BFF' : 'white'};
   color: ${props => props.active ? 'white' : '#1F2937'};
-  border: 1px solid ${props => props.active ? '#635BFF' : '#E5E7EB'};
+  border: 1px solid ${props => props.active ? '#635BFF' : '#C7CED6'};
 
   &:hover {
     background: ${props => props.active ? '#5A54E5' : '#F9FAFB'};
@@ -65,7 +65,7 @@ export const MergeButton = styled.button`
   }
 
   &:disabled {
-    background: #9CA3AF;
+    background: #6B7280;
     cursor: not-allowed;
   }
 `;
@@ -114,7 +114,7 @@ export const SearchInput = styled.input`
   width: 100%;
   height: 38px;
   padding: 0 32px 0 36px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   color: #1F2937;
@@ -126,7 +126,7 @@ export const SearchInput = styled.input`
   }
 
   &::placeholder {
-    color: #9CA3AF;
+    color: #6B7280;
   }
 `;
 
@@ -135,7 +135,7 @@ export const ClearSearchButton = styled.button`
   right: 8px;
   top: 50%;
   transform: translateY(-50%);
-  background: #E5E7EB;
+  background: #C7CED6;
   border: none;
   border-radius: 50%;
   width: 18px;
@@ -145,21 +145,21 @@ export const ClearSearchButton = styled.button`
   justify-content: center;
   cursor: pointer;
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   padding: 0;
   line-height: 1;
 
   &:hover {
-    background: #D1D5DB;
+    background: #6B7280;
   }
 `;
 
 export const DownloadButton = styled.button`
   height: 38px;
   width: 38px;
-  background: #F6F9FC;
+  background: #F4F6F9;
   color: #0A2540;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   cursor: pointer;
   display: inline-flex;
@@ -180,7 +180,7 @@ export const DownloadButton = styled.button`
   }
 
   &:hover {
-    background: #E6EBF1;
+    background: #C7CED6;
   }
 
   @media (max-width: 768px) {
@@ -200,7 +200,7 @@ export const SearchIcon = styled.span`
   top: 50%;
   transform: translateY(-50%);
   font-size: 16px;
-  color: #9CA3AF;
+  color: #6B7280;
 `;
 
 
@@ -211,7 +211,7 @@ export const StatusTabs = styled.div`
   display: flex;
   gap: 24px;
   margin-bottom: 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 
@@ -220,16 +220,16 @@ export const StatusTabs = styled.div`
   }
 
   &::-webkit-scrollbar-track {
-    background: #F8FAFC;
+    background: #F1F4F8;
   }
 
   &::-webkit-scrollbar-thumb {
-    background: #CBD5E1;
+    background: #64748B;
     border-radius: 3px;
   }
 
   &::-webkit-scrollbar-thumb:hover {
-    background: #94A3B8;
+    background: #64748B;
   }
 `;
 
@@ -239,7 +239,7 @@ export const StatusTab = styled.button<{ active?: boolean }>`
   border: none;
   font-size: 14px;
   font-weight: 500;
-  color: ${props => props.active ? '#635BFF' : '#6B7C93'};
+  color: ${props => props.active ? '#635BFF' : '#4B5563'};
   cursor: pointer;
   position: relative;
   transition: all 0.15s;
@@ -278,16 +278,16 @@ export const TabBadge = styled.span`
 `;
 
 export const StatisticsBar = styled.div`
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 8px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   padding: 12px 20px;
   margin: 16px 0;
   display: flex;
   flex-wrap: wrap;
   gap: 20px;
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 
   @media (max-width: 768px) {
@@ -310,7 +310,7 @@ export const StatItem = styled.span`
 export const OrdersCard = styled.div`
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   overflow: visible;
 
   @media (max-width: 1024px) {
@@ -348,7 +348,7 @@ export const OrderTypeBadge = styled.span`
 
 
 export const CustomerInfo = styled.div`
-  color: #6B7C93;
+  color: #4B5563;
   font-size: 13px;
   margin-top: 2px;
 `;
@@ -366,7 +366,7 @@ export const ItemWithOptions = styled.div`
 `;
 
 export const ItemQuantity = styled.span`
-  color: #6B7C93;
+  color: #4B5563;
   margin-right: 8px;
 `;
 
@@ -392,11 +392,11 @@ export const StatusBadge = styled.span<{ status: string }>`
       case 'preparing': return '#DBEAFE';
       case 'ready': return '#D1FAE5';
       case 'served': return '#D1FAE5';
-      case 'completed': return '#E5E7EB';
+      case 'completed': return '#C7CED6';
       case 'cancelled': return '#FEE2E2';
       case 'rejected': return '#FEE2E2';
       case 'verifying': return '#FEF3C7';
-      default: return '#F3F4F6';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
@@ -406,24 +406,24 @@ export const StatusBadge = styled.span<{ status: string }>`
       case 'preparing': return '#1E40AF';
       case 'ready': return '#065F46';
       case 'served': return '#065F46';
-      case 'completed': return '#374151';
+      case 'completed': return '#1F2937';
       case 'cancelled': return '#991B1B';
       case 'rejected': return '#DC2626';
       case 'verifying': return '#F59E0B';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 `;
 
 export const TimeInfo = styled.div`
-  color: #6B7C93;
+  color: #4B5563;
   font-size: 13px;
   line-height: 1.4;
 `;
 
 
 export const PaymentMethod = styled.div<{ isPending?: boolean; isVerificationPending?: boolean }>`
-  color: ${props => props.isVerificationPending ? '#F59E0B' : props.isPending ? '#FF6B6B' : '#6B7C93'};
+  color: ${props => props.isVerificationPending ? '#F59E0B' : props.isPending ? '#FF6B6B' : '#4B5563'};
   font-size: 13px;
   margin-top: 2px;
   font-weight: ${props => (props.isPending || props.isVerificationPending) ? '500' : 'normal'};
@@ -431,9 +431,9 @@ export const PaymentMethod = styled.div<{ isPending?: boolean; isVerificationPen
 
 export const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' }>`
   padding: 6px 12px;
-  background: ${props => props.variant === 'secondary' ? '#F6F9FC' : '#635BFF'};
-  color: ${props => props.variant === 'secondary' ? '#6B7C93' : 'white'};
-  border: ${props => props.variant === 'secondary' ? '1px solid #E6EBF1' : 'none'};
+  background: ${props => props.variant === 'secondary' ? '#F4F6F9' : '#635BFF'};
+  color: ${props => props.variant === 'secondary' ? '#4B5563' : 'white'};
+  border: ${props => props.variant === 'secondary' ? '1px solid #C7CED6' : 'none'};
   border-radius: 6px;
   font-size: 13px;
   font-weight: 500;
@@ -442,7 +442,7 @@ export const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' }>
   white-space: nowrap;
 
   &:hover {
-    background: ${props => props.variant === 'secondary' ? '#E6EBF1' : '#5A51E6'};
+    background: ${props => props.variant === 'secondary' ? '#C7CED6' : '#5A51E6'};
     transform: translateY(-1px);
   }
 
@@ -475,8 +475,8 @@ export const VerifyConfirmButton = styled(ModalButton)`
 
 export const IconButton = styled.button`
   padding: 6px;
-  background: #F6F9FC;
-  border: 1px solid #E6EBF1;
+  background: #F4F6F9;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s;
@@ -488,7 +488,7 @@ export const IconButton = styled.button`
   min-height: 32px;
 
   &:hover {
-    background: #E6EBF1;
+    background: #C7CED6;
     transform: translateY(-1px);
   }
 
@@ -519,7 +519,7 @@ export const ActionButtonsGroup = styled.div`
 export const IconSymbol = styled.span`
   font-size: 14px;
   font-family: 'Lucida Console', 'Courier New', monospace;
-  color: #6B7C93;
+  color: #4B5563;
   display: inline-block;
   line-height: 1;
 `;
@@ -537,7 +537,7 @@ export const OrderDetailSection = styled.div`
 export const SectionTitle = styled.h3`
   font-size: 14px;
   font-weight: 600;
-  color: #6B7C93;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin: 0 0 12px 0;
@@ -552,7 +552,7 @@ export const DetailRow = styled.div`
 `;
 
 export const DetailLabel = styled.span`
-  color: #6B7C93;
+  color: #4B5563;
 `;
 
 export const DetailValue = styled.span`
@@ -563,7 +563,7 @@ export const ItemDetail = styled.div`
   display: flex;
   gap: 16px;
   padding: 12px;
-  background: #F6F9FC;
+  background: #F4F6F9;
   border-radius: 8px;
   margin-bottom: 12px;
 
@@ -585,7 +585,7 @@ export const ItemName = styled.div`
 
 export const ItemOptions = styled.div`
   font-size: 13px;
-  color: #6B7C93;
+  color: #4B5563;
   margin-bottom: 4px;
 `;
 
@@ -598,12 +598,12 @@ export const ItemPrice = styled.div`
 
 export const Divider = styled.hr`
   border: 0;
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
   margin: 20px 0;
 `;
 
 export const TotalSection = styled.div`
-  background: #F6F9FC;
+  background: #F4F6F9;
   padding: 20px;
   border-radius: 8px;
 `;
@@ -614,7 +614,7 @@ export const TotalRow = styled.div<{ isTotal?: boolean }>`
   padding: 8px 0;
   font-size: ${props => props.isTotal ? '18px' : '14px'};
   font-weight: ${props => props.isTotal ? '700' : '400'};
-  color: ${props => props.isTotal ? '#0A2540' : '#6B7C93'};
+  color: ${props => props.isTotal ? '#0A2540' : '#4B5563'};
 `;
 
 
@@ -774,7 +774,7 @@ export const PaginationContainer = styled.div`
   align-items: center;
   padding: 20px 32px;
   background: white;
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
 
   @media (max-width: 768px) {
     padding: 16px 20px;
@@ -785,7 +785,7 @@ export const PaginationContainer = styled.div`
 
 export const PaginationInfo = styled.div`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 export const PaginationControls = styled.div`
@@ -797,16 +797,16 @@ export const PaginationControls = styled.div`
 export const PageButton = styled.button<{ active?: boolean }>`
   padding: 8px 12px;
   border-radius: 6px;
-  border: 1px solid ${props => props.active ? '#635BFF' : '#E6EBF1'};
+  border: 1px solid ${props => props.active ? '#635BFF' : '#C7CED6'};
   background: ${props => props.active ? '#635BFF' : 'white'};
-  color: ${props => props.active ? 'white' : '#6B7280'};
+  color: ${props => props.active ? 'white' : '#4B5563'};
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
 
   &:hover:not(:disabled) {
-    background: ${props => props.active ? '#5A51E6' : '#F6F9FC'};
+    background: ${props => props.active ? '#5A51E6' : '#F4F6F9'};
     border-color: ${props => props.active ? '#5A51E6' : '#C7D2FE'};
   }
 

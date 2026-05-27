@@ -83,7 +83,7 @@ const CloseButton = styled.button`
   background: none;
   border: none;
   font-size: 24px;
-  color: #64748B;
+  color: #475569;
   cursor: pointer;
   padding: 8px;
   border-radius: 8px;
@@ -142,7 +142,7 @@ const StaffAvatar = styled.div<{ role: string }>`
       case 'cashier': return 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)';
       case 'kitchen': return 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)';
       case 'server': return 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)';
-      default: return 'linear-gradient(135deg, #6B7280 0%, #4B5563 100%)';
+      default: return 'linear-gradient(135deg, #4B5563 0%, #374151 100%)';
     }
   }};
 `;
@@ -178,7 +178,7 @@ const RoleBadge = styled.span<{ role: string }>`
       case 'cashier': return '#DBEAFE';
       case 'kitchen': return '#ECFDF5';
       case 'server': return '#FEF3C7';
-      default: return '#F3F4F6';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
@@ -188,14 +188,14 @@ const RoleBadge = styled.span<{ role: string }>`
       case 'cashier': return '#1E40AF';
       case 'kitchen': return '#059669';
       case 'server': return '#D97706';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 `;
 
 const ProfileMeta = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const FormContainer = styled.form`
@@ -223,12 +223,12 @@ const FormGroup = styled.div`
 const Label = styled.label`
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: #1F2937;
 `;
 
 const Input = styled.input`
   padding: 12px 16px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.2s;
@@ -241,17 +241,17 @@ const Input = styled.input`
   
   &:disabled {
     background: #F9FAFB;
-    color: #6B7280;
+    color: #4B5563;
     cursor: not-allowed;
   }
   
   &::placeholder {
-    color: #9CA3AF;
+    color: #6B7280;
   }
 `;
 
 const StatCard = styled.div`
-  background: #F8FAFC;
+  background: #F1F4F8;
   border: 1px solid #E2E8F0;
   border-radius: 8px;
   padding: 16px;
@@ -267,7 +267,7 @@ const StatValue = styled.div`
 
 const StatLabel = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.3px;
 `;
@@ -286,9 +286,9 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
-  border: ${props => props.variant === 'primary' ? 'none' : '1px solid #E5E7EB'};
+  border: ${props => props.variant === 'primary' ? 'none' : '1px solid #C7CED6'};
   background: ${props => props.variant === 'primary' ? '#635BFF' : 'white'};
-  color: ${props => props.variant === 'primary' ? 'white' : '#6B7280'};
+  color: ${props => props.variant === 'primary' ? 'white' : '#4B5563'};
   
   &:hover {
     background: ${props => props.variant === 'primary' ? '#5A51E6' : '#F9FAFB'};
@@ -304,7 +304,7 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
 
 const TabContainer = styled.div`
   display: flex;
-  border-bottom: 1px solid #E5E7EB;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 24px;
 `;
 
@@ -317,7 +317,7 @@ const Tab = styled.button<{ active: boolean }>`
   cursor: pointer;
   transition: all 0.2s;
   border-bottom: 2px solid ${props => props.active ? '#635BFF' : 'transparent'};
-  color: ${props => props.active ? '#635BFF' : '#6B7280'};
+  color: ${props => props.active ? '#635BFF' : '#4B5563'};
   
   &:hover {
     color: #635BFF;
@@ -337,7 +337,7 @@ const ScheduleGrid = styled.div`
 
 const DayCard = styled.div<{ active: boolean }>`
   padding: 12px 8px;
-  border: 1px solid ${props => props.active ? '#635BFF' : '#E5E7EB'};
+  border: 1px solid ${props => props.active ? '#635BFF' : '#C7CED6'};
   border-radius: 8px;
   text-align: center;
   background: ${props => props.active ? 'rgba(99, 91, 255, 0.05)' : 'white'};
@@ -346,14 +346,14 @@ const DayCard = styled.div<{ active: boolean }>`
 const DayName = styled.div`
   font-size: 12px;
   font-weight: 600;
-  color: #374151;
+  color: #1F2937;
   margin-bottom: 4px;
   text-transform: uppercase;
 `;
 
 const DayTime = styled.div`
   font-size: 11px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 interface StaffProfileModalProps {
@@ -444,7 +444,7 @@ const StaffProfileModal: React.FC<StaffProfileModalProps> = ({ isOpen, onClose }
                 <RoleBadge role={currentStaff.role}>
                   {currentStaff.role}
                 </RoleBadge>
-                <span style={{ fontSize: '12px', color: '#6B7280', textTransform: 'capitalize' }}>
+                <span style={{ fontSize: '12px', color: '#4B5563', textTransform: 'capitalize' }}>
                   {currentStaff.department}
                 </span>
               </ProfileRole>

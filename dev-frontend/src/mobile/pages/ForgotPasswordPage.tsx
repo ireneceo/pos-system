@@ -37,7 +37,7 @@ const Title = styled.h1`
 
 const Subtitle = styled.p`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 0 0 24px 0;
   line-height: 1.5;
   text-align: center;
@@ -56,14 +56,14 @@ const InputLabel = styled.label`
   display: block;
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: #1F2937;
   margin-bottom: 8px;
 `;
 
 const Input = styled.input`
   width: 100%;
   padding: 14px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 10px;
   font-size: 16px;
   box-sizing: border-box;
@@ -77,7 +77,7 @@ const Input = styled.input`
   }
 
   &::placeholder {
-    color: #9CA3AF;
+    color: #6B7280;
   }
 `;
 
@@ -116,7 +116,7 @@ const SubmitButton = styled.button`
   }
 
   &:disabled {
-    background: #D1D5DB;
+    background: #6B7280;
     cursor: not-allowed;
   }
 `;
@@ -125,9 +125,9 @@ const SecondaryButton = styled.button`
   width: 100%;
   padding: 14px;
   background: white;
-  border: 2px solid #E5E7EB;
+  border: 2px solid #C7CED6;
   border-radius: 10px;
-  color: #374151;
+  color: #1F2937;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
@@ -136,7 +136,7 @@ const SecondaryButton = styled.button`
 
   &:active {
     background: #F9FAFB;
-    border-color: #D1D5DB;
+    border-color: #6B7280;
   }
 `;
 
@@ -144,7 +144,7 @@ const SignUpLink = styled.div`
   text-align: center;
   margin-top: 16px;
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
 
   span {
     color: #635BFF;
@@ -184,14 +184,14 @@ const SuccessTitle = styled.h2`
 
 const SuccessMessage = styled.p`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 0 0 24px 0;
   line-height: 1.6;
 `;
 
 const TabContainer = styled.div`
   display: flex;
-  background: #F3F4F6;
+  background: #F1F4F8;
   border-radius: 10px;
   padding: 4px;
   margin-bottom: 24px;
@@ -207,7 +207,7 @@ const Tab = styled.button<{ active: boolean }>`
   cursor: pointer;
   transition: all 0.2s;
   background: ${props => props.active ? 'white' : 'transparent'};
-  color: ${props => props.active ? '#1F2937' : '#6B7280'};
+  color: ${props => props.active ? '#1F2937' : '#4B5563'};
   box-shadow: ${props => props.active ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'};
 `;
 

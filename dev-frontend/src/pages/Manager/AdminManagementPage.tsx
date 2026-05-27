@@ -28,13 +28,13 @@ interface Staff {
 
 const Container = styled.div`
   min-height: 100vh;
-  background: #FAFBFC;
+  background: #F9FAFB;
 `;
 
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -87,13 +87,13 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
     }
   ` : `
     background: white;
-    color: #6B7280;
-    border: 1px solid #E6EBF1;
+    color: #4B5563;
+    border: 1px solid #C7CED6;
 
     &:hover {
-      background: #F8FAFC;
+      background: #F1F4F8;
       color: #0A2540;
-      border-color: #CBD5E1;
+      border-color: #64748B;
     }
   `}
 `;
@@ -104,14 +104,14 @@ const Content = styled.div`
 
 const StatSubtext = styled.div`
   font-size: 12px;
-  color: #9CA3AF;
+  color: #6B7280;
   margin-top: 4px;
 `;
 
 const StaffTableContainer = styled.div`
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   overflow: hidden;
 
   @media (max-width: 768px) {
@@ -138,8 +138,8 @@ const StaffTable = styled.table`
 `;
 
 const StaffTableHead = styled.thead`
-  background: #F8FAFC;
-  border-bottom: 1px solid #E6EBF1;
+  background: #F1F4F8;
+  border-bottom: 1px solid #C7CED6;
 
   @media (max-width: 768px) {
     display: none;
@@ -150,7 +150,7 @@ const StaffTableHead = styled.thead`
     text-align: left;
     font-size: 12px;
     font-weight: 600;
-    color: #6B7280;
+    color: #4B5563;
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }
@@ -161,11 +161,11 @@ const StaffTableHead = styled.thead`
 `;
 
 const StaffTableRow = styled.tr`
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
   transition: background 0.15s;
 
   &:hover {
-    background: #F8FAFC;
+    background: #F1F4F8;
   }
 
   &:last-child {
@@ -180,7 +180,7 @@ const StaffTableRow = styled.tr`
     margin-bottom: 10px;
     background: white;
     border-radius: 10px;
-    border: 1px solid #E6EBF1;
+    border: 1px solid #C7CED6;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 
     &:last-child {
@@ -210,7 +210,7 @@ const StaffTableCell = styled.td`
       display: block;
       font-size: 10px;
       font-weight: 600;
-      color: #9CA3AF;
+      color: #6B7280;
       text-transform: uppercase;
       letter-spacing: 0.5px;
       margin-bottom: 4px;
@@ -220,7 +220,7 @@ const StaffTableCell = styled.td`
       flex: 1 1 100%;
       padding-top: 10px;
       margin-top: 10px;
-      border-top: 1px solid #F3F4F6;
+      border-top: 1px solid #F1F4F8;
 
       &:before {
         display: none;
@@ -245,7 +245,7 @@ const StaffName = styled.div`
 
 const StaffEmail = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const StatusBadge = styled.span<{ active: boolean }>`
@@ -276,9 +276,9 @@ const ActionButtons = styled.div`
 const ActionButton = styled.button<{ variant?: 'danger' }>`
   padding: 6px 12px;
   background: transparent;
-  border: 1px solid ${props => props.variant === 'danger' ? '#FEE2E2' : '#E6EBF1'};
+  border: 1px solid ${props => props.variant === 'danger' ? '#FEE2E2' : '#C7CED6'};
   border-radius: 6px;
-  color: ${props => props.variant === 'danger' ? '#DC2626' : '#6B7280'};
+  color: ${props => props.variant === 'danger' ? '#DC2626' : '#4B5563'};
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
@@ -312,7 +312,7 @@ const ViewField = styled.div`
 const ViewLabel = styled.span`
   font-size: 12px;
   font-weight: 500;
-  color: #6B7280;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.3px;
 `;
@@ -325,7 +325,7 @@ const ViewValue = styled.span`
 
 const ViewDivider = styled.hr`
   border: none;
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
   margin: 4px 0;
 `;
 
@@ -339,7 +339,7 @@ const DropdownContainer = styled.div`
   left: 0;
   right: 0;
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   max-height: 200px;
   overflow-y: auto;
@@ -351,7 +351,7 @@ const DropdownContainer = styled.div`
 const DropdownItem = styled.div`
   padding: 10px 16px;
   cursor: pointer;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
   font-size: 14px;
   transition: background 0.15s;
 
@@ -360,7 +360,7 @@ const DropdownItem = styled.div`
   }
 
   &:hover {
-    background: #F8FAFC;
+    background: #F1F4F8;
   }
 `;
 
@@ -626,7 +626,7 @@ const ManagerAdminManagementPage: React.FC = () => {
       <Container>
         <Header><Title>{t('admin:adminManagementPage.restaurantAdmin')}</Title></Header>
         <Content>
-          <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>{t('admin:adminManagementPage.loading')}</div>
+          <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>{t('admin:adminManagementPage.loading')}</div>
         </Content>
       </Container>
     );
@@ -828,7 +828,7 @@ const ManagerAdminManagementPage: React.FC = () => {
           </UIFormGroup>
         </UIFormRow>
 
-        <div style={{ fontSize: '13px', color: '#6B7280', background: '#F9FAFB', padding: '12px', borderRadius: '8px' }}>
+        <div style={{ fontSize: '13px', color: '#4B5563', background: '#F9FAFB', padding: '12px', borderRadius: '8px' }}>
           Password will be auto-generated and shown after creation.
         </div>
       </Modal>
@@ -948,7 +948,7 @@ const ManagerAdminManagementPage: React.FC = () => {
         </UIFormGroup>
 
         {editingStaff && (
-          <div style={{ fontSize: '13px', color: '#6B7280', background: '#F9FAFB', padding: '12px', borderRadius: '8px' }}>
+          <div style={{ fontSize: '13px', color: '#4B5563', background: '#F9FAFB', padding: '12px', borderRadius: '8px' }}>
             Restaurant: {editingStaff.restaurantName || '-'} &middot; Role: {editingStaff.role}
           </div>
         )}
@@ -980,12 +980,12 @@ const ManagerAdminManagementPage: React.FC = () => {
           <ModalButton variant="primary" onClick={() => setShowSuccessModal(false)}>{t('admin:adminManagementPage.done')}</ModalButton>
         </>}
       >
-        <div style={{ marginBottom: '20px', fontSize: '14px', color: '#6B7280' }}>
+        <div style={{ marginBottom: '20px', fontSize: '14px', color: '#4B5563' }}>
           {successMessage} Please share this password securely. They should change it after first login.
         </div>
         {successPassword && (
-          <div style={{ background: '#F8FAFC', border: '1px solid #E6EBF1', borderRadius: '8px', padding: '16px', textAlign: 'center', marginBottom: '16px' }}>
-            <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '8px', fontWeight: 600 }}>{t('admin:adminManagementPage.temporaryPassword')}</div>
+          <div style={{ background: '#F1F4F8', border: '1px solid #C7CED6', borderRadius: '8px', padding: '16px', textAlign: 'center', marginBottom: '16px' }}>
+            <div style={{ fontSize: '12px', color: '#4B5563', marginBottom: '8px', fontWeight: 600 }}>{t('admin:adminManagementPage.temporaryPassword')}</div>
             <div style={{ fontSize: '18px', fontWeight: 700, color: '#0A2540', fontFamily: 'monospace', letterSpacing: '1px', userSelect: 'all' as const }}>{successPassword}</div>
           </div>
         )}

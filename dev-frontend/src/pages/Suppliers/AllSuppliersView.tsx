@@ -44,7 +44,7 @@ const Grid = styled.div`
 `;
 const Card = styled.div`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   padding: 20px;
   display: flex;
@@ -89,17 +89,17 @@ const Name = styled.h3`
   overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-break: break-word;
 `;
 const Meta = styled.div`
-  font-size: 13px; color: #6B7C93;
+  font-size: 13px; color: #4B5563;
   display: flex; align-items: center; gap: 6px;
 `;
 const MetaLabel = styled.span`
-  font-size: 11px; color: #9CA3AF; min-width: 50px;
+  font-size: 11px; color: #6B7280; min-width: 50px;
 `;
 const CardActions = styled.div`
   display: flex; gap: 8px;
   margin-top: auto;
   padding-top: 12px;
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
 `;
 const ActionButton = styled.button<{ variant?: 'danger' | 'primary' }>`
   flex: 1;
@@ -109,12 +109,12 @@ const ActionButton = styled.button<{ variant?: 'danger' | 'primary' }>`
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s;
-  border: 1px solid ${p => p.variant === 'danger' ? '#FEE2E2' : '#E6EBF1'};
+  border: 1px solid ${p => p.variant === 'danger' ? '#FEE2E2' : '#C7CED6'};
   background: ${p => p.variant === 'danger' ? '#FEF2F2' : p.variant === 'primary' ? '#635BFF' : 'white'};
-  color: ${p => p.variant === 'danger' ? '#DC2626' : p.variant === 'primary' ? 'white' : '#4B5563'};
+  color: ${p => p.variant === 'danger' ? '#DC2626' : p.variant === 'primary' ? 'white' : '#374151'};
   &:hover {
     background: ${p => p.variant === 'danger' ? '#FEE2E2' : p.variant === 'primary' ? '#5048E5' : '#F9FAFB'};
-    border-color: ${p => p.variant === 'danger' ? '#FECACA' : p.variant === 'primary' ? '#5048E5' : '#D1D5DB'};
+    border-color: ${p => p.variant === 'danger' ? '#FECACA' : p.variant === 'primary' ? '#5048E5' : '#6B7280'};
   }
 `;
 
@@ -311,13 +311,13 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
         )}
       </FilterBar>
       {loading ? (
-        <EmptyState><div style={{ fontSize: 14, color: '#6B7C93' }}>Loading...</div></EmptyState>
+        <EmptyState><div style={{ fontSize: 14, color: '#4B5563' }}>Loading...</div></EmptyState>
       ) : filtered.length === 0 ? (
         <EmptyState>
           <div style={{ fontSize: 14, color: '#0A2540', fontWeight: 600, marginBottom: 4 }}>
             {t('supplier:emptyAll.title', 'No suppliers yet')}
           </div>
-          <div style={{ fontSize: 13, color: '#6B7C93' }}>
+          <div style={{ fontSize: 13, color: '#4B5563' }}>
             {t('supplier:emptyAll.desc', 'Suppliers will appear here automatically when you add your own, connect to a brand/foodcourt, or have an active supplier contract.')}
           </div>
         </EmptyState>

@@ -11,7 +11,7 @@ const OrderButton = styled.button`
   width: 28px;
   height: 28px;
   border-radius: 4px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   background: white;
   display: flex;
   align-items: center;
@@ -21,7 +21,7 @@ const OrderButton = styled.button`
 
   &:hover:not(:disabled) {
     background: #F9FAFB;
-    border-color: #D1D5DB;
+    border-color: #6B7280;
   }
 
   &:disabled {
@@ -32,7 +32,7 @@ const OrderButton = styled.button`
   svg {
     width: 14px;
     height: 14px;
-    color: #6B7280;
+    color: #4B5563;
   }
 `;
 

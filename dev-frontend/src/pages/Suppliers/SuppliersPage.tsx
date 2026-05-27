@@ -55,7 +55,7 @@ const SuppliersGrid = styled.div`
 const SupplierCard = styled.div<{ isActive?: boolean; readOnly?: boolean }>`
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   padding: 20px;
   transition: all 0.2s;
   opacity: ${props => props.isActive ? 1 : 0.6};
@@ -64,7 +64,7 @@ const SupplierCard = styled.div<{ isActive?: boolean; readOnly?: boolean }>`
   flex-direction: column;
   ${props => props.readOnly && `
     background: #F9FAFB;
-    border: 1px dashed #D1D5DB;
+    border: 1px dashed #6B7280;
   `}
 
   &:hover {
@@ -90,7 +90,7 @@ const SupplierName = styled.h3`
 
 const SupplierCode = styled.span`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-left: 8px;
 `;
 
@@ -117,7 +117,7 @@ const InfoRow = styled.div`
   align-items: center;
   gap: 8px;
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
 
   svg {
     width: 14px;
@@ -131,7 +131,7 @@ const CardActions = styled.div`
   gap: 8px;
   margin-top: auto;
   padding-top: 16px;
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
 `;
 
 const ActionButton = styled.button<{ variant?: 'danger' }>`
@@ -142,13 +142,13 @@ const ActionButton = styled.button<{ variant?: 'danger' }>`
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s;
-  border: 1px solid ${props => props.variant === 'danger' ? '#FEE2E2' : '#E6EBF1'};
+  border: 1px solid ${props => props.variant === 'danger' ? '#FEE2E2' : '#C7CED6'};
   background: ${props => props.variant === 'danger' ? '#FEF2F2' : 'white'};
-  color: ${props => props.variant === 'danger' ? '#DC2626' : '#4B5563'};
+  color: ${props => props.variant === 'danger' ? '#DC2626' : '#374151'};
 
   &:hover {
     background: ${props => props.variant === 'danger' ? '#FEE2E2' : '#F9FAFB'};
-    border-color: ${props => props.variant === 'danger' ? '#FECACA' : '#D1D5DB'};
+    border-color: ${props => props.variant === 'danger' ? '#FECACA' : '#6B7280'};
   }
 `;
 
@@ -162,7 +162,7 @@ const EmptyTitle = styled.h3`
 
 const EmptyDescription = styled.p`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin-bottom: 24px;
 `;
 
@@ -186,7 +186,7 @@ const BrandSuppliersSection = styled.div`
 const SectionTitle = styled.h4`
   font-size: 14px;
   font-weight: 600;
-  color: #6B7280;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 16px;
@@ -221,7 +221,7 @@ const ViewField = styled.div`
 const ViewLabel = styled.span`
   font-size: 12px;
   font-weight: 500;
-  color: #6B7280;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.3px;
 `;
@@ -234,7 +234,7 @@ const ViewValue = styled.span`
 
 const ViewDivider = styled.hr`
   border: none;
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
   margin: 4px 0;
 `;
 
@@ -575,7 +575,7 @@ const SuppliersPage: React.FC = () => {
             <ActionButton
               onClick={() => handleToggleActive(supplier)}
               title={supplier.is_active ? 'Deactivate' : 'Activate'}
-              style={{ color: supplier.is_active ? '#10B981' : '#9CA3AF' }}
+              style={{ color: supplier.is_active ? '#10B981' : '#6B7280' }}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 {supplier.is_active
@@ -605,7 +605,7 @@ const SuppliersPage: React.FC = () => {
             <Title>{t('suppliers:suppliersPage.suppliers')}</Title>
           </Header>
           <Content>
-            <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
+            <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>
               Loading...
             </div>
           </Content>

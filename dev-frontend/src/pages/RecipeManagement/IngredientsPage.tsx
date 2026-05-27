@@ -18,7 +18,7 @@ const HeaderActions = styled.div`
 
 const BrandSelect = styled.select`
   padding: 10px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   color: #0A2540;
@@ -27,7 +27,7 @@ const BrandSelect = styled.select`
   min-width: 200px;
 
   &:hover {
-    border-color: #CBD5E1;
+    border-color: #64748B;
   }
 
   &:focus {
@@ -107,7 +107,7 @@ const IngredientsPage: React.FC = () => {
       <Container>
         <Header><Title>{t('recipes:ingredientsPage.ingredients')}</Title></Header>
         <Content>
-          <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>{t('recipes:ingredientsPage.loading')}</div>
+          <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>{t('recipes:ingredientsPage.loading')}</div>
         </Content>
       </Container>
     );

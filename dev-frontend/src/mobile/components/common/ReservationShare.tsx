@@ -143,10 +143,10 @@ const CalendarIcon = () => (
   </svg>
 );
 
-const Container = styled.div`margin-top:16px;padding-top:16px;border-top:1px solid #E5E7EB;`;
-const Label = styled.div`font-size:12px;color:#9CA3AF;margin-bottom:10px;text-align:center;`;
+const Container = styled.div`margin-top:16px;padding-top:16px;border-top:1px solid #C7CED6;`;
+const Label = styled.div`font-size:12px;color:#6B7280;margin-bottom:10px;text-align:center;`;
 const ButtonRow = styled.div`display:flex;justify-content:center;gap:10px;margin-bottom:10px;&:last-child{margin-bottom:0;}`;
-const Btn = styled.button`display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;border:1px solid #E5E7EB;background:white;font-size:13px;font-weight:500;color:#374151;cursor:pointer;&:active{transform:scale(0.96);background:#F9FAFB;}`;
+const Btn = styled.button`display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;border:1px solid #C7CED6;background:white;font-size:13px;font-weight:500;color:#1F2937;cursor:pointer;&:active{transform:scale(0.96);background:#F9FAFB;}`;
 const CalendarBtn = styled(Btn)`flex:1;max-width:280px;justify-content:center;border-color:#635BFF;color:#635BFF;font-weight:600;`;
 const Toast = styled.div<{ visible: boolean }>`position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1F2937;color:white;padding:10px 20px;border-radius:8px;font-size:14px;font-weight:500;opacity:${p => p.visible ? 1 : 0};transition:opacity 0.3s;pointer-events:none;z-index:1000;`;
 

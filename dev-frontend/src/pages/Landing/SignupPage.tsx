@@ -1239,11 +1239,11 @@ const SignupPage: React.FC = () => {
         <div style={{ maxWidth: '500px', margin: '80px auto', padding: '48px 32px', textAlign: 'center', background: '#fff', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>✉</div>
           <h2 style={{ color: '#1F2937', margin: '0 0 12px', fontSize: '24px' }}>{t('landing:signupPage.checkYourEmail')}</h2>
-          <p style={{ color: '#6B7280', fontSize: '15px', lineHeight: '1.6', margin: '0 0 24px' }}>
+          <p style={{ color: '#4B5563', fontSize: '15px', lineHeight: '1.6', margin: '0 0 24px' }}>
             {t('landing:signupPage.weveSentAVerificationLinkTo')}<br />
-            <strong style={{ color: '#374151' }}>{verificationEmail}</strong>
+            <strong style={{ color: '#1F2937' }}>{verificationEmail}</strong>
           </p>
-          <p style={{ color: '#9CA3AF', fontSize: '13px', lineHeight: '1.6', margin: '0 0 32px' }}>
+          <p style={{ color: '#6B7280', fontSize: '13px', lineHeight: '1.6', margin: '0 0 32px' }}>
             {t('landing:signupPage.pleaseClickTheLinkInTheEmailToVerifyYour')}<br />
             {t('landing:signupPage.theLinkExpiresIn24Hours')}
           </p>
@@ -1256,7 +1256,7 @@ const SignupPage: React.FC = () => {
           >
             {t('landing:signupPage.goToLogin')}
           </button>
-          <p style={{ color: '#9CA3AF', fontSize: '12px', marginTop: '16px' }}>
+          <p style={{ color: '#6B7280', fontSize: '12px', marginTop: '16px' }}>
             {t('landing:signupPage.didntReceiveTheEmailCheckYourSpamFolder')}
           </p>
         </div>
@@ -1280,7 +1280,7 @@ const SignupPage: React.FC = () => {
             <p style={{ color: '#525F7F', fontSize: 15, lineHeight: 1.6, marginBottom: 8 }}>
               Logged in as <strong>{user.name}</strong> ({user.role}).
             </p>
-            <p style={{ color: '#6B7C93', fontSize: 14, marginBottom: 24 }}>
+            <p style={{ color: '#4B5563', fontSize: 14, marginBottom: 24 }}>
               To create a new account, sign out first.
             </p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -1291,7 +1291,7 @@ const SignupPage: React.FC = () => {
                 type="button"
                 onClick={() => { logout(); }}
                 style={{
-                  padding: '12px 32px', border: '1px solid #E6EBF1', borderRadius: 8,
+                  padding: '12px 32px', border: '1px solid #C7CED6', borderRadius: 8,
                   background: '#FFF', color: '#0A2540', fontSize: 14, fontWeight: 600,
                   cursor: 'pointer'
                 }}
@@ -1504,7 +1504,7 @@ const RefStatusHint = styled.span<{ $state: 'idle' | 'checking' | 'valid' | 'inv
   margin-left: 8px;
   color: ${p => ({
     idle: 'transparent',
-    checking: '#6B7C93',
+    checking: '#4B5563',
     valid: '#059669',
     invalid: '#DC2626'
   })[p.$state]};
@@ -1519,7 +1519,7 @@ const RefDiscountNote = styled.div`
 
 const RefHelpText = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 4px;
 `;
 
@@ -1528,7 +1528,7 @@ const SignupCard = styled.div`
   border-radius: 16px;
   padding: 40px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
 
   @media (max-width: 768px) {
     padding: 24px;
@@ -1564,14 +1564,14 @@ const ProgressDot = styled.div<{ active: boolean; current: boolean }>`
   font-size: 14px;
   font-weight: 600;
   transition: all 0.3s;
-  background: ${({ active, current }) => current ? '#635BFF' : active ? '#635BFF' : '#E6EBF1'};
-  color: ${({ active }) => active ? 'white' : '#6B7C93'};
+  background: ${({ active, current }) => current ? '#635BFF' : active ? '#635BFF' : '#C7CED6'};
+  color: ${({ active }) => active ? 'white' : '#4B5563'};
 `;
 
 const ProgressLabel = styled.div<{ active: boolean }>`
   font-size: 12px;
   font-weight: 500;
-  color: ${({ active }) => active ? '#0A2540' : '#6B7C93'};
+  color: ${({ active }) => active ? '#0A2540' : '#4B5563'};
 `;
 
 const ProgressLine = styled.div`
@@ -1580,7 +1580,7 @@ const ProgressLine = styled.div`
   left: 50px;
   right: 50px;
   height: 3px;
-  background: #E6EBF1;
+  background: #C7CED6;
   z-index: 0;
 `;
 
@@ -1606,7 +1606,7 @@ const StepTitle = styled.h2`
 
 const StepDescription = styled.p`
   font-size: 14px;
-  color: #6B7C93;
+  color: #4B5563;
   margin: 0 0 24px;
 `;
 
@@ -1643,14 +1643,14 @@ const RoleCard = styled.div<{ selected: boolean }>`
   position: relative;
   padding: 24px;
   border-radius: 12px;
-  border: 2px solid ${({ selected }) => selected ? '#635BFF' : '#E6EBF1'};
+  border: 2px solid ${({ selected }) => selected ? '#635BFF' : '#C7CED6'};
   background: ${({ selected }) => selected ? '#F8F7FF' : 'white'};
   cursor: pointer;
   transition: all 0.2s;
   text-align: center;
 
   &:hover {
-    border-color: ${({ selected }) => selected ? '#635BFF' : '#CBD5E1'};
+    border-color: ${({ selected }) => selected ? '#635BFF' : '#64748B'};
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   }
@@ -1672,7 +1672,7 @@ const RoleTitle = styled.div`
 
 const RoleSubtitle = styled.div`
   font-size: 13px;
-  color: #6B7C93;
+  color: #4B5563;
   line-height: 1.4;
 `;
 
@@ -1712,14 +1712,14 @@ const FormLabel = styled.label`
   display: block;
   font-size: 13px;
   font-weight: 500;
-  color: #6B7C93;
+  color: #4B5563;
   margin-bottom: 6px;
 `;
 
 const FormInput = styled.input<{ hasError?: boolean }>`
   width: 100%;
   padding: 10px 14px;
-  border: 1px solid ${({ hasError }) => hasError ? '#DC2626' : '#E6EBF1'};
+  border: 1px solid ${({ hasError }) => hasError ? '#DC2626' : '#C7CED6'};
   border-radius: 8px;
   font-size: 14px;
   color: #0A2540;
@@ -1734,7 +1734,7 @@ const FormInput = styled.input<{ hasError?: boolean }>`
   }
 
   &::placeholder {
-    color: #9CA3AF;
+    color: #6B7280;
   }
 `;
 
@@ -1749,7 +1749,7 @@ const PasswordToggle = styled.button`
   transform: translateY(-50%);
   background: none;
   border: none;
-  color: #6B7C93;
+  color: #4B5563;
   font-size: 13px;
   cursor: pointer;
   padding: 4px 8px;
@@ -1790,7 +1790,7 @@ const PwMeterBar = styled.div<{ $filled: boolean; $score: number }>`
   height: 4px;
   border-radius: 2px;
   background: ${({ $filled, $score }) => {
-    if (!$filled) return '#E6EBF1';
+    if (!$filled) return '#C7CED6';
     if ($score <= 1) return '#DC2626';
     if ($score === 2) return '#F59E0B';
     if ($score === 3) return '#10B981';
@@ -1810,7 +1810,7 @@ const PwReqList = styled.ul`
 
 const PwReqItem = styled.li<{ $met: boolean }>`
   font-size: 11.5px;
-  color: ${({ $met }) => ($met ? '#059669' : '#9CA3AF')};
+  color: ${({ $met }) => ($met ? '#059669' : '#6B7280')};
   display: flex;
   align-items: center;
   gap: 4px;
@@ -1843,7 +1843,7 @@ const HintRow = styled.div<{ $ready: boolean }>`
   align-items: center;
   gap: 6px;
   font-size: 12.5px;
-  color: ${({ $ready }) => ($ready ? '#059669' : '#6B7C93')};
+  color: ${({ $ready }) => ($ready ? '#059669' : '#4B5563')};
   flex-wrap: wrap;
   line-height: 1.5;
 `;
@@ -1875,7 +1875,7 @@ const PlanHint = styled.div`
   align-items: center;
   gap: 6px;
   font-size: 12.5px;
-  color: #6B7C93;
+  color: #4B5563;
   margin: 6px 0 12px;
   &::after {
     content: "↓";
@@ -1908,7 +1908,7 @@ const PlanSectionTitle = styled.h3`
 
 const PlanTrialHint = styled.p`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 0 0 16px;
 `;
 
@@ -1924,7 +1924,7 @@ const PlanControlsRow = styled.div`
 const CurrencySelect = styled.select`
   padding: 8px 12px;
   font-size: 13px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   background: white;
   cursor: pointer;
@@ -1939,7 +1939,7 @@ const CurrencySelect = styled.select`
 const BillingToggle = styled.div`
   display: flex;
   gap: 0;
-  background: #F3F4F6;
+  background: #F1F4F8;
   border-radius: 8px;
   padding: 3px;
   width: fit-content;
@@ -1957,7 +1957,7 @@ const BillingOption = styled.button<{ active: boolean }>`
   align-items: center;
   gap: 6px;
   background: ${({ active }) => active ? 'white' : 'transparent'};
-  color: ${({ active }) => active ? '#0A2540' : '#6B7C93'};
+  color: ${({ active }) => active ? '#0A2540' : '#4B5563'};
   box-shadow: ${({ active }) => active ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'};
 `;
 
@@ -1983,14 +1983,14 @@ const PlanGrid = styled.div`
 const PlanCard = styled.div<{ selected: boolean }>`
   padding: 20px;
   border-radius: 12px;
-  border: 2px solid ${({ selected }) => selected ? '#635BFF' : '#E6EBF1'};
+  border: 2px solid ${({ selected }) => selected ? '#635BFF' : '#C7CED6'};
   background: ${({ selected }) => selected ? '#F8F7FF' : 'white'};
   cursor: pointer;
   transition: all 0.2s;
   text-align: center;
 
   &:hover {
-    border-color: ${({ selected }) => selected ? '#635BFF' : '#CBD5E1'};
+    border-color: ${({ selected }) => selected ? '#635BFF' : '#64748B'};
   }
 `;
 
@@ -2011,7 +2011,7 @@ const PlanPriceDisplay = styled.div`
 const PlanPeriod = styled.span`
   font-size: 13px;
   font-weight: 400;
-  color: #6B7C93;
+  color: #4B5563;
 `;
 
 const AnnualHint = styled.div`
@@ -2029,7 +2029,7 @@ const PlanFeatures = styled.div`
 
 const PlanFeature = styled.div`
   font-size: 12px;
-  color: #6B7C93;
+  color: #4B5563;
 `;
 
 const PlanSelected = styled.div`
@@ -2042,10 +2042,10 @@ const PlanSelected = styled.div`
 // ─── Step 4: Review ────────────────────────────────────────────
 
 const ReviewSection = styled.div`
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 12px;
   padding: 24px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
 `;
 
 const ReviewGroup = styled.div`
@@ -2057,7 +2057,7 @@ const ReviewGroup = styled.div`
 
 const ReviewLabel = styled.div`
   font-size: 14px;
-  color: #6B7C93;
+  color: #4B5563;
 `;
 
 const ReviewValue = styled.div<{ highlight?: boolean }>`
@@ -2068,7 +2068,7 @@ const ReviewValue = styled.div<{ highlight?: boolean }>`
 
 const ReviewDivider = styled.div`
   height: 1px;
-  background: #E6EBF1;
+  background: #C7CED6;
   margin: 4px 0;
 `;
 
@@ -2105,15 +2105,15 @@ const InvitationBanner = styled.div<{ variant: 'loading' | 'valid' | 'invalid' }
   background: ${({ variant }) =>
     variant === 'valid' ? 'linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%)' :
     variant === 'invalid' ? '#FEF2F2' :
-    '#F3F4F6'};
+    '#F1F4F8'};
   border: 1px solid ${({ variant }) =>
     variant === 'valid' ? '#A7F3D0' :
     variant === 'invalid' ? '#FCA5A5' :
-    '#E5E7EB'};
+    '#C7CED6'};
   color: ${({ variant }) =>
     variant === 'valid' ? '#065F46' :
     variant === 'invalid' ? '#991B1B' :
-    '#374151'};
+    '#1F2937'};
 `;
 
 const InvitationBannerTitle = styled.div`
@@ -2151,18 +2151,18 @@ const ButtonSpacer = styled.div`
 
 const BackButton = styled.button`
   padding: 12px 24px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   background: white;
-  color: #6B7C93;
+  color: #4B5563;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
 
   &:hover:not(:disabled) {
-    background: #F8FAFC;
-    border-color: #CBD5E1;
+    background: #F1F4F8;
+    border-color: #64748B;
   }
   &:disabled { opacity: 0.5; cursor: not-allowed; }
 `;
@@ -2212,7 +2212,7 @@ const LoginLink = styled.div`
   text-align: center;
   margin-top: 20px;
   font-size: 14px;
-  color: #6B7C93;
+  color: #4B5563;
 
   a {
     color: #635BFF;

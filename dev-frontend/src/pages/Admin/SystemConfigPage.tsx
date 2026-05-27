@@ -29,13 +29,13 @@ const ConfigCategories = styled.div`
 const CategorySection = styled.div`
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   overflow: hidden;
 `;
 
 const CategoryHeader = styled.div`
-  background: #F8FAFC;
-  border-bottom: 1px solid #E6EBF1;
+  background: #F1F4F8;
+  border-bottom: 1px solid #C7CED6;
   padding: 20px 24px;
 `;
 
@@ -59,11 +59,11 @@ const ConfigItem = styled.div`
   gap: 20px;
   align-items: center;
   padding: 20px 24px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   transition: all 0.2s;
 
   &:hover {
-    background: #FAFBFC;
+    background: #F9FAFB;
   }
 
   &:last-child {
@@ -88,13 +88,13 @@ const ConfigName = styled.div`
 
 const ConfigDescription = styled.div`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
   line-height: 1.4;
 `;
 
 const ConfigKey = styled.div`
   font-size: 12px;
-  color: #9CA3AF;
+  color: #6B7280;
   font-family: 'Monaco', 'Menlo', monospace;
   margin-top: 4px;
 `;
@@ -107,7 +107,7 @@ const ConfigValue = styled.div`
 
 const ValueInput = styled.input<{ dataType: string }>`
   padding: 8px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   min-width: 200px;
@@ -120,17 +120,17 @@ const ValueInput = styled.input<{ dataType: string }>`
   }
 
   &:disabled {
-    background: #F3F4F6;
+    background: #F1F4F8;
     cursor: not-allowed;
   }
 `;
 
 const ValueDisplay = styled.div`
   padding: 8px 12px;
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 6px;
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   min-width: 200px;
 `;
 
@@ -162,8 +162,8 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger
     }
 
     &:disabled {
-      background: #CBD5E1;
-      border-color: #CBD5E1;
+      background: #64748B;
+      border-color: #64748B;
       cursor: not-allowed;
     }
   ` : props.variant === 'danger' ? `
@@ -176,11 +176,11 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger
     }
   ` : `
     background: transparent;
-    color: #6B7280;
-    border-color: #E6EBF1;
+    color: #4B5563;
+    border-color: #C7CED6;
 
     &:hover {
-      background: #F8FAFC;
+      background: #F1F4F8;
       color: #0A2540;
     }
   `}
@@ -211,13 +211,13 @@ const FileInput = styled.input`
 const FileInputLabel = styled.label`
   display: block;
   padding: 12px 16px;
-  border: 2px dashed #CBD5E1;
+  border: 2px dashed #64748B;
   border-radius: 8px;
   text-align: center;
   cursor: pointer;
   transition: all 0.2s;
-  color: #6B7280;
-  background: #F8FAFC;
+  color: #4B5563;
+  background: #F1F4F8;
 
   &:hover {
     border-color: #635BFF;
@@ -508,7 +508,7 @@ const SystemConfigPage: React.FC = () => {
                 </>
               }
             >
-              <p style={{ marginBottom: '20px', color: '#6B7280' }}>
+              <p style={{ marginBottom: '20px', color: '#4B5563' }}>
                 Select a configuration file to import. Only editable settings will be updated.
               </p>
               <FileInputContainer>
@@ -551,7 +551,7 @@ const SystemConfigPage: React.FC = () => {
               <WarningText>
                 <strong>{t('admin:systemConfigPage.areYouSureYouWantToRestartTheSystem')}</strong>
               </WarningText>
-              <p style={{ color: '#6B7280', marginBottom: '0' }}>
+              <p style={{ color: '#4B5563', marginBottom: '0' }}>
                 This will temporarily interrupt service for all users. The system will be back online in a few minutes.
               </p>
             </Modal>

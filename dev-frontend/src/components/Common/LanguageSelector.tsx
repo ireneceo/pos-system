@@ -169,11 +169,11 @@ const GlobeToggle = styled.button`
   cursor: pointer;
   font-size: 13px;
   font-weight: 500;
-  color: #374151;
+  color: #1F2937;
   transition: all 0.2s;
   letter-spacing: 0.3px;
 
-  svg { color: #6B7280; }
+  svg { color: #4B5563; }
 
   &:hover {
     background: rgba(0, 0, 0, 0.04);
@@ -207,7 +207,7 @@ const GlobeOption = styled.button<{ $active: boolean }>`
   background: ${({ $active }) => $active ? '#F0EEFF' : 'transparent'};
   cursor: pointer;
   font-size: 14px;
-  color: ${({ $active }) => $active ? '#635BFF' : '#374151'};
+  color: ${({ $active }) => $active ? '#635BFF' : '#1F2937'};
   font-weight: ${({ $active }) => $active ? 600 : 400};
   transition: background 0.15s;
 
@@ -226,7 +226,7 @@ const GlobeLabel = styled.div`
 
 const GlobeCode = styled.span`
   font-size: 11px;
-  color: #9CA3AF;
+  color: #6B7280;
   font-weight: 400;
 `;
 
@@ -240,12 +240,12 @@ const Toggle = styled.button<{ $compact: boolean }>`
   border-radius: 8px;
   cursor: pointer;
   font-size: 13px;
-  color: #374151;
+  color: #1F2937;
   transition: all 0.15s;
 
   &:hover {
     background: #F9FAFB;
-    border-color: #D1D5DB;
+    border-color: #6B7280;
   }
 `;
 
@@ -263,7 +263,7 @@ const IconToggle = styled.button`
   transition: background 0.15s;
 
   &:hover {
-    background: #F3F4F6;
+    background: #F1F4F8;
   }
 `;
 
@@ -277,12 +277,12 @@ const SidebarToggle = styled.button`
   border: none;
   cursor: pointer;
   font-size: 13px;
-  color: #374151;
+  color: #1F2937;
   transition: background 0.15s;
   border-radius: 0;
 
   &:hover {
-    background: #F3F4F6;
+    background: #F1F4F8;
   }
 `;
 
@@ -295,7 +295,7 @@ const SidebarLeft = styled.div`
 const SidebarLabel = styled.span`
   font-size: 13px;
   font-weight: 500;
-  color: #4B5563;
+  color: #374151;
 `;
 
 const FlagCircle = styled.span`
@@ -305,7 +305,7 @@ const FlagCircle = styled.span`
 
 const Arrow = styled.span<{ $open: boolean }>`
   font-size: 10px;
-  color: #9CA3AF;
+  color: #6B7280;
   transition: transform 0.15s;
   transform: ${({ $open }) => $open ? 'rotate(180deg)' : 'none'};
 `;
@@ -319,7 +319,7 @@ const Dropdown = styled.div<{ $direction?: 'up' | 'down' }>`
   right: 0;
   min-width: 170px;
   background: white;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 10px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
   /* Sits above Landing header (1500) and any in-page banner / hero. */
@@ -337,7 +337,7 @@ const Option = styled.button<{ $active: boolean }>`
   background: ${({ $active }) => $active ? '#F0EEFF' : 'transparent'};
   cursor: pointer;
   font-size: 14px;
-  color: ${({ $active }) => $active ? '#635BFF' : '#374151'};
+  color: ${({ $active }) => $active ? '#635BFF' : '#1F2937'};
   font-weight: ${({ $active }) => $active ? 600 : 400};
   transition: background 0.1s;
 

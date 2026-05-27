@@ -253,7 +253,7 @@ const Wrapper = styled.div`
   right: 0;
   z-index: 1000;
   background: #FFFFFF;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
   padding: 20px 24px;
@@ -298,13 +298,13 @@ const PresetSidebar = styled.div`
   gap: 2px;
   padding-right: 20px;
   margin-right: 20px;
-  border-right: 1px solid #E6EBF1;
+  border-right: 1px solid #C7CED6;
   min-width: 120px;
 
   @media (max-width: 768px) {
     flex-direction: row;
     border-right: none;
-    border-bottom: 1px solid #E6EBF1;
+    border-bottom: 1px solid #C7CED6;
     padding-right: 0;
     margin-right: 0;
     padding-bottom: 12px;
@@ -318,7 +318,7 @@ const PresetButton = styled.button`
   padding: 8px 12px;
   text-align: left;
   background: transparent;
-  color: #374151;
+  color: #1F2937;
   border: none;
   border-radius: 6px;
   font-size: 13px;
@@ -327,14 +327,14 @@ const PresetButton = styled.button`
   white-space: nowrap;
 
   &:hover {
-    background: #F3F4F6;
+    background: #F1F4F8;
   }
 
   @media (max-width: 768px) {
     flex: 1;
     text-align: center;
     padding: 8px 10px;
-    background: #F6F9FC;
+    background: #F4F6F9;
     border-radius: 8px;
   }
 `;
@@ -356,12 +356,12 @@ const NavButton = styled.button`
   border: none;
   border-radius: 50%;
   background: transparent;
-  color: #6B7280;
+  color: #4B5563;
   cursor: pointer;
   transition: background 0.15s;
 
   &:hover {
-    background: #F3F4F6;
+    background: #F1F4F8;
   }
 `;
 
@@ -405,7 +405,7 @@ const WeekdayRow = styled.div`
 const Weekday = styled.div`
   text-align: center;
   font-size: 12px;
-  color: #9CA3AF;
+  color: #6B7280;
   font-weight: 500;
   height: 28px;
   line-height: 28px;
@@ -440,7 +440,7 @@ const DayCell = styled.div<{
   position: relative;
   user-select: none;
 
-  color: ${p => (p.$isStart || p.$isEnd) ? '#FFFFFF' : p.$isInRange ? '#635BFF' : '#374151'};
+  color: ${p => (p.$isStart || p.$isEnd) ? '#FFFFFF' : p.$isInRange ? '#635BFF' : '#1F2937'};
   background: ${p => (p.$isStart || p.$isEnd) ? '#635BFF' : p.$isInRange ? '#F0EEFF' : 'transparent'};
   font-weight: ${p => (p.$isStart || p.$isEnd || p.$isToday) ? 700 : 400};
 
@@ -463,7 +463,7 @@ const DayCell = styled.div<{
 
   &:hover {
     ${p => !p.$isStart && !p.$isEnd && `
-      background: ${p.$isInRange ? '#E8E5FF' : '#F3F4F6'};
+      background: ${p.$isInRange ? '#E8E5FF' : '#F1F4F8'};
     `}
   }
 `;

@@ -47,7 +47,7 @@ interface ContractRow {
 const PageTabBar = styled.div`
   display: flex;
   gap: 4px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   padding: 0 24px;
   background: white;
 `;
@@ -58,7 +58,7 @@ const PageTab = styled.button<{ $active: boolean }>`
   padding: 14px 20px;
   font-size: 14px;
   font-weight: 600;
-  color: ${p => p.$active ? '#635BFF' : '#6B7280'};
+  color: ${p => p.$active ? '#635BFF' : '#4B5563'};
   border-bottom: 2px solid ${p => p.$active ? '#635BFF' : 'transparent'};
   cursor: pointer;
   font-family: inherit;
@@ -68,7 +68,7 @@ const PageTab = styled.button<{ $active: boolean }>`
 `;
 
 const Subtitle = styled.div`
-  color: #6B7280;
+  color: #4B5563;
   font-size: 14px;
   margin-top: 4px;
 `;
@@ -82,7 +82,7 @@ const CardList = styled.div`
 
 const Card = styled.div`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   padding: 18px 20px;
   display: flex;
@@ -106,7 +106,7 @@ const BuyerName = styled.div`
 
 const Meta = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
@@ -124,12 +124,12 @@ const Pill = styled.span`
 `;
 
 const MessageBox = styled.div`
-  background: #F8FAFC;
-  border: 1px solid #E6EBF1;
+  background: #F1F4F8;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   padding: 10px 14px;
   font-size: 13px;
-  color: #374151;
+  color: #1F2937;
   line-height: 1.5;
   white-space: pre-wrap;
 `;
@@ -146,21 +146,21 @@ const Empty = styled.div`
   text-align: center;
   padding: 60px 20px;
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
-  color: #6B7280;
+  color: #4B5563;
 
   h3 {
     margin: 0 0 8px;
     font-size: 16px;
-    color: #374151;
+    color: #1F2937;
   }
   p {
     margin: 0 auto 20px;
     font-size: 13px;
     line-height: 1.5;
     max-width: 360px;
-    color: #6B7C93;
+    color: #4B5563;
   }
 `;
 
@@ -186,7 +186,7 @@ const WarningBox = styled.div`
 
 const TermsSummary = styled.div`
   font-size: 13px;
-  color: #374151;
+  color: #1F2937;
   background: #F0FDF4;
   border: 1px solid #BBF7D0;
   border-radius: 8px;
@@ -546,13 +546,13 @@ const SupplierContractsPage: React.FC = () => {
 
         {row.request_message ? (
           <MessageBox>
-            <strong style={{ fontSize: 12, color: '#6B7280', display: 'block', marginBottom: 4 }}>
+            <strong style={{ fontSize: 12, color: '#4B5563', display: 'block', marginBottom: 4 }}>
               {t('supplierContracts.card.message')}
             </strong>
             {row.request_message}
           </MessageBox>
         ) : row.status === 'requested' ? (
-          <MessageBox style={{ fontStyle: 'italic', color: '#9CA3AF' }}>
+          <MessageBox style={{ fontStyle: 'italic', color: '#6B7280' }}>
             {t('supplierContracts.card.noMessage')}
           </MessageBox>
         ) : null}
@@ -700,7 +700,7 @@ const SupplierContractsPage: React.FC = () => {
                 onChange={(e) => setApproveForm({ ...approveForm, payment_due_day: e.target.value })}
                 required
               />
-              <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>
+              <div style={{ fontSize: 12, color: '#4B5563', marginTop: 4 }}>
                 {t('approve.paymentDueDayHint')}
               </div>
             </UIFormGroup>

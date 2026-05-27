@@ -34,7 +34,7 @@ interface CustomerRow {
 }
 
 const Subtitle = styled.div`
-  color: #6B7280;
+  color: #4B5563;
   font-size: 14px;
   margin-top: 4px;
 `;
@@ -252,8 +252,8 @@ const SupplierCustomersPage: React.FC = () => {
                 <tr>
                   <td colSpan={5}>
                     <DataTableEmpty>
-                      <div style={{ marginBottom: 8, fontSize: 16, fontWeight: 600, color: '#374151' }}>{t('customers.noCustomers', 'No customers yet')}</div>
-                      <div style={{ fontSize: 13, color: '#6B7280', maxWidth: 360, margin: '0 auto 16px', lineHeight: 1.5 }}>
+                      <div style={{ marginBottom: 8, fontSize: 16, fontWeight: 600, color: '#1F2937' }}>{t('customers.noCustomers', 'No customers yet')}</div>
+                      <div style={{ fontSize: 13, color: '#4B5563', maxWidth: 360, margin: '0 auto 16px', lineHeight: 1.5 }}>
                         {t('customers.noCustomersHint', 'Once you approve buyer contract requests, your customers will appear here.')}
                       </div>
                       <ThemedButton variant="outline" size="small" onClick={() => navigate('/pos/supplier/contracts?tab=pending')}>
@@ -269,7 +269,7 @@ const SupplierCustomersPage: React.FC = () => {
                       <div>
                         <strong>{row.buyer_name}</strong>
                         {row.buyer_email && (
-                          <div style={{ fontSize: 12, color: '#6B7280' }}>{row.buyer_email}</div>
+                          <div style={{ fontSize: 12, color: '#4B5563' }}>{row.buyer_email}</div>
                         )}
                       </div>
                     </DataTableCell>

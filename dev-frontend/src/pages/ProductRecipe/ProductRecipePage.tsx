@@ -120,13 +120,13 @@ const ProductName = styled.div`
 
 const ProductMeta = styled.div`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const IngredientList = styled.div`
   max-height: 300px;
   overflow-y: auto;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   margin: 16px 0;
 `;
@@ -136,7 +136,7 @@ const IngredientRow = styled.div`
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  border-bottom: 1px solid #E5E7EB;
+  border-bottom: 1px solid #C7CED6;
 
   &:last-child {
     border-bottom: none;
@@ -171,7 +171,7 @@ const CostRow = styled.div`
   font-size: 14px;
 
   &:last-child {
-    border-top: 1px solid #E5E7EB;
+    border-top: 1px solid #C7CED6;
     margin-top: 8px;
     padding-top: 16px;
     font-weight: 600;
@@ -526,7 +526,7 @@ const ProductRecipePage: React.FC = () => {
                       </StatusBadge>
                     </DataTableCell>
                     <DataTableCell data-label={t('recipes:productRecipePage.ingredientCost')} align="right">
-                      <div style={{ color: product.has_recipe ? '#0A2540' : '#9CA3AF' }}>
+                      <div style={{ color: product.has_recipe ? '#0A2540' : '#6B7280' }}>
                         {product.has_recipe ? formatCurrency(product.ingredient_cost, selectedCurrency) : '-'}
                       </div>
                     </DataTableCell>
@@ -536,7 +536,7 @@ const ProductRecipePage: React.FC = () => {
                           {product.profit_margin}%
                         </ProfitBadge>
                       ) : (
-                        <span style={{ color: '#9CA3AF' }}>-</span>
+                        <span style={{ color: '#6B7280' }}>-</span>
                       )}
                     </DataTableCell>
                     <DataTableCell data-label={t('recipes:productRecipePage.actions')} mobileFullWidth>
@@ -588,7 +588,7 @@ const ProductRecipePage: React.FC = () => {
                   <IngredientRow key={index}>
                     <IngredientInfo>
                       <div style={{ fontWeight: 600 }}>{ri.ingredient_name}</div>
-                      <div style={{ fontSize: '13px', color: '#6B7280' }}>
+                      <div style={{ fontSize: '13px', color: '#4B5563' }}>
                         {ri.quantity} {ri.unit} x {formatCurrency(ri.unit_cost || 0, selectedCurrency)}
                       </div>
                     </IngredientInfo>

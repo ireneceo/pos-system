@@ -23,7 +23,7 @@ const Label = styled.label`
   display: block;
   font-size: 13px;
   font-weight: 500;
-  color: #6B7C93;
+  color: #4B5563;
   margin-bottom: 8px;
   text-transform: uppercase;
   letter-spacing: 0.3px;
@@ -45,13 +45,13 @@ const DropzoneWrapper = styled.div`
 const DropzoneArea = styled.div<{ isDragging: boolean; hasImage: boolean; isUploading: boolean }>`
   width: ${props => props.hasImage ? '150px' : '100%'};
   height: 150px;
-  border: 2px dashed ${props => props.isDragging ? '#635BFF' : '#CBD5E1'};
+  border: 2px dashed ${props => props.isDragging ? '#635BFF' : '#64748B'};
   border-radius: 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: ${props => props.isDragging ? 'rgba(99, 91, 255, 0.05)' : '#F8FAFC'};
+  background: ${props => props.isDragging ? 'rgba(99, 91, 255, 0.05)' : '#F1F4F8'};
   cursor: ${props => props.isUploading ? 'wait' : 'pointer'};
   transition: all 0.2s;
   overflow: hidden;
@@ -59,8 +59,8 @@ const DropzoneArea = styled.div<{ isDragging: boolean; hasImage: boolean; isUplo
   opacity: ${props => props.isUploading ? 0.7 : 1};
 
   &:hover {
-    border-color: ${props => props.hasImage ? '#CBD5E1' : '#635BFF'};
-    background: ${props => props.hasImage ? '#F8FAFC' : 'rgba(99, 91, 255, 0.03)'};
+    border-color: ${props => props.hasImage ? '#64748B' : '#635BFF'};
+    background: ${props => props.hasImage ? '#F1F4F8' : 'rgba(99, 91, 255, 0.03)'};
   }
 
   img {
@@ -78,14 +78,14 @@ const DropzoneContent = styled.div`
 
 
 const DropzoneText = styled.p`
-  color: #6B7280;
+  color: #4B5563;
   font-size: 14px;
   margin-bottom: 8px;
   font-weight: 500;
 `;
 
 const DropzoneSubtext = styled.p`
-  color: #9CA3AF;
+  color: #6B7280;
   font-size: 12px;
 `;
 
@@ -142,7 +142,7 @@ const HiddenInput = styled.input`
 const LoadingSpinner = styled.div`
   width: 24px;
   height: 24px;
-  border: 3px solid #E5E7EB;
+  border: 3px solid #C7CED6;
   border-top-color: #635BFF;
   border-radius: 50%;
   animation: spin 1s linear infinite;

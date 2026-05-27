@@ -38,25 +38,25 @@ const Group = styled.div`
 const Label = styled.label`
   font-size: 11px;
   font-weight: 500;
-  color: #6B7C93;
+  color: #4B5563;
 `;
 
 const Input = styled.input`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   color: #0A2540;
   outline: none;
   box-sizing: border-box;
   &:focus { border-color: #635BFF; box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1); }
-  &:disabled { background: #F8FAFC; color: #6B7C93; }
+  &:disabled { background: #F1F4F8; color: #4B5563; }
 `;
 
 const IconBtn = styled.button`
   background: none;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   padding: 10px 12px;
   cursor: pointer;
@@ -81,10 +81,10 @@ const AddBtn = styled.button`
 
 const EmptyState = styled.div`
   font-size: 13px;
-  color: #9CA3AF;
+  color: #6B7280;
   text-align: center;
   padding: 12px;
-  border: 1px dashed #E6EBF1;
+  border: 1px dashed #C7CED6;
   border-radius: 6px;
 `;
 

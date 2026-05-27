@@ -29,9 +29,39 @@ export const GlobalStyles = createGlobalStyle`
     font-family: inherit;
   }
 
-  input, textarea, select {
+  /* Disabled state — must look obviously inactive (washed-out, not just "another grey").
+     One global rule so every button/input across the app reads the same. */
+  button:disabled,
+  button[disabled],
+  [aria-disabled='true'] {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  /* Input affordance — every text/number/email/date input, textarea, and select gets
+     a subtle grey fill so users instantly see "this is where I type." Buttons, checkbox,
+     radio, range, color, file pickers and search are excluded — they have their own visual. */
+  input:not([type='button']):not([type='submit']):not([type='reset']):not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='file']):not([type='image']):not([type='hidden']),
+  textarea,
+  select {
     font-family: inherit;
     outline: none;
+    background-color: #F4F6F9;
+  }
+
+  input:not([type='button']):not([type='submit']):not([type='reset']):not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='file']):not([type='image']):not([type='hidden']):focus,
+  textarea:focus,
+  select:focus {
+    background-color: #FFFFFF;
+  }
+
+  input:disabled, textarea:disabled, select:disabled {
+    background-color: #F4F6F9;     /* very light grey so it doesn't compete with active fields */
+    color: #C7CED6;                /* washed-out text — clearly "not editable" */
+    border-color: #E9EDF2;
+    cursor: not-allowed;
+    opacity: 1;                    /* override the global button-disabled opacity:0.4 — inputs are clear enough */
   }
 
   /* Scrollbar Styles */

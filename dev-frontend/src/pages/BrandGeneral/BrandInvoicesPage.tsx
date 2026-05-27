@@ -815,11 +815,11 @@ const BrandInvoicesPage: React.FC = () => {
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; line-height: 1.5; color: #333; background: #fff; }
         .invoice-container { max-width: 800px; margin: 0 auto; padding: 40px; }
-        .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; padding-bottom: 24px; border-bottom: 2px solid #E5E7EB; }
+        .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; padding-bottom: 24px; border-bottom: 2px solid #C7CED6; }
         .logo-section { flex: 1; max-width: 400px; }
         .company-logo { max-height: 60px; margin-bottom: 10px; }
         .company-name { font-size: 20px; font-weight: 700; color: #0A2540; margin-bottom: 8px; }
-        .company-details { font-size: 13px; color: #6B7280; line-height: 1.6; }
+        .company-details { font-size: 13px; color: #4B5563; line-height: 1.6; }
         .invoice-title { text-align: right; }
         .invoice-label { font-size: 24px; font-weight: 700; color: #635BFF; margin-bottom: 8px; }
         .invoice-number { font-size: 16px; font-weight: 600; color: #0A2540; margin-bottom: 8px; }
@@ -829,37 +829,37 @@ const BrandInvoicesPage: React.FC = () => {
         .status-submitted { background: #DBEAFE; color: #1E40AF; }
         .status-overdue { background: #FEE2E2; color: #DC2626; }
         .status-cancelled { background: #FEF2F2; color: #DC2626; }
-        .status-draft { background: #F3F4F6; color: #6B7280; }
+        .status-draft { background: #F1F4F8; color: #4B5563; }
         .billing-info { display: flex; justify-content: space-between; margin-bottom: 24px; }
         .bill-to-section { flex: 1; }
-        .section-label { font-size: 12px; font-weight: 600; color: #6B7280; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .section-label { font-size: 12px; font-weight: 600; color: #4B5563; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
         .customer-name { font-size: 15px; font-weight: 600; color: #0A2540; }
-        .customer-details { font-size: 13px; color: #6B7280; margin-top: 4px; }
+        .customer-details { font-size: 13px; color: #4B5563; margin-top: 4px; }
         .dates-section { text-align: right; }
         .date-row { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 6px; font-size: 13px; }
-        .date-label { color: #6B7280; }
+        .date-label { color: #4B5563; }
         .date-value { color: #0A2540; font-weight: 500; min-width: 140px; }
         .items-section { margin-bottom: 24px; }
         .items-table { width: 100%; border-collapse: collapse; }
-        .items-table th { text-align: left; padding: 12px 8px; font-size: 12px; font-weight: 600; color: #6B7280; text-transform: uppercase; border-bottom: 2px solid #E5E7EB; }
+        .items-table th { text-align: left; padding: 12px 8px; font-size: 12px; font-weight: 600; color: #4B5563; text-transform: uppercase; border-bottom: 2px solid #C7CED6; }
         .items-table th.text-center { text-align: center; }
         .items-table th.text-right { text-align: right; }
-        .items-table td { padding: 12px 8px; font-size: 14px; color: #374151; border-bottom: 1px solid #F3F4F6; }
+        .items-table td { padding: 12px 8px; font-size: 14px; color: #1F2937; border-bottom: 1px solid #F1F4F8; }
         .items-table td.text-center { text-align: center; }
         .items-table td.text-right { text-align: right; white-space: nowrap; }
         .items-table th.text-right { white-space: nowrap; }
         .summary-section { display: flex; justify-content: flex-end; margin-bottom: 24px; }
         .summary-box { width: 280px; }
         .summary-row { display: flex; justify-content: space-between; padding: 8px 12px; font-size: 14px; white-space: nowrap; }
-        .summary-row.subtotal { color: #6B7280; }
-        .summary-row.tax { color: #6B7280; }
-        .summary-row.total { background: #F8FAFC; border-radius: 6px; font-weight: 700; font-size: 16px; color: #0A2540; margin-top: 8px; }
-        .bank-section { background: #F8FAFC; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
-        .bank-title { font-size: 12px; font-weight: 600; color: #6B7280; margin-bottom: 8px; text-transform: uppercase; }
-        .bank-details { font-size: 13px; color: #374151; line-height: 1.6; }
-        .registration-info { font-size: 12px; color: #9CA3AF; text-align: center; margin-top: 16px; }
-        .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #E5E7EB; text-align: center; }
-        .footer-text { font-size: 12px; color: #6B7280; margin-bottom: 4px; }
+        .summary-row.subtotal { color: #4B5563; }
+        .summary-row.tax { color: #4B5563; }
+        .summary-row.total { background: #F1F4F8; border-radius: 6px; font-weight: 700; font-size: 16px; color: #0A2540; margin-top: 8px; }
+        .bank-section { background: #F1F4F8; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+        .bank-title { font-size: 12px; font-weight: 600; color: #4B5563; margin-bottom: 8px; text-transform: uppercase; }
+        .bank-details { font-size: 13px; color: #1F2937; line-height: 1.6; }
+        .registration-info { font-size: 12px; color: #6B7280; text-align: center; margin-top: 16px; }
+        .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #C7CED6; text-align: center; }
+        .footer-text { font-size: 12px; color: #4B5563; margin-bottom: 4px; }
         ${INVOICE_PRINT_CSS}
     </style>
 </head>
@@ -1520,12 +1520,12 @@ const BrandInvoicesPage: React.FC = () => {
         {/* Payment Submit Modal */}
         {showPaymentSubmitModal && selectedInvoice && (
           <CommonModal isOpen={true} onClose={() => setShowPaymentSubmitModal(false)} title="Submit Payment" footer={<><div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}><Button variant="secondary" onClick={() => { setShowPaymentSubmitModal(false); setPaymentSubmitError(null); }}>{t('brand:brandInvoicesPage.cancel')}</Button> {paymentData.paymentMethod !== 'stripe' && paymentData.paymentMethod !== 'paypal' && ( <Button variant="success" onClick={handleSubmitPayment} disabled={!paymentData.paymentMethod || loadingPaymentMethods || isSubmittingPayment || (!paymentData.transactionId && !paymentData.receiptImage)} > {isSubmittingPayment ? 'Submitting...' : 'Submit Payment'} </Button> )} </div> {paymentSubmitError && ( <StatusMessage type="error" style={{ marginTop: '12px', wordBreak: 'break-word' }}> {paymentSubmitError} </StatusMessage> )}</>}>
-            <div style={{ marginBottom: '20px', padding: '16px', background: '#F8FAFC', borderRadius: '8px' }}>
-              <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#6B7280' }}>Invoice: <strong>{selectedInvoice.invoiceNumber}</strong></p>
+            <div style={{ marginBottom: '20px', padding: '16px', background: '#F1F4F8', borderRadius: '8px' }}>
+              <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#4B5563' }}>Invoice: <strong>{selectedInvoice.invoiceNumber}</strong></p>
               <p style={{ margin: '0', fontSize: '20px', fontWeight: '700', color: '#0A2540' }}>{formatCurrency(selectedInvoice.total, selectedInvoice.currency)}</p>
             </div>
             {loadingPaymentMethods ? (
-              <div style={{ textAlign: 'center', padding: '20px', color: '#6B7280' }}>{t('brand:brandInvoicesPage.loadingPaymentMethods')}</div>
+              <div style={{ textAlign: 'center', padding: '20px', color: '#4B5563' }}>{t('brand:brandInvoicesPage.loadingPaymentMethods')}</div>
             ) : availablePaymentMethods.length === 0 ? (
               <div style={{ padding: '20px', background: '#FEF3C7', borderRadius: '8px', marginBottom: '16px' }}>
                 <p style={{ margin: '0 0 8px 0', fontWeight: '600', color: '#92400E', fontSize: '15px' }}>Payment Not Available</p>
@@ -1540,7 +1540,7 @@ const BrandInvoicesPage: React.FC = () => {
                   <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(availablePaymentMethods.length, 3)}, 1fr)`, gap: '10px', marginTop: '8px' }}>
                     {availablePaymentMethods.map(method => (
                       <button key={method.id} onClick={() => { setPaymentData(prev => ({ ...prev, paymentMethod: method.id })); setPaymentSubmitError(null); }}
-                        style={{ padding: '12px 16px', minHeight: '44px', borderRadius: '8px', border: `1px solid ${paymentData.paymentMethod === method.id ? '#635BFF' : '#E6EBF1'}`, background: paymentData.paymentMethod === method.id ? 'rgba(99, 91, 255, 0.1)' : 'white', color: paymentData.paymentMethod === method.id ? '#635BFF' : '#374151', fontSize: '14px', fontWeight: '500', cursor: 'pointer', transition: 'all 0.15s', textAlign: 'center' }}>{method.name}</button>
+                        style={{ padding: '12px 16px', minHeight: '44px', borderRadius: '8px', border: `1px solid ${paymentData.paymentMethod === method.id ? '#635BFF' : '#C7CED6'}`, background: paymentData.paymentMethod === method.id ? 'rgba(99, 91, 255, 0.1)' : 'white', color: paymentData.paymentMethod === method.id ? '#635BFF' : '#1F2937', fontSize: '14px', fontWeight: '500', cursor: 'pointer', transition: 'all 0.15s', textAlign: 'center' }}>{method.name}</button>
                     ))}
                   </div>
                 </div>
@@ -1548,12 +1548,12 @@ const BrandInvoicesPage: React.FC = () => {
                   <StripePaymentForm invoiceId={selectedInvoice.id} onSuccess={() => { setShowPaymentSubmitModal(false); setSelectedInvoice(null); setPaymentData({ paymentMethod: 'bank_transfer', transactionId: '', notes: '', receiptImage: '' }); setSuccessMessage('Payment submitted successfully! The issuer will review and confirm your payment.'); setShowSuccessModal(true); fetchInvoicesToPay(); fetchPaidInvoices(); window.dispatchEvent(new Event('refreshBadgeCounts')); }} onError={() => {}} />
                 )}
                 {paymentData.paymentMethod === 'bank_transfer' && (() => { const m = availablePaymentMethods.find(m => m.id === 'bank_transfer'); return m ? (<div style={{ padding: '16px', background: '#EFF6FF', borderRadius: '8px', marginBottom: '16px', fontSize: '14px', lineHeight: '1.8' }}><h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600', color: '#1E40AF' }}>{t('brand:brandInvoicesPage.bankTransferDetails')}</h4><p style={{ margin: '0' }}><strong>Bank:</strong> {m.bankName}</p><p style={{ margin: '0' }}><strong>Account Number:</strong> {m.accountNumber}</p><p style={{ margin: '0' }}><strong>Account Name:</strong> {m.accountName}</p></div>) : null; })()}
-                {paymentData.paymentMethod === 'qr_payment' && (() => { const m = availablePaymentMethods.find(m => m.id === 'qr_payment'); return m ? (<div style={{ padding: '16px', background: '#EFF6FF', borderRadius: '8px', marginBottom: '16px', textAlign: 'center' }}><h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600', color: '#1E40AF' }}>{t('brand:brandInvoicesPage.qrPayment')}</h4>{m.qrImage && <img src={m.qrImage} alt="Payment QR Code" style={{ maxWidth: '200px', maxHeight: '200px', border: '1px solid #E5E7EB', borderRadius: '8px' }} />}{m.qrDescription && <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#6B7280' }}>{m.qrDescription}</p>}</div>) : null; })()}
+                {paymentData.paymentMethod === 'qr_payment' && (() => { const m = availablePaymentMethods.find(m => m.id === 'qr_payment'); return m ? (<div style={{ padding: '16px', background: '#EFF6FF', borderRadius: '8px', marginBottom: '16px', textAlign: 'center' }}><h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600', color: '#1E40AF' }}>{t('brand:brandInvoicesPage.qrPayment')}</h4>{m.qrImage && <img src={m.qrImage} alt="Payment QR Code" style={{ maxWidth: '200px', maxHeight: '200px', border: '1px solid #C7CED6', borderRadius: '8px' }} />}{m.qrDescription && <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#4B5563' }}>{m.qrDescription}</p>}</div>) : null; })()}
                 {paymentData.paymentMethod && paymentData.paymentMethod !== 'stripe' && paymentData.paymentMethod !== 'paypal' && (
                   <>
                     <div style={{ padding: '12px 16px', background: '#FEF3C7', borderRadius: '8px', marginBottom: '16px', fontSize: '13px', color: '#92400E', display: 'flex', alignItems: 'flex-start', gap: '8px' }}><span style={{ fontWeight: '600', flexShrink: 0 }}>*</span><span>{t('brand:brandInvoicesPage.pleaseProvideEitherA')}<strong>{t('brand:brandInvoicesPage.transactionIdReferenceNumber')}</strong> or upload a <strong>{t('brand:brandInvoicesPage.paymentReceiptImage')}</strong> to submit your payment.</span></div>
                     <FormGroup><FormLabel>{t('brand:brandInvoicesPage.transactionIdReferenceNumber')}</FormLabel><FormInput type="text" placeholder="Enter transaction ID or reference number" value={paymentData.transactionId} onChange={(e) => setPaymentData(prev => ({ ...prev, transactionId: e.target.value }))} /></FormGroup>
-                    <FormGroup><FormLabel>{t('brand:brandInvoicesPage.paymentReceiptImage')}</FormLabel><div style={{ border: '2px dashed #E6EBF1', borderRadius: '8px', padding: '20px', textAlign: 'center', background: paymentData.receiptImage ? '#F0FDF4' : '#FAFBFC', cursor: 'pointer', position: 'relative' }}>{paymentData.receiptImage ? (<div><img src={paymentData.receiptImage} alt="Payment Receipt" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', marginBottom: '12px' }} /><div><button type="button" onClick={() => setPaymentData(prev => ({ ...prev, receiptImage: '' }))} style={{ background: '#EF4444', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}>{t('brand:brandInvoicesPage.removeImage')}</button></div></div>) : (<label style={{ cursor: 'pointer', display: 'block' }}><input type="file" accept="image/*" onChange={handleReceiptImageUpload} style={{ display: 'none' }} /><div style={{ color: '#6B7280', fontSize: '14px' }}><div style={{ fontSize: '24px', marginBottom: '8px' }}>+</div><div>{t('brand:brandInvoicesPage.clickToUploadPaymentReceipt')}</div><div style={{ fontSize: '12px', marginTop: '4px' }}>{t('brand:brandInvoicesPage.supportsJpgPngMax5mb')}</div></div></label>)}</div></FormGroup>
+                    <FormGroup><FormLabel>{t('brand:brandInvoicesPage.paymentReceiptImage')}</FormLabel><div style={{ border: '2px dashed #C7CED6', borderRadius: '8px', padding: '20px', textAlign: 'center', background: paymentData.receiptImage ? '#F0FDF4' : '#F9FAFB', cursor: 'pointer', position: 'relative' }}>{paymentData.receiptImage ? (<div><img src={paymentData.receiptImage} alt="Payment Receipt" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', marginBottom: '12px' }} /><div><button type="button" onClick={() => setPaymentData(prev => ({ ...prev, receiptImage: '' }))} style={{ background: '#EF4444', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}>{t('brand:brandInvoicesPage.removeImage')}</button></div></div>) : (<label style={{ cursor: 'pointer', display: 'block' }}><input type="file" accept="image/*" onChange={handleReceiptImageUpload} style={{ display: 'none' }} /><div style={{ color: '#4B5563', fontSize: '14px' }}><div style={{ fontSize: '24px', marginBottom: '8px' }}>+</div><div>{t('brand:brandInvoicesPage.clickToUploadPaymentReceipt')}</div><div style={{ fontSize: '12px', marginTop: '4px' }}>{t('brand:brandInvoicesPage.supportsJpgPngMax5mb')}</div></div></label>)}</div></FormGroup>
                     <FormGroup><FormLabel>{t('brand:brandInvoicesPage.notesOptional')}</FormLabel><FormTextarea placeholder="Any additional information about the payment..." value={paymentData.notes} onChange={(e) => setPaymentData(prev => ({ ...prev, notes: e.target.value }))} /></FormGroup>
                   </>
                 )}
@@ -1618,12 +1618,12 @@ const BrandInvoicesPage: React.FC = () => {
           <CommonModal isOpen={true} onClose={() => setShowSendConfirmModal(false)} title="Send Invoice" footer={<><Button variant="secondary" onClick={() => setShowSendConfirmModal(false)}> Cancel </Button><Button variant="success" onClick={confirmSendInvoice}> Confirm </Button></>}>
             <div style={{ textAlign: 'center', padding: '20px 0' }}>
               <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#0A2540', marginBottom: '12px' }}>{t('brand:brandInvoicesPage.sendInvoice')}</h3>
-              <p style={{ fontSize: '14px', color: '#6B7280', marginBottom: '20px', lineHeight: '1.6' }}>Are you sure you want to send invoice <strong>{selectedInvoice.invoiceNumber}</strong> to <strong>{selectedInvoice.restaurantName || selectedInvoice.customerName}</strong>?</p>
-              <div style={{ background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E6EBF1' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span style={{ color: '#6B7280' }}>Invoice:</span><span style={{ fontWeight: '500' }}>{selectedInvoice.invoiceNumber}</span></div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span style={{ color: '#6B7280' }}>Recipient:</span><span style={{ fontWeight: '500' }}>{selectedInvoice.managerName || selectedInvoice.restaurantName || selectedInvoice.customerName}</span></div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span style={{ color: '#6B7280' }}>Company:</span><span style={{ fontWeight: '500' }}>{selectedInvoice.customerName || selectedInvoice.restaurantName}</span></div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6B7280' }}>Amount:</span><span style={{ fontWeight: '600', color: '#059669' }}>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</span></div>
+              <p style={{ fontSize: '14px', color: '#4B5563', marginBottom: '20px', lineHeight: '1.6' }}>Are you sure you want to send invoice <strong>{selectedInvoice.invoiceNumber}</strong> to <strong>{selectedInvoice.restaurantName || selectedInvoice.customerName}</strong>?</p>
+              <div style={{ background: '#F1F4F8', padding: '16px', borderRadius: '8px', border: '1px solid #C7CED6' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span style={{ color: '#4B5563' }}>Invoice:</span><span style={{ fontWeight: '500' }}>{selectedInvoice.invoiceNumber}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span style={{ color: '#4B5563' }}>Recipient:</span><span style={{ fontWeight: '500' }}>{selectedInvoice.managerName || selectedInvoice.restaurantName || selectedInvoice.customerName}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span style={{ color: '#4B5563' }}>Company:</span><span style={{ fontWeight: '500' }}>{selectedInvoice.customerName || selectedInvoice.restaurantName}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#4B5563' }}>Amount:</span><span style={{ fontWeight: '600', color: '#059669' }}>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</span></div>
               </div>
             </div>
           </CommonModal>
@@ -1634,7 +1634,7 @@ const BrandInvoicesPage: React.FC = () => {
           <CommonModal isOpen={true} onClose={() => setShowResendConfirmModal(false)} title="Resend Invoice" footer={<><Button variant="secondary" onClick={() => setShowResendConfirmModal(false)}> Cancel </Button><Button variant="primary" onClick={confirmResendInvoice}> Resend Invoice </Button></>}>
             <div style={{ textAlign: 'center', padding: '20px 0' }}>
               <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#0A2540', marginBottom: '12px' }}>{t('brand:brandInvoicesPage.resendInvoice')}</h3>
-              <p style={{ fontSize: '14px', color: '#6B7280', marginBottom: '20px', lineHeight: '1.6' }}>Resend invoice <strong>{selectedInvoice.invoiceNumber}</strong> to <strong>{selectedInvoice.restaurantName || selectedInvoice.customerName}</strong>?</p>
+              <p style={{ fontSize: '14px', color: '#4B5563', marginBottom: '20px', lineHeight: '1.6' }}>Resend invoice <strong>{selectedInvoice.invoiceNumber}</strong> to <strong>{selectedInvoice.restaurantName || selectedInvoice.customerName}</strong>?</p>
               <div style={{ background: '#FEF3C7', padding: '12px', borderRadius: '6px', border: '1px solid #F59E0B', fontSize: '13px', color: '#92400E' }}>This will send another copy of the invoice to the restaurant's email.</div>
             </div>
           </CommonModal>
@@ -1645,12 +1645,12 @@ const BrandInvoicesPage: React.FC = () => {
           <CommonModal isOpen={true} onClose={() => setShowCancelConfirmModal(false)} title="Cancel Invoice" footer={<><Button variant="secondary" onClick={() => setShowCancelConfirmModal(false)}> Keep Invoice </Button><Button variant="primary" onClick={confirmCancelInvoice} style={{ background: '#EF4444', borderColor: '#EF4444' }} > Cancel Invoice </Button></>}>
             <div style={{ textAlign: 'center', padding: '20px 0' }}>
               <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#0A2540', marginBottom: '12px' }}>{t('brand:brandInvoicesPage.cancelInvoice')}</h3>
-              <p style={{ fontSize: '14px', color: '#6B7280', marginBottom: '20px', lineHeight: '1.6' }}>Are you sure you want to cancel invoice <strong>{selectedInvoice.invoiceNumber}</strong>?</p>
+              <p style={{ fontSize: '14px', color: '#4B5563', marginBottom: '20px', lineHeight: '1.6' }}>Are you sure you want to cancel invoice <strong>{selectedInvoice.invoiceNumber}</strong>?</p>
               <div style={{ background: '#FEE2E2', padding: '16px', borderRadius: '8px', border: '1px solid #FCA5A5', marginBottom: '16px' }}><p style={{ margin: 0, color: '#991B1B', fontSize: '14px', fontWeight: '500' }}><strong>This action cannot be undone</strong></p><p style={{ margin: '8px 0 0 0', color: '#7F1D1D', fontSize: '13px' }}>The invoice will be marked as cancelled and cannot be sent or processed for payment.</p></div>
-              <div style={{ background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E6EBF1' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span style={{ color: '#6B7280' }}>Invoice:</span><span style={{ fontWeight: '500' }}>{selectedInvoice.invoiceNumber}</span></div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span style={{ color: '#6B7280' }}>Manager:</span><span style={{ fontWeight: '500' }}>{selectedInvoice.managerName}</span></div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6B7280' }}>Amount:</span><span style={{ fontWeight: '600', color: '#DC2626' }}>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</span></div>
+              <div style={{ background: '#F1F4F8', padding: '16px', borderRadius: '8px', border: '1px solid #C7CED6' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span style={{ color: '#4B5563' }}>Invoice:</span><span style={{ fontWeight: '500' }}>{selectedInvoice.invoiceNumber}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span style={{ color: '#4B5563' }}>Manager:</span><span style={{ fontWeight: '500' }}>{selectedInvoice.managerName}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#4B5563' }}>Amount:</span><span style={{ fontWeight: '600', color: '#DC2626' }}>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</span></div>
               </div>
             </div>
           </CommonModal>
@@ -1661,7 +1661,7 @@ const BrandInvoicesPage: React.FC = () => {
           <CommonModal isOpen={true} onClose={() => setShowDeleteConfirmModal(false)} title="Delete Invoice" footer={<><Button variant="secondary" onClick={() => setShowDeleteConfirmModal(false)}> Keep Invoice </Button><Button variant="primary" onClick={confirmDeleteInvoice} style={{ background: '#EF4444', borderColor: '#EF4444' }} > Delete Invoice </Button></>}>
             <div style={{ textAlign: 'center', padding: '20px 0' }}>
               <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#0A2540', marginBottom: '12px' }}>{t('brand:brandInvoicesPage.deleteInvoice')}</h3>
-              <p style={{ fontSize: '14px', color: '#6B7280', lineHeight: '1.5' }}>Are you sure you want to permanently delete invoice <strong>#{selectedInvoice.invoiceNumber}</strong>?<br />This action cannot be undone.</p>
+              <p style={{ fontSize: '14px', color: '#4B5563', lineHeight: '1.5' }}>Are you sure you want to permanently delete invoice <strong>#{selectedInvoice.invoiceNumber}</strong>?<br />This action cannot be undone.</p>
             </div>
           </CommonModal>
         )}
@@ -1687,14 +1687,14 @@ const BrandInvoicesPage: React.FC = () => {
                     {selectedInvoice.paymentMethod && (<p style={{ margin: '0 0 8px 0' }}><strong>Payment Method:</strong> {selectedInvoice.paymentMethod === 'bank_transfer' ? 'Bank Transfer' : selectedInvoice.paymentMethod === 'qr_payment' ? 'QR Payment' : selectedInvoice.paymentMethod === 'stripe' ? 'Stripe' : selectedInvoice.paymentMethod === 'paypal' ? 'PayPal' : selectedInvoice.paymentMethod}</p>)}
                     {selectedInvoice.transactionId && (<p style={{ margin: '0 0 8px 0' }}><strong>Transaction ID:</strong> {selectedInvoice.transactionId}</p>)}
                   </div>
-                  {selectedInvoice.receiptUrl && (<div style={{ marginTop: '12px' }}><p style={{ margin: '0 0 8px 0', fontWeight: '600', fontSize: '14px' }}>Payment Receipt:</p><div style={{ textAlign: 'center', background: 'white', padding: '12px', borderRadius: '8px' }}><img src={selectedInvoice.receiptUrl} alt="Payment Receipt" style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '8px', cursor: 'pointer' }} onClick={() => window.open(selectedInvoice.receiptUrl, '_blank')} /><p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#6B7280' }}>{t('brand:brandInvoicesPage.clickImageToViewFullSize')}</p></div></div>)}
+                  {selectedInvoice.receiptUrl && (<div style={{ marginTop: '12px' }}><p style={{ margin: '0 0 8px 0', fontWeight: '600', fontSize: '14px' }}>Payment Receipt:</p><div style={{ textAlign: 'center', background: 'white', padding: '12px', borderRadius: '8px' }}><img src={selectedInvoice.receiptUrl} alt="Payment Receipt" style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '8px', cursor: 'pointer' }} onClick={() => window.open(selectedInvoice.receiptUrl, '_blank')} /><p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#4B5563' }}>{t('brand:brandInvoicesPage.clickImageToViewFullSize')}</p></div></div>)}
                 </div>
               </FormGroup>
             )}
             <div style={{ background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: '8px', padding: '16px', margin: '16px 0' }}><p style={{ margin: 0, color: '#92400E', fontSize: '14px' }}><strong>{t('brand:brandInvoicesPage.confirmPaymentReceipt')}</strong><br />Only mark this invoice as paid if you have received and verified the payment. This action will update the invoice status to "Paid".</p></div>
             <FormGroup>
               <FormLabel>{t('brand:brandInvoicesPage.statusChange')}</FormLabel>
-              <div style={{ fontSize: '14px', lineHeight: '1.6', color: '#374151', background: '#F8FAFC', padding: '12px', borderRadius: '6px' }}>Payment Submitted → Paid<br />Paid Date: {formatDateTime(new Date(), operationSettings, { year: 'numeric', month: '2-digit', day: '2-digit' })}</div>
+              <div style={{ fontSize: '14px', lineHeight: '1.6', color: '#1F2937', background: '#F1F4F8', padding: '12px', borderRadius: '6px' }}>Payment Submitted → Paid<br />Paid Date: {formatDateTime(new Date(), operationSettings, { year: 'numeric', month: '2-digit', day: '2-digit' })}</div>
             </FormGroup>
           </CommonModal>
         )}
@@ -1704,12 +1704,12 @@ const BrandInvoicesPage: React.FC = () => {
           <CommonModal isOpen={true} onClose={() => setShowEmailModal(false)} title="Send Invoice via Email" footer={<><Button variant="secondary" onClick={() => { setShowEmailModal(false); setEmailInvoice(null); setEmailRecipient(''); }}> Cancel </Button><Button variant="primary" onClick={handleSendInvoiceEmail} disabled={!emailRecipient || !emailRecipient.includes('@')} > Send Email </Button></>}>
             <FormGroup>
               <FormLabel>{t('brand:brandInvoicesPage.invoice')}</FormLabel>
-              <div style={{ padding: '12px', background: '#F8FAFC', borderRadius: '6px', marginBottom: '16px' }}><div style={{ fontWeight: '600', color: '#0A2540', marginBottom: '4px' }}>{emailInvoice.invoiceNumber}</div><div style={{ fontSize: '13px', color: '#6B7280' }}>{emailInvoice.customerName}</div><div style={{ fontSize: '14px', fontWeight: '600', color: '#635BFF', marginTop: '8px' }}>{formatCurrency(emailInvoice.total, emailInvoice.currency || 'MYR')}</div></div>
+              <div style={{ padding: '12px', background: '#F1F4F8', borderRadius: '6px', marginBottom: '16px' }}><div style={{ fontWeight: '600', color: '#0A2540', marginBottom: '4px' }}>{emailInvoice.invoiceNumber}</div><div style={{ fontSize: '13px', color: '#4B5563' }}>{emailInvoice.customerName}</div><div style={{ fontSize: '14px', fontWeight: '600', color: '#635BFF', marginTop: '8px' }}>{formatCurrency(emailInvoice.total, emailInvoice.currency || 'MYR')}</div></div>
             </FormGroup>
             <FormGroup>
               <FormLabel>Recipient Email *</FormLabel>
               <FormInput type="email" value={emailRecipient} onChange={(e) => setEmailRecipient(e.target.value)} placeholder="Enter recipient email address" required style={{ maxWidth: '100%' }} />
-              <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>{emailRecipient ? (<>Default email for {emailInvoice.payerType === 'restaurant' ? 'Restaurant' : emailInvoice.payerType === 'foodcourt_manager' ? 'Foodcourt Manager' : emailInvoice.payerType === 'brand_manager' ? 'Brand Manager' : 'Customer'}</>) : (<>Enter the {emailInvoice.payerType === 'restaurant' ? 'restaurant' : emailInvoice.payerType === 'foodcourt_manager' ? 'foodcourt manager' : emailInvoice.payerType === 'brand_manager' ? 'brand manager' : 'customer'} email address</>)}</div>
+              <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '4px' }}>{emailRecipient ? (<>Default email for {emailInvoice.payerType === 'restaurant' ? 'Restaurant' : emailInvoice.payerType === 'foodcourt_manager' ? 'Foodcourt Manager' : emailInvoice.payerType === 'brand_manager' ? 'Brand Manager' : 'Customer'}</>) : (<>Enter the {emailInvoice.payerType === 'restaurant' ? 'restaurant' : emailInvoice.payerType === 'foodcourt_manager' ? 'foodcourt manager' : emailInvoice.payerType === 'brand_manager' ? 'brand manager' : 'customer'} email address</>)}</div>
             </FormGroup>
             <div style={{ background: '#F0F9FF', border: '1px solid #0EA5E9', borderRadius: '8px', padding: '12px', marginTop: '16px' }}><p style={{ margin: 0, fontSize: '13px', color: '#0369A1' }}>The invoice will be sent to the recipient email address using the system email settings.</p></div>
           </CommonModal>

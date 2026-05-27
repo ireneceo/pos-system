@@ -64,7 +64,7 @@ const InitialStockModal: React.FC<Props> = ({
             <TableRow key={item.id} columns="2fr 1fr 1fr" style={{ padding: '12px 16px' }}>
               <div>
                 <div style={{ fontWeight: 600, color: '#0A2540' }}>{item.name}</div>
-                <div style={{ fontSize: '13px', color: '#6B7280' }}>{item.unit}</div>
+                <div style={{ fontSize: '13px', color: '#4B5563' }}>{item.unit}</div>
               </div>
               <div>
                 <FormInput

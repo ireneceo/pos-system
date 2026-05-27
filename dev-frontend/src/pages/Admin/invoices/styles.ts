@@ -14,7 +14,7 @@ export const InvoiceNumber = styled.div`
 
 export const CompanyName = styled.div`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 export const AutoBadge = styled.span`
@@ -45,7 +45,7 @@ export const DemoToggleLabel = styled.label`
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
   cursor: pointer;
   white-space: nowrap;
   user-select: none;
@@ -101,28 +101,28 @@ export const LocalActionButton = styled.button<{ variant?: 'primary' | 'danger' 
       background: #FEE2E2;
     }
   ` : props.variant === 'email' ? `
-    background: #F3F4F6;
-    color: #6B7280;
-    border-color: #E5E7EB;
+    background: #F1F4F8;
+    color: #4B5563;
+    border-color: #C7CED6;
     padding: 5px;
 
     &:hover {
-      background: #E5E7EB;
-      color: #374151;
+      background: #C7CED6;
+      color: #1F2937;
     }
   ` : props.variant === 'cancel' ? `
-    background: #F6F9FC;
-    color: #6B7C93;
-    border-color: #E6EBF1;
+    background: #F4F6F9;
+    color: #4B5563;
+    border-color: #C7CED6;
 
     &:hover {
-      background: #E6EBF1;
+      background: #C7CED6;
       transform: translateY(-1px);
     }
   ` : `
     background: transparent;
-    color: #6B7280;
-    border-color: #E6EBF1;
+    color: #4B5563;
+    border-color: #C7CED6;
 
     &:hover {
       border-color: #635BFF;
@@ -134,8 +134,8 @@ export const LocalActionButton = styled.button<{ variant?: 'primary' | 'danger' 
 
 export const LocalIconButton = styled.button`
   padding: 6px;
-  background: #F6F9FC;
-  border: 1px solid #E6EBF1;
+  background: #F4F6F9;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s;
@@ -145,7 +145,7 @@ export const LocalIconButton = styled.button`
   justify-content: center;
 
   &:hover {
-    background: #E6EBF1;
+    background: #C7CED6;
     transform: translateY(-1px);
   }
 
@@ -157,7 +157,7 @@ export const LocalIconButton = styled.button`
 export const IconSymbol = styled.span`
   font-size: 16px;
   font-family: 'Lucida Console', 'Courier New', monospace;
-  color: #6B7C93;
+  color: #4B5563;
   display: inline-block;
   line-height: 1;
 `;
@@ -188,7 +188,7 @@ export const CategoryIcon = styled.div`
   width: 48px;
   height: 48px;
   border-radius: 8px;
-  background: #F3F4F6;
+  background: #F1F4F8;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -216,7 +216,7 @@ export const CategoryMeta = styled.div`
   display: flex;
   gap: 16px;
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 export const CategoryActions = styled.div`
@@ -237,8 +237,8 @@ export const CategoryIconButton = styled.button`
   width: 36px;
   height: 36px;
   border-radius: 6px;
-  border: 1px solid #E6EBF1;
-  background: #F6F9FC;
+  border: 1px solid #C7CED6;
+  background: #F4F6F9;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -262,7 +262,7 @@ export const CategoryIconButton = styled.button`
   svg {
     width: 18px;
     height: 18px;
-    color: #6B7280;
+    color: #4B5563;
     transition: color 0.15s;
   }
 `;
@@ -318,14 +318,14 @@ export const FormLabel = styled.label`
   display: block;
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: #1F2937;
   margin-bottom: 8px;
 `;
 
 export const FormInput = styled.input`
   width: 100%;
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.2s;
@@ -342,7 +342,7 @@ export const FormTextarea = styled.textarea`
   width: 100%;
   max-width: 100%;
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.2s;
@@ -361,7 +361,7 @@ export const FormTextarea = styled.textarea`
 export const FormSelect = styled.select`
   width: 100%;
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -375,8 +375,8 @@ export const FormSelect = styled.select`
 `;
 
 export const InvoiceSummary = styled.div`
-  background: #F8FAFC;
-  border: 1px solid #E6EBF1;
+  background: #F1F4F8;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   padding: 16px;
   margin-top: 16px;
@@ -390,7 +390,7 @@ export const SummaryRow = styled.div<{ highlight?: boolean }>`
   white-space: nowrap;
 
   ${props => props.highlight ? `
-    border-top: 1px solid #E6EBF1;
+    border-top: 1px solid #C7CED6;
     margin-top: 8px;
     padding-top: 16px;
     font-size: 16px;

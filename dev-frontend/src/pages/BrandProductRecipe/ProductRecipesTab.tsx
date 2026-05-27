@@ -91,7 +91,7 @@ const RecipeImageFull = styled.div`
   aspect-ratio: 16 / 9;
   border-radius: 8px 8px 0 0;
   overflow: hidden;
-  background: #F6F9FC;
+  background: #F4F6F9;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -106,7 +106,7 @@ const RecipeImageFull = styled.div`
 const RecipeCard = styled.div<{ isActive?: boolean }>`
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   padding: 20px;
   transition: all 0.2s;
   opacity: ${props => props.isActive !== false ? 1 : 0.6};
@@ -161,7 +161,7 @@ const RecipeCategoryBadge = styled.div`
 
 const RecipeDescription = styled.p`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 12px 0;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -175,7 +175,7 @@ const RecipeCosts = styled.div`
   gap: 12px;
   margin: 16px 0;
   padding: 12px;
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 8px;
 `;
 
@@ -183,7 +183,7 @@ const CostItem = styled.div``;
 
 const CostLabel = styled.div`
   font-size: 11px;
-  color: #6B7280;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 4px;
@@ -202,12 +202,12 @@ const CardSpacer = styled.div`
 
 const RecipeIngredients = styled.div`
   padding-top: 12px;
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
 `;
 
 const IngredientsCount = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-bottom: 8px;
 `;
 
@@ -221,8 +221,8 @@ const IngredientTags = styled.div`
 const IngredientTag = styled.span`
   display: inline-block;
   padding: 2px 8px;
-  background: #F3F4F6;
-  color: #4B5563;
+  background: #F1F4F8;
+  color: #374151;
   border-radius: 12px;
   font-size: 11px;
   font-weight: 500;
@@ -232,7 +232,7 @@ const RecipeMetaInfo = styled.div`
   display: flex;
   gap: 12px;
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 8px 0;
   padding: 8px;
   background: #F9FAFB;
@@ -245,18 +245,18 @@ const MetaItem = styled.div`
   gap: 4px;
 
   span {
-    color: #9CA3AF;
+    color: #6B7280;
   }
 
   strong {
-    color: #374151;
+    color: #1F2937;
     font-weight: 600;
   }
 `;
 
 const InstructionsPreview = styled.div`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 8px 0;
   padding: 8px;
   background: #FEFCE8;
@@ -307,9 +307,9 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger
         `;
       default:
         return `
-          background: #F6F9FC;
-          border: 1px solid #E6EBF1;
-          color: #6B7280;
+          background: #F4F6F9;
+          border: 1px solid #C7CED6;
+          color: #4B5563;
           &:hover {
             border-color: #635BFF;
             color: #635BFF;
@@ -331,7 +331,7 @@ const EmptyTitle = styled.h3`
 
 const EmptyDescription = styled.p`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin-bottom: 24px;
 `;
 
@@ -355,12 +355,12 @@ const IngredientHeaderRow = styled.div`
   gap: 8px;
   padding: 8px 0;
   margin-bottom: 8px;
-  border-bottom: 1px solid #E5E7EB;
+  border-bottom: 1px solid #C7CED6;
 
   span {
     font-size: 13px;
     font-weight: 600;
-    color: #6B7280;
+    color: #4B5563;
   }
 
   @media (max-width: 768px) {
@@ -426,12 +426,12 @@ const CostSummary = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-top: 1px solid #E5E7EB;
+  border-top: 1px solid #C7CED6;
 `;
 
 const CostSummaryLabel = styled.div`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   font-weight: 600;
 `;
 
@@ -458,9 +458,9 @@ const EmojiPicker = styled.div`
   max-height: 160px;
   overflow-y: auto;
   padding: 8px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
-  background: #FAFBFC;
+  background: #F9FAFB;
 `;
 
 const EmojiOption = styled.button<{ selected?: boolean }>`
@@ -468,7 +468,7 @@ const EmojiOption = styled.button<{ selected?: boolean }>`
   height: 36px;
   font-size: 20px;
   background: ${props => props.selected ? '#635BFF' : 'white'};
-  border: 1px solid ${props => props.selected ? '#635BFF' : '#E6EBF1'};
+  border: 1px solid ${props => props.selected ? '#635BFF' : '#C7CED6'};
   border-radius: 8px;
   cursor: pointer;
   display: flex;
@@ -512,7 +512,7 @@ const RecipeModalContent = styled.div`
 
 const RecipeModalHeader = styled.div`
   padding: 24px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -529,7 +529,7 @@ const RecipeModalClose = styled.button`
   background: none;
   border: none;
   font-size: 24px;
-  color: #6B7280;
+  color: #4B5563;
   cursor: pointer;
   padding: 4px;
   line-height: 1;
@@ -548,7 +548,7 @@ const RecipeTimeRow = styled.div`
   gap: 24px;
   margin-bottom: 24px;
   padding: 16px;
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 12px;
 `;
 
@@ -564,7 +564,7 @@ const RecipeTimeIcon = styled.span`
 
 const RecipeTimeLabel = styled.span`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const RecipeTimeValue = styled.span`
@@ -583,7 +583,7 @@ const RecipeSectionTitle = styled.h3`
   color: #0A2540;
   margin: 0 0 12px 0;
   padding-bottom: 8px;
-  border-bottom: 1px solid #E5E7EB;
+  border-bottom: 1px solid #C7CED6;
 `;
 
 const RecipeIngredientList = styled.ul`
@@ -597,7 +597,7 @@ const RecipeIngredientItem = styled.li`
   justify-content: space-between;
   align-items: center;
   padding: 10px 0;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
 
   &:last-child {
     border-bottom: none;
@@ -617,7 +617,7 @@ const RecipeIngredientQty = styled.span`
 
 const RecipeSummaryText = styled.p`
   font-size: 15px;
-  color: #4B5563;
+  color: #374151;
   line-height: 1.8;
   margin: 0;
   white-space: pre-wrap;
@@ -625,7 +625,7 @@ const RecipeSummaryText = styled.p`
 
 const RecipeDetailText = styled.div`
   font-size: 15px;
-  color: #374151;
+  color: #1F2937;
   line-height: 1.8;
   white-space: pre-wrap;
 `;
@@ -649,7 +649,7 @@ const ViewImage = styled.div`
   border-radius: 12px;
   overflow: hidden;
   flex-shrink: 0;
-  background: #F3F4F6;
+  background: #F1F4F8;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -685,7 +685,7 @@ const ViewCategoryBadge = styled.span`
 
 const ViewDescription = styled.p`
   font-size: 15px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 16px 0 0 0;
   line-height: 1.6;
 `;
@@ -701,7 +701,7 @@ const ViewSectionTitle = styled.h3`
   color: #0A2540;
   margin: 0 0 12px 0;
   padding-bottom: 8px;
-  border-bottom: 1px solid #E5E7EB;
+  border-bottom: 1px solid #C7CED6;
 `;
 
 const ViewGrid = styled.div`
@@ -717,13 +717,13 @@ const ViewGrid = styled.div`
 const ViewGridItem = styled.div`
   text-align: center;
   padding: 16px;
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 12px;
 `;
 
 const ViewGridLabel = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-bottom: 4px;
 `;
 
@@ -735,7 +735,7 @@ const ViewGridValue = styled.div`
 
 const ViewInstructions = styled.div`
   font-size: 15px;
-  color: #374151;
+  color: #1F2937;
   line-height: 1.8;
   white-space: pre-wrap;
 `;
@@ -747,19 +747,19 @@ const ViewIngredientTable = styled.table`
   th, td {
     padding: 12px;
     text-align: left;
-    border-bottom: 1px solid #E6EBF1;
+    border-bottom: 1px solid #C7CED6;
   }
 
   th {
     font-size: 12px;
     font-weight: 600;
-    color: #6B7280;
+    color: #4B5563;
     text-transform: uppercase;
   }
 
   td {
     font-size: 14px;
-    color: #374151;
+    color: #1F2937;
   }
 
   th:last-child, td:last-child {
@@ -776,11 +776,11 @@ const ViewTotalRow = styled.div`
   justify-content: space-between;
   padding: 12px 0;
   margin-top: 12px;
-  border-top: 1px solid #E5E7EB;
+  border-top: 1px solid #C7CED6;
   font-weight: 600;
 
   span:first-child {
-    color: #6B7280;
+    color: #4B5563;
   }
 
   span:last-child {
@@ -1158,7 +1158,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ brandId: brandIdP
   }), sortKey);
 
   if (loading) {
-    return <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>{'Loading...'}</div>;
+    return <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>{'Loading...'}</div>;
   }
 
   return (
@@ -1181,11 +1181,11 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ brandId: brandIdP
         </FilterSelect>
         <SortDropdown value={sortKey} onChange={setSortKey} />
         <div data-controls-trailing>
-          <div style={{ display: 'flex', background: '#F3F4F6', borderRadius: '6px', padding: '2px' }}>
-            <button onClick={() => { setViewMode('compact'); localStorage.setItem('brandProductRecipesViewMode', 'compact'); }} style={{ padding: '5px 14px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'compact' ? 'white' : 'transparent', color: viewMode === 'compact' ? '#0A2540' : '#6B7C93', boxShadow: viewMode === 'compact' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
+          <div style={{ display: 'flex', background: '#F1F4F8', borderRadius: '6px', padding: '2px' }}>
+            <button onClick={() => { setViewMode('compact'); localStorage.setItem('brandProductRecipesViewMode', 'compact'); }} style={{ padding: '5px 14px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'compact' ? 'white' : 'transparent', color: viewMode === 'compact' ? '#0A2540' : '#4B5563', boxShadow: viewMode === 'compact' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
               Compact
             </button>
-            <button onClick={() => { setViewMode('image'); localStorage.setItem('brandProductRecipesViewMode', 'image'); }} style={{ padding: '5px 14px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'image' ? 'white' : 'transparent', color: viewMode === 'image' ? '#0A2540' : '#6B7C93', boxShadow: viewMode === 'image' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
+            <button onClick={() => { setViewMode('image'); localStorage.setItem('brandProductRecipesViewMode', 'image'); }} style={{ padding: '5px 14px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'image' ? 'white' : 'transparent', color: viewMode === 'image' ? '#0A2540' : '#4B5563', boxShadow: viewMode === 'image' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
               Image
             </button>
           </div>
@@ -1377,9 +1377,9 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ brandId: brandIdP
             {(formData.yield_amount && formData.yield_amount !== '1') && (
               <ViewSection>
                 <ViewSectionTitle>{'Yield'}</ViewSectionTitle>
-                <div style={{ fontSize: '15px', color: '#374151' }}>
+                <div style={{ fontSize: '15px', color: '#1F2937' }}>
                   {formData.yield_amount} {STANDARD_UNITS.find(u => u.value === formData.yield_unit)?.label || formData.yield_unit}
-                  <span style={{ marginLeft: '16px', color: '#6B7280', fontSize: '13px' }}>
+                  <span style={{ marginLeft: '16px', color: '#4B5563', fontSize: '13px' }}>
                     (Cost per {formData.yield_unit}: {formatCurrency(
                       calculateCostPerUnit(
                         calculateTotalCost(),
@@ -1659,7 +1659,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ brandId: brandIdP
                   <FormInput
                     value={fi.unit}
                     disabled
-                    style={{ background: '#F3F4F6', color: '#6B7280' }}
+                    style={{ background: '#F1F4F8', color: '#4B5563' }}
                   />
                   <FormInput
                     value={fi.notes}

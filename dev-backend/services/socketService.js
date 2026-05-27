@@ -153,6 +153,17 @@ function initSocketServer(server) {
     socket.on('checkout-complete', (data) => {
       socket.to(`restaurant_${data.restaurantId}`).emit('checkout-complete', data);
     });
+
+    // Floor Plan 에서 테이블 선택 해제 → Customer Display 초기 화면으로 복귀
+    socket.on('cart-clear', (data) => {
+      socket.to(`restaurant_${data.restaurantId}`).emit('cart-clear', data);
+    });
+
+    // POS 에서 회원 선택/해제 → Customer Display 에 회원 정보 표시
+    // payload: { restaurantId, customer: { id, name, phone, loyaltyTier, points } | null }
+    socket.on('pos-customer-update', (data) => {
+      socket.to(`restaurant_${data.restaurantId}`).emit('pos-customer-update', data);
+    });
   });
 
   return io;

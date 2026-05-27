@@ -14,24 +14,24 @@ import ListControlsBar from '../../components/Common/ListControlsBar';
 import { getAuthToken } from '../../utils/auth';
 
 const Wrapper = styled.div``;
-const GroupCard = styled.div` background: white; border: 1px solid #E6EBF1; border-radius: 12px; padding: 16px; margin-bottom: 12px; `;
+const GroupCard = styled.div` background: white; border: 1px solid #C7CED6; border-radius: 12px; padding: 16px; margin-bottom: 12px; `;
 const GroupHeader = styled.div` display: flex; align-items: center; gap: 12px; cursor: pointer; `;
 const GroupName = styled.div` font-size: 14px; font-weight: 600; color: #0A2540; flex: 1; `;
-const GroupMeta = styled.div` font-size: 12px; color: #6B7C93; `;
-const OptionList = styled.div` margin-top: 12px; padding-top: 12px; border-top: 1px solid #F3F4F6; `;
+const GroupMeta = styled.div` font-size: 12px; color: #4B5563; `;
+const OptionList = styled.div` margin-top: 12px; padding-top: 12px; border-top: 1px solid #F1F4F8; `;
 const OptionRow = styled.div` display: flex; align-items: center; gap: 12px; padding: 6px 0; font-size: 13px; color: #0A2540; `;
 const Actions = styled.div` display: flex; gap: 8px; `;
 const IconBtn = styled.button`
   display: inline-flex; align-items: center; justify-content: center;
-  padding: 6px 10px; background: transparent; border: 1px solid #E6EBF1; border-radius: 6px;
-  color: #6B7C93; cursor: pointer; transition: all 0.15s;
+  padding: 6px 10px; background: transparent; border: 1px solid #C7CED6; border-radius: 6px;
+  color: #4B5563; cursor: pointer; transition: all 0.15s;
   &:hover { border-color: #635BFF; color: #635BFF; }
   svg { width: 14px; height: 14px; }
 `;
 const FormGroup = styled.div` margin-bottom: 16px; `;
 const Label = styled.label` display: block; font-size: 13px; font-weight: 500; color: #0A2540; margin-bottom: 6px; `;
 const Input = styled.input`
-  width: 100%; padding: 8px 12px; border: 1px solid #E6EBF1; border-radius: 6px;
+  width: 100%; padding: 8px 12px; border: 1px solid #C7CED6; border-radius: 6px;
   font-size: 14px; box-sizing: border-box;
   &:focus { outline: none; border-color: #635BFF; box-shadow: 0 0 0 3px rgba(99,91,255,0.1); }
 `;
@@ -40,7 +40,7 @@ const Toggle = styled.label`
   display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px;
   input { accent-color: #635BFF; }
 `;
-const EmptyState = styled.div` background: white; border: 1px dashed #E6EBF1; border-radius: 12px; padding: 48px; text-align: center; color: #6B7C93; `;
+const EmptyState = styled.div` background: white; border: 1px dashed #C7CED6; border-radius: 12px; padding: 48px; text-align: center; color: #4B5563; `;
 
 interface BMOption { id?: number; name: string; extra_price: number; sort_order?: number; }
 interface BMGroup {
@@ -151,7 +151,7 @@ const BrandMenuOptionGroupsPage: React.FC<Props> = ({ brandId }) => {
       </ListControlsBar>
         {groups.length === 0 ? (
           <EmptyState>
-            <Layers style={{ width: 32, height: 32, color: '#9CA3AF', marginBottom: 8 }} />
+            <Layers style={{ width: 32, height: 32, color: '#6B7280', marginBottom: 8 }} />
             <div style={{ fontWeight: 500, color: '#0A2540', marginBottom: 4 }}>
               {t('brand:brandMenuOptionGroupsPage.empty', 'No option groups yet')}
             </div>
@@ -162,7 +162,7 @@ const BrandMenuOptionGroupsPage: React.FC<Props> = ({ brandId }) => {
         ) : groups.map(g => (
           <GroupCard key={g.id}>
             <GroupHeader onClick={() => toggleExpand(g.id)}>
-              {expanded.has(g.id) ? <ChevronDown style={{ width: 16, height: 16, color: '#9CA3AF' }} /> : <ChevronRight style={{ width: 16, height: 16, color: '#9CA3AF' }} />}
+              {expanded.has(g.id) ? <ChevronDown style={{ width: 16, height: 16, color: '#6B7280' }} /> : <ChevronRight style={{ width: 16, height: 16, color: '#6B7280' }} />}
               <GroupName>{g.name}</GroupName>
               <GroupMeta>
                 {g.is_required ? t('brand:brandMenuOptionGroupsPage.required', 'Required') : t('brand:brandMenuOptionGroupsPage.optional', 'Optional')} ·{' '}
@@ -181,7 +181,7 @@ const BrandMenuOptionGroupsPage: React.FC<Props> = ({ brandId }) => {
                 {(g.options || []).map((o, i) => (
                   <OptionRow key={i}>
                     <span style={{ flex: 1 }}>{o.name}</span>
-                    <span style={{ color: '#6B7C93' }}>{Number(o.extra_price) > 0 ? `+${Number(o.extra_price).toFixed(2)}` : ''}</span>
+                    <span style={{ color: '#4B5563' }}>{Number(o.extra_price) > 0 ? `+${Number(o.extra_price).toFixed(2)}` : ''}</span>
                   </OptionRow>
                 ))}
               </OptionList>
@@ -202,9 +202,9 @@ const BrandMenuOptionGroupsPage: React.FC<Props> = ({ brandId }) => {
               <Label>{t('brand:brandMenuOptionGroupsPage.selection', 'Selection')}</Label>
               <Row>
                 <Toggle><input type="checkbox" checked={form.required} onChange={(e) => setForm({ ...form, required: e.target.checked })} />{t('brand:brandMenuOptionGroupsPage.required', 'Required')}</Toggle>
-                <span style={{ color: '#6B7C93', fontSize: 13 }}>Min</span>
+                <span style={{ color: '#4B5563', fontSize: 13 }}>Min</span>
                 <Input style={{ width: 70 }} type="number" min={0} value={form.min} onChange={(e) => setForm({ ...form, min: parseInt(e.target.value) || 0 })} />
-                <span style={{ color: '#6B7C93', fontSize: 13 }}>Max</span>
+                <span style={{ color: '#4B5563', fontSize: 13 }}>Max</span>
                 <Input style={{ width: 70 }} type="number" min={1} value={form.max} onChange={(e) => setForm({ ...form, max: parseInt(e.target.value) || 1 })} />
               </Row>
             </FormGroup>
@@ -228,7 +228,7 @@ const BrandMenuOptionGroupsPage: React.FC<Props> = ({ brandId }) => {
               </ThemedButton>
             </FormGroup>
             {editing && (
-              <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 12 }}>
+              <div style={{ fontSize: 12, color: '#6B7280', marginTop: 12 }}>
                 {t('brand:brandMenuOptionGroupsPage.propagateWarning', 'Saving will bump version and mark consuming menus as pending_update for restaurants.')}
               </div>
             )}

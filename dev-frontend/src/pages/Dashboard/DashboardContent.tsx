@@ -20,7 +20,7 @@ const Container = styled.div`
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -42,7 +42,7 @@ const Header = styled.div`
 
 const Content = styled.div`
   padding: 32px;
-  background: #FAFBFC;
+  background: #F9FAFB;
   min-height: calc(100vh - 120px);
 
   @media (max-width: 768px) {
@@ -67,7 +67,7 @@ const Subtitle = styled.div`
   align-items: center;
   gap: 12px;
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 8px 0 0 16px;
 `;
 
@@ -99,7 +99,7 @@ const ChartContainer = styled.div`
   background: white;
   border-radius: 16px;
   padding: 24px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
 
   h3 {
     margin: 0 0 20px 0;
@@ -113,7 +113,7 @@ const AlertsPanel = styled.div`
   background: white;
   border-radius: 16px;
   padding: 20px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   display: flex;
   flex-direction: column;
 
@@ -143,7 +143,7 @@ const AlertsList = styled.div`
     background: transparent;
   }
   &::-webkit-scrollbar-thumb {
-    background: #CBD5E1;
+    background: #64748B;
     border-radius: 4px;
   }
 `;
@@ -162,7 +162,7 @@ const Alert = styled.div<{ type: 'warning' | 'error' | 'info' | 'success' }>`
       case 'warning': return '#FFFBEB';
       case 'success': return '#ECFDF5';
       case 'info': return '#EFF6FF';
-      default: return '#F8FAFC';
+      default: return '#F1F4F8';
     }
   }};
   border: 1px solid ${props => {
@@ -171,7 +171,7 @@ const Alert = styled.div<{ type: 'warning' | 'error' | 'info' | 'success' }>`
       case 'warning': return '#FDE68A';
       case 'success': return '#A7F3D0';
       case 'info': return '#BFDBFE';
-      default: return '#E6EBF1';
+      default: return '#C7CED6';
     }
   }};
   flex-shrink: 0;
@@ -195,14 +195,14 @@ const AlertTitle = styled.div<{ type: 'warning' | 'error' | 'info' | 'success' }
       case 'warning': return '#D97706';
       case 'success': return '#059669';
       case 'info': return '#2563EB';
-      default: return '#374151';
+      default: return '#1F2937';
     }
   }};
 `;
 
 const AlertDescription = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 2px;
 `;
 
@@ -232,13 +232,13 @@ const QuickActionCard = styled.div`
   padding: 24px;
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   text-align: center;
   cursor: pointer;
   transition: all 0.2s;
 
   &:hover {
-    background: #F6F9FC;
+    background: #F4F6F9;
 
     .icon {
       color: #0A2540;
@@ -252,7 +252,7 @@ const QuickActionCard = styled.div`
   .icon {
     font-size: 32px;
     margin-bottom: 12px;
-    color: #6B7C93;
+    color: #4B5563;
     transition: color 0.2s;
     font-family: 'Lucida Console', 'Courier New', monospace;
   }
@@ -267,7 +267,7 @@ const QuickActionCard = styled.div`
 
   .description {
     font-size: 13px;
-    color: #6B7280;
+    color: #4B5563;
   }
 `;
 
@@ -279,7 +279,7 @@ const RecentOrdersSection = styled.div`
     color: #0A2540;
     font-size: 18px;
     font-weight: 600;
-    border: 1px solid #E6EBF1;
+    border: 1px solid #C7CED6;
     border-radius: 16px 16px 0 0;
   }
 `;
@@ -287,7 +287,7 @@ const RecentOrdersSection = styled.div`
 const TableContainer = styled.div`
   background: white;
   border-radius: 0 0 16px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-top: none;
   overflow: hidden;
 `;
@@ -298,7 +298,7 @@ const Table = styled.table`
 `;
 
 const Thead = styled.thead`
-  background: #F8FAFC;
+  background: #F1F4F8;
 `;
 
 const Th = styled.th`
@@ -306,7 +306,7 @@ const Th = styled.th`
   text-align: left;
   font-size: 12px;
   font-weight: 600;
-  color: #6B7C93;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 `;
@@ -314,11 +314,11 @@ const Th = styled.th`
 const Tbody = styled.tbody``;
 
 const Tr = styled.tr`
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
   transition: background 0.2s;
 
   &:hover {
-    background: #F8FAFC;
+    background: #F1F4F8;
   }
 
   &:last-child {
@@ -329,7 +329,7 @@ const Tr = styled.tr`
 const Td = styled.td`
   padding: 16px;
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
   vertical-align: middle;
 `;
 
@@ -354,11 +354,11 @@ const Badge = styled.span<{ variant: string }>`
       case 'served':
         return 'background: #D1FAE5; color: #065F46;';
       case 'completed':
-        return 'background: #E5E7EB; color: #374151;';
+        return 'background: #C7CED6; color: #1F2937;';
       case 'cancelled':
         return 'background: #FEE2E2; color: #991B1B;';
       default:
-        return 'background: #F3F4F6; color: #6B7280;';
+        return 'background: #F1F4F8; color: #4B5563;';
     }
   }}
 `;
@@ -642,25 +642,25 @@ const DashboardContent: React.FC = () => {
           <ChartContainer>
             <h3>{t('dashboard:dashboardContent.platformOverview')}</h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-              <div style={{ padding: '16px', background: '#F8FAFC', borderRadius: '12px' }}>
-                <div style={{ fontSize: '12px', color: '#6B7C93', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>{t('dashboard:dashboardContent.restaurants')}</div>
+              <div style={{ padding: '16px', background: '#F1F4F8', borderRadius: '12px' }}>
+                <div style={{ fontSize: '12px', color: '#4B5563', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>{t('dashboard:dashboardContent.restaurants')}</div>
                 <div style={{ fontSize: '28px', fontWeight: 700, color: '#0A2540' }}>{stats.totalRestaurants}</div>
-                <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>{t('dashboard:dashboardContent.registeredRestaurants')}</div>
+                <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '4px' }}>{t('dashboard:dashboardContent.registeredRestaurants')}</div>
               </div>
-              <div style={{ padding: '16px', background: '#F8FAFC', borderRadius: '12px' }}>
-                <div style={{ fontSize: '12px', color: '#6B7C93', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>{t('dashboard:dashboardContent.managers')}</div>
+              <div style={{ padding: '16px', background: '#F1F4F8', borderRadius: '12px' }}>
+                <div style={{ fontSize: '12px', color: '#4B5563', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>{t('dashboard:dashboardContent.managers')}</div>
                 <div style={{ fontSize: '28px', fontWeight: 700, color: '#0A2540' }}>{stats.totalManagers}</div>
-                <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>{t('dashboard:dashboardContent.activeManagers')}</div>
+                <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '4px' }}>{t('dashboard:dashboardContent.activeManagers')}</div>
               </div>
-              <div style={{ padding: '16px', background: '#F8FAFC', borderRadius: '12px' }}>
-                <div style={{ fontSize: '12px', color: '#6B7C93', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>{t('dashboard:dashboardContent.subscriptions')}</div>
+              <div style={{ padding: '16px', background: '#F1F4F8', borderRadius: '12px' }}>
+                <div style={{ fontSize: '12px', color: '#4B5563', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>{t('dashboard:dashboardContent.subscriptions')}</div>
                 <div style={{ fontSize: '28px', fontWeight: 700, color: '#0A2540' }}>{stats.totalSubscriptions}</div>
-                <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>{t('dashboard:dashboardContent.activePlans')}</div>
+                <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '4px' }}>{t('dashboard:dashboardContent.activePlans')}</div>
               </div>
-              <div style={{ padding: '16px', background: '#F8FAFC', borderRadius: '12px' }}>
-                <div style={{ fontSize: '12px', color: '#6B7C93', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>{t('dashboard:dashboardContent.staff')}</div>
+              <div style={{ padding: '16px', background: '#F1F4F8', borderRadius: '12px' }}>
+                <div style={{ fontSize: '12px', color: '#4B5563', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>{t('dashboard:dashboardContent.staff')}</div>
                 <div style={{ fontSize: '28px', fontWeight: 700, color: '#0A2540' }}>{stats.totalStaff}</div>
-                <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>{t('dashboard:dashboardContent.registeredStaff')}</div>
+                <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '4px' }}>{t('dashboard:dashboardContent.registeredStaff')}</div>
               </div>
             </div>
           </ChartContainer>
@@ -782,14 +782,14 @@ const DashboardContent: React.FC = () => {
                         })()}
                       </Badge>
                     </Td>
-                    <Td style={{ color: '#6B7280', fontSize: '13px' }}>
+                    <Td style={{ color: '#4B5563', fontSize: '13px' }}>
                       {order.createdAt ? formatTimeTz(order.createdAt, null) : '-'}
                     </Td>
                   </Tr>
                 ))
               ) : (
                 <Tr>
-                  <Td colSpan={4} style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
+                  <Td colSpan={4} style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>
                     No recent orders
                   </Td>
                 </Tr>

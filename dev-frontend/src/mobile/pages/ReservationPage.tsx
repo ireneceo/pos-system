@@ -325,36 +325,36 @@ export default function ReservationPage() {
 }
 
 const Inner = styled.div`display:flex;flex-direction:column;gap:16px;`;
-const RestaurantName = styled.div`font-size:14px;color:#6B7C93;text-align:center;`;
-const Section = styled.section`background:white;border:1px solid #E5E7EB;border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:12px;`;
+const RestaurantName = styled.div`font-size:14px;color:#4B5563;text-align:center;`;
+const Section = styled.section`background:white;border:1px solid #C7CED6;border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:12px;`;
 const SectionTitle = styled.h3`font-size:14px;font-weight:600;color:#1F2937;margin:0 0 4px 0;`;
 const Row = styled.div`display:grid;grid-template-columns:1fr 1fr;gap:12px;`;
 const FormGroup = styled.div`display:flex;flex-direction:column;gap:6px;`;
-const Label = styled.label`font-size:13px;font-weight:600;color:#374151;`;
+const Label = styled.label`font-size:13px;font-weight:600;color:#1F2937;`;
 const Input = styled.input`
-  width:100%;padding:10px 12px;border:1px solid #E5E7EB;border-radius:6px;
+  width:100%;padding:10px 12px;border:1px solid #C7CED6;border-radius:6px;
   font-size:16px;box-sizing:border-box;background:white;color:#0A2540;
   &:focus{outline:none;border-color:#635BFF;}
-  &::placeholder{color:#9CA3AF;}
+  &::placeholder{color:#6B7280;}
 `;
 const Textarea = styled.textarea`
-  width:100%;padding:10px 12px;border:1px solid #E5E7EB;border-radius:6px;
+  width:100%;padding:10px 12px;border:1px solid #C7CED6;border-radius:6px;
   font-size:16px;color:#0A2540;resize:vertical;font-family:inherit;box-sizing:border-box;
   &:focus{outline:none;border-color:#635BFF;}
 `;
 const PartyRow = styled.div`display:grid;grid-template-columns:48px 1fr 48px;gap:8px;align-items:center;`;
 const PartyBtn = styled.button`
-  height:44px;border-radius:6px;border:1px solid #E5E7EB;background:white;
+  height:44px;border-radius:6px;border:1px solid #C7CED6;background:white;
   color:#0A2540;font-size:20px;font-weight:600;cursor:pointer;
   &:disabled{opacity:0.3;cursor:not-allowed;}
-  &:not(:disabled):hover{background:#F6F9FC;}
+  &:not(:disabled):hover{background:#F4F6F9;}
 `;
 
 // PaymentPage CustomerChoice — 동일
 const CustomerChoiceContainer = styled.div`display:grid;grid-template-columns:1fr 1fr;gap:8px;`;
 const CustomerChoiceButton = styled.button<{ selected?: boolean }>`
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  padding:16px 12px;border:1px solid ${p => p.selected ? '#635BFF' : '#E5E7EB'};
+  padding:16px 12px;border:1px solid ${p => p.selected ? '#635BFF' : '#C7CED6'};
   border-radius:6px;cursor:pointer;transition:all 0.2s;
   background:${p => p.selected ? 'rgba(99,91,255,0.05)' : 'white'};
   width:100%;gap:6px;
@@ -362,13 +362,13 @@ const CustomerChoiceButton = styled.button<{ selected?: boolean }>`
   &:active{transform:scale(0.98);}
 `;
 const ChoiceTitle = styled.div`font-size:14px;font-weight:600;color:#1F2937;text-align:center;`;
-const ChoiceSubtitle = styled.div`font-size:11px;color:#6B7280;text-align:center;`;
+const ChoiceSubtitle = styled.div`font-size:11px;color:#4B5563;text-align:center;`;
 
-const LoginTypeTabs = styled.div`display:flex;background:#F3F4F6;border-radius:10px;padding:4px;margin-bottom:16px;`;
+const LoginTypeTabs = styled.div`display:flex;background:#F1F4F8;border-radius:10px;padding:4px;margin-bottom:16px;`;
 const LoginTypeTab = styled.button<{ active?: boolean }>`
   flex:1;padding:8px;border:none;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;
   background:${p => p.active ? 'white' : 'transparent'};
-  color:${p => p.active ? '#1F2937' : '#6B7280'};
+  color:${p => p.active ? '#1F2937' : '#4B5563'};
   box-shadow:${p => p.active ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'};
 `;
 const Stack = styled.div`display:flex;flex-direction:column;gap:14px;margin-top:16px;`;
@@ -377,7 +377,7 @@ const LoginBtn = styled.button`
   font-size:14px;font-weight:600;cursor:pointer;margin-top:4px;
   &:hover{background:#5A51E6;}
 `;
-const CenterText = styled.div`font-size:13px;color:#6B7280;text-align:center;margin-top:8px;`;
+const CenterText = styled.div`font-size:13px;color:#4B5563;text-align:center;margin-top:8px;`;
 const Link = styled.span`color:#635BFF;cursor:pointer;text-decoration:underline;`;
 
 const CustomerInfoBox = styled.div`
@@ -386,9 +386,9 @@ const CustomerInfoBox = styled.div`
 `;
 const CustomerInfoContent = styled.div`flex:1;`;
 const CustomerInfoName = styled.div`font-size:14px;font-weight:600;color:#0A2540;`;
-const CustomerInfoDetails = styled.div`font-size:12px;color:#6B7280;margin-top:4px;`;
+const CustomerInfoDetails = styled.div`font-size:12px;color:#4B5563;margin-top:4px;`;
 const ClearButton = styled.button`
-  background:none;border:none;color:#6B7280;cursor:pointer;font-size:18px;
+  background:none;border:none;color:#4B5563;cursor:pointer;font-size:18px;
   width:28px;height:28px;border-radius:50%;
   &:hover{background:rgba(0,0,0,0.05);color:#1F2937;}
 `;
@@ -399,5 +399,5 @@ const PrimaryBtn = styled.button`
   &:disabled{opacity:0.5;cursor:not-allowed;}
   &:hover:not(:disabled){background:#5A51E6;}
 `;
-const Empty = styled.div`text-align:center;padding:24px 12px;color:#6B7C93;font-size:14px;background:#F6F9FC;border-radius:6px;`;
+const Empty = styled.div`text-align:center;padding:24px 12px;color:#4B5563;font-size:14px;background:#F4F6F9;border-radius:6px;`;
 const ErrorMsg = styled.div`background:#FFEBEE;color:#C62828;padding:12px;border-radius:6px;font-size:13px;`;

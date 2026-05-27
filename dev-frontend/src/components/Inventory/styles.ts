@@ -3,7 +3,7 @@ import { TableHeader, TableRow } from '../UI';
 
 export const InfoBox = styled.div`
   background: #F0F4FF;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   padding: 12px 16px;
   color: #635BFF;
@@ -66,7 +66,7 @@ export const AlertTitle = styled.div`
 
 export const AlertDetail = styled.div`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 export const StockItemImage = styled.div`
@@ -74,7 +74,7 @@ export const StockItemImage = styled.div`
   height: 40px;
   border-radius: 6px;
   overflow: hidden;
-  background: #F3F4F6;
+  background: #F1F4F8;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -100,7 +100,7 @@ export const StockItemDetails = styled.div`
 
 export const StockItemCode = styled.span`
   font-size: 11px;
-  color: #9CA3AF;
+  color: #6B7280;
   font-family: monospace;
 `;
 
@@ -191,26 +191,26 @@ export const ConfidenceBadge = styled.span<{ level: string }>`
       case 'low':
         return 'background: #FEE2E2; color: #DC2626;';
       default:
-        return 'background: #F3F4F6; color: #6B7280;';
+        return 'background: #F1F4F8; color: #4B5563;';
     }
   }}
 `;
 
 export const SettingsButton = styled.button`
-  background: #F3F4F6;
-  border: 1px solid #E5E7EB;
+  background: #F1F4F8;
+  border: 1px solid #C7CED6;
   padding: 6px 12px;
   cursor: pointer;
-  color: #6B7280;
+  color: #4B5563;
   border-radius: 6px;
   font-size: 13px;
   font-weight: 500;
   transition: all 0.15s ease;
 
   &:hover {
-    background: #E5E7EB;
+    background: #C7CED6;
     color: #0A2540;
-    border-color: #D1D5DB;
+    border-color: #6B7280;
   }
 `;
 
@@ -229,7 +229,7 @@ export const IngredientName = styled.div`
 
 export const IngredientMeta = styled.div`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 /*
@@ -280,7 +280,7 @@ export const EditableStock = styled.div`
   transition: background 0.15s;
 
   &:hover {
-    background: #F3F4F6;
+    background: #F1F4F8;
   }
 `;
 
@@ -302,7 +302,7 @@ export const InlineStockInput = styled.input`
 export const OrderInput = styled.input`
   width: 70px;
   padding: 4px 8px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 4px;
   font-size: 13px;
   text-align: right;
@@ -355,18 +355,18 @@ export const DeleteButton = styled.button`
 
 export const EditButton = styled.button`
   padding: 6px 12px;
-  background: #F3F4F6;
-  border: 1px solid #E5E7EB;
+  background: #F1F4F8;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 13px;
   font-weight: 500;
-  color: #6B7280;
+  color: #4B5563;
   cursor: pointer;
   transition: all 0.15s ease;
 
   &:hover {
-    background: #E5E7EB;
+    background: #C7CED6;
     color: #0A2540;
-    border-color: #D1D5DB;
+    border-color: #6B7280;
   }
 `;

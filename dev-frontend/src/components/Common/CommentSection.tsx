@@ -39,7 +39,7 @@ const SectionContainer = styled.div<{ $embedded?: boolean }>`
     margin-top: 0;
   ` : `
     margin-top: 24px;
-    border-top: 1px solid #E6EBF1;
+    border-top: 1px solid #C7CED6;
     padding-top: 20px;
   `}
 `;
@@ -126,13 +126,13 @@ const InternalBadge = styled.span`
 
 const CommentDate = styled.span`
   font-size: 11px;
-  color: #9CA3AF;
+  color: #6B7280;
   margin-left: auto;
 `;
 
 const CommentText = styled.p`
   font-size: 13px;
-  color: #374151;
+  color: #1F2937;
   margin: 0;
   line-height: 1.5;
   white-space: pre-wrap;
@@ -141,7 +141,7 @@ const CommentText = styled.p`
 const DeleteButton = styled.button`
   background: none;
   border: none;
-  color: #9CA3AF;
+  color: #6B7280;
   font-size: 11px;
   cursor: pointer;
   padding: 0;
@@ -164,7 +164,7 @@ const InputRow = styled.div`
 const CommentInput = styled.textarea`
   flex: 1;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 13px;
   resize: none;
@@ -176,7 +176,7 @@ const CommentInput = styled.textarea`
     border-color: #635BFF;
     box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
   }
-  &::placeholder { color: #9CA3AF; }
+  &::placeholder { color: #6B7280; }
 `;
 
 const ButtonGroup = styled.div`
@@ -186,14 +186,14 @@ const ButtonGroup = styled.div`
 
 const AttachButton = styled.button`
   padding: 10px 12px;
-  background: #F3F4F6;
-  color: #6B7280;
-  border: 1px solid #E6EBF1;
+  background: #F1F4F8;
+  color: #4B5563;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 15px;
   cursor: pointer;
   line-height: 1;
-  &:hover { background: #E5E7EB; color: #0A2540; }
+  &:hover { background: #C7CED6; color: #0A2540; }
 `;
 
 const SendButton = styled.button`
@@ -212,7 +212,7 @@ const SendButton = styled.button`
 
 const EmptyText = styled.p`
   font-size: 13px;
-  color: #9CA3AF;
+  color: #6B7280;
   text-align: center;
   padding: 12px 0;
 `;
@@ -237,7 +237,7 @@ const PendingFile = styled.div`
 const PendingRemove = styled.button`
   background: none;
   border: none;
-  color: #9CA3AF;
+  color: #6B7280;
   font-size: 12px;
   cursor: pointer;
   padding: 0;
@@ -272,7 +272,7 @@ const InternalToggle = styled.label`
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   cursor: pointer;
   user-select: none;
 

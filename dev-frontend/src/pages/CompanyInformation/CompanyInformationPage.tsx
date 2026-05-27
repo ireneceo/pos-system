@@ -32,14 +32,14 @@ interface CompanyInfo {
 }
 
 const Container = styled.div`
-  background: #FAFBFC;
+  background: #F9FAFB;
   min-height: 100vh;
 `;
 
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -82,7 +82,7 @@ const Content = styled.div`
 const Section = styled.div`
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   padding: 32px;
   margin-bottom: 24px;
 
@@ -97,7 +97,7 @@ const SectionTitle = styled.h2`
   color: #0A2540;
   margin: 0 0 24px 0;
   padding-bottom: 16px;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
 `;
 
 const FormGrid = styled.div`
@@ -122,7 +122,7 @@ const Label = styled.label`
   display: block;
   font-size: 13px;
   font-weight: 500;
-  color: #6B7C93;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.3px;
   margin-bottom: 8px;
@@ -137,7 +137,7 @@ const Input = styled.input`
   width: 100%;
   box-sizing: border-box;
   padding: 8px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   transition: all 0.15s;
@@ -150,12 +150,12 @@ const Input = styled.input`
 
   &:disabled {
     background: #F9FAFB;
-    color: #6B7280;
+    color: #4B5563;
     cursor: not-allowed;
   }
 
   &::placeholder {
-    color: #9CA3AF;
+    color: #6B7280;
   }
 `;
 
@@ -163,7 +163,7 @@ const Select = styled.select`
   width: 100%;
   box-sizing: border-box;
   padding: 8px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   background: white;
@@ -178,7 +178,7 @@ const Select = styled.select`
 
   &:disabled {
     background: #F9FAFB;
-    color: #6B7280;
+    color: #4B5563;
     cursor: not-allowed;
   }
 `;

@@ -12,7 +12,7 @@ import MobileAlertModal from '../components/common/MobileAlertModal';
 
 const Container = styled.div`
   min-height: 100vh;
-  background: #FAFBFC;
+  background: #F9FAFB;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -22,7 +22,7 @@ const Container = styled.div`
 
   /* Tablet support */
   @media (min-width: 768px) {
-    background: #E5E7EB;
+    background: #C7CED6;
     padding: 80px 24px 24px;
   }
 `;
@@ -53,11 +53,11 @@ const BranchName = styled.div`
   padding: 5px 12px;
   margin: 10px auto 22px;
   width: fit-content;
-  background: #F3F4F6;
+  background: #F1F4F8;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 500;
-  color: #4B5563;
+  color: #374151;
   letter-spacing: 0.2px;
 
   svg {
@@ -70,7 +70,7 @@ const BranchName = styled.div`
 
 const Subtitle = styled.p`
   font-size: 15px;
-  color: #6B7C93;
+  color: #4B5563;
   margin: 0;
 `;
 
@@ -94,7 +94,7 @@ const OptionsContainer = styled.div`
 // 라인 아이콘 + 좌측 정렬 row 카드 (POS 사이드바와 동일한 lucide line 스타일)
 const OptionCard = styled.button`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   padding: 18px 20px;
   cursor: pointer;
@@ -158,12 +158,12 @@ const OptionTitle = styled.h3`
 
 const OptionSubtitle = styled.div`
   font-size: 12px;
-  color: #6B7C93;
+  color: #4B5563;
   font-weight: 400;
 `;
 
 const OptionChevron = styled.div`
-  color: #9CA3AF;
+  color: #6B7280;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -529,7 +529,7 @@ const OrderTypePage: React.FC = () => {
 
       <OptionsContainer>
         {!orderTypes ? (
-          <div style={{ textAlign: 'center', padding: '40px 0', color: '#9CA3AF', fontSize: '14px' }}>Loading...</div>
+          <div style={{ textAlign: 'center', padding: '40px 0', color: '#6B7280', fontSize: '14px' }}>Loading...</div>
         ) : storeData?.pauseOrdering ? (
           <div style={{
             textAlign: 'center',
@@ -647,7 +647,10 @@ const OrderTypePage: React.FC = () => {
             </FooterLink>
           )}
         </FooterLinks>
-        Powered by Purple Here POS
+        <a href="https://purplehere.com" target="_blank" rel="noopener noreferrer"
+           style={{ color: 'inherit', textDecoration: 'none', borderBottom: '1px dotted currentColor' }}>
+          Powered by Purple Here POS
+        </a>
       </Footer>
 
       {/* Cart Reset Warning Modal */}

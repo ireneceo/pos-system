@@ -32,7 +32,7 @@ const PwMeterBar = styled.div<{ $filled: boolean; $score: number }>`
   height: 4px;
   border-radius: 2px;
   background: ${({ $filled, $score }) => {
-    if (!$filled) return '#E6EBF1';
+    if (!$filled) return '#C7CED6';
     if ($score <= 1) return '#DC2626';
     if ($score === 2) return '#F59E0B';
     if ($score === 3) return '#10B981';
@@ -50,7 +50,7 @@ const PwReqList = styled.ul`
 `;
 const PwReqItem = styled.li<{ $met: boolean }>`
   font-size: 11.5px;
-  color: ${({ $met }) => ($met ? '#059669' : '#9CA3AF')};
+  color: ${({ $met }) => ($met ? '#059669' : '#6B7280')};
   display: flex;
   align-items: center;
   gap: 4px;
@@ -90,7 +90,7 @@ const Card = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 32px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   box-shadow: 0 8px 24px rgba(10, 37, 64, 0.06);
 
   @media (max-width: 760px) {
@@ -112,7 +112,7 @@ const Title = styled.h1`
 
 const Sub = styled.p`
   font-size: 14px;
-  color: #6B7C93;
+  color: #4B5563;
   margin: 0 0 24px;
 `;
 
@@ -124,7 +124,7 @@ const Label = styled.label`
   display: block;
   font-size: 12px;
   font-weight: 600;
-  color: #6B7C93;
+  color: #4B5563;
   letter-spacing: 0.4px;
   text-transform: uppercase;
   margin-bottom: 6px;
@@ -137,7 +137,7 @@ const Input = styled.input<{ $hasError?: boolean }>`
   padding: 0 14px;
   font-size: 14px;
   color: #0A2540;
-  border: 1px solid ${({ $hasError }) => ($hasError ? '#DC2626' : '#E6EBF1')};
+  border: 1px solid ${({ $hasError }) => ($hasError ? '#DC2626' : '#C7CED6')};
   border-radius: 8px;
   outline: none;
   background: white;
@@ -191,7 +191,7 @@ const Notice = styled.div`
 const Footer = styled.div`
   margin-top: 18px;
   font-size: 13px;
-  color: #6B7C93;
+  color: #4B5563;
   line-height: 1.8;
 
   a {
@@ -204,7 +204,7 @@ const Footer = styled.div`
 
 const Sim = styled.div`
   background: linear-gradient(180deg, #F1F0FF 0%, #FFFFFF 100%);
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   padding: 24px;
 `;
@@ -230,7 +230,7 @@ const Select = styled.select`
   font-size: 14px;
   color: #0A2540;
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   outline: none;
   min-width: 160px;
@@ -240,7 +240,7 @@ const Select = styled.select`
 const Stepper = styled.div`
   display: inline-flex;
   align-items: center;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   background: white;
   overflow: hidden;
@@ -264,8 +264,8 @@ const StepValue = styled.div`
   font-weight: 600;
   font-size: 14px;
   color: #0A2540;
-  border-left: 1px solid #E6EBF1;
-  border-right: 1px solid #E6EBF1;
+  border-left: 1px solid #C7CED6;
+  border-right: 1px solid #C7CED6;
   padding: 0 12px;
   height: 36px;
   display: flex;
@@ -278,7 +278,7 @@ const SimResult = styled.div`
   border-radius: 8px;
   padding: 16px;
   margin-top: 8px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
 `;
 
 const Big = styled.div`
@@ -290,7 +290,7 @@ const Big = styled.div`
 
 const Small = styled.div`
   font-size: 12px;
-  color: #6B7C93;
+  color: #4B5563;
   margin-top: 2px;
 `;
 

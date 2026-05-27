@@ -37,12 +37,12 @@ const Wrapper = styled.div`
   align-items: center;
   gap: 6px;
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   padding: 0 10px 0 12px;
   height: 40px;
   &:focus-within { border-color: #635BFF; box-shadow: 0 0 0 3px rgba(99,91,255,0.1); }
-  svg { width: 14px; height: 14px; color: #6B7C93; flex-shrink: 0; }
+  svg { width: 14px; height: 14px; color: #4B5563; flex-shrink: 0; }
 `;
 
 const Select = styled.select`

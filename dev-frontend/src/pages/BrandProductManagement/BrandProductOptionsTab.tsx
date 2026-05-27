@@ -30,8 +30,8 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
       case 'secondary':
         return `
           background: white;
-          color: #6B7280;
-          border: 1px solid #E5E7EB;
+          color: #4B5563;
+          border: 1px solid #C7CED6;
           &:hover { background: #F9FAFB; }
         `;
       default:
@@ -114,7 +114,7 @@ const IconButton = styled.button`
   width: 32px;
   height: 32px;
   border-radius: 6px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   background: white;
   display: flex;
   align-items: center;
@@ -124,13 +124,13 @@ const IconButton = styled.button`
 
   &:hover {
     background: #F9FAFB;
-    border-color: #D1D5DB;
+    border-color: #6B7280;
   }
 
   svg {
     width: 16px;
     height: 16px;
-    color: #6B7280;
+    color: #4B5563;
   }
 `;
 
@@ -144,15 +144,15 @@ const OptionChip = styled.div`
   display: inline-flex;
   align-items: center;
   padding: 6px 12px;
-  background: #F3F4F6;
+  background: #F1F4F8;
   border-radius: 6px;
   font-size: 13px;
-  color: #374151;
+  color: #1F2937;
 `;
 
 const OptionPrice = styled.span`
   margin-left: 6px;
-  color: #6B7280;
+  color: #4B5563;
   font-size: 12px;
 `;
 
@@ -166,7 +166,7 @@ const EmptyTitle = styled.h3`
 
 const EmptyDescription = styled.p`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 0 0 24px 0;
 `;
 
@@ -178,7 +178,7 @@ const Label = styled.label`
   display: block;
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: #1F2937;
   margin-bottom: 8px;
 `;
 
@@ -186,7 +186,7 @@ const Input = styled.input`
   width: 100%;
   box-sizing: border-box;
   padding: 10px 12px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
 
@@ -207,7 +207,7 @@ const CheckboxLabel = styled.label`
   gap: 8px;
   cursor: pointer;
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
 `;
 
 const OptionItemRow = styled.div`
@@ -215,7 +215,7 @@ const OptionItemRow = styled.div`
   align-items: center;
   gap: 8px;
   padding: 8px 0;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
 
   &:last-child {
     border-bottom: none;
@@ -423,7 +423,7 @@ const BrandProductOptionsTab: React.FC<Props> = ({ onCountChange }) => {
   ), sortKey);
 
   if (loading) {
-    return <div style={{ padding: '40px', textAlign: 'center', color: '#6B7280' }}>{'Loading...'}</div>;
+    return <div style={{ padding: '40px', textAlign: 'center', color: '#4B5563' }}>{'Loading...'}</div>;
   }
 
   // useTranslation moved to component level
@@ -466,7 +466,7 @@ const BrandProductOptionsTab: React.FC<Props> = ({ onCountChange }) => {
                     <Badge type={group.is_required ? 'required' : 'optional'}>
                       {group.is_required ? 'Required' : 'Optional'}
                     </Badge>
-                    <span style={{ fontSize: '13px', color: '#6B7280' }}>
+                    <span style={{ fontSize: '13px', color: '#4B5563' }}>
                       {group.options.length} options
                     </span>
                   </CardMeta>
@@ -557,7 +557,7 @@ const BrandProductOptionsTab: React.FC<Props> = ({ onCountChange }) => {
             <select
               value={newOption.ingredient_id || ''}
               onChange={(e) => setNewOption({ ...newOption, ingredient_id: e.target.value ? Number(e.target.value) : null })}
-              style={{ flex: 2, padding: '8px 12px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '13px', color: newOption.ingredient_id ? '#0A2540' : '#9CA3AF' }}
+              style={{ flex: 2, padding: '8px 12px', border: '1px solid #C7CED6', borderRadius: '6px', fontSize: '13px', color: newOption.ingredient_id ? '#0A2540' : '#6B7280' }}
             >
               <option value="">{'Linked ingredient (optional)'}</option>
               {productIngredients.map(ing => (
@@ -582,11 +582,11 @@ const BrandProductOptionsTab: React.FC<Props> = ({ onCountChange }) => {
               <div style={{ flex: 1 }}>
                 <strong>{option.name}</strong>
                 {option.price_adjustment !== 0 && (
-                  <span style={{ marginLeft: '8px', color: '#6B7280' }}>
+                  <span style={{ marginLeft: '8px', color: '#4B5563' }}>
                     ({Number(option.price_adjustment) > 0 ? '+' : ''}RM {(Number(option.price_adjustment) || 0).toFixed(2)})
                   </span>
                 )}
-                {(option as any).ingredient_name && <span style={{ fontSize: '11px', color: '#6B7280', marginLeft: '8px' }}>→ {(option as any).ingredient_name} {(option as any).ingredient_quantity}{(option as any).ingredient_unit}</span>}
+                {(option as any).ingredient_name && <span style={{ fontSize: '11px', color: '#4B5563', marginLeft: '8px' }}>→ {(option as any).ingredient_name} {(option as any).ingredient_quantity}{(option as any).ingredient_unit}</span>}
               </div>
               <RemoveButton onClick={() => handleRemoveOption(idx)}>x</RemoveButton>
             </OptionItemRow>

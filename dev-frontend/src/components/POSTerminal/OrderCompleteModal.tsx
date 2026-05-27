@@ -59,7 +59,7 @@ const OrderNumber = styled.div`
 `;
 
 const OrderDetails = styled.div`
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 20px;
@@ -78,7 +78,7 @@ const DetailRow = styled.div`
 `;
 
 const DetailLabel = styled.span`
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const DetailValue = styled.span`
@@ -94,7 +94,7 @@ const ItemRow = styled.div`
   display: flex;
   justify-content: space-between;
   padding: 12px 0;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
   
   &:last-child {
     border-bottom: none;
@@ -113,13 +113,13 @@ const ItemName = styled.div`
 
 const ItemOptions = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 4px;
 `;
 
 const ItemQuantity = styled.span`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin-right: 16px;
 `;
 
@@ -198,11 +198,11 @@ const PrintFooter = styled.div`
 
 const HeaderActionButton = styled.button`
   background: none;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   padding: 6px 12px;
   font-size: 13px;
-  color: #6B7C93;
+  color: #4B5563;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -211,9 +211,9 @@ const HeaderActionButton = styled.button`
   font-weight: 500;
 
   &:hover {
-    background: #F8FAFC;
+    background: #F1F4F8;
     color: #0A2540;
-    border-color: #CBD5E1;
+    border-color: #64748B;
   }
 
   &:active {

@@ -41,7 +41,7 @@ const SectionTitle = styled.h2`
 const LoadingBox = styled.div`
   padding: 40px 24px;
   text-align: center;
-  color: #6B7280;
+  color: #4B5563;
   font-size: 14px;
 `;
 
@@ -290,7 +290,7 @@ const OnlinePaymentPage: React.FC = () => {
               <div style={{ fontSize: '18px', fontWeight: '600', color: '#059669', marginBottom: '8px' }}>
                 Payment Successful!
               </div>
-              <div style={{ fontSize: '14px', color: '#6B7280' }}>
+              <div style={{ fontSize: '14px', color: '#4B5563' }}>
                 Redirecting to order tracking...
               </div>
             </SuccessBox>

@@ -14,7 +14,7 @@ export const renderFeatureFlag = (v: string | boolean | number | null | undefine
     return <Check size={16} style={{ color: '#10B981' }} aria-label="Yes" />;
   }
   if (v === '✗' || v === '✘' || v === false || v === 'false' || v === 'no') {
-    return <X size={16} style={{ color: '#D1D5DB' }} aria-label="No" />;
+    return <X size={16} style={{ color: '#6B7280' }} aria-label="No" />;
   }
   return <span style={{ color: '#0A2540', fontSize: 14 }}>{v as string}</span>;
 };

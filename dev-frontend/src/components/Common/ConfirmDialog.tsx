@@ -65,7 +65,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
     >
       <div style={{ textAlign: 'center', padding: '32px 0' }}>
         <div style={{ fontSize: '56px', marginBottom: '24px' }}>{getIcon()}</div>
-        <p style={{ fontSize: '16px', color: '#4B5563', lineHeight: '1.6', margin: '0' }}>
+        <p style={{ fontSize: '16px', color: '#374151', lineHeight: '1.6', margin: '0' }}>
           {message}
         </p>
       </div>

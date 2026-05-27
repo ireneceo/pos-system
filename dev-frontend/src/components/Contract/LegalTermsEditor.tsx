@@ -35,26 +35,26 @@ const Field = styled.div`
 const Label = styled.label`
   font-size: 11px;
   font-weight: 500;
-  color: #6B7C93;
+  color: #4B5563;
 `;
 
 const Input = styled.input`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   color: #0A2540;
   outline: none;
   box-sizing: border-box;
   &:focus { border-color: #635BFF; box-shadow: 0 0 0 3px rgba(99,91,255,0.1); }
-  &:disabled { background: #F8FAFC; color: #6B7C93; }
+  &:disabled { background: #F1F4F8; color: #4B5563; }
 `;
 
 const Select = styled.select`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   color: #0A2540;
@@ -62,7 +62,7 @@ const Select = styled.select`
   outline: none;
   box-sizing: border-box;
   &:focus { border-color: #635BFF; }
-  &:disabled { background: #F8FAFC; color: #6B7C93; }
+  &:disabled { background: #F1F4F8; color: #4B5563; }
 `;
 
 const DeliveryRow = styled.div`
@@ -76,16 +76,16 @@ const Pill = styled.label<{ checked: boolean; disabled?: boolean }>`
   align-items: center;
   gap: 6px;
   padding: 8px 12px;
-  border: 1px solid ${p => p.checked ? '#C7D2FE' : '#E6EBF1'};
+  border: 1px solid ${p => p.checked ? '#C7D2FE' : '#C7CED6'};
   background: ${p => p.checked ? '#F5F3FF' : '#fff'};
   border-radius: 20px;
   font-size: 13px;
-  color: ${p => p.checked ? '#635BFF' : '#6B7C93'};
+  color: ${p => p.checked ? '#635BFF' : '#4B5563'};
   font-weight: ${p => p.checked ? 500 : 400};
   cursor: ${p => p.disabled ? 'not-allowed' : 'pointer'};
   user-select: none;
   transition: all 0.15s;
-  &:hover { border-color: ${p => p.disabled ? (p.checked ? '#C7D2FE' : '#E6EBF1') : '#C7D2FE'}; }
+  &:hover { border-color: ${p => p.disabled ? (p.checked ? '#C7D2FE' : '#C7CED6') : '#C7D2FE'}; }
   input { accent-color: #635BFF; cursor: inherit; }
 `;
 
@@ -102,7 +102,7 @@ const ConditionalRow = styled.div`
   grid-template-columns: 1fr 1fr;
   gap: 14px;
   padding-top: 8px;
-  border-top: 1px dashed #F3F4F6;
+  border-top: 1px dashed #F1F4F8;
   @media (max-width: 768px) { grid-template-columns: 1fr; }
 `;
 

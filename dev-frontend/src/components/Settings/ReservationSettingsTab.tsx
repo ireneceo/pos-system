@@ -197,17 +197,17 @@ function Number({ value, min, max, step, onChange }: { value: number; min?: numb
 }
 
 const Container = styled.div`display:flex;flex-direction:column;gap:20px;`;
-const Card = styled.div`background:white;border:1px solid #E6EBF1;border-radius:12px;padding:20px 24px;`;
+const Card = styled.div`background:white;border:1px solid #C7CED6;border-radius:12px;padding:20px 24px;`;
 const CardTitle = styled.h3`font-size:15px;font-weight:600;color:#0A2540;margin:0 0 4px;`;
-const Hint = styled.p`color:#6B7C93;font-size:13px;margin:0 0 16px;`;
-const Sub = styled.div`color:#6B7C93;font-size:12px;margin-top:4px;`;
+const Hint = styled.p`color:#4B5563;font-size:13px;margin:0 0 16px;`;
+const Sub = styled.div`color:#4B5563;font-size:12px;margin-top:4px;`;
 const Row = styled.div`display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid #F0F4F8;&:last-child{border-bottom:none;}`;
 const RowLabel = styled.div`display:flex;flex-direction:column;color:#0A2540;font-size:14px;`;
 const Grid = styled.div`display:grid;grid-template-columns:repeat(2,1fr);gap:16px 20px;@media(max-width:768px){grid-template-columns:1fr;}`;
 const Field = styled.div`display:flex;flex-direction:column;`;
-const Label = styled.label`font-size:13px;font-weight:500;color:#6B7C93;margin-bottom:6px;`;
-const NumInput = styled.input`padding:8px 12px;border:1px solid #E6EBF1;border-radius:6px;font-size:14px;color:#0A2540;max-width:140px;`;
-const Empty = styled.div`text-align:center;padding:40px;color:#6B7C93;`;
+const Label = styled.label`font-size:13px;font-weight:500;color:#4B5563;margin-bottom:6px;`;
+const NumInput = styled.input`padding:8px 12px;border:1px solid #C7CED6;border-radius:6px;font-size:14px;color:#0A2540;max-width:140px;`;
+const Empty = styled.div`text-align:center;padding:40px;color:#4B5563;`;
 const ToggleSwitch = styled.label`position:relative;display:inline-block;width:44px;height:24px;`;
 const ToggleInput = styled.input`opacity:0;width:0;height:0;&:checked + span{background-color:#635BFF;}&:checked + span:before{transform:translateX(20px);}`;
 const ToggleSlider = styled.span`position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:#CBD5E0;transition:.3s;border-radius:24px;&:before{position:absolute;content:"";height:18px;width:18px;left:3px;bottom:3px;background-color:white;transition:.3s;border-radius:50%;}`;

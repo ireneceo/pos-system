@@ -46,7 +46,7 @@ const CategoryIcon = styled.div`
   width: 48px;
   height: 48px;
   border-radius: 8px;
-  background: #F3F4F6;
+  background: #F1F4F8;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -69,7 +69,7 @@ const CategoryMeta = styled.div`
   display: flex;
   gap: 16px;
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const CategoryActions = styled.div`
@@ -81,15 +81,15 @@ const IconBtn = styled.button`
   width: 36px;
   height: 36px;
   border-radius: 6px;
-  border: 1px solid #E6EBF1;
-  background: #F6F9FC;
+  border: 1px solid #C7CED6;
+  background: #F4F6F9;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
 
   &:hover { border-color: #635BFF; background: #F4F3FF; }
-  svg { width: 18px; height: 18px; color: #6B7280; }
+  svg { width: 18px; height: 18px; color: #4B5563; }
 `;
 
 const EmojiPicker = styled.div`
@@ -107,8 +107,8 @@ const EmojiOption = styled.button<{ selected?: boolean }>`
   width: 100%;
   aspect-ratio: 1;
   border-radius: 4px;
-  background: ${p => p.selected ? '#E5E7EB' : 'white'};
-  border: 1px solid ${p => p.selected ? '#9CA3AF' : '#E5E7EB'};
+  background: ${p => p.selected ? '#C7CED6' : 'white'};
+  border: 1px solid ${p => p.selected ? '#6B7280' : '#C7CED6'};
   cursor: pointer;
   font-size: 20px;
 `;
@@ -239,7 +239,7 @@ const FoodcourtProductCategoriesTab: React.FC<Props> = ({ onCountChange, onCateg
   };
 
   if (loading) {
-    return <div style={{ padding: 40, textAlign: 'center', color: '#6B7280' }}>{t('common:loading', 'Loading...')}</div>;
+    return <div style={{ padding: 40, textAlign: 'center', color: '#4B5563' }}>{t('common:loading', 'Loading...')}</div>;
   }
 
   return (
@@ -255,7 +255,7 @@ const FoodcourtProductCategoriesTab: React.FC<Props> = ({ onCountChange, onCateg
           <h4 style={{ fontSize: 16, fontWeight: 600, color: '#1F2937', margin: '0 0 8px 0' }}>
             {t('foodcourt:products.noCategories', 'No categories yet')}
           </h4>
-          <p style={{ fontSize: 14, color: '#6B7280', margin: '0 0 16px 0' }}>
+          <p style={{ fontSize: 14, color: '#4B5563', margin: '0 0 16px 0' }}>
             {t('foodcourt:products.startCategories', 'Create your first product category to organize your products.')}
           </p>
           <ThemedButton onClick={() => openModal()}>
@@ -279,7 +279,7 @@ const FoodcourtProductCategoriesTab: React.FC<Props> = ({ onCountChange, onCateg
                   <span>{cat.product_count || 0} {t('foodcourt:products.products', 'products')}</span>
                 </CategoryMeta>
                 {cat.description && (
-                  <div style={{ fontSize: 13, color: '#6B7280', marginTop: 4 }}>{cat.description}</div>
+                  <div style={{ fontSize: 13, color: '#4B5563', marginTop: 4 }}>{cat.description}</div>
                 )}
               </CategoryInfo>
               <CategoryActions>

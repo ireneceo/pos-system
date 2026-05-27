@@ -231,7 +231,7 @@ const SupplierStaffPage: React.FC = () => {
                 <tr>
                   <td colSpan={6}>
                     <DataTableEmpty>
-                      <div style={{ color: '#6B7280' }}>{t('supplier:staff.empty', 'No staff yet. Add your first team member to delegate work.')}</div>
+                      <div style={{ color: '#4B5563' }}>{t('supplier:staff.empty', 'No staff yet. Add your first team member to delegate work.')}</div>
                     </DataTableEmpty>
                   </td>
                 </tr>
@@ -255,7 +255,7 @@ const SupplierStaffPage: React.FC = () => {
                             </ThemedButton>
                           </>
                         ) : (
-                          <span style={{ color: '#9CA3AF', fontSize: 12 }}>{t('supplier:staff.ownerLabel', 'Owner')}</span>
+                          <span style={{ color: '#6B7280', fontSize: 12 }}>{t('supplier:staff.ownerLabel', 'Owner')}</span>
                         )}
                       </DataTableActions>
                     </DataTableCell>

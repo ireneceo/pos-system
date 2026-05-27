@@ -59,14 +59,14 @@ const IconBtn = styled.button`
   width: 36px;
   height: 36px;
   border-radius: 6px;
-  border: 1px solid #E6EBF1;
-  background: #F6F9FC;
+  border: 1px solid #C7CED6;
+  background: #F4F6F9;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   &:hover { border-color: #635BFF; background: #F4F3FF; }
-  svg { width: 16px; height: 16px; color: #6B7280; }
+  svg { width: 16px; height: 16px; color: #4B5563; }
 `;
 
 const OptionsListInline = styled.div`
@@ -79,10 +79,10 @@ const OptionChip = styled.div`
   display: inline-flex;
   align-items: center;
   padding: 6px 12px;
-  background: #F3F4F6;
+  background: #F1F4F8;
   border-radius: 6px;
   font-size: 13px;
-  color: #374151;
+  color: #1F2937;
 `;
 
 const OptionRow = styled.div`
@@ -90,7 +90,7 @@ const OptionRow = styled.div`
   align-items: center;
   gap: 8px;
   padding: 8px 0;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
   &:last-child { border-bottom: none; }
 `;
 
@@ -109,7 +109,7 @@ const CheckboxLabel = styled.label`
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: #374151;
+  color: #1F2937;
   cursor: pointer;
 `;
 
@@ -247,7 +247,7 @@ const FoodcourtProductOptionsTab: React.FC<Props> = ({ onCountChange, onChange }
   const filtered = groups.filter(g => g.name.toLowerCase().includes(search.toLowerCase()));
 
   if (loading) {
-    return <div style={{ padding: 40, textAlign: 'center', color: '#6B7280' }}>{t('common:loading', 'Loading...')}</div>;
+    return <div style={{ padding: 40, textAlign: 'center', color: '#4B5563' }}>{t('common:loading', 'Loading...')}</div>;
   }
 
   return (
@@ -271,7 +271,7 @@ const FoodcourtProductOptionsTab: React.FC<Props> = ({ onCountChange, onChange }
           <h4 style={{ fontSize: 18, fontWeight: 600, color: '#1F2937', margin: '0 0 8px 0' }}>
             {t('foodcourt:products.noOptionGroupsTitle', 'No option groups yet')}
           </h4>
-          <p style={{ fontSize: 14, color: '#6B7280', margin: '0 0 24px 0' }}>
+          <p style={{ fontSize: 14, color: '#4B5563', margin: '0 0 24px 0' }}>
             {t('foodcourt:products.optionGroupsDescription', 'Create option groups to add customizable options to your products.')}
           </p>
           <ThemedButton onClick={() => openModal()}>
@@ -289,7 +289,7 @@ const FoodcourtProductOptionsTab: React.FC<Props> = ({ onCountChange, onChange }
                     <ReqBadge required={g.is_required}>
                       {g.is_required ? t('common:required', 'Required') : t('common:optional', 'Optional')}
                     </ReqBadge>
-                    <span style={{ fontSize: 13, color: '#6B7280' }}>
+                    <span style={{ fontSize: 13, color: '#4B5563' }}>
                       {g.options.length} {t('foodcourt:products.options', 'options')}
                     </span>
                   </div>
@@ -313,7 +313,7 @@ const FoodcourtProductOptionsTab: React.FC<Props> = ({ onCountChange, onChange }
                   <OptionChip key={idx}>
                     {opt.name}
                     {Number(opt.price_adjustment) !== 0 && (
-                      <span style={{ marginLeft: 6, color: '#6B7280', fontSize: 12 }}>
+                      <span style={{ marginLeft: 6, color: '#4B5563', fontSize: 12 }}>
                         {Number(opt.price_adjustment) > 0 ? '+' : ''}RM {Number(opt.price_adjustment).toFixed(2)}
                       </span>
                     )}
@@ -378,7 +378,7 @@ const FoodcourtProductOptionsTab: React.FC<Props> = ({ onCountChange, onChange }
                   <div style={{ flex: 1 }}>
                     <strong>{opt.name}</strong>
                     {Number(opt.price_adjustment) !== 0 && (
-                      <span style={{ marginLeft: 8, color: '#6B7280' }}>
+                      <span style={{ marginLeft: 8, color: '#4B5563' }}>
                         ({Number(opt.price_adjustment) > 0 ? '+' : ''}RM {Number(opt.price_adjustment).toFixed(2)})
                       </span>
                     )}

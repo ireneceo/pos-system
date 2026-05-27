@@ -104,7 +104,7 @@ const FilterBar = styled.div`
 
 const SearchInput = styled.input`
   padding: 10px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   min-width: 250px;
@@ -117,7 +117,7 @@ const SearchInput = styled.input`
 
 const FilterSelect = styled.select`
   padding: 10px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -143,7 +143,7 @@ const QuoteCard = styled.div`
   background: white;
   border-radius: 12px;
   padding: 24px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   transition: all 0.2s;
   overflow: hidden;
   cursor: pointer;
@@ -180,7 +180,7 @@ const QuoteNumber = styled.div`
 const QuoteName = styled.div`
   font-size: 15px;
   font-weight: 600;
-  color: #374151;
+  color: #1F2937;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -188,7 +188,7 @@ const QuoteName = styled.div`
 
 const QuoteEmail = styled.div`
   font-size: 13px;
-  color: #6B7C93;
+  color: #4B5563;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -196,7 +196,7 @@ const QuoteEmail = styled.div`
 
 const QuoteCompany = styled.div`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 2px;
 `;
 
@@ -213,8 +213,8 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'contacted': return '#DBEAFE';
       case 'confirmed': return '#ECFDF5';
       case 'invoiced': return '#F0F0FF';
-      case 'cancelled': return '#F3F4F6';
-      default: return '#F3F4F6';
+      case 'cancelled': return '#F1F4F8';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
@@ -223,8 +223,8 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'contacted': return '#1E40AF';
       case 'confirmed': return '#059669';
       case 'invoiced': return '#635BFF';
-      case 'cancelled': return '#6B7280';
-      default: return '#6B7280';
+      case 'cancelled': return '#4B5563';
+      default: return '#4B5563';
     }
   }};
 `;
@@ -244,7 +244,7 @@ const PackageBadge = styled.div`
 
 const AddonSummary = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-bottom: 4px;
 `;
 
@@ -265,9 +265,9 @@ const QuoteFooter = styled.div`
   justify-content: space-between;
   align-items: center;
   padding-top: 16px;
-  border-top: 1px solid #F3F4F6;
+  border-top: 1px solid #F1F4F8;
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   flex-wrap: wrap;
   gap: 12px;
 `;
@@ -276,15 +276,15 @@ const CloseQuoteButton = styled.button`
   padding: 4px 12px;
   font-size: 12px;
   font-weight: 500;
-  border: 1px solid #D1D5DB;
+  border: 1px solid #6B7280;
   border-radius: 6px;
   background: #fff;
-  color: #6B7280;
+  color: #4B5563;
   cursor: pointer;
   transition: all 0.15s;
   &:hover {
-    background: #E5E7EB;
-    color: #374151;
+    background: #C7CED6;
+    color: #1F2937;
   }
 `;
 
@@ -296,7 +296,7 @@ const SectionTitle = styled.h3`
   color: #0A2540;
   margin: 24px 0 12px 0;
   padding-bottom: 8px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
 
   &:first-child {
     margin-top: 0;
@@ -316,7 +316,7 @@ const DetailItem = styled.div`
 
 const DetailItemLabel = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-bottom: 4px;
   text-transform: uppercase;
   font-weight: 600;
@@ -330,7 +330,7 @@ const DetailItemValue = styled.div`
 
 const StatusSelect = styled.select`
   padding: 6px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 13px;
   background: white;
@@ -363,9 +363,9 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger
     &:hover { background: #FEE2E2; }
   ` : `
     background: transparent;
-    color: #6B7280;
-    border-color: #E6EBF1;
-    &:hover { background: #F8FAFC; color: #0A2540; }
+    color: #4B5563;
+    border-color: #C7CED6;
+    &:hover { background: #F1F4F8; color: #0A2540; }
   `}
 
   &:disabled {
@@ -376,12 +376,12 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger
 
 const MessageBlock = styled.div`
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
   line-height: 1.6;
   padding: 16px;
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 8px;
-  border-left: 3px solid #E6EBF1;
+  border-left: 3px solid #C7CED6;
   white-space: pre-wrap;
   word-break: break-word;
 `;
@@ -394,14 +394,14 @@ const FormLabel = styled.label`
   display: block;
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: #1F2937;
   margin-bottom: 8px;
 `;
 
 const FormTextArea = styled.textarea`
   width: 100%;
   padding: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   min-height: 100px;
@@ -418,7 +418,7 @@ const FormTextArea = styled.textarea`
 const FormInput = styled.input`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   box-sizing: border-box;
@@ -432,7 +432,7 @@ const FormInput = styled.input`
 const FormSelect = styled.select`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -451,8 +451,8 @@ const AddonRow = styled.div`
   align-items: center;
   padding: 8px 0;
   font-size: 14px;
-  color: #374151;
-  border-bottom: 1px solid #F3F4F6;
+  color: #1F2937;
+  border-bottom: 1px solid #F1F4F8;
 
   &:last-child {
     border-bottom: none;
@@ -467,7 +467,7 @@ const TotalRow = styled.div`
   font-size: 16px;
   font-weight: 700;
   color: #0A2540;
-  border-top: 2px solid #E6EBF1;
+  border-top: 2px solid #C7CED6;
   margin-top: 8px;
 `;
 
@@ -489,14 +489,14 @@ const LinkedUserInfo = styled.div`
 const UserSearchList = styled.div`
   max-height: 300px;
   overflow-y: auto;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
 `;
 
 const UserSearchItem = styled.div`
   padding: 12px 16px;
   cursor: pointer;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
   transition: background 0.15s;
 
   &:hover {
@@ -516,7 +516,7 @@ const UserSearchName = styled.div`
 
 const UserSearchEmail = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const InvoiceInfoBox = styled.div`
@@ -1150,10 +1150,10 @@ const HardwareQuotesPage: React.FC = () => {
             <div style={{
               textAlign: 'center',
               padding: '60px 20px',
-              color: '#6B7280',
+              color: '#4B5563',
               gridColumn: '1 / -1'
             }}>
-              <h3 style={{ color: '#374151', marginBottom: '8px' }}>
+              <h3 style={{ color: '#1F2937', marginBottom: '8px' }}>
                 No {activeTab === 'new' ? 'new' : activeTab === 'progress' ? 'in progress' : 'closed'} quotes
               </h3>
               <p>{t('admin:hardwareQuotesPage.hardwareQuotesWillAppearHereWhenSubmitted')}</p>
@@ -1337,25 +1337,25 @@ const HardwareQuotesPage: React.FC = () => {
               <LinkedUserBox>
                 <LinkedUserInfo>
                   <strong>{selectedQuote.user.full_name}</strong>
-                  <span style={{ color: '#6B7280', marginLeft: 8 }}>({selectedQuote.user.email})</span>
+                  <span style={{ color: '#4B5563', marginLeft: 8 }}>({selectedQuote.user.email})</span>
                   <span style={{ color: '#635BFF', marginLeft: 8, fontSize: 12 }}>{selectedQuote.user.role}</span>
                 </LinkedUserInfo>
                 <ActionButton onClick={openLinkUserModal}>{t('admin:hardwareQuotesPage.change')}</ActionButton>
               </LinkedUserBox>
             ) : (
               <LinkedUserBox style={{ background: '#F9FAFB' }}>
-                <LinkedUserInfo style={{ color: '#6B7280' }}>{t('admin:hardwareQuotesPage.notLinked')}</LinkedUserInfo>
+                <LinkedUserInfo style={{ color: '#4B5563' }}>{t('admin:hardwareQuotesPage.notLinked')}</LinkedUserInfo>
                 <ActionButton variant="primary" onClick={openLinkUserModal}>Link Restaurant Admin</ActionButton>
               </LinkedUserBox>
             )}
 
             {/* Quote Details */}
             <SectionTitle>{t('admin:hardwareQuotesPage.quoteDetails')}</SectionTitle>
-            <div style={{ background: '#F8FAFC', borderRadius: 8, padding: 16, marginBottom: 16 }}>
+            <div style={{ background: '#F1F4F8', borderRadius: 8, padding: 16, marginBottom: 16 }}>
               <AddonRow>
                 <div>
                   <strong>{selectedQuote.packageProduct?.name || selectedQuote.package_snapshot?.name || 'N/A'}</strong>
-                  <span style={{ color: '#6B7280', marginLeft: 8 }}>
+                  <span style={{ color: '#4B5563', marginLeft: 8 }}>
                     ({selectedQuote.packageProduct?.set_group || ''} - {selectedQuote.packageProduct?.set_tier || ''})
                   </span>
                 </div>
@@ -1364,7 +1364,7 @@ const HardwareQuotesPage: React.FC = () => {
 
               {selectedQuote.addon_items && selectedQuote.addon_items.length > 0 && (
                 <>
-                  <div style={{ fontSize: 12, color: '#6B7280', marginTop: 12, marginBottom: 8, fontWeight: 600, textTransform: 'uppercase' as const }}>
+                  <div style={{ fontSize: 12, color: '#4B5563', marginTop: 12, marginBottom: 8, fontWeight: 600, textTransform: 'uppercase' as const }}>
                     Add-ons
                   </div>
                   {selectedQuote.addon_items.map((addon, idx) => (
@@ -1384,11 +1384,11 @@ const HardwareQuotesPage: React.FC = () => {
               {/* Included Setup Services */}
               {(selectedQuote.package_snapshot?.set_setup_items || selectedQuote.packageProduct?.set_setup_items) && (
                 <>
-                  <div style={{ fontSize: 12, color: '#6B7280', marginTop: 16, marginBottom: 8, fontWeight: 600, textTransform: 'uppercase' as const }}>
+                  <div style={{ fontSize: 12, color: '#4B5563', marginTop: 16, marginBottom: 8, fontWeight: 600, textTransform: 'uppercase' as const }}>
                     Included Setup
                   </div>
                   {(selectedQuote.package_snapshot?.set_setup_items || (selectedQuote.packageProduct as any)?.set_setup_items || []).map((item: string, idx: number) => (
-                    <div key={idx} style={{ fontSize: 13, color: '#374151', padding: '3px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div key={idx} style={{ fontSize: 13, color: '#1F2937', padding: '3px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span style={{ color: '#10B981' }}>✓</span> {item}
                     </div>
                   ))}
@@ -1554,12 +1554,12 @@ const HardwareQuotesPage: React.FC = () => {
                 placeholder="Type at least 2 characters..."
                 autoFocus
               />
-              <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+              <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '4px' }}>
                 Only Restaurant Admins are shown — hardware invoices are billed to the restaurant admin.
               </div>
             </FormGroup>
 
-            {searchingUsers && <div style={{ textAlign: 'center', color: '#6B7280', padding: 16 }}>{t('admin:hardwareQuotesPage.searching')}</div>}
+            {searchingUsers && <div style={{ textAlign: 'center', color: '#4B5563', padding: 16 }}>{t('admin:hardwareQuotesPage.searching')}</div>}
 
             {userResults.length > 0 && (
               <UserSearchList>
@@ -1573,7 +1573,7 @@ const HardwareQuotesPage: React.FC = () => {
             )}
 
             {userSearch.length >= 2 && !searchingUsers && userResults.length === 0 && (
-              <div style={{ textAlign: 'center', color: '#6B7280', padding: 16 }}>No Restaurant Admin found matching your search.</div>
+              <div style={{ textAlign: 'center', color: '#4B5563', padding: 16 }}>No Restaurant Admin found matching your search.</div>
             )}
           </CommonModal>
         )}
@@ -1595,7 +1595,7 @@ const HardwareQuotesPage: React.FC = () => {
           >
             {/* Quote Summary */}
             <SectionTitle style={{ marginTop: 0 }}>{t('admin:hardwareQuotesPage.quoteSummary')}</SectionTitle>
-            <div style={{ background: '#F8FAFC', borderRadius: 8, padding: 16, marginBottom: 20 }}>
+            <div style={{ background: '#F1F4F8', borderRadius: 8, padding: 16, marginBottom: 20 }}>
               <AddonRow>
                 <div><strong>{selectedQuote.packageProduct?.name || selectedQuote.package_snapshot?.name || 'N/A'}</strong> ({selectedQuote.packageProduct?.set_group || ''} - {selectedQuote.packageProduct?.set_tier || ''})</div>
                 <div>{formatCurrency(selectedQuote.package_price, quoteCurrency)}</div>
@@ -1651,7 +1651,7 @@ const HardwareQuotesPage: React.FC = () => {
             {/* Additional Charges — auto-loaded from Payment Settings */}
             <FormGroup>
               <FormLabel>{t('admin:hardwareQuotesPage.additionalCharges')}</FormLabel>
-              <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '8px' }}>
+              <div style={{ fontSize: '12px', color: '#4B5563', marginBottom: '8px' }}>
                 Auto-loaded from Payment Settings for {selectedQuote?.currency || 'MYR'}. You can edit or add more charges.
               </div>
               {additionalCharges.map((charge, idx) => {
@@ -1684,7 +1684,7 @@ const HardwareQuotesPage: React.FC = () => {
                         placeholder="Rate %"
                       />
                     </InlineFormGroup>
-                    <div style={{ minWidth: '100px', fontSize: '13px', color: '#6B7280', textAlign: 'right', alignSelf: 'center' }}>
+                    <div style={{ minWidth: '100px', fontSize: '13px', color: '#4B5563', textAlign: 'right', alignSelf: 'center' }}>
                       = {formatCurrency(previewAmount, selectedQuote?.currency || 'MYR')}
                     </div>
                     <ActionButton variant="danger" onClick={() => removeCharge(idx)} style={{ flexShrink: 0 }}>
@@ -1747,7 +1747,7 @@ const HardwareQuotesPage: React.FC = () => {
 
                 {/* Hardware Summary */}
                 <SectionTitle style={{ marginTop: 0 }}>{t('admin:hardwareQuotesPage.hardware')}</SectionTitle>
-                <div style={{ background: '#F8FAFC', borderRadius: 8, padding: 16, marginBottom: 20 }}>
+                <div style={{ background: '#F1F4F8', borderRadius: 8, padding: 16, marginBottom: 20 }}>
                   <AddonRow>
                     <div><strong>{selectedQuote.packageProduct?.name || selectedQuote.package_snapshot?.name || 'N/A'}</strong></div>
                     <div>{formatCurrency(selectedQuote.package_price, quoteCurrency)}</div>
@@ -1772,7 +1772,7 @@ const HardwareQuotesPage: React.FC = () => {
                       <div style={{ fontWeight: 600, fontSize: 14, color: '#0A2540', marginBottom: 4 }}>
                         {selectedQuote.plan_snapshot.display_name}
                       </div>
-                      <div style={{ fontSize: 13, color: '#6B7280' }}>
+                      <div style={{ fontSize: 13, color: '#4B5563' }}>
                         {selectedQuote.billing_cycle === 'annual' ? 'Annual' : 'Monthly'} billing -{' '}
                         {formatCurrency(
                           selectedQuote.billing_cycle === 'annual'
@@ -1856,7 +1856,7 @@ const HardwareQuotesPage: React.FC = () => {
 
                 {/* Mark as Paid */}
                 <FormGroup>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', color: '#374151' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', color: '#1F2937' }}>
                     <input
                       type="checkbox"
                       checked={proceedMarkAsPaid}
@@ -1890,7 +1890,7 @@ const HardwareQuotesPage: React.FC = () => {
               </>
             }
           >
-            <p style={{ margin: 0, color: '#374151', fontSize: '14px' }}>
+            <p style={{ margin: 0, color: '#1F2937', fontSize: '14px' }}>
               Are you sure you want to delete quote <strong>{selectedQuote?.quote_number}</strong>? This action cannot be undone.
             </p>
           </CommonModal>

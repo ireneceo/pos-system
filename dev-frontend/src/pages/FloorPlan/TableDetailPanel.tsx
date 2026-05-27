@@ -5,7 +5,7 @@ import { formatCurrency } from '../../utils/currency';
 import { formatPaymentDisplay } from '../../constants';
 import { useStore } from '../../contexts/StoreContext';
 import { formatDateTime } from '../../utils/timezone';
-import { printBillViaRawBT, printKitchenTicketViaRawBT, printTableQR } from '../../utils/billPrint';
+import { printBillViaRawBT, printOrderTicketToBillPrinter, printTableQR } from '../../utils/billPrint';
 import OptionModal from '../../components/POSTerminal/OptionModal';
 import { Modal, ModalButton } from '../../components/UI';
 import OrderActionHistory from '../LiveOrders/OrderActionHistory';
@@ -58,7 +58,7 @@ const Panel = styled.div`
   width: 380px;
   min-width: 380px;
   background: white;
-  border-left: 1px solid #E6EBF1;
+  border-left: 1px solid #C7CED6;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -74,7 +74,7 @@ const Panel = styled.div`
 
 const PanelHeader = styled.div`
   padding: 16px 20px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -95,7 +95,7 @@ const TableMeta = styled.div`
   gap: 12px;
   margin-top: 4px;
   font-size: 12px;
-  color: #6B7C93;
+  color: #4B5563;
   font-weight: 500;
 `;
 
@@ -103,13 +103,13 @@ const CloseBtn = styled.button`
   background: none;
   border: none;
   font-size: 18px;
-  color: #6B7C93;
+  color: #4B5563;
   cursor: pointer;
   padding: 2px 6px;
   border-radius: 4px;
   flex-shrink: 0;
 
-  &:hover { background: #F3F4F6; }
+  &:hover { background: #F1F4F8; }
 `;
 
 const BadgeRow = styled.div`
@@ -136,13 +136,13 @@ const PanelBody = styled.div`
 
 const Section = styled.div`
   padding: 14px 20px;
-  border-bottom: 1px solid #F0F2F5;
+  border-bottom: 1px solid #C7CED6;
 `;
 
 const SectionTitle = styled.div`
   font-size: 11px;
   font-weight: 600;
-  color: #9CA3AF;
+  color: #6B7280;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 8px;
@@ -159,7 +159,7 @@ const InfoItem = styled.div`
 `;
 
 const InfoLabel = styled.span`
-  color: #9CA3AF;
+  color: #6B7280;
   font-weight: 500;
 `;
 
@@ -173,7 +173,7 @@ const GroupHeader = styled.div<{ $isAdded?: boolean }>`
   padding: 5px 0;
   font-size: 10px;
   font-weight: 600;
-  color: ${p => p.$isAdded ? '#92400E' : '#6B7280'};
+  color: ${p => p.$isAdded ? '#92400E' : '#4B5563'};
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -184,7 +184,7 @@ const ItemRow = styled.div<{ $completed?: boolean }>`
   align-items: flex-start;
   gap: 6px;
   padding: 6px 0;
-  border-bottom: 1px solid #F8FAFC;
+  border-bottom: 1px solid #F1F4F8;
   opacity: ${p => p.$completed ? 0.5 : 1};
 
   &:last-child { border-bottom: none; }
@@ -194,7 +194,7 @@ const ServedCheckbox = styled.button<{ $checked: boolean }>`
   width: 20px;
   height: 20px;
   border-radius: 4px;
-  border: 2px solid ${p => p.$checked ? '#059669' : '#D1D5DB'};
+  border: 2px solid ${p => p.$checked ? '#059669' : '#6B7280'};
   background: ${p => p.$checked ? '#059669' : 'white'};
   color: white;
   font-size: 11px;
@@ -207,7 +207,7 @@ const ServedCheckbox = styled.button<{ $checked: boolean }>`
   transition: all 0.15s;
 
   &:hover {
-    border-color: ${p => p.$checked ? '#047857' : '#9CA3AF'};
+    border-color: ${p => p.$checked ? '#047857' : '#6B7280'};
   }
 `;
 
@@ -225,7 +225,7 @@ const ItemName = styled.div<{ $completed?: boolean }>`
 
 const ItemOptions = styled.div`
   font-size: 10px;
-  color: #6B7C93;
+  color: #4B5563;
   margin-top: 1px;
 `;
 
@@ -240,7 +240,7 @@ const ItemPrice = styled.div`
 
 const ItemQty = styled.span`
   font-size: 11px;
-  color: #9CA3AF;
+  color: #6B7280;
   font-weight: 500;
 `;
 
@@ -249,7 +249,7 @@ const DeleteItemBtn = styled.button`
   height: 20px;
   border: none;
   background: none;
-  color: #D1D5DB;
+  color: #6B7280;
   font-size: 14px;
   cursor: pointer;
   flex-shrink: 0;
@@ -269,7 +269,7 @@ const SummaryRow = styled.div<{ $bold?: boolean }>`
   display: flex;
   justify-content: space-between;
   font-size: ${p => p.$bold ? '14px' : '12px'};
-  color: ${p => p.$bold ? '#0A2540' : '#6B7C93'};
+  color: ${p => p.$bold ? '#0A2540' : '#4B5563'};
   font-weight: ${p => p.$bold ? '700' : '500'};
   padding: 2px 0;
 `;
@@ -290,7 +290,7 @@ const ActionGroup = styled.div`
   flex-direction: column;
   gap: 6px;
   flex-shrink: 0;
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
 `;
 
 const ActionBtn = styled.button<{ $variant: 'primary' | 'secondary' | 'success' | 'danger' | 'link' }>`
@@ -310,11 +310,11 @@ const ActionBtn = styled.button<{ $variant: 'primary' | 'secondary' | 'success' 
       case 'success':
         return `background: #10B981; color: white; border: 1px solid #10B981; &:hover { background: #059669; }`;
       case 'secondary':
-        return `background: #F6F9FC; color: #6B7C93; border: 1px solid #E6EBF1; &:hover { background: #E6EBF1; }`;
+        return `background: #F4F6F9; color: #4B5563; border: 1px solid #C7CED6; &:hover { background: #C7CED6; }`;
       case 'danger':
         return `background: white; color: #DC2626; border: 1px solid #FCA5A5; &:hover { background: #FEF2F2; }`;
       case 'link':
-        return `background: none; color: #6B7C93; font-weight: 500; padding: 6px; &:hover { color: #374151; }`;
+        return `background: none; color: #4B5563; font-weight: 500; padding: 6px; &:hover { color: #1F2937; }`;
     }
   }}
 `;
@@ -334,8 +334,8 @@ const IconButtonGroup = styled.div`
 
 const IconButton = styled.button`
   padding: 6px 10px;
-  background: #F6F9FC;
-  border: 1px solid #E6EBF1;
+  background: #F4F6F9;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s;
@@ -345,11 +345,11 @@ const IconButton = styled.button`
   gap: 4px;
   min-height: 32px;
   font-size: 12px;
-  color: #6B7C93;
+  color: #4B5563;
   white-space: nowrap;
 
   &:hover {
-    background: #E6EBF1;
+    background: #C7CED6;
     transform: translateY(-1px);
   }
 
@@ -361,7 +361,7 @@ const IconButton = styled.button`
 const IconSymbol = styled.span`
   font-size: 14px;
   font-family: 'Lucida Console', 'Courier New', monospace;
-  color: #6B7C93;
+  color: #4B5563;
   display: inline-block;
   line-height: 1;
 `;
@@ -374,7 +374,7 @@ const EmptyState = styled.div`
   justify-content: center;
   padding: 40px 20px;
   text-align: center;
-  color: #9CA3AF;
+  color: #6B7280;
 
   p {
     margin: 8px 0 0;
@@ -428,7 +428,7 @@ const ConfirmTitle = styled.div`
 
 const ConfirmMessage = styled.div`
   font-size: 14px;
-  color: #6B7C93;
+  color: #4B5563;
   margin-bottom: 20px;
   line-height: 1.5;
 `;
@@ -450,7 +450,7 @@ const ConfirmBtn = styled.button<{ $danger?: boolean }>`
 
   ${p => p.$danger
     ? `background: #FEF2F2; color: #EF4444; border: 1px solid #EF4444; &:hover { background: #FEE2E2; }`
-    : `background: #F3F4F6; color: #374151; &:hover { background: #E5E7EB; }`
+    : `background: #F1F4F8; color: #1F2937; &:hover { background: #C7CED6; }`
   }
 `;
 
@@ -691,7 +691,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
 
   const statusColors = isOccupied && ORDER_STATUS_COLORS[orderStatus]
     ? ORDER_STATUS_COLORS[orderStatus]
-    : { bg: '#F3F4F6', text: '#9CA3AF', border: '#D1D5DB' };
+    : { bg: '#F1F4F8', text: '#6B7280', border: '#6B7280' };
 
   const paymentStatusColors = (() => {
     switch (paymentStatus) {
@@ -700,7 +700,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
       case 'failed': return { color: '#DC2626', bg: '#FEE2E2' };
       case 'rejected': return { color: '#DC2626', bg: '#FEE2E2' };
       case 'payment_verification_pending': return { color: '#D97706', bg: '#FEF3C7' };
-      default: return { color: '#6B7280', bg: '#F3F4F6' };
+      default: return { color: '#4B5563', bg: '#F1F4F8' };
     }
   })();
 
@@ -951,7 +951,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
   const handlePrintKitchenTicket = async () => {
     const orderData = buildKitchenDataForPrint();
     if (!orderData || items.length === 0) return;
-    await printKitchenTicketViaRawBT(orderData, getStoreInfo());
+    await printOrderTicketToBillPrinter(orderData, getStoreInfo());
   };
 
   const handlePrintLatestGroupTicket = async () => {
@@ -965,7 +965,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
     const latestGroupItems = items.filter((item: any) => (item.order_group || 0) === latestGroup);
     const orderData = buildKitchenDataForPrint(latestGroupItems, `+Order ${latestGroup}`);
     if (!orderData) return;
-    await printKitchenTicketViaRawBT(orderData, getStoreInfo());
+    await printOrderTicketToBillPrinter(orderData, getStoreInfo());
   };
 
   const handlePrintQR = async () => {
@@ -1054,26 +1054,26 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
         ) : undefined}
       >
         <div style={{ marginBottom: '16px' }}>
-          <div style={{ fontSize: '14px', color: '#6B7C93', marginBottom: '6px' }}>Order: <strong style={{ color: '#0A2540' }}>#{statusInfo?.orderNumber}</strong></div>
-          <div style={{ fontSize: '14px', color: '#6B7C93', marginBottom: '6px' }}>Amount: <strong style={{ color: '#0A2540' }}>{currency} {statusInfo?.totalAmount?.toFixed(2)}</strong></div>
-          <div style={{ fontSize: '14px', color: '#6B7C93' }}>Method: <strong style={{ color: '#0A2540' }}>{statusInfo?.paymentMethod}</strong></div>
+          <div style={{ fontSize: '14px', color: '#4B5563', marginBottom: '6px' }}>Order: <strong style={{ color: '#0A2540' }}>#{statusInfo?.orderNumber}</strong></div>
+          <div style={{ fontSize: '14px', color: '#4B5563', marginBottom: '6px' }}>Amount: <strong style={{ color: '#0A2540' }}>{currency} {statusInfo?.totalAmount?.toFixed(2)}</strong></div>
+          <div style={{ fontSize: '14px', color: '#4B5563' }}>Method: <strong style={{ color: '#0A2540' }}>{statusInfo?.paymentMethod}</strong></div>
         </div>
 
-        <div style={{ borderTop: '1px solid #E6EBF1', paddingTop: '16px' }}>
+        <div style={{ borderTop: '1px solid #C7CED6', paddingTop: '16px' }}>
           <div style={{ fontSize: '13px', fontWeight: 600, color: '#0A2540', marginBottom: '12px' }}>{'Customer Submitted Proof'}</div>
           {paymentProof ? (
             <>
               {paymentProof.reference && (
                 <div style={{ fontSize: '13px', marginBottom: '6px' }}>
-                  <span style={{ color: '#6B7C93' }}>Reference: </span>
+                  <span style={{ color: '#4B5563' }}>Reference: </span>
                   <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#0A2540' }}>{paymentProof.reference}</span>
                 </div>
               )}
               {paymentProof.file_name && (
-                <div style={{ fontSize: '13px', marginBottom: '6px', color: '#6B7C93' }}>File: {paymentProof.file_name}</div>
+                <div style={{ fontSize: '13px', marginBottom: '6px', color: '#4B5563' }}>File: {paymentProof.file_name}</div>
               )}
               {paymentProof.uploaded_at && (
-                <div style={{ fontSize: '12px', color: '#9CA3AF', marginBottom: '6px' }}>
+                <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '6px' }}>
                   Submitted: {formatDateTime(paymentProof.uploaded_at, tzSettings)}
                 </div>
               )}
@@ -1087,7 +1087,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
               )}
             </>
           ) : (
-            <div style={{ fontSize: '13px', color: '#9CA3AF' }}>
+            <div style={{ fontSize: '13px', color: '#6B7280' }}>
               {paymentStatus === 'rejected' ? 'Waiting for customer to resubmit.' : 'No payment proof submitted.'}
             </div>
           )}
@@ -1095,8 +1095,8 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
 
         {/* History Section */}
         {proofHistory.length > 0 && (
-          <div style={{ borderTop: '1px solid #E6EBF1', paddingTop: '16px', marginTop: '16px' }}>
-            <div style={{ fontSize: '13px', fontWeight: 600, color: '#6B7C93', marginBottom: '10px' }}>
+          <div style={{ borderTop: '1px solid #C7CED6', paddingTop: '16px', marginTop: '16px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 600, color: '#4B5563', marginBottom: '10px' }}>
               Previous Attempts ({proofHistory.length})
             </div>
             {proofHistory.map((entry: any, idx: number) => (
@@ -1105,16 +1105,16 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                 background: '#F9FAFB',
                 borderRadius: '6px',
                 marginBottom: idx < proofHistory.length - 1 ? '8px' : 0,
-                border: '1px solid #E5E7EB'
+                border: '1px solid #C7CED6'
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                   <span style={{ fontSize: '12px', color: '#DC2626', fontWeight: 600 }}>Rejected #{entry.reject_count || idx + 1}</span>
                   {entry.rejected_at && (
-                    <span style={{ fontSize: '11px', color: '#9CA3AF' }}>{formatDateTime(entry.rejected_at, tzSettings)}</span>
+                    <span style={{ fontSize: '11px', color: '#6B7280' }}>{formatDateTime(entry.rejected_at, tzSettings)}</span>
                   )}
                 </div>
                 {entry.reference && (
-                  <div style={{ fontSize: '12px', color: '#6B7C93' }}>
+                  <div style={{ fontSize: '12px', color: '#4B5563' }}>
                     Ref: <span style={{ fontFamily: 'monospace' }}>{entry.reference}</span>
                   </div>
                 )}
@@ -1172,7 +1172,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
       {orders.length > 1 && (
         <div style={{
           padding: '8px 20px',
-          borderBottom: '1px solid #E6EBF1',
+          borderBottom: '1px solid #C7CED6',
           display: 'flex',
           gap: '6px',
           flexWrap: 'wrap',
@@ -1187,9 +1187,9 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                 borderRadius: '6px',
                 fontSize: '12px',
                 fontWeight: selectedOrderIndex === idx ? 600 : 400,
-                border: selectedOrderIndex === idx ? '1.5px solid #635BFF' : '1px solid #D1D5DB',
+                border: selectedOrderIndex === idx ? '1.5px solid #635BFF' : '1px solid #6B7280',
                 background: selectedOrderIndex === idx ? '#EDE9FE' : 'white',
-                color: selectedOrderIndex === idx ? '#635BFF' : '#6B7280',
+                color: selectedOrderIndex === idx ? '#635BFF' : '#4B5563',
                 cursor: 'pointer',
                 transition: 'all 0.15s'
               }}
@@ -1200,7 +1200,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                 : ''}
             </button>
           ))}
-          <span style={{ fontSize: '11px', color: '#9CA3AF', alignSelf: 'center', marginLeft: '4px' }}>
+          <span style={{ fontSize: '11px', color: '#6B7280', alignSelf: 'center', marginLeft: '4px' }}>
             {orders.length} orders
           </span>
         </div>
@@ -1220,19 +1220,19 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                   onChange={(e) => setAddItemsSearchQuery(e.target.value)}
                   style={{
                     width: '100%', padding: '10px 14px',
-                    border: '2px solid #E5E7EB', borderRadius: '8px',
+                    border: '2px solid #C7CED6', borderRadius: '8px',
                     fontSize: '14px', outline: 'none', transition: 'border-color 0.15s',
                     boxSizing: 'border-box'
                   }}
                   onFocus={(e) => { e.currentTarget.style.borderColor = '#635BFF'; }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = '#E5E7EB'; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = '#C7CED6'; }}
                   autoFocus
                 />
               </div>
 
               {/* Search Results */}
               {addItemsSearchQuery.length > 0 && (
-                <div style={{ marginBottom: '16px', maxHeight: '200px', overflowY: 'auto', border: '1px solid #E5E7EB', borderRadius: '8px' }}>
+                <div style={{ marginBottom: '16px', maxHeight: '200px', overflowY: 'auto', border: '1px solid #C7CED6', borderRadius: '8px' }}>
                   {menuItems
                     .filter((item: any) => {
                       if (!item || !item.name) return false;
@@ -1245,7 +1245,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                       return (
                         <div key={item.id} style={{
                           padding: '10px 14px', display: 'flex', justifyContent: 'space-between',
-                          alignItems: 'center', borderBottom: '1px solid #F3F4F6', cursor: 'pointer'
+                          alignItems: 'center', borderBottom: '1px solid #F1F4F8', cursor: 'pointer'
                         }}
                           onMouseEnter={(e) => { e.currentTarget.style.background = '#F9FAFB'; }}
                           onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; }}
@@ -1284,7 +1284,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                     const q = addItemsSearchQuery.toLowerCase();
                     return item.name?.toLowerCase().includes(q) || (item.code && item.code.toLowerCase().includes(q));
                   }).length === 0 && (
-                    <div style={{ padding: '14px', textAlign: 'center', color: '#9CA3AF', fontSize: '13px' }}>{'No items found'}</div>
+                    <div style={{ padding: '14px', textAlign: 'center', color: '#6B7280', fontSize: '13px' }}>{'No items found'}</div>
                   )}
                 </div>
               )}
@@ -1295,30 +1295,30 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                   Items to Add ({addItemsCart.reduce((sum: number, item: any) => sum + item.quantity, 0)})
                 </SectionTitle>
                 {addItemsCart.length === 0 ? (
-                  <div style={{ padding: '20px', textAlign: 'center', color: '#9CA3AF', background: '#F9FAFB', borderRadius: '8px', fontSize: '13px' }}>
+                  <div style={{ padding: '20px', textAlign: 'center', color: '#6B7280', background: '#F9FAFB', borderRadius: '8px', fontSize: '13px' }}>
                     Search and select items to add
                   </div>
                 ) : (
-                  <div style={{ border: '1px solid #E5E7EB', borderRadius: '8px', overflow: 'hidden' }}>
+                  <div style={{ border: '1px solid #C7CED6', borderRadius: '8px', overflow: 'hidden' }}>
                     {addItemsCart.map((item: any) => (
-                      <div key={item.cartId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderBottom: '1px solid #F3F4F6' }}>
+                      <div key={item.cartId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderBottom: '1px solid #F1F4F8' }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontWeight: 500, fontSize: '13px' }}>{item.name}</div>
                           {item.selectedOptions && item.selectedOptions.length > 0 && (
-                            <div style={{ fontSize: '11px', color: '#6B7280', marginTop: '1px' }}>
+                            <div style={{ fontSize: '11px', color: '#4B5563', marginTop: '1px' }}>
                               {item.selectedOptions.map((opt: any) => opt.name).join(', ')}
                             </div>
                           )}
-                          <div style={{ color: '#6B7280', fontSize: '12px' }}>
+                          <div style={{ color: '#4B5563', fontSize: '12px' }}>
                             {formatCurrency(item.unitPrice || parseFloat(item.price), currency)} each
                           </div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
                           <button onClick={() => handleRemoveFromItemsCart(item.cartId)}
-                            style={{ width: '28px', height: '28px', border: '1px solid #E5E7EB', borderRadius: '6px', background: 'white', cursor: 'pointer', fontSize: '16px', fontWeight: 500 }}>-</button>
+                            style={{ width: '28px', height: '28px', border: '1px solid #C7CED6', borderRadius: '6px', background: 'white', cursor: 'pointer', fontSize: '16px', fontWeight: 500 }}>-</button>
                           <span style={{ minWidth: '24px', textAlign: 'center', fontWeight: 600, fontSize: '14px' }}>{item.quantity}</span>
                           <button onClick={() => handleIncreaseCartItem(item.cartId)}
-                            style={{ width: '28px', height: '28px', border: '1px solid #E5E7EB', borderRadius: '6px', background: 'white', cursor: 'pointer', fontSize: '16px', fontWeight: 500 }}>+</button>
+                            style={{ width: '28px', height: '28px', border: '1px solid #C7CED6', borderRadius: '6px', background: 'white', cursor: 'pointer', fontSize: '16px', fontWeight: 500 }}>+</button>
                         </div>
                       </div>
                     ))}
@@ -1372,7 +1372,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                       onClick={() => setShowHistory(true)}
                       style={{
                         background: 'transparent', border: 'none', cursor: 'pointer',
-                        color: '#6B7C93', fontSize: 11, padding: '2px 4px', fontWeight: 500
+                        color: '#4B5563', fontSize: 11, padding: '2px 4px', fontWeight: 500
                       }}
                       title={t('history.viewLink', 'View history')}
                     >
@@ -1449,7 +1449,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                         <GroupHeader $isAdded={isAdded}>
                           <span>{isAdded ? `+Added #${groupNum}` : 'Original Order'}</span>
                           {isAdded && firstItem?.added_at && (
-                            <span style={{ fontSize: '9px', fontWeight: 400, color: '#9CA3AF' }}>
+                            <span style={{ fontSize: '9px', fontWeight: 400, color: '#6B7280' }}>
                               {formatDT(firstItem.added_at)}
                             </span>
                           )}
@@ -1499,7 +1499,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                 })}
 
                 {items.length === 0 && (
-                  <div style={{ fontSize: '13px', color: '#9CA3AF' }}>{'No items'}</div>
+                  <div style={{ fontSize: '13px', color: '#6B7280' }}>{'No items'}</div>
                 )}
               </Section>
 
@@ -1553,7 +1553,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                   </SummaryRow>
                 )}
 
-                <SummaryRow $bold style={{ marginTop: '4px', paddingTop: '6px', borderTop: '1px solid #E6EBF1' }}>
+                <SummaryRow $bold style={{ marginTop: '4px', paddingTop: '6px', borderTop: '1px solid #C7CED6' }}>
                   <span>{'Total'}</span>
                   <span>{formatCurrency(statusInfo!.totalAmount, currency)}</span>
                 </SummaryRow>
@@ -1614,7 +1614,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                   style={
                     orderStatus === 'outstanding' ? { background: '#F59E0B', borderColor: '#F59E0B', color: 'white' } :
                     orderStatus === 'ready' ? { background: '#10B981', borderColor: '#10B981', color: 'white' } :
-                    nextAction.status === 'completed' ? { background: '#9CA3AF', borderColor: '#9CA3AF', color: 'white' } :
+                    nextAction.status === 'completed' ? { background: '#6B7280', borderColor: '#6B7280', color: 'white' } :
                     undefined
                   }
                 >
@@ -1679,7 +1679,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                 <QRStatusInfo>
                   <div>
                     <span style={{ color: '#059669' }}>● Active QR ({qrSession.remaining_minutes ?? 0}min left)</span>
-                    <div style={{ fontSize: '11px', color: '#6B7280', marginTop: '2px' }}>
+                    <div style={{ fontSize: '11px', color: '#4B5563', marginTop: '2px' }}>
                       Printed: {formatDateTime(qrSession.created_at, tzSettings, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', year: undefined })}
                       {' · '}Orders until {formatDateTime(qrSession.expires_at, tzSettings, { year: undefined, month: undefined, day: undefined, hour: '2-digit', minute: '2-digit' })}
                     </div>
@@ -1715,7 +1715,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
               <QRStatusInfo>
                 <div>
                   <span style={{ color: '#059669' }}>● Active QR ({qrSession.remaining_minutes}min left)</span>
-                  <div style={{ fontSize: '11px', color: '#6B7280', marginTop: '2px' }}>
+                  <div style={{ fontSize: '11px', color: '#4B5563', marginTop: '2px' }}>
                     Printed: {qrSession.created_at ? formatDateTime(qrSession.created_at, tzSettings, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', year: undefined }) : 'just now'}
                     <br />Orders accepted until {formatDateTime(qrSession.expires_at, tzSettings, { year: undefined, month: undefined, day: undefined, hour: '2-digit', minute: '2-digit' })}
                   </div>
@@ -1725,7 +1725,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                 </ActionBtn>
               </QRStatusInfo>
             ) : (
-              <QRStatusInfo style={{ color: '#6B7280', fontSize: '12px' }}>{'Print QR to generate a session-based ordering code for this table.'}</QRStatusInfo>
+              <QRStatusInfo style={{ color: '#4B5563', fontSize: '12px' }}>{'Print QR to generate a session-based ordering code for this table.'}</QRStatusInfo>
             )}
             </>
             )}
@@ -1797,7 +1797,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                 type="button"
                 onClick={() => setShowHistory(false)}
                 style={{
-                  border: 'none', background: '#F0F2F5', color: '#0A2540',
+                  border: 'none', background: '#C7CED6', color: '#0A2540',
                   borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer'
                 }}
               >

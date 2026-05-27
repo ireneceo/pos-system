@@ -49,7 +49,7 @@ const Container = styled.div`
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -71,7 +71,7 @@ const Header = styled.div`
 
 const Content = styled.div`
   padding: 32px;
-  background: #FAFBFC;
+  background: #F9FAFB;
   min-height: calc(100vh - 120px);
   
   @media (max-width: 768px) {
@@ -116,13 +116,13 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
     }
   ` : `
     background: white;
-    color: #6B7280;
-    border: 1px solid #E6EBF1;
+    color: #4B5563;
+    border: 1px solid #C7CED6;
     
     &:hover {
-      background: #F8FAFC;
+      background: #F1F4F8;
       color: #0A2540;
-      border-color: #CBD5E1;
+      border-color: #64748B;
     }
   `}
 `;
@@ -137,7 +137,7 @@ const RestaurantCard = styled.div`
   background: white;
   border-radius: 12px;
   padding: 24px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   transition: all 0.2s;
   cursor: pointer;
   display: flex;
@@ -171,8 +171,8 @@ const RestaurantName = styled.h3`
 const BranchBadge = styled.span`
   font-size: 12px;
   font-weight: 500;
-  color: #6B7C93;
-  background: #F3F4F6;
+  color: #4B5563;
+  background: #F1F4F8;
   padding: 1px 8px;
   border-radius: 4px;
   margin-left: 6px;
@@ -181,7 +181,7 @@ const BranchBadge = styled.span`
 
 const RestaurantMeta = styled.div`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
   margin-bottom: 2px;
 `;
 
@@ -196,10 +196,10 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'trial': return '#DBEAFE';
       case 'expired': return '#FEF2F2';
       case 'suspended': return '#FEF3C7';
-      case 'cancelled': return '#F3F4F6';
+      case 'cancelled': return '#F1F4F8';
       case 'inactive': return '#FEF2F2';
       case 'maintenance': return '#FEF3C7';
-      default: return '#F3F4F6';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
@@ -208,10 +208,10 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'trial': return '#1E40AF';
       case 'expired': return '#DC2626';
       case 'suspended': return '#D97706';
-      case 'cancelled': return '#6B7280';
+      case 'cancelled': return '#4B5563';
       case 'inactive': return '#DC2626';
       case 'maintenance': return '#D97706';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 `;
@@ -237,7 +237,7 @@ const ContractBadge = styled.span<{ $bg: string; $text: string }>`
 
 const ContractMeta = styled.div`
   font-size: 11px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 4px;
   letter-spacing: 0.2px;
   span.num { color: #635BFF; font-weight: 600; }
@@ -254,16 +254,16 @@ const PlanBadge = styled.span<{ plan: string }>`
     switch(props.plan) {
       case 'enterprise': return '#EDE9FE';
       case 'professional': return '#DBEAFE';
-      case 'basic': return '#F3F4F6';
-      default: return '#F3F4F6';
+      case 'basic': return '#F1F4F8';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
     switch(props.plan) {
       case 'enterprise': return '#5B21B6';
       case 'professional': return '#1E40AF';
-      case 'basic': return '#6B7280';
-      default: return '#6B7280';
+      case 'basic': return '#4B5563';
+      default: return '#4B5563';
     }
   }};
 `;
@@ -274,7 +274,7 @@ const MetricsGrid = styled.div`
   gap: 16px;
   margin-top: 16px;
   padding-top: 16px;
-  border-top: 1px solid #F3F4F6;
+  border-top: 1px solid #F1F4F8;
 `;
 
 const Metric = styled.div`
@@ -289,7 +289,7 @@ const MetricValue = styled.div`
 
 const MetricLabel = styled.div`
   font-size: 11px;
-  color: #6B7280;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-top: 2px;
@@ -303,7 +303,7 @@ const RatingContainer = styled.div`
 `;
 
 const Star = styled.span<{ filled: boolean }>`
-  color: ${props => props.filled ? '#FFC107' : '#E5E7EB'};
+  color: ${props => props.filled ? '#FFC107' : '#C7CED6'};
   font-size: 14px;
 `;
 
@@ -318,9 +318,9 @@ const ActionButton = styled.button`
   flex: 1;
   padding: 8px 12px;
   background: transparent;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
-  color: #6B7280;
+  color: #4B5563;
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
@@ -349,12 +349,12 @@ const FormGroup = styled.div`
 const FormLabel = styled.label`
   font-size: 14px;
   font-weight: 600;
-  color: #374151;
+  color: #1F2937;
 `;
 
 const FormInput = styled.input`
   padding: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.2s;
@@ -367,13 +367,13 @@ const FormInput = styled.input`
 
   &:disabled {
     background: #F9FAFB;
-    color: #6B7280;
+    color: #4B5563;
   }
 `;
 
 const FormSelect = styled.select`
   padding: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -388,7 +388,7 @@ const FormSelect = styled.select`
 
 const FormTextarea = styled.textarea`
   padding: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   resize: vertical;
@@ -418,13 +418,13 @@ const PageFilterWrapper = styled.div`
 const PageSearchInput = styled.input`
   flex: 0 1 250px;
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
 
   &::placeholder {
-    color: #9CA3AF;
+    color: #6B7280;
   }
 
   &:focus {
@@ -442,7 +442,7 @@ const PageSearchInput = styled.input`
 const PageFilterSelect = styled.select`
   flex: 0 0 150px;
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -473,7 +473,7 @@ const DropdownContainer = styled.div`
 
 const DropdownInput = styled.input`
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -488,7 +488,7 @@ const DropdownInput = styled.input`
   }
 
   &:hover {
-    border-color: #D1D5DB;
+    border-color: #6B7280;
   }
 `;
 
@@ -498,7 +498,7 @@ const DropdownMenu = styled.div<{ show: boolean }>`
   left: 0;
   right: 0;
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   max-height: 200px;
   overflow-y: auto;
@@ -514,7 +514,7 @@ const DropdownItem = styled.div`
   transition: background-color 0.2s;
 
   &:hover {
-    background: #F8FAFC;
+    background: #F1F4F8;
   }
 
   &:last-child {
@@ -530,7 +530,7 @@ const ItemName = styled.div`
 
 const ItemDetails = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const ClearButton = styled.button`
@@ -541,7 +541,7 @@ const ClearButton = styled.button`
   background: none;
   border: none;
   font-size: 16px;
-  color: #9CA3AF;
+  color: #6B7280;
   cursor: pointer;
   padding: 0;
   width: 20px;
@@ -551,7 +551,7 @@ const ClearButton = styled.button`
   justify-content: center;
 
   &:hover {
-    color: #6B7280;
+    color: #4B5563;
   }
 `;
 
@@ -1787,7 +1787,7 @@ const ManagerRestaurantsPage: React.FC = () => {
 
                 <RatingContainer>
                   {renderStars(restaurant.rating)}
-                  <span style={{ fontSize: '12px', color: '#6B7280', marginLeft: '4px' }}>
+                  <span style={{ fontSize: '12px', color: '#4B5563', marginLeft: '4px' }}>
                     {restaurant.rating} • Last order: {restaurant.lastOrder}
                   </span>
                 </RatingContainer>
@@ -1815,7 +1815,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                     padding: '8px 0', marginTop: 8, marginBottom: 4,
                     borderTop: '1px dashed #F1F5F9'
                   }}>
-                    <div style={{ fontSize: 12, color: '#6B7280' }}>
+                    <div style={{ fontSize: 12, color: '#4B5563' }}>
                       {t('billing:column.title', 'Trade Billing')}
                     </div>
                     <div style={{ fontSize: 12, fontWeight: 600, color: '#0A2540' }}>
@@ -1865,7 +1865,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                     <select
                       value={newRestaurant.brand_id}
                       onChange={(e) => setNewRestaurant({...newRestaurant, brand_id: e.target.value})}
-                      style={{width: '100%', padding: '10px 12px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '14px', background: '#fff'}}
+                      style={{width: '100%', padding: '10px 12px', border: '1px solid #C7CED6', borderRadius: '8px', fontSize: '14px', background: '#fff'}}
                     >
                       <option value="">— Select brand —</option>
                       {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
@@ -1893,23 +1893,23 @@ const ManagerRestaurantsPage: React.FC = () => {
                       display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer',
                       padding: '8px 16px', borderRadius: '8px',
                       background: adminAction === 'create' ? '#F0EFFF' : '#F9FAFB',
-                      border: adminAction === 'create' ? '2px solid #635BFF' : '2px solid #E5E7EB'
+                      border: adminAction === 'create' ? '2px solid #635BFF' : '2px solid #C7CED6'
                     }}>
                       <input type="radio" name="adminActionMgr" checked={adminAction === 'create'}
                         onChange={() => { setAdminAction('create'); setSelectedAdmin(null); }}
                         style={{ accentColor: '#635BFF' }} />
-                      <span style={{fontSize: '14px', fontWeight: '500', color: '#374151'}}>{t('admin:restaurantsPage.createNewAccount')}</span>
+                      <span style={{fontSize: '14px', fontWeight: '500', color: '#1F2937'}}>{t('admin:restaurantsPage.createNewAccount')}</span>
                     </label>
                     <label style={{
                       display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer',
                       padding: '8px 16px', borderRadius: '8px',
                       background: adminAction === 'assign' ? '#F0EFFF' : '#F9FAFB',
-                      border: adminAction === 'assign' ? '2px solid #635BFF' : '2px solid #E5E7EB'
+                      border: adminAction === 'assign' ? '2px solid #635BFF' : '2px solid #C7CED6'
                     }}>
                       <input type="radio" name="adminActionMgr" checked={adminAction === 'assign'}
                         onChange={() => { setAdminAction('assign'); setNewAdminData({ fullName: '', email: '', username: '', phone: '' }); }}
                         style={{ accentColor: '#635BFF' }} />
-                      <span style={{fontSize: '14px', fontWeight: '500', color: '#374151'}}>{t('admin:restaurantsPage.selectExistingUser')}</span>
+                      <span style={{fontSize: '14px', fontWeight: '500', color: '#1F2937'}}>{t('admin:restaurantsPage.selectExistingUser')}</span>
                     </label>
                   </div>
                 </div>
@@ -1954,7 +1954,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                         onBlur={() => setTimeout(() => setShowAdminDropdown(false), 200)} />
                       <DropdownMenu show={showAdminDropdown}>
                         {adminCandidates.length === 0 ? (
-                          <div style={{padding: '12px 16px', color: '#6B7280', fontSize: '13px'}}>
+                          <div style={{padding: '12px 16px', color: '#4B5563', fontSize: '13px'}}>
                             {adminSearchQuery.length > 0 ? 'No available users found' : 'Type to search users...'}
                           </div>
                         ) : (
@@ -1977,7 +1977,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                           <div style={{fontWeight: '600', color: '#1F2937', fontSize: '14px'}}>
                             {selectedAdmin.full_name || selectedAdmin.username}
                           </div>
-                          <div style={{fontSize: '12px', color: '#6B7280'}}>
+                          <div style={{fontSize: '12px', color: '#4B5563'}}>
                             {selectedAdmin.email} • {selectedAdmin.role}
                           </div>
                         </div>
@@ -2068,7 +2068,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                   <h3 style={{margin: 0, fontSize: '18px', fontWeight: '600', color: '#0A2540', borderBottom: '2px solid #635BFF', paddingBottom: '8px'}}>
                     {t('admin:restaurantsPage.solutionSubscription', 'Solution Subscription')}
                   </h3>
-                  <div style={{ fontSize: 12, color: '#6B7C93', marginTop: 6 }}>
+                  <div style={{ fontSize: 12, color: '#4B5563', marginTop: 6 }}>
                     {t('admin:restaurantsPage.solutionSubscriptionHint', 'PurpleHere platform usage fee (billed by System Admin)')}
                   </div>
                 </div>
@@ -2127,7 +2127,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup style={{ gridColumn: 'span 2' }}>
-                  <FormLabel>{t('admin:restaurantsPage.subscriptionPeriod', 'Subscription Period *')} <span style={{ color: '#6B7C93', fontWeight: 400, fontSize: 11 }}>({t('admin:restaurantsPage.endAutoCalculated', 'end auto-calculated')})</span></FormLabel>
+                  <FormLabel>{t('admin:restaurantsPage.subscriptionPeriod', 'Subscription Period *')} <span style={{ color: '#4B5563', fontWeight: 400, fontSize: 11 }}>({t('admin:restaurantsPage.endAutoCalculated', 'end auto-calculated')})</span></FormLabel>
                   <DateRangeField
                     startDate={newRestaurant.subscriptionStart}
                     endDate={newRestaurant.subscriptionEnd}
@@ -2158,20 +2158,20 @@ const ManagerRestaurantsPage: React.FC = () => {
                       onChange={(e) => setNewRestaurant({...newRestaurant, autoRenew: e.target.checked})}
                       style={{width: '16px', height: '16px'}}
                     />
-                    <span style={{fontSize: '14px', color: '#374151'}}>
+                    <span style={{fontSize: '14px', color: '#1F2937'}}>
                       Auto-renew subscription
                     </span>
                   </label>
                 </FormGroup>
 
-                <div style={{gridColumn: '1 / -1', padding: '16px', background: '#F3F4F6', borderRadius: '8px', marginTop: '10px'}}>
-                  <div style={{fontSize: '14px', color: '#6B7280', marginBottom: '8px'}}>
+                <div style={{gridColumn: '1 / -1', padding: '16px', background: '#F1F4F8', borderRadius: '8px', marginTop: '10px'}}>
+                  <div style={{fontSize: '14px', color: '#4B5563', marginBottom: '8px'}}>
                     <strong>Summary:</strong>
                   </div>
                   <div style={{fontSize: '16px', fontWeight: '600', color: '#0A2540'}}>
                     {newRestaurant.planType} - {formatCurrency(parseFloat(newRestaurant.planAmount) || 0, newRestaurant.currency || 'MYR')} ({newRestaurant.billingCycle})
                   </div>
-                  <div style={{fontSize: '12px', color: '#6B7280', marginTop: '4px'}}>
+                  <div style={{fontSize: '12px', color: '#4B5563', marginTop: '4px'}}>
                     Paid by: {newRestaurant.paymentModel === 'manager' ? 'Manager' : 'Restaurant'}
                   </div>
                 </div>
@@ -2192,7 +2192,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                     <select
                       value={newRestaurant.brand_id}
                       onChange={(e) => setNewRestaurant({...newRestaurant, brand_id: e.target.value})}
-                      style={{width: '100%', padding: '10px 12px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '14px', background: '#fff'}}
+                      style={{width: '100%', padding: '10px 12px', border: '1px solid #C7CED6', borderRadius: '8px', fontSize: '14px', background: '#fff'}}
                     >
                       <option value="">— Not linked to any brand —</option>
                       {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
@@ -2207,7 +2207,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                     <select
                       value={newRestaurant.branch_id}
                       onChange={(e) => setNewRestaurant({...newRestaurant, branch_id: e.target.value})}
-                      style={{width: '100%', padding: '10px 12px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '14px', background: '#fff'}}
+                      style={{width: '100%', padding: '10px 12px', border: '1px solid #C7CED6', borderRadius: '8px', fontSize: '14px', background: '#fff'}}
                     >
                       <option value="">— Not linked to a specific branch —</option>
                       {branches.map(b => <option key={b.id} value={b.id}>{b.code} — {b.name}{b.is_primary ? ' (Primary)' : ''}</option>)}
@@ -2303,7 +2303,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                   <h3 style={{margin: 0, fontSize: '18px', fontWeight: '600', color: '#0A2540', borderBottom: '2px solid #635BFF', paddingBottom: '8px'}}>
                     {t('admin:restaurantsPage.solutionSubscription', 'Solution Subscription')}
                   </h3>
-                  <div style={{ fontSize: 12, color: '#6B7C93', marginTop: 6 }}>
+                  <div style={{ fontSize: 12, color: '#4B5563', marginTop: 6 }}>
                     {t('admin:restaurantsPage.solutionSubscriptionHint', 'PurpleHere platform usage fee (billed by System Admin)')}
                   </div>
                 </div>
@@ -2362,7 +2362,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup style={{ gridColumn: 'span 2' }}>
-                  <FormLabel>{t('admin:restaurantsPage.subscriptionPeriod', 'Subscription Period *')} <span style={{ color: '#6B7C93', fontWeight: 400, fontSize: 11 }}>({t('admin:restaurantsPage.endAutoCalculated', 'end auto-calculated')})</span></FormLabel>
+                  <FormLabel>{t('admin:restaurantsPage.subscriptionPeriod', 'Subscription Period *')} <span style={{ color: '#4B5563', fontWeight: 400, fontSize: 11 }}>({t('admin:restaurantsPage.endAutoCalculated', 'end auto-calculated')})</span></FormLabel>
                   <DateRangeField
                     startDate={newRestaurant.subscriptionStart}
                     endDate={newRestaurant.subscriptionEnd}
@@ -2393,20 +2393,20 @@ const ManagerRestaurantsPage: React.FC = () => {
                       onChange={(e) => setNewRestaurant({...newRestaurant, autoRenew: e.target.checked})}
                       style={{width: '16px', height: '16px'}}
                     />
-                    <span style={{fontSize: '14px', color: '#374151'}}>
+                    <span style={{fontSize: '14px', color: '#1F2937'}}>
                       Auto-renew subscription
                     </span>
                   </label>
                 </FormGroup>
 
-                <div style={{gridColumn: '1 / -1', padding: '16px', background: '#F3F4F6', borderRadius: '8px', marginTop: '10px'}}>
-                  <div style={{fontSize: '14px', color: '#6B7280', marginBottom: '8px'}}>
+                <div style={{gridColumn: '1 / -1', padding: '16px', background: '#F1F4F8', borderRadius: '8px', marginTop: '10px'}}>
+                  <div style={{fontSize: '14px', color: '#4B5563', marginBottom: '8px'}}>
                     <strong>Summary:</strong>
                   </div>
                   <div style={{fontSize: '16px', fontWeight: '600', color: '#0A2540'}}>
                     {newRestaurant.planType} - {formatCurrency(parseFloat(newRestaurant.planAmount) || 0, newRestaurant.currency || 'MYR')} ({newRestaurant.billingCycle})
                   </div>
-                  <div style={{fontSize: '12px', color: '#6B7280', marginTop: '4px'}}>
+                  <div style={{fontSize: '12px', color: '#4B5563', marginTop: '4px'}}>
                     Paid by: {newRestaurant.paymentModel === 'manager' ? 'Manager' : 'Restaurant'}
                   </div>
                 </div>
@@ -2455,7 +2455,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                     <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: '#0A2540', borderBottom: '2px solid #0891B2', paddingBottom: '8px' }}>
                       {t('admin:restaurantsPage.brandSubscription', 'Brand Subscription')}
                     </h3>
-                    <div style={{ fontSize: 12, color: '#6B7C93', marginTop: 6, marginBottom: 12 }}>
+                    <div style={{ fontSize: 12, color: '#4B5563', marginTop: 6, marginBottom: 12 }}>
                       {t('admin:restaurantsPage.brandSubscriptionHint', 'Franchise royalties/fees your brand bills this restaurant (plan & contract)')}
                     </div>
 
@@ -2467,7 +2467,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                       borderRadius: 8,
                       marginBottom: 8
                     }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: '#6B7C93', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
                         {t('admin:restaurantsPage.franchiseContract', 'Franchise Contract')}
                       </div>
                       {(editingRestaurant as any).contract_summary ? (
@@ -2475,7 +2475,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                           <div style={{ fontWeight: 600, color: '#0A2540', fontSize: 14 }}>
                             {(editingRestaurant as any).contract_summary.contract_number || `Contract #${(editingRestaurant as any).contract_summary.id}`}
                           </div>
-                          <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>
+                          <div style={{ fontSize: 12, color: '#4B5563', marginTop: 4 }}>
                             {(editingRestaurant as any).contract_summary.contract_type} · {(editingRestaurant as any).contract_summary.stage}
                             {(editingRestaurant as any).contract_summary.start_date && ` · ${String((editingRestaurant as any).contract_summary.start_date).slice(0,10)}`}
                             {(editingRestaurant as any).contract_summary.end_date && ` ~ ${String((editingRestaurant as any).contract_summary.end_date).slice(0,10)}`}
@@ -2511,7 +2511,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                       border: `1px solid ${(editingRestaurant as any).entity_plan_summary ? '#BAE6FD' : '#F59E0B'}`,
                       borderRadius: 8
                     }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: '#6B7C93', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
                         {t('admin:restaurantsPage.brandPlan', 'Brand Plan')}
                       </div>
                       {(editingRestaurant as any).entity_plan_summary ? (
@@ -2519,7 +2519,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                           <div style={{ fontWeight: 600, color: '#0A2540', fontSize: 14 }}>
                             {(editingRestaurant as any).entity_plan_summary.name}
                           </div>
-                          <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>
+                          <div style={{ fontSize: 12, color: '#4B5563', marginTop: 4 }}>
                             {(editingRestaurant as any).entity_plan_summary.charge_type === 'percentage'
                               ? `${(editingRestaurant as any).entity_plan_summary.percentage_value}% of revenue`
                               : (editingRestaurant as any).entity_plan_summary.charge_type === 'combined'
@@ -2559,7 +2559,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                     <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: '#0A2540', borderBottom: '2px solid #0891B2', paddingBottom: '8px' }}>
                       {t('admin:restaurantsPage.foodcourtSubscription', 'Foodcourt Subscription')}
                     </h3>
-                    <div style={{ fontSize: 12, color: '#6B7C93', marginTop: 6, marginBottom: 12 }}>
+                    <div style={{ fontSize: 12, color: '#4B5563', marginTop: 6, marginBottom: 12 }}>
                       {t('admin:restaurantsPage.foodcourtSubscriptionHint', 'Tenancy rent/fees your foodcourt bills this restaurant (plan & contract)')}
                     </div>
 
@@ -2571,7 +2571,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                       borderRadius: 8,
                       marginBottom: 8
                     }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: '#6B7C93', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
                         {t('admin:restaurantsPage.tenancyContract', 'Tenancy Contract')}
                       </div>
                       {(editingRestaurant as any).contract_summary ? (
@@ -2579,7 +2579,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                           <div style={{ fontWeight: 600, color: '#0A2540', fontSize: 14 }}>
                             {(editingRestaurant as any).contract_summary.contract_number || `Contract #${(editingRestaurant as any).contract_summary.id}`}
                           </div>
-                          <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>
+                          <div style={{ fontSize: 12, color: '#4B5563', marginTop: 4 }}>
                             {(editingRestaurant as any).contract_summary.contract_type} · {(editingRestaurant as any).contract_summary.stage}
                             {(editingRestaurant as any).contract_summary.start_date && ` · ${String((editingRestaurant as any).contract_summary.start_date).slice(0,10)}`}
                             {(editingRestaurant as any).contract_summary.end_date && ` ~ ${String((editingRestaurant as any).contract_summary.end_date).slice(0,10)}`}
@@ -2615,7 +2615,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                       border: `1px solid ${(editingRestaurant as any).entity_plan_summary ? '#BAE6FD' : '#F59E0B'}`,
                       borderRadius: 8
                     }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: '#6B7C93', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
                         {t('admin:restaurantsPage.foodcourtPlan', 'Foodcourt Plan')}
                       </div>
                       {(editingRestaurant as any).entity_plan_summary ? (
@@ -2623,7 +2623,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                           <div style={{ fontWeight: 600, color: '#0A2540', fontSize: 14 }}>
                             {(editingRestaurant as any).entity_plan_summary.name}
                           </div>
-                          <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>
+                          <div style={{ fontSize: 12, color: '#4B5563', marginTop: 4 }}>
                             {(editingRestaurant as any).entity_plan_summary.charge_type === 'percentage'
                               ? `${(editingRestaurant as any).entity_plan_summary.percentage_value}% of revenue`
                               : (editingRestaurant as any).entity_plan_summary.charge_type === 'combined'
@@ -2674,7 +2674,7 @@ const ManagerRestaurantsPage: React.FC = () => {
               <div style={{ fontSize: 16, fontWeight: 700, color: '#0A2540' }}>
                 {t('admin:restaurantsPage.linkContractTitle', 'Link an existing contract')}
               </div>
-              <button type="button" onClick={() => !pickerSubmitting && setShowContractPicker(false)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#6B7C93' }}>×</button>
+              <button type="button" onClick={() => !pickerSubmitting && setShowContractPicker(false)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#4B5563' }}>×</button>
             </div>
             {(() => {
               const bId = (editingRestaurant as any)?.brand_id;
@@ -2690,13 +2690,13 @@ const ManagerRestaurantsPage: React.FC = () => {
               value={pickerSearch}
               onChange={e => setPickerSearch(e.target.value)}
               placeholder={t('admin:restaurantsPage.searchContracts', 'Search by contract number or applicant...') as string}
-              style={{ width: '100%', padding: '10px 12px', marginBottom: 12, border: '1px solid #E6EBF1', borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
+              style={{ width: '100%', padding: '10px 12px', marginBottom: 12, border: '1px solid #C7CED6', borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
             />
             {pickerError && (
               <div style={{ padding: '8px 12px', background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: 6, color: '#991B1B', fontSize: 13, marginBottom: 12 }}>{pickerError}</div>
             )}
             {availableContracts === null ? (
-              <div style={{ textAlign: 'center', padding: 24, color: '#6B7C93', fontSize: 13 }}>{t('admin:restaurantsPage.loading', 'Loading…')}</div>
+              <div style={{ textAlign: 'center', padding: 24, color: '#4B5563', fontSize: 13 }}>{t('admin:restaurantsPage.loading', 'Loading…')}</div>
             ) : (() => {
               const q = pickerSearch.toLowerCase();
               const filtered = (availableContracts || []).filter((c: any) => {
@@ -2709,19 +2709,19 @@ const ManagerRestaurantsPage: React.FC = () => {
                   String(c.applicant_contact_person || '').toLowerCase().includes(q);
               });
               if (filtered.length === 0) {
-                return <div style={{ textAlign: 'center', padding: 24, color: '#9CA3AF', fontSize: 13 }}>
+                return <div style={{ textAlign: 'center', padding: 24, color: '#6B7280', fontSize: 13 }}>
                   {pickerSearch ? t('admin:restaurantsPage.noContractsMatch', 'No contracts match.') : t('admin:restaurantsPage.noAvailableContracts', 'No unlinked contracts. Create one in the Franchise page.')}
                 </div>;
               }
               return <div>{filtered.map((c: any) => {
                 const isLinkedHere = c.restaurant_id === editingRestaurant.id;
-                return <div key={c.id} style={{ padding: '12px 14px', border: '1px solid #E6EBF1', borderRadius: 8, marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                return <div key={c.id} style={{ padding: '12px 14px', border: '1px solid #C7CED6', borderRadius: 8, marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 600, color: '#0A2540', fontSize: 14 }}>
                       {c.contract_number || `Contract #${c.id}`}
                       {isLinkedHere && <span style={{ marginLeft: 8, fontSize: 11, padding: '2px 8px', borderRadius: 10, background: '#DCFCE7', color: '#166534' }}>{t('admin:restaurantsPage.linkedHere', 'linked')}</span>}
                     </div>
-                    <div style={{ fontSize: 12, color: '#6B7C93', marginTop: 2 }}>
+                    <div style={{ fontSize: 12, color: '#4B5563', marginTop: 2 }}>
                       {c.applicant_company_name || c.applicant_contact_person || '—'} · {c.stage}
                       {c.start_date && ` · ${String(c.start_date).slice(0,10)}`}
                     </div>
@@ -2734,7 +2734,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                 </div>;
               })}</div>;
             })()}
-            <div style={{ marginTop: 12, fontSize: 12, color: '#9CA3AF', textAlign: 'center' }}>
+            <div style={{ marginTop: 12, fontSize: 12, color: '#6B7280', textAlign: 'center' }}>
               {t('admin:restaurantsPage.linkContractHint', 'Linking transfers the contract to this restaurant. Any open plan on the contract will auto-wire billing.')}
             </div>
           </div>
@@ -2752,7 +2752,7 @@ const ManagerRestaurantsPage: React.FC = () => {
               <div style={{ fontSize: 16, fontWeight: 700, color: '#0A2540' }}>
                 {t('admin:restaurantsPage.linkPlanTitle', 'Link an existing brand plan')}
               </div>
-              <button type="button" onClick={() => !pickerSubmitting && setShowPlanPicker(false)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#6B7C93' }}>×</button>
+              <button type="button" onClick={() => !pickerSubmitting && setShowPlanPicker(false)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#4B5563' }}>×</button>
             </div>
             {(() => {
               const bId = (editingRestaurant as any)?.brand_id;
@@ -2768,25 +2768,25 @@ const ManagerRestaurantsPage: React.FC = () => {
               value={pickerSearch}
               onChange={e => setPickerSearch(e.target.value)}
               placeholder={t('admin:restaurantsPage.searchPlans', 'Search plans by name...') as string}
-              style={{ width: '100%', padding: '10px 12px', marginBottom: 12, border: '1px solid #E6EBF1', borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
+              style={{ width: '100%', padding: '10px 12px', marginBottom: 12, border: '1px solid #C7CED6', borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
             />
             {pickerError && (
               <div style={{ padding: '8px 12px', background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: 6, color: '#991B1B', fontSize: 13, marginBottom: 12 }}>{pickerError}</div>
             )}
             {availableBrandPlans === null ? (
-              <div style={{ textAlign: 'center', padding: 24, color: '#6B7C93', fontSize: 13 }}>{t('admin:restaurantsPage.loading', 'Loading…')}</div>
+              <div style={{ textAlign: 'center', padding: 24, color: '#4B5563', fontSize: 13 }}>{t('admin:restaurantsPage.loading', 'Loading…')}</div>
             ) : (() => {
               const q = pickerSearch.toLowerCase();
               const filtered = (availableBrandPlans || []).filter((p: any) => !q || String(p.name || '').toLowerCase().includes(q));
               if (filtered.length === 0) {
-                return <div style={{ textAlign: 'center', padding: 24, color: '#9CA3AF', fontSize: 13 }}>
+                return <div style={{ textAlign: 'center', padding: 24, color: '#6B7280', fontSize: 13 }}>
                   {pickerSearch ? t('admin:restaurantsPage.noPlansMatch', 'No plans match.') : t('admin:restaurantsPage.noAvailablePlans', 'No brand plans yet. Create one in the Subscriptions page.')}
                 </div>;
               }
-              return <div>{filtered.map((p: any) => <div key={p.id} style={{ padding: '12px 14px', border: '1px solid #E6EBF1', borderRadius: 8, marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+              return <div>{filtered.map((p: any) => <div key={p.id} style={{ padding: '12px 14px', border: '1px solid #C7CED6', borderRadius: 8, marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 600, color: '#0A2540', fontSize: 14 }}>{p.name}</div>
-                  <div style={{ fontSize: 12, color: '#6B7C93', marginTop: 2 }}>
+                  <div style={{ fontSize: 12, color: '#4B5563', marginTop: 2 }}>
                     {p.charge_type === 'percentage' ? `${p.percentage_value}% of revenue` : p.charge_type === 'combined' ? `Combined (${p.percentage_value}% min)` : 'Fixed'}
                     {p.billing_day && ` · billing day ${p.billing_day}`}
                   </div>
@@ -2811,20 +2811,20 @@ const ManagerRestaurantsPage: React.FC = () => {
               <div style={{ fontSize: 16, fontWeight: 700, color: '#0A2540' }}>
                 {t('admin:restaurantsPage.linkTenancyContractTitle', 'Link an existing tenancy contract')}
               </div>
-              <button type="button" onClick={() => !pickerSubmitting && setShowTenancyPicker(false)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#6B7C93' }}>×</button>
+              <button type="button" onClick={() => !pickerSubmitting && setShowTenancyPicker(false)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#4B5563' }}>×</button>
             </div>
             <input
               type="text"
               value={pickerSearch}
               onChange={e => setPickerSearch(e.target.value)}
               placeholder={t('admin:restaurantsPage.searchContracts', 'Search by contract number or applicant...') as string}
-              style={{ width: '100%', padding: '10px 12px', marginBottom: 12, border: '1px solid #E6EBF1', borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
+              style={{ width: '100%', padding: '10px 12px', marginBottom: 12, border: '1px solid #C7CED6', borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
             />
             {pickerError && (
               <div style={{ padding: '8px 12px', background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: 6, color: '#991B1B', fontSize: 13, marginBottom: 12 }}>{pickerError}</div>
             )}
             {availableTenancyContracts === null ? (
-              <div style={{ textAlign: 'center', padding: 24, color: '#6B7C93', fontSize: 13 }}>{t('admin:restaurantsPage.loading', 'Loading…')}</div>
+              <div style={{ textAlign: 'center', padding: 24, color: '#4B5563', fontSize: 13 }}>{t('admin:restaurantsPage.loading', 'Loading…')}</div>
             ) : (() => {
               const q = pickerSearch.toLowerCase();
               const filtered = (availableTenancyContracts || []).filter((c: any) => {
@@ -2836,19 +2836,19 @@ const ManagerRestaurantsPage: React.FC = () => {
                   String(c.applicant_contact_person || '').toLowerCase().includes(q);
               });
               if (filtered.length === 0) {
-                return <div style={{ textAlign: 'center', padding: 24, color: '#9CA3AF', fontSize: 13 }}>
+                return <div style={{ textAlign: 'center', padding: 24, color: '#6B7280', fontSize: 13 }}>
                   {pickerSearch ? t('admin:restaurantsPage.noContractsMatch', 'No contracts match.') : t('admin:restaurantsPage.noAvailableTenancyContracts', 'No unlinked contracts. Create one in the Tenancy page.')}
                 </div>;
               }
               return <div>{filtered.map((c: any) => {
                 const isLinkedHere = c.restaurant_id === editingRestaurant.id;
-                return <div key={c.id} style={{ padding: '12px 14px', border: '1px solid #E6EBF1', borderRadius: 8, marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                return <div key={c.id} style={{ padding: '12px 14px', border: '1px solid #C7CED6', borderRadius: 8, marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 600, color: '#0A2540', fontSize: 14 }}>
                       {c.contract_number || `Contract #${c.id}`}
                       {isLinkedHere && <span style={{ marginLeft: 8, fontSize: 11, padding: '2px 8px', borderRadius: 10, background: '#DCFCE7', color: '#166534' }}>{t('admin:restaurantsPage.linkedHere', 'linked')}</span>}
                     </div>
-                    <div style={{ fontSize: 12, color: '#6B7C93', marginTop: 2 }}>
+                    <div style={{ fontSize: 12, color: '#4B5563', marginTop: 2 }}>
                       {c.applicant_company_name || c.applicant_contact_person || '—'} · {c.stage}
                       {c.start_date && ` · ${String(c.start_date).slice(0,10)}`}
                     </div>
@@ -2861,7 +2861,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                 </div>;
               })}</div>;
             })()}
-            <div style={{ marginTop: 12, fontSize: 12, color: '#9CA3AF', textAlign: 'center' }}>
+            <div style={{ marginTop: 12, fontSize: 12, color: '#6B7280', textAlign: 'center' }}>
               {t('admin:restaurantsPage.linkContractHint', 'Linking transfers the contract to this restaurant. Any open plan on the contract will auto-wire billing.')}
             </div>
           </div>
@@ -2879,32 +2879,32 @@ const ManagerRestaurantsPage: React.FC = () => {
               <div style={{ fontSize: 16, fontWeight: 700, color: '#0A2540' }}>
                 {t('admin:restaurantsPage.linkFoodcourtPlanTitle', 'Link an existing foodcourt plan')}
               </div>
-              <button type="button" onClick={() => !pickerSubmitting && setShowFoodcourtPlanPicker(false)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#6B7C93' }}>×</button>
+              <button type="button" onClick={() => !pickerSubmitting && setShowFoodcourtPlanPicker(false)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#4B5563' }}>×</button>
             </div>
             <input
               type="text"
               value={pickerSearch}
               onChange={e => setPickerSearch(e.target.value)}
               placeholder={t('admin:restaurantsPage.searchPlans', 'Search plans by name...') as string}
-              style={{ width: '100%', padding: '10px 12px', marginBottom: 12, border: '1px solid #E6EBF1', borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
+              style={{ width: '100%', padding: '10px 12px', marginBottom: 12, border: '1px solid #C7CED6', borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
             />
             {pickerError && (
               <div style={{ padding: '8px 12px', background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: 6, color: '#991B1B', fontSize: 13, marginBottom: 12 }}>{pickerError}</div>
             )}
             {availableFoodcourtPlans === null ? (
-              <div style={{ textAlign: 'center', padding: 24, color: '#6B7C93', fontSize: 13 }}>{t('admin:restaurantsPage.loading', 'Loading…')}</div>
+              <div style={{ textAlign: 'center', padding: 24, color: '#4B5563', fontSize: 13 }}>{t('admin:restaurantsPage.loading', 'Loading…')}</div>
             ) : (() => {
               const q = pickerSearch.toLowerCase();
               const filtered = (availableFoodcourtPlans || []).filter((p: any) => !q || String(p.name || '').toLowerCase().includes(q));
               if (filtered.length === 0) {
-                return <div style={{ textAlign: 'center', padding: 24, color: '#9CA3AF', fontSize: 13 }}>
+                return <div style={{ textAlign: 'center', padding: 24, color: '#6B7280', fontSize: 13 }}>
                   {pickerSearch ? t('admin:restaurantsPage.noPlansMatch', 'No plans match.') : t('admin:restaurantsPage.noAvailableFoodcourtPlans', 'No foodcourt plans yet. Create one in the Subscriptions page.')}
                 </div>;
               }
-              return <div>{filtered.map((p: any) => <div key={p.id} style={{ padding: '12px 14px', border: '1px solid #E6EBF1', borderRadius: 8, marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+              return <div>{filtered.map((p: any) => <div key={p.id} style={{ padding: '12px 14px', border: '1px solid #C7CED6', borderRadius: 8, marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 600, color: '#0A2540', fontSize: 14 }}>{p.name}</div>
-                  <div style={{ fontSize: 12, color: '#6B7C93', marginTop: 2 }}>
+                  <div style={{ fontSize: 12, color: '#4B5563', marginTop: 2 }}>
                     {p.charge_type === 'percentage' ? `${p.percentage_value}% of revenue`
                       : p.charge_type === 'combined' ? `Combined (${p.percentage_value}% min)`
                       : p.charge_type === 'additive' ? `Fixed + ${p.percentage_value}%`
@@ -2942,7 +2942,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                   Are you sure you want to delete this restaurant?
                 </h3>
                 <div style={{ textAlign: 'left', margin: '0 auto', maxWidth: '320px' }}>
-                  <p style={{ margin: '0 0 12px', fontSize: '14px', color: '#6B7280' }}>
+                  <p style={{ margin: '0 0 12px', fontSize: '14px', color: '#4B5563' }}>
                     <strong style={{ color: '#DC2626' }}>{restaurantToDelete.name}</strong> and all its data will be permanently deleted:
                   </p>
                   <div style={{ padding: '12px 16px', backgroundColor: '#FEF2F2', borderRadius: '8px', border: '1px solid #FECACA', fontSize: '13px', color: '#991B1B', lineHeight: '1.6' }}>
@@ -2963,12 +2963,12 @@ const ManagerRestaurantsPage: React.FC = () => {
           {successPassword && <ThemedButton variant="secondary" onClick={() => { navigator.clipboard.writeText(successPassword); setPasswordCopied(true); setTimeout(() => setPasswordCopied(false), 2000); }}>{passwordCopied ? 'Copied!' : 'Copy Password'}</ThemedButton>}
           <ThemedButton onClick={() => setShowSuccessModal(false)}>{t('admin:restaurantsPage.done')}</ThemedButton>
         </>}>
-          <div style={{ marginBottom: '20px', fontSize: '14px', color: '#6B7280' }}>
+          <div style={{ marginBottom: '20px', fontSize: '14px', color: '#4B5563' }}>
             {successMessage} Please share this password securely. They should change it after first login.
           </div>
           {successPassword && (
-            <div style={{ background: '#F8FAFC', border: '1px solid #E6EBF1', borderRadius: '8px', padding: '16px', textAlign: 'center', marginBottom: '16px' }}>
-              <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '8px', fontWeight: 600 }}>{t('admin:restaurantsPage.temporaryPassword')}</div>
+            <div style={{ background: '#F1F4F8', border: '1px solid #C7CED6', borderRadius: '8px', padding: '16px', textAlign: 'center', marginBottom: '16px' }}>
+              <div style={{ fontSize: '12px', color: '#4B5563', marginBottom: '8px', fontWeight: 600 }}>{t('admin:restaurantsPage.temporaryPassword')}</div>
               <div style={{ fontSize: '18px', fontWeight: 700, color: '#0A2540', fontFamily: 'monospace', letterSpacing: '1px', userSelect: 'all' as const }}>{successPassword}</div>
             </div>
           )}

@@ -9,7 +9,7 @@ import { useRoleDisplayName } from '../../utils/roleDisplay';
 import { setAuthToken } from '../../utils/auth';
 
 const PageContainer = styled.div`
-  background: #FAFBFC;
+  background: #F9FAFB;
 `;
 
 const HeroSection = styled.section`
@@ -72,7 +72,7 @@ const DemoCard = styled.div`
   background: white;
   border-radius: 16px;
   padding: 32px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   transition: all 0.3s;
   display: flex;
   flex-direction: column;
@@ -98,7 +98,7 @@ const CardTitle = styled.h3`
 
 const CardDescription = styled.p`
   font-size: 14px;
-  color: #6B7C93;
+  color: #4B5563;
   line-height: 1.6;
   margin-bottom: 24px;
 `;
@@ -116,7 +116,7 @@ const FeatureItem = styled.li`
   gap: 10px;
   padding: 8px 0;
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
 
   &::before {
     content: '~';
@@ -145,7 +145,7 @@ const LoginButton = styled.button<{ isLoading?: boolean }>`
   }
 
   &:disabled {
-    background: #9CA3AF;
+    background: #6B7280;
     cursor: not-allowed;
     opacity: 0.6;
   }

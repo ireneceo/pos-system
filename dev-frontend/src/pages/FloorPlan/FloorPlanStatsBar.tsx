@@ -14,7 +14,7 @@ interface FloorPlanStatsBarProps {
 const Bar = styled.div`
   background: white;
   padding: 10px 24px;
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
   display: flex;
   align-items: center;
   gap: 16px;
@@ -39,7 +39,7 @@ const LegendItem = styled.div`
   display: flex;
   align-items: center;
   gap: 4px;
-  color: #6B7C93;
+  color: #4B5563;
   font-weight: 500;
 `;
 
@@ -53,11 +53,11 @@ const LegendDot = styled.div<{ $color: string }>`
 const Divider = styled.div`
   width: 1px;
   height: 18px;
-  background: #E6EBF1;
+  background: #C7CED6;
 `;
 
 const StatItem = styled.div`
-  color: #6B7C93;
+  color: #4B5563;
   font-weight: 500;
   white-space: nowrap;
 

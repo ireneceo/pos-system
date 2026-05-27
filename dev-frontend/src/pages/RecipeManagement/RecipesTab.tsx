@@ -101,7 +101,7 @@ const RecipesGrid = styled.div`
 const RecipeCard = styled.div<{ isActive?: boolean }>`
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   padding: 20px;
   transition: all 0.2s;
   opacity: ${props => props.isActive !== false ? 1 : 0.6};
@@ -168,7 +168,7 @@ const BrandBadge = styled.span`
 
 const RecipeDescription = styled.p`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 12px 0;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -182,7 +182,7 @@ const RecipeCosts = styled.div`
   gap: 12px;
   margin: 16px 0;
   padding: 12px;
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 8px;
 `;
 
@@ -190,7 +190,7 @@ const CostItem = styled.div``;
 
 const CostLabel = styled.div`
   font-size: 11px;
-  color: #6B7280;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 4px;
@@ -209,12 +209,12 @@ const CardSpacer = styled.div`
 
 const RecipeIngredients = styled.div`
   padding-top: 12px;
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
 `;
 
 const IngredientsCount = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-bottom: 8px;
 `;
 
@@ -228,8 +228,8 @@ const IngredientTags = styled.div`
 const IngredientTag = styled.span`
   display: inline-block;
   padding: 2px 8px;
-  background: #F3F4F6;
-  color: #4B5563;
+  background: #F1F4F8;
+  color: #374151;
   border-radius: 12px;
   font-size: 11px;
   font-weight: 500;
@@ -243,7 +243,7 @@ const RecipeMetaInfo = styled.div`
   background: #FAFAFA;
   border-radius: 8px;
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const MetaItem = styled.div`
@@ -254,7 +254,7 @@ const MetaItem = styled.div`
 
 const InstructionsPreview = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 8px;
   padding: 8px;
   background: #FFFBEB;
@@ -286,7 +286,7 @@ const ViewImage = styled.div`
   border-radius: 12px;
   overflow: hidden;
   flex-shrink: 0;
-  background: #F3F4F6;
+  background: #F1F4F8;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -326,7 +326,7 @@ const ViewCategoryBadge = styled.span`
 
 const ViewDescription = styled.p`
   font-size: 15px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 16px 0 0 0;
   line-height: 1.6;
 `;
@@ -342,7 +342,7 @@ const ViewSectionTitle = styled.h3`
   color: #0A2540;
   margin: 0 0 12px 0;
   padding-bottom: 8px;
-  border-bottom: 1px solid #E5E7EB;
+  border-bottom: 1px solid #C7CED6;
 `;
 
 const ViewGrid = styled.div`
@@ -358,13 +358,13 @@ const ViewGrid = styled.div`
 const ViewGridItem = styled.div`
   text-align: center;
   padding: 16px;
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 12px;
 `;
 
 const ViewGridLabel = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-bottom: 4px;
 `;
 
@@ -376,7 +376,7 @@ const ViewGridValue = styled.div`
 
 const ViewInstructions = styled.div`
   font-size: 15px;
-  color: #374151;
+  color: #1F2937;
   line-height: 1.8;
   white-space: pre-wrap;
 `;
@@ -388,19 +388,19 @@ const ViewIngredientTable = styled.table`
   th, td {
     padding: 12px;
     text-align: left;
-    border-bottom: 1px solid #E6EBF1;
+    border-bottom: 1px solid #C7CED6;
   }
 
   th {
     font-size: 12px;
     font-weight: 600;
-    color: #6B7280;
+    color: #4B5563;
     text-transform: uppercase;
   }
 
   td {
     font-size: 14px;
-    color: #374151;
+    color: #1F2937;
   }
 
   /* Subtotal column right-align */
@@ -418,11 +418,11 @@ const ViewTotalRow = styled.div`
   justify-content: space-between;
   padding: 12px 0;
   margin-top: 12px;
-  border-top: 1px solid #E5E7EB;
+  border-top: 1px solid #C7CED6;
   font-weight: 600;
 
   span:first-child {
-    color: #6B7280;
+    color: #4B5563;
   }
 
   span:last-child {
@@ -471,9 +471,9 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger
         `;
       default:
         return `
-          background: #F6F9FC;
-          border: 1px solid #E6EBF1;
-          color: #6B7280;
+          background: #F4F6F9;
+          border: 1px solid #C7CED6;
+          color: #4B5563;
           &:hover {
             border-color: #635BFF;
             color: #635BFF;
@@ -499,7 +499,7 @@ const EmptyTitle = styled.h3`
 
 const EmptyDescription = styled.p`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin-bottom: 24px;
 `;
 
@@ -525,12 +525,12 @@ const IngredientHeaderRow = styled.div`
   gap: 8px;
   padding: 8px 0;
   margin-bottom: 8px;
-  border-bottom: 1px solid #E5E7EB;
+  border-bottom: 1px solid #C7CED6;
 
   span {
     font-size: 13px;
     font-weight: 600;
-    color: #6B7280;
+    color: #4B5563;
   }
 
   @media (max-width: 768px) {
@@ -597,12 +597,12 @@ const CostSummary = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-top: 1px solid #E5E7EB;
+  border-top: 1px solid #C7CED6;
 `;
 
 const CostSummaryLabel = styled.div`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   font-weight: 600;
 `;
 
@@ -669,7 +669,7 @@ const RemoveTagButton = styled.button`
 
 const TagInput = styled.input`
   padding: 8px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
 
@@ -685,7 +685,7 @@ const RecipeTimeRow = styled.div`
   gap: 24px;
   margin-bottom: 24px;
   padding: 16px;
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 12px;
 `;
 
@@ -701,7 +701,7 @@ const RecipeTimeIcon = styled.span`
 
 const RecipeTimeLabel = styled.span`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const RecipeTimeValue = styled.span`
@@ -720,7 +720,7 @@ const RecipeSectionTitle = styled.h3`
   color: #0A2540;
   margin: 0 0 12px 0;
   padding-bottom: 8px;
-  border-bottom: 1px solid #E5E7EB;
+  border-bottom: 1px solid #C7CED6;
 `;
 
 const RecipeIngredientList = styled.ul`
@@ -734,7 +734,7 @@ const RecipeIngredientItem = styled.li`
   justify-content: space-between;
   align-items: center;
   padding: 10px 0;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
 
   &:last-child {
     border-bottom: none;
@@ -754,7 +754,7 @@ const RecipeIngredientQty = styled.span`
 
 const RecipeSummaryText = styled.p`
   font-size: 15px;
-  color: #4B5563;
+  color: #374151;
   line-height: 1.8;
   margin: 0;
   white-space: pre-wrap;
@@ -762,7 +762,7 @@ const RecipeSummaryText = styled.p`
 
 const RecipeDetailText = styled.div`
   font-size: 15px;
-  color: #374151;
+  color: #1F2937;
   line-height: 1.8;
   white-space: pre-wrap;
 `;
@@ -1405,11 +1405,11 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
         </FilterSelect>
         <SortDropdown value={sortKey} onChange={setSortKey} options={['newest','oldest','name_asc','name_desc','category']} />
         <div data-controls-trailing>
-          <div style={{ display: 'flex', background: '#F3F4F6', borderRadius: '6px', padding: '2px' }}>
-            <button onClick={() => { setViewMode('compact'); localStorage.setItem('recipesViewMode', 'compact'); }} style={{ padding: '5px 14px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'compact' ? 'white' : 'transparent', color: viewMode === 'compact' ? '#0A2540' : '#6B7C93', boxShadow: viewMode === 'compact' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
+          <div style={{ display: 'flex', background: '#F1F4F8', borderRadius: '6px', padding: '2px' }}>
+            <button onClick={() => { setViewMode('compact'); localStorage.setItem('recipesViewMode', 'compact'); }} style={{ padding: '5px 14px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'compact' ? 'white' : 'transparent', color: viewMode === 'compact' ? '#0A2540' : '#4B5563', boxShadow: viewMode === 'compact' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
               Compact
             </button>
-            <button onClick={() => { setViewMode('image'); localStorage.setItem('recipesViewMode', 'image'); }} style={{ padding: '5px 14px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'image' ? 'white' : 'transparent', color: viewMode === 'image' ? '#0A2540' : '#6B7C93', boxShadow: viewMode === 'image' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
+            <button onClick={() => { setViewMode('image'); localStorage.setItem('recipesViewMode', 'image'); }} style={{ padding: '5px 14px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'image' ? 'white' : 'transparent', color: viewMode === 'image' ? '#0A2540' : '#4B5563', boxShadow: viewMode === 'image' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
               Image
             </button>
           </div>
@@ -1489,8 +1489,8 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                 {isRestaurantAdmin && recipe.owner_type === 'brand' && recipe.restaurant_ingredient_cost !== null ? (
                   <>
                     <CostItem>
-                      <CostLabel style={{ color: '#6B7280' }}>{'Brand Cost'}</CostLabel>
-                      <CostValue style={{ color: '#6B7280', textDecoration: 'line-through', fontSize: '13px' }}>
+                      <CostLabel style={{ color: '#4B5563' }}>{'Brand Cost'}</CostLabel>
+                      <CostValue style={{ color: '#4B5563', textDecoration: 'line-through', fontSize: '13px' }}>
                         {formatCurrency(Number(recipe.total_ingredient_cost || 0), selectedCurrency)}
                       </CostValue>
                     </CostItem>
@@ -1650,8 +1650,8 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                 {isRestaurantAdmin && selectedRecipe.owner_type === 'brand' && selectedRecipe.restaurant_ingredient_cost !== null ? (
                   <>
                     <ViewGridItem>
-                      <ViewGridLabel style={{ color: '#6B7280' }}>{'Brand Cost'}</ViewGridLabel>
-                      <ViewGridValue style={{ color: '#6B7280', textDecoration: 'line-through', fontSize: '14px' }}>
+                      <ViewGridLabel style={{ color: '#4B5563' }}>{'Brand Cost'}</ViewGridLabel>
+                      <ViewGridValue style={{ color: '#4B5563', textDecoration: 'line-through', fontSize: '14px' }}>
                         {formatCurrency(Number(selectedRecipe.total_ingredient_cost || 0), selectedCurrency)}
                       </ViewGridValue>
                     </ViewGridItem>
@@ -1718,11 +1718,11 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                         <tr key={idx}>
                           <td><strong>{ingredient?.name || `Ingredient #${ri.ingredient_id}`}</strong></td>
                           <td>{Number(ri.quantity).toFixed(2)} {ri.unit}</td>
-                          <td style={isBrandRecipeView && hasOverride ? { color: '#6B7280', textDecoration: 'line-through' } : {}}>
+                          <td style={isBrandRecipeView && hasOverride ? { color: '#4B5563', textDecoration: 'line-through' } : {}}>
                             {getCurrencySymbol(selectedCurrency)} {brandCostPerUnit.toFixed(2)}/{ingredient?.unit}
                           </td>
                           {isBrandRecipeView && (
-                            <td style={hasOverride ? { color: '#2563EB', fontWeight: 600 } : { color: '#9CA3AF' }}>
+                            <td style={hasOverride ? { color: '#2563EB', fontWeight: 600 } : { color: '#6B7280' }}>
                               {hasOverride
                                 ? `${getCurrencySymbol(selectedCurrency)} ${effectiveCostPerUnit.toFixed(2)}/${ingredient?.unit}`
                                 : '-'
@@ -1986,7 +1986,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                     <FormInput
                       value={ri.unit}
                       disabled
-                      style={{ background: '#F3F4F6', color: '#6B7280' }}
+                      style={{ background: '#F1F4F8', color: '#4B5563' }}
                     />
                     <FormInput
                       type="text"
@@ -2076,7 +2076,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
             </>
           }
         >
-          <div style={{ padding: '10px 12px', background: '#F8F7FF', border: '1px solid #E6E3FF', borderRadius: 8, marginBottom: 16, fontSize: 12, color: '#4B5563' }}>
+          <div style={{ padding: '10px 12px', background: '#F8F7FF', border: '1px solid #E6E3FF', borderRadius: 8, marginBottom: 16, fontSize: 12, color: '#374151' }}>
             {t('recipes:recipesTab.copyIntro', 'A new recipe will be created in the target brand with all ingredients. Category will be unset — re-assign in the target brand.')}
           </div>
           <UIFormGroup>
@@ -2088,7 +2088,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
               ))}
             </FormSelect>
             {allBrands.length > 0 && allBrands.filter(b => b.id !== brandId).length === 0 && (
-              <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 6 }}>
+              <div style={{ fontSize: 12, color: '#6B7280', marginTop: 6 }}>
                 {t('recipes:recipesTab.copyOnlyOneBrand', 'You only have one brand. Create another brand first to copy recipes between them.')}
               </div>
             )}

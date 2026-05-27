@@ -10,7 +10,7 @@ const ModalHeader = styled.div`
 
 const ModalSubtitle = styled.p`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 0;
 `;
 
@@ -23,7 +23,7 @@ const FormGroup = styled.div`
 
 const Input = styled.input`
   padding: 12px 16px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.2s;
@@ -36,7 +36,7 @@ const Input = styled.input`
   }
 
   &::placeholder {
-    color: #9CA3AF;
+    color: #6B7280;
   }
 
   &:disabled {
@@ -73,7 +73,7 @@ const LoadingSpinner = styled.div`
 const DemoAccountsBox = styled.div`
   margin-top: 24px;
   padding: 16px;
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 8px;
   border: 1px solid #E2E8F0;
 `;
@@ -81,13 +81,13 @@ const DemoAccountsBox = styled.div`
 const DemoTitle = styled.div`
   font-size: 12px;
   font-weight: 600;
-  color: #64748B;
+  color: #475569;
   margin-bottom: 8px;
 `;
 
 const DemoContent = styled.div`
   font-size: 11px;
-  color: #64748B;
+  color: #475569;
   line-height: 1.6;
 
   strong {

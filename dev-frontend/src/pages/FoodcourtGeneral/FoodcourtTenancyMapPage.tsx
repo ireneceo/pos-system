@@ -85,7 +85,7 @@ const occupiedCount = (s: Branch['unit_stats']): number =>
 
 const STATUS_COLOR: Record<string, string> = {
   active: '#10B981', trial: '#F59E0B', suspended: '#EF4444', overdue: '#EAB308',
-  inactive: '#9CA3AF', expired: '#9CA3AF', cancelled: '#9CA3AF'
+  inactive: '#6B7280', expired: '#6B7280', cancelled: '#6B7280'
 };
 
 const Layout = styled.div<{ $hasDetail?: boolean }>`
@@ -109,7 +109,7 @@ const STAGE_PALETTE: Record<string, { bg: string; border: string; text: string; 
   contracting: { bg: '#FFEDD5', border: '#F97316', text: '#9A3412', label: 'In Talks' },
   proposal:    { bg: '#EDE9FE', border: '#8B5CF6', text: '#5B21B6', label: 'Proposal' },
   expired:     { bg: '#FEE2E2', border: '#EF4444', text: '#991B1B', label: 'Expired' },
-  vacant:      { bg: '#F3F4F6', border: '#9CA3AF', text: '#6B7280', label: 'Vacant' }
+  vacant:      { bg: '#F1F4F8', border: '#6B7280', text: '#4B5563', label: 'Vacant' }
 };
 
 const StatsPillRow = styled.div`
@@ -130,26 +130,26 @@ const StatPill = styled.span<{ $bg: string; $text: string; $border: string }>`
 // Right-side detail panel (new)
 const DetailPanel = styled.div`
   display: flex; flex-direction: column;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   background: white;
   overflow: hidden;
 `;
 const DetailHeader = styled.div`
   padding: 14px 16px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   display: flex; justify-content: space-between; align-items: flex-start;
   gap: 8px;
   .title { font-size: 15px; font-weight: 700; color: #0A2540; margin: 0 0 4px; }
-  .code { font-size: 11px; color: #9CA3AF; font-weight: 500; letter-spacing: 0.3px; }
-  .close { background: none; border: none; cursor: pointer; font-size: 18px; color: #6B7C93; &:hover { color: #0A2540; } }
+  .code { font-size: 11px; color: #6B7280; font-weight: 500; letter-spacing: 0.3px; }
+  .close { background: none; border: none; cursor: pointer; font-size: 18px; color: #4B5563; &:hover { color: #0A2540; } }
 `;
 const DetailBody = styled.div`
   flex: 1; overflow-y: auto; padding: 14px 16px;
 `;
 const DetailSection = styled.div`margin-bottom: 16px;`;
 const DetailSectionTitle = styled.div`
-  font-size: 10px; font-weight: 600; color: #6B7C93;
+  font-size: 10px; font-weight: 600; color: #4B5563;
   text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;
 `;
 const UnitRow = styled.div<{ $bg: string; $border: string; $text: string }>`
@@ -162,14 +162,14 @@ const UnitRow = styled.div<{ $bg: string; $border: string; $text: string }>`
   font-size: 12px;
   color: ${p => p.$text};
   .unit-code { font-weight: 700; font-size: 13px; }
-  .tenant { color: #374151; font-size: 11px; opacity: 0.9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px; }
+  .tenant { color: #1F2937; font-size: 11px; opacity: 0.9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px; }
   .stage-tag { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
 `;
 const InfoRow = styled.div`
   display: flex; justify-content: space-between;
   padding: 4px 0;
   font-size: 12px;
-  color: #4B5563;
+  color: #374151;
   b { color: #0A2540; text-align: right; }
 `;
 const ViewFloorPlanLink = styled(Link)`
@@ -187,7 +187,7 @@ const ViewFloorPlanLink = styled(Link)`
 
 const SidePanel = styled.div`
   display: flex; flex-direction: column;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   background: white;
   overflow: hidden;
@@ -195,11 +195,11 @@ const SidePanel = styled.div`
 
 const SidePanelHeader = styled.div`
   padding: 12px 14px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   font-size: 13px;
   font-weight: 600;
   color: #0A2540;
-  background: #F8FAFC;
+  background: #F1F4F8;
 `;
 
 const SideList = styled.div`
@@ -214,20 +214,20 @@ const BranchCard = styled.div<{ $selected?: boolean }>`
   transition: background 0.12s;
   background: ${p => p.$selected ? '#F0EDFF' : 'white'};
   border-left: 3px solid ${p => p.$selected ? '#635BFF' : 'transparent'};
-  &:hover { background: ${p => p.$selected ? '#F0EDFF' : '#F8FAFC'}; }
+  &:hover { background: ${p => p.$selected ? '#F0EDFF' : '#F1F4F8'}; }
   h4 { margin: 0 0 4px; font-size: 14px; color: #0A2540; display: flex; align-items: center; gap: 8px; }
-  .code { font-size: 11px; color: #9CA3AF; font-weight: 500; }
-  .addr { font-size: 12px; color: #6B7280; margin-top: 2px; }
-  .stats { margin-top: 6px; display: flex; gap: 8px; font-size: 11px; color: #4B5563; }
+  .code { font-size: 11px; color: #6B7280; font-weight: 500; }
+  .addr { font-size: 12px; color: #4B5563; margin-top: 2px; }
+  .stats { margin-top: 6px; display: flex; gap: 8px; font-size: 11px; color: #374151; }
   .stats b { color: #0A2540; }
   .occupancy { background: var(--c); color: white; padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; }
 `;
 
 const TenantSubList = styled.div`
   padding: 8px 14px 12px;
-  background: #FAFBFC;
+  background: #F9FAFB;
   border-bottom: 1px solid #EEF2F6;
-  .sub-title { font-size: 11px; font-weight: 600; color: #6B7280; text-transform: uppercase; margin: 4px 0; }
+  .sub-title { font-size: 11px; font-weight: 600; color: #4B5563; text-transform: uppercase; margin: 4px 0; }
 `;
 
 const TenantRow = styled.div<{ $selected?: boolean }>`
@@ -235,54 +235,54 @@ const TenantRow = styled.div<{ $selected?: boolean }>`
   border-radius: 4px;
   cursor: pointer;
   font-size: 12px;
-  color: #374151;
+  color: #1F2937;
   background: ${p => p.$selected ? '#E0E7FF' : 'transparent'};
-  &:hover { background: ${p => p.$selected ? '#E0E7FF' : '#F3F4F6'}; }
+  &:hover { background: ${p => p.$selected ? '#E0E7FF' : '#F1F4F8'}; }
   display: flex; align-items: center; gap: 6px;
-  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c, #9CA3AF); flex-shrink: 0; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c, #6B7280); flex-shrink: 0; }
   .name { flex: 1; }
-  .sales { color: #9CA3AF; font-size: 11px; }
+  .sales { color: #6B7280; font-size: 11px; }
 `;
 
 const NoTenants = styled.div`
-  font-size: 12px; color: #9CA3AF; font-style: italic; padding: 4px 8px;
+  font-size: 12px; color: #6B7280; font-style: italic; padding: 4px 8px;
 `;
 
 const MapWrap = styled.div`
-  border: 1px solid #E6EBF1; border-radius: 8px; overflow: hidden; height: 640px;
+  border: 1px solid #C7CED6; border-radius: 8px; overflow: hidden; height: 640px;
   .leaflet-container { height: 100%; width: 100%; }
   @media (max-width: 960px) { height: 480px; }
 `;
 
-const Legend = styled.div`display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; color: #4B5563;`;
+const Legend = styled.div`display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; color: #374151;`;
 const LegendItem = styled.span`
   display: inline-flex; align-items: center; gap: 6px;
-  &::before { content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--c, #9CA3AF); }
+  &::before { content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--c, #6B7280); }
 `;
 
 const Summary = styled.div`
-  display: flex; gap: 16px; font-size: 13px; color: #4B5563;
+  display: flex; gap: 16px; font-size: 13px; color: #374151;
   strong { color: #0A2540; }
 `;
 
 const UnmappedBox = styled.div`
-  border: 1px solid #E6EBF1; border-radius: 8px; padding: 12px 16px; background: #FAFBFC;
+  border: 1px solid #C7CED6; border-radius: 8px; padding: 12px 16px; background: #F9FAFB;
   margin-top: 16px;
 `;
 
-const UnmappedTitle = styled.div`font-size: 13px; font-weight: 600; color: #4B5563; margin-bottom: 8px;`;
+const UnmappedTitle = styled.div`font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 8px;`;
 
 const UnmappedList = styled.ul`
-  margin: 0; padding-left: 20px; font-size: 13px; color: #6B7280;
+  margin: 0; padding-left: 20px; font-size: 13px; color: #4B5563;
   li { margin: 2px 0; }
 `;
 
-const EmptyState = styled.div`padding: 48px 16px; text-align: center; color: #6B7280; font-size: 14px;`;
+const EmptyState = styled.div`padding: 48px 16px; text-align: center; color: #4B5563; font-size: 14px;`;
 
 const FRANCHISE_TYPES = ['franchise', 'license', 'master', 'revenue_share'];
 
 const createBranchIcon = (status: string, unitStats: Branch['unit_stats'], selected: boolean) => {
-  const color = STATUS_COLOR[status] || '#9CA3AF';
+  const color = STATUS_COLOR[status] || '#6B7280';
   const occupancyRate = unitStats.total > 0 ? occupiedCount(unitStats) / unitStats.total : 0;
   const pct = Math.round(occupancyRate * 100);
   const size = selected ? 44 : 36;
@@ -303,7 +303,7 @@ const createBranchIcon = (status: string, unitStats: Branch['unit_stats'], selec
 };
 
 const createRestaurantIcon = (status: string, contractType: string | null) => {
-  const color = STATUS_COLOR[status] || '#9CA3AF';
+  const color = STATUS_COLOR[status] || '#6B7280';
   const isFranchise = contractType && FRANCHISE_TYPES.includes(contractType);
   const isDirect = contractType === 'direct' || contractType === 'standard';
   const mark = isFranchise
@@ -377,7 +377,7 @@ const PinsLayer: React.FC<{
       const isSelected = selectedBranchId === b.id;
       const marker = L.marker([b.latitude, b.longitude], { icon: createBranchIcon(b.status, b.unit_stats, isSelected) });
       marker.on('click', () => onBranchClick(b.id));
-      const color = STATUS_COLOR[b.status] || '#9CA3AF';
+      const color = STATUS_COLOR[b.status] || '#6B7280';
       const occ = occupiedCount(b.unit_stats);
       // Popup strings are rendered into raw HTML by Leaflet, so escape user-controlled
       // fields (branch name, code, address) to avoid stored-XSS when names contain angle brackets.
@@ -386,12 +386,12 @@ const PinsLayer: React.FC<{
       const html = `
         <div style="min-width:220px">
           <h4 style="margin:0 0 6px;font-size:14px;color:#0A2540">${esc(b.name)}${b.is_primary ? ` <span style="font-size:10px;background:#F0EDFF;color:#635BFF;padding:1px 5px;border-radius:3px">${esc(popupLabels.primary)}</span>` : ''}</h4>
-          <div style="font-size:11px;color:#9CA3AF;margin:2px 0">${esc(b.code)}</div>
-          ${(() => { const a = formatAddress(b, 'short', (i18n.language as AppLocale) || 'en'); return a ? `<div style="font-size:12px;color:#6B7280;margin:2px 0">${esc(a)}</div>` : (b.address ? `<div style="font-size:12px;color:#6B7280;margin:2px 0">${esc(b.address)}</div>` : ''); })()}
+          <div style="font-size:11px;color:#6B7280;margin:2px 0">${esc(b.code)}</div>
+          ${(() => { const a = formatAddress(b, 'short', (i18n.language as AppLocale) || 'en'); return a ? `<div style="font-size:12px;color:#4B5563;margin:2px 0">${esc(a)}</div>` : (b.address ? `<div style="font-size:12px;color:#4B5563;margin:2px 0">${esc(b.address)}</div>` : ''); })()}
           <div style="display:flex;gap:10px;margin-top:8px;font-size:11px">
             <span><b>${esc(popupLabels.total)}:</b> ${b.unit_stats.total}</span>
             <span style="color:#10B981"><b>${esc(popupLabels.occupied)}:</b> ${occ}</span>
-            <span style="color:#6B7280"><b>${esc(popupLabels.vacant)}:</b> ${b.unit_stats.vacant}</span>
+            <span style="color:#4B5563"><b>${esc(popupLabels.vacant)}:</b> ${b.unit_stats.vacant}</span>
           </div>
           <span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;margin-top:6px;color:white;background:${color}">${esc(b.status)}</span>
         </div>`;
@@ -406,12 +406,12 @@ const PinsLayer: React.FC<{
       if (r.latitude == null || r.longitude == null) return;
       const m = L.marker([r.latitude, r.longitude], { icon: createRestaurantIcon(r.status, r.contract_type || null) });
       if (onTenantClick) m.on('click', () => onTenantClick(r.id));
-      const color = STATUS_COLOR[r.status] || '#9CA3AF';
+      const color = STATUS_COLOR[r.status] || '#6B7280';
       const html = `
         <div style="min-width:200px">
           <h4 style="margin:0 0 6px;font-size:13px;color:#0A2540">${esc(r.name)}${r.branch_name ? ' · ' + esc(r.branch_name) : ''}</h4>
-          <div style="font-size:11px;color:#4B5563;margin:2px 0"><b>${esc(popupLabels.type)}:</b> ${esc(r.contract_type || '—')}</div>
-          <div style="font-size:11px;color:#4B5563"><b>${esc(popupLabels.sales30d)}:</b> ${esc(popupLabels.currencySymbol)} ${(r.sales_30d || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</div>
+          <div style="font-size:11px;color:#374151;margin:2px 0"><b>${esc(popupLabels.type)}:</b> ${esc(r.contract_type || '—')}</div>
+          <div style="font-size:11px;color:#374151"><b>${esc(popupLabels.sales30d)}:</b> ${esc(popupLabels.currencySymbol)} ${(r.sales_30d || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</div>
           <span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;margin-top:6px;color:white;background:${color}">${esc(r.status)}</span>
         </div>`;
       m.bindPopup(html);
@@ -572,7 +572,7 @@ const FoodcourtTenancyMapPage: React.FC = () => {
           <SideList>
             {allBranches.map(b => {
               const isSelected = selectedBranchId === b.id;
-              const color = STATUS_COLOR[b.status] || '#9CA3AF';
+              const color = STATUS_COLOR[b.status] || '#6B7280';
               const pct = b.unit_stats.total > 0 ? Math.round(occupiedCount(b.unit_stats) / b.unit_stats.total * 100) : 0;
               // Sort units: non-vacant first (by stage priority), then vacant; each alphabetical by unit_number
               const stageOrder: Record<string, number> = { active: 1, setup: 2, contracting: 3, proposal: 4, expired: 5, vacant: 6 };
@@ -603,7 +603,7 @@ const FoodcourtTenancyMapPage: React.FC = () => {
                     </h4>
                     <div className="code">{b.code}</div>
                     {(formatAddress(b, 'short', (i18n.language as AppLocale) || 'en') || b.address) && <div className="addr">{formatAddress(b, 'short', (i18n.language as AppLocale) || 'en') || b.address}</div>}
-                    <div style={{ fontSize: 11, color: '#6B7280', marginTop: 4 }}>
+                    <div style={{ fontSize: 11, color: '#4B5563', marginTop: 4 }}>
                       <b style={{ color: '#0A2540' }}>{b.unit_stats.total}</b> {t('map.units', 'units')}
                       {b.latitude == null && <span style={{ color: '#EF4444', marginLeft: 6 }}>no coords</span>}
                     </div>
@@ -641,7 +641,7 @@ const FoodcourtTenancyMapPage: React.FC = () => {
                             <span className="dot" />
                             <span className="name">
                               <b style={{ color: '#0A2540', marginRight: 6 }}>{u.unit_number}</b>
-                              {tenantName ? tenantName : <span style={{ color: '#9CA3AF', fontStyle: 'italic' }}>{t('floorPlan.unitStatus.vacant', 'Vacant')}</span>}
+                              {tenantName ? tenantName : <span style={{ color: '#6B7280', fontStyle: 'italic' }}>{t('floorPlan.unitStatus.vacant', 'Vacant')}</span>}
                             </span>
                             <span className="sales" style={{ color: pal.text, fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.3 }}>
                               {t(`floorPlan.unitStatus.${u.displayStage}`, pal.label)}
@@ -786,7 +786,7 @@ const FoodcourtTenancyMapPage: React.FC = () => {
                 {/* Vacant empty state */}
                 {isVacant && (
                   <DetailSection>
-                    <div style={{ fontSize: 12, color: '#9CA3AF', fontStyle: 'italic', padding: '8px 0' }}>
+                    <div style={{ fontSize: 12, color: '#6B7280', fontStyle: 'italic', padding: '8px 0' }}>
                       {t('floorPlan.vacant.noContract', 'This unit has no contract assigned.')}
                     </div>
                     {canEdit && (
@@ -842,7 +842,7 @@ const FoodcourtTenancyMapPage: React.FC = () => {
                 {c && c.financial_redacted && (
                   <DetailSection>
                     <DetailSectionTitle>{t('floorPlan.sec.financial', 'Financial Terms')}</DetailSectionTitle>
-                    <div style={{ fontSize: 12, color: '#9CA3AF', fontStyle: 'italic' }}>
+                    <div style={{ fontSize: 12, color: '#6B7280', fontStyle: 'italic' }}>
                       🔒 {t('floorPlan.fin.redacted', 'Financial terms are visible to Foodcourt General and System Admin only')}
                     </div>
                   </DetailSection>

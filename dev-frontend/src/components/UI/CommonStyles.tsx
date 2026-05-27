@@ -56,8 +56,8 @@ export const BaseButton = styled.button<{
       case 'secondary':
         return css`
           background: #F8F9FA;
-          color: #6B7C93;
-          border: 1px solid #E6EBF1;
+          color: #4B5563;
+          border: 1px solid #C7CED6;
           &:hover:not(:disabled) {
             background: #EBEEF2;
             border-color: #D1D9E0;
@@ -161,8 +161,8 @@ export const StatusBadge = styled.span<{
     switch (props.status) {
       case 'draft':
         return css`
-          background: #F3F4F6;
-          color: #6B7280;
+          background: #F1F4F8;
+          color: #4B5563;
         `;
       case 'sent':
         return css`
@@ -210,8 +210,8 @@ export const StatusBadge = styled.span<{
         `;
       default:
         return css`
-          background: #F3F4F6;
-          color: #6B7280;
+          background: #F1F4F8;
+          color: #4B5563;
         `;
     }
   }}
@@ -340,7 +340,7 @@ export const SaveButtonContainer = styled.div`
   align-items: flex-end;
   margin-top: 32px;
   padding-top: 24px;
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
 `;
 
 // 저장 버튼 그룹 (Reset + Save 버튼)
@@ -363,9 +363,9 @@ export const SaveButton = styled.button<{ variant?: 'primary' | 'secondary' }>`
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
-  border: ${props => props.variant === 'secondary' ? '1px solid #E5E7EB' : 'none'};
+  border: ${props => props.variant === 'secondary' ? '1px solid #C7CED6' : 'none'};
   background: ${props => props.variant === 'secondary' ? 'white' : '#635BFF'};
-  color: ${props => props.variant === 'secondary' ? '#6B7280' : 'white'};
+  color: ${props => props.variant === 'secondary' ? '#4B5563' : 'white'};
 
   &:hover:not(:disabled) {
     background: ${props => props.variant === 'secondary' ? '#F9FAFB' : '#5A51E6'};

@@ -255,10 +255,10 @@ const InputDisplay = styled.button<{ $hasValue: boolean }>`
   width: 100%;
   padding: 10px 12px;
   background: #FFFFFF;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
-  color: ${p => p.$hasValue ? '#0A2540' : '#9CA3AF'};
+  color: ${p => p.$hasValue ? '#0A2540' : '#6B7280'};
   cursor: pointer;
   transition: border-color 0.15s, box-shadow 0.15s;
   text-align: left;
@@ -275,34 +275,34 @@ const InputDisplay = styled.button<{ $hasValue: boolean }>`
   }
 
   &:disabled {
-    background: #F3F4F6;
-    color: #9CA3AF;
+    background: #F1F4F8;
+    color: #6B7280;
     cursor: not-allowed;
   }
 `;
 
 const CalendarIcon = styled.span`
-  color: #6B7280;
+  color: #4B5563;
   display: inline-flex;
   flex-shrink: 0;
 `;
 
 const DisplayText = styled.span<{ $hasValue: boolean }>`
   flex: 1;
-  color: ${p => p.$hasValue ? '#0A2540' : '#9CA3AF'};
+  color: ${p => p.$hasValue ? '#0A2540' : '#6B7280'};
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 `;
 
 const ClearButton = styled.span`
-  color: #9CA3AF;
+  color: #6B7280;
   font-size: 18px;
   line-height: 1;
   padding: 0 4px;
 
   &:hover {
-    color: #6B7280;
+    color: #4B5563;
   }
 `;
 
@@ -312,7 +312,7 @@ const PickerPanel = styled.div`
   left: 0;
   z-index: 1000;
   background: #FFFFFF;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
   padding: 16px;
@@ -343,7 +343,7 @@ const CalendarHeader = styled.div`
 
 const NavButton = styled.button`
   background: transparent;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   width: 28px;
   height: 28px;
@@ -355,7 +355,7 @@ const NavButton = styled.button`
   transition: all 0.15s;
 
   &:hover {
-    background: #F6F9FC;
+    background: #F4F6F9;
     border-color: #635BFF;
     color: #635BFF;
   }
@@ -413,7 +413,7 @@ const DayCell = styled.div<{
   border-radius: 6px;
   transition: all 0.15s;
   color: ${p => {
-    if (p.$isDisabled) return '#D1D5DB';
+    if (p.$isDisabled) return '#6B7280';
     if (p.$isSelected) return '#FFFFFF';
     if (p.$isToday) return '#635BFF';
     return '#0A2540';
@@ -426,7 +426,7 @@ const DayCell = styled.div<{
     background: ${p => {
       if (p.$isDisabled) return 'transparent';
       if (p.$isSelected) return '#635BFF';
-      return '#F6F9FC';
+      return '#F4F6F9';
     }};
   }
 `;
@@ -436,7 +436,7 @@ const Footer = styled.div`
   justify-content: flex-end;
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
 `;
 
 const TodayButton = styled.button`

@@ -37,7 +37,7 @@ const Title = styled.h2`
 
 const Subtitle = styled.p`
   font-size: 13px;
-  color: #6B7C93;
+  color: #4B5563;
   text-align: center;
   margin: 0 0 24px;
 `;
@@ -51,7 +51,7 @@ const PinDisplay = styled.div`
 
 const PinDot = styled.div<{ filled: boolean; error?: boolean }>`
   width: 16px; height: 16px; border-radius: 50%;
-  border: 2px solid ${p => p.error ? '#DC2626' : p.filled ? '#635BFF' : '#E6EBF1'};
+  border: 2px solid ${p => p.error ? '#DC2626' : p.filled ? '#635BFF' : '#C7CED6'};
   background: ${p => p.error ? '#DC2626' : p.filled ? '#635BFF' : 'transparent'};
   transition: all 0.15s;
 `;
@@ -64,15 +64,15 @@ const Keypad = styled.div`
 
 const Key = styled.button<{ variant?: 'action' }>`
   height: 80px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 10px;
-  background: ${p => p.variant === 'action' ? '#F8FAFC' : '#fff'};
-  color: ${p => p.variant === 'action' ? '#6B7C93' : '#0A2540'};
+  background: ${p => p.variant === 'action' ? '#F1F4F8' : '#fff'};
+  color: ${p => p.variant === 'action' ? '#4B5563' : '#0A2540'};
   font-size: ${p => p.variant === 'action' ? '14px' : '22px'};
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
-  &:hover { background: ${p => p.variant === 'action' ? '#F0F4FF' : '#F8FAFC'}; border-color: #635BFF; }
+  &:hover { background: ${p => p.variant === 'action' ? '#F0F4FF' : '#F1F4F8'}; border-color: #635BFF; }
   &:active { transform: scale(0.96); background: #F0F4FF; }
 `;
 

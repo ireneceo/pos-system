@@ -7,7 +7,7 @@ const LayoutContainer = styled.div`
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #FAFBFC;
+  background: #F9FAFB;
 `;
 
 const MainContent = styled.main`

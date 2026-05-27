@@ -35,13 +35,13 @@ const PERMISSION_GROUPS = [
 
 const Container = styled.div`
   min-height: 100vh;
-  background: #FAFBFC;
+  background: #F9FAFB;
 `;
 
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -104,12 +104,12 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
     }
   ` : `
     background: white;
-    color: #6B7280;
-    border: 1px solid #E6EBF1;
+    color: #4B5563;
+    border: 1px solid #C7CED6;
     &:hover {
-      background: #F8FAFC;
+      background: #F1F4F8;
       color: #0A2540;
-      border-color: #CBD5E1;
+      border-color: #64748B;
     }
   `}
 `;
@@ -121,7 +121,7 @@ const Content = styled.div`
 const TableContainer = styled.div`
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   overflow: hidden;
 
   @media (max-width: 768px) {
@@ -139,7 +139,7 @@ const ManagerName = styled.div`
 
 const ManagerEmail = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const PermissionTags = styled.div`
@@ -178,9 +178,9 @@ const ActionButtons = styled.div`
 const ActionButton = styled.button`
   padding: 6px 12px;
   background: transparent;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
-  color: #6B7280;
+  color: #4B5563;
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
@@ -215,10 +215,10 @@ const PermissionLabel = styled.label<{ alwaysOn?: boolean }>`
   padding: 8px 10px;
   border-radius: 6px;
   background: ${props => props.alwaysOn ? '#F0FDF4' : 'white'};
-  border: 1px solid ${props => props.alwaysOn ? '#BBF7D0' : '#E6EBF1'};
+  border: 1px solid ${props => props.alwaysOn ? '#BBF7D0' : '#C7CED6'};
   cursor: ${props => props.alwaysOn ? 'default' : 'pointer'};
   font-size: 13px;
-  color: ${props => props.alwaysOn ? '#166534' : '#374151'};
+  color: ${props => props.alwaysOn ? '#166534' : '#1F2937'};
   opacity: ${props => props.alwaysOn ? 0.8 : 1};
   transition: all 0.15s;
 
@@ -518,9 +518,9 @@ const BrandStaffPage: React.FC = () => {
     permissions: string[],
     onChange: (updated: string[]) => void
   ) => (
-    <div style={{ marginTop: '20px', padding: '16px', background: '#F8FAFC', borderRadius: '8px', border: '1px solid #E6EBF1' }}>
+    <div style={{ marginTop: '20px', padding: '16px', background: '#F1F4F8', borderRadius: '8px', border: '1px solid #C7CED6' }}>
       <div style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540', marginBottom: '4px' }}>{t('common:brandStaffPage.menuAccess')}</div>
-      <div style={{ fontSize: '12px', color: '#6B7C93', marginBottom: '12px' }}>
+      <div style={{ fontSize: '12px', color: '#4B5563', marginBottom: '12px' }}>
         Select which menu sections this manager can access:
       </div>
       <PermissionGrid>
@@ -615,7 +615,7 @@ const BrandStaffPage: React.FC = () => {
                     </DataTableCell>
 
                     <DataTableCell data-label="Phone" align="center">
-                      <span style={{ fontSize: '13px', color: '#6B7280' }}>
+                      <span style={{ fontSize: '13px', color: '#4B5563' }}>
                         {manager.phone || '—'}
                       </span>
                     </DataTableCell>
@@ -623,7 +623,7 @@ const BrandStaffPage: React.FC = () => {
                     <DataTableCell data-label="Permissions" align="center">
                       <PermissionTags>
                         {manager.permissions.length === 0 ? (
-                          <span style={{ fontSize: '12px', color: '#9CA3AF' }}>{t('common:brandStaffPage.noPermissions')}</span>
+                          <span style={{ fontSize: '12px', color: '#6B7280' }}>{t('common:brandStaffPage.noPermissions')}</span>
                         ) : (
                           manager.permissions.map(p => (
                             <PermissionTag key={p}>
@@ -635,7 +635,7 @@ const BrandStaffPage: React.FC = () => {
                     </DataTableCell>
 
                     <DataTableCell data-label="Joined" align="center">
-                      <span style={{ fontSize: '13px', color: '#6B7280' }}>
+                      <span style={{ fontSize: '13px', color: '#4B5563' }}>
                         {manager.joinDate || '—'}
                       </span>
                     </DataTableCell>
@@ -694,7 +694,7 @@ const BrandStaffPage: React.FC = () => {
               placeholder="Enter unique username"
               autoComplete="off"
             />
-            <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+            <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '4px' }}>
               A strong password will be auto-generated
             </div>
           </FormGroup>
@@ -737,14 +737,14 @@ const BrandStaffPage: React.FC = () => {
               <select
                 value={newManager.brand_id || ''}
                 onChange={(e) => setNewManager(prev => ({ ...prev, brand_id: e.target.value }))}
-                style={{ width: '100%', padding: '8px 12px', border: '1px solid #E6EBF1', borderRadius: 6, fontSize: 14 }}
+                style={{ width: '100%', padding: '8px 12px', border: '1px solid #C7CED6', borderRadius: 6, fontSize: 14 }}
               >
                 <option value="">{t('common:brandStaffPage.selectBrand', 'Select a brand...')}</option>
                 {ownedBrands.map(b => (
                   <option key={b.id} value={b.id}>{b.name}</option>
                 ))}
               </select>
-              <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>
+              <div style={{ fontSize: 11, color: '#6B7280', marginTop: 4 }}>
                 {t('common:brandStaffPage.brandHint', 'Manager will have access to this specific brand only.')}
               </div>
             </FormGroup>
@@ -855,18 +855,18 @@ const BrandStaffPage: React.FC = () => {
           </>
         }
       >
-        <div style={{ marginBottom: '20px', fontSize: '14px', color: '#6B7280' }}>
+        <div style={{ marginBottom: '20px', fontSize: '14px', color: '#4B5563' }}>
           Please share this password with the manager. They should change it after first login.
         </div>
         <div style={{
-          background: '#F8FAFC',
-          border: '1px solid #E6EBF1',
+          background: '#F1F4F8',
+          border: '1px solid #C7CED6',
           borderRadius: '8px',
           padding: '16px',
           textAlign: 'center',
           marginBottom: '16px'
         }}>
-          <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '8px', fontWeight: 600 }}>
+          <div style={{ fontSize: '12px', color: '#4B5563', marginBottom: '8px', fontWeight: 600 }}>
             Temporary Password
           </div>
           <div style={{
@@ -898,7 +898,7 @@ const BrandStaffPage: React.FC = () => {
           </>
         }
       >
-        <div style={{ fontSize: '14px', color: '#374151' }}>
+        <div style={{ fontSize: '14px', color: '#1F2937' }}>
           Are you sure you want to delete <strong>{deleteTarget?.name}</strong>?
         </div>
         <div style={{ fontSize: '13px', color: '#DC2626', marginTop: '8px' }}>
@@ -916,7 +916,7 @@ const BrandStaffPage: React.FC = () => {
           <ModalButton variant="primary" onClick={() => setErrorMessage('')}>{t('common:brandStaffPage.ok')}</ModalButton>
         }
       >
-        <div style={{ fontSize: '14px', color: '#374151' }}>
+        <div style={{ fontSize: '14px', color: '#1F2937' }}>
           {errorMessage}
         </div>
       </Modal>
@@ -934,10 +934,10 @@ const BrandStaffPage: React.FC = () => {
           </>
         }
       >
-        <div style={{ fontSize: '14px', color: '#374151' }}>
+        <div style={{ fontSize: '14px', color: '#1F2937' }}>
           Reset the password for <strong>{resetPasswordTarget?.name}</strong>?
         </div>
-        <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '8px' }}>
+        <div style={{ fontSize: '13px', color: '#4B5563', marginTop: '8px' }}>
           A new password will be generated. The current password will no longer work.
         </div>
       </Modal>

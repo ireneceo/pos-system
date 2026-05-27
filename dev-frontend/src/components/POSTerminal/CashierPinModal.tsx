@@ -59,7 +59,7 @@ const Title = styled.h2`
 
 const Subtitle = styled.p`
   font-size: 13px;
-  color: #6B7C93;
+  color: #4B5563;
   text-align: center;
   margin: 0 0 24px;
 `;
@@ -75,7 +75,7 @@ const PinDot = styled.div<{ filled: boolean; error?: boolean }>`
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  border: 2px solid ${props => props.error ? '#DC2626' : props.filled ? '#635BFF' : '#E6EBF1'};
+  border: 2px solid ${props => props.error ? '#DC2626' : props.filled ? '#635BFF' : '#C7CED6'};
   background: ${props => props.error ? '#DC2626' : props.filled ? '#635BFF' : 'transparent'};
   transition: all 0.15s;
 `;
@@ -92,17 +92,17 @@ const KeyBtn = styled.button<{ variant?: 'action' }>`
   min-height: 80px;
   max-height: 80px;
   box-sizing: border-box;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 10px;
   font-size: ${props => props.variant === 'action' ? '14px' : '22px'};
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
-  background: ${props => props.variant === 'action' ? '#F8FAFC' : 'white'};
-  color: ${props => props.variant === 'action' ? '#6B7C93' : '#0A2540'};
+  background: ${props => props.variant === 'action' ? '#F1F4F8' : 'white'};
+  color: ${props => props.variant === 'action' ? '#4B5563' : '#0A2540'};
 
   &:hover {
-    background: ${props => props.variant === 'action' ? '#F0F4FF' : '#F8FAFC'};
+    background: ${props => props.variant === 'action' ? '#F0F4FF' : '#F1F4F8'};
     border-color: #635BFF;
   }
 

@@ -92,7 +92,7 @@ const PageWrap = styled.div`
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: #FAFBFC;
+  background: #F9FAFB;
 
   @media (max-width: 768px) {
     height: calc(100vh - 56px);
@@ -102,7 +102,7 @@ const PageWrap = styled.div`
 const PageHeader = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   height: 80px;
   min-height: 80px;
   max-height: 80px;
@@ -136,7 +136,7 @@ const Layout = styled.div`
   gap: 0;
   flex: 1;
   min-height: 0;
-  background: #FAFBFC;
+  background: #F9FAFB;
   overflow: hidden;
 
   @media (max-width: 1024px) {
@@ -149,18 +149,18 @@ const MainPane = styled.div`
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border-right: 1px solid #E6EBF1;
+  border-right: 1px solid #C7CED6;
   background: white;
 
   @media (max-width: 1024px) {
     border-right: none;
-    border-bottom: 1px solid #E6EBF1;
+    border-bottom: 1px solid #C7CED6;
   }
 `;
 
 const TabBar = styled.div`
   display: flex;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   background: white;
   flex-shrink: 0;
 `;
@@ -171,7 +171,7 @@ const TabBtn = styled.button<{ $active: boolean }>`
   background: transparent;
   border: none;
   border-bottom: 2px solid ${p => p.$active ? '#635BFF' : 'transparent'};
-  color: ${p => p.$active ? '#635BFF' : '#6B7280'};
+  color: ${p => p.$active ? '#635BFF' : '#4B5563'};
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -194,7 +194,7 @@ const SearchBox = styled.input`
   min-width: 220px;
   max-width: 280px;
   padding: 9px 14px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 13px;
   outline: none;
@@ -203,7 +203,7 @@ const SearchBox = styled.input`
 
 const FilterSel = styled.select`
   padding: 9px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 13px;
   background: white;
@@ -220,15 +220,15 @@ const CategoryRow = styled.div`
   border-bottom: 1px solid #F1F5F9;
   flex-shrink: 0;
   &::-webkit-scrollbar { height: 4px; }
-  &::-webkit-scrollbar-thumb { background: #E5E7EB; border-radius: 2px; }
+  &::-webkit-scrollbar-thumb { background: #C7CED6; border-radius: 2px; }
 `;
 
 const CategoryChip = styled.button<{ $active: boolean }>`
   padding: 6px 14px;
   border-radius: 999px;
-  border: 1px solid ${p => p.$active ? '#635BFF' : '#E6EBF1'};
+  border: 1px solid ${p => p.$active ? '#635BFF' : '#C7CED6'};
   background: ${p => p.$active ? '#EEF2FF' : 'white'};
-  color: ${p => p.$active ? '#635BFF' : '#374151'};
+  color: ${p => p.$active ? '#635BFF' : '#1F2937'};
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -251,7 +251,7 @@ const Grid = styled.div`
 
 const Card = styled.button<{ $disabled?: boolean }>`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 10px;
   padding: 12px;
   text-align: left;
@@ -279,7 +279,7 @@ const ProductImage = styled.div`
   aspect-ratio: 4 / 3;
   border-radius: 6px;
   overflow: hidden;
-  background: #F8FAFC;
+  background: #F1F4F8;
   border: 1px solid #F1F5F9;
   margin-bottom: 4px;
 
@@ -300,7 +300,7 @@ const CardName = styled.div`
 
 const CardMeta = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const CardPrice = styled.div`
@@ -350,7 +350,7 @@ const Badge = styled.span<{ $variant?: 'success' | 'cart' | 'warning' | 'options
 const Empty = styled.div`
   text-align: center;
   padding: 60px 20px;
-  color: #6B7280;
+  color: #4B5563;
   font-size: 13px;
   line-height: 1.6;
 `;
@@ -365,7 +365,7 @@ const CartPane = styled.div`
 
 const CartHeader = styled.div`
   padding: 14px 20px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   font-size: 14px;
   font-weight: 600;
   color: #0A2540;
@@ -379,7 +379,7 @@ const CartScroll = styled.div`
 `;
 
 const CartLine = styled.div`
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
   padding: 8px 0;
   display: flex;
   flex-direction: column;
@@ -397,7 +397,7 @@ const CartLineHead = styled.div`
 const QtyInput = styled.input`
   width: 100%;
   padding: 5px 6px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 12px;
   text-align: center;
@@ -408,7 +408,7 @@ const QtyInput = styled.input`
 const VendorMini = styled.select`
   width: 100%;
   padding: 6px 8px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 12px;
   background: white;
@@ -419,7 +419,7 @@ const VendorMini = styled.select`
 const RemoveX = styled.button`
   background: transparent;
   border: 1px solid transparent;
-  color: #9CA3AF;
+  color: #6B7280;
   font-size: 16px;
   cursor: pointer;
   border-radius: 4px;
@@ -432,15 +432,15 @@ const RemoveX = styled.button`
 `;
 
 const CartFooter = styled.div`
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
   padding: 16px 20px;
-  background: #FAFBFC;
+  background: #F9FAFB;
   flex-shrink: 0;
 `;
 
 const FieldLabel = styled.label`
   font-size: 11px;
-  color: #6B7280;
+  color: #4B5563;
   font-weight: 600;
   display: block;
   margin-bottom: 4px;
@@ -451,7 +451,7 @@ const FieldLabel = styled.label`
 const InputBase = styled.input`
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 13px;
   outline: none;
@@ -466,7 +466,7 @@ const TotalAmount = styled.div`
 
 const SubmitMeta = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-bottom: 4px;
 `;
 
@@ -1014,10 +1014,10 @@ const NewPurchaseOrderPage: React.FC = () => {
             {tab === 'mine' && untrackedCount > 0 && (
               <label style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 10px',
-                background: showUntracked ? '#EEF2FF' : '#F8FAFC',
-                border: `1px solid ${showUntracked ? '#C7D2FE' : '#E6EBF1'}`,
+                background: showUntracked ? '#EEF2FF' : '#F1F4F8',
+                border: `1px solid ${showUntracked ? '#C7D2FE' : '#C7CED6'}`,
                 borderRadius: 6, fontSize: 12, fontWeight: 600,
-                color: showUntracked ? '#3730A3' : '#6B7C93', cursor: 'pointer'
+                color: showUntracked ? '#3730A3' : '#4B5563', cursor: 'pointer'
               }}>
                 <input
                   type="checkbox"
@@ -1164,10 +1164,10 @@ const NewPurchaseOrderPage: React.FC = () => {
               ) : catalogList.length === 0 ? (
                 <Empty>
                   <strong>{t('newPo.empty.catalog.title', 'No supplier products yet')}</strong>
-                  <div style={{ marginTop: 8, fontSize: 13, color: '#6B7C93', lineHeight: 1.7, maxWidth: 460 }}>
+                  <div style={{ marginTop: 8, fontSize: 13, color: '#4B5563', lineHeight: 1.7, maxWidth: 460 }}>
                     {t('newPo.empty.catalog.desc', "Before you can place a purchase order, you need an active supplier contract. Once a supplier accepts your contract, their product catalog will appear here.")}
                   </div>
-                  <div style={{ marginTop: 14, padding: '10px 14px', background: 'white', border: '1px solid #E6EBF1', borderRadius: 8, fontSize: 12.5, color: '#4B5563', textAlign: 'left', maxWidth: 440 }}>
+                  <div style={{ marginTop: 14, padding: '10px 14px', background: 'white', border: '1px solid #C7CED6', borderRadius: 8, fontSize: 12.5, color: '#374151', textAlign: 'left', maxWidth: 440 }}>
                     <div style={{ marginBottom: 4 }}><strong style={{ color: '#635BFF' }}>1.</strong> {t('newPo.empty.catalog.step1', 'Find a supplier in the Suppliers directory')}</div>
                     <div style={{ marginBottom: 4 }}><strong style={{ color: '#635BFF' }}>2.</strong> {t('newPo.empty.catalog.step2', 'Request a contract — supplier accepts')}</div>
                     <div><strong style={{ color: '#635BFF' }}>3.</strong> {t('newPo.empty.catalog.step3', 'Their products will be listed here for ordering')}</div>
@@ -1255,7 +1255,7 @@ const NewPurchaseOrderPage: React.FC = () => {
                 <div key={g.key} style={{ marginBottom: 14 }}>
                   <div style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '6px 8px', background: '#F8FAFC', borderRadius: 6,
+                    padding: '6px 8px', background: '#F1F4F8', borderRadius: 6,
                     marginBottom: 6, fontSize: 11, fontWeight: 700, color: '#475569',
                     textTransform: 'uppercase', letterSpacing: 0.4
                   }}>
@@ -1296,7 +1296,7 @@ const NewPurchaseOrderPage: React.FC = () => {
                         ))}
                       </div>
                     )}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#9CA3AF' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#6B7280' }}>
                       {row.ingredient_unit && <span>{row.ingredient_unit}</span>}
                       {row.available_sellers.length > 1 ? (
                         <VendorMini
@@ -1418,7 +1418,7 @@ const NewPurchaseOrderPage: React.FC = () => {
               disabled={!conversionModal.suggested || conversionModal.suggested <= 0}
               style={{
                 padding: '8px 16px',
-                background: conversionModal.suggested > 0 ? '#635BFF' : '#CBD5E1',
+                background: conversionModal.suggested > 0 ? '#635BFF' : '#64748B',
                 border: 'none', color: 'white', borderRadius: 6, fontWeight: 600,
                 cursor: conversionModal.suggested > 0 ? 'pointer' : 'not-allowed'
               }}
@@ -1447,7 +1447,7 @@ const NewPurchaseOrderPage: React.FC = () => {
                 {conversionModal.note}
               </div>
             )}
-            <p style={{ margin: 0, fontSize: 12, color: '#64748B', lineHeight: 1.5 }}>
+            <p style={{ margin: 0, fontSize: 12, color: '#475569', lineHeight: 1.5 }}>
               {t('newPo.conversion.help', 'Example — a 10kg box of an ingredient measured in kg: enter 10. A 30-piece tray measured in piece: enter 30.')}
             </p>
           </>

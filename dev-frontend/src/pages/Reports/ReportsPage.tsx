@@ -23,7 +23,7 @@ import { getAuthToken } from '../../utils/auth';
 // 스타일 컴포넌트
 const ReportsContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #FAFBFC;
+  background-color: #F9FAFB;
   min-height: 100vh;
 `;
 
@@ -58,7 +58,7 @@ const ChartCard = styled.div`
   background: white;
   padding: 24px;
   border-radius: 8px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
 `;
 
 const ChartTitle = styled.h3`
@@ -72,7 +72,7 @@ const TableCard = styled.div`
   background: white;
   padding: 24px;
   border-radius: 8px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
 `;
 
 const Table = styled.table`
@@ -83,9 +83,9 @@ const Table = styled.table`
 const TableHeader = styled.th`
   padding: 12px 0;
   text-align: left;
-  border-bottom: 1px solid #F6F9FC;
+  border-bottom: 1px solid #F4F6F9;
   font-size: 11px;
-  color: #6B7C93;
+  color: #4B5563;
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.3px;
@@ -94,7 +94,7 @@ const TableHeader = styled.th`
 const TableCell = styled.td`
   padding: 12px 0;
   text-align: left;
-  border-bottom: 1px solid #F6F9FC;
+  border-bottom: 1px solid #F4F6F9;
   font-size: 13px;
   color: #0A2540;
 `;
@@ -102,7 +102,7 @@ const TableCell = styled.td`
 const ProgressBar = styled.div<{ percentage: number }>`
   width: 100%;
   height: 4px;
-  background: #F3F4F6;
+  background: #F1F4F8;
   border-radius: 2px;
   overflow: hidden;
   position: relative;
@@ -122,23 +122,23 @@ const ProgressBar = styled.div<{ percentage: number }>`
 // Drilldown Table Styles
 const DrilldownRow = styled.tr<{ level?: number; clickable?: boolean }>`
   background: ${props =>
-    props.level === 0 ? '#FAFBFC' :
+    props.level === 0 ? '#F9FAFB' :
     props.level === 1 ? '#FFFFFF' :
-    '#F8FAFC'};
+    '#F1F4F8'};
   cursor: ${props => props.clickable ? 'pointer' : 'default'};
   transition: all 0.2s;
 
   &:hover {
-    background: ${props => props.clickable ? '#F6F9FC' : 'inherit'};
+    background: ${props => props.clickable ? '#F4F6F9' : 'inherit'};
   }
 `;
 
 const DrilldownCell = styled.td<{ level?: number; bold?: boolean }>`
   padding: 12px 16px;
   text-align: left;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
   font-size: 13px;
-  color: ${props => props.bold ? '#0A2540' : '#6B7280'};
+  color: ${props => props.bold ? '#0A2540' : '#4B5563'};
   font-weight: ${props => props.bold ? 600 : 400};
   padding-left: ${props => props.level ? `${16 + (props.level * 24)}px` : '16px'};
 `;
@@ -148,7 +148,7 @@ const ExpandIcon = styled.span<{ expanded?: boolean }>`
   margin-right: 8px;
   transition: transform 0.2s;
   transform: ${props => props.expanded ? 'rotate(90deg)' : 'rotate(0deg)'};
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 // Payment filter button style
@@ -159,9 +159,9 @@ const PaymentFilterBtn = styled.button<{ active?: boolean }>`
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s;
-  border: 1px solid ${props => props.active ? '#635BFF' : '#E6EBF1'};
+  border: 1px solid ${props => props.active ? '#635BFF' : '#C7CED6'};
   background: ${props => props.active ? '#635BFF' : 'white'};
-  color: ${props => props.active ? 'white' : '#6B7C93'};
+  color: ${props => props.active ? 'white' : '#4B5563'};
 
   &:hover {
     border-color: #635BFF;
@@ -919,8 +919,8 @@ const ReportsPage: React.FC = () => {
         onClick={handleDownloadReport}
         style={{
           display: 'flex', alignItems: 'center', gap: '8px',
-          padding: '8px 16px', background: '#F6F9FC', color: '#0A2540',
-          border: '1px solid #E6EBF1', borderRadius: '6px', cursor: 'pointer',
+          padding: '8px 16px', background: '#F4F6F9', color: '#0A2540',
+          border: '1px solid #C7CED6', borderRadius: '6px', cursor: 'pointer',
           fontSize: '14px', marginLeft: 'auto'
         }}
       >
@@ -933,8 +933,8 @@ const ReportsPage: React.FC = () => {
         onClick={() => setShowSettlement(true)}
         style={{
           display: 'flex', alignItems: 'center', gap: '8px',
-          padding: '8px 16px', background: '#F6F9FC', color: '#0A2540',
-          border: '1px solid #E6EBF1', borderRadius: '6px', cursor: 'pointer',
+          padding: '8px 16px', background: '#F4F6F9', color: '#0A2540',
+          border: '1px solid #C7CED6', borderRadius: '6px', cursor: 'pointer',
           fontSize: '14px'
         }}
       >
@@ -979,7 +979,7 @@ const ReportsPage: React.FC = () => {
               {loading || ordersLoading ? (
                 <div style={{ textAlign: 'center', padding: '40px' }}>{t('reports:reportsPage.loading')}</div>
               ) : totalOrders === 0 ? (
-                <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>
+                <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>
                   No order data available for the selected period
                 </div>
               ) : (
@@ -1012,13 +1012,13 @@ const ReportsPage: React.FC = () => {
                   <ChartTitle>{t('reports:reportsPage.revenueTrend')}</ChartTitle>
                   <ResponsiveContainer width="100%" height={300}>
                     <LineChart data={salesData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#F6F9FC" />
-                      <XAxis dataKey="date" stroke="#6B7C93" fontSize={12} />
-                      <YAxis stroke="#6B7C93" fontSize={12} width={60} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#F4F6F9" />
+                      <XAxis dataKey="date" stroke="#4B5563" fontSize={12} />
+                      <YAxis stroke="#4B5563" fontSize={12} width={60} />
                       <Tooltip
                         contentStyle={{
                           background: 'white',
-                          border: '1px solid #E6EBF1',
+                          border: '1px solid #C7CED6',
                           borderRadius: '6px'
                         }}
                       />
@@ -1061,13 +1061,13 @@ const ReportsPage: React.FC = () => {
                 <ChartTitle>{t('reports:reportsPage.hourlyOrdersDistribution')}</ChartTitle>
                 <ResponsiveContainer width="100%" height={250}>
                   <BarChart data={hourlyData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#F6F9FC" />
-                    <XAxis dataKey="hour" stroke="#6B7C93" fontSize={12} />
-                    <YAxis stroke="#6B7C93" fontSize={12} width={60} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#F4F6F9" />
+                    <XAxis dataKey="hour" stroke="#4B5563" fontSize={12} />
+                    <YAxis stroke="#4B5563" fontSize={12} width={60} />
                     <Tooltip
                       contentStyle={{
                         background: 'white',
-                        border: '1px solid #E6EBF1',
+                        border: '1px solid #C7CED6',
                         borderRadius: '6px'
                       }}
                     />
@@ -1085,7 +1085,7 @@ const ReportsPage: React.FC = () => {
               {loading || ordersLoading ? (
                 <div style={{ textAlign: 'center', padding: '40px' }}>{t('reports:reportsPage.loading')}</div>
               ) : totalOrders === 0 ? (
-                <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>
+                <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>
                   No order data available for the selected period
                 </div>
               ) : (
@@ -1279,8 +1279,8 @@ const ReportsPage: React.FC = () => {
                               padding: '2px 6px',
                               borderRadius: '4px',
                               fontSize: '11px',
-                              backgroundColor: '#F3F4F6',
-                              color: '#6B7280'
+                              backgroundColor: '#F1F4F8',
+                              color: '#4B5563'
                             }}>
                               {menu.category}
                             </span>
@@ -1291,7 +1291,7 @@ const ReportsPage: React.FC = () => {
                           <DataTableCell data-label={t('reports:reportsPage.performance')}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                               <ProgressBar percentage={(menu.orders / maxOrders) * 100} />
-                              <span style={{ fontSize: '12px', color: '#6B7C93', minWidth: '40px' }}>
+                              <span style={{ fontSize: '12px', color: '#4B5563', minWidth: '40px' }}>
                                 {Math.round((menu.orders / maxOrders) * 100)}%
                               </span>
                             </div>
@@ -1310,7 +1310,7 @@ const ReportsPage: React.FC = () => {
               {loading || ordersLoading ? (
                 <div style={{ textAlign: 'center', padding: '40px' }}>{t('reports:reportsPage.loadingCustomerData')}</div>
               ) : filteredCustomers.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>
+                <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>
                   No customers with orders in the selected period
                 </div>
               ) : (
@@ -1376,8 +1376,8 @@ const ReportsPage: React.FC = () => {
                                   padding: '2px 6px',
                                   borderRadius: '4px',
                                   fontSize: '11px',
-                                  backgroundColor: customerData.customer?.type === 'member' ? '#E0F2FE' : '#F3F4F6',
-                                  color: customerData.customer?.type === 'member' ? '#0369A1' : '#6B7280'
+                                  backgroundColor: customerData.customer?.type === 'member' ? '#E0F2FE' : '#F1F4F8',
+                                  color: customerData.customer?.type === 'member' ? '#0369A1' : '#4B5563'
                                 }}>
                                   {customerData.customer?.type === 'member' ? 'Member' : 'Guest'}
                                 </span>
@@ -1390,8 +1390,8 @@ const ReportsPage: React.FC = () => {
                                   padding: '2px 6px',
                                   borderRadius: '4px',
                                   fontSize: '11px',
-                                  backgroundColor: customerData.loyalty_tier === 'VIP' ? '#FEF3C7' : customerData.loyalty_tier === 'Gold' ? '#FEF9C3' : customerData.loyalty_tier === 'Silver' ? '#F3F4F6' : '#E5E7EB',
-                                  color: customerData.loyalty_tier === 'VIP' ? '#92400E' : customerData.loyalty_tier === 'Gold' ? '#854D0E' : '#6B7280'
+                                  backgroundColor: customerData.loyalty_tier === 'VIP' ? '#FEF3C7' : customerData.loyalty_tier === 'Gold' ? '#FEF9C3' : customerData.loyalty_tier === 'Silver' ? '#F1F4F8' : '#C7CED6',
+                                  color: customerData.loyalty_tier === 'VIP' ? '#92400E' : customerData.loyalty_tier === 'Gold' ? '#854D0E' : '#4B5563'
                                 }}>
                                   {customerData.loyalty_tier || 'Bronze'}
                                 </span>
@@ -1411,7 +1411,7 @@ const ReportsPage: React.FC = () => {
               {loading || ordersLoading ? (
                 <div style={{ textAlign: 'center', padding: '40px' }}>{t('reports:reportsPage.loadingOperationsData')}</div>
               ) : totalOrders === 0 ? (
-                <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>
+                <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>
                   No order data available for the selected period
                 </div>
               ) : (
@@ -1469,7 +1469,7 @@ const ReportsPage: React.FC = () => {
                               <DataTableCell data-label={t('reports:reportsPage.share')}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                   <ProgressBar percentage={totalOrders > 0 ? (item.orders / totalOrders) * 100 : 0} />
-                                  <span style={{ fontSize: '12px', color: '#6B7C93' }}>
+                                  <span style={{ fontSize: '12px', color: '#4B5563' }}>
                                     {totalOrders > 0 ? Math.round((item.orders / totalOrders) * 100) : 0}%
                                   </span>
                                 </div>
@@ -1485,13 +1485,13 @@ const ReportsPage: React.FC = () => {
                     <ChartTitle>{t('reports:reportsPage.hourlyOrderDistribution')}</ChartTitle>
                     <ResponsiveContainer width="100%" height={250}>
                       <BarChart data={hourlyData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#F6F9FC" />
-                        <XAxis dataKey="hour" stroke="#6B7C93" fontSize={12} />
-                        <YAxis stroke="#6B7C93" fontSize={12} width={60} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#F4F6F9" />
+                        <XAxis dataKey="hour" stroke="#4B5563" fontSize={12} />
+                        <YAxis stroke="#4B5563" fontSize={12} width={60} />
                         <Tooltip
                           contentStyle={{
                             background: 'white',
-                            border: '1px solid #E6EBF1',
+                            border: '1px solid #C7CED6',
                             borderRadius: '6px'
                           }}
                         />
@@ -1509,7 +1509,7 @@ const ReportsPage: React.FC = () => {
               {loading || ordersLoading ? (
                 <div style={{ textAlign: 'center', padding: '40px' }}>{t('reports:reportsPage.loadingPaymentData')}</div>
               ) : totalOrders === 0 ? (
-                <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>
+                <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>
                   No order data available for the selected period
                 </div>
               ) : (
@@ -1611,7 +1611,7 @@ const ReportsPage: React.FC = () => {
                                   <DataTableCell data-label={t('reports:reportsPage.share')}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                       <ProgressBar percentage={pct} />
-                                      <span style={{ fontSize: '12px', color: '#6B7C93', minWidth: '40px' }}>
+                                      <span style={{ fontSize: '12px', color: '#4B5563', minWidth: '40px' }}>
                                         {pct.toFixed(1)}%
                                       </span>
                                     </div>
@@ -1705,7 +1705,7 @@ const ReportsPage: React.FC = () => {
                                   <DataTableCell data-label={t('reports:reportsPage.shareOfCardPayments')}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                       <ProgressBar percentage={pct} />
-                                      <span style={{ fontSize: '12px', color: '#6B7C93', minWidth: '40px' }}>
+                                      <span style={{ fontSize: '12px', color: '#4B5563', minWidth: '40px' }}>
                                         {pct.toFixed(1)}%
                                       </span>
                                     </div>

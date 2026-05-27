@@ -73,7 +73,7 @@ const NoticeCard = styled.div<{ isUnread?: boolean }>`
   background: white;
   border-radius: 12px;
   padding: 24px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   cursor: pointer;
   transition: all 0.2s;
   position: relative;
@@ -122,7 +122,7 @@ const UnreadDot = styled.div`
 
 const NoticeContentPreview = styled.div`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   line-height: 1.5;
   margin-bottom: 12px;
   display: -webkit-box;
@@ -138,7 +138,7 @@ const NoticeCardMeta = styled.div`
   gap: 16px;
   flex-wrap: wrap;
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const AuthorInfo = styled.div`
@@ -158,14 +158,14 @@ const AuthorRoleBadge = styled.span<{ role: string }>`
     if (r.includes('admin') || r.includes('system')) return '#E0F2FE';
     if (r.includes('brand')) return '#F3E8FF';
     if (r.includes('foodcourt')) return '#FEF3C7';
-    return '#F3F4F6';
+    return '#F1F4F8';
   }};
   color: ${props => {
     const r = props.role.toLowerCase();
     if (r.includes('admin') || r.includes('system')) return '#0891B2';
     if (r.includes('brand')) return '#7C3AED';
     if (r.includes('foodcourt')) return '#D97706';
-    return '#6B7280';
+    return '#4B5563';
   }};
 `;
 
@@ -194,14 +194,14 @@ const PriorityBadge = styled.span<{ priority: string }>`
     switch (props.priority) {
       case 'urgent': return '#991B1B';
       case 'important': return '#92400E';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 `;
 
 const CommentCountBadge = styled.span`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -209,7 +209,7 @@ const CommentCountBadge = styled.span`
 
 const DateText = styled.span`
   font-size: 12px;
-  color: #9CA3AF;
+  color: #6B7280;
 `;
 
 
@@ -234,13 +234,13 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
     }
   ` : `
     background: white;
-    color: #6B7280;
-    border: 1px solid #E6EBF1;
+    color: #4B5563;
+    border: 1px solid #C7CED6;
 
     &:hover {
-      background: #F8FAFC;
+      background: #F1F4F8;
       color: #0A2540;
-      border-color: #CBD5E1;
+      border-color: #64748B;
     }
   `}
 
@@ -260,7 +260,7 @@ const NoticeDetailSection = styled.div`
 const NoticeDetailLabel = styled.div`
   font-size: 12px;
   font-weight: 600;
-  color: #6B7C93;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 8px;
@@ -268,13 +268,13 @@ const NoticeDetailLabel = styled.div`
 
 const NoticeDetailContent = styled.div`
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
   line-height: 1.7;
   white-space: pre-wrap;
   padding: 16px;
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 8px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   min-height: 80px;
 `;
 
@@ -283,9 +283,9 @@ const NoticeFromInfo = styled.div`
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 8px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
 `;
 
 const NoticeFromAvatar = styled.div`
@@ -315,7 +315,7 @@ const NoticeFromName = styled.div`
 
 const NoticeFromRole = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const DetailMetaRow = styled.div`
@@ -334,14 +334,14 @@ const DetailMetaItem = styled.div`
 const DetailMetaLabel = styled.span`
   font-size: 11px;
   font-weight: 600;
-  color: #6B7C93;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 `;
 
 const DetailMetaValue = styled.span`
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
 `;
 
 
@@ -349,7 +349,7 @@ const LoadingText = styled.div`
   text-align: center;
   padding: 40px 20px;
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 // ============================================================================
@@ -542,9 +542,9 @@ const NoticesPage: React.FC = () => {
               style={{
                 padding: '6px 16px',
                 borderRadius: '20px',
-                border: categoryFilter === cat ? '1.5px solid #635BFF' : '1px solid #E6EBF1',
+                border: categoryFilter === cat ? '1.5px solid #635BFF' : '1px solid #C7CED6',
                 background: categoryFilter === cat ? '#F0EFFF' : 'white',
-                color: categoryFilter === cat ? '#635BFF' : '#6B7280',
+                color: categoryFilter === cat ? '#635BFF' : '#4B5563',
                 fontSize: '13px',
                 fontWeight: categoryFilter === cat ? 600 : 400,
                 cursor: 'pointer',

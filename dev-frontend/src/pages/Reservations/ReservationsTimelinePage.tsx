@@ -56,16 +56,16 @@ const STATUS_COLOR: Record<string, { bg: string; fg: string }> = {
   confirmed: { bg: '#D1FAE5', fg: '#065F46' },
   arrived:   { bg: '#DBEAFE', fg: '#1E40AF' },
   seated:    { bg: '#EDE9FE', fg: '#5B21B6' },
-  completed: { bg: '#E5E7EB', fg: '#374151' },
+  completed: { bg: '#C7CED6', fg: '#1F2937' },
   cancelled: { bg: '#FEE2E2', fg: '#991B1B' },
-  no_show:   { bg: '#F3F4F6', fg: '#6B7280' }
+  no_show:   { bg: '#F1F4F8', fg: '#4B5563' }
 };
 
 const FORWARD_BTN_COLOR: Record<string, string> = {
   confirmed: '#10B981',
   arrived:   '#635BFF',
   seated:    '#8B5CF6',
-  completed: '#9CA3AF'
+  completed: '#6B7280'
 };
 
 const ACTION_LABEL: Record<string, string> = {
@@ -306,7 +306,7 @@ export default function ReservationsTimelinePage() {
                       {next.includes('no_show') && (
                         <ActionButton
                           onClick={() => changeStatus(r.id, 'no_show')}
-                          style={{ background: '#F6F9FC', borderColor: '#E6EBF1', color: '#6B7C93' }}
+                          style={{ background: '#F4F6F9', borderColor: '#C7CED6', color: '#4B5563' }}
                         >{ACTION_LABEL.no_show}</ActionButton>
                       )}
                       {(next.includes('cancelled') || r.status === 'cancelled') && (
@@ -346,7 +346,7 @@ export default function ReservationsTimelinePage() {
           </>
         }
       >
-        <p style={{ margin: 0, color: '#6B7C93', fontSize: 14, lineHeight: 1.5 }}>
+        <p style={{ margin: 0, color: '#4B5563', fontSize: 14, lineHeight: 1.5 }}>
           This cancelled reservation will be permanently removed and cannot be recovered.
         </p>
       </Modal>
@@ -464,7 +464,7 @@ function CreateModal({ restaurantId, defaultDate, tables, onClose, onCreated }: 
   );
 }
 
-const Container = styled.div`background:#FAFBFC;min-height:100vh;`;
+const Container = styled.div`background:#F9FAFB;min-height:100vh;`;
 const Content = styled.main`padding:24px 32px;@media(max-width:768px){padding:16px;}`;
 const NewBtn = styled.button`
   padding:8px 16px;background:#635BFF;color:white;border:none;border-radius:6px;
@@ -475,18 +475,18 @@ const NewBtn = styled.button`
 const DateButton = styled.button<{ active?: boolean }>`
   padding:8px 16px;
   background:${p => p.active ? '#635BFF' : '#FFFFFF'};
-  color:${p => p.active ? '#FFFFFF' : '#6B7C93'};
-  border:1px solid ${p => p.active ? '#635BFF' : '#E6EBF1'};
+  color:${p => p.active ? '#FFFFFF' : '#4B5563'};
+  border:1px solid ${p => p.active ? '#635BFF' : '#C7CED6'};
   border-radius:6px;font-size:14px;font-weight:500;cursor:pointer;transition:all 0.2s;
-  &:hover{background:${p => p.active ? '#5A51E6' : '#F8FAFC'};border-color:${p => p.active ? '#5A51E6' : '#CBD5E1'};}
+  &:hover{background:${p => p.active ? '#5A51E6' : '#F1F4F8'};border-color:${p => p.active ? '#5A51E6' : '#64748B'};}
   @media(max-width:768px){padding:6px 12px;font-size:13px;}
 `;
-const Hint = styled.div`color:#6B7C93;font-size:12px;margin-top:2px;`;
+const Hint = styled.div`color:#4B5563;font-size:12px;margin-top:2px;`;
 const StatusPill = styled.span`display:inline-block;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;`;
 const ErrorMsg = styled.div`margin-top:12px;padding:8px 12px;background:#FFEBEE;color:#C62828;border-radius:6px;font-size:13px;`;
 // Inline 테이블 배정 — 빈 셀 호버 시 회색, 값 있으면 보라 강조
 const TableSelect = styled.select`
-  padding:4px 8px;border:1px solid #E6EBF1;border-radius:4px;
+  padding:4px 8px;border:1px solid #C7CED6;border-radius:4px;
   font-size:13px;background:white;color:#0A2540;cursor:pointer;min-width:90px;
   &:hover{border-color:#635BFF;}
   &:focus{outline:none;border-color:#635BFF;box-shadow:0 0 0 2px rgba(99,91,255,0.1);}

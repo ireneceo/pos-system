@@ -25,12 +25,12 @@ import { useTabParam } from '../../hooks/useTabParam';
 // reference_live_orders_pattern.md.
 const Container = styled.div`
   min-height: 100vh;
-  background: #FAFBFC;
+  background: #F9FAFB;
 `;
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   height: 80px;
   min-height: 80px;
   max-height: 80px;
@@ -65,7 +65,7 @@ const FormLabel = styled.label`
   display: block;
   font-size: 13px;
   font-weight: 500;
-  color: #6B7C93;
+  color: #4B5563;
   margin-bottom: 8px;
 `;
 const FormInput = styled.input`
@@ -73,41 +73,41 @@ const FormInput = styled.input`
   max-width: 100%;
   box-sizing: border-box;
   padding: 8px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   transition: all 0.15s;
   &:focus { outline: none; border-color: #635BFF; box-shadow: 0 0 0 3px rgba(99,91,255,0.1); }
-  &:disabled { background: #F9FAFB; color: #6B7280; cursor: not-allowed; }
-  &::placeholder { color: #9CA3AF; }
+  &:disabled { background: #F9FAFB; color: #4B5563; cursor: not-allowed; }
+  &::placeholder { color: #6B7280; }
 `;
 const FormSelect = styled.select`
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
   padding: 8px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   background: white;
   cursor: pointer;
   transition: all 0.15s;
   &:focus { outline: none; border-color: #635BFF; box-shadow: 0 0 0 3px rgba(99,91,255,0.1); }
-  &:disabled { background: #F9FAFB; color: #6B7280; cursor: not-allowed; }
+  &:disabled { background: #F9FAFB; color: #4B5563; cursor: not-allowed; }
 `;
 const FormTextArea = styled.textarea`
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
   padding: 8px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   min-height: 100px;
   resize: vertical;
   transition: all 0.15s;
   &:focus { outline: none; border-color: #635BFF; box-shadow: 0 0 0 3px rgba(99,91,255,0.1); }
-  &::placeholder { color: #9CA3AF; }
+  &::placeholder { color: #6B7280; }
 `;
 const ModalButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
   padding: 12px 20px;
@@ -116,16 +116,16 @@ const ModalButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger'
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
-  border: ${p => p.variant === 'primary' || p.variant === 'danger' ? 'none' : '1px solid #E6EBF1'};
+  border: ${p => p.variant === 'primary' || p.variant === 'danger' ? 'none' : '1px solid #C7CED6'};
   background: ${p => p.variant === 'primary' ? '#635BFF' : p.variant === 'danger' ? '#DC2626' : 'white'};
-  color: ${p => p.variant === 'primary' || p.variant === 'danger' ? 'white' : '#6B7C93'};
+  color: ${p => p.variant === 'primary' || p.variant === 'danger' ? 'white' : '#4B5563'};
   &:hover:not(:disabled) {
-    background: ${p => p.variant === 'primary' ? '#5A51E6' : p.variant === 'danger' ? '#B91C1C' : '#F8FAFC'};
+    background: ${p => p.variant === 'primary' ? '#5A51E6' : p.variant === 'danger' ? '#B91C1C' : '#F1F4F8'};
     transform: translateY(-1px);
   }
   &:disabled {
-    background: ${p => p.variant === 'primary' ? '#A5A0FF' : p.variant === 'danger' ? '#FCA5A5' : '#F3F4F6'};
-    color: ${p => (p.variant === 'primary' || p.variant === 'danger') ? 'rgba(255,255,255,0.7)' : '#D1D5DB'};
+    background: ${p => p.variant === 'primary' ? '#A5A0FF' : p.variant === 'danger' ? '#FCA5A5' : '#F1F4F8'};
+    color: ${p => (p.variant === 'primary' || p.variant === 'danger') ? 'rgba(255,255,255,0.7)' : '#6B7280'};
     cursor: not-allowed;
     transform: none;
   }
@@ -187,7 +187,7 @@ interface IncomingOrdersViewProps {
 }
 
 const Subtitle = styled.div`
-  color: #6B7280;
+  color: #4B5563;
   font-size: 14px;
   margin-top: 4px;
 `;
@@ -205,7 +205,7 @@ const AudioToggleButton = styled.button<{ enabled: boolean }>`
   align-items: center;
   justify-content: center;
   padding: 0;
-  background: ${props => props.enabled ? '#635BFF' : '#E6EBF1'};
+  background: ${props => props.enabled ? '#635BFF' : '#C7CED6'};
   img { width: 22px; height: 22px; filter: ${props => props.enabled ? 'invert(1)' : 'opacity(0.4)'}; }
   &:hover { opacity: 0.85; }
 `;
@@ -224,13 +224,13 @@ const RLStatusTabs = styled.div`
   display: flex;
   gap: 24px;
   margin-bottom: 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   &::-webkit-scrollbar { height: 3px; }
-  &::-webkit-scrollbar-track { background: #F8FAFC; }
-  &::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
-  &::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+  &::-webkit-scrollbar-track { background: #F1F4F8; }
+  &::-webkit-scrollbar-thumb { background: #64748B; border-radius: 3px; }
+  &::-webkit-scrollbar-thumb:hover { background: #64748B; }
 `;
 
 const RLStatusTab = styled.button<{ active?: boolean }>`
@@ -239,7 +239,7 @@ const RLStatusTab = styled.button<{ active?: boolean }>`
   border: none;
   font-size: 14px;
   font-weight: 500;
-  color: ${props => props.active ? '#635BFF' : '#6B7C93'};
+  color: ${props => props.active ? '#635BFF' : '#4B5563'};
   cursor: pointer;
   position: relative;
   transition: all 0.15s;
@@ -274,16 +274,16 @@ const RLTabBadge = styled.span`
 `;
 
 const StatisticsBar = styled.div`
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 8px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   padding: 12px 20px;
   margin: 16px 0;
   display: flex;
   flex-wrap: wrap;
   gap: 20px;
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   @media (max-width: 768px) { gap: 10px; padding: 10px 14px; font-size: 11px; }
 `;
@@ -321,8 +321,8 @@ const NewBadge = styled.span`
 const BuyerType = styled.span`
   font-size: 9px;
   padding: 2px 6px;
-  background: #F3F4F6;
-  color: #6B7280;
+  background: #F1F4F8;
+  color: #4B5563;
   border-radius: 999px;
   font-weight: 700;
   text-transform: uppercase;
@@ -334,7 +334,7 @@ const InfoLine = styled.div`
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 6px;
   & .icon { font-size: 13px; flex-shrink: 0; line-height: 1; }
   & .text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
@@ -357,7 +357,7 @@ const CarrierChip = styled.a`
 
 const TimeAgoText = styled.div`
   font-size: 11px;
-  color: #9CA3AF;
+  color: #6B7280;
 `;
 
 function timeAgo(iso: string | null | undefined): string {
@@ -995,7 +995,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                       <DataTableCell data-label={tNs('orders.table.items', 'Items') as string}>
                         <div style={{ fontSize: 13, color: '#0A2540', fontWeight: 600 }}>{items.length} {tNs('orders.table.itemsUnit', 'items')}</div>
                         {items.length > 0 && (
-                          <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>
+                          <div style={{ fontSize: 11, color: '#4B5563', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>
                             {items.slice(0, 2).map(it => (it.ingredient?.name || it.description || `#${it.ingredient_id}`)).join(', ')}
                             {items.length > 2 && ` +${items.length - 2}`}
                           </div>
@@ -1019,13 +1019,13 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                               {ti.tracking_number ? ` · ${ti.tracking_number}` : ''}
                             </CarrierChip>
                           ) : (
-                            <span style={{ fontSize: 11, color: '#374151', fontWeight: 600 }}>
+                            <span style={{ fontSize: 11, color: '#1F2937', fontWeight: 600 }}>
                               {ti.carrier_name || ti.carrier_code}
                               {ti.tracking_number ? ` · ${ti.tracking_number}` : ''}
                             </span>
                           )
                         ) : !row.delivery_address ? (
-                          <span style={{ color: '#9CA3AF', fontSize: 12 }}>—</span>
+                          <span style={{ color: '#6B7280', fontSize: 12 }}>—</span>
                         ) : null}
                       </DataTableCell>
                       <DataTableCell data-label={tNs('orders.table.status', 'Status') as string} align="center">
@@ -1117,11 +1117,11 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
           </>
         }
       >
-        <p style={{ margin: 0, color: '#374151' }}>
+        <p style={{ margin: 0, color: '#1F2937' }}>
           {tNs('orders.confirm.message', 'Confirm this purchase order?')}
         </p>
         {confirmModalRow && (
-          <div style={{ marginTop: 12, padding: 12, background: '#F8FAFC', borderRadius: 8, fontSize: 13, color: '#6B7280' }}>
+          <div style={{ marginTop: 12, padding: 12, background: '#F1F4F8', borderRadius: 8, fontSize: 13, color: '#4B5563' }}>
             <div><strong>{tNs('orders.table.poNumber', 'PO #')}:</strong> {confirmModalRow.po_number}</div>
             <div><strong>{tNs('orders.table.buyer', 'Buyer')}:</strong> {confirmModalRow.buyer_name || '-'}</div>
             <div><strong>{tNs('orders.table.total', 'Total')}:</strong> {formatMoney(confirmModalRow.total_amount, confirmModalRow.currency)}</div>
@@ -1276,11 +1276,11 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
         }
       >
         {detailLoading ? (
-          <div style={{ padding: 32, textAlign: 'center', color: '#6B7280' }}>
+          <div style={{ padding: 32, textAlign: 'center', color: '#4B5563' }}>
             {tNs('orders.detail.loading', 'Loading…')}
           </div>
         ) : !detailFull ? (
-          <div style={{ padding: 32, textAlign: 'center', color: '#6B7280' }}>
+          <div style={{ padding: 32, textAlign: 'center', color: '#4B5563' }}>
             {tNs('orders.detail.notFound', 'Not found')}
           </div>
         ) : (
@@ -1288,18 +1288,18 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
             {/* Header summary */}
             <FormGrid3>
               <div style={{ padding: 12, background: '#F9FAFB', borderRadius: 8 }}>
-                <div style={{ fontSize: 11, color: '#6B7280', fontWeight: 600, textTransform: 'uppercase' }}>
+                <div style={{ fontSize: 11, color: '#4B5563', fontWeight: 600, textTransform: 'uppercase' }}>
                   {tNs('orders.detail.buyer', 'Buyer')}
                 </div>
                 <div style={{ fontSize: 14, fontWeight: 600, color: '#0A2540', marginTop: 2 }}>
                   {detailFull.buyer?.name || '—'}
                 </div>
-                <div style={{ fontSize: 11, color: '#9CA3AF' }}>
+                <div style={{ fontSize: 11, color: '#6B7280' }}>
                   {detailFull.buyer?.type || ''}
                 </div>
               </div>
               <div style={{ padding: 12, background: '#F9FAFB', borderRadius: 8 }}>
-                <div style={{ fontSize: 11, color: '#6B7280', fontWeight: 600, textTransform: 'uppercase' }}>
+                <div style={{ fontSize: 11, color: '#4B5563', fontWeight: 600, textTransform: 'uppercase' }}>
                   {tNs('orders.detail.status', 'Status')}
                 </div>
                 <DataTableStatus variant={StatusVariantMap[detailFull.status] || 'info'}>
@@ -1307,7 +1307,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                 </DataTableStatus>
               </div>
               <div style={{ padding: 12, background: '#F9FAFB', borderRadius: 8 }}>
-                <div style={{ fontSize: 11, color: '#6B7280', fontWeight: 600, textTransform: 'uppercase' }}>
+                <div style={{ fontSize: 11, color: '#4B5563', fontWeight: 600, textTransform: 'uppercase' }}>
                   {tNs('orders.detail.total', 'Total')}
                 </div>
                 <div style={{ fontSize: 16, fontWeight: 700, color: '#0A2540', marginTop: 2 }}>
@@ -1321,11 +1321,11 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
               <div style={{ fontSize: 13, fontWeight: 600, color: '#0A2540', marginBottom: 8 }}>
                 {tNs('orders.detail.items', 'Items')}
               </div>
-              <div style={{ border: '1px solid #E6EBF1', borderRadius: 8, overflow: 'hidden' }}>
+              <div style={{ border: '1px solid #C7CED6', borderRadius: 8, overflow: 'hidden' }}>
                 <div style={{
                   display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr',
                   padding: '8px 12px', background: '#F9FAFB',
-                  fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase'
+                  fontSize: 11, fontWeight: 600, color: '#4B5563', textTransform: 'uppercase'
                 }}>
                   <div>{tNs('orders.detail.ingredient', 'Ingredient')}</div>
                   <div style={{ textAlign: 'right' }}>{tNs('orders.detail.qty', 'Qty')}</div>
@@ -1335,12 +1335,12 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                 {(detailFull.items || []).map((it: any) => (
                   <div key={it.id} style={{
                     display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr',
-                    padding: '10px 12px', borderTop: '1px solid #F3F4F6',
+                    padding: '10px 12px', borderTop: '1px solid #F1F4F8',
                     fontSize: 13, color: '#0A2540', alignItems: 'center'
                   }}>
                     <div>
                       <strong>{it.ingredient?.name || it.description || `#${it.ingredient_id}`}</strong>
-                      <div style={{ fontSize: 11, color: '#6B7280' }}>
+                      <div style={{ fontSize: 11, color: '#4B5563' }}>
                         {tNs('orders.detail.received', 'Received')}: {Number(it.quantity_received) || 0}
                       </div>
                     </div>
@@ -1379,14 +1379,14 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                 <div style={{ display: 'grid', gap: 8 }}>
                   {detailReturns.map((r: any) => (
                     <div key={r.id} style={{
-                      padding: 12, border: '1px solid #E6EBF1', borderRadius: 8,
+                      padding: 12, border: '1px solid #C7CED6', borderRadius: 8,
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12
                     }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 13, fontWeight: 600, color: '#0A2540' }}>
                           #{r.id} · qty {r.quantity} {r.unit || ''}
                         </div>
-                        <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
+                        <div style={{ fontSize: 11, color: '#4B5563', marginTop: 2 }}>
                           {r.reason || '—'}
                         </div>
                       </div>

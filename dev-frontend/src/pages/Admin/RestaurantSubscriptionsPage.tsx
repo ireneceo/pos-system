@@ -18,7 +18,7 @@ const Container = styled.div`
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -40,7 +40,7 @@ const Header = styled.div`
 
 const Content = styled.div`
   padding: 32px;
-  background: #FAFBFC;
+  background: #F9FAFB;
   min-height: calc(100vh - 120px);
   
   @media (max-width: 768px) {
@@ -85,13 +85,13 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
     }
   ` : `
     background: white;
-    color: #6B7280;
-    border: 1px solid #E6EBF1;
+    color: #4B5563;
+    border: 1px solid #C7CED6;
     
     &:hover {
-      background: #F8FAFC;
+      background: #F1F4F8;
       color: #0A2540;
-      border-color: #CBD5E1;
+      border-color: #64748B;
     }
   `}
 `;
@@ -103,7 +103,7 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
 const SubscriptionTable = styled.div`
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   overflow: hidden;
 `;
 
@@ -112,11 +112,11 @@ const TableHeader = styled.div`
   grid-template-columns: 2.5fr 1.5fr 1fr 1fr 1fr 1fr 180px;
   gap: 16px;
   padding: 16px 24px;
-  background: #F8FAFC;
-  border-bottom: 1px solid #E6EBF1;
+  background: #F1F4F8;
+  border-bottom: 1px solid #C7CED6;
   font-size: 12px;
   font-weight: 600;
-  color: #6B7280;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 
@@ -142,12 +142,12 @@ const TableRow = styled.div`
   grid-template-columns: 2.5fr 1.5fr 1fr 1fr 1fr 1fr 180px;
   gap: 16px;
   padding: 20px 24px;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
   align-items: center;
   transition: all 0.2s;
 
   &:hover {
-    background: #F8FAFC;
+    background: #F1F4F8;
   }
 
   &:last-child {
@@ -186,7 +186,7 @@ const RestaurantName = styled.div`
 
 const ManagerInfo = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 // const PaymentInfo = styled.div`
@@ -220,16 +220,16 @@ const PlanBadge = styled.span<{ plan: string }>`
     switch(props.plan) {
       case 'enterprise': return '#EDE9FE';
       case 'professional': return '#DBEAFE';
-      case 'basic': return '#F3F4F6';
-      default: return '#F3F4F6';
+      case 'basic': return '#F1F4F8';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
     switch(props.plan) {
       case 'enterprise': return '#7C3AED';
       case 'professional': return '#1E40AF';
-      case 'basic': return '#6B7280';
-      default: return '#6B7280';
+      case 'basic': return '#4B5563';
+      default: return '#4B5563';
     }
   }};
 `;
@@ -253,9 +253,9 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'active': return '#ECFDF5';
       case 'trial': return '#FEF3C7';
       case 'expired': return '#FEE2E2';
-      case 'suspended': return '#F3F4F6';
+      case 'suspended': return '#F1F4F8';
       case 'cancelled': return '#FEF2F2';
-      default: return '#F3F4F6';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
@@ -263,9 +263,9 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'active': return '#059669';
       case 'trial': return '#D97706';
       case 'expired': return '#DC2626';
-      case 'suspended': return '#6B7280';
+      case 'suspended': return '#4B5563';
       case 'cancelled': return '#DC2626';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 `;
@@ -279,7 +279,7 @@ const UsageCell = styled.div`
 const UsageBar = styled.div`
   width: 100px;
   height: 6px;
-  background: #F3F4F6;
+  background: #F1F4F8;
   border-radius: 3px;
   overflow: hidden;
 `;
@@ -293,7 +293,7 @@ const UsageProgress = styled.div<{ percentage: number }>`
 
 const UsageText = styled.div`
   font-size: 11px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const ActionButtons = styled.div`
@@ -316,9 +316,9 @@ const ActionButtons = styled.div`
 const ActionButton = styled.button`
   padding: 6px 12px;
   background: transparent;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
-  color: #6B7280;
+  color: #4B5563;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -345,7 +345,7 @@ const DetailSection = styled.div`
 const DetailLabel = styled.div`
   font-size: 12px;
   font-weight: 600;
-  color: #6B7280;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 4px;
@@ -382,7 +382,7 @@ const FormLabel = styled.label`
 const TextArea = styled.textarea`
   width: 100%;
   padding: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   resize: vertical;
@@ -722,7 +722,7 @@ const RestaurantSubscriptionsPage: React.FC = () => {
           {filteredSubscriptions.map(subscription => (
             <TableRow key={subscription.id}>
               <RestaurantInfo>
-                <RestaurantName>{subscription.restaurantName}{subscription.branchName && <span style={{ fontSize: '12px', fontWeight: 500, color: '#6B7C93', background: '#F3F4F6', padding: '1px 8px', borderRadius: '4px', marginLeft: '6px' }}>{subscription.branchName}</span>}</RestaurantName>
+                <RestaurantName>{subscription.restaurantName}{subscription.branchName && <span style={{ fontSize: '12px', fontWeight: 500, color: '#4B5563', background: '#F1F4F8', padding: '1px 8px', borderRadius: '4px', marginLeft: '6px' }}>{subscription.branchName}</span>}</RestaurantName>
                 <ManagerInfo>
                   <PaymentBadge type={subscription.paymentModel}>
                     {subscription.paymentModel === 'self' ? 'Self' : 'Manager'}
@@ -733,7 +733,7 @@ const RestaurantSubscriptionsPage: React.FC = () => {
 
               <div>
                 <div style={{ fontSize: '14px', color: '#0A2540' }}>{subscription.managerName}</div>
-                <div style={{ fontSize: '12px', color: '#6B7280' }}>{subscription.managerId}</div>
+                <div style={{ fontSize: '12px', color: '#4B5563' }}>{subscription.managerId}</div>
               </div>
 
               <PlanBadge plan={subscription.planType}>
@@ -742,7 +742,7 @@ const RestaurantSubscriptionsPage: React.FC = () => {
 
               <PriceCell>
                 {formatCurrency(subscription.billingCycle === 'monthly' ? subscription.monthlyFee : subscription.annualFee)}
-                <div style={{ fontSize: '11px', color: '#6B7280' }}>
+                <div style={{ fontSize: '11px', color: '#4B5563' }}>
                   /{subscription.billingCycle === 'monthly' ? 'month' : 'year'}
                 </div>
               </PriceCell>
@@ -786,7 +786,7 @@ const RestaurantSubscriptionsPage: React.FC = () => {
           ))}
 
           {filteredSubscriptions.length === 0 && (
-            <div style={{ padding: '60px 20px', textAlign: 'center', color: '#6B7280' }}>
+            <div style={{ padding: '60px 20px', textAlign: 'center', color: '#4B5563' }}>
               No subscriptions found
             </div>
           )}
@@ -831,7 +831,7 @@ const RestaurantSubscriptionsPage: React.FC = () => {
                     <PaymentBadge type={selectedSubscription.paymentModel}>
                       {selectedSubscription.paymentModel === 'self' ? 'Self-Paying' : 'Manager-Paid'}
                     </PaymentBadge>
-                    <div style={{fontSize: '12px', color: '#6B7280', marginTop: '4px'}}>
+                    <div style={{fontSize: '12px', color: '#4B5563', marginTop: '4px'}}>
                       Paid by: {selectedSubscription.payerName}
                     </div>
                   </DetailValue>
@@ -894,7 +894,7 @@ const RestaurantSubscriptionsPage: React.FC = () => {
 
         {/* Suspend Modal */}
         {showSuspendModal && selectedSubscription && (
-          <CommonModal isOpen={true} onClose={() => setShowSuspendModal(false)} title="Suspend Subscription" footer={<><Button variant="secondary" onClick={() => setShowSuspendModal(false)}>{t('admin:restaurantSubscriptionsPage.cancel')}</Button><Button variant="primary" onClick={confirmSuspend} disabled={!suspendReason.trim()} style={{background: suspendReason.trim() ? '#DC2626' : '#9CA3AF'}}>{t('admin:restaurantSubscriptionsPage.suspendSubscription')}</Button></>}>
+          <CommonModal isOpen={true} onClose={() => setShowSuspendModal(false)} title="Suspend Subscription" footer={<><Button variant="secondary" onClick={() => setShowSuspendModal(false)}>{t('admin:restaurantSubscriptionsPage.cancel')}</Button><Button variant="primary" onClick={confirmSuspend} disabled={!suspendReason.trim()} style={{background: suspendReason.trim() ? '#DC2626' : '#6B7280'}}>{t('admin:restaurantSubscriptionsPage.suspendSubscription')}</Button></>}>
                 <FormGroup>
                   <FormLabel>Restaurant: {selectedSubscription.restaurantName}</FormLabel>
                   <FormLabel>Suspension Reason:</FormLabel>

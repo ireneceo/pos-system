@@ -34,13 +34,13 @@ const SortRow = styled.div`
 const SortLabel = styled.span`
   font-size: 13px;
   font-weight: 500;
-  color: #6B7280;
+  color: #4B5563;
   margin-right: 4px;
 `;
 
 const FilterSelect = styled.select`
   padding: 8px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 13px;
   background: white;
@@ -64,7 +64,7 @@ const RestaurantCard = styled.div`
   background: white;
   border-radius: 12px;
   padding: 24px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   transition: all 0.2s;
 
   &:hover {
@@ -89,8 +89,8 @@ const RestaurantName = styled.h3`
 
 const StatusBadge = styled.span<{ status?: string }>`
   font-size: 12px;
-  color: ${props => props.status === 'active' ? '#059669' : '#6B7280'};
-  background: ${props => props.status === 'active' ? '#ECFDF5' : '#F3F4F6'};
+  color: ${props => props.status === 'active' ? '#059669' : '#4B5563'};
+  background: ${props => props.status === 'active' ? '#ECFDF5' : '#F1F4F8'};
   padding: 4px 8px;
   border-radius: 4px;
 `;
@@ -100,7 +100,7 @@ const MetricRow = styled.div`
   justify-content: space-between;
   align-items: center;
   padding: 10px 0;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
 
   &:last-child {
     border-bottom: none;
@@ -109,7 +109,7 @@ const MetricRow = styled.div`
 
 const MetricLabel = styled.span`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const MetricValue = styled.div`
@@ -134,7 +134,7 @@ const RankingSection = styled.div`
   background: white;
   border-radius: 12px;
   padding: 24px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
 `;
 
 const SectionTitle = styled.h2`
@@ -148,7 +148,7 @@ const RankingItem = styled.div`
   display: flex;
   align-items: center;
   padding: 16px 0;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
 
   &:last-child {
     border-bottom: none;
@@ -163,9 +163,9 @@ const RankNumber = styled.div<{ rank: number }>`
     if (props.rank === 1) return '#FFD700';
     if (props.rank === 2) return '#C0C0C0';
     if (props.rank === 3) return '#CD7F32';
-    return '#E5E7EB';
+    return '#C7CED6';
   }};
-  color: ${props => props.rank <= 3 ? 'white' : '#6B7280'};
+  color: ${props => props.rank <= 3 ? 'white' : '#4B5563'};
   display: flex;
   align-items: center;
   justify-content: center;
@@ -192,7 +192,7 @@ const RankStats = styled.div`
   flex-wrap: wrap;
   gap: 12px;
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const RankStat = styled.span`
@@ -640,7 +640,7 @@ const OwnerPerformance: React.FC = () => {
                 {sortedRestaurants.map((restaurant) => (
                   <RestaurantCard key={restaurant.id}>
                     <RestaurantHeader>
-                      <RestaurantName>{restaurant.name}{restaurant.branch_name && <span style={{ fontSize: '12px', fontWeight: 500, color: '#6B7C93', marginLeft: '6px' }}>({restaurant.branch_name})</span>}</RestaurantName>
+                      <RestaurantName>{restaurant.name}{restaurant.branch_name && <span style={{ fontSize: '12px', fontWeight: 500, color: '#4B5563', marginLeft: '6px' }}>({restaurant.branch_name})</span>}</RestaurantName>
                       <StatusBadge status={restaurant.status}>
                         {restaurant.status === 'active' ? 'Active' : restaurant.status}
                       </StatusBadge>

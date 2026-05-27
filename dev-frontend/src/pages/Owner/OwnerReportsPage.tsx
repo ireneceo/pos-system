@@ -21,14 +21,14 @@ import {
 // Styled Components
 const ReportsContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #FAFBFC;
+  background-color: #F9FAFB;
   min-height: 100vh;
 `;
 
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -86,7 +86,7 @@ const ChartCard = styled.div`
   background: white;
   padding: 24px;
   border-radius: 8px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
 `;
 
 const ChartTitle = styled.h3`
@@ -100,7 +100,7 @@ const TableCard = styled.div`
   background: white;
   padding: 24px;
   border-radius: 8px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
 `;
 
 const Table = styled.table`
@@ -111,9 +111,9 @@ const Table = styled.table`
 const TableHeader = styled.th`
   padding: 12px 0;
   text-align: left;
-  border-bottom: 1px solid #F6F9FC;
+  border-bottom: 1px solid #F4F6F9;
   font-size: 11px;
-  color: #6B7C93;
+  color: #4B5563;
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.3px;
@@ -122,7 +122,7 @@ const TableHeader = styled.th`
 const TableCell = styled.td`
   padding: 12px 0;
   text-align: left;
-  border-bottom: 1px solid #F6F9FC;
+  border-bottom: 1px solid #F4F6F9;
   font-size: 13px;
   color: #0A2540;
 `;
@@ -130,7 +130,7 @@ const TableCell = styled.td`
 const ProgressBar = styled.div<{ percentage: number }>`
   width: 100%;
   height: 4px;
-  background: #F3F4F6;
+  background: #F1F4F8;
   border-radius: 2px;
   overflow: hidden;
   position: relative;
@@ -150,23 +150,23 @@ const ProgressBar = styled.div<{ percentage: number }>`
 // Drilldown Table Styles
 const DrilldownRow = styled.tr<{ level?: number; clickable?: boolean }>`
   background: ${props =>
-    props.level === 0 ? '#FAFBFC' :
+    props.level === 0 ? '#F9FAFB' :
     props.level === 1 ? '#FFFFFF' :
-    '#F8FAFC'};
+    '#F1F4F8'};
   cursor: ${props => props.clickable ? 'pointer' : 'default'};
   transition: all 0.2s;
 
   &:hover {
-    background: ${props => props.clickable ? '#F6F9FC' : 'inherit'};
+    background: ${props => props.clickable ? '#F4F6F9' : 'inherit'};
   }
 `;
 
 const DrilldownCell = styled.td<{ level?: number; bold?: boolean }>`
   padding: 12px 16px;
   text-align: left;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
   font-size: 13px;
-  color: ${props => props.bold ? '#0A2540' : '#6B7280'};
+  color: ${props => props.bold ? '#0A2540' : '#4B5563'};
   font-weight: ${props => props.bold ? 600 : 400};
   padding-left: ${props => props.level ? `${16 + (props.level * 24)}px` : '16px'};
 `;
@@ -176,7 +176,7 @@ const ExpandIcon = styled.span<{ expanded?: boolean }>`
   margin-right: 8px;
   transition: transform 0.2s;
   transform: ${props => props.expanded ? 'rotate(90deg)' : 'rotate(0deg)'};
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 // Restaurant Filter Dropdown
@@ -192,7 +192,7 @@ const DropdownContainer = styled.div`
 
 const DropdownInput = styled.input`
   padding: 8px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   background: white;
@@ -207,7 +207,7 @@ const DropdownInput = styled.input`
   }
 
   &:hover {
-    border-color: #D1D5DB;
+    border-color: #6B7280;
   }
 `;
 
@@ -217,7 +217,7 @@ const DropdownMenu = styled.div<{ show: boolean }>`
   left: 0;
   right: 0;
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   max-height: 200px;
   overflow-y: auto;
@@ -233,7 +233,7 @@ const DropdownItem = styled.div`
   transition: background-color 0.2s;
 
   &:hover {
-    background: #F8FAFC;
+    background: #F1F4F8;
   }
 
   &:last-child {
@@ -250,7 +250,7 @@ const ItemName = styled.div`
 
 const ItemDetails = styled.div`
   font-size: 11px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const ClearButton = styled.button`
@@ -261,7 +261,7 @@ const ClearButton = styled.button`
   background: none;
   border: none;
   font-size: 16px;
-  color: #9CA3AF;
+  color: #6B7280;
   cursor: pointer;
   padding: 0;
   width: 20px;
@@ -271,7 +271,7 @@ const ClearButton = styled.button`
   justify-content: center;
 
   &:hover {
-    color: #6B7280;
+    color: #4B5563;
   }
 `;
 
@@ -280,7 +280,7 @@ const RankingCard = styled.div`
   background: white;
   padding: 24px;
   border-radius: 8px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   margin-bottom: 24px;
 `;
 
@@ -297,8 +297,8 @@ const RankBadge = styled.span<{ rank: number }>`
     props.rank === 1 ? 'linear-gradient(135deg, #FFD700, #FFA500)' :
     props.rank === 2 ? 'linear-gradient(135deg, #C0C0C0, #A0A0A0)' :
     props.rank === 3 ? 'linear-gradient(135deg, #CD7F32, #8B4513)' :
-    '#F3F4F6'};
-  color: ${props => props.rank <= 3 ? 'white' : '#6B7280'};
+    '#F1F4F8'};
+  color: ${props => props.rank <= 3 ? 'white' : '#4B5563'};
 `;
 
 // Types
@@ -952,7 +952,7 @@ const OwnerReportsPage: React.FC = () => {
             {loading ? (
               <div style={{ textAlign: 'center', padding: '40px' }}>{t('owner:ownerReportsPage.loading')}</div>
             ) : filteredOrders.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>{t('owner:ownerReportsPage.noOrderDataAvailableForTheSelectedPeriod')}</div>
+              <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>{t('owner:ownerReportsPage.noOrderDataAvailableForTheSelectedPeriod')}</div>
             ) : (
               <div>
                 <StatsRow>
@@ -983,10 +983,10 @@ const OwnerReportsPage: React.FC = () => {
                     <ChartTitle>{t('owner:ownerReportsPage.revenueTrend')}</ChartTitle>
                     <ResponsiveContainer width="100%" height={300}>
                       <LineChart data={salesData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#F6F9FC" />
-                        <XAxis dataKey="date" stroke="#6B7C93" fontSize={12} />
-                        <YAxis stroke="#6B7C93" fontSize={12} width={60} />
-                        <Tooltip contentStyle={{ background: 'white', border: '1px solid #E6EBF1', borderRadius: '6px' }} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#F4F6F9" />
+                        <XAxis dataKey="date" stroke="#4B5563" fontSize={12} />
+                        <YAxis stroke="#4B5563" fontSize={12} width={60} />
+                        <Tooltip contentStyle={{ background: 'white', border: '1px solid #C7CED6', borderRadius: '6px' }} />
                         <Line type="monotone" dataKey="sales" stroke="#635BFF" strokeWidth={2} dot={{ fill: '#635BFF', r: 4 }} />
                       </LineChart>
                     </ResponsiveContainer>
@@ -1009,10 +1009,10 @@ const OwnerReportsPage: React.FC = () => {
                   <ChartTitle>{t('owner:ownerReportsPage.hourlyOrdersDistribution')}</ChartTitle>
                   <ResponsiveContainer width="100%" height={250}>
                     <BarChart data={hourlyData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#F6F9FC" />
-                      <XAxis dataKey="hour" stroke="#6B7C93" fontSize={12} />
-                      <YAxis stroke="#6B7C93" fontSize={12} width={60} />
-                      <Tooltip contentStyle={{ background: 'white', border: '1px solid #E6EBF1', borderRadius: '6px' }} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#F4F6F9" />
+                      <XAxis dataKey="hour" stroke="#4B5563" fontSize={12} />
+                      <YAxis stroke="#4B5563" fontSize={12} width={60} />
+                      <Tooltip contentStyle={{ background: 'white', border: '1px solid #C7CED6', borderRadius: '6px' }} />
                       <Bar dataKey="orders" fill="#635BFF" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
@@ -1027,7 +1027,7 @@ const OwnerReportsPage: React.FC = () => {
             {loading ? (
               <div style={{ textAlign: 'center', padding: '40px' }}>{t('owner:ownerReportsPage.loading')}</div>
             ) : filteredOrders.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>{t('owner:ownerReportsPage.noOrderDataAvailableForTheSelectedPeriod')}</div>
+              <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>{t('owner:ownerReportsPage.noOrderDataAvailableForTheSelectedPeriod')}</div>
             ) : (
               <div>
                 <StatsRow>
@@ -1174,14 +1174,14 @@ const OwnerReportsPage: React.FC = () => {
                           #{index + 1}
                         </DataTableCell>
                         <DataTableCell data-label={t('owner:ownerReportsPage.menuItem')} style={{ fontWeight: 600 }}>{menu.name}</DataTableCell>
-                        <DataTableCell data-label={t('owner:ownerReportsPage.category')}><span style={{ padding: '2px 6px', borderRadius: '4px', fontSize: '11px', backgroundColor: '#F3F4F6', color: '#6B7280' }}>{menu.category}</span></DataTableCell>
+                        <DataTableCell data-label={t('owner:ownerReportsPage.category')}><span style={{ padding: '2px 6px', borderRadius: '4px', fontSize: '11px', backgroundColor: '#F1F4F8', color: '#4B5563' }}>{menu.category}</span></DataTableCell>
                         <DataTableCell data-label={t('owner:ownerReportsPage.price')}>{formatCurrency(menu.price)}</DataTableCell>
                         <DataTableCell data-label={t('owner:ownerReportsPage.orders')}>{menu.orders.toLocaleString()}</DataTableCell>
                         <DataTableCell data-label={t('owner:ownerReportsPage.revenue')}>{formatCurrency(menu.revenue)}</DataTableCell>
                         <DataTableCell data-label={t('owner:ownerReportsPage.performance')}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <ProgressBar percentage={(menu.orders / maxOrders) * 100} />
-                            <span style={{ fontSize: '12px', color: '#6B7C93', minWidth: '40px' }}>{Math.round((menu.orders / maxOrders) * 100)}%</span>
+                            <span style={{ fontSize: '12px', color: '#4B5563', minWidth: '40px' }}>{Math.round((menu.orders / maxOrders) * 100)}%</span>
                           </div>
                         </DataTableCell>
                       </DataTableRow>
@@ -1269,7 +1269,7 @@ const OwnerReportsPage: React.FC = () => {
                       <DataTableCell data-label={t('owner:ownerReportsPage.efficiency')}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <ProgressBar percentage={item.efficiency} />
-                          <span style={{ fontSize: '12px', color: '#6B7C93' }}>{item.efficiency}%</span>
+                          <span style={{ fontSize: '12px', color: '#4B5563' }}>{item.efficiency}%</span>
                         </div>
                       </DataTableCell>
                     </DataTableRow>
@@ -1320,7 +1320,7 @@ const OwnerReportsPage: React.FC = () => {
                           <DataTableCell data-label={t('owner:ownerReportsPage.performance')}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                               <ProgressBar percentage={percentage} />
-                              <span style={{ fontSize: '12px', color: '#6B7C93', minWidth: '40px' }}>{percentage}%</span>
+                              <span style={{ fontSize: '12px', color: '#4B5563', minWidth: '40px' }}>{percentage}%</span>
                             </div>
                           </DataTableCell>
                         </DataTableRow>

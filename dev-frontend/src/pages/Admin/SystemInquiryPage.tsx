@@ -85,7 +85,7 @@ const TicketCard = styled.div`
   background: white;
   border-radius: 12px;
   padding: 24px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   transition: all 0.2s;
   overflow: hidden;
   cursor: pointer;
@@ -111,7 +111,7 @@ const TicketInfo = styled.div`
 const TicketNumber = styled.div`
   font-size: 12px;
   font-weight: 500;
-  color: #6B7280;
+  color: #4B5563;
   margin-bottom: 6px;
 `;
 
@@ -126,7 +126,7 @@ const TicketSubject = styled.div`
 
 const CustomerInfo = styled.div`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const TicketBadges = styled.div`
@@ -149,7 +149,7 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'open': return '#FEF3C7';
       case 'in-progress': return '#DBEAFE';
       case 'closed': return '#ECFDF5';
-      default: return '#F3F4F6';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
@@ -157,7 +157,7 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'open': return '#D97706';
       case 'in-progress': return '#1E40AF';
       case 'closed': return '#059669';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 `;
@@ -174,7 +174,7 @@ const PriorityBadge = styled.span<{ priority: string }>`
       case 'high': return '#FED7AA';
       case 'medium': return '#FEF3C7';
       case 'low': return '#E0F2FE';
-      default: return '#F3F4F6';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
@@ -183,20 +183,20 @@ const PriorityBadge = styled.span<{ priority: string }>`
       case 'high': return '#EA580C';
       case 'medium': return '#D97706';
       case 'low': return '#0891B2';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 `;
 
 const TicketDescription = styled.div`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   line-height: 1.5;
   margin: 16px 0;
   padding: 16px;
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-radius: 8px;
-  border-left: 3px solid #E6EBF1;
+  border-left: 3px solid #C7CED6;
   word-break: break-word;
 `;
 
@@ -205,9 +205,9 @@ const TicketMeta = styled.div`
   justify-content: space-between;
   align-items: center;
   padding-top: 16px;
-  border-top: 1px solid #F3F4F6;
+  border-top: 1px solid #F1F4F8;
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const MetaItem = styled.div`
@@ -223,22 +223,22 @@ const MetaLabel = styled.span`
 `;
 
 const MetaValue = styled.span`
-  color: #374151;
+  color: #1F2937;
 `;
 
 const CloseTicketButton = styled.button`
   padding: 4px 12px;
   font-size: 12px;
   font-weight: 500;
-  border: 1px solid #D1D5DB;
+  border: 1px solid #6B7280;
   border-radius: 6px;
   background: #fff;
-  color: #6B7280;
+  color: #4B5563;
   cursor: pointer;
   transition: all 0.15s;
   &:hover {
-    background: #E5E7EB;
-    color: #374151;
+    background: #C7CED6;
+    color: #1F2937;
   }
 `;
 
@@ -261,14 +261,14 @@ const FormLabel = styled.label`
   display: block;
   font-size: 13px;
   font-weight: 500;
-  color: #6B7C93;
+  color: #4B5563;
   margin-bottom: 8px;
 `;
 
 const FormInput = styled.input`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.15s;
@@ -284,7 +284,7 @@ const FormInput = styled.input`
 const FormSelect = styled.select`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -302,7 +302,7 @@ const FormSelect = styled.select`
 const FormTextArea = styled.textarea`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   resize: vertical;
@@ -328,7 +328,7 @@ const DropdownContainer = styled.div`
   left: 0;
   right: 0;
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   max-height: 240px;
   overflow-y: auto;
@@ -340,7 +340,7 @@ const DropdownContainer = styled.div`
 const DropdownItem = styled.div`
   padding: 12px 16px;
   cursor: pointer;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
   transition: background 0.15s;
 
   &:last-child {
@@ -348,7 +348,7 @@ const DropdownItem = styled.div`
   }
 
   &:hover {
-    background: #F8FAFC;
+    background: #F1F4F8;
   }
 `;
 
@@ -360,7 +360,7 @@ const DropdownItemTitle = styled.div`
 
 const DropdownItemSubtitle = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const SelectedUserBadge = styled.div`
@@ -816,10 +816,10 @@ const SystemInquiryPage: React.FC = () => {
             <div style={{
               textAlign: 'center',
               padding: '60px 20px',
-              color: '#6B7280',
+              color: '#4B5563',
               gridColumn: '1 / -1'
             }}>
-              <h3 style={{ color: '#374151', marginBottom: '8px' }}>{t('admin:systemInquiryPage.noTicketsYet')}</h3>
+              <h3 style={{ color: '#1F2937', marginBottom: '8px' }}>{t('admin:systemInquiryPage.noTicketsYet')}</h3>
               <p>{t('admin:systemInquiryPage.noSupportTicketsHaveBeenSubmitted')}</p>
             </div>
           )}
@@ -984,7 +984,7 @@ const SystemInquiryPage: React.FC = () => {
                     </div>
                     <div>
                       <FormLabel>{t('admin:systemInquiryPage.category')}</FormLabel>
-                      <div style={{ padding: '8px 0', color: '#374151', textTransform: 'capitalize' }}>
+                      <div style={{ padding: '8px 0', color: '#1F2937', textTransform: 'capitalize' }}>
                         {selectedTicket.category.replace('-', ' ')}
                       </div>
                     </div>
@@ -992,11 +992,11 @@ const SystemInquiryPage: React.FC = () => {
 
                   <div>
                     <FormLabel>{t('admin:systemInquiryPage.customerInformation')}</FormLabel>
-                    <div style={{ padding: '12px', backgroundColor: '#F8FAFC', borderRadius: '8px', border: '1px solid #E6EBF1' }}>
+                    <div style={{ padding: '12px', backgroundColor: '#F1F4F8', borderRadius: '8px', border: '1px solid #C7CED6' }}>
                       <div style={{ marginBottom: '4px', color: '#0A2540', fontWeight: '600' }}>
                         {selectedTicket.customerName}
                       </div>
-                      <div style={{ color: '#6B7280', fontSize: '14px' }}>
+                      <div style={{ color: '#4B5563', fontSize: '14px' }}>
                         {selectedTicket.customerEmail}
                       </div>
                     </div>
@@ -1013,13 +1013,13 @@ const SystemInquiryPage: React.FC = () => {
                     <FormLabel>{t('admin:systemInquiryPage.description')}</FormLabel>
                     <div style={{
                       padding: '12px',
-                      backgroundColor: '#F8FAFC',
+                      backgroundColor: '#F1F4F8',
                       borderRadius: '8px',
-                      border: '1px solid #E6EBF1',
+                      border: '1px solid #C7CED6',
                       minHeight: '100px',
                       whiteSpace: 'pre-wrap',
                       lineHeight: '1.5',
-                      color: '#374151'
+                      color: '#1F2937'
                     }}>
                       {selectedTicket.description}
                     </div>
@@ -1032,13 +1032,13 @@ const SystemInquiryPage: React.FC = () => {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                     <div>
                       <FormLabel>{t('admin:systemInquiryPage.createdAt')}</FormLabel>
-                      <div style={{ padding: '8px 0', color: '#6B7280' }}>
+                      <div style={{ padding: '8px 0', color: '#4B5563' }}>
                         {formatDateTime(selectedTicket.createdAt)}
                       </div>
                     </div>
                     <div>
                       <FormLabel>{t('admin:systemInquiryPage.lastUpdated')}</FormLabel>
-                      <div style={{ padding: '8px 0', color: '#6B7280' }}>
+                      <div style={{ padding: '8px 0', color: '#4B5563' }}>
                         {formatDateTime(selectedTicket.updatedAt)}
                       </div>
                     </div>

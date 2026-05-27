@@ -68,7 +68,7 @@ root.render(
             <h1 style={{ fontSize: '24px', marginBottom: '12px', color: '#1F2937' }}>
               Something went wrong
             </h1>
-            <p style={{ color: '#6B7280', marginBottom: '24px', fontSize: '14px' }}>
+            <p style={{ color: '#4B5563', marginBottom: '24px', fontSize: '14px' }}>
               Please try again or contact support if the problem persists.
             </p>
             <button

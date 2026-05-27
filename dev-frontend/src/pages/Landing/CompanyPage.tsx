@@ -5,7 +5,7 @@ import SEOHead from '../../components/Common/SEOHead';
 import { useTranslation } from 'react-i18next';
 
 const PageContainer = styled.div`
-  background: #FAFBFC;
+  background: #F9FAFB;
 `;
 
 const HeroSection = styled.section`
@@ -86,7 +86,7 @@ const SectionTitle = styled.h2`
 const Paragraph = styled.p`
   font-size: 16px;
   line-height: 1.8;
-  color: #6B7C93;
+  color: #4B5563;
   margin-bottom: 20px;
 
   &:last-child {
@@ -126,7 +126,7 @@ const ContactItem = styled.div`
 const ContactLabel = styled.span`
   font-size: 14px;
   font-weight: 600;
-  color: #6B7C93;
+  color: #4B5563;
   min-width: 60px;
 `;
 
@@ -153,7 +153,7 @@ const ServiceCard = styled.div`
   background: #F8F9FB;
   border-radius: 12px;
   padding: 24px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   transition: all 0.3s;
 
   &:hover {
@@ -172,7 +172,7 @@ const ServiceTitle = styled.h4`
 const ServiceDescription = styled.p`
   font-size: 14px;
   line-height: 1.6;
-  color: #6B7C93;
+  color: #4B5563;
   margin: 0;
 `;
 

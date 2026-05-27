@@ -34,7 +34,7 @@ const formatPickupTimeRange = (dateString: string, timeZone?: string): string =>
 // ─── Styled Components ────────────────────────────────────────
 
 const Container = styled.div`
-  background: #F0F2F5;
+  background: #C7CED6;
   min-height: 100vh;
   color: #0A2540;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -60,7 +60,7 @@ const HeaderInfo = styled.div`
 const Clock = styled.div`
   font-size: 18px;
   font-weight: 500;
-  color: #6B7C93;
+  color: #4B5563;
 `;
 
 const ConnectionStatus = styled.div<{ connected: boolean }>`
@@ -127,7 +127,7 @@ const ColumnHeader = styled.div<{ status: string }>`
       case 'pending': return '#FFF7ED';
       case 'preparing': return '#EFF6FF';
       case 'ready': return '#ECFDF5';
-      default: return '#F6F9FC';
+      default: return '#F4F6F9';
     }
   }};
   border: 2px solid ${props => {
@@ -135,7 +135,7 @@ const ColumnHeader = styled.div<{ status: string }>`
       case 'pending': return '#FBBF24';
       case 'preparing': return '#60A5FA';
       case 'ready': return '#34D399';
-      default: return '#E6EBF1';
+      default: return '#C7CED6';
     }
   }};
 `;
@@ -193,14 +193,14 @@ const OrdersContainer = styled.div`
   }
 
   &::-webkit-scrollbar-thumb {
-    background: #D1D5DB;
+    background: #6B7280;
     border-radius: 3px;
   }
 `;
 
 const OrderCard = styled.div`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   padding: 12px;
   margin-bottom: 8px;
@@ -228,7 +228,7 @@ const OrderLeft = styled.div`
 const OrderNumber = styled.div`
   font-size: 13px;
   font-weight: 600;
-  color: #6B7C93;
+  color: #4B5563;
 `;
 
 const OrderTypeBadge = styled.span<{ variant?: 'takeaway' | 'pickup' | 'delivery' }>`
@@ -261,14 +261,14 @@ const OrderRight = styled.div`
 
 const OrderId = styled.div`
   font-size: 11px;
-  color: #9CA3AF;
+  color: #6B7280;
   font-weight: 500;
 `;
 
 const ElapsedTime = styled.div<{ urgent?: boolean }>`
   font-size: 13px;
   font-weight: 600;
-  color: ${props => props.urgent ? '#DC2626' : '#6B7C93'};
+  color: ${props => props.urgent ? '#DC2626' : '#4B5563'};
 `;
 
 // ─── Progress Bar ─────────────────────────────────────────────
@@ -283,7 +283,7 @@ const ProgressContainer = styled.div`
 const ProgressBar = styled.div`
   flex: 1;
   height: 4px;
-  background: #F3F4F6;
+  background: #F1F4F8;
   border-radius: 2px;
   overflow: hidden;
 `;
@@ -310,9 +310,9 @@ const ItemRow = styled.div<{ done?: boolean }>`
   align-items: center;
   padding: 5px 8px;
   margin: 0 -8px;
-  border-bottom: 1px solid #F6F9FC;
+  border-bottom: 1px solid #F4F6F9;
   border-radius: 4px;
-  background: ${props => props.done ? '#F3F4F6' : 'transparent'};
+  background: ${props => props.done ? '#F1F4F8' : 'transparent'};
 
   &:last-child {
     border-bottom: none;
@@ -327,7 +327,7 @@ const ItemInfo = styled.div`
 const ItemName = styled.div<{ done?: boolean }>`
   font-size: 16px;
   font-weight: 700;
-  color: ${props => props.done ? '#D1D5DB' : '#0A2540'};
+  color: ${props => props.done ? '#6B7280' : '#0A2540'};
 `;
 
 const OptionTags = styled.div`
@@ -343,8 +343,8 @@ const OptionTag = styled.span<{ done?: boolean }>`
   border-radius: 4px;
   font-size: 12px;
   font-weight: 600;
-  background: ${props => props.done ? '#E5E7EB' : '#EDE9FE'};
-  color: ${props => props.done ? '#9CA3AF' : '#6D28D9'};
+  background: ${props => props.done ? '#C7CED6' : '#EDE9FE'};
+  color: ${props => props.done ? '#6B7280' : '#6D28D9'};
 `;
 
 const SpecialTag = styled.span<{ done?: boolean }>`
@@ -354,8 +354,8 @@ const SpecialTag = styled.span<{ done?: boolean }>`
   font-size: 12px;
   font-weight: 600;
   font-style: italic;
-  background: ${props => props.done ? '#E5E7EB' : '#FEF2F2'};
-  color: ${props => props.done ? '#9CA3AF' : '#DC2626'};
+  background: ${props => props.done ? '#C7CED6' : '#FEF2F2'};
+  color: ${props => props.done ? '#6B7280' : '#DC2626'};
 `;
 
 const ItemQty = styled.span<{ highlight?: boolean; done?: boolean }>`
@@ -370,7 +370,7 @@ const ItemQty = styled.span<{ highlight?: boolean; done?: boolean }>`
     font-size: 14px;
     letter-spacing: 0.5px;
     ${props.done
-      ? `background: #E5E7EB; color: #9CA3AF;`
+      ? `background: #C7CED6; color: #6B7280;`
       : `background: #FEF2F2; color: #DC2626;`
     }
   ` : `
@@ -386,9 +386,9 @@ const ItemActionButton = styled.button<{ done?: boolean; statusColor?: string }>
   cursor: pointer;
   transition: all 0.15s;
   flex-shrink: 0;
-  border: 1px solid ${props => props.done ? '#E6EBF1' : (props.statusColor || '#10B981')};
-  background: ${props => props.done ? '#F3F4F6' : (props.statusColor || '#10B981')};
-  color: ${props => props.done ? '#9CA3AF' : 'white'};
+  border: 1px solid ${props => props.done ? '#C7CED6' : (props.statusColor || '#10B981')};
+  background: ${props => props.done ? '#F1F4F8' : (props.statusColor || '#10B981')};
+  color: ${props => props.done ? '#6B7280' : 'white'};
 
   &:hover {
     ${props => !props.done && `
@@ -400,7 +400,7 @@ const ItemActionButton = styled.button<{ done?: boolean; statusColor?: string }>
 const SetItemsWrap = styled.div`
   margin-left: 20px;
   padding-left: 10px;
-  border-left: 2px solid #E6EBF1;
+  border-left: 2px solid #C7CED6;
 `;
 
 const SetItemRow = styled.div<{ done?: boolean }>`
@@ -409,13 +409,13 @@ const SetItemRow = styled.div<{ done?: boolean }>`
   padding: 4px 8px;
   margin: 0 -8px;
   border-radius: 4px;
-  background: ${props => props.done ? '#F3F4F6' : 'transparent'};
+  background: ${props => props.done ? '#F1F4F8' : 'transparent'};
 `;
 
 const SetItemName = styled.div<{ done?: boolean }>`
   font-size: 15px;
   font-weight: 600;
-  color: ${props => props.done ? '#D1D5DB' : '#0A2540'};
+  color: ${props => props.done ? '#6B7280' : '#0A2540'};
   flex: 1;
 `;
 
@@ -462,19 +462,19 @@ const ActionBtn = styled.button<{ color: string; solid?: boolean }>`
 
 const RevertBtn = styled.button`
   padding: 8px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
   background: white;
-  color: #6B7C93;
+  color: #4B5563;
   flex-shrink: 0;
 
   &:hover {
-    background: #F6F9FC;
-    border-color: #D1D5DB;
+    background: #F4F6F9;
+    border-color: #6B7280;
   }
 `;
 
@@ -525,7 +525,7 @@ interface PreparingBatch {
 
 const ViewToggle = styled.div`
   display: flex;
-  background: #F3F4F6;
+  background: #F1F4F8;
   border-radius: 6px;
   padding: 2px;
 `;
@@ -539,7 +539,7 @@ const ViewToggleBtn = styled.button<{ active: boolean }>`
   cursor: pointer;
   transition: all 0.15s;
   background: ${props => props.active ? 'white' : 'transparent'};
-  color: ${props => props.active ? '#0A2540' : '#6B7C93'};
+  color: ${props => props.active ? '#0A2540' : '#4B5563'};
   box-shadow: ${props => props.active ? '0 1px 2px rgba(0,0,0,0.08)' : 'none'};
   flex-shrink: 0;
   white-space: nowrap;
@@ -549,7 +549,7 @@ const ViewToggleBtn = styled.button<{ active: boolean }>`
 
 const GroupCard = styled.div`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   padding: 12px;
   margin-bottom: 8px;
@@ -566,7 +566,7 @@ const GroupMenuName = styled.div`
 
 const GroupOrderList = styled.div`
   font-size: 12px;
-  color: #6B7C93;
+  color: #4B5563;
   margin-top: 4px;
   line-height: 1.4;
 `;
@@ -1504,7 +1504,7 @@ const KitchenDisplayPage: React.FC = () => {
       case 'pending': return '#F59E0B';
       case 'preparing': return '#3B82F6';
       case 'ready': return '#10B981';
-      default: return '#6B7C93';
+      default: return '#4B5563';
     }
   };
 
@@ -1578,7 +1578,7 @@ const KitchenDisplayPage: React.FC = () => {
               <ItemRow done={isItemDoneForColumn(order.status, item.status || 'pending') && order.status !== 'pending'}>
                 <ItemInfo>
                   {item.is_set_menu ? (
-                    <div style={{ fontSize: '12px', fontWeight: 500, color: '#6B7C93' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 500, color: '#4B5563' }}>
                       {formatItemName(item.name)} {item.quantity > 1 && <ItemQty highlight done={isItemDoneForColumn(order.status, item.status || 'pending') && order.status !== 'pending'}>x {item.quantity}</ItemQty>}
                     </div>
                   ) : (
@@ -1694,7 +1694,7 @@ const KitchenDisplayPage: React.FC = () => {
             onClick={(e) => { e.stopPropagation(); setHistoryOrderId(Number(order.id)); }}
             style={{
               background: 'transparent', border: 'none', cursor: 'pointer',
-              color: '#6B7C93', fontSize: 11, padding: '2px 4px', fontWeight: 500
+              color: '#4B5563', fontSize: 11, padding: '2px 4px', fontWeight: 500
             }}
           >
             {t('history.viewLink', 'View history')}
@@ -2103,17 +2103,17 @@ const KitchenDisplayPage: React.FC = () => {
           <div style={{
             marginTop: 8,
             paddingTop: group.plainQty > 0 ? 8 : 0,
-            borderTop: group.plainQty > 0 ? '1px solid #E6EBF1' : 'none'
+            borderTop: group.plainQty > 0 ? '1px solid #C7CED6' : 'none'
           }}>
             {group.optionSources.map((src, si) => (
               <div key={`opt-${si}`} style={{
                 padding: '6px 0',
-                borderBottom: si < group.optionSources.length - 1 ? '1px dashed #E6EBF1' : 'none'
+                borderBottom: si < group.optionSources.length - 1 ? '1px dashed #C7CED6' : 'none'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#9CA3AF' }}>{src.label}</span>
-                  <span style={{ fontSize: 11, color: '#9CA3AF' }}>{src.orderNumber}</span>
-                  {src.quantity > 1 && <span style={{ fontSize: 11, fontWeight: 600, color: '#9CA3AF' }}>x{src.quantity}</span>}
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#6B7280' }}>{src.label}</span>
+                  <span style={{ fontSize: 11, color: '#6B7280' }}>{src.orderNumber}</span>
+                  {src.quantity > 1 && <span style={{ fontSize: 11, fontWeight: 600, color: '#6B7280' }}>x{src.quantity}</span>}
                 </div>
                   <OptionTags>
                     {src.options?.map((opt, i) => <OptionTag key={i}>{opt}</OptionTag>)}
@@ -2531,9 +2531,9 @@ const KitchenDisplayPage: React.FC = () => {
           <div style={{
             display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
             padding: '4px 12px',
-            background: kdsStaff ? '#F0F4FF' : '#F8FAFC',
+            background: kdsStaff ? '#F0F4FF' : '#F1F4F8',
             borderRadius: 8,
-            border: `1px solid ${kdsStaff ? '#DDD9FF' : '#E6EBF1'}`,
+            border: `1px solid ${kdsStaff ? '#DDD9FF' : '#C7CED6'}`,
             lineHeight: 1.2
           }}>
             <span style={{
@@ -2551,7 +2551,7 @@ const KitchenDisplayPage: React.FC = () => {
                 : t('pin.switchStaffTitle', 'Sign in as a different kitchen staff for accurate audit logs')}
               style={{
                 border: 'none', background: 'transparent', cursor: 'pointer',
-                color: kdsStaff ? '#3B30D9' : '#6B7C93',
+                color: kdsStaff ? '#3B30D9' : '#4B5563',
                 fontWeight: 500, fontSize: 10, padding: 0,
                 marginTop: 2, textAlign: 'left', whiteSpace: 'nowrap'
               }}
@@ -2567,7 +2567,7 @@ const KitchenDisplayPage: React.FC = () => {
             style={{
               width: 32, height: 32, borderRadius: 8, border: 'none', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
-              background: audioEnabled ? '#635BFF' : '#E6EBF1',
+              background: audioEnabled ? '#635BFF' : '#C7CED6',
               transition: 'all 0.15s'
             }}
           >
@@ -2697,7 +2697,7 @@ const KitchenDisplayPage: React.FC = () => {
                 type="button"
                 onClick={() => setHistoryOrderId(null)}
                 style={{
-                  border: 'none', background: '#F0F2F5', color: '#0A2540',
+                  border: 'none', background: '#C7CED6', color: '#0A2540',
                   borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer'
                 }}
               >

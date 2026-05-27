@@ -20,9 +20,9 @@ interface Props {
 
 const Box = styled.div`
   padding: 20px;
-  background: #F6F9FC;
+  background: #F4F6F9;
   border-radius: 8px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
 `;
 
 const Title = styled.h4`
@@ -35,7 +35,7 @@ const Title = styled.h4`
 const Description = styled.p`
   margin: 0 0 16px;
   font-size: 13px;
-  color: #6B7C93;
+  color: #4B5563;
   line-height: 1.5;
 `;
 
@@ -72,7 +72,7 @@ const ErrorMsg = styled.div`
 const Note = styled.div`
   margin-top: 12px;
   font-size: 12px;
-  color: #6B7C93;
+  color: #4B5563;
   line-height: 1.5;
 `;
 

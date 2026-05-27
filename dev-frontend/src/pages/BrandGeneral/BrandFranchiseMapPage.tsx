@@ -98,7 +98,7 @@ interface BrandFranchiseMapPageProps {
 
 const STATUS_COLOR: Record<string, string> = {
   active: '#10B981', trial: '#F59E0B', suspended: '#EF4444', overdue: '#EAB308',
-  inactive: '#9CA3AF', expired: '#9CA3AF', cancelled: '#9CA3AF'
+  inactive: '#6B7280', expired: '#6B7280', cancelled: '#6B7280'
 };
 
 const FRANCHISE_TYPES = ['franchise', 'license', 'master'];
@@ -128,24 +128,24 @@ const STAGE_PALETTE: Record<string, { bg: string; border: string; text: string; 
 
 const DetailPanel = styled.div`
   display: flex; flex-direction: column;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   background: white;
   overflow: hidden;
 `;
 const DetailHeader = styled.div`
   padding: 14px 16px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   display: flex; justify-content: space-between; align-items: flex-start;
   gap: 8px;
   .title { font-size: 15px; font-weight: 700; color: #0A2540; margin: 0; }
-  .sub { font-size: 11px; color: #9CA3AF; font-weight: 500; margin-top: 2px; }
-  .close { background: none; border: none; cursor: pointer; font-size: 18px; color: #6B7C93; &:hover { color: #0A2540; } }
+  .sub { font-size: 11px; color: #6B7280; font-weight: 500; margin-top: 2px; }
+  .close { background: none; border: none; cursor: pointer; font-size: 18px; color: #4B5563; &:hover { color: #0A2540; } }
 `;
 const DetailBody = styled.div`flex: 1; overflow-y: auto; padding: 14px 16px;`;
 const DetailSection = styled.div`margin-bottom: 16px;`;
 const DetailSectionTitle = styled.div`
-  font-size: 10px; font-weight: 600; color: #6B7C93;
+  font-size: 10px; font-weight: 600; color: #4B5563;
   text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;
 `;
 const StageBadge = styled.span<{ $bg: string; $text: string; $border: string }>`
@@ -160,7 +160,7 @@ const InfoRow = styled.div`
   display: flex; justify-content: space-between;
   padding: 4px 0;
   font-size: 12px;
-  color: #4B5563;
+  color: #374151;
   b { color: #0A2540; text-align: right; }
 `;
 const TileGrid = styled.div`
@@ -172,11 +172,11 @@ const TileGrid = styled.div`
 const Tile = styled.div<{ $color: string }>`
   padding: 8px;
   border-radius: 6px;
-  background: #F8FAFC;
+  background: #F1F4F8;
   border-left: 3px solid ${p => p.$color};
 `;
 const TileLabel = styled.div`
-  font-size: 9px; font-weight: 600; color: #6B7C93;
+  font-size: 9px; font-weight: 600; color: #4B5563;
   text-transform: uppercase; letter-spacing: 0.3px;
   margin-bottom: 3px;
 `;
@@ -193,7 +193,7 @@ function fmtMoney(v: any): string {
 
 const SidePanel = styled.div`
   display: flex; flex-direction: column;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   background: white;
   overflow: hidden;
@@ -201,16 +201,16 @@ const SidePanel = styled.div`
 
 const SidePanelHeader = styled.div`
   padding: 12px 14px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   font-size: 13px; font-weight: 600; color: #0A2540;
-  background: #F8FAFC;
+  background: #F1F4F8;
   display: flex; align-items: center; gap: 8px;
 `;
 
 const SearchInput = styled.input`
   flex: 1;
   padding: 4px 8px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 4px;
   font-size: 12px;
   &:focus { outline: none; border-color: #635BFF; }
@@ -227,40 +227,40 @@ const RestaurantCard = styled.div<{ $selected?: boolean }>`
   transition: background 0.12s;
   background: ${p => p.$selected ? '#F0EDFF' : 'white'};
   border-left: 3px solid ${p => p.$selected ? '#635BFF' : 'transparent'};
-  &:hover { background: ${p => p.$selected ? '#F0EDFF' : '#F8FAFC'}; }
+  &:hover { background: ${p => p.$selected ? '#F0EDFF' : '#F1F4F8'}; }
   h4 { margin: 0 0 4px; font-size: 13px; color: #0A2540; display: flex; align-items: center; gap: 6px; }
-  .addr { font-size: 11px; color: #6B7280; margin-top: 2px; }
-  .stats { margin-top: 6px; display: flex; gap: 8px; font-size: 11px; color: #4B5563; align-items: center; }
+  .addr { font-size: 11px; color: #4B5563; margin-top: 2px; }
+  .stats { margin-top: 6px; display: flex; gap: 8px; font-size: 11px; color: #374151; align-items: center; }
   .status-badge { padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; color: white; background: var(--c); }
   .type-mark { font-size: 11px; }
 `;
 
 const MapWrap = styled.div`
-  border: 1px solid #E6EBF1; border-radius: 8px; overflow: hidden; height: 640px;
+  border: 1px solid #C7CED6; border-radius: 8px; overflow: hidden; height: 640px;
   .leaflet-container { height: 100%; width: 100%; }
   @media (max-width: 960px) { height: 480px; }
 `;
 
-const Legend = styled.div`display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; color: #4B5563;`;
+const Legend = styled.div`display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; color: #374151;`;
 const LegendItem = styled.span`
   display: inline-flex; align-items: center; gap: 6px;
-  &::before { content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--c, #9CA3AF); }
+  &::before { content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--c, #6B7280); }
 `;
 
-const Summary = styled.div`display: flex; gap: 16px; font-size: 13px; color: #4B5563; strong { color: #0A2540; }`;
+const Summary = styled.div`display: flex; gap: 16px; font-size: 13px; color: #374151; strong { color: #0A2540; }`;
 
 const UnmappedBox = styled.div`
-  border: 1px solid #E6EBF1; border-radius: 8px; padding: 12px 16px; background: #FAFBFC; margin-top: 16px;
+  border: 1px solid #C7CED6; border-radius: 8px; padding: 12px 16px; background: #F9FAFB; margin-top: 16px;
 `;
-const UnmappedTitle = styled.div`font-size: 13px; font-weight: 600; color: #4B5563; margin-bottom: 8px;`;
-const UnmappedList = styled.ul`margin: 0; padding-left: 20px; font-size: 13px; color: #6B7280; li { margin: 2px 0; }`;
+const UnmappedTitle = styled.div`font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 8px;`;
+const UnmappedList = styled.ul`margin: 0; padding-left: 20px; font-size: 13px; color: #4B5563; li { margin: 2px 0; }`;
 
-const EmptyState = styled.div`padding: 48px 16px; text-align: center; color: #6B7280; font-size: 14px;`;
+const EmptyState = styled.div`padding: 48px 16px; text-align: center; color: #4B5563; font-size: 14px;`;
 
 // ============ Map helpers ============
 
 const createPinIcon = (status: string, contractType: string | null, salesIntensity: number, selected: boolean) => {
-  const color = STATUS_COLOR[status] || '#9CA3AF';
+  const color = STATUS_COLOR[status] || '#6B7280';
   const scale = (selected ? 1.2 : 1) * (0.85 + Math.min(1, Math.max(0, salesIntensity)) * 0.6);
   const w = Math.round(28 * scale);
   const h = Math.round(40 * scale);
@@ -322,7 +322,7 @@ const ClusterLayer: React.FC<{
       const isSelected = selectedId === p.id;
       const marker = L.marker([p.latitude, p.longitude], { icon: createPinIcon(p.status, p.contract_type || null, intensity, isSelected) });
       marker.on('click', () => onPinClick(p.id));
-      const color = STATUS_COLOR[p.status] || '#9CA3AF';
+      const color = STATUS_COLOR[p.status] || '#6B7280';
       const ctypeLabel = p.contract_type || '—';
       const salesLabel = p.sales_30d != null ? p.sales_30d.toLocaleString() : '—';
       const radiusLabel = p.radius_km ? `${p.radius_km} km` : '—';
@@ -331,13 +331,13 @@ const ClusterLayer: React.FC<{
       const html = `
         <div style="min-width:220px">
           <h4 style="margin:0 0 6px;font-size:14px;color:#0A2540">${escapeHtml(p.name)}${p.branch_name ? ' · ' + escapeHtml(p.branch_name) : ''}</h4>
-          ${addrLine ? `<div style="font-size:12px;color:#6B7280;margin:2px 0">${escapeHtml(addrLine)}</div>` : ''}
-          ${p.phone ? `<div style="font-size:12px;color:#6B7280;margin:2px 0">${escapeHtml(p.phone)}</div>` : ''}
-          <div style="display:flex;gap:12px;margin-top:8px;font-size:11px;color:#4B5563">
+          ${addrLine ? `<div style="font-size:12px;color:#4B5563;margin:2px 0">${escapeHtml(addrLine)}</div>` : ''}
+          ${p.phone ? `<div style="font-size:12px;color:#4B5563;margin:2px 0">${escapeHtml(p.phone)}</div>` : ''}
+          <div style="display:flex;gap:12px;margin-top:8px;font-size:11px;color:#374151">
             <span><b>Type:</b> ${ctypeLabel}</span>
             <span><b>Radius:</b> ${radiusLabel}</span>
           </div>
-          <div style="font-size:11px;color:#4B5563;margin-top:2px"><b>Sales 30d:</b> ${salesLabel} (${p.order_count || 0} orders)</div>
+          <div style="font-size:11px;color:#374151;margin-top:2px"><b>Sales 30d:</b> ${salesLabel} (${p.order_count || 0} orders)</div>
           <span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;margin-top:6px;color:white;background:${color}">${p.status}</span>
         </div>`;
       marker.bindPopup(html);
@@ -479,10 +479,10 @@ const BrandFranchiseMapPage: React.FC<BrandFranchiseMapPageProps> = ({ brandId }
         <LegendItem style={{ ['--c' as any]: STATUS_COLOR.overdue }}>{t('map.legend.overdue', 'Overdue')}</LegendItem>
         <LegendItem style={{ ['--c' as any]: STATUS_COLOR.suspended }}>{t('map.legend.suspended', 'Suspended')}</LegendItem>
         <LegendItem style={{ ['--c' as any]: STATUS_COLOR.inactive }}>{t('map.legend.archive', 'Archive')}</LegendItem>
-        <span style={{ marginLeft: 12, color: '#6B7280' }}>
+        <span style={{ marginLeft: 12, color: '#4B5563' }}>
           ★ {t('map.legend.franchise', 'Franchise/License')}  ·  ● {t('map.legend.direct', 'Direct')}  ·  ⎯⎯ {t('map.legend.territory', 'Territory radius')}
         </span>
-        <span style={{ marginLeft: 12, color: '#6B7280' }}>{t('map.legend.sizeNote', 'Pin size = sales last 30d')}</span>
+        <span style={{ marginLeft: 12, color: '#4B5563' }}>{t('map.legend.sizeNote', 'Pin size = sales last 30d')}</span>
       </Legend>
 
       <Layout $hasDetail={!!selected}>
@@ -498,7 +498,7 @@ const BrandFranchiseMapPage: React.FC<BrandFranchiseMapPageProps> = ({ brandId }
           <SideList>
             {filteredList.map(r => {
               const isSelected = selectedId === r.id;
-              const color = STATUS_COLOR[r.status] || '#9CA3AF';
+              const color = STATUS_COLOR[r.status] || '#6B7280';
               const isFranchise = r.contract_type && FRANCHISE_TYPES.includes(r.contract_type);
               const isDirect = r.contract_type === 'direct';
               const hasCoords = r.latitude != null && r.longitude != null;
@@ -540,7 +540,7 @@ const BrandFranchiseMapPage: React.FC<BrandFranchiseMapPageProps> = ({ brandId }
               />
               {mapped.filter(p => p.radius_km && p.radius_km > 0).map(p => {
                 const isSelected = selectedId === p.id;
-                const color = STATUS_COLOR[p.status] || '#9CA3AF';
+                const color = STATUS_COLOR[p.status] || '#6B7280';
                 return (
                   <Circle
                     key={`radius-${p.id}`}
@@ -643,7 +643,7 @@ const BrandFranchiseMapPage: React.FC<BrandFranchiseMapPageProps> = ({ brandId }
                 <DetailSection>
                   <DetailSectionTitle>{t('map.restaurant', 'Restaurant')}</DetailSectionTitle>
                   <InfoRow><span>{t('map.status', 'Status')}</span>
-                    <b style={{ color: STATUS_COLOR[selected.status] || '#6B7280' }}>{selected.status}</b></InfoRow>
+                    <b style={{ color: STATUS_COLOR[selected.status] || '#4B5563' }}>{selected.status}</b></InfoRow>
                   {selected.phone && <InfoRow><span>{t('map.phone', 'Phone')}</span>
                     <b><a href={`tel:${selected.phone}`} style={{ color: '#635BFF', textDecoration: 'none' }}>{selected.phone}</a></b></InfoRow>}
                   {selected.email && <InfoRow><span>{t('map.email', 'Email')}</span>
@@ -718,7 +718,7 @@ const BrandFranchiseMapPage: React.FC<BrandFranchiseMapPageProps> = ({ brandId }
                     {c.financial_redacted && (
                       <DetailSection>
                         <DetailSectionTitle>{t('floorPlan.sec.financial', 'Financial Terms')}</DetailSectionTitle>
-                        <div style={{ fontSize: 12, color: '#9CA3AF', fontStyle: 'italic' }}>
+                        <div style={{ fontSize: 12, color: '#6B7280', fontStyle: 'italic' }}>
                           🔒 {t('floorPlan.fin.redacted', 'Financial terms are visible to Brand General and System Admin only')}
                         </div>
                       </DetailSection>
@@ -770,7 +770,7 @@ const BrandFranchiseMapPage: React.FC<BrandFranchiseMapPageProps> = ({ brandId }
                   </>
                 ) : (
                   <DetailSection>
-                    <div style={{ fontSize: 12, color: '#9CA3AF', fontStyle: 'italic', padding: '8px 0' }}>
+                    <div style={{ fontSize: 12, color: '#6B7280', fontStyle: 'italic', padding: '8px 0' }}>
                       {t('map.noContract', 'No active contract with this restaurant')}
                     </div>
                   </DetailSection>
@@ -785,7 +785,7 @@ const BrandFranchiseMapPage: React.FC<BrandFranchiseMapPageProps> = ({ brandId }
                       {t('map.sec.plans', 'Current Plans')} ({selected.currentPlans.length})
                     </DetailSectionTitle>
                     {selected.currentPlans.map(plan => (
-                      <div key={plan.id} style={{ marginBottom: 10, paddingBottom: 10, borderBottom: '1px dashed #E6EBF1' }}>
+                      <div key={plan.id} style={{ marginBottom: 10, paddingBottom: 10, borderBottom: '1px dashed #C7CED6' }}>
                         <InfoRow><span>{t('map.plan.name', 'Plan')}</span>
                           <b>{plan.name}</b></InfoRow>
                         <InfoRow><span>{t('map.plan.chargeType', 'Charge')}</span>
@@ -819,7 +819,7 @@ const BrandFranchiseMapPage: React.FC<BrandFranchiseMapPageProps> = ({ brandId }
                 ) : (
                   <DetailSection>
                     <DetailSectionTitle>{t('map.sec.plans', 'Current Plans')}</DetailSectionTitle>
-                    <div style={{ fontSize: 12, color: '#9CA3AF', fontStyle: 'italic', padding: '4px 0' }}>
+                    <div style={{ fontSize: 12, color: '#6B7280', fontStyle: 'italic', padding: '4px 0' }}>
                       {t('map.noPlan', 'No subscription plan linked')}
                     </div>
                   </DetailSection>

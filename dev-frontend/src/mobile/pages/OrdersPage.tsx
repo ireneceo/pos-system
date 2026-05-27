@@ -32,7 +32,7 @@ const EmptyTitle = styled.h3`
 
 const EmptyDescription = styled.p`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 0;
 `;
 
@@ -69,7 +69,7 @@ const OrderNumber = styled.h4`
 
 const OrderDate = styled.p`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 0;
 `;
 
@@ -87,7 +87,7 @@ const OrderStatus = styled.div<{ status: string }>`
       case 'cancelled': return '#FEE2E2';
       case 'rejected': return '#FEE2E2';
       case 'payment_verification_pending': return '#FEF3C7';
-      default: return '#F3F4F6';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
@@ -98,7 +98,7 @@ const OrderStatus = styled.div<{ status: string }>`
       case 'cancelled': return '#991B1B';
       case 'rejected': return '#991B1B';
       case 'payment_verification_pending': return '#92400E';
-      default: return '#374151';
+      default: return '#1F2937';
     }
   }};
 `;
@@ -112,7 +112,7 @@ const OrderItems = styled.div`
 
 const OrderItem = styled.div`
   font-size: 14px;
-  color: #4B5563;
+  color: #374151;
   display: flex;
   justify-content: space-between;
 `;
@@ -122,7 +122,7 @@ const OrderFooter = styled.div`
   justify-content: space-between;
   align-items: center;
   padding-top: 12px;
-  border-top: 1px solid #E5E7EB;
+  border-top: 1px solid #C7CED6;
 `;
 
 const OrderTotal = styled.div`
@@ -146,7 +146,7 @@ const OrderType = styled.div<{ orderType?: string }>`
       case 'takeaway': return '#FEF3C7';
       case 'pickup': return '#EDE9FE';
       case 'delivery': return '#D1FAE5';
-      default: return '#F3F4F6';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
@@ -156,7 +156,7 @@ const OrderType = styled.div<{ orderType?: string }>`
       case 'takeaway': return '#92400E';
       case 'pickup': return '#6D28D9';
       case 'delivery': return '#065F46';
-      default: return '#374151';
+      default: return '#1F2937';
     }
   }};
 `;
@@ -405,7 +405,7 @@ const OrdersPage: React.FC = () => {
                     })}
                     {orderItems.length > 2 && (
                       <OrderItem>
-                        <span style={{ color: '#6B7280' }}>
+                        <span style={{ color: '#4B5563' }}>
                           +{orderItems.length - 2} more items
                         </span>
                       </OrderItem>
@@ -414,7 +414,7 @@ const OrdersPage: React.FC = () => {
                 ) : (
                   <OrderItems>
                     <OrderItem>
-                      <span style={{ color: '#6B7280' }}>No items</span>
+                      <span style={{ color: '#4B5563' }}>No items</span>
                     </OrderItem>
                   </OrderItems>
                 )}

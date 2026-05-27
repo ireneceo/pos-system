@@ -98,14 +98,14 @@ const OrderModal: React.FC<Props> = ({
           <div style={{ marginBottom: '16px', padding: '12px', background: '#F9FAFB', borderRadius: '8px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
               <div>
-                <div style={{ fontSize: '13px', color: '#6B7280' }}>Current Stock</div>
+                <div style={{ fontSize: '13px', color: '#4B5563' }}>Current Stock</div>
                 <div style={{ fontSize: '18px', fontWeight: 600, color: '#0A2540' }}>
                   {formatStock(item.current_stock)} {item.unit}
                 </div>
               </div>
               <div>
-                <div style={{ fontSize: '13px', color: '#6B7280' }}>Min Stock</div>
-                <div style={{ fontSize: '18px', fontWeight: 600, color: '#6B7280' }}>
+                <div style={{ fontSize: '13px', color: '#4B5563' }}>Min Stock</div>
+                <div style={{ fontSize: '18px', fontWeight: 600, color: '#4B5563' }}>
                   {formatStock(item.min_stock)} {item.unit}
                 </div>
               </div>
@@ -161,7 +161,7 @@ const OrderModal: React.FC<Props> = ({
 
           {qtyNum > 0 && (
             <div style={{ padding: '12px', background: '#F0FDF4', borderRadius: '8px' }}>
-              <div style={{ fontSize: '13px', color: '#6B7280' }}>Estimated Cost</div>
+              <div style={{ fontSize: '13px', color: '#4B5563' }}>Estimated Cost</div>
               <div style={{ fontSize: '18px', fontWeight: 600, color: '#16A34A' }}>
                 {formatCurrency(qtyNum * unitPrice, currency)}
               </div>

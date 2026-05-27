@@ -9,6 +9,7 @@ import TableDetailPanel from './TableDetailPanel';
 import FloorPlanStatsBar from './FloorPlanStatsBar';
 import PaymentModal from '../../components/POSTerminal/PaymentModal';
 import { Modal as CommonModal } from '../../components/UI';
+import OverflowMenu, { OverflowMenuItem } from '../../components/UI/OverflowMenu';
 import { getRestaurantTimezone } from '../../utils/timezone';
 import DailySettlementPrint from '../Reports/DailySettlementPrint';
 import io from 'socket.io-client';
@@ -28,7 +29,7 @@ const prefetchPosTerminal = () => {
 
 const PageContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #FAFBFC;
+  background: #F9FAFB;
   height: 100vh;
   display: flex;
   flex-direction: column;
@@ -40,7 +41,7 @@ const PageContainer = styled.div`
 const ChipSeparator = styled.div`
   width: 1px;
   height: 20px;
-  background: #E6EBF1;
+  background: #C7CED6;
   margin: 0 4px;
 `;
 
@@ -50,7 +51,7 @@ const ZoneFilterBar = styled.div`
   gap: 8px;
   padding: 12px 24px;
   background: #fff;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
@@ -61,8 +62,8 @@ const ZoneFilterBar = styled.div`
 `;
 const ZoneChip = styled.button<{ active: boolean }>`
   background: ${p => p.active ? '#635BFF' : '#fff'};
-  color: ${p => p.active ? '#fff' : '#6B7C93'};
-  border: 1px solid ${p => p.active ? '#635BFF' : '#E6EBF1'};
+  color: ${p => p.active ? '#fff' : '#4B5563'};
+  border: 1px solid ${p => p.active ? '#635BFF' : '#C7CED6'};
   border-radius: 999px;
   padding: 6px 14px;
   font-size: 13px;
@@ -86,7 +87,7 @@ const ZoneChipCount = styled.span`
 const Header = styled.div`
   background: white;
   padding: 12px 24px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -119,13 +120,38 @@ const ConnectionStatus = styled.div`
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #6B7C93;
+  color: #4B5563;
 `;
 
 const HeaderRight = styled.div`
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
+
+  @media (max-width: 1280px) {
+    gap: 8px;
+  }
+`;
+
+/* Buttons shown only on wider screens. On ≤1280px (10-inch tablets etc.) these
+   collapse into the OverflowMenu so the header stays readable. */
+const DesktopActions = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  @media (max-width: 1280px) {
+    display: none;
+  }
+`;
+
+/* OverflowMenu wrapper — hidden on wide screens (actions are inline there). */
+const CompactActions = styled.div`
+  display: none;
+
+  @media (max-width: 1280px) {
+    display: inline-flex;
+  }
 `;
 
 const Clock = styled.div`
@@ -142,12 +168,12 @@ const EditBtn = styled.button`
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   background: white;
-  color: #374151;
+  color: #1F2937;
 
   &:hover {
-    background: #F3F4F6;
+    background: #F1F4F8;
     border-color: #D1D9E0;
   }
 `;
@@ -159,12 +185,12 @@ const BackBtn = styled.button`
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   background: white;
-  color: #374151;
+  color: #1F2937;
 
   &:hover {
-    background: #F3F4F6;
+    background: #F1F4F8;
   }
 `;
 
@@ -193,7 +219,7 @@ const LoadingScreen = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #6B7C93;
+  color: #4B5563;
   font-size: 14px;
 `;
 
@@ -321,7 +347,10 @@ const FloorPlanPage: React.FC = () => {
   const checkoutSocketRef = useRef<any>(null);
 
   // Detail panel
-  const [selectedTable, setSelectedTable] = useState<string | null>(null);
+  // 2026-05-27: state = `selectedTableId` (Floor Plan v2 tables[].id) so multiple
+  // zones with the same tableNumber stay isolated. `selectedTable` (tableNumber)
+  // and `selectedTableInfo` (FloorTable object) are derived below.
+  const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [selectedOrderIndex, setSelectedOrderIndex] = useState(0);
 
   // Payment modal (like LiveOrders)
@@ -560,6 +589,73 @@ const FloorPlanPage: React.FC = () => {
     return () => clearInterval(id);
   }, [fetchStatuses]);
 
+  // 2026-05-27: Mirror selected table → Customer Display in real time.
+  // Lets the customer see their bill before they walk to the counter (table
+  // service / post-pay flow). When a table is deselected, clear the display so
+  // the next customer doesn't see the previous bill.
+  // NOTE: derive selectedTable + status INSIDE the effect — referencing the
+  // module-level `selectedTable` const here would TDZ-fault because that const
+  // is declared further down in the render body (post-loading branch).
+  useEffect(() => {
+    if (!checkoutSocketRef.current) return;
+    if (!selectedTableId) {
+      checkoutSocketRef.current.emit('cart-clear', { restaurantId });
+      return;
+    }
+    const tInfo = (floorPlan?.tables || []).find(t => t.id === selectedTableId);
+    const tNumber = tInfo?.tableNumber ?? null;
+    const tableStatus = tableStatuses[selectedTableId] || (tNumber ? tableStatuses[tNumber] : undefined);
+    if (!tableStatus) return;
+    // Pick the order shown in the panel — supports multi-order tables.
+    const orders = tableStatus.orders || (tableStatus ? [tableStatus] : []);
+    const idx = Math.min(selectedOrderIndex, Math.max(orders.length - 1, 0));
+    const order: any = orders[idx] || tableStatus;
+    const items = (order.orderItems || []).map((item: any) => ({
+      name: item.name || item.menu_item_name || 'Item',
+      quantity: item.quantity || 1,
+      price: parseFloat(item.price) || 0,
+      options: item.options || []
+    }));
+    // 2026-05-27 enrich — mirror the right-side detail panel onto the Customer
+    // Display so the guest sees order#, type, payment, cashier, member info
+    // before checkout. Replaces the phone-keypad on the CD's left column when
+    // a cart is active. Customer Display reverts to the keypad only on cart-clear.
+    checkoutSocketRef.current.emit('cart-update', {
+      restaurantId,
+      tableNumber: tNumber,
+      orderNumber: order.orderNumber,
+      items,
+      subtotal: parseFloat(order.subtotal) || 0,
+      tax: parseFloat(order.tax) || 0,
+      taxRate: parseFloat(order.taxRate) || 0,
+      serviceCharge: parseFloat(order.serviceCharge) || 0,
+      serviceChargeRate: parseFloat(order.serviceChargeRate) || 0,
+      discount: parseFloat(order.discount) || 0,
+      total: parseFloat(order.totalAmount) || 0,
+      currency: currency || 'MYR',
+      source: 'floor-plan',
+      orderInfo: {
+        orderNumber: order.orderNumber,
+        orderType: order.orderType || 'dine_in',
+        sourceLabel: order.orderSource || 'pos',
+        createdAt: order.orderCreatedAt || null,
+        paymentStatus: order.paymentStatus || 'pending',
+        paymentMethod: order.paymentMethod || null,
+        cashierName: order.cashierName || null,
+        orderStatus: order.orderStatus || null,
+        guestCount: order.guestCount || null
+      },
+      customer: order.customerId ? {
+        id: order.customerId,
+        name: order.customerName || 'Member',
+        phone: order.customerPhone || ''
+      } : (order.customerName && order.customerName !== 'Walk-in Customer' ? {
+        name: order.customerName,
+        phone: order.customerPhone || ''
+      } : null)
+    });
+  }, [selectedTableId, selectedOrderIndex, tableStatuses, restaurantId, currency, floorPlan]);
+
   // Listen for POS complete message from iframe
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -573,9 +669,10 @@ const FloorPlanPage: React.FC = () => {
     return () => window.removeEventListener('message', handleMessage);
   }, [fetchStatuses]);
 
-  // Table click → toggle detail panel
-  const handleTableClick = (tableNumber: string) => {
-    setSelectedTable(prev => prev === tableNumber ? null : tableNumber);
+  // Table click → toggle detail panel. Receives Floor Plan v2 tables[].id, so
+  // multiple zones with the same tableNumber stay isolated.
+  const handleTableClick = (tableId: string) => {
+    setSelectedTableId(prev => prev === tableId ? null : tableId);
     setSelectedOrderIndex(0);
   };
 
@@ -610,8 +707,12 @@ const FloorPlanPage: React.FC = () => {
     if (opts?.takeaway) {
       params.set('order_type', 'takeaway');
     } else {
-      if (!selectedTable) return;
+      if (!selectedTable || !selectedTableId) return;
+      // table = tableNumber (display) + tableId = Floor Plan v2 id (zone-isolated).
+      // POSTerminal binds the order to floor_plan_table_id so different zones with
+      // the same tableNumber don't collide.
       params.set('table', selectedTable);
+      params.set('tableId', selectedTableId);
     }
     params.set('from', 'floor-plan-overlay');
     setPosUrl(`/restaurant/${restaurantId}/pos-terminal?${params.toString()}`);
@@ -622,9 +723,9 @@ const FloorPlanPage: React.FC = () => {
   const handlePayment = () => {
     setShowPaymentModal(true);
 
-    // Checkout Display에 주문 내역 전송
-    if (checkoutSocketRef.current && selectedTable) {
-      const statusInfo = tableStatuses[selectedTable];
+    // Checkout Display 에 주문 내역 전송 — lookup by floor_plan_table_id first
+    if (checkoutSocketRef.current && (selectedTableId || selectedTable)) {
+      const statusInfo = (selectedTableId && tableStatuses[selectedTableId]) || (selectedTable ? tableStatuses[selectedTable] : undefined);
       if (statusInfo) {
         const items = (statusInfo as any).items?.map((item: any) => ({
           name: item.name || item.menu_item_name || 'Item',
@@ -673,8 +774,8 @@ const FloorPlanPage: React.FC = () => {
       orderId = o.id;
       baseTotalAmount = parseFloat(o.final_price ?? o.total_amount ?? o.total) || 0;
     } else {
-      if (!selectedTable) return;
-      const statusInfo = tableStatuses[selectedTable];
+      if (!selectedTableId && !selectedTable) return;
+      const statusInfo = (selectedTableId && tableStatuses[selectedTableId]) || (selectedTable ? tableStatuses[selectedTable] : undefined);
       if (!statusInfo?.orderId) return;
       orderId = statusInfo.orderId;
       baseTotalAmount = Number(statusInfo.totalAmount || 0);
@@ -696,7 +797,9 @@ const FloorPlanPage: React.FC = () => {
 
       // For takeaway path we don't have selectedStatusInfo's orderStatus here, so we re-fetch lightly
       // by reading the canonical row when needed. Dine-in keeps its existing optimization.
-      const dineInStatusInfo = !paymentTakeawayOrderId && selectedTable ? tableStatuses[selectedTable] : null;
+      const dineInStatusInfo = !paymentTakeawayOrderId
+        ? ((selectedTableId && tableStatuses[selectedTableId]) || (selectedTable ? tableStatuses[selectedTable] : null))
+        : null;
       const takeawayOrder: any = paymentTakeawayOrderId
         ? takeawayOrders.find((x: any) => x.id === paymentTakeawayOrderId)
         : null;
@@ -762,7 +865,7 @@ const FloorPlanPage: React.FC = () => {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ table_number: null })
       });
-      setSelectedTable(null);
+      setSelectedTableId(null);
       await fetchStatuses();
     } catch (err) {
       console.error('Failed to clear table:', err);
@@ -782,7 +885,7 @@ const FloorPlanPage: React.FC = () => {
           body: JSON.stringify({ table_number: null })
         })
       ));
-      setSelectedTable(null);
+      setSelectedTableId(null);
       await fetchStatuses();
     } catch (err) {
       console.error('Failed to clear table:', err);
@@ -791,8 +894,8 @@ const FloorPlanPage: React.FC = () => {
 
   // Navigate to POS Terminal (full page)
   const handleNavigateToPOS = () => {
-    if (selectedTable) {
-      navigate(`/restaurant/${restaurantId}/pos-terminal?table=${selectedTable}&from=floor-plan`);
+    if (selectedTable && selectedTableId) {
+      navigate(`/restaurant/${restaurantId}/pos-terminal?table=${selectedTable}&tableId=${selectedTableId}&from=floor-plan`);
     }
   };
 
@@ -803,15 +906,28 @@ const FloorPlanPage: React.FC = () => {
     fetchStatuses();
   };
 
-  // Derived data for detail panel — multi-order support
-  const selectedTableData = selectedTable ? tableStatuses[selectedTable] : undefined;
+  // Derived selection — selectedTableId is the single source of truth.
+  // selectedTableInfo = FloorTable object, selectedTable = tableNumber string.
+  // tableStatuses lookup tries the unique id first, then falls back to tableNumber
+  // for legacy orders (pre-floor_plan_table_id migration).
+  const selectedTableInfo = selectedTableId
+    ? floorPlan.tables.find(t => t.id === selectedTableId)
+    : undefined;
+  // 2026-05-27 hotfix: prefer label over tableNumber when sending `?table=` to
+  // POS Terminal. Multi-zone shops (e.g. restaurant 16 — The Fire Korean) name
+  // tables "A-20" / "T-20" via group prefix + tableNumber but `tableNumber` itself
+  // is just "20" in both zones — so without label, two zones collapse into one
+  // ordering bucket. Label carries the user-visible prefix so the order is
+  // stored as "A-20" or "T-20" and the zones stay separated even when
+  // floor_plan_table_id is missing (legacy POS-direct entries).
+  const selectedTable: string | null = (selectedTableInfo?.label || selectedTableInfo?.tableNumber) ?? null;
+  const selectedTableData = selectedTableId
+    ? (tableStatuses[selectedTableId] || (selectedTable ? tableStatuses[selectedTable] : undefined))
+    : undefined;
   const selectedOrders = selectedTableData?.orders || (selectedTableData ? [selectedTableData] : []);
   // Clamp index to valid range
   const safeOrderIndex = Math.min(selectedOrderIndex, Math.max(selectedOrders.length - 1, 0));
   const selectedStatusInfo = selectedOrders.length > 0 ? selectedOrders[safeOrderIndex] : selectedTableData;
-  const selectedTableInfo = selectedTable
-    ? floorPlan.tables.find(t => t.tableNumber === selectedTable)
-    : undefined;
 
   if (loading) {
     return (
@@ -855,7 +971,10 @@ const FloorPlanPage: React.FC = () => {
           </div>
           <button onClick={() => {
             if (itemsAddedAlert.tableNumber) {
-              setSelectedTable(itemsAddedAlert.tableNumber);
+              // socket payload only carries tableNumber today — best-effort
+              // resolve to a Floor Plan v2 table id (first matching zone).
+              const match = floorPlan?.tables.find(t => t.tableNumber === itemsAddedAlert.tableNumber);
+              if (match) setSelectedTableId(match.id);
             }
             setItemsAddedAlert(null);
           }} style={{
@@ -879,6 +998,8 @@ const FloorPlanPage: React.FC = () => {
         </HeaderLeft>
         <HeaderRight>
           <Clock>{clock}</Clock>
+          {/* Customer Display — always visible. Most-used action on this header
+              because cashiers re-open the secondary monitor view every shift. */}
           <button
             type="button"
             onClick={async () => {
@@ -890,9 +1011,9 @@ const FloorPlanPage: React.FC = () => {
             title={isAutoOpenEnabled() ? 'Customer Display (auto-open enabled)' : 'Open Customer Display on secondary monitor'}
             style={{
               padding: '6px 12px', fontSize: 12, fontWeight: 500,
-              border: '1px solid #E6EBF1', borderRadius: 6,
-              background: isAutoOpenEnabled() ? '#F0EFFF' : '#F6F9FC',
-              color: isAutoOpenEnabled() ? '#635BFF' : '#6B7C93',
+              border: '1px solid #C7CED6', borderRadius: 6,
+              background: isAutoOpenEnabled() ? '#F0EFFF' : '#F4F6F9',
+              color: isAutoOpenEnabled() ? '#635BFF' : '#4B5563',
               cursor: 'pointer',
               display: 'inline-flex', alignItems: 'center', gap: 4
             }}
@@ -900,17 +1021,92 @@ const FloorPlanPage: React.FC = () => {
             {isAutoOpenEnabled() && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#635BFF', display: 'inline-block' }} />}
             Customer Display
           </button>
-          <EditBtn onClick={() => setShowSettlement(true)}>
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '14px', height: '14px', verticalAlign: 'middle', marginRight: '4px' }}>
-              <path d="M6 9V2H18V9M6 18H4C2.89543 18 2 17.1046 2 16V11C2 9.89543 2.89543 9 4 9H20C21.1046 9 22 9.89543 22 11V16C22 17.1046 21.1046 18 20 18H18M6 14H18V22H6V14Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            Daily Settlement
-          </EditBtn>
-          {user?.role === 'Restaurant Admin' && (
-            <EditBtn onClick={() => navigate(`/restaurant/${restaurantId}/floor-plan-editor`)}>
-              Edit Layout
+
+          {/* Wide screens — full toolbar. Below 1280px these collapse into the
+              kebab menu so 10-inch tablets aren't crowded. */}
+          <DesktopActions>
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  const { openCashDrawer } = await import('../../utils/billPrint');
+                  const ok = await openCashDrawer();
+                  if (!ok) {
+                    setCdInfoModal({
+                      open: true,
+                      title: 'Drawer did not open',
+                      message: 'Cash drawer pulse needs QZ Tray or RawBT (not Browser print mode).\nCheck Settings → Workstations → Method.'
+                    });
+                  }
+                } catch (e: any) {
+                  setCdInfoModal({ open: true, title: 'Drawer error', message: e?.message || 'Unknown error' });
+                }
+              }}
+              title="Send open-drawer pulse to the active workstation's bill printer"
+              style={{
+                padding: '6px 12px', fontSize: 12, fontWeight: 500,
+                border: '1px solid #C7CED6', borderRadius: 6,
+                background: '#F4F6F9', color: '#1F2937',
+                cursor: 'pointer'
+              }}
+            >
+              Open Drawer
+            </button>
+            <EditBtn onClick={() => setShowSettlement(true)}>
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '14px', height: '14px', verticalAlign: 'middle', marginRight: '4px' }}>
+                <path d="M6 9V2H18V9M6 18H4C2.89543 18 2 17.1046 2 16V11C2 9.89543 2.89543 9 4 9H20C21.1046 9 22 9.89543 22 11V16C22 17.1046 21.1046 18 20 18H18M6 14H18V22H6V14Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Daily Settlement
             </EditBtn>
-          )}
+            {user?.role === 'Restaurant Admin' && (
+              <EditBtn onClick={() => navigate(`/restaurant/${restaurantId}/floor-plan-editor`)}>
+                Edit Layout
+              </EditBtn>
+            )}
+          </DesktopActions>
+
+          {/* Narrow screens (≤1280px) — kebab menu collects the secondary actions. */}
+          <CompactActions>
+            <OverflowMenu
+              ariaLabel="More floor plan actions"
+              items={(() => {
+                const items: OverflowMenuItem[] = [
+                  {
+                    id: 'open-drawer',
+                    label: 'Open Drawer',
+                    onClick: async () => {
+                      try {
+                        const { openCashDrawer } = await import('../../utils/billPrint');
+                        const ok = await openCashDrawer();
+                        if (!ok) {
+                          setCdInfoModal({
+                            open: true,
+                            title: 'Drawer did not open',
+                            message: 'Cash drawer pulse needs QZ Tray or RawBT (not Browser print mode).\nCheck Settings → Workstations → Method.'
+                          });
+                        }
+                      } catch (e: any) {
+                        setCdInfoModal({ open: true, title: 'Drawer error', message: e?.message || 'Unknown error' });
+                      }
+                    }
+                  },
+                  {
+                    id: 'daily-settlement',
+                    label: 'Daily Settlement',
+                    onClick: () => setShowSettlement(true)
+                  }
+                ];
+                if (user?.role === 'Restaurant Admin') {
+                  items.push({
+                    id: 'edit-layout',
+                    label: 'Edit Layout',
+                    onClick: () => navigate(`/restaurant/${restaurantId}/floor-plan-editor`)
+                  });
+                }
+                return items;
+              })()}
+            />
+          </CompactActions>
         </HeaderRight>
       </Header>
 
@@ -952,7 +1148,7 @@ const FloorPlanPage: React.FC = () => {
             active={activeView === 'takeaway'}
             onClick={() => {
               setActiveView(activeView === 'takeaway' ? 'floor' : 'takeaway');
-              setSelectedTable(null);
+              setSelectedTableId(null);
             }}
             title={t('floorplan:floorPlanPage.takeawayViewHint', 'View active takeaway orders')}
           >
@@ -978,7 +1174,7 @@ const FloorPlanPage: React.FC = () => {
               floorPlan={filteredFloorPlan}
               tableStatuses={tableStatuses}
               onTableClick={handleTableClick}
-              selectedTableId={selectedTable ? floorPlan.tables.find(t => t.tableNumber === selectedTable)?.id : null}
+              selectedTableId={selectedTableId}
               currency={currency}
             />
           ) : (
@@ -987,14 +1183,14 @@ const FloorPlanPage: React.FC = () => {
             // the same component LiveOrders uses, so all actions (status change, payment, cancel) work.
             <div style={{
               flex: 1, overflow: 'auto', padding: 20,
-              background: '#FAFBFC', border: '1px solid #E6EBF1', borderRadius: 8
+              background: '#F9FAFB', border: '1px solid #C7CED6', borderRadius: 8
             }}>
               {takeawayLoading && takeawayOrders.length === 0 ? (
-                <div style={{ padding: 40, textAlign: 'center', color: '#6B7C93' }}>
+                <div style={{ padding: 40, textAlign: 'center', color: '#4B5563' }}>
                   {t('floorplan:floorPlanPage.loading', 'Loading takeaway orders...')}
                 </div>
               ) : takeawayOrders.length === 0 ? (
-                <div style={{ padding: 40, textAlign: 'center', color: '#6B7C93' }}>
+                <div style={{ padding: 40, textAlign: 'center', color: '#4B5563' }}>
                   <div style={{ fontSize: 14, fontWeight: 500, color: '#0A2540', marginBottom: 6 }}>
                     {t('floorplan:floorPlanPage.noTakeaway', 'No active takeaway orders')}
                   </div>
@@ -1071,7 +1267,7 @@ const FloorPlanPage: React.FC = () => {
             currency={currency}
             timezone={timezone}
             restaurantId={Number(restaurantId)}
-            onClose={() => setSelectedTable(null)}
+            onClose={() => setSelectedTableId(null)}
             onNewOrder={handleNewOrder}
             onStatusChange={handleStatusChange}
             onPayment={handlePayment}

@@ -6,7 +6,7 @@ const TabsContainer = styled.div`
   display: flex;
   gap: 24px;
   margin-bottom: 24px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 
@@ -15,11 +15,11 @@ const TabsContainer = styled.div`
   }
 
   &::-webkit-scrollbar-track {
-    background: #F8FAFC;
+    background: #F1F4F8;
   }
 
   &::-webkit-scrollbar-thumb {
-    background: #CBD5E1;
+    background: #64748B;
     border-radius: 3px;
   }
 `;
@@ -31,7 +31,7 @@ const TabButton = styled.button<{ active?: boolean }>`
   border: none;
   font-size: 14px;
   font-weight: 500;
-  color: ${props => props.active ? '#635BFF' : '#6B7C93'};
+  color: ${props => props.active ? '#635BFF' : '#4B5563'};
   cursor: pointer;
   position: relative;
   transition: all 0.15s;
@@ -65,14 +65,14 @@ const TabBadge = styled.span<{ variant?: 'default' | 'warning' | 'danger' }>`
     switch (props.variant) {
       case 'danger': return '#DC2626';
       case 'warning': return '#F59E0B';
-      default: return '#E6EBF1';
+      default: return '#C7CED6';
     }
   }};
   color: ${props => {
     switch (props.variant) {
       case 'danger': return 'white';
       case 'warning': return 'white';
-      default: return '#6B7C93';
+      default: return '#4B5563';
     }
   }};
 `;

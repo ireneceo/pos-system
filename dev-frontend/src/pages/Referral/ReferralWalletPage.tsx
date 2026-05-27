@@ -56,7 +56,7 @@ const PageTitle = styled.h1`
 
 const Block = styled.section`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   padding: 24px;
   margin-bottom: 20px;
@@ -70,17 +70,17 @@ const BlockTitle = styled.h2`
 `;
 
 const WalletCard = styled.div`
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   padding: 24px;
-  background: #FAFBFC;
+  background: #F9FAFB;
   margin-bottom: 12px;
 `;
 
 const Currency = styled.div`
   font-size: 12px;
   font-weight: 600;
-  color: #6B7C93;
+  color: #4B5563;
   letter-spacing: 0.4px;
   text-transform: uppercase;
   margin-bottom: 6px;
@@ -102,7 +102,7 @@ const StatsRow = styled.div`
 
 const StatItem = styled.div`
   font-size: 13px;
-  color: #6B7C93;
+  color: #4B5563;
 
   strong {
     display: block;
@@ -121,7 +121,7 @@ const Actions = styled.div`
 
 const Btn = styled.button`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   padding: 9px 16px;
   font-size: 13px;
@@ -149,8 +149,8 @@ const FilterBar = styled.div`
 
 const FilterChip = styled.button<{ $active: boolean }>`
   background: ${p => (p.$active ? '#635BFF' : 'white')};
-  color: ${p => (p.$active ? 'white' : '#6B7C93')};
-  border: 1px solid ${p => (p.$active ? '#635BFF' : '#E6EBF1')};
+  color: ${p => (p.$active ? 'white' : '#4B5563')};
+  border: 1px solid ${p => (p.$active ? '#635BFF' : '#C7CED6')};
   border-radius: 16px;
   padding: 6px 14px;
   font-size: 12px;
@@ -162,10 +162,10 @@ const FilterChip = styled.button<{ $active: boolean }>`
 const Empty = styled.div`
   padding: 36px 20px;
   text-align: center;
-  color: #6B7C93;
+  color: #4B5563;
   font-size: 14px;
-  background: #FAFBFC;
-  border: 1px dashed #E6EBF1;
+  background: #F9FAFB;
+  border: 1px dashed #C7CED6;
   border-radius: 8px;
 `;
 
@@ -184,7 +184,7 @@ const TypeBadge = styled.span<{ $type: WalletTx['type'] }>`
   color: ${p => ({
     commission: '#059669',
     credit_used: '#2563EB',
-    payout: '#6B7C93',
+    payout: '#4B5563',
     adjustment: '#C2410C'
   })[p.$type]};
 `;
@@ -249,7 +249,7 @@ const Label = styled.label`
   display: block;
   font-size: 12px;
   font-weight: 600;
-  color: #6B7C93;
+  color: #4B5563;
   letter-spacing: 0.4px;
   text-transform: uppercase;
   margin-bottom: 6px;
@@ -261,7 +261,7 @@ const Input = styled.input`
   padding: 0 12px;
   font-size: 14px;
   color: #0A2540;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   outline: none;
   &:focus { border-color: #635BFF; box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1); }

@@ -154,12 +154,12 @@ export interface InvoiceSettings {
 
 // Status badge configuration
 export const STATUS_CONFIG: Record<InvoiceStatus, { label: string; color: string; bgColor: string }> = {
-  draft: { label: 'Draft', color: '#6B7280', bgColor: '#F3F4F6' },
+  draft: { label: 'Draft', color: '#4B5563', bgColor: '#F1F4F8' },
   pending_payment: { label: 'Pending', color: '#D97706', bgColor: '#FEF3C7' },
   payment_submitted: { label: 'Submitted', color: '#2563EB', bgColor: '#DBEAFE' },
   paid: { label: 'Paid', color: '#059669', bgColor: '#D1FAE5' },
   overdue: { label: 'Overdue', color: '#DC2626', bgColor: '#FEE2E2' },
-  cancelled: { label: 'Cancelled', color: '#4B5563', bgColor: '#E5E7EB' }
+  cancelled: { label: 'Cancelled', color: '#374151', bgColor: '#C7CED6' }
 };
 
 // Currency configuration

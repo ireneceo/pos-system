@@ -5,7 +5,7 @@ import SEOHead from '../../components/Common/SEOHead';
 import { useTranslation } from 'react-i18next';
 
 const PageContainer = styled.div`
-  background: #FAFBFC;
+  background: #F9FAFB;
 `;
 
 const HeroSection = styled.section`
@@ -97,7 +97,7 @@ const SubSectionTitle = styled.h3`
 const Paragraph = styled.p`
   font-size: 16px;
   line-height: 1.8;
-  color: #6B7C93;
+  color: #4B5563;
   margin-bottom: 16px;
 
   &:last-child {
@@ -113,7 +113,7 @@ const List = styled.ul`
 const ListItem = styled.li`
   font-size: 16px;
   line-height: 1.8;
-  color: #6B7C93;
+  color: #4B5563;
   margin-bottom: 8px;
 
   &:last-child {
@@ -185,13 +185,13 @@ const Th = styled.th`
   text-align: left;
   font-weight: 600;
   color: #0A2540;
-  border-bottom: 2px solid #E6EBF1;
+  border-bottom: 2px solid #C7CED6;
 `;
 
 const Td = styled.td`
   padding: 12px 16px;
-  border-bottom: 1px solid #E6EBF1;
-  color: #6B7C93;
+  border-bottom: 1px solid #C7CED6;
+  color: #4B5563;
 `;
 
 const TermsOfServicePage: React.FC = () => {

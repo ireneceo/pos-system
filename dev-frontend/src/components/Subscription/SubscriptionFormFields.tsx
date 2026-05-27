@@ -431,9 +431,9 @@ const CardLabel = styled.label<{ $active?: boolean; $variant?: 'success' | 'warn
   padding: 14px 18px;
   border-radius: 12px;
   border: 2px solid ${p => {
-    if (p.$variant === 'success') return p.$active ? '#10B981' : '#E5E7EB';
+    if (p.$variant === 'success') return p.$active ? '#10B981' : '#C7CED6';
     if (p.$variant === 'warning') return p.$active ? '#10B981' : '#F59E0B';
-    return p.$active ? '#635BFF' : '#E5E7EB';
+    return p.$active ? '#635BFF' : '#C7CED6';
   }};
   background: ${p => {
     if (p.$variant === 'success') return p.$active ? '#ECFDF5' : '#F9FAFB';
@@ -460,7 +460,7 @@ const CardTitle = styled.div`
 
 const CardDesc = styled.div`
   font-size: 12.5px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 2px;
   line-height: 1.5;
 `;
@@ -471,14 +471,14 @@ const InlineLabel = styled.label`
   gap: 8px;
   cursor: pointer;
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
   input { width: 16px; height: 16px; accent-color: #635BFF; }
 `;
 
 const SummaryBox = styled.div`
   grid-column: 1 / -1;
   padding: 16px 18px;
-  background: #F3F4F6;
+  background: #F1F4F8;
   border-radius: 8px;
   margin-top: 10px;
 `;
@@ -486,7 +486,7 @@ const SummaryBox = styled.div`
 const SummaryLabel = styled.div`
   font-size: 12px;
   font-weight: 600;
-  color: #6B7280;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.4px;
   margin-bottom: 6px;
@@ -502,12 +502,12 @@ const SummaryRow = styled.div`
   display: flex;
   justify-content: space-between;
   font-size: 13px;
-  color: #4B5563;
+  color: #374151;
   margin-top: 4px;
 `;
 
 const SummarySub = styled.div`
   font-size: 12.5px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 6px;
 `;

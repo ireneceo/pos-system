@@ -86,12 +86,12 @@ const BulkOrderModal: React.FC<Props> = ({
           <div style={{ display: 'grid', gap: 8 }}>
             {resultPos!.map(po => (
               <div key={po.id} style={{
-                padding: 12, border: '1px solid #E6EBF1', borderRadius: 8, display: 'flex',
+                padding: 12, border: '1px solid #C7CED6', borderRadius: 8, display: 'flex',
                 justifyContent: 'space-between', alignItems: 'center', gap: 12
               }}>
                 <div>
                   <div style={{ fontWeight: 600, color: '#0A2540', fontSize: 14 }}>{po.po_number}</div>
-                  <div style={{ fontSize: 12, color: '#6B7280' }}>{po.seller_name || '—'}</div>
+                  <div style={{ fontSize: 12, color: '#4B5563' }}>{po.seller_name || '—'}</div>
                 </div>
                 <span style={{
                   fontSize: 11, fontWeight: 600, padding: '4px 10px',
@@ -111,7 +111,7 @@ const BulkOrderModal: React.FC<Props> = ({
             </div>
           )}
           {items.length === 0 ? (
-            <div style={{ padding: 32, textAlign: 'center', color: '#6B7280' }}>
+            <div style={{ padding: 32, textAlign: 'center', color: '#4B5563' }}>
               {t('bulkOrder.empty', 'No items selected. Pick low-stock ingredients with a preferred seller mapping first.')}
             </div>
           ) : (
@@ -121,15 +121,15 @@ const BulkOrderModal: React.FC<Props> = ({
                 const groupTotal = g.items.reduce((s, it) => s + (it.quantity || 0) * (it.unit_price || 0), 0);
                 return (
                   <div key={g.key} style={{
-                    border: '1px solid #E6EBF1', borderRadius: 12, overflow: 'hidden', background: 'white'
+                    border: '1px solid #C7CED6', borderRadius: 12, overflow: 'hidden', background: 'white'
                   }}>
                     <div style={{
                       padding: '12px 16px', background: '#F9FAFB',
-                      borderBottom: '1px solid #E6EBF1',
+                      borderBottom: '1px solid #C7CED6',
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12
                     }}>
                       <div>
-                        <div style={{ fontSize: 11, color: '#6B7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                        <div style={{ fontSize: 11, color: '#4B5563', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                           {SELLER_TYPE_LABEL[first.seller_type || ''] || first.seller_type}
                         </div>
                         <div style={{ fontSize: 15, fontWeight: 600, color: '#0A2540' }}>
@@ -137,7 +137,7 @@ const BulkOrderModal: React.FC<Props> = ({
                         </div>
                       </div>
                       <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: 11, color: '#6B7280' }}>
+                        <div style={{ fontSize: 11, color: '#4B5563' }}>
                           {t('bulkOrder.itemsCount', { count: g.items.length, defaultValue: `${g.items.length} item${g.items.length === 1 ? '' : 's'}` })}
                         </div>
                         <div style={{ fontSize: 14, fontWeight: 600, color: '#0A2540' }}>
@@ -150,11 +150,11 @@ const BulkOrderModal: React.FC<Props> = ({
                         <div key={it.ingredient_id} style={{
                           display: 'grid', gridTemplateColumns: '1fr 120px 110px 110px 36px',
                           gap: 12, padding: '10px 8px', alignItems: 'center',
-                          borderBottom: '1px dashed #F3F4F6'
+                          borderBottom: '1px dashed #F1F4F8'
                         }}>
                           <div>
                             <div style={{ fontSize: 13, fontWeight: 600, color: '#0A2540' }}>{it.ingredient_name}</div>
-                            <div style={{ fontSize: 11, color: '#9CA3AF' }}>
+                            <div style={{ fontSize: 11, color: '#6B7280' }}>
                               {t('bulkOrder.stockShort', 'Current')}: {it.current_stock} / {t('bulkOrder.minShort', 'Min')}: {it.min_stock} {it.unit}
                             </div>
                           </div>
@@ -168,7 +168,7 @@ const BulkOrderModal: React.FC<Props> = ({
                               disabled={submitting}
                             />
                           </div>
-                          <div style={{ fontSize: 13, color: '#6B7280', textAlign: 'right' }}>
+                          <div style={{ fontSize: 13, color: '#4B5563', textAlign: 'right' }}>
                             @ {formatCurrency(it.unit_price, currency)}
                           </div>
                           <div style={{ fontSize: 13, fontWeight: 600, color: '#0A2540', textAlign: 'right' }}>

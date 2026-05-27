@@ -41,7 +41,7 @@ const Modal = styled.div`
 
 const Header = styled.div`
   padding: 20px 24px;
-  border-bottom: 1px solid #E5E7EB;
+  border-bottom: 1px solid #C7CED6;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -59,12 +59,12 @@ const CloseButton = styled.button`
   border: none;
   font-size: 24px;
   cursor: pointer;
-  color: #6B7280;
+  color: #4B5563;
   padding: 0;
   line-height: 1;
 
   &:hover {
-    color: #374151;
+    color: #1F2937;
   }
 `;
 
@@ -87,13 +87,13 @@ const SummaryRow = styled.div`
   &:last-child {
     margin-bottom: 0;
     padding-top: 12px;
-    border-top: 1px solid #E5E7EB;
+    border-top: 1px solid #C7CED6;
     font-weight: 600;
   }
 `;
 
 const Label = styled.span`
-  color: #6B7280;
+  color: #4B5563;
   font-size: 14px;
 `;
 
@@ -109,7 +109,7 @@ const Section = styled.div`
 const SectionTitle = styled.h3`
   font-size: 14px;
   font-weight: 600;
-  color: #374151;
+  color: #1F2937;
   margin: 0 0 12px 0;
 `;
 
@@ -128,7 +128,7 @@ const PaymentMethodCard = styled.button<{ selected: boolean; disabled?: boolean 
   flex-direction: column;
   align-items: center;
   padding: 16px;
-  border: 2px solid ${props => props.selected ? '#635BFF' : '#E5E7EB'};
+  border: 2px solid ${props => props.selected ? '#635BFF' : '#C7CED6'};
   border-radius: 8px;
   background: ${props => props.selected ? '#F5F3FF' : 'white'};
   cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
@@ -136,7 +136,7 @@ const PaymentMethodCard = styled.button<{ selected: boolean; disabled?: boolean 
   transition: all 0.2s;
 
   &:hover:not(:disabled) {
-    border-color: ${props => props.selected ? '#635BFF' : '#D1D5DB'};
+    border-color: ${props => props.selected ? '#635BFF' : '#6B7280'};
   }
 `;
 
@@ -148,12 +148,12 @@ const MethodIcon = styled.div`
 const MethodName = styled.div`
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: #1F2937;
 `;
 
 const MethodDesc = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 4px;
 `;
 
@@ -165,14 +165,14 @@ const FormLabel = styled.label`
   display: block;
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: #1F2937;
   margin-bottom: 6px;
 `;
 
 const FormInput = styled.input`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
 
@@ -186,7 +186,7 @@ const FormInput = styled.input`
 const FormTextarea = styled.textarea`
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   resize: vertical;
@@ -200,7 +200,7 @@ const FormTextarea = styled.textarea`
 `;
 
 const BankDetails = styled.div`
-  background: #F3F4F6;
+  background: #F1F4F8;
   border-radius: 8px;
   padding: 16px;
   margin-top: 12px;
@@ -208,7 +208,7 @@ const BankDetails = styled.div`
   p {
     margin: 4px 0;
     font-size: 14px;
-    color: #374151;
+    color: #1F2937;
   }
 
   strong {
@@ -218,7 +218,7 @@ const BankDetails = styled.div`
 
 const Footer = styled.div`
   padding: 16px 24px;
-  border-top: 1px solid #E5E7EB;
+  border-top: 1px solid #C7CED6;
   display: flex;
   justify-content: flex-end;
   gap: 12px;
@@ -247,8 +247,8 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
     }
   ` : `
     background: white;
-    color: #374151;
-    border: 1px solid #E5E7EB;
+    color: #1F2937;
+    border: 1px solid #C7CED6;
 
     &:hover {
       background: #F9FAFB;

@@ -28,11 +28,11 @@ interface FloorPlan {
 // ───── Styled (cloned from FloorPlanEditor.tsx) ─────
 const PageContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #FAFBFC; height: 100vh;
+  background: #F9FAFB; height: 100vh;
   display: flex; flex-direction: column; overflow: hidden;
 `;
 const Header = styled.div`
-  background: white; padding: 16px 32px; border-bottom: 1px solid #E6EBF1;
+  background: white; padding: 16px 32px; border-bottom: 1px solid #C7CED6;
   display: flex; justify-content: space-between; align-items: center; height: 56px;
   @media (max-width: 768px) { padding: 12px 16px; height: auto; }
 `;
@@ -50,29 +50,29 @@ const Btn = styled.button<{ $variant?: 'primary' | 'secondary' | 'danger' }>`
     background: #FEE2E2; color: #DC2626;
     &:hover { background: #FECACA; }
   ` : `
-    background: #F3F4F6; color: #374151;
-    &:hover { background: #E5E7EB; }
+    background: #F1F4F8; color: #1F2937;
+    &:hover { background: #C7CED6; }
     &:disabled { opacity: .6; cursor: not-allowed; }
   `}
 `;
 const StatusMsg = styled.div<{ $type: 'success' | 'info' }>`
   font-size: 12px; font-weight: 500;
-  color: ${p => p.$type === 'success' ? '#059669' : '#6B7C93'};
+  color: ${p => p.$type === 'success' ? '#059669' : '#4B5563'};
 `;
 
 const SubHeader = styled.div`
-  background: white; padding: 8px 24px; border-bottom: 1px solid #E6EBF1;
+  background: white; padding: 8px 24px; border-bottom: 1px solid #C7CED6;
   display: flex; gap: 12px; align-items: center; flex-shrink: 0; flex-wrap: wrap;
 `;
 const Select = styled.select`
-  padding: 5px 10px; border: 1px solid #E6EBF1; border-radius: 6px;
+  padding: 5px 10px; border: 1px solid #C7CED6; border-radius: 6px;
   font-size: 13px; background: white; cursor: pointer;
 `;
 const Tabs = styled.div`display: flex; gap: 2px; flex: 1; overflow-x: auto;`;
 const TabBtn = styled.button<{ $active?: boolean }>`
   padding: 5px 12px; border: none; background: none; cursor: pointer;
   font-size: 13px; font-weight: 500; white-space: nowrap;
-  color: ${p => p.$active ? '#635BFF' : '#6B7C93'};
+  color: ${p => p.$active ? '#635BFF' : '#4B5563'};
   border-bottom: 2px solid ${p => p.$active ? '#635BFF' : 'transparent'};
   &:hover { color: #635BFF; }
 `;
@@ -87,18 +87,18 @@ const Sidebar = styled.div`
   @media (max-width: 768px) { width: 100%; flex-direction: row; flex-wrap: wrap; overflow-y: visible; }
 `;
 const SidebarCard = styled.div`
-  background: white; border: 1px solid #E6EBF1; border-radius: 8px; padding: 16px;
+  background: white; border: 1px solid #C7CED6; border-radius: 8px; padding: 16px;
 `;
 const CardTitle = styled.div`
-  font-size: 12px; font-weight: 600; color: #6B7C93;
+  font-size: 12px; font-weight: 600; color: #4B5563;
   text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;
 `;
 const ShapeGrid = styled.div`display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;`;
 const ShapeBtn = styled.button`
   display: flex; flex-direction: column; align-items: center; gap: 4px;
-  padding: 10px 4px; border: 1px solid #E6EBF1; border-radius: 6px;
+  padding: 10px 4px; border: 1px solid #C7CED6; border-radius: 6px;
   background: white; cursor: pointer; transition: all .15s;
-  font-size: 10px; color: #6B7C93; font-weight: 500;
+  font-size: 10px; color: #4B5563; font-weight: 500;
   &:hover:not(:disabled) { border-color: #635BFF; color: #635BFF; background: rgba(99,91,255,.04); }
   &:disabled { opacity: .4; cursor: not-allowed; }
 `;
@@ -113,22 +113,22 @@ const UnplacedChip = styled.button<{ $border: string }>`
   padding: 4px 10px;
   background: white; border: 1px solid ${p => p.$border}; border-radius: 16px;
   font-size: 12px; color: #0A2540; cursor: pointer; margin: 3px 3px 3px 0;
-  &:hover { background: #F3F4F6; }
+  &:hover { background: #F1F4F8; }
   &::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: ${p => p.$border}; }
 `;
 const CanvasArea = styled.div`flex: 1; display: flex; flex-direction: column; min-height: 0;`;
 const FormGroup = styled.div`margin-bottom: 12px; &:last-child { margin-bottom: 0; }`;
 const FormLabel = styled.label`
-  display: block; font-size: 11px; font-weight: 500; color: #6B7C93;
+  display: block; font-size: 11px; font-weight: 500; color: #4B5563;
   text-transform: uppercase; margin-bottom: 4px;
 `;
 const FormInput = styled.input`
-  width: 100%; padding: 6px 10px; border: 1px solid #E6EBF1; border-radius: 4px;
+  width: 100%; padding: 6px 10px; border: 1px solid #C7CED6; border-radius: 4px;
   font-size: 13px; box-sizing: border-box;
   &:focus { outline: none; border-color: #635BFF; box-shadow: 0 0 0 2px rgba(99,91,255,.1); }
 `;
 const FormSelect = styled.select`
-  width: 100%; padding: 6px 10px; border: 1px solid #E6EBF1; border-radius: 4px;
+  width: 100%; padding: 6px 10px; border: 1px solid #C7CED6; border-radius: 4px;
   font-size: 13px; background: white; box-sizing: border-box;
   &:focus { outline: none; border-color: #635BFF; }
 `;
@@ -136,16 +136,16 @@ const FormRow = styled.div`display: grid; grid-template-columns: 1fr 1fr; gap: 8
 const SizeRow = styled.div`display: flex; gap: 6px; margin-bottom: 12px;`;
 const SizeBtn = styled.button<{ $active?: boolean }>`
   flex: 1; padding: 6px 4px;
-  border: 1px solid ${p => p.$active ? '#635BFF' : '#E6EBF1'};
+  border: 1px solid ${p => p.$active ? '#635BFF' : '#C7CED6'};
   border-radius: 4px;
   background: ${p => p.$active ? 'rgba(99,91,255,.08)' : 'white'};
-  color: ${p => p.$active ? '#635BFF' : '#6B7C93'};
+  color: ${p => p.$active ? '#635BFF' : '#4B5563'};
   font-size: 11px; font-weight: 600; cursor: pointer; transition: all .1s;
   &:hover { border-color: #635BFF; }
 `;
 const CheckboxRow = styled.label`
   display: flex; align-items: center; gap: 8px;
-  font-size: 13px; color: #374151; cursor: pointer; margin-top: 8px;
+  font-size: 13px; color: #1F2937; cursor: pointer; margin-top: 8px;
 `;
 
 // ───── Component ─────
@@ -165,7 +165,7 @@ interface EditableStore extends FloorTable {
 }
 
 const STATUS_COLORS: Record<string, { border: string }> = {
-  vacant:    { border: '#D1D5DB' },
+  vacant:    { border: '#6B7280' },
   reserved:  { border: '#F59E0B' },
   preparing: { border: '#3B82F6' },
   occupied:  { border: '#16A34A' }
@@ -544,7 +544,7 @@ const FoodcourtFloorPlanEditorPage: React.FC = () => {
     return (
       <PageContainer>
         <Header><HeaderTitle>{t('floorPlan.editorTitle', 'Floor Plan Editor')}</HeaderTitle></Header>
-        <Content><div style={{ color: '#6B7C93' }}>{t('common.loading', 'Loading...')}</div></Content>
+        <Content><div style={{ color: '#4B5563' }}>{t('common.loading', 'Loading...')}</div></Content>
       </PageContainer>
     );
   }
@@ -561,7 +561,7 @@ const FoodcourtFloorPlanEditorPage: React.FC = () => {
           <HeaderTitle>
             {t('floorPlan.editorTitle', 'Floor Plan Editor')}
             {currentBranch && (
-              <span style={{ fontSize: 14, fontWeight: 500, color: '#6B7C93', marginLeft: 10 }}>
+              <span style={{ fontSize: 14, fontWeight: 500, color: '#4B5563', marginLeft: 10 }}>
                 · {currentBranch.name}{currentBranch.code ? ` (${currentBranch.code})` : ''}
               </span>
             )}
@@ -602,11 +602,11 @@ const FoodcourtFloorPlanEditorPage: React.FC = () => {
               {unplacedUnits.length > 0 && (
                 <SidebarCard>
                   <CardTitle>{t('floorPlan.unplacedStores', 'Unplaced Stores ({{count}})', { count: unplacedUnits.length })}</CardTitle>
-                  <div style={{ fontSize: 11, color: '#9CA3AF', marginBottom: 6 }}>
+                  <div style={{ fontSize: 11, color: '#6B7280', marginBottom: 6 }}>
                     {t('floorPlan.clickToAdd', 'Click a store to place it')}
                   </div>
                   {unplacedUnits.map(u => (
-                    <UnplacedChip key={u.id} $border={STATUS_COLORS[u.status]?.border || '#D1D5DB'} onClick={() => addUnit(u)}>
+                    <UnplacedChip key={u.id} $border={STATUS_COLORS[u.status]?.border || '#6B7280'} onClick={() => addUnit(u)}>
                       {u.unit_number}
                     </UnplacedChip>
                   ))}
@@ -619,7 +619,7 @@ const FoodcourtFloorPlanEditorPage: React.FC = () => {
                   <CardTitle>{t('floorPlan.storeProperties', 'Store Properties')}</CardTitle>
                   <FormGroup>
                     <FormLabel>{t('floorPlan.storeNumber', 'Store Number')}</FormLabel>
-                    <FormInput value={selectedStore.tableNumber} readOnly style={{ background: '#F3F4F6' }} />
+                    <FormInput value={selectedStore.tableNumber} readOnly style={{ background: '#F1F4F8' }} />
                   </FormGroup>
                   <FormGroup>
                     <FormLabel>{t('floorPlan.shape', 'Shape')}</FormLabel>
@@ -738,7 +738,7 @@ const FoodcourtFloorPlanEditorPage: React.FC = () => {
                     {t('floorPlan.removeStore', 'Remove Store')}
                   </Btn>
                   {/* Drag + nudge hints */}
-                  <div style={{ fontSize: 10, color: '#9CA3AF', marginTop: 8, lineHeight: 1.5 }}>
+                  <div style={{ fontSize: 10, color: '#6B7280', marginTop: 8, lineHeight: 1.5 }}>
                     <div>{t('floorPlan.dragHintSnap', 'Drag: edge snap · Shift = center snap · Alt = free')}</div>
                     <div>{t('floorPlan.nudgeHint', '↑↓←→ 1px · Shift 1 grid · Alt 10px')}</div>
                   </div>

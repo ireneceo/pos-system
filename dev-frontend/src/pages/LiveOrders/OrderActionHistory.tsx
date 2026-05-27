@@ -28,7 +28,7 @@ const Wrap = styled.div`
 const Empty = styled.div`
   padding: 32px 16px;
   text-align: center;
-  color: #6B7C93;
+  color: #4B5563;
   font-size: 13px;
 `;
 
@@ -36,7 +36,7 @@ const Item = styled.div<{ critical?: boolean }>`
   display: flex;
   gap: 14px;
   padding: 14px 16px;
-  border-left: 3px solid ${p => p.critical ? '#FF6B6B' : '#E6EBF1'};
+  border-left: 3px solid ${p => p.critical ? '#FF6B6B' : '#C7CED6'};
   background: ${p => p.critical ? '#FFF5F5' : 'transparent'};
   border-radius: 0 8px 8px 0;
   margin-bottom: 6px;
@@ -45,7 +45,7 @@ const Item = styled.div<{ critical?: boolean }>`
 const TimeCol = styled.div`
   min-width: 96px;
   font-size: 12px;
-  color: #6B7C93;
+  color: #4B5563;
   line-height: 1.4;
 `;
 
@@ -63,14 +63,14 @@ const ActionLine = styled.div<{ critical?: boolean }>`
 
 const Meta = styled.div`
   font-size: 12px;
-  color: #6B7C93;
+  color: #4B5563;
   display: flex;
   flex-wrap: wrap;
   gap: 6px 12px;
 `;
 
 const Tag = styled.span`
-  background: #F0F2F5;
+  background: #C7CED6;
   color: #3B30D9;
   padding: 1px 6px;
   border-radius: 4px;
@@ -147,7 +147,7 @@ const OrderActionHistory: React.FC<Props> = ({ orderId, timeZone }) => {
             <Body>
               <ActionLine critical={critical}>
                 {actionLabel}
-                {statusFlow && <span style={{ marginLeft: 8, fontWeight: 500, color: '#6B7C93' }}>{statusFlow}</span>}
+                {statusFlow && <span style={{ marginLeft: 8, fontWeight: 500, color: '#4B5563' }}>{statusFlow}</span>}
               </ActionLine>
               <Meta>
                 <span>{a.performed_by_name || 'System'}</span>

@@ -29,7 +29,7 @@ export const StatCard = styled.div<{ color?: string }>`
   background: white;
   border-radius: 12px;
   padding: 20px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-left: 4px solid ${props => props.color || '#635BFF'};
   transition: all 0.2s;
 
@@ -59,7 +59,7 @@ export const StatValue = styled.div`
 // 통계 라벨
 export const StatLabel = styled.div`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   font-weight: 500;
@@ -72,7 +72,7 @@ export const StatLabel = styled.div`
 // 통계 설명 (선택사항)
 export const StatDescription = styled.div`
   font-size: 12px;
-  color: #9CA3AF;
+  color: #6B7280;
   margin-top: 4px;
 
   @media (max-width: 768px) {
@@ -90,7 +90,7 @@ export const StatTrend = styled.div<{ trend?: 'up' | 'down' | 'neutral' }>`
     switch (props.trend) {
       case 'up': return '#059669';
       case 'down': return '#DC2626';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 `;
@@ -122,7 +122,7 @@ export const DashboardStatCard = styled.div<{ color?: string }>`
   background: white;
   border-radius: 12px;
   padding: 24px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-left: 4px solid ${props => props.color || '#635BFF'};
   transition: all 0.2s;
 
@@ -140,7 +140,7 @@ export const DashboardStatCard = styled.div<{ color?: string }>`
 export const DashboardStatLabel = styled.div`
   font-size: 13px;
   font-weight: 600;
-  color: #6B7C93;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 8px;
@@ -167,7 +167,7 @@ export const DashboardStatValue = styled.div`
 
 export const DashboardStatDescription = styled.div`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
 
   @media (max-width: 768px) {
     font-size: 11px;

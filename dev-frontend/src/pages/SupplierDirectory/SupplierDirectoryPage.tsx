@@ -47,7 +47,7 @@ interface DirectoryResponse {
 const PageTabBar = styled.div`
   display: flex;
   gap: 4px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   padding: 0 24px;
   background: white;
 `;
@@ -58,7 +58,7 @@ const PageTab = styled.button<{ $active: boolean }>`
   padding: 14px 20px;
   font-size: 14px;
   font-weight: 600;
-  color: ${p => p.$active ? '#635BFF' : '#6B7280'};
+  color: ${p => p.$active ? '#635BFF' : '#4B5563'};
   border-bottom: 2px solid ${p => p.$active ? '#635BFF' : 'transparent'};
   cursor: pointer;
   font-family: inherit;
@@ -68,7 +68,7 @@ const PageTab = styled.button<{ $active: boolean }>`
 `;
 
 const Subtitle = styled.div`
-  color: #6B7280;
+  color: #4B5563;
   font-size: 14px;
   margin-top: 4px;
 `;
@@ -86,7 +86,7 @@ const CardGrid = styled.div`
 
 const Card = styled.button`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   padding: 18px;
   text-align: left;
@@ -111,14 +111,14 @@ const LogoBox = styled.div`
   max-height: 80px;
   box-sizing: border-box;
   border-radius: 10px;
-  background: #F8FAFC;
-  border: 1px solid #E6EBF1;
+  background: #F1F4F8;
+  border: 1px solid #C7CED6;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 22px;
   font-weight: 600;
-  color: #6B7280;
+  color: #4B5563;
   overflow: hidden;
 
   img {
@@ -137,7 +137,7 @@ const CardName = styled.div`
 
 const CardLine = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   line-height: 1.4;
 `;
 
@@ -152,7 +152,7 @@ const Badge = styled.span<{ variant?: 'success' | 'warning' | 'neutral' | 'dange
       case 'success': return '#DCFCE7';
       case 'warning': return '#FEF3C7';
       case 'danger': return '#FEE2E2';
-      default: return '#F3F4F6';
+      default: return '#F1F4F8';
     }
   }};
   color: ${(p) => {
@@ -160,7 +160,7 @@ const Badge = styled.span<{ variant?: 'success' | 'warning' | 'neutral' | 'dange
       case 'success': return '#166534';
       case 'warning': return '#92400E';
       case 'danger': return '#991B1B';
-      default: return '#374151';
+      default: return '#1F2937';
     }
   }};
 `;
@@ -180,7 +180,7 @@ const SmallTag = styled.span`
 `;
 
 const Skeleton = styled.div`
-  background: linear-gradient(90deg, #F3F4F6 0%, #E5E7EB 50%, #F3F4F6 100%);
+  background: linear-gradient(90deg, #F1F4F8 0%, #C7CED6 50%, #F1F4F8 100%);
   background-size: 200% 100%;
   border-radius: 8px;
   animation: shimmer 1.4s ease infinite;
@@ -194,19 +194,19 @@ const Skeleton = styled.div`
 const SkeletonCard = styled(Card)`
   pointer-events: none;
   cursor: default;
-  border-color: #E6EBF1;
-  &:hover { transform: none; box-shadow: none; border-color: #E6EBF1; }
+  border-color: #C7CED6;
+  &:hover { transform: none; box-shadow: none; border-color: #C7CED6; }
 `;
 
 const EmptyBox = styled.div`
   text-align: center;
   padding: 60px 20px;
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
-  color: #6B7280;
+  color: #4B5563;
 
-  h3 { color: #374151; font-size: 18px; font-weight: 600; margin: 0 0 8px; }
+  h3 { color: #1F2937; font-size: 18px; font-weight: 600; margin: 0 0 8px; }
   p { font-size: 14px; margin: 0; }
 `;
 
@@ -220,7 +220,7 @@ const Pagination = styled.div`
 
 const PageInfo = styled.div`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 function statusVariant(s?: string): 'success' | 'warning' | 'neutral' | 'danger' {
@@ -479,7 +479,7 @@ const SupplierDirectoryPage: React.FC = () => {
           </>
         }
       >
-        <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 14, lineHeight: 1.5 }}>
+        <div style={{ fontSize: 12, color: '#4B5563', marginBottom: 14, lineHeight: 1.5 }}>
           {t('externalSupplier.hint', '시스템에 가입 안 된 공급업체를 직접 등록합니다. 이 공급업체로의 발주는 자동 발송되지 않으며, PDF 다운로드 또는 WhatsApp 으로 직접 보내야 합니다.')}
         </div>
         <FormRow>

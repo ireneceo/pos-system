@@ -28,7 +28,7 @@ const Modal = styled.div`
 
 const Header = styled.div`
   padding: 24px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
 `;
 
 const Title = styled.h2`
@@ -40,7 +40,7 @@ const Title = styled.h2`
 
 const Message = styled.p`
   font-size: 14px;
-  color: #6B7C93;
+  color: #4B5563;
   line-height: 1.5;
   margin: 0;
   white-space: pre-line;
@@ -49,7 +49,7 @@ const Message = styled.p`
 
 const Footer = styled.div`
   padding: 20px 24px;
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
   display: flex;
   justify-content: flex-end;
   gap: 12px;
@@ -65,7 +65,7 @@ const Button = styled.button<{ variant: 'primary' | 'secondary'; type?: string }
   border: ${props => {
     switch (props.variant) {
       case 'primary': return 'none';
-      default: return '1px solid #E6EBF1';
+      default: return '1px solid #C7CED6';
     }
   }};
   background: ${props => {
@@ -79,7 +79,7 @@ const Button = styled.button<{ variant: 'primary' | 'secondary'; type?: string }
   color: ${props => {
     switch (props.variant) {
       case 'primary': return 'white';
-      default: return '#6B7C93';
+      default: return '#4B5563';
     }
   }};
 
@@ -89,7 +89,7 @@ const Button = styled.button<{ variant: 'primary' | 'secondary'; type?: string }
         case 'primary':
           return props.type === 'danger' ? '#B91C1C' :
                  props.type === 'warning' ? '#B45309' : '#5A51E6';
-        default: return '#F8FAFC';
+        default: return '#F1F4F8';
       }
     }};
     transform: translateY(-1px);

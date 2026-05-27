@@ -66,15 +66,15 @@ const VerifyEmailPage: React.FC = () => {
         {status === 'loading' && (
           <>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏳</div>
-            <h2 style={{ color: '#374151', margin: '0 0 8px' }}>{t('auth:verifyEmailPage.verifyingYourEmail')}</h2>
-            <p style={{ color: '#6B7280' }}>{t('auth:verifyEmailPage.pleaseWaitAMoment')}</p>
+            <h2 style={{ color: '#1F2937', margin: '0 0 8px' }}>{t('auth:verifyEmailPage.verifyingYourEmail')}</h2>
+            <p style={{ color: '#4B5563' }}>{t('auth:verifyEmailPage.pleaseWaitAMoment')}</p>
           </>
         )}
         {status === 'success' && (
           <>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>✓</div>
             <h2 style={{ color: '#059669', margin: '0 0 8px' }}>{t('auth:verifyEmailPage.emailVerified')}</h2>
-            <p style={{ color: '#6B7280', marginBottom: '24px' }}>{message}</p>
+            <p style={{ color: '#4B5563', marginBottom: '24px' }}>{message}</p>
             <button
               onClick={() => navigate('/pos')}
               style={{
@@ -89,8 +89,8 @@ const VerifyEmailPage: React.FC = () => {
         {status === 'already' && (
           <>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>✓</div>
-            <h2 style={{ color: '#374151', margin: '0 0 8px' }}>{t('auth:verifyEmailPage.alreadyVerified')}</h2>
-            <p style={{ color: '#6B7280', marginBottom: '24px' }}>{message}</p>
+            <h2 style={{ color: '#1F2937', margin: '0 0 8px' }}>{t('auth:verifyEmailPage.alreadyVerified')}</h2>
+            <p style={{ color: '#4B5563', marginBottom: '24px' }}>{message}</p>
             <button
               onClick={() => navigate('/pos')}
               style={{
@@ -106,7 +106,7 @@ const VerifyEmailPage: React.FC = () => {
           <>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>✗</div>
             <h2 style={{ color: '#EF4444', margin: '0 0 8px' }}>{t('auth:verifyEmailPage.verificationFailed')}</h2>
-            <p style={{ color: '#6B7280', marginBottom: '24px' }}>{message}</p>
+            <p style={{ color: '#4B5563', marginBottom: '24px' }}>{message}</p>
             <button
               onClick={() => navigate('/pos')}
               style={{

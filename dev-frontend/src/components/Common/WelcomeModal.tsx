@@ -166,13 +166,13 @@ const CloseBtn = styled.button`
   background: none;
   border: none;
   font-size: 28px;
-  color: #9CA3AF;
+  color: #6B7280;
   cursor: pointer;
   line-height: 1;
   padding: 4px 8px;
   border-radius: 6px;
 
-  &:hover { color: #4B5563; background: #F3F4F6; }
+  &:hover { color: #374151; background: #F1F4F8; }
 `;
 
 const Header = styled.div`
@@ -198,7 +198,7 @@ const RoleTag = styled.span`
 `;
 
 const Subtitle = styled.p`
-  color: #6B7C93;
+  color: #4B5563;
   font-size: 14px;
   margin: 4px 0 0;
   line-height: 1.5;
@@ -215,9 +215,9 @@ const PreviewItem = styled.div`
   display: flex;
   gap: 12px;
   padding: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
-  background: #FAFBFC;
+  background: #F9FAFB;
 `;
 
 const Step = styled.div`
@@ -247,14 +247,14 @@ const PreviewLabel = styled.div`
 
 const PreviewDesc = styled.div`
   font-size: 12px;
-  color: #6B7C93;
+  color: #4B5563;
   margin-top: 2px;
   line-height: 1.4;
 `;
 
 const MoreNote = styled.div`
   font-size: 12px;
-  color: #6B7C93;
+  color: #4B5563;
   text-align: center;
   margin-bottom: 20px;
 `;
@@ -282,10 +282,10 @@ const buttonBase = `
 
 const SecondaryBtn = styled.button`
   ${buttonBase}
-  background: #F3F4F6;
-  color: #4B5563;
+  background: #F1F4F8;
+  color: #374151;
 
-  &:hover { background: #E5E7EB; }
+  &:hover { background: #C7CED6; }
 `;
 
 const PrimaryBtn = styled.button`

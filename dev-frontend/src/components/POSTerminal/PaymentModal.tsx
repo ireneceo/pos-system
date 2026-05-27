@@ -14,7 +14,7 @@ import { useStore } from '../../contexts/StoreContext';
 
 import { getAuthToken } from '../../utils/auth';
 const OrderSummary = styled.div`
-  background: linear-gradient(to bottom, #F8FAFC, #F1F5F9);
+  background: linear-gradient(to bottom, #F1F4F8, #F1F5F9);
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 20px;
@@ -33,7 +33,7 @@ const SummaryRow = styled.div`
 `;
 
 const SummaryLabel = styled.span`
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const SummaryValue = styled.span`
@@ -50,7 +50,7 @@ const AmountInput = styled.input`
   padding: 12px 16px;
   font-size: 18px;
   font-weight: 600;
-  border: 2px solid #E5E7EB;
+  border: 2px solid #C7CED6;
   border-radius: 8px;
   text-align: center;
   color: #1F2937;
@@ -64,7 +64,7 @@ const AmountInput = styled.input`
   }
 
   &::placeholder {
-    color: #9CA3AF;
+    color: #6B7280;
     font-weight: 400;
   }
 `;
@@ -78,9 +78,9 @@ const QuickAmountGrid = styled.div`
 
 const QuickAmountBtn = styled.button<{ selected?: boolean }>`
   padding: 10px;
-  border: 1px solid ${props => props.selected ? '#635BFF' : '#E5E7EB'};
+  border: 1px solid ${props => props.selected ? '#635BFF' : '#C7CED6'};
   background: ${props => props.selected ? 'rgba(99, 91, 255, 0.1)' : 'white'};
-  color: ${props => props.selected ? '#635BFF' : '#374151'};
+  color: ${props => props.selected ? '#635BFF' : '#1F2937'};
   border-radius: 8px;
   font-size: 14px;
   font-weight: 500;
@@ -88,7 +88,7 @@ const QuickAmountBtn = styled.button<{ selected?: boolean }>`
   transition: all 0.15s;
   
   &:hover {
-    border-color: ${props => props.selected ? '#635BFF' : '#D1D5DB'};
+    border-color: ${props => props.selected ? '#635BFF' : '#6B7280'};
     background: ${props => props.selected ? 'rgba(99, 91, 255, 0.1)' : '#F9FAFB'};
   }
 `;
@@ -143,7 +143,7 @@ const PointsTitle = styled.div`
 
 const PointsTier = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const PointsBalance = styled.div`
@@ -176,7 +176,7 @@ const PointsSlider = styled.input`
   width: 100%;
   height: 8px;
   border-radius: 4px;
-  background: #E5E7EB;
+  background: #C7CED6;
   accent-color: #635BFF;
   cursor: pointer;
 `;
@@ -199,7 +199,7 @@ const PointsUsing = styled.div`
 
 const PointsConversion = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const PointsDiscount = styled.div`
@@ -702,8 +702,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       {splitEligible && (
         <div style={{
           padding: '12px 16px',
-          background: splitMode ? '#F0F4FF' : '#F8FAFC',
-          border: `1px solid ${splitMode ? '#DDD9FF' : '#E6EBF1'}`,
+          background: splitMode ? '#F0F4FF' : '#F1F4F8',
+          border: `1px solid ${splitMode ? '#DDD9FF' : '#C7CED6'}`,
           borderRadius: 8,
           marginBottom: 16
         }}>
@@ -712,7 +712,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
               <div style={{ fontSize: 13, fontWeight: 600, color: '#0A2540' }}>
                 Split bill (pay by items)
               </div>
-              <div style={{ fontSize: 11, color: '#6B7C93', marginTop: 2 }}>
+              <div style={{ fontSize: 11, color: '#4B5563', marginTop: 2 }}>
                 Select items to pay this round. Remaining items can be paid separately.
                 {totalPaidAlready > 0 && (
                   <>
@@ -739,14 +739,14 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
             <div style={{
               marginTop: 12, padding: '8px 10px',
               background: 'white',
-              border: '1px solid #E6EBF1', borderRadius: 6,
+              border: '1px solid #C7CED6', borderRadius: 6,
               fontSize: 11
             }}>
               <div style={{ fontWeight: 600, color: '#0A2540', marginBottom: 4 }}>
                 Already paid ({paidReceipts.length} receipt{paidReceipts.length > 1 ? 's' : ''})
               </div>
               {paidReceipts.map((r, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', color: '#6B7C93', padding: '2px 0' }}>
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', color: '#4B5563', padding: '2px 0' }}>
                   <span>
                     <span style={{ color: '#3B30D9', fontWeight: 600 }}>{r.receipt_number}</span>
                     {' · '}{r.payment_method}{r.card_type ? ` (${r.card_type})` : ''}
@@ -771,8 +771,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
                     style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                       padding: '8px 10px',
-                      background: alreadyPaid ? '#F0F2F5' : (checked ? 'white' : 'transparent'),
-                      border: `1px solid ${alreadyPaid ? '#D1D5DB' : (checked ? '#635BFF' : '#E6EBF1')}`,
+                      background: alreadyPaid ? '#C7CED6' : (checked ? 'white' : 'transparent'),
+                      border: `1px solid ${alreadyPaid ? '#6B7280' : (checked ? '#635BFF' : '#C7CED6')}`,
                       borderRadius: 6,
                       cursor: alreadyPaid ? 'not-allowed' : 'pointer',
                       opacity: alreadyPaid ? 0.6 : 1
@@ -804,7 +804,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
                         </span>
                       )}
                     </div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: alreadyPaid ? '#6B7C93' : '#0A2540', whiteSpace: 'nowrap', textDecoration: alreadyPaid ? 'line-through' : 'none' }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: alreadyPaid ? '#4B5563' : '#0A2540', whiteSpace: 'nowrap', textDecoration: alreadyPaid ? 'line-through' : 'none' }}>
                       {formatCurrency(itemTotal, operationSettings.currency)}
                     </div>
                   </label>
@@ -816,59 +816,59 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
                 <div style={{
                   marginTop: 8, padding: '10px 12px',
                   background: 'white',
-                  border: '1px solid #E6EBF1',
+                  border: '1px solid #C7CED6',
                   borderRadius: 6,
                   fontSize: 12
                 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#6B7C93', marginBottom: 4 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#4B5563', marginBottom: 4 }}>
                     <span>Items subtotal</span>
                     <span>{formatCurrency(splitSubtotal, operationSettings.currency)}</span>
                   </div>
                   {splitDiscount > 0.005 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#6B7C93', marginBottom: 4 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#4B5563', marginBottom: 4 }}>
                       <span>Discount (proportional)</span>
                       <span>−{formatCurrency(splitDiscount, operationSettings.currency)}</span>
                     </div>
                   )}
                   {splitCoupon > 0.005 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#6B7C93', marginBottom: 4 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#4B5563', marginBottom: 4 }}>
                       <span>Coupon (proportional)</span>
                       <span>−{formatCurrency(splitCoupon, operationSettings.currency)}</span>
                     </div>
                   )}
                   {splitDiscountPolicy > 0.005 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#6B7C93', marginBottom: 4 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#4B5563', marginBottom: 4 }}>
                       <span>Discount policy (proportional)</span>
                       <span>−{formatCurrency(splitDiscountPolicy, operationSettings.currency)}</span>
                     </div>
                   )}
                   {splitPointDiscount > 0.005 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#6B7C93', marginBottom: 4 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#4B5563', marginBottom: 4 }}>
                       <span>Points (proportional)</span>
                       <span>−{formatCurrency(splitPointDiscount, operationSettings.currency)}</span>
                     </div>
                   )}
                   {splitTakeaway > 0.005 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#6B7C93', marginBottom: 4 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#4B5563', marginBottom: 4 }}>
                       <span>Takeaway charge</span>
                       <span>+{formatCurrency(splitTakeaway, operationSettings.currency)}</span>
                     </div>
                   )}
                   {splitService > 0.005 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#6B7C93', marginBottom: 4 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#4B5563', marginBottom: 4 }}>
                       <span>Service ({serviceChargeRate}%)</span>
                       <span>+{formatCurrency(splitService, operationSettings.currency)}</span>
                     </div>
                   )}
                   {splitTax > 0.005 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#6B7C93', marginBottom: 4 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#4B5563', marginBottom: 4 }}>
                       <span>Tax ({taxRate}%)</span>
                       <span>+{formatCurrency(splitTax, operationSettings.currency)}</span>
                     </div>
                   )}
                   <div style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    marginTop: 6, paddingTop: 8, borderTop: '1px solid #E6EBF1'
+                    marginTop: 6, paddingTop: 8, borderTop: '1px solid #C7CED6'
                   }}>
                     <span style={{ fontSize: 13, fontWeight: 600, color: '#0A2540' }}>This payment</span>
                     <span style={{ fontSize: 16, fontWeight: 700, color: splitTotal - remainingAmount > 0.01 ? '#DC2626' : '#3B30D9' }}>
@@ -1012,7 +1012,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 
               {usePoints && (
                 <>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#6B7280', marginBottom: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#4B5563', marginBottom: '8px' }}>
                     <span>{membershipSettings?.min_points_to_use || 100} pts</span>
                     <span>{maxPointsForOrder.toLocaleString()} pts (max)</span>
                   </div>
@@ -1036,7 +1036,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
               )}
             </>
           ) : (
-            <div style={{ fontSize: '13px', color: '#6B7280', textAlign: 'center', padding: '12px' }}>
+            <div style={{ fontSize: '13px', color: '#4B5563', textAlign: 'center', padding: '12px' }}>
               Minimum {membershipSettings?.min_points_to_use || 100} points required to use
             </div>
           )}
@@ -1100,7 +1100,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       <Section>
         <Label>Payment Method</Label>
         {!paymentMethods ? (
-          <div style={{ color: '#6B7C93', fontSize: '14px', padding: '12px 0' }}>
+          <div style={{ color: '#4B5563', fontSize: '14px', padding: '12px 0' }}>
             Loading payment methods...
           </div>
         ) : availableMethods.length === 0 ? (

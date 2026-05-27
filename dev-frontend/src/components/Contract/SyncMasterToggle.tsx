@@ -14,8 +14,8 @@ const Wrapper = styled.div`
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
-  background: #F8FAFC;
-  border: 1px solid #E6EBF1;
+  background: #F1F4F8;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
 `;
 
@@ -27,7 +27,7 @@ const Switch = styled.button<{ checked: boolean; disabled?: boolean }>`
   border: none;
   padding: 0;
   cursor: ${p => p.disabled ? 'not-allowed' : 'pointer'};
-  background: ${p => p.checked ? '#635BFF' : '#CBD5E1'};
+  background: ${p => p.checked ? '#635BFF' : '#64748B'};
   opacity: ${p => p.disabled ? 0.5 : 1};
   transition: background 0.15s;
   flex-shrink: 0;
@@ -61,7 +61,7 @@ const LabelText = styled.span`
 
 const Hint = styled.span`
   font-size: 12px;
-  color: #6B7C93;
+  color: #4B5563;
 `;
 
 const SyncMasterToggle: React.FC<Props> = ({ checked, onChange, disabled, label, hint }) => {

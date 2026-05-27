@@ -7,7 +7,7 @@ const QuickBtnDiv = styled.div`
   text-decoration: none;
   color: #0A2540;
   transition: all 0.15s;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   cursor: pointer;
 
   &:hover {

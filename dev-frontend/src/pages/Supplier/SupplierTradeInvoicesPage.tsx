@@ -46,7 +46,7 @@ interface TradeInvoiceRow {
 // SOA is a real Invoice record (invoice_category='soa') in the main list with a purple badge.
 
 const Subtitle = styled.div`
-  color: #6B7280;
+  color: #4B5563;
   font-size: 14px;
   margin-top: 4px;
 `;
@@ -55,12 +55,12 @@ const DetailRow = styled.div`
   display: flex;
   justify-content: space-between;
   padding: 6px 0;
-  border-bottom: 1px dashed #F3F4F6;
+  border-bottom: 1px dashed #F1F4F8;
   font-size: 14px;
 
   &:last-child { border-bottom: none; }
 
-  span:first-child { color: #6B7280; }
+  span:first-child { color: #4B5563; }
   span:last-child { color: #0A2540; font-weight: 600; }
 `;
 
@@ -75,7 +75,7 @@ const ItemTable = styled.table`
     text-align: left;
     border-bottom: 1px solid #F1F5F9;
   }
-  th { color: #6B7280; font-weight: 600; }
+  th { color: #4B5563; font-weight: 600; }
   td.right, th.right { text-align: right; }
 `;
 
@@ -247,7 +247,7 @@ const SupplierTradeInvoicesPage: React.FC = () => {
                 <tr>
                   <td colSpan={7}>
                     <DataTableEmpty>
-                      <div style={{ color: '#6B7280' }}>{t('supplier:tradeInvoicesPage.empty')}</div>
+                      <div style={{ color: '#4B5563' }}>{t('supplier:tradeInvoicesPage.empty')}</div>
                     </DataTableEmpty>
                   </td>
                 </tr>
@@ -269,7 +269,7 @@ const SupplierTradeInvoicesPage: React.FC = () => {
                       )}
                       <strong>{row.invoice_number}</strong>
                       {row.parent_soa_invoice_id && (
-                        <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>
+                        <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
                           {t('supplier:tradeInvoicesPage.bundledInSoa', 'Bundled in SOA')}
                         </div>
                       )}
@@ -354,7 +354,7 @@ const SupplierTradeInvoicesPage: React.FC = () => {
               </div>
             )}
 
-            <div style={{ marginTop: 12, padding: 12, background: '#F8FAFC', borderRadius: 8 }}>
+            <div style={{ marginTop: 12, padding: 12, background: '#F1F4F8', borderRadius: 8 }}>
               {detailRow.subtotal != null && (
                 <DetailRow>
                   <span>Subtotal</span>
@@ -384,7 +384,7 @@ const SupplierTradeInvoicesPage: React.FC = () => {
             </div>
 
             {detailRow.notes && (
-              <div style={{ marginTop: 12, padding: 12, background: '#FFFBEB', borderRadius: 8, fontSize: 13, color: '#374151' }}>
+              <div style={{ marginTop: 12, padding: 12, background: '#FFFBEB', borderRadius: 8, fontSize: 13, color: '#1F2937' }}>
                 {detailRow.notes}
               </div>
             )}

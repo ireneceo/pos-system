@@ -26,10 +26,10 @@ const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title
 );
 
 const Row: React.FC<{ label: string; desc?: string; right: React.ReactNode }> = ({ label, desc, right }) => (
-  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #F3F4F6' }}>
+  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #F1F4F8' }}>
     <div style={{ flex: 1, minWidth: 0 }}>
       <div style={{ fontSize: 14, fontWeight: 500, color: '#0A2540' }}>{label}</div>
-      {desc && <div style={{ fontSize: 12, color: '#6B7C93', marginTop: 2 }}>{desc}</div>}
+      {desc && <div style={{ fontSize: 12, color: '#4B5563', marginTop: 2 }}>{desc}</div>}
     </div>
     <div style={{ marginLeft: 16 }}>{right}</div>
   </div>
@@ -105,7 +105,7 @@ const PushPreferencesCard: React.FC = () => {
   }
 
   return (
-    <div style={{ background: '#fff', border: '1px solid #E6EBF1', borderRadius: 12, padding: 24 }}>
+    <div style={{ background: '#fff', border: '1px solid #C7CED6', borderRadius: 12, padding: 24 }}>
       <Section title="Push notifications">
         <Row
           label="Enable push notifications on this device"
@@ -123,7 +123,7 @@ const PushPreferencesCard: React.FC = () => {
               />
               <span style={{
                 position: 'absolute', cursor: busy || permission === 'denied' ? 'not-allowed' : 'pointer', inset: 0,
-                background: prefs?.push_enabled ? '#635BFF' : '#CBD5E1',
+                background: prefs?.push_enabled ? '#635BFF' : '#64748B',
                 opacity: permission === 'denied' ? 0.5 : 1,
                 borderRadius: 24, transition: 'background 0.15s'
               }} />
@@ -148,7 +148,7 @@ const PushPreferencesCard: React.FC = () => {
           >
             Send test push
           </button>
-          {testStatus && <span style={{ marginLeft: 12, fontSize: 13, color: '#6B7C93' }}>{testStatus}</span>}
+          {testStatus && <span style={{ marginLeft: 12, fontSize: 13, color: '#4B5563' }}>{testStatus}</span>}
         </div>
       </Section>
 
@@ -168,19 +168,19 @@ const PushPreferencesCard: React.FC = () => {
         />
         {prefs?.muted_hours?.enabled && (
           <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 12 }}>
-            <label style={{ fontSize: 13, color: '#6B7C93' }}>From</label>
+            <label style={{ fontSize: 13, color: '#4B5563' }}>From</label>
             <select
               value={prefs.muted_hours.start}
               onChange={(e) => handleMutedChange({ start: parseInt(e.target.value, 10) })}
-              style={{ padding: '6px 10px', border: '1px solid #E6EBF1', borderRadius: 6 }}
+              style={{ padding: '6px 10px', border: '1px solid #C7CED6', borderRadius: 6 }}
             >
               {Array.from({ length: 24 }, (_, h) => <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>)}
             </select>
-            <label style={{ fontSize: 13, color: '#6B7C93' }}>To</label>
+            <label style={{ fontSize: 13, color: '#4B5563' }}>To</label>
             <select
               value={prefs.muted_hours.end}
               onChange={(e) => handleMutedChange({ end: parseInt(e.target.value, 10) })}
-              style={{ padding: '6px 10px', border: '1px solid #E6EBF1', borderRadius: 6 }}
+              style={{ padding: '6px 10px', border: '1px solid #C7CED6', borderRadius: 6 }}
             >
               {Array.from({ length: 24 }, (_, h) => <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>)}
             </select>

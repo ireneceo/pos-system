@@ -47,13 +47,13 @@ const StyledSearchInput = styled.input`
   width: 100%;
   height: 38px;
   padding: 0 32px 0 36px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   color: #1F2937;
   box-sizing: border-box;
   &:focus { outline: none; border-color: #635BFF; }
-  &::placeholder { color: #9CA3AF; }
+  &::placeholder { color: #6B7280; }
 `;
 
 const SearchIcon = styled.span`
@@ -61,7 +61,7 @@ const SearchIcon = styled.span`
   left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  color: #9CA3AF;
+  color: #6B7280;
   pointer-events: none;
   display: inline-flex;
 `;
@@ -71,7 +71,7 @@ const ClearSearchButton = styled.button`
   right: 8px;
   top: 50%;
   transform: translateY(-50%);
-  background: #E5E7EB;
+  background: #C7CED6;
   border: none;
   border-radius: 50%;
   width: 18px;
@@ -81,16 +81,16 @@ const ClearSearchButton = styled.button`
   justify-content: center;
   cursor: pointer;
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   padding: 0;
   line-height: 1;
-  &:hover { background: #D1D5DB; }
+  &:hover { background: #6B7280; }
 `;
 
 const StatusFilter = styled.select`
   height: 38px;
   padding: 0 30px 0 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   color: #1F2937;
@@ -115,14 +115,14 @@ const IconBtn = styled.button`
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   background: white;
   color: #475569;
   border-radius: 6px;
   cursor: pointer;
   padding: 0;
   transition: all 0.15s;
-  &:hover { background: #F8FAFC; border-color: #635BFF; color: #635BFF; }
+  &:hover { background: #F1F4F8; border-color: #635BFF; color: #635BFF; }
   svg { width: 16px; height: 16px; }
 `;
 
@@ -161,7 +161,7 @@ const PanelHeader = styled.div`
   align-items: center;
   justify-content: space-between;
   padding: 16px 24px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   flex-shrink: 0;
   gap: 12px;
 
@@ -171,7 +171,7 @@ const PanelHeader = styled.div`
 const PanelBody = styled.div`
   flex: 1;
   overflow-y: auto;
-  background: #FAFBFC;
+  background: #F9FAFB;
 `;
 
 const PanelClose = styled.button`
@@ -180,7 +180,7 @@ const PanelClose = styled.button`
   border: none;
   background: transparent;
   font-size: 22px;
-  color: #6B7280;
+  color: #4B5563;
   cursor: pointer;
   border-radius: 6px;
   &:hover { background: #F1F5F9; color: #0A2540; }
@@ -203,7 +203,7 @@ const NakedClose = styled.button`
   background: transparent;
   font-size: 26px;
   line-height: 1;
-  color: #6B7280;
+  color: #4B5563;
   cursor: pointer;
   padding: 0;
   display: inline-flex;
@@ -214,14 +214,14 @@ const NakedClose = styled.button`
 
 const InfoCard = styled.div`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 10px;
   padding: 16px 20px;
   margin-bottom: 16px;
 
   h3 { margin: 0 0 12px; font-size: 13px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.4px; }
   dl { margin: 0; display: grid; grid-template-columns: 110px 1fr; row-gap: 8px; column-gap: 12px; font-size: 13px; }
-  dt { color: #6B7280; font-weight: 500; }
+  dt { color: #4B5563; font-weight: 500; }
   dd { margin: 0; color: #0A2540; font-weight: 500; }
 `;
 
@@ -230,7 +230,7 @@ const ItemTable = styled.table`
   border-collapse: collapse;
   font-size: 13px;
   th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid #F1F5F9; }
-  th { font-weight: 600; color: #475569; background: #F8FAFC; font-size: 12px; }
+  th { font-weight: 600; color: #475569; background: #F1F4F8; font-size: 12px; }
   td.num { text-align: right; }
   th.num { text-align: right; }
 `;
@@ -274,7 +274,7 @@ interface SuggestionGroup {
 }
 
 const Subtitle = styled.div`
-  color: #6B7280;
+  color: #4B5563;
   font-size: 14px;
   margin-top: 4px;
 `;
@@ -308,7 +308,7 @@ const SuggestionBadge = styled.button`
 
 const SuggestionPanel = styled.div`
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 16px;
@@ -329,12 +329,12 @@ const SuggestionHead = styled.div`
   p {
     margin: 0;
     font-size: 13px;
-    color: #6B7280;
+    color: #4B5563;
   }
 `;
 
 const SuggestionGroupBox = styled.div`
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   padding: 12px;
   margin-bottom: 10px;
@@ -349,7 +349,7 @@ const SuggestionGroupHead = styled.div`
   margin-bottom: 8px;
 
   strong { color: #0A2540; font-size: 14px; }
-  span { color: #6B7280; font-size: 12px; }
+  span { color: #4B5563; font-size: 12px; }
 `;
 
 const SuggestionList = styled.ul`
@@ -357,13 +357,13 @@ const SuggestionList = styled.ul`
   margin: 0;
   padding: 0;
   font-size: 13px;
-  color: #374151;
+  color: #1F2937;
 
   li {
     display: flex;
     justify-content: space-between;
     padding: 4px 0;
-    border-bottom: 1px dashed #F3F4F6;
+    border-bottom: 1px dashed #F1F4F8;
   }
   li:last-child { border-bottom: none; }
 `;
@@ -689,7 +689,7 @@ const PurchaseOrdersPage: React.FC = () => {
 
       <Content>
         <StatsGrid>
-          <StatCard color="#6B7280">
+          <StatCard color="#4B5563">
             <StatValue>{stats.draft}</StatValue>
             <StatLabel>{t('list.stats.draft')}</StatLabel>
           </StatCard>
@@ -824,10 +824,10 @@ const PurchaseOrdersPage: React.FC = () => {
                 <tr>
                   <td colSpan={9}>
                     <DataTableEmpty>
-                      <div style={{ marginBottom: 12, fontSize: 16, fontWeight: 600, color: '#374151' }}>
+                      <div style={{ marginBottom: 12, fontSize: 16, fontWeight: 600, color: '#1F2937' }}>
                         {t('list.empty.title')}
                       </div>
-                      <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 16 }}>
+                      <div style={{ fontSize: 13, color: '#4B5563', marginBottom: 16 }}>
                         {t('list.empty.hint')}
                       </div>
                       <ThemedButton

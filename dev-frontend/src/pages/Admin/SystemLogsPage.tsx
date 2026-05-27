@@ -60,7 +60,7 @@ type ActiveTab = 'logs' | 'health';
 
 const DateInput = styled.input`
   padding: 8px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 14px;
   
@@ -96,11 +96,11 @@ const ToggleButton = styled.button<{ active?: boolean }>`
     }
   ` : `
     background: transparent;
-    color: #6B7280;
-    border-color: #E6EBF1;
+    color: #4B5563;
+    border-color: #C7CED6;
     
     &:hover {
-      background: #F8FAFC;
+      background: #F1F4F8;
       color: #0A2540;
     }
   `}
@@ -109,13 +109,13 @@ const ToggleButton = styled.button<{ active?: boolean }>`
 const LogsContainer = styled.div`
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   overflow: hidden;
 `;
 
 const LogsHeader = styled.div`
-  background: #F8FAFC;
-  border-bottom: 1px solid #E6EBF1;
+  background: #F1F4F8;
+  border-bottom: 1px solid #C7CED6;
   padding: 16px 24px;
   display: flex;
   justify-content: space-between;
@@ -143,7 +143,7 @@ const LogsList = styled.div`
 
 const LogItem = styled.div<{ level: string }>`
   padding: 12px 24px;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
   transition: background 0.2s;
   
   ${props => {
@@ -161,13 +161,13 @@ const LogItem = styled.div<{ level: string }>`
         `;
       case 'debug':
         return `
-          background: #F8FAFC;
-          border-left: 4px solid #6B7280;
+          background: #F1F4F8;
+          border-left: 4px solid #4B5563;
         `;
       default:
         return `
           &:hover {
-            background: #FAFBFC;
+            background: #F9FAFB;
           }
         `;
     }
@@ -187,7 +187,7 @@ const LogHeader = styled.div`
 `;
 
 const LogTimestamp = styled.span`
-  color: #6B7280;
+  color: #4B5563;
   font-size: 12px;
 `;
 
@@ -203,8 +203,8 @@ const LogLevel = styled.span<{ level: string }>`
       case 'error': return '#FED7D7';
       case 'warning': return '#FEF3C7';
       case 'info': return '#DBEAFE';
-      case 'debug': return '#F3F4F6';
-      default: return '#F3F4F6';
+      case 'debug': return '#F1F4F8';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
@@ -213,8 +213,8 @@ const LogLevel = styled.span<{ level: string }>`
       case 'error': return '#E53E3E';
       case 'warning': return '#D97706';
       case 'info': return '#1E40AF';
-      case 'debug': return '#6B7280';
-      default: return '#6B7280';
+      case 'debug': return '#4B5563';
+      default: return '#4B5563';
     }
   }};
 `;
@@ -230,7 +230,7 @@ const LogCategory = styled.span`
 `;
 
 const LogService = styled.span`
-  color: #374151;
+  color: #1F2937;
   font-weight: 500;
 `;
 
@@ -240,7 +240,7 @@ const LogMessage = styled.div`
 `;
 
 const LogMeta = styled.div`
-  color: #9CA3AF;
+  color: #6B7280;
   font-size: 11px;
   display: flex;
   gap: 12px;
@@ -249,13 +249,13 @@ const LogMeta = styled.div`
 `;
 
 const LogDetails = styled.pre`
-  background: #F8FAFC;
-  border: 1px solid #E6EBF1;
+  background: #F1F4F8;
+  border: 1px solid #C7CED6;
   border-radius: 4px;
   padding: 8px;
   margin-top: 8px;
   font-size: 11px;
-  color: #374151;
+  color: #1F2937;
   overflow-x: auto;
   white-space: pre-wrap;
 `;
@@ -313,13 +313,13 @@ const ExportOption = styled.div`
   align-items: center;
   gap: 16px;
   padding: 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
   
   &:hover {
-    background: #F8FAFC;
+    background: #F1F4F8;
     border-color: #635BFF;
     transform: translateY(-1px);
   }
@@ -342,7 +342,7 @@ const ExportTitle = styled.div`
 
 const ExportDesc = styled.div`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const WarningIcon = styled.div`
@@ -361,7 +361,7 @@ const WarningText = styled.div`
 
 const WarningSubtext = styled.div`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   text-align: center;
   margin-bottom: 24px;
 `;
@@ -376,7 +376,7 @@ const TabBar = styled.div`
   display: flex;
   gap: 0;
   margin-bottom: 24px;
-  border-bottom: 2px solid #E6EBF1;
+  border-bottom: 2px solid #C7CED6;
 `;
 
 const Tab = styled.button<{ active: boolean }>`
@@ -386,13 +386,13 @@ const Tab = styled.button<{ active: boolean }>`
   cursor: pointer;
   border: none;
   background: none;
-  color: ${props => props.active ? '#635BFF' : '#6B7280'};
+  color: ${props => props.active ? '#635BFF' : '#4B5563'};
   border-bottom: 2px solid ${props => props.active ? '#635BFF' : 'transparent'};
   margin-bottom: -2px;
   transition: all 0.2s;
 
   &:hover {
-    color: ${props => props.active ? '#635BFF' : '#374151'};
+    color: ${props => props.active ? '#635BFF' : '#1F2937'};
   }
 `;
 
@@ -420,7 +420,7 @@ const HealthCard = styled.div<{ status: 'ok' | 'warning' | 'critical' | 'unknown
       case 'ok': return '#D1FAE5';
       case 'warning': return '#FDE68A';
       case 'critical': return '#FCA5A5';
-      default: return '#E6EBF1';
+      default: return '#C7CED6';
     }
   }};
   background: ${props => {
@@ -428,7 +428,7 @@ const HealthCard = styled.div<{ status: 'ok' | 'warning' | 'critical' | 'unknown
       case 'ok': return '#F0FDF4';
       case 'warning': return '#FFFBEB';
       case 'critical': return '#FEF2F2';
-      default: return '#F8FAFC';
+      default: return '#F1F4F8';
     }
   }};
 `;
@@ -437,7 +437,7 @@ const HealthCardTitle = styled.div`
   font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
-  color: #6B7280;
+  color: #4B5563;
   margin-bottom: 8px;
 `;
 
@@ -449,21 +449,21 @@ const HealthCardValue = styled.div<{ status: 'ok' | 'warning' | 'critical' | 'un
       case 'ok': return '#059669';
       case 'warning': return '#D97706';
       case 'critical': return '#DC2626';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 `;
 
 const HealthCardSub = styled.div`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 4px;
 `;
 
 const HealthSection = styled.div`
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   padding: 20px 24px;
   margin-bottom: 16px;
 `;
@@ -480,7 +480,7 @@ const ServiceRow = styled.div`
   align-items: center;
   justify-content: space-between;
   padding: 10px 0;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
 
   &:last-child {
     border-bottom: none;
@@ -490,7 +490,7 @@ const ServiceRow = styled.div`
 const ServiceName = styled.span`
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: #1F2937;
 `;
 
 const ServiceBadge = styled.span<{ status: 'online' | 'offline' | 'unknown' }>`
@@ -502,14 +502,14 @@ const ServiceBadge = styled.span<{ status: 'online' | 'offline' | 'unknown' }>`
     switch(props.status) {
       case 'online': return '#D1FAE5';
       case 'offline': return '#FEE2E2';
-      default: return '#F3F4F6';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
     switch(props.status) {
       case 'online': return '#059669';
       case 'offline': return '#DC2626';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 `;
@@ -524,7 +524,7 @@ const TrendRow = styled.div`
 `;
 
 const TrendTime = styled.span`
-  color: #6B7280;
+  color: #4B5563;
   min-width: 50px;
 `;
 
@@ -539,13 +539,13 @@ const TrendBar = styled.div<{ percent: number; color: string }>`
 
 const TrendBarContainer = styled.div`
   flex: 1;
-  background: #F3F4F6;
+  background: #F1F4F8;
   border-radius: 3px;
   height: 16px;
 `;
 
 const TrendValue = styled.span`
-  color: #374151;
+  color: #1F2937;
   font-weight: 500;
   min-width: 45px;
   text-align: right;
@@ -560,7 +560,7 @@ const HealthHeaderRow = styled.div`
 
 const HealthLastCheck = styled.div`
   font-size: 13px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const CheckNowBtn = styled.button`
@@ -587,7 +587,7 @@ const CheckNowBtn = styled.button`
 const NoDataMessage = styled.div`
   text-align: center;
   padding: 60px 20px;
-  color: #6B7280;
+  color: #4B5563;
   font-size: 16px;
 `;
 
@@ -953,7 +953,7 @@ const SystemLogsPage: React.FC = () => {
             <ServiceRow key={idx}>
               <ServiceName>PM2: {proc.name}</ServiceName>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <span style={{ fontSize: 12, color: '#6B7280' }}>
+                <span style={{ fontSize: 12, color: '#4B5563' }}>
                   CPU: {proc.cpu}% &middot; MEM: {proc.memory}MB &middot; Restarts: {proc.restarts}
                 </span>
                 <ServiceBadge status={getServiceStatus(proc.status)}>
@@ -969,15 +969,15 @@ const SystemLogsPage: React.FC = () => {
           <HealthSectionTitle>{'Server Info'}</HealthSectionTitle>
           <ServiceRow>
             <ServiceName>{'Server'}</ServiceName>
-            <span style={{ fontSize: 14, color: '#374151' }}>{current.ip} (production)</span>
+            <span style={{ fontSize: 14, color: '#1F2937' }}>{current.ip} (production)</span>
           </ServiceRow>
           <ServiceRow>
             <ServiceName>{'Uptime'}</ServiceName>
-            <span style={{ fontSize: 14, color: '#374151' }}>{formatUptime(current.serverUptime)}</span>
+            <span style={{ fontSize: 14, color: '#1F2937' }}>{formatUptime(current.serverUptime)}</span>
           </ServiceRow>
           <ServiceRow>
             <ServiceName>{'Pending Security Updates'}</ServiceName>
-            <span style={{ fontSize: 14, fontWeight: 600, color: current.securityUpdates > 10 ? '#D97706' : '#374151' }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: current.securityUpdates > 10 ? '#D97706' : '#1F2937' }}>
               {current.securityUpdates}
             </span>
           </ServiceRow>
@@ -988,7 +988,7 @@ const SystemLogsPage: React.FC = () => {
           <HealthSection>
             <HealthSectionTitle>24h Resource Trend ({trend.length} data points)</HealthSectionTitle>
             <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8 }}>{'CPU'}</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#1F2937', marginBottom: 8 }}>{'CPU'}</div>
               {trend.filter((_, i) => i % Math.max(1, Math.floor(trend.length / 12)) === 0 || i === trend.length - 1).map((point, idx) => (
                 <TrendRow key={`cpu-${idx}`}>
                   <TrendTime>{formatDateTime(point.timestamp, null, { hour: '2-digit', minute: '2-digit', hour12: false, year: undefined, month: undefined, day: undefined })}</TrendTime>
@@ -1000,7 +1000,7 @@ const SystemLogsPage: React.FC = () => {
               ))}
             </div>
             <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8 }}>{'Memory'}</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#1F2937', marginBottom: 8 }}>{'Memory'}</div>
               {trend.filter((_, i) => i % Math.max(1, Math.floor(trend.length / 12)) === 0 || i === trend.length - 1).map((point, idx) => (
                 <TrendRow key={`mem-${idx}`}>
                   <TrendTime>{formatDateTime(point.timestamp, null, { hour: '2-digit', minute: '2-digit', hour12: false, year: undefined, month: undefined, day: undefined })}</TrendTime>
@@ -1012,7 +1012,7 @@ const SystemLogsPage: React.FC = () => {
               ))}
             </div>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8 }}>{'Disk'}</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#1F2937', marginBottom: 8 }}>{'Disk'}</div>
               {trend.filter((_, i) => i % Math.max(1, Math.floor(trend.length / 12)) === 0 || i === trend.length - 1).map((point, idx) => (
                 <TrendRow key={`disk-${idx}`}>
                   <TrendTime>{formatDateTime(point.timestamp, null, { hour: '2-digit', minute: '2-digit', hour12: false, year: undefined, month: undefined, day: undefined })}</TrendTime>
@@ -1120,7 +1120,7 @@ const SystemLogsPage: React.FC = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
           <LiveToggle>
-            <span style={{ fontSize: '12px', color: '#6B7280', fontWeight: '600', textTransform: 'uppercase' }}>
+            <span style={{ fontSize: '12px', color: '#4B5563', fontWeight: '600', textTransform: 'uppercase' }}>
               Live Mode
             </span>
             <ToggleButton
@@ -1159,7 +1159,7 @@ const SystemLogsPage: React.FC = () => {
                     </span>
                   )}
                   {log.duration && (
-                    <span style={{ color: '#6B7280' }}>{log.duration}ms</span>
+                    <span style={{ color: '#4B5563' }}>{log.duration}ms</span>
                   )}
                 </LogHeader>
                 <LogMessage>{log.message}</LogMessage>
@@ -1196,7 +1196,7 @@ const SystemLogsPage: React.FC = () => {
               </LogItem>
             ))}
             {filteredLogs.length === 0 && (
-              <div style={{ padding: '40px', textAlign: 'center', color: '#6B7280' }}>
+              <div style={{ padding: '40px', textAlign: 'center', color: '#4B5563' }}>
                 No logs match the current filters
               </div>
             )}

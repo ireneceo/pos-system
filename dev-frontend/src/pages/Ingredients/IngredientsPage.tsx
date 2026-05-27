@@ -48,7 +48,7 @@ const IngredientsGrid = styled.div`
 const IngredientCard = styled.div<{ isActive?: boolean }>`
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   padding: 20px;
   transition: all 0.2s;
   opacity: ${props => props.isActive ? 1 : 0.6};
@@ -103,7 +103,7 @@ const InfoRow = styled.div`
   justify-content: space-between;
   align-items: center;
   padding: 8px 0;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
 
   &:last-child {
     border-bottom: none;
@@ -112,7 +112,7 @@ const InfoRow = styled.div`
 
 const InfoLabel = styled.span`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const InfoValue = styled.span`
@@ -155,9 +155,9 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger
         `;
       default:
         return `
-          background: #F3F4F6;
-          color: #374151;
-          &:hover { background: #E5E7EB; }
+          background: #F1F4F8;
+          color: #1F2937;
+          &:hover { background: #C7CED6; }
         `;
     }
   }}
@@ -180,7 +180,7 @@ const EmptyTitle = styled.h3`
 
 const EmptyDescription = styled.p`
   font-size: 14px;
-  color: #6B7280;
+  color: #4B5563;
   margin-bottom: 24px;
 `;
 
@@ -484,7 +484,7 @@ const IngredientsPage: React.FC = () => {
               </EmptyDescription>
               {!searchTerm && selectedCategory === 'all' && (
                 <>
-                  <div style={{ marginTop: 14, padding: '10px 14px', background: 'white', border: '1px solid #E6EBF1', borderRadius: 8, fontSize: 12.5, color: '#4B5563', textAlign: 'left', maxWidth: 460 }}>
+                  <div style={{ marginTop: 14, padding: '10px 14px', background: 'white', border: '1px solid #C7CED6', borderRadius: 8, fontSize: 12.5, color: '#374151', textAlign: 'left', maxWidth: 460 }}>
                     <div style={{ marginBottom: 4 }}><strong style={{ color: '#635BFF' }}>1.</strong> Add a stock item with name, unit, and starting quantity</div>
                     <div style={{ marginBottom: 4 }}><strong style={{ color: '#635BFF' }}>2.</strong> Link it to menu products (Recipes) so it deducts on each sale</div>
                     <div><strong style={{ color: '#635BFF' }}>3.</strong> Set min/par levels to enable reorder alerts and PO suggestions</div>

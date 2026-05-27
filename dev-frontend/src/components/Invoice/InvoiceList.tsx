@@ -17,19 +17,19 @@ const Th = styled.th`
   text-align: left;
   padding: 12px 16px;
   background: #F9FAFB;
-  border-bottom: 1px solid #E5E7EB;
+  border-bottom: 1px solid #C7CED6;
   font-size: 12px;
   font-weight: 600;
-  color: #6B7280;
+  color: #4B5563;
   text-transform: uppercase;
   white-space: nowrap;
 `;
 
 const Td = styled.td`
   padding: 16px;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
   vertical-align: middle;
 `;
 
@@ -41,12 +41,12 @@ const InvoiceNumber = styled.div`
 
 const SubInfo = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const Amount = styled.div<{ highlight?: boolean }>`
   font-weight: ${props => props.highlight ? '700' : '500'};
-  color: #374151;
+  color: #1F2937;
 `;
 
 const ActionButtons = styled.div`
@@ -98,8 +98,8 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'success' | 'danger' 
       default:
         return `
           background: white;
-          color: #374151;
-          border-color: #E5E7EB;
+          color: #1F2937;
+          border-color: #C7CED6;
           &:hover { background: #F9FAFB; }
         `;
     }
@@ -109,7 +109,7 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'success' | 'danger' 
 const EmptyState = styled.div`
   text-align: center;
   padding: 48px 24px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const EmptyIcon = styled.div`
@@ -120,7 +120,7 @@ const EmptyIcon = styled.div`
 const EmptyTitle = styled.div`
   font-size: 16px;
   font-weight: 600;
-  color: #374151;
+  color: #1F2937;
   margin-bottom: 8px;
 `;
 
@@ -131,14 +131,14 @@ const EmptyDesc = styled.div`
 const LoadingSpinner = styled.div`
   text-align: center;
   padding: 48px 24px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 // Mobile responsive card view
 const MobileCard = styled.div`
   display: none;
   background: white;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   padding: 16px;
   margin-bottom: 12px;
@@ -160,19 +160,19 @@ const MobileRow = styled.div`
 
 const MobileLabel = styled.span`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const MobileValue = styled.span`
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
   font-weight: 500;
 `;
 
 const MobileActions = styled.div`
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid #E5E7EB;
+  border-top: 1px solid #C7CED6;
   display: flex;
   gap: 8px;
   flex-wrap: wrap;

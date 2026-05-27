@@ -120,7 +120,7 @@ const ModalHeader = styled.div`
   align-items: center;
   justify-content: space-between;
   padding: 20px 24px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
 
   @media print {
     display: none;
@@ -139,7 +139,7 @@ const CloseButton = styled.button`
   border: none;
   cursor: pointer;
   padding: 4px;
-  color: #6B7C93;
+  color: #4B5563;
   font-size: 20px;
   line-height: 1;
 
@@ -153,7 +153,7 @@ const DateSelector = styled.div`
   align-items: center;
   gap: 8px;
   padding: 16px 24px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   flex-wrap: wrap;
 
   @media print {
@@ -168,9 +168,9 @@ const QuickDateBtn = styled.button<{ active?: boolean }>`
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s;
-  border: 1px solid ${props => props.active ? '#635BFF' : '#E6EBF1'};
+  border: 1px solid ${props => props.active ? '#635BFF' : '#C7CED6'};
   background: ${props => props.active ? '#635BFF' : 'white'};
-  color: ${props => props.active ? 'white' : '#6B7C93'};
+  color: ${props => props.active ? 'white' : '#4B5563'};
 
   &:hover {
     border-color: #635BFF;
@@ -180,7 +180,7 @@ const QuickDateBtn = styled.button<{ active?: boolean }>`
 
 const DateInput = styled.input`
   padding: 6px 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 6px;
   font-size: 13px;
   color: #0A2540;
@@ -206,7 +206,7 @@ const ActionBar = styled.div`
   display: flex;
   gap: 12px;
   padding: 16px 24px;
-  border-top: 1px solid #E6EBF1;
+  border-top: 1px solid #C7CED6;
   justify-content: flex-end;
   flex-shrink: 0;
 
@@ -225,12 +225,12 @@ const ActionButton = styled.button<{ primary?: boolean }>`
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
-  border: 1px solid ${props => props.primary ? '#635BFF' : '#E6EBF1'};
+  border: 1px solid ${props => props.primary ? '#635BFF' : '#C7CED6'};
   background: ${props => props.primary ? '#635BFF' : 'white'};
   color: ${props => props.primary ? 'white' : '#0A2540'};
 
   &:hover {
-    background: ${props => props.primary ? '#5A51E6' : '#F6F9FC'};
+    background: ${props => props.primary ? '#5A51E6' : '#F4F6F9'};
   }
 `;
 
@@ -275,7 +275,7 @@ const ReceiptStoreName = styled.div`
 
 const ReceiptStoreInfo = styled.div`
   font-size: 11px;
-  color: #4B5563;
+  color: #374151;
   line-height: 1.4;
 
   @media print {
@@ -291,8 +291,8 @@ const ReceiptTitle = styled.div`
   letter-spacing: 2px;
   margin: 12px 0;
   padding: 8px 0;
-  border-top: 1px dashed #9CA3AF;
-  border-bottom: 1px dashed #9CA3AF;
+  border-top: 1px dashed #6B7280;
+  border-bottom: 1px dashed #6B7280;
 
   @media print {
     font-size: 13px;
@@ -308,7 +308,7 @@ const ReceiptSectionTitle = styled.div`
   font-size: 12px;
   margin-bottom: 6px;
   padding-bottom: 4px;
-  border-bottom: 1px dashed #9CA3AF;
+  border-bottom: 1px dashed #6B7280;
 
   @media print {
     font-size: 11px;
@@ -351,7 +351,7 @@ const ReceiptRowCount = styled.span`
   text-align: right;
   white-space: nowrap;
   min-width: 36px;
-  color: #6B7280;
+  color: #4B5563;
 
   @media print {
     color: #1F2937;
@@ -361,8 +361,8 @@ const ReceiptRowCount = styled.span`
 const ReceiptDivider = styled.div<{ style_type?: 'dashed' | 'solid' | 'double' }>`
   border-bottom: ${props =>
     props.style_type === 'double' ? '3px double #1F2937' :
-    props.style_type === 'solid' ? '1px solid #9CA3AF' :
-    '1px dashed #9CA3AF'};
+    props.style_type === 'solid' ? '1px solid #6B7280' :
+    '1px dashed #6B7280'};
   margin: 8px 0;
 `;
 
@@ -370,9 +370,9 @@ const ReceiptFooter = styled.div`
   text-align: center;
   margin-top: 16px;
   padding-top: 12px;
-  border-top: 1px dashed #9CA3AF;
+  border-top: 1px dashed #6B7280;
   font-size: 11px;
-  color: #6B7280;
+  color: #4B5563;
   line-height: 1.6;
 
   @media print {
@@ -384,7 +384,7 @@ const ReceiptFooter = styled.div`
 const LoadingContainer = styled.div`
   text-align: center;
   padding: 60px 24px;
-  color: #6B7C93;
+  color: #4B5563;
   font-family: 'Inter', sans-serif;
   font-size: 14px;
 `;
@@ -392,7 +392,7 @@ const LoadingContainer = styled.div`
 const NoDataContainer = styled.div`
   text-align: center;
   padding: 60px 24px;
-  color: #6B7C93;
+  color: #4B5563;
   font-family: 'Inter', sans-serif;
   font-size: 14px;
 `;

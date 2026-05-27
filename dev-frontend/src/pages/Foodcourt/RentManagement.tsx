@@ -19,7 +19,7 @@ const Container = styled.div`
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -41,7 +41,7 @@ const Header = styled.div`
 
 const Content = styled.div`
   padding: 32px;
-  background: #FAFBFC;
+  background: #F9FAFB;
   min-height: calc(100vh - 120px);
 
   @media (max-width: 768px) {
@@ -63,7 +63,7 @@ const Title = styled.h1`
 
 const Subtitle = styled.p`
   font-size: 16px;
-  color: #6B7280;
+  color: #4B5563;
   margin: 8px 0 0;
 `;
 
@@ -72,7 +72,7 @@ const ActionBar = styled.div`
   background: white;
   border-radius: 16px;
   padding: 24px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   margin-bottom: 24px;
   display: flex;
   justify-content: space-between;
@@ -87,7 +87,7 @@ const ActionBar = styled.div`
 
 const SearchInput = styled.input`
   padding: 10px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   min-width: 300px;
@@ -123,7 +123,7 @@ const TableContainer = styled.div`
   background: white;
   border-radius: 16px;
   padding: 24px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   overflow-x: auto;
 `;
 
@@ -143,7 +143,7 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'overdue':
         return 'background: #FEE2E2; color: #991B1B;';
       default:
-        return 'background: #F3F4F6; color: #374151;';
+        return 'background: #F1F4F8; color: #1F2937;';
     }
   }}
 `;
@@ -180,10 +180,10 @@ const SmallButton = styled.button<{ variant: 'primary' | 'secondary' | 'danger' 
         `;
       default:
         return `
-          background: #F3F4F6;
-          border-color: #9CA3AF;
-          color: #374151;
-          &:hover { background: #E5E7EB; }
+          background: #F1F4F8;
+          border-color: #6B7280;
+          color: #1F2937;
+          &:hover { background: #C7CED6; }
         `;
     }
   }}

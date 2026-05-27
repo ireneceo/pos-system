@@ -26,14 +26,14 @@ const InputWrapper = styled.div<{ isOpen: boolean; disabled?: boolean }>`
   display: flex;
   align-items: center;
   padding: 10px 12px;
-  border: 1px solid ${props => props.isOpen ? '#635BFF' : '#E6EBF1'};
+  border: 1px solid ${props => props.isOpen ? '#635BFF' : '#C7CED6'};
   border-radius: 8px;
   background: ${props => props.disabled ? '#F9FAFB' : 'white'};
   cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
   transition: all 0.2s;
 
   &:hover {
-    border-color: ${props => props.disabled ? '#E6EBF1' : '#635BFF'};
+    border-color: ${props => props.disabled ? '#C7CED6' : '#635BFF'};
   }
 
   ${props => props.isOpen && `
@@ -47,11 +47,11 @@ const Input = styled.input<{ disabled?: boolean }>`
   outline: none;
   font-size: 14px;
   background: transparent;
-  color: ${props => props.disabled ? '#9CA3AF' : '#0A2540'};
+  color: ${props => props.disabled ? '#6B7280' : '#0A2540'};
   cursor: ${props => props.disabled ? 'not-allowed' : 'text'};
 
   &::placeholder {
-    color: #9CA3AF;
+    color: #6B7280;
   }
 `;
 
@@ -62,20 +62,20 @@ const ClearButton = styled.button`
   width: 20px;
   height: 20px;
   border: none;
-  background: #E5E7EB;
+  background: #C7CED6;
   border-radius: 50%;
   cursor: pointer;
   margin-right: 8px;
   transition: background 0.2s;
 
   &:hover {
-    background: #D1D5DB;
+    background: #6B7280;
   }
 
   svg {
     width: 12px;
     height: 12px;
-    color: #6B7280;
+    color: #4B5563;
   }
 `;
 
@@ -89,7 +89,7 @@ const ArrowIcon = styled.div<{ isOpen: boolean }>`
   svg {
     width: 16px;
     height: 16px;
-    color: #6B7280;
+    color: #4B5563;
   }
 `;
 
@@ -101,7 +101,7 @@ const Dropdown = styled.div<{ isOpen: boolean }>`
   max-height: 240px;
   overflow-y: auto;
   background: white;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   z-index: 1000;
@@ -131,14 +131,14 @@ const OptionLabel = styled.div`
 
 const OptionSubLabel = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 2px;
 `;
 
 const NoOptions = styled.div`
   padding: 12px;
   text-align: center;
-  color: #6B7280;
+  color: #4B5563;
   font-size: 14px;
 `;
 

@@ -39,13 +39,13 @@ interface Promotion {
 
 const Container = styled.div`
   min-height: 100vh;
-  background: #FAFBFC;
+  background: #F9FAFB;
 `;
 
 const Header = styled.div`
   background: white;
   padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
+  border-bottom: 1px solid #C7CED6;
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -124,13 +124,13 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
     }
   ` : `
     background: white;
-    color: #6B7280;
-    border: 1px solid #E6EBF1;
+    color: #4B5563;
+    border: 1px solid #C7CED6;
     
     &:hover {
-      background: #F8FAFC;
+      background: #F1F4F8;
       color: #0A2540;
-      border-color: #CBD5E1;
+      border-color: #64748B;
     }
   `}
 `;
@@ -144,7 +144,7 @@ const FilterRow = styled.div`
 
 const FilterSelect = styled.select`
   padding: 12px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -167,7 +167,7 @@ const SearchContainer = styled.div`
 const SearchInput = styled.input`
   width: 100%;
   padding: 12px 16px 12px 44px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.2s;
@@ -179,7 +179,7 @@ const SearchInput = styled.input`
   }
   
   &::placeholder {
-    color: #9CA3AF;
+    color: #6B7280;
   }
 `;
 
@@ -188,7 +188,7 @@ const SearchIcon = styled.div`
   left: 16px;
   top: 50%;
   transform: translateY(-50%);
-  color: #6B7C93;
+  color: #4B5563;
   font-size: 16px;
 `;
 
@@ -210,7 +210,7 @@ const StatChange = styled.div<{ positive?: boolean }>`
 const PromotionTable = styled.div`
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   overflow: hidden;
 `;
 
@@ -219,11 +219,11 @@ const TableHeader = styled.div`
   grid-template-columns: 2fr 1fr 1.5fr 1fr 1fr 1fr 1fr 120px;
   gap: 16px;
   padding: 16px 24px;
-  background: #F8FAFC;
-  border-bottom: 1px solid #E6EBF1;
+  background: #F1F4F8;
+  border-bottom: 1px solid #C7CED6;
   font-size: 12px;
   font-weight: 600;
-  color: #6B7280;
+  color: #4B5563;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 
@@ -237,13 +237,13 @@ const TableRow = styled.div`
   grid-template-columns: 2fr 1fr 1.5fr 1fr 1fr 1fr 1fr 120px;
   gap: 16px;
   padding: 20px 24px;
-  border-bottom: 1px solid #F3F4F6;
+  border-bottom: 1px solid #F1F4F8;
   align-items: center;
   transition: all 0.2s;
   cursor: pointer;
   
   &:hover {
-    background: #F8FAFC;
+    background: #F1F4F8;
   }
   
   &:last-child {
@@ -269,7 +269,7 @@ const PromotionName = styled.div`
 
 const PromotionDescription = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
 `;
 
 const TypeBadge = styled.span<{ type: string }>`
@@ -285,7 +285,7 @@ const TypeBadge = styled.span<{ type: string }>`
       case 'bogo': return '#FEF3C7';
       case 'free_shipping': return '#E0E7FF';
       case 'happy_hour': return '#FCE7F3';
-      default: return '#F3F4F6';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
@@ -295,7 +295,7 @@ const TypeBadge = styled.span<{ type: string }>`
       case 'bogo': return '#92400E';
       case 'free_shipping': return '#3730A3';
       case 'happy_hour': return '#BE185D';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 `;
@@ -310,18 +310,18 @@ const StatusBadge = styled.span<{ status: string }>`
     switch(props.status) {
       case 'active': return '#ECFDF5';
       case 'scheduled': return '#FEF3C7';
-      case 'paused': return '#F3F4F6';
+      case 'paused': return '#F1F4F8';
       case 'expired': return '#FEF2F2';
-      default: return '#F3F4F6';
+      default: return '#F1F4F8';
     }
   }};
   color: ${props => {
     switch(props.status) {
       case 'active': return '#059669';
       case 'scheduled': return '#D97706';
-      case 'paused': return '#6B7280';
+      case 'paused': return '#4B5563';
       case 'expired': return '#DC2626';
-      default: return '#6B7280';
+      default: return '#4B5563';
     }
   }};
 `;
@@ -329,7 +329,7 @@ const StatusBadge = styled.span<{ status: string }>`
 const ValueCell = styled.div`
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: #1F2937;
 `;
 
 const ActionButtons = styled.div`
@@ -341,9 +341,9 @@ const ActionButtons = styled.div`
 const ActionButton = styled.button`
   padding: 4px 8px;
   background: transparent;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 4px;
-  color: #6B7280;
+  color: #4B5563;
   font-size: 11px;
   font-weight: 500;
   cursor: pointer;
@@ -369,7 +369,7 @@ const MobilePromotionGrid = styled.div`
 const MobilePromotionCard = styled.div`
   background: white;
   border-radius: 8px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   padding: 16px;
   cursor: pointer;
   transition: all 0.2s;
@@ -398,9 +398,9 @@ const MobilePromotionStats = styled.div`
   justify-content: space-between;
   align-items: center;
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   padding-top: 12px;
-  border-top: 1px solid #F3F4F6;
+  border-top: 1px solid #F1F4F8;
 `;
 
 
@@ -423,14 +423,14 @@ const Label = styled.label`
   display: block;
   font-size: 14px;
   font-weight: 600;
-  color: #374151;
+  color: #1F2937;
   margin-bottom: 8px;
 `;
 
 const Input = styled.input`
   width: 100%;
   padding: 12px 16px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.2s;
@@ -445,7 +445,7 @@ const Input = styled.input`
 const Select = styled.select`
   width: 100%;
   padding: 12px 16px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   background: white;
@@ -461,7 +461,7 @@ const Select = styled.select`
 const TextArea = styled.textarea`
   width: 100%;
   padding: 12px 16px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.2s;
@@ -482,7 +482,7 @@ const RestaurantCheckboxGroup = styled.div`
   max-height: 150px;
   overflow-y: auto;
   padding: 8px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
 `;
 
@@ -492,7 +492,7 @@ const CheckboxLabel = styled.label`
   gap: 8px;
   cursor: pointer;
   font-size: 14px;
-  color: #374151;
+  color: #1F2937;
   
   input {
     width: 16px;
@@ -940,7 +940,7 @@ const ManagerPromotionsPage: React.FC = () => {
 
                     <ValueCell style={{ textAlign: 'center' }}>
                       <div>{formatDate(promotion.startDate)}</div>
-                      <div style={{ fontSize: '12px', color: '#6B7280' }}>to {formatDate(promotion.endDate)}</div>
+                      <div style={{ fontSize: '12px', color: '#4B5563' }}>to {formatDate(promotion.endDate)}</div>
                     </ValueCell>
 
                     <ValueCell style={{ textAlign: 'right' }}>
@@ -1017,13 +1017,13 @@ const ManagerPromotionsPage: React.FC = () => {
                       {selectedPromotion.status}
                     </StatusBadge>
                   </div>
-                  <p style={{ color: '#6B7280', margin: '0 0 16px 0' }}>{selectedPromotion.description}</p>
+                  <p style={{ color: '#4B5563', margin: '0 0 16px 0' }}>{selectedPromotion.description}</p>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '24px' }}>
                   <div>
                     <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#1F2937', marginBottom: '12px' }}>{t('admin:managerPromotionsPage.discountDetails')}</h4>
-                    <div style={{ fontSize: '14px', color: '#374151', lineHeight: '1.5' }}>
+                    <div style={{ fontSize: '14px', color: '#1F2937', lineHeight: '1.5' }}>
                       <p><strong>Discount:</strong> {selectedPromotion.discountText}</p>
                       <p><strong>Min Order:</strong> {selectedPromotion.minOrderAmount ? formatCurrency(selectedPromotion.minOrderAmount, selectedCurrency) : 'No minimum'}</p>
                       <p><strong>Max Discount:</strong> {selectedPromotion.maxDiscount ? formatCurrency(selectedPromotion.maxDiscount, selectedCurrency) : 'No limit'}</p>
@@ -1031,7 +1031,7 @@ const ManagerPromotionsPage: React.FC = () => {
                   </div>
                   <div>
                     <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#1F2937', marginBottom: '12px' }}>{t('admin:managerPromotionsPage.usagePerformance')}</h4>
-                    <div style={{ fontSize: '14px', color: '#374151', lineHeight: '1.5' }}>
+                    <div style={{ fontSize: '14px', color: '#1F2937', lineHeight: '1.5' }}>
                       <p><strong>Usage:</strong> {selectedPromotion.usageCount} / {selectedPromotion.usageLimit || '∞'}</p>
                       <p><strong>Revenue:</strong> {formatCurrency(selectedPromotion.generatedRevenue, selectedCurrency)}</p>
                       <p><strong>Created:</strong> {formatDate(selectedPromotion.createdDate)}</p>
@@ -1041,7 +1041,7 @@ const ManagerPromotionsPage: React.FC = () => {
 
                 <div style={{ marginBottom: '24px' }}>
                   <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#1F2937', marginBottom: '12px' }}>{t('admin:managerPromotionsPage.validPeriod')}</h4>
-                  <p style={{ fontSize: '14px', color: '#374151' }}>
+                  <p style={{ fontSize: '14px', color: '#1F2937' }}>
                     <strong>From:</strong> {formatDate(selectedPromotion.startDate)} <br/>
                     <strong>To:</strong> {formatDate(selectedPromotion.endDate)}
                   </p>
@@ -1055,10 +1055,10 @@ const ManagerPromotionsPage: React.FC = () => {
                         key={index}
                         style={{
                           padding: '6px 12px',
-                          background: '#F3F4F6',
+                          background: '#F1F4F8',
                           borderRadius: '6px',
                           fontSize: '13px',
-                          color: '#6B7280'
+                          color: '#4B5563'
                         }}
                       >
                         {name}
@@ -1070,7 +1070,7 @@ const ManagerPromotionsPage: React.FC = () => {
                 {selectedPromotion.conditions.length > 0 && (
                   <div>
                     <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#1F2937', marginBottom: '12px' }}>{t('admin:managerPromotionsPage.termsConditions')}</h4>
-                    <ul style={{ fontSize: '14px', color: '#374151', paddingLeft: '20px' }}>
+                    <ul style={{ fontSize: '14px', color: '#1F2937', paddingLeft: '20px' }}>
                       {selectedPromotion.conditions.map((condition, index) => (
                         <li key={index} style={{ marginBottom: '4px' }}>{condition}</li>
                       ))}

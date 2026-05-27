@@ -127,7 +127,7 @@ export const TYPE_COLORS: Record<InboxType, { bg: string; fg: string; dot: strin
 };
 
 export const SEVERITY_COLORS: Record<InboxSeverity, string> = {
-  normal: '#9CA3AF',
+  normal: '#6B7280',
   important: '#F59E0B',
   urgent: '#DC2626'
 };

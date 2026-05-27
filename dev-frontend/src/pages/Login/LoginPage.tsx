@@ -125,14 +125,14 @@ const LeftSection = styled.div`
 
 const RightSection = styled.div`
   flex: 1;
-  background: #F8FAFC;
+  background: #F1F4F8;
   padding: 60px;
-  border-left: 1px solid #E6EBF1;
+  border-left: 1px solid #C7CED6;
   
   @media (max-width: 968px) {
     padding: 40px 30px;
     border-left: none;
-    border-top: 1px solid #E6EBF1;
+    border-top: 1px solid #C7CED6;
   }
 `;
 
@@ -163,12 +163,12 @@ const InputGroup = styled.div`
 const Label = styled.label`
   font-size: 14px;
   font-weight: 600;
-  color: #374151;
+  color: #1F2937;
 `;
 
 const Input = styled.input`
   padding: 14px 16px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 10px;
   font-size: 16px;
   transition: all 0.2s;
@@ -198,11 +198,11 @@ const PasswordToggle = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #9CA3AF;
+  color: #6B7280;
   transition: color 0.2s;
 
   &:hover {
-    color: #374151;
+    color: #1F2937;
   }
 
   svg {
@@ -252,7 +252,7 @@ const TestAccountsTitle = styled.h3`
 
 const TestAccountCard = styled.div<{ color: string }>`
   background: white;
-  border: 2px solid #E6EBF1;
+  border: 2px solid #C7CED6;
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 16px;
@@ -289,14 +289,14 @@ const AccountRole = styled.div<{ color: string }>`
 
 const AccountDescription = styled.div`
   font-size: 12px;
-  color: #6B7280;
+  color: #4B5563;
   margin-top: 8px;
 `;
 
 const Divider = styled.div`
   width: 100%;
   height: 1px;
-  background: #E6EBF1;
+  background: #C7CED6;
   margin: 30px 0;
 `;
 
@@ -362,13 +362,13 @@ const DemoCard = styled.div<{ color: string }>`
 
 const TestAccountsToggle = styled.button`
   background: transparent;
-  border: 1px solid #E6EBF1;
+  border: 1px solid #C7CED6;
   border-radius: 8px;
   padding: 10px 16px;
   width: 100%;
   font-size: 13px;
   font-weight: 500;
-  color: #6B7C93;
+  color: #4B5563;
   cursor: pointer;
   transition: all 0.2s;
   margin: 20px 0;
@@ -378,16 +378,16 @@ const TestAccountsToggle = styled.button`
   gap: 8px;
 
   &:hover {
-    border-color: #9CA3AF;
+    border-color: #6B7280;
     background: #F9FAFB;
   }
 
   span {
     font-size: 10px;
-    background: #F3F4F6;
+    background: #F1F4F8;
     padding: 2px 8px;
     border-radius: 4px;
-    color: #6B7280;
+    color: #4B5563;
   }
 `;
 
@@ -407,7 +407,7 @@ const BottomLinks = styled.div`
   gap: 10px;
   align-items: center;
   font-size: 14px;
-  color: #6B7C93;
+  color: #4B5563;
 
   a {
     color: #635BFF;
@@ -421,12 +421,12 @@ const HomeLink = styled(Link)`
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  color: #9CA3AF !important;
+  color: #6B7280 !important;
   font-size: 13px;
   font-weight: 400 !important;
 
   &:hover {
-    color: #6B7C93 !important;
+    color: #4B5563 !important;
     text-decoration: none !important;
   }
 
@@ -726,7 +726,7 @@ const LoginPage: React.FC = () => {
 
           <Divider />
 
-          <div style={{ fontSize: '12px', color: '#9CA3AF' }}>
+          <div style={{ fontSize: '12px', color: '#6B7280' }}>
             <p><strong>Note:</strong> Using real database authentication.</p>
             <p>Demo accounts are reset daily at midnight (GMT+8).</p>
           </div>

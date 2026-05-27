@@ -100,10 +100,10 @@ const BellButton = styled.button`
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: #4B5563;
+  color: #374151;
   transition: background 0.15s, color 0.15s;
 
-  &:hover { background: #F3F4F6; color: #0A2540; }
+  &:hover { background: #F1F4F8; color: #0A2540; }
   &:focus-visible {
     outline: none;
     box-shadow: 0 0 0 3px rgba(99,91,255,0.18);

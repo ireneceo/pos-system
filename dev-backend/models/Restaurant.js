@@ -595,33 +595,71 @@ Restaurant.init({
   printer_settings: {
     type: DataTypes.TEXT,
     allowNull: true,
-    comment: 'JSON settings for printers (bill printer, kitchen printer, printer mode)',
+    comment: 'JSON settings for printers. Includes per-printer method (browser/rawbt/qztray) on billPrinter, kitchenPrinter, kitchenStationPrinters.<id>, AND a workstations[] array — each workstation has its own billPrinter so multi-POS shops can route receipts to the right counter printer. printerMode is the legacy global fallback.',
     get() {
       const rawValue = this.getDataValue('printer_settings');
+      const defaultBill = { enabled: true, name: '', autoPrint: false, method: 'browser', address: '' };
+      const defaultKitchen = { enabled: true, name: '', autoPrint: true, method: 'qztray', address: '' };
       const defaultSettings = {
         printerMode: 'rawbt',
-        billPrinter: {
-          enabled: true,
-          name: '',
-          autoPrint: false
-        },
-        kitchenPrinter: {
-          enabled: true,
-          name: '',
-          autoPrint: true
-        }
+        billPrinter: { ...defaultBill },
+        kitchenPrinter: { ...defaultKitchen },
+        workstations: [
+          { id: 'ws_default', name: 'Main POS', billPrinter: { ...defaultBill } }
+        ]
       };
       if (!rawValue) {
         return defaultSettings;
       }
       try {
         const parsed = JSON.parse(rawValue);
-        return {
+        const merged = {
           ...defaultSettings,
           ...parsed,
-          billPrinter: { ...defaultSettings.billPrinter, ...(parsed.billPrinter || {}) },
-          kitchenPrinter: { ...defaultSettings.kitchenPrinter, ...(parsed.kitchenPrinter || {}) }
+          billPrinter: { ...defaultBill, ...(parsed.billPrinter || {}) },
+          kitchenPrinter: { ...defaultKitchen, ...(parsed.kitchenPrinter || {}) }
         };
+        // Auto-fill method for legacy stores — preserve the exact legacy printerMode
+        // so existing live shops keep printing the same way they did before this rollout.
+        // Earlier version coerced qztray→browser "for safety" but that broke any shop
+        // that was actively using QZ Tray for receipts.
+        const legacyMode = parsed.printerMode || 'browser';
+        if (!parsed.billPrinter || !parsed.billPrinter.method) {
+          merged.billPrinter.method = legacyMode;
+        }
+        if (!parsed.kitchenPrinter || !parsed.kitchenPrinter.method) {
+          merged.kitchenPrinter.method = legacyMode;
+        }
+        // kitchenStationPrinters are LAN-only in practice → default each station to qztray when missing.
+        if (merged.kitchenStationPrinters && typeof merged.kitchenStationPrinters === 'object') {
+          Object.keys(merged.kitchenStationPrinters).forEach(stationId => {
+            const sp = merged.kitchenStationPrinters[stationId];
+            if (sp && !sp.method) sp.method = 'qztray';
+          });
+        }
+        // === Workstation migration ===
+        // Legacy stores have a single billPrinter and no workstations[]. Synthesize a single
+        // "Main POS" workstation from the legacy billPrinter so the new client renders something
+        // sensible on first load.
+        if (!Array.isArray(parsed.workstations) || parsed.workstations.length === 0) {
+          merged.workstations = [{
+            id: 'ws_default',
+            name: 'Main POS',
+            billPrinter: { ...defaultBill, ...merged.billPrinter }
+          }];
+        } else {
+          // Fill in any missing fields on saved workstations.
+          merged.workstations = parsed.workstations.map((ws, idx) => ({
+            id: ws.id || `ws_${idx}`,
+            name: ws.name || `Workstation ${idx + 1}`,
+            billPrinter: { ...defaultBill, ...(ws.billPrinter || {}) }
+          }));
+          // Ensure at least one workstation always exists (never let it become empty).
+          if (merged.workstations.length === 0) {
+            merged.workstations = [{ id: 'ws_default', name: 'Main POS', billPrinter: { ...defaultBill, ...merged.billPrinter } }];
+          }
+        }
+        return merged;
       } catch (e) {
         return defaultSettings;
       }

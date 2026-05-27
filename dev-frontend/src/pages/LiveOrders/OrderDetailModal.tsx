@@ -126,7 +126,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
         ) : (
           <>
             {['Restaurant Admin', 'Restaurant Owner', 'System Admin'].includes(user?.role) && (
-              <ActionButton variant="secondary" onClick={() => handleDeleteOrder(selectedOrder.id)} style={{ background: '#6B7280', borderColor: '#6B7280', color: 'white' }}>{t('orders:liveOrdersPage.remove')}</ActionButton>
+              <ActionButton variant="secondary" onClick={() => handleDeleteOrder(selectedOrder.id)} style={{ background: '#4B5563', borderColor: '#4B5563', color: 'white' }}>{t('orders:liveOrdersPage.remove')}</ActionButton>
             )}
             {selectedOrder.status !== 'cancelled' && selectedOrder.status !== 'completed' && (
               <ActionButton onClick={() => handleCancelOrder(selectedOrder.id)} style={{ background: '#FF6B6B', borderColor: '#FF6B6B', color: 'white' }}>{t('orders:liveOrdersPage.cancelOrder')}</ActionButton>
@@ -165,7 +165,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                 style={{
                   width: '100%',
                   padding: '12px 16px',
-                  border: '2px solid #E5E7EB',
+                  border: '2px solid #C7CED6',
                   borderRadius: '8px',
                   fontSize: '15px',
                   outline: 'none',
@@ -173,14 +173,14 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                   boxSizing: 'border-box'
                 }}
                 onFocus={(e) => e.currentTarget.style.borderColor = '#635BFF'}
-                onBlur={(e) => e.currentTarget.style.borderColor = '#E5E7EB'}
+                onBlur={(e) => e.currentTarget.style.borderColor = '#C7CED6'}
                 autoFocus
               />
             </div>
 
             {/* Search Results - Click to add */}
             {addItemsSearchQuery.length > 0 && (
-              <div style={{ marginBottom: '20px', maxHeight: '200px', overflowY: 'auto', border: '1px solid #E5E7EB', borderRadius: '8px' }}>
+              <div style={{ marginBottom: '20px', maxHeight: '200px', overflowY: 'auto', border: '1px solid #C7CED6', borderRadius: '8px' }}>
                 {menuItems
                   .filter((item: any) => {
                     if (!item || !item.name) return false;
@@ -201,7 +201,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                           display: 'flex',
                           justifyContent: 'space-between',
                           alignItems: 'center',
-                          borderBottom: '1px solid #F3F4F6',
+                          borderBottom: '1px solid #F1F4F8',
                           transition: 'background 0.1s'
                         }}
                         onMouseEnter={(e) => e.currentTarget.style.background = '#F9FAFB'}
@@ -253,7 +253,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                   item.name.toLowerCase().includes(addItemsSearchQuery.toLowerCase()) ||
                   (item.code && item.code.toLowerCase().includes(addItemsSearchQuery.toLowerCase()))
                 ).length === 0 && (
-                  <div style={{ padding: '16px', textAlign: 'center', color: '#9CA3AF' }}>
+                  <div style={{ padding: '16px', textAlign: 'center', color: '#6B7280' }}>
                     {t('orders:liveOrdersPage.noItemsFound', 'No items found')}
                   </div>
                 )}
@@ -266,33 +266,33 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                 {t('orders:liveOrdersPage.itemsToAdd', 'Items to Add')} ({addItemsCart.reduce((sum: number, item: any) => sum + item.quantity, 0)})
               </h4>
               {addItemsCart.length === 0 ? (
-                <div style={{ padding: '24px', textAlign: 'center', color: '#9CA3AF', background: '#F9FAFB', borderRadius: '8px' }}>
+                <div style={{ padding: '24px', textAlign: 'center', color: '#6B7280', background: '#F9FAFB', borderRadius: '8px' }}>
                   {t('orders:liveOrdersPage.searchAndSelectItems', 'Search and select items to add')}
                 </div>
               ) : (
-                <div style={{ border: '1px solid #E5E7EB', borderRadius: '8px', overflow: 'hidden' }}>
+                <div style={{ border: '1px solid #C7CED6', borderRadius: '8px', overflow: 'hidden' }}>
                   {addItemsCart.map((item: any) => (
-                    <div key={item.cartId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid #F3F4F6' }}>
+                    <div key={item.cartId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid #F1F4F8' }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontWeight: 500 }}>{item.name}</div>
                         {item.selectedOptions && item.selectedOptions.length > 0 && (
-                          <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>
+                          <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '2px' }}>
                             {item.selectedOptions.map((opt: any) => opt.name).join(', ')}
                           </div>
                         )}
-                        <div style={{ color: '#6B7280', fontSize: '13px' }}>
+                        <div style={{ color: '#4B5563', fontSize: '13px' }}>
                           {formatCurrency(item.unitPrice || parseFloat(item.price), operationSettings.currency)} each
                         </div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                         <button type="button"
                           onClick={() => handleRemoveFromItemsCart(item.cartId)}
-                          style={{ width: '32px', height: '32px', border: '1px solid #E5E7EB', borderRadius: '6px', background: 'white', cursor: 'pointer', fontSize: '18px', fontWeight: 500 }}
+                          style={{ width: '32px', height: '32px', border: '1px solid #C7CED6', borderRadius: '6px', background: 'white', cursor: 'pointer', fontSize: '18px', fontWeight: 500 }}
                         >-</button>
                         <span style={{ minWidth: '28px', textAlign: 'center', fontWeight: 600, fontSize: '15px' }}>{item.quantity}</span>
                         <button type="button"
                           onClick={() => handleIncreaseCartItem(item.cartId)}
-                          style={{ width: '32px', height: '32px', border: '1px solid #E5E7EB', borderRadius: '6px', background: 'white', cursor: 'pointer', fontSize: '18px', fontWeight: 500 }}
+                          style={{ width: '32px', height: '32px', border: '1px solid #C7CED6', borderRadius: '6px', background: 'white', cursor: 'pointer', fontSize: '18px', fontWeight: 500 }}
                         >+</button>
                       </div>
                     </div>
@@ -303,7 +303,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
           </div>
 
           {/* Fixed Footer - Total and Buttons */}
-          <div style={{ borderTop: '1px solid #E5E7EB', padding: '16px 20px', display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: '8px' }}>
+          <div style={{ borderTop: '1px solid #C7CED6', padding: '16px 20px', display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: '8px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
               <div style={{ fontWeight: 600 }}>
                 Total: {formatCurrency(
@@ -320,7 +320,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                     setAddItemsSearchQuery('');
                     handleCloseModal();
                   }}
-                  style={{ background: 'white', color: '#6B7C93', border: '1px solid #E5E7EB' }}
+                  style={{ background: 'white', color: '#4B5563', border: '1px solid #C7CED6' }}
                 >
                   Cancel
                 </ActionButton>
@@ -328,7 +328,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                   onClick={handleSubmitAddItems}
                   disabled={addItemsCart.length === 0 || isAddingItems}
                   style={{
-                    background: addItemsCart.length === 0 ? '#E5E7EB' : '#635BFF',
+                    background: addItemsCart.length === 0 ? '#C7CED6' : '#635BFF',
                     color: 'white',
                     cursor: addItemsCart.length === 0 ? 'not-allowed' : 'pointer'
                   }}
@@ -632,7 +632,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                             maxWidth: '100%',
                             maxHeight: '400px',
                             borderRadius: '8px',
-                            border: '1px solid #E5E7EB',
+                            border: '1px solid #C7CED6',
                             cursor: 'pointer',
                             display: 'block'
                           }}
@@ -669,12 +669,12 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                 <div key={groupNum}>
                   {hasMultipleGroups && (
                     <div style={{
-                      background: groupNum === 0 ? '#F3F4F6' : '#FEF3C7',
+                      background: groupNum === 0 ? '#F1F4F8' : '#FEF3C7',
                       padding: '6px 12px',
                       borderRadius: '4px',
                       fontSize: '12px',
                       fontWeight: 600,
-                      color: groupNum === 0 ? '#6B7280' : '#92400E',
+                      color: groupNum === 0 ? '#4B5563' : '#92400E',
                       marginTop: groupNum > 0 ? '12px' : '0',
                       marginBottom: '8px',
                       display: 'flex',
@@ -691,7 +691,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                         <button type="button"
                           onClick={() => handlePrintGroupTicket(groupNum, groupedItems[groupNum])}
                           style={{
-                            background: groupNum === 0 ? '#6B7280' : '#F59E0B',
+                            background: groupNum === 0 ? '#4B5563' : '#F59E0B',
                             color: 'white',
                             border: 'none',
                             borderRadius: '4px',
@@ -810,7 +810,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               onClick={() => setShowHistory(true)}
               style={{
                 background: 'transparent', border: 'none', cursor: 'pointer',
-                color: selectedOrder.status === 'cancelled' ? '#DC2626' : '#6B7C93',
+                color: selectedOrder.status === 'cancelled' ? '#DC2626' : '#4B5563',
                 fontSize: 11, fontWeight: 500, padding: '2px 4px',
                 display: 'inline-flex', alignItems: 'center', gap: 4
               }}
@@ -849,7 +849,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                 type="button"
                 onClick={() => setShowHistory(false)}
                 style={{
-                  border: 'none', background: '#F0F2F5', color: '#0A2540',
+                  border: 'none', background: '#C7CED6', color: '#0A2540',
                   borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer'
                 }}
               >
