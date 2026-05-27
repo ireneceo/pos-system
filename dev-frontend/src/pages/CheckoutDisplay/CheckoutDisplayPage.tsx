@@ -174,6 +174,10 @@ const CheckoutDisplayPage: React.FC = () => {
   // Membership phone collection — defaults to ON (preserves existing behavior).
   // Toggle off in Settings → Printer → Customer Display card if membership isn't used.
   const [showPhoneInput, setShowPhoneInput] = useState(true);
+  // Membership system active for this restaurant. When false, hide phone keypad,
+  // points / tier UI, and "Points earned" line on thank-you. is_active=false 매장이
+  // 포인트 안 쓰는 경우 고객에게 noise 노출 차단.
+  const [membershipActive, setMembershipActive] = useState(true);
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
@@ -190,6 +194,12 @@ const CheckoutDisplayPage: React.FC = () => {
       const cd = rest.operation_settings?.checkout_display;
       if (cd && typeof cd.show_phone_input === 'boolean') {
         setShowPhoneInput(cd.show_phone_input);
+      }
+    }).catch(() => {});
+    // Fetch membership settings — public endpoint, no auth needed.
+    fetch(`/api/membership/settings/${restaurantId}`).then(r => r.json()).then(d => {
+      if (d?.success && d.data) {
+        setMembershipActive(d.data.is_active !== false);
       }
     }).catch(() => {});
   }, [restaurantId]);
@@ -323,7 +333,7 @@ const CheckoutDisplayPage: React.FC = () => {
           <div style={{ fontSize: '44px', fontWeight: 600, color: '#10B981' }}>{t('pos:checkoutDisplayPage.thankYou')}</div>
           <div style={{ fontSize: '22px', color: '#4B5563' }}>Order {completedOrder.orderNumber}</div>
           <div style={{ fontSize: '40px', fontWeight: 800, color: '#0A2540', marginTop: '12px' }}>{formatCurrency(completedOrder.total, completedOrder.currency)}</div>
-          {customer && <div style={{ fontSize: '18px', color: '#635BFF', marginTop: '6px' }}>Points earned</div>}
+          {membershipActive && customer && <div style={{ fontSize: '18px', color: '#635BFF', marginTop: '6px' }}>Points earned</div>}
         </div>
       </Container>
     );
@@ -340,11 +350,13 @@ const CheckoutDisplayPage: React.FC = () => {
       </Header>
 
       <Main>
-        {/* ===== LEFT: cart 가 active 면 주문/회원 정보 패널, 아니면 phone 키패드 =====
-            2026-05-27: Floor Plan / POS Terminal 에서 cart-update 가 오면 orderInfo
-            가 함께 박힘. 그 시점엔 좌측에 OrderInfo 카드 표시 (키패드 hide).
-            cart 가 cleared 되거나 아직 안 받았으면 기존 phone 키패드 표시. */}
-        {cart?.orderInfo ? (
+        {/* ===== LEFT: Floor Plan source 만 OrderInfo 패널 / 그 외는 phone 키패드 =====
+            2026-05-28: Floor Plan 의 cart-update 에 orderInfo 가 박혀 옴 (테이블별
+            주문 미러). POS Terminal 의 cart-update 에도 orderInfo 가 박히는데, POS
+            는 cashier 가 회원을 골랐을 때 좌측에서 phone 키패드로 입력해야 하므로
+            POS source 일 때는 OrderInfo 로 덮지 않는다. customer 가 함께 박혀 오면
+            POS source 라도 회원 카드를 좌측에 표시한다. */}
+        {cart?.orderInfo && cart?.source === 'floor-plan' ? (
           <LeftPanel>
             <div style={{ fontSize: '14px', color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '12px', fontWeight: 700 }}>
               {t('pos:checkoutDisplayPage.orderInfo', 'Order Details')}
@@ -384,7 +396,7 @@ const CheckoutDisplayPage: React.FC = () => {
                 <div style={{ fontSize: '13px', color: '#065F46', fontWeight: 700, letterSpacing: '0.6px', marginBottom: '8px' }}>{t('pos:checkoutDisplayPage.member', 'MEMBER')}</div>
                 <div style={{ fontSize: '22px', fontWeight: 700, color: '#065F46' }}>{cart.customer.name}</div>
                 {cart.customer.phone && <div style={{ fontSize: '15px', color: '#047857', marginTop: '4px' }}>{cart.customer.phone}</div>}
-                {(typeof cart.customer.points === 'number' || cart.customer.tier || cart.customer.loyaltyTier) && (
+                {membershipActive && (typeof cart.customer.points === 'number' || cart.customer.tier || cart.customer.loyaltyTier) && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '14px' }}>
                     {typeof cart.customer.points === 'number' && (
                       <div>
@@ -407,33 +419,35 @@ const CheckoutDisplayPage: React.FC = () => {
               </div>
             )}
           </LeftPanel>
-        ) : showPhoneInput && (
+        ) : showPhoneInput && membershipActive && (
         <LeftPanel>
           <div style={{ fontSize: '16px', color: '#4B5563', marginBottom: '12px', textAlign: 'center', fontWeight: 500 }}>
-            {t('pos:checkoutDisplayPage.enterPhone', 'Enter phone number for points')}
+            {t('pos:checkoutDisplayPage.enterPhone', 'Enter phone number for membership')}
           </div>
           <div style={{ fontSize: '38px', fontWeight: 700, color: '#0A2540', textAlign: 'center', padding: '14px 0', minHeight: '56px', letterSpacing: '3px', fontVariantNumeric: 'tabular-nums' }}>
             {phoneNumber || '—'}
           </div>
 
-          {/* 고객 정보 */}
+          {/* 고객 정보 — membership off 매장은 points/tier 숨김 */}
           {customerStatus === 'found' && customer && (
             <div style={{ padding: '14px', background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: '10px', marginBottom: '12px', animation: 'fadeIn 0.3s' }}>
               <div style={{ fontSize: '15px', fontWeight: 600, color: '#065F46' }}>{customer.name}</div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px' }}>
-                <div>
-                  <div style={{ fontSize: '11px', color: '#4B5563' }}>{t('pos:checkoutDisplayPage.points')}</div>
-                  <div style={{ fontSize: '18px', fontWeight: 700, color: '#635BFF' }}>{customer.points.toLocaleString()}</div>
+              {membershipActive && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px' }}>
+                  <div>
+                    <div style={{ fontSize: '11px', color: '#4B5563' }}>{t('pos:checkoutDisplayPage.points')}</div>
+                    <div style={{ fontSize: '18px', fontWeight: 700, color: '#635BFF' }}>{customer.points.toLocaleString()}</div>
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '11px', color: '#4B5563' }}>{t('pos:checkoutDisplayPage.tier')}</div>
+                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540' }}>{customer.tier}</div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '11px', color: '#4B5563' }}>{t('pos:checkoutDisplayPage.orders')}</div>
+                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540' }}>{customer.totalOrders}</div>
+                  </div>
                 </div>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '11px', color: '#4B5563' }}>{t('pos:checkoutDisplayPage.tier')}</div>
-                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540' }}>{customer.tier}</div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '11px', color: '#4B5563' }}>{t('pos:checkoutDisplayPage.orders')}</div>
-                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540' }}>{customer.totalOrders}</div>
-                </div>
-              </div>
+              )}
             </div>
           )}
           {customerStatus === 'searching' && (

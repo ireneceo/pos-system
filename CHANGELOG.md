@@ -8,6 +8,15 @@
 
 ---
 
+## [v3.43 hotfix #1] — 2026-05-27 배포 (Customer Display 회원/포인트 UX — 같은 날 누적)
+
+- Floor Plan 빈 테이블 클릭 placeholder — tableStatus 미준비 / 빈 테이블에도 cart-update emit (table label + `orderInfo.orderStatus='empty'`). 사용자가 테이블 눌렀는데 CD 가 blank 인 사례 차단
+- POS Terminal 시 좌측 keypad 유지 — CD 좌측 분기를 `cart?.orderInfo && cart?.source === 'floor-plan'` 로 한정. POS source 의 cart-update 가 keypad 를 OrderInfo 로 덮던 사례 차단
+- "Enter phone number for points" → "Enter phone number for membership" 라벨 변경 (포인트 한정 아닌 일반 회원 식별)
+- 매장 membership.is_active=false → CD 회원/포인트 UI 자동 hide. `/api/membership/settings/:rid` (익명) fetch + `membershipActive` state. keypad 자체 hide + customer card 의 points/tier/orders 영역 hide + Floor Plan source cart.customer points/tier hide + Thank-you "Points earned" hide. 운영 매장 16 (The Fire, is_active=false) 에서 즉시 적용
+
+---
+
 ## [v3.43] — 2026-05-27 배포 (매장 도입 직전 critical fix + 누적 backstage 정식화)
 
 ### 2026-05-27 매장 도입 critical fix

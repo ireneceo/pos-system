@@ -606,8 +606,32 @@ const FloorPlanPage: React.FC = () => {
     }
     const tInfo = (floorPlan?.tables || []).find(t => t.id === selectedTableId);
     const tNumber = tInfo?.tableNumber ?? null;
+    const tLabel = (tInfo as any)?.label || tNumber;
     const tableStatus = tableStatuses[selectedTableId] || (tNumber ? tableStatuses[tNumber] : undefined);
-    if (!tableStatus) return;
+    if (!tableStatus) {
+      // Table is selected but has no order yet (or polling hasn't fetched it).
+      // Push a placeholder so the Customer Display shows "Table X — no order yet"
+      // instead of staying blank — staff was confused that clicking a table did
+      // nothing on the customer screen (2026-05-28).
+      checkoutSocketRef.current.emit('cart-update', {
+        restaurantId,
+        tableNumber: tLabel,
+        items: [],
+        subtotal: 0, tax: 0, taxRate: 0,
+        serviceCharge: 0, serviceChargeRate: 0,
+        discount: 0, total: 0,
+        currency: currency || 'MYR',
+        source: 'floor-plan',
+        orderInfo: {
+          orderType: 'dine_in',
+          sourceLabel: 'floor-plan',
+          paymentStatus: 'pending',
+          orderStatus: 'empty'
+        },
+        customer: null
+      });
+      return;
+    }
     // Pick the order shown in the panel — supports multi-order tables.
     const orders = tableStatus.orders || (tableStatus ? [tableStatus] : []);
     const idx = Math.min(selectedOrderIndex, Math.max(orders.length - 1, 0));
