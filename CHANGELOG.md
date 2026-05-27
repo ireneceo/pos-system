@@ -8,6 +8,10 @@
 
 ---
 
+## [v3.43 hotfix #2] — 2026-05-27 배포 (Customer Display Floor Plan lookup — 같은 날 누적)
+
+- Floor Plan 의 cart-update useEffect lookup 에 `tableStatuses[tLabel]` fallback 추가. 우측 패널 (`selectedStatusInfo` line 1040) 과 동일한 lookup 식으로 통일. 옛 주문 (floor_plan_table_id=null + table_number=label) 시 lookup miss 로 cart-update 가 발사 안 돼 CD 가 blank 이던 사례 차단. 주문 여러 개 — useEffect deps `selectedOrderIndex` + 내부 `orders[idx]` 로 탭 변경 자동 반영
+
 ## [v3.43 hotfix #1] — 2026-05-27 배포 (Customer Display 회원/포인트 UX — 같은 날 누적)
 
 - Floor Plan 빈 테이블 클릭 placeholder — tableStatus 미준비 / 빈 테이블에도 cart-update emit (table label + `orderInfo.orderStatus='empty'`). 사용자가 테이블 눌렀는데 CD 가 blank 인 사례 차단

@@ -607,7 +607,13 @@ const FloorPlanPage: React.FC = () => {
     const tInfo = (floorPlan?.tables || []).find(t => t.id === selectedTableId);
     const tNumber = tInfo?.tableNumber ?? null;
     const tLabel = (tInfo as any)?.label || tNumber;
-    const tableStatus = tableStatuses[selectedTableId] || (tNumber ? tableStatuses[tNumber] : undefined);
+    // Status lookup priority: floor_plan_table_id → label → tableNumber.
+    // Backend keys grouping by (floor_plan_table_id || table_number); orders
+    // typically save table_number as the *label* (e.g. "U-2") so plain numeric
+    // tableNumber ("2") misses. Falling through label first restores the match.
+    const tableStatus = tableStatuses[selectedTableId]
+      || (tLabel ? tableStatuses[tLabel] : undefined)
+      || (tNumber ? tableStatuses[tNumber] : undefined);
     if (!tableStatus) {
       // Table is selected but has no order yet (or polling hasn't fetched it).
       // Push a placeholder so the Customer Display shows "Table X — no order yet"

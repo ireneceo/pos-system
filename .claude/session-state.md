@@ -2,8 +2,8 @@
 
 ## 현재 작업 상태
 **마지막 업데이트:** 2026-05-27
-**버전:** v3.43 hotfix #1 운영 (2026-05-27, Backup 20260527_205720, smoke 10/10)
-**작업 상태:** Customer Display 회원/포인트 UX hotfix 추가 배포 완료. 내일 매장 영업 시작.
+**버전:** v3.43 hotfix #2 운영 (2026-05-27, Backup 20260527_210718, smoke 10/10)
+**작업 상태:** Customer Display Floor Plan lookup hotfix 배포 완료. 내일 매장 영업 시작.
 
 ---
 
