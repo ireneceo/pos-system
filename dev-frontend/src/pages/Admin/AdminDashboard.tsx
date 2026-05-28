@@ -646,7 +646,7 @@ const AdminDashboard: React.FC = () => {
           const currencyRes = await fetch('/api/currencies/supported', { headers });
           if (currencyRes.ok) {
             const currencyData = await currencyRes.json();
-            supportedCurs = (currencyData.data || currencyData || []).map((c: any) =>
+            supportedCurs = (Array.isArray(currencyData.data) ? currencyData.data : Array.isArray(currencyData) ? currencyData : []).map((c: any) =>
               normalizeCurrency(typeof c === 'string' ? c : c.code)
             );
           }
@@ -799,7 +799,7 @@ const AdminDashboard: React.FC = () => {
           const ticketsResponse = await fetch('/api/support-tickets', { headers });
           if (ticketsResponse.ok) {
             const ticketsData = await ticketsResponse.json();
-            supportTicketsCount = (ticketsData.data || ticketsData || []).length;
+            supportTicketsCount = (Array.isArray(ticketsData.data) ? ticketsData.data : Array.isArray(ticketsData) ? ticketsData : []).length;
           }
         } catch (error) {
           console.error('Error fetching support tickets:', error);

@@ -363,7 +363,22 @@
       "Bash(sed -n '735,775p' src/pages/FloorPlan/FloorPlanPage.tsx)",
       "Bash(sed -n '160,235p' src/pages/CheckoutDisplay/CheckoutDisplayPage.tsx)",
       "Bash(sed -n '580,605p' src/pages/FloorPlan/FloorPlanPage.tsx)",
-      "Bash(awk '/^## \\\\[Unreleased\\\\]/,/^## \\\\[v/' /var/www/CHANGELOG.md)"
+      "Bash(awk '/^## \\\\[Unreleased\\\\]/,/^## \\\\[v/' /var/www/CHANGELOG.md)",
+      "Bash(perl -i -pe 's/\\\\\\(\\([a-zA-Z_]\\\\w*\\)\\\\.data \\\\|\\\\| \\\\1 \\\\|\\\\| \\\\[\\\\]\\\\\\)/\\(Array.isArray\\($1.data\\) ? $1.data : Array.isArray\\($1\\) ? $1 : []\\)/g' pages/BrandGeneral/BrandGeneralDashboard.tsx)",
+      "Bash(perl -i -pe 's/\\\\\\(plansData\\\\.data \\\\|\\\\| plansData \\\\|\\\\| \\\\[\\\\]\\\\\\)/\\(Array.isArray\\(plansData.data\\) ? plansData.data : Array.isArray\\(plansData\\) ? plansData : []\\)/g' pages/BrandGeneral/BrandGeneralDashboard.tsx)",
+      "Bash(kill 580385)",
+      "Bash(kill 584089)",
+      "Bash(pkill -9 -f \"react-scripts build\")",
+      "Bash(pgrep -f \"react-scripts build\")",
+      "Bash(echo \"Started single build pid=$!\")",
+      "Bash(echo \"Started final build pid=$!\")",
+      "Bash(pkill -9 -f \"deploy-dev\")",
+      "Bash(echo \"Started build pid=$!\")",
+      "Bash(RA_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6OSwiZW1haWwiOiJhZG1pbkBrZGluZS5jb20iLCJ1c2VybmFtZSI6ImtkaW5lX2FkbWluIiwicm9sZSI6IlJlc3RhdXJhbnQgQWRtaW4iLCJyZXN0YXVyYW50X2lkIjo1LCJpYXQiOjE3Nzk5NTgyNDIsImV4cCI6MTc3OTk2NTQ0Mn0.3JMRbs4CwZHsrvX-pUYUAg0gDi9W1c3OdarW3Z3Nppc RA_RID=5 timeout 90 node -e ' *)",
+      "Bash(tee /tmp/build-autoprint.log)",
+      "Bash(systemctl --user list-units --type=timer)",
+      "Bash(loginctl show-user *)",
+      "Bash(chmod +x /var/www/.claude/hooks/auto-save.sh)"
     ],
     "deny": [],
     "ask": []
@@ -376,6 +391,17 @@
           {
             "type": "command",
             "command": "/var/www/.claude/hooks/safety-guard.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/var/www/.claude/hooks/auto-save.sh stop"
           }
         ]
       }

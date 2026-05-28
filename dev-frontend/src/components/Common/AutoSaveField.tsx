@@ -181,19 +181,30 @@ const AutoSaveField = forwardRef<AutoSaveHandle, AutoSaveFieldProps>(({
     return () => { mountedRef.current = false; clearTimers(); };
   }, [clearTimers]);
 
-  // Auto-intercept onChange of children — recurse into wrappers (label, div, etc.)
-  // so `<AutoSaveField><label><input onChange={...}/></label></AutoSaveField>`
-  // also auto-saves. Previously only direct-child onChange was hooked, which
-  // silently dropped saves on every label-wrapped toggle (cash drawer / copies
-  // / workstation autoPrint), so the cashier toggled them but they never
-  // persisted — autoprint conditions stayed false and nothing fired.
+  // Auto-intercept onChange / onClick of children — recurse into wrappers
+  // (label, div, etc.) so both
+  //   `<AutoSaveField><label><input onChange={...}/></label></AutoSaveField>`
+  // and
+  //   `<AutoSaveField type="toggle"><button onClick={...}/></AutoSaveField>`
+  // also auto-save. onClick interception is restricted to type='toggle'|'list'
+  // because those wrap explicit save-action UI (segmented buttons, copy
+  // counters, etc); intercepting onClick on all types would catch unrelated
+  // clicks. 2026-05-28: copiesAfterPayment buttons in Printer Settings used
+  // <button onClick> and silently never saved — matj a g영업 1일차 매장에서 빌 1번만
+  // 인쇄되던 핵심 버그였음.
   const enhance = (node: React.ReactNode): React.ReactNode => {
     if (!React.isValidElement(node)) return node;
     const props: any = node.props || {};
-    const orig = props.onChange;
-    if (typeof orig === 'function') {
+    const origChange = props.onChange;
+    const origClick = props.onClick;
+    if (typeof origChange === 'function') {
       return React.cloneElement(node as React.ReactElement<any>, {
-        onChange: (...args: any[]) => { orig(...args); triggerSave(); },
+        onChange: (...args: any[]) => { origChange(...args); triggerSave(); },
+      });
+    }
+    if (typeof origClick === 'function' && (type === 'toggle' || type === 'list')) {
+      return React.cloneElement(node as React.ReactElement<any>, {
+        onClick: (...args: any[]) => { origClick(...args); triggerSave(); },
       });
     }
     if (props.children) {

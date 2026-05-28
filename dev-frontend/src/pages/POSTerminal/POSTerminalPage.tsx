@@ -12,6 +12,7 @@ import AlertDialog from '../../components/Common/AlertDialog';
 import NumberInputModal from '../../components/Common/NumberInputModal';
 import { useOrders } from '../../contexts/OrderContext';
 import { useStore } from '../../contexts/StoreContext';
+import { useAutoPrintPoller } from '../../hooks/useAutoPrintPoller';
 import { useMenu } from '../../contexts/MenuContext';
 import { useCustomer } from '../../contexts/CustomerContext';
 import { useStaff } from '../../contexts/StaffContext';
@@ -1185,6 +1186,11 @@ const POSTerminalPage: React.FC = () => {
   const { getTakeawayCharge, operationSettings, getStoreInfo } = useStore();
   const { categories: allCategories, menuItems, getItemsByCategory, loadMenuByCategory, isLoadingMenu } = useMenu();
 
+  // 2026-05-28 매장 critical: backend-driven auto-print polling. POSTerminal 은
+  // MainLayout 안에 mount 안 되므로 (fullscreen route), 이 hook 으로 같은
+  // polling 동작 보장.
+  useAutoPrintPoller({ restaurantId: user?.restaurantId, enabled: !!user?.restaurantId, getStoreInfo });
+
   // POS Terminal shows only active categories (customer-facing view)
   const categories = allCategories.filter(cat => cat.isActive !== false);
   const {
@@ -2004,30 +2010,40 @@ const POSTerminalPage: React.FC = () => {
         loyaltyTier: selectedCustomerForOrder?.loyaltyTier,
         points: selectedCustomerForOrder?.points
       },
-      items: orderItems.map(item => {
-        // Calculate item price including options
-        let itemPrice = item.menuItem.price;
-        if (item.selectedOptions && item.selectedOptions.length > 0) {
-          const optionsTotal = item.selectedOptions.reduce((sum, opt) => sum + opt.price, 0);
-          itemPrice += optionsTotal;
-        }
-        return {
-          id: item.id,
-          menuItem: {
-            id: item.menuItem.id,
-            name: item.menuItem.code ? `${item.menuItem.code} ${item.menuItem.name}` : item.menuItem.name,
-            price: itemPrice,  // Include option prices in the item price
-            emoji: item.menuItem.emoji,
-            is_set_menu: item.menuItem.is_set_menu,
-            set_items: item.menuItem.set_items
-          },
-          quantity: item.quantity,
-          options: item.options,
-          selectedOptions: item.selectedOptions || [],
-          is_set_menu: item.menuItem.is_set_menu || false,
-          set_items: item.menuItem.set_items || []
-        };
-      }),
+      items: (() => {
+        // 2026-05-28 매장 critical: print path 의 tagTicketWithStations 가
+        // item.kitchen_station_id 우선 사용. cart item 에 이 필드를 frontend
+        // 가 직접 채워 (MenuContext lookup) 로컬 localStorage map 의존성 제거.
+        // backend enrich 와 동등하게 작동.
+        const _catStationMap = new Map<string, number>();
+        (categories as any[]).forEach((c: any) => { if (c.kitchen_station_id) _catStationMap.set(String(c.id), c.kitchen_station_id); });
+        return orderItems.map(item => {
+          let itemPrice = item.menuItem.price;
+          if (item.selectedOptions && item.selectedOptions.length > 0) {
+            const optionsTotal = item.selectedOptions.reduce((sum, opt) => sum + opt.price, 0);
+            itemPrice += optionsTotal;
+          }
+          const fullMenuItem = (menuItems as any[]).find((m: any) => String(m.id) === String(item.menuItem.id));
+          const ksid = fullMenuItem?.kitchen_station_id || _catStationMap.get(String(fullMenuItem?.category)) || null;
+          return {
+            id: item.id,
+            menuItem: {
+              id: item.menuItem.id,
+              name: item.menuItem.code ? `${item.menuItem.code} ${item.menuItem.name}` : item.menuItem.name,
+              price: itemPrice,
+              emoji: item.menuItem.emoji,
+              is_set_menu: item.menuItem.is_set_menu,
+              set_items: item.menuItem.set_items
+            },
+            quantity: item.quantity,
+            options: item.options,
+            selectedOptions: item.selectedOptions || [],
+            is_set_menu: item.menuItem.is_set_menu || false,
+            set_items: item.menuItem.set_items || [],
+            kitchen_station_id: ksid
+          };
+        });
+      })(),
       status: 'pending' as const,
       createdAt: formatTime(now, operationSettings),
       subtotal,
@@ -2113,14 +2129,16 @@ const POSTerminalPage: React.FC = () => {
       try {
         const printSettings = getPrinterSettings();
         const printStoreInfo = getStoreInfo();
-        // Master gate (2026-05-28): kitchen autoPrint OFF means no auto-print
-        // even when a station-level toggle is ON. See KDS handler.
+        // Master gate (2026-05-28 revised — station-only mode 허용):
+        //   master autoPrint OFF + station autoPrint OFF → absolute block.
+        //   master autoPrint OFF + ANY station autoPrint ON → station-only mode.
+        //   master autoPrint ON → fire both.
         const _stationPrintersMap = printSettings.kitchenStationPrinters || {};
         const _kp: any = printSettings.kitchenPrinter || {};
         const _kpEnabled = _kp.enabled !== false;
         const _kpAuto = !!_kp.autoPrint;
         const _stationAutoPrint = Object.values(_stationPrintersMap).some((s: any) => s?.autoPrint);
-        const kitchenAuto = (_kpEnabled && !_kpAuto) ? false : (_kpAuto || _stationAutoPrint);
+        const kitchenAuto = (_kpEnabled && !_kpAuto && !_stationAutoPrint) ? false : (_kpAuto || _stationAutoPrint);
         // Telemetry helper — POSTs to /api/qz-tray/diagnose silently so we get a SupportTicket
         // for every auto-print attempt on the add-order flow.
         const _tele = (scope: string, extra: any = {}) => {
@@ -2266,30 +2284,40 @@ const POSTerminalPage: React.FC = () => {
         loyaltyTier: selectedCustomerForOrder?.loyaltyTier,
         points: selectedCustomerForOrder?.points
       },
-      items: orderItems.map(item => {
-        // Calculate item price including options
-        let itemPrice = item.menuItem.price;
-        if (item.selectedOptions && item.selectedOptions.length > 0) {
-          const optionsTotal = item.selectedOptions.reduce((sum, opt) => sum + opt.price, 0);
-          itemPrice += optionsTotal;
-        }
-        return {
-          id: item.id,
-          menuItem: {
-            id: item.menuItem.id,
-            name: item.menuItem.code ? `${item.menuItem.code} ${item.menuItem.name}` : item.menuItem.name,
-            price: itemPrice,  // Include option prices in the item price
-            emoji: item.menuItem.emoji,
-            is_set_menu: item.menuItem.is_set_menu,
-            set_items: item.menuItem.set_items
-          },
-          quantity: item.quantity,
-          options: item.options,
-          selectedOptions: item.selectedOptions || [],
-          is_set_menu: item.menuItem.is_set_menu || false,
-          set_items: item.menuItem.set_items || []
-        };
-      }),
+      items: (() => {
+        // 2026-05-28 매장 critical: print path 의 tagTicketWithStations 가
+        // item.kitchen_station_id 우선 사용. cart item 에 이 필드를 frontend
+        // 가 직접 채워 (MenuContext lookup) 로컬 localStorage map 의존성 제거.
+        // backend enrich 와 동등하게 작동.
+        const _catStationMap = new Map<string, number>();
+        (categories as any[]).forEach((c: any) => { if (c.kitchen_station_id) _catStationMap.set(String(c.id), c.kitchen_station_id); });
+        return orderItems.map(item => {
+          let itemPrice = item.menuItem.price;
+          if (item.selectedOptions && item.selectedOptions.length > 0) {
+            const optionsTotal = item.selectedOptions.reduce((sum, opt) => sum + opt.price, 0);
+            itemPrice += optionsTotal;
+          }
+          const fullMenuItem = (menuItems as any[]).find((m: any) => String(m.id) === String(item.menuItem.id));
+          const ksid = fullMenuItem?.kitchen_station_id || _catStationMap.get(String(fullMenuItem?.category)) || null;
+          return {
+            id: item.id,
+            menuItem: {
+              id: item.menuItem.id,
+              name: item.menuItem.code ? `${item.menuItem.code} ${item.menuItem.name}` : item.menuItem.name,
+              price: itemPrice,
+              emoji: item.menuItem.emoji,
+              is_set_menu: item.menuItem.is_set_menu,
+              set_items: item.menuItem.set_items
+            },
+            quantity: item.quantity,
+            options: item.options,
+            selectedOptions: item.selectedOptions || [],
+            is_set_menu: item.menuItem.is_set_menu || false,
+            set_items: item.menuItem.set_items || [],
+            kitchen_station_id: ksid
+          };
+        });
+      })(),
       status: 'pending' as const,
       createdAt: formatTime(now, operationSettings),
       subtotal,
@@ -2462,15 +2490,22 @@ const POSTerminalPage: React.FC = () => {
         });
       }
 
-      // Kitchen auto-print master gate (2026-05-28): kitchen autoPrint OFF must
-      // hard-block — even if a station-level toggle is ON. Operational trust.
+      // Kitchen auto-print master gate (2026-05-28 revised — station-only 허용):
+      //   master autoPrint OFF + station autoPrint OFF → block.
+      //   master autoPrint OFF + ANY station autoPrint ON → station-only mode.
+      //   master autoPrint ON → fire both.
+      //
+      // Skip when paying for an existing order (forceMergeOrderId set) —
+      // kitchen ticket already fired at handleAddOrder time. Fresh / takeaway
+      // immediate-pay (forceMergeOrderId null) still prints.
+      const _isPaymentForExistingOrder = !!forceMergeOrderId;
       const _stationPrintersMap = printSettings.kitchenStationPrinters || {};
       const _kp: any = printSettings.kitchenPrinter || {};
       const _kpEnabled = _kp.enabled !== false;
       const _kpAuto = !!_kp.autoPrint;
       const _stationAutoPrint = Object.values(_stationPrintersMap).some((s: any) => s?.autoPrint);
-      const kitchenAuto = (_kpEnabled && !_kpAuto) ? false : (_kpAuto || _stationAutoPrint);
-      if (kitchenAuto) {
+      const kitchenAuto = (_kpEnabled && !_kpAuto && !_stationAutoPrint) ? false : (_kpAuto || _stationAutoPrint);
+      if (kitchenAuto && !_isPaymentForExistingOrder) {
         setTimeout(() => {
           printKitchenTicketViaRawBT(printData, printStoreInfo)
             .then((ok: any) => {
@@ -2483,7 +2518,10 @@ const POSTerminalPage: React.FC = () => {
         }, 800);
       } else {
         _telemetry('auto-kitchen-skip', {
-          reason: 'no kitchen target — global off and no station autoPrint',
+          reason: _isPaymentForExistingOrder
+            ? 'payment for existing order — kitchen ticket already printed on add'
+            : 'no kitchen target — global off and no station autoPrint',
+          isPaymentForExistingOrder: _isPaymentForExistingOrder,
           stationCount: Object.keys(_stationPrintersMap).length,
           globalKitchenEnabled: !!printSettings.kitchenPrinter?.enabled,
           globalKitchenAutoPrint: !!printSettings.kitchenPrinter?.autoPrint

@@ -355,7 +355,7 @@ export function useSetupStatus(params: UseSetupStatusParams) {
           }
           if (branchesRes.ok) {
             const result = await branchesRes.json();
-            const branches = result.data || result || [];
+            const branches = (Array.isArray(result?.data) ? result.data : Array.isArray(result) ? result : []);
             hasBranch = Array.isArray(branches) ? branches.length > 0 : false;
             // any branch with units → floor plan considered set up
             hasFloorPlanFc = Array.isArray(branches) && branches.some((b: any) =>
@@ -402,7 +402,7 @@ export function useSetupStatus(params: UseSetupStatusParams) {
           let restaurants: any[] = [];
           if (ownerRes.ok) {
             const result = await ownerRes.json();
-            restaurants = result.data || result || [];
+            restaurants = (Array.isArray(result?.data) ? result.data : Array.isArray(result) ? result : []);
             if (!Array.isArray(restaurants)) restaurants = [];
           }
           const hasRestaurant = restaurants.length > 0;
@@ -457,7 +457,7 @@ export function useSetupStatus(params: UseSetupStatusParams) {
           }
           if (plansRes.ok) {
             const result = await plansRes.json();
-            const list = result.data || result || [];
+            const list = (Array.isArray(result?.data) ? result.data : Array.isArray(result) ? result : []);
             hasPlanTemplate = Array.isArray(list) ? list.length > 0 : false;
           }
           if (paymentRes.ok) {

@@ -428,7 +428,7 @@ const BrandReportsPage: React.FC = () => {
         });
         if (restaurantsResponse.ok) {
           const restaurantsData = await restaurantsResponse.json();
-          const formattedRestaurants = (restaurantsData.data || restaurantsData || []).map((r: any) => ({
+          const formattedRestaurants = (Array.isArray(restaurantsData.data) ? restaurantsData.data : Array.isArray(restaurantsData) ? restaurantsData : []).map((r: any) => ({
             id: r.id?.toString(),
             name: r.name,
             branch_name: r.branch_name || null,
@@ -492,7 +492,7 @@ const BrandReportsPage: React.FC = () => {
 
         if (ordersResponse.ok) {
           const ordersData = await ordersResponse.json();
-          let allOrders = ordersData.data || ordersData || [];
+          let allOrders = (Array.isArray(ordersData?.data) ? ordersData.data : Array.isArray(ordersData) ? ordersData : []);
 
           // Filter orders to only include those from allowed restaurants
           allOrders = allOrders.filter((order: any) =>

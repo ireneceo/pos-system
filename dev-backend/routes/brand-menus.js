@@ -150,7 +150,7 @@ router.get('/', authenticateToken, requireBGScope, async (req, res) => {
 
     const data = menus.map(m => ({
       ...m.toJSON(),
-      locks: { name: !!m.lock_name, price: !!m.lock_price, category: !!m.lock_category, image: !!m.lock_image, options: !!m.lock_options },
+      locks: { name: !!m.lock_name, price: !!m.lock_price, category: !!m.lock_category, image: !!m.lock_image, options: !!m.lock_options, set_items: !!m.lock_set_items },
       distribution: distribution[m.id] || { in_sync: 0, pending_update: 0, unlinked: 0 }
     }));
 
@@ -183,7 +183,7 @@ router.post('/', authenticateToken, requireBGScope, async (req, res) => {
     const {
       brand_id, category_id, product_recipe_id, name, description, image_url, emoji,
       recommended_price, currency, is_active, sort_order, distribution_mode,
-      option_group_ids, locks
+      option_group_ids, locks, is_set_menu, set_items
     } = req.body;
     // Accept both nested locks{} and flat lock_* — nested wins if provided
     const lock_name = locks && 'name' in locks ? locks.name : req.body.lock_name;
@@ -191,6 +191,7 @@ router.post('/', authenticateToken, requireBGScope, async (req, res) => {
     const lock_category = locks && 'category' in locks ? locks.category : req.body.lock_category;
     const lock_image = locks && 'image' in locks ? locks.image : req.body.lock_image;
     const lock_options = locks && 'options' in locks ? locks.options : req.body.lock_options;
+    const lock_set_items = locks && 'set_items' in locks ? locks.set_items : req.body.lock_set_items;
 
     if (!Number.isFinite(parseInt(brand_id, 10)) || !name?.trim()) {
       await t.rollback();
@@ -232,7 +233,10 @@ router.post('/', authenticateToken, requireBGScope, async (req, res) => {
       lock_price: resolvedLock(lock_price, 'price'),
       lock_category: resolvedLock(lock_category, 'category'),
       lock_image: resolvedLock(lock_image, 'image'),
-      lock_options: resolvedLock(lock_options, 'options')
+      lock_options: resolvedLock(lock_options, 'options'),
+      is_set_menu: !!is_set_menu,
+      set_items: Array.isArray(set_items) ? set_items : null,
+      lock_set_items: resolvedLock(lock_set_items, 'set_items')
     }, { transaction: t });
 
     // Option group links
@@ -281,7 +285,8 @@ router.put('/:id', authenticateToken, requireBGScope, async (req, res) => {
     const body = req.body || {};
     const updatable = ['category_id', 'product_recipe_id', 'name', 'description', 'emoji',
       'recommended_price', 'currency', 'is_active', 'sort_order', 'distribution_mode',
-      'lock_name', 'lock_price', 'lock_category', 'lock_image', 'lock_options'];
+      'lock_name', 'lock_price', 'lock_category', 'lock_image', 'lock_options',
+      'is_set_menu', 'set_items', 'lock_set_items'];
     const update = {};
     for (const k of updatable) if (k in body) update[k] = body[k];
 
@@ -382,7 +387,10 @@ router.post('/:id/copy', authenticateToken, requireBGScope, async (req, res) => 
       lock_price: req.body.include_locks ? source.lock_price : false,
       lock_category: req.body.include_locks ? source.lock_category : false,
       lock_image: req.body.include_locks ? source.lock_image : false,
-      lock_options: req.body.include_locks ? source.lock_options : false
+      lock_options: req.body.include_locks ? source.lock_options : false,
+      is_set_menu: source.is_set_menu,
+      set_items: source.set_items,
+      lock_set_items: req.body.include_locks ? source.lock_set_items : false
     }, { transaction: t });
 
     await t.commit();

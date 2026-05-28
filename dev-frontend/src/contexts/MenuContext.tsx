@@ -297,6 +297,32 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
         });
 
         setMenuItems(items);
+
+        // Sync kitchenStationMenuMap to localStorage so billPrint.js
+        // (POS / LiveOrders / FloorPlan kitchen ticket printing) can resolve
+        // station names even when KDS page is not open on this device.
+        // Previously KDS was the only writer — cashier devices that never
+        // opened KDS had an empty map, so printed tickets had blank station
+        // tags (2026-05-28 The Fire 매장 영업 1일차 critical 보고).
+        try {
+          const catStationMap = new Map<string, number>();
+          cats.forEach((c: any) => {
+            if (c.kitchen_station_id) catStationMap.set(String(c.id), c.kitchen_station_id);
+          });
+          const map: Record<string, number> = {};
+          items.forEach((item: any) => {
+            const sid = item.kitchen_station_id || catStationMap.get(String(item.category));
+            if (sid) {
+              map[item.name] = sid;
+              if (item.code) map[`${item.code} ${item.name}`] = sid;
+            }
+          });
+          if (Object.keys(map).length > 0) {
+            localStorage.setItem('kitchenStationMenuMap', JSON.stringify(map));
+          } else {
+            localStorage.removeItem('kitchenStationMenuMap');
+          }
+        } catch { /* silent */ }
       } else {
 
       }

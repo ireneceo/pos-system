@@ -1,9 +1,24 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-05-27 (v3.43 매장 도입 직전 critical fix 운영 배포)
+> **최종 업데이트:** 2026-05-28 (글쓰기 스킬 video_prompt 포맷 개선)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 > **현재 버전:** **v3.43** 운영 (2026-05-27 배포, Backup 20260527_203834)
+
+## ✅ 완료: 글쓰기 스킬 video_prompt 포맷 개선 (2026-05-28)
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| video_prompt 구조화 포맷 | 한 줄 압축 → 상황설명 + Shot + Audio + Text overlay 4섹션 분리. 각 컷 가독성 대폭 개선 | ✅ |
+| BRAND CONCEPT v3 헤더 포함 | video_prompt 맨 위에 브랜드 톤 헤더 고정 (영상 생성 AI 일관성 보장) | ✅ |
+| 글자 수 제한 확장 | 4000자 → 6000자 (디테일한 샷 리스트 수용) | ✅ |
+| 기존 블로그 video_prompt 업데이트 | staff-mistakes (57-59) + e-invoice (78-80) 총 6건 새 포맷 적용 | ✅ |
+
+**수정된 파일**: `.claude/commands/글쓰기.md`, `.claude/commands/블로그초안.md`
+
+**DB 변경**: `contents` 테이블 ID 57-59, 78-80 — `video_prompt` 필드 구조화 포맷 적용
+
+---
 
 ## ✅ 완료: v3.43 매장 도입 직전 critical fix (2026-05-27)
 

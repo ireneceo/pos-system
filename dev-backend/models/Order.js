@@ -58,6 +58,22 @@ Order.init({
     type: DataTypes.ENUM('awaiting_payment', 'pending', 'preparing', 'ready', 'served', 'completed', 'cancelled', 'outstanding'),
     defaultValue: 'awaiting_payment'
   },
+  // 2026-05-28 매장 critical: source 무관 (POS/모바일/FloorPlan) 주문 발생 직후
+  // backend 가 set, 매장 device 가 polling 으로 catch → 인쇄 후 false set.
+  // Frontend socket 의존성을 제거. backend 가 단일 진실.
+  needs_print: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    comment: 'Pending kitchen auto-print flag. Set true on Order.create. Cleared by frontend.'
+  },
+  // 2026-05-28: needs_bill — separate flag for cashier bill receipt auto-print.
+  // Set true on merge (mobile 같은 테이블 추가 = staff 주문관리용 누적 영수증).
+  // Single new orders 는 false (결제 버튼 시점에만 bill 인쇄).
+  needs_bill: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    comment: 'Pending bill auto-print flag. Set true on merge (mobile 같은 테이블 추가).'
+  },
   order_type: {
     type: DataTypes.ENUM('dine_in', 'takeaway', 'delivery', 'pickup', 'reservation_deposit'),
     defaultValue: 'dine_in'

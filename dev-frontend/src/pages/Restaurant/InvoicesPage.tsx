@@ -369,7 +369,7 @@ const RestaurantInvoicesPage: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         // Transform data to match Invoice interface
-        const invoices: Invoice[] = (data.data || data || []).map((inv: any) => ({
+        const invoices: Invoice[] = (Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : []).map((inv: any) => ({
           id: inv.id?.toString() || '',
           invoiceNumber: inv.invoice_number || '',
           issueDate: inv.issued_at || inv.issue_date || '',

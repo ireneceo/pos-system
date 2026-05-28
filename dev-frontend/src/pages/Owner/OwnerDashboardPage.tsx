@@ -534,7 +534,7 @@ const OwnerDashboardPage: React.FC = () => {
         setCurrency(restaurantList[0].currency);
       }
 
-      const compare = compareResult.data || compareResult || [];
+      const compare = (Array.isArray(compareResult?.data) ? compareResult.data : Array.isArray(compareResult) ? compareResult : []);
       setCompareData(compare);
 
       const totalRevenue = compare.reduce((sum: number, r: any) => sum + parseFloat(r.revenue || 0), 0);
@@ -615,7 +615,7 @@ const OwnerDashboardPage: React.FC = () => {
       const headers = getHeaders();
       const res = await fetch(`/api/owner/statistics/compare?period=${chartPeriod}`, { headers });
       const data = await res.json();
-      setCompareData(data.data || data || []);
+      setCompareData(Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error fetching compare data:', error);
     }

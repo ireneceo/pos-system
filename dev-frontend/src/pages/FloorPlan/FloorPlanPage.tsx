@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
 import { useStore } from '../../contexts/StoreContext';
+import { useAutoPrintPoller } from '../../hooks/useAutoPrintPoller';
 import { openCustomerDisplay, isAutoOpenEnabled } from '../../utils/customerDisplay';
 
 // Prefetch POS Terminal chunk on Floor Plan mount — clicking a table to start
@@ -277,6 +278,11 @@ const FloorPlanPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { getStoreInfo } = useStore();
+
+  // 2026-05-28 매장 critical: backend-driven auto-print polling (fullscreen page,
+  // MainLayout 안 mount). 매장 device 가 FloorPlan 켜둔 상태에서 모바일/POS
+  // 주문 발생 시 polling 으로 catch + 인쇄 + PATCH.
+  useAutoPrintPoller({ restaurantId: user?.restaurantId, enabled: !!user?.restaurantId, getStoreInfo });
 
   // Prefetch is intentionally disabled here. Initial implementation triggered
   // POS Terminal chunk download during Floor Plan idle, but the observed effect
@@ -949,19 +955,10 @@ const FloorPlanPage: React.FC = () => {
             })();
           }
 
-          // Kitchen auto-print master gate (2026-05-28) — kitchen autoPrint OFF
-          // must hard-block even when a station-level toggle is ON.
-          const _stationAutoPrint = Object.values(printSettings.kitchenStationPrinters || {}).some((s: any) => s?.autoPrint);
-          const _kp: any = printSettings.kitchenPrinter || {};
-          const _kpEnabled = _kp.enabled !== false;
-          const _kpAuto = !!_kp.autoPrint;
-          const _kitchenAuto = (_kpEnabled && !_kpAuto) ? false : (_kpAuto || _stationAutoPrint);
-          if (_kitchenAuto) {
-            setTimeout(() => {
-              billPrintMod.printKitchenTicketViaRawBT(printData, printStoreInfo)
-                .catch((e: any) => console.error('FloorPlan auto kitchen print failed:', e));
-            }, 800);
-          }
+          // 2026-05-28: FloorPlan 결제는 항상 pre-existing 주문에 대한 결제 흐름
+          // (테이블 자리잡음 → 주문 추가 시점에 kitchen ticket 인쇄됨). 결제 시점에
+          // 다시 인쇄하면 같은 ticket 중복 → 매장 보고. kitchen ticket 은 주문이
+          // 들어올 때만 인쇄.
         } catch (autoPrintErr) {
           console.error('FloorPlan auto-print skipped:', autoPrintErr);
         }

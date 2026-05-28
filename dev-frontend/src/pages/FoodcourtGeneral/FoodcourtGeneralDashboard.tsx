@@ -674,7 +674,7 @@ const FoodcourtGeneralDashboard: React.FC = () => {
 
       const foodcourtsRes = await fetch('/api/foodcourts', { headers });
       const foodcourtsData = await foodcourtsRes.json();
-      const foodcourts = foodcourtsData.data || foodcourtsData || [];
+      const foodcourts = (Array.isArray(foodcourtsData?.data) ? foodcourtsData.data : Array.isArray(foodcourtsData) ? foodcourtsData : []);
       const foodcourt = foodcourts[0];
       if (!foodcourt) { setLoading(false); return; }
       setFoodcourtId(foodcourt.id);
@@ -704,16 +704,16 @@ const FoodcourtGeneralDashboard: React.FC = () => {
       const totalOrders = restaurantRevenues.reduce((sum: number, r: any) => sum + (r.order_count || 0), 0);
       setRestaurants(restaurantRevenues);
 
-      const plans = plansData.data || plansData || [];
+      const plans = (Array.isArray(plansData?.data) ? plansData.data : Array.isArray(plansData) ? plansData : []);
       const activePlans = plans.filter((p: any) => p.is_active !== false).length;
 
-      const invoices = invoicesData.data || invoicesData || [];
+      const invoices = (Array.isArray(invoicesData?.data) ? invoicesData.data : Array.isArray(invoicesData) ? invoicesData : []);
       const pendingInvoices = invoices.filter((inv: any) =>
         inv.status === 'pending_payment' || inv.status === 'payment_submitted'
       ).length;
       const overdueInvoices = invoices.filter((inv: any) => inv.status === 'overdue').length;
 
-      const subs = subsData.data || subsData || [];
+      const subs = (Array.isArray(subsData?.data) ? subsData.data : Array.isArray(subsData) ? subsData : []);
       setSubscriptions(subs);
 
       setStats({

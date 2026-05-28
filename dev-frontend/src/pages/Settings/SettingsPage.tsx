@@ -680,7 +680,6 @@ const SettingsPage: React.FC = () => {
   const ewalletQrRef = useRef<AutoSaveHandle>(null);
   const companyLogoRef = useRef<AutoSaveHandle>(null);
   const storeLogoRef = useRef<AutoSaveHandle>(null);
-  const kitchenAssignmentRefs = useRef<Map<string, AutoSaveHandle>>(new Map());
   const [deleteStationConfirm, setDeleteStationConfirm] = useState<{ isOpen: boolean; stationId: number | null; stationName: string }>({ isOpen: false, stationId: null, stationName: '' });
 
   // Payment settings state - start with null, will be loaded from DB
@@ -770,9 +769,8 @@ const SettingsPage: React.FC = () => {
     return () => window.removeEventListener('workstation-changed', handler);
   }, []);
 
-  // Kitchen Stations state
+  // Kitchen Stations state — hybrid mode (v3.44+): category default + per-menu override
   const [kitchenStations, setKitchenStations] = useState<any[]>([]);
-  const [kitchenAssignmentMode, setKitchenAssignmentMode] = useState<'category' | 'menu_item'>('category');
   const [itemMergeTimeLimit, setItemMergeTimeLimit] = useState<number>(0);
   const [itemMergeMaxCount, setItemMergeMaxCount] = useState<number>(0);
   const [kitchenStationsLoading, setKitchenStationsLoading] = useState(true);
@@ -1471,7 +1469,6 @@ const SettingsPage: React.FC = () => {
       if (stationsRes.ok) {
         const stationsData = await stationsRes.json();
         setKitchenStations(stationsData.data?.stations || []);
-        setKitchenAssignmentMode(stationsData.data?.assignment_mode || 'category');
       }
       if (categoriesRes.ok) {
         const catData = await categoriesRes.json();
@@ -1501,6 +1498,47 @@ const SettingsPage: React.FC = () => {
     loadKitchenStations();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.restaurantId]);
+
+  // 2026-05-28 매장 critical: Auto-seed kitchenStationPrinters entries for every
+  // KitchenStation row. Previously an entry was only persisted when the user
+  // touched that station's printer form. If they never touched it, the entry
+  // was missing — the kitchen ticket router (printKitchenTicketsByStation)
+  // saw `stationPrinters[stationId]` as undefined and bucketed all its items
+  // into "unmapped" → piled onto the first station's printer. BARPR (3rd
+  // station at The Fire) never received anything.
+  //
+  // Now: as soon as kitchenStations load, every station gets a default entry
+  // (autoPrint=ON, address='', method='qztray', stationName mirrored from
+  // DB). Sidebar device gets the merged result on next load.
+  const stationSeedDoneRef = useRef(false);
+  useEffect(() => {
+    if (!user?.restaurantId) return;
+    if (!Array.isArray(kitchenStations) || kitchenStations.length === 0) return;
+    if (stationSeedDoneRef.current) return;
+    const current = printerSettings.kitchenStationPrinters || {};
+    const missing = kitchenStations.filter((s: any) => !current[s.id]);
+    if (missing.length === 0) {
+      stationSeedDoneRef.current = true;
+      return;
+    }
+    setPrinterSettings(prev => {
+      const next = { ...(prev.kitchenStationPrinters || {}) };
+      missing.forEach((s: any) => {
+        next[s.id] = {
+          name: '',
+          autoPrint: true,
+          address: '',
+          method: 'qztray',
+          stationName: s.name
+        };
+      });
+      return { ...prev, kitchenStationPrinters: next };
+    });
+    stationSeedDoneRef.current = true;
+    // Allow setPrinterSettings to flush before handleSave reads the state
+    setTimeout(() => { handleSave(); }, 60);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kitchenStations, user?.restaurantId]);
 
   // Load membership settings
   useEffect(() => {
@@ -6877,37 +6915,21 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                 </SettingsCard>
               )}
 
-              {/* Assignment Mode — only relevant with 2+ stations */}
+              {/* Routing explainer — only relevant with 2+ stations */}
               {kitchenStations.length > 1 && (
-              <SettingsCard style={{ marginBottom: '24px' }}>
-                <CardTitle>{t('settings:settingsPage.assignmentMode')}</CardTitle>
-                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                  {([
-                    { key: 'category', label: 'By Category (Recommended)', desc: 'Assign categories to stations. New menu items automatically follow their category.' },
-                    { key: 'menu_item', label: 'By Menu Item', desc: 'Assign each menu item individually. More precise but requires manual assignment for new items.' },
-                  ] as const).map(opt => (
-                    <AutoSaveField key={opt.key} ref={(h: AutoSaveHandle | null) => { if (h) kitchenAssignmentRefs.current.set(opt.key, h); }} onSave={async () => {
-                      const token = getAuthToken();
-                      const res = await fetch(`/api/restaurants/${user?.restaurantId}`, {
-                        method: 'PUT',
-                        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ kitchen_assignment_mode: opt.key })
-                      });
-                      if (!res.ok) throw new Error('Save failed');
-                    }} type="toggle" style={{ flex: 1, minWidth: 200 }}>
-                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer', padding: '12px', borderRadius: '8px', border: `1px solid ${kitchenAssignmentMode === opt.key ? '#635BFF' : '#C7CED6'}`, background: kitchenAssignmentMode === opt.key ? '#F8F7FF' : 'white' }}>
-                      <input type="radio" name="assignmentMode" checked={kitchenAssignmentMode === opt.key}
-                        onChange={() => { setKitchenAssignmentMode(opt.key); kitchenAssignmentRefs.current.get(opt.key)?.triggerSave(); }}
-                        style={{ marginTop: '2px' }} />
-                      <div>
-                        <div style={{ fontWeight: 600, color: '#0A2540', fontSize: '14px' }}>{opt.label}</div>
-                        <div style={{ color: '#4B5563', fontSize: '13px', marginTop: '4px' }}>{opt.desc}</div>
+                <SettingsCard style={{ marginBottom: '24px', background: '#F0F9FF', borderColor: '#BAE6FD' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                    <span style={{ fontSize: '20px' }}>i</span>
+                    <div>
+                      <div style={{ fontWeight: 600, color: '#075985', fontSize: '14px', marginBottom: '4px' }}>
+                        {t('settings:settingsPage.hybridAssignmentTitle')}
                       </div>
-                    </label>
-                    </AutoSaveField>
-                  ))}
-                </div>
-              </SettingsCard>
+                      <div style={{ color: '#0369A1', fontSize: '13px', lineHeight: 1.5 }}>
+                        {t('settings:settingsPage.hybridAssignmentDesc')}
+                      </div>
+                    </div>
+                  </div>
+                </SettingsCard>
               )}
 
               {/* Stations List */}
@@ -6992,52 +7014,50 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                   </div>
                 )}
 
-                {/* Unassigned Warning — only meaningful when user has 2+ stations to route between */}
+                {/* Unassigned Warning (hybrid) — items with no category station AND no per-item override */}
                 {kitchenStations.length > 1 && (() => {
-                  const assignedCatIds = new Set(kitchenStations.flatMap((s: any) => (s.categories || []).map((c: any) => c.id)));
-                  const assignedProdIds = new Set(kitchenStations.flatMap((s: any) => (s.products || []).map((p: any) => p.id)));
-                  const unassignedCats = allCategories.filter((c: any) => !assignedCatIds.has(c.id));
-                  const unassignedProds = allProducts.filter((p: any) => !assignedProdIds.has(p.id));
+                  // Build cat → stationId map from stations data
+                  const catToStation = new Map<number, number>();
+                  kitchenStations.forEach((s: any) => {
+                    (s.categories || []).forEach((c: any) => catToStation.set(Number(c.id), s.id));
+                  });
+                  // Per-item overrides
+                  const productToStation = new Map<number, number>();
+                  kitchenStations.forEach((s: any) => {
+                    (s.products || []).forEach((p: any) => productToStation.set(Number(p.id), s.id));
+                  });
 
                   // 카테고리 없는 아이템 찾기 (Uncategorized)
-                  // Backend returns menu items with `categoryId` (camelCase) — also accept `category_id` for safety.
                   const validCatIds = new Set(allCategories.map((c: any) => Number(c.id)));
                   const uncategorizedProds = allProducts.filter((p: any) => {
                     const catId = p.categoryId ?? p.category_id;
                     return catId == null || !validCatIds.has(Number(catId));
                   });
 
+                  // hybrid 미배정: product 자체 override 없고 + 속한 카테고리도 station 매핑 없는 것
+                  const trulyUnassignedProds = allProducts.filter((p: any) => {
+                    if (productToStation.has(Number(p.id))) return false;
+                    const catId = Number(p.categoryId ?? p.category_id);
+                    return !catToStation.has(catId);
+                  }).filter((p: any) => !uncategorizedProds.some((u: any) => u.id === p.id));
+
                   const warnings: React.ReactElement[] = [];
 
-                  if (kitchenAssignmentMode === 'category' && unassignedCats.length > 0) {
+                  if (trulyUnassignedProds.length > 0) {
                     warnings.push(
-                      <div key="unassigned-cats" style={{ padding: '12px 16px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '8px', fontSize: '13px', color: '#92400E' }}>
+                      <div key="unassigned" style={{ padding: '12px 16px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '8px', fontSize: '13px', color: '#92400E' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                          <span style={{ fontSize: '16px' }}>⚠</span>
-                          <strong>{unassignedCats.length} unassigned {unassignedCats.length === 1 ? 'category' : 'categories'}</strong>
+                          <strong>{trulyUnassignedProds.length} unassigned menu {trulyUnassignedProds.length === 1 ? 'item' : 'items'}</strong>
                         </div>
-                        <div>{unassignedCats.map((c: any) => `${c.emoji || ''} ${c.name}`.trim()).join(', ')}</div>
-                        <div style={{ marginTop: '6px', color: '#B45309', fontSize: '12px' }}>These categories will show in all stations on Kitchen Display. Edit a station above to assign them.</div>
+                        <div>{trulyUnassignedProds.slice(0, 10).map((p: any) => p.name).join(', ')}{trulyUnassignedProds.length > 10 ? ` +${trulyUnassignedProds.length - 10} more` : ''}</div>
+                        <div style={{ marginTop: '6px', color: '#B45309', fontSize: '12px' }}>{t('settings:settingsPage.assignCategoryOrItemOverride')}</div>
                       </div>
                     );
                   }
-                  if (kitchenAssignmentMode === 'menu_item' && unassignedProds.length > 0) {
-                    warnings.push(
-                      <div key="unassigned-prods" style={{ padding: '12px 16px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '8px', fontSize: '13px', color: '#92400E' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                          <span style={{ fontSize: '16px' }}>⚠</span>
-                          <strong>{unassignedProds.length} unassigned menu {unassignedProds.length === 1 ? 'item' : 'items'}</strong>
-                        </div>
-                        <div>{unassignedProds.slice(0, 10).map((p: any) => p.name).join(', ')}{unassignedProds.length > 10 ? ` +${unassignedProds.length - 10} more` : ''}</div>
-                        <div style={{ marginTop: '6px', color: '#B45309', fontSize: '12px' }}>These items will show in all stations on Kitchen Display. Edit a station above to assign them.</div>
-                      </div>
-                    );
-                  }
-                  if (kitchenAssignmentMode === 'category' && uncategorizedProds.length > 0) {
+                  if (uncategorizedProds.length > 0) {
                     warnings.push(
                       <div key="uncategorized" style={{ padding: '12px 16px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', fontSize: '13px', color: '#991B1B' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                          <span style={{ fontSize: '16px' }}>⚠</span>
                           <strong>{uncategorizedProds.length} uncategorized menu {uncategorizedProds.length === 1 ? 'item' : 'items'}</strong>
                         </div>
                         <div>{uncategorizedProds.map((p: any) => p.name).join(', ')}</div>
@@ -7078,7 +7098,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                   isOpen={true}
                   title={editingStation ? `Edit Station: ${editingStation.name}` : 'Add Kitchen Station'}
                   onClose={() => setShowStationModal(false)}
-                  maxWidth="520px"
+                  maxWidth="640px"
                   footer={
                     <>
                       <button type="button"
@@ -7176,69 +7196,130 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                       </div>
                     </FormGroup>
 
-                    {kitchenAssignmentMode === 'category' ? (
-                      <FormGroup>
-                        <Label>{t('settings:settingsPage.assignCategories')}</Label>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', maxHeight: '300px', overflowY: 'auto' }}>
-                          {allCategories.map((cat: any) => {
-                            const isChecked = stationForm.category_ids.includes(cat.id);
-                            // Check if assigned to another station
-                            const otherStation = kitchenStations.find((s: any) =>
-                              s.id !== editingStation?.id && (s.categories || []).some((c: any) => c.id === cat.id)
-                            );
-                            return (
-                              <label key={cat.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px', borderRadius: '6px', cursor: otherStation ? 'not-allowed' : 'pointer', background: isChecked ? '#F8F7FF' : 'white', border: `1px solid ${isChecked ? '#C7D2FE' : '#C7CED6'}`, opacity: otherStation ? 0.5 : 1 }}>
-                                <input
-                                  type="checkbox"
-                                  checked={isChecked}
-                                  disabled={!!otherStation}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      setStationForm({ ...stationForm, category_ids: [...stationForm.category_ids, cat.id] });
-                                    } else {
-                                      setStationForm({ ...stationForm, category_ids: stationForm.category_ids.filter(id => id !== cat.id) });
-                                    }
-                                  }}
-                                />
-                                <span style={{ fontSize: '14px', color: '#0A2540' }}>{cat.emoji || ''} {cat.name}</span>
-                                {otherStation && <span style={{ fontSize: '11px', color: '#8898AA' }}>({otherStation.name})</span>}
-                              </label>
-                            );
-                          })}
-                        </div>
-                      </FormGroup>
-                    ) : (
-                      <FormGroup>
-                        <Label>{t('settings:settingsPage.assignMenuItems')}</Label>
-                        <div style={{ maxHeight: '300px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          {allProducts.map((prod: any) => {
-                            const isChecked = stationForm.product_ids.includes(prod.id);
-                            const otherStation = kitchenStations.find((s: any) =>
-                              s.id !== editingStation?.id && (s.products || []).some((p: any) => p.id === prod.id)
-                            );
-                            return (
-                              <label key={prod.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 8px', borderRadius: '6px', cursor: otherStation ? 'not-allowed' : 'pointer', background: isChecked ? '#F8F7FF' : 'white', border: `1px solid ${isChecked ? '#C7D2FE' : '#C7CED6'}`, opacity: otherStation ? 0.5 : 1 }}>
-                                <input
-                                  type="checkbox"
-                                  checked={isChecked}
-                                  disabled={!!otherStation}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      setStationForm({ ...stationForm, product_ids: [...stationForm.product_ids, prod.id] });
-                                    } else {
-                                      setStationForm({ ...stationForm, product_ids: stationForm.product_ids.filter(id => id !== prod.id) });
-                                    }
-                                  }}
-                                />
-                                <span style={{ fontSize: '14px', color: '#0A2540' }}>{prod.name}</span>
-                                <span style={{ fontSize: '12px', color: '#8898AA' }}>({prod.category})</span>
-                                {otherStation && <span style={{ fontSize: '11px', color: '#8898AA' }}>({otherStation.name})</span>}
-                              </label>
-                            );
-                          })}
-                        </div>
-                      </FormGroup>
-                    )}
+                    {/* Categories (default routing) */}
+                    <FormGroup>
+                      <Label>{t('settings:settingsPage.assignCategories')}</Label>
+                      <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '8px' }}>
+                        {t('settings:settingsPage.assignCategoriesHint')}
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', maxHeight: '240px', overflowY: 'auto' }}>
+                        {allCategories.map((cat: any) => {
+                          const isChecked = stationForm.category_ids.includes(cat.id);
+                          // Check if assigned to another station
+                          const otherStation = kitchenStations.find((s: any) =>
+                            s.id !== editingStation?.id && (s.categories || []).some((c: any) => c.id === cat.id)
+                          );
+                          return (
+                            <label key={cat.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px', borderRadius: '6px', cursor: otherStation ? 'not-allowed' : 'pointer', background: isChecked ? '#F8F7FF' : 'white', border: `1px solid ${isChecked ? '#C7D2FE' : '#C7CED6'}`, opacity: otherStation ? 0.5 : 1 }}>
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                disabled={!!otherStation}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setStationForm({ ...stationForm, category_ids: [...stationForm.category_ids, cat.id] });
+                                  } else {
+                                    setStationForm({ ...stationForm, category_ids: stationForm.category_ids.filter(id => id !== cat.id) });
+                                  }
+                                }}
+                              />
+                              <span style={{ fontSize: '14px', color: '#0A2540' }}>{cat.emoji || ''} {cat.name}</span>
+                              {otherStation && <span style={{ fontSize: '11px', color: '#8898AA' }}>({otherStation.name})</span>}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </FormGroup>
+
+                    {/* Per-menu overrides */}
+                    <FormGroup>
+                      <Label>{t('settings:settingsPage.menuItemOverrides')}</Label>
+                      <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '8px' }}>
+                        {t('settings:settingsPage.menuItemOverridesHint')}
+                      </div>
+                      {(() => {
+                        // Build cat → currently-assigned station map (across all stations + this form's draft)
+                        const catToStation = new Map<number, { id: number; name: string }>();
+                        kitchenStations.forEach((s: any) => {
+                          (s.categories || []).forEach((c: any) => {
+                            // skip current station's saved cats — pretend draft is truth for this station
+                            if (s.id === editingStation?.id) return;
+                            catToStation.set(Number(c.id), { id: s.id, name: s.name });
+                          });
+                        });
+                        // overlay current draft
+                        stationForm.category_ids.forEach((cid) => {
+                          catToStation.set(Number(cid), { id: editingStation?.id ?? -1, name: stationForm.name || t('settings:settingsPage.thisStation') });
+                        });
+
+                        // Group products by category
+                        const grouped = new Map<string, { catName: string; emoji: string; items: any[] }>();
+                        allProducts.forEach((p: any) => {
+                          const catId = String(p.categoryId ?? p.category_id ?? p.category ?? '');
+                          const catMeta = allCategories.find((c: any) => String(c.id) === catId);
+                          const key = catMeta ? String(catMeta.id) : '__uncategorized__';
+                          if (!grouped.has(key)) {
+                            grouped.set(key, {
+                              catName: catMeta?.name || t('settings:settingsPage.uncategorized'),
+                              emoji: catMeta?.emoji || '',
+                              items: []
+                            });
+                          }
+                          grouped.get(key)!.items.push({ ...p, _catId: catMeta ? Number(catMeta.id) : null });
+                        });
+
+                        return (
+                          <div style={{ maxHeight: '320px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            {Array.from(grouped.entries()).map(([key, group]) => {
+                              const catId = key === '__uncategorized__' ? null : Number(key);
+                              const defaultStation = catId != null ? catToStation.get(catId) : null;
+                              return (
+                                <div key={key}>
+                                  <div style={{ fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <span>{group.emoji} {group.catName}</span>
+                                    {defaultStation ? (
+                                      <span style={{ fontSize: '11px', color: '#8898AA', fontWeight: 400 }}>
+                                        {t('settings:settingsPage.routedToByCategory', { station: defaultStation.name })}
+                                      </span>
+                                    ) : (
+                                      <span style={{ fontSize: '11px', color: '#F59E0B', fontWeight: 400 }}>
+                                        {t('settings:settingsPage.noCategoryRouting')}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingLeft: '4px' }}>
+                                    {group.items.map((prod: any) => {
+                                      const isChecked = stationForm.product_ids.includes(prod.id);
+                                      const otherStation = kitchenStations.find((s: any) =>
+                                        s.id !== editingStation?.id && (s.products || []).some((p: any) => p.id === prod.id)
+                                      );
+                                      return (
+                                        <label key={prod.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 8px', borderRadius: '6px', cursor: otherStation ? 'not-allowed' : 'pointer', background: isChecked ? '#F8F7FF' : 'white', border: `1px solid ${isChecked ? '#C7D2FE' : '#E5E7EB'}`, opacity: otherStation ? 0.5 : 1 }}>
+                                          <input
+                                            type="checkbox"
+                                            checked={isChecked}
+                                            disabled={!!otherStation}
+                                            onChange={(e) => {
+                                              if (e.target.checked) {
+                                                setStationForm({ ...stationForm, product_ids: [...stationForm.product_ids, prod.id] });
+                                              } else {
+                                                setStationForm({ ...stationForm, product_ids: stationForm.product_ids.filter(id => id !== prod.id) });
+                                              }
+                                            }}
+                                          />
+                                          <span style={{ fontSize: '14px', color: '#0A2540' }}>{prod.name}</span>
+                                          {otherStation && <span style={{ fontSize: '11px', color: '#8898AA' }}>({t('settings:settingsPage.overriddenBy', { station: otherStation.name })})</span>}
+                                        </label>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
+                    </FormGroup>
                 </CommonModal>
               )}
             </>

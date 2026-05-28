@@ -67,15 +67,13 @@ router.get('/', authenticateToken, verifyRestaurantAccess, async (req, res) => {
       stations = await loadStations();
     }
 
-    // Get restaurant assignment mode
-    const restaurant = await Restaurant.findByPk(req.restaurantId, {
-      attributes: ['kitchen_assignment_mode']
-    });
-
+    // assignment_mode is always 'hybrid' (v3.44+): category as default + per-menu override.
+    // Restaurant.kitchen_assignment_mode column is kept for schema backward-compat but no longer
+    // gates UI behavior.
     res.json({
       success: true,
       data: {
-        assignment_mode: restaurant?.kitchen_assignment_mode || 'category',
+        assignment_mode: 'hybrid',
         stations
       }
     });
@@ -86,14 +84,9 @@ router.get('/', authenticateToken, verifyRestaurantAccess, async (req, res) => {
 });
 
 // GET /api/kitchen-stations/unassigned?restaurant_id=5
-// 미배정 카테고리/메뉴 목록
+// hybrid 모드 미배정: 카테고리 미배정 + 카테고리 fallback 도 없는 메뉴
 router.get('/unassigned', authenticateToken, verifyRestaurantAccess, async (req, res) => {
   try {
-    const restaurant = await Restaurant.findByPk(req.restaurantId, {
-      attributes: ['kitchen_assignment_mode']
-    });
-    const mode = restaurant?.kitchen_assignment_mode || 'category';
-
     const unassignedCategories = await Category.findAll({
       where: {
         restaurant_id: req.restaurantId,
@@ -103,7 +96,14 @@ router.get('/unassigned', authenticateToken, verifyRestaurantAccess, async (req,
       order: [['displayOrder', 'ASC']]
     });
 
-    const unassignedProducts = await Product.findAll({
+    // 메뉴: product 자체 station 도 없고, 속한 카테고리에도 station 이 없을 때만 unassigned
+    const allCategories = await Category.findAll({
+      where: { restaurant_id: req.restaurantId },
+      attributes: ['id', 'kitchen_station_id']
+    });
+    const catStationMap = new Map(allCategories.map(c => [String(c.id), c.kitchen_station_id]));
+
+    const productsNoStation = await Product.findAll({
       where: {
         restaurant_id: req.restaurantId,
         kitchen_station_id: null
@@ -111,11 +111,12 @@ router.get('/unassigned', authenticateToken, verifyRestaurantAccess, async (req,
       attributes: ['id', 'name', 'category', 'emoji'],
       order: [['name', 'ASC']]
     });
+    const unassignedProducts = productsNoStation.filter(p => !catStationMap.get(String(p.category)));
 
     res.json({
       success: true,
       data: {
-        assignment_mode: mode,
+        assignment_mode: 'hybrid',
         categories: unassignedCategories,
         products: unassignedProducts
       }

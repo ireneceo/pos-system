@@ -444,7 +444,7 @@ const OwnerReportsPage: React.FC = () => {
 
         if (ordersResponse.ok) {
           const ordersData = await ordersResponse.json();
-          let allOrders = ordersData.data || ordersData || [];
+          let allOrders = (Array.isArray(ordersData?.data) ? ordersData.data : Array.isArray(ordersData) ? ordersData : []);
 
           // Filter orders to only include those from owned restaurants
           allOrders = allOrders.filter((order: any) =>

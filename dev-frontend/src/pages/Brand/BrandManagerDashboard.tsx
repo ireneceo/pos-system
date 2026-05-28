@@ -397,7 +397,7 @@ const BrandManagerDashboard: React.FC = () => {
         ]);
 
         const invoicesData = invoicesRes.ok ? await invoicesRes.json() : { data: [] };
-        const invoices = invoicesData.data || invoicesData || [];
+        const invoices = (Array.isArray(invoicesData?.data) ? invoicesData.data : Array.isArray(invoicesData) ? invoicesData : []);
         const overdueInvoices = invoices.filter((inv: any) => inv.status === 'overdue').length;
         const pendingInvoices = invoices.filter((inv: any) =>
           inv.status === 'pending_payment' || inv.status === 'payment_submitted'
@@ -409,7 +409,7 @@ const BrandManagerDashboard: React.FC = () => {
           const todayStr = new Date().toISOString().split('T')[0];
           const ordersRes = await fetch('/api/orders', { headers });
           const ordersData = ordersRes.ok ? await ordersRes.json() : [];
-          const orders = ordersData.data || ordersData || [];
+          const orders = (Array.isArray(ordersData?.data) ? ordersData.data : Array.isArray(ordersData) ? ordersData : []);
 
           const transformed: RestaurantSummary[] = restData.map((r: any) => {
             const restaurantOrders = orders.filter((o: any) =>

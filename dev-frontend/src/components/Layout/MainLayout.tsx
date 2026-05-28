@@ -1109,6 +1109,30 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const userRestaurantId = user?.restaurantId || user?.restaurant_id;
   const isOrderRole = user?.role === 'Restaurant Admin' || user?.role === 'Staff';
 
+  // 2026-05-28: Cache kitchenStations id→name map for any page on this device.
+  // tagTicketWithStations (utils/billPrint.js) reads localStorage('kitchenStationsById')
+  // as a fallback when the polling endpoint's stationName is missing, so every
+  // ticket — POS, KDS, FloorPlan, LiveOrders — can label items with the correct
+  // station name even before the user visits Settings or KDS on this device.
+  useEffect(() => {
+    if (!userRestaurantId || !isOrderRole) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const tok = getAuthToken();
+        if (!tok) return;
+        const res = await fetch(`/api/kitchen-stations?restaurant_id=${userRestaurantId}`, { headers: { Authorization: `Bearer ${tok}` } });
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        const stations = (data?.data?.stations || []).filter((s: any) => s && s.is_active !== false);
+        const idMap: Record<string, string> = {};
+        stations.forEach((s: any) => { if (s && s.id != null && s.name) idMap[String(s.id)] = s.name; });
+        localStorage.setItem('kitchenStationsById', JSON.stringify(idMap));
+      } catch (e) { /* non-fatal */ }
+    })();
+    return () => { cancelled = true; };
+  }, [userRestaurantId, isOrderRole]);
+
   useEffect(() => {
     if (!userRestaurantId || !isOrderRole) return;
 
@@ -1149,11 +1173,119 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         if (cfg?.soundEnabled !== false) {
           playIfNotOnSoundPage((cfg?.soundType as any) || 'bell');
         }
+
+        // 2026-05-28: socket 기반 인쇄 path 는 제거. backend needs_print marker +
+        // polling (useAutoPrintPoller / 아래 _printPollFn) 이 single source.
+        // socket 은 banner + sound + badge 갱신만 담당. polling 이 PATCH
+        // /printed lock 으로 race-safe 처리. socket 도 인쇄하면 중복 (2회).
       } else {
         playIfNotOnSoundPage('bell');
       }
     });
     socket.on('order-items-added', () => { playIfNotOnSoundPage('bell'); fetchBadgeCounts(); });
+
+    // 2026-05-28 매장 critical: backend-driven auto-print polling. socket 의존
+    // 자체 제거. 매장 device 가 어떤 페이지에 있든 10초 polling 으로 backend
+    // 의 needs_print=true 주문 catch → 인쇄 → PATCH /printed.
+    // POS button click 직접 trigger 는 fast path 로 유지, 이 polling 은 안전망.
+    let _printPollTimer: any = null;
+    const _printPollFn = async () => {
+      try {
+        const tok = getAuthToken();
+        if (!tok || !userRestaurantId) return;
+        const r = await fetch(`/api/orders/restaurant/${userRestaurantId}/pending-print`, { headers: { Authorization: `Bearer ${tok}` } });
+        if (!r.ok) return;
+        const j = await r.json().catch(() => null);
+        const list: any[] = (j && j.data) || [];
+        if (list.length === 0) return;
+        const billPrintMod = await import('../../utils/billPrint');
+        const printSettings = billPrintMod.getPrinterSettings();
+        if (printSettings.emergencyMode) return;
+        const activeBill = billPrintMod.getActiveBillPrinter();
+        // 2026-05-28: KDS 페이지에서도 폴링 활성. KDS socket 이 빠른 첫 path 이고
+        // 폴링이 fail-safe (socket 누락 / device 다중 / 일시 단절 시). KDS socket
+        // 핸들러는 인쇄 성공 시 PATCH /printed 호출 → 폴링은 자동 skip.
+        // __autoPrintInflight 가 same-device race 차단.
+        for (const ord of list) {
+          try {
+            // In-memory dedup (single-device race)
+            if ((window as any).__autoPrintInflight && (window as any).__autoPrintInflight[ord.id]) continue;
+            (window as any).__autoPrintInflight = (window as any).__autoPrintInflight || {};
+            (window as any).__autoPrintInflight[ord.id] = true;
+
+            const items = Array.isArray(ord.order_items) ? ord.order_items : (typeof ord.order_items === 'string' ? (() => { try { return JSON.parse(ord.order_items); } catch { return []; } })() : []);
+            const printStoreInfo = (typeof getStoreInfo === 'function') ? getStoreInfo() : {} as any;
+            const printData: any = {
+              orderNumber: ord.order_number,
+              pickupNumber: ord.order_number ? String(ord.order_number).split('-')[1] : '',
+              tableNumber: ord.table_number || undefined,
+              pagerNumber: ord.pager_number || undefined,
+              date: new Date(ord.order_date || ord.createdAt || Date.now()),
+              orderType: ord.order_type === 'dine_in' ? 'dine-in' : (ord.order_type || 'takeaway'),
+              orderSource: ord.source || 'mobile',
+              items: items.map((it: any) => ({
+                menuItem: { name: it.menu_item_name || it.name || (it.menuItem && it.menuItem.name) || 'Item', price: parseFloat(it.price || (it.menuItem && it.menuItem.price) || '0') },
+                quantity: it.quantity || 1,
+                options: Array.isArray(it.options) ? it.options : [],
+                kitchen_station_id: it.kitchen_station_id || null,
+                stationName: it.stationName || null
+              })),
+              subtotal: parseFloat(ord.subtotal || '0'),
+              tax: parseFloat(ord.tax || '0'),
+              serviceCharge: parseFloat(ord.service_charge || '0'),
+              serviceChargeRate: parseFloat(ord.service_charge_rate || '0'),
+              takeawayCharge: parseFloat(ord.takeaway_charge || '0'),
+              discount: parseFloat(ord.discount || '0'),
+              total: parseFloat(ord.total_amount || '0'),
+              paymentMethod: ord.payment_method || 'counter',
+              cashierName: ord.source === 'mobile' ? 'Mobile Order' : 'POS'
+            };
+            // Bill — payment_status='completed' (모바일 QR 즉시 결제 / 결제 완료) + needs_bill 시
+            const _isPaid = ord.payment_status === 'completed' || ord.payment_status === 'partial';
+            let billOk = true, kitchenOk = true;
+            if (_isPaid && ord.needs_bill && activeBill?.enabled && activeBill?.autoPrint) {
+              const copies = Math.max(1, Math.min(3, parseInt((printSettings.receiptSettings && printSettings.receiptSettings.copiesAfterPayment) || (JSON.parse(localStorage.getItem('receiptSettings') || '{}').copiesAfterPayment) || 1, 10) || 1));
+              const autoOpenDrawer = (printSettings.receiptSettings && printSettings.receiptSettings.autoOpenDrawer) !== false && (JSON.parse(localStorage.getItem('receiptSettings') || '{}').autoOpenDrawer !== false);
+              for (let i = 0; i < copies; i++) {
+                const isLast = i === copies - 1;
+                const dataForCopy = { ...printData, __drawerPulse: !!(autoOpenDrawer && isLast) };
+                try { const ok = await billPrintMod.printBillViaRawBT(dataForCopy, printStoreInfo); if (ok === false) billOk = false; }
+                catch (e: any) { console.error('[poll] bill failed:', e); billOk = false; }
+                if (i < copies - 1) await new Promise(r => setTimeout(r, 600));
+              }
+            }
+            // Kitchen ticket — needs_print=true 일 때.
+            if (ord.needs_print) {
+              const _kp: any = printSettings.kitchenPrinter || {};
+              const _kpEnabled = _kp.enabled !== false;
+              const _kpAuto = !!_kp.autoPrint;
+              const _stationAutoPrint = Object.values(printSettings.kitchenStationPrinters || {}).some((s: any) => s?.autoPrint);
+              // Station-only mode 허용: master autoPrint OFF + any station autoPrint ON → fire stations.
+              const _kitchenAuto = (_kpEnabled && !_kpAuto && !_stationAutoPrint) ? false : (_kpAuto || _stationAutoPrint);
+              if (_kitchenAuto) {
+                try { const ok = await billPrintMod.printKitchenTicketViaRawBT(printData, printStoreInfo); if (ok === false) kitchenOk = false; }
+                catch (e: any) { console.error('[poll] kitchen print failed:', e); kitchenOk = false; }
+              }
+            }
+            // PATCH only after both succeeded — fail keeps needs_print/bill, retry next cycle
+            if (billOk && kitchenOk) {
+              try { await fetch(`/api/orders/${ord.id}/printed`, { method: 'PATCH', headers: { Authorization: `Bearer ${tok}` } }); }
+              catch (e: any) { console.error('[poll] PATCH printed failed:', e); }
+              console.log('[poll] ✓ order', ord.order_number);
+            } else {
+              console.warn('[poll] ✗ print failed for order', ord.order_number, '— retry next cycle');
+            }
+            delete (window as any).__autoPrintInflight[ord.id];
+          } catch (e) {
+            delete (window as any).__autoPrintInflight?.[ord.id];
+            console.error('[poll] per-order error:', e);
+          }
+        }
+      } catch (e) { console.error('[poll] cycle error:', e); }
+    };
+    // Fire once after 2s + every 10s
+    setTimeout(_printPollFn, 2000);
+    _printPollTimer = setInterval(_printPollFn, 10000);
 
     // 주문 상태 변경 시 소리 중지 + mobile alert 자동 정리
     socket.on('order-updated', (payload: any) => {
@@ -1165,6 +1297,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     });
 
     return () => {
+      if (_printPollTimer) clearInterval(_printPollTimer);
       socket.disconnect();
       globalSocketRef.current = null;
     };

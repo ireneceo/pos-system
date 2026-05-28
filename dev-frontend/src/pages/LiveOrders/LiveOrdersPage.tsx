@@ -1388,18 +1388,9 @@ const LiveOrdersPage: React.FC = () => {
             }
           })();
         }
-        // Master gate (2026-05-28): kitchen autoPrint OFF must hard-block.
-        const _stationAutoPrint = Object.values(printSettings.kitchenStationPrinters || {}).some((s: any) => s?.autoPrint);
-        const _kp: any = printSettings.kitchenPrinter || {};
-        const _kpEnabled = _kp.enabled !== false;
-        const _kpAuto = !!_kp.autoPrint;
-        const _kitchenAuto = (_kpEnabled && !_kpAuto) ? false : (_kpAuto || _stationAutoPrint);
-        if (_kitchenAuto) {
-          setTimeout(() => {
-            billPrintMod.printKitchenTicketViaRawBT(printData, printStoreInfo)
-              .catch((e: any) => console.error('LiveOrders auto kitchen print failed:', e));
-          }, 800);
-        }
+        // 2026-05-28: LiveOrders 결제는 항상 pre-existing 주문에 대한 결제
+        // (주문 add 시점에 kitchen 이미 인쇄). 결제 시 중복 인쇄 금지.
+        // kitchen ticket 은 주문이 들어올 때만 인쇄.
       } catch (autoPrintErr) {
         console.error('LiveOrders auto-print skipped:', autoPrintErr);
       }

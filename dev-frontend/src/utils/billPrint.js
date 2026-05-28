@@ -34,6 +34,10 @@ const CMD = {
   BOLD_ON: ESC + 'E\x01',
   BOLD_OFF: ESC + 'E\x00',
 
+  // Double-strike emphasis (prints each line twice → thicker, darker output)
+  EMPHASIS_ON: ESC + 'G\x01',
+  EMPHASIS_OFF: ESC + 'G\x00',
+
   // Reverse mode (white text on black background)
   REVERSE_ON: GS + 'B\x01',
   REVERSE_OFF: GS + 'B\x00',
@@ -43,6 +47,10 @@ const CMD = {
 
   // Separators (80mm = 48 chars)
   DASHED_LINE: '------------------------------------------------',
+  // Strong solid line — double-struck equals for visual emphasis (mirrors the
+  // 1px solid border in the HTML bill). Use for section transitions where the
+  // hyphen line is too faint on QZ Tray raw-socket output.
+  SOLID_LINE: ESC + 'G\x01' + '================================================' + ESC + 'G\x00',
 
   // Paper cut (partial)
   CUT_PARTIAL: GS + 'V\x41\x00'
@@ -611,15 +619,24 @@ async function sendHTMLViaQZTray(htmlContent, printerName, opts) {
       margins: { top: 0, right: 0, bottom: 0, left: 0 }
     });
     const payloads = [{ type: 'pixel', format: 'html', flavor: 'plain', data: htmlContent }];
-    // 2026-05-27: Inline cash drawer pulse on the SAME print job. The previous
-    // standalone openCashDrawer() call sent a raw ESC/POS sequence to the
-    // pixel/html printer; on raster printers that produced a blank/garbage
-    // receipt (matched the user report "bill comes out 3 times instead of 2").
-    // Bundling pulse with the receipt = 1 atomic job, no orphan garbage page.
-    if (opts && opts.drawerPulse) {
-      payloads.push({ type: 'raw', format: 'base64', data: btoa('\x1B\x70\x00\x64\x64') });
-    }
     await qz.print(config, payloads);
+    // 2026-05-28: Send drawer pulse as a SEPARATE qz.print() with a bare config.
+    // Inline-mixed (pixel+raw in one call, prev approach) caused the raster
+    // driver to swallow the ESC/POS bytes — receipt printed but drawer never
+    // kicked (매장 영업 1일차 The Fire 보고). Separate raw config avoids the
+    // garbage-page issue (the earlier standalone openCashDrawer used pixel
+    // settings → printer rasterized the raw bytes) by reusing the same
+    // printer name with NO size/density/colorType so the driver treats it as
+    // a raw passthrough job.
+    if (opts && opts.drawerPulse) {
+      try {
+        const rawConfig = qz.configs.create(resolved);
+        await qz.print(rawConfig, [{ type: 'raw', format: 'plain', data: '\x1B\x70\x00\x64\x64' }]);
+        console.log('QZ Tray drawer pulse sent to', resolved);
+      } catch (drawerErr) {
+        console.warn('QZ Tray drawer pulse failed:', drawerErr && drawerErr.message);
+      }
+    }
     console.log('QZ Tray HTML print: sent to', resolved, opts && opts.drawerPulse ? '(+ drawer pulse)' : '');
     return true;
   } catch (err) {
@@ -733,7 +750,10 @@ const CURRENCY_SYMBOLS = {
 };
 
 function getCurrencySymbol(currency) {
-  return CURRENCY_SYMBOLS[currency] || currency || 'MYR';
+  // Always return a printable symbol — fall back to RM (Malaysian default) when
+  // the currency code is missing or unmapped. Returning the raw code (e.g. 'MYR')
+  // was leaking through to receipts.
+  return CURRENCY_SYMBOLS[currency] || (currency === 'MYR' ? 'RM' : (currency || 'RM'));
 }
 
 // ============================================
@@ -776,27 +796,19 @@ export function generateBillContent(orderData, storeInfo) {
   // Initialize printer
   content += CMD.INIT;
 
-  // === TAKEAWAY/PICKUP INDICATOR (if applicable) ===
-  if (orderData.orderType === 'pickup') {
+  // Compute order type label — printed in meta row below, not as a big top banner.
+  const _orderTypeLabel =
+    orderData.orderType === 'pickup' ? 'PICKUP' :
+    (orderData.orderType === 'takeaway' || (orderData.takeawayCharge && orderData.takeawayCharge > 0)) ? 'TAKEAWAY' :
+    orderData.orderType === 'delivery' ? 'DELIVERY' :
+    'DINE-IN';
+
+  // Pickup time only printed at top when scheduled — too important to bury in meta.
+  if (orderData.orderType === 'pickup' && orderData.scheduledPickupTime) {
     content += CMD.ALIGN_CENTER;
-    content += CMD.TEXT_DOUBLE;
     content += CMD.BOLD_ON;
-    content += '** PRE-ORDER PICKUP **' + CMD.LINE_FEED;
+    content += 'Pickup: ' + formatPickupTimeRange(orderData.scheduledPickupTime) + CMD.LINE_FEED;
     content += CMD.BOLD_OFF;
-    content += CMD.TEXT_NORMAL;
-    content += CMD.BOLD_ON;
-    content += 'Pickup: ' + (orderData.scheduledPickupTime ? formatPickupTimeRange(orderData.scheduledPickupTime) : 'ASAP') + CMD.LINE_FEED;
-    content += CMD.BOLD_OFF;
-    content += CMD.LINE_FEED;
-    content += CMD.LINE_FEED;
-  } else if (orderData.takeawayCharge && orderData.takeawayCharge > 0) {
-    content += CMD.ALIGN_CENTER;
-    content += CMD.TEXT_DOUBLE;
-    content += CMD.BOLD_ON;
-    content += '** TAKEAWAY **' + CMD.LINE_FEED;
-    content += CMD.BOLD_OFF;
-    content += CMD.TEXT_NORMAL;
-    content += CMD.LINE_FEED;
     content += CMD.LINE_FEED;
   }
 
@@ -813,9 +825,16 @@ export function generateBillContent(orderData, storeInfo) {
   content += CMD.BOLD_OFF;
   content += CMD.LINE_FEED;
 
-  // Store info (only show if not empty)
+  // Store info (only show if not empty) — full multi-line address.
   if (storeInfo.address) {
     content += storeInfo.address + CMD.LINE_FEED;
+  }
+  if (storeInfo.address_line_2) {
+    content += storeInfo.address_line_2 + CMD.LINE_FEED;
+  }
+  const _cityStateLineEsc = [storeInfo.city, storeInfo.state, storeInfo.postalCode || storeInfo.postal_code].filter(Boolean).join(' ');
+  if (_cityStateLineEsc) {
+    content += _cityStateLineEsc + CMD.LINE_FEED;
   }
   if (storeInfo.legalName && storeInfo.legalName.trim() && storeInfo.legalName.trim() !== bigName_.trim()) {
     content += storeInfo.legalName + CMD.LINE_FEED;
@@ -827,7 +846,7 @@ export function generateBillContent(orderData, storeInfo) {
     content += 'Reg No: ' + storeInfo.businessRegistration + CMD.LINE_FEED;
   }
   if (storeInfo.gstRegNo) {
-    content += 'Tax No: ' + storeInfo.gstRegNo + CMD.LINE_FEED;
+    content += 'SST NO: ' + storeInfo.gstRegNo + CMD.LINE_FEED;
   }
   content += CMD.LINE_FEED;
 
@@ -835,6 +854,7 @@ export function generateBillContent(orderData, storeInfo) {
   content += CMD.DASHED_LINE + CMD.LINE_FEED;
   content += CMD.ALIGN_LEFT;
   content += formatLine('Order:', orderData.orderNumber) + CMD.LINE_FEED;
+  content += formatLine('Type:', _orderTypeLabel) + CMD.LINE_FEED;
 
   // Show Table if exists, otherwise show Pager, otherwise show Pickup
   if (orderData.tableNumber) {
@@ -859,7 +879,12 @@ export function generateBillContent(orderData, storeInfo) {
   content += CMD.DASHED_LINE + CMD.LINE_FEED;
 
   // === ITEMS ===
+  // Column header (currency symbol printed once here → item rows stay clean).
   content += CMD.LINE_FEED;
+  content += CMD.BOLD_ON;
+  content += formatLine('QTY  ITEM', currencySymbol) + CMD.LINE_FEED;
+  content += CMD.BOLD_OFF;
+  content += CMD.DASHED_LINE + CMD.LINE_FEED;
 
   orderData.items.forEach(item => {
     const itemName = item.menuItem.name;
@@ -867,22 +892,19 @@ export function generateBillContent(orderData, storeInfo) {
     const price = item.menuItem.price;
     const total = qty * price;
 
-    // Item name and total
-    content += formatLine(
-      itemName,
-      currencySymbol + ' ' + total.toFixed(2)
-    ) + CMD.LINE_FEED;
+    // qty (4-char column) + item name on left, total on right (no currency repeat).
+    const qtyCol = String(qty).padEnd(4, ' ');
+    content += formatLine(qtyCol + itemName, total.toFixed(2)) + CMD.LINE_FEED;
 
-    // Quantity and unit price
-    content += formatLine(
-      '  ' + qty + ' x ' + currencySymbol + ' ' + price.toFixed(2),
-      ''
-    ) + CMD.LINE_FEED;
+    // Unit price line only when quantity > 1 — otherwise it duplicates the total.
+    if (qty > 1) {
+      content += '    @ ' + price.toFixed(2) + CMD.LINE_FEED;
+    }
 
     // Options
     if (item.options && item.options.length > 0) {
       item.options.forEach(option => {
-        content += '  + ' + option + CMD.LINE_FEED;
+        content += '    + ' + option + CMD.LINE_FEED;
       });
     }
   });
@@ -926,19 +948,52 @@ export function generateBillContent(orderData, storeInfo) {
     content += formatLine(scLabel, currencySymbol + ' ' + orderData.serviceCharge.toFixed(2)) + CMD.LINE_FEED;
   }
 
-  // Tax (after discounts)
+  // Service Tax (after discounts) — Malaysian SST standard label
   if (orderData.tax && orderData.tax > 0) {
-    const taxLabel = 'Tax (' + (orderData.taxRate || 6) + '%):';
+    const taxLabel = 'Service Tax @ ' + (orderData.taxRate || 6) + '%:';
     content += formatLine(taxLabel, currencySymbol + ' ' + orderData.tax.toFixed(2)) + CMD.LINE_FEED;
   }
 
-  content += CMD.DASHED_LINE + CMD.LINE_FEED;
+  // Rounding adjustment (auto-derived from final vs computed)
+  const _computedPreRound = (orderData.subtotal || 0)
+    + (orderData.takeawayCharge || 0)
+    - (orderData.discount || 0)
+    - ((orderData.discountPolicy && orderData.discountPolicy.amount) || 0)
+    - ((orderData.coupon && orderData.coupon.discount) || 0)
+    - Number(orderData.pointDiscount || 0)
+    + (orderData.serviceCharge || 0)
+    + (orderData.tax || 0);
+  const _roundingDelta = (orderData.total || 0) - _computedPreRound;
+  if (Math.abs(_roundingDelta) >= 0.005) {
+    const _sign = _roundingDelta >= 0 ? '' : '- ';
+    content += formatLine('Rounding Adj:', _sign + currencySymbol + ' ' + Math.abs(_roundingDelta).toFixed(2)) + CMD.LINE_FEED;
+  }
+
+  content += CMD.SOLID_LINE + CMD.LINE_FEED;
   content += CMD.BOLD_ON;
+  content += CMD.EMPHASIS_ON;
   content += CMD.TEXT_DOUBLE_HEIGHT;
-  content += formatLine('TOTAL:', currencySymbol + ' ' + orderData.total.toFixed(2)) + CMD.LINE_FEED;
+  content += formatLine('Net Total:', currencySymbol + ' ' + orderData.total.toFixed(2)) + CMD.LINE_FEED;
   content += CMD.TEXT_NORMAL;
+  content += CMD.EMPHASIS_OFF;
   content += CMD.BOLD_OFF;
   content += CMD.LINE_FEED;
+
+  // === TAX SUMMARY (Malaysian SST standard breakdown) ===
+  if (orderData.tax && orderData.tax > 0) {
+    const taxable = (orderData.tax / ((orderData.taxRate || 6) / 100)) || 0;
+    content += CMD.SOLID_LINE + CMD.LINE_FEED;
+    content += CMD.ALIGN_LEFT;
+    content += CMD.BOLD_ON;
+    content += CMD.EMPHASIS_ON;
+    content += 'Tax Summary' + CMD.LINE_FEED;
+    content += CMD.EMPHASIS_OFF;
+    content += CMD.BOLD_OFF;
+    content += 'Service Tax @ ' + (orderData.taxRate || 6) + '%' + CMD.LINE_FEED;
+    content += formatLine('  Taxable', currencySymbol + ' ' + taxable.toFixed(2)) + CMD.LINE_FEED;
+    content += formatLine('  Tax', currencySymbol + ' ' + orderData.tax.toFixed(2)) + CMD.LINE_FEED;
+    content += CMD.LINE_FEED;
+  }
 
   // === FOOTER ===
   // Pull the custom footer message & QR text from receiptSettings so ESC/POS
@@ -1021,13 +1076,18 @@ body {
 .meta-label { font-weight: 600; }
 
 /* Items */
+.items-header { display: flex; align-items: baseline; gap: 8px; font-weight: 700; font-size: 12px; padding: 4px 0; border-top: 1px solid #000; border-bottom: 1px solid #000; margin: 4px 0; }
+.items-header .ih-qty { width: 28px; text-align: left; }
+.items-header .ih-name { flex: 1; text-align: left; }
+.items-header .ih-price { width: 56px; text-align: right; white-space: nowrap; }
 .items { text-align: left; margin: 4px 0; }
 .item { margin-bottom: 6px; }
 .item-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.item-row .ih-qty { width: 28px; text-align: left; font-weight: 600; }
 .item-name { flex: 1; font-weight: 600; word-break: break-word; }
-.item-price { white-space: nowrap; }
-.item-qty { font-size: 11px; color: #222; padding-left: 0; margin-top: 1px; }
-.item-option { font-size: 11px; padding-left: 12px; color: #222; }
+.item-price { width: 56px; text-align: right; white-space: nowrap; }
+.item-qty { font-size: 11px; color: #222; padding-left: 36px; margin-top: 1px; }
+.item-option { font-size: 11px; padding-left: 36px; color: #222; }
 .item-option::before { content: '+ '; }
 
 /* Totals */
@@ -1051,7 +1111,6 @@ body {
 
 /* Per-station header in kitchen tickets */
 .group-label { font-size: 16px; font-weight: 700; letter-spacing: 0.5px; padding: 4px 0; margin: 4px 0; border-top: 2px solid #000; border-bottom: 2px solid #000; }
-.printed-at { display: inline-block; padding: 3px 10px; margin: 4px 0 6px 0; font-size: 13px; font-weight: 700; letter-spacing: 0.5px; background: #000; color: #fff; }
 .station-tag { display: inline-block; padding: 1px 6px; margin-left: 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.3px; border: 1px solid #000; vertical-align: middle; }
 
 /* Multi-page (kitchen per-item) */
@@ -1124,14 +1183,25 @@ export function generateHTMLBill(orderData, storeInfo) {
   const dateStr = orderData.date.toLocaleDateString('en-MY');
   const timeStr = orderData.date.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: true });
 
-  // Order-type banner (PICKUP / TAKEAWAY) — uses shared .banner class
+  // Order-type label — always shown in the meta row (Type:). Big top banner is
+  // reserved for pickup scheduled time / delivery address which need emphasis,
+  // not for the type itself.
+  const orderTypeLabel =
+    orderData.orderType === 'pickup' ? 'PICKUP' :
+    (orderData.orderType === 'takeaway' || (orderData.takeawayCharge && orderData.takeawayCharge > 0)) ? 'TAKEAWAY' :
+    orderData.orderType === 'delivery' ? 'DELIVERY' :
+    'DINE-IN';
+
   let bannerHtml = '';
-  if (orderData.orderType === 'pickup') {
-    const pickupTime = orderData.scheduledPickupTime ? formatPickupTimeRange(orderData.scheduledPickupTime) : 'ASAP';
-    bannerHtml = `<div class="banner banner-strong">PRE-ORDER PICKUP</div>
-      <div style="font-weight:600;margin-bottom:4px;">Pickup: ${escapeHtmlForPrint(pickupTime)}</div>`;
-  } else if (orderData.takeawayCharge && orderData.takeawayCharge > 0) {
-    bannerHtml = `<div class="banner">TAKEAWAY</div>`;
+  if (orderData.orderType === 'pickup' && orderData.scheduledPickupTime) {
+    const pickupTime = formatPickupTimeRange(orderData.scheduledPickupTime);
+    bannerHtml = `<div style="font-weight:600;margin:4px 0;">Pickup: ${escapeHtmlForPrint(pickupTime)}</div>`;
+  } else if (orderData.orderType === 'delivery' && orderData.deliveryInfo) {
+    const di = orderData.deliveryInfo;
+    const parts = [di.address, di.phone && `Phone: ${di.phone}`, di.zoneName && `Zone: ${di.zoneName}`].filter(Boolean);
+    if (parts.length) {
+      bannerHtml = `<div style="font-weight:600;text-align:left;margin:4px 0;padding:4px;border:1px dashed #000;font-size:11px;">${parts.map(p => escapeHtmlForPrint(p)).join('<br>')}</div>`;
+    }
   }
 
   // Header (logo + brand name + store info lines)
@@ -1139,12 +1209,17 @@ export function generateHTMLBill(orderData, storeInfo) {
   const legalName = storeInfo.legalName || '';
   const showLegal = legalName && legalName.trim() && legalName.trim() !== bigName.trim();
   const infoLines = [];
+  // Full address — output every populated component on its own line so the receipt
+  // shows the complete posted address (street / address line 2 / city+state+postal).
   if (storeInfo.address) infoLines.push(escapeHtmlForPrint(storeInfo.address));
+  if (storeInfo.address_line_2) infoLines.push(escapeHtmlForPrint(storeInfo.address_line_2));
+  const _cityStateLine = [storeInfo.city, storeInfo.state, storeInfo.postalCode || storeInfo.postal_code].filter(Boolean).join(' ');
+  if (_cityStateLine) infoLines.push(escapeHtmlForPrint(_cityStateLine));
   if (showLegal) infoLines.push(escapeHtmlForPrint(legalName));
   if (storeInfo.telephone) infoLines.push('Tel: ' + escapeHtmlForPrint(storeInfo.telephone));
   const regParts = [];
   if (storeInfo.businessRegistration) regParts.push('Reg No: ' + escapeHtmlForPrint(storeInfo.businessRegistration));
-  if (storeInfo.gstRegNo) regParts.push('Tax No: ' + escapeHtmlForPrint(storeInfo.gstRegNo));
+  if (storeInfo.gstRegNo) regParts.push('SST NO: ' + escapeHtmlForPrint(storeInfo.gstRegNo));
   if (regParts.length) infoLines.push(regParts.join(' &nbsp;|&nbsp; '));
 
   const headerHtml = `
@@ -1165,6 +1240,7 @@ export function generateHTMLBill(orderData, storeInfo) {
   const metaHtml = `
     <div class="meta">
       <div class="meta-row"><span class="meta-label">Order</span><span>${escapeHtmlForPrint(orderData.orderNumber)}</span></div>
+      <div class="meta-row"><span class="meta-label">Type</span><span>${orderTypeLabel}</span></div>
       ${tableMetaHtml}
       <div class="meta-row"><span class="meta-label">Date</span><span>${dateStr}</span></div>
       <div class="meta-row"><span class="meta-label">Time</span><span>${timeStr}</span></div>
@@ -1172,7 +1248,15 @@ export function generateHTMLBill(orderData, storeInfo) {
     </div>
   `;
 
-  // Items
+  // Items column header — currency printed ONCE in the header so item rows stay clean.
+  const itemsHeaderHtml = `
+    <div class="items-header">
+      <span class="ih-qty">QTY</span>
+      <span class="ih-name">ITEM</span>
+      <span class="ih-price">${escapeHtmlForPrint(currencySymbol)}</span>
+    </div>
+  `;
+
   const itemsHtml = orderData.items.map(item => {
     const itemName = escapeHtmlForPrint(item.menuItem.name);
     const qty = item.quantity;
@@ -1186,8 +1270,8 @@ export function generateHTMLBill(orderData, storeInfo) {
       : '';
     return `
       <div class="item">
-        <div class="item-row"><span class="item-name">${itemName}</span><span class="item-price">${currencySymbol} ${total.toFixed(2)}</span></div>
-        <div class="item-qty">${qty} × ${currencySymbol} ${price.toFixed(2)}</div>
+        <div class="item-row"><span class="ih-qty">${qty}</span><span class="item-name">${itemName}</span><span class="item-price">${total.toFixed(2)}</span></div>
+        <div class="item-qty">@ ${price.toFixed(2)}</div>
         ${setItemsHtml}
         ${optionsHtml}
       </div>
@@ -1203,14 +1287,43 @@ export function generateHTMLBill(orderData, storeInfo) {
   if (orderData.coupon && orderData.coupon.discount > 0) totalsRows.push(`<div class="meta-row"><span>Coupon (${escapeHtmlForPrint(orderData.coupon.code)})</span><span>− ${currencySymbol} ${orderData.coupon.discount.toFixed(2)}</span></div>`);
   if (orderData.pointDiscount && Number(orderData.pointDiscount) > 0) totalsRows.push(`<div class="meta-row"><span>Points (${(orderData.pointsUsed || 0).toLocaleString()} pts)</span><span>− ${currencySymbol} ${Number(orderData.pointDiscount).toFixed(2)}</span></div>`);
   if (orderData.serviceCharge && orderData.serviceCharge > 0) totalsRows.push(`<div class="meta-row"><span>Service Charge (${orderData.serviceChargeRate || 10}%)</span><span>${currencySymbol} ${orderData.serviceCharge.toFixed(2)}</span></div>`);
-  if (orderData.tax && orderData.tax > 0) totalsRows.push(`<div class="meta-row"><span>Tax (${orderData.taxRate || 6}%)</span><span>${currencySymbol} ${orderData.tax.toFixed(2)}</span></div>`);
+  if (orderData.tax && orderData.tax > 0) totalsRows.push(`<div class="meta-row"><span>Service Tax @ ${orderData.taxRate || 6}%</span><span>${currencySymbol} ${orderData.tax.toFixed(2)}</span></div>`);
+
+  // Rounding adjustment (auto-derived: difference between final total and computed pre-round total).
+  // Cash-rounding setting on the restaurant rounds to nearest 5sen — print the delta line when non-zero
+  // so the customer sees why total ≠ subtotal+tax exactly.
+  const computedPreRound = (orderData.subtotal || 0)
+    + (orderData.takeawayCharge || 0)
+    - (orderData.discount || 0)
+    - ((orderData.discountPolicy && orderData.discountPolicy.amount) || 0)
+    - ((orderData.coupon && orderData.coupon.discount) || 0)
+    - Number(orderData.pointDiscount || 0)
+    + (orderData.serviceCharge || 0)
+    + (orderData.tax || 0);
+  const roundingDelta = (orderData.total || 0) - computedPreRound;
+  if (Math.abs(roundingDelta) >= 0.005) {
+    const sign = roundingDelta >= 0 ? '' : '− ';
+    totalsRows.push(`<div class="meta-row"><span>Rounding Adj</span><span>${sign}${currencySymbol} ${Math.abs(roundingDelta).toFixed(2)}</span></div>`);
+  }
 
   const totalsHtml = `
     <div class="totals">
       ${totalsRows.join('')}
-      <div class="total-final"><span>TOTAL</span><span>${currencySymbol} ${orderData.total.toFixed(2)}</span></div>
+      <div class="total-final"><span>Net Total</span><span>${currencySymbol} ${orderData.total.toFixed(2)}</span></div>
     </div>
   `;
+
+  // Tax Summary — Malaysian SST standard breakdown (Taxable amount + Tax amount).
+  // Auto-shown whenever tax > 0. Taxable = the base amount tax was calculated on.
+  const taxSummaryHtml = (orderData.tax && orderData.tax > 0) ? `
+    <div class="divider"></div>
+    <div style="text-align:left;font-weight:700;margin:4px 0 2px 0;">Tax Summary</div>
+    <div class="meta">
+      <div class="meta-row"><span class="meta-label">Service Tax @ ${orderData.taxRate || 6}%</span><span></span></div>
+      <div class="meta-row"><span>&nbsp;&nbsp;Taxable</span><span>${currencySymbol} ${((orderData.tax / ((orderData.taxRate || 6) / 100)) || 0).toFixed(2)}</span></div>
+      <div class="meta-row"><span>&nbsp;&nbsp;Tax</span><span>${currencySymbol} ${orderData.tax.toFixed(2)}</span></div>
+    </div>
+  ` : '';
 
   // Membership QR (loyalty link)
   const membershipHtml = (showMembership && membershipQrDataUrl) ? `
@@ -1235,9 +1348,11 @@ export function generateHTMLBill(orderData, storeInfo) {
     <div class="divider"></div>
     ${metaHtml}
     <div class="divider"></div>
+    ${itemsHeaderHtml}
     <div class="items">${itemsHtml}</div>
     <div class="divider"></div>
     ${totalsHtml}
+    ${taxSummaryHtml}
     ${membershipHtml}
     ${customQrHtml}
     ${footerHtml}
@@ -1247,7 +1362,7 @@ export function generateHTMLBill(orderData, storeInfo) {
 /**
  * Generate HTML Kitchen Ticket for PC browser print
  */
-function generateHTMLKitchenTicket(orderData, storeInfo) {
+export function generateHTMLKitchenTicket(orderData, storeInfo) {
   const timeStr = orderData.date.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: true });
   const orderSource = orderData.orderSource === 'mobile' ? 'MOBILE ORDER' : 'POS';
 
@@ -1270,11 +1385,6 @@ function generateHTMLKitchenTicket(orderData, storeInfo) {
       </div>
     `;
   }).join('');
-
-  // Printer-location banner (PRINTED AT: POS COUNTER | KQ1 | KITCHEN)
-  const printedAtHtml = orderData.printedAt
-    ? `<div class="printed-at">PRINTED AT: ${escapeHtmlForPrint(orderData.printedAt)}</div>`
-    : '';
 
   const groupLabelHtml = orderData.groupLabel
     ? `<div class="group-label">${escapeHtmlForPrint(orderData.groupLabel.toUpperCase())}</div>`
@@ -1336,7 +1446,6 @@ function generateHTMLKitchenTicket(orderData, storeInfo) {
   ` : '';
 
   return wrapPrintHTML(`Kitchen Ticket - ${orderData.orderNumber || ''}`, `
-    ${printedAtHtml}
     ${groupLabelHtml}
     ${metaHtml}
     <div class="divider"></div>
@@ -1375,10 +1484,6 @@ function generateHTMLAdditionalItemsTicket(orderData, storeInfo) {
     `;
   }).join('');
 
-  const printedAtHtml = orderData.printedAt
-    ? `<div class="printed-at">PRINTED AT: ${escapeHtmlForPrint(orderData.printedAt)}</div>`
-    : '';
-
   const metaHtml = `
     <div class="meta">
       <div class="meta-row"><span class="meta-label">Order</span><span>${escapeHtmlForPrint(orderData.orderNumber)}</span></div>
@@ -1388,7 +1493,6 @@ function generateHTMLAdditionalItemsTicket(orderData, storeInfo) {
   `;
 
   return wrapPrintHTML(`Additional Items - ${orderData.orderNumber || ''}`, `
-    ${printedAtHtml}
     <div class="group-label">ADDITIONAL ORDER</div>
     ${metaHtml}
     <div class="divider"></div>
@@ -1590,17 +1694,6 @@ export function generateKitchenTicketContent(orderData, storeInfo) {
 
   // Initialize printer
   content += CMD.INIT;
-
-  // === PRINTER LOCATION BANNER (where this ticket physically printed) ===
-  // POS-counter prints show 'POS COUNTER'; station prints show the station name.
-  // Lets kitchen / counter staff identify the source at a glance.
-  if (orderData.printedAt) {
-    content += CMD.ALIGN_CENTER;
-    content += CMD.BOLD_ON;
-    content += '[ PRINTED AT: ' + orderData.printedAt + ' ]' + CMD.LINE_FEED;
-    content += CMD.BOLD_OFF;
-    content += CMD.LINE_FEED;
-  }
 
   // === GROUP LABEL (for partial order printing) ===
   if (orderData.groupLabel) {
@@ -1935,10 +2028,6 @@ function generateHTMLMultiPageKitchenTickets(orderData, storeInfo) {
     pickupHtml = `<div class="big-number">PICKUP ${escapeHtmlForPrint(pickupNum)}</div>`;
   }
 
-  const printedAtHtml = orderData.printedAt
-    ? `<div class="printed-at">PRINTED AT: ${escapeHtmlForPrint(orderData.printedAt)}</div>`
-    : '';
-
   const metaHtml = `
     <div class="meta">
       <div class="meta-row"><span class="meta-label">Order</span><span>${escapeHtmlForPrint(orderData.orderNumber)}</span></div>
@@ -1968,7 +2057,6 @@ function generateHTMLMultiPageKitchenTickets(orderData, storeInfo) {
     ` : '';
     return `
       <div class="ticket-page${isLastPage ? '' : ' page-break'}">
-        ${printedAtHtml}
         ${metaHtml}
         <div class="divider"></div>
         <div class="group-label">ITEM ${itemIndex} of ${totalItems}</div>
@@ -2027,7 +2115,12 @@ export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerNa
         try {
           const billAddr = __bpMirror.address;
           const isLanIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(billAddr);
-          const unifiedTicket = { ...orderData, groupLabel: 'COUNTER', printedAt: 'COUNTER' };
+          // Tag each item with its target station name so the counter mirror
+          // ticket shows inline [KQ1] [KQ2] [BARPR] next to each item — cashier
+          // can verify station routing at a glance (2026-05-28 The Fire 매장
+          // 영업 1일차 보고: station 라벨 누락으로 어디로 가는지 불명).
+          const tagged = tagTicketWithStations(orderData, 'COUNTER', settings);
+          const unifiedTicket = { ...tagged, groupLabel: 'COUNTER', printedAt: 'COUNTER' };
           if (isLanIP) {
             sendViaQZTray(generateKitchenTicketContent(unifiedTicket, storeInfo), billAddr)
               .catch(e => console.warn('Kitchen → counter mirror print failed:', e && e.message));
@@ -2259,19 +2352,15 @@ export async function printOrderTicketToBillPrinter(orderData, storeInfo) {
 }
 
 /**
- * Tag an order with the printer-location label AND attach each item's target
- * kitchen station name (resolved via the menu→station map saved by Kitchen Display).
- *
- * Used by printOrderTicketToBillPrinter so the printed ticket clearly shows:
- *   - PRINTED AT: <printedAtLabel>     (header banner)
- *   - <item name>  [STATION]            (inline tag next to each item)
+ * Attach each item's target kitchen station name (resolved via the menu→station
+ * map saved by Kitchen Display). Inline [STATION] tag shows next to each item.
  *
  * @param {Object} orderData
- * @param {string} printedAtLabel - e.g. 'POS COUNTER' / 'KQ1' / 'KITCHEN'
+ * @param {string} printedAtLabel - e.g. 'POS COUNTER' / 'KQ1' / 'KITCHEN' (kept for backwards-compat; no longer printed as banner)
  * @param {Object} settings - getPrinterSettings() result (for station name lookup)
- * @returns {Object} new orderData with printedAt + items[].stationName
+ * @returns {Object} new orderData with items[].stationName
  */
-function tagTicketWithStations(orderData, printedAtLabel, settings) {
+export function tagTicketWithStations(orderData, printedAtLabel, settings) {
   let menuStationMap = {};
   try {
     const saved = localStorage.getItem('kitchenStationMenuMap');
@@ -2279,14 +2368,28 @@ function tagTicketWithStations(orderData, printedAtLabel, settings) {
   } catch (e) {
     console.warn('Failed to load kitchen station menu map:', e);
   }
+  // KDS caches a fresh KitchenStation list in localStorage as id→name so any
+  // page can resolve a station name without depending on the printer_settings
+  // entry having been seeded yet (handles the brief window between Settings
+  // auto-seed and other devices reloading printer_settings from DB).
+  let kdsStationNameById = {};
+  try {
+    const saved = localStorage.getItem('kitchenStationsById');
+    if (saved) kdsStationNameById = JSON.parse(saved);
+  } catch (e) { /* non-fatal */ }
   const stationPrinters = settings?.kitchenStationPrinters || {};
   const items = (orderData.items || []).map(item => {
+    // 1) Backend-enriched item.stationName (polling endpoint) — single source.
+    //    localStorage 의존 X. 매장 device 캐시 무관하게 항상 정확.
+    if (item.stationName) return item;
+    // 2) Fallback chain: kitchen_station_id → KDS DB cache → printer_settings → station id label.
     const itemName = item.menuItem?.name || item.name;
-    const stationId = menuStationMap[itemName];
-    const stationName = stationId && stationPrinters[stationId]?.stationName
-      ? stationPrinters[stationId].stationName
-      : null;
-    return stationName ? { ...item, stationName } : item;
+    const stationId = item.kitchen_station_id || menuStationMap[itemName];
+    if (!stationId) return item;
+    const fromKdsCache = kdsStationNameById[stationId];
+    const fromSettings = stationPrinters[stationId]?.stationName;
+    const stationName = fromKdsCache || fromSettings || `Station #${stationId}`;
+    return { ...item, stationName };
   });
   return { ...orderData, items, printedAt: printedAtLabel };
 }
@@ -2988,15 +3091,43 @@ async function printKitchenTicketsByStation(orderData, storeInfo, settings) {
       stationItems[firstStationId] = [...stationItems[firstStationId], ...unmappedItems];
     }
 
-    // Mapped: send each station its own items (unmapped now in first station)
-    for (const stationId of mappedStationIds) {
+    // Mapped: send each station its own items (unmapped now in first station).
+    // 2026-05-28 final hardening: per-station try/catch with one auto-retry so
+    // a single station's print failure (LAN blip / driver queue race / printer
+    // offline) never cascades into "all remaining stations skipped". The Fire
+    // 매장 보고: 3번째 station drop 반복. 1500ms delay 는 driver queue race 마진,
+    // 재시도는 transient 장애 자동 복구. retry 이후에도 실패하면 audit log 만 남기고
+    // 다음 station 진행 (한 프린터 문제로 다른 주방 차단 금지).
+    const stationResults = [];
+    for (let i = 0; i < mappedStationIds.length; i++) {
+      const stationId = mappedStationIds[i];
       const sp = stationPrinters[stationId];
       const items = stationItems[stationId];
       const stationName = sp.stationName || `Station ${stationId}`;
-      await sendToRawBTPrinter({ ...orderData, items }, storeInfo, settings, sp.name, stationName, sp.address, stationId);
+      let ok = false;
+      let lastErr = null;
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          const r = await sendToRawBTPrinter({ ...orderData, items }, storeInfo, settings, sp.name, stationName, sp.address, stationId);
+          if (r !== false) { ok = true; break; }
+        } catch (e) {
+          lastErr = e;
+          console.error(`🍳 Station ${stationName} attempt ${attempt} failed:`, e && e.message);
+        }
+        if (attempt === 1) await new Promise(r => setTimeout(r, 600));
+      }
+      stationResults.push({ stationId, stationName, ok, error: lastErr && lastErr.message });
+      if (!ok) {
+        console.error(`🍳 Station ${stationName} ALL attempts failed — moving to next station to avoid cascade.`);
+      }
+      if (i < mappedStationIds.length - 1) await new Promise(r => setTimeout(r, 1500));
     }
 
-    return true;
+    const allOk = stationResults.every(r => r.ok);
+    if (!allOk) {
+      console.warn('🍳 Station print summary:', stationResults);
+    }
+    return allOk;
   }
 
   // Multi-station, RawBT: cannot fire multiple intents consecutively → collapse to one combined ticket
@@ -3023,11 +3154,13 @@ async function printKitchenTicketsByStation(orderData, storeInfo, settings) {
     const firstStationId = mappedStationIds[0];
     stationItems[firstStationId] = [...stationItems[firstStationId], ...unmappedItems];
   }
-  for (const stationId of mappedStationIds) {
+  for (let i = 0; i < mappedStationIds.length; i++) {
+    const stationId = mappedStationIds[i];
     const sp = stationPrinters[stationId];
     const items = stationItems[stationId];
     const stationName = sp.stationName || `Station ${stationId}`;
     await sendToRawBTPrinter({ ...orderData, items }, storeInfo, settings, sp.name, stationName, sp.address, stationId);
+    if (i < mappedStationIds.length - 1) await new Promise(r => setTimeout(r, 700));
   }
 
   return true;
@@ -3205,17 +3338,12 @@ function generateHTMLCancellationTicket(orderData, storeInfo, reason) {
   const tableNum = orderData.tableNumber || orderData.table_number || '';
   const orderNumber = orderData.orderNumber || orderData.order_number || '';
 
-  const printedAtHtml = orderData.printedAt
-    ? `<div class="printed-at">PRINTED AT: ${escapeHtmlForPrint(orderData.printedAt)}</div>`
-    : '';
-
   const metaRows = [];
   if (tableNum) metaRows.push(`<div class="meta-row"><span class="meta-label">Table</span><span><strong>${escapeHtmlForPrint(String(tableNum))}</strong></span></div>`);
   if (orderType) metaRows.push(`<div class="meta-row"><span class="meta-label">Type</span><span>${escapeHtmlForPrint(orderType)}</span></div>`);
   if (reason) metaRows.push(`<div class="meta-row"><span class="meta-label">Reason</span><span>${escapeHtmlForPrint(String(reason))}</span></div>`);
 
   return wrapPrintHTML(`Cancelled - ${orderNumber}`, `
-    ${printedAtHtml}
     <div class="banner banner-strong" style="background:#000;color:#fff;border-color:#000;">*** CANCELLED ***</div>
     <div class="medium-number">Order #${escapeHtmlForPrint(orderNumber)}</div>
     ${metaRows.length ? `<div class="meta">${metaRows.join('')}</div>` : ''}

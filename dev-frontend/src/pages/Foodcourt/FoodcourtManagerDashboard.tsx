@@ -361,10 +361,10 @@ const FoodcourtManagerDashboard: React.FC = () => {
             fetch('/api/badge-counts', { headers }),
           ]);
           const ordersData = ordersRes.ok ? await ordersRes.json() : [];
-          const orders = ordersData.data || ordersData || [];
+          const orders = (Array.isArray(ordersData?.data) ? ordersData.data : Array.isArray(ordersData) ? ordersData : []);
 
           const invoicesData = invoicesRes.ok ? await invoicesRes.json() : { data: [] };
-          const invoices = invoicesData.data || invoicesData || [];
+          const invoices = (Array.isArray(invoicesData?.data) ? invoicesData.data : Array.isArray(invoicesData) ? invoicesData : []);
           const overdueInvoices = invoices.filter((inv: any) => inv.status === 'overdue').length;
           const pendingInvoices = invoices.filter((inv: any) => inv.status === 'pending_payment' || inv.status === 'sent').length;
 

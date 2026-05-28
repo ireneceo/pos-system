@@ -263,7 +263,7 @@ const ReportsPage: React.FC = () => {
         const res = await fetch('/api/currencies/supported', { headers });
         if (res.ok) {
           const data = await res.json();
-          supported = (data.data || data || []).map((c: any) => typeof c === 'string' ? c : c.code);
+          supported = (Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : []).map((c: any) => typeof c === 'string' ? c : c.code);
         }
       } catch {}
       if (supported.length === 0) supported = [defaultCurrency];

@@ -765,7 +765,17 @@ const KitchenDisplayPage: React.FC = () => {
         const res = await fetch(`/api/kitchen-stations?restaurant_id=${user.restaurantId}`, { headers: apiHeaders() });
         if (res.ok) {
           const data = await res.json();
-          setKitchenStations((data.data?.stations || []).filter((s: any) => s.is_active !== false));
+          const stations = (data.data?.stations || []).filter((s: any) => s.is_active !== false);
+          setKitchenStations(stations);
+          // Cache id→name map so any device on any page (POS / Floor Plan)
+          // can resolve a station name without re-fetching. tagTicketWithStations
+          // (utils/billPrint.js) reads this as a fallback when the polling
+          // backend payload's stationName is missing.
+          try {
+            const idMap: Record<string, string> = {};
+            stations.forEach((s: any) => { if (s && s.id != null && s.name) idMap[String(s.id)] = s.name; });
+            localStorage.setItem('kitchenStationsById', JSON.stringify(idMap));
+          } catch { /* non-fatal */ }
         }
       } catch (e) {
         console.error('Failed to load kitchen stations:', e);
@@ -942,21 +952,30 @@ const KitchenDisplayPage: React.FC = () => {
       playNotificationSoundRef.current(orderItems);
 
       // ─── Auto-print kitchen ticket ───
-      // Master gate: if the shop uses kitchenPrinter and explicitly turned its
-      // autoPrint OFF, NEVER auto-print — even when a station-level toggle is
-      // ON. Station-only shops (no global kitchenPrinter) fall through to the
-      // station check. 2026-05-28 — master OFF + station ON was firing browser
-      // print dialogs the user did not authorize. Operational trust > convenience.
+      // Master gate (2026-05-28 revised — station-only mode正常化):
+      //   master autoPrint OFF + station autoPrint OFF → absolute block.
+      //   master autoPrint OFF + ANY station autoPrint ON → station-only mode,
+      //     skip master kitchen printer but fire station printers normally.
+      //   master autoPrint ON → fire both master + stations.
+      // Previously a strict "master OFF = total block" cut shops that intentionally
+      // run station-only off from auto-print entirely. The Fire 매장은 station 만
+      // 쓰지만 master autoPrint OFF 라 모든 자동 인쇄 차단되던 보고.
       try {
         const printerSettings = getBillPrinterSettings();
         const kp: any = printerSettings.kitchenPrinter || {};
         const kpEnabled = kp.enabled !== false;
         const kpAuto = !!kp.autoPrint;
-        if (kpEnabled && !kpAuto) return; // master OFF — absolute block
         const _stationAutoPrint = Object.values(printerSettings.kitchenStationPrinters || {}).some((s: any) => s?.autoPrint);
+        if (kpEnabled && !kpAuto && !_stationAutoPrint) return; // both off → block
         const shouldAutoPrint = kpAuto || _stationAutoPrint;
 
         if (shouldAutoPrint) {
+          // Share the inflight dedup pool with MainLayout polling so the same
+          // order can't double-print on a single device when KDS socket and
+          // polling both fire.
+          const inflight = ((window as any).__autoPrintInflight = (window as any).__autoPrintInflight || {});
+          if (inflight[order.id]) return;
+          inflight[order.id] = true;
           const storeInfo = getStoreInfo();
           const printOrderData = {
             orderNumber: order.order_number,
@@ -981,17 +1000,34 @@ const KitchenDisplayPage: React.FC = () => {
                   set_items: item.set_items || []
                 },
                 quantity: item.quantity || 1,
-                options: itemOptions
+                options: itemOptions,
+                // Preserve backend-resolved station tagging so the printer
+                // router (printKitchenTicketsByStation) can bucket each item
+                // to its correct station printer. Dropping these fields was
+                // why BARPR / KQ2 never received items when KDS handled the
+                // socket directly.
+                kitchen_station_id: item.kitchen_station_id || null,
+                stationName: item.stationName || null
               };
             }),
             notes: order.notes || ''
           };
 
           printKitchenTicketViaRawBT(printOrderData, storeInfo)
-            .then(success => {
-              if (success) console.log('Kitchen ticket auto-printed for order', order.order_number);
+            .then(async (success) => {
+              if (success) {
+                console.log('Kitchen ticket auto-printed for order', order.order_number);
+                // Clear needs_print so MainLayout polling won't reprint this order
+                // on the next cycle (KDS socket is the fast path; polling is the
+                // safety net).
+                try {
+                  const tok = getAuthToken() || '';
+                  await fetch(`/api/orders/${order.id}/printed`, { method: 'PATCH', headers: { Authorization: `Bearer ${tok}` } });
+                } catch (e) { /* non-fatal — next poll will retry */ }
+              }
             })
-            .catch(err => console.error('Auto-print failed:', err));
+            .catch(err => console.error('Auto-print failed:', err))
+            .finally(() => { delete (window as any).__autoPrintInflight[order.id]; });
         }
       } catch (err) {
         console.error('Auto-print error:', err);
@@ -1017,15 +1053,19 @@ const KitchenDisplayPage: React.FC = () => {
 
       try {
         const printerSettings = getBillPrinterSettings();
-        // Same master-gate as the order-created handler — kitchen autoPrint OFF
-        // means OFF, regardless of station-level toggles.
+        // Mirror the master-gate policy from order-created (station-only mode 허용).
         const kp: any = printerSettings.kitchenPrinter || {};
         const kpEnabled = kp.enabled !== false;
         const kpAuto = !!kp.autoPrint;
-        if (kpEnabled && !kpAuto) return; // master OFF — absolute block
         const _stationAutoPrint = Object.values(printerSettings.kitchenStationPrinters || {}).some((s: any) => s?.autoPrint);
+        if (kpEnabled && !kpAuto && !_stationAutoPrint) return; // both off → block
         const shouldAutoPrint = kpAuto || _stationAutoPrint;
         if (!shouldAutoPrint) return;
+
+        // Same inflight dedup as order-created handler
+        const inflight = ((window as any).__autoPrintInflight = (window as any).__autoPrintInflight || {});
+        if (inflight[data.orderId]) return;
+        inflight[data.orderId] = true;
 
         const storeInfo = getStoreInfo();
         // Mark every addedItem with `added_at` so generateHTMLAdditionalItemsTicket
@@ -1045,7 +1085,14 @@ const KitchenDisplayPage: React.FC = () => {
             quantity: item.quantity || 1,
             options: opts,
             added_at: item.added_at || now,
-            order_group: item.order_group || data.orderGroup
+            order_group: item.order_group || data.orderGroup,
+            // Preserve station tagging for additional-order ticket routing.
+            // The backend now ALWAYS sets kitchen_station_id on merged items
+            // (mergeItemsIntoOrder + mobile auto-merge both call
+            // enrichItemsWithStation), so each +Round N ticket reaches the
+            // correct station printer.
+            kitchen_station_id: item.kitchen_station_id || null,
+            stationName: item.stationName || null
           };
         });
         const printOrderData = {
@@ -1062,8 +1109,17 @@ const KitchenDisplayPage: React.FC = () => {
           notes: ''
         };
         printKitchenTicketViaRawBT(printOrderData as any, storeInfo)
-          .then((ok) => { if (ok) console.log('[KDS] additional-items ticket auto-printed for', data.orderNumber, `+Round ${data.orderGroup}`); })
-          .catch(err => console.error('[KDS] additional-items auto-print failed:', err));
+          .then(async (ok) => {
+            if (ok) {
+              console.log('[KDS] additional-items ticket auto-printed for', data.orderNumber, `+Round ${data.orderGroup}`);
+              try {
+                const tok = getAuthToken() || '';
+                await fetch(`/api/orders/${data.orderId}/printed`, { method: 'PATCH', headers: { Authorization: `Bearer ${tok}` } });
+              } catch (e) { /* non-fatal */ }
+            }
+          })
+          .catch(err => console.error('[KDS] additional-items auto-print failed:', err))
+          .finally(() => { delete (window as any).__autoPrintInflight[data.orderId]; });
       } catch (err) {
         console.error('[KDS] order-items-added handler error:', err);
       }

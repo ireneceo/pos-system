@@ -439,16 +439,16 @@ const DashboardContent: React.FC = () => {
         const ordersData = await ordersResponse.json();
         const ticketsResult = ticketsResponse.ok ? await ticketsResponse.json() : { data: [] };
 
-        const invoices = invoicesData.data || invoicesData || [];
+        const invoices = (Array.isArray(invoicesData?.data) ? invoicesData.data : Array.isArray(invoicesData) ? invoicesData : []);
         const orders = ordersData.data || ordersData;
-        const tickets = ticketsResult.data || ticketsResult || [];
+        const tickets = (Array.isArray(ticketsResult?.data) ? ticketsResult.data : Array.isArray(ticketsResult) ? ticketsResult : []);
 
         let subscriptions: any[] = [];
         try {
           const subscriptionsResponse = await fetch('/api/subscriptions', { headers });
           if (subscriptionsResponse.ok) {
             const subscriptionsData = await subscriptionsResponse.json();
-            subscriptions = subscriptionsData.data || subscriptionsData || [];
+            subscriptions = (Array.isArray(subscriptionsData?.data) ? subscriptionsData.data : Array.isArray(subscriptionsData) ? subscriptionsData : []);
           }
         } catch { /* graceful fallback */ }
 

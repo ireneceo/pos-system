@@ -12,6 +12,7 @@ const { getTodayBounds, getOrderDatePrefix, getRestaurantTimezone } = require('.
 const { generateOrderNumber } = require('./mobile-helpers');
 const { checkPaymentMethodAllowed, checkOrderTypeEnabled } = require('../utils/paymentMethodGuard');
 const { logOrderActionSafe } = require('../services/orderAuditLog');
+const { enrichItemsWithStation } = require('../utils/stationEnrichment');
 
 router.post('/cart/validate', async (req, res) => {
   try {
@@ -116,13 +117,13 @@ router.post('/order', async (req, res) => {
     const actualOrderType = rawOrderType === 'dine-in' ? 'dine_in' : rawOrderType;
 
     // Get restaurant timezone + payment settings for date calculations & validation
-    const restaurant = await Restaurant.findByPk(restaurantId, { attributes: ['id', 'operation_settings', 'payment_settings', 'is_active', 'floor_plan'] });
-    // Restaurant must exist and be active — prevents anonymous orders against unknown/disabled stores.
+    // 2026-05-28 hotfix: `is_active` 컬럼이 restaurants 테이블에 없는데 attributes
+    // 에 포함시켜 SELECT 시도 → SQL error → 모든 모바일 주문 500 fail (매장에
+    // 주문 도착도 / 자동 인쇄도 안 됨). 컬럼 제거. 매장 차단은 다른 layer
+    // (subscription suspended 등) 에서 이미 처리.
+    const restaurant = await Restaurant.findByPk(restaurantId, { attributes: ['id', 'operation_settings', 'payment_settings', 'floor_plan'] });
     if (!restaurant) {
       return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
-    }
-    if (restaurant.is_active === false) {
-      return res.status(403).json({ success: false, error: { message: 'Restaurant is not accepting orders', code: 'INACTIVE_STORE' } });
     }
     const tz = getRestaurantTimezone(restaurant);
 
@@ -173,12 +174,24 @@ router.post('/order', async (req, res) => {
         const maxGroup = existingGroups.length > 0 ? Math.max(...existingGroups) : 0;
         const nextGroup = maxGroup + 1;
 
-        // Add new items with added_at timestamp and order_group
-        const newItemsWithTimestamp = items.map(item => ({
+        // 2026-05-28: Enrich new items with kitchen_station_id through the
+        // shared helper so mobile additional orders route to the correct
+        // station printer (Croffle→BARPR / Korean Chicken→KQ2 etc.). Before
+        // this, mobile auto-merge new items had no station tag and the
+        // frontend bucketed them as "unmapped" → all piled on the first
+        // station. The Fire 매장 1일차 영업 critical 보고.
+        const baseNewItems = items.map(item => ({
           name: item.name,
+          menu_item_id: item.menu_item_id || item.id || null,
           quantity: item.quantity,
           price: item.price,
-          options: item.options || [],
+          options: item.options || []
+        }));
+        const enrichedNewItems = await enrichItemsWithStation(restaurantId, baseNewItems);
+
+        // Add new items with added_at timestamp and order_group
+        const newItemsWithTimestamp = enrichedNewItems.map(item => ({
+          ...item,
           status: 'pending',
           added_at: now,
           order_group: nextGroup
@@ -200,7 +213,10 @@ router.post('/order', async (req, res) => {
         await mergeableOrder.update({
           order_items: mergedItems,
           total_amount: newTotal,
-          status: preserveOutstanding ? 'outstanding' : 'pending'
+          status: preserveOutstanding ? 'outstanding' : 'pending',
+          // 2026-05-28: 같은 테이블 모바일 추가 = kitchen ticket 만 (주방 추가
+          // 주문 받아야 함). bill 은 절대 안 나옴 — 결제 버튼 시점에만.
+          needs_print: true
         });
         await mergeableOrder.reload();
 
@@ -293,23 +309,17 @@ router.post('/order', async (req, res) => {
             if (matched && matched.id) resolvedFloorPlanTableId = String(matched.id);
           }
 
-          // Enrich each item with kitchen_station_id (Product 직접 / Category 매핑
-          // 둘 다 lookup). 매장이 카테고리 단위로 station 매핑한 경우 — 이걸 안
-          // 채우면 KDS 의 station-별 print 가 매핑 fail → unmapped → 같은 station
-          // ticket 에 합쳐서 출력. 카테고리 매핑이 *필수* 라는 매장 운영 기준
-          // (2026-05-27 매장 정정) 에 부합하게 backend 에서 자동 채움.
-          const Product = require('../models/Product');
-          const Category = require('../models/Category');
-          const productIds = items.map(i => i.menu_item_id || i.id).filter(x => x && Number.isInteger(Number(x))).map(Number);
-          const products = productIds.length > 0
-            ? await Product.findAll({ where: { id: productIds }, attributes: ['id', 'kitchen_station_id', 'category'] })
-            : [];
-          const productMap = new Map(products.map(p => [Number(p.id), p]));
-          const catIds = [...new Set(products.map(p => p.category).filter(Boolean))];
-          const cats = catIds.length > 0
-            ? await Category.findAll({ where: { id: catIds }, attributes: ['id', 'kitchen_station_id'] })
-            : [];
-          const catStationMap = new Map(cats.map(c => [Number(c.id), c.kitchen_station_id]));
+          // Enrich each item with kitchen_station_id via the central helper
+          // (utils/stationEnrichment.js) so every order-write path resolves
+          // station the same way. Without this, KDS station-routing falls back
+          // to "unmapped" → all items pile onto the first station's printer.
+          const enrichedItems = await enrichItemsWithStation(restaurantId, items.map(item => ({
+            name: item.name,
+            menu_item_id: item.menu_item_id || item.id || null,
+            quantity: item.quantity,
+            price: item.price,
+            options: item.options || []
+          })));
 
           const orderData = {
             restaurant_id: restaurantId,
@@ -319,25 +329,13 @@ router.post('/order', async (req, res) => {
             customer_phone: customerInfo?.phone || null,
             total_amount: total,
             status: initialStatus,
+            needs_print: true,  // 2026-05-28: backend trigger for auto-print polling
             order_type: actualOrderType,
             payment_method: paymentMethod || 'counter',
             payment_status: 'pending',
             order_number: orderNumber,
             scheduled_pickup_time: scheduledPickupTime ? new Date(scheduledPickupTime) : null,
-            order_items: items.map(item => {
-              const pid = Number(item.menu_item_id || item.id);
-              const product = productMap.get(pid);
-              const kitchenStationId = product?.kitchen_station_id || (product?.category && catStationMap.get(Number(product.category))) || null;
-              return {
-                name: item.name,
-                menu_item_id: item.menu_item_id || item.id || null,
-                category: product?.category || null,
-                kitchen_station_id: kitchenStationId,
-                quantity: item.quantity,
-                price: item.price,
-                options: item.options || []
-              };
-            })
+            order_items: enrichedItems
           };
           console.log('    restaurant_id:', orderData.restaurant_id);
           console.log('    order_number:', orderData.order_number);
@@ -386,8 +384,18 @@ router.post('/order', async (req, res) => {
     };
 
     // Emit Socket.IO event for live orders
+    // 2026-05-28 매장 critical: payload 에 print 에 필요한 모든 데이터 포함.
+    // frontend MainLayout 이 추가 fetch 없이 즉시 인쇄 가능 (fetch race/실패
+    // 위험 제거). order.toJSON() 의 핵심 필드 + enriched order_items
+    // (kitchen_station_id 채워진) 동시 전달.
     const io = req.app.get('io');
     if (io) {
+      const orderPlain = (typeof order.toJSON === 'function') ? order.toJSON() : order;
+      const enrichedItems = Array.isArray(orderPlain.order_items)
+        ? orderPlain.order_items
+        : (typeof orderPlain.order_items === 'string'
+            ? (() => { try { return JSON.parse(orderPlain.order_items); } catch { return []; } })()
+            : []);
       io.of('/orders').to(`restaurant_${restaurantId}`).emit('order-created', {
         id: order.id,
         restaurant_id: restaurantId,
@@ -396,6 +404,12 @@ router.post('/order', async (req, res) => {
         customer_phone: customerInfo?.phone || null,
         table_number: actualTableNumber,
         total_amount: total,
+        subtotal: orderPlain.subtotal || 0,
+        tax: orderPlain.tax || 0,
+        service_charge: orderPlain.service_charge || 0,
+        service_charge_rate: orderPlain.service_charge_rate || 0,
+        takeaway_charge: orderPlain.takeaway_charge || 0,
+        discount: orderPlain.discount || 0,
         status: 'pending',
         order_type: actualOrderType,
         payment_method: paymentMethod || 'counter',
@@ -403,12 +417,7 @@ router.post('/order', async (req, res) => {
         order_date: new Date().toISOString(),
         scheduled_pickup_time: scheduledPickupTime || null,
         source: 'mobile',
-        order_items: items.map(item => ({
-          name: item.name,
-          quantity: item.quantity,
-          price: item.price,
-          options: item.options || []
-        })),
+        order_items: enrichedItems,
         createdAt: order.createdAt,
         updatedAt: order.updatedAt
       });

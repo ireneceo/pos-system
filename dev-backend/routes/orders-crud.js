@@ -18,6 +18,7 @@ const ActivityLog = require('../models/ActivityLog');
 const { logActivity } = require('../utils/activityLogger');
 const { getTodayBounds, getOrderDatePrefix, getRestaurantTimezone } = require('../utils/dateTimeHelper');
 const { checkPaymentMethodAllowed } = require('../utils/paymentMethodGuard');
+const { enrichItemsWithStation } = require('../utils/stationEnrichment');
 
 router.get('/', authenticateToken, async (req, res) => {
   try {
@@ -273,8 +274,16 @@ async function mergeItemsIntoOrder(existingOrder, newItems, transaction = null) 
   const maxGroup = existingGroups.length > 0 ? Math.max(...existingGroups) : 0;
   const nextGroup = maxGroup + 1;
 
+  // 2026-05-28: Enrich new items with kitchen_station_id through the same
+  // helper used by new-order paths. Without this, +Round N additional items
+  // arrived at the kitchen with no station label, all bucketed as "unmapped"
+  // by the frontend printer router → piled onto the first station's printer,
+  // BARPR/KQ2 etc. printed nothing for additional orders (The Fire 매장 1일차
+  // 영업 보고).
+  const enrichedNewItems = await enrichItemsWithStation(existingOrder.restaurant_id, newItems);
+
   // Add new items with added_at timestamp and order_group
-  const itemsWithTimestamp = newItems.map(item => ({
+  const itemsWithTimestamp = enrichedNewItems.map(item => ({
     ...item,
     status: 'pending',
     added_at: now,
@@ -327,7 +336,12 @@ async function mergeItemsIntoOrder(existingOrder, newItems, transaction = null) 
     order_items: mergedItems,
     subtotal: itemsSubtotal,
     total_amount: newTotal,
-    status: preserveOutstanding ? 'outstanding' : 'pending'
+    status: preserveOutstanding ? 'outstanding' : 'pending',
+    // 2026-05-28: Flip needs_print so MainLayout polling triggers the
+    // additional-items kitchen ticket regardless of which page each POS
+    // device is on. Without this, only a device sitting on KDS would
+    // receive the socket-based fast-path; everyone else missed the print.
+    needs_print: true
   }, updateOptions);
 
   await existingOrder.reload(updateOptions);
@@ -589,7 +603,17 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
 
           // Prepare order data - add order_group: 0 to all original items
           // Note: Pass array directly to Order model - the model's setter will handle stringify
-          const itemsArray = (orderData.order_items || orderData.items || []).map(item => ({
+          //
+          // 2026-05-28 (refactored): All station enrichment now goes through
+          // utils/stationEnrichment.js so every order-write path (POS new /
+          // POS add-items / mobile new / mobile auto-merge) resolves stations
+          // identically — fixes The Fire 매장 영업 1일차 critical 보고 where
+          // add-items / mobile-merge paths bypassed enrichment.
+          const rawItems = orderData.order_items || orderData.items || [];
+          const enriched = orderData.restaurant_id
+            ? await enrichItemsWithStation(orderData.restaurant_id, rawItems)
+            : rawItems;
+          const itemsArray = enriched.map(item => ({
             ...item,
             order_group: item.order_group !== undefined ? item.order_group : 0
           }));
@@ -614,7 +638,10 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
             order_number: generatedOrderNumber,
             order_items: itemsArray.length > 0 ? itemsArray : null,  // Pass array, not JSON string
             total_amount: calculatedTotal ?? 0,
-            payment_proof: normalizedProof || orderData.payment_proof
+            payment_proof: normalizedProof || orderData.payment_proof,
+            // 2026-05-28: backend trigger for auto-print polling (POS direct trigger
+            // still fires as fast path — this is the safety net for any device).
+            needs_print: true
           }, {
             transaction: t,
             validate: false  // Skip validation since we're generating order_number
@@ -1343,74 +1370,41 @@ router.post('/:id/add-items', authenticateToken, async (req, res) => {
       });
     }
 
-    const now = new Date().toISOString();
+    // 2026-05-28: Route through the shared mergeItemsIntoOrder helper so this
+    // path gets the same station enrichment + needs_print=true + order_group
+    // tracking as auto-merge / mobile merge / merge-items. Previously the
+    // /add-items route had its own raw item-map without enrichment, so POS
+    // 추가주문 (Live Orders 의 메뉴 추가 흐름) 에 station 라우팅이 빠지고
+    // additional-items kitchen ticket 도 폴링 path 에서 누락됐다.
+    const mergeResult = await mergeItemsIntoOrder(order, items);
+    const newItemsWithTimestamp = mergeResult.addedItems;
+    const newTotal = mergeResult.newTotal;
 
-    // Get current items
-    let currentItems = order.order_items || [];
-    if (typeof currentItems === 'string') {
-      currentItems = JSON.parse(currentItems);
-    }
+    console.log(`✓ [ADD-ITEMS] Added ${newItemsWithTimestamp.length} items to order ${order.id} (group: ${mergeResult.orderGroup})`);
 
-    // Add new items with added_at timestamp
-    const newItemsWithTimestamp = items.map(item => ({
-      name: item.name,
-      quantity: item.quantity,
-      price: item.price,
-      options: item.options || [],
-      status: 'pending',
-      added_at: now
-    }));
-
-    const mergedItems = [...currentItems, ...newItemsWithTimestamp];
-
-    // Recalculate total - preserve existing discounts
-    const itemsSubtotal = mergedItems.reduce((sum, item) => {
-      const itemPrice = parseFloat(item.price) || 0;
-      const itemQty = parseInt(item.quantity) || 1;
-      return sum + (itemPrice * itemQty);
-    }, 0);
-
-    // Preserve existing discount fields
-    const discount = parseFloat(order.discount) || 0;
-    const couponDiscount = parseFloat(order.coupon_discount) || 0;
-    const discountPolicyAmount = parseFloat(order.discount_policy_amount) || 0;
-    const pointDiscount = parseFloat(order.point_discount) || 0;
-    const tax = parseFloat(order.tax) || 0;
-    const serviceCharge = parseFloat(order.service_charge) || 0;
-    const takeawayCharge = parseFloat(order.takeaway_charge) || 0;
-    const deliveryFee = parseFloat(order.delivery_fee) || 0;
-
-    const newTotal = itemsSubtotal
-      - discount
-      - couponDiscount
-      - discountPolicyAmount
-      - pointDiscount
-      + tax
-      + serviceCharge
-      + takeawayCharge
-      + deliveryFee;
-
-    // Update order
-    // Note: Don't use JSON.stringify - Sequelize setter handles it automatically
-    await order.update({
-      order_items: mergedItems,
-      subtotal: itemsSubtotal,
-      total_amount: newTotal,
-      status: 'pending' // Reset to pending for kitchen
-    });
-
-    await order.reload();
-
-    console.log(`✓ [ADD-ITEMS] Added ${newItemsWithTimestamp.length} items to order ${order.id}`);
-
-    // Emit socket event
+    // Emit socket events. Both order-updated (UI refresh) and order-items-added
+    // (KDS additional-items ticket fast path). The KDS handler consumes
+    // addedItems with their enriched kitchen_station_id to route the ticket
+    // to the correct station printer; without this event, KDS silently missed
+    // every POS-side 추가주문 and had to wait for the polling cycle.
     const io = req.app.get('io');
     if (io && order.restaurant_id) {
       const plainAddOrder = order.get ? order.get({ plain: true }) : order;
       if (typeof plainAddOrder.order_items === 'string') {
         try { plainAddOrder.order_items = JSON.parse(plainAddOrder.order_items); } catch(e) { plainAddOrder.order_items = []; }
       }
-      io.of('/orders').to(`restaurant_${order.restaurant_id}`).emit('order-updated', plainAddOrder);
+      const room = `restaurant_${order.restaurant_id}`;
+      io.of('/orders').to(room).emit('order-updated', plainAddOrder);
+      io.of('/orders').to(room).emit('order-items-added', {
+        orderId: order.id,
+        orderNumber: order.order_number,
+        tableNumber: order.table_number,
+        pagerNumber: order.pager_number,
+        orderGroup: mergeResult.orderGroup,
+        addedItems: newItemsWithTimestamp,
+        itemCount: newItemsWithTimestamp.length,
+        source: req.body.source || 'pos'
+      });
     }
 
     // ── Audit log — items added ────────────────
@@ -1784,6 +1778,74 @@ router.get('/:id/actions', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('✗ [GET /:id/actions] error:', error);
     res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 2026-05-28 매장 critical: 자동 인쇄 polling endpoint.
+// Backend 가 모든 신규 주문에 needs_print=true set, 매장 device 가 어떤
+// 페이지에 있든 폴링으로 catch → 인쇄 후 PATCH printed.
+// socket 의존성 제거 (socket 은 보조 빠른 경로로만 남음).
+router.get('/restaurant/:restaurantId/pending-print', authenticateToken, async (req, res) => {
+  try {
+    const restaurantId = parseInt(req.params.restaurantId, 10);
+    if (!restaurantId) return res.status(400).json({ success: false, message: 'restaurantId required' });
+    // RA / Staff 본인 매장만
+    if (req.user.role !== 'System Admin' && parseInt(req.user.restaurant_id) !== restaurantId) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+    const { Op } = require('sequelize');
+    const orders = await Order.findAll({
+      where: {
+        restaurant_id: restaurantId,
+        [Op.or]: [{ needs_print: true }, { needs_bill: true }]
+      },
+      order: [['createdAt', 'ASC']],
+      limit: 20
+    });
+    // 2026-05-28 매장 critical (revised): station name resolution moved to the
+    // KitchenStation DB table directly. Previously we read it from
+    // Restaurant.printer_settings.kitchenStationPrinters[sid].stationName, but
+    // that field was only populated when the user touched the printer settings
+    // UI — a freshly-added station that the user hadn't configured a printer
+    // for had no stationName, so tickets printed with a blank station label.
+    // The KitchenStation table is the single source of truth.
+    const KitchenStation = require('../models/KitchenStation');
+    const stations = await KitchenStation.findAll({
+      where: { restaurant_id: restaurantId },
+      attributes: ['id', 'name']
+    });
+    const stationNameById = new Map(stations.map(s => [Number(s.id), s.name]));
+    const result = orders.map(o => {
+      const plain = o.toJSON();
+      const items = Array.isArray(plain.order_items)
+        ? plain.order_items
+        : (typeof plain.order_items === 'string' ? (() => { try { return JSON.parse(plain.order_items); } catch { return []; } })() : []);
+      plain.order_items = items.map(it => {
+        const sid = it.kitchen_station_id ? Number(it.kitchen_station_id) : null;
+        const sName = sid ? (stationNameById.get(sid) || null) : null;
+        return { ...it, stationName: sName };
+      });
+      return plain;
+    });
+    res.json({ success: true, data: result });
+  } catch (e) {
+    console.error('[pending-print] error:', e.message);
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+router.patch('/:id/printed', authenticateToken, async (req, res) => {
+  try {
+    const o = await Order.findByPk(req.params.id);
+    if (!o) return res.status(404).json({ success: false, message: 'Order not found' });
+    if (req.user.role !== 'System Admin' && parseInt(req.user.restaurant_id) !== o.restaurant_id) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+    await o.update({ needs_print: false, needs_bill: false });
+    res.json({ success: true });
+  } catch (e) {
+    console.error('[printed] error:', e.message);
+    res.status(500).json({ success: false, message: e.message });
   }
 });
 

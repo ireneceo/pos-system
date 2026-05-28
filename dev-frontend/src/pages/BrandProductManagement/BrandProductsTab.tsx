@@ -483,7 +483,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         const piRes = await fetch('/api/product-ingredients', { headers: { 'Authorization': `Bearer ${token}` } });
         if (piRes.ok) {
           const piData = await piRes.json();
-          setProductIngredientsList((piData.data || piData || []).map((pi: any) => ({ id: pi.id, name: pi.name, unit: pi.unit, unit_cost: Number(pi.unit_cost || 0) })));
+          setProductIngredientsList((Array.isArray(piData.data) ? piData.data : Array.isArray(piData) ? piData : []).map((pi: any) => ({ id: pi.id, name: pi.name, unit: pi.unit, unit_cost: Number(pi.unit_cost || 0) })));
         }
       } catch (e) { console.error('Failed to fetch product ingredients:', e); }
       // Fetch restaurants of BG's brands (for specific_restaurants distribution)

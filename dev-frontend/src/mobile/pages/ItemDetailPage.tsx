@@ -503,15 +503,6 @@ const ItemDetailPage: React.FC = () => {
           <ItemName>{item.code ? `${item.code} ` : ''}{item.name}</ItemName>
           <ItemDescription>{item.description}</ItemDescription>
           <ItemDetails>
-            {item.preparationTime > 0 && (
-              <DetailItem>
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 6V12L16 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-                </svg>
-                {item.preparationTime} min
-              </DetailItem>
-            )}
             {item.calories && (
               <DetailItem>
                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">

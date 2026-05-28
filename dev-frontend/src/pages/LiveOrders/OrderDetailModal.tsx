@@ -5,7 +5,7 @@ import OrderActionHistory from './OrderActionHistory';
 import { formatCurrency } from '../../utils/currency';
 import { formatPaymentDisplay } from '../../constants';
 import { formatDateTime as formatDateTimeUtil } from '../../utils/timezone';
-import { generateHTMLBill, generateKitchenTicketPreview } from '../../utils/billPrint';
+import { generateHTMLBill, generateHTMLKitchenTicket, tagTicketWithStations, getPrinterSettings } from '../../utils/billPrint';
 import { DbOrder } from './types';
 import { formatPickupTimeRange, getProofCurrent, getProofHistory } from './helpers';
 import {
@@ -341,53 +341,54 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
         </>
       ) : showKitchenTicketView ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '20px' }}>
-          <div style={{
-            width: '302px',
-            padding: '20px',
-            fontFamily: 'monospace',
-            fontSize: '11px',
-            lineHeight: '1.3',
-            whiteSpace: 'pre',
-            backgroundColor: '#ffffff',
-            border: '2px solid #333',
-            borderRadius: '4px',
-            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-            maxHeight: '600px',
-            overflowY: 'auto',
-            overflowX: 'hidden'
-          }}>
-            {(() => {
-              const storeInfo = getStoreInfo();
-              const orderItems = Array.isArray(selectedOrder.order_items) ? selectedOrder.order_items : [];
+          {(() => {
+            const storeInfo = getStoreInfo();
+            const orderItems = Array.isArray(selectedOrder.order_items) ? selectedOrder.order_items : [];
 
-              const orderData = {
-                orderNumber: selectedOrder.order_number,
-                pickupNumber: selectedOrder.order_number.split('-')[1],
-                date: new Date(selectedOrder.order_date || selectedOrder.createdAt),
-                orderType: selectedOrder.order_type,
-                orderSource: (selectedOrder as any).order_source || 'pos',
-                tableNumber: selectedOrder.table_number || null,
-                pagerNumber: selectedOrder.pager_number || null,
-                customerName: selectedOrder.customer_name || 'Walk-in Customer',
-                scheduledPickupTime: selectedOrder.scheduled_pickup_time || null,
-                items: orderItems.map((item: any) => ({
-                  menuItem: {
-                    name: item.menu_item_name || item.name || 'Unknown Item',
-                    price: parseFloat(item.price || '0'),
-                    is_set_menu: item.is_set_menu || false,
-                    set_items: item.set_items || []
-                  },
-                  quantity: item.quantity || 1,
-                  options: item.options || []
-                })),
-                notes: (selectedOrder as any).notes || '',
-                takeawayCharge: parseFloat((selectedOrder as any).takeaway_charge || '0')
-              };
+            const orderData: any = {
+              orderNumber: selectedOrder.order_number,
+              pickupNumber: selectedOrder.order_number.split('-')[1],
+              date: new Date(selectedOrder.order_date || selectedOrder.createdAt),
+              orderType: selectedOrder.order_type,
+              orderSource: (selectedOrder as any).order_source || 'pos',
+              tableNumber: selectedOrder.table_number || null,
+              pagerNumber: selectedOrder.pager_number || null,
+              customerName: selectedOrder.customer_name || 'Walk-in Customer',
+              scheduledPickupTime: selectedOrder.scheduled_pickup_time || null,
+              items: orderItems.map((item: any) => ({
+                menuItem: {
+                  name: item.menu_item_name || item.name || 'Unknown Item',
+                  price: parseFloat(item.price || '0'),
+                  is_set_menu: item.is_set_menu || false,
+                  set_items: item.set_items || []
+                },
+                quantity: item.quantity || 1,
+                options: item.options || []
+              })),
+              notes: (selectedOrder as any).notes || '',
+              takeawayCharge: parseFloat((selectedOrder as any).takeaway_charge || '0')
+            };
 
-              const content = generateKitchenTicketPreview(orderData, storeInfo);
-              return content.split('\n').map((line: string, i: number) => <div key={i}>{line || '\u00A0'}</div>);
-            })()}
-          </div>
+            // Match the unified POS-counter print path: same station tagging,
+            // same HTML template \u2014 preview = real printed ticket, no second format.
+            const tagged = tagTicketWithStations(orderData, 'POS COUNTER', getPrinterSettings());
+            const htmlContent = generateHTMLKitchenTicket(tagged, storeInfo);
+            return (
+              <iframe
+                srcDoc={htmlContent}
+                title="Kitchen Ticket Preview"
+                style={{
+                  width: '320px',
+                  minHeight: '500px',
+                  height: '600px',
+                  border: '2px solid #333',
+                  borderRadius: '4px',
+                  boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                  background: 'white'
+                }}
+              />
+            );
+          })()}
         </div>
       ) : showReceiptView ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '20px' }}>

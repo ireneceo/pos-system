@@ -1314,6 +1314,35 @@ const FloorPlanEditor: React.FC = () => {
                     ⊕ Snap center
                   </Btn>
                 </SizeRow>
+                <FormGroup style={{ marginTop: 12 }}>
+                  <FormLabel>{t('floorplan:floorPlanEditor.rotation', 'Rotation')}</FormLabel>
+                  <FormRow>
+                    <FormInput
+                      type="number"
+                      min={0} max={359} step={15}
+                      value={selectedTable.rotation || 0}
+                      onChange={(e) => {
+                        const v = parseInt(e.target.value, 10);
+                        const norm = ((Number.isFinite(v) ? v : 0) % 360 + 360) % 360;
+                        updateTable({ rotation: norm });
+                      }}
+                      style={{ width: 80 }}
+                    />
+                    <SizeRow style={{ flex: 1, marginLeft: 8 }}>
+                      {[0, 45, 90, -45].map(deg => {
+                        const target = ((selectedTable.rotation || 0) + deg + 360) % 360;
+                        return (
+                          <Btn key={deg} onClick={() => updateTable({ rotation: target })} style={{ flex: 1, justifyContent: 'center' }}>
+                            {deg === 0 ? '0°' : `${deg > 0 ? '+' : ''}${deg}°`}
+                          </Btn>
+                        );
+                      })}
+                    </SizeRow>
+                  </FormRow>
+                  <div style={{ fontSize: 10, color: '#6B7280', marginTop: 6, lineHeight: 1.5 }}>
+                    {t('floorplan:floorPlanEditor.rotationHint', 'Rotate booth / long table to match floor layout. 0° = upright.')}
+                  </div>
+                </FormGroup>
                 <div style={{ fontSize: 10, color: '#6B7280', marginTop: 8, lineHeight: 1.5 }}>
                   Drag: edge snap · Shift = center snap · Alt = free
                 </div>

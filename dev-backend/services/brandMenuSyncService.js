@@ -26,11 +26,12 @@ const LOCK_FIELDS = ['name', 'price', 'category', 'image', 'options'];
 
 function buildLocksSnapshot(brandMenu) {
   return {
-    name:     !!brandMenu.lock_name,
-    price:    !!brandMenu.lock_price,
-    category: !!brandMenu.lock_category,
-    image:    !!brandMenu.lock_image,
-    options:  !!brandMenu.lock_options
+    name:      !!brandMenu.lock_name,
+    price:     !!brandMenu.lock_price,
+    category:  !!brandMenu.lock_category,
+    image:     !!brandMenu.lock_image,
+    options:   !!brandMenu.lock_options,
+    set_items: !!brandMenu.lock_set_items
   };
 }
 
@@ -141,6 +142,10 @@ async function syncBrandMenuToRestaurant({ brandMenuId, restaurantId, transactio
     if (locks.category && categoryName) updates.category = categoryName;
     if (locks.image) updates.image = brandMenu.image_url;
     if (locks.options) updates.optionGroups = localOptionGroupIds;
+    if (locks.set_items) {
+      updates.is_set_menu = !!brandMenu.is_set_menu;
+      updates.set_items = brandMenu.set_items || null;
+    }
     // emoji / description always refreshed (not in lock matrix per spec — informational)
     if (brandMenu.emoji) updates.emoji = brandMenu.emoji;
     if (brandMenu.description) updates.description = brandMenu.description;
@@ -162,6 +167,8 @@ async function syncBrandMenuToRestaurant({ brandMenuId, restaurantId, transactio
     emoji: brandMenu.emoji || null,
     optionGroups: localOptionGroupIds,
     product_recipe_id: brandMenu.product_recipe_id || null,
+    is_set_menu: !!brandMenu.is_set_menu,
+    set_items: brandMenu.set_items || null,
     is_active: false,
     soldOut: false,
     // Sync tracking

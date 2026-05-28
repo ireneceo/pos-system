@@ -973,7 +973,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
             });
             if (menuRes.ok) {
               const menuData = await menuRes.json();
-              const items = menuData.data || menuData || [];
+              const items = (Array.isArray(menuData?.data) ? menuData.data : Array.isArray(menuData) ? menuData : []);
               const map: Record<number, string[]> = {};
               (Array.isArray(items) ? items : []).forEach((m: any) => {
                 if (m.recipe_id) {

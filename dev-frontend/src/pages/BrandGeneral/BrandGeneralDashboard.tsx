@@ -580,7 +580,7 @@ const BrandGeneralDashboard: React.FC = () => {
 
       const brandsRes = await fetch('/api/brands', { headers });
       const brandsData = await brandsRes.json();
-      const brands = brandsData.data || brandsData || [];
+      const brands = Array.isArray(brandsData?.data) ? brandsData.data : Array.isArray(brandsData) ? brandsData : [];
       const brand = brands[0];
       if (!brand) { setLoading(false); return; }
       setBrandId(brand.id);
@@ -633,14 +633,14 @@ const BrandGeneralDashboard: React.FC = () => {
       const totalOrders = restaurantRevenues.reduce((sum: number, r: any) => sum + (r.order_count || 0), 0);
       setRestaurants(restaurantRevenues);
 
-      const plans = plansData.data || plansData || [];
+      const plans = Array.isArray(plansData?.data) ? plansData.data : Array.isArray(plansData) ? plansData : [];
       const activePlans = plans.filter((p: any) => p.is_active !== false).length;
 
-      const invoices = invoicesData.data || invoicesData || [];
+      const invoices = Array.isArray(invoicesData?.data) ? invoicesData.data : Array.isArray(invoicesData) ? invoicesData : [];
       const pendingInvoices = invoices.filter((inv: any) => inv.status === 'pending_payment' || inv.status === 'sent').length;
       const overdueInvoices = invoices.filter((inv: any) => inv.status === 'overdue').length;
 
-      const subs = subsData.data || subsData || [];
+      const subs = Array.isArray(subsData?.data) ? subsData.data : Array.isArray(subsData) ? subsData : [];
       setSubscriptions(subs);
 
       setStats({

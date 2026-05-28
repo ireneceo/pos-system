@@ -294,7 +294,12 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
               billPrinter: ps.billPrinter || { enabled: false, name: '', autoPrint: false },
               kitchenPrinter: ps.kitchenPrinter || { enabled: false, name: '', autoPrint: false, printPerItem: false },
               ...(ps.kitchenStationPrinters ? { kitchenStationPrinters: ps.kitchenStationPrinters } : {}),
-              ...(Array.isArray(ps.workstations) ? { workstations: ps.workstations } : {})
+              ...(Array.isArray(ps.workstations) ? { workstations: ps.workstations } : {}),
+              // include receiptSettings so POS/LiveOrders/FloorPlan can read
+              // copiesAfterPayment / autoOpenDrawer from one consistent source
+              // (was previously only in localStorage['receiptSettings'], which
+              // led to stale reads when settings hadn't been re-saved).
+              ...(ps.receiptSettings ? { receiptSettings: ps.receiptSettings } : {})
             }));
             // receiptSettings + 멤버십 QR을 state + localStorage에 저장
             if (ps.receiptSettings) {

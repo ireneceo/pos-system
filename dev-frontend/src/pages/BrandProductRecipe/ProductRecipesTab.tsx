@@ -907,7 +907,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ brandId: brandIdP
       // Fetch brand products to show linked products on recipe cards (filter to active brand)
       try {
         const bpRes = await fetchAPI(`/api/brand-products${q}`);
-        const bpList = bpRes.data || bpRes || [];
+        const bpList = (Array.isArray(bpRes?.data) ? bpRes.data : Array.isArray(bpRes) ? bpRes : []);
         const map: Record<number, string[]> = {};
         (Array.isArray(bpList) ? bpList : []).forEach((bp: any) => {
           if (bp.product_recipe_id) {

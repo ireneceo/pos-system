@@ -1,9 +1,9 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-05-27
-**버전:** v3.43 hotfix #2 운영 (2026-05-27, Backup 20260527_210718, smoke 10/10)
-**작업 상태:** Customer Display Floor Plan lookup hotfix 배포 완료. 내일 매장 영업 시작.
+**마지막 업데이트:** 2026-05-28
+**버전:** v3.43 hotfix #3 운영 배포 (2026-05-28, Backup 20260528_085906, smoke 10/10) — 버전 미상승 (backstage)
+**작업 상태:** Kitchen Station hybrid 모드 + 모바일 주문 카테고리 라우팅 fix 운영 배포 완료. The Fire 매장 영업 1일차 실시간 fix.
 
 ---
 
@@ -57,6 +57,29 @@
 - 운영 매장 16 receipt-logo endpoint 200 OK + PNG raster (어제 안 나오던 핵심)
 - 운영 cartCache 코드 deploy 확인
 - 운영 frontend main.1bf88f91.js
+
+---
+
+## 오늘 (2026-05-28) v3.43 hotfix #3 운영 배포 — Kitchen Station hybrid 모드 (버전 미상승, backstage)
+
+### 매장 영업 1일차 실시간 fix
+1. **Kitchen Station hybrid 모드** — `kitchen_assignment_mode` radio (category OR menu_item) 제거, 항상 hybrid (카테고리 기본 + 메뉴별 override 동시). Toast / Square / Lightspeed 산업 표준 패턴
+2. **Station Modal 통합** — 카테고리 섹션 + 메뉴 Override 섹션 동시 노출, 메뉴는 카테고리별 그룹 + "via Category → Station" 라우팅 힌트
+3. **Mobile orders 카테고리 fallback bug fix** — `routes/mobile-orders.js` `Product.category` 가 legacy NAME 일 때 `Number(name)=NaN` → 카테고리 라우팅 무효였던 pre-existing 버그. id/name 양쪽 lookup map. 모바일 주문의 카테고리 단위 station 매핑이 실제로 작동 안 하던 사례 차단
+4. **Unassigned 경고 hybrid** — 카테고리 미배정 + 메뉴 override 도 없는 것만 경고
+5. i18n en/ko/zh/ms 12 신규 키
+
+### 검증 통과
+- 빌드 main.7b94c1c9.js
+- API hybrid (override 우선 + category fallback) ✓
+- DB cat→A / product override→B / sibling→null ✓
+- health-check 80/80 ✓
+- headless mount kitchenStations 탭 ✓ pageerror 0
+- 운영 검증: backend 2개 파일 MD5 일치, frontend bundle 일치, The Fire (r=16) `assignment_mode: hybrid` 응답
+
+### 운영 배포
+- Backup: 20260528_085906, smoke 10/10
+- Content sync: 51 contents updated (블로그 자동 동기화)
 
 ---
 

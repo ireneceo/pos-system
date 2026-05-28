@@ -38,7 +38,7 @@ const BrandProductRecipePage: React.FC = () => {
       try {
         const res: any = await fetchAPI('/api/brands');
         if (cancelled) return;
-        const list: OwnedBrand[] = (res?.data || res || []).map((b: any) => ({
+        const list: OwnedBrand[] = ((Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [])).map((b: any) => ({
           id: b.id, name: b.name
         }));
         setBrands(list);

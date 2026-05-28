@@ -6,6 +6,26 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+### 2026-05-28
+- /글쓰기 스킬 video_prompt 포맷 개선 — 한 줄 압축 → 상황설명 + Shot + Audio + Text overlay 4섹션 구조화
+- BRAND CONCEPT v3 헤더 video_prompt 맨 위 고정 포함 (브랜드 톤 일관성)
+- video_prompt 글자 수 제한 4000자 → 6000자 확장
+- staff-mistakes / e-invoice 블로그 6건 video_prompt 새 포맷 적용
+
+---
+
+## [v3.43 hotfix #3] — 2026-05-28 배포 (Kitchen Station hybrid 모드 + 모바일 주문 카테고리 라우팅 fix — 매장 영업 1일차 실시간)
+
+- **Kitchen Station hybrid 모드** — 기존 `kitchen_assignment_mode` radio (category 또는 menu_item 둘 중 하나) 제거. 항상 hybrid: 카테고리를 station 에 배정하면 기본 라우팅 + 같은 카테고리 안 일부 메뉴만 다른 station 으로 보내려면 메뉴별 override. 산업 표준 (Toast / Square / Lightspeed) 패턴. 매장 영업 첫날 The Fire 피드백 즉시 반영
+- Station Add/Edit Modal 카테고리 섹션 + 메뉴 Override 섹션 동시 노출. 메뉴 섹션은 카테고리별 그룹화 + "via Category → Station" 현재 라우팅 힌트 + 다른 station 에 override 된 메뉴는 disabled
+- 새 explainer 카드 — "Category default + per-item override" 사용 가이드 안내 (2+ stations 일 때만)
+- Unassigned 경고 hybrid 기준 재계산 — 카테고리 미배정 + 메뉴 override 도 없는 메뉴만 경고
+- **Mobile orders 카테고리 fallback bug fix** — `routes/mobile-orders.js` 의 `catStationMap` 이 `Number(product.category)` 로 lookup 하던 부분이 legacy `Product.category` (카테고리 이름 STRING) 일 때 `NaN` → 카테고리 기본 라우팅이 모바일 주문에서 작동 안 하던 pre-existing 버그. id/name 양쪽 lookup map 으로 fix. 메뉴별 station 지정 없이 카테고리 단위로만 매핑하던 매장의 모바일 주문이 KDS 분배 안 되던 사례 차단
+- Backend `routes/kitchen-stations.js` GET 응답 `assignment_mode='hybrid'` 강제 (DB 컬럼은 호환 위해 유지)
+- i18n 4언어 (en/ko/zh/ms) 12 신규 키
+- 검증: API hybrid (override 우선 + category fallback) ✓ / DB ✓ / health-check 80/80 ✓ / headless mount ✓ / 운영 The Fire (r=16) `assignment_mode: hybrid` 응답 확인
+- Backup: 20260528_085906, smoke 10/10
+
 ---
 
 ## [v3.43 hotfix #2] — 2026-05-27 배포 (Customer Display Floor Plan lookup — 같은 날 누적)

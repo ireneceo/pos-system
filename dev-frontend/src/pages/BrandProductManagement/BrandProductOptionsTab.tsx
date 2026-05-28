@@ -302,7 +302,7 @@ const BrandProductOptionsTab: React.FC<Props> = ({ onCountChange }) => {
     const token = getAuthToken();
     fetch('/api/product-ingredients', { headers: { 'Authorization': `Bearer ${token}` } })
       .then(r => r.json())
-      .then(data => setProductIngredients((data.data || data || []).map((pi: any) => ({ id: pi.id, name: pi.name, unit: pi.unit, unit_cost: Number(pi.unit_cost || 0) }))))
+      .then(data => setProductIngredients((Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : []).map((pi: any) => ({ id: pi.id, name: pi.name, unit: pi.unit, unit_cost: Number(pi.unit_cost || 0) }))))
       .catch(() => {});
   }, [fetchOptionGroups]);
 

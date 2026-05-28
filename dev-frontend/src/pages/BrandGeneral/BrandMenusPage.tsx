@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next';
 import { Lock, Building2, Edit2, Copy, Trash2, Send, ChevronDown, UtensilsCrossed, Clock, Info, ArrowRight } from 'lucide-react';
 import PageHeader from '../../components/Common/PageHeader';
 import { Modal as CommonModal, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormTextArea } from '../../components/UI';
+import SearchableSelect from '../../components/Common/SearchableSelect';
 import { SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import ListControlsBar from '../../components/Common/ListControlsBar';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
@@ -475,7 +476,9 @@ interface BrandMenu {
   image_url: string | null; emoji: string | null;
   recommended_price: number; currency: string;
   version: number; distribution_mode: 'auto' | 'manual';
-  locks: { name: boolean; price: boolean; category: boolean; image: boolean; options: boolean };
+  locks: { name: boolean; price: boolean; category: boolean; image: boolean; options: boolean; set_items?: boolean };
+  is_set_menu?: boolean;
+  set_items?: Array<{ brand_menu_id: number; name: string; quantity: number }> | null;
   category?: { id: number; name: string; emoji: string | null } | null;
   recipe?: { id: number; name: string; code: string } | null;
   distribution: { in_sync: number; pending_update: number; unlinked: number };
@@ -550,7 +553,7 @@ const BrandMenusPage: React.FC = () => {
         const r = await fetch('/api/brands?owner=me', { headers: authHeaders() });
         if (!r.ok) return;
         const j = await r.json();
-        const list: Brand[] = (j.data || j || []).map((b: any) => ({ id: b.id, name: b.name }));
+        const list: Brand[] = (Array.isArray(j.data) ? j.data : Array.isArray(j) ? j : []).map((b: any) => ({ id: b.id, name: b.name }));
         setBrands(list);
         if (!selectedBrandId && list.length > 0) {
           setSelectedBrandId(list[0].id);
@@ -1128,6 +1131,12 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
   const [recipeId, setRecipeId] = useState<string>(menu?.recipe?.id ? String(menu.recipe.id) : '');
   const [optionGroups, setOptionGroups] = useState<Array<{ id: number; name: string; is_required: boolean; max_select: number }>>([]);
   const [selectedOptionGroupIds, setSelectedOptionGroupIds] = useState<number[]>([]);
+  // Set menu support — mirrors Restaurant Product (is_set_menu + set_items[])
+  const [isSetMenu, setIsSetMenu] = useState<boolean>(!!menu?.is_set_menu);
+  const [setItems, setSetItems] = useState<Array<{ brand_menu_id: number; name: string; quantity: number }>>(
+    Array.isArray((menu as any)?.set_items) ? (menu as any).set_items : []
+  );
+  const [allBrandMenus, setAllBrandMenus] = useState<Array<{ id: number; name: string }>>([]);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -1138,14 +1147,25 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
         const [c, og, r] = await Promise.all([
           fetch(`/api/brand-menu-categories?brand_id=${brandId}`, { headers: authHeaders() }).then(r => r.ok ? r.json() : { data: [] }),
           fetch(`/api/brand-menu-option-groups?brand_id=${brandId}`, { headers: authHeaders() }).then(r => r.ok ? r.json() : { data: [] }),
-          fetch(`/api/brand-product-recipes?brand_id=${brandId}`, { headers: authHeaders() }).then(r => r.ok ? r.json() : { data: [] })
+          fetch(`/api/product-recipes`, { headers: authHeaders() }).then(r => r.ok ? r.json() : { data: [] })
         ]);
         setCategories((c.data || []).map((x: any) => ({ id: x.id, name: x.name })));
         setOptionGroups((og.data || []).map((x: any) => ({ id: x.id, name: x.name, is_required: !!x.is_required, max_select: x.max_select || 1 })));
         setRecipes((r.data || []).map((x: any) => ({ id: x.id, name: x.name })));
+        // Load other brand menus for set-menu picker (exclude current menu, exclude other sets — sets can't nest sets)
+        try {
+          const mr = await fetch(`/api/brand-menus?brand_id=${brandId}`, { headers: authHeaders() });
+          if (mr.ok) {
+            const mj = await mr.json();
+            const allMenus = Array.isArray(mj.data) ? mj.data : [];
+            setAllBrandMenus(allMenus
+              .filter((m: any) => !m.is_set_menu && (!menu || m.id !== menu.id))
+              .map((m: any) => ({ id: m.id, name: m.name })));
+          }
+        } catch (e) { /* silent */ }
       } catch (e) { /* silent */ }
     })();
-  }, [brandId]);
+  }, [brandId, menu]);
 
   // Load existing menu's option groups
   useEffect(() => {
@@ -1175,7 +1195,9 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
         product_recipe_id: recipeId ? parseInt(recipeId, 10) : null,
         // distribution_mode + lock_* are omitted on purpose — the backend fills
         // them from brand.menu_settings defaults (Settings tab is the single source).
-        option_group_ids: selectedOptionGroupIds
+        option_group_ids: selectedOptionGroupIds,
+        is_set_menu: isSetMenu,
+        set_items: isSetMenu ? setItems : null
       };
       const url = isEdit ? `/api/brand-menus/${menu!.id}` : '/api/brand-menus';
       const method = isEdit ? 'PUT' : 'POST';
@@ -1231,10 +1253,14 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
 
       <UIFormGroup>
         <FormLabel>{t('brand:brandMenusPage.category', 'Category')} *</FormLabel>
-        <FormSelect value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required>
-          <option value="">— {t('brand:brandMenusPage.selectCategoryPlaceholder', 'Select Category')} —</option>
-          {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </FormSelect>
+        <SearchableSelect
+          options={categories.map(c => ({ value: c.id, label: c.name }))}
+          value={categoryId ? Number(categoryId) : null}
+          onChange={(v) => setCategoryId(v != null ? String(v) : '')}
+          placeholder={t('brand:brandMenusPage.selectCategoryPlaceholder', 'Select Category') as string}
+          noOptionsMessage={t('brand:brandMenusPage.noCategoriesYet', 'No categories yet') as string}
+          allowClear={false}
+        />
       </UIFormGroup>
 
       <UIFormGroup>
@@ -1258,10 +1284,13 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
 
       <UIFormGroup style={{ marginTop: 24 }}>
         <FormLabel>{t('brand:brandMenusPage.linkedRecipe', 'Linked Recipe (optional)')}</FormLabel>
-        <FormSelect value={recipeId} onChange={(e) => setRecipeId(e.target.value)}>
-          <option value="">— {t('brand:brandMenusPage.selectRecipePlaceholder', 'Select Recipe')} —</option>
-          {recipes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-        </FormSelect>
+        <SearchableSelect
+          options={recipes.map(r => ({ value: r.id, label: r.name }))}
+          value={recipeId ? Number(recipeId) : null}
+          onChange={(v) => setRecipeId(v != null ? String(v) : '')}
+          placeholder={t('brand:brandMenusPage.selectRecipePlaceholder', 'Select Recipe') as string}
+          noOptionsMessage={t('brand:brandMenusPage.noRecipesYet', 'No recipes yet') as string}
+        />
       </UIFormGroup>
 
       <UIFormGroup style={{ marginTop: 24 }}>
@@ -1275,24 +1304,26 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
           </div>
         ) : (
           <>
-            <OptionGroupSelectStyled
-              value=""
-              onChange={(e) => {
-                const id = parseInt(e.target.value, 10);
+            <SearchableSelect
+              options={optionGroups
+                .filter(g => !selectedOptionGroupIds.includes(g.id))
+                .map(g => ({
+                  value: g.id,
+                  label: g.name,
+                  subLabel: `${g.is_required ? t('brand:brandMenusPage.required', 'Required') : t('brand:brandMenusPage.optional', 'Optional')} · ${g.max_select > 1 ? t('brand:brandMenusPage.multi', 'Multi') : t('brand:brandMenusPage.single', 'Single')}`
+                }))}
+              value={null}
+              onChange={(v) => {
+                if (v == null) return;
+                const id = Number(v);
                 if (id && !selectedOptionGroupIds.includes(id)) {
                   setSelectedOptionGroupIds([...selectedOptionGroupIds, id]);
                 }
               }}
-            >
-              <option value="">{t('brand:brandMenusPage.selectOptionGroupToAdd', 'Select option group to add...')}</option>
-              {optionGroups
-                .filter(g => !selectedOptionGroupIds.includes(g.id))
-                .map(g => (
-                  <option key={g.id} value={g.id}>
-                    {g.name} ({g.is_required ? t('brand:brandMenusPage.required', 'Required') : t('brand:brandMenusPage.optional', 'Optional')}, {g.max_select > 1 ? t('brand:brandMenusPage.multi', 'Multi') : t('brand:brandMenusPage.single', 'Single')})
-                  </option>
-                ))}
-            </OptionGroupSelectStyled>
+              placeholder={t('brand:brandMenusPage.selectOptionGroupToAdd', 'Select option group to add...') as string}
+              noOptionsMessage={t('brand:brandMenusPage.allOptionGroupsAdded', 'All option groups already added') as string}
+              allowClear={false}
+            />
             <SelectedChipsContainer>
               {selectedOptionGroupIds.map((groupId, index) => {
                 const group = optionGroups.find(g => g.id === groupId);
@@ -1315,6 +1346,70 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
               })}
             </SelectedChipsContainer>
           </>
+        )}
+      </UIFormGroup>
+
+      <UIFormGroup style={{ marginTop: 24 }}>
+        <FormLabel style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={isSetMenu}
+            onChange={(e) => setIsSetMenu(e.target.checked)}
+            style={{ width: 16, height: 16, cursor: 'pointer' }}
+          />
+          <span>{t('brand:brandMenusPage.setMenu', 'Set Menu (consists of multiple items)')}</span>
+        </FormLabel>
+        {isSetMenu && (
+          <div style={{ marginTop: 12, padding: 12, background: '#F8F7FF', border: '1px solid #E6E3FF', borderRadius: 8 }}>
+            <FormLabel style={{ fontSize: 12, marginBottom: 8 }}>{t('brand:brandMenusPage.setItems', 'Items in this set')}</FormLabel>
+            {setItems.length > 0 ? (
+              <div style={{ marginBottom: 12 }}>
+                {setItems.map((item, i) => (
+                  <div key={`${item.brand_menu_id}-${i}`} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: 8, background: '#FFFFFF', border: '1px solid #E6EBF1', borderRadius: 6, marginBottom: 6 }}>
+                    <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: '#0A2540' }}>{item.name}</span>
+                    <label style={{ fontSize: 11, color: '#6B7C93' }}>{t('common:label.qty', 'Qty')}</label>
+                    <FormInput
+                      type="number"
+                      min="1"
+                      value={String(item.quantity)}
+                      onChange={(e) => {
+                        const q = Math.max(1, parseInt(e.target.value, 10) || 1);
+                        setSetItems(setItems.map((s, j) => j === i ? { ...s, quantity: q } : s));
+                      }}
+                      style={{ width: 64, padding: '6px 8px', fontSize: 13 }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setSetItems(setItems.filter((_, j) => j !== i))}
+                      style={{ background: 'transparent', border: 'none', color: '#DC2626', cursor: 'pointer', fontSize: 18, padding: '0 6px' }}
+                      title={t('common:button.remove', 'Remove') as string}
+                    >×</button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 12 }}>
+                {t('brand:brandMenusPage.setItemsEmpty', 'No items added yet — pick from the dropdown below.')}
+              </div>
+            )}
+            <SearchableSelect
+              options={allBrandMenus
+                .filter(m => !setItems.find(s => s.brand_menu_id === m.id))
+                .map(m => ({ value: m.id, label: m.name }))}
+              value={null}
+              onChange={(v) => {
+                if (v == null) return;
+                const id = Number(v);
+                const m = allBrandMenus.find(x => x.id === id);
+                if (m && !setItems.find(s => s.brand_menu_id === id)) {
+                  setSetItems([...setItems, { brand_menu_id: id, name: m.name, quantity: 1 }]);
+                }
+              }}
+              placeholder={t('brand:brandMenusPage.addSetItem', 'Add an item to this set') as string}
+              noOptionsMessage={t('brand:brandMenusPage.noMenusToAdd', 'No more menus to add (or no menus exist yet)') as string}
+              allowClear={false}
+            />
+          </div>
         )}
       </UIFormGroup>
     </CommonModal>
