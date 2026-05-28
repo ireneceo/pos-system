@@ -40,6 +40,32 @@ fix_ownership() {
 fix_ownership "$CACHE_DIR" "캐시 폴더"
 fix_ownership "$BUILD_DIR" "빌드 폴더"
 
+# 0.5 Autoprint regression gate — locks in critical store invariants
+# (enrichment per-path, polling stationName, frontend bucketing including the
+# "station has no printer config → silent merge" trap). If this fails the
+# build aborts so a broken auto-print path cannot ship to dev/store.
+# Skip with SKIP_REGRESSION=1 if backend is intentionally offline.
+if [ "$SKIP_REGRESSION" != "1" ]; then
+    echo -e "\n${BLUE}🧪 Autoprint regression check...${NC}"
+    REGRESSION_LOG=$(mktemp)
+    if (cd /var/www/dev-backend && node tests/autoprint-regression.js) >"$REGRESSION_LOG" 2>&1; then
+        PASS_LINE=$(grep -E "^PASS: " "$REGRESSION_LOG" | tail -1)
+        echo -e "${GREEN}✓ Autoprint regression $PASS_LINE${NC}"
+        rm -f "$REGRESSION_LOG"
+    else
+        echo -e "${RED}✗ Autoprint regression FAILED — build aborted${NC}"
+        echo -e "${YELLOW}━━━ Last 40 lines of regression output ━━━${NC}"
+        tail -40 "$REGRESSION_LOG"
+        echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "${RED}코드 변경이 자동인쇄 invariant 를 깼습니다. fix 후 다시 build.${NC}"
+        echo -e "${YELLOW}(긴급히 우회 필요 시: SKIP_REGRESSION=1 npm run build:dev — 사유 기록 권장)${NC}"
+        rm -f "$REGRESSION_LOG"
+        exit 1
+    fi
+else
+    echo -e "${YELLOW}⚠ Autoprint regression SKIPPED (SKIP_REGRESSION=1)${NC}"
+fi
+
 # 1. 이전 빌드 정리 + 빌드 실행
 if [ -d "$BUILD_DIR/static" ]; then
     sudo rm -rf "$BUILD_DIR/static"

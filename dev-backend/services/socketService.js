@@ -136,21 +136,19 @@ function initSocketServer(server) {
   // In-memory cart cache per restaurant. Customer Display can reconnect (PWA
   // refresh / network blip / monitor sleep) without losing the current bill —
   // we replay the last cart-update / pos-customer-update on join-restaurant.
-  // Cleared by cart-clear or checkout-complete. TTL 60min — auto-evict stale.
+  //
+  // 2026-05-28: TTL 자동 evict 제거. 매장 보고 — 모니터 sleep 1시간 이상
+  // → 깨움 → TTL 만료된 캐시 → CD blank. 명시적 trigger (cart-clear /
+  // checkout-complete) 만 evict 하도록 변경. Memory bound: Map keyed by
+  // restaurantId, 매장당 1 entry. 매장 100 곳 운영해도 메모리 미미.
+  // backend 재시작 시는 캐시 사라지지만 그건 의도 — 매장 직원이 다시
+  // 테이블 클릭하면 됨.
   const cartCache = new Map(); // restaurantId(string) → { cart, customer, ts }
-  const CART_TTL_MS = 60 * 60 * 1000;
-  const cachePrune = () => {
-    const now = Date.now();
-    for (const [k, v] of cartCache.entries()) {
-      if (now - (v?.ts || 0) > CART_TTL_MS) cartCache.delete(k);
-    }
-  };
 
   io.of('/checkout-display').on('connection', (socket) => {
     socket.on('join-restaurant', (restaurantId) => {
       const rid = String(restaurantId);
       socket.join(`restaurant_${rid}`);
-      cachePrune();
       const cached = cartCache.get(rid);
       if (cached) {
         // Send a one-shot replay only to this newly-joined client.

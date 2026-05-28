@@ -378,7 +378,15 @@
       "Bash(tee /tmp/build-autoprint.log)",
       "Bash(systemctl --user list-units --type=timer)",
       "Bash(loginctl show-user *)",
-      "Bash(chmod +x /var/www/.claude/hooks/auto-save.sh)"
+      "Bash(chmod +x /var/www/.claude/hooks/auto-save.sh)",
+      "Bash(bash -n /var/www/dev-frontend/deploy-dev.sh)",
+      "Bash(awk '/^              }\\\\\\)\\\\\\(\\\\\\)\\\\}$/{print NR\": \"$0}' /var/www/dev-frontend/src/pages/Settings/SettingsPage.tsx)",
+      "Bash(tee /tmp/build-b2.log)",
+      "Bash(tee /tmp/build-final.log)",
+      "Bash(awk '{print $2, $9, $10, $11}')",
+      "Bash(tee /tmp/build-cd.log)",
+      "Bash(awk '/io\\\\.of\\\\\\(.\\\\/checkout-display/,/^  return io/' /var/www/dev-backend/services/socketService.js)",
+      "Bash(awk '/io\\\\.of\\\\\\(.\\\\/checkout-display/{flag=1} flag{print NR\": \"$0} /^  return io/{flag=0}' /var/www/dev-backend/services/socketService.js)"
     ],
     "deny": [],
     "ask": []

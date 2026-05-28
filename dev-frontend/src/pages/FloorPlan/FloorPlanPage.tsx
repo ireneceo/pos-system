@@ -599,15 +599,28 @@ const FloorPlanPage: React.FC = () => {
 
   // 2026-05-27: Mirror selected table → Customer Display in real time.
   // Lets the customer see their bill before they walk to the counter (table
-  // service / post-pay flow). When a table is deselected, clear the display so
-  // the next customer doesn't see the previous bill.
+  // service / post-pay flow).
+  //
+  // 2026-05-28: cart-clear 트리거 좁힘. 이전: selectedTableId===null 이면
+  // 무조건 cart-clear → page mount/refresh 시도 fire → CD blank. 매장 보고
+  // (영업 중 시간 지나면 자꾸 사라짐). 이제: 사용자가 명시적으로 다른 곳
+  // 클릭해서 deselect 한 경우 (prev 가 값이 있었음) 만 cart-clear. 페이지
+  // mount / refresh / 다른 탭으로 이동 후 복귀는 CD 표시 유지.
   // NOTE: derive selectedTable + status INSIDE the effect — referencing the
   // module-level `selectedTable` const here would TDZ-fault because that const
   // is declared further down in the render body (post-loading branch).
+  const prevSelectedTableIdRef = useRef<typeof selectedTableId>(null);
   useEffect(() => {
     if (!checkoutSocketRef.current) return;
+    const prevId = prevSelectedTableIdRef.current;
+    prevSelectedTableIdRef.current = selectedTableId;
     if (!selectedTableId) {
-      checkoutSocketRef.current.emit('cart-clear', { restaurantId });
+      // Only emit cart-clear when the user EXPLICITLY deselected (had a value
+      // before). Skip the mount-time null and the refresh-time null so the
+      // CD keeps the last table info until the user does something.
+      if (prevId) {
+        checkoutSocketRef.current.emit('cart-clear', { restaurantId });
+      }
       return;
     }
     const tInfo = (floorPlan?.tables || []).find(t => t.id === selectedTableId);

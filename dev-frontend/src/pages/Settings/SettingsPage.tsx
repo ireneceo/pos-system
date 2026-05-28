@@ -13,6 +13,7 @@ import PhoneInput from '../../components/Common/PhoneInput';
 import PageHeader from '../../components/Common/PageHeader';
 import AutoSaveField, { AutoSaveHandle } from '../../components/Common/AutoSaveField';
 import ReservationSettingsTab from '../../components/Settings/ReservationSettingsTab';
+import AutoPrintPreviewModal from '../../components/Settings/AutoPrintPreviewModal';
 import ZonesAndGroupsCard from './components/ZonesAndGroupsCard';
 import AddressFields from '../../components/Form/AddressFields';
 import ConfirmModal from '../../components/ConfirmModal';
@@ -754,6 +755,7 @@ const SettingsPage: React.FC = () => {
   const [printerGuideTab, setPrinterGuideTab] = useState<'browser' | 'qztray' | 'rawbt'>('browser');
   const [methodMatrixOpen, setMethodMatrixOpen] = useState(false);
   const [emergencyEffectOpen, setEmergencyEffectOpen] = useState(false);
+  const [autoPrintPreviewOpen, setAutoPrintPreviewOpen] = useState(false);
   const [showPrinterTroubleshoot, setShowPrinterTroubleshoot] = useState(false);
   const [qzTrayPrinters, setQzTrayPrinters] = useState<string[]>([]);
   const [showQzGuide, setShowQzGuide] = useState(false);
@@ -5398,6 +5400,32 @@ const SettingsPage: React.FC = () => {
                 );
               })()}
 
+              {/* Auto-Print Preview button — opens a modal showing the LAST 10
+                  orders with per-station breakdown of what would print. Uses
+                  the same bucketing logic as the actual auto-print path so the
+                  preview is faithful. Catches the "station configured in DB
+                  but no printer assigned → items silently merge into first
+                  station" trap that has hit the store multiple times. Preview
+                  only — no actual print. */}
+              <div style={{ margin: '12px 0 16px 0', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => setAutoPrintPreviewOpen(true)}
+                  style={{
+                    padding: '10px 18px',
+                    borderRadius: 8,
+                    border: '1px solid #635BFF',
+                    background: '#F0EFFF',
+                    color: '#635BFF',
+                    fontWeight: 600,
+                    fontSize: 14,
+                    cursor: 'pointer'
+                  }}
+                >
+                  자동 인쇄 미리보기 / Auto-Print Preview
+                </button>
+              </div>
+
               {/* Printer methods guide — 3 tabs so Browser / QZ Tray / RawBT are
                   presented as equally valid options. Each tab explains when to
                   pick it and shows its setup steps. The actual per-printer Method
@@ -6774,6 +6802,16 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                   }
                 `}</style>
               </SettingsCard>
+
+              {/* Auto-print preview modal — opened from the button at the top of
+                  the printer tab. Shows the actual bucketing of last orders by
+                  station + warnings for missing printer configs. Preview only. */}
+              {autoPrintPreviewOpen && user?.restaurantId && (
+                <AutoPrintPreviewModal
+                  restaurantId={user.restaurantId}
+                  onClose={() => setAutoPrintPreviewOpen(false)}
+                />
+              )}
 
               {/* Printer troubleshooting modal — opened from Emergency card.
                   Covers the most common pain points reported on the floor. */}

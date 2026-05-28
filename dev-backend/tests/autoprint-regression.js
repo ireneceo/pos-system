@@ -21,7 +21,8 @@ require('dotenv').config();
 const jwt = require('jsonwebtoken');
 // Node 20 has global fetch — no node-fetch dependency.
 
-const Order = require('./models/Order');
+const Order = require('../models/Order');
+const { enrichItemsWithStation } = require('../utils/stationEnrichment');
 
 const RID = 5;
 const RA_USER_ID = 9; // admin@kdine.com
@@ -171,9 +172,125 @@ async function run() {
     ok('polling 모바일 주문 stationName=Kitchen Station 01', mappedPolled?.stationName === 'Kitchen Station 01', 'got ' + mappedPolled?.stationName);
   }
 
+  // ═══════════════════════════════════════════════════════════════════════
+  // ─── Path B: Pure bucketing logic regression (frontend replica) ──────────
+  // ═══════════════════════════════════════════════════════════════════════
+  //
+  // Locks in the printKitchenTicketsByStation behavior from billPrint.js.
+  // CATCHES THE TRAP: backend resolves kitchen_station_id correctly but
+  // printerSettings.kitchenStationPrinters is missing that station id →
+  // item falls into "unmapped" → merged into the first mapped station.
+  // This was a recurring root cause for "3번째 station prints nothing".
+  //
+  // Mirror of /var/www/dev-frontend/src/utils/billPrint.js
+  //   `printKitchenTicketsByStation > bucketItemsByStation` (around line 3037).
+  // Keep both copies in sync when changing bucketing behavior.
+
+  function bucketItemsByStation(items, printerSettings) {
+    const stationPrinters = printerSettings.kitchenStationPrinters || {};
+    const stationItems = {};
+    const unmappedItems = [];
+    items.forEach(item => {
+      const sid = item.kitchen_station_id || (item.menuItem && item.menuItem.kitchen_station_id) || null;
+      if (sid && stationPrinters[sid]) {
+        stationItems[sid] = stationItems[sid] || [];
+        stationItems[sid].push(item);
+      } else {
+        unmappedItems.push(item);
+      }
+    });
+    const mappedIds = Object.keys(stationItems);
+    if (mappedIds.length > 0 && unmappedItems.length > 0) {
+      stationItems[mappedIds[0]] = [...stationItems[mappedIds[0]], ...unmappedItems];
+    }
+    return { stationItems, unmappedItems };
+  }
+
+  console.log('\n[B] Bucketing logic regression (frontend replica)');
+
+  // [B1] Happy path — 3 stations, all configured → 3 separate tickets
+  {
+    const items = [
+      { name: '김밥', kitchen_station_id: 25 },
+      { name: '치킨', kitchen_station_id: 26 },
+      { name: '빙수', kitchen_station_id: 27 }
+    ];
+    const ps = { kitchenStationPrinters: { 25: { name: 'KQ1' }, 26: { name: 'KQ2' }, 27: { name: 'BARPR' } } };
+    const { stationItems } = bucketItemsByStation(items, ps);
+    ok('B1 — 3 stations configured → 3 buckets', Object.keys(stationItems).length === 3, 'got ' + Object.keys(stationItems).length);
+    ok('B1 — KQ1 has 1 item', stationItems[25]?.length === 1);
+    ok('B1 — KQ2 has 1 item', stationItems[26]?.length === 1);
+    ok('B1 — BARPR has 1 item', stationItems[27]?.length === 1);
+  }
+
+  // [B2] CRITICAL: backend tags item with station 27, but printerSettings missing 27.
+  // Expected: that item falls into unmapped, merges into FIRST mapped station.
+  // This is the "store added a station in DB but didn't configure its printer" trap.
+  {
+    const items = [
+      { name: '김밥', kitchen_station_id: 25 },
+      { name: '치킨', kitchen_station_id: 26 },
+      { name: '빙수', kitchen_station_id: 27 }
+    ];
+    const ps = { kitchenStationPrinters: { 25: { name: 'KQ1' }, 26: { name: 'KQ2' } } }; // no 27
+    const { stationItems, unmappedItems } = bucketItemsByStation(items, ps);
+    ok('B2 — missing printer config → item pre-merge unmapped', unmappedItems.length === 1, 'len=' + unmappedItems.length);
+    ok('B2 — unmapped merges into FIRST station (KQ1)', stationItems[25]?.length === 2, 'KQ1 size=' + stationItems[25]?.length);
+    ok('B2 — KQ2 untouched (still 1)', stationItems[26]?.length === 1);
+    ok('B2 — BARPR (27) NOT in buckets (no printer)', !stationItems[27]);
+  }
+
+  // [B3] All items unmapped (no kitchen_station_id at all) — no merge target
+  {
+    const items = [{ name: 'X', kitchen_station_id: null }, { name: 'Y' }];
+    const ps = { kitchenStationPrinters: { 25: { name: 'KQ1' } } };
+    const { stationItems, unmappedItems } = bucketItemsByStation(items, ps);
+    ok('B3 — no station_id on any item → all unmapped', unmappedItems.length === 2);
+    ok('B3 — no merge happens (no mapped station)', Object.keys(stationItems).length === 0);
+  }
+
+  // [B4] Mixed mapped + orphan → orphan merges into mapped
+  {
+    const items = [{ name: 'mapped', kitchen_station_id: 25 }, { name: 'orphan' }];
+    const ps = { kitchenStationPrinters: { 25: { name: 'KQ1' }, 26: { name: 'KQ2' } } };
+    const { stationItems } = bucketItemsByStation(items, ps);
+    ok('B4 — orphan merges into mapped first station', stationItems[25]?.length === 2);
+    ok('B4 — KQ2 no ticket (no items routed there)', !stationItems[26]);
+  }
+
+  // [B5] menuItem-wrapped form (POSTerminal passes this shape)
+  {
+    const items = [{ menuItem: { name: '김밥', kitchen_station_id: 25 } }];
+    const ps = { kitchenStationPrinters: { 25: { name: 'KQ1' } } };
+    const { stationItems } = bucketItemsByStation(items, ps);
+    ok('B5 — menuItem.kitchen_station_id picked up', stationItems[25]?.length === 1);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // ─── Path C: Enrichment edge cases (real DB) ─────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════
+  console.log('\n[C] Enrichment edge cases (live DB on restaurant ' + RID + ')');
+
+  const e1 = await enrichItemsWithStation(RID, []);
+  ok('C1 — empty array → empty array', Array.isArray(e1) && e1.length === 0);
+
+  const e2 = await enrichItemsWithStation(RID, [{ name: 'X', price: 1, quantity: 1 }]);
+  ok('C2 — item without menu_item_id → station=null (no crash)', e2[0]?.kitchen_station_id == null);
+
+  const e3 = await enrichItemsWithStation(RID, [{ menu_item_id: 14, kitchen_station_id: 999 }]);
+  ok('C3 — explicit item-level kitchen_station_id wins', e3[0]?.kitchen_station_id === 999, 'got=' + e3[0]?.kitchen_station_id);
+
+  // Mapped product → category fallback resolves
+  const e4 = await enrichItemsWithStation(RID, [{ menu_item_id: 279 }]);
+  ok('C4 — mapped product 279 → station 25 via category', e4[0]?.kitchen_station_id === 25, 'got=' + e4[0]?.kitchen_station_id);
+
+  // Unmapped product → null
+  const e5 = await enrichItemsWithStation(RID, [{ menu_item_id: 14 }]);
+  ok('C5 — unmapped product 14 → null station', e5[0]?.kitchen_station_id == null, 'got=' + e5[0]?.kitchen_station_id);
+
   // ─── Cleanup ────────────────────────────────────────────────
   console.log('\n[cleanup] 테스트 주문 삭제');
-  const OrderAction = require('./models/OrderAction');
+  const OrderAction = require('../models/OrderAction');
   for (const oid of createdOrderIds) {
     try {
       await OrderAction.destroy({ where: { order_id: oid }, force: true });
