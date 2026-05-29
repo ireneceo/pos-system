@@ -949,6 +949,8 @@
   "restaurantDashboard.monitorAllOrders": "전체 주문 모니터",
   "restaurantDashboard.editMenuItems": "메뉴 항목 수정",
   "settingsPage": {
+    "requireCardType": "카드 종류 선택 필수",
+    "requireCardTypeHint": "켜면 카드 결제 완료 전에 캐셔가 카드 종류(Visa / Master / Amex / Other)를 반드시 선택해야 합니다.",
     "orderTypePin": {
       "allowedOrderTypes": "허용 주문방식",
       "allowedOrderTypesHelp": "모두 선택된 상태는 이 결제수단이 모든 모바일 주문방식에 허용됨을 의미합니다.",

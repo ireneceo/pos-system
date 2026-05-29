@@ -345,7 +345,8 @@ Restaurant.init({
           card: {
             enabled: true,
             label: 'Card',
-            availableIn: ['pos']
+            availableIn: ['pos'],
+            requireCardType: false // 카드 결제 시 카드종류(Visa/Master 등) 선택 필수 여부
           },
           ewallet: {
             enabled: true,

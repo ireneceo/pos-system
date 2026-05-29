@@ -1,6 +1,8 @@
 {
   "storeBadge.cashless": "无现金",
   "storeBadge.cashlessHint": "本店不接受现金支付",
+  "storeBadge.cashlessNoticeTitle": "无现金门店 — 不接受现金",
+  "storeBadge.cashlessNoticeSub": "请仅使用银行卡或电子钱包付款。",
   "backToDashboard": "返回仪表盘",
   "visitHomepage": "前往 PurpleHere 主页",
   "button": {

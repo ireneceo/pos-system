@@ -386,7 +386,12 @@
       "Bash(awk '{print $2, $9, $10, $11}')",
       "Bash(tee /tmp/build-cd.log)",
       "Bash(awk '/io\\\\.of\\\\\\(.\\\\/checkout-display/,/^  return io/' /var/www/dev-backend/services/socketService.js)",
-      "Bash(awk '/io\\\\.of\\\\\\(.\\\\/checkout-display/{flag=1} flag{print NR\": \"$0} /^  return io/{flag=0}' /var/www/dev-backend/services/socketService.js)"
+      "Bash(awk '/io\\\\.of\\\\\\(.\\\\/checkout-display/{flag=1} flag{print NR\": \"$0} /^  return io/{flag=0}' /var/www/dev-backend/services/socketService.js)",
+      "Bash(echo \"build started \\(bg\\), pid=$!\")",
+      "Bash(awk 'NR>=792 && NR<=1365' utils/billPrint.js)",
+      "Bash(break)",
+      "Bash(pm2 restart *)",
+      "Bash(curl -s -o /dev/null -w \"backend health: %{http_code}\\\\n\" http://localhost:3001/api/health)"
     ],
     "deny": [],
     "ask": []

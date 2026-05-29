@@ -949,6 +949,8 @@
   "restaurantDashboard.monitorAllOrders": "Pantau semua pesanan",
   "restaurantDashboard.editMenuItems": "Sunting item menu",
   "settingsPage": {
+    "requireCardType": "Wajib pilih jenis kad",
+    "requireCardTypeHint": "Apabila dihidupkan, juruwang mesti memilih jenis kad (Visa / Master / Amex / Other) sebelum melengkapkan pembayaran kad.",
     "orderTypePin": {
       "allowedOrderTypes": "Jenis pesanan dibenarkan",
       "allowedOrderTypesHelp": "Biarkan semua dipilih untuk membenarkan kaedah ini bagi setiap jenis pesanan mudah alih.",

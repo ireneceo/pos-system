@@ -949,6 +949,8 @@
   "restaurantDashboard.monitorAllOrders": "监控所有订单",
   "restaurantDashboard.editMenuItems": "编辑菜单项目",
   "settingsPage": {
+    "requireCardType": "必须选择卡类型",
+    "requireCardTypeHint": "开启后，收银员在完成刷卡支付前必须选择卡类型（Visa / Master / Amex / Other）。",
     "orderTypePin": {
       "allowedOrderTypes": "可用订单类型",
       "allowedOrderTypesHelp": "全部勾选表示该方式适用于所有移动订单类型。",

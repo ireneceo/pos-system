@@ -45,6 +45,12 @@ const CMD = {
   // Line feed
   LINE_FEED: '\n',
 
+  // Line spacing (ESC 3 n / ESC 2). 2026-05-29: 빌 줄간격 축소 요청. ESC 3 n 으로
+  // 라인 높이를 기본(~30/34 dot)보다 모더릿하게 줄인다(26 dot). ESC @ (INIT)가
+  // 다음 작업에서 기본값으로 리셋하므로 주방 티켓 등 다른 출력에는 영향 없음.
+  LINE_SPACING_TIGHT: ESC + '3' + '\x1A',
+  LINE_SPACING_DEFAULT: ESC + '2',
+
   // Separators (80mm = 48 chars)
   DASHED_LINE: '------------------------------------------------',
   // Strong solid line — double-struck equals for visual emphasis (mirrors the
@@ -795,6 +801,9 @@ export function generateBillContent(orderData, storeInfo) {
 
   // Initialize printer
   content += CMD.INIT;
+  // 2026-05-29: 빌 줄간격 축소 (매장 요청). 빌 출력에만 적용 — 주방 티켓은 INIT 가
+  // 기본 라인 스페이싱으로 리셋하므로 영향 없음.
+  content += CMD.LINE_SPACING_TIGHT;
 
   // Compute order type label — printed in meta row below, not as a big top banner.
   const _orderTypeLabel =
@@ -892,13 +901,18 @@ export function generateBillContent(orderData, storeInfo) {
     const price = item.menuItem.price;
     const total = qty * price;
 
-    // qty (4-char column) + item name on left, total on right (no currency repeat).
+    // qty (4-char column) + item name on left, line total on right (no currency repeat).
+    // 2026-05-29: 단가(@ unit price) 라인 제거 (매장 요청) — 수량 + 품명 + 합계만 표기.
     const qtyCol = String(qty).padEnd(4, ' ');
     content += formatLine(qtyCol + itemName, total.toFixed(2)) + CMD.LINE_FEED;
 
-    // Unit price line only when quantity > 1 — otherwise it duplicates the total.
-    if (qty > 1) {
-      content += '    @ ' + price.toFixed(2) + CMD.LINE_FEED;
+    // Set menu sub-items — HTML 빌과 동일하게 구성품을 모두 표기 (완벽히 동일한 항목).
+    // thermal 은 ↳ 글리프가 안 찍힐 수 있어 ASCII '>' 사용.
+    if (item.menuItem.is_set_menu && Array.isArray(item.menuItem.set_items) && item.menuItem.set_items.length > 0) {
+      item.menuItem.set_items.forEach(si => {
+        const siName = typeof si === 'string' ? si : ((si && si.name) || '');
+        if (siName) content += '    > ' + siName + CMD.LINE_FEED;
+      });
     }
 
     // Options
@@ -1049,7 +1063,7 @@ html, body { margin: 0; padding: 0; background: #fff; color: #000; }
 body {
   font-family: 'Noto Sans KR', 'Noto Sans', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
   font-size: 12px;
-  line-height: 1.5;
+  line-height: 1.3;
   padding: 10px 8px 4px 8px;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
@@ -1080,8 +1094,8 @@ body {
 .items-header .ih-qty { width: 28px; text-align: left; }
 .items-header .ih-name { flex: 1; text-align: left; }
 .items-header .ih-price { width: 56px; text-align: right; white-space: nowrap; }
-.items { text-align: left; margin: 4px 0; }
-.item { margin-bottom: 6px; }
+.items { text-align: left; margin: 3px 0; }
+.item { margin-bottom: 3px; }
 .item-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .item-row .ih-qty { width: 28px; text-align: left; font-weight: 600; }
 .item-name { flex: 1; font-weight: 600; word-break: break-word; }
@@ -1092,7 +1106,7 @@ body {
 
 /* Totals */
 .totals { text-align: left; margin-top: 6px; }
-.totals .meta-row { padding: 2px 0; }
+.totals .meta-row { padding: 1px 0; }
 .total-final { display: flex; justify-content: space-between; align-items: baseline; font-size: 16px; font-weight: 700; margin-top: 4px; padding-top: 4px; border-top: 1px solid #000; }
 
 /* Big numbers (table/pickup) */
@@ -1268,10 +1282,10 @@ export function generateHTMLBill(orderData, storeInfo) {
     const setItemsHtml = (item.menuItem.is_set_menu && Array.isArray(item.menuItem.set_items) && item.menuItem.set_items.length > 0)
       ? item.menuItem.set_items.map(si => `<div class="item-option">↳ ${escapeHtmlForPrint(typeof si === 'string' ? si : (si?.name || ''))}</div>`).join('')
       : '';
+    // 2026-05-29: 단가(@ unit price) 라인 제거 (매장 요청) — 수량 + 품명 + 합계만.
     return `
       <div class="item">
         <div class="item-row"><span class="ih-qty">${qty}</span><span class="item-name">${itemName}</span><span class="item-price">${total.toFixed(2)}</span></div>
-        <div class="item-qty">@ ${price.toFixed(2)}</div>
         ${setItemsHtml}
         ${optionsHtml}
       </div>
@@ -2714,13 +2728,22 @@ export function generateKitchenTicketPreview(orderData, storeInfo) {
  * @param {HTMLCanvasElement} qrCanvas - QR code canvas element
  * @param {string} storeName - Restaurant name
  */
-export async function printTableQR(tableNumber, qrCanvas, storeName = 'Restaurant', expiresAt = null, timezone = null) {
+export async function printTableQR(tableNumber, qrCanvas, storeName = 'Restaurant', expiresAt = null, timezone = null, cashless = false) {
   const tzOpt = timezone ? { timeZone: timezone } : {};
   const now = new Date();
   const printedTime = now.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', ...tzOpt });
   const expiryTime = expiresAt ? new Date(expiresAt).toLocaleString('en-US', { hour: '2-digit', minute: '2-digit', ...tzOpt }) : '';
   const timeInfo = `<div class="time-info">Printed: ${printedTime}</div>` +
     (expiryTime ? `<div class="time-info">Orders accepted until ${expiryTime}</div>` : '');
+
+  // 2026-05-29: 캐시리스 매장이면 손님이 QR 찍기 전에 바로 보이도록 굵은 박스 표시.
+  // 인쇄는 흑백이므로 굵은 글씨 + 테두리로 강조 (영수증 전체가 영어이므로 영어 유지).
+  const cashlessHtml = cashless
+    ? `<div style="margin:8px auto;padding:5px 10px;border:2px solid #000;border-radius:6px;font-weight:700;font-size:13px;letter-spacing:0.5px;">CASHLESS STORE<br/><span style="font-weight:600;font-size:11px;">Card / e-wallet only — no cash</span></div>`
+    : '';
+  const cashlessEscpos = cashless
+    ? (CMD.BOLD_ON + '** CASHLESS STORE **' + CMD.LINE_FEED + 'Card / e-wallet only - no cash' + CMD.LINE_FEED + CMD.BOLD_OFF + CMD.LINE_FEED)
+    : '';
 
   // Browser-iframe path — works in every browser, no popup blocker, no QZ setup.
   // This is the safe fallback for the OS print dialog whenever the silent QZ/RawBT
@@ -2733,6 +2756,7 @@ export async function printTableQR(tableNumber, qrCanvas, storeName = 'Restauran
       <div class="big-number">${escapeHtmlForPrint(tableNumber)}</div>
       <div class="qr-container"><img src="${qrCanvas.toDataURL('image/png')}" width="140" height="140" /></div>
       <div class="instruction">Scan to order</div>
+      ${cashlessHtml}
       ${timeInfo}
     `);
     return printHTMLContent(htmlContent, 'Table QR');
@@ -2762,7 +2786,7 @@ export async function printTableQR(tableNumber, qrCanvas, storeName = 'Restauran
         const [host, port] = address.split(':');
         const config = qz.configs.create(null, { host, port: parseInt(port || '9100', 10), encoding: 'UTF-8' });
         let header = CMD.INIT + CMD.ALIGN_CENTER + CMD.TEXT_DOUBLE + storeName + CMD.LINE_FEED + CMD.TEXT_NORMAL + CMD.LINE_FEED + CMD.BOLD_ON + CMD.TEXT_DOUBLE + tableNumber + CMD.LINE_FEED + CMD.TEXT_NORMAL + CMD.BOLD_OFF + CMD.LINE_FEED;
-        let footer = CMD.ALIGN_CENTER + 'Scan to order' + CMD.LINE_FEED + CMD.LINE_FEED + 'Printed: ' + printedTime + CMD.LINE_FEED + (expiryTime ? 'Orders accepted until ' + expiryTime + CMD.LINE_FEED : '') + CMD.LINE_FEED + CMD.LINE_FEED + CMD.CUT_PARTIAL;
+        let footer = CMD.ALIGN_CENTER + 'Scan to order' + CMD.LINE_FEED + CMD.LINE_FEED + cashlessEscpos + 'Printed: ' + printedTime + CMD.LINE_FEED + (expiryTime ? 'Orders accepted until ' + expiryTime + CMD.LINE_FEED : '') + CMD.LINE_FEED + CMD.LINE_FEED + CMD.CUT_PARTIAL;
         await qz.print(config, [
           { type: 'raw', format: 'base64', data: btoa(unescape(encodeURIComponent(header))) },
           { type: 'raw', format: 'image', data: qrCanvas.toDataURL('image/png'), options: { language: 'ESCPOS', dotDensity: 'double' } },
@@ -2781,6 +2805,7 @@ export async function printTableQR(tableNumber, qrCanvas, storeName = 'Restauran
       <div class="big-number">${escapeHtmlForPrint(tableNumber)}</div>
       <div class="qr-container"><img src="${qrCanvas.toDataURL('image/png')}" width="140" height="140" /></div>
       <div class="instruction">Scan to order</div>
+      ${cashlessHtml}
       ${timeInfo}
     `);
     console.log('🧾 Table QR via QZ Tray (HTML, OS driver)');
@@ -2825,6 +2850,8 @@ export async function printTableQR(tableNumber, qrCanvas, storeName = 'Restauran
       content += '2. Browse menu & add items' + CMD.LINE_FEED;
       content += '3. Place your order' + CMD.LINE_FEED;
       content += CMD.LINE_FEED;
+
+      if (cashlessEscpos) { content += cashlessEscpos; }
 
       content += CMD.DASHED_LINE + CMD.LINE_FEED;
       content += CMD.LINE_FEED;

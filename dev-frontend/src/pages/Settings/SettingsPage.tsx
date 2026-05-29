@@ -679,6 +679,7 @@ const SettingsPage: React.FC = () => {
   const receiptLogoRef = useRef<AutoSaveHandle>(null);
   const customQrImageRef = useRef<AutoSaveHandle>(null);
   const ewalletQrRef = useRef<AutoSaveHandle>(null);
+  const requireCardTypeRef = useRef<AutoSaveHandle>(null);
   const companyLogoRef = useRef<AutoSaveHandle>(null);
   const storeLogoRef = useRef<AutoSaveHandle>(null);
   const [deleteStationConfirm, setDeleteStationConfirm] = useState<{ isOpen: boolean; stationId: number | null; stationName: string }>({ isOpen: false, stationId: null, stationName: '' });
@@ -2515,6 +2516,32 @@ const SettingsPage: React.FC = () => {
                   })()}
 
                   {/* Card - POS only, no PG config needed (online payments use Online Payment method) */}
+
+                  {/* Card Settings — require card type selection at payment */}
+                  {key === 'card' && method.enabled && (
+                    <div style={{ borderTop: '1px solid #C7CED6', paddingTop: '16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540' }}>
+                            {t('settings:settingsPage.requireCardType', { defaultValue: 'Require card type selection' })}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#6B7C93', marginTop: '2px' }}>
+                            {t('settings:settingsPage.requireCardTypeHint', { defaultValue: 'When on, the cashier must pick a card type (Visa / Master / Amex / Other) before completing a card payment.' })}
+                          </div>
+                        </div>
+                        <AutoSaveField ref={requireCardTypeRef} onSave={handleSave} type="toggle">
+                          <ToggleSwitch>
+                            <ToggleInput
+                              type="checkbox"
+                              checked={!!method.requireCardType}
+                              onChange={(e) => { handlePaymentSettingChange(key, 'requireCardType', e.target.checked); requireCardTypeRef.current?.triggerSave(); }}
+                            />
+                            <ToggleSlider />
+                          </ToggleSwitch>
+                        </AutoSaveField>
+                      </div>
+                    </div>
+                  )}
 
                   {/* E-Wallet Settings - QR Code Image */}
                   {key === 'ewallet' && method.enabled && (

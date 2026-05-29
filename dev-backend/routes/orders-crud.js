@@ -19,6 +19,23 @@ const { logActivity } = require('../utils/activityLogger');
 const { getTodayBounds, getOrderDatePrefix, getRestaurantTimezone } = require('../utils/dateTimeHelper');
 const { checkPaymentMethodAllowed } = require('../utils/paymentMethodGuard');
 const { enrichItemsWithStation } = require('../utils/stationEnrichment');
+const { round2, computeOrderTotals } = require('../utils/orderTotals');
+
+// coupon_code 로 쿠폰 메타(type/value/max_discount)를 조회. 머지/삭제 시 % 쿠폰을
+// 새 소계로 정확히 재계산하기 위함. 없으면 null → 비례 재계산 fallback.
+async function resolveCouponMeta(restaurantId, couponCode, transaction = null) {
+  if (!couponCode) return null;
+  try {
+    const c = await Coupon.findOne({
+      where: { restaurant_id: restaurantId, code: String(couponCode).toUpperCase() },
+      ...(transaction ? { transaction } : {})
+    });
+    if (!c) return null;
+    return { type: c.type, value: parseFloat(c.value), maxDiscount: c.max_discount != null ? parseFloat(c.max_discount) : null };
+  } catch (e) {
+    return null;
+  }
+}
 
 router.get('/', authenticateToken, async (req, res) => {
   try {
@@ -292,32 +309,42 @@ async function mergeItemsIntoOrder(existingOrder, newItems, transaction = null) 
 
   const mergedItems = [...currentItems, ...itemsWithTimestamp];
 
-  // Recalculate total - preserve existing discounts
+  // Subtotal before adding the new items (% 할인·실효세율 비율 도출용)
+  const oldSubtotal = currentItems.reduce((sum, item) => {
+    const itemPrice = parseFloat(item.price) || 0;
+    const itemQty = parseInt(item.quantity) || 1;
+    return sum + (itemPrice * itemQty);
+  }, 0);
+
   const itemsSubtotal = mergedItems.reduce((sum, item) => {
     const itemPrice = parseFloat(item.price) || 0;
     const itemQty = parseInt(item.quantity) || 1;
     return sum + (itemPrice * itemQty);
   }, 0);
 
-  // Preserve existing discount fields (already calculated amounts)
-  const discount = parseFloat(existingOrder.discount) || 0;
-  const couponDiscount = parseFloat(existingOrder.coupon_discount) || 0;
-  const discountPolicyAmount = parseFloat(existingOrder.discount_policy_amount) || 0;
-  const pointDiscount = parseFloat(existingOrder.point_discount) || 0;
-  const tax = parseFloat(existingOrder.tax) || 0;
-  const serviceCharge = parseFloat(existingOrder.service_charge) || 0;
-  const takeawayCharge = parseFloat(existingOrder.takeaway_charge) || 0;
-  const deliveryFee = parseFloat(existingOrder.delivery_fee) || 0;
-
-  const newTotal = itemsSubtotal
-    - discount
-    - couponDiscount
-    - discountPolicyAmount
-    - pointDiscount
-    + tax
-    + serviceCharge
-    + takeawayCharge
-    + deliveryFee;
+  // 2026-05-29: 전체 금액을 정식 공식(computeOrderTotals)으로 재계산.
+  //   - 세금·서비스차지: 새 할인후금액(afterDiscount) 기준으로 재계산
+  //   - % 할인정책·% 쿠폰: 새 소계 기준 재계산 (매장 결정, Toast/Square 표준)
+  //   - 고정 할인·포인트·포장/배달: 유지
+  // 이전엔 tax/service 를 원시 소계로 계산하고 % 할인을 동결해서 청구액이 어긋났다.
+  const couponMeta = await resolveCouponMeta(existingOrder.restaurant_id, existingOrder.coupon_code, transaction);
+  const totals = computeOrderTotals({
+    newSubtotal: itemsSubtotal,
+    oldSubtotal,
+    takeawayCharge: existingOrder.takeaway_charge,
+    deliveryFee: existingOrder.delivery_fee,
+    discount: existingOrder.discount,
+    oldDiscountPolicyAmount: existingOrder.discount_policy_amount,
+    oldCouponDiscount: existingOrder.coupon_discount,
+    coupon: couponMeta,
+    pointDiscount: existingOrder.point_discount,
+    oldTax: existingOrder.tax,
+    taxRate: existingOrder.tax_rate,
+    oldServiceCharge: existingOrder.service_charge,
+    serviceChargeRate: existingOrder.service_charge_rate
+  });
+  const { tax, serviceCharge } = totals;
+  const newTotal = totals.total;
 
   // Update order
   // Note: Don't use JSON.stringify - Sequelize setter handles it automatically
@@ -335,6 +362,10 @@ async function mergeItemsIntoOrder(existingOrder, newItems, transaction = null) 
   await existingOrder.update({
     order_items: mergedItems,
     subtotal: itemsSubtotal,
+    tax,
+    service_charge: serviceCharge,
+    discount_policy_amount: totals.discountPolicyAmount,
+    coupon_discount: totals.couponDiscount,
     total_amount: newTotal,
     status: preserveOutstanding ? 'outstanding' : 'pending',
     // 2026-05-28: Flip needs_print so MainLayout polling triggers the
@@ -1225,6 +1256,8 @@ router.post('/merge', authenticateToken, async (req, res) => {
       if (typeof targetItems === 'string') {
         targetItems = JSON.parse(targetItems);
       }
+      // Snapshot target's own items before appending sources (% 할인 비율 도출 base)
+      const targetOriginalItems = [...targetItems];
 
       const now = new Date().toISOString();
       const deletedOrderIds = [];
@@ -1261,32 +1294,42 @@ router.post('/merge', authenticateToken, async (req, res) => {
         return sum + (itemPrice * itemQty);
       }, 0);
 
-      // Preserve existing discount fields from target order
-      const discount = parseFloat(target.discount) || 0;
-      const couponDiscount = parseFloat(target.coupon_discount) || 0;
-      const discountPolicyAmount = parseFloat(target.discount_policy_amount) || 0;
-      const pointDiscount = parseFloat(target.point_discount) || 0;
-      const tax = parseFloat(target.tax) || 0;
-      const serviceCharge = parseFloat(target.service_charge) || 0;
-      const takeawayCharge = parseFloat(target.takeaway_charge) || 0;
-      const deliveryFee = parseFloat(target.delivery_fee) || 0;
+      // Subtotal of the target BEFORE merging sources (% 할인 비율 도출용)
+      const targetOldSubtotal = targetOriginalItems.reduce((sum, item) => {
+        const itemPrice = parseFloat(item.price) || 0;
+        const itemQty = parseInt(item.quantity) || 1;
+        return sum + (itemPrice * itemQty);
+      }, 0);
 
-      const newTotal = itemsSubtotal
-        - discount
-        - couponDiscount
-        - discountPolicyAmount
-        - pointDiscount
-        + tax
-        + serviceCharge
-        + takeawayCharge
-        + deliveryFee;
+      // 2026-05-29: 정식 공식으로 전체 재계산 (세금·서비스차지 afterDiscount 기준,
+      // % 할인정책·쿠폰 새 소계 재계산, 고정 할인·포인트 유지)
+      const couponMeta = await resolveCouponMeta(target.restaurant_id, target.coupon_code, t);
+      const totals = computeOrderTotals({
+        newSubtotal: itemsSubtotal,
+        oldSubtotal: targetOldSubtotal,
+        takeawayCharge: target.takeaway_charge,
+        deliveryFee: target.delivery_fee,
+        discount: target.discount,
+        oldDiscountPolicyAmount: target.discount_policy_amount,
+        oldCouponDiscount: target.coupon_discount,
+        coupon: couponMeta,
+        pointDiscount: target.point_discount,
+        oldTax: target.tax,
+        taxRate: target.tax_rate,
+        oldServiceCharge: target.service_charge,
+        serviceChargeRate: target.service_charge_rate
+      });
 
       // Update target order
       // Note: Don't use JSON.stringify - Sequelize setter handles it automatically
       await target.update({
         order_items: targetItems,
         subtotal: itemsSubtotal,
-        total_amount: newTotal,
+        tax: totals.tax,
+        service_charge: totals.serviceCharge,
+        discount_policy_amount: totals.discountPolicyAmount,
+        coupon_discount: totals.couponDiscount,
+        total_amount: totals.total,
         status: 'pending' // Reset to pending for kitchen re-review
       }, { transaction: t });
 
@@ -1605,35 +1648,34 @@ router.delete('/:id/items/:itemIndex', authenticateToken, async (req, res) => {
     order.subtotal = newSubtotal;
     order.order_items = orderItems;
 
-    // Recalculate service charge if applicable
-    const serviceChargeRate = parseFloat(order.service_charge_rate || 0);
-    if (serviceChargeRate > 0) {
-      order.service_charge = newSubtotal * (serviceChargeRate / 100);
-    }
-
-    // Recalculate tax if applicable
-    const taxRate = parseFloat(order.tax_rate || 0);
-    if (taxRate > 0) {
-      order.tax = newSubtotal * (taxRate / 100);
-    }
-
-    // Calculate final total
-    const takeawayCharge = parseFloat(order.takeaway_charge || 0);
-    const deliveryFee = parseFloat(order.delivery_fee || 0);
-    const serviceCharge = parseFloat(order.service_charge || 0);
-    const tax = parseFloat(order.tax || 0);
-    const discount = parseFloat(order.discount || 0);
-
-    const newTotal = newSubtotal
-      + takeawayCharge
-      + deliveryFee
-      + serviceCharge
-      + tax
-      - discount
-      - pointDiscount
-      - couponDiscount;
-
-    order.total_amount = Math.max(0, newTotal); // Ensure non-negative
+    // 2026-05-29: 아이템 삭제도 머지와 동일한 정식 공식(computeOrderTotals)으로
+    // 전체 재계산. 세금·서비스차지는 새 할인후금액 기준, % 할인정책·쿠폰은 줄어든
+    // 소계 기준으로 재계산, 고정 할인·포인트는 유지. (이전 코드는 rate>0 만 보고
+    // 재계산해서 세금 없던 주문에 6% 세금이 잘못 붙는 버그가 있었다.)
+    const prevTotalAmount = parseFloat(order.total_amount) || 0; // 변경 전 총액 (audit 용)
+    const prevTax = parseFloat(order.tax) || 0;
+    const prevServiceCharge = parseFloat(order.service_charge) || 0;
+    const couponMeta = await resolveCouponMeta(order.restaurant_id, order.coupon_code);
+    const totals = computeOrderTotals({
+      newSubtotal,
+      oldSubtotal: currentSubtotal,
+      takeawayCharge: order.takeaway_charge,
+      deliveryFee: order.delivery_fee,
+      discount: order.discount,
+      oldDiscountPolicyAmount: order.discount_policy_amount,
+      oldCouponDiscount: order.coupon_discount,
+      coupon: couponMeta,
+      pointDiscount: order.point_discount,
+      oldTax: prevTax,
+      taxRate: order.tax_rate,
+      oldServiceCharge: prevServiceCharge,
+      serviceChargeRate: order.service_charge_rate
+    });
+    order.service_charge = totals.serviceCharge;
+    order.tax = totals.tax;
+    order.discount_policy_amount = totals.discountPolicyAmount;
+    order.coupon_discount = totals.couponDiscount;
+    order.total_amount = Math.max(0, totals.total); // Ensure non-negative
 
     await order.save();
 
@@ -1654,7 +1696,7 @@ router.delete('/:id/items/:itemIndex', authenticateToken, async (req, res) => {
             price: removedItem.price,
             quantity: removedItem.quantity
           },
-          previous_total: currentSubtotal + takeawayCharge + deliveryFee + (serviceChargeRate > 0 ? currentSubtotal * serviceChargeRate / 100 : serviceCharge) + (taxRate > 0 ? currentSubtotal * taxRate / 100 : tax) - discount - pointDiscount - couponDiscount,
+          previous_total: round2(prevTotalAmount),
           new_total: newTotal
         },
         description: `Removed "${removedItem.name}" (qty: ${removedItem.quantity}, price: ${removedItem.price}) from order ${order.order_number}`,

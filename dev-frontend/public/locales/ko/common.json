@@ -1,6 +1,8 @@
 {
   "storeBadge.cashless": "캐시리스",
   "storeBadge.cashlessHint": "이 매장은 현금 결제를 받지 않습니다",
+  "storeBadge.cashlessNoticeTitle": "캐시리스 매장 — 현금 결제 불가",
+  "storeBadge.cashlessNoticeSub": "카드 또는 전자지갑으로만 결제해 주세요.",
   "backToDashboard": "대시보드로 돌아가기",
   "visitHomepage": "PurpleHere 홈페이지로",
   "button": {

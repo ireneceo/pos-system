@@ -2139,28 +2139,11 @@ const POSTerminalPage: React.FC = () => {
         const _kpAuto = !!_kp.autoPrint;
         const _stationAutoPrint = Object.values(_stationPrintersMap).some((s: any) => s?.autoPrint);
         const kitchenAuto = (_kpEnabled && !_kpAuto && !_stationAutoPrint) ? false : (_kpAuto || _stationAutoPrint);
-        // Telemetry helper — POSTs to /api/qz-tray/diagnose silently so we get a SupportTicket
-        // for every auto-print attempt on the add-order flow.
-        const _tele = (scope: string, extra: any = {}) => {
-          try {
-            const tok = getAuthToken();
-            if (!tok) return;
-            fetch('/api/qz-tray/diagnose', {
-              method: 'POST',
-              headers: { 'Authorization': `Bearer ${tok}`, 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                scope, orderNumber: savedOrder?.order_number || newOrder.orderNumber,
-                method: 'qztray',
-                userAgent: navigator.userAgent, os: navigator.platform,
-                probedAt: new Date().toISOString(),
-                kitchenEnabled: !!printSettings.kitchenPrinter?.enabled,
-                kitchenAutoPrint: !!printSettings.kitchenPrinter?.autoPrint,
-                stationCount: Object.keys(printSettings.kitchenStationPrinters || {}).length,
-                ...extra
-              })
-            }).catch(()=>{});
-          } catch {}
-        };
+        // 2026-05-29: 자동 진단 이메일 발송 중단 (매장 요청). auto-kitchen-skip 등은
+        // 에러가 아니라 정상 설정(자동인쇄 OFF)에서도 주문마다 발사돼 관리자에게
+        // 메일 스팸이 됐다. 프린터 문제는 발생 시 Settings → Printer 의 수동 진단
+        // 버튼으로 한 번만 보고한다. 자동 telemetry 는 no-op 처리.
+        const _tele = (_scope: string, _extra: any = {}) => {};
         if (kitchenAuto) {
           const printData = {
             ...orderData,
@@ -2420,36 +2403,11 @@ const POSTerminalPage: React.FC = () => {
       // Falls back to legacy global billPrinter for restaurants that haven't migrated.
       const activeBill = getActiveBillPrinter();
 
-      // Auto-telemetry helper: silently POSTs to /api/qz-tray/diagnose so we get a
-      // SupportTicket on the admin side every time an auto-print path fails or is
-      // skipped. No cashier-visible noise, just turns the silent failure into a
-      // signal we can act on.
-      const _telemetry = (scope: string, extra: any = {}) => {
-        try {
-          const tok = getAuthToken();
-          if (!tok) return;
-          fetch('/api/qz-tray/diagnose', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${tok}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              scope,
-              orderNumber: printData?.orderNumber,
-              method: activeBill?.method || 'unknown',
-              connected: true,
-              certHandshake: 'silent',
-              silentPrint: 'unknown',
-              userAgent: navigator.userAgent,
-              os: navigator.platform,
-              probedAt: new Date().toISOString(),
-              activeBillName: activeBill?.name || '(empty)',
-              activeBillAddress: activeBill?.address || '(empty)',
-              activeBillEnabled: !!activeBill?.enabled,
-              activeBillAutoPrint: !!activeBill?.autoPrint,
-              ...extra
-            })
-          }).catch(() => {});
-        } catch {}
-      };
+      // 2026-05-29: 자동 진단 이메일 발송 중단 (매장 요청). auto-bill-skip /
+      // auto-kitchen-skip 은 정상 설정(자동인쇄 OFF)에서도 결제마다 발사돼 관리자
+      // 메일 스팸의 원인이었다. 프린터 문제는 Settings → Printer 의 수동 진단
+      // 버튼으로 한 번만 보고한다. 자동 telemetry 는 no-op.
+      const _telemetry = (_scope: string, _extra: any = {}) => {};
 
       if (activeBill?.enabled && activeBill?.autoPrint) {
         // F&B standard: counter copy + customer copy (default 2). User-configurable in Settings → Receipt.

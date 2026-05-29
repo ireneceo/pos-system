@@ -673,6 +673,9 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     }
   };
 
+  // 카드 결제 시 카드종류 선택 필수 여부 (매장 Payment 설정).
+  const requireCardType = !!(paymentMethods && paymentMethods.card && paymentMethods.card.requireCardType);
+
   const canConfirm = () => {
     if (!paymentMethods || availableMethods.length === 0) return false;
     if (splitMode) {
@@ -681,6 +684,9 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
         const amount = parseFloat(cashAmount) || 0;
         return amount >= splitTotal;
       }
+      if (paymentMethod === 'card') {
+        return !requireCardType || !!cardType;
+      }
       return true;
     }
     if (paymentMethod === 'cash') {
@@ -688,7 +694,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       return amount >= total;
     }
     if (paymentMethod === 'card') {
-      return true;
+      // 매장 설정(payment_settings.card.requireCardType)이 켜져 있으면 카드종류 선택 필수.
+      return !requireCardType || !!cardType;
     }
     return true;
   };
@@ -1137,7 +1144,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 
       {paymentMethod === 'card' && (
         <InputSection>
-          <Label>Card Type (Optional)</Label>
+          <Label>{requireCardType ? 'Card Type *' : 'Card Type (Optional)'}</Label>
           <QuickAmountGrid>
             {['visa', 'master', 'amex', 'other'].map(type => (
               <QuickAmountBtn
@@ -1149,6 +1156,11 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
               </QuickAmountBtn>
             ))}
           </QuickAmountGrid>
+          {requireCardType && !cardType && (
+            <div style={{ marginTop: '8px', fontSize: '12px', fontWeight: 500, color: '#FF6B6B' }}>
+              Please select a card type to continue.
+            </div>
+          )}
         </InputSection>
       )}
 

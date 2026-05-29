@@ -1083,26 +1083,13 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
         const QRCode = (await import('qrcode')).default;
         const canvas = document.createElement('canvas');
         await QRCode.toCanvas(canvas, qrData.qr_url, { width: 200, margin: 2 });
-        const printed = await printTableQR(tableNumber, canvas, storeName, qrData.expires_at, timezone);
+        // Cashless = cash 결제수단이 명시적으로 비활성. QR 인쇄물에 손님이 보도록 표시.
+        const cashless = !!(paymentSettings && paymentSettings.cash && paymentSettings.cash.enabled === false);
+        const printed = await printTableQR(tableNumber, canvas, storeName, qrData.expires_at, timezone, cashless);
         if (!printed) {
+          // 2026-05-29: 자동 진단 이메일 발송 제거 (매장 요청). 실패 시 화면 안내만
+          // 표시하고, 필요하면 Settings → Printer 의 수동 진단 버튼으로 보고한다.
           setQrError('QR print failed via the configured printer method. Check Settings → Printer (QZ Tray / address / connection) — the QR may need a printer that supports raster images.');
-          // Auto-telemetry — silent ticket so we can see why printTableQR returned false
-          try {
-            const tok = getAuthToken();
-            if (tok) {
-              fetch('/api/qz-tray/diagnose', {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${tok}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  scope: 'floor-plan-qr-fail',
-                  tableNumber, restaurantId,
-                  method: 'qztray',
-                  userAgent: navigator.userAgent, os: navigator.platform,
-                  probedAt: new Date().toISOString()
-                })
-              }).catch(()=>{});
-            }
-          } catch {}
         }
       }
     } catch (err) {

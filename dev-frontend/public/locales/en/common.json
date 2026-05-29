@@ -1,6 +1,8 @@
 {
   "storeBadge.cashless": "Cashless",
   "storeBadge.cashlessHint": "This store does not accept cash payments",
+  "storeBadge.cashlessNoticeTitle": "Cashless store — cash not accepted",
+  "storeBadge.cashlessNoticeSub": "Please pay by card or e-wallet only.",
   "backToDashboard": "Back to Dashboard",
   "visitHomepage": "Visit PurpleHere homepage",
   "button": {

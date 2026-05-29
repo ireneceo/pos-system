@@ -1,107 +1,55 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-05-28
-**버전:** v3.43 hotfix #3 운영 배포 (2026-05-28, Backup 20260528_085906, smoke 10/10) — 버전 미상승 (backstage)
-**작업 상태:** Kitchen Station hybrid 모드 + 모바일 주문 카테고리 라우팅 fix 운영 배포 완료. The Fire 매장 영업 1일차 실시간 fix.
+**마지막 업데이트:** 2026-05-29
+**버전:** v3.43 (운영) — 아래 변경들은 **dev 에만 있고 미배포** (버전 미상승, /배포 대기)
+**작업 상태:** 분석/설계 마침. 다음 세션 = 아래 "다음 확정 작업" 바로 구현 착수.
 
 ---
 
-## 🔔 다음 세션 진입 시 사용자에게 알려야 할 것 (필수)
+## 🔔 다음 세션 진입 시 사용자에게 알려야 할 것
 
-### 1. 매장 도입 (2026-05-28~) 현장 검증 항목
-사용자에게 "어제 v3.43 운영 배포한 변경들 — 매장에서 실제 동작 확인하셨나요?" 명시.
+### A. 이번 세션 dev 반영했으나 **아직 운영 미배포** (Irene /배포 시 함께 나감)
+1. **주문 머지 전체 금액 재계산 정합성** — `utils/orderTotals.computeOrderTotals` 단일 공식. 세금/서비스차지=할인후금액 기준, %할인정책·쿠폰 새 소계 재계산, 고정할인·포인트 유지. 4경로(POS forceMerge / add-items·merge-items / bulk merge / 모바일) + DELETE item 통일. (검증: E2E 5케이스 PASS, health 80/80)
+2. **빌프린트 단가 제거 + 줄간격 축소** (ESC/POS + HTML 양쪽, 세트 구성품 표기 동일화). `billPrint.js`.
+3. **Floor Plan QR 인쇄 캐시리스 표시** + **모바일 메뉴 캐시리스 배너** (4언어).
+4. **진단 이메일 자동발송 중단** — POSTerminal `_tele`/`_telemetry` no-op, Floor Plan QR-fail 자동발송 제거. 수동 Settings 진단 버튼만 유지. (qz-tray/diagnose 백엔드는 그대로)
+5. **카드 결제 시 카드종류 선택 필수 토글** — `payment_settings.card.requireCardType`(기본 false). Settings 결제탭 토글 + PaymentModal 강제 + 4언어.
 
-**v3.43 매장 critical 검증 시나리오**:
-- A. **AutoPrint master gate** — `kitchenPrinter.autoPrint=false` 시 station 토글 ON 이어도 자동 인쇄 안 됨 (browser print dialog 안 뜸)
-- B. **신규주문 banner** — 녹색(emerald) 그라데이션, View/X 버튼 클릭 정상, 우측 NotificationToaster 와 안 겹침
-- C. **Customer Display reconnect** — F5 / 네트워크 끊김 / 모니터 sleep 후 last cart 자동 복원
-- D. **Customer Display 자동 오픈** — 첫 click 으로 secondary 모니터에 popup, default ON
-- E. **Customer Display 크기** — 작은 모니터에서 가독성 (전화 38px tabular, member 22px)
-- F. **Receipt logo 인쇄** — POS/LiveOrders/주문상세 뷰영수증/모바일 ReceiptShare 모두 로고 보임 (어제 안 나오던 핵심)
-- G. **Brand Menu** — 카테고리 필터 select / 등록 시 카테고리 필수 / 모두 lock 시 Edit→View
-- H. **Floor Plan TableDetailPanel** — 4단계 dot (Queued/Cooking/Ready/Served), ready 부터만 체크박스 활성
-- I. **모바일 주문 status override** — Settings 토글 ON 일 때 outstanding / OFF 일 때 즉시 pending → KDS
-- J. **KDS +Round N divider** — 같은 테이블 추가 주문 시 노란 띠 "+ ROUND N" 표시 + 자동 인쇄 (master gate 통과 시)
+→ **다음 세션 진입 시 "위 5개 dev 검증 끝, /배포 할까요?" 먼저 물어볼 것.** (커밋도 아직 — 작업 트리에만 있음, /개발완료 미실행)
 
-### 2. 진행 중인 미해결
-- 매장 station-only 운영 패턴 (kitchenPrinter.enabled=false + station autoPrint 만) — 별도 검증 필요
-- Customer Display PWA 모드 자동오픈 — Chrome 의 popup 제한 매장 PC 환경 확인
+### B. v3.43 운영 매장 현장 검증 (이전 세션 이월, The Fire 도입)
+AutoPrint master gate / 신규주문 banner / Customer Display reconnect·자동오픈 / Receipt logo 인쇄 / Brand Menu / KDS +Round N — 현장 동작 확인 여부 확인.
 
 ---
 
-## 오늘 (2026-05-27) v3.43 운영 배포
+## 다음 확정 작업 (Irene 명시 지시 + 결정 확정 완료 — 바로 구현)
 
-### 매장 도입 직전 critical fix
-1. **AutoPrint master gate** (6곳 일괄) — kitchenPrinter.autoPrint 가 master, station 토글 우회 차단
-2. **신규주문 banner** — 색상/Z-index/X 버튼/NotificationToaster 분리
-3. **Customer Display backend cart cache** — services/socketService.js, reconnect 시 자동 replay
-4. **Customer Display 자동오픈 default ON** + 폰트/패딩 대폭 키움
-5. **Receipt logo endpoint path fix** — `/var/www/uploads` 기준 + traversal 가드 + data: 처리
-6. **billPrint.js img src 정규식 fix** — `^https?` → `^(data:|https?:\/\/)` (모든 인쇄 경로 자동 적용)
-7. **Brand Menu** — 카테고리 필수 + 검색 옆 select 필터 + fully locked View
-8. **Floor Plan TableDetailPanel** — ready↔served 4단계 dot ItemStatusPill + i18n 4언어
-9. **Mobile orders status override** — orders-crud.js:386 source='mobile' 분기
-10. **KDS +Round N divider** + auto-print
-11. **Auto-merge 조건 완화** + status preservation
+> 2026-05-29 Irene 가 AskUserQuestion 으로 전부 컨펌함. 재질문 없이 구현.
 
-### 검증 (10단계 통과)
-- 0 state-hydration 0 warning
-- 1 빌드 main.1bf88f91.js warning 0
-- 2 health-check 80/80
-- 3 API 6/6 (autoPrint master gate / receipt-logo / status override / auto-merge / cart cache reconnect / clear evict)
-- 10 critical mount 6/6 (POS/KDS/Floor Plan/Settings Printer/Live Orders/Customer Display)
+### 그룹 1 — Floor Plan / POS 운영 개선 (중규모, 바로 구현 가능)
+1. **우측 패널 접기** (`TableDetailPanel.tsx`) — 항상 노출: 주문 상태진행 버튼 + 결제 + Add Items. 접이식 "테이블 작업 ▾"(기본 접힘): QR Reprint/Expire/정보, 프린트 아이콘, Cancel/Leaved. → 주문내역 가독성 확보.
+2. **"Open in POS Terminal" 링크 제거** — `TableDetailPanel.tsx` 2곳(occupied ~1798 / available ~1837). 신규주문은 기존 "+ New Order" iframe POSOverlay(`handleNewOrder`)로 충분.
+3. **테이블 점 재정의** (`TableNode.tsx` `MobileOrderDot`) — 기준을 "**미접수 새 주문**"으로: `orderStatus === 'pending'`(+outstanding), **출처 무관**. 색=빨강(needs-attention 토큰). 직원이 접수(Start Cooking 등 상태 진행)하면 사라짐. 테이블 색은 주문상태, 점은 "확인 필요" 직교 신호. **범례(legend) 추가** (Floor Plan 화면).
+4. **POS 품절(sold-out)** — `Product.soldOut` 필드 이미 존재(is_active=활성/비활성과 별개). 메뉴 타일 **길게누르기 → 품절/재고복구 토글**. 즉시 회색+SOLD OUT + **socket 브로드캐스트**(전 POS/모바일 반영). 백엔드: `PUT /menu/product/:id/toggle-soldout`(toggle-active 미러, `checkProductTenant` → Staff 허용). Staff 권한 OK.
+5. **할인 PIN 승인** — 매장 설정 토글 "할인 시 PIN 승인 필요"(operation_settings 권장). ON 시 할인 적용에 PIN 입력 → **신규 경량 엔드포인트** `POST /api/staff/verify-pin-permission`(PIN 이 *할인 승인 권한* 가진 직원인지 서버 검증, **JWT 재발급/세션 전환 없이** `{authorized, by}` 반환) + 감사로그. **하드코딩 `MANAGER123` 제거**(`POSTerminalPage.tsx:1914`). 권한 모델: User.permissions JSON 에 `discount_authorize` 추가 or Restaurant Admin/Owner/Manager 자동 허용 — 구현 시 확정.
 
-### 운영 배포 확인
-- Backup: 20260527_203834, smoke 10/10
-- 운영 매장 16 receipt-logo endpoint 200 OK + PNG raster (어제 안 나오던 핵심)
-- 운영 cartCache 코드 deploy 확인
-- 운영 frontend main.1bf88f91.js
+### 그룹 2 — 세트메뉴(콤보) 재설계 (대규모 → `/기능설계` 6단계)
+- 설계 문서: **`docs/SET_MENU_REDESIGN.md`** (작성 완료).
+- 핵심: ① OR(택1) 슬롯 `set_groups` 구조 ② 구성품 Product live 참조 + 옵션 상속 + 주문라인 구성품 분해 → 단품/세트 통합 통계 + 구성품 레시피 재고차감 ③ 품절 연동(fixed=상품품절 시 차단, choice=전 선택지 품절 시만 차단).
+- 기존 set_items → set_groups[fixed] 무손실 마이그.
+- 구성품 선택 UI는 이미 검색 가능(확인됨).
 
 ---
 
-## 오늘 (2026-05-28) v3.43 hotfix #3 운영 배포 — Kitchen Station hybrid 모드 (버전 미상승, backstage)
-
-### 매장 영업 1일차 실시간 fix
-1. **Kitchen Station hybrid 모드** — `kitchen_assignment_mode` radio (category OR menu_item) 제거, 항상 hybrid (카테고리 기본 + 메뉴별 override 동시). Toast / Square / Lightspeed 산업 표준 패턴
-2. **Station Modal 통합** — 카테고리 섹션 + 메뉴 Override 섹션 동시 노출, 메뉴는 카테고리별 그룹 + "via Category → Station" 라우팅 힌트
-3. **Mobile orders 카테고리 fallback bug fix** — `routes/mobile-orders.js` `Product.category` 가 legacy NAME 일 때 `Number(name)=NaN` → 카테고리 라우팅 무효였던 pre-existing 버그. id/name 양쪽 lookup map. 모바일 주문의 카테고리 단위 station 매핑이 실제로 작동 안 하던 사례 차단
-4. **Unassigned 경고 hybrid** — 카테고리 미배정 + 메뉴 override 도 없는 것만 경고
-5. i18n en/ko/zh/ms 12 신규 키
-
-### 검증 통과
-- 빌드 main.7b94c1c9.js
-- API hybrid (override 우선 + category fallback) ✓
-- DB cat→A / product override→B / sibling→null ✓
-- health-check 80/80 ✓
-- headless mount kitchenStations 탭 ✓ pageerror 0
-- 운영 검증: backend 2개 파일 MD5 일치, frontend bundle 일치, The Fire (r=16) `assignment_mode: hybrid` 응답
-
-### 운영 배포
-- Backup: 20260528_085906, smoke 10/10
-- Content sync: 51 contents updated (블로그 자동 동기화)
-
----
-
-### 다음 확정 작업
-- 없음 — 매장 도입 후 실 운영 피드백 기준 대응
-
-### 후속 후보 (아이디어 메모, 확정 X)
-> 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.
-
-- station-only 매장 패턴 검증 (kitchenPrinter 미사용)
-- Customer Display PWA 모드 popup 차단 우회 (Chrome 환경)
-- Floor Plan 우측 패널 — Restaurant Admin 전용 권한 일부 확장
-- Brand Menu lock 토글 UI (현재 backend 설정만, UI 없음)
-- Staff 권한 fine-grained (지금은 6 그룹)
+## 후속 후보 (아이디어 메모, 확정 X)
+> /개발시작 자동 추천 대상 아님.
+- station-only 매장 패턴 검증 / Customer Display PWA popup 우회 / Brand Menu lock 토글 UI / Staff 권한 fine-grained
 
 ---
 
 ## 서버 재시작 후 복구 가이드
-
-새 Claude 세션 시작 시 아래 내용을 붙여넣으세요:
-
+새 Claude 세션 시작 시:
 ```
-이전 세션에서 진행하던 작업을 이어서 하고 싶어.
-/var/www/.claude/session-state.md 파일 읽어줘.
+이전 세션 이어서 할게. /var/www/.claude/session-state.md 읽어줘.
 ```

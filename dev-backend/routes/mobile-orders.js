@@ -13,6 +13,18 @@ const { generateOrderNumber } = require('./mobile-helpers');
 const { checkPaymentMethodAllowed, checkOrderTypeEnabled } = require('../utils/paymentMethodGuard');
 const { logOrderActionSafe } = require('../services/orderAuditLog');
 const { enrichItemsWithStation } = require('../utils/stationEnrichment');
+const { round2, computeOrderTotals } = require('../utils/orderTotals');
+const Coupon = require('../models/Coupon');
+
+// coupon_code → 쿠폰 메타 (머지 시 % 쿠폰 정확 재계산)
+async function resolveCouponMeta(restaurantId, couponCode) {
+  if (!couponCode) return null;
+  try {
+    const c = await Coupon.findOne({ where: { restaurant_id: restaurantId, code: String(couponCode).toUpperCase() } });
+    if (!c) return null;
+    return { type: c.type, value: parseFloat(c.value), maxDiscount: c.max_discount != null ? parseFloat(c.max_discount) : null };
+  } catch (e) { return null; }
+}
 
 router.post('/cart/validate', async (req, res) => {
   try {
@@ -199,12 +211,38 @@ router.post('/order', async (req, res) => {
 
         const mergedItems = [...currentItems, ...newItemsWithTimestamp];
 
-        // Recalculate total
-        const newTotal = mergedItems.reduce((sum, item) => {
+        // 2026-05-29: 정식 공식(computeOrderTotals)으로 전체 재계산. 이전에는
+        // total_amount 를 단순 아이템 합계로 덮어써서 세금·서비스차지·할인이
+        // 모두 사라졌다 (매장 보고: 머지 후 "텍스가 계산 안 되고 추가가 안 됨").
+        // 세금·서비스차지는 할인후금액 기준, % 할인정책·쿠폰은 새 소계 재계산.
+        const oldSubtotal = currentItems.reduce((sum, item) => {
           const itemPrice = parseFloat(item.price) || 0;
           const itemQty = parseInt(item.quantity) || 1;
           return sum + (itemPrice * itemQty);
         }, 0);
+        const itemsSubtotal = mergedItems.reduce((sum, item) => {
+          const itemPrice = parseFloat(item.price) || 0;
+          const itemQty = parseInt(item.quantity) || 1;
+          return sum + (itemPrice * itemQty);
+        }, 0);
+
+        const couponMeta = await resolveCouponMeta(restaurantId, mergeableOrder.coupon_code);
+        const totals = computeOrderTotals({
+          newSubtotal: itemsSubtotal,
+          oldSubtotal,
+          takeawayCharge: mergeableOrder.takeaway_charge,
+          deliveryFee: mergeableOrder.delivery_fee,
+          discount: mergeableOrder.discount,
+          oldDiscountPolicyAmount: mergeableOrder.discount_policy_amount,
+          oldCouponDiscount: mergeableOrder.coupon_discount,
+          coupon: couponMeta,
+          pointDiscount: mergeableOrder.point_discount,
+          oldTax: mergeableOrder.tax,
+          taxRate: mergeableOrder.tax_rate,
+          oldServiceCharge: mergeableOrder.service_charge,
+          serviceChargeRate: mergeableOrder.service_charge_rate
+        });
+        const newTotal = totals.total;
 
         // Update order — preserve 'outstanding' so a shop with
         // requirePaymentBeforeKitchen=true doesn't auto-send to the kitchen
@@ -212,6 +250,11 @@ router.post('/order', async (req, res) => {
         const preserveOutstanding = mergeableOrder.status === 'outstanding';
         await mergeableOrder.update({
           order_items: mergedItems,
+          subtotal: itemsSubtotal,
+          tax: totals.tax,
+          service_charge: totals.serviceCharge,
+          discount_policy_amount: totals.discountPolicyAmount,
+          coupon_discount: totals.couponDiscount,
           total_amount: newTotal,
           status: preserveOutstanding ? 'outstanding' : 'pending',
           // 2026-05-28: 같은 테이블 모바일 추가 = kitchen ticket 만 (주방 추가

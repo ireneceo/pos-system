@@ -1,6 +1,8 @@
 {
   "storeBadge.cashless": "Tanpa Tunai",
   "storeBadge.cashlessHint": "Kedai ini tidak menerima pembayaran tunai",
+  "storeBadge.cashlessNoticeTitle": "Kedai tanpa tunai — tunai tidak diterima",
+  "storeBadge.cashlessNoticeSub": "Sila bayar dengan kad atau e-dompet sahaja.",
   "backToDashboard": "Kembali ke Papan Pemuka",
   "visitHomepage": "Lawat laman utama PurpleHere",
   "button": {

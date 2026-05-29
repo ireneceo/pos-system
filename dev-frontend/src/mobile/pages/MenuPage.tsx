@@ -123,6 +123,30 @@ const StoreRight = styled.div`
   flex-shrink: 0;
 `;
 
+// 캐시리스 매장 — 손님이 메뉴 진입 즉시 명확히 보도록 헤더 아래 강조 배너.
+// 상단의 작은 pill 배지와 별개로, QR 찍고 들어온 손님이 결제 전에 인지하게 한다.
+const CashlessNotice = styled.div`
+  background: #F0EFFF;
+  border: 1px solid #DDD9FF;
+  border-left: 4px solid #635BFF;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin: 0 0 16px 0;
+  color: #4B45C6;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.45;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+`;
+
+const CashlessNoticeSub = styled.span`
+  font-size: 12px;
+  font-weight: 500;
+  color: #635BFF;
+`;
+
 // Order-type chip — shows current selection, tap to change.
 // Subtle but discoverable (Stripe/Toast-style inline chip). Always visible so the
 // affordance is consistent regardless of how the user landed on this page.
@@ -999,6 +1023,15 @@ const MenuPage: React.FC = () => {
             </StoreRight>
           )}
         </StoreHeader>
+      )}
+
+      {currentStore?.cashless && (
+        <CashlessNotice role="note">
+          {t('common:storeBadge.cashlessNoticeTitle', { defaultValue: 'Cashless store — cash not accepted' })}
+          <CashlessNoticeSub>
+            {t('common:storeBadge.cashlessNoticeSub', { defaultValue: 'Please pay by card or e-wallet only.' })}
+          </CashlessNoticeSub>
+        </CashlessNotice>
       )}
 
       <SearchSection>
