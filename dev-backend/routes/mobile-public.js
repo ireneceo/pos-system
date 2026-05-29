@@ -182,7 +182,8 @@ router.get('/menu/:slug', async (req, res) => {
     // Build product query with pagination
     const productWhere = {
       restaurant_id: restaurantId,
-      soldOut: false
+      soldOut: false,
+      is_active: true   // 2026-05-29: hide deactivated menu items from the customer mobile menu (was missing → disabled items stayed orderable)
     };
 
     // Filter by category if specified
@@ -567,7 +568,7 @@ router.get('/popular/:slug', async (req, res) => {
     }
 
     // Fetch product details
-    const productWhere = { id: topIds, soldOut: false };
+    const productWhere = { id: topIds, soldOut: false, is_active: true };
 
     // Exclude categories from popular (mobile_settings.popular_excluded_category_ids)
     const mobileSettings = restaurant.mobile_settings || {};

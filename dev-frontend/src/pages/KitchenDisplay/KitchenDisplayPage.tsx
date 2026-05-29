@@ -967,10 +967,12 @@ const KitchenDisplayPage: React.FC = () => {
         const kpAuto = !!kp.autoPrint;
         const _stationAutoPrint = Object.values(printerSettings.kitchenStationPrinters || {}).some((s: any) => s?.autoPrint);
         if (kpEnabled && !kpAuto && !_stationAutoPrint) return; // both off → block
-        // 2026-05-29 (PRINT_RULES_MATRIX 고정 규칙): KDS 는 표시 전용. 자동 인쇄하지 않는다.
-        // 프린터(주방 station / 빌)를 가진 카운터 POS / Floor Plan poller 가 단일 인쇄 주체.
-        // KDS(프린터 없을 수 있음)가 인쇄 주체가 되면 중복/누락("아무것도 안 나옴")을 유발했다.
-        const shouldAutoPrint = false;
+        // 2026-05-29: KDS auto-prints kitchen tickets to the station printers IT has.
+        // The QZ-Tray printer-availability gate inside printKitchenTicketViaRawBT means
+        // KDS only outputs to printers physically on the kitchen device and silently
+        // skips the rest — so whether the kitchen printers are wired to the KDS box or
+        // the counter POS, the device that HAS them prints, with no interception.
+        const shouldAutoPrint = false; // 2026-05-29: KDS DISPLAY-ONLY — counter POS already prints; KDS printing caused duplicate tickets
 
         if (shouldAutoPrint) {
           // Share the inflight dedup pool with MainLayout polling so the same
@@ -1016,29 +1018,20 @@ const KitchenDisplayPage: React.FC = () => {
             notes: order.notes || ''
           };
 
-          // Atomic claim so this order's kitchen ticket prints EXACTLY ONCE across
-          // the POS direct fast-path, other devices' polling, and this KDS socket.
-          // Only the first claimer prints; the rest skip.
+          // Print then mark (no pre-claim). printKitchenTicketViaRawBT only outputs
+          // to the station printers THIS device has (availability gate); if it has
+          // none, it returns false → we don't stamp → the device that DOES have them
+          // prints. On success → PATCH /printed (stamp printed_at + clear needs_print).
           (async () => {
-            const tok = getAuthToken() || '';
-            const _h = { Authorization: `Bearer ${tok}` };
-            let claimed = false;
-            try {
-              const cr = await fetch(`/api/orders/${order.id}/print-claim`, { method: 'PATCH', headers: _h }).then(r => r.json());
-              claimed = !!(cr && cr.claimed);
-            } catch (e) { /* claim failed — skip to avoid blind double-print */ }
-            if (!claimed) { delete (window as any).__autoPrintInflight[order.id]; return; }
+            const _h = { Authorization: `Bearer ${getAuthToken() || ''}` };
             try {
               const success = await printKitchenTicketViaRawBT(printOrderData, storeInfo);
-              if (success === false) {
-                await fetch(`/api/orders/${order.id}/print-rearm`, { method: 'PATCH', headers: _h }).catch(() => {});
-              } else {
+              if (success !== false) {
                 console.log('Kitchen ticket auto-printed for order', order.order_number);
                 await fetch(`/api/orders/${order.id}/printed`, { method: 'PATCH', headers: _h }).catch(() => {});
               }
             } catch (err) {
               console.error('Auto-print failed:', err);
-              await fetch(`/api/orders/${order.id}/print-rearm`, { method: 'PATCH', headers: _h }).catch(() => {});
             } finally {
               delete (window as any).__autoPrintInflight[order.id];
             }
@@ -1074,8 +1067,8 @@ const KitchenDisplayPage: React.FC = () => {
         const kpAuto = !!kp.autoPrint;
         const _stationAutoPrint = Object.values(printerSettings.kitchenStationPrinters || {}).some((s: any) => s?.autoPrint);
         if (kpEnabled && !kpAuto && !_stationAutoPrint) return; // both off → block
-        // KDS 표시 전용 (PRINT_RULES_MATRIX): +Round 자동 인쇄도 카운터 POS poller 가 담당.
-        const shouldAutoPrint = false;
+        // +Round ticket: KDS prints to the station printers it has (availability gate).
+        const shouldAutoPrint = false; // 2026-05-29: KDS DISPLAY-ONLY — counter POS already prints; KDS printing caused duplicate tickets
         if (!shouldAutoPrint) return;
 
         // Same inflight dedup as order-created handler
@@ -1124,27 +1117,17 @@ const KitchenDisplayPage: React.FC = () => {
           items: printItems,
           notes: ''
         };
-        // Atomic claim — +Round ticket prints EXACTLY ONCE across paths/devices.
+        // Print then mark — KDS outputs only to station printers it has (gate).
         (async () => {
-          const tok = getAuthToken() || '';
-          const _h = { Authorization: `Bearer ${tok}` };
-          let claimed = false;
-          try {
-            const cr = await fetch(`/api/orders/${data.orderId}/print-claim`, { method: 'PATCH', headers: _h }).then(r => r.json());
-            claimed = !!(cr && cr.claimed);
-          } catch (e) { /* skip on claim error */ }
-          if (!claimed) { delete (window as any).__autoPrintInflight[data.orderId]; return; }
+          const _h = { Authorization: `Bearer ${getAuthToken() || ''}` };
           try {
             const ok = await printKitchenTicketViaRawBT(printOrderData as any, storeInfo);
-            if (ok === false) {
-              await fetch(`/api/orders/${data.orderId}/print-rearm`, { method: 'PATCH', headers: _h }).catch(() => {});
-            } else {
+            if (ok !== false) {
               console.log('[KDS] additional-items ticket auto-printed for', data.orderNumber, `+Round ${data.orderGroup}`);
               await fetch(`/api/orders/${data.orderId}/printed`, { method: 'PATCH', headers: _h }).catch(() => {});
             }
           } catch (err) {
             console.error('[KDS] additional-items auto-print failed:', err);
-            await fetch(`/api/orders/${data.orderId}/print-rearm`, { method: 'PATCH', headers: _h }).catch(() => {});
           } finally {
             delete (window as any).__autoPrintInflight[data.orderId];
           }

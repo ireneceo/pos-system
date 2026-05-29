@@ -1555,6 +1555,7 @@ const FloorPlanPage: React.FC = () => {
           subtotal={Number(selectedStatusInfo.subtotal || selectedStatusInfo.totalAmount || 0)}
           tax={Number(selectedStatusInfo.tax || 0)}
           serviceCharge={Number(selectedStatusInfo.serviceCharge || 0)}
+          serviceChargeRate={Number(selectedStatusInfo.serviceChargeRate || 10)}
           takeawayCharge={Number(selectedStatusInfo.takeawayCharge || 0)}
           discountAmount={Number(selectedStatusInfo.discount || 0)}
           couponDiscount={Number(selectedStatusInfo.couponDiscount || 0)}

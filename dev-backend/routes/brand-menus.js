@@ -402,6 +402,49 @@ router.post('/:id/copy', authenticateToken, requireBGScope, async (req, res) => 
   }
 });
 
+// POST /api/brand-menus/:id/duplicate — clone WITHIN the same brand (convenience).
+// 2026-05-29: BG only has one brand → "copy to another brand" is unusable. This
+// makes a same-brand copy so a new menu can be built off an existing one. Carries
+// over category, recipe, option groups (incl. multi-select), set items and locks —
+// everything is valid within the same brand. Creates a fresh draft (version 1).
+router.post('/:id/duplicate', authenticateToken, requireBGScope, async (req, res) => {
+  const t = await BrandMenu.sequelize.transaction();
+  try {
+    const source = await BrandMenu.findByPk(parseInt(req.params.id, 10), { transaction: t });
+    if (!source) { await t.rollback(); return res.status(404).json({ success: false, message: 'Source menu not found' }); }
+    if (!(await assertBrandOwnership(req, source.brand_id))) {
+      await t.rollback(); return res.status(403).json({ success: false, message: 'Brand not owned' });
+    }
+    const copy = await BrandMenu.create({
+      brand_id: source.brand_id,             // SAME brand
+      category_id: source.category_id,       // valid within same brand
+      product_recipe_id: source.product_recipe_id,
+      name: req.body.name || `${source.name} (Copy)`,
+      description: source.description, image_url: source.image_url, emoji: source.emoji,
+      recommended_price: source.recommended_price, currency: source.currency,
+      is_active: source.is_active, sort_order: 0,
+      version: 1, distribution_mode: 'manual',
+      lock_name: source.lock_name, lock_price: source.lock_price,
+      lock_category: source.lock_category, lock_image: source.lock_image,
+      lock_options: source.lock_options, lock_set_items: source.lock_set_items,
+      is_set_menu: source.is_set_menu, set_items: source.set_items
+    }, { transaction: t });
+    // Carry over the option-group links (so the copy has the same options incl. multi-select)
+    const links = await BrandMenuOptionGroupLink.findAll({ where: { brand_menu_id: source.id }, transaction: t });
+    for (const l of links) {
+      await BrandMenuOptionGroupLink.create({
+        brand_menu_id: copy.id, option_group_id: l.option_group_id, sort_order: l.sort_order
+      }, { transaction: t });
+    }
+    await t.commit();
+    res.status(201).json({ success: true, data: copy });
+  } catch (e) {
+    try { await t.rollback(); } catch (_) {}
+    console.error('[brand-menus] duplicate error:', e);
+    res.status(500).json({ success: false, message: 'Failed to duplicate brand menu' });
+  }
+});
+
 // POST /api/brand-menus/:id/push  body: { restaurant_ids: [1,2,3] | "all" }
 router.post('/:id/push', authenticateToken, requireBGScope, async (req, res) => {
   try {

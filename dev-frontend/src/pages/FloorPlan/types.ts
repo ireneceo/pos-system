@@ -81,6 +81,7 @@ export interface TableStatusInfo {
   subtotal?: number;
   tax?: number;
   serviceCharge?: number;
+  takeawayCharge?: number;
   discount?: number;
   cashierName?: string | null;
   orderStatus?: string;

@@ -530,6 +530,7 @@ const BrandMenusPage: React.FC = () => {
   const [copyToBrandId, setCopyToBrandId] = useState<number | null>(null);
   const [copyIncludeLocks, setCopyIncludeLocks] = useState(false);
   const [copying, setCopying] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
   const [menuSettings, setMenuSettings] = useState<MenuSettings | null>(null);
   const [listCategories, setListCategories] = useState<Array<{ id: number; name: string }>>([]);
 
@@ -654,6 +655,25 @@ const BrandMenusPage: React.FC = () => {
       setError(e?.message || 'Failed to copy');
     } finally {
       setCopying(false);
+    }
+  };
+
+  // Duplicate within the SAME brand (convenience — works even with a single brand).
+  const confirmDuplicate = async () => {
+    if (!copyTarget) return;
+    setDuplicating(true);
+    try {
+      const r = await fetch(`/api/brand-menus/${copyTarget.menuId}/duplicate`, {
+        method: 'POST', headers: authHeaders(), body: JSON.stringify({})
+      });
+      const j = await r.json();
+      if (!r.ok || !j.success) throw new Error(j.message || 'Duplicate failed');
+      setCopyTarget(null); setCopyToBrandId(null); setCopyIncludeLocks(false);
+      loadMenus();
+    } catch (e: any) {
+      setError(e?.message || 'Failed to duplicate');
+    } finally {
+      setDuplicating(false);
     }
   };
 
@@ -916,15 +936,20 @@ const BrandMenusPage: React.FC = () => {
             onClose={() => { setCopyTarget(null); setCopyToBrandId(null); setCopyIncludeLocks(false); }}
             title={t('brand:brandMenusPage.copyMenuTitle', { name: copyTarget.menuName, defaultValue: `Copy "${copyTarget.menuName}" to another brand` })}
             footer={
-              <>
-                <ThemedButton variant="cancel" onClick={() => { setCopyTarget(null); setCopyToBrandId(null); setCopyIncludeLocks(false); }}>
-                  {t('common:button.cancel')}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: 8 }}>
+                <ThemedButton variant="secondary" onClick={confirmDuplicate} disabled={duplicating || copying}>
+                  {duplicating ? t('common:label.saving', 'Saving...') : t('brand:brandMenusPage.duplicateHere', 'Duplicate in this brand')}
                 </ThemedButton>
-                <ThemedButton variant="primary" onClick={confirmCopy}
-                  disabled={!copyToBrandId || copying || copyToBrandId === selectedBrandId}>
-                  {copying ? t('common:label.saving', 'Saving...') : t('brand:brandMenusPage.copyAction', 'Copy Menu')}
-                </ThemedButton>
-              </>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <ThemedButton variant="cancel" onClick={() => { setCopyTarget(null); setCopyToBrandId(null); setCopyIncludeLocks(false); }}>
+                    {t('common:button.cancel')}
+                  </ThemedButton>
+                  <ThemedButton variant="primary" onClick={confirmCopy}
+                    disabled={!copyToBrandId || copying || duplicating || copyToBrandId === selectedBrandId}>
+                    {copying ? t('common:label.saving', 'Saving...') : t('brand:brandMenusPage.copyAction', 'Copy Menu')}
+                  </ThemedButton>
+                </div>
+              </div>
             }
           >
             <div style={{ padding: '10px 12px', background: '#F8F7FF', border: '1px solid #E6E3FF', borderRadius: 8, marginBottom: 16, fontSize: 12, color: '#374151' }}>
@@ -940,7 +965,7 @@ const BrandMenusPage: React.FC = () => {
               </FormSelect>
               {brands.filter(b => b.id !== selectedBrandId).length === 0 && (
                 <div style={{ fontSize: 12, color: '#6B7280', marginTop: 6 }}>
-                  {t('brand:brandMenusPage.copyOnlyOneBrand', 'You only have one brand. Create another brand first to copy menus between them.')}
+                  {t('brand:brandMenusPage.copyOnlyOneBrandDuplicate', 'You only have one brand — use "Duplicate in this brand" below to make an editable copy here.')}
                 </div>
               )}
             </UIFormGroup>

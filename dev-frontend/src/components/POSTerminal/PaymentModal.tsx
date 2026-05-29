@@ -947,13 +947,13 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
             <SummaryValue>{formatCurrency(-pointDiscount, operationSettings.currency)}</SummaryValue>
           </DiscountRow>
         )}
-        {serviceChargeEnabled && serviceCharge > 0 && (
+        {serviceCharge > 0 && (
           <SummaryRow>
             <SummaryLabel>Service Charge ({serviceChargeRate}%)</SummaryLabel>
             <SummaryValue>{formatCurrency(serviceCharge, operationSettings.currency)}</SummaryValue>
           </SummaryRow>
         )}
-        {taxEnabled && tax > 0 && (
+        {tax > 0 && (
           <SummaryRow>
             <SummaryLabel>Tax ({taxRate}%)</SummaryLabel>
             <SummaryValue>{formatCurrency(tax, operationSettings.currency)}</SummaryValue>

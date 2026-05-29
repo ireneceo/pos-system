@@ -139,9 +139,35 @@ async function syncBrandMenuToRestaurant({ brandMenuId, restaurantId, transactio
     };
     if (locks.name || !product.name) updates.name = brandMenu.name;
     if (locks.price) updates.price = brandMenu.recommended_price;
-    if (locks.category && categoryName) updates.category = categoryName;
+    // Category: forced when locked, otherwise seed if the restaurant hasn't set a real one.
+    if ((locks.category || !product.category || product.category === 'Uncategorized') && categoryName) {
+      updates.category = categoryName;
+    }
     if (locks.image) updates.image = brandMenu.image_url;
-    if (locks.options) updates.optionGroups = localOptionGroupIds;
+    // Options: when locked, BG fully controls. When unlocked, the BG-defined options
+    // STILL carry over to the restaurant — merge the BG mirror groups with whatever
+    // option groups the restaurant added on its own (own groups preserved). This is
+    // why BG options now always appear on the linked product, even without a lock.
+    if (locks.options) {
+      updates.optionGroups = localOptionGroupIds;
+    } else {
+      const current = Array.isArray(product.optionGroups) ? product.optionGroups : [];
+      // Identify which current groups are BG mirrors (linked by brand_menu_option_group_id)
+      const mirrorRows = current.length ? await OptionGroup.findAll({
+        where: {
+          restaurant_id: restaurantId,
+          id: { [Op.in]: current },
+          brand_menu_option_group_id: { [Op.ne]: null }
+        },
+        attributes: ['id'],
+        transaction
+      }) : [];
+      const mirrorIds = new Set(mirrorRows.map(r => r.id));
+      const restaurantOwn = current.filter(id => !mirrorIds.has(id));   // keep store's own
+      const merged = [...restaurantOwn];
+      for (const id of localOptionGroupIds) if (!merged.includes(id)) merged.push(id);
+      updates.optionGroups = merged;
+    }
     if (locks.set_items) {
       updates.is_set_menu = !!brandMenu.is_set_menu;
       updates.set_items = brandMenu.set_items || null;

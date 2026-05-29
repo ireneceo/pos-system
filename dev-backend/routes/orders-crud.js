@@ -1676,6 +1676,10 @@ router.delete('/:id/items/:itemIndex', authenticateToken, async (req, res) => {
     order.discount_policy_amount = totals.discountPolicyAmount;
     order.coupon_discount = totals.couponDiscount;
     order.total_amount = Math.max(0, totals.total); // Ensure non-negative
+    // 2026-05-29 fix: computeOrderTotals refactor left audit-log refs to an
+    // undefined `newTotal` → DELETE-ITEM threw "newTotal is not defined" and the
+    // item removal failed. Define it from the recomputed total.
+    const newTotal = order.total_amount;
 
     await order.save();
 

@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { io, Socket } from 'socket.io-client';
 import styled, { keyframes, css } from 'styled-components';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import AutoPrintFailureBanner from '../AutoPrintFailureBanner';
 import { useStaff } from '../../contexts/StaffContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useStore } from '../../contexts/StoreContext';
@@ -1271,7 +1270,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               const _kpAuto = !!_kp.autoPrint;
               const _stationAutoPrint = Object.values(printSettings.kitchenStationPrinters || {}).some((s: any) => s?.autoPrint);
               // Station-only mode 허용: master autoPrint OFF + any station autoPrint ON → fire stations.
-              const _kitchenAuto = (_kpEnabled && !_kpAuto && !_stationAutoPrint) ? false : (_kpAuto || _stationAutoPrint);
+              const _kitchenAuto = _kpEnabled && _kpAuto;
               if (_kitchenAuto) {
                 const kitchenPrintData = { ...printData, items: kitchenItemsRaw.map(mapItem) };
                 let ok: any = true;
@@ -1299,8 +1298,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       } catch (e) { console.error('[poll] cycle error:', e); }
     };
     // Fire once after 2s + every 10s
-    setTimeout(_printPollFn, 2000);
-    _printPollTimer = setInterval(_printPollFn, 10000);
+    setTimeout(_printPollFn, 800);
+    _printPollTimer = setInterval(_printPollFn, 5000);
 
     // 주문 상태 변경 시 소리 중지 + mobile alert 자동 정리
     socket.on('order-updated', (payload: any) => {
@@ -2249,7 +2248,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
   return (
     <BrandThemeProvider>
-      <AutoPrintFailureBanner />
       <LayoutContainer>
         {/* Payment Status Modals */}
         <PaymentStatusModals />

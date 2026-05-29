@@ -76,7 +76,7 @@ async function enrichItemsWithStation(restaurantId, items) {
     if (c.name) catStationMap.set(c.name, c.kitchen_station_id);
   });
 
-  return items.map(item => {
+  let result = items.map(item => {
     const pid = resolveProductId(item);
     const product = pid ? productMap.get(pid) : null;
     const fromProduct = product && product.kitchen_station_id;
@@ -88,6 +88,34 @@ async function enrichItemsWithStation(restaurantId, items) {
       category: item.category || (product && product.category) || null
     };
   });
+
+  // 2026-05-29: NAME-based fallback. Mobile/QR orders arrive with only a product
+  // NAME (no numeric id — their line id is "item-<order>-<idx>"), so the id pass
+  // above leaves kitchen_station_id null → the ticket piled onto station #1 and
+  // missed its real station (e.g. a milkshake never reached the BAR printer).
+  // Match the leftover items to a product by name. Only runs when something is
+  // still unresolved (POS orders resolve by id and skip this — no extra query).
+  if (result.some(it => !it.kitchen_station_id && it.name)) {
+    try {
+      const allProducts = await Product.findAll({
+        where: { restaurant_id: restaurantId },
+        attributes: ['name', 'kitchen_station_id', 'category']
+      });
+      const nameStationMap = new Map();
+      allProducts.forEach(p => {
+        if (!p.name) return;
+        const sid = p.kitchen_station_id || (p.category && catStationMap.get(String(p.category)));
+        if (sid) nameStationMap.set(String(p.name).trim().toLowerCase(), sid);
+      });
+      result = result.map(it => {
+        if (it.kitchen_station_id || !it.name) return it;
+        const sid = nameStationMap.get(String(it.name).trim().toLowerCase());
+        return sid ? { ...it, kitchen_station_id: sid } : it;
+      });
+    } catch (e) { /* non-fatal — leave unresolved */ }
+  }
+
+  return result;
 }
 
 module.exports = { enrichItemsWithStation };

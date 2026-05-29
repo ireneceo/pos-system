@@ -17,7 +17,6 @@ import { useMenu } from '../../contexts/MenuContext';
 import { useCustomer } from '../../contexts/CustomerContext';
 import { useStaff } from '../../contexts/StaffContext';
 import { printBillViaRawBT, printKitchenTicketViaRawBT, getPrinterSettings, getActiveBillPrinter } from '../../utils/billPrint';
-import AutoPrintFailureBanner from '../../components/AutoPrintFailureBanner';
 import { useAuth } from '../../contexts/AuthContext';
 import CustomerModal from '../../components/Customer/CustomerModal';
 // StaffLoginModal removed - authentication handled by ProtectedRoute
@@ -2139,7 +2138,7 @@ const POSTerminalPage: React.FC = () => {
         const _kpEnabled = _kp.enabled !== false;
         const _kpAuto = !!_kp.autoPrint;
         const _stationAutoPrint = Object.values(_stationPrintersMap).some((s: any) => s?.autoPrint);
-        const kitchenAuto = (_kpEnabled && !_kpAuto && !_stationAutoPrint) ? false : (_kpAuto || _stationAutoPrint);
+        const kitchenAuto = _kpEnabled && _kpAuto;
         // 2026-05-29: 자동 진단 이메일 발송 중단 (매장 요청). auto-kitchen-skip 등은
         // 에러가 아니라 정상 설정(자동인쇄 OFF)에서도 주문마다 발사돼 관리자에게
         // 메일 스팸이 됐다. 프린터 문제는 발생 시 Settings → Printer 의 수동 진단
@@ -2177,7 +2176,7 @@ const POSTerminalPage: React.FC = () => {
             } finally {
               if (_orderId) { try { delete (window as any).__autoPrintInflight[_orderId]; } catch {} }
             }
-          }, 400);
+          }, 250);
         } else {
           _tele('add-order-kitchen-skip', {
             reason: !printSettings.kitchenPrinter?.enabled ? 'kitchen not enabled'
@@ -2481,7 +2480,7 @@ const POSTerminalPage: React.FC = () => {
       const _kpEnabled = _kp.enabled !== false;
       const _kpAuto = !!_kp.autoPrint;
       const _stationAutoPrint = Object.values(_stationPrintersMap).some((s: any) => s?.autoPrint);
-      const kitchenAuto = (_kpEnabled && !_kpAuto && !_stationAutoPrint) ? false : (_kpAuto || _stationAutoPrint);
+      const kitchenAuto = _kpEnabled && _kpAuto;
       if (kitchenAuto && !_isPaymentForExistingOrder) {
         // 2026-05-29: PRINT THEN MARK (no pre-claim). Counter POS fast path.
         const _orderId = savedOrder?.id || savedOrder?.data?.id || savedOrder?.order?.id;
@@ -2501,7 +2500,7 @@ const POSTerminalPage: React.FC = () => {
           } finally {
             if (_orderId) { try { delete (window as any).__autoPrintInflight[_orderId]; } catch {} }
           }
-        }, 800);
+        }, 300);
       } else {
         _telemetry('auto-kitchen-skip', {
           reason: _isPaymentForExistingOrder
@@ -2824,7 +2823,6 @@ const POSTerminalPage: React.FC = () => {
 
   return (
     <POSContainer>
-      <AutoPrintFailureBanner />
       <Header>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <Logo onClick={handleResetPOS}>

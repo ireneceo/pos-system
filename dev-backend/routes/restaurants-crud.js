@@ -524,7 +524,7 @@ router.get('/:id/table-status', authenticateToken, async (req, res) => {
       attributes: [
         'table_number', 'floor_plan_table_id', 'status', 'payment_status', 'order_number', 'id',
         'total_amount', 'createdAt', 'customer_name', 'customer_id',
-        'guest_count', 'order_items', 'subtotal', 'tax', 'service_charge',
+        'guest_count', 'order_items', 'subtotal', 'tax', 'service_charge', 'takeaway_charge',
         'discount', 'coupon_discount', 'discount_policy_amount', 'point_discount',
         'order_type', 'cashier_name',
         'coupon_code', 'discount_policy_name', 'points_used',
@@ -570,6 +570,7 @@ router.get('/:id/table-status', authenticateToken, async (req, res) => {
         subtotal: parseFloat(order.subtotal || 0),
         tax: parseFloat(order.tax || 0),
         serviceCharge: parseFloat(order.service_charge || 0),
+        takeawayCharge: parseFloat(order.takeaway_charge || 0),
         discount: parseFloat(order.discount || 0) + parseFloat(order.coupon_discount || 0) + parseFloat(order.discount_policy_amount || 0) + parseFloat(order.point_discount || 0),
         cashierName: order.cashier_name,
         orderStatus: order.status,
@@ -1600,7 +1601,30 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
       'takeawaySettings', 'allowQuickOrder', 'breakTimes', 'mobileOrderProcessing',
       'mobileOrderAlerts', 'requirePaymentBeforeKitchen'
     ]);
-    if (req.body.payment_settings !== undefined) updateData.payment_settings = req.body.payment_settings;
+    if (req.body.payment_settings !== undefined) {
+      // 2026-05-29 ANTI-WIPE GUARD: never let a save collapse the payment methods.
+      // A stale/half-loaded client (state held only {staffMeal}) was overwriting the
+      // full set → the POS showed only "Staff Meal". If the incoming set has drastically
+      // fewer methods than what's already stored, reject the payment_settings change and
+      // keep the existing config (all other fields still save normally).
+      let _allowPayment = true;
+      try {
+        const incoming = typeof req.body.payment_settings === 'string'
+          ? JSON.parse(req.body.payment_settings) : req.body.payment_settings;
+        const incomingCount = (incoming && typeof incoming === 'object')
+          ? Object.keys(incoming).filter(k => k !== '_order').length : 0;
+        const existingRaw = restaurant.getDataValue('payment_settings');
+        const existing = existingRaw
+          ? (typeof existingRaw === 'string' ? JSON.parse(existingRaw) : existingRaw) : null;
+        const existingCount = (existing && typeof existing === 'object')
+          ? Object.keys(existing).filter(k => k !== '_order').length : 0;
+        if (existingCount >= 3 && incomingCount <= 1) {
+          _allowPayment = false;
+          console.warn(`[anti-wipe] Rejected payment_settings collapse for restaurant ${req.params.id}: incoming ${incomingCount} vs existing ${existingCount} methods — keeping existing.`);
+        }
+      } catch (e) { /* parse issue → fall through and save as-is */ }
+      if (_allowPayment) updateData.payment_settings = req.body.payment_settings;
+    }
     if (req.body.operation_settings !== undefined) {
       const ops = req.body.operation_settings;
       if (ops && typeof ops === 'object' && !Array.isArray(ops)) {
@@ -1615,7 +1639,39 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
     }
     if (req.body.table_settings !== undefined) updateData.table_settings = req.body.table_settings;
     if (req.body.floor_plan !== undefined) updateData.floor_plan = req.body.floor_plan;
-    if (req.body.printer_settings !== undefined) updateData.printer_settings = req.body.printer_settings;
+    if (req.body.printer_settings !== undefined) {
+      // 2026-05-29 ANTI-WIPE GUARD (printer_settings): a Settings page that saved
+      // before its printer config finished loading (or from a device whose state
+      // wasn't hydrated) was overwriting the live config — losing the bill-printer
+      // address, workstations, kitchen station printers and turning autoPrint off,
+      // which silently killed auto-print + bill print. A real edit never blanks the
+      // bill-printer address, so we use "incoming clears an address that existed" as
+      // the stale-save signal and PRESERVE the critical sub-objects from the DB.
+      let _ps = req.body.printer_settings;
+      try {
+        const incoming = typeof _ps === 'string' ? JSON.parse(_ps) : (_ps || {});
+        const exRaw = restaurant.getDataValue('printer_settings');
+        const existing = exRaw ? (typeof exRaw === 'string' ? JSON.parse(exRaw) : exRaw) : {};
+        const exBillAddr = existing.billPrinter && existing.billPrinter.address;
+        const inBillAddr = incoming.billPrinter && incoming.billPrinter.address;
+        const exWsAddr = Array.isArray(existing.workstations) && existing.workstations.some(w => w && w.billPrinter && w.billPrinter.address);
+        const inWsAddr = Array.isArray(incoming.workstations) && incoming.workstations.some(w => w && w.billPrinter && w.billPrinter.address);
+        const exStations = existing.kitchenStationPrinters && Object.keys(existing.kitchenStationPrinters).length > 0;
+        const inStations = incoming.kitchenStationPrinters && Object.keys(incoming.kitchenStationPrinters).length > 0;
+        // Stale signal: incoming drops a previously-set printer address, or drops all stations.
+        const stale = (exBillAddr && !inBillAddr) || (exWsAddr && !inWsAddr) || (exStations && !inStations);
+        if (stale) {
+          const merged = { ...incoming };
+          if (existing.billPrinter) merged.billPrinter = existing.billPrinter;
+          if (existing.kitchenPrinter) merged.kitchenPrinter = existing.kitchenPrinter;
+          if (Array.isArray(existing.workstations) && existing.workstations.length) merged.workstations = existing.workstations;
+          if (exStations) merged.kitchenStationPrinters = existing.kitchenStationPrinters;
+          _ps = merged;
+          console.warn(`[anti-wipe] printer_settings stale-save for restaurant ${req.params.id} — preserved bill/kitchen/workstations/stations from DB.`);
+        }
+      } catch (e) { /* parse issue → save as-is */ }
+      updateData.printer_settings = _ps;
+    }
 
     // Brand association
     if (req.body.brand_id !== undefined) {

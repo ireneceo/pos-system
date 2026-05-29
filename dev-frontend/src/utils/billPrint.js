@@ -572,6 +572,36 @@ export async function getQZTrayPrinters() {
   }
 }
 
+// 2026-05-29: Commercial-POS routing — a device must only print to printers it
+// physically has. Without this, a device that LACKS a printer would still "accept"
+// the job (phantom success) → it stamped the order printed and the device that
+// ACTUALLY has the printer skipped → blank output. With this check, every device
+// (POS / KDS / Floor Plan — any number open at once) prints ONLY its own printers
+// and silently skips the rest, so each ticket lands on the configured printer
+// exactly where it's wired, with no interception.
+let _qzPrinterCache = { names: null, at: 0 };
+async function getCachedQZPrinterNames() {
+  try {
+    const now = Date.now();
+    if (_qzPrinterCache.names && (now - _qzPrinterCache.at) < 20000) return _qzPrinterCache.names;
+    const list = await qz.printers.find();
+    _qzPrinterCache = { names: Array.isArray(list) ? list.map((n) => String(n)) : [], at: now };
+    return _qzPrinterCache.names;
+  } catch (e) {
+    return _qzPrinterCache.names || [];
+  }
+}
+/** True if THIS device's QZ Tray has the named printer. Fail-open (true) only when
+ *  the list can't be determined, so a transient query failure never blocks printing
+ *  (qz.print's own error is the backstop). Empty name = OS default → allowed. */
+async function qzHasPrinter(name) {
+  if (!name) return true;
+  const names = await getCachedQZPrinterNames();
+  if (!names || names.length === 0) return true;
+  const target = String(name).trim().toLowerCase();
+  return names.some((n) => String(n).trim().toLowerCase() === target);
+}
+
 /**
  * QZ Tray를 통해 ESC/POS 데이터를 네트워크 프린터로 전송
  *
@@ -2145,7 +2175,7 @@ export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerNa
         } catch (e) {
           console.warn('Kitchen → counter mirror trigger failed:', e && e.message);
         }
-      }, 600);
+      }, 200);
     }
 
     // 2026-05-27: Station routing — if the shop configured kitchenStationPrinters,
@@ -2972,6 +3002,10 @@ async function sendToRawBTPrinter(orderData, storeInfo, settings, printerName, s
     if (!address) return false;
     const isLanIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(address);
 
+    // 2026-05-29: Kitchen tickets go HTML-pixel for OS-named printers (renders
+    // 한글 + the ticket design correctly via the OS driver — raw ESC/POS garbled
+    // Korean) and raw ESC/POS only for direct LAN-IP sockets (no OS driver there).
+    // This mirrors how the bill printer (POS-80C) prints Korean fine via HTML pixel.
     if (printPerItem && items.length > 0) {
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
@@ -3154,7 +3188,7 @@ async function printKitchenTicketsByStation(orderData, storeInfo, settings) {
       if (!ok) {
         console.error(`🍳 Station ${stationName} ALL attempts failed — moving to next station to avoid cascade.`);
       }
-      if (i < mappedStationIds.length - 1) await new Promise(r => setTimeout(r, 1500));
+      if (i < mappedStationIds.length - 1) await new Promise(r => setTimeout(r, 800));
     }
 
     const allOk = stationResults.every(r => r.ok);
@@ -3430,7 +3464,7 @@ export async function printCancellationTicket(orderData, storeInfo, reason, prin
         printCancellationToCounter(orderData, storeInfo, reason).catch(e =>
           console.warn('Cancellation → counter mirror failed:', e && e.message)
         );
-      }, 600);
+      }, 200);
     }
 
     // QZ Tray

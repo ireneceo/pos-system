@@ -1616,6 +1616,13 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                   <span>{formatCurrency(statusInfo!.subtotal || 0, currency)}</span>
                 </SummaryRow>
 
+                {(statusInfo!.takeawayCharge || 0) > 0 && (
+                  <SummaryRow>
+                    <span>{'Takeaway Charge'}</span>
+                    <span>{formatCurrency(statusInfo!.takeawayCharge || 0, currency)}</span>
+                  </SummaryRow>
+                )}
+
                 {(statusInfo!.discountPolicyAmount || 0) > 0 && (
                   <SummaryRow>
                     <span>Discount{statusInfo!.discountPolicyName ? ` (${statusInfo!.discountPolicyName})` : ''}</span>

@@ -20,7 +20,7 @@ export function useAutoPrintPoller(opts: {
   getStoreInfo: () => any;
   intervalMs?: number;
 }) {
-  const { restaurantId, enabled, getStoreInfo, intervalMs = 10000 } = opts;
+  const { restaurantId, enabled, getStoreInfo, intervalMs = 5000 } = opts;
   const locationRef = useRef<string>('');
   useEffect(() => {
     locationRef.current = window.location.pathname;
@@ -128,7 +128,7 @@ export function useAutoPrintPoller(opts: {
               const _kpEnabled = _kp.enabled !== false;
               const _kpAuto = !!_kp.autoPrint;
               const _stationAutoPrint = Object.values(printSettings.kitchenStationPrinters || {}).some((s: any) => s?.autoPrint);
-              const _kitchenAuto = (_kpEnabled && !_kpAuto) ? false : (_kpAuto || _stationAutoPrint);
+              const _kitchenAuto = _kpEnabled && _kpAuto;
               if (_kitchenAuto) {
                 const kitchenPrintData = { ...printData, items: kitchenItemsRaw.map(mapItem) };
                 let ok: any = true;
@@ -160,7 +160,7 @@ export function useAutoPrintPoller(opts: {
       } catch (e) { console.error('[autoPrint] cycle error:', e); }
     };
 
-    setTimeout(pollFn, 2000);
+    setTimeout(pollFn, 800);
     timer = setInterval(pollFn, intervalMs);
     return () => { cancelled = true; if (timer) clearInterval(timer); };
   }, [restaurantId, enabled, intervalMs, getStoreInfo]);

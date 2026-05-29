@@ -1,5 +1,32 @@
 1# 프로젝트 가이드라인
 
+## 🔒🔒 인쇄(PRINT) 코드 보호 — 절대 규칙 (2026-05-29, 최우선)
+
+**매장 인쇄는 영업 생명선. 인쇄 문제 = 매장 마비. 아래를 위반하면 안 됨.**
+
+### 보호 대상 (이 파일/경로는 "현재 동작 = 정답". 함부로 변경 금지)
+- `dev-frontend/src/utils/billPrint.js` (특히 `sendHTMLViaQZTray` / `sendViaQZTray` / `printKitchenTicketViaRawBT` / `printBillViaRawBT` / `printKitchenTicketsByStation` / `sendToRawBTPrinter` / mirror 블록)
+- `dev-frontend/src/hooks/useAutoPrintPoller.ts`
+- `dev-frontend/src/components/Layout/MainLayout.tsx` 의 `_printPollFn`
+- `dev-frontend/src/pages/KitchenDisplay/KitchenDisplayPage.tsx` 의 order-created / order-items-added 핸들러
+- `dev-frontend/src/pages/POSTerminal/POSTerminalPage.tsx` 의 직접 인쇄 블록
+- 백엔드 `routes/orders-crud.js` 의 pending-print / printed / kitchen_items
+
+### 절대 규칙
+1. **다른 기능 작업 중 위 인쇄 코드를 절대 같이 건드리지 않는다.** 인쇄 무관한 작업이면 인쇄 파일은 열지도 말 것.
+2. **인쇄 동작(방식/타이밍/라우팅) 변경은 Irene 명시 요청 + 승인 시에만.** 추측으로 "개선" 금지.
+3. **변경 시 반드시 실제 매장 프린터에서 출력 확인** (코드/헤드리스로는 종이 출력을 못 봄 — Irene 눈 확인 필수). 검증 없이 "됐다" 금지.
+4. **한 번에 한 가지만**, 변경 후 Irene 확인 받고 다음. 여러 인쇄 변경 동시 금지.
+5. **검증된 현재 사실 (건드리면 회귀)**:
+   - 주방/빌 프린터(QZ Tray, OS 이름 프린터 예: KITCHEN/KITCHEN 2/BAR/POS-80C)는 **HTML pixel**(`sendHTMLViaQZTray`)로 한글·디자인 정상. raw ESC/POS 는 한글 깨짐.
+   - LAN IP 프린터만 raw ESC/POS(`sendViaQZTray`).
+   - **KDS = 표시 전용**(자동 인쇄 안 함). 카운터 POS 직접인쇄 + poller 가 인쇄 주체. KDS 도 인쇄하면 **티켓 2장 중복**.
+   - `printer-availability 게이트`(qzHasPrinter) 절대 재도입 금지 — 수동인쇄까지 막았던 사고.
+   - station 라우팅은 item.kitchen_station_id 로 분배(`enrichItemsWithStation`/`resolveProductId`). +Round 는 printed_at 히스토리로 추가분만.
+6. 자세한 단일 진실: `docs/PRINT_RULES_MATRIX.md` 🔒 섹션 + 메모리 [[reference_kitchen_print_pipeline]].
+
+---
+
 ## 작업 워크플로우 (최우선 규칙)
 
 모든 작업 요청은 아래 흐름을 자동으로 따른다. Irene이 단계 이름을 말할 필요 없다.
