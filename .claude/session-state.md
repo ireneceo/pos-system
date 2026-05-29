@@ -1,9 +1,15 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-05-29 (3회 운영 배포 완료)
+**마지막 업데이트:** 2026-05-29 (운영 배포 누적, 최신 hotfix #4)
 **버전:** v3.43 (버전 미상승 — backstage/critical fix). 아래 전부 **운영 배포 완료**.
-**작업 상태:** The Fire 자동인쇄 현장 테스트 진행 중. 다음 = Irene 현장 결과 보고 대기 → 어긋나면 즉시 수정.
+**작업 상태:** The Fire 실매출 중 실시간 대응. 다음 = Irene 현장 확인 보고 대기.
+
+### hotfix #4 (Backup 20260529_141604, 번들 main.a2f57813.js) — 결제팝업/Served/Settlement인쇄
+- 결제 팝업 SC/Tax 표시 fix (PaymentModal 게이트 값기준) + Floor Plan Takeaway 표시 (table-status takeawayCharge 반환 + 패널 줄)
+- Floor Plan Served 클릭 fix (활성주문이면 단계무관 토글 — KDS 표시전용 매장 지원)
+- Daily Settlement 인쇄경로 = 빌과 동일 QZ HTML pixel (브라우저 폴백 → sendHTMLViaQZTray) + 제목 리터럴 버그
+- ⚠️ Settlement 인쇄 종이 출력 + 결제팝업/Served 현장 확인 대기. **Settlement 내용 Z-리포트 매칭은 그룹3 #8 로 이월(신규 데이터 필요).**
 
 ---
 

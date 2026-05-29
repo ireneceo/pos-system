@@ -14,6 +14,18 @@
 
 ---
 
+## [v3.43 hotfix #4] — 2026-05-29 배포 (결제 팝업 SC/Takeaway 표시 + Served 클릭 + Daily Settlement 인쇄경로 — The Fire 실매출 중 실시간)
+
+- **결제 팝업(PaymentModal) 서비스차지/세금 표시 fix** — 인쇄·계산·영수증은 정상인데 화면 결제 팝업에서만 Service Charge / Tax 줄이 안 보이던 버그. 게이트가 `serviceChargeEnabled`/`taxEnabled` prop 의존이었는데 Floor Plan·LiveOrders 호출부가 이 prop 을 안 넘겨 숨겨짐. 게이트를 값 기준(`serviceCharge>0`, `tax>0`)으로 변경 → Floor Plan·LiveOrders·POS 팝업 일괄 정상. (`components/POSTerminal/PaymentModal.tsx`)
+- **테이크웨이 차지 Floor Plan 표시** — 백엔드 `/table-status` 가 `takeaway_charge` 를 안 돌려줘 Floor Plan 결제 팝업·우측 패널의 Takeaway 항상 0. attributes + buildOrderInfo 에 `takeawayCharge` 추가 (`routes/restaurants-crud.js`) + 우측 패널 Takeaway 줄 추가 + 팝업에 serviceChargeRate 전달 (`FloorPlan/TableDetailPanel.tsx`, `FloorPlanPage.tsx`, `FloorPlan/types.ts`)
+- **Floor Plan Served 버튼 클릭 안 되던 버그 fix** — v3.43 에서 Served 를 품목별 체크박스로 바꾸며 `item.status==='ready'` 일 때만 클릭 가능하게 했는데, The Fire 는 KDS 표시전용이라 품목별 ready 마킹이 없어 영원히 클릭 불가였음. 활성 주문(pending/preparing/ready)이면 단계 무관하게 홀 직원이 Served 토글 가능하도록 변경 + 전 품목 served 시 주문 자동 'served' 승급에 pending 포함 (`FloorPlan/TableDetailPanel.tsx`)
+- **Daily Settlement 인쇄 경로 fix** — `printSettlementReport(html, null)` 이 escposContent=null 이라 QZ 분기를 건너뛰고 브라우저 print 다이얼로그로 폴백 → 빌(POS-80C, QZ HTML pixel)과 다르게 출력되던 문제. 빌/주방과 동일한 QZ HTML pixel 경로(`sendHTMLViaQZTray`, OS 이름 프린터)로 라우팅, LAN IP 만 raw ESC/POS. 보호된 인쇄 함수 자체는 미변경, 호출만 빌과 동일하게 (`utils/billPrint.js`). 제목 템플릿 리터럴 버그(`{t(...)}` 가 그대로 인쇄되던 것) 수정 (`Reports/DailySettlementPrint.tsx`)
+- 검증: state-hydration 0 / build (main.a2f57813.js) / health-check 80/80 / table-status API 실호출 (takeawayCharge/serviceCharge/rate/tax 반환 Write→Read) / headless mount floor-plan·pos·kitchen·settings 0 크래시
+- Backup: 20260529_141604, smoke 10/10
+- ⚠️ Daily Settlement 인쇄는 실제 매장 프린터 출력(종이) 확인 필요 — 코드/헤드리스로는 출력 못 봄
+
+---
+
 ## [v3.43 hotfix #3] — 2026-05-28 배포 (Kitchen Station hybrid 모드 + 모바일 주문 카테고리 라우팅 fix — 매장 영업 1일차 실시간)
 
 - **Kitchen Station hybrid 모드** — 기존 `kitchen_assignment_mode` radio (category 또는 menu_item 둘 중 하나) 제거. 항상 hybrid: 카테고리를 station 에 배정하면 기본 라우팅 + 같은 카테고리 안 일부 메뉴만 다른 station 으로 보내려면 메뉴별 override. 산업 표준 (Toast / Square / Lightspeed) 패턴. 매장 영업 첫날 The Fire 피드백 즉시 반영
