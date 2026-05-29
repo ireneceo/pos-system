@@ -1885,6 +1885,67 @@ router.get('/restaurant/:restaurantId/pending-print', authenticateToken, async (
   }
 });
 
+// 2026-05-29: ATOMIC print claim — the single coordination point that makes the
+// kitchen ticket auto-print EXACTLY ONCE across every path/device. Three paths can
+// race for the same order: POS direct fast-path, KDS order-created/items-added
+// socket, and the polling fallbacks (useAutoPrintPoller + MainLayout). Each calls
+// this BEFORE printing; the conditional UPDATE (needs_print true→false) means only
+// the first caller gets claimed:true and prints. Everyone else gets claimed:false
+// and skips. On a print failure the caller re-arms via /print-rearm so another
+// device/cycle retries. printed_at (history) is still stamped via /printed after a
+// successful print, so +Round adds reprint only the new rows.
+router.patch('/:id/print-claim', authenticateToken, async (req, res) => {
+  try {
+    const o = await Order.findByPk(req.params.id);
+    if (!o) return res.status(404).json({ success: false, message: 'Order not found' });
+    if (req.user.role !== 'System Admin' && parseInt(req.user.restaurant_id) !== o.restaurant_id) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+    const [affected] = await Order.update(
+      { needs_print: false },
+      { where: { id: o.id, needs_print: true } }
+    );
+    res.json({ success: true, claimed: affected > 0 });
+  } catch (e) {
+    console.error('[print-claim] error:', e.message);
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// Clear ONLY needs_bill — used by a device that auto-printed the receipt but did
+// not win the kitchen claim (another device owns the kitchen ticket). Keeps the
+// kitchen print history (printed_at) untouched.
+router.patch('/:id/bill-printed', authenticateToken, async (req, res) => {
+  try {
+    const o = await Order.findByPk(req.params.id);
+    if (!o) return res.status(404).json({ success: false, message: 'Order not found' });
+    if (req.user.role !== 'System Admin' && parseInt(req.user.restaurant_id) !== o.restaurant_id) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+    await o.update({ needs_bill: false });
+    res.json({ success: true });
+  } catch (e) {
+    console.error('[bill-printed] error:', e.message);
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// Re-arm after a failed print so another device / next poll cycle retries.
+router.patch('/:id/print-rearm', authenticateToken, async (req, res) => {
+  try {
+    const o = await Order.findByPk(req.params.id);
+    if (!o) return res.status(404).json({ success: false, message: 'Order not found' });
+    if (req.user.role !== 'System Admin' && parseInt(req.user.restaurant_id) !== o.restaurant_id) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+    await o.update({ needs_print: true });
+    res.json({ success: true });
+  } catch (e) {
+    console.error('[print-rearm] error:', e.message);
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
 router.patch('/:id/printed', authenticateToken, async (req, res) => {
   try {
     const o = await Order.findByPk(req.params.id);

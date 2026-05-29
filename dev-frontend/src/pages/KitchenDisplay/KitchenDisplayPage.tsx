@@ -967,7 +967,10 @@ const KitchenDisplayPage: React.FC = () => {
         const kpAuto = !!kp.autoPrint;
         const _stationAutoPrint = Object.values(printerSettings.kitchenStationPrinters || {}).some((s: any) => s?.autoPrint);
         if (kpEnabled && !kpAuto && !_stationAutoPrint) return; // both off → block
-        const shouldAutoPrint = kpAuto || _stationAutoPrint;
+        // 2026-05-29 (PRINT_RULES_MATRIX 고정 규칙): KDS 는 표시 전용. 자동 인쇄하지 않는다.
+        // 프린터(주방 station / 빌)를 가진 카운터 POS / Floor Plan poller 가 단일 인쇄 주체.
+        // KDS(프린터 없을 수 있음)가 인쇄 주체가 되면 중복/누락("아무것도 안 나옴")을 유발했다.
+        const shouldAutoPrint = false;
 
         if (shouldAutoPrint) {
           // Share the inflight dedup pool with MainLayout polling so the same
@@ -1013,21 +1016,33 @@ const KitchenDisplayPage: React.FC = () => {
             notes: order.notes || ''
           };
 
-          printKitchenTicketViaRawBT(printOrderData, storeInfo)
-            .then(async (success) => {
-              if (success) {
+          // Atomic claim so this order's kitchen ticket prints EXACTLY ONCE across
+          // the POS direct fast-path, other devices' polling, and this KDS socket.
+          // Only the first claimer prints; the rest skip.
+          (async () => {
+            const tok = getAuthToken() || '';
+            const _h = { Authorization: `Bearer ${tok}` };
+            let claimed = false;
+            try {
+              const cr = await fetch(`/api/orders/${order.id}/print-claim`, { method: 'PATCH', headers: _h }).then(r => r.json());
+              claimed = !!(cr && cr.claimed);
+            } catch (e) { /* claim failed — skip to avoid blind double-print */ }
+            if (!claimed) { delete (window as any).__autoPrintInflight[order.id]; return; }
+            try {
+              const success = await printKitchenTicketViaRawBT(printOrderData, storeInfo);
+              if (success === false) {
+                await fetch(`/api/orders/${order.id}/print-rearm`, { method: 'PATCH', headers: _h }).catch(() => {});
+              } else {
                 console.log('Kitchen ticket auto-printed for order', order.order_number);
-                // Clear needs_print so MainLayout polling won't reprint this order
-                // on the next cycle (KDS socket is the fast path; polling is the
-                // safety net).
-                try {
-                  const tok = getAuthToken() || '';
-                  await fetch(`/api/orders/${order.id}/printed`, { method: 'PATCH', headers: { Authorization: `Bearer ${tok}` } });
-                } catch (e) { /* non-fatal — next poll will retry */ }
+                await fetch(`/api/orders/${order.id}/printed`, { method: 'PATCH', headers: _h }).catch(() => {});
               }
-            })
-            .catch(err => console.error('Auto-print failed:', err))
-            .finally(() => { delete (window as any).__autoPrintInflight[order.id]; });
+            } catch (err) {
+              console.error('Auto-print failed:', err);
+              await fetch(`/api/orders/${order.id}/print-rearm`, { method: 'PATCH', headers: _h }).catch(() => {});
+            } finally {
+              delete (window as any).__autoPrintInflight[order.id];
+            }
+          })();
         }
       } catch (err) {
         console.error('Auto-print error:', err);
@@ -1059,7 +1074,8 @@ const KitchenDisplayPage: React.FC = () => {
         const kpAuto = !!kp.autoPrint;
         const _stationAutoPrint = Object.values(printerSettings.kitchenStationPrinters || {}).some((s: any) => s?.autoPrint);
         if (kpEnabled && !kpAuto && !_stationAutoPrint) return; // both off → block
-        const shouldAutoPrint = kpAuto || _stationAutoPrint;
+        // KDS 표시 전용 (PRINT_RULES_MATRIX): +Round 자동 인쇄도 카운터 POS poller 가 담당.
+        const shouldAutoPrint = false;
         if (!shouldAutoPrint) return;
 
         // Same inflight dedup as order-created handler
@@ -1108,18 +1124,31 @@ const KitchenDisplayPage: React.FC = () => {
           items: printItems,
           notes: ''
         };
-        printKitchenTicketViaRawBT(printOrderData as any, storeInfo)
-          .then(async (ok) => {
-            if (ok) {
+        // Atomic claim — +Round ticket prints EXACTLY ONCE across paths/devices.
+        (async () => {
+          const tok = getAuthToken() || '';
+          const _h = { Authorization: `Bearer ${tok}` };
+          let claimed = false;
+          try {
+            const cr = await fetch(`/api/orders/${data.orderId}/print-claim`, { method: 'PATCH', headers: _h }).then(r => r.json());
+            claimed = !!(cr && cr.claimed);
+          } catch (e) { /* skip on claim error */ }
+          if (!claimed) { delete (window as any).__autoPrintInflight[data.orderId]; return; }
+          try {
+            const ok = await printKitchenTicketViaRawBT(printOrderData as any, storeInfo);
+            if (ok === false) {
+              await fetch(`/api/orders/${data.orderId}/print-rearm`, { method: 'PATCH', headers: _h }).catch(() => {});
+            } else {
               console.log('[KDS] additional-items ticket auto-printed for', data.orderNumber, `+Round ${data.orderGroup}`);
-              try {
-                const tok = getAuthToken() || '';
-                await fetch(`/api/orders/${data.orderId}/printed`, { method: 'PATCH', headers: { Authorization: `Bearer ${tok}` } });
-              } catch (e) { /* non-fatal */ }
+              await fetch(`/api/orders/${data.orderId}/printed`, { method: 'PATCH', headers: _h }).catch(() => {});
             }
-          })
-          .catch(err => console.error('[KDS] additional-items auto-print failed:', err))
-          .finally(() => { delete (window as any).__autoPrintInflight[data.orderId]; });
+          } catch (err) {
+            console.error('[KDS] additional-items auto-print failed:', err);
+            await fetch(`/api/orders/${data.orderId}/print-rearm`, { method: 'PATCH', headers: _h }).catch(() => {});
+          } finally {
+            delete (window as any).__autoPrintInflight[data.orderId];
+          }
+        })();
       } catch (err) {
         console.error('[KDS] order-items-added handler error:', err);
       }

@@ -391,7 +391,10 @@
       "Bash(awk 'NR>=792 && NR<=1365' utils/billPrint.js)",
       "Bash(break)",
       "Bash(pm2 restart *)",
-      "Bash(curl -s -o /dev/null -w \"backend health: %{http_code}\\\\n\" http://localhost:3001/api/health)"
+      "Bash(curl -s -o /dev/null -w \"backend health: %{http_code}\\\\n\" http://localhost:3001/api/health)",
+      "Bash(echo \"BUILD_EXIT=$?\")",
+      "Bash(sed -n '175,225p' src/utils/billPrint.js)",
+      "Bash(sed -n '3143,3200p' src/utils/billPrint.js)"
     ],
     "deny": [],
     "ask": []

@@ -323,3 +323,29 @@ backend mergeItemsIntoOrder() 성공
 | 2026-03-17 | Kitchen Station 시스템 Phase 5: Station별 분리 인쇄 추가 |
 | 2026-03-17 | 프린팅 규칙 매트릭스 초판 작성 |
 | 2026-05-27 | § C Additional-items 자동 인쇄 (`order-items-added` socket → `generateAdditionalItemsTicketContent`) + § D Receipt logo path resolution (`/var/www/uploads` 기준) 및 img src 정규식 (`data:` 통과) fix |
+
+---
+
+## 🔒 자동 인쇄 규칙 (2026-05-29 고정 — Irene 확정 스펙, 변경 금지)
+
+> 이 6개 규칙이 자동 인쇄의 **단일 진실**. 코드는 항상 이 규칙을 따른다. 동작이 규칙과 다르면 코드를 고친다 (규칙을 바꾸지 않는다).
+
+| # | 규칙 |
+|---|------|
+| 1 | **주방 자동발행 ON**: 주문 들어오면 즉시 **모든 주방 station 에 발행**. 각 station 은 자기 메뉴만 (station 별 라우팅). 이것도 "오더티켓". |
+| 2 | **"POS 미러링" ON** (`kitchenPrinter.mirrorToBillPrinter`): POS(빌프린터)에 **통합 오더티켓 1장** 추가 발행. #1 과 독립. |
+| 3 | **빌 자동발행 ON** (`billPrinter.autoPrint`): 결제되면 영수증 자동발행, 설정한 매수대로. |
+| 4 | **출처 무관 동일**: POS / Floor Plan / 모바일오더 어디서 온 주문이든 #1~#3 동일하게 동작. |
+| 5 | **추가 주문(+Round)**: 추가된 품목만 발행 (이전 품목 재발행 금지). `printed_at` per-item 히스토리. |
+| 6 | **안정성 최우선**: 절대 "아무것도 안 나옴" 금지. 인쇄 실패 시 **POS 가 알아야 함** (실패 배너 + 조치 안내 + 다시 인쇄). |
+
+### 구현 원칙 (이 규칙을 어떻게 보장하나)
+
+- **post-print 기록 방식** (사전 claim 금지): 인쇄를 *성공*한 뒤에만 `printed_at` 도장 + `needs_print` clear. 사전 선점(claim)은 인쇄 못 하는 기기가 먹고 막아버려 "아무것도 안 나옴"을 유발 → **금지**.
+- **KDS 는 표시 전용**: KDS 는 자동 인쇄하지 않는다. 프린터(주방 station / 빌)를 가진 **카운터 POS / Floor Plan 기기**가 자동발행 담당. (KDS 기기엔 프린터가 없을 수 있어 인쇄 주체가 되면 안 됨.)
+- **중복 방지**: 같은 기기 내 `window.__autoPrintInflight[orderId]` + 영속 `printed_at`. 인쇄 주체 기기가 1대면 정확히 1회.
+- **#2 미러는 #1 과 한 함수**(`printKitchenTicketViaRawBT` 내 mirror 블록)지만, 인쇄 주체가 항상 카운터(빌프린터 보유) 기기이므로 미러가 항상 같이 나온다.
+- **실패 알림**: 인쇄 실패(`ok===false` / throw) 시 `window` 이벤트 `autoprint-failed` 발생 → POS/레이아웃이 배너로 표시 + needs_print 유지(다음 주기 재시도).
+
+### 인쇄 주체 기기 = 프린터를 가진 기기 (전제)
+카운터 POS 기기의 QZ Tray 가 주방 station 프린터(예: `KITCHEN`/`KITCHEN 2`/`BAR`)와 빌프린터(`POS-80C`)를 **모두 인식**해야 한다. station address 는 그 기기 QZ Tray 의 실제 프린터명과 일치해야 무음 실패가 없다.

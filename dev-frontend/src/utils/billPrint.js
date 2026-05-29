@@ -3094,9 +3094,16 @@ async function printKitchenTicketsByStation(orderData, storeInfo, settings) {
     return await sendToRawBTPrinter(orderData, storeInfo, settings, sp.name, stationName, sp.address, stationId);
   }
 
-  // Multi-station, QZ Tray: route per-station to different network IPs
-  // (each station's method is resolved inside sendToRawBTPrinter via stationId)
-  if (shouldUseQZTray('kitchen')) {
+  // Multi-station, QZ Tray: route per-station to different network IPs / OS printers
+  // (each station's method is resolved inside sendToRawBTPrinter via stationId).
+  // 2026-05-29 (The Fire): gate on the STATIONS' own method, not just the master
+  // kitchenPrinter.method. The Fire configured each station as 'qztray' but left
+  // the master kitchenPrinter.method empty → getPrinterMode() defaulted to 'rawbt'
+  // → this branch was skipped → tickets collapsed to one combined ticket (and only
+  // the bill-printer mirror printed). Entering the per-station loop whenever any
+  // station is qztray fixes station routing regardless of the master/global mode.
+  const _stationsUseQZ = stationIds.some(id => stationPrinters[id] && stationPrinters[id].method === 'qztray');
+  if (shouldUseQZTray('kitchen') || _stationsUseQZ) {
     const { stationItems, unmappedItems } = bucketItemsByStation(loadMenuStationMap());
 
     // No mapping at all: send everything to the first station as ONE ticket.

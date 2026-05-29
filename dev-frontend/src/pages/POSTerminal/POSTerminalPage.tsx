@@ -17,6 +17,7 @@ import { useMenu } from '../../contexts/MenuContext';
 import { useCustomer } from '../../contexts/CustomerContext';
 import { useStaff } from '../../contexts/StaffContext';
 import { printBillViaRawBT, printKitchenTicketViaRawBT, getPrinterSettings, getActiveBillPrinter } from '../../utils/billPrint';
+import AutoPrintFailureBanner from '../../components/AutoPrintFailureBanner';
 import { useAuth } from '../../contexts/AuthContext';
 import CustomerModal from '../../components/Customer/CustomerModal';
 // StaffLoginModal removed - authentication handled by ProtectedRoute
@@ -2154,10 +2155,28 @@ const POSTerminalPage: React.FC = () => {
             total: savedOrder?.total || orderData.total,
             cashierName: user?.name || null
           };
-          setTimeout(() => {
-            printKitchenTicketViaRawBT(printData, printStoreInfo)
-              .then((ok: any) => { if (ok === false) _tele('add-order-kitchen-fail', { reason: 'returned false' }); })
-              .catch(e => { console.error('Auto kitchen print (add-only) failed:', e); _tele('add-order-kitchen-fail', { error: String(e?.message || e) }); });
+          // 2026-05-29: PRINT THEN MARK (no pre-claim). This is the counter POS
+          // fast path. On success → PATCH /printed (stamp printed_at + clear
+          // needs_print) so the poller on this device skips. On failure → notify
+          // POS (rule 6) and leave needs_print so the poller retries. Mark inflight
+          // up front so the poller can't double-fire while this print is in flight.
+          const _orderId = savedOrder?.id || savedOrder?.data?.id || savedOrder?.order?.id;
+          if (_orderId) { (window as any).__autoPrintInflight = (window as any).__autoPrintInflight || {}; (window as any).__autoPrintInflight[_orderId] = true; }
+          setTimeout(async () => {
+            const _h = { 'Authorization': `Bearer ${getAuthToken()}` };
+            try {
+              const ok = await printKitchenTicketViaRawBT(printData, printStoreInfo);
+              if (ok === false) {
+                try { window.dispatchEvent(new CustomEvent('autoprint-failed', { detail: { orderNumber: printData.orderNumber, scope: 'kitchen' } })); } catch {}
+              } else if (_orderId) {
+                await fetch(`/api/orders/${_orderId}/printed`, { method: 'PATCH', headers: _h }).catch(() => {});
+              }
+            } catch (e) {
+              console.error('Auto kitchen print (add-only) failed:', e);
+              try { window.dispatchEvent(new CustomEvent('autoprint-failed', { detail: { orderNumber: printData.orderNumber, scope: 'kitchen' } })); } catch {}
+            } finally {
+              if (_orderId) { try { delete (window as any).__autoPrintInflight[_orderId]; } catch {} }
+            }
           }, 400);
         } else {
           _tele('add-order-kitchen-skip', {
@@ -2464,15 +2483,24 @@ const POSTerminalPage: React.FC = () => {
       const _stationAutoPrint = Object.values(_stationPrintersMap).some((s: any) => s?.autoPrint);
       const kitchenAuto = (_kpEnabled && !_kpAuto && !_stationAutoPrint) ? false : (_kpAuto || _stationAutoPrint);
       if (kitchenAuto && !_isPaymentForExistingOrder) {
-        setTimeout(() => {
-          printKitchenTicketViaRawBT(printData, printStoreInfo)
-            .then((ok: any) => {
-              if (ok === false) _telemetry('auto-kitchen-fail', { reason: 'returned false' });
-            })
-            .catch((e: any) => {
-              console.error('Auto kitchen print failed:', e);
-              _telemetry('auto-kitchen-fail', { error: String(e?.message || e) });
-            });
+        // 2026-05-29: PRINT THEN MARK (no pre-claim). Counter POS fast path.
+        const _orderId = savedOrder?.id || savedOrder?.data?.id || savedOrder?.order?.id;
+        if (_orderId) { (window as any).__autoPrintInflight = (window as any).__autoPrintInflight || {}; (window as any).__autoPrintInflight[_orderId] = true; }
+        setTimeout(async () => {
+          const _h = { 'Authorization': `Bearer ${getAuthToken()}` };
+          try {
+            const ok = await printKitchenTicketViaRawBT(printData, printStoreInfo);
+            if (ok === false) {
+              try { window.dispatchEvent(new CustomEvent('autoprint-failed', { detail: { orderNumber: printData.orderNumber, scope: 'kitchen' } })); } catch {}
+            } else if (_orderId) {
+              await fetch(`/api/orders/${_orderId}/printed`, { method: 'PATCH', headers: _h }).catch(() => {});
+            }
+          } catch (e: any) {
+            console.error('Auto kitchen print failed:', e);
+            try { window.dispatchEvent(new CustomEvent('autoprint-failed', { detail: { orderNumber: printData.orderNumber, scope: 'kitchen' } })); } catch {}
+          } finally {
+            if (_orderId) { try { delete (window as any).__autoPrintInflight[_orderId]; } catch {} }
+          }
         }, 800);
       } else {
         _telemetry('auto-kitchen-skip', {
@@ -2796,6 +2824,7 @@ const POSTerminalPage: React.FC = () => {
 
   return (
     <POSContainer>
+      <AutoPrintFailureBanner />
       <Header>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <Logo onClick={handleResetPOS}>

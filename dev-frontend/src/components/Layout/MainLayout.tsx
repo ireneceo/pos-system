@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { io, Socket } from 'socket.io-client';
 import styled, { keyframes, css } from 'styled-components';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import AutoPrintFailureBanner from '../AutoPrintFailureBanner';
 import { useStaff } from '../../contexts/StaffContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useStore } from '../../contexts/StoreContext';
@@ -1248,7 +1249,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             };
             // Bill — payment_status='completed' (모바일 QR 즉시 결제 / 결제 완료) + needs_bill 시
             const _isPaid = ord.payment_status === 'completed' || ord.payment_status === 'partial';
-            let billOk = true, kitchenOk = true;
+            const _h = { Authorization: `Bearer ${tok}` };
+            let billOk = true, billPrinted = false, kitchenPrinted = false;
             if (_isPaid && ord.needs_bill && activeBill?.enabled && activeBill?.autoPrint) {
               const copies = Math.max(1, Math.min(3, parseInt((printSettings.receiptSettings && printSettings.receiptSettings.copiesAfterPayment) || (JSON.parse(localStorage.getItem('receiptSettings') || '{}').copiesAfterPayment) || 1, 10) || 1));
               const autoOpenDrawer = (printSettings.receiptSettings && printSettings.receiptSettings.autoOpenDrawer) !== false && (JSON.parse(localStorage.getItem('receiptSettings') || '{}').autoOpenDrawer !== false);
@@ -1259,8 +1261,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 catch (e: any) { console.error('[poll] bill failed:', e); billOk = false; }
                 if (i < copies - 1) await new Promise(r => setTimeout(r, 600));
               }
+              billPrinted = billOk;
+              if (!billOk) { try { window.dispatchEvent(new CustomEvent('autoprint-failed', { detail: { orderNumber: ord.order_number, scope: 'bill' } })); } catch {} }
             }
-            // Kitchen ticket — needs_print=true 일 때. 미인쇄 품목만 (kitchen_items).
+            // Kitchen ticket — PRINT THEN MARK (no pre-claim). 미인쇄 품목만 (kitchen_items).
             if (ord.needs_print && kitchenItemsRaw.length > 0) {
               const _kp: any = printSettings.kitchenPrinter || {};
               const _kpEnabled = _kp.enabled !== false;
@@ -1270,17 +1274,21 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               const _kitchenAuto = (_kpEnabled && !_kpAuto && !_stationAutoPrint) ? false : (_kpAuto || _stationAutoPrint);
               if (_kitchenAuto) {
                 const kitchenPrintData = { ...printData, items: kitchenItemsRaw.map(mapItem) };
-                try { const ok = await billPrintMod.printKitchenTicketViaRawBT(kitchenPrintData, printStoreInfo); if (ok === false) kitchenOk = false; }
-                catch (e: any) { console.error('[poll] kitchen print failed:', e); kitchenOk = false; }
+                let ok: any = true;
+                try { ok = await billPrintMod.printKitchenTicketViaRawBT(kitchenPrintData, printStoreInfo); }
+                catch (e: any) { console.error('[poll] kitchen print failed:', e); ok = false; }
+                if (ok === false) {
+                  try { window.dispatchEvent(new CustomEvent('autoprint-failed', { detail: { orderNumber: ord.order_number, scope: 'kitchen' } })); } catch {}
+                } else {
+                  kitchenPrinted = true;
+                }
               }
             }
-            // PATCH only after both succeeded — fail keeps needs_print/bill, retry next cycle
-            if (billOk && kitchenOk) {
-              try { await fetch(`/api/orders/${ord.id}/printed`, { method: 'PATCH', headers: { Authorization: `Bearer ${tok}` } }); }
-              catch (e: any) { console.error('[poll] PATCH printed failed:', e); }
-              console.log('[poll] ✓ order', ord.order_number);
-            } else {
-              console.warn('[poll] ✗ print failed for order', ord.order_number, '— retry next cycle');
+            if (kitchenPrinted) {
+              try { await fetch(`/api/orders/${ord.id}/printed`, { method: 'PATCH', headers: _h }); } catch (e: any) { console.error('[poll] PATCH printed failed:', e); }
+              console.log('[poll] ✓ kitchen order', ord.order_number);
+            } else if (billPrinted) {
+              try { await fetch(`/api/orders/${ord.id}/bill-printed`, { method: 'PATCH', headers: _h }); } catch (e: any) { /* non-fatal */ }
             }
             delete (window as any).__autoPrintInflight[ord.id];
           } catch (e) {
@@ -2241,6 +2249,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
   return (
     <BrandThemeProvider>
+      <AutoPrintFailureBanner />
       <LayoutContainer>
         {/* Payment Status Modals */}
         <PaymentStatusModals />

@@ -102,7 +102,8 @@ export function useAutoPrintPoller(opts: {
             // 결제 / staff 가 결제 버튼 누름 후 needs_bill set 등). counter
             // (나중 결제) = payment_status='pending' → bill 안 나옴.
             const _isPaid = ord.payment_status === 'completed' || ord.payment_status === 'partial';
-            let billOk = true, kitchenOk = true;
+            const _h = { Authorization: `Bearer ${tok}` };
+            let billOk = true, billPrinted = false, kitchenPrinted = false;
             if (_isPaid && ord.needs_bill && activeBill?.enabled && activeBill?.autoPrint) {
               const copies = Math.max(1, Math.min(3, parseInt((printSettings.receiptSettings && printSettings.receiptSettings.copiesAfterPayment) || (JSON.parse(localStorage.getItem('receiptSettings') || '{}').copiesAfterPayment) || 1, 10) || 1));
               const autoOpenDrawer = (printSettings.receiptSettings && printSettings.receiptSettings.autoOpenDrawer) !== false && (JSON.parse(localStorage.getItem('receiptSettings') || '{}').autoOpenDrawer !== false);
@@ -113,11 +114,15 @@ export function useAutoPrintPoller(opts: {
                 catch (e: any) { console.error('[autoPrint] bill failed:', e); billOk = false; }
                 if (i < copies - 1) await new Promise(r => setTimeout(r, 600));
               }
+              billPrinted = billOk;
+              if (!billOk) { try { window.dispatchEvent(new CustomEvent('autoprint-failed', { detail: { orderNumber: ord.order_number, scope: 'bill' } })); } catch {} }
             }
 
-            // Kitchen ticket — needs_print=true 일 때. skip if KDS open.
-            // Prints ONLY the not-yet-printed items (kitchen_items); empty = nothing
-            // new to send (e.g. only a bill reprint was pending), so skip cleanly.
+            // Kitchen ticket — PRINT THEN MARK (no pre-claim). Prints ONLY the
+            // not-yet-printed items (kitchen_items) so +Round sends only new rows.
+            // No pre-claim → a device can never "win then fail to print" and block
+            // everyone (that caused the "nothing prints" outage). printed_at is
+            // stamped ONLY on success. (KDS is display-only and doesn't run this.)
             if (ord.needs_print && !isOnKDS && kitchenItemsRaw.length > 0) {
               const _kp: any = printSettings.kitchenPrinter || {};
               const _kpEnabled = _kp.enabled !== false;
@@ -126,20 +131,25 @@ export function useAutoPrintPoller(opts: {
               const _kitchenAuto = (_kpEnabled && !_kpAuto) ? false : (_kpAuto || _stationAutoPrint);
               if (_kitchenAuto) {
                 const kitchenPrintData = { ...printData, items: kitchenItemsRaw.map(mapItem) };
-                try {
-                  const ok = await billPrintMod.printKitchenTicketViaRawBT(kitchenPrintData, printStoreInfo);
-                  if (ok === false) kitchenOk = false;
-                } catch (e: any) { console.error('[autoPrint] kitchen failed:', e); kitchenOk = false; }
+                let ok: any = true;
+                try { ok = await billPrintMod.printKitchenTicketViaRawBT(kitchenPrintData, printStoreInfo); }
+                catch (e: any) { console.error('[autoPrint] kitchen failed:', e); ok = false; }
+                if (ok === false) {
+                  // Rule 6: notify POS, keep needs_print=true so next cycle retries.
+                  try { window.dispatchEvent(new CustomEvent('autoprint-failed', { detail: { orderNumber: ord.order_number, scope: 'kitchen' } })); } catch {}
+                } else {
+                  kitchenPrinted = true;
+                }
               }
             }
 
-            // PATCH /printed only after both succeeded.
-            if (billOk && kitchenOk) {
-              try { await fetch(`/api/orders/${ord.id}/printed`, { method: 'PATCH', headers: { Authorization: `Bearer ${tok}` } }); }
-              catch (e: any) { console.error('[autoPrint] PATCH printed failed:', e); }
-              console.log('[autoPrint] ✓ order', ord.order_number, '(source=' + ord.source + ')');
-            } else {
-              console.warn('[autoPrint] ✗ print failed for order', ord.order_number, '— will retry next cycle');
+            // Mark printed ONLY after a successful kitchen print (post-print).
+            if (kitchenPrinted) {
+              try { await fetch(`/api/orders/${ord.id}/printed`, { method: 'PATCH', headers: _h }); } catch (e: any) { console.error('[autoPrint] PATCH printed failed:', e); }
+              console.log('[autoPrint] ✓ kitchen order', ord.order_number);
+            } else if (billPrinted) {
+              // bill printed but no kitchen print this cycle — clear needs_bill only
+              try { await fetch(`/api/orders/${ord.id}/bill-printed`, { method: 'PATCH', headers: _h }); } catch (e: any) { /* non-fatal */ }
             }
             delete (window as any).__autoPrintInflight[ord.id];
           } catch (e) {

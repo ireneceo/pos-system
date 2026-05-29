@@ -293,6 +293,16 @@ router.get('/installer', (req, res) => {
 router.post('/diagnose', authenticateToken, async (req, res) => {
   try {
     const payload = req.body || {};
+    // 2026-05-29: Auto telemetry (auto-kitchen-skip / auto-bill-skip / auto-*-fail)
+    // must NEVER create a ticket or email admins. These fire on every order — even
+    // in a perfectly healthy "kitchen auto-print OFF" config — and spammed System
+    // Admins with diagnostic mail. The frontend was already no-op'd, but a store
+    // device running a stale cached bundle can keep POSTing; this server-side guard
+    // drops it for good. Only the manual Settings → Printer "Send to Support" button
+    // (which carries no `auto-` scope) files a report and notifies admins.
+    if (typeof payload.scope === 'string' && payload.scope.startsWith('auto-')) {
+      return res.status(202).json({ success: true, skipped: 'auto-telemetry suppressed' });
+    }
     const timestamp = Date.now();
     const random = Math.floor(Math.random() * 1000);
     const ticketNumber = `QZ-${new Date().getFullYear()}-${String(timestamp % 10000)}-${String(random).padStart(3, '0')}`;
