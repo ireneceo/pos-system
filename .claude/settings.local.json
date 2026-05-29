@@ -411,7 +411,9 @@
       "Bash(sed -i '163s/setTimeout\\(pollFn, 2000\\)/setTimeout\\(pollFn, 800\\)/' src/hooks/useAutoPrintPoller.ts)",
       "Bash(sed -i '23s/intervalMs = 10000/intervalMs = 5000/' src/hooks/useAutoPrintPoller.ts)",
       "Bash(echo \"FE=$?\")",
-      "Bash(awk '/<PaymentModal/,/\\\\/>/' pages/POSTerminal/POSTerminalPage.tsx)"
+      "Bash(awk '/<PaymentModal/,/\\\\/>/' pages/POSTerminal/POSTerminalPage.tsx)",
+      "Bash(sed -n '1,5p')",
+      "Bash(sed -n '886,960p' /var/www/dev-backend/routes/orders-crud.js)"
     ],
     "deny": [],
     "ask": []

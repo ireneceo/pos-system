@@ -794,8 +794,9 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
     if (loading || !statusInfo?.orderId) return;
     const target = items[itemIndex] as any;
     if (!target) return;
-    const cur = target.status || 'pending';
-    if (cur !== 'ready' && cur !== 'served') return; // guard
+    // KDS 표시전용 매장은 품목별 ready 마킹이 없으므로, 활성 주문이면
+    // 어느 단계(pending/preparing/ready)에서든 홀 직원이 Served 토글 가능.
+    if (!['pending', 'preparing', 'ready', 'served'].includes(orderStatus)) return; // guard
     setLoading(true);
     try {
       const updatedItems = items.map((item, idx) => {
@@ -815,7 +816,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
 
       if (res.ok) {
         const allServed = updatedItems.every((i: any) => i.status === 'served');
-        if (allServed && ['preparing', 'ready'].includes(orderStatus)) {
+        if (allServed && ['pending', 'preparing', 'ready'].includes(orderStatus)) {
           await fetch(`/api/orders/${statusInfo.orderId}/status`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -1552,7 +1553,8 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                         const originalIndex = item._originalIndex as number;
                         const displayStatus = toDisplayStatus(item.status);
                         const isServed = displayStatus === 'served';
-                        const clickable = displayStatus === 'ready' || displayStatus === 'served';
+                        // 활성 주문이면 단계 무관하게 홀 직원이 Served 토글 가능 (KDS 표시전용 매장 지원)
+                        const clickable = showServedCheckbox;
                         const badgeLabel = t(`floorplan:tableDetailPanel.itemStatus.${displayStatus}`);
                         const badgeTitle = clickable
                           ? (isServed

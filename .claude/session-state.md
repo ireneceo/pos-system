@@ -109,6 +109,26 @@ AutoPrint master gate / 신규주문 banner / Customer Display reconnect·자동
 - 기존 set_items → set_groups[fixed] 무손실 마이그.
 - 구성품 선택 UI는 이미 검색 가능(확인됨).
 
+### 그룹 3 — 주문 상세/추가 흐름 (2026-05-29 Irene 현장 추가, 분석 완료)
+
+6. **옵션이 상세에서 제대로 안 나옴** (POS / Floor Plan / LiveOrders 상세).
+   - **분석 결과: 데이터는 정상.** 운영16 실주문 확인 → `order_items[].options` 가 깔끔한 `string[]` 로 저장됨 (예: `["Beef"]`, `["꿀간장치킨 I Soy Honey Sauce","버터갈릭 I Butter Garlic"]`). `selectedOptions` 는 undefined(주문 저장 후엔 options 만 남음).
+   - **즉 렌더(표시) 측 버그.** 어느 상세뷰가 options 줄을 빠뜨리는지 특정 필요. 후보:
+     - `LiveOrders/OrderDetailModal.tsx`(~715): `Array.isArray(item.options)? join(', ') : item.options` — string[] 이면 OK여야 함. 실제 누락 지점 확인 필요.
+     - `FloorPlan/TableDetailPanel.tsx`(~1562): `options.map(o => typeof o==='string'? o : o?.name)` — string 처리 OK.
+     - `POSTerminalPage.tsx`: 기존 주문을 카트로 재구성/추가할 때 options 복원 누락 가능 (selectedOptions 없어서 가격/표시 깨질 수 있음).
+   - **할 일**: 3개 상세뷰 실제 렌더 1:1 점검 → options 줄 통일 표시 (string[] 기준). set/combo 구성품 표시도 함께 점검.
+
+7. **Floor Plan "Add Items" → 첫 New Order 처럼 POS(오버레이) 열기**.
+   - 현재: `TableDetailPanel.tsx` 의 인라인 미니카트(`addItemsCart`, ~639/714/1302) 로 추가.
+   - 요청: New Order 와 동일하게 **POSOverlay(iframe)** 로 열어 전체 POS 메뉴/검색/옵션으로 추가 (메모리 [[reference_floor_plan_pos_overlay]] 일관성). 이러면 6번 옵션 문제도 POS 정식 흐름으로 흡수됨.
+   - 연계: 그룹1 #2("Open in POS Terminal 링크 제거")와 같은 방향 — 모든 진입을 POSOverlay 로 통일. POS 가 기존 주문 테이블에 핀(table_number/forceMergeIntoOrderId)되도록 컨텍스트 전달.
+
+8. **Daily Settlement 내용 = 매장 제공 Z-리포트 샘플에 정밀 매칭** (2026-05-29 배포에서 인쇄경로만 우선 수정, 내용은 이월).
+   - 이미 가능(현 데이터): GROSS/DISCOUNT/NET SALES, EXCLUSIVE TAX(Service Tax @6%)/EXCLUSIVE CHARGES(Service Charge @10%), 결제수단별→Total Credit Card/Total Others/Total Tender 그룹, TOTAL TRANSACTIONS, ATV(net/gross), Non-Sales(Staff Meal), 주문유형(Dine In/Takeaway).
+   - **신규 데이터 필요(현 모델에 없음)**: POS ID, BOD/EOD 시각, BILL ROUNDING, VOIDED BILLS/VOIDED ITEMS(New/Saved/Billed) 분해, Cash Movement/FLOAT, ITEM ENTRY COUNT(Scan/Key/Menu). → 백엔드 집계/스키마 작업 + 실프린터 반복검증 동반 별도 사이클.
+   - 샘플 원본: 대화 2026-05-29 (THE FIRE Z DAILY SALES).
+
 ---
 
 ## 후속 후보 (아이디어 메모, 확정 X)

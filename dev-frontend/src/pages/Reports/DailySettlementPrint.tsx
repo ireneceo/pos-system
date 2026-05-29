@@ -529,7 +529,7 @@ const DailySettlementPrint: React.FC<DailySettlementPrintProps> = ({ isOpen, onC
     html += `<div style="text-align:center;padding-bottom:12px;margin-bottom:12px;border-bottom:2px solid #000">${storeHeader}</div>`;
 
     // Title
-    html += `<div style="text-align:center;font-size:16px;font-weight:900;letter-spacing:2px;margin:12px 0;padding:8px 0;border-top:1px dashed #666;border-bottom:1px dashed #666">{t('reports:dailySettlementPrint.dailySettlement')}</div>`;
+    html += `<div style="text-align:center;font-size:16px;font-weight:900;letter-spacing:2px;margin:12px 0;padding:8px 0;border-top:1px dashed #666;border-bottom:1px dashed #666">${t('reports:dailySettlementPrint.dailySettlement', 'DAILY SETTLEMENT')}</div>`;
 
     // Date / Printed
     html += row('Date:', formatDateDisplay(selectedDate));

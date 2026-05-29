@@ -2925,12 +2925,19 @@ export async function printSettlementReport(htmlContent, escposContent) {
       return true;
     }
 
-    // QZ Tray mode
-    if (shouldUseQZTray() && escposContent) {
+    // QZ Tray mode — bill 인쇄와 동일 경로. OS 이름 프린터(POS-80C 등)는
+    // HTML pixel(sendHTMLViaQZTray)로 한글·디자인 정상, LAN IP 만 raw ESC/POS.
+    // (이전엔 escposContent=null 이라 이 분기를 건너뛰고 브라우저 print 다이얼로그로
+    //  폴백돼 빌과 다르게 출력됐다.)
+    if (shouldUseQZTray()) {
       console.log('🖨️ QZ Tray mode - printing settlement report');
       const address = getActiveBillPrinter().address;
       if (address) {
-        return await sendViaQZTray(escposContent, address);
+        const isLanIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(address);
+        if (isLanIP && escposContent) {
+          return await sendViaQZTray(escposContent, address);
+        }
+        return await sendHTMLViaQZTray(htmlContent, address);
       }
       // Fallback to browser print if no address
       return printHTMLContent(htmlContent, 'Daily Settlement');
