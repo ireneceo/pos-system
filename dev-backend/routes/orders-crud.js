@@ -1857,16 +1857,25 @@ router.get('/restaurant/:restaurantId/pending-print', authenticateToken, async (
       attributes: ['id', 'name']
     });
     const stationNameById = new Map(stations.map(s => [Number(s.id), s.name]));
+    const enrichItem = (it) => {
+      const sid = it.kitchen_station_id ? Number(it.kitchen_station_id) : null;
+      const sName = sid ? (stationNameById.get(sid) || null) : null;
+      return { ...it, stationName: sName };
+    };
     const result = orders.map(o => {
       const plain = o.toJSON();
       const items = Array.isArray(plain.order_items)
         ? plain.order_items
         : (typeof plain.order_items === 'string' ? (() => { try { return JSON.parse(plain.order_items); } catch { return []; } })() : []);
-      plain.order_items = items.map(it => {
-        const sid = it.kitchen_station_id ? Number(it.kitchen_station_id) : null;
-        const sName = sid ? (stationNameById.get(sid) || null) : null;
-        return { ...it, stationName: sName };
-      });
+      // Full list (with station names) — used for the BILL/receipt.
+      plain.order_items = items.map(enrichItem);
+      // 2026-05-29: per-item auto-print history. `kitchen_items` carries ONLY the
+      // items that have not been kitchen-printed yet (printed_at unset). On a
+      // +Round add, this is just the newly added items — so the kitchen ticket
+      // never reprints previously-sent rows. The PATCH /printed call stamps
+      // printed_at, so each item is auto-printed exactly once across every device
+      // (KDS socket fast-path OR polling), regardless of which one fires first.
+      plain.kitchen_items = items.filter(it => !it.printed_at).map(enrichItem);
       return plain;
     });
     res.json({ success: true, data: result });
@@ -1883,7 +1892,25 @@ router.patch('/:id/printed', authenticateToken, async (req, res) => {
     if (req.user.role !== 'System Admin' && parseInt(req.user.restaurant_id) !== o.restaurant_id) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
-    await o.update({ needs_print: false, needs_bill: false });
+    // 2026-05-29: stamp printed_at on every not-yet-printed item so the kitchen
+    // auto-print history is persisted. pending-print's `kitchen_items` filters on
+    // this flag, so a later +Round add reprints ONLY the new rows — already-sent
+    // items are never re-emitted. Both the poller and the KDS socket path call
+    // this endpoint after a successful print, keeping one shared history.
+    const items = Array.isArray(o.order_items)
+      ? o.order_items
+      : (typeof o.order_items === 'string' ? (() => { try { return JSON.parse(o.order_items); } catch { return []; } })() : []);
+    const now = new Date().toISOString();
+    let changed = false;
+    const stamped = items.map(it => {
+      if (it && !it.printed_at) { changed = true; return { ...it, printed_at: now }; }
+      return it;
+    });
+    await o.update({
+      ...(changed ? { order_items: stamped } : {}),
+      needs_print: false,
+      needs_bill: false
+    });
     res.json({ success: true });
   } catch (e) {
     console.error('[printed] error:', e.message);

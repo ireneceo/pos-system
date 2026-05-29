@@ -1214,7 +1214,19 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             (window as any).__autoPrintInflight[ord.id] = true;
 
             const items = Array.isArray(ord.order_items) ? ord.order_items : (typeof ord.order_items === 'string' ? (() => { try { return JSON.parse(ord.order_items); } catch { return []; } })() : []);
+            // 2026-05-29: kitchen ticket prints ONLY not-yet-printed items
+            // (backend `kitchen_items`) so a +Round add never reprints prior rows.
+            const kitchenItemsRaw = Array.isArray(ord.kitchen_items) ? ord.kitchen_items : items;
             const printStoreInfo = (typeof getStoreInfo === 'function') ? getStoreInfo() : {} as any;
+            const mapItem = (it: any) => ({
+              menuItem: { name: it.menu_item_name || it.name || (it.menuItem && it.menuItem.name) || 'Item', price: parseFloat(it.price || (it.menuItem && it.menuItem.price) || '0') },
+              quantity: it.quantity || 1,
+              options: Array.isArray(it.options) ? it.options : [],
+              kitchen_station_id: it.kitchen_station_id || null,
+              added_at: it.added_at || null,
+              order_group: it.order_group || 0,
+              stationName: it.stationName || null
+            });
             const printData: any = {
               orderNumber: ord.order_number,
               pickupNumber: ord.order_number ? String(ord.order_number).split('-')[1] : '',
@@ -1223,13 +1235,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               date: new Date(ord.order_date || ord.createdAt || Date.now()),
               orderType: ord.order_type === 'dine_in' ? 'dine-in' : (ord.order_type || 'takeaway'),
               orderSource: ord.source || 'mobile',
-              items: items.map((it: any) => ({
-                menuItem: { name: it.menu_item_name || it.name || (it.menuItem && it.menuItem.name) || 'Item', price: parseFloat(it.price || (it.menuItem && it.menuItem.price) || '0') },
-                quantity: it.quantity || 1,
-                options: Array.isArray(it.options) ? it.options : [],
-                kitchen_station_id: it.kitchen_station_id || null,
-                stationName: it.stationName || null
-              })),
+              items: items.map(mapItem),
               subtotal: parseFloat(ord.subtotal || '0'),
               tax: parseFloat(ord.tax || '0'),
               serviceCharge: parseFloat(ord.service_charge || '0'),
@@ -1254,8 +1260,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 if (i < copies - 1) await new Promise(r => setTimeout(r, 600));
               }
             }
-            // Kitchen ticket — needs_print=true 일 때.
-            if (ord.needs_print) {
+            // Kitchen ticket — needs_print=true 일 때. 미인쇄 품목만 (kitchen_items).
+            if (ord.needs_print && kitchenItemsRaw.length > 0) {
               const _kp: any = printSettings.kitchenPrinter || {};
               const _kpEnabled = _kp.enabled !== false;
               const _kpAuto = !!_kp.autoPrint;
@@ -1263,7 +1269,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               // Station-only mode 허용: master autoPrint OFF + any station autoPrint ON → fire stations.
               const _kitchenAuto = (_kpEnabled && !_kpAuto && !_stationAutoPrint) ? false : (_kpAuto || _stationAutoPrint);
               if (_kitchenAuto) {
-                try { const ok = await billPrintMod.printKitchenTicketViaRawBT(printData, printStoreInfo); if (ok === false) kitchenOk = false; }
+                const kitchenPrintData = { ...printData, items: kitchenItemsRaw.map(mapItem) };
+                try { const ok = await billPrintMod.printKitchenTicketViaRawBT(kitchenPrintData, printStoreInfo); if (ok === false) kitchenOk = false; }
                 catch (e: any) { console.error('[poll] kitchen print failed:', e); kitchenOk = false; }
               }
             }

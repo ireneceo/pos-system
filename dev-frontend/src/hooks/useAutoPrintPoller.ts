@@ -61,7 +61,23 @@ export function useAutoPrintPoller(opts: {
             (window as any).__autoPrintInflight[ord.id] = true;
 
             const items = Array.isArray(ord.order_items) ? ord.order_items : (typeof ord.order_items === 'string' ? (() => { try { return JSON.parse(ord.order_items); } catch { return []; } })() : []);
+            // 2026-05-29: kitchen ticket prints ONLY not-yet-printed items
+            // (backend `kitchen_items`). On a +Round add this is just the new
+            // rows, so previously-sent items never reprint. Falls back to the
+            // full list for older backends that don't send kitchen_items.
+            const kitchenItemsRaw = Array.isArray(ord.kitchen_items) ? ord.kitchen_items : items;
             const printStoreInfo = (typeof getStoreInfo === 'function') ? getStoreInfo() : {};
+            const mapItem = (it: any) => ({
+              menuItem: { name: it.menu_item_name || it.name || (it.menuItem && it.menuItem.name) || 'Item', price: parseFloat(it.price || (it.menuItem && it.menuItem.price) || '0') },
+              quantity: it.quantity || 1,
+              options: Array.isArray(it.options) ? it.options : [],
+              kitchen_station_id: it.kitchen_station_id || null,
+              added_at: it.added_at || null,
+              order_group: it.order_group || 0,
+              // 2026-05-28: stationName backend-enriched (single source).
+              // print 함수가 item.stationName 으로 inline tag + station header.
+              stationName: it.stationName || null
+            });
             const printData: any = {
               orderNumber: ord.order_number,
               pickupNumber: ord.order_number ? String(ord.order_number).split('-')[1] : '',
@@ -70,15 +86,7 @@ export function useAutoPrintPoller(opts: {
               date: new Date(ord.order_date || ord.createdAt || Date.now()),
               orderType: ord.order_type === 'dine_in' ? 'dine-in' : (ord.order_type || 'takeaway'),
               orderSource: ord.source || 'mobile',
-              items: items.map((it: any) => ({
-                menuItem: { name: it.menu_item_name || it.name || (it.menuItem && it.menuItem.name) || 'Item', price: parseFloat(it.price || (it.menuItem && it.menuItem.price) || '0') },
-                quantity: it.quantity || 1,
-                options: Array.isArray(it.options) ? it.options : [],
-                kitchen_station_id: it.kitchen_station_id || null,
-                // 2026-05-28: stationName backend-enriched (single source).
-                // print 함수가 item.stationName 으로 inline tag + station header.
-                stationName: it.stationName || null
-              })),
+              items: items.map(mapItem),
               subtotal: parseFloat(ord.subtotal || '0'),
               tax: parseFloat(ord.tax || '0'),
               serviceCharge: parseFloat(ord.service_charge || '0'),
@@ -107,16 +115,19 @@ export function useAutoPrintPoller(opts: {
               }
             }
 
-            // Kitchen ticket — needs_print=true 일 때. skip if KDS open
-            if (ord.needs_print && !isOnKDS) {
+            // Kitchen ticket — needs_print=true 일 때. skip if KDS open.
+            // Prints ONLY the not-yet-printed items (kitchen_items); empty = nothing
+            // new to send (e.g. only a bill reprint was pending), so skip cleanly.
+            if (ord.needs_print && !isOnKDS && kitchenItemsRaw.length > 0) {
               const _kp: any = printSettings.kitchenPrinter || {};
               const _kpEnabled = _kp.enabled !== false;
               const _kpAuto = !!_kp.autoPrint;
               const _stationAutoPrint = Object.values(printSettings.kitchenStationPrinters || {}).some((s: any) => s?.autoPrint);
               const _kitchenAuto = (_kpEnabled && !_kpAuto) ? false : (_kpAuto || _stationAutoPrint);
               if (_kitchenAuto) {
+                const kitchenPrintData = { ...printData, items: kitchenItemsRaw.map(mapItem) };
                 try {
-                  const ok = await billPrintMod.printKitchenTicketViaRawBT(printData, printStoreInfo);
+                  const ok = await billPrintMod.printKitchenTicketViaRawBT(kitchenPrintData, printStoreInfo);
                   if (ok === false) kitchenOk = false;
                 } catch (e: any) { console.error('[autoPrint] kitchen failed:', e); kitchenOk = false; }
               }
