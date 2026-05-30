@@ -1,9 +1,32 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-05-29 (v3.44 배포 — 모바일 고객주문 UX + 품목서빙 + KDS 주방별 단계 + 이머전시 모바일인쇄)
+> **최종 업데이트:** 2026-05-30 (세트메뉴 옵션 전구간 기록 + 브랜드 세트 OR 빌더 업그레이드 운영 배포)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 > **현재 버전:** **v3.44** 운영 (2026-05-29 배포, Backup 20260529_224606, smoke 10/10)
+
+## ✅ 완료: 세트메뉴 옵션 전구간 + 브랜드 세트 OR 업그레이드 (2026-05-30 배포)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 세트 옵션 데이터 정규화 | 세트직접옵션(A)=options / 구성품옵션(B)=set_components. POS도 세트옵션 입력(POSSetModal) + 모바일 A가격 합산 | ✅ |
+| 세트 옵션 전구간 인쇄/표시 | billPrint(🔒) A+B 둘 다 인쇄(방식무변경 콘텐츠만) + station티켓 구성품 + KDS(🔒) 구성품+옵션 렌더 + OrderTracking A | ✅ |
+| 브랜드 세트 OR/Choice 빌더 | BrandMenusPage 레거시 set_items → SetMenuBuilder. brand_menus.set_groups 신규 컬럼 + 푸시 시 brand_menu_id→매장 product_id 변환 | ✅ |
+| SetMenuBuilder 친절화 | Fixed/Choice 설명 + 구성품 상속옵션 표시 + 세트옵션 일반상품과 통일(dropdown+chips) + Plus아이콘 제거 | ✅ |
+| Floor Plan 에디터 fix | 흰 캔버스가 테이블 덮던 z-index 버그 + 캔버스 높이 최소 600→300 | ✅ |
+| products.set_groups 운영 누락 수정 | 운영 DB에 컬럼 없던 것 ALTER 추가 + migrate-brand-set-groups.js 가 products+brand_menus 커버 | ✅ |
+
+### 수정된 파일
+- 백엔드: `models/BrandMenu.js`, `routes/{brand-menus,menu}.js`, `services/brandMenuSyncService.js`, `utils/setMenu.js`, `scripts/migrate-brand-set-groups.js`
+- 프론트: `components/MenuManagement/SetMenuBuilder.tsx`, `components/POSTerminal/POSSetModal.tsx`, `pages/POSTerminal/POSTerminalPage.tsx`, `pages/BrandGeneral/BrandMenusPage.tsx`, `pages/MenuManagement/MenuManagementPage.tsx`, `pages/KitchenDisplay/KitchenDisplayPage.tsx`, `pages/FloorPlan/FloorPlanCanvas.tsx`, `pages/FloorPlan/FloorPlanEditor.tsx`, `mobile/pages/{ItemDetailPage,OrderTrackingPage}.tsx`, `utils/billPrint.js`(🔒), i18n 4언어
+- 배포: Backup 20260530_042734, smoke 10/10
+
+### ⚠️ 다음 세션 검증 필요
+- 브랜드 세트(OR/옵션) 산하 매장 실데이터 전파 + 세트 A/B 인쇄 실프린터 확인 + 이머전시 모바일인쇄 실프린터 ([[project_brand_set_groups_verify]])
+
+---
 
 ## ✅ 완료: 글쓰기 스킬 video_prompt 포맷 개선 (2026-05-28)
 

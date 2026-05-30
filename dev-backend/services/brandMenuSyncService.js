@@ -101,6 +101,30 @@ async function ensureLocalOptionGroups(restaurantId, brandOptionGroups, transact
 }
 
 /**
+ * Brand set_groups → Restaurant set_groups 변환.
+ * 브랜드 set_groups 의 items[].product_id = 구성품 brand_menu_id. 매장 미러 상품 id 로 치환.
+ * 그 매장에 아직 안 깔린 구성품은 drop(fallback). 슬롯이 비면 슬롯도 drop. 결과 없으면 null.
+ */
+async function translateSetGroupsForRestaurant(setGroups, restaurantId, transaction) {
+  if (!Array.isArray(setGroups) || setGroups.length === 0) return null;
+  const bmIds = [...new Set(setGroups.flatMap(g => (g.items || []).map(it => Number(it.product_id))).filter(Number.isInteger))];
+  if (bmIds.length === 0) return null;
+  const prods = await Product.findAll({
+    where: { restaurant_id: restaurantId, brand_menu_id: { [Op.in]: bmIds } },
+    attributes: ['id', 'brand_menu_id'], transaction
+  });
+  const map = new Map(prods.map(p => [Number(p.brand_menu_id), p.id]));
+  const translated = setGroups.map(g => ({
+    ...g,
+    items: (g.items || []).map(it => {
+      const rid = map.get(Number(it.product_id));
+      return rid ? { ...it, product_id: rid } : null;
+    }).filter(Boolean)
+  })).filter(g => (g.items || []).length > 0);
+  return translated.length ? translated : null;
+}
+
+/**
  * Sync a single BrandMenu into a single Restaurant. Idempotent.
  * Returns { product, created } indicating the local Product row and whether it was newly created.
  */
@@ -171,6 +195,8 @@ async function syncBrandMenuToRestaurant({ brandMenuId, restaurantId, transactio
     if (locks.set_items) {
       updates.is_set_menu = !!brandMenu.is_set_menu;
       updates.set_items = brandMenu.set_items || null;
+      // v2 set_groups — 구성품 brand_menu_id 를 매장 상품 id 로 변환해 미러
+      updates.set_groups = await translateSetGroupsForRestaurant(brandMenu.set_groups, restaurantId, transaction);
     }
     // emoji / description always refreshed (not in lock matrix per spec — informational)
     if (brandMenu.emoji) updates.emoji = brandMenu.emoji;
@@ -195,6 +221,7 @@ async function syncBrandMenuToRestaurant({ brandMenuId, restaurantId, transactio
     product_recipe_id: brandMenu.product_recipe_id || null,
     is_set_menu: !!brandMenu.is_set_menu,
     set_items: brandMenu.set_items || null,
+    set_groups: await translateSetGroupsForRestaurant(brandMenu.set_groups, restaurantId, transaction),
     is_active: false,
     soldOut: false,
     // Sync tracking

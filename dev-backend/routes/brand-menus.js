@@ -128,7 +128,9 @@ router.get('/', authenticateToken, requireBGScope, async (req, res) => {
       where,
       include: [
         { model: BrandMenuCategory, as: 'category', attributes: ['id', 'name', 'emoji'] },
-        { model: ProductRecipe, as: 'recipe', attributes: ['id', 'name', 'code'] }
+        { model: ProductRecipe, as: 'recipe', attributes: ['id', 'name', 'code'] },
+        // 세트 빌더의 구성품 상속옵션 표시용 — 각 메뉴의 옵션그룹 id (경량)
+        { model: BrandMenuOptionGroup, as: 'optionGroups', attributes: ['id', 'name'], through: { attributes: [] } }
       ],
       order: [['sort_order', 'ASC'], ['name', 'ASC']]
     });
@@ -183,7 +185,7 @@ router.post('/', authenticateToken, requireBGScope, async (req, res) => {
     const {
       brand_id, category_id, product_recipe_id, name, description, image_url, emoji,
       recommended_price, currency, is_active, sort_order, distribution_mode,
-      option_group_ids, locks, is_set_menu, set_items
+      option_group_ids, locks, is_set_menu, set_items, set_groups
     } = req.body;
     // Accept both nested locks{} and flat lock_* — nested wins if provided
     const lock_name = locks && 'name' in locks ? locks.name : req.body.lock_name;
@@ -236,6 +238,7 @@ router.post('/', authenticateToken, requireBGScope, async (req, res) => {
       lock_options: resolvedLock(lock_options, 'options'),
       is_set_menu: !!is_set_menu,
       set_items: Array.isArray(set_items) ? set_items : null,
+      set_groups: Array.isArray(set_groups) ? set_groups : null,
       lock_set_items: resolvedLock(lock_set_items, 'set_items')
     }, { transaction: t });
 
@@ -286,7 +289,7 @@ router.put('/:id', authenticateToken, requireBGScope, async (req, res) => {
     const updatable = ['category_id', 'product_recipe_id', 'name', 'description', 'emoji',
       'recommended_price', 'currency', 'is_active', 'sort_order', 'distribution_mode',
       'lock_name', 'lock_price', 'lock_category', 'lock_image', 'lock_options',
-      'is_set_menu', 'set_items', 'lock_set_items'];
+      'is_set_menu', 'set_items', 'set_groups', 'lock_set_items'];
     const update = {};
     for (const k of updatable) if (k in body) update[k] = body[k];
 

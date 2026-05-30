@@ -164,3 +164,30 @@ set_groups: [
 ### 공통 규칙
 - **터치스크린·키보드 없음 전제**(매장 단말): 모든 입력 손가락 터치로 완결. 검색형 Select는 **탭 선택이 기본 + 필요 시 온스크린 키보드**, 수량/min·max/upcharge는 **+/- 스테퍼 또는 온스크린 숫자 키패드**(타이핑 강제 금지). 터치 타겟 ≥44px, hover 의존 금지. ([[feedback_touchscreen_no_keyboard]])
 - **모든 Select = 검색 가능한 고급형**(SELECT_COMPONENT_GUIDE.md) — 단 위 터치 전제 충족. 표준 Modal/ConfirmModal/FormGroup/Button/Select 재사용, 자체 styled overlay 금지. alert/toast.success 금지. 이모지 금지. i18n 4언어(`menu`/`pos`/`common`). 반응형(모바일/태블릿 슬롯 카드 1열).
+
+---
+
+## §11. 브랜드 메뉴 세트 업그레이드 (2026-05-30) — set_groups + OR/Choice + 개별옵션을 Brand General 에도
+
+> 배경: 매장(Restaurant) 메뉴는 set_groups(슬롯/Fixed·Choice/구성품 상속옵션) 빌더로 업그레이드됐으나, **Brand General 메뉴(BrandMenusPage)는 아직 레거시 set_items**("Items in this set" 단순 목록, OR·옵션 없음). BG가 만든 세트가 매장에 푸시돼도 레거시라 OR/옵션이 없다. → BG 세트도 동일 빌더로 통일.
+
+### 데이터
+- `brand_menus.set_groups` JSON 컬럼 추가 (Product.set_groups 미러). 슬롯 구조 동일: `[{id,label,type:fixed|choice,min,max,items:[{product_id,qty,upcharge}]}]`.
+- **단, 브랜드 set_groups 의 `items[].product_id` = 구성품 브랜드메뉴의 id** (브랜드 시스템 내 참조). 매장은 restaurant product id 를 쓰므로 푸시 시 변환 필요.
+- 레거시 `set_items` 는 유지(폴백/하위호환). 세트 잠금은 기존 `lock_set_items` 가 set_groups 도 커버.
+
+### 백엔드 (`routes/brand-menus.js`)
+- create/update 가 `set_groups` 저장(검증은 매장과 동일 `validateSetGroups` 재사용 — utils/setMenu).
+- 단일 조회/목록에 set_groups 노출. 빌더 상속옵션 표시용 resolve = 브랜드 구성품(BrandMenu) + 옵션그룹(BrandMenuOptionGroup) 기반(매장 buildSetResolved 의 브랜드 버전, 신규 헬퍼 `buildBrandSetResolved`).
+
+### 푸시 매핑 (`services/brandMenuSyncService.js`) — 핵심
+- 브랜드 set_groups → 매장 Product.set_groups 변환: 각 구성품 `product_id`(=brand_menu_id) 를 해당 매장의 미러 상품 id 로 치환 (`Product.findOne({where:{brand_menu_id, restaurant_id}})`).
+- 구성품 브랜드메뉴가 그 매장에 아직 안 깔렸으면 그 구성품은 skip(매핑 실패 fallback). set_components 가 비면 레거시 set_items 도 함께 유지돼 표시는 보존.
+- lock_set_items 잠금 시 set_groups 도 매장에 동기화.
+
+### 프론트 (`pages/BrandGeneral/BrandMenusPage.tsx`)
+- 레거시 "Items in this set" UI → **SetMenuBuilder 재사용**(슬롯+Fixed/Choice+구성품 상속옵션 표시). menuItems=판매가능 브랜드메뉴, optionGroups=브랜드 옵션그룹.
+- 저장 시 set_groups 전송. set_items 는 set_groups 에서 파생(하위호환 표시용).
+
+### 검증
+- BG 세트 생성(슬롯/Choice/옵션) → 매장 푸시 → 매장 Product.set_groups 에 매장 product_id 로 변환 확인 → 매장 주문 시 구성품 개별옵션 + 세트옵션 표시/인쇄(§위에서 완성된 흐름 재사용).

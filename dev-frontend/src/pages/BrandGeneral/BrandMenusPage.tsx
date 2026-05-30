@@ -16,6 +16,8 @@ import { Lock, Building2, Edit2, Copy, Trash2, Send, ChevronDown, UtensilsCrosse
 import PageHeader from '../../components/Common/PageHeader';
 import { Modal as CommonModal, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormTextArea } from '../../components/UI';
 import SearchableSelect from '../../components/Common/SearchableSelect';
+import SetMenuBuilder from '../../components/MenuManagement/SetMenuBuilder';
+import { SetGroup } from '../../utils/setMenu';
 import { SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import ListControlsBar from '../../components/Common/ListControlsBar';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
@@ -1158,10 +1160,22 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
   const [selectedOptionGroupIds, setSelectedOptionGroupIds] = useState<number[]>([]);
   // Set menu support — mirrors Restaurant Product (is_set_menu + set_items[])
   const [isSetMenu, setIsSetMenu] = useState<boolean>(!!menu?.is_set_menu);
-  const [setItems, setSetItems] = useState<Array<{ brand_menu_id: number; name: string; quantity: number }>>(
-    Array.isArray((menu as any)?.set_items) ? (menu as any).set_items : []
-  );
-  const [allBrandMenus, setAllBrandMenus] = useState<Array<{ id: number; name: string }>>([]);
+  // v2 세트 슬롯 — 매장과 동일한 SetMenuBuilder 사용 (구성품 product_id = brand_menu_id)
+  const [setGroups, setSetGroups] = useState<SetGroup[]>(() => {
+    const sg = (menu as any)?.set_groups;
+    if (Array.isArray(sg) && sg.length > 0) return sg;
+    // 브랜드 레거시 set_items({brand_menu_id,name,quantity}) → 단일 fixed 슬롯
+    const si = (menu as any)?.set_items;
+    if (Array.isArray(si) && si.length > 0) {
+      return [{
+        id: 'legacy', label: 'Set', type: 'fixed' as const,
+        items: si.filter((i: any) => i?.brand_menu_id != null)
+          .map((i: any) => ({ product_id: Number(i.brand_menu_id), qty: i.quantity != null ? Number(i.quantity) : 1, upcharge: 0 }))
+      }];
+    }
+    return [];
+  });
+  const [allBrandMenus, setAllBrandMenus] = useState<Array<{ id: string; name: string; optionGroups?: string[] }>>([]);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -1185,7 +1199,7 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
             const allMenus = Array.isArray(mj.data) ? mj.data : [];
             setAllBrandMenus(allMenus
               .filter((m: any) => !m.is_set_menu && (!menu || m.id !== menu.id))
-              .map((m: any) => ({ id: m.id, name: m.name })));
+              .map((m: any) => ({ id: String(m.id), name: m.name, optionGroups: (m.optionGroups || []).map((g: any) => String(g.id)) })));
           }
         } catch (e) { /* silent */ }
       } catch (e) { /* silent */ }
@@ -1222,7 +1236,14 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
         // them from brand.menu_settings defaults (Settings tab is the single source).
         option_group_ids: selectedOptionGroupIds,
         is_set_menu: isSetMenu,
-        set_items: isSetMenu ? setItems : null
+        // v2 슬롯 저장 + 레거시 set_items 는 set_groups 구성품에서 파생(하위호환 표시용)
+        set_groups: isSetMenu ? setGroups : null,
+        set_items: isSetMenu
+          ? setGroups.flatMap(g => (g.items || []).map(it => {
+              const bm = allBrandMenus.find(m => String(m.id) === String(it.product_id));
+              return { brand_menu_id: Number(it.product_id), name: bm?.name || `#${it.product_id}`, quantity: it.qty != null ? Number(it.qty) : 1 };
+            }))
+          : null
       };
       const url = isEdit ? `/api/brand-menus/${menu!.id}` : '/api/brand-menus';
       const method = isEdit ? 'PUT' : 'POST';
@@ -1386,53 +1407,12 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
         </FormLabel>
         {isSetMenu && (
           <div style={{ marginTop: 12, padding: 12, background: '#F8F7FF', border: '1px solid #E6E3FF', borderRadius: 8 }}>
-            <FormLabel style={{ fontSize: 12, marginBottom: 8 }}>{t('brand:brandMenusPage.setItems', 'Items in this set')}</FormLabel>
-            {setItems.length > 0 ? (
-              <div style={{ marginBottom: 12 }}>
-                {setItems.map((item, i) => (
-                  <div key={`${item.brand_menu_id}-${i}`} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: 8, background: '#FFFFFF', border: '1px solid #E6EBF1', borderRadius: 6, marginBottom: 6 }}>
-                    <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: '#0A2540' }}>{item.name}</span>
-                    <label style={{ fontSize: 11, color: '#6B7C93' }}>{t('common:label.qty', 'Qty')}</label>
-                    <FormInput
-                      type="number"
-                      min="1"
-                      value={String(item.quantity)}
-                      onChange={(e) => {
-                        const q = Math.max(1, parseInt(e.target.value, 10) || 1);
-                        setSetItems(setItems.map((s, j) => j === i ? { ...s, quantity: q } : s));
-                      }}
-                      style={{ width: 64, padding: '6px 8px', fontSize: 13 }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setSetItems(setItems.filter((_, j) => j !== i))}
-                      style={{ background: 'transparent', border: 'none', color: '#DC2626', cursor: 'pointer', fontSize: 18, padding: '0 6px' }}
-                      title={t('common:button.remove', 'Remove') as string}
-                    >×</button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 12 }}>
-                {t('brand:brandMenusPage.setItemsEmpty', 'No items added yet — pick from the dropdown below.')}
-              </div>
-            )}
-            <SearchableSelect
-              options={allBrandMenus
-                .filter(m => !setItems.find(s => s.brand_menu_id === m.id))
-                .map(m => ({ value: m.id, label: m.name }))}
-              value={null}
-              onChange={(v) => {
-                if (v == null) return;
-                const id = Number(v);
-                const m = allBrandMenus.find(x => x.id === id);
-                if (m && !setItems.find(s => s.brand_menu_id === id)) {
-                  setSetItems([...setItems, { brand_menu_id: id, name: m.name, quantity: 1 }]);
-                }
-              }}
-              placeholder={t('brand:brandMenusPage.addSetItem', 'Add an item to this set') as string}
-              noOptionsMessage={t('brand:brandMenusPage.noMenusToAdd', 'No more menus to add (or no menus exist yet)') as string}
-              allowClear={false}
+            <SetMenuBuilder
+              value={setGroups}
+              onChange={setSetGroups}
+              menuItems={allBrandMenus as any}
+              optionGroups={optionGroups.map(g => ({ id: String(g.id), name: g.name, required: g.is_required, multiple: (g.max_select || 1) > 1 })) as any}
+              formatCurrency={(v: number) => formatCurrency(v, (menu as any)?.currency || 'MYR')}
             />
           </div>
         )}

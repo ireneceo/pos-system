@@ -1,9 +1,9 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-05-29 (v3.44 운영 배포 완료)
-**버전:** **v3.44** (2026-05-29 배포, Backup 20260529_224606, smoke 10/10). 모바일 고객주문 UX + 품목서빙 + KDS 주방별 단계 + 이머전시 모바일인쇄 + 결제팝업 통일 + 인쇄/주문 안전망 전부 운영 반영.
-**작업 상태:** v3.44 배포 완료. The Fire 실매출 중 — 매장 현장 확인 대기(특히 이머전시 인쇄·영업시간 배지·결제버튼). 다음 = Irene 지시 대기.
+**마지막 업데이트:** 2026-05-30 (세트메뉴 옵션 전구간 + 브랜드 세트 OR 빌더 업그레이드 운영 배포)
+**버전:** **v3.44** (버전 미상승 — 배포는 했으나 버전 올림 질문 중 Irene 이동, 다음 세션 결정). 최신 배포 Backup 20260530_042734, smoke 10/10.
+**작업 상태:** 배포 완료. **다음 세션 필수 검증** = 브랜드 세트(OR/옵션) 산하 매장 실전파 + 세트 A/B 인쇄 실프린터 + 이머전시 모바일인쇄 실프린터 ([[project_brand_set_groups_verify]]). The Fire 실매출 중.
 **v3.44 운영 검증:** The Fire(trial status) 모바일 메뉴 실데이터 mount 크래시 0 + #7 영업시간 배지 근본원인=trial status 확정(옛 로직 active만 Open). 릴리즈 노트/블로그/공지 등록 완료.
 **🟠 미뤄둔 일 (매장 가서):** 이머전시 모바일 인쇄 수정 + 명칭(POS-80C) 표시 = dev 배포됨, **실프린터 확인 후 `check-print-guard --bless` → 운영배포**. 아래 "🟠 미뤄둔 작업" 섹션 참조.
 **🟢 신규 (dev 배포됨, 인쇄 무관):** 품목별 서빙 — Floor Plan/Live Orders 둘 다 활성주문이면 단계무관 칩 클릭→Served(ready 건너뜀). 아래 "🟢 품목 서빙" 섹션 참조.
@@ -177,6 +177,25 @@ AutoPrint master gate / 신규주문 banner / Customer Display reconnect·자동
 
 **검증:** 타입 0에러 / build+배포(main.84d8717b.js) / Autoprint regression 44 PASS / floor-plan headless mount OK(크래시 0). 무결성 감시기 8/8(비보호 파일이라 영향X).
 **남은 일:** Irene가 Floor Plan에서 테이블 결제 눌러 서비스차지/쿠폰/포인트 표시 확인(인쇄 아님 → dev에서 가능).
+
+---
+
+## ✅ 운영 배포 (2026-05-30) — 세트메뉴 옵션 전구간 + 브랜드 세트 OR 업그레이드 (Backup 20260530_042734, smoke 10/10)
+
+> v3.44 위 배포. 버전 올림 여부는 Irene 미응답(질문 중단) → **버전 유지(v3.44), CHANGELOG/릴리즈노트 미처리 — 다음 세션에서 결정**.
+
+**배포 내용:**
+1. **세트메뉴 옵션 전구간 기록 정규화** — 세트직접옵션(A=order_items.options) + 구성품 개별옵션(B=set_components[].options) 데이터 통일. POS도 세트 자체 옵션 입력받게(POSSetModal 세트옵션 섹션) + 모바일 setTotal A가격 합산. billPrint(🔒) 4가드 제거(set_components 있어도 options(A) 인쇄) + station 티켓에 구성품 표기 추가 — **방식 무변경 콘텐츠만**. KDS(🔒) 세트 구성품+옵션 렌더 추가. OrderTracking A 표시. (LiveOrders/FloorPlan/Cart는 이미 A+B 표시 확인). 🔒 bless 갱신(8/8).
+2. **브랜드 세트 OR/Choice 빌더 업그레이드** — BrandMenusPage 레거시 "Items in this set" → SetMenuBuilder(슬롯+Fixed/Choice+구성품 상속옵션). 신규 `brand_menus.set_groups` 컬럼. brand-menus.js create/update 저장 + 리스트에 optionGroups 노출. **푸시 매핑** `brandMenuSyncService.translateSetGroupsForRestaurant`(구성품 brand_menu_id→매장 product_id 변환, lock_set_items 시 동기화) — 실데이터 검증 OK(26/27/28→310/311/312).
+3. SetMenuBuilder 친절화(Fixed/Choice 설명·상속옵션 표시·세트옵션 일반상품과 통일 dropdown+chips), Plus아이콘 제거.
+4. Floor Plan 에디터 테이블 z-index 버그 + 캔버스 높이 최소 600→300.
+
+**⚠️ 배포 중 발견·수정:** `products.set_groups` 컬럼이 **운영에 없었음**(sync-database가 못 잡음) → 수동 ALTER 추가. migrate-brand-set-groups.js 가 products+brand_menus 둘 다 커버하도록 보강(배포목록 등록). 운영 set resolve 정상 확인(product 70 comps=1 setOptGroups=1).
+
+**🔔 다음 세션 필수 검증 (이동으로 미완):** [[project_brand_set_groups_verify]]
+- 브랜드 세트(OR/옵션)가 산하 매장에 **실데이터로 제대로 전파**되는지 (BG 세트 생성→push→매장 주문→주방티켓/빌/KDS).
+- 세트 A/B 인쇄 **실매장 프린터 출력 확인**(billPrint 콘텐츠 변경).
+- 이머전시 모바일 인쇄(이전 이월) 실프린터 확인.
 
 ---
 

@@ -35,6 +35,7 @@ const BrandMenu = sequelize.define('BrandMenu', {
   // Set menu support — mirrors Restaurant.Product (is_set_menu / set_items JSON list).
   is_set_menu:       { type: DataTypes.BOOLEAN, defaultValue: false },
   set_items:         { type: DataTypes.JSON, allowNull: true, defaultValue: null, comment: 'JSON array of sub-item descriptors (name, qty, etc.) mirrored to Product.set_items' },
+  set_groups:        { type: DataTypes.JSON, allowNull: true, defaultValue: null, comment: 'v2 set slots [{id,label,type:fixed|choice,min,max,items:[{product_id(=brand_menu_id),qty,upcharge}]}] — mirrored→Product.set_groups with id translation on push' },
   lock_set_items:    { type: DataTypes.BOOLEAN, defaultValue: false }
 }, {
   tableName: 'brand_menus',
