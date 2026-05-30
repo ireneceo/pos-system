@@ -133,7 +133,7 @@ router.post('/order', async (req, res) => {
     // 에 포함시켜 SELECT 시도 → SQL error → 모든 모바일 주문 500 fail (매장에
     // 주문 도착도 / 자동 인쇄도 안 됨). 컬럼 제거. 매장 차단은 다른 layer
     // (subscription suspended 등) 에서 이미 처리.
-    const restaurant = await Restaurant.findByPk(restaurantId, { attributes: ['id', 'operation_settings', 'payment_settings', 'floor_plan'] });
+    const restaurant = await Restaurant.findByPk(restaurantId, { attributes: ['id', 'operation_settings', 'payment_settings', 'floor_plan', 'table_settings'] });
     if (!restaurant) {
       return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
     }
@@ -147,6 +147,17 @@ router.post('/order', async (req, res) => {
     });
     if (!otGuard.ok) {
       return res.status(400).json({ success: false, error: { message: otGuard.message, code: otGuard.code } });
+    }
+
+    // Defence C: dine-in table requirement (table_settings.tableNumberRequired).
+    // Mobile dine-in must carry a table number; takeaway/pickup/delivery exempt.
+    // Catches the generic/representative-QR path where no ?table= was scanned.
+    {
+      const ts = restaurant.table_settings || {};
+      const requireTable = ts.enableTableNumbers !== false && !!ts.tableNumberRequired;
+      if (requireTable && actualOrderType === 'dine_in' && !actualTableNumber) {
+        return res.status(400).json({ success: false, error: { message: 'Table number is required for dine-in orders', code: 'TABLE_REQUIRED' } });
+      }
     }
 
     // Defence B: payment_method must match the method's allowed_order_types for the chosen order_type.

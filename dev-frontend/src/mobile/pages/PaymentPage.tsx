@@ -539,6 +539,8 @@ const PaymentPage: React.FC = () => {
   // Table selection
   const [availableTables, setAvailableTables] = useState<string[]>([]);
   const [selectedTable, setSelectedTable] = useState('');
+  // When ON, a dine-in order must carry a table number (table_settings.tableNumberRequired).
+  const [tableRequired, setTableRequired] = useState(false);
 
   // Coupon code
   const [couponCode, setCouponCode] = useState('');
@@ -970,13 +972,36 @@ const PaymentPage: React.FC = () => {
         if (response.ok) {
           const data = await response.json();
           const restaurant = data.data || data;
-          if (restaurant.operation_settings?.enableTableNumbers) {
-            const { totalTables, tablePrefix } = restaurant.operation_settings;
-            console.log('✅ Table settings loaded:', { totalTables, tablePrefix });
+          // Settings live in table_settings (source of truth); operation_settings
+          // is a legacy fallback for older records.
+          const ts = restaurant.table_settings || {};
+          const os = restaurant.operation_settings || {};
+          const tablesEnabled = (ts.enableTableNumbers ?? os.enableTableNumbers) !== false;
+          const required = tablesEnabled && !!(ts.tableNumberRequired ?? os.tableNumberRequired);
+          setTableRequired(required);
+
+          // Prefer the actual Floor Plan tables (labels) so the chosen table maps
+          // to a real Floor Plan table — the order then lands on that table card
+          // instead of showing up table-less. Fall back to the generated prefix
+          // list when no Floor Plan tables are registered.
+          const fpTables = Array.isArray(restaurant.floor_plan?.tables)
+            ? restaurant.floor_plan.tables
+                .map((tt: any) => (tt && tt.label != null ? String(tt.label)
+                  : (tt && tt.tableNumber != null ? String(tt.tableNumber) : null)))
+                .filter(Boolean)
+            : [];
+
+          if (fpTables.length > 0) {
+            console.log('✅ Floor Plan tables loaded:', fpTables.length);
+            setAvailableTables(fpTables);
+          } else if (tablesEnabled) {
+            const totalTables = ts.totalTables ?? os.totalTables ?? 0;
+            const tablePrefix = ts.tablePrefix ?? os.tablePrefix ?? 'T';
             const tables = [];
             for (let i = 1; i <= totalTables; i++) {
-              tables.push(`${tablePrefix || 'T'}${String(i).padStart(3, '0')}`);
+              tables.push(`${tablePrefix}${String(i).padStart(3, '0')}`);
             }
+            console.log('✅ Table settings loaded (legacy generated):', { totalTables, tablePrefix });
             setAvailableTables(tables);
           } else {
             console.log('ℹ️ Table numbers not enabled for this restaurant');
@@ -1224,6 +1249,13 @@ const PaymentPage: React.FC = () => {
     // Check if payment method is selected
     if (!paymentMethod) {
       setError('Please select a payment method');
+      return;
+    }
+
+    // Dine-in table requirement — the store mandates a table number. Button is
+    // already disabled in this state, but double-check so a stale render can't slip through.
+    if (tableRequired && orderType === 'dine-in' && !selectedTable) {
+      setError('Please select your table to continue.');
       return;
     }
 
@@ -2621,18 +2653,25 @@ const PaymentPage: React.FC = () => {
           </Section>
         )}
 
-        {sessionStorage.getItem('orderType') === 'dine-in' && availableTables.length > 0 && (
+        {sessionStorage.getItem('orderType') === 'dine-in' && (availableTables.length > 0 || tableRequired) && (
           <TableSection>
-            <SectionTitle>Table Number</SectionTitle>
+            <SectionTitle>Table Number{tableRequired ? ' *' : ''}</SectionTitle>
             <TableSelect
               value={selectedTable}
               onChange={(e) => setSelectedTable(e.target.value)}
+              style={tableRequired && !selectedTable ? { borderColor: '#EF4444' } : undefined}
             >
-              <option value="">Free Seating</option>
+              {/* When a table is mandatory, no "Free Seating" — the customer must pick a real table. */}
+              <option value="">{tableRequired ? 'Select your table' : 'Free Seating'}</option>
               {availableTables.map(table => (
                 <option key={table} value={table}>{table}</option>
               ))}
             </TableSelect>
+            {tableRequired && !selectedTable && (
+              <div style={{ fontSize: '13px', color: '#EF4444', marginTop: '6px' }}>
+                Please select your table to continue.
+              </div>
+            )}
           </TableSection>
         )}
         
@@ -2759,7 +2798,7 @@ const PaymentPage: React.FC = () => {
       
       <PayButton
         onClick={handlePayment}
-        disabled={isProcessing || cartItems.length === 0 || !paymentMethod || (!currentCustomer && !guestInfo)}
+        disabled={isProcessing || cartItems.length === 0 || !paymentMethod || (!currentCustomer && !guestInfo) || (tableRequired && orderType === 'dine-in' && !selectedTable)}
       >
         {isProcessing ? (
           <>

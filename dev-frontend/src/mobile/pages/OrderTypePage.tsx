@@ -210,6 +210,99 @@ const FooterLink = styled.button`
   &:hover { opacity: 0.75; }
 `;
 
+const TablePickerOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 9999;
+`;
+
+const TablePickerSheet = styled.div`
+  background: #fff;
+  width: 100%;
+  max-width: 480px;
+  border-radius: 16px 16px 0 0;
+  padding: 20px 18px calc(18px + env(safe-area-inset-bottom));
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+`;
+
+const TablePickerTitle = styled.h3`
+  margin: 0 0 4px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1F2937;
+`;
+
+const TablePickerHint = styled.p`
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: #6B7280;
+  line-height: 1.4;
+`;
+
+const TableSearchInput = styled.input`
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #D1D5DB;
+  border-radius: 10px;
+  font-size: 16px;
+  margin-bottom: 14px;
+  &:focus { outline: none; border-color: #7C3AED; }
+`;
+
+const TableGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 10px;
+  overflow-y: auto;
+  padding-bottom: 4px;
+`;
+
+const TableChip = styled.button`
+  padding: 16px 8px;
+  min-height: 56px;
+  border: 1px solid #D1D5DB;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1F2937;
+  cursor: pointer;
+  &:active { background: #F3E8FF; border-color: #7C3AED; }
+`;
+
+const TableEmptyNote = styled.div`
+  font-size: 14px;
+  color: #6B7280;
+  text-align: center;
+  padding: 24px 8px;
+  line-height: 1.5;
+`;
+
+const TableManualInput = styled.div`
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+`;
+
+const TableManualBtn = styled.button`
+  padding: 12px 16px;
+  border: none;
+  border-radius: 10px;
+  background: #7C3AED;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+`;
+
 interface StoreData {
   id: string;
   slug: string;
@@ -240,6 +333,8 @@ interface StoreData {
   };
   pauseOrdering?: boolean;
   pauseMessage?: string;
+  tableNumberRequired?: boolean;
+  floorTables?: string[];
 }
 
 const OrderTypePage: React.FC = () => {
@@ -254,6 +349,8 @@ const OrderTypePage: React.FC = () => {
 
   // Modal state for cart reset warning
   const [showCartResetModal, setShowCartResetModal] = useState(false);
+  const [showTablePicker, setShowTablePicker] = useState(false);
+  const [tableSearch, setTableSearch] = useState('');
   const [pendingOrderType, setPendingOrderType] = useState<'dine-in' | 'takeaway' | 'pickup' | 'delivery' | null>(null);
 
   // Set when the URL pins to an unavailable order type — surface as a notice on the picker.
@@ -294,7 +391,9 @@ const OrderTypePage: React.FC = () => {
               pickupSettings: result.data.pickupSettings || undefined,
               takeawaySettings: result.data.takeawaySettings || undefined,
               pauseOrdering: !!result.data.pauseOrdering,
-              pauseMessage: result.data.pauseMessage || ''
+              pauseMessage: result.data.pauseMessage || '',
+              tableNumberRequired: !!result.data.tableNumberRequired,
+              floorTables: Array.isArray(result.data.floorTables) ? result.data.floorTables : []
             });
           }
         }
@@ -372,6 +471,17 @@ const OrderTypePage: React.FC = () => {
       // Clear any previous pickup time (will be set in PaymentPage)
       sessionStorage.removeItem('scheduledPickupTime');
 
+      // Dine-in table requirement: the customer entered via the generic /
+      // representative QR (no table scanned). Force a table pick before the
+      // menu so the order lands on the correct Floor Plan table instead of
+      // showing up as a table-less "pickup N" order.
+      const currentTable = tableFromQR || (typeof window !== 'undefined' ? sessionStorage.getItem('tableNumber') : null);
+      if (newOrderType === 'dine-in' && storeData?.tableNumberRequired && !currentTable) {
+        setShowTablePicker(true);
+        setIsLoading(false);
+        return;
+      }
+
       navigate(`/mobile/${restaurantSlug}/menu`);
     } catch (error) {
       console.error('Error initializing order:', error);
@@ -387,6 +497,18 @@ const OrderTypePage: React.FC = () => {
       await proceedWithOrderType(pendingOrderType);
     }
     setPendingOrderType(null);
+  };
+
+  // Table picked from the in-app picker (generic-QR dine-in flow).
+  const handleTablePicked = (tableLabel: string) => {
+    const label = (tableLabel || '').trim();
+    if (!label) return;
+    sessionStorage.setItem('tableNumber', label);
+    setTableFromQR(label);
+    setShowTablePicker(false);
+    setTableSearch('');
+    const restaurantSlug = slug || sessionStorage.getItem('restaurantSlug');
+    navigate(`/mobile/${restaurantSlug}/menu`);
   };
 
   const handleCancelCartReset = () => {
@@ -665,6 +787,54 @@ const OrderTypePage: React.FC = () => {
         onConfirm={handleConfirmCartReset}
         showCancel={true}
       />
+
+      {/* Dine-in table picker — shown when the store requires a table and the
+          customer arrived without one (generic / representative QR). */}
+      {showTablePicker && (() => {
+        const tables = storeData?.floorTables || [];
+        const q = tableSearch.trim().toLowerCase();
+        const filtered = q ? tables.filter(tb => tb.toLowerCase().includes(q)) : tables;
+        const hasTables = tables.length > 0;
+        return (
+          <TablePickerOverlay onClick={() => setShowTablePicker(false)}>
+            <TablePickerSheet onClick={(e) => e.stopPropagation()}>
+              <TablePickerTitle>{t('common:selectYourTable', 'Select your table')}</TablePickerTitle>
+              <TablePickerHint>
+                {t('common:selectYourTableHint', 'Please choose the table you are seated at to continue your dine-in order.')}
+              </TablePickerHint>
+              <TableSearchInput
+                value={tableSearch}
+                onChange={(e) => setTableSearch(e.target.value)}
+                placeholder={hasTables
+                  ? t('common:searchTablePlaceholder', 'Search table number')
+                  : t('common:enterTablePlaceholder', 'Enter your table number')}
+                inputMode={hasTables ? undefined : 'text'}
+              />
+              {hasTables ? (
+                filtered.length > 0 ? (
+                  <TableGrid>
+                    {filtered.map(tb => (
+                      <TableChip key={tb} onClick={() => handleTablePicked(tb)}>{tb}</TableChip>
+                    ))}
+                  </TableGrid>
+                ) : (
+                  <TableEmptyNote>{t('common:noTableMatch', 'No matching table. Check the number on your table.')}</TableEmptyNote>
+                )
+              ) : (
+                <TableManualInput>
+                  <TableManualBtn
+                    disabled={!tableSearch.trim()}
+                    onClick={() => handleTablePicked(tableSearch)}
+                    style={{ width: '100%' }}
+                  >
+                    {t('common:continue', 'Continue')}
+                  </TableManualBtn>
+                </TableManualInput>
+              )}
+            </TablePickerSheet>
+          </TablePickerOverlay>
+        );
+      })()}
     </Container>
   );
 };

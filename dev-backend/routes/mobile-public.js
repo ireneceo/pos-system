@@ -118,6 +118,25 @@ router.get('/store/:slug', async (req, res) => {
       },
       // Reservation availability flag — used by mobile to show/hide "Reserve a Table"
       reservationsEnabled: !!(restaurant.reservation_settings && restaurant.reservation_settings.enabled),
+      // Dine-in table requirement. When ON, a mobile dine-in order MUST carry a
+      // table number — used by the menu flow to force a table pick when the
+      // customer entered via the generic/representative QR (no ?table=).
+      // Gated by enableTableNumbers (default true).
+      tableNumberRequired: (() => {
+        const ts = restaurant.table_settings || {};
+        return ts.enableTableNumbers !== false && !!ts.tableNumberRequired;
+      })(),
+      // Floor Plan table labels for the in-app table picker. Selecting from this
+      // list guarantees the order resolves to the right Floor Plan table
+      // (orders-crud / mobile-orders match table_number against these labels).
+      floorTables: (() => {
+        const fp = restaurant.floor_plan || {};
+        const tbls = Array.isArray(fp.tables) ? fp.tables : [];
+        return tbls
+          .map(tt => (tt && tt.label != null ? String(tt.label)
+            : (tt && tt.tableNumber != null ? String(tt.tableNumber) : null)))
+          .filter(Boolean);
+      })(),
       // Pickup / Takeaway informational settings — shown as hints on the OrderTypePage
       pickupSettings: operationSettings.pickupSettings || { prepMinutes: 30, locationNote: '', confirmationRequired: true },
       takeawaySettings: operationSettings.takeawaySettings || { prepMinutes: 15, packagingNote: '' },

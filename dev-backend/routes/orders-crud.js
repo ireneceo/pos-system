@@ -423,6 +423,24 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
       }
     }
 
+    // Defence: dine-in table requirement. When table_settings.tableNumberRequired
+    // is enabled, a mobile dine-in order MUST carry a table number. This catches
+    // the generic/representative-QR path (no ?table=) where the customer entered
+    // the menu without a table — those previously slipped through table-less and
+    // showed on Floor Plan as a "pickup N" label instead of on a table. Takeaway/
+    // pickup/delivery are exempt. The mobile frontend already forces a table pick,
+    // but a crafted request must not bypass. POS-sourced orders are not gated
+    // (staff/operator judgment). This guard only validates input — it does not
+    // touch print/kitchen routing.
+    if (orderData.source === 'mobile') {
+      const ts = restaurant.table_settings || {};
+      const requireTable = ts.enableTableNumbers !== false && !!ts.tableNumberRequired;
+      const isDineIn = orderData.order_type === 'dine_in' || orderData.order_type === 'dine-in';
+      if (requireTable && isDineIn && !orderData.table_number) {
+        return res.status(400).json({ success: false, message: 'Table number is required for dine-in orders', code: 'TABLE_REQUIRED' });
+      }
+    }
+
     // Auto-merge policy:
     //   - Mobile: 안전 (customer 검사) → default 자동 머지 유지
     //   - POS:   default 자동 머지 OFF (skipAutoMerge=true). POS UI 가 사전에 mergeable 조회 후
