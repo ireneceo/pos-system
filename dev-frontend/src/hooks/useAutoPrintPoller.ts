@@ -79,6 +79,10 @@ export function useAutoPrintPoller(opts: {
               kitchen_station_id: it.kitchen_station_id || null,
               added_at: it.added_at || null,
               order_group: it.order_group || 0,
+              // 세트 구성품(+옵션) 을 영수증/주방 티켓이 표기·주방분배 할 수 있게 그대로 전달.
+              // 이게 없으면 빌/주방에 "SET" 만 찍히고 구성품이 통째로 누락된다.
+              is_set_menu: it.is_set_menu || false,
+              set_components: Array.isArray(it.set_components) ? it.set_components : undefined,
               // 2026-05-28: stationName backend-enriched (single source).
               // print 함수가 item.stationName 으로 inline tag + station header.
               stationName: it.stationName || null

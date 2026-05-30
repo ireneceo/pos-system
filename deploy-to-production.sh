@@ -91,7 +91,13 @@ else
     fi
     success "보호 파일 무결성 OK (생명선 안전)"
 
-    log "Safety gate (2/2): 회귀 테스트 (health-check, 인쇄 계약 + 보안 + API 88건)..."
+    log "Safety gate (2/3): 🧾 인쇄 데이터 필드 계약 (세트 구성품 누락 방지)..."
+    if ! node scripts/check-print-field-contract.js; then
+        error "인쇄 항목 변환에서 세트 구성품 필드(set_components) 누락 — 빌/주방에 'SET' 만 찍히는 회귀. 해당 mapItem 수정 후 재배포. (긴급 우회: --skip-safety)"
+    fi
+    success "인쇄 필드 계약 OK (세트 구성품 전 경로 통과)"
+
+    log "Safety gate (3/3): 회귀 테스트 (health-check, 인쇄 계약 + 보안 + API 88건)..."
     if ! node scripts/health-check.js --quiet; then
         error "회귀 테스트 실패 — 인쇄/주문/보안 등 기능 회귀 감지. 위 실패 항목 수정 후 재배포. (긴급 우회: --skip-safety)"
     fi

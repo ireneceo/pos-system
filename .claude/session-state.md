@@ -30,7 +30,19 @@ session-state.md 읽고 이어서 개발해.
 
 **세트전용 구성품 숨김(Irene 결정="비활성화 사용"):** 구성품 is_active=false → 개별 메뉴 사라지고 세트는 계속 resolve(buildSetResolved 는 is_active 무시). 추가개발 0. 실제 comp 453 "Roasted Chicken Set" 이미 이 방식 동작중.
 
-**남은 일:** /배포(위 2·3 운영반영) · SET 601 BG 슬롯정의 · #3 첫탭 dev확정.
+**남은 일:** /배포(위 2·3 운영반영) · SET 601 BG 슬롯정의.
+
+### ✅ 추가 — 모바일 첫화면 빈 리스트 critical (근본원인+fix, dev 빌드됨 main.02af9630.js)
+**근본원인(확정):** The Fire `show_featured=true`인데 **featured/popular 상품 0개**. init이 `useCat='__featured__'`로 가는데 `setMenuItems`가 `useCat!=='__featured__'` 게이트에 막혀 첫 카테고리(93 Korean Stew, 상품5개)를 영영 안 채움 → "No items available". 탭 갔다오면 캐시에서 채워져 보임. → **현 dev에도 있던 버그.**
+**fix:** `MenuPage.tsx` init에서 게이트 제거 → 항상 첫 카테고리 채움(featured 탭은 featuredItems 별도 렌더라 무해). chunk 2997.7949d381 반영 확인.
+### ✅ 추가 — 모바일 UX 묶음 (dev 빌드됨, 미배포)
+- 상세 담기 후 **리스트 자동복귀 제거** + "✓ Added to Cart" 피드백(ItemDetailPage). 뒤로가기는 navigate(-1)+?cat로 직전 탭 복원.
+- **연회색 배경(#F4F6F8) + 흰 카드 + 그림자**(MobileLayout contentBg prop[스코프] + MenuItemCard 그림자/테두리 강화). 헤드리스 mount로 bg rgb(244,246,248) 적용 확인.
+- 런치메뉴: category 이름저장 11개 숫자ID 정규화 → 치킨윙 등 노출. 4번째는 매장이 활성화/BG슬롯 필요(601화/606목 빈세트).
+- 픽업주문 "버그아님": orderTypes pickup=false, 전 주문 dine_in, 픽업 0건.
+**검증:** hydration0 · 🔒8/8(인쇄 무관) · i18n Err0 · health 88/88 · mount crash0/EB0.
+### 🔴 미착수 (다음 — POS 옵션/세트팝업)
+Irene 보고: ① POS에서 옵션 제대로 안 나옴(BG 푸시 후 엉망 의심) ② 세트가 옵션처럼 표시·UI 제각각 → **팝업 통일** ③ 세트/필수옵션 아이템은 아이템 어디 눌러도 **옵션팝업 강제 오픈** ④ **모든 상품 옵션 BG 동기화 정합성 확인 필요** ⑤ 세트팝업 가로스크롤+리플래시(불안정) → 옵션팝업과 동일하게. + Dine-in 칩 위치(이름아래 삭제, 우측상단 유지+> 홈). **전부 다음 세션 focused 작업.**
 
 ---
 

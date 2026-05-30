@@ -58,10 +58,12 @@ const OptionModal: React.FC<OptionModalProps> = ({ isOpen, onClose, menuItem, on
   const [quantity, setQuantity] = useState(1);
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
 
-  // Get option groups for this menu item - 메뉴에서 설정한 순서대로 정렬
+  // Get option groups for this menu item - 메뉴에서 설정한 순서대로 정렬.
+  // ⚠ 브랜드 푸시 상품은 optionGroups 가 숫자([99])로, MenuContext 그룹 id 는 문자열("99")로
+  // 들어와 strict === 매칭이 실패(옵션이 통째로 안 나옴) → String() 으로 느슨하게 매칭.
   const availableOptionGroups = menuItem.optionGroups
     ? menuItem.optionGroups
-        .map(groupId => allOptionGroups.find(group => group.id === groupId))
+        .map(groupId => allOptionGroups.find(group => String(group.id) === String(groupId)))
         .filter((group): group is NonNullable<typeof group> => group !== undefined)
     : [];
 

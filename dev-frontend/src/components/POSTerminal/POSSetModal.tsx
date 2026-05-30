@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { Modal } from '../UI';
-import MobileSetOrder from '../../mobile/components/MobileSetOrder';
 import { isSetSelectionValid } from '../../utils/setMenu';
 import { getAuthToken } from '../../utils/auth';
 
@@ -40,6 +39,32 @@ const AddBtn = styled.button`
   &:disabled { background: #C7CED6; cursor: not-allowed; }
 `;
 const Loading = styled.div`padding: 30px; text-align: center; color: #6B7C93;`;
+
+// 구성품(B) 슬롯 렌더 — POS 자체 스타일(옵션팝업과 동일 톤). MobileSetOrder 의존 제거.
+const GroupSection = styled.div`margin-bottom: 16px;`;
+const GroupHead = styled.div`display: flex; align-items: center; gap: 8px; margin-bottom: 8px;`;
+const GroupLabel = styled.div`font-size: 14px; font-weight: 700; color: #0A2540;`;
+const ChooseHint = styled.span`
+  font-size: 11px; font-weight: 600; color: #635BFF;
+  background: #F0EFFF; border-radius: 999px; padding: 2px 10px;
+`;
+const FixedRow = styled.div`
+  min-height: 40px; padding: 8px 14px; margin-bottom: 6px;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  border: 1px solid #E6EBF1; border-radius: 8px; background: #F7F9FC; color: #0A2540; font-size: 13px;
+`;
+const PickRow = styled.div`display: flex; flex-wrap: wrap; gap: 8px;`;
+const PickBtn = styled.button<{ $sel: boolean; $disabled?: boolean }>`
+  min-height: 40px; padding: 0 14px; border-radius: 8px; font-size: 13px; cursor: pointer;
+  border: 1px solid ${p => (p.$sel ? '#635BFF' : '#E6EBF1')};
+  background: ${p => (p.$sel ? '#F0EFFF' : '#FFF')};
+  color: ${p => (p.$sel ? '#635BFF' : '#0A2540')};
+  font-weight: ${p => (p.$sel ? 600 : 400)};
+  opacity: ${p => (p.$disabled ? 0.5 : 1)};
+`;
+const InhWrap = styled.div`margin: 6px 0 4px 12px; padding-left: 12px; border-left: 2px solid #EEF1F6;`;
+const InhTitle = styled.div`font-size: 12px; font-weight: 600; color: #6B7C93; margin-bottom: 6px;`;
+const SoldTag = styled.span`font-size: 11px; font-weight: 600; color: #FF6B6B;`;
 
 // 세트 자체 옵션(A) 섹션 — 구성품과 별개로 세트 전체에 적용되는 옵션
 const SetOptSection = styled.div`
@@ -195,14 +220,84 @@ const POSSetModal: React.FC<Props> = ({ isOpen, product, restaurantId, formatCur
       ) : (
         <>
           <Body>
-            <MobileSetOrder
-              groups={resolved as any}
-              selections={sel}
-              onToggleComponent={toggleComponent}
-              componentOptions={opts}
-              onToggleOption={toggleOption}
-              formatCurrency={formatCurrency}
-            />
+            {resolved.map((g: any) => {
+              const min = g.min == null ? 1 : g.min;
+              const max = g.max == null ? 1 : g.max;
+              const chosen = sel[g.id] || [];
+              const renderInherited = (it: any) => {
+                const ogs = it.optionGroups || [];
+                if (!ogs.length) return null;
+                const k = `${g.id}:${it.product_id}`;
+                const s = opts[k] || [];
+                return (
+                  <InhWrap>
+                    {ogs.map((og: any) => (
+                      <div key={og.id} style={{ marginBottom: 8 }}>
+                        <InhTitle>{og.name}{og.required ? ' *' : ''}</InhTitle>
+                        <PickRow>
+                          {(og.options || []).map((o: any) => (
+                            <PickBtn
+                              key={o.id}
+                              type="button"
+                              $sel={s.includes(String(o.id))}
+                              onClick={() => toggleOption(g.id, Number(it.product_id), String(o.id), !!og.multiple, !!og.required)}
+                            >
+                              {o.name}{Number(o.price) > 0 ? ` +${formatCurrency(Number(o.price))}` : ''}
+                            </PickBtn>
+                          ))}
+                        </PickRow>
+                      </div>
+                    ))}
+                  </InhWrap>
+                );
+              };
+              return (
+                <GroupSection key={g.id}>
+                  <GroupHead>
+                    <GroupLabel>{g.label || t('menu:setOrder.choose', { defaultValue: 'Choose' })}</GroupLabel>
+                    {g.type === 'choice' && (
+                      <ChooseHint>{min === max ? `Choose ${max}` : `Choose ${min}-${max}`}</ChooseHint>
+                    )}
+                  </GroupHead>
+                  {g.type === 'fixed'
+                    ? (g.items || []).map((it: any) => (
+                        <div key={it.product_id}>
+                          <FixedRow>
+                            <span>{it.name}{it.qty && it.qty > 1 ? ` ×${it.qty}` : ''}</span>
+                            {it.soldOut && <SoldTag>{t('menu:setOrder.soldOut', { defaultValue: 'SOLD OUT' })}</SoldTag>}
+                          </FixedRow>
+                          {!it.soldOut && renderInherited(it)}
+                        </div>
+                      ))
+                    : (
+                      <>
+                        <PickRow>
+                          {(g.items || []).map((it: any) => {
+                            const selected = chosen.includes(Number(it.product_id));
+                            return (
+                              <PickBtn
+                                key={it.product_id}
+                                type="button"
+                                $sel={selected}
+                                $disabled={it.soldOut}
+                                disabled={it.soldOut}
+                                onClick={() => toggleComponent(g.id, Number(it.product_id), 'choice', max)}
+                              >
+                                {it.name}
+                                {Number(it.upcharge) > 0 ? ` +${formatCurrency(Number(it.upcharge))}` : ''}
+                                {selected ? ' ✓' : ''}
+                              </PickBtn>
+                            );
+                          })}
+                        </PickRow>
+                        {(g.items || []).filter((it: any) => chosen.includes(Number(it.product_id))).map((it: any) => (
+                          <div key={`inh-${it.product_id}`}>{renderInherited(it)}</div>
+                        ))}
+                      </>
+                    )}
+                </GroupSection>
+              );
+            })}
             {setOptionGroups.length > 0 && (
               <SetOptSection>
                 <SetOptHead>{t('menu:setOrder.setOptionsTitle', { defaultValue: 'Set options' })}</SetOptHead>

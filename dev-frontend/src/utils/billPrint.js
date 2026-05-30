@@ -1160,7 +1160,8 @@ body {
 .time-info { font-size: 10px; color: #333; margin-top: 2px; }
 
 /* Per-station header in kitchen tickets */
-.group-label { font-size: 16px; font-weight: 700; letter-spacing: 0.5px; padding: 4px 0; margin: 4px 0; border-top: 2px solid #000; border-bottom: 2px solid #000; }
+/* 스테이션 헤더 = 사방 박스 (위/아래 2선이 만나 밀리거나 잘리는 문제 방지 — 안정 레이아웃) */
+.group-label { font-size: 16px; font-weight: 700; letter-spacing: 0.5px; text-align: center; padding: 6px 8px; margin: 8px 0; border: 2px solid #000; box-sizing: border-box; width: 100%; }
 .station-tag { display: inline-block; padding: 1px 6px; margin-left: 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.3px; border: 1px solid #000; vertical-align: middle; }
 
 /* Multi-page (kitchen per-item) */
@@ -3152,6 +3153,30 @@ async function printKitchenTicketsByStation(orderData, storeInfo, settings) {
     const stationItems = {};
     const unmappedItems = [];
     (orderData.items || []).forEach(item => {
+      // SET: 구성품을 각자 걸린 주방으로 분배 (걸려있는 메뉴대로). 각 station 티켓엔
+      // 그 주방 구성품만 담은 세트 클론을 넣어 → 주방별로 자기 아이템+옵션만 표기.
+      // 구성품 station 은 백엔드 stationEnrichment 가 set_components[].kitchen_station_id 로 부여.
+      if (Array.isArray(item.set_components) && item.set_components.length > 0) {
+        const compByStation = {};
+        const unmappedComps = [];
+        item.set_components.forEach(c => {
+          const cStation = c.kitchen_station_id || (c.name ? menuStationMap[c.name] : null) || null;
+          if (cStation && stationPrinters[cStation]) {
+            if (!compByStation[cStation]) compByStation[cStation] = [];
+            compByStation[cStation].push(c);
+          } else {
+            unmappedComps.push(c);
+          }
+        });
+        Object.keys(compByStation).forEach(sid => {
+          if (!stationItems[sid]) stationItems[sid] = [];
+          stationItems[sid].push({ ...item, set_components: compByStation[sid] });
+        });
+        if (unmappedComps.length > 0) {
+          unmappedItems.push({ ...item, set_components: unmappedComps });
+        }
+        return;
+      }
       // 1) Item-level kitchen_station_id (backend now resolves this from Product
       //    or Category for mobile orders; POS already attaches it directly).
       // 2) Fall back to the menu-name → station map (KDS localStorage), so

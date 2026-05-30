@@ -561,6 +561,17 @@ router.get('/popular/:slug', async (req, res) => {
       raw: true
     });
 
+    // 주문 항목은 product_id 없이 이름만 저장되는 경우가 많다(모바일/POS 카트라인).
+    // → 이름 기반 폴백 매칭으로 빈도를 센다(stationEnrichment 와 동일 전략).
+    //   이 폴백이 없으면 인기메뉴가 항상 0개라 인기 탭이 영영 안 뜬다.
+    const nameMatchProducts = await Product.findAll({
+      where: { restaurant_id: restaurant.id },
+      attributes: ['id', 'name'],
+      raw: true
+    });
+    const nameToId = new Map();
+    nameMatchProducts.forEach(p => { if (p.name) nameToId.set(p.name.trim().toLowerCase(), p.id); });
+
     // Count item frequency
     const itemCounts = {};
     orders.forEach(order => {
@@ -570,7 +581,11 @@ router.get('/popular/:slug', async (req, res) => {
       }
       if (!Array.isArray(items)) return;
       items.forEach(item => {
-        const productId = item.product_id || item.productId || item.menuItem?.id;
+        let productId = item.product_id || item.productId || item.menuItem?.id;
+        // product_id 없으면 이름으로 폴백 매칭
+        if (!productId && item.name) {
+          productId = nameToId.get(String(item.name).trim().toLowerCase());
+        }
         if (!productId) return;
         const parsed = parseInt(productId);
         if (isNaN(parsed)) return;

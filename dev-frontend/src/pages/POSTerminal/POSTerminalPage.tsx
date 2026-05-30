@@ -156,7 +156,8 @@ const MainLayout = styled.div`
 
 const MenuSection = styled.div`
   flex: 1;
-  background: #F9FAFB;
+  /* 메뉴 리스트 배경 — 흰 메뉴 카드가 또렷이 떠 보이도록 진한 회색 (가독성) */
+  background: #E4E9EF;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -524,7 +525,8 @@ const OptionButton = styled.button`
 
 const OrderSection = styled.div`
   width: 400px;
-  background: white;
+  /* 우측 주문(카트) 패널 — 메뉴 영역과 같은 계열의 진한 회색으로 가독성 확보 */
+  background: #EDF1F5;
   border-left: 1px solid #C7CED6;
   display: flex;
   flex-direction: column;
@@ -769,19 +771,21 @@ const ActionBtn = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }
         return `
           background: #FFE6E6;
           color: #FF6B6B;
-          
+          border: 1px solid #FFC2C2;
+
           &:hover {
             background: #FFD9D9;
+            border-color: #FFB0B0;
           }
         `;
       default:
         return `
           background: white;
           color: #4B5563;
-          border: 1px solid #C7CED6;
-          
+          border: 1px solid #B9C2CC;
+
           &:hover {
-            border-color: #C7D2FE;
+            border-color: #635BFF;
             color: #635BFF;
           }
         `;

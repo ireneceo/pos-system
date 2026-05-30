@@ -1230,6 +1230,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               kitchen_station_id: it.kitchen_station_id || null,
               added_at: it.added_at || null,
               order_group: it.order_group || 0,
+              // 세트 구성품(+옵션) 전달 — 없으면 빌/주방에 "SET" 만 찍히고 구성품 누락 + 주방분배 불가.
+              is_set_menu: it.is_set_menu || false,
+              set_components: Array.isArray(it.set_components) ? it.set_components : undefined,
               stationName: it.stationName || null
             });
             const printData: any = {

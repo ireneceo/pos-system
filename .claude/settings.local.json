@@ -447,7 +447,14 @@
       "Bash(scp -q /tmp/probe3.js irene@87.106.78.146:/var/www/production-backend/probe3.js)",
       "Bash(scp -q /tmp/probe4.js irene@87.106.78.146:/var/www/production-backend/probe4.js)",
       "Bash(rm -f /tmp/build_menu_fix.log)",
-      "Bash(echo \"build started pid $!\")"
+      "Bash(echo \"build started pid $!\")",
+      "Bash(rm -f /tmp/build_final.log)",
+      "Bash(echo \"build restarted pid $!\")",
+      "Bash(rm -f /tmp/build_emg.log)",
+      "Bash(echo \"build pid $!\")",
+      "Bash(rm -f /tmp/build_set.log)",
+      "Bash(rm -f /tmp/build_box.log)",
+      "Bash(rm -f /tmp/build_mi.log)"
     ],
     "deny": [],
     "ask": []

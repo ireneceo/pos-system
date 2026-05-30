@@ -1060,7 +1060,8 @@ const MenuPage: React.FC = () => {
               )}
             </div>
           </StoreInfo>
-          {orderType && (
+          {/* 레스토랑 이름 아래 Dine-in 칩 제거 — 주문방식은 상단 헤더 ContextChip 으로 일원화 */}
+          {false && orderType && (
             <StoreRight>
               <OrderTypeChip
                 type="button"
@@ -1190,7 +1191,7 @@ const MenuPage: React.FC = () => {
         </EmptyState>
       )}
 
-      {cartItems.length > 0 && (
+      {false && cartItems.length > 0 && (
         <FloatingCartButton onClick={handleCartClick}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M9 22C9.55228 22 10 21.5523 10 21C10 20.4477 9.55228 20 9 20C8.44772 20 8 20.4477 8 21C8 21.5523 8.44772 22 9 22Z" stroke="currentColor" strokeWidth="2"/>
