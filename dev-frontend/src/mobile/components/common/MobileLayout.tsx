@@ -147,8 +147,9 @@ const ContextChip = styled.div`
   }
 `;
 
-const Content = styled.main`
+const Content = styled.main<{ $bg?: string }>`
   flex: 1;
+  background: ${props => props.$bg || 'transparent'};
   padding: 16px;
   padding-bottom: 80px; /* Space for bottom navigation */
   max-width: 600px;
@@ -257,6 +258,7 @@ interface MobileLayoutProps {
   onBack?: () => void;
   currentPage?: 'home' | 'menu' | 'cart' | 'orders' | 'reserve';
   cartItemCount?: number;
+  contentBg?: string; // 콘텐츠 영역 배경색 (연회색 위 흰 카드 대비용) — 미지정 시 흰색
 }
 
 const MobileLayout: React.FC<MobileLayoutProps> = ({
@@ -265,7 +267,8 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
   showBack = false,
   onBack,
   currentPage,
-  cartItemCount = 0
+  cartItemCount = 0,
+  contentBg
 }) => {
   const navigate = useNavigate();
   const { currentStore, orderType } = useMobileOrder();
@@ -378,7 +381,7 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
         </Header>
       )}
 
-      <Content>{children}</Content>
+      <Content $bg={contentBg}>{children}</Content>
 
       <BottomNav>
         {/* 컨텍스트별 하단 nav 분리:

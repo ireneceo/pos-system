@@ -187,9 +187,15 @@ router.get('/menu/:slug', async (req, res) => {
       is_active: true   // 2026-05-29: hide deactivated menu items from the customer mobile menu (was missing → disabled items stayed orderable)
     };
 
-    // Filter by category if specified
+    // Filter by category if specified.
+    // Product.category 는 일관되지 않게 카테고리 ID("106") 또는 이름("SET MENU")으로 저장돼 있다.
+    // (브랜드 동기화 ensureLocalCategory 가 이름을 쓰는 반면, 매장 native 상품은 ID를 쓴다.)
+    // → 프론트가 보내는 categoryId(숫자)와 그 카테고리 이름을 둘 다 매칭해야 세트/브랜드푸시 상품이 누락되지 않는다.
     if (categoryId) {
-      productWhere.category = categoryId;
+      const catRow = dbCategories.find(c => c.id.toString() === categoryId.toString());
+      productWhere.category = catRow
+        ? { [Op.in]: [categoryId.toString(), catRow.name] }
+        : categoryId;
     }
 
     // Exclude hidden categories from product results

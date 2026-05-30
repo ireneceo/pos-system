@@ -10,9 +10,27 @@ session-state.md 읽고 이어서 개발해.
 ```
 
 ## 🔖 지금 중단 지점
-- **방금까지:** 현장 보고 6건 dev 수정 완료(세트빌더 검색위치/모바일2열은 1차·세트옵션라이브/모바일상품순서/브랜드강제순서/POS카테고리펼치기/데빗) + /검증 통과(build0·hydration0·🔒8/8·health88/88·i18n0·mount5/5). 전부 **dev만, 운영 미배포.**
-- **바로 다음:** 아래 "🔴 미해결" 의 **운영16 버그 2건**(푸시→활성화해도 모바일 안나옴 / 비활성·품절·복사 버튼 안됨)을 **운영 직접 조사(SSH irene@87.106.78.146, 추측금지)**.
-- **커밋:** 79824489 (chore: 세션 중간 저장 — push 안 함)
+- **방금까지(2026-05-30 세션):** 운영16 세트 모바일 주문 critical 해결 — 아래 "✅ 세트 모바일 주문" 참조. **운영 데이터 직접 수정함(세트 8개 활성화+category 교정)** + dev 영구 코드수정 1건(미배포).
+- **바로 다음:** ① **/배포** 대기 (dev 누적분 + 이번 mobile-public 카테고리 매칭 수정) → 그래야 #2 버튼/#3 첫탭 운영 반영. ② SET 601 "화요일 TUE" 빈 세트(set_groups=NULL) — BG가 슬롯 정의해야 함. ③ #3 첫탭 빈화면 dev 재현·확정(현 dev 코드는 정상 추적됨).
+- **커밋:** 79824489 (push 안 함) + mobile-public.js 카테고리 id|name 매칭 (uncommitted)
+
+---
+
+## ✅ 세트 모바일 주문 critical 해결 (2026-05-30, 운영16 The Fire)
+> Irene "세트메뉴 모바일에서 주문 급선무" + "세트전용 구성품 개별메뉴 숨기기 방법". **운영 실데이터 직접 조사(추측 0)로 뿌리 확정.**
+
+**근본 원인 (운영 실DB 확정):**
+1. 세트 9개 **전부 is_active=0** → 모바일 리스트(is_active=true 필수) 미노출.
+2. **category 컬럼 불일치** — 세트는 `category="SET MENU"/"LUNCH MENU"`(이름)인데 모바일 리스트는 `category=숫자ID`로 필터 → 활성화해도 탭에서 0개. 원인=`brandMenuSyncService.ensureLocalCategory` 가 Product.category 에 **이름** 저장(라인53). 브랜드 category 잠금이라 다음 푸시마다 재발.
+3. 버튼 안됨(#2)=운영 프론트 **구버전 번들**(main.550d1dc4.js, MenuManagement 옛버전, brandPushedInactive/lockedKeys 없음). dev엔 작동 버튼+주황 Activate 배너 있음 → **배포하면 해결**.
+
+**조치:**
+- **[운영 데이터 직접]** 유효 세트 8개(592/594/595/596/597/599=SET MENU→category"106", 600/602=LUNCH MENU→"107") **is_active=1 + category 숫자ID 교정**. 601(빈 세트)은 제외(is_active=0 유지). → 모바일 SET MENU 6개·LUNCH MENU 2개 노출 + resolve(구성품/옵션) 실호출 검증 OK. **지금 주문 가능.** (is_active 는 sync 대상 아님=RA소유, 라인11 → 활성화 영속)
+- **[dev 영구수정, 미배포]** `routes/mobile-public.js` 메뉴 리스트 category 필터를 **id|name 둘 다 매칭**(Op.in [id, name]) → sync가 다시 이름으로 써도 안 깨짐 + 다른 이름저장 상품(치킨/라면 등 ~5개)도 자동 구제. dev 검증: 회귀OK + 이름저장 상품 숫자탭 노출 증명 + 🔒8/8 + mobile health 8/8.
+
+**세트전용 구성품 숨김(Irene 결정="비활성화 사용"):** 구성품 is_active=false → 개별 메뉴 사라지고 세트는 계속 resolve(buildSetResolved 는 is_active 무시). 추가개발 0. 실제 comp 453 "Roasted Chicken Set" 이미 이 방식 동작중.
+
+**남은 일:** /배포(위 2·3 운영반영) · SET 601 BG 슬롯정의 · #3 첫탭 dev확정.
 
 ---
 

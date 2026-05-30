@@ -276,16 +276,19 @@ const MenuGrid = styled.div`
 `;
 
 const MenuItemCard = styled.div`
-  background: white;
+  background: #FFFFFF;
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  /* 연회색 배경 위에서 흰 카드가 또렷이 떠 보이도록 그림자 + 옅은 테두리 강화 (#4) */
+  border: 1px solid #E5E8EC;
+  box-shadow: 0 2px 8px rgba(16, 24, 40, 0.08);
   cursor: pointer;
-  transition: transform 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s;
   position: relative;
 
   &:active {
     transform: scale(0.98);
+    box-shadow: 0 1px 4px rgba(16, 24, 40, 0.12);
   }
 `;
 
@@ -684,7 +687,10 @@ const MenuPage: React.FC = () => {
                 const cr = await firstCatRes.json();
                 if (cr.success && cr.data) {
                   const firstItems = transformItems(cr.data.items || []);
-                  if (useCat !== '__featured__') setMenuItems(firstItems);
+                  // 항상 첫 카테고리 아이템을 채운다. featured 기본일 때도 채워두면,
+                  // featured/popular 가 0개라 첫 카테고리로 폴백될 때 빈 화면이 안 뜬다.
+                  // (featured 탭이 실제로 떠 있으면 menuItems 는 안 쓰이므로 무해 — 버그fix)
+                  setMenuItems(firstItems);
                   categoryCacheRef.current.set(firstCatId, firstItems);
                 }
               }
@@ -1023,6 +1029,7 @@ const MenuPage: React.FC = () => {
     <MobileLayout
       title="Menu"
       currentPage="menu"
+      contentBg="#F4F6F8"
       cartItemCount={cartItems.length}
     >
       {currentStore && (

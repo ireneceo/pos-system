@@ -441,7 +441,13 @@
       "Bash(sed -n '1310,1325p' utils/billPrint.js)",
       "Bash(awk 'NR>=1140 && NR<=1167' pages/BrandGeneral/BrandMenusPage.tsx)",
       "Bash(sed -n '1,15p' routes/menu.js)",
-      "Bash(sed -n '100,130p' middleware/auth.js)"
+      "Bash(sed -n '100,130p' middleware/auth.js)",
+      "Bash(find . -path ./node_modules -prune -o -name \"MenuPage.tsx\" -print)",
+      "Bash(ls mobile/pages/)",
+      "Bash(scp -q /tmp/probe3.js irene@87.106.78.146:/var/www/production-backend/probe3.js)",
+      "Bash(scp -q /tmp/probe4.js irene@87.106.78.146:/var/www/production-backend/probe4.js)",
+      "Bash(rm -f /tmp/build_menu_fix.log)",
+      "Bash(echo \"build started pid $!\")"
     ],
     "deny": [],
     "ask": []

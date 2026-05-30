@@ -335,6 +335,8 @@ const ItemDetailPage: React.FC = () => {
   const [quantity, setQuantity] = useState(1);
   const [instructions, setInstructions] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  // #1: 담은 직후 상세에 머물며 보여줄 "담음" 피드백 (리스트로 자동 복귀 안 함)
+  const [justAdded, setJustAdded] = useState(false);
   // 세트 선택 상태: groupId -> 선택 product_ids / `${groupId}:${pid}` -> 선택 optionIds
   const [setSel, setSetSel] = useState<Record<string, number[]>>({});
   const [setOpts, setSetOpts] = useState<Record<string, string[]>>({});
@@ -599,9 +601,10 @@ const ItemDetailPage: React.FC = () => {
     };
 
     addToCart(itemWithOptions, quantity, selectedOptions, instructions);
-    // 담은 뒤 장바구니로 튀지 않고 메뉴로 복귀 — 카트 뱃지 숫자만 증가하고
-    // 사용자는 계속 둘러볼 수 있다 (#4). 메뉴는 직전 탭(?cat=) 그대로 복원된다.
-    navigate(-1);
+    // #1: 담아도 리스트로 자동 복귀하지 않는다 — 상세에 머물며 "담음" 피드백만 보여주고,
+    // 고객이 직접 뒤로가기를 누르면 직전 탭(?cat=)으로 정확히 복원된다(#2).
+    setJustAdded(true);
+    setTimeout(() => setJustAdded(false), 1800);
   };
   
   if (isLoading) {
@@ -759,9 +762,16 @@ const ItemDetailPage: React.FC = () => {
       <AddToCartButton
         onClick={handleAddToCart}
         disabled={!isValid()}
+        style={justAdded ? { background: '#10B981' } : undefined}
       >
-        <span>Add to Cart</span>
-        <PriceDisplay>{formatCurrency(calculateTotal(), currency)}</PriceDisplay>
+        {justAdded ? (
+          <span>✓ Added to Cart</span>
+        ) : (
+          <>
+            <span>Add to Cart</span>
+            <PriceDisplay>{formatCurrency(calculateTotal(), currency)}</PriceDisplay>
+          </>
+        )}
       </AddToCartButton>
     </MobileLayout>
   );
