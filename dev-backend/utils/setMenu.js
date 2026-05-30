@@ -181,6 +181,25 @@ async function buildSetResolved(setProduct, restaurantId) {
     }]));
   }
 
+  // 세트 상품 자신의 옵션그룹(A — "전체 세트 옵션") 도 이름/가격까지 resolve.
+  // 구성품 상속 옵션(B)과 별개로, 등록 시 세트에 직접 붙인 옵션. POS/모바일 주문 UI 가 렌더한다.
+  let setOptionGroups = [];
+  const setOgIds = parseOgIds(setProduct.optionGroups);
+  if (setOgIds.length) {
+    const needFetch = setOgIds.filter(id => !ogMap.has(id));
+    if (needFetch.length) {
+      const extra = await OptionGroup.findAll({
+        where: { id: needFetch, restaurant_id: restaurantId, isActive: true },
+        include: [{ model: Option, as: 'options' }]
+      });
+      extra.forEach(g => ogMap.set(g.id, {
+        id: g.id, name: g.name, required: !!g.required, multiple: !!g.multiple,
+        options: (g.options || []).filter(o => o.isActive !== false).map(o => ({ id: o.id, name: o.name, price: Number(o.price) || 0 }))
+      }));
+    }
+    setOptionGroups = setOgIds.map(id => ogMap.get(id)).filter(Boolean);
+  }
+
   const soldOutMap = {};
   compMap.forEach((v, id) => { soldOutMap[id] = v.soldOut; });
   const avail = computeSetAvailability(groups, soldOutMap);
@@ -202,7 +221,7 @@ async function buildSetResolved(setProduct, restaurantId) {
     })
   }));
 
-  return { set_available: avail.available, set_unavailable_reason: avail.reason, set_groups_resolved: resolved };
+  return { set_available: avail.available, set_unavailable_reason: avail.reason, set_groups_resolved: resolved, set_option_groups: setOptionGroups };
 }
 
 module.exports = {

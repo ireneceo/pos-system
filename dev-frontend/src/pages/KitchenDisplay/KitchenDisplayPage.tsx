@@ -1840,6 +1840,14 @@ const KitchenDisplayPage: React.FC = () => {
                       {formatItemName(item.name)} {item.quantity > 1 && <ItemQty highlight done={isItemDoneForColumn(cardStatus, item.status || 'pending') && cardStatus !== 'pending'}>x {item.quantity}</ItemQty>}
                     </ItemName>
                   )}
+                  {/* 세트 구성품(B) — 주방이 만들 항목 + 각 구성품 선택옵션. (set_components 우선, 레거시 set_items 폴백) */}
+                  {item.is_set_menu && Array.isArray((item as any).set_components) && (item as any).set_components.length > 0 && (
+                    <div style={{ fontSize: '11px', color: '#4B5563', margin: '2px 0 0', paddingLeft: '8px' }}>
+                      {(item as any).set_components.map((c: any, ci: number) => (
+                        <div key={ci}>› {c?.name}{Array.isArray(c?.options) && c.options.length ? ` (${c.options.join(', ')})` : ''}</div>
+                      ))}
+                    </div>
+                  )}
                   {(() => {
                     const regularOptions = item.options?.filter(opt => !/^.+\sx\d+$/.test(opt)) || [];
                     if (regularOptions.length === 0 && !item.special_instructions) return null;

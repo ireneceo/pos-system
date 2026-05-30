@@ -95,5 +95,7 @@
   "setOrder.required": "필수",
   "setOrder.soldOut": "품절",
   "setOrder.chooseN": "{{count}}개 선택",
-  "setOrder.chooseRange": "{{min}}~{{max}}개 선택"
+  "setOrder.chooseRange": "{{min}}~{{max}}개 선택",
+  "setOrder.setOptionsTitle": "세트 옵션",
+  "setOrder.multi": "다중 선택"
 }

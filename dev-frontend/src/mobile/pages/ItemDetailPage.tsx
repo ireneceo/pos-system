@@ -488,6 +488,10 @@ const ItemDetailPage: React.FC = () => {
         if (sel.includes(String(o.id))) total += Number(o.price) || 0;
       }));
     });
+    // 세트 자체 옵션(A) 가격도 합산 (selectedOptions = A 선택)
+    availableOptionGroups.forEach((og: any) => (og.options || []).forEach((o: any) => {
+      if (selectedOptions.includes(String(o.id))) total += Number(o.price) || 0;
+    }));
     return total * quantity;
   };
 

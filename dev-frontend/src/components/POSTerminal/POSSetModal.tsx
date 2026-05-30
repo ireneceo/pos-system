@@ -14,6 +14,7 @@ export interface POSSetResult {
   setComponents: any[];
   selectedOptions: { name: string; price: number }[];
   optionsDisplay: string[];
+  setLevelOptions: string[];   // 세트 자체 옵션(A) — 선택된 옵션 이름
 }
 
 interface Props {
@@ -40,9 +41,27 @@ const AddBtn = styled.button`
 `;
 const Loading = styled.div`padding: 30px; text-align: center; color: #6B7C93;`;
 
+// 세트 자체 옵션(A) 섹션 — 구성품과 별개로 세트 전체에 적용되는 옵션
+const SetOptSection = styled.div`
+  margin-top: 14px; padding-top: 12px; border-top: 1px dashed #E6EBF1;
+`;
+const SetOptHead = styled.div`font-size: 13px; font-weight: 700; color: #0A2540; margin-bottom: 8px;`;
+const SetOptGroup = styled.div`margin-bottom: 12px;`;
+const SetOptLabel = styled.div`font-size: 12px; color: #6B7C93; margin-bottom: 6px;`;
+const SetOptRow = styled.div`display: flex; flex-wrap: wrap; gap: 8px;`;
+const SetOptBtn = styled.button<{ $sel: boolean }>`
+  min-height: 40px; padding: 0 14px; border-radius: 8px; cursor: pointer; font-size: 13px;
+  border: 1px solid ${p => p.$sel ? '#635BFF' : '#E6EBF1'};
+  background: ${p => p.$sel ? '#F0EFFF' : '#FFF'};
+  color: ${p => p.$sel ? '#635BFF' : '#0A2540'};
+  font-weight: ${p => p.$sel ? 600 : 400};
+`;
+
 const POSSetModal: React.FC<Props> = ({ isOpen, product, restaurantId, formatCurrency, onClose, onConfirm }) => {
   const { t } = useTranslation();
   const [resolved, setResolved] = useState<any[]>([]);
+  const [setOptionGroups, setSetOptionGroups] = useState<any[]>([]);  // 세트 자체 옵션(A)
+  const [setLevelSel, setSetLevelSel] = useState<string[]>([]);       // 선택된 A 옵션 id
   const [loading, setLoading] = useState(false);
   const [sel, setSel] = useState<Record<string, number[]>>({});
   const [opts, setOpts] = useState<Record<string, string[]>>({});
@@ -50,7 +69,7 @@ const POSSetModal: React.FC<Props> = ({ isOpen, product, restaurantId, formatCur
 
   useEffect(() => {
     if (!isOpen || !product) return;
-    setQty(1); setOpts({});
+    setQty(1); setOpts({}); setSetLevelSel([]);
     setLoading(true);
     (async () => {
       try {
@@ -60,13 +79,26 @@ const POSSetModal: React.FC<Props> = ({ isOpen, product, restaurantId, formatCur
         const j = await res.json();
         const groups = (j.data && j.data.set_groups_resolved) || [];
         setResolved(groups);
+        setSetOptionGroups((j.data && j.data.set_option_groups) || []);
         const init: Record<string, number[]> = {};
         groups.forEach((g: any) => { init[g.id] = g.type === 'fixed' ? (g.items || []).map((it: any) => Number(it.product_id)) : []; });
         setSel(init);
-      } catch { setResolved([]); }
+      } catch { setResolved([]); setSetOptionGroups([]); }
       finally { setLoading(false); }
     })();
   }, [isOpen, product, restaurantId]);
+
+  // 세트 자체 옵션(A) 토글 — 단일/다중 + 필수 처리
+  const toggleSetLevelOption = (optionId: string, groupId: string, multiple: boolean, required: boolean) => {
+    setSetLevelSel(prev => {
+      if (multiple) return prev.includes(optionId) ? prev.filter(id => id !== optionId) : [...prev, optionId];
+      const og = setOptionGroups.find((g: any) => String(g.id) === String(groupId));
+      const ids = (og?.options || []).map((o: any) => String(o.id));
+      const isSel = prev.includes(optionId);
+      if (isSel && !required) return prev.filter(id => !ids.includes(id));
+      return [...prev.filter(id => !ids.includes(id)), optionId];
+    });
+  };
 
   const included = useMemo(() => {
     const out: { group: any; it: any }[] = [];
@@ -114,7 +146,11 @@ const POSSetModal: React.FC<Props> = ({ isOpen, product, restaurantId, formatCur
       return (it?.optionGroups || []).filter((og: any) => og.required).every((og: any) => og.options.some((o: any) => s.includes(String(o.id))));
     };
     const selected = included.map(({ group, it }) => ({ group_id: group.id, product_id: Number(it.product_id) }));
-    return isSetSelectionValid(resolved as any, selected as any, requiredOk as any);
+    if (!isSetSelectionValid(resolved as any, selected as any, requiredOk as any)) return false;
+    // 세트 자체 옵션(A) 의 필수 그룹도 충족돼야 함
+    const setLevelOk = setOptionGroups.filter((g: any) => g.required)
+      .every((g: any) => (g.options || []).some((o: any) => setLevelSel.includes(String(o.id))));
+    return setLevelOk;
   })();
 
   const buildResult = (): POSSetResult => {
@@ -131,7 +167,17 @@ const POSSetModal: React.FC<Props> = ({ isOpen, product, restaurantId, formatCur
       chosenOpts.forEach((o: any) => { if (Number(o.price) > 0) selectedOptions.push({ name: o.name, price: Number(o.price) }); });
       optionsDisplay.push(`${it.name}${optNames.length ? ` (${optNames.join(', ')})` : ''}`);
     });
-    return { setComponents, selectedOptions, optionsDisplay };
+    // 세트 자체 옵션(A) — 이름 수집 + 가격은 selectedOptions 로 합산
+    const setLevelOptions: string[] = [];
+    setOptionGroups.forEach((g: any) => {
+      (g.options || []).forEach((o: any) => {
+        if (setLevelSel.includes(String(o.id))) {
+          setLevelOptions.push(o.name);
+          if (Number(o.price) > 0) selectedOptions.push({ name: o.name, price: Number(o.price) });
+        }
+      });
+    });
+    return { setComponents, selectedOptions, optionsDisplay, setLevelOptions };
   };
 
   const unitTotal = (() => {
@@ -157,6 +203,28 @@ const POSSetModal: React.FC<Props> = ({ isOpen, product, restaurantId, formatCur
               onToggleOption={toggleOption}
               formatCurrency={formatCurrency}
             />
+            {setOptionGroups.length > 0 && (
+              <SetOptSection>
+                <SetOptHead>{t('menu:setOrder.setOptionsTitle', { defaultValue: 'Set options' })}</SetOptHead>
+                {setOptionGroups.map((g: any) => (
+                  <SetOptGroup key={g.id}>
+                    <SetOptLabel>{g.name}{g.required ? ' *' : ''}{g.multiple ? ` · ${t('menu:setOrder.multi', { defaultValue: 'choose multiple' })}` : ''}</SetOptLabel>
+                    <SetOptRow>
+                      {(g.options || []).map((o: any) => (
+                        <SetOptBtn
+                          key={o.id}
+                          type="button"
+                          $sel={setLevelSel.includes(String(o.id))}
+                          onClick={() => toggleSetLevelOption(String(o.id), String(g.id), !!g.multiple, !!g.required)}
+                        >
+                          {o.name}{Number(o.price) > 0 ? ` +${formatCurrency(Number(o.price))}` : ''}
+                        </SetOptBtn>
+                      ))}
+                    </SetOptRow>
+                  </SetOptGroup>
+                ))}
+              </SetOptSection>
+            )}
           </Body>
           <Footer>
             <Stepper>

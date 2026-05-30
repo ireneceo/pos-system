@@ -95,5 +95,7 @@
   "setOrder.required": "Required",
   "setOrder.soldOut": "SOLD OUT",
   "setOrder.chooseN": "Choose {{count}}",
-  "setOrder.chooseRange": "Choose {{min}}-{{max}}"
+  "setOrder.chooseRange": "Choose {{min}}-{{max}}",
+  "setOrder.setOptionsTitle": "Set options",
+  "setOrder.multi": "choose multiple"
 }

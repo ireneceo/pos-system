@@ -95,5 +95,7 @@
   "setOrder.required": "必选",
   "setOrder.soldOut": "已售罄",
   "setOrder.chooseN": "选择 {{count}} 个",
-  "setOrder.chooseRange": "选择 {{min}}-{{max}} 个"
+  "setOrder.chooseRange": "选择 {{min}}-{{max}} 个",
+  "setOrder.setOptionsTitle": "套餐选项",
+  "setOrder.multi": "可多选"
 }

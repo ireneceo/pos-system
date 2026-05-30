@@ -567,15 +567,17 @@ const OrderTrackingPage: React.FC = () => {
                 try {
                   const itemName = item?.menuItem?.name || item?.name || 'Item';
                   const itemQuantity = item?.quantity || 1;
-                  const itemOptions = item?.options || item?.selectedOptions || [];
-                  const specialInstructions = item?.special_instructions || item?.specialInstructions;
-
                   const setComps = Array.isArray(item?.set_components) ? item.set_components : [];
+                  // 세트는 options = 세트 자체 옵션(A) 만 인라인 표기 (구성품 B 는 아래 별도). 비세트는 selectedOptions 폴백 허용.
+                  const itemOptions = setComps.length > 0
+                    ? (Array.isArray(item?.options) ? item.options : [])
+                    : (item?.options || item?.selectedOptions || []);
+                  const specialInstructions = item?.special_instructions || item?.specialInstructions;
                   return (
                     <div key={item?.id || `item-${index}`} style={{ marginBottom: '8px' }}>
                       <Item>
                         {itemQuantity}x {itemName}
-                        {setComps.length === 0 && itemOptions.length > 0 && ` (${itemOptions.join(', ')})`}
+                        {itemOptions.length > 0 && ` (${itemOptions.join(', ')})`}
                       </Item>
                       {setComps.length > 0 && (
                         <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px', paddingLeft: '16px' }}>

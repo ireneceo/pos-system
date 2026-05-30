@@ -1649,13 +1649,14 @@ const POSTerminalPage: React.FC = () => {
   const isV2Set = (mi: any) => mi?.is_set_menu && Array.isArray(mi?.set_groups) && mi.set_groups.length > 0;
 
   // 세트 v2 모달 확정 → 카트 적재 (가격은 priced selectedOptions 로 기존 POS 가격식에 합산)
-  const handleConfirmSet = (quantity: number, result: { setComponents: any[]; selectedOptions: { name: string; price: number }[]; optionsDisplay: string[] }) => {
+  const handleConfirmSet = (quantity: number, result: { setComponents: any[]; selectedOptions: { name: string; price: number }[]; optionsDisplay: string[]; setLevelOptions: string[] }) => {
     if (!setModalProduct) return;
     setOrderItems([...orderItems, {
       id: `order-${Date.now()}`,
       menuItem: setModalProduct,
       quantity,
-      options: result.optionsDisplay.length > 0 ? result.optionsDisplay : undefined,
+      // options = 세트 자체 옵션(A) 만. 구성품(B)은 set_components 로 분리 (인쇄/표시 단일소스).
+      options: result.setLevelOptions.length > 0 ? result.setLevelOptions : undefined,
       selectedOptions: result.selectedOptions as any,
       set_components: result.setComponents
     } as any]);
@@ -3345,6 +3346,13 @@ const POSTerminalPage: React.FC = () => {
                   <OrderItem key={item.id}>
                     <ItemInfo>
                       <ItemName>{item.menuItem.code ? `${item.menuItem.code} ` : ''}{item.menuItem.name}</ItemName>
+                      {Array.isArray((item as any).set_components) && (item as any).set_components.length > 0 && (
+                        <ItemOptions style={{ fontWeight: 600 }}>
+                          {(item as any).set_components.map((c: any, ci: number) => (
+                            <div key={ci}>· {c?.name}{Array.isArray(c?.options) && c.options.length ? ` (${c.options.join(', ')})` : ''}</div>
+                          ))}
+                        </ItemOptions>
+                      )}
                       {item.options && item.options.length > 0 && (() => {
                         // Separate set menu items and regular options
                         const setItems: string[] = [];

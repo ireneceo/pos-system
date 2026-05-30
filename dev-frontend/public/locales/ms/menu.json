@@ -95,5 +95,7 @@
   "setOrder.required": "Wajib",
   "setOrder.soldOut": "HABIS",
   "setOrder.chooseN": "Pilih {{count}}",
-  "setOrder.chooseRange": "Pilih {{min}}-{{max}}"
+  "setOrder.chooseRange": "Pilih {{min}}-{{max}}",
+  "setOrder.setOptionsTitle": "Pilihan set",
+  "setOrder.multi": "pilih berbilang"
 }
