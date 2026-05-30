@@ -1,9 +1,39 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-05-30 (세트메뉴 옵션 전구간 기록 + 브랜드 세트 OR 빌더 업그레이드 운영 배포)
+> **최종 업데이트:** 2026-05-30 (모바일 dine-in 테이블번호 필수 기능 DEV 구현+검증 — 미배포)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 > **현재 버전:** **v3.44** 운영 (2026-05-29 배포, Backup 20260529_224606, smoke 10/10)
+
+## ✅ 완료(DEV): 모바일 dine-in 테이블번호 필수 — 매장별 설정 (2026-05-30, 미배포)
+
+> 픽업 안 받는 매장에 대표/공용 QR 로 들어온 손님이 테이블 없이 dine_in 주문 → Floor Plan 에 안 꽂히고 "픽업 N"(수령번호) 로 표시되던 문제. **매장별 설정 ON 시** 테이블을 강제로 고르게 함. **설정은 신규 X — 기존 `table_settings.tableNumberRequired` 토글을 enforcement 에 연결.**
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 근본원인 확정 | 테이블 QR(`?table=`) 정상. 문제는 대표/공용 슬러그 링크 진입 dine_in+table=null. PaymentPage 기본 "Free Seating" + 백엔드 무검증 통과 | ✅ |
+| 설정 노출 | `mobile-public.js` `/store/:slug` 응답에 `tableNumberRequired`(enableTableNumbers 게이트) + `floorTables`(floor_plan.tables 라벨) | ✅ |
+| 입력방식 = Floor Plan 목록 선택 | 자유타이핑 X(오타→orphan 테이블→Floor Plan 미표시 재발). `floor_plan.tables[].label` 에서 선택 | ✅ |
+| 진입 강제 (OrderTypePage) | dine-in 선택 시 테이블 없으면 → 테이블 선택 바텀시트 모달(T001~ 칩, 검색, #635BFF) | ✅ |
+| 결제 강제 (PaymentPage) | 테이블목록=Floor Plan 우선(operation→table_settings 소스버그 동시수정), "Free Seating" 제거, 미선택 결제 차단 | ✅ |
+| 백엔드 가드 2경로 | `orders-crud.js`(POST `/`) + `mobile-orders.js`(POST `/order`): mobile+dine_in+무테이블 → 400 TABLE_REQUIRED. POS·takeaway·pickup·delivery 면제 | ✅ |
+| takeaway 정책 유지 | 테이블 QR 로 들어온 takeaway 는 table_number 유지(그 Floor Plan 테이블에 표시) = 기존 의도 | ✅ |
+| i18n | common.json 4언어 (selectYourTable / selectTableToContinue 등) | ✅ |
+
+### 검증 (10단계 전부)
+- 0 state-hydration 0 warning · 1 빌드 main.1b8e01d1.js · 3 API 7/7(차단/통과/면제/POS/양경로) · 7 회귀 3/3(OFF매장 무영향+게이트) · print 계약 7/7 · i18n Errors 0 · 10 실브라우저 mount 5/5(picker→T001→메뉴)
+
+### 수정된 파일
+- 백엔드: `routes/mobile-public.js`, `routes/orders-crud.js`🔒, `routes/mobile-orders.js`
+- 프론트: `mobile/pages/OrderTypePage.tsx`, `mobile/pages/PaymentPage.tsx`, `public/locales/{en,ko,zh,ms}/common.json`
+
+### ⚠️ 배포 전 필수 2가지
+1. **bless**: `node dev-backend/scripts/check-print-guard.js --bless` — orders-crud.js TABLE_REQUIRED 가드 지문(인쇄 무관, print 7/7 통과). Irene 승인 후. 안 하면 deploy fail-closed.
+2. 배포 후 **The Fire(16) 설정에서 토글 ON** (기본 OFF, 배포만으론 자동적용 X).
+
+---
 
 ## ✅ 완료: 세트메뉴 옵션 전구간 + 브랜드 세트 OR 업그레이드 (2026-05-30 배포)
 

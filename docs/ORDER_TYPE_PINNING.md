@@ -132,6 +132,25 @@ POST `/api/orders` and POST `/api/mobile-orders`:
 
 This closes the current trust-the-client gap (the frontend filter is the only barrier today).
 
+## Dine-in table requirement (added 2026-05-30)
+
+Extends the entry flow so a store can **force a table number on every mobile dine-in order**. Solves the "generic/representative QR" gap: a customer entering via `/mobile/{slug}` or `?order_type=dine-in` (no `?table=`) could place a table-less dine-in order, which then showed on the Floor Plan as a table-less "pickup N" (receiving-number) card instead of on a table.
+
+**Setting (reused, not new)**: `restaurants.table_settings.tableNumberRequired` (bool), gated by `table_settings.enableTableNumbers`. Settings → **Tables & QR** tab, toggle "Table Number Required". The toggle already existed; this cycle wired it to enforcement. Default OFF → no change for existing stores.
+
+**Exposure**: `GET /api/mobile/store/:slug` now returns `tableNumberRequired` (= `enableTableNumbers !== false && tableNumberRequired`) and `floorTables` (labels from `floor_plan.tables[].label || .tableNumber`).
+
+**Table source = Floor Plan tables, not free text.** The customer selects from `floor_plan.tables` labels so the chosen value matches what `orders-crud`/`mobile-orders` use to resolve `floor_plan_table_id` — free-typing risks a label mismatch that re-introduces the table-less bug.
+
+**Enforcement (3 layers, dine-in only — takeaway/pickup/delivery exempt):**
+1. `OrderTypePage` — selecting Dine In with `tableNumberRequired` and no table (QR or sessionStorage) opens a **table-picker bottom sheet** (Floor Plan table chips + search) before `/menu`. Table QR (`?table=`) is unaffected — it already carries a table, skips the picker.
+2. `PaymentPage` — table list sourced from `floor_plan.tables` (falls back to legacy `table_settings.totalTables`/`tablePrefix`; **note**: previously read `operation_settings` by mistake — fixed to `table_settings`). When required: no "Free Seating" option, pay button blocked until a table is picked.
+3. Backend — POST `/api/orders` (orders-crud) and POST `/api/mobile/order` (mobile-orders): `source === 'mobile' && order_type === 'dine_in' && !table_number && tableNumberRequired` → **400 `TABLE_REQUIRED`**. POS path not gated.
+
+**Takeaway-with-table preserved**: a takeaway order entered via a *table* QR keeps its `table_number` (shown on that table card) — unchanged intentional behaviour (`mobile-orders.js` comment). The requirement only forces a table for dine-in; it never adds/removes a table for takeaway.
+
+**File touch list (this feature)**: `routes/mobile-public.js`, `routes/orders-crud.js` 🔒, `routes/mobile-orders.js`, `mobile/pages/OrderTypePage.tsx`, `mobile/pages/PaymentPage.tsx`, `public/locales/{en,ko,zh,ms}/common.json`. The orders-crud guard changes the print-guard fingerprint (non-print input validation; print contract 7/7 passes) → re-bless before deploy.
+
 ## Backward compatibility
 
 | Surface | Old data | New behaviour |
