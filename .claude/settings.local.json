@@ -439,7 +439,9 @@
       "Bash(perl -0pi -e 's/title=\"길게 누르면 품절\\\\/재고복구\"/title=\"Long-press to toggle sold-out\"/g' pages/POSTerminal/POSTerminalPage.tsx)",
       "Bash(sed -n '938,958p' utils/billPrint.js)",
       "Bash(sed -n '1310,1325p' utils/billPrint.js)",
-      "Bash(awk 'NR>=1140 && NR<=1167' pages/BrandGeneral/BrandMenusPage.tsx)"
+      "Bash(awk 'NR>=1140 && NR<=1167' pages/BrandGeneral/BrandMenusPage.tsx)",
+      "Bash(sed -n '1,15p' routes/menu.js)",
+      "Bash(sed -n '100,130p' middleware/auth.js)"
     ],
     "deny": [],
     "ask": []

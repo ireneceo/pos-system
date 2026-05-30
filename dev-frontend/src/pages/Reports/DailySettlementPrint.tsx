@@ -70,6 +70,7 @@ const CARD_TYPE_LABELS: Record<string, string> = {
   mastercard: 'Mastercard',
   master: 'Mastercard',
   amex: 'Amex',
+  debit: 'Debit',
   other: 'Other',
   unspecified: 'Unspecified',
 };

@@ -30,6 +30,7 @@ export interface MenuItem {
   kitchen_station_id?: number | null;
   is_featured?: boolean;
   after_meal?: boolean;
+  display_order?: number;
   brand_menu_id?: number | null;
   brand_menu_locks_snapshot?: Record<string, boolean> | null;
   brand_menu_synced_version?: number | null;
@@ -268,6 +269,7 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
             set_display_order: item.set_display_order || 0,
             recipe_id: item.recipe_id || null,
             after_meal: item.after_meal || false,
+            display_order: item.display_order || 0,
             kitchen_station_id: item.kitchen_station_id || null,
             brand_menu_id: item.brand_menu_id || null,
             brand_menu_locks_snapshot: typeof item.brand_menu_locks_snapshot === 'string'
@@ -442,6 +444,7 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
             set_display_order: item.set_display_order || 0,
             recipe_id: item.recipe_id || null,
             after_meal: item.after_meal || false,
+            display_order: item.display_order || 0,
             takeaway_charge: item.takeaway_charge != null ? Number(item.takeaway_charge) : 0
           };
         });

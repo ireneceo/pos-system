@@ -31,7 +31,8 @@ function buildLocksSnapshot(brandMenu) {
     category:  !!brandMenu.lock_category,
     image:     !!brandMenu.lock_image,
     options:   !!brandMenu.lock_options,
-    set_items: !!brandMenu.lock_set_items
+    set_items: !!brandMenu.lock_set_items,
+    sort_order: !!brandMenu.lock_sort_order
   };
 }
 
@@ -198,6 +199,8 @@ async function syncBrandMenuToRestaurant({ brandMenuId, restaurantId, transactio
       // v2 set_groups — 구성품 brand_menu_id 를 매장 상품 id 로 변환해 미러
       updates.set_groups = await translateSetGroupsForRestaurant(brandMenu.set_groups, restaurantId, transaction);
     }
+    // 브랜드가 순서를 강제(lock_sort_order)하면 매장 상품 display_order 를 브랜드 sort_order 로 고정
+    if (locks.sort_order) updates.display_order = brandMenu.sort_order || 0;
     // emoji / description always refreshed (not in lock matrix per spec — informational)
     if (brandMenu.emoji) updates.emoji = brandMenu.emoji;
     if (brandMenu.description) updates.description = brandMenu.description;
@@ -224,6 +227,7 @@ async function syncBrandMenuToRestaurant({ brandMenuId, restaurantId, transactio
     set_groups: await translateSetGroupsForRestaurant(brandMenu.set_groups, restaurantId, transaction),
     is_active: false,
     after_meal: brandMenu.after_meal === true, // 식후 제공 플래그 상속(초기 푸시). 이후엔 매장이 소유.
+    display_order: locks.sort_order ? (brandMenu.sort_order || 0) : 0, // 순서 강제 시 브랜드 순서 상속
     soldOut: false,
     // Sync tracking
     brand_menu_id: brandMenu.id,

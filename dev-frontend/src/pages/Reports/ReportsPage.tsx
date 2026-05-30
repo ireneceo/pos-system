@@ -544,6 +544,7 @@ const ReportsPage: React.FC = () => {
     visa: 'Visa',
     master: 'Mastercard',
     amex: 'Amex',
+    debit: 'Debit',
     other: 'Other'
   };
 

@@ -143,6 +143,11 @@ Product.init({
     defaultValue: false,
     comment: 'Serve after the main meal (e.g. dessert). Registration flag only.'
   },
+  display_order: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+    comment: 'Admin-set product order within its category (mobile menu + POS). 0 = unset → falls back to newest-first.'
+  },
   // Brand Menu System (v3.32+) — linkage with a BG-owned BrandMenu template.
   brand_menu_id: {
     type: DataTypes.INTEGER,

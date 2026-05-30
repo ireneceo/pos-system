@@ -827,7 +827,7 @@ const MenuItemImageWithFallback: React.FC<{ src?: string | null; alt?: string; e
 
 const MenuManagementPage: React.FC = () => {
   const { t } = useTranslation('menu');
-  const { categories, menuItems, optionGroups, updateMenuItem, addMenuItem, removeMenuItem, toggleItemSoldOut } = useMenu();
+  const { categories, menuItems, optionGroups, updateMenuItem, addMenuItem, removeMenuItem, toggleItemSoldOut, reloadMenu } = useMenu();
   const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -1235,6 +1235,45 @@ const MenuManagementPage: React.FC = () => {
     }
   };
 
+  // 메뉴 순서 재정렬 (위/아래) — 'custom' 정렬 + 특정 카테고리 + 검색 없음일 때만 노출.
+  // 현재 카테고리의 표시 순서를 1..N 으로 저장 → 모바일/POS 메뉴에 반영.
+  const reorderInFlight = useRef(false);
+  const handleMoveItem = async (item: MenuItemType, dir: 'up' | 'down') => {
+    if (reorderInFlight.current) return;
+    // 현재 카테고리 아이템을 custom 순서로
+    const catItems = sortItems(
+      menuItems.filter(m => m.category === selectedCategory)
+        .map((it: any) => ({ ...it, createdAt: it.createdAt || it.created_at })),
+      'custom'
+    );
+    const idx = catItems.findIndex(m => m.id === item.id);
+    const swapIdx = dir === 'up' ? idx - 1 : idx + 1;
+    if (idx < 0 || swapIdx < 0 || swapIdx >= catItems.length) return;
+    const reordered = [...catItems];
+    [reordered[idx], reordered[swapIdx]] = [reordered[swapIdx], reordered[idx]];
+    const order = reordered.map(m => Number(m.id)).filter(n => !Number.isNaN(n));
+
+    const pathParts = window.location.pathname.split('/');
+    const ri = pathParts.indexOf('restaurant');
+    const restaurantId = ri >= 0 ? pathParts[ri + 1] : '';
+    reorderInFlight.current = true;
+    // 낙관적 로컬 반영
+    reordered.forEach((m, i) => updateMenuItem({ ...(m as any), display_order: i + 1 }));
+    try {
+      const token = getAuthToken();
+      const res = await fetch('/api/menu/products/reorder', {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ restaurant_id: restaurantId, order })
+      });
+      if (!res.ok) { await reloadMenu(); }
+    } catch {
+      await reloadMenu();
+    } finally {
+      reorderInFlight.current = false;
+    }
+  };
+
   const handleSaveNew = () => {
     if (!formData.category) return;
     const newItem: MenuItemType = {
@@ -1383,7 +1422,7 @@ const MenuManagementPage: React.FC = () => {
                 </ClearSearchBtn>
               )}
             </SearchInputContainer>
-            <SortDropdown value={sortKey} onChange={setSortKey} />
+            <SortDropdown value={sortKey} onChange={setSortKey} options={['custom', 'newest', 'oldest', 'name_asc', 'name_desc', 'price_asc', 'price_desc', 'category']} />
           </SearchSection>
 
           {searchQuery && filteredItems.length > 0 && (
@@ -1505,7 +1544,29 @@ const MenuManagementPage: React.FC = () => {
                     }
                     return null;
                   })()}
+                  {/* 브랜드에서 푸시된 메뉴는 비활성으로 도착 → 활성화해야 모바일 노출됨을 명확히 안내 */}
+                  {item.brand_menu_id && item.is_active === false && (
+                    <div style={{ marginTop: 8, padding: '8px 10px', background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '11.5px', color: '#9A3412', fontWeight: 500, flex: 1, minWidth: 150 }}>
+                        {t('menu:menuManagementPage.brandPushedInactive', { defaultValue: 'Pushed from Brand · inactive — activate to show it on the customer mobile menu.' })}
+                      </span>
+                      <ActionButton onClick={(e: any) => { e.stopPropagation(); handleToggleActive(item); }} style={{ padding: '6px 12px', fontSize: '12px' }}>
+                        {t('menu:menuManagementPage.activate', { defaultValue: 'Activate' })}
+                      </ActionButton>
+                    </div>
+                  )}
                   <MenuActions>
+                    {/* 메뉴 순서 재정렬 — 'Menu order(manual)' 정렬 + 특정 카테고리 + 검색 없음일 때만 */}
+                    {sortKey === 'custom' && selectedCategory !== 'all' && !searchQuery.trim() && (
+                      <>
+                        <IconButton onClick={() => handleMoveItem(item, 'up')} title={t('menu:menuManagementPage.moveUp', { defaultValue: 'Move up' })}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+                        </IconButton>
+                        <IconButton onClick={() => handleMoveItem(item, 'down')} title={t('menu:menuManagementPage.moveDown', { defaultValue: 'Move down' })}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                        </IconButton>
+                      </>
+                    )}
                     {(() => {
                       const locks = item.brand_menu_locks_snapshot || {};
                       const lockedKeys = Object.keys(locks).filter(k => locks[k]);

@@ -38,6 +38,7 @@ interface Product {
   image_url: string | null;
   emoji: string | null;
   is_active: boolean;
+  after_meal?: boolean;
   current_stock: number;
   low_stock_threshold: number;
   lead_time_days: number;
@@ -301,7 +302,7 @@ const FoodcourtProductsTab: React.FC<FoodcourtProductsTabProps> = ({
   const [formData, setFormData] = useState({
     name: '', description: '', sku: '', unit: '',
     base_quantity: '1', unit_price: '', min_order_quantity: '1',
-    category_id: '', image_url: '', emoji: '', is_active: true,
+    category_id: '', image_url: '', emoji: '', is_active: true, after_meal: false,
     current_stock: '0', low_stock_threshold: '0', lead_time_days: '0',
     option_group_ids: [] as number[]
   });
@@ -364,6 +365,7 @@ const FoodcourtProductsTab: React.FC<FoodcourtProductsTabProps> = ({
         image_url: product.image_url || '',
         emoji: product.emoji || '',
         is_active: product.is_active,
+        after_meal: !!product.after_meal,
         current_stock: (product.current_stock || 0).toString(),
         low_stock_threshold: (product.low_stock_threshold || 0).toString(),
         lead_time_days: (product.lead_time_days || 0).toString(),
@@ -375,7 +377,7 @@ const FoodcourtProductsTab: React.FC<FoodcourtProductsTabProps> = ({
         name: '', description: '', sku: '', unit: '',
         base_quantity: '1', unit_price: '', min_order_quantity: '1',
         category_id: categories[0]?.id?.toString() || '',
-        image_url: '', emoji: '', is_active: true,
+        image_url: '', emoji: '', is_active: true, after_meal: false,
         current_stock: '0', low_stock_threshold: '0', lead_time_days: '0',
         option_group_ids: []
       });
@@ -413,6 +415,7 @@ const FoodcourtProductsTab: React.FC<FoodcourtProductsTabProps> = ({
           image_url: formData.image_url || null,
           emoji: formData.emoji || null,
           is_active: formData.is_active,
+          after_meal: formData.after_meal,
           current_stock: parseFloat(formData.current_stock) || 0,
           low_stock_threshold: parseFloat(formData.low_stock_threshold) || 0,
           lead_time_days: parseInt(formData.lead_time_days) || 0,
@@ -723,6 +726,14 @@ const FoodcourtProductsTab: React.FC<FoodcourtProductsTabProps> = ({
                 <input type="checkbox" checked={formData.is_active}
                   onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })} />
                 {t('common:active', 'Active')}
+              </CheckboxLabel>
+            </UIFormGroup>
+
+            <UIFormGroup style={{ marginBottom: 0 }}>
+              <CheckboxLabel>
+                <input type="checkbox" checked={formData.after_meal}
+                  onChange={(e) => setFormData({ ...formData, after_meal: e.target.checked })} />
+                {t('foodcourt:products.afterMeal', { defaultValue: 'After meal (serve after main course, e.g. dessert)' })}
               </CheckboxLabel>
             </UIFormGroup>
 

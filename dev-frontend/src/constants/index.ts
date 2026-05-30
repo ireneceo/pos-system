@@ -507,6 +507,7 @@ const CARD_TYPE_LABELS: Record<string, string> = {
   visa: 'Visa',
   master: 'Master',
   amex: 'Amex',
+  debit: 'Debit',
   other: 'Other'
 };
 

@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { ArrowUpDown } from 'lucide-react';
 
 export type SortKey =
+  | 'custom'      // admin-set display_order (manual menu order)
   | 'newest'      // createdAt desc (default)
   | 'oldest'      // createdAt asc
   | 'name_asc'    // name A → Z
@@ -30,6 +31,7 @@ interface Item {
   created_at?: string;
   category?: string | number | null;
   categoryId?: string | number | null;
+  display_order?: number;
 }
 
 const Wrapper = styled.div`
@@ -67,11 +69,13 @@ interface Props {
   options?: SortKey[];  // limit choices (e.g. omit 'price' for non-priced lists)
 }
 
+// 'custom'(수동 메뉴 순서)은 재정렬을 지원하는 페이지에서만 options 로 명시해 노출한다.
 const DEFAULT_OPTIONS: SortKey[] = ['newest', 'oldest', 'name_asc', 'name_desc', 'price_asc', 'price_desc', 'category'];
 
 const SortDropdown: React.FC<Props> = ({ value, onChange, options = DEFAULT_OPTIONS }) => {
   const { t } = useTranslation('common');
   const labelFor: Record<SortKey, string> = {
+    custom: t('sort.custom', 'Menu order (manual)'),
     newest: t('sort.newest', 'Newest first'),
     oldest: t('sort.oldest', 'Oldest first'),
     name_asc: t('sort.nameAsc', 'Name A → Z'),
@@ -99,6 +103,15 @@ export function sortItems<T extends Item>(items: T[], key: SortKey): T[] {
   const getPrice = (x: T) => Number(x.price || 0);
   const getName = (x: T) => String(x.name || '').toLowerCase();
   switch (key) {
+    case 'custom': {
+      // 관리자 지정 순서(display_order). 0=미설정은 뒤로, 그 안에서는 최근 추가.
+      const ord = (x: T) => Number(x.display_order || 0);
+      return arr.sort((a, b) => {
+        const ao = ord(a), bo = ord(b);
+        if (ao !== bo) { if (ao === 0) return 1; if (bo === 0) return -1; return ao - bo; }
+        return getCreatedAt(b).localeCompare(getCreatedAt(a)) || Number(b.id) - Number(a.id);
+      });
+    }
     case 'newest':
       return arr.sort((a, b) => getCreatedAt(b).localeCompare(getCreatedAt(a)) || Number(b.id) - Number(a.id));
     case 'oldest':

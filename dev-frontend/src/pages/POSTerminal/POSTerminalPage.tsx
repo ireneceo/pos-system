@@ -278,16 +278,27 @@ const NoResultsMessage = styled.div`
   }
 `;
 
-const CategoryTabs = styled.div`
+// 카테고리 바 — 기본은 가로 스크롤, "펼치기" 토글 시 전체 카테고리를 줄바꿈해 한 번에 표시.
+const CategoryBar = styled.div`
+  position: relative;
+  background: white;
+`;
+const CategoryTabs = styled.div<{ $expanded?: boolean }>`
   display: flex;
+  flex-wrap: ${p => p.$expanded ? 'wrap' : 'nowrap'};
+  align-items: flex-end;
   background: white;
   border-bottom: 1px solid #C7CED6;
-  padding: 0 24px;
+  padding: ${p => p.$expanded ? '6px 56px 6px 24px' : '0 56px 0 24px'};
   gap: 24px;
-  overflow-x: auto;
+  row-gap: ${p => p.$expanded ? '8px' : '0'};
+  overflow-x: ${p => p.$expanded ? 'hidden' : 'auto'};
+  overflow-y: ${p => p.$expanded ? 'auto' : 'visible'};
+  max-height: ${p => p.$expanded ? '40vh' : 'none'};
 
   &::-webkit-scrollbar {
     height: 3px;
+    width: 6px;
   }
 
   &::-webkit-scrollbar-track {
@@ -298,6 +309,16 @@ const CategoryTabs = styled.div`
     background: #C7D2FE;
     border-radius: 3px;
   }
+`;
+// 펼치기/접기 토글 — 카테고리 바 우측 상단 고정. 누르면 상태 유지(열어둠), 다시 누르면 접힘.
+const CategoryExpandToggle = styled.button`
+  position: absolute;
+  top: 4px; right: 10px; z-index: 2;
+  width: 36px; height: 36px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid #E6EBF1; border-radius: 8px; background: #FFFFFF;
+  color: #4B5563; cursor: pointer;
+  &:hover { color: #635BFF; border-color: #635BFF; }
 `;
 
 const CategoryTab = styled.button<{ active: boolean }>`
@@ -1201,6 +1222,8 @@ const POSTerminalPage: React.FC = () => {
   } = useCustomer();
   const { currentStaff, updateStaff } = useStaff();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  // 카테고리 바 펼치기(전체 보기) — 토글로 열어두거나 닫음. 카테고리 선택해도 닫히지 않음(원할 때만 닫게).
+  const [categoryExpanded, setCategoryExpanded] = useState(false);
   const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   const [previousCategory, setPreviousCategory] = useState<string | null>(null); // 검색 전 카테고리 저장
   const [searchQuery, setSearchQuery] = useState('');
@@ -3084,7 +3107,8 @@ const POSTerminalPage: React.FC = () => {
             </ViewToggle>
           </SearchSection>
 
-          <CategoryTabs>
+          <CategoryBar>
+          <CategoryTabs $expanded={categoryExpanded}>
             {/* "All" tab is only available in Simple mode — text rendering scales,
                 but loading every category's images at once is too slow for large menus. */}
             {displayMode === 'simple' && (
@@ -3105,6 +3129,20 @@ const POSTerminalPage: React.FC = () => {
               </CategoryTab>
             ))}
           </CategoryTabs>
+            <CategoryExpandToggle
+              type="button"
+              onClick={() => setCategoryExpanded(v => !v)}
+              title={categoryExpanded
+                ? t('pos:terminal.collapseCategories', { defaultValue: 'Collapse categories' })
+                : t('pos:terminal.expandCategories', { defaultValue: 'Show all categories' })}
+              aria-label={categoryExpanded ? 'Collapse categories' : 'Show all categories'}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                style={{ transform: categoryExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </CategoryExpandToggle>
+          </CategoryBar>
 
           {isSearchMode && (
             <div style={{

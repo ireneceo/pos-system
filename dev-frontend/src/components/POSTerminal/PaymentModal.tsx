@@ -1146,13 +1146,13 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
         <InputSection>
           <Label>{requireCardType ? 'Card Type *' : 'Card Type (Optional)'}</Label>
           <QuickAmountGrid>
-            {['visa', 'master', 'amex', 'other'].map(type => (
+            {['visa', 'master', 'amex', 'debit', 'other'].map(type => (
               <QuickAmountBtn
                 key={type}
                 selected={cardType === type}
                 onClick={() => setCardType(cardType === type ? '' : type)}
               >
-                {type === 'visa' ? 'Visa' : type === 'master' ? 'Master' : type === 'amex' ? 'Amex' : 'Other'}
+                {type === 'visa' ? 'Visa' : type === 'master' ? 'Master' : type === 'amex' ? 'Amex' : type === 'debit' ? 'Debit' : 'Other'}
               </QuickAmountBtn>
             ))}
           </QuickAmountGrid>

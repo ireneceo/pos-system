@@ -33,6 +33,7 @@ const BrandMenu = sequelize.define('BrandMenu', {
   lock_category:     { type: DataTypes.BOOLEAN, defaultValue: false },
   lock_image:        { type: DataTypes.BOOLEAN, defaultValue: false },
   lock_options:      { type: DataTypes.BOOLEAN, defaultValue: false },
+  lock_sort_order:   { type: DataTypes.BOOLEAN, defaultValue: false },
   // Set menu support — mirrors Restaurant.Product (is_set_menu / set_items JSON list).
   is_set_menu:       { type: DataTypes.BOOLEAN, defaultValue: false },
   set_items:         { type: DataTypes.JSON, allowNull: true, defaultValue: null, comment: 'JSON array of sub-item descriptors (name, qty, etc.) mirrored to Product.set_items' },

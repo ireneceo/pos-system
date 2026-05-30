@@ -1,6 +1,66 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
+**마지막 업데이트:** 2026-05-30 (Irene 이동 — 아래 "🔴 미해결/다음 세션 (세트·비활성·운영16 버그)" 먼저 처리)
+
+---
+
+## 🔴 미해결 / 다음 세션 최우선 (2026-05-30, Irene 이동으로 조사·구현 보류 — 문제만 정리)
+
+> Irene 마지막 보고. **운영(purplehere.com, The Fire 16) 실데이터 조사 필요(추측 금지, SSH/API 직접). PROD_SERVER=irene@87.106.78.146, REMOTE_PROD_BACKEND=/var/www/production-backend.**
+
+### 1. 🔴 운영 버그 — 푸시 후 레스토랑에서 ADD(활성화)까지 했는데도 모바일에 안 나옴
+- dev 검증에선 "활성화하면 모바일 노출" 실측 확인됨(product 331 rest5). **그런데 운영 16에선 활성화해도 안 나온다고 보고.**
+- 의심: ① 운영 세트의 set_groups 구성품 product_id 가 매장에 없어 resolve 실패(빈/깨진 세트) ② 운영 배포 버전이 dev 수정 미반영 ③ 모바일 캐시 아님(백엔드 no-store 확인됨) ④ 구성품 미푸시.
+- **할 일:** 운영 16 해당 세트 상품의 is_active / set_groups / 구성품 존재·is_active 실DB 확인 + 모바일 endpoint 실호출(`/api/mobile/menu/<slug>`)로 노출 여부 직접 확인.
+
+### 2. 🔴 운영 버그 — restaurant 16 메뉴에서 비활성화/품절/복사 버튼이 안 됨
+- URL: https://purplehere.com/restaurant/16/menu . 세 버튼(비활성화 toggle-active / 품절 toggle-soldout / 복사 copy)이 동작 안 함.
+- 백엔드엔 브랜드락 가드 없음(toggle-active/soldout = checkProductTenant 만). → **프론트 비활성/조건, 운영 배포 번들 버전 차이, 또는 JS 에러/403/500 가능성.**
+- 16은 110상품 전부 brand-linked+fully locked(마이그). fully-locked 시 Edit→View 로 바뀌는데, toggle/copy 까지 막혔는지 프론트 확인 필요.
+- **할 일:** 운영 pm2 logs + 브라우저 콘솔/네트워크(403·500·JS에러) + 운영 프론트 번들 버전 확인. 추측 말고 실호출.
+
+### 3. ✅ (답 확정) 세트 전용 구성품 — 개별판매만 막고 세트는 팔기
+- 코드 확인 결과(`utils/setMenu.js`): **buildSetResolved 는 구성품을 is_active 필터 없이 가져옴 + computeSetAvailability 는 soldOut 만 보고 is_active 는 안 봄.**
+- 따라서: **비활성화(is_active=false) = 개별판매(모바일 list는 is_active=true만 노출)만 막힘, 세트는 그대로 판매됨.** ← Irene 원하는 동작 그대로 가능.
+- **품절(soldOut) = 개별 + 세트 둘 다 막힘** (fixed 구성품 품절 → 세트 unavailable, choice 는 전부 품절 시만). 세트도 닫고 싶을 때만 품절 사용.
+- **조언:** 세트용 임의 구성품은 **비활성화**로 두면 단품판매 안 되고 세트만 팔림. 세트까지 멈추려면 품절. (매장 실확인 권장)
+
+### 4. 🟠 세트용 임의 구성품도 브랜드→레스토랑 푸시 필요?
+- **답: 필요함.** 세트 set_groups 는 구성품을 product_id 로 참조 → `translateSetGroupsForRestaurant` 가 매장에 없는 구성품(미푸시)은 drop → 세트 깨짐/빈 세트. 구성품을 매장에 푸시해야 세트가 매장에서 resolve 됨. 푸시 후 그 구성품을 **비활성화**하면 개별판매는 막고 세트만 유지.
+
+### 5. 🟠 브랜드제너럴 메뉴관리에 '비활성화' 기능 없음 → 추가 필요
+- BrandMenu 는 is_active 컬럼 있음. BrandMenusPage 폼/리스트에 **활성/비활성 토글 UI 추가** 필요(세트 전용 구성품을 브랜드에서 만들고 비활성으로 관리하려면). 푸시 시 매장 Product.is_active 정책(현재 push=비활성 도착)과 연계 검토.
+
+---
+
+## (이전) 현재 작업 상태
+**마지막 업데이트:** 2026-05-30 (현장 보고 6건 dev 수정 — 아래 "🟢 현장 보고 묶음 2026-05-30 (2차)" 참조)
+
+### 🟢 현장 보고 묶음 2026-05-30 (3차, dev 배포 main.9fc6dc84.js · 운영 미배포) — /검증 완료
+> Irene 추가 6건. build EXIT0 / 0단계 hydration 0 / 🔒8/8(bless, POSTerminal 카테고리UI만·인쇄 0) / health88/88 / i18n Errors0 / Autoprint44 / mount 5페이지 크래시0 / reorder·brand reorder·mobile정렬 실HTTP 검증.
+1. **세트 빌더 검색창 = 선택목록 '위'로 고정** (`SetMenuBuilder.tsx`) — 추가할 때마다 아래로 안 밀림.
+2. **세트 구성품 옵션 라이브 참조 확인** (setMenu.js buildSetResolved) — 세트는 product_id 만 저장, 이름·가격·옵션 매주문 라이브 조회 → **나중에 구성품 옵션 바꾸면 세트 자동 반영(재저장 불필요)**.
+3. **모바일 메뉴 상품 순서 관리자 지정** — Product `display_order` 컬럼(실DB) + menu.js 정렬·재정렬 API `PUT /api/menu/products/reorder`(본인매장만, IDOR가드) + mobile-public 정렬(0=뒤로 literal) + MenuContext + SortDropdown 'custom'(재정렬 지원 2페이지에만 options 노출) + MenuManagement 위/아래 버튼('custom'+특정카테고리+검색없음). 실HTTP: anon401/auth200/write-read일치/cross403.
+4. **브랜드 순서 강제** — BrandMenu `lock_sort_order`(실DB) + sync(locks.sort_order→매장 display_order, create/update) + `PUT /api/brand-menus/reorder/bulk`(BG scope) + BrandMenusPage 위/아래(custom) + 폼 잠금토글. 실HTTP: reorder200/lock영속.
+5. **POS 좌측 카테고리 '펼치기'** (`POSTerminalPage.tsx` 🔒, 인쇄 0) — CategoryExpandToggle 토글 → flex-wrap 전체보기, 열어둠 유지(선택해도 안 닫힘), 다시 누르면 접힘. Autoprint44+diff카테고리UI만 확인 후 bless.
+6. **데빗 카드** — PaymentModal 카드타입 debit 추가 + 라벨맵 3곳.
+> **i18n 후속(소):** 신규 t() 키들 defaultValue(영어)로 렌더(verify Errors0). en/ko/zh/ms 정식 키 추가는 후속.
+> **남은 검증(매장):** 위 dev UX 실확인(검색위치/2열/펼치기/순서 위아래/데빗) + 브랜드 슬롯세트 push→활성화→모바일 [[project_brand_set_groups_verify]].
+
+### 🟢 현장 보고 묶음 2026-05-30 (2차, dev 배포 main.cf22ea5f.js · 인쇄 무관 · 운영 미배포)
+> Irene 현장 보고 6건. build EXIT0 / 🔒8/8(보호파일 무변경) / health 88/88 / i18n Errors0 / Autoprint44 / after_meal 백엔드 저장·조회 검증.
+1. **SetMenuBuilder 검색 UX** (`SetMenuBuilder.tsx`) — PickList 가 항상 펼쳐져 모달 레이아웃 밀던 것("벗어났어") → 검색어 있을 때만 absolute 오버레이 드롭다운 + **상품 선택 시 query 초기화로 닫힘**. 매장/브랜드 빌더 공통.
+2. **안드로이드 모바일 메뉴 1열→2열** (`mobile/pages/MenuPage.tsx`) — MenuGrid `minmax(160px)` 가 좁은 안드로이드(~320px usable)에서 1열 붕괴 → 좁은 화면 `repeat(2,1fr)` 강제 + 520px↑만 기존 반응형.
+3. **QR 3시간 만료 화면 잔존** (`FloorPlan/TableDetailPanel.tsx`) — 백엔드 GET 은 이미 만료세션 제외(3h 만료 정상 적용, 실DB 만료 8건 확인). 패널이 1회 fetch 값을 들고 있어 시간 지나도 "Active QR" 잔존 → 30초 라이브 체크(activeQr/qrRemainingMin) 추가, 만료 시 발행정보 자동 소거 + 재인쇄도 만료분 새 발행. (printTableQR 만 사용, 주방/빌 파이프라인 무관)
+4. **After meal(식후제공/디저트) 등록 플래그 전구간** — 모델 3개(`products`/`brand_menus`/`foodcourt_products`) after_meal 컬럼(실DB ALTER 적용) + menu.js(list/copy)·brand-menus.js(create/update/updatable)·foodcourt-products.js(create/update/list)·brandMenuSyncService(초기 푸시 상속) + 매장 메뉴관리(추가/편집/세트 3모달)·브랜드메뉴·푸드코트 폼 + MenuContext(인터페이스/로드2/add/update). **동작 미연결(KDS hold/fire 등) — 등록 플래그만**(🔒 인쇄/KDS 무접촉).
+5. **데빗 카드종류** (`POSTerminal/PaymentModal.tsx`) — card type 에 `debit` 추가 + 라벨맵 3곳(constants/DailySettlementPrint/ReportsPage) + Settings 힌트.
+6. **브랜드 세트 푸시 → 모바일 안나옴 "무슨 오류?"** — 캐시 문제 아님. 실DB: 푸시상품(id331,rest5) active=false+set_groups=NULL, 원본(bm36) lock_set_items=false+set_groups=NULL. 원인=① 푸시는 의도적으로 is_active=false 도착(`brandMenuSyncService`) → 모바일은 active=true 만 노출 → 매장이 켜야 뜸. ② 세트 구성품은 lock_set_items=true 라야 전파. **Irene 결정="비활성 유지 + 승인 안내 강화"** → MenuManagementPage 에 브랜드푸시 비활성 카드에 "활성화하면 모바일 노출" 주황 안내 + 인라인 Activate 버튼 추가. (is_active 정책 무변경)
+> **남은 검증(매장/실데이터):** ① 위 6건 dev UX 확인(특히 검색 드롭다운/2열/QR배지/after_meal 체크/데빗 버튼). ② 브랜드 **슬롯 있는 실세트** 만들어 lock 후 push→매장 활성화→모바일 resolve 까지 [[project_brand_set_groups_verify]] 본검증. ③ "Set test"(bm36)는 슬롯 비어서 빈세트였음.
+
+---
+
+## (이전) 현재 작업 상태
 **마지막 업데이트:** 2026-05-30 (세트메뉴 옵션 전구간 + 브랜드 세트 OR 빌더 업그레이드 운영 배포)
 **버전:** **v3.44** (버전 미상승 — 배포는 했으나 버전 올림 질문 중 Irene 이동, 다음 세션 결정). 최신 배포 Backup 20260530_042734, smoke 10/10.
 **작업 상태:** 배포 완료. **다음 세션 필수 검증** = 브랜드 세트(OR/옵션) 산하 매장 실전파 + 세트 A/B 인쇄 실프린터 + 이머전시 모바일인쇄 실프린터 ([[project_brand_set_groups_verify]]). The Fire 실매출 중.

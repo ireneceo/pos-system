@@ -267,6 +267,34 @@ const SetMenuBuilder: React.FC<Props> = ({ value, onChange, menuItems, formatCur
                 : t('menu:setBuilder.choiceHint', { defaultValue: 'Choice — the customer picks from the products below (this OR that). Set how many they choose.' })}
             </TypeExplain>
 
+            {/* 검색창은 선택된 구성품 목록 '위'에 고정 — 추가할 때마다 아래로 밀리지 않게 */}
+            <SearchBox>
+              <SearchIcon size={16} />
+              <SearchInput
+                value={search[g.id] || ''}
+                onChange={e => setSearch(s => ({ ...s, [g.id]: e.target.value }))}
+                placeholder={t('menu:setBuilder.searchProducts', { defaultValue: 'Search products to add…' })}
+              />
+              {q && (
+                <PickList>
+                  {filtered.length === 0 ? (
+                    <EmptyHint style={{ border: 'none' }}>{t('menu:setBuilder.noMatch', { defaultValue: 'No matching products' })}</EmptyHint>
+                  ) : filtered.slice(0, 50).map(m => (
+                    <PickRow
+                      key={m.id}
+                      type="button"
+                      $selected={chosenIds.has(Number(m.id))}
+                      onClick={() => { toggleItem(gi, Number(m.id)); setSearch(s => ({ ...s, [g.id]: '' })); }}
+                    >
+                      <PickName>{m.code ? `${m.code} ` : ''}{m.name}</PickName>
+                      <PickPrice>{formatCurrency(m.price)}</PickPrice>
+                      {chosenIds.has(Number(m.id)) && <span style={{ color: '#635BFF', fontWeight: 600 }}>✓</span>}
+                    </PickRow>
+                  ))}
+                </PickList>
+              )}
+            </SearchBox>
+
             {g.type === 'choice' && (g.items || []).length > 0 && (
               <ChoiceRange>
                 <SmallLabel>{t('menu:setBuilder.chooseRange', { defaultValue: 'Customer chooses' })}</SmallLabel>
@@ -328,33 +356,6 @@ const SetMenuBuilder: React.FC<Props> = ({ value, onChange, menuItems, formatCur
                 })}
               </ChosenList>
             )}
-
-            <SearchBox>
-              <SearchIcon size={16} />
-              <SearchInput
-                value={search[g.id] || ''}
-                onChange={e => setSearch(s => ({ ...s, [g.id]: e.target.value }))}
-                placeholder={t('menu:setBuilder.searchProducts', { defaultValue: 'Search products to add…' })}
-              />
-              {q && (
-                <PickList>
-                  {filtered.length === 0 ? (
-                    <EmptyHint style={{ border: 'none' }}>{t('menu:setBuilder.noMatch', { defaultValue: 'No matching products' })}</EmptyHint>
-                  ) : filtered.slice(0, 50).map(m => (
-                    <PickRow
-                      key={m.id}
-                      type="button"
-                      $selected={chosenIds.has(Number(m.id))}
-                      onClick={() => { toggleItem(gi, Number(m.id)); setSearch(s => ({ ...s, [g.id]: '' })); }}
-                    >
-                      <PickName>{m.code ? `${m.code} ` : ''}{m.name}</PickName>
-                      <PickPrice>{formatCurrency(m.price)}</PickPrice>
-                      {chosenIds.has(Number(m.id)) && <span style={{ color: '#635BFF', fontWeight: 600 }}>✓</span>}
-                    </PickRow>
-                  ))}
-                </PickList>
-              )}
-            </SearchBox>
           </SlotCard>
         );
       })}

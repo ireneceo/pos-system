@@ -200,12 +200,17 @@ router.get('/menu/:slug', async (req, res) => {
     // Get total count for pagination
     const totalCount = await Product.count({ where: productWhere });
 
-    // Get products with pagination
+    // Get products with pagination.
+    // 관리자 지정 순서(display_order) 우선. 0=미설정은 뒤로(추가순 id ASC).
     const products = await Product.findAll({
       where: productWhere,
       limit: parseInt(limit),
       offset: offset,
-      order: [['id', 'ASC']]
+      order: [
+        [Product.sequelize.literal('display_order = 0'), 'ASC'],
+        ['display_order', 'ASC'],
+        ['id', 'ASC']
+      ]
     });
 
     // Get option groups for this restaurant

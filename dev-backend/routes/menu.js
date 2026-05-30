@@ -99,10 +99,10 @@ router.get('/', checkRestaurantAccess, async (req, res) => {
     const totalCount = await Product.count({ where: productWhere });
 
     // Get products (with pagination if limit > 0)
-    // Sort: newest-added on top (Product has no manual displayOrder column).
+    // Sort: admin display_order first (0 = unset), then newest-added.
     const queryOptions = {
       where: productWhere,
-      order: [['createdAt', 'DESC'], ['id', 'DESC']]
+      order: [['display_order', 'ASC'], ['createdAt', 'DESC'], ['id', 'DESC']]
     };
 
     if (limitNum > 0) {
@@ -215,6 +215,8 @@ router.get('/', checkRestaurantAccess, async (req, res) => {
         is_active: prod.is_active !== false,  // 기본값 true
         // 식후 제공(디저트 등) 등록 플래그
         after_meal: prod.after_meal || false,
+        // 관리자 지정 상품 순서(카테고리 내). 0 = 미설정
+        display_order: prod.display_order || 0,
         // Kitchen Station 배정
         kitchen_station_id: prod.kitchen_station_id || null,
         // Brand Menu linkage (v3.32+)
@@ -231,24 +233,30 @@ router.get('/', checkRestaurantAccess, async (req, res) => {
       };
     });
 
-    // 정렬: 같은 카테고리 내에서 세트 메뉴 우선
+    // 정렬: 같은 카테고리 내
     items.sort((a, b) => {
       // 카테고리가 다르면 카테고리 순서대로
       if (a.categoryId !== b.categoryId) {
         return 0;
       }
 
-      // 같은 카테고리 내에서
-      // 1순위: 세트 메뉴 우선
+      // 1순위: 관리자 지정 순서 display_order (0 = 미설정 → 뒤로)
+      const ao = a.display_order || 0, bo = b.display_order || 0;
+      if (ao !== bo) {
+        if (ao === 0) return 1;
+        if (bo === 0) return -1;
+        return ao - bo;
+      }
+
+      // 미설정(둘 다 0)일 때 기존 규칙 유지:
+      // 2순위: 세트 메뉴 우선
       if (a.is_set_menu && !b.is_set_menu) return -1;
       if (!a.is_set_menu && b.is_set_menu) return 1;
-
-      // 2순위: 세트 메뉴끼리는 set_display_order
+      // 3순위: 세트끼리는 set_display_order
       if (a.is_set_menu && b.is_set_menu) {
         return a.set_display_order - b.set_display_order;
       }
-
-      // 3순위: 일반 메뉴끼리는 최근 추가가 위로 (newest first)
+      // 4순위: 일반 메뉴끼리는 최근 추가가 위로 (newest first)
       return b.id - a.id;
     });
 
@@ -810,6 +818,37 @@ router.put('/product/:id/toggle-soldout', checkProductTenant, async (req, res) =
     });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 상품 표시 순서 재정렬 (관리자) — 카테고리 내 보이는 순서를 display_order 1..N 으로 저장.
+// body: { restaurant_id?, order: [productId, ...] } (위→아래 순서). 모바일/POS 메뉴에 즉시 반영.
+router.put('/products/reorder', async (req, res) => {
+  try {
+    const restaurantId = req.body.restaurant_id || req.body.restaurantId || req.user.restaurant_id;
+    if (!restaurantId) {
+      return res.status(400).json({ success: false, message: 'restaurant_id required' });
+    }
+    // 본인 매장만 (System Admin 예외)
+    if (req.user.role !== 'System Admin' && parseInt(req.user.restaurant_id) !== parseInt(restaurantId)) {
+      return res.status(403).json({ success: false, message: 'Access denied to this restaurant' });
+    }
+    const order = Array.isArray(req.body.order) ? req.body.order : [];
+    if (order.length === 0) {
+      return res.status(400).json({ success: false, message: 'order array required' });
+    }
+    let i = 1;
+    for (const pid of order) {
+      await Product.update({ display_order: i++ }, { where: { id: pid, restaurant_id: restaurantId } });
+    }
+    // 소켓 브로드캐스트 — 다른 단말 메뉴 순서 즉시 갱신
+    try {
+      const io = req.app.get('io');
+      if (io) io.of('/orders').to(`restaurant_${restaurantId}`).emit('menu-reordered', { restaurant_id: Number(restaurantId) });
+    } catch (e) { /* non-fatal */ }
+    res.json({ success: true, data: { updated: order.length } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 

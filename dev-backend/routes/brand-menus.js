@@ -178,6 +178,30 @@ router.get('/:id', authenticateToken, requireBGScope, async (req, res) => {
   }
 });
 
+// PUT /api/brand-menus/reorder/bulk — BG 가 브랜드 메뉴 순서 지정 (sort_order 0..N).
+// lock_sort_order 가 켜진 메뉴는 push 시 매장 display_order 로 강제된다.
+router.put('/reorder/bulk', authenticateToken, requireBGScope, async (req, res) => {
+  const t = await BrandMenu.sequelize.transaction();
+  try {
+    const { brand_id, order } = req.body;
+    if (!(await assertBrandOwnership(req, brand_id))) {
+      await t.rollback(); return res.status(403).json({ success: false, message: 'Brand not owned' });
+    }
+    if (!Array.isArray(order) || order.length === 0) {
+      await t.rollback(); return res.status(400).json({ success: false, message: 'order array required' });
+    }
+    for (let i = 0; i < order.length; i++) {
+      await BrandMenu.update({ sort_order: i }, { where: { id: order[i], brand_id }, transaction: t });
+    }
+    await t.commit();
+    res.json({ success: true, data: { updated: order.length } });
+  } catch (e) {
+    await t.rollback();
+    console.error('[brand-menus] reorder error:', e);
+    res.status(500).json({ success: false, message: 'Failed to reorder brand menus' });
+  }
+});
+
 // POST /api/brand-menus
 router.post('/', authenticateToken, requireBGScope, async (req, res) => {
   const t = await BrandMenu.sequelize.transaction();
@@ -239,7 +263,8 @@ router.post('/', authenticateToken, requireBGScope, async (req, res) => {
       is_set_menu: !!is_set_menu,
       set_items: Array.isArray(set_items) ? set_items : null,
       set_groups: Array.isArray(set_groups) ? set_groups : null,
-      lock_set_items: resolvedLock(lock_set_items, 'set_items')
+      lock_set_items: resolvedLock(lock_set_items, 'set_items'),
+      lock_sort_order: req.body.lock_sort_order === true
     }, { transaction: t });
 
     // Option group links
@@ -289,7 +314,7 @@ router.put('/:id', authenticateToken, requireBGScope, async (req, res) => {
     const updatable = ['category_id', 'product_recipe_id', 'name', 'description', 'emoji',
       'recommended_price', 'currency', 'is_active', 'after_meal', 'sort_order', 'distribution_mode',
       'lock_name', 'lock_price', 'lock_category', 'lock_image', 'lock_options',
-      'is_set_menu', 'set_items', 'set_groups', 'lock_set_items'];
+      'is_set_menu', 'set_items', 'set_groups', 'lock_set_items', 'lock_sort_order'];
     const update = {};
     for (const k of updatable) if (k in body) update[k] = body[k];
 

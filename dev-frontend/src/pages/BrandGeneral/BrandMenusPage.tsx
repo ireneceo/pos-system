@@ -12,7 +12,7 @@ import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
-import { Lock, Building2, Edit2, Copy, Trash2, Send, ChevronDown, UtensilsCrossed, Clock, Info, ArrowRight } from 'lucide-react';
+import { Lock, Building2, Edit2, Copy, Trash2, Send, ChevronDown, ChevronUp, UtensilsCrossed, Clock, Info, ArrowRight } from 'lucide-react';
 import PageHeader from '../../components/Common/PageHeader';
 import { Modal as CommonModal, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormTextArea } from '../../components/UI';
 import SearchableSelect from '../../components/Common/SearchableSelect';
@@ -588,6 +588,29 @@ const BrandMenusPage: React.FC = () => {
 
   useEffect(() => { loadMenus(); }, [loadMenus]);
 
+  // 브랜드 메뉴 순서 재정렬(위/아래) — 'Menu order(manual)' 정렬일 때만 노출. sort_order 0..N 저장.
+  // lock_sort_order 켜진 메뉴는 push 시 매장 순서로 강제됨.
+  const reorderBrandInFlight = useRef(false);
+  const handleMoveBrandMenu = async (menuId: number, dir: 'up' | 'down') => {
+    if (reorderBrandInFlight.current || !selectedBrandId) return;
+    const sorted = sortItems(menus.map(m => ({ ...m, price: m.recommended_price, display_order: (m as any).sort_order })), 'custom');
+    const idx = sorted.findIndex(m => m.id === menuId);
+    const swapIdx = dir === 'up' ? idx - 1 : idx + 1;
+    if (idx < 0 || swapIdx < 0 || swapIdx >= sorted.length) return;
+    const reordered = [...sorted];
+    [reordered[idx], reordered[swapIdx]] = [reordered[swapIdx], reordered[idx]];
+    const order = reordered.map(m => Number(m.id));
+    reorderBrandInFlight.current = true;
+    try {
+      await fetch('/api/brand-menus/reorder/bulk', {
+        method: 'PUT', headers: authHeaders(),
+        body: JSON.stringify({ brand_id: selectedBrandId, order })
+      });
+      await loadMenus();
+    } catch { /* silent */ }
+    finally { reorderBrandInFlight.current = false; }
+  };
+
   // Cache brand-level menu defaults so handlePushClick can decide which modal to open.
   useEffect(() => {
     if (!selectedBrandId) { setMenuSettings(null); return; }
@@ -773,7 +796,7 @@ const BrandMenusPage: React.FC = () => {
               {listCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           )}
-          <SortDropdown value={sortKey} onChange={setSortKey} />
+          <SortDropdown value={sortKey} onChange={setSortKey} options={['custom', 'newest', 'oldest', 'name_asc', 'name_desc', 'price_asc', 'price_desc', 'category']} />
           <div data-controls-trailing>
             <ThemedButton variant="primary" onClick={() => setShowAddModal(true)} disabled={!selectedBrandId}>
               {t('brand:brandMenusPage.addMenu', 'Add Brand Menu')}
@@ -816,7 +839,7 @@ const BrandMenusPage: React.FC = () => {
           </>
         ) : (
           <Grid>
-            {sortItems(menus.map(m => ({ ...m, price: m.recommended_price })), sortKey).map(m => (
+            {sortItems(menus.map(m => ({ ...m, price: m.recommended_price, display_order: (m as any).sort_order })), sortKey).map(m => (
               <Card key={m.id}>
                 <CardImage $src={m.image_url}>
                   {!m.image_url && <UtensilsCrossed />}
@@ -853,6 +876,16 @@ const BrandMenusPage: React.FC = () => {
                   <span style={{ color: '#6B7280', marginLeft: 'auto' }}>v{m.version}</span>
                 </DistributionLine>
                 <CardActions>
+                  {sortKey === 'custom' && (
+                    <>
+                      <IconBtn type="button" onClick={() => handleMoveBrandMenu(m.id, 'up')} title={t('brand:brandMenusPage.moveUp', { defaultValue: 'Move up' })}>
+                        <ChevronUp />
+                      </IconBtn>
+                      <IconBtn type="button" onClick={() => handleMoveBrandMenu(m.id, 'down')} title={t('brand:brandMenusPage.moveDown', { defaultValue: 'Move down' })}>
+                        <ChevronDown />
+                      </IconBtn>
+                    </>
+                  )}
                   <IconBtn type="button" onClick={() => setEditingMenu(m)} title={t('common:button.edit')}>
                     <Edit2 /> {t('common:button.edit')}
                   </IconBtn>
@@ -1158,6 +1191,10 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
   const [recipeId, setRecipeId] = useState<string>(menu?.recipe?.id ? String(menu.recipe.id) : '');
   const [optionGroups, setOptionGroups] = useState<Array<{ id: number; name: string; is_required: boolean; max_select: number }>>([]);
   const [selectedOptionGroupIds, setSelectedOptionGroupIds] = useState<number[]>([]);
+  // 식후 제공(디저트 등) 등록 플래그 — 매장 Product 와 동일
+  const [afterMeal, setAfterMeal] = useState<boolean>(!!(menu as any)?.after_meal);
+  // 순서 강제 — 켜면 이 메뉴의 브랜드 순서를 산하 매장 메뉴 순서로 고정(매장이 못 바꿈)
+  const [lockSortOrder, setLockSortOrder] = useState<boolean>(!!(menu as any)?.lock_sort_order);
   // Set menu support — mirrors Restaurant Product (is_set_menu + set_items[])
   const [isSetMenu, setIsSetMenu] = useState<boolean>(!!menu?.is_set_menu);
   // v2 세트 슬롯 — 매장과 동일한 SetMenuBuilder 사용 (구성품 product_id = brand_menu_id)
@@ -1235,6 +1272,8 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
         // distribution_mode + lock_* are omitted on purpose — the backend fills
         // them from brand.menu_settings defaults (Settings tab is the single source).
         option_group_ids: selectedOptionGroupIds,
+        after_meal: afterMeal,
+        lock_sort_order: lockSortOrder,
         is_set_menu: isSetMenu,
         // v2 슬롯 저장 + 레거시 set_items 는 set_groups 구성품에서 파생(하위호환 표시용)
         set_groups: isSetMenu ? setGroups : null,
@@ -1393,6 +1432,30 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
             </SelectedChipsContainer>
           </>
         )}
+      </UIFormGroup>
+
+      <UIFormGroup style={{ marginTop: 24 }}>
+        <FormLabel style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={afterMeal}
+            onChange={(e) => setAfterMeal(e.target.checked)}
+            style={{ width: 16, height: 16, cursor: 'pointer' }}
+          />
+          <span>{t('brand:brandMenusPage.afterMeal', { defaultValue: 'After meal — serve after the main course (e.g. dessert)' })}</span>
+        </FormLabel>
+      </UIFormGroup>
+
+      <UIFormGroup style={{ marginTop: 24 }}>
+        <FormLabel style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={lockSortOrder}
+            onChange={(e) => setLockSortOrder(e.target.checked)}
+            style={{ width: 16, height: 16, cursor: 'pointer' }}
+          />
+          <span>{t('brand:brandMenusPage.lockSortOrder', { defaultValue: 'Enforce display order on restaurants (use the brand menu order; restaurants cannot reorder)' })}</span>
+        </FormLabel>
       </UIFormGroup>
 
       <UIFormGroup style={{ marginTop: 24 }}>
