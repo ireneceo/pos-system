@@ -878,6 +878,7 @@ const MenuManagementPage: React.FC = () => {
     optionGroups: [],
     is_set_menu: false,
     is_featured: false,
+    after_meal: false,
     set_items: [],
     set_display_order: 0,
     recipe_id: null,
@@ -1249,6 +1250,7 @@ const MenuManagementPage: React.FC = () => {
       soldOut: false,
       is_set_menu: false,
       is_featured: formData.is_featured || false,
+      after_meal: formData.after_meal || false,
       set_items: [],
       set_display_order: 0,
       recipe_id: formData.recipe_id || null,
@@ -1286,6 +1288,7 @@ const MenuManagementPage: React.FC = () => {
       set_groups: setGroups,
       set_items: null,  // v2 로 전환 — set_groups 가 단일 소스
       set_display_order: formData.set_display_order || 0,
+      after_meal: formData.after_meal || false,
       takeaway_charge: formData.takeaway_charge ?? 0
     };
 
@@ -1676,6 +1679,15 @@ const MenuManagementPage: React.FC = () => {
           </UIFormGroup>
 
           <UIFormGroup>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+              <input type="checkbox" checked={formData.after_meal || false}
+                onChange={(e) => setFormData({ ...formData, after_meal: e.target.checked })} />
+              <span style={{ fontSize: '14px', color: '#0A2540', fontWeight: 500 }}>{t('menu:menuManagementPage.afterMeal', { defaultValue: 'After meal' })}</span>
+              <span style={{ fontSize: '12px', color: '#4B5563' }}>{t('menu:menuManagementPage.afterMealHint', { defaultValue: 'Serve after the main course (e.g. dessert)' })}</span>
+            </label>
+          </UIFormGroup>
+
+          <UIFormGroup>
             <FormLabel>{t('menu:menuManagementPage.emojiIcon')}</FormLabel>
             <EmojiPicker>
               {emojiOptions['other'].map((emoji: string) => (
@@ -1916,6 +1928,15 @@ const MenuManagementPage: React.FC = () => {
           </UIFormGroup>
 
           <UIFormGroup>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+              <input type="checkbox" checked={formData.after_meal || false}
+                onChange={(e) => setFormData({ ...formData, after_meal: e.target.checked })} />
+              <span style={{ fontSize: '14px', color: '#0A2540', fontWeight: 500 }}>{t('menu:menuManagementPage.afterMeal', { defaultValue: 'After meal' })}</span>
+              <span style={{ fontSize: '12px', color: '#4B5563' }}>{t('menu:menuManagementPage.afterMealHint', { defaultValue: 'Serve after the main course (e.g. dessert)' })}</span>
+            </label>
+          </UIFormGroup>
+
+          <UIFormGroup>
             <FormLabel>{t('menu:menuManagementPage.emojiIcon')}</FormLabel>
             <EmojiPicker>
               {emojiOptions['other'].map((emoji: string) => (
@@ -2125,6 +2146,15 @@ const MenuManagementPage: React.FC = () => {
                 onChange={(e) => setFormData({ ...formData, is_featured: e.target.checked })} />
               <span style={{ fontSize: '14px', color: '#0A2540', fontWeight: 500 }}>{t('menu:menuManagementPage.featuredItem')}</span>
               <span style={{ fontSize: '12px', color: '#4B5563' }}>{t('menu:menuManagementPage.showInMobileFeaturedTab')}</span>
+            </label>
+          </UIFormGroup>
+
+          <UIFormGroup>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+              <input type="checkbox" checked={formData.after_meal || false}
+                onChange={(e) => setFormData({ ...formData, after_meal: e.target.checked })} />
+              <span style={{ fontSize: '14px', color: '#0A2540', fontWeight: 500 }}>{t('menu:menuManagementPage.afterMeal', { defaultValue: 'After meal' })}</span>
+              <span style={{ fontSize: '12px', color: '#4B5563' }}>{t('menu:menuManagementPage.afterMealHint', { defaultValue: 'Serve after the main course (e.g. dessert)' })}</span>
             </label>
           </UIFormGroup>
 

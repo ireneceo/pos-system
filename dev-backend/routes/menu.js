@@ -213,6 +213,8 @@ router.get('/', checkRestaurantAccess, async (req, res) => {
         recipe_id: prod.recipe_id || null,
         // 활성화 상태
         is_active: prod.is_active !== false,  // 기본값 true
+        // 식후 제공(디저트 등) 등록 플래그
+        after_meal: prod.after_meal || false,
         // Kitchen Station 배정
         kitchen_station_id: prod.kitchen_station_id || null,
         // Brand Menu linkage (v3.32+)
@@ -720,6 +722,7 @@ router.post('/product/:id/copy', checkProductTenant, async (req, res) => {
       is_set_menu: sourceProduct.is_set_menu,
       set_items: sourceProduct.set_items,
       set_display_order: sourceProduct.set_display_order,
+      after_meal: sourceProduct.after_meal,
       recipe_id: sourceProduct.recipe_id
     };
 

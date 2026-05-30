@@ -122,9 +122,14 @@ const SearchInput = styled.input`
 `;
 const SearchIcon = styled(Search)`position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #9CA3AF;`;
 
+// 진짜 드롭다운 — 검색어 있을 때만 SearchBox 위에 absolute 로 떠서 레이아웃을 밀지 않음.
+// 선택하면 query 가 비워지며 닫힘.
 const PickList = styled.div`
-  margin-top: 8px; max-height: 220px; overflow-y: auto;
-  border: 1px solid #E6EBF1; border-radius: 8px;
+  position: absolute;
+  top: calc(100% + 4px); left: 0; right: 0; z-index: 30;
+  max-height: 240px; overflow-y: auto;
+  background: #FFFFFF; border: 1px solid #E6EBF1; border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(10,37,64,0.12);
 `;
 const PickRow = styled.button<{ $selected: boolean }>`
   width: 100%; min-height: 48px; padding: 8px 12px;
@@ -331,18 +336,25 @@ const SetMenuBuilder: React.FC<Props> = ({ value, onChange, menuItems, formatCur
                 onChange={e => setSearch(s => ({ ...s, [g.id]: e.target.value }))}
                 placeholder={t('menu:setBuilder.searchProducts', { defaultValue: 'Search products to add…' })}
               />
+              {q && (
+                <PickList>
+                  {filtered.length === 0 ? (
+                    <EmptyHint style={{ border: 'none' }}>{t('menu:setBuilder.noMatch', { defaultValue: 'No matching products' })}</EmptyHint>
+                  ) : filtered.slice(0, 50).map(m => (
+                    <PickRow
+                      key={m.id}
+                      type="button"
+                      $selected={chosenIds.has(Number(m.id))}
+                      onClick={() => { toggleItem(gi, Number(m.id)); setSearch(s => ({ ...s, [g.id]: '' })); }}
+                    >
+                      <PickName>{m.code ? `${m.code} ` : ''}{m.name}</PickName>
+                      <PickPrice>{formatCurrency(m.price)}</PickPrice>
+                      {chosenIds.has(Number(m.id)) && <span style={{ color: '#635BFF', fontWeight: 600 }}>✓</span>}
+                    </PickRow>
+                  ))}
+                </PickList>
+              )}
             </SearchBox>
-            <PickList>
-              {filtered.length === 0 ? (
-                <EmptyHint style={{ border: 'none' }}>{t('menu:setBuilder.noMatch', { defaultValue: 'No matching products' })}</EmptyHint>
-              ) : filtered.slice(0, 50).map(m => (
-                <PickRow key={m.id} type="button" $selected={chosenIds.has(Number(m.id))} onClick={() => toggleItem(gi, Number(m.id))}>
-                  <PickName>{m.code ? `${m.code} ` : ''}{m.name}</PickName>
-                  <PickPrice>{formatCurrency(m.price)}</PickPrice>
-                  {chosenIds.has(Number(m.id)) && <span style={{ color: '#635BFF', fontWeight: 600 }}>✓</span>}
-                </PickRow>
-              ))}
-            </PickList>
           </SlotCard>
         );
       })}

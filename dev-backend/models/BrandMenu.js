@@ -24,6 +24,7 @@ const BrandMenu = sequelize.define('BrandMenu', {
   recommended_price: { type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 },
   currency:          { type: DataTypes.STRING(3), defaultValue: 'MYR' },
   is_active:         { type: DataTypes.BOOLEAN, defaultValue: true },
+  after_meal:        { type: DataTypes.BOOLEAN, defaultValue: false, comment: 'Serve after the main meal (e.g. dessert). Registration flag only.' },
   sort_order:        { type: DataTypes.INTEGER, defaultValue: 0 },
   version:           { type: DataTypes.INTEGER, defaultValue: 1, comment: 'Bumps on every edit; Restaurants compare to detect pending updates' },
   distribution_mode: { type: DataTypes.ENUM('auto', 'manual'), defaultValue: 'manual' },

@@ -264,8 +264,15 @@ const CategoryTab = styled.button<{ active: boolean }>`
 
 const MenuGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  /* 2-column is the mobile default. Force exactly 2 columns on phones so
+     narrow Android viewports (~320px usable after system UI) don't collapse
+     to 1 column the way minmax(160px) did. Wider screens get more columns. */
+  grid-template-columns: repeat(2, 1fr);
   gap: 12px;
+
+  @media (min-width: 520px) {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  }
 `;
 
 const MenuItemCard = styled.div`

@@ -582,7 +582,7 @@ router.post('/foodcourt-products', async (req, res) => {
     const {
       name, description, sku, unit, base_quantity, unit_price,
       min_order_quantity, image_url, image_thumbnail, category_id, emoji,
-      is_active, sort_order, current_stock, low_stock_threshold,
+      is_active, after_meal, sort_order, current_stock, low_stock_threshold,
       lead_time_days, sync_to_ingredients, option_group_ids
     } = req.body;
 
@@ -625,6 +625,7 @@ router.post('/foodcourt-products', async (req, res) => {
       image_thumbnail: image_thumbnail || null,
       emoji: emoji || null,
       is_active: is_active !== false,
+      after_meal: after_meal === true,
       sort_order: sort_order || 0,
       current_stock: current_stock !== undefined ? current_stock : 0,
       low_stock_threshold: low_stock_threshold !== undefined ? low_stock_threshold : 0,
@@ -686,7 +687,7 @@ router.put('/foodcourt-products/:productId', async (req, res) => {
     const {
       name, description, sku, unit, base_quantity, unit_price,
       min_order_quantity, image_url, image_thumbnail, category_id, emoji,
-      is_active, sort_order, current_stock, low_stock_threshold,
+      is_active, after_meal, sort_order, current_stock, low_stock_threshold,
       lead_time_days, sync_to_ingredients, option_group_ids
     } = req.body;
 
@@ -719,6 +720,7 @@ router.put('/foodcourt-products/:productId', async (req, res) => {
       emoji: emoji !== undefined ? emoji : product.emoji,
       category_id: category_id !== undefined ? category_id : product.category_id,
       is_active: is_active !== undefined ? is_active : product.is_active,
+      after_meal: after_meal !== undefined ? after_meal : product.after_meal,
       sort_order: sort_order !== undefined ? sort_order : product.sort_order,
       current_stock: current_stock !== undefined ? current_stock : product.current_stock,
       low_stock_threshold: low_stock_threshold !== undefined ? low_stock_threshold : product.low_stock_threshold,

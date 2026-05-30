@@ -631,6 +631,21 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
     fetchQRStatus();
   }, [fetchQRStatus]);
 
+  // ─── QR live expiry ───
+  // 백엔드는 expires_at(기본 3시간) 지나면 GET 에서 세션을 안 돌려주지만, 패널이 열린 채로
+  // 시간이 흐르면 화면의 "Active QR" 발행정보가 그대로 남아있다(once-fetch 라 재확인 없음).
+  // 매장 요구("시간 지나면 사라져야") → 30초마다 시각을 갱신해 만료된 QR 은 화면에서 자동으로 비운다.
+  const [qrNowTs, setQrNowTs] = useState(() => Date.now());
+  useEffect(() => {
+    if (!qrSession) return;
+    const id = setInterval(() => setQrNowTs(Date.now()), 30000);
+    return () => clearInterval(id);
+  }, [qrSession]);
+  const activeQr = qrSession && new Date(qrSession.expires_at).getTime() > qrNowTs ? qrSession : null;
+  const qrRemainingMin = activeQr
+    ? Math.max(0, Math.floor((new Date(activeQr.expires_at).getTime() - qrNowTs) / 60000))
+    : 0;
+
   // ─── Confirm modal state ───
   const [confirmModal, setConfirmModal] = useState<{
     title: string;
@@ -1062,7 +1077,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
     setQrLoading(true);
     try {
       const token = getAuthToken();
-      let qrData = qrSession;
+      let qrData = activeQr; // 만료된 세션이면 재사용하지 않고 새로 발행
 
       if (!qrData) {
         // No active QR → create new one
@@ -1801,19 +1816,19 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                 <ActionBtn $variant="secondary" onClick={handlePrintQR} disabled={qrLoading}>
                   {qrLoading ? 'Printing...' : <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight: 4, verticalAlign: 'middle'}}><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>{'Reprint QR'}</>}
                 </ActionBtn>
-                {qrSession && (
+                {activeQr && (
                   <ActionBtn $variant="danger" onClick={handleExpireQR} disabled={qrLoading} style={{ flex: '0 0 auto', width: 'auto', padding: '9px 16px' }}>
                     Expire QR
                   </ActionBtn>
                 )}
               </ActionRow>
-              {qrSession ? (
+              {activeQr ? (
                 <QRStatusInfo>
                   <div>
-                    <span style={{ color: '#059669' }}>● Active QR ({qrSession.remaining_minutes ?? 0}min left)</span>
+                    <span style={{ color: '#059669' }}>● Active QR ({qrRemainingMin}min left)</span>
                     <div style={{ fontSize: '11px', color: '#4B5563', marginTop: '2px' }}>
-                      Printed: {formatDateTime(qrSession.created_at, tzSettings, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', year: undefined })}
-                      {' · '}Orders until {formatDateTime(qrSession.expires_at, tzSettings, { year: undefined, month: undefined, day: undefined, hour: '2-digit', minute: '2-digit' })}
+                      Printed: {formatDateTime(activeQr.created_at, tzSettings, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', year: undefined })}
+                      {' · '}Orders until {formatDateTime(activeQr.expires_at, tzSettings, { year: undefined, month: undefined, day: undefined, hour: '2-digit', minute: '2-digit' })}
                     </div>
                   </div>
                 </QRStatusInfo>
@@ -1843,13 +1858,13 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
             <ActionBtn $variant="secondary" onClick={handlePrintQR} disabled={qrLoading}>
               {qrLoading ? 'Printing...' : <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight: 4, verticalAlign: 'middle'}}><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>{'Print QR'}</>}
             </ActionBtn>
-            {qrSession ? (
+            {activeQr ? (
               <QRStatusInfo>
                 <div>
-                  <span style={{ color: '#059669' }}>● Active QR ({qrSession.remaining_minutes}min left)</span>
+                  <span style={{ color: '#059669' }}>● Active QR ({qrRemainingMin}min left)</span>
                   <div style={{ fontSize: '11px', color: '#4B5563', marginTop: '2px' }}>
-                    Printed: {qrSession.created_at ? formatDateTime(qrSession.created_at, tzSettings, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', year: undefined }) : 'just now'}
-                    <br />Orders accepted until {formatDateTime(qrSession.expires_at, tzSettings, { year: undefined, month: undefined, day: undefined, hour: '2-digit', minute: '2-digit' })}
+                    Printed: {activeQr.created_at ? formatDateTime(activeQr.created_at, tzSettings, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', year: undefined }) : 'just now'}
+                    <br />Orders accepted until {formatDateTime(activeQr.expires_at, tzSettings, { year: undefined, month: undefined, day: undefined, hour: '2-digit', minute: '2-digit' })}
                   </div>
                 </div>
                 <ActionBtn $variant="link" onClick={handleExpireQR} style={{ padding: '4px 8px', fontSize: '12px', width: 'auto' }}>

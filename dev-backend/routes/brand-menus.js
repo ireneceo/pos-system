@@ -184,7 +184,7 @@ router.post('/', authenticateToken, requireBGScope, async (req, res) => {
   try {
     const {
       brand_id, category_id, product_recipe_id, name, description, image_url, emoji,
-      recommended_price, currency, is_active, sort_order, distribution_mode,
+      recommended_price, currency, is_active, after_meal, sort_order, distribution_mode,
       option_group_ids, locks, is_set_menu, set_items, set_groups
     } = req.body;
     // Accept both nested locks{} and flat lock_* — nested wins if provided
@@ -228,7 +228,7 @@ router.post('/', authenticateToken, requireBGScope, async (req, res) => {
       name: name.trim(), description: description || null,
       image_url: normalizedImage, emoji: emoji || null,
       recommended_price: recommended_price || 0, currency: currency || 'MYR',
-      is_active: is_active !== false, sort_order: sort_order || 0,
+      is_active: is_active !== false, after_meal: after_meal === true, sort_order: sort_order || 0,
       version: 1,
       distribution_mode: resolvedDistribution,
       lock_name: resolvedLock(lock_name, 'name'),
@@ -287,7 +287,7 @@ router.put('/:id', authenticateToken, requireBGScope, async (req, res) => {
 
     const body = req.body || {};
     const updatable = ['category_id', 'product_recipe_id', 'name', 'description', 'emoji',
-      'recommended_price', 'currency', 'is_active', 'sort_order', 'distribution_mode',
+      'recommended_price', 'currency', 'is_active', 'after_meal', 'sort_order', 'distribution_mode',
       'lock_name', 'lock_price', 'lock_category', 'lock_image', 'lock_options',
       'is_set_menu', 'set_items', 'set_groups', 'lock_set_items'];
     const update = {};

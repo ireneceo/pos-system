@@ -223,6 +223,7 @@ async function syncBrandMenuToRestaurant({ brandMenuId, restaurantId, transactio
     set_items: brandMenu.set_items || null,
     set_groups: await translateSetGroupsForRestaurant(brandMenu.set_groups, restaurantId, transaction),
     is_active: false,
+    after_meal: brandMenu.after_meal === true, // 식후 제공 플래그 상속(초기 푸시). 이후엔 매장이 소유.
     soldOut: false,
     // Sync tracking
     brand_menu_id: brandMenu.id,

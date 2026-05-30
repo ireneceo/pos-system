@@ -138,6 +138,11 @@ Product.init({
     defaultValue: false,
     comment: 'Featured item for mobile order display'
   },
+  after_meal: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    comment: 'Serve after the main meal (e.g. dessert). Registration flag only.'
+  },
   // Brand Menu System (v3.32+) — linkage with a BG-owned BrandMenu template.
   brand_menu_id: {
     type: DataTypes.INTEGER,

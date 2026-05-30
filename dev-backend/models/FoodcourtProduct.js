@@ -15,6 +15,7 @@ const FoodcourtProduct = sequelize.define('FoodcourtProduct', {
   image_url: { type: DataTypes.TEXT('medium'), allowNull: true },
   image_thumbnail: { type: DataTypes.TEXT, allowNull: true },
   is_active: { type: DataTypes.BOOLEAN, defaultValue: true },
+  after_meal: { type: DataTypes.BOOLEAN, defaultValue: false, comment: 'Serve after the main meal (e.g. dessert). Registration flag only.' },
   distribution_mode: {
     type: DataTypes.ENUM('all', 'specific_restaurants'),
     allowNull: false,
