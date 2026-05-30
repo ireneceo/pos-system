@@ -68,13 +68,17 @@ router.get('/stats', async (req, res) => {
     });
     
     const productCounts = {};
+    const addCount = (name, qty) => {
+      if (!name) return;
+      productCounts[name] = (productCounts[name] || 0) + qty;
+    };
     completedOrders.forEach(order => {
       if (order.order_items && Array.isArray(order.order_items)) {
         order.order_items.forEach(item => {
-          if (productCounts[item.name]) {
-            productCounts[item.name] += item.quantity;
-          } else {
-            productCounts[item.name] = item.quantity;
+          addCount(item.name, item.quantity);
+          // 세트면 구성품도 합산(단품 판매수에 세트 내장분 포함) — SET_MENU_REDESIGN §3
+          if (Array.isArray(item.set_components)) {
+            item.set_components.forEach(c => addCount(c.name, (c.qty || 1) * (item.quantity || 1)));
           }
         });
       }
@@ -1182,6 +1186,21 @@ router.get('/restaurant/:restaurantId/reports-summary', authenticateToken, check
           menuSales[menuKey].revenue += itemRevenue;
           menuSales[menuKey].quantity += quantity;
           menuSales[menuKey].orders += 1;
+
+          // 세트 구성품 통합 집계(SET_MENU_REDESIGN §3): 구성품 판매수에 세트 내장분 포함.
+          // 매출은 구성품 upcharge 만 가산(세트 기본가는 위 세트 라인에 이미 계상 → 중복 방지).
+          if (Array.isArray(item.set_components)) {
+            item.set_components.forEach(c => {
+              const cName = c.name || 'Component';
+              const cCat = productCategoryMap[`name:${cName}`] || category;
+              const cQty = (parseInt(c.qty) || 1) * quantity;
+              const cRev = (parseFloat(c.upcharge) || 0) * quantity;
+              const ck = `${cCat}|${cName}`;
+              if (!menuSales[ck]) menuSales[ck] = { name: cName, category: cCat, revenue: 0, quantity: 0, orders: 0 };
+              menuSales[ck].quantity += cQty;
+              menuSales[ck].revenue += cRev;
+            });
+          }
         });
       }
     });

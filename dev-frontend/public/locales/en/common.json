@@ -1,4 +1,8 @@
 {
+  "storeBadge.openNow": "Open Now",
+  "storeBadge.onBreak": "On Break",
+  "storeBadge.closed": "Closed",
+  "storeBadge.break": "Break",
   "storeBadge.cashless": "Cashless",
   "storeBadge.cashlessHint": "This store does not accept cash payments",
   "storeBadge.cashlessNoticeTitle": "Cashless store — cash not accepted",
@@ -689,5 +693,13 @@
   "mobileOrderAlerts.multipleNewOrders": "{{count}} new mobile orders",
   "mobileOrderAlerts.table": "Table",
   "mobileOrderAlerts.view": "View",
-  "mobileOrderAlerts.dismiss": "Dismiss"
+  "mobileOrderAlerts.dismiss": "Dismiss",
+  "itemServe.queued": "Queued",
+  "itemServe.cooking": "Cooking",
+  "itemServe.ready": "Ready",
+  "itemServe.served": "Served",
+  "itemServe.serveHint": "Serve ▸",
+  "itemServe.tapToServe": "Tap to mark as served",
+  "itemServe.tapToUndo": "Tap to undo (back to ready)",
+  "itemServe.servedCount": "{{served}}/{{total}} served"
 }

@@ -636,6 +636,7 @@ const SettingsPage: React.FC = () => {
   const mobileOrderPickupRef = useRef<AutoSaveHandle>(null);
   const mobileOrderDeliveryRef = useRef<AutoSaveHandle>(null);
   const requirePaymentBeforeKitchenRef = useRef<AutoSaveHandle>(null);
+  const requirePinForDiscountRef = useRef<AutoSaveHandle>(null);  // #5 할인 PIN 승인 토글
   const mobileOrderQuickOrderRef = useRef<AutoSaveHandle>(null);
   const mobileOrderShowFeaturedRef = useRef<AutoSaveHandle>(null);
   const mobileOrderShowPopularRef = useRef<AutoSaveHandle>(null);
@@ -4775,6 +4776,30 @@ const SettingsPage: React.FC = () => {
                       </ToggleSwitch>
                     </AutoSaveField>
                   </Toggle>
+
+                  {/* 할인 PIN 승인 토글 (#5) */}
+                  <Toggle>
+                    <div style={{ flex: 1 }}>
+                      <ToggleLabel style={{ marginBottom: '4px' }}>{t('settings:operations.requirePinForDiscountLabel', { defaultValue: 'Require PIN approval for discounts' })}</ToggleLabel>
+                      <p style={{ fontSize: '12px', color: '#4B5563', margin: 0 }}>
+                        {t('settings:operations.requirePinForDiscountDesc', { defaultValue: 'When on, applying a discount requires a manager PIN.' })}
+                      </p>
+                    </div>
+                    <AutoSaveField ref={requirePinForDiscountRef} onSave={handleSave} type="toggle">
+                      <ToggleSwitch>
+                        <ToggleInput
+                          type="checkbox"
+                          checked={!!(operationSettings as any).requirePinForDiscount}
+                          onChange={(e) => {
+                            const v = e.target.checked;
+                            setOperationSettings(prev => ({ ...prev, requirePinForDiscount: v } as any));
+                            requirePinForDiscountRef.current?.triggerSave();
+                          }}
+                        />
+                        <ToggleSlider />
+                      </ToggleSwitch>
+                    </AutoSaveField>
+                  </Toggle>
                 </SettingsCard>
 
                 {operationSettings.orderTypes?.pickup && (
@@ -5132,6 +5157,11 @@ const SettingsPage: React.FC = () => {
                 const wsName = activeWs?.name || '—';
                 const cMethod: string = activeWs?.billPrinter?.method || 'browser';
                 const cAddress: string = (activeWs?.billPrinter?.address || '').trim();
+                // 실제 영수증(빌) 프린터 이름. "cashier" 추상어 대신 매장이 아는 진짜
+                // 이름(예: POS-80C)을 카드에 노출 — 비상시 어디로 나가는지 명확히.
+                const cName: string = (activeWs?.billPrinter?.name || '').trim();
+                const cPrinterLabel: string = cName
+                  || t('settings:printer.emergency.workstationReceiptPrinter', 'this workstation’s receipt printer');
                 // Crude "LAN-ish" heuristic: an IP-or-host:port suggests LAN/Wi-Fi.
                 const looksLan = /^(\d{1,3}\.){3}\d{1,3}(:\d+)?$/.test(cAddress) || /:\d+$/.test(cAddress);
                 let envBand: 'good' | 'ok' | 'partial' = 'good';
@@ -5191,7 +5221,8 @@ const SettingsPage: React.FC = () => {
                         : t('settings:printer.emergency.modalOffTitle', 'Emergency Mode Disabled'),
                       message: next
                         ? t('settings:printer.emergency.modalOnMessage',
-                            'All order tickets will print from the cashier (bill) printer. Staff must hand-deliver tickets to each station.\n\nIf internet is down, connect this POS to a mobile hotspot. Old PCs without Wi-Fi: use a USB Wi-Fi dongle (TP-Link Nano / Mercusys / ASUS USB Adapter). Hotspot is for internet only — keep kitchen printers OFF the hotspot.')
+                            'All order tickets (POS and mobile) will print from {{printer}} — the receipt/bill printer on this workstation. Staff must hand-deliver tickets to each station.\n\nIf internet is down, connect this POS to a mobile hotspot. Old PCs without Wi-Fi: use a USB Wi-Fi dongle (TP-Link Nano / Mercusys / ASUS USB Adapter). Hotspot is for internet only — keep kitchen printers OFF the hotspot.',
+                            { printer: cPrinterLabel })
                         : t('settings:printer.emergency.modalOffMessage',
                             'Original printer routing restored. Each station prints to its own printer again.')
                     });
@@ -5283,9 +5314,11 @@ const SettingsPage: React.FC = () => {
                     <p style={{ fontSize: '13px', color: isEm ? '#7F1D1D' : '#4B5563', lineHeight: 1.6, margin: '0 0 12px' }}>
                       {isEm
                         ? t('settings:printer.emergency.descOn',
-                            'Every order ticket is currently printing from the cashier (bill) printer regardless of station mapping. Staff must hand-deliver tickets to each station. Click "Turn OFF" once your kitchen printers / network are back to normal.')
+                            'Every order ticket — POS and mobile — is printing from {{printer}} (the receipt/bill printer on this workstation) regardless of station mapping. Staff must hand-deliver tickets to each station. Click "Turn OFF" once your kitchen printers / network are back to normal.',
+                            { printer: cPrinterLabel })
                         : t('settings:printer.emergency.descOff',
-                            'One-click escape hatch for kitchen printer or network failures. Activating reroutes every order ticket to the cashier (bill) printer. Original station routing is preserved — turning OFF restores it instantly. No manual reconfiguration.')}
+                            'One-click escape hatch for kitchen printer or network failures. Activating reroutes every order ticket (POS and mobile) to {{printer}} — the receipt/bill printer on this workstation. Original station routing is preserved — turning OFF restores it instantly. No manual reconfiguration.',
+                            { printer: cPrinterLabel })}
                     </p>
 
                     {/* "How it works + recommended setup" — combined accordion.
@@ -5402,8 +5435,14 @@ const SettingsPage: React.FC = () => {
                             : t('settings:printer.emergency.rightLabelOff', '⚡ IF YOU TURN ON')}
                         </div>
                         <div style={{ fontSize: '12px', color: isEm ? '#7F1D1D' : envFg, lineHeight: 1.7 }}>
+                          <div style={{ fontSize: '13px', fontWeight: 700, marginBottom: '2px' }}>
+                            → {cPrinterLabel}
+                          </div>
+                          <div style={{ fontSize: '11px', opacity: 0.85, marginBottom: '6px' }}>
+                            {t('settings:printer.emergency.destinationHint', 'Receipt (bill) printer on workstation “{{ws}}”', { ws: wsName })}
+                          </div>
                           <div>
-                            <strong>{t('settings:printer.emergency.routing', 'Routing')}:</strong> {t('settings:printer.emergency.routingEmergency', 'ALL stations → cashier ({{ws}})', { ws: wsName })}
+                            <strong>{t('settings:printer.emergency.routing', 'Routing')}:</strong> {t('settings:printer.emergency.routingEmergency2', 'Every order ticket (all stations) prints here', {})}
                           </div>
                           <div>
                             <strong>{isEm

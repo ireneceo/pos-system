@@ -1,4 +1,8 @@
 {
+  "storeBadge.openNow": "영업 중",
+  "storeBadge.onBreak": "브레이크 타임",
+  "storeBadge.closed": "영업 종료",
+  "storeBadge.break": "브레이크",
   "storeBadge.cashless": "캐시리스",
   "storeBadge.cashlessHint": "이 매장은 현금 결제를 받지 않습니다",
   "storeBadge.cashlessNoticeTitle": "캐시리스 매장 — 현금 결제 불가",
@@ -689,5 +693,13 @@
   "mobileOrderAlerts.multipleNewOrders": "새 모바일 주문 {{count}}건",
   "mobileOrderAlerts.table": "테이블",
   "mobileOrderAlerts.view": "확인",
-  "mobileOrderAlerts.dismiss": "닫기"
+  "mobileOrderAlerts.dismiss": "닫기",
+  "itemServe.queued": "대기",
+  "itemServe.cooking": "조리 중",
+  "itemServe.ready": "준비 완료",
+  "itemServe.served": "서빙 완료",
+  "itemServe.serveHint": "서빙 ▸",
+  "itemServe.tapToServe": "탭하면 서빙 완료",
+  "itemServe.tapToUndo": "탭하면 서빙 취소",
+  "itemServe.servedCount": "{{served}}/{{total}} 서빙 완료"
 }

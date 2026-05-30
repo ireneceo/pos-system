@@ -11,6 +11,7 @@ const OptionGroup = require('../models/OptionGroup');
 const Option = require('../models/Option');
 const { Op } = require('sequelize');
 const { parseImageData, getProductEmoji, TableQRSession } = require('./mobile-helpers');
+const { buildSetResolved } = require('../utils/setMenu');
 
 router.get('/verify-qr', async (req, res) => {
   try {
@@ -430,8 +431,18 @@ router.get('/menu/item/:itemId', async (req, res) => {
         carbs: '30g',
         fat: '15g'
       },
-      optionGroups: productOptionGroups  // Use real DB option groups
+      optionGroups: productOptionGroups,  // Use real DB option groups
+      is_set_menu: product.is_set_menu || false,
+      set_groups: product.set_groups || null
     };
+
+    // 세트면 구성품(name/price/soldOut/상속옵션) + 품절계산 resolve 첨부
+    if (product.is_set_menu) {
+      try {
+        const resolved = await buildSetResolved(product, product.restaurant_id);
+        if (resolved) Object.assign(item, resolved);
+      } catch (e) { console.error('set resolve(mobile) 실패:', e.message); }
+    }
 
     res.json({ success: true, data: item });
   } catch (error) {

@@ -29,6 +29,7 @@ TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 # Flags
 AUTO_MODE=false
 SKIP_BUILD=false
+SKIP_SAFETY=false                  # 인쇄/주문 안전 게이트. 기본 ON(막힘). 긴급 핫픽스 시에만 --skip-safety 로 우회
 SYNC_CONTENT=true                  # default ON: 랜딩/블로그 콘텐츠는 코드와 함께 운영에 반영되어야 함
 SYNC_CONTENT_SINCE="90d"           # 최근 90일 발행/수정분 sync (그 이상 과거 글은 사용자가 별도 --group=N 지정)
 
@@ -36,6 +37,7 @@ for arg in "$@"; do
     case $arg in
         --auto) AUTO_MODE=true ;;
         --skip-build) SKIP_BUILD=true ;;
+        --skip-safety) SKIP_SAFETY=true ;;         # 인쇄/주문 안전 게이트 우회 (긴급 핫픽스 전용)
         --sync-content) SYNC_CONTENT=true ;;       # 명시적 ON (기본값과 동일, 이전 호환)
         --no-sync-content) SYNC_CONTENT=false ;;   # 콘텐츠 sync 끄기 (긴급 핫픽스용)
         --sync-content-since=*) SYNC_CONTENT_SINCE="${arg#*=}" ;;  # 예: --sync-content-since=30d
@@ -69,6 +71,32 @@ if ! curl -s --max-time 3 http://localhost:3001/api/health | grep -q '"status":"
     error "Local dev server is not healthy"
 fi
 success "Local dev server is healthy"
+
+# ──────────────────────────────────────────
+# 1b. SAFETY GATE — 인쇄/주문 생명선 회귀 + 보호 파일 무결성 (운영 도달 전 마지막 자동 검사)
+# ──────────────────────────────────────────
+# 매장 인쇄는 영업 생명선 (CLAUDE.md 최우선). 다른 기능을 개발하다 인쇄/주문 코드를
+# 실수로 건드렸으면 여기서 배포가 막힌다. 운영을 건드리기 전(backup/build 전)이라 fail-fast.
+# 긴급 핫픽스로 우회가 필요하면 --skip-safety (의식적 선택, 기본은 막힘).
+if [ "$SKIP_SAFETY" = true ]; then
+    warn "⚠️  안전 게이트 건너뜀 (--skip-safety) — 긴급 핫픽스 모드. 인쇄/주문 회귀 미검증 상태로 배포함."
+else
+    cd $LOCAL_DEV_BACKEND
+
+    log "Safety gate (1/2): 🔒 인쇄/주문 보호 파일 무결성..."
+    if ! node scripts/check-print-guard.js --quiet; then
+        error "🔒 인쇄/주문 보호 파일이 변경됨. 의도한 인쇄 변경이고 실프린터 확인까지 끝났으면
+       'cd dev-backend && node scripts/check-print-guard.js --bless' 후 재배포.
+       인쇄 작업이 아니었다면 변경을 되돌릴 것. (긴급 우회: --skip-safety)"
+    fi
+    success "보호 파일 무결성 OK (생명선 안전)"
+
+    log "Safety gate (2/2): 회귀 테스트 (health-check, 인쇄 계약 + 보안 + API 88건)..."
+    if ! node scripts/health-check.js --quiet; then
+        error "회귀 테스트 실패 — 인쇄/주문/보안 등 기능 회귀 감지. 위 실패 항목 수정 후 재배포. (긴급 우회: --skip-safety)"
+    fi
+    success "회귀 테스트 통과 — 인쇄/주문 계약 + 전체 기능 정상"
+fi
 
 # ──────────────────────────────────────────
 # 2. Pre-deploy: DB Schema Comparison (dev vs prod)

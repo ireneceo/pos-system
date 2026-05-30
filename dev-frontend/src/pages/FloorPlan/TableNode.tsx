@@ -113,8 +113,8 @@ const MultiOrderBadge = styled.div`
   box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 `;
 
-// Mobile order indicator: small purple dot for tables with a mobile/QR-source pending order.
-// Distinguishes self-ordered (mobile) tables from staff-entered (POS) ones at a glance.
+// "확인 필요" 점 (#3): 미접수 새 주문(pending/outstanding, 출처 무관)을 빨강 점으로 표시.
+// 직원이 접수(상태 진행)하면 사라진다. 테이블 색=주문상태, 점=확인필요 직교 신호.
 const MobileOrderDot = styled.div`
   position: absolute;
   top: -5px;
@@ -122,10 +122,10 @@ const MobileOrderDot = styled.div`
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: #635BFF;
+  background: #FF6B6B;
   border: 2px solid white;
   z-index: 5;
-  box-shadow: 0 0 0 1px rgba(99, 91, 255, 0.4), 0 1px 3px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 0 0 1px rgba(255, 107, 107, 0.4), 0 1px 3px rgba(0, 0, 0, 0.15);
 `;
 
 const TEXT_ONLY_FIXTURES = new Set(['kitchen', 'entrance']);
@@ -220,8 +220,8 @@ const TableNode: React.FC<TableNodeProps> = React.memo(({
       {!isFixture && statusInfo?.orderCount && statusInfo.orderCount > 1 && (
         <MultiOrderBadge>{statusInfo.orderCount}</MultiOrderBadge>
       )}
-      {!isFixture && statusInfo?.orderSource === 'mobile' && statusInfo?.orderStatus === 'pending' && (
-        <MobileOrderDot title="New mobile order" />
+      {!isFixture && (statusInfo?.orderStatus === 'pending' || statusInfo?.orderStatus === 'outstanding') && (
+        <MobileOrderDot title="Needs attention — new order" />
       )}
       <TableLabel $textColor={colors.text} style={isTextOnly ? {
         fontSize: '14px',

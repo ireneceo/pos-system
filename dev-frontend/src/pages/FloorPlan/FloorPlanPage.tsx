@@ -48,10 +48,11 @@ const ChipSeparator = styled.div`
 `;
 
 const ZoneFilterBar = styled.div`
+  /* 밀도 축소: 상단 탭 바 패딩 줄임 */
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 24px;
+  padding: 6px 24px;
   background: #fff;
   border-bottom: 1px solid #C7CED6;
   overflow-x: auto;
@@ -59,7 +60,7 @@ const ZoneFilterBar = styled.div`
   scrollbar-width: thin;
 
   @media (max-width: 768px) {
-    padding: 10px 16px;
+    padding: 5px 16px;
   }
 `;
 const ZoneChip = styled.button<{ active: boolean }>`
@@ -67,7 +68,7 @@ const ZoneChip = styled.button<{ active: boolean }>`
   color: ${p => p.active ? '#fff' : '#4B5563'};
   border: 1px solid ${p => p.active ? '#635BFF' : '#C7CED6'};
   border-radius: 999px;
-  padding: 6px 14px;
+  padding: 5px 14px;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -205,14 +206,14 @@ const MainContent = styled.div`
 
 const CanvasWrapper = styled.div`
   flex: 1;
-  padding: 16px 24px;
+  padding: 8px 12px;
   display: flex;
   flex-direction: column;
   min-height: 0;
   min-width: 0;
 
   @media (max-width: 768px) {
-    padding: 12px;
+    padding: 6px 8px;
   }
 `;
 
@@ -361,8 +362,22 @@ const FloorPlanPage: React.FC = () => {
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [selectedOrderIndex, setSelectedOrderIndex] = useState(0);
 
+  // 알림배너 → Floor Plan 테이블 열기 (#배너): ?openTable=테이블번호 로 진입 시 해당 테이블 자동 선택.
+  useEffect(() => {
+    const tn = searchParams.get('openTable');
+    if (!tn || !floorPlan?.tables?.length) return;
+    const match = floorPlan.tables.find(t => String(t.tableNumber) === String(tn) || String((t as any).label) === String(tn));
+    if (match) setSelectedTableId(match.id);
+    // 1회 처리 후 파라미터 제거(중복 선택 방지)
+    setSearchParams(prev => { const n = new URLSearchParams(prev); n.delete('openTable'); return n; }, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, floorPlan]);
+
   // Payment modal (like LiveOrders)
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  // 결제 팝업용 풀 주문 객체 — Live Orders 와 동일 소스(GET /orders/:id). table-status
+  // 객체는 서비스차지 값/세율/쿠폰·포인트 분리값이 없어 그 줄들이 숨었던 문제 통일 (2026-05-29).
+  const [orderForPayment, setOrderForPayment] = useState<any>(null);
   // Takeaway payment target — when set, renders PaymentModal for that takeaway order (same UI as dine-in).
   const [paymentTakeawayOrderId, setPaymentTakeawayOrderId] = useState<number | null>(null);
   const [paymentMethods, setPaymentMethods] = useState<any>(null);
@@ -753,8 +768,10 @@ const FloorPlanPage: React.FC = () => {
   // (POSOverlayHeader with × Close) is the only close path, and Floor Plan state (zone filter, statuses,
   // socket subscription) is preserved by staying in this route.
   // Add new launch types here as new opts keys; do not split into separate functions.
-  const handleNewOrder = (opts?: { takeaway?: boolean }) => {
+  const handleNewOrder = (opts?: { takeaway?: boolean; mergeOrderId?: number }) => {
     const params = new URLSearchParams();
+    // Add Items (#7) — 기존 주문에 머지(새 주문 생성 방지). POS 가 forceMergeIntoOrderId 로 합친다.
+    if (opts?.mergeOrderId) params.set('mergeOrderId', String(opts.mergeOrderId));
     // 2026-05-27: takeaway from a selected table pins to that table's bill
     // (e.g. a guest at T20 wants a coffee to go — staff still wants it on the
     // T20 ticket). Walk-in takeaway (no selected table) stays counter-pickup.
@@ -778,12 +795,27 @@ const FloorPlanPage: React.FC = () => {
   };
 
   // Payment → PaymentModal (like LiveOrders)
-  const handlePayment = () => {
+  const handlePayment = async () => {
+    const statusInfo = (selectedTableId && tableStatuses[selectedTableId]) || (selectedTable ? tableStatuses[selectedTable] : undefined);
+
+    // 통일(2026-05-29): Live Orders 와 동일하게 풀 주문 데이터로 팝업을 채운다.
+    // table-status 객체는 서비스차지/세율/쿠폰·포인트 분리값이 없어 그 줄들이 숨었음.
+    setOrderForPayment(null);
+    const oid = (statusInfo as any)?.orderId;
+    if (oid) {
+      try {
+        const token = getAuthToken();
+        const res = await fetch(`/api/orders/${oid}`, { headers: { Authorization: `Bearer ${token}` } });
+        const j = await res.json();
+        const full = j?.data || (j && j.id ? j : null);
+        if (full) setOrderForPayment(full);
+      } catch { /* fetch 실패 시 selectedStatusInfo 로 폴백 (아래 렌더) */ }
+    }
+
     setShowPaymentModal(true);
 
     // Checkout Display 에 주문 내역 전송 — lookup by floor_plan_table_id first
     if (checkoutSocketRef.current && (selectedTableId || selectedTable)) {
-      const statusInfo = (selectedTableId && tableStatuses[selectedTableId]) || (selectedTable ? tableStatuses[selectedTable] : undefined);
       if (statusInfo) {
         const items = (statusInfo as any).items?.map((item: any) => ({
           name: item.name || item.menu_item_name || 'Item',
@@ -896,6 +928,7 @@ const FloorPlanPage: React.FC = () => {
           await fetchTakeawayOrders();
         } else {
           setShowPaymentModal(false);
+          setOrderForPayment(null);
           await fetchStatuses();
         }
 
@@ -1292,6 +1325,8 @@ const FloorPlanPage: React.FC = () => {
         </ZoneFilterBar>
       )}
 
+      {/* 범례는 Irene 가 직접 추가 예정 — 제거 (#3 점 기능은 TableNode 빨강 점으로 유지) */}
+
       <MainContent>
         <CanvasWrapper>
           {activeView === 'floor' ? (
@@ -1307,8 +1342,7 @@ const FloorPlanPage: React.FC = () => {
             // Clicking a card sets selectedTakeawayOrderId, opening the right-side OrderDetailModal —
             // the same component LiveOrders uses, so all actions (status change, payment, cancel) work.
             <div style={{
-              flex: 1, overflow: 'auto', padding: 20,
-              background: '#F9FAFB', border: '1px solid #C7CED6', borderRadius: 8
+              flex: 1, overflow: 'auto', padding: '4px 0'
             }}>
               {takeawayLoading && takeawayOrders.length === 0 ? (
                 <div style={{ padding: 40, textAlign: 'center', color: '#4B5563' }}>
@@ -1334,10 +1368,7 @@ const FloorPlanPage: React.FC = () => {
                   </button>
                 </div>
               ) : (
-                <div style={{
-                  display: 'grid', gap: 12,
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))'
-                }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {takeawayOrders.map((o: any) => {
                     const id = o.id;
                     const isSelected = selectedTakeawayOrderId === id;
@@ -1350,30 +1381,45 @@ const FloorPlanPage: React.FC = () => {
                     const orderNum = o.order_number || o.orderNumber || `#${id}`;
                     const itemCount = (o.order_items || o.orderItems || []).reduce((s: number, it: any) => s + (parseInt(it.quantity, 10) || 1), 0);
                     const total = parseFloat(o.final_price || o.total_amount || o.total || 0).toFixed(2);
+                    // 리스트에서 바로 파악할 핵심정보: 고객/픽업번호/시각/품목 미리보기
+                    const customerName = o.customer_name || o.customerName || '';
+                    const pickupNo = o.pickup_number || o.pickupNumber || '';
+                    const _items = (o.order_items || o.orderItems || []);
+                    const itemPreview = _items.slice(0, 3).map((it: any) => `${it.quantity || 1}×${it.name || it.menuItem?.name || ''}`.trim()).filter(Boolean).join(', ');
+                    const _created = o.createdAt || o.order_date || o.created_at;
+                    let timeStr = '';
+                    try { timeStr = _created ? new Date(_created).toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', timeZone }) : ''; } catch { timeStr = ''; }
                     return (
                       <button
                         key={id}
                         type="button"
                         onClick={() => setSelectedTakeawayOrderId(selectedTakeawayOrderId === id ? null : id)}
                         style={{
-                          textAlign: 'left', background: palette.bg,
-                          border: `2px solid ${isSelected ? '#635BFF' : palette.border}`,
-                          borderRadius: 8, padding: '12px 14px', cursor: 'pointer',
-                          boxShadow: isSelected ? '0 0 0 3px rgba(99,91,255,0.15)' : '0 1px 3px rgba(0,0,0,0.04)',
-                          transition: 'all 0.15s'
+                          textAlign: 'left', width: '100%', background: isSelected ? '#F0EFFF' : '#fff',
+                          border: `1px solid ${isSelected ? '#635BFF' : '#E6EBF1'}`,
+                          borderLeft: `4px solid ${palette.border}`,
+                          borderRadius: 8, padding: '8px 12px', cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', gap: 12, transition: 'all 0.12s'
                         }}
                       >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: palette.text }}>{orderNum}</div>
-                          <div style={{ fontSize: 11, fontWeight: 600, color: palette.text, textTransform: 'uppercase' }}>{status}</div>
+                        {/* 주문번호 + 픽업 + 시각 */}
+                        <div style={{ minWidth: 96, flexShrink: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: '#0A2540' }}>{orderNum}{pickupNo ? ` · #${pickupNo}` : ''}</div>
+                          {timeStr && <div style={{ fontSize: 11, color: '#8898AA' }}>{timeStr}</div>}
                         </div>
-                        <div style={{ marginTop: 6, fontSize: 12, color: palette.text, opacity: 0.85 }}>
-                          {t('floorplan:floorPlanPage.itemsCount', { count: itemCount, defaultValue: '{{count}} items' })} · {currency}{total}
+                        {/* 상태 배지 */}
+                        <div style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: palette.text, background: palette.bg, border: `1px solid ${palette.border}`, borderRadius: 999, padding: '2px 8px' }}>{status}</div>
+                        {/* 고객 + 품목 미리보기 (가변) */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          {customerName && <span style={{ fontSize: 12, fontWeight: 600, color: '#0A2540' }}>{customerName} · </span>}
+                          <span style={{ fontSize: 12, color: '#4B5563', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{itemPreview || `${itemCount} items`}</span>
                         </div>
-                        <div style={{ marginTop: 4, fontSize: 11, color: palette.text, opacity: 0.75 }}>
-                          {paymentStatus === 'paid'
-                            ? t('floorplan:floorPlanPage.paid', 'Paid')
-                            : t('floorplan:floorPlanPage.unpaid', 'Awaiting payment')}
+                        {/* 금액 + 결제 */}
+                        <div style={{ flexShrink: 0, textAlign: 'right' }}>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: '#0A2540' }}>{currency}{total}</div>
+                          <div style={{ fontSize: 10, fontWeight: 600, color: paymentStatus === 'paid' ? '#10B981' : '#F59E0B' }}>
+                            {paymentStatus === 'paid' ? t('floorplan:floorPlanPage.paid', 'Paid') : t('floorplan:floorPlanPage.unpaid', 'Unpaid')}
+                          </div>
                         </div>
                       </button>
                     );
@@ -1546,39 +1592,54 @@ const FloorPlanPage: React.FC = () => {
         );
       })()}
 
-      {/* Payment Modal — same as LiveOrders + Split bill (Phase 2) */}
-      {showPaymentModal && selectedStatusInfo && (
-        <PaymentModal
-          isOpen={showPaymentModal}
-          onClose={() => setShowPaymentModal(false)}
-          total={Number(selectedStatusInfo.totalAmount || 0)}
-          subtotal={Number(selectedStatusInfo.subtotal || selectedStatusInfo.totalAmount || 0)}
-          tax={Number(selectedStatusInfo.tax || 0)}
-          serviceCharge={Number(selectedStatusInfo.serviceCharge || 0)}
-          serviceChargeRate={Number(selectedStatusInfo.serviceChargeRate || 10)}
-          takeawayCharge={Number(selectedStatusInfo.takeawayCharge || 0)}
-          discountAmount={Number(selectedStatusInfo.discount || 0)}
-          couponDiscount={Number(selectedStatusInfo.couponDiscount || 0)}
-          discountPolicyAmount={Number((selectedStatusInfo as any).discountPolicyAmount || 0)}
-          pointDiscount={Number((selectedStatusInfo as any).pointDiscount || 0)}
-          onConfirmPayment={handlePaymentConfirm}
-          paymentMethods={paymentMethods}
-          customerId={selectedStatusInfo.customerId || undefined}
-          restaurantId={Number(restaurantId)}
-          membershipSettings={membershipSettings}
-          // Split bill (Phase 2)
-          orderId={selectedStatusInfo.orderId ? Number(selectedStatusInfo.orderId) : undefined}
-          orderItems={Array.isArray(selectedStatusInfo.orderItems) ? selectedStatusInfo.orderItems : []}
-          existingAmountPaid={Number((selectedStatusInfo as any).amountPaid || 0)}
-          onPartialPaymentComplete={(_p, remaining) => {
-            if (remaining <= 0.005) {
-              setShowPaymentModal(false);
-            }
-            // 새로 결제된 row 반영 — 다음 mergeable / table status refresh
-            // (FloorPlan socket 으로 자동 — 별도 fetch 불필요)
-          }}
-        />
-      )}
+      {/* Payment Modal — Live Orders 와 동일 컴포넌트 + 동일 데이터(풀 주문). 통일(2026-05-29):
+          orderForPayment(GET /orders/:id, snake_case) 우선, fetch 실패 시 selectedStatusInfo(table-status) 폴백.
+          이로써 서비스차지/세율/쿠폰/포인트/할인이 Live Orders 와 100% 동일하게 표시된다. */}
+      {showPaymentModal && (selectedStatusInfo || orderForPayment) && (() => {
+        const pf: any = orderForPayment;        // 풀 주문(snake_case) — 우선
+        const si: any = selectedStatusInfo || {}; // table-status(camelCase) — 폴백
+        const closeModal = () => { setShowPaymentModal(false); setOrderForPayment(null); };
+        const pfItems = (() => {
+          if (!pf) return Array.isArray(si.orderItems) ? si.orderItems : [];
+          const raw = pf.order_items;
+          if (Array.isArray(raw)) return raw;
+          if (typeof raw === 'string') { try { return JSON.parse(raw); } catch { return []; } }
+          return [];
+        })();
+        return (
+          <PaymentModal
+            isOpen={showPaymentModal}
+            onClose={closeModal}
+            total={pf ? Number(pf.total_amount || 0) : Number(si.totalAmount || 0)}
+            subtotal={pf ? Number(pf.subtotal || pf.total_amount || 0) : Number(si.subtotal || si.totalAmount || 0)}
+            tax={pf ? Number(pf.tax || 0) : Number(si.tax || 0)}
+            serviceCharge={pf ? Number(pf.service_charge || 0) : Number(si.serviceCharge || 0)}
+            serviceChargeRate={pf ? Number(pf.service_charge_rate || 10) : Number(si.serviceChargeRate || 10)}
+            taxRate={pf ? Number(pf.tax_rate || 6) : Number(si.taxRate || 6)}
+            takeawayCharge={pf ? Number(pf.takeaway_charge || 0) : Number(si.takeawayCharge || 0)}
+            discountAmount={pf ? Number(pf.discount || 0) : Number(si.discount || 0)}
+            couponDiscount={pf ? Number(pf.coupon_discount || 0) : Number(si.couponDiscount || 0)}
+            discountPolicyAmount={pf ? Number(pf.discount_policy_amount || 0) : Number(si.discountPolicyAmount || 0)}
+            pointDiscount={pf ? Number(pf.point_discount || 0) : Number(si.pointDiscount || 0)}
+            onConfirmPayment={handlePaymentConfirm}
+            paymentMethods={paymentMethods}
+            customerId={(pf ? pf.customer_id : si.customerId) || undefined}
+            restaurantId={Number(restaurantId)}
+            membershipSettings={membershipSettings}
+            // Split bill (Phase 2)
+            orderId={(pf ? pf.id : si.orderId) ? Number(pf ? pf.id : si.orderId) : undefined}
+            orderItems={pfItems}
+            existingAmountPaid={pf ? Number(pf.amount_paid || 0) : Number(si.amountPaid || 0)}
+            onPartialPaymentComplete={(_p, remaining) => {
+              if (remaining <= 0.005) {
+                closeModal();
+              }
+              // 새로 결제된 row 반영 — 다음 mergeable / table status refresh
+              // (FloorPlan socket 으로 자동 — 별도 fetch 불필요)
+            }}
+          />
+        );
+      })()}
 
       {/* POS Terminal overlay — for New Order only */}
       <POSOverlay $isOpen={showPOS}>

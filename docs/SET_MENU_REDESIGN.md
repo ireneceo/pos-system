@@ -67,3 +67,100 @@ set_groups: [
 ## 7. 규모 / 다음 단계
 
 대규모 (DB 모델 + 주문/장바구니 흐름 + 옵션상속 + 리포트 + 재고 + 마이그). **`/기능설계` 6단계로 진행**: 기능정의 → API → DB → UI → 코드 → 테스트 시나리오. 각 단계 Irene 승인.
+
+---
+
+# 정식 설계 (2026-05-29, /기능설계)
+
+> 1단계 기능정의 Irene 승인 완료. 비범위 확정: 단계형 옵션(min/max/parent_option) + BG 옵션전파 버그 + optionGroups lock 갭 = **별도 트랙**. 가격모델 = 세트 고정가 + 프리미엄 upcharge. UI 원칙: **모든 셀렉트는 검색 가능한 고급형 `<Select>`**(SELECT_COMPONENT_GUIDE.md), 표준 Modal/FormGroup/Button 재사용, 30년차 UX(쉽고 통일).
+
+## 8. DB 구조 (3단계)
+
+신규 테이블 없음. `Product`에 컬럼 1개 추가 + 기존 `set_items` 레거시 폴백 유지.
+
+### Product (products 테이블)
+| 컬럼 | 타입 | null | default | 설명 |
+|------|------|------|---------|------|
+| `set_groups` | JSON | Y | null | 신규. 세트 구성 슬롯 배열(아래 shape). `is_set_menu=true`일 때만 의미 |
+| `set_items` | JSON | Y | null | **레거시 유지**(드롭 X). set_groups 없으면 런타임 폴백 해석 |
+| `is_set_menu` | BOOLEAN | - | false | 기존 |
+
+**`set_groups` shape:**
+```jsonc
+[
+  { "id": "g1", "label": "메인", "type": "fixed",
+    "items": [ { "product_id": 101, "qty": 1 } ] },
+  { "id": "g2", "label": "찌개 택1", "type": "choice", "min": 1, "max": 1,
+    "items": [ { "product_id": 201, "upcharge": 0 }, { "product_id": 202, "upcharge": 2.00 } ] }
+]
+```
+- `type`: `'fixed'`(자동 포함) | `'choice'`(택 min~max). `min/max`는 choice만(기본 1/1). `upcharge`는 choice 선택지별 추가금(기본 0).
+- 구성품은 **`product_id` live 참조만** 저장(이름/가격/옵션 비복사). 표시·옵션·레시피는 주문/렌더 시점에 원본 Product에서 resolve.
+
+### Order (orders.order_items TEXT-JSON) — 신규 테이블 없음
+세트 주문라인 안에 구성품 분해 저장:
+```jsonc
+{
+  "product_id": 500, "name": "치킨 세트", "is_set": true, "quantity": 1, "price": 25.00,
+  "set_components": [
+    { "group_id": "g1", "product_id": 101, "name": "후라이드치킨", "qty": 1,
+      "options": ["꿀간장"], "price_share": 23.00 },
+    { "group_id": "g2", "product_id": 202, "name": "순두부찌개", "qty": 1,
+      "options": [], "upcharge": 2.00, "price_share": 2.00 }
+  ]
+}
+```
+- `options`는 기존 주문 옵션 저장 포맷(string[])과 동일 → 빌·주방·리포트 기존 렌더 재사용.
+- `price_share`: 통계용 가격 안분(세트가를 구성품에 분배). 합계=세트 price.
+
+### 마이그레이션
+- `sync-database.js`로 `set_groups` 컬럼 추가(JSON nullable, 무위험).
+- 백필 스크립트 `scripts/migrate-set-items-to-groups.js`: `is_set_menu && set_items && !set_groups`인 Product → `set_groups=[{type:'fixed', label:'Set', items: set_items.map(i=>({product_id:i.menuItemId, qty:i.quantity}))}]`. **무손실**, 멱등(이미 set_groups 있으면 skip).
+- 런타임 폴백: `resolveSetGroups(product)` 헬퍼 — set_groups 있으면 그대로, 없고 set_items 있으면 fixed 그룹으로 변환 반환. 프론트/백 공용 로직(`utils/setMenu.js`).
+
+## 9. API 구조 (2단계)
+
+세트 등록은 기존 메뉴 상품 라우트 재사용(별도 CRUD 파일 X). 주문/렌더용 resolve만 보강.
+
+| METHOD / PATH | 역할 | 인증 | Body / 응답 | 비고 |
+|---|---|---|---|---|
+| `POST /api/menu/product` | RA/Owner | authenticateToken + checkProductTenant | body에 `is_set_menu`, `set_groups[]` 추가 허용 | 기존 라우트 확장 |
+| `PUT /api/menu/product/:id` | RA/Owner | 〃 | `set_groups` 갱신. **set_groups 검증**(아래) | 기존 확장 |
+| `GET /api/menu/:slug` (모바일) / `GET /api/menu` (POS) | 공개/직원 | 기존 | 세트 상품에 **`set_groups_resolved`** 포함: 각 구성품 {id,name,price,soldOut, optionGroups(상속 해석됨)} + `set_available`(품절 계산) | 렌더용 enrich |
+| `POST /api/orders` / `POST /api/mobile/order` | 직원/고객 | 기존 | order_item에 `set_components[]` 허용 + **서버 검증**(choice min/max, fixed 존재, 구성품 옵션 required, 품절 차단) + price/재고 계산 | 기존 확장 |
+
+**set_groups 검증 규칙(백엔드 공용 `validateSetGroups`)**: 각 그룹 label 필수 / type∈{fixed,choice} / fixed는 items≥1 / choice는 1≤min≤max≤items.length / 모든 product_id가 같은 restaurant의 비-세트 활성 상품(세트 중첩 금지) / upcharge≥0.
+
+**응답 형식**: `{ success, data }` 표준. 검증 실패 400 `{ success:false, message }`.
+
+**품절(soldOut) 계산(`computeSetAvailability`)**: fixed 슬롯 상품 중 하나라도 soldOut → `set_available=false`(사유 'component'). choice 슬롯은 **전 선택지 soldOut일 때만** 차단. 품절 선택지는 `items[].soldOut=true`로 표시(비활성). DB 미기록 → 구성품 복구 시 자동 부활.
+
+## 10. UI 흐름 (4단계)
+
+### A. 세트 빌더 (MenuManagementPage 세트 모달 재구성)
+기존 "메뉴 목록에 수량 추가" → **"구성 슬롯" 리스트**로 교체. 표준 Modal + FormGroup.
+- 상단: 세트명/가격/카테고리(기존 상품 필드).
+- **슬롯 리스트**(동적, Add Slot 버튼 / 슬롯 삭제 아이콘 / 드래그 정렬):
+  - 슬롯명 텍스트 입력
+  - **타입 Select**(고정/선택) — 검색형 `<Select>` 통일
+  - **구성품 멀티선택** — 검색 가능한 고급형 `<Select multi search>` (상품명/코드 검색, 보라 하이라이트, 세트는 제외 필터). 이미 검색되던 패턴 표준 컴포넌트로 승격
+  - type=choice면: **min/max Select**(검색형) + 슬롯내 상품별 **upcharge CurrencyInput**
+  - **"옵션 상속" 스위치**(기본 ON, 라벨+힌트) — 구성품 옵션그룹을 주문 시 노출할지
+- 슬롯 카드 하단 액션 정렬(카드 룰 준수). 빈 상태: "구성 슬롯을 추가하세요" + Add CTA.
+- 저장 시 `set_groups` 직렬화 → PUT.
+
+### B. 주문 UI (POS `OptionModal` + 모바일 `ItemDetailPage` 공통 패턴)
+세트 상품 선택 시:
+1. **fixed 슬롯** 구성품 자동 표시(읽기전용 칩).
+2. **choice 슬롯** 피커 — min/max=1/1이면 라디오, 그 외 체크(최대 max개). 품절 선택지 비활성+"SOLD OUT". upcharge는 "+RM2.00" 표기.
+3. 선택된(또는 fixed) 구성품마다 **상속된 옵션그룹 인라인 표시**(기존 옵션 렌더 재사용) → 구성품별 옵션 선택.
+4. 하단 합계 = 세트가 + Σupcharge. 유효성: choice min 충족 + 각 구성품 required 옵션 충족 전엔 담기 비활성.
+5. `set_available=false`면 타일 회색 + "SOLD OUT · 구성품 품절", 담기 차단.
+
+### C. 표시/통계
+- 빌·주방·주문상세: order_item.set_components를 들여쓰기로 표시(구성품명 + 옵션). 기존 옵션 string[] 렌더 그대로.
+- Sales 리포트: set_components 순회해 **구성품별 판매수(단품+세트내장 합산)** + 세트 판매수 둘 다 집계(`price_share` 기반 매출 안분).
+
+### 공통 규칙
+- **터치스크린·키보드 없음 전제**(매장 단말): 모든 입력 손가락 터치로 완결. 검색형 Select는 **탭 선택이 기본 + 필요 시 온스크린 키보드**, 수량/min·max/upcharge는 **+/- 스테퍼 또는 온스크린 숫자 키패드**(타이핑 강제 금지). 터치 타겟 ≥44px, hover 의존 금지. ([[feedback_touchscreen_no_keyboard]])
+- **모든 Select = 검색 가능한 고급형**(SELECT_COMPONENT_GUIDE.md) — 단 위 터치 전제 충족. 표준 Modal/ConfirmModal/FormGroup/Button/Select 재사용, 자체 styled overlay 금지. alert/toast.success 금지. 이모지 금지. i18n 4언어(`menu`/`pos`/`common`). 반응형(모바일/태블릿 슬롯 카드 1열).

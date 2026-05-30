@@ -142,16 +142,16 @@
   "printer.methodGuide.qzManualInstallTitle": "Pemasangan manual (lanjutan)",
   "printer.methodGuide.qzWinRHint": "Win+R → tampalkan %APPDATA%\\qz → Enter",
   "printer.emergency.titleOff": "Mod Penghalaan Kecemasan",
-  "printer.emergency.titleOn": "Mod Kecemasan — SEMUA PESANAN DIHALA KE JURUWANG",
-  "printer.emergency.descOff": "Pintu keluar satu klik untuk kegagalan pencetak dapur atau rangkaian. Aktifkan untuk menghalakan setiap tiket pesanan ke pencetak juruwang (bil). Penghalaan stesen asal dikekalkan — matikan untuk pulih serta-merta. Tiada konfigurasi semula manual.",
-  "printer.emergency.descOn": "Setiap tiket pesanan kini mencetak dari pencetak juruwang (bil) tanpa mengira pemetaan stesen. Staf perlu menghantar tiket secara manual ke setiap stesen. Klik \"Matikan\" apabila pencetak dapur / rangkaian kembali normal.",
+  "printer.emergency.titleOn": "Mod Kecemasan — SEMUA PESANAN DIHALA KE PENCETAK RESIT (BIL)",
+  "printer.emergency.descOff": "Pintu keluar satu klik untuk kegagalan pencetak dapur atau rangkaian. Aktifkan untuk menghalakan setiap tiket pesanan (POS dan mudah alih) ke {{printer}} — pencetak resit/bil pada stesen kerja ini. Penghalaan stesen asal dikekalkan — matikan untuk pulih serta-merta. Tiada konfigurasi semula manual.",
+  "printer.emergency.descOn": "Setiap tiket pesanan — POS dan mudah alih — dicetak dari {{printer}} (pencetak resit/bil pada stesen kerja ini) tanpa mengira pemetaan stesen. Staf perlu menghantar tiket ke setiap stesen secara manual. Klik \"Matikan\" sebaik sahaja pencetak dapur / rangkaian kembali normal.",
   "printer.emergency.turnOn": "Hidupkan",
   "printer.emergency.turnOff": "Matikan",
   "printer.emergency.testCashier": "Uji Pencetak Juruwang",
   "printer.emergency.testItem": "Ujian Pencetak Juruwang",
   "printer.emergency.enabledFor": "Aktif selama {{minutes}} minit",
   "printer.emergency.modalOnTitle": "Mod Kecemasan Diaktifkan",
-  "printer.emergency.modalOnMessage": "Semua tiket pesanan akan dicetak dari pencetak juruwang (bil). Staf perlu menghantar tiket secara manual ke setiap stesen.\n\nJika internet terputus, sambungkan POS ini ke titik panas mudah alih. PC lama tanpa Wi-Fi: gunakan dongle USB Wi-Fi (TP-Link Nano / Mercusys / ASUS USB Adapter). Titik panas untuk internet sahaja — JANGAN sambungkan pencetak dapur ke titik panas.",
+  "printer.emergency.modalOnMessage": "Semua tiket pesanan (POS dan mudah alih) akan dicetak dari {{printer}} — pencetak resit/bil pada stesen kerja ini. Staf perlu menghantar tiket ke setiap stesen secara manual.\n\nJika internet terputus, sambungkan POS ini ke hotspot mudah alih. PC lama tanpa Wi-Fi: guna dongle USB Wi-Fi (TP-Link Nano / Mercusys / ASUS USB Adapter). Hotspot untuk internet sahaja — jangan sambungkan pencetak dapur ke hotspot.",
   "printer.emergency.modalOffTitle": "Mod Kecemasan Dimatikan",
   "printer.emergency.modalOffMessage": "Penghalaan pencetak asal dipulihkan. Setiap stesen mencetak ke pencetaknya sendiri sekali lagi.",
   "printer.emergency.prereqTitle": "Konfigurasi pencetak juruwang yang disyorkan (supaya mod kecemasan benar-benar membantu)",
@@ -970,5 +970,10 @@
       "title": "Paparan Pelanggan — Kemasukan Keahlian",
       "description": "Tunjukkan pad nombor telefon pada skrin yang menghadap pelanggan supaya tetamu boleh masukkan nombor telefon untuk mata / keahlian."
     }
-  }
+  },
+  "printer.emergency.workstationReceiptPrinter": "pencetak resit stesen kerja ini",
+  "printer.emergency.destinationHint": "Pencetak resit (bil) pada stesen kerja “{{ws}}”",
+  "printer.emergency.routingEmergency2": "Setiap tiket pesanan (semua stesen) dicetak di sini",
+  "operations.requirePinForDiscountLabel": "Perlu kelulusan PIN untuk diskaun",
+  "operations.requirePinForDiscountDesc": "Apabila dihidupkan, diskaun memerlukan PIN pengurus."
 }

@@ -86,6 +86,7 @@ interface CartItem {
   selectedOptionsData: SelectedOptionData[];  // Full option data
   specialInstructions?: string;
   totalPrice: number;
+  setComponents?: any[];  // 세트 v2 구성품 분해 (주문 생성 시 order_item.set_components 로 전송)
 }
 
 interface Order {
@@ -203,9 +204,12 @@ export const MobileOrderProvider: React.FC<MobileOrderProviderProps> = ({ childr
     options: string[],  // Option IDs
     instructions?: string
   ) => {
-    // For set menus, add set_items as special instructions prefix
+    // 세트 v2: 구성품은 set_components(별도 필드)로 carry/표시 → specialInstructions 엔 사용자 메모만(브래킷 X).
+    const setComponents: any[] | undefined = (item as any).set_components;
     let finalInstructions = instructions || '';
-    if (item.is_set_menu && item.set_items && item.set_items.length > 0) {
+    if (setComponents && setComponents.length > 0) {
+      // 구성품 텍스트를 instructions 에 안 넣음 (중복 방지). finalInstructions = 사용자 메모 그대로.
+    } else if (item.is_set_menu && item.set_items && item.set_items.length > 0) {
       const setItemsText = item.set_items
         .map(setItem => `${setItem.name} x${setItem.quantity}`)
         .join(', ');
@@ -221,7 +225,10 @@ export const MobileOrderProvider: React.FC<MobileOrderProviderProps> = ({ childr
     const selectedOptionsData: SelectedOptionData[] = [];
     const selectedOptionNames: string[] = [];
 
-    if (item.optionGroups) {
+    if (setComponents && setComponents.length > 0) {
+      // 세트: 단가는 ItemDetailPage 가 계산(_setUnitPrice = 세트가+upcharge+옵션)
+      totalPrice = (item as any)._setUnitPrice != null ? (item as any)._setUnitPrice : item.price;
+    } else if (item.optionGroups) {
       options.forEach(optionId => {
         const option = item.optionGroups
           ?.flatMap(g => g.options)
@@ -246,8 +253,9 @@ export const MobileOrderProvider: React.FC<MobileOrderProviderProps> = ({ childr
       selectedOptions: selectedOptionNames,  // Store names for display
       selectedOptionsData,  // Store full data for order processing
       specialInstructions: finalInstructions,
-      totalPrice
-    };
+      totalPrice,
+      ...(setComponents && setComponents.length > 0 ? { setComponents } : {})
+    } as CartItem;
 
     setCartItems(prev => [...prev, newCartItem]);
   // eslint-disable-next-line react-hooks/exhaustive-deps

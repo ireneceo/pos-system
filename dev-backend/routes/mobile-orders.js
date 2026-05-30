@@ -197,7 +197,10 @@ router.post('/order', async (req, res) => {
           menu_item_id: item.menu_item_id || item.id || null,
           quantity: item.quantity,
           price: item.price,
-          options: item.options || []
+          options: item.options || [],
+          // 세트 v2 — 자동머지 경로도 구성품 보존 (신규 경로와 동일)
+          ...(item.is_set || item.is_set_menu ? { is_set: true } : {}),
+          ...(Array.isArray(item.set_components) && item.set_components.length ? { set_components: item.set_components } : {})
         }));
         const enrichedNewItems = await enrichItemsWithStation(restaurantId, baseNewItems);
 
@@ -361,7 +364,10 @@ router.post('/order', async (req, res) => {
             menu_item_id: item.menu_item_id || item.id || null,
             quantity: item.quantity,
             price: item.price,
-            options: item.options || []
+            options: item.options || [],
+            // 세트 v2 — 구성품 분해 보존 (빌/주문상세/리포트 표시·집계용). 미설정이면 미포함.
+            ...(item.is_set || item.is_set_menu ? { is_set: true } : {}),
+            ...(Array.isArray(item.set_components) && item.set_components.length ? { set_components: item.set_components } : {})
           })));
 
           const orderData = {

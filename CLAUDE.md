@@ -25,6 +25,25 @@
    - station 라우팅은 item.kitchen_station_id 로 분배(`enrichItemsWithStation`/`resolveProductId`). +Round 는 printed_at 히스토리로 추가분만.
 6. 자세한 단일 진실: `docs/PRINT_RULES_MATRIX.md` 🔒 섹션 + 메모리 [[reference_kitchen_print_pipeline]].
 
+### 🛡️ 자동 안전망 (사고 예방)
+인쇄 무관 기능을 확장하다 위 생명선 코드를 실수로 건드리는 사고를 자동 감지·차단한다.
+
+**언제 자동으로 도는가:** `deploy-to-production.sh` 가 운영 도달 전(backup/build 전)에 아래 1·2를 **무조건 실행하고, 실패하면 배포를 막는다**(fail-closed). 긴급 핫픽스 우회는 `--skip-safety`(의식적 선택). 개발 중에는 `/검증` 이 같은 검사를 수행. (git commit/auto-save 는 트리거 안 함 — 너무 잦아 의미 없음.)
+
+1. **보호 파일 무결성 감시** — 위 보호 파일 8개(billPrint/useAutoPrintPoller/MainLayout/KitchenDisplay/POSTerminal/orders-crud/stationEnrichment/orderTotals)의 지문을 비교. 인쇄 무관 작업 후 반드시 실행:
+   ```bash
+   cd /var/www/dev-backend && node scripts/check-print-guard.js
+   ```
+   - 변경 0건 → 통과. **변경 떴는데 인쇄 작업이 아니었으면 사고 → 되돌린다.**
+   - Irene 승인 + 실프린터 확인 완료된 정식 인쇄 변경일 때만 `--bless` 로 새 기준 등록.
+2. **인쇄 파이프라인 회귀 테스트** — 데모 매장에서 계약 검증 (운영 매장 무영향, orphan sweep 로 멱등):
+   - 티켓 정확히 1번(printed→pending 사라짐) / +Round 새 품목만 / **동시 print-claim N개→1개만(티켓 중복 방지)** / 금액 공식 / 익명 401 / 🔒보호파일 무결성
+   ```bash
+   cd /var/www/dev-backend && node scripts/health-check.js --category=print
+   ```
+   - health-check 전체(**88/88**)에 print 8건 포함 → 배포 전 의무 게이트가 인쇄 계약 + 보호파일 무결성을 자동 검사.
+   - 금액 공식 단위 테스트: `npx jest tests/order-totals.test.js` (11건)
+
 ---
 
 ## 작업 워크플로우 (최우선 규칙)

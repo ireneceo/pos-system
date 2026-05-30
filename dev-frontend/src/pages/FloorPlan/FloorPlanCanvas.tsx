@@ -43,8 +43,9 @@ const CanvasOuter = styled.div<{ $editing?: boolean }>`
   flex: 1;
   overflow: hidden;
   background: ${p => p.$editing ? '#F5F7FA' : 'white'};
-  border-radius: 8px;
-  border: 1px solid ${p => p.$editing ? '#64748B' : '#C7CED6'};
+  /* 뷰 모드는 라운드박스 제거 — 테이블맵이 박스/여백 없이 꽉 차게 (편집 모드만 경계 표시) */
+  border-radius: ${p => p.$editing ? '8px' : '0'};
+  border: ${p => p.$editing ? '1px solid #64748B' : 'none'};
   position: relative;
 `;
 const CanvasBoundsOverlay = styled.div<{ $w: number; $h: number; $scale: number; $offX: number; $offY: number }>`
@@ -58,7 +59,7 @@ const CanvasBoundsOverlay = styled.div<{ $w: number; $h: number; $scale: number;
   border-radius: 4px;
   box-shadow: 0 0 0 2px rgba(99,91,255,0.08), 0 4px 12px rgba(0,0,0,0.04);
   pointer-events: none;
-  z-index: 1;
+  z-index: 0;  /* 흰 plotting 영역은 바닥 — 그리드/테이블(ScaledLayer)이 위에 그려져야 함 (이전 z-index:1 이 테이블을 덮던 버그) */
 `;
 
 const CanvasInner = styled.div`
@@ -83,6 +84,7 @@ const GridOverlay = styled.div<{ $gridSize: number; $scale: number }>`
 const ScaledLayer = styled.div`
   position: absolute;
   transform-origin: 0 0;
+  z-index: 2;  /* 테이블/도형은 흰 plotting 영역(0) + 그리드 위에 */
 `;
 
 const EmptyMessage = styled.div`
@@ -131,11 +133,11 @@ const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
       maxY = Math.max(maxY, t.y + halfH);
     }
 
-    // Add symmetric padding (10% of bounds or minimum 40px)
+    // 여백 최소화 — 테이블이 화면을 더 꽉 채워 크게 보이게 (10%/40px → 3%/12px)
     const boundsW = maxX - minX;
     const boundsH = maxY - minY;
-    const padX = Math.max(boundsW * 0.10, 40);
-    const padY = Math.max(boundsH * 0.10, 40);
+    const padX = Math.max(boundsW * 0.03, 12);
+    const padY = Math.max(boundsH * 0.03, 12);
 
     // Keep padding symmetric around bounding box center
     const vx = minX - padX;

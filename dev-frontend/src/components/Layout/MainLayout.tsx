@@ -1200,7 +1200,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         if (list.length === 0) return;
         const billPrintMod = await import('../../utils/billPrint');
         const printSettings = billPrintMod.getPrinterSettings();
-        if (printSettings.emergencyMode) return;
+        // 2026-05-29 (Irene 승인): Emergency 모드에서도 poller 가 계속 돈다.
+        // 이전엔 여기서 bail → 모바일/QR 주문(poller 가 유일한 인쇄 주체)이 비상시
+        // 무인쇄였다. printKitchenTicketViaRawBT 가 emergencyMode 면 최상단에서 죽은
+        // station 프린터를 건드리기 전에 cashier(bill) 프린터로 redirect 하므로, bail
+        // 없이 정상 경로를 타면 모바일 주문도 cashier 로 안전하게 나간다.
+        // (POS 직접경로와의 중복은 printed_at 히스토리 + __autoPrintInflight 로 방지)
         const activeBill = billPrintMod.getActiveBillPrinter();
         // 2026-05-28: KDS 페이지에서도 폴링 활성. KDS socket 이 빠른 첫 path 이고
         // 폴링이 fail-safe (socket 누락 / device 다중 / 일시 단절 시). KDS socket
@@ -2287,7 +2292,16 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             <button
               type="button"
               onClick={() => {
-                const path = `/restaurant/${restaurantId || user?.restaurantId}/live-orders`;
+                const rid = restaurantId || user?.restaurantId;
+                const o: any = mobileAlertOrders[0] || {};
+                const single = mobileAlertOrders.length === 1;
+                const tn = o.tableNumber;
+                // Floor Plan 에서 누르고 테이블번호가 있으면 → 그 테이블 열기.
+                // 그 외(다른 페이지 전부) → Live Orders (원래 동작 유지).
+                const onFloorPlan = (window.location.pathname || '').includes('/floor-plan');
+                const path = (onFloorPlan && single && tn)
+                  ? `/restaurant/${rid}/floor-plan?openTable=${encodeURIComponent(tn)}`
+                  : `/restaurant/${rid}/live-orders`;
                 setMobileAlertOrders([]);
                 import('../../utils/notificationSound').then(({ stopRepeatingSound }) => stopRepeatingSound());
                 navigate(path);

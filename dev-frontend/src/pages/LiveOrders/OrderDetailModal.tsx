@@ -8,6 +8,7 @@ import { formatDateTime as formatDateTimeUtil } from '../../utils/timezone';
 import { generateHTMLBill, generateHTMLKitchenTicket, tagTicketWithStations, getPrinterSettings } from '../../utils/billPrint';
 import { DbOrder } from './types';
 import { formatPickupTimeRange, getProofCurrent, getProofHistory } from './helpers';
+import ItemServeChip from '../../components/Order/ItemServeChip';
 import {
   OrderDetailSection, SectionTitle, DetailRow, DetailLabel, DetailValue,
   ItemDetail, ItemInfo, ItemName, ItemOptions, ItemPrice,
@@ -43,6 +44,7 @@ interface OrderDetailModalProps {
   handleIncreaseCartItem: (cartId: string) => void;
   handleSubmitAddItems: () => void;
   handleDeleteOrderItem: (index: number, name: string) => void;
+  handleToggleItemServed: (itemIndex: number) => void;
   handlePrintGroupTicket: (groupNum: number, groupItems: any[]) => void;
   setShowOptionModal: (v: boolean) => void;
   setSelectedMenuItemForOption: (item: any) => void;
@@ -83,6 +85,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   handleIncreaseCartItem,
   handleSubmitAddItems,
   handleDeleteOrderItem,
+  handleToggleItemServed,
   handlePrintGroupTicket,
   setShowOptionModal,
   setSelectedMenuItemForOption,
@@ -651,9 +654,20 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
 
           {/* Items - grouped by order_group */}
           <OrderDetailSection>
-            <SectionTitle>{t('orders:liveOrdersPage.orderItems')}</SectionTitle>
+            <SectionTitle>
+              {t('orders:liveOrdersPage.orderItems')}
+              {(() => {
+                const its = Array.isArray(selectedOrder.order_items) ? selectedOrder.order_items : [];
+                const active = ['pending', 'preparing', 'ready', 'served'].includes(selectedOrder.status);
+                if (!active || its.length === 0) return null;
+                const served = its.filter((i: any) => i.status === 'served' || i.status === 'completed').length;
+                return ' — ' + t('common:itemServe.servedCount', { served, total: its.length });
+              })()}
+            </SectionTitle>
             {(() => {
               const items = selectedOrder.order_items && Array.isArray(selectedOrder.order_items) ? selectedOrder.order_items : [];
+              // 활성 주문이면 단계 무관하게 홀 직원이 품목별 Served 토글 가능 (Floor Plan 과 동일).
+              const orderActive = ['pending', 'preparing', 'ready', 'served'].includes(selectedOrder.status);
               // Add original index to each item for deletion
               const itemsWithIndex = items.map((item: any, idx: number) => ({ ...item, _originalIndex: idx }));
               // Group items by order_group
@@ -710,11 +724,28 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                   )}
                   {groupedItems[groupNum].map((item: any, idx: number) => (
                     <ItemDetail key={`${groupNum}-${idx}`} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                      {orderActive && (
+                        <ItemServeChip
+                          status={item.status}
+                          clickable={orderActive}
+                          onToggle={() => handleToggleItemServed(item._originalIndex)}
+                        />
+                      )}
                       <ItemInfo style={{ flex: 1 }}>
                         <ItemName>{item.name || item.menuItem?.name || 'Item'}</ItemName>
                         {item.options && item.options.length > 0 && (
                           <ItemOptions>
                             {Array.isArray(item.options) ? item.options.join(', ') : item.options}
+                          </ItemOptions>
+                        )}
+                        {Array.isArray(item.set_components) && item.set_components.length > 0 && (
+                          <ItemOptions style={{ paddingLeft: 8 }}>
+                            {item.set_components.map((c: any, ci: number) => (
+                              <div key={ci}>
+                                · {c.name}{c.upcharge ? ` +${formatCurrency(c.upcharge, operationSettings.currency)}` : ''}
+                                {Array.isArray(c.options) && c.options.length > 0 ? ` (${c.options.join(', ')})` : ''}
+                              </div>
+                            ))}
                           </ItemOptions>
                         )}
                         <ItemPrice>

@@ -1,4 +1,8 @@
 {
+  "storeBadge.openNow": "Sedang Buka",
+  "storeBadge.onBreak": "Waktu Rehat",
+  "storeBadge.closed": "Tutup",
+  "storeBadge.break": "Rehat",
   "storeBadge.cashless": "Tanpa Tunai",
   "storeBadge.cashlessHint": "Kedai ini tidak menerima pembayaran tunai",
   "storeBadge.cashlessNoticeTitle": "Kedai tanpa tunai — tunai tidak diterima",
@@ -689,5 +693,13 @@
   "mobileOrderAlerts.multipleNewOrders": "{{count}} pesanan mudah alih baru",
   "mobileOrderAlerts.table": "Meja",
   "mobileOrderAlerts.view": "Lihat",
-  "mobileOrderAlerts.dismiss": "Tutup"
+  "mobileOrderAlerts.dismiss": "Tutup",
+  "itemServe.queued": "Beratur",
+  "itemServe.cooking": "Memasak",
+  "itemServe.ready": "Sedia",
+  "itemServe.served": "Dihidang",
+  "itemServe.serveHint": "Hidang ▸",
+  "itemServe.tapToServe": "Ketik untuk tanda dihidang",
+  "itemServe.tapToUndo": "Ketik untuk batal dihidang",
+  "itemServe.servedCount": "{{served}}/{{total}} dihidang"
 }

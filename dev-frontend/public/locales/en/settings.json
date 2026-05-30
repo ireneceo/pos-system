@@ -142,16 +142,16 @@
   "printer.methodGuide.qzManualInstallTitle": "Manual install (advanced)",
   "printer.methodGuide.qzWinRHint": "Win+R → paste %APPDATA%\\qz → Enter",
   "printer.emergency.titleOff": "Emergency Routing Mode",
-  "printer.emergency.titleOn": "Emergency Mode — ALL ORDERS ROUTED TO CASHIER",
-  "printer.emergency.descOff": "One-click escape hatch for kitchen printer or network failures. Activating reroutes every order ticket to the cashier (bill) printer. Original station routing is preserved — turning OFF restores it instantly. No manual reconfiguration.",
-  "printer.emergency.descOn": "Every order ticket is currently printing from the cashier (bill) printer regardless of station mapping. Staff must hand-deliver tickets to each station. Click \"Turn OFF\" once your kitchen printers / network are back to normal.",
+  "printer.emergency.titleOn": "Emergency Mode — ALL ORDERS ROUTED TO THE RECEIPT (BILL) PRINTER",
+  "printer.emergency.descOff": "One-click escape hatch for kitchen printer or network failures. Activating reroutes every order ticket (POS and mobile) to {{printer}} — the receipt/bill printer on this workstation. Original station routing is preserved — turning OFF restores it instantly. No manual reconfiguration.",
+  "printer.emergency.descOn": "Every order ticket — POS and mobile — is printing from {{printer}} (the receipt/bill printer on this workstation) regardless of station mapping. Staff must hand-deliver tickets to each station. Click \"Turn OFF\" once your kitchen printers / network are back to normal.",
   "printer.emergency.turnOn": "Turn ON",
   "printer.emergency.turnOff": "Turn OFF",
   "printer.emergency.testCashier": "Test Cashier Printer",
   "printer.emergency.testItem": "Cashier Printer Test",
   "printer.emergency.enabledFor": "Active for {{minutes}} minute(s)",
   "printer.emergency.modalOnTitle": "Emergency Mode Enabled",
-  "printer.emergency.modalOnMessage": "All order tickets will print from the cashier (bill) printer. Staff must hand-deliver tickets to each station.\n\nIf internet is down, connect this POS to a mobile hotspot. Old PCs without Wi-Fi: use a USB Wi-Fi dongle (TP-Link Nano / Mercusys / ASUS USB Adapter). Hotspot is for internet only — keep kitchen printers OFF the hotspot.",
+  "printer.emergency.modalOnMessage": "All order tickets (POS and mobile) will print from {{printer}} — the receipt/bill printer on this workstation. Staff must hand-deliver tickets to each station.\n\nIf internet is down, connect this POS to a mobile hotspot. Old PCs without Wi-Fi: use a USB Wi-Fi dongle (TP-Link Nano / Mercusys / ASUS USB Adapter). Hotspot is for internet only — keep kitchen printers OFF the hotspot.",
   "printer.emergency.modalOffTitle": "Emergency Mode Disabled",
   "printer.emergency.modalOffMessage": "Original printer routing restored. Each station prints to its own printer again.",
   "printer.emergency.prereqTitle": "Recommended cashier printer setup (for emergency mode to actually help)",
@@ -970,5 +970,10 @@
       "title": "Customer Display — Membership Entry",
       "description": "Show a phone-number keypad on the customer-facing screen (Customer Display) so guests can enter their phone for points / membership."
     }
-  }
+  },
+  "printer.emergency.workstationReceiptPrinter": "this workstation’s receipt printer",
+  "printer.emergency.destinationHint": "Receipt (bill) printer on workstation “{{ws}}”",
+  "printer.emergency.routingEmergency2": "Every order ticket (all stations) prints here",
+  "operations.requirePinForDiscountLabel": "Require PIN approval for discounts",
+  "operations.requirePinForDiscountDesc": "When on, applying a discount requires a manager PIN."
 }

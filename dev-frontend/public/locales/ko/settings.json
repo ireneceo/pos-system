@@ -142,16 +142,16 @@
   "printer.methodGuide.qzManualInstallTitle": "수동 설치 (고급)",
   "printer.methodGuide.qzWinRHint": "Win+R → %APPDATA%\\qz 붙여넣기 → Enter",
   "printer.emergency.titleOff": "비상 라우팅 모드",
-  "printer.emergency.titleOn": "비상 모드 — 모든 주문 캐셔 프린터로 라우팅 중",
-  "printer.emergency.descOff": "주방 프린터 또는 네트워크 장애 시 한 클릭으로 작동. 활성화하면 모든 주문 티켓이 캐셔(빌) 프린터로 라우팅됩니다. 원본 스테이션 라우팅은 보존되며 — 끄면 즉시 복원됩니다. 수동 재설정 불필요.",
-  "printer.emergency.descOn": "현재 모든 주문 티켓이 스테이션 매핑과 관계없이 캐셔(빌) 프린터에서 인쇄됩니다. 직원이 티켓을 직접 각 스테이션으로 전달해야 합니다. 주방 프린터 / 네트워크가 정상화되면 '비상 모드 끄기' 클릭하세요.",
+  "printer.emergency.titleOn": "비상 모드 — 모든 주문 영수증(빌) 프린터로 라우팅 중",
+  "printer.emergency.descOff": "주방 프린터 또는 네트워크 장애 시 한 클릭 대응. 활성화하면 모든 주문 티켓(POS·모바일)이 {{printer}}(이 워크스테이션의 영수증/빌 프린터)로 라우팅됩니다. 원본 스테이션 라우팅은 보존되며 — 끄면 즉시 복원됩니다. 수동 재설정 불필요.",
+  "printer.emergency.descOn": "모든 주문 티켓(POS·모바일 포함)이 {{printer}}(이 워크스테이션의 영수증/빌 프린터)에서 인쇄되고 있습니다. 스테이션 매핑과 무관합니다. 직원이 각 스테이션으로 티켓을 직접 전달해야 합니다. 주방 프린터/네트워크가 정상으로 돌아오면 \"끄기\"를 누르세요.",
   "printer.emergency.turnOn": "비상 모드 켜기",
   "printer.emergency.turnOff": "비상 모드 끄기",
   "printer.emergency.testCashier": "캐셔 프린터 테스트",
   "printer.emergency.testItem": "캐셔 프린터 테스트",
   "printer.emergency.enabledFor": "{{minutes}}분 째 활성",
   "printer.emergency.modalOnTitle": "비상 모드 활성",
-  "printer.emergency.modalOnMessage": "모든 주문 티켓이 캐셔(빌) 프린터에서 인쇄됩니다. 직원이 직접 각 스테이션으로 티켓을 전달해야 합니다.\n\n인터넷이 끊겼다면 이 POS 를 휴대폰 핫스팟에 연결하세요. Wi-Fi 없는 구형 PC: USB Wi-Fi 동글 사용 (TP-Link Nano / Mercusys / ASUS USB Adapter). 핫스팟은 인터넷용 — 주방 프린터까지 핫스팟에 연결하지 마세요.",
+  "printer.emergency.modalOnMessage": "모든 주문 티켓(POS·모바일)이 {{printer}}(이 워크스테이션의 영수증/빌 프린터)에서 인쇄됩니다. 직원이 각 스테이션으로 티켓을 직접 전달해야 합니다.\n\n인터넷이 끊기면 이 POS를 모바일 핫스팟에 연결하세요. Wi-Fi 없는 구형 PC는 USB Wi-Fi 동글(TP-Link Nano / Mercusys / ASUS USB 어댑터)을 사용하세요. 핫스팟은 인터넷 전용 — 주방 프린터는 핫스팟에 연결하지 마세요.",
   "printer.emergency.modalOffTitle": "비상 모드 해제",
   "printer.emergency.modalOffMessage": "원래 프린터 라우팅이 복원되었습니다. 각 스테이션이 다시 자체 프린터로 인쇄됩니다.",
   "printer.emergency.prereqTitle": "비상 모드가 실제 효과를 보려면 — 권장 캐셔 프린터 셋업",
@@ -970,5 +970,10 @@
       "title": "고객 디스플레이 — 멤버십 입력",
       "description": "고객용 디스플레이 화면에 전화번호 키패드 노출 — 손님이 직접 전화번호를 입력하여 포인트/멤버십 적립."
     }
-  }
+  },
+  "printer.emergency.workstationReceiptPrinter": "이 워크스테이션 영수증 프린터",
+  "printer.emergency.destinationHint": "워크스테이션 “{{ws}}”의 영수증(빌) 프린터",
+  "printer.emergency.routingEmergency2": "모든 주문 티켓(모든 스테이션)이 여기로 인쇄됩니다",
+  "operations.requirePinForDiscountLabel": "할인 시 PIN 승인 필요",
+  "operations.requirePinForDiscountDesc": "켜면 할인 적용 시 관리자 PIN이 필요합니다."
 }

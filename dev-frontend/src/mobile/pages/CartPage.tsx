@@ -296,7 +296,15 @@ const CartPage: React.FC = () => {
                 {item.selectedOptions.join(', ')}
               </ItemOptions>
             )}
-            
+
+            {Array.isArray((item as any).setComponents) && (item as any).setComponents.length > 0 && (
+              <ItemOptions>
+                {(item as any).setComponents.map((c: any, ci: number) => (
+                  <div key={ci}>· {c?.name}{Array.isArray(c?.options) && c.options.length ? ` (${c.options.join(', ')})` : ''}</div>
+                ))}
+              </ItemOptions>
+            )}
+
             {item.specialInstructions && (
               <SpecialInstructions>
                 Note: {item.specialInstructions}

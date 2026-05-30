@@ -654,6 +654,194 @@ function defineReferralTests({ adminToken, customerToken, restaurantAdminToken }
 }
 
 // ============================================
+// 카테고리: 인쇄/주문 파이프라인 (매장 생명선 회귀 가드)
+// ============================================
+// 🔒 매장 인쇄는 영업 생명선 (CLAUDE.md 최우선). 하루 종일 싸운 두 계약을
+// 데모 매장(is_demo)에서 실제 API 로 검증하고 끝나면 정리한다. The Fire 등
+// 운영 매장 데이터는 절대 건드리지 않는다.
+//   계약 1 — 티켓 정확히 1번: /printed 찍으면 pending-print 에서 사라진다(재인쇄 0).
+//   계약 2 — +Round 는 새 품목만: 추가 시 kitchen_items=새 품목만, order_items(빌용)=전체.
+//   계약 3 — 금액 공식: 세금 없던 주문에 세금 안 붙고, 세금은 할인후 기준.
+function definePrintTests({ adminToken }) {
+  const adminAuth = { Authorization: `Bearer ${adminToken}` };
+  // 테스트 주문 고정 마커. 프로세스가 create~finally 사이에서 죽어도(파이프
+  // 조기종료/크래시) 다음 실행의 sweep 가 orphan 을 쓸어담아 데모 매장에
+  // 누적되지 않게 한다 (idempotent). 운영 주문엔 이 customer_name 이 없다.
+  const TEST_MARKER = '__HC_PRINT_TEST__';
+
+  async function demoRestaurantId() {
+    const { Restaurant } = require('../models');
+    // 운영 매장 오염 방지 — 반드시 데모 매장만.
+    const demo = await Restaurant.findOne({ where: { is_demo: true } });
+    return demo ? demo.id : null;
+  }
+
+  // 사전 정리: 이전 실행이 중단되어 남은 테스트 주문 orphan 을 먼저 쓸어담는다.
+  // 마커 기반이라 운영 데이터는 절대 건드리지 않는다. (멱등성 보장)
+  test('print', '테스트 주문 orphan sweep (멱등성 — 데모 매장 누적 방지)', async () => {
+    const Order = require('../models/Order');
+    await Order.destroy({ where: { customer_name: TEST_MARKER }, force: true });
+    const remaining = await Order.count({ where: { customer_name: TEST_MARKER } });
+    return remaining === 0;
+  });
+
+  // 계약 1: 인쇄 후 재인쇄 0 (printed_at 히스토리)
+  test('print', '인쇄 후 pending-print 에서 사라짐 (티켓 정확히 1번)', async () => {
+    const Order = require('../models/Order');
+    const rid = await demoRestaurantId();
+    if (!rid) return true; // 데모 매장 없으면 의미있는 검증 불가 → skip
+
+    const order = await Order.create({
+      restaurant_id: rid,
+      customer_name: TEST_MARKER,
+      total_amount: 30,
+      status: 'pending',
+      source: 'pos',
+      order_type: 'dine_in',
+      needs_print: true,
+      order_items: [
+        { id: 'hc-1', name: 'HealthCheck Item A', quantity: 1, price: 15 },
+        { id: 'hc-2', name: 'HealthCheck Item B', quantity: 1, price: 15 },
+      ],
+    });
+
+    let pass = false;
+    try {
+      // 인쇄 전: pending-print 에 잡히고 kitchen_items 2개
+      const before = await request('GET', `/orders/restaurant/${rid}/pending-print`, null, adminAuth);
+      const found = (before.body?.data || []).find((o) => o.id === order.id);
+      const hasTwo = found && Array.isArray(found.kitchen_items) && found.kitchen_items.length === 2;
+
+      // 인쇄 완료 도장
+      const printed = await request('PATCH', `/orders/${order.id}/printed`, {}, adminAuth);
+
+      // 인쇄 후: pending-print 에서 사라짐 (needs_print=false) → 재인쇄 0
+      const after = await request('GET', `/orders/restaurant/${rid}/pending-print`, null, adminAuth);
+      const gone = !(after.body?.data || []).some((o) => o.id === order.id);
+
+      pass = hasTwo && printed.status === 200 && gone;
+    } finally {
+      await Order.destroy({ where: { id: order.id }, force: true });
+    }
+    return pass;
+  });
+
+  // 계약 2: +Round 추가분만 인쇄, 빌은 전체 유지
+  test('print', '+Round 추가 시 kitchen_items=새 품목만, order_items=전체', async () => {
+    const Order = require('../models/Order');
+    const rid = await demoRestaurantId();
+    if (!rid) return true;
+
+    // 1라운드 2품목 — 이미 인쇄된 상태(printed_at 도장)로 생성
+    const stamp = new Date().toISOString();
+    const order = await Order.create({
+      restaurant_id: rid,
+      customer_name: TEST_MARKER,
+      total_amount: 45,
+      status: 'preparing',
+      source: 'pos',
+      order_type: 'dine_in',
+      needs_print: false,
+      order_items: [
+        { id: 'hc-r1a', name: 'Round1 A', quantity: 1, price: 15, printed_at: stamp },
+        { id: 'hc-r1b', name: 'Round1 B', quantity: 1, price: 15, printed_at: stamp },
+      ],
+    });
+
+    let pass = false;
+    try {
+      // +Round: 새 품목 1개 추가 (printed_at 없음) + needs_print 재발사
+      const items = [...order.order_items, { id: 'hc-r2a', name: 'Round2 NEW', quantity: 1, price: 15 }];
+      await order.update({ order_items: items, needs_print: true, total_amount: 45 });
+
+      const res = await request('GET', `/orders/restaurant/${rid}/pending-print`, null, adminAuth);
+      const found = (res.body?.data || []).find((o) => o.id === order.id);
+
+      const kitchenOnlyNew = found
+        && Array.isArray(found.kitchen_items)
+        && found.kitchen_items.length === 1
+        && found.kitchen_items[0].name === 'Round2 NEW';
+      const billHasAll = found && Array.isArray(found.order_items) && found.order_items.length === 3;
+
+      pass = !!(kitchenOnlyNew && billHasAll);
+    } finally {
+      await Order.destroy({ where: { id: order.id }, force: true });
+    }
+    return pass;
+  });
+
+  // 계약 1-b: 동시 인쇄 돌진 → 정확히 1대만 claim (티켓 3장 방지의 진짜 메커니즘)
+  // POS 직접 / KDS 소켓 / poller 2곳이 같은 주문을 동시에 인쇄하려 해도
+  // 조건부 UPDATE(needs_print true→false)로 첫 1대만 claimed:true 를 받는다.
+  test('print', '동시 print-claim N개 → 정확히 1개만 claimed (티켓 중복 방지)', async () => {
+    const Order = require('../models/Order');
+    const rid = await demoRestaurantId();
+    if (!rid) return true;
+
+    const order = await Order.create({
+      restaurant_id: rid,
+      customer_name: TEST_MARKER,
+      total_amount: 15,
+      status: 'pending',
+      source: 'pos',
+      order_type: 'dine_in',
+      needs_print: true,
+      order_items: [{ id: 'hc-claim', name: 'Claim Race Item', quantity: 1, price: 15 }],
+    });
+
+    let pass = false;
+    try {
+      // 5대가 동시에 claim 시도
+      const claims = await Promise.all(
+        Array.from({ length: 5 }, () => request('PATCH', `/orders/${order.id}/print-claim`, {}, adminAuth))
+      );
+      const wonCount = claims.filter((r) => r.status === 200 && r.body?.claimed === true).length;
+      pass = wonCount === 1; // 정확히 1대만 인쇄, 나머지 4대 skip
+    } finally {
+      await Order.destroy({ where: { id: order.id }, force: true });
+    }
+    return pass;
+  });
+
+  // 계약 3: 금액 공식 핵심 불변식 (배포 게이트에 포함)
+  test('print', '세금 없던 주문은 추가해도 세금 0 (computeOrderTotals)', async () => {
+    const { computeOrderTotals } = require('../utils/orderTotals');
+    const r = computeOrderTotals({ newSubtotal: 150, oldSubtotal: 100, taxRate: 6, serviceChargeRate: 10 });
+    return r.tax === 0 && r.serviceCharge === 0 && r.total === 150;
+  });
+
+  test('print', '세금은 할인 후 금액 기준 (computeOrderTotals)', async () => {
+    const { computeOrderTotals } = require('../utils/orderTotals');
+    // 소계 100, 고정할인 20 → afterDiscount 80, 세금 6% = 4.8
+    const r = computeOrderTotals({ newSubtotal: 100, oldSubtotal: 100, discount: 20, oldTax: 6, taxRate: 6 });
+    return r.afterDiscount === 80 && r.tax === 4.8 && r.total === 84.8;
+  });
+
+  // 보호 엔드포인트 — 익명 차단 가드 (인쇄 큐 노출 방지)
+  test('print', '익명 pending-print → 401', async () => {
+    return (await request('GET', '/orders/restaurant/1/pending-print')).status === 401;
+  });
+
+  // 🔒 보호 파일 무결성 — 배포 의무 게이트가 자동으로 생명선 코드 변경을 감지.
+  // 인쇄 무관 작업이 실수로 인쇄/주문 코드를 건드렸으면 여기서 빨간불.
+  test('print', '🔒 인쇄/주문 보호 파일 무결성 (변경 0건)', async () => {
+    const { compareManifest } = require('./check-print-guard');
+    const r = compareManifest();
+    if (!r.hasBaseline) {
+      throw new Error('기준 미등록 — node scripts/check-print-guard.js --bless 먼저 실행');
+    }
+    if (r.ok) return true;
+    const lines = [
+      ...r.changed.map((f) => `${f.tier === 'dedicated' ? '변경·전용' : '변경·공유'}:${f.rel}`),
+      ...r.added.map((f) => `신규:${f.rel}`),
+      ...r.removed.map((f) => `삭제:${f.rel}`),
+      ...r.missing.map((f) => `누락:${f.rel}`),
+    ];
+    throw new Error(`보호 파일 변경 ${lines.length}건 → ${lines.join(', ')} (의도한 인쇄 변경이면 --bless)`);
+  });
+}
+
+// ============================================
 // 실행기
 // ============================================
 async function runTests(allTests, category) {
@@ -736,6 +924,7 @@ async function runTests(allTests, category) {
   defineReservationTests(ctx);
   definePaymentTests();
   defineReferralTests(ctx);
+  definePrintTests(ctx);
   defineDbTests();
 
   const allPass = await runTests(tests, opts.category);

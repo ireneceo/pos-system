@@ -174,6 +174,26 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ success: false, error: { message: 'Option group not found', code: 'NOT_FOUND' } });
     }
 
+    // 브랜드 잠금 가드 (lock 갭 수정): 이 옵션그룹이 브랜드메뉴 미러이고, 이를 사용하는 상품 중
+    // options 잠금이 걸린 게 있으면 레스토랑의 옵션 수정을 거부 → PUT /optionGroups 로 브랜드 잠금 우회 방지.
+    if (optionGroup.brand_menu_option_group_id) {
+      const { Op } = require('sequelize');
+      const { Product } = require('../models');
+      const consumers = await Product.findAll({
+        where: { restaurant_id: optionGroup.restaurant_id, brand_menu_id: { [Op.ne]: null } },
+        attributes: ['id', 'optionGroups', 'brand_menu_locks_snapshot']
+      });
+      const locked = consumers.some(p => {
+        let ogs = p.optionGroups; try { if (typeof ogs === 'string') ogs = JSON.parse(ogs); if (typeof ogs === 'string') ogs = JSON.parse(ogs); } catch { ogs = []; }
+        if (!Array.isArray(ogs) || !ogs.map(String).includes(String(optionGroup.id))) return false;
+        let snap = p.brand_menu_locks_snapshot; try { if (typeof snap === 'string') snap = JSON.parse(snap); } catch { snap = {}; }
+        return snap && snap.options === true;
+      });
+      if (locked) {
+        return res.status(403).json({ success: false, message: 'These options are locked by the brand and cannot be edited at the restaurant level.', code: 'OPTION_LOCKED_BY_BRAND' });
+      }
+    }
+
     // Update option group
     await optionGroup.update({
       name: name || optionGroup.name,

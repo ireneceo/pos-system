@@ -27,9 +27,9 @@
   "floorPlanEditor.swapHint": "Tukar dengan {{label}}",
   "floorPlanEditor.availableHint": "Tersedia — klik untuk tugaskan",
   "floorPlanEditor.canvasSize": "Saiz Kanvas",
-  "floorPlanEditor.canvasSizeHint": "Lalai 1200×800. Setiap sisi dalam julat 600–5000. Tingkatkan untuk restoran besar dengan banyak zon.",
+  "floorPlanEditor.canvasSizeHint": "Lalai 1200×800. Setiap sisi dalam julat 300–5000. Tingkatkan untuk restoran besar dengan banyak zon.",
   "floorPlanEditor.width": "Lebar",
-  "floorPlanEditor.height": "Tinggi",
+  "floorPlanEditor.height": "Ketinggian",
   "floorPlanEditor.multiSelected": "{{count}} dipilih",
   "floorPlanPage.mode": "Mod",
   "floorPlanPage.dineIn": "Makan Di Sini",
@@ -70,8 +70,6 @@
   "floorPlanPage.change": "Baki",
   "floorPlanEditor.size": "Saiz",
   "floorPlanEditor.seats": "Tempat Duduk",
-  "floorPlanEditor.width": "Lebar",
-  "floorPlanEditor.height": "Ketinggian",
   "floorPlanEditor.canvas": "Kanvas",
   "floorPlanEditor.gridSize": "Saiz Grid",
   "floorPlanPage.floorPlan": "Pelan Lantai",
@@ -124,5 +122,6 @@
   "tableDetailPanel.itemStatus.unmarkServed": "Batal dihidang",
   "tableDetailPanel.itemStatus.waitingKitchen": "Menunggu dapur",
   "tableDetailPanel.itemStatus.servedCount": "{{served}}/{{total}} dihidang",
-  "tableNode.staff": "Kakitangan"
+  "tableNode.staff": "Kakitangan",
+  "tableDetailPanel.tableActions": "Tindakan Meja"
 }

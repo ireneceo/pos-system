@@ -27,7 +27,7 @@
   "floorPlanEditor.swapHint": "与 {{label}} 交换",
   "floorPlanEditor.availableHint": "可用 — 点击分配",
   "floorPlanEditor.canvasSize": "画布尺寸",
-  "floorPlanEditor.canvasSizeHint": "默认 1200×800。每边范围 600–5000。多区域大型餐厅请加大尺寸。",
+  "floorPlanEditor.canvasSizeHint": "默认 1200×800。每边范围 300–5000。多区域大型餐厅请加大尺寸。",
   "floorPlanEditor.width": "宽度",
   "floorPlanEditor.height": "高度",
   "floorPlanEditor.multiSelected": "已选择 {{count}} 个",
@@ -70,8 +70,6 @@
   "floorPlanPage.change": "找零",
   "floorPlanEditor.size": "大小",
   "floorPlanEditor.seats": "座位",
-  "floorPlanEditor.width": "宽度",
-  "floorPlanEditor.height": "高度",
   "floorPlanEditor.canvas": "画布",
   "floorPlanEditor.gridSize": "网格大小",
   "floorPlanPage.floorPlan": "平面图",
@@ -124,5 +122,6 @@
   "tableDetailPanel.itemStatus.unmarkServed": "取消上菜",
   "tableDetailPanel.itemStatus.waitingKitchen": "等待厨房",
   "tableDetailPanel.itemStatus.servedCount": "已上菜 {{served}}/{{total}}",
-  "tableNode.staff": "员工"
+  "tableNode.staff": "员工",
+  "tableDetailPanel.tableActions": "桌台操作"
 }

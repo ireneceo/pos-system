@@ -24,6 +24,7 @@ export interface MenuItem {
   preparationTime?: number;
   is_set_menu?: boolean;
   set_items?: SetMenuItem[];
+  set_groups?: any[] | null;  // 세트 v2 슬롯 (SET_MENU_REDESIGN)
   set_display_order?: number;
   recipe_id?: number | null;
   kitchen_station_id?: number | null;
@@ -262,6 +263,7 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
             preparationTime: item.preparationTime || 15,
             is_set_menu: item.is_set_menu || false,
             set_items: item.set_items || undefined,
+            set_groups: item.set_groups || undefined,
             set_display_order: item.set_display_order || 0,
             recipe_id: item.recipe_id || null,
             kitchen_station_id: item.kitchen_station_id || null,
@@ -434,6 +436,7 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
             preparationTime: item.preparationTime || 15,
             is_set_menu: item.is_set_menu || false,
             set_items: item.set_items || undefined,
+            set_groups: item.set_groups || undefined,
             set_display_order: item.set_display_order || 0,
             recipe_id: item.recipe_id || null,
             takeaway_charge: item.takeaway_charge != null ? Number(item.takeaway_charge) : 0
@@ -534,6 +537,7 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
         optionGroups: updatedItem.optionGroups,
         is_set_menu: updatedItem.is_set_menu,
         set_items: updatedItem.set_items,
+        set_groups: updatedItem.set_groups,
         set_display_order: updatedItem.set_display_order,
         recipe_id: updatedItem.recipe_id || null,
         takeaway_charge: updatedItem.takeaway_charge ?? 0,
@@ -609,6 +613,7 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
         optionGroups: newItem.optionGroups,
         is_set_menu: newItem.is_set_menu,
         set_items: newItem.set_items,
+        set_groups: newItem.set_groups,
         set_display_order: newItem.set_display_order,
         recipe_id: newItem.recipe_id || null,
         takeaway_charge: newItem.takeaway_charge ?? 0,

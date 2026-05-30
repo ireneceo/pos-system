@@ -47,7 +47,12 @@ export function useAutoPrintPoller(opts: {
 
         const billPrintMod = await import('../utils/billPrint');
         const printSettings = billPrintMod.getPrinterSettings();
-        if (printSettings.emergencyMode) return;
+        // 2026-05-29 (Irene 승인): Emergency 모드에서도 poller 가 계속 돈다.
+        // 이전엔 여기서 bail → 모바일/QR 주문(poller 가 유일한 인쇄 주체)이 비상시
+        // 무인쇄였다. printKitchenTicketViaRawBT 가 emergencyMode 면 최상단에서 죽은
+        // station 프린터를 건드리기 전에 cashier(bill) 프린터로 redirect 하므로, bail
+        // 없이 정상 경로를 타면 모바일 주문도 cashier 로 안전하게 나간다.
+        // (POS 직접경로와의 중복은 printed_at 히스토리 + __autoPrintInflight 로 방지)
         const activeBill = billPrintMod.getActiveBillPrinter();
         const path = locationRef.current || window.location.pathname;
         const isOnKDS = path.includes('/kitchen') || path.includes('/kds');

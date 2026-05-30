@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import MobileLayout from '../components/common/MobileLayout';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { formatCurrency } from '../../utils/currency';
+import { getStoreOpenState } from '../utils/storeHours';
 
 interface MenuCategory {
   id: string;
@@ -99,6 +100,12 @@ const StoreStatus = styled.span<{ isOpen: boolean }>`
   }
 `;
 
+// 운영시간 텍스트 — 뱃지 옆에 "9:00 AM – 10:00 PM" / 브레이크 표시 (#7)
+const StoreHoursText = styled.span`
+  font-size: 12px;
+  color: #9CA3AF;
+`;
+
 // Cashless badge — 매장이 현금 결제 받지 않을 때 표시.
 // 30년차 UX: 절제된 outlined pill, primary purple subtle. 이모지 X, 텍스트만.
 const CashlessBadge = styled.span`
@@ -123,29 +130,7 @@ const StoreRight = styled.div`
   flex-shrink: 0;
 `;
 
-// 캐시리스 매장 — 손님이 메뉴 진입 즉시 명확히 보도록 헤더 아래 강조 배너.
-// 상단의 작은 pill 배지와 별개로, QR 찍고 들어온 손님이 결제 전에 인지하게 한다.
-const CashlessNotice = styled.div`
-  background: #F0EFFF;
-  border: 1px solid #DDD9FF;
-  border-left: 4px solid #635BFF;
-  border-radius: 8px;
-  padding: 12px 16px;
-  margin: 0 0 16px 0;
-  color: #4B45C6;
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.45;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-`;
-
-const CashlessNoticeSub = styled.span`
-  font-size: 12px;
-  font-weight: 500;
-  color: #635BFF;
-`;
+// 캐시리스 안내 배너는 결제 화면(PaymentPage)으로 이동(#9). 메뉴에는 상단 작은 Cashless 뱃지만 둔다.
 
 // Order-type chip — shows current selection, tap to change.
 // Subtle but discoverable (Stripe/Toast-style inline chip). Always visible so the
@@ -507,6 +492,8 @@ const MenuPage: React.FC = () => {
   const [featuredItems, setFeaturedItems] = useState<MenuItem[]>([]);
   const [popularItems, setPopularItems] = useState<(MenuItem & { orderCount?: number })[]>([]);
   const [showFeaturedTab, setShowFeaturedTab] = useState(false);
+  // 영업중 뱃지(#7)를 시간 흐름에 따라 갱신 — 1분마다 재평가 (open→break→closed 자동 전환)
+  const [nowTick, setNowTick] = useState(0);
 
   const loadTriggerRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -539,7 +526,11 @@ const MenuPage: React.FC = () => {
               description: result.data.description || '',
               logo: result.data.logo_url || '',
               isOpen: result.data.status === 'active',
-              openingHours: result.data.opening_hours || {}
+              openingHours: result.data.opening_hours || {},
+              openingTime: result.data.operation_settings?.openingTime,
+              closingTime: result.data.operation_settings?.closingTime,
+              timeZone: result.data.operation_settings?.timeZone,
+              breakTimes: result.data.operation_settings?.breakTimes || []
             });
           }
         }
@@ -646,6 +637,11 @@ const MenuPage: React.FC = () => {
               id: r.data.id.toString(), name: r.data.name, branchName: r.data.branch_name || null,
               slug: r.data.slug, description: r.data.description || '', logo: r.data.logo_url || '',
               isOpen: r.data.status === 'active', openingHours: r.data.opening_hours || {},
+              // 영업중 뱃지(#7)용 — operation_settings 에서 운영시간/브레이크/타임존을 그대로 싣는다.
+              openingTime: r.data.operation_settings?.openingTime,
+              closingTime: r.data.operation_settings?.closingTime,
+              timeZone: r.data.operation_settings?.timeZone,
+              breakTimes: r.data.operation_settings?.breakTimes || [],
               cashless
             });
           }
@@ -668,7 +664,11 @@ const MenuPage: React.FC = () => {
               const urlCat = new URLSearchParams(window.location.search).get('cat') || '';
               const validCatIds = new Set(cats.map((c: any) => c.id.toString()));
               const isUrlCatValid = urlCat && (validCatIds.has(urlCat) || urlCat === '__featured__');
-              const useCat = isUrlCatValid ? urlCat : cats[0].id.toString();
+              // 인기/추천 탭이 켜져 있으면(설정상) 그 탭을 기본 선택. URL ?cat= 가 있으면 그게 우선.
+              // 실제 아이템이 0개면 아래 showFeaturedTab 효과가 첫 카테고리로 폴백시킨다.
+              const ms = r.data.mobile_settings;
+              const featuredDefault = !!(ms && (ms.show_featured || ms.show_popular));
+              const useCat = isUrlCatValid ? urlCat : (featuredDefault ? '__featured__' : cats[0].id.toString());
               setSelectedCategory(useCat);
               // backend fetch: normal cat 이면 그 cat, featured 면 첫 normal cat 만 prefetch (cache용)
               firstCatId = (useCat === '__featured__') ? cats[0].id.toString() : useCat;
@@ -764,7 +764,17 @@ const MenuPage: React.FC = () => {
     if (shouldShow && !selectedCategory && !isSearchMode) {
       setSelectedCategory('__featured__');
     }
-  }, [mobileSettings, featuredItems, popularItems]); // eslint-disable-line react-hooks/exhaustive-deps
+    // 폴백: 기본을 __featured__ 로 잡았는데 실제 featured/popular 아이템이 0개면
+    // (설정만 켜져있고 데이터 없음) 첫 카테고리로 되돌린다 → 빈 탭 방지.
+    if (!shouldShow && selectedCategory === '__featured__' && !isSearchMode && categories.length > 0) {
+      const firstId = categories[0].id.toString();
+      setSelectedCategory(firstId);
+      // init 이 featured 기본일 땐 menuItems 를 안 채웠으므로(featured 별도 렌더),
+      // 폴백 시 캐시(init 이 첫 카테고리를 prefetch 해둠)에서 리스트를 채워준다 → 빈 리스트 방지.
+      const cached = categoryCacheRef.current.get(firstId);
+      if (cached) setMenuItems(cached);
+    }
+  }, [mobileSettings, featuredItems, popularItems, categories]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle category change — 탭 아래 리스트만 교체, 페이지 리로드 없음
   const handleCategoryChange = useCallback(async (categoryId: string) => {
@@ -942,12 +952,31 @@ const MenuPage: React.FC = () => {
   }, [pagination?.hasMore, isLoadingMore, loadMoreItems]);
 
   const handleItemClick = useCallback((item: MenuItem) => {
+    // 상세 진입 전 현재 탭을 URL(?cat=)에 박아둔다 → 상세에서 뒤로가기 하면
+    // 메뉴가 그 탭 그대로 복원된다 (#5/#6 통합). updateCatInUrl 은 replaceState.
+    updateCatInUrl(selectedCategory);
     navigate(`/mobile/${slug}/item/${item.id}`);
-  }, [navigate, slug]);
+  }, [navigate, slug, selectedCategory, updateCatInUrl]);
 
   const handleCartClick = useCallback(() => {
     navigate(`/mobile/${slug}/cart`);
   }, [navigate, slug]);
+
+  // 영업중 뱃지(#7) 1분 주기 재평가 — 운영시간 경계/브레이크 진입 시 자동 갱신
+  useEffect(() => {
+    const id = setInterval(() => setNowTick(t => t + 1), 60000);
+    return () => clearInterval(id);
+  }, []);
+
+  // 매장 타임존 운영시간 기준 Open / On Break / Closed (nowTick 으로 분 단위 갱신)
+  const storeOpenState = currentStore ? getStoreOpenState({
+    openingTime: currentStore.openingTime,
+    closingTime: currentStore.closingTime,
+    timeZone: currentStore.timeZone,
+    breakTimes: currentStore.breakTimes
+  }) : null;
+  // nowTick 을 참조해 1분마다 재계산되도록 (린트 unused 방지 겸)
+  void nowTick;
 
   // Render a single menu item card
   const renderMenuItemCard = useCallback((item: MenuItem) => (
@@ -995,9 +1024,21 @@ const MenuPage: React.FC = () => {
             <StoreName>{currentStore.name}</StoreName>
             {currentStore.branchName && <StoreBranch>{currentStore.branchName}</StoreBranch>}
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-              <StoreStatus isOpen={currentStore.isOpen}>
-                {currentStore.isOpen ? 'Open Now' : 'Closed'}
+              <StoreStatus isOpen={storeOpenState?.status === 'open'}>
+                {storeOpenState?.status === 'open'
+                  ? t('common:storeBadge.openNow', { defaultValue: 'Open Now' })
+                  : storeOpenState?.status === 'break'
+                    ? t('common:storeBadge.onBreak', { defaultValue: 'On Break' })
+                    : t('common:storeBadge.closed', { defaultValue: 'Closed' })}
               </StoreStatus>
+              {storeOpenState?.hoursText && (
+                <StoreHoursText>
+                  {storeOpenState.hoursText}
+                  {storeOpenState.breakText
+                    ? ` · ${t('common:storeBadge.break', { defaultValue: 'Break' })} ${storeOpenState.breakText}`
+                    : ''}
+                </StoreHoursText>
+              )}
               {currentStore.cashless && (
                 <CashlessBadge title={t('common:storeBadge.cashlessHint', { defaultValue: 'This store does not accept cash payments' })}>
                   {t('common:storeBadge.cashless', { defaultValue: 'Cashless' })}
@@ -1025,14 +1066,7 @@ const MenuPage: React.FC = () => {
         </StoreHeader>
       )}
 
-      {currentStore?.cashless && (
-        <CashlessNotice role="note">
-          {t('common:storeBadge.cashlessNoticeTitle', { defaultValue: 'Cashless store — cash not accepted' })}
-          <CashlessNoticeSub>
-            {t('common:storeBadge.cashlessNoticeSub', { defaultValue: 'Please pay by card or e-wallet only.' })}
-          </CashlessNoticeSub>
-        </CashlessNotice>
-      )}
+      {/* 캐시리스 안내 배너는 결제 화면(PaymentPage)으로 이동(#9). 메뉴에는 상단 작은 Cashless 뱃지만 유지. */}
 
       <SearchSection>
         <SearchInputContainer>

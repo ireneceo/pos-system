@@ -5,6 +5,34 @@ const Restaurant = require('../models/Restaurant');
 const Category = require('../models/Category');
 const { Recipe, RecipeIngredient, Ingredient } = require('../models');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
+const { validateSetGroups, resolveSetGroups, computeSetAvailability } = require('../utils/setMenu');
+const { OptionGroup, Option } = require('../models');
+
+// 세트 set_groups 검증 공용 — is_set_menu 상품 저장 시 호출. set_groups 우선, 없으면 레거시 set_items.
+// 반환 null=통과, 또는 에러 메시지 문자열.
+async function validateSetPayload(body, restaurantId, existingProduct) {
+  const sg = body.set_groups !== undefined ? body.set_groups
+    : (existingProduct ? existingProduct.set_groups : undefined);
+  if (Array.isArray(sg) && sg.length > 0) {
+    const ids = [...new Set(sg.flatMap(g => (g.items || []).map(it => Number(it.product_id))).filter(Number.isInteger))];
+    const refs = ids.length ? await Product.findAll({ where: { id: ids, restaurant_id: restaurantId } }) : [];
+    const validIds = new Set(refs.filter(p => !p.is_set_menu).map(p => p.id));
+    const { valid, errors } = validateSetGroups(sg, { validProductIds: validIds });
+    if (!valid) return errors[0] || '세트 구성이 올바르지 않습니다.';
+    return null;
+  }
+  // 레거시 set_items 경로
+  const si = body.set_items !== undefined ? body.set_items : (existingProduct ? existingProduct.set_items : undefined);
+  if (!si || !Array.isArray(si) || si.length === 0) return 'Set menu must contain at least one item';
+  for (const item of si) {
+    if (!item.menuItemId || !item.name || !item.quantity || item.quantity < 1) return 'Each set item must have menuItemId, name, and quantity (minimum 1)';
+  }
+  const menuItemIds = si.map(item => item.menuItemId);
+  const referencedProducts = await Product.findAll({ where: { id: menuItemIds, restaurant_id: restaurantId } });
+  if (referencedProducts.some(prod => prod.is_set_menu === true)) return 'Set menu cannot contain other set menus';
+  if (referencedProducts.length !== menuItemIds.length) return 'One or more referenced menu items do not exist';
+  return null;
+}
 
 // Local guard: enforce tenant isolation for `/product/:id` routes where
 // `:id` is the **product** id. `checkRestaurantAccess` falls back to
@@ -179,6 +207,7 @@ router.get('/', checkRestaurantAccess, async (req, res) => {
         // 세트 메뉴 관련 필드
         is_set_menu: prod.is_set_menu || false,
         set_items: prod.set_items || null,
+        set_groups: prod.set_groups || null,  // 세트 v2 (구성품/상속옵션 resolve 는 프론트 utils/setMenu)
         set_display_order: prod.set_display_order || 0,
         // 레시피 연결
         recipe_id: prod.recipe_id || null,
@@ -297,7 +326,16 @@ router.get('/product/:id', checkProductTenant, async (req, res) => {
     if (!product) {
       return res.status(404).json({ success: false, error: { message: 'Product not found', code: 'NOT_FOUND' } });
     }
-    res.json({ success: true, data: product });
+    // 세트면 구성품(name/price/soldOut/상속옵션) + 품절계산 resolve 첨부 (POS 주문 UI 용)
+    let data = product.toJSON();
+    if (product.is_set_menu) {
+      try {
+        const { buildSetResolved } = require('../utils/setMenu');
+        const resolved = await buildSetResolved(product, product.restaurant_id);
+        if (resolved) data = { ...data, ...resolved };
+      } catch (e) { console.error('set resolve(POS) 실패:', e.message); }
+    }
+    res.json({ success: true, data });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -335,38 +373,10 @@ router.post('/product', checkRestaurantAccess, async (req, res) => {
       }
     }
 
-    // Set menu validation
+    // Set menu validation (set_groups v2 우선, 레거시 set_items 폴백)
     if (req.body.is_set_menu) {
-      // Check if set_items exists and has at least one item
-      if (!req.body.set_items || !Array.isArray(req.body.set_items) || req.body.set_items.length === 0) {
-        return res.status(400).json({ success: false, error: { message: 'Set menu must contain at least one item', code: 'VALIDATION_ERROR' } });
-      }
-
-      // Validate each set item structure
-      for (const item of req.body.set_items) {
-        if (!item.menuItemId || !item.name || !item.quantity || item.quantity < 1) {
-          return res.status(400).json({ success: false, error: { message: 'Each set item must have menuItemId, name, and quantity (minimum 1)', code: 'VALIDATION_ERROR' } });
-        }
-      }
-
-      // Check for circular references (prevent sets containing other sets)
-      const menuItemIds = req.body.set_items.map(item => item.menuItemId);
-      const referencedProducts = await Product.findAll({
-        where: {
-          id: menuItemIds,
-          restaurant_id: restaurantId
-        }
-      });
-
-      const hasSetMenu = referencedProducts.some(prod => prod.is_set_menu === true);
-      if (hasSetMenu) {
-        return res.status(400).json({ success: false, error: { message: 'Set menu cannot contain other set menus', code: 'VALIDATION_ERROR' } });
-      }
-
-      // Verify all referenced menu items exist
-      if (referencedProducts.length !== menuItemIds.length) {
-        return res.status(400).json({ success: false, error: { message: 'One or more referenced menu items do not exist', code: 'VALIDATION_ERROR' } });
-      }
+      const setErr = await validateSetPayload(req.body, restaurantId, null);
+      if (setErr) return res.status(400).json({ success: false, message: setErr, error: { message: setErr, code: 'VALIDATION_ERROR' } });
     }
 
     // Automatically set restaurant_id from authenticated user
@@ -516,40 +526,8 @@ router.put('/product/:id', checkProductTenant, async (req, res) => {
     const willBeSetMenu = req.body.is_set_menu !== undefined ? req.body.is_set_menu : product.is_set_menu;
 
     if (willBeSetMenu) {
-      const setItems = req.body.set_items !== undefined ? req.body.set_items : product.set_items;
-
-      // Check if set_items exists and has at least one item
-      if (!setItems || !Array.isArray(setItems) || setItems.length === 0) {
-        return res.status(400).json({ success: false, error: { message: 'Set menu must contain at least one item', code: 'VALIDATION_ERROR' } });
-      }
-
-      // Validate each set item structure
-      for (const item of setItems) {
-        if (!item.menuItemId || !item.name || !item.quantity || item.quantity < 1) {
-          return res.status(400).json({ success: false, error: { message: 'Each set item must have menuItemId, name, and quantity (minimum 1)', code: 'VALIDATION_ERROR' } });
-        }
-      }
-
-      // Check for circular references (prevent sets containing other sets)
-      const menuItemIds = setItems.map(item => item.menuItemId);
-
-      // Exclude self from circular reference check
-      const referencedProducts = await Product.findAll({
-        where: {
-          id: menuItemIds,
-          restaurant_id: restaurantId
-        }
-      });
-
-      const hasSetMenu = referencedProducts.some(prod => prod.is_set_menu === true);
-      if (hasSetMenu) {
-        return res.status(400).json({ success: false, error: { message: 'Set menu cannot contain other set menus', code: 'VALIDATION_ERROR' } });
-      }
-
-      // Verify all referenced menu items exist
-      if (referencedProducts.length !== menuItemIds.length) {
-        return res.status(400).json({ success: false, error: { message: 'One or more referenced menu items do not exist', code: 'VALIDATION_ERROR' } });
-      }
+      const setErr = await validateSetPayload(req.body, restaurantId, product);
+      if (setErr) return res.status(400).json({ success: false, message: setErr, error: { message: setErr, code: 'VALIDATION_ERROR' } });
     }
 
     // Prevent changing restaurant_id
@@ -792,6 +770,40 @@ router.put('/product/:id/toggle-active', checkProductTenant, async (req, res) =>
         is_active: newActiveState
       },
       message: newActiveState ? 'Menu item activated' : 'Menu item deactivated'
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 품절(sold-out) 토글 (#4) — toggle-active 미러. Staff 허용(checkProductTenant). is_active 와 별개.
+// 즉시 회색+SOLD OUT + 전 POS/모바일 반영(소켓 브로드캐스트).
+router.put('/product/:id/toggle-soldout', checkProductTenant, async (req, res) => {
+  try {
+    const restaurantId = req.query.restaurantId || req.user.restaurant_id;
+    const product = await Product.findOne({
+      where: { id: req.params.id, ...(restaurantId && { restaurant_id: restaurantId }) }
+    });
+    if (!product) {
+      return res.status(404).json({ success: false, error: { message: 'Product not found', code: 'NOT_FOUND' } });
+    }
+    // body 로 명시 가능, 없으면 토글
+    const newSoldOut = typeof req.body?.soldOut === 'boolean' ? req.body.soldOut : !product.soldOut;
+    await product.update({ soldOut: newSoldOut });
+
+    // 소켓 브로드캐스트 — POS/모바일 메뉴가 실시간 회색 처리
+    try {
+      const io = req.app.get('io');
+      if (io) {
+        io.of('/orders').to(`restaurant_${product.restaurant_id}`)
+          .emit('product-soldout', { id: product.id, soldOut: newSoldOut });
+      }
+    } catch (e) { /* non-fatal */ }
+
+    res.json({
+      success: true,
+      data: { id: product.id, soldOut: newSoldOut },
+      message: newSoldOut ? 'Marked sold out' : 'Back in stock'
     });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });

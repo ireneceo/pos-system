@@ -80,7 +80,7 @@ async function checkAndCreateAlert(restaurantId, ingredientId, currentStock, min
     where: {
       restaurant_id: restaurantId,
       ingredient_id: ingredientId,
-      resolved: false
+      is_resolved: false   // 모델 필드명은 is_resolved (resolved 는 존재하지 않는 컬럼 → 차감 전체 실패하던 버그)
     },
     transaction
   });
@@ -109,7 +109,7 @@ async function checkAndCreateAlert(restaurantId, ingredientId, currentStock, min
       }, { transaction });
     }
   } else if (existingAlert) {
-    await existingAlert.update({ resolved: true }, { transaction });
+    await existingAlert.update({ is_resolved: true, resolved_at: new Date() }, { transaction });
   }
 }
 
@@ -164,92 +164,102 @@ async function deductInventoryForOrder(restaurantId, orderItems, orderId) {
 
     // Process each order item
     for (const item of orderItems) {
-      const productId = item.product_id || item.id;
       const orderQty = item.quantity || 1;
 
-      // Get recipe ingredients for this product
-      const recipeIngredients = await getProductRecipeIngredients(productId);
+      // 세트면 구성품별 레시피 차감(SET_MENU_REDESIGN §3 — 세트=단일차감 → 구성품 차감).
+      // 아니면 상품 자체. 구성품 수량 = 구성품 qty × 주문 수량.
+      const targets = (Array.isArray(item.set_components) && item.set_components.length > 0)
+        ? item.set_components.map(c => ({ pid: c.product_id || c.id, qty: (parseInt(c.qty) || 1) * orderQty, name: c.name || item.name }))
+        : [{ pid: item.product_id || item.id, qty: orderQty, name: item.name }];
 
-      if (recipeIngredients.length === 0) {
-        // No recipe linked - skip deduction
-        results.warnings.push({
-          product_id: productId,
-          product_name: item.name,
-          message: 'No recipe linked - inventory not deducted'
-        });
-        continue;
-      }
+      for (const tgt of targets) {
+        const productId = tgt.pid;
+        const tgtQty = tgt.qty;
 
-      // Deduct each ingredient
-      for (const ri of recipeIngredients) {
-        const deductQty = ri.quantity * orderQty;
-        const ingredient = ri.ingredient;
+        // Get recipe ingredients for this product (component or standalone)
+        const recipeIngredients = await getProductRecipeIngredients(productId);
 
-        if (!ingredient) {
-          results.errors.push({
-            ingredient_id: ri.ingredient_id,
-            message: 'Ingredient not found'
+        if (recipeIngredients.length === 0) {
+          // No recipe linked - skip deduction
+          results.warnings.push({
+            product_id: productId,
+            product_name: tgt.name,
+            message: 'No recipe linked - inventory not deducted'
           });
           continue;
         }
 
-        const currentStock = parseFloat(ingredient.current_stock) || 0;
+        // Deduct each ingredient
+        for (const ri of recipeIngredients) {
+          const deductQty = ri.quantity * tgtQty;
+          const ingredient = ri.ingredient;
 
-        // Check if we have enough stock
-        if (deductQty > currentStock) {
-          results.warnings.push({
-            ingredient_id: ingredient.id,
-            ingredient_name: ingredient.name,
-            required: deductQty,
-            available: currentStock,
-            message: 'Insufficient stock - partial deduction'
-          });
-        }
+          if (!ingredient) {
+            results.errors.push({
+              ingredient_id: ri.ingredient_id,
+              message: 'Ingredient not found'
+            });
+            continue;
+          }
 
-        // Deduct what we can (even if partial)
-        const actualDeductQty = Math.min(deductQty, currentStock);
+          const currentStock = parseFloat(ingredient.current_stock) || 0;
 
-        if (actualDeductQty > 0) {
-          // FIFO deduction from batches
-          const fifoResult = await deductStockFIFO(ingredient.id, actualDeductQty, transaction);
+          // Check if we have enough stock
+          if (deductQty > currentStock) {
+            results.warnings.push({
+              ingredient_id: ingredient.id,
+              ingredient_name: ingredient.name,
+              required: deductQty,
+              available: currentStock,
+              message: 'Insufficient stock - partial deduction'
+            });
+          }
 
-          const newStock = currentStock - fifoResult.deducted_quantity;
+          // Deduct what we can (even if partial)
+          const actualDeductQty = Math.min(deductQty, currentStock);
 
-          // Update ingredient stock
-          await Ingredient.update(
-            { current_stock: newStock },
-            { where: { id: ingredient.id }, transaction }
-          );
+          if (actualDeductQty > 0) {
+            // FIFO deduction from batches
+            const fifoResult = await deductStockFIFO(ingredient.id, actualDeductQty, transaction);
 
-          // Create transaction record
-          await InventoryTransaction.create({
-            restaurant_id: restaurantId,
-            ingredient_id: ingredient.id,
-            transaction_type: 'order_deduct',
-            quantity_change: -fifoResult.deducted_quantity,
-            unit: ingredient.unit,
-            stock_after: newStock,
-            notes: `Order #${orderId} - ${item.name} x${orderQty}`,
-            created_by: null // System action
-          }, { transaction });
+            const newStock = currentStock - fifoResult.deducted_quantity;
 
-          // Check and create alerts
-          await checkAndCreateAlert(
-            restaurantId,
-            ingredient.id,
-            newStock,
-            parseFloat(ingredient.min_stock) || 0,
-            transaction
-          );
+            // Update ingredient stock
+            await Ingredient.update(
+              { current_stock: newStock },
+              { where: { id: ingredient.id }, transaction }
+            );
 
-          results.deductions.push({
-            ingredient_id: ingredient.id,
-            ingredient_name: ingredient.name,
-            quantity_deducted: fifoResult.deducted_quantity,
-            unit: ingredient.unit,
-            new_stock: newStock,
-            batches_affected: fifoResult.batches.length
-          });
+            // Create transaction record
+            await InventoryTransaction.create({
+              restaurant_id: restaurantId,
+              ingredient_id: ingredient.id,
+              transaction_type: 'order_deduct',
+              quantity_change: -fifoResult.deducted_quantity,
+              unit: ingredient.unit,
+              stock_after: newStock,
+              notes: `Order #${orderId} - ${tgt.name} x${tgtQty}`,
+              created_by: null // System action
+            }, { transaction });
+
+            // Check and create alerts
+            await checkAndCreateAlert(
+              restaurantId,
+              ingredient.id,
+              newStock,
+              parseFloat(ingredient.min_stock) || 0,
+              transaction
+            );
+
+            results.deductions.push({
+              ingredient_id: ingredient.id,
+              ingredient_name: ingredient.name,
+              quantity_deducted: fifoResult.deducted_quantity,
+              unit: ingredient.unit,
+              new_stock: newStock,
+              batches_affected: fifoResult.batches.length
+            });
+          }
         }
       }
       // Deduct option ingredients (if selectedOptions with option_id exist)
@@ -325,26 +335,31 @@ async function calculateRequiredIngredients(orderItems) {
   const ingredientMap = new Map();
 
   for (const item of orderItems) {
-    const productId = item.product_id || item.id;
     const orderQty = item.quantity || 1;
+    // 세트면 구성품별, 아니면 상품 자체
+    const targets = (Array.isArray(item.set_components) && item.set_components.length > 0)
+      ? item.set_components.map(c => ({ pid: c.product_id || c.id, qty: (parseInt(c.qty) || 1) * orderQty }))
+      : [{ pid: item.product_id || item.id, qty: orderQty }];
 
-    const recipeIngredients = await getProductRecipeIngredients(productId);
+    for (const tgt of targets) {
+      const recipeIngredients = await getProductRecipeIngredients(tgt.pid);
 
-    for (const ri of recipeIngredients) {
-      const key = ri.ingredient_id;
-      const requiredQty = ri.quantity * orderQty;
+      for (const ri of recipeIngredients) {
+        const key = ri.ingredient_id;
+        const requiredQty = ri.quantity * tgt.qty;
 
-      if (ingredientMap.has(key)) {
-        const existing = ingredientMap.get(key);
-        existing.required_quantity += requiredQty;
-      } else {
-        ingredientMap.set(key, {
-          ingredient_id: ri.ingredient_id,
-          ingredient_name: ri.ingredient?.name,
-          unit: ri.unit,
-          required_quantity: requiredQty,
-          current_stock: parseFloat(ri.ingredient?.current_stock) || 0
-        });
+        if (ingredientMap.has(key)) {
+          const existing = ingredientMap.get(key);
+          existing.required_quantity += requiredQty;
+        } else {
+          ingredientMap.set(key, {
+            ingredient_id: ri.ingredient_id,
+            ingredient_name: ri.ingredient?.name,
+            unit: ri.unit,
+            required_quantity: requiredQty,
+            current_stock: parseFloat(ri.ingredient?.current_stock) || 0
+          });
+        }
       }
     }
   }

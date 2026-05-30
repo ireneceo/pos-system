@@ -314,6 +314,33 @@ const StatusMsg = styled.div<{ $type: 'success' | 'info' }>`
   font-weight: 500;
 `;
 
+// 캔버스가 내용(테이블)보다 과도하게 크면 내용에 맞게 자동 fit (기능 A + 데이터 조치 B).
+// 테이블을 여백 위치로 정렬 + 캔버스를 content+margin 으로 축소 → 에디터에서 테이블이 크게 보임.
+// 큰 매장(내용이 이미 캔버스를 충분히 채움)은 가드로 미적용(좌표 보존).
+function fitCanvasToContent(fp: FloorPlanData): { changed: boolean; floorPlan: FloorPlanData } {
+  const tables = fp.tables || [];
+  if (tables.length === 0) return { changed: false, floorPlan: fp };
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const t of tables) {
+    const hw = t.width / 2, hh = t.height / 2;
+    minX = Math.min(minX, t.x - hw); minY = Math.min(minY, t.y - hh);
+    maxX = Math.max(maxX, t.x + hw); maxY = Math.max(maxY, t.y + hh);
+  }
+  const margin = 150;
+  const needW = (maxX - minX) + margin * 2;
+  const needH = (maxY - minY) + margin * 2;
+  // 캔버스가 필요분의 1.5배 이내면(이미 적정) 손대지 않음 — 큰 매장 보호.
+  if ((fp.canvasWidth || 0) <= needW * 1.5 && (fp.canvasHeight || 0) <= needH * 1.5) {
+    return { changed: false, floorPlan: fp };
+  }
+  const dx = margin - minX, dy = margin - minY;
+  const newTables = tables.map(t => ({ ...t, x: t.x + dx, y: t.y + dy }));
+  return {
+    changed: true,
+    floorPlan: { ...fp, tables: newTables, canvasWidth: Math.round(needW), canvasHeight: Math.round(needH) }
+  };
+}
+
 // ─── Main Component ───
 
 const FloorPlanEditor: React.FC = () => {
@@ -362,7 +389,7 @@ const FloorPlanEditor: React.FC = () => {
   useEffect(() => { setCanvasWidthInput(String(floorPlan.canvasWidth)); }, [floorPlan.canvasWidth]);
   useEffect(() => { setCanvasHeightInput(String(floorPlan.canvasHeight)); }, [floorPlan.canvasHeight]);
   const commitCanvasWidth = useCallback(() => {
-    const v = Math.max(600, Math.min(5000, parseInt(canvasWidthInput, 10) || 1200));
+    const v = Math.max(300, Math.min(5000, parseInt(canvasWidthInput, 10) || 1200));
     if (v !== floorPlan.canvasWidth) {
       setFloorPlan(prev => ({ ...prev, canvasWidth: v }));
       setHasChanges(true);
@@ -370,7 +397,7 @@ const FloorPlanEditor: React.FC = () => {
     setCanvasWidthInput(String(v));
   }, [canvasWidthInput, floorPlan.canvasWidth]);
   const commitCanvasHeight = useCallback(() => {
-    const v = Math.max(600, Math.min(5000, parseInt(canvasHeightInput, 10) || 800));
+    const v = Math.max(300, Math.min(5000, parseInt(canvasHeightInput, 10) || 800));
     if (v !== floorPlan.canvasHeight) {
       setFloorPlan(prev => ({ ...prev, canvasHeight: v }));
       setHasChanges(true);
@@ -396,7 +423,14 @@ const FloorPlanEditor: React.FC = () => {
           setRestaurantName(restaurant.name);
         }
         if (restaurant.floor_plan) {
-          setFloorPlan(restaurant.floor_plan);
+          // 기능 A + 조치 B: 캔버스가 내용(테이블)보다 과도하게 크면 내용에 맞게 자동 fit
+          // → 에디터에서 테이블이 작게 나오던 문제 해결. 큰 매장(내용이 꽉 찬 경우)은 가드로 미적용.
+          const fitted = fitCanvasToContent(restaurant.floor_plan);
+          setFloorPlan(fitted.floorPlan);
+          if (fitted.changed) {
+            setHasChanges(true);
+            setStatusMsg('Canvas auto-fitted to your tables — review and Save to keep.');
+          }
         }
 
         // NOTE: legacy `table_settings.tablePrefix + totalTables` (v1) auto-generated table number
@@ -975,7 +1009,7 @@ const FloorPlanEditor: React.FC = () => {
                 <FormLabel>{t('floorplan:floorPlanEditor.width', 'Width')}</FormLabel>
                 <FormInput
                   type="number"
-                  min={600}
+                  min={300}
                   max={5000}
                   step={100}
                   value={canvasWidthInput}
@@ -988,7 +1022,7 @@ const FloorPlanEditor: React.FC = () => {
                 <FormLabel>{t('floorplan:floorPlanEditor.height', 'Height')}</FormLabel>
                 <FormInput
                   type="number"
-                  min={600}
+                  min={300}
                   max={5000}
                   step={100}
                   value={canvasHeightInput}
@@ -999,7 +1033,7 @@ const FloorPlanEditor: React.FC = () => {
               </FormGroup>
             </FormRow>
             <div style={{ fontSize: 11, color: '#4B5563', marginTop: 6 }}>
-              {t('floorplan:floorPlanEditor.canvasSizeHint', 'Default 1200×800. Range 600–5000 each side. Increase for large multi-zone restaurants.')}
+              {t('floorplan:floorPlanEditor.canvasSizeHint', 'Default 1200×800. Range 300–5000 each side. Increase for large multi-zone restaurants.')}
             </div>
           </SidebarCard>
 

@@ -5,8 +5,10 @@ import { io, Socket } from 'socket.io-client';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import PaymentModal from '../../components/POSTerminal/PaymentModal';
 import OptionModal from '../../components/POSTerminal/OptionModal';
+import POSSetModal from '../../components/POSTerminal/POSSetModal';
 import OrderCompleteModal from '../../components/POSTerminal/OrderCompleteModal';
 import CashierPinModal from '../../components/POSTerminal/CashierPinModal';
+import DiscountPinModal from '../../components/POSTerminal/DiscountPinModal';
 import ConfirmDialog from '../../components/Common/ConfirmDialog';
 import AlertDialog from '../../components/Common/AlertDialog';
 import NumberInputModal from '../../components/Common/NumberInputModal';
@@ -21,7 +23,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import CustomerModal from '../../components/Customer/CustomerModal';
 // StaffLoginModal removed - authentication handled by ProtectedRoute
 import { normalizeCustomerName } from '../../utils/orderUtils';
-import { getCurrencySymbol } from '../../utils/currency';
+import { getCurrencySymbol, formatCurrency } from '../../utils/currency';
 import { formatDateTime, formatTime } from '../../utils/timezone';
 import { useRestaurantId } from '../../hooks/useRestaurantId';
 import { openCustomerDisplay, tryAutoReopen, isAutoOpenEnabled } from '../../utils/customerDisplay';
@@ -201,7 +203,7 @@ const SearchInputContainer = styled.div`
 
 const SearchInput = styled.input`
   width: 100%;
-  padding: 10px 16px 10px 40px;
+  padding: 7px 16px 7px 40px;
   border: 1px solid #C7CED6;
   border-radius: 8px;
   font-size: 14px;
@@ -299,7 +301,7 @@ const CategoryTabs = styled.div`
 `;
 
 const CategoryTab = styled.button<{ active: boolean }>`
-  padding: 12px 0;
+  padding: 8px 0;
   border: none;
   background: none;
   font-size: 14px;
@@ -1213,6 +1215,9 @@ const POSTerminalPage: React.FC = () => {
   const [showMergeChoiceModal, setShowMergeChoiceModal] = useState(false);
   const [forceMergeOrderId, setForceMergeOrderId] = useState<number | null>(null);
   const [showOptionModal, setShowOptionModal] = useState(false);
+  // 세트 v2(set_groups) 주문 모달
+  const [showSetModal, setShowSetModal] = useState(false);
+  const [setModalProduct, setSetModalProduct] = useState<any>(null);
   const [showOrderCompleteModal, setShowOrderCompleteModal] = useState(false);
   const [completedOrderData, setCompletedOrderData] = useState<any>(null);
   const [selectedMenuItem, setSelectedMenuItem] = useState<MenuItemType | null>(null);
@@ -1237,12 +1242,21 @@ const POSTerminalPage: React.FC = () => {
   const [tableNumber, setTableNumber] = useState('');
   const [guestCount, setGuestCount] = useState(0);
   const [availableTables, setAvailableTables] = useState<string[]>([]);
+
+  // Floor Plan "Add Items" 진입 — URL mergeOrderId 가 있으면 기존 주문에 자동 머지(새 주문 생성 방지).
+  useEffect(() => {
+    const mid = searchParams.get('mergeOrderId');
+    if (mid && /^\d+$/.test(mid)) setForceMergeOrderId(parseInt(mid, 10));
+  }, [searchParams]);
   const [pagerNumber, setPagerNumber] = useState('');
   const [pagerSearchQuery, setPagerSearchQuery] = useState('');
   const [showPagerDropdown, setShowPagerDropdown] = useState(false);
   const [showCustomAmountModal, setShowCustomAmountModal] = useState(false);
   // Cashier quick switch (PIN → 실제 로그인 전환)
   const [showCashierPinModal, setShowCashierPinModal] = useState(false);
+  // 할인 승인 PIN (#5) — 터치 numpad 모달 + 승인 후 적용할 보류 할인
+  const [showDiscountPin, setShowDiscountPin] = useState(false);
+  const [pendingDiscount, setPendingDiscount] = useState<{ name: string; value: number } | null>(null);
   const [showCustomPercentModal, setShowCustomPercentModal] = useState(false);
   const [brandLogo, setBrandLogo] = useState<string>('');
   const [paymentMethods, setPaymentMethods] = useState<any>(null);
@@ -1631,8 +1645,66 @@ const POSTerminalPage: React.FC = () => {
     return () => observer.disconnect();
   }, [useProgressive, visibleCount, filteredMenuItems.length]);
 
+  // 세트 v2 판정 — set_groups 슬롯이 있으면 선택 모달 필요
+  const isV2Set = (mi: any) => mi?.is_set_menu && Array.isArray(mi?.set_groups) && mi.set_groups.length > 0;
+
+  // 세트 v2 모달 확정 → 카트 적재 (가격은 priced selectedOptions 로 기존 POS 가격식에 합산)
+  const handleConfirmSet = (quantity: number, result: { setComponents: any[]; selectedOptions: { name: string; price: number }[]; optionsDisplay: string[] }) => {
+    if (!setModalProduct) return;
+    setOrderItems([...orderItems, {
+      id: `order-${Date.now()}`,
+      menuItem: setModalProduct,
+      quantity,
+      options: result.optionsDisplay.length > 0 ? result.optionsDisplay : undefined,
+      selectedOptions: result.selectedOptions as any,
+      set_components: result.setComponents
+    } as any]);
+    setShowSetModal(false);
+    setSetModalProduct(null);
+  };
+
+  // ── POS 품절(sold-out) 토글 (#4) — 메뉴 타일 길게누르기 ──
+  const [soldOutOverride, setSoldOutOverride] = useState<Record<string, boolean>>({});
+  const lpTimer = useRef<any>(null);
+  const lpFired = useRef(false);
+  const effSoldOut = (item: any) => soldOutOverride[item.id] ?? item.soldOut;
+
+  const handleToggleSoldOut = async (item: any) => {
+    const cur = effSoldOut(item);
+    const next = !cur;
+    setSoldOutOverride(p => ({ ...p, [item.id]: next })); // 낙관적 즉시 반영
+    try {
+      const res = await fetch(`/api/menu/product/${item.id}/toggle-soldout?restaurantId=${restaurantId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
+        body: JSON.stringify({ soldOut: next })
+      });
+      if (!res.ok) throw new Error('toggle failed');
+    } catch {
+      setSoldOutOverride(p => ({ ...p, [item.id]: cur })); // 실패 시 원복
+    }
+  };
+  const startLongPress = (item: any) => {
+    lpFired.current = false;
+    lpTimer.current = setTimeout(() => { lpFired.current = true; handleToggleSoldOut(item); }, 600);
+  };
+  const cancelLongPress = () => { if (lpTimer.current) { clearTimeout(lpTimer.current); lpTimer.current = null; } };
+
+  // 전 POS/모바일 실시간 반영 — 다른 기기가 토글하면 회색 처리
+  useEffect(() => {
+    if (!restaurantId) return;
+    const s = io('/orders', { transports: ['websocket', 'polling'] });
+    s.on('connect', () => s.emit('join-restaurant', restaurantId));
+    s.on('product-soldout', (d: { id: number; soldOut: boolean }) => {
+      setSoldOutOverride(p => ({ ...p, [String(d.id)]: d.soldOut }));
+    });
+    return () => { s.disconnect(); };
+  }, [restaurantId]);
+
   const handleAddItemDirectly = (menuItem: MenuItemType) => {
-    if (menuItem.soldOut) return;
+    if (effSoldOut(menuItem)) return;
+    // 세트 v2 → 선택 모달 (구성품 택1/옵션 선택 필요)
+    if (isV2Set(menuItem)) { setSetModalProduct(menuItem); setShowSetModal(true); return; }
 
     // For set menus, convert set_items to options format (as strings)
     let setMenuOptions: string[] = [];
@@ -1668,7 +1740,9 @@ const POSTerminalPage: React.FC = () => {
   const handleShowOptions = (menuItem: MenuItemType, e: React.MouseEvent) => {
     e.stopPropagation();
     if (menuItem.soldOut) return;
-    
+    // 세트 v2 → 선택 모달
+    if (isV2Set(menuItem)) { setSetModalProduct(menuItem); setShowSetModal(true); return; }
+
     setSelectedMenuItem(menuItem);
     setShowOptionModal(true);
   };
@@ -1889,7 +1963,7 @@ const POSTerminalPage: React.FC = () => {
     setAppliedCoupon(null);
   };
 
-  const handleApplyDiscountPolicy = (policyName: string) => {
+  const handleApplyDiscountPolicy = async (policyName: string) => {
     // Toggle: if same policy is clicked again, reset discount
     if (appliedDiscountPolicy && appliedDiscountPolicy.name === policyName) {
       setAppliedDiscountPolicy(null);
@@ -1909,20 +1983,14 @@ const POSTerminalPage: React.FC = () => {
       const percentage = parseFloat(policy.discount.replace('%', ''));
       const discountValue = subtotal * (percentage / 100);
 
-      if (policy.requiresApproval) {
-        // Show approval dialog for manager approval
-        const managerCode = prompt(`${policyName} requires manager approval. Enter manager code:`);
-        if (managerCode === 'MANAGER123') {
-          setAppliedDiscountPolicy({
-            name: policyName,
-            discount: discountValue,
-            requiresApproval: true
-          });
-          setDiscount(0); // Clear fixed discount when applying percentage
-        } else {
-          setInfoModal({ open: true, title: 'Invalid Code', message: 'Invalid manager code. Discount not applied.' });
-          return;
-        }
+      // 할인 PIN 승인 (#5) — 정책이 승인 필요거나 매장 설정 'PIN 승인 필요' ON 시 터치 numpad PIN 모달로 서버 검증.
+      // 하드코딩 MANAGER123 제거 → DiscountPinModal → POST /api/staff/verify-pin-permission (세션 전환 없음 + 감사로그).
+      const needPin = policy.requiresApproval || !!(operationSettings as any)?.requirePinForDiscount;
+      if (needPin) {
+        // 보류 → 모달 승인 시 적용
+        setPendingDiscount({ name: policyName, value: discountValue });
+        setShowDiscountPin(true);
+        return;
       } else {
         setAppliedDiscountPolicy({
           name: policyName,
@@ -2040,6 +2108,7 @@ const POSTerminalPage: React.FC = () => {
             selectedOptions: item.selectedOptions || [],
             is_set_menu: item.menuItem.is_set_menu || false,
             set_items: item.menuItem.set_items || [],
+            set_components: (item as any).set_components || undefined,
             kitchen_station_id: ksid
           };
         });
@@ -2315,6 +2384,7 @@ const POSTerminalPage: React.FC = () => {
             selectedOptions: item.selectedOptions || [],
             is_set_menu: item.menuItem.is_set_menu || false,
             set_items: item.menuItem.set_items || [],
+            set_components: (item as any).set_components || undefined,
             kitchen_station_id: ksid
           };
         });
@@ -3065,8 +3135,12 @@ const POSTerminalPage: React.FC = () => {
                     return (
                       <MenuItem
                         key={item.id}
-                        soldOut={item.soldOut}
-                        onClick={() => handleAddItemDirectly(item)}
+                        soldOut={effSoldOut(item)}
+                        onClick={() => { if (lpFired.current) { lpFired.current = false; return; } handleAddItemDirectly(item); }}
+                        onPointerDown={() => startLongPress(item)}
+                        onPointerUp={cancelLongPress}
+                        onPointerLeave={cancelLongPress}
+                        title="Long-press to toggle sold-out"
                         style={{ padding: '12px 16px', textAlign: 'left' }}
                       >
                         {item.is_set_menu && <SetBadge>{'SET'}</SetBadge>}
@@ -3089,8 +3163,12 @@ const POSTerminalPage: React.FC = () => {
                   return (
                     <MenuItem
                       key={item.id}
-                      soldOut={item.soldOut}
-                      onClick={() => handleAddItemDirectly(item)}
+                      soldOut={effSoldOut(item)}
+                      onClick={() => { if (lpFired.current) { lpFired.current = false; return; } handleAddItemDirectly(item); }}
+                      onPointerDown={() => startLongPress(item)}
+                      onPointerUp={cancelLongPress}
+                      onPointerLeave={cancelLongPress}
+                      title="Long-press to toggle sold-out"
                     >
                       {item.is_set_menu && <SetBadge>{'SET'}</SetBadge>}
                       <MenuImage hasImage={!!item.image}>
@@ -3625,6 +3703,17 @@ const POSTerminalPage: React.FC = () => {
           onConfirm={handleConfirmOptions}
         />
       )}
+
+      {showSetModal && setModalProduct && (
+        <POSSetModal
+          isOpen={showSetModal}
+          product={{ id: setModalProduct.id, name: setModalProduct.name, price: setModalProduct.price }}
+          restaurantId={restaurantId as any}
+          formatCurrency={(v: number) => formatCurrency(v, operationSettings.currency)}
+          onClose={() => { setShowSetModal(false); setSetModalProduct(null); }}
+          onConfirm={handleConfirmSet}
+        />
+      )}
       
       {completedOrderData && (
         <OrderCompleteModal
@@ -3803,6 +3892,20 @@ const POSTerminalPage: React.FC = () => {
         }}
         onLogout={handleLogout}
         currentCashierName={user?.name}
+      />
+      <DiscountPinModal
+        show={showDiscountPin}
+        restaurantId={restaurantId as any}
+        title={pendingDiscount ? `${pendingDiscount.name} Discount` : 'Discount Approval'}
+        onClose={() => { setShowDiscountPin(false); setPendingDiscount(null); }}
+        onApproved={() => {
+          if (pendingDiscount) {
+            setAppliedDiscountPolicy({ name: pendingDiscount.name, discount: pendingDiscount.value, requiresApproval: true });
+            setDiscount(0);
+          }
+          setShowDiscountPin(false);
+          setPendingDiscount(null);
+        }}
       />
       <ConfirmModal
         isOpen={infoModal.open}

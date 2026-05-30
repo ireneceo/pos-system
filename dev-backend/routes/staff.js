@@ -116,6 +116,48 @@ router.post('/verify-pin', async (req, res) => {
   }
 });
 
+// 할인 승인 PIN 검증 (#5) — 경량. JWT 재발급/세션 전환 없이 PIN 이 해당 권한 가진 직원인지만 확인.
+// 반환 { authorized, by }. 감사로그 남김. 하드코딩 MANAGER123 대체.
+router.post('/verify-pin-permission', async (req, res) => {
+  try {
+    const { pin_code, permission } = req.body;
+    const restaurantId = req.body.restaurant_id || req.user.restaurant_id;
+    if (!pin_code || !restaurantId) {
+      return res.status(400).json({ success: false, message: 'PIN code and restaurant ID are required' });
+    }
+    const staff = await User.findOne({
+      where: { restaurant_id: restaurantId, pin_code },
+      attributes: ['id', 'full_name', 'email', 'role', 'permissions']
+    });
+    if (!staff) {
+      return res.json({ success: true, data: { authorized: false } });
+    }
+    // 권한: Admin/Owner/Manager 는 자동 허용, 그 외엔 permissions 에 해당 권한 보유 시.
+    const privilegedRoles = ['Restaurant Admin', 'Restaurant Owner', 'Restaurant Manager', 'Manager', 'System Admin'];
+    let perms = [];
+    try { perms = typeof staff.permissions === 'string' ? JSON.parse(staff.permissions) : (staff.permissions || []); } catch { perms = []; }
+    const wanted = permission || 'discount_authorize';
+    const authorized = privilegedRoles.includes(staff.role) || (Array.isArray(perms) && perms.includes(wanted));
+
+    // 감사로그 (ActivityLog 있으면)
+    try {
+      const { ActivityLog } = require('../models');
+      if (ActivityLog) {
+        await ActivityLog.create({
+          restaurant_id: restaurantId,
+          user_id: req.user.id,
+          action: authorized ? 'discount_pin_approved' : 'discount_pin_denied',
+          details: JSON.stringify({ approver_id: staff.id, approver: staff.full_name || staff.email, permission: wanted, requested_by: req.user.id })
+        });
+      }
+    } catch (e) { /* non-fatal */ }
+
+    return res.json({ success: true, data: { authorized, by: authorized ? (staff.full_name || staff.email) : null } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // Staff logout (placeholder)
 router.post('/logout', async (req, res) => {
   try {

@@ -6,11 +6,33 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
-### 2026-05-28
-- /글쓰기 스킬 video_prompt 포맷 개선 — 한 줄 압축 → 상황설명 + Shot + Audio + Text overlay 4섹션 구조화
-- BRAND CONCEPT v3 헤더 video_prompt 맨 위 고정 포함 (브랜드 톤 일관성)
-- video_prompt 글자 수 제한 4000자 → 6000자 확장
-- staff-mistakes / e-invoice 블로그 6건 video_prompt 새 포맷 적용
+---
+
+## [v3.44] — 2026-05-29 배포 (모바일 고객주문 UX + 품목서빙/KDS 주방별 단계/이머전시 모바일인쇄/결제팝업 통일 — The Fire 실매출 중)
+
+### 모바일 고객주문 UX (QR 주문 사이트)
+- **결제 버튼 라벨 결제수단별 표시** — 카운터/현금은 "Place Order"(결제 안 함), QR/이월렛은 "Scan to Pay", 은행이체는 "Continue to Bank Transfer", 카드/PayPal만 금액 포함 "Pay". 카운터 결제인데 "Pay"라 고객이 결제하는 줄 알고 헷갈리던 문제 해결 (`mobile/pages/PaymentPage.tsx`)
+- **영업시간 기반 Open / On Break / Closed 배지** — 기존엔 매장 계정 status(active) 기준이라 trial/overdue 매장은 운영시간 중에도 "Closed"로 뜨고, active 매장은 새벽에도 "Open"으로 뜸. 매장 타임존의 운영시간(openingTime/closingTime) + 브레이크타임으로 판정하도록 변경 + 운영시간 텍스트 표시 + 1분마다 자동 갱신. 신규 `mobile/utils/storeHours.ts` (표시 전용 — 주문 차단엔 미적용, 시간 오설정으로 매출 막히는 사고 방지). 4언어 (`mobile/pages/MenuPage.tsx`)
+- **캐시리스 안내 배너 메뉴 → 결제화면 이동** — 메뉴엔 상단 작은 Cashless 뱃지만 유지, 안내 배너는 실제 결제 직전(PaymentPage)에 노출 (`MenuPage.tsx`, `PaymentPage.tsx`)
+- **인기/추천 메뉴 탭 기본 선택** — 인기/추천 탭이 있으면 진입 시 그 탭이 잡히도록 (기존엔 무조건 첫 상품 카테고리). 설정만 켜지고 실제 아이템 0개면 첫 카테고리로 폴백 (`MenuPage.tsx`)
+- **메뉴 담아도 장바구니로 안 튐** — 상품 담으면 장바구니 화면으로 전환되지 않고 카트 뱃지 숫자만 증가, 계속 둘러보기 가능 (`mobile/pages/ItemDetailPage.tsx`)
+- **상세 갔다 돌아오면 탭 위치 복원** — 상품 상세 진입 전 현재 탭을 URL에 기록 → 뒤로가기 시 그 탭 그대로 복원 (`MenuPage.tsx`)
+- **주문완료/주문히스토리 "주문 못 찾음" 깜빡임 제거** — 주문 생성 직후 추적 페이지가 곧장 조회하면 타이밍상 잠깐 404 → "못 찾음"이 깜빡이던 문제. 초기 로드 grace-retry(로딩 유지하며 짧게 재시도) + 주문목록 첫 로드 로딩표시 (`mobile/pages/OrderTrackingPage.tsx`, `OrdersPage.tsx`)
+
+### 매장 운영 (POS / Floor Plan / KDS)
+- **품목별 서빙 (Floor Plan + Live Orders 통일)** — 주방이 ready 체크 안 해도 홀 직원이 음식 나오면 품목 칩 클릭 → 서빙 처리(요리끝+서빙 한 번에). KDS 표시전용 매장 지원. 신규 공유 컴포넌트 `components/Order/ItemServeChip.tsx`
+- **KDS 주방별 독립 단계 (주문단위 보기)** — 멀티 스테이션 주문에서 각 주방 탭이 자기 아이템 기준으로 독립 단계 이동. 'all' 탭은 전 주방 완료 시 승급 (`KitchenDisplay/KitchenDisplayPage.tsx`)
+- **Floor Plan 결제 팝업 통일** — Floor Plan 테이블 결제 팝업에서 서비스차지/쿠폰/포인트/할인이 안 보이던 문제. 풀 주문 fetch로 Live Orders와 동일하게 표시 (`FloorPlan/FloorPlanPage.tsx`)
+- **이머전시(비상) 모드 모바일 인쇄 + 프린터 명칭** — 비상모드에서 모바일/QR 주문이 자동인쇄 안 되던 결함 수정(poller가 정상 경로 타고 영수증 프린터로 redirect) + Settings 비상 카드에 추상어 "cashier" 대신 실제 프린터 이름(예: POS-80C) 노출. 4언어 (`hooks/useAutoPrintPoller.ts`, `Layout/MainLayout.tsx`, `Settings/SettingsPage.tsx`)
+
+### 안전망 (backstage)
+- **인쇄/주문 회귀 안전망 3종** — `scripts/check-print-guard.js`(🔒 보호파일 8개 지문 무결성 감시) + health-check `print` 카테고리 8건(전체 80→88) + `tests/order-totals.test.js`(청구 공식 11건). `deploy-to-production.sh`에 fail-closed 배포 게이트 통합(운영 도달 전 무결성+health 88 무조건 실행)
+- /글쓰기 스킬 video_prompt 4섹션 구조화 + 6000자 확장 (dev 툴링)
+
+### 검증
+- state-hydration 0 / build (main.f3f5942d.js) / 타입에러 0 / health-check 88/88 / Autoprint regression 44 / 🔒 print guard 8/8 무변경 / storeHours 로직 단위 9/9 / 주문 루트 실호출 (POS 12 + 모바일 8 + 인쇄 8) / headless mount menu·payment·tracking 크래시 0
+- Backup: 20260529_224606, smoke 10/10 (운영 POST order #12258 포함)
+- 운영 검증: The Fire(trial status) 모바일 메뉴 실데이터 mount 크래시 0 + 영업시간 배지 정상 (#7 근본원인 = trial status 확정)
 
 ---
 

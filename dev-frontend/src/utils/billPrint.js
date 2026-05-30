@@ -938,15 +938,21 @@ export function generateBillContent(orderData, storeInfo) {
 
     // Set menu sub-items — HTML 빌과 동일하게 구성품을 모두 표기 (완벽히 동일한 항목).
     // thermal 은 ↳ 글리프가 안 찍힐 수 있어 ASCII '>' 사용.
-    if (item.menuItem.is_set_menu && Array.isArray(item.menuItem.set_items) && item.menuItem.set_items.length > 0) {
+    // 세트 v2(set_components) 우선 — 구성품명 + 선택옵션. 없으면 레거시 set_items.
+    if (Array.isArray(item.set_components) && item.set_components.length > 0) {
+      item.set_components.forEach(c => {
+        const cn = (c && c.name) || '';
+        if (cn) content += '    > ' + cn + (Array.isArray(c.options) && c.options.length ? ' (' + c.options.join(', ') + ')' : '') + CMD.LINE_FEED;
+      });
+    } else if (item.menuItem.is_set_menu && Array.isArray(item.menuItem.set_items) && item.menuItem.set_items.length > 0) {
       item.menuItem.set_items.forEach(si => {
         const siName = typeof si === 'string' ? si : ((si && si.name) || '');
         if (siName) content += '    > ' + siName + CMD.LINE_FEED;
       });
     }
 
-    // Options
-    if (item.options && item.options.length > 0) {
+    // Options — 세트는 set_components 가 이미 표기하므로 중복 skip
+    if ((!Array.isArray(item.set_components) || item.set_components.length === 0) && item.options && item.options.length > 0) {
       item.options.forEach(option => {
         content += '    + ' + option + CMD.LINE_FEED;
       });
@@ -1306,12 +1312,15 @@ export function generateHTMLBill(orderData, storeInfo) {
     const qty = item.quantity;
     const price = item.menuItem.price;
     const total = qty * price;
-    const optionsHtml = (item.options || []).map(o => `<div class="item-option">${escapeHtmlForPrint(typeof o === 'string' ? o : (o?.name || ''))}</div>`).join('');
+    const hasSetComps = Array.isArray(item.set_components) && item.set_components.length > 0;
+    const optionsHtml = hasSetComps ? '' : (item.options || []).map(o => `<div class="item-option">${escapeHtmlForPrint(typeof o === 'string' ? o : (o?.name || ''))}</div>`).join('');
     // Set menu — list every sub-item so the customer sees what's included
     // (previously only the wrapper name printed, hiding the contents).
-    const setItemsHtml = (item.menuItem.is_set_menu && Array.isArray(item.menuItem.set_items) && item.menuItem.set_items.length > 0)
-      ? item.menuItem.set_items.map(si => `<div class="item-option">↳ ${escapeHtmlForPrint(typeof si === 'string' ? si : (si?.name || ''))}</div>`).join('')
-      : '';
+    const setItemsHtml = (Array.isArray(item.set_components) && item.set_components.length > 0)
+      ? item.set_components.map(c => `<div class="item-option">↳ ${escapeHtmlForPrint((c && c.name) || '')}${Array.isArray(c.options) && c.options.length ? ' (' + escapeHtmlForPrint(c.options.join(', ')) + ')' : ''}</div>`).join('')
+      : (item.menuItem.is_set_menu && Array.isArray(item.menuItem.set_items) && item.menuItem.set_items.length > 0)
+        ? item.menuItem.set_items.map(si => `<div class="item-option">↳ ${escapeHtmlForPrint(typeof si === 'string' ? si : (si?.name || ''))}</div>`).join('')
+        : '';
     // 2026-05-29: 단가(@ unit price) 라인 제거 (매장 요청) — 수량 + 품명 + 합계만.
     return `
       <div class="item">
@@ -1419,12 +1428,22 @@ export function generateHTMLKitchenTicket(orderData, storeInfo) {
     const stationTagHtml = item.stationName
       ? ` <span class="station-tag">${escapeHtmlForPrint(item.stationName.toUpperCase())}</span>`
       : '';
-    const optionsHtml = (item.options || []).map(opt =>
+    // 세트 v2 구성품 — 주방이 만들 항목 표기 (구성품명 + 선택옵션). 방식 무변경, 콘텐츠만.
+    const hasSetComps = Array.isArray(item.set_components) && item.set_components.length > 0;
+    const setCompHtml = hasSetComps
+      ? item.set_components.map(c => {
+          const cn = escapeHtmlForPrint((c && c.name) || '');
+          const co = Array.isArray(c.options) && c.options.length ? `<div class="item-option" style="font-size:12px;">★ ${escapeHtmlForPrint(c.options.join(', '))}</div>` : '';
+          return cn ? `<div class="item-option" style="font-size:14px;font-weight:700;">› ${cn}</div>${co}` : '';
+        }).join('')
+      : '';
+    const optionsHtml = hasSetComps ? '' : (item.options || []).map(opt =>
       `<div class="item-option" style="font-size:13px;font-weight:600;">★ ${escapeHtmlForPrint(typeof opt === 'string' ? opt : (opt?.name || ''))}</div>`
     ).join('');
     return `
       <div class="item">
         <div class="item-name" style="font-size:18px;font-weight:700;">${qty} × ${itemName}${stationTagHtml}</div>
+        ${setCompHtml}
         ${optionsHtml}
       </div>
     `;
@@ -1517,12 +1536,21 @@ function generateHTMLAdditionalItemsTicket(orderData, storeInfo) {
     const stationTagHtml = item.stationName
       ? ` <span class="station-tag">${escapeHtmlForPrint(item.stationName.toUpperCase())}</span>`
       : '';
-    const optionsHtml = (item.options || []).map(opt =>
+    const hasSetComps = Array.isArray(item.set_components) && item.set_components.length > 0;
+    const setCompHtml = hasSetComps
+      ? item.set_components.map(c => {
+          const cn = escapeHtmlForPrint((c && c.name) || '');
+          const co = Array.isArray(c.options) && c.options.length ? `<div class="item-option" style="font-size:12px;">★ ${escapeHtmlForPrint(c.options.join(', '))}</div>` : '';
+          return cn ? `<div class="item-option" style="font-size:14px;font-weight:700;">› ${cn}</div>${co}` : '';
+        }).join('')
+      : '';
+    const optionsHtml = hasSetComps ? '' : (item.options || []).map(opt =>
       `<div class="item-option" style="font-size:13px;font-weight:600;">★ ${escapeHtmlForPrint(typeof opt === 'string' ? opt : (opt?.name || ''))}</div>`
     ).join('');
     return `
       <div class="item">
         <div class="item-name" style="font-size:18px;font-weight:700;">${qty} × ${itemName}${stationTagHtml}</div>
+        ${setCompHtml}
         ${optionsHtml}
       </div>
     `;
@@ -1800,8 +1828,22 @@ export function generateKitchenTicketContent(orderData, storeInfo) {
       content += CMD.BOLD_OFF;
     }
 
-    // Options with marker (same as Bill format)
-    if (item.options && item.options.length > 0) {
+    // 세트 v2 구성품 — 주방이 무엇을 만들지 보이게 (구성품명 + 선택옵션). 방식 무변경, 콘텐츠만.
+    if (Array.isArray(item.set_components) && item.set_components.length > 0) {
+      item.set_components.forEach(c => {
+        const cn = (c && c.name) || '';
+        if (!cn) return;
+        content += CMD.BOLD_ON;
+        content += '  > ' + cn + CMD.LINE_FEED;
+        content += CMD.BOLD_OFF;
+        if (Array.isArray(c.options) && c.options.length > 0) {
+          c.options.forEach(o => { content += '    * ' + o + CMD.LINE_FEED; });
+        }
+      });
+    }
+
+    // Options with marker (same as Bill format) — 세트는 set_components 가 이미 표기하므로 중복 skip
+    if ((!Array.isArray(item.set_components) || item.set_components.length === 0) && item.options && item.options.length > 0) {
       item.options.forEach(option => {
         content += '  ★ ' + option + CMD.LINE_FEED;
       });

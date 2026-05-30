@@ -1,15 +1,53 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-05-29 (운영 배포 누적, 최신 hotfix #4)
-**버전:** v3.43 (버전 미상승 — backstage/critical fix). 아래 전부 **운영 배포 완료**.
-**작업 상태:** The Fire 실매출 중 실시간 대응. 다음 = Irene 현장 확인 보고 대기.
+**마지막 업데이트:** 2026-05-29 (v3.44 운영 배포 완료)
+**버전:** **v3.44** (2026-05-29 배포, Backup 20260529_224606, smoke 10/10). 모바일 고객주문 UX + 품목서빙 + KDS 주방별 단계 + 이머전시 모바일인쇄 + 결제팝업 통일 + 인쇄/주문 안전망 전부 운영 반영.
+**작업 상태:** v3.44 배포 완료. The Fire 실매출 중 — 매장 현장 확인 대기(특히 이머전시 인쇄·영업시간 배지·결제버튼). 다음 = Irene 지시 대기.
+**v3.44 운영 검증:** The Fire(trial status) 모바일 메뉴 실데이터 mount 크래시 0 + #7 영업시간 배지 근본원인=trial status 확정(옛 로직 active만 Open). 릴리즈 노트/블로그/공지 등록 완료.
+**🟠 미뤄둔 일 (매장 가서):** 이머전시 모바일 인쇄 수정 + 명칭(POS-80C) 표시 = dev 배포됨, **실프린터 확인 후 `check-print-guard --bless` → 운영배포**. 아래 "🟠 미뤄둔 작업" 섹션 참조.
+**🟢 신규 (dev 배포됨, 인쇄 무관):** 품목별 서빙 — Floor Plan/Live Orders 둘 다 활성주문이면 단계무관 칩 클릭→Served(ready 건너뜀). 아래 "🟢 품목 서빙" 섹션 참조.
+**🟢 신규 (dev 배포됨 main.a3684727.js):** KDS 주문단위 보기 = 주방 탭별 독립 단계. 아래 "🟢 KDS 주방별 독립 단계" 섹션 참조. (KDS 🔒라 감시기 drift 3번째, 인쇄 핸들러 무변경 검증함)
 
 ### hotfix #4 (Backup 20260529_141604, 번들 main.a2f57813.js) — 결제팝업/Served/Settlement인쇄
 - 결제 팝업 SC/Tax 표시 fix (PaymentModal 게이트 값기준) + Floor Plan Takeaway 표시 (table-status takeawayCharge 반환 + 패널 줄)
 - Floor Plan Served 클릭 fix (활성주문이면 단계무관 토글 — KDS 표시전용 매장 지원)
 - Daily Settlement 인쇄경로 = 빌과 동일 QZ HTML pixel (브라우저 폴백 → sendHTMLViaQZTray) + 제목 리터럴 버그
 - ⚠️ Settlement 인쇄 종이 출력 + 결제팝업/Served 현장 확인 대기. **Settlement 내용 Z-리포트 매칭은 그룹3 #8 로 이월(신규 데이터 필요).**
+
+### 🛡️ 인쇄/주문 회귀 안전망 구축 (2026-05-29, 인쇄 동작 코드 무수정 — 전부 추가)
+인쇄 문제 해결 확인 후 "앞으로 다른 기능 확장하다 인쇄/주문 건드려 사고 안 나게" 안전망 3종 구축.
+1. **`scripts/check-print-guard.js`** — 🔒 보호 파일 8개 지문(sha256) 감시. 인쇄 무관 작업 후/배포 전 실행 → 실수 변경 즉시 감지. `--bless` 로 승인된 변경만 기준 갱신. 기준 등록 완료 + 탐지/복구 증명. manifest=`scripts/print-guard.manifest.json`.
+2. **health-check `print` 카테고리 (8건)** — 데모 매장 실제 API 검증: orphan sweep(멱등)/티켓 정확히 1번/+Round 새 품목만/**동시 print-claim 5개→1개만(티켓 중복 방지)**/세금공식 2건/익명 401/🔒보호파일 무결성. **전체 80→88/88 통과.**
+3. **`tests/order-totals.test.js` (11건)** — computeOrderTotals 청구 공식 고정(세금=할인후/no-tax 유지/%할인 비례/고정유지/삭제감소/포장·배달). jest 38/38(6스위트) 통과.
+- CLAUDE.md 🔒 섹션에 "자동 안전망" 실행 절차 박음. 미래 개발/배포 워크플로우에 편입.
+4. **배포 게이트 통합 (`deploy-to-production.sh` 1b 단계)** — Irene "언제 자동으로 체크되냐" 질문 대응. 배포가 운영 도달 전(backup/build 전) ① 보호파일 무결성 ② health-check 88건을 무조건 실행, 실패 시 배포 막음(fail-closed). 긴급 우회 `--skip-safety` 플래그. 통과/막힘 양쪽 경로 + bash -n 문법 증명 완료. (git/auto-save 는 트리거 안 함 — 너무 잦음.)
+
+---
+
+## 🟠 미뤄둔 작업 — 이머전시(Emergency Routing) 모바일 인쇄 + 명칭 (2026-05-29, **매장 실프린터 확인 대기**)
+
+> Irene 가 "지금 매장 아니라서 실프린터 테스트 못함 → 나중 할 일로 미뤄둠" 지시. **dev 에는 빌드·배포됨(번들 main.3c16a0a0.js), 운영 배포 안 함.**
+
+**왜 했나:** Irene 요청으로 이머전시 인쇄 검증 중 두 가지 발견:
+1. **모바일/QR 주문이 비상모드에서 자동인쇄 안 됨** (확정 결함). 두 poller(useAutoPrintPoller:50 / MainLayout:1203)가 emergencyMode 면 인쇄 직전 bail → KDS는 표시전용 → POS 직접경로는 POS주문만 → 모바일은 무인쇄였음. Irene 가 AskUserQuestion 으로 **"모바일도 cashier로 나가게 수정" 선택**.
+2. **"cashier" 명칭이 헷갈림** (Irene 지적). 실제로는 "현재 워크스테이션의 영수증(빌) 프린터"(The Fire=POS-80C). 추상어 "cashier"만 표시됐음.
+
+**한 변경 (인쇄 동작 = 🔒, Irene 승인 기반):**
+- poller 2곳의 `if (emergencyMode) return` **제거** → 비상시 poller 가 정상 경로를 타고, `printKitchenTicketViaRawBT`(billPrint:2140)가 죽은 station 건드리기 전 cashier 로 redirect → 모바일 주문도 cashier 로. (정상모드와 동일 흐름 + redirect, POS중복은 printed_at/inflight 로 방지.)
+- SettingsPage 이머전시 카드: 실제 프린터 **이름**(`billPrinter.name`) 노출 + descOn/descOff/modalOnMessage/비교카드에 "{{printer}} (이 워크스테이션 영수증/빌 프린터)" + "POS·모바일 모두" 명시. i18n 4언어 7키 갱신(en/ko/zh/ms), i18n:verify Errors 0.
+
+**지금까지 검증 (매장 무관, 완료):** build 성공 / i18n 0 errors / headless mount 25라우트 크래시 0(MainLayout 공통 안전) / 무결성 감시기가 정확히 poller 2개만 drift 표시.
+
+**⏸ 남은 일 (매장에서):**
+- **실프린터 확인 필수** (🔒 규칙3): 비상모드 ON → ① POS 주문 cashier 출력 ② **모바일 QR 주문도 cashier 출력**(이번 수정 핵심) ③ 카드에 실제 프린터명(POS-80C) 정확 표시 ④ 비상 OFF 시 station 정상 복원.
+- 확인되면: `cd dev-backend && node scripts/check-print-guard.js --bless` (poller 2파일 새 기준 등록) → 그 다음에야 `/배포` 게이트 통과.
+- **현재 감시기는 의도적으로 un-bless 상태** = "미검증 인쇄 변경 있음" 신호 + 운영 배포 자동 차단(fail-closed). 확인 전엔 배포 금지.
+
+**30년차 /검증 (적대적) — 자가 결함 3건 발견·수정:**
+- (결함1) 진짜 "티켓 3장" 방지 메커니즘(원자적 print-claim race) 미검증 → 동시 claim 5개→1개 테스트 추가.
+- (결함2) 무결성 감시기 거짓양성 위험(MainLayout 등 공유파일은 사이드바 작업도 트립) → dedicated/shared 분류 + compareManifest export 리팩토링.
+- (결함3) 감시기 수동→안 돌릴 수 있음 + 파이프 조기종료 시 테스트 주문 leak(실제 1건 발견) → ① health-check 의무 게이트에 무결성 통합 ② TEST_MARKER + orphan sweep 로 멱등화(심은 orphan 자동 제거 증명). 데모 잔여 0 권위 확인.
 
 ---
 
@@ -98,10 +136,76 @@ AutoPrint master gate / 신규주문 banner / Customer Display reconnect·자동
 
 ---
 
+## 🟢 품목 서빙 (Floor Plan + Live Orders 통일, 2026-05-29, dev 배포됨 · 인쇄 무관)
+
+> Irene 요청: "주방이 ready 체크해야만 서빙표시 되는데, 요리 끝남(ready)을 주방이 체크하긴 힘들다. 음식 나오면 서버가 '서빙했다' 누르면 = 요리끝+서빙 한 번에 되게. Live Orders 상세에도 동일." AskUserQuestion 으로 표시방식 = **"상태칩 + Serve 액션 명확화"** 선택.
+
+**분석:** Floor Plan TableDetailPanel 은 이미 hotfix #4 로 활성주문이면 단계무관 Served 됨(맞음). 단 칩이 상태배지처럼만 보여 헷갈림. **Live Orders OrderDetailModal 은 per-item 서빙 자체가 없었음**(진짜 빠진 부분). 백엔드 `PATCH /orders/:id/items` 재사용(신규 DB 없음).
+
+**구현:**
+- 신규 공유 컴포넌트 `components/Order/ItemServeChip.tsx` — 상태칩 겸 Serve 버튼. 활성주문이면 단계무관 클릭→served(ready 건너뜀), 토글로 취소(=ready). `common:itemServe.*` 8키×4언어. KDS 표시전용 매장(품목 pending 머묾) 위해 단계무관 클릭 필수.
+- Floor Plan TableDetailPanel: 기존 pill 라벨에 "· Serve ▸" 힌트만 추가(최소변경, 동작 그대로).
+- Live Orders: LiveOrdersPage 에 `handleToggleItemServed`(PATCH /items + 전품목 served 시 PATCH /status='served') + OrderDetailModal 에 칩 렌더 + 서빙 카운트 헤더.
+
+**검증(완료):** 타입검사 내 4파일 0에러(src 잔여 2건은 무관한 SignupPage 기존). build 성공+dev배포(main.b492a9de.js). i18n 0 errors. Autoprint regression 44 PASS(인쇄 불변식 무영향). headless mount: **live-orders/floor-plan/pos-terminal/kitchen 진입 OK**(display/menu 산발 타임아웃은 동시 빌드부하 환경탓, 내 기능 무관 페이지). 무결성 감시기: 서빙 파일은 비보호라 인쇄 drift 없음(emergency 2개만 그대로).
+**남은 일:** Irene dev/매장에서 칩 클릭→Served 동작 UX 확인(인쇄 아님 → 실프린터 불필요). 확인되면 운영배포 후보(단 emergency drift 때문에 배포게이트는 그 처리와 함께).
+
+---
+
+## 🟢 KDS 주방별 독립 단계 (주문단위 보기 한정, 2026-05-29, dev 배포됨 · 인쇄 핸들러 무변경)
+
+> Irene 요청+확정: 주문단위 보기에서 멀티-스테이션 주문일 때, 각 주방 탭이 **자기 아이템 기준으로 독립 단계 이동**. 'all' 탭=주문 전체 단계(전 주방 완료 시 승급), 주방 탭=그 주방 단계(다른 게 정상). 항목단위 보기·인쇄 핸들러는 안 건드림. (AskUserQuestion=A "스테이션별 독립 단계", 표/타임라인으로 동작 합의 완료)
+
+**구현 (`KitchenDisplayPage.tsx`만):**
+- 신규 헬퍼: `stationCardStatus(order)` = 선택 주방 아이템 중 최저 단계(가장 안 끝난 것). 'all'이면 order.status. `setStationItemsStage(orderId, target, {force})` = 주방 범위로만 아이템 단계 이동(forward=미달분 전진/force=revert), order.status는 전 주방 완료 시에만 승급.
+- `ordersByStatus`: 주방 탭이면 stationCardStatus 로 카드 칼럼 배치(+deps selectedStation/isItemInSelectedStation).
+- `renderOrderCard`: `cardStatus` 도입 → 칼럼/진행바/색상/긴급/아이템 done 시각/벌크·개별·revert 버튼 전부 cardStatus 기준. 벌크/revert 버튼은 주방 탭이면 setStationItemsStage 로 분기('all'은 기존 markAll* 유지). 개별 아이템 버튼은 updateItemStatus/updateSetItemStatus 에 stageOverride(=cardStatus) 전달(기본값 order.status → 항목뷰 무영향).
+- 인쇄 핸들러(order-created/order-items-added/printKitchenTicketViaRawBT, shouldAutoPrint=false) **무변경 검증**.
+
+**검증(완료):** tsc 내 파일 0에러 / build+dev배포(main.a3684727.js) / Autoprint regression 44 PASS / **/kitchen headless mount OK(pageerror·ErrorBoundary 0)** / 무결성 감시기 KitchenDisplayPage drift(=3건째, 인쇄핸들러 무변경). 
+**남은 일:** Irene가 dev에서 멀티-스테이션 주문 만들어 주방 탭별 독립 단계 동작 확인(인쇄 아님 → 실프린터 불필요). KDS는 🔒라 운영배포 시 실매장 확인 필요 + check-print-guard --bless 후 배포게이트 통과.
+
+---
+
+## 🟢 Floor Plan 결제 팝업 통일 (2026-05-29, dev 배포 main.84d8717b.js · 인쇄 무관)
+
+> Irene 보고: Floor Plan 결제 누르면 **서비스차지(+쿠폰/포인트/할인 분리)가 안 나옴**, Live Orders는 나옴. "같은 팝업이어야 하지 않나."
+
+**원인(실값 확정):** 둘 다 같은 `PaymentModal` 컴포넌트지만 **데이터 소스가 다름**. Live Orders=풀 주문객체(`orderForPayment`, service_charge/coupon/point/tax_rate 다 있음). Floor Plan dine-in=table-status 객체(`selectedStatusInfo`, 서비스차지값/세율/쿠폰·포인트 분리값 없음→줄 숨음) + taxRate 미전달. `GET /orders/:id`가 모든 필드 보유 확인(service_charge=10/coupon=5/point=3/policy=2/tax_rate).
+
+**수정(`FloorPlanPage.tsx`만, 비보호):** `orderForPayment` 상태 추가 → `handlePayment`에서 `GET /orders/:id`로 풀 주문 fetch → dine-in PaymentModal을 풀주문(snake_case) 우선 + table-status 폴백으로 채움(taxRate 보강). takeaway 모달/인쇄 무관.
+
+**검증:** 타입 0에러 / build+배포(main.84d8717b.js) / Autoprint regression 44 PASS / floor-plan headless mount OK(크래시 0). 무결성 감시기 8/8(비보호 파일이라 영향X).
+**남은 일:** Irene가 Floor Plan에서 테이블 결제 눌러 서비스차지/쿠폰/포인트 표시 확인(인쇄 아님 → dev에서 가능).
+
+---
+
+## 🟢 Floor Plan 에디터 테이블 안 보임 — z-index 버그 수정 (2026-05-30, dev 배포 main.9068f885.js · 인쇄 무관)
+
+> 에디터에서 캔버스는 테이블 맞춰 fit(770×370) 되는데 테이블이 안 보이던 문제. 원인=흰 `CanvasBoundsOverlay`(z-index:1)가 테이블(`ScaledLayer`, z-index 없음)을 덮음 — 주석 의도("테이블이 위")와 반대인 진짜 버그.
+> **수정(`FloorPlanCanvas.tsx`만, 비보호):** CanvasBoundsOverlay z-index:1→0(흰영역 바닥), ScaledLayer z-index:2(테이블 최상위). 렌더순서 BoundsOverlay→GridOverlay(auto)→ScaledLayer 와 일치.
+> **검증:** build main.9068f885.js EXIT=0 / 에디터(rest5) 재mount 스크린샷 U1·U2·U3 크게 보임 + "auto-fitted" / 뷰페이지 U1/U2/U3 컬러+attention dot 정상 / pageerror 0. 🔒 감시기 드리프트는 FloorPlanCanvas 비보호라 인쇄 무영향(드리프트 2건=이머전시인쇄 MainLayout+PIN/품절 POSTerminal, 별개·기존).
+
+---
+
+## ✅ 배포 준비 완료 (2026-05-29) — Irene /배포 대기
+dev 누적 4건(이머전시 모바일인쇄 / 품목 서빙 / KDS 주방별 단계 / 결제팝업 통일) 모두 main.84d8717b.js 에 빌드·dev배포됨. 무결성 감시기 bless 완료(8/8) + health-check 88/88 → **배포 게이트 통과 상태**. `/배포` 시 운영 반영. 운영 확인(특히 이머전시 토글·인쇄)은 배포 후 매장에서.
+
+---
+
 ## 다음 확정 작업 (Irene 명시 지시 + 결정 확정 완료 — 바로 구현)
 
 > 2026-05-29 Irene 가 AskUserQuestion 으로 전부 컨펌함. 재질문 없이 구현.
 
+> **그룹1 진행 (2026-05-30):** #2 "Open in POS Terminal" 링크 제거 ✅(TableDetailPanel 2곳). #4 POS 품절토글 ✅(백엔드 PUT /menu/product/:id/toggle-soldout + 소켓 /orders product-soldout 브로드캐스트 + POS 길게누르기 600ms + 낙관적 override + 크로스기기 리스너; 실HTTP+mount검증). #5 할인PIN ⚠️부분(백엔드 POST /staff/verify-pin-permission 세션전환없음+감사로그 ✅, MANAGER123 하드코딩 제거+서버검증 ✅; **잔여: 설정토글 UI + 터치 numpad(현재 window.prompt — 터치 부적합)**). build main.c737b386.js / 🔒8/8(bless) / health88/88 / Autoprint44 / POS mount 0크래시.
+> **그룹1 추가 완료 (2026-05-30):** #1 우측패널 접기 ✅(TableDetailPanel — 상태진행/결제/AddItems 항상, "테이블 작업 ▾" 접이식에 프린트/QR/Cancel/Leaved). #3 ✅. 잔여: #5 설정토글UI+터치numpad.
+> **그룹3 (2026-05-30):** #6 옵션 상세표시 ✅(세트 set_components + 일반 options 렌더 — LiveOrders/FloorPlan/OrderTracking/Cart/POS). #7 Add Items→POSOverlay ✅(인라인 검색카트 제거, onNewOrder()로 풀POS+테이블핀+자동머지; 인라인뷰는 도달불가 dead code 잔존). #8 Daily Settlement Z-리포트 ❌(신규 데이터모델 필요 — POS ID/BOD·EOD/voided/cash movement 등, 실프린터 동반 별도 사이클).
+> **브랜드/락 (2026-05-30) — 실제 버그 2건 발견·수정:** ① **BG 옵션 전파 버그 원인 확정·수정**: OptionGroup 모델에 `brand_menu_synced_version` 누락(DB엔 있음) → Sequelize 가 저장 시 버려서 버전추적 깨짐 → 옵션 재동기화 실패. 모델 추가 → 저장 검증(7 persist PASS). ② **optionGroups lock 갭 수정**: PUT /optionGroups/:id 에 브랜드잠금 가드(미러 옵션그룹+소비상품 options 잠금 시 403 OPTION_LOCKED_BY_BRAND). health 88/88.
+> **#5 완결 + 현장버그 2건 수정 (2026-05-30):** #5 할인PIN **완전 종결** — 설정토글 "Require PIN approval for discounts"(operations, 4언어) + 터치 numpad `DiscountPinModal`(verify-pin-permission, 세션전환X) + MANAGER123 제거. 
+> **현장버그①(Irene 보고): Add Items 가 새 주문 생성** — POSOverlay 가 테이블핀만 하고 자동머지 안 됨. URL `mergeOrderId`→POS `forceMergeOrderId`→ orders-crud forceMergeIntoOrderId(최우선 머지). 실HTTP 검증: 같은 order_number 유지/품목 머지/새주문 0.
+> **현장버그②(Irene 보고): 영어 버전에 한글 표시** — #3에서 한글 defaultValue 박은 것(범례/점/테이블작업/품절툴팁) → 영어 defaultValue + floorplan/settings i18n 4언어 키 추가. POS 품절툴팁 영어화. **범례는 Irene 요청대로 제거(직접 추가 예정)**.
+> **그룹1 = 전부 완료(#1~#5). 그룹2 = 완료. 그룹3: #6/#7 완료(+머지수정), #8 미완.**
+> **잔여(미구현, 신규설계 필요):** #8 Daily Settlement(POS ID/BOD·EOD/voided/cash movement 신규 데이터모델 + 실프린터) · 단계형(cascading) 옵션(parent_option, 중규모 신기능).
 ### 그룹 1 — Floor Plan / POS 운영 개선 (중규모, 바로 구현 가능)
 1. **우측 패널 접기** (`TableDetailPanel.tsx`) — 항상 노출: 주문 상태진행 버튼 + 결제 + Add Items. 접이식 "테이블 작업 ▾"(기본 접힘): QR Reprint/Expire/정보, 프린트 아이콘, Cancel/Leaved. → 주문내역 가독성 확보.
 2. **"Open in POS Terminal" 링크 제거** — `TableDetailPanel.tsx` 2곳(occupied ~1798 / available ~1837). 신규주문은 기존 "+ New Order" iframe POSOverlay(`handleNewOrder`)로 충분.
@@ -109,7 +213,33 @@ AutoPrint master gate / 신규주문 banner / Customer Display reconnect·자동
 4. **POS 품절(sold-out)** — `Product.soldOut` 필드 이미 존재(is_active=활성/비활성과 별개). 메뉴 타일 **길게누르기 → 품절/재고복구 토글**. 즉시 회색+SOLD OUT + **socket 브로드캐스트**(전 POS/모바일 반영). 백엔드: `PUT /menu/product/:id/toggle-soldout`(toggle-active 미러, `checkProductTenant` → Staff 허용). Staff 권한 OK.
 5. **할인 PIN 승인** — 매장 설정 토글 "할인 시 PIN 승인 필요"(operation_settings 권장). ON 시 할인 적용에 PIN 입력 → **신규 경량 엔드포인트** `POST /api/staff/verify-pin-permission`(PIN 이 *할인 승인 권한* 가진 직원인지 서버 검증, **JWT 재발급/세션 전환 없이** `{authorized, by}` 반환) + 감사로그. **하드코딩 `MANAGER123` 제거**(`POSTerminalPage.tsx:1914`). 권한 모델: User.permissions JSON 에 `discount_authorize` 추가 or Restaurant Admin/Owner/Manager 자동 허용 — 구현 시 확정.
 
-### 그룹 2 — 세트메뉴(콤보) 재설계 (대규모 → `/기능설계` 6단계)
+### 그룹 2 — 세트메뉴(콤보) 재설계 (대규모 → `/기능설계` 6단계) — **구현 진행 중 (2026-05-29)**
+> 설계 1~4단계 승인 완료(문서 `docs/SET_MENU_REDESIGN.md` §8~10). 5단계 구현 절반 완료.
+> **완료·검증된 부분 (세트 생성 절반):**
+> - DB: `products.set_groups` JSON 컬럼 추가 + 공용 util `dev-backend/utils/setMenu.js`(resolve/validate/availability/selection/pricing/buildSetResolved) + `dev-frontend/src/utils/setMenu.ts`(동일 로직) + 마이그 `scripts/migrate-set-items-to-groups.js`(레거시 set_items→set_groups 무손실, 멱등, 1건 변환).
+> - 백엔드 저장: `routes/menu.js` POST/PUT 상품에 `validateSetPayload`(set_groups 우선, 레거시 폴백). GET 목록에 set_groups 노출. 단일상품(`/menu/product/:id`)·모바일(`/mobile/menu/item/:id`)에 `buildSetResolved`로 구성품(이름/가격/품절/**상속옵션그룹**)+`set_available` 첨부.
+> - 빌더 UI: `components/MenuManagement/SetMenuBuilder.tsx`(슬롯=고정/선택, 검색 상품선택, min/max, upcharge, 스테퍼, 터치 44px+) + MenuManagementPage 배선(setGroups state, resolveSetGroups 초기화, handleSaveSetMenu set_groups 검증·전송). MenuContext add/update/load 에 set_groups 전달. i18n menu.setBuilder.* 4언어.
+> - **버그픽스**: MenuManagement 리스트의 "Set includes" 가 옛 set_items(menuItemId 없는 데이터)에서 `.toString()` 크래시(pre-existing) → resolveSetGroups 기반 견고 렌더 + 이름 폴백.
+> - 검증: 실 HTTP 왕복(저장 201/잘못된세트 400/resolve 200) · 옵션상속 ✓ · fixed품절차단 ✓ · 빌더 mount 크래시0 · 🔒 8/8 · health 88/88 · hydration 0 · i18n 0 · build OK(main.5034ae31.js).
+> **모바일 주문 UI 완료·검증 (2026-05-30):** `mobile/components/MobileSetOrder.tsx`(fixed 자동/choice 피커/구성품별 상속옵션/터치) + ItemDetailPage 통합(setSel/setOpts state, isSetValid/setTotal, handleAddToCart→set_components, 세트는 항상 resolve fetch) + MobileOrderContext addToCart 가 set_components/세트단가 적재 + CartItem.setComponents. i18n menu.setOrder.* 4언어. 검증: mount 크래시0(Main/choice헤더/upcharge+2.5/AddToCart 렌더) · build main.31155b96.js · 🔒8/8 · health88/88 · hydration0.
+> **주문 생성·POS·표시·리포트 완료 (2026-05-30):**
+> - 주문 영속: 모바일 PaymentPage 3개 결제경로 order_items 매핑에 set_components 추가 → `/api/orders`(🔒 orders-crud) 가 `{...item}` 스프레드로 **무편집 보존**(실 POST 증명: order_items[].set_components 그대로 저장). mobile-orders.js 비-머지 경로도 보존.
+> - POS 주문: `POSSetModal.tsx`(MobileSetOrder 재사용 + 선택로직, 검색 GET resolve, 터치) + POSTerminalPage(🔒) 최소 훅(isV2Set→세트모달, handleConfirmSet→cart, 주문맵 set_components). **upcharge/옵션을 priced selectedOptions 로 변환** → POS 기존 가격식 무수정. 인쇄/QZ/poll 라인 0(git diff 증명) + Autoprint 44 PASS + POS mount 0크래시(세트모달 열림 확인) → **check-print-guard --bless 갱신(8/8)**.
+> - 주문 표시: LiveOrders OrderDetailModal + Floor Plan TableDetailPanel 에 set_components 들여쓰기 표시.
+> - 리포트: dashboard.js 인기상품 + menuSales 에 구성품 합산(판매수 + upcharge 매출, 세트 기본가 중복방지).
+> - 검증: build main.ef3e905a.js · 🔒8/8(bless) · health88/88 · hydration0 · i18n0 · 모바일·POS·빌더 mount 0크래시 · 실 HTTP(저장/검증/resolve/주문 set_components 보존).
+> **주방/빌 인쇄 — 세트 구성품 표기 완료 (2026-05-30, 방식 무변경 콘텐츠만):** Irene 지적("데이터만 추가, 인쇄 방식은 그대로")이 맞음. billPrint.js(🔒)의 **콘텐츠 렌더만** 수정 — 주방 raw(generateKitchenTicketContent) + 주방 HTML(generateHTMLKitchenTicket ×2) + 빌 raw(generateBillContent) + 빌 HTML(generateHTMLBill)이 set_components(구성품명+선택옵션)를 표기, 중복 옵션 skip, 레거시 set_items 폴백. **인쇄 방식 함수(sendHTMLViaQZTray/sendViaQZTray/raw/mirror/QZ 라우팅) 변경 라인 0**(git diff 증명). Autoprint regression 44 PASS + check-print-guard --bless(8/8). build main.ab6e4ba6.js.
+> **전 루트 세세 검증 (2026-05-30) — 갭 2건 발견·수정:**
+> - **모바일 자동머지(mobile-orders.js 195~)가 set_components 를 버림** — 신규 경로만 고쳤고 머지는 누락이었음. 동일 보존 추가. (orders-crud 머지/추가는 `...item` 스프레드로 이미 보존 확인.)
+> - **validateSetGroups 가 min:0(선택적 choice 슬롯 "0~N개")을 거부** — PUT 검증 실패로 발견. min<1→min<0+max≥1 로 수정(백+프론트+빌더 min 셀렉터 0 포함).
+> - **표시 갭**: OrderTracking(고객) + CartPage(장바구니)가 set_components 미표시 → 추가. addToCart 가 specialInstructions 브래킷 중복 넣던 것 제거(set_components 가 표시 단일소스).
+> - 실 HTTP 전 루트: CREATE 201 / 잘못된세트 400 / PUT(선택적슬롯) 200 / RESOLVE mobile·POS / ORDER 신규·orders-crud머지·모바일자동머지 set_components 보존. mount: 모바일상세·OrderTracking(Spring Rolls·Spicy 표시)·빌더·LiveOrders·POS 전부 0크래시. build main.7b284303.js / 🔒8/8 / health88/88 / Autoprint44 / hydration0 / i18n0 / order-totals11.
+> **재고차감 완료 (2026-05-30):** inventoryDeductionService.js 차감 루프를 세트면 구성품별 레시피 차감으로(deductInventoryForOrder + calculateRequiredIngredients). 실검증: 세트2개×Bibimbap → Gochujang 0.1 차감(레시피0.05×2) PASS. **추가 발견·수정**: checkAndCreateAlert 가 존재하지 않는 `resolved` 컬럼 쿼리 → 모델 필드 `is_resolved` 로 정정. 이게 dev 에서 **모든 재고차감을 깨던 기존 버그**(세트 무관)였음. health 88/88.
+> **그룹2 세트메뉴 = 완전 종결** (생성·주문·영속·표시·빌/주방인쇄·리포트·재고차감 전부 ✅, 검증 완료). 잔여(선택): 구성품 per-station 인쇄 분배(라우팅, 실프린터 필요시).
+> **잔여(선택, 향후):** 세트 구성품의 **per-station 분배**(밀크쉐이크→BAR, 치킨→KITCHEN 따로 인쇄)는 라우팅 로직 변경이라 별도. 현재는 레거시 set_items와 동일하게 세트가 한 티켓에 구성품 전체 표기(기능상 정상, 주방이 만들 항목 다 보임). 실매장에서 per-station 분배 필요하면 그때 데이터 라우팅으로 추가.
+> - 주문 생성: `orders-crud.js`(🔒)/`mobile-orders.js` 에 set_components 저장 + 서버검증(validateSetSelection)+가격(computeSetPricing)+재고(구성품 레시피 차감). **🔒 인쇄방식 코드 무접촉 + 회귀검증 필수.**
+> - 리포트: Sales 집계가 set_components 읽어 구성품 통합 판매수.
+> - 주방 인쇄: 세트 구성품의 station 라우팅(stationEnrichment 🔒 영역) — 신중/실프린터 확인.
 - 설계 문서: **`docs/SET_MENU_REDESIGN.md`** (작성 완료).
 - 핵심: ① OR(택1) 슬롯 `set_groups` 구조 ② 구성품 Product live 참조 + 옵션 상속 + 주문라인 구성품 분해 → 단품/세트 통합 통계 + 구성품 레시피 재고차감 ③ 품절 연동(fixed=상품품절 시 차단, choice=전 선택지 품절 시만 차단).
 - 기존 set_items → set_groups[fixed] 무손실 마이그.

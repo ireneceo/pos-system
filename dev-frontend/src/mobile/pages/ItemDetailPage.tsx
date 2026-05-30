@@ -6,6 +6,8 @@ import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { useMenu } from '../../contexts/MenuContext';
 import api from '../services/api';
 import { formatCurrency } from '../../utils/currency';
+import MobileSetOrder from '../components/MobileSetOrder';
+import { isSetSelectionValid } from '../../utils/setMenu';
 
 const ItemHeader = styled.div`
   background: white;
@@ -333,16 +335,20 @@ const ItemDetailPage: React.FC = () => {
   const [quantity, setQuantity] = useState(1);
   const [instructions, setInstructions] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  // 세트 선택 상태: groupId -> 선택 product_ids / `${groupId}:${pid}` -> 선택 optionIds
+  const [setSel, setSetSel] = useState<Record<string, number[]>>({});
+  const [setOpts, setSetOpts] = useState<Record<string, string[]>>({});
   
   useEffect(() => {
     if (!itemId) return;
 
     const foundItem = getItemById(itemId);
-    if (foundItem) {
+    // 세트는 구성품/상속옵션 resolve 가 필요해 항상 API 상세를 받는다(context 엔 resolved 없음).
+    if (foundItem && !foundItem.is_set_menu) {
       setItem(foundItem);
       setIsLoading(false);
     } else {
-      // Fetch from API if not in context
+      // Fetch from API (set resolve 포함, 또는 context 에 없을 때)
       loadItemDetails();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -370,7 +376,12 @@ const ItemDetailPage: React.FC = () => {
           preparationTime: itemData.preparationTime || 15,
           calories: itemData.calories || 0,
           isAvailable: itemData.isAvailable !== false,
-          optionGroups: itemData.optionGroups || []
+          optionGroups: itemData.optionGroups || [],
+          // 세트 v2 — resolve 된 구성품/상속옵션/품절 (mobile /menu/item/:id 가 첨부)
+          is_set_menu: itemData.is_set_menu || false,
+          set_groups: itemData.set_groups || null,
+          set_groups_resolved: itemData.set_groups_resolved || [],
+          set_available: itemData.set_available !== false
         };
 
         setItem(transformedItem);
@@ -386,6 +397,100 @@ const ItemDetailPage: React.FC = () => {
     }
   };
   
+  // ─── 세트 v2 ───
+  const setGroupsResolved: any[] = Array.isArray(item?.set_groups_resolved) ? item.set_groups_resolved : [];
+  const isSet = !!item?.is_set_menu && setGroupsResolved.length > 0;
+
+  // 세트 로드 시 선택 초기화: fixed=구성품 자동 포함, choice=빈 선택
+  useEffect(() => {
+    if (!isSet) return;
+    const init: Record<string, number[]> = {};
+    setGroupsResolved.forEach((g: any) => {
+      init[g.id] = g.type === 'fixed' ? (g.items || []).map((it: any) => Number(it.product_id)) : [];
+    });
+    setSetSel(init);
+    setSetOpts({});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item?.id, isSet]);
+
+  // 포함된 구성품 목록 (fixed 전부 + choice 선택분)
+  const includedSetComponents = () => {
+    const out: { group: any; it: any }[] = [];
+    setGroupsResolved.forEach((g: any) => {
+      const picks = g.type === 'fixed'
+        ? (g.items || [])
+        : (g.items || []).filter((it: any) => (setSel[g.id] || []).includes(Number(it.product_id)));
+      picks.forEach((it: any) => out.push({ group: g, it }));
+    });
+    return out;
+  };
+
+  const handleToggleSetComponent = (groupId: string, productId: number, _type: 'fixed' | 'choice', max: number) => {
+    setSetSel(prev => {
+      const cur = prev[groupId] || [];
+      const has = cur.includes(productId);
+      let next: number[];
+      if (has) next = cur.filter(id => id !== productId);
+      else if (max <= 1) next = [productId];                 // 라디오
+      else next = cur.length >= max ? cur : [...cur, productId]; // 체크(최대 max)
+      return { ...prev, [groupId]: next };
+    });
+    // 선택 해제 시 해당 구성품 옵션도 제거
+    setSetOpts(prev => {
+      const k = `${groupId}:${productId}`;
+      if (prev[k] && !(setSel[groupId] || []).includes(productId)) return prev;
+      const { [k]: _removed, ...rest } = prev;
+      return rest;
+    });
+  };
+
+  const handleToggleSetOption = (groupId: string, productId: number, optionId: string, multiple: boolean, required: boolean) => {
+    const k = `${groupId}:${productId}`;
+    setSetOpts(prev => {
+      const cur = prev[k] || [];
+      if (multiple) {
+        return { ...prev, [k]: cur.includes(optionId) ? cur.filter(id => id !== optionId) : [...cur, optionId] };
+      }
+      // 단일선택: 같은 그룹 옵션 교체. 그룹 옵션 id 집합 필요 → resolved 에서 찾기
+      const grp = setGroupsResolved.find((g: any) => g.id === groupId);
+      const item2 = grp?.items?.find((it: any) => Number(it.product_id) === productId);
+      const og = (item2?.optionGroups || []).find((o: any) => o.options.some((opt: any) => String(opt.id) === optionId));
+      const groupOptIds = (og?.options || []).map((o: any) => String(o.id));
+      const isSel = cur.includes(optionId);
+      if (isSel && !required) return { ...prev, [k]: cur.filter(id => !groupOptIds.includes(id)) };
+      return { ...prev, [k]: [...cur.filter(id => !groupOptIds.includes(id)), optionId] };
+    });
+  };
+
+  // 세트 유효성: choice min~max 충족 + 포함 구성품의 required 옵션 충족
+  const isSetValid = (): boolean => {
+    if (!isSet) return true;
+    const requiredOk = (c: { group_id: string; product_id: number }) => {
+      const grp = setGroupsResolved.find((g: any) => g.id === c.group_id);
+      const it = grp?.items?.find((x: any) => Number(x.product_id) === Number(c.product_id));
+      const sel = setOpts[`${c.group_id}:${c.product_id}`] || [];
+      return (it?.optionGroups || []).filter((og: any) => og.required)
+        .every((og: any) => og.options.some((o: any) => sel.includes(String(o.id))));
+    };
+    const selected = includedSetComponents().map(({ group, it }) => ({ group_id: group.id, product_id: Number(it.product_id) }));
+    // soldOut 포함 구성품이 있으면 막기
+    if (includedSetComponents().some(({ it }) => it.soldOut)) return false;
+    return isSetSelectionValid(setGroupsResolved as any, selected as any, requiredOk as any);
+  };
+
+  // 세트 합계 = 세트 기본가 + 포함 구성품 upcharge + 선택 옵션 가격
+  const setTotal = (): number => {
+    let total = item?.price || 0;
+    includedSetComponents().forEach(({ group, it }) => {
+      total += Number(it.upcharge) || 0;
+      const sel = setOpts[`${group.id}:${it.product_id}`] || [];
+      (it.optionGroups || []).forEach((og: any) => og.options.forEach((o: any) => {
+        if (sel.includes(String(o.id))) total += Number(o.price) || 0;
+      }));
+    });
+    return total * quantity;
+  };
+
   // Get available option groups for this item - 메뉴에서 설정한 순서대로 정렬
   // Support both formats: array of IDs or array of objects
   const availableOptionGroups = item?.optionGroups
@@ -427,9 +532,10 @@ const ItemDetailPage: React.FC = () => {
   
   const calculateTotal = () => {
     if (!item) return 0;
-    
+    if (isSet) return setTotal();   // 세트는 기본가+upcharge+옵션
+
     let total = item.price * quantity;
-    
+
     // Add option prices
     selectedOptions.forEach(optionId => {
       const option = availableOptionGroups
@@ -439,34 +545,59 @@ const ItemDetailPage: React.FC = () => {
         total += option.price * quantity;
       }
     });
-    
+
     return total;
   };
-  
+
   const isValid = () => {
+    if (isSet) return isSetValid() && item?.set_available !== false;
     if (!availableOptionGroups.length) return true;
-    
+
     // Check if all required options are selected
     return availableOptionGroups
       .filter((group: any) => group.required)
-      .every((group: any) => 
-        selectedOptions.some(optionId => 
+      .every((group: any) =>
+        selectedOptions.some(optionId =>
           group.options.some((option: any) => option.id === optionId)
         )
       );
   };
-  
+
   const handleAddToCart = () => {
     if (!item || !isValid()) return;
+
+    // 세트: 구성품 분해(set_components) + 옵션 이름을 카트에 적재
+    let setComponents: any[] | undefined;
+    if (isSet) {
+      setComponents = includedSetComponents().map(({ group, it }) => {
+        const sel = setOpts[`${group.id}:${it.product_id}`] || [];
+        const optionNames = (it.optionGroups || [])
+          .flatMap((og: any) => og.options)
+          .filter((o: any) => sel.includes(String(o.id)))
+          .map((o: any) => o.name);
+        return {
+          group_id: group.id,
+          group_label: group.label,
+          product_id: Number(it.product_id),
+          name: it.name,
+          qty: it.qty || 1,
+          upcharge: Number(it.upcharge) || 0,
+          options: optionNames,
+        };
+      });
+    }
 
     // Create a copy of item with actual option groups instead of IDs
     const itemWithOptions = {
       ...item,
-      optionGroups: availableOptionGroups
+      optionGroups: availableOptionGroups,
+      ...(setComponents ? { set_components: setComponents, _setUnitPrice: setTotal() / quantity } : {})
     };
 
     addToCart(itemWithOptions, quantity, selectedOptions, instructions);
-    navigate(`/mobile/${slug}/cart`);
+    // 담은 뒤 장바구니로 튀지 않고 메뉴로 복귀 — 카트 뱃지 숫자만 증가하고
+    // 사용자는 계속 둘러볼 수 있다 (#4). 메뉴는 직전 탭(?cat=) 그대로 복원된다.
+    navigate(-1);
   };
   
   if (isLoading) {
@@ -515,17 +646,27 @@ const ItemDetailPage: React.FC = () => {
         </ItemInfo>
       </ItemHeader>
 
-      {/* Set Menu Items Display */}
-      {item.is_set_menu && item.set_items && item.set_items.length > 0 && (
+      {/* 세트 v2 — fixed 자동 + choice 피커 + 구성품별 상속옵션 */}
+      {isSet && (
         <SetMenuSection>
-          <SetMenuTitle>
-            🍱 This set includes:
-          </SetMenuTitle>
+          <MobileSetOrder
+            groups={setGroupsResolved as any}
+            selections={setSel}
+            onToggleComponent={handleToggleSetComponent}
+            componentOptions={setOpts}
+            onToggleOption={handleToggleSetOption}
+            formatCurrency={(v: number) => formatCurrency(v, currency)}
+          />
+        </SetMenuSection>
+      )}
+
+      {/* 레거시 세트(set_items, resolve 없음) 폴백 표시 */}
+      {!isSet && item.is_set_menu && item.set_items && item.set_items.length > 0 && (
+        <SetMenuSection>
+          <SetMenuTitle>This set includes:</SetMenuTitle>
           <SetMenuItems>
             {item.set_items.map((setItem: any, index: number) => (
-              <SetMenuItem key={index}>
-                • {setItem.name} x{setItem.quantity}
-              </SetMenuItem>
+              <SetMenuItem key={index}>• {setItem.name} x{setItem.quantity}</SetMenuItem>
             ))}
           </SetMenuItems>
         </SetMenuSection>

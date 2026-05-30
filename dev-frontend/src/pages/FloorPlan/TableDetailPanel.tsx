@@ -35,7 +35,7 @@ interface TableDetailPanelProps {
   timezone?: string;
   restaurantId: number;
   onClose: () => void;
-  onNewOrder: () => void;
+  onNewOrder: (opts?: { takeaway?: boolean; mergeOrderId?: number }) => void;
   onStatusChange: (orderId: number, newStatus: string) => Promise<void>;
   onPayment: () => void;
   onNavigateToPOS: () => void;
@@ -593,6 +593,8 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
   floorPlan
 }) => {
   const [loading, setLoading] = useState(false);
+  // 우측 패널 접기 (#1): 테이블 작업(QR/프린트/Cancel/Leaved) 기본 접힘 → 주문내역 가독성 확보.
+  const [showTableActions, setShowTableActions] = useState(false);
   const { getStoreInfo, paymentSettings } = useStore();
   const { t } = useTranslation(['orders', 'floorplan']);
   const [showHistory, setShowHistory] = useState(false);
@@ -1577,8 +1579,9 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                                 aria-pressed={isServed}
                                 title={badgeTitle}
                               >
-                                {isServed ? '\u2713' : null}
+                                {isServed ? '\u2713 ' : null}
                                 {badgeLabel}
+                                {clickable && !isServed ? ` \u00b7 ${t('common:itemServe.serveHint')}` : ''}
                               </ItemStatusPill>
                             )}
                             <ItemInfo>
@@ -1586,6 +1589,13 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                                 {item.name} <ItemQty>x{item.quantity}</ItemQty>
                               </ItemName>
                               {optionsStr && <ItemOptions>{optionsStr}</ItemOptions>}
+                              {Array.isArray(item.set_components) && item.set_components.length > 0 && (
+                                <ItemOptions style={{ paddingLeft: 8 }}>
+                                  {item.set_components.map((c: any, ci: number) => (
+                                    <div key={ci}>· {c.name}{Array.isArray(c.options) && c.options.length ? ` (${c.options.join(', ')})` : ''}</div>
+                                  ))}
+                                </ItemOptions>
+                              )}
                             </ItemInfo>
                             <ItemPrice>
                               {formatCurrency(item.price * item.quantity, currency)}
@@ -1680,6 +1690,56 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
 
             {/* Actions */}
             <ActionGroup>
+              {/* ── 항상 보임: 상태진행 + 결제확인 + Add Items/Payment (#1) ── */}
+              {/* Status progression — completed/cancelled 제외. Served에서는 Complete Order 표시 */}
+              {nextAction && statusInfo!.orderId && orderStatus !== 'completed' && orderStatus !== 'cancelled' && (
+                <ActionBtn
+                  $variant="primary"
+                  onClick={() => onStatusChange(statusInfo!.orderId!, nextAction.status)}
+                  disabled={loading}
+                  style={
+                    orderStatus === 'outstanding' ? { background: '#F59E0B', borderColor: '#F59E0B', color: 'white' } :
+                    orderStatus === 'ready' ? { background: '#10B981', borderColor: '#10B981', color: 'white' } :
+                    nextAction.status === 'completed' ? { background: '#6B7280', borderColor: '#6B7280', color: 'white' } :
+                    undefined
+                  }
+                >
+                  {nextAction.label}
+                </ActionBtn>
+              )}
+
+              {/* Confirm Payment — 증빙 확인 모달 열기 */}
+              {paymentStatus === 'payment_verification_pending' && (
+                <ActionBtn $variant="success" onClick={handleConfirmPaymentClick} disabled={loading}>
+                  Confirm Payment
+                </ActionBtn>
+              )}
+
+              <ActionRow>
+                {/* Add Items (#7) — 인라인 검색카트(터치 부적합) 대신 New Order 와 동일하게 POSOverlay(풀 POS).
+                    테이블에 핀되어 POS 자동머지가 기존 주문에 추가. */}
+                {paymentStatus === 'pending' && !['served', 'completed', 'cancelled'].includes(orderStatus) && (
+                  <ActionBtn $variant="secondary" onClick={() => onNewOrder({ mergeOrderId: statusInfo!.orderId || undefined })}>
+                    Add Items
+                  </ActionBtn>
+                )}
+                {/* Payment — LiveOrders와 동일: payment_status=pending */}
+                {paymentStatus === 'pending' && (
+                  <ActionBtn
+                    $variant={orderStatus === 'served' ? 'success' : 'secondary'}
+                    onClick={onPayment}
+                  >
+                    Payment
+                  </ActionBtn>
+                )}
+              </ActionRow>
+
+              {/* ── 테이블 작업 — 접이식 (#1, 기본 접힘): 프린트/QR/Cancel/Leaved ── */}
+              <ActionBtn $variant="link" type="button" onClick={() => setShowTableActions(v => !v)} style={{ marginTop: 2 }}>
+                {t('floorplan:tableDetailPanel.tableActions', { defaultValue: 'Table Actions' })} {showTableActions ? '▴' : '▾'}
+              </ActionBtn>
+              {showTableActions && (
+              <>
               {/* Print & Revert row */}
               <IconButtonGroup>
                 <IconButton onClick={handlePrintBill} title="Print Bill">
@@ -1718,48 +1778,6 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                   </IconButton>
                 )}
               </IconButtonGroup>
-
-              {/* Status progression — completed/cancelled 제외. Served에서는 Complete Order 표시 */}
-              {nextAction && statusInfo!.orderId && orderStatus !== 'completed' && orderStatus !== 'cancelled' && (
-                <ActionBtn
-                  $variant="primary"
-                  onClick={() => onStatusChange(statusInfo!.orderId!, nextAction.status)}
-                  disabled={loading}
-                  style={
-                    orderStatus === 'outstanding' ? { background: '#F59E0B', borderColor: '#F59E0B', color: 'white' } :
-                    orderStatus === 'ready' ? { background: '#10B981', borderColor: '#10B981', color: 'white' } :
-                    nextAction.status === 'completed' ? { background: '#6B7280', borderColor: '#6B7280', color: 'white' } :
-                    undefined
-                  }
-                >
-                  {nextAction.label}
-                </ActionBtn>
-              )}
-
-              {/* Confirm Payment — 증빙 확인 모달 열기 */}
-              {paymentStatus === 'payment_verification_pending' && (
-                <ActionBtn $variant="success" onClick={handleConfirmPaymentClick} disabled={loading}>
-                  Confirm Payment
-                </ActionBtn>
-              )}
-
-              <ActionRow>
-                {/* Add Items — LiveOrders와 동일: payment_status=pending && status not served/completed/cancelled */}
-                {paymentStatus === 'pending' && !['served', 'completed', 'cancelled'].includes(orderStatus) && (
-                  <ActionBtn $variant="secondary" onClick={() => setShowAddItemsView(true)}>
-                    Add Items
-                  </ActionBtn>
-                )}
-                {/* Payment — LiveOrders와 동일: payment_status=pending */}
-                {paymentStatus === 'pending' && (
-                  <ActionBtn
-                    $variant={orderStatus === 'served' ? 'success' : 'secondary'}
-                    onClick={onPayment}
-                  >
-                    Payment
-                  </ActionBtn>
-                )}
-              </ActionRow>
               {/* Cancel Order — LiveOrders와 동일: status not cancelled/completed */}
               {orderStatus !== 'cancelled' && orderStatus !== 'completed' && (
                 <ActionBtn $variant="danger" onClick={handleCancelOrder} disabled={loading}>
@@ -1804,9 +1822,9 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
               )}
               </>
               )}
-              <ActionBtn $variant="link" onClick={onNavigateToPOS}>
-                Open in POS Terminal &#x2197;
-              </ActionBtn>
+              </>
+              )}
+              {/* 접이식 끝 (#1) · "Open in POS Terminal" 링크 제거 (#2) */}
             </ActionGroup>
           </>
         )
@@ -1843,9 +1861,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
             )}
             </>
             )}
-            <ActionBtn $variant="link" onClick={onNavigateToPOS}>
-              Open in POS Terminal &#x2197;
-            </ActionBtn>
+            {/* "Open in POS Terminal" 링크 제거 (#2) */}
           </ActionGroup>
         </>
       )}

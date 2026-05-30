@@ -1,4 +1,8 @@
 {
+  "storeBadge.openNow": "营业中",
+  "storeBadge.onBreak": "休息时间",
+  "storeBadge.closed": "已打烊",
+  "storeBadge.break": "休息",
   "storeBadge.cashless": "无现金",
   "storeBadge.cashlessHint": "本店不接受现金支付",
   "storeBadge.cashlessNoticeTitle": "无现金门店 — 不接受现金",
@@ -689,5 +693,13 @@
   "mobileOrderAlerts.multipleNewOrders": "{{count}} 个新移动订单",
   "mobileOrderAlerts.table": "桌号",
   "mobileOrderAlerts.view": "查看",
-  "mobileOrderAlerts.dismiss": "关闭"
+  "mobileOrderAlerts.dismiss": "关闭",
+  "itemServe.queued": "待处理",
+  "itemServe.cooking": "烹饪中",
+  "itemServe.ready": "可上菜",
+  "itemServe.served": "已上菜",
+  "itemServe.serveHint": "上菜 ▸",
+  "itemServe.tapToServe": "点按标记为已上菜",
+  "itemServe.tapToUndo": "点按取消上菜",
+  "itemServe.servedCount": "{{served}}/{{total}} 已上菜"
 }

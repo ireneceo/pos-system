@@ -27,7 +27,7 @@
   "floorPlanEditor.swapHint": "Swap with {{label}}",
   "floorPlanEditor.availableHint": "Available — pick to assign",
   "floorPlanEditor.canvasSize": "Canvas Size",
-  "floorPlanEditor.canvasSizeHint": "Default 1200×800. Range 600–5000 each side. Increase for large multi-zone restaurants.",
+  "floorPlanEditor.canvasSizeHint": "Default 1200×800. Range 300–5000 each side. Increase for large multi-zone restaurants.",
   "floorPlanEditor.width": "Width",
   "floorPlanEditor.height": "Height",
   "floorPlanEditor.multiSelected": "{{count}} selected",
@@ -70,8 +70,6 @@
   "floorPlanPage.change": "Change",
   "floorPlanEditor.size": "Size",
   "floorPlanEditor.seats": "Seats",
-  "floorPlanEditor.width": "Width",
-  "floorPlanEditor.height": "Height",
   "floorPlanEditor.canvas": "Canvas",
   "floorPlanEditor.gridSize": "Grid Size",
   "floorPlanPage.floorPlan": "Floor Plan",
@@ -124,5 +122,6 @@
   "tableDetailPanel.itemStatus.unmarkServed": "Undo served",
   "tableDetailPanel.itemStatus.waitingKitchen": "Waiting for kitchen",
   "tableDetailPanel.itemStatus.servedCount": "{{served}}/{{total}} served",
-  "tableNode.staff": "STAFF"
+  "tableNode.staff": "STAFF",
+  "tableDetailPanel.tableActions": "Table Actions"
 }

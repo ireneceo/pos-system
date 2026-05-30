@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import MobileLayout from '../components/common/MobileLayout';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
@@ -512,6 +513,7 @@ const validateCouponAPI = async (code: string, restaurantId: number, orderAmount
 const PaymentPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { cartItems, cartTotal, clearCart, setCurrentOrder, currentStore, setCurrentStore, currency } = useMobileOrder();
   const {
     currentCustomer,
@@ -714,6 +716,10 @@ const PaymentPage: React.FC = () => {
   // Rounding settings
   const cashRounding = currentStore?.cash_rounding;
   const roundingApplyTo = currentStore?.rounding_apply_to || 'cash_only';
+
+  // 캐시리스 매장 — 메뉴에 있던 안내 배너를 결제 화면으로 이동(#9). 결제 직전 손님이 인지하게.
+  // 판정: payment_settings.cash.enabled === false (메뉴 뱃지와 동일 기준) + context 폴백.
+  const isCashless = (paymentMethods?.cash && paymentMethods.cash.enabled === false) || !!currentStore?.cashless;
 
   // Helper function for rounding
   const applyRounding = (amount: number): number => {
@@ -1355,7 +1361,8 @@ const PaymentPage: React.FC = () => {
                   optionDetails: optionDetails,  // Full option data with prices
                   special_instructions: item.specialInstructions || null,
                   is_set_menu: (item.menuItem as any).is_set_menu || false,
-                  set_items: (item.menuItem as any).set_items || []
+                  set_items: (item.menuItem as any).set_items || [],
+                  set_components: (item as any).setComponents || []
                 };
               })
             };
@@ -1517,7 +1524,8 @@ const PaymentPage: React.FC = () => {
                 optionDetails: optionDetails,
                 special_instructions: item.specialInstructions || null,
                 is_set_menu: (item.menuItem as any).is_set_menu || false,
-                set_items: (item.menuItem as any).set_items || []
+                set_items: (item.menuItem as any).set_items || [],
+                set_components: (item as any).setComponents || []
               };
             })
           };
@@ -1617,7 +1625,8 @@ const PaymentPage: React.FC = () => {
                   optionDetails: optionDetails,
                   special_instructions: item.specialInstructions || null,
                   is_set_menu: (item.menuItem as any).is_set_menu || false,
-                  set_items: (item.menuItem as any).set_items || []
+                  set_items: (item.menuItem as any).set_items || [],
+                  set_components: (item as any).setComponents || []
                 };
               })
             };
@@ -2655,6 +2664,28 @@ const PaymentPage: React.FC = () => {
               Please select a payment method to continue
             </div>
           )}
+          {isCashless && (
+            <div role="note" style={{
+              background: '#F0EFFF',
+              border: '1px solid #DDD9FF',
+              borderLeft: '4px solid #635BFF',
+              borderRadius: '8px',
+              padding: '12px 16px',
+              marginBottom: '16px',
+              color: '#4B45C6',
+              fontSize: '14px',
+              fontWeight: 600,
+              lineHeight: 1.45,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '2px'
+            }}>
+              {t('common:storeBadge.cashlessNoticeTitle', { defaultValue: 'Cashless store — cash not accepted' })}
+              <span style={{ fontSize: '12px', fontWeight: 500, color: '#635BFF' }}>
+                {t('common:storeBadge.cashlessNoticeSub', { defaultValue: 'Please pay by card or e-wallet only.' })}
+              </span>
+            </div>
+          )}
           <PaymentMethods>
             {availableMethods.map(method => {
               const hint =
@@ -2737,7 +2768,17 @@ const PaymentPage: React.FC = () => {
           </>
         ) : (
           <>
-            Pay {formatCurrency(total, currency)}
+            {(() => {
+              // 결제수단별 버튼 라벨 — 카운터결제인데 "Pay"라 결제하는 줄 알던 혼란 해결.
+              // 카운터/현금: 결제 안 하고 주문만 생성 → "Place Order"(금액 표기 X).
+              const m = (paymentMethod || '').toLowerCase();
+              if (m === 'counter' || m === 'cash' || m === 'payatcounter') return 'Place Order';
+              if (m === 'qr' || m === 'qrpayment' || m === 'qr_payment' || m === 'ewallet') return 'Scan to Pay';
+              if (m === 'banktransfer' || m === 'bank_transfer' || m === 'bank') return 'Continue to Bank Transfer';
+              if (m === 'paypal') return `Pay with PayPal ${formatCurrency(total, currency)}`;
+              // card / stripe / online / 기본
+              return `Pay ${formatCurrency(total, currency)}`;
+            })()}
           </>
         )}
       </PayButton>

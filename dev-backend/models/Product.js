@@ -106,6 +106,14 @@ Product.init({
     allowNull: true,
     defaultValue: null
   },
+  // 세트메뉴 v2 — OR(택1) 슬롯 + 구성품 live 참조 + 옵션 상속 (SET_MENU_REDESIGN.md §8).
+  // shape: [{ id, label, type:'fixed'|'choice', min, max, items:[{product_id, qty, upcharge}] }]
+  // set_items 는 레거시 폴백용으로 유지 (resolveSetGroups 가 런타임 변환).
+  set_groups: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: null
+  },
   set_display_order: {
     type: DataTypes.INTEGER,
     defaultValue: 0

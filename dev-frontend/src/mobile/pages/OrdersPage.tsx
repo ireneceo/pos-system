@@ -176,6 +176,9 @@ const OrdersPage: React.FC = () => {
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
   const [orders, setOrders] = useState<any[]>([]);
+  // 첫 로드 완료 전엔 빈 상태("No orders") 대신 로딩 표시 → "주문 없음/찾을 수 없음" 깜빡임 방지.
+  // 초기 true, 첫 loadOrders 완료 후 false 로 고정(5초 폴링마다 다시 true 로 안 만듦).
+  const [isLoading, setIsLoading] = useState(true);
   const { currentStore, setCurrentStore, currency } = useMobileOrder();
   const { currentCustomer } = useCustomer();
 
@@ -226,6 +229,7 @@ const OrdersPage: React.FC = () => {
   const loadOrders = async () => {
     if (!currentStore) {
       console.warn('No currentStore available');
+      setIsLoading(false);
       return;
     }
 
@@ -291,6 +295,8 @@ const OrdersPage: React.FC = () => {
     } catch (error) {
       console.error('❌ Error loading orders:', error);
       setOrders([]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -326,7 +332,11 @@ const OrdersPage: React.FC = () => {
   return (
     <MobileLayout title="My Orders" currentPage="orders">
       <OrdersContainer>
-        {orders.length === 0 ? (
+        {isLoading ? (
+          <EmptyState>
+            <EmptyTitle>Loading orders…</EmptyTitle>
+          </EmptyState>
+        ) : orders.length === 0 ? (
           <EmptyState>
             <EmptyTitle>No orders yet</EmptyTitle>
             <EmptyDescription>

@@ -1392,14 +1392,92 @@ const KitchenDisplayPage: React.FC = () => {
     });
   };
 
-  const updateItemStatus = async (orderId: string, itemId: string) => {
+  // ── 주문단위 보기: 주방 탭별 독립 단계 ──────────────────────────────
+  // (2026-05-29 Irene 승인) 주문단위 보기에서 특정 주방 탭이 켜져 있으면, 카드 칼럼과
+  // 벌크 버튼을 "그 주방 아이템" 기준으로 굴린다. order.status(주문 전체)는 그대로 두고
+  // 여기서 계산만 한다(단일 진실 유지) — 주문 전체 단계는 전 주방 완료 시에만 승급.
+  // 항목단위 보기 / 인쇄 핸들러는 건드리지 않는다.
+  const STAGE_LEVEL: Record<string, number> = { pending: 0, preparing: 1, ready: 2, served: 3, completed: 3 };
+  const LEVEL_STAGE = ['pending', 'preparing', 'ready', 'served'] as const;
+
+  // 선택된 주방 아이템들의 상태만 수집 (세트메뉴 구성품 포함)
+  const collectStationItemStatuses = (order: KitchenOrder): string[] => {
+    const out: string[] = [];
+    order.items.forEach(item => {
+      if (item.is_set_menu && item.set_items && item.set_items.length > 0) {
+        item.set_items.forEach(si => {
+          if (selectedStation === 'all' || isItemInSelectedStation(si.name)) out.push(si.status || 'pending');
+        });
+      } else if (selectedStation === 'all' || isItemInSelectedStation(item.name)) {
+        out.push(item.status || 'pending');
+      }
+    });
+    return out;
+  };
+
+  // 주방 탭 기준 카드 단계 = 그 주방 아이템 중 "가장 안 끝난 것"(최저 단계).
+  // 'all' 탭이면 주문 전체 상태를 그대로 사용(현행 동작 보존).
+  const stationCardStatus = (order: KitchenOrder): KitchenOrder['status'] => {
+    if (selectedStation === 'all') return order.status;
+    const statuses = collectStationItemStatuses(order);
+    if (statuses.length === 0) return order.status; // 해당 주방 아이템 없음(카드 자체가 안 보임)
+    const minLvl = Math.min(...statuses.map(s => STAGE_LEVEL[s] ?? 0));
+    return (LEVEL_STAGE[minLvl] || 'served') as KitchenOrder['status'];
+  };
+
+  // 주방 범위로만 아이템 단계 이동. forward=미달분만 전진(Start/Done/Serve),
+  // force=강제 세팅(Revert). order.status 는 전 주방 완료 시에만 승급(forward 한정).
+  const setStationItemsStage = async (
+    orderId: string,
+    targetStatus: KitchenOrder['status'],
+    opts: { force?: boolean } = {}
+  ) => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+    stopSound();
+    const tLvl = STAGE_LEVEL[targetStatus] ?? 0;
+    const inScope = (name: string) => selectedStation === 'all' || isItemInSelectedStation(name);
+    const adjust = (cur?: string): ItemStatus => {
+      if (opts.force) return targetStatus as ItemStatus;
+      const lvl = STAGE_LEVEL[cur || 'pending'] ?? 0;
+      return (lvl < tLvl ? targetStatus : (cur || 'pending')) as ItemStatus;
+    };
+    const updatedItems = order.items.map(item => {
+      if (item.is_set_menu && item.set_items && item.set_items.length > 0) {
+        return {
+          ...item,
+          set_items: item.set_items.map(si => inScope(si.name) ? { ...si, status: adjust(si.status) } : si)
+        };
+      }
+      return inScope(item.name) ? { ...item, status: adjust(item.status) } : item;
+    });
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, items: updatedItems as any } : o));
+    try {
+      const res = await fetch(`/api/orders/${orderId}/items`, {
+        method: 'PATCH', credentials: 'include', headers: apiHeaders(),
+        body: JSON.stringify(kdsBody({ order_items: updatedItems }))
+      });
+      const result = await res.json();
+      if (!result.success) { fetchOrders(); return; }
+      // 주문 전체(order.status) 승급은 전 주방 아이템이 다 끝났을 때만 (forward 한정).
+      if (!opts.force && areAllItemsDoneForColumn(updatedItems, order.status)) {
+        const next = ({ pending: 'preparing', preparing: 'ready', ready: 'served' } as any)[order.status];
+        if (next) await updateOrderStatus(orderId, next);
+      }
+    } catch {
+      fetchOrders();
+    }
+  };
+
+  const updateItemStatus = async (orderId: string, itemId: string, stageOverride?: string) => {
     stopSound();
     const order = orders.find(o => o.id === orderId);
     if (!order) return;
+    const stage = stageOverride || order.status;
 
     const updatedItems = order.items.map(item => {
       if (item.id === itemId) {
-        return { ...item, status: getNextItemStatus(order.status, item.status || 'pending') };
+        return { ...item, status: getNextItemStatus(stage, item.status || 'pending') };
       }
       return item;
     });
@@ -1426,20 +1504,21 @@ const KitchenDisplayPage: React.FC = () => {
     }
   };
 
-  const updateSetItemStatus = async (orderId: string, parentItemId: string, setItemId: string) => {
+  const updateSetItemStatus = async (orderId: string, parentItemId: string, setItemId: string, stageOverride?: string) => {
     const order = orders.find(o => o.id === orderId);
     if (!order) return;
+    const stage = stageOverride || order.status;
 
     const updatedItems = order.items.map(item => {
       if (item.id === parentItemId && item.set_items) {
         const updatedSetItems = item.set_items.map(setItem => {
           if (setItem.id === setItemId) {
-            return { ...setItem, status: getNextItemStatus(order.status, setItem.status || 'pending') };
+            return { ...setItem, status: getNextItemStatus(stage, setItem.status || 'pending') };
           }
           return setItem;
         });
-        const allSetDone = updatedSetItems.every(si => isItemDoneForColumn(order.status, si.status || 'pending'));
-        const parentStatus: ItemStatus = allSetDone ? getNextItemStatus(order.status, order.status) : (order.status as ItemStatus);
+        const allSetDone = updatedSetItems.every(si => isItemDoneForColumn(stage, si.status || 'pending'));
+        const parentStatus: ItemStatus = allSetDone ? getNextItemStatus(stage, stage) : (order.status as ItemStatus);
         return { ...item, set_items: updatedSetItems, status: parentStatus };
       }
       return item;
@@ -1578,8 +1657,9 @@ const KitchenDisplayPage: React.FC = () => {
       (o.orderType === 'pickup' && o.scheduledPickupTime
         ? new Date(o.scheduledPickupTime).getTime()
         : o.orderTime.getTime());
+    // 주문단위 카드 칼럼 배치: 'all' 탭은 주문 전체 상태, 주방 탭은 그 주방 단계 기준.
     const sorted = (status: string) => orders
-      .filter(order => order.status === status)
+      .filter(order => (selectedStation === 'all' ? order.status : stationCardStatus(order)) === status)
       .filter(orderHasStationItems)
       .sort((a, b) => sortKey(a) - sortKey(b));
     return {
@@ -1587,7 +1667,7 @@ const KitchenDisplayPage: React.FC = () => {
       preparing: sorted('preparing'),
       ready: sorted('ready')
     };
-  }, [orders, orderHasStationItems]);
+  }, [orders, orderHasStationItems, selectedStation, isItemInSelectedStation]);
 
   const getOrdersByStatus = (status: KitchenOrder['status']) => {
     return ordersByStatus[status] || [];
@@ -1659,7 +1739,9 @@ const KitchenDisplayPage: React.FC = () => {
 
   const renderOrderCard = (order: KitchenOrder) => {
     const elapsedTime = getElapsedTime(order.orderTime);
-    const isUrgent = elapsedTime > 15 && order.status === 'pending';
+    // 주방 탭이면 그 주방 단계, 'all'이면 주문 전체 단계 — 카드 칼럼/버튼/라벨의 기준.
+    const cardStatus = selectedStation === 'all' ? order.status : stationCardStatus(order);
+    const isUrgent = elapsedTime > 15 && cardStatus === 'pending';
 
     // Station 필터: 선택된 Station 아이템만 표시
     const visibleItems = selectedStation === 'all' ? order.items : order.items.filter(item => {
@@ -1676,14 +1758,14 @@ const KitchenDisplayPage: React.FC = () => {
       if (item.is_set_menu && item.set_items && item.set_items.length > 0) {
         const stationSetItems = selectedStation === 'all' ? item.set_items : item.set_items.filter(si => isItemInSelectedStation(si.name));
         totalItems += stationSetItems.length;
-        completedItems += stationSetItems.filter(si => isItemDoneForColumn(order.status, si.status || 'pending')).length;
+        completedItems += stationSetItems.filter(si => isItemDoneForColumn(cardStatus, si.status || 'pending')).length;
       } else {
         totalItems += 1;
-        if (isItemDoneForColumn(order.status, item.status || 'pending')) completedItems += 1;
+        if (isItemDoneForColumn(cardStatus, item.status || 'pending')) completedItems += 1;
       }
     });
     const progressPercent = totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
-    const statusColor = getStatusColor(order.status);
+    const statusColor = getStatusColor(cardStatus);
 
     return (
       <OrderCard key={order.id}>
@@ -1747,15 +1829,15 @@ const KitchenDisplayPage: React.FC = () => {
                   {addedAtLabel && <span style={{ fontWeight: 500, opacity: 0.8 }}>· added {addedAtLabel}</span>}
                 </div>
               )}
-              <ItemRow done={isItemDoneForColumn(order.status, item.status || 'pending') && order.status !== 'pending'}>
+              <ItemRow done={isItemDoneForColumn(cardStatus, item.status || 'pending') && cardStatus !== 'pending'}>
                 <ItemInfo>
                   {item.is_set_menu ? (
                     <div style={{ fontSize: '12px', fontWeight: 500, color: '#4B5563' }}>
-                      {formatItemName(item.name)} {item.quantity > 1 && <ItemQty highlight done={isItemDoneForColumn(order.status, item.status || 'pending') && order.status !== 'pending'}>x {item.quantity}</ItemQty>}
+                      {formatItemName(item.name)} {item.quantity > 1 && <ItemQty highlight done={isItemDoneForColumn(cardStatus, item.status || 'pending') && cardStatus !== 'pending'}>x {item.quantity}</ItemQty>}
                     </div>
                   ) : (
-                    <ItemName done={isItemDoneForColumn(order.status, item.status || 'pending') && order.status !== 'pending'}>
-                      {formatItemName(item.name)} {item.quantity > 1 && <ItemQty highlight done={isItemDoneForColumn(order.status, item.status || 'pending') && order.status !== 'pending'}>x {item.quantity}</ItemQty>}
+                    <ItemName done={isItemDoneForColumn(cardStatus, item.status || 'pending') && cardStatus !== 'pending'}>
+                      {formatItemName(item.name)} {item.quantity > 1 && <ItemQty highlight done={isItemDoneForColumn(cardStatus, item.status || 'pending') && cardStatus !== 'pending'}>x {item.quantity}</ItemQty>}
                     </ItemName>
                   )}
                   {(() => {
@@ -1764,25 +1846,27 @@ const KitchenDisplayPage: React.FC = () => {
                     return (
                       <OptionTags>
                         {regularOptions.map((option, idx) => (
-                          <OptionTag key={idx} done={isItemDoneForColumn(order.status, item.status || 'pending') && order.status !== 'pending'}>{option}</OptionTag>
+                          <OptionTag key={idx} done={isItemDoneForColumn(cardStatus, item.status || 'pending') && cardStatus !== 'pending'}>{option}</OptionTag>
                         ))}
                         {item.special_instructions && (
-                          <SpecialTag done={isItemDoneForColumn(order.status, item.status || 'pending') && order.status !== 'pending'}>{item.special_instructions}</SpecialTag>
+                          <SpecialTag done={isItemDoneForColumn(cardStatus, item.status || 'pending') && cardStatus !== 'pending'}>{item.special_instructions}</SpecialTag>
                         )}
                       </OptionTags>
                     );
                   })()}
                 </ItemInfo>
-                {!item.is_set_menu && totalItems === 1 && order.status !== 'pending' && (
+                {!item.is_set_menu && totalItems === 1 && cardStatus !== 'pending' && (
                   <RevertBtn
                     style={{ padding: '6px 10px', fontSize: '12px', marginRight: 4 }}
                     onClick={() => {
-                      const prevStatus = order.status === 'preparing' ? 'pending' : order.status === 'ready' ? 'preparing' : null;
-                      if (prevStatus) updateOrderStatus(order.id, prevStatus);
+                      const prevStatus = cardStatus === 'preparing' ? 'pending' : cardStatus === 'ready' ? 'preparing' : null;
+                      if (!prevStatus) return;
+                      if (selectedStation === 'all') updateOrderStatus(order.id, prevStatus);
+                      else setStationItemsStage(order.id, prevStatus as KitchenOrder['status'], { force: true });
                     }}
                   >↺</RevertBtn>
                 )}
-                {!item.is_set_menu && totalItems === 1 && order.status === 'pending' && (
+                {!item.is_set_menu && totalItems === 1 && cardStatus === 'pending' && (
                   <RevertBtn
                     style={{ padding: '6px 8px', marginRight: 4 }}
                     onClick={() => {
@@ -1801,13 +1885,13 @@ const KitchenDisplayPage: React.FC = () => {
                 )}
                 {!item.is_set_menu && (
                   <ItemActionButton
-                    done={isItemDoneForColumn(order.status, item.status || 'pending')}
+                    done={isItemDoneForColumn(cardStatus, item.status || 'pending')}
                     statusColor={statusColor}
-                    onClick={() => updateItemStatus(order.id, item.id!)}
+                    onClick={() => updateItemStatus(order.id, item.id!, cardStatus)}
                   >
-                    {isItemDoneForColumn(order.status, item.status || 'pending')
-                      ? (order.status === 'pending' ? 'Started' : order.status === 'preparing' ? 'Done ✓' : 'Served')
-                      : (order.status === 'pending' ? 'Start' : order.status === 'preparing' ? 'Done' : 'Serve')
+                    {isItemDoneForColumn(cardStatus, item.status || 'pending')
+                      ? (cardStatus === 'pending' ? 'Started' : cardStatus === 'preparing' ? 'Done ✓' : 'Served')
+                      : (cardStatus === 'pending' ? 'Start' : cardStatus === 'preparing' ? 'Done' : 'Serve')
                     }
                   </ItemActionButton>
                 )}
@@ -1816,18 +1900,18 @@ const KitchenDisplayPage: React.FC = () => {
               {item.is_set_menu && item.set_items && item.set_items.length > 0 && (
                 <SetItemsWrap>
                   {(selectedStation === 'all' ? item.set_items : item.set_items.filter(si => isItemInSelectedStation(si.name))).map((setItem) => (
-                    <SetItemRow key={setItem.id} done={isItemDoneForColumn(order.status, setItem.status || 'pending') && order.status !== 'pending'}>
-                      <SetItemName done={isItemDoneForColumn(order.status, setItem.status || 'pending') && order.status !== 'pending'}>
-                        {formatItemName(setItem.name)} {setItem.quantity > 1 && <ItemQty highlight done={isItemDoneForColumn(order.status, setItem.status || 'pending') && order.status !== 'pending'}>x {setItem.quantity}</ItemQty>}
+                    <SetItemRow key={setItem.id} done={isItemDoneForColumn(cardStatus, setItem.status || 'pending') && cardStatus !== 'pending'}>
+                      <SetItemName done={isItemDoneForColumn(cardStatus, setItem.status || 'pending') && cardStatus !== 'pending'}>
+                        {formatItemName(setItem.name)} {setItem.quantity > 1 && <ItemQty highlight done={isItemDoneForColumn(cardStatus, setItem.status || 'pending') && cardStatus !== 'pending'}>x {setItem.quantity}</ItemQty>}
                       </SetItemName>
                       <ItemActionButton
-                        done={isItemDoneForColumn(order.status, setItem.status || 'pending')}
+                        done={isItemDoneForColumn(cardStatus, setItem.status || 'pending')}
                         statusColor={statusColor}
-                        onClick={() => updateSetItemStatus(order.id, item.id!, setItem.id!)}
+                        onClick={() => updateSetItemStatus(order.id, item.id!, setItem.id!, cardStatus)}
                       >
-                        {isItemDoneForColumn(order.status, setItem.status || 'pending')
-                          ? (order.status === 'pending' ? 'Started' : order.status === 'preparing' ? 'Done ✓' : 'Served')
-                          : (order.status === 'pending' ? 'Start' : order.status === 'preparing' ? 'Done' : 'Serve')
+                        {isItemDoneForColumn(cardStatus, setItem.status || 'pending')
+                          ? (cardStatus === 'pending' ? 'Started' : cardStatus === 'preparing' ? 'Done ✓' : 'Served')
+                          : (cardStatus === 'pending' ? 'Start' : cardStatus === 'preparing' ? 'Done' : 'Serve')
                         }
                       </ItemActionButton>
                     </SetItemRow>
@@ -1840,7 +1924,7 @@ const KitchenDisplayPage: React.FC = () => {
         </ItemsContainer>
 
         {/* Actions */}
-        {order.status === 'pending' && totalItems > 1 && (
+        {cardStatus === 'pending' && totalItems > 1 && (
           <ActionRow>
             <RevertBtn style={{ flex: 'none', padding: '8px 10px' }} onClick={() => {
               const visibleItems = selectedStation === 'all'
@@ -1850,23 +1934,23 @@ const KitchenDisplayPage: React.FC = () => {
             }} title="Print Kitchen Ticket">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
             </RevertBtn>
-            <ActionBtn color="#F59E0B" onClick={() => markAllItemsAndMove(order.id, 'preparing')}>
+            <ActionBtn color="#F59E0B" onClick={() => selectedStation === 'all' ? markAllItemsAndMove(order.id, 'preparing') : setStationItemsStage(order.id, 'preparing')}>
               Start All
             </ActionBtn>
           </ActionRow>
         )}
-        {order.status === 'preparing' && totalItems > 1 && (
+        {cardStatus === 'preparing' && totalItems > 1 && (
           <ActionRow>
-            <RevertBtn onClick={() => updateOrderStatus(order.id, 'pending')}>↺</RevertBtn>
-            <ActionBtn color="#3B82F6" onClick={() => markAllItemsCompletedAndReady(order.id)}>
+            <RevertBtn onClick={() => selectedStation === 'all' ? updateOrderStatus(order.id, 'pending') : setStationItemsStage(order.id, 'pending', { force: true })}>↺</RevertBtn>
+            <ActionBtn color="#3B82F6" onClick={() => selectedStation === 'all' ? markAllItemsCompletedAndReady(order.id) : setStationItemsStage(order.id, 'ready')}>
               Mark Ready
             </ActionBtn>
           </ActionRow>
         )}
-        {order.status === 'ready' && totalItems > 1 && (
+        {cardStatus === 'ready' && totalItems > 1 && (
           <ActionRow>
-            <RevertBtn onClick={() => updateOrderStatus(order.id, 'preparing')}>↺</RevertBtn>
-            <ActionBtn color="#10B981" onClick={() => markAllServed(order.id)}>
+            <RevertBtn onClick={() => selectedStation === 'all' ? updateOrderStatus(order.id, 'preparing') : setStationItemsStage(order.id, 'preparing', { force: true })}>↺</RevertBtn>
+            <ActionBtn color="#10B981" onClick={() => selectedStation === 'all' ? markAllServed(order.id) : setStationItemsStage(order.id, 'served')}>
               Serve All
             </ActionBtn>
           </ActionRow>

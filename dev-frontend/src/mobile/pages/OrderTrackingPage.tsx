@@ -264,20 +264,17 @@ const OrderTrackingPage: React.FC = () => {
       setError(null);
     }
 
-    try {
-      console.log('�� Loading order with ID:', orderId);
-      // Try to fetch from API first for real-time data
+    // 주문 생성 직후 추적 페이지가 곧장 조회하면 백엔드 커밋/전파 타이밍상 잠깐 404 가
+    // 날 수 있다(#8 "잠깐 주문 못 찾음" 깜빡임). 초기(비-silent) 로드는 짧게 재시도하면서
+    // 그 동안 "Loading…" 을 유지한다. silent 폴링은 1회만 (화면 안 깜빡이게 조용히).
+    const maxAttempts = silent ? 1 : 4;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         const response = await fetch(`/api/mobile/order/${orderId}`);
-        console.log('📡 API response status:', response.status);
-
         if (response.ok) {
           const data = await response.json();
-          console.log('📦 API response data:', data);
           const apiOrder = data.data || data;
-
           if (apiOrder && (apiOrder.id || apiOrder.orderNumber)) {
-            console.log('✅ Loaded order from API:', apiOrder);
             setOrder({
               ...apiOrder,
               estimatedPickupTime: apiOrder.estimatedPickupTime ||
@@ -286,27 +283,21 @@ const OrderTrackingPage: React.FC = () => {
             setError(null);
             if (!silent) setLoading(false);
             return;
-          } else {
-            console.warn('⚠️ API order data is incomplete:', apiOrder);
           }
-        } else {
-          console.log('⚠️ API response not OK:', response.status);
-          const errorText = await response.text();
-          console.log('⚠️ Error response:', errorText);
         }
       } catch (apiError) {
         console.error('❌ Failed to load order from database:', apiError);
-        if (!silent) {
-          setError('Order not found');
-        }
       }
-    } catch (error) {
-      console.error('❌ Error loading order:', error);
-      if (!silent) {
-        setError('Failed to load order');
+      // 아직 못 찾음 — 마지막 시도가 아니면 잠깐 기다렸다 재시도 (로딩 화면 유지)
+      if (attempt < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 700));
       }
-    } finally {
-      if (!silent) setLoading(false);
+    }
+
+    // 재시도 다 소진 후에야 "못 찾음" 표시 (silent 폴링은 기존 화면 그대로 둔다)
+    if (!silent) {
+      setError('Order not found');
+      setLoading(false);
     }
   };
   
@@ -579,12 +570,20 @@ const OrderTrackingPage: React.FC = () => {
                   const itemOptions = item?.options || item?.selectedOptions || [];
                   const specialInstructions = item?.special_instructions || item?.specialInstructions;
 
+                  const setComps = Array.isArray(item?.set_components) ? item.set_components : [];
                   return (
                     <div key={item?.id || `item-${index}`} style={{ marginBottom: '8px' }}>
                       <Item>
                         {itemQuantity}x {itemName}
-                        {itemOptions.length > 0 && ` (${itemOptions.join(', ')})`}
+                        {setComps.length === 0 && itemOptions.length > 0 && ` (${itemOptions.join(', ')})`}
                       </Item>
+                      {setComps.length > 0 && (
+                        <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px', paddingLeft: '16px' }}>
+                          {setComps.map((c: any, ci: number) => (
+                            <div key={ci}>· {c?.name}{Array.isArray(c?.options) && c.options.length ? ` (${c.options.join(', ')})` : ''}</div>
+                          ))}
+                        </div>
+                      )}
                       {specialInstructions && (
                         <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px', paddingLeft: '16px' }}>
                           Note: {specialInstructions}

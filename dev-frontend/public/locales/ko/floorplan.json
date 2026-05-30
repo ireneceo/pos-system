@@ -27,9 +27,9 @@
   "floorPlanEditor.swapHint": "{{label}} 와 교환",
   "floorPlanEditor.availableHint": "사용 가능 — 클릭하여 할당",
   "floorPlanEditor.canvasSize": "캔버스 크기",
-  "floorPlanEditor.canvasSizeHint": "기본 1200×800. 가로/세로 각각 600–5000 범위. 다중 zone 대형 매장은 키워서 사용하세요.",
-  "floorPlanEditor.width": "가로",
-  "floorPlanEditor.height": "세로",
+  "floorPlanEditor.canvasSizeHint": "기본 1200×800. 가로/세로 각각 300–5000 범위. 다중 zone 대형 매장은 키워서 사용하세요.",
+  "floorPlanEditor.width": "너비",
+  "floorPlanEditor.height": "높이",
   "floorPlanEditor.multiSelected": "{{count}}개 선택됨",
   "floorPlanPage.mode": "모드",
   "floorPlanPage.dineIn": "Dine-In",
@@ -70,8 +70,6 @@
   "floorPlanPage.change": "거스름돈",
   "floorPlanEditor.size": "크기",
   "floorPlanEditor.seats": "좌석",
-  "floorPlanEditor.width": "너비",
-  "floorPlanEditor.height": "높이",
   "floorPlanEditor.canvas": "캔버스",
   "floorPlanEditor.gridSize": "그리드 크기",
   "floorPlanPage.floorPlan": "배치도",
@@ -124,5 +122,6 @@
   "tableDetailPanel.itemStatus.unmarkServed": "서빙 취소",
   "tableDetailPanel.itemStatus.waitingKitchen": "주방 조리 대기",
   "tableDetailPanel.itemStatus.servedCount": "{{served}}/{{total}} 서빙됨",
-  "tableNode.staff": "직원"
+  "tableNode.staff": "직원",
+  "tableDetailPanel.tableActions": "테이블 작업"
 }

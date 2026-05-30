@@ -27,6 +27,8 @@ import { formatCurrency } from '../../utils/currency';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
+import SetMenuBuilder from '../../components/MenuManagement/SetMenuBuilder';
+import { resolveSetGroups, validateSetGroups, SetGroup } from '../../utils/setMenu';
 // Styled Components
 const BrandMenuHelper = styled.div`
   background: linear-gradient(135deg, #F8F7FF 0%, #FFFFFF 100%);
@@ -530,27 +532,6 @@ const EmojiOption = styled.button<{ selected?: boolean }>`
 `;
 
 
-const CheckboxGroup = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-`;
-
-const CheckboxLabel = styled.label`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  color: #0A2540;
-
-  input {
-    width: 18px;
-    height: 18px;
-    cursor: pointer;
-  }
-`;
-
 // 옵션 그룹 선택 UI - Select + Chip 방식
 const OptionGroupSelect = styled.select`
   width: 100%;
@@ -874,6 +855,8 @@ const MenuManagementPage: React.FC = () => {
   // Set menu states
   const [showSetMenuModal, setShowSetMenuModal] = useState(false);
   const [setMenuItems, setSetMenuItems] = useState<SetMenuItem[]>([]);
+  // 세트메뉴 v2 — 슬롯 기반 set_groups (SetMenuBuilder 가 관리). 레거시 setMenuItems 는 폴백/마이그용.
+  const [setGroups, setSetGroups] = useState<SetGroup[]>([]);
   const [, ] = useState(0);
   const [setMenuSearchQuery, setSetMenuSearchQuery] = useState('');
 
@@ -1084,6 +1067,7 @@ const MenuManagementPage: React.FC = () => {
     });
     setSelectedOptionGroups([]);
     setSetMenuItems([]);
+    setSetGroups([]);
     setShowSetMenuModal(true);
   };
 
@@ -1102,6 +1086,8 @@ const MenuManagementPage: React.FC = () => {
     });
     setSelectedOptionGroups(item.optionGroups || []);
     setSetMenuItems(item.set_items || []);
+    // set_groups 우선, 없으면 레거시 set_items 를 fixed 그룹으로 폴백 변환
+    setSetGroups(resolveSetGroups(item));
 
     // Load direct ingredients if recipe is auto-generated
     if (item.recipe_id) {
@@ -1276,13 +1262,16 @@ const MenuManagementPage: React.FC = () => {
   };
 
   const handleSaveSetMenu = () => {
-    if (setMenuItems.length === 0) {
-      setInfoModal({ open: true, title: t('menu:menuManagement.setMenuRequiredTitle', 'Set Menu Validation'), message: t('menu:menuManagement.setMenuRequiredMessage', 'Set menu must contain at least one menu item.') });
+    // set_groups 검증 (택1 min/max, 활성 단품, 세트 중첩 금지)
+    const validProductIds = new Set(menuItems.filter(m => !m.is_set_menu).map(m => Number(m.id)));
+    const { valid, errors } = validateSetGroups(setGroups, validProductIds);
+    if (!valid) {
+      setInfoModal({ open: true, title: t('menu:menuManagement.setMenuRequiredTitle', 'Set Menu Validation'), message: errors[0] });
       return;
     }
 
     if (!formData.category) return;
-    const newSetMenu: MenuItemType = {
+    const newSetMenu: any = {
       id: editingItem?.id || `item-${Date.now()}`,
       code: formData.code || '',
       name: formData.name || '',
@@ -1294,7 +1283,8 @@ const MenuManagementPage: React.FC = () => {
       optionGroups: selectedOptionGroups,
       soldOut: false,
       is_set_menu: true,
-      set_items: setMenuItems,
+      set_groups: setGroups,
+      set_items: null,  // v2 로 전환 — set_groups 가 단일 소스
       set_display_order: formData.set_display_order || 0,
       takeaway_charge: formData.takeaway_charge ?? 0
     };
@@ -1308,6 +1298,7 @@ const MenuManagementPage: React.FC = () => {
     setShowSetMenuModal(false);
     setEditingItem(null);
     setSetMenuItems([]);
+    setSetGroups([]);
   };
 
   const handleSaveEdit = () => {
@@ -1468,15 +1459,23 @@ const MenuManagementPage: React.FC = () => {
                   <MenuDescription>
                     {item.description || 'No description available'}
                   </MenuDescription>
-                  {item.is_set_menu && item.set_items && item.set_items.length > 0 && (
-                    <MenuDescription style={{ fontSize: '11px', color: '#667eea', fontWeight: 500 }}>
-                      Set includes: {item.set_items.map(setItem => {
-                        const menuItem = menuItems.find(m => m.id === setItem.menuItemId.toString());
-                        const itemCode = menuItem?.code;
-                        return `${itemCode ? `${itemCode} ` : ''}${setItem.name} x${setItem.quantity}`;
-                      }).join(', ')}
-                    </MenuDescription>
-                  )}
+                  {item.is_set_menu && (() => {
+                    // set_groups(v2) 우선, 레거시 set_items 폴백. product_id 없는 옛 데이터는 이름으로 폴백(크래시 방지).
+                    const groups = resolveSetGroups(item);
+                    const names = groups.flatMap(g => (g.items || []).map(it => {
+                      const mi = menuItems.find(m => String(m.id) === String(it.product_id));
+                      return mi ? `${mi.code ? `${mi.code} ` : ''}${mi.name}` : null;
+                    })).filter(Boolean) as string[];
+                    if (names.length === 0 && Array.isArray(item.set_items)) {
+                      item.set_items.forEach((si: any) => { if (si && si.name) names.push(si.name); });
+                    }
+                    if (names.length === 0) return null;
+                    return (
+                      <MenuDescription style={{ fontSize: '11px', color: '#667eea', fontWeight: 500 }}>
+                        {t('menu:setBuilder.setIncludes', { defaultValue: 'Set includes' })}: {names.join(', ')}
+                      </MenuDescription>
+                    );
+                  })()}
                   {item.optionGroups && item.optionGroups.length > 0 && (
                     <MenuDescription style={{ fontSize: '11px', color: '#8898AA' }}>
                       Option Groups: {item.optionGroups.map(groupId =>
@@ -2170,106 +2169,58 @@ const MenuManagementPage: React.FC = () => {
           </UIFormGroup>
 
           <UIFormGroup>
-            <FormLabel>Set Menu Items * (at least 1 item required)</FormLabel>
-            {setMenuItems.length > 0 && (
-              <SetItemsList>
-                {setMenuItems.map(setItem => {
-                  const menuItem = menuItems.find(m => parseInt(m.id) === setItem.menuItemId);
-                  const itemCode = menuItem?.code;
-                  return (
-                    <SetItemRow key={setItem.menuItemId}>
-                      <SetItemInfo>
-                        <SetItemName>{itemCode ? `${itemCode} ` : ''}{setItem.name}</SetItemName>
-                      </SetItemInfo>
-                      <SetItemQuantity>
-                        <QuantityButton
-                          onClick={() => handleUpdateSetMenuItemQuantity(setItem.menuItemId, -1)}
-                          disabled={setItem.quantity <= 1}
-                        >
-                          −
-                        </QuantityButton>
-                        <QuantityDisplay>{setItem.quantity}</QuantityDisplay>
-                        <QuantityButton
-                          onClick={() => handleUpdateSetMenuItemQuantity(setItem.menuItemId, 1)}
-                        >
-                          +
-                        </QuantityButton>
-                      </SetItemQuantity>
-                      <RemoveButton onClick={() => handleRemoveSetMenuItem(setItem.menuItemId)}>
-                        Remove
-                      </RemoveButton>
-                    </SetItemRow>
-                  );
-                })}
-              </SetItemsList>
-            )}
-            <div style={{ marginTop: '12px' }}>
-              <FormLabel>{t('menu:menuManagementPage.availableMenuItemsSelectItemsToAddToSet')}</FormLabel>
-              <FormInput
-                type="text"
-                value={setMenuSearchQuery}
-                onChange={(e) => setSetMenuSearchQuery(e.target.value)}
-                placeholder="Search by code or name..."
-                style={{ marginBottom: '12px' }}
-              />
-              <MenuItemSelector>
-                {menuItems
-                  .filter(item => !item.is_set_menu) // Don't show other set menus
-                  .filter(item => {
-                    if (!setMenuSearchQuery) return true;
-                    const query = setMenuSearchQuery.toLowerCase();
-                    const matchCode = item.code?.toLowerCase().includes(query);
-                    const matchName = item.name.toLowerCase().includes(query);
-                    return matchCode || matchName;
-                  })
-                  .map(item => (
-                    <MenuItemOption
-                      key={item.id}
-                      selected={setMenuItems.some(si => si.menuItemId === parseInt(item.id))}
-                      onClick={() => handleAddSetMenuItem(parseInt(item.id))}
-                    >
-                      {item.image ? (
-                        <img
-                          src={item.image}
-                          alt={item.name}
-                          loading="lazy"
-                          style={{
-                            width: '48px',
-                            height: '48px',
-                            objectFit: 'cover',
-                            borderRadius: '8px',
-                            marginRight: '12px'
-                          }}
-                        />
-                      ) : (
-                        <MenuItemOptionEmoji>{item.emoji || '🍽️'}</MenuItemOptionEmoji>
-                      )}
-                      <MenuItemOptionInfo>
-                        <MenuItemOptionName>{item.code ? `${item.code} ` : ''}{item.name}</MenuItemOptionName>
-                        <MenuItemOptionPrice>
-                          {formatCurrency(item.price, selectedCurrency)} · {categories.find(c => c.id === item.category)?.name}
-                        </MenuItemOptionPrice>
-                      </MenuItemOptionInfo>
-                    </MenuItemOption>
-                  ))}
-              </MenuItemSelector>
-            </div>
+            <FormLabel>{t('menu:setBuilder.title', { defaultValue: 'Set Composition' })} *</FormLabel>
+            <SetMenuBuilder
+              value={setGroups}
+              onChange={setSetGroups}
+              menuItems={menuItems as any}
+              optionGroups={optionGroups as any}
+              formatCurrency={(v: number) => formatCurrency(v, selectedCurrency)}
+            />
           </UIFormGroup>
 
           <UIFormGroup>
-            <FormLabel>{t('menu:menuManagementPage.setMenuOptionsOptionsForEntireSet')}</FormLabel>
-            <CheckboxGroup>
-              {optionGroups.map(group => (
-                <CheckboxLabel key={group.id}>
-                  <input
-                    type="checkbox"
-                    checked={selectedOptionGroups.includes(group.id)}
-                    onChange={() => handleOptionGroupToggle(group.id)}
-                  />
-                  {group.name} ({group.required ? 'Required' : 'Optional'}, {group.multiple ? 'Multi' : 'Single'})
-                </CheckboxLabel>
-              ))}
-            </CheckboxGroup>
+            <FormLabel>{t('menu:menuManagementPage.setMenuOptionsOptionsForEntireSet')} {selectedOptionGroups.length > 0 && `(${selectedOptionGroups.length} selected)`}</FormLabel>
+
+            <OptionGroupSelect
+              value=""
+              onChange={(e) => {
+                if (e.target.value && !selectedOptionGroups.includes(e.target.value)) {
+                  setSelectedOptionGroups([...selectedOptionGroups, e.target.value]);
+                }
+              }}
+            >
+              <option value="">{t('menu:menuManagementPage.selectOptionGroupToAdd')}</option>
+              {optionGroups
+                .filter(group => !selectedOptionGroups.includes(group.id))
+                .map(group => (
+                  <option key={group.id} value={group.id}>
+                    {group.name} ({group.required ? 'Required' : 'Optional'}, {group.multiple ? 'Multi' : 'Single'})
+                  </option>
+                ))}
+            </OptionGroupSelect>
+
+            <SelectedChipsContainer>
+              {selectedOptionGroups.map((groupId, index) => {
+                const group = optionGroups.find(g => g.id === groupId);
+                if (!group) return null;
+                return (
+                  <OptionGroupChip key={groupId}>
+                    <ChipOrderBadge>{index + 1}</ChipOrderBadge>
+                    <ChipName>{group.name}</ChipName>
+                    <ChipBadge type={group.required ? 'required' : 'optional'}>
+                      {group.required ? 'Required' : 'Optional'}
+                    </ChipBadge>
+                    <ChipRemoveButton
+                      onClick={() => setSelectedOptionGroups(selectedOptionGroups.filter(id => id !== groupId))}
+                      title="Remove"
+                    >
+                      ×
+                    </ChipRemoveButton>
+                  </OptionGroupChip>
+                );
+              })}
+            </SelectedChipsContainer>
           </UIFormGroup>
         </UIModal>
 

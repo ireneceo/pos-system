@@ -1086,6 +1086,47 @@ const LiveOrdersPage: React.FC = () => {
     }
   };
 
+  // 품목별 서빙 토글 — Floor Plan TableDetailPanel 과 동일 동작.
+  // 활성 주문이면 단계 무관하게 홀 직원이 Served 토글(주방 ready 체크 건너뜀).
+  // 전 품목 served 가 되면 주문도 'served' 로 자동 승급. (KDS 표시전용 매장 지원)
+  const handleToggleItemServed = async (itemIndex: number) => {
+    if (!selectedOrder) return;
+    const items: any[] = Array.isArray(selectedOrder.order_items) ? selectedOrder.order_items : [];
+    const target = items[itemIndex];
+    if (!target) return;
+    if (!['pending', 'preparing', 'ready', 'served'].includes(selectedOrder.status)) return; // guard
+    const updatedItems = items.map((it: any, idx: number) =>
+      idx === itemIndex
+        ? { ...it, status: (it.status === 'served' || it.status === 'completed') ? 'ready' : 'served' }
+        : it
+    );
+    try {
+      const res = await fetch(`/api/orders/${selectedOrder.id}/items`, {
+        ...getFetchOptions({ method: 'PATCH' }),
+        body: JSON.stringify({ order_items: updatedItems })
+      });
+      const result = await res.json();
+      if (result.success) {
+        let updatedOrder = result.data;
+        const allServed = updatedItems.every((i: any) => i.status === 'served' || i.status === 'completed');
+        if (allServed && ['pending', 'preparing', 'ready'].includes(selectedOrder.status)) {
+          const sres = await fetch(`/api/orders/${selectedOrder.id}/status`, {
+            ...getFetchOptions({ method: 'PATCH' }),
+            body: JSON.stringify({ status: 'served' })
+          });
+          const sresult = await sres.json().catch(() => null);
+          if (sresult && sresult.success && sresult.data) updatedOrder = sresult.data;
+        }
+        if (updatedOrder) setSelectedOrder(updatedOrder);
+        fetchOrders();
+      } else {
+        showToast(result.error || result.message || 'Failed to update item', 'error');
+      }
+    } catch (e) {
+      showToast('Failed to update item', 'error');
+    }
+  };
+
   // Print kitchen ticket for a specific order group (merged orders)
   const handlePrintGroupTicket = async (groupNum: number, groupItems: any[]) => {
     if (!selectedOrder) return;
@@ -1769,6 +1810,7 @@ const LiveOrdersPage: React.FC = () => {
           handleIncreaseCartItem={handleIncreaseCartItem}
           handleSubmitAddItems={handleSubmitAddItems}
           handleDeleteOrderItem={handleDeleteOrderItem}
+          handleToggleItemServed={handleToggleItemServed}
           handlePrintGroupTicket={handlePrintGroupTicket}
           setShowOptionModal={setShowOptionModal}
           setSelectedMenuItemForOption={setSelectedMenuItemForOption}
