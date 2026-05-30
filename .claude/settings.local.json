@@ -457,7 +457,12 @@
       "Bash(rm -f /tmp/build_mi.log)",
       "Bash(node --check src/components/POSTerminal/POSSetModal.tsx)",
       "Bash(rm -f /tmp/build_reset.log)",
-      "Bash(rm -f /tmp/build_kds.log)"
+      "Bash(rm -f /tmp/build_kds.log)",
+      "Bash(scp -o StrictHostKeyChecking=no /var/www/dev-backend/diag-mobile-missing.js irene@87.106.78.146:/var/www/production-backend/diag-mobile-missing.js)",
+      "Bash(scp -o StrictHostKeyChecking=no /var/www/dev-backend/diag2.js irene@87.106.78.146:/var/www/production-backend/diag2.js)",
+      "Bash(scp -o StrictHostKeyChecking=no /var/www/dev-backend/fix-activate-set.js irene@87.106.78.146:/var/www/production-backend/fix-activate-set.js)",
+      "Bash(scp -o StrictHostKeyChecking=no /var/www/dev-backend/diag-pickup.js irene@87.106.78.146:/var/www/production-backend/diag-pickup.js)",
+      "Bash(scp -o StrictHostKeyChecking=no /var/www/dev-backend/diag-pickup2.js irene@87.106.78.146:/var/www/production-backend/diag-pickup2.js)"
     ],
     "deny": [],
     "ask": []
