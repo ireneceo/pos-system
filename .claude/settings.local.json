@@ -454,7 +454,10 @@
       "Bash(echo \"build pid $!\")",
       "Bash(rm -f /tmp/build_set.log)",
       "Bash(rm -f /tmp/build_box.log)",
-      "Bash(rm -f /tmp/build_mi.log)"
+      "Bash(rm -f /tmp/build_mi.log)",
+      "Bash(node --check src/components/POSTerminal/POSSetModal.tsx)",
+      "Bash(rm -f /tmp/build_reset.log)",
+      "Bash(rm -f /tmp/build_kds.log)"
     ],
     "deny": [],
     "ask": []

@@ -111,7 +111,11 @@ const POSSetModal: React.FC<Props> = ({ isOpen, product, restaurantId, formatCur
       } catch { setResolved([]); setSetOptionGroups([]); }
       finally { setLoading(false); }
     })();
-  }, [isOpen, product, restaurantId]);
+    // ⚠ product 는 부모에서 인라인 객체로 넘어와 매 렌더 새 참조 → product 전체를 deps 에 넣으면
+    // POS poller 가 부모를 리렌더할 때마다 이 effect 가 재실행돼 선택(구성품/옵션)이 초기화된다
+    // ("옵션 누르면 다시 닫힘"). product.id 로만 고정해 같은 세트면 재fetch/리셋 안 함.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, product?.id, restaurantId]);
 
   // 세트 자체 옵션(A) 토글 — 단일/다중 + 필수 처리
   const toggleSetLevelOption = (optionId: string, groupId: string, multiple: boolean, required: boolean) => {

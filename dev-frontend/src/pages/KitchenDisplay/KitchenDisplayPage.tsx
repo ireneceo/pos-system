@@ -620,12 +620,21 @@ const KitchenDisplayPage: React.FC = () => {
   const processRawOrderItems = (orderId: string | number, rawItems: any[]): KitchenOrder['items'] => {
     const items: any[] = [];
     rawItems.forEach((item: any, itemIndex: number) => {
-      if (item.is_set_menu && item.set_items && item.set_items.length > 0) {
-        const setItems = item.set_items.map((si: any, setIndex: number) => ({
+      // 새 세트(v2)는 set_components 로 저장되고 is_set_menu 가 false 인 경우도 있다.
+      // set_components 가 있으면 그것을 set_items 모양(name/quantity/options/status)으로 매핑해
+      // 기존 KDS 세트 렌더가 '구성품(=메뉴) + 옵션' 을 보여주게 한다. (레거시 set_items 폴백)
+      const comps = Array.isArray(item.set_components) ? item.set_components : null;
+      const legacy = (item.is_set_menu && Array.isArray(item.set_items) && item.set_items.length > 0) ? item.set_items : null;
+      const srcSet = (comps && comps.length > 0)
+        ? comps.map((c: any) => ({ name: c.name, quantity: (c.qty || 1), options: Array.isArray(c.options) ? c.options : [], status: c.status }))
+        : legacy;
+      if (srcSet && srcSet.length > 0) {
+        const setItems = srcSet.map((si: any, setIndex: number) => ({
           ...si,
           id: `item-${orderId}-${itemIndex}-set-${setIndex}`,
           name: si.name,
-          quantity: si.quantity * (item.quantity || 1),
+          quantity: (si.quantity || 1) * (item.quantity || 1),
+          options: Array.isArray(si.options) ? si.options : [],
           status: si.status || 'pending'
         }));
         items.push({

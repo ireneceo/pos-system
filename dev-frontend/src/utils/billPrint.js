@@ -1430,24 +1430,34 @@ export function generateHTMLKitchenTicket(orderData, storeInfo) {
     const stationTagHtml = item.stationName
       ? ` <span class="station-tag">${escapeHtmlForPrint(item.stationName.toUpperCase())}</span>`
       : '';
-    // 세트 v2 구성품 — 주방이 만들 항목 표기 (구성품명 + 선택옵션). 방식 무변경, 콘텐츠만.
     const hasSetComps = Array.isArray(item.set_components) && item.set_components.length > 0;
-    const setCompHtml = hasSetComps
-      ? item.set_components.map(c => {
-          const cn = escapeHtmlForPrint((c && c.name) || '');
-          const co = Array.isArray(c.options) && c.options.length ? `<div class="item-option" style="font-size:12px;">★ ${escapeHtmlForPrint(c.options.join(', '))}</div>` : '';
-          return cn ? `<div class="item-option" style="font-size:14px;font-weight:700;">› ${cn}</div>${co}` : '';
-        }).join('')
-      : '';
-    // options = 세트 자체 옵션(A) — 구성품(B, set_components)과 별개라 둘 다 표기.
-    const optionsHtml = (item.options || []).map(opt =>
+    // 세트 자체 옵션(A) — 구성품(B)과 별개. 둘 다 표기.
+    const setLevelOptionsHtml = (item.options || []).map(opt =>
       `<div class="item-option" style="font-size:13px;font-weight:600;">★ ${escapeHtmlForPrint(typeof opt === 'string' ? opt : (opt?.name || ''))}</div>`
     ).join('');
+    if (hasSetComps) {
+      // 세트: 주방은 구성품(=실제 만드는 메뉴)을 봐야 한다. 구성품을 18px 메뉴로 크게 + 옵션,
+      // 세트명은 작은 라벨로(맥락만). 방식 무변경 콘텐츠/레이아웃만.
+      const compsHtml = item.set_components.map(c => {
+        const cn = escapeHtmlForPrint((c && c.name) || '');
+        if (!cn) return '';
+        const cq = (Number(qty) || 1) * (Number(c.qty) || 1);
+        const co = Array.isArray(c.options) && c.options.length
+          ? `<div class="item-option" style="font-size:13px;font-weight:600;">★ ${escapeHtmlForPrint(c.options.join(', '))}</div>` : '';
+        return `<div class="item-name" style="font-size:18px;font-weight:700;">${cq} × ${cn}${stationTagHtml}</div>${co}`;
+      }).join('');
+      return `
+      <div class="item">
+        <div style="font-size:11px;font-weight:600;letter-spacing:0.3px;color:#000;">↳ ${itemName}</div>
+        ${compsHtml}
+        ${setLevelOptionsHtml}
+      </div>
+    `;
+    }
     return `
       <div class="item">
         <div class="item-name" style="font-size:18px;font-weight:700;">${qty} × ${itemName}${stationTagHtml}</div>
-        ${setCompHtml}
-        ${optionsHtml}
+        ${setLevelOptionsHtml}
       </div>
     `;
   }).join('');
