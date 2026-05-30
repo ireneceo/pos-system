@@ -462,7 +462,9 @@
       "Bash(scp -o StrictHostKeyChecking=no /var/www/dev-backend/diag2.js irene@87.106.78.146:/var/www/production-backend/diag2.js)",
       "Bash(scp -o StrictHostKeyChecking=no /var/www/dev-backend/fix-activate-set.js irene@87.106.78.146:/var/www/production-backend/fix-activate-set.js)",
       "Bash(scp -o StrictHostKeyChecking=no /var/www/dev-backend/diag-pickup.js irene@87.106.78.146:/var/www/production-backend/diag-pickup.js)",
-      "Bash(scp -o StrictHostKeyChecking=no /var/www/dev-backend/diag-pickup2.js irene@87.106.78.146:/var/www/production-backend/diag-pickup2.js)"
+      "Bash(scp -o StrictHostKeyChecking=no /var/www/dev-backend/diag-pickup2.js irene@87.106.78.146:/var/www/production-backend/diag-pickup2.js)",
+      "Bash(npx i18n:verify)",
+      "Bash(awk 'NR>=3800 && NR<=4123 && \\(/activeTab ===/ || /tab ===/ || /TabContent/ || /id: .tablesQr|id: .tables|key: .tables|tablesQr|=== .tables/ || /<TabButton/ || /label.*[Tt]able/\\)' SettingsPage.tsx)"
     ],
     "deny": [],
     "ask": []

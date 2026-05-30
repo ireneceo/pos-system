@@ -701,5 +701,11 @@
   "itemServe.serveHint": "Hidang ▸",
   "itemServe.tapToServe": "Ketik untuk tanda dihidang",
   "itemServe.tapToUndo": "Ketik untuk batal dihidang",
-  "itemServe.servedCount": "{{served}}/{{total}} dihidang"
+  "itemServe.servedCount": "{{served}}/{{total}} dihidang",
+  "selectYourTable": "Pilih meja anda",
+  "selectYourTableHint": "Sila pilih meja tempat anda duduk untuk meneruskan pesanan makan di sini.",
+  "searchTablePlaceholder": "Cari nombor meja",
+  "enterTablePlaceholder": "Masukkan nombor meja anda",
+  "noTableMatch": "Tiada meja sepadan. Semak nombor pada meja anda.",
+  "selectTableToContinue": "Sila pilih meja anda untuk meneruskan."
 }

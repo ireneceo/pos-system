@@ -1255,7 +1255,7 @@ const PaymentPage: React.FC = () => {
     // Dine-in table requirement — the store mandates a table number. Button is
     // already disabled in this state, but double-check so a stale render can't slip through.
     if (tableRequired && orderType === 'dine-in' && !selectedTable) {
-      setError('Please select your table to continue.');
+      setError(t('common:selectTableToContinue', 'Please select your table to continue.'));
       return;
     }
 
@@ -2659,17 +2659,17 @@ const PaymentPage: React.FC = () => {
             <TableSelect
               value={selectedTable}
               onChange={(e) => setSelectedTable(e.target.value)}
-              style={tableRequired && !selectedTable ? { borderColor: '#EF4444' } : undefined}
+              style={tableRequired && !selectedTable ? { borderColor: '#DC2626' } : undefined}
             >
               {/* When a table is mandatory, no "Free Seating" — the customer must pick a real table. */}
-              <option value="">{tableRequired ? 'Select your table' : 'Free Seating'}</option>
+              <option value="">{tableRequired ? t('common:selectYourTable', 'Select your table') : 'Free Seating'}</option>
               {availableTables.map(table => (
                 <option key={table} value={table}>{table}</option>
               ))}
             </TableSelect>
             {tableRequired && !selectedTable && (
-              <div style={{ fontSize: '13px', color: '#EF4444', marginTop: '6px' }}>
-                Please select your table to continue.
+              <div style={{ fontSize: '13px', color: '#DC2626', marginTop: '6px' }}>
+                {t('common:selectTableToContinue', 'Please select your table to continue.')}
               </div>
             )}
           </TableSection>

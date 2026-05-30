@@ -1,13 +1,35 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-05-30 12:00
-**작업 상태:** 중단 (Irene 이동) — 매장 The Fire(16) 라이브 대응 중. 아래 1·2 다음 세션 이어서.
+**마지막 업데이트:** 2026-05-30 13:45
+**작업 상태:** 테이블번호 필수 기능 **DEV 구현+검증 완료**. 다음 세션 = Irene 가 dev 에서 직접 테스트 → 이상없으면 bless + 운영배포.
 
 ## ⚡ 빠른 재개
 ```
 session-state.md 읽고 이어서 개발해.
 ```
+
+---
+
+## ✅ 다음 세션 우선 — 테이블번호 필수 기능 Irene 직접 테스트 (DEV)
+
+**왜:** 픽업 안 받는 매장에 대표/공용 QR 로 들어온 손님이 테이블 없이 dine_in 주문 → "픽업 N" 으로 표시되던 문제. 매장별 설정 ON 시 테이블 강제 입력하게 만듦. **DEV 구현+검증 끝, 운영 미배포.**
+
+**테스트 절차 (dev, 데모매장 사용 — The Fire(16) 은 dev 에 없음):**
+1. 설정 위치: **설정 → "Tables & QR" 탭** (`/restaurant/{id}/settings?tab=tablesQr`). 토글 2개:
+   - ① **테이블 번호 활성화**(Enable Table Numbers) — 게이트, 먼저 ON
+   - ② **테이블 번호 필수**(Table Number Required) — 이걸 ON 해야 작동. ①꺼지면 ②비활성.
+2. 데모매장 `demo-korean-bbq`(id 38, Floor Plan 테이블 T001~T003) 에서 ①②  ON.
+3. 모바일 **대표/공용 링크**(테이블 QR 아님)로 진입: `https://dev.purplehere.com/mobile/demo-korean-bbq` → **Dine In** → **테이블 선택 모달**(T001~T003 칩) 떠야 정상.
+4. 비교: 테이블 QR(`?table=T001&order_type=dine-in`)로 들어가면 모달 없이 바로 메뉴 (이미 테이블 보유).
+5. takeaway 전용 QR(`?order_type=takeaway`) → 테이블 안 물음(면제). 테이블 QR 로 들어온 takeaway 는 그 테이블에 표시(유지).
+
+**테스트 OK 후 배포 순서 (둘 다 필요):**
+- ① **bless**: `cd /var/www/dev-backend && node scripts/check-print-guard.js --bless` (orders-crud.js TABLE_REQUIRED 가드 지문 — 인쇄 무관, print계약 7/7 통과. **Irene 승인 후에만**. 안 하면 deploy-to-production.sh fail-closed 로 배포 막힘)
+- ② 배포 후 **The Fire(16) 설정에서 ①② 토글 ON** (배포만으론 자동적용 X, 기본 OFF)
+
+**구현 파일 (참조):** mobile-public.js(store 응답 tableNumberRequired+floorTables) / orders-crud.js🔒(POST `/` 가드) / mobile-orders.js(가드+table_settings attr) / OrderTypePage.tsx(테이블 picker 모달, #635BFF) / PaymentPage.tsx(테이블목록=Floor Plan, Free Seating 제거, 결제차단, operation→table_settings 소스수정) / common.json 4언어(selectYourTable 등). 설정은 **기존 table_settings.tableNumberRequired 토글 재사용**(신규 X).
+**검증:** API 7/7 + 회귀 3/3(OFF매장 무영향) + print 7/7 + i18n 0 + state-hydration 0 + 실브라우저 mount 5/5(신번들 main.1b8e01d1.js).
 
 ---
 
@@ -19,13 +41,14 @@ session-state.md 읽고 이어서 개발해.
 - 18개 품절(soldOut) 항목 = **Irene 직접 품절 처리한 것 = 정상.** 건드리지 말 것.
 
 **바로 다음 (다음 세션 우선순위):**
-1. 🟠 **[설계완료/구현 대기] 테이블 없는 모바일 주문 차단 — 매장별 설정 토글.** ("획업025" 정체 = order #12337/260530-025, 실제 dine_in·mobile·**table_number=null**·Guest·counter. 테이블 QR 아닌 **공용 슬러그 메뉴 링크**로 주문 → 테이블 없어 "픽업 N"(수령번호 라벨)로 표시 + 주방 티켓만 인쇄됨. "픽업"은 주문종류 아니라 수령번호.) Irene 결정: **무조건 차단 X, 매장별 설정 ON 시 차단** ("가게마다 다르다"). 설계:
-   - 설정 키: `operation_settings.orderTypes.requireTable` (bool, default false). dine_in + 테이블없음일 때만 차단(포장/픽업 영향 X).
-   - **백엔드 가드**: `routes/mobile-orders.js` ~line 150 (otGuard 다음)에 `if (requireTable && actualOrderType==='dine_in' && !actualTableNumber) return 400 {code:'TABLE_REQUIRED'}`.
-   - **모바일 통과**: `routes/mobile-public.js:343-348` 응답에 `mobile_settings.mobileOrderRequireTable = operation_settings.orderTypes?.requireTable ?? false` 추가.
-   - **설정 UI**: `pages/Settings/SettingsPage.tsx:4681` (delivery 토글 다음) AutoSaveField 토글 추가 + ref(`mobileOrderRequireTableRef` ~line637) + i18n 4언어 `settings:settingsPage.mobileOrderRequireTable(+Hint)`.
-   - **모바일 체크아웃**: `mobile/pages/PaymentPage.tsx` `handlePayment()` ~line1216, dine-in인데 `selectedTable` 없으면 차단 + "테이블 QR 스캔" 안내 + 400 TABLE_REQUIRED 처리. 테이블은 `sessionStorage.getItem('tableNumber')`(QR) → selectedTable.
-   - **저장 API**: `routes/store.js` PUT /store/settings 가 operation_settings JSON 통째 저장(line177) → 마이그 불필요.
+1. ✅ **[DEV 구현완료 / 실매장 검증 대기] 테이블 없는 모바일 주문 차단 — 기존 `table_settings.tableNumberRequired` 토글 연결** (2026-05-30).
+   - **근본원인 확정**: "픽업 N" = 테이블 QR 아닌 **대표/공용 슬러그 링크**로 진입 → dine_in·table_number=null. PaymentPage 기본값 "Free Seating" + 백엔드 무검증 통과 조합.
+   - **설정**: 새로 안 만듦 — 이미 존재하던 `restaurant.table_settings.tableNumberRequired`(enableTableNumbers 게이트, 헬프텍스트 "Make table number selection mandatory for dine-in orders")를 enforcement에 **연결만**. SettingsPage 토글 그대로.
+   - **입력방식**(Irene 결정): 자유타이핑 X → **Floor Plan 테이블 목록에서 선택**(`floor_plan.tables[].label`). 오타→orphan 테이블→Floor Plan 미표시 재발 방지.
+   - **구현 파일**: `mobile-public.js`(store 응답에 `tableNumberRequired`+`floorTables` 노출) / `orders-crud.js`🔒(POST `/` mobile+dine_in+무테이블→400 TABLE_REQUIRED) / `mobile-orders.js`(같은 가드 + table_settings attr) / `OrderTypePage.tsx`(dine-in 선택 시 테이블 picker 모달) / `PaymentPage.tsx`(테이블목록=Floor Plan, Free Seating 제거, 미선택 결제차단) / common.json 4언어.
+   - **검증**: API 7/7 (400 차단/테이블有 통과/takeaway·POS 면제/2경로) + print계약 7/7 + i18n Errors 0 + 실브라우저 mount(picker 등장·T001 chip·console 0).
+   - **⚠️ orders-crud.js🔒 지문 변경** = TABLE_REQUIRED 가드(인쇄 무관, print계약 7/7 통과). **Irene 확인 후 `check-print-guard.js --bless` 필요**. 미배포.
+   - **takeaway 정책 확정**: 테이블QR로 들어온 takeaway는 table_number 유지(해당 Floor Plan 테이블에 표시) = 기존 의도(mobile-orders.js:123). 가드는 dine_in만 강제, takeaway 면제.
 2. 🔴 **[critical, 미진단확정] 주방 단계 멋대로 바뀜 — Irene "단계 완전 픽스, 절대 마음대로 바뀌면 안 됨".**
    - ① **해물부침개 서빙해도 다시 생김**(서브하면 다시 만들어짐, 기다리는 주문이 같이 표시). ② **잡채 1개 눌렀는데 3개 들어가고, 취소했더니 다시 3개.** "너무 불안정."
    - 가설(미검증, Explore 분석): (a) 모바일 주문 제출 **멱등키 없음** → 네트워크 재시도가 주문/품목 중복 생성. (b) 자동머지(`mergeItemsIntoOrder` orders-crud.js:272 / mobile-orders.js auto-merge)가 **dedup 없이 append** → 같은 품목 중복행. (c) `/orders` 소켓 네임스페이스 **replay 캐시 없음**(checkout-display만 있음) → 재접속 시 KDS 상태 꼬임. (d) 서빙 시 item.status='completed' 되는데 printed_at 없으면 kitchen_items 필터에 다시 잡힘.

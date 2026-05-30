@@ -701,5 +701,11 @@
   "itemServe.serveHint": "서빙 ▸",
   "itemServe.tapToServe": "탭하면 서빙 완료",
   "itemServe.tapToUndo": "탭하면 서빙 취소",
-  "itemServe.servedCount": "{{served}}/{{total}} 서빙 완료"
+  "itemServe.servedCount": "{{served}}/{{total}} 서빙 완료",
+  "selectYourTable": "테이블을 선택하세요",
+  "selectYourTableHint": "매장 내 식사 주문을 계속하려면 앉으신 테이블을 선택해 주세요.",
+  "searchTablePlaceholder": "테이블 번호 검색",
+  "enterTablePlaceholder": "테이블 번호를 입력하세요",
+  "noTableMatch": "일치하는 테이블이 없습니다. 테이블의 번호를 확인하세요.",
+  "selectTableToContinue": "계속하려면 테이블을 선택해 주세요."
 }

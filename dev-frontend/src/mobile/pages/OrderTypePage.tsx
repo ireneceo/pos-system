@@ -248,11 +248,11 @@ const TablePickerHint = styled.p`
 const TableSearchInput = styled.input`
   width: 100%;
   padding: 12px 14px;
-  border: 1px solid #D1D5DB;
+  border: 1px solid #C7CED6;
   border-radius: 10px;
   font-size: 16px;
   margin-bottom: 14px;
-  &:focus { outline: none; border-color: #7C3AED; }
+  &:focus { outline: none; border-color: #635BFF; box-shadow: 0 0 0 3px rgba(99,91,255,0.1); }
 `;
 
 const TableGrid = styled.div`
@@ -266,14 +266,15 @@ const TableGrid = styled.div`
 const TableChip = styled.button`
   padding: 16px 8px;
   min-height: 56px;
-  border: 1px solid #D1D5DB;
+  border: 1px solid #C7CED6;
   border-radius: 10px;
   background: #fff;
   font-size: 15px;
   font-weight: 600;
   color: #1F2937;
   cursor: pointer;
-  &:active { background: #F3E8FF; border-color: #7C3AED; }
+  transition: background 0.15s, border-color 0.15s;
+  &:active { background: rgba(99,91,255,0.1); border-color: #635BFF; }
 `;
 
 const TableEmptyNote = styled.div`
@@ -294,7 +295,7 @@ const TableManualBtn = styled.button`
   padding: 12px 16px;
   border: none;
   border-radius: 10px;
-  background: #7C3AED;
+  background: #635BFF;
   color: #fff;
   font-size: 15px;
   font-weight: 600;

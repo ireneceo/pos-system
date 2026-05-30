@@ -701,5 +701,11 @@
   "itemServe.serveHint": "上菜 ▸",
   "itemServe.tapToServe": "点按标记为已上菜",
   "itemServe.tapToUndo": "点按取消上菜",
-  "itemServe.servedCount": "{{served}}/{{total}} 已上菜"
+  "itemServe.servedCount": "{{served}}/{{total}} 已上菜",
+  "selectYourTable": "选择您的餐桌",
+  "selectYourTableHint": "请选择您就座的餐桌以继续堂食点餐。",
+  "searchTablePlaceholder": "搜索餐桌号",
+  "enterTablePlaceholder": "输入您的餐桌号",
+  "noTableMatch": "没有匹配的餐桌。请核对餐桌上的编号。",
+  "selectTableToContinue": "请选择您的餐桌以继续。"
 }

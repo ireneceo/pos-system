@@ -701,5 +701,11 @@
   "itemServe.serveHint": "Serve ▸",
   "itemServe.tapToServe": "Tap to mark as served",
   "itemServe.tapToUndo": "Tap to undo (back to ready)",
-  "itemServe.servedCount": "{{served}}/{{total}} served"
+  "itemServe.servedCount": "{{served}}/{{total}} served",
+  "selectYourTable": "Select your table",
+  "selectYourTableHint": "Please choose the table you are seated at to continue your dine-in order.",
+  "searchTablePlaceholder": "Search table number",
+  "enterTablePlaceholder": "Enter your table number",
+  "noTableMatch": "No matching table. Check the number on your table.",
+  "selectTableToContinue": "Please select your table to continue."
 }
