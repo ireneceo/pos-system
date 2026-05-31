@@ -6,6 +6,9 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+### 2026-05-31 분석 (구현 보류)
+- 설정 가드 분석 완료 — 5/31 The Fire 설정 소실 사고 진짜 원인: `PUT /api/store/settings` (store.js:97) 라우트에 anti-wipe 가드 0. restaurants-crud.js 의 기존 가드는 다른 라우트라 무의미. 4개 문제 정의 (store.js 무방비 / restaurants-crud 빈틈 4개 / operation_settings whitelist 미공유 / table·mobile·reservation 무방비) + 해결 방안 정리. 구현은 Irene 비즈니스 결정 (hydration marker 도입 여부) 후 다음 세션. 상세: memory `project_settings_guard_analysis`
+
 ### 2026-05-31 (The Fire 영업 critical 핫픽스 — 운영 배포 완료분 포함)
 - 결제 팝업 크래시 수정 — 할인 기능 추가 시 변수 선언 순서 오류로 결제창이 열리자마자 멈추던 문제(POS·결제 마비) 긴급 핫픽스
 - 영수증(빌) 출력 오류 수정 — 결제완료 후 빈 빌이 나오거나 "출력 실패"가 뜨던 문제(금액 데이터 형식) 수정

@@ -1,9 +1,9 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-05-31 (The Fire 영업 critical 대응일 — 저장 후 마무리)
+**마지막 업데이트:** 2026-05-31 (설정 가드 분석 완료 — 구현 다음 세션)
 **버전:** v3.45 운영 (오늘은 emergency 핫픽스 — 버전 미변경)
-**작업 상태:** 완료 (세션 마무리)
+**작업 상태:** 분석 완료, 구현 보류 (Irene 자리 비움 → 다음 세션에서 결정 후 구현)
 
 The Fire(restaurant 16) 종일 실매출 중 연쇄 이슈 대응. 핫픽스 다수 운영 배포 + **설정 소실 사고 복구 완료.**
 
@@ -22,7 +22,8 @@ The Fire(restaurant 16) 종일 실매출 중 연쇄 이슈 대응. 핫픽스 다
 - 복구불가: 오늘 Leave로 날아간 테이블번호 19건(덤프에 없음, binlog 권한없음).
 
 ### 다음 확정 작업
-- **[CRITICAL] 설정 저장 빈값 덮어쓰기 백엔드 가드** — 오늘 설정 소실 사고 영구 차단. restaurants 설정 저장 시 이미 값 있는 printer_settings/payment_settings를 빈값/기본값으로 덮어쓰는 요청 거부(또는 merge). 인쇄무관·비보호. 상세: memory `project_thefire_settings_wipe`. (Irene이 "다신 일어나면 안돼"로 영구해결 강조 → 최우선)
+- **[CRITICAL] 설정 저장 빈값 덮어쓰기 백엔드 가드 — 구현** — 2026-05-31 분석 완료. 진짜 원인 = `store.js` 라우트 가드 0 (restaurants-crud 가드는 다른 라우트라 무의미). 4개 문제 정의 + 해결 방안 정리됨. 상세 분석: memory `project_settings_guard_analysis`. 비즈니스 결정 1건 보류 중 = hydration marker 도입 여부.
+  - 구현 시작 전 Irene 결정 필요: (a) 문제 1 만 우선 / (b) 1~4 전체 / (c) 1~4 + hydration marker
 
 ### 후속 후보 (아이디어 메모, 확정 X)
 > 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.
