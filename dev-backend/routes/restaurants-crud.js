@@ -73,6 +73,12 @@ const { authenticateToken, checkRestaurantAccess, requireRole } = require('../mi
 const { validateRestaurantCreation } = require('../middleware/validation');
 const { getTodayBounds, getRestaurantTimezone } = require('../utils/dateTimeHelper');
 const { deleteOldImages } = require('../utils/imageProcessor');
+const {
+  guardPrinterSettings,
+  guardPaymentSettings,
+  guardOperationSettings,
+  guardShallowSettings,
+} = require('../utils/settingsGuard');
 
 
 router.get('/', authenticateToken, async (req, res) => {
@@ -1599,88 +1605,33 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
       updateData.staff_limit = req.body.staffLimit || req.body.staff_limit;
     }
 
-    // Settings objects — whitelist nested keys to prevent rogue payload injection.
-    // operation_settings is a large JSON; we accept only known keys instead of trusting client.
-    // Update this allow-list when the schema grows (and `models/Restaurant.js`).
-    const OPERATION_SETTINGS_ALLOWED_KEYS = new Set([
-      'openingTime', 'closingTime', 'timeZone', 'orderNumberReset',
-      'defaultPreparationTime', 'taxEnabled', 'taxRate', 'serviceChargeEnabled',
-      'serviceChargeRate', 'serviceChargeExcludeTakeaway', 'currency',
-      'cashRounding', 'roundingApplyTo', 'pagerSystem', 'takeawayPricing',
-      'deliveryPricing', 'loyaltyTiers', 'orderTypes', 'pickupSettings',
-      'takeawaySettings', 'allowQuickOrder', 'breakTimes', 'mobileOrderProcessing',
-      'mobileOrderAlerts', 'requirePaymentBeforeKitchen'
-    ]);
+    // 2026-05-31 — anti-wipe guards moved to utils/settingsGuard.js (공용).
+    // store.js (Settings 페이지 저장 경로) 와 동일한 함수를 쓴다. 두 라우트
+    // 가드 분기/임계값 drift 차단. 5/31 The Fire 설정 소실 사고 영구 차단.
     if (req.body.payment_settings !== undefined) {
-      // 2026-05-29 ANTI-WIPE GUARD: never let a save collapse the payment methods.
-      // A stale/half-loaded client (state held only {staffMeal}) was overwriting the
-      // full set → the POS showed only "Staff Meal". If the incoming set has drastically
-      // fewer methods than what's already stored, reject the payment_settings change and
-      // keep the existing config (all other fields still save normally).
-      let _allowPayment = true;
-      try {
-        const incoming = typeof req.body.payment_settings === 'string'
-          ? JSON.parse(req.body.payment_settings) : req.body.payment_settings;
-        const incomingCount = (incoming && typeof incoming === 'object')
-          ? Object.keys(incoming).filter(k => k !== '_order').length : 0;
-        const existingRaw = restaurant.getDataValue('payment_settings');
-        const existing = existingRaw
-          ? (typeof existingRaw === 'string' ? JSON.parse(existingRaw) : existingRaw) : null;
-        const existingCount = (existing && typeof existing === 'object')
-          ? Object.keys(existing).filter(k => k !== '_order').length : 0;
-        if (existingCount >= 3 && incomingCount <= 1) {
-          _allowPayment = false;
-          console.warn(`[anti-wipe] Rejected payment_settings collapse for restaurant ${req.params.id}: incoming ${incomingCount} vs existing ${existingCount} methods — keeping existing.`);
-        }
-      } catch (e) { /* parse issue → fall through and save as-is */ }
-      if (_allowPayment) updateData.payment_settings = req.body.payment_settings;
+      const r = guardPaymentSettings(req.body.payment_settings, restaurant.getDataValue('payment_settings'), req.params.id);
+      if (r.action !== 'reject') updateData.payment_settings = r.value;
     }
     if (req.body.operation_settings !== undefined) {
-      const ops = req.body.operation_settings;
-      if (ops && typeof ops === 'object' && !Array.isArray(ops)) {
-        const filtered = {};
-        for (const k of Object.keys(ops)) {
-          if (OPERATION_SETTINGS_ALLOWED_KEYS.has(k)) filtered[k] = ops[k];
-        }
-        updateData.operation_settings = filtered;
-      } else {
-        updateData.operation_settings = ops;
-      }
+      const r = guardOperationSettings(req.body.operation_settings, restaurant.getDataValue('operation_settings'), req.params.id);
+      if (r.action !== 'reject') updateData.operation_settings = r.value;
     }
-    if (req.body.table_settings !== undefined) updateData.table_settings = req.body.table_settings;
+    if (req.body.table_settings !== undefined) {
+      const r = guardShallowSettings('table_settings', req.body.table_settings, restaurant.getDataValue('table_settings'), req.params.id);
+      if (r.action !== 'reject') updateData.table_settings = r.value;
+    }
+    if (req.body.mobile_settings !== undefined) {
+      const r = guardShallowSettings('mobile_settings', req.body.mobile_settings, restaurant.getDataValue('mobile_settings'), req.params.id);
+      if (r.action !== 'reject') updateData.mobile_settings = r.value;
+    }
+    if (req.body.reservation_settings !== undefined) {
+      const r = guardShallowSettings('reservation_settings', req.body.reservation_settings, restaurant.getDataValue('reservation_settings'), req.params.id);
+      if (r.action !== 'reject') updateData.reservation_settings = r.value;
+    }
     if (req.body.floor_plan !== undefined) updateData.floor_plan = req.body.floor_plan;
     if (req.body.printer_settings !== undefined) {
-      // 2026-05-29 ANTI-WIPE GUARD (printer_settings): a Settings page that saved
-      // before its printer config finished loading (or from a device whose state
-      // wasn't hydrated) was overwriting the live config — losing the bill-printer
-      // address, workstations, kitchen station printers and turning autoPrint off,
-      // which silently killed auto-print + bill print. A real edit never blanks the
-      // bill-printer address, so we use "incoming clears an address that existed" as
-      // the stale-save signal and PRESERVE the critical sub-objects from the DB.
-      let _ps = req.body.printer_settings;
-      try {
-        const incoming = typeof _ps === 'string' ? JSON.parse(_ps) : (_ps || {});
-        const exRaw = restaurant.getDataValue('printer_settings');
-        const existing = exRaw ? (typeof exRaw === 'string' ? JSON.parse(exRaw) : exRaw) : {};
-        const exBillAddr = existing.billPrinter && existing.billPrinter.address;
-        const inBillAddr = incoming.billPrinter && incoming.billPrinter.address;
-        const exWsAddr = Array.isArray(existing.workstations) && existing.workstations.some(w => w && w.billPrinter && w.billPrinter.address);
-        const inWsAddr = Array.isArray(incoming.workstations) && incoming.workstations.some(w => w && w.billPrinter && w.billPrinter.address);
-        const exStations = existing.kitchenStationPrinters && Object.keys(existing.kitchenStationPrinters).length > 0;
-        const inStations = incoming.kitchenStationPrinters && Object.keys(incoming.kitchenStationPrinters).length > 0;
-        // Stale signal: incoming drops a previously-set printer address, or drops all stations.
-        const stale = (exBillAddr && !inBillAddr) || (exWsAddr && !inWsAddr) || (exStations && !inStations);
-        if (stale) {
-          const merged = { ...incoming };
-          if (existing.billPrinter) merged.billPrinter = existing.billPrinter;
-          if (existing.kitchenPrinter) merged.kitchenPrinter = existing.kitchenPrinter;
-          if (Array.isArray(existing.workstations) && existing.workstations.length) merged.workstations = existing.workstations;
-          if (exStations) merged.kitchenStationPrinters = existing.kitchenStationPrinters;
-          _ps = merged;
-          console.warn(`[anti-wipe] printer_settings stale-save for restaurant ${req.params.id} — preserved bill/kitchen/workstations/stations from DB.`);
-        }
-      } catch (e) { /* parse issue → save as-is */ }
-      updateData.printer_settings = _ps;
+      const r = guardPrinterSettings(req.body.printer_settings, restaurant.getDataValue('printer_settings'), req.params.id);
+      if (r.action !== 'reject') updateData.printer_settings = r.value;
     }
 
     // Brand association

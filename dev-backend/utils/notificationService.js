@@ -128,12 +128,70 @@ async function resolveReceiverBranding(user) {
   }
 }
 
+// 2026-05-31 invalid-recipient gates — added after operations noticed Gmail
+// "delivery failure" retry notifications flooding the admin inbox for 47h.
+// Root causes were (a) System Admin email left at the placeholder
+// `admin@pos-system.com`, (b) demo / test restaurants with synthetic emails
+// receiving real production notifications, (c) unverified emails getting
+// notifications they never opted into. We skip outbound mail entirely in
+// these cases. See `project_thefire_settings_wipe` & memory notes.
+const PLACEHOLDER_EMAIL_DOMAINS = new Set([
+  'pos-system.com', 'example.com', 'example.org', 'example.net',
+  'test.com', 'test.local', 'localhost', 'invalid', 'mailinator.com',
+  'placeholder.com', 'demo.com', 'sample.com', 'noreply.com'
+]);
+
+function _emailLooksValid(email) {
+  if (!email || typeof email !== 'string') return false;
+  const m = email.trim().toLowerCase().match(/^[^\s@]+@([^\s@]+\.[^\s@]+)$/);
+  if (!m) return false;
+  const domain = m[1];
+  if (PLACEHOLDER_EMAIL_DOMAINS.has(domain)) return false;
+  // Common "fake" suffixes
+  if (/\.(test|local|invalid|example)$/.test(domain)) return false;
+  return true;
+}
+
+async function _restaurantIsDemoOrTest(restaurantId) {
+  if (!restaurantId) return false;
+  try {
+    const row = await sequelize.query(
+      'SELECT is_demo, is_test FROM restaurants WHERE id = :id LIMIT 1',
+      { replacements: { id: restaurantId }, type: QueryTypes.SELECT }
+    );
+    const r = row[0];
+    if (!r) return false;
+    return r.is_demo === true || r.is_demo === 1 || r.is_test === true || r.is_test === 1;
+  } catch { return false; }
+}
+
 async function sendNotification(recipientUserId, category, mailOptions) {
   try {
     // 1. Get recipient user
     const user = await User.findByPk(recipientUserId);
     if (!user || !user.email) {
       console.log(`[Notification] Skip: user ${recipientUserId} not found or no email`);
+      return;
+    }
+
+    // 1-a. Reject unverified emails. Marketing / system notifications shouldn't
+    //      hit addresses the user never confirmed they own.
+    if (user.email_verified === false) {
+      console.log(`[Notification] Skip: user ${recipientUserId} email not verified (${user.email})`);
+      return;
+    }
+
+    // 1-b. Reject syntactically bogus / placeholder-domain emails. Gmail will
+    //      bounce these and we end up flooding the admin with retry warnings.
+    if (!_emailLooksValid(user.email)) {
+      console.log(`[Notification] Skip: user ${recipientUserId} email invalid/placeholder (${user.email})`);
+      return;
+    }
+
+    // 1-c. Reject demo / test restaurant recipients. These accounts exist for
+    //      QA only and their addresses are typically synthetic.
+    if (user.restaurant_id && await _restaurantIsDemoOrTest(user.restaurant_id)) {
+      console.log(`[Notification] Skip: user ${recipientUserId} belongs to demo/test restaurant ${user.restaurant_id}`);
       return;
     }
 

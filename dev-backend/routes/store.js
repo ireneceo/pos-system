@@ -4,6 +4,12 @@ const Restaurant = require('../models/Restaurant');
 const SystemSettings = require('../models/SystemSettings');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const { logActivity } = require('../utils/activityLogger');
+const {
+  guardPrinterSettings,
+  guardPaymentSettings,
+  guardOperationSettings,
+  guardShallowSettings,
+} = require('../utils/settingsGuard');
 
 // Get store settings
 router.get('/settings', authenticateToken, async (req, res) => {
@@ -192,9 +198,25 @@ router.put('/settings', authenticateToken, async (req, res) => {
           : req.body[field]);
 
         if (field === 'payment_settings' || field === 'operation_settings' || field === 'table_settings' || field === 'mobile_settings' || field === 'printer_settings' || field === 'reservation_settings') {
-          // Migrate legacy payment method keys on save
-          if (field === 'payment_settings' && req.body[field]) {
-            const ps = req.body[field];
+          // 2026-05-31 anti-wipe guard FIRST — runs before any client-payload mutation
+          // so that legacy migrations (e.g. auto-adding staffMeal) can't turn an
+          // empty {} into a non-empty object that bypasses the empty-payload check.
+          const guardFn = guardMap[field];
+          const existingVal = restaurant.getDataValue(field);
+          const result = guardFn(req.body[field], existingVal, restaurantId);
+          if (result.action === 'reject') {
+            console.warn(`  ⚠️  [anti-wipe] skipped ${field}: ${result.reason}`);
+            return; // skip this field — DB value untouched
+          }
+          let valueToSave = result.value;
+          if (result.action === 'merged') {
+            console.warn(`  🛡️  [anti-wipe] merged ${field}: ${result.reason}`);
+          }
+
+          // Migrate legacy payment method keys on save (post-guard, on the
+          // guard-approved value).
+          if (field === 'payment_settings' && valueToSave && typeof valueToSave === 'object') {
+            const ps = valueToSave;
             // qr/qrPayment → ewallet (merge qrImage)
             if (ps.qr || ps.qrPayment) {
               const qrData = ps.qrPayment || ps.qr;
@@ -234,54 +256,30 @@ router.put('/settings', authenticateToken, async (req, res) => {
               }
             }
           }
-          // 2026-05-31 anti-wipe guard. Pass through migration result + existing
-          // value; the guard decides save / merge / reject.
-          const guardFn = guardMap[field];
-          if (guardFn) {
-            const existingVal = restaurant.getDataValue(field);
-            const result = guardFn(req.body[field], existingVal, restaurantId);
-            if (result.action === 'reject') {
-              // Skip this field — keep DB value untouched. The rest of the body still saves.
-              console.warn(`  ⚠️  [anti-wipe] skipped ${field}: ${result.reason}`);
-            } else {
-              restaurant[field] = result.value;
-              if (result.action === 'merged') {
-                console.warn(`  🛡️  [anti-wipe] merged ${field}: ${result.reason}`);
-              }
-            }
-          } else {
-            // Fallback (should never hit since SETTINGS_GUARDED covers all)
-            restaurant[field] = req.body[field];
-          }
+
+          restaurant[field] = valueToSave;
         } else {
           restaurant[field] = req.body[field];
         }
       }
     });
 
-    // Sync operation_settings with individual currency columns
-    // This ensures both locations have the same values
-    if (req.body.operation_settings) {
-      const opSettings = req.body.operation_settings;
-
-      // Sync currency values: individual columns take priority
-      if (req.body.currency !== undefined) {
-        opSettings.currency = req.body.currency;
+    // Sync operation_settings with individual currency columns. We patch the
+    // *guarded* operation_settings (set above) instead of the raw req.body to
+    // avoid undoing the anti-wipe merge.
+    if (req.body.operation_settings && (req.body.currency !== undefined || req.body.cash_rounding !== undefined || req.body.rounding_apply_to !== undefined)) {
+      const opSettings = restaurant.operation_settings;
+      if (opSettings && typeof opSettings === 'object') {
+        if (req.body.currency !== undefined) opSettings.currency = req.body.currency;
+        if (req.body.cash_rounding !== undefined) opSettings.cashRounding = req.body.cash_rounding;
+        if (req.body.rounding_apply_to !== undefined) opSettings.roundingApplyTo = req.body.rounding_apply_to;
+        restaurant.operation_settings = opSettings;
+        console.log('✓ Synced currency settings in operation_settings:', {
+          currency: opSettings.currency,
+          cashRounding: opSettings.cashRounding,
+          roundingApplyTo: opSettings.roundingApplyTo
+        });
       }
-      if (req.body.cash_rounding !== undefined) {
-        opSettings.cashRounding = req.body.cash_rounding;
-      }
-      if (req.body.rounding_apply_to !== undefined) {
-        opSettings.roundingApplyTo = req.body.rounding_apply_to;
-      }
-
-      // Update operation_settings with synced values
-      restaurant.operation_settings = opSettings;
-      console.log('✓ Synced currency settings in operation_settings:', {
-        currency: opSettings.currency,
-        cashRounding: opSettings.cashRounding,
-        roundingApplyTo: opSettings.roundingApplyTo
-      });
     }
 
     console.log('💾 Saving to database...');
