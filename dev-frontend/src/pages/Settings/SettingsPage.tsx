@@ -629,6 +629,7 @@ const SettingsPage: React.FC = () => {
   const pagerSystemToggleRef = useRef<AutoSaveHandle>(null);
   const enableTableNumbersToggleRef = useRef<AutoSaveHandle>(null);
   const tableNumberRequiredToggleRef = useRef<AutoSaveHandle>(null);
+  const clearTableOnPaymentToggleRef = useRef<AutoSaveHandle>(null);
 
   // Mobile Order tab AutoSave refs (toggles & lists)
   const mobileOrderDineInRef = useRef<AutoSaveHandle>(null);
@@ -1052,6 +1053,7 @@ const SettingsPage: React.FC = () => {
   const [tableSettings, setTableSettings] = useState({
     enableTableNumbers: true,
     tableNumberRequired: false,
+    clearTableOnPayment: false,
     tablePrefix: 'T',
     totalTables: 20,
     qrCodeBaseUrl: window.location.origin,
@@ -1263,6 +1265,7 @@ const SettingsPage: React.FC = () => {
               setTableSettings({
                 enableTableNumbers: restaurant.table_settings.enableTableNumbers ?? true,
                 tableNumberRequired: restaurant.table_settings.tableNumberRequired ?? false,
+                clearTableOnPayment: restaurant.table_settings.clearTableOnPayment ?? false,
                 tablePrefix: restaurant.table_settings.tablePrefix || 'T',
                 totalTables: restaurant.table_settings.totalTables || 20,
                 qrCodeBaseUrl: restaurant.table_settings.qrCodeBaseUrl || window.location.origin,
@@ -4131,6 +4134,19 @@ const SettingsPage: React.FC = () => {
                           </AutoSaveField>
                         </Toggle>
                       <HelpText>{t('settings:settingsPage.makeTableNumberSelectionMandatoryForDineinOrders')}</HelpText>
+                    </FormGroup>
+                    <FormGroup>
+                        <Toggle>
+                          <ToggleLabel>{t('settings:settingsPage.clearTableOnPayment')}</ToggleLabel>
+                          <AutoSaveField ref={clearTableOnPaymentToggleRef} onSave={handleSave} type="toggle">
+                          <ToggleSwitch>
+                            <ToggleInput type="checkbox" checked={tableSettings.clearTableOnPayment}
+                              onChange={(e) => { setTableSettings({...tableSettings, clearTableOnPayment: e.target.checked}); clearTableOnPaymentToggleRef.current?.triggerSave(); }} />
+                            <ToggleSlider />
+                          </ToggleSwitch>
+                          </AutoSaveField>
+                        </Toggle>
+                      <HelpText>{t('settings:settingsPage.clearTableOnPaymentHelp')}</HelpText>
                     </FormGroup>
                   </div>
                   <div>

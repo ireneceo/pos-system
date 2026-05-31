@@ -14,6 +14,8 @@
   "liveOrdersPage.action": "Action",
   "liveOrdersPage.takeaway": "外卖",
   "liveOrdersPage.pickup": "PICKUP",
+  "liveOrdersPage.dineInNoTable": "堂食 · 未指定桌号",
+  "liveOrdersPage.dineIn": "堂食",
   "liveOrdersPage.delivery": "配送",
   "liveOrdersPage.mobile": "MOBILE",
   "liveOrdersPage.member": "MEMBER",

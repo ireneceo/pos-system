@@ -9,6 +9,7 @@ import {
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { API_BASE_URL } from '../../config/api';
 import MobileAlertModal from '../components/common/MobileAlertModal';
+import SearchableSelect from '../../components/Common/SearchableSelect';
 
 const Container = styled.div`
   min-height: 100vh;
@@ -215,20 +216,21 @@ const TablePickerOverlay = styled.div`
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
   display: flex;
-  align-items: flex-end;
+  /* Anchor near the TOP (not bottom sheet) so the search dropdown stays visible
+     ABOVE the on-screen keyboard — bottom sheet got hidden behind the keyboard. */
+  align-items: flex-start;
   justify-content: center;
+  padding: 11vh 16px 16px;
   z-index: 9999;
 `;
 
 const TablePickerSheet = styled.div`
   background: #fff;
   width: 100%;
-  max-width: 480px;
-  border-radius: 16px 16px 0 0;
-  padding: 20px 18px calc(18px + env(safe-area-inset-bottom));
-  max-height: 80vh;
-  display: flex;
-  flex-direction: column;
+  max-width: 420px;
+  border-radius: 16px;
+  padding: 20px 18px;
+  /* overflow visible so the SearchableSelect dropdown isn't clipped */
 `;
 
 const TablePickerTitle = styled.h3`
@@ -247,34 +249,43 @@ const TablePickerHint = styled.p`
 
 const TableSearchInput = styled.input`
   width: 100%;
+  box-sizing: border-box;
+  flex-shrink: 0;
   padding: 12px 14px;
   border: 1px solid #C7CED6;
   border-radius: 10px;
   font-size: 16px;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
   &:focus { outline: none; border-color: #635BFF; box-shadow: 0 0 0 3px rgba(99,91,255,0.1); }
 `;
 
-const TableGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
-  gap: 10px;
+// Searchable scrolling list (replaces the chip grid — too cluttered with many tables).
+// Search filters; matches show as a clean vertical dropdown list that scrolls.
+const TableList = styled.div`
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid #E6EBF1;
+  border-radius: 10px;
 `;
 
-const TableChip = styled.button`
-  padding: 16px 8px;
-  min-height: 56px;
-  border: 1px solid #C7CED6;
-  border-radius: 10px;
+const TableRow = styled.button`
+  display: flex;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  padding: 14px 16px;
+  min-height: 48px;
+  border: 0;
+  border-bottom: 1px solid #F1F4F8;
   background: #fff;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 500;
   color: #1F2937;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-  &:active { background: rgba(99,91,255,0.1); border-color: #635BFF; }
+  &:last-child { border-bottom: 0; }
+  &:active { background: rgba(99,91,255,0.1); }
 `;
 
 const TableEmptyNote = styled.div`
@@ -476,7 +487,7 @@ const OrderTypePage: React.FC = () => {
       // representative QR (no table scanned). Force a table pick before the
       // menu so the order lands on the correct Floor Plan table instead of
       // showing up as a table-less "pickup N" order.
-      const currentTable = tableFromQR || (typeof window !== 'undefined' ? sessionStorage.getItem('tableNumber') : null);
+      const currentTable = tableFromQR || (typeof window !== 'undefined' ? localStorage.getItem('tableNumber') : null);
       if (newOrderType === 'dine-in' && storeData?.tableNumberRequired && !currentTable) {
         setShowTablePicker(true);
         setIsLoading(false);
@@ -504,7 +515,7 @@ const OrderTypePage: React.FC = () => {
   const handleTablePicked = (tableLabel: string) => {
     const label = (tableLabel || '').trim();
     if (!label) return;
-    sessionStorage.setItem('tableNumber', label);
+    localStorage.setItem('tableNumber', label);
     setTableFromQR(label);
     setShowTablePicker(false);
     setTableSearch('');
@@ -527,10 +538,11 @@ const OrderTypePage: React.FC = () => {
     if (table) {
       // Table from URL parameter (QR code scan)
       setTableFromQR(table);
-      sessionStorage.setItem('tableNumber', table);
+      localStorage.setItem('tableNumber', table);
     } else {
-      // Check if table number exists in sessionStorage (returning from menu/cart)
-      const existingTable = sessionStorage.getItem('tableNumber');
+      // Check if table number exists in localStorage (returning from menu/cart, or
+      // resuming after a mobile tab eviction — shares the cart's persistent store)
+      const existingTable = localStorage.getItem('tableNumber');
       if (existingTable) {
         setTableFromQR(existingTable);
       }
@@ -793,8 +805,6 @@ const OrderTypePage: React.FC = () => {
           customer arrived without one (generic / representative QR). */}
       {showTablePicker && (() => {
         const tables = storeData?.floorTables || [];
-        const q = tableSearch.trim().toLowerCase();
-        const filtered = q ? tables.filter(tb => tb.toLowerCase().includes(q)) : tables;
         const hasTables = tables.length > 0;
         return (
           <TablePickerOverlay onClick={() => setShowTablePicker(false)}>
@@ -803,34 +813,31 @@ const OrderTypePage: React.FC = () => {
               <TablePickerHint>
                 {t('common:selectYourTableHint', 'Please choose the table you are seated at to continue your dine-in order.')}
               </TablePickerHint>
-              <TableSearchInput
-                value={tableSearch}
-                onChange={(e) => setTableSearch(e.target.value)}
-                placeholder={hasTables
-                  ? t('common:searchTablePlaceholder', 'Search table number')
-                  : t('common:enterTablePlaceholder', 'Enter your table number')}
-                inputMode={hasTables ? undefined : 'text'}
-              />
               {hasTables ? (
-                filtered.length > 0 ? (
-                  <TableGrid>
-                    {filtered.map(tb => (
-                      <TableChip key={tb} onClick={() => handleTablePicked(tb)}>{tb}</TableChip>
-                    ))}
-                  </TableGrid>
-                ) : (
-                  <TableEmptyNote>{t('common:noTableMatch', 'No matching table. Check the number on your table.')}</TableEmptyNote>
-                )
+                <SearchableSelect
+                  options={tables.map(tb => ({ value: tb, label: tb }))}
+                  value={null}
+                  onChange={(v) => { if (v != null && String(v).trim()) handleTablePicked(String(v)); }}
+                  placeholder={t('common:searchTablePlaceholder', 'Search table number')}
+                  noOptionsMessage={t('common:noTableMatch', 'No matching table. Check the number on your table.')}
+                />
               ) : (
-                <TableManualInput>
-                  <TableManualBtn
-                    disabled={!tableSearch.trim()}
-                    onClick={() => handleTablePicked(tableSearch)}
-                    style={{ width: '100%' }}
-                  >
-                    {t('common:continue', 'Continue')}
-                  </TableManualBtn>
-                </TableManualInput>
+                <>
+                  <TableSearchInput
+                    value={tableSearch}
+                    onChange={(e) => setTableSearch(e.target.value)}
+                    placeholder={t('common:enterTablePlaceholder', 'Enter your table number')}
+                  />
+                  <TableManualInput>
+                    <TableManualBtn
+                      disabled={!tableSearch.trim()}
+                      onClick={() => handleTablePicked(tableSearch)}
+                      style={{ width: '100%' }}
+                    >
+                      {t('common:continue', 'Continue')}
+                    </TableManualBtn>
+                  </TableManualInput>
+                </>
               )}
             </TablePickerSheet>
           </TablePickerOverlay>

@@ -14,6 +14,8 @@
   "liveOrdersPage.action": "Action",
   "liveOrdersPage.takeaway": "TAKEAWAY",
   "liveOrdersPage.pickup": "PICKUP",
+  "liveOrdersPage.dineInNoTable": "Dine-in · no table assigned",
+  "liveOrdersPage.dineIn": "Dine-in",
   "liveOrdersPage.delivery": "DELIVERY",
   "liveOrdersPage.mobile": "MOBILE",
   "liveOrdersPage.member": "MEMBER",

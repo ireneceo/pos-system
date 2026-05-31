@@ -722,6 +722,8 @@
   "settingsPage.allowCustomersToSelectTableNumbersWhenOrdering": "允许顾客在点餐时选择桌号",
   "settingsPage.tableNumberRequired": "需要桌号",
   "settingsPage.makeTableNumberSelectionMandatoryForDineinOrders": "Make table number selection mandatory for dine-in orders",
+  "settingsPage.clearTableOnPayment": "付款后清空桌台",
+  "settingsPage.clearTableOnPaymentHelp": "订单付清后，从平面图中移除该桌台（保留在该桌今日订单记录中）。",
   "settingsPage.tablePrefix": "桌号前缀",
   "settingsPage.prefixForTableNumbersEgT001Table001": "Prefix for table numbers (e.g., T001, TABLE001)",
   "settingsPage.numberOfTables": "Number of Tables",

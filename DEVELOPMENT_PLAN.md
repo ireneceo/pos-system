@@ -1,9 +1,40 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-05-30 (모바일 dine-in 테이블번호 필수 기능 DEV 구현+검증 — 미배포)
+> **최종 업데이트:** 2026-05-31 (The Fire 영업 critical 핫픽스 다수 배포 + 설정 소실 사고 복구)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
-> **현재 버전:** **v3.44** 운영 (2026-05-29 배포, Backup 20260529_224606, smoke 10/10)
+> **현재 버전:** **v3.45** 운영 (2026-05-31 배포, Backup 20260531_021629, smoke 10/10 — 주문/주방 안정성 + 모바일 dine-in 테이블 + 세트옵션 버전확정)
+
+## ✅ 완료: The Fire 영업 critical 핫픽스 + 설정 소실 복구 (2026-05-31)
+
+> The Fire(16) 종일 실매출 중 연쇄 이슈 대응. 대부분 운영 배포 완료. **다음 세션 최우선 = 설정 빈값 덮어쓰기 백엔드 가드(미구현).**
+
+### 완료/배포된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 빈 빌 핫픽스 | PaymentModal `liveTotalOverride` TDZ(선언 전 참조) → 결제팝업·POS 크래시. 선언 위로 이동 | ✅ 배포 |
+| 빌 toFixed 크래시 | POSTerminal completedOrderData가 savedOrder의 DECIMAL **문자열**을 빌로 전달 → `subtotal.toFixed is not a function`. parseFloat 코어싱 (🔒 POSTerminal bless) | ✅ 배포 |
+| KDS 단계 역행 복귀 | order-updated가 오래된 echo를 무조건 덮어써 ready→pending 되돌림. updatedAt monotonic guard 4곳 (🔒 KDS bless) | ✅ 배포 |
+| LiveOrders 재연결 재동기화 | 소켓 끊긴 동안 들어온 주문 누락 → connect 시 fetchOrders + 30초 폴링(KDS 패턴 이식) | ✅ 배포 |
+| Leave 버튼 비파괴 | "테이블 비우기"가 order.table_number=null로 **기록 파괴** → `table_cleared` 플래그로 전환(번호 보존), table-status에서 제외. 모델+DB컬럼+restaurants-crud | ✅ 배포 |
+| clearTableOnPayment ON | The Fire 운영 DB 직접 ON (결제완료 자동 테이블 비움, Leave 불필요) | ✅ |
+| T-7→T-13 고객 이동 | 운영 DB 직접 (table_number + floor_plan_table_id) | ✅ |
+| 설정 소실 복구 | printer_settings(POS-80C+3스테이션)+payment_settings(8) 3am 백업서 복원 | ✅ |
+
+### 🔴 미완 (다음 세션 — 오늘 논의)
+- **[CRITICAL] 설정 빈값 덮어쓰기 백엔드 가드** — 오늘 사고 영구차단 (memory project_thefire_settings_wipe)
+- 설정 저장 merge/hydration 가드 ("계속 로딩" + 통째 덮어쓰기)
+- 오더티켓 2장 중복(부모창+iframe poller 동시인쇄, Irene 답 대기)
+- POS UI 정비(버튼높이/검색·테이블 밀착/카테고리탭 전체클릭)
+- 플로어플랜 하단 통계 재진단 / 테이블별 "오늘 주문" 탭
+
+### 수정된 파일
+- 프론트: `POSTerminal/POSTerminalPage.tsx`🔒, `POSTerminal/PaymentModal.tsx`, `KitchenDisplay/KitchenDisplayPage.tsx`🔒, `LiveOrders/LiveOrdersPage.tsx`, `FloorPlan/FloorPlanPage.tsx`
+- 백엔드: `models/Order.js`(table_cleared), `routes/restaurants-crud.js`(table-status 필터), `routes/orders-crud.js`🔒
+- DB: orders.table_cleared 컬럼(dev+운영), The Fire table_settings.clearTableOnPayment + printer/payment 복원
+
+---
 
 ## ✅ 완료(DEV): 모바일 dine-in 테이블번호 필수 — 매장별 설정 (2026-05-30, 미배포)
 

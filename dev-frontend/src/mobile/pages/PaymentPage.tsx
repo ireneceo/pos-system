@@ -653,7 +653,8 @@ const PaymentPage: React.FC = () => {
   }, [pointsToUse, membershipSettings]);
 
   // Calculate takeaway charge (using existing function from StoreContext)
-  const orderType = sessionStorage.getItem('orderType') as 'dine-in' | 'takeaway' | 'pickup' | 'delivery' || 'dine-in';
+  // localStorage (shares lifecycle with cart) — see MobileOrderContext lifecycle note.
+  const orderType = localStorage.getItem('orderType') as 'dine-in' | 'takeaway' | 'pickup' | 'delivery' || 'dine-in';
 
   // Get scheduled pickup time from state (not sessionStorage anymore)
   // Convert time slot (HH:mm) to full datetime for today
@@ -1016,7 +1017,7 @@ const PaymentPage: React.FC = () => {
     loadTableSettings();
 
     // Check if table was pre-selected from QR code
-    const preSelectedTable = sessionStorage.getItem('tableNumber');
+    const preSelectedTable = localStorage.getItem('tableNumber');
     if (preSelectedTable) {
       setSelectedTable(preSelectedTable);
     }
@@ -2653,7 +2654,7 @@ const PaymentPage: React.FC = () => {
           </Section>
         )}
 
-        {sessionStorage.getItem('orderType') === 'dine-in' && (availableTables.length > 0 || tableRequired) && (
+        {localStorage.getItem('orderType') === 'dine-in' && (availableTables.length > 0 || tableRequired) && (
           <TableSection>
             <SectionTitle>Table Number{tableRequired ? ' *' : ''}</SectionTitle>
             <TableSelect

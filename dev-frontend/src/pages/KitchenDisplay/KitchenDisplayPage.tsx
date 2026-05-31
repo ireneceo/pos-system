@@ -330,6 +330,17 @@ const ItemName = styled.div<{ done?: boolean }>`
   color: ${props => props.done ? '#6B7280' : '#0A2540'};
 `;
 
+// 2026-05-31 (Irene): when the KDS language is NOT Korean but a dish name still
+// carries Korean (added for customers), the Korean glyphs render visually larger/
+// heavier and steal the cook's attention. Shrink + lighten ONLY the Korean run so
+// the primary-language name keeps the visual weight. em-relative so it scales in
+// every context (main item / set component). Display-only.
+const KoreanText = styled.span`
+  font-size: 0.78em;
+  font-weight: 400;
+  opacity: 0.9;
+`;
+
 const OptionTags = styled.div`
   display: flex;
   flex-wrap: wrap;
@@ -585,12 +596,48 @@ const LiveClock: React.FC<{ operationSettings: any }> = React.memo(({ operationS
 });
 
 const KitchenDisplayPage: React.FC = () => {
-  const { t } = useTranslation('kitchen');
+  const { t, i18n } = useTranslation('kitchen');
   const { user } = useAuth();
   const { menuItems, categories } = useMenu();
   const { getStoreInfo, operationSettings: storeOpSettings } = useStore();
   const [searchParams, setSearchParams] = useSearchParams();
   const [orders, setOrders] = useState<KitchenOrder[]>([]);
+  // In-flight write guard: blocks duplicate/rapid double-fire PATCHes of the SAME
+  // status/item action on the SAME order while one is still in flight. The audit
+  // showed the kitchen sending the identical status_change / item PATCH twice in
+  // the same second (double-tap / double-dispatch); with the full-array order_items
+  // overwrite, a stale concurrent PATCH could un-serve items. Sequential distinct
+  // actions still work (key released on completion). Display/sync only — no print.
+  const inflightWritesRef = useRef<Set<string>>(new Set());
+  const beginWrite = (key: string): boolean => {
+    if (inflightWritesRef.current.has(key)) return false;
+    inflightWritesRef.current.add(key);
+    return true;
+  };
+  const endWrite = (key: string) => { inflightWritesRef.current.delete(key); };
+  // 2026-05-31 (Irene): monotonic guard. The order-updated handler used to blindly
+  // replace an order with whatever echo arrived last; a serve-all fires two emits
+  // (PATCH /items then /status) and redundant taps fire extra echoes, so an OLDER
+  // echo (carrying the pre-ready status) landing after a newer one reverted
+  // ready→pending ("레디 갔다 펜딩 복귀"). We track the newest applied updatedAt per
+  // order and drop any strictly-older echo. Newest always wins, so a legit +Round
+  // pending-reset (which bumps updatedAt) still shows correctly. Display-only — no
+  // print/routing change.
+  const orderVersionRef = useRef<Map<string, number>>(new Map());
+  const verOf = (raw: any): number => {
+    const t = raw?.updatedAt || raw?.updated_at;
+    const ms = t ? new Date(t).getTime() : 0;
+    return Number.isFinite(ms) ? ms : 0;
+  };
+  // Returns false if `raw` is older than what we already applied for this order.
+  const acceptVersion = (idStr: string, raw: any): boolean => {
+    const v = verOf(raw);
+    if (!v) return true; // no timestamp → can't compare, fall through (old behavior)
+    const lastV = orderVersionRef.current.get(idStr) || 0;
+    if (v < lastV) return false;
+    orderVersionRef.current.set(idStr, v);
+    return true;
+  };
   const [currentTime, setCurrentTime] = useState(new Date());
   const [, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -741,6 +788,14 @@ const KitchenDisplayPage: React.FC = () => {
       });
       const result = await response.json();
       if (result.success && result.data) {
+        // Seed the monotonic version baseline from authoritative server data so a
+        // later stale echo is correctly dropped and a legit newer echo applied.
+        result.data.forEach((raw: any) => {
+          if (raw?.id != null) {
+            const v = verOf(raw);
+            if (v) orderVersionRef.current.set(raw.id.toString(), v);
+          }
+        });
         const kitchenOrders: KitchenOrder[] = result.data
           .filter(isKitchenVisible)
           .map(rawToKitchenOrder);
@@ -957,6 +1012,7 @@ const KitchenDisplayPage: React.FC = () => {
         scheduledPickupTime: order.scheduled_pickup_time || null
       };
 
+      orderVersionRef.current.set(order.id.toString(), verOf(order));
       setOrders(prev => [newOrder, ...prev]);
       playNotificationSoundRef.current(orderItems);
 
@@ -1148,7 +1204,17 @@ const KitchenDisplayPage: React.FC = () => {
 
     newSocket.on('order-updated', (order: any) => {
       if (order.restaurant_id !== user.restaurantId) return;
+      // Drop stale echoes (older updatedAt than already applied) — prevents the
+      // ready→pending revert. Applies to removal too, so an old "preparing" echo
+      // can't re-add an order a newer "served" echo already cleared.
+      if (!acceptVersion(order.id.toString(), order)) return;
 
+      // Monotonic guard: a serve-all fires TWO emits (PATCH /items then PATCH
+      // /status) and redundant KDS taps fire extra /items echoes. If an OLDER
+      // echo (carrying the pre-serve order_items / stage) lands after a newer
+      // one, blindly replacing would un-serve items / revert the stage
+      // ("서브했는데 다시 생김 / 단계가 돌아감"). Drop echoes older than what we
+      // already applied. (display-state only — does NOT touch print/routing.)
       if (!isKitchenVisible(order)) {
         // 주문이 served/completed 되어 화면에서 제거
         setOrders(prev => prev.filter(o => o.id !== order.id.toString()));
@@ -1238,6 +1304,28 @@ const KitchenDisplayPage: React.FC = () => {
     return code ? `${code} ${itemName}` : itemName;
   };
 
+  // Render an item name with Korean runs shrunk (display only). Only kicks in when
+  // the KDS language is non-Korean — if Korean is the chosen language the whole
+  // name stays full size. Returns plain string when there's nothing to shrink so
+  // existing layouts are untouched.
+  const renderItemName = (rawName: string): React.ReactNode => {
+    const name = formatItemName(rawName);
+    const lang = (i18n.language || 'en').toLowerCase();
+    if (lang.startsWith('ko')) return name;
+    const hangul = /[ᄀ-ᇿ㄰-㆏가-힣]+/g;
+    if (!hangul.test(name)) return name;
+    hangul.lastIndex = 0;
+    const parts: React.ReactNode[] = [];
+    let last = 0, m: RegExpExecArray | null, k = 0;
+    while ((m = hangul.exec(name)) !== null) {
+      if (m.index > last) parts.push(name.slice(last, m.index));
+      parts.push(<KoreanText key={k++}>{m[0]}</KoreanText>);
+      last = m.index + m[0].length;
+    }
+    if (last < name.length) parts.push(name.slice(last));
+    return parts;
+  };
+
   const getElapsedTime = (orderTime: Date) => {
     return Math.floor((currentTime.getTime() - orderTime.getTime()) / 1000 / 60);
   };
@@ -1309,6 +1397,9 @@ const KitchenDisplayPage: React.FC = () => {
   };
 
   const updateOrderStatus = async (orderId: string, newStatus: KitchenOrder['status']) => {
+    // Block duplicate/double-tap of the same status transition while in flight.
+    const wKey = `status:${orderId}:${newStatus}`;
+    if (!beginWrite(wKey)) return;
     // Stop repeating notification sound on any status change
     stopSound();
     // 즉시 UI 반영 (소켓 오면 덮어씌워짐)
@@ -1331,6 +1422,8 @@ const KitchenDisplayPage: React.FC = () => {
       if (!result.success) fetchOrders();
     } catch {
       fetchOrders();
+    } finally {
+      endWrite(wKey);
     }
   };
 
@@ -1443,6 +1536,8 @@ const KitchenDisplayPage: React.FC = () => {
   ) => {
     const order = orders.find(o => o.id === orderId);
     if (!order) return;
+    const wKey = `station:${orderId}:${targetStatus}:${opts.force ? 'f' : 'n'}`;
+    if (!beginWrite(wKey)) return;
     stopSound();
     const tLvl = STAGE_LEVEL[targetStatus] ?? 0;
     const inScope = (name: string) => selectedStation === 'all' || isItemInSelectedStation(name);
@@ -1464,7 +1559,9 @@ const KitchenDisplayPage: React.FC = () => {
     try {
       const res = await fetch(`/api/orders/${orderId}/items`, {
         method: 'PATCH', credentials: 'include', headers: apiHeaders(),
-        body: JSON.stringify(kdsBody({ order_items: updatedItems }))
+        // force = manual Revert → allow lowering item cooking status past the
+        // backend forward-only guard. Forward moves keep the guard active.
+        body: JSON.stringify(kdsBody({ order_items: updatedItems, allowItemRevert: !!opts.force }))
       });
       const result = await res.json();
       if (!result.success) { fetchOrders(); return; }
@@ -1475,13 +1572,17 @@ const KitchenDisplayPage: React.FC = () => {
       }
     } catch {
       fetchOrders();
+    } finally {
+      endWrite(wKey);
     }
   };
 
   const updateItemStatus = async (orderId: string, itemId: string, stageOverride?: string) => {
-    stopSound();
     const order = orders.find(o => o.id === orderId);
     if (!order) return;
+    const wKey = `item:${orderId}:${itemId}`;
+    if (!beginWrite(wKey)) return;
+    stopSound();
     const stage = stageOverride || order.status;
 
     const updatedItems = order.items.map(item => {
@@ -1510,12 +1611,16 @@ const KitchenDisplayPage: React.FC = () => {
       }
     } catch {
       fetchOrders();
+    } finally {
+      endWrite(wKey);
     }
   };
 
   const updateSetItemStatus = async (orderId: string, parentItemId: string, setItemId: string, stageOverride?: string) => {
     const order = orders.find(o => o.id === orderId);
     if (!order) return;
+    const wKey = `setitem:${orderId}:${parentItemId}:${setItemId}`;
+    if (!beginWrite(wKey)) return;
     const stage = stageOverride || order.status;
 
     const updatedItems = order.items.map(item => {
@@ -1552,6 +1657,8 @@ const KitchenDisplayPage: React.FC = () => {
       }
     } catch {
       fetchOrders();
+    } finally {
+      endWrite(wKey);
     }
   };
 
@@ -1842,11 +1949,11 @@ const KitchenDisplayPage: React.FC = () => {
                 <ItemInfo>
                   {item.is_set_menu ? (
                     <div style={{ fontSize: '12px', fontWeight: 500, color: '#4B5563' }}>
-                      {formatItemName(item.name)} {item.quantity > 1 && <ItemQty highlight done={isItemDoneForColumn(cardStatus, item.status || 'pending') && cardStatus !== 'pending'}>x {item.quantity}</ItemQty>}
+                      {renderItemName(item.name)} {item.quantity > 1 && <ItemQty highlight done={isItemDoneForColumn(cardStatus, item.status || 'pending') && cardStatus !== 'pending'}>x {item.quantity}</ItemQty>}
                     </div>
                   ) : (
                     <ItemName done={isItemDoneForColumn(cardStatus, item.status || 'pending') && cardStatus !== 'pending'}>
-                      {formatItemName(item.name)} {item.quantity > 1 && <ItemQty highlight done={isItemDoneForColumn(cardStatus, item.status || 'pending') && cardStatus !== 'pending'}>x {item.quantity}</ItemQty>}
+                      {renderItemName(item.name)} {item.quantity > 1 && <ItemQty highlight done={isItemDoneForColumn(cardStatus, item.status || 'pending') && cardStatus !== 'pending'}>x {item.quantity}</ItemQty>}
                     </ItemName>
                   )}
                   {/* 세트 구성품(B) — 주방이 만들 항목 + 각 구성품 선택옵션. (set_components 우선, 레거시 set_items 폴백) */}
@@ -1919,7 +2026,7 @@ const KitchenDisplayPage: React.FC = () => {
                   {(selectedStation === 'all' ? item.set_items : item.set_items.filter(si => isItemInSelectedStation(si.name))).map((setItem) => (
                     <SetItemRow key={setItem.id} done={isItemDoneForColumn(cardStatus, setItem.status || 'pending') && cardStatus !== 'pending'}>
                       <SetItemName done={isItemDoneForColumn(cardStatus, setItem.status || 'pending') && cardStatus !== 'pending'}>
-                        {formatItemName(setItem.name)} {setItem.quantity > 1 && <ItemQty highlight done={isItemDoneForColumn(cardStatus, setItem.status || 'pending') && cardStatus !== 'pending'}>x {setItem.quantity}</ItemQty>}
+                        {renderItemName(setItem.name)} {setItem.quantity > 1 && <ItemQty highlight done={isItemDoneForColumn(cardStatus, setItem.status || 'pending') && cardStatus !== 'pending'}>x {setItem.quantity}</ItemQty>}
                       </SetItemName>
                       <ItemActionButton
                         done={isItemDoneForColumn(cardStatus, setItem.status || 'pending')}
@@ -2300,7 +2407,7 @@ const KitchenDisplayPage: React.FC = () => {
             'Content-Type': 'application/json',
             ...(token ? { 'Authorization': `Bearer ${token}` } : {})
           },
-          body: JSON.stringify(kdsBody({ order_items: updatedItems.map(item => ({ ...item, status: item.status })) }))
+          body: JSON.stringify(kdsBody({ order_items: updatedItems.map(item => ({ ...item, status: item.status })), allowItemRevert: direction === 'revert' }))
         }).then(r => r.json())
       ));
       if (results.some(r => !r.success)) { fetchOrders(); return; }
@@ -2698,7 +2805,8 @@ const KitchenDisplayPage: React.FC = () => {
                             const response = await fetch(`/api/orders/${order.id}/items`, {
                               method: 'PATCH', credentials: 'include',
                               headers: apiHeaders(),
-                              body: JSON.stringify(kdsBody({ order_items: updatedItems }))
+                              // manual item Revert (ready→preparing) → bypass forward-only guard
+                              body: JSON.stringify(kdsBody({ order_items: updatedItems, allowItemRevert: true }))
                             });
                             const result = await response.json();
                             if (!result.success) { fetchOrders(); return; }

@@ -169,14 +169,16 @@ const TableNode: React.FC<TableNodeProps> = React.memo(({
     }
   };
 
+  // Fire in EDIT mode (table drag) AND in LIVE view (long-press → bill print, 2026-05-31).
+  // Live view excludes fixtures (kitchen/counter/entrance) — only real tables print.
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (isEditing && onMouseDown) {
+    if (onMouseDown && (isEditing || !isFixture)) {
       onMouseDown(e, table.id);
     }
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (isEditing && onTouchStart) {
+    if (onTouchStart && (isEditing || !isFixture)) {
       onTouchStart(e, table.id);
     }
   };

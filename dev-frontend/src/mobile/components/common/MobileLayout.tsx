@@ -325,8 +325,9 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
   // Get slug from currentStore or sessionStorage
   const slug = currentStore?.slug || sessionStorage.getItem('restaurantSlug') || 'default';
 
-  // Get table number from sessionStorage to maintain it across navigation
-  const tableNumber = sessionStorage.getItem('tableNumber');
+  // Get table number from localStorage to maintain it across navigation AND across
+  // mobile tab eviction (cart is localStorage too — keep them on the same store).
+  const tableNumber = localStorage.getItem('tableNumber');
 
   const handleNavigation = (path: string) => {
     // Home from bottom nav: explicitly show the order-type picker. Previously we

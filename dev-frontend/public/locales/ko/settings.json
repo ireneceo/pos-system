@@ -722,6 +722,8 @@
   "settingsPage.allowCustomersToSelectTableNumbersWhenOrdering": "고객이 주문 시 테이블 번호를 선택할 수 있도록 허용",
   "settingsPage.tableNumberRequired": "테이블 번호 필수",
   "settingsPage.makeTableNumberSelectionMandatoryForDineinOrders": "매장 식사 주문 시 테이블 번호 선택을 필수로 설정",
+  "settingsPage.clearTableOnPayment": "결제 완료 시 테이블 비우기",
+  "settingsPage.clearTableOnPaymentHelp": "주문이 완전히 결제되면 Floor Plan에서 해당 테이블을 비웁니다 (테이블의 오늘 주문 내역에는 보존).",
   "settingsPage.tablePrefix": "테이블 접두사",
   "settingsPage.prefixForTableNumbersEgT001Table001": "테이블 번호 접두사 (예: T001, TABLE001)",
   "settingsPage.numberOfTables": "테이블 수",

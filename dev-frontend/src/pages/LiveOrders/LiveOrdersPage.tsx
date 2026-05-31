@@ -282,12 +282,28 @@ const LiveOrdersPage: React.FC = () => {
   // Store playNotificationSound in ref to avoid socket reconnection on audio state changes
   const playNotificationSoundRef = useRef(playNotificationSound);
   const fetchOrderCountsRef = useRef(fetchOrderCounts);
+  // 2026-05-31 (Irene): keep latest fetchOrders in a ref so the socket effect can
+  // re-sync on (re)connect without listing fetchOrders in its deps (which would
+  // tear down/recreate the socket on every filter change).
+  const fetchOrdersRef = useRef(fetchOrders);
   useEffect(() => {
     playNotificationSoundRef.current = playNotificationSound;
   }, [playNotificationSound]);
   useEffect(() => {
     fetchOrderCountsRef.current = fetchOrderCounts;
   }, [fetchOrderCounts]);
+  useEffect(() => {
+    fetchOrdersRef.current = fetchOrders;
+  }, [fetchOrders]);
+  // 2026-05-31 (Irene): 30s safety poll. Belt-and-suspenders for the case where the
+  // socket silently stalls without firing a disconnect/connect cycle (so the
+  // reconnect re-fetch above never runs). Mirrors KDS's 30s poll. Uses the ref so
+  // changing tab/date filters doesn't tear down & recreate the interval.
+  useEffect(() => {
+    if (!user?.restaurantId) return;
+    const id = setInterval(() => fetchOrdersRef.current(), 30000);
+    return () => clearInterval(id);
+  }, [user?.restaurantId]);
 
   // Initialize Socket.IO connection
   useEffect(() => {
@@ -302,6 +318,12 @@ const LiveOrdersPage: React.FC = () => {
     newSocket.on('connect', () => {
       console.log('Connected to Socket.IO /orders namespace');
       newSocket.emit('join-restaurant', user.restaurantId);
+      // 2026-05-31 (Irene): re-sync the full list on every (re)connect. A staff
+      // tablet/monitor whose socket dropped (sleep / PWA background / network blip)
+      // misses every order-created emit during the gap; without this re-fetch the
+      // missed orders never appear until a manual refresh. (KDS already does this.)
+      fetchOrdersRef.current();
+      fetchOrderCountsRef.current();
     });
 
     newSocket.on('connect_error', (error) => {
@@ -530,6 +552,10 @@ const LiveOrdersPage: React.FC = () => {
 
   // Floor plan (v2 zone/group) — table_number 의 풀라벨 매핑용
   const [floorPlan, setFloorPlan] = useState<FloorPlanLike | null>(null);
+  // Whether this restaurant uses table numbers at all. When OFF (e.g. food courts
+  // with seating but no numbered tables, no takeaway), a dine-in order with no table
+  // is NORMAL — show a plain "Dine-in", NOT the "no table assigned" attention.
+  const [tableNumbersEnabled, setTableNumbersEnabled] = useState(true);
 
   // Load company information for bill printing
   useEffect(() => {
@@ -570,6 +596,13 @@ const LiveOrdersPage: React.FC = () => {
           if (opSettings?.salesThreshold) {
             setSalesThreshold(opSettings.salesThreshold);
           }
+
+          // Table-numbers usage (table_settings primary, operation_settings legacy fallback).
+          const tsRaw = typeof data.table_settings === 'string'
+            ? (() => { try { return JSON.parse(data.table_settings); } catch { return {}; } })()
+            : (data.table_settings || {});
+          const enableTN = tsRaw.enableTableNumbers ?? opSettings?.enableTableNumbers;
+          setTableNumbersEnabled(enableTN !== false);
         }
       } catch (error) {
         console.error('Failed to load company info:', error);
@@ -1095,6 +1128,9 @@ const LiveOrdersPage: React.FC = () => {
     const target = items[itemIndex];
     if (!target) return;
     if (!['pending', 'preparing', 'ready', 'served'].includes(selectedOrder.status)) return; // guard
+    // Un-serving (served/completed → ready) is a manual revert → bypass backend
+    // forward-only item guard. Marking served stays guarded.
+    const _allowRevert = target.status === 'served' || target.status === 'completed';
     const updatedItems = items.map((it: any, idx: number) =>
       idx === itemIndex
         ? { ...it, status: (it.status === 'served' || it.status === 'completed') ? 'ready' : 'served' }
@@ -1103,7 +1139,7 @@ const LiveOrdersPage: React.FC = () => {
     try {
       const res = await fetch(`/api/orders/${selectedOrder.id}/items`, {
         ...getFetchOptions({ method: 'PATCH' }),
-        body: JSON.stringify({ order_items: updatedItems })
+        body: JSON.stringify({ order_items: updatedItems, allowItemRevert: _allowRevert })
       });
       const result = await res.json();
       if (result.success) {
@@ -1653,6 +1689,13 @@ const LiveOrdersPage: React.FC = () => {
                         {order.customer_name || 'Guest'}
                         {order.customer_phone && <><br />{order.customer_phone}</>}
                         {order.table_number && (<><br /><span style={{ color: '#635BFF', fontWeight: 500 }}>Table: {getTableLabel(order.table_number, floorPlan).display}{order.guest_count ? ` (${order.guest_count}p)` : ''}</span></>)}
+                        {/* Dine-in with no table → never read as "pickup". Flag it so staff can locate
+                            the guest (table number got lost / never captured). order-type aware. */}
+                        {!order.table_number && (order.order_type === 'dine_in' || order.order_type === 'dine-in') && (
+                          tableNumbersEnabled
+                            ? <><br /><span style={{ color: '#DC2626', fontWeight: 600 }}>{t('orders:liveOrdersPage.dineInNoTable')}</span></>
+                            : <><br /><span style={{ color: '#635BFF', fontWeight: 500 }}>{t('orders:liveOrdersPage.dineIn')}</span></>
+                        )}
                         {order.pager_number && (<><br />Pager: {order.pager_number}</>)}
                         {order.order_type === 'pickup' && (<><br /><span style={{ color: '#8B5CF6', fontWeight: 500 }}>Pickup: {order.scheduled_pickup_time ? formatPickupTimeRange(order.scheduled_pickup_time) : 'ASAP'}</span></>)}
                         {order.cashier_name && (<><br /><span style={{ color: '#8898AA', fontSize: '11px' }}>Cashier: {order.cashier_name}</span></>)}
@@ -1957,7 +2000,8 @@ const LiveOrdersPage: React.FC = () => {
                             {order.table_number ? `${getTableLabel(order.table_number, floorPlan).display}${order.guest_count ? ` (${order.guest_count}p)` : ''}` : ''}
                             {order.table_number && order.pager_number ? ' / ' : ''}
                             {order.pager_number ? `Pager ${order.pager_number}` : ''}
-                            {!order.table_number && !order.pager_number ? 'No Table/Pager' : ''}
+                            {!order.table_number && !order.pager_number && (order.order_type === 'dine_in' || order.order_type === 'dine-in') ? t(tableNumbersEnabled ? 'orders:liveOrdersPage.dineInNoTable' : 'orders:liveOrdersPage.dineIn') : ''}
+                            {!order.table_number && !order.pager_number && !(order.order_type === 'dine_in' || order.order_type === 'dine-in') ? 'No Table/Pager' : ''}
                           </div>
                           {order.customer_name && order.customer_name !== 'Guest' && order.customer_name !== 'Mobile Guest' && (
                             <div style={{ fontSize: '12px', color: '#635BFF', marginTop: '2px', fontWeight: 500 }}>{order.customer_name}</div>

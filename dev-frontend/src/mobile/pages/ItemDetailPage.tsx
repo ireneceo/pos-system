@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { useParams, useNavigate } from 'react-router-dom';
 import MobileLayout from '../components/common/MobileLayout';
@@ -569,8 +569,15 @@ const ItemDetailPage: React.FC = () => {
       );
   };
 
+  const addingRef = useRef(false);
   const handleAddToCart = () => {
     if (!item || !isValid()) return;
+    // Debounce: block a rapid double-tap / re-fire from enqueuing the same item
+    // twice (root cause of duplicate kitchen lines). A deliberate re-add after the
+    // short window still works (and merges to qty+1 in the cart).
+    if (addingRef.current) return;
+    addingRef.current = true;
+    setTimeout(() => { addingRef.current = false; }, 600);
 
     // 세트: 구성품 분해(set_components) + 옵션 이름을 카트에 적재
     let setComponents: any[] | undefined;

@@ -825,10 +825,14 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
       });
 
       const token = getAuthToken();
+      // Hall staff un-serving (served → ready) is a manual revert → bypass the
+      // backend forward-only item guard. Marking served (ready → served) stays
+      // guarded so a stale snapshot can't quietly un-serve other items.
+      const _allowRevert = (target as any).status === 'served';
       const res = await fetch(`/api/orders/${statusInfo.orderId}/items`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ order_items: updatedItems })
+        body: JSON.stringify({ order_items: updatedItems, allowItemRevert: _allowRevert })
       });
 
       if (res.ok) {

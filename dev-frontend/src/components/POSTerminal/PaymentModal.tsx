@@ -395,13 +395,50 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       setFetchedPoints(0);
       setFetchedTier('Bronze');
       setFetchedMembershipSettings(null);
+      // Reset discount-at-payment state
+      setDiscountInput('');
+      setDiscountMode('amount');
+      setLiveTotalOverride(null);
     }
   }, [isOpen]);
+
+  // 2026-05-31 (Irene). Payment-time discount state — MUST be declared before
+  // `total` below (which reads liveTotalOverride). Declaring it after `total`
+  // caused a TDZ crash that broke the whole payment modal in production.
+  // Applies via the server-side apply-discount endpoint which recomputes with
+  // computeOrderTotals (single source of truth); the returned total overrides
+  // the displayed/charged total so it's always correct.
+  const [discountInput, setDiscountInput] = useState('');
+  const [discountMode, setDiscountMode] = useState<'amount' | 'percent'>('amount');
+  const [applyingDiscount, setApplyingDiscount] = useState(false);
+  const [liveTotalOverride, setLiveTotalOverride] = useState<number | null>(null);
 
   // Adjusted total after point discount
   // total = full payment 모드일 때 결제할 금액 (point discount 적용)
   // splitMode 면 선택 아이템 합계가 결제 amount
-  const total = originalTotal - pointDiscount;
+  const total = liveTotalOverride != null ? liveTotalOverride : originalTotal - pointDiscount;
+
+  // Apply a manual discount (amount or %) to this existing order at payment time.
+  const handleApplyPaymentDiscount = async () => {
+    if (!orderId || applyingDiscount) return;
+    const raw = parseFloat(discountInput);
+    if (isNaN(raw) || raw < 0) return;
+    const d = discountMode === 'percent' ? (subtotal * raw) / 100 : raw;
+    setApplyingDiscount(true);
+    try {
+      const tk = getAuthToken();
+      const res = await fetch(`/api/orders/${orderId}/apply-discount`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...(tk ? { Authorization: `Bearer ${tk}` } : {}) },
+        body: JSON.stringify({ discount: Math.round(d * 100) / 100 })
+      });
+      const j = await res.json();
+      if (j.success && j.totals) setLiveTotalOverride(Number(j.totals.total));
+    } catch (e) {
+      console.error('apply payment discount failed', e);
+    }
+    setApplyingDiscount(false);
+  };
 
   // Get available payment methods for POS
   const getAvailablePaymentMethods = () => {
@@ -446,6 +483,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   }, [paymentMethods]); // eslint-disable-line react-hooks/exhaustive-deps
   const [cashAmount, setCashAmount] = useState('');
   const [cardType, setCardType] = useState<string>('');
+  // Discount-at-payment (incl. deferred payment from Live Orders / Floor Plan).
 
   // ─── Split bill state ───
   const splitEligible = !!(orderId && orderItems.length > 0);
@@ -961,6 +999,37 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
         )}
       </OrderSummary>
 
+      {/* Discount at payment (2026-05-31 Irene) — for an existing order (incl. deferred
+          payment from Live Orders / Floor Plan). Server recomputes via computeOrderTotals. */}
+      {orderId && !splitMode && (
+        <InputSection>
+          <Label>Discount</Label>
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'stretch' }}>
+            <div style={{ display: 'flex', border: '1px solid #C7CED6', borderRadius: 8, overflow: 'hidden' }}>
+              {(['amount', 'percent'] as const).map(m => (
+                <button key={m} type="button" onClick={() => setDiscountMode(m)}
+                  style={{ padding: '0 12px', border: 0, cursor: 'pointer', fontWeight: 600, fontSize: 14,
+                    background: discountMode === m ? '#635BFF' : '#fff', color: discountMode === m ? '#fff' : '#0A2540' }}>
+                  {m === 'amount' ? (operationSettings.currency === 'MYR' ? 'RM' : operationSettings.currency) : '%'}
+                </button>
+              ))}
+            </div>
+            <input type="number" inputMode="decimal" value={discountInput}
+              onChange={(e) => setDiscountInput(e.target.value)} placeholder="0"
+              style={{ flex: 1, minWidth: 0, padding: '10px 12px', border: '1px solid #C7CED6', borderRadius: 8, fontSize: 16 }} />
+            <button type="button" onClick={handleApplyPaymentDiscount} disabled={applyingDiscount || !discountInput.trim()}
+              style={{ padding: '10px 16px', background: '#635BFF', color: '#fff', border: 0, borderRadius: 8, fontWeight: 600, cursor: 'pointer', opacity: (applyingDiscount || !discountInput.trim()) ? 0.5 : 1 }}>
+              {applyingDiscount ? '...' : 'Apply'}
+            </button>
+          </div>
+          {liveTotalOverride != null && (
+            <div style={{ fontSize: 12, color: '#059669', fontWeight: 600, marginTop: 6 }}>
+              Discount applied — new total {formatCurrency(liveTotalOverride, operationSettings.currency)}
+            </div>
+          )}
+        </InputSection>
+      )}
+
       <TotalSection>
         <TotalLabel>{splitEligible && totalPaidAlready > 0 ? 'Order Total' : 'Total Amount'}</TotalLabel>
         <TotalPrice>{formatCurrency(total, operationSettings.currency)}</TotalPrice>
@@ -1145,17 +1214,19 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       {paymentMethod === 'card' && (
         <InputSection>
           <Label>{requireCardType ? 'Card Type *' : 'Card Type (Optional)'}</Label>
-          <QuickAmountGrid>
+          {/* Card types on a SINGLE row (2026-05-31 Irene) — was a wrapping grid. */}
+          <div style={{ display: 'flex', gap: '6px' }}>
             {['visa', 'master', 'amex', 'debit', 'other'].map(type => (
               <QuickAmountBtn
                 key={type}
                 selected={cardType === type}
                 onClick={() => setCardType(cardType === type ? '' : type)}
+                style={{ flex: 1, minWidth: 0, padding: '10px 2px' }}
               >
                 {type === 'visa' ? 'Visa' : type === 'master' ? 'Master' : type === 'amex' ? 'Amex' : type === 'debit' ? 'Debit' : 'Other'}
               </QuickAmountBtn>
             ))}
-          </QuickAmountGrid>
+          </div>
           {requireCardType && !cardType && (
             <div style={{ marginTop: '8px', fontSize: '12px', fontWeight: 500, color: '#FF6B6B' }}>
               Please select a card type to continue.

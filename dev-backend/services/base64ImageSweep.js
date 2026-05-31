@@ -20,7 +20,7 @@ const cron = require('node-cron');
 const { sequelize } = require('../config/database');
 const { SchedulerRun, User } = require('../models');
 const { sendNotification } = require('../utils/notificationService');
-const { emailLayout } = require('../utils/notificationTemplates');
+const { emailLayout } = require('../utils/emailTemplates'); // emailLayout lives in emailTemplates, not notificationTemplates (was: "emailLayout is not a function")
 const logger = require('../utils/logger');
 
 const NAME_PATTERNS = ['%image%', '%logo%', '%avatar%', '%favicon%', '%photo%', '%picture%', '%og_image%'];

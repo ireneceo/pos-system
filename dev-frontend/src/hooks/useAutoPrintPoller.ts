@@ -83,6 +83,8 @@ export function useAutoPrintPoller(opts: {
               // 이게 없으면 빌/주방에 "SET" 만 찍히고 구성품이 통째로 누락된다.
               is_set_menu: it.is_set_menu || false,
               set_components: Array.isArray(it.set_components) ? it.set_components : undefined,
+              // 2026-05-31 (Irene): carry per-item special request to the kitchen ticket.
+              special_instructions: it.special_instructions || it.specialInstructions || '',
               // 2026-05-28: stationName backend-enriched (single source).
               // print 함수가 item.stationName 으로 inline tag + station header.
               stationName: it.stationName || null

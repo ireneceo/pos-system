@@ -485,7 +485,8 @@ const MenuPage: React.FC = () => {
   } = useMobileOrder();
 
   // Preserve table number across the picker round-trip so dine-in QR stays sticky.
-  const tableNumber = typeof window !== 'undefined' ? sessionStorage.getItem('tableNumber') : null;
+  // localStorage (not sessionStorage) so it survives mobile tab eviction like the cart.
+  const tableNumber = typeof window !== 'undefined' ? localStorage.getItem('tableNumber') : null;
 
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);

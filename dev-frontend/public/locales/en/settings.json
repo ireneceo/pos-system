@@ -722,6 +722,8 @@
   "settingsPage.allowCustomersToSelectTableNumbersWhenOrdering": "Allow customers to select table numbers when ordering",
   "settingsPage.tableNumberRequired": "Table Number Required",
   "settingsPage.makeTableNumberSelectionMandatoryForDineinOrders": "Make table number selection mandatory for dine-in orders",
+  "settingsPage.clearTableOnPayment": "Clear Table on Payment",
+  "settingsPage.clearTableOnPaymentHelp": "When an order is fully paid, remove its table from the Floor Plan (kept in the table's today history).",
   "settingsPage.tablePrefix": "Table Prefix",
   "settingsPage.prefixForTableNumbersEgT001Table001": "Prefix for table numbers (e.g., T001, TABLE001)",
   "settingsPage.numberOfTables": "Number of Tables",

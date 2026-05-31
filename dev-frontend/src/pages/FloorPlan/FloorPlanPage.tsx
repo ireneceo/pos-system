@@ -738,8 +738,74 @@ const FloorPlanPage: React.FC = () => {
   // Table click → toggle detail panel. Receives Floor Plan v2 tables[].id, so
   // multiple zones with the same tableNumber stay isolated.
   const handleTableClick = (tableId: string) => {
+    // If a long-press just fired (bill printed), swallow the click so the panel
+    // doesn't also toggle.
+    if (longPressRef.current.fired) { longPressRef.current.fired = false; return; }
     setSelectedTableId(prev => prev === tableId ? null : tableId);
     setSelectedOrderIndex(0);
+  };
+
+  // ── Long-press a table box → print its bill (2026-05-31 Irene: POS bill print is
+  // cumbersome and stores print bills often). Holding a table ~600ms prints that
+  // table's current bill (1 copy, no drawer pulse). A normal tap still opens the panel.
+  // Reuses the proven bill print path (printBillViaRawBT) — no print-method change.
+  const longPressRef = useRef<{ timer: any; fired: boolean }>({ timer: null, fired: false });
+
+  const printBillForTable = async (tableId: string) => {
+    const info: any = (tableId && tableStatuses[tableId]) || null;
+    const orderId = info?.orderId;
+    if (!orderId) return; // empty table → nothing to print
+    try {
+      const token = getAuthToken();
+      const billPrintMod = await import('../../utils/billPrint');
+      const printStoreInfo = getStoreInfo();
+      const oRes = await fetch(`/api/orders/${orderId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+      const oJson = await oRes.json();
+      const o = oJson?.data || oJson;
+      const items = Array.isArray(o.order_items) ? o.order_items
+        : (typeof o.order_items === 'string' ? (() => { try { return JSON.parse(o.order_items); } catch { return []; } })() : []);
+      const printData = {
+        orderNumber: o.order_number,
+        pickupNumber: o.pickup_number || (o.order_number ? String(o.order_number).split('-')[1] : ''),
+        tableNumber: o.table_number || undefined,
+        pagerNumber: o.pager_number || undefined,
+        date: new Date(o.createdAt || Date.now()),
+        orderType: o.order_type === 'dine_in' ? 'dine-in' : (o.order_type || 'dine-in'),
+        orderSource: o.source || 'pos',
+        items: items.map((it: any) => ({ menuItem: { name: it.menuItem?.name || it.name || 'Item', price: parseFloat(it.price || it.menuItem?.price || '0'), emoji: it.menuItem?.emoji }, quantity: it.quantity || 1, options: it.options || [] })),
+        subtotal: parseFloat(o.subtotal || '0'),
+        tax: parseFloat(o.tax || '0'),
+        serviceCharge: parseFloat(o.service_charge || '0'),
+        serviceChargeRate: parseFloat(o.service_charge_rate || '0'),
+        takeawayCharge: parseFloat(o.takeaway_charge || '0'),
+        discount: parseFloat(o.discount || '0'),
+        total: parseFloat(o.total_amount || o.total || '0'),
+        paymentMethod: o.payment_method || undefined,
+        cardType: o.card_type || undefined,
+        cashierName: null
+      };
+      await billPrintMod.printBillViaRawBT(printData, printStoreInfo);
+    } catch (e) {
+      console.error('Long-press bill print failed:', e);
+    }
+  };
+
+  const startTablePress = (tableId: string) => {
+    longPressRef.current.fired = false;
+    if (longPressRef.current.timer) clearTimeout(longPressRef.current.timer);
+    longPressRef.current.timer = setTimeout(() => {
+      longPressRef.current.fired = true;
+      printBillForTable(tableId);
+    }, 600);
+    const cancel = () => {
+      if (longPressRef.current.timer) { clearTimeout(longPressRef.current.timer); longPressRef.current.timer = null; }
+      window.removeEventListener('mouseup', cancel);
+      window.removeEventListener('touchend', cancel);
+      window.removeEventListener('touchmove', cancel);
+    };
+    window.addEventListener('mouseup', cancel);
+    window.addEventListener('touchend', cancel);
+    window.addEventListener('touchmove', cancel);
   };
 
   // Status change handler
@@ -1014,14 +1080,18 @@ const FloorPlanPage: React.FC = () => {
     }
   };
 
-  // Clear table — completed 주문의 table_number를 null로 설정하여 테이블 비움
+  // Clear table — frees the table on the floor WITHOUT erasing table_number.
+  // 2026-05-31 (Irene): previously this PATCHed { table_number: null }, which
+  // destroyed the order's table history → completed orders showed "no table
+  // assigned" in Live Orders. Now we set table_cleared=true: table-status drops
+  // it from occupancy, but the order keeps its number for bill/reports/history.
   const handleClearTable = async (orderId: number) => {
     try {
       const token = getAuthToken();
       await fetch(`/api/orders/${orderId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ table_number: null })
+        body: JSON.stringify({ table_cleared: true })
       });
       setSelectedTableId(null);
       await fetchStatuses();
@@ -1040,7 +1110,7 @@ const FloorPlanPage: React.FC = () => {
         fetch(`/api/orders/${o.orderId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ table_number: null })
+          body: JSON.stringify({ table_cleared: true })  // 2026-05-31: non-destructive — keep table_number
         })
       ));
       setSelectedTableId(null);
@@ -1334,6 +1404,8 @@ const FloorPlanPage: React.FC = () => {
               floorPlan={filteredFloorPlan}
               tableStatuses={tableStatuses}
               onTableClick={handleTableClick}
+              onTableMouseDown={(_e, id) => startTablePress(id)}
+              onTableTouchStart={(_e, id) => startTablePress(id)}
               selectedTableId={selectedTableId}
               currency={currency}
             />

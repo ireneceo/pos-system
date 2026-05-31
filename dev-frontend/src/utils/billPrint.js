@@ -825,6 +825,30 @@ function getCurrencySymbol(currency) {
  *
  * @returns {string} ESC/POS command string
  */
+// 2026-05-31 (Irene): 빌 영수증에 결제방식 상세 표시. CONTENT-ONLY helper — does not
+// touch print method/timing/routing. Maps raw payment_method (+ card type) to a
+// friendly label shown on both the HTML and ESC/POS bill.
+function paymentMethodLabel(method, cardType) {
+  if (!method) return '';
+  const m = String(method).toLowerCase().replace(/[_\s-]/g, '');
+  const map = {
+    cash: 'Cash', card: 'Card', creditcard: 'Card', debitcard: 'Card',
+    qr: 'QR Pay', qrpay: 'QR Pay', duitnow: 'DuitNow QR',
+    ewallet: 'E-Wallet', wallet: 'E-Wallet', tng: "Touch 'n Go", grabpay: 'GrabPay', boost: 'Boost',
+    banktransfer: 'Bank Transfer', bank: 'Bank Transfer',
+    counter: 'Pay at Counter', paypal: 'PayPal', stripe: 'Card (Online)',
+    staffmeal: 'Staff Meal', online: 'Online'
+  };
+  let label = map[m] || (String(method).charAt(0).toUpperCase() + String(method).slice(1));
+  if ((m === 'card' || m === 'creditcard' || m === 'debitcard') && cardType) {
+    const ctMap = { visa: 'Visa', master: 'Mastercard', mastercard: 'Mastercard', amex: 'Amex' };
+    const ct = ctMap[String(cardType).toLowerCase()];
+    const ctLabel = ct != null ? ct : (String(cardType).toLowerCase() === 'other' ? '' : cardType);
+    if (ctLabel) label += ' (' + ctLabel + ')';
+  }
+  return label;
+}
+
 export function generateBillContent(orderData, storeInfo) {
   const currencySymbol = getCurrencySymbol(orderData.currency);
   let content = '';
@@ -1028,6 +1052,24 @@ export function generateBillContent(orderData, storeInfo) {
   content += CMD.EMPHASIS_OFF;
   content += CMD.BOLD_OFF;
   content += CMD.LINE_FEED;
+
+  // === PAYMENT METHOD DETAIL (2026-05-31 Irene) — parity with HTML bill ===
+  const _pmLabelR = paymentMethodLabel(orderData.paymentMethod, orderData.cardType);
+  const _pmRawR = String(orderData.paymentMethod || '').toLowerCase().replace(/[_\s-]/g, '');
+  if (_pmLabelR && _pmRawR !== 'pending') {
+    content += CMD.DASHED_LINE + CMD.LINE_FEED;
+    content += formatLine('Payment:', _pmLabelR) + CMD.LINE_FEED;
+    if (_pmRawR === 'cash' && Number(orderData.amountReceived) > 0) {
+      content += formatLine('Received:', currencySymbol + ' ' + Number(orderData.amountReceived).toFixed(2)) + CMD.LINE_FEED;
+      content += formatLine('Change:', currencySymbol + ' ' + Number(orderData.change || 0).toFixed(2)) + CMD.LINE_FEED;
+    }
+    const _paidR = Number(orderData.amountPaid);
+    if (!isNaN(_paidR) && _paidR > 0 && _paidR < (orderData.total || 0) - 0.005) {
+      content += formatLine('Paid:', currencySymbol + ' ' + _paidR.toFixed(2)) + CMD.LINE_FEED;
+      content += formatLine('Balance Due:', currencySymbol + ' ' + ((orderData.total || 0) - _paidR).toFixed(2)) + CMD.LINE_FEED;
+    }
+    content += CMD.LINE_FEED;
+  }
 
   // === TAX SUMMARY (Malaysian SST standard breakdown) ===
   if (orderData.tax && orderData.tax > 0) {
@@ -1368,6 +1410,25 @@ export function generateHTMLBill(orderData, storeInfo) {
     </div>
   `;
 
+  // Payment method detail (2026-05-31 Irene) — shown on EVERY bill, same format
+  // regardless of order type. Cash → Received/Change; card → type; partial → Paid/Balance.
+  const _pmLabel = paymentMethodLabel(orderData.paymentMethod, orderData.cardType);
+  const _pmRaw = String(orderData.paymentMethod || '').toLowerCase().replace(/[_\s-]/g, '');
+  const paymentRows = [];
+  if (_pmLabel && _pmRaw !== 'pending') {
+    paymentRows.push(`<div class="meta-row"><span class="meta-label">Payment</span><span>${escapeHtmlForPrint(_pmLabel)}</span></div>`);
+    if (_pmRaw === 'cash' && Number(orderData.amountReceived) > 0) {
+      paymentRows.push(`<div class="meta-row"><span>Received</span><span>${currencySymbol} ${Number(orderData.amountReceived).toFixed(2)}</span></div>`);
+      paymentRows.push(`<div class="meta-row"><span>Change</span><span>${currencySymbol} ${Number(orderData.change || 0).toFixed(2)}</span></div>`);
+    }
+    const _paid = Number(orderData.amountPaid);
+    if (!isNaN(_paid) && _paid > 0 && _paid < (orderData.total || 0) - 0.005) {
+      paymentRows.push(`<div class="meta-row"><span>Paid</span><span>${currencySymbol} ${_paid.toFixed(2)}</span></div>`);
+      paymentRows.push(`<div class="meta-row"><span>Balance Due</span><span>${currencySymbol} ${((orderData.total || 0) - _paid).toFixed(2)}</span></div>`);
+    }
+  }
+  const paymentHtml = paymentRows.length ? `<div class="divider"></div><div class="meta">${paymentRows.join('')}</div>` : '';
+
   // Tax Summary — Malaysian SST standard breakdown (Taxable amount + Tax amount).
   // Auto-shown whenever tax > 0. Taxable = the base amount tax was calculated on.
   const taxSummaryHtml = (orderData.tax && orderData.tax > 0) ? `
@@ -1407,6 +1468,7 @@ export function generateHTMLBill(orderData, storeInfo) {
     <div class="items">${itemsHtml}</div>
     <div class="divider"></div>
     ${totalsHtml}
+    ${paymentHtml}
     ${taxSummaryHtml}
     ${membershipHtml}
     ${customQrHtml}
@@ -1435,6 +1497,10 @@ export function generateHTMLKitchenTicket(orderData, storeInfo) {
     const setLevelOptionsHtml = (item.options || []).map(opt =>
       `<div class="item-option" style="font-size:13px;font-weight:600;">★ ${escapeHtmlForPrint(typeof opt === 'string' ? opt : (opt?.name || ''))}</div>`
     ).join('');
+    // Per-item special request (2026-05-31 Irene) — kitchen must see it.
+    const _si = item.special_instructions || item.specialInstructions || '';
+    const siHtml = (_si && String(_si).trim())
+      ? `<div class="item-option" style="font-size:14px;font-weight:700;color:#000;">** ${escapeHtmlForPrint(String(_si).trim())}</div>` : '';
     if (hasSetComps) {
       // 세트: 주방은 구성품(=실제 만드는 메뉴)을 봐야 한다. 구성품을 18px 메뉴로 크게 + 옵션,
       // 세트명은 작은 라벨로(맥락만). 방식 무변경 콘텐츠/레이아웃만.
@@ -1451,6 +1517,7 @@ export function generateHTMLKitchenTicket(orderData, storeInfo) {
         <div style="font-size:11px;font-weight:600;letter-spacing:0.3px;color:#000;">↳ ${itemName}</div>
         ${compsHtml}
         ${setLevelOptionsHtml}
+        ${siHtml}
       </div>
     `;
     }
@@ -1458,6 +1525,7 @@ export function generateHTMLKitchenTicket(orderData, storeInfo) {
       <div class="item">
         <div class="item-name" style="font-size:18px;font-weight:700;">${qty} × ${itemName}${stationTagHtml}</div>
         ${setLevelOptionsHtml}
+        ${siHtml}
       </div>
     `;
   }).join('');
@@ -1863,6 +1931,15 @@ export function generateKitchenTicketContent(orderData, storeInfo) {
       });
     }
 
+    // Per-item special request (2026-05-31 Irene) — kitchen must see "no onions" /
+    // "change rice to noodles" etc. Bold so the cook doesn't miss it.
+    const _si = item.special_instructions || item.specialInstructions || '';
+    if (_si && String(_si).trim()) {
+      content += CMD.BOLD_ON;
+      content += '  ** ' + String(_si).trim() + CMD.LINE_FEED;
+      content += CMD.BOLD_OFF;
+    }
+
     // Spacing between items
     if (index < orderData.items.length - 1) {
       content += CMD.LINE_FEED;
@@ -1907,6 +1984,16 @@ export function generateKitchenTicketContent(orderData, storeInfo) {
     content += CMD.TEXT_DOUBLE;
     content += CMD.BOLD_ON;
     content += 'PAGER  ' + orderData.pagerNumber + CMD.LINE_FEED;
+    content += CMD.TEXT_NORMAL;
+    content += CMD.BOLD_OFF;
+  } else if (orderData.orderType === 'dine-in' || orderData.orderType === 'dine_in') {
+    // 2026-05-31 (Irene): a dine-in order with no table must NOT print "PICKUP".
+    // Show "DINE-IN (NO TABLE)" so kitchen/counter knows it's dine-in to be located,
+    // not a pickup. Real fix = require a table (Settings → Table Number Required).
+    content += CMD.ALIGN_CENTER;
+    content += CMD.TEXT_DOUBLE;
+    content += CMD.BOLD_ON;
+    content += 'DINE-IN (NO TABLE)' + CMD.LINE_FEED;
     content += CMD.TEXT_NORMAL;
     content += CMD.BOLD_OFF;
   } else {
@@ -2123,6 +2210,10 @@ function generateHTMLMultiPageKitchenTickets(orderData, storeInfo) {
     pickupHtml = `<div class="big-number">TABLE ${escapeHtmlForPrint(orderData.tableNumber)}</div>`;
   } else if (orderData.pagerNumber) {
     pickupHtml = `<div class="big-number">PAGER ${escapeHtmlForPrint(orderData.pagerNumber)}</div>`;
+  } else if (orderData.orderType === 'dine-in' || orderData.orderType === 'dine_in') {
+    // 2026-05-31 (Irene): dine-in with no table must NOT print "PICKUP". No-table-number
+    // stores → this is the normal label. Table-number stores → require a table instead.
+    pickupHtml = `<div class="big-number">DINE-IN</div>`;
   } else {
     const pickupNum = orderData.pickupNumber || (orderData.orderNumber ? orderData.orderNumber.split('-')[1] : '000');
     pickupHtml = `<div class="big-number">PICKUP ${escapeHtmlForPrint(pickupNum)}</div>`;
@@ -2421,15 +2512,22 @@ export async function printOrderTicketToBillPrinter(orderData, storeInfo) {
       return printHTMLContent(html, `Order Ticket - ${tagged.orderNumber || ''}`);
     }
 
-    // QZ Tray: send ESC/POS to the bill printer's configured address
+    // QZ Tray: unify with the AUTO-PRINT path (printKitchenTicketViaRawBT) so the
+    // manual "Print Kitchen Ticket" from Live Orders prints identically.
+    // 2026-05-31 (Irene): manual ticket printed 한글 깨짐 because this branch always
+    // sent RAW ESC/POS, while auto-print uses HTML pixel via the OS driver (Korean OK).
+    // Now: HTML pixel for OS-driver printers, raw ESC/POS ONLY for LAN IP printers.
     if (method === 'qztray') {
       const address = getActiveBillPrinter().address;
       if (!address) {
         console.warn('QZ Tray: bill printer address not configured');
         return false;
       }
-      const escpos = generateKitchenTicketContent(tagged, storeInfo);
-      return await sendViaQZTray(escpos, address);
+      const isLanIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(address);
+      if (isLanIP) {
+        return await sendViaQZTray(generateKitchenTicketContent(tagged, storeInfo), address);
+      }
+      return await sendHTMLViaQZTray(generateHTMLKitchenTicket(tagged, storeInfo), address);
     }
 
     // RawBT (Android): fire intent with the bill printer name

@@ -147,12 +147,16 @@ const FloorPlanStatsBar: React.FC<FloorPlanStatsBarProps> = ({ tables, tableStat
             orderCount = Array.isArray(orders) ? orders.length : 0;
 
             if (Array.isArray(orders) && orders.length > 0) {
-              // Calculate serve times
+              // Calculate serve times — MATCH Live Orders exactly: served_at − createdAt.
+              // (Was created_at/completed_at: the orders API returns camelCase `createdAt`,
+              //  so `o.created_at` was undefined → serve times always blank on Floor Plan.)
               const times: number[] = [];
               orders.forEach((o: any) => {
                 if (o.status === 'cancelled') return;
-                if (o.created_at && o.completed_at) {
-                  const diff = (new Date(o.completed_at).getTime() - new Date(o.created_at).getTime()) / 60000;
+                const created = o.createdAt || o.created_at;
+                const served = o.served_at || o.completed_at;
+                if (created && served) {
+                  const diff = (new Date(served).getTime() - new Date(created).getTime()) / 60000;
                   if (diff > 0 && diff < 300) times.push(diff);
                 }
               });

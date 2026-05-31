@@ -503,9 +503,14 @@ router.get('/:id/table-status', authenticateToken, async (req, res) => {
     const restaurantId = req.params.id;
 
     // 레스토랑 timezone 기준으로 "오늘" 계산
-    const restaurant = await Restaurant.findByPk(restaurantId, { attributes: ['operation_settings'] });
+    const restaurant = await Restaurant.findByPk(restaurantId, { attributes: ['operation_settings', 'table_settings'] });
     const timezone = getRestaurantTimezone(restaurant);
     const { startOfDay: todayStartUTC, endOfDay: todayEndUTC } = getTodayBounds(timezone);
+    // 2026-05-31 (Irene): "결제 완료 시 테이블 비우기" — when ON, a fully-completed
+    // (paid) order no longer occupies its table on the Floor Plan so the board stays
+    // clean. The order is NOT deleted — it stays in today's per-table history tab.
+    const _tsClear = (restaurant && restaurant.table_settings) || {};
+    const clearTableOnPayment = _tsClear.clearTableOnPayment === true;
 
     const activeOrders = await Order.findAll({
       where: {
@@ -522,7 +527,7 @@ router.get('/:id/table-status', authenticateToken, async (req, res) => {
         createdAt: { [Op.between]: [todayStartUTC, todayEndUTC] }
       },
       attributes: [
-        'table_number', 'floor_plan_table_id', 'status', 'payment_status', 'order_number', 'id',
+        'table_number', 'floor_plan_table_id', 'table_cleared', 'status', 'payment_status', 'order_number', 'id',
         'total_amount', 'createdAt', 'customer_name', 'customer_id',
         'guest_count', 'order_items', 'subtotal', 'tax', 'service_charge', 'takeaway_charge',
         'discount', 'coupon_discount', 'discount_policy_amount', 'point_discount',
@@ -593,8 +598,13 @@ router.get('/:id/table-status', authenticateToken, async (req, res) => {
       };
     }
 
-    // Filter: exclude only cancelled. Keep completed (Leave button) and served (still at table).
-    const activeOnly = activeOrders.filter(o => o.status !== 'cancelled');
+    // Filter: exclude cancelled. Keep completed (Leave button) and served (still at table)
+    // — UNLESS the store enabled "clear table on payment", in which case completed
+    // (paid) orders are cleared from the floor (still visible in today's history tab).
+    const activeOnly = activeOrders.filter(o =>
+      o.status !== 'cancelled'
+      && !o.table_cleared  // 2026-05-31: "Leave/Clear table" frees the floor non-destructively (keeps table_number)
+      && !(clearTableOnPayment && o.status === 'completed'));
 
     // Group all active orders per table.
     // Key strategy (2026-05-27):

@@ -897,6 +897,54 @@ router.patch('/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// Apply / replace a manual discount on an EXISTING order and recompute every total
+// via the single canonical formula (computeOrderTotals — the same one the cart and
+// merge paths use). Lets staff discount at PAYMENT time, including deferred payment
+// from Live Orders / Floor Plan, not just at cart creation. (2026-05-31 Irene)
+// Money path: reuses the tested formula — NO ad-hoc arithmetic, NO trusting a
+// client-sent total. Recompute is server-side so front/back can't diverge.
+router.patch('/:id/apply-discount', authenticateToken, async (req, res) => {
+  try {
+    const order = await Order.findByPk(req.params.id);
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+    const subtotal = parseFloat(order.subtotal || 0);
+    const takeaway = parseFloat(order.takeaway_charge || 0);
+    const maxD = Math.max(0, subtotal + takeaway); // never below zero
+    let D = Math.max(0, Number(req.body.discount) || 0);
+    if (D > maxD) D = round2(maxD);
+    const coupon = await resolveCouponMeta(order.restaurant_id, order.coupon_code);
+    const totals = computeOrderTotals({
+      newSubtotal: subtotal, oldSubtotal: subtotal,
+      takeawayCharge: takeaway, deliveryFee: parseFloat(order.delivery_fee || 0),
+      discount: D,
+      oldDiscountPolicyAmount: parseFloat(order.discount_policy_amount || 0),
+      oldCouponDiscount: parseFloat(order.coupon_discount || 0),
+      coupon,
+      pointDiscount: parseFloat(order.point_discount || 0),
+      oldTax: parseFloat(order.tax || 0), taxRate: parseFloat(order.tax_rate || 0),
+      oldServiceCharge: parseFloat(order.service_charge || 0), serviceChargeRate: parseFloat(order.service_charge_rate || 0)
+    });
+    await order.update({
+      discount: D,
+      discount_policy_amount: totals.discountPolicyAmount,
+      coupon_discount: totals.couponDiscount,
+      tax: totals.tax,
+      service_charge: totals.serviceCharge,
+      total_amount: totals.total
+    });
+    const io = req.app.get('io');
+    if (io && order.restaurant_id) {
+      const plain = order.get ? order.get({ plain: true }) : order;
+      if (typeof plain.order_items === 'string') { try { plain.order_items = JSON.parse(plain.order_items); } catch (e) { plain.order_items = []; } }
+      io.of('/orders').to(`restaurant_${order.restaurant_id}`).emit('order-updated', plain);
+    }
+    res.json({ success: true, data: order, totals });
+  } catch (e) {
+    console.error('apply-discount error:', e);
+    res.status(400).json({ success: false, message: e.message });
+  }
+});
+
 // Status order for forward/backward detection
 const STATUS_ORDER = { outstanding: 0, pending: 1, preparing: 2, ready: 3, served: 4, completed: 5, cancelled: -1 };
 
@@ -1091,14 +1139,50 @@ router.patch('/:id/items', authenticateToken, async (req, res) => {
     }
     if (!Array.isArray(_prevItemsForAudit)) _prevItemsForAudit = [];
 
+    // ── Forward-only cooking-stage guard (2026-05-31, Irene) ──────────────────
+    // order_items is a FULL-ARRAY replace, so a STALE client (one that missed a
+    // concurrent update) can overwrite an already-progressed item's cooking status
+    // with an older/lower one — the root cause of "served item reappears / 주방
+    // 단계가 자동으로 되돌아감". For each item matched by id, never let its cooking
+    // status move BACKWARD on this write. The explicit manual Revert button sends
+    // allowItemRevert=true to bypass. New items, removed items and quantity edits
+    // are untouched (only the cooking status is clamped). This does NOT change order
+    // status (so +Round/payment/outstanding flows are unaffected) and does NOT touch
+    // print routing — it only prevents a regression of item status.
+    const _allowItemRevert = req.body.allowItemRevert === true;
+    let _itemsToSave = order_items;
+    if (!_allowItemRevert && Array.isArray(order_items)) {
+      const _STAGE = { pending: 0, preparing: 1, ready: 2, served: 3, completed: 4 };
+      const _lvl = s => (_STAGE[s] != null ? _STAGE[s] : 0);
+      const _exById = {};
+      for (const it of _prevItemsForAudit) { if (it && it.id != null) _exById[it.id] = it; }
+      _itemsToSave = order_items.map(it => {
+        if (!it || it.id == null) return it;          // new / id-less item → as-is
+        const ex = _exById[it.id];
+        if (!ex) return it;                            // unmatched → as-is
+        let out = it;
+        if (_lvl(it.status) < _lvl(ex.status)) out = { ...out, status: ex.status }; // never lower
+        if (Array.isArray(out.set_items) && Array.isArray(ex.set_items)) {
+          const _exSi = {};
+          for (const s of ex.set_items) { if (s && s.id != null) _exSi[s.id] = s; }
+          out = { ...out, set_items: out.set_items.map(si => {
+            if (!si || si.id == null) return si;
+            const e = _exSi[si.id];
+            return (e && _lvl(si.status) < _lvl(e.status)) ? { ...si, status: e.status } : si;
+          }) };
+        }
+        return out;
+      });
+    }
+
     // Note: Don't use JSON.stringify - Sequelize setter handles it automatically
     const updateData = {
-      order_items: order_items
+      order_items: _itemsToSave
     };
 
     // Recalculate total_amount if requested or if items changed significantly
-    if (recalculateTotal && order_items && Array.isArray(order_items)) {
-      const newTotal = order_items.reduce((sum, item) => {
+    if (recalculateTotal && Array.isArray(_itemsToSave)) {
+      const newTotal = _itemsToSave.reduce((sum, item) => {
         const itemPrice = parseFloat(item.price) || 0;
         const itemQty = parseInt(item.quantity) || 1;
         return sum + (itemPrice * itemQty);

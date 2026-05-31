@@ -443,7 +443,13 @@ const OrderTrackingPage: React.FC = () => {
 
   const getDisplayLabel = () => {
     const tableNumber = getTableNumber();
-    return tableNumber ? 'Your Table Number' : 'Your Pickup Number';
+    if (tableNumber) return 'Your Table Number';
+    // Order-type aware: a dine-in order with no captured table must NOT read as
+    // "Pickup" (confuses the counter). Show the order number instead so staff can
+    // locate the seated guest. Pickup/takeaway/delivery keep the pickup label.
+    const ot = order?.order_type || (order as any)?.orderType;
+    if (ot === 'dine_in' || ot === 'dine-in') return 'Your Order Number';
+    return 'Your Pickup Number';
   };
 
   const getOrderNumber = () => {

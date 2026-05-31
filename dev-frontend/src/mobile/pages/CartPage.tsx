@@ -235,7 +235,7 @@ const CartPage: React.FC = () => {
 
   const subtotal = cartTotal;
   // SC takeaway 제외 옵션 (default true) — PaymentPage / POSTerminal 과 일관.
-  const orderType = (typeof window !== 'undefined' ? sessionStorage.getItem('orderType') : null) || 'dine-in';
+  const orderType = (typeof window !== 'undefined' ? localStorage.getItem('orderType') : null) || 'dine-in';
   const scExcludeTakeaway = (operationSettings as any).serviceChargeExcludeTakeaway ?? true;
   const scApplies = operationSettings.serviceChargeEnabled && !(orderType === 'takeaway' && scExcludeTakeaway);
   const serviceCharge = scApplies ? subtotal * (operationSettings.serviceChargeRate / 100) : 0;

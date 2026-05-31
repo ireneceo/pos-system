@@ -39,6 +39,12 @@ Order.init({
     allowNull: true,
     comment: 'Floor plan v2 tables[].id (e.g. "t_abc123"). Disambiguates same table_number across different zones. NULL for legacy orders (pre-2026-05-27).'
   },
+  table_cleared: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+    comment: '2026-05-31: "Leave/Clear table" frees the table on the floor plan WITHOUT erasing table_number. Was previously done by nulling table_number, which destroyed the order history ("Dine-in · no table assigned"). table-status excludes table_cleared=true from occupancy; the order keeps its table_number for bills/reports/today-history.'
+  },
   guest_count: {
     type: DataTypes.INTEGER,
     allowNull: true,

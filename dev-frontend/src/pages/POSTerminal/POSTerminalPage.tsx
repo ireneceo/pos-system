@@ -2182,16 +2182,20 @@ const POSTerminalPage: React.FC = () => {
         pagerNumber: savedOrder?.pager_number || pagerNumber || undefined,
         tableNumber: savedOrder?.table_number || tableNumber || undefined,
         // Ensure takeawayCharge from backend is used if available
-        takeawayCharge: savedOrder?.takeaway_charge || savedOrder?.takeawayCharge || orderData.takeawayCharge,
-        subtotal: savedOrder?.subtotal || orderData.subtotal,
-        tax: savedOrder?.tax || orderData.tax,
-        serviceCharge: savedOrder?.service_charge || savedOrder?.serviceCharge || orderData.serviceCharge,
-        discount: savedOrder?.discount || orderData.discount,
+        // 2026-05-31 (Irene): coerce to Number. savedOrder.* are DB DECIMAL strings
+        // ("116.00"); passing a string makes billPrint's subtotal.toFixed(2) throw
+        // ("subtotal.toFixed is not a function") → empty/failed bill. Resolution
+        // order unchanged — only parseFloat added. (No print-method change.)
+        takeawayCharge: parseFloat(savedOrder?.takeaway_charge || savedOrder?.takeawayCharge || orderData.takeawayCharge || 0) || 0,
+        subtotal: parseFloat(savedOrder?.subtotal || orderData.subtotal || 0) || 0,
+        tax: parseFloat(savedOrder?.tax || orderData.tax || 0) || 0,
+        serviceCharge: parseFloat(savedOrder?.service_charge || savedOrder?.serviceCharge || orderData.serviceCharge || 0) || 0,
+        discount: parseFloat(savedOrder?.discount || orderData.discount || 0) || 0,
         discountPolicy: orderData.discountPolicy,
         coupon: orderData.coupon,
         pointsUsed: 0,
         pointDiscount: 0,
-        total: savedOrder?.total || orderData.total,
+        total: parseFloat(savedOrder?.total || orderData.total || 0) || 0,
         cashierName: user?.name || null
       });
       setShowOrderCompleteModal(true);
@@ -2477,16 +2481,18 @@ const POSTerminalPage: React.FC = () => {
         tableNumber: savedOrder?.table_number || tableNumber || undefined,
         pagerNumber: savedOrder?.pager_number || pagerNumber || undefined,
         // Ensure takeawayCharge from backend is used if available
-        takeawayCharge: savedOrder?.takeaway_charge || savedOrder?.takeawayCharge || orderData.takeawayCharge,
-        subtotal: savedOrder?.subtotal || orderData.subtotal,
-        tax: savedOrder?.tax || orderData.tax,
-        serviceCharge: savedOrder?.service_charge || savedOrder?.serviceCharge || orderData.serviceCharge,
-        discount: savedOrder?.discount || orderData.discount,
+        // 2026-05-31 (Irene): coerce to Number — savedOrder.* are DB DECIMAL strings.
+        // See the matching note in the other completedOrderData builder above.
+        takeawayCharge: parseFloat(savedOrder?.takeaway_charge || savedOrder?.takeawayCharge || orderData.takeawayCharge || 0) || 0,
+        subtotal: parseFloat(savedOrder?.subtotal || orderData.subtotal || 0) || 0,
+        tax: parseFloat(savedOrder?.tax || orderData.tax || 0) || 0,
+        serviceCharge: parseFloat(savedOrder?.service_charge || savedOrder?.serviceCharge || orderData.serviceCharge || 0) || 0,
+        discount: parseFloat(savedOrder?.discount || orderData.discount || 0) || 0,
         discountPolicy: orderData.discountPolicy,
         coupon: orderData.coupon,
         pointsUsed: orderData.pointsUsed || 0,
         pointDiscount: orderData.pointDiscount || 0,
-        total: savedOrder?.total || orderData.total,
+        total: parseFloat(savedOrder?.total || orderData.total || 0) || 0,
         cashierName: user?.name || null
       });
       setShowOrderCompleteModal(true);

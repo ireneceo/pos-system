@@ -150,18 +150,23 @@ export const MobileOrderProvider: React.FC<MobileOrderProviderProps> = ({ childr
   // Store state
   const [currentStore, setCurrentStore] = useState<Store | null>(null);
 
-  // Order type state - synced with sessionStorage
+  // Order type state — persisted in localStorage so it shares the SAME lifecycle
+  // as the cart (also localStorage). Previously this lived in sessionStorage, which
+  // is wiped when a mobile browser evicts a backgrounded tab — the cart survived but
+  // orderType/tableNumber did not, so a resumed checkout submitted table_number=null
+  // (dine-in orders silently became table-less "pickup N"). Keep cart + orderType +
+  // tableNumber on the SAME store so "cart alive ⇒ table alive" always holds.
   const [orderType, setOrderTypeState] = useState<string | null>(() => {
-    return sessionStorage.getItem('orderType');
+    return localStorage.getItem('orderType');
   });
 
-  // Wrapper to sync orderType with sessionStorage
+  // Wrapper to sync orderType with localStorage (see lifecycle note above).
   const setOrderType = useCallback((type: string | null) => {
     setOrderTypeState(type);
     if (type) {
-      sessionStorage.setItem('orderType', type);
+      localStorage.setItem('orderType', type);
     } else {
-      sessionStorage.removeItem('orderType');
+      localStorage.removeItem('orderType');
     }
   }, []);
 
@@ -257,7 +262,24 @@ export const MobileOrderProvider: React.FC<MobileOrderProviderProps> = ({ childr
       ...(setComponents && setComponents.length > 0 ? { setComponents } : {})
     } as CartItem;
 
-    setCartItems(prev => [...prev, newCartItem]);
+    // Merge identical configurations into one line (industry standard — Toast/Square).
+    // The kitchen saw the SAME item as many separate qty-1 lines ("잡채 1개 눌렀는데 3개",
+    // SET 2 ×6 lines) because every add appended a brand-new line keyed by Date.now().
+    // Same product + same options + same note + same set-components → bump quantity
+    // instead of duplicating the line. Different note/options still stay separate.
+    const sig = `${item.id}|${[...selectedOptionNames].sort().join(',')}|${finalInstructions}|${setComponents && setComponents.length ? JSON.stringify(setComponents) : ''}`;
+    setCartItems(prev => {
+      const idx = prev.findIndex(ci => {
+        const ciSig = `${ci.menuItem?.id}|${[...(ci.selectedOptions || [])].sort().join(',')}|${ci.specialInstructions || ''}|${(ci as any).setComponents ? JSON.stringify((ci as any).setComponents) : ''}`;
+        return ciSig === sig;
+      });
+      if (idx >= 0) {
+        return prev.map((ci, i) => i === idx
+          ? { ...ci, quantity: ci.quantity + quantity, totalPrice: ci.totalPrice + totalPrice }
+          : ci);
+      }
+      return [...prev, newCartItem];
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   
@@ -283,10 +305,16 @@ export const MobileOrderProvider: React.FC<MobileOrderProviderProps> = ({ childr
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   
-  // Clear cart
+  // Clear cart — clears the whole ordering session (cart + orderType + tableNumber)
+  // together so a finished/abandoned session never leaves a stale table behind for
+  // the next visit. A fresh scan re-seeds tableNumber/orderType from the ?table= /
+  // ?order_type= URL params on OrderTypePage.
   const clearCart = useCallback(() => {
     setCartItemsState([]);
     localStorage.removeItem('mobile_cart');
+    localStorage.removeItem('tableNumber');
+    localStorage.removeItem('orderType');
+    setOrderTypeState(null);
   }, []);
   
   // Get currency from current store or default to 'MYR'

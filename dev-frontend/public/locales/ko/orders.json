@@ -14,6 +14,8 @@
   "liveOrdersPage.action": "작업",
   "liveOrdersPage.takeaway": "포장",
   "liveOrdersPage.pickup": "PICKUP",
+  "liveOrdersPage.dineInNoTable": "매장식사 · 테이블 미지정",
+  "liveOrdersPage.dineIn": "매장식사",
   "liveOrdersPage.delivery": "배달",
   "liveOrdersPage.mobile": "MOBILE",
   "liveOrdersPage.member": "MEMBER",

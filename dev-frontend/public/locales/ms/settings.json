@@ -722,6 +722,8 @@
   "settingsPage.allowCustomersToSelectTableNumbersWhenOrdering": "Allow Pelanggan Hingga Pilih Meja numbers when ordering",
   "settingsPage.tableNumberRequired": "Meja Number Wajib",
   "settingsPage.makeTableNumberSelectionMandatoryForDineinOrders": "Make table number selection mandatory for dine-in orders",
+  "settingsPage.clearTableOnPayment": "Kosongkan Meja Selepas Bayar",
+  "settingsPage.clearTableOnPaymentHelp": "Apabila pesanan dibayar penuh, keluarkan meja dari Pelan Lantai (disimpan dalam sejarah hari ini meja).",
   "settingsPage.tablePrefix": "Meja Prefix",
   "settingsPage.prefixForTableNumbersEgT001Table001": "Prefix for table numbers (e.g., T001, TABLE001)",
   "settingsPage.numberOfTables": "Number of Tables",
