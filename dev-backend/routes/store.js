@@ -168,6 +168,23 @@ router.put('/settings', authenticateToken, async (req, res) => {
     ];
 
     console.log('🔄 Updating fields...');
+    // 2026-05-31 anti-wipe guard — see utils/settingsGuard.js. The Settings page
+    // (this route's caller) was the 5/31 The Fire wipe path. Guard rejects null
+    // / {} / parse-error / sparse payloads and deep-merges critical sub-objects
+    // so a half-loaded client can't blank the live config.
+    const SETTINGS_GUARDED = new Set([
+      'printer_settings', 'payment_settings', 'operation_settings',
+      'table_settings', 'mobile_settings', 'reservation_settings'
+    ]);
+    const guardMap = {
+      printer_settings: guardPrinterSettings,
+      payment_settings: guardPaymentSettings,
+      operation_settings: guardOperationSettings,
+      table_settings: (i, e, r) => guardShallowSettings('table_settings', i, e, r),
+      mobile_settings: (i, e, r) => guardShallowSettings('mobile_settings', i, e, r),
+      reservation_settings: (i, e, r) => guardShallowSettings('reservation_settings', i, e, r),
+    };
+
     allowedFields.forEach(field => {
       if (req.body[field] !== undefined) {
         console.log(`  ✏️  ${field}:`, field === 'payment_settings' || field === 'operation_settings'
@@ -217,8 +234,25 @@ router.put('/settings', authenticateToken, async (req, res) => {
               }
             }
           }
-          // Model setter will handle JSON.stringify, just pass the object
-          restaurant[field] = req.body[field];
+          // 2026-05-31 anti-wipe guard. Pass through migration result + existing
+          // value; the guard decides save / merge / reject.
+          const guardFn = guardMap[field];
+          if (guardFn) {
+            const existingVal = restaurant.getDataValue(field);
+            const result = guardFn(req.body[field], existingVal, restaurantId);
+            if (result.action === 'reject') {
+              // Skip this field — keep DB value untouched. The rest of the body still saves.
+              console.warn(`  ⚠️  [anti-wipe] skipped ${field}: ${result.reason}`);
+            } else {
+              restaurant[field] = result.value;
+              if (result.action === 'merged') {
+                console.warn(`  🛡️  [anti-wipe] merged ${field}: ${result.reason}`);
+              }
+            }
+          } else {
+            // Fallback (should never hit since SETTINGS_GUARDED covers all)
+            restaurant[field] = req.body[field];
+          }
         } else {
           restaurant[field] = req.body[field];
         }
