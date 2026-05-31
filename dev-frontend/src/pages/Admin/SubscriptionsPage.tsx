@@ -1550,15 +1550,25 @@ const SubscriptionsPage: React.FC = () => {
                         <CommonModal isOpen={true} onClose={() => setShowEditModal(false)} title="Edit Custom Subscription" footer={<><ThemedButton variant="cancel" onClick={() => setShowEditModal(false)}>{t('admin:subscriptionsPage.cancel')}</ThemedButton><ThemedButton variant="primary" onClick={handleUpdateSubscription}>{t('admin:subscriptionsPage.updateSubscription')}</ThemedButton></>}>
 
                   <FormGrid>
-                    <FormGroup style={{gridColumn: '1 / -1'}}>
-                      <FormLabel>Restaurant *</FormLabel>
-                      <FormInput
-                        type="text"
-                        value={editingSubscription.restaurantName}
-                        disabled
-                        style={{background: '#F1F4F8', cursor: 'not-allowed'}}
-                      />
-                    </FormGroup>
+                    {(() => {
+                      const et = (editingSubscription as any).entityType;
+                      const label = et === 'brand' ? 'Brand'
+                                  : et === 'foodcourt' ? 'Foodcourt'
+                                  : et === 'owner' ? 'Restaurant Owner'
+                                  : et === 'supplier' ? 'Supplier'
+                                  : 'Restaurant';
+                      return (
+                        <FormGroup style={{gridColumn: '1 / -1'}}>
+                          <FormLabel>{label} *</FormLabel>
+                          <FormInput
+                            type="text"
+                            value={editingSubscription.restaurantName}
+                            disabled
+                            style={{background: '#F1F4F8', cursor: 'not-allowed'}}
+                          />
+                        </FormGroup>
+                      );
+                    })()}
 
                     {/* Plan select — rendered outside SubscriptionFormFields so we can offer
                         the legacy "Others" option that lets admins type a custom plan name. */}
@@ -1649,14 +1659,25 @@ const SubscriptionsPage: React.FC = () => {
                     </FormGroup>
 
                     {/* Unified subscription fields — same component the Add modal uses.
-                        Plan, Trial, Activate-now are hidden because Edit handles them externally / not applicable. */}
+                        Plan, Trial, Activate-now are hidden because Edit handles them externally / not applicable.
+                        Payment Model is hidden for non-restaurant subscribers (BG / FG / Owner / Supplier
+                        pay themselves; restaurants are the only entity that picks between manager / restaurant). */}
+                    {(() => {
+                      const et = (editingSubscription as any).entityType;
+                      const ut: any = et === 'brand' ? 'brand_manager'
+                                    : et === 'foodcourt' ? 'foodcourt_manager'
+                                    : et === 'owner' ? 'owner'
+                                    : et === 'supplier' ? 'supplier'
+                                    : 'restaurant';
+                      const hidePM = !!et && et !== 'restaurant';
+                      return (
                     <div style={{ gridColumn: '1 / -1' }}>
                       <SubscriptionFormFields
-                        userType="restaurant"
+                        userType={ut}
                         mode="edit"
                         availablePlans={availablePlans}
                         planCurrencies={getActivePlanCurrencies(availablePlans)}
-                        options={{ hidePlan: true, hideTrial: true, hideActivateNow: true }}
+                        options={{ hidePlan: true, hideTrial: true, hideActivateNow: true, hidePaymentModel: hidePM }}
                         values={{
                           currency: editingSubscription.currency || 'MYR',
                           plan_type: editingSubscription.planType || '',
@@ -1687,6 +1708,8 @@ const SubscriptionsPage: React.FC = () => {
                         } : prev)}
                       />
                     </div>
+                      );
+                    })()}
                   </FormGrid>
 
             </CommonModal>
