@@ -1,9 +1,32 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-06-01 (The Fire 3-이슈 데이터 무결성 fix — DEV 완료, 미배포)
-**버전:** v3.45 운영
-**작업 상태:** DEV 완료 / 배포 대기 (Issue 1 = 실프린터 확인 후 배포)
+**마지막 업데이트:** 2026-06-01 (The Fire 3-이슈 데이터 무결성 fix — **운영 배포 완료**)
+**버전:** v3.45 운영 (backstage 성격 — 버전 미상승, 보안/안정성 fix)
+**작업 상태:** 운영 배포 완료 + 운영 검증 완료. **남은 것 = Issue 1(티켓 2장) 실프린터 눈 확인만.**
+
+---
+
+## 2026-06-01 운영 배포 완료 — The Fire 3 이슈 근본 fix (Backup 20260601_031208 + 20260601_032829)
+
+> Irene: "더파이어 기준으로 모든 솔루션 문제 해결, 다시 안 생기게 + 배포 후 모든 주문루트 직접 검증 + The Fire 동일설정 테스트매장으로 결제완료까지." 인쇄 방식(method/routing) 무변경, 데이터 무결성 버그만 수정.
+
+### 배포된 fix (2회 배포)
+1. **오더티켓 2장 중복** — Floor Plan iframe POS 오버레이가 부모와 중복 poller 실행 → 오버레이는 poller off (POSTerminalPage `!isFloorPlanOverlay`). 인쇄 타이밍만, 방식 무변경. ⚠️ **실프린터 눈 확인 미완** (코드/headless 로는 종이 확인 불가).
+2. **테이블번호 누락** — orders-crud TABLE_REQUIRED 가드: order_type 누락/빈문자열도 차단. PATCH `/:id` anti-wipe (dine-in table_number null/'' 무시, table_cleared 플래그로만).
+3. **모바일↔POS 미매칭** — orders-crud POST 에 floor_plan_table_id derive 이식(PaymentPage 경로가 FPTI 안 보내 멀티존 미바인딩이 근본). PaymentPage `restaurant_id: currentStore?.id||1` 폴백 제거(미로드시 제출차단).
+4. **라벨 불일치 머지** — "1"↔"T001"↔"Table 1" normalizeTableLabel 정규화 머지 (orders-crud + mobile-orders). **모호성 가드**: 정규화 후보 2+ 충돌(멀티존)이면 머지 안 함(유일 매칭만). 't' 접두는 숫자 앞만 제거(TEA1/A20 보존).
+5. **(검증 중 발견) IDOR** — GET /orders/:id 에 소유권 검사 없어 타 매장 주문 조회 가능 → 인-핸들러 소유권 체크 추가(orders-payment.js 패턴).
+6. i18n storeNotLoaded 4언어.
+
+### 검증 (전부 실제 API)
+- `/검증` 정식 10단계: state-hydration 0, build, health 88/88(bless 후), i18n Errors 0, 실브라우저 mount(pos-terminal/floor-plan/settings-payment/mobile-payment) 크래시 0.
+- **운영 데모 r13 18 루트** 17/18 (1 = 내 테스트 데이터 버그, 코드 정상).
+- **The Fire 100% 동일설정 테스트매장(is_test)** 모바일/POS/플로어플랜 **결제완료까지**: DEV 21/21, 운영 21/22(1=테스트데이터 버그) → 운영 재확인 3/3. 결제는 counter/card/ewallet 기록방식(실 게이트웨이 과금 X).
+- 테스트매장: `[TEST] Fire Clone`, email `@test.invalid`(전송 3중 차단=.invalid/unverified/is_test), 검증 후 FK까지 완전삭제(잔여 0 확인).
+
+### ⚠️ 다음: Issue 1 실프린터 확인 (Irene/매장)
+The Fire 에서 **Floor Plan 으로 테이블 POS 열고 주문 → 키친 티켓 정확히 1장** 눈 확인. 문제 시 즉시 핫픽스.
 
 ---
 
