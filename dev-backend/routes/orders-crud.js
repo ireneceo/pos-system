@@ -1063,11 +1063,23 @@ router.post('/:id/move-table', authenticateToken, async (req, res) => {
 
       // Destination occupied? An open order on the destination table (excluding this one).
       // Keyed on floor_plan_table_id when available (zone-safe), else table_number.
+      //
+      // 2026-06-01 IMPORTANT: the occupancy check MUST match what the Floor Plan
+      // actually SHOWS (table-status, restaurants-crud.js) — which only counts
+      // orders created TODAY and not table_cleared. Without the same today-window,
+      // an old unpaid order (e.g. a 10-day-old test row) made the table look
+      // "occupied" and triggered a merge prompt even though the user sees an EMPTY
+      // table. Aligning the window means: if the destination looks empty on the
+      // floor, the move just goes through (no spurious merge prompt). (Irene)
+      const moveTz = getRestaurantTimezone(restaurant);
+      const { startOfDay: occToday, endOfDay: occTodayEnd } = getTodayBounds(moveTz);
       const destWhere = {
         restaurant_id: order.restaurant_id,
         id: { [Op.ne]: order.id },
         payment_status: 'pending',
         status: { [Op.notIn]: ['served', 'completed', 'cancelled'] },
+        table_cleared: { [Op.not]: true },   // Floor Plan hides cleared tables
+        createdAt: { [Op.between]: [occToday, occTodayEnd] },  // same today-window as table-status
         [Op.or]: [{ is_deleted: false }, { is_deleted: null }]
       };
       if (destFpti) destWhere.floor_plan_table_id = destFpti;

@@ -314,7 +314,6 @@ const ManagerSignupPage: React.FC = () => {
   const { t } = useTranslation('admin');
   const navigate = useNavigate();
   const [formData, setFormData] = useState<SignupFormData>({
-  const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
     name: '',
     email: '',
     password: '',
@@ -324,6 +323,7 @@ const ManagerSignupPage: React.FC = () => {
     address: '',
     restaurantCount: 1
   });
+  const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { defaultCurrency } = useBrandCurrency();

@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { RecipeCategory, Recipe, Restaurant } = require('../models');
 const { Op } = require('sequelize');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const { isBrandManager } = require('../middleware/recipeAuth');
 
 // ============================================
@@ -87,6 +87,36 @@ router.post('/brands/:brandId/recipe-categories', authenticateToken, isBrandMana
 });
 
 /**
+ * PUT /api/brands/:brandId/recipe-categories/reorder
+ * 브랜드 레시피 카테고리 순서 변경
+ * ⚠️ 반드시 /:categoryId 라우트보다 먼저 등록 — 안 그러면 Express 가 'reorder' 를
+ *    categoryId 로 잡아 404 (2026-06-01: 순서변경 화살표 안 되던 버그 원인).
+ */
+router.put('/brands/:brandId/recipe-categories/reorder', authenticateToken, isBrandManager, async (req, res) => {
+  try {
+    const { brandId } = req.params;
+    const brand_id = brandId; // DB 쿼리용
+    const { orders } = req.body; // [{ id: 1, display_order: 0 }, { id: 2, display_order: 1 }, ...]
+
+    if (!orders || !Array.isArray(orders)) {
+      return res.status(400).json({ success: false, error: { message: '순서 정보가 필요합니다', code: 'VALIDATION_ERROR' } });
+    }
+
+    for (const item of orders) {
+      await RecipeCategory.update(
+        { display_order: item.display_order },
+        { where: { id: item.id, brand_id } }
+      );
+    }
+
+    res.json({ success: true, message: '순서가 변경되었습니다' });
+  } catch (error) {
+    console.error('Reorder brand recipe categories error:', error);
+    res.status(500).json({ success: false, error: { message: '순서 변경 실패', code: 'INTERNAL_ERROR' } });
+  }
+});
+
+/**
  * PUT /api/brands/:brandId/recipe-categories/:categoryId
  * 브랜드 레시피 카테고리 수정
  */
@@ -165,34 +195,6 @@ router.delete('/brands/:brandId/recipe-categories/:categoryId', authenticateToke
   } catch (error) {
     console.error('Delete brand recipe category error:', error);
     res.status(500).json({ success: false, error: { message: '카테고리 삭제 실패', code: 'INTERNAL_ERROR' } });
-  }
-});
-
-/**
- * PUT /api/brands/:brandId/recipe-categories/reorder
- * 브랜드 레시피 카테고리 순서 변경
- */
-router.put('/brands/:brandId/recipe-categories/reorder', authenticateToken, isBrandManager, async (req, res) => {
-  try {
-    const { brandId } = req.params;
-    const brand_id = brandId; // DB 쿼리용
-    const { orders } = req.body; // [{ id: 1, display_order: 0 }, { id: 2, display_order: 1 }, ...]
-
-    if (!orders || !Array.isArray(orders)) {
-      return res.status(400).json({ success: false, error: { message: '순서 정보가 필요합니다', code: 'VALIDATION_ERROR' } });
-    }
-
-    for (const item of orders) {
-      await RecipeCategory.update(
-        { display_order: item.display_order },
-        { where: { id: item.id, brand_id } }
-      );
-    }
-
-    res.json({ success: true, message: '순서가 변경되었습니다' });
-  } catch (error) {
-    console.error('Reorder brand recipe categories error:', error);
-    res.status(500).json({ success: false, error: { message: '순서 변경 실패', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -310,6 +312,36 @@ router.post('/restaurants/:restaurantId/recipe-categories', authenticateToken, a
   } catch (error) {
     console.error('Create restaurant recipe category error:', error);
     res.status(500).json({ success: false, error: { message: '카테고리 생성 실패', code: 'INTERNAL_ERROR' } });
+  }
+});
+
+/**
+ * PUT /api/restaurants/:restaurantId/recipe-categories/reorder
+ * 레스토랑 레시피 카테고리 순서 변경
+ * ⚠️ /:categoryId 보다 먼저 등록 (brand 쪽과 동일 이유). 2026-06-01: 독립 레스토랑
+ *    에는 reorder 핸들러가 아예 없어 화살표가 404 였음 — 신규 추가.
+ */
+router.put('/restaurants/:restaurantId/recipe-categories/reorder', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const restaurant_id = restaurantId; // DB 쿼리용
+    const { orders } = req.body; // [{ id, display_order }, ...]
+
+    if (!orders || !Array.isArray(orders)) {
+      return res.status(400).json({ success: false, error: { message: '순서 정보가 필요합니다', code: 'VALIDATION_ERROR' } });
+    }
+
+    for (const item of orders) {
+      await RecipeCategory.update(
+        { display_order: item.display_order },
+        { where: { id: item.id, restaurant_id } }  // 소유권: restaurant_id 로 격리
+      );
+    }
+
+    res.json({ success: true, message: '순서가 변경되었습니다' });
+  } catch (error) {
+    console.error('Reorder restaurant recipe categories error:', error);
+    res.status(500).json({ success: false, error: { message: '순서 변경 실패', code: 'INTERNAL_ERROR' } });
   }
 });
 
