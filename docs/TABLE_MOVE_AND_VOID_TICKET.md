@@ -116,10 +116,18 @@ Body: `{ destinationTableNumber, destinationFloorPlanTableId, onOccupied?: 'merg
 
 ---
 
-## 설계 2 — 이동/취소 티켓 내용 차별화 (2026-06-01, 설계확정 대기)
+## 설계 2 — 이동/취소 티켓 내용 차별화 (2026-06-01, **설계 확정 — Irene 전체위임**)
 
 > 문제: 이동 재발행 / 취소 티켓이 **일반 오더티켓과 똑같이** 나와서 주방이 또 만든다.
 > 안내 문구 + 시각 표시(줄긋기)로 명확히 구분해야 함. 🔒 billPrint.js 변경 — Irene 승인 + 실프린터 확인 필수.
+
+### 4-케이스 (내용이 전부 달라야 함)
+| # | 케이스 | 헤더 | 시각/라우팅 | 본 문서 절 |
+|---|--------|------|------------|-----------|
+| 1 | 테이블 이동 → **빈 테이블** | `** TABLE CHANGED **` "이전 티켓 버리고 이걸로" + 새 테이블 | 옛 station VOID + 새 station 재발행 | A |
+| 2 | 테이블 이동 → **점유(머지)** | `** TABLE CHANGED + MERGED **` "이 테이블들 이전 N장 버리고 이걸로" | 동일 + 머지 합본 | A |
+| 3 | **아이템만 취소** | `*** ITEM CANCELLED ***` | 취소 아이템 ~~줄긋기~~ + 사유, 그 station 만 | B |
+| 4 | **주문 전체 취소** | `*** ORDER CANCELLED ***` | 전 아이템 ~~줄긋기~~, **station별** 각자 아이템만 | C |
 
 ### 코드 위치 (audit)
 - 일반 주방티켓: `generateKitchenTicketContent`(ESC/POS, line 1846) / `generateHTMLKitchenTicket`(HTML, line 1482). 아이템에 `stationName` 외 status/strike 플래그 없음. 상단에 `orderData.groupLabel`(박스 배너)·`orderData.notes`(SPECIAL NOTES) 훅 있음.
@@ -176,8 +184,24 @@ Order  260601-003   TABLE U-1
 ```
 → 전체취소 경로(LiveOrders confirmCancelOrder)가 `printCancellationTicket` 대신 **station 버킷팅 경유**로 각 station 에 그 station 아이템만 줄긋기 발행. (신규 배선 — `printKitchenTicketsByStation` 의 버킷팅 재사용)
 
+### D. 자동/수동 발행 UX (확정 — 30년차 솔루션 표준안)
+> "자동발행 설정이 된 경우에만 발행. 수동이면 액션 시 같이 인쇄 보낼지 물어보거나 완료표시에서 프린트." → 아래로 확정.
+
+**자동발행 ON** (`kitchenPrinter.autoPrint` master + 해당 토글):
+- 4-케이스 티켓을 액션 직후 **무음 자동 발행**. 액션 모달엔 "주방에 자동 통보됨" 안내만. 결정적·빠름.
+
+**자동발행 OFF (수동)**:
+- 액션 confirm 모달(이동=목적지 picker / 취소=사유 빠른버튼) 안에 **발행될 티켓 목록 미리보기** + 주 버튼 `확인 + 티켓 인쇄`, 부 버튼 `인쇄 없이 확인`.
+- 상시 별도 버튼 X(화면 정리). 멀티티켓(이동=옛VOID+새재발행 2장 / 전체취소=station N장)도 한 번에.
+
+**공통 안전망** (규칙 #6 재사용):
+- 액션 완료 표시(토스트/패널)에 **재인쇄 버튼**. 인쇄 실패 시 `autoprint-failed` 배너 → 재시도. "종이 안 나옴" 0.
+
+**게이트 단일화**: 4-케이스 모두 `kitchenPrinter.autoPrint`(master) + 케이스별 토글(`printCancellationTicket` 등) 존중. 자동발행 OFF 매장은 절대 자동으로 안 쏨(수동 버튼으로만).
+
 ### 구현 범위 / 가드
 - billPrint.js: `noticeHeader` 렌더(양 포맷) + 취소 item strike(양 포맷) + 전체취소 station 라우팅. **인쇄 방식/주소/분배 로직은 무변경**, 콘텐츠·신규 필드만.
+- 호출부 게이트: autoPrint ON → 자동 호출 / OFF → confirm 모달 "확인+인쇄" 버튼에서만 호출 + 완료표시 재인쇄.
 - 호출부: FloorPlanPage(이동 noticeHeader), LiveOrders(아이템취소 strike·전체취소 station경유).
 - 🔒 변경 후 check-print-guard --bless(Irene 승인) + 실프린터: 이동(버리라 안내) / 아이템취소(줄긋기) / 전체취소(station별 줄긋기) 눈 확인.
 - 한 번에 하나씩 실프린터 확인(A→B→C), 동시 인쇄변경 금지.

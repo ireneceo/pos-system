@@ -1,7 +1,8 @@
 # 프린팅 규칙 매트릭스
 
-> **최종 업데이트:** 2026-03-17
+> **최종 업데이트:** 2026-06-01 (§ 9 주문루트 × 주요설정 검증 매트릭스 추가 — 4-케이스 오더티켓 포함)
 > **관련 파일:** `dev-frontend/src/utils/billPrint.js`, `dev-frontend/src/pages/Settings/SettingsPage.tsx`
+> **검증 계약:** **§ 9** 가 `/검증`·`/운영검증` 이 "그대로 대조" 하는 단일 표. 동작이 § 9 와 다르면 코드를 고친다(규칙 X). § 0~8 은 경로 상세, § 9 는 루트×설정 종합.
 
 ---
 
@@ -316,10 +317,92 @@ backend mergeItemsIntoOrder() 성공
 
 ---
 
+## 9. 주문루트 × 주요설정 검증 매트릭스 (2026-06-01 — 검증 계약)
+
+> `/검증`(DEV)·`/운영검증`(운영) 이 **이 표 그대로** 대조한다. 동작이 다르면 코드를 고친다.
+
+### 9-1. 축 정의
+
+**주문루트 (11)**
+| 코드 | 루트 | 인쇄 주체 기기 |
+|------|------|----------------|
+| R1 | POS 직접 주문 (카운터) | 카운터 POS |
+| R2 | Floor Plan 오버레이 POS 주문 | **부모 Floor Plan** (오버레이 poller off — Issue 1 fix) |
+| R3 | 모바일 — 테이블 QR (dine-in) | 카운터 POS / Floor Plan (poller) |
+| R4 | 모바일 — 공용 슬러그 (dine-in, 테이블 강제 시) | 〃 |
+| R5 | 모바일 — takeaway/pickup | 〃 |
+| R6 | 추가주문 +Round (auto-merge) | 〃 (socket `order-items-added`) |
+| R7 | 테이블 이동 → **빈 테이블** | Floor Plan |
+| R8 | 테이블 이동 → **점유(머지)** | Floor Plan |
+| R9 | **아이템 단일 취소** | LiveOrders / Floor Plan |
+| R10 | **주문 전체 취소** | LiveOrders |
+| R11 | 결제완료 (빌/영수증) | 결제 단말 |
+
+**주요설정**
+| 코드 | 설정 | 값 |
+|------|------|---|
+| S1 | `kitchenPrinter.autoPrint` (**master**) | ON / OFF |
+| S2 | station printers 유무 | 0 / 1+ |
+| S3 | `printPerItem` | ON / OFF |
+| S4 | `mirrorToBillPrinter` | ON / OFF |
+| S5 | `printCancellationTicket` | ON / OFF |
+| S6 | `billPrinter.autoPrint` | ON / OFF |
+| S7 | `printerMode` | rawbt / browser / qz |
+| S8 | 멀티존(zone별 station 분리) | 유 / 무 |
+
+### 9-2. 게이트 요약 (어떤 설정이 무엇을 켜고 끄나)
+
+| 출력 | 게이트 | OFF 시 |
+|------|--------|--------|
+| 주방 오더티켓(자동) | **S1 master** + station/kitchen enabled | 자동 X → **수동 버튼으로만** |
+| station별 분배 | S2 (1+ → 경로 A) | S2=0 → 합본/per-item (경로 B/C) |
+| 아이템별 개별 티켓 | S3 | OFF → 합본 1장 |
+| POS 미러(통합 1장) | S4 | 미러 X |
+| 취소표(R9/R10) | S1 + S5 + `wasInKitchen`(주방 진입분만) | 취소표 X |
+| 결제 영수증(자동) | S6 | 자동 X (수동 인쇄) |
+| 한글 정상 | S7=qz(HTML pixel) | raw ESC/POS=한글 깨짐(LAN IP 전용) |
+
+> **핵심**: **S1(master)** 가 모든 주방 자동발행의 최상위 게이트. OFF면 R1~R10 어떤 주방티켓도 **자동으로 안 나감** → 수동 경로만. (KDS 는 항상 표시 전용, 인쇄 주체 아님.)
+
+### 9-3. 주문루트별 출력 (핵심 계약)
+
+> "자동발행 ON" = S1 ON 기준. "수동(OFF)" = S1 OFF 시 동작.
+
+| 루트 | 자동발행 ON (S1 ON) | 수동 (S1 OFF) | 헤더 | 미러(S4 ON) |
+|------|--------------------|--------------|------|------------|
+| R1/R3/R4/R5 신규주문 | station별 오더티켓 1장씩(S2 1+) / 합본·per-item(S2 0) | OrderComplete·LiveOrders **Kitchen Ticket 버튼** | (없음/일반) | 빌프린터 통합 1장 |
+| R2 오버레이 주문 | **부모만** 발행 (오버레이 중복 poller off) → 1장 | 〃 | 일반 | 〃 |
+| R6 +Round | **추가 품목만** 1장 (`added_at` 필터) | 수동 버튼 | `** ADDITIONAL ORDER **` | 추가분 미러 |
+| R7 이동→빈 | 옛 station **VOID** 1장 + 새 station **재발행** 1장 (station 동일 시 재발행 skip) | confirm 모달 `확인+인쇄` | `** TABLE CHANGED **` | 해당 |
+| R8 이동→머지 | 〃 + 머지 합본 | 〃 | `** TABLE CHANGED + MERGED **` | 해당 |
+| R9 아이템 취소 | 그 아이템 **station 에만** 취소표(줄긋기). 주방 미진입분은 발행 X | 사유 모달 `확인+인쇄` | `*** ITEM CANCELLED ***` | — |
+| R10 전체 취소 | **station별** 각 station 아이템만 줄긋기 취소표 | confirm 모달 `확인+인쇄` | `*** ORDER CANCELLED ***` | — |
+| R11 결제 | (주방 무관) S6 ON → 영수증 자동, 설정 매수 | 수동 인쇄 | 영수증 | — |
+
+**4-케이스 티켓 내용** (R7~R10): `docs/TABLE_MOVE_AND_VOID_TICKET.md` § 설계 2 단일 진실. 줄긋기 = HTML `line-through` / ESC-POS `~~`·reverse. station 라우팅 = `stationEnrichment`(resolveProductId+이름폴백) 재사용 — **인쇄 방식/주소 무변경, 콘텐츠·신규필드(`noticeHeader`)만**.
+
+### 9-4. 설정 조합 상세 (S2 × S3 은 § 6 표 재사용)
+- **S2/S3** (station 유무 × printPerItem): § 6 "Station 유무에 따른 동작 비교" 그대로. R7~R10 도 동일 분배 로직.
+- **S7 한글**: qz(HTML pixel)=정상 / raw ESC-POS=깨짐 → LAN IP 프린터만 raw. 취소표/재발행도 같은 경로 따름.
+- **S5 OFF**: R9/R10 취소표 자체를 안 냄(주방이 손으로 확인). R7/R8 재발행은 S5 무관(정규 발행).
+- **S8 멀티존**: 이동 시 옛/새 station 다를 수 있음 → R7/R8 의 VOID+재발행이 의미. 단일존이면 station 동일 → 재발행 skip.
+
+### 9-5. 검증 분담 (API vs 실프린터)
+| 검증 가능 (API/백엔드 — `/검증`) | 실프린터 눈 (Irene — `/운영검증`) |
+|----------------------------------|-----------------------------------|
+| pending-print 큐 / `printed_at` 도장 / `needs_print` clear | 종이 1장 정확히 (중복 0) |
+| station_id 분배 결과 / removedItem payload / `noticeHeader` 플래그 | 헤더 문구·줄긋기 시각 |
+| 게이트 분기 (S1~S6 조합별 호출 여부) | 한글 raster 정상 |
+| 동시 print-claim N개→1개 (중복 방지) | Issue 1 오버레이 1장 |
+| 금액 공식 / 익명 401 / 보호파일 무결성 | 자동발행 OFF 매장 무음(수동만) |
+
+---
+
 ## 변경 이력
 
 | 날짜 | 변경 |
 |------|------|
+| 2026-06-01 | § 9 주문루트(11) × 주요설정(8) 검증 매트릭스 추가 — R7~R10 4-케이스 오더티켓(이동 빈/머지, 아이템/전체 취소) + 자동/수동 게이트 |
 | 2026-03-17 | Kitchen Station 시스템 Phase 5: Station별 분리 인쇄 추가 |
 | 2026-03-17 | 프린팅 규칙 매트릭스 초판 작성 |
 | 2026-05-27 | § C Additional-items 자동 인쇄 (`order-items-added` socket → `generateAdditionalItemsTicketContent`) + § D Receipt logo path resolution (`/var/www/uploads` 기준) 및 img src 정규식 (`data:` 통과) fix |

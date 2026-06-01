@@ -419,7 +419,8 @@
       "Bash(grep -c \"Compiled with the following type errors\" /tmp/v3-build.log /tmp/movefix-build.log)",
       "Bash(grep -l \"배포 완료\" /tmp/v3-build.log /tmp/movefix-build.log)",
       "Bash(CI=true DISABLE_ESLINT_PLUGIN=true npx tsc --noEmit --project tsconfig.json)",
-      "Bash(R38=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjIzLCJpYXQiOjE3ODAzMDI3MDMsImV4cCI6MTc4MDMwNDUwM30.qoxILnEwLoGHtkWS-h0y6u2YkqRZ3Am2QbjW7mNkjD4 BG=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjYsImlhdCI6MTc4MDMwMjcwMywiZXhwIjoxNzgwMzA0NTAzfQ.sNwROmGSmK3oHNnGxKfeS3Orj8h5qtZZftA4g-sSndY timeout 110 node mount-final.js)"
+      "Bash(R38=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjIzLCJpYXQiOjE3ODAzMDI3MDMsImV4cCI6MTc4MDMwNDUwM30.qoxILnEwLoGHtkWS-h0y6u2YkqRZ3Am2QbjW7mNkjD4 BG=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjYsImlhdCI6MTc4MDMwMjcwMywiZXhwIjoxNzgwMzA0NTAzfQ.sNwROmGSmK3oHNnGxKfeS3Orj8h5qtZZftA4g-sSndY timeout 110 node mount-final.js)",
+      "Bash(echo \"BUILD_EXIT=$?\")"
     ],
     "deny": [],
     "ask": []

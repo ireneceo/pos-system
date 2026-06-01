@@ -1534,6 +1534,17 @@ export function generateHTMLKitchenTicket(orderData, storeInfo) {
     ? `<div class="group-label">${escapeHtmlForPrint(orderData.groupLabel.toUpperCase())}</div>`
     : '';
 
+  // Notice header (table-move reissue 등) — orderData.noticeHeader 설정 시에만.
+  // 미설정이면 빈 문자열 → 일반 티켓 출력 동일(영향 0). docs/TABLE_MOVE_AND_VOID_TICKET.md § 설계 2-A.
+  let noticeHeaderHtml = '';
+  if (orderData.noticeHeader) {
+    const _nh = orderData.noticeHeader;
+    const _nhTitle = escapeHtmlForPrint(typeof _nh === 'string' ? _nh : (_nh.title || ''));
+    const _nhLines = (_nh && typeof _nh === 'object' && Array.isArray(_nh.lines)) ? _nh.lines : [];
+    const _sub = _nhLines.map(l => `<div style="font-size:13px;font-weight:600;">${escapeHtmlForPrint(String(l))}</div>`).join('');
+    noticeHeaderHtml = `<div class="banner banner-strong" style="background:#000;color:#fff;border-color:#000;">${_nhTitle}</div>${_sub}`;
+  }
+
   // Order-type banner
   let bannerHtml = '';
   if (orderData.orderType === 'pickup') {
@@ -1590,6 +1601,7 @@ export function generateHTMLKitchenTicket(orderData, storeInfo) {
   ` : '';
 
   return wrapPrintHTML(`Kitchen Ticket - ${orderData.orderNumber || ''}`, `
+    ${noticeHeaderHtml}
     ${groupLabelHtml}
     ${metaHtml}
     <div class="divider"></div>
@@ -1848,6 +1860,22 @@ export function generateKitchenTicketContent(orderData, storeInfo) {
 
   // Initialize printer
   content += CMD.INIT;
+
+  // === NOTICE HEADER (table-move reissue 등) — orderData.noticeHeader 설정 시에만.
+  // 일반 발행은 미설정이라 출력 100% 동일(영향 0). 방식 무변경, 콘텐츠 신규 필드만.
+  // docs/TABLE_MOVE_AND_VOID_TICKET.md § 설계 2-A 단일 진실. ===
+  if (orderData.noticeHeader) {
+    const _nh = orderData.noticeHeader;
+    const _nhTitle = typeof _nh === 'string' ? _nh : (_nh.title || '');
+    const _nhLines = (_nh && typeof _nh === 'object' && Array.isArray(_nh.lines)) ? _nh.lines : [];
+    content += CMD.ALIGN_CENTER;
+    content += CMD.REVERSE_ON + CMD.TEXT_DOUBLE + CMD.BOLD_ON;
+    content += ' ' + _nhTitle + ' ' + CMD.LINE_FEED;
+    content += CMD.REVERSE_OFF + CMD.TEXT_NORMAL + CMD.BOLD_OFF;
+    _nhLines.forEach(l => { content += String(l) + CMD.LINE_FEED; });
+    content += CMD.LINE_FEED;
+    content += CMD.ALIGN_LEFT;
+  }
 
   // === GROUP LABEL (for partial order printing) ===
   if (orderData.groupLabel) {
@@ -3535,7 +3563,9 @@ function generateCancellationTicketContent(orderData, storeInfo, reason) {
   content += CMD.INIT;
   content += CMD.ALIGN_CENTER;
   content += CMD.REVERSE_ON + CMD.TEXT_DOUBLE + CMD.BOLD_ON;
-  content += ' *** CANCELLED *** ';
+  // cancelTitle override: R9='*** ITEM CANCELLED ***' / R10='*** ORDER CANCELLED ***'.
+  // 미설정 시 기존 '*** CANCELLED ***' 유지(하위호환).
+  content += ' ' + (orderData.cancelTitle || '*** CANCELLED ***') + ' ';
   content += CMD.LINE_FEED + CMD.LINE_FEED;
   content += CMD.REVERSE_OFF + CMD.TEXT_NORMAL + CMD.BOLD_OFF;
 
@@ -3553,17 +3583,20 @@ function generateCancellationTicketContent(orderData, storeInfo, reason) {
   if (reason) content += 'Reason: ' + reason + CMD.LINE_FEED;
   content += CMD.DASHED_LINE + CMD.LINE_FEED;
 
-  // Items to stop preparing
+  // Items to stop preparing — 줄긋기 emulation: thermal 은 native line-through 없음 →
+  // reverse-video(흰글자 검정바탕) 로 "취소된 줄" 을 강하게 표시. (HTML 은 text line-through)
   const items = orderData.items || [];
   items.forEach(it => {
     const qty = (it.quantity != null ? it.quantity : 1);
     const name = it.name || (it.menuItem && it.menuItem.name) || '';
-    content += qty + 'x  ' + name + CMD.LINE_FEED;
+    content += CMD.REVERSE_ON + ' ' + qty + 'x  ' + name + ' ' + CMD.REVERSE_OFF + CMD.LINE_FEED;
+    if (it.cancelReason) content += '   (' + it.cancelReason + ')' + CMD.LINE_FEED;
   });
   content += CMD.DASHED_LINE + CMD.LINE_FEED;
 
   content += CMD.ALIGN_CENTER + CMD.BOLD_ON + CMD.TEXT_DOUBLE_HEIGHT;
-  content += '>> STOP PREPARATION <<' + CMD.LINE_FEED;
+  // cancelFooter override: R9='>> DO NOT PREPARE <<' / R10='>> DO NOT PREPARE - ALL CANCELLED <<'.
+  content += (orderData.cancelFooter || '>> STOP PREPARATION <<') + CMD.LINE_FEED;
   content += CMD.TEXT_NORMAL + CMD.BOLD_OFF;
   content += CMD.LINE_FEED;
 
@@ -3593,7 +3626,11 @@ function generateHTMLCancellationTicket(orderData, storeInfo, reason) {
     const stationTagHtml = it.stationName
       ? ` <span class="station-tag">${escapeHtmlForPrint(it.stationName.toUpperCase())}</span>`
       : '';
-    return `<div class="item"><div class="item-name" style="font-size:16px;font-weight:700;">${qty} × ${name}${stationTagHtml}</div></div>`;
+    // 줄긋기: qty×name 만 line-through (station tag 는 제외해 가독). 사유는 줄 아래.
+    const reasonHtml = it.cancelReason
+      ? `<div class="item-option" style="font-size:12px;font-weight:600;">(${escapeHtmlForPrint(String(it.cancelReason))})</div>`
+      : '';
+    return `<div class="item"><div class="item-name" style="font-size:16px;font-weight:700;"><span style="text-decoration:line-through;">${qty} × ${name}</span>${stationTagHtml}</div>${reasonHtml}</div>`;
   }).join('');
 
   const orderType = String(orderData.orderType || orderData.order_type || '').replace(/_/g, '-');
@@ -3606,13 +3643,13 @@ function generateHTMLCancellationTicket(orderData, storeInfo, reason) {
   if (reason) metaRows.push(`<div class="meta-row"><span class="meta-label">Reason</span><span>${escapeHtmlForPrint(String(reason))}</span></div>`);
 
   return wrapPrintHTML(`Cancelled - ${orderNumber}`, `
-    <div class="banner banner-strong" style="background:#000;color:#fff;border-color:#000;">*** CANCELLED ***</div>
+    <div class="banner banner-strong" style="background:#000;color:#fff;border-color:#000;">${escapeHtmlForPrint(orderData.cancelTitle || '*** CANCELLED ***')}</div>
     <div class="medium-number">Order #${escapeHtmlForPrint(orderNumber)}</div>
     ${metaRows.length ? `<div class="meta">${metaRows.join('')}</div>` : ''}
     <div class="divider"></div>
     <div class="items">${itemsHtml}</div>
     <div class="divider-solid"></div>
-    <div class="banner banner-strong">&gt;&gt; STOP PREPARATION &lt;&lt;</div>
+    <div class="banner banner-strong">${escapeHtmlForPrint(orderData.cancelFooter || '>> STOP PREPARATION <<')}</div>
     <div class="footer time-info">${new Date().toLocaleString()}</div>
   `);
 }
