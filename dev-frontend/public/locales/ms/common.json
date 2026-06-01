@@ -707,5 +707,6 @@
   "searchTablePlaceholder": "Cari nombor meja",
   "enterTablePlaceholder": "Masukkan nombor meja anda",
   "noTableMatch": "Tiada meja sepadan. Semak nombor pada meja anda.",
-  "selectTableToContinue": "Sila pilih meja anda untuk meneruskan."
+  "selectTableToContinue": "Sila pilih meja anda untuk meneruskan.",
+  "storeNotLoaded": "Kedai masih dimuatkan. Sila tunggu sebentar dan cuba lagi."
 }

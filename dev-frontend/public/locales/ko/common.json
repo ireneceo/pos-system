@@ -707,5 +707,6 @@
   "searchTablePlaceholder": "테이블 번호 검색",
   "enterTablePlaceholder": "테이블 번호를 입력하세요",
   "noTableMatch": "일치하는 테이블이 없습니다. 테이블의 번호를 확인하세요.",
-  "selectTableToContinue": "계속하려면 테이블을 선택해 주세요."
+  "selectTableToContinue": "계속하려면 테이블을 선택해 주세요.",
+  "storeNotLoaded": "매장 정보를 불러오는 중입니다. 잠시 후 다시 시도해 주세요."
 }

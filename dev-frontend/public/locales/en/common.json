@@ -707,5 +707,6 @@
   "searchTablePlaceholder": "Search table number",
   "enterTablePlaceholder": "Enter your table number",
   "noTableMatch": "No matching table. Check the number on your table.",
-  "selectTableToContinue": "Please select your table to continue."
+  "selectTableToContinue": "Please select your table to continue.",
+  "storeNotLoaded": "Store is still loading. Please wait a moment and try again."
 }
