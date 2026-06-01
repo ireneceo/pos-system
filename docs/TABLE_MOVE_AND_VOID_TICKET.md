@@ -113,3 +113,71 @@ Body: `{ destinationTableNumber, destinationFloorPlanTableId, onOccupied?: 'merg
 ### ⚠️ 배포 전 (Irene 만)
 1. `--bless` (orders-crud.js 지문 — move-table/item-voided 는 인쇄방식 무관, 새 엔드포인트+payload 필드).
 2. 배포 후 The Fire 실프린터: (a) station 다른 테이블로 이동 시 옛 주방 취소표 + 새 주방 재발행 1장씩, (b) 자동발행된 아이템 취소 시 해당 station 취소표 1장. 눈 확인.
+
+---
+
+## 설계 2 — 이동/취소 티켓 내용 차별화 (2026-06-01, 설계확정 대기)
+
+> 문제: 이동 재발행 / 취소 티켓이 **일반 오더티켓과 똑같이** 나와서 주방이 또 만든다.
+> 안내 문구 + 시각 표시(줄긋기)로 명확히 구분해야 함. 🔒 billPrint.js 변경 — Irene 승인 + 실프린터 확인 필수.
+
+### 코드 위치 (audit)
+- 일반 주방티켓: `generateKitchenTicketContent`(ESC/POS, line 1846) / `generateHTMLKitchenTicket`(HTML, line 1482). 아이템에 `stationName` 외 status/strike 플래그 없음. 상단에 `orderData.groupLabel`(박스 배너)·`orderData.notes`(SPECIAL NOTES) 훅 있음.
+- 취소티켓: `generateCancellationTicketContent`(3533)/`generateHTMLCancellationTicket`(3588). 이미 `*** CANCELLED ***` 헤더 + `>> STOP PREPARATION <<` 푸터. 단 **아이템 줄긋기 없음(plain list)**, **station 라우팅 안 함**(단일 프린터).
+- station 버킷팅: `printKitchenTicketsByStation`(3244) — kitchen_station_id 로 분배. 취소경로는 이걸 안 탐(신규 배선 필요).
+- 줄긋기: HTML=`text-decoration:line-through` 가능(현재 없음). ESC/POS=네이티브 없음 → `-- CANCELLED --` 접두 또는 reverse-video(헤더가 이미 REVERSE 사용).
+- 모든 티켓 문구 하드코딩 영어(t() 못 씀).
+
+### A. 테이블 이동 재발행 티켓 (자동발행 ON 매장)
+신규 필드 `orderData.noticeHeader` 추가 → 티켓 최상단 박스. 일반 발행은 미설정이라 영향 0.
+```
+┌────────────────────────────┐
+│   ** TABLE CHANGED **       │   ← noticeHeader (이동 단순)
+│ Discard previous ticket.    │
+│ Use THIS one.               │
+└────────────────────────────┘
+Order  260601-003
+Time   02:06 pm
+Source POS
+─────────────
+ORDER ITEMS
+1 × Bibimbap
+TABLE  U-5                     ← 새 테이블
+```
+합체 이동이면 헤더 문구만 교체:
+```
+│  ** TABLE CHANGED + MERGED ** │
+│ Discard the previous 2 tickets│
+│ for these tables. Use THIS.   │
+```
+→ FloorPlanPage 의 재발행 호출에서 `noticeHeader` 전달(merge 여부로 문구 분기). 인쇄 방식(USB/QZ/RawBT)·게이트는 기존 그대로.
+
+### B. 아이템 취소 티켓 (해당 station)
+취소된 그 아이템만, **줄긋기**로:
+```
+   *** ITEM CANCELLED ***
+Order  260601-003   TABLE U-1
+─────────────
+~~1 × Kimchi Stew~~            ← strikethrough
+Reason: Sold out
+>> DO NOT PREPARE <<
+```
+→ `generateCancellationTicket*` 의 item 빌더에 strike 적용(HTML line-through / ESC/POS `-- X -- ~~name~~` 또는 reverse). 이미 station 라우팅됨(LiveOrders 가 stPrinter 지정).
+
+### C. 주문 전체 취소 티켓 (station별)
+전 아이템 줄긋기 + **station별로 그 station 아이템만**:
+```
+   *** ORDER CANCELLED ***
+Order  260601-003   TABLE U-1
+─────────────
+~~1 × Bibimbap~~              ← 이 station 아이템만, 전부 줄긋기
+~~2 × Soju~~
+>> DO NOT PREPARE — ALL CANCELLED <<
+```
+→ 전체취소 경로(LiveOrders confirmCancelOrder)가 `printCancellationTicket` 대신 **station 버킷팅 경유**로 각 station 에 그 station 아이템만 줄긋기 발행. (신규 배선 — `printKitchenTicketsByStation` 의 버킷팅 재사용)
+
+### 구현 범위 / 가드
+- billPrint.js: `noticeHeader` 렌더(양 포맷) + 취소 item strike(양 포맷) + 전체취소 station 라우팅. **인쇄 방식/주소/분배 로직은 무변경**, 콘텐츠·신규 필드만.
+- 호출부: FloorPlanPage(이동 noticeHeader), LiveOrders(아이템취소 strike·전체취소 station경유).
+- 🔒 변경 후 check-print-guard --bless(Irene 승인) + 실프린터: 이동(버리라 안내) / 아이템취소(줄긋기) / 전체취소(station별 줄긋기) 눈 확인.
+- 한 번에 하나씩 실프린터 확인(A→B→C), 동시 인쇄변경 금지.

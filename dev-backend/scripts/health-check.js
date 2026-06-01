@@ -925,6 +925,7 @@ async function runTests(allTests, category) {
   definePaymentTests();
   defineReferralTests(ctx);
   definePrintTests(ctx);
+  defineMatrixTests(ctx);
   defineDbTests();
 
   const allPass = await runTests(tests, opts.category);
