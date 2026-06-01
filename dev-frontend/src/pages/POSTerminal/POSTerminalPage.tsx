@@ -3987,4 +3987,4 @@ const POSTerminalPage: React.FC = () => {
   );
 };
 
-export default POSTerminalPage;
+export default POSTerminalPage;x

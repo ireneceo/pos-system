@@ -389,7 +389,19 @@
       "Bash(sed -n '1105,1128p' routes/orders-crud.js)",
       "Bash(pm2 info *)",
       "Bash(lsof -i:3001 -sTCP:LISTEN)",
-      "Bash(kill 3013283)"
+      "Bash(kill 3013283)",
+      "Bash(xargs -I{} ps -p {} -o user,comm,args)",
+      "Bash(getfacl /var/www/dev-backend)",
+      "Bash(getfacl /var/www/dev-backend/routes/restaurants-crud.js)",
+      "Bash(setfacl -x user:lua /var/www/dev-backend/routes/restaurants-crud.js)",
+      "Bash(getfacl -R /var/www/dev-backend)",
+      "Bash(echo \"남은 lua ACL: $\\(getfacl -R /var/www/dev-backend)",
+      "Bash(echo \"1. lua ACL: $\\(getfacl -R /var/www/dev-backend)",
+      "Bash(awk '{print \"   \"$1, $2}')",
+      "Bash(getfacl -R /var/www/dev-frontend/src)",
+      "Bash(getfacl /var/www/dev-frontend/src)",
+      "Bash(getfacl /var/www/dev-frontend/src/pages/POSTerminal)",
+      "Bash(getfacl /var/www/dev-frontend/src/pages/LiveOrders)"
     ],
     "deny": [],
     "ask": []

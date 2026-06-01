@@ -1907,7 +1907,8 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
 });
 
 // Delete restaurant (with cascade cleanup)
-router.delete('/:id', authenticateToken, requireRole('System Admin'), async (req, res) => {
+// 권한: System Admin(전체), Brand General(자기 브랜드 소속만), Foodcourt General(자기 푸드코트 소속만)
+router.delete('/:id', authenticateToken, async (req, res) => {
   const { sequelize } = require('../config/database');
   const RestaurantManager = require('../models/RestaurantManager');
   const RestaurantCustomer = require('../models/RestaurantCustomer');
@@ -1937,6 +1938,31 @@ router.delete('/:id', authenticateToken, requireRole('System Admin'), async (req
     if (!restaurant) {
       await t.rollback();
       return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
+    }
+
+    // 권한 체크: System Admin은 전체, Brand General/Foodcourt General은 자기 소속만
+    const user = req.user;
+    if (user.role !== 'System Admin') {
+      if (user.role === 'Brand General' || user.role === 'Brand Manager') {
+        const Brand = require('../models/Brand');
+        const ownedBrands = await Brand.findAll({ where: { owner_id: user.id }, attributes: ['id'], transaction: t });
+        const ownedBrandIds = ownedBrands.map(b => b.id);
+        if (!restaurant.brand_id || !ownedBrandIds.includes(restaurant.brand_id)) {
+          await t.rollback();
+          return res.status(403).json({ success: false, error: { message: 'You can only delete restaurants belonging to your brand', code: 'FORBIDDEN' } });
+        }
+      } else if (user.role === 'Foodcourt General') {
+        const Foodcourt = require('../models/Foodcourt');
+        const ownedFoodcourts = await Foodcourt.findAll({ where: { owner_id: user.id }, attributes: ['id'], transaction: t });
+        const ownedFoodcourtIds = ownedFoodcourts.map(f => f.id);
+        if (!restaurant.foodcourt_id || !ownedFoodcourtIds.includes(restaurant.foodcourt_id)) {
+          await t.rollback();
+          return res.status(403).json({ success: false, error: { message: 'You can only delete restaurants belonging to your foodcourt', code: 'FORBIDDEN' } });
+        }
+      } else {
+        await t.rollback();
+        return res.status(403).json({ success: false, error: { message: 'Permission denied', code: 'FORBIDDEN' } });
+      }
     }
 
     const rid = restaurant.id;

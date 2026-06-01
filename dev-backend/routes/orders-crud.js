@@ -1016,7 +1016,6 @@ router.patch('/:id', authenticateToken, async (req, res) => {
 //   station) + reprint (new station). Keeps all printing on the client per the
 //   🔒 print-protection rules — no print method/routing touched here.
 router.post('/:id/move-table', authenticateToken, async (req, res) => {
-  console.log('[MOVE-DBG] ENTER move-table id=' + req.params.id + ' onOccupied=' + (req.body && req.body.onOccupied));
   try {
     const { destinationTableNumber, destinationFloorPlanTableId, onOccupied = 'block' } = req.body || {};
     if (!destinationTableNumber || String(destinationTableNumber).trim() === '') {
@@ -1111,7 +1110,6 @@ router.post('/:id/move-table', authenticateToken, async (req, res) => {
           // the paid order first). Plain MOVE is unaffected (same row, money stays).
           const srcPaid = parseFloat(order.amount_paid || 0) > 0
             || ['partial', 'completed'].includes(String(order.payment_status));
-          console.log('[MOVE-DBG] merge branch: srcId=' + order.id + ' amount_paid=' + order.amount_paid + ' payment_status=' + order.payment_status + ' srcPaid=' + srcPaid);
           if (srcPaid) {
             const e = new Error('Cannot merge an order that already has a payment. Settle it first.');
             e.code = 'SOURCE_HAS_PAYMENT';

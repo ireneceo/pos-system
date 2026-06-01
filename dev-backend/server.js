@@ -32,6 +32,34 @@ if (process.getuid && process.getuid() === 0) {
   process.exit(1);
 }
 
+// ============================================
+// 실행 사용자 제한 - 허용된 OS 사용자만 실행 가능 (2026-06-01)
+// 사고: lua 사용자(POS read-only 범위)가 자기 PM2 로 dev-backend 를 띄워 3001
+// 포트를 선점 → irene 의 코드 변경이 반영 안 되고, lua 의 옛 코드가 운영처럼
+// 동작. lua 는 랜딩/콘텐츠 전용이므로 dev-backend 를 실행할 이유가 없음.
+// PM2 가드(pm_id)는 lua 가 자기 PM2 를 쓰면 통과하므로, 사용자명으로 직접 차단.
+// 운영/CI 등 다른 환경은 ALLOW_BACKEND_USER 환경변수로 명시 허용.
+// ============================================
+try {
+  const os = require('os');
+  const runUser = (os.userInfo().username || '').toLowerCase();
+  // 허용: irene(개발) + 운영 배포 사용자. 필요 시 ALLOW_BACKEND_USER 로 확장.
+  const allowedUsers = ['irene', 'root-disabled-above'];
+  const extra = (process.env.ALLOW_BACKEND_USER || '').toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
+  const allowList = allowedUsers.concat(extra);
+  if (runUser && !allowList.includes(runUser)) {
+    console.error(`✗ ERROR: User "${runUser}" is not allowed to run dev-backend.`);
+    console.error('✗ This backend must run as the development user (irene), not POS-read-only users (e.g. lua).');
+    console.error('✗ Running as another user causes port 3001 conflicts and serves stale code.');
+    console.error('📌 If this is an intended host/user, set ALLOW_BACKEND_USER=<username> in the environment.');
+    console.error('🚫 Exiting immediately...');
+    process.exit(1);
+  }
+} catch (e) {
+  // os.userInfo 실패(드문 컨테이너 환경)면 가드 통과 — 다른 가드(root/pm2)가 1차 방어.
+  console.warn('[startup] user-guard skipped:', e && e.message);
+}
+
 // 환경 설정 자동 로드 (가장 먼저 실행)
 const loadEnvironmentConfig = require('./config/env-loader');
 loadEnvironmentConfig();
