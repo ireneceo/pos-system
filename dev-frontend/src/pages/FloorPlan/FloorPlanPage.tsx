@@ -1138,11 +1138,55 @@ const FloorPlanPage: React.FC = () => {
         return;
       }
 
-      // 테이블 이동은 인쇄하지 않는다 (Irene 2026-06-01). 주방에 티켓을 다시
-      // 쏘면 같은 주문을 또 만드는 사고가 난다. 이동은 데이터만 옮기고, 주방은
-      // KDS 가 백엔드의 order-updated 소켓을 받아 그 주문의 테이블 라벨을 자동
-      // 갱신 + "테이블 이동됨" 안내 배지로 알린다 (KitchenDisplayPage 에서 처리).
-      // 종이 재발행/취소표 인쇄 없음.
+      // 🔒 이동 후 주방 재발행 — "설정에 맞춘다"(Irene). 매장이 주방 자동발행 ON
+      // 이면 새 테이블 번호로 오더티켓을 매장 설정 방식(USB/브라우저/QZ/RawBT) 그대로
+      // 자동 재발행해서 주방이 바뀐 테이블을 알게 한다. 자동발행 OFF 면 인쇄 없이
+      // KDS 팝업 안내만(KitchenDisplayPage 의 table-moved 핸들러). 정상 자동인쇄
+      // 경로(useAutoPrintPoller)와 100% 동일한 printData 구조 — 특히 date:new Date
+      // (빠지면 toLocaleTimeString 크래시) + 동일 게이트. printKitchenTicketViaRawBT
+      // 가 방식을 내부 분기하므로 함수명과 무관하게 설정대로 나간다. 합치기(merge)는
+      // 목적지 주문에 이미 붙은 거라 재발행 안 함.
+      try {
+        const printed = Array.isArray(result.printedItems) ? result.printedItems : [];
+        if (printed.length > 0 && result.moved) {
+          const billPrintMod = await import('../../utils/billPrint');
+          const printSettings = billPrintMod.getPrinterSettings();
+          const _kp: any = (printSettings && printSettings.kitchenPrinter) || {};
+          const kitchenAutoOn = _kp.enabled !== false && !!_kp.autoPrint;
+          if (kitchenAutoOn) {
+            const printStoreInfo = (typeof getStoreInfo === 'function') ? getStoreInfo() : {};
+            const ord = result.data || {};
+            const mapItem = (it: any) => ({
+              menuItem: { name: it.name || (it.menuItem && it.menuItem.name) || 'Item', price: parseFloat(it.price || '0') },
+              quantity: it.quantity || 1,
+              options: Array.isArray(it.options) ? it.options : [],
+              kitchen_station_id: it.kitchen_station_id || null,
+              stationName: it.stationName || null,
+              ...(it.is_set_menu ? { is_set_menu: true } : {}),
+              ...(Array.isArray(it.set_components) ? { set_components: it.set_components } : {}),
+              special_instructions: it.special_instructions || ''
+            });
+            const reprintData: any = {
+              orderNumber: ord.order_number,
+              pickupNumber: ord.order_number ? String(ord.order_number).split('-')[1] : '',
+              tableNumber: destTable || ord.table_number || undefined,
+              pagerNumber: ord.pager_number || undefined,
+              date: new Date(ord.order_date || ord.createdAt || Date.now()),
+              orderType: ord.order_type === 'dine_in' ? 'dine-in' : (ord.order_type || 'dine-in'),
+              orderSource: ord.source || 'pos',
+              items: printed.map(mapItem),
+              subtotal: parseFloat(ord.subtotal || '0'),
+              tax: parseFloat(ord.tax || '0'),
+              total: parseFloat(ord.total_amount || '0'),
+              paymentMethod: ord.payment_method || 'counter',
+              cashierName: 'POS'
+            };
+            // 매장 설정 방식대로 자동 재발행. 실패해도 이동은 성공(non-fatal).
+            billPrintMod.printKitchenTicketViaRawBT(reprintData, printStoreInfo)
+              .catch((e: any) => console.warn('[move-table] reprint failed (non-fatal):', e?.message));
+          }
+        }
+      } catch (e: any) { console.warn('[move-table] reprint step skipped:', e?.message); }
 
       // Refresh both tables, jump selection to the destination, close picker.
       setSelectedTableId(destFpti || null);
