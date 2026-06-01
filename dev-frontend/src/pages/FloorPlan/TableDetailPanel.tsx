@@ -42,6 +42,9 @@ interface TableDetailPanelProps {
   onOrderUpdated: () => void;
   onClearTable: (orderId: number) => Promise<void>;
   onClearAllCompleted?: () => Promise<void>;
+  // Table move/transfer — opens the destination picker (managed by FloorPlanPage,
+  // which knows the full table list + occupancy). Passes the order being moved.
+  onMoveTable?: (orderId: number, sourceTableNumber: string | null) => void;
   // Multi-order support
   orders?: TableStatusInfo[];
   selectedOrderIndex?: number;
@@ -586,6 +589,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
   onOrderUpdated,
   onClearTable,
   onClearAllCompleted,
+  onMoveTable,
   orders = [],
   selectedOrderIndex = 0,
   onOrderIndexChange,
@@ -1797,6 +1801,17 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                   </IconButton>
                 )}
               </IconButtonGroup>
+              {/* Move Table — dine-in 전용: 진행 중 주문을 다른 테이블로 이동.
+                  목적지 선택/점유처리는 FloorPlanPage 의 picker 가 담당. */}
+              {tableNumber && onMoveTable && orderStatus !== 'cancelled' && orderStatus !== 'completed' && statusInfo!.orderId && (
+                <ActionBtn
+                  $variant="secondary"
+                  onClick={() => onMoveTable(statusInfo!.orderId!, tableNumber)}
+                  disabled={loading}
+                >
+                  {t('floorplan:tableDetailPanel.moveTable', { defaultValue: 'Move Table' })}
+                </ActionBtn>
+              )}
               {/* Cancel Order — LiveOrders와 동일: status not cancelled/completed */}
               {orderStatus !== 'cancelled' && orderStatus !== 'completed' && (
                 <ActionBtn $variant="danger" onClick={handleCancelOrder} disabled={loading}>

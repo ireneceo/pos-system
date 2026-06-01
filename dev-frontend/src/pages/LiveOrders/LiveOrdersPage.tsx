@@ -1096,17 +1096,49 @@ const LiveOrdersPage: React.FC = () => {
     setShowDeleteItemConfirm(true);
   };
 
-  const confirmDeleteItem = async () => {
+  // reason: a quick-pick reason string (품절/고객변심/주문실수/기타) printed on the
+  // kitchen VOID ticket. The backend persists it in the audit log + item-voided event.
+  const confirmDeleteItem = async (reason?: string) => {
     if (!selectedOrder || !itemToDelete) return;
+    // Snapshot the order's status BEFORE delete to decide if the kitchen already
+    // got this item (same wasInKitchen gate as whole-order cancel).
+    const wasInKitchen = !['awaiting_payment', 'pending'].includes(String((selectedOrder as any).status || ''));
     try {
       const response = await fetch(`/api/orders/${selectedOrder.id}/items/${itemToDelete.index}`, {
-        ...getFetchOptions({ method: 'DELETE' })
+        ...getFetchOptions({ method: 'DELETE', body: JSON.stringify({ reason: reason || null }) })
       });
       const result = await response.json();
       if (result.success) {
         showToast(`Item removed: ${itemToDelete.name}`, 'success');
         setSelectedOrder(result.data);
         fetchOrders();
+
+        // 🔒 VOID kitchen ticket — only for an item that ALREADY reached the
+        // kitchen (was_printed) AND the order had progressed past pending. Routes
+        // to that item's station printer so only the right station gets the void.
+        // Setting toggle / disabled printer are honored inside printCancellationTicket.
+        try {
+          const removed = result.removedItem || {};
+          const settingOn = (() => {
+            try { const s = require('../../utils/billPrint').getPrinterSettings?.(); return !s || !s.kitchenPrinter || s.kitchenPrinter.printCancellationTicket !== false; } catch { return true; }
+          })();
+          if (wasInKitchen && (removed.was_printed || removed.printed_at) && settingOn) {
+            const settings = (() => { try { return require('../../utils/billPrint').getPrinterSettings(); } catch { return {}; } })();
+            const sid = removed.kitchen_station_id;
+            const stPrinter = (sid != null && settings?.kitchenStationPrinters?.[String(sid)]?.name) || undefined;
+            const sInfo = (typeof getStoreInfo === 'function') ? getStoreInfo() : {};
+            const printData: any = {
+              orderNumber: (selectedOrder as any).order_number || (selectedOrder as any).orderNumber,
+              order_number: (selectedOrder as any).order_number,
+              tableNumber: (selectedOrder as any).table_number || (selectedOrder as any).tableNumber,
+              orderType: (selectedOrder as any).order_type || (selectedOrder as any).orderType,
+              items: [{ name: removed.name || itemToDelete.name, quantity: removed.quantity || 1, kitchen_station_id: sid, stationName: removed.stationName }]
+            };
+            const reasonLabel = reason ? `Item voided — ${reason}` : 'Item voided';
+            printCancellationTicket(printData, sInfo, reasonLabel, stPrinter).catch(e =>
+              console.warn('Item void print failed:', e && e.message));
+          }
+        } catch (e: any) { console.warn('void-ticket step skipped:', e?.message); }
       } else {
         showToast(result.error || 'Failed to remove item', 'error');
       }
@@ -1897,14 +1929,48 @@ const LiveOrdersPage: React.FC = () => {
         </CommonModal>
         )}
 
-        {/* Delete Item Confirmation Modal */}
-        <ConfirmModal
-          isOpen={showDeleteItemConfirm} title="Remove Item"
-          message={`Are you sure you want to remove "${itemToDelete?.name || ''}" from this order?`}
-          onConfirm={confirmDeleteItem}
-          onCancel={() => { setShowDeleteItemConfirm(false); setItemToDelete(null); }}
-          confirmText="Remove" cancelText="Cancel" type="danger"
-        />
+        {/* Remove Item — reason quick-pick. The reason prints on the kitchen VOID
+            ticket (if the item already reached the kitchen) and is saved to audit. */}
+        {showDeleteItemConfirm && (
+          <CommonModal
+            isOpen={showDeleteItemConfirm}
+            onClose={() => { setShowDeleteItemConfirm(false); setItemToDelete(null); }}
+            title={t('liveorders:voidItem.title', { defaultValue: 'Remove Item' })}
+            size="small"
+          >
+            <div style={{ padding: '2px' }}>
+              <p style={{ margin: '0 0 14px', fontSize: 14, color: '#0A2540', lineHeight: 1.5 }}>
+                {t('liveorders:voidItem.confirm', { defaultValue: 'Remove "{{name}}"? Choose a reason — it prints on the kitchen void ticket.', name: itemToDelete?.name || '' })}
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
+                {[
+                  { key: 'soldOut', label: t('liveorders:voidItem.reasonSoldOut', { defaultValue: 'Sold out' }) },
+                  { key: 'customerChange', label: t('liveorders:voidItem.reasonCustomer', { defaultValue: 'Customer changed mind' }) },
+                  { key: 'orderMistake', label: t('liveorders:voidItem.reasonMistake', { defaultValue: 'Order mistake' }) },
+                  { key: 'other', label: t('liveorders:voidItem.reasonOther', { defaultValue: 'Other' }) }
+                ].map(r => (
+                  <button
+                    key={r.key}
+                    type="button"
+                    onClick={() => confirmDeleteItem(r.label)}
+                    style={{ padding: '14px 8px', borderRadius: 8, border: '1px solid #E6EBF1', background: '#fff', color: '#0A2540', fontWeight: 600, fontSize: 14, cursor: 'pointer', minHeight: 52 }}
+                  >
+                    {r.label}
+                  </button>
+                ))}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={() => { setShowDeleteItemConfirm(false); setItemToDelete(null); }}
+                  style={{ padding: '10px 18px', borderRadius: 8, border: '1px solid #E6EBF1', background: '#fff', color: '#6B7C93', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  {t('common:cancel', { defaultValue: 'Cancel' })}
+                </button>
+              </div>
+            </div>
+          </CommonModal>
+        )}
 
         {/* Payment Verification Modal */}
         <PaymentVerificationModal

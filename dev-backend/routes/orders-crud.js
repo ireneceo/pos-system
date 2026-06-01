@@ -991,6 +991,191 @@ router.patch('/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// ════════════════════════════════════════════════════════════════════════
+// Table Move / Transfer — POST /orders/:id/move-table  (2026-06-01)
+// ════════════════════════════════════════════════════════════════════════
+// Moves an open dine-in order to another table, carrying ALL data (items,
+// totals, customer, order_group, payments) — they live on the same row, so
+// nothing is split. Updates BOTH table_number AND floor_plan_table_id
+// atomically (the generic PATCH only set table_number → order stayed pinned to
+// the old Floor Plan table; that's why staff had to edit the DB by hand).
+//
+// Concurrency: row-locked in a transaction so two staff moving the same/colliding
+// tables can't race. Destination-occupied is resolved inside the same lock.
+//
+// Body: { destinationTableNumber, destinationFloorPlanTableId?, onOccupied?: 'block'|'merge' }
+//   - onOccupied 'block' (default): if the destination already has an open order,
+//     respond 409 with that order's summary so the UI can ask merge-or-cancel.
+//   - onOccupied 'merge': merge this order's items into the destination's order.
+//
+// Auth: any authenticated staff of THIS restaurant (Irene: staff included). IDOR
+//   guarded by ownership check (same pattern as GET /:id, /:id/payments).
+//
+// Print: this endpoint does NOT print. It returns `stationChanged` + the item
+//   station map so the FRONTEND decides whether to fire a VOID ticket (old
+//   station) + reprint (new station). Keeps all printing on the client per the
+//   🔒 print-protection rules — no print method/routing touched here.
+router.post('/:id/move-table', authenticateToken, async (req, res) => {
+  try {
+    const { destinationTableNumber, destinationFloorPlanTableId, onOccupied = 'block' } = req.body || {};
+    if (!destinationTableNumber || String(destinationTableNumber).trim() === '') {
+      return res.status(400).json({ success: false, message: 'destinationTableNumber is required', code: 'DEST_REQUIRED' });
+    }
+
+    const outcome = await executeTransaction(async (t) => {
+      const order = await Order.findByPk(req.params.id, { lock: t.LOCK.UPDATE, transaction: t });
+      if (!order) { const e = new Error('Order not found'); e.code = 'NOT_FOUND'; throw e; }
+
+      // Ownership (IDOR): non-System-Admin can only touch their own restaurant.
+      if (req.user?.restaurant_id && Number(req.user.restaurant_id) !== Number(order.restaurant_id)
+          && req.user.role !== 'System Admin') {
+        const e = new Error('Forbidden'); e.code = 'FORBIDDEN'; throw e;
+      }
+      // Can't move a finished order.
+      if (['completed', 'cancelled'].includes(String(order.status)) || order.payment_status === 'completed') {
+        const e = new Error('Cannot move a completed/cancelled order'); e.code = 'ORDER_CLOSED'; throw e;
+      }
+
+      const sourceTableNumber = order.table_number;
+      const sourceFloorPlanTableId = order.floor_plan_table_id;
+
+      // No-op move (same table) — nothing to do, return early so we don't reprint.
+      const sameTable = String(sourceTableNumber || '') === String(destinationTableNumber)
+        && String(sourceFloorPlanTableId || '') === String(destinationFloorPlanTableId || sourceFloorPlanTableId || '');
+      if (sameTable) {
+        const e = new Error('Source and destination are the same table'); e.code = 'SAME_TABLE'; throw e;
+      }
+
+      // Resolve destination floor_plan_table_id (canvas id) from label if not given.
+      const restaurant = await Restaurant.findByPk(order.restaurant_id, { transaction: t });
+      let destFpti = destinationFloorPlanTableId || null;
+      if (!destFpti) {
+        const fp = (restaurant && restaurant.floor_plan) || {};
+        const fpTables = Array.isArray(fp.tables) ? fp.tables : [];
+        const dn = String(destinationTableNumber);
+        const matched = fpTables.find(tbl =>
+          (tbl && tbl.id != null && String(tbl.id) === dn) ||
+          (tbl && tbl.label != null && String(tbl.label) === dn) ||
+          (tbl && tbl.tableNumber != null && String(tbl.tableNumber) === dn)
+        );
+        if (matched && matched.id != null) destFpti = String(matched.id);
+      }
+
+      // Destination occupied? An open order on the destination table (excluding this one).
+      // Keyed on floor_plan_table_id when available (zone-safe), else table_number.
+      const destWhere = {
+        restaurant_id: order.restaurant_id,
+        id: { [Op.ne]: order.id },
+        payment_status: 'pending',
+        status: { [Op.notIn]: ['served', 'completed', 'cancelled'] },
+        [Op.or]: [{ is_deleted: false }, { is_deleted: null }]
+      };
+      if (destFpti) destWhere.floor_plan_table_id = destFpti;
+      else destWhere.table_number = destinationTableNumber;
+      const destOrder = await Order.findOne({ where: destWhere, lock: t.LOCK.UPDATE, transaction: t });
+
+      if (destOrder) {
+        if (onOccupied === 'merge') {
+          // Merge THIS order's items into the destination order, then cancel this one.
+          let myItems = order.order_items || [];
+          if (typeof myItems === 'string') { try { myItems = JSON.parse(myItems); } catch { myItems = []; } }
+          const mergeResult = await mergeItemsIntoOrder(destOrder, myItems, t);
+          // Soft-cancel the now-empty source order so it leaves the source table.
+          await order.update({ status: 'cancelled', is_deleted: true, table_cleared: true }, { transaction: t });
+          return {
+            kind: 'merged',
+            order: mergeResult.order,
+            mergedFromOrderId: order.id,
+            destinationOrderId: destOrder.id,
+            sourceTableNumber, destinationTableNumber,
+            addedItems: mergeResult.addedItems, orderGroup: mergeResult.orderGroup
+          };
+        }
+        // Default: block, hand the UI the destination order summary to decide.
+        const e = new Error('Destination table already has an open order');
+        e.code = 'DEST_OCCUPIED';
+        e.dest = {
+          orderId: destOrder.id, orderNumber: destOrder.order_number,
+          tableNumber: destOrder.table_number, total_amount: destOrder.total_amount,
+          itemCount: (() => { let it = destOrder.order_items; if (typeof it === 'string') { try { it = JSON.parse(it); } catch { it = []; } } return Array.isArray(it) ? it.length : 0; })()
+        };
+        throw e;
+      }
+
+      // ── Clean move: update BOTH table_number and floor_plan_table_id atomically.
+      const updateData = { table_number: destinationTableNumber, table_cleared: false };
+      if (destFpti) updateData.floor_plan_table_id = destFpti;
+      await order.update(updateData, { transaction: t });
+
+      // Detect kitchen-station change for items that were ALREADY sent to the
+      // kitchen (printed_at set). The frontend uses this to void at the old
+      // station + reprint at the new one. We don't change stations here — station
+      // is derived from product/category, not table — but the PHYSICAL printer a
+      // station maps to can differ per zone, so the client decides per its
+      // kitchenStationPrinters config. We surface the printed items + their station.
+      let items = order.order_items || [];
+      if (typeof items === 'string') { try { items = JSON.parse(items); } catch { items = []; } }
+      const printedItems = (Array.isArray(items) ? items : []).filter(it => it && (it.printed_at || it.printed));
+
+      return {
+        kind: 'moved',
+        order,
+        sourceTableNumber, destinationTableNumber,
+        sourceFloorPlanTableId, destinationFloorPlanTableId: destFpti,
+        printedItems
+      };
+    }, { maxRetries: 3 });
+
+    // Socket: refresh source + destination tables for every connected screen.
+    const io = req.app.get('io');
+    if (io && outcome.order && outcome.order.restaurant_id) {
+      const room = `restaurant_${outcome.order.restaurant_id}`;
+      const plain = outcome.order.get ? outcome.order.get({ plain: true }) : outcome.order;
+      if (typeof plain.order_items === 'string') { try { plain.order_items = JSON.parse(plain.order_items); } catch { plain.order_items = []; } }
+      io.of('/orders').to(room).emit('order-updated', plain);
+      if (outcome.kind === 'merged') {
+        io.of('/orders').to(room).emit('order-items-added', {
+          orderId: outcome.destinationOrderId, orderNumber: plain.order_number,
+          tableNumber: plain.table_number, orderGroup: outcome.orderGroup,
+          addedItems: outcome.addedItems, itemCount: (outcome.addedItems || []).length
+        });
+      }
+    }
+
+    // Audit
+    logOrderActionSafe({
+      orderId: outcome.order.id, restaurantId: outcome.order.restaurant_id,
+      actionType: 'table_moved',
+      performedByUserId: req.user?.id,
+      performedByName: req.user?.full_name || req.user?.username || 'POS Staff',
+      performedByRole: ['System Admin', 'Restaurant Admin'].includes(req.user?.role) ? 'admin' : 'staff',
+      source: 'pos',
+      metadata: {
+        from_table: outcome.sourceTableNumber, to_table: outcome.destinationTableNumber,
+        mode: outcome.kind, merged_from_order_id: outcome.mergedFromOrderId || null
+      }
+    });
+
+    return res.json({
+      success: true,
+      data: outcome.order,
+      moved: outcome.kind === 'moved',
+      merged: outcome.kind === 'merged',
+      sourceTableNumber: outcome.sourceTableNumber,
+      destinationTableNumber: outcome.destinationTableNumber,
+      // Items already sent to kitchen (for the client to void@old + reprint@new).
+      printedItems: outcome.printedItems || []
+    });
+  } catch (error) {
+    const map = { NOT_FOUND: 404, FORBIDDEN: 403, ORDER_CLOSED: 409, SAME_TABLE: 400, DEST_OCCUPIED: 409 };
+    const status = map[error.code] || 400;
+    const body = { success: false, message: error.message, code: error.code || 'MOVE_FAILED' };
+    if (error.code === 'DEST_OCCUPIED') body.destination = error.dest;
+    if (status >= 500) console.error('✗ [MOVE-TABLE] Error:', error.message);
+    return res.status(status).json(body);
+  }
+});
+
 // Apply / replace a manual discount on an EXISTING order and recompute every total
 // via the single canonical formula (computeOrderTotals — the same one the cart and
 // merge paths use). Lets staff discount at PAYMENT time, including deferred payment
@@ -1939,7 +2124,10 @@ router.delete('/:id/items/:itemIndex', authenticateToken, async (req, res) => {
       }
       io.of('/orders').to(room).emit('order-updated', plainVoidOrder);
 
-      // Send VOID notification for kitchen display
+      // Send VOID notification for kitchen display.
+      // 2026-06-01: carry kitchen_station_id + was_printed so the client can route
+      // a VOID kitchen ticket to the SAME station that printed the item (not all
+      // stations), and skip printing for items that never reached the kitchen.
       io.of('/orders').to(room).emit('item-voided', {
         orderId: order.id,
         orderNumber: order.order_number,
@@ -1947,8 +2135,13 @@ router.delete('/:id/items/:itemIndex', authenticateToken, async (req, res) => {
         voidedItem: {
           name: removedItem.name,
           quantity: removedItem.quantity,
-          price: removedItem.price
+          price: removedItem.price,
+          kitchen_station_id: removedItem.kitchen_station_id || null,
+          stationName: removedItem.stationName || null,
+          was_printed: !!(removedItem.printed_at || removedItem.printed),
+          options: Array.isArray(removedItem.options) ? removedItem.options : []
         },
+        reason: req.body.reason || null,
         voidedBy: req.user.username || req.user.email,
         voidedAt: new Date().toISOString()
       });
@@ -1957,7 +2150,13 @@ router.delete('/:id/items/:itemIndex', authenticateToken, async (req, res) => {
     res.json({
       success: true,
       data: order,
-      removedItem,
+      // Enriched so the caller (POS/LiveOrders) can print a station-routed VOID
+      // ticket for only this item without a second lookup.
+      removedItem: {
+        ...removedItem,
+        kitchen_station_id: removedItem.kitchen_station_id || null,
+        was_printed: !!(removedItem.printed_at || removedItem.printed)
+      },
       newTotal
     });
 

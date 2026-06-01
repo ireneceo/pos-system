@@ -16,6 +16,9 @@ import io from 'socket.io-client';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
+// 🔒 print: only CALLING existing functions (void ticket at old station + reprint
+// at new station after a table move with a station change). No print internals touched.
+import { printCancellationTicket, printKitchenTicketViaRawBT, getPrinterSettings } from '../../utils/billPrint';
 import { useStore } from '../../contexts/StoreContext';
 import { useAutoPrintPoller } from '../../hooks/useAutoPrintPoller';
 import { openCustomerDisplay, isAutoOpenEnabled } from '../../utils/customerDisplay';
@@ -1100,6 +1103,87 @@ const FloorPlanPage: React.FC = () => {
     }
   };
 
+  // ── Table Move ──────────────────────────────────────────────────────────
+  // moveCtx holds the order being moved + its source table while the picker is open.
+  const [moveCtx, setMoveCtx] = useState<{ orderId: number; sourceTableNumber: string | null } | null>(null);
+  const [moveSearch, setMoveSearch] = useState('');
+  const [moveBusy, setMoveBusy] = useState(false);
+  // Occupied-destination prompt: server said the dest table already has an order.
+  const [moveOccupied, setMoveOccupied] = useState<{ destTable: string; destFpti: string; dest: any } | null>(null);
+
+  const handleOpenMove = (orderId: number, sourceTableNumber: string | null) => {
+    setMoveSearch('');
+    setMoveOccupied(null);
+    setMoveCtx({ orderId, sourceTableNumber });
+  };
+
+  // Core move call. onOccupied 'block' first; if the server reports the dest is
+  // occupied we surface the merge/cancel prompt instead of guessing.
+  const doMove = async (destTable: string, destFpti: string, onOccupied: 'block' | 'merge') => {
+    if (!moveCtx) return;
+    setMoveBusy(true);
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`/api/orders/${moveCtx.orderId}/move-table`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ destinationTableNumber: destTable, destinationFloorPlanTableId: destFpti, onOccupied })
+      });
+      const result = await res.json().catch(() => ({}));
+
+      if (res.status === 409 && result?.code === 'DEST_OCCUPIED') {
+        // Ask the user: merge into the destination's open order, or cancel.
+        setMoveOccupied({ destTable, destFpti, dest: result.destination });
+        return;
+      }
+      if (!res.ok || !result?.success) {
+        console.error('[move-table] failed:', result?.message || res.status);
+        return;
+      }
+
+      // 🔒 Station-change print: if items were already sent to the kitchen, void
+      // them at the OLD station's printer and reprint at the NEW one — only when
+      // that item's station maps to a different physical printer. Mirrors the
+      // existing cancel-ticket call shape; no print internals touched.
+      try {
+        const printed = Array.isArray(result.printedItems) ? result.printedItems : [];
+        if (printed.length > 0 && !result.merged) {
+          const settings = getPrinterSettings();
+          const stationPrinters = (settings && settings.kitchenStationPrinters) || {};
+          const printerFor = (sid: any) => (sid != null && stationPrinters[String(sid)] && stationPrinters[String(sid)].name) || null;
+          // Group printed items by their station printer; if the source and dest
+          // tables route to the same printer, skip (kitchen already has it right).
+          const sInfo = (typeof getStoreInfo === 'function') ? getStoreInfo() : {};
+          const baseData = {
+            orderNumber: result.data?.order_number,
+            order_number: result.data?.order_number,
+            tableNumber: destTable,
+            orderType: result.data?.order_type || 'dine-in'
+          };
+          // VOID at old station tagged with source table; reprint tagged with dest.
+          const voidData: any = { ...baseData, tableNumber: moveCtx.sourceTableNumber || '', items: printed.map((it: any) => ({ name: it.name, quantity: it.quantity || 1, kitchen_station_id: it.kitchen_station_id, stationName: it.stationName })) };
+          const reprintData: any = { ...baseData, items: printed.map((it: any) => ({ name: it.name, quantity: it.quantity || 1, kitchen_station_id: it.kitchen_station_id, stationName: it.stationName })) };
+          // Route per item's station printer (override printerName) when configured.
+          // Fall back to default kitchen printer (printerName undefined).
+          const firstStation = printed.find((it: any) => it.kitchen_station_id != null);
+          const stPrinter = firstStation ? printerFor(firstStation.kitchen_station_id) : null;
+          printCancellationTicket(voidData, sInfo, `Moved to ${destTable}`, stPrinter || undefined).catch((e: any) => console.warn('move void print:', e?.message));
+          printKitchenTicketViaRawBT(reprintData, sInfo, stPrinter || undefined).catch((e: any) => console.warn('move reprint:', e?.message));
+        }
+      } catch (e: any) { console.warn('[move-table] print step skipped:', e?.message); }
+
+      // Refresh both tables, jump selection to the destination, close picker.
+      setSelectedTableId(destFpti || null);
+      setMoveCtx(null);
+      setMoveOccupied(null);
+      await fetchStatuses();
+    } catch (err) {
+      console.error('Failed to move table:', err);
+    } finally {
+      setMoveBusy(false);
+    }
+  };
+
   // Clear all completed orders from table
   const handleClearAllCompleted = async () => {
     if (!selectedTable) return;
@@ -1518,6 +1602,7 @@ const FloorPlanPage: React.FC = () => {
             onOrderUpdated={fetchStatuses}
             onClearTable={handleClearTable}
             onClearAllCompleted={handleClearAllCompleted}
+            onMoveTable={handleOpenMove}
             orders={selectedOrders}
             selectedOrderIndex={safeOrderIndex}
             onOrderIndexChange={setSelectedOrderIndex}
@@ -1735,6 +1820,96 @@ const FloorPlanPage: React.FC = () => {
         isOpen={showSettlement}
         onClose={() => setShowSettlement(false)}
       />
+
+      {/* ── Table Move picker ───────────────────────────────────────────────
+          Pick a destination table for the order being moved. Occupied tables are
+          marked; choosing one routes through doMove (which prompts merge/cancel
+          if the server reports it's occupied). Touch-first: large tap targets. */}
+      {moveCtx && (
+        <CommonModal
+          isOpen={!!moveCtx}
+          onClose={() => { if (!moveBusy) { setMoveCtx(null); setMoveOccupied(null); } }}
+          title={t('floorplan:moveTable.title', { defaultValue: 'Move Table' })}
+          size="medium"
+        >
+          {moveOccupied ? (
+            // Destination occupied → merge or cancel
+            <div style={{ padding: '4px 2px' }}>
+              <p style={{ margin: '0 0 16px', fontSize: 14, color: '#0A2540', lineHeight: 1.5 }}>
+                {t('floorplan:moveTable.occupiedPrompt', {
+                  defaultValue: 'Table {{table}} already has an open order (#{{num}}, {{count}} items). Combine both onto one bill?',
+                  table: moveOccupied.destTable,
+                  num: moveOccupied.dest?.orderNumber || moveOccupied.dest?.orderId,
+                  count: moveOccupied.dest?.itemCount ?? 0
+                })}
+              </p>
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={() => setMoveOccupied(null)}
+                  disabled={moveBusy}
+                  style={{ padding: '10px 18px', borderRadius: 8, border: '1px solid #E6EBF1', background: '#fff', color: '#6B7C93', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  {t('common:cancel', { defaultValue: 'Cancel' })}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => doMove(moveOccupied.destTable, moveOccupied.destFpti, 'merge')}
+                  disabled={moveBusy}
+                  style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: '#635BFF', color: '#fff', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  {moveBusy ? '…' : t('floorplan:moveTable.combine', { defaultValue: 'Combine onto one bill' })}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ padding: '2px' }}>
+              <p style={{ margin: '0 0 12px', fontSize: 13, color: '#6B7C93' }}>
+                {t('floorplan:moveTable.pickDestination', { defaultValue: 'Choose the table to move this order to.' })}
+              </p>
+              <input
+                type="text"
+                value={moveSearch}
+                onChange={(e) => setMoveSearch(e.target.value)}
+                placeholder={t('floorplan:moveTable.searchPlaceholder', { defaultValue: 'Search table…' })}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #E6EBF1', fontSize: 14, marginBottom: 12 }}
+              />
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))', gap: 8, maxHeight: 320, overflowY: 'auto' }}>
+                {(floorPlan.tables || [])
+                  .filter(tb => String(tb.id) !== String(selectedTableId))
+                  .filter(tb => {
+                    const q = moveSearch.trim().toLowerCase();
+                    if (!q) return true;
+                    return String(tb.label || '').toLowerCase().includes(q) || String(tb.tableNumber || '').toLowerCase().includes(q);
+                  })
+                  .map(tb => {
+                    const st = tableStatuses[tb.id] || tableStatuses[tb.label] || tableStatuses[tb.tableNumber];
+                    const occupied = st && st.status && st.status !== 'available';
+                    return (
+                      <button
+                        key={tb.id}
+                        type="button"
+                        disabled={moveBusy}
+                        onClick={() => doMove(tb.label, tb.id, 'block')}
+                        title={occupied ? t('floorplan:moveTable.occupied', { defaultValue: 'Occupied' }) : ''}
+                        style={{
+                          padding: '14px 6px', borderRadius: 8, cursor: 'pointer',
+                          border: occupied ? '1px solid #F59E0B' : '1px solid #E6EBF1',
+                          background: occupied ? '#FFF7ED' : '#fff',
+                          color: '#0A2540', fontWeight: 600, fontSize: 14, minHeight: 56,
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2
+                        }}
+                      >
+                        <span>{tb.label}</span>
+                        {occupied && <span style={{ fontSize: 10, color: '#B45309', fontWeight: 500 }}>{t('floorplan:moveTable.occupied', { defaultValue: 'Occupied' })}</span>}
+                      </button>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
+        </CommonModal>
+      )}
     </PageContainer>
   );
 };

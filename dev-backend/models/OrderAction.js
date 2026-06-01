@@ -28,7 +28,7 @@ const OrderAction = sequelize.define('OrderAction', {
       'discount_applied', 'discount_removed',
       'coupon_applied', 'coupon_removed',
       'cancelled', 'printed', 'reprinted',
-      'merged', 'note_added'
+      'merged', 'note_added', 'table_moved'
     ),
     allowNull: false
   },

@@ -57,8 +57,18 @@ The Fire 에서 **Floor Plan 으로 테이블 POS 열고 주문 → 키친 티�
 
 ---
 
+## 🔔 다음 확정 작업 (2026-06-01 Irene 지시) — 테이블 이동 + 아이템 취소표
+
+> 설계 문서: `docs/TABLE_MOVE_AND_VOID_TICKET.md` (스코프 확정, 구현 대기). 둘 다 **풀버전** 결정.
+> 인쇄 변경 포함 → 🔒 PRINT 규칙. 한 번에 하나, 실프린터 확인 의무.
+
+1. **테이블 이동 (풀버전)** — Floor Plan 에 [Move] 버튼. 신규 `POST /orders/:id/move-table`: table_number+floor_plan_table_id **둘 다** 갱신(현재 PATCH 가 FPTI 안 바꿔 옛 테이블에 남는 결함), 아이템/금액/고객/결제 자동 이동, 목적지 점유 시 merge/block, station 변경 시 옛 주방 VOID + 새 주방 재발행. (과거 T-7→T-13 을 DB 직접수정한 이유 = 기능 부재)
+2. **아이템 취소표 발행 (풀버전)** — 현재 아이템 1개 취소 시 주방에 종이 안 나감(미스 위험). 기존 `printCancellationTicket`(billPrint.js:3628, 이미 존재) 을 `confirmDeleteItem`(LiveOrders:1099)+TableDetailPanel 에서 **취소된 아이템만** 호출, 해당 station 라우팅, `wasInKitchen`+설정 게이트. 인쇄 방식 무변경 = 호출만 추가.
+
+---
+
 ## 🔔 다음 세션 (이전 미해결 — 보류 중)
-> 아래는 5/31 이월. The Fire 3-이슈 fix 가 우선이라 뒤로 밀림.
+> 아래는 5/31 이월. The Fire 3-이슈 fix + 테이블이동/취소표가 우선이라 뒤로 밀림.
 
 ## 🔔 다음 세션 진입 시 이어서 할 것
 
