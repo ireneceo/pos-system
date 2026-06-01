@@ -379,7 +379,8 @@
       "Bash(echo \"build started pid $!\")",
       "Bash(TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjIzLCJpYXQiOjE3ODAyODg5NzMsImV4cCI6MTc4MDI5MDc3M30.M7QKwE9WCM0z5CC95XU32xYvbzUBG9s6OYONAL0Ardk timeout 70 node test-mount-mv.js)",
       "Bash(TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjIzLCJpYXQiOjE3ODAyODk1MDcsImV4cCI6MTc4MDI5MTMwN30.1Dcte8asgImu5dkv8jXgEO_rfKG7tPhuadQLH5tpbQs timeout 90 node verify-mount-interact.js)",
-      "Bash(TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjIzLCJpYXQiOjE3ODAyODk1MDcsImV4cCI6MTc4MDI5MTMwN30.1Dcte8asgImu5dkv8jXgEO_rfKG7tPhuadQLH5tpbQs timeout 50 node check-errs.js)"
+      "Bash(TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjIzLCJpYXQiOjE3ODAyODk1MDcsImV4cCI6MTc4MDI5MTMwN30.1Dcte8asgImu5dkv8jXgEO_rfKG7tPhuadQLH5tpbQs timeout 50 node check-errs.js)",
+      "Bash(TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjIzLCJpYXQiOjE3ODAyOTEzMjgsImV4cCI6MTc4MDI5MzEyOH0.72CL8C4DqiBR_osu7J99N2riFHqcPmuoFX5o5GU3O8Q timeout 60 node diag-pos-timing.js)"
     ],
     "deny": [],
     "ask": []

@@ -130,5 +130,9 @@
   "moveTable.searchPlaceholder": "Cari meja…",
   "moveTable.occupied": "Digunakan",
   "moveTable.occupiedPrompt": "Meja {{table}} sudah ada pesanan terbuka (#{{num}}, {{count}} item). Gabungkan ke satu bil?",
-  "moveTable.combine": "Gabung ke satu bil"
+  "moveTable.combine": "Gabung ke satu bil",
+  "moveTable.occupiedTitle": "Meja {{table}} sedang digunakan",
+  "moveTable.occupiedBody": "Ia mempunyai pesanan terbuka (#{{num}}) dengan {{count}} item, jumlah {{total}}. Memindahkan ke sini akan MENGGABUNGKAN pesanan ini ke dalam bil itu — kedua-duanya tidak boleh dipisahkan selepas itu.",
+  "moveTable.pickAnother": "Tidak, pilih meja lain",
+  "moveTable.combineConfirm": "Ya, gabung ke satu bil"
 }

@@ -334,15 +334,12 @@ const ProductRecipeCategoriesTab: React.FC<ProductRecipeCategoriesTabProps> = ({
     const items = [...categories];
     [items[index], items[targetIndex]] = [items[targetIndex], items[index]];
 
-    const orders = items.map((item, idx) => ({
-      id: item.id,
-      display_order: idx
-    }));
+    const categoryIds = items.map((item) => item.id);
 
     try {
       await fetchAPI('/api/product-recipe-categories/reorder', {
         method: 'PUT',
-        body: JSON.stringify({ orders })
+        body: JSON.stringify({ categoryIds })
       });
 
       fetchCategories();

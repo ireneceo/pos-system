@@ -130,5 +130,9 @@
   "moveTable.searchPlaceholder": "搜索餐桌…",
   "moveTable.occupied": "占用中",
   "moveTable.occupiedPrompt": "餐桌 {{table}} 已有进行中的订单（#{{num}}，{{count}} 项）。合并到一张账单吗？",
-  "moveTable.combine": "合并为一张账单"
+  "moveTable.combine": "合并为一张账单",
+  "moveTable.occupiedTitle": "餐桌 {{table}} 已被占用",
+  "moveTable.occupiedBody": "已有进行中的订单（#{{num}}），{{count}} 项，合计 {{total}}。移动到此处会将本订单合并到该账单——合并后无法再分开。",
+  "moveTable.pickAnother": "不，选择其他餐桌",
+  "moveTable.combineConfirm": "是的，合并为一张账单"
 }

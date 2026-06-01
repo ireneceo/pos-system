@@ -1223,7 +1223,7 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
         const [c, og, r] = await Promise.all([
           fetch(`/api/brand-menu-categories?brand_id=${brandId}`, { headers: authHeaders() }).then(r => r.ok ? r.json() : { data: [] }),
           fetch(`/api/brand-menu-option-groups?brand_id=${brandId}`, { headers: authHeaders() }).then(r => r.ok ? r.json() : { data: [] }),
-          fetch(`/api/product-recipes`, { headers: authHeaders() }).then(r => r.ok ? r.json() : { data: [] })
+          fetch(`/api/product-recipes?brand_id=${brandId}`, { headers: authHeaders() }).then(r => r.ok ? r.json() : { data: [] })
         ]);
         setCategories((c.data || []).map((x: any) => ({ id: x.id, name: x.name })));
         setOptionGroups((og.data || []).map((x: any) => ({ id: x.id, name: x.name, is_required: !!x.is_required, max_select: x.max_select || 1 })));

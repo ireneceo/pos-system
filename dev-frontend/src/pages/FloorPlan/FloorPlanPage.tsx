@@ -1835,30 +1835,37 @@ const FloorPlanPage: React.FC = () => {
           {moveOccupied ? (
             // Destination occupied → merge or cancel
             <div style={{ padding: '4px 2px' }}>
-              <p style={{ margin: '0 0 16px', fontSize: 14, color: '#0A2540', lineHeight: 1.5 }}>
-                {t('floorplan:moveTable.occupiedPrompt', {
-                  defaultValue: 'Table {{table}} already has an open order (#{{num}}, {{count}} items). Combine both onto one bill?',
-                  table: moveOccupied.destTable,
-                  num: moveOccupied.dest?.orderNumber || moveOccupied.dest?.orderId,
-                  count: moveOccupied.dest?.itemCount ?? 0
-                })}
-              </p>
+              {/* Amber warning box — destination is OCCUPIED. Combining is
+                  irreversible, so make that unmistakable (Irene: prompt clearer). */}
+              <div style={{ background: '#FFF7ED', border: '1px solid #F59E0B', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#B45309', marginBottom: 6 }}>
+                  {t('floorplan:moveTable.occupiedTitle', { defaultValue: 'Table {{table}} is already in use', table: moveOccupied.destTable })}
+                </div>
+                <div style={{ fontSize: 13, color: '#0A2540', lineHeight: 1.6 }}>
+                  {t('floorplan:moveTable.occupiedBody', {
+                    defaultValue: 'It has an open order (#{{num}}) with {{count}} item(s), total {{total}}. Moving here will MERGE this order into that bill — the two cannot be separated afterwards.',
+                    num: moveOccupied.dest?.orderNumber || moveOccupied.dest?.orderId,
+                    count: moveOccupied.dest?.itemCount ?? 0,
+                    total: `${currency || 'MYR'} ${Number(moveOccupied.dest?.total_amount || 0).toFixed(2)}`
+                  })}
+                </div>
+              </div>
               <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
                 <button
                   type="button"
                   onClick={() => setMoveOccupied(null)}
                   disabled={moveBusy}
-                  style={{ padding: '10px 18px', borderRadius: 8, border: '1px solid #E6EBF1', background: '#fff', color: '#6B7C93', fontWeight: 600, cursor: 'pointer' }}
+                  style={{ padding: '11px 18px', borderRadius: 8, border: '1px solid #E6EBF1', background: '#fff', color: '#0A2540', fontWeight: 600, cursor: 'pointer', minHeight: 44 }}
                 >
-                  {t('common:cancel', { defaultValue: 'Cancel' })}
+                  {t('floorplan:moveTable.pickAnother', { defaultValue: 'No, pick another table' })}
                 </button>
                 <button
                   type="button"
                   onClick={() => doMove(moveOccupied.destTable, moveOccupied.destFpti, 'merge')}
                   disabled={moveBusy}
-                  style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: '#635BFF', color: '#fff', fontWeight: 600, cursor: 'pointer' }}
+                  style={{ padding: '11px 18px', borderRadius: 8, border: 'none', background: '#F59E0B', color: '#fff', fontWeight: 700, cursor: 'pointer', minHeight: 44 }}
                 >
-                  {moveBusy ? '…' : t('floorplan:moveTable.combine', { defaultValue: 'Combine onto one bill' })}
+                  {moveBusy ? '…' : t('floorplan:moveTable.combineConfirm', { defaultValue: 'Yes, merge into one bill' })}
                 </button>
               </div>
             </div>

@@ -130,5 +130,9 @@
   "moveTable.searchPlaceholder": "테이블 검색…",
   "moveTable.occupied": "사용 중",
   "moveTable.occupiedPrompt": "{{table}} 테이블에 이미 진행 중인 주문(#{{num}}, {{count}}개 품목)이 있습니다. 한 빌로 합칠까요?",
-  "moveTable.combine": "한 빌로 합치기"
+  "moveTable.combine": "한 빌로 합치기",
+  "moveTable.occupiedTitle": "{{table}} 테이블은 이미 사용 중입니다",
+  "moveTable.occupiedBody": "진행 중인 주문(#{{num}})이 있습니다 — {{count}}개 품목, 합계 {{total}}. 여기로 옮기면 이 주문이 그 빌에 합쳐지며, 합친 뒤에는 다시 나눌 수 없습니다.",
+  "moveTable.pickAnother": "아니요, 다른 테이블 선택",
+  "moveTable.combineConfirm": "네, 한 빌로 합치기"
 }

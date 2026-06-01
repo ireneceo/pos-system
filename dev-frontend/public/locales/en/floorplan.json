@@ -130,5 +130,9 @@
   "moveTable.searchPlaceholder": "Search table…",
   "moveTable.occupied": "Occupied",
   "moveTable.occupiedPrompt": "Table {{table}} already has an open order (#{{num}}, {{count}} items). Combine both onto one bill?",
-  "moveTable.combine": "Combine onto one bill"
+  "moveTable.combine": "Combine onto one bill",
+  "moveTable.occupiedTitle": "Table {{table}} is already in use",
+  "moveTable.occupiedBody": "It has an open order (#{{num}}) with {{count}} item(s), total {{total}}. Moving here will MERGE this order into that bill — the two cannot be separated afterwards.",
+  "moveTable.pickAnother": "No, pick another table",
+  "moveTable.combineConfirm": "Yes, merge into one bill"
 }
