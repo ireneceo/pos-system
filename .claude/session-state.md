@@ -1,11 +1,41 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-05-31 (컴퓨터 이동 임시 저장)
-**버전:** v3.45 운영 (오늘 backstage 가드 fix 운영 배포 완료 — 버전 미상승)
-**작업 상태:** 진행 중 (컴퓨터 이동 — 다음 세션 이어서)
+**마지막 업데이트:** 2026-06-01 (The Fire 3-이슈 데이터 무결성 fix — DEV 완료, 미배포)
+**버전:** v3.45 운영
+**작업 상태:** DEV 완료 / 배포 대기 (Issue 1 = 실프린터 확인 후 배포)
 
 ---
+
+## 2026-06-01 완료(DEV, 미배포) — The Fire 3 이슈 근본 fix
+
+> Irene: "더파이어 기준으로 모든 솔루션 문제 해결, 다시는 안 생기게." 인쇄 방식(method/routing) 은 안 건드리고 **데이터 무결성 버그**만 수정. 새 빌드 main.02eeb8dd.js, autoprint regression 44 PASS, health-check 87/88(1 = 보호파일 무결성 플래그=의도한 2 edit), demo r38 실API 7/7.
+
+### Issue 2 — 테이블번호 누락 (백엔드 구멍 2개)
+- `orders-crud.js` TABLE_REQUIRED 가드: `order_type` 누락 시 dine-in 으로 간주 → 우회 차단 (기존엔 order_type 빠지면 통과)
+- `orders-crud.js` PATCH `/:id` anti-wipe: dine-in 주문에 `table_number:null/''` 오면 무시(보존). table 비우기는 `table_cleared` 플래그로만. (5/31 settings-wipe 와 동일 클래스 차단). 명시적 table 변경은 허용.
+
+### Issue 3 — 모바일↔POS 미매칭/미표시 (근본원인)
+- **근본**: 모바일 실결제 경로 PaymentPage → `POST /api/orders`(source:mobile) 가 `floor_plan_table_id` 를 안 보냈고 orders-crud 도 derive 안 함 → 모든 모바일 주문 FPTI=null → multi-zone(The Fire) 에서 테이블 바인딩 실패("missing")
+- fix: `orders-crud.js` POST 에 FPTI derive 이식 (label/tableNumber→canvas id). mobile-orders.js 와 동일 로직.
+- `PaymentPage.tsx`: `restaurant_id: currentStore?.id || 1` 폴백 제거(3곳) → currentStore 미로드 시 제출 차단(잘못된 매장 1 로 가던 버그). resolvedRestaurantId 사용.
+
+### Issue 1 — 오더티켓 2장 (가끔)
+- **근본**: Floor Plan iframe POS 오버레이일 때 부모 FloorPlan + iframe POS **둘 다** useAutoPrintPoller 실행. 별도 JS realm → `__autoPrintInflight` dedupe 미공유 → 5초 폴 위상 겹치면 2장.
+- fix: `POSTerminalPage.tsx` poller `enabled: ... && !isFloorPlanOverlay` (오버레이는 폴 안 함, 부모가 커버). **인쇄 방식/라우팅 무변경 — 타이밍만.**
+
+### ⚠️ 배포 전 필수
+1. **Issue 1 실프린터 확인**: Floor Plan 오버레이로 테이블 POS 열고 주문 → 키친 티켓 **정확히 1장** 확인 (Irene 눈). 확인 후에만 `node scripts/check-print-guard.js --bless` (POSTerminal+orders-crud 지문 재등록).
+2. bless 안 하면 deploy fail-closed (보호파일 무결성 게이트). Irene 승인 + 실프린터 확인이 전제.
+
+### 수정 파일
+- 백엔드: `routes/orders-crud.js`🔒 (POST 가드+FPTI derive, PATCH anti-wipe)
+- 프론트: `pages/POSTerminal/POSTerminalPage.tsx`🔒 (poller overlay 차단), `mobile/pages/PaymentPage.tsx` (restaurant_id 폴백 제거)
+
+---
+
+## 🔔 다음 세션 (이전 미해결 — 보류 중)
+> 아래는 5/31 이월. The Fire 3-이슈 fix 가 우선이라 뒤로 밀림.
 
 ## 🔔 다음 세션 진입 시 이어서 할 것
 

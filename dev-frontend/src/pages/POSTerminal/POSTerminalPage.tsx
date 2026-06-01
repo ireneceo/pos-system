@@ -1216,7 +1216,17 @@ const POSTerminalPage: React.FC = () => {
   // 2026-05-28 매장 critical: backend-driven auto-print polling. POSTerminal 은
   // MainLayout 안에 mount 안 되므로 (fullscreen route), 이 hook 으로 같은
   // polling 동작 보장.
-  useAutoPrintPoller({ restaurantId: user?.restaurantId, enabled: !!user?.restaurantId, getStoreInfo });
+  //
+  // 2026-06-01 DUPLICATE-TICKET FIX: when POS runs as the Floor Plan iframe
+  // OVERLAY, the PARENT FloorPlanPage ALSO mounts useAutoPrintPoller. Parent
+  // window and iframe are separate JS realms, so the in-memory de-dupe
+  // (window.__autoPrintInflight) is NOT shared — both pollers could fetch the
+  // same needs_print order before either marked it printed → TWO physical
+  // tickets ("가끔" = only when the two 5s poll phases overlap). The parent
+  // already polls for this restaurant, so the overlay must NOT poll too. This
+  // does NOT change the print METHOD/ROUTING — only suppresses the redundant
+  // second poller. Standalone POS (not overlay) keeps polling as before.
+  useAutoPrintPoller({ restaurantId: user?.restaurantId, enabled: !!user?.restaurantId && !isFloorPlanOverlay, getStoreInfo });
 
   // POS Terminal shows only active categories (customer-facing view)
   const categories = allCategories.filter(cat => cat.isActive !== false);

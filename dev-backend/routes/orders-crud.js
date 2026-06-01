@@ -137,9 +137,19 @@ router.get('/:id', authenticateToken, async (req, res, next) => {
     const order = await executeQuery(async () => {
       return await Order.findByPk(req.params.id);
     }, { maxRetries: 3 });
-    
+
     if (!order) {
       return res.status(404).json({ success: false, error: { message: 'Order not found', code: 'NOT_FOUND' } });
+    }
+    // 2026-06-01 IDOR fix: this route had authenticateToken but NO ownership
+    // check — any authenticated restaurant admin could read another store's
+    // order by id (confirmed: r5 admin read r38's order, status 200). Mirror the
+    // in-handler ownership check already used by GET /:id/payments
+    // (orders-payment.js) since checkRestaurantAccess can't be used here (it
+    // treats :id as a restaurant id, not an order id). System Admin sees all.
+    if (req.user?.restaurant_id && Number(req.user.restaurant_id) !== Number(order.restaurant_id)
+        && req.user.role !== 'System Admin') {
+      return res.status(403).json({ success: false, error: { message: 'Forbidden', code: 'FORBIDDEN' } });
     }
     res.json({ success: true, data: order });
   } catch (error) {

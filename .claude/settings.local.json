@@ -365,7 +365,9 @@
       "Bash(sed -n '580,605p' src/pages/FloorPlan/FloorPlanPage.tsx)",
       "Bash(awk '/^## \\\\[Unreleased\\\\]/,/^## \\\\[v/' /var/www/CHANGELOG.md)",
       "Bash(sed -n '170,210p' /var/www/dev-backend/utils/notificationService.js)",
-      "Bash(sed -n '108,160p' /var/www/dev-backend/utils/emailService.js)"
+      "Bash(sed -n '108,160p' /var/www/dev-backend/utils/emailService.js)",
+      "Bash(echo \"build started, pid $!\")",
+      "Bash(xargs -I{} stat -c '%n  %y' {})"
     ],
     "deny": [],
     "ask": []
