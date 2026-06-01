@@ -106,6 +106,56 @@ function createTransporter(settings) {
 
 const isDev = process.env.NODE_ENV !== 'production';
 
+// ============================================================
+// 2026-06-01 발송 차단 가드 — 인증 안 된/유효하지 않은 주소로의 발송을
+// 모든 메일 경로(sendPlatformEmail / sendIssuerEmail)에서 원천 중지.
+// 그동안 가드는 notificationService.sendNotification 한 곳에만 있어서, 매장
+// 가입 Welcome / 예약확인 / 비번재설정 등 sendPlatformEmail·sendIssuerEmail 직접
+// 호출 경로(수십 곳)는 무방비였음 → 미인증 주소로 발송 시도 → 실패 → 바운스
+// 알림이 관리자에게 쏟아짐. 공통 발송함수 2곳에 가드를 박아 전 경로 차단.
+// ============================================================
+const PLACEHOLDER_EMAIL_DOMAINS = new Set([
+  'pos-system.com', 'example.com', 'example.org', 'example.net',
+  'test.com', 'test.local', 'localhost', 'invalid', 'mailinator.com',
+  'placeholder.com', 'demo.com', 'sample.com', 'noreply.com'
+]);
+
+function emailLooksValid(email) {
+  if (!email || typeof email !== 'string') return false;
+  const m = email.trim().toLowerCase().match(/^[^\s@]+@([^\s@]+\.[^\s@]+)$/);
+  if (!m) return false;
+  const domain = m[1];
+  if (PLACEHOLDER_EMAIL_DOMAINS.has(domain)) return false;
+  if (/\.(test|local|invalid|example)$/.test(domain)) return false;
+  return true;
+}
+
+// 발송 직전 게이트. to 주소가 (1) 형식/placeholder 부적합 또는 (2) 그 주소를 가진
+// 유저가 email_verified=false 면 발송 중지. 여러 수신자면 유효한 주소만 통과.
+// 반환: { ok, to(필터된), reason }. 인증 여부 모르는 외부주소(유저 테이블에 없음)는
+// verified 체크 통과(가입확인/초대 등 신규 주소 정상 발송 위해) — placeholder 만 거름.
+async function screenRecipients(rawTo) {
+  const list = Array.isArray(rawTo) ? rawTo : [rawTo];
+  const kept = [];
+  const dropped = [];
+  for (const addr of list) {
+    if (!emailLooksValid(addr)) { dropped.push({ addr, why: 'invalid/placeholder' }); continue; }
+    // 유저 테이블에 있고 명시적으로 email_verified=false 면 차단.
+    try {
+      const rows = await sequelize.query(
+        'SELECT email_verified FROM users WHERE email = :e LIMIT 1',
+        { replacements: { e: addr }, type: QueryTypes.SELECT }
+      );
+      if (rows[0] && (rows[0].email_verified === false || rows[0].email_verified === 0)) {
+        dropped.push({ addr, why: 'email_verified=false' });
+        continue;
+      }
+    } catch (_e) { /* DB 조회 실패 시 막지 않음 — 발송 흐름 우선 */ }
+    kept.push(addr);
+  }
+  return { ok: kept.length > 0, to: Array.isArray(rawTo) ? kept : kept[0], dropped };
+}
+
 /**
  * Send email for a specific entity
  */
@@ -179,6 +229,17 @@ async function sendPlatformEmail(mailOptions) {
       const to = Array.isArray(mailOptions.to) ? mailOptions.to.join(', ') : mailOptions.to;
       console.log(`[dev-email-blocked] Platform email skipped: subject="${subj}" to="${to}". Set DEV_SEND_PLATFORM_EMAILS=true to enable.`);
       return { success: true, skipped: true, reason: 'dev-environment' };
+    }
+
+    // 2026-06-01: 미인증/placeholder 주소 발송 차단 (모든 platform 메일 공통).
+    const screenP = await screenRecipients(mailOptions.to);
+    if (!screenP.ok) {
+      console.log(`[email-guard] Platform email NOT sent — no valid/verified recipient. subject="${mailOptions.subject || ''}" dropped=${JSON.stringify(screenP.dropped)}`);
+      return { success: true, skipped: true, reason: 'unverified-or-invalid-recipient' };
+    }
+    mailOptions.to = screenP.to;
+    if (screenP.dropped.length) {
+      console.log(`[email-guard] Platform email dropped some recipients: ${JSON.stringify(screenP.dropped)}`);
     }
 
     // 바운스 체크: 3회 이상 실패한 이메일은 발송 차단
@@ -307,6 +368,17 @@ async function sendIssuerEmail(issuerType, issuerId, mailOptions) {
       const to = Array.isArray(mailOptions.to) ? mailOptions.to.join(', ') : mailOptions.to;
       console.log(`[dev-email-blocked] Issuer email skipped (${issuerType}/${issuerId}): subject="${subj}" to="${to}". Set DEV_SEND_ENTITY_EMAILS=true to enable.`);
       return { success: true, skipped: true, reason: 'dev-environment' };
+    }
+
+    // 2026-06-01: 미인증/placeholder 주소 발송 차단 (모든 issuer 메일 공통).
+    const screenI = await screenRecipients(mailOptions.to);
+    if (!screenI.ok) {
+      console.log(`[email-guard] Issuer email NOT sent — no valid/verified recipient. subject="${mailOptions.subject || ''}" dropped=${JSON.stringify(screenI.dropped)}`);
+      return { success: true, skipped: true, reason: 'unverified-or-invalid-recipient' };
+    }
+    mailOptions.to = screenI.to;
+    if (screenI.dropped.length) {
+      console.log(`[email-guard] Issuer email dropped some recipients: ${JSON.stringify(screenI.dropped)}`);
     }
 
     if (mailOptions.to && await isEmailBlocked(mailOptions.to)) {

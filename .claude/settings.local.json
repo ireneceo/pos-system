@@ -401,7 +401,19 @@
       "Bash(getfacl -R /var/www/dev-frontend/src)",
       "Bash(getfacl /var/www/dev-frontend/src)",
       "Bash(getfacl /var/www/dev-frontend/src/pages/POSTerminal)",
-      "Bash(getfacl /var/www/dev-frontend/src/pages/LiveOrders)"
+      "Bash(getfacl /var/www/dev-frontend/src/pages/LiveOrders)",
+      "Bash(chmod 664 src/pages/BrandProductRecipe/ProductRecipeCategoriesTab.tsx src/pages/BrandGeneral/BrandMenusPage.tsx)",
+      "Bash(awk '{print \"  \"$3\":\"$4, $9}')",
+      "Bash(setfacl -R -x user:lua,default:user:lua src)",
+      "Bash(getfacl -R src)",
+      "Bash(echo \"제거 후 src 전체 lua ACL: $\\(getfacl -R src)",
+      "Bash(setfacl -R -m user:lua:rwx,default:user:lua:rwx src/pages/Landing)",
+      "Bash(setfacl -R -m user:lua:rwx,default:user:lua:rwx src/components/Landing)",
+      "Bash(getfacl -R src/pages/Landing)",
+      "Bash(echo \"Landing\\(pages\\) lua ACL: $\\(getfacl -R src/pages/Landing)",
+      "Bash(echo \"dev-backend lua ACL: $\\(getfacl -R /var/www/dev-backend)",
+      "Bash(sed -n '240,260p' services/authService.js)",
+      "Bash(sed -n '725,745p' services/authService.js)"
     ],
     "deny": [],
     "ask": []
