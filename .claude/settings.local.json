@@ -413,7 +413,11 @@
       "Bash(echo \"Landing\\(pages\\) lua ACL: $\\(getfacl -R src/pages/Landing)",
       "Bash(echo \"dev-backend lua ACL: $\\(getfacl -R /var/www/dev-backend)",
       "Bash(sed -n '240,260p' services/authService.js)",
-      "Bash(sed -n '725,745p' services/authService.js)"
+      "Bash(sed -n '725,745p' services/authService.js)",
+      "Bash(DISABLE_ESLINT_PLUGIN=true npx tsc --noEmit -p tsconfig.json)",
+      "Bash(CI=false GENERATE_SOURCEMAP=false npx react-scripts build)",
+      "Bash(grep -c \"Compiled with the following type errors\" /tmp/v3-build.log /tmp/movefix-build.log)",
+      "Bash(grep -l \"배포 완료\" /tmp/v3-build.log /tmp/movefix-build.log)"
     ],
     "deny": [],
     "ask": []

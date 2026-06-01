@@ -16,9 +16,6 @@ import io from 'socket.io-client';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
-// 🔒 print: only CALLING existing functions (void ticket at old station + reprint
-// at new station after a table move with a station change). No print internals touched.
-import { printCancellationTicket, printKitchenTicketViaRawBT, getPrinterSettings } from '../../utils/billPrint';
 import { useStore } from '../../contexts/StoreContext';
 import { useAutoPrintPoller } from '../../hooks/useAutoPrintPoller';
 import { openCustomerDisplay, isAutoOpenEnabled } from '../../utils/customerDisplay';
@@ -1141,36 +1138,11 @@ const FloorPlanPage: React.FC = () => {
         return;
       }
 
-      // 🔒 Station-change print: if items were already sent to the kitchen, void
-      // them at the OLD station's printer and reprint at the NEW one — only when
-      // that item's station maps to a different physical printer. Mirrors the
-      // existing cancel-ticket call shape; no print internals touched.
-      try {
-        const printed = Array.isArray(result.printedItems) ? result.printedItems : [];
-        if (printed.length > 0 && !result.merged) {
-          const settings = getPrinterSettings();
-          const stationPrinters = (settings && settings.kitchenStationPrinters) || {};
-          const printerFor = (sid: any) => (sid != null && stationPrinters[String(sid)] && stationPrinters[String(sid)].name) || null;
-          // Group printed items by their station printer; if the source and dest
-          // tables route to the same printer, skip (kitchen already has it right).
-          const sInfo = (typeof getStoreInfo === 'function') ? getStoreInfo() : {};
-          const baseData = {
-            orderNumber: result.data?.order_number,
-            order_number: result.data?.order_number,
-            tableNumber: destTable,
-            orderType: result.data?.order_type || 'dine-in'
-          };
-          // VOID at old station tagged with source table; reprint tagged with dest.
-          const voidData: any = { ...baseData, tableNumber: moveCtx.sourceTableNumber || '', items: printed.map((it: any) => ({ name: it.name, quantity: it.quantity || 1, kitchen_station_id: it.kitchen_station_id, stationName: it.stationName })) };
-          const reprintData: any = { ...baseData, items: printed.map((it: any) => ({ name: it.name, quantity: it.quantity || 1, kitchen_station_id: it.kitchen_station_id, stationName: it.stationName })) };
-          // Route per item's station printer (override printerName) when configured.
-          // Fall back to default kitchen printer (printerName undefined).
-          const firstStation = printed.find((it: any) => it.kitchen_station_id != null);
-          const stPrinter = firstStation ? printerFor(firstStation.kitchen_station_id) : null;
-          printCancellationTicket(voidData, sInfo, `Moved to ${destTable}`, stPrinter || undefined).catch((e: any) => console.warn('move void print:', e?.message));
-          printKitchenTicketViaRawBT(reprintData, sInfo, stPrinter || undefined).catch((e: any) => console.warn('move reprint:', e?.message));
-        }
-      } catch (e: any) { console.warn('[move-table] print step skipped:', e?.message); }
+      // 테이블 이동은 인쇄하지 않는다 (Irene 2026-06-01). 주방에 티켓을 다시
+      // 쏘면 같은 주문을 또 만드는 사고가 난다. 이동은 데이터만 옮기고, 주방은
+      // KDS 가 백엔드의 order-updated 소켓을 받아 그 주문의 테이블 라벨을 자동
+      // 갱신 + "테이블 이동됨" 안내 배지로 알린다 (KitchenDisplayPage 에서 처리).
+      // 종이 재발행/취소표 인쇄 없음.
 
       // Refresh both tables, jump selection to the destination, close picker.
       setSelectedTableId(destFpti || null);

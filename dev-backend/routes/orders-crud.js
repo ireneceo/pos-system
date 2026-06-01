@@ -1180,6 +1180,24 @@ router.post('/:id/move-table', authenticateToken, async (req, res) => {
       const plain = outcome.order.get ? outcome.order.get({ plain: true }) : outcome.order;
       if (typeof plain.order_items === 'string') { try { plain.order_items = JSON.parse(plain.order_items); } catch { plain.order_items = []; } }
       io.of('/orders').to(room).emit('order-updated', plain);
+      if (outcome.kind === 'moved') {
+        // 2026-06-01: KDS 가 "이 주문 테이블 바뀜" 을 명시적으로 안내(팝업+알림음)
+        // 할 수 있게 별도 이벤트. order-updated 로 테이블 라벨은 이미 갱신되지만,
+        // 주방이 못 보고 같은 주문을 또 만드는 사고를 막기 위해 눈에 띄게 알린다.
+        // 인쇄는 하지 않는다(Irene). 종이 재발행 없이 화면 안내만.
+        io.of('/orders').to(room).emit('table-moved', {
+          orderId: outcome.order.id,
+          orderNumber: plain.order_number,
+          fromTable: outcome.sourceTableNumber,
+          toTable: outcome.destinationTableNumber,
+          // 주방이 만들던 아이템(이미 주방에 간 것)만 — 스테이션별 필터용.
+          items: (outcome.printedItems || []).map(it => ({
+            name: it.name, quantity: it.quantity || 1,
+            kitchen_station_id: it.kitchen_station_id || null, stationName: it.stationName || null
+          })),
+          movedAt: new Date().toISOString()
+        });
+      }
       if (outcome.kind === 'merged') {
         io.of('/orders').to(room).emit('order-items-added', {
           orderId: outcome.destinationOrderId, orderNumber: plain.order_number,

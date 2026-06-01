@@ -26,5 +26,14 @@
   "pin.close": "Close",
   "mergeLabel": "Merge",
   "mergeNoLimit": "No limit",
-  "mergeTooltip": "Configure item merge settings"
+  "mergeTooltip": "Configure item merge settings",
+  "notice.voidTitle": "Item Cancelled",
+  "notice.moveTitle": "Table Moved",
+  "notice.voidWasCancelled": "was cancelled.",
+  "notice.order": "Order",
+  "notice.doNotMake": "Do NOT prepare this item.",
+  "notice.movedFromTo": "moved",
+  "notice.sameOrder": "Same order — do NOT make it again.",
+  "notice.confirm": "OK, got it",
+  "notice.more": "{{count}} more notice(s)"
 }

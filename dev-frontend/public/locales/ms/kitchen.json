@@ -26,5 +26,14 @@
   "pin.close": "Tutup",
   "mergeLabel": "Cantum",
   "mergeNoLimit": "Tiada had",
-  "mergeTooltip": "Tetapan gabungan item"
+  "mergeTooltip": "Tetapan gabungan item",
+  "notice.voidTitle": "Item Dibatalkan",
+  "notice.moveTitle": "Meja Dipindahkan",
+  "notice.voidWasCancelled": "telah dibatalkan.",
+  "notice.order": "Pesanan",
+  "notice.doNotMake": "JANGAN sediakan item ini.",
+  "notice.movedFromTo": "dipindah",
+  "notice.sameOrder": "Pesanan sama — JANGAN buat lagi.",
+  "notice.confirm": "OK, faham",
+  "notice.more": "{{count}} notis lagi"
 }

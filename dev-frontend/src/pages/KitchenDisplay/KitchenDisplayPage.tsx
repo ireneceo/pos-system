@@ -40,6 +40,36 @@ const Container = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 `;
 
+// 주방 안내 팝업 (아이템 취소 / 테이블 이동). 터치스크린 전제 — 큰 버튼.
+const NoticeOverlay = styled.div`
+  position: fixed; inset: 0; z-index: 11000;
+  background: rgba(10, 37, 64, 0.55);
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+`;
+const NoticeCard = styled.div<{ $kind: 'void' | 'move' }>`
+  background: #fff; border-radius: 16px; width: 100%; max-width: 520px;
+  border-top: 8px solid ${p => p.$kind === 'void' ? '#FF6B6B' : '#F59E0B'};
+  box-shadow: 0 24px 48px rgba(0,0,0,0.3); overflow: hidden;
+`;
+const NoticeHead = styled.div<{ $kind: 'void' | 'move' }>`
+  padding: 20px 24px 8px; font-size: 22px; font-weight: 800;
+  color: ${p => p.$kind === 'void' ? '#C92A2A' : '#B45309'};
+  display: flex; align-items: center; gap: 10px;
+`;
+const NoticeBody = styled.div`
+  padding: 8px 24px 20px; font-size: 18px; line-height: 1.5; color: #0A2540;
+  strong { font-weight: 800; }
+  .sub { color: #6B7C93; font-size: 14px; margin-top: 6px; }
+`;
+const NoticeConfirm = styled.button<{ $kind: 'void' | 'move' }>`
+  width: 100%; border: none; cursor: pointer; padding: 18px; min-height: 60px;
+  font-size: 18px; font-weight: 700; color: #fff;
+  background: ${p => p.$kind === 'void' ? '#FF6B6B' : '#F59E0B'};
+`;
+const NoticeCount = styled.div`
+  text-align: center; padding: 10px; font-size: 13px; color: #6B7C93; background: #F1F4F8;
+`;
+
 const ContentArea = styled.div`
   padding: 16px 20px;
 `;
@@ -663,6 +693,13 @@ const KitchenDisplayPage: React.FC = () => {
   // menuName → station_id 매핑 (카테고리 or 프로덕트 기반, 프로덕트 오버라이드 우선)
   const [menuStationMap, setMenuStationMap] = useState<Map<string, number>>(new Map());
 
+  // ─── 주방 안내 팝업 (아이템 취소 / 테이블 이동) ───
+  // 2026-06-01 (Irene): 인쇄 대신 화면 팝업+알림음으로 주방에 알림. 확인 눌러야 닫힘.
+  // 전체 탭(selectedStation='all') 이면 모든 안내, 특정 스테이션 탭이면 그 스테이션
+  // 아이템이 걸린 안내만 표시(스테이션 무관 아이템은 모든 탭에 표시).
+  type KitchenNotice = { id: string; kind: 'void' | 'move'; orderNumber: string; tableNumber?: string; toTable?: string; itemText?: string; reason?: string; at: number };
+  const [kitchenNotices, setKitchenNotices] = useState<KitchenNotice[]>([]);
+
   // ─── Shared: raw order_items → KitchenOrder items 변환 ───
   const processRawOrderItems = (orderId: string | number, rawItems: any[]): KitchenOrder['items'] => {
     const items: any[] = [];
@@ -1235,6 +1272,56 @@ const KitchenDisplayPage: React.FC = () => {
       setOrders(prev => prev.filter(o => o.id !== id.toString()));
     });
 
+    // 2026-06-01: 아이템 취소 안내. 이미 주방에 간(was_printed) 아이템만, 그리고
+    // 현재 스테이션 탭에 해당하는 것만 팝업+알림음. (인쇄는 백엔드 무관, 화면 안내)
+    newSocket.on('item-voided', (data: any) => {
+      if (!data || !data.voidedItem) return;
+      const vi = data.voidedItem;
+      // 주방에 안 갔던 아이템(was_printed=false)은 주방이 알 필요 없음 → skip.
+      if (!vi.was_printed) return;
+      // 스테이션 필터: 'all' 이면 모두. 특정 스테이션 탭이면 그 스테이션 아이템만
+      // (스테이션 미지정 아이템은 모든 탭에 표시 — 안전쪽). ref 로 최신 값 참조.
+      const curStation = selectedStationRef.current;
+      const sidByName = menuStationMapRef.current.get(vi.name || '');
+      const itemStation = vi.kitchen_station_id ?? sidByName;
+      const passStation = curStation === 'all' || itemStation == null || itemStation === curStation;
+      if (!passStation) return;
+      const noticeId = `void-${data.orderId}-${Date.now()}`;
+      setKitchenNotices(prev => [{
+        id: noticeId, kind: 'void',
+        orderNumber: data.orderNumber || String(data.orderId),
+        tableNumber: data.tableNumber || undefined,
+        itemText: `${vi.quantity || 1} × ${vi.name || 'Item'}`,
+        reason: data.reason || undefined,
+        at: Date.now()
+      }, ...prev].slice(0, 8));
+      try { import('../../utils/notificationSound').then(({ startRepeatingSound }) => audioEnabledRef.current && startRepeatingSound('bell')); } catch {}
+    });
+
+    // 2026-06-01: 테이블 이동 안내. 주방이 같은 주문을 또 만들지 않도록 명시 알림.
+    // order-updated 로 테이블 라벨은 이미 갱신되지만, 눈에 띄는 팝업으로 한 번 더.
+    newSocket.on('table-moved', (data: any) => {
+      if (!data) return;
+      const items = Array.isArray(data.items) ? data.items : [];
+      const curStation = selectedStationRef.current;
+      // 이동한 주문에 현재 스테이션 아이템이 걸려있을 때만(또는 전체 탭). 주방에 간
+      // 아이템(printedItems)만 백엔드가 보냄.
+      const relevant = curStation === 'all' || items.length === 0 || items.some((it: any) => {
+        const sid = it.kitchen_station_id ?? menuStationMapRef.current.get(it.name || '');
+        return sid == null || sid === curStation;
+      });
+      if (!relevant) return;
+      const noticeId = `move-${data.orderId}-${Date.now()}`;
+      setKitchenNotices(prev => [{
+        id: noticeId, kind: 'move',
+        orderNumber: data.orderNumber || String(data.orderId),
+        tableNumber: data.fromTable || undefined,
+        toTable: data.toTable || undefined,
+        at: Date.now()
+      }, ...prev].slice(0, 8));
+      try { import('../../utils/notificationSound').then(({ startRepeatingSound }) => audioEnabled && startRepeatingSound('bell')); } catch {}
+    });
+
     setSocket(newSocket);
     return () => { newSocket.disconnect(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1293,6 +1380,16 @@ const KitchenDisplayPage: React.FC = () => {
   useEffect(() => {
     playNotificationSoundRef.current = playNotificationSound;
   }, [playNotificationSound]);
+
+  // 2026-06-01: 주방 안내(item-voided/table-moved) 핸들러가 소켓 클로저 안에서
+  // 최신 스테이션 탭/매핑/오디오 설정을 보도록 ref 로 미러. (socket useEffect 는
+  // [user?.restaurantId] 만 의존하므로 직접 참조 시 stale.)
+  const selectedStationRef = useRef(selectedStation);
+  const menuStationMapRef = useRef(menuStationMap);
+  const audioEnabledRef = useRef(audioEnabled);
+  useEffect(() => { selectedStationRef.current = selectedStation; }, [selectedStation]);
+  useEffect(() => { menuStationMapRef.current = menuStationMap; }, [menuStationMap]);
+  useEffect(() => { audioEnabledRef.current = audioEnabled; }, [audioEnabled]);
 
   const getItemCode = (itemName: string): string => {
     const menuItem = menuItems.find(m => m.name === itemName);
@@ -2867,6 +2964,52 @@ const KitchenDisplayPage: React.FC = () => {
 
   return (
     <Container>
+      {/* 주방 안내 팝업 — 최신 안내 1건씩, 확인 눌러야 닫힘(+알림음 정지). */}
+      {kitchenNotices.length > 0 && (() => {
+        const n = kitchenNotices[0];
+        const dismiss = () => {
+          setKitchenNotices(prev => prev.filter(x => x.id !== n.id));
+          import('../../utils/notificationSound').then(({ stopRepeatingSound }) => stopRepeatingSound()).catch(() => {});
+        };
+        return (
+          <NoticeOverlay onClick={dismiss}>
+            <NoticeCard $kind={n.kind} onClick={e => e.stopPropagation()}>
+              <NoticeHead $kind={n.kind}>
+                {n.kind === 'void'
+                  ? t('kitchen:notice.voidTitle', { defaultValue: 'Item Cancelled' })
+                  : t('kitchen:notice.moveTitle', { defaultValue: 'Table Moved' })}
+              </NoticeHead>
+              <NoticeBody>
+                {n.kind === 'void' ? (
+                  <>
+                    <div><strong>{n.itemText}</strong> {t('kitchen:notice.voidWasCancelled', { defaultValue: 'was cancelled.' })}</div>
+                    <div className="sub">
+                      {t('kitchen:notice.order', { defaultValue: 'Order' })} #{n.orderNumber}
+                      {n.tableNumber ? ` · ${n.tableNumber}` : ''}
+                      {n.reason ? ` · ${n.reason}` : ''}
+                    </div>
+                    <div className="sub">{t('kitchen:notice.doNotMake', { defaultValue: 'Do NOT prepare this item.' })}</div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      {t('kitchen:notice.order', { defaultValue: 'Order' })} #{n.orderNumber} {t('kitchen:notice.movedFromTo', { defaultValue: 'moved' })}
+                      {' '}<strong>{n.tableNumber || '?'}</strong> → <strong>{n.toTable || '?'}</strong>
+                    </div>
+                    <div className="sub">{t('kitchen:notice.sameOrder', { defaultValue: 'Same order — do NOT make it again.' })}</div>
+                  </>
+                )}
+              </NoticeBody>
+              <NoticeConfirm $kind={n.kind} type="button" onClick={dismiss}>
+                {t('kitchen:notice.confirm', { defaultValue: 'OK, got it' })}
+              </NoticeConfirm>
+              {kitchenNotices.length > 1 && (
+                <NoticeCount>{t('kitchen:notice.more', { defaultValue: '{{count}} more notice(s)', count: kitchenNotices.length - 1 })}</NoticeCount>
+              )}
+            </NoticeCard>
+          </NoticeOverlay>
+        );
+      })()}
       <PageHeader
         title="Kitchen Display"
         backHref={user?.restaurantId ? `/restaurant/${user.restaurantId}/dashboard` : undefined}
