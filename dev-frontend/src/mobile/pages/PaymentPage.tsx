@@ -1253,6 +1253,16 @@ const PaymentPage: React.FC = () => {
       return;
     }
 
+    // 2026-06-01: never fall back to restaurant_id=1. If the store context isn't
+    // resolved, a `currentStore?.id || 1` default attached the order to the wrong
+    // restaurant (id 1) and it never showed in the real store's POS. Block submit
+    // and ask the customer to reload instead of silently mis-routing the order.
+    if (!currentStore?.id) {
+      setError(t('common:storeNotLoaded', 'Store is still loading. Please wait a moment and try again.'));
+      return;
+    }
+    const resolvedRestaurantId = currentStore.id;
+
     // Dine-in table requirement — the store mandates a table number. Button is
     // already disabled in this state, but double-check so a stale render can't slip through.
     if (tableRequired && orderType === 'dine-in' && !selectedTable) {

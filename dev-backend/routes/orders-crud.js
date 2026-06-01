@@ -435,9 +435,41 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
     if (orderData.source === 'mobile') {
       const ts = restaurant.table_settings || {};
       const requireTable = ts.enableTableNumbers !== false && !!ts.tableNumberRequired;
-      const isDineIn = orderData.order_type === 'dine_in' || orderData.order_type === 'dine-in';
+      // 2026-06-01: treat a MISSING order_type as dine-in for this guard. The
+      // mobile client always sends order_type, but a malformed/crafted body that
+      // omits it must not slip through table-less (was: isDineIn=false → allowed
+      // with null table). Only an explicit takeaway/pickup/delivery is exempt.
+      const ot = orderData.order_type;
+      const isDineIn = !ot || ot === 'dine_in' || ot === 'dine-in';
       if (requireTable && isDineIn && !orderData.table_number) {
         return res.status(400).json({ success: false, message: 'Table number is required for dine-in orders', code: 'TABLE_REQUIRED' });
+      }
+    }
+
+    // 2026-06-01: Derive floor_plan_table_id for dine-in orders so they pin to
+    // the correct Floor Plan table card. The mobile PaymentPage path POSTs here
+    // (source:'mobile') but never sends floor_plan_table_id — only mobile-orders.js
+    // resolved it, so every PaymentPage order landed with FPTI=null and, in a
+    // multi-zone store like The Fire, could not be disambiguated (Zone1-T20 vs
+    // Zone2-T20) and showed as "missing" from its table. Match by the table's
+    // canvas id directly, else by label, else by tableNumber. POS already passes
+    // floor_plan_table_id explicitly (from ?tableId=), so this only fills the gap
+    // when it's absent. Pure data binding — no print/kitchen routing touched.
+    {
+      const otRaw = orderData.order_type;
+      const isDineInOrder = !otRaw || otRaw === 'dine_in' || otRaw === 'dine-in';
+      if (isDineInOrder && orderData.table_number && !orderData.floor_plan_table_id) {
+        const fp = restaurant.floor_plan || {};
+        const fpTables = Array.isArray(fp.tables) ? fp.tables : [];
+        const tn = String(orderData.table_number);
+        const matched = fpTables.find(tbl =>
+          (tbl && tbl.id != null && String(tbl.id) === tn) ||
+          (tbl && tbl.label != null && String(tbl.label) === tn) ||
+          (tbl && tbl.tableNumber != null && String(tbl.tableNumber) === tn)
+        );
+        if (matched && matched.id != null) {
+          orderData.floor_plan_table_id = String(matched.id);
+        }
       }
     }
 
@@ -846,6 +878,24 @@ router.patch('/:id', authenticateToken, async (req, res) => {
             current: newProofData,
             history: existingProof ? (existingProof.history || []) : []
           };
+        }
+      }
+
+      // 2026-06-01 anti-wipe guard: never let a blind whole-body PATCH erase the
+      // table binding of a dine-in order. The "Leave"/clear flow now sets
+      // table_cleared:true (non-destructive) and no longer sends table_number:null,
+      // but this endpoint applies req.body wholesale (same blind-update class as the
+      // 5/31 settings-wipe). A stale cached build, a third path, or a crafted call
+      // sending table_number:null would silently destroy the record's table. Drop a
+      // null/empty table_number from the patch for dine-in orders rather than wiping.
+      // An explicit table CHANGE (non-empty value) is still allowed.
+      const otNow = req.body.order_type || order.order_type;
+      const isDineInNow = !otNow || otNow === 'dine_in' || otNow === 'dine-in';
+      if (isDineInNow && Object.prototype.hasOwnProperty.call(req.body, 'table_number')) {
+        const newTn = req.body.table_number;
+        if (newTn === null || newTn === undefined || newTn === '') {
+          console.warn(`[ANTI-WIPE] Ignored table_number=${JSON.stringify(newTn)} on dine-in order ${order.id} (preserving "${order.table_number}"). Use table_cleared flag to free a table.`);
+          delete req.body.table_number;
         }
       }
 
