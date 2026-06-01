@@ -384,7 +384,12 @@
       "Bash(echo \"build pid $! — checking for errors\")",
       "Bash(xargs -I{} stat -c \"%y %n\" {})",
       "Bash(xargs stat -c '%y')",
-      "Bash(xargs stat -c '%n %y')"
+      "Bash(xargs stat -c '%n %y')",
+      "Bash(R38=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjIzLCJpYXQiOjE3ODAyOTQxMjUsImV4cCI6MTc4MDI5NTkyNX0.LeC9a30yZA_LTpRJIZn7mExd6plUGQiEupgP1OOA77A BG=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjYsImlhdCI6MTc4MDI5NDEyNSwiZXhwIjoxNzgwMjk1OTI1fQ.DfoC2DstKMKGhe3H1X3SVkRkRJ9gLCy8Cf-77Ez7Jls timeout 90 node verify2-mount.js)",
+      "Bash(sed -n '1105,1128p' routes/orders-crud.js)",
+      "Bash(pm2 info *)",
+      "Bash(lsof -i:3001 -sTCP:LISTEN)",
+      "Bash(kill 3013283)"
     ],
     "deny": [],
     "ask": []

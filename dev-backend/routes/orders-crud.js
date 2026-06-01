@@ -1016,6 +1016,7 @@ router.patch('/:id', authenticateToken, async (req, res) => {
 //   station) + reprint (new station). Keeps all printing on the client per the
 //   🔒 print-protection rules — no print method/routing touched here.
 router.post('/:id/move-table', authenticateToken, async (req, res) => {
+  console.log('[MOVE-DBG] ENTER move-table id=' + req.params.id + ' onOccupied=' + (req.body && req.body.onOccupied));
   try {
     const { destinationTableNumber, destinationFloorPlanTableId, onOccupied = 'block' } = req.body || {};
     if (!destinationTableNumber || String(destinationTableNumber).trim() === '') {
@@ -1071,23 +1072,59 @@ router.post('/:id/move-table', authenticateToken, async (req, res) => {
       // "occupied" and triggered a merge prompt even though the user sees an EMPTY
       // table. Aligning the window means: if the destination looks empty on the
       // floor, the move just goes through (no spurious merge prompt). (Irene)
+      // 2026-06-01: match table-status (restaurants-crud.js) EXACTLY so "occupied"
+      // means the same thing on both surfaces. Previously this used a narrower
+      // filter (payment_status:'pending', excluded served/completed, no order_type)
+      // → a served/unpaid or kept-on-floor paid order showed as occupied on the
+      // Floor Plan but this check saw the table as EMPTY, so a move silently stacked
+      // two orders on one table with no merge prompt. Same DB conditions as the
+      // table-status query (status notIn cancelled / order_type dine_in|takeaway /
+      // today / not is_deleted), then the same post-filters (not table_cleared, and
+      // — when clearTableOnPayment is on — drop completed/paid).
       const moveTz = getRestaurantTimezone(restaurant);
       const { startOfDay: occToday, endOfDay: occTodayEnd } = getTodayBounds(moveTz);
+      const clearOnPay = ((restaurant && restaurant.table_settings) || {}).clearTableOnPayment === true;
       const destWhere = {
         restaurant_id: order.restaurant_id,
         id: { [Op.ne]: order.id },
-        payment_status: 'pending',
-        status: { [Op.notIn]: ['served', 'completed', 'cancelled'] },
-        table_cleared: { [Op.not]: true },   // Floor Plan hides cleared tables
-        createdAt: { [Op.between]: [occToday, occTodayEnd] },  // same today-window as table-status
+        order_type: { [Op.in]: ['dine_in', 'takeaway'] },
+        status: { [Op.notIn]: ['cancelled'] },
+        table_cleared: { [Op.not]: true },
+        createdAt: { [Op.between]: [occToday, occTodayEnd] },
         [Op.or]: [{ is_deleted: false }, { is_deleted: null }]
       };
+      // clearTableOnPayment: a completed (paid) order no longer occupies the table.
+      if (clearOnPay) destWhere.status = { [Op.notIn]: ['cancelled', 'completed'] };
       if (destFpti) destWhere.floor_plan_table_id = destFpti;
       else destWhere.table_number = destinationTableNumber;
       const destOrder = await Order.findOne({ where: destWhere, lock: t.LOCK.UPDATE, transaction: t });
 
       if (destOrder) {
         if (onOccupied === 'merge') {
+          // 2026-06-01 PAYMENT-SAFETY: a merge cancels THIS (source) order. If it
+          // carries money already collected (partial payment / split bill), that
+          // payment lives on order_payments.order_id = source and amount_paid on
+          // the source row — neither of which mergeItemsIntoOrder carries over. So
+          // merging a partially-paid source would orphan its payment on a cancelled
+          // row and under-credit the destination bill → the customer gets charged
+          // again. Refuse the merge in that case (the safe choice — staff settles
+          // the paid order first). Plain MOVE is unaffected (same row, money stays).
+          const srcPaid = parseFloat(order.amount_paid || 0) > 0
+            || ['partial', 'completed'].includes(String(order.payment_status));
+          console.log('[MOVE-DBG] merge branch: srcId=' + order.id + ' amount_paid=' + order.amount_paid + ' payment_status=' + order.payment_status + ' srcPaid=' + srcPaid);
+          if (srcPaid) {
+            const e = new Error('Cannot merge an order that already has a payment. Settle it first.');
+            e.code = 'SOURCE_HAS_PAYMENT';
+            throw e;
+          }
+          // Likewise refuse if the source redeemed loyalty points — cancelling it
+          // here bypasses the point-refund path (only the PATCH status route refunds),
+          // so the points would be silently burned. Settle/handle first.
+          if (parseFloat(order.points_used || 0) > 0) {
+            const e = new Error('Cannot merge an order that redeemed points. Handle it first.');
+            e.code = 'SOURCE_HAS_POINTS';
+            throw e;
+          }
           // Merge THIS order's items into the destination order, then cancel this one.
           let myItems = order.order_items || [];
           if (typeof myItems === 'string') { try { myItems = JSON.parse(myItems); } catch { myItems = []; } }
@@ -1151,6 +1188,11 @@ router.post('/:id/move-table', authenticateToken, async (req, res) => {
           tableNumber: plain.table_number, orderGroup: outcome.orderGroup,
           addedItems: outcome.addedItems, itemCount: (outcome.addedItems || []).length
         });
+        // 2026-06-01 SYNC-FIX: the source order was soft-cancelled by the merge.
+        // Without an order-deleted, it lingered on Live Orders / KDS / Customer
+        // Display (those screens only drop a row on order-deleted; order-updated
+        // just maps the survivor). Mirror the older POST /orders/merge behaviour.
+        io.of('/orders').to(room).emit('order-deleted', { id: outcome.mergedFromOrderId });
       }
     }
 
@@ -1179,7 +1221,7 @@ router.post('/:id/move-table', authenticateToken, async (req, res) => {
       printedItems: outcome.printedItems || []
     });
   } catch (error) {
-    const map = { NOT_FOUND: 404, FORBIDDEN: 403, ORDER_CLOSED: 409, SAME_TABLE: 400, DEST_OCCUPIED: 409 };
+    const map = { NOT_FOUND: 404, FORBIDDEN: 403, ORDER_CLOSED: 409, SAME_TABLE: 400, DEST_OCCUPIED: 409, SOURCE_HAS_PAYMENT: 409, SOURCE_HAS_POINTS: 409 };
     const status = map[error.code] || 400;
     const body = { success: false, message: error.message, code: error.code || 'MOVE_FAILED' };
     if (error.code === 'DEST_OCCUPIED') body.destination = error.dest;
