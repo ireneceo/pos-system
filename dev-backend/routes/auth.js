@@ -316,6 +316,7 @@ router.get('/me', async (req, res, next) => {
       restaurantIsTest,
       is_demo: !!user.is_demo,
       is_test: !!user.is_test,
+      email_verified: !!user.email_verified,   // 프론트 미인증 안내 배너용
       preferred_language: user.preferred_language || 'en',
       permissions
     };
@@ -567,7 +568,8 @@ router.post('/resend-verification', async (req, res) => {
         to: user.email,
         subject: emailContent.subject,
         html: emailContent.html,
-        text: emailContent.text
+        text: emailContent.text,
+        allowUnverified: true   // 재인증 메일도 미인증 주소(본인)에 도달해야 함
       });
     } catch (emailError) {
       console.error('[AUTH] Failed to send verification email:', emailError.message);

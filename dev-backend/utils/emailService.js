@@ -90,7 +90,7 @@ async function getPlatformEmailSettings() {
  * Create nodemailer transporter with SMTP settings
  */
 function createTransporter(settings) {
-  return nodemailer.createTransport({
+  const transporter = nodemailer.createTransport({
     host: settings.smtp_host,
     port: settings.smtp_port || 587,
     secure: settings.smtp_secure || false,
@@ -102,6 +102,27 @@ function createTransporter(settings) {
       rejectUnauthorized: false
     }
   });
+
+  // 🔒 전송계층 가드 (단일 chokepoint) — 인증 안 됨/placeholder(example.com 등) 주소는
+  // 어떤 발송 경로(sendEmail/sendPlatformEmail/sendIssuerEmail/sendTestEmail/인증메일/그 외)
+  // 로도 SMTP 에 닿지 않는다. "인증 안 되는 메일은 안 보낸다"를 한 곳에서 강제.
+  const _origSendMail = transporter.sendMail.bind(transporter);
+  transporter.sendMail = async function (mailOptions) {
+    try {
+      const raw = mailOptions && mailOptions.to;
+      const list = Array.isArray(raw) ? raw : (raw ? [raw] : []);
+      // placeholder(example.com/pos-system.com 등)·형식오류 주소는 어떤 경로로도 발송 안 함.
+      // (email_verified 강제는 인증메일이 신규주소에 못 가는 닭-달걀을 피하려 상위 플로우에서 처리.)
+      const kept = list.filter(a => emailLooksValid(a));
+      if (kept.length === 0) {
+        console.log(`[email-guard:transport] 발송 차단 — placeholder/형식오류 수신자뿐. subject="${(mailOptions && mailOptions.subject) || ''}" to=${JSON.stringify(list)}`);
+        return { skipped: true, accepted: [], rejected: list, reason: 'invalid-or-placeholder-recipient' };
+      }
+      if (mailOptions) mailOptions.to = Array.isArray(raw) ? kept : kept[0];
+    } catch (e) { /* 가드 자체 실패 시 발송 흐름 유지 */ }
+    return _origSendMail(mailOptions);
+  };
+  return transporter;
 }
 
 const isDev = process.env.NODE_ENV !== 'production';
@@ -134,12 +155,16 @@ function emailLooksValid(email) {
 // 유저가 email_verified=false 면 발송 중지. 여러 수신자면 유효한 주소만 통과.
 // 반환: { ok, to(필터된), reason }. 인증 여부 모르는 외부주소(유저 테이블에 없음)는
 // verified 체크 통과(가입확인/초대 등 신규 주소 정상 발송 위해) — placeholder 만 거름.
-async function screenRecipients(rawTo) {
+async function screenRecipients(rawTo, opts = {}) {
+  // allowUnverified: 인증메일 등 "미인증 주소에 닿아야 하는" 메일은 email_verified 체크를 건너뜀.
+  // placeholder/형식오류 차단은 allowUnverified 여부와 무관하게 항상 적용(바운스 원천 차단).
+  const allowUnverified = !!(opts && opts.allowUnverified);
   const list = Array.isArray(rawTo) ? rawTo : [rawTo];
   const kept = [];
   const dropped = [];
   for (const addr of list) {
     if (!emailLooksValid(addr)) { dropped.push({ addr, why: 'invalid/placeholder' }); continue; }
+    if (allowUnverified) { kept.push(addr); continue; }
     // 유저 테이블에 있고 명시적으로 email_verified=false 면 차단.
     try {
       const rows = await sequelize.query(
@@ -170,6 +195,15 @@ async function sendEmail(entityType, entityId, mailOptions) {
       console.log(`[dev-email-blocked] Entity email skipped (${entityType}/${entityId}): subject="${subj}" to="${to}". Set DEV_SEND_ENTITY_EMAILS=true to enable.`);
       return { success: true, skipped: true, reason: 'dev-environment' };
     }
+
+    // 2026-06-01: 미인증/placeholder 주소 발송 차단 (entity 메일도 platform/issuer 와 동일 가드).
+    // 이전엔 sendEmail 만 screenRecipients 를 안 타서 entity SMTP 경로로 잘못된 주소가 새어나갔음.
+    const screenE = await screenRecipients(mailOptions.to, { allowUnverified: mailOptions.allowUnverified });
+    if (!screenE.ok) {
+      console.log(`[email-guard] Entity email NOT sent — no valid/verified recipient. ${entityType}/${entityId} subject="${mailOptions.subject || ''}" dropped=${JSON.stringify(screenE.dropped)}`);
+      return { success: true, skipped: true, reason: 'unverified-or-invalid-recipient' };
+    }
+    mailOptions.to = screenE.to;
 
     if (mailOptions.to && await isEmailBlocked(mailOptions.to)) {
       console.log(`Email blocked (bounce count >= 3): ${mailOptions.to}`);
@@ -232,7 +266,7 @@ async function sendPlatformEmail(mailOptions) {
     }
 
     // 2026-06-01: 미인증/placeholder 주소 발송 차단 (모든 platform 메일 공통).
-    const screenP = await screenRecipients(mailOptions.to);
+    const screenP = await screenRecipients(mailOptions.to, { allowUnverified: mailOptions.allowUnverified });
     if (!screenP.ok) {
       console.log(`[email-guard] Platform email NOT sent — no valid/verified recipient. subject="${mailOptions.subject || ''}" dropped=${JSON.stringify(screenP.dropped)}`);
       return { success: true, skipped: true, reason: 'unverified-or-invalid-recipient' };
@@ -371,7 +405,7 @@ async function sendIssuerEmail(issuerType, issuerId, mailOptions) {
     }
 
     // 2026-06-01: 미인증/placeholder 주소 발송 차단 (모든 issuer 메일 공통).
-    const screenI = await screenRecipients(mailOptions.to);
+    const screenI = await screenRecipients(mailOptions.to, { allowUnverified: mailOptions.allowUnverified });
     if (!screenI.ok) {
       console.log(`[email-guard] Issuer email NOT sent — no valid/verified recipient. subject="${mailOptions.subject || ''}" dropped=${JSON.stringify(screenI.dropped)}`);
       return { success: true, skipped: true, reason: 'unverified-or-invalid-recipient' };

@@ -22,5 +22,10 @@
   "notificationSettingsPage.ok": "확인",
   "notificationSettingsPage.liveOrderAudio.section": "실시간 주문 알림",
   "notificationSettingsPage.liveOrderAudio.label": "알림음",
-  "notificationSettingsPage.liveOrderAudio.description": "새 주문이 도착하면 알림음을 재생합니다. 브라우저 단위 설정입니다."
+  "notificationSettingsPage.liveOrderAudio.description": "새 주문이 도착하면 알림음을 재생합니다. 브라우저 단위 설정입니다.",
+  "notificationSettingsPage.verifyEmailNotice": "이메일이 인증되지 않았습니다 — 인증해야 메일 알림을 받습니다.",
+  "notificationSettingsPage.resendVerification": "인증 메일 재발송",
+  "notificationSettingsPage.sending": "보내는 중…",
+  "notificationSettingsPage.verifySent": "인증 메일을 보냈습니다. 받은편지함을 확인하세요.",
+  "notificationSettingsPage.verifySendFailed": "인증 메일 발송에 실패했습니다. 다시 시도하세요."
 }

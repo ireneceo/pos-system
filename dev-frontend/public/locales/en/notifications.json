@@ -22,5 +22,10 @@
   "notificationSettingsPage.ok": "OK",
   "notificationSettingsPage.liveOrderAudio.section": "Live Order Alert",
   "notificationSettingsPage.liveOrderAudio.label": "Sound notification",
-  "notificationSettingsPage.liveOrderAudio.description": "Play a sound when a new order arrives. This is a per-browser setting."
+  "notificationSettingsPage.liveOrderAudio.description": "Play a sound when a new order arrives. This is a per-browser setting.",
+  "notificationSettingsPage.verifyEmailNotice": "Your email is not verified — verify it to receive email notifications.",
+  "notificationSettingsPage.resendVerification": "Resend verification",
+  "notificationSettingsPage.sending": "Sending…",
+  "notificationSettingsPage.verifySent": "Verification email sent. Check your inbox.",
+  "notificationSettingsPage.verifySendFailed": "Could not send the verification email. Please try again."
 }

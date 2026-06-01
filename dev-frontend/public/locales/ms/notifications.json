@@ -22,5 +22,10 @@
   "notificationSettingsPage.ok": "OK",
   "notificationSettingsPage.liveOrderAudio.section": "Amaran Pesanan Langsung",
   "notificationSettingsPage.liveOrderAudio.label": "Pemberitahuan bunyi",
-  "notificationSettingsPage.liveOrderAudio.description": "Mainkan bunyi apabila pesanan baharu tiba. Ini ialah tetapan setiap pelayar."
+  "notificationSettingsPage.liveOrderAudio.description": "Mainkan bunyi apabila pesanan baharu tiba. Ini ialah tetapan setiap pelayar.",
+  "notificationSettingsPage.verifyEmailNotice": "E-mel anda belum disahkan — sahkan untuk menerima notifikasi e-mel.",
+  "notificationSettingsPage.resendVerification": "Hantar semula pengesahan",
+  "notificationSettingsPage.sending": "Menghantar…",
+  "notificationSettingsPage.verifySent": "E-mel pengesahan dihantar. Semak peti masuk anda.",
+  "notificationSettingsPage.verifySendFailed": "Gagal menghantar e-mel pengesahan. Cuba lagi."
 }

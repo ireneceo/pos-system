@@ -545,8 +545,9 @@ router.post('/', authenticateToken, async (req, res) => {
       userCreateData.discount_reason = (validDt === 'none') ? null : (discount_reason || null);
     }
 
-    // 관리자가 만드는 계정은 이메일 인증 건너뛰기 (셀프 가입만 인증 필요)
-    userCreateData.email_verified = true;
+    // 이메일 인증 정책 (2026-06-01): 등록 계정도 인증 필요 (skipVerification 명시 시만 면제).
+    // 미인증이어도 로그인 가능 + 알림 메일 미수신 + 화면 안내 배너. 아래서 인증메일 발송.
+    userCreateData.email_verified = !!skipVerification;
 
     const user = await User.create(userCreateData);
 
@@ -568,7 +569,8 @@ router.post('/', authenticateToken, async (req, res) => {
           to: user.email,
           subject: emailContent.subject,
           html: emailContent.html,
-          text: emailContent.text
+          text: emailContent.text,
+          allowUnverified: true   // 인증메일은 미인증 본인 주소에 도달해야 함
         }).catch(err => console.error('[USERS] Verification email failed:', err.message));
       } catch (verifyErr) {
         console.error('[USERS] Verification setup failed:', verifyErr.message);
@@ -722,6 +724,8 @@ router.put('/:id', authenticateToken, demoProtection, async (req, res) => {
           error: `Email "${updateData.email}" is already used by another user`
         });
       }
+      // 이메일 변경 → 재인증 필요 (Irene 2026-06-01: "변경하려면 인증해야"). 미인증 처리.
+      updateData.email_verified = false;
     }
 
     // PIN duplicate check within same restaurant (only if pin_code is being changed)
@@ -799,6 +803,12 @@ router.put('/:id', authenticateToken, demoProtection, async (req, res) => {
     }
 
     await user.update(updateData);
+
+    // 이메일 변경 시 새 주소로 인증메일 발송 (위 블록에서 email_verified=false 설정된 경우만).
+    if (updateData.email_verified === false && updateData.email) {
+      try { require('../services/authService').sendVerificationEmail(user); }
+      catch (e) { console.warn('[profile email change] verification email skip:', e && e.message); }
+    }
 
     // Sync pending invoice if subscription changed (for subscribing roles)
     const SUBSCRIBING_ROLES = ['Brand General', 'Foodcourt General', 'Restaurant Owner', 'Supplier Admin'];

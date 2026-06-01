@@ -61,7 +61,10 @@
   "liveOrdersPage.reject": "Tolak",
   "liveOrdersPage.customerSubmittedProof": "Bukti Dikemukakan Pelanggan",
   "liveOrdersPage": {
-    "takeawayCharge": "Caj Bungkus"
+    "takeawayCharge": "Caj Bungkus",
+    "printToKitchenTitle": "Cetak ke dapur?",
+    "dontPrint": "Jangan cetak",
+    "printTicket": "Cetak tiket"
   },
   "brandMenuUpdatesPage.title": "Kemas Kini Menu Jenama",
   "brandMenuUpdatesPage.allSyncedTitle": "Semua disegerakkan",

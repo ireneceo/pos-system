@@ -61,7 +61,10 @@
   "liveOrdersPage.reject": "Reject",
   "liveOrdersPage.customerSubmittedProof": "Customer Submitted Proof",
   "liveOrdersPage": {
-    "takeawayCharge": "Takeaway Charge"
+    "takeawayCharge": "Takeaway Charge",
+    "printToKitchenTitle": "Print to kitchen?",
+    "dontPrint": "Don't print",
+    "printTicket": "Print ticket"
   },
   "brandMenuUpdatesPage.title": "Brand Menu Updates",
   "brandMenuUpdatesPage.allSyncedTitle": "All synced",

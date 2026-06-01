@@ -305,11 +305,56 @@ function guardShallowSettings(field, incomingRaw, existingRaw, restaurantId = '?
   return makeResult('save', incoming, 'normal');
 }
 
+// ── 결제수단 고정 카탈로그 (구조 = 모든 매장 동일, 값만 매장별) ──
+// payment_settings 가 매장별 자유형 JSON 이라 (옛키 미마이그 payAtCounter→counter,
+// wipe, 생성시점 기본값 차이) 구조가 어긋나던 문제 영구 차단. 읽을 때 정규화하면
+// 신규 매장·미래 결제수단도 자동 일관. 값(enabled/config)은 매장 것 보존.
+const PAYMENT_CATALOG = {
+  cash:         { label: 'Cash', availableIn: ['pos'] },
+  card:         { label: 'Card', availableIn: [], provider: '', config: { stripePublicKey: '', stripeSecretKey: '', paypalClientId: '', paypalClientSecret: '' } },
+  ewallet:      { label: 'E-Wallet', availableIn: ['pos', 'mobile'], qrImage: '' },
+  bankTransfer: { label: 'Bank Transfer', availableIn: [], bankName: '', accountNumber: '', accountName: '' },
+  counter:      { label: 'Pay at Counter', availableIn: ['mobile'], allowed_order_types: ['dine-in', 'takeaway', 'pickup'] },
+  online:       { label: 'Online Payment', availableIn: [], provider: '', config: { stripePublicKey: '', stripeSecretKey: '', paypalClientId: '', paypalClientSecret: '' } },
+  staffMeal:    { label: 'Staff Meal', availableIn: ['pos'] }
+};
+const PAYMENT_ORDER = ['cash', 'card', 'ewallet', 'bankTransfer', 'counter', 'online', 'staffMeal'];
+
+// 읽기 정규화: 옛 키 마이그 + 누락 결제수단 백필(disabled) + label 보장 + _order 고정.
+// 값(enabled/config/qrImage 등)은 기존 매장 것 보존. 비파괴(응답용; DB 강제 변경 X).
+function normalizePaymentSettings(raw) {
+  let ps = parseJsonSafe(raw);
+  if (!ps || typeof ps !== 'object') ps = {};
+  ps = { ...ps };
+  // 옛 키 마이그 (값 보존)
+  if (ps.payAtCounter && !ps.counter) ps.counter = { ...ps.payAtCounter };
+  delete ps.payAtCounter;
+  if ((ps.qr || ps.qrPayment)) {
+    const q = ps.qrPayment || ps.qr;
+    if (!ps.ewallet) ps.ewallet = {};
+    if (q && q.qrImage && !ps.ewallet.qrImage) ps.ewallet.qrImage = q.qrImage;
+    delete ps.qr; delete ps.qrPayment;
+  }
+  if (ps.fpx) delete ps.fpx;
+  const out = {};
+  for (const k of PAYMENT_ORDER) {
+    const def = { enabled: false, ...PAYMENT_CATALOG[k] };
+    out[k] = { ...def, ...(ps[k] && typeof ps[k] === 'object' ? ps[k] : {}) };
+    if (typeof out[k].label !== 'string' || !out[k].label) out[k].label = PAYMENT_CATALOG[k].label;
+    if (!Array.isArray(out[k].availableIn)) out[k].availableIn = PAYMENT_CATALOG[k].availableIn;
+  }
+  out._order = PAYMENT_ORDER.slice();
+  return out;
+}
+
 module.exports = {
   guardPrinterSettings,
   guardPaymentSettings,
   guardOperationSettings,
   guardShallowSettings,
+  normalizePaymentSettings,
+  PAYMENT_CATALOG,
+  PAYMENT_ORDER,
   OPERATION_SETTINGS_ALLOWED_KEYS,
   // exposed for tests
   _internal: { parseJsonSafe, isEmptyObj }

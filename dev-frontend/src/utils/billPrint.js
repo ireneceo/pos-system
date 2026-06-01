@@ -3269,68 +3269,73 @@ async function sendToRawBTPrinter(orderData, storeInfo, settings, printerName, s
  * RawBT 모드: 모든 아이템을 하나의 티켓으로 합쳐서 전송 (RawBT는 연속 intent 처리 불가)
  * Browser 모드: Station별 분리 인쇄 (각 Station 별도 페이지)
  */
+// === Station 버킷팅 단일 소스 (kitchen 발행 + 취소표 라우팅 공용) ===
+// printKitchenTicketsByStation 의 클로저를 모듈 스코프로 추출. 동작 동일(autoprint regression 안전망).
+function _loadKitchenStationMenuMap() {
+  try {
+    const saved = localStorage.getItem('kitchenStationMenuMap');
+    if (saved) return JSON.parse(saved);
+  } catch (e) {
+    console.error('Failed to load kitchen station menu map:', e);
+  }
+  return {};
+}
+
+function _bucketItemsByStation(items, stationPrinters, menuStationMap) {
+  const stationItems = {};
+  const unmappedItems = [];
+  (items || []).forEach(item => {
+    // SET: 구성품을 각자 걸린 주방으로 분배 (걸려있는 메뉴대로). 각 station 티켓엔
+    // 그 주방 구성품만 담은 세트 클론을 넣어 → 주방별로 자기 아이템+옵션만 표기.
+    // 구성품 station 은 백엔드 stationEnrichment 가 set_components[].kitchen_station_id 로 부여.
+    if (Array.isArray(item.set_components) && item.set_components.length > 0) {
+      const compByStation = {};
+      const unmappedComps = [];
+      item.set_components.forEach(c => {
+        const cStation = c.kitchen_station_id || (c.name ? menuStationMap[c.name] : null) || null;
+        if (cStation && stationPrinters[cStation]) {
+          if (!compByStation[cStation]) compByStation[cStation] = [];
+          compByStation[cStation].push(c);
+        } else {
+          unmappedComps.push(c);
+        }
+      });
+      Object.keys(compByStation).forEach(sid => {
+        if (!stationItems[sid]) stationItems[sid] = [];
+        stationItems[sid].push({ ...item, set_components: compByStation[sid] });
+      });
+      if (unmappedComps.length > 0) {
+        unmappedItems.push({ ...item, set_components: unmappedComps });
+      }
+      return;
+    }
+    // 1) Item-level kitchen_station_id (backend now resolves this from Product
+    //    or Category for mobile orders; POS already attaches it directly).
+    // 2) Fall back to the menu-name → station map (KDS localStorage), so
+    //    legacy / un-enriched items still route via the old path.
+    let stationId = item.kitchen_station_id || item.menuItem?.kitchen_station_id || null;
+    if (!stationId) {
+      const itemName = item.menuItem?.name || item.name;
+      stationId = menuStationMap[itemName];
+    }
+    if (stationId && stationPrinters[stationId]) {
+      if (!stationItems[stationId]) stationItems[stationId] = [];
+      stationItems[stationId].push(item);
+    } else {
+      unmappedItems.push(item);
+    }
+  });
+  return { stationItems, unmappedItems };
+}
+
 async function printKitchenTicketsByStation(orderData, storeInfo, settings) {
   const stationPrinters = settings.kitchenStationPrinters || {};
   const stationIds = Object.keys(stationPrinters);
 
-  // Helper: read the menu→station mapping (saved by Kitchen Display)
-  const loadMenuStationMap = () => {
-    try {
-      const saved = localStorage.getItem('kitchenStationMenuMap');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.error('Failed to load kitchen station menu map:', e);
-    }
-    return {};
-  };
-
-  // Helper: bucket items by station based on the menu→station mapping
-  const bucketItemsByStation = (menuStationMap) => {
-    const stationItems = {};
-    const unmappedItems = [];
-    (orderData.items || []).forEach(item => {
-      // SET: 구성품을 각자 걸린 주방으로 분배 (걸려있는 메뉴대로). 각 station 티켓엔
-      // 그 주방 구성품만 담은 세트 클론을 넣어 → 주방별로 자기 아이템+옵션만 표기.
-      // 구성품 station 은 백엔드 stationEnrichment 가 set_components[].kitchen_station_id 로 부여.
-      if (Array.isArray(item.set_components) && item.set_components.length > 0) {
-        const compByStation = {};
-        const unmappedComps = [];
-        item.set_components.forEach(c => {
-          const cStation = c.kitchen_station_id || (c.name ? menuStationMap[c.name] : null) || null;
-          if (cStation && stationPrinters[cStation]) {
-            if (!compByStation[cStation]) compByStation[cStation] = [];
-            compByStation[cStation].push(c);
-          } else {
-            unmappedComps.push(c);
-          }
-        });
-        Object.keys(compByStation).forEach(sid => {
-          if (!stationItems[sid]) stationItems[sid] = [];
-          stationItems[sid].push({ ...item, set_components: compByStation[sid] });
-        });
-        if (unmappedComps.length > 0) {
-          unmappedItems.push({ ...item, set_components: unmappedComps });
-        }
-        return;
-      }
-      // 1) Item-level kitchen_station_id (backend now resolves this from Product
-      //    or Category for mobile orders; POS already attaches it directly).
-      // 2) Fall back to the menu-name → station map (KDS localStorage), so
-      //    legacy / un-enriched items still route via the old path.
-      let stationId = item.kitchen_station_id || item.menuItem?.kitchen_station_id || null;
-      if (!stationId) {
-        const itemName = item.menuItem?.name || item.name;
-        stationId = menuStationMap[itemName];
-      }
-      if (stationId && stationPrinters[stationId]) {
-        if (!stationItems[stationId]) stationItems[stationId] = [];
-        stationItems[stationId].push(item);
-      } else {
-        unmappedItems.push(item);
-      }
-    });
-    return { stationItems, unmappedItems };
-  };
+  // Helpers factored to module scope (단일 소스) so the cancellation path
+  // (printCancellationTicketsByStation) buckets items identically. 동작 무변경.
+  const loadMenuStationMap = _loadKitchenStationMenuMap;
+  const bucketItemsByStation = (menuStationMap) => _bucketItemsByStation(orderData.items, stationPrinters, menuStationMap);
 
   // Single station: send everything to it
   if (stationIds.length === 1) {
@@ -3569,6 +3574,15 @@ function generateCancellationTicketContent(orderData, storeInfo, reason) {
   content += CMD.LINE_FEED + CMD.LINE_FEED;
   content += CMD.REVERSE_OFF + CMD.TEXT_NORMAL + CMD.BOLD_OFF;
 
+  // station 이름 상단 표기 (원래 주방티켓 [ STATION ] 과 동일) — station별 라우팅 시
+  // 어느 주방 취소표인지 한눈에. orderData.stationLabel 없으면 미표기(하위호환).
+  if (orderData.stationLabel) {
+    content += CMD.ALIGN_CENTER + CMD.TEXT_DOUBLE + CMD.BOLD_ON;
+    content += '[ ' + String(orderData.stationLabel).toUpperCase() + ' ]' + CMD.LINE_FEED;
+    content += CMD.TEXT_NORMAL + CMD.BOLD_OFF;
+    content += CMD.LINE_FEED;
+  }
+
   content += CMD.TEXT_DOUBLE_HEIGHT + CMD.BOLD_ON;
   content += 'Order #' + (orderData.orderNumber || orderData.order_number || '') + CMD.LINE_FEED;
   content += CMD.TEXT_NORMAL + CMD.BOLD_OFF;
@@ -3628,7 +3642,7 @@ function generateHTMLCancellationTicket(orderData, storeInfo, reason) {
       : '';
     // 줄긋기: qty×name 만 line-through (station tag 는 제외해 가독). 사유는 줄 아래.
     const reasonHtml = it.cancelReason
-      ? `<div class="item-option" style="font-size:12px;font-weight:600;">(${escapeHtmlForPrint(String(it.cancelReason))})</div>`
+      ? `<div style="font-size:12px;font-weight:600;padding-left:18px;color:#333;">(${escapeHtmlForPrint(String(it.cancelReason))})</div>`
       : '';
     return `<div class="item"><div class="item-name" style="font-size:16px;font-weight:700;"><span style="text-decoration:line-through;">${qty} × ${name}</span>${stationTagHtml}</div>${reasonHtml}</div>`;
   }).join('');
@@ -3644,6 +3658,7 @@ function generateHTMLCancellationTicket(orderData, storeInfo, reason) {
 
   return wrapPrintHTML(`Cancelled - ${orderNumber}`, `
     <div class="banner banner-strong" style="background:#000;color:#fff;border-color:#000;">${escapeHtmlForPrint(orderData.cancelTitle || '*** CANCELLED ***')}</div>
+    ${orderData.stationLabel ? `<div style="text-align:center;font-size:20px;font-weight:800;margin:2px 0;">[ ${escapeHtmlForPrint(String(orderData.stationLabel).toUpperCase())} ]</div>` : ''}
     <div class="medium-number">Order #${escapeHtmlForPrint(orderNumber)}</div>
     ${metaRows.length ? `<div class="meta">${metaRows.join('')}</div>` : ''}
     <div class="divider"></div>
@@ -3662,7 +3677,7 @@ function escapeHtml(s) {
  * Print a cancellation ticket to the kitchen printer.
  * Returns Promise<boolean>. Silent no-op when kitchen printer disabled or option OFF.
  */
-export async function printCancellationTicket(orderData, storeInfo, reason, printerName) {
+export async function printCancellationTicket(orderData, storeInfo, reason, printerName, printerAddress, suppressMirror) {
   try {
     const settings = getPrinterSettings();
     if (!settings.kitchenPrinter || !settings.kitchenPrinter.enabled) {
@@ -3690,7 +3705,7 @@ export async function printCancellationTicket(orderData, storeInfo, reason, prin
     const targetPrinter = printerName || settings.kitchenPrinter.name;
 
     // Mirror to bill printer (same toggle as normal kitchen tickets)
-    const __bpMirror = getActiveBillPrinter(); if (settings.kitchenPrinter.mirrorToBillPrinter && __bpMirror && __bpMirror.enabled) {
+    const __bpMirror = getActiveBillPrinter(); if (!suppressMirror && settings.kitchenPrinter.mirrorToBillPrinter && __bpMirror && __bpMirror.enabled) {
       setTimeout(() => {
         printCancellationToCounter(orderData, storeInfo, reason).catch(e =>
           console.warn('Cancellation → counter mirror failed:', e && e.message)
@@ -3698,9 +3713,9 @@ export async function printCancellationTicket(orderData, storeInfo, reason, prin
       }, 200);
     }
 
-    // QZ Tray
+    // QZ Tray — station 주소 우선(R9/R10 station 라우팅), 없으면 master kitchen 주소(기존 동작).
     if (shouldUseQZTray()) {
-      const address = settings.kitchenPrinter.address;
+      const address = printerAddress || settings.kitchenPrinter.address;
       if (!address) {
         console.warn('[CANCEL TICKET] QZ Tray: no kitchen address');
         return false;
@@ -3728,6 +3743,70 @@ export async function printCancellationTicket(orderData, storeInfo, reason, prin
     return true;
   } catch (e) {
     console.error('[CANCEL TICKET] failed:', e && e.message);
+    return false;
+  }
+}
+
+/**
+ * R10 전체취소 — station별로 각 station 의 아이템만 줄긋기 취소표 발행.
+ * 버킷팅은 kitchen 발행과 동일 단일소스(_bucketItemsByStation). station 없으면
+ * 기존 printCancellationTicket(단일 프린터)로 폴백. 빌 미러는 전체 1회만.
+ * orderData.cancelTitle/cancelFooter(예: '*** ORDER CANCELLED ***') 그대로 전달됨.
+ */
+export async function printCancellationTicketsByStation(orderData, storeInfo, reason) {
+  try {
+    const settings = getPrinterSettings();
+    if (!settings.kitchenPrinter || !settings.kitchenPrinter.enabled) return true;
+    if (settings.kitchenPrinter.printCancellationTicket === false) return true;
+    if (settings.emergencyMode) {
+      // 비상모드: station 라우팅 무시, 캐셔 프린터로 (기존 취소표 정책과 동일).
+      return await printCancellationTicket(orderData, storeInfo, reason);
+    }
+
+    const stationPrinters = settings.kitchenStationPrinters || {};
+    const stationIds = Object.keys(stationPrinters);
+    // Station 미설정 → 단일 주방 프린터(기존 동작 100% 동일).
+    if (stationIds.length === 0) {
+      return await printCancellationTicket(orderData, storeInfo, reason);
+    }
+
+    const menuMap = _loadKitchenStationMenuMap();
+    const { stationItems, unmappedItems } = _bucketItemsByStation(orderData.items || [], stationPrinters, menuMap);
+    const mappedIds = Object.keys(stationItems);
+
+    // 매핑된 station 없으면 → 첫 station 으로 전체(주방이 한 곳).
+    if (mappedIds.length === 0) {
+      const sp0 = stationPrinters[stationIds[0]];
+      return await printCancellationTicket({ ...orderData, stationLabel: sp0.stationName || ('Station ' + stationIds[0]) }, storeInfo, reason, sp0.name, sp0.address);
+    }
+    // unmapped 는 첫 매핑 station 에 합쳐 별도 job race 회피(kitchen 경로와 동일).
+    if (unmappedItems.length > 0) {
+      stationItems[mappedIds[0]] = [...stationItems[mappedIds[0]], ...unmappedItems];
+    }
+
+    // station별 발행 — per-station 미러는 suppress, 전체 미러 1회는 아래서.
+    for (let i = 0; i < mappedIds.length; i++) {
+      const sp = stationPrinters[mappedIds[i]];
+      const perStation = { ...orderData, items: stationItems[mappedIds[i]], stationLabel: sp.stationName || ('Station ' + mappedIds[i]) };
+      try {
+        await printCancellationTicket(perStation, storeInfo, reason, sp.name, sp.address, true);
+      } catch (e) {
+        console.error('[CANCEL STATION] station 발행 실패:', sp && sp.stationName, e && e.message);
+      }
+      if (i < mappedIds.length - 1) await new Promise(r => setTimeout(r, 800));
+    }
+
+    // 빌 미러 — 전체 취소 주문 1장만 (station별 중복 방지).
+    if (settings.kitchenPrinter.mirrorToBillPrinter) {
+      const bp = getActiveBillPrinter();
+      if (bp && bp.enabled) {
+        try { await printCancellationToCounter(orderData, storeInfo, reason); }
+        catch (e) { console.warn('[CANCEL STATION] 빌 미러 실패:', e && e.message); }
+      }
+    }
+    return true;
+  } catch (e) {
+    console.error('[CANCEL STATION] failed:', e && e.message);
     return false;
   }
 }

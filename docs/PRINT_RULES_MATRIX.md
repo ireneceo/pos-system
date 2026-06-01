@@ -398,10 +398,32 @@ backend mergeItemsIntoOrder() 성공
 
 ---
 
+### 9-6. 런타임 대조 결과 (2026-06-01 하니스 — billPrint 실제 dispatch 가로채기)
+
+billPrint 의 송신(qz.print / RawBT intent)을 스텁으로 가로채 **설정조합별 실제 발행 건수·대상·내용**을 §9 와 1:1 대조 (멀티 station 한글 데이터: 비빔밥@KITCHEN / 된장찌개@KITCHEN 2 / 소주@BAR).
+
+| 케이스 | 설정 | 실제 dispatch | §9 기대 | 판정 |
+|--------|------|--------------|---------|:----:|
+| C1 | QZ · 3 station · perItem OFF · mirror OFF | 3장 (station별 자기 아이템) | station별 합본 | ✓ |
+| C2 | QZ · station 0 · perItem OFF | 1장 (합본, 3 아이템) → kitchenPrinter | 합본 1장 | ✓ |
+| C3 | QZ · station 0 · perItem ON | 3장 (아이템별) → kitchenPrinter | 아이템별 | ✓ |
+| C4 | QZ · 3 station · **mirror ON** | 3 station + **빌프린터(POS-80C) 통합 1장** = 4 | station N + 빌미러 1 | ✓ |
+| C5 | **R10 전체취소** · QZ · 3 station | 3장 (station별 라우팅, 내용=ORDER CANCELLED 줄긋기 — 별도 캡처검증) | station별 취소표 | ✓ |
+| C6 | **kitchenPrinter.enabled=false** + station 有 | **3장 발행됨** | 0장(인쇄 안 함) | **✗ 불일치** |
+
+**C6 불일치 (확인된 코드 사실)**: `printKitchenTicketViaRawBT` 에서 **station 라우팅 분기(`hasStationPrinters && !printerName` → `return printKitchenTicketsByStation`)가 `kitchenPrinter.enabled` 체크보다 먼저** 실행됨(billPrint.js ~2364 vs ~2369). 따라서 station 설정 매장은 `kitchenPrinter.enabled=false` 여도 station 발행이 멈추지 않는다.
+- **단, 실운영 자동인쇄의 진짜 master 게이트는 `kitchenPrinter.autoPrint`(상위 호출부 useAutoPrintPoller/POS)** 이므로, autoPrint OFF 면 애초에 이 함수가 안 불려 발행되지 않는다(회귀테스트 44 통과). `.enabled` 는 station 설정 시 station 분기에 의해 우회되는 2차 플래그.
+- **조치**: `.enabled` 가 station 까지 하드 게이트하길 원하면 billPrint.js 2364/2369 순서 교체 필요 = 🔒 보호코드 변경 → **Irene 승인 + 실프린터 확인 후에만**(과거 이 분기는 "station 매장 결제 후 아무것도 안 나옴" 버그 수정용으로 추가됨 — 순서 변경 시 회귀 주의). 현 매트릭스는 **코드 실제 동작**(station 발행)을 기준으로 기록.
+
+C1~C5 모두 §9 일치 확인 (라우팅·건수·미러·취소 station별).
+
+---
+
 ## 변경 이력
 
 | 날짜 | 변경 |
 |------|------|
+| 2026-06-01 | § 9-6 런타임 대조 결과 추가 (C1~C5 §9 일치 / C6 kitchenPrinter.enabled+station 불일치 = 코드 우회, 실게이트는 autoPrint) |
 | 2026-06-01 | § 9 주문루트(11) × 주요설정(8) 검증 매트릭스 추가 — R7~R10 4-케이스 오더티켓(이동 빈/머지, 아이템/전체 취소) + 자동/수동 게이트 |
 | 2026-03-17 | Kitchen Station 시스템 Phase 5: Station별 분리 인쇄 추가 |
 | 2026-03-17 | 프린팅 규칙 매트릭스 초판 작성 |

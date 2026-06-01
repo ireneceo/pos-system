@@ -9,6 +9,7 @@ const {
   guardPaymentSettings,
   guardOperationSettings,
   guardShallowSettings,
+  normalizePaymentSettings,
 } = require('../utils/settingsGuard');
 
 // Get store settings
@@ -32,19 +33,18 @@ router.get('/settings', authenticateToken, async (req, res) => {
     let operationSettings = {};
 
     try {
-      if (restaurant.payment_settings) {
-        paymentSettings = typeof restaurant.payment_settings === 'string'
-          ? JSON.parse(restaurant.payment_settings)
-          : restaurant.payment_settings;
-        // Normalize: sync enabled flag with availableIn for all methods
-        Object.keys(paymentSettings).forEach(key => {
-          if (key === '_order') return;
-          const m = paymentSettings[key];
-          if (m && typeof m === 'object' && 'enabled' in m && 'availableIn' in m) {
-            m.enabled = Array.isArray(m.availableIn) && m.availableIn.length > 0;
-          }
-        });
-      }
+      // 읽기 정규화 — 모든 매장이 고정 카탈로그(표준 7종) 구조로 응답. 옛 키 마이그 +
+      // 누락 결제수단 백필(disabled) + label 보장. 값은 매장 것 보존. 이걸로 "매장마다
+      // 결제수단 목록이 다른" 구조 어긋남이 응답 단계에서 영구 차단된다(신규/미래 포함).
+      paymentSettings = normalizePaymentSettings(restaurant.payment_settings);
+      // sync enabled flag with availableIn for all methods
+      Object.keys(paymentSettings).forEach(key => {
+        if (key === '_order') return;
+        const m = paymentSettings[key];
+        if (m && typeof m === 'object' && 'enabled' in m && 'availableIn' in m) {
+          m.enabled = Array.isArray(m.availableIn) && m.availableIn.length > 0;
+        }
+      });
     } catch (e) {
       console.error('Error parsing payment_settings:', e);
     }

@@ -144,11 +144,22 @@ The Fire 에서 **Floor Plan 으로 테이블 POS 열고 주문 → 키친 티�
 
 > 임시저장·저장·개발완료 모두 이 세 줄을 매번 새로 쓴다(침묵 상속 금지). DEVELOPMENT_PLAN.md 는 완료 아카이브 전용.
 
+### 🔴 2026-06-01 이메일 폭주 대응 (운영 핫픽스 배포됨) + 인증 UI
+- **운영 배포 완료(surgical, 인쇄작업 무관)**: `emailService.js`(전송계층 가드 `createTransporter.sendMail` 래핑 = placeholder/example.com 차단, 모든 경로) + `screenRecipients` allowUnverified 옵션 + `authService.js`/`auth.js` 인증·재인증 메일에 `allowUnverified:true`(닭-달걀 회피). → **폭주 원천 차단. 인증돼야 발송. 인증메일은 예외.** [[reference_email_send_guard]]
+  - 남은 바운스 = Gmail 재시도 큐의 옛(가드前) 메일, ~48h 자동종료. 운영 미인증 실유저 0 (테스트계정 1=lua_test2 id33만, is_test 우회).
+- **인증 안내 UI (dev 코드완료·미배포)**: `/auth/me`에 email_verified 추가 + AuthContext `emailVerified` 매핑(3블록) + NotificationSettings 미인증 안내 배너+재인증 버튼(외부toast 없이 인라인) + i18n 5키×4언어. 플러밍 검증됨(런타임 ev=false 확인). 시각 end-to-end는 헤드리스 한계(미인증 유저 로그인 리다이렉트)로 미확정 — 실시나리오=로그인된 유저가 이메일 변경→미인증→배너.
+- **인증 enforcement 구현완료(dev, 미배포)** — Irene 결정: 미인증=로그인 허용(차단X), 메일만 미발송+배너. A) authService 로그인차단(EMAIL_NOT_VERIFIED throw) **제거**. B) 등록 3지점(users.js create + restaurants-crud admin 2곳) email_verified=false + 인증메일(restaurants는 commit후 best-effort, users.js는 skipVerification 게이트). C) 프로필 PUT /users/:id 이메일 변경 시 email_verified=false + 새주소 인증메일. sendVerificationEmail export. **실API 검증: 유저생성→email_verified=false+토큰발급 ✓**, health 87/88.
+- **미배포 종합**: 인증 enforcement(A/B/C 백엔드) + 안내배너(프론트) + 인쇄 4-케이스 — 전부 dev. 다음 배포에 함께. (이메일 *가드*만 운영 surgical 배포됨.)
+- **남은 검증**: §9 매트릭스 각 설정조합(printPerItem/mirror/browser·rawbt·qz 전조합) 런타임 대조는 부분만.
+
 ### 진행 중인 작업
 - **인쇄 4-케이스 오더티켓 + 개발 인프라 (2026-06-01 Irene 전체위임, 순서대로 진행)**
-  - Phase 0 인프라: (0-1) 히스토리 단일화 = **완료** / (0-2) `/운영검증` 스킬 = 진행 예정
-  - Phase 1 설계·매트릭스 → 2 구현(🔒billPrint) → 3 DEV검증 → 4 배포(Irene만) → 5 운영검증
-  - 설계 문서: `docs/TABLE_MOVE_AND_VOID_TICKET.md`(설계 2) + `docs/PRINT_RULES_MATRIX.md`(전체 재작성)
+  - Phase 0: (0-1)히스토리 단일화 **완료** / (0-2)`/운영검증` 스킬 **완료**
+  - Phase 1: 설계확정 + `PRINT_RULES_MATRIX.md §9` 매트릭스 **완료**
+  - Phase 2 구현(🔒billPrint): #1 noticeHeader(R7/R8) / #2 취소표 줄긋기+title/footer / #3 R9 wiring + R10 station 라우팅(factor-out 단일소스) **완료·빌드·regression 44/44**. **남음: R7/R8 FloorPlan 이동 호출부 wiring + 자동/수동(S1) 게이트+수동 확인인쇄 + Playwright 캡처하니스(4케이스×4방식) + /검증 §9 대조**
+  - Phase 3 DEV검증 → 4 배포(Irene만, `--bless`+실프린터) → 5 `/운영검증`
+  - 설계 문서: `docs/TABLE_MOVE_AND_VOID_TICKET.md`(설계 2 확정) + `docs/PRINT_RULES_MATRIX.md §9`
+- **[같이 배포] 이메일 발송 가드 완성** — `emailService.js` `screenRecipients`(미인증/placeholder 차단)를 3개 발송함수 전부에 적용(`sendEmail` 구멍 닫음). **운영엔 notificationService 가드만 있고 emailService 전송계층 가드 미배포 → 이 배포에 반드시 포함.** `health-check.js` defineMatrixTests 미정의 크래시도 가드 수정함.
 
 ### 다음 확정 작업
 - 위 진행 중 작업을 Phase 순서대로 완료. 인쇄 변경은 **Irene 승인 + 실프린터 눈 확인** 후에만 bless/배포.

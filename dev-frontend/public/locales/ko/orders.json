@@ -61,7 +61,10 @@
   "liveOrdersPage.reject": "거절",
   "liveOrdersPage.customerSubmittedProof": "고객 제출 증빙",
   "liveOrdersPage": {
-    "takeawayCharge": "포장료"
+    "takeawayCharge": "포장료",
+    "printToKitchenTitle": "주방에 인쇄할까요?",
+    "dontPrint": "인쇄 안 함",
+    "printTicket": "티켓 인쇄"
   },
   "brandMenuUpdatesPage.title": "브랜드 메뉴 업데이트",
   "brandMenuUpdatesPage.allSyncedTitle": "모두 동기화됨",

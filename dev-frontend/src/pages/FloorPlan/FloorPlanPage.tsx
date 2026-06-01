@@ -9,6 +9,7 @@ import TableDetailPanel from './TableDetailPanel';
 import FloorPlanStatsBar from './FloorPlanStatsBar';
 import PaymentModal from '../../components/POSTerminal/PaymentModal';
 import { Modal as CommonModal } from '../../components/UI';
+import KitchenTicketSendModal, { previewStationBuckets, KitchenTicketSendPrompt } from '../../components/Print/KitchenTicketSendModal';
 import OverflowMenu, { OverflowMenuItem } from '../../components/UI/OverflowMenu';
 import { getRestaurantTimezone } from '../../utils/timezone';
 import DailySettlementPrint from '../Reports/DailySettlementPrint';
@@ -1107,6 +1108,8 @@ const FloorPlanPage: React.FC = () => {
   const [moveBusy, setMoveBusy] = useState(false);
   // Occupied-destination prompt: server said the dest table already has an order.
   const [moveOccupied, setMoveOccupied] = useState<{ destTable: string; destFpti: string; dest: any } | null>(null);
+  // 수동발행(자동발행 OFF) 시 이동 재발행 확인 프롬프트 (station별 미리보기 + 보내기/안보내기)
+  const [movePrintPrompt, setMovePrintPrompt] = useState<KitchenTicketSendPrompt | null>(null);
 
   const handleOpenMove = (orderId: number, sourceTableNumber: string | null) => {
     setMoveSearch('');
@@ -1148,42 +1151,55 @@ const FloorPlanPage: React.FC = () => {
       // 목적지 주문에 이미 붙은 거라 재발행 안 함.
       try {
         const printed = Array.isArray(result.printedItems) ? result.printedItems : [];
-        if (printed.length > 0 && result.moved) {
+        if (printed.length > 0 && (result.moved || result.merged)) {   // 머지(R8)도 재발행 (MERGED 헤더)
           const billPrintMod = await import('../../utils/billPrint');
           const printSettings = billPrintMod.getPrinterSettings();
           const _kp: any = (printSettings && printSettings.kitchenPrinter) || {};
           const kitchenAutoOn = _kp.enabled !== false && !!_kp.autoPrint;
+          const printStoreInfo = (typeof getStoreInfo === 'function') ? getStoreInfo() : {};
+          const ord = result.data || {};
+          const mapItem = (it: any) => ({
+            menuItem: { name: it.name || (it.menuItem && it.menuItem.name) || 'Item', price: parseFloat(it.price || '0') },
+            quantity: it.quantity || 1,
+            options: Array.isArray(it.options) ? it.options : [],
+            kitchen_station_id: it.kitchen_station_id || null,
+            stationName: it.stationName || null,
+            ...(it.is_set_menu ? { is_set_menu: true } : {}),
+            ...(Array.isArray(it.set_components) ? { set_components: it.set_components } : {}),
+            special_instructions: it.special_instructions || ''
+          });
+          // R7/R8 — 이동 재발행 티켓 상단 안내 헤더(주방이 옛 티켓 버리게). merge=R8.
+          const _moveNotice = onOccupied === 'merge'
+            ? { title: '** TABLE CHANGED + MERGED **', lines: ['Discard previous tickets for these tables.', 'Use THIS ticket.'] }
+            : { title: '** TABLE CHANGED **', lines: ['Discard the previous ticket.', 'Use THIS ticket.'] };
+          const reprintData: any = {
+            noticeHeader: _moveNotice,
+            orderNumber: ord.order_number,
+            pickupNumber: ord.order_number ? String(ord.order_number).split('-')[1] : '',
+            tableNumber: destTable || ord.table_number || undefined,
+            pagerNumber: ord.pager_number || undefined,
+            date: new Date(ord.order_date || ord.createdAt || Date.now()),
+            orderType: ord.order_type === 'dine_in' ? 'dine-in' : (ord.order_type || 'dine-in'),
+            orderSource: ord.source || 'pos',
+            items: printed.map(mapItem),
+            subtotal: parseFloat(ord.subtotal || '0'),
+            tax: parseFloat(ord.tax || '0'),
+            total: parseFloat(ord.total_amount || '0'),
+            paymentMethod: ord.payment_method || 'counter',
+            cashierName: 'POS'
+          };
+          const doReissue = () => billPrintMod.printKitchenTicketViaRawBT(reprintData, printStoreInfo)
+            .catch((e: any) => console.warn('[move-table] reprint failed (non-fatal):', e?.message));
           if (kitchenAutoOn) {
-            const printStoreInfo = (typeof getStoreInfo === 'function') ? getStoreInfo() : {};
-            const ord = result.data || {};
-            const mapItem = (it: any) => ({
-              menuItem: { name: it.name || (it.menuItem && it.menuItem.name) || 'Item', price: parseFloat(it.price || '0') },
-              quantity: it.quantity || 1,
-              options: Array.isArray(it.options) ? it.options : [],
-              kitchen_station_id: it.kitchen_station_id || null,
-              stationName: it.stationName || null,
-              ...(it.is_set_menu ? { is_set_menu: true } : {}),
-              ...(Array.isArray(it.set_components) ? { set_components: it.set_components } : {}),
-              special_instructions: it.special_instructions || ''
+            doReissue();   // 자동발행: 매장 설정 방식대로 즉시 재발행
+          } else {
+            // 수동발행: 발행될 오더티켓을 station 별로 미리보고 보낼지 선택 (합의 설계 — 이동/취소 공통)
+            setMovePrintPrompt({
+              run: doReissue,
+              ticketType: _moveNotice.title,
+              description: onOccupied === 'merge' ? '머지 — 이전 티켓들 버리고 이 티켓 사용' : '테이블 이동 — 이전 티켓 버리고 이 티켓 사용',
+              stations: previewStationBuckets(printed, printSettings),
             });
-            const reprintData: any = {
-              orderNumber: ord.order_number,
-              pickupNumber: ord.order_number ? String(ord.order_number).split('-')[1] : '',
-              tableNumber: destTable || ord.table_number || undefined,
-              pagerNumber: ord.pager_number || undefined,
-              date: new Date(ord.order_date || ord.createdAt || Date.now()),
-              orderType: ord.order_type === 'dine_in' ? 'dine-in' : (ord.order_type || 'dine-in'),
-              orderSource: ord.source || 'pos',
-              items: printed.map(mapItem),
-              subtotal: parseFloat(ord.subtotal || '0'),
-              tax: parseFloat(ord.tax || '0'),
-              total: parseFloat(ord.total_amount || '0'),
-              paymentMethod: ord.payment_method || 'counter',
-              cashierName: 'POS'
-            };
-            // 매장 설정 방식대로 자동 재발행. 실패해도 이동은 성공(non-fatal).
-            billPrintMod.printKitchenTicketViaRawBT(reprintData, printStoreInfo)
-              .catch((e: any) => console.warn('[move-table] reprint failed (non-fatal):', e?.message));
           }
         }
       } catch (e: any) { console.warn('[move-table] reprint step skipped:', e?.message); }
@@ -1933,6 +1949,9 @@ const FloorPlanPage: React.FC = () => {
           )}
         </CommonModal>
       )}
+
+      {/* 수동발행 — 이동 재발행 station별 미리보기 + 보내기/안보내기 (자동발행 OFF일 때) */}
+      <KitchenTicketSendModal prompt={movePrintPrompt} onClose={() => setMovePrintPrompt(null)} t={t} />
     </PageContainer>
   );
 };

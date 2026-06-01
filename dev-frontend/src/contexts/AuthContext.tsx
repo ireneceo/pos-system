@@ -28,6 +28,7 @@ export interface User {
   // QA tooling and demo flows stay usable even with overdue invoices.
   isDemo?: boolean;
   isTest?: boolean;
+  emailVerified?: boolean;   // 미인증 시 알림설정에 "인증해야 메일 알림 감" 안내 배너
   restaurantIsDemo?: boolean;
   restaurantIsTest?: boolean;
   company_name?: string;
@@ -484,6 +485,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               subscriptionStatus: apiUser.subscription_status || null,
               isDemo: !!apiUser.is_demo,
               isTest: !!apiUser.is_test,
+            emailVerified: !!apiUser.email_verified,
               restaurantIsDemo: !!apiUser.restaurantIsDemo,
               restaurantIsTest: !!apiUser.restaurantIsTest,
               preferred_language: apiUser.preferred_language || 'en'
@@ -549,6 +551,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             restaurantName: apiUser.restaurantName || null,
             isDemo: !!apiUser.is_demo,
             isTest: !!apiUser.is_test,
+            emailVerified: !!apiUser.email_verified,
             restaurantIsDemo: !!apiUser.restaurantIsDemo,
             restaurantIsTest: !!apiUser.restaurantIsTest,
             subscriptionStatus: apiUser.subscription_status || null,
@@ -615,6 +618,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             restaurantName: apiUser.restaurantName || null,
             isDemo: !!apiUser.is_demo,
             isTest: !!apiUser.is_test,
+            emailVerified: !!apiUser.email_verified,
             restaurantIsDemo: !!apiUser.restaurantIsDemo,
             restaurantIsTest: !!apiUser.restaurantIsTest,
             subscriptionStatus: apiUser.subscription_status || null,

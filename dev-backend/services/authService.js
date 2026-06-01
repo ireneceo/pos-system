@@ -87,13 +87,10 @@ async function login(emailOrUsername, password) {
   // The frontend (ProtectedRoute) detects subscription_status / restaurantStatus
   // === 'suspended' and redirects every route except the invoice page.
 
-  // Email verification check (demo/test 계정 bypass)
-  if (!user.is_demo && !user.is_test && user.email_verified === false) {
-    const err = new Error('Please verify your email address before logging in. Check your inbox for the verification link.');
-    err.code = 'EMAIL_NOT_VERIFIED';
-    err.email = user.email;
-    throw err;
-  }
+  // 이메일 인증 정책 (Irene 2026-06-01): 미인증이어도 로그인은 허용한다.
+  // 인증은 "메일 발송 자격"일 뿐 — 미인증 유저는 알림 메일을 못 받고(서버 가드),
+  // 화면에 미인증 안내 배너 + 재인증 버튼만 노출된다. 로그인/영업은 막지 않는다.
+  // (과거: 미인증=로그인불가 → admin이 만든 매니저 락아웃 위험 → 정책 변경.)
 
   // JWT_SECRET 필수 검증
   if (!process.env.JWT_SECRET) {
@@ -682,7 +679,8 @@ async function sendVerificationEmail(user) {
       to: user.email,
       subject: emailContent.subject,
       html: emailContent.html,
-      text: emailContent.text
+      text: emailContent.text,
+      allowUnverified: true   // 인증메일은 미인증 주소(=본인)에 반드시 도달해야 함 (placeholder 는 여전히 차단)
     });
     if (result?.skipped) {
       console.log(`[Signup] Verification email blocked (${result.reason || 'env'}): ${user.email}`);
@@ -903,4 +901,4 @@ async function loginAsDemo(key) {
   };
 }
 
-module.exports = { login, loginAsDemo, register, signup, signupReferralPartner, DEMO_KEY_TO_EMAIL };
+module.exports = { login, loginAsDemo, register, signup, signupReferralPartner, sendVerificationEmail, DEMO_KEY_TO_EMAIL };

@@ -662,6 +662,55 @@ function defineReferralTests({ adminToken, customerToken, restaurantAdminToken }
 //   계약 1 — 티켓 정확히 1번: /printed 찍으면 pending-print 에서 사라진다(재인쇄 0).
 //   계약 2 — +Round 는 새 품목만: 추가 시 kitchen_items=새 품목만, order_items(빌용)=전체.
 //   계약 3 — 금액 공식: 세금 없던 주문에 세금 안 붙고, 세금은 할인후 기준.
+// ── 설정 무결성 (2026-06-01) — 결제/프린터 설정 wipe·라벨누락 자동 감지 ──
+// 배경: dev 레스토랑 5 결제설정이 cash+staffMeal 2개로 줄고 첫 항목 라벨 누락.
+// 가드(settingsGuard)는 wipe 를 막지만, 그게 실제로 작동하는지 + 설정 데이터
+// 무결성(모든 결제수단 label 존재)을 매 검증/배포마다 자동 확인한다.
+function defineSettingsTests() {
+  const { Restaurant } = require('../models');
+  const guard = require('../utils/settingsGuard');
+
+  test('settings', '결제설정 — 모든 결제수단에 label 존재 (첫 항목 이름 누락 방지)', async () => {
+    const rows = await Restaurant.findAll({ attributes: ['id', 'payment_settings'], limit: 50 });
+    for (const r of rows) {
+      if (!r.payment_settings) continue;
+      const ps = typeof r.payment_settings === 'string' ? JSON.parse(r.payment_settings) : r.payment_settings;
+      const keys = Object.keys(ps).filter(k => k !== '_order');
+      for (const k of keys) {
+        const m = ps[k];
+        if (!m || typeof m !== 'object' || typeof m.label !== 'string' || m.label.length === 0) {
+          console.log(`    ↳ restaurant ${r.id} payment method '${k}' label 누락`);
+          return false;
+        }
+      }
+    }
+    return true;
+  });
+
+  test('settings', '설정 가드 — 부분 wipe(절반 미만) reject (결제설정 소실 방지)', async () => {
+    const existing = { cash:{enabled:true}, card:{enabled:false}, ewallet:{enabled:true}, bankTransfer:{enabled:false}, counter:{enabled:false}, online:{enabled:false}, staffMeal:{enabled:false} };
+    const r = guard.guardPaymentSettings({ cash:{enabled:true}, staffMeal:{enabled:false} }, existing, 'HC');
+    return r.action === 'reject';
+  });
+
+  test('settings', '설정 가드 — 빈/null payload reject', async () => {
+    const existing = { cash:{enabled:true}, card:{enabled:false}, ewallet:{enabled:true} };
+    return guard.guardPaymentSettings({}, existing, 'HC').action === 'reject'
+        && guard.guardPaymentSettings(null, existing, 'HC').action === 'reject';
+  });
+
+  test('settings', '설정 가드 — 누락 method merge 보존 (1개 빠져도 기존 유지)', async () => {
+    const existing = { cash:{enabled:true}, card:{enabled:false}, ewallet:{enabled:true}, _order:['cash','card','ewallet'] };
+    const r = guard.guardPaymentSettings({ cash:{enabled:true}, card:{enabled:false} }, existing, 'HC');
+    return r.action !== 'reject' && r.value && ('ewallet' in r.value);
+  });
+
+  test('settings', '프린터설정 가드 — 빈 payload reject (printer 소실 방지)', async () => {
+    const existing = { kitchenPrinter:{enabled:true,name:'KITCHEN'}, billPrinter:{enabled:true,name:'POS-80C'} };
+    return guard.guardPrinterSettings({}, existing, 'HC').action === 'reject';
+  });
+}
+
 function definePrintTests({ adminToken }) {
   const adminAuth = { Authorization: `Bearer ${adminToken}` };
   // 테스트 주문 고정 마커. 프로세스가 create~finally 사이에서 죽어도(파이프
@@ -925,7 +974,10 @@ async function runTests(allTests, category) {
   definePaymentTests();
   defineReferralTests(ctx);
   definePrintTests(ctx);
-  defineMatrixTests(ctx);
+  defineSettingsTests();
+  // defineMatrixTests 는 아직 미정의(09:05 스텁) — health-check 전체 크래시 방지 가드.
+  // §9 주문루트×설정 매트릭스 테스트가 정의되면 자동 활성화 (Phase 3 예정).
+  if (typeof defineMatrixTests === 'function') defineMatrixTests(ctx);
   defineDbTests();
 
   const allPass = await runTests(tests, opts.category);

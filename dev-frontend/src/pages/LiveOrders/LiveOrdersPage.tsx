@@ -19,7 +19,8 @@ import {
   DataTableAmount,
   Modal as CommonModal
 } from '../../components/UI';
-import { printBillViaRawBT, printOrderTicketToBillPrinter, printCancellationTicket } from '../../utils/billPrint';
+import { printBillViaRawBT, printOrderTicketToBillPrinter, printCancellationTicket, printCancellationTicketsByStation } from '../../utils/billPrint';
+import KitchenTicketSendModal, { previewStationBuckets, KitchenTicketSendPrompt } from '../../components/Print/KitchenTicketSendModal';
 import { formatDateTime as formatDateTimeUtil } from '../../utils/timezone';
 import ConfirmModal from '../../components/ConfirmModal';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
@@ -70,6 +71,8 @@ const LiveOrdersPage: React.FC = () => {
   const [orderToCancel, setOrderToCancel] = useState<number | null>(null);
   const [showDeleteItemConfirm, setShowDeleteItemConfirm] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ index: number; name: string } | null>(null);
+  // S1 autoPrint OFF(수동) 매장: 취소/아이템취소 후 "주방에 취소 티켓 인쇄?" 확인 프롬프트.
+  const [cancelPrintPrompt, setCancelPrintPrompt] = useState<KitchenTicketSendPrompt | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [orderForPayment, setOrderForPayment] = useState<DbOrder | null>(null);
   const [, ] = useState(false);
@@ -1125,18 +1128,27 @@ const LiveOrdersPage: React.FC = () => {
           if (wasInKitchen && (removed.was_printed || removed.printed_at) && settingOn) {
             const settings = (() => { try { return require('../../utils/billPrint').getPrinterSettings(); } catch { return {}; } })();
             const sid = removed.kitchen_station_id;
-            const stPrinter = (sid != null && settings?.kitchenStationPrinters?.[String(sid)]?.name) || undefined;
+            const sp = (sid != null && settings?.kitchenStationPrinters?.[String(sid)]) || null;
+            const stPrinter = (sp && sp.name) || undefined;
+            const stAddr = (sp && sp.address) || undefined;   // QZ: 그 station 주소로 라우팅 (3a)
             const sInfo = (typeof getStoreInfo === 'function') ? getStoreInfo() : {};
             const printData: any = {
               orderNumber: (selectedOrder as any).order_number || (selectedOrder as any).orderNumber,
               order_number: (selectedOrder as any).order_number,
               tableNumber: (selectedOrder as any).table_number || (selectedOrder as any).tableNumber,
               orderType: (selectedOrder as any).order_type || (selectedOrder as any).orderType,
-              items: [{ name: removed.name || itemToDelete.name, quantity: removed.quantity || 1, kitchen_station_id: sid, stationName: removed.stationName }]
+              cancelTitle: '*** ITEM CANCELLED ***',   // R9 헤더
+              cancelFooter: '>> DO NOT PREPARE <<',
+              stationLabel: removed.stationName,   // 상단 station명 표기
+              items: [{ name: removed.name || itemToDelete.name, quantity: removed.quantity || 1, kitchen_station_id: sid, stationName: removed.stationName, cancelReason: reason || undefined }]
             };
             const reasonLabel = reason ? `Item voided — ${reason}` : 'Item voided';
-            printCancellationTicket(printData, sInfo, reasonLabel, stPrinter).catch(e =>
-              console.warn('Item void print failed:', e && e.message));
+            // S1 autoPrint master: ON 이면 자동 발행 / OFF 면 "확인+인쇄" 프롬프트(수동).
+            const autoOn = !!(settings?.kitchenPrinter && settings.kitchenPrinter.enabled !== false && settings.kitchenPrinter.autoPrint);  // 표준 게이트(useAutoPrintPoller 와 동일)
+            const doPrint = () => printCancellationTicket(printData, sInfo, reasonLabel, stPrinter, stAddr)
+              .catch(e => console.warn('Item void print failed:', e && e.message));
+            if (autoOn) doPrint();
+            else setCancelPrintPrompt({ run: doPrint, ticketType: '*** ITEM CANCELLED ***', description: '취소된 아이템만 해당 주방에 발행', stations: previewStationBuckets(printData.items, settings) });
           }
         } catch (e: any) { console.warn('void-ticket step skipped:', e?.message); }
       } else {
@@ -1353,20 +1365,30 @@ const LiveOrdersPage: React.FC = () => {
         const wasInKitchen = !['awaiting_payment', 'pending'].includes(String(orderSnapshot.status || ''));
         if (wasInKitchen) {
           try {
+            // R10 전체취소: 헤더 ORDER CANCELLED + 전 아이템 줄긋기 + station별 라우팅
+            // (각 station 은 자기 아이템만). item 의 kitchen_station_id 보존해 버킷팅에 사용.
             const printData: any = {
               orderNumber: (orderSnapshot as any).order_number || (orderSnapshot as any).orderNumber,
               order_number: (orderSnapshot as any).order_number,
               tableNumber: (orderSnapshot as any).table_number || (orderSnapshot as any).tableNumber,
               orderType: (orderSnapshot as any).order_type || (orderSnapshot as any).orderType,
+              cancelTitle: '*** ORDER CANCELLED ***',
+              cancelFooter: '>> DO NOT PREPARE - ALL CANCELLED <<',
               items: ((orderSnapshot as any).items || (orderSnapshot as any).order_items || []).map((it: any) => ({
                 quantity: it.quantity || 1,
-                name: it.name || it.menu_item_name || (it.menuItem && it.menuItem.name) || ''
+                name: it.name || it.menu_item_name || (it.menuItem && it.menuItem.name) || '',
+                kitchen_station_id: it.kitchen_station_id ?? it.kitchenStationId ?? (it.menuItem && it.menuItem.kitchen_station_id) ?? null,
+                stationName: it.stationName || it.station_name,
+                set_components: it.set_components
               }))
             };
             const sInfo = (typeof getStoreInfo === 'function') ? getStoreInfo() : {};
-            printCancellationTicket(printData, sInfo, 'Cancelled by staff').catch(e =>
-              console.warn('Cancellation print failed:', e && e.message)
-            );
+            // S1 autoPrint master: ON 자동 발행 / OFF "확인+인쇄" 프롬프트(수동).
+            const autoOn = (() => { try { const kp = require('../../utils/billPrint').getPrinterSettings()?.kitchenPrinter; return !!(kp && kp.enabled !== false && kp.autoPrint); } catch { return false; } })();  // 표준 게이트
+            const doPrint = () => printCancellationTicketsByStation(printData, sInfo, 'Cancelled by staff')
+              .catch(e => console.warn('Cancellation print failed:', e && e.message));
+            if (autoOn) doPrint();
+            else { const _ps = (() => { try { return require('../../utils/billPrint').getPrinterSettings(); } catch { return {}; } })(); setCancelPrintPrompt({ run: doPrint, ticketType: '*** ORDER CANCELLED ***', description: `주문 ${printData.orderNumber} — station 별로 해당 아이템 발행`, stations: previewStationBuckets(printData.items, _ps) }); }
           } catch (e) {
             console.warn('Cancellation ticket trigger error:', (e as any) && (e as any).message);
           }
@@ -1919,6 +1941,9 @@ const LiveOrdersPage: React.FC = () => {
               </p>
         </CommonModal>
         )}
+
+        {/* S1 autoPrint OFF(수동) — 취소 티켓 주방 인쇄 확인 프롬프트 */}
+        <KitchenTicketSendModal prompt={cancelPrintPrompt} onClose={() => setCancelPrintPrompt(null)} t={t} />
 
         {/* Cancel Order Confirmation Modal */}
         {showCancelConfirm && (

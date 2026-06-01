@@ -1135,7 +1135,10 @@ router.post('/:id/move-table', authenticateToken, async (req, res) => {
             mergedFromOrderId: order.id,
             destinationOrderId: destOrder.id,
             sourceTableNumber, destinationTableNumber,
-            addedItems: mergeResult.addedItems, orderGroup: mergeResult.orderGroup
+            addedItems: mergeResult.addedItems, orderGroup: mergeResult.orderGroup,
+            // 2026-06-01: 머지도 재발행 가능하게 — source 의 "이미 주방에 간"(printed) 아이템을
+            // 반환. 프론트가 TABLE CHANGED + MERGED 헤더로 목적지 station 에 재발행한다.
+            printedItems: (Array.isArray(myItems) ? myItems : []).filter(it => it && (it.printed_at || it.printed))
           };
         }
         // Default: block, hand the UI the destination order summary to decide.

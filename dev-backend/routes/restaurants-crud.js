@@ -1033,7 +1033,7 @@ router.post('/', authenticateToken, requireRole(
         role: 'Restaurant Admin',
         full_name: adminFullName,
         phone: adminPhone || null,
-        email_verified: true
+        email_verified: false   // 인증 정책(2026-06-01): 등록 관리자도 인증 필요. commit 후 인증메일 발송.
       }, { transaction });
       adminUser._generatedPassword = generatedAdminPassword;
 
@@ -1164,6 +1164,12 @@ router.post('/', authenticateToken, requireRole(
     }
 
     await transaction.commit();
+
+    // 신규 등록 관리자(생성된 경우만)에게 인증메일 발송 — commit 후, best-effort.
+    if (adminUser && adminUser._generatedPassword) {
+      try { require('../services/authService').sendVerificationEmail(adminUser); }
+      catch (e) { console.warn('[restaurant create] admin verification email skip:', e && e.message); }
+    }
 
     // Auto-start trial period if status is 'trial'
     if (restaurant.status === 'trial') {
@@ -1742,7 +1748,7 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
             full_name: adminFullName,
             phone: adminPhone || null,
             restaurant_id: restaurant.id,
-            email_verified: true
+            email_verified: false   // 인증 정책(2026-06-01): 등록 관리자도 인증 필요. commit 후 인증메일.
           }, { transaction: adminTransaction });
           newAdminUser._generatedPassword = generatedAdminPassword;
         } else if (adminAction === 'change') {
@@ -1797,6 +1803,11 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
         }
 
         await adminTransaction.commit();
+        // 신규 등록 관리자에게 인증메일 (생성된 경우만, best-effort).
+        if (newAdminUser && newAdminUser._generatedPassword) {
+          try { require('../services/authService').sendVerificationEmail(newAdminUser); }
+          catch (e) { console.warn('[restaurant admin change] verification email skip:', e && e.message); }
+        }
         return res.json({ success: true, restaurant });
       } catch (adminError) {
         await adminTransaction.rollback();

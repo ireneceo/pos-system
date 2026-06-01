@@ -413,6 +413,9 @@ const NotificationSettingsPage: React.FC = () => {
   const toggleRefs = useRef<Map<string, AutoSaveHandle>>(new Map());
   // Ref for email_enabled checkbox AutoSaveField
   const emailEnabledRef = useRef<AutoSaveHandle>(null);
+  // 미인증 안내 배너 — 재인증 발송 상태 (외부 toast 없이 배너 인라인 피드백)
+  const [resendingVerify, setResendingVerify] = useState(false);
+  const [verifyResult, setVerifyResult] = useState<'idle' | 'sent' | 'error'>('idle');
   // Latest preferences ref so save callbacks always see up-to-date state
   const preferencesRef = useRef<Record<string, boolean>>({});
   const [showTestEmailModal, setShowTestEmailModal] = useState(false);
@@ -593,6 +596,23 @@ const NotificationSettingsPage: React.FC = () => {
     );
   }
 
+  const handleResendVerification = async () => {
+    if (!user?.email || resendingVerify) return;
+    setResendingVerify(true);
+    setVerifyResult('idle');
+    try {
+      const r = await fetch('/api/auth/resend-verification', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: user.email })
+      });
+      setVerifyResult(r.ok ? 'sent' : 'error');
+    } catch (e) {
+      setVerifyResult('error');
+    } finally {
+      setResendingVerify(false);
+    }
+  };
+
   return (
     <>
       <SettingsContainer>
@@ -601,6 +621,23 @@ const NotificationSettingsPage: React.FC = () => {
         </Header>
 
         <Content>
+          {user && user.emailVerified === false && !user.isDemo && !user.isTest && (
+            <div style={{ margin: '0 0 16px', padding: '14px 16px', background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+              <div style={{ fontSize: 14, color: '#92400E', fontWeight: 600 }}>
+                {verifyResult === 'sent'
+                  ? t('notifications:notificationSettingsPage.verifySent', { defaultValue: 'Verification email sent. Check your inbox.' })
+                  : verifyResult === 'error'
+                    ? t('notifications:notificationSettingsPage.verifySendFailed', { defaultValue: 'Could not send the verification email. Please try again.' })
+                    : t('notifications:notificationSettingsPage.verifyEmailNotice', { defaultValue: 'Your email is not verified — verify it to receive email notifications.' })}
+              </div>
+              {verifyResult !== 'sent' && (
+                <button type="button" onClick={handleResendVerification} disabled={resendingVerify}
+                  style={{ padding: '8px 14px', background: '#635BFF', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: 13, cursor: resendingVerify ? 'default' : 'pointer', opacity: resendingVerify ? 0.6 : 1 }}>
+                  {resendingVerify ? t('notifications:notificationSettingsPage.sending', { defaultValue: 'Sending…' }) : t('notifications:notificationSettingsPage.resendVerification', { defaultValue: 'Resend verification' })}
+                </button>
+              )}
+            </div>
+          )}
           <Tabs>
             <Tab active={activeTab === 'preferences'} onClick={() => handleTabChange('preferences')}>
               Notification Preferences
