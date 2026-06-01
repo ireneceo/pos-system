@@ -26,7 +26,6 @@
   "liveOrdersPage.addItemsToOrder": "添加项目到订单",
   "liveOrdersPage.billPreview": "账单预览",
   "liveOrdersPage.kitchenTicketPreview": "厨房单据预览",
-  "liveOrdersPage.order": "订单",
   "liveOrdersPage.remove": "移除",
   "liveOrdersPage.cancelOrder": "取消 订单",
   "liveOrdersPage.proceedWithoutPayment": "无需付款继续",
@@ -121,5 +120,11 @@
   "liveOrdersPage.options": "选项",
   "liveOrdersPage.noItemsFound": "未找到菜单项",
   "liveOrdersPage.itemsToAdd": "要添加的项目",
-  "liveOrdersPage.searchAndSelectItems": "搜索并选择要添加的菜单项"
+  "liveOrdersPage.searchAndSelectItems": "搜索并选择要添加的菜单项",
+  "voidItem.title": "删除项目",
+  "voidItem.confirm": "删除“{{name}}”？请选择原因——它会打印在厨房取消单上。",
+  "voidItem.reasonSoldOut": "已售罄",
+  "voidItem.reasonCustomer": "顾客改变主意",
+  "voidItem.reasonMistake": "下单错误",
+  "voidItem.reasonOther": "其他"
 }

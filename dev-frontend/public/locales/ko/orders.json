@@ -26,7 +26,6 @@
   "liveOrdersPage.addItemsToOrder": "주문에 항목 추가",
   "liveOrdersPage.billPreview": "영수증 미리보기",
   "liveOrdersPage.kitchenTicketPreview": "주방 티켓 미리보기",
-  "liveOrdersPage.order": "주문",
   "liveOrdersPage.remove": "제거",
   "liveOrdersPage.cancelOrder": "취소 주문",
   "liveOrdersPage.proceedWithoutPayment": "결제 없이 진행",
@@ -121,5 +120,11 @@
   "liveOrdersPage.options": "옵션",
   "liveOrdersPage.noItemsFound": "메뉴 항목을 찾을 수 없습니다",
   "liveOrdersPage.itemsToAdd": "추가할 항목",
-  "liveOrdersPage.searchAndSelectItems": "추가할 메뉴를 검색하여 선택하세요"
+  "liveOrdersPage.searchAndSelectItems": "추가할 메뉴를 검색하여 선택하세요",
+  "voidItem.title": "품목 삭제",
+  "voidItem.confirm": "\"{{name}}\" 을(를) 삭제할까요? 사유를 선택하면 주방 취소표에 인쇄됩니다.",
+  "voidItem.reasonSoldOut": "품절",
+  "voidItem.reasonCustomer": "고객 변심",
+  "voidItem.reasonMistake": "주문 실수",
+  "voidItem.reasonOther": "기타"
 }

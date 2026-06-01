@@ -1935,19 +1935,19 @@ const LiveOrdersPage: React.FC = () => {
           <CommonModal
             isOpen={showDeleteItemConfirm}
             onClose={() => { setShowDeleteItemConfirm(false); setItemToDelete(null); }}
-            title={t('liveorders:voidItem.title', { defaultValue: 'Remove Item' })}
+            title={t('orders:voidItem.title', { defaultValue: 'Remove Item' })}
             size="small"
           >
             <div style={{ padding: '2px' }}>
               <p style={{ margin: '0 0 14px', fontSize: 14, color: '#0A2540', lineHeight: 1.5 }}>
-                {t('liveorders:voidItem.confirm', { defaultValue: 'Remove "{{name}}"? Choose a reason — it prints on the kitchen void ticket.', name: itemToDelete?.name || '' })}
+                {t('orders:voidItem.confirm', { defaultValue: 'Remove "{{name}}"? Choose a reason — it prints on the kitchen void ticket.', name: itemToDelete?.name || '' })}
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
                 {[
-                  { key: 'soldOut', label: t('liveorders:voidItem.reasonSoldOut', { defaultValue: 'Sold out' }) },
-                  { key: 'customerChange', label: t('liveorders:voidItem.reasonCustomer', { defaultValue: 'Customer changed mind' }) },
-                  { key: 'orderMistake', label: t('liveorders:voidItem.reasonMistake', { defaultValue: 'Order mistake' }) },
-                  { key: 'other', label: t('liveorders:voidItem.reasonOther', { defaultValue: 'Other' }) }
+                  { key: 'soldOut', label: t('orders:voidItem.reasonSoldOut', { defaultValue: 'Sold out' }) },
+                  { key: 'customerChange', label: t('orders:voidItem.reasonCustomer', { defaultValue: 'Customer changed mind' }) },
+                  { key: 'orderMistake', label: t('orders:voidItem.reasonMistake', { defaultValue: 'Order mistake' }) },
+                  { key: 'other', label: t('orders:voidItem.reasonOther', { defaultValue: 'Other' }) }
                 ].map(r => (
                   <button
                     key={r.key}

@@ -26,7 +26,6 @@
   "liveOrdersPage.addItemsToOrder": "Tambah Item ke Pesanan",
   "liveOrdersPage.billPreview": "Pratonton Bil",
   "liveOrdersPage.kitchenTicketPreview": "Pratonton Tiket Dapur",
-  "liveOrdersPage.order": "Pesanan",
   "liveOrdersPage.remove": "Buang",
   "liveOrdersPage.cancelOrder": "Batal Pesanan",
   "liveOrdersPage.proceedWithoutPayment": "Teruskan Tanpa Pembayaran",
@@ -121,5 +120,11 @@
   "liveOrdersPage.options": "Pilihan",
   "liveOrdersPage.noItemsFound": "Tiada item menu dijumpai",
   "liveOrdersPage.itemsToAdd": "Item untuk Ditambah",
-  "liveOrdersPage.searchAndSelectItems": "Cari dan pilih item menu untuk ditambah"
+  "liveOrdersPage.searchAndSelectItems": "Cari dan pilih item menu untuk ditambah",
+  "voidItem.title": "Buang Item",
+  "voidItem.confirm": "Buang \"{{name}}\"? Pilih sebab — ia dicetak pada tiket batal dapur.",
+  "voidItem.reasonSoldOut": "Habis dijual",
+  "voidItem.reasonCustomer": "Pelanggan tukar fikiran",
+  "voidItem.reasonMistake": "Silap pesanan",
+  "voidItem.reasonOther": "Lain-lain"
 }

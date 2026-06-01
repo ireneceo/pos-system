@@ -375,7 +375,11 @@
       "Bash(scp -o ConnectTimeout=10 irene@87.106.78.146:/tmp/fire-settings.json /tmp/fire-settings.json)",
       "Bash(TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjIzLCJpYXQiOjE3ODAyODUzNDQsImV4cCI6MTc4MDI4NzE0NH0.Pfx9r3GUU2jAHkwBmj24F1Pzrnjq-VzZ2T_7HsMD4EI RID=38 timeout 80 node test-poller-evidence.js)",
       "Bash(TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjIzLCJpYXQiOjE3ODAyODUzNDQsImV4cCI6MTc4MDI4NzE0NH0.Pfx9r3GUU2jAHkwBmj24F1Pzrnjq-VzZ2T_7HsMD4EI RID=38 timeout 90 node test-poller-evidence.js)",
-      "Bash(PTOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjI1LCJpYXQiOjE3ODAyODU2MzksImV4cCI6MTc4MDI4NzQzOX0.nZ8DVRxp115Yjv4ZfwwTZFjtH7dDsP_vxLx5NqoFRak timeout 90 node test-prod-overlay.js)"
+      "Bash(PTOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjI1LCJpYXQiOjE3ODAyODU2MzksImV4cCI6MTc4MDI4NzQzOX0.nZ8DVRxp115Yjv4ZfwwTZFjtH7dDsP_vxLx5NqoFRak timeout 90 node test-prod-overlay.js)",
+      "Bash(echo \"build started pid $!\")",
+      "Bash(TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjIzLCJpYXQiOjE3ODAyODg5NzMsImV4cCI6MTc4MDI5MDc3M30.M7QKwE9WCM0z5CC95XU32xYvbzUBG9s6OYONAL0Ardk timeout 70 node test-mount-mv.js)",
+      "Bash(TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjIzLCJpYXQiOjE3ODAyODk1MDcsImV4cCI6MTc4MDI5MTMwN30.1Dcte8asgImu5dkv8jXgEO_rfKG7tPhuadQLH5tpbQs timeout 90 node verify-mount-interact.js)",
+      "Bash(TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjIzLCJpYXQiOjE3ODAyODk1MDcsImV4cCI6MTc4MDI5MTMwN30.1Dcte8asgImu5dkv8jXgEO_rfKG7tPhuadQLH5tpbQs timeout 50 node check-errs.js)"
     ],
     "deny": [],
     "ask": []

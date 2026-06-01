@@ -26,7 +26,6 @@
   "liveOrdersPage.addItemsToOrder": "Add Items to Order",
   "liveOrdersPage.billPreview": "Bill Preview",
   "liveOrdersPage.kitchenTicketPreview": "Kitchen Order Ticket Preview",
-  "liveOrdersPage.order": "Order",
   "liveOrdersPage.remove": "Remove",
   "liveOrdersPage.cancelOrder": "Cancel Order",
   "liveOrdersPage.proceedWithoutPayment": "Proceed Without Payment",
@@ -121,5 +120,11 @@
   "liveOrdersPage.options": "Options",
   "liveOrdersPage.noItemsFound": "No items found",
   "liveOrdersPage.itemsToAdd": "Items to Add",
-  "liveOrdersPage.searchAndSelectItems": "Search and select items to add"
+  "liveOrdersPage.searchAndSelectItems": "Search and select items to add",
+  "voidItem.title": "Remove Item",
+  "voidItem.confirm": "Remove \"{{name}}\"? Choose a reason — it prints on the kitchen void ticket.",
+  "voidItem.reasonSoldOut": "Sold out",
+  "voidItem.reasonCustomer": "Customer changed mind",
+  "voidItem.reasonMistake": "Order mistake",
+  "voidItem.reasonOther": "Other"
 }

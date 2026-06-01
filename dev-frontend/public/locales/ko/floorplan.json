@@ -123,5 +123,12 @@
   "tableDetailPanel.itemStatus.waitingKitchen": "주방 조리 대기",
   "tableDetailPanel.itemStatus.servedCount": "{{served}}/{{total}} 서빙됨",
   "tableNode.staff": "직원",
-  "tableDetailPanel.tableActions": "테이블 작업"
+  "tableDetailPanel.tableActions": "테이블 작업",
+  "tableDetailPanel.moveTable": "테이블 이동",
+  "moveTable.title": "테이블 이동",
+  "moveTable.pickDestination": "이 주문을 옮길 테이블을 선택하세요.",
+  "moveTable.searchPlaceholder": "테이블 검색…",
+  "moveTable.occupied": "사용 중",
+  "moveTable.occupiedPrompt": "{{table}} 테이블에 이미 진행 중인 주문(#{{num}}, {{count}}개 품목)이 있습니다. 한 빌로 합칠까요?",
+  "moveTable.combine": "한 빌로 합치기"
 }

@@ -123,5 +123,12 @@
   "tableDetailPanel.itemStatus.waitingKitchen": "Waiting for kitchen",
   "tableDetailPanel.itemStatus.servedCount": "{{served}}/{{total}} served",
   "tableNode.staff": "STAFF",
-  "tableDetailPanel.tableActions": "Table Actions"
+  "tableDetailPanel.tableActions": "Table Actions",
+  "tableDetailPanel.moveTable": "Move Table",
+  "moveTable.title": "Move Table",
+  "moveTable.pickDestination": "Choose the table to move this order to.",
+  "moveTable.searchPlaceholder": "Search table…",
+  "moveTable.occupied": "Occupied",
+  "moveTable.occupiedPrompt": "Table {{table}} already has an open order (#{{num}}, {{count}} items). Combine both onto one bill?",
+  "moveTable.combine": "Combine onto one bill"
 }

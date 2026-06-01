@@ -57,13 +57,20 @@ The Fire 에서 **Floor Plan 으로 테이블 POS 열고 주문 → 키친 티�
 
 ---
 
-## 🔔 다음 확정 작업 (2026-06-01 Irene 지시) — 테이블 이동 + 아이템 취소표
+## 2026-06-01 완료(DEV, 미배포) — 테이블 이동 + 아이템 취소표 (풀버전)
 
-> 설계 문서: `docs/TABLE_MOVE_AND_VOID_TICKET.md` (스코프 확정, 구현 대기). 둘 다 **풀버전** 결정.
-> 인쇄 변경 포함 → 🔒 PRINT 규칙. 한 번에 하나, 실프린터 확인 의무.
+> 설계+구현 완료. 문서: `docs/TABLE_MOVE_AND_VOID_TICKET.md`. **배포는 Irene 만.**
+> Irene 결정: 점유시 물어보기(merge/cancel) / 권한 Staff포함 모두 / 취소사유 빠른버튼.
 
-1. **테이블 이동 (풀버전)** — Floor Plan 에 [Move] 버튼. 신규 `POST /orders/:id/move-table`: table_number+floor_plan_table_id **둘 다** 갱신(현재 PATCH 가 FPTI 안 바꿔 옛 테이블에 남는 결함), 아이템/금액/고객/결제 자동 이동, 목적지 점유 시 merge/block, station 변경 시 옛 주방 VOID + 새 주방 재발행. (과거 T-7→T-13 을 DB 직접수정한 이유 = 기능 부재)
-2. **아이템 취소표 발행 (풀버전)** — 현재 아이템 1개 취소 시 주방에 종이 안 나감(미스 위험). 기존 `printCancellationTicket`(billPrint.js:3628, 이미 존재) 을 `confirmDeleteItem`(LiveOrders:1099)+TableDetailPanel 에서 **취소된 아이템만** 호출, 해당 station 라우팅, `wasInKitchen`+설정 게이트. 인쇄 방식 무변경 = 호출만 추가.
+### 구현
+1. **테이블 이동** — `POST /orders/:id/move-table` (트랜잭션+lock, table_number+FPTI 원자갱신, IDOR, onOccupied block(409+요약)/merge, 완료주문 차단, station변경시 printedItems 반환, 감사로그 table_moved). OrderAction ENUM 에 table_moved 추가(모델+DB). 프론트: TableDetailPanel [Move]버튼 + FloorPlanPage 목적지 picker 모달 + 점유시 merge/cancel + 🔒 station변경시 옛VOID/새재발행(호출만).
+2. **아이템 취소표** — DELETE /items 가 removedItem 에 kitchen_station_id/was_printed 반환 + item-voided payload 보강. LiveOrders 삭제를 사유 빠른버튼 모달로 교체 → was_printed+wasInKitchen+설정 게이트시 취소아이템만 station 취소표.
+
+### 검증: move 백엔드 14/14, mount 2/2, 인쇄계약 7/7, build main.d4ba91db.js, i18n 0err, autoprint 44.
+
+### ⚠️ 배포 시 (Irene): `--bless` + The Fire 실프린터 확인 (이동 station변경 취소표/재발행, 아이템취소 취소표).
+
+### (이전) 미배포 The Fire 3-이슈 fix — 별도 배포됨 (위 v3.45-hotfix 참조)
 
 ---
 

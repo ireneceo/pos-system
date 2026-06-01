@@ -123,5 +123,12 @@
   "tableDetailPanel.itemStatus.waitingKitchen": "Menunggu dapur",
   "tableDetailPanel.itemStatus.servedCount": "{{served}}/{{total}} dihidang",
   "tableNode.staff": "Kakitangan",
-  "tableDetailPanel.tableActions": "Tindakan Meja"
+  "tableDetailPanel.tableActions": "Tindakan Meja",
+  "tableDetailPanel.moveTable": "Pindah Meja",
+  "moveTable.title": "Pindah Meja",
+  "moveTable.pickDestination": "Pilih meja untuk memindahkan pesanan ini.",
+  "moveTable.searchPlaceholder": "Cari meja…",
+  "moveTable.occupied": "Digunakan",
+  "moveTable.occupiedPrompt": "Meja {{table}} sudah ada pesanan terbuka (#{{num}}, {{count}} item). Gabungkan ke satu bil?",
+  "moveTable.combine": "Gabung ke satu bil"
 }

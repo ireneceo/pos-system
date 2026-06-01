@@ -1,7 +1,12 @@
-# 테이블 이동 + 아이템 취소표 발행 (설계)
+# 테이블 이동 + 아이템 취소표 발행 (설계 + 구현)
 
-> 작성 2026-06-01. 상태: **설계 확정, 구현 대기 (다음 세션).** Irene 결정 = 둘 다 풀버전.
-> 인쇄 변경 포함 → 🔒 PRINT 보호 규칙 적용. 실프린터 확인 의무.
+> 작성 2026-06-01. 상태: **DEV 구현 완료, 미배포.** Irene 결정 = 둘 다 풀버전.
+> 인쇄 변경 포함 → 🔒 PRINT 보호 규칙 적용. 실프린터 확인 의무. **배포는 Irene 만.**
+
+## 확정된 운영 정책 (Irene 결정 2026-06-01)
+- **목적지 점유 시**: 물어보기 — 백엔드 `onOccupied:'block'`(기본) → 409+목적지 주문요약 → UI 모달에서 "한 빌로 합치기 / 취소" 선택. 'merge' 선택 시 합침.
+- **이동 권한**: 직원(Staff) 포함 모두 — `authenticateToken` + 소유권(IDOR) 검증만. requireRole 로 막지 않음.
+- **아이템 취소 사유**: 빠른 버튼 — 품절/고객변심/주문실수/기타 → 취소표에 인쇄 + 감사로그 저장.
 
 ## 배경 / 문제
 
@@ -82,3 +87,29 @@ Body: `{ destinationTableNumber, destinationFloorPlanTableId, onOccupied?: 'merg
   3. 목적지 점유: merge/block 분기.
   4. 아이템 취소표: 자동발행된 아이템 취소 → 해당 station 에 취소표(실프린터). 주방 미진입 아이템 취소 → 취소표 안 나감.
   5. 회귀: 전체취소 취소표 기존대로, +Round 정상, 금액 공식.
+
+---
+
+## 구현 완료 (2026-06-01, DEV / 미배포)
+
+### 백엔드 (`routes/orders-crud.js`, `models/OrderAction.js`)
+- **신규** `POST /orders/:id/move-table` — 트랜잭션+row lock, 소유권(IDOR) 검증, table_number+floor_plan_table_id **원자적 갱신**, onOccupied block(409+dest요약)/merge, 완료주문 차단(409 ORDER_CLOSED), same-table no-op 차단, station 변경용 `printedItems` 반환, 감사로그 `table_moved`(from/to), socket order-updated/order-items-added.
+- **OrderAction ENUM** 에 `table_moved` 추가 (모델 + DB ALTER 둘 다).
+- **DELETE /items/:idx** `item-voided` 페이로드 + 응답 `removedItem` 에 `kitchen_station_id`/`was_printed`/`stationName`/`options` 추가 (프론트 station 라우팅 취소표용). reason 은 기존대로 audit 저장.
+
+### 프론트 (`FloorPlanPage.tsx`, `TableDetailPanel.tsx`, `LiveOrdersPage.tsx`)
+- TableDetailPanel: dine-in 진행주문에 **[Move] 버튼** (onMoveTable prop).
+- FloorPlanPage: **목적지 picker 모달**(검색+점유표시 칩) + `doMove`(block→409시 merge/cancel 모달) + 🔒 station변경시 옛station VOID + 새station 재발행(printCancellationTicket/printKitchenTicketViaRawBT **호출만**, 방식 무변경).
+- LiveOrdersPage: 아이템 삭제를 **사유 빠른버튼 모달**(품절/고객변심/주문실수/기타)로 교체. 삭제 후 was_printed+wasInKitchen+설정 게이트 통과 시 **취소된 아이템만** station 라우팅 취소표.
+- i18n 4언어 (floorplan.moveTable.*, orders.voidItem.*).
+
+### 검증 (DEV, 실API + 실브라우저)
+- move-table 백엔드 14/14 (이동/FPTI원자갱신/IDOR/점유block+merge/완료차단/감사로그/printedItems).
+- move+void 통합 6/7 (1건=audit best-effort 타이밍 = 테스트버그, reason 저장 격리확인 OK).
+- 실브라우저 mount 2/2 (Floor Plan, Live Orders 크래시0/err0/boundary0).
+- 인쇄 계약 7/7 (보호파일 지문 플래그만 — bless 는 **배포 시 Irene 승인+실프린터 확인 후**).
+- build main.d4ba91db.js, autoprint regression 44 PASS, i18n Errors 0.
+
+### ⚠️ 배포 전 (Irene 만)
+1. `--bless` (orders-crud.js 지문 — move-table/item-voided 는 인쇄방식 무관, 새 엔드포인트+payload 필드).
+2. 배포 후 The Fire 실프린터: (a) station 다른 테이블로 이동 시 옛 주방 취소표 + 새 주방 재발행 1장씩, (b) 자동발행된 아이템 취소 시 해당 station 취소표 1장. 눈 확인.

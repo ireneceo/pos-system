@@ -123,5 +123,12 @@
   "tableDetailPanel.itemStatus.waitingKitchen": "等待厨房",
   "tableDetailPanel.itemStatus.servedCount": "已上菜 {{served}}/{{total}}",
   "tableNode.staff": "员工",
-  "tableDetailPanel.tableActions": "桌台操作"
+  "tableDetailPanel.tableActions": "桌台操作",
+  "tableDetailPanel.moveTable": "移动餐桌",
+  "moveTable.title": "移动餐桌",
+  "moveTable.pickDestination": "选择要将此订单移动到的餐桌。",
+  "moveTable.searchPlaceholder": "搜索餐桌…",
+  "moveTable.occupied": "占用中",
+  "moveTable.occupiedPrompt": "餐桌 {{table}} 已有进行中的订单（#{{num}}，{{count}} 项）。合并到一张账单吗？",
+  "moveTable.combine": "合并为一张账单"
 }
