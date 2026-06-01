@@ -210,6 +210,21 @@ router.get('/mergeable', authenticateToken, async (req, res) => {
 // - POS→POS: table + payment_method match is enough (cashier controls)
 // - Mobile→Mobile: additionally requires same customer (customer_id or customer_phone)
 // - POS↔Mobile cross-source: never merge
+// 2026-06-01: normalize a table label so "1" / "T001" / "Table 1" / "t1" all
+// compare equal for auto-merge. Without this, a POS order created as "T001" and
+// a mobile order carrying "1" (or differing QR labels) never merged → two bills
+// on one table (The Fire risk if floor_plan label ≠ QR label). The 't' prefix is
+// only stripped when followed by a digit, so real labels like "TEA1"/"A20" are
+// left intact. Leading zeros dropped so "001" === "1".
+function normalizeTableLabel(s) {
+  if (s == null) return '';
+  return String(s).trim().toLowerCase()
+    .replace(/^table\s*/, '')
+    .replace(/^t(?=\d)/, '')
+    .replace(/[\s\-_]/g, '')
+    .replace(/^0+(?=\d)/, '');
+}
+
 async function findMergeableOrder(restaurantId, tableNumber, orderType, newOrderData = {}, transaction = null, timezone = 'Asia/Kuala_Lumpur') {
   if (!restaurantId || !tableNumber) return null;
 
@@ -265,7 +280,26 @@ async function findMergeableOrder(restaurantId, tableNumber, orderType, newOrder
   }
 
   const existingOrders = await Order.findAll(queryOptions);
-  if (existingOrders.length === 0) return null;
+  if (existingOrders.length === 0) {
+    // 2026-06-01: exact table_number match found nothing. Retry with normalized
+    // label matching so "1"↔"T001"↔"Table 1" still land on one bill. Same WHERE
+    // minus the exact table_number, then filter in JS by normalizeTableLabel.
+    //
+    // SAFETY: only merge when EXACTLY ONE open order normalizes to the same
+    // label. If two+ candidates collide (e.g. multi-zone Zone1-"1" and Zone2-"1"
+    // both normalize to "1"), we must NOT guess — a wrong merge combines two
+    // tables' bills, which is worse than a missed merge. Ambiguous → no merge
+    // (staff still sees both, recoverable). The Fire is 2-zone/59-table, so this
+    // guard matters.
+    const fbOptions = { ...queryOptions, where: { ...queryOptions.where }, limit: 10 };
+    delete fbOptions.where.table_number;
+    const candidates = await Order.findAll(fbOptions);
+    const target = normalizeTableLabel(tableNumber);
+    if (target === '') return null;
+    const matches = candidates.filter(o => normalizeTableLabel(o.table_number) === target);
+    if (matches.length !== 1) return null; // 0 = none, 2+ = ambiguous → safe no-merge
+    return matches[0];
+  }
 
   const existing = existingOrders[0];
 

@@ -370,7 +370,9 @@
       "Bash(xargs -I{} stat -c '%n  %y' {})",
       "Bash(ls -la /var/www/dev-backend/scripts/headless-page-sweep.js /var/www/dev-frontend/scripts/headless-page-sweep.js)",
       "Bash(echo \"build pid $!\")",
-      "Bash(BASE_URL=https://dev.purplehere.com RA_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjIzLCJpYXQiOjE3ODAyODE5NzMsImV4cCI6MTc4MDI4Mzc3M30.JyZwL9xZ0RntJ_rCSMXQ3tsYQJLE-urVr2v3D-t9kn4 RA_RID=38 timeout 180 node scripts/headless-page-sweep.js)"
+      "Bash(BASE_URL=https://dev.purplehere.com RA_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjIzLCJpYXQiOjE3ODAyODE5NzMsImV4cCI6MTc4MDI4Mzc3M30.JyZwL9xZ0RntJ_rCSMXQ3tsYQJLE-urVr2v3D-t9kn4 RA_RID=38 timeout 180 node scripts/headless-page-sweep.js)",
+      "Bash(scp -o ConnectTimeout=10 /tmp/verify-prod-routes.js irene@87.106.78.146:/var/www/production-backend/verify-prod-routes.js)",
+      "Bash(scp -o ConnectTimeout=10 irene@87.106.78.146:/tmp/fire-settings.json /tmp/fire-settings.json)"
     ],
     "deny": [],
     "ask": []

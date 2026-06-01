@@ -91,7 +91,30 @@ async function findMergeableOrderMobile(restaurantId, tableNumber, orderType, tr
   }
 
   const existingOrders = await Order.findAll(queryOptions);
-  return existingOrders.length > 0 ? existingOrders[0] : null;
+  if (existingOrders.length > 0) return existingOrders[0];
+
+  // 2026-06-01: exact table_number found nothing — retry with normalized label
+  // ("1"↔"T001"↔"Table 1") so a label-format mismatch doesn't split one table
+  // into two bills. Mirrors orders-crud.js findMergeableOrder fallback.
+  // SAFETY: merge only when EXACTLY ONE candidate normalizes to the same label;
+  // ambiguous (multi-zone collision) → no merge (combining two tables is worse).
+  const fbOptions = { ...queryOptions, where: { ...queryOptions.where }, limit: 10 };
+  delete fbOptions.where.table_number;
+  const candidates = await Order.findAll(fbOptions);
+  const target = normalizeTableLabelMobile(tableNumber);
+  if (target === '') return null;
+  const matches = candidates.filter(o => normalizeTableLabelMobile(o.table_number) === target);
+  return matches.length === 1 ? matches[0] : null;
+}
+
+// Keep in sync with orders-crud.js normalizeTableLabel.
+function normalizeTableLabelMobile(s) {
+  if (s == null) return '';
+  return String(s).trim().toLowerCase()
+    .replace(/^table\s*/, '')
+    .replace(/^t(?=\d)/, '')
+    .replace(/[\s\-_]/g, '')
+    .replace(/^0+(?=\d)/, '');
 }
 
 router.post('/order', async (req, res) => {
