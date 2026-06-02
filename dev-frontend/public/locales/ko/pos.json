@@ -42,6 +42,7 @@
   "terminal.categoryAll": "전체",
   "terminal.simpleMode": "컴팩트",
   "terminal.photoMode": "이미지",
+  "terminal.themeLight": "밝게", "terminal.themeContrast": "고대비", "terminal.themeDark": "어둡게",
   "terminal.switchToSimple": "컴팩트 모드로 전환",
   "terminal.switchToPhoto": "이미지 모드로 전환",
   "terminal.options": "옵션",

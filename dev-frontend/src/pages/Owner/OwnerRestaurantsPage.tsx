@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getCurrencySymbol } from '../../utils/currency';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
@@ -970,7 +971,7 @@ const OwnerRestaurantsPage: React.FC = () => {
                 <RestaurantCard key={restaurant.id} onClick={() => handleRestaurantClick(restaurant.id, restaurant.name)}>
                   <RestaurantHeader>
                     <RestaurantInfo>
-                      <RestaurantName>{restaurant.name} {restaurant.branch_name && <BranchBadge>{restaurant.branch_name}</BranchBadge>}{restaurant.currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{restaurant.currency}</span>}</RestaurantName>
+                      <RestaurantName>{restaurant.name} {restaurant.branch_name && <BranchBadge>{restaurant.branch_name}</BranchBadge>}{restaurant.currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{getCurrencySymbol(restaurant.currency)}</span>}</RestaurantName>
                       {restaurant.adminName && (
                         <RestaurantMeta style={{ fontWeight: '600', color: '#635BFF' }}>
                           Admin: {restaurant.adminName}

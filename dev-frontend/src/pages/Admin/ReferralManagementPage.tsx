@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { getCurrencySymbol } from '../../utils/currency';
 import styled from 'styled-components';
 import { Header as StdHeader, Title as StdTitle } from '../../components/UI/PageComponents';
 import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
@@ -388,9 +389,9 @@ const Switch = styled.button<{ $on: boolean }>`
 
 function fmtMoney(amount: number, currency: string) {
   if (currency === 'KRW' || currency === 'JPY' || currency === 'VND') {
-    return `${currency} ${Math.round(amount).toLocaleString()}`;
+    return `${getCurrencySymbol(currency)} ${Math.round(amount).toLocaleString()}`;
   }
-  return `${currency} ${amount.toFixed(2)}`;
+  return `${getCurrencySymbol(currency)} ${amount.toFixed(2)}`;
 }
 
 const ReferralManagementPage: React.FC = () => {

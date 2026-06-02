@@ -314,7 +314,7 @@ const PurchaseOrderStagingPage: React.FC = () => {
               {t('staging.summary', { count: pos.length, defaultValue: '{{count}} POs' })}
             </div>
             <div style={{ fontSize: 22, fontWeight: 700, color: '#0A2540', marginTop: 2 }}>
-              MYR {grandTotal.toFixed(2)}
+              RM {grandTotal.toFixed(2)}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>

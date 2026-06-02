@@ -437,7 +437,22 @@
       "Bash(awk 'NR<=549 && /router.post\\\\\\(/{l=NR\": \"$0} END{}' routes/users.js)",
       "Bash(awk -F: '$1<549')",
       "Bash(awk '/^function guardPaymentSettings/{f=1} f{print NR\": \"$0} f&&/^}/{c++; if\\(c>=1\\)exit}' utils/settingsGuard.js)",
-      "Bash(break)"
+      "Bash(break)",
+      "Bash(bash -n .claude/hooks/auto-save.sh)",
+      "Bash(rm -f /tmp/.claude-last-activity)",
+      "Bash(/var/www/.claude/hooks/auto-save.sh stop *)",
+      "Bash(echo \"stop exit=$?\")",
+      "Bash(awk '/§9|## 9|# 9 |9\\\\. /{f=1} f{print} /## 10|§10/{if\\(f\\)exit}' docs/PRINT_RULES_MATRIX.md)",
+      "Bash(SKIP_REGRESSION=1 npm run build:dev)",
+      "Bash(RA_TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjksImlhdCI6MTc4MDM3NjExMSwiZXhwIjoxNzgwMzc2NzExfQ.uz7DSZKKFD5vXyCnpVM42aPvcoq9wQJESb6bx50jj7o\" RA_RID=5 node scripts/headless-page-sweep.js)",
+      "Bash([ -f \"$f\" ])",
+      "Bash(awk '/styled\\\\.[a-z]+<\\\\{ *selected|const Option[A-Za-z]* = styled/{f=1} f{print NR\": \"$0} f&&/`;/{c++; if\\(c>=1\\){f=0}}' OptionModal.tsx)",
+      "Bash(awk '{print $6,$7,$8,$NF}')",
+      "Bash(sed -n '1,60p' src/utils/currency.ts)",
+      "Bash(sed -n '1,60p' src/utils/currency.js)",
+      "Bash(sed -n '3,10p' DEVELOPMENT_PLAN.md)",
+      "Bash(sed -n '3,7p' .claude/session-state.md)",
+      "Bash(sed -n '7,12p' CHANGELOG.md)"
     ],
     "deny": [],
     "ask": []
@@ -450,6 +465,16 @@
           {
             "type": "command",
             "command": "/var/www/.claude/hooks/safety-guard.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/var/www/.claude/hooks/auto-save.sh stop"
           }
         ]
       }

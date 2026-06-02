@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { getCurrencySymbol } from '../../utils/currency';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
@@ -304,9 +305,9 @@ const Skeleton = styled.div`
 
 function formatMoney(amount: number, currency: string) {
   if (currency === 'KRW' || currency === 'JPY' || currency === 'VND') {
-    return `${currency} ${Math.round(amount).toLocaleString()}`;
+    return `${getCurrencySymbol(currency)} ${Math.round(amount).toLocaleString()}`;
   }
-  return `${currency} ${amount.toFixed(2)}`;
+  return `${getCurrencySymbol(currency)} ${amount.toFixed(2)}`;
 }
 
 function formatDate(iso: string, tz: string) {

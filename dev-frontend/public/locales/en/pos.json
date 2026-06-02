@@ -42,6 +42,7 @@
   "terminal.categoryAll": "All",
   "terminal.simpleMode": "Compact",
   "terminal.photoMode": "Image",
+  "terminal.themeLight": "Light", "terminal.themeContrast": "High Contrast", "terminal.themeDark": "Dark",
   "terminal.switchToSimple": "Switch to compact mode",
   "terminal.switchToPhoto": "Switch to image mode",
   "terminal.options": "Options",

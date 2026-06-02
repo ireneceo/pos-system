@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { getCurrencySymbol } from '../../utils/currency';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
@@ -316,9 +317,9 @@ const Bullet = styled.div`
 
 function formatMoney(amount: number, currency: string) {
   if (currency === 'KRW' || currency === 'JPY' || currency === 'VND') {
-    return `${currency} ${Math.round(amount).toLocaleString()}`;
+    return `${getCurrencySymbol(currency)} ${Math.round(amount).toLocaleString()}`;
   }
-  return `${currency} ${amount.toFixed(2)}`;
+  return `${getCurrencySymbol(currency)} ${amount.toFixed(2)}`;
 }
 
 const ReferralSignupPage: React.FC = () => {
@@ -597,7 +598,7 @@ const ReferralSignupPage: React.FC = () => {
                 {plans.length === 0 && <option value="">Professional</option>}
                 {plans.map(p => (
                   <option key={p.id} value={p.id}>
-                    {p.display_name} {p.currency ? `(${p.currency})` : ''}
+                    {p.display_name} {p.currency ? `(${getCurrencySymbol(p.currency)})` : ''}
                   </option>
                 ))}
               </Select>

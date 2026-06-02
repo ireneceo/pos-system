@@ -711,7 +711,7 @@ const SupplierContractsPage: React.FC = () => {
               type="text"
               value={approveForm.currency}
               onChange={(e) => setApproveForm({ ...approveForm, currency: e.target.value.toUpperCase() })}
-              placeholder="MYR"
+              placeholder="RM"
               maxLength={3}
             />
           </UIFormGroup>

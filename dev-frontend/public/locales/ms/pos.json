@@ -42,6 +42,7 @@
   "terminal.categoryAll": "Semua",
   "terminal.simpleMode": "Padat",
   "terminal.photoMode": "Imej",
+  "terminal.themeLight": "Terang", "terminal.themeContrast": "Kontras Tinggi", "terminal.themeDark": "Gelap",
   "terminal.switchToSimple": "Tukar ke mod padat",
   "terminal.switchToPhoto": "Tukar ke mod imej",
   "terminal.options": "Pilihan",

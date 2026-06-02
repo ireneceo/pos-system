@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { FloorTable, TableStatusInfo, ORDER_STATUS_COLORS } from './types';
-import { formatCurrency } from '../../utils/currency';
+import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import { formatPaymentDisplay } from '../../constants';
 import { useStore } from '../../contexts/StoreContext';
 import { formatDateTime } from '../../utils/timezone';
@@ -1171,7 +1171,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
       >
         <div style={{ marginBottom: '16px' }}>
           <div style={{ fontSize: '14px', color: '#4B5563', marginBottom: '6px' }}>Order: <strong style={{ color: '#0A2540' }}>#{statusInfo?.orderNumber}</strong></div>
-          <div style={{ fontSize: '14px', color: '#4B5563', marginBottom: '6px' }}>Amount: <strong style={{ color: '#0A2540' }}>{currency} {statusInfo?.totalAmount?.toFixed(2)}</strong></div>
+          <div style={{ fontSize: '14px', color: '#4B5563', marginBottom: '6px' }}>Amount: <strong style={{ color: '#0A2540' }}>{getCurrencySymbol(currency)} {statusInfo?.totalAmount?.toFixed(2)}</strong></div>
           <div style={{ fontSize: '14px', color: '#4B5563' }}>Method: <strong style={{ color: '#0A2540' }}>{statusInfo?.paymentMethod}</strong></div>
         </div>
 

@@ -42,6 +42,7 @@
   "terminal.categoryAll": "全部",
   "terminal.simpleMode": "紧凑",
   "terminal.photoMode": "图片",
+  "terminal.themeLight": "明亮", "terminal.themeContrast": "高对比", "terminal.themeDark": "深色",
   "terminal.switchToSimple": "切换为紧凑模式",
   "terminal.switchToPhoto": "切换为图片模式",
   "terminal.options": "选项",

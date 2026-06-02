@@ -6,6 +6,12 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+### 2026-06-02 (POS 운영페이지 UI/UX 개편 — DEV, 미배포)
+- POS Terminal 화면 개편 — 매장 단말(10인치) 클릭/가독성 개선: 카테고리·주문유형을 또렷한 선택 디자인으로 통일, 장바구니 수량/삭제·결제 버튼 확대, 메뉴 목록 여백 최적화로 한 화면에 더 많이 표시
+- 주문 화면 영역 정리 — 상단(주문유형·고객·테이블)과 하단(결제 버튼)은 고정, 가운데 주문내역만 스크롤되게 구분
+- 통화 표시 통일 — 모든 화면에서 "MYR" → "RM"(매장 설정 통화 기준), 장바구니·요약은 숫자만 표시하고 합계에만 통화 표기
+- 보기 색상 토글 신설 — POS/플로어플랜/주방 화면에 밝게·고대비·어둡게 3가지 보기 모드(단말별 저장). 밝은 매장·야간 등 환경에 맞춰 전환
+
 ### 2026-05-31 분석 (구현 보류)
 - 설정 가드 분석 완료 — 5/31 The Fire 설정 소실 사고 진짜 원인: `PUT /api/store/settings` (store.js:97) 라우트에 anti-wipe 가드 0. restaurants-crud.js 의 기존 가드는 다른 라우트라 무의미. 4개 문제 정의 (store.js 무방비 / restaurants-crud 빈틈 4개 / operation_settings whitelist 미공유 / table·mobile·reservation 무방비) + 해결 방안 정리. 구현은 Irene 비즈니스 결정 (hydration marker 도입 여부) 후 다음 세션. 상세: memory `project_settings_guard_analysis`
 

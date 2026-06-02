@@ -8,7 +8,7 @@ import { StatsGrid, StatCard, StatValue, StatLabel, StatTrend , Modal as CommonM
 // 매니저는 브랜드 테마 적용 안함
 import { BaseRestaurant } from '../../interfaces/Restaurant';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
-import { formatCurrency, getPlanPrice, formatPlanPrice, normalizeCurrencyCode } from '../../utils/currency';
+import { formatCurrency, getPlanPrice, formatPlanPrice, normalizeCurrencyCode, getCurrencySymbol } from '../../utils/currency';
 import { COUNTRIES } from '../../constants/countries';
 import PhoneInput from '../../components/Common/PhoneInput';
 import DateRangeField from '../../components/Common/DateRangeField';
@@ -1749,7 +1749,7 @@ const ManagerRestaurantsPage: React.FC = () => {
               <RestaurantCard key={restaurant.id} onClick={() => handleRestaurantClick(restaurant.id, restaurant.name)}>
                 <RestaurantHeader>
                   <RestaurantInfo>
-                    <RestaurantName>{restaurant.name} {restaurant.branchName && <BranchBadge>{restaurant.branchName}</BranchBadge>}{restaurant.currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{restaurant.currency}</span>}</RestaurantName>
+                    <RestaurantName>{restaurant.name} {restaurant.branchName && <BranchBadge>{restaurant.branchName}</BranchBadge>}{restaurant.currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{getCurrencySymbol(restaurant.currency)}</span>}</RestaurantName>
                     {restaurant.brand_id && (
                       <RestaurantMeta style={{ fontWeight: '600', color: '#635BFF' }}>
                         {brands.find(b => b.id === restaurant.brand_id)?.name || 'Brand'}

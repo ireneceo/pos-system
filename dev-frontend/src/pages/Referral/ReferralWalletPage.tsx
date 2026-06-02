@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { getCurrencySymbol } from '../../utils/currency';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
@@ -279,9 +280,9 @@ const ErrorBox = styled.div`
 
 function formatMoney(amount: number, currency: string) {
   if (currency === 'KRW' || currency === 'JPY' || currency === 'VND') {
-    return `${currency} ${Math.round(amount).toLocaleString()}`;
+    return `${getCurrencySymbol(currency)} ${Math.round(amount).toLocaleString()}`;
   }
-  return `${currency} ${amount.toFixed(2)}`;
+  return `${getCurrencySymbol(currency)} ${amount.toFixed(2)}`;
 }
 
 function formatDateTime(iso: string | null, tz: string) {
@@ -415,7 +416,7 @@ const ReferralWalletPage: React.FC = () => {
         )}
         {(wallets || []).map(w => (
           <WalletCard key={w.currency}>
-            <Currency>{w.currency}</Currency>
+            <Currency>{getCurrencySymbol(w.currency)}</Currency>
             <Balance>{formatMoney(w.balance, w.currency)}</Balance>
             <StatsRow>
               <StatItem>{t('wallet.stats.totalEarned', 'Total earned')}<strong>{formatMoney(w.total_earned, w.currency)}</strong></StatItem>
@@ -512,7 +513,7 @@ const ReferralWalletPage: React.FC = () => {
                 </div>
               </FormRow>
               <FormRow>
-                <Label htmlFor="po-amount">{t('wallet.payoutDialog.amount', 'Payout amount ({{currency}})', { currency: payoutWallet.currency })}</Label>
+                <Label htmlFor="po-amount">{t('wallet.payoutDialog.amount', 'Payout amount ({{currency}})', { currency: getCurrencySymbol(payoutWallet.currency) })}</Label>
                 <Input
                   id="po-amount"
                   type="number"

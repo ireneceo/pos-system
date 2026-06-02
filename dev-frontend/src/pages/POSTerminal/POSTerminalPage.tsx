@@ -24,6 +24,7 @@ import CustomerModal from '../../components/Customer/CustomerModal';
 // StaffLoginModal removed - authentication handled by ProtectedRoute
 import { normalizeCustomerName } from '../../utils/orderUtils';
 import { getCurrencySymbol, formatCurrency } from '../../utils/currency';
+import { PosDisplayThemeStyle, getPosTheme, setPosTheme, POS_THEME_MODES, PosThemeMode } from '../../styles/posDisplayTheme';
 import { formatDateTime, formatTime } from '../../utils/timezone';
 import { useRestaurantId } from '../../hooks/useRestaurantId';
 import { openCustomerDisplay, tryAutoReopen, isAutoOpenEnabled } from '../../utils/customerDisplay';
@@ -33,7 +34,7 @@ import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
 const POSContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #F9FAFB;
+  background-color: var(--pos-app-bg, var(--pos-surface-2, #F9FAFB));
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -43,9 +44,9 @@ const POSContainer = styled.div`
 `;
 
 const Header = styled.div`
-  background: white;
+  background: var(--pos-surface, #FFFFFF);
   padding: 16px 32px;
-  border-bottom: 1px solid #C7CED6;
+  border-bottom: 1px solid var(--pos-border, #C7CED6);
   margin-bottom: 0;
   height: 80px;
   min-height: 80px;
@@ -89,7 +90,7 @@ const HeaderInfo = styled.div`
   display: flex;
   align-items: center;
   gap: 16px;
-  color: #0A2540;
+  color: var(--pos-text, #0A2540);
 
   @media (max-width: 1280px) {
     gap: 10px;
@@ -124,18 +125,18 @@ const StaffInfo = styled.div<{ clickable?: boolean }>`
   padding: ${props => props.clickable ? '8px 12px' : '0'};
   border-radius: ${props => props.clickable ? '8px' : '0'};
   transition: all 0.2s;
-  color: #4B5563;
+  color: var(--pos-text-muted, #4B5563);
 
   &:hover {
-    background: ${props => props.clickable ? '#F4F6F9' : 'transparent'};
-    color: ${props => props.clickable ? '#0A2540' : '#4B5563'};
+    background: ${props => props.clickable ? 'var(--pos-surface-2, #F4F6F9)' : 'transparent'};
+    color: ${props => props.clickable ? 'var(--pos-text, #0A2540)' : 'var(--pos-text-muted, #4B5563)'};
   }
 `;
 
 const DateTime = styled.div`
   font-size: 14px;
   font-weight: 500;
-  color: #4B5563;
+  color: var(--pos-text-muted, #4B5563);
   font-variant-numeric: tabular-nums;
   min-width: 200px;
   text-align: right;
@@ -157,16 +158,16 @@ const MainLayout = styled.div`
 const MenuSection = styled.div`
   flex: 1;
   /* 메뉴 리스트 배경 — 흰 메뉴 카드가 또렷이 떠 보이도록 진한 회색 (가독성) */
-  background: #E4E9EF;
+  background: var(--pos-menu-bg, #E4E9EF);
   display: flex;
   flex-direction: column;
   overflow: hidden;
 `;
 
 const SearchSection = styled.div`
-  background: white;
+  background: var(--pos-surface, #FFFFFF);
   padding: 16px 24px;
-  border-bottom: 1px solid #C7CED6;
+  border-bottom: 1px solid var(--pos-border, #C7CED6);
   display: flex;
   align-items: center;
   gap: 12px;
@@ -175,7 +176,7 @@ const SearchSection = styled.div`
 // Segmented toggle (KDS Order/Item 토글과 동일 스타일 — 시스템 통일).
 const ViewToggle = styled.div`
   display: flex;
-  background: #F1F4F8;
+  background: var(--pos-surface-2, #F1F4F8);
   border-radius: 6px;
   padding: 2px;
 `;
@@ -188,8 +189,8 @@ const ViewToggleBtn = styled.button<{ active: boolean }>`
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
-  background: ${props => props.active ? 'white' : 'transparent'};
-  color: ${props => props.active ? '#0A2540' : '#4B5563'};
+  background: ${props => props.active ? 'var(--pos-surface, #FFFFFF)' : 'transparent'};
+  color: ${props => props.active ? 'var(--pos-text, #0A2540)' : 'var(--pos-text-muted, #4B5563)'};
   box-shadow: ${props => props.active ? '0 1px 2px rgba(0,0,0,0.08)' : 'none'};
   flex-shrink: 0;
   white-space: nowrap;
@@ -205,27 +206,29 @@ const SearchInputContainer = styled.div`
 const SearchInput = styled.input`
   width: 100%;
   padding: 7px 16px 7px 40px;
-  border: 1px solid #C7CED6;
+  border: 1px solid var(--pos-border, #C7CED6);
   border-radius: 8px;
   font-size: 14px;
   transition: all 0.15s;
   box-sizing: border-box;
+  background: var(--pos-surface, #FFFFFF);
+  color: var(--pos-text, #0A2540);
 
   &:focus {
     outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+    border-color: var(--pos-brand, #635BFF);
+    box-shadow: 0 0 0 3px var(--pos-brand-tint, rgba(99,91,255,0.1));
   }
 
   &::placeholder {
-    color: #8898AA;
+    color: var(--pos-text-muted, #8898AA);
   }
 `;
 
 const SearchIcon = styled.div`
   position: absolute;
   left: 12px;
-  color: #8898AA;
+  color: var(--pos-text-muted, #8898AA);
   font-size: 16px;
   pointer-events: none;
 `;
@@ -236,9 +239,9 @@ const ClearSearchBtn = styled.button`
   width: 24px;
   height: 24px;
   border: none;
-  background: #F4F6F9;
+  background: var(--pos-surface-2, #F4F6F9);
   border-radius: 50%;
-  color: #4B5563;
+  color: var(--pos-text-muted, #4B5563);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -247,8 +250,8 @@ const ClearSearchBtn = styled.button`
   transition: all 0.15s;
   
   &:hover {
-    background: #C7CED6;
-    color: #0A2540;
+    background: var(--pos-border, #C7CED6);
+    color: var(--pos-text, #0A2540);
   }
 `;
 
@@ -258,7 +261,7 @@ const NoResultsMessage = styled.div`
   align-items: center;
   justify-content: center;
   padding: 60px 20px;
-  color: #4B5563;
+  color: var(--pos-text-muted, #4B5563);
   text-align: center;
   
   .icon {
@@ -279,85 +282,76 @@ const NoResultsMessage = styled.div`
   }
 `;
 
-// 카테고리 바 — 기본은 가로 스크롤, "펼치기" 토글 시 전체 카테고리를 줄바꿈해 한 번에 표시.
+// 카테고리 바 — 칩 줄. 펼치기 화살표는 우측 전용 컬럼이 아니라 칩 줄 안의 작은 칩(맨 끝 인라인).
 const CategoryBar = styled.div`
-  position: relative;
-  background: white;
+  background: var(--pos-surface, #FFFFFF);
+  border-bottom: 1px solid var(--pos-border, #C7CED6);
 `;
 const CategoryTabs = styled.div<{ $expanded?: boolean }>`
   display: flex;
   flex-wrap: ${p => p.$expanded ? 'wrap' : 'nowrap'};
-  align-items: flex-end;
-  background: white;
-  border-bottom: 1px solid #C7CED6;
-  padding: ${p => p.$expanded ? '6px 56px 6px 24px' : '0 56px 0 24px'};
-  gap: 24px;
+  align-items: center;
+  padding: 10px 16px;
+  gap: 8px;
   row-gap: ${p => p.$expanded ? '8px' : '0'};
   overflow-x: ${p => p.$expanded ? 'hidden' : 'auto'};
   overflow-y: ${p => p.$expanded ? 'auto' : 'visible'};
   max-height: ${p => p.$expanded ? '40vh' : 'none'};
 
   &::-webkit-scrollbar {
-    height: 3px;
-    width: 6px;
+    height: 4px;
   }
-
   &::-webkit-scrollbar-track {
-    background: #F4F6F9;
+    background: transparent;
   }
-
   &::-webkit-scrollbar-thumb {
     background: #C7D2FE;
     border-radius: 3px;
   }
 `;
-// 펼치기/접기 토글 — 카테고리 바 우측 상단 고정. 누르면 상태 유지(열어둠), 다시 누르면 접힘.
+// 펼치기/접기 화살표 = 탭 줄에 녹는 은은한 컨트롤(액션버튼 아님). 우측 빈 컬럼 X.
 const CategoryExpandToggle = styled.button`
-  position: absolute;
-  top: 4px; right: 10px; z-index: 2;
-  width: 36px; height: 36px;
+  min-height: 48px;
+  width: 40px;
+  flex-shrink: 0;
   display: inline-flex; align-items: center; justify-content: center;
-  border: 1px solid #E6EBF1; border-radius: 8px; background: #FFFFFF;
-  color: #4B5563; cursor: pointer;
-  &:hover { color: #635BFF; border-color: #635BFF; }
+  border: none;
+  background: transparent;
+  color: var(--pos-border-strong, #6B7280); cursor: pointer; transition: all 0.15s;
+  &:hover { background: #F5F6F8; color: var(--pos-brand, #635BFF); }
 `;
 
+// 카테고리 = 중요한 선택 → 상품 옵션(RadioButton)과 동일 디자인. 선택 = 브랜드 테두리+틴트+글씨, 기본 = 흰 박스+또렷 테두리. 클릭 48px.
 const CategoryTab = styled.button<{ active: boolean }>`
-  padding: 8px 0;
-  border: none;
-  background: none;
-  font-size: 14px;
-  font-weight: 500;
+  min-height: 48px;
+  padding: 0 16px;
+  border: 1px solid ${props => props.active ? 'var(--pos-brand, #635BFF)' : 'var(--pos-border-strong, #B9C2CC)'};
+  background: ${props => props.active ? 'var(--pos-brand-tint, rgba(99,91,255,0.1))' : 'var(--pos-control, #FFFFFF)'};
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
   white-space: nowrap;
-  position: relative;
-  color: ${props => props.active ? '#635BFF' : '#4B5563'};
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  color: ${props => props.active ? 'var(--pos-brand-text, #635BFF)' : 'var(--pos-text, #1F2937)'};
 
   &:hover {
-    color: #635BFF;
+    border-color: var(--pos-brand, #635BFF);
+    background: ${props => props.active ? 'var(--pos-brand-tint, rgba(99,91,255,0.1))' : 'var(--pos-brand-ghost, #F5F3FF)'};
+    color: var(--pos-brand-text, #635BFF);
   }
-
-  ${props => props.active && `
-    &::after {
-      content: '';
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 2px;
-      background: #635BFF;
-    }
-  `}
 `;
 
 const MenuGrid = styled.div`
   flex: 1;
-  padding: 24px;
+  padding: 12px;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   grid-auto-rows: max-content;
-  gap: 16px;
+  gap: 10px;
   overflow-y: auto;
   align-content: start;
   
@@ -366,7 +360,7 @@ const MenuGrid = styled.div`
   }
   
   &::-webkit-scrollbar-track {
-    background: #F4F6F9;
+    background: var(--pos-surface-2, #F4F6F9);
   }
   
   &::-webkit-scrollbar-thumb {
@@ -376,8 +370,8 @@ const MenuGrid = styled.div`
 `;
 
 const MenuItem = styled.div<{ soldOut?: boolean }>`
-  background: white;
-  border: 1px solid #C7CED6;
+  background: var(--pos-surface, #FFFFFF);
+  border: 1px solid var(--pos-border, #C7CED6);
   border-radius: 8px;
   padding: 16px;
   cursor: pointer;
@@ -423,7 +417,7 @@ const MenuItem = styled.div<{ soldOut?: boolean }>`
 const MenuImage = styled.div<{ hasImage?: boolean }>`
   width: 100%;
   height: 80px;
-  background: #F4F6F9;
+  background: var(--pos-surface-2, #F4F6F9);
   border-radius: 6px;
   margin-bottom: 12px;
   display: flex;
@@ -443,7 +437,7 @@ const MenuImage = styled.div<{ hasImage?: boolean }>`
 const MenuName = styled.div`
   font-size: 13px;
   font-weight: 500;
-  color: #0A2540;
+  color: var(--pos-text, #0A2540);
   margin-bottom: 4px;
   line-height: 1.3;
   overflow: hidden;
@@ -456,7 +450,7 @@ const MenuName = styled.div`
 const MenuPrice = styled.div`
   font-size: 16px;
   font-weight: 600;
-  color: #635BFF;
+  color: var(--pos-brand, #635BFF);
 `;
 
 const SetBadge = styled.div`
@@ -476,7 +470,7 @@ const SetBadge = styled.div`
 
 const SetItemsPreview = styled.div`
   font-size: 10px;
-  color: #4B5563;
+  color: var(--pos-text-muted, #4B5563);
   margin-top: 4px;
   line-height: 1.3;
   font-weight: 500;
@@ -491,25 +485,25 @@ const MenuItemActions = styled.div`
 
 const OptionButton = styled.button`
   flex: 1;
-  background: linear-gradient(135deg, #F1F4F8 0%, #F0F4FF 100%);
-  border: 1px solid #C7CED6;
+  background: transparent;
+  border: 1px solid var(--pos-brand, #635BFF);
   border-radius: 8px;
   padding: 10px 16px;
   font-size: 13px;
   font-weight: 600;
-  color: #635BFF;
+  color: var(--pos-brand, #635BFF);
   cursor: pointer;
   transition: all 0.2s;
   text-align: center;
-  
+
   &:hover {
-    background: linear-gradient(135deg, #F0F4FF 0%, #E6F0FF 100%);
-    border-color: #635BFF;
-    color: #5A51E6;
+    background: var(--pos-brand-ghost, rgba(99,91,255,0.07));
+    border-color: var(--pos-brand, #635BFF);
+    color: var(--pos-brand, #635BFF);
     transform: translateY(-1px);
     box-shadow: 0 2px 8px rgba(99, 91, 255, 0.2);
   }
-  
+
   &:active {
     transform: translateY(0);
   }
@@ -525,17 +519,16 @@ const OptionButton = styled.button`
 
 const OrderSection = styled.div`
   width: 400px;
-  /* 우측 주문(카트) 패널 — 메뉴 영역과 같은 계열의 진한 회색으로 가독성 확보 */
-  background: #EDF1F5;
-  border-left: 1px solid #C7CED6;
+  /* 패널 = 흰색. 상단(유형/고객/테이블)·하단(페이저/버튼) 고정 흰색,
+     가운데 스크롤(품목/요약/할인)만 회색 밴드로 분리 — Irene 2026-06-02. */
+  background: var(--pos-surface, #FFFFFF);
+  border-left: 1px solid var(--pos-border, #C7CED6);
   display: flex;
   flex-direction: column;
 `;
 
 const TableNumberSection = styled.div`
-  padding: 16px 24px;
-  background: #F7F9FC;
-  border-bottom: 1px solid #C7CED6;
+  padding: 8px 16px;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -544,34 +537,44 @@ const TableNumberSection = styled.div`
 const TableNumberLabel = styled.label`
   font-size: 14px;
   font-weight: 500;
-  color: #4B5563;
+  color: var(--pos-text-muted, #4B5563);
 `;
 
 const TableNumberSelect = styled.select`
   padding: 8px 12px;
-  border: 1px solid #C7CED6;
+  border: 1px solid var(--pos-border, #C7CED6);
   border-radius: 6px;
   font-size: 14px;
   width: 160px;
-  background: white;
+  background: var(--pos-surface, #FFFFFF);
+  color: var(--pos-text, #0A2540);
   cursor: pointer;
-  
+
+  & option {
+    background: var(--pos-surface, #FFFFFF);
+    color: var(--pos-text, #0A2540);
+  }
+
   &:focus {
     outline: none;
-    border-color: #635BFF;
+    border-color: var(--pos-brand, #635BFF);
   }
 `;
 
 const ScrollableOrderContent = styled.div`
   flex: 1;
   overflow-y: auto;
+  /* 움직이는(스크롤) 가운데 영역 = 회색 밴드로 분리. 위/아래 고정 흰색과 구분. */
+  background: var(--pos-surface-2, #EDF1F5);
+  border-top: 1px solid var(--pos-border, #C7CED6);
+  border-bottom: 1px solid var(--pos-border, #C7CED6);
 
   &::-webkit-scrollbar {
     width: 4px;
   }
 
   &::-webkit-scrollbar-track {
-    background: #F4F6F9;
+    background: var(--pos-surface-2, #F4F6F9);
   }
 
   &::-webkit-scrollbar-thumb {
@@ -581,16 +584,14 @@ const ScrollableOrderContent = styled.div`
 `;
 
 const OrderItems = styled.div`
-  padding: 16px 24px;
+  padding: 12px 16px;
 `;
 
 const OrderItemsHeader = styled.div`
   font-size: 13px;
   font-weight: 600;
-  color: #4B5563;
-  margin-bottom: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #C7CED6;
+  color: var(--pos-text-muted, #374151);
+  margin-bottom: 8px;
 `;
 
 const OrderItem = styled.div`
@@ -598,17 +599,18 @@ const OrderItem = styled.div`
   justify-content: space-between;
   align-items: center;
   padding: 12px 0;
-  border-bottom: 1px solid #F4F6F9;
+  border-bottom: 1px solid var(--pos-surface-2, #F4F6F9);
 `;
 
 const ItemInfo = styled.div`
   flex: 1;
+  min-width: 0;
 `;
 
 const ItemName = styled.div`
   font-size: 14px;
   font-weight: 500;
-  color: #0A2540;
+  color: var(--pos-text, #0A2540);
   margin-bottom: 4px;
   overflow: hidden;
   word-break: break-word;
@@ -619,13 +621,14 @@ const ItemName = styled.div`
 
 const ItemOptions = styled.div`
   font-size: 12px;
-  color: #4B5563;
+  color: var(--pos-text-muted, #4B5563);
 `;
 
 const ItemControls = styled.div`
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+  flex-shrink: 0;
 `;
 
 const QuantityControl = styled.div`
@@ -635,73 +638,76 @@ const QuantityControl = styled.div`
 `;
 
 const QuantityBtn = styled.button`
-  width: 24px;
-  height: 24px;
-  border: 1px solid #C7CED6;
-  background: white;
-  border-radius: 4px;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--pos-border-strong, #B9C2CC);
+  background: var(--pos-surface, #FFFFFF);
+  border-radius: 8px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
-  color: #4B5563;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--pos-text-muted, #374151);
   transition: all 0.15s;
-  
+
   &:hover {
-    border-color: #635BFF;
-    color: #635BFF;
+    border-color: var(--pos-brand, #635BFF);
+    color: var(--pos-brand, #635BFF);
   }
-  
+
   &:active {
-    background: #F0F4FF;
+    background: var(--pos-brand-tint, #F0F4FF);
   }
 `;
 
 const Quantity = styled.span`
-  font-size: 14px;
-  font-weight: 500;
-  color: #0A2540;
-  min-width: 20px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--pos-text, #0A2540);
+  min-width: 32px;
   text-align: center;
 `;
 
 const ItemPrice = styled.div`
   font-size: 14px;
   font-weight: 600;
-  color: #0A2540;
-  min-width: 80px;
+  color: var(--pos-text, #0A2540);
+  min-width: 52px;
   text-align: right;
 `;
 
+// 삭제 = 박스/배경 없이 아이콘만(공간 절약). 회색 → hover 시 빨강.
 const DeleteBtn = styled.button`
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 40px;
   border: none;
-  background: #FFF4F4;
-  border-radius: 4px;
+  background: transparent;
+  padding: 0;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
-  color: #FF6B6B;
-  transition: all 0.15s;
-  
+  font-size: 22px;
+  line-height: 1;
+  color: var(--pos-text-muted, #9CA3AF);
+  transition: color 0.15s;
+
   &:hover {
-    background: #FFE6E6;
+    color: #FF6B6B;
   }
 `;
 
 const OrderSummary = styled.div`
-  padding: 20px 24px;
-  border-top: 1px solid #C7CED6;
+  padding: 14px 16px;
+  border-top: 1px solid var(--pos-border, #C7CED6);
 `;
 
 const SummaryRow = styled.div`
   display: flex;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   font-size: 14px;
   
   &:last-child {
@@ -710,43 +716,43 @@ const SummaryRow = styled.div`
 `;
 
 const SummaryLabel = styled.span`
-  color: #4B5563;
+  color: var(--pos-text-muted, #4B5563);
 `;
 
 const SummaryValue = styled.span`
   font-weight: 500;
-  color: #0A2540;
+  color: var(--pos-text, #0A2540);
 `;
 
 const TotalRow = styled(SummaryRow)`
   font-size: 18px;
   font-weight: 600;
   padding-top: 12px;
-  border-top: 1px solid #F4F6F9;
+  border-top: 1px solid var(--pos-surface-2, #F4F6F9);
   
   ${SummaryLabel} {
-    color: #0A2540;
+    color: var(--pos-text, #0A2540);
   }
   
   ${SummaryValue} {
-    color: #635BFF;
+    color: var(--pos-brand, #635BFF);
   }
 `;
 
 const OrderActions = styled.div`
-  padding: 24px;
-  background: #F9FAFB;
+  padding: 12px 16px 16px;
   display: flex;
-  gap: 12px;
+  gap: 8px;
 `;
 
 const ActionBtn = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
   flex: 1;
+  min-height: 72px;
   padding: 16px;
   border: none;
   border-radius: 8px;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 17px;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.15s;
   
@@ -754,7 +760,7 @@ const ActionBtn = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }
     switch(props.variant) {
       case 'primary':
         return `
-          background: #635BFF;
+          background: var(--pos-brand, #635BFF);
           color: white;
           
           &:hover {
@@ -768,25 +774,29 @@ const ActionBtn = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }
           }
         `;
       case 'danger':
+        // Clear = 장바구니 비우기(파괴적 삭제/취소 아님) → 중립 회색.
         return `
-          background: #FFE6E6;
-          color: #FF6B6B;
-          border: 1px solid #FFC2C2;
+          background: var(--pos-surface-2, #EAEEF3);
+          color: var(--pos-text-muted, #374151);
 
           &:hover {
-            background: #FFD9D9;
-            border-color: #FFB0B0;
+            background: var(--pos-border-strong, #DCE2EA);
           }
         `;
       default:
+        // Pay Later — 솔리드 에메랄드. Pay Now(브랜드)와 동등한 강도(어느 쪽이 메인이든 매장 자유).
         return `
-          background: white;
-          color: #4B5563;
-          border: 1px solid #B9C2CC;
+          background: var(--pos-positive, #10B981);
+          color: #FFFFFF;
 
           &:hover {
-            border-color: #635BFF;
-            color: #635BFF;
+            background: #0EA372;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+          }
+
+          &:active {
+            transform: translateY(0);
           }
         `;
     }
@@ -799,9 +809,13 @@ const EmptyOrder = styled.div`
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #4B5563;
+  color: var(--pos-text-muted, #4B5563);
   padding: 40px;
   text-align: center;
+  /* 빈 상태도 가운데 회색 영역 유지 (구조 일관) */
+  background: var(--pos-surface-2, #EDF1F5);
+  border-top: 1px solid var(--pos-border, #C7CED6);
+  border-bottom: 1px solid var(--pos-border, #C7CED6);
 `;
 
 
@@ -810,9 +824,7 @@ const EmptyText = styled.div`
 `;
 
 const DiscountSection = styled.div`
-  padding: 16px 24px;
-  background: #F9FAFB;
-  border-top: 1px solid #C7CED6;
+  padding: 12px 16px;
 `;
 
 const DiscountRow = styled.div`
@@ -828,24 +840,26 @@ const DiscountRow = styled.div`
 const DiscountInput = styled.input`
   flex: 1;
   padding: 10px 12px;
-  border: 1px solid #C7CED6;
+  border: 1px solid var(--pos-border, #C7CED6);
   border-radius: 6px;
   font-size: 14px;
   transition: all 0.15s;
-  
+  background: var(--pos-surface, #FFFFFF);
+  color: var(--pos-text, #0A2540);
+
   &:focus {
     outline: none;
-    border-color: #635BFF;
+    border-color: var(--pos-brand, #635BFF);
   }
   
   &::placeholder {
-    color: #8898AA;
+    color: var(--pos-text-muted, #8898AA);
   }
 `;
 
 const DiscountButton = styled.button`
   padding: 10px 16px;
-  background: #635BFF;
+  background: var(--pos-brand, #635BFF);
   color: white;
   border: none;
   border-radius: 6px;
@@ -872,9 +886,9 @@ const QuickDiscountButtons = styled.div`
 
 const QuickDiscountBtn = styled.button<{ active?: boolean }>`
   padding: 8px 12px;
-  background: ${props => props.active ? 'rgba(99, 91, 255, 0.1)' : 'white'};
-  color: ${props => props.active ? '#635BFF' : '#1F2937'};
-  border: 1px solid ${props => props.active ? '#635BFF' : '#C7CED6'};
+  background: ${props => props.active ? 'var(--pos-brand-tint, rgba(99,91,255,0.1))' : 'var(--pos-control, #FFFFFF)'};
+  color: ${props => props.active ? 'var(--pos-brand, #635BFF)' : 'var(--pos-text, #1F2937)'};
+  border: 1px solid ${props => props.active ? 'var(--pos-brand, #635BFF)' : 'var(--pos-border, #C7CED6)'};
   border-radius: 6px;
   font-size: 13px;
   font-weight: 500;
@@ -882,8 +896,8 @@ const QuickDiscountBtn = styled.button<{ active?: boolean }>`
   transition: all 0.15s;
 
   &:hover {
-    border-color: ${props => props.active ? '#635BFF' : '#6B7280'};
-    background: ${props => props.active ? 'rgba(99, 91, 255, 0.1)' : '#F9FAFB'};
+    border-color: ${props => props.active ? 'var(--pos-brand, #635BFF)' : 'var(--pos-border-strong, #6B7280)'};
+    background: ${props => props.active ? 'var(--pos-brand-tint, rgba(99,91,255,0.1))' : 'var(--pos-surface-2, #F9FAFB)'};
   }
 `;
 
@@ -892,31 +906,30 @@ const AppliedCoupon = styled.div`
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px;
-  background: #F0F4FF;
+  background: var(--pos-brand-tint, #F0F4FF);
   border: 1px solid #C7D2FE;
   border-radius: 6px;
   font-size: 13px;
-  color: #635BFF;
+  color: var(--pos-brand, #635BFF);
 `;
 
+// 주문유형 = 중요한 선택 → 상품 옵션(RadioButton)과 동일 디자인 언어.
+// 선택 = 브랜드 테두리 + 연한 브랜드 틴트 + 브랜드 글씨 / 기본 = 흰 박스 + 또렷한 테두리.
 const OrderTypeToggle = styled.div`
   display: flex;
   gap: 8px;
-  padding: 16px 24px;
-  background: #F7F9FC;
-  border-bottom: 1px solid #C7CED6;
+  padding: 12px 16px 4px;
 `;
 
 const OrderTypeBtn = styled.button<{ active: boolean }>`
   flex: 1;
-  padding: 12px 16px;
-  min-height: 44px;
-  background: ${props => props.active ? 'rgba(99, 91, 255, 0.1)' : 'white'};
-  color: ${props => props.active ? '#635BFF' : '#1F2937'};
-  border: 1px solid ${props => props.active ? '#635BFF' : '#C7CED6'};
+  min-height: 48px;
+  background: ${props => props.active ? 'var(--pos-brand-tint, rgba(99,91,255,0.1))' : 'var(--pos-control, #FFFFFF)'};
+  color: ${props => props.active ? 'var(--pos-brand-text, #635BFF)' : 'var(--pos-text, #1F2937)'};
+  border: 1px solid ${props => props.active ? 'var(--pos-brand, #635BFF)' : 'var(--pos-border-strong, #B9C2CC)'};
   border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 15px;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
   display: flex;
@@ -926,8 +939,9 @@ const OrderTypeBtn = styled.button<{ active: boolean }>`
   text-align: center;
 
   &:hover {
-    border-color: ${props => props.active ? '#635BFF' : '#6B7280'};
-    background: ${props => props.active ? 'rgba(99, 91, 255, 0.1)' : '#F9FAFB'};
+    border-color: var(--pos-brand, #635BFF);
+    background: ${props => props.active ? 'var(--pos-brand-tint, rgba(99,91,255,0.1))' : 'var(--pos-brand-ghost, #F5F3FF)'};
+    color: var(--pos-brand-text, #635BFF);
   }
 
   span {
@@ -949,9 +963,7 @@ const RemoveBtn = styled.button`
 `;
 
 const CustomerSearchSection = styled.div`
-  padding: 16px 24px;
-  background: #F7F9FC;
-  border-bottom: 1px solid #C7CED6;
+  padding: 8px 16px;
 `;
 
 const CustomerSearchContainer = styled.div`
@@ -961,26 +973,27 @@ const CustomerSearchContainer = styled.div`
 const CustomerSearchInput = styled.input`
   width: 100%;
   padding: 12px 16px 12px 40px;
-  border: 1px solid #C7CED6;
+  border: 1px solid var(--pos-border, #C7CED6);
   border-radius: 8px;
   font-size: 14px;
-  background: white;
+  background: var(--pos-surface, #FFFFFF);
+  color: var(--pos-text, #0A2540);
   cursor: pointer;
   transition: all 0.15s;
   box-sizing: border-box;
 
   &:focus {
     outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+    border-color: var(--pos-brand, #635BFF);
+    box-shadow: 0 0 0 3px var(--pos-brand-tint, rgba(99,91,255,0.1));
   }
 
   &:hover {
-    border-color: #6B7280;
+    border-color: var(--pos-border-strong, #6B7280);
   }
 
   &::placeholder {
-    color: #8898AA;
+    color: var(--pos-text-muted, #8898AA);
   }
 `;
 
@@ -989,7 +1002,7 @@ const CustomerSearchIcon = styled.div`
   left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  color: #8898AA;
+  color: var(--pos-text-muted, #8898AA);
   font-size: 14px;
   pointer-events: none;
 `;
@@ -999,8 +1012,8 @@ const CustomerSearchDropdown = styled.div<{ show: boolean }>`
   top: 100%;
   left: 0;
   right: 0;
-  background: white;
-  border: 1px solid #C7CED6;
+  background: var(--pos-surface, #FFFFFF);
+  border: 1px solid var(--pos-border, #C7CED6);
   border-radius: 8px;
   max-height: 200px;
   overflow-y: auto;
@@ -1017,7 +1030,7 @@ const CustomerSearchItem = styled.div`
   transition: background-color 0.2s;
 
   &:hover {
-    background: #F1F4F8;
+    background: var(--pos-surface-2, #F1F4F8);
   }
 
   &:last-child {
@@ -1027,14 +1040,14 @@ const CustomerSearchItem = styled.div`
 
 const CustomerItemName = styled.div`
   font-weight: 600;
-  color: #0A2540;
+  color: var(--pos-text, #0A2540);
   margin-bottom: 2px;
   font-size: 14px;
 `;
 
 const CustomerItemDetails = styled.div`
   font-size: 12px;
-  color: #4B5563;
+  color: var(--pos-text-muted, #4B5563);
 `;
 
 const SelectedCustomerDisplay = styled.div`
@@ -1042,7 +1055,7 @@ const SelectedCustomerDisplay = styled.div`
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  background: #F0F4FF;
+  background: var(--pos-brand-tint, #F0F4FF);
   border: 1px solid #C7D2FE;
   border-radius: 8px;
   margin-top: 8px;
@@ -1055,13 +1068,13 @@ const SelectedCustomerInfo = styled.div`
 const SelectedCustomerName = styled.div`
   font-size: 14px;
   font-weight: 600;
-  color: #635BFF;
+  color: var(--pos-brand, #635BFF);
   margin-bottom: 2px;
 `;
 
 const SelectedCustomerMeta = styled.div`
   font-size: 12px;
-  color: #4B5563;
+  color: var(--pos-text-muted, #4B5563);
 `;
 
 // Pager Search Components (same style as Customer Search)
@@ -1073,26 +1086,27 @@ const PagerSearchContainer = styled.div`
 const PagerSearchInput = styled.input`
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid #C7CED6;
+  border: 1px solid var(--pos-border, #C7CED6);
   border-radius: 6px;
   font-size: 14px;
-  background: white;
+  background: var(--pos-surface, #FFFFFF);
+  color: var(--pos-text, #0A2540);
   cursor: pointer;
   transition: all 0.15s;
   box-sizing: border-box;
 
   &:focus {
     outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+    border-color: var(--pos-brand, #635BFF);
+    box-shadow: 0 0 0 3px var(--pos-brand-tint, rgba(99,91,255,0.1));
   }
 
   &:hover {
-    border-color: #6B7280;
+    border-color: var(--pos-border-strong, #6B7280);
   }
 
   &::placeholder {
-    color: #8898AA;
+    color: var(--pos-text-muted, #8898AA);
   }
 `;
 
@@ -1101,8 +1115,8 @@ const PagerSearchDropdown = styled.div<{ show: boolean }>`
   top: 100%;
   left: 0;
   right: 0;
-  background: white;
-  border: 1px solid #C7CED6;
+  background: var(--pos-surface, #FFFFFF);
+  border: 1px solid var(--pos-border, #C7CED6);
   border-radius: 8px;
   max-height: 200px;
   overflow-y: auto;
@@ -1137,10 +1151,10 @@ const PagerSearchItem = styled.div`
   border-bottom: 1px solid #F1F3F5;
   transition: background-color 0.2s;
   font-size: 14px;
-  color: #0A2540;
+  color: var(--pos-text, #0A2540);
 
   &:hover {
-    background: #F1F4F8;
+    background: var(--pos-surface-2, #F1F4F8);
   }
 
   &:last-child {
@@ -1151,7 +1165,7 @@ const PagerSearchItem = styled.div`
 const ClearCustomerBtn = styled.button`
   background: none;
   border: none;
-  color: #635BFF;
+  color: var(--pos-brand, #635BFF);
   cursor: pointer;
   font-size: 12px;
   font-weight: 500;
@@ -1237,7 +1251,15 @@ const POSTerminalPage: React.FC = () => {
   const { currentStaff, updateStaff } = useStaff();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   // 카테고리 바 펼치기(전체 보기) — 토글로 열어두거나 닫음. 카테고리 선택해도 닫히지 않음(원할 때만 닫게).
-  const [categoryExpanded, setCategoryExpanded] = useState(false);
+  // 펼친 카테고리 탭은 닫기 전까지 유지 (새로고침/재진입에도). 기기별 저장.
+  const [categoryExpanded, setCategoryExpanded] = useState<boolean>(() => {
+    try { return localStorage.getItem('pos_category_expanded') === '1'; } catch { return false; }
+  });
+  const toggleCategoryExpanded = () => setCategoryExpanded(v => {
+    const nv = !v;
+    try { localStorage.setItem('pos_category_expanded', nv ? '1' : '0'); } catch { /* ignore */ }
+    return nv;
+  });
   const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   const [previousCategory, setPreviousCategory] = useState<string | null>(null); // 검색 전 카테고리 저장
   const [searchQuery, setSearchQuery] = useState('');
@@ -1320,6 +1342,11 @@ const POSTerminalPage: React.FC = () => {
     try { return localStorage.getItem('pos_display_mode') === 'simple' ? 'simple' : 'photo'; }
     catch { return 'photo'; }
   });
+
+  // 보기 색상 테마 (밝게/고대비/어둡게) — 기기별 저장. POS/FloorPlan/KDS 전용.
+  const [posTheme, setPosThemeState] = useState<PosThemeMode>(getPosTheme);
+  const selectPosTheme = (m: PosThemeMode) => { setPosThemeState(m); setPosTheme(m); };
+
 
   // Sort order applied to every category / mode / search result. Default = newest.
   type SortKey = 'newest' | 'name' | 'price_asc' | 'price_desc';
@@ -1534,8 +1561,9 @@ const POSTerminalPage: React.FC = () => {
             if (restaurant.payment_settings) {
               setPaymentMethods(restaurant.payment_settings);
             }
-            // Load currency settings
-            setCurrency(restaurant.currency || 'MYR');
+            // Load currency settings — store the SYMBOL (RM, ₩…) not the ISO code,
+            // so all displays show the user's local convention (MYR→RM 무조건).
+            setCurrency(getCurrencySymbol(restaurant.currency || 'MYR'));
             setCashRounding(restaurant.cash_rounding ? parseFloat(restaurant.cash_rounding) : null);
             setRoundingApplyTo(restaurant.rounding_apply_to || 'cash_only');
           }
@@ -2836,7 +2864,10 @@ const POSTerminalPage: React.FC = () => {
     const dateStr = formatDateTime(date, operationSettings, {
       month: 'short',
       day: '2-digit',
-      year: 'numeric'
+      year: 'numeric',
+      hour: undefined,
+      minute: undefined,
+      second: undefined
     });
     const time = formatDateTime(date, operationSettings, {
       hour: '2-digit',
@@ -2936,28 +2967,29 @@ const POSTerminalPage: React.FC = () => {
   };
 
   return (
-    <POSContainer>
+    <POSContainer data-pos-theme={posTheme}>
+      <PosDisplayThemeStyle />
       <Header>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <Logo onClick={handleResetPOS}>
             {brandLogo ? (
               <>
                 <LogoImage src={brandLogo} alt="Brand Logo" />
-                <span style={{ color: '#4B5563', fontSize: '14px', fontWeight: 500 }}>{'POS Terminal'}</span>
+                <span style={{ color: 'var(--pos-text-muted, #4B5563)', fontSize: '14px', fontWeight: 500 }}>{'POS Terminal'}</span>
               </>
             ) : (
-              <span style={{ color: '#4B5563', fontSize: '14px', fontWeight: 500 }}>{'POS Terminal'}</span>
+              <span style={{ color: 'var(--pos-text-muted, #4B5563)', fontSize: '14px', fontWeight: 500 }}>{'POS Terminal'}</span>
             )}
           </Logo>
           <button type="button"
             onClick={() => navigate(`/restaurant/${restaurantId}/dashboard`)}
             style={{
               background: 'none',
-              border: '1px solid #C7CED6',
+              border: '1px solid var(--pos-border, #C7CED6)',
               borderRadius: '6px',
               padding: '6px 12px',
               cursor: 'pointer',
-              color: '#4B5563',
+              color: 'var(--pos-text-muted, #4B5563)',
               fontSize: '13px',
               display: 'flex',
               alignItems: 'center',
@@ -2971,7 +3003,7 @@ const POSTerminalPage: React.FC = () => {
           <StaffInfo clickable={true} onClick={() => setShowCashierPinModal(true)} title="Click to switch cashier">
             <span style={{ fontSize: '16px' }}>◆</span>
             <span>Cashier: {user?.name || 'Staff'}</span>
-            <span style={{ fontSize: '11px', color: '#8898AA', marginLeft: '4px' }}>▼</span>
+            <span style={{ fontSize: '11px', color: 'var(--pos-text-muted, #8898AA)', marginLeft: '4px' }}>▼</span>
           </StaffInfo>
           <DateTime>{formatDateTimeLocal(currentDateTime)}</DateTime>
           {/* Customer Display — always visible. Cashiers re-open the secondary
@@ -2986,14 +3018,14 @@ const POSTerminalPage: React.FC = () => {
             title={isAutoOpenEnabled() ? 'Customer Display (auto-open enabled)' : 'Open Customer Display on secondary monitor'}
             style={{
               padding: '6px 12px', fontSize: '12px', fontWeight: 500,
-              border: '1px solid #C7CED6', borderRadius: '6px',
-              background: isAutoOpenEnabled() ? '#F0EFFF' : '#F4F6F9',
-              color: isAutoOpenEnabled() ? '#635BFF' : '#4B5563',
+              border: '1px solid ' + (isAutoOpenEnabled() ? 'var(--pos-brand, #635BFF)' : 'var(--pos-border, #C7CED6)'), borderRadius: '6px',
+              background: isAutoOpenEnabled() ? 'var(--pos-brand-tint, rgba(99,91,255,0.1))' : 'var(--pos-surface-2, #F4F6F9)',
+              color: 'var(--pos-text, #1F2937)',
               cursor: 'pointer',
               display: 'flex', alignItems: 'center', gap: '4px'
             }}
           >
-            {isAutoOpenEnabled() && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#635BFF', display: 'inline-block' }} />}
+            {isAutoOpenEnabled() && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--pos-brand, #635BFF)', display: 'inline-block' }} />}
             Customer Display
           </button>
 
@@ -3018,8 +3050,8 @@ const POSTerminalPage: React.FC = () => {
               title="Send open-drawer pulse to the bill printer"
               style={{
                 padding: '6px 12px', fontSize: '12px', fontWeight: 500,
-                border: '1px solid #C7CED6', borderRadius: '6px',
-                background: '#F4F6F9', color: '#1F2937', cursor: 'pointer'
+                border: '1px solid var(--pos-border, #C7CED6)', borderRadius: '6px',
+                background: 'var(--pos-surface-2, #F4F6F9)', color: 'var(--pos-text, #1F2937)', cursor: 'pointer'
               }}
             >
               Open Drawer
@@ -3053,6 +3085,30 @@ const POSTerminalPage: React.FC = () => {
               ] as OverflowMenuItem[]}
             />
           </HeaderCompactActions>
+
+          {/* 보기 색상 토글 (밝게/고대비/어둡게) — Open Drawer 뒤. 항상 표시, 기기별 기억. */}
+          <div role="group" aria-label="Display theme" style={{
+            display: 'inline-flex', gap: 2, borderRadius: 8, padding: 3,
+            background: 'var(--pos-surface-2, #EDF1F5)', border: '1px solid var(--pos-border, #C7CED6)'
+          }}>
+            {POS_THEME_MODES.map(m => {
+              const label = t(`pos:terminal.theme${m.charAt(0).toUpperCase()}${m.slice(1)}`,
+                { defaultValue: { light: 'Light', contrast: 'High Contrast', dark: 'Dark' }[m] });
+              return (
+              <button key={m} type="button"
+                onClick={() => selectPosTheme(m)}
+                aria-pressed={posTheme === m}
+                title={label}
+                style={{
+                  minWidth: 40, height: 30, padding: '0 10px', fontSize: 12, fontWeight: 600,
+                  border: 'none', borderRadius: 6, cursor: 'pointer', whiteSpace: 'nowrap',
+                  background: posTheme === m ? 'var(--pos-brand, #635BFF)' : 'transparent',
+                  color: posTheme === m ? '#FFFFFF' : 'var(--pos-text-muted, #4B5563)',
+                }}
+              >{label}</button>
+              );
+            })}
+          </div>
         </HeaderInfo>
       </Header>
 
@@ -3085,12 +3141,12 @@ const POSTerminalPage: React.FC = () => {
               onChange={(e) => setSortByPersistent(e.target.value as SortKey)}
               style={{
                 height: 36, padding: '0 28px 0 12px',
-                border: '1px solid #C7CED6',
+                border: '1px solid var(--pos-border, #C7CED6)',
                 borderRadius: 6,
-                background: 'white',
+                background: 'var(--pos-surface, #FFFFFF)',
                 fontSize: 13,
                 fontWeight: 500,
-                color: '#0A2540',
+                color: 'var(--pos-text, #0A2540)',
                 cursor: 'pointer',
                 appearance: 'none',
                 backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 12 12\' fill=\'none\'%3E%3Cpath d=\'M3 4.5L6 7.5L9 4.5\' stroke=\'%236B7C93\' stroke-width=\'1.5\' stroke-linecap=\'round\' stroke-linejoin=\'round\'/%3E%3C/svg%3E")',
@@ -3148,10 +3204,9 @@ const POSTerminalPage: React.FC = () => {
                 {category.emoji} {category.name}
               </CategoryTab>
             ))}
-          </CategoryTabs>
             <CategoryExpandToggle
               type="button"
-              onClick={() => setCategoryExpanded(v => !v)}
+              onClick={toggleCategoryExpanded}
               title={categoryExpanded
                 ? t('pos:terminal.collapseCategories', { defaultValue: 'Collapse categories' })
                 : t('pos:terminal.expandCategories', { defaultValue: 'Show all categories' })}
@@ -3162,6 +3217,7 @@ const POSTerminalPage: React.FC = () => {
                 <polyline points="6 9 12 15 18 9" />
               </svg>
             </CategoryExpandToggle>
+          </CategoryTabs>
           </CategoryBar>
 
           {isSearchMode && (
@@ -3182,7 +3238,7 @@ const POSTerminalPage: React.FC = () => {
           )}
 
           <MenuGrid style={displayMode === 'simple'
-            ? { gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }
+            ? { gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 8 }
             : undefined}>
             {filteredMenuItems.length > 0 ? (
               <>
@@ -3341,12 +3397,12 @@ const POSTerminalPage: React.FC = () => {
                   ))}
                 </CustomerSearchDropdown>
                 <CustomerSearchDropdown show={showCustomerDropdown && customerSearchQuery.trim().length > 0 && filteredCustomers.length === 0 && !isSearchingCustomers}>
-                  <CustomerSearchItem style={{ cursor: 'default', color: '#4B5563' }}>
+                  <CustomerSearchItem style={{ cursor: 'default', color: 'var(--pos-text-muted, #4B5563)' }}>
                     No customers found
                   </CustomerSearchItem>
                 </CustomerSearchDropdown>
                 <CustomerSearchDropdown show={showCustomerDropdown && isSearchingCustomers}>
-                  <CustomerSearchItem style={{ cursor: 'default', color: '#4B5563' }}>
+                  <CustomerSearchItem style={{ cursor: 'default', color: 'var(--pos-text-muted, #4B5563)' }}>
                     Searching...
                   </CustomerSearchItem>
                 </CustomerSearchDropdown>
@@ -3452,7 +3508,7 @@ const POSTerminalPage: React.FC = () => {
                         </QuantityBtn>
                       </QuantityControl>
                       <ItemPrice>
-                        {currency} {(() => {
+                        {(() => {
                           let itemTotal = item.menuItem.price * item.quantity;
                           if (item.selectedOptions && item.selectedOptions.length > 0) {
                             const optionsTotal = item.selectedOptions.reduce((sum, opt) => sum + opt.price, 0);
@@ -3472,42 +3528,42 @@ const POSTerminalPage: React.FC = () => {
               <OrderSummary>
                 <SummaryRow>
                   <SummaryLabel>{'Subtotal'}</SummaryLabel>
-                  <SummaryValue>{currency} {subtotal.toFixed(2)}</SummaryValue>
+                  <SummaryValue>{subtotal.toFixed(2)}</SummaryValue>
                 </SummaryRow>
                 {takeawayCharge > 0 && (
                   <SummaryRow>
                     <SummaryLabel>{'Takeaway Charge'}</SummaryLabel>
-                    <SummaryValue>{currency} {takeawayCharge.toFixed(2)}</SummaryValue>
+                    <SummaryValue>{takeawayCharge.toFixed(2)}</SummaryValue>
                   </SummaryRow>
                 )}
                 {discountAmount > 0 && (
                   <SummaryRow>
                     <SummaryLabel>{'Discount'}</SummaryLabel>
-                    <SummaryValue style={{ color: '#10B981' }}>-{currency} {discountAmount.toFixed(2)}</SummaryValue>
+                    <SummaryValue style={{ color: 'var(--pos-positive, #10B981)' }}>-{discountAmount.toFixed(2)}</SummaryValue>
                   </SummaryRow>
                 )}
                 {appliedCoupon && (
                   <SummaryRow>
                     <SummaryLabel>Coupon ({appliedCoupon.code})</SummaryLabel>
-                    <SummaryValue style={{ color: '#10B981' }}>-{currency} {couponDiscount.toFixed(2)}</SummaryValue>
+                    <SummaryValue style={{ color: 'var(--pos-positive, #10B981)' }}>-{couponDiscount.toFixed(2)}</SummaryValue>
                   </SummaryRow>
                 )}
                 {appliedDiscountPolicy && (
                   <SummaryRow>
                     <SummaryLabel>Discount ({appliedDiscountPolicy.name})</SummaryLabel>
-                    <SummaryValue style={{ color: '#10B981' }}>-{currency} {policyDiscount.toFixed(2)}</SummaryValue>
+                    <SummaryValue style={{ color: 'var(--pos-positive, #10B981)' }}>-{policyDiscount.toFixed(2)}</SummaryValue>
                   </SummaryRow>
                 )}
                 {operationSettings.serviceChargeEnabled && serviceCharge > 0 && (
                   <SummaryRow>
                     <SummaryLabel>Service Charge ({operationSettings.serviceChargeRate}%)</SummaryLabel>
-                    <SummaryValue>{currency} {serviceCharge.toFixed(2)}</SummaryValue>
+                    <SummaryValue>{serviceCharge.toFixed(2)}</SummaryValue>
                   </SummaryRow>
                 )}
                 {operationSettings.taxEnabled && tax > 0 && (
                   <SummaryRow>
                     <SummaryLabel>Tax ({operationSettings.taxRate}%)</SummaryLabel>
-                    <SummaryValue>{currency} {tax.toFixed(2)}</SummaryValue>
+                    <SummaryValue>{tax.toFixed(2)}</SummaryValue>
                   </SummaryRow>
                 )}
                 <TotalRow>
@@ -3564,21 +3620,21 @@ const POSTerminalPage: React.FC = () => {
                               right: 0,
                               maxHeight: '280px',
                               overflowY: 'auto',
-                              background: 'white',
-                              border: '1px solid #C7CED6',
+                              background: 'var(--pos-surface, #FFFFFF)',
+                              border: '1px solid var(--pos-border, #C7CED6)',
                               borderRadius: '8px',
                               boxShadow: '0 8px 16px rgba(0,0,0,0.12)',
                               zIndex: 100
                             }}
                           >
                             {availableCoupons.length === 0 ? (
-                              <div style={{ padding: '14px', textAlign: 'center', color: '#6B7280', fontSize: '13px' }}>
+                              <div style={{ padding: '14px', textAlign: 'center', color: 'var(--pos-border-strong, #6B7280)', fontSize: '13px' }}>
                                 {couponsLoaded
                                   ? t('pos:pOSTerminalPage.noActiveCoupons', 'No active coupons. Enter a code manually if you have one.')
                                   : t('pos:pOSTerminalPage.loadingCoupons', 'Loading...')}
                               </div>
                             ) : filteredCoupons.length === 0 ? (
-                              <div style={{ padding: '14px', textAlign: 'center', color: '#6B7280', fontSize: '13px' }}>
+                              <div style={{ padding: '14px', textAlign: 'center', color: 'var(--pos-border-strong, #6B7280)', fontSize: '13px' }}>
                                 {t('pos:pOSTerminalPage.noMatchingCoupons', 'No matching coupons.')}
                               </div>
                             ) : (
@@ -3594,28 +3650,28 @@ const POSTerminalPage: React.FC = () => {
                                       cursor: eligible ? 'pointer' : 'not-allowed',
                                       opacity: eligible ? 1 : 0.5,
                                       fontSize: '13px',
-                                      color: '#0A2540',
-                                      borderBottom: '1px solid #F1F4F8',
+                                      color: 'var(--pos-text, #0A2540)',
+                                      borderBottom: '1px solid var(--pos-surface-2, #F1F4F8)',
                                       display: 'flex',
                                       justifyContent: 'space-between',
                                       alignItems: 'center',
                                       gap: '12px',
-                                      background: 'white',
+                                      background: 'var(--pos-surface, #FFFFFF)',
                                       transition: 'background 0.1s'
                                     }}
-                                    onMouseEnter={(e) => { if (eligible) e.currentTarget.style.background = '#F5F3FF'; }}
-                                    onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                                    onMouseEnter={(e) => { if (eligible) e.currentTarget.style.background = 'var(--pos-brand-tint, #F5F3FF)'; }}
+                                    onMouseLeave={(e) => e.currentTarget.style.background = 'var(--pos-surface, #FFFFFF)'}
                                   >
                                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                                      <span style={{ fontWeight: 600, color: '#635BFF', marginRight: '8px' }}>{c.code}</span>
-                                      {c.name && <span style={{ color: '#4B5563' }}>{c.name}</span>}
+                                      <span style={{ fontWeight: 600, color: 'var(--pos-brand, #635BFF)', marginRight: '8px' }}>{c.code}</span>
+                                      {c.name && <span style={{ color: 'var(--pos-text-muted, #4B5563)' }}>{c.name}</span>}
                                       {minOrder > 0 && !eligible && (
                                         <span style={{ marginLeft: '6px', fontSize: '11px', color: '#EF4444' }}>
                                           ({t('pos:pOSTerminalPage.minOrder', 'min')} {currency} {minOrder.toFixed(2)})
                                         </span>
                                       )}
                                     </span>
-                                    <span style={{ color: '#635BFF', fontWeight: 500, flexShrink: 0 }}>
+                                    <span style={{ color: 'var(--pos-brand, #635BFF)', fontWeight: 500, flexShrink: 0 }}>
                                       {formatCouponLabel(c)}
                                     </span>
                                   </div>
@@ -3635,24 +3691,24 @@ const POSTerminalPage: React.FC = () => {
                       active={discount === 5}
                       onClick={() => handleApplyDiscount(5)}
                     >
-                      {operationSettings.currency} 5
+                      {currency} 5
                     </QuickDiscountBtn>
                     <QuickDiscountBtn
                       active={discount === 10}
                       onClick={() => handleApplyDiscount(10)}
                     >
-                      {operationSettings.currency} 10
+                      {currency} 10
                     </QuickDiscountBtn>
                     <QuickDiscountBtn
                       active={discount === 15}
                       onClick={() => handleApplyDiscount(15)}
                     >
-                      {operationSettings.currency} 15
+                      {currency} 15
                     </QuickDiscountBtn>
                     <QuickDiscountBtn
                       onClick={() => setShowCustomAmountModal(true)}
                     >
-                      Custom {operationSettings.currency}
+                      Custom {currency}
                     </QuickDiscountBtn>
                   </QuickDiscountButtons>
                 </DiscountRow>
@@ -3707,7 +3763,7 @@ const POSTerminalPage: React.FC = () => {
                       </PagerSearchItem>
                     ))
                   ) : (
-                    <PagerSearchItem style={{ cursor: 'default', color: '#4B5563' }}>
+                    <PagerSearchItem style={{ cursor: 'default', color: 'var(--pos-text-muted, #4B5563)' }}>
                       No matching pagers
                     </PagerSearchItem>
                   )}
@@ -3717,17 +3773,17 @@ const POSTerminalPage: React.FC = () => {
           )}
 
           <OrderActions>
-            <ActionBtn variant="danger" onClick={handleClearOrder}>
+            <ActionBtn
+              variant="danger"
+              onClick={handleClearOrder}
+              style={{ flex: '0 0 auto', minWidth: 72, padding: '14px 12px' }}
+            >
               Clear
             </ActionBtn>
             <ActionBtn variant="secondary" onClick={handleAddOrder}>
               Pay Later
             </ActionBtn>
-            <ActionBtn
-              variant="primary"
-              onClick={handlePayment}
-              style={{ flex: 2 }}
-            >
+            <ActionBtn variant="primary" onClick={handlePayment}>
               Pay Now
             </ActionBtn>
           </OrderActions>
@@ -3828,10 +3884,10 @@ const POSTerminalPage: React.FC = () => {
               boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
             }}
           >
-            <div style={{ fontSize: 16, fontWeight: 700, color: '#0A2540', marginBottom: 4 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--pos-text, #0A2540)', marginBottom: 4 }}>
               {t('pos:mergeChoice.title', 'Existing order on this table')}
             </div>
-            <div style={{ fontSize: 13, color: '#4B5563', marginBottom: 16 }}>
+            <div style={{ fontSize: 13, color: 'var(--pos-text-muted, #4B5563)', marginBottom: 16 }}>
               {t('pos:mergeChoice.subtitle', { defaultValue: 'Table {{table}} already has {{count}} pending order(s). Add to one, or create a separate order?', table: tableNumber, count: mergeableOrders.length })}
             </div>
 
@@ -3849,7 +3905,7 @@ const POSTerminalPage: React.FC = () => {
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                     padding: '12px 14px',
                     border: '1px solid #DDD9FF',
-                    background: '#F0F4FF',
+                    background: 'var(--pos-brand-tint, #F0F4FF)',
                     borderRadius: 8, cursor: 'pointer', textAlign: 'left',
                     transition: 'all 0.15s'
                   }}
@@ -3858,7 +3914,7 @@ const POSTerminalPage: React.FC = () => {
                     <div style={{ fontSize: 13, fontWeight: 600, color: '#3B30D9' }}>
                       #{o.order_number || o.id} {o.customer_name ? '— ' + o.customer_name : ''}
                     </div>
-                    <div style={{ fontSize: 11, color: '#4B5563', marginTop: 2 }}>
+                    <div style={{ fontSize: 11, color: 'var(--pos-text-muted, #4B5563)', marginTop: 2 }}>
                       {new Date(o.createdAt).toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: false })}
                       {' · '}{currency} {Number(o.total_amount).toFixed(2)}
                     </div>
@@ -3875,8 +3931,8 @@ const POSTerminalPage: React.FC = () => {
                 type="button"
                 onClick={() => setShowMergeChoiceModal(false)}
                 style={{
-                  flex: 1, padding: '12px 16px', border: '1px solid #C7CED6',
-                  background: 'white', color: '#4B5563', borderRadius: 8,
+                  flex: 1, padding: '12px 16px', border: '1px solid var(--pos-border, #C7CED6)',
+                  background: 'var(--pos-surface, #FFFFFF)', color: 'var(--pos-text-muted, #4B5563)', borderRadius: 8,
                   fontSize: 13, fontWeight: 500, cursor: 'pointer'
                 }}
               >
@@ -3891,7 +3947,7 @@ const POSTerminalPage: React.FC = () => {
                 }}
                 style={{
                   flex: 2, padding: '12px 16px', border: 'none',
-                  background: '#635BFF', color: 'white', borderRadius: 8,
+                  background: 'var(--pos-brand, #635BFF)', color: 'white', borderRadius: 8,
                   fontSize: 13, fontWeight: 600, cursor: 'pointer'
                 }}
               >

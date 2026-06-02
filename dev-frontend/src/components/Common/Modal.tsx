@@ -27,7 +27,7 @@ export const RadioButton = styled.button<{ selected?: boolean }>`
   padding: 12px 16px;
   min-height: 44px;
   border-radius: 8px;
-  border: 1px solid ${props => props.selected ? '#635BFF' : '#C7CED6'};
+  border: 1px solid ${props => props.selected ? '#635BFF' : '#B9C2CC'};
   background: ${props => props.selected ? 'rgba(99, 91, 255, 0.1)' : 'white'};
   color: ${props => props.selected ? '#635BFF' : '#1F2937'};
   font-size: 14px;

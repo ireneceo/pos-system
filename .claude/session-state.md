@@ -1,9 +1,47 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-06-01 (The Fire 3-이슈 데이터 무결성 fix — **운영 배포 완료**)
-**버전:** v3.45 운영 (backstage 성격 — 버전 미상승, 보안/안정성 fix)
-**작업 상태:** 운영 배포 완료 + 운영 검증 완료. **남은 것 = Issue 1(티켓 2장) 실프린터 눈 확인만.**
+**마지막 업데이트:** 2026-06-02 (POS 운영페이지 UI/UX 개편 + 보기 색상 토글 — DEV 완료, 미배포. 다음 세션 계속)
+**버전:** v3.45 운영 (backstage 성격 — 버전 미상승)
+**작업 상태:** POS Terminal UI/UX 개편 + 밝게/고대비/어둡게 토글 **DEV 적용 완료**(미배포, 다음 세션 색감 미세조정·모달다크·FloorPlan/KDS 확장 계속). 최신 빌드 main.ea0f8766.js. 보류: 인쇄 4-케이스/테이블이동/이메일인증(DEV 완료, 배포 대기).
+
+---
+
+## 2026-06-02 진행 중 — POS 운영페이지 UI/UX 개편 (현장 클릭/가독성)
+
+> Irene: 매장에서 Floor Plan/POS Terminal/KDS 가 실제 POS 대비 클릭 불편 + 안 또렷함. 우선 클릭부터. POS Terminal 먼저. + 검색 접기 + 다크/고대비 보기 버전(이 3페이지만). "30년차 디자이너로 구성."
+> AskUserQuestion 결정: **보기 버전 = Light/고대비(기본)/Dark 3-모드 토글, 기기별 기억, POS/FloorPlan/KDS 3페이지에만(관리자 등 무영향).**
+
+### 확정 계획
+- **Phase A (클릭/가독)**: 카테고리 큰 칩 + 우측 버튼 키우기·선/여백 정리 + 검색 접기 + 터치 44px+
+- **Phase B (보기 토글)**: POS 색값 토큰화 → 밝게/고대비/어둡게 전환 버튼
+- **Phase C**: 같은 시스템 Floor Plan·KDS 확장
+
+### Phase A — POS Terminal **완료 (DEV, 미배포)** · 빌드 main.235e7b5f.js · /검증 10단계 통과
+- **A 다듬기 v6 (카트 아이템·통화)**: 액션버튼 높이 60→72px·글자17. 삭제X=박스/배경 없이 아이콘만(회색→hover빨강). 아이템명 공간 확보(가격폭80→52, 컨트롤 gap12→8, ItemInfo min-width:0). **통화=심볼로**(`currency` state=getCurrencySymbol → MYR 무조건 RM, KRW→₩). **카트 아이템·요약 내역(Subtotal/Discount/Service/Tax)=숫자만, 통화는 Total 에만.** mount 47/47 OK(직전), 요약은 표시 토큰 제거뿐.
+- **A 다듬기 v5 (선택 디자인 = 상품옵션 기준)**: Irene 확정 — "중요한 선택"은 상품 옵션(RadioButton: 선택=브랜드테두리+연한틴트rgba(99,91,255,.1)+브랜드글씨/기본=흰박스+테두리) 디자인이 정답. 세그먼트(Image/Compact 토글)는 사소한 보기용이라 부적합. → Dine In/Takeaway·카테고리 **모두 옵션 박스 디자인으로 통일**. 검색 🔍 토글+접기 **완전 삭제**(검색바 항상 표시). 공용 RadioButton 기본 테두리 #C7CED6→#B9C2CC(옵션 S/M/L 가독). mount 47/47 OK.
+- 통일된 선택 언어: 옵션/카테고리/주문유형 = 동일 RadioButton 박스. 실행(Pay)만 솔리드. Clear=중립 회색.
+- **A 다듬기 v7 (통화 RM 일괄)**: 액션버튼 60→72px. **MYR→RM 전 사이트**: POS state=심볼(getCurrencySymbol), 카트아이템·요약 내역=숫자만/Total만 통화, 할인버튼 RM. 표시 지점 일괄(코드값 보존): Referral 머니포맷터5+지갑뱃지, 매장통화뱃지(Owner/Admin/Manager), TableDetailPanel, Inventory OrderModal, PO staging 리터럴, Supplier placeholder → 전부 getCurrencySymbol. Brand/Foodcourt 맵은 이미 심볼(오탐). 빌드 main.8aae84b3.js. **Irene "이제 괜찮아, 이렇게 하자" → Phase A 확정.**
+
+### Phase B 착수 — 보기 색상 토글 (Light/고대비/Dark, 기기별, POS/FloorPlan/KDS 만)
+> Irene 결정(AskUserQuestion): 3-모드 토글, 기본=고대비, 나머지 화면 무영향. 방식 = CSS 변수 팔레트(--pos-*) + data-pos-theme 래퍼 + 헤더 토글 + localStorage `pos_display_theme`. POS 구조 색(bg/surface/text/border) 토큰화부터.
+- **B-1 POS Terminal 테마 토글 (DEV, 다듬는 중)** · 최신 빌드 main.d46b2389.js · mount 47/47 OK.
+  - v2 피드백 반영: 고대비 팔레트 강화(배경 #C2CCD8, 글씨 #060B14, 테두리 #5B6675). 다크 "안 보임" 수정 — 삼항/인라인 흰배경(`'white'`/`'#FFFFFF'` bg만, 텍스트 흰색 보존)+2차연회색(#F4F6F9/#F1F4F8/#F9FAFB)+틴트(#F5F3FF/#F0F4FF)+플레이스홀더(#8898AA)+입력칸 bg/color 전부 var화. var 참조 162곳.
+  - v3 업그레이드(빌드 main.db807dcc.js): **elevation 모델** — 다크 배경#0E1626<패널#1F2A40<선택박스 control#2C3A56 로 분리, 텍스트 92%(#EAF0F8). 토큰 추가 `--pos-control`(선택박스 면: CategoryTab/OrderTypeBtn/QuickDiscountBtn base) + `--pos-positive`(Pay Later·할인 녹색: 다크 #0E9E6B/고대비 #0A7D57). 고대비 강화(app#E7ECF2/menu#94A4B8/text#000/border#3E4A5A).
+  - v4(빌드 main.669d83c1.js): 활성 선택(카테고리/주문유형)=솔리드 브랜드+흰글씨(틴트→채움). 테마토글 Open Drawer 뒤로 이동 + i18n(`terminal.theme*` 4언어, 하드코딩 한글 제거). 카테고리 펼치기 영속화(localStorage `pos_category_expanded`, 닫기 전까지 유지). 헤더 Customer Display/Open Drawer 글자색 통일(var --pos-text), CD 자동열기 활성=브랜드틴트+테두리+점(하드코딩 #F0EFFF 제거).
+  - v5 다듬기(최신 main.2975837f.js): **다크 accent=라이트와 동일**(brand #635BFF/tint #ECEAFF/brand-text #635BFF/positive #10B981 — Irene "다크 버튼·색 라이트와 같게"). 카테고리·DineIn/Takeaway 활성=틴트+보라글씨(탭/옵션 디자인 통일, 솔리드 아님=액션버튼 구분). OrderTypeBtn/Clear hover 글자색 수정(다크 가독). 옵션버튼 그라데이션→탭/옵션 디자인. 메뉴그리드 여백 24→12·gap 16→10(10인치). 일시표시 시간중복 제거(formatDateTimeLocal dateStr 시간 suppress).
+  - **⚠️ 작업 원칙(중요)**: [[feedback_minimal_scoped_change]] — 한 요청=그것만 최소 범위. "다크에서만"은 다크 토큰 한 곳만. 인접/전모드 쓸어 바꾸기 금지.
+  - **남은 것**: 모달(OptionModal/PaymentModal/RadioButton 등 별도 컴포넌트) 다크 미적용. Irene 실화면 재확인 중. 확정 후 모달 테마 or Floor Plan·KDS(B-2). 신규 `src/styles/posDisplayTheme.ts`(3팔레트 CSS변수 createGlobalStyle + getPosTheme/setPosTheme/labels). POSTerminalPage: data-pos-theme={posTheme} + `<PosDisplayThemeStyle/>` + 헤더 [밝게|고대비|어둡게] 토글 + 구조색 125곳 var(--pos-*) 화(브랜드/상태색·버튼글씨 보존). **다음: Irene 실화면 3모드(특히 다크) 팔레트 눈확인 → 미세조정 → Floor Plan·KDS 동일 적용(B-2).**
+- **A 다듬기 v4 (디자인 위계 — 선택 vs 실행)**: Irene 원칙 "기능에 맞는 디자인". 선택(탭/세그먼트)은 솔리드 액션버튼처럼 보이면 안 됨. → 주문유형(DineIn/Takeaway)=**세그먼트 컨트롤**(회색트랙+선택칸 흰색, Image/Compact 토글과 동일언어). 카테고리=**밑줄 탭**(선택=브랜드 밑줄3px+연한 틴트#F0EEFF+브랜드글씨, 채움칩 아님). Pay Later/Pay Now 만 솔리드 실행버튼. 버튼 높이 52→**60px**, **Clear=중립 회색**(빨강 제거, 장바구니 비우기는 위험동작 아님). mount 47/47 OK.
+- **A 다듬기 v3 (실화면 반복 피드백)**: (1) 검색 돋보기 = 헤더X → **Image/Compact 옆 툴바**(입력칸만 토글, 정렬/보기 유지). (2) 카테고리 펼치기 화살표 = 우측 전용컬럼 제거 → **칩과 같은 작은 인라인 칩**(맨 끝). (3) 우측패널 = 상단 흰색(유형/고객/테이블)·**가운데 회색 스크롤밴드 분리(품목/요약/할인)**·하단 흰색(페이저/버튼). (4) **Pay Later·Pay Now 동등 솔리드 버튼**(보라/에메랄드, 자동추론X — 테이블+선결제 매장 때문), Clear 좁게 demote. mount 47/47 OK.
+- **A 다듬기 v2 (Irene 실화면 피드백, "기계반영 말고 디자이너 수준으로")**: 카테고리 바 = `[칩영역|화살표 전용 우측셀]` flex(겹침0, 화살표가 칩 안 가림) + 검색 돋보기 카테고리바→**헤더 우측상단**(데스크톱+kebab) 이동 + 칩 **회색 채움면**(#EAEEF3, 테두리의존X)/선택=브랜드채움. 우측패널 = **하나의 면**(구역배경 #F7F9FC/#F9FAFB 변주·과한 구분선 제거, 요약 위 단일 구분선만, 할인→버튼 1색) + 고객검색 위아래 선 제거 + 주문유형(다인인/테이크웨이) **면 자체가 버튼**(세그먼트, #EAEEF3/브랜드, min-h52). mount 47/47 OK.
+- `POSTerminalPage.tsx`(🔒): A1 CategoryTab 밑줄텍스트→칩(min-height44, 선택=꽉찬보라) / A2 QuantityBtn·DeleteBtn 24→40px, OrderItemsHeader 밑줄제거·요약여백·OrderActions패딩 축소, ActionBtn min-height52 / A3 searchBarOpen state+SearchToggle(🔍, localStorage `pos_search_open`)로 검색바 접기. **인쇄 로직(poller 1236/티켓 2292/빌 2579) 무접촉** — git: 인쇄 보호파일 8개 변경 0건(POSTerminal 제외).
+- 검증(/검증 10단계): 0 state-hydration 0warn · 0-b timezone 신규위반 0 · 1 build OK · 2 backend online · 4 번들 200+index일치 · 7 연관영향 0(POSTerminal 로컬 styled만, 공유컴포넌트 무변경) · 8 UI/UX: off-grid(radius10/gap10/pad18·14) → 8그리드 정규화 + aria-pressed 보강, i18n Errors 0(tooltip defaultValue=기존 컨벤션) · 10 headless mount **47/47 OK·0 failed**(pos-terminal/floor-plan/kitchen/display 0 pageerror). 색 토큰화는 Phase B.
+- ⚠️ POSTerminalPage 는 보호파일 → check-print-guard 가 변경 감지함(UI 변경, 인쇄 무관). 배포 시 Irene 승인+`--bless` 전제.
+- ⚠️ **기존 플래키**(내 작업 무관): `autoprint-regression.js` [5] polling catch 2건 실패 — 공유 dev 백엔드의 인쇄 poller 가 테스트보다 먼저 needs_print claim(레이스). DEV 빌드는 `SKIP_REGRESSION=1`(프론트 전용 변경) 사용. 별도 진단 후보.
+
+### 다음
+- Phase B(보기 토글) 구현 → Phase A/B 묶어 Floor Plan·KDS(Phase C) → DEV검증 → Irene 배포.
 
 ---
 
@@ -153,21 +191,24 @@ The Fire 에서 **Floor Plan 으로 테이블 POS 열고 주문 → 키친 티�
 - **남은 검증**: §9 매트릭스 각 설정조합(printPerItem/mirror/browser·rawbt·qz 전조합) 런타임 대조는 부분만.
 
 ### 진행 중인 작업
-- **인쇄 4-케이스 오더티켓 + 개발 인프라 (2026-06-01 Irene 전체위임, 순서대로 진행)**
-  - Phase 0: (0-1)히스토리 단일화 **완료** / (0-2)`/운영검증` 스킬 **완료**
-  - Phase 1: 설계확정 + `PRINT_RULES_MATRIX.md §9` 매트릭스 **완료**
-  - Phase 2 구현(🔒billPrint): #1 noticeHeader(R7/R8) / #2 취소표 줄긋기+title/footer / #3 R9 wiring + R10 station 라우팅(factor-out 단일소스) **완료·빌드·regression 44/44**. **남음: R7/R8 FloorPlan 이동 호출부 wiring + 자동/수동(S1) 게이트+수동 확인인쇄 + Playwright 캡처하니스(4케이스×4방식) + /검증 §9 대조**
-  - Phase 3 DEV검증 → 4 배포(Irene만, `--bless`+실프린터) → 5 `/운영검증`
-  - 설계 문서: `docs/TABLE_MOVE_AND_VOID_TICKET.md`(설계 2 확정) + `docs/PRINT_RULES_MATRIX.md §9`
-- **[같이 배포] 이메일 발송 가드 완성** — `emailService.js` `screenRecipients`(미인증/placeholder 차단)를 3개 발송함수 전부에 적용(`sendEmail` 구멍 닫음). **운영엔 notificationService 가드만 있고 emailService 전송계층 가드 미배포 → 이 배포에 반드시 포함.** `health-check.js` defineMatrixTests 미정의 크래시도 가드 수정함.
+- **POS 운영페이지 UI/UX 개편 + 보기 색상 토글 (2026-06-02, DEV·미배포, 다음 세션 계속)**
+  - Phase A(클릭/가독)·통화 RM 일괄·Phase B(밝게/고대비/어둡게 토글, `posDisplayTheme.ts`) **POS Terminal 적용 완료**. 최신 빌드 main.ea0f8766.js. 상세 = 위 "2026-06-02" 섹션 + [[reference_pos_display_theme]].
+  - **Irene "이제 이렇게 할게, 다음 섹션에서 계속" → 이번 세션 종료, 다음 세션 이어서.**
+  - **다음 세션 남은 것**: (1) 다크 색감 미세조정 계속(Irene 실화면) (2) 모달(OptionModal/PaymentModal/RadioButton) 다크 미적용 (3) 같은 테마 시스템 **Floor Plan·KDS 확장(B-2)**
+  - ⚠️ POSTerminalPage(🔒) 변경됨 → 배포 시 `--bless` + 실프린터 확인. 인쇄 로직 무접촉(확인됨).
+  - ⚠️ **작업 원칙**: [[feedback_minimal_scoped_change]] — 한 요청=그 부분만 최소 범위. "다크에서만"은 다크 토큰 한 곳만.
 
 ### 다음 확정 작업
-- 위 진행 중 작업을 Phase 순서대로 완료. 인쇄 변경은 **Irene 승인 + 실프린터 눈 확인** 후에만 bless/배포.
-- (Phase 6, 인쇄 무관 별도 트랙) BG dashboard 자동 trial 판정 + user 29 데이터 정정
+- **POS 보기 색상/UI 미세조정 계속 → 모달 다크화 → Floor Plan·KDS 확장** (Irene "다음 섹션에서 계속" 명시)
+
+### 보류 중 (이전 세션 DEV 완료, 배포 대기 — Irene 지시 시)
+- 인쇄 4-케이스 오더티켓 + 테이블이동/취소표 + 이메일 인증 enforcement (DEV 완료). 배포는 `--bless`+The Fire 실프린터 확인 후 Irene 만. 상세: `docs/TABLE_MOVE_AND_VOID_TICKET.md`, `docs/PRINT_RULES_MATRIX.md §9`.
+- 인쇄 4-케이스 남은검증: Playwright 캡처하니스 미발견(불필요 여부 확인), §9 전조합 런타임 대조 부분만, Issue1 티켓2장 실프린터 눈확인.
 
 ### 후속 후보 (아이디어 메모, 확정 X)
 > 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.
 
+- BG dashboard 자동 trial 판정 + user 29 데이터 정정
 - subscription_status 자동 결정 scheduler 검토 (grace_period_start trigger)
 - 매장 8 (K-DINE IPC) QZ Tray 인쇄 문제 진단
 - 매장 16 is_test → false 변경 (사용자 결정 후)

@@ -2,7 +2,7 @@ import React from 'react';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect } from '../../UI/Modal';
 import { UnifiedStockItem } from '../types';
 import { formatStock } from '../utils';
-import { formatCurrency } from '../../../utils/currency';
+import { formatCurrency, getCurrencySymbol } from '../../../utils/currency';
 
 interface SellerSource {
   id: number;
@@ -138,7 +138,7 @@ const OrderModal: React.FC<Props> = ({
                   <option key={s.id} value={s.id}>
                     {SELLER_TYPE_LABEL[s.seller_type] || s.seller_type}
                     {s.seller_entity_id ? ` #${s.seller_entity_id}` : ''}
-                    {' — '}{currency} {(parseFloat(String(s.unit_price)) || 0).toFixed(2)}
+                    {' — '}{getCurrencySymbol(currency)} {(parseFloat(String(s.unit_price)) || 0).toFixed(2)}
                     {s.is_preferred ? ' ⭐' : ''}
                   </option>
                 ))}

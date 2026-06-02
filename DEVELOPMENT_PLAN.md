@@ -1,9 +1,36 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-05-31 (The Fire 영업 critical 핫픽스 다수 배포 + 설정 소실 사고 복구)
+> **최종 업데이트:** 2026-06-02 (POS 운영페이지 UI/UX 개편 + 보기 색상 토글 — DEV, 미배포)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 > **현재 버전:** **v3.45** 운영 (2026-05-31 배포, Backup 20260531_021629, smoke 10/10 — 주문/주방 안정성 + 모바일 dine-in 테이블 + 세트옵션 버전확정)
+
+## ✅ 완료(DEV, 미배포): POS 운영페이지 UI/UX 개편 + 보기 색상 토글 (2026-06-02)
+
+> 매장 현장(10인치 단말) 클릭 불편·가독성 호소 → POS Terminal 우선 개편. Irene 실화면 피드백 다회 반영. **DEV 만, 미배포.** 배포 시 POSTerminalPage(🔒) bless + The Fire 실프린터 확인 전제.
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Phase A 클릭/가독 | 카테고리·주문유형=옵션(RadioButton) 디자인 통일, 우측 카트 버튼 확대(수량/삭제 40px·액션 72px), 삭제X 아이콘만, 우측패널 영역분리(상단/스크롤밴드/하단 고정), 메뉴그리드 여백 축소(10인치) | ✅ |
+| 통화 RM 일괄 | MYR→RM 전 사이트 표시(getCurrencySymbol), 카트 아이템·요약 내역 숫자만/Total만 통화 | ✅ |
+| Phase B 보기 색상 토글 | 신규 `posDisplayTheme.ts` — 밝게/고대비/어둡게 3-모드 CSS변수 토글(기기별 기억), POS 구조색 var화. 헤더 토글(i18n 4언어), 다크 elevation 모델 | ✅ |
+| 디자인 위계 정립 | 선택/필터(탭·옵션)=틴트+보라글씨 / 액션(Pay)=솔리드 / 사소한보기(Image·Compact)=세그먼트. 옵션버튼 그라데이션 제거 | ✅ |
+| 인쇄 로직 무접촉 | POSTerminalPage UI만 변경, 인쇄 poller/티켓/빌 블록 미접촉 (git 보호파일 확인) | ✅ |
+
+### 수정된 파일
+- 프론트: `pages/POSTerminal/POSTerminalPage.tsx`🔒, `styles/posDisplayTheme.ts`(신규), `components/Common/Modal.tsx`(RadioButton 테두리), `public/locales/{en,ko,zh,ms}/pos.json`(theme 키)
+- 통화 표시 일괄: `Referral{Wallet,Dashboard,Signup}`,`Admin/ReferralManagement`,`Landing/ReferralLanding`,`Admin/RestaurantsPage`,`Manager/RestaurantsPage`,`Owner/OwnerRestaurantsPage`,`FloorPlan/TableDetailPanel`,`Inventory/modals/OrderModal`,`PurchaseOrders/PurchaseOrderStaging`,`Supplier/SupplierContracts`
+- 인프라: `.claude/hooks/auto-save.sh`(STALE 배너), `.claude/settings.local.json`(Stop 훅)
+
+### ⚠️ 남은 것 (다음 세션)
+- 다크 모달(OptionModal/PaymentModal/RadioButton 등) 미적용
+- 색감 미세조정 계속(Irene 실화면)
+- 같은 시스템 Floor Plan·KDS 확장
+- 배포 시 `--bless` + 실프린터 확인 (POSTerminalPage 보호파일)
+
+---
 
 ## ✅ 완료: The Fire 영업 critical 핫픽스 + 설정 소실 복구 (2026-05-31)
 
