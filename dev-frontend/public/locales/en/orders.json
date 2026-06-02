@@ -129,5 +129,9 @@
   "voidItem.reasonSoldOut": "Sold out",
   "voidItem.reasonCustomer": "Customer changed mind",
   "voidItem.reasonMistake": "Order mistake",
-  "voidItem.reasonOther": "Other"
+  "voidItem.reasonOther": "Other",
+  "ticketSend.sentTitle": "Sent to kitchen",
+  "ticketSend.sentList": "Sent the following:",
+  "ticketSend.resend": "Resend",
+  "ticketSend.close": "Close"
 }

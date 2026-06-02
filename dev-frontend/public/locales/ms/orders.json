@@ -129,5 +129,9 @@
   "voidItem.reasonSoldOut": "Habis dijual",
   "voidItem.reasonCustomer": "Pelanggan tukar fikiran",
   "voidItem.reasonMistake": "Silap pesanan",
-  "voidItem.reasonOther": "Lain-lain"
+  "voidItem.reasonOther": "Lain-lain",
+  "ticketSend.sentTitle": "Dihantar ke dapur",
+  "ticketSend.sentList": "Dihantar yang berikut:",
+  "ticketSend.resend": "Hantar semula",
+  "ticketSend.close": "Tutup"
 }

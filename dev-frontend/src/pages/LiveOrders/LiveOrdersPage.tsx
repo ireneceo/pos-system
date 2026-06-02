@@ -1122,10 +1122,10 @@ const LiveOrdersPage: React.FC = () => {
         // Setting toggle / disabled printer are honored inside printCancellationTicket.
         try {
           const removed = result.removedItem || {};
-          const settingOn = (() => {
-            try { const s = require('../../utils/billPrint').getPrinterSettings?.(); return !s || !s.kitchenPrinter || s.kitchenPrinter.printCancellationTicket !== false; } catch { return true; }
-          })();
-          if (wasInKitchen && (removed.was_printed || removed.printed_at) && settingOn) {
+          // 확정 스펙 v2 (2026-06-02): 취소는 주방이 무조건 알아야 함 → 설정/자동발행과
+          // 무관하게 항상 발송. 발송 후 화면엔 알림형 팝업([재발송][닫기]).
+          // 단, 주방에 안 갔던(미발행) 아이템은 주방이 알 필요 없음 → skip.
+          if (wasInKitchen && (removed.was_printed || removed.printed_at)) {
             const settings = (() => { try { return require('../../utils/billPrint').getPrinterSettings(); } catch { return {}; } })();
             const sid = removed.kitchen_station_id;
             const sp = (sid != null && settings?.kitchenStationPrinters?.[String(sid)]) || null;
@@ -1143,12 +1143,10 @@ const LiveOrdersPage: React.FC = () => {
               items: [{ name: removed.name || itemToDelete.name, quantity: removed.quantity || 1, kitchen_station_id: sid, stationName: removed.stationName, cancelReason: reason || undefined }]
             };
             const reasonLabel = reason ? `Item voided — ${reason}` : 'Item voided';
-            // S1 autoPrint master: ON 이면 자동 발행 / OFF 면 "확인+인쇄" 프롬프트(수동).
-            const autoOn = !!(settings?.kitchenPrinter && settings.kitchenPrinter.enabled !== false && settings.kitchenPrinter.autoPrint);  // 표준 게이트(useAutoPrintPoller 와 동일)
             const doPrint = () => printCancellationTicket(printData, sInfo, reasonLabel, stPrinter, stAddr)
               .catch(e => console.warn('Item void print failed:', e && e.message));
-            if (autoOn) doPrint();
-            else setCancelPrintPrompt({ run: doPrint, ticketType: '*** ITEM CANCELLED ***', description: '취소된 아이템만 해당 주방에 발행', stations: previewStationBuckets(printData.items, settings) });
+            doPrint();   // 항상 발송
+            setCancelPrintPrompt({ run: doPrint, ticketType: '*** ITEM CANCELLED ***', description: '취소된 아이템 — 해당 주방에 발송됨', stations: previewStationBuckets(printData.items, settings) });
           }
         } catch (e: any) { console.warn('void-ticket step skipped:', e?.message); }
       } else {
@@ -1383,12 +1381,13 @@ const LiveOrdersPage: React.FC = () => {
               }))
             };
             const sInfo = (typeof getStoreInfo === 'function') ? getStoreInfo() : {};
-            // S1 autoPrint master: ON 자동 발행 / OFF "확인+인쇄" 프롬프트(수동).
-            const autoOn = (() => { try { const kp = require('../../utils/billPrint').getPrinterSettings()?.kitchenPrinter; return !!(kp && kp.enabled !== false && kp.autoPrint); } catch { return false; } })();  // 표준 게이트
+            // 확정 스펙 v2 (2026-06-02): 주문취소는 설정/자동발행과 무관하게 항상 발송.
+            // 발송 후 화면엔 알림형 팝업([재발송][닫기]). station 별로 자기 아이템만 발행.
+            const _ps = (() => { try { return require('../../utils/billPrint').getPrinterSettings(); } catch { return {}; } })();
             const doPrint = () => printCancellationTicketsByStation(printData, sInfo, 'Cancelled by staff')
               .catch(e => console.warn('Cancellation print failed:', e && e.message));
-            if (autoOn) doPrint();
-            else { const _ps = (() => { try { return require('../../utils/billPrint').getPrinterSettings(); } catch { return {}; } })(); setCancelPrintPrompt({ run: doPrint, ticketType: '*** ORDER CANCELLED ***', description: `주문 ${printData.orderNumber} — station 별로 해당 아이템 발행`, stations: previewStationBuckets(printData.items, _ps) }); }
+            doPrint();   // 항상 발송
+            setCancelPrintPrompt({ run: doPrint, ticketType: '*** ORDER CANCELLED ***', description: `주문 ${printData.orderNumber} — 해당 주방에 발송됨`, stations: previewStationBuckets(printData.items, _ps) });
           } catch (e) {
             console.warn('Cancellation ticket trigger error:', (e as any) && (e as any).message);
           }

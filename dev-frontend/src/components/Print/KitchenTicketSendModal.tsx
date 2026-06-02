@@ -3,10 +3,10 @@ import { Modal as CommonModal } from '../UI';
 import { Button } from '../UI/Button';   // 표준 버튼 컴포넌트 (variant 토큰)
 
 /**
- * 수동발행(자동발행 OFF) 공용 확인 모달 — 이동/취소 공통.
- * 합의 설계(Irene): 자동발행이 아니면, "어떤 오더티켓을 어느 주방 station 에 보내는지"
- * 미리 보여주고 [보내기]/[안 보내기] 선택. station 이 여러 개면 어디로 가는지가 중요하므로
- * station 별로 나눠서 표기한다.
+ * 주방 발송 알림 모달 — 이동/취소 공통 (확정 스펙 v2, 2026-06-02 Irene).
+ * 취소·이동은 주방이 무조건 알아야 하므로 "보낼지 말지" 묻지 않고 항상 발송한 뒤,
+ * 이 모달은 "무엇을 어느 station 으로 보냈는지" 를 알리는 알림형이다.
+ * 푸터: [재발송] (run = 같은 티켓 다시 발송) / [닫기].
  */
 export interface TicketPreviewStation {
   stationName: string;
@@ -14,9 +14,9 @@ export interface TicketPreviewStation {
 }
 export interface KitchenTicketSendPrompt {
   ticketType: string;            // 예: 'TABLE CHANGED', 'TABLE CHANGED + MERGED', 'ITEM CANCELLED', 'ORDER CANCELLED'
-  description?: string;          // 보조 설명 (예: '이전 티켓 버리고 이걸로')
+  description?: string;          // 보조 설명 (예: '해당 주방에 발송됨')
   stations: TicketPreviewStation[];
-  run: () => void;               // [보내기] 시 실제 발행
+  run: () => void;               // [재발송] 시 같은 티켓 다시 발행 (최초 발송은 호출부에서 이미 수행)
 }
 
 interface Props {
@@ -33,15 +33,15 @@ const KitchenTicketSendModal: React.FC<Props> = ({ prompt, onClose, t }) => {
     <CommonModal
       isOpen={true}
       onClose={onClose}
-      title={tr('orders:ticketSend.title', 'Send order ticket to kitchen?')}
+      title={tr('orders:ticketSend.sentTitle', 'Sent to kitchen')}
       footer={<>
-        <Button variant="secondary" onClick={onClose}>{tr('orders:ticketSend.dont', "Don't send")}</Button>
-        <Button variant="primary" onClick={() => { const p = prompt; onClose(); p.run(); }}>{tr('orders:ticketSend.send', 'Send ticket')}</Button>
+        <Button variant="secondary" onClick={() => { prompt.run(); }}>{tr('orders:ticketSend.resend', 'Resend')}</Button>
+        <Button variant="primary" onClick={onClose}>{tr('orders:ticketSend.close', 'Close')}</Button>
       </>}>
       <div style={{ padding: '2px 2px 4px', fontSize: 14, color: '#0A2540', lineHeight: 1.5 }}>
         <div style={{ fontWeight: 700, marginBottom: 4 }}>{prompt.ticketType}</div>
         {prompt.description && <div style={{ fontSize: 13, color: '#6B7C93', marginBottom: 10 }}>{prompt.description}</div>}
-        <div style={{ fontSize: 13, color: '#6B7C93', marginBottom: 6 }}>{tr('orders:ticketSend.willSend', 'The following will print:')}</div>
+        <div style={{ fontSize: 13, color: '#6B7C93', marginBottom: 6 }}>{tr('orders:ticketSend.sentList', 'Sent the following:')}</div>
         {stations.map((s, i) => (
           <div key={i} style={{ border: '1px solid #E6EBF1', borderRadius: 8, padding: '8px 12px', marginBottom: 8 }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: '#635BFF', letterSpacing: 0.3 }}>[ {String(s.stationName).toUpperCase()} ]</div>

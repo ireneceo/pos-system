@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import styled from 'styled-components';
+import { PosDisplayThemeStyle, getPosTheme, setPosTheme, POS_THEME_MODES, PosThemeMode } from '../../styles/posDisplayTheme';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { FloorPlanData, DEFAULT_FLOOR_PLAN, TableStatusInfo, ORDER_STATUS_COLORS } from './types';
@@ -32,7 +33,7 @@ const prefetchPosTerminal = () => {
 
 const PageContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #F9FAFB;
+  background: var(--pos-app-bg, #F9FAFB);
   height: 100vh;
   display: flex;
   flex-direction: column;
@@ -44,7 +45,7 @@ const PageContainer = styled.div`
 const ChipSeparator = styled.div`
   width: 1px;
   height: 20px;
-  background: #C7CED6;
+  background: var(--pos-border, #C7CED6);
   margin: 0 4px;
 `;
 
@@ -54,8 +55,8 @@ const ZoneFilterBar = styled.div`
   align-items: center;
   gap: 8px;
   padding: 6px 24px;
-  background: #fff;
-  border-bottom: 1px solid #C7CED6;
+  background: var(--pos-surface, #FFFFFF);
+  border-bottom: 1px solid var(--pos-border, #C7CED6);
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
@@ -65,13 +66,14 @@ const ZoneFilterBar = styled.div`
   }
 `;
 const ZoneChip = styled.button<{ active: boolean }>`
-  background: ${p => p.active ? '#635BFF' : '#fff'};
-  color: ${p => p.active ? '#fff' : '#4B5563'};
-  border: 1px solid ${p => p.active ? '#635BFF' : '#C7CED6'};
+  background: ${p => p.active ? 'var(--pos-brand, #635BFF)' : 'var(--pos-control, #FFFFFF)'};
+  color: ${p => p.active ? '#fff' : 'var(--pos-text-muted, #4B5563)'};
+  border: 1px solid ${p => p.active ? 'var(--pos-brand, #635BFF)' : 'var(--pos-border, #C7CED6)'};
   border-radius: 999px;
-  padding: 5px 14px;
-  font-size: 13px;
-  font-weight: 500;
+  min-height: 40px;
+  padding: 8px 18px;
+  font-size: 15px;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
   white-space: nowrap;
@@ -79,8 +81,8 @@ const ZoneChip = styled.button<{ active: boolean }>`
   align-items: center;
   gap: 6px;
 
-  &:hover { background: ${p => p.active ? '#514DD6' : '#F5F7FA'}; }
-  &:focus-visible { outline: 2px solid #635BFF; outline-offset: 2px; }
+  &:hover { background: ${p => p.active ? '#514DD6' : 'var(--pos-surface-2, #F5F7FA)'}; }
+  &:focus-visible { outline: 2px solid var(--pos-brand, #635BFF); outline-offset: 2px; }
 `;
 const ZoneChipCount = styled.span`
   font-size: 11px;
@@ -89,9 +91,9 @@ const ZoneChipCount = styled.span`
 `;
 
 const Header = styled.div`
-  background: white;
+  background: var(--pos-surface, #FFFFFF);
   padding: 12px 24px;
-  border-bottom: 1px solid #C7CED6;
+  border-bottom: 1px solid var(--pos-border, #C7CED6);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -107,7 +109,7 @@ const HeaderLeft = styled.div`
 const HeaderTitle = styled.h1`
   font-size: 20px;
   font-weight: 700;
-  color: #0A2540;
+  color: var(--pos-text, #0A2540);
   margin: 0;
 `;
 
@@ -124,7 +126,7 @@ const ConnectionStatus = styled.div`
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #4B5563;
+  color: var(--pos-text-muted, #4B5563);
 `;
 
 const HeaderRight = styled.div`
@@ -161,7 +163,7 @@ const CompactActions = styled.div`
 const Clock = styled.div`
   font-size: 14px;
   font-weight: 600;
-  color: #0A2540;
+  color: var(--pos-text, #0A2540);
   font-variant-numeric: tabular-nums;
 `;
 
@@ -172,29 +174,37 @@ const EditBtn = styled.button`
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
-  border: 1px solid #C7CED6;
-  background: white;
-  color: #1F2937;
+  border: 1px solid var(--pos-border, #C7CED6);
+  background: var(--pos-surface, #FFFFFF);
+  color: var(--pos-text, #1F2937);
 
   &:hover {
-    background: #F1F4F8;
+    background: var(--pos-surface-2, #F1F4F8);
     border-color: #D1D9E0;
   }
 `;
 
+// 상단 헤더 액션 버튼 공용 — 흰 버튼 + 테두리 + hover (Dashboard/Customer Display/Open Drawer 통일).
 const BackBtn = styled.button`
-  padding: 6px 14px;
+  height: 38px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.15s;
-  border: 1px solid #C7CED6;
-  background: white;
-  color: #1F2937;
+  border: 1px solid var(--pos-border, #C7CED6);
+  background: var(--pos-surface, #FFFFFF);
+  color: var(--pos-text, #1F2937);
+  white-space: nowrap;
 
   &:hover {
-    background: #F1F4F8;
+    border-color: var(--pos-brand, #635BFF);
+    background: var(--pos-surface-2, #F1F4F8);
   }
 `;
 
@@ -212,6 +222,8 @@ const CanvasWrapper = styled.div`
   flex-direction: column;
   min-height: 0;
   min-width: 0;
+  /* 맵 주위 회색(페이지 배경 비침) 제거 — 캔버스와 같은 면색으로 */
+  background: var(--pos-surface, #FFFFFF);
 
   @media (max-width: 768px) {
     padding: 6px 8px;
@@ -223,7 +235,7 @@ const LoadingScreen = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #4B5563;
+  color: var(--pos-text-muted, #4B5563);
   font-size: 14px;
 `;
 
@@ -233,7 +245,7 @@ const POSOverlay = styled.div<{ $isOpen: boolean }>`
   position: fixed;
   inset: 0;
   z-index: 1000;
-  background: white;
+  background: var(--pos-surface, #FFFFFF);
   flex-direction: column;
 `;
 
@@ -242,6 +254,7 @@ const POSOverlayHeader = styled.div`
   align-items: center;
   justify-content: space-between;
   padding: 8px 16px;
+  /* 검정 바(× Close) — 테마 무관 고정. 다크에서 var(--pos-text) 가 밝아져 흰글씨가 안 보이던 회귀 수정. */
   background: #0A2540;
   flex-shrink: 0;
 `;
@@ -295,6 +308,9 @@ const FloorPlanPage: React.FC = () => {
   // Future fix: deduplicate the POS Terminal mount fetches first, then revisit.
 
   const [floorPlan, setFloorPlan] = useState<FloorPlanData>(DEFAULT_FLOOR_PLAN);
+  // 보기 색상 테마 (밝게/고대비/어둡게) — POS 와 동일 토글, 기기별 공유(localStorage).
+  const [posTheme, setPosThemeState] = useState<PosThemeMode>(getPosTheme);
+  const selectPosTheme = (m: PosThemeMode) => { setPosThemeState(m); setPosTheme(m); };
   // Tab state mirrored to the URL so each tab/zone/order is a shareable bookmark:
   //   /floor-plan                          → All Zones, floor view
   //   /floor-plan?zone=z_main              → specific zone, floor view
@@ -346,6 +362,8 @@ const FloorPlanPage: React.FC = () => {
     };
   }, [floorPlan, activeZoneFilter]);
   const [tableStatuses, setTableStatuses] = useState<Record<string, TableStatusInfo>>({});
+  // 오늘 per-table 이력(완료 포함) — 우측 패널 탭 소스. 보드 점유(tableStatuses)와 분리.
+  const [tableHistory, setTableHistory] = useState<Record<string, TableStatusInfo[]>>({});
   const [connected, setConnected] = useState(false);
   const [clock, setClock] = useState('');
   const [loading, setLoading] = useState(true);
@@ -361,7 +379,10 @@ const FloorPlanPage: React.FC = () => {
   // zones with the same tableNumber stay isolated. `selectedTable` (tableNumber)
   // and `selectedTableInfo` (FloorTable object) are derived below.
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
-  const [selectedOrderIndex, setSelectedOrderIndex] = useState(0);
+  // -1 = 기본 화면(활성 주문/빈 테이블). 탭(완료 포함) 클릭 시에만 0+ 로.
+  const [selectedOrderIndex, setSelectedOrderIndex] = useState(-1);
+  // 다른 테이블 선택 시 탭 선택 초기화 → 항상 기본(활성/빈) 화면부터.
+  useEffect(() => { setSelectedOrderIndex(-1); }, [selectedTableId]);
 
   // 알림배너 → Floor Plan 테이블 열기 (#배너): ?openTable=테이블번호 로 진입 시 해당 테이블 자동 선택.
   useEffect(() => {
@@ -426,6 +447,7 @@ const FloorPlanPage: React.FC = () => {
       if (res.ok) {
         const data = await res.json();
         setTableStatuses(data.data || {});
+        setTableHistory(data.history || {});
       }
     } catch (err) {
       console.error('Failed to fetch table statuses:', err);
@@ -1154,8 +1176,6 @@ const FloorPlanPage: React.FC = () => {
         if (printed.length > 0 && (result.moved || result.merged)) {   // 머지(R8)도 재발행 (MERGED 헤더)
           const billPrintMod = await import('../../utils/billPrint');
           const printSettings = billPrintMod.getPrinterSettings();
-          const _kp: any = (printSettings && printSettings.kitchenPrinter) || {};
-          const kitchenAutoOn = _kp.enabled !== false && !!_kp.autoPrint;
           const printStoreInfo = (typeof getStoreInfo === 'function') ? getStoreInfo() : {};
           const ord = result.data || {};
           const mapItem = (it: any) => ({
@@ -1190,17 +1210,15 @@ const FloorPlanPage: React.FC = () => {
           };
           const doReissue = () => billPrintMod.printKitchenTicketViaRawBT(reprintData, printStoreInfo)
             .catch((e: any) => console.warn('[move-table] reprint failed (non-fatal):', e?.message));
-          if (kitchenAutoOn) {
-            doReissue();   // 자동발행: 매장 설정 방식대로 즉시 재발행
-          } else {
-            // 수동발행: 발행될 오더티켓을 station 별로 미리보고 보낼지 선택 (합의 설계 — 이동/취소 공통)
-            setMovePrintPrompt({
-              run: doReissue,
-              ticketType: _moveNotice.title,
-              description: onOccupied === 'merge' ? '머지 — 이전 티켓들 버리고 이 티켓 사용' : '테이블 이동 — 이전 티켓 버리고 이 티켓 사용',
-              stations: previewStationBuckets(printed, printSettings),
-            });
-          }
+          // 확정 스펙 v2 (2026-06-02): 이동도 주방이 무조건 알아야 함 → 자동발행과 무관하게
+          // 항상 재발행 + 알림형 팝업([재발송][닫기]). 묻지 않음.
+          doReissue();
+          setMovePrintPrompt({
+            run: doReissue,
+            ticketType: _moveNotice.title,
+            description: onOccupied === 'merge' ? '머지 — 이전 티켓들 버리고 이 티켓 사용 (발송됨)' : '테이블 이동 — 이전 티켓 버리고 이 티켓 사용 (발송됨)',
+            stations: previewStationBuckets(printed, printSettings),
+          });
         }
       } catch (e: any) { console.warn('[move-table] reprint step skipped:', e?.message); }
 
@@ -1268,10 +1286,25 @@ const FloorPlanPage: React.FC = () => {
   const selectedTableData = selectedTableId
     ? (tableStatuses[selectedTableId] || (selectedTable ? tableStatuses[selectedTable] : undefined))
     : undefined;
-  const selectedOrders = selectedTableData?.orders || (selectedTableData ? [selectedTableData] : []);
-  // Clamp index to valid range
-  const safeOrderIndex = Math.min(selectedOrderIndex, Math.max(selectedOrders.length - 1, 0));
-  const selectedStatusInfo = selectedOrders.length > 0 ? selectedOrders[safeOrderIndex] : selectedTableData;
+  // 우측 패널 탭 = 오늘 per-table 전체 이력(완료 포함). 빈 테이블을 눌러도 오늘 주문을 다 본다.
+  // 보드 점유는 tableStatuses(=data)가 그대로 담당 — 여기 history 는 패널 탭 표시용.
+  const selectedHistory = selectedTableId
+    ? (tableHistory[selectedTableId] || (selectedTable ? tableHistory[selectedTable] : undefined))
+    : undefined;
+  const selectedOrders = (selectedHistory && selectedHistory.length > 0)
+    ? selectedHistory
+    : (selectedTableData?.orders || (selectedTableData ? [selectedTableData] : []));
+  // 기본 화면 = 활성 주문(점유). 없으면 빈 테이블(available/새주문). 완료 주문은 탭(history)으로만 표시.
+  // selectedOrderIndex === -1 → 기본(활성/빈). >=0 → 그 탭(완료 포함)을 명시적으로 선택해 본다.
+  // 완료/cleared 로 비워진 테이블을 눌러도 기본은 "빈 테이블 새주문"이고, 상단 탭으로 오늘 완료 주문 조회.
+  const safeOrderIndex = selectedOrderIndex < 0
+    ? -1
+    : Math.min(selectedOrderIndex, Math.max(selectedOrders.length - 1, 0));
+  const selectedStatusInfo = (safeOrderIndex >= 0 && selectedOrders[safeOrderIndex])
+    ? selectedOrders[safeOrderIndex]
+    : selectedTableData;
+  // 탭을 보일지: 주문이 여러 개거나, 빈 테이블이라도 오늘 완료 이력이 있으면.
+  const showOrderTabs = selectedOrders.length > 1 || (!selectedTableData && selectedOrders.length >= 1);
 
   if (loading) {
     return (
@@ -1285,7 +1318,8 @@ const FloorPlanPage: React.FC = () => {
   }
 
   return (
-    <PageContainer>
+    <PageContainer data-pos-theme={posTheme}>
+      <PosDisplayThemeStyle />
       {/* Items Added Alert — same as LiveOrders */}
       {itemsAddedAlert?.isVisible && (
         <div style={{
@@ -1342,9 +1376,32 @@ const FloorPlanPage: React.FC = () => {
         </HeaderLeft>
         <HeaderRight>
           <Clock>{clock}</Clock>
+          {/* 보기 색상 토글 (밝게/고대비/어둡게) — POS 와 동일, 기기별 기억. */}
+          <div role="group" aria-label="Display theme" style={{
+            display: 'inline-flex', gap: 2, borderRadius: 8, padding: 3,
+            background: 'var(--pos-surface-2, var(--pos-surface-2, #EDF1F5))', border: '1px solid var(--pos-border, var(--pos-border, #C7CED6))'
+          }}>
+            {POS_THEME_MODES.map(m => {
+              const label = t(`pos:terminal.theme${m.charAt(0).toUpperCase()}${m.slice(1)}`,
+                { defaultValue: { light: 'Light', contrast: 'High Contrast', dark: 'Dark' }[m] });
+              return (
+              <button key={m} type="button"
+                onClick={() => selectPosTheme(m)}
+                aria-pressed={posTheme === m}
+                title={label}
+                style={{
+                  minWidth: 40, height: 30, padding: '0 10px', fontSize: 12, fontWeight: 600,
+                  border: 'none', borderRadius: 6, cursor: 'pointer', whiteSpace: 'nowrap',
+                  background: posTheme === m ? 'var(--pos-brand, var(--pos-brand, #635BFF))' : 'transparent',
+                  color: posTheme === m ? '#FFFFFF' : 'var(--pos-text-muted, var(--pos-text-muted, #4B5563))',
+                }}
+              >{label}</button>
+              );
+            })}
+          </div>
           {/* Customer Display — always visible. Most-used action on this header
               because cashiers re-open the secondary monitor view every shift. */}
-          <button
+          <BackBtn
             type="button"
             onClick={async () => {
               const result = await openCustomerDisplay(restaurantId || '');
@@ -1353,23 +1410,15 @@ const FloorPlanPage: React.FC = () => {
               }
             }}
             title={isAutoOpenEnabled() ? 'Customer Display (auto-open enabled)' : 'Open Customer Display on secondary monitor'}
-            style={{
-              padding: '6px 12px', fontSize: 12, fontWeight: 500,
-              border: '1px solid #C7CED6', borderRadius: 6,
-              background: isAutoOpenEnabled() ? '#F0EFFF' : '#F4F6F9',
-              color: isAutoOpenEnabled() ? '#635BFF' : '#4B5563',
-              cursor: 'pointer',
-              display: 'inline-flex', alignItems: 'center', gap: 4
-            }}
           >
-            {isAutoOpenEnabled() && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#635BFF', display: 'inline-block' }} />}
+            {isAutoOpenEnabled() && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--pos-brand, #635BFF)', display: 'inline-block' }} />}
             Customer Display
-          </button>
+          </BackBtn>
 
           {/* Wide screens — full toolbar. Below 1280px these collapse into the
               kebab menu so 10-inch tablets aren't crowded. */}
           <DesktopActions>
-            <button
+            <BackBtn
               type="button"
               onClick={async () => {
                 try {
@@ -1387,15 +1436,9 @@ const FloorPlanPage: React.FC = () => {
                 }
               }}
               title="Send open-drawer pulse to the active workstation's bill printer"
-              style={{
-                padding: '6px 12px', fontSize: 12, fontWeight: 500,
-                border: '1px solid #C7CED6', borderRadius: 6,
-                background: '#F4F6F9', color: '#1F2937',
-                cursor: 'pointer'
-              }}
             >
               Open Drawer
-            </button>
+            </BackBtn>
             <EditBtn onClick={() => setShowSettlement(true)}>
               <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '14px', height: '14px', verticalAlign: 'middle', marginRight: '4px' }}>
                 <path d="M6 9V2H18V9M6 18H4C2.89543 18 2 17.1046 2 16V11C2 9.89543 2.89543 9 4 9H20C21.1046 9 22 9.89543 22 11V16C22 17.1046 21.1046 18 20 18H18M6 14H18V22H6V14Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -1504,7 +1547,7 @@ const FloorPlanPage: React.FC = () => {
             active={false}
             onClick={() => handleNewOrder({ takeaway: true })}
             title={t('floorplan:floorPlanPage.takeawayWalkInHint', 'Start a new walk-in takeaway order')}
-            style={{ color: '#635BFF', borderColor: '#635BFF' }}
+            style={{ color: 'var(--pos-brand, #635BFF)', borderColor: 'var(--pos-brand, #635BFF)' }}
           >
             {t('floorplan:floorPlanPage.takeawayWalkIn', '+ Walk-in')}
           </ZoneChip>
@@ -1533,12 +1576,12 @@ const FloorPlanPage: React.FC = () => {
               flex: 1, overflow: 'auto', padding: '4px 0'
             }}>
               {takeawayLoading && takeawayOrders.length === 0 ? (
-                <div style={{ padding: 40, textAlign: 'center', color: '#4B5563' }}>
+                <div style={{ padding: 40, textAlign: 'center', color: 'var(--pos-text-muted, #4B5563)' }}>
                   {t('floorplan:floorPlanPage.loading', 'Loading takeaway orders...')}
                 </div>
               ) : takeawayOrders.length === 0 ? (
-                <div style={{ padding: 40, textAlign: 'center', color: '#4B5563' }}>
-                  <div style={{ fontSize: 14, fontWeight: 500, color: '#0A2540', marginBottom: 6 }}>
+                <div style={{ padding: 40, textAlign: 'center', color: 'var(--pos-text-muted, #4B5563)' }}>
+                  <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--pos-text, #0A2540)', marginBottom: 6 }}>
                     {t('floorplan:floorPlanPage.noTakeaway', 'No active takeaway orders')}
                   </div>
                   <div style={{ fontSize: 12, marginBottom: 16 }}>
@@ -1548,7 +1591,7 @@ const FloorPlanPage: React.FC = () => {
                     type="button"
                     onClick={() => handleNewOrder({ takeaway: true })}
                     style={{
-                      background: '#635BFF', color: 'white', border: 0, borderRadius: 6,
+                      background: 'var(--pos-brand, #635BFF)', color: 'white', border: 0, borderRadius: 6,
                       padding: '10px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer'
                     }}
                   >
@@ -1583,8 +1626,8 @@ const FloorPlanPage: React.FC = () => {
                         type="button"
                         onClick={() => setSelectedTakeawayOrderId(selectedTakeawayOrderId === id ? null : id)}
                         style={{
-                          textAlign: 'left', width: '100%', background: isSelected ? '#F0EFFF' : '#fff',
-                          border: `1px solid ${isSelected ? '#635BFF' : '#E6EBF1'}`,
+                          textAlign: 'left', width: '100%', background: isSelected ? 'var(--pos-brand-tint, #F0EFFF)' : 'var(--pos-surface, #FFFFFF)',
+                          border: `1px solid ${isSelected ? 'var(--pos-brand, #635BFF)' : '#E6EBF1'}`,
                           borderLeft: `4px solid ${palette.border}`,
                           borderRadius: 8, padding: '8px 12px', cursor: 'pointer',
                           display: 'flex', alignItems: 'center', gap: 12, transition: 'all 0.12s'
@@ -1592,19 +1635,19 @@ const FloorPlanPage: React.FC = () => {
                       >
                         {/* 주문번호 + 픽업 + 시각 */}
                         <div style={{ minWidth: 96, flexShrink: 0 }}>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: '#0A2540' }}>{orderNum}{pickupNo ? ` · #${pickupNo}` : ''}</div>
-                          {timeStr && <div style={{ fontSize: 11, color: '#8898AA' }}>{timeStr}</div>}
+                          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--pos-text, #0A2540)' }}>{orderNum}{pickupNo ? ` · #${pickupNo}` : ''}</div>
+                          {timeStr && <div style={{ fontSize: 11, color: 'var(--pos-text-muted, #8898AA)' }}>{timeStr}</div>}
                         </div>
                         {/* 상태 배지 */}
                         <div style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: palette.text, background: palette.bg, border: `1px solid ${palette.border}`, borderRadius: 999, padding: '2px 8px' }}>{status}</div>
                         {/* 고객 + 품목 미리보기 (가변) */}
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          {customerName && <span style={{ fontSize: 12, fontWeight: 600, color: '#0A2540' }}>{customerName} · </span>}
-                          <span style={{ fontSize: 12, color: '#4B5563', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{itemPreview || `${itemCount} items`}</span>
+                          {customerName && <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--pos-text, #0A2540)' }}>{customerName} · </span>}
+                          <span style={{ fontSize: 12, color: 'var(--pos-text-muted, #4B5563)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{itemPreview || `${itemCount} items`}</span>
                         </div>
                         {/* 금액 + 결제 */}
                         <div style={{ flexShrink: 0, textAlign: 'right' }}>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: '#0A2540' }}>{currency}{total}</div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--pos-text, #0A2540)' }}>{currency}{total}</div>
                           <div style={{ fontSize: 10, fontWeight: 600, color: paymentStatus === 'paid' ? '#10B981' : '#F59E0B' }}>
                             {paymentStatus === 'paid' ? t('floorplan:floorPlanPage.paid', 'Paid') : t('floorplan:floorPlanPage.unpaid', 'Unpaid')}
                           </div>
@@ -1638,8 +1681,11 @@ const FloorPlanPage: React.FC = () => {
             orders={selectedOrders}
             selectedOrderIndex={safeOrderIndex}
             onOrderIndexChange={setSelectedOrderIndex}
+            showOrderTabs={showOrderTabs}
+            tableFree={!selectedTableData}
             qrMode={qrMode}
             floorPlan={floorPlan}
+            onKitchenTicketSent={setMovePrintPrompt}
           />
         )}
 
@@ -1715,6 +1761,7 @@ const FloorPlanPage: React.FC = () => {
               onClearTable={async () => { /* no-op for takeaway */ }}
               orders={[]}
               floorPlan={floorPlan}
+              onKitchenTicketSent={setMovePrintPrompt}
             />
           );
         })()}
@@ -1735,7 +1782,7 @@ const FloorPlanPage: React.FC = () => {
           onClose={() => setCdInfoModal({ open: false, title: '', message: '' })}
           title={cdInfoModal.title}
         >
-          <div style={{ padding: 24, whiteSpace: 'pre-line', color: '#0A2540', lineHeight: 1.6 }}>
+          <div style={{ padding: 24, whiteSpace: 'pre-line', color: 'var(--pos-text, #0A2540)', lineHeight: 1.6 }}>
             {cdInfoModal.message}
           </div>
         </CommonModal>
@@ -1873,7 +1920,7 @@ const FloorPlanPage: React.FC = () => {
                 <div style={{ fontSize: 14, fontWeight: 700, color: '#B45309', marginBottom: 6 }}>
                   {t('floorplan:moveTable.occupiedTitle', { defaultValue: 'Table {{table}} is already in use', table: moveOccupied.destTable })}
                 </div>
-                <div style={{ fontSize: 13, color: '#0A2540', lineHeight: 1.6 }}>
+                <div style={{ fontSize: 13, color: 'var(--pos-text, #0A2540)', lineHeight: 1.6 }}>
                   {t('floorplan:moveTable.occupiedBody', {
                     defaultValue: 'It has an open order (#{{num}}) with {{count}} item(s), total {{total}}. Moving here will MERGE this order into that bill — the two cannot be separated afterwards.',
                     num: moveOccupied.dest?.orderNumber || moveOccupied.dest?.orderId,
@@ -1887,7 +1934,7 @@ const FloorPlanPage: React.FC = () => {
                   type="button"
                   onClick={() => setMoveOccupied(null)}
                   disabled={moveBusy}
-                  style={{ padding: '11px 18px', borderRadius: 8, border: '1px solid #E6EBF1', background: '#fff', color: '#0A2540', fontWeight: 600, cursor: 'pointer', minHeight: 44 }}
+                  style={{ padding: '11px 18px', borderRadius: 8, border: '1px solid #E6EBF1', background: 'var(--pos-surface, #FFFFFF)', color: 'var(--pos-text, #0A2540)', fontWeight: 600, cursor: 'pointer', minHeight: 44 }}
                 >
                   {t('floorplan:moveTable.pickAnother', { defaultValue: 'No, pick another table' })}
                 </button>
@@ -1895,7 +1942,7 @@ const FloorPlanPage: React.FC = () => {
                   type="button"
                   onClick={() => doMove(moveOccupied.destTable, moveOccupied.destFpti, 'merge')}
                   disabled={moveBusy}
-                  style={{ padding: '11px 18px', borderRadius: 8, border: 'none', background: '#F59E0B', color: '#fff', fontWeight: 700, cursor: 'pointer', minHeight: 44 }}
+                  style={{ padding: '11px 18px', borderRadius: 8, border: 'none', background: '#F59E0B', color: 'var(--pos-surface, #FFFFFF)', fontWeight: 700, cursor: 'pointer', minHeight: 44 }}
                 >
                   {moveBusy ? '…' : t('floorplan:moveTable.combineConfirm', { defaultValue: 'Yes, merge into one bill' })}
                 </button>
@@ -1934,8 +1981,8 @@ const FloorPlanPage: React.FC = () => {
                         style={{
                           padding: '14px 6px', borderRadius: 8, cursor: 'pointer',
                           border: occupied ? '1px solid #F59E0B' : '1px solid #E6EBF1',
-                          background: occupied ? '#FFF7ED' : '#fff',
-                          color: '#0A2540', fontWeight: 600, fontSize: 14, minHeight: 56,
+                          background: occupied ? '#FFF7ED' : 'var(--pos-surface, #FFFFFF)',
+                          color: 'var(--pos-text, #0A2540)', fontWeight: 600, fontSize: 14, minHeight: 56,
                           display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2
                         }}
                       >

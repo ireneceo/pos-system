@@ -46,14 +46,16 @@ const NoticeOverlay = styled.div`
   background: rgba(10, 37, 64, 0.55);
   display: flex; align-items: center; justify-content: center; padding: 24px;
 `;
-const NoticeCard = styled.div<{ $kind: 'void' | 'move' }>`
+type NoticeKind = 'void' | 'move' | 'order-cancel';
+const isRedKind = (k: NoticeKind) => k === 'void' || k === 'order-cancel';
+const NoticeCard = styled.div<{ $kind: NoticeKind }>`
   background: #fff; border-radius: 16px; width: 100%; max-width: 520px;
-  border-top: 8px solid ${p => p.$kind === 'void' ? '#FF6B6B' : '#F59E0B'};
+  border-top: 8px solid ${p => isRedKind(p.$kind) ? '#FF6B6B' : '#F59E0B'};
   box-shadow: 0 24px 48px rgba(0,0,0,0.3); overflow: hidden;
 `;
-const NoticeHead = styled.div<{ $kind: 'void' | 'move' }>`
+const NoticeHead = styled.div<{ $kind: NoticeKind }>`
   padding: 20px 24px 8px; font-size: 22px; font-weight: 800;
-  color: ${p => p.$kind === 'void' ? '#C92A2A' : '#B45309'};
+  color: ${p => isRedKind(p.$kind) ? '#C92A2A' : '#B45309'};
   display: flex; align-items: center; gap: 10px;
 `;
 const NoticeBody = styled.div`
@@ -61,10 +63,10 @@ const NoticeBody = styled.div`
   strong { font-weight: 800; }
   .sub { color: #6B7C93; font-size: 14px; margin-top: 6px; }
 `;
-const NoticeConfirm = styled.button<{ $kind: 'void' | 'move' }>`
+const NoticeConfirm = styled.button<{ $kind: NoticeKind }>`
   width: 100%; border: none; cursor: pointer; padding: 18px; min-height: 60px;
   font-size: 18px; font-weight: 700; color: #fff;
-  background: ${p => p.$kind === 'void' ? '#FF6B6B' : '#F59E0B'};
+  background: ${p => isRedKind(p.$kind) ? '#FF6B6B' : '#F59E0B'};
 `;
 const NoticeCount = styled.div`
   text-align: center; padding: 10px; font-size: 13px; color: #6B7C93; background: #F1F4F8;
@@ -697,8 +699,10 @@ const KitchenDisplayPage: React.FC = () => {
   // 2026-06-01 (Irene): 인쇄 대신 화면 팝업+알림음으로 주방에 알림. 확인 눌러야 닫힘.
   // 전체 탭(selectedStation='all') 이면 모든 안내, 특정 스테이션 탭이면 그 스테이션
   // 아이템이 걸린 안내만 표시(스테이션 무관 아이템은 모든 탭에 표시).
-  type KitchenNotice = { id: string; kind: 'void' | 'move'; orderNumber: string; tableNumber?: string; toTable?: string; itemText?: string; reason?: string; at: number };
+  type KitchenNotice = { id: string; kind: NoticeKind; orderNumber: string; tableNumber?: string; toTable?: string; itemText?: string; reason?: string; merged?: boolean; intoOrderNumber?: string; at: number };
   const [kitchenNotices, setKitchenNotices] = useState<KitchenNotice[]>([]);
+  // 같은 주문 취소가 order-updated 재방출로 중복 팝업되지 않도록 1회만.
+  const cancelledNoticeRef = useRef<Set<string>>(new Set());
 
   // ─── Shared: raw order_items → KitchenOrder items 변환 ───
   const processRawOrderItems = (orderId: string | number, rawItems: any[]): KitchenOrder['items'] => {
@@ -1246,6 +1250,38 @@ const KitchenDisplayPage: React.FC = () => {
       // can't re-add an order a newer "served" echo already cleared.
       if (!acceptVersion(order.id.toString(), order)) return;
 
+      // 2026-06-02: 주문 전체 취소(ORDER CANCELLED) 안내 팝업. 이미 주방에 간(printed)
+      // 아이템이 있을 때만, 현재 스테이션 탭 기준 필터. 인쇄는 별도(프린터 IP), 화면 안내만.
+      // (item-voided 는 아이템 1개 단위, 이건 주문 전체 취소 단위.)
+      if (String(order.status) === 'cancelled' && !cancelledNoticeRef.current.has(String(order.id))) {
+        try {
+          const rawItems = Array.isArray(order.order_items)
+            ? order.order_items
+            : (typeof order.order_items === 'string' ? JSON.parse(order.order_items || '[]') : []);
+          const printed = (rawItems || []).filter((it: any) => it && (it.printed_at || it.printed));
+          if (printed.length > 0) {
+            const curStation = selectedStationRef.current;
+            const relevant = curStation === 'all' || printed.some((it: any) => {
+              const sid = it.kitchen_station_id ?? menuStationMapRef.current.get(it.name || '');
+              return sid == null || sid === curStation;
+            });
+            if (relevant) {
+              cancelledNoticeRef.current.add(String(order.id));
+              const shown = printed.slice(0, 3).map((it: any) => `${it.quantity || 1} × ${it.name || 'Item'}`).join(', ');
+              const itemText = shown + (printed.length > 3 ? ` +${printed.length - 3}` : '');
+              setKitchenNotices(prev => [{
+                id: `ordcancel-${order.id}-${Date.now()}`, kind: 'order-cancel',
+                orderNumber: order.order_number || String(order.id),
+                tableNumber: order.table_number || undefined,
+                itemText,
+                at: Date.now()
+              }, ...prev].slice(0, 8));
+              try { import('../../utils/notificationSound').then(({ startRepeatingSound }) => audioEnabledRef.current && startRepeatingSound('bell')); } catch {}
+            }
+          }
+        } catch { /* silent */ }
+      }
+
       // Monotonic guard: a serve-all fires TWO emits (PATCH /items then PATCH
       // /status) and redundant KDS taps fire extra /items echoes. If an OLDER
       // echo (carrying the pre-serve order_items / stage) lands after a newer
@@ -1317,6 +1353,8 @@ const KitchenDisplayPage: React.FC = () => {
         orderNumber: data.orderNumber || String(data.orderId),
         tableNumber: data.fromTable || undefined,
         toTable: data.toTable || undefined,
+        merged: !!data.merged,
+        intoOrderNumber: data.intoOrderNumber || undefined,
         at: Date.now()
       }, ...prev].slice(0, 8));
       try { import('../../utils/notificationSound').then(({ startRepeatingSound }) => audioEnabled && startRepeatingSound('bell')); } catch {}
@@ -2977,7 +3015,9 @@ const KitchenDisplayPage: React.FC = () => {
               <NoticeHead $kind={n.kind}>
                 {n.kind === 'void'
                   ? t('kitchen:notice.voidTitle', { defaultValue: 'Item Cancelled' })
-                  : t('kitchen:notice.moveTitle', { defaultValue: 'Table Moved' })}
+                  : n.kind === 'order-cancel'
+                    ? t('kitchen:notice.orderCancelTitle', { defaultValue: 'Order Cancelled' })
+                    : t('kitchen:notice.moveTitle', { defaultValue: 'Table Moved' })}
               </NoticeHead>
               <NoticeBody>
                 {n.kind === 'void' ? (
@@ -2990,12 +3030,29 @@ const KitchenDisplayPage: React.FC = () => {
                     </div>
                     <div className="sub">{t('kitchen:notice.doNotMake', { defaultValue: 'Do NOT prepare this item.' })}</div>
                   </>
-                ) : (
+                ) : n.kind === 'order-cancel' ? (
                   <>
                     <div>
-                      {t('kitchen:notice.order', { defaultValue: 'Order' })} #{n.orderNumber} {t('kitchen:notice.movedFromTo', { defaultValue: 'moved' })}
-                      {' '}<strong>{n.tableNumber || '?'}</strong> → <strong>{n.toTable || '?'}</strong>
+                      {t('kitchen:notice.order', { defaultValue: 'Order' })} #{n.orderNumber}
+                      {n.tableNumber ? ` · ${n.tableNumber}` : ''} {t('kitchen:notice.orderWasCancelled', { defaultValue: 'was cancelled.' })}
                     </div>
+                    {n.itemText ? <div className="sub"><strong>{n.itemText}</strong></div> : null}
+                    <div className="sub">{t('kitchen:notice.doNotMakeOrder', { defaultValue: 'Stop preparing this order.' })}</div>
+                  </>
+                ) : (
+                  <>
+                    {n.merged ? (
+                      <div>
+                        {t('kitchen:notice.order', { defaultValue: 'Order' })} #{n.orderNumber} {t('kitchen:notice.mergedInto', { defaultValue: 'merged into' })}
+                        {' '}<strong>{n.intoOrderNumber ? `#${n.intoOrderNumber}` : (n.toTable || '?')}</strong>
+                        {n.toTable ? ` (${n.toTable})` : ''}
+                      </div>
+                    ) : (
+                      <div>
+                        {t('kitchen:notice.order', { defaultValue: 'Order' })} #{n.orderNumber} {t('kitchen:notice.movedFromTo', { defaultValue: 'moved' })}
+                        {' '}<strong>{n.tableNumber || '?'}</strong> → <strong>{n.toTable || '?'}</strong>
+                      </div>
+                    )}
                     <div className="sub">{t('kitchen:notice.sameOrder', { defaultValue: 'Same order — do NOT make it again.' })}</div>
                   </>
                 )}

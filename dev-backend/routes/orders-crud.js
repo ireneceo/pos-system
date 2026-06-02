@@ -1133,6 +1133,7 @@ router.post('/:id/move-table', authenticateToken, async (req, res) => {
             kind: 'merged',
             order: mergeResult.order,
             mergedFromOrderId: order.id,
+            mergedFromOrderNumber: order.order_number,
             destinationOrderId: destOrder.id,
             sourceTableNumber, destinationTableNumber,
             addedItems: mergeResult.addedItems, orderGroup: mergeResult.orderGroup,
@@ -1206,6 +1207,22 @@ router.post('/:id/move-table', authenticateToken, async (req, res) => {
           orderId: outcome.destinationOrderId, orderNumber: plain.order_number,
           tableNumber: plain.table_number, orderGroup: outcome.orderGroup,
           addedItems: outcome.addedItems, itemCount: (outcome.addedItems || []).length
+        });
+        // 2026-06-02: KDS 가 "이 주문이 다른 테이블/주문에 합쳐졌다" 를 명시 안내(팝업).
+        // 이동(table-moved)과 같은 채널, merged 플래그로 문구만 분기. 인쇄 무관(화면 안내).
+        io.of('/orders').to(room).emit('table-moved', {
+          orderId: outcome.mergedFromOrderId,
+          orderNumber: outcome.mergedFromOrderNumber || null,
+          fromTable: outcome.sourceTableNumber,
+          toTable: outcome.destinationTableNumber,
+          merged: true,
+          intoOrderNumber: plain.order_number,
+          // 주방에 간(printed) 아이템만 — 스테이션별 필터용.
+          items: (outcome.printedItems || []).map(it => ({
+            name: it.name, quantity: it.quantity || 1,
+            kitchen_station_id: it.kitchen_station_id || null, stationName: it.stationName || null
+          })),
+          movedAt: new Date().toISOString()
         });
         // 2026-06-01 SYNC-FIX: the source order was soft-cancelled by the merge.
         // Without an order-deleted, it lingered on Live Orders / KDS / Customer

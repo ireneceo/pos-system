@@ -1,9 +1,9 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-06-02 (POS 운영페이지 UI/UX 개편 + 보기 색상 토글 — DEV 완료, 미배포. 다음 세션 계속)
+**마지막 업데이트:** 2026-06-02 (주방 인쇄·알림 모델 v2 — DEV 완료, 미배포·실프린터 미확인. 다른 노트북으로 이동 위해 /개발완료)
 **버전:** v3.45 운영 (backstage 성격 — 버전 미상승)
-**작업 상태:** POS Terminal UI/UX 개편 + 밝게/고대비/어둡게 토글 **DEV 적용 완료**(미배포, 다음 세션 색감 미세조정·모달다크·FloorPlan/KDS 확장 계속). 최신 빌드 main.ea0f8766.js. 보류: 인쇄 4-케이스/테이블이동/이메일인증(DEV 완료, 배포 대기).
+**작업 상태:** **주방 인쇄·알림 v2 DEV 구현 완료**(취소·이동 항상 발송+알림팝업·station 박스·KDS 취소/머지 팝업·`printCancellationTicket` 삭제). 빌드 main.a6211efc.js, 타입0·i18n통과·인쇄계약7/8(보호파일 지문 정상경고)·mount 47/47. ⚠️ **실프린터 종이·KDS·POS 눈 확인 + `--bless` 미완 = 배포 전 의무**(가이드 `docs/PRINT_RULES_MATRIX.md` §10). 직전: POS UI/UX 개편+보기 색상 토글(DEV, 다음 세션 모달다크·FloorPlan/KDS 확장 계속).
 
 ---
 
@@ -191,15 +191,32 @@ The Fire 에서 **Floor Plan 으로 테이블 POS 열고 주문 → 키친 티�
 - **남은 검증**: §9 매트릭스 각 설정조합(printPerItem/mirror/browser·rawbt·qz 전조합) 런타임 대조는 부분만.
 
 ### 진행 중인 작업
-- **POS 운영페이지 UI/UX 개편 + 보기 색상 토글 (2026-06-02, DEV·미배포, 다음 세션 계속)**
-  - Phase A(클릭/가독)·통화 RM 일괄·Phase B(밝게/고대비/어둡게 토글, `posDisplayTheme.ts`) **POS Terminal 적용 완료**. 최신 빌드 main.ea0f8766.js. 상세 = 위 "2026-06-02" 섹션 + [[reference_pos_display_theme]].
-  - **Irene "이제 이렇게 할게, 다음 섹션에서 계속" → 이번 세션 종료, 다음 세션 이어서.**
-  - **다음 세션 남은 것**: (1) 다크 색감 미세조정 계속(Irene 실화면) (2) 모달(OptionModal/PaymentModal/RadioButton) 다크 미적용 (3) 같은 테마 시스템 **Floor Plan·KDS 확장(B-2)**
+- 없음 (주방 인쇄·알림 v2 = DEV 구현 완료, 실프린터 확인 대기 — 위 "✅ 주방 인쇄·알림 모델 v2" 참조)
+- **이월(DEV·미배포, 다음 세션 계속): POS 운영페이지 UI/UX 개편 + 보기 색상 토글**
+  - Phase A(클릭/가독)·통화 RM 일괄·Phase B(밝게/고대비/어둡게 토글, `posDisplayTheme.ts`) **POS Terminal 적용 완료**. 상세 = 위 "2026-06-02" 섹션 + [[reference_pos_display_theme]].
+  - **남은 것**: (1) 다크 색감 미세조정(Irene 실화면) (2) 모달(OptionModal/PaymentModal/RadioButton) 다크 미적용 (3) 같은 테마 시스템 **Floor Plan·KDS 확장(B-2)**
   - ⚠️ POSTerminalPage(🔒) 변경됨 → 배포 시 `--bless` + 실프린터 확인. 인쇄 로직 무접촉(확인됨).
   - ⚠️ **작업 원칙**: [[feedback_minimal_scoped_change]] — 한 요청=그 부분만 최소 범위. "다크에서만"은 다크 토큰 한 곳만.
 
 ### 다음 확정 작업
-- **POS 보기 색상/UI 미세조정 계속 → 모달 다크화 → Floor Plan·KDS 확장** (Irene "다음 섹션에서 계속" 명시)
+- **Floor Plan Phase C 진행 중** (Irene "이 기준으로 플로우플랜 작업하자"). 1차 완료: 보기 토글 헤더 추가 + 크롬 색 토큰화(페이지/헤더/존바/존칩/텍스트/선/브랜드 → `--pos-*`, 상태색·캔버스·버튼흰글자 보존). POS오버레이는 localStorage 공유로 이미 다크 상속(확인). 빌드 main.0a3490a8.js, mount OK.
+  - 2차: 캔버스 주위 회색 제거(CanvasWrapper surface), 존탭 키움(40px), 헤더버튼 38px. TableDetailPanel 주요버튼 17px/700(POS 기준)·상단 IconButton 키움·서브액션(Move/Cancel/Reprint QR/Expire QR/Leaved) **2열 그리드 작게**(SubActionGrid). POS 옵션버튼 운영원형 복원(--pos-option-bg, 회색테두리+그라데이션/다크평면). PaymentModal 할인표시 3줄(Before/Discount/New).
+  - **테이블별 오늘 주문 이력 탭(완료 포함) 구현**: 백엔드 table-status 에 `history` 맵 추가(오늘 non-cancelled 전체 per-table, 점유 `data` 무변경=보드 위험0). 프론트 `tableHistory` state→패널 탭 소스. **빈 테이블 클릭해도 오늘 이력 탭(Irene 결정)**. API 확인: data 1 vs history 2(완료 보존). 빌드 main.55dbf845.js, mount OK.
+  - 이력 탭 버그수정(기획 일치): 빈/cleared 테이블 클릭=**기본 새주문(available)**, 완료 주문은 **상단 탭(클릭 시에만 표시)**. selectedOrderIndex 기본 -1(활성/빈)·테이블변경시 리셋, showOrderTabs(빈테이블+이력시 탭표시). 빌드 main.19f72fa2.js, mount OK.
+  - 이력 탭 완성: "+ New Order" 탭(완료 탭 본 뒤 빈 테이블 복귀, tableFree) + 탭 오버플로 접기(최근4 + `+N`/`− Less`, showAllOrderTabs). 헤더버튼 6개(POS HeaderActionBtn / FP BackBtn) 흰버튼+hover 통일. 최신 빌드 main.3fd8e293.js. **/검증 10단계 전체 통과**(0/0-b 0건, i18n 0, mount 47/47, table-status data1/history2).
+  - **다음 증분**: 캔버스/TableDetailPanel 다크 색 토큰화. 그다음 KDS.
+  - **A 수정**: POSOverlayHeader 다크 회귀(var--pos-text 밝아져 흰글씨 안보임) → 고정 #0A2540 검정바 복원. 빌드 main.00d62c6d.js.
+
+### ✅ 주방 인쇄·알림 모델 v2 — **DEV 구현 완료 (2026-06-02), 실프린터 확인 대기**
+> 인쇄 파이프라인(🔒). 체크리스트 5/5 구현 완료. 빌드 main.a6211efc.js. **남은 것 = 실프린터 종이·KDS·POS 눈 확인 + `node scripts/check-print-guard.js --bless`(Irene 승인) → 배포.** 따라하기 = `docs/PRINT_RULES_MATRIX.md` §10. 설계 단일진실 = `docs/TABLE_MOVE_AND_VOID_TICKET.md` §확정 스펙 v2.
+- ✓ #1 모든 티켓 상단 station 박스(7개 티켓 함수 HTML+ESC-POS) — billPrint🔒
+- ✓ #2 취소·이동 항상 발송(자동발행 무관) + 알림형 팝업("Sent to kitchen"/[재발송][닫기]) — KitchenTicketSendModal + LiveOrders/FloorPlan 게이트
+- ✓ #3 KDS 주문취소(빨강) 팝업 + 이동+머지 문구, 탭(station) 기준 필터 — KitchenDisplayPage🔒 + orders-crud🔒 merged emit
+- ✓ #4 Floor Plan 취소/아이템삭제 발송+알림 연결 — TableDetailPanel onKitchenTicketSent
+- ✓ #5 `printCancellationTicket` 설정 삭제 — SettingsPage + billPrint 게이트 2곳
+- 라우팅(확정): 이동=관련 station 전부 / 취소=발행됐던(주방 진입) 아이템 station만 / station 없으면 POS(미러 따름). KDS 팝업은 인쇄와 별개 탭 기준.
+- ⚠️ 배포 시 billPrint+KitchenDisplay+orders-crud(+직전 POSTerminal) 보호파일 지문 변경 → `--bless` 필요. 실프린터 눈 확인 먼저.
+- (다음 증분, 별개) POS/Floor Plan 모달(OptionModal/PaymentModal/RadioButton) 다크화 + KDS 테마(Phase C 잔여).
 
 ### 보류 중 (이전 세션 DEV 완료, 배포 대기 — Irene 지시 시)
 - 인쇄 4-케이스 오더티켓 + 테이블이동/취소표 + 이메일 인증 enforcement (DEV 완료). 배포는 `--bless`+The Fire 실프린터 확인 후 Irene 만. 상세: `docs/TABLE_MOVE_AND_VOID_TICKET.md`, `docs/PRINT_RULES_MATRIX.md §9`.

@@ -5,7 +5,8 @@ import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import { formatPaymentDisplay } from '../../constants';
 import { useStore } from '../../contexts/StoreContext';
 import { formatDateTime } from '../../utils/timezone';
-import { printBillViaRawBT, printOrderTicketToBillPrinter, printTableQR } from '../../utils/billPrint';
+import { printBillViaRawBT, printOrderTicketToBillPrinter, printTableQR, printCancellationTicket, printCancellationTicketsByStation, getPrinterSettings } from '../../utils/billPrint';
+import { previewStationBuckets, KitchenTicketSendPrompt } from '../../components/Print/KitchenTicketSendModal';
 import OptionModal from '../../components/POSTerminal/OptionModal';
 import { Modal, ModalButton } from '../../components/UI';
 import OrderActionHistory from '../LiveOrders/OrderActionHistory';
@@ -49,10 +50,17 @@ interface TableDetailPanelProps {
   orders?: TableStatusInfo[];
   selectedOrderIndex?: number;
   onOrderIndexChange?: (index: number) => void;
+  // 탭 표시 여부 — 주문 여러 개거나 빈 테이블이라도 오늘 완료 이력이 있으면 true.
+  showOrderTabs?: boolean;
+  // 빈 테이블(활성 주문 없음) — true 면 탭에 "+ New Order"(빈 테이블 복귀) 칩 표시.
+  tableFree?: boolean;
   // QR mode
   qrMode?: 'static' | 'session';
   // Floor plan v2 — zone/group 풀라벨 매핑용
   floorPlan?: any;
+  // 확정 스펙 v2 (2026-06-02): 취소/아이템삭제 후 "주방에 발송됨" 알림 팝업.
+  // FloorPlanPage 가 KitchenTicketSendModal 을 렌더하므로 prompt 를 위로 올린다.
+  onKitchenTicketSent?: (prompt: KitchenTicketSendPrompt) => void;
 }
 
 // ─── Styled Components ───
@@ -358,10 +366,10 @@ const ActionGroup = styled.div`
 
 const ActionBtn = styled.button<{ $variant: 'primary' | 'secondary' | 'success' | 'danger' | 'link' }>`
   width: 100%;
-  padding: 9px;
+  padding: 16px;
   border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 17px;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.15s;
   border: none;
@@ -377,7 +385,7 @@ const ActionBtn = styled.button<{ $variant: 'primary' | 'secondary' | 'success' 
       case 'danger':
         return `background: white; color: #DC2626; border: 1px solid #FCA5A5; &:hover { background: #FEF2F2; }`;
       case 'link':
-        return `background: none; color: #4B5563; font-weight: 500; padding: 6px; &:hover { color: #1F2937; }`;
+        return `background: none; color: #4B5563; font-size: 13px; font-weight: 500; padding: 6px; &:hover { color: #1F2937; }`;
     }
   }}
 `;
@@ -385,6 +393,23 @@ const ActionBtn = styled.button<{ $variant: 'primary' | 'secondary' | 'success' 
 const ActionRow = styled.div`
   display: flex;
   gap: 6px;
+`;
+
+// 서브 액션(Move Table/Cancel/Reprint QR/Expire QR/Leaved) — 2열 그리드 + 컴팩트.
+// 주요 버튼(ActionBtn 17px)과 위계 구분: 작게, 두 개씩.
+const SubActionGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+
+  & > button {
+    width: 100%;
+    min-height: 0;
+    padding: 11px 12px;
+    font-size: 14px;
+    font-weight: 600;
+  }
 `;
 
 const IconButtonGroup = styled.div`
@@ -396,18 +421,20 @@ const IconButtonGroup = styled.div`
 `;
 
 const IconButton = styled.button`
-  padding: 6px 10px;
+  flex: 1;
+  padding: 10px 12px;
   background: #F4F6F9;
   border: 1px solid #C7CED6;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.15s;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  min-height: 32px;
-  font-size: 12px;
+  gap: 6px;
+  min-height: 44px;
+  font-size: 14px;
+  font-weight: 600;
   color: #4B5563;
   white-space: nowrap;
 
@@ -593,12 +620,17 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
   orders = [],
   selectedOrderIndex = 0,
   onOrderIndexChange,
+  showOrderTabs,
+  tableFree,
   qrMode = 'static',
-  floorPlan
+  floorPlan,
+  onKitchenTicketSent
 }) => {
   const [loading, setLoading] = useState(false);
   // 우측 패널 접기 (#1): 테이블 작업(QR/프린트/Cancel/Leaved) 기본 접힘 → 주문내역 가독성 확보.
   const [showTableActions, setShowTableActions] = useState(false);
+  // 주문 탭이 많을 때 접기/펼치기 — 기본은 최근 몇 개만, "+N" 누르면 전체.
+  const [showAllOrderTabs, setShowAllOrderTabs] = useState(false);
   const { getStoreInfo, paymentSettings } = useStore();
   const { t } = useTranslation(['orders', 'floorplan']);
   const [showHistory, setShowHistory] = useState(false);
@@ -877,13 +909,46 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
       message: `Delete "${itemName}" from this order?`,
       onConfirm: async () => {
         setConfirmModal(null);
+        const wasInKitchen = !['awaiting_payment', 'pending'].includes(String(statusInfo.orderStatus || ''));
         try {
           const token = getAuthToken();
           const res = await fetch(`/api/orders/${statusInfo.orderId}/items/${itemIndex}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` }
           });
-          if (res.ok) onOrderUpdated();
+          const result = await res.json().catch(() => ({} as any));
+          if (res.ok && result.success !== false) {
+            onOrderUpdated();
+            // 확정 스펙 v2 (2026-06-02): 주방에 간(printed) 아이템 삭제는 항상 취소표 발송
+            // + 알림형 팝업. 미발행 아이템은 주방이 알 필요 없음 → skip.
+            try {
+              const removed = result.removedItem || {};
+              if (wasInKitchen && (removed.was_printed || removed.printed_at)) {
+                const settings = getPrinterSettings();
+                const sid = removed.kitchen_station_id;
+                const sp = (sid != null && settings?.kitchenStationPrinters?.[String(sid)]) || null;
+                const stPrinter = (sp && sp.name) || undefined;
+                const stAddr = (sp && sp.address) || undefined;
+                const sInfo = (typeof getStoreInfo === 'function') ? getStoreInfo() : {};
+                const printData: any = {
+                  orderNumber: statusInfo.orderNumber, order_number: statusInfo.orderNumber,
+                  tableNumber: tableNumber || undefined,
+                  cancelTitle: '*** ITEM CANCELLED ***',
+                  cancelFooter: '>> DO NOT PREPARE <<',
+                  stationLabel: removed.stationName,
+                  items: [{ name: removed.name || itemName, quantity: removed.quantity || 1, kitchen_station_id: sid, stationName: removed.stationName }]
+                };
+                const doPrint = () => printCancellationTicket(printData, sInfo, 'Item voided', stPrinter, stAddr)
+                  .catch((e: any) => console.warn('FloorPlan item void print failed:', e && e.message));
+                doPrint();
+                onKitchenTicketSent && onKitchenTicketSent({
+                  run: doPrint, ticketType: '*** ITEM CANCELLED ***',
+                  description: '취소된 아이템 — 해당 주방에 발송됨',
+                  stations: previewStationBuckets(printData.items, settings)
+                });
+              }
+            } catch (e: any) { console.warn('FloorPlan void-ticket step skipped:', e?.message); }
+          }
         } catch (_) { /* silently fail */ }
       }
     });
@@ -899,12 +964,55 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
         setLoading(true);
         try {
           const token = getAuthToken();
+          // 확정 스펙 v2 (2026-06-02): 취소표 station 라우팅을 위해 취소 전 주문 상세(발행된
+          // 아이템의 kitchen_station_id/printed_at)를 가져온다. table-status 요약엔 없음.
+          let fullItems: any[] = [];
+          const wasInKitchen = !['awaiting_payment', 'pending'].includes(String(statusInfo.orderStatus || ''));
+          if (wasInKitchen) {
+            try {
+              const r = await fetch(`/api/orders/${statusInfo.orderId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+              const j = await r.json();
+              const od = j.data || j;
+              let oi = od.order_items;
+              if (typeof oi === 'string') { try { oi = JSON.parse(oi); } catch { oi = []; } }
+              fullItems = Array.isArray(oi) ? oi : [];
+            } catch { /* fetch best-effort */ }
+          }
           await fetch(`/api/orders/${statusInfo.orderId}/status`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify({ status: 'cancelled' })
           });
           onOrderUpdated();
+          // 취소는 항상 발송(주방이 무조건 알아야) + 발송 후 알림형 팝업. 발행된 아이템만.
+          try {
+            const printedItems = fullItems.filter(it => it && (it.printed_at || it.printed));
+            if (wasInKitchen && printedItems.length > 0) {
+              const settings = getPrinterSettings();
+              const sInfo = (typeof getStoreInfo === 'function') ? getStoreInfo() : {};
+              const printData: any = {
+                orderNumber: statusInfo.orderNumber, order_number: statusInfo.orderNumber,
+                tableNumber: tableNumber || undefined,
+                cancelTitle: '*** ORDER CANCELLED ***',
+                cancelFooter: '>> DO NOT PREPARE - ALL CANCELLED <<',
+                items: printedItems.map(it => ({
+                  quantity: it.quantity || 1,
+                  name: it.name || (it.menuItem && it.menuItem.name) || '',
+                  kitchen_station_id: it.kitchen_station_id ?? null,
+                  stationName: it.stationName || it.station_name,
+                  set_components: it.set_components
+                }))
+              };
+              const doPrint = () => printCancellationTicketsByStation(printData, sInfo, 'Cancelled by staff')
+                .catch((e: any) => console.warn('FloorPlan cancel print failed:', e && e.message));
+              doPrint();
+              onKitchenTicketSent && onKitchenTicketSent({
+                run: doPrint, ticketType: '*** ORDER CANCELLED ***',
+                description: `주문 ${printData.orderNumber} — 해당 주방에 발송됨`,
+                stations: previewStationBuckets(printData.items, settings)
+              });
+            }
+          } catch (e: any) { console.warn('FloorPlan cancel-ticket step skipped:', e?.message); }
         } catch (_) { /* silently fail */ }
         setLoading(false);
       }
@@ -1284,8 +1392,8 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
         <CloseBtn onClick={onClose}>&times;</CloseBtn>
       </PanelHeader>
 
-      {/* Multi-order tabs */}
-      {orders.length > 1 && (
+      {/* Multi-order tabs — 주문 여러 개거나, 빈 테이블이라도 오늘 완료 이력이 있으면 표시 */}
+      {(showOrderTabs !== undefined ? showOrderTabs : orders.length > 1) && (
         <div style={{
           padding: '8px 20px',
           borderBottom: '1px solid #C7CED6',
@@ -1294,7 +1402,26 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
           flexWrap: 'wrap',
           background: '#F9FAFB'
         }}>
-          {orders.map((order, idx) => (
+          {/* 빈 테이블: 완료 탭을 본 뒤 다시 "빈 테이블/새주문"으로 돌아오는 탭. 기본 선택. */}
+          {tableFree && (
+            <button
+              onClick={() => onOrderIndexChange?.(-1)}
+              style={{
+                padding: '4px 10px',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: selectedOrderIndex < 0 ? 600 : 400,
+                border: selectedOrderIndex < 0 ? '1.5px solid #635BFF' : '1px solid #6B7280',
+                background: selectedOrderIndex < 0 ? '#EDE9FE' : 'white',
+                color: selectedOrderIndex < 0 ? '#635BFF' : '#4B5563',
+                cursor: 'pointer',
+                transition: 'all 0.15s'
+              }}
+            >
+              + New Order
+            </button>
+          )}
+          {(showAllOrderTabs ? orders : orders.slice(0, 4)).map((order, idx) => (
             <button
               key={order.orderId || idx}
               onClick={() => onOrderIndexChange?.(idx)}
@@ -1316,9 +1443,18 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                 : ''}
             </button>
           ))}
-          <span style={{ fontSize: '11px', color: '#6B7280', alignSelf: 'center', marginLeft: '4px' }}>
-            {orders.length} orders
-          </span>
+          {orders.length > 4 && (
+            <button
+              onClick={() => setShowAllOrderTabs(v => !v)}
+              style={{
+                padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 600,
+                border: '1px solid #6B7280', background: 'white', color: '#4B5563',
+                cursor: 'pointer', transition: 'all 0.15s'
+              }}
+            >
+              {showAllOrderTabs ? '− Less' : `+${orders.length - 4}`}
+            </button>
+          )}
         </div>
       )}
 
@@ -1801,47 +1937,39 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                   </IconButton>
                 )}
               </IconButtonGroup>
-              {/* Move Table — dine-in 전용: 진행 중 주문을 다른 테이블로 이동.
-                  목적지 선택/점유처리는 FloorPlanPage 의 picker 가 담당. */}
-              {tableNumber && onMoveTable && orderStatus !== 'cancelled' && orderStatus !== 'completed' && statusInfo!.orderId && (
-                <ActionBtn
-                  $variant="secondary"
-                  onClick={() => onMoveTable(statusInfo!.orderId!, tableNumber)}
-                  disabled={loading}
-                >
-                  {t('floorplan:tableDetailPanel.moveTable', { defaultValue: 'Move Table' })}
-                </ActionBtn>
-              )}
-              {/* Cancel Order — LiveOrders와 동일: status not cancelled/completed */}
-              {orderStatus !== 'cancelled' && orderStatus !== 'completed' && (
-                <ActionBtn $variant="danger" onClick={handleCancelOrder} disabled={loading}>
-                  Cancel Order
-                </ActionBtn>
-              )}
-              {/* Leaved — dine-in 전용: completed 상태에서 테이블 비우기. takeaway 는 비울 테이블 없음 */}
-              {tableNumber && orderStatus === 'completed' && statusInfo!.orderId && (
-                <ActionBtn
-                  $variant="primary"
-                  onClick={() => onClearTable(statusInfo!.orderId!)}
-                  disabled={loading}
-                >
-                  Leaved
-                </ActionBtn>
-              )}
-              {/* QR Session for occupied table */}
-              {qrMode === 'session' && (
-              <>
-              <ActionRow>
-                <ActionBtn $variant="secondary" onClick={handlePrintQR} disabled={qrLoading}>
-                  {qrLoading ? 'Printing...' : <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight: 4, verticalAlign: 'middle'}}><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>{'Reprint QR'}</>}
-                </ActionBtn>
-                {activeQr && (
-                  <ActionBtn $variant="danger" onClick={handleExpireQR} disabled={qrLoading} style={{ flex: '0 0 auto', width: 'auto', padding: '9px 16px' }}>
+              {/* 서브 액션 — 2열 그리드(작게). Move Table/Cancel/Leaved/Reprint QR/Expire QR */}
+              <SubActionGrid>
+                {/* Move Table — dine-in 전용: 진행 중 주문을 다른 테이블로 이동 */}
+                {tableNumber && onMoveTable && orderStatus !== 'cancelled' && orderStatus !== 'completed' && statusInfo!.orderId && (
+                  <ActionBtn $variant="secondary" onClick={() => onMoveTable(statusInfo!.orderId!, tableNumber)} disabled={loading}>
+                    {t('floorplan:tableDetailPanel.moveTable', { defaultValue: 'Move Table' })}
+                  </ActionBtn>
+                )}
+                {/* Cancel Order */}
+                {orderStatus !== 'cancelled' && orderStatus !== 'completed' && (
+                  <ActionBtn $variant="danger" onClick={handleCancelOrder} disabled={loading}>
+                    Cancel Order
+                  </ActionBtn>
+                )}
+                {/* Leaved — completed 상태 테이블 비우기 */}
+                {tableNumber && orderStatus === 'completed' && statusInfo!.orderId && (
+                  <ActionBtn $variant="primary" onClick={() => onClearTable(statusInfo!.orderId!)} disabled={loading}>
+                    Leaved
+                  </ActionBtn>
+                )}
+                {/* QR session — Reprint / Expire */}
+                {qrMode === 'session' && (
+                  <ActionBtn $variant="secondary" onClick={handlePrintQR} disabled={qrLoading}>
+                    {qrLoading ? 'Printing...' : <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight: 4, verticalAlign: 'middle'}}><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>{'Reprint QR'}</>}
+                  </ActionBtn>
+                )}
+                {qrMode === 'session' && activeQr && (
+                  <ActionBtn $variant="danger" onClick={handleExpireQR} disabled={qrLoading}>
                     Expire QR
                   </ActionBtn>
                 )}
-              </ActionRow>
-              {activeQr ? (
+              </SubActionGrid>
+              {qrMode === 'session' && activeQr && (
                 <QRStatusInfo>
                   <div>
                     <span style={{ color: '#059669' }}>● Active QR ({qrRemainingMin}min left)</span>
@@ -1851,10 +1979,6 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                     </div>
                   </div>
                 </QRStatusInfo>
-              ) : (
-                <></>
-              )}
-              </>
               )}
               </>
               )}

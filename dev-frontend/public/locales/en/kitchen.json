@@ -34,6 +34,10 @@
   "notice.doNotMake": "Do NOT prepare this item.",
   "notice.movedFromTo": "moved",
   "notice.sameOrder": "Same order — do NOT make it again.",
+  "notice.orderCancelTitle": "Order Cancelled",
+  "notice.orderWasCancelled": "was cancelled.",
+  "notice.doNotMakeOrder": "Stop preparing this order.",
+  "notice.mergedInto": "merged into",
   "notice.confirm": "OK, got it",
   "notice.more": "{{count}} more notice(s)"
 }

@@ -1023,8 +1023,19 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
             </button>
           </div>
           {liveTotalOverride != null && (
-            <div style={{ fontSize: 12, color: '#059669', fontWeight: 600, marginTop: 6 }}>
-              Discount applied — new total {formatCurrency(liveTotalOverride, operationSettings.currency)}
+            <div style={{ marginTop: 8, fontSize: 13, borderTop: '1px dashed #C7CED6', paddingTop: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#4B5563', marginBottom: 4 }}>
+                <span>Before discount</span>
+                <span style={{ textDecoration: 'line-through' }}>{formatCurrency(originalTotal, operationSettings.currency)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#059669', fontWeight: 600, marginBottom: 4 }}>
+                <span>Discount applied</span>
+                <span>-{formatCurrency(Math.max(0, originalTotal - liveTotalOverride), operationSettings.currency)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#0A2540', fontWeight: 700 }}>
+                <span>New total</span>
+                <span>{formatCurrency(liveTotalOverride, operationSettings.currency)}</span>
+              </div>
             </div>
           )}
         </InputSection>

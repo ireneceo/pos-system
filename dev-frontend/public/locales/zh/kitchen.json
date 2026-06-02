@@ -34,6 +34,10 @@
   "notice.doNotMake": "请勿制作此项目。",
   "notice.movedFromTo": "移动",
   "notice.sameOrder": "同一订单——请勿重复制作。",
+  "notice.orderCancelTitle": "订单已取消",
+  "notice.orderWasCancelled": "订单已取消。",
+  "notice.doNotMakeOrder": "请停止制作此订单。",
+  "notice.mergedInto": "已合并至",
   "notice.confirm": "知道了",
   "notice.more": "还有 {{count}} 条通知"
 }

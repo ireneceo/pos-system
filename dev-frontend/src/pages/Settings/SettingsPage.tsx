@@ -671,7 +671,6 @@ const SettingsPage: React.FC = () => {
   const kitchenPrinterToggleRef = useRef<AutoSaveHandle>(null);
   const printPerItemToggleRef = useRef<AutoSaveHandle>(null);
   const mirrorToBillPrinterRef = useRef<AutoSaveHandle>(null);
-  const printCancellationTicketRef = useRef<AutoSaveHandle>(null);
   const receiptMembershipToggleRef = useRef<AutoSaveHandle>(null);
   const membershipActiveToggleRef = useRef<AutoSaveHandle>(null);
   const checkoutDisplayPhoneRef = useRef<AutoSaveHandle>(null);
@@ -6763,30 +6762,8 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                     </AutoSaveField>
                   </Toggle>
 
-                  <Toggle style={{ marginTop: '16px' }}>
-                    <div style={{ flex: 1 }}>
-                      <ToggleLabel style={{ marginBottom: '4px' }}>{t('settings:printer.printCancellationLabel')}</ToggleLabel>
-                      <p style={{ fontSize: '12px', color: '#4B5563', margin: 0 }}>
-                        {t('settings:printer.printCancellationDesc')}
-                      </p>
-                    </div>
-                    <AutoSaveField ref={printCancellationTicketRef} onSave={handleSave} type="toggle">
-                    <ToggleSwitch>
-                      <ToggleInput
-                        type="checkbox"
-                        checked={printerSettings.kitchenPrinter.printCancellationTicket ?? true}
-                        onChange={(e) => {
-                          setPrinterSettings(prev => ({
-                            ...prev,
-                            kitchenPrinter: { ...prev.kitchenPrinter, printCancellationTicket: e.target.checked }
-                          }));
-                          printCancellationTicketRef.current?.triggerSave();
-                        }}
-                      />
-                      <ToggleSlider />
-                    </ToggleSwitch>
-                    </AutoSaveField>
-                  </Toggle>
+                  {/* 2026-06-02 확정 스펙 v2: 취소 티켓은 설정 토글 없이 항상 발송
+                      (취소·이동은 주방이 무조건 알아야 함). printCancellationTicket 설정 삭제. */}
                 </SettingsCard>
               )}
 

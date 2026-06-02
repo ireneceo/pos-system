@@ -34,6 +34,10 @@
   "notice.doNotMake": "JANGAN sediakan item ini.",
   "notice.movedFromTo": "dipindah",
   "notice.sameOrder": "Pesanan sama — JANGAN buat lagi.",
+  "notice.orderCancelTitle": "Pesanan Dibatalkan",
+  "notice.orderWasCancelled": "telah dibatalkan.",
+  "notice.doNotMakeOrder": "Berhenti menyediakan pesanan ini.",
+  "notice.mergedInto": "digabung ke",
   "notice.confirm": "OK, faham",
   "notice.more": "{{count}} notis lagi"
 }

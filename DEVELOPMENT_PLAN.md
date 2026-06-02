@@ -1,9 +1,34 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-02 (POS 운영페이지 UI/UX 개편 + 보기 색상 토글 — DEV, 미배포)
+> **최종 업데이트:** 2026-06-02 (주방 인쇄·알림 v2 — 취소·이동 항상 발송+알림팝업, station 박스, KDS 취소/머지 팝업 — DEV, 미배포·실프린터 미확인)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 > **현재 버전:** **v3.45** 운영 (2026-05-31 배포, Backup 20260531_021629, smoke 10/10 — 주문/주방 안정성 + 모바일 dine-in 테이블 + 세트옵션 버전확정)
+
+## ✅ 완료(DEV, 미배포·실프린터 미확인): 주방 인쇄·알림 모델 v2 (2026-06-02)
+
+> 취소/이동 시 주방 통보 모델 확정(Irene). **취소·이동은 주방이 무조건 알아야 하므로 자동발행 설정과 무관하게 항상 발송 + 발송 후 알림형 팝업.** 🔒 인쇄 보호파일(billPrint/KitchenDisplay/orders-crud) 포함 → **배포 전 실프린터 종이·KDS·POS 눈 확인 + `check-print-guard --bless` 의무.** 따라하기 가이드 = `docs/PRINT_RULES_MATRIX.md` § 10.
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| #1 station 박스 | 모든 오더티켓 상단 station 이름 박스 — 7개 티켓 함수 전부(HTML 신규/추가/멀티페이지 + ESC-POS raw/단품 + 취소 ESC/HTML) | ✅ |
+| #2 항상 발송+알림 | KitchenTicketSendModal 알림형 전환(제목 "Sent to kitchen", [재발송][닫기]) + LiveOrders 취소/아이템취소·FloorPlan 이동 always-send 게이트 | ✅ |
+| #3 KDS 팝업 | KitchenDisplayPage🔒 주문취소(ORDER CANCELLED, 빨강) 팝업 신설 + 이동+머지 문구 분기. 탭(현재 station) 기준 필터. 백엔드 orders-crud🔒 merged 브랜치 table-moved(merged:true) emit | ✅ |
+| #4 Floor Plan 연결 | TableDetailPanel 취소(주문상세 fetch→printed 라우팅)/아이템삭제(removedItem) → 취소표 항상 발송 + onKitchenTicketSent 알림 | ✅ |
+| #5 설정 삭제 | `printCancellationTicket` 토글/ref 제거 + billPrint 게이트 2곳 제거(항상 발송) | ✅ |
+| i18n | kitchen.json notice.* 4키 + orders.json ticketSend.* 4키 — 4언어 | ✅ |
+| 검증 | 빌드 타입에러 0, i18n 통과, 인쇄계약 7/8(나머지=보호파일 지문 정상경고), mount 47/47 크래시 0 | ✅ |
+| 문서 | PRINT_RULES_MATRIX § 9 v2 + § 10 실프린터 테스트 가이드 / TABLE_MOVE_AND_VOID_TICKET § 확정 스펙 v2 체크리스트 5/5 | ✅ |
+
+### 수정된 파일
+- 프론트🔒: `utils/billPrint.js`(station 박스 7함수 + 취소 게이트 제거), `pages/KitchenDisplay/KitchenDisplayPage.tsx`(ORDER CANCELLED 팝업 + 머지 문구)
+- 프론트: `components/Print/KitchenTicketSendModal.tsx`(알림형), `pages/LiveOrders/LiveOrdersPage.tsx`, `pages/FloorPlan/{FloorPlanPage,TableDetailPanel}.tsx`, `pages/Settings/SettingsPage.tsx`, `public/locales/{en,ko,zh,ms}/{kitchen,orders}.json`
+- 백엔드🔒: `routes/orders-crud.js`(merged 브랜치 table-moved emit + mergedFromOrderNumber)
+- 문서: `docs/PRINT_RULES_MATRIX.md`(§9 v2 + §10), `docs/TABLE_MOVE_AND_VOID_TICKET.md`(§ 확정 스펙 v2)
+
+---
 
 ## ✅ 완료(DEV, 미배포): POS 운영페이지 UI/UX 개편 + 보기 색상 토글 (2026-06-02)
 

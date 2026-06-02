@@ -116,6 +116,30 @@ const HeaderCompactActions = styled.div`
   }
 `;
 
+// 상단 헤더 액션 버튼 통일 — 흰 버튼 + 테두리 + hover (Dashboard/Customer Display/Open Drawer).
+const HeaderActionBtn = styled.button`
+  height: 38px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--pos-surface, #FFFFFF);
+  border: 1px solid var(--pos-border, #C7CED6);
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--pos-text, #1F2937);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+
+  &:hover {
+    border-color: var(--pos-brand, #635BFF);
+    background: var(--pos-surface-2, #F4F6F9);
+  }
+`;
+
 const StaffInfo = styled.div<{ clickable?: boolean }>`
   display: flex;
   align-items: center;
@@ -211,8 +235,9 @@ const SearchInput = styled.input`
   font-size: 14px;
   transition: all 0.15s;
   box-sizing: border-box;
-  background: var(--pos-surface, #FFFFFF);
-  color: var(--pos-text, #0A2540);
+  /* 검색 입력란은 다크에서도 밝은 필드 + 진한 글자로 (입력 글자 가독성 — Irene 2026-06-02) */
+  background: #FFFFFF;
+  color: #1F2937;
 
   &:focus {
     outline: none;
@@ -221,7 +246,7 @@ const SearchInput = styled.input`
   }
 
   &::placeholder {
-    color: var(--pos-text-muted, #8898AA);
+    color: #8898AA;
   }
 `;
 
@@ -349,7 +374,7 @@ const MenuGrid = styled.div`
   flex: 1;
   padding: 12px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   grid-auto-rows: max-content;
   gap: 10px;
   overflow-y: auto;
@@ -435,8 +460,8 @@ const MenuImage = styled.div<{ hasImage?: boolean }>`
 `;
 
 const MenuName = styled.div`
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 17px;
+  font-weight: 600;
   color: var(--pos-text, #0A2540);
   margin-bottom: 4px;
   line-height: 1.3;
@@ -485,21 +510,21 @@ const MenuItemActions = styled.div`
 
 const OptionButton = styled.button`
   flex: 1;
-  background: transparent;
-  border: 1px solid var(--pos-brand, #635BFF);
+  /* 운영서버 원래 옵션버튼 형태: 은은한 면(라이트=그라데이션/다크=평면) + 회색 테두리 + 보라 글자. */
+  background: var(--pos-option-bg, linear-gradient(135deg, #F1F4F8 0%, #F0F4FF 100%));
+  border: 1px solid var(--pos-border, #C7CED6);
   border-radius: 8px;
   padding: 10px 16px;
   font-size: 13px;
   font-weight: 600;
-  color: var(--pos-brand, #635BFF);
+  color: var(--pos-brand-text, #635BFF);
   cursor: pointer;
   transition: all 0.2s;
   text-align: center;
 
   &:hover {
-    background: var(--pos-brand-ghost, rgba(99,91,255,0.07));
     border-color: var(--pos-brand, #635BFF);
-    color: var(--pos-brand, #635BFF);
+    color: var(--pos-brand-text, #635BFF);
     transform: translateY(-1px);
     box-shadow: 0 2px 8px rgba(99, 91, 255, 0.2);
   }
@@ -844,16 +869,17 @@ const DiscountInput = styled.input`
   border-radius: 6px;
   font-size: 14px;
   transition: all 0.15s;
-  background: var(--pos-surface, #FFFFFF);
-  color: var(--pos-text, #0A2540);
+  /* 입력란은 다크에서도 밝은 필드 + 진한 글자 (입력 가독성 통일 — Irene) */
+  background: #FFFFFF;
+  color: #1F2937;
 
   &:focus {
     outline: none;
     border-color: var(--pos-brand, #635BFF);
   }
-  
+
   &::placeholder {
-    color: var(--pos-text-muted, #8898AA);
+    color: #8898AA;
   }
 `;
 
@@ -976,8 +1002,9 @@ const CustomerSearchInput = styled.input`
   border: 1px solid var(--pos-border, #C7CED6);
   border-radius: 8px;
   font-size: 14px;
-  background: var(--pos-surface, #FFFFFF);
-  color: var(--pos-text, #0A2540);
+  /* 입력란은 다크에서도 밝은 필드 + 진한 글자 (입력 가독성 통일 — Irene) */
+  background: #FFFFFF;
+  color: #1F2937;
   cursor: pointer;
   transition: all 0.15s;
   box-sizing: border-box;
@@ -993,7 +1020,7 @@ const CustomerSearchInput = styled.input`
   }
 
   &::placeholder {
-    color: var(--pos-text-muted, #8898AA);
+    color: #8898AA;
   }
 `;
 
@@ -1089,8 +1116,9 @@ const PagerSearchInput = styled.input`
   border: 1px solid var(--pos-border, #C7CED6);
   border-radius: 6px;
   font-size: 14px;
-  background: var(--pos-surface, #FFFFFF);
-  color: var(--pos-text, #0A2540);
+  /* 입력란은 다크에서도 밝은 필드 + 진한 글자 (입력 가독성 통일 — Irene) */
+  background: #FFFFFF;
+  color: #1F2937;
   cursor: pointer;
   transition: all 0.15s;
   box-sizing: border-box;
@@ -1106,7 +1134,7 @@ const PagerSearchInput = styled.input`
   }
 
   &::placeholder {
-    color: var(--pos-text-muted, #8898AA);
+    color: #8898AA;
   }
 `;
 
@@ -2981,23 +3009,11 @@ const POSTerminalPage: React.FC = () => {
               <span style={{ color: 'var(--pos-text-muted, #4B5563)', fontSize: '14px', fontWeight: 500 }}>{'POS Terminal'}</span>
             )}
           </Logo>
-          <button type="button"
+          <HeaderActionBtn type="button"
             onClick={() => navigate(`/restaurant/${restaurantId}/dashboard`)}
-            style={{
-              background: 'none',
-              border: '1px solid var(--pos-border, #C7CED6)',
-              borderRadius: '6px',
-              padding: '6px 12px',
-              cursor: 'pointer',
-              color: 'var(--pos-text-muted, #4B5563)',
-              fontSize: '13px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px'
-            }}
           >
             ← Dashboard
-          </button>
+          </HeaderActionBtn>
         </div>
         <HeaderInfo>
           <StaffInfo clickable={true} onClick={() => setShowCashierPinModal(true)} title="Click to switch cashier">
@@ -3008,7 +3024,7 @@ const POSTerminalPage: React.FC = () => {
           <DateTime>{formatDateTimeLocal(currentDateTime)}</DateTime>
           {/* Customer Display — always visible. Cashiers re-open the secondary
               monitor view often, keep one-click access regardless of width. */}
-          <button type="button"
+          <HeaderActionBtn type="button"
             onClick={async () => {
               const result = await openCustomerDisplay(user?.restaurantId || '');
               if (result.title && result.message) {
@@ -3016,22 +3032,14 @@ const POSTerminalPage: React.FC = () => {
               }
             }}
             title={isAutoOpenEnabled() ? 'Customer Display (auto-open enabled)' : 'Open Customer Display on secondary monitor'}
-            style={{
-              padding: '6px 12px', fontSize: '12px', fontWeight: 500,
-              border: '1px solid ' + (isAutoOpenEnabled() ? 'var(--pos-brand, #635BFF)' : 'var(--pos-border, #C7CED6)'), borderRadius: '6px',
-              background: isAutoOpenEnabled() ? 'var(--pos-brand-tint, rgba(99,91,255,0.1))' : 'var(--pos-surface-2, #F4F6F9)',
-              color: 'var(--pos-text, #1F2937)',
-              cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: '4px'
-            }}
           >
             {isAutoOpenEnabled() && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--pos-brand, #635BFF)', display: 'inline-block' }} />}
             Customer Display
-          </button>
+          </HeaderActionBtn>
 
           {/* Wide screens — full toolbar. Open Drawer manual button is here. */}
           <HeaderDesktopActions>
-            <button type="button"
+            <HeaderActionBtn type="button"
               onClick={async () => {
                 try {
                   const { openCashDrawer } = await import('../../utils/billPrint');
@@ -3048,14 +3056,9 @@ const POSTerminalPage: React.FC = () => {
                 }
               }}
               title="Send open-drawer pulse to the bill printer"
-              style={{
-                padding: '6px 12px', fontSize: '12px', fontWeight: 500,
-                border: '1px solid var(--pos-border, #C7CED6)', borderRadius: '6px',
-                background: 'var(--pos-surface-2, #F4F6F9)', color: 'var(--pos-text, #1F2937)', cursor: 'pointer'
-              }}
             >
               Open Drawer
-            </button>
+            </HeaderActionBtn>
           </HeaderDesktopActions>
 
           {/* Narrow screens (≤1280px) — kebab menu collects secondary actions. */}
@@ -3223,16 +3226,12 @@ const POSTerminalPage: React.FC = () => {
           {isSearchMode && (
             <div style={{
               padding: '8px 16px',
-              background: '#f0f7ff',
-              borderRadius: '8px',
-              marginBottom: '12px',
+              background: 'transparent',
               fontSize: '14px',
-              color: '#1a73e8',
+              color: 'var(--pos-text-muted, #4B5563)',
               display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
+              alignItems: 'center'
             }}>
-              <span>🔍</span>
               <span>Search results for "{searchQuery}" ({filteredMenuItems.length} items)</span>
             </div>
           )}

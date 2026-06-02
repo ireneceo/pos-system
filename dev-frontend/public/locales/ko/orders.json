@@ -129,5 +129,9 @@
   "voidItem.reasonSoldOut": "품절",
   "voidItem.reasonCustomer": "고객 변심",
   "voidItem.reasonMistake": "주문 실수",
-  "voidItem.reasonOther": "기타"
+  "voidItem.reasonOther": "기타",
+  "ticketSend.sentTitle": "주방에 발송됨",
+  "ticketSend.sentList": "다음 내용을 발송했습니다:",
+  "ticketSend.resend": "재발송",
+  "ticketSend.close": "닫기"
 }

@@ -60,6 +60,7 @@ const PALETTES: Record<PosThemeMode, Record<string, string>> = {
     'brand': '#635BFF',
     'brand-tint': 'rgba(99, 91, 255, 0.10)',
     'brand-ghost': 'rgba(99, 91, 255, 0.07)',
+    'option-bg': 'linear-gradient(135deg, #F1F4F8 0%, #F0F4FF 100%)',
     'brand-text': '#635BFF',
     'control': '#FFFFFF',     // 선택 박스(카테고리/주문유형) 기본 면
     'positive': '#10B981',    // Pay Later 등 긍정 액션
@@ -77,6 +78,7 @@ const PALETTES: Record<PosThemeMode, Record<string, string>> = {
     'brand': '#332AB8',
     'brand-tint': 'rgba(51, 42, 184, 0.18)',
     'brand-ghost': 'rgba(51, 42, 184, 0.10)',
+    'option-bg': 'linear-gradient(135deg, #DFE5EE 0%, #E3E0FA 100%)',
     'brand-text': '#1E1675',
     'control': '#FFFFFF',
     'positive': '#0A7D57',
@@ -94,6 +96,7 @@ const PALETTES: Record<PosThemeMode, Record<string, string>> = {
     'brand': '#8B82E8',
     'brand-tint': '#ECEAFF',
     'brand-ghost': 'rgba(158, 149, 245, 0.16)',
+    'option-bg': 'rgba(139, 128, 255, 0.10)',
     'brand-text': '#635BFF',
     'control': '#2C3A56',
     'positive': '#10B981',

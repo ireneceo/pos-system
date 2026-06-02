@@ -1600,7 +1600,17 @@ export function generateHTMLKitchenTicket(orderData, storeInfo) {
     <div style="font-size:13px;text-align:left;">${escapeHtmlForPrint(orderData.notes)}</div>
   ` : '';
 
+  // 모든 주방 티켓 상단 station 이름 박스 (Irene 2026-06-02). station-routed 티켓은 items 가
+  // 같은 stationName 을 가짐 → 거기서 도출. 미설정(단일 주방)이면 박스 생략.
+  const _ticketStation = (orderData.stationName
+    || (orderData.items || []).map(i => i && i.stationName).find(Boolean)
+    || '').toString().trim();
+  const stationBoxHtml = _ticketStation
+    ? `<div style="border:2px solid #000;border-radius:6px;padding:5px 0;text-align:center;font-size:17px;font-weight:800;letter-spacing:2px;margin-bottom:6px;">${escapeHtmlForPrint(_ticketStation.toUpperCase())}</div>`
+    : '';
+
   return wrapPrintHTML(`Kitchen Ticket - ${orderData.orderNumber || ''}`, `
+    ${stationBoxHtml}
     ${noticeHeaderHtml}
     ${groupLabelHtml}
     ${metaHtml}
@@ -1658,7 +1668,15 @@ function generateHTMLAdditionalItemsTicket(orderData, storeInfo) {
     </div>
   `;
 
+  const _ticketStation = (orderData.stationName
+    || (orderData.items || []).map(i => i && i.stationName).find(Boolean)
+    || '').toString().trim();
+  const stationBoxHtml = _ticketStation
+    ? `<div style="border:2px solid #000;border-radius:6px;padding:5px 0;text-align:center;font-size:17px;font-weight:800;letter-spacing:2px;margin-bottom:6px;">${escapeHtmlForPrint(_ticketStation.toUpperCase())}</div>`
+    : '';
+
   return wrapPrintHTML(`Additional Items - ${orderData.orderNumber || ''}`, `
+    ${stationBoxHtml}
     <div class="group-label">ADDITIONAL ORDER</div>
     ${metaHtml}
     <div class="divider"></div>
@@ -1860,6 +1878,25 @@ export function generateKitchenTicketContent(orderData, storeInfo) {
 
   // Initialize printer
   content += CMD.INIT;
+
+  // === STATION NAME BOX (모든 주방 티켓 상단 — Irene 2026-06-02) ===
+  // station-routed 티켓은 items 가 같은 stationName 을 가짐 → 거기서 도출.
+  // 미설정(단일 주방)이면 박스 생략. raw thermal 이라 dashed line 으로 박스 표현.
+  {
+    const _ts = (orderData.stationName
+      || (orderData.items || []).map(i => i && i.stationName).find(Boolean)
+      || '').toString().trim();
+    if (_ts) {
+      content += CMD.ALIGN_CENTER;
+      content += CMD.DASHED_LINE + CMD.LINE_FEED;
+      content += CMD.TEXT_DOUBLE + CMD.BOLD_ON;
+      content += _ts.toUpperCase() + CMD.LINE_FEED;
+      content += CMD.TEXT_NORMAL + CMD.BOLD_OFF;
+      content += CMD.DASHED_LINE + CMD.LINE_FEED;
+      content += CMD.LINE_FEED;
+      content += CMD.ALIGN_LEFT;
+    }
+  }
 
   // === NOTICE HEADER (table-move reissue 등) — orderData.noticeHeader 설정 시에만.
   // 일반 발행은 미설정이라 출력 100% 동일(영향 0). 방식 무변경, 콘텐츠 신규 필드만.
@@ -2113,6 +2150,21 @@ export function generateSingleItemKitchenTicket(orderData, item, itemIndex, tota
   // Initialize printer
   content += CMD.INIT;
 
+  // === STATION NAME BOX (모든 주방 티켓 상단 — Irene 2026-06-02) ===
+  {
+    const _ts = ((item && item.stationName) || orderData.stationName || '').toString().trim();
+    if (_ts) {
+      content += CMD.ALIGN_CENTER;
+      content += CMD.DASHED_LINE + CMD.LINE_FEED;
+      content += CMD.TEXT_DOUBLE + CMD.BOLD_ON;
+      content += _ts.toUpperCase() + CMD.LINE_FEED;
+      content += CMD.TEXT_NORMAL + CMD.BOLD_OFF;
+      content += CMD.DASHED_LINE + CMD.LINE_FEED;
+      content += CMD.LINE_FEED;
+      content += CMD.ALIGN_LEFT;
+    }
+  }
+
   // === ORDER INFO ===
   content += CMD.ALIGN_LEFT;
   content += CMD.DASHED_LINE + CMD.LINE_FEED;
@@ -2265,6 +2317,10 @@ function generateHTMLMultiPageKitchenTickets(orderData, storeInfo) {
     const stationTagHtml = item.stationName
       ? ` <span class="station-tag">${escapeHtmlForPrint(item.stationName.toUpperCase())}</span>`
       : '';
+    const _pageStation = (item.stationName || orderData.stationName || '').toString().trim();
+    const stationBoxHtml = _pageStation
+      ? `<div style="border:2px solid #000;border-radius:6px;padding:5px 0;text-align:center;font-size:17px;font-weight:800;letter-spacing:2px;margin-bottom:6px;">${escapeHtmlForPrint(_pageStation.toUpperCase())}</div>`
+      : '';
     const optionsHtml = (item.options || []).map(opt =>
       `<div class="item-option" style="font-size:13px;font-weight:600;">★ ${escapeHtmlForPrint(typeof opt === 'string' ? opt : (opt?.name || ''))}</div>`
     ).join('');
@@ -2276,6 +2332,7 @@ function generateHTMLMultiPageKitchenTickets(orderData, storeInfo) {
     ` : '';
     return `
       <div class="ticket-page${isLastPage ? '' : ' page-break'}">
+        ${stationBoxHtml}
         ${metaHtml}
         <div class="divider"></div>
         <div class="group-label">ITEM ${itemIndex} of ${totalItems}</div>
@@ -3566,6 +3623,19 @@ function generateStationKitchenTicket(orderData, storeInfo, stationName, ticketI
 function generateCancellationTicketContent(orderData, storeInfo, reason) {
   let content = '';
   content += CMD.INIT;
+
+  // station 이름 박스 — 모든 주방 티켓 상단 통일(신규/취소 동일, Irene 2026-06-02).
+  // raw thermal 이라 dashed line 으로 박스 표현. orderData.stationLabel 없으면 미표기(하위호환).
+  if (orderData.stationLabel) {
+    content += CMD.ALIGN_CENTER;
+    content += CMD.DASHED_LINE + CMD.LINE_FEED;
+    content += CMD.TEXT_DOUBLE + CMD.BOLD_ON;
+    content += String(orderData.stationLabel).toUpperCase() + CMD.LINE_FEED;
+    content += CMD.TEXT_NORMAL + CMD.BOLD_OFF;
+    content += CMD.DASHED_LINE + CMD.LINE_FEED;
+    content += CMD.LINE_FEED;
+  }
+
   content += CMD.ALIGN_CENTER;
   content += CMD.REVERSE_ON + CMD.TEXT_DOUBLE + CMD.BOLD_ON;
   // cancelTitle override: R9='*** ITEM CANCELLED ***' / R10='*** ORDER CANCELLED ***'.
@@ -3573,15 +3643,6 @@ function generateCancellationTicketContent(orderData, storeInfo, reason) {
   content += ' ' + (orderData.cancelTitle || '*** CANCELLED ***') + ' ';
   content += CMD.LINE_FEED + CMD.LINE_FEED;
   content += CMD.REVERSE_OFF + CMD.TEXT_NORMAL + CMD.BOLD_OFF;
-
-  // station 이름 상단 표기 (원래 주방티켓 [ STATION ] 과 동일) — station별 라우팅 시
-  // 어느 주방 취소표인지 한눈에. orderData.stationLabel 없으면 미표기(하위호환).
-  if (orderData.stationLabel) {
-    content += CMD.ALIGN_CENTER + CMD.TEXT_DOUBLE + CMD.BOLD_ON;
-    content += '[ ' + String(orderData.stationLabel).toUpperCase() + ' ]' + CMD.LINE_FEED;
-    content += CMD.TEXT_NORMAL + CMD.BOLD_OFF;
-    content += CMD.LINE_FEED;
-  }
 
   content += CMD.TEXT_DOUBLE_HEIGHT + CMD.BOLD_ON;
   content += 'Order #' + (orderData.orderNumber || orderData.order_number || '') + CMD.LINE_FEED;
@@ -3657,8 +3718,8 @@ function generateHTMLCancellationTicket(orderData, storeInfo, reason) {
   if (reason) metaRows.push(`<div class="meta-row"><span class="meta-label">Reason</span><span>${escapeHtmlForPrint(String(reason))}</span></div>`);
 
   return wrapPrintHTML(`Cancelled - ${orderNumber}`, `
+    ${orderData.stationLabel ? `<div style="border:2px solid #000;border-radius:6px;padding:5px 0;text-align:center;font-size:17px;font-weight:800;letter-spacing:2px;margin-bottom:6px;">${escapeHtmlForPrint(String(orderData.stationLabel).toUpperCase())}</div>` : ''}
     <div class="banner banner-strong" style="background:#000;color:#fff;border-color:#000;">${escapeHtmlForPrint(orderData.cancelTitle || '*** CANCELLED ***')}</div>
-    ${orderData.stationLabel ? `<div style="text-align:center;font-size:20px;font-weight:800;margin:2px 0;">[ ${escapeHtmlForPrint(String(orderData.stationLabel).toUpperCase())} ]</div>` : ''}
     <div class="medium-number">Order #${escapeHtmlForPrint(orderNumber)}</div>
     ${metaRows.length ? `<div class="meta">${metaRows.join('')}</div>` : ''}
     <div class="divider"></div>
@@ -3684,10 +3745,8 @@ export async function printCancellationTicket(orderData, storeInfo, reason, prin
       console.log('[CANCEL TICKET] Kitchen printer disabled, skip');
       return true;
     }
-    if (settings.kitchenPrinter.printCancellationTicket === false) {
-      console.log('[CANCEL TICKET] Option OFF, skip');
-      return true;
-    }
+    // 확정 스펙 v2 (2026-06-02): 취소는 주방이 무조건 알아야 하므로 항상 발송.
+    // printCancellationTicket 설정 게이트 삭제(설정 자체 제거됨).
     // Emergency Routing Mode — cancellation ticket also goes to the cashier
     // printer so staff can hand-deliver the cancellation to the right station.
     if (settings.emergencyMode) {
@@ -3757,7 +3816,7 @@ export async function printCancellationTicketsByStation(orderData, storeInfo, re
   try {
     const settings = getPrinterSettings();
     if (!settings.kitchenPrinter || !settings.kitchenPrinter.enabled) return true;
-    if (settings.kitchenPrinter.printCancellationTicket === false) return true;
+    // 확정 스펙 v2: 취소는 항상 발송 (printCancellationTicket 게이트 삭제).
     if (settings.emergencyMode) {
       // 비상모드: station 라우팅 무시, 캐셔 프린터로 (기존 취소표 정책과 동일).
       return await printCancellationTicket(orderData, storeInfo, reason);

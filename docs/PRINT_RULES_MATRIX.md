@@ -1,8 +1,8 @@
 # 프린팅 규칙 매트릭스
 
-> **최종 업데이트:** 2026-06-01 (§ 9 주문루트 × 주요설정 검증 매트릭스 추가 — 4-케이스 오더티켓 포함)
-> **관련 파일:** `dev-frontend/src/utils/billPrint.js`, `dev-frontend/src/pages/Settings/SettingsPage.tsx`
-> **검증 계약:** **§ 9** 가 `/검증`·`/운영검증` 이 "그대로 대조" 하는 단일 표. 동작이 § 9 와 다르면 코드를 고친다(규칙 X). § 0~8 은 경로 상세, § 9 는 루트×설정 종합.
+> **최종 업데이트:** 2026-06-02 (§ 9 v2 — 취소·이동 **항상 발송 + 알림형 팝업**, station 박스 전 티켓, KDS 취소/머지 팝업, `printCancellationTicket` 설정 삭제 / § 10 **실프린터 테스트 가이드** 추가)
+> **관련 파일:** `dev-frontend/src/utils/billPrint.js`, `dev-frontend/src/pages/Settings/SettingsPage.tsx`, `dev-frontend/src/components/Print/KitchenTicketSendModal.tsx`, `dev-frontend/src/pages/KitchenDisplay/KitchenDisplayPage.tsx`
+> **검증 계약:** **§ 9** = `PRINT-ROUTE MATRIX` (주문루트 × 설정 인쇄·알림 검증 매트릭스). `/검증`·`/운영검증` 이 "그대로 대조" 하는 단일 표. 동작이 § 9 와 다르면 코드를 고친다(규칙 X). § 0~8 은 경로 상세, § 9 는 루트×설정 종합, **§ 10 = 실프린터 눈 확인 따라하기 체크리스트**.
 
 ---
 
@@ -317,9 +317,17 @@ backend mergeItemsIntoOrder() 성공
 
 ---
 
-## 9. 주문루트 × 주요설정 검증 매트릭스 (2026-06-01 — 검증 계약)
+## 9. PRINT-ROUTE MATRIX — 주문루트 × 설정 인쇄·알림 검증 매트릭스 (2026-06-02 v2 — 검증 계약)
 
 > `/검증`(DEV)·`/운영검증`(운영) 이 **이 표 그대로** 대조한다. 동작이 다르면 코드를 고친다.
+>
+> **v2 핵심 변경 (2026-06-02, Irene 확정 — `docs/TABLE_MOVE_AND_VOID_TICKET.md` § 확정 스펙 v2):**
+> 1. **취소(R9/R10)·이동(R7/R8) = 자동발행 설정과 무관하게 항상 발송.** "보낼지 말지" 묻지 않음.
+> 2. **S1(autoPrint) master 는 신규주문(R1~R6)에만** 적용. 취소·이동엔 게이트 아님.
+> 3. **발송 후 화면엔 알림형 팝업** (제목 "Sent to kitchen", 푸터 `[재발송][닫기]`). 자동 ON·OFF 모두 뜸.
+> 4. **모든 오더티켓 상단 station 이름 박스** (신규·추가·이동·취소 전부 / HTML·ESC-POS 양 포맷).
+> 5. **KDS 화면 팝업** = **탭(현재 station) 기준** 필터. 종류: 아이템취소(빨강)·주문취소(빨강)·이동(앰버)·이동+머지(앰버).
+> 6. **`printCancellationTicket`(S5) 설정 삭제** — 취소는 무조건 발송이라 토글 불필요.
 
 ### 9-1. 축 정의
 
@@ -345,7 +353,7 @@ backend mergeItemsIntoOrder() 성공
 | S2 | station printers 유무 | 0 / 1+ |
 | S3 | `printPerItem` | ON / OFF |
 | S4 | `mirrorToBillPrinter` | ON / OFF |
-| S5 | `printCancellationTicket` | ON / OFF |
+| ~~S5~~ | ~~`printCancellationTicket`~~ | **(삭제됨 v2)** — 취소는 항상 발송 |
 | S6 | `billPrinter.autoPrint` | ON / OFF |
 | S7 | `printerMode` | rawbt / browser / qz |
 | S8 | 멀티존(zone별 station 분리) | 유 / 무 |
@@ -354,37 +362,41 @@ backend mergeItemsIntoOrder() 성공
 
 | 출력 | 게이트 | OFF 시 |
 |------|--------|--------|
-| 주방 오더티켓(자동) | **S1 master** + station/kitchen enabled | 자동 X → **수동 버튼으로만** |
+| **신규주문** 오더티켓(자동, R1~R6) | **S1 master** + station/kitchen enabled | 자동 X → **수동 버튼으로만** |
 | station별 분배 | S2 (1+ → 경로 A) | S2=0 → 합본/per-item (경로 B/C) |
 | 아이템별 개별 티켓 | S3 | OFF → 합본 1장 |
 | POS 미러(통합 1장) | S4 | 미러 X |
-| 취소표(R9/R10) | S1 + S5 + `wasInKitchen`(주방 진입분만) | 취소표 X |
+| **이동표(R7/R8)** | **S1 무관 — 항상 발송** + `wasInKitchen` | (게이트 없음) 발송 후 알림팝업 |
+| **취소표(R9/R10)** | **S1 무관 — 항상 발송** + `wasInKitchen`(주방 진입분만) | (게이트 없음) 발송 후 알림팝업 |
 | 결제 영수증(자동) | S6 | 자동 X (수동 인쇄) |
 | 한글 정상 | S7=qz(HTML pixel) | raw ESC/POS=한글 깨짐(LAN IP 전용) |
 
-> **핵심**: **S1(master)** 가 모든 주방 자동발행의 최상위 게이트. OFF면 R1~R10 어떤 주방티켓도 **자동으로 안 나감** → 수동 경로만. (KDS 는 항상 표시 전용, 인쇄 주체 아님.)
+> **핵심 (v2)**: **S1(master)** 는 **신규주문(R1~R6) 자동발행**의 최상위 게이트. OFF면 신규 주방티켓은 자동으로 안 나감 → 수동 버튼만. **단, 이동(R7/R8)·취소(R9/R10)는 S1 과 무관하게 항상 발송**(주방이 무조건 알아야 함) + 발송 후 화면 알림팝업. (KDS 는 항상 표시 전용, 인쇄 주체 아님.)
 
 ### 9-3. 주문루트별 출력 (핵심 계약)
 
-> "자동발행 ON" = S1 ON 기준. "수동(OFF)" = S1 OFF 시 동작.
+> "신규주문(R1~R6)" = S1 ON/OFF 로 자동/수동 갈림. **"이동·취소(R7~R10)" = S1 무관, 항상 발송 + 알림팝업.**
+> **모든 티켓(R1~R10) 상단에 station 이름 박스** (HTML=테두리 박스 / ESC-POS=점선 프레임). station 미설정(단일 주방) 매장은 박스 생략.
 
-| 루트 | 자동발행 ON (S1 ON) | 수동 (S1 OFF) | 헤더 | 미러(S4 ON) |
-|------|--------------------|--------------|------|------------|
-| R1/R3/R4/R5 신규주문 | station별 오더티켓 1장씩(S2 1+) / 합본·per-item(S2 0) | OrderComplete·LiveOrders **Kitchen Ticket 버튼** | (없음/일반) | 빌프린터 통합 1장 |
-| R2 오버레이 주문 | **부모만** 발행 (오버레이 중복 poller off) → 1장 | 〃 | 일반 | 〃 |
-| R6 +Round | **추가 품목만** 1장 (`added_at` 필터) | 수동 버튼 | `** ADDITIONAL ORDER **` | 추가분 미러 |
-| R7 이동→빈 | 옛 station **VOID** 1장 + 새 station **재발행** 1장 (station 동일 시 재발행 skip) | confirm 모달 `확인+인쇄` | `** TABLE CHANGED **` | 해당 |
-| R8 이동→머지 | 〃 + 머지 합본 | 〃 | `** TABLE CHANGED + MERGED **` | 해당 |
-| R9 아이템 취소 | 그 아이템 **station 에만** 취소표(줄긋기). 주방 미진입분은 발행 X | 사유 모달 `확인+인쇄` | `*** ITEM CANCELLED ***` | — |
-| R10 전체 취소 | **station별** 각 station 아이템만 줄긋기 취소표 | confirm 모달 `확인+인쇄` | `*** ORDER CANCELLED ***` | — |
-| R11 결제 | (주방 무관) S6 ON → 영수증 자동, 설정 매수 | 수동 인쇄 | 영수증 | — |
+| 루트 | 자동발행 ON (S1 ON) | S1 OFF / 발송 정책 | 헤더 | 미러(S4 ON) | KDS 팝업(탭기준) |
+|------|--------------------|--------------------|------|------------|------------------|
+| R1/R3/R4/R5 신규주문 | station별 오더티켓 1장씩(S2 1+) / 합본·per-item(S2 0) | 수동: OrderComplete·LiveOrders **Kitchen Ticket 버튼** | (일반) + station박스 | 빌프린터 통합 1장 | — |
+| R2 오버레이 주문 | **부모만** 발행 (오버레이 poller off) → 1장 | 〃 | 일반 | 〃 | — |
+| R6 +Round | **추가 품목만** 1장 (`added_at` 필터) | 수동 버튼 | `** ADDITIONAL ORDER **` | 추가분 미러 | — |
+| R7 이동→빈 | 옛 station **VOID**(이동표) + 새 station **재발행** | **S1 무관 항상 발송** + 알림팝업`[재발송][닫기]` | `** TABLE CHANGED **` | 해당 | 이동(앰버) `moved A→B` |
+| R8 이동→머지 | 〃 + 머지 합본 | **항상 발송** + 알림팝업 | `** TABLE CHANGED + MERGED **` | 해당 | 이동+머지(앰버) `merged into #Y` |
+| R9 아이템 취소 | 그 아이템 **station 에만** 취소표(줄긋기). 주방 미진입분 발행 X | **항상 발송** + 알림팝업 | `*** ITEM CANCELLED ***` | — | 아이템취소(빨강) |
+| R10 전체 취소 | **station별** 각 station 아이템만 줄긋기 취소표 | **항상 발송** + 알림팝업 | `*** ORDER CANCELLED ***` | — | 주문취소(빨강) |
+| R11 결제 | (주방 무관) S6 ON → 영수증 자동, 설정 매수 | 수동 인쇄 | 영수증 | — | — |
 
-**4-케이스 티켓 내용** (R7~R10): `docs/TABLE_MOVE_AND_VOID_TICKET.md` § 설계 2 단일 진실. 줄긋기 = HTML `line-through` / ESC-POS `~~`·reverse. station 라우팅 = `stationEnrichment`(resolveProductId+이름폴백) 재사용 — **인쇄 방식/주소 무변경, 콘텐츠·신규필드(`noticeHeader`)만**.
+**4-케이스 티켓 내용** (R7~R10): `docs/TABLE_MOVE_AND_VOID_TICKET.md` § 확정 스펙 v2 단일 진실. 줄긋기 = HTML `line-through` / ESC-POS reverse. station 라우팅 = `stationEnrichment`(resolveProductId+이름폴백) 재사용 — **인쇄 방식/주소 무변경, 콘텐츠·신규필드(`noticeHeader`·station박스)만**.
+
+**KDS 팝업 vs 인쇄 라우팅 (다른 기준!)**: 인쇄(종이)는 **프린터 IP/station** 기준 라우팅. KDS 화면 팝업은 **현재 열린 탭(All/Station1/…)** 기준 필터 — 그 탭에 해당 아이템이 있을 때만 뜸. 인쇄와 팝업은 독립.
 
 ### 9-4. 설정 조합 상세 (S2 × S3 은 § 6 표 재사용)
 - **S2/S3** (station 유무 × printPerItem): § 6 "Station 유무에 따른 동작 비교" 그대로. R7~R10 도 동일 분배 로직.
 - **S7 한글**: qz(HTML pixel)=정상 / raw ESC-POS=깨짐 → LAN IP 프린터만 raw. 취소표/재발행도 같은 경로 따름.
-- **S5 OFF**: R9/R10 취소표 자체를 안 냄(주방이 손으로 확인). R7/R8 재발행은 S5 무관(정규 발행).
+- **~~S5 OFF~~ (삭제됨 v2)**: 취소표는 이제 설정 토글 없이 **항상 발송**. (옛 "S5 OFF → 취소표 안 냄" 규칙 폐기.)
 - **S8 멀티존**: 이동 시 옛/새 station 다를 수 있음 → R7/R8 의 VOID+재발행이 의미. 단일존이면 station 동일 → 재발행 skip.
 
 ### 9-5. 검증 분담 (API vs 실프린터)
@@ -419,10 +431,67 @@ C1~C5 모두 §9 일치 확인 (라우팅·건수·미러·취소 station별).
 
 ---
 
+## 10. 실프린터 테스트 가이드 (Irene 따라하기 — 종이·KDS·POS 눈 확인)
+
+> **목적:** v2 변경(취소·이동 항상 발송 + 알림팝업 + station 박스 + KDS 팝업)을 **실제 매장 프린터·KDS·POS 화면에서** 한 줄씩 따라 확인. 코드/헤드리스로는 종이·화면을 못 보므로 **이 체크리스트가 최종 검증.**
+> **테스트 매장:** 운영 영업 외 시간 또는 데모/테스트 매장. (운영 주문/결제 실데이터 변경 주의.)
+> **표기:** 종이 = 실제 출력물, KDS = 주방 디스플레이 화면 팝업, POS = 주문 낸 단말 화면 알림팝업.
+
+### 10-0. 사전 준비 (한 번)
+- [ ] 카운터 POS 의 QZ Tray 가 주방 station 프린터 + 빌프린터를 **모두 인식**하는지 (Settings > Printer 에서 프린터명 일치).
+- [ ] station 매장이면 `kitchenStationPrinters` 에 station별 프린터명·stationName 설정.
+- [ ] 테스트할 메뉴가 서로 **다른 station** 에 걸리게 1~2개 준비 (예: 음식@KITCHEN, 음료@BAR).
+
+### 10-A. 신규주문 — station 박스 + 자동/수동 (R1·R3~R5)
+1. [ ] **S1(autoPrint) ON** 상태에서 신규 주문 1건.
+   - 종이: station별 1장씩(또는 단일주방 1장). **상단에 station 이름 박스** 보이는가? 한글 정상인가(qz)?
+   - 미러 S4 ON 이면: 빌프린터에 **통합 1장** 더.
+2. [ ] **S1 OFF** 로 바꾸고 신규 주문 → **자동으로 안 나와야** 정상. OrderComplete/LiveOrders 의 **Kitchen Ticket 버튼**으로 수동 발행 → 종이 정상 + station 박스.
+
+### 10-B. 추가주문 +Round (R6)
+3. [ ] 진행 중 주문에 품목 추가 → **추가된 품목만** 1장 (`** ADDITIONAL ORDER **` 헤더 + station 박스). 이전 품목 재발행 **안 됨**.
+
+### 10-C. 테이블 이동 (R7 빈 / R8 머지) — 항상 발송 + 알림 + KDS
+4. [ ] **S1 OFF 인 상태에서도** (중요) Floor Plan 에서 주문을 **빈 테이블**로 이동.
+   - 종이: 옛 station VOID(이동 안내) + 새 station 재발행. **station 박스** + `** TABLE CHANGED **` 헤더.
+   - POS(이동한 단말): **"Sent to kitchen" 알림팝업** + `[재발송][닫기]`. → 재발송 누르면 종이 한 번 더.
+   - KDS(All 또는 해당 station 탭): **앰버 팝업** "Order #.. moved A→B".
+5. [ ] **점유 테이블로 이동(머지)**.
+   - 종이: `** TABLE CHANGED + MERGED **` + station 박스.
+   - KDS: **앰버 팝업** "merged into #Y".
+   - KDS 의 **다른 station 탭**으로 옮겨가면, 그 station 아이템이 없는 주문이면 팝업 **안 떠야** 정상(탭 기준 필터).
+
+### 10-D. 아이템 취소 (R9) — 항상 발송 + 알림 + KDS
+6. [ ] **주방에 이미 간(조리중) 아이템**을 LiveOrders 또는 **Floor Plan 패널**에서 삭제.
+   - 종이: 그 아이템 **station 에만** 취소표(줄긋기) + station 박스 + `*** ITEM CANCELLED ***`.
+   - POS: "Sent to kitchen" 알림팝업.
+   - KDS(그 station 탭/All): **빨강 팝업** "n × 메뉴 was cancelled / Do NOT prepare".
+7. [ ] **아직 주방 안 간(pending)** 아이템 삭제 → 종이/KDS **안 나와야** 정상(주방 미진입분 제외).
+
+### 10-E. 주문 전체 취소 (R10) — 항상 발송 + 알림 + KDS
+8. [ ] 조리중 주문을 LiveOrders 또는 **Floor Plan 패널**에서 전체 취소.
+   - 종이: **station별** 각자 아이템만 줄긋기 취소표 + station 박스 + `*** ORDER CANCELLED ***`.
+   - POS: "Sent to kitchen" 알림팝업.
+   - KDS: **빨강 팝업** "Order #.. was cancelled / Stop preparing this order".
+
+### 10-F. 설정 삭제 확인 (S5)
+9. [ ] Settings > Printer 탭에 **"Print cancellation ticket" 토글이 사라졌는지** 확인. (취소는 항상 발송이므로 토글 없음.)
+
+### 10-G. 통과 기준
+- [ ] 모든 종이 티켓 상단에 **station 박스**가 있고 한글이 안 깨진다(qz).
+- [ ] 취소·이동은 **S1 ON/OFF 무관하게** 종이가 나가고, POS 에 알림팝업이 뜬다.
+- [ ] KDS 팝업이 **현재 탭 기준**으로만 뜬다(다른 station 탭에선 무관 주문 안 뜸).
+- [ ] 중복 티켓 0 (한 동작에 한 station 1장). 무음 실패 0.
+
+> **문제 발견 시:** 동작이 § 9 와 다르면 **코드를 고친다(규칙 X)**. 🔒 billPrint/KitchenDisplay/orders-crud 변경은 이 가이드 통과 + Irene 승인 후 `node scripts/check-print-guard.js --bless` → 그 다음 배포.
+
+---
+
 ## 변경 이력
 
 | 날짜 | 변경 |
 |------|------|
+| 2026-06-02 | **§ 9 v2** — 취소(R9/R10)·이동(R7/R8) **항상 발송**(S1 무관) + **알림형 팝업**(Sent to kitchen·[재발송][닫기]) / **모든 티켓 station 박스**(HTML·ESC-POS) / **KDS 취소·머지 팝업**(탭 기준) / **S5 `printCancellationTicket` 설정 삭제** / **§ 10 실프린터 테스트 가이드** 신설. ⚠️ 실프린터 종이 확인 + `--bless` 미완(배포 전 의무). |
 | 2026-06-01 | § 9-6 런타임 대조 결과 추가 (C1~C5 §9 일치 / C6 kitchenPrinter.enabled+station 불일치 = 코드 우회, 실게이트는 autoPrint) |
 | 2026-06-01 | § 9 주문루트(11) × 주요설정(8) 검증 매트릭스 추가 — R7~R10 4-케이스 오더티켓(이동 빈/머지, 아이템/전체 취소) + 자동/수동 게이트 |
 | 2026-03-17 | Kitchen Station 시스템 Phase 5: Station별 분리 인쇄 추가 |

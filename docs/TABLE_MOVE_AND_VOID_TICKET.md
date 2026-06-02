@@ -205,3 +205,42 @@ Order  260601-003   TABLE U-1
 - 호출부: FloorPlanPage(이동 noticeHeader), LiveOrders(아이템취소 strike·전체취소 station경유).
 - 🔒 변경 후 check-print-guard --bless(Irene 승인) + 실프린터: 이동(버리라 안내) / 아이템취소(줄긋기) / 전체취소(station별 줄긋기) 눈 확인.
 - 한 번에 하나씩 실프린터 확인(A→B→C), 동시 인쇄변경 금지.
+
+---
+
+## 🔒 확정 스펙 v2 (2026-06-02, Irene 확정) — 위 "자동발행 OFF=물어보기" 모델 대체
+
+> 위 v1 게이트("자동 OFF → 보낼지 confirm")는 **폐기**. 새 원칙: **취소·이동은 주방이 무조건 알아야 하므로 묻지 않고 항상 발송**, 팝업은 "보낼까요?"가 아니라 **알림(무엇을 어디로 보냈는지)**.
+
+### 1. 발송 게이트 (단일 규칙)
+- **취소(아이템/전체)·테이블 이동·이동+머지 → 자동발행 설정과 무관하게 항상 발송.** 안 보내는 선택지 없음.
+- **`kitchenPrinter.autoPrint`(마스터)는 "신규 주문 오더티켓"에만** 적용 (ON=자동 / OFF=직원 수동 인쇄).
+- **`printCancellationTicket` 별도 설정 삭제** (취소는 무조건 발송이므로 토글 불필요).
+
+### 2. 화면 팝업 (KitchenTicketSendModal 개편)
+- "Send order ticket to kitchen? / Don't send·Send" (허락형) → **알림형**으로: 제목 "주방에 발송됨", 푸터 `[재발송] [닫기]`. 항상(자동 ON·OFF 모두) 뜸.
+- 본문: 발송 대상 station 별 미리보기(`previewStationBuckets`) 그대로.
+
+### 3. KDS(주방 디스플레이) 화면 팝업 — **탭(curStation) 기준** (인쇄는 프린터 IP 기준)
+- 팝업은 **현재 열린 탭** 기준 필터: All=전체 / Station탭=그 station 아이템만. (item-voided/table-moved 는 이미 curStation 필터 동작.)
+- 종류: **아이템취소(void, 빨강)** ✓있음 / **테이블이동(move, 앰버)** ✓있음 / **주문취소 전용(ORDER CANCELLED, 빨강) 신설** / **이동+머지 전용 문구("merged into Tx") 신설**.
+
+### 4. 모든 오더티켓 상단 **station 이름 박스** (신규/취소/이동 전부)
+- 현재 station 은 아이템 옆 인라인 태그뿐 → **티켓 상단에 station 이름 박스 헤더** 추가(모든 티켓). HTML(QZ) + ESC/POS 양 포맷.
+
+### 5. 라우팅 범위
+- **이동**: 그 주문 아이템이 가 있는 **모든 station** (옛 station VOID + 새 station 재발행).
+- **취소(아이템/전체)**: **이미 발행됐던(주방 진입) 아이템의 station 에만**. 미발행분 제외.
+- station 없는 매장 → POS(카운터) 인쇄(미러 설정 따름).
+
+### 6. 전 화면 동일 — Floor Plan 취소/아이템삭제 연결
+- 현재 Live Orders(취소)·Floor Plan(이동)만 연결됨 → **Floor Plan 패널 취소/아이템삭제**도 동일 발송+알림 연결. POS 포함 어디서든 동일.
+
+### 구현 체크리스트 (✗=미구현, 실프린터 확인 시점 진행)
+1. ✓ 모든 티켓 상단 station 박스 (billPrint🔒) — 2026-06-02 구현. 7개 티켓 함수 전부(HTML 신규/추가/멀티페이지 + ESC/POS raw/단품 + 취소 ESC/HTML). **실프린터 종이 확인 미완 → 배포 전 의무.**
+2. ✓ 무조건 발송 + 알림형 팝업 — 2026-06-02. KitchenTicketSendModal 알림형(제목 "Sent to kitchen", [재발송][닫기]) + LiveOrders 취소/아이템취소 게이트 always-send + FloorPlan 이동 always-send. orders.json ticketSend.* 4개키 4언어.
+3. ✓ 주문취소 전용 KDS 팝업 + 이동+머지 문구 — 2026-06-02. KitchenDisplayPage🔒 order-updated(cancelled) 감지→ORDER CANCELLED 팝업(빨강, printed+탭필터), table-moved 핸들러 merged 분기. 백엔드 orders-crud.js🔒 merged 브랜치에 table-moved(merged:true) emit + mergedFromOrderNumber. kitchen.json notice.* 4키 4언어.
+4. ✓ Floor Plan 취소/아이템삭제 발송 연결 — 2026-06-02. TableDetailPanel handleCancelOrder(취소전 주문상세 fetch→printed 라우팅)/handleDeleteItem(removedItem) → printCancellationTicket(sByStation) 항상 발송 + onKitchenTicketSent 콜백→FloorPlanPage 알림 모달.
+5. ✓ `printCancellationTicket` 설정 삭제 — 2026-06-02. SettingsPage 토글/ref 제거 + billPrint🔒 게이트 2곳 제거(항상 발송). (default/load 잔존 필드는 미사용, 무해.)
+- ✓ 이미: 이동/취소 티켓 인쇄, station 라우팅, KDS void/move 팝업 + 탭필터.
+- 🔒 billPrint/KitchenDisplay 변경 후 `check-print-guard --bless`(Irene 승인) + **실프린터 눈 확인** 의무. 한 번에 하나씩.

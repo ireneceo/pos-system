@@ -646,7 +646,18 @@ router.get('/:id/table-status', authenticateToken, async (req, res) => {
       }
     }
 
-    res.json({ success: true, data: tableStatusMap });
+    // 오늘 per-table 이력 맵 — 점유(data)와 분리. 완료/cleared 포함한 오늘 전체 주문을
+    // 테이블별로 모아, 빈 테이블을 눌러도 우측 패널 탭으로 오늘 주문을 다 볼 수 있게 한다.
+    // (보드 점유 색은 data 기준 — 여기는 보드에 영향 없음. Irene 2026-06-02)
+    const historyMap = {};
+    for (const order of activeOrders) {  // activeOrders = 오늘 non-cancelled 전체(완료/cleared 포함)
+      const key = order.floor_plan_table_id || order.table_number;
+      if (!key) continue;
+      if (!historyMap[key]) historyMap[key] = [];
+      historyMap[key].push(buildOrderInfo(order));  // 이미 createdAt DESC 정렬
+    }
+
+    res.json({ success: true, data: tableStatusMap, history: historyMap });
   } catch (error) {
     console.error('Error fetching table status:', error);
     res.status(500).json({ success: false, error: error.message });
