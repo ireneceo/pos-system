@@ -68,8 +68,8 @@ interface TableDetailPanelProps {
 const Panel = styled.div`
   width: 380px;
   min-width: 380px;
-  background: white;
-  border-left: 1px solid #C7CED6;
+  background: var(--pos-surface, white);
+  border-left: 1px solid var(--pos-border, #C7CED6);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -85,7 +85,7 @@ const Panel = styled.div`
 
 const PanelHeader = styled.div`
   padding: 16px 20px;
-  border-bottom: 1px solid #C7CED6;
+  border-bottom: 1px solid var(--pos-border, #C7CED6);
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -96,7 +96,7 @@ const TableTitle = styled.div`
   h3 {
     font-size: 18px;
     font-weight: 700;
-    color: #0A2540;
+    color: var(--pos-text, #0A2540);
     margin: 0;
   }
 `;
@@ -106,7 +106,7 @@ const TableMeta = styled.div`
   gap: 12px;
   margin-top: 4px;
   font-size: 12px;
-  color: #4B5563;
+  color: var(--pos-text-muted, #4B5563);
   font-weight: 500;
 `;
 
@@ -114,13 +114,13 @@ const CloseBtn = styled.button`
   background: none;
   border: none;
   font-size: 18px;
-  color: #4B5563;
+  color: var(--pos-text-muted, #4B5563);
   cursor: pointer;
   padding: 2px 6px;
   border-radius: 4px;
   flex-shrink: 0;
 
-  &:hover { background: #F1F4F8; }
+  &:hover { background: var(--pos-surface-2, #F1F4F8); }
 `;
 
 const BadgeRow = styled.div`
@@ -147,13 +147,13 @@ const PanelBody = styled.div`
 
 const Section = styled.div`
   padding: 14px 20px;
-  border-bottom: 1px solid #C7CED6;
+  border-bottom: 1px solid var(--pos-border, #C7CED6);
 `;
 
 const SectionTitle = styled.div`
   font-size: 11px;
   font-weight: 600;
-  color: #6B7280;
+  color: var(--pos-text-muted, #6B7280);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 8px;
@@ -170,12 +170,12 @@ const InfoItem = styled.div`
 `;
 
 const InfoLabel = styled.span`
-  color: #6B7280;
+  color: var(--pos-text-muted, #6B7280);
   font-weight: 500;
 `;
 
 const InfoValue = styled.span`
-  color: #0A2540;
+  color: var(--pos-text, #0A2540);
   font-weight: 600;
   margin-left: 4px;
 `;
@@ -184,7 +184,7 @@ const GroupHeader = styled.div<{ $isAdded?: boolean }>`
   padding: 5px 0;
   font-size: 10px;
   font-weight: 600;
-  color: ${p => p.$isAdded ? '#92400E' : '#4B5563'};
+  color: ${p => p.$isAdded ? '#92400E' : 'var(--pos-text-muted, #4B5563)'};
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -196,7 +196,7 @@ const ItemRow = styled.div<{ $completed?: boolean }>`
   align-items: center;
   gap: 8px;
   padding: 8px 0;
-  border-bottom: 1px solid #F1F4F8;
+  border-bottom: 1px solid var(--pos-border, #F1F4F8);
   opacity: ${p => p.$completed ? 0.55 : 1};
   transition: opacity 0.2s;
 
@@ -280,7 +280,7 @@ const ItemInfo = styled.div`
 const ItemName = styled.div<{ $completed?: boolean }>`
   font-size: 13px;
   font-weight: 600;
-  color: #0A2540;
+  color: var(--pos-text, #0A2540);
   text-decoration: ${p => p.$completed ? 'line-through' : 'none'};
   word-break: break-word;
   line-height: 1.35;
@@ -292,14 +292,14 @@ const ItemName = styled.div<{ $completed?: boolean }>`
 
 const ItemOptions = styled.div`
   font-size: 10px;
-  color: #4B5563;
+  color: var(--pos-text-muted, #4B5563);
   margin-top: 1px;
 `;
 
 const ItemPrice = styled.div`
   font-size: 12px;
   font-weight: 600;
-  color: #0A2540;
+  color: var(--pos-text, #0A2540);
   white-space: nowrap;
   flex-shrink: 0;
   font-variant-numeric: tabular-nums;
@@ -311,7 +311,7 @@ const ItemPrice = styled.div`
 
 const ItemQty = styled.span`
   font-size: 11px;
-  color: #6B7280;
+  color: var(--pos-text-muted, #6B7280);
   font-weight: 500;
 `;
 
@@ -320,7 +320,7 @@ const DeleteItemBtn = styled.button`
   height: 20px;
   border: none;
   background: none;
-  color: #6B7280;
+  color: var(--pos-text-muted, #6B7280);
   font-size: 14px;
   cursor: pointer;
   flex-shrink: 0;
@@ -340,7 +340,7 @@ const SummaryRow = styled.div<{ $bold?: boolean }>`
   display: flex;
   justify-content: space-between;
   font-size: ${p => p.$bold ? '14px' : '12px'};
-  color: ${p => p.$bold ? '#0A2540' : '#4B5563'};
+  color: ${p => p.$bold ? 'var(--pos-text, #0A2540)' : 'var(--pos-text-muted, #4B5563)'};
   font-weight: ${p => p.$bold ? '700' : '500'};
   padding: 2px 0;
 `;
@@ -361,7 +361,7 @@ const ActionGroup = styled.div`
   flex-direction: column;
   gap: 6px;
   flex-shrink: 0;
-  border-top: 1px solid #C7CED6;
+  border-top: 1px solid var(--pos-border, #C7CED6);
 `;
 
 const ActionBtn = styled.button<{ $variant: 'primary' | 'secondary' | 'success' | 'danger' | 'link' }>`
@@ -381,11 +381,11 @@ const ActionBtn = styled.button<{ $variant: 'primary' | 'secondary' | 'success' 
       case 'success':
         return `background: #10B981; color: white; border: 1px solid #10B981; &:hover { background: #059669; }`;
       case 'secondary':
-        return `background: #F4F6F9; color: #4B5563; border: 1px solid #C7CED6; &:hover { background: #C7CED6; }`;
+        return `background: var(--pos-surface-2, #F4F6F9); color: var(--pos-text-muted, #4B5563); border: 1px solid var(--pos-border, #C7CED6); &:hover { background: var(--pos-border, #C7CED6); }`;
       case 'danger':
-        return `background: white; color: #DC2626; border: 1px solid #FCA5A5; &:hover { background: #FEF2F2; }`;
+        return `background: var(--pos-surface, white); color: #DC2626; border: 1px solid #FCA5A5; &:hover { background: #FEF2F2; }`;
       case 'link':
-        return `background: none; color: #4B5563; font-size: 13px; font-weight: 500; padding: 6px; &:hover { color: #1F2937; }`;
+        return `background: none; color: var(--pos-text-muted, #4B5563); font-size: 13px; font-weight: 500; padding: 6px; &:hover { color: var(--pos-text, #1F2937); }`;
     }
   }}
 `;
@@ -423,8 +423,8 @@ const IconButtonGroup = styled.div`
 const IconButton = styled.button`
   flex: 1;
   padding: 10px 12px;
-  background: #F4F6F9;
-  border: 1px solid #C7CED6;
+  background: var(--pos-surface-2, #F4F6F9);
+  border: 1px solid var(--pos-border, #C7CED6);
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.15s;
@@ -435,11 +435,11 @@ const IconButton = styled.button`
   min-height: 44px;
   font-size: 14px;
   font-weight: 600;
-  color: #4B5563;
+  color: var(--pos-text-muted, #4B5563);
   white-space: nowrap;
 
   &:hover {
-    background: #C7CED6;
+    background: var(--pos-border, #C7CED6);
     transform: translateY(-1px);
   }
 
@@ -451,7 +451,7 @@ const IconButton = styled.button`
 const IconSymbol = styled.span`
   font-size: 14px;
   font-family: 'Lucida Console', 'Courier New', monospace;
-  color: #4B5563;
+  color: var(--pos-text-muted, #4B5563);
   display: inline-block;
   line-height: 1;
 `;
@@ -464,7 +464,7 @@ const EmptyState = styled.div`
   justify-content: center;
   padding: 40px 20px;
   text-align: center;
-  color: #6B7280;
+  color: var(--pos-text-muted, #6B7280);
 
   p {
     margin: 8px 0 0;
@@ -549,7 +549,8 @@ const QRStatusInfo = styled.div`
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px;
-  background: #F9FAFB;
+  background: var(--pos-surface-2, #F9FAFB);
+  color: var(--pos-text, #0A2540);
   border-radius: 8px;
   font-size: 13px;
   margin-top: 8px;

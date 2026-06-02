@@ -29,9 +29,11 @@ interface OverflowMenuProps {
   ariaLabel?: string;
   /** Override trigger label — defaults to "More". */
   triggerTitle?: string;
+  /** Override the trigger glyph — defaults to the kebab (⋯). e.g. a gear icon. */
+  triggerIcon?: React.ReactNode;
 }
 
-const OverflowMenu: React.FC<OverflowMenuProps> = ({ items, ariaLabel = 'More actions', triggerTitle = 'More' }) => {
+const OverflowMenu: React.FC<OverflowMenuProps> = ({ items, ariaLabel = 'More actions', triggerTitle = 'More', triggerIcon }) => {
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
@@ -70,11 +72,13 @@ const OverflowMenu: React.FC<OverflowMenuProps> = ({ items, ariaLabel = 'More ac
         title={triggerTitle}
         onClick={() => setOpen(prev => !prev)}
       >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-          <circle cx="5" cy="12" r="2" />
-          <circle cx="12" cy="12" r="2" />
-          <circle cx="19" cy="12" r="2" />
-        </svg>
+        {triggerIcon || (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <circle cx="5" cy="12" r="2" />
+            <circle cx="12" cy="12" r="2" />
+            <circle cx="19" cy="12" r="2" />
+          </svg>
+        )}
       </Trigger>
       {open && (
         <Panel role="menu" aria-label={ariaLabel}>
@@ -111,16 +115,16 @@ const Trigger = styled.button`
   justify-content: center;
   width: 32px;
   height: 32px;
-  background: white;
-  border: 1px solid #C7CED6;
+  background: var(--pos-surface, white);
+  border: 1px solid var(--pos-border, #C7CED6);
   border-radius: 6px;
-  color: #1F2937;
+  color: var(--pos-text, #1F2937);
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
 
   &:hover {
-    background: #F1F4F8;
-    border-color: #B0BEC5;
+    background: var(--pos-surface-2, #F1F4F8);
+    border-color: var(--pos-brand, #B0BEC5);
   }
 
   &:focus-visible {
@@ -134,8 +138,8 @@ const Panel = styled.div`
   top: calc(100% + 6px);
   right: 0;
   min-width: 200px;
-  background: white;
-  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: var(--pos-surface, white);
+  border: 1px solid var(--pos-border, rgba(15, 23, 42, 0.08));
   border-radius: 12px;
   box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12), 0 2px 6px rgba(15, 23, 42, 0.06);
   padding: 6px;
@@ -156,14 +160,14 @@ const MenuItem = styled.button<{ $destructive?: boolean }>`
   border-radius: 8px;
   font-size: 13px;
   font-weight: 500;
-  color: ${p => p.$destructive ? '#DC2626' : '#1F2937'};
+  color: ${p => p.$destructive ? '#DC2626' : 'var(--pos-text, #1F2937)'};
   cursor: pointer;
   text-align: left;
   transition: background 0.12s;
   white-space: nowrap;
 
   &:hover:not(:disabled) {
-    background: ${p => p.$destructive ? 'rgba(220, 38, 38, 0.08)' : '#F4F6F9'};
+    background: ${p => p.$destructive ? 'rgba(220, 38, 38, 0.08)' : 'var(--pos-surface-2, #F4F6F9)'};
   }
 
   &:focus-visible {

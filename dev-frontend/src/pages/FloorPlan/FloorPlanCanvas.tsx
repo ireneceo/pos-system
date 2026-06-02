@@ -42,7 +42,8 @@ const CanvasOuter = styled.div<{ $editing?: boolean }>`
   width: 100%;
   flex: 1;
   overflow: hidden;
-  background: ${p => p.$editing ? '#F5F7FA' : 'white'};
+  /* 뷰 모드 배경 = 보기 테마(밝게/고대비/어둡게) 따라감. 편집 모드만 고정 회색. */
+  background: ${p => p.$editing ? '#F5F7FA' : 'var(--pos-surface, white)'};
   /* 뷰 모드는 라운드박스 제거 — 테이블맵이 박스/여백 없이 꽉 차게 (편집 모드만 경계 표시) */
   border-radius: ${p => p.$editing ? '8px' : '0'};
   border: ${p => p.$editing ? '1px solid #64748B' : 'none'};
@@ -94,7 +95,7 @@ const EmptyMessage = styled.div`
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #6B7280;
+  color: var(--pos-text-muted, #6B7280);
   font-size: 14px;
   gap: 8px;
 `;

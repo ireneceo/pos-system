@@ -1,5 +1,10 @@
 # Purple POS — 개발 세션 상태
 
+<!-- AUTOSAVE-STALE-BANNER -->
+> **[AUTO-SAVE STALE] (2026-06-02 19:50, idle 1941s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
+> 변경된 작업 파일: OverflowMenu.tsx,FloorPlanCanvas.tsx TableDetailPanel.tsx
+<!-- /AUTOSAVE-STALE-BANNER -->
+
 ## 현재 작업 상태
 **마지막 업데이트:** 2026-06-02 (주방 인쇄·알림 모델 v2 — DEV 완료, 미배포·실프린터 미확인. 다른 노트북으로 이동 위해 /개발완료)
 **버전:** v3.45 운영 (backstage 성격 — 버전 미상승)
