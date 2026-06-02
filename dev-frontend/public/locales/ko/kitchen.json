@@ -39,5 +39,10 @@
   "notice.doNotMakeOrder": "이 주문 조리를 중단하세요.",
   "notice.mergedInto": "합쳐짐 →",
   "notice.confirm": "확인했습니다",
-  "notice.more": "안내 {{count}}건 더"
+  "notice.more": "안내 {{count}}건 더",
+  "notice": {
+    "moveTitle": "테이블 이동",
+    "sameOrder": "같은 주문입니다 — 다시 만들지 마세요.",
+    "mergedAtTable": "{{table}} 의 기존 주문과 합쳐졌습니다"
+  }
 }

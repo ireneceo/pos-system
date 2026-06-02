@@ -85,13 +85,13 @@ const StaffMealBadge = styled.div`
   right: -5px;
   padding: 1px 5px;
   border-radius: 6px;
-  background: #F1F4F8;
-  color: #4B5563;
+  background: var(--pos-surface-2, #F1F4F8);
+  color: var(--pos-text-muted, #4B5563);
   font-size: 8px;
   font-weight: 700;
   letter-spacing: 0.3px;
   z-index: 5;
-  border: 1px solid #6B7280;
+  border: 1px solid var(--pos-border-strong, #6B7280);
 `;
 
 const MultiOrderBadge = styled.div`
@@ -131,9 +131,9 @@ const MobileOrderDot = styled.div`
 const TEXT_ONLY_FIXTURES = new Set(['kitchen', 'entrance']);
 
 const FIXTURE_COLORS: Record<string, { bg: string; border: string; text: string }> = {
-  kitchen: { bg: 'transparent', border: 'transparent', text: '#4B5563' },
+  kitchen: { bg: 'transparent', border: 'transparent', text: 'var(--pos-text-muted, #4B5563)' },
   counter: { bg: '#FEF3C7', border: '#D97706', text: '#92400E' },
-  entrance: { bg: 'transparent', border: 'transparent', text: '#4B5563' }
+  entrance: { bg: 'transparent', border: 'transparent', text: 'var(--pos-text-muted, #4B5563)' }
 };
 
 const TableNode: React.FC<TableNodeProps> = React.memo(({

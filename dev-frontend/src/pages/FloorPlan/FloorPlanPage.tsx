@@ -12,6 +12,11 @@ import PaymentModal from '../../components/POSTerminal/PaymentModal';
 import { Modal as CommonModal } from '../../components/UI';
 import KitchenTicketSendModal, { previewStationBuckets, KitchenTicketSendPrompt } from '../../components/Print/KitchenTicketSendModal';
 import OverflowMenu, { OverflowMenuItem } from '../../components/UI/OverflowMenu';
+import CashierPinModal from '../../components/POSTerminal/CashierPinModal';
+// timezone.ts (POS·TableDetailPanel 과 동일): 2번째 인자 = operationSettings 객체.
+// dateFormat.ts 는 2번째 인자가 timeZone "문자열" 이라, 객체를 넘기면 resolveTz 가
+// 객체.trim() 호출로 크래시("e.trim is not a function") → 반드시 timezone 에서 import.
+import { formatDateTime } from '../../utils/timezone';
 import { getRestaurantTimezone } from '../../utils/timezone';
 import DailySettlementPrint from '../Reports/DailySettlementPrint';
 import io from 'socket.io-client';
@@ -139,48 +144,18 @@ const HeaderRight = styled.div`
   }
 `;
 
-/* Buttons shown only on wider screens. On ≤1280px (10-inch tablets etc.) these
-   collapse into the OverflowMenu so the header stays readable. */
-const DesktopActions = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-
-  @media (max-width: 1280px) {
-    display: none;
-  }
-`;
-
-/* OverflowMenu wrapper — hidden on wide screens (actions are inline there). */
-const CompactActions = styled.div`
-  display: none;
-
-  @media (max-width: 1280px) {
-    display: inline-flex;
-  }
-`;
+/* 헤더 액션은 넓은 화면에서만 인라인 렌더(JS isNarrow 판정), 좁으면 설정 gear 드롭다운으로
+   수납한다 — 과거의 CSS 미디어 기반 DesktopActions/CompactActions 분기는 JS 판정으로 대체됨. */
 
 const Clock = styled.div`
   font-size: 14px;
   font-weight: 600;
-  color: var(--pos-text, #0A2540);
+  color: var(--pos-text-muted, #4B5563);
   font-variant-numeric: tabular-nums;
-`;
+  white-space: nowrap;
 
-const EditBtn = styled.button`
-  padding: 6px 14px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s;
-  border: 1px solid var(--pos-border, #C7CED6);
-  background: var(--pos-surface, #FFFFFF);
-  color: var(--pos-text, #1F2937);
-
-  &:hover {
-    background: var(--pos-surface-2, #F1F4F8);
-    border-color: #D1D9E0;
+  @media (max-width: 1024px) {
+    font-size: 13px;
   }
 `;
 
@@ -205,6 +180,29 @@ const BackBtn = styled.button`
   &:hover {
     border-color: var(--pos-brand, #635BFF);
     background: var(--pos-surface-2, #F1F4F8);
+  }
+`;
+
+// 로그인 표시 — POS Terminal StaffInfo 와 동일: 박스(테두리/배경) 없이 아이콘+이름만.
+// (액션 버튼 BackBtn 은 박스 유지, 로그인 표시만 boxless 로 통일.)
+const StaffInfo = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--pos-text-muted, #4B5563);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+
+  &:hover {
+    background: var(--pos-surface-2, #F4F6F9);
+    color: var(--pos-text, #0A2540);
   }
 `;
 
@@ -291,8 +289,8 @@ const FloorPlanPage: React.FC = () => {
   const { t } = useTranslation('floorplan');
   const { restaurantId } = useParams<{ restaurantId: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { getStoreInfo } = useStore();
+  const { user, switchUser, logout } = useAuth();
+  const { getStoreInfo, operationSettings } = useStore();
 
   // 2026-05-28 매장 critical: backend-driven auto-print polling (fullscreen page,
   // MainLayout 안 mount). 매장 device 가 FloorPlan 켜둔 상태에서 모바일/POS
@@ -311,6 +309,18 @@ const FloorPlanPage: React.FC = () => {
   // 보기 색상 테마 (밝게/고대비/어둡게) — POS 와 동일 토글, 기기별 공유(localStorage).
   const [posTheme, setPosThemeState] = useState<PosThemeMode>(getPosTheme);
   const selectPosTheme = (m: PosThemeMode) => { setPosThemeState(m); setPosTheme(m); };
+  // 스탭 PIN 로그인 전환 (POS Terminal 과 동일 — switchUser/logout).
+  const [showCashierPinModal, setShowCashierPinModal] = useState(false);
+  // 좁은 화면(≤1280px, 10인치 단말)에서 Daily Settlement/Customer Display/Open Drawer 를
+  // 설정(gear) 드롭다운으로 수납. CSS 미디어와 충돌 없게 JS 로 단일 판정.
+  const [isNarrow, setIsNarrow] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 1280px)');
+    const apply = () => setIsNarrow(mq.matches);
+    apply();
+    mq.addEventListener('change', apply);
+    return () => mq.removeEventListener('change', apply);
+  }, []);
   // Tab state mirrored to the URL so each tab/zone/order is a shareable bookmark:
   //   /floor-plan                          → All Zones, floor view
   //   /floor-plan?zone=z_main              → specific zone, floor view
@@ -423,19 +433,27 @@ const FloorPlanPage: React.FC = () => {
     itemCount: number;
   } | null>(null);
 
-  // Clock (restaurant timezone)
+  // Clock (restaurant timezone) — POS Terminal 과 동일 포맷, 단 년도 제외.
+  // 예: "03 Jun  02:48:38 am". 초까지 표시하므로 1초 간격 tick.
   useEffect(() => {
     const tick = () => {
       const now = new Date();
-      setClock(now.toLocaleTimeString('en-US', {
-        hour: '2-digit', minute: '2-digit',
-        timeZone: timezone
-      }));
+      const dateStr = formatDateTime(now, operationSettings, {
+        month: 'short', day: '2-digit', year: undefined,
+        hour: undefined, minute: undefined, second: undefined
+      });
+      const time = formatDateTime(now, operationSettings, {
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true,
+        year: undefined, month: undefined, day: undefined
+      });
+      setClock(`${dateStr}  ${time}`);
     };
     tick();
-    const id = setInterval(tick, 30000);
+    const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [timezone]);
+    // operationSettings.timeZone 변경 시 갱신
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [operationSettings?.timeZone]);
 
   // Fetch table statuses
   const fetchStatuses = useCallback(async () => {
@@ -1322,7 +1340,7 @@ const FloorPlanPage: React.FC = () => {
       <PosDisplayThemeStyle />
       {/* Items Added Alert — same as LiveOrders */}
       {itemsAddedAlert?.isVisible && (
-        <div style={{
+        <div data-items-added-banner="" style={{
           position: 'fixed', top: '20px', right: '20px',
           background: '#FEF3C7', border: '2px solid #F59E0B',
           borderRadius: '12px', padding: '16px 20px',
@@ -1375,8 +1393,61 @@ const FloorPlanPage: React.FC = () => {
           </ConnectionStatus>
         </HeaderLeft>
         <HeaderRight>
+          {/* 로그인 표시 = 사용자 아이콘 + 이름 (클릭 → PIN 전환). 역할 단정 "Cashier:" 라벨 없음
+              — 로그인 주체가 관리자/오너일 수 있어 "Cashier" 가 부정확하던 문제. POS Terminal 과 동일. */}
+          <StaffInfo type="button" onClick={() => setShowCashierPinModal(true)} title="Logged in — click to switch user">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+            {user?.name || 'Staff'}
+            <span style={{ fontSize: '11px', color: 'var(--pos-text-muted, #8898AA)', marginLeft: '2px' }}>▼</span>
+          </StaffInfo>
           <Clock>{clock}</Clock>
-          {/* 보기 색상 토글 (밝게/고대비/어둡게) — POS 와 동일, 기기별 기억. */}
+
+          {/* 액션 버튼 순서: Daily Settlement(항상 인라인) · Customer Display · Open Drawer.
+              좁은 화면(≤1280px, 10인치 단말)에선 Customer Display/Open Drawer 만 설정(gear)
+              드롭다운으로 수납한다. Daily Settlement 은 마감 핵심 동작이라 좁은 화면에서도 인라인 유지(Irene). */}
+          <BackBtn type="button" onClick={() => setShowSettlement(true)} title="Daily Settlement">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '15px', height: '15px' }}>
+              <path d="M6 9V2H18V9M6 18H4C2.89543 18 2 17.1046 2 16V11C2 9.89543 2.89543 9 4 9H20C21.1046 9 22 9.89543 22 11V16C22 17.1046 21.1046 18 20 18H18M6 14H18V22H6V14Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Daily Settlement
+          </BackBtn>
+          {!isNarrow && (
+            <>
+              <BackBtn type="button"
+                onClick={async () => {
+                  const result = await openCustomerDisplay(restaurantId || '');
+                  if (result.title && result.message) {
+                    setCdInfoModal({ open: true, title: result.title, message: result.message });
+                  }
+                }}
+                title={isAutoOpenEnabled() ? 'Customer Display (auto-open enabled)' : 'Open Customer Display on secondary monitor'}
+              >
+                {isAutoOpenEnabled() && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--pos-brand, #635BFF)', display: 'inline-block' }} />}
+                Customer Display
+              </BackBtn>
+              <BackBtn type="button"
+                onClick={async () => {
+                  try {
+                    const { openCashDrawer } = await import('../../utils/billPrint');
+                    const ok = await openCashDrawer();
+                    if (!ok) {
+                      setCdInfoModal({ open: true, title: 'Drawer did not open', message: 'Cash drawer pulse needs QZ Tray or RawBT (not Browser print mode).\nCheck Settings → Workstations → Method.' });
+                    }
+                  } catch (e: any) {
+                    setCdInfoModal({ open: true, title: 'Drawer error', message: e?.message || 'Unknown error' });
+                  }
+                }}
+                title="Send open-drawer pulse to the active workstation's bill printer"
+              >
+                Open Drawer
+              </BackBtn>
+            </>
+          )}
+
+          {/* 보기 색상 토글 (밝게/고대비/어둡게) — 항상 표시, 기기별 기억. */}
           <div role="group" aria-label="Display theme" style={{
             display: 'inline-flex', gap: 2, borderRadius: 8, padding: 3,
             background: 'var(--pos-surface-2, var(--pos-surface-2, #EDF1F5))', border: '1px solid var(--pos-border, var(--pos-border, #C7CED6))'
@@ -1399,101 +1470,60 @@ const FloorPlanPage: React.FC = () => {
               );
             })}
           </div>
-          {/* Customer Display — always visible. Most-used action on this header
-              because cashiers re-open the secondary monitor view every shift. */}
-          <BackBtn
-            type="button"
-            onClick={async () => {
-              const result = await openCustomerDisplay(restaurantId || '');
-              if (result.title && result.message) {
-                setCdInfoModal({ open: true, title: result.title, message: result.message });
-              }
-            }}
-            title={isAutoOpenEnabled() ? 'Customer Display (auto-open enabled)' : 'Open Customer Display on secondary monitor'}
-          >
-            {isAutoOpenEnabled() && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--pos-brand, #635BFF)', display: 'inline-block' }} />}
-            Customer Display
-          </BackBtn>
 
-          {/* Wide screens — full toolbar. Below 1280px these collapse into the
-              kebab menu so 10-inch tablets aren't crowded. */}
-          <DesktopActions>
-            <BackBtn
-              type="button"
-              onClick={async () => {
-                try {
-                  const { openCashDrawer } = await import('../../utils/billPrint');
-                  const ok = await openCashDrawer();
-                  if (!ok) {
-                    setCdInfoModal({
-                      open: true,
-                      title: 'Drawer did not open',
-                      message: 'Cash drawer pulse needs QZ Tray or RawBT (not Browser print mode).\nCheck Settings → Workstations → Method.'
-                    });
-                  }
-                } catch (e: any) {
-                  setCdInfoModal({ open: true, title: 'Drawer error', message: e?.message || 'Unknown error' });
+          {/* 설정(gear) — Edit Layout 의 단일 거처(메뉴 어디에도 없어 혼란이라 여기로 모음).
+              좁은 화면에선 Customer Display/Open Drawer 두 개도 함께 수납(Daily Settlement 은 인라인 유지). */}
+          {(() => {
+            const gearItems: OverflowMenuItem[] = [];
+            if (isNarrow) {
+              // Daily Settlement 은 항상 인라인 → 드롭다운엔 Customer Display/Open Drawer 만 수납.
+              gearItems.push({
+                id: 'customer-display', label: 'Customer Display', indicator: isAutoOpenEnabled(),
+                onClick: async () => {
+                  const result = await openCustomerDisplay(restaurantId || '');
+                  if (result.title && result.message) setCdInfoModal({ open: true, title: result.title, message: result.message });
                 }
-              }}
-              title="Send open-drawer pulse to the active workstation's bill printer"
-            >
-              Open Drawer
-            </BackBtn>
-            <EditBtn onClick={() => setShowSettlement(true)}>
-              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '14px', height: '14px', verticalAlign: 'middle', marginRight: '4px' }}>
-                <path d="M6 9V2H18V9M6 18H4C2.89543 18 2 17.1046 2 16V11C2 9.89543 2.89543 9 4 9H20C21.1046 9 22 9.89543 22 11V16C22 17.1046 21.1046 18 20 18H18M6 14H18V22H6V14Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              Daily Settlement
-            </EditBtn>
-            {user?.role === 'Restaurant Admin' && (
-              <EditBtn onClick={() => navigate(`/restaurant/${restaurantId}/floor-plan-editor`)}>
-                Edit Layout
-              </EditBtn>
-            )}
-          </DesktopActions>
-
-          {/* Narrow screens (≤1280px) — kebab menu collects the secondary actions. */}
-          <CompactActions>
-            <OverflowMenu
-              ariaLabel="More floor plan actions"
-              items={(() => {
-                const items: OverflowMenuItem[] = [
-                  {
-                    id: 'open-drawer',
-                    label: 'Open Drawer',
-                    onClick: async () => {
-                      try {
-                        const { openCashDrawer } = await import('../../utils/billPrint');
-                        const ok = await openCashDrawer();
-                        if (!ok) {
-                          setCdInfoModal({
-                            open: true,
-                            title: 'Drawer did not open',
-                            message: 'Cash drawer pulse needs QZ Tray or RawBT (not Browser print mode).\nCheck Settings → Workstations → Method.'
-                          });
-                        }
-                      } catch (e: any) {
-                        setCdInfoModal({ open: true, title: 'Drawer error', message: e?.message || 'Unknown error' });
-                      }
-                    }
-                  },
-                  {
-                    id: 'daily-settlement',
-                    label: 'Daily Settlement',
-                    onClick: () => setShowSettlement(true)
+              });
+              gearItems.push({
+                id: 'open-drawer', label: 'Open Drawer',
+                onClick: async () => {
+                  try {
+                    const { openCashDrawer } = await import('../../utils/billPrint');
+                    const ok = await openCashDrawer();
+                    if (!ok) setCdInfoModal({ open: true, title: 'Drawer did not open', message: 'Cash drawer pulse needs QZ Tray or RawBT (not Browser print mode).\nCheck Settings → Workstations → Method.' });
+                  } catch (e: any) {
+                    setCdInfoModal({ open: true, title: 'Drawer error', message: e?.message || 'Unknown error' });
                   }
-                ];
-                if (user?.role === 'Restaurant Admin') {
-                  items.push({
-                    id: 'edit-layout',
-                    label: 'Edit Layout',
-                    onClick: () => navigate(`/restaurant/${restaurantId}/floor-plan-editor`)
-                  });
                 }
-                return items;
-              })()}
-            />
-          </CompactActions>
+              });
+            }
+            if (user?.role === 'Restaurant Admin') {
+              gearItems.push({
+                id: 'edit-layout', label: 'Edit Layout',
+                icon: (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+                  </svg>
+                ),
+                onClick: () => navigate(`/restaurant/${restaurantId}/floor-plan-editor`)
+              });
+            }
+            if (gearItems.length === 0) return null;
+            return (
+              <OverflowMenu
+                ariaLabel="Floor plan settings"
+                triggerTitle="Settings"
+                triggerSize={38}
+                triggerIcon={(
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                  </svg>
+                )}
+                items={gearItems}
+              />
+            );
+          })()}
         </HeaderRight>
       </Header>
 
@@ -1999,6 +2029,20 @@ const FloorPlanPage: React.FC = () => {
 
       {/* 수동발행 — 이동 재발행 station별 미리보기 + 보내기/안보내기 (자동발행 OFF일 때) */}
       <KitchenTicketSendModal prompt={movePrintPrompt} onClose={() => setMovePrintPrompt(null)} t={t} />
+
+      {/* 스탭 PIN 로그인 전환 (POS Terminal 과 동일 동작) */}
+      <CashierPinModal
+        show={showCashierPinModal}
+        onClose={() => setShowCashierPinModal(false)}
+        onVerified={(result) => {
+          if (result.token && result.user) {
+            switchUser(result.token, result.user);
+          }
+          setShowCashierPinModal(false);
+        }}
+        onLogout={() => { logout(); }}
+        currentCashierName={user?.name}
+      />
     </PageContainer>
   );
 };

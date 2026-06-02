@@ -12,9 +12,9 @@ interface FloorPlanStatsBarProps {
 }
 
 const Bar = styled.div`
-  background: white;
+  background: var(--pos-surface, white);
   padding: 10px 24px;
-  border-top: 1px solid #C7CED6;
+  border-top: 1px solid var(--pos-border, #C7CED6);
   display: flex;
   align-items: center;
   gap: 16px;
@@ -39,7 +39,7 @@ const LegendItem = styled.div`
   display: flex;
   align-items: center;
   gap: 4px;
-  color: #4B5563;
+  color: var(--pos-text-muted, #4B5563);
   font-weight: 500;
 `;
 
@@ -53,28 +53,28 @@ const LegendDot = styled.div<{ $color: string }>`
 const Divider = styled.div`
   width: 1px;
   height: 18px;
-  background: #C7CED6;
+  background: var(--pos-border, #C7CED6);
 `;
 
 const StatItem = styled.div`
-  color: #4B5563;
+  color: var(--pos-text-muted, #4B5563);
   font-weight: 500;
   white-space: nowrap;
 
   span {
     font-weight: 700;
-    color: #0A2540;
+    color: var(--pos-text, #0A2540);
   }
 `;
 
 const ThresholdInput = styled.input`
   width: 36px;
   border: none;
-  border-bottom: 1px dashed #635BFF;
+  border-bottom: 1px dashed var(--pos-brand, #635BFF);
   background: transparent;
   font-size: 12px;
   font-weight: 700;
-  color: #0A2540;
+  color: var(--pos-text, #0A2540);
   text-align: center;
   padding: 0;
   outline: none;

@@ -1,14 +1,11 @@
 # Purple POS — 개발 세션 상태
 
-<!-- AUTOSAVE-STALE-BANNER -->
-> **[AUTO-SAVE STALE] (2026-06-02 19:50, idle 1941s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
-> 변경된 작업 파일: OverflowMenu.tsx,FloorPlanCanvas.tsx TableDetailPanel.tsx
-<!-- /AUTOSAVE-STALE-BANNER -->
-
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-06-02 (주방 인쇄·알림 모델 v2 — DEV 완료, 미배포·실프린터 미확인. 다른 노트북으로 이동 위해 /개발완료)
-**버전:** v3.45 운영 (backstage 성격 — 버전 미상승)
-**작업 상태:** **주방 인쇄·알림 v2 DEV 구현 완료**(취소·이동 항상 발송+알림팝업·station 박스·KDS 취소/머지 팝업·`printCancellationTicket` 삭제). 빌드 main.a6211efc.js, 타입0·i18n통과·인쇄계약7/8(보호파일 지문 정상경고)·mount 47/47. ⚠️ **실프린터 종이·KDS·POS 눈 확인 + `--bless` 미완 = 배포 전 의무**(가이드 `docs/PRINT_RULES_MATRIX.md` §10). 직전: POS UI/UX 개편+보기 색상 토글(DEV, 다음 세션 모달다크·FloorPlan/KDS 확장 계속).
+**마지막 업데이트:** 2026-06-02 (**v3.46 운영 배포 완료**)
+**이번 세션 완료(배포됨):** 누적분 v3.46 배포(POS UI/UX·주방인쇄v2·테이블이동/취소표·이메일인증) + 매장5 옛 e2e 잔재 399건 cancelled 정리(FPTI 하니스 unblock, 43/43) + KDS 이동팝업 "테이블 우선"(오더번호 단축) + 새주문 녹색배너↔items배너 겹침 fix(`data-items-added-banner`) + **배포 DB가드**: `order_actions` ENUM `table_moved` 멱등 마이그레이션 신설·deploy 9a-2 등록(운영 적용 확인). **다음: Irene 실프린터 눈확인**(주방티켓 1장·station박스·취소/이동·영수증·KDS팝업).
+**버전:** v3.46 운영 (2026-06-02 배포 — POS UI/UX·주방인쇄v2·테이블이동/취소표·이메일인증·KDS팝업/배너. Backup 20260602_233232. table_moved ENUM 운영적용 확인. ⚠️ 실프린터 눈확인 매장 진행 중. 스모크 3/4=레거시 admin@pos-system.com false 1건)
+**작업 상태:** **(2026-06-02 추가) "주문루트 전체 테스트" 단일 하니스 커밋** — `dev-backend/tests/print-route-matrix.js`. R1~R11 실API 한 바퀴 + Poller + 매수 C1~C6(§9-6 replica) 자동 §9 대조. **43/43, 3회 연속 안정 (2026-06-02: R3 FPTI derive 하드검증 통과 — 매장5 uf1/uf2/uf3 점유 옛 e2e 잔재 13건 cancelled 처리로 skip 해소, derive=uf1 확인).** 인쇄 코드(🔒 8파일) 무변경(신규 테스트 파일 1개만). 실행=`cd /var/www/dev-backend && node tests/print-route-matrix.js`. 문서 §9-7 + PIN 모달 축소(CashierPinModal 80→58px, POS·FloorPlan 공용). **못 잡는 것=실종이 매수/한글raster/헤더시각=§10 Irene 눈.** ↓ 아래는 직전 Floor Plan Phase C.
+**(직전) Floor Plan Phase C — 헤더/테마 마감 (DEV 완료, 미배포)**. 빌드 main.ee2d343f.js. 헤더(버튼순서·높이·PIN로그인 아이콘·시계 년도제외·Edit Layout→gear 2뎁스·반응형 드롭다운=Daily Settlement 인라인+CD/Drawer만 수납)는 대부분 이전 세션에 이미 구현돼 있었음(검토 확인). 오늘 실제 수정: ① **다크/고대비 미반영 fix** — 빈 테이블카드(`--pos-table-empty-*` 3토큰 신규/3팔레트, 라이트값 보존), 우측패널 주문탭 인라인색, StaffMealBadge·픽스처글자·통계바(FloorPlanStatsBar) 전부 var(--pos-*) 토큰화. ② **🔴 크래시 fix(중요)**: FloorPlanPage 가 `formatDateTime` 을 `dateFormat`(2번째인자=tz문자열)에서 import해 `operationSettings` 객체를 넘겨 `e.trim is not a function` 으로 **Floor Plan 진입 즉시 ErrorBoundary 크래시**(working tree 미빌드 상태, 이전 세션 잔존). → `timezone` 모듈로 import 교체(POS·TableDetailPanel 과 동일). 검증: 0 hydration 0 / 0-b 타임존 신규0 / build 타입0 / i18n Err0 / **mount 6/6(light·contrast·dark × FloorPlan·POS) 크래시0** / computed-style 증명(빈테이블 bg light=#F1F4F8·dark=#1B2640) / 스크린샷 라이트회귀0+다크 일관. ⚠️ POSTerminalPage(🔒) 는 오늘 무변경(이미 구현됨) — 단 이전 세션 변경분 잔존으로 `--bless` 여전히 필요. **다음: Irene 실화면 3모드 눈확인 → 모달(OptionModal/PaymentModal) 다크 → KDS 테마.**
 
 ---
 

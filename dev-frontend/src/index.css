@@ -66,3 +66,9 @@ code {
 body.has-mobile-banner [data-notification-toaster] {
   top: 68px !important;
 }
+
+/* The page-level "New Items Added" toast (Live Orders / Floor Plan) also steps
+   below the green Mobile Order Alert banner so the banner doesn't cover it. */
+body.has-mobile-banner [data-items-added-banner] {
+  top: 80px !important;
+}

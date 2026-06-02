@@ -69,6 +69,9 @@ const Panel = styled.div`
   width: 380px;
   min-width: 380px;
   background: var(--pos-surface, white);
+  /* 기본 글자색을 테마 토큰으로 — color 미지정 인라인 텍스트(상품명 등)가
+     다크에서 검정으로 남아 안 보이던 문제 방지. 명시색은 각자 우선. */
+  color: var(--pos-text, #0A2540);
   border-left: 1px solid var(--pos-border, #C7CED6);
   display: flex;
   flex-direction: column;
@@ -1397,11 +1400,11 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
       {(showOrderTabs !== undefined ? showOrderTabs : orders.length > 1) && (
         <div style={{
           padding: '8px 20px',
-          borderBottom: '1px solid #C7CED6',
+          borderBottom: '1px solid var(--pos-border, #C7CED6)',
           display: 'flex',
           gap: '6px',
           flexWrap: 'wrap',
-          background: '#F9FAFB'
+          background: 'var(--pos-surface-2, #F9FAFB)'
         }}>
           {/* 빈 테이블: 완료 탭을 본 뒤 다시 "빈 테이블/새주문"으로 돌아오는 탭. 기본 선택. */}
           {tableFree && (
@@ -1412,9 +1415,9 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                 borderRadius: '6px',
                 fontSize: '12px',
                 fontWeight: selectedOrderIndex < 0 ? 600 : 400,
-                border: selectedOrderIndex < 0 ? '1.5px solid #635BFF' : '1px solid #6B7280',
-                background: selectedOrderIndex < 0 ? '#EDE9FE' : 'white',
-                color: selectedOrderIndex < 0 ? '#635BFF' : '#4B5563',
+                border: selectedOrderIndex < 0 ? '1.5px solid var(--pos-brand, #635BFF)' : '1px solid var(--pos-border, #6B7280)',
+                background: selectedOrderIndex < 0 ? 'var(--pos-brand-tint, #EDE9FE)' : 'var(--pos-surface, white)',
+                color: selectedOrderIndex < 0 ? 'var(--pos-brand-text, #635BFF)' : 'var(--pos-text-muted, #4B5563)',
                 cursor: 'pointer',
                 transition: 'all 0.15s'
               }}
@@ -1431,9 +1434,9 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                 borderRadius: '6px',
                 fontSize: '12px',
                 fontWeight: selectedOrderIndex === idx ? 600 : 400,
-                border: selectedOrderIndex === idx ? '1.5px solid #635BFF' : '1px solid #6B7280',
-                background: selectedOrderIndex === idx ? '#EDE9FE' : 'white',
-                color: selectedOrderIndex === idx ? '#635BFF' : '#4B5563',
+                border: selectedOrderIndex === idx ? '1.5px solid var(--pos-brand, #635BFF)' : '1px solid var(--pos-border, #6B7280)',
+                background: selectedOrderIndex === idx ? 'var(--pos-brand-tint, #EDE9FE)' : 'var(--pos-surface, white)',
+                color: selectedOrderIndex === idx ? 'var(--pos-brand-text, #635BFF)' : 'var(--pos-text-muted, #4B5563)',
                 cursor: 'pointer',
                 transition: 'all 0.15s'
               }}
@@ -1449,7 +1452,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
               onClick={() => setShowAllOrderTabs(v => !v)}
               style={{
                 padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 600,
-                border: '1px solid #6B7280', background: 'white', color: '#4B5563',
+                border: '1px solid var(--pos-border, #6B7280)', background: 'var(--pos-surface, white)', color: 'var(--pos-text-muted, #4B5563)',
                 cursor: 'pointer', transition: 'all 0.15s'
               }}
             >
@@ -1473,19 +1476,20 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                   onChange={(e) => setAddItemsSearchQuery(e.target.value)}
                   style={{
                     width: '100%', padding: '10px 14px',
-                    border: '2px solid #C7CED6', borderRadius: '8px',
+                    border: '2px solid var(--pos-border, #C7CED6)', borderRadius: '8px',
+                    background: 'var(--pos-surface, white)', color: 'var(--pos-text, #0A2540)',
                     fontSize: '14px', outline: 'none', transition: 'border-color 0.15s',
                     boxSizing: 'border-box'
                   }}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = '#635BFF'; }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = '#C7CED6'; }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--pos-brand, #635BFF)'; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--pos-border, #C7CED6)'; }}
                   autoFocus
                 />
               </div>
 
               {/* Search Results */}
               {addItemsSearchQuery.length > 0 && (
-                <div style={{ marginBottom: '16px', maxHeight: '200px', overflowY: 'auto', border: '1px solid #C7CED6', borderRadius: '8px' }}>
+                <div style={{ marginBottom: '16px', maxHeight: '200px', overflowY: 'auto', border: '1px solid var(--pos-border, #C7CED6)', borderRadius: '8px' }}>
                   {menuItems
                     .filter((item: any) => {
                       if (!item || !item.name) return false;
@@ -1498,10 +1502,10 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                       return (
                         <div key={item.id} style={{
                           padding: '10px 14px', display: 'flex', justifyContent: 'space-between',
-                          alignItems: 'center', borderBottom: '1px solid #F1F4F8', cursor: 'pointer'
+                          alignItems: 'center', borderBottom: '1px solid var(--pos-border, #F1F4F8)', cursor: 'pointer'
                         }}
-                          onMouseEnter={(e) => { e.currentTarget.style.background = '#F9FAFB'; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--pos-surface-2, #F9FAFB)'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                         >
                           <div style={{ flex: 1, minWidth: 0 }} onClick={() => {
                             handleAddToItemsCart(item, 1, []);
@@ -1537,7 +1541,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                     const q = addItemsSearchQuery.toLowerCase();
                     return item.name?.toLowerCase().includes(q) || (item.code && item.code.toLowerCase().includes(q));
                   }).length === 0 && (
-                    <div style={{ padding: '14px', textAlign: 'center', color: '#6B7280', fontSize: '13px' }}>{'No items found'}</div>
+                    <div style={{ padding: '14px', textAlign: 'center', color: 'var(--pos-text-muted, #6B7280)', fontSize: '13px' }}>{'No items found'}</div>
                   )}
                 </div>
               )}
@@ -1548,30 +1552,30 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                   Items to Add ({addItemsCart.reduce((sum: number, item: any) => sum + item.quantity, 0)})
                 </SectionTitle>
                 {addItemsCart.length === 0 ? (
-                  <div style={{ padding: '20px', textAlign: 'center', color: '#6B7280', background: '#F9FAFB', borderRadius: '8px', fontSize: '13px' }}>
+                  <div style={{ padding: '20px', textAlign: 'center', color: 'var(--pos-text-muted, #6B7280)', background: 'var(--pos-surface-2, #F9FAFB)', borderRadius: '8px', fontSize: '13px' }}>
                     Search and select items to add
                   </div>
                 ) : (
-                  <div style={{ border: '1px solid #C7CED6', borderRadius: '8px', overflow: 'hidden' }}>
+                  <div style={{ border: '1px solid var(--pos-border, #C7CED6)', borderRadius: '8px', overflow: 'hidden' }}>
                     {addItemsCart.map((item: any) => (
-                      <div key={item.cartId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderBottom: '1px solid #F1F4F8' }}>
+                      <div key={item.cartId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderBottom: '1px solid var(--pos-border, #F1F4F8)' }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontWeight: 500, fontSize: '13px' }}>{item.name}</div>
                           {item.selectedOptions && item.selectedOptions.length > 0 && (
-                            <div style={{ fontSize: '11px', color: '#4B5563', marginTop: '1px' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--pos-text-muted, #4B5563)', marginTop: '1px' }}>
                               {item.selectedOptions.map((opt: any) => opt.name).join(', ')}
                             </div>
                           )}
-                          <div style={{ color: '#4B5563', fontSize: '12px' }}>
+                          <div style={{ color: 'var(--pos-text-muted, #4B5563)', fontSize: '12px' }}>
                             {formatCurrency(item.unitPrice || parseFloat(item.price), currency)} each
                           </div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
                           <button onClick={() => handleRemoveFromItemsCart(item.cartId)}
-                            style={{ width: '28px', height: '28px', border: '1px solid #C7CED6', borderRadius: '6px', background: 'white', cursor: 'pointer', fontSize: '16px', fontWeight: 500 }}>-</button>
+                            style={{ width: '28px', height: '28px', border: '1px solid var(--pos-border, #C7CED6)', borderRadius: '6px', background: 'var(--pos-surface, white)', color: 'var(--pos-text, #0A2540)', cursor: 'pointer', fontSize: '16px', fontWeight: 500 }}>-</button>
                           <span style={{ minWidth: '24px', textAlign: 'center', fontWeight: 600, fontSize: '14px' }}>{item.quantity}</span>
                           <button onClick={() => handleIncreaseCartItem(item.cartId)}
-                            style={{ width: '28px', height: '28px', border: '1px solid #C7CED6', borderRadius: '6px', background: 'white', cursor: 'pointer', fontSize: '16px', fontWeight: 500 }}>+</button>
+                            style={{ width: '28px', height: '28px', border: '1px solid var(--pos-border, #C7CED6)', borderRadius: '6px', background: 'var(--pos-surface, white)', color: 'var(--pos-text, #0A2540)', cursor: 'pointer', fontSize: '16px', fontWeight: 500 }}>+</button>
                         </div>
                       </div>
                     ))}
@@ -1625,7 +1629,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                       onClick={() => setShowHistory(true)}
                       style={{
                         background: 'transparent', border: 'none', cursor: 'pointer',
-                        color: '#4B5563', fontSize: 11, padding: '2px 4px', fontWeight: 500
+                        color: 'var(--pos-text-muted, #4B5563)', fontSize: 11, padding: '2px 4px', fontWeight: 500
                       }}
                       title={t('history.viewLink', 'View history')}
                     >
@@ -1705,7 +1709,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                         <GroupHeader $isAdded={isAdded}>
                           <span>{isAdded ? `+Added #${groupNum}` : 'Original Order'}</span>
                           {isAdded && firstItem?.added_at && (
-                            <span style={{ fontSize: '9px', fontWeight: 400, color: '#6B7280' }}>
+                            <span style={{ fontSize: '9px', fontWeight: 400, color: 'var(--pos-text-muted, #6B7280)' }}>
                               {formatDT(firstItem.added_at)}
                             </span>
                           )}
@@ -1776,7 +1780,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                 })}
 
                 {items.length === 0 && (
-                  <div style={{ fontSize: '13px', color: '#6B7280' }}>{'No items'}</div>
+                  <div style={{ fontSize: '13px', color: 'var(--pos-text-muted, #6B7280)' }}>{'No items'}</div>
                 )}
               </Section>
 
@@ -1974,7 +1978,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                 <QRStatusInfo>
                   <div>
                     <span style={{ color: '#059669' }}>● Active QR ({qrRemainingMin}min left)</span>
-                    <div style={{ fontSize: '11px', color: '#4B5563', marginTop: '2px' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--pos-text-muted, #4B5563)', marginTop: '2px' }}>
                       Printed: {formatDateTime(activeQr.created_at, tzSettings, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', year: undefined })}
                       {' · '}Orders until {formatDateTime(activeQr.expires_at, tzSettings, { year: undefined, month: undefined, day: undefined, hour: '2-digit', minute: '2-digit' })}
                     </div>
@@ -2006,7 +2010,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
               <QRStatusInfo>
                 <div>
                   <span style={{ color: '#059669' }}>● Active QR ({qrRemainingMin}min left)</span>
-                  <div style={{ fontSize: '11px', color: '#4B5563', marginTop: '2px' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--pos-text-muted, #4B5563)', marginTop: '2px' }}>
                     Printed: {activeQr.created_at ? formatDateTime(activeQr.created_at, tzSettings, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', year: undefined }) : 'just now'}
                     <br />Orders accepted until {formatDateTime(activeQr.expires_at, tzSettings, { year: undefined, month: undefined, day: undefined, hour: '2-digit', minute: '2-digit' })}
                   </div>
@@ -2016,7 +2020,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                 </ActionBtn>
               </QRStatusInfo>
             ) : (
-              <QRStatusInfo style={{ color: '#4B5563', fontSize: '12px' }}>{'Print QR to generate a session-based ordering code for this table.'}</QRStatusInfo>
+              <QRStatusInfo style={{ color: 'var(--pos-text-muted, #4B5563)', fontSize: '12px' }}>{'Print QR to generate a session-based ordering code for this table.'}</QRStatusInfo>
             )}
             </>
             )}

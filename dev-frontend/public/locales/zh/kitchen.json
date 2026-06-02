@@ -39,5 +39,10 @@
   "notice.doNotMakeOrder": "请停止制作此订单。",
   "notice.mergedInto": "已合并至",
   "notice.confirm": "知道了",
-  "notice.more": "还有 {{count}} 条通知"
+  "notice.more": "还有 {{count}} 条通知",
+  "notice": {
+    "moveTitle": "餐桌已移动",
+    "sameOrder": "同一订单 — 请勿重复制作。",
+    "mergedAtTable": "已与 {{table}} 的现有订单合并"
+  }
 }

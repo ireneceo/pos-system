@@ -62,6 +62,10 @@ const NoticeBody = styled.div`
   padding: 8px 24px 20px; font-size: 18px; line-height: 1.5; color: #0A2540;
   strong { font-weight: 800; }
   .sub { color: #6B7C93; font-size: 14px; margin-top: 6px; }
+  /* 이동 안내의 핵심 = 어느 테이블 → 어느 테이블. 크게. */
+  .big { font-size: 28px; font-weight: 800; margin: 2px 0 4px; }
+  .big .arrow { color: #B45309; margin: 0 8px; }
+  .ref { color: #9AA7B5; font-size: 13px; font-weight: 600; }
 `;
 const NoticeConfirm = styled.button<{ $kind: NoticeKind }>`
   width: 100%; border: none; cursor: pointer; padding: 18px; min-height: 60px;
@@ -1432,6 +1436,14 @@ const KitchenDisplayPage: React.FC = () => {
   const getItemCode = (itemName: string): string => {
     const menuItem = menuItems.find(m => m.name === itemName);
     return menuItem?.code || '';
+  };
+
+  // 오더번호(예: 260603-022)를 주방이 보기 쉬운 짧은 형태(022)로. 화면 보조표시용.
+  const shortOrderNo = (no?: string): string => {
+    if (!no) return '';
+    const s = String(no);
+    const i = s.lastIndexOf('-');
+    return i >= 0 ? s.slice(i + 1) : (s.length > 3 ? s.slice(-3) : s);
   };
 
   const formatItemName = (itemName: string): string => {
@@ -3041,17 +3053,21 @@ const KitchenDisplayPage: React.FC = () => {
                   </>
                 ) : (
                   <>
+                    {/* 주방 핵심 = 어느 테이블 → 어느 테이블. 오더번호는 작게 보조. */}
+                    <div className="big">
+                      <strong>{n.tableNumber || '?'}</strong>
+                      <span className="arrow">→</span>
+                      <strong>{n.toTable || '?'}</strong>
+                    </div>
                     {n.merged ? (
-                      <div>
-                        {t('kitchen:notice.order', { defaultValue: 'Order' })} #{n.orderNumber} {t('kitchen:notice.mergedInto', { defaultValue: 'merged into' })}
-                        {' '}<strong>{n.intoOrderNumber ? `#${n.intoOrderNumber}` : (n.toTable || '?')}</strong>
-                        {n.toTable ? ` (${n.toTable})` : ''}
+                      <div className="sub">
+                        {t('kitchen:notice.mergedAtTable', { defaultValue: 'Combined with the order already at {{table}}', table: n.toTable || '?' })}
+                        {(n.orderNumber || n.intoOrderNumber)
+                          ? <span className="ref">{'  ·  '}#{shortOrderNo(n.orderNumber)} → #{shortOrderNo(n.intoOrderNumber)}</span>
+                          : null}
                       </div>
                     ) : (
-                      <div>
-                        {t('kitchen:notice.order', { defaultValue: 'Order' })} #{n.orderNumber} {t('kitchen:notice.movedFromTo', { defaultValue: 'moved' })}
-                        {' '}<strong>{n.tableNumber || '?'}</strong> → <strong>{n.toTable || '?'}</strong>
-                      </div>
+                      n.orderNumber ? <div className="sub"><span className="ref">#{shortOrderNo(n.orderNumber)}</span></div> : null
                     )}
                     <div className="sub">{t('kitchen:notice.sameOrder', { defaultValue: 'Same order — do NOT make it again.' })}</div>
                   </>

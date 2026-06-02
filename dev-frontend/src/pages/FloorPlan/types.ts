@@ -148,11 +148,13 @@ export const FIXTURE_PRESETS: { type: FixtureType; label: string; defaultWidth: 
 
 export const STATUS_COLORS: Record<TableStatus, { bg: string; border: string; text: string }> = {
   // 2026-05-26: shop-floor pass — bumped text/border one shade darker for legibility
-  available: { bg: '#F1F4F8', border: '#6B7280', text: '#374151' },        // was bg #F1F4F8, border #6B7280, text #6B7280
+  // 2026-06-02: 빈/완료 테이블은 보기 테마(밝게/고대비/어둡게) 토큰을 따라감 — 어둡게에선 바닥보다
+  //   한 단계 밝은 어두운 카드로. 점유/준비/주의는 의미색 유지(어두운 바닥 위에서 또렷하게 떠야 함).
+  available: { bg: 'var(--pos-table-empty-bg, #F1F4F8)', border: 'var(--pos-table-empty-border, #6B7280)', text: 'var(--pos-table-empty-text, #374151)' },
   occupied: { bg: '#EDE9FE', border: '#7C3AED', text: '#6D28D9' },
   ready: { bg: '#DCFCE7', border: '#16A34A', text: '#15803D' },
   'needs-attention': { bg: '#FEE2E2', border: '#DC2626', text: '#B91C1C' },
-  completed: { bg: '#F1F4F8', border: '#4B5563', text: '#1F2937' }         // was bg #F1F4F8, border #6B7280, text #4B5563
+  completed: { bg: 'var(--pos-table-empty-bg, #F1F4F8)', border: 'var(--pos-table-empty-border, #4B5563)', text: 'var(--pos-table-empty-text, #1F2937)' }
 };
 
 export const STATUS_LABELS: Record<TableStatus, string> = {

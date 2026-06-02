@@ -31,9 +31,11 @@ interface OverflowMenuProps {
   triggerTitle?: string;
   /** Override the trigger glyph — defaults to the kebab (⋯). e.g. a gear icon. */
   triggerIcon?: React.ReactNode;
+  /** Square trigger size in px (default 32). Set to 38 to line up with 38px header buttons. */
+  triggerSize?: number;
 }
 
-const OverflowMenu: React.FC<OverflowMenuProps> = ({ items, ariaLabel = 'More actions', triggerTitle = 'More', triggerIcon }) => {
+const OverflowMenu: React.FC<OverflowMenuProps> = ({ items, ariaLabel = 'More actions', triggerTitle = 'More', triggerIcon, triggerSize = 32 }) => {
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
@@ -66,6 +68,7 @@ const OverflowMenu: React.FC<OverflowMenuProps> = ({ items, ariaLabel = 'More ac
     <Wrapper ref={wrapperRef}>
       <Trigger
         type="button"
+        $size={triggerSize}
         aria-label={ariaLabel}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -109,12 +112,12 @@ const Wrapper = styled.div`
   display: inline-flex;
 `;
 
-const Trigger = styled.button`
+const Trigger = styled.button<{ $size: number }>`
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: ${p => p.$size}px;
+  height: ${p => p.$size}px;
   background: var(--pos-surface, white);
   border: 1px solid var(--pos-border, #C7CED6);
   border-radius: 6px;

@@ -2892,7 +2892,7 @@ const POSTerminalPage: React.FC = () => {
     const dateStr = formatDateTime(date, operationSettings, {
       month: 'short',
       day: '2-digit',
-      year: 'numeric',
+      year: undefined, // 년도 제외 — 운영 화면엔 불필요 (예: "03 Jun  02:48:38 am")
       hour: undefined,
       minute: undefined,
       second: undefined
@@ -3016,9 +3016,13 @@ const POSTerminalPage: React.FC = () => {
           </HeaderActionBtn>
         </div>
         <HeaderInfo>
-          <StaffInfo clickable={true} onClick={() => setShowCashierPinModal(true)} title="Click to switch cashier">
-            <span style={{ fontSize: '16px' }}>◆</span>
-            <span>Cashier: {user?.name || 'Staff'}</span>
+          <StaffInfo clickable={true} onClick={() => setShowCashierPinModal(true)} title="Logged in — click to switch user">
+            {/* 로그인 표시 = 사용자 아이콘 + 이름 (역할 단정 "Cashier:" 라벨 제거 — 로그인 주체가 관리자/오너일 수 있음) */}
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+            <span>{user?.name || 'Staff'}</span>
             <span style={{ fontSize: '11px', color: 'var(--pos-text-muted, #8898AA)', marginLeft: '4px' }}>▼</span>
           </StaffInfo>
           <DateTime>{formatDateTimeLocal(currentDateTime)}</DateTime>

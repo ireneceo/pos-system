@@ -64,6 +64,9 @@ const PALETTES: Record<PosThemeMode, Record<string, string>> = {
     'brand-text': '#635BFF',
     'control': '#FFFFFF',     // 선택 박스(카테고리/주문유형) 기본 면
     'positive': '#10B981',    // Pay Later 등 긍정 액션
+    'table-empty-bg': '#F1F4F8',     // 빈 테이블 카드(보드) — 라이트는 현재 값 그대로 보존
+    'table-empty-border': '#6B7280',
+    'table-empty-text': '#374151',
   },
   // 고대비 = 회색 배경 위 흰 면이 확 뜨고, 글씨 검정, 테두리 굵고 진하게 (밝은 매장/글레어 대응)
   contrast: {
@@ -82,6 +85,9 @@ const PALETTES: Record<PosThemeMode, Record<string, string>> = {
     'brand-text': '#1E1675',
     'control': '#FFFFFF',
     'positive': '#0A7D57',
+    'table-empty-bg': '#D4DCE6',     // 고대비 — 회색 위 빈 테이블이 또렷하게
+    'table-empty-border': '#3E4A5A',
+    'table-empty-text': '#16202C',
   },
   // 어둡게 = elevation 모델(배경<패널<선택박스로 점점 밝게 → 자연 분리). 순백 대신 92% 톤.
   dark: {
@@ -100,6 +106,9 @@ const PALETTES: Record<PosThemeMode, Record<string, string>> = {
     'brand-text': '#635BFF',
     'control': '#2C3A56',
     'positive': '#10B981',
+    'table-empty-bg': '#1B2640',     // 어둡게 — 빈 테이블은 바닥보다 한 단계 밝은 어두운 카드
+    'table-empty-border': '#46566F',
+    'table-empty-text': '#9AA8BE',
   },
 };
 

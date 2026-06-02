@@ -39,5 +39,10 @@
   "notice.doNotMakeOrder": "Berhenti menyediakan pesanan ini.",
   "notice.mergedInto": "digabung ke",
   "notice.confirm": "OK, faham",
-  "notice.more": "{{count}} notis lagi"
+  "notice.more": "{{count}} notis lagi",
+  "notice": {
+    "moveTitle": "Meja Dipindahkan",
+    "sameOrder": "Pesanan sama — JANGAN buat lagi.",
+    "mergedAtTable": "Digabung dengan pesanan sedia ada di {{table}}"
+  }
 }

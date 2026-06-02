@@ -431,6 +431,22 @@ C1~C5 모두 §9 일치 확인 (라우팅·건수·미러·취소 station별).
 
 ---
 
+### 9-7. "주문루트 전체 테스트" 단일 러너 (2026-06-02 — 커밋된 자동 하니스)
+
+> Irene 가 **"주문루트 전체 테스트"** 라고 하면 이 한 줄을 돌린다. R1~R11 한 바퀴 + Poller + 매수(C1~C6)를 §9 와 자동 대조.
+
+```bash
+cd /var/www/dev-backend && node tests/print-route-matrix.js
+```
+
+- **테스트 매장 id=5 (Test3)** — 운영 무영향, 끝에서 생성 주문 전부 hard-delete(데이터 불변).
+- **백엔드(Part A)**: R1~R11 실제 API 주문 생성 + pending-print 큐 / station_id 분배 / removedItem(was_printed) / 이동 merged / needs_print / 취소 status / 결제 → §9 대조. (현 40/40)
+- **매수(Part B)**: §9-6 C1~C6 티켓 매수를 **billPrint 라우팅 로직 replica** 로 대조(printKitchenTicketsByStation L3388 + 미러 L2389 + perItem L2439 와 동기화 — billPrint 변경 시 같이 수정). billPrint QZ 전송(qz.print)은 번들 내부 모듈이라 헤드리스 가로채기 불가 → replica 채택(autoprint-regression bucketing 과 동일 패턴).
+- **❌ 못 잡는 것 = §10 Irene 눈**: 실제 종이 매수·한글 raster·헤더 문구 시각·드로어·오버레이 1장. 자동 검증은 "코드/큐/라우팅/매수 계약"까지.
+- R4 는 매장 `tableNumberRequired` 설정에 따라 차단/통과를 **그대로 기록**(가드 동작 확인).
+
+---
+
 ## 10. 실프린터 테스트 가이드 (Irene 따라하기 — 종이·KDS·POS 눈 확인)
 
 > **목적:** v2 변경(취소·이동 항상 발송 + 알림팝업 + station 박스 + KDS 팝업)을 **실제 매장 프린터·KDS·POS 화면에서** 한 줄씩 따라 확인. 코드/헤드리스로는 종이·화면을 못 보므로 **이 체크리스트가 최종 검증.**
@@ -491,6 +507,7 @@ C1~C5 모두 §9 일치 확인 (라우팅·건수·미러·취소 station별).
 
 | 날짜 | 변경 |
 |------|------|
+| 2026-06-02 | **§ 9-7 "주문루트 전체 테스트" 단일 러너 커밋** (`dev-backend/tests/print-route-matrix.js`) — R1~R11 + Poller + 매수 C1~C6 자동 대조(40/40, 3회 안정). 인쇄 코드 무변경. |
 | 2026-06-02 | **§ 9 v2** — 취소(R9/R10)·이동(R7/R8) **항상 발송**(S1 무관) + **알림형 팝업**(Sent to kitchen·[재발송][닫기]) / **모든 티켓 station 박스**(HTML·ESC-POS) / **KDS 취소·머지 팝업**(탭 기준) / **S5 `printCancellationTicket` 설정 삭제** / **§ 10 실프린터 테스트 가이드** 신설. ⚠️ 실프린터 종이 확인 + `--bless` 미완(배포 전 의무). |
 | 2026-06-01 | § 9-6 런타임 대조 결과 추가 (C1~C5 §9 일치 / C6 kitchenPrinter.enabled+station 불일치 = 코드 우회, 실게이트는 autoPrint) |
 | 2026-06-01 | § 9 주문루트(11) × 주요설정(8) 검증 매트릭스 추가 — R7~R10 4-케이스 오더티켓(이동 빈/머지, 아이템/전체 취소) + 자동/수동 게이트 |

@@ -1541,6 +1541,7 @@ const LiveOrdersPage: React.FC = () => {
       {/* Items Added Alert - for merged orders */}
       {itemsAddedAlert?.isVisible && (
         <div
+          data-items-added-banner=""
           style={{
             position: 'fixed', top: '20px', right: '20px', background: '#FEF3C7',
             border: '2px solid #F59E0B', borderRadius: '12px', padding: '16px 20px',

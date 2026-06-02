@@ -39,5 +39,10 @@
   "notice.doNotMakeOrder": "Stop preparing this order.",
   "notice.mergedInto": "merged into",
   "notice.confirm": "OK, got it",
-  "notice.more": "{{count}} more notice(s)"
+  "notice.more": "{{count}} more notice(s)",
+  "notice": {
+    "moveTitle": "Table Moved",
+    "sameOrder": "Same order — do NOT make it again.",
+    "mergedAtTable": "Combined with the order already at {{table}}"
+  }
 }

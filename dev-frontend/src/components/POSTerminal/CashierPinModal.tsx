@@ -43,7 +43,7 @@ const Overlay = styled.div<{ show: boolean }>`
 const ModalBox = styled.div`
   background: white;
   border-radius: 16px;
-  padding: 32px;
+  padding: 22px 24px;
   width: 360px;
   max-width: calc(100vw - 32px);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
@@ -61,14 +61,14 @@ const Subtitle = styled.p`
   font-size: 13px;
   color: #4B5563;
   text-align: center;
-  margin: 0 0 24px;
+  margin: 0 0 12px;
 `;
 
 const PinDisplay = styled.div`
   display: flex;
   justify-content: center;
   gap: 12px;
-  margin-bottom: 24px;
+  margin-bottom: 14px;
 `;
 
 const PinDot = styled.div<{ filled: boolean; error?: boolean }>`
@@ -83,18 +83,18 @@ const PinDot = styled.div<{ filled: boolean; error?: boolean }>`
 const Keypad = styled.div`
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin-bottom: 16px;
+  gap: 8px;
+  margin-bottom: 12px;
 `;
 
 const KeyBtn = styled.button<{ variant?: 'action' }>`
-  height: 80px;
-  min-height: 80px;
-  max-height: 80px;
+  height: 58px;
+  min-height: 58px;
+  max-height: 58px;
   box-sizing: border-box;
   border: 1px solid #C7CED6;
   border-radius: 10px;
-  font-size: ${props => props.variant === 'action' ? '14px' : '22px'};
+  font-size: ${props => props.variant === 'action' ? '14px' : '20px'};
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
@@ -117,13 +117,13 @@ const ErrorMsg = styled.div`
   color: #DC2626;
   font-size: 13px;
   font-weight: 500;
-  margin-bottom: 16px;
-  min-height: 20px;
+  margin-bottom: 8px;
+  min-height: 16px;
 `;
 
 const LogoutBtn = styled.button`
   width: 100%;
-  padding: 12px;
+  padding: 9px;
   background: transparent;
   border: 1px solid #FCA5A5;
   border-radius: 8px;
@@ -143,7 +143,7 @@ const CurrentCashier = styled.div`
   text-align: center;
   font-size: 12px;
   color: #8898AA;
-  margin-bottom: 20px;
+  margin-bottom: 10px;
 `;
 
 const CashierPinModal: React.FC<CashierPinModalProps> = ({ show, onClose, onVerified, onLogout, currentCashierName }) => {
