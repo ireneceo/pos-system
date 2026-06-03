@@ -7443,6 +7443,10 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                                       </span>
                                     )}
                                   </div>
+                                  {/* 2026-06-03: 카테고리가 이미 스테이션에 배정(라우팅)됐으면 개별 메뉴 목록을
+                                      숨긴다 — 카테고리 배정만으로 그 안 메뉴가 전부 자동 라우팅되므로(혼란 방지).
+                                      라우팅 안 된 카테고리만 개별 항목을 펼쳐 예외 지정용으로 보여준다. */}
+                                  {!defaultStation && (
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingLeft: '4px' }}>
                                     {group.items.map((prod: any) => {
                                       const isChecked = stationForm.product_ids.includes(prod.id);
@@ -7469,6 +7473,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                                       );
                                     })}
                                   </div>
+                                  )}
                                 </div>
                               );
                             })}

@@ -25,15 +25,19 @@ const Container = styled.div`
 const InputWrapper = styled.div<{ isOpen: boolean; disabled?: boolean }>`
   display: flex;
   align-items: center;
-  padding: 10px 12px;
-  border: 1px solid ${props => props.isOpen ? '#635BFF' : '#C7CED6'};
+  box-sizing: border-box;
+  min-height: 42px;
+  padding: 8px 12px;
+  /* 테마 변수 + 동일 fallback — 테마 없는 페이지는 기존(#fff/#C7CED6)과 동일,
+     POS/FloorPlan 에서는 검색입력 박스와 색·높이 통일 (박스 흰색만 튀던 문제 해결). */
+  border: 1px solid ${props => props.isOpen ? 'var(--pos-brand, #635BFF)' : 'var(--pos-border, #C7CED6)'};
   border-radius: 8px;
-  background: ${props => props.disabled ? '#F9FAFB' : 'white'};
+  background: ${props => props.disabled ? 'var(--pos-surface-2, #F9FAFB)' : 'var(--pos-surface, #fff)'};
   cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
   transition: all 0.2s;
 
   &:hover {
-    border-color: ${props => props.disabled ? '#C7CED6' : '#635BFF'};
+    border-color: ${props => props.disabled ? 'var(--pos-border, #C7CED6)' : 'var(--pos-brand, #635BFF)'};
   }
 
   ${props => props.isOpen && `
@@ -47,11 +51,11 @@ const Input = styled.input<{ disabled?: boolean }>`
   outline: none;
   font-size: 14px;
   background: transparent;
-  color: ${props => props.disabled ? '#6B7280' : '#0A2540'};
+  color: ${props => props.disabled ? 'var(--pos-text-muted, #6B7280)' : 'var(--pos-text, #0A2540)'};
   cursor: ${props => props.disabled ? 'not-allowed' : 'text'};
 
   &::placeholder {
-    color: #6B7280;
+    color: var(--pos-text-muted, #6B7280);
   }
 `;
 
@@ -85,11 +89,13 @@ const ArrowIcon = styled.div<{ isOpen: boolean }>`
   justify-content: center;
   transition: transform 0.2s;
   transform: ${props => props.isOpen ? 'rotate(180deg)' : 'rotate(0deg)'};
+  flex-shrink: 0;
+  margin-left: 4px;
 
   svg {
     width: 16px;
     height: 16px;
-    color: #4B5563;
+    color: var(--pos-text-muted, #4B5563);
   }
 `;
 

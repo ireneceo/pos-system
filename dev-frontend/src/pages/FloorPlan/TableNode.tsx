@@ -38,6 +38,8 @@ const NodeWrapper = styled.div<{
   transition: ${p => p.$isEditing ? 'none' : 'box-shadow 0.15s, transform 0.15s, border-color 0.15s'};
   user-select: none;
   -webkit-user-select: none;
+  /* 터치스크린 길게누르기(빌 보기) 시 브라우저 기본 우클릭/콜아웃 메뉴 차단 */
+  -webkit-touch-callout: none;
   /* Selected state — double ring (inner solid border + outer purple ring) + lift,
      so the active table is unmistakable even when its base colour is dark. */
   box-shadow: ${p => p.$isSelected
@@ -216,6 +218,7 @@ const TableNode: React.FC<TableNodeProps> = React.memo(({
       onClick={handleClick}
       onMouseDown={handleMouseDown}
       onTouchStart={handleTouchStart}
+      onContextMenu={(e) => e.preventDefault()}
       style={fixtureStyle}
     >
       {isStaffMeal && <StaffMealBadge>{'STAFF'}</StaffMealBadge>}

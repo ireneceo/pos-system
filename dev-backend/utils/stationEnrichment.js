@@ -52,6 +52,30 @@ function resolveProductId(i) {
 async function enrichItemsWithStation(restaurantId, items) {
   if (!Array.isArray(items) || items.length === 0) return items || [];
 
+  // 2026-06-03: 레거시 set_items → set_components 정규화 (The Fire SET5 사고).
+  // POS 직접담기 등 일부 경로가 세트를 구성품(set_components) 없이 레거시 set_items
+  // (이름만, product_id·station 없음)로만 저장하면, 주방 티켓이 구성품을 못 펼치고
+  // 스테이션도 못 찾아 통째로 첫 프린터로 떨어진다(메뉴 안 보이는 "SET5" 티켓 + BAR 누락).
+  // 여기서 set_items(실제 주문된 구성품)를 set_components 껍데기로 바꿔두면, 아래의
+  // product/이름 폴백 해석이 구성품마다 자기 주방 station 을 박아준다.
+  // 모바일 등 이미 set_components 가 채워진 경로는 건드리지 않는다(조건: 비어있을 때만).
+  items = items.map(it => {
+    if (it && it.is_set_menu
+        && (!Array.isArray(it.set_components) || it.set_components.length === 0)
+        && Array.isArray(it.set_items) && it.set_items.length > 0) {
+      return {
+        ...it,
+        set_components: it.set_items.map(si => ({
+          name: si.name,
+          qty: si.quantity || si.qty || 1,
+          product_id: si.product_id != null ? si.product_id : null,
+          options: Array.isArray(si.options) ? si.options : []
+        }))
+      };
+    }
+    return it;
+  });
+
   // Collect candidate product ids (numeric product id, never the cart-line id).
   // 세트 구성품(set_components)의 product_id 도 함께 수집 → 구성품마다 자기 주방으로 분배.
   const productIds = [];

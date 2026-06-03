@@ -20,7 +20,9 @@
 | 준비시간 타이머 v1 | Settings 토글+주문/아이템 목표+임계. 신호등 3단계(여유/임박/초과 맥동). 기준=주방 진입 시각 | ✅ |
 | 시간코드 중복 제거 | utils/prepTimer 단일 소스 — 경과/서브소요(LiveOrders 인라인 추출)/레벨. 4화면 공유 | ✅ |
 | 서브 시간 표시 순서 | 아이템 리스트: 타이머/상대시간 앞, 주문시간 뒤. 서브 시 소요시간(Xm) | ✅ |
-| KDS 타이머 | 주방 디스플레이 타이머 — 🔒 인쇄 보호 파일이라 실프린터 화면 앞 후속 | ⏳ 후속 |
+| KDS 타이머 | 주방 디스플레이 신호등 칩 — KitchenDisplayPage:2057 prepTimeTracking ON 시 PrepTimerChip(표시 전용) 렌더. 코드 적용 완료, 실프린터 화면 눈확인만 남음 | ✅ |
+| 주문 머지 → KDS 팝업 | Live Orders `POST /orders/merge` 가 `table-moved(merged:true)` 발행 → KDS "합쳐짐 #X" 팝업+소리(표시 전용). 소스 품목은 이미 인쇄됨 → **재인쇄 X, 티켓 중복 0**(Irene 결정). FloorPlan 머지(:1213)와 동일 채널 | ✅ |
+| un-serve 복귀 단계 | 서빙 취소 시 'ready' 유지(현행) 확정 — hall 직원은 ready↔served 만, preparing 은 주방 소관. 코드 변경 없음(의도 확인) | ✅ |
 
 ### 수정/추가된 파일
 - `dev-frontend/src/utils/prepTimer.tsx` (신규 — 준비시간 단일 소스 + 신호등 칩)

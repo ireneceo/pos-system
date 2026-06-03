@@ -133,13 +133,16 @@ const FloorPlanStatsBar: React.FC<FloorPlanStatsBarProps> = ({ tables, tableStat
           const data = await res.json();
           const stats = data.statistics || data;
 
-          // Fetch orders for serve time + threshold calculation
-          const ordersRes = await fetch(`/api/orders?restaurantId=${restaurantId}&status=all&startDate=${today}&endDate=${today}&limit=500`, {
+          // 2026-06-03 FIX: 통계 전부 0 버그 — 기존 `status=all` 은 백엔드가 status='all'
+          // 로 필터해 0건, `startDate/endDate`(camel)도 백엔드는 안 읽음(snake_case 만).
+          // 라이브오더처럼 "주문 받으면 포함"하도록 오늘 받은 주문(취소 제외)에서 직접 집계.
+          const ordersRes = await fetch(`/api/orders?restaurantId=${restaurantId}&start_date=${today}&end_date=${today}&limit=500`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           let serveTimes = { avg: 0, max: 0, min: 0 };
           let abovePercent = 0;
           let orderCount = 0;
+          let totalSales = 0, avgAmount = 0, maxAmount = 0;
 
           if (ordersRes.ok) {
             const ordersData = await ordersRes.json();
@@ -147,6 +150,14 @@ const FloorPlanStatsBar: React.FC<FloorPlanStatsBarProps> = ({ tables, tableStat
             orderCount = Array.isArray(orders) ? orders.length : 0;
 
             if (Array.isArray(orders) && orders.length > 0) {
+              // 받은 주문(취소 제외) 매출 집계 — 라이브오더와 동일 기준(완료 여부 무관, 받으면 포함).
+              const received = orders.filter((o: any) => o.status !== 'cancelled');
+              const amounts = received.map((o: any) => parseFloat(o.total_amount) || 0);
+              totalSales = amounts.reduce((a: number, b: number) => a + b, 0);
+              avgAmount = received.length > 0 ? totalSales / received.length : 0;
+              maxAmount = amounts.length > 0 ? Math.max(...amounts) : 0;
+              orderCount = received.length;
+
               // Calculate serve times — MATCH Live Orders exactly: served_at − createdAt.
               // (Was created_at/completed_at: the orders API returns camelCase `createdAt`,
               //  so `o.created_at` was undefined → serve times always blank on Floor Plan.)
@@ -174,10 +185,10 @@ const FloorPlanStatsBar: React.FC<FloorPlanStatsBarProps> = ({ tables, tableStat
           }
 
           setOrderStats({
-            totalSales: parseFloat(stats.totalSales || stats.total_sales || 0),
-            avgAmount: parseFloat(stats.avgAmount || stats.avg_amount || 0),
-            maxAmount: parseFloat(stats.maxAmount || stats.max_amount || 0),
-            orderCount: parseInt(stats.totalOrders || stats.total_orders || orderCount || 0),
+            totalSales: parseFloat(totalSales.toFixed(2)),
+            avgAmount: parseFloat(avgAmount.toFixed(2)),
+            maxAmount: parseFloat(maxAmount.toFixed(2)),
+            orderCount,
             avgServeTime: serveTimes.avg,
             maxServeTime: serveTimes.max,
             minServeTime: serveTimes.min,

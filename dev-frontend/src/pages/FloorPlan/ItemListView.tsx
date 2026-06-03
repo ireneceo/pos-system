@@ -1,10 +1,12 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { TableStatusInfo } from './types';
 import { ItemStatusPill, toDisplayStatus } from './orderItemStatus';
 import SearchableSelect from '../../components/Common/SearchableSelect';
 import { computePrep, getServedDurationMin, PrepTimerChip } from '../../utils/prepTimer';
+import { useAuth } from '../../contexts/AuthContext';
+import { playPresetSound } from '../../utils/notificationSound';
 
 /**
  * 아이템별 리스트 (Expo / Runner) — 서빙(홀) 직원용 (2026-06-03).
@@ -110,6 +112,7 @@ const optList = (x: any): string[] => (Array.isArray(x.options) ? x.options : []
 
 const ItemListView: React.FC<ItemListViewProps> = ({ dineInOrders, takeawayOrders, activeOrderId, categoryByName = {}, stationById = {}, categories = [], stations = [], timezone, prepMinutes = 15, prepTracking = false, prepPerItem = 10, prepThreshold = 80, onServe, onOpenDineIn, onOpenTakeaway }) => {
   const { t } = useTranslation(['floorplan', 'common']);
+  const { hasPermission } = useAuth();
   const [search, setSearch] = useState('');
   const [catFilter, setCatFilter] = useState('all');
   const [stationFilter, setStationFilter] = useState('all');
@@ -191,6 +194,21 @@ const ItemListView: React.FC<ItemListViewProps> = ({ dineInOrders, takeawayOrder
     });
     return out;
   }, [dineInOrders, takeawayOrders, t, categoryByName, stationById]);
+
+  // 2026-06-03: 서빙(홀) 직원 'ready' 진입 알림음 (1회). 서브권한(access_serving) 만 —
+  // POS 권한만 있는 카운터 직원 화면에선 울리지 않음(소음·혼선 방지). 진입 직후 기존
+  // ready 는 안 울리게 첫 렌더는 시드만. 주방 KDS 와 같은 notificationSound.
+  const prevReadyRef = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    const readyKeys = new Set(rows.filter(r => toDisplayStatus(r.status) === 'ready').map(r => r.key));
+    const prev = prevReadyRef.current;
+    prevReadyRef.current = readyKeys;
+    if (prev === null) return;                      // 첫 렌더 — 시드만
+    if (!hasPermission('access_serving')) return;   // 서브권한만 소리
+    let hasNew = false;
+    readyKeys.forEach(k => { if (!prev.has(k)) hasNew = true; });
+    if (hasNew) { try { playPresetSound('bell'); } catch {} }
+  }, [rows, hasPermission]);
 
   const view = useMemo(() => {
     const q = search.trim().toLowerCase();

@@ -1742,6 +1742,7 @@ router.post('/merge', authenticateToken, async (req, res) => {
 
       const now = new Date().toISOString();
       const deletedOrderIds = [];
+      const mergedSources = [];
 
       for (const source of sourceOrders) {
         let sourceItems = source.order_items || [];
@@ -1766,6 +1767,18 @@ router.post('/merge', authenticateToken, async (req, res) => {
         }, { transaction: t });
 
         deletedOrderIds.push(source.id);
+        // 2026-06-03: KDS 표시 전용 머지 안내용 소스 메타. 인쇄 아님 —
+        // 스테이션 필터용 품목 이름/스테이션만 (재인쇄하지 않는다, Irene 결정).
+        mergedSources.push({
+          id: source.id,
+          orderNumber: source.order_number,
+          tableNumber: source.table_number,
+          items: sourceItems.map(it => ({
+            name: it.name,
+            quantity: it.quantity || 1,
+            kitchen_station_id: it.kitchen_station_id || null
+          }))
+        });
       }
 
       // Recalculate total - preserve existing discounts from target order
@@ -1818,7 +1831,8 @@ router.post('/merge', authenticateToken, async (req, res) => {
 
       return {
         mergedOrder: target,
-        deletedOrderIds
+        deletedOrderIds,
+        mergedSources
       };
     });
 
@@ -1839,6 +1853,24 @@ router.post('/merge', authenticateToken, async (req, res) => {
       // Emit delete for source orders
       for (const deletedId of result.deletedOrderIds) {
         io.of('/orders').to(room).emit('order-deleted', { id: deletedId });
+      }
+
+      // 2026-06-03: KDS 표시 전용 머지 안내 팝업. 소스 주문 품목은 원래 주문
+      // 생성 때 이미 주방에 인쇄됐으므로 재인쇄하지 않는다(Irene 결정: 팝업만).
+      // order-items-added(자동인쇄 유발) 대신 table-moved(merged:true) 만 발행 —
+      // FloorPlan 머지(:1213)와 동일한 표시 전용 채널. 티켓 중복 위험 0.
+      const mergedToTable = plainMergedOrder.table_number || null;
+      for (const src of (result.mergedSources || [])) {
+        io.of('/orders').to(room).emit('table-moved', {
+          orderId: src.id,
+          orderNumber: src.orderNumber || String(src.id),
+          fromTable: src.tableNumber || undefined,
+          toTable: mergedToTable || undefined,
+          merged: true,
+          intoOrderNumber: plainMergedOrder.order_number,
+          items: src.items || [],
+          movedAt: new Date().toISOString()
+        });
       }
     }
 

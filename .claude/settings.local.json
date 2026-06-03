@@ -503,7 +503,10 @@
       "Bash(sed -n '455,475p' src/pages/Settings/SettingsPage.tsx)",
       "Bash(sed -n '812,822p' src/pages/Settings/SettingsPage.tsx)",
       "Bash(sed -n '28,40p' src/contexts/StoreContext.tsx)",
-      "Bash(sed -n '105,115p' src/contexts/StoreContext.tsx)"
+      "Bash(sed -n '105,115p' src/contexts/StoreContext.tsx)",
+      "Bash(scp -o ConnectTimeout=8 -q /var/www/dev-backend/diag-set5-thefire.js irene@87.106.78.146:/var/www/production-backend/diag-set5-thefire.js)",
+      "Bash(scp -o ConnectTimeout=8 -q /var/www/dev-backend/diag-order-set5.js irene@87.106.78.146:/var/www/production-backend/diag-order-set5.js)",
+      "Bash(scp -o ConnectTimeout=8 -q /var/www/dev-backend/diag-order-src.js irene@87.106.78.146:/var/www/production-backend/diag-order-src.js)"
     ],
     "deny": [],
     "ask": []

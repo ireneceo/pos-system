@@ -1822,12 +1822,20 @@ const POSTerminalPage: React.FC = () => {
           : item
       ));
     } else {
+      // 2026-06-03: 세트는 구성품(set_components)을 반드시 실어, 카운터 직접인쇄(로컬 장바구니
+      // 기준)에서도 구성품이 각자 주방으로 분배되게 한다. 이름만 있어도 billPrint 의
+      // _bucketItemsByStation 가 menuStationMap 으로 라우팅한다. (백엔드 stationEnrichment 가
+      // DB 저장분을 같은 규칙으로 한 번 더 보장 — 모든 경로 멱등. The Fire SET5 사고 방지.)
+      const setComps = (menuItem.is_set_menu && Array.isArray(menuItem.set_items) && menuItem.set_items.length > 0)
+        ? menuItem.set_items.map((si: any) => ({ name: si.name, qty: si.quantity || 1, product_id: si.menuItemId != null ? si.menuItemId : null, options: [] }))
+        : undefined;
       setOrderItems([...orderItems, {
         id: `order-${Date.now()}`,
         menuItem,
         quantity: 1,
-        options: setMenuOptions.length > 0 ? setMenuOptions : undefined
-      }]);
+        options: setMenuOptions.length > 0 ? setMenuOptions : undefined,
+        ...(setComps ? { set_components: setComps } : {})
+      } as any]);
     }
   };
 
