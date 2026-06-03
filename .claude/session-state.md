@@ -1,5 +1,10 @@
 # Purple POS — 개발 세션 상태
 
+<!-- AUTOSAVE-STALE-BANNER -->
+> **[AUTO-SAVE STALE] (2026-06-03 04:40, idle 1853s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
+> 변경된 작업 파일: auth.js,orders-crud.js orders-payment.js,backfill-pos-counter.js admin.json,floorplan.json floorplan.json,floorplan.json floorplan.json,AuthContext.tsx StaffManagementPage.tsx,FloorPlanPage.tsx
+<!-- /AUTOSAVE-STALE-BANNER -->
+
 ## 현재 작업 상태
 **마지막 업데이트:** 2026-06-02 (**v3.46 운영 배포 완료**)
 **이번 세션 완료(배포됨):** 누적분 v3.46 배포(POS UI/UX·주방인쇄v2·테이블이동/취소표·이메일인증) + 매장5 옛 e2e 잔재 399건 cancelled 정리(FPTI 하니스 unblock, 43/43) + KDS 이동팝업 "테이블 우선"(오더번호 단축) + 새주문 녹색배너↔items배너 겹침 fix(`data-items-added-banner`) + **배포 DB가드**: `order_actions` ENUM `table_moved` 멱등 마이그레이션 신설·deploy 9a-2 등록(운영 적용 확인). **다음: Irene 실프린터 눈확인**(주방티켓 1장·station박스·취소/이동·영수증·KDS팝업).

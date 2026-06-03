@@ -807,6 +807,8 @@
   "staffManagementPage.companyLocation": "Company & Location",
   "staffManagementPage.role": "Role",
   "staffManagementPage.department": "Department",
+  "staffManagementPage.counterOps": "Counter (POS) operations",
+  "staffManagementPage.counterOpsDesc": "Allow payment, cancel, void, cash drawer & settlement. Turn off for serving-only staff.",
   "staffManagementPage.status": "Status",
   "staffManagementPage.salary": "Salary",
   "staffManagementPage.actions": "Actions",

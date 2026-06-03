@@ -486,7 +486,14 @@
       "Bash(sed -n '60,82p' src/index.css)",
       "Bash(sed -n '1,90p' src/components/Common/NotificationToaster.tsx)",
       "Bash(scp -q irene@87.106.78.146:/tmp/prod_schema.json /tmp/prod_schema.json)",
-      "Bash(xargs -I{} sh -c 'echo \"FILE: {}\"; grep -n -A15 \"logOrderActionSafe\" {} | head -25')"
+      "Bash(xargs -I{} sh -c 'echo \"FILE: {}\"; grep -n -A15 \"logOrderActionSafe\" {} | head -25')",
+      "Bash(sed -n '180,195p;765,775p' dev-frontend/src/contexts/AuthContext.tsx)",
+      "Bash(sed -n '51,75p' dev-backend/middleware/auth.js)",
+      "Bash(ls -la docs/ROLES_AND_PERMISSIONS.md)",
+      "Bash(sed -n '1050,1066p' dev-frontend/src/pages/Admin/StaffManagementPage.tsx)",
+      "Bash(sed -n '2040,2042p' routes/orders-crud.js)",
+      "Bash(sed -n '1321,1323p' routes/orders-crud.js)",
+      "Bash(perl -0pi -e 's/\\(onKitchenTicketSent=\\\\{setMovePrintPrompt\\\\}\\\\n\\)/$1            canOperatePOS={canOperatePOS}\\\\n/g' FloorPlanPage.tsx)"
     ],
     "deny": [],
     "ask": []

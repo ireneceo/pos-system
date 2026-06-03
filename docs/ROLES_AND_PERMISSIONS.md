@@ -292,6 +292,16 @@ Staff의 권한은 **메뉴 보이기/숨기기**로 제어됨. Restaurant Admin
 
 **저장 방식**: `User.permissions` 필드에 JSON 배열 (`["menu_management", "reports"]`)
 
+### 액션 권한 (Menu Visibility 와 별개) — `pos_counter` (2026-06-03)
+
+메뉴 보이기와 별개로, **카운터 전용 액션 권한** `pos_counter` 가 같은 `permissions` 배열에 저장된다.
+
+- **있음** → 결제 / 주문 취소 / 아이템 void / 현금박스 / 고객 디스플레이 / 정산 가능 (카운터/캐셔 직원).
+- **없음** → **서빙 전용** 직원. Floor Plan 에서 위 카운터 액션 UI 미표시 + 백엔드 403. 주문 넣기·단계 이동·주방 프린트·품목 서빙 토글은 가능.
+- **헬퍼**: 프론트 `canOperatePOS = role ∈ {System/Restaurant Admin} || permissions.includes('pos_counter')`. 백엔드 `requirePosCounter` 미들웨어(같은 식).
+- **백워드 호환**: 기존 Staff 중 `process_payment`/`use_pos` 보유자는 `pos_counter` 자동 백필(현 동작 유지). 신규 Staff 기본 포함. 서빙 전용은 명시적으로 끈다.
+- **서빙 뷰**: Floor Plan 3번째 탭 `Items`(아이템별 Expo 리스트). 설계 단일진실 = `docs/SERVING_VIEW_DESIGN.md`.
+
 ### PIN 기반 POS 캐셔 전환
 - POS 터미널 상단 "Cashier: [이름] ▼" 클릭 → PIN 입력 모달
 - 4자리 PIN 입력 시 자동 인증 (`POST /api/staff/verify-pin`)

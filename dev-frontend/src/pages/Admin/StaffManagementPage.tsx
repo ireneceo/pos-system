@@ -1201,6 +1201,10 @@ const AdminStaffManagementPage: React.FC = () => {
         department: editingStaff.department ? editingStaff.department.trim() : null,
         phone: editingStaff.phone ? editingStaff.phone.trim() : null
       };
+      // 카운터(POS) 운영 권한 — Staff 만 적용. 서빙 전용은 pos_counter 제거. (Admin 은 역할로 항상 가능)
+      if (editingStaff.role === 'Staff') {
+        requestData.permissions = Array.isArray(editingStaff.permissions) ? editingStaff.permissions : [];
+      }
       if (editingStaff.pin_code && editingStaff.pin_code.length === 4) {
         requestData.pin_code = editingStaff.pin_code;
       }
@@ -1944,6 +1948,42 @@ const AdminStaffManagementPage: React.FC = () => {
                       </div>
                     </FormGroup>
                   )}
+
+                  {/* 카운터(POS) 운영 권한 — Staff 만. 끄면 서빙 전용 직원(결제/취소/void/현금박스/정산 숨김) */}
+                  {editingStaff.role === 'Staff' && (() => {
+                    const hasCounter = Array.isArray(editingStaff.permissions) && editingStaff.permissions.includes('pos_counter');
+                    const toggleCounter = () => {
+                      const cur = Array.isArray(editingStaff.permissions) ? editingStaff.permissions : [];
+                      const next = hasCounter ? cur.filter(p => p !== 'pos_counter') : [...cur, 'pos_counter'];
+                      setEditingStaff({ ...editingStaff, permissions: next });
+                    };
+                    return (
+                      <FormGroup>
+                        <Label>{t('admin:staffManagementPage.counterOps', { defaultValue: 'Counter (POS) operations' })}</Label>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                          <div style={{ fontSize: '13px', color: '#4B5563', lineHeight: 1.4 }}>
+                            {t('admin:staffManagementPage.counterOpsDesc', { defaultValue: 'Allow payment, cancel, void, cash drawer & settlement. Turn off for serving-only staff.' })}
+                          </div>
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={hasCounter}
+                            onClick={toggleCounter}
+                            title={hasCounter ? 'Counter operations enabled' : 'Serving-only'}
+                            style={{
+                              flexShrink: 0, width: '48px', height: '28px', borderRadius: '999px', border: 'none', cursor: 'pointer',
+                              background: hasCounter ? '#635BFF' : '#C7CED6', position: 'relative', transition: 'background .15s', padding: 0
+                            }}
+                          >
+                            <span style={{
+                              position: 'absolute', top: '3px', left: hasCounter ? '23px' : '3px', width: '22px', height: '22px',
+                              borderRadius: '50%', background: '#fff', transition: 'left .15s', boxShadow: '0 1px 2px rgba(0,0,0,.2)'
+                            }} />
+                          </button>
+                        </div>
+                      </FormGroup>
+                    );
+                  })()}
                 </FormGrid>
 
               </>

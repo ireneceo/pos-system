@@ -61,6 +61,8 @@ interface TableDetailPanelProps {
   // 확정 스펙 v2 (2026-06-02): 취소/아이템삭제 후 "주방에 발송됨" 알림 팝업.
   // FloorPlanPage 가 KitchenTicketSendModal 을 렌더하므로 prompt 를 위로 올린다.
   onKitchenTicketSent?: (prompt: KitchenTicketSendPrompt) => void;
+  // 카운터(POS) 운영 권한. false(서빙 전용 직원) → 결제/취소/void 버튼 숨김. docs/SERVING_VIEW_DESIGN.md
+  canOperatePOS?: boolean;
 }
 
 // ─── Styled Components ───
@@ -628,7 +630,8 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
   tableFree,
   qrMode = 'static',
   floorPlan,
-  onKitchenTicketSent
+  onKitchenTicketSent,
+  canOperatePOS = true
 }) => {
   const [loading, setLoading] = useState(false);
   // 우측 패널 접기 (#1): 테이블 작업(QR/프린트/Cancel/Leaved) 기본 접힘 → 주문내역 가독성 확보.
@@ -1764,7 +1767,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                             <ItemPrice>
                               {formatCurrency(item.price * item.quantity, currency)}
                             </ItemPrice>
-                            {paymentStatus !== 'completed' && items.length > 1 && (
+                            {canOperatePOS && paymentStatus !== 'completed' && items.length > 1 && (
                               <DeleteItemBtn
                                 onClick={() => handleDeleteItem(originalIndex, item.name)}
                                 title="Delete item"
@@ -1872,8 +1875,8 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                 </ActionBtn>
               )}
 
-              {/* Confirm Payment — 증빙 확인 모달 열기 */}
-              {paymentStatus === 'payment_verification_pending' && (
+              {/* Confirm Payment — 증빙 확인 모달 열기 (카운터 전용) */}
+              {canOperatePOS && paymentStatus === 'payment_verification_pending' && (
                 <ActionBtn $variant="success" onClick={handleConfirmPaymentClick} disabled={loading}>
                   Confirm Payment
                 </ActionBtn>
@@ -1887,8 +1890,8 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                     Add Items
                   </ActionBtn>
                 )}
-                {/* Payment — LiveOrders와 동일: payment_status=pending */}
-                {paymentStatus === 'pending' && (
+                {/* Payment — LiveOrders와 동일: payment_status=pending (카운터 전용) */}
+                {canOperatePOS && paymentStatus === 'pending' && (
                   <ActionBtn
                     $variant={orderStatus === 'served' ? 'success' : 'secondary'}
                     onClick={onPayment}
@@ -1950,8 +1953,8 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                     {t('floorplan:tableDetailPanel.moveTable', { defaultValue: 'Move Table' })}
                   </ActionBtn>
                 )}
-                {/* Cancel Order */}
-                {orderStatus !== 'cancelled' && orderStatus !== 'completed' && (
+                {/* Cancel Order (카운터 전용) */}
+                {canOperatePOS && orderStatus !== 'cancelled' && orderStatus !== 'completed' && (
                   <ActionBtn $variant="danger" onClick={handleCancelOrder} disabled={loading}>
                     Cancel Order
                   </ActionBtn>

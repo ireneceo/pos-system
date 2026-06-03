@@ -37,6 +37,8 @@ const authenticateToken = async (req, res, next) => {
       foodcourt_id: user.foodcourt_id,
       branch_id: user.branch_id,
       manager_id: user.manager_id,
+      // permissions JSON 배열 (Staff 액션 권한 — pos_counter 등). getter 가 auto-parse.
+      permissions: Array.isArray(user.permissions) ? user.permissions : [],
       is_demo: user.is_demo || false
     };
 
@@ -70,6 +72,28 @@ const requireRole = (...allowedRoles) => {
 
     next();
   };
+};
+
+// 카운터 전용 액션(결제/취소/void/현금박스/정산) 권한 게이트 (2026-06-03).
+// Restaurant/System Admin = 항상 허용. Staff = permissions 에 'pos_counter' 보유 시만.
+// 서빙 전용 직원(pos_counter 없음)이 결제/취소/void 를 직접 호출해도 차단(UI 숨김만으론 부족).
+// docs/SERVING_VIEW_DESIGN.md §7 / docs/ROLES_AND_PERMISSIONS.md.
+const POS_COUNTER_ROLES = ['System Admin', 'Restaurant Admin'];
+const userCanOperatePosCounter = (user) =>
+  !!user && (POS_COUNTER_ROLES.includes(user.role) || (Array.isArray(user.permissions) && user.permissions.includes('pos_counter')));
+
+const requirePosCounter = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ success: false, error: { message: 'Authentication required', code: 'UNAUTHORIZED' } });
+  }
+  if (!userCanOperatePosCounter(req.user)) {
+    return res.status(403).json({
+      success: false,
+      error: 'This action requires counter (POS) permission. Serving-only staff cannot perform it.',
+      code: 'POS_COUNTER_REQUIRED'
+    });
+  }
+  next();
 };
 
 // Check if Restaurant Admin/Staff can access the restaurant
@@ -308,6 +332,8 @@ module.exports = {
   authenticateToken,
   optionalAuthenticateToken,
   requireRole,
+  requirePosCounter,
+  userCanOperatePosCounter,
   checkRestaurantAccess,
   checkSubscriptionStatus,
   demoProtection,

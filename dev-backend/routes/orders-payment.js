@@ -11,7 +11,7 @@ const { sequelize } = require('../config/database');
 const { executeQuery, executeTransaction } = require('../utils/queryWrapper');
 const { deductInventoryForOrder } = require('../services/inventoryDeductionService');
 const { earnPointsForOrder, refundPointsForOrder, usePointsForOrder } = require('../services/pointService');
-const { authenticateToken, optionalAuthenticateToken } = require('../middleware/auth');
+const { authenticateToken, optionalAuthenticateToken, requirePosCounter } = require('../middleware/auth');
 const ActivityLog = require('../models/ActivityLog');
 const { logActivity } = require('../utils/activityLogger');
 const { getTodayBounds, getOrderDatePrefix, getRestaurantTimezone } = require('../utils/dateTimeHelper');
@@ -314,7 +314,9 @@ router.get('/:id/payments', authenticateToken, async (req, res) => {
 
 // POST /api/orders/:id/payments — record a (possibly partial) payment
 // Body: { amount, payment_method, items_paid?, amount_received?, change_amount?, card_type?, transaction_id?, cashier_name? }
-router.post('/:id/payments', authenticateToken, async (req, res) => {
+// 카운터 결제 기록(현금/카드 수납) — 서빙 전용 직원 차단. 모바일 게스트는 이 경로가 아닌
+// create-payment-intent/capture(공개) 사용이므로 영향 없음. docs/SERVING_VIEW_DESIGN.md §7.
+router.post('/:id/payments', authenticateToken, requirePosCounter, async (req, res) => {
   try {
     const order = await Order.findByPk(req.params.id);
     if (!order) return res.status(404).json({ success: false, message: 'Order not found' });

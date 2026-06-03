@@ -7,6 +7,7 @@ import { FloorPlanData, DEFAULT_FLOOR_PLAN, TableStatusInfo, ORDER_STATUS_COLORS
 import { calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import FloorPlanCanvas from './FloorPlanCanvas';
 import TableDetailPanel from './TableDetailPanel';
+import ItemListView from './ItemListView';
 import FloorPlanStatsBar from './FloorPlanStatsBar';
 import PaymentModal from '../../components/POSTerminal/PaymentModal';
 import { Modal as CommonModal } from '../../components/UI';
@@ -289,7 +290,7 @@ const FloorPlanPage: React.FC = () => {
   const { t } = useTranslation('floorplan');
   const { restaurantId } = useParams<{ restaurantId: string }>();
   const navigate = useNavigate();
-  const { user, switchUser, logout } = useAuth();
+  const { user, switchUser, logout, canOperatePOS } = useAuth();
   const { getStoreInfo, operationSettings } = useStore();
 
   // 2026-05-28 매장 critical: backend-driven auto-print polling (fullscreen page,
@@ -329,7 +330,9 @@ const FloorPlanPage: React.FC = () => {
   // useSearchParams gives us bidirectional sync; we never mutate the params object directly.
   const [searchParams, setSearchParams] = useSearchParams();
   const activeZoneFilter = searchParams.get('zone') || 'all';
-  const activeView: 'floor' | 'takeaway' = searchParams.get('view') === 'takeaway' ? 'takeaway' : 'floor';
+  const _viewParam = searchParams.get('view');
+  const activeView: 'floor' | 'takeaway' | 'items' =
+    _viewParam === 'takeaway' ? 'takeaway' : (_viewParam === 'items' ? 'items' : 'floor');
   const selectedTakeawayOrderId = (() => {
     const q = searchParams.get('order');
     return q ? parseInt(q, 10) || null : null;
@@ -344,10 +347,11 @@ const FloorPlanPage: React.FC = () => {
       return next;
     }, { replace: true });
   }, [setSearchParams]);
-  const setActiveView = useCallback((view: 'floor' | 'takeaway') => {
+  const setActiveView = useCallback((view: 'floor' | 'takeaway' | 'items') => {
     setSearchParams(prev => {
       const next = new URLSearchParams(prev);
       if (view === 'takeaway') next.set('view', 'takeaway');
+      else if (view === 'items') { next.set('view', 'items'); next.delete('order'); }
       else { next.delete('view'); next.delete('order'); }
       return next;
     }, { replace: true });
@@ -868,6 +872,60 @@ const FloorPlanPage: React.FC = () => {
       console.error('Failed to update order status:', err);
     }
   };
+
+  // ── 아이템별 리스트(서빙 뷰) 지원 ──
+  // 활성(미서빙) 아이템 수 — Items 탭 배지용.
+  const itemViewActiveCount = useMemo(() => {
+    const isServed = (s: any) => ['served', 'completed'].includes(String(s || ''));
+    let n = 0;
+    const count = (orders: any[]) => orders.forEach((o: any) => {
+      const st = String(o.orderStatus || o.status || '');
+      if (st === 'cancelled' || st === 'completed') return;
+      (o.orderItems || o.order_items || []).forEach((it: any) => { if (!isServed(it.status)) n++; });
+    });
+    count(Object.values(tableStatuses));
+    count(takeawayOrders);
+    return n;
+  }, [tableStatuses, takeawayOrders]);
+
+  // 아이템 서빙 완료 토글 — 해당 주문의 order_items[idx].status 갱신(PATCH /items). 카운터 권한 불필요.
+  const handleServeItem = useCallback(async (orderId: number, itemIndex: number, makeServed: boolean) => {
+    // 주문(테이블/테이크웨이) 찾아 현재 items 확보
+    const fromTables = Object.values(tableStatuses).find((o: any) => o.orderId === orderId) as any;
+    const fromTakeaway = takeawayOrders.find((o: any) => (o.orderId || o.id) === orderId);
+    const src: any = fromTables || fromTakeaway;
+    const items = (src && (src.orderItems || src.order_items)) || [];
+    if (!Array.isArray(items) || !items[itemIndex]) return;
+    const updated = items.map((it: any, i: number) =>
+      i === itemIndex ? { ...it, status: makeServed ? 'served' : 'ready' } : it);
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`/api/orders/${orderId}/items`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ order_items: updated, allowItemRevert: !makeServed })
+      });
+      if (res.ok) { await fetchStatuses(); if (typeof fetchTakeawayOrders === 'function') fetchTakeawayOrders(); }
+    } catch (err) {
+      console.error('Failed to toggle item served:', err);
+    }
+  }, [tableStatuses, takeawayOrders, fetchStatuses, fetchTakeawayOrders]);
+
+  // 행의 "주문 전체보기" → 우측 패널 오픈(테이블/테이크웨이).
+  const handleOpenDineInFromItems = useCallback((tableNumber: string, _orderId: number) => {
+    const tbl = (floorPlan?.tables || []).find((tt: any) =>
+      String(tt.label ?? tt.tableNumber ?? tt.id) === String(tableNumber) || String(tt.tableNumber) === String(tableNumber));
+    if (tbl) { setActiveView('floor'); setSelectedTableId(tbl.id); }
+  }, [floorPlan, setActiveView]);
+
+  // 서빙 전용 직원(canOperatePOS=false)은 아이템 리스트를 가장 많이 봄 → 진입 기본 뷰 = items.
+  // 명시적 view 파라미터가 없을 때만 1회 적용(이후 사용자가 자유롭게 탭 전환).
+  const defaultViewAppliedRef = useRef(false);
+  useEffect(() => {
+    if (defaultViewAppliedRef.current || !user) return;
+    defaultViewAppliedRef.current = true;
+    if (!canOperatePOS && !_viewParam) setActiveView('items');
+  }, [user, canOperatePOS, _viewParam, setActiveView]);
 
   // [POS Overlay pattern — SINGLE entry point for any POS launch from Floor Plan]
   // All POS Terminal launches from Floor Plan must go through this function and the <POSOverlay> iframe below.
@@ -1408,13 +1466,15 @@ const FloorPlanPage: React.FC = () => {
           {/* 액션 버튼 순서: Daily Settlement(항상 인라인) · Customer Display · Open Drawer.
               좁은 화면(≤1280px, 10인치 단말)에선 Customer Display/Open Drawer 만 설정(gear)
               드롭다운으로 수납한다. Daily Settlement 은 마감 핵심 동작이라 좁은 화면에서도 인라인 유지(Irene). */}
+          {canOperatePOS && (
           <BackBtn type="button" onClick={() => setShowSettlement(true)} title="Daily Settlement">
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '15px', height: '15px' }}>
               <path d="M6 9V2H18V9M6 18H4C2.89543 18 2 17.1046 2 16V11C2 9.89543 2.89543 9 4 9H20C21.1046 9 22 9.89543 22 11V16C22 17.1046 21.1046 18 20 18H18M6 14H18V22H6V14Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
             Daily Settlement
           </BackBtn>
-          {!isNarrow && (
+          )}
+          {canOperatePOS && !isNarrow && (
             <>
               <BackBtn type="button"
                 onClick={async () => {
@@ -1475,8 +1535,9 @@ const FloorPlanPage: React.FC = () => {
               좁은 화면에선 Customer Display/Open Drawer 두 개도 함께 수납(Daily Settlement 은 인라인 유지). */}
           {(() => {
             const gearItems: OverflowMenuItem[] = [];
-            if (isNarrow) {
+            if (isNarrow && canOperatePOS) {
               // Daily Settlement 은 항상 인라인 → 드롭다운엔 Customer Display/Open Drawer 만 수납.
+              // 서빙 전용 직원(canOperatePOS=false)에겐 카운터 항목 자체를 넣지 않는다.
               gearItems.push({
                 id: 'customer-display', label: 'Customer Display', indicator: isAutoOpenEnabled(),
                 onClick: async () => {
@@ -1572,6 +1633,16 @@ const FloorPlanPage: React.FC = () => {
             {t('floorplan:floorPlanPage.takeawayView', 'Takeaway')}
             <ZoneChipCount>{takeawayOrders.length}</ZoneChipCount>
           </ZoneChip>
+          {/* Items 뷰 — 아이템별 서빙 리스트(홀 직원). 서버가 가장 많이 봄. */}
+          <ZoneChip
+            type="button"
+            active={activeView === 'items'}
+            onClick={() => { setActiveView('items'); setSelectedTableId(null); }}
+            title={t('floorplan:floorPlanPage.itemsViewHint', 'Item-by-item serving list')}
+          >
+            {t('floorplan:floorPlanPage.itemsView', 'Items')}
+            <ZoneChipCount>{itemViewActiveCount}</ZoneChipCount>
+          </ZoneChip>
           <ZoneChip
             type="button"
             active={false}
@@ -1588,7 +1659,15 @@ const FloorPlanPage: React.FC = () => {
 
       <MainContent>
         <CanvasWrapper>
-          {activeView === 'floor' ? (
+          {activeView === 'items' ? (
+            <ItemListView
+              dineInOrders={Object.values(tableStatuses)}
+              takeawayOrders={takeawayOrders}
+              onServe={handleServeItem}
+              onOpenDineIn={handleOpenDineInFromItems}
+              onOpenTakeaway={(id) => { setActiveView('takeaway'); setSelectedTakeawayOrderId(id); }}
+            />
+          ) : activeView === 'floor' ? (
             <FloorPlanCanvas
               floorPlan={filteredFloorPlan}
               tableStatuses={tableStatuses}
@@ -1716,6 +1795,7 @@ const FloorPlanPage: React.FC = () => {
             qrMode={qrMode}
             floorPlan={floorPlan}
             onKitchenTicketSent={setMovePrintPrompt}
+            canOperatePOS={canOperatePOS}
           />
         )}
 
@@ -1792,6 +1872,7 @@ const FloorPlanPage: React.FC = () => {
               orders={[]}
               floorPlan={floorPlan}
               onKitchenTicketSent={setMovePrintPrompt}
+            canOperatePOS={canOperatePOS}
             />
           );
         })()}

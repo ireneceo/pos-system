@@ -48,6 +48,9 @@ interface AuthContextType {
   updateUser: (userData: Partial<User>) => void;
   updateLanguage: (language: string) => Promise<void>;
   hasPermission: (permission: string) => boolean;
+  // 카운터 전용 액션(결제/취소/void/현금박스/정산) 가능 여부. Restaurant/System Admin 항상 true,
+  // Staff 는 'pos_counter' 권한 보유 시만. 없으면 서빙 전용 직원. docs/SERVING_VIEW_DESIGN.md
+  canOperatePOS: boolean;
   canAccessRoute: (route: string) => boolean;
   // Refetch /me and update user in place. Use after server-side state changes
   // that affect ProtectedRoute / SuspendedBanner — e.g., paying an overdue
@@ -187,6 +190,7 @@ const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     'create_order',
     'view_orders',
     'process_payment',
+    'pos_counter',
     'view_kitchen_display',
     'view_customer_display'
   ],
@@ -771,6 +775,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return user.permissions?.includes(permission) || false;
   };
 
+  // 카운터 전용 액션 게이트(서빙 전용 직원 구분). 백엔드 requirePosCounter 와 동일 식.
+  const canOperatePOS = !!user && (
+    user.role === 'System Admin' || user.role === 'Restaurant Admin' ||
+    (user.permissions?.includes('pos_counter') || false)
+  );
+
   const canAccessRoute = (route: string): boolean => {
     if (!user) return false;
     
@@ -800,6 +810,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     updateUser,
     updateLanguage,
     hasPermission,
+    canOperatePOS,
     canAccessRoute,
     refreshUser
   };
