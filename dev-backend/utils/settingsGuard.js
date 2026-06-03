@@ -19,7 +19,8 @@
 
 const OPERATION_SETTINGS_ALLOWED_KEYS = new Set([
   'openingTime', 'closingTime', 'timeZone', 'orderNumberReset',
-  'defaultPreparationTime', 'taxEnabled', 'taxRate', 'serviceChargeEnabled',
+  'defaultPreparationTime', 'prepTimeTracking', 'defaultPreparationTimePerItem',
+  'prepUrgentThreshold', 'taxEnabled', 'taxRate', 'serviceChargeEnabled',
   'serviceChargeRate', 'serviceChargeExcludeTakeaway', 'currency',
   'cashRounding', 'roundingApplyTo', 'pagerSystem', 'takeawayPricing',
   'deliveryPricing', 'loyaltyTiers', 'orderTypes', 'pickupSettings',

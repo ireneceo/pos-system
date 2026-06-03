@@ -75,12 +75,13 @@ const requireRole = (...allowedRoles) => {
 };
 
 // 카운터 전용 액션(결제/취소/void/현금박스/정산) 권한 게이트 (2026-06-03).
-// Restaurant/System Admin = 항상 허용. Staff = permissions 에 'pos_counter' 보유 시만.
-// 서빙 전용 직원(pos_counter 없음)이 결제/취소/void 를 직접 호출해도 차단(UI 숨김만으론 부족).
+// Restaurant/System Admin = 항상 허용. Staff = permissions 에 'access_pos' 보유 시만.
+// 서빙/주방 전용 직원(access_pos 없음)이 결제/취소/void 를 직접 호출해도 차단(UI 숨김만으론 부족).
 // docs/SERVING_VIEW_DESIGN.md §7 / docs/ROLES_AND_PERMISSIONS.md.
 const POS_COUNTER_ROLES = ['System Admin', 'Restaurant Admin'];
+// access_pos = 포스/카운터 접근(메뉴 가시성 + 결제/취소/void/현금박스/정산 액션). 단일 키로 통합(2026-06-03).
 const userCanOperatePosCounter = (user) =>
-  !!user && (POS_COUNTER_ROLES.includes(user.role) || (Array.isArray(user.permissions) && user.permissions.includes('pos_counter')));
+  !!user && (POS_COUNTER_ROLES.includes(user.role) || (Array.isArray(user.permissions) && user.permissions.includes('access_pos')));
 
 const requirePosCounter = (req, res, next) => {
   if (!req.user) {

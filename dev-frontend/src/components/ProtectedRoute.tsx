@@ -109,7 +109,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requiredPermission,
   requireRestaurantMatch = false
 }) => {
-  const { user, isAuthenticated, isLoading, hasPermission, canAccessRoute } = useAuth();
+  const { user, isAuthenticated, isLoading, hasPermission, canAccessRoute, canOpenStaffRoute, staffHomePath } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const params = useParams<{ restaurantId?: string }>();
@@ -187,6 +187,15 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       const redirectPath = `/restaurant/${userRestaurantId}/${pagePath || 'dashboard'}`;
 
       return <Navigate to={redirectPath} replace />;
+    }
+  }
+
+  // 직원 작업 접근(주방/포스/서빙) 게이트 — 권한 없는 운영 페이지 URL 직접 진입 차단(2026-06-03).
+  // Staff 한정. 보유 접근의 기본 랜딩으로 리다이렉트. docs/STAFF_ACCESS_AND_IDENTITY_DESIGN.md §3-B.
+  if (user && user.role === 'Staff' && params.restaurantId && !canOpenStaffRoute(location.pathname)) {
+    const home = staffHomePath(params.restaurantId);
+    if (!location.pathname.startsWith(home.split('?')[0])) {
+      return <Navigate to={home} replace />;
     }
   }
 

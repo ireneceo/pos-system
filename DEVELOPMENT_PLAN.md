@@ -1,9 +1,42 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-02 (v3.46 운영 배포 완료 — POS UI/UX 개편·주방 인쇄 v2·테이블 이동/취소표·이메일 인증·KDS 이동팝업 테이블우선·새주문 배너 겹침 fix. table_moved ENUM 운영 적용. ⚠️ 실프린터 눈확인 매장 진행 중)
+> **최종 업데이트:** 2026-06-03 (DEV — 서빙뷰(아이템리스트)·스탭 작업접근(POS/서빙/주방)·이메일선택·Staff ID 매장 네임스페이스·검색형 셀렉트 통일·준비시간 타이머(신호등) v1. KDS 타이머는 인쇄 보호 후속.)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 > **현재 버전:** **v3.46** 운영 (2026-06-02 배포, Backup 20260602_233232 — POS UI/UX 개편 + 주방 인쇄·알림 v2 + 테이블 이동/취소표 + 이메일 인증 + KDS 팝업/배너 정리. table_moved ENUM 운영 적용. ⚠️ 실프린터 눈확인 매장 진행 중)
+
+## ✅ 완료(DEV, 미배포): 서빙뷰 + 스탭 접근/정체성 + 준비시간 타이머 (2026-06-03)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 서빙 아이템 리스트 | Floor Plan ?view=items — 아이템별/세트구성품별 서빙, KDS 색 동기화, 카드 디자인 | ✅ |
+| 스탭 작업 접근 | access_pos / access_serving / access_kitchen 분리 (라이브오더=POS만). requirePosCounter + canOperatePOS | ✅ |
+| 스탭 이메일 선택 | 직원=username/PIN 로그인, 이메일 optional (타역할은 필수 유지) | ✅ |
+| Staff ID 매장 네임스페이스 | 내부 r{rid}:{id} 저장, 화면엔 친근한 ID. 매장별 동일 ID(counter) 재사용. PIN 전환은 restaurant+PIN | ✅ |
+| 검색형 셀렉트 통일 | 아이템 리스트 필터(카테고리/스테이션/정렬) → SearchableSelect (allowClear off, 값 string 일치) | ✅ |
+| 커뮤니케이션 메뉴명 | 스탭 권한 라벨 "Support" → "Communication (Notices/Manuals/Inquiries)" | ✅ |
+| 준비시간 타이머 v1 | Settings 토글+주문/아이템 목표+임계. 신호등 3단계(여유/임박/초과 맥동). 기준=주방 진입 시각 | ✅ |
+| 시간코드 중복 제거 | utils/prepTimer 단일 소스 — 경과/서브소요(LiveOrders 인라인 추출)/레벨. 4화면 공유 | ✅ |
+| 서브 시간 표시 순서 | 아이템 리스트: 타이머/상대시간 앞, 주문시간 뒤. 서브 시 소요시간(Xm) | ✅ |
+| KDS 타이머 | 주방 디스플레이 타이머 — 🔒 인쇄 보호 파일이라 실프린터 화면 앞 후속 | ⏳ 후속 |
+
+### 수정/추가된 파일
+- `dev-frontend/src/utils/prepTimer.tsx` (신규 — 준비시간 단일 소스 + 신호등 칩)
+- `dev-frontend/src/pages/FloorPlan/{ItemListView,FloorPlanPage,TableDetailPanel,orderItemStatus}.tsx`
+- `dev-frontend/src/pages/Settings/SettingsPage.tsx` (준비시간 추적 토글 + 2필드)
+- `dev-frontend/src/pages/LiveOrders/LiveOrdersPage.tsx` (서브 소요시간 → getServedDurationMin 공유)
+- `dev-frontend/src/contexts/StoreContext.tsx` (3 필드)
+- `dev-frontend/src/pages/Staff/StaffPage.tsx`, `dev-frontend/src/pages/Admin/StaffManagementPage.tsx` (Staff ID strip)
+- `dev-frontend/src/contexts/AuthContext.tsx`, `components/Layout/MainLayout.tsx`, `components/ProtectedRoute.tsx` (작업 접근 게이트)
+- `dev-backend/routes/users.js` (이메일 선택 + Staff ID 네임스페이스), `middleware/auth.js` (requirePosCounter)
+- `dev-backend/utils/settingsGuard.js` (operation_settings 화이트리스트 3키 추가)
+- `dev-backend/models/User.js` (email nullable), `scripts/backfill-staff-access.js`
+- 로케일 en/ko/zh/ms: floorplan.json, settings.json, admin.json
+- `docs/PREP_TIME_TRACKING.md`, `docs/STAFF_ACCESS_AND_IDENTITY_DESIGN.md`, `docs/SERVING_VIEW_DESIGN.md`, `docs/PRINT_RULES_MATRIX.md`
+
+---
 
 ## ✅ 완료(DEV, 미배포·실프린터 미확인): 주방 인쇄·알림 모델 v2 (2026-06-02)
 

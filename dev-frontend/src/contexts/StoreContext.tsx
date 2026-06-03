@@ -30,6 +30,9 @@ interface OperationSettings {
   timeZone: string;
   orderNumberReset: 'daily' | 'weekly' | 'monthly' | 'never';
   defaultPreparationTime: number;
+  prepTimeTracking: boolean;
+  defaultPreparationTimePerItem: number;
+  prepUrgentThreshold: number;
   taxEnabled: boolean;
   taxRate: number;
   serviceChargeEnabled: boolean;
@@ -107,6 +110,9 @@ const defaultOperationSettings: OperationSettings = {
   timeZone: 'Asia/Kuala_Lumpur',
   orderNumberReset: 'daily',
   defaultPreparationTime: 15,
+  prepTimeTracking: false,
+  defaultPreparationTimePerItem: 10,
+  prepUrgentThreshold: 80,
   taxEnabled: true,
   taxRate: 6,
   serviceChargeEnabled: false,

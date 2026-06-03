@@ -47,6 +47,9 @@ const getAuthHeaders = () => {
   };
 };
 
+// Staff ID 매장 네임스페이스(r{restaurant_id}:counter) → 화면 표시는 prefix 제거.
+const stripStaffNs = (u?: string | null): string => (u || '').replace(/^r\d+:/i, '');
+
 interface Staff {
   id: string;
   username: string;
@@ -245,6 +248,52 @@ const Label = styled.label`
   margin-bottom: 8px;
 `;
 
+// 직원 작업 접근(주방/포스/서빙) 선택 — permissions 배열의 access_* 키만 토글, 나머지 키는 보존.
+// docs/STAFF_ACCESS_AND_IDENTITY_DESIGN.md §4
+const WORK_ACCESS_OPTS = [
+  { key: 'access_pos', labelKey: 'staffManagementPage.accessPos', label: 'POS / Counter', descKey: 'staffManagementPage.accessPosDesc', desc: 'POS Terminal, Live Orders, Floor Plan with payment/cancel/void' },
+  { key: 'access_serving', labelKey: 'staffManagementPage.accessServing', label: 'Serving', descKey: 'staffManagementPage.accessServingDesc', desc: 'Floor Plan serving (item list) — no payment/cancel' },
+  { key: 'access_kitchen', labelKey: 'staffManagementPage.accessKitchen', label: 'Kitchen', descKey: 'staffManagementPage.accessKitchenDesc', desc: 'Kitchen Display only' },
+];
+const WorkAccessPicker: React.FC<{ value: string[]; onChange: (perms: string[]) => void; t: any }> = ({ value, onChange, t }) => {
+  const has = (k: string) => value.includes(k);
+  const toggle = (k: string) => {
+    onChange(has(k) ? value.filter(p => p !== k) : [...value, k]);
+  };
+  const none = WORK_ACCESS_OPTS.every(o => !has(o.key));
+  return (
+    <div>
+      <Label style={{ marginBottom: 4 }}>{t('admin:staffManagementPage.workAccess', { defaultValue: 'Work access' })}</Label>
+      <div style={{ fontSize: 12, color: '#6B7C93', marginBottom: 10 }}>
+        {t('admin:staffManagementPage.workAccessHint', { defaultValue: 'Which work screens this staff can open. Pick at least one.' })}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {WORK_ACCESS_OPTS.map(o => {
+          const on = has(o.key);
+          return (
+            <label key={o.key} style={{
+              display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 14px', cursor: 'pointer',
+              border: `1px solid ${on ? '#635BFF' : '#C7CED6'}`, borderRadius: 8,
+              background: on ? '#F0F4FF' : '#FFFFFF', transition: 'all .15s'
+            }}>
+              <input type="checkbox" checked={on} onChange={() => toggle(o.key)} style={{ marginTop: 2, width: 18, height: 18, accentColor: '#635BFF', cursor: 'pointer' }} />
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#0A2540' }}>{t(`admin:${o.labelKey}`, { defaultValue: o.label })}</div>
+                <div style={{ fontSize: 12, color: '#6B7C93', marginTop: 2 }}>{t(`admin:${o.descKey}`, { defaultValue: o.desc })}</div>
+              </div>
+            </label>
+          );
+        })}
+      </div>
+      {none && (
+        <div style={{ fontSize: 12, color: '#B45309', marginTop: 8 }}>
+          {t('admin:staffManagementPage.workAccessNone', { defaultValue: 'No access selected — this staff will not see any work screen.' })}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const Input = styled.input`
   padding: 12px 16px;
   border: 1px solid #C7CED6;
@@ -388,6 +437,7 @@ const AdminStaffManagementPage: React.FC = () => {
     restaurantId: '',
     companyName: '',
     pin_code: '',
+    workAccess: [] as string[],   // 직원 작업 접근(access_pos/access_serving/access_kitchen)
     // v3.27 unified subscription form (Brand/Foodcourt General + Restaurant Owner + Supplier Admin)
     currency: 'MYR',
     planType: '',
@@ -489,8 +539,8 @@ const AdminStaffManagementPage: React.FC = () => {
               
               return {
                 id: user.id.toString(),
-                username: user.username || '',
-                name: user.full_name || user.username || 'Unknown',
+                username: stripStaffNs(user.username),
+                name: user.full_name || stripStaffNs(user.username) || 'Unknown',
                 email: user.email,
                 phone: user.phone || '+60 12-345-6789',
                 type,
@@ -640,6 +690,7 @@ const AdminStaffManagementPage: React.FC = () => {
       restaurantId: '',
       companyName: '',
       pin_code: '',
+      workAccess: [] as string[],
       currency: 'MYR',
       planType: '',
       planAmount: '0',
@@ -676,14 +727,14 @@ const AdminStaffManagementPage: React.FC = () => {
       return;
     }
 
-    if (!newStaff.email || newStaff.email.trim() === '') {
+    // 2026-06-03: 직원(Staff)은 이메일 선택(username/PIN 로그인). 그 외 역할은 필수.
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailEmpty = !newStaff.email || newStaff.email.trim() === '';
+    if (emailEmpty && newStaff.role !== 'Staff') {
       setFormError('Email address is required');
       return;
     }
-
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(newStaff.email)) {
+    if (!emailEmpty && !emailRegex.test(newStaff.email)) {
       setFormError('Please enter a valid email address');
       return;
     }
@@ -698,7 +749,7 @@ const AdminStaffManagementPage: React.FC = () => {
       // Create new staff/user in database
       const staffUserData: Record<string, any> = {
         username: newStaff.username.trim(),
-        email: newStaff.email.trim(),
+        email: newStaff.email && newStaff.email.trim() ? newStaff.email.trim() : null,
         role: newStaff.role,
         full_name: newStaff.name.trim(),
         phone: newStaff.phone ? newStaff.phone.trim() : null,
@@ -709,6 +760,10 @@ const AdminStaffManagementPage: React.FC = () => {
       };
       if ((newStaff.pin_code || '').length === 4) {
         staffUserData.pin_code = newStaff.pin_code;
+      }
+      // 직원 작업 접근(주방/포스/서빙) — Staff 만. admin 이 폼에서 선택한 키 전달.
+      if (newStaff.role === 'Staff') {
+        staffUserData.permissions = Array.isArray(newStaff.workAccess) ? newStaff.workAccess : [];
       }
 
       // Subscription fields — Brand/Foodcourt General + Restaurant Owner + Supplier Admin
@@ -810,8 +865,8 @@ const AdminStaffManagementPage: React.FC = () => {
 
             return {
               id: user.id.toString(),
-              username: user.username || '',
-              name: user.full_name || user.username || 'Unknown',
+              username: stripStaffNs(user.username),
+              name: user.full_name || stripStaffNs(user.username) || 'Unknown',
               email: user.email,
               phone: user.phone || '',
               type,
@@ -1174,14 +1229,14 @@ const AdminStaffManagementPage: React.FC = () => {
       return;
     }
 
-    if (!editingStaff.email || editingStaff.email.trim() === '') {
+    // 2026-06-03: 직원(Staff)은 이메일 선택. 그 외 역할은 필수.
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const editEmailEmpty = !editingStaff.email || editingStaff.email.trim() === '';
+    if (editEmailEmpty && editingStaff.role !== 'Staff') {
       setInfoModal({ open: true, title: 'Required Fields', message: 'Email is required.' });
       return;
     }
-
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(editingStaff.email)) {
+    if (!editEmailEmpty && !emailRegex.test(editingStaff.email)) {
       setInfoModal({ open: true, title: 'Invalid Email', message: 'Please enter a valid email address.' });
       return;
     }
@@ -1196,7 +1251,7 @@ const AdminStaffManagementPage: React.FC = () => {
 
       const requestData: Record<string, any> = {
         full_name: editingStaff.name.trim(),
-        email: editingStaff.email.trim(),
+        email: editingStaff.email && editingStaff.email.trim() ? editingStaff.email.trim() : null,
         role: editingStaff.role,
         department: editingStaff.department ? editingStaff.department.trim() : null,
         phone: editingStaff.phone ? editingStaff.phone.trim() : null
@@ -1612,13 +1667,13 @@ const AdminStaffManagementPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>Email *</Label>
+                <Label>{newStaff.role === 'Staff' ? 'Email' : 'Email *'}</Label>
                 <Input
                   type="email"
                   value={newStaff.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
-                  placeholder="Enter email address"
-                  required
+                  placeholder={newStaff.role === 'Staff' ? 'Optional — staff log in with ID + PIN' : 'Enter email address'}
+                  required={newStaff.role !== 'Staff'}
                 />
               </FormGroup>
 
@@ -1732,6 +1787,17 @@ const AdminStaffManagementPage: React.FC = () => {
                 </FormGroup>
               )}
 
+              {/* 작업 접근(주방/포스/서빙) — Staff 만 */}
+              {newStaff.role === 'Staff' && (
+                <FormGroup style={{ gridColumn: '1 / -1' }}>
+                  <WorkAccessPicker
+                    value={newStaff.workAccess}
+                    onChange={(perms) => setNewStaff(prev => ({ ...prev, workAccess: perms }))}
+                    t={t}
+                  />
+                </FormGroup>
+              )}
+
               {/* v3.27 unified subscription form — Brand/Foodcourt General + Restaurant Owner + Supplier Admin */}
               {['Brand General', 'Foodcourt General', 'Restaurant Owner', 'Supplier Admin'].includes(newStaff.role) && (
                 <FormGroup style={{ gridColumn: '1 / -1', marginTop: '8px', paddingTop: '16px', borderTop: '1px solid #C7CED6' }}>
@@ -1832,13 +1898,13 @@ const AdminStaffManagementPage: React.FC = () => {
                   </FormGroup>
 
                   <FormGroup>
-                    <Label>Email *</Label>
+                    <Label>{editingStaff.role === 'Staff' ? 'Email' : 'Email *'}</Label>
                     <Input
                       type="email"
-                      value={editingStaff.email}
+                      value={editingStaff.email || ''}
                       onChange={(e) => setEditingStaff({...editingStaff, email: e.target.value})}
-                      placeholder="Enter email address"
-                      required
+                      placeholder={editingStaff.role === 'Staff' ? 'Optional — staff log in with ID + PIN' : 'Enter email address'}
+                      required={editingStaff.role !== 'Staff'}
                     />
                   </FormGroup>
 
@@ -1949,41 +2015,16 @@ const AdminStaffManagementPage: React.FC = () => {
                     </FormGroup>
                   )}
 
-                  {/* 카운터(POS) 운영 권한 — Staff 만. 끄면 서빙 전용 직원(결제/취소/void/현금박스/정산 숨김) */}
-                  {editingStaff.role === 'Staff' && (() => {
-                    const hasCounter = Array.isArray(editingStaff.permissions) && editingStaff.permissions.includes('pos_counter');
-                    const toggleCounter = () => {
-                      const cur = Array.isArray(editingStaff.permissions) ? editingStaff.permissions : [];
-                      const next = hasCounter ? cur.filter(p => p !== 'pos_counter') : [...cur, 'pos_counter'];
-                      setEditingStaff({ ...editingStaff, permissions: next });
-                    };
-                    return (
-                      <FormGroup>
-                        <Label>{t('admin:staffManagementPage.counterOps', { defaultValue: 'Counter (POS) operations' })}</Label>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-                          <div style={{ fontSize: '13px', color: '#4B5563', lineHeight: 1.4 }}>
-                            {t('admin:staffManagementPage.counterOpsDesc', { defaultValue: 'Allow payment, cancel, void, cash drawer & settlement. Turn off for serving-only staff.' })}
-                          </div>
-                          <button
-                            type="button"
-                            role="switch"
-                            aria-checked={hasCounter}
-                            onClick={toggleCounter}
-                            title={hasCounter ? 'Counter operations enabled' : 'Serving-only'}
-                            style={{
-                              flexShrink: 0, width: '48px', height: '28px', borderRadius: '999px', border: 'none', cursor: 'pointer',
-                              background: hasCounter ? '#635BFF' : '#C7CED6', position: 'relative', transition: 'background .15s', padding: 0
-                            }}
-                          >
-                            <span style={{
-                              position: 'absolute', top: '3px', left: hasCounter ? '23px' : '3px', width: '22px', height: '22px',
-                              borderRadius: '50%', background: '#fff', transition: 'left .15s', boxShadow: '0 1px 2px rgba(0,0,0,.2)'
-                            }} />
-                          </button>
-                        </div>
-                      </FormGroup>
-                    );
-                  })()}
+                  {/* 작업 접근(주방/포스/서빙) — Staff 만. 어떤 작업 화면을 보는지 결정. */}
+                  {editingStaff.role === 'Staff' && (
+                    <FormGroup style={{ gridColumn: '1 / -1' }}>
+                      <WorkAccessPicker
+                        value={Array.isArray(editingStaff.permissions) ? editingStaff.permissions : []}
+                        onChange={(perms) => setEditingStaff({ ...editingStaff, permissions: perms })}
+                        t={t}
+                      />
+                    </FormGroup>
+                  )}
                 </FormGrid>
 
               </>

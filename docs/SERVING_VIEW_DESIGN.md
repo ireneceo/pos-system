@@ -1,7 +1,21 @@
 # 서빙(홀 직원) 뷰 + 아이템별 리스트 — 설계
 
-> 작성 2026-06-03 (Irene 요청). 상태: **설계 — 구현 대기.**
+> 작성 2026-06-03 (Irene 요청). 상태: **DEV 구현 완료(2026-06-03), 미배포. 실브라우저 눈 확인 대기.**
 > 결정: 별도 페이지 복사 ✗ → **Floor Plan 확장**(뷰 탭 + 단일 포스 capability 게이트). 인쇄 방식 무변경(🔒 보호).
+
+## 0. 구현 상태 (2026-06-03)
+
+**완료**: #1~#9 전부 구현. 빌드 main.2378a53e.js (타입에러 0).
+- 백엔드: `middleware/auth.js`(requirePosCounter + userCanOperatePosCounter + req.user.permissions) / `orders-payment.js`(POST payments 게이트) / `orders-crud.js`🔒(items DELETE 게이트 + status cancelled 인라인 게이트) / `users.js`(신규 Staff pos_counter 기본) / `scripts/backfill-pos-counter.js`(신규, dev 11/11 적용).
+- 프론트: `contexts/AuthContext.tsx`(canOperatePOS + Staff 기본권한) / `pages/Admin/StaffManagementPage.tsx`(Counter 토글) / `pages/FloorPlan/FloorPlanPage.tsx`(items 뷰·칩·게이트·기본뷰) / `TableDetailPanel.tsx`(결제/취소/void 게이트) / `ItemListView.tsx`(신규 Expo 리스트) / i18n floorplan·admin 4언어.
+
+**검증 완료**:
+- 백엔드 enforcement 실토큰 테스트 **6/6** (서빙 void/payment→403, 단계이동/서빙토글→비403, 카운터→비403).
+- 빌드 타입0 / i18n verify 통과 / health-check 92/93(1=orders-crud🔒 지문 변경, 의도된 것) / RA mount 47/47 크래시0.
+- backfill dry-run + 적용(11/11).
+
+**남은 검증 (Irene 눈)**: 서빙 전용 Staff 로 **실 브라우저 로그인** → Items 탭 렌더/서빙 토글/카운터 버튼 숨김 시각 확인. (헤드리스는 이 환경에서 /auth/me fetch 가 막혀 세션 부트스트랩 불가 — 실로그인 필요.)
+- ⚠️ 배포 시: orders-crud🔒 지문 변경 → `check-print-guard --bless`(Irene 승인) + 운영 backfill 스크립트 실행.
 
 ---
 

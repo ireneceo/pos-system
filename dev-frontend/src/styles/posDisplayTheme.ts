@@ -64,6 +64,7 @@ const PALETTES: Record<PosThemeMode, Record<string, string>> = {
     'brand-text': '#635BFF',
     'control': '#FFFFFF',     // 선택 박스(카테고리/주문유형) 기본 면
     'positive': '#10B981',    // Pay Later 등 긍정 액션
+    'positive-tint': 'rgba(16, 185, 129, 0.12)',   // 서빙 완료 행 등 긍정 연한 배경
     'table-empty-bg': '#F1F4F8',     // 빈 테이블 카드(보드) — 라이트는 현재 값 그대로 보존
     'table-empty-border': '#6B7280',
     'table-empty-text': '#374151',
@@ -85,6 +86,7 @@ const PALETTES: Record<PosThemeMode, Record<string, string>> = {
     'brand-text': '#1E1675',
     'control': '#FFFFFF',
     'positive': '#0A7D57',
+    'positive-tint': 'rgba(10, 125, 87, 0.18)',
     'table-empty-bg': '#D4DCE6',     // 고대비 — 회색 위 빈 테이블이 또렷하게
     'table-empty-border': '#3E4A5A',
     'table-empty-text': '#16202C',
@@ -106,6 +108,7 @@ const PALETTES: Record<PosThemeMode, Record<string, string>> = {
     'brand-text': '#635BFF',
     'control': '#2C3A56',
     'positive': '#10B981',
+    'positive-tint': 'rgba(16, 185, 129, 0.16)',
     'table-empty-bg': '#1B2640',     // 어둡게 — 빈 테이블은 바닥보다 한 단계 밝은 어두운 카드
     'table-empty-border': '#46566F',
     'table-empty-text': '#9AA8BE',

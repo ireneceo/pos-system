@@ -20,6 +20,8 @@ const RA_ROUTES = [
   `/restaurant/${RA_RID}/reservations`,
   `/restaurant/${RA_RID}/pos-terminal`,
   `/restaurant/${RA_RID}/floor-plan`,
+  `/restaurant/${RA_RID}/floor-plan?view=items`,
+  `/restaurant/${RA_RID}/floor-plan?view=takeaway`,
   `/restaurant/${RA_RID}/kitchen`,
   `/restaurant/${RA_RID}/display`,
   `/restaurant/${RA_RID}/menu`,

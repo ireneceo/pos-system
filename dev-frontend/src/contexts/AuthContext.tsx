@@ -49,9 +49,13 @@ interface AuthContextType {
   updateLanguage: (language: string) => Promise<void>;
   hasPermission: (permission: string) => boolean;
   // 카운터 전용 액션(결제/취소/void/현금박스/정산) 가능 여부. Restaurant/System Admin 항상 true,
-  // Staff 는 'pos_counter' 권한 보유 시만. 없으면 서빙 전용 직원. docs/SERVING_VIEW_DESIGN.md
+  // Staff 는 'access_pos' 권한 보유 시만. 없으면 서빙/주방 전용 직원. docs/STAFF_ACCESS_AND_IDENTITY_DESIGN.md
   canOperatePOS: boolean;
   canAccessRoute: (route: string) => boolean;
+  // Staff 운영 페이지 접근(주방/포스/서빙 키 기반). 비-Staff 는 항상 true.
+  canOpenStaffRoute: (path: string) => boolean;
+  // 로그인 후 Staff 기본 랜딩 경로(보유 접근 우선순위).
+  staffHomePath: (restaurantId: string | number) => string;
   // Refetch /me and update user in place. Use after server-side state changes
   // that affect ProtectedRoute / SuspendedBanner — e.g., paying an overdue
   // invoice flips restaurantStatus from 'suspended' to 'active'.
@@ -190,9 +194,10 @@ const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     'create_order',
     'view_orders',
     'process_payment',
-    'pos_counter',
-    'view_kitchen_display',
-    'view_customer_display'
+    // 운영 작업 접근 키(주방/포스/서빙). 실제 Staff 는 DB permissions 사용; 이건 폴백 기본값.
+    'access_pos',
+    'access_serving',
+    'access_kitchen'
   ],
   'Supplier Admin': [
     'view_supplier_dashboard',
@@ -442,6 +447,17 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
     '/pos/profile'
   ]
 };
+
+// 운영 라우트 ↔ 필요한 작업 접근 키(주방/포스/서빙). Staff 한정 게이트. (2026-06-03)
+// 하나라도 보유하면 진입 허용(Floor Plan 은 pos 또는 serving). docs/STAFF_ACCESS_AND_IDENTITY_DESIGN.md §3-B
+const STAFF_ROUTE_ACCESS: { test: RegExp; keys: string[] }[] = [
+  { test: /\/pos-terminal/, keys: ['access_pos'] },
+  { test: /\/live-orders/, keys: ['access_pos'] },
+  { test: /\/floor-plan/, keys: ['access_pos', 'access_serving'] },
+  { test: /\/kitchen/, keys: ['access_kitchen'] },
+  { test: /\/display/, keys: ['access_pos'] },
+  { test: /\/dashboard/, keys: ['access_pos'] },
+];
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -775,15 +791,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return user.permissions?.includes(permission) || false;
   };
 
-  // 카운터 전용 액션 게이트(서빙 전용 직원 구분). 백엔드 requirePosCounter 와 동일 식.
+  // 포스/카운터 접근(메뉴 가시성 + 결제/취소/void/현금박스/정산 액션). 백엔드 requirePosCounter 와 동일 식.
+  // access_pos 단일 키로 통합(2026-06-03). docs/STAFF_ACCESS_AND_IDENTITY_DESIGN.md
   const canOperatePOS = !!user && (
     user.role === 'System Admin' || user.role === 'Restaurant Admin' ||
-    (user.permissions?.includes('pos_counter') || false)
+    (user.permissions?.includes('access_pos') || false)
   );
 
   const canAccessRoute = (route: string): boolean => {
     if (!user) return false;
-    
+
     const userRoutes = ROLE_ROUTES[user.role];
     if (!userRoutes) return false;
 
@@ -795,6 +812,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
       return route === pattern;
     });
+  };
+
+  // 운영 페이지 접근 — Staff 한정 permission 게이트(주방/포스/서빙). 역할 가드(canAccessRoute)와 별개.
+  // 매핑 없는 라우트(백오피스 등)는 기존 그룹키/역할가드가 처리하므로 여기선 통과.
+  const canOpenStaffRoute = (path: string): boolean => {
+    if (!user) return false;
+    if (user.role !== 'Staff') return true;
+    const perms = user.permissions || [];
+    for (const r of STAFF_ROUTE_ACCESS) {
+      if (r.test.test(path)) return r.keys.some(k => perms.includes(k));
+    }
+    return true;
+  };
+
+  // 로그인 후 Staff 기본 랜딩 — 보유 접근 우선순위(포스→서빙→주방). restaurantId 필요.
+  const staffHomePath = (restaurantId: string | number): string => {
+    const base = `/restaurant/${restaurantId}`;
+    const perms = user?.permissions || [];
+    if (perms.includes('access_pos')) return `${base}/pos-terminal`;
+    if (perms.includes('access_serving')) return `${base}/floor-plan?view=items`;
+    if (perms.includes('access_kitchen')) return `${base}/kitchen`;
+    return `${base}/profile`;
   };
 
   const isAuthenticated = !!user;
@@ -812,6 +851,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     hasPermission,
     canOperatePOS,
     canAccessRoute,
+    canOpenStaffRoute,
+    staffHomePath,
     refreshUser
   };
 

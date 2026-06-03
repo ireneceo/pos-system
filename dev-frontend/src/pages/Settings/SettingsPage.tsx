@@ -457,6 +457,9 @@ interface OperationSettings {
   timeZone: string;
   orderNumberReset: 'daily' | 'weekly' | 'monthly' | 'never';
   defaultPreparationTime: number;
+  prepTimeTracking: boolean;
+  defaultPreparationTimePerItem: number;
+  prepUrgentThreshold: number;
   taxEnabled: boolean;
   taxRate: number;
   serviceChargeEnabled: boolean;
@@ -622,6 +625,7 @@ const SettingsPage: React.FC = () => {
 
   // Operations tab AutoSave refs (toggles & list)
   const breakTimesRef = useRef<AutoSaveHandle>(null);
+  const prepTrackingToggleRef = useRef<AutoSaveHandle>(null);
   const taxToggleRef = useRef<AutoSaveHandle>(null);
   const serviceChargeToggleRef = useRef<AutoSaveHandle>(null);
   const serviceChargeExcludeTakeawayRef = useRef<AutoSaveHandle>(null);
@@ -814,6 +818,9 @@ const SettingsPage: React.FC = () => {
         timeZone: 'Asia/Kuala_Lumpur',
         orderNumberReset: 'daily',
         defaultPreparationTime: 15,
+        prepTimeTracking: false,
+        defaultPreparationTimePerItem: 10,
+        prepUrgentThreshold: 80,
         taxEnabled: true,
         taxRate: 6,
         serviceChargeEnabled: false,
@@ -3393,8 +3400,60 @@ const SettingsPage: React.FC = () => {
                       }}
                     />
                   </AutoSaveField>
-                  <span style={{ color: '#4B5563', fontSize: '14px' }}>minutes</span>
+                  <span style={{ color: '#4B5563', fontSize: '14px' }}>{t('settings:settingsPage.minutesOrderTotal', { defaultValue: 'minutes (whole order target)' })}</span>
                 </FormGroup>
+
+                <Toggle>
+                  <ToggleLabel>{t('settings:settingsPage.prepTimeTracking', { defaultValue: 'Preparation Time Tracking' })}</ToggleLabel>
+                  <AutoSaveField ref={prepTrackingToggleRef} onSave={handleSave} type="toggle">
+                    <ToggleSwitch>
+                      <ToggleInput
+                        type="checkbox"
+                        checked={operationSettings.prepTimeTracking}
+                        onChange={(e) => {
+                          setOperationSettings(prev => ({ ...prev, prepTimeTracking: e.target.checked }));
+                          prepTrackingToggleRef.current?.triggerSave();
+                        }}
+                      />
+                      <ToggleSlider />
+                    </ToggleSwitch>
+                  </AutoSaveField>
+                </Toggle>
+                <p style={{ color: '#6B7C93', fontSize: '13px', marginTop: '-4px', marginBottom: operationSettings.prepTimeTracking ? '8px' : '0' }}>
+                  {t('settings:settingsPage.prepTimeTrackingHint', { defaultValue: 'Show per-item and per-order timers on Kitchen Display and Floor Plan. Only overdue items pulse red — calm until something runs late.' })}
+                </p>
+
+                {operationSettings.prepTimeTracking && (
+                  <>
+                    <FormGroup style={{ marginLeft: '16px', marginTop: '8px' }}>
+                      <Label>{t('settings:settingsPage.defaultPreparationTimePerItem', { defaultValue: 'Default Preparation Time (per item)' })}</Label>
+                      <AutoSaveField onSave={handleSave}>
+                        <FeeInput
+                          type="number"
+                          value={operationSettings.defaultPreparationTimePerItem}
+                          onChange={(e) => {
+                            setOperationSettings(prev => ({ ...prev, defaultPreparationTimePerItem: Number(e.target.value) }));
+                          }}
+                        />
+                      </AutoSaveField>
+                      <span style={{ color: '#4B5563', fontSize: '14px' }}>{t('settings:settingsPage.minutesPerItemHint', { defaultValue: 'minutes (used when a menu item has no prep time set)' })}</span>
+                    </FormGroup>
+                    <FormGroup style={{ marginLeft: '16px', marginTop: '8px' }}>
+                      <Label>{t('settings:settingsPage.prepUrgentThreshold', { defaultValue: 'Urgent threshold' })}</Label>
+                      <AutoSaveField onSave={handleSave}>
+                        <FeeInput
+                          type="number"
+                          value={operationSettings.prepUrgentThreshold}
+                          onChange={(e) => {
+                            const v = Math.min(100, Math.max(0, Number(e.target.value)));
+                            setOperationSettings(prev => ({ ...prev, prepUrgentThreshold: v }));
+                          }}
+                        />
+                      </AutoSaveField>
+                      <span style={{ color: '#4B5563', fontSize: '14px' }}>{t('settings:settingsPage.prepUrgentThresholdHint', { defaultValue: '% of target — turns amber here, red when over 100%' })}</span>
+                    </FormGroup>
+                  </>
+                )}
               </SettingsCard>
 
               <SettingsCard>

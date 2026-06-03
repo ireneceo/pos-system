@@ -493,7 +493,17 @@
       "Bash(sed -n '1050,1066p' dev-frontend/src/pages/Admin/StaffManagementPage.tsx)",
       "Bash(sed -n '2040,2042p' routes/orders-crud.js)",
       "Bash(sed -n '1321,1323p' routes/orders-crud.js)",
-      "Bash(perl -0pi -e 's/\\(onKitchenTicketSent=\\\\{setMovePrintPrompt\\\\}\\\\n\\)/$1            canOperatePOS={canOperatePOS}\\\\n/g' FloorPlanPage.tsx)"
+      "Bash(perl -0pi -e 's/\\(onKitchenTicketSent=\\\\{setMovePrintPrompt\\\\}\\\\n\\)/$1            canOperatePOS={canOperatePOS}\\\\n/g' FloorPlanPage.tsx)",
+      "Bash(TOKEN=__CMDSUB_OUTPUT__ node -e ' *)",
+      "Bash(awk '/ROLE_ROUTES/{f=NR} f&&/^};/{print \"ROLE_ROUTES ends ~line \"$0\" at \"NR; exit}')",
+      "Bash(cd *)",
+      "Bash(awk '{print $6,$7,$8,$9}')",
+      "Bash(awk '{print $6, $7}')",
+      "Bash(echo \"EXIT $?\")",
+      "Bash(sed -n '455,475p' src/pages/Settings/SettingsPage.tsx)",
+      "Bash(sed -n '812,822p' src/pages/Settings/SettingsPage.tsx)",
+      "Bash(sed -n '28,40p' src/contexts/StoreContext.tsx)",
+      "Bash(sed -n '105,115p' src/contexts/StoreContext.tsx)"
     ],
     "deny": [],
     "ask": []

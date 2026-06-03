@@ -503,10 +503,54 @@ cd /var/www/dev-backend && node tests/print-route-matrix.js
 
 ---
 
+## 11. 역할(POS / 주방 / 서빙) × 주문 관리 액션 매트릭스 (2026-06-03)
+
+> 직원 접근 프로파일(`access_pos`/`access_kitchen`/`access_serving`)별로 주문을 어떻게 관리하는지. 설계 = `docs/SERVING_VIEW_DESIGN.md`, `docs/STAFF_ACCESS_AND_IDENTITY_DESIGN.md`.
+
+### 11-1. 접근 프로파일 (직원 폼에서 선택, 복수 가능)
+| 키 | 보는 화면 | 카운터 액션(결제/취소/void/현금박스/정산) |
+|----|----------|:----:|
+| `access_pos` | POS Terminal · Live Orders · Floor Plan(카운터) · Customer/Pickup Display · Dashboard | ✅ |
+| `access_kitchen` | Kitchen Display(KDS) | ✗ |
+| `access_serving` | Floor Plan **Items(서빙 리스트)** | ✗ |
+- 직원 이메일 **선택**(사번+PIN 로그인). `canOperatePOS = role∈{System/Restaurant Admin} ‖ access_pos`. 백엔드 `requirePosCounter` 동일 게이트.
+
+### 11-2. 아이템 단계(상태) 모델 — 단일 진실
+- 각 **아이템**(세트는 **구성품 각각**)이 `pending(queued) → preparing(cooking) → ready → served` 단계를 가짐. **세트는 구성품별로 주방 관리**(KDS 동일), 옵션도 구성품별.
+- **롤업**: 한 세트의 구성품 전부 served → 그 세트 항목 served. **주문의 최상위 항목 전부 served → 주문 status=served** 저장(패널·서빙리스트 공통).
+- 서빙 리스트 진행(`n/total served`)은 **서빙 단위**(세트=구성품 수) 기준 → 주문 항목 수와 다름.
+
+### 11-3. 역할별 주문 관리 액션
+| 액션 | POS | 주방(KDS) | 서빙 | 백엔드 게이트 |
+|------|:--:|:--:|:--:|------|
+| 주문 넣기(신규/추가) | ✅ | ✗(화면없음) | ✅(Floor New Order) | 없음 |
+| 단계 이동(준비/서빙 등) | ✅ | ✅ | ✅ | `PATCH /orders/:id/status`(cancelled 외 통과) |
+| **아이템/구성품 서빙 토글** | ✅ | ✅ | ✅ | `PATCH /orders/:id/items` (통과) |
+| 주방 티켓 프린트/재발행 | ✅ | ✅ | ✅(필요분) | 인쇄(§9) |
+| 결제 수납 | ✅ | ✗ | ✗ | `POST /orders/:id/payments` → `requirePosCounter` |
+| 주문 취소 | ✅ | ✗ | ✗ | `PATCH status(cancelled)` 인라인 게이트(실주문 후) |
+| 아이템 void(삭제) | ✅ | ✗ | ✗ | `DELETE /orders/:id/items/:idx` → `requirePosCounter` |
+| 현금박스/정산 | ✅ | ✗ | ✗ | UI 게이트(정산은 다중역할 공유라 UI만) |
+
+### 11-4. 서빙 리스트(Items) 동작
+- 세트 → **구성품 각각 별도 줄**(좌측 SERVE 버튼·옵션·진행). 행 = `[큰 상태버튼] TABLE n · SET · n/total served · 경과 / qty × 구성품명 · 세트명 · 옵션`.
+- 행 탭 = 우측 상세 패널(그 자리, 페이지 이동 X) + 열린 주문 카드 하이라이트(상태 원래 색 굵은선, 레이아웃 불변). served = 회색 dim.
+- 낙관적 override = stale poll 이 방금 서브한 단계를 못 되돌림(서버 따라잡으면 해제).
+
+### 11-5. 검증 (실API, 2026-06-03)
+- 이메일 없이 3역할 생성 201 + email NULL / 사번 로그인 200 / 비-Staff 이메일 필수 유지.
+- 권한: POS payment 통과 · Serving·Kitchen payment/void/cancel **403** · 단계이동/서빙토글 전역 통과.
+- 세트 구성품 서빙 Write→Read(served) + 전 구성품 served → 부모 세트 롤업 served (4/4). prior-status 복원(preparing→served→preparing).
+- mount 47/47, 빌드 타입0, i18n 통과.
+- ⚠️ 실 브라우저(사이드바 메뉴 분리·폼·서빙 화면 시각)는 Irene 눈 확인.
+
+---
+
 ## 변경 이력
 
 | 날짜 | 변경 |
 |------|------|
+| 2026-06-03 | **§ 11 역할(POS/주방/서빙) × 주문관리 액션 매트릭스** 추가 — 접근 프로파일·아이템(세트=구성품)별 단계 모델·롤업·서빙리스트 동작·역할별 액션 게이트. 실API 검증(이메일선택 생성·권한 403·세트 구성품 서빙/롤업). 서빙뷰·직원식별 설계 = `docs/SERVING_VIEW_DESIGN.md`, `docs/STAFF_ACCESS_AND_IDENTITY_DESIGN.md`. |
 | 2026-06-02 | **§ 9-7 "주문루트 전체 테스트" 단일 러너 커밋** (`dev-backend/tests/print-route-matrix.js`) — R1~R11 + Poller + 매수 C1~C6 자동 대조(40/40, 3회 안정). 인쇄 코드 무변경. |
 | 2026-06-02 | **§ 9 v2** — 취소(R9/R10)·이동(R7/R8) **항상 발송**(S1 무관) + **알림형 팝업**(Sent to kitchen·[재발송][닫기]) / **모든 티켓 station 박스**(HTML·ESC-POS) / **KDS 취소·머지 팝업**(탭 기준) / **S5 `printCancellationTicket` 설정 삭제** / **§ 10 실프린터 테스트 가이드** 신설. ⚠️ 실프린터 종이 확인 + `--bless` 미완(배포 전 의무). |
 | 2026-06-01 | § 9-6 런타임 대조 결과 추가 (C1~C5 §9 일치 / C6 kitchenPrinter.enabled+station 불일치 = 코드 우회, 실게이트는 autoPrint) |

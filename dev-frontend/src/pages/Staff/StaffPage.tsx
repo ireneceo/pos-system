@@ -10,6 +10,11 @@ import PhoneInput from '../../components/Common/PhoneInput';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
+
+// Staff ID 매장 네임스페이스(r{restaurant_id}:counter) → 화면 표시용으로 prefix 제거.
+// 백엔드가 저장 시 prefix 를 붙이므로 폼/리스트에는 항상 벗긴 친근한 ID 만 노출한다.
+const stripStaffNs = (u?: string | null): string => (u || '').replace(/^r\d+:/i, '');
+
 interface Staff {
   id: string;
   username: string;
@@ -35,8 +40,15 @@ const MENU_GROUPS = [
   { key: 'inventory', label: 'Stock Management (Suppliers / Inventory)', alwaysOn: false },
   { key: 'marketing', label: 'Marketing (Customers / Coupons)', alwaysOn: false },
   { key: 'reports', label: 'Analytics (Reports / Activity History)', alwaysOn: false },
-  { key: 'support', label: 'Support (Invoices / Inquiries)', alwaysOn: false },
+  { key: 'support', label: 'Communication (Notices / Manuals / Inquiries)', alwaysOn: false },
   { key: 'settings', label: 'Settings (Store / Company / Notifications)', alwaysOn: false },
+];
+
+// 작업 접근(운영 화면) — 직원이 보는 작업 화면 결정. docs/STAFF_ACCESS_AND_IDENTITY_DESIGN.md
+const WORK_ACCESS = [
+  { key: 'access_pos', label: 'POS / Counter — POS Terminal, Live Orders, Floor Plan (payment/cancel/void)' },
+  { key: 'access_serving', label: 'Serving — Floor Plan serving (item list), no payment/cancel' },
+  { key: 'access_kitchen', label: 'Kitchen — Kitchen Display only' },
 ];
 
 const StaffContainer = styled.div`
@@ -351,8 +363,9 @@ const StaffPage: React.FC = () => {
 
       const transformedStaff: Staff[] = restaurantStaff.map((u: any) => ({
         id: u.id.toString(),
-        username: u.username || '',
-        name: u.full_name || u.username || 'Unknown',
+        // Staff ID 는 내부적으로 매장 prefix(r5:)로 네임스페이스됨 — 화면엔 벗겨서 표시.
+        username: stripStaffNs(u.username),
+        name: u.full_name || stripStaffNs(u.username) || 'Unknown',
         email: u.email,
         phone: u.phone || '',
         role: u.role,
@@ -445,8 +458,10 @@ const StaffPage: React.FC = () => {
       setFormError('Full Name is required.');
       return;
     }
-    if (!newStaff.email || newStaff.email.trim() === '') {
-      setFormError('Email is required.');
+    // 2026-06-03: 직원 이메일 선택(사번+PIN 로그인). 입력 시 형식만 검증.
+    const emailVal = (newStaff.email || '').trim();
+    if (emailVal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
+      setFormError('Please enter a valid email address (or leave it blank).');
       return;
     }
     if (!newStaff.pin_code || newStaff.pin_code.length !== 4) {
@@ -458,7 +473,7 @@ const StaffPage: React.FC = () => {
       const restaurantId = user?.restaurantId;
       const staffUserData: Record<string, any> = {
         username: newStaff.username.trim(),
-        email: newStaff.email.trim(),
+        email: emailVal || null,
         role: newStaff.role,
         full_name: newStaff.name.trim(),
         restaurant_id: parseInt(restaurantId?.toString() || '0'),
@@ -532,8 +547,9 @@ const StaffPage: React.FC = () => {
       setFormError('Full Name is required.');
       return;
     }
-    if (!editForm.email || editForm.email.trim() === '') {
-      setFormError('Email is required.');
+    const editEmailVal = (editForm.email || '').trim();
+    if (editEmailVal && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editEmailVal)) {
+      setFormError('Please enter a valid email address (or leave it blank).');
       return;
     }
     if (editForm.pin_code && editForm.pin_code.length !== 4) {
@@ -544,7 +560,7 @@ const StaffPage: React.FC = () => {
     try {
       const updateData: Record<string, any> = {
         full_name: editForm.name.trim(),
-        email: editForm.email.trim(),
+        email: editEmailVal || null,
         phone: editForm.phone ? editForm.phone.trim() : null,
         department: editForm.department ? editForm.department.trim() : null,
         company_name: editForm.company_name ? editForm.company_name.trim() : null,
@@ -623,12 +639,32 @@ const StaffPage: React.FC = () => {
     onChange: (updated: string[]) => void
   ) => (
     <div style={{ marginTop: '20px', padding: '16px', background: '#F1F4F8', borderRadius: '8px', border: '1px solid #C7CED6' }}>
-      <div style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540', marginBottom: '4px' }}>{t('staff:staffPage.menuAccess')}</div>
-      <div style={{ fontSize: '12px', color: '#4B5563', marginBottom: '4px' }}>
-        Core menus are always visible: Dashboard, POS Terminal, Live Orders, Kitchen Display, Customer Display, Mobile Order, Profile.
-      </div>
+      {/* 작업 접근 — 어떤 운영 화면(포스/서빙/주방)을 보는지. 최소 1개 선택 권장. */}
+      <div style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540', marginBottom: '4px' }}>Work access</div>
       <div style={{ fontSize: '12px', color: '#4B5563', marginBottom: '12px' }}>
-        Toggle additional menu sections below:
+        Which work screens this staff can open. Serving-only staff (no POS) won't see payment/cancel.
+      </div>
+      <PermissionGrid>
+        {WORK_ACCESS.map(group => (
+          <PermissionLabel key={group.key} alwaysOn={false}>
+            <input
+              type="checkbox"
+              checked={permissions.includes(group.key)}
+              onChange={(e) => {
+                const updated = e.target.checked
+                  ? [...permissions, group.key]
+                  : permissions.filter(p => p !== group.key);
+                onChange(updated);
+              }}
+              style={{ accentColor: '#635BFF' }}
+            />
+            {group.label}
+          </PermissionLabel>
+        ))}
+      </PermissionGrid>
+      <div style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540', margin: '16px 0 4px' }}>{t('staff:staffPage.menuAccess')}</div>
+      <div style={{ fontSize: '12px', color: '#4B5563', marginBottom: '4px' }}>
+        Always visible: Profile. Back-office sections below are optional:
       </div>
       <PermissionGrid>
         {MENU_GROUPS.map(group => (
@@ -857,12 +893,12 @@ const StaffPage: React.FC = () => {
 
           <FormRow>
             <FormGroup>
-              <FormLabel>Email *</FormLabel>
+              <FormLabel>Email</FormLabel>
               <FormInput
                 type="email"
                 value={newStaff.email}
                 onChange={(e) => handleAddInputChange('email', e.target.value)}
-                placeholder="Enter email address"
+                placeholder="Optional — staff log in with Staff ID + PIN"
                 autoComplete="off"
               />
             </FormGroup>
@@ -994,12 +1030,12 @@ const StaffPage: React.FC = () => {
                   />
                 </FormGroup>
                 <FormGroup>
-                  <FormLabel>Email *</FormLabel>
+                  <FormLabel>Email</FormLabel>
                   <FormInput
                     type="email"
-                    value={editForm.email}
+                    value={editForm.email || ''}
                     onChange={(e) => handleEditInputChange('email', e.target.value)}
-                    placeholder="Enter email address"
+                    placeholder="Optional — staff log in with Staff ID + PIN"
                     autoComplete="off"
                   />
                 </FormGroup>

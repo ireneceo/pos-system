@@ -216,7 +216,8 @@ const MainContent = styled.div`
 
 const CanvasWrapper = styled.div`
   flex: 1;
-  padding: 8px 12px;
+  /* 좌우 여백을 Header/ZoneFilterBar(24px) 와 통일 → 모든 행 좌우 정렬 일치(POS Terminal 본문과 동일 게터). */
+  padding: 8px 24px;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -225,7 +226,7 @@ const CanvasWrapper = styled.div`
   background: var(--pos-surface, #FFFFFF);
 
   @media (max-width: 768px) {
-    padding: 6px 8px;
+    padding: 6px 16px;
   }
 `;
 
@@ -378,6 +379,38 @@ const FloorPlanPage: React.FC = () => {
   const [tableStatuses, setTableStatuses] = useState<Record<string, TableStatusInfo>>({});
   // 오늘 per-table 이력(완료 포함) — 우측 패널 탭 소스. 보드 점유(tableStatuses)와 분리.
   const [tableHistory, setTableHistory] = useState<Record<string, TableStatusInfo[]>>({});
+  // 서빙 토글 낙관적 override (orderId:itemIndex → {status, ts}) — stale poll 되돌림 방지.
+  const [serveOverrides, setServeOverrides] = useState<Record<string, { status: string; ts: number }>>({});
+  // Items 뷰 필터용 메타 — 카테고리(제품명→카테고리) + 주방 스테이션(id→이름).
+  const [itemMeta, setItemMeta] = useState<{ catByName: Record<string, string>; stationById: Record<string, string>; categories: string[]; stations: { id: string; name: string }[] }>({ catByName: {}, stationById: {}, categories: [], stations: [] });
+  useEffect(() => {
+    if (!restaurantId) return;
+    let alive = true;
+    (async () => {
+      try {
+        const token = getAuthToken();
+        const h = { Authorization: `Bearer ${token}` } as any;
+        const [pRes, sRes] = await Promise.all([
+          fetch(`/api/menu?restaurant_id=${restaurantId}`, { headers: h }),
+          fetch(`/api/kitchen-stations?restaurant_id=${restaurantId}`, { headers: h }),
+        ]);
+        const pj = await pRes.json().catch(() => ({})); const sj = await sRes.json().catch(() => ({}));
+        // /api/menu → { success, data: { categories, items } }
+        const products = (pj.data && Array.isArray(pj.data.items)) ? pj.data.items
+          : (Array.isArray(pj.data) ? pj.data : (Array.isArray(pj.products) ? pj.products : []));
+        const catByName: Record<string, string> = {}; const cats = new Set<string>();
+        (Array.isArray(products) ? products : []).forEach((p: any) => { if (p.name && p.category) { catByName[p.name] = p.category; cats.add(p.category); } });
+        if (pj.data && Array.isArray(pj.data.categories)) pj.data.categories.forEach((c: any) => { const n = typeof c === 'string' ? c : (c?.name || c?.category); if (n) cats.add(n); });
+        // /api/kitchen-stations → { success, data: { assignment_mode, stations: [...] } }
+        const stationsRaw = (sj.data && Array.isArray(sj.data.stations)) ? sj.data.stations
+          : (Array.isArray(sj.data) ? sj.data : (Array.isArray(sj.stations) ? sj.stations : []));
+        const stationById: Record<string, string> = {};
+        const stations = (Array.isArray(stationsRaw) ? stationsRaw : []).map((s: any) => { stationById[String(s.id)] = s.name; return { id: String(s.id), name: s.name }; });
+        if (alive) setItemMeta({ catByName, stationById, categories: [...cats].sort(), stations });
+      } catch { /* best-effort */ }
+    })();
+    return () => { alive = false; };
+  }, [restaurantId]);
   const [connected, setConnected] = useState(false);
   const [clock, setClock] = useState('');
   const [loading, setLoading] = useState(true);
@@ -889,15 +922,41 @@ const FloorPlanPage: React.FC = () => {
   }, [tableStatuses, takeawayOrders]);
 
   // 아이템 서빙 완료 토글 — 해당 주문의 order_items[idx].status 갱신(PATCH /items). 카운터 권한 불필요.
-  const handleServeItem = useCallback(async (orderId: number, itemIndex: number, makeServed: boolean) => {
-    // 주문(테이블/테이크웨이) 찾아 현재 items 확보
-    const fromTables = Object.values(tableStatuses).find((o: any) => o.orderId === orderId) as any;
+  // 아이템/세트구성품 서빙 토글. compIndex=null → 일반 아이템, 숫자 → 세트 구성품.
+  // 세트는 구성품 각각 status 보유(KDS 와 동일). 구성품 다 served → 부모 세트 status=served.
+  // 모든 최상위 아이템이 served → 주문 status=served 롤업(패널과 동일).
+  const handleServeItem = useCallback(async (orderId: number, itemIndex: number, compIndex: number | null, makeServed: boolean) => {
+    // 한 테이블 여러 주문 대비 — orders[] 까지 펼쳐서 대상 주문 검색.
+    const allDineIn = Object.values(tableStatuses).flatMap((o: any) => (Array.isArray(o.orders) && o.orders.length) ? o.orders : [o]);
+    const fromTables = allDineIn.find((o: any) => o.orderId === orderId);
     const fromTakeaway = takeawayOrders.find((o: any) => (o.orderId || o.id) === orderId);
     const src: any = fromTables || fromTakeaway;
     const items = (src && (src.orderItems || src.order_items)) || [];
     if (!Array.isArray(items) || !items[itemIndex]) return;
-    const updated = items.map((it: any, i: number) =>
-      i === itemIndex ? { ...it, status: makeServed ? 'served' : 'ready' } : it);
+    let newStatus = makeServed ? 'served' : 'ready';
+    const updated = items.map((it: any, i: number) => {
+      if (i !== itemIndex) return it;
+      if (compIndex == null) {
+        // 일반 아이템 — 서브 시 직전 상태 보존 + 서브시간 기록, 되돌릴 때 복원/시간제거
+        if (makeServed) return { ...it, _servedFrom: it.status || 'ready', status: 'served', served_at: new Date().toISOString() };
+        const { _servedFrom, served_at, ...rest } = it; newStatus = _servedFrom || 'ready';
+        return { ...rest, status: newStatus };
+      }
+      // 세트 구성품 토글
+      const fieldKey = Array.isArray(it.set_components) && it.set_components.length ? 'set_components' : 'set_items';
+      const comps = (it[fieldKey] || []).map((c: any, ci: number) => {
+        if (ci !== compIndex) return c;
+        if (makeServed) return { ...c, _servedFrom: c.status || 'ready', status: 'served', served_at: new Date().toISOString() };
+        const { _servedFrom, served_at, ...rest } = c; newStatus = _servedFrom || 'ready';
+        return { ...rest, status: newStatus };
+      });
+      const allComps = comps.every((c: any) => ['served', 'completed'].includes(String(c.status)));
+      const parentStatus = allComps ? 'served' : (it.status === 'served' ? 'ready' : it.status);
+      return { ...it, [fieldKey]: comps, status: parentStatus };
+    });
+    // 🔴 낙관적 override — stale poll 이 방금 서브한 상태를 되돌리는 사고 방지(서버 따라잡으면/60s 해제).
+    const key = `${orderId}:${itemIndex}:${compIndex ?? 'i'}`;
+    setServeOverrides(prev => ({ ...prev, [key]: { status: newStatus, ts: Date.now() } }));
     try {
       const token = getAuthToken();
       const res = await fetch(`/api/orders/${orderId}/items`, {
@@ -905,18 +964,93 @@ const FloorPlanPage: React.FC = () => {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ order_items: updated, allowItemRevert: !makeServed })
       });
-      if (res.ok) { await fetchStatuses(); if (typeof fetchTakeawayOrders === 'function') fetchTakeawayOrders(); }
+      if (res.ok) {
+        // 롤업: 모든 최상위 아이템이 served → 주문 status=served (best-effort)
+        const allServed = updated.every((it: any) => String(it.status) === 'served');
+        const ostatus = String((src && (src.orderStatus || src.status)) || '');
+        if (allServed && ['pending', 'preparing', 'ready'].includes(ostatus)) {
+          fetch(`/api/orders/${orderId}/status`, {
+            method: 'PATCH', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ status: 'served' })
+          }).catch(() => {});
+        }
+        await fetchStatuses(); if (typeof fetchTakeawayOrders === 'function') fetchTakeawayOrders();
+      } else { setServeOverrides(prev => { const n = { ...prev }; delete n[key]; return n; }); }
     } catch (err) {
       console.error('Failed to toggle item served:', err);
+      setServeOverrides(prev => { const n = { ...prev }; delete n[key]; return n; });
     }
   }, [tableStatuses, takeawayOrders, fetchStatuses, fetchTakeawayOrders]);
 
+  // 서버가 override 상태로 따라잡았거나(일치) 60s 지난 항목은 override 해제.
+  useEffect(() => {
+    setServeOverrides(prev => {
+      if (!Object.keys(prev).length) return prev;
+      const now = Date.now(); let changed = false; const next: typeof prev = {};
+      const serverStatus = (oid: string, idx: number, comp: string): string | null => {
+        const allDineIn = Object.values(tableStatuses).flatMap((x: any) => (Array.isArray(x.orders) && x.orders.length) ? x.orders : [x]);
+        const o: any = allDineIn.find((x: any) => String(x.orderId) === oid)
+          || takeawayOrders.find((x: any) => String(x.orderId || x.id) === oid);
+        const its = o && (o.orderItems || o.order_items);
+        const it = Array.isArray(its) ? its[idx] : null;
+        if (!it) return null;
+        if (comp === 'i') return String(it.status || '');
+        const comps = it.set_components || it.set_items || [];
+        return comps[+comp] ? String(comps[+comp].status || '') : null;
+      };
+      for (const [k, v] of Object.entries(prev)) {
+        const [oid, idxStr, comp] = k.split(':');
+        const srv = serverStatus(oid, parseInt(idxStr, 10), comp);
+        const serverCaughtUp = srv != null && srv === v.status;
+        if (serverCaughtUp || (now - v.ts > 60000)) { changed = true; continue; }
+        next[k] = v;
+      }
+      return changed ? next : prev;
+    });
+  }, [tableStatuses, takeawayOrders]);
+
+  // override 를 ItemListView 에 넘길 주문에 입힌다(아이템/세트구성품 status 덮어쓰기).
+  const applyServeOverrides = useCallback((orders: any[]) => {
+    if (!Object.keys(serveOverrides).length) return orders;
+    return orders.map((o: any) => {
+      const oid = o.orderId || o.id;
+      const its = o.orderItems || o.order_items;
+      if (!Array.isArray(its)) return o;
+      let changed = false;
+      const next = its.map((it: any, i: number) => {
+        const itemOv = serveOverrides[`${oid}:${i}:i`];
+        // 세트 구성품 override
+        const fieldKey = Array.isArray(it.set_components) && it.set_components.length ? 'set_components'
+          : (Array.isArray(it.set_items) && it.set_items.length ? 'set_items' : null);
+        let nextIt = it;
+        if (fieldKey) {
+          let cChanged = false;
+          const comps = it[fieldKey].map((c: any, ci: number) => {
+            const ov = serveOverrides[`${oid}:${i}:${ci}`];
+            if (ov && String(c.status) !== ov.status) { cChanged = true; return { ...c, status: ov.status }; }
+            return c;
+          });
+          if (cChanged) { nextIt = { ...nextIt, [fieldKey]: comps }; changed = true; }
+        }
+        if (itemOv && String(nextIt.status) !== itemOv.status) { nextIt = { ...nextIt, status: itemOv.status }; changed = true; }
+        return nextIt;
+      });
+      return changed ? { ...o, orderItems: next, order_items: next } : o;
+    });
+  }, [serveOverrides]);
+
   // 행의 "주문 전체보기" → 우측 패널 오픈(테이블/테이크웨이).
+  // "주문 전체보기" → 뷰(items) 유지한 채 그 자리에서 우측 패널만 오픈. 페이지 이동 X.
   const handleOpenDineInFromItems = useCallback((tableNumber: string, _orderId: number) => {
     const tbl = (floorPlan?.tables || []).find((tt: any) =>
       String(tt.label ?? tt.tableNumber ?? tt.id) === String(tableNumber) || String(tt.tableNumber) === String(tableNumber));
-    if (tbl) { setActiveView('floor'); setSelectedTableId(tbl.id); }
-  }, [floorPlan, setActiveView]);
+    if (tbl) { setSelectedTakeawayOrderId(null); setSelectedTableId(tbl.id); }
+  }, [floorPlan, setSelectedTakeawayOrderId]);
+
+  const handleOpenTakeawayFromItems = useCallback((id: number) => {
+    setSelectedTableId(null);
+    setSelectedTakeawayOrderId(id);
+  }, [setSelectedTakeawayOrderId]);
 
   // 서빙 전용 직원(canOperatePOS=false)은 아이템 리스트를 가장 많이 봄 → 진입 기본 뷰 = items.
   // 명시적 view 파라미터가 없을 때만 1회 적용(이후 사용자가 자유롭게 탭 전환).
@@ -1598,6 +1732,8 @@ const FloorPlanPage: React.FC = () => {
         <ZoneFilterBar>
           {/* Zone chips highlight only while in floor view. In takeaway view the active chip is the
               Takeaway pill — having both lit simultaneously implies a filter that doesn't actually apply. */}
+          {/* All Zones 칩 — 존이 2개 이상일 때만(존 1개면 그 존 칩 하나로 충분, 중복 제거). */}
+          {(floorPlan.zones || []).length > 1 && (
           <ZoneChip
             type="button"
             active={activeView === 'floor' && activeZoneFilter === 'all'}
@@ -1605,6 +1741,7 @@ const FloorPlanPage: React.FC = () => {
           >
             All Zones <ZoneChipCount>{floorPlan.tables.length}</ZoneChipCount>
           </ZoneChip>
+          )}
           {(floorPlan.zones || []).slice().sort((a, b) => a.sort_order - b.sort_order).map(zone => {
             const groupIds = (floorPlan.table_groups || []).filter(g => g.zone_id === zone.id).map(g => g.id);
             const count = floorPlan.tables.filter(t => t.group_id && groupIds.includes(t.group_id)).length;
@@ -1619,8 +1756,18 @@ const FloorPlanPage: React.FC = () => {
               </ZoneChip>
             );
           })}
-          {/* Takeaway view chip + Walk-in CTA — same row, separator visually parts them from zone chips */}
+          {/* 뷰 칩 — 서버가 가장 많이 보는 Items 를 앞에. 이어서 Takeaway + Walk-in(인접). */}
           <ChipSeparator />
+          {/* Items 뷰 — 아이템별 서빙 리스트(홀 직원) */}
+          <ZoneChip
+            type="button"
+            active={activeView === 'items'}
+            onClick={() => { setActiveView('items'); setSelectedTableId(null); }}
+            title={t('floorplan:floorPlanPage.itemsViewHint', 'Item-by-item serving list')}
+          >
+            {t('floorplan:floorPlanPage.itemsView', 'Items')}
+            <ZoneChipCount>{itemViewActiveCount}</ZoneChipCount>
+          </ZoneChip>
           <ZoneChip
             type="button"
             active={activeView === 'takeaway'}
@@ -1632,16 +1779,6 @@ const FloorPlanPage: React.FC = () => {
           >
             {t('floorplan:floorPlanPage.takeawayView', 'Takeaway')}
             <ZoneChipCount>{takeawayOrders.length}</ZoneChipCount>
-          </ZoneChip>
-          {/* Items 뷰 — 아이템별 서빙 리스트(홀 직원). 서버가 가장 많이 봄. */}
-          <ZoneChip
-            type="button"
-            active={activeView === 'items'}
-            onClick={() => { setActiveView('items'); setSelectedTableId(null); }}
-            title={t('floorplan:floorPlanPage.itemsViewHint', 'Item-by-item serving list')}
-          >
-            {t('floorplan:floorPlanPage.itemsView', 'Items')}
-            <ZoneChipCount>{itemViewActiveCount}</ZoneChipCount>
           </ZoneChip>
           <ZoneChip
             type="button"
@@ -1658,14 +1795,31 @@ const FloorPlanPage: React.FC = () => {
       {/* 범례는 Irene 가 직접 추가 예정 — 제거 (#3 점 기능은 TableNode 빨강 점으로 유지) */}
 
       <MainContent>
-        <CanvasWrapper>
+        {/* Items 뷰는 바닥 전체를 회색으로(흰 카드 또렷) — 박스가 아니라 풀 배경. */}
+        <CanvasWrapper style={activeView === 'items' ? { background: 'var(--pos-menu-bg, #E4E9EF)' } : undefined}>
           {activeView === 'items' ? (
             <ItemListView
-              dineInOrders={Object.values(tableStatuses)}
-              takeawayOrders={takeawayOrders}
+              dineInOrders={applyServeOverrides(Object.entries(tableStatuses).flatMap(([fpti, o]: [string, any]) => {
+                // 한 테이블에 주문 여러 개면 전부(orders[]) 펼쳐 표시 — KDS 와 동일 커버리지. 라벨(U-1)로 통일.
+                const tbl = (floorPlan?.tables || []).find((tt: any) => tt.id === fpti);
+                const label = tbl?.label;
+                const list = (Array.isArray(o.orders) && o.orders.length) ? o.orders : [o];
+                return list.map((ord: any) => (label ? { ...ord, tableLabel: label } : ord));
+              }))}
+              takeawayOrders={applyServeOverrides(takeawayOrders)}
+              activeOrderId={selectedTakeawayOrderId ?? selectedStatusInfo?.orderId ?? null}
+              categoryByName={itemMeta.catByName}
+              stationById={itemMeta.stationById}
+              categories={itemMeta.categories}
+              stations={itemMeta.stations}
+              timezone={timezone}
+              prepMinutes={Number(operationSettings?.defaultPreparationTime) || 15}
+              prepTracking={!!operationSettings?.prepTimeTracking}
+              prepPerItem={Number(operationSettings?.defaultPreparationTimePerItem) || 10}
+              prepThreshold={Number(operationSettings?.prepUrgentThreshold) || 80}
               onServe={handleServeItem}
               onOpenDineIn={handleOpenDineInFromItems}
-              onOpenTakeaway={(id) => { setActiveView('takeaway'); setSelectedTakeawayOrderId(id); }}
+              onOpenTakeaway={handleOpenTakeawayFromItems}
             />
           ) : activeView === 'floor' ? (
             <FloorPlanCanvas
@@ -1802,7 +1956,7 @@ const FloorPlanPage: React.FC = () => {
         {/* Takeaway order panel — reuses TableDetailPanel with tableNumber=null. Same component,
             same status-based action buttons (Confirm/Ready/Served/Payment/Cancel), same money breakdown.
             Adapter below maps a takeaway order to TableStatusInfo shape so the panel renders identically. */}
-        {activeView === 'takeaway' && selectedTakeawayOrderId != null && (() => {
+        {(activeView === 'takeaway' || activeView === 'items') && selectedTakeawayOrderId != null && (() => {
           const o: any = takeawayOrders.find((x: any) => x.id === selectedTakeawayOrderId);
           if (!o) return null;
           const num = (v: any) => parseFloat(v) || 0;

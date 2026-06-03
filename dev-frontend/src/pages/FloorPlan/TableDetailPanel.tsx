@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { FloorTable, TableStatusInfo, ORDER_STATUS_COLORS } from './types';
+import { ItemStatusPill, toDisplayStatus } from './orderItemStatus';
 import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import { formatPaymentDisplay } from '../../constants';
 import { useStore } from '../../contexts/StoreContext';
 import { formatDateTime } from '../../utils/timezone';
+import { computePrepFromElapsed, PrepTimerChip } from '../../utils/prepTimer';
 import { printBillViaRawBT, printOrderTicketToBillPrinter, printTableQR, printCancellationTicket, printCancellationTicketsByStation, getPrinterSettings } from '../../utils/billPrint';
 import { previewStationBuckets, KitchenTicketSendPrompt } from '../../components/Print/KitchenTicketSendModal';
 import OptionModal from '../../components/POSTerminal/OptionModal';
@@ -213,69 +215,8 @@ const ItemRow = styled.div<{ $completed?: boolean }>`
   }
 `;
 
-type ItemDisplayStatus = 'queued' | 'cooking' | 'ready' | 'served';
-
-const STATUS_TOKEN: Record<ItemDisplayStatus, { bg: string; text: string; border: string; dot: string }> = {
-  queued:   { bg: '#F3F4F6', text: '#6B7280', border: '#E5E7EB', dot: '#9CA3AF' },
-  cooking:  { bg: '#FEF3C7', text: '#92400E', border: '#FCD34D', dot: '#F59E0B' },
-  ready:    { bg: '#ECFDF5', text: '#047857', border: '#6EE7B7', dot: '#10B981' },
-  served:   { bg: '#059669', text: '#FFFFFF', border: '#047857', dot: '#FFFFFF' },
-};
-
-const ItemStatusPill = styled.button<{ $status: ItemDisplayStatus; $clickable: boolean }>`
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 9px 4px 7px;
-  border-radius: 999px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.3px;
-  text-transform: uppercase;
-  border: 1px solid ${p => STATUS_TOKEN[p.$status].border};
-  background: ${p => STATUS_TOKEN[p.$status].bg};
-  color: ${p => STATUS_TOKEN[p.$status].text};
-  cursor: ${p => p.$clickable ? 'pointer' : 'default'};
-  transition: filter 0.15s, transform 0.1s, box-shadow 0.15s;
-  white-space: nowrap;
-  flex-shrink: 0;
-  min-height: 24px;
-  user-select: none;
-  appearance: none;
-  font-family: inherit;
-  line-height: 1;
-
-  &::before {
-    content: '';
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: ${p => STATUS_TOKEN[p.$status].dot};
-    flex-shrink: 0;
-  }
-
-  &:hover {
-    ${p => p.$clickable && `
-      filter: brightness(0.96);
-      box-shadow: 0 0 0 3px ${STATUS_TOKEN[p.$status].border}55;
-    `}
-  }
-  &:active {
-    ${p => p.$clickable && `transform: scale(0.97);`}
-  }
-  &:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px ${p => STATUS_TOKEN[p.$status].border}aa;
-  }
-  &:disabled { cursor: default; }
-
-  @media (max-width: 480px) {
-    padding: 3px 7px 3px 6px;
-    font-size: 9px;
-    gap: 4px;
-    min-height: 22px;
-  }
-`;
+// 아이템 단계 pill — 공용 모듈 재사용(ItemListView 와 동일). orderItemStatus.tsx 단일 진실.
+// (import 는 파일 상단에 추가됨)
 
 const ItemInfo = styled.div`
   flex: 1;
@@ -414,6 +355,10 @@ const SubActionGrid = styled.div`
     padding: 11px 12px;
     font-size: 14px;
     font-weight: 600;
+  }
+  /* 버튼 개수가 홀수면 마지막 1개를 전체폭으로 — 빈 칸 없이(2열 정렬 유지). */
+  & > button:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
   }
 `;
 
@@ -638,7 +583,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
   const [showTableActions, setShowTableActions] = useState(false);
   // 주문 탭이 많을 때 접기/펼치기 — 기본은 최근 몇 개만, "+N" 누르면 전체.
   const [showAllOrderTabs, setShowAllOrderTabs] = useState(false);
-  const { getStoreInfo, paymentSettings } = useStore();
+  const { getStoreInfo, paymentSettings, operationSettings } = useStore();
   const { t } = useTranslation(['orders', 'floorplan']);
   const [showHistory, setShowHistory] = useState(false);
 
@@ -850,28 +795,32 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
   // Floor Plan 의 hall 직원은 'ready → served' 만 토글한다.
   // 'pending'/'preparing' 은 주방(KDS) 이 관리하는 단계이므로 여기서 건드리지 않는다.
   // 모든 아이템이 served 가 되면 order.status='served' 로 자동 승급.
-  const handleToggleItemServed = async (itemIndex: number) => {
+  const handleToggleItemServed = async (itemIndex: number, compIndex: number | null = null) => {
     if (loading || !statusInfo?.orderId) return;
     const target = items[itemIndex] as any;
     if (!target) return;
-    // KDS 표시전용 매장은 품목별 ready 마킹이 없으므로, 활성 주문이면
-    // 어느 단계(pending/preparing/ready)에서든 홀 직원이 Served 토글 가능.
     if (!['pending', 'preparing', 'ready', 'served'].includes(orderStatus)) return; // guard
+    // 토글 대상 현재 상태(아이템 또는 세트 구성품) — revert 여부 판정용
+    const curStatus = compIndex == null
+      ? target.status
+      : ((target.set_components || target.set_items || [])[compIndex]?.status);
     setLoading(true);
     try {
-      const updatedItems = items.map((item, idx) => {
-        if (idx === itemIndex) {
-          const nextStatus = (item as any).status === 'served' ? 'ready' : 'served';
-          return { ...item, status: nextStatus };
+      const updatedItems = items.map((item: any, idx) => {
+        if (idx !== itemIndex) return item;
+        if (compIndex == null) {
+          return { ...item, status: item.status === 'served' ? 'ready' : 'served' };
         }
-        return item;
+        // 세트 구성품 토글 — 구성품 status 변경 + 부모 세트 롤업(전부 served → 세트 served)
+        const fk = Array.isArray(item.set_components) && item.set_components.length ? 'set_components' : 'set_items';
+        const comps = (item[fk] || []).map((c: any, ci: number) =>
+          ci === compIndex ? { ...c, status: c.status === 'served' ? 'ready' : 'served' } : c);
+        const allComps = comps.every((c: any) => ['served', 'completed'].includes(String(c.status)));
+        return { ...item, [fk]: comps, status: allComps ? 'served' : (item.status === 'served' ? 'ready' : item.status) };
       });
 
       const token = getAuthToken();
-      // Hall staff un-serving (served → ready) is a manual revert → bypass the
-      // backend forward-only item guard. Marking served (ready → served) stays
-      // guarded so a stale snapshot can't quietly un-serve other items.
-      const _allowRevert = (target as any).status === 'served';
+      const _allowRevert = curStatus === 'served';
       const res = await fetch(`/api/orders/${statusInfo.orderId}/items`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -894,21 +843,6 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
   };
 
   // Map item.status → display token. 'completed' 는 레거시 데이터; served 와 같은 의미로 처리.
-  const toDisplayStatus = (itemStatus?: string): ItemDisplayStatus => {
-    switch (itemStatus) {
-      case 'served':
-      case 'completed':
-        return 'served';
-      case 'ready':
-        return 'ready';
-      case 'preparing':
-        return 'cooking';
-      case 'pending':
-      default:
-        return 'queued';
-    }
-  };
-
   const handleDeleteItem = (itemIndex: number, itemName: string) => {
     if (!statusInfo?.orderId) return;
     setConfirmModal({
@@ -1388,6 +1322,11 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                  paymentStatus === 'rejected' ? 'Rejected' :
                  paymentStatus === 'payment_verification_pending' ? 'Verifying' : 'Unpaid'}
               </StatusBadge>
+              {operationSettings?.prepTimeTracking && ['pending', 'preparing', 'ready'].includes(orderStatus) && (() => {
+                // 주문단위 타이머 — 테이블 전체가 얼마나 기다렸나(목표=주문 준비시간). 단일 소스 prepTimer.
+                const prep = computePrepFromElapsed(statusInfo!.elapsedMinutes || 0, Number(operationSettings?.defaultPreparationTime) || 15, Number(operationSettings?.prepUrgentThreshold) || 80);
+                return prep ? <PrepTimerChip prep={prep} /> : null;
+              })()}
             </BadgeRow>
           )}
           {!isOccupied && (
@@ -1733,6 +1672,55 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                         const optionsStr = Array.isArray(item.options)
                           ? item.options.map((o: any) => typeof o === 'string' ? o : o?.name || '').filter(Boolean).join(', ')
                           : '';
+
+                        // 세트 → 구성품 각각 단계 pill(주방·서빙 리스트와 동일). 구성품별 토글 + 부모 롤업.
+                        const setComps = (Array.isArray(item.set_components) && item.set_components.length) ? item.set_components
+                          : ((item.is_set_menu && Array.isArray(item.set_items) && item.set_items.length) ? item.set_items : null);
+                        if (setComps) {
+                          const servedN = setComps.filter((c: any) => toDisplayStatus(String(c.status || item.status)) === 'served').length;
+                          return (
+                            <div key={originalIndex} style={{ marginBottom: 4 }}>
+                              <ItemRow $completed={false}>
+                                <ItemInfo>
+                                  <ItemName $completed={false}>
+                                    {item.name} <ItemQty>x{item.quantity}</ItemQty>
+                                    <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 800, color: '#fff', background: 'var(--pos-brand, #635BFF)', borderRadius: 4, padding: '1px 6px' }}>
+                                      {t('floorplan:itemList.setBadge', { defaultValue: 'SET' })} {servedN}/{setComps.length}
+                                    </span>
+                                  </ItemName>
+                                </ItemInfo>
+                                <ItemPrice>{formatCurrency(item.price * item.quantity, currency)}</ItemPrice>
+                                {canOperatePOS && paymentStatus !== 'completed' && items.length > 1 && (
+                                  <DeleteItemBtn onClick={() => handleDeleteItem(originalIndex, item.name)} title="Delete item">&times;</DeleteItemBtn>
+                                )}
+                              </ItemRow>
+                              {setComps.map((c: any, ci: number) => {
+                                const cds = toDisplayStatus(String(c.status || item.status));
+                                const cServed = cds === 'served';
+                                const copts = (Array.isArray(c.options) ? c.options : []).map((o: any) => typeof o === 'string' ? o : o?.name || '').filter(Boolean).join(', ');
+                                return (
+                                  <ItemRow key={ci} $completed={cServed && showServedCheckbox} style={{ paddingLeft: 14 }}>
+                                    {showServedCheckbox && (
+                                      <ItemStatusPill
+                                        $status={cds} $clickable={clickable}
+                                        onClick={() => clickable && handleToggleItemServed(originalIndex, ci)}
+                                        disabled={loading || !clickable} aria-pressed={cServed}
+                                        title={cServed ? t('floorplan:tableDetailPanel.itemStatus.unmarkServed') : t('floorplan:tableDetailPanel.itemStatus.markServed')}
+                                      >
+                                        {cServed ? '✓ ' : null}{t(`floorplan:tableDetailPanel.itemStatus.${cds}`)}
+                                        {clickable && !cServed ? ` · ${t('common:itemServe.serveHint')}` : ''}
+                                      </ItemStatusPill>
+                                    )}
+                                    <ItemInfo>
+                                      <ItemName $completed={cServed}>{c.name}{(c.qty || c.quantity) > 1 ? ` x${c.qty || c.quantity}` : ''}</ItemName>
+                                      {copts && <ItemOptions>{copts}</ItemOptions>}
+                                    </ItemInfo>
+                                  </ItemRow>
+                                );
+                              })}
+                            </div>
+                          );
+                        }
 
                         return (
                           <ItemRow key={originalIndex} $completed={isServed && showServedCheckbox}>

@@ -30,6 +30,7 @@ import { getAuthToken } from '../../utils/auth';
 
 import { DbOrder, CompanyInfo } from './types';
 import { formatPickupTimeRange, getFetchOptions, TimeAgoDisplay } from './helpers';
+import { getServedDurationMin } from '../../utils/prepTimer';
 import {
   Container, Content, AudioToggleButton, SelectModeButton, MergeButton,
   FilterToolbar, SearchInputContainer, SearchInput, ClearSearchButton,
@@ -1780,10 +1781,9 @@ const LiveOrdersPage: React.FC = () => {
                           <span style={{ fontSize: '11px', color: '#0A2540' }}>
                             Served: {formatDateTime(order.served_at)}
                             {(() => {
-                              const orderTime = new Date(order.createdAt || order.order_date).getTime();
-                              const servedTime = new Date(order.served_at).getTime();
-                              const diffMinutes = Math.round((servedTime - orderTime) / 1000 / 60);
-                              return ` (${diffMinutes}min)`;
+                              // 서브까지 걸린 시간 — 공유 헬퍼 단일 소스 (utils/prepTimer). 인라인 계산 제거.
+                              const dur = getServedDurationMin(order.createdAt || order.order_date, order.served_at);
+                              return dur != null ? ` (${dur}min)` : '';
                             })()}
                           </span>
                         )}

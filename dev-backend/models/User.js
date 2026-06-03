@@ -15,8 +15,11 @@ User.init({
     unique: true
   },
   email: {
+    // 2026-06-03: 직원(Staff)은 이메일 선택 — 직원=직원이지 회원 아님. 로그인은 username/PIN.
+    // 다른 역할(Admin/Owner/Brand/Foodcourt/Supplier/Customer)은 라우트단에서 필수 강제.
+    // UNIQUE 유지: MySQL 은 NULL 중복 허용이라 무이메일 직원 다수 가능. docs/STAFF_ACCESS_AND_IDENTITY_DESIGN.md
     type: DataTypes.STRING(100),
-    allowNull: false,
+    allowNull: true,
     unique: true
   },
   password: {

@@ -340,8 +340,9 @@ router.post('/', authenticateToken, async (req, res) => {
       }
     }
 
-    // Validate required fields
-    if (!email) {
+    // Validate required fields — 2026-06-03: 직원(Staff)은 이메일 선택(username/PIN 로그인).
+    // 그 외 모든 역할은 이메일 필수 유지. docs/STAFF_ACCESS_AND_IDENTITY_DESIGN.md §3-A.
+    if (!email && (role || 'Staff') !== 'Staff') {
       return res.status(400).json({ success: false, error: { message: 'Email is required', code: 'VALIDATION_ERROR' } });
     }
 
@@ -379,28 +380,38 @@ router.post('/', authenticateToken, async (req, res) => {
       return res.status(400).json({ success: false, error: { message: 'Username is required', code: 'VALIDATION_ERROR' } });
     }
 
-    console.log('📝 Parsed username:', username);
+    // 2026-06-03: Staff ID 매장 네임스페이스 — 내부 username = r{restaurant_id}:{staffId}.
+    // 매장마다 같은 ID(counter 등) 자유롭게 재사용 가능(전역 UNIQUE 우회). 화면엔 prefix 벗긴 ID 표시.
+    // 로그인은 공용 단말 + PIN 전환(restaurant_id+pin_code)이라 username 직접 입력 불필요.
+    // docs/STAFF_ACCESS_AND_IDENTITY_DESIGN.md §6.
+    let effectiveUsername = username;
+    if ((role || 'Staff') === 'Staff' && finalRestaurantId) {
+      const bare = String(username).replace(/^r\d+:/i, '');
+      effectiveUsername = `r${finalRestaurantId}:${bare}`;
+    }
+
+    console.log('📝 Parsed username:', username, '→ effective:', effectiveUsername);
     console.log('📝 Parsed email:', email);
 
-    // Check if user already exists (by email or username)
+    // Check if user already exists (by email or username).
+    // 2026-06-03: 무이메일 직원 지원 — email 이 있을 때만 OR 조건에 포함(NULL 매칭 방지).
+    const _orConds = [{ username: effectiveUsername }];
+    if (email) _orConds.push({ email });
     const existingUser = await User.findOne({
-      where: {
-        [require('sequelize').Op.or]: [
-          { email },
-          { username }
-        ]
-      }
+      where: { [require('sequelize').Op.or]: _orConds }
     });
 
     if (existingUser) {
       // Build descriptive error message
+      // 화면 표시는 매장 prefix(r5:) 벗긴 친근한 ID 로.
+      const displayId = String(effectiveUsername).replace(/^r\d+:/i, '');
       let errorDetail = '';
-      if (existingUser.email === email && existingUser.username === username) {
-        errorDetail = `Both email "${email}" and username "${username}" are already in use`;
+      if (existingUser.email === email && existingUser.username === effectiveUsername) {
+        errorDetail = `Both email "${email}" and Staff ID "${displayId}" are already in use`;
       } else if (existingUser.email === email) {
         errorDetail = `Email "${email}" is already in use`;
       } else {
-        errorDetail = `Username "${username}" is already in use`;
+        errorDetail = `Staff ID "${displayId}" is already in use`;
       }
 
       // Add context about existing user
@@ -452,11 +463,13 @@ router.post('/', authenticateToken, async (req, res) => {
       }
     }
 
-    // MX 레코드 검증: 이메일 도메인에 메일 서버가 존재하는지 확인
+    // MX 레코드 검증: 이메일 도메인에 메일 서버가 존재하는지 확인 (이메일 있을 때만 — 무이메일 직원 스킵)
     const { verifyMxRecord, generateVerificationToken, getVerificationUrl } = require('../utils/emailValidator');
-    const mxResult = await verifyMxRecord(email);
-    if (!mxResult.valid) {
-      return res.status(400).json({ success: false, message: mxResult.message });
+    if (email) {
+      const mxResult = await verifyMxRecord(email);
+      if (!mxResult.valid) {
+        return res.status(400).json({ success: false, message: mxResult.message });
+      }
     }
 
     const hashedPassword = await bcrypt.hash(finalPassword, 10);
@@ -510,15 +523,20 @@ router.post('/', authenticateToken, async (req, res) => {
       }
     }
 
+    // 2026-06-03: 신규 Staff 는 "베이직 다 포함" 폐기 — admin 이 폼에서 작업 접근(access_pos/
+    // access_serving/access_kitchen)을 직접 선택해 보낸다. 자동 부여 없음.
+    // docs/STAFF_ACCESS_AND_IDENTITY_DESIGN.md §5.
+    const finalPermissions = permissions || null;
+
     // Build user create data
     const userCreateData = {
-      username,
-      email,
+      username: effectiveUsername,
+      email: email || null,
       password: hashedPassword,
       role: role || 'Staff',
       full_name: generatedFullName,
       phone: phone || null,
-      permissions: permissions || null,
+      permissions: finalPermissions,
       restaurant_id: finalRestaurantId || null,
       department: department || null,
       company_name: company_name || null,
@@ -551,8 +569,8 @@ router.post('/', authenticateToken, async (req, res) => {
 
     const user = await User.create(userCreateData);
 
-    // 이메일 인증 토큰 생성 + 발송 (skip_verification이 아닌 경우)
-    if (!skipVerification) {
+    // 이메일 인증 토큰 생성 + 발송 (skip_verification이 아닌 경우 + 이메일 있을 때만 — 무이메일 직원 스킵)
+    if (!skipVerification && user.email) {
       try {
         const { rawToken, hashedToken, expires } = await generateVerificationToken();
         await user.update({
