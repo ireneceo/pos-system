@@ -2054,7 +2054,13 @@ const KitchenDisplayPage: React.FC = () => {
           </OrderLeft>
           <OrderRight>
             <OrderId>{order.orderNumber}</OrderId>
-            <ElapsedTime urgent={isUrgent}>{elapsedTime}m</ElapsedTime>
+            {operationSettings?.prepTimeTracking ? (() => {
+              // 준비시간 추적 ON — 신호등 칩(남은시간/초과). elapsedTime(분) 재사용, 단일 소스 prepTimer.
+              const prep = computePrepFromElapsed(elapsedTime, Number(operationSettings?.defaultPreparationTime) || 15, Number(operationSettings?.prepUrgentThreshold) || 80);
+              return prep ? <PrepTimerChip prep={prep} /> : <ElapsedTime urgent={isUrgent}>{elapsedTime}m</ElapsedTime>;
+            })() : (
+              <ElapsedTime urgent={isUrgent}>{elapsedTime}m</ElapsedTime>
+            )}
           </OrderRight>
         </OrderHeader>
 
