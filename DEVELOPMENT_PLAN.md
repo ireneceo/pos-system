@@ -1,6 +1,30 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-03 (DEV — 서빙뷰(아이템리스트)·스탭 작업접근(POS/서빙/주방)·이메일선택·Staff ID 매장 네임스페이스·검색형 셀렉트 통일·준비시간 타이머(신호등) v1. KDS 타이머는 인쇄 보호 후속.)
+> **최종 업데이트:** 2026-06-03 (밤 — 매장 현장 인쇄 핫픽스 운영 2회 배포. SET 라우팅/취소표/통합티켓 박스/이모지제거/통계 등. ⚠️ 새 주문 오더티켓은 여전히 엉망 — 다음 세션 1순위: 새주문 인쇄를 테이블이동 enriched 데이터 기준으로 단일화.)
+
+## ⚠️ 미해결 (다음 세션 1순위): 새 주문 오더티켓을 테이블이동 기준으로 (2026-06-03)
+
+같은 기기에서 **테이블이동 티켓=완벽 / 새 주문 티켓=엉망**. 캐시 아님(코드 경로 차이). 둘 다 `printKitchenTicketViaRawBT` 공유하나 **데이터 준비가 다름** — 테이블이동은 mapItem(stationName 해석된 enriched), 새 주문은 장바구니 raw. **수정: 새 주문 직접인쇄가 savedOrder(enriched) 또는 mapItem 동일 로직으로 인쇄.** 취소도 같은 단일 경로로(voided 플래그). 세트 구성품 옵션 캡처(POSSetModal optionGroups resolve)는 2순위. 상세 = `.claude/session-state.md` + memory [[reference_print_issuance_unify]].
+
+---
+
+## ✅ 완료: 매장 현장 인쇄 핫픽스 — 운영 배포 (2026-06-03)
+
+| 작업 | 상태 |
+|------|:----:|
+| SET 주방 라우팅(백엔드 stationEnrichment: set_items→set_components+스테이션 정규화) | ✅ 배포 |
+| 취소표 트리거 printed_at 기준 + 자동발행 ON 자동/OFF 팝업(LiveOrders+TableDetailPanel) | ✅ 배포 |
+| 통합 카운터 티켓 noStationBox / 세트 set_items 폴백 렌더 / 모든 HTML 인쇄 이모지 제거 | ✅ 배포 |
+| 머지→KDS 팝업 / 서빙 ready 사운드+스피커토글 / 플로어플랜 통계 fix / KDS 헤더 / 길게누르기 / 스테이션 배정 UI / 필터 셀렉트 | ✅ 배포 |
+| 서빙뷰·스탭접근·준비시간 타이머(이전 미배포분 함께 배포) | ✅ 배포 |
+
+### 수정된 파일
+- 프론트🔒: `utils/billPrint.js`, `pages/KitchenDisplay/KitchenDisplayPage.tsx`, `pages/POSTerminal/POSTerminalPage.tsx`
+- 프론트: `pages/LiveOrders/LiveOrdersPage.tsx`, `pages/FloorPlan/{FloorPlanPage,ItemListView,TableDetailPanel}.tsx`, `pages/Settings/SettingsPage.tsx`, `components/Common/SearchableSelect.tsx`
+- 백엔드🔒: `utils/stationEnrichment.js`, `routes/orders-crud.js`
+- 배포: Backup 20260603_150638(1차), 20260603_153359(2차)
+
+---
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 > **현재 버전:** **v3.46** 운영 (2026-06-02 배포, Backup 20260602_233232 — POS UI/UX 개편 + 주방 인쇄·알림 v2 + 테이블 이동/취소표 + 이메일 인증 + KDS 팝업/배너 정리. table_moved ENUM 운영 적용. ⚠️ 실프린터 눈확인 매장 진행 중)

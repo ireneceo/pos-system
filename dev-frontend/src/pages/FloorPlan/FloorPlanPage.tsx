@@ -451,6 +451,8 @@ const FloorPlanPage: React.FC = () => {
   const [paymentTakeawayOrderId, setPaymentTakeawayOrderId] = useState<number | null>(null);
   const [paymentMethods, setPaymentMethods] = useState<any>(null);
   const [membershipSettings, setMembershipSettings] = useState<any>(null);
+  // 서빙 ready 알림음 on/off (기기별 기억, 기본 ON). ItemListView 가 이 값으로 게이트.
+  const [readyAudio, setReadyAudio] = useState<boolean>(() => { try { return localStorage.getItem('fp_ready_audio') !== '0'; } catch { return true; } });
 
   // Daily Settlement
   const [showSettlement, setShowSettlement] = useState(false);
@@ -1396,6 +1398,7 @@ const FloorPlanPage: React.FC = () => {
             stationName: it.stationName || null,
             ...(it.is_set_menu ? { is_set_menu: true } : {}),
             ...(Array.isArray(it.set_components) ? { set_components: it.set_components } : {}),
+            ...(Array.isArray(it.set_items) ? { set_items: it.set_items } : {}),
             special_instructions: it.special_instructions || ''
           });
           // R7/R8 — 이동 재발행 티켓 상단 안내 헤더(주방이 옛 티켓 버리게). merge=R8.
@@ -1665,6 +1668,22 @@ const FloorPlanPage: React.FC = () => {
             })}
           </div>
 
+          {/* 서빙 ready 알림음 토글(스피커) — 설정 기어 앞. 서빙(홀) 직원이 음식 준비완료를
+              소리로 인지. 실제 소리는 아이템보기에서 access_serving 직원에게만 울린다(ItemListView). */}
+          <button
+            type="button"
+            onClick={() => setReadyAudio(v => { const n = !v; try { localStorage.setItem('fp_ready_audio', n ? '1' : '0'); } catch {} return n; })}
+            title={readyAudio ? 'Ready alert sound: ON' : 'Ready alert sound: OFF'}
+            aria-label="Toggle ready alert sound"
+            style={{ width: 38, height: 38, borderRadius: 8, border: '1px solid var(--pos-border, #C7CED6)', background: 'var(--pos-surface, #fff)', color: readyAudio ? 'var(--pos-brand, #635BFF)' : 'var(--pos-text-muted, #8898AA)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
+          >
+            {readyAudio ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M11 5L6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+            )}
+          </button>
+
           {/* 설정(gear) — Edit Layout 의 단일 거처(메뉴 어디에도 없어 혼란이라 여기로 모음).
               좁은 화면에선 Customer Display/Open Drawer 두 개도 함께 수납(Daily Settlement 은 인라인 유지). */}
           {(() => {
@@ -1817,6 +1836,7 @@ const FloorPlanPage: React.FC = () => {
               prepTracking={!!operationSettings?.prepTimeTracking}
               prepPerItem={Number(operationSettings?.defaultPreparationTimePerItem) || 10}
               prepThreshold={Number(operationSettings?.prepUrgentThreshold) || 80}
+              audioEnabled={readyAudio}
               onServe={handleServeItem}
               onOpenDineIn={handleOpenDineInFromItems}
               onOpenTakeaway={handleOpenTakeawayFromItems}

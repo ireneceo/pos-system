@@ -103,6 +103,7 @@ interface ItemListViewProps {
   prepTracking?: boolean;
   prepPerItem?: number;
   prepThreshold?: number;
+  audioEnabled?: boolean;
   onServe: (orderId: number, itemIndex: number, compIndex: number | null, makeServed: boolean) => void;
   onOpenDineIn: (tableNumber: string, orderId: number) => void;
   onOpenTakeaway: (orderId: number) => void;
@@ -110,7 +111,7 @@ interface ItemListViewProps {
 
 const optList = (x: any): string[] => (Array.isArray(x.options) ? x.options : []).map((o: any) => typeof o === 'string' ? o : (o?.name || '')).filter(Boolean);
 
-const ItemListView: React.FC<ItemListViewProps> = ({ dineInOrders, takeawayOrders, activeOrderId, categoryByName = {}, stationById = {}, categories = [], stations = [], timezone, prepMinutes = 15, prepTracking = false, prepPerItem = 10, prepThreshold = 80, onServe, onOpenDineIn, onOpenTakeaway }) => {
+const ItemListView: React.FC<ItemListViewProps> = ({ dineInOrders, takeawayOrders, activeOrderId, categoryByName = {}, stationById = {}, categories = [], stations = [], timezone, prepMinutes = 15, prepTracking = false, prepPerItem = 10, prepThreshold = 80, audioEnabled = true, onServe, onOpenDineIn, onOpenTakeaway }) => {
   const { t } = useTranslation(['floorplan', 'common']);
   const { hasPermission } = useAuth();
   const [search, setSearch] = useState('');
@@ -204,11 +205,12 @@ const ItemListView: React.FC<ItemListViewProps> = ({ dineInOrders, takeawayOrder
     const prev = prevReadyRef.current;
     prevReadyRef.current = readyKeys;
     if (prev === null) return;                      // 첫 렌더 — 시드만
+    if (audioEnabled === false) return;             // 스피커 토글 OFF
     if (!hasPermission('access_serving')) return;   // 서브권한만 소리
     let hasNew = false;
     readyKeys.forEach(k => { if (!prev.has(k)) hasNew = true; });
     if (hasNew) { try { playPresetSound('bell'); } catch {} }
-  }, [rows, hasPermission]);
+  }, [rows, hasPermission, audioEnabled]);
 
   const view = useMemo(() => {
     const q = search.trim().toLowerCase();

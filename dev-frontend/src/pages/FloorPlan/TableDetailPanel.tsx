@@ -864,7 +864,8 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
             // + 알림형 팝업. 미발행 아이템은 주방이 알 필요 없음 → skip.
             try {
               const removed = result.removedItem || {};
-              if (wasInKitchen && (removed.was_printed || removed.printed_at)) {
+              // 2026-06-03: printed_at 기준(상태 무관). 자동발행 ON 매장은 pending 중 이미 인쇄됨.
+              if (removed.was_printed || removed.printed_at) {
                 const settings = getPrinterSettings();
                 const sid = removed.kitchen_station_id;
                 const sp = (sid != null && settings?.kitchenStationPrinters?.[String(sid)]) || null;
@@ -881,10 +882,12 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                 };
                 const doPrint = () => printCancellationTicket(printData, sInfo, 'Item voided', stPrinter, stAddr)
                   .catch((e: any) => console.warn('FloorPlan item void print failed:', e && e.message));
-                doPrint();
+                const _kp: any = (settings as any)?.kitchenPrinter;
+                const _autoOn = !!(_kp && _kp.enabled && _kp.autoPrint);
+                if (_autoOn) doPrint();
                 onKitchenTicketSent && onKitchenTicketSent({
                   run: doPrint, ticketType: '*** ITEM CANCELLED ***',
-                  description: '취소된 아이템 — 해당 주방에 발송됨',
+                  description: _autoOn ? '취소된 아이템 — 해당 주방에 발송됨' : '취소된 아이템 — [발송]을 눌러 주방에 전송',
                   stations: previewStationBuckets(printData.items, settings)
                 });
               }
@@ -908,17 +911,16 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
           // 확정 스펙 v2 (2026-06-02): 취소표 station 라우팅을 위해 취소 전 주문 상세(발행된
           // 아이템의 kitchen_station_id/printed_at)를 가져온다. table-status 요약엔 없음.
           let fullItems: any[] = [];
-          const wasInKitchen = !['awaiting_payment', 'pending'].includes(String(statusInfo.orderStatus || ''));
-          if (wasInKitchen) {
-            try {
-              const r = await fetch(`/api/orders/${statusInfo.orderId}`, { headers: { 'Authorization': `Bearer ${token}` } });
-              const j = await r.json();
-              const od = j.data || j;
-              let oi = od.order_items;
-              if (typeof oi === 'string') { try { oi = JSON.parse(oi); } catch { oi = []; } }
-              fullItems = Array.isArray(oi) ? oi : [];
-            } catch { /* fetch best-effort */ }
-          }
+          // 2026-06-03: 상태 무관 항상 주문 상세 조회 → printed_at 으로 발행 여부 판단.
+          // (자동발행 ON 매장은 pending 중 이미 인쇄 → 상태 기준이면 취소표 누락)
+          try {
+            const r = await fetch(`/api/orders/${statusInfo.orderId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+            const j = await r.json();
+            const od = j.data || j;
+            let oi = od.order_items;
+            if (typeof oi === 'string') { try { oi = JSON.parse(oi); } catch { oi = []; } }
+            fullItems = Array.isArray(oi) ? oi : [];
+          } catch { /* fetch best-effort */ }
           await fetch(`/api/orders/${statusInfo.orderId}/status`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -928,7 +930,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
           // 취소는 항상 발송(주방이 무조건 알아야) + 발송 후 알림형 팝업. 발행된 아이템만.
           try {
             const printedItems = fullItems.filter(it => it && (it.printed_at || it.printed));
-            if (wasInKitchen && printedItems.length > 0) {
+            if (printedItems.length > 0) {
               const settings = getPrinterSettings();
               const sInfo = (typeof getStoreInfo === 'function') ? getStoreInfo() : {};
               const printData: any = {
@@ -946,10 +948,12 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
               };
               const doPrint = () => printCancellationTicketsByStation(printData, sInfo, 'Cancelled by staff')
                 .catch((e: any) => console.warn('FloorPlan cancel print failed:', e && e.message));
-              doPrint();
+              const _kpO: any = (settings as any)?.kitchenPrinter;
+              const _autoOnO = !!(_kpO && _kpO.enabled && _kpO.autoPrint);
+              if (_autoOnO) doPrint();
               onKitchenTicketSent && onKitchenTicketSent({
                 run: doPrint, ticketType: '*** ORDER CANCELLED ***',
-                description: `주문 ${printData.orderNumber} — 해당 주방에 발송됨`,
+                description: _autoOnO ? `주문 ${printData.orderNumber} — 해당 주방에 발송됨` : `주문 ${printData.orderNumber} — [발송]을 눌러 주방에 전송`,
                 stations: previewStationBuckets(printData.items, settings)
               });
             }

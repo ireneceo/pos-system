@@ -576,6 +576,9 @@ const ViewToggle = styled.div`
   background: #F1F4F8;
   border-radius: 6px;
   padding: 2px;
+  height: 36px;
+  box-sizing: border-box;
+  align-items: center;
 `;
 
 const ViewToggleBtn = styled.button<{ active: boolean }>`
@@ -3107,8 +3110,8 @@ const KitchenDisplayPage: React.FC = () => {
               title={t('kitchen:mergeTooltip', 'Configure item merge settings')}
               style={{
                 display: 'inline-flex', flexDirection: 'column',
-                alignItems: 'flex-start', lineHeight: 1.2,
-                padding: '4px 10px',
+                alignItems: 'flex-start', justifyContent: 'center', lineHeight: 1.2,
+                padding: '0 10px', minHeight: 36, boxSizing: 'border-box',
                 background: '#F0F0FF', color: '#635BFF',
                 borderRadius: 8, textDecoration: 'none', border: 'none'
               }}
@@ -3147,8 +3150,8 @@ const KitchenDisplayPage: React.FC = () => {
 
           {/* 4) Staff badge — 2 lines: name / Switch staff or Sign out */}
           <div style={{
-            display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
-            padding: '4px 12px',
+            display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center',
+            padding: '0 12px', minHeight: 36, boxSizing: 'border-box',
             background: kdsStaff ? '#F0F4FF' : '#F1F4F8',
             borderRadius: 8,
             border: `1px solid ${kdsStaff ? '#DDD9FF' : '#C7CED6'}`,
@@ -3183,10 +3186,10 @@ const KitchenDisplayPage: React.FC = () => {
             onClick={() => { setAudioEnabled(prev => { const next = !prev; localStorage.setItem('sound_enabled', String(next)); return next; }); }}
             title={audioEnabled ? 'Sound ON' : 'Sound OFF'}
             style={{
-              width: 32, height: 32, borderRadius: 8, border: 'none', cursor: 'pointer',
+              width: 36, height: 36, borderRadius: 8, border: 'none', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
               background: audioEnabled ? '#635BFF' : '#C7CED6',
-              transition: 'all 0.15s'
+              transition: 'all 0.15s', flexShrink: 0
             }}
           >
             <img
@@ -3201,8 +3204,8 @@ const KitchenDisplayPage: React.FC = () => {
 
           {/* 6) Live + Time — 끝쪽, Settings ⚙ 직전. 2줄 컴팩트. */}
           <div style={{
-            display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
-            lineHeight: 1.15, marginLeft: 4
+            display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center',
+            lineHeight: 1.15, marginLeft: 4, minHeight: 36, boxSizing: 'border-box'
           }}>
             <ConnectionStatus connected={isConnected} style={{ padding: '2px 8px', fontSize: 11 }}>
               <ConnectionDot connected={isConnected} />

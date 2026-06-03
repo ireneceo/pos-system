@@ -1232,8 +1232,16 @@ function wrapPrintHTML(title, bodyHtml) {
 }
 
 /** HTML-escape user-provided strings before injecting into print HTML. */
-function escapeHtmlForPrint(s) {
+// 2026-06-03: 인쇄 공용 — 옵션/이름의 이모지·아이콘 제거 (빌·오더티켓 모든 프린팅, Irene).
+// 화살표(↳ → 등 U+2190~21FF / U+2B00~)는 구조 기호라 보존. 🌶️ ☕ 🍽️ 국기 등 픽토그램만 제거.
+function stripPrintEmoji(s) {
   return String(s == null ? '' : s)
+    .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{FE00}-\u{FE0F}\u{200D}]/gu, '')
+    .replace(/[ \t]{2,}/g, ' ');
+}
+
+function escapeHtmlForPrint(s) {
+  return stripPrintEmoji(String(s == null ? '' : s))
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -1492,7 +1500,11 @@ export function generateHTMLKitchenTicket(orderData, storeInfo) {
     const stationTagHtml = item.stationName
       ? ` <span class="station-tag">${escapeHtmlForPrint(item.stationName.toUpperCase())}</span>`
       : '';
-    const hasSetComps = Array.isArray(item.set_components) && item.set_components.length > 0;
+    // 세트 구성품: set_components 우선, 없으면 레거시 set_items 폴백(둘 다 메뉴명 보유).
+    // (테이블이동/구주문이 set_components 없이 set_items 만 들고 와도 메뉴명 크게 펼침)
+    const _comps = (Array.isArray(item.set_components) && item.set_components.length > 0) ? item.set_components
+      : (Array.isArray(item.set_items) && item.set_items.length > 0 ? item.set_items : null);
+    const hasSetComps = !!_comps;
     // 세트 자체 옵션(A) — 구성품(B)과 별개. 둘 다 표기.
     const setLevelOptionsHtml = (item.options || []).map(opt =>
       `<div class="item-option" style="font-size:13px;font-weight:600;">★ ${escapeHtmlForPrint(typeof opt === 'string' ? opt : (opt?.name || ''))}</div>`
@@ -1504,7 +1516,7 @@ export function generateHTMLKitchenTicket(orderData, storeInfo) {
     if (hasSetComps) {
       // 세트: 주방은 구성품(=실제 만드는 메뉴)을 봐야 한다. 구성품을 18px 메뉴로 크게 + 옵션,
       // 세트명은 작은 라벨로(맥락만). 방식 무변경 콘텐츠/레이아웃만.
-      const compsHtml = item.set_components.map(c => {
+      const compsHtml = _comps.map(c => {
         const cn = escapeHtmlForPrint((c && c.name) || '');
         if (!cn) return '';
         const cq = (Number(qty) || 1) * (Number(c.qty) || 1);
@@ -1602,9 +1614,12 @@ export function generateHTMLKitchenTicket(orderData, storeInfo) {
 
   // 모든 주방 티켓 상단 station 이름 박스 (Irene 2026-06-02). station-routed 티켓은 items 가
   // 같은 stationName 을 가짐 → 거기서 도출. 미설정(단일 주방)이면 박스 생략.
-  const _ticketStation = (orderData.stationName
+  // 2026-06-03: 통합(카운터 미러) 티켓은 여러 스테이션이 섞여 있으므로 상단 박스 생략
+  // (noStationBox). 카운터는 아이템별 인라인 [KQ1][KQ2] 태그로 라우팅 확인 — 박스에 첫
+  // 스테이션(KQ1)만 찍히던 오류 제거.
+  const _ticketStation = orderData.noStationBox ? '' : ((orderData.stationName
     || (orderData.items || []).map(i => i && i.stationName).find(Boolean)
-    || '').toString().trim();
+    || '').toString().trim());
   const stationBoxHtml = _ticketStation
     ? `<div style="border:2px solid #000;border-radius:6px;padding:5px 0;text-align:center;font-size:17px;font-weight:800;letter-spacing:2px;margin-bottom:6px;">${escapeHtmlForPrint(_ticketStation.toUpperCase())}</div>`
     : '';
@@ -1668,9 +1683,9 @@ function generateHTMLAdditionalItemsTicket(orderData, storeInfo) {
     </div>
   `;
 
-  const _ticketStation = (orderData.stationName
+  const _ticketStation = orderData.noStationBox ? '' : ((orderData.stationName
     || (orderData.items || []).map(i => i && i.stationName).find(Boolean)
-    || '').toString().trim();
+    || '').toString().trim());
   const stationBoxHtml = _ticketStation
     ? `<div style="border:2px solid #000;border-radius:6px;padding:5px 0;text-align:center;font-size:17px;font-weight:800;letter-spacing:2px;margin-bottom:6px;">${escapeHtmlForPrint(_ticketStation.toUpperCase())}</div>`
     : '';
@@ -1883,9 +1898,10 @@ export function generateKitchenTicketContent(orderData, storeInfo) {
   // station-routed 티켓은 items 가 같은 stationName 을 가짐 → 거기서 도출.
   // 미설정(단일 주방)이면 박스 생략. raw thermal 이라 dashed line 으로 박스 표현.
   {
-    const _ts = (orderData.stationName
+    // 통합(카운터 미러) 티켓은 상단 station 박스 생략 — 아이템별 인라인 태그로 확인.
+    const _ts = orderData.noStationBox ? '' : ((orderData.stationName
       || (orderData.items || []).map(i => i && i.stationName).find(Boolean)
-      || '').toString().trim();
+      || '').toString().trim());
     if (_ts) {
       content += CMD.ALIGN_CENTER;
       content += CMD.DASHED_LINE + CMD.LINE_FEED;
@@ -1976,8 +1992,11 @@ export function generateKitchenTicketContent(orderData, storeInfo) {
     }
 
     // 세트 v2 구성품 — 주방이 무엇을 만들지 보이게 (구성품명 + 선택옵션). 방식 무변경, 콘텐츠만.
-    if (Array.isArray(item.set_components) && item.set_components.length > 0) {
-      item.set_components.forEach(c => {
+    // set_components 없으면 레거시 set_items 폴백(테이블이동/구주문 대비).
+    const _escComps = (Array.isArray(item.set_components) && item.set_components.length > 0) ? item.set_components
+      : (Array.isArray(item.set_items) && item.set_items.length > 0 ? item.set_items : null);
+    if (_escComps) {
+      _escComps.forEach(c => {
         const cn = (c && c.name) || '';
         if (!cn) return;
         content += CMD.BOLD_ON;
@@ -2396,7 +2415,9 @@ export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerNa
           // can verify station routing at a glance (2026-05-28 The Fire 매장
           // 영업 1일차 보고: station 라벨 누락으로 어디로 가는지 불명).
           const tagged = tagTicketWithStations(orderData, 'COUNTER', settings);
-          const unifiedTicket = { ...tagged, groupLabel: 'COUNTER', printedAt: 'COUNTER' };
+          // noStationBox: 통합 티켓은 상단 단일 station 박스 생략(여러 스테이션 혼재).
+          // 라우팅은 아이템별 인라인 [KQ1][KQ2] 태그로 확인. (KQ1 박스만 찍히던 오류 제거)
+          const unifiedTicket = { ...tagged, groupLabel: 'COUNTER', printedAt: 'COUNTER', noStationBox: true };
           if (isLanIP) {
             sendViaQZTray(generateKitchenTicketContent(unifiedTicket, storeInfo), billAddr)
               .catch(e => console.warn('Kitchen → counter mirror print failed:', e && e.message));
@@ -3665,6 +3686,18 @@ function generateCancellationTicketContent(orderData, storeInfo, reason) {
     const qty = (it.quantity != null ? it.quantity : 1);
     const name = it.name || (it.menuItem && it.menuItem.name) || '';
     content += CMD.REVERSE_ON + ' ' + qty + 'x  ' + name + ' ' + CMD.REVERSE_OFF + CMD.LINE_FEED;
+    // 2026-06-03: 세트 구성품(메뉴)도 펼쳐 표시 — 주방이 무엇을 멈춰야 하는지 메뉴별로
+    // 보이게(정상 티켓과 동일). 세트명은 위 줄에 있고, 구성품 메뉴명은 들여써서 나열.
+    const cComps = (Array.isArray(it.set_components) && it.set_components.length) ? it.set_components
+      : ((Array.isArray(it.set_items) && it.set_items.length) ? it.set_items : null);
+    if (cComps) {
+      cComps.forEach(c => {
+        const cn = (c && c.name) || '';
+        if (!cn) return;
+        const cq = (c.qty != null ? c.qty : (c.quantity != null ? c.quantity : 1));
+        content += CMD.REVERSE_ON + '   > ' + cq + 'x ' + cn + ' ' + CMD.REVERSE_OFF + CMD.LINE_FEED;
+      });
+    }
     if (it.cancelReason) content += '   (' + it.cancelReason + ')' + CMD.LINE_FEED;
   });
   content += CMD.DASHED_LINE + CMD.LINE_FEED;
@@ -3705,6 +3738,18 @@ function generateHTMLCancellationTicket(orderData, storeInfo, reason) {
     const reasonHtml = it.cancelReason
       ? `<div style="font-size:12px;font-weight:600;padding-left:18px;color:#333;">(${escapeHtmlForPrint(String(it.cancelReason))})</div>`
       : '';
+    // 2026-06-03: 세트는 세트명 작게(라벨) + 구성품 메뉴명 크게 펼침(정상 티켓과 동일 규칙).
+    const cComps = (Array.isArray(it.set_components) && it.set_components.length) ? it.set_components
+      : ((Array.isArray(it.set_items) && it.set_items.length) ? it.set_items : null);
+    if (cComps) {
+      const compHtml = cComps.map(c => {
+        const cn = escapeHtmlForPrint((c && c.name) || '');
+        if (!cn) return '';
+        const cq = (c.qty != null ? c.qty : (c.quantity != null ? c.quantity : 1));
+        return `<div class="item-name" style="font-size:16px;font-weight:700;padding-left:14px;"><span style="text-decoration:line-through;">${cq} × ${cn}</span></div>`;
+      }).join('');
+      return `<div class="item"><div class="item-name" style="font-size:12px;font-weight:600;color:#555;"><span style="text-decoration:line-through;">${qty} × ${name}</span>${stationTagHtml}</div>${compHtml}${reasonHtml}</div>`;
+    }
     return `<div class="item"><div class="item-name" style="font-size:16px;font-weight:700;"><span style="text-decoration:line-through;">${qty} × ${name}</span>${stationTagHtml}</div>${reasonHtml}</div>`;
   }).join('');
 

@@ -506,7 +506,8 @@
       "Bash(sed -n '105,115p' src/contexts/StoreContext.tsx)",
       "Bash(scp -o ConnectTimeout=8 -q /var/www/dev-backend/diag-set5-thefire.js irene@87.106.78.146:/var/www/production-backend/diag-set5-thefire.js)",
       "Bash(scp -o ConnectTimeout=8 -q /var/www/dev-backend/diag-order-set5.js irene@87.106.78.146:/var/www/production-backend/diag-order-set5.js)",
-      "Bash(scp -o ConnectTimeout=8 -q /var/www/dev-backend/diag-order-src.js irene@87.106.78.146:/var/www/production-backend/diag-order-src.js)"
+      "Bash(scp -o ConnectTimeout=8 -q /var/www/dev-backend/diag-order-src.js irene@87.106.78.146:/var/www/production-backend/diag-order-src.js)",
+      "Bash(scp -o ConnectTimeout=8 -q /var/www/dev-backend/diag-thefire-recent.js irene@87.106.78.146:/var/www/production-backend/diag-thefire-recent.js)"
     ],
     "deny": [],
     "ask": []

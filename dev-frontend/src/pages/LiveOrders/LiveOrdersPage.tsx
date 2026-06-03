@@ -1126,7 +1126,10 @@ const LiveOrdersPage: React.FC = () => {
           // 확정 스펙 v2 (2026-06-02): 취소는 주방이 무조건 알아야 함 → 설정/자동발행과
           // 무관하게 항상 발송. 발송 후 화면엔 알림형 팝업([재발송][닫기]).
           // 단, 주방에 안 갔던(미발행) 아이템은 주방이 알 필요 없음 → skip.
-          if (wasInKitchen && (removed.was_printed || removed.printed_at)) {
+          // 2026-06-03: 트리거 = '주방에 인쇄됐던 아이템'(printed_at) 기준. 자동발행 ON 매장은
+          // pending 상태에서 이미 주방에 인쇄되므로, 상태 기준(wasInKitchen) 으로 막으면 취소표가
+          // 안 나갔다(Irene). printed_at 있으면 상태 무관하게 취소 대상.
+          if (removed.was_printed || removed.printed_at) {
             const settings = (() => { try { return require('../../utils/billPrint').getPrinterSettings(); } catch { return {}; } })();
             const sid = removed.kitchen_station_id;
             const sp = (sid != null && settings?.kitchenStationPrinters?.[String(sid)]) || null;
@@ -1146,8 +1149,11 @@ const LiveOrdersPage: React.FC = () => {
             const reasonLabel = reason ? `Item voided — ${reason}` : 'Item voided';
             const doPrint = () => printCancellationTicket(printData, sInfo, reasonLabel, stPrinter, stAddr)
               .catch(e => console.warn('Item void print failed:', e && e.message));
-            doPrint();   // 항상 발송
-            setCancelPrintPrompt({ run: doPrint, ticketType: '*** ITEM CANCELLED ***', description: '취소된 아이템 — 해당 주방에 발송됨', stations: previewStationBuckets(printData.items, settings) });
+            // 자동발행(master) ON → 자동 발송 / OFF → 팝업으로 수동 발송 (Irene 2026-06-03).
+            const _kp: any = (settings as any)?.kitchenPrinter;
+            const _autoOn = !!(_kp && _kp.enabled && _kp.autoPrint);
+            if (_autoOn) doPrint();
+            setCancelPrintPrompt({ run: doPrint, ticketType: '*** ITEM CANCELLED ***', description: _autoOn ? '취소된 아이템 — 해당 주방에 발송됨' : '취소된 아이템 — [발송]을 눌러 주방에 전송', stations: previewStationBuckets(printData.items, settings) });
           }
         } catch (e: any) { console.warn('void-ticket step skipped:', e?.message); }
       } else {
@@ -1361,8 +1367,11 @@ const LiveOrdersPage: React.FC = () => {
       } else if (orderSnapshot) {
         // Cancellation ticket — 키친 진입 가능성 있는 상태에서만 (pending/awaiting_payment 는 키친 미진입 추정).
         // Setting toggle (printCancellationTicket) OFF 또는 키친 프린터 disabled 면 함수 내부에서 skip.
-        const wasInKitchen = !['awaiting_payment', 'pending'].includes(String(orderSnapshot.status || ''));
-        if (wasInKitchen) {
+        // 2026-06-03: 트리거 = '주방에 인쇄됐던 주문'(아이템 printed_at) 기준. 자동발행 ON 매장은
+        // pending 상태에서 이미 주방에 인쇄되므로, 상태 기준으로 막으면 취소표가 안 나갔다(Irene).
+        const _snapItems = ((orderSnapshot as any).items || (orderSnapshot as any).order_items || []);
+        const _anyPrinted = Array.isArray(_snapItems) && _snapItems.some((it: any) => it && (it.printed_at || it.printed));
+        if (_anyPrinted) {
           try {
             // R10 전체취소: 헤더 ORDER CANCELLED + 전 아이템 줄긋기 + station별 라우팅
             // (각 station 은 자기 아이템만). item 의 kitchen_station_id 보존해 버킷팅에 사용.
@@ -1384,11 +1393,14 @@ const LiveOrdersPage: React.FC = () => {
             const sInfo = (typeof getStoreInfo === 'function') ? getStoreInfo() : {};
             // 확정 스펙 v2 (2026-06-02): 주문취소는 설정/자동발행과 무관하게 항상 발송.
             // 발송 후 화면엔 알림형 팝업([재발송][닫기]). station 별로 자기 아이템만 발행.
-            const _ps = (() => { try { return require('../../utils/billPrint').getPrinterSettings(); } catch { return {}; } })();
+            const _ps: any = (() => { try { return require('../../utils/billPrint').getPrinterSettings(); } catch { return {}; } })();
             const doPrint = () => printCancellationTicketsByStation(printData, sInfo, 'Cancelled by staff')
               .catch(e => console.warn('Cancellation print failed:', e && e.message));
-            doPrint();   // 항상 발송
-            setCancelPrintPrompt({ run: doPrint, ticketType: '*** ORDER CANCELLED ***', description: `주문 ${printData.orderNumber} — 해당 주방에 발송됨`, stations: previewStationBuckets(printData.items, _ps) });
+            // 자동발행(master) ON → 자동 발송 / OFF → 팝업 수동 발송 (Irene 2026-06-03).
+            const _kpO: any = _ps?.kitchenPrinter;
+            const _autoOnO = !!(_kpO && _kpO.enabled && _kpO.autoPrint);
+            if (_autoOnO) doPrint();
+            setCancelPrintPrompt({ run: doPrint, ticketType: '*** ORDER CANCELLED ***', description: _autoOnO ? `주문 ${printData.orderNumber} — 해당 주방에 발송됨` : `주문 ${printData.orderNumber} — [발송]을 눌러 주방에 전송`, stations: previewStationBuckets(printData.items, _ps) });
           } catch (e) {
             console.warn('Cancellation ticket trigger error:', (e as any) && (e as any).message);
           }
