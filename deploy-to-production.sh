@@ -491,13 +491,19 @@ smoke_test "Health check" \
     "curl -s --max-time 5 http://localhost:3002/api/health" \
     '"status":"ok"'
 
-ADMIN_TOKEN=$(ssh $PROD_SERVER "curl -s --max-time 5 -X POST http://localhost:3002/api/auth/login \
+# Smoke 로그인 — 로그인 페이지의 "Test Accounts" 와 동일한 demo-login(키 기반, 비번 하드코딩 X).
+# test_restaurant_admin = K-DINE Restaurant Admin(is_test, restaurant_id=5). 과거 직접로그인
+# (admin@pos-system.com)은 그 계정 삭제(이메일폭주 정리, 2026-06-01)로 항상 실패하던 것 →
+# demo-login 키 방식으로 교체(2026-06-04). restaurant_id 도 응답에서 추출해 하위 smoke 에 사용.
+SMOKE_LOGIN=$(ssh $PROD_SERVER "curl -s --max-time 5 -X POST http://localhost:3002/api/auth/demo-login \
     -H 'Content-Type: application/json' \
-    -d '{\"email\":\"admin@pos-system.com\",\"password\":\"admin123\"}'" 2>/dev/null \
-    | grep -o '"token":"[^"]*"' | head -1 | cut -d'"' -f4)
+    -d '{\"key\":\"test_restaurant_admin\"}'" 2>/dev/null)
+ADMIN_TOKEN=$(echo "$SMOKE_LOGIN" | grep -o '"token":"[^"]*"' | head -1 | cut -d'"' -f4)
+SMOKE_RID=$(echo "$SMOKE_LOGIN" | grep -o '"restaurant_id":[0-9]*' | head -1 | cut -d':' -f2)
+[ -z "$SMOKE_RID" ] && SMOKE_RID=5
 
 if [ -n "$ADMIN_TOKEN" ] && [ "$ADMIN_TOKEN" != "null" ]; then
-    echo -e "  ${GREEN}✓${NC} Admin login"
+    echo -e "  ${GREEN}✓${NC} Test admin login (demo-login key)"
     SMOKE_PASS=$((SMOKE_PASS + 1))
 else
     echo -e "  ${RED}✗${NC} Admin login"
@@ -509,7 +515,7 @@ SMOKE_TOTAL=$((SMOKE_TOTAL + 1))
 # --- 14b. POS 핵심 흐름: 메뉴 → 주문 → 빌 ---
 if [ -n "$ADMIN_TOKEN" ]; then
     smoke_test "GET menu" \
-        "curl -s --max-time 5 http://localhost:3002/api/menu?restaurantId=1 \
+        "curl -s --max-time 5 http://localhost:3002/api/menu?restaurantId=$SMOKE_RID \
             -H 'Authorization: Bearer $ADMIN_TOKEN'" \
         '"success"'
 
@@ -517,7 +523,7 @@ if [ -n "$ADMIN_TOKEN" ]; then
     ORDER_RESPONSE=$(ssh $PROD_SERVER "curl -s --max-time 10 -X POST http://localhost:3002/api/orders \
         -H 'Content-Type: application/json' \
         -H 'Authorization: Bearer $ADMIN_TOKEN' \
-        -d '{\"restaurant_id\":1,\"order_type\":\"dine_in\",\"table_number\":\"SMOKE99\",\"skipAutoMerge\":true,\"order_items\":[{\"name\":\"Smoke Test Item\",\"price\":1.00,\"quantity\":1}]}'" 2>/dev/null) || ORDER_RESPONSE=""
+        -d '{\"restaurant_id\":$SMOKE_RID,\"order_type\":\"dine_in\",\"table_number\":\"SMOKE99\",\"skipAutoMerge\":true,\"order_items\":[{\"name\":\"Smoke Test Item\",\"price\":1.00,\"quantity\":1}]}'" 2>/dev/null) || ORDER_RESPONSE=""
 
     SMOKE_ORDER_ID=$(echo "$ORDER_RESPONSE" | grep -o '"id":[0-9]*' | head -1 | cut -d':' -f2)
 
@@ -543,18 +549,16 @@ fi
 
 # --- 14c. API Endpoints ---
 if [ -n "$ADMIN_TOKEN" ]; then
-    smoke_test "GET invoices" \
-        "curl -s --max-time 5 http://localhost:3002/api/invoices \
-            -H 'Authorization: Bearer $ADMIN_TOKEN'" \
-        '"id"'
-
-    smoke_test "GET restaurants" \
+    # 매장(Restaurant Admin) 토큰 스코프 검증. 과거 GET invoices([] 빈배열 → '"id"' 못찾아
+    # false fail) / GET admin/payment-settings(System Admin 전용 → RA 403) 는 제거하고, 매장
+    # 토큰으로 항상 유효한 항목으로 교체(2026-06-04). 운영 인증/POS 흐름은 위 menu→order→bill 로 검증.
+    smoke_test "GET restaurants (accessible)" \
         "curl -s --max-time 5 http://localhost:3002/api/restaurants \
             -H 'Authorization: Bearer $ADMIN_TOKEN'" \
         '"id"'
 
-    smoke_test "GET payment-settings" \
-        "curl -s --max-time 5 http://localhost:3002/api/admin/payment-settings \
+    smoke_test "GET pending-print" \
+        "curl -s --max-time 5 http://localhost:3002/api/orders/restaurant/$SMOKE_RID/pending-print \
             -H 'Authorization: Bearer $ADMIN_TOKEN'" \
         '"success"'
 fi
