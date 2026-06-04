@@ -1,8 +1,25 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-06-03 (밤, 매장 현장 마라톤 세션)
-**버전:** v3.46 운영 (배포는 했으나 버전 미상승 — 인쇄 핫픽스 성격)
+**마지막 업데이트:** 2026-06-04 (오더티켓 옵션/이모지 진단 세션)
+**버전:** v3.46 운영
+**작업 상태(2026-06-04):** Irene 보고 = "테이블이동 티켓 정상. 세트 구성품 옵션 / 일반 옵션 / 이모지 깨짐만 해결" → **정밀 진단 결과: 코드는 운영에 이미 정답.** 핵심은 **기기가 SW 캐시로 옛 번들에 묶여 2026-06-03 이모지제거 번들을 안 받음.** 해결 lever = **SW_VERSION bump + 재배포**. DEV 준비 완료, **운영 배포(Irene /배포) + 실프린터 확인 + billPrint --bless 대기.**
+
+### 2026-06-04 진단 (실데이터·운영 직접 조회로 증명)
+1. **이모지(🌶️):** The Fire 프린터는 전부 QZ Tray OS드라이버(POS-80C/KITCHEN/KITCHEN 2/BAR, LAN IP 아님) → HTML pixel(`generateHTMLKitchenTicket`) 경로 → **2026-06-03 배포부터 이미 이모지 제거**(stripPrintEmoji가 🌶️→"", 한글 보존 확인). 운영 번들(main.f68c92ef.js, 6/3 15:35)에 `1FAFF` 시그니처 존재 = 코드 있음. **그런데도 기기가 이모지를 봄 = sw.js 미변경 → SW 재설치 안 됨 → 캐시 옛 번들 유지.**
+   - 추가 조치(코드): raw ESC/POS 5개 생성기(`generateKitchenTicketContent`/`SingleItem`/`Station`/`AdditionalItems`/`Cancellation`)는 이모지 미제거였음 → `rawText()` 헬퍼로 제거 적용(LAN/RawBT 매장 보호). The Fire(HTML)엔 무영향이나 정합성 hardening. DEV 빌드 완료.
+2. **세트 구성품 옵션(치밥 매운맛):** 코드 정상. 운영 `buildSetResolved(#596 SET4)` 가 #456 치밥의 `Spicy Level[Level1🌶️…Level5🌶️🌶️🌶️🌶️🌶️]`(required=true) 정상 resolve. POSSetModal renderInherited 렌더+캡처 → set_components[].options 저장 → stationEnrichment 보존(`...c`) → 인쇄 렌더. 실 API 라운드트립으로 옵션 보존 증명(rest5 #52). **= 매운맛 옵션명에 🌶️ 박혀 raw에서 깨졌던 것 + 기기 옛 번들. 코드 버그 아님.**
+3. **일반 메뉴 옵션:** item.options 전 체인 보존+렌더 확인(API 라운드트립). 정상.
+
+### 2026-06-04 변경 (DEV, 미배포)
+- `dev-frontend/src/utils/billPrint.js`(🔒): `rawText()` 헬퍼 신규 + raw 5생성기 사용자콘텐츠(메뉴명/옵션/구성품/특별요청/메모/고객명)에 이모지 제거 적용. 들여쓰기 prefix 미포함(레이아웃 보존).
+- `dev-frontend/public/sw.js`: SW_VERSION `3.46-set-station-20260530` → `3.46-emoji-rawpath-20260604` (전 기기 강제 갱신 lever).
+- 검증: autoprint regression 44/44, build OK, print health 7/7(보호파일 무결성은 billPrint 변경 감지 — 배포 시 --bless 예정).
+- **배포 전 필수:** Irene /배포 + The Fire 실프린터 눈확인(매운맛 정상/이모지 0) + `node dev-backend/scripts/check-print-guard.js --bless`(billPrint).
+- 참고: dev rest5 pending-print 백로그 131건(stale) 정리함(ASC+limit20이 신규 주문 가리던 회귀테스트 false fail 원인).
+
+---
+(이전 기록 — 2026-06-03 밤 매장 현장 마라톤 세션)
 **작업 상태:** 운영 2회 배포 완료(15:08 Backup 20260603_150638 / 15:33 Backup 20260603_153359). **단, 새 주문 오더티켓 여전히 엉망 — 미해결.**
 
 ### 🔴🔴🔴 다음 세션 절대 1순위: 새 주문 인쇄를 "테이블이동 기준"으로 (Irene 세션 내내 반복 요청)

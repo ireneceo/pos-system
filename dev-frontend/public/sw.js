@@ -10,7 +10,7 @@
  * caching SPA shell would conflict. If future offline support is needed, layer Workbox separately.
  */
 
-const SW_VERSION = '3.46-set-station-20260530';
+const SW_VERSION = '3.46-emoji-rawpath-20260604';
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {

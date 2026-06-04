@@ -1240,6 +1240,14 @@ function stripPrintEmoji(s) {
     .replace(/[ \t]{2,}/g, ' ');
 }
 
+// raw ESC/POS 경로 전용 — 이모지만 제거(HTML escape 불필요). 단품/통합/스테이션 raw 티켓이
+// 메뉴명·옵션·구성품명을 원문 그대로 출력해 LAN IP 프린터에서 이모지가 깨지던 문제(2026-06-04).
+// HTML 경로(escapeHtmlForPrint)와 동일 기준. ⚠ 들여쓰기 prefix('  * ')는 감싸지 말 것 —
+// stripPrintEmoji 가 연속 공백을 1칸으로 줄여 레이아웃이 깨진다. 변수(사용자 콘텐츠)만 감쌀 것.
+function rawText(s) {
+  return stripPrintEmoji(String(s == null ? '' : s)).trim();
+}
+
 function escapeHtmlForPrint(s) {
   return stripPrintEmoji(String(s == null ? '' : s))
     .replace(/&/g, '&amp;')
@@ -1958,7 +1966,7 @@ export function generateKitchenTicketContent(orderData, storeInfo) {
   content += formatLine('Source:', orderSource) + CMD.LINE_FEED;
 
   if (orderData.customerName && orderData.customerName !== 'Walk-in Customer') {
-    content += formatLine('Customer:', orderData.customerName) + CMD.LINE_FEED;
+    content += formatLine('Customer:', rawText(orderData.customerName)) + CMD.LINE_FEED;
   }
 
   content += CMD.DASHED_LINE + CMD.LINE_FEED;
@@ -1973,7 +1981,7 @@ export function generateKitchenTicketContent(orderData, storeInfo) {
   content += CMD.LINE_FEED;
 
   orderData.items.forEach((item, index) => {
-    const itemName = item.menuItem?.name || item.name;
+    const itemName = rawText(item.menuItem?.name || item.name);
     const qty = item.quantity;
 
     // Item: Quantity x Name (LARGE & BOLD)
@@ -1997,13 +2005,13 @@ export function generateKitchenTicketContent(orderData, storeInfo) {
       : (Array.isArray(item.set_items) && item.set_items.length > 0 ? item.set_items : null);
     if (_escComps) {
       _escComps.forEach(c => {
-        const cn = (c && c.name) || '';
+        const cn = rawText((c && c.name) || '');
         if (!cn) return;
         content += CMD.BOLD_ON;
         content += '  > ' + cn + CMD.LINE_FEED;
         content += CMD.BOLD_OFF;
         if (Array.isArray(c.options) && c.options.length > 0) {
-          c.options.forEach(o => { content += '    * ' + o + CMD.LINE_FEED; });
+          c.options.forEach(o => { content += '    * ' + rawText(o) + CMD.LINE_FEED; });
         }
       });
     }
@@ -2011,7 +2019,7 @@ export function generateKitchenTicketContent(orderData, storeInfo) {
     // Options with marker — 세트 자체 옵션(A). 구성품(B)은 위 set_components 가 표기, A 는 여기서 (별개).
     if (item.options && item.options.length > 0) {
       item.options.forEach(option => {
-        content += '  ★ ' + option + CMD.LINE_FEED;
+        content += '  ★ ' + rawText(option) + CMD.LINE_FEED;
       });
     }
 
@@ -2020,7 +2028,7 @@ export function generateKitchenTicketContent(orderData, storeInfo) {
     const _si = item.special_instructions || item.specialInstructions || '';
     if (_si && String(_si).trim()) {
       content += CMD.BOLD_ON;
-      content += '  ** ' + String(_si).trim() + CMD.LINE_FEED;
+      content += '  ** ' + rawText(_si) + CMD.LINE_FEED;
       content += CMD.BOLD_OFF;
     }
 
@@ -2039,7 +2047,7 @@ export function generateKitchenTicketContent(orderData, storeInfo) {
     content += CMD.BOLD_ON;
     content += '** SPECIAL NOTES **' + CMD.LINE_FEED;
     content += CMD.BOLD_OFF;
-    content += orderData.notes + CMD.LINE_FEED;
+    content += rawText(orderData.notes) + CMD.LINE_FEED;
     content += CMD.LINE_FEED;
     content += CMD.DASHED_LINE + CMD.LINE_FEED;
   }
@@ -2201,7 +2209,7 @@ export function generateSingleItemKitchenTicket(orderData, item, itemIndex, tota
   content += formatLine('Source:', orderSource) + CMD.LINE_FEED;
 
   if (orderData.customerName && orderData.customerName !== 'Walk-in Customer') {
-    content += formatLine('Customer:', orderData.customerName) + CMD.LINE_FEED;
+    content += formatLine('Customer:', rawText(orderData.customerName)) + CMD.LINE_FEED;
   }
 
   content += CMD.DASHED_LINE + CMD.LINE_FEED;
@@ -2216,7 +2224,7 @@ export function generateSingleItemKitchenTicket(orderData, item, itemIndex, tota
 
   // === SINGLE ITEM (LARGE) ===
   content += CMD.ALIGN_LEFT;
-  const itemName = item.menuItem?.name || item.name;
+  const itemName = rawText(item.menuItem?.name || item.name);
   const qty = item.quantity;
 
   // Item: Quantity x Name (LARGE & BOLD)
@@ -2229,7 +2237,7 @@ export function generateSingleItemKitchenTicket(orderData, item, itemIndex, tota
   // Options with marker
   if (item.options && item.options.length > 0) {
     item.options.forEach(option => {
-      content += '  * ' + option + CMD.LINE_FEED;
+      content += '  * ' + rawText(option) + CMD.LINE_FEED;
     });
   }
 
@@ -2242,7 +2250,7 @@ export function generateSingleItemKitchenTicket(orderData, item, itemIndex, tota
     content += CMD.BOLD_ON;
     content += '** SPECIAL NOTES **' + CMD.LINE_FEED;
     content += CMD.BOLD_OFF;
-    content += orderData.notes + CMD.LINE_FEED;
+    content += rawText(orderData.notes) + CMD.LINE_FEED;
     content += CMD.LINE_FEED;
     content += CMD.DASHED_LINE + CMD.LINE_FEED;
   }
@@ -2763,7 +2771,7 @@ export function generateAdditionalItemsTicketContent(orderData, storeInfo) {
   content += CMD.LINE_FEED;
 
   addedItems.forEach((item, index) => {
-    const itemName = item.menuItem?.name || item.name;
+    const itemName = rawText(item.menuItem?.name || item.name);
     const qty = item.quantity;
 
     // Item: Quantity x Name (LARGE & BOLD)
@@ -2776,7 +2784,7 @@ export function generateAdditionalItemsTicketContent(orderData, storeInfo) {
     // Options with marker
     if (item.options && item.options.length > 0) {
       item.options.forEach(option => {
-        content += '  ★ ' + option + CMD.LINE_FEED;
+        content += '  ★ ' + rawText(option) + CMD.LINE_FEED;
       });
     }
 
@@ -3581,7 +3589,7 @@ function generateStationKitchenTicket(orderData, storeInfo, stationName, ticketI
   content += CMD.LINE_FEED;
 
   orderData.items.forEach(item => {
-    const itemName = item.menuItem?.name || item.name;
+    const itemName = rawText(item.menuItem?.name || item.name);
     const qty = item.quantity;
 
     content += CMD.BOLD_ON;
@@ -3593,9 +3601,10 @@ function generateStationKitchenTicket(orderData, storeInfo, stationName, ticketI
     // 세트 v2 구성품(B) — 주방이 만들 항목 표기 (구성품명 + 선택옵션). 방식 무변경, 콘텐츠만.
     if (Array.isArray(item.set_components) && item.set_components.length > 0) {
       item.set_components.forEach(c => {
-        const cn = (c && c.name) || '';
+        const cn = rawText((c && c.name) || '');
         if (!cn) return;
-        content += '  > ' + cn + (Array.isArray(c.options) && c.options.length ? ' (' + c.options.join(', ') + ')' : '') + CMD.LINE_FEED;
+        const co = (Array.isArray(c.options) && c.options.length) ? ' (' + rawText(c.options.join(', ')) + ')' : '';
+        content += '  > ' + cn + co + CMD.LINE_FEED;
       });
     }
 
@@ -3603,7 +3612,7 @@ function generateStationKitchenTicket(orderData, storeInfo, stationName, ticketI
     const options = item.options || [];
     options.forEach(opt => {
       if (!/^.+\sx\d+$/.test(opt)) {
-        content += '  > ' + opt + CMD.LINE_FEED;
+        content += '  > ' + rawText(opt) + CMD.LINE_FEED;
       }
     });
 
@@ -3611,7 +3620,7 @@ function generateStationKitchenTicket(orderData, storeInfo, stationName, ticketI
     const special = item.special_instructions || item.specialInstructions || '';
     if (special) {
       content += CMD.BOLD_ON;
-      content += '  *** ' + special + ' ***' + CMD.LINE_FEED;
+      content += '  *** ' + rawText(special) + ' ***' + CMD.LINE_FEED;
       content += CMD.BOLD_OFF;
     }
 
@@ -3684,7 +3693,7 @@ function generateCancellationTicketContent(orderData, storeInfo, reason) {
   const items = orderData.items || [];
   items.forEach(it => {
     const qty = (it.quantity != null ? it.quantity : 1);
-    const name = it.name || (it.menuItem && it.menuItem.name) || '';
+    const name = rawText(it.name || (it.menuItem && it.menuItem.name) || '');
     content += CMD.REVERSE_ON + ' ' + qty + 'x  ' + name + ' ' + CMD.REVERSE_OFF + CMD.LINE_FEED;
     // 2026-06-03: 세트 구성품(메뉴)도 펼쳐 표시 — 주방이 무엇을 멈춰야 하는지 메뉴별로
     // 보이게(정상 티켓과 동일). 세트명은 위 줄에 있고, 구성품 메뉴명은 들여써서 나열.
@@ -3692,13 +3701,13 @@ function generateCancellationTicketContent(orderData, storeInfo, reason) {
       : ((Array.isArray(it.set_items) && it.set_items.length) ? it.set_items : null);
     if (cComps) {
       cComps.forEach(c => {
-        const cn = (c && c.name) || '';
+        const cn = rawText((c && c.name) || '');
         if (!cn) return;
         const cq = (c.qty != null ? c.qty : (c.quantity != null ? c.quantity : 1));
         content += CMD.REVERSE_ON + '   > ' + cq + 'x ' + cn + ' ' + CMD.REVERSE_OFF + CMD.LINE_FEED;
       });
     }
-    if (it.cancelReason) content += '   (' + it.cancelReason + ')' + CMD.LINE_FEED;
+    if (it.cancelReason) content += '   (' + rawText(it.cancelReason) + ')' + CMD.LINE_FEED;
   });
   content += CMD.DASHED_LINE + CMD.LINE_FEED;
 

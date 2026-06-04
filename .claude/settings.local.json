@@ -507,7 +507,8 @@
       "Bash(scp -o ConnectTimeout=8 -q /var/www/dev-backend/diag-set5-thefire.js irene@87.106.78.146:/var/www/production-backend/diag-set5-thefire.js)",
       "Bash(scp -o ConnectTimeout=8 -q /var/www/dev-backend/diag-order-set5.js irene@87.106.78.146:/var/www/production-backend/diag-order-set5.js)",
       "Bash(scp -o ConnectTimeout=8 -q /var/www/dev-backend/diag-order-src.js irene@87.106.78.146:/var/www/production-backend/diag-order-src.js)",
-      "Bash(scp -o ConnectTimeout=8 -q /var/www/dev-backend/diag-thefire-recent.js irene@87.106.78.146:/var/www/production-backend/diag-thefire-recent.js)"
+      "Bash(scp -o ConnectTimeout=8 -q /var/www/dev-backend/diag-thefire-recent.js irene@87.106.78.146:/var/www/production-backend/diag-thefire-recent.js)",
+      "Bash(xargs -I{} sed -n '{},+8p' routes/auth.js)"
     ],
     "deny": [],
     "ask": []
