@@ -202,6 +202,25 @@ printKitchenTicketViaRawBT(orderData, storeInfo, printerName?)
 
 ---
 
+## 8.5 이모지(emoji) 인쇄 규칙 (2026-06-04)
+
+- **HTML pixel 경로**(OS 드라이버 프린터 — POS-80C/KITCHEN 등 LAN IP 아닌 이름): `escapeHtmlForPrint` 가 `stripPrintEmoji` 로 이모지 제거. 2026-06-03부터. 메뉴명/옵션/구성품옵션/특별요청/메모 전부 적용. 한글·화살표(↳→)는 보존.
+- **raw ESC/POS 경로**(LAN IP 프린터 / RawBT): 2026-06-04부터 `rawText()` 헬퍼로 동일하게 이모지 제거 — 5개 생성기(`generateKitchenTicketContent`/`SingleItem`/`Station`/`AdditionalItems`/`Cancellation`)의 사용자 콘텐츠에만 적용. ⚠ 들여쓰기 prefix(`'  * '`)는 감싸지 말 것(stripPrintEmoji 가 연속공백 1칸으로 줄여 레이아웃 깨짐). 변수만 감쌀 것.
+- **옵션명에 이모지가 박힌 데이터**(예: The Fire "Spicy Level → Level 3 🌶️🌶️🌶️")가 raw 프린터에서 깨지던 게 "매운맛 안 나옴"의 한 원인이었음. 코드 체인(세트 구성품 옵션 inherit→캡처→저장→인쇄)은 정상.
+- **기기 갱신 주의**: 위 수정이 현장에 닿으려면 `public/sw.js` 의 `SW_VERSION` 을 bump 해 SW 재설치(캐시 wipe + 강제 리로드)를 일으켜야 한다. 안 그러면 기기가 옛 캐시 번들 유지. 배포마다 bump 필수. 메모리 [[reference_sw_version_stale_bundle]].
+
+---
+
+## 8.6 취소(VOID) 티켓 = 일반 오더티켓 + CANCELLED (2026-06-04)
+
+- **별도 취소표 디자인 폐기.** 취소표는 일반 오더티켓 생성기(`generateKitchenTicketContent` / `generateHTMLKitchenTicket`)를 그대로 재사용한다 — 주방이 레일에 걸린 원본 오더티켓과 같은 모양이라 즉시 짝맞춰 멈출 수 있음(업계 표준 — Toast/Square/Aloha 동일).
+- **어댑터:** `buildVoidTicketData(orderData, reason)` 가 취소 orderData 를 일반 생성기 형식으로 변환 — `voided:true` + `noticeHeader:{title: cancelTitle, lines:[Reason…]}` + `stationName ← stationLabel`.
+- **`voided` 플래그(두 일반 생성기 내부, 취소일 때만 동작):** 품목 줄긋기(HTML=`line-through`, raw=`reverse-video`) + 하단 STOP 푸터(`cancelFooter`). **voided=false(평소 주문)면 출력 byte 100% 불변** (raw·HTML 변경전==후 IDENTICAL 회귀 증명함).
+- **라우팅 무접촉:** `printCancellationTicket` / `printCancellationTicketsByStation` / `printCancellationToCounter` 의 스테이션 버킷팅·미러·비상모드 로직은 그대로. 생성기 호출만 교체.
+- 옛 `generateCancellationTicketContent` / `generateHTMLCancellationTicket` 는 `@deprecated`(호출 0). **재연결 금지** — 재연결 시 취소표 디자인 분기 재발.
+
+---
+
 ## 관련 코드
 
 | 파일 | 함수/역할 |

@@ -1,62 +1,38 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-06-04 (오더티켓 옵션/이모지 진단 세션)
-**버전:** v3.46 운영
-**작업 상태(2026-06-04):** Irene 보고 = "테이블이동 티켓 정상. 세트 구성품 옵션 / 일반 옵션 / 이모지 깨짐만 해결" → **정밀 진단 결과: 코드는 운영에 이미 정답.** 핵심은 **기기가 SW 캐시로 옛 번들에 묶여 2026-06-03 이모지제거 번들을 안 받음.** 해결 lever = **SW_VERSION bump + 재배포**. DEV 준비 완료, **운영 배포(Irene /배포) + 실프린터 확인 + billPrint --bless 대기.**
-
-### 2026-06-04 진단 (실데이터·운영 직접 조회로 증명)
-1. **이모지(🌶️):** The Fire 프린터는 전부 QZ Tray OS드라이버(POS-80C/KITCHEN/KITCHEN 2/BAR, LAN IP 아님) → HTML pixel(`generateHTMLKitchenTicket`) 경로 → **2026-06-03 배포부터 이미 이모지 제거**(stripPrintEmoji가 🌶️→"", 한글 보존 확인). 운영 번들(main.f68c92ef.js, 6/3 15:35)에 `1FAFF` 시그니처 존재 = 코드 있음. **그런데도 기기가 이모지를 봄 = sw.js 미변경 → SW 재설치 안 됨 → 캐시 옛 번들 유지.**
-   - 추가 조치(코드): raw ESC/POS 5개 생성기(`generateKitchenTicketContent`/`SingleItem`/`Station`/`AdditionalItems`/`Cancellation`)는 이모지 미제거였음 → `rawText()` 헬퍼로 제거 적용(LAN/RawBT 매장 보호). The Fire(HTML)엔 무영향이나 정합성 hardening. DEV 빌드 완료.
-2. **세트 구성품 옵션(치밥 매운맛):** 코드 정상. 운영 `buildSetResolved(#596 SET4)` 가 #456 치밥의 `Spicy Level[Level1🌶️…Level5🌶️🌶️🌶️🌶️🌶️]`(required=true) 정상 resolve. POSSetModal renderInherited 렌더+캡처 → set_components[].options 저장 → stationEnrichment 보존(`...c`) → 인쇄 렌더. 실 API 라운드트립으로 옵션 보존 증명(rest5 #52). **= 매운맛 옵션명에 🌶️ 박혀 raw에서 깨졌던 것 + 기기 옛 번들. 코드 버그 아님.**
-3. **일반 메뉴 옵션:** item.options 전 체인 보존+렌더 확인(API 라운드트립). 정상.
-
-### 2026-06-04 변경 (DEV, 미배포)
-- `dev-frontend/src/utils/billPrint.js`(🔒): `rawText()` 헬퍼 신규 + raw 5생성기 사용자콘텐츠(메뉴명/옵션/구성품/특별요청/메모/고객명)에 이모지 제거 적용. 들여쓰기 prefix 미포함(레이아웃 보존).
-- `dev-frontend/public/sw.js`: SW_VERSION `3.46-set-station-20260530` → `3.46-emoji-rawpath-20260604` (전 기기 강제 갱신 lever).
-- 검증: autoprint regression 44/44, build OK, print health 7/7(보호파일 무결성은 billPrint 변경 감지 — 배포 시 --bless 예정).
-- **배포 전 필수:** Irene /배포 + The Fire 실프린터 눈확인(매운맛 정상/이모지 0) + `node dev-backend/scripts/check-print-guard.js --bless`(billPrint).
-- 참고: dev rest5 pending-print 백로그 131건(stale) 정리함(ASC+limit20이 신규 주문 가리던 회귀테스트 false fail 원인).
-
----
-(이전 기록 — 2026-06-03 밤 매장 현장 마라톤 세션)
-**작업 상태:** 운영 2회 배포 완료(15:08 Backup 20260603_150638 / 15:33 Backup 20260603_153359). **단, 새 주문 오더티켓 여전히 엉망 — 미해결.**
-
-### 🔴🔴🔴 다음 세션 절대 1순위: 새 주문 인쇄를 "테이블이동 기준"으로 (Irene 세션 내내 반복 요청)
-
-**핵심 사실(확정):** 같은 기기에서 **테이블이동 오더티켓 = 완벽 / 새 주문 오더티켓 = 엉망**.
-→ 같은 기기 = 새 코드 동작 중 = **캐시 문제 아님(이건 내가 헤맸던 오답).** 순수 코드 경로 차이.
-
-**근본원인:** 둘 다 `printKitchenTicketViaRawBT`를 쓰지만 **들어가는 데이터가 다름**:
-- **테이블이동**(완벽): FloorPlanPage `mapItem`(:1393)으로 **스테이션 해석된(enriched) 아이템**(stationName + kitchen_station_id + set_components + options) 을 만들어 넣음. = 정답.
-- **새 주문 POS 직접인쇄**(엉망): `POSTerminalPage` ~2323 `printData = {...orderData, ...}` — **화면 장바구니 raw 데이터**. 아이템에 stationName/스테이션 해석 안 됨 → 스테이션 분배 실패, 통합 다른 주방, 스테이션명 2번, 카운터 2장 등.
-
-**수정 방향(확정):** 새 주문 POS 직접인쇄가 **저장응답(savedOrder, 백엔드 stationEnrichment로 enriched된 order_items) 또는 테이블이동과 동일한 mapItem**을 써서 인쇄하게 한다. 즉 **발행 데이터 준비를 테이블이동과 단일화.** 발행 함수(printKitchenTicketViaRawBT)는 이미 공유 → **데이터 준비만 통일하면 됨.**
-- 확인 위치: POSTerminalPage `savedOrder` 응답에 enriched order_items(kitchen_station_id, set_components, stationName) 가 있는지 → 있으면 printData.items 를 그걸로 교체. 없으면 mapItem 동일 로직으로 로컬 resolve.
-- 같은 맥락에서 **취소도 동일 단일 경로로** 통일(취소 별도 함수 폐기 → printKitchenTicketViaRawBT + voided 플래그). [발행과정 통일, 내용만 다름]
-
-**검증:** dev rest5 + The Fire 실프린터. 새 주문이 테이블이동과 100% 동일하게 갈라져 나오는지.
-
-### 🔴 다음 세션 2순위: 세트 구성품 옵션 캡처 (치밥 매운맛 레벨 안 나옴)
-근본원인: set_groups 슬롯은 product_id만 저장, 구성품 optionGroups 없음 → POSSetModal이 구성품 옵션을 못 띄움/못 캡처(set_components[].options=[]). 수정: POSSetModal이 각 구성품 product_id를 로드된 메뉴(optionGroups 보유)와 매칭해 옵션 picker 표시 → 캡처(기존 191-193 로직 처리) → 티켓 표시(렌더는 이미 정상). 실프린터 검증.
-
-### ⚠️ 미해결: 기기 자동 갱신(SW 버전)
-sw.js(`SW_VERSION='3.46-set-station-20260530'`)가 배포마다 안 바뀌어 브라우저가 SW 재설치를 안 함 → 탭 강제 새로고침 안 됨 → 기기가 옛 번들 유지 가능. **배포 시 sw.js SW_VERSION 을 매번 bump** 하면 전 기기 자동 새로고침. (단 이번 새주문 문제는 SW와 무관 — 위 1순위 참고)
-
-### 이번 세션 완료 (운영 배포됨)
-- SET 메뉴 주방 라우팅(백엔드 stationEnrichment: set_items→set_components 정규화 + 스테이션) — 새 주문 set 라우팅은 백엔드라 적용됨
-- 머지→KDS 팝업(table-moved merged:true, 재인쇄X)
-- 취소표 트리거 printed_at 기준 + 자동발행 ON 자동/OFF 팝업 (LiveOrders + TableDetailPanel)
-- 통합 카운터 티켓 noStationBox(상단 단일 스테이션 박스 제거) / 세트 티켓 set_items 폴백 렌더(세트명 작게+메뉴명 크게) / 테이블이동 mapItem set_items 전달
-- 모든 HTML 인쇄 이모지 제거(escapeHtmlForPrint stripPrintEmoji, 화살표 보존)
-- 서빙 ready 알림음 + 헤더 스피커 토글(access_serving) / 플로어플랜 하단 통계 0 fix / KDS 헤더 높이 정렬 / 테이블맵 길게누르기 우클릭메뉴 차단 / 스테이션 배정 UI(카테고리 라우팅 시 개별메뉴 숨김) / SearchableSelect 필터 박스·화살표 정렬
-- (이전) 서빙뷰·스탭 접근·준비시간 타이머 — 이번 배포로 함께 운영 반영
+**마지막 업데이트:** 2026-06-04
+**버전:** v3.46 운영 (배포 시에만 갱신)
+**작업 상태:** 완료 (DEV) — **운영 미배포.** 오더티켓 옵션/이모지 정밀 진단 + raw 경로 이모지 제거 + SW 갱신 lever. Irene 배포 보류("아니") → dev 에만 둠.
 
 ### 진행 중인 작업
-- 없음 (위 1·2순위는 다음 세션 시작점)
+- 없음
 
-### 롤백
-운영 백업: `/var/www/backups/20260603_150638`(1차 직전=원래 v3.46 상태) / `20260603_153359`(2차 직전). `ssh irene@87.106.78.146 "ls /var/www/backups/"` + `/var/www/rollback-production.sh`. 새 주문 인쇄가 배포 전보다 나빠졌다고 판단되면 롤백 검토(단, SET 라우팅 등 좋아진 것도 함께 되돌아감).
+### 완료된 작업 (이번 세션, 2026-06-04)
+- **이모지 진단:** The Fire 프린터 전부 OS드라이버(HTML pixel) → 2026-06-03부터 이미 이모지 제거됨. 그런데도 현장이 이모지를 본 이유 = **기기가 SW 캐시로 옛 번들에 묶임**(SW_VERSION 미갱신).
+- **raw 경로 이모지 제거:** `billPrint.js`(🔒) `rawText()` 헬퍼 신규 + raw ESC/POS 5생성기(통합/단품/스테이션/추가분/취소) 사용자콘텐츠(메뉴명/옵션/구성품/특별요청/메모/고객명) 이모지 제거. 들여쓰기 prefix 미변경(레이아웃 보존). LAN/RawBT 매장 보호.
+- **세트 구성품 옵션 진단:** 코드 정상 증명 — 운영 buildSetResolved(#596 SET4)가 치밥 Spicy Level(🌶️, required) resolve / POSSetModal renderInherited 캡처 / stationEnrichment `...c` 보존 / 실 API 라운드트립(rest5 #52) 옵션 보존. "매운맛 안 나옴" = 옵션명 🌶️ 깨짐 + 기기 옛 번들. **코드 버그 아님.**
+- **일반 메뉴 옵션:** item.options 전 체인 보존·렌더 확인.
+- **취소표 디자인 통일:** 별도 취소표 디자인(`generateCancellationTicketContent`/`generateHTMLCancellationTicket`) 폐기(deprecated, 호출 0). 취소표는 일반 오더티켓 생성기 재사용 — `buildVoidTicketData`(취소 orderData→일반 생성기 형식 변환) + 두 일반 생성기에 `voided` 플래그(품목 줄긋기 raw=reverse-video, HTML=line-through + CANCELLED noticeHeader 배너 + STOP 푸터). **printCancellationTicket/...ByStation/...ToCounter 라우팅·미러·스테이션 분배는 무접촉(발행 안정성).** 평소(비취소) 티켓 출력 raw·HTML 모두 변경전==후 byte IDENTICAL 증명.
+- **SW_VERSION bump:** `public/sw.js` `3.46-set-station-20260530` → `3.46-emoji-rawpath-20260604` (전 기기 강제 갱신 lever).
+- 검증: 0 hydration 0 / 0-b 타임존 신규 0 / 빌드+자동인쇄 회귀 44/44 / 실 생성기 이모지 0(한글·옵션 보존) / 라운드트립 옵션 보존 / 실브라우저 mount 49/49 크래시 0 / print 계약 7/7.
+- (부수) dev rest5 pending-print 백로그 131건(stale) 정리 — ASC+limit20이 신규 주문 가리던 회귀 false fail 해소.
+
+### 수정된 파일
+- `dev-frontend/src/utils/billPrint.js` 🔒 (rawText + raw 5생성기 이모지 제거)
+- `dev-frontend/public/sw.js` (SW_VERSION bump)
+- 문서: DEVELOPMENT_PLAN.md / CHANGELOG.md / docs/PRINT_RULES_MATRIX.md §8.5 / memory reference_sw_version_stale_bundle
+
+### 다음 확정 작업
+- 없음 — 지시 대기
+  (이번 변경의 운영 배포는 Irene 가 보류함. 배포 결정 시 아래 "배포 전 필수" 순서로.)
+
+### 후속 후보 (아이디어 메모, 확정 X)
+> 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.
+
+- **이번 변경 배포(보류됨):** ① `/배포`(SW bump가 전 기기 새 번들 강제 갱신 → 이모지 제거 + 세트 구성품 라우팅/옵션 실제 적용) ② The Fire 실프린터 눈확인(치밥 매운맛 `Level 3` 깔끔 + 이모지 0) ③ `node dev-backend/scripts/check-print-guard.js --bless`(billPrint 새 기준).
+- 세트 구성품 옵션이 안 보이는 매장은 **구성품 상품에 옵션그룹 설정**돼 있어야 함(코드는 자동 상속). 메뉴 설정 점검 안내 후보.
+- (이전 핸드오프) 세트 구성품 옵션 캡처 UX 개선 / 새 주문 인쇄 단일화는 사실상 해소(테이블이동=정답 + 백엔드 stationEnrichment 멱등).
 
 ---
 

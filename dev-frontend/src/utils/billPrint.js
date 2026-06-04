@@ -1499,6 +1499,13 @@ export function generateHTMLKitchenTicket(orderData, storeInfo) {
   const timeStr = orderData.date.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: true });
   const orderSource = orderData.orderSource === 'mobile' ? 'MOBILE ORDER' : 'POS';
 
+  // 취소표 통일 (2026-06-04): 취소표는 별도 디자인 폐기 → 이 일반 오더티켓 생성기를 그대로
+  // 재사용하고 noticeHeader(CANCELLED 배너) + voided 플래그만 추가한다. 주방이 평소 보던
+  // 오더티켓과 같은 모양 + 큰 CANCELLED 도장이라 레일의 원본 티켓과 즉시 짝맞춤 가능(업계 표준).
+  // ⚠ voided 가 false(평소 주문)면 _strike 는 원문 그대로 → 일반 티켓 출력 100% 불변.
+  const _void = !!orderData.voided;
+  const _strike = (t) => _void ? `<span style="text-decoration:line-through;">${t}</span>` : t;
+
   // Items — kitchen format: large qty × name + starred options + inline station tag
   // The station tag lets POS staff (when this ticket comes out at the counter)
   // tell at a glance which kitchen station each item belongs to.
@@ -1530,11 +1537,11 @@ export function generateHTMLKitchenTicket(orderData, storeInfo) {
         const cq = (Number(qty) || 1) * (Number(c.qty) || 1);
         const co = Array.isArray(c.options) && c.options.length
           ? `<div class="item-option" style="font-size:13px;font-weight:600;">★ ${escapeHtmlForPrint(c.options.join(', '))}</div>` : '';
-        return `<div class="item-name" style="font-size:18px;font-weight:700;">${cq} × ${cn}${stationTagHtml}</div>${co}`;
+        return `<div class="item-name" style="font-size:18px;font-weight:700;">${_strike(`${cq} × ${cn}`)}${stationTagHtml}</div>${co}`;
       }).join('');
       return `
       <div class="item">
-        <div style="font-size:11px;font-weight:600;letter-spacing:0.3px;color:#000;">↳ ${itemName}</div>
+        <div style="font-size:11px;font-weight:600;letter-spacing:0.3px;color:#000;">↳ ${_strike(itemName)}</div>
         ${compsHtml}
         ${setLevelOptionsHtml}
         ${siHtml}
@@ -1543,7 +1550,7 @@ export function generateHTMLKitchenTicket(orderData, storeInfo) {
     }
     return `
       <div class="item">
-        <div class="item-name" style="font-size:18px;font-weight:700;">${qty} × ${itemName}${stationTagHtml}</div>
+        <div class="item-name" style="font-size:18px;font-weight:700;">${_strike(`${qty} × ${itemName}`)}${stationTagHtml}</div>
         ${setLevelOptionsHtml}
         ${siHtml}
       </div>
@@ -1639,7 +1646,7 @@ export function generateHTMLKitchenTicket(orderData, storeInfo) {
     ${metaHtml}
     <div class="divider"></div>
     <div style="font-size:14px;font-weight:700;text-align:left;margin:4px 0;">ORDER ITEMS</div>
-    <div class="items">${itemsHtml}</div>
+    <div class="items">${itemsHtml}</div>${_void ? `<div class="banner banner-strong" style="background:#000;color:#fff;border-color:#000;">${escapeHtmlForPrint(orderData.cancelFooter || '>> STOP PREPARATION <<')}</div>` : ''}
     ${notesHtml}
     <div class="divider"></div>
     ${pickupHtml}
@@ -1899,6 +1906,11 @@ export async function printBillViaRawBT(orderData, storeInfo, printerName) {
 export function generateKitchenTicketContent(orderData, storeInfo) {
   let content = '';
 
+  // 취소표 통일 (2026-06-04): 취소표 별도 디자인 폐기 → 이 생성기를 재사용하고 noticeHeader
+  // (CANCELLED 배너) + voided 플래그만 추가. voided 면 품목을 reverse-video(흰글자/검정바탕)
+  // 로 "취소 줄" 강조 + 하단 STOP 푸터. voided 가 false(평소)면 출력 100% 불변.
+  const _void = !!orderData.voided;
+
   // Initialize printer
   content += CMD.INIT;
 
@@ -1984,10 +1996,13 @@ export function generateKitchenTicketContent(orderData, storeInfo) {
     const itemName = rawText(item.menuItem?.name || item.name);
     const qty = item.quantity;
 
-    // Item: Quantity x Name (LARGE & BOLD)
+    // Item: Quantity x Name (LARGE & BOLD). 취소표(voided)면 reverse-video 로 "취소 줄" 강조
+    // (thermal 은 native line-through 없음 — 기존 취소표와 동일 표현).
     content += CMD.BOLD_ON;
     content += CMD.TEXT_DOUBLE;
-    content += qty + ' x ' + itemName + CMD.LINE_FEED;
+    if (_void) content += CMD.REVERSE_ON;
+    content += qty + ' x ' + itemName + (_void ? ' ' : '') + CMD.LINE_FEED;
+    if (_void) content += CMD.REVERSE_OFF;
     content += CMD.TEXT_NORMAL;
     content += CMD.BOLD_OFF;
 
@@ -2040,6 +2055,14 @@ export function generateKitchenTicketContent(orderData, storeInfo) {
 
   content += CMD.LINE_FEED;
   content += CMD.DASHED_LINE + CMD.LINE_FEED;
+
+  // === STOP PREPARATION 푸터 (취소표 voided 일 때만) ===
+  if (_void) {
+    content += CMD.ALIGN_CENTER + CMD.BOLD_ON + CMD.TEXT_DOUBLE_HEIGHT;
+    content += (orderData.cancelFooter || '>> STOP PREPARATION <<') + CMD.LINE_FEED;
+    content += CMD.TEXT_NORMAL + CMD.BOLD_OFF + CMD.ALIGN_LEFT;
+    content += CMD.DASHED_LINE + CMD.LINE_FEED;
+  }
 
   // === SPECIAL NOTES ===
   if (orderData.notes && orderData.notes.trim()) {
@@ -3643,12 +3666,17 @@ function generateStationKitchenTicket(orderData, storeInfo, stationName, ticketI
 }
 
 // ============================================
-// CANCELLATION TICKET — 주문 취소 시 키친에 인쇄 (선택)
+// CANCELLATION TICKET — 주문 취소 시 키친에 인쇄
 // ============================================
+// ⚠️ DEPRECATED (2026-06-04): 아래 두 함수(generateCancellationTicketContent /
+// generateHTMLCancellationTicket)는 별도 취소표 디자인이었으나 폐기됨. 취소표는 이제
+// 일반 오더티켓 생성기(generateKitchenTicketContent / generateHTMLKitchenTicket)를
+// buildVoidTicketData 로 재사용한다(테이블이동과 동일 모양 + CANCELLED 배너 + voided 줄긋기).
+// 호출처 0건. 절대 다시 연결하지 말 것 — 재연결 시 취소표 디자인 분기 재발.
 
 /**
+ * @deprecated 2026-06-04 — buildVoidTicketData + generateKitchenTicketContent 로 대체됨. 미사용.
  * Generate ESCPOS for a CANCELLED kitchen ticket.
- * 큰 "CANCELLED" 헤더 + 원본 주문 번호 + items 요약 + "STOP PREPARATION" 푸터.
  */
 function generateCancellationTicketContent(orderData, storeInfo, reason) {
   let content = '';
@@ -3789,6 +3817,29 @@ function escapeHtml(s) {
 }
 
 /**
+ * 취소표 통일 어댑터 (2026-06-04) — 취소용 orderData 를 "일반 오더티켓 생성기"
+ * (generateKitchenTicketContent / generateHTMLKitchenTicket) 가 이해하는 형태로 변환한다.
+ * 별도 취소표 디자인(폐기) 대신, 테이블이동에서 검증된 그 오더티켓 모양 + CANCELLED 배너 +
+ * voided(품목 줄긋기/STOP) 로 출력 → 주방이 평소 티켓과 즉시 짝맞춤. 라우팅/미러/스테이션
+ * 분배 로직은 일절 건드리지 않는다(발행 안정성 유지).
+ */
+function buildVoidTicketData(orderData, reason) {
+  const _lines = [];
+  if (reason) _lines.push('Reason: ' + reason);
+  return {
+    ...orderData,
+    date: (orderData.date instanceof Date) ? orderData.date : new Date(),
+    voided: true,
+    noticeHeader: { title: orderData.cancelTitle || '*** ORDER CANCELLED ***', lines: _lines },
+    // 취소 경로는 station 을 stationLabel 로 전달 → 일반 생성기는 stationName 으로 박스 그림.
+    stationName: orderData.stationName || orderData.stationLabel || null,
+    orderNumber: orderData.orderNumber || orderData.order_number,
+    tableNumber: orderData.tableNumber || orderData.table_number,
+    orderType: orderData.orderType || orderData.order_type,
+  };
+}
+
+/**
  * Print a cancellation ticket to the kitchen printer.
  * Returns Promise<boolean>. Silent no-op when kitchen printer disabled or option OFF.
  */
@@ -3814,7 +3865,7 @@ export async function printCancellationTicket(orderData, storeInfo, reason, prin
       }
     }
 
-    const escpos = generateCancellationTicketContent(orderData, storeInfo, reason);
+    const escpos = generateKitchenTicketContent(buildVoidTicketData(orderData, reason), storeInfo);
     const targetPrinter = printerName || settings.kitchenPrinter.name;
 
     // Mirror to bill printer (same toggle as normal kitchen tickets)
@@ -3838,7 +3889,7 @@ export async function printCancellationTicket(orderData, storeInfo, reason, prin
 
     // Browser print
     if (shouldUseBrowserPrint()) {
-      const html = generateHTMLCancellationTicket(orderData, storeInfo, reason);
+      const html = generateHTMLKitchenTicket(buildVoidTicketData(orderData, reason), storeInfo);
       return printHTMLContent(html, 'CANCELLED - ' + (orderData.orderNumber || ''));
     }
 
@@ -3927,7 +3978,9 @@ export async function printCancellationTicketsByStation(orderData, storeInfo, re
 // Mirror helper — same content to bill printer
 async function printCancellationToCounter(orderData, storeInfo, reason) {
   const settings = getPrinterSettings();
-  const escpos = generateCancellationTicketContent(orderData, storeInfo, reason);
+  // 카운터 미러는 여러 스테이션 혼재 → 상단 station 박스 생략(noStationBox), 일반 오더티켓과 동일.
+  const _voidData = { ...buildVoidTicketData(orderData, reason), noStationBox: true };
+  const escpos = generateKitchenTicketContent(_voidData, storeInfo);
 
   if (shouldUseQZTray()) {
     const address = getActiveBillPrinter().address;
@@ -3936,7 +3989,7 @@ async function printCancellationToCounter(orderData, storeInfo, reason) {
   }
 
   if (shouldUseBrowserPrint()) {
-    const html = generateHTMLCancellationTicket(orderData, storeInfo, reason);
+    const html = generateHTMLKitchenTicket(_voidData, storeInfo);
     return printHTMLContent(html, 'CANCELLED (counter) - ' + (orderData.orderNumber || ''));
   }
 

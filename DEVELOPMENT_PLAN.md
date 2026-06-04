@@ -1,6 +1,35 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-03 (밤 — 매장 현장 인쇄 핫픽스 운영 2회 배포. SET 라우팅/취소표/통합티켓 박스/이모지제거/통계 등. ⚠️ 새 주문 오더티켓은 여전히 엉망 — 다음 세션 1순위: 새주문 인쇄를 테이블이동 enriched 데이터 기준으로 단일화.)
+> **최종 업데이트:** 2026-06-04 (오더티켓 옵션/이모지 정밀 진단 + raw 경로 이모지 제거 + SW 갱신 lever. DEV 완료, 미배포.)
+
+## ✅ 완료(DEV, 미배포): 오더티켓 이모지 제거(raw 경로) + 세트/일반 옵션 진단 + SW 갱신 (2026-06-04)
+
+> Irene 보고 = "테이블이동 티켓 정상. 세트 구성품 옵션 / 일반 옵션 / 이모지 깨짐만 해결." → **정밀 진단 결과 코드 체인은 이미 정답.** 핵심 = 기기가 SW 캐시로 옛 번들에 묶여 2026-06-03 이모지제거 번들을 못 받음. 해결 lever = SW_VERSION bump + 재배포.
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 이모지 진단 | The Fire 프린터 전부 OS드라이버(HTML pixel) → 6/3부터 이미 이모지 제거. 그런데도 현장 이모지 = 기기 옛 번들(SW 미갱신) | ✅ |
+| raw 경로 이모지 제거 | `rawText()` 헬퍼 + raw ESC/POS 5생성기(통합/단품/스테이션/추가분/취소) 사용자콘텐츠(메뉴명/옵션/구성품/특별요청/메모/고객명) 이모지 제거. 들여쓰기 prefix 미변경(레이아웃 보존). LAN/RawBT 매장 보호 | ✅ |
+| 세트 구성품 옵션 진단 | 코드 정상 증명 — 운영 buildSetResolved(#596)가 치밥 Spicy Level(🌶️, required) resolve / POSSetModal 캡처 / stationEnrichment 보존 / 실 API 라운드트립 옵션 보존. "안 나옴"=옵션명 🌶️ 깨짐 + 기기 옛 번들 | ✅ |
+| 일반 메뉴 옵션 진단 | item.options 전 체인 보존·렌더 확인(API 라운드트립) | ✅ |
+| **취소표 디자인 통일** | 별도 취소표 생성기 폐기 → 일반 오더티켓 생성기 재사용(`buildVoidTicketData` + `voided` 플래그). 같은 모양 + CANCELLED 배너 + 품목 줄긋기(raw=reverse) + STOP 푸터. **라우팅/미러/스테이션 분배 무접촉.** 평소 티켓 출력 byte 동일(raw·HTML 둘 다 변경전==후 IDENTICAL 증명) | ✅ |
+| SW_VERSION bump | `3.46-set-station-20260530` → `3.46-emoji-rawpath-20260604` (전 기기 강제 갱신 lever) | ✅ |
+
+### 수정된 파일
+- 프론트🔒: `dev-frontend/src/utils/billPrint.js` (rawText 헬퍼 + raw 5생성기 이모지 제거 + 취소표 통일: generateHTMLKitchenTicket/generateKitchenTicketContent에 voided 추가 + buildVoidTicketData + printCancellation* 재배선 + 옛 취소 생성기 2개 deprecated)
+- 프론트: `dev-frontend/public/sw.js` (SW_VERSION bump)
+
+### 검증 (10단계)
+- 0 hydration 0 warning · 0-b 타임존 신규 0 · 1 빌드+자동인쇄 회귀 44/44 · 3 실 생성기 호출 이모지 0(한글/옵션 보존)+주문 라운드트립 옵션 보존 · 10 실브라우저 mount 49/49 크래시 0 · print 계약 7/7(보호파일 무결성만 billPrint 감지)
+
+### ⚠️ 배포 전 필수
+1. `/배포` (Irene) — SW bump가 전 기기 새 번들 강제 갱신 → 이모지 제거 + 세트 구성품 라우팅/옵션 실제 적용
+2. 배포 후 The Fire 실프린터 눈확인 (치밥 매운맛 `Level 3` 깔끔 + 이모지 0)
+3. `node dev-backend/scripts/check-print-guard.js --bless` (billPrint 새 기준)
+
+---
 
 ## ⚠️ 미해결 (다음 세션 1순위): 새 주문 오더티켓을 테이블이동 기준으로 (2026-06-03)
 
