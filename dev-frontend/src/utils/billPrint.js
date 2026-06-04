@@ -3828,6 +3828,9 @@ function buildVoidTicketData(orderData, reason) {
   if (reason) _lines.push('Reason: ' + reason);
   return {
     ...orderData,
+    // 일반 오더티켓 생성기는 items 에 `|| []` 방어가 없다(평소 주문은 항상 items 보유).
+    // 취소 경로가 items 없이 호출돼도 크래시하지 않도록 여기서 보장(옛 취소 생성기와 동일 안전).
+    items: Array.isArray(orderData.items) ? orderData.items : [],
     date: (orderData.date instanceof Date) ? orderData.date : new Date(),
     voided: true,
     noticeHeader: { title: orderData.cancelTitle || '*** ORDER CANCELLED ***', lines: _lines },
