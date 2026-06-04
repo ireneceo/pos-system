@@ -18,7 +18,7 @@ import { useAutoPrintPoller } from '../../hooks/useAutoPrintPoller';
 import { useMenu } from '../../contexts/MenuContext';
 import { useCustomer } from '../../contexts/CustomerContext';
 import { useStaff } from '../../contexts/StaffContext';
-import { printBillViaRawBT, printKitchenTicketViaRawBT, getPrinterSettings, getActiveBillPrinter } from '../../utils/billPrint';
+import { printBillViaRawBT, getPrinterSettings, getActiveBillPrinter } from '../../utils/billPrint';
 import { useAuth } from '../../contexts/AuthContext';
 import CustomerModal from '../../components/Customer/CustomerModal';
 // StaffLoginModal removed - authentication handled by ProtectedRoute
@@ -1738,8 +1738,13 @@ const POSTerminalPage: React.FC = () => {
     return () => observer.disconnect();
   }, [useProgressive, visibleCount, filteredMenuItems.length]);
 
-  // 세트 v2 판정 — set_groups 슬롯이 있으면 선택 모달 필요
-  const isV2Set = (mi: any) => mi?.is_set_menu && Array.isArray(mi?.set_groups) && mi.set_groups.length > 0;
+  // 2026-06-04 (Irene): 세트면 무조건 선택 모달을 연다. 이전엔 메뉴 LIST 아이템에 set_groups 가
+  // 실려야만(=Array.isArray) 모달을 띄웠는데, lazy 카테고리 로드/머지 dedup 등으로 그 한 필드가
+  // 누락되면 isV2Set=false → 레거시 set_items 전체 확장(15개·옵션X·한국녹차 누락)으로 저장되는
+  // 버그가 매장에서 반복됐다. POSSetModal 은 열릴 때 /api/menu/product/:id 의 set_groups_resolved
+  // 를 직접 fetch·resolve 하므로(LIST 의존 X), is_set_menu 만으로 열어도 항상 정확히 캡처된다.
+  // set_groups 가 진짜 없는 레거시 세트는 모달 내부에서 set_items 폴백으로 처리(깨짐 없음).
+  const isV2Set = (mi: any) => !!mi?.is_set_menu;
 
   // 세트 v2 모달 확정 → 카트 적재 (가격은 priced selectedOptions 로 기존 POS 가격식에 합산)
   const handleConfirmSet = (quantity: number, result: { setComponents: any[]; selectedOptions: { name: string; price: number }[]; optionsDisplay: string[]; setLevelOptions: string[] }) => {
@@ -2297,71 +2302,20 @@ const POSTerminalPage: React.FC = () => {
       setSelectedCustomerForOrder(null);
       setCustomerSearchQuery('');
 
-      // Kitchen ticket fires on ORDER CREATION (not payment). The trigger is
-      // kitchenPrinter.autoPrint — same toggle the KDS socket listener uses.
-      // Without this branch the "Add order" button (post-paid dine-in flow)
-      // silently dropped tickets unless the shop also had KDS open on screen.
-      try {
-        const printSettings = getPrinterSettings();
-        const printStoreInfo = getStoreInfo();
-        // Master gate (2026-05-28 revised — station-only mode 허용):
-        //   master autoPrint OFF + station autoPrint OFF → absolute block.
-        //   master autoPrint OFF + ANY station autoPrint ON → station-only mode.
-        //   master autoPrint ON → fire both.
-        const _stationPrintersMap = printSettings.kitchenStationPrinters || {};
-        const _kp: any = printSettings.kitchenPrinter || {};
-        const _kpEnabled = _kp.enabled !== false;
-        const _kpAuto = !!_kp.autoPrint;
-        const _stationAutoPrint = Object.values(_stationPrintersMap).some((s: any) => s?.autoPrint);
-        const kitchenAuto = _kpEnabled && _kpAuto;
-        // 2026-05-29: 자동 진단 이메일 발송 중단 (매장 요청). auto-kitchen-skip 등은
-        // 에러가 아니라 정상 설정(자동인쇄 OFF)에서도 주문마다 발사돼 관리자에게
-        // 메일 스팸이 됐다. 프린터 문제는 발생 시 Settings → Printer 의 수동 진단
-        // 버튼으로 한 번만 보고한다. 자동 telemetry 는 no-op 처리.
-        const _tele = (_scope: string, _extra: any = {}) => {};
-        if (kitchenAuto) {
-          const printData = {
-            ...orderData,
-            orderNumber: savedOrder?.order_number || savedOrder?.orderNumber || newOrder.orderNumber,
-            pickupNumber: savedOrder?.pickup_number || savedOrder?.pickupNumber || (savedOrder?.order_number ? savedOrder.order_number.split('-')[1] : newOrder.pickupNumber),
-            tableNumber: savedOrder?.table_number || tableNumber || undefined,
-            pagerNumber: savedOrder?.pager_number || pagerNumber || undefined,
-            total: savedOrder?.total || orderData.total,
-            cashierName: user?.name || null
-          };
-          // 2026-05-29: PRINT THEN MARK (no pre-claim). This is the counter POS
-          // fast path. On success → PATCH /printed (stamp printed_at + clear
-          // needs_print) so the poller on this device skips. On failure → notify
-          // POS (rule 6) and leave needs_print so the poller retries. Mark inflight
-          // up front so the poller can't double-fire while this print is in flight.
-          const _orderId = savedOrder?.id || savedOrder?.data?.id || savedOrder?.order?.id;
-          if (_orderId) { (window as any).__autoPrintInflight = (window as any).__autoPrintInflight || {}; (window as any).__autoPrintInflight[_orderId] = true; }
-          setTimeout(async () => {
-            const _h = { 'Authorization': `Bearer ${getAuthToken()}` };
-            try {
-              const ok = await printKitchenTicketViaRawBT(printData, printStoreInfo);
-              if (ok === false) {
-                try { window.dispatchEvent(new CustomEvent('autoprint-failed', { detail: { orderNumber: printData.orderNumber, scope: 'kitchen' } })); } catch {}
-              } else if (_orderId) {
-                await fetch(`/api/orders/${_orderId}/printed`, { method: 'PATCH', headers: _h }).catch(() => {});
-              }
-            } catch (e) {
-              console.error('Auto kitchen print (add-only) failed:', e);
-              try { window.dispatchEvent(new CustomEvent('autoprint-failed', { detail: { orderNumber: printData.orderNumber, scope: 'kitchen' } })); } catch {}
-            } finally {
-              if (_orderId) { try { delete (window as any).__autoPrintInflight[_orderId]; } catch {} }
-            }
-          }, 250);
-        } else {
-          _tele('add-order-kitchen-skip', {
-            reason: !printSettings.kitchenPrinter?.enabled ? 'kitchen not enabled'
-                  : !printSettings.kitchenPrinter?.autoPrint ? 'kitchen autoPrint off'
-                  : 'unknown'
-          });
-        }
-      } catch (e) {
-        console.error('Kitchen auto-print on add-order skipped:', e);
-      }
+      // 2026-06-04 (Irene): SINGLE kitchen auto-print path. The POS no longer prints
+      // the kitchen ticket directly from local cart data — that ran a SECOND printer
+      // (alongside the auto-print poller) with a DIFFERENT data shape (cart raw vs
+      // backend-enriched), producing duplicate tickets with divergent content + the
+      // "SET5 only" set rendering. New orders now print through ONE path — the
+      // auto-print poller (useAutoPrintPoller) — exactly like the table-move reissue:
+      // backend-enriched items, station bucketing → counter + each station one ticket,
+      // printed_at dedup. We just nudge the poller to run immediately so the ticket
+      // still comes out fast instead of waiting for the next 5s poll. (KDS stays
+      // display-only.) needs_print is set by the backend on creation.
+      // Nudge the auto-print poller immediately — same realm via CustomEvent, and OTHER
+      // realms (Floor Plan parent / other terminals) via a localStorage 'storage' event —
+      // so the device that actually has the printers prints now, not on its next ~5s poll.
+      try { window.dispatchEvent(new CustomEvent('autoprint-poke')); localStorage.setItem('autoprint-poke', String(Date.now())); } catch {}
 
       console.log('POS - Order added without payment:', savedOrder?.orderNumber);
     } catch (error) {
@@ -2644,52 +2598,16 @@ const POSTerminalPage: React.FC = () => {
         });
       }
 
-      // Kitchen auto-print master gate (2026-05-28 revised — station-only 허용):
-      //   master autoPrint OFF + station autoPrint OFF → block.
-      //   master autoPrint OFF + ANY station autoPrint ON → station-only mode.
-      //   master autoPrint ON → fire both.
-      //
-      // Skip when paying for an existing order (forceMergeOrderId set) —
-      // kitchen ticket already fired at handleAddOrder time. Fresh / takeaway
-      // immediate-pay (forceMergeOrderId null) still prints.
-      const _isPaymentForExistingOrder = !!forceMergeOrderId;
-      const _stationPrintersMap = printSettings.kitchenStationPrinters || {};
-      const _kp: any = printSettings.kitchenPrinter || {};
-      const _kpEnabled = _kp.enabled !== false;
-      const _kpAuto = !!_kp.autoPrint;
-      const _stationAutoPrint = Object.values(_stationPrintersMap).some((s: any) => s?.autoPrint);
-      const kitchenAuto = _kpEnabled && _kpAuto;
-      if (kitchenAuto && !_isPaymentForExistingOrder) {
-        // 2026-05-29: PRINT THEN MARK (no pre-claim). Counter POS fast path.
-        const _orderId = savedOrder?.id || savedOrder?.data?.id || savedOrder?.order?.id;
-        if (_orderId) { (window as any).__autoPrintInflight = (window as any).__autoPrintInflight || {}; (window as any).__autoPrintInflight[_orderId] = true; }
-        setTimeout(async () => {
-          const _h = { 'Authorization': `Bearer ${getAuthToken()}` };
-          try {
-            const ok = await printKitchenTicketViaRawBT(printData, printStoreInfo);
-            if (ok === false) {
-              try { window.dispatchEvent(new CustomEvent('autoprint-failed', { detail: { orderNumber: printData.orderNumber, scope: 'kitchen' } })); } catch {}
-            } else if (_orderId) {
-              await fetch(`/api/orders/${_orderId}/printed`, { method: 'PATCH', headers: _h }).catch(() => {});
-            }
-          } catch (e: any) {
-            console.error('Auto kitchen print failed:', e);
-            try { window.dispatchEvent(new CustomEvent('autoprint-failed', { detail: { orderNumber: printData.orderNumber, scope: 'kitchen' } })); } catch {}
-          } finally {
-            if (_orderId) { try { delete (window as any).__autoPrintInflight[_orderId]; } catch {} }
-          }
-        }, 300);
-      } else {
-        _telemetry('auto-kitchen-skip', {
-          reason: _isPaymentForExistingOrder
-            ? 'payment for existing order — kitchen ticket already printed on add'
-            : 'no kitchen target — global off and no station autoPrint',
-          isPaymentForExistingOrder: _isPaymentForExistingOrder,
-          stationCount: Object.keys(_stationPrintersMap).length,
-          globalKitchenEnabled: !!printSettings.kitchenPrinter?.enabled,
-          globalKitchenAutoPrint: !!printSettings.kitchenPrinter?.autoPrint
-        });
-      }
+      // 2026-06-04 (Irene): SINGLE kitchen auto-print path — see handleAddOrder note.
+      // The POS no longer prints the kitchen ticket directly here (cart data) — the
+      // auto-print poller is the sole kitchen printer (backend-enriched, station
+      // bucketing, printed_at dedup), identical to the table-move reissue path. A
+      // +Round (payment for existing order) prints only the new rows via the poller's
+      // kitchen_items filter. We nudge the poller to run immediately for prompt output.
+      // Nudge the auto-print poller immediately — same realm via CustomEvent, and OTHER
+      // realms (Floor Plan parent / other terminals) via a localStorage 'storage' event —
+      // so the device that actually has the printers prints now, not on its next ~5s poll.
+      try { window.dispatchEvent(new CustomEvent('autoprint-poke')); localStorage.setItem('autoprint-poke', String(Date.now())); } catch {}
 
       // Clear the order
       setOrderItems([]);

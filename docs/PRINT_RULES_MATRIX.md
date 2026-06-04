@@ -336,6 +336,32 @@ backend mergeItemsIntoOrder() 성공
 
 ---
 
+## 8.7 자동발행(Auto-print) vs 수동발행(Manual) — 정의 (단일 진실, 2026-06-04 Irene 확정)
+
+> 이 절이 "자동/수동 발행"의 **단일 정의**다. 동작이 이와 다르면 코드를 고친다(규칙 X).
+> 토글: `kitchenPrinter.autoPrint`(master) + station별 autoPrint. "자동발행"=주방 오더티켓 자동 인쇄.
+
+### 공통 (인쇄 모드와 무관 — 항상)
+- **모든 주문은 KDS·라이브오더·플로어플랜 화면에 표시된다.** 인쇄 안 해도 주방이 화면으로 본다 (KDS = 표시 전용).
+- **취소·이동은 항상 알린다** — 인쇄 여부·자동발행 설정과 **무관**:
+  - POS 팝업 (KitchenTicketSendModal): 자동발행 ON → 발송됨 + **[Resend Order Ticket]** / OFF → **[Send Order Ticket]** 수동.
+  - KDS 주방 팝업: **현재 station 탭 기준 필터**(그 탭에 해당 품목 있을 때만). 아이템취소·주문취소·이동·이동+머지. **"주방 화면에 떴던 주문"이면 인쇄 여부와 무관하게 뜬다** (printed 게이트 X — 주방은 화면으로 봤으니 취소를 알아야 함).
+
+### 자동발행 ON
+- **자동발행을 켠 시각 이후 들어오는 새 주문만** 자동으로 주방(스테이션+카운터)에 인쇄한다.
+- **켜기 전에 쌓여 있던 주문(백로그)은 자동으로 인쇄하지 않는다** — OFF→ON 전환 시 밀린 티켓 한꺼번에 폭주 금지. 필요하면 오더티켓 버튼으로 수동.
+- 구현: OFF→ON 토글 시각을 `localStorage['kitchenAutoPrintEnabledAt']` 에 기록. 폴러(`useAutoPrintPoller`)는 `order.created_at < kitchenAutoPrintEnabledAt` 인 주문의 주방 자동인쇄를 **건너뛴다**(needs_print 유지 → 수동 가능). 미설정(=계속 ON)이면 폴러 mount 시각으로 초기화.
+
+### 자동발행 OFF (= 수동발행)
+- 새 주문 **자동 인쇄 안 함**, 화면에만 표시.
+- 직원이 준비되면 **오더티켓(Kitchen Ticket) 버튼으로 수동 인쇄** (스테이션+카운터, 자동과 동일 경로 `printKitchenTicketViaRawBT` enriched).
+- "프린트 대기"로 **쌓이지 않는다**(폭주 방지). needs_print 는 백엔드 공유 플래그라 남지만, 위 컷오프로 자동 폭주는 차단.
+
+### 왜 "저장 자체를 안 함"이 아니라 "켠 시각 컷오프"인가
+needs_print 는 **백엔드 공유 플래그**(기기별 아님). 한 기기가 autoPrint OFF 라고 needs_print 를 안 남기면, 다른 기기(autoPrint ON)가 그 주문을 못 찍는다. 그래서 "저장 안 함"이 아니라 **"자동발행 ON 기기가 켠 시각 이후분만 인쇄"** 가 정답.
+
+---
+
 ## 9. PRINT-ROUTE MATRIX — 주문루트 × 설정 인쇄·알림 검증 매트릭스 (2026-06-02 v2 — 검증 계약)
 
 > `/검증`(DEV)·`/운영검증`(운영) 이 **이 표 그대로** 대조한다. 동작이 다르면 코드를 고친다.
@@ -346,7 +372,15 @@ backend mergeItemsIntoOrder() 성공
 > 3. **발송 후 화면엔 알림형 팝업** (제목 "Sent to kitchen", 푸터 `[재발송][닫기]`). 자동 ON·OFF 모두 뜸.
 > 4. **모든 오더티켓 상단 station 이름 박스** (신규·추가·이동·취소 전부 / HTML·ESC-POS 양 포맷).
 > 5. **KDS 화면 팝업** = **탭(현재 station) 기준** 필터. 종류: 아이템취소(빨강)·주문취소(빨강)·이동(앰버)·이동+머지(앰버).
-> 6. **`printCancellationTicket`(S5) 설정 삭제** — 취소는 무조건 발송이라 토글 불필요.
+> 6. **`printCancellationTicket`(S5) 설정 삭제** — 토글 불필요.
+>
+> **v3 개정 (2026-06-04, Irene 확정 — v2 의 "항상 발송" 철회):**
+> 1. **이동(R7/R8)·취소(R9/R10) 도 `kitchenPrinter.autoPrint` 설정을 따른다.**
+>    - autoPrint **ON** → 자동 발송 + 알림 팝업 버튼 **[Resend Order Ticket]**.
+>    - autoPrint **OFF** → 자동 발송 안 함, 팝업 버튼 **[Send Order Ticket]** 로 **수동 발송**.
+>    - 팝업(KitchenTicketSendModal)은 **항상 표시**. `autoSent` 플래그로 제목/버튼 분기(미발송="Send to kitchen"/[Send], 발송됨="Sent to kitchen"/[Resend]).
+> 2. **취소 티켓 = 일반 오더티켓과 완전 동일한 시작/끝 패턴.** `printCancellationTicket`/`printCancellationToCounter` 도 일반 경로처럼 **OS 드라이버 프린터엔 HTML pixel**(`sendHTMLViaQZTray`+`generateHTMLKitchenTicket`, 같은 폰트 + 품목 **line-through**), **raw ESC/POS 는 LAN IP 에만**. (이전엔 취소만 항상 raw → 다른 폰트 + reverse-video 검정바탕이던 버그 수정.)
+> 3. **단일 소스 원칙(관리체계):** 모든 주방티켓 내용 = `buildVoidTicketData`(취소) → `generateKitchenTicketContent`/`generateHTMLKitchenTicket` 한 쌍. 라우팅 = `printKitchenTicketsByStation`(신규/이동) ∥ `printCancellationTicketsByStation`(취소) 동일 버킷팅. 발행 트리거(자동) = `useAutoPrintPoller` 단일(POS 직접인쇄 제거). 수동 = LiveOrders/FloorPlan/팝업 모두 `printKitchenTicketViaRawBT` enriched. station 프린터 미연결 → 카운터 통합 1장 폴백(전 경로 공통).
 
 ### 9-1. 축 정의
 

@@ -470,10 +470,20 @@ const OrderTypePage: React.FC = () => {
 
       setCurrentStore(store);
 
-      // If order type changed, clear the cart
+      // If order type changed, clear the cart — but NEVER drop the QR/access-link
+      // table number. Irene rule (2026-06-04): a customer who scanned a TABLE QR
+      // keeps that table even after switching to takeaway (the takeaway is still
+      // delivered to that table). clearCart() wipes tableNumber for a fresh-session
+      // reset; here we preserve the scanned table across the order-type switch.
+      // Only a genuinely table-less entry (takeaway/generic QR) has nothing to keep.
       if (currentOrderType && currentOrderType !== newOrderType) {
-        console.log('Order type changed - clearing cart');
+        console.log('Order type changed - clearing cart (preserving scanned table)');
+        const qrTable = tableFromQR || (typeof window !== 'undefined' ? localStorage.getItem('tableNumber') : null);
         clearCart();
+        if (qrTable) {
+          localStorage.setItem('tableNumber', qrTable);
+          setTableFromQR(qrTable);
+        }
       }
 
       // Update order type in context (syncs with sessionStorage)

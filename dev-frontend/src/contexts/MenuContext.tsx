@@ -265,7 +265,17 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
             preparationTime: item.preparationTime || 15,
             is_set_menu: item.is_set_menu || false,
             set_items: item.set_items || undefined,
-            set_groups: item.set_groups || undefined,
+            set_groups: (() => {
+              // Defensive parse — set_groups can arrive as a (double-)encoded JSON
+              // string from some endpoints. optionGroups already does this; set_groups
+              // didn't, so isV2Set's Array.isArray check failed and the POS set modal
+              // never opened → set components/options dropped (legacy set_items path).
+              let g: any = item.set_groups;
+              if (typeof g === 'string') {
+                try { g = JSON.parse(g); if (typeof g === 'string') g = JSON.parse(g); } catch { return undefined; }
+              }
+              return Array.isArray(g) ? g : undefined;
+            })(),
             set_display_order: item.set_display_order || 0,
             recipe_id: item.recipe_id || null,
             after_meal: item.after_meal || false,
@@ -440,7 +450,17 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
             preparationTime: item.preparationTime || 15,
             is_set_menu: item.is_set_menu || false,
             set_items: item.set_items || undefined,
-            set_groups: item.set_groups || undefined,
+            set_groups: (() => {
+              // Defensive parse — set_groups can arrive as a (double-)encoded JSON
+              // string from some endpoints. optionGroups already does this; set_groups
+              // didn't, so isV2Set's Array.isArray check failed and the POS set modal
+              // never opened → set components/options dropped (legacy set_items path).
+              let g: any = item.set_groups;
+              if (typeof g === 'string') {
+                try { g = JSON.parse(g); if (typeof g === 'string') g = JSON.parse(g); } catch { return undefined; }
+              }
+              return Array.isArray(g) ? g : undefined;
+            })(),
             set_display_order: item.set_display_order || 0,
             recipe_id: item.recipe_id || null,
             after_meal: item.after_meal || false,

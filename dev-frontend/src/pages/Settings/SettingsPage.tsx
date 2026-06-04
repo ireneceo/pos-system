@@ -6746,6 +6746,15 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                           type="checkbox"
                           checked={printerSettings.kitchenPrinter.autoPrint}
                           onChange={(e) => {
+                            // 2026-06-04 (Irene, docs/PRINT_RULES_MATRIX § 8.7): backlog cutoff.
+                            // Record the EXACT moment autoPrint turns ON so the poller only
+                            // auto-prints orders created from this point forward — switching
+                            // ON must NOT flush the backlog that piled up while it was OFF.
+                            // Cleared on OFF so the next ON starts a fresh cutoff.
+                            try {
+                              if (e.target.checked) localStorage.setItem('kitchenAutoPrintEnabledAt', String(Date.now()));
+                              else localStorage.removeItem('kitchenAutoPrintEnabledAt');
+                            } catch { /* localStorage may be blocked */ }
                             setPrinterSettings(prev => ({
                               ...prev,
                               kitchenPrinter: { ...prev.kitchenPrinter, autoPrint: e.target.checked }

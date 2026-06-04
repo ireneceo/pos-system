@@ -19,7 +19,7 @@ import {
   DataTableAmount,
   Modal as CommonModal
 } from '../../components/UI';
-import { printBillViaRawBT, printOrderTicketToBillPrinter, printCancellationTicket, printCancellationTicketsByStation } from '../../utils/billPrint';
+import { printBillViaRawBT, printKitchenTicketViaRawBT, printCancellationTicket, printCancellationTicketsByStation } from '../../utils/billPrint';
 import KitchenTicketSendModal, { previewStationBuckets, KitchenTicketSendPrompt } from '../../components/Print/KitchenTicketSendModal';
 import { formatDateTime as formatDateTimeUtil } from '../../utils/timezone';
 import ConfirmModal from '../../components/ConfirmModal';
@@ -1083,13 +1083,19 @@ const LiveOrdersPage: React.FC = () => {
               price: parseFloat(item.price || (item.menuItem && item.menuItem.price) || '0'),
               is_set_menu: item.is_set_menu || false, set_items: item.set_items || []
             },
-            quantity: item.quantity || 1, options: itemOptions
+            quantity: item.quantity || 1, options: itemOptions,
+            // 2026-06-04 (Irene): carry station + set components so the manual reprint
+            // routes to EACH kitchen station and renders set components/options exactly
+            // like the order-complete popup + auto-print (single content source).
+            kitchen_station_id: item.kitchen_station_id ?? (item.menuItem && item.menuItem.kitchen_station_id) ?? null,
+            stationName: item.stationName || item.station_name || undefined,
+            set_components: item.set_components
           };
         }),
         notes: (orderToPrint as any).notes || '',
         takeawayCharge: parseFloat((orderToPrint as any).takeaway_charge || '0')
       };
-      await printOrderTicketToBillPrinter(orderData, storeInfo);
+      await printKitchenTicketViaRawBT(orderData, storeInfo);
     }
   };
 
@@ -1153,7 +1159,7 @@ const LiveOrdersPage: React.FC = () => {
             const _kp: any = (settings as any)?.kitchenPrinter;
             const _autoOn = !!(_kp && _kp.enabled && _kp.autoPrint);
             if (_autoOn) doPrint();
-            setCancelPrintPrompt({ run: doPrint, ticketType: '*** ITEM CANCELLED ***', description: _autoOn ? '취소된 아이템 — 해당 주방에 발송됨' : '취소된 아이템 — [발송]을 눌러 주방에 전송', stations: previewStationBuckets(printData.items, settings) });
+            setCancelPrintPrompt({ run: doPrint, autoSent: _autoOn, ticketType: '*** ITEM CANCELLED ***', description: _autoOn ? '취소된 아이템 — 해당 주방에 발송됨' : '취소된 아이템 — [발송]을 눌러 주방에 전송', stations: previewStationBuckets(printData.items, settings) });
           }
         } catch (e: any) { console.warn('void-ticket step skipped:', e?.message); }
       } else {
@@ -1245,7 +1251,7 @@ const LiveOrdersPage: React.FC = () => {
       takeawayCharge: 0
     };
 
-    const success = await printOrderTicketToBillPrinter(orderData, storeInfo);
+    const success = await printKitchenTicketViaRawBT(orderData, storeInfo);
     if (success) {
       showToast(`Kitchen ticket for ${groupNum === 0 ? 'Original Order' : `+Order ${groupNum}`} printed`, 'success');
     }
@@ -1288,7 +1294,7 @@ const LiveOrdersPage: React.FC = () => {
       notes: '', takeawayCharge: 0
     };
 
-    const success = await printOrderTicketToBillPrinter(orderData, storeInfo);
+    const success = await printKitchenTicketViaRawBT(orderData, storeInfo);
     if (success) { showToast(`Kitchen ticket for +Order ${latestGroup} printed`, 'success'); }
   };
 
@@ -1400,7 +1406,7 @@ const LiveOrdersPage: React.FC = () => {
             const _kpO: any = _ps?.kitchenPrinter;
             const _autoOnO = !!(_kpO && _kpO.enabled && _kpO.autoPrint);
             if (_autoOnO) doPrint();
-            setCancelPrintPrompt({ run: doPrint, ticketType: '*** ORDER CANCELLED ***', description: _autoOnO ? `주문 ${printData.orderNumber} — 해당 주방에 발송됨` : `주문 ${printData.orderNumber} — [발송]을 눌러 주방에 전송`, stations: previewStationBuckets(printData.items, _ps) });
+            setCancelPrintPrompt({ run: doPrint, autoSent: _autoOnO, ticketType: '*** ORDER CANCELLED ***', description: _autoOnO ? `주문 ${printData.orderNumber} — 해당 주방에 발송됨` : `주문 ${printData.orderNumber} — [발송]을 눌러 주방에 전송`, stations: previewStationBuckets(printData.items, _ps) });
           } catch (e) {
             console.warn('Cancellation ticket trigger error:', (e as any) && (e as any).message);
           }

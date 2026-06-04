@@ -73,8 +73,25 @@ startBuildVersionWatcher();
 // Errors are non-fatal: app degrades to in-app socket toaster only.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch((err) => {
+    navigator.serviceWorker.register('/sw.js', { scope: '/' }).then((reg) => {
+      // 2026-06-04 (Irene): kiosk POS devices that never navigate were getting
+      // stuck on an OLD service worker serving an OLD bundle — a plain app reopen
+      // didn't help (the old SW intercepts and serves its cached main.js), so
+      // store deploys silently never reached the device. Poll for a new SW every
+      // 60s so the browser fetches the freshly deployed sw.js; the new SW's install
+      // wipes caches + skipWaiting + clients.claim, then we reload once on
+      // controllerchange to run the fresh code. No user action / hard-refresh ever
+      // needed — the device self-updates within ~1 min of a deploy.
+      try { setInterval(() => { reg.update().catch(() => {}); }, 60 * 1000); } catch (_) { /* non-fatal */ }
+    }).catch((err) => {
       console.warn('[SW] Registration failed:', err);
+    });
+    let _swReloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (_swReloaded) return;
+      _swReloaded = true;
+      // A fresh SW just took control → reload once to run the new bundle.
+      try { window.location.reload(); } catch (_) { /* non-fatal */ }
     });
   });
 }

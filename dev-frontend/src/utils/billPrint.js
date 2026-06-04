@@ -3287,6 +3287,14 @@ export async function printSettlementReport(htmlContent, escposContent) {
  * @param {string|null} stationId  — used to resolve per-station method
  */
 async function sendToRawBTPrinter(orderData, storeInfo, settings, printerName, stationName, printerAddress, stationId) {
+  // 2026-06-04 (Irene): a station-routed ticket already shows its station as the
+  // ** STATION ** group header (groupLabel, set below). The auto-print path enriches
+  // each item with stationName too, so the generator ALSO drew the top [ STATION ] box
+  // → station name printed TWICE at the top (only on auto-print; table-move/cancel use
+  // raw DB items w/o stationName so they showed once). Suppress the redundant top box
+  // for station tickets so it matches table-move exactly (one header). Inline per-item
+  // tags are unaffected.
+  if (stationName) orderData = { ...orderData, noStationBox: true };
   const scope = stationId ? `station:${stationId}` : 'kitchen';
   const method = getPrinterMethod(scope);
   const printPerItem = settings.kitchenPrinter.printPerItem || false;
@@ -3304,26 +3312,30 @@ async function sendToRawBTPrinter(orderData, storeInfo, settings, printerName, s
     // 한글 + the ticket design correctly via the OS driver — raw ESC/POS garbled
     // Korean) and raw ESC/POS only for direct LAN-IP sockets (no OS driver there).
     // This mirrors how the bill printer (POS-80C) prints Korean fine via HTML pixel.
+    // 2026-06-04 (Irene): RETURN THE ACTUAL SEND RESULT. Previously this branch
+    // swallowed sendHTMLViaQZTray's return value and always returned true — so when
+    // a station's QZ job failed (the documented "3rd/last station drop"), the caller
+    // loop saw "ok" and never retried or fell back, silently losing that station's
+    // ticket. Now a false from QZ propagates → retry + counter fallback + POS banner.
     if (printPerItem && items.length > 0) {
+      let allOk = true;
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
         const perItemData = { ...orderData, items: [item], groupLabel: stationName ? stationName.toUpperCase() : undefined, printedAt: stationName ? stationName.toUpperCase() : 'KITCHEN' };
-        if (isLanIP) {
-          await sendViaQZTray(generateKitchenTicketContent(perItemData, storeInfo), address);
-        } else {
-          await sendHTMLViaQZTray(generateHTMLKitchenTicket(perItemData, storeInfo), address);
-        }
+        const r = isLanIP
+          ? await sendViaQZTray(generateKitchenTicketContent(perItemData, storeInfo), address)
+          : await sendHTMLViaQZTray(generateHTMLKitchenTicket(perItemData, storeInfo), address);
+        if (r === false) allOk = false;
         if (i < items.length - 1) await new Promise(r => setTimeout(r, 300));
       }
+      return allOk;
     } else {
       const ticketData = { ...orderData, groupLabel: stationName ? stationName.toUpperCase() : undefined, printedAt: stationName ? stationName.toUpperCase() : 'KITCHEN' };
-      if (isLanIP) {
-        await sendViaQZTray(generateKitchenTicketContent(ticketData, storeInfo), address);
-      } else {
-        await sendHTMLViaQZTray(generateHTMLKitchenTicket(ticketData, storeInfo), address);
-      }
+      const r = isLanIP
+        ? await sendViaQZTray(generateKitchenTicketContent(ticketData, storeInfo), address)
+        : await sendHTMLViaQZTray(generateHTMLKitchenTicket(ticketData, storeInfo), address);
+      return r !== false;
     }
-    return true;
   }
 
   // --- Browser / RawBT method ---
@@ -3521,6 +3533,24 @@ async function printKitchenTicketsByStation(orderData, storeInfo, settings) {
     const allOk = stationResults.every(r => r.ok);
     if (!allOk) {
       console.warn('🍳 Station print summary:', stationResults);
+      const failedStations = stationResults.filter(r => !r.ok);
+      // Safety net (Irene 2026-06-04): a station printer didn't take the job → those
+      // items must NOT silently vanish (the "last station drops" complaint). 1) Alert
+      // the POS with a banner naming the failed station(s). 2) Unless the counter
+      // mirror already carries the whole order, reprint the failed items at the counter
+      // so staff can hand-deliver. Never lose a ticket silently.
+      try { window.dispatchEvent(new CustomEvent('autoprint-failed', { detail: { scope: 'kitchen-station', stations: failedStations.map(f => f.stationName) } })); } catch (_) {}
+      if (!(settings.kitchenPrinter && settings.kitchenPrinter.mirrorToBillPrinter)) {
+        try {
+          const failedItems = failedStations.flatMap(f => stationItems[f.stationId] || []);
+          const bp = getActiveBillPrinter();
+          if (failedItems.length > 0 && bp && bp.enabled && bp.address) {
+            const fallbackData = { ...orderData, items: failedItems, noStationBox: true,
+              noticeHeader: { title: '** STATION PRINT FAILED — DELIVER MANUALLY **', lines: failedStations.map(f => `${f.stationName}: not printed at station`) } };
+            await sendToRawBTPrinter(fallbackData, storeInfo, settings, bp.name, 'COUNTER', bp.address, null);
+          }
+        } catch (e) { console.warn('🍳 Station fallback to counter failed:', e && e.message); }
+      }
     }
     return allOk;
   }
@@ -3887,7 +3917,12 @@ export async function printCancellationTicket(orderData, storeInfo, reason, prin
         console.warn('[CANCEL TICKET] QZ Tray: no kitchen address');
         return false;
       }
-      return await sendViaQZTray(escpos, address);
+      // 2026-06-04 (Irene): 일반 오더티켓 경로와 동일하게 — OS 드라이버 프린터는 HTML pixel
+      // (한글 OK, 일반 티켓과 같은 폰트, 취소 줄긋기 = CSS line-through), raw ESC/POS 는 LAN IP
+      // 프린터에만. 이전엔 항상 raw 라 취소표만 다른 폰트 + reverse-video(검정바탕)로 나왔다.
+      const isLanIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(address);
+      if (isLanIP) return await sendViaQZTray(escpos, address);
+      return await sendHTMLViaQZTray(generateHTMLKitchenTicket(buildVoidTicketData(orderData, reason), storeInfo), address);
     }
 
     // Browser print
@@ -3988,7 +4023,11 @@ async function printCancellationToCounter(orderData, storeInfo, reason) {
   if (shouldUseQZTray()) {
     const address = getActiveBillPrinter().address;
     if (!address) return false;
-    return await sendViaQZTray(escpos, address);
+    // 2026-06-04 (Irene): OS 드라이버 프린터엔 HTML pixel(일반 티켓과 같은 폰트 + line-through),
+    // raw ESC/POS 는 LAN IP 에만. (이전엔 항상 raw → 카운터 미러 취소표만 폰트 다름.)
+    const isLanIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(address);
+    if (isLanIP) return await sendViaQZTray(escpos, address);
+    return await sendHTMLViaQZTray(generateHTMLKitchenTicket(_voidData, storeInfo), address);
   }
 
   if (shouldUseBrowserPrint()) {

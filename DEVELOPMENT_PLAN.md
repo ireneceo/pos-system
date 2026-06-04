@@ -1,6 +1,38 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-04 (운영 배포 완료 — 오더티켓 raw 이모지 제거 + 취소표 일반 오더티켓 통일 + SW 갱신. 버전 미상승. 실프린터 눈확인은 현장 몫.)
+> **최종 업데이트:** 2026-06-04 (운영 배포 다회 — 인쇄/세트 캡처 대수정 마라톤. 버전 미상승(핫픽스 성격). 실프린터 눈확인 현장 몫.)
+
+## ✅ 완료(운영 배포 2026-06-04, 다회): 인쇄 파이프라인 + POS 세트 캡처 대수정
+
+> The Fire 매장 라이브 대응. 인쇄 단일소스화 + 세트 캡처 근본수정 + 자동/수동 발행 정의. 버전 미상승.
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| POS 세트 캡처 근본수정 | `isV2Set`가 메뉴 LIST의 set_groups 유무로 게이트 → lazy 로드/머지 dedup으로 누락 시 레거시 전체확장(15개·옵션X·한국녹차 누락). **세트면 무조건 POSSetModal 개방**(모달이 `/api/menu/product/:id` set_groups_resolved 직접 fetch). 백엔드는 올바른 set_components 받으면 그대로 저장(검증). 모바일과 동일. | ✅ |
+| 인쇄 단일소스화 | 새 주문 POS 직접인쇄(장바구니) 제거 → poller 단일(백엔드 enriched, 테이블이동과 동일). 2장 중복/내용차이/SET5만 해소. + 즉시 poke(cross-realm storage 이벤트로 인쇄기기 즉시 전달 — 첫 티켓 지연 해소). | ✅ |
+| 스테이션 발행 누락 근본수정 | `sendToRawBTPrinter`가 `sendHTMLViaQZTray` 실패(false)를 삼키고 무조건 true 반환 → 마지막 스테이션 실패해도 재시도·폴백 0 조용히 누락. 실제 결과 반환 + 실패 시 카운터 폴백 + POS 배너. | ✅ |
+| 수동 오더티켓 통일 | LiveOrders(3)+FloorPlan(2) 수동 재발행이 카운터전용 printOrderTicketToBillPrinter → printKitchenTicketViaRawBT(스테이션 라우팅) + enriched(station/set_components). | ✅ |
+| 취소표 폰트/줄긋기 | printCancellationTicket/...ToCounter가 항상 raw → OS드라이버엔 HTML pixel(같은 폰트+line-through), LAN IP만 raw. | ✅ |
+| 자동/수동 발행 정의 + 백로그 컷오프 | PRINT_RULES_MATRIX §8.7 정의. autoPrint OFF→ON 폭주 차단(`kitchenAutoPrintEnabledAt` 이전 주문 skip). | ✅ |
+| KDS 취소/이동 팝업 | order-updated(취소)/item-voided의 printed 게이트 제거 → autoPrint OFF여도 KDS 팝업(station 탭 필터). 이동 팝업도 autoPrint 준수(Send/Resend). | ✅ |
+| 스테이션명 1번 | 자동발행 오더티켓 상단 박스 억제(groupLabel 헤더 1개, 테이블이동과 동일). | ✅ |
+| 모바일 테이크웨이 테이블 | QR 테이블 진입 후 테이크웨이 전환 시 테이블 보존(접속링크값 안 날림). | ✅ |
+| 자동 업데이트 하드닝 | SW `registration.update()` 60초 폴링 + controllerchange 자동 리로드 → 매장 기기 옛 SW 갇힘 해소(유저 무작업). | ✅ |
+| (별건) 직원 무이메일 | 운영 DB `users.email` NOT NULL→NULL ALTER (스키마 드리프트). | ✅ |
+
+### 수정된 파일
+- 프론트🔒: `utils/billPrint.js`, `hooks/useAutoPrintPoller.ts`, `pages/POSTerminal/POSTerminalPage.tsx`, `pages/KitchenDisplay/KitchenDisplayPage.tsx`
+- 프론트: `components/POSTerminal/POSSetModal.tsx`, `components/Print/KitchenTicketSendModal.tsx`, `contexts/MenuContext.tsx`, `index.tsx`, `mobile/pages/OrderTypePage.tsx`, `pages/FloorPlan/{FloorPlanPage,TableDetailPanel}.tsx`, `pages/LiveOrders/LiveOrdersPage.tsx`, `pages/Settings/SettingsPage.tsx`, `public/sw.js`
+- 문서: `docs/PRINT_RULES_MATRIX.md` (§8.7 자동/수동 정의, §9 v3)
+
+### 남은 것 (다음 세션 후보)
+- KDS 실시간 미반영(리플래시해야 새 주문 보임) — 별도 소켓 이슈, 미진단.
+- 전 화면 세트 렌더링 통일(POS/FloorPlan/KDS/LiveOrders 일관) — 데이터 정상화 후 점검.
+- 실프린터 현장 최종 확인(Irene).
+
+---
 
 ## ✅ 완료(운영 배포 2026-06-04): 오더티켓 raw 이모지 제거 + 취소표 통일 + SW 갱신 + 세트/일반 옵션 진단
 

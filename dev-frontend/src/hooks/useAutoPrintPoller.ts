@@ -57,6 +57,19 @@ export function useAutoPrintPoller(opts: {
         const path = locationRef.current || window.location.pathname;
         const isOnKDS = path.includes('/kitchen') || path.includes('/kds');
 
+        // 2026-06-04 (Irene): backlog cutoff (docs/PRINT_RULES_MATRIX § 8.7).
+        // 자동발행 OFF 동안 쌓인 needs_print 주문이 ON 으로 바꾼 순간 한꺼번에 폭주 인쇄되던
+        // 문제. "자동발행 ON 은 켠 시각 이후 들어온 주문만 인쇄" 가 정의. enabledAt(=autoPrint
+        // 가 처음 ON 으로 관측된 시각)을 localStorage 에 남기고(리로드 생존), 그보다 먼저 생성된
+        // 주문은 자동인쇄 skip(needs_print 유지 → 오더티켓 버튼 수동 가능). OFF 면 enabledAt clear
+        // → 다음 ON 때 새로 잡혀 그 이전 백로그는 자동 제외.
+        const _kpAutoNow = !!(printSettings.kitchenPrinter && printSettings.kitchenPrinter.autoPrint);
+        const _stAutoNow = Object.values(printSettings.kitchenStationPrinters || {}).some((s: any) => s?.autoPrint);
+        const _anyAutoNow = _kpAutoNow || _stAutoNow;
+        let _autoEnabledAt = parseInt(localStorage.getItem('kitchenAutoPrintEnabledAt') || '0', 10) || 0;
+        if (_anyAutoNow && !_autoEnabledAt) { _autoEnabledAt = Date.now(); try { localStorage.setItem('kitchenAutoPrintEnabledAt', String(_autoEnabledAt)); } catch {} }
+        if (!_anyAutoNow && _autoEnabledAt) { try { localStorage.removeItem('kitchenAutoPrintEnabledAt'); } catch {} _autoEnabledAt = 0; }
+
         for (const ord of list) {
           try {
             // 2026-05-28: in-memory dedup (single device race) — 같은 orderId
@@ -140,7 +153,14 @@ export function useAutoPrintPoller(opts: {
               const _kpAuto = !!_kp.autoPrint;
               const _stationAutoPrint = Object.values(printSettings.kitchenStationPrinters || {}).some((s: any) => s?.autoPrint);
               const _kitchenAuto = _kpEnabled && _kpAuto;
-              if (_kitchenAuto) {
+              // Backlog cutoff (§8.7): don't auto-print orders created BEFORE this
+              // autoPrint session began (prevents the OFF→ON flush flood). needs_print
+              // stays → still printable via the manual Kitchen Ticket button.
+              const _ordMs = ord.created_at ? new Date(ord.created_at).getTime()
+                : (ord.createdAt ? new Date(ord.createdAt).getTime()
+                : (ord.order_date ? new Date(ord.order_date).getTime() : 0));
+              const _isBacklog = !!(_autoEnabledAt && _ordMs && _ordMs < _autoEnabledAt);
+              if (_kitchenAuto && !_isBacklog) {
                 const kitchenPrintData = { ...printData, items: kitchenItemsRaw.map(mapItem) };
                 let ok: any = true;
                 try { ok = await billPrintMod.printKitchenTicketViaRawBT(kitchenPrintData, printStoreInfo); }
@@ -173,6 +193,23 @@ export function useAutoPrintPoller(opts: {
 
     setTimeout(pollFn, 800);
     timer = setInterval(pollFn, intervalMs);
-    return () => { cancelled = true; if (timer) clearInterval(timer); };
+    // 2026-06-04 (Irene): immediate trigger. The POS no longer prints kitchen
+    // tickets directly from cart data (that ran a 2nd printer with divergent data
+    // → duplicates). New orders print through THIS poller alone (backend-enriched,
+    // single ticket per station + counter, like table-move). To keep the ticket
+    // prompt instead of waiting up to one poll interval, POSTerminalPage dispatches
+    // an 'autoprint-poke' right after creating/paying an order → run pollFn now.
+    // De-dup is unchanged (__autoPrintInflight + needs_print/printed_at).
+    const onPoke = () => { pollFn(); };
+    window.addEventListener('autoprint-poke', onPoke);
+    // 2026-06-04 (Irene "첫 티켓 늦게 나옴"): the device that CREATES an order is often a
+    // DIFFERENT window/realm than the one that PRINTS — Floor Plan parent vs its POS
+    // overlay iframe (overlay's poller is disabled), or a separate terminal. A window
+    // CustomEvent can't cross realms, so the printer device only caught the order on its
+    // next ~5s interval → late first ticket. A localStorage write fires a 'storage' event
+    // in OTHER same-origin windows → the printing device runs pollFn immediately.
+    const onStoragePoke = (e: StorageEvent) => { if (e.key === 'autoprint-poke') pollFn(); };
+    window.addEventListener('storage', onStoragePoke);
+    return () => { cancelled = true; if (timer) clearInterval(timer); window.removeEventListener('autoprint-poke', onPoke); window.removeEventListener('storage', onStoragePoke); };
   }, [restaurantId, enabled, intervalMs, getStoreInfo]);
 }

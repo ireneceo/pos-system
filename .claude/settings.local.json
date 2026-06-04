@@ -510,7 +510,12 @@
       "Bash(scp -o ConnectTimeout=8 -q /var/www/dev-backend/diag-thefire-recent.js irene@87.106.78.146:/var/www/production-backend/diag-thefire-recent.js)",
       "Bash(xargs -I{} sed -n '{},+8p' routes/auth.js)",
       "Bash(echo \"dev tables: $\\(node -e \"console.log\\(Object.keys\\(JSON.parse\\(require\\('fs'\\).readFileSync\\('/tmp/dev_schema.json','utf-8'\\)\\)\\).length\\)\"\\)\")",
-      "Bash(echo \"prod tables: $\\(node -e \"console.log\\(Object.keys\\(JSON.parse\\(require\\('fs'\\).readFileSync\\('/tmp/prod_schema.json','utf-8'\\)\\)\\).length\\)\" || echo '?'\\)\")"
+      "Bash(echo \"prod tables: $\\(node -e \"console.log\\(Object.keys\\(JSON.parse\\(require\\('fs'\\).readFileSync\\('/tmp/prod_schema.json','utf-8'\\)\\)\\).length\\)\" || echo '?'\\)\")",
+      "Bash(RA_TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjksImVtYWlsIjoiYWRtaW5Aa2RpbmUuY29tIiwicm9sZSI6IlJlc3RhdXJhbnQgQWRtaW4iLCJ1c2VybmFtZSI6ImtkaW5lX2FkbWluIiwiYnJhbmRfaWQiOm51bGwsImZvb2Rjb3VydF9pZCI6bnVsbCwiYnJhbmNoX2lkIjpudWxsLCJyZXN0YXVyYW50X2lkIjo1LCJtYW5hZ2VyX2lkIjpudWxsLCJpYXQiOjE3ODA1NjcwMzMsImV4cCI6MTc4MTE3MTgzM30.UX1yz6orh-sS7rKfswtTIZtF8Kr_N_r8oPS2h6WnCMo\" RA_RID=5 node scripts/headless-page-sweep.js)",
+      "Bash(echo \"SWEEP_EXIT=$?\")",
+      "Bash(sed -n '1055,1074p' src/pages/FloorPlan/TableDetailPanel.tsx)",
+      "Bash(sed -n '1100,1110p' src/pages/FloorPlan/TableDetailPanel.tsx)",
+      "Bash(awk '/printCancellationTicketsByStation = |function printCancellationTicketsByStation|printCancellationTicketsByStation\\\\\\(/{print NR\": \"$0}' src/utils/billPrint.js)"
     ],
     "deny": [],
     "ask": []

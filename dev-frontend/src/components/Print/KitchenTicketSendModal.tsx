@@ -16,7 +16,10 @@ export interface KitchenTicketSendPrompt {
   ticketType: string;            // 예: 'TABLE CHANGED', 'TABLE CHANGED + MERGED', 'ITEM CANCELLED', 'ORDER CANCELLED'
   description?: string;          // 보조 설명 (예: '해당 주방에 발송됨')
   stations: TicketPreviewStation[];
-  run: () => void;               // [재발송] 시 같은 티켓 다시 발행 (최초 발송은 호출부에서 이미 수행)
+  run: () => void;               // 발송/재발송 시 같은 티켓 발행.
+  // 2026-06-04 (Irene): autoPrint 설정 반영. true = 자동발행 ON 이라 호출부가 이미 발송함
+  //   → 버튼 [Resend Order Ticket]. false = 자동발행 OFF 라 아직 미발송 → 버튼 [Send Order Ticket].
+  autoSent?: boolean;
 }
 
 interface Props {
@@ -29,19 +32,21 @@ const KitchenTicketSendModal: React.FC<Props> = ({ prompt, onClose, t }) => {
   if (!prompt) return null;
   const tr = (k: string, dv: string) => (t ? t(k, { defaultValue: dv }) : dv);
   const stations = prompt.stations && prompt.stations.length ? prompt.stations : [{ stationName: 'Kitchen', items: [] }];
+  // 2026-06-04 (Irene): autoPrint OFF(미발송) → [Send Order Ticket] / ON(이미 발송) → [Resend Order Ticket].
+  const sent = prompt.autoSent !== false;
   return (
     <CommonModal
       isOpen={true}
       onClose={onClose}
-      title={tr('orders:ticketSend.sentTitle', 'Sent to kitchen')}
+      title={sent ? tr('orders:ticketSend.sentTitle', 'Sent to kitchen') : tr('orders:ticketSend.sendTitle', 'Send to kitchen')}
       footer={<>
-        <Button variant="secondary" onClick={() => { prompt.run(); }}>{tr('orders:ticketSend.resend', 'Resend')}</Button>
+        <Button variant="secondary" onClick={() => { prompt.run(); }}>{sent ? tr('orders:ticketSend.resend', 'Resend Order Ticket') : tr('orders:ticketSend.send', 'Send Order Ticket')}</Button>
         <Button variant="primary" onClick={onClose}>{tr('orders:ticketSend.close', 'Close')}</Button>
       </>}>
       <div style={{ padding: '2px 2px 4px', fontSize: 14, color: '#0A2540', lineHeight: 1.5 }}>
         <div style={{ fontWeight: 700, marginBottom: 4 }}>{prompt.ticketType}</div>
         {prompt.description && <div style={{ fontSize: 13, color: '#6B7C93', marginBottom: 10 }}>{prompt.description}</div>}
-        <div style={{ fontSize: 13, color: '#6B7C93', marginBottom: 6 }}>{tr('orders:ticketSend.sentList', 'Sent the following:')}</div>
+        <div style={{ fontSize: 13, color: '#6B7C93', marginBottom: 6 }}>{sent ? tr('orders:ticketSend.sentList', 'Sent the following:') : tr('orders:ticketSend.sendList', 'Will send the following:')}</div>
         {stations.map((s, i) => (
           <div key={i} style={{ border: '1px solid #E6EBF1', borderRadius: 8, padding: '8px 12px', marginBottom: 8 }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: '#635BFF', letterSpacing: 0.3 }}>[ {String(s.stationName).toUpperCase()} ]</div>

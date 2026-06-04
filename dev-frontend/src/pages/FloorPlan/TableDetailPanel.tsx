@@ -7,7 +7,7 @@ import { formatPaymentDisplay } from '../../constants';
 import { useStore } from '../../contexts/StoreContext';
 import { formatDateTime } from '../../utils/timezone';
 import { computePrepFromElapsed, PrepTimerChip } from '../../utils/prepTimer';
-import { printBillViaRawBT, printOrderTicketToBillPrinter, printTableQR, printCancellationTicket, printCancellationTicketsByStation, getPrinterSettings } from '../../utils/billPrint';
+import { printBillViaRawBT, printKitchenTicketViaRawBT, printTableQR, printCancellationTicket, printCancellationTicketsByStation, getPrinterSettings } from '../../utils/billPrint';
 import { previewStationBuckets, KitchenTicketSendPrompt } from '../../components/Print/KitchenTicketSendModal';
 import OptionModal from '../../components/POSTerminal/OptionModal';
 import { Modal, ModalButton } from '../../components/UI';
@@ -886,7 +886,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                 const _autoOn = !!(_kp && _kp.enabled && _kp.autoPrint);
                 if (_autoOn) doPrint();
                 onKitchenTicketSent && onKitchenTicketSent({
-                  run: doPrint, ticketType: '*** ITEM CANCELLED ***',
+                  run: doPrint, autoSent: _autoOn, ticketType: '*** ITEM CANCELLED ***',
                   description: _autoOn ? '취소된 아이템 — 해당 주방에 발송됨' : '취소된 아이템 — [발송]을 눌러 주방에 전송',
                   stations: previewStationBuckets(printData.items, settings)
                 });
@@ -952,7 +952,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
               const _autoOnO = !!(_kpO && _kpO.enabled && _kpO.autoPrint);
               if (_autoOnO) doPrint();
               onKitchenTicketSent && onKitchenTicketSent({
-                run: doPrint, ticketType: '*** ORDER CANCELLED ***',
+                run: doPrint, autoSent: _autoOnO, ticketType: '*** ORDER CANCELLED ***',
                 description: _autoOnO ? `주문 ${printData.orderNumber} — 해당 주방에 발송됨` : `주문 ${printData.orderNumber} — [발송]을 눌러 주방에 전송`,
                 stations: previewStationBuckets(printData.items, settings)
               });
@@ -1099,7 +1099,13 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
             set_items: item.set_items || []
           },
           quantity: item.quantity || 1,
-          options: itemOptions
+          options: itemOptions,
+          // 2026-06-04 (Irene): carry station + set components so the manual reprint
+          // routes to EACH kitchen station and renders set components/options exactly
+          // like the order-complete popup + auto-print (single content source).
+          kitchen_station_id: item.kitchen_station_id ?? (item.menuItem && item.menuItem.kitchen_station_id) ?? null,
+          stationName: item.stationName || item.station_name || undefined,
+          set_components: item.set_components
         };
       }),
       notes: statusInfo.notes || '',
@@ -1116,7 +1122,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
   const handlePrintKitchenTicket = async () => {
     const orderData = buildKitchenDataForPrint();
     if (!orderData || items.length === 0) return;
-    await printOrderTicketToBillPrinter(orderData, getStoreInfo());
+    await printKitchenTicketViaRawBT(orderData, getStoreInfo());
   };
 
   const handlePrintLatestGroupTicket = async () => {
@@ -1130,7 +1136,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
     const latestGroupItems = items.filter((item: any) => (item.order_group || 0) === latestGroup);
     const orderData = buildKitchenDataForPrint(latestGroupItems, `+Order ${latestGroup}`);
     if (!orderData) return;
-    await printOrderTicketToBillPrinter(orderData, getStoreInfo());
+    await printKitchenTicketViaRawBT(orderData, getStoreInfo());
   };
 
   const handlePrintQR = async () => {

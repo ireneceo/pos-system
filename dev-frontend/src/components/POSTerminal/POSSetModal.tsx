@@ -102,7 +102,21 @@ const POSSetModal: React.FC<Props> = ({ isOpen, product, restaurantId, formatCur
           headers: { Authorization: `Bearer ${getAuthToken()}` }
         });
         const j = await res.json();
-        const groups = (j.data && j.data.set_groups_resolved) || [];
+        let groups = (j.data && j.data.set_groups_resolved) || [];
+        // 2026-06-04 (Irene): is_set_menu 면 무조건 이 모달을 연다(POSTerminal isV2Set).
+        // set_groups 가 진짜 없는 레거시 세트는 set_groups_resolved 가 비는데, 그땐 set_items 를
+        // 하나의 fixed 그룹으로 합성해 그대로 추가 가능하게(레거시 무회귀). set_groups 있는 세트는
+        // 그대로 정상 resolve.
+        if (groups.length === 0 && Array.isArray(j.data && j.data.set_items) && j.data.set_items.length > 0) {
+          groups = [{
+            id: 'legacy', label: 'Set', type: 'fixed',
+            min: j.data.set_items.length, max: j.data.set_items.length,
+            items: j.data.set_items.map((si: any) => ({
+              product_id: si.product_id != null ? si.product_id : (si.menuItemId != null ? si.menuItemId : null),
+              name: si.name, qty: si.quantity || 1, upcharge: 0, optionGroups: []
+            }))
+          }];
+        }
         setResolved(groups);
         setSetOptionGroups((j.data && j.data.set_option_groups) || []);
         const init: Record<string, number[]> = {};

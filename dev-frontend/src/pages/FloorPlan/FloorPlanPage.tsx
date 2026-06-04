@@ -1423,13 +1423,21 @@ const FloorPlanPage: React.FC = () => {
           };
           const doReissue = () => billPrintMod.printKitchenTicketViaRawBT(reprintData, printStoreInfo)
             .catch((e: any) => console.warn('[move-table] reprint failed (non-fatal):', e?.message));
-          // 확정 스펙 v2 (2026-06-02): 이동도 주방이 무조건 알아야 함 → 자동발행과 무관하게
-          // 항상 재발행 + 알림형 팝업([재발송][닫기]). 묻지 않음.
-          doReissue();
+          // 2026-06-04 (Irene 개정): 이동도 자동발행(autoPrint) 설정을 따른다.
+          //   autoPrint ON  → 자동 발송 + 팝업 [Resend].
+          //   autoPrint OFF → 자동 발송 안 함, 팝업 [Send] 로 수동 발송.
+          // (이전 v2 스펙은 설정 무관 항상 발송이었으나, 매장이 자동발행을 끈 상태에서도
+          //  나가는 건 맞지 않다고 Irene 확정 — 취소/이동 모두 설정대로.)
+          const _kpMove: any = printSettings.kitchenPrinter;
+          const _autoOnMove = !!(_kpMove && _kpMove.enabled && _kpMove.autoPrint);
+          if (_autoOnMove) doReissue();
           setMovePrintPrompt({
             run: doReissue,
+            autoSent: _autoOnMove,
             ticketType: _moveNotice.title,
-            description: onOccupied === 'merge' ? '머지 — 이전 티켓들 버리고 이 티켓 사용 (발송됨)' : '테이블 이동 — 이전 티켓 버리고 이 티켓 사용 (발송됨)',
+            description: _autoOnMove
+              ? (onOccupied === 'merge' ? '머지 — 이전 티켓들 버리고 이 티켓 사용 (발송됨)' : '테이블 이동 — 이전 티켓 버리고 이 티켓 사용 (발송됨)')
+              : (onOccupied === 'merge' ? '머지 — [Send]를 눌러 주방에 전송' : '테이블 이동 — [Send]를 눌러 주방에 전송'),
             stations: previewStationBuckets(printed, printSettings),
           });
         }

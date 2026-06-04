@@ -1266,7 +1266,10 @@ const KitchenDisplayPage: React.FC = () => {
           const rawItems = Array.isArray(order.order_items)
             ? order.order_items
             : (typeof order.order_items === 'string' ? JSON.parse(order.order_items || '[]') : []);
-          const printed = (rawItems || []).filter((it: any) => it && (it.printed_at || it.printed));
+          // 2026-06-04 (Irene, § 8.7): KDS 는 표시 전용 — 인쇄 안 했어도 주방이 화면으로 본
+          // 주문이다. 따라서 취소 팝업은 "printed 된 것만"이 아니라 화면에 떴던(=order_items 가 있는)
+          // 주문이면 자동발행 ON/OFF 무관하게 뜬다. (현재 station 탭 필터는 그대로 유지.)
+          const printed = (rawItems || []);
           if (printed.length > 0) {
             const curStation = selectedStationRef.current;
             const relevant = curStation === 'all' || printed.some((it: any) => {
@@ -1321,8 +1324,9 @@ const KitchenDisplayPage: React.FC = () => {
     newSocket.on('item-voided', (data: any) => {
       if (!data || !data.voidedItem) return;
       const vi = data.voidedItem;
-      // 주방에 안 갔던 아이템(was_printed=false)은 주방이 알 필요 없음 → skip.
-      if (!vi.was_printed) return;
+      // 2026-06-04 (Irene, § 8.7): KDS 표시 전용 — 인쇄(was_printed) 여부와 무관하게, 주방이
+      // 화면으로 본 주문의 아이템이 취소되면 알아야 한다(자동발행 OFF 라 인쇄 안 됐어도). 이전엔
+      // was_printed=false 면 skip 이라 autoPrint OFF 매장에서 아이템취소 팝업이 안 떴다.
       // 스테이션 필터: 'all' 이면 모두. 특정 스테이션 탭이면 그 스테이션 아이템만
       // (스테이션 미지정 아이템은 모든 탭에 표시 — 안전쪽). ref 로 최신 값 참조.
       const curStation = selectedStationRef.current;
