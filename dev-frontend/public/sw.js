@@ -10,7 +10,7 @@
  * caching SPA shell would conflict. If future offline support is needed, layer Workbox separately.
  */
 
-const SW_VERSION = '3.46-tickets-offtable-reports-20260605';
+const SW_VERSION = '3.48-sound-unify-itemcancel-guide-20260605';
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
