@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import { PosDisplayThemeStyle, getPosTheme, setPosTheme, POS_THEME_MODES, PosThemeMode } from '../../styles/posDisplayTheme';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { FloorPlanData, DEFAULT_FLOOR_PLAN, TableStatusInfo, ORDER_STATUS_COLORS } from './types';
+import { FloorPlanData, DEFAULT_FLOOR_PLAN, TableStatusInfo, ORDER_STATUS_COLORS, getOrderStatusColors, getTableNodeStatusColors, getOrderTypeColors } from './types';
 import { calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import FloorPlanCanvas from './FloorPlanCanvas';
 import TableDetailPanel from './TableDetailPanel';
@@ -366,6 +366,10 @@ const FloorPlanPage: React.FC = () => {
   }, [setSearchParams]);
   const [takeawayOrders, setTakeawayOrders] = useState<any[]>([]);
   const [takeawayLoading, setTakeawayLoading] = useState(false);
+  // Off-table 통합 뷰: 매장이 켠 주문타입 + 타입 필터(All/takeaway/pickup/delivery)
+  const [restaurantOrderTypes, setRestaurantOrderTypes] = useState<{ takeaway: boolean; pickup: boolean; delivery: boolean }>({ takeaway: true, pickup: false, delivery: false });
+  const [offTableFilter, setOffTableFilter] = useState<'all' | 'takeaway' | 'pickup' | 'delivery'>('all');
+  const [offTableSearch, setOffTableSearch] = useState('');
 
   // Filtered floor plan — tables restricted to selected zone.
   const filteredFloorPlan = useMemo<FloorPlanData>(() => {
@@ -453,6 +457,9 @@ const FloorPlanPage: React.FC = () => {
   const [membershipSettings, setMembershipSettings] = useState<any>(null);
   // 서빙 ready 알림음 on/off (기기별 기억, 기본 ON). ItemListView 가 이 값으로 게이트.
   const [readyAudio, setReadyAudio] = useState<boolean>(() => { try { return localStorage.getItem('fp_ready_audio') !== '0'; } catch { return true; } });
+  // Floor Plan 알림음 설정(Settings) — 소켓 핸들러 closure 가 stale 안 되게 ref 로 최신 유지.
+  const floorSoundRef = useRef<{ enabled?: boolean; type?: string } | undefined>(undefined);
+  floorSoundRef.current = (operationSettings as any)?.orderSounds?.floorPlan;
 
   // Daily Settlement
   const [showSettlement, setShowSettlement] = useState(false);
@@ -470,6 +477,8 @@ const FloorPlanPage: React.FC = () => {
     tableNumber: string | null;
     orderGroup: number;
     itemCount: number;
+    kind?: 'items' | 'order';        // 'order' = 새 주문, 'items' = 추가 품목
+    orderType?: string;              // off-table 라우팅용 (takeaway/pickup/delivery)
   } | null>(null);
 
   // Clock (restaurant timezone) — POS Terminal 과 동일 포맷, 단 년도 제외.
@@ -522,7 +531,7 @@ const FloorPlanPage: React.FC = () => {
       const token = getAuthToken();
       const range = calculatePeriodDateRange('today', timezone);
       const params = new URLSearchParams({
-        page: '1', limit: '200', includeCompleted: 'true', order_type: 'takeaway'
+        page: '1', limit: '200', includeCompleted: 'true'
       });
       if (range.start) params.append('startDate', range.start);
       if (range.end) params.append('endDate', range.end);
@@ -531,13 +540,13 @@ const FloorPlanPage: React.FC = () => {
       });
       if (res.ok) {
         const data = await res.json();
-        // API returns `data.data`. We belt-and-suspenders filter for `order_type=takeaway` in
-        // case the server doesn't honour that param, and drop cancelled rows so the screen matches
-        // the dine-in canvas behaviour (cancelled orders never count as active work).
+        // Off-table 통합: 테이블에 안 매인 주문(테이크아웃·픽업·배달)을 한 리스트로. 백엔드는
+        // 전 타입 반환하므로 여기서 off-table 타입만 남기고 cancelled 는 제외(바닥 캔버스와 동일).
         const list = Array.isArray(data.data) ? data.data : [];
+        const OFF_TABLE = new Set(['takeaway', 'pickup', 'delivery']);
         const taList = list.filter((o: any) => {
           const ot = (o.order_type || o.orderType || '').toString().replace(/[_\s]/g, '').toLowerCase();
-          if (ot !== 'takeaway') return false;
+          if (!OFF_TABLE.has(ot)) return false;
           if ((o.status || '').toString() === 'cancelled') return false;
           return true;
         });
@@ -560,6 +569,26 @@ const FloorPlanPage: React.FC = () => {
     const id = setInterval(fetchTakeawayOrders, 15000);
     return () => clearInterval(id);
   }, [activeView, fetchTakeawayOrders]);
+
+  // Off-table 뷰: 켠 타입 목록 + 타입필터 적용된 표시 목록
+  const normOffTableType = (o: any) => (o.order_type || o.orderType || '').toString().replace(/[_\s]/g, '').toLowerCase();
+  const enabledOffTableTypes = useMemo<Array<'takeaway' | 'pickup' | 'delivery'>>(() => {
+    const list: Array<'takeaway' | 'pickup' | 'delivery'> = [];
+    if (restaurantOrderTypes.takeaway) list.push('takeaway');
+    if (restaurantOrderTypes.pickup) list.push('pickup');
+    if (restaurantOrderTypes.delivery) list.push('delivery');
+    return list.length ? list : ['takeaway'];
+  }, [restaurantOrderTypes]);
+  const displayedOffTableOrders = useMemo(() => {
+    const q = offTableSearch.trim().toLowerCase();
+    return takeawayOrders.filter(o => {
+      if (offTableFilter !== 'all' && normOffTableType(o) !== offTableFilter) return false;
+      if (!q) return true;
+      const hay = `${o.order_number || o.orderNumber || ''} ${o.customer_name || o.customerName || ''} ${o.customer_phone || ''} ${o.pickup_number || o.pickupNumber || ''}`.toLowerCase();
+      const itemsHay = (o.order_items || o.orderItems || []).map((it: any) => it.name || it.menuItem?.name || '').join(' ').toLowerCase();
+      return hay.includes(q) || itemsHay.includes(q);
+    });
+  }, [takeawayOrders, offTableFilter, offTableSearch]);
 
   const debouncedFetch = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -595,6 +624,13 @@ const FloorPlanPage: React.FC = () => {
             ? JSON.parse(restaurant.operation_settings)
             : restaurant.operation_settings;
           setTimezone(getRestaurantTimezone(opSettings));
+          // Off-table 뷰: 이 매장이 켠 주문타입(없으면 기본 dineIn+takeaway).
+          const ot = opSettings.orderTypes || {};
+          setRestaurantOrderTypes({
+            takeaway: ot.takeaway !== false,
+            pickup: !!ot.pickup,
+            delivery: !!ot.delivery,
+          });
         }
         // Payment methods from restaurant settings (like LiveOrders)
         if (restaurant.payment_settings) {
@@ -645,7 +681,33 @@ const FloorPlanPage: React.FC = () => {
 
     socket.on('disconnect', () => setConnected(false));
     socket.on('order-updated', () => debouncedFetch());
-    socket.on('order-created', () => debouncedFetch());
+    socket.on('order-created', (order: any) => {
+      debouncedFetch();
+      // off-table 새 주문(테이크/픽업/배달)은 바닥에 안 떠서 놓치기 쉬움 → 배너로 알림.
+      // 테이블 주문은 캔버스에 불이 들어오므로 배너 생략.
+      const ot = (order?.order_type || order?.orderType || '').toString().replace(/[_\s]/g, '').toLowerCase();
+      if (['takeaway', 'pickup', 'delivery'].includes(ot)) {
+        const cnt = (order?.order_items || order?.orderItems || []).reduce((s: number, it: any) => s + (parseInt(it.quantity, 10) || 1), 0);
+        setItemsAddedAlert({
+          isVisible: true,
+          orderId: order?.id ?? null,
+          orderNumber: order?.order_number || order?.orderNumber || '',
+          tableNumber: null,
+          orderGroup: 0,
+          itemCount: cnt || 1,
+          kind: 'order',
+          orderType: ot,
+        });
+        // 새 주문 도착 알림음(Floor Plan) — Settings on/off + 종류, 기기 mute(fp_ready_audio).
+        try {
+          const cfg = floorSoundRef.current;
+          let localOn = true; try { localOn = localStorage.getItem('fp_ready_audio') !== '0'; } catch { /* ignore */ }
+          if ((cfg?.enabled !== false) && localOn) {
+            import('../../utils/notificationSound').then(({ playPresetSound }) => playPresetSound((cfg?.type || 'bell') as any, 0.85)).catch(() => {});
+          }
+        } catch { /* ignore */ }
+      }
+    });
     socket.on('order-items-added', (data: {
       orderId: number;
       orderNumber: string;
@@ -661,7 +723,8 @@ const FloorPlanPage: React.FC = () => {
         orderNumber: data.orderNumber,
         tableNumber: data.tableNumber,
         orderGroup: data.orderGroup,
-        itemCount: data.itemCount
+        itemCount: data.itemCount,
+        kind: 'items',
       });
     });
     socket.on('new-order', () => debouncedFetch());
@@ -1553,7 +1616,7 @@ const FloorPlanPage: React.FC = () => {
         }}>
           <style>{`@keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }`}</style>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-            <div style={{ fontWeight: 700, fontSize: '15px', color: '#92400E' }}>{t('floorplan:floorPlanPage.newItemsAdded')}</div>
+            <div style={{ fontWeight: 700, fontSize: '15px', color: '#92400E' }}>{itemsAddedAlert.kind === 'order' ? t('floorplan:floorPlanPage.newOrderReceived', { defaultValue: 'New order received' }) : t('floorplan:floorPlanPage.newItemsAdded')}</div>
             <button onClick={() => setItemsAddedAlert(null)} style={{
               background: 'none', border: 'none', fontSize: '20px',
               cursor: 'pointer', color: '#92400E', padding: '0', lineHeight: 1
@@ -1561,26 +1624,39 @@ const FloorPlanPage: React.FC = () => {
           </div>
           <div style={{ color: '#78350F', fontSize: '14px', marginBottom: '12px' }}>
             <strong>Order {itemsAddedAlert.orderNumber}</strong>
-            {itemsAddedAlert.tableNumber && ` (Table ${itemsAddedAlert.tableNumber})`}
+            {itemsAddedAlert.tableNumber
+              ? ` (Table ${itemsAddedAlert.tableNumber})`
+              : itemsAddedAlert.orderType ? ` (${t(`floorplan:floorPlanPage.type_${itemsAddedAlert.orderType}`, { defaultValue: itemsAddedAlert.orderType })})` : ''}
             <br />
-            <span style={{ background: '#FCD34D', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
-              +Order {itemsAddedAlert.orderGroup}
-            </span>
-            {' '}{itemsAddedAlert.itemCount} item{itemsAddedAlert.itemCount > 1 ? 's' : ''} added
+            {itemsAddedAlert.kind === 'order' ? (
+              <span>{itemsAddedAlert.itemCount} item{itemsAddedAlert.itemCount > 1 ? 's' : ''}</span>
+            ) : (
+              <>
+                <span style={{ background: '#FCD34D', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                  +Order {itemsAddedAlert.orderGroup}
+                </span>
+                {' '}{itemsAddedAlert.itemCount} item{itemsAddedAlert.itemCount > 1 ? 's' : ''} added
+              </>
+            )}
           </div>
           <button onClick={() => {
-            if (itemsAddedAlert.tableNumber) {
-              // socket payload only carries tableNumber today — best-effort
-              // resolve to a Floor Plan v2 table id (first matching zone).
-              const match = floorPlan?.tables.find(t => t.tableNumber === itemsAddedAlert.tableNumber);
+            const alert = itemsAddedAlert;
+            if (alert.tableNumber) {
+              // 테이블 주문 → 테이블 우측 패널
+              const match = floorPlan?.tables.find(t => t.tableNumber === alert.tableNumber);
               if (match) setSelectedTableId(match.id);
+            } else if (alert.orderId != null) {
+              // off-table(테이크/픽업/배달) → off-table 뷰로 전환 + 그 주문 우측 패널
+              setActiveView('takeaway');
+              setOffTableFilter('all');
+              setSelectedTakeawayOrderId(alert.orderId);
             }
             setItemsAddedAlert(null);
           }} style={{
             width: '100%', padding: '10px', background: '#F59E0B', color: 'white',
             border: 'none', borderRadius: '8px', fontWeight: 600,
             cursor: 'pointer', fontSize: '14px'
-          }}>{t('floorplan:floorPlanPage.viewTable')}</button>
+          }}>{itemsAddedAlert.tableNumber ? t('floorplan:floorPlanPage.viewTable') : t('floorplan:floorPlanPage.viewOrderBtn', { defaultValue: 'View order' })}</button>
         </div>
       )}
 
@@ -1783,8 +1859,23 @@ const FloorPlanPage: React.FC = () => {
               </ZoneChip>
             );
           })}
-          {/* 뷰 칩 — 서버가 가장 많이 보는 Items 를 앞에. 이어서 Takeaway + Walk-in(인접). */}
+          {/* 뷰 칩 순서: 테이블맵(존) → Takeout(주문, 테이블맵과 연계) → Items → Walk-in. */}
           <ChipSeparator />
+          {/* Takeout 뷰 — off-table 주문(테이크아웃/픽업/배달). 테이블맵 바로 뒤. */}
+          <ZoneChip
+            type="button"
+            active={activeView === 'takeaway'}
+            onClick={() => {
+              setActiveView(activeView === 'takeaway' ? 'floor' : 'takeaway');
+              setSelectedTableId(null);
+            }}
+            title={t('floorplan:floorPlanPage.offTableHint', { defaultValue: 'Takeaway / pickup / delivery orders' })}
+          >
+            {enabledOffTableTypes.length === 1
+              ? t(`floorplan:floorPlanPage.type_${enabledOffTableTypes[0]}`, { defaultValue: 'Takeout' })
+              : t('floorplan:floorPlanPage.offTableView', { defaultValue: 'Takeout' })}
+            <ZoneChipCount>{takeawayOrders.length}</ZoneChipCount>
+          </ZoneChip>
           {/* Items 뷰 — 아이템별 서빙 리스트(홀 직원) */}
           <ZoneChip
             type="button"
@@ -1794,18 +1885,6 @@ const FloorPlanPage: React.FC = () => {
           >
             {t('floorplan:floorPlanPage.itemsView', 'Items')}
             <ZoneChipCount>{itemViewActiveCount}</ZoneChipCount>
-          </ZoneChip>
-          <ZoneChip
-            type="button"
-            active={activeView === 'takeaway'}
-            onClick={() => {
-              setActiveView(activeView === 'takeaway' ? 'floor' : 'takeaway');
-              setSelectedTableId(null);
-            }}
-            title={t('floorplan:floorPlanPage.takeawayViewHint', 'View active takeaway orders')}
-          >
-            {t('floorplan:floorPlanPage.takeawayView', 'Takeaway')}
-            <ZoneChipCount>{takeawayOrders.length}</ZoneChipCount>
           </ZoneChip>
           <ZoneChip
             type="button"
@@ -1823,7 +1902,7 @@ const FloorPlanPage: React.FC = () => {
 
       <MainContent>
         {/* Items 뷰는 바닥 전체를 회색으로(흰 카드 또렷) — 박스가 아니라 풀 배경. */}
-        <CanvasWrapper style={activeView === 'items' ? { background: 'var(--pos-menu-bg, #E4E9EF)' } : undefined}>
+        <CanvasWrapper style={(activeView === 'items' || activeView === 'takeaway') ? { background: 'var(--pos-menu-bg, #E4E9EF)' } : undefined}>
           {activeView === 'items' ? (
             <ItemListView
               dineInOrders={applyServeOverrides(Object.entries(tableStatuses).flatMap(([fpti, o]: [string, any]) => {
@@ -1844,7 +1923,8 @@ const FloorPlanPage: React.FC = () => {
               prepTracking={!!operationSettings?.prepTimeTracking}
               prepPerItem={Number(operationSettings?.defaultPreparationTimePerItem) || 10}
               prepThreshold={Number(operationSettings?.prepUrgentThreshold) || 80}
-              audioEnabled={readyAudio}
+              audioEnabled={((operationSettings as any)?.orderSounds?.floorPlan?.enabled !== false) && readyAudio}
+              soundType={(operationSettings as any)?.orderSounds?.floorPlan?.type || 'bell'}
               onServe={handleServeItem}
               onOpenDineIn={handleOpenDineInFromItems}
               onOpenTakeaway={handleOpenTakeawayFromItems}
@@ -1866,6 +1946,43 @@ const FloorPlanPage: React.FC = () => {
             <div style={{
               flex: 1, overflow: 'auto', padding: '4px 0'
             }}>
+              {/* 검색창 — 주문번호 / 고객 / 품목 */}
+              <div style={{ padding: '0 2px 8px' }}>
+                <input
+                  type="text"
+                  value={offTableSearch}
+                  onChange={e => setOffTableSearch(e.target.value)}
+                  placeholder={t('floorplan:floorPlanPage.offTableSearch', { defaultValue: 'Search order #, customer, item' })}
+                  style={{
+                    width: '100%', height: 44, boxSizing: 'border-box', borderRadius: 8,
+                    border: '1px solid var(--pos-border, #C7CED6)', background: 'var(--pos-surface, #fff)',
+                    color: 'var(--pos-text, #0A2540)', fontSize: 14, padding: '0 14px', fontFamily: 'inherit'
+                  }}
+                />
+              </div>
+              {/* 타입 필터 칩 — 매장이 켠 off-table 타입이 2개 이상일 때만 */}
+              {enabledOffTableTypes.length > 1 && (
+                <div style={{ display: 'flex', gap: 6, padding: '0 2px 8px', flexWrap: 'wrap' }}>
+                  {(['all', ...enabledOffTableTypes] as const).map(ft => {
+                    const on = offTableFilter === ft;
+                    const label = ft === 'all'
+                      ? t('floorplan:floorPlanPage.type_all', { defaultValue: 'All' })
+                      : t(`floorplan:floorPlanPage.type_${ft}`, { defaultValue: ft });
+                    const cnt = ft === 'all' ? takeawayOrders.length : takeawayOrders.filter(o => normOffTableType(o) === ft).length;
+                    return (
+                      <button key={ft} type="button" onClick={() => setOffTableFilter(ft as any)}
+                        style={{
+                          fontSize: 12, fontWeight: 600, padding: '5px 11px', borderRadius: 999, cursor: 'pointer',
+                          border: `1px solid ${on ? 'var(--pos-brand, #635BFF)' : '#D7DEE6'}`,
+                          background: on ? 'var(--pos-brand, #635BFF)' : 'var(--pos-surface, #fff)',
+                          color: on ? '#fff' : 'var(--pos-text-muted, #4B5563)'
+                        }}>
+                        {label}{cnt > 0 ? ` ${cnt}` : ''}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
               {takeawayLoading && takeawayOrders.length === 0 ? (
                 <div style={{ padding: 40, textAlign: 'center', color: 'var(--pos-text-muted, #4B5563)' }}>
                   {t('floorplan:floorPlanPage.loading', 'Loading takeaway orders...')}
@@ -1891,15 +2008,23 @@ const FloorPlanPage: React.FC = () => {
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {takeawayOrders.map((o: any) => {
+                  {displayedOffTableOrders.length === 0 && (
+                    <div style={{ padding: 24, textAlign: 'center', fontSize: 12, color: 'var(--pos-text-muted, #8898AA)' }}>
+                      {t('floorplan:floorPlanPage.noTypeOrders', { defaultValue: 'No {{type}} orders right now', type: t(`floorplan:floorPlanPage.type_${offTableFilter}`, { defaultValue: offTableFilter }) })}
+                    </div>
+                  )}
+                  {displayedOffTableOrders.map((o: any) => {
                     const id = o.id;
                     const isSelected = selectedTakeawayOrderId === id;
+                    const oType = normOffTableType(o);
+                    const tc = getOrderTypeColors(oType);
+                    const typeMeta = { label: t(`floorplan:floorPlanPage.type_${oType}`, { defaultValue: oType }), bg: tc.bg, text: tc.text, border: tc.border };
                     const status = (o.status || 'pending').toString();
                     const paymentStatus = (o.payment_status || o.paymentStatus || '').toString();
                     // Single source of status palette — same `ORDER_STATUS_COLORS` that TableNode uses
                     // on the floor canvas. Cards match table colors on the same screen so the user's
                     // mental model is consistent (pending=yellow, preparing=purple, ready=green, etc.).
-                    const palette = ORDER_STATUS_COLORS[status] || ORDER_STATUS_COLORS.pending;
+                    const palette = getTableNodeStatusColors(status); // 솔리드(amber/purple/green/gray)
                     const orderNum = o.order_number || o.orderNumber || `#${id}`;
                     const itemCount = (o.order_items || o.orderItems || []).reduce((s: number, it: any) => s + (parseInt(it.quantity, 10) || 1), 0);
                     const total = parseFloat(o.final_price || o.total_amount || o.total || 0).toFixed(2);
@@ -1917,28 +2042,50 @@ const FloorPlanPage: React.FC = () => {
                         type="button"
                         onClick={() => setSelectedTakeawayOrderId(selectedTakeawayOrderId === id ? null : id)}
                         style={{
-                          textAlign: 'left', width: '100%', background: isSelected ? 'var(--pos-brand-tint, #F0EFFF)' : 'var(--pos-surface, #FFFFFF)',
-                          border: `1px solid ${isSelected ? 'var(--pos-brand, #635BFF)' : '#E6EBF1'}`,
-                          borderLeft: `4px solid ${palette.border}`,
-                          borderRadius: 8, padding: '8px 12px', cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', gap: 12, transition: 'all 0.12s'
+                          // 좌측 6px 솔리드 단계색 라인 = 항상(선택/해제 무관) 표시. border 단축속성과
+                          // 충돌 안 나게 longhand 로 지정(좌측 라인 사라짐 방지).
+                          // 선택 = 같은 솔리드색 '바깥' halo(2px) → 좌측 라인 안 가리고, 글자 밀림 0.
+                          // 표면색 유지 → 고대비·다크 가독성.
+                          textAlign: 'left', width: '100%', background: 'var(--pos-surface, #FFFFFF)',
+                          borderTop: '1px solid var(--pos-border, #E6EBF1)',
+                          borderRight: '1px solid var(--pos-border, #E6EBF1)',
+                          borderBottom: '1px solid var(--pos-border, #E6EBF1)',
+                          borderLeft: `6px solid ${palette.bg}`,
+                          borderRadius: 8, padding: '14px 16px', cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', gap: 14, transition: 'box-shadow 0.12s',
+                          // 선택 = '안쪽' inset 링(스크롤 컨테이너에 안 잘림). 좌측 라인 안 가리고 글자 밀림 0.
+                          boxShadow: isSelected ? `inset 0 0 0 2px ${palette.bg}` : '0 1px 3px rgba(10,37,64,0.06)'
                         }}
                       >
                         {/* 주문번호 + 픽업 + 시각 */}
-                        <div style={{ minWidth: 96, flexShrink: 0 }}>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--pos-text, #0A2540)' }}>{orderNum}{pickupNo ? ` · #${pickupNo}` : ''}</div>
+                        <div style={{ minWidth: 104, flexShrink: 0 }}>
+                          <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--pos-text, #0A2540)' }}>{orderNum}{pickupNo ? ` · #${pickupNo}` : ''}</div>
                           {timeStr && <div style={{ fontSize: 11, color: 'var(--pos-text-muted, #8898AA)' }}>{timeStr}</div>}
                         </div>
+                        {/* 주문타입 배지 (Takeaway/Pickup/Delivery) */}
+                        <div style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.3px', color: typeMeta.text, background: typeMeta.bg, border: `1px solid ${typeMeta.border}`, borderRadius: 6, padding: '2px 7px' }}>{typeMeta.label}</div>
                         {/* 상태 배지 */}
                         <div style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: palette.text, background: palette.bg, border: `1px solid ${palette.border}`, borderRadius: 999, padding: '2px 8px' }}>{status}</div>
-                        {/* 고객 + 품목 미리보기 (가변) */}
+                        {/* 고객 + 픽업시간/배달존 + 품목 미리보기 (가변) */}
                         <div style={{ flex: 1, minWidth: 0 }}>
                           {customerName && <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--pos-text, #0A2540)' }}>{customerName} · </span>}
+                          {(() => {
+                            if (oType === 'pickup' && o.scheduled_pickup_time) {
+                              let pt = ''; try { pt = new Date(o.scheduled_pickup_time).toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', timeZone }); } catch { pt = ''; }
+                              return pt ? <span style={{ fontSize: 11, fontWeight: 700, color: '#2563EB' }}>{t('floorplan:floorPlanPage.pickupAt', { defaultValue: 'Pickup {{t}}', t: pt })} · </span> : null;
+                            }
+                            if (oType === 'delivery') {
+                              let di: any = o.delivery_info; if (typeof di === 'string') { try { di = JSON.parse(di); } catch { di = null; } }
+                              const where = di && (di.zone || di.address || di.city);
+                              return where ? <span style={{ fontSize: 11, fontWeight: 700, color: '#7C3AED' }}>{String(where).slice(0, 28)} · </span> : null;
+                            }
+                            return null;
+                          })()}
                           <span style={{ fontSize: 12, color: 'var(--pos-text-muted, #4B5563)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{itemPreview || `${itemCount} items`}</span>
                         </div>
                         {/* 금액 + 결제 */}
                         <div style={{ flexShrink: 0, textAlign: 'right' }}>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--pos-text, #0A2540)' }}>{currency}{total}</div>
+                          <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--pos-text, #0A2540)' }}>{currency}{total}</div>
                           <div style={{ fontSize: 10, fontWeight: 600, color: paymentStatus === 'paid' ? '#10B981' : '#F59E0B' }}>
                             {paymentStatus === 'paid' ? t('floorplan:floorPlanPage.paid', 'Paid') : t('floorplan:floorPlanPage.unpaid', 'Unpaid')}
                           </div>
@@ -2027,7 +2174,9 @@ const FloorPlanPage: React.FC = () => {
             taxRate: num(o.tax_rate),
             orderCreatedAt: orderTime,
             notes: o.notes ?? null,
-            orderType: 'takeaway',
+            orderType: normOffTableType(o) || 'takeaway',
+            scheduledPickupTime: o.scheduled_pickup_time ?? null,
+            deliveryInfo: (() => { let di: any = o.delivery_info; if (typeof di === 'string') { try { di = JSON.parse(di); } catch { di = null; } } return di || null; })(),
             paymentProof: o.payment_proof ?? null,
           };
           return (

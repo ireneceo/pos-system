@@ -38,7 +38,7 @@ function validateSetGroups(setGroups, opts = {}) {
   // API 에러는 영어로 통일(백엔드 i18n 미들웨어 없음). 사용자 언어 표시는 프론트 setMenu.ts 가 담당.
   setGroups.forEach((g, gi) => {
     const tag = `Slot ${gi + 1}`;
-    if (!g || typeof g.label !== 'string' || !g.label.trim()) errors.push(`${tag}: a slot name is required.`);
+    // 슬롯 이름은 선택사항 — 비어도 통과(주문 화면이 보기 좋게 폴백). Brand 와 동일.
     if (g.type !== 'fixed' && g.type !== 'choice') errors.push(`${tag}: type must be fixed or choice.`);
     const items = Array.isArray(g.items) ? g.items : [];
     if (items.length === 0) errors.push(`${tag}: select at least one component.`);

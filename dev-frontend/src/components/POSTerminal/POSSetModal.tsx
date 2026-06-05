@@ -238,7 +238,7 @@ const POSSetModal: React.FC<Props> = ({ isOpen, product, restaurantId, formatCur
       ) : (
         <>
           <Body>
-            {resolved.map((g: any) => {
+            {resolved.map((g: any, gi: number) => {
               const min = g.min == null ? 1 : g.min;
               const max = g.max == null ? 1 : g.max;
               const chosen = sel[g.id] || [];
@@ -272,16 +272,18 @@ const POSSetModal: React.FC<Props> = ({ isOpen, product, restaurantId, formatCur
               return (
                 <GroupSection key={g.id}>
                   <GroupHead>
-                    <GroupLabel>{g.label || t('menu:setOrder.choose', { defaultValue: 'Choose' })}</GroupLabel>
+                    <GroupLabel>{g.label || t('menu:setOrder.itemN', { defaultValue: 'Item {{n}}', n: gi + 1 })}</GroupLabel>
                     {g.type === 'choice' && (
-                      <ChooseHint>{min === max ? `Choose ${max}` : `Choose ${min}-${max}`}</ChooseHint>
+                      <ChooseHint>{min >= 1
+                        ? t('menu:setOrder.pickRequired', { defaultValue: 'required' })
+                        : t('menu:setOrder.pickOptional', { defaultValue: 'optional' })}{max > 1 ? ` · ${min === max ? `${max}` : `${min}-${max}`}` : ''}</ChooseHint>
                     )}
                   </GroupHead>
                   {g.type === 'fixed'
                     ? (g.items || []).map((it: any) => (
                         <div key={it.product_id}>
                           <FixedRow>
-                            <span>{it.name}{it.qty && it.qty > 1 ? ` ×${it.qty}` : ''}</span>
+                            <span>{it.name}{it.qty && it.qty > 1 ? ` ×${it.qty}` : ''} <span style={{ color: '#6B7C93', fontSize: '12px', fontWeight: 400 }}>({t('menu:setOrder.included', { defaultValue: 'included' })})</span></span>
                             {it.soldOut && <SoldTag>{t('menu:setOrder.soldOut', { defaultValue: 'SOLD OUT' })}</SoldTag>}
                           </FixedRow>
                           {!it.soldOut && renderInherited(it)}

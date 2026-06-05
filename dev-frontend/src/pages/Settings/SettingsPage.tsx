@@ -489,6 +489,10 @@ interface OperationSettings {
     soundEnabled: boolean;
     soundType: 'bell' | 'beep' | 'triple' | 'urgent' | 'melody' | 'deep';
   };
+  orderSounds?: {
+    liveOrders: { enabled: boolean; type: 'bell' | 'beep' | 'triple' | 'urgent' | 'melody' | 'deep' };
+    floorPlan: { enabled: boolean; type: 'bell' | 'beep' | 'triple' | 'urgent' | 'melody' | 'deep' };
+  };
   deliveryPricing: {
     enabled: boolean;
     minimumOrder: number;
@@ -853,6 +857,10 @@ const SettingsPage: React.FC = () => {
           bannerEnabled: true,
           soundEnabled: true,
           soundType: 'bell'
+        },
+        orderSounds: {
+          liveOrders: { enabled: true, type: 'bell' },
+          floorPlan: { enabled: true, type: 'bell' }
         },
         deliveryPricing: {
           enabled: false,
@@ -4655,6 +4663,60 @@ const SettingsPage: React.FC = () => {
                       </div>
                     </FormGroup>
                   )}
+                </SettingsCard>
+
+                {/* 주문 알림음 — 화면별 on/off + 종류. (주방은 주방 스테이션 섹션에서 스테이션별 설정) */}
+                <SettingsCard style={{ gridColumn: '1 / -1' }}>
+                  <CardTitle>{t('settings:settingsPage.orderSounds', 'Order Notification Sounds')}</CardTitle>
+                  <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
+                    {t('settings:settingsPage.orderSoundsHint', 'New-order alert sound per screen. Kitchen station sounds are set per station in the Kitchen Stations section. Each device can still mute locally with its speaker icon.')}
+                  </p>
+                  {(['liveOrders', 'floorPlan'] as const).map((screen) => {
+                    const cur = operationSettings.orderSounds?.[screen] || { enabled: true, type: 'bell' as const };
+                    const screenLabel = screen === 'liveOrders'
+                      ? t('settings:settingsPage.soundLiveOrders', 'Live Orders')
+                      : t('settings:settingsPage.soundFloorPlan', 'Floor Plan (serving / off-table)');
+                    const setScreen = (patch: Partial<{ enabled: boolean; type: any }>) => setOperationSettings(prev => {
+                      const base = prev.orderSounds || { liveOrders: { enabled: true, type: 'bell' }, floorPlan: { enabled: true, type: 'bell' } };
+                      return { ...prev, orderSounds: { ...base, [screen]: { ...base[screen], ...patch } } };
+                    });
+                    return (
+                      <div key={screen} style={{ paddingBottom: '8px', marginBottom: '8px', borderBottom: screen === 'liveOrders' ? '1px solid #EEF1F5' : undefined }}>
+                        <Toggle>
+                          <ToggleLabel>{screenLabel}</ToggleLabel>
+                          <AutoSaveField onSave={handleSave} type="toggle">
+                            <ToggleSwitch>
+                              <ToggleInput type="checkbox" checked={cur.enabled !== false}
+                                onChange={(e) => setScreen({ enabled: e.target.checked })} />
+                              <ToggleSlider />
+                            </ToggleSwitch>
+                          </AutoSaveField>
+                        </Toggle>
+                        {cur.enabled !== false && (
+                          <FormGroup style={{ marginLeft: '16px', marginTop: '6px' }}>
+                            <Label>{t('settings:settingsPage.alertSound', 'Alert sound')}</Label>
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                              <AutoSaveField onSave={handleSave} type="select">
+                                <Select value={cur.type || 'bell'} onChange={(e) => setScreen({ type: e.target.value as any })} style={{ flex: 1, maxWidth: '240px' }}>
+                                  <option value="bell">Bell</option>
+                                  <option value="beep">Double Beep</option>
+                                  <option value="triple">Triple</option>
+                                  <option value="urgent">Urgent</option>
+                                  <option value="melody">Melody</option>
+                                  <option value="deep">Deep</option>
+                                </Select>
+                              </AutoSaveField>
+                              <button type="button"
+                                onClick={async () => { const { playPresetSound } = await import('../../utils/notificationSound'); playPresetSound((cur.type || 'bell') as any, 0.8); }}
+                                style={{ padding: '8px 14px', background: '#EEF2FF', color: '#635BFF', border: '1px solid #C7D2FE', borderRadius: '6px', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>
+                                {t('settings:settingsPage.testSound', 'Test sound')}
+                              </button>
+                            </div>
+                          </FormGroup>
+                        )}
+                      </div>
+                    );
+                  })}
                 </SettingsCard>
 
                 <SettingsCard style={{ gridColumn: '1 / -1', borderLeft: mobileSettings.pause_ordering ? '4px solid #DC2626' : undefined }}>

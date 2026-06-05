@@ -833,6 +833,8 @@ const MenuManagementPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('newest');
   const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
+  // 세트 모달 내부 인라인 에러 (팝업 위 팝업 금지 — 모달 안에서 바로 표시)
+  const [setMenuError, setSetMenuError] = useState<string>('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItemType | null>(null);
@@ -1069,6 +1071,7 @@ const MenuManagementPage: React.FC = () => {
     setSelectedOptionGroups([]);
     setSetMenuItems([]);
     setSetGroups([]);
+    setSetMenuError("");
     setShowSetMenuModal(true);
   };
 
@@ -1112,6 +1115,7 @@ const MenuManagementPage: React.FC = () => {
 
     // Open appropriate modal based on item type
     if (item.is_set_menu) {
+      setSetMenuError("");
       setShowSetMenuModal(true);
     } else {
       setShowEditModal(true);
@@ -1303,25 +1307,19 @@ const MenuManagementPage: React.FC = () => {
   };
 
   const handleSaveSetMenu = () => {
-    // 슬롯 이름을 안 적어도 등록되게 — 빈 라벨은 자동 이름(편집 가능). 매장이 슬롯명을
-    // 일일이 안 적어도 세트가 만들어진다(업계 표준). 적은 라벨은 그대로 유지.
-    const labeledGroups = setGroups.map((g, i) => ({
-      ...g,
-      label: (g.label && String(g.label).trim())
-        ? g.label
-        : (g.type === 'choice'
-            ? t('menu:setBuilder.choiceDefault', { defaultValue: 'Choice {{n}}', n: i + 1 })
-            : t('menu:setBuilder.fixedDefault', { defaultValue: 'Item {{n}}', n: i + 1 }))
-    }));
-    // set_groups 검증 (택1 min/max, 활성 단품, 세트 중첩 금지)
+    setSetMenuError('');
+    // 슬롯 이름은 선택 — 안 적으면 빈 값으로 저장(주문 화면이 "Choose" + 개수 힌트로 표시).
+    // 억지 generic 이름("Choice 1") 금지. 적은 라벨만 trim 해서 유지.
+    const cleanGroups = setGroups.map(g => ({ ...g, label: (g.label || '').trim() }));
+    // set_groups 검증 (택1 min/max, 활성 단품, 세트 중첩 금지 — 슬롯명은 검증 안 함)
     const validProductIds = new Set(menuItems.filter(m => !m.is_set_menu).map(m => Number(m.id)));
-    const { valid, errors } = validateSetGroups(labeledGroups, validProductIds, t);
+    const { valid, errors } = validateSetGroups(cleanGroups, validProductIds, t);
     if (!valid) {
-      setInfoModal({ open: true, title: t('menu:menuManagement.setMenuRequiredTitle', 'Set Menu Validation'), message: errors[0] });
+      setSetMenuError(errors[0]);
       return;
     }
 
-    if (!formData.category) return;
+    if (!formData.category) { setSetMenuError(t('menu:menuManagementPage.categoryRequired', { defaultValue: 'Please select a category.' })); return; }
     const newSetMenu: any = {
       id: editingItem?.id || `item-${Date.now()}`,
       code: formData.code || '',
@@ -1334,7 +1332,7 @@ const MenuManagementPage: React.FC = () => {
       optionGroups: selectedOptionGroups,
       soldOut: false,
       is_set_menu: true,
-      set_groups: labeledGroups,
+      set_groups: cleanGroups,
       set_items: null,  // v2 로 전환 — set_groups 가 단일 소스
       set_display_order: formData.set_display_order || 0,
       after_meal: formData.after_meal || false,
@@ -1353,12 +1351,14 @@ const MenuManagementPage: React.FC = () => {
         setEditingItem(null);
         setSetMenuItems([]);
         setSetGroups([]);
+        setSetMenuError('');
       } catch (err: any) {
-        setInfoModal({
-          open: true,
-          title: t('menu:menuManagement.setMenuRequiredTitle', 'Set Menu Validation'),
-          message: err?.message || t('menu:menuManagementPage.saveFailed', { defaultValue: 'Could not save. Please try again.' })
-        });
+        // 백엔드가 친절한 문구를 주지만, 혹시 날 메시지가 와도 SQL/FK 흔적은 가린다.
+        let msg = err?.message || t('menu:menuManagementPage.saveFailed', { defaultValue: 'Could not save. Please try again.' });
+        if (/foreign key|constraint|SQL|Sequelize/i.test(msg)) {
+          msg = t('menu:menuManagementPage.saveFailed', { defaultValue: 'Could not save. Please try again.' });
+        }
+        setSetMenuError(msg);
       }
     })();
   };
@@ -2157,10 +2157,20 @@ const MenuManagementPage: React.FC = () => {
           size="large"
           footer={
             <>
+              {setMenuError && (
+                <div style={{
+                  flex: '1 1 100%', order: -1, marginBottom: '8px', padding: '10px 14px',
+                  background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: '8px',
+                  color: '#B91C1C', fontSize: '13px', lineHeight: 1.4
+                }}>
+                  {setMenuError}
+                </div>
+              )}
               <UIButton variant="secondary" onClick={() => {
                 setShowSetMenuModal(false);
                 setEditingItem(null);
                 setSetMenuItems([]);
+                setSetMenuError('');
               }}>
                 Cancel
               </UIButton>

@@ -25,7 +25,7 @@ const OPERATION_SETTINGS_ALLOWED_KEYS = new Set([
   'cashRounding', 'roundingApplyTo', 'pagerSystem', 'takeawayPricing',
   'deliveryPricing', 'loyaltyTiers', 'orderTypes', 'pickupSettings',
   'takeawaySettings', 'allowQuickOrder', 'breakTimes', 'mobileOrderProcessing',
-  'mobileOrderAlerts', 'requirePaymentBeforeKitchen', 'checkout_display'
+  'mobileOrderAlerts', 'requirePaymentBeforeKitchen', 'checkout_display', 'orderSounds'
 ]);
 
 function parseJsonSafe(v) {

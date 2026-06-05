@@ -9,11 +9,14 @@ import { useTranslation } from 'react-i18next';
 
 export type ItemDisplayStatus = 'queued' | 'cooking' | 'ready' | 'served';
 
+// 단계색 = 전 화면 단일 소스(orderItemStatus)와 동일하게 정렬. 기존엔 조리중이 황색으로
+// 갈라져 있어 LiveOrders 상세만 다르게 보였음(2026-06-05 통일). 대기=노랑/조리중=파랑/준비=초록.
+// 단일 팔레트(Irene 확정 2026-06-05): 대기=amber/조리=purple/준비=green/서빙=gray.
 const STATUS_TOKEN: Record<ItemDisplayStatus, { bg: string; text: string; border: string; dot: string }> = {
-  queued:  { bg: '#F3F4F6', text: '#6B7280', border: '#E5E7EB', dot: '#9CA3AF' },
-  cooking: { bg: '#FEF3C7', text: '#92400E', border: '#FCD34D', dot: '#F59E0B' },
-  ready:   { bg: '#ECFDF5', text: '#047857', border: '#6EE7B7', dot: '#10B981' },
-  served:  { bg: '#059669', text: '#FFFFFF', border: '#047857', dot: '#FFFFFF' },
+  queued:  { bg: '#FEF3C7', text: '#B45309', border: '#F59E0B', dot: '#F59E0B' },
+  cooking: { bg: '#EDEBFF', text: '#4F46E5', border: '#635BFF', dot: '#635BFF' },
+  ready:   { bg: '#D1FAE5', text: '#047857', border: '#10B981', dot: '#10B981' },
+  served:  { bg: '#6B7280', text: '#FFFFFF', border: '#4B5563', dot: '#FFFFFF' },
 };
 
 /** raw order_item.status → 표시 토큰. 'completed' 는 레거시 데이터 = served 동일 처리. */

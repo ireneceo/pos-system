@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
-import { FloorTable, TableStatusInfo, ORDER_STATUS_COLORS } from './types';
+import { FloorTable, TableStatusInfo, ORDER_STATUS_COLORS, getOrderStatusColors } from './types';
 import { ItemStatusPill, toDisplayStatus } from './orderItemStatus';
+import { getPosTheme } from '../../styles/posDisplayTheme';
 import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import { formatPaymentDisplay } from '../../constants';
 import { useStore } from '../../contexts/StoreContext';
@@ -757,7 +758,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
   const showServedCheckbox = ['pending', 'preparing', 'ready', 'served'].includes(orderStatus);
 
   const statusColors = isOccupied && ORDER_STATUS_COLORS[orderStatus]
-    ? ORDER_STATUS_COLORS[orderStatus]
+    ? getOrderStatusColors(orderStatus)
     : { bg: '#F1F4F8', text: '#6B7280', border: '#6B7280' };
 
   const paymentStatusColors = (() => {
@@ -1712,6 +1713,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                                   <ItemRow key={ci} $completed={cServed && showServedCheckbox} style={{ paddingLeft: 14 }}>
                                     {showServedCheckbox && (
                                       <ItemStatusPill
+                                        $theme={getPosTheme()}
                                         $status={cds} $clickable={clickable}
                                         onClick={() => clickable && handleToggleItemServed(originalIndex, ci)}
                                         disabled={loading || !clickable} aria-pressed={cServed}
@@ -1736,6 +1738,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                           <ItemRow key={originalIndex} $completed={isServed && showServedCheckbox}>
                             {showServedCheckbox && (
                               <ItemStatusPill
+                                $theme={getPosTheme()}
                                 $status={displayStatus}
                                 $clickable={clickable}
                                 onClick={() => clickable && handleToggleItemServed(originalIndex)}

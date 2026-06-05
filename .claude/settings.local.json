@@ -519,7 +519,14 @@
       "Bash(pm2 restart *)",
       "Bash(sed -n '1058,1075p' src/pages/MenuManagement/MenuManagementPage.tsx)",
       "Bash(sed -n '2130,2240p' src/pages/MenuManagement/MenuManagementPage.tsx)",
-      "Bash(echo \"BUILD EXIT $?\")"
+      "Bash(echo \"BUILD EXIT $?\")",
+      "Bash(sed -n '1990,2000p' src/pages/MenuManagement/MenuManagementPage.tsx)",
+      "Bash(sed -n '1743,1752p' src/pages/MenuManagement/MenuManagementPage.tsx)",
+      "Bash(awk 'NR>=460 && NR<=487' routes/menu.js)",
+      "Bash(sed -n '487,500p' routes/menu.js)",
+      "Bash(awk 'NR>=540 && NR<=595' routes/menu.js)",
+      "Bash(awk 'NR>=487 && NR<=680 && /} catch \\\\\\(error\\\\\\)/{print NR\": \"$0; getline; print NR\": \"$0}' routes/menu.js)",
+      "Bash(perl -0pi -e 's/\\(    setShowSetMenuModal\\\\\\(true\\\\\\);\\)/    setSetMenuError\\(\"\"\\);\\\\n$1/g' src/pages/MenuManagement/MenuManagementPage.tsx)"
     ],
     "deny": [],
     "ask": []

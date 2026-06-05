@@ -61,6 +61,11 @@ interface OperationSettings {
     soundEnabled: boolean;
     soundType: 'bell' | 'beep' | 'triple' | 'urgent' | 'melody' | 'deep';
   };
+  // 화면별 주문 알림음(종류·on/off) — docs/ORDER_SOUND_SYSTEM.md. 주방은 스테이션 alert_sound 별도.
+  orderSounds: {
+    liveOrders: { enabled: boolean; type: 'bell' | 'beep' | 'triple' | 'urgent' | 'melody' | 'deep' };
+    floorPlan: { enabled: boolean; type: 'bell' | 'beep' | 'triple' | 'urgent' | 'melody' | 'deep' };
+  };
   deliveryPricing: {
     enabled: boolean;
     minimumOrder: number;
@@ -140,6 +145,10 @@ const defaultOperationSettings: OperationSettings = {
     bannerEnabled: true,
     soundEnabled: true,
     soundType: 'bell'
+  },
+  orderSounds: {
+    liveOrders: { enabled: true, type: 'bell' },
+    floorPlan: { enabled: true, type: 'bell' }
   },
   deliveryPricing: {
     enabled: false,

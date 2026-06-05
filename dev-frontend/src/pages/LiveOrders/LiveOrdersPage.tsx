@@ -91,7 +91,12 @@ const LiveOrdersPage: React.FC = () => {
   const [receiptSettings, setReceiptSettings] = useState<{ receiptLogo: string; footerMessage: string; showMembership: boolean; customQrImage: string; customQrText: string; customQrPosition: string }>({ receiptLogo: '', footerMessage: '', showMembership: false, customQrImage: '', customQrText: '', customQrPosition: 'back' });
   const [paymentMethods, setPaymentMethods] = useState<any>(null);
   const [timeDisplayKey, setTimeDisplayKey] = useState(0); // Time display update key
-  const [audioEnabled, setAudioEnabled] = useState(() => localStorage.getItem('sound_enabled') !== 'false');
+  // 사운드: 기기별 mute 키는 Live Orders 전용(KDS 와 분리 — 더 이상 공유 안 함).
+  // 종류·매장단위 on/off 는 Settings(operation_settings.orderSounds.liveOrders).
+  const [localSoundOn, setLocalSoundOn] = useState(() => localStorage.getItem('liveorders_sound_enabled') !== 'false');
+  const _liveSound = operationSettings?.orderSounds?.liveOrders;
+  const liveSoundType = (_liveSound?.type || 'bell') as any;
+  const audioEnabled = (_liveSound?.enabled !== false) && localSoundOn;
 
   // Membership settings (used by PaymentModal for membership info display)
   const [membershipSettings, setMembershipSettings] = useState<any>(null);
@@ -156,9 +161,9 @@ const LiveOrdersPage: React.FC = () => {
   const playNotificationSound = useCallback(() => {
     if (!audioEnabled) return;
     import('../../utils/notificationSound').then(({ startRepeatingSound }) => {
-      startRepeatingSound('bell', 3000);
+      startRepeatingSound(liveSoundType, 3000);
     });
-  }, [audioEnabled]);
+  }, [audioEnabled, liveSoundType]);
 
   const stopSound = useCallback(() => {
     import('../../utils/notificationSound').then(({ stopRepeatingSound }) => {
@@ -1622,7 +1627,7 @@ const LiveOrdersPage: React.FC = () => {
           )}
           <AudioToggleButton
             enabled={audioEnabled}
-            onClick={() => { setAudioEnabled(prev => { const next = !prev; localStorage.setItem('sound_enabled', String(next)); return next; }); }}
+            onClick={() => { setLocalSoundOn(prev => { const next = !prev; localStorage.setItem('liveorders_sound_enabled', String(next)); return next; }); }}
             title={audioEnabled ? 'Sound ON' : 'Sound OFF'}
           >
             <img src={audioEnabled ? '/speaker-on.svg' : '/speaker-off.svg'} alt={audioEnabled ? 'Sound ON' : 'Sound OFF'} />

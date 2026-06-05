@@ -690,7 +690,8 @@ const KitchenDisplayPage: React.FC = () => {
   const [preparingBatches, setPreparingBatches] = useState<PreparingBatch[]>([]);
 
   // ─── Sound toggle ───
-  const [audioEnabled, setAudioEnabled] = useState(() => localStorage.getItem('sound_enabled') !== 'false');
+  // 사운드 mute 키 = KDS 전용(Live Orders 와 분리 — 더 이상 'sound_enabled' 공유 안 함). 종류=스테이션 alert_sound.
+  const [audioEnabled, setAudioEnabled] = useState(() => localStorage.getItem('kds_sound_enabled') !== 'false');
 
   // ─── Kitchen Station Filter ───
   const [kitchenStations, setKitchenStations] = useState<Array<{ id: number; name: string; alert_sound?: string }>>([]);
@@ -2117,14 +2118,8 @@ const KitchenDisplayPage: React.FC = () => {
                       {renderItemName(item.name)} {item.quantity > 1 && <ItemQty highlight done={isItemDoneForColumn(cardStatus, item.status || 'pending') && cardStatus !== 'pending'}>x {item.quantity}</ItemQty>}
                     </ItemName>
                   )}
-                  {/* 세트 구성품(B) — 주방이 만들 항목 + 각 구성품 선택옵션. (set_components 우선, 레거시 set_items 폴백) */}
-                  {item.is_set_menu && Array.isArray((item as any).set_components) && (item as any).set_components.length > 0 && (
-                    <div style={{ fontSize: '11px', color: '#4B5563', margin: '2px 0 0', paddingLeft: '8px' }}>
-                      {(item as any).set_components.map((c: any, ci: number) => (
-                        <div key={ci}>› {c?.name}{Array.isArray(c?.options) && c.options.length ? ` (${c.options.join(', ')})` : ''}</div>
-                      ))}
-                    </div>
-                  )}
+                  {/* 세트 구성품은 아래 SetItemRow(액션 가능 행)에서 옵션과 함께 1번만 표시.
+                      여기서 별도 요약 리스트를 또 그리면 '2번 중복' → 제거(2026-06-05). */}
                   {(() => {
                     const regularOptions = item.options?.filter(opt => !/^.+\sx\d+$/.test(opt)) || [];
                     if (regularOptions.length === 0 && !item.special_instructions) return null;
@@ -2186,9 +2181,19 @@ const KitchenDisplayPage: React.FC = () => {
                 <SetItemsWrap>
                   {(selectedStation === 'all' ? item.set_items : item.set_items.filter(si => isItemInSelectedStation(si.name))).map((setItem) => (
                     <SetItemRow key={setItem.id} done={isItemDoneForColumn(cardStatus, setItem.status || 'pending') && cardStatus !== 'pending'}>
-                      <SetItemName done={isItemDoneForColumn(cardStatus, setItem.status || 'pending') && cardStatus !== 'pending'}>
-                        {renderItemName(setItem.name)} {setItem.quantity > 1 && <ItemQty highlight done={isItemDoneForColumn(cardStatus, setItem.status || 'pending') && cardStatus !== 'pending'}>x {setItem.quantity}</ItemQty>}
-                      </SetItemName>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <SetItemName done={isItemDoneForColumn(cardStatus, setItem.status || 'pending') && cardStatus !== 'pending'}>
+                          {renderItemName(setItem.name)} {setItem.quantity > 1 && <ItemQty highlight done={isItemDoneForColumn(cardStatus, setItem.status || 'pending') && cardStatus !== 'pending'}>x {setItem.quantity}</ItemQty>}
+                        </SetItemName>
+                        {/* 구성품별 선택 옵션 — 오더티켓과 동일하게 1번만, 이름 아래 표시 */}
+                        {Array.isArray((setItem as any).options) && (setItem as any).options.filter((o: string) => !/^.+\sx\d+$/.test(o)).length > 0 && (
+                          <OptionTags>
+                            {(setItem as any).options.filter((o: string) => !/^.+\sx\d+$/.test(o)).map((option: string, idx: number) => (
+                              <OptionTag key={idx} done={isItemDoneForColumn(cardStatus, setItem.status || 'pending') && cardStatus !== 'pending'}>{option}</OptionTag>
+                            ))}
+                          </OptionTags>
+                        )}
+                      </div>
                       <ItemActionButton
                         done={isItemDoneForColumn(cardStatus, setItem.status || 'pending')}
                         statusColor={statusColor}
@@ -3187,7 +3192,7 @@ const KitchenDisplayPage: React.FC = () => {
 
           {/* 5) Sound toggle */}
           <button
-            onClick={() => { setAudioEnabled(prev => { const next = !prev; localStorage.setItem('sound_enabled', String(next)); return next; }); }}
+            onClick={() => { setAudioEnabled(prev => { const next = !prev; localStorage.setItem('kds_sound_enabled', String(next)); return next; }); }}
             title={audioEnabled ? 'Sound ON' : 'Sound OFF'}
             style={{
               width: 36, height: 36, borderRadius: 8, border: 'none', cursor: 'pointer',

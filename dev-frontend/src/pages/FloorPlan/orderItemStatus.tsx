@@ -7,13 +7,44 @@ import styled from 'styled-components';
  */
 export type ItemDisplayStatus = 'queued' | 'cooking' | 'ready' | 'served';
 
-// 색상 = Kitchen Display(KDS)와 동일: 대기=노랑 / 조리중=파랑 / 준비됨=초록 / 서빙됨=진초록.
-export const STATUS_TOKEN: Record<ItemDisplayStatus, { bg: string; text: string; border: string; dot: string }> = {
-  queued:   { bg: '#FFF7ED', text: '#D97706', border: '#FBBF24', dot: '#FBBF24' },
-  cooking:  { bg: '#EFF6FF', text: '#2563EB', border: '#60A5FA', dot: '#60A5FA' },
-  ready:    { bg: '#ECFDF5', text: '#059669', border: '#34D399', dot: '#34D399' },
-  served:   { bg: '#059669', text: '#FFFFFF', border: '#047857', dot: '#FFFFFF' },
+// 아이템 단계색 단일 소스(테마 인식). 대기=노랑 / 조리중=파랑 / 준비됨=초록 / 서빙됨=진초록.
+// 라이트=기존 파스텔(변경 금지), 고대비·다크=채도 높은 진한 칠 + 흰 글자(테이블맵과 동일 철학).
+type ItemToken = { bg: string; text: string; border: string; dot: string };
+const ITEM_TOKENS: Record<'light' | 'contrast' | 'dark', Record<ItemDisplayStatus, ItemToken>> = {
+  // 우측 패널 등 작은 pill = 기존 파스텔 그대로(변경 금지).
+  light: {
+    queued:   { bg: '#FFF7ED', text: '#D97706', border: '#FBBF24', dot: '#FBBF24' },
+    cooking:  { bg: '#EFF6FF', text: '#2563EB', border: '#60A5FA', dot: '#60A5FA' },
+    ready:    { bg: '#ECFDF5', text: '#059669', border: '#34D399', dot: '#34D399' },
+    served:   { bg: '#059669', text: '#FFFFFF', border: '#047857', dot: '#FFFFFF' },
+  },
+  contrast: {
+    queued:   { bg: '#D97706', text: '#FFFFFF', border: '#92400E', dot: '#FFFFFF' },
+    cooking:  { bg: '#2563EB', text: '#FFFFFF', border: '#1E40AF', dot: '#FFFFFF' },
+    ready:    { bg: '#16A34A', text: '#FFFFFF', border: '#14532D', dot: '#FFFFFF' },
+    served:   { bg: '#047857', text: '#FFFFFF', border: '#064E3B', dot: '#FFFFFF' },
+  },
+  dark: {
+    queued:   { bg: '#B45309', text: '#FFFFFF', border: '#FBBF24', dot: '#FBBF24' },
+    cooking:  { bg: '#1D4ED8', text: '#FFFFFF', border: '#60A5FA', dot: '#60A5FA' },
+    ready:    { bg: '#15803D', text: '#FFFFFF', border: '#4ADE80', dot: '#4ADE80' },
+    served:   { bg: '#065F46', text: '#FFFFFF', border: '#34D399', dot: '#FFFFFF' },
+  },
 };
+// 백워드 호환(기존 import 처). 라이트 토큰.
+export const STATUS_TOKEN = ITEM_TOKENS.light;
+
+// 솔리드(꽉 찬) 팔레트 — 아이템 리스트 좌측 큰 버튼($lg) + 카드 보더용. 액션버튼색 기준:
+// 대기=amber / 조리=purple / 준비=green / 서빙=gray. 솔리드 채움 + 흰 글자.
+export const ITEM_SOLID: Record<ItemDisplayStatus, ItemToken> = {
+  queued:   { bg: '#F59E0B', text: '#FFFFFF', border: '#D97706', dot: '#FFFFFF' },
+  cooking:  { bg: '#635BFF', text: '#FFFFFF', border: '#4F46E5', dot: '#FFFFFF' },
+  ready:    { bg: '#10B981', text: '#FFFFFF', border: '#059669', dot: '#FFFFFF' },
+  served:   { bg: '#6B7280', text: '#FFFFFF', border: '#4B5563', dot: '#FFFFFF' },
+};
+export function getItemStageColors(status: ItemDisplayStatus): ItemToken {
+  return ITEM_TOKENS.light[status];
+}
 
 export const toDisplayStatus = (itemStatus?: string): ItemDisplayStatus => {
   switch (itemStatus) {
@@ -30,7 +61,7 @@ export const toDisplayStatus = (itemStatus?: string): ItemDisplayStatus => {
   }
 };
 
-export const ItemStatusPill = styled.button<{ $status: ItemDisplayStatus; $clickable: boolean; $lg?: boolean }>`
+export const ItemStatusPill = styled.button<{ $status: ItemDisplayStatus; $clickable: boolean; $lg?: boolean; $theme?: 'light' | 'contrast' | 'dark' }>`
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -42,9 +73,9 @@ export const ItemStatusPill = styled.button<{ $status: ItemDisplayStatus; $click
   font-weight: ${p => p.$lg ? 800 : 700};
   letter-spacing: 0.3px;
   text-transform: uppercase;
-  border: 1px solid ${p => STATUS_TOKEN[p.$status].border};
-  background: ${p => STATUS_TOKEN[p.$status].bg};
-  color: ${p => STATUS_TOKEN[p.$status].text};
+  border: 1px solid ${p => (p.$lg ? ITEM_SOLID : ITEM_TOKENS.light)[p.$status].border};
+  background: ${p => (p.$lg ? ITEM_SOLID : ITEM_TOKENS.light)[p.$status].bg};
+  color: ${p => (p.$lg ? ITEM_SOLID : ITEM_TOKENS.light)[p.$status].text};
   cursor: ${p => p.$clickable ? 'pointer' : 'default'};
   transition: filter 0.15s, transform 0.1s, box-shadow 0.15s;
   white-space: ${p => p.$lg ? 'normal' : 'nowrap'};
@@ -63,14 +94,14 @@ export const ItemStatusPill = styled.button<{ $status: ItemDisplayStatus; $click
     width: ${p => p.$lg ? '9px' : '6px'};
     height: ${p => p.$lg ? '9px' : '6px'};
     border-radius: 50%;
-    background: ${p => STATUS_TOKEN[p.$status].dot};
+    background: ${p => (p.$lg ? ITEM_SOLID : ITEM_TOKENS.light)[p.$status].dot};
     flex-shrink: 0;
   }
 
   &:hover {
     ${p => p.$clickable && `
       filter: brightness(0.96);
-      box-shadow: 0 0 0 3px ${STATUS_TOKEN[p.$status].border}55;
+      box-shadow: 0 0 0 3px ${(p.$lg ? ITEM_SOLID : ITEM_TOKENS.light)[p.$status].border}55;
     `}
   }
   &:active {
@@ -78,7 +109,7 @@ export const ItemStatusPill = styled.button<{ $status: ItemDisplayStatus; $click
   }
   &:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 3px ${p => STATUS_TOKEN[p.$status].border}aa;
+    box-shadow: 0 0 0 3px ${p => (p.$lg ? ITEM_SOLID : ITEM_TOKENS.light)[p.$status].border}aa;
   }
   &:disabled { cursor: default; }
 

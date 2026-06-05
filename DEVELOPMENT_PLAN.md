@@ -1,6 +1,42 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-04 (운영 배포 다회 — 인쇄/세트 캡처 대수정 마라톤. 버전 미상승(핫픽스 성격). 실프린터 눈확인 현장 몫.)
+> **최종 업데이트:** 2026-06-05 (DEV — 세트 주문 파이프라인 수정 + Floor Plan Off-table 통합뷰 + 단계색 통일 + 주문 알림음 체계. 미배포·실화면 눈확인 대기.)
+
+## ✅ 완료(DEV, 미배포): 세트 파이프라인 + Off-table 뷰 + 색상 통일 + 알림음 (2026-06-05)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 세트 i18n | 세트 검증문구 영어판 한글노출 제거(frontend t-주입 / backend 영어) | ✅ |
+| 세트 등록 무음실패 | 카테고리 FK(드롭다운이 id 전송→name 정규화) + addMenuItem 에러 가시화 + 인라인 표시 | ✅ |
+| 세트 슬롯명 선택화 | 슬롯명 필수 폐기, 빈 슬롯 주문화면 "Item N (선택 필수)" 폴백 | ✅ |
+| 세트 주문 렌더 | OrderContext set_components 누락 수정(POS=mobile 동일) → FloorPlan·KDS 폭발/옵션소실 해결 | ✅ |
+| KDS 세트 중복 | 구성품 2번 표시 제거 + 액션행에 옵션 표시(1번만) | ✅ |
+| Off-table 통합뷰 | Floor Plan Takeout 뷰=테이크아웃+픽업+배달, 타입배지/필터/검색, 배너→우측패널 라우팅, off-table 새주문 배너 | ✅ |
+| Off-table 아이템리스트 | ?view=items 에 픽업/배달 타입 표시 + 타입색 loc 배지 | ✅ |
+| SearchableSelect 통일 | 아이템리스트 필터 셀렉트화, 화살표 박스내 고정, 선택값 진하게, 기본값 회색 placeholder | ✅ |
+| 색상 통일 | 테이블맵 박스 + 아이템 리스트 버튼 = 솔리드(amber/purple/green/gray), 우측패널 기존 유지 | ✅ |
+| 주문 알림음 체계 | 키 분리(liveorders/kds/floorplan), Floor Plan 새주문음 추가, Settings 화면별 종류/on-off | ✅ |
+| 스탭 ID 매장 네임스페이스 | r{rid}:id 저장·화면 strip, 매장별 재사용, PIN전환 (이전 세션분 포함) | ✅ |
+
+### 수정/추가된 파일
+- `dev-frontend/src/pages/FloorPlan/{FloorPlanPage,ItemListView,TableDetailPanel,TableNode,orderItemStatus,types}.tsx`
+- `dev-frontend/src/contexts/{OrderContext,MenuContext,StoreContext}.tsx`
+- `dev-frontend/src/pages/{MenuManagement/MenuManagementPage,Settings/SettingsPage,LiveOrders/LiveOrdersPage,KitchenDisplay/KitchenDisplayPage}.tsx`
+- `dev-frontend/src/components/{Common/SearchableSelect,Order/ItemServeChip,POSTerminal/POSSetModal}.tsx`, `mobile/components/MobileSetOrder.tsx`
+- `dev-frontend/src/utils/setMenu.ts`
+- `dev-backend/{routes/menu.js, utils/setMenu.js, utils/settingsGuard.js}`
+- 로케일 en/ko/zh/ms: floorplan/menu/settings.json
+- `docs/{FLOORPLAN_OFFTABLE_ORDERS, ORDER_SOUND_SYSTEM, PREP_TIME_TRACKING, STAFF_ACCESS_AND_IDENTITY_DESIGN}.md`
+
+### ⚠️ 실화면 눈확인 대기 (다음 세션)
+- 세트 주문 → 주방 티켓/KDS 구성품+옵션 정상(실프린터)
+- Off-table 뷰 픽업/배달 + 배너 라우팅
+- 색상 통일(테이블맵/아이템 솔리드) + 카드 선택 디자인
+- 주문 알림음(Floor Plan 새주문음, Settings 종류)
+
+---
 
 ## ✅ 완료(운영 배포 2026-06-04, 다회): 인쇄 파이프라인 + POS 세트 캡처 대수정
 

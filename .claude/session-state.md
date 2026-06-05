@@ -1,40 +1,38 @@
 # Purple POS — 개발 세션 상태
 
-<!-- AUTOSAVE-STALE-BANNER -->
-> **[AUTO-SAVE STALE] (2026-06-05 05:35, idle 1839s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
-> 변경된 작업 파일: menu.js,setMenu.js menu.json,menu.json menu.json,menu.json SetMenuBuilder.tsx,MenuContext.tsx OrderContext.tsx,MenuManagementPage.tsx setMenu.ts
-<!-- /AUTOSAVE-STALE-BANNER -->
-
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-06-04
-**버전:** v3.46 운영 (이번 세션 인쇄/세트 핫픽스 다회 배포 — 버전 미상승, Irene 결정 보류)
-**작업 상태:** 완료 (운영 배포 다회 — 인쇄 파이프라인 + POS 세트 캡처 대수정)
+**마지막 업데이트:** 2026-06-05
+**버전:** v3.46 (운영 배포 기준 — /배포 시에만 갱신)
+**작업 상태:** 완료 (DEV, 미배포 — 실화면 눈확인 대기)
 
 ### 진행 중인 작업
 - 없음
 
-### 완료된 작업 (이번 세션, 2026-06-04 — 전부 운영 배포)
-- **POS 세트 캡처 근본수정:** `isV2Set`가 메뉴 LIST set_groups 유무 게이트(lazy 로드/머지 dedup 누락 시 레거시 전체확장) → **세트면 무조건 POSSetModal 개방**(모달이 `/api/menu/product/:id` set_groups_resolved 직접 fetch). 고른 구성품+옵션만 정확 저장(모바일 동등, 한국녹차 포함). 백엔드는 올바른 payload면 그대로 저장 검증됨.
-- **인쇄 단일소스화:** 새 주문 POS 직접인쇄(장바구니) 제거 → poller 단일(백엔드 enriched=테이블이동과 동일). 2장중복/내용차이/SET5만 해소. + cross-realm poke(storage 이벤트)로 인쇄기기 즉시 발행(첫 티켓 지연 해소).
-- **스테이션 발행 누락 근본수정:** `sendToRawBTPrinter`가 sendHTMLViaQZTray 실패(false) 삼키고 true 반환 → 마지막 스테이션 누락. 실제 결과 반환 + 실패 시 카운터 폴백 + POS 배너.
-- **수동 오더티켓 통일:** LiveOrders(3)+FloorPlan(2) 재발행 printOrderTicketToBillPrinter → printKitchenTicketViaRawBT enriched.
-- **취소표 폰트/줄긋기:** OS드라이버엔 HTML pixel(같은 폰트+line-through), LAN IP만 raw.
-- **자동/수동 발행 정의 + 백로그 컷오프:** PRINT_RULES_MATRIX §8.7. autoPrint OFF→ON 폭주 차단(kitchenAutoPrintEnabledAt 이전 주문 skip).
-- **KDS 취소/이동 팝업:** printed 게이트 제거(autoPrint OFF여도 station 탭 필터로 팝업). 이동도 autoPrint 준수(Send/Resend).
-- **스테이션명 1번:** 자동발행 상단 박스 억제(groupLabel 헤더 1개=테이블이동 동일).
-- **모바일 테이크웨이 테이블 보존** / **자동 업데이트 하드닝(60초 SW update + controllerchange 리로드)**.
-- (별건) 직원 무이메일: 운영 DB `users.email` NOT NULL→NULL ALTER.
+### 완료된 작업 (이번 세션)
+- 세트 i18n: 세트 검증문구 영어판 한글노출 제거(frontend t-주입 / backend 영어)
+- 세트 등록 무음실패 수정: 카테고리 FK(드롭다운 id→name 정규화, normalizeCategoryToName) + addMenuItem 에러 가시화 + 인라인 표시(스택팝업 제거) + cleanDbError(SQL 노출 제거)
+- 세트 슬롯명 선택화: 슬롯명 필수 폐기, 빈 슬롯 주문화면 "Item N (선택 필수)" 폴백
+- 세트 주문 렌더 폭발 수정: OrderContext.addOrder set_components 누락 → FloorPlan·KDS 폭발/옵션소실 해결 (POS=mobile 동일)
+- KDS 세트 중복 제거 + 액션행 옵션 표시
+- Floor Plan Off-table 통합뷰: Takeout 뷰=테이크아웃+픽업+배달, 타입배지/필터칩/검색, 배너→우측패널 라우팅, off-table 새주문 배너
+- Off-table 아이템리스트(?view=items): 픽업/배달 타입색 loc 배지
+- SearchableSelect 통일: 아이템리스트 필터 셀렉트화, 화살표 박스내 고정, 선택값 진하게/기본값 회색
+- 색상 통일: 테이블맵 박스 + 아이템 리스트 버튼 = 솔리드 단계색(amber/purple/green/gray), 우측패널 기존 파스텔 유지. 카드 선택 디자인(좌측라인 유지 + inset ring + 텍스트 이동 없음)
+- 주문 알림음 체계: 키 분리(liveorders_sound_enabled/kds_sound_enabled/floorplan), Floor Plan 새주문음 추가, Settings 화면별 종류/on-off (orderSounds operation_settings + settingsGuard 화이트리스트)
 
 ### 다음 확정 작업
-- 없음 — 지시 대기 (이번 배포 운영 반영, Irene 실프린터 현장 최종 확인 중)
+- 없음 — 지시 대기
 
 ### 후속 후보 (아이디어 메모, 확정 X)
 > 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.
 
-- **KDS 실시간 미반영:** 새 주문이 리플래시해야 KDS에 보임 — 별도 소켓 이슈, 미진단.
-- **전 화면 세트 렌더링 통일:** POS/FloorPlan/KDS/LiveOrders가 세트를 제각각 표시(LiveOrders는 세트명만). 데이터 정상화 후 공용 렌더러로 통일 검토.
-- **버전 결정:** 이번 인쇄 핫픽스들 버전 미상승. Irene이 v3.47로 올리고 릴리즈노트 낼지 미정.
-- **실프린터 현장 최종 확인** (Irene): 세트 선택팝업/N스테이션 N장+마지막/스테이션명1번/자동발행 폭주없음/취소 KDS팝업/첫티켓 빠름.
+- **실화면 눈확인 (다음 세션 진입 시 Irene 테스트 안내 필수)**:
+  - 세트 주문 → 주방 티켓/KDS 구성품+옵션 정상(실프린터)
+  - Off-table 뷰 픽업/배달 + 배너 라우팅
+  - 색상 통일(테이블맵/아이템 솔리드) + 카드 선택 디자인
+  - 주문 알림음(Floor Plan 새주문음, Settings 종류)
+  - prep timer 카운트다운(KDS/Floor Plan 아이템리스트) 신호등 3단계
+- 사운드 아이콘 스타일 통일 미완 (Floor Plan vs LiveOrders 모양 다름)
 
 ---
 

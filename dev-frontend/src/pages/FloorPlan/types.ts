@@ -166,7 +166,10 @@ export const STATUS_LABELS: Record<TableStatus, string> = {
 };
 
 // Order-level status colors — unified pastel palette for floor plan
-export const ORDER_STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+type StatusColor = { bg: string; text: string; border: string };
+
+// 파스텔(기존) — 우측 패널 상태 배지 등에 사용. 변경 금지.
+export const ORDER_STATUS_COLORS: Record<string, StatusColor> = {
   outstanding: { bg: '#FFF7ED', text: '#C2410C', border: '#F97316' },
   pending: { bg: '#FEF9C3', text: '#A16207', border: '#CA8A04' },
   preparing: { bg: '#EDE9FE', text: '#6D28D9', border: '#7C3AED' },
@@ -176,3 +179,83 @@ export const ORDER_STATUS_COLORS: Record<string, { bg: string; text: string; bor
   cancelled: { bg: '#FEE2E2', text: '#B91C1C', border: '#DC2626' },
   awaiting_payment: { bg: '#FFF7ED', text: '#C2410C', border: '#F97316' }
 };
+
+// 솔리드(꽉 찬) 팔레트 — 테이블맵 테이블 박스용. 액션버튼색 기준:
+// 대기/미결제=amber / 조리=purple / 준비=green / 서빙·완료=gray. 솔리드 채움 + 흰 글자.
+const STATUS_SOLID: Record<string, StatusColor> = {
+  outstanding: { bg: '#F59E0B', text: '#FFFFFF', border: '#D97706' },
+  pending: { bg: '#F59E0B', text: '#FFFFFF', border: '#D97706' },
+  preparing: { bg: '#635BFF', text: '#FFFFFF', border: '#4F46E5' },
+  ready: { bg: '#10B981', text: '#FFFFFF', border: '#059669' },
+  served: { bg: '#6B7280', text: '#FFFFFF', border: '#4B5563' },
+  completed: { bg: '#6B7280', text: '#FFFFFF', border: '#4B5563' },
+  cancelled: { bg: '#EF4444', text: '#FFFFFF', border: '#DC2626' },
+  awaiting_payment: { bg: '#F59E0B', text: '#FFFFFF', border: '#D97706' }
+};
+// 테이블맵 테이블 박스 색 = 솔리드. (우측 패널 배지는 getOrderStatusColors=파스텔 유지.)
+export function getTableNodeStatusColors(status: string): StatusColor {
+  return STATUS_SOLID[status] || STATUS_SOLID.pending;
+}
+
+// 고대비 — 채도 높은 진한 칠 + 흰 글자(글레어 매장에서 확 보이게).
+const ORDER_STATUS_COLORS_CONTRAST: Record<string, StatusColor> = {
+  outstanding: { bg: '#EA580C', text: '#FFFFFF', border: '#9A3412' },
+  pending: { bg: '#CA8A04', text: '#FFFFFF', border: '#854D0E' },
+  preparing: { bg: '#7C3AED', text: '#FFFFFF', border: '#4C1D95' },
+  ready: { bg: '#16A34A', text: '#FFFFFF', border: '#14532D' },
+  served: { bg: '#059669', text: '#FFFFFF', border: '#064E3B' },
+  completed: { bg: '#64748B', text: '#FFFFFF', border: '#334155' },
+  cancelled: { bg: '#DC2626', text: '#FFFFFF', border: '#7F1D1D' },
+  awaiting_payment: { bg: '#EA580C', text: '#FFFFFF', border: '#9A3412' }
+};
+
+// 다크 — 어두운 면 위에서 밝고 선명한 칠 + 흰 글자.
+const ORDER_STATUS_COLORS_DARK: Record<string, StatusColor> = {
+  outstanding: { bg: '#C2410C', text: '#FFFFFF', border: '#FB923C' },
+  pending: { bg: '#A16207', text: '#FFFFFF', border: '#FACC15' },
+  preparing: { bg: '#6D28D9', text: '#FFFFFF', border: '#A78BFA' },
+  ready: { bg: '#15803D', text: '#FFFFFF', border: '#4ADE80' },
+  served: { bg: '#047857', text: '#FFFFFF', border: '#34D399' },
+  completed: { bg: '#475569', text: '#FFFFFF', border: '#94A3B8' },
+  cancelled: { bg: '#B91C1C', text: '#FFFFFF', border: '#F87171' },
+  awaiting_payment: { bg: '#C2410C', text: '#FFFFFF', border: '#FB923C' }
+};
+
+// 주문상태 색 — Irene 결정(2026-06-05): 어두운/진한 색 안 씀. 모든 테마에서 기존 라이트
+// 파스텔 그대로(우측 패널 기준). (CONTRAST/DARK 맵은 미사용 — 보존만.)
+export function getOrderStatusColors(status: string): StatusColor {
+  return ORDER_STATUS_COLORS[status] || ORDER_STATUS_COLORS.pending;
+}
+
+// 주문 리스트(Off-table/Takeout) 상태색 — 라이트는 Live Orders StatusBadge 와 100% 동일,
+// 고대비·다크는 진하게. (Floor Plan 테이블 노드와 별개 — 주문리스트는 Live Orders 기준.)
+export function getOrderListStatusColors(status: string): StatusColor {
+  // Off-table 도 동일 단일 팔레트(테이블맵·아이템과 통일).
+  return ORDER_STATUS_COLORS[status] || ORDER_STATUS_COLORS.pending;
+}
+
+// 주문 타입색(테이크아웃/픽업/배달) — Off-table 카드 배지 + 아이템리스트 loc 배지 공용.
+// 테이블번호(검정)와 구분되게 타입별 색. 라이트=연한, 고대비·다크=진한 솔리드+흰글자.
+type TypeColor = { bg: string; text: string; border: string };
+const ORDER_TYPE_COLORS: Record<'light' | 'contrast' | 'dark', Record<string, TypeColor>> = {
+  light: {
+    takeaway: { bg: '#F1F5F9', text: '#475569', border: '#94A3B8' },
+    pickup:   { bg: '#EFF6FF', text: '#2563EB', border: '#60A5FA' },
+    delivery: { bg: '#F5F3FF', text: '#7C3AED', border: '#A78BFA' },
+  },
+  contrast: {
+    takeaway: { bg: '#475569', text: '#FFFFFF', border: '#334155' },
+    pickup:   { bg: '#2563EB', text: '#FFFFFF', border: '#1E40AF' },
+    delivery: { bg: '#7C3AED', text: '#FFFFFF', border: '#5B21B6' },
+  },
+  dark: {
+    takeaway: { bg: '#475569', text: '#FFFFFF', border: '#94A3B8' },
+    pickup:   { bg: '#1D4ED8', text: '#FFFFFF', border: '#60A5FA' },
+    delivery: { bg: '#6D28D9', text: '#FFFFFF', border: '#A78BFA' },
+  },
+};
+export function getOrderTypeColors(type: string): TypeColor {
+  // 모든 테마 동일 = 연한 라이트(어두운 변형 미사용).
+  const t = (type || '').replace(/[_\s]/g, '').toLowerCase();
+  return ORDER_TYPE_COLORS.light[t] || ORDER_TYPE_COLORS.light.takeaway;
+}

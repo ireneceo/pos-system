@@ -1,6 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
-import { FloorTable, FixtureType, TableStatus, TableStatusInfo, STATUS_COLORS, ORDER_STATUS_COLORS } from './types';
+import { FloorTable, FixtureType, TableStatus, TableStatusInfo, STATUS_COLORS, ORDER_STATUS_COLORS, getTableNodeStatusColors } from './types';
 
 interface TableNodeProps {
   table: FloorTable;
@@ -159,7 +159,7 @@ const TableNode: React.FC<TableNodeProps> = React.memo(({
     : isEditing
       ? { bg: '#F8F9FA', border: '#D1D9E0', text: '#1F2937' }
       : (!isEditing && statusInfo?.orderStatus && ORDER_STATUS_COLORS[statusInfo.orderStatus])
-        ? ORDER_STATUS_COLORS[statusInfo.orderStatus]
+        ? getTableNodeStatusColors(statusInfo.orderStatus)
         : STATUS_COLORS[status];
 
   const handleClick = (e: React.MouseEvent) => {

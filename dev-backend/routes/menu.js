@@ -8,6 +8,37 @@ const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth
 const { validateSetGroups, resolveSetGroups, computeSetAvailability } = require('../utils/setMenu');
 const { OptionGroup, Option } = require('../models');
 
+// products.category 는 categories.name 을 FK 로 참조한다. 그런데 프론트 드롭다운은 category **id**
+// 를 보낸다(읽기 API 는 name→categoryId 변환, 쓰기는 변환 없었음 → FK 깨짐). 여기서 양쪽 입력
+// (name 또는 id)을 받아 항상 categories.name 으로 정규화한다. 이름이 숫자("33")인 경우를 위해
+// 이름 일치를 먼저 본다. 2026-06-05.
+async function normalizeCategoryToName(body, restaurantId) {
+  if (body.category == null || body.category === '') return;
+  const raw = String(body.category).trim();
+  const byName = await Category.findOne({ where: { name: raw, restaurant_id: restaurantId }, attributes: ['name'] });
+  if (byName) { body.category = byName.name; return; }
+  if (/^\d+$/.test(raw)) {
+    const byId = await Category.findOne({ where: { id: Number(raw), restaurant_id: restaurantId }, attributes: ['name'] });
+    if (byId) body.category = byId.name;
+  }
+}
+
+// Sequelize/DB 에러를 사용자에게 그대로 노출하지 않는다(날 SQL/FK 문구 금지). 친절한 문구로 치환.
+function cleanDbError(error) {
+  const name = error && error.name;
+  if (name === 'SequelizeForeignKeyConstraintError') {
+    if (String(error.message || '').includes('category')) {
+      return 'The selected category is no longer available. Please pick a category again.';
+    }
+    return 'A referenced item is no longer available. Please review your selection.';
+  }
+  if (name === 'SequelizeValidationError' || name === 'SequelizeUniqueConstraintError') {
+    return (error.errors && error.errors[0] && error.errors[0].message) || 'Some fields are invalid. Please check and try again.';
+  }
+  // 알 수 없는 내부 오류는 일반 문구 (스택/SQL 숨김)
+  return 'Could not save. Please try again.';
+}
+
 // 세트 set_groups 검증 공용 — is_set_menu 상품 저장 시 호출. set_groups 우선, 없으면 레거시 set_items.
 // 반환 null=통과, 또는 에러 메시지 문자열.
 async function validateSetPayload(body, restaurantId, existingProduct) {
@@ -365,6 +396,9 @@ router.post('/product', checkRestaurantAccess, async (req, res) => {
       return res.status(400).json({ success: false, error: { message: 'Name and category are required', code: 'VALIDATION_ERROR' } });
     }
 
+    // category(id 또는 name) → categories.name 으로 정규화 (FK 충족)
+    await normalizeCategoryToName(req.body, restaurantId);
+
     // Check menu item limit
     const restaurant = await Restaurant.findByPk(restaurantId);
 
@@ -479,7 +513,8 @@ router.post('/product', checkRestaurantAccess, async (req, res) => {
     await product.reload();
     res.status(201).json({ success: true, data: product });
   } catch (error) {
-    res.status(400).json({ success: false, error: error.message });
+    console.error('[menu POST /product] error:', error.message);
+    res.status(400).json({ success: false, message: cleanDbError(error), error: cleanDbError(error) });
   }
 });
 
@@ -498,6 +533,11 @@ router.put('/product/:id', checkProductTenant, async (req, res) => {
 
     if (!product) {
       return res.status(404).json({ success: false, error: { message: 'Product not found', code: 'NOT_FOUND' } });
+    }
+
+    // category(id 또는 name) → categories.name 으로 정규화 (FK 충족). category 가 올 때만.
+    if (req.body.category !== undefined) {
+      await normalizeCategoryToName(req.body, product.restaurant_id || restaurantId);
     }
 
     // Brand Menu Lock guard — block edits to fields locked by the linked BrandMenu.
@@ -670,7 +710,8 @@ router.put('/product/:id', checkProductTenant, async (req, res) => {
 
     res.json({ success: true, data: product });
   } catch (error) {
-    res.status(400).json({ success: false, error: error.message });
+    console.error('[menu PUT /product] error:', error.message);
+    res.status(400).json({ success: false, message: cleanDbError(error), error: cleanDbError(error) });
   }
 });
 

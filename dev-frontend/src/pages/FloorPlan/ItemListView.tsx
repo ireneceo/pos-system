@@ -1,8 +1,9 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
-import { TableStatusInfo } from './types';
-import { ItemStatusPill, toDisplayStatus } from './orderItemStatus';
+import { TableStatusInfo, getOrderTypeColors } from './types';
+import { ItemStatusPill, toDisplayStatus, ITEM_SOLID } from './orderItemStatus';
+import { getPosTheme } from '../../styles/posDisplayTheme';
 import SearchableSelect from '../../components/Common/SearchableSelect';
 import { computePrep, getServedDurationMin, PrepTimerChip } from '../../utils/prepTimer';
 import { useAuth } from '../../contexts/AuthContext';
@@ -85,7 +86,7 @@ const SORT_ORDER: Record<string, number> = { ready: 0, cooking: 1, queued: 2, se
 interface FlatRow {
   key: string; orderId: number; itemIndex: number; compIndex: number | null;
   name: string; qty: number; opt: string[]; setName: string | null;
-  status: string; loc: string; isTakeaway: boolean; tableNumber: string | null;
+  status: string; loc: string; isTakeaway: boolean; tableNumber: string | null; offType: string | null;
   orderTime: string | null; servedAt: string | null; category: string; stationId: string; stationName: string;
   servedCount: number; totalCount: number; setServed: number; setTotal: number;
 }
@@ -104,6 +105,7 @@ interface ItemListViewProps {
   prepPerItem?: number;
   prepThreshold?: number;
   audioEnabled?: boolean;
+  soundType?: string;
   onServe: (orderId: number, itemIndex: number, compIndex: number | null, makeServed: boolean) => void;
   onOpenDineIn: (tableNumber: string, orderId: number) => void;
   onOpenTakeaway: (orderId: number) => void;
@@ -111,7 +113,7 @@ interface ItemListViewProps {
 
 const optList = (x: any): string[] => (Array.isArray(x.options) ? x.options : []).map((o: any) => typeof o === 'string' ? o : (o?.name || '')).filter(Boolean);
 
-const ItemListView: React.FC<ItemListViewProps> = ({ dineInOrders, takeawayOrders, activeOrderId, categoryByName = {}, stationById = {}, categories = [], stations = [], timezone, prepMinutes = 15, prepTracking = false, prepPerItem = 10, prepThreshold = 80, audioEnabled = true, onServe, onOpenDineIn, onOpenTakeaway }) => {
+const ItemListView: React.FC<ItemListViewProps> = ({ dineInOrders, takeawayOrders, activeOrderId, categoryByName = {}, stationById = {}, categories = [], stations = [], timezone, prepMinutes = 15, prepTracking = false, prepPerItem = 10, prepThreshold = 80, audioEnabled = true, soundType = 'bell', onServe, onOpenDineIn, onOpenTakeaway }) => {
   const { t } = useTranslation(['floorplan', 'common']);
   const { hasPermission } = useAuth();
   const [search, setSearch] = useState('');
@@ -145,7 +147,7 @@ const ItemListView: React.FC<ItemListViewProps> = ({ dineInOrders, takeawayOrder
     const out: FlatRow[] = [];
     const setComps = (item: any): any[] | null => (Array.isArray(item.set_components) && item.set_components.length ? item.set_components
       : (item.is_set_menu && Array.isArray(item.set_items) && item.set_items.length ? item.set_items : null));
-    const push = (order: any, loc: string, isTakeaway: boolean, tableNumber: string | null) => {
+    const push = (order: any, loc: string, isTakeaway: boolean, tableNumber: string | null, offType: string | null = null) => {
       const status = String(order.orderStatus || order.status || '');
       if (status === 'cancelled' || status === 'completed') return;
       const items = order.orderItems || order.order_items || [];
@@ -172,14 +174,14 @@ const ItemListView: React.FC<ItemListViewProps> = ({ dineInOrders, takeawayOrder
             const m = meta(c.name, c.kitchen_station_id != null ? c : item);
             out.push({ key: `${oid}-${idx}-${ci}`, orderId: oid, itemIndex: idx, compIndex: ci,
               name: c.name || 'Item', qty: (c.qty || c.quantity || 1) * (item.quantity || 1), opt: optList(c), setName: baseName,
-              status: String(c.status || item.status || status || 'pending'), loc, isTakeaway, tableNumber,
+              status: String(c.status || item.status || status || 'pending'), loc, isTakeaway, tableNumber, offType,
               orderTime, servedAt: c.served_at || null, ...m, servedCount, totalCount, setServed, setTotal });
           });
         } else {
           const m = meta(baseName, item);
           out.push({ key: `${oid}-${idx}`, orderId: oid, itemIndex: idx, compIndex: null,
             name: baseName, qty: item.quantity || 1, opt: optList(item), setName: null,
-            status: String(item.status || status || 'pending'), loc, isTakeaway, tableNumber,
+            status: String(item.status || status || 'pending'), loc, isTakeaway, tableNumber, offType,
             orderTime, servedAt: item.served_at || null, ...m, servedCount, totalCount, setServed: 0, setTotal: 0 });
         }
       });
@@ -190,8 +192,15 @@ const ItemListView: React.FC<ItemListViewProps> = ({ dineInOrders, takeawayOrder
       push(o, tlabel, false, tnum);
     });
     takeawayOrders.forEach((o: any) => {
+      const ot = (o.order_type || o.orderType || '').toString().replace(/[_\s]/g, '').toLowerCase();
       const pager = o.pager_number || o.pagerNumber;
-      push(o, pager ? `${t('floorplan:itemList.pager', { defaultValue: 'PAGER' })} ${pager}` : t('floorplan:itemList.takeaway', { defaultValue: 'TAKEAWAY' }), true, null);
+      // off-table 타입을 그대로 표기 (테이크아웃/픽업/배달). 픽업·배달은 페이저 라벨 대신 타입.
+      const loc = ot === 'pickup'
+        ? t('floorplan:itemList.pickup', { defaultValue: 'PICKUP' })
+        : ot === 'delivery'
+          ? t('floorplan:itemList.delivery', { defaultValue: 'DELIVERY' })
+          : (pager ? `${t('floorplan:itemList.pager', { defaultValue: 'PAGER' })} ${pager}` : t('floorplan:itemList.takeaway', { defaultValue: 'TAKEAWAY' }));
+      push(o, loc, true, null, ot || 'takeaway');
     });
     return out;
   }, [dineInOrders, takeawayOrders, t, categoryByName, stationById]);
@@ -209,7 +218,7 @@ const ItemListView: React.FC<ItemListViewProps> = ({ dineInOrders, takeawayOrder
     if (!hasPermission('access_serving')) return;   // 서브권한만 소리
     let hasNew = false;
     readyKeys.forEach(k => { if (!prev.has(k)) hasNew = true; });
-    if (hasNew) { try { playPresetSound('bell'); } catch {} }
+    if (hasNew) { try { playPresetSound((soundType as any) || 'bell'); } catch {} }
   }, [rows, hasPermission, audioEnabled]);
 
   const view = useMemo(() => {
@@ -246,7 +255,7 @@ const ItemListView: React.FC<ItemListViewProps> = ({ dineInOrders, takeawayOrder
           <div className="sel">
             <SearchableSelect
               allowClear={false}
-              value={catFilter}
+              value={catFilter === 'all' ? null : catFilter}
               onChange={v => setCatFilter(v ? String(v) : 'all')}
               placeholder={t('floorplan:itemList.allCategories', { defaultValue: 'All categories' })}
               options={[{ value: 'all', label: t('floorplan:itemList.allCategories', { defaultValue: 'All categories' }) }, ...categories.map(c => ({ value: String(c), label: c }))]}
@@ -257,7 +266,7 @@ const ItemListView: React.FC<ItemListViewProps> = ({ dineInOrders, takeawayOrder
           <div className="sel">
             <SearchableSelect
               allowClear={false}
-              value={stationFilter}
+              value={stationFilter === 'all' ? null : stationFilter}
               onChange={v => setStationFilter(v ? String(v) : 'all')}
               placeholder={t('floorplan:itemList.allStations', { defaultValue: 'All stations' })}
               options={[{ value: 'all', label: t('floorplan:itemList.allStations', { defaultValue: 'All stations' }) }, ...stations.map(s => ({ value: String(s.id), label: s.name }))]}
@@ -267,7 +276,7 @@ const ItemListView: React.FC<ItemListViewProps> = ({ dineInOrders, takeawayOrder
         <div className="sel">
           <SearchableSelect
             allowClear={false}
-            value={sortBy}
+            value={sortBy === 'time' ? null : sortBy}
             onChange={v => setSortBy((v as any) || 'time')}
             placeholder={t('floorplan:itemList.sortTime', { defaultValue: 'Sort: Order time' })}
             options={[
@@ -291,14 +300,14 @@ const ItemListView: React.FC<ItemListViewProps> = ({ dineInOrders, takeawayOrder
             const ds = toDisplayStatus(r.status);
             const isServed = ds === 'served';
             // KDS 색상과 동일: 대기 노랑 / 조리중 파랑 / 준비됨·서빙됨 초록
-            const statusColor = ds === 'queued' ? '#FBBF24' : ds === 'cooking' ? '#2563EB' : ds === 'ready' ? '#34D399' : '#059669';
+            const statusColor = ITEM_SOLID[ds].bg;
             const badgeLabel = t(`floorplan:tableDetailPanel.itemStatus.${ds}`);
             return (
               <Card key={r.key} $served={isServed} $color={statusColor}
                 $active={activeOrderId != null && r.orderId === activeOrderId}
                 onClick={() => openPanel(r)} title={t('floorplan:itemList.tapOpen', { defaultValue: 'Open order' })}>
                 <PillCell>
-                  <ItemStatusPill type="button" $status={ds} $clickable $lg
+                  <ItemStatusPill type="button" $status={ds} $clickable $lg $theme={getPosTheme()}
                     onClick={(e) => { e.stopPropagation(); onServe(r.orderId, r.itemIndex, r.compIndex, !isServed); }}
                     title={isServed ? t('floorplan:tableDetailPanel.itemStatus.unmarkServed') : t('floorplan:tableDetailPanel.itemStatus.markServed')}>
                     <PillLines>
@@ -309,7 +318,7 @@ const ItemListView: React.FC<ItemListViewProps> = ({ dineInOrders, takeawayOrder
                 </PillCell>
                 <Body>
                   <Line1>
-                    <span className="loc">{r.loc}</span>
+                    {r.offType ? (() => { const tc = getOrderTypeColors(r.offType); return <span className="loc" style={{ background: tc.bg, color: tc.text, border: `1px solid ${tc.border}` }}>{r.loc}</span>; })() : <span className="loc">{r.loc}</span>}
                     {r.totalCount > 1 && <span className="progress"><b>{r.servedCount}</b>/{r.totalCount} {t('floorplan:itemList.servedLabel', { defaultValue: 'served' })}</span>}
                     {r.setName && <SetBadge>{t('floorplan:itemList.setBadge', { defaultValue: 'SET' })} {r.setServed}/{r.setTotal}</SetBadge>}
                     {r.stationName && <StationBadge>{r.stationName}</StationBadge>}

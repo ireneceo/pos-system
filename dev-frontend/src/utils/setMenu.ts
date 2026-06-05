@@ -65,7 +65,7 @@ export function validateSetGroups(setGroups: SetGroup[], validProductIds?: Set<n
   }
   setGroups.forEach((g, gi) => {
     const n = gi + 1;
-    if (!g || typeof g.label !== 'string' || !g.label.trim()) errors.push(tr('slotName', 'Slot {{n}}: a slot name is required.', { n }));
+    // 슬롯 이름은 선택사항 — 비어도 통과(주문 화면이 "Choose" 로 폴백). Brand 와 동일.
     if (g.type !== 'fixed' && g.type !== 'choice') errors.push(tr('slotType', 'Slot {{n}}: invalid slot type.', { n }));
     const items = Array.isArray(g.items) ? g.items : [];
     if (items.length === 0) errors.push(tr('noItems', 'Slot {{n}}: select at least one component.', { n }));

@@ -96,19 +96,19 @@ const MobileSetOrder: React.FC<Props> = ({ groups, selections, onToggleComponent
 
   return (
     <div>
-      {groups.map(g => {
+      {groups.map((g, gi) => {
         const min = g.min == null ? 1 : g.min;
         const max = g.max == null ? 1 : g.max;
         const chosen = selections[g.id] || [];
         return (
           <Section key={g.id}>
             <GroupHead>
-              <GroupLabel>{g.label}</GroupLabel>
+              <GroupLabel>{g.label || t('menu:setOrder.itemN', { defaultValue: 'Item {{n}}', n: gi + 1 })}</GroupLabel>
               {g.type === 'choice' && (
                 <ChooseHint>
-                  {min === max
-                    ? t('menu:setOrder.chooseN', { count: max, defaultValue: `Choose ${max}` })
-                    : t('menu:setOrder.chooseRange', { min, max, defaultValue: `Choose ${min}-${max}` })}
+                  {min >= 1
+                    ? t('menu:setOrder.pickRequired', { defaultValue: 'required' })
+                    : t('menu:setOrder.pickOptional', { defaultValue: 'optional' })}{max > 1 ? ` · ${min === max ? `${max}` : `${min}-${max}`}` : ''}
                 </ChooseHint>
               )}
             </GroupHead>
@@ -117,7 +117,7 @@ const MobileSetOrder: React.FC<Props> = ({ groups, selections, onToggleComponent
               ? g.items.map(it => (
                   <div key={it.product_id}>
                     <FixedRow>
-                      <span>{it.name}{it.qty && it.qty > 1 ? ` ×${it.qty}` : ''}</span>
+                      <span>{it.name}{it.qty && it.qty > 1 ? ` ×${it.qty}` : ''} <span style={{ color: '#6B7C93', fontSize: 12, fontWeight: 400 }}>({t('menu:setOrder.included', { defaultValue: 'included' })})</span></span>
                       {it.soldOut && <SoldOutTag>{t('menu:setOrder.soldOut', { defaultValue: 'SOLD OUT' })}</SoldOutTag>}
                     </FixedRow>
                     {!it.soldOut && renderInheritedOptions(g.id, it)}

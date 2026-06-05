@@ -23,11 +23,13 @@ const Container = styled.div`
 `;
 
 const InputWrapper = styled.div<{ isOpen: boolean; disabled?: boolean }>`
+  position: relative;
   display: flex;
   align-items: center;
   box-sizing: border-box;
   min-height: 42px;
-  padding: 8px 12px;
+  /* 우측에 화살표(+선택해제) 공간 확보 → 화살표가 항상 박스 안에 고정 */
+  padding: 8px 36px 8px 12px;
   /* 테마 변수 + 동일 fallback — 테마 없는 페이지는 기존(#fff/#C7CED6)과 동일,
      POS/FloorPlan 에서는 검색입력 박스와 색·높이 통일 (박스 흰색만 튀던 문제 해결). */
   border: 1px solid ${props => props.isOpen ? 'var(--pos-brand, #635BFF)' : 'var(--pos-border, #C7CED6)'};
@@ -47,50 +49,61 @@ const InputWrapper = styled.div<{ isOpen: boolean; disabled?: boolean }>`
 
 const Input = styled.input<{ disabled?: boolean }>`
   flex: 1;
+  min-width: 0;
   border: none;
   outline: none;
   font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
   background: transparent;
+  /* 선택된 값은 항상 본문색(진하게). placeholder 만 muted. */
   color: ${props => props.disabled ? 'var(--pos-text-muted, #6B7280)' : 'var(--pos-text, #0A2540)'};
-  cursor: ${props => props.disabled ? 'not-allowed' : 'text'};
+  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
 
   &::placeholder {
     color: var(--pos-text-muted, #6B7280);
+    font-weight: 400;
   }
 `;
 
 const ClearButton = styled.button`
+  position: absolute;
+  right: 30px;
+  top: 50%;
+  transform: translateY(-50%);
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   border: none;
-  background: #C7CED6;
+  background: var(--pos-border, #C7CED6);
   border-radius: 50%;
   cursor: pointer;
-  margin-right: 8px;
   transition: background 0.2s;
 
   &:hover {
-    background: #6B7280;
+    background: var(--pos-text-muted, #6B7280);
   }
 
   svg {
-    width: 12px;
-    height: 12px;
-    color: #4B5563;
+    width: 11px;
+    height: 11px;
+    color: #fff;
   }
 `;
 
+// 화살표는 박스 안 우측에 절대 고정 — 내용 길이와 무관하게 항상 박스 내부.
 const ArrowIcon = styled.div<{ isOpen: boolean }>`
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%) ${props => props.isOpen ? 'rotate(180deg)' : 'rotate(0deg)'};
   display: flex;
   align-items: center;
   justify-content: center;
+  pointer-events: none;
   transition: transform 0.2s;
-  transform: ${props => props.isOpen ? 'rotate(180deg)' : 'rotate(0deg)'};
-  flex-shrink: 0;
-  margin-left: 4px;
 
   svg {
     width: 16px;
@@ -247,7 +260,9 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
     }
   };
 
-  const displayValue = isOpen ? searchTerm : (selectedOption?.label || '');
+  // 열려도 타이핑 전이면 선택값을 그대로(진하게) 유지 — 열자마자 회색 placeholder 로
+  // 바뀌어 "글자 회색" 처럼 보이던 문제 해결. 실제 검색을 시작(searchTerm)하면 그때 전환.
+  const displayValue = (isOpen && searchTerm) ? searchTerm : (selectedOption?.label || '');
 
   return (
     <Container ref={containerRef}>
