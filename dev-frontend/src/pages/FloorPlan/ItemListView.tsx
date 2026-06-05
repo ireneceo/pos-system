@@ -19,13 +19,13 @@ import { playPresetSound } from '../../utils/notificationSound';
 const Wrap = styled.div` flex: 1; min-height: 0; display: flex; flex-direction: column; `;
 const Bar = styled.div`
   display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 2px 2px 10px;
-  .search { flex: 1 1 200px; min-width: 160px; }
+  .search { flex: 2 1 150px; min-width: 140px; }
   .search input {
     height: 42px; width: 100%; border: 1px solid var(--pos-border, #C7CED6); border-radius: 8px;
     padding: 0 12px; font-size: 14px; background: var(--pos-surface, #fff); color: var(--pos-text, #0A2540);
     font-family: inherit; box-sizing: border-box;
   }
-  .sel { flex: 0 0 auto; width: 180px; }
+  .sel { flex: 1 1 120px; min-width: 110px; max-width: 200px; }
 `;
 const Count = styled.div`
   padding: 0 2px 8px; font-size: 13px; color: var(--pos-text-muted, #4B5563);
