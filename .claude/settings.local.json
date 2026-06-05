@@ -538,7 +538,11 @@
       "Bash(sed -n '1130,1155p' /var/www/dev-frontend/src/components/Layout/MainLayout.tsx)",
       "Bash(awk \"NR>=$\\(grep -nE \"activeTab === 'operations'\" src/pages/Settings/SettingsPage.tsx)",
       "Bash(awk 'NR>=3247 && NR<4540' src/pages/Settings/SettingsPage.tsx)",
-      "Bash(awk -F: '$1>=4540 && $1<=4640')"
+      "Bash(awk -F: '$1>=4540 && $1<=4640')",
+      "Bash(awk 'NR>=3247 && NR<4546' src/pages/Settings/SettingsPage.tsx)",
+      "Bash(awk -F: '$1>=3450 && $1<=3640')",
+      "Bash(awk -F: '$1>=3380 && $1<=3700')",
+      "Bash(awk '/const SettingsGrid = styled/{f=1} f{print NR\": \"$0} /^\\\\`;/{if\\(f\\)exit}' src/pages/Settings/SettingsPage.tsx)"
     ],
     "deny": [],
     "ask": []
