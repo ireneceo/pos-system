@@ -9,6 +9,7 @@ import PageHeader from '../../components/Common/PageHeader';
 import { formatTime } from '../../utils/timezone';
 import { computePrepFromElapsed, PrepTimerChip } from '../../utils/prepTimer';
 import { printKitchenTicketViaRawBT, getPrinterSettings as getBillPrinterSettings } from '../../utils/billPrint';
+import CashierPinModal from '../../components/POSTerminal/CashierPinModal';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
@@ -98,6 +99,24 @@ const Clock = styled.div`
   font-size: 18px;
   font-weight: 500;
   color: #4B5563;
+`;
+
+// 계정 로그인 표시 + PIN 전환 (Floor Plan / POS Terminal 과 동일).
+const StaffInfo = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #4B5563;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  &:hover { background: #F4F6F9; color: #0A2540; }
 `;
 
 const ConnectionStatus = styled.div<{ connected: boolean }>`
@@ -637,7 +656,7 @@ const LiveClock: React.FC<{ operationSettings: any }> = React.memo(({ operationS
 
 const KitchenDisplayPage: React.FC = () => {
   const { t, i18n } = useTranslation('kitchen');
-  const { user } = useAuth();
+  const { user, switchUser, logout } = useAuth();
   const { menuItems, categories } = useMenu();
   const { getStoreInfo, operationSettings: storeOpSettings } = useStore();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -682,6 +701,7 @@ const KitchenDisplayPage: React.FC = () => {
   const [, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [operationSettings, setOperationSettings] = useState<any>(null);
+  const [showCashierPinModal, setShowCashierPinModal] = useState(false);
   const [viewMode, setViewMode] = useState<'order' | 'item'>(() => {
     const saved = localStorage.getItem('kitchenDisplayViewMode');
     return saved === 'item' ? 'item' : 'order';
@@ -3224,6 +3244,16 @@ const KitchenDisplayPage: React.FC = () => {
               <LiveClock operationSettings={operationSettings} />
             </div>
           </div>
+
+          {/* 계정 로그인 — 시간과 설정아이콘(⚙) 사이. 클릭 시 PIN 전환 (Floor Plan / POS Terminal 과 동일). */}
+          <StaffInfo type="button" onClick={() => setShowCashierPinModal(true)} title="Logged in — click to switch user">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+            {user?.name || 'Staff'}
+            <span style={{ fontSize: '11px', color: '#8898AA', marginLeft: '2px' }}>▼</span>
+          </StaffInfo>
         </HeaderInfo>
       </PageHeader>
 
@@ -3301,6 +3331,20 @@ const KitchenDisplayPage: React.FC = () => {
           stationName={selectedStation === 'all' ? undefined : kitchenStations.find(s => s.id === selectedStation)?.name}
         />
       )}
+
+      {/* 계정 PIN 전환 (Floor Plan / POS Terminal 과 동일 동작) */}
+      <CashierPinModal
+        show={showCashierPinModal}
+        onClose={() => setShowCashierPinModal(false)}
+        onVerified={(result) => {
+          if (result.token && result.user) {
+            switchUser(result.token, result.user);
+          }
+          setShowCashierPinModal(false);
+        }}
+        onLogout={() => { logout(); }}
+        currentCashierName={user?.name}
+      />
 
       {historyOrderId !== null && (
         <div

@@ -546,7 +546,9 @@
       "Bash(echo \"빌드 백그라운드 시작 \\(pid $!\\)\")",
       "Bash(pm2 describe *)",
       "Bash(awk '/router.post\\\\\\(.\\\\/staging.|router.post\\\\\\(.\\\\/bulk.|router.post\\\\\\(.\\\\/.,.*async/{found=NR} END{}' routes/purchase-orders-crud.js)",
-      "Bash(sed -n '600,720p' routes/purchase-orders-crud.js)"
+      "Bash(sed -n '600,720p' routes/purchase-orders-crud.js)",
+      "Bash(sed -n '190,215p' src/pages/FloorPlan/FloorPlanPage.tsx)",
+      "Bash(sed -n '1680,1700p' src/pages/FloorPlan/FloorPlanPage.tsx)"
     ],
     "deny": [],
     "ask": []
