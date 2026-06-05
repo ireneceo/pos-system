@@ -65,6 +65,8 @@ interface OperationSettings {
   orderSounds: {
     liveOrders: { enabled: boolean; type: 'bell' | 'beep' | 'triple' | 'urgent' | 'melody' | 'deep' };
     floorPlan: { enabled: boolean; type: 'bell' | 'beep' | 'triple' | 'urgent' | 'melody' | 'deep' };
+    // Floor Plan 아이템 ready(서빙 알림) — 새 주문음과 구분되게 별도 종류. 미설정 시 floorPlan 폴백.
+    floorPlanReady?: { enabled: boolean; type: 'bell' | 'beep' | 'triple' | 'urgent' | 'melody' | 'deep' };
   };
   deliveryPricing: {
     enabled: boolean;
@@ -148,7 +150,8 @@ const defaultOperationSettings: OperationSettings = {
   },
   orderSounds: {
     liveOrders: { enabled: true, type: 'bell' },
-    floorPlan: { enabled: true, type: 'bell' }
+    floorPlan: { enabled: true, type: 'bell' },
+    floorPlanReady: { enabled: true, type: 'triple' }
   },
   deliveryPricing: {
     enabled: false,

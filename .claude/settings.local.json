@@ -527,7 +527,13 @@
       "Bash(awk 'NR>=540 && NR<=595' routes/menu.js)",
       "Bash(awk 'NR>=487 && NR<=680 && /} catch \\\\\\(error\\\\\\)/{print NR\": \"$0; getline; print NR\": \"$0}' routes/menu.js)",
       "Bash(perl -0pi -e 's/\\(    setShowSetMenuModal\\\\\\(true\\\\\\);\\)/    setSetMenuError\\(\"\"\\);\\\\n$1/g' src/pages/MenuManagement/MenuManagementPage.tsx)",
-      "Bash(awk 'NR>=882 && NR<=1200 && /res.json|salesBy|byDate|daily|monthly|labels|chart/' routes/dashboard.js)"
+      "Bash(awk 'NR>=882 && NR<=1200 && /res.json|salesBy|byDate|daily|monthly|labels|chart/' routes/dashboard.js)",
+      "Bash(sed -n '120,145p' src/pages/FloorPlan/types.ts)",
+      "Bash(sed -n '540,610p' src/mobile/pages/OrderTypePage.tsx)",
+      "Bash(awk 'NR>=4400 && NR<=4675 && \\(/activeTab ===|tab: |TabContent|=== .kitchen|=== .notification|=== .operation|=== .general|sectionTab|{activeTab/\\)' src/pages/Settings/SettingsPage.tsx)",
+      "Bash(awk 'NR<=4670 && /activeTab === '\\\\''|currentTab === '\\\\''|\\\\{activeTab === /{last=NR\": \"$0} END{print last}' src/pages/Settings/SettingsPage.tsx)",
+      "Bash(awk -F: '$1>=4540 && $1<=4720')",
+      "Bash(sed -n '4660,4690p' src/pages/Settings/SettingsPage.tsx)"
     ],
     "deny": [],
     "ask": []

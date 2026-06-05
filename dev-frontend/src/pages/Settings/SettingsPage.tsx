@@ -492,6 +492,7 @@ interface OperationSettings {
   orderSounds?: {
     liveOrders: { enabled: boolean; type: 'bell' | 'beep' | 'triple' | 'urgent' | 'melody' | 'deep' };
     floorPlan: { enabled: boolean; type: 'bell' | 'beep' | 'triple' | 'urgent' | 'melody' | 'deep' };
+    floorPlanReady?: { enabled: boolean; type: 'bell' | 'beep' | 'triple' | 'urgent' | 'melody' | 'deep' };
   };
   deliveryPricing: {
     enabled: boolean;
@@ -860,7 +861,8 @@ const SettingsPage: React.FC = () => {
         },
         orderSounds: {
           liveOrders: { enabled: true, type: 'bell' },
-          floorPlan: { enabled: true, type: 'bell' }
+          floorPlan: { enabled: true, type: 'bell' },
+          floorPlanReady: { enabled: true, type: 'triple' }
         },
         deliveryPricing: {
           enabled: false,
@@ -4671,17 +4673,20 @@ const SettingsPage: React.FC = () => {
                   <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
                     {t('settings:settingsPage.orderSoundsHint', 'New-order alert sound per screen. Kitchen station sounds are set per station in the Kitchen Stations section. Each device can still mute locally with its speaker icon.')}
                   </p>
-                  {(['liveOrders', 'floorPlan'] as const).map((screen) => {
-                    const cur = operationSettings.orderSounds?.[screen] || { enabled: true, type: 'bell' as const };
+                  {(['liveOrders', 'floorPlan', 'floorPlanReady'] as const).map((screen) => {
+                    const defType = screen === 'floorPlanReady' ? 'triple' : 'bell';
+                    const cur = operationSettings.orderSounds?.[screen] || { enabled: true, type: defType as any };
                     const screenLabel = screen === 'liveOrders'
                       ? t('settings:settingsPage.soundLiveOrders', 'Live Orders')
-                      : t('settings:settingsPage.soundFloorPlan', 'Floor Plan (serving / off-table)');
+                      : screen === 'floorPlan'
+                      ? t('settings:settingsPage.soundFloorPlan', 'Floor Plan — New Order')
+                      : t('settings:settingsPage.soundFloorPlanReady', 'Floor Plan — Item Ready (serving)');
                     const setScreen = (patch: Partial<{ enabled: boolean; type: any }>) => setOperationSettings(prev => {
-                      const base = prev.orderSounds || { liveOrders: { enabled: true, type: 'bell' }, floorPlan: { enabled: true, type: 'bell' } };
-                      return { ...prev, orderSounds: { ...base, [screen]: { ...base[screen], ...patch } } };
+                      const base = prev.orderSounds || { liveOrders: { enabled: true, type: 'bell' }, floorPlan: { enabled: true, type: 'bell' }, floorPlanReady: { enabled: true, type: 'triple' } };
+                      return { ...prev, orderSounds: { ...base, [screen]: { ...(base as any)[screen], ...patch } } };
                     });
                     return (
-                      <div key={screen} style={{ paddingBottom: '8px', marginBottom: '8px', borderBottom: screen === 'liveOrders' ? '1px solid #EEF1F5' : undefined }}>
+                      <div key={screen} style={{ paddingBottom: '8px', marginBottom: '8px', borderBottom: screen !== 'floorPlanReady' ? '1px solid #EEF1F5' : undefined }}>
                         <Toggle>
                           <ToggleLabel>{screenLabel}</ToggleLabel>
                           <AutoSaveField onSave={handleSave} type="toggle">

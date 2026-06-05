@@ -1923,8 +1923,8 @@ const FloorPlanPage: React.FC = () => {
               prepTracking={!!operationSettings?.prepTimeTracking}
               prepPerItem={Number(operationSettings?.defaultPreparationTimePerItem) || 10}
               prepThreshold={Number(operationSettings?.prepUrgentThreshold) || 80}
-              audioEnabled={((operationSettings as any)?.orderSounds?.floorPlan?.enabled !== false) && readyAudio}
-              soundType={(operationSettings as any)?.orderSounds?.floorPlan?.type || 'bell'}
+              audioEnabled={(((operationSettings as any)?.orderSounds?.floorPlanReady?.enabled ?? (operationSettings as any)?.orderSounds?.floorPlan?.enabled) !== false) && readyAudio}
+              soundType={(operationSettings as any)?.orderSounds?.floorPlanReady?.type || (operationSettings as any)?.orderSounds?.floorPlan?.type || 'triple'}
               onServe={handleServeItem}
               onOpenDineIn={handleOpenDineInFromItems}
               onOpenTakeaway={handleOpenTakeawayFromItems}
