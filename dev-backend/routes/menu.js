@@ -18,7 +18,7 @@ async function validateSetPayload(body, restaurantId, existingProduct) {
     const refs = ids.length ? await Product.findAll({ where: { id: ids, restaurant_id: restaurantId } }) : [];
     const validIds = new Set(refs.filter(p => !p.is_set_menu).map(p => p.id));
     const { valid, errors } = validateSetGroups(sg, { validProductIds: validIds });
-    if (!valid) return errors[0] || '세트 구성이 올바르지 않습니다.';
+    if (!valid) return errors[0] || 'Invalid set configuration.';
     return null;
   }
   // 레거시 set_items 경로

@@ -515,7 +515,11 @@
       "Bash(echo \"SWEEP_EXIT=$?\")",
       "Bash(sed -n '1055,1074p' src/pages/FloorPlan/TableDetailPanel.tsx)",
       "Bash(sed -n '1100,1110p' src/pages/FloorPlan/TableDetailPanel.tsx)",
-      "Bash(awk '/printCancellationTicketsByStation = |function printCancellationTicketsByStation|printCancellationTicketsByStation\\\\\\(/{print NR\": \"$0}' src/utils/billPrint.js)"
+      "Bash(awk '/printCancellationTicketsByStation = |function printCancellationTicketsByStation|printCancellationTicketsByStation\\\\\\(/{print NR\": \"$0}' src/utils/billPrint.js)",
+      "Bash(pm2 restart *)",
+      "Bash(sed -n '1058,1075p' src/pages/MenuManagement/MenuManagementPage.tsx)",
+      "Bash(sed -n '2130,2240p' src/pages/MenuManagement/MenuManagementPage.tsx)",
+      "Bash(echo \"BUILD EXIT $?\")"
     ],
     "deny": [],
     "ask": []

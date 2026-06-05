@@ -1303,9 +1303,19 @@ const MenuManagementPage: React.FC = () => {
   };
 
   const handleSaveSetMenu = () => {
+    // 슬롯 이름을 안 적어도 등록되게 — 빈 라벨은 자동 이름(편집 가능). 매장이 슬롯명을
+    // 일일이 안 적어도 세트가 만들어진다(업계 표준). 적은 라벨은 그대로 유지.
+    const labeledGroups = setGroups.map((g, i) => ({
+      ...g,
+      label: (g.label && String(g.label).trim())
+        ? g.label
+        : (g.type === 'choice'
+            ? t('menu:setBuilder.choiceDefault', { defaultValue: 'Choice {{n}}', n: i + 1 })
+            : t('menu:setBuilder.fixedDefault', { defaultValue: 'Item {{n}}', n: i + 1 }))
+    }));
     // set_groups 검증 (택1 min/max, 활성 단품, 세트 중첩 금지)
     const validProductIds = new Set(menuItems.filter(m => !m.is_set_menu).map(m => Number(m.id)));
-    const { valid, errors } = validateSetGroups(setGroups, validProductIds);
+    const { valid, errors } = validateSetGroups(labeledGroups, validProductIds, t);
     if (!valid) {
       setInfoModal({ open: true, title: t('menu:menuManagement.setMenuRequiredTitle', 'Set Menu Validation'), message: errors[0] });
       return;
@@ -1324,23 +1334,33 @@ const MenuManagementPage: React.FC = () => {
       optionGroups: selectedOptionGroups,
       soldOut: false,
       is_set_menu: true,
-      set_groups: setGroups,
+      set_groups: labeledGroups,
       set_items: null,  // v2 로 전환 — set_groups 가 단일 소스
       set_display_order: formData.set_display_order || 0,
       after_meal: formData.after_meal || false,
       takeaway_charge: formData.takeaway_charge ?? 0
     };
 
-    if (editingItem) {
-      updateMenuItem(newSetMenu);
-    } else {
-      addMenuItem(newSetMenu);
-    }
-
-    setShowSetMenuModal(false);
-    setEditingItem(null);
-    setSetMenuItems([]);
-    setSetGroups([]);
+    // 저장 결과를 기다리고 실패 시 실제 사유를 표시 — 무음 실패(모달만 닫힘) 방지.
+    (async () => {
+      try {
+        if (editingItem) {
+          await updateMenuItem(newSetMenu);
+        } else {
+          await addMenuItem(newSetMenu);
+        }
+        setShowSetMenuModal(false);
+        setEditingItem(null);
+        setSetMenuItems([]);
+        setSetGroups([]);
+      } catch (err: any) {
+        setInfoModal({
+          open: true,
+          title: t('menu:menuManagement.setMenuRequiredTitle', 'Set Menu Validation'),
+          message: err?.message || t('menu:menuManagementPage.saveFailed', { defaultValue: 'Could not save. Please try again.' })
+        });
+      }
+    })();
   };
 
   const handleSaveEdit = () => {

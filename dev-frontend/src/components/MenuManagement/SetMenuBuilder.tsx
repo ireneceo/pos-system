@@ -246,7 +246,7 @@ const SetMenuBuilder: React.FC<Props> = ({ value, onChange, menuItems, formatCur
               <SlotNameInput
                 value={g.label}
                 onChange={e => patchGroup(gi, { label: e.target.value })}
-                placeholder={t('menu:setBuilder.slotName', { defaultValue: 'Slot name (e.g. Main, Choose a soup)' })}
+                placeholder={t('menu:setBuilder.slotNameOptional', { defaultValue: 'Slot name — optional (e.g. Main, Choose a soup)' })}
               />
               <TypeToggle role="group">
                 <TypeBtn type="button" $active={g.type === 'fixed'} onClick={() => patchGroup(gi, { type: 'fixed' })}>

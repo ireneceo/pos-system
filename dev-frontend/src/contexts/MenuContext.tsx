@@ -582,7 +582,9 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update menu item');
+        let msg = 'Failed to update menu item';
+        try { const e = await response.json(); msg = e?.message || e?.error?.message || e?.error || msg; } catch { /* non-json */ }
+        throw new Error(msg);
       }
 
       // API 응답에서 실제 저장된 데이터 가져오기
@@ -656,7 +658,10 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to add menu item');
+        // 백엔드 실제 사유를 그대로 전달(예: 세트 구성품 검증 실패) — 무음 실패 방지.
+        let msg = 'Failed to add menu item';
+        try { const e = await response.json(); msg = e?.message || e?.error?.message || e?.error || msg; } catch { /* non-json */ }
+        throw new Error(msg);
       }
 
       // API 응답에서 실제 생성된 데이터 가져오기

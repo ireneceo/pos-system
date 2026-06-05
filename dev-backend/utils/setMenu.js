@@ -29,28 +29,29 @@ function resolveSetGroups(product) {
 function validateSetGroups(setGroups, opts = {}) {
   const errors = [];
   if (!Array.isArray(setGroups) || setGroups.length === 0) {
-    return { valid: false, errors: ['세트는 최소 1개의 구성 슬롯이 필요합니다.'] };
+    return { valid: false, errors: ['A set needs at least one component slot.'] };
   }
   const validIds = opts.validProductIds != null
     ? (opts.validProductIds instanceof Set ? opts.validProductIds : new Set(opts.validProductIds.map(Number)))
     : null;
 
+  // API 에러는 영어로 통일(백엔드 i18n 미들웨어 없음). 사용자 언어 표시는 프론트 setMenu.ts 가 담당.
   setGroups.forEach((g, gi) => {
-    const tag = `슬롯 ${gi + 1}`;
-    if (!g || typeof g.label !== 'string' || !g.label.trim()) errors.push(`${tag}: 슬롯 이름이 필요합니다.`);
-    if (g.type !== 'fixed' && g.type !== 'choice') errors.push(`${tag}: 타입은 fixed 또는 choice 여야 합니다.`);
+    const tag = `Slot ${gi + 1}`;
+    if (!g || typeof g.label !== 'string' || !g.label.trim()) errors.push(`${tag}: a slot name is required.`);
+    if (g.type !== 'fixed' && g.type !== 'choice') errors.push(`${tag}: type must be fixed or choice.`);
     const items = Array.isArray(g.items) ? g.items : [];
-    if (items.length === 0) errors.push(`${tag}: 구성품을 최소 1개 선택하세요.`);
+    if (items.length === 0) errors.push(`${tag}: select at least one component.`);
 
     items.forEach((it, ii) => {
       const pid = Number(it && it.product_id);
-      if (!Number.isInteger(pid)) errors.push(`${tag} 항목 ${ii + 1}: 잘못된 상품입니다.`);
-      else if (validIds && !validIds.has(pid)) errors.push(`${tag} 항목 ${ii + 1}: 이 매장의 활성 단품이 아닙니다(세트 중첩 불가).`);
+      if (!Number.isInteger(pid)) errors.push(`${tag} item ${ii + 1}: invalid product.`);
+      else if (validIds && !validIds.has(pid)) errors.push(`${tag} item ${ii + 1}: not an active single item of this store (sets cannot be nested).`);
       if (it && it.upcharge != null && (isNaN(Number(it.upcharge)) || Number(it.upcharge) < 0)) {
-        errors.push(`${tag} 항목 ${ii + 1}: upcharge 는 0 이상이어야 합니다.`);
+        errors.push(`${tag} item ${ii + 1}: surcharge must be 0 or more.`);
       }
       if (it && it.qty != null && (!Number.isInteger(Number(it.qty)) || Number(it.qty) < 1)) {
-        errors.push(`${tag} 항목 ${ii + 1}: 수량은 1 이상의 정수여야 합니다.`);
+        errors.push(`${tag} item ${ii + 1}: quantity must be an integer of 1 or more.`);
       }
     });
 
@@ -59,7 +60,7 @@ function validateSetGroups(setGroups, opts = {}) {
       const max = g.max == null ? 1 : Number(g.max);
       // min=0 허용(선택적 슬롯 "0~N개"). max 는 1 이상, min ≤ max ≤ 구성품수.
       if (!Number.isInteger(min) || !Number.isInteger(max) || min < 0 || max < 1 || max < min || max > items.length) {
-        errors.push(`${tag}: 택1 범위(min ${min} / max ${max})가 잘못되었습니다 (0 ≤ min ≤ max ≤ 구성품수, max ≥ 1).`);
+        errors.push(`${tag}: choice range (min ${min} / max ${max}) is invalid (0 ≤ min ≤ max ≤ item count, max ≥ 1).`);
       }
     }
   });
@@ -97,22 +98,22 @@ function validateSetSelection(setGroups, selectedComponents, opts = {}) {
     const picks = sel.filter(c => String(c.group_id) === String(g.id));
     const allowedIds = new Set((g.items || []).map(it => Number(it.product_id)));
     picks.forEach(p => {
-      if (!allowedIds.has(Number(p.product_id))) errors.push(`슬롯 "${g.label}": 허용되지 않은 구성품입니다.`);
+      if (!allowedIds.has(Number(p.product_id))) errors.push(`Slot "${g.label}": component not allowed.`);
     });
     if (g.type === 'fixed') {
       (g.items || []).forEach(it => {
         if (!picks.some(p => Number(p.product_id) === Number(it.product_id))) {
-          errors.push(`슬롯 "${g.label}": 고정 구성품이 누락되었습니다.`);
+          errors.push(`Slot "${g.label}": a fixed component is missing.`);
         }
       });
     } else {
       const min = g.min == null ? 1 : Number(g.min);
       const max = g.max == null ? 1 : Number(g.max);
-      if (picks.length < min) errors.push(`슬롯 "${g.label}": 최소 ${min}개 선택하세요.`);
-      if (picks.length > max) errors.push(`슬롯 "${g.label}": 최대 ${max}개까지 선택할 수 있습니다.`);
+      if (picks.length < min) errors.push(`Slot "${g.label}": select at least ${min}.`);
+      if (picks.length > max) errors.push(`Slot "${g.label}": select at most ${max}.`);
     }
     if (typeof opts.requiredOptionCheck === 'function') {
-      picks.forEach(p => { const r = opts.requiredOptionCheck(p); if (r) errors.push(`슬롯 "${g.label}": ${r}`); });
+      picks.forEach(p => { const r = opts.requiredOptionCheck(p); if (r) errors.push(`Slot "${g.label}": ${r}`); });
     }
   });
 

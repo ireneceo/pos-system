@@ -45,30 +45,43 @@ export function resolveSetGroups(product: any): SetGroup[] {
   return [];
 }
 
+// i18n: 호출처(컴포넌트)가 react-i18next 의 t 를 넘기면 사용자 언어로, 안 넘기면 영어로.
+// 유틸은 hook 을 못 쓰므로 t 를 주입받는다. key = menu:menuManagement.setErr.*
+type SetErrT = (key: string, opts?: any) => string;
+function makeTr(t?: SetErrT) {
+  return (key: string, en: string, params?: Record<string, any>): string => {
+    if (t) return t(`menu:menuManagement.setErr.${key}`, { defaultValue: en, ...params });
+    return en.replace(/\{\{(\w+)\}\}/g, (_m, k) => String(params?.[k] ?? ''));
+  };
+}
+
 // 빌더 저장 전 검증. validProductIds = 허용 단품 id 집합(같은 매장 · 비-세트 · 활성).
-export function validateSetGroups(setGroups: SetGroup[], validProductIds?: Set<number>): { valid: boolean; errors: string[] } {
+// t = react-i18next 번역기(선택). 없으면 영어 기본 문구. (백엔드 setMenu.js 와 로직 동일)
+export function validateSetGroups(setGroups: SetGroup[], validProductIds?: Set<number>, t?: SetErrT): { valid: boolean; errors: string[] } {
+  const tr = makeTr(t);
   const errors: string[] = [];
   if (!Array.isArray(setGroups) || setGroups.length === 0) {
-    return { valid: false, errors: ['세트는 최소 1개의 구성 슬롯이 필요합니다.'] };
+    return { valid: false, errors: [tr('noGroups', 'A set needs at least one component slot.')] };
   }
   setGroups.forEach((g, gi) => {
-    const tag = `슬롯 ${gi + 1}`;
-    if (!g || typeof g.label !== 'string' || !g.label.trim()) errors.push(`${tag}: 슬롯 이름이 필요합니다.`);
-    if (g.type !== 'fixed' && g.type !== 'choice') errors.push(`${tag}: 타입이 올바르지 않습니다.`);
+    const n = gi + 1;
+    if (!g || typeof g.label !== 'string' || !g.label.trim()) errors.push(tr('slotName', 'Slot {{n}}: a slot name is required.', { n }));
+    if (g.type !== 'fixed' && g.type !== 'choice') errors.push(tr('slotType', 'Slot {{n}}: invalid slot type.', { n }));
     const items = Array.isArray(g.items) ? g.items : [];
-    if (items.length === 0) errors.push(`${tag}: 구성품을 최소 1개 선택하세요.`);
+    if (items.length === 0) errors.push(tr('noItems', 'Slot {{n}}: select at least one component.', { n }));
     items.forEach((it, ii) => {
+      const i = ii + 1;
       const pid = Number(it?.product_id);
-      if (!Number.isInteger(pid)) errors.push(`${tag} 항목 ${ii + 1}: 잘못된 상품입니다.`);
-      else if (validProductIds && !validProductIds.has(pid)) errors.push(`${tag} 항목 ${ii + 1}: 활성 단품이 아닙니다.`);
-      if (it?.upcharge != null && (isNaN(Number(it.upcharge)) || Number(it.upcharge) < 0)) errors.push(`${tag} 항목 ${ii + 1}: 추가금은 0 이상이어야 합니다.`);
+      if (!Number.isInteger(pid)) errors.push(tr('badProduct', 'Slot {{n}} item {{i}}: invalid product.', { n, i }));
+      else if (validProductIds && !validProductIds.has(pid)) errors.push(tr('notActive', 'Slot {{n}} item {{i}}: not an active single item.', { n, i }));
+      if (it?.upcharge != null && (isNaN(Number(it.upcharge)) || Number(it.upcharge) < 0)) errors.push(tr('upcharge', 'Slot {{n}} item {{i}}: surcharge must be 0 or more.', { n, i }));
     });
     if (g.type === 'choice') {
       const min = g.min == null ? 1 : Number(g.min);
       const max = g.max == null ? 1 : Number(g.max);
       // min=0 허용(선택적 슬롯). max ≥ 1, min ≤ max ≤ 구성품수.
       if (!Number.isInteger(min) || !Number.isInteger(max) || min < 0 || max < 1 || max < min || max > items.length) {
-        errors.push(`${tag}: 택1 범위(min ${min}/max ${max})가 올바르지 않습니다.`);
+        errors.push(tr('choiceRange', 'Slot {{n}}: choice range (min {{min}}/max {{max}}) is invalid.', { n, min, max }));
       }
     }
   });
