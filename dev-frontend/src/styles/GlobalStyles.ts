@@ -39,15 +39,15 @@ export const GlobalStyles = createGlobalStyle`
     pointer-events: none;
   }
 
-  /* Input affordance — every text/number/email/date input, textarea, and select gets
-     a subtle grey fill so users instantly see "this is where I type." Buttons, checkbox,
-     radio, range, color, file pickers and search are excluded — they have their own visual. */
+  /* Input background — every text/number/email/date input, textarea, and select uses a
+     WHITE fill (Irene 2026-06-05: 회색 채움 폐기, 모든 입력란 흰 배경). 입력란임은 테두리로
+     구분. 안내(placeholder/기본 선택값)는 회색 글자, 입력/선택 시 검정 글자(컴포넌트별 처리). */
   input:not([type='button']):not([type='submit']):not([type='reset']):not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='file']):not([type='image']):not([type='hidden']),
   textarea,
   select {
     font-family: inherit;
     outline: none;
-    background-color: #F4F6F9;
+    background-color: #FFFFFF;
   }
 
   input:not([type='button']):not([type='submit']):not([type='reset']):not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='file']):not([type='image']):not([type='hidden']):focus,
