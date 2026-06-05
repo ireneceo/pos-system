@@ -1951,24 +1951,21 @@ const FloorPlanPage: React.FC = () => {
             <div style={{
               flex: 1, overflow: 'auto', padding: '4px 0'
             }}>
-              {/* 검색창 — 주문번호 / 고객 / 품목 */}
-              <div style={{ padding: '0 2px 8px' }}>
+              {/* 검색 + 필터 한 줄 — 아이템리스트와 동일. 검색(넓게) + 타입(2개 이상일 때) + 정렬. */}
+              <div style={{ display: 'flex', gap: 8, padding: '0 2px 8px', flexWrap: 'wrap', alignItems: 'center' }}>
                 <input
                   type="text"
                   value={offTableSearch}
                   onChange={e => setOffTableSearch(e.target.value)}
                   placeholder={t('floorplan:floorPlanPage.offTableSearch', { defaultValue: 'Search order #, customer, item' })}
                   style={{
-                    width: '100%', height: 44, boxSizing: 'border-box', borderRadius: 8,
+                    flex: '2 1 160px', minWidth: 140, height: 40, boxSizing: 'border-box', borderRadius: 8,
                     border: '1px solid var(--pos-border, #C7CED6)', background: 'var(--pos-surface, #fff)',
                     color: 'var(--pos-text, #0A2540)', fontSize: 14, padding: '0 14px', fontFamily: 'inherit'
                   }}
                 />
-              </div>
-              {/* 필터 — 타입(off-table 타입 2개 이상일 때) + 정렬. 아이템리스트와 동일 SearchableSelect. */}
-              <div style={{ display: 'flex', gap: 8, padding: '0 2px 8px', flexWrap: 'wrap' }}>
                 {enabledOffTableTypes.length > 1 && (
-                  <div style={{ flex: '1 1 150px', minWidth: 140 }}>
+                  <div style={{ flex: '1 1 120px', minWidth: 110 }}>
                     <SearchableSelect
                       allowClear={false}
                       value={offTableFilter === 'all' ? null : offTableFilter}
@@ -1981,7 +1978,7 @@ const FloorPlanPage: React.FC = () => {
                     />
                   </div>
                 )}
-                <div style={{ flex: '1 1 150px', minWidth: 140 }}>
+                <div style={{ flex: '1 1 120px', minWidth: 110 }}>
                   <SearchableSelect
                     allowClear={false}
                     value={offTableSort === 'time' ? null : offTableSort}
