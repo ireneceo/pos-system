@@ -298,11 +298,19 @@
     "empty": {
       "mine": {
         "title": "No linked ingredients",
-        "desc": "Click any product in the Supplier Catalog tab to add to your inventory."
+        "desc": "Open the Supplier Catalog tab and click a product to order it — it’s added to your inventory automatically. If that tab is empty too, connect a brand or supplier first (see the Supplier Catalog tab for how)."
       },
       "catalog": {
-        "title": "No supplier products",
-        "desc": "You need an active contract with a supplier to view their catalog."
+        "title": "No products to order yet",
+        "desc": "Products you can order come from your brand or from suppliers you connect. Set up at least one source below to start ordering.",
+        "srcBrandLabel": "From your brand",
+        "srcBrand": "products your brand shares appear here automatically (if your store is linked to a brand). No action needed.",
+        "srcSupplierLabel": "From a registered supplier",
+        "srcSupplier": "find one in the Suppliers directory and request a contract; their catalog appears here once they accept.",
+        "srcExternalLabel": "Your own supplier",
+        "srcExternal": "not in the directory? Add it directly from the Suppliers page (orders are sent by PDF / WhatsApp).",
+        "tip": "Tip: each product links to your inventory automatically when you order it — you don’t need to create ingredients first.",
+        "cta": "Browse & add suppliers"
       }
     },
     "toast": {

@@ -1061,8 +1061,8 @@ const NewPurchaseOrderPage: React.FC = () => {
               ) : filteredMy.length === 0 ? (
                 <Empty>
                   <strong>{t('newPo.empty.mine.title', 'No ingredients found')}</strong>
-                  <div style={{ marginTop: 8, fontSize: 12 }}>
-                    {t('newPo.empty.mine.desc', 'Click any product in the Supplier Catalog tab to add to your inventory.')}
+                  <div style={{ marginTop: 8, fontSize: 12.5, color: '#4B5563', lineHeight: 1.6, maxWidth: 440 }}>
+                    {t('newPo.empty.mine.desc', 'Open the Supplier Catalog tab and click a product to order it — it’s added to your inventory automatically. If that tab is empty too, connect a brand or supplier first (see the Supplier Catalog tab for how).')}
                   </div>
                 </Empty>
               ) : (
@@ -1163,21 +1163,24 @@ const NewPurchaseOrderPage: React.FC = () => {
                 <Empty>{t('common:loading', 'Loading…')}</Empty>
               ) : catalogList.length === 0 ? (
                 <Empty>
-                  <strong>{t('newPo.empty.catalog.title', 'No supplier products yet')}</strong>
-                  <div style={{ marginTop: 8, fontSize: 13, color: '#4B5563', lineHeight: 1.7, maxWidth: 460 }}>
-                    {t('newPo.empty.catalog.desc', "Before you can place a purchase order, you need an active supplier contract. Once a supplier accepts your contract, their product catalog will appear here.")}
+                  <strong>{t('newPo.empty.catalog.title', 'No products to order yet')}</strong>
+                  <div style={{ marginTop: 8, fontSize: 13, color: '#4B5563', lineHeight: 1.7, maxWidth: 480 }}>
+                    {t('newPo.empty.catalog.desc', 'Products you can order come from your brand or from suppliers you connect. Set up at least one source below to start ordering.')}
                   </div>
-                  <div style={{ marginTop: 14, padding: '10px 14px', background: 'white', border: '1px solid #C7CED6', borderRadius: 8, fontSize: 12.5, color: '#374151', textAlign: 'left', maxWidth: 440 }}>
-                    <div style={{ marginBottom: 4 }}><strong style={{ color: '#635BFF' }}>1.</strong> {t('newPo.empty.catalog.step1', 'Find a supplier in the Suppliers directory')}</div>
-                    <div style={{ marginBottom: 4 }}><strong style={{ color: '#635BFF' }}>2.</strong> {t('newPo.empty.catalog.step2', 'Request a contract — supplier accepts')}</div>
-                    <div><strong style={{ color: '#635BFF' }}>3.</strong> {t('newPo.empty.catalog.step3', 'Their products will be listed here for ordering')}</div>
+                  <div style={{ marginTop: 14, padding: '12px 14px', background: 'white', border: '1px solid #C7CED6', borderRadius: 8, fontSize: 12.5, color: '#374151', textAlign: 'left', maxWidth: 480, lineHeight: 1.6 }}>
+                    <div style={{ marginBottom: 8 }}><strong style={{ color: '#635BFF' }}>A.</strong> <strong>{t('newPo.empty.catalog.srcBrandLabel', 'From your brand')}</strong> — {t('newPo.empty.catalog.srcBrand', 'products your brand shares appear here automatically (if your store is linked to a brand). No action needed.')}</div>
+                    <div style={{ marginBottom: 8 }}><strong style={{ color: '#635BFF' }}>B.</strong> <strong>{t('newPo.empty.catalog.srcSupplierLabel', 'From a registered supplier')}</strong> — {t('newPo.empty.catalog.srcSupplier', 'find one in the Suppliers directory and request a contract; their catalog appears here once they accept.')}</div>
+                    <div><strong style={{ color: '#635BFF' }}>C.</strong> <strong>{t('newPo.empty.catalog.srcExternalLabel', 'Your own supplier')}</strong> — {t('newPo.empty.catalog.srcExternal', 'not in the directory? Add it directly from the Suppliers page (orders are sent by PDF / WhatsApp).')}</div>
+                  </div>
+                  <div style={{ marginTop: 10, fontSize: 12, color: '#6B7280', maxWidth: 480 }}>
+                    {t('newPo.empty.catalog.tip', 'Tip: each product links to your inventory automatically when you order it — you don’t need to create ingredients first.')}
                   </div>
                   <button
                     type="button"
                     onClick={() => window.location.href = '/pos/supplier-directory'}
                     style={{ marginTop: 14, background: '#635BFF', color: 'white', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
                   >
-                    {t('newPo.empty.catalog.cta', 'Browse suppliers')}
+                    {t('newPo.empty.catalog.cta', 'Browse & add suppliers')}
                   </button>
                 </Empty>
               ) : (

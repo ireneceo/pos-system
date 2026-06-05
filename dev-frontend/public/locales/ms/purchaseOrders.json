@@ -298,11 +298,19 @@
     "empty": {
       "mine": {
         "title": "Tiada bahan dipautkan",
-        "desc": "Klik produk dalam Katalog Pembekal untuk masuk inventori."
+        "desc": "Buka tab Katalog Pembekal dan klik produk untuk memesannya — ia ditambah ke inventori secara automatik. Jika tab itu juga kosong, sambung jenama atau pembekal dahulu (lihat tab Katalog Pembekal untuk caranya)."
       },
       "catalog": {
-        "title": "Tiada produk pembekal",
-        "desc": "Perlu kontrak aktif dengan pembekal."
+        "title": "Belum ada produk untuk dipesan",
+        "desc": "Produk yang boleh dipesan datang dari jenama anda atau pembekal yang anda sambungkan. Sediakan sekurang-kurangnya satu sumber di bawah untuk mula memesan.",
+        "srcBrandLabel": "Dari jenama anda",
+        "srcBrand": "produk yang dikongsi jenama anda muncul di sini secara automatik (jika kedai disambung ke jenama). Tiada tindakan diperlukan.",
+        "srcSupplierLabel": "Dari pembekal berdaftar",
+        "srcSupplier": "cari dalam direktori Pembekal dan minta kontrak; katalog mereka muncul di sini sebaik diterima.",
+        "srcExternalLabel": "Pembekal anda sendiri",
+        "srcExternal": "tiada dalam direktori? Tambah terus dari halaman Pembekal (pesanan dihantar melalui PDF / WhatsApp).",
+        "tip": "Petua: setiap produk dipautkan ke inventori secara automatik apabila dipesan — anda tidak perlu cipta bahan dahulu.",
+        "cta": "Layari & tambah pembekal"
       }
     },
     "toast": {

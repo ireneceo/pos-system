@@ -544,7 +544,9 @@
       "Bash(awk -F: '$1>=3380 && $1<=3700')",
       "Bash(awk '/const SettingsGrid = styled/{f=1} f{print NR\": \"$0} /^\\\\`;/{if\\(f\\)exit}' src/pages/Settings/SettingsPage.tsx)",
       "Bash(echo \"빌드 백그라운드 시작 \\(pid $!\\)\")",
-      "Bash(pm2 describe *)"
+      "Bash(pm2 describe *)",
+      "Bash(awk '/router.post\\\\\\(.\\\\/staging.|router.post\\\\\\(.\\\\/bulk.|router.post\\\\\\(.\\\\/.,.*async/{found=NR} END{}' routes/purchase-orders-crud.js)",
+      "Bash(sed -n '600,720p' routes/purchase-orders-crud.js)"
     ],
     "deny": [],
     "ask": []
