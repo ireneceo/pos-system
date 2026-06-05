@@ -332,8 +332,9 @@ const FloorPlanPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeZoneFilter = searchParams.get('zone') || 'all';
   const _viewParam = searchParams.get('view');
+  // 'takeout' 이 정식 파라미터. 'takeaway' 는 옛 링크/북마크 하위호환으로 계속 인식.
   const activeView: 'floor' | 'takeaway' | 'items' =
-    _viewParam === 'takeaway' ? 'takeaway' : (_viewParam === 'items' ? 'items' : 'floor');
+    (_viewParam === 'takeout' || _viewParam === 'takeaway') ? 'takeaway' : (_viewParam === 'items' ? 'items' : 'floor');
   const selectedTakeawayOrderId = (() => {
     const q = searchParams.get('order');
     return q ? parseInt(q, 10) || null : null;
@@ -351,7 +352,7 @@ const FloorPlanPage: React.FC = () => {
   const setActiveView = useCallback((view: 'floor' | 'takeaway' | 'items') => {
     setSearchParams(prev => {
       const next = new URLSearchParams(prev);
-      if (view === 'takeaway') next.set('view', 'takeaway');
+      if (view === 'takeaway') next.set('view', 'takeout');
       else if (view === 'items') { next.set('view', 'items'); next.delete('order'); }
       else { next.delete('view'); next.delete('order'); }
       return next;
@@ -1872,9 +1873,7 @@ const FloorPlanPage: React.FC = () => {
             }}
             title={t('floorplan:floorPlanPage.offTableHint', { defaultValue: 'Takeaway / pickup / delivery orders' })}
           >
-            {enabledOffTableTypes.length === 1
-              ? t(`floorplan:floorPlanPage.type_${enabledOffTableTypes[0]}`, { defaultValue: 'Takeout' })
-              : t('floorplan:floorPlanPage.offTableView', { defaultValue: 'Takeout' })}
+            {t('floorplan:floorPlanPage.offTableView', { defaultValue: 'Takeout' })}
             <ZoneChipCount>{takeawayOrders.length}</ZoneChipCount>
           </ZoneChip>
           {/* Items 뷰 — 아이템별 서빙 리스트(홀 직원) */}
