@@ -459,7 +459,8 @@ const FloorPlanPage: React.FC = () => {
   const [readyAudio, setReadyAudio] = useState<boolean>(() => { try { return localStorage.getItem('fp_ready_audio') !== '0'; } catch { return true; } });
   // Floor Plan 알림음 설정(Settings) — 소켓 핸들러 closure 가 stale 안 되게 ref 로 최신 유지.
   const floorSoundRef = useRef<{ enabled?: boolean; type?: string } | undefined>(undefined);
-  floorSoundRef.current = (operationSettings as any)?.orderSounds?.floorPlan;
+  // 통합 새 주문음(newOrder), 레거시 floorPlan 폴백.
+  floorSoundRef.current = (operationSettings as any)?.orderSounds?.newOrder || (operationSettings as any)?.orderSounds?.floorPlan;
 
   // Daily Settlement
   const [showSettlement, setShowSettlement] = useState(false);
@@ -1923,8 +1924,8 @@ const FloorPlanPage: React.FC = () => {
               prepTracking={!!operationSettings?.prepTimeTracking}
               prepPerItem={Number(operationSettings?.defaultPreparationTimePerItem) || 10}
               prepThreshold={Number(operationSettings?.prepUrgentThreshold) || 80}
-              audioEnabled={(((operationSettings as any)?.orderSounds?.floorPlanReady?.enabled ?? (operationSettings as any)?.orderSounds?.floorPlan?.enabled) !== false) && readyAudio}
-              soundType={(operationSettings as any)?.orderSounds?.floorPlanReady?.type || (operationSettings as any)?.orderSounds?.floorPlan?.type || 'triple'}
+              audioEnabled={(((operationSettings as any)?.orderSounds?.itemReady?.enabled ?? (operationSettings as any)?.orderSounds?.floorPlanReady?.enabled) !== false) && readyAudio}
+              soundType={(operationSettings as any)?.orderSounds?.itemReady?.type || (operationSettings as any)?.orderSounds?.floorPlanReady?.type || 'triple'}
               onServe={handleServeItem}
               onOpenDineIn={handleOpenDineInFromItems}
               onOpenTakeaway={handleOpenTakeawayFromItems}

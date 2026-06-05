@@ -535,7 +535,10 @@
       "Bash(awk -F: '$1>=4540 && $1<=4720')",
       "Bash(sed -n '4660,4690p' src/pages/Settings/SettingsPage.tsx)",
       "Bash(sed -n '2283,2300p' /var/www/dev-backend/routes/orders-crud.js)",
-      "Bash(sed -n '1130,1155p' /var/www/dev-frontend/src/components/Layout/MainLayout.tsx)"
+      "Bash(sed -n '1130,1155p' /var/www/dev-frontend/src/components/Layout/MainLayout.tsx)",
+      "Bash(awk \"NR>=$\\(grep -nE \"activeTab === 'operations'\" src/pages/Settings/SettingsPage.tsx)",
+      "Bash(awk 'NR>=3247 && NR<4540' src/pages/Settings/SettingsPage.tsx)",
+      "Bash(awk -F: '$1>=4540 && $1<=4640')"
     ],
     "deny": [],
     "ask": []

@@ -92,11 +92,12 @@ const LiveOrdersPage: React.FC = () => {
   const [paymentMethods, setPaymentMethods] = useState<any>(null);
   const [timeDisplayKey, setTimeDisplayKey] = useState(0); // Time display update key
   // 사운드: 기기별 mute 키는 Live Orders 전용(KDS 와 분리 — 더 이상 공유 안 함).
-  // 종류·매장단위 on/off 는 Settings(operation_settings.orderSounds.liveOrders).
+  // 종류·매장단위 on/off 는 Settings(operation_settings.orderSounds.newOrder — 통합 새 주문음).
+  // 레거시(liveOrders) 폴백 유지. 기기별 mute 는 liveorders_sound_enabled.
   const [localSoundOn, setLocalSoundOn] = useState(() => localStorage.getItem('liveorders_sound_enabled') !== 'false');
-  const _liveSound = operationSettings?.orderSounds?.liveOrders;
-  const liveSoundType = (_liveSound?.type || 'bell') as any;
-  const audioEnabled = (_liveSound?.enabled !== false) && localSoundOn;
+  const _newOrderSound = operationSettings?.orderSounds?.newOrder || operationSettings?.orderSounds?.liveOrders;
+  const liveSoundType = (_newOrderSound?.type || 'bell') as any;
+  const audioEnabled = (_newOrderSound?.enabled !== false) && localSoundOn;
 
   // Membership settings (used by PaymentModal for membership info display)
   const [membershipSettings, setMembershipSettings] = useState<any>(null);

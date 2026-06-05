@@ -62,10 +62,13 @@ interface OperationSettings {
     soundType: 'bell' | 'beep' | 'triple' | 'urgent' | 'melody' | 'deep';
   };
   // 화면별 주문 알림음(종류·on/off) — docs/ORDER_SOUND_SYSTEM.md. 주방은 스테이션 alert_sound 별도.
+  // 통합(2026-06-05): 새 주문은 화면 불문 단일 newOrder 소리, 서빙 ready 는 itemReady.
+  // 레거시 키(liveOrders/floorPlan/floorPlanReady)는 옛 설정 읽기 폴백용 (신규 저장 안 함).
   orderSounds: {
-    liveOrders: { enabled: boolean; type: 'bell' | 'beep' | 'triple' | 'urgent' | 'melody' | 'deep' };
-    floorPlan: { enabled: boolean; type: 'bell' | 'beep' | 'triple' | 'urgent' | 'melody' | 'deep' };
-    // Floor Plan 아이템 ready(서빙 알림) — 새 주문음과 구분되게 별도 종류. 미설정 시 floorPlan 폴백.
+    newOrder?: { enabled: boolean; type: 'bell' | 'beep' | 'triple' | 'urgent' | 'melody' | 'deep' };
+    itemReady?: { enabled: boolean; type: 'bell' | 'beep' | 'triple' | 'urgent' | 'melody' | 'deep' };
+    liveOrders?: { enabled: boolean; type: 'bell' | 'beep' | 'triple' | 'urgent' | 'melody' | 'deep' };
+    floorPlan?: { enabled: boolean; type: 'bell' | 'beep' | 'triple' | 'urgent' | 'melody' | 'deep' };
     floorPlanReady?: { enabled: boolean; type: 'bell' | 'beep' | 'triple' | 'urgent' | 'melody' | 'deep' };
   };
   deliveryPricing: {
@@ -149,9 +152,8 @@ const defaultOperationSettings: OperationSettings = {
     soundType: 'bell'
   },
   orderSounds: {
-    liveOrders: { enabled: true, type: 'bell' },
-    floorPlan: { enabled: true, type: 'bell' },
-    floorPlanReady: { enabled: true, type: 'triple' }
+    newOrder: { enabled: true, type: 'bell' },
+    itemReady: { enabled: true, type: 'triple' }
   },
   deliveryPricing: {
     enabled: false,

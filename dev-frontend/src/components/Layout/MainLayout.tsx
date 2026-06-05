@@ -1170,8 +1170,14 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             createdAt: payload.order_date
           }];
         });
-        if (cfg?.soundEnabled !== false) {
-          playIfNotOnSoundPage((cfg?.soundType as any) || 'bell');
+        // 통합(2026-06-05): 새 주문음은 orderSounds.newOrder 단일 소스. 레거시(liveOrders/
+        // mobileOrderAlerts.soundType) 폴백. 배너는 그대로 mobileOrderAlerts.bannerEnabled.
+        const _os = operationSettingsRef.current?.orderSounds as any;
+        const _no = _os?.newOrder || _os?.liveOrders || _os?.floorPlan;
+        const _noType = (_no?.type || cfg?.soundType || 'bell') as any;
+        const _noOn = _no ? (_no.enabled !== false) : (cfg?.soundEnabled !== false);
+        if (_noOn) {
+          playIfNotOnSoundPage(_noType);
         }
 
         // 2026-05-28: socket 기반 인쇄 path 는 제거. backend needs_print marker +
