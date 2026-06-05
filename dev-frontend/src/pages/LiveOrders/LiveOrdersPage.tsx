@@ -1154,8 +1154,10 @@ const LiveOrdersPage: React.FC = () => {
               orderType: (selectedOrder as any).order_type || (selectedOrder as any).orderType,
               cancelTitle: '*** ITEM CANCELLED ***',   // R9 헤더
               cancelFooter: '>> DO NOT PREPARE <<',
-              stationLabel: removed.stationName,   // 상단 station명 표기
-              items: [{ name: removed.name || itemToDelete.name, quantity: removed.quantity || 1, kitchen_station_id: sid, stationName: removed.stationName, cancelReason: reason || undefined }]
+              // station명 — 저장된 item.stationName 이 없으면(POS 주문 등) 프린터 설정의 stationName 폴백.
+              // 주문취소(printCancellationTicketsByStation)와 동일하게 → 안내문 아래 ** STATION ** 박스.
+              stationLabel: removed.stationName || (sp && sp.stationName) || undefined,
+              items: [{ name: removed.name || itemToDelete.name, quantity: removed.quantity || 1, kitchen_station_id: sid, stationName: removed.stationName || (sp && sp.stationName) || undefined, cancelReason: reason || undefined }]
             };
             const reasonLabel = reason ? `Item voided — ${reason}` : 'Item voided';
             const doPrint = () => printCancellationTicket(printData, sInfo, reasonLabel, stPrinter, stAddr)

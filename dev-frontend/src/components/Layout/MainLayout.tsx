@@ -1145,8 +1145,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
     const playIfNotOnSoundPage = (preset: 'bell' | 'beep' | 'triple' | 'urgent' | 'melody' | 'deep' = 'bell') => {
       const path = locationRef.current.pathname;
-      // Live Orders, Kitchen Display는 자체 소리 관리
-      if (path.includes('/live-orders') || path.includes('/kitchen')) return;
+      // Live Orders, Kitchen Display, Floor Plan 은 자체 새주문 소리 관리 → 전역 모바일 알림음 억제(중복 방지).
+      if (path.includes('/live-orders') || path.includes('/kitchen') || path.includes('/floor-plan')) return;
       const enabled = localStorage.getItem('sound_enabled') !== 'false';
       if (!enabled) return;
       import('../../utils/notificationSound').then(({ startRepeatingSound }) => {

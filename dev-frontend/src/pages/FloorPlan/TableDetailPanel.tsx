@@ -878,8 +878,9 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                   tableNumber: tableNumber || undefined,
                   cancelTitle: '*** ITEM CANCELLED ***',
                   cancelFooter: '>> DO NOT PREPARE <<',
-                  stationLabel: removed.stationName,
-                  items: [{ name: removed.name || itemName, quantity: removed.quantity || 1, kitchen_station_id: sid, stationName: removed.stationName }]
+                  // station명 — 저장된 stationName 없으면 프린터 설정의 stationName 폴백 (주문취소/테이블이동과 동일).
+                  stationLabel: removed.stationName || (sp && sp.stationName) || undefined,
+                  items: [{ name: removed.name || itemName, quantity: removed.quantity || 1, kitchen_station_id: sid, stationName: removed.stationName || (sp && sp.stationName) || undefined }]
                 };
                 const doPrint = () => printCancellationTicket(printData, sInfo, 'Item voided', stPrinter, stAddr)
                   .catch((e: any) => console.warn('FloorPlan item void print failed:', e && e.message));

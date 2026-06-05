@@ -533,7 +533,9 @@
       "Bash(awk 'NR>=4400 && NR<=4675 && \\(/activeTab ===|tab: |TabContent|=== .kitchen|=== .notification|=== .operation|=== .general|sectionTab|{activeTab/\\)' src/pages/Settings/SettingsPage.tsx)",
       "Bash(awk 'NR<=4670 && /activeTab === '\\\\''|currentTab === '\\\\''|\\\\{activeTab === /{last=NR\": \"$0} END{print last}' src/pages/Settings/SettingsPage.tsx)",
       "Bash(awk -F: '$1>=4540 && $1<=4720')",
-      "Bash(sed -n '4660,4690p' src/pages/Settings/SettingsPage.tsx)"
+      "Bash(sed -n '4660,4690p' src/pages/Settings/SettingsPage.tsx)",
+      "Bash(sed -n '2283,2300p' /var/www/dev-backend/routes/orders-crud.js)",
+      "Bash(sed -n '1130,1155p' /var/www/dev-frontend/src/components/Layout/MainLayout.tsx)"
     ],
     "deny": [],
     "ask": []
