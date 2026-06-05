@@ -141,6 +141,10 @@ async function runFor(label, token, routes) {
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({
     ignoreHTTPSErrors: true,
+    // 2026-06-05: PWA Service Worker 가 헤드리스 네비게이션을 가로채 /pos(로그인)로
+    // 리다이렉트시켜 실제 인증 페이지가 mount 안 되던 문제 → SW 차단으로 토큰 인증이
+    // 실제로 적용된다(이전엔 로그인 페이지를 "OK"로 오판할 수 있었음).
+    serviceWorkers: 'block',
     storageState: {
       cookies: [],
       origins: [

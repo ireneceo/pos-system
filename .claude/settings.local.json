@@ -542,7 +542,9 @@
       "Bash(awk 'NR>=3247 && NR<4546' src/pages/Settings/SettingsPage.tsx)",
       "Bash(awk -F: '$1>=3450 && $1<=3640')",
       "Bash(awk -F: '$1>=3380 && $1<=3700')",
-      "Bash(awk '/const SettingsGrid = styled/{f=1} f{print NR\": \"$0} /^\\\\`;/{if\\(f\\)exit}' src/pages/Settings/SettingsPage.tsx)"
+      "Bash(awk '/const SettingsGrid = styled/{f=1} f{print NR\": \"$0} /^\\\\`;/{if\\(f\\)exit}' src/pages/Settings/SettingsPage.tsx)",
+      "Bash(echo \"빌드 백그라운드 시작 \\(pid $!\\)\")",
+      "Bash(pm2 describe *)"
     ],
     "deny": [],
     "ask": []
