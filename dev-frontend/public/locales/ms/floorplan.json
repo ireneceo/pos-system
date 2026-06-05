@@ -179,5 +179,7 @@
   "itemList.took": "{{n}}m",
   "itemList.justNow": "baru sahaja",
   "itemList.minAgo": "{{n}}m lalu",
-  "itemList.hrAgo": "{{h}}j {{m}}m lalu"
+  "itemList.hrAgo": "{{h}}j {{m}}m lalu",
+  "floorPlanPage.sortTime": "Isih: Masa pesanan",
+  "floorPlanPage.sortAmount": "Isih: Jumlah"
 }

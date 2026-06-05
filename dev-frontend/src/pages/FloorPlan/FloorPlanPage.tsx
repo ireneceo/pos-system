@@ -13,6 +13,7 @@ import PaymentModal from '../../components/POSTerminal/PaymentModal';
 import { Modal as CommonModal } from '../../components/UI';
 import KitchenTicketSendModal, { previewStationBuckets, KitchenTicketSendPrompt } from '../../components/Print/KitchenTicketSendModal';
 import OverflowMenu, { OverflowMenuItem } from '../../components/UI/OverflowMenu';
+import SearchableSelect from '../../components/Common/SearchableSelect';
 import CashierPinModal from '../../components/POSTerminal/CashierPinModal';
 // timezone.ts (POS·TableDetailPanel 과 동일): 2번째 인자 = operationSettings 객체.
 // dateFormat.ts 는 2번째 인자가 timeZone "문자열" 이라, 객체를 넘기면 resolveTz 가
@@ -371,6 +372,7 @@ const FloorPlanPage: React.FC = () => {
   const [restaurantOrderTypes, setRestaurantOrderTypes] = useState<{ takeaway: boolean; pickup: boolean; delivery: boolean }>({ takeaway: true, pickup: false, delivery: false });
   const [offTableFilter, setOffTableFilter] = useState<'all' | 'takeaway' | 'pickup' | 'delivery'>('all');
   const [offTableSearch, setOffTableSearch] = useState('');
+  const [offTableSort, setOffTableSort] = useState<'time' | 'amount'>('time');
 
   // Filtered floor plan — tables restricted to selected zone.
   const filteredFloorPlan = useMemo<FloorPlanData>(() => {
@@ -583,14 +585,17 @@ const FloorPlanPage: React.FC = () => {
   }, [restaurantOrderTypes]);
   const displayedOffTableOrders = useMemo(() => {
     const q = offTableSearch.trim().toLowerCase();
-    return takeawayOrders.filter(o => {
+    const filtered = takeawayOrders.filter(o => {
       if (offTableFilter !== 'all' && normOffTableType(o) !== offTableFilter) return false;
       if (!q) return true;
       const hay = `${o.order_number || o.orderNumber || ''} ${o.customer_name || o.customerName || ''} ${o.customer_phone || ''} ${o.pickup_number || o.pickupNumber || ''}`.toLowerCase();
       const itemsHay = (o.order_items || o.orderItems || []).map((it: any) => it.name || it.menuItem?.name || '').join(' ').toLowerCase();
       return hay.includes(q) || itemsHay.includes(q);
     });
-  }, [takeawayOrders, offTableFilter, offTableSearch]);
+    const amt = (o: any) => Number(o.total_amount ?? o.total ?? 0) || 0;
+    const ts = (o: any) => new Date(o.order_date || o.orderCreatedAt || o.createdAt || 0).getTime();
+    return filtered.sort((a, b) => offTableSort === 'amount' ? amt(b) - amt(a) : ts(b) - ts(a));
+  }, [takeawayOrders, offTableFilter, offTableSearch, offTableSort]);
 
   const debouncedFetch = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -1960,29 +1965,35 @@ const FloorPlanPage: React.FC = () => {
                   }}
                 />
               </div>
-              {/* 타입 필터 칩 — 매장이 켠 off-table 타입이 2개 이상일 때만 */}
-              {enabledOffTableTypes.length > 1 && (
-                <div style={{ display: 'flex', gap: 6, padding: '0 2px 8px', flexWrap: 'wrap' }}>
-                  {(['all', ...enabledOffTableTypes] as const).map(ft => {
-                    const on = offTableFilter === ft;
-                    const label = ft === 'all'
-                      ? t('floorplan:floorPlanPage.type_all', { defaultValue: 'All' })
-                      : t(`floorplan:floorPlanPage.type_${ft}`, { defaultValue: ft });
-                    const cnt = ft === 'all' ? takeawayOrders.length : takeawayOrders.filter(o => normOffTableType(o) === ft).length;
-                    return (
-                      <button key={ft} type="button" onClick={() => setOffTableFilter(ft as any)}
-                        style={{
-                          fontSize: 12, fontWeight: 600, padding: '5px 11px', borderRadius: 999, cursor: 'pointer',
-                          border: `1px solid ${on ? 'var(--pos-brand, #635BFF)' : '#D7DEE6'}`,
-                          background: on ? 'var(--pos-brand, #635BFF)' : 'var(--pos-surface, #fff)',
-                          color: on ? '#fff' : 'var(--pos-text-muted, #4B5563)'
-                        }}>
-                        {label}{cnt > 0 ? ` ${cnt}` : ''}
-                      </button>
-                    );
-                  })}
+              {/* 필터 — 타입(off-table 타입 2개 이상일 때) + 정렬. 아이템리스트와 동일 SearchableSelect. */}
+              <div style={{ display: 'flex', gap: 8, padding: '0 2px 8px', flexWrap: 'wrap' }}>
+                {enabledOffTableTypes.length > 1 && (
+                  <div style={{ flex: '1 1 150px', minWidth: 140 }}>
+                    <SearchableSelect
+                      allowClear={false}
+                      value={offTableFilter === 'all' ? null : offTableFilter}
+                      onChange={v => setOffTableFilter((v as any) || 'all')}
+                      placeholder={t('floorplan:floorPlanPage.type_all', { defaultValue: 'All types' })}
+                      options={[
+                        { value: 'all', label: t('floorplan:floorPlanPage.type_all', { defaultValue: 'All types' }) },
+                        ...enabledOffTableTypes.map(ft => ({ value: ft, label: `${t(`floorplan:floorPlanPage.type_${ft}`, { defaultValue: ft })}${takeawayOrders.filter(o => normOffTableType(o) === ft).length ? ` (${takeawayOrders.filter(o => normOffTableType(o) === ft).length})` : ''}` }))
+                      ]}
+                    />
+                  </div>
+                )}
+                <div style={{ flex: '1 1 150px', minWidth: 140 }}>
+                  <SearchableSelect
+                    allowClear={false}
+                    value={offTableSort === 'time' ? null : offTableSort}
+                    onChange={v => setOffTableSort((v as any) || 'time')}
+                    placeholder={t('floorplan:floorPlanPage.sortTime', { defaultValue: 'Sort: Order time' })}
+                    options={[
+                      { value: 'time', label: t('floorplan:floorPlanPage.sortTime', { defaultValue: 'Sort: Order time' }) },
+                      { value: 'amount', label: t('floorplan:floorPlanPage.sortAmount', { defaultValue: 'Sort: Amount' }) },
+                    ]}
+                  />
                 </div>
-              )}
+              </div>
               {takeawayLoading && takeawayOrders.length === 0 ? (
                 <div style={{ padding: 40, textAlign: 'center', color: 'var(--pos-text-muted, #4B5563)' }}>
                   {t('floorplan:floorPlanPage.loading', 'Loading takeaway orders...')}

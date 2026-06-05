@@ -2490,6 +2490,7 @@ const SettingsPage: React.FC = () => {
                         borderTop: '1px solid #C7CED6',
                         paddingTop: '14px',
                         marginTop: '14px',
+                        marginBottom: '18px',
                         display: 'flex',
                         flexDirection: 'column',
                         gap: '8px'

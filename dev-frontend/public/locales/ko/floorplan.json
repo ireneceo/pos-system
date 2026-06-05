@@ -179,5 +179,7 @@
   "itemList.took": "{{n}}분",
   "itemList.justNow": "방금 전",
   "itemList.minAgo": "{{n}}분 전",
-  "itemList.hrAgo": "{{h}}시간 {{m}}분 전"
+  "itemList.hrAgo": "{{h}}시간 {{m}}분 전",
+  "floorPlanPage.sortTime": "정렬: 주문시간",
+  "floorPlanPage.sortAmount": "정렬: 금액"
 }

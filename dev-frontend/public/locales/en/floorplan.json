@@ -179,5 +179,7 @@
   "itemList.took": "{{n}}m",
   "itemList.justNow": "just now",
   "itemList.minAgo": "{{n}}m ago",
-  "itemList.hrAgo": "{{h}}h {{m}}m ago"
+  "itemList.hrAgo": "{{h}}h {{m}}m ago",
+  "floorPlanPage.sortTime": "Sort: Order time",
+  "floorPlanPage.sortAmount": "Sort: Amount"
 }

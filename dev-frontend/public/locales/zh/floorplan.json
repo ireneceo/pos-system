@@ -179,5 +179,7 @@
   "itemList.took": "{{n}}分钟",
   "itemList.justNow": "刚刚",
   "itemList.minAgo": "{{n}}分钟前",
-  "itemList.hrAgo": "{{h}}小时{{m}}分钟前"
+  "itemList.hrAgo": "{{h}}小时{{m}}分钟前",
+  "floorPlanPage.sortTime": "排序：下单时间",
+  "floorPlanPage.sortAmount": "排序：金额"
 }
