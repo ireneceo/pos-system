@@ -1,6 +1,22 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-05 (v3.47 운영 배포 — 세트 파이프라인 + Off-table 통합뷰 + 색상 통일 + 주문 알림음 + 오더티켓 스테이션 정비 + Reports 달력. Backup 20260605_150148, smoke 9/9. 매장 프린터 실출력 눈확인 대기.)
+> **최종 업데이트:** 2026-06-05 (v3.48 운영 배포 — 주문 알림음 통합 + 아이템취소 티켓 스테이션 박스 + 발주 안내 보완 + 발주 전수조사. Backup 20260605_174713, smoke 9/9. 아이템취소 티켓 실프린터 눈확인 대기.)
+
+## ✅ 완료(v3.48 운영 배포 2026-06-05): 주문 알림음 통합 + 아이템취소 티켓 + 발주 안내
+
+### 완료된 작업
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 주문 알림음 단일화 | New Order(전화면 공통) + Item Ready(서빙) 2개로 통합, Operations 탭 이동, 중복음 제거 | ✅ |
+| 아이템취소 티켓 스테이션 박스 | 안내문 아래 ** STATION ** 그룹라벨(테이블이동·주문취소와 동일) | ✅ |
+| 발주 빈상태 안내 | 3경로(브랜드/등록공급사/외부) + 재료 자동연결 안내, 4개 언어 | ✅ |
+| 발주 시스템 전수조사 | 생성→수령→인보이스→반품→크레딧, IDOR/익명 차단, UI mount — 코드 무결성 확인 | ✅ |
+| sweep 도구 보강 | serviceWorkers:'block' (SW 리다이렉트로 인증 페이지 mount 오판 수정) | ✅ |
+
+### 수정 파일
+- `dev-frontend/src/contexts/StoreContext.tsx`, `pages/Settings/SettingsPage.tsx`, `pages/LiveOrders/LiveOrdersPage.tsx`, `pages/FloorPlan/{FloorPlanPage,TableDetailPanel}.tsx`, `components/Layout/MainLayout.tsx`, `pages/PurchaseOrders/NewPurchaseOrderPage.tsx`, `scripts/headless-page-sweep.js`, `public/sw.js`, 로케일 settings/purchaseOrders.json ×4
+
+---
 
 ## ✅ 완료(v3.47 운영 배포 2026-06-05): 세트 파이프라인 + Off-table 뷰 + 색상 통일 + 알림음 + 오더티켓/달력
 
