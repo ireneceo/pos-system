@@ -10,7 +10,7 @@
  * caching SPA shell would conflict. If future offline support is needed, layer Workbox separately.
  */
 
-const SW_VERSION = '3.46-crossrealm-poke-20260604';
+const SW_VERSION = '3.46-tickets-offtable-reports-20260605';
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {

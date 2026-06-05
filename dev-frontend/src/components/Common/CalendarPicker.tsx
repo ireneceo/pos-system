@@ -78,6 +78,15 @@ const CalendarPicker: React.FC<CalendarPickerProps> = ({
     if (isOpen) setStep('start');
   }, [isOpen]);
 
+  // 2026-06-05 (Irene 버그): 열 때마다 오늘(현재 월)로 돌아가던 문제 → 선택된 시작일의 월로 위치.
+  // 커스텀 5월 범위를 골라도 다시 열면 6월(오늘)이 떠서 "자꾸 6월" 처럼 보이던 원인.
+  useEffect(() => {
+    if (!isOpen) return;
+    const anchor = parseDate(startDate || '') || parseDate(endDate || '') || new Date();
+    setViewMonth(anchor.getMonth());
+    setViewYear(anchor.getFullYear());
+  }, [isOpen, startDate, endDate]);
+
   // Outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {

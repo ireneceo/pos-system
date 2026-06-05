@@ -1509,12 +1509,16 @@ export function generateHTMLKitchenTicket(orderData, storeInfo) {
   // Items — kitchen format: large qty × name + starred options + inline station tag
   // The station tag lets POS staff (when this ticket comes out at the counter)
   // tell at a glance which kitchen station each item belongs to.
+  // 2026-06-05 (Irene): 인라인 스테이션 태그는 통합(카운터) 티켓에서만 (showItemStations).
+  // 스테이션별 티켓은 상단/그룹 라벨에 이미 스테이션이 있어 인라인 태그는 중복.
+  const _showStations = !!orderData.showItemStations;
+  const _stationTag = (sn) => (_showStations && sn)
+    ? ` <span class="station-tag">${escapeHtmlForPrint(sn.toUpperCase())}</span>`
+    : '';
   const itemsHtml = orderData.items.map(item => {
     const itemName = escapeHtmlForPrint(item.menuItem?.name || item.name);
     const qty = item.quantity;
-    const stationTagHtml = item.stationName
-      ? ` <span class="station-tag">${escapeHtmlForPrint(item.stationName.toUpperCase())}</span>`
-      : '';
+    const stationTagHtml = _stationTag(item.stationName);
     // 세트 구성품: set_components 우선, 없으면 레거시 set_items 폴백(둘 다 메뉴명 보유).
     // (테이블이동/구주문이 set_components 없이 set_items 만 들고 와도 메뉴명 크게 펼침)
     const _comps = (Array.isArray(item.set_components) && item.set_components.length > 0) ? item.set_components
@@ -1537,7 +1541,8 @@ export function generateHTMLKitchenTicket(orderData, storeInfo) {
         const cq = (Number(qty) || 1) * (Number(c.qty) || 1);
         const co = Array.isArray(c.options) && c.options.length
           ? `<div class="item-option" style="font-size:13px;font-weight:600;">★ ${escapeHtmlForPrint(c.options.join(', '))}</div>` : '';
-        return `<div class="item-name" style="font-size:18px;font-weight:700;">${_strike(`${cq} × ${cn}`)}${stationTagHtml}</div>${co}`;
+        // 구성품은 각자 걸린 주방을 표시(통합 티켓 전용). 부모 세트 태그 대신 구성품 자기 station.
+        return `<div class="item-name" style="font-size:18px;font-weight:700;">${_strike(`${cq} × ${cn}`)}${_stationTag(c.stationName)}</div>${co}`;
       }).join('');
       return `
       <div class="item">
@@ -1666,7 +1671,7 @@ function generateHTMLAdditionalItemsTicket(orderData, storeInfo) {
   const itemsHtml = addedItems.map(item => {
     const itemName = escapeHtmlForPrint(item.menuItem?.name || item.name);
     const qty = item.quantity;
-    const stationTagHtml = item.stationName
+    const stationTagHtml = (orderData.showItemStations && item.stationName)
       ? ` <span class="station-tag">${escapeHtmlForPrint(item.stationName.toUpperCase())}</span>`
       : '';
     const hasSetComps = Array.isArray(item.set_components) && item.set_components.length > 0;
@@ -1906,6 +1911,9 @@ export async function printBillViaRawBT(orderData, storeInfo, printerName) {
 export function generateKitchenTicketContent(orderData, storeInfo) {
   let content = '';
 
+  // 2026-06-05 (Irene): 인라인 스테이션 태그는 통합(카운터) 티켓에서만 표시.
+  const _showStations = !!orderData.showItemStations;
+
   // 취소표 통일 (2026-06-04): 취소표 별도 디자인 폐기 → 이 생성기를 재사용하고 noticeHeader
   // (CANCELLED 배너) + voided 플래그만 추가. voided 면 품목을 reverse-video(흰글자/검정바탕)
   // 로 "취소 줄" 강조 + 하단 STOP 푸터. voided 가 false(평소)면 출력 100% 불변.
@@ -2008,7 +2016,9 @@ export function generateKitchenTicketContent(orderData, storeInfo) {
 
     // Inline station tag — printed on the next line at normal size so it
     // stays readable on 32-char thermal paper even when item names are long.
-    if (item.stationName) {
+    // 2026-06-05 (Irene): 통합(카운터) 티켓에서만 (showItemStations). 스테이션별 티켓은
+    // 상단/그룹 라벨에 이미 스테이션이 있어 중복.
+    if (_showStations && item.stationName) {
       content += CMD.BOLD_ON;
       content += '  → ' + item.stationName.toUpperCase() + CMD.LINE_FEED;
       content += CMD.BOLD_OFF;
@@ -2025,6 +2035,12 @@ export function generateKitchenTicketContent(orderData, storeInfo) {
         content += CMD.BOLD_ON;
         content += '  > ' + cn + CMD.LINE_FEED;
         content += CMD.BOLD_OFF;
+        // 구성품 각자 걸린 주방 (통합 티켓 전용).
+        if (_showStations && c.stationName) {
+          content += CMD.BOLD_ON;
+          content += '    → ' + c.stationName.toUpperCase() + CMD.LINE_FEED;
+          content += CMD.BOLD_OFF;
+        }
         if (Array.isArray(c.options) && c.options.length > 0) {
           c.options.forEach(o => { content += '    * ' + rawText(o) + CMD.LINE_FEED; });
         }
@@ -2364,7 +2380,7 @@ function generateHTMLMultiPageKitchenTickets(orderData, storeInfo) {
     const itemIndex = index + 1;
     const itemName = escapeHtmlForPrint(item.menuItem?.name || item.name);
     const qty = item.quantity;
-    const stationTagHtml = item.stationName
+    const stationTagHtml = (orderData.showItemStations && item.stationName)
       ? ` <span class="station-tag">${escapeHtmlForPrint(item.stationName.toUpperCase())}</span>`
       : '';
     const _pageStation = (item.stationName || orderData.stationName || '').toString().trim();
@@ -2448,7 +2464,7 @@ export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerNa
           const tagged = tagTicketWithStations(orderData, 'COUNTER', settings);
           // noStationBox: 통합 티켓은 상단 단일 station 박스 생략(여러 스테이션 혼재).
           // 라우팅은 아이템별 인라인 [KQ1][KQ2] 태그로 확인. (KQ1 박스만 찍히던 오류 제거)
-          const unifiedTicket = { ...tagged, groupLabel: 'COUNTER', printedAt: 'COUNTER', noStationBox: true };
+          const unifiedTicket = { ...tagged, groupLabel: 'COUNTER', printedAt: 'COUNTER', noStationBox: true, showItemStations: true };
           if (isLanIP) {
             sendViaQZTray(generateKitchenTicketContent(unifiedTicket, storeInfo), billAddr)
               .catch(e => console.warn('Kitchen → counter mirror print failed:', e && e.message));
@@ -2713,18 +2729,33 @@ export function tagTicketWithStations(orderData, printedAtLabel, settings) {
     if (saved) kdsStationNameById = JSON.parse(saved);
   } catch (e) { /* non-fatal */ }
   const stationPrinters = settings?.kitchenStationPrinters || {};
+  // station id → 표시 이름 (아이템 + 세트 구성품 공용 single source).
+  const resolveStationName = (sid) => {
+    if (!sid) return null;
+    return kdsStationNameById[sid] || stationPrinters[sid]?.stationName || `Station #${sid}`;
+  };
   const items = (orderData.items || []).map(item => {
+    // 세트 구성품도 각자 걸린 주방으로 태깅 — 통합(카운터) 티켓에서 구성품별 스테이션 표시.
+    // (구성품 station = 백엔드 stationEnrichment 가 set_components[].kitchen_station_id 로 부여)
+    let next = item;
+    if (Array.isArray(item.set_components) && item.set_components.length > 0) {
+      const taggedComps = item.set_components.map(c => {
+        if (!c || c.stationName) return c;
+        const csid = c.kitchen_station_id || (c.name ? menuStationMap[c.name] : null);
+        const cName = resolveStationName(csid);
+        return cName ? { ...c, stationName: cName } : c;
+      });
+      next = { ...item, set_components: taggedComps };
+    }
     // 1) Backend-enriched item.stationName (polling endpoint) — single source.
     //    localStorage 의존 X. 매장 device 캐시 무관하게 항상 정확.
-    if (item.stationName) return item;
+    if (next.stationName) return next;
     // 2) Fallback chain: kitchen_station_id → KDS DB cache → printer_settings → station id label.
-    const itemName = item.menuItem?.name || item.name;
-    const stationId = item.kitchen_station_id || menuStationMap[itemName];
-    if (!stationId) return item;
-    const fromKdsCache = kdsStationNameById[stationId];
-    const fromSettings = stationPrinters[stationId]?.stationName;
-    const stationName = fromKdsCache || fromSettings || `Station #${stationId}`;
-    return { ...item, stationName };
+    const itemName = next.menuItem?.name || next.name;
+    const stationId = next.kitchen_station_id || menuStationMap[itemName];
+    if (!stationId) return next;
+    const stationName = resolveStationName(stationId);
+    return { ...next, stationName };
   });
   return { ...orderData, items, printedAt: printedAtLabel };
 }
@@ -3856,6 +3887,7 @@ function escapeHtml(s) {
 function buildVoidTicketData(orderData, reason) {
   const _lines = [];
   if (reason) _lines.push('Reason: ' + reason);
+  const _station = orderData.stationName || orderData.stationLabel || null;
   return {
     ...orderData,
     // 일반 오더티켓 생성기는 items 에 `|| []` 방어가 없다(평소 주문은 항상 items 보유).
@@ -3864,8 +3896,12 @@ function buildVoidTicketData(orderData, reason) {
     date: (orderData.date instanceof Date) ? orderData.date : new Date(),
     voided: true,
     noticeHeader: { title: orderData.cancelTitle || '*** ORDER CANCELLED ***', lines: _lines },
-    // 취소 경로는 station 을 stationLabel 로 전달 → 일반 생성기는 stationName 으로 박스 그림.
-    stationName: orderData.stationName || orderData.stationLabel || null,
+    // 2026-06-05 (Irene): 취소 티켓 스테이션을 테이블이동 티켓과 동일하게 — 상단 박스(stationName)가
+    // 아니라 안내문(*** ORDER CANCELLED *** + Reason) 아래의 그룹 라벨(** STATION **)로 표시.
+    // groupLabel + noStationBox 로 테이블이동 재발행 티켓과 레이아웃 100% 일치.
+    groupLabel: _station || orderData.groupLabel || undefined,
+    noStationBox: true,
+    stationName: null,
     orderNumber: orderData.orderNumber || orderData.order_number,
     tableNumber: orderData.tableNumber || orderData.table_number,
     orderType: orderData.orderType || orderData.order_type,
@@ -4017,7 +4053,8 @@ export async function printCancellationTicketsByStation(orderData, storeInfo, re
 async function printCancellationToCounter(orderData, storeInfo, reason) {
   const settings = getPrinterSettings();
   // 카운터 미러는 여러 스테이션 혼재 → 상단 station 박스 생략(noStationBox), 일반 오더티켓과 동일.
-  const _voidData = { ...buildVoidTicketData(orderData, reason), noStationBox: true };
+  // 2026-06-05 (Irene): 통합 취소 티켓도 아이템별 스테이션 인라인 표시(showItemStations).
+  const _voidData = { ...buildVoidTicketData(orderData, reason), noStationBox: true, showItemStations: true };
   const escpos = generateKitchenTicketContent(_voidData, storeInfo);
 
   if (shouldUseQZTray()) {
