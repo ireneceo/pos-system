@@ -17,7 +17,14 @@ const {
 const { authenticateToken } = require('../middleware/auth');
 const { isBrandManager } = require('../middleware/recipeAuth');
 const { requireBGScope, applyBGFilter, assertBGOwnsRow } = require('../middleware/brandScope');
+const { requireBrandUserModule } = require('../middleware/requireModule');
 const { normalizeImageField } = require('../utils/imageProcessor');
+
+// P0-3 Wave B: 브랜드 상품 관리(카탈로그/카테고리/옵션그룹/상품레시피)는 Advanced(brand_products).
+// BG 유저 스코프 경로만 게이트 — 레스토랑이 브랜드 카탈로그를 읽는 `/brands/:brandId/products`(별도 prefix)는
+// 비차단. authenticateToken 선행(per-route 와 중복돼도 idempotent), 데모/System Admin bypass.
+router.use(['/brand-products', '/brand-product-categories', '/brand-product-option-groups'],
+  authenticateToken, requireBrandUserModule('brand_products'));
 
 /**
  * Generate unique product SKU

@@ -14,6 +14,7 @@ const {
 } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 const { requireBrandScope } = require('../middleware/brandScope');
+const { requireBrandModule } = require('../middleware/requireModule');
 
 // All routes require authentication. Per-route ownership is enforced by
 // requireBrandScope below — the previous implementation only had
@@ -25,6 +26,9 @@ const { requireBrandScope } = require('../middleware/brandScope');
 // path-less로 모든 fall-through를 차단했음 (carrier-webhooks public endpoint 401 사고).
 // brand-inventory의 모든 endpoint가 /brands prefix이므로 안전하게 좁힐 수 있음.
 router.use('/brands', authenticateToken);
+// P0-3 Wave B: 브랜드 재고는 Advanced(brand_inventory). /brands/:brandId/inventory* 만 게이트
+// (/brands/:brandId/restaurants 목록은 비차단). requireBrandScope 가 소유권/데모 별도 처리.
+router.use('/brands/:brandId/inventory', requireBrandModule('brand_inventory', 'brandId'));
 
 // Get brand's restaurants
 router.get('/brands/:brandId/restaurants', requireBrandScope(), async (req, res) => {

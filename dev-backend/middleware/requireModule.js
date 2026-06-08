@@ -70,12 +70,12 @@ async function resolveSupplierModules(supplierCompany) {
  * Check a brand's subscription plan for a module code.
  * Use for routes under `/api/brands/:id/...`.
  */
-function requireBrandModule(moduleCode) {
+function requireBrandModule(moduleCode, brandIdParam = 'id') {
   return async (req, res, next) => {
     if (!req.user) return res.status(401).json({ success: false, message: 'Not authenticated' });
     if (req.user.role === 'System Admin') return next();
 
-    const brandId = req.params.id;
+    const brandId = req.params[brandIdParam];
     const { planType, modules } = await resolveEntityModules('brand', brandId);
     if (!modules.includes(moduleCode)) {
       return res.status(403).json({
@@ -258,8 +258,38 @@ function requireRestaurantModule(moduleCode, restaurantIdParam = 'restaurant_id'
   };
 }
 
+/**
+ * BG(Brand General) 유저 스코프 라우트용 (`:brandId` 없이 requireBGScope 로 동작하는
+ * brand-products 등) — BG 유저 자신의 구독 plan_type(= 브랜드 owner 플랜)으로 게이트.
+ * resolveEntityModules('brand') 와 동일 소스(owner.plan_type)지만 :id 파라미터가 없어
+ * 유저 기준으로 resolve. 데모/System Admin bypass. (P0-3 Wave B)
+ */
+function requireBrandUserModule(moduleCode) {
+  return async (req, res, next) => {
+    if (!req.user) return res.status(401).json({ success: false, message: 'Not authenticated' });
+    if (req.user.role === 'System Admin') return next();
+    if (req.user.is_demo) return next();
+    const owner = await User.findByPk(req.user.id, { attributes: ['id', 'plan_type', 'is_demo'] });
+    if (owner?.is_demo) return next();
+    const planType = owner?.plan_type;
+    if (planType) {
+      const plan = await PlanTemplate.findOne({
+        where: { [Op.or]: [{ display_name: planType }, { name: planType }], plan_target: 'brand' }
+      });
+      if ((plan?.included_modules || []).includes(moduleCode)) return next();
+    }
+    return res.status(403).json({
+      success: false,
+      code: 'MODULE_NOT_INCLUDED',
+      message: `This feature (${moduleCode}) is not included in the current subscription plan${planType ? ` (${planType})` : ''}.`,
+      required_module: moduleCode
+    });
+  };
+}
+
 module.exports = {
   requireBrandModule,
+  requireBrandUserModule,
   requireFoodcourtModule,
   requireRestaurantModule,
   requireContractEntityModule,

@@ -255,7 +255,8 @@ Phase 6 (구조)         P2 — 병행 가능, 우선순위 낮음
 - **Phase 2 (게이팅) — 진행중.**
   - P0-2 **완료**: `resolveRestaurantModules`(plan_type ∪ 활성 EntityPlanRestaurant→EntityPlan, 합집합) 단일 resolver. `requireRestaurantModule` 이를 사용 + 배열 any-of. `allowed-routes`도 동일 resolver(UI=백엔드 일치).
   - P0-3 **Wave A 완료**(레스토랑 Advanced): inventory(inventory-routes barrel) / recipes(recipes.js) / ingredients(restaurants-ingredients.js + ingredients.js). path-prefix로 좁혀 fall-through 안전. brand-* 읽기 비차단. **실측 과차단 0건.** health-check tier gate 2케이스. **100/100.**
-  - P0-3 **Wave B 남음**: 브랜드 Advanced(brand_products/brand_inventory/brand_recipes — requireBrandModule, brand owner plan_type 기반 이미 동작) + buyer 버티컬(PO/구매인보이스/공급사디렉토리; buyer_* 모듈은 전 레스토랑 플랜 포함→레스토랑 buyer 차단대상 0, brand/fc buyer는 entity 기준 필요).
+  - P0-3 **Wave B-1 (브랜드 Advanced) 완료**(2026-06-08): `brand-products`(BG 유저 스코프 — `requireBrandUserModule('brand_products')`, `/brand-products`·카테고리·옵션그룹·상품레시피. 레스토랑 카탈로그 읽기 `/brands/:brandId/products`는 비차단) + `brand-inventory`(`requireBrandModule('brand_inventory','brandId')`, `/brands/:brandId/inventory*`만). `requireBrandModule` param화 + `requireBrandUserModule` 신규(BG 유저 owner plan_type). **영향측정: 차단=plan없는 테스트브랜드 2건뿐, 실 Enterprise·데모 전부 통과(과차단 0).** 유닛 3경로(차단/데모/Enterprise) + 실API 검증. health-check 100/100, print-guard 8/8.
+  - P0-3 **Wave B-2 (buyer 버티컬) 남음**: PO/구매인보이스/공급사디렉토리. **주의(영향측정)**: buyer_* 모듈은 모든 플랜(레스토랑/브랜드/푸드코트/오너)에 포함 → 레스토랑/brand/fc buyer 차단대상 ~0(페이월 가치 낮음). **단 EntityPlan(지점 프랜차이즈 플랜)엔 buyer_* 없음** → brand/fc buyer는 owner plan_template 로 resolve해야 안전(entity 플랜 기준이면 과차단). null-plan 레스토랑 over-block 측정 후 적용. `requireBuyerModule`(req.buyerEntity 기준) 설계 완료, 적용 전 측정 필요.
   - ⚠ **운영 배포 전 필수**: 운영 DB로 §8.5-1 영향측정 재실행 + 실 Enterprise 지점 200 허용 확인(dev엔 비데모 Enterprise 0개). 그 후 /배포.
 - **Phase 3~6 미착수** (결제 통일 / 전파 / 안전망 / 구조).
 
