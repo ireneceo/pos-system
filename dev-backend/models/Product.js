@@ -178,6 +178,12 @@ Product.init({
     allowNull: true,
     defaultValue: null,
     comment: 'Per-item packaging fee override for pricingType=per-item-individual. NULL = use defaultPerItemCharge; number (incl. 0) = explicit override.'
+  },
+  availability: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: null,
+    comment: 'Per-item mobile availability schedule (events). NULL = always available. Shape: {start_time,end_time,days:[0-6],start_date,end_date,display:"hide"|"disable"}. Evaluated by utils/availabilitySchedule in restaurant timezone; combined (AND) with category schedule.'
   }
 }, {
   sequelize: database.sequelize,

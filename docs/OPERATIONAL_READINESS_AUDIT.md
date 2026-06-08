@@ -241,7 +241,7 @@ health-check 통합 외 unit test 없음, CI 연동 없음 (deploy-to-production
 Phase 0 (설계)        ← 이 §8 (완료, 2026-06-08)
 Phase 1 (격리)        P0-5, P0-6  — 모범 패턴 복제, 부작용 적고 즉효. health-check 익명/IDOR 케이스 동반 추가
 Phase 2 (게이팅 기반)  P0-2 단일 resolver → P0-3 라우터 게이트. resolver 먼저(게이트의 토대)
-Phase 3 (결제 정확성)  P0-1, P0-4, P1-1~P1-4 — 결정1(지점별 인보이스 통일) 반영. ★sandbox e2e 필수, 인쇄급 신중
+Phase 3 (결제 정확성)  P0-1, P0-4, P1-1~P1-4 — 완료·검증(2026-06-08). ★sandbox e2e + 운영 webhookId 확인은 배포 전 게이트로 미완
 Phase 4 (전파)        P1-6, P1-7
 Phase 5 (안전망)       P1-5 health-check 영구 확장 (Phase1~3 각 케이스 누적)
 Phase 6 (구조)         P2 — 병행 가능, 우선순위 낮음
@@ -258,7 +258,16 @@ Phase 6 (구조)         P2 — 병행 가능, 우선순위 낮음
   - P0-3 **Wave B-1 (브랜드 Advanced) 완료**(2026-06-08): `brand-products`(BG 유저 스코프 — `requireBrandUserModule('brand_products')`, `/brand-products`·카테고리·옵션그룹·상품레시피. 레스토랑 카탈로그 읽기 `/brands/:brandId/products`는 비차단) + `brand-inventory`(`requireBrandModule('brand_inventory','brandId')`, `/brands/:brandId/inventory*`만). `requireBrandModule` param화 + `requireBrandUserModule` 신규(BG 유저 owner plan_type). **영향측정: 차단=plan없는 테스트브랜드 2건뿐, 실 Enterprise·데모 전부 통과(과차단 0).** 유닛 3경로(차단/데모/Enterprise) + 실API 검증. health-check 100/100, print-guard 8/8.
   - P0-3 **Wave B-2 (buyer 버티컬) — 보류/생략 (Irene 결정, 2026-06-08)**: PO/구매인보이스/공급사디렉토리. 영향측정 결과 buyer_* 모듈이 **모든 플랜에 이미 포함 → 페이월 실익 0**(아무도 안 막힘) + **EntityPlan(지점 프랜차이즈 플랜)엔 buyer_* 없어 brand/fc 지점 발주 과차단 리스크**. 실익 0 + 출시 리스크 → 게이트 미적용. (필요 시 향후 owner plan_template resolve 로 방어적 적용 가능 — `requireBuyerModule` 미구현.) **→ Phase 2 (게이팅) 완료.**
   - ⚠ **운영 배포 전 필수**: 운영 DB로 §8.5-1 영향측정 재실행 + 실 Enterprise 지점 200 허용 확인(dev엔 비데모 Enterprise 0개). 그 후 /배포.
-- **Phase 3~6 미착수** (결제 통일 / 전파 / 안전망 / 구조).
+- **Phase 3 (결제 정확성) — 완료·검증·DEV반영 (2026-06-08).**
+  - **P0-1 완료**: `subscriptionScheduler.restoreEntitySubscription(payerType, payerId)` 신규(payer_id=owner User → `subscription_status` overdue/suspended→active, audit 로그). `invoiceLifecycle.handleInvoicePaid` 에 분기 추가 — `SUBSCRIPTION_CATEGORIES=['subscription','pos_subscription']` 중 `restaurant_id`→지점 복구(기존) + `payer_type ∈ {brand_manager,foodcourt_manager,restaurant_owner}`→엔티티 복구(신규). 둘 다 발동 가능(지점-브랜드 인보이스). 실 인보이스(inv178 restaurant_id=null) 결제→user6 suspended→active 라운드트립 검증, try/finally 원복. **핵심 근거**: `processEntitySubscriptions` 쿼리(line 421)가 `subscription_status IN ('trial','overdue')`라 suspended 엔티티를 영영 재조회 안 함 → 결제 시점 복구가 유일 경로.
+  - **P0-4 완료**: PayPal webhook fail-open 제거. `getWebhookIdForIssuer('system')` 없으면 400 거부(Stripe `constructEvent` 강제와 동일 fail-closed). 위조 `PAYMENT.CAPTURE.COMPLETED`(custom_id만) 실HTTP→`400 PayPal webhookId not configured`, 미처리 검증. (dev엔 webhookId 0 → 수정 전엔 완전 fail-open이었음.)
+  - **P1-1 완료**: `recomputeInvoiceTotals` 에 `discountAmount = min(max(0,d), subtotal)` + `total = max(0, subtotal-d+charges)` 캡. jest 3건(fixed>subtotal, %>100, 정상 무변).
+  - **P1-2 완료**: `webhooks-payments.passesAmountCrossCheck(invoice, gwAmount, gwCurrency, ctx)` 헬퍼 — 3 paid 사이트(Stripe checkout/PI, PayPal capture)에서 mark-paid 직전 호출. 과소결제(`amt+0.01 < total`)/통화불일치→paid 보류+payment_notes. 과다/오차내/판독불가(null·0)→통과(정상결제 차단 금지, best-effort). jest 6건. 테스트용 export.
+  - **P1-3 완료(코드)**: 중복 결제 세션 재사용 — Stripe `checkout.sessions.retrieve` status==='open'→URL 재사용 / PayPal order GET status==='CREATED'→approve 링크 재사용. 둘 다 try/catch(stale면 신규 생성). **full 검증은 sandbox e2e 필요**(게이트웨이 상태 의존).
+  - **P1-4 비결함 확정**: `Invoice.payer_type`(brand_manager=청구대상 축)와 `/checkout/start` `payer_type`(brand=게이트웨이 결제주체 축)는 직교. brand_manager 인보이스는 `payer_type='brand'`/`payer_id=brand_id`로 결제, `ensurePayerAccess('brand')=owner_id===user.id` 통과(403 없음). ALLOWED_PAYER에 brand_manager 추가는 범주오류 → **변경 안 함**(과거 audit 프레이밍 교정). BG user6→brand{1,2,4} 데이터로 확인.
+  - 안전망 영구 추가: health-check **101/101**(payment 카테고리 P0-4 위조 webhook 거부 케이스) + jest `tests/payment-flow.test.js` **13/13**(P1-1×3 + P1-2×6 신규). print-guard 8/8(인쇄 무관).
+  - ⚠ **운영 배포 전 필수(미완)**: ① §8 게이트 **sandbox 결제 e2e**(Stripe test card/PayPal sandbox → suspended 해제 실흐름; dev에 test 게이트웨이 키 없어 미실행) ② 운영 PayPal **webhookId 설정 확인**(fail-closed라 미설정 시 모든 PayPal webhook 거부) ③ 운영 DB §8.5-1 영향측정.
+- **Phase 4~6 미착수** (전파 / 안전망 확장 / 구조).
 
 ### 8.7 영향 받는 파일 (수정 예정 — 인쇄 보호파일 제외)
 

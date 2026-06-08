@@ -36,6 +36,16 @@ export interface MenuItem {
   brand_menu_synced_version?: number | null;
   brand_menu_status?: 'in_sync' | 'pending_update' | 'unlinked' | null;
   takeaway_charge?: number;
+  // Per-item mobile availability schedule (events). null = always available.
+  // Shape mirrors category schedule; evaluated by backend in restaurant timezone.
+  availability?: {
+    start_time?: string;
+    end_time?: string;
+    days?: number[];
+    start_date?: string | null;
+    end_date?: string | null;
+    display?: 'hide' | 'disable';
+  } | null;
   createdAt?: string | null;
 }
 
@@ -288,6 +298,7 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
             brand_menu_synced_version: item.brand_menu_synced_version || null,
             brand_menu_status: item.brand_menu_status || null,
             takeaway_charge: item.takeaway_charge != null ? Number(item.takeaway_charge) : 0,
+            availability: item.availability || null,
             createdAt: item.createdAt || item.created_at || null
           } as any;
         });
@@ -465,7 +476,8 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
             recipe_id: item.recipe_id || null,
             after_meal: item.after_meal || false,
             display_order: item.display_order || 0,
-            takeaway_charge: item.takeaway_charge != null ? Number(item.takeaway_charge) : 0
+            takeaway_charge: item.takeaway_charge != null ? Number(item.takeaway_charge) : 0,
+            availability: item.availability || null
           };
         });
 
@@ -568,6 +580,7 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
         recipe_id: updatedItem.recipe_id || null,
         after_meal: updatedItem.after_meal ?? false,
         takeaway_charge: updatedItem.takeaway_charge ?? 0,
+        availability: updatedItem.availability ?? null,
         directIngredients: (updatedItem as any).directIngredients || undefined
       };
 
@@ -647,6 +660,7 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
         recipe_id: newItem.recipe_id || null,
         after_meal: newItem.after_meal ?? false,
         takeaway_charge: newItem.takeaway_charge ?? 0,
+        availability: newItem.availability ?? null,
         directIngredients: (newItem as any).directIngredients || undefined,
         ...(restaurantId && { restaurant_id: restaurantId })
       };

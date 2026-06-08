@@ -12,6 +12,7 @@ const Option = require('../models/Option');
 const { Op } = require('sequelize');
 const { parseImageData, getProductEmoji, TableQRSession } = require('./mobile-helpers');
 const { buildSetResolved } = require('../utils/setMenu');
+const { isWithinSchedule, offScheduleMode } = require('../utils/availabilitySchedule');
 
 router.get('/verify-qr', async (req, res) => {
   try {
@@ -175,29 +176,41 @@ router.get('/menu/:slug', async (req, res) => {
       order: [['displayOrder', 'ASC'], ['name', 'ASC']]
     });
 
-    // Filter categories by time schedule (mobile_settings.category_schedules)
+    // Filter categories by schedule (mobile_settings.category_schedules).
+    // Each entry supports day-of-week, event date range, daily time window, and an
+    // off-schedule display mode (hide vs show-disabled) — evaluated by the shared
+    // availabilitySchedule helper in the restaurant's timezone.
     const mobileCfg = restaurant.mobile_settings || {};
     const schedules = mobileCfg.category_schedules || [];
-    const hiddenCategoryIds = new Set();
-    if (schedules.length > 0) {
-      const now = new Date();
-      const tz = restaurant.operation_settings?.timeZone || 'Asia/Kuala_Lumpur';
-      const localTime = now.toLocaleTimeString('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false });
-      for (const sched of schedules) {
-        const catId = sched.category_id?.toString();
-        if (!catId || !sched.start_time || !sched.end_time) continue;
-        const { start_time, end_time } = sched;
-        let isInRange;
-        if (start_time <= end_time) {
-          isInRange = localTime >= start_time && localTime < end_time;
-        } else {
-          isInRange = localTime >= start_time || localTime < end_time;
-        }
-        if (!isInRange) hiddenCategoryIds.add(catId);
+    const now = new Date();
+    const tz = restaurant.operation_settings?.timeZone || 'Asia/Kuala_Lumpur';
+
+    // catId -> { mode:'hide'|'disable', sched } for categories currently OUT of schedule.
+    const offSchedule = {};
+    for (const sched of schedules) {
+      const catId = sched.category_id?.toString();
+      if (!catId) continue;
+      if (!isWithinSchedule(sched, now, tz)) {
+        offSchedule[catId] = { mode: offScheduleMode(sched), sched };
       }
     }
 
-    const visibleCategories = dbCategories.filter(cat => !hiddenCategoryIds.has(cat.id.toString()));
+    // Products store `category` as either the id ("106") or the name ("SET MENU")
+    // depending on source (brand sync uses name, native uses id), so each
+    // off-schedule category contributes BOTH forms to the filter sets.
+    const catNameById = {};
+    dbCategories.forEach(c => { catNameById[c.id.toString()] = c.name; });
+    const hiddenKeys = new Set();              // product.category values fully removed
+    const disabledSchedByKey = new Map();      // product.category value -> sched (kept, greyed)
+    for (const [catId, info] of Object.entries(offSchedule)) {
+      const keys = [catId];
+      if (catNameById[catId]) keys.push(catNameById[catId]);
+      if (info.mode === 'disable') keys.forEach(k => disabledSchedByKey.set(k, info.sched));
+      else keys.forEach(k => hiddenKeys.add(k));
+    }
+
+    // 'hide' categories drop out of the tab list; 'disable' categories stay (greyed).
+    const visibleCategories = dbCategories.filter(cat => offSchedule[cat.id.toString()]?.mode !== 'hide');
 
     // Build product query with pagination
     const productWhere = {
@@ -217,9 +230,10 @@ router.get('/menu/:slug', async (req, res) => {
         : categoryId;
     }
 
-    // Exclude hidden categories from product results
-    if (hiddenCategoryIds.size > 0 && !categoryId) {
-      productWhere.category = { [Op.notIn]: Array.from(hiddenCategoryIds) };
+    // Exclude only HIDDEN categories from product results; 'disable' categories
+    // stay in the list (their items are returned flagged + greyed on mobile).
+    if (hiddenKeys.size > 0 && !categoryId) {
+      productWhere.category = { [Op.notIn]: Array.from(hiddenKeys) };
     }
 
     // Get total count for pagination
@@ -251,12 +265,31 @@ router.get('/menu/:slug', async (req, res) => {
       ]
     });
 
-    // Create categories array for mobile app
-    const categories = visibleCategories.map(cat => ({
-      id: cat.id.toString(),
-      name: cat.name,
-      emoji: cat.emoji || getProductEmoji(cat.name)  // Use DB emoji first, fallback to generated
-    }));
+    // Shape the schedule window for the mobile client to render a localized
+    // "available …" label on disabled categories/items.
+    const scheduleInfo = (sched) => sched ? {
+      start_time: sched.start_time || null,
+      end_time: sched.end_time || null,
+      days: Array.isArray(sched.days) ? sched.days : [],
+      start_date: sched.start_date || null,
+      end_date: sched.end_date || null
+    } : null;
+
+    // Create categories array for mobile app. 'disable' categories carry a flag +
+    // schedule so the client greys them out instead of hiding.
+    const categories = visibleCategories.map(cat => {
+      const off = offSchedule[cat.id.toString()];
+      const base = {
+        id: cat.id.toString(),
+        name: cat.name,
+        emoji: cat.emoji || getProductEmoji(cat.name)  // Use DB emoji first, fallback to generated
+      };
+      if (off && off.mode === 'disable') {
+        base.schedule_unavailable = true;
+        base.schedule = scheduleInfo(off.sched);
+      }
+      return base;
+    });
 
     // Create category map for quick lookup (use all categories for item mapping)
     const categoryMap = {};
@@ -333,6 +366,21 @@ router.get('/menu/:slug', async (req, res) => {
       // Parse image — list view: thumbnail URL only, skip base64
       const imageData = parseImageData(product.image, product.image_thumbnail, true);
 
+      // Availability = category schedule AND item schedule (both must be open).
+      // Category 'disable' (the category is off but shown greyed):
+      const catOffSched = disabledSchedByKey.get(categoryId)
+        || (categoryName && disabledSchedByKey.get(categoryName))
+        || disabledSchedByKey.get(product.category)
+        || null;
+      // Per-item schedule (Product.availability) — events set per menu item:
+      const itemSched = (product.availability && typeof product.availability === 'object') ? product.availability : null;
+      const itemOff = itemSched ? !isWithinSchedule(itemSched, now, tz) : false;
+      const itemHide = itemOff && offScheduleMode(itemSched) === 'hide';
+      const itemDisable = itemOff && offScheduleMode(itemSched) === 'disable';
+      // Effective off-schedule: item-level takes precedence (more specific), else category.
+      const scheduleUnavailable = itemDisable || (!itemOff && !!catOffSched);
+      const offSched = itemOff ? itemSched : catOffSched;
+
       return {
         id: product.id.toString(),
         categoryId: categoryId,
@@ -342,7 +390,10 @@ router.get('/menu/:slug', async (req, res) => {
         description: product.description || '',
         emoji: product.emoji || getProductEmoji(categoryName),
         image: imageData?.thumbnail || undefined,
-        isAvailable: !product.soldOut,  // Available if not sold out
+        isAvailable: !product.soldOut && !scheduleUnavailable,  // unavailable if sold out OR off-schedule(disable)
+        schedule_unavailable: scheduleUnavailable || undefined,
+        schedule: offSched ? scheduleInfo(offSched) : undefined,
+        _hide: itemHide,  // item-level 'hide' schedule → stripped from the list below
         preparationTime: product.preparation_time || 15,
         calories: product.calories || 0,
         isPopular: product.isPopular || false,
@@ -353,7 +404,10 @@ router.get('/menu/:slug', async (req, res) => {
         is_featured: product.is_featured || false,
         takeaway_charge: product.takeaway_charge != null ? Number(product.takeaway_charge) : null
       };
-    });
+    })
+      // Item-level 'hide' schedule → drop from the menu entirely; strip the internal flag.
+      .filter(it => !it._hide)
+      .map(({ _hide, ...rest }) => rest);
 
     // Pagination info
     const totalPages = Math.ceil(totalCount / parseInt(limit));

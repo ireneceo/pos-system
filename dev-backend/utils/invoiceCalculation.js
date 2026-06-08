@@ -53,7 +53,15 @@ function recomputeInvoiceTotals(header, items) {
   if (dt === 'percentage') discountAmount = round2(subtotal * (dv / 100));
   else if (dt === 'fixed') discountAmount = round2(dv);
 
-  const total = round2(subtotal - discountAmount + chargesTotal);
+  // P1-1 (2026-06-08): cap the discount at subtotal and floor the total at 0.
+  // A fixed discount larger than subtotal (or a percentage > 100) would push
+  // total_amount negative; stripeCheckoutService throws on amount <= 0, so the
+  // invoice becomes unpayable. The scheduler path already caps via Math.min —
+  // this makes the authoritative recompute consistent. Discount applies to the
+  // goods (subtotal), never to the added charges.
+  discountAmount = Math.min(Math.max(0, discountAmount), subtotal);
+
+  const total = Math.max(0, round2(subtotal - discountAmount + chargesTotal));
 
   return {
     header: {

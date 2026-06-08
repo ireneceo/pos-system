@@ -11,6 +11,7 @@ import { Modal as CommonModal } from '../../components/UI';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import ConfirmModal from '../../components/ConfirmModal';
 import ListControlsBar from '../../components/Common/ListControlsBar';
+import EmojiPickerField from '../../components/Common/EmojiPickerField';
 import { getAuthToken } from '../../utils/auth';
 
 const Wrapper = styled.div``;
@@ -152,7 +153,7 @@ const BrandMenuCategoriesPage: React.FC<Props> = ({ brandId }) => {
           </FormGroup>
           <FormGroup>
             <Label>{t('brand:brandMenusPage.emojiOptional', 'Emoji (optional)')}</Label>
-            <Input value={emoji} onChange={(e) => setEmoji(e.target.value)} maxLength={4} placeholder="" />
+            <EmojiPickerField value={emoji} onChange={setEmoji} />
           </FormGroup>
         </CommonModal>
       )}

@@ -26,6 +26,9 @@ interface MenuItem {
   is_featured?: boolean;
   set_items?: Array<{ name: string; quantity: number }>;
   orderCount?: number;
+  isAvailable?: boolean;
+  schedule_unavailable?: boolean;
+  schedule?: { start_time?: string | null; end_time?: string | null; days?: number[]; start_date?: string | null; end_date?: string | null };
 }
 
 interface PaginationInfo {
@@ -573,7 +576,10 @@ const MenuPage: React.FC = () => {
             emoji: item.emoji || '🍽️',
             image: item.image,
             is_set_menu: item.is_set_menu || false,
-            set_items: item.set_items
+            set_items: item.set_items,
+            isAvailable: item.isAvailable,
+            schedule_unavailable: item.schedule_unavailable,
+            schedule: item.schedule
           }));
 
           // Append or replace items
@@ -616,7 +622,8 @@ const MenuPage: React.FC = () => {
       id: item.id.toString(), code: item.code, name: item.name,
       price: parseFloat(item.price), categoryId: item.categoryId?.toString() || '',
       emoji: item.emoji || '🍽️', image: item.image,
-      is_set_menu: item.is_set_menu || false, set_items: item.set_items
+      is_set_menu: item.is_set_menu || false, set_items: item.set_items,
+      isAvailable: item.isAvailable, schedule_unavailable: item.schedule_unavailable, schedule: item.schedule
     }));
   }, []);
 
@@ -966,11 +973,26 @@ const MenuPage: React.FC = () => {
   }, [pagination?.hasMore, isLoadingMore, loadMoreItems]);
 
   const handleItemClick = useCallback((item: MenuItem) => {
+    // Off-schedule items (display='disable') are shown greyed and not orderable.
+    if (item.schedule_unavailable) return;
     // 상세 진입 전 현재 탭을 URL(?cat=)에 박아둔다 → 상세에서 뒤로가기 하면
     // 메뉴가 그 탭 그대로 복원된다 (#5/#6 통합). updateCatInUrl 은 replaceState.
     updateCatInUrl(selectedCategory);
     navigate(`/mobile/${slug}/item/${item.id}`);
   }, [navigate, slug, selectedCategory, updateCatInUrl]);
+
+  // Localized "Available …" label for off-schedule (disabled) items.
+  const formatScheduleLabel = useCallback((schedule?: MenuItem['schedule']) => {
+    const dayShort = t('menu:menuPage.weekdayShortList', 'Su,Mo,Tu,We,Th,Fr,Sa').split(',');
+    const parts: string[] = [];
+    if (schedule && Array.isArray(schedule.days) && schedule.days.length > 0) {
+      parts.push(schedule.days.slice().sort((a, b) => a - b).map(d => dayShort[d]).join(' '));
+    }
+    if (schedule?.start_time && schedule?.end_time) parts.push(`${schedule.start_time}–${schedule.end_time}`);
+    if (schedule?.start_date || schedule?.end_date) parts.push(`${schedule?.start_date || ''}~${schedule?.end_date || ''}`);
+    const when = parts.join(' · ');
+    return when ? t('menu:menuPage.availableWhen', { defaultValue: 'Available {{when}}', when }) : t('menu:menuPage.unavailableNow', 'Currently unavailable');
+  }, [t]);
 
   const handleCartClick = useCallback(() => {
     navigate(`/mobile/${slug}/cart`);
@@ -993,30 +1015,39 @@ const MenuPage: React.FC = () => {
   void nowTick;
 
   // Render a single menu item card
-  const renderMenuItemCard = useCallback((item: MenuItem) => (
-    <MenuItemCard
-      key={item.id}
-      onClick={() => handleItemClick(item)}
-    >
-      {item.is_set_menu && <SetBadge>SET</SetBadge>}
-      <ItemImage hasImage={!!item.image}>
-        {item.image ? (
-          <LazyImage src={item.image} alt={item.name} fallback={item.emoji || '🍽️'} />
-        ) : (
-          <span>{item.emoji || '🍽️'}</span>
-        )}
-      </ItemImage>
-      <ItemInfo>
-        <ItemName>{item.code ? `${item.code} ` : ''}{item.name}</ItemName>
-        <ItemPrice>{formatCurrency(item.price, currency)}</ItemPrice>
-        {item.is_set_menu && item.set_items && item.set_items.length > 0 && (
-          <SetItemsPreview>
-            {item.set_items.map((si) => `${si.name} x${si.quantity}`).join(', ')}
-          </SetItemsPreview>
-        )}
-      </ItemInfo>
-    </MenuItemCard>
-  ), [handleItemClick, currency]);
+  const renderMenuItemCard = useCallback((item: MenuItem) => {
+    const unavailable = item.schedule_unavailable === true;
+    return (
+      <MenuItemCard
+        key={item.id}
+        onClick={() => handleItemClick(item)}
+        style={unavailable ? { opacity: 0.55, cursor: 'not-allowed' } : undefined}
+      >
+        {item.is_set_menu && <SetBadge>SET</SetBadge>}
+        <ItemImage hasImage={!!item.image}>
+          {item.image ? (
+            <LazyImage src={item.image} alt={item.name} fallback={item.emoji || '🍽️'} />
+          ) : (
+            <span>{item.emoji || '🍽️'}</span>
+          )}
+        </ItemImage>
+        <ItemInfo>
+          <ItemName>{item.code ? `${item.code} ` : ''}{item.name}</ItemName>
+          <ItemPrice>{formatCurrency(item.price, currency)}</ItemPrice>
+          {unavailable && (
+            <div style={{ fontSize: '11px', color: '#B45309', fontWeight: 600, marginTop: '4px' }}>
+              {formatScheduleLabel(item.schedule)}
+            </div>
+          )}
+          {item.is_set_menu && item.set_items && item.set_items.length > 0 && (
+            <SetItemsPreview>
+              {item.set_items.map((si) => `${si.name} x${si.quantity}`).join(', ')}
+            </SetItemsPreview>
+          )}
+        </ItemInfo>
+      </MenuItemCard>
+    );
+  }, [handleItemClick, currency, formatScheduleLabel]);
 
   if (isLoading) {
     return (

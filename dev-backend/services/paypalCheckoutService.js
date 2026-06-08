@@ -182,6 +182,23 @@ async function startInvoiceCheckout({
   const amount = String(Number(invoice.total_amount || invoice.total || 0).toFixed(2));
   if (Number(amount) <= 0) throw new Error('Invoice total must be > 0');
 
+  // P1-3 (2026-06-08): reuse an existing un-captured order for this invoice
+  // rather than creating a second one (two approvable orders → possible double
+  // charge while the invoice credits once). Only a still-CREATED order (not yet
+  // approved/captured/voided) is safe to hand back; anything else falls through
+  // to a fresh order.
+  if (invoice.gateway_session_id) {
+    try {
+      const existing = await paypalFetch(config, `/v2/checkout/orders/${invoice.gateway_session_id}`, { method: 'GET' });
+      if (existing && existing.status === 'CREATED') {
+        const reuse = (existing.links || []).find(l => l.rel === 'approve');
+        if (reuse) return { url: reuse.href, order_id: existing.id, reused: true };
+      }
+    } catch (e) {
+      // unknown/stale order id — create a new one below
+    }
+  }
+
   const order = await paypalFetch(config, '/v2/checkout/orders', {
     method: 'POST',
     body: {

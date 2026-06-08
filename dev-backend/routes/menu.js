@@ -259,6 +259,8 @@ router.get('/', checkRestaurantAccess, async (req, res) => {
         // null = no override (use defaultPerItemCharge from operation_settings)
         // number (incl. 0) = explicit per-item override
         takeaway_charge: prod.takeaway_charge != null ? Number(prod.takeaway_charge) : null,
+        // Per-item mobile availability schedule (events). null = always available.
+        availability: prod.availability || null,
         // POS Terminal sort 기준 (Newest)
         createdAt: prod.createdAt || null
       };

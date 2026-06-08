@@ -12,6 +12,8 @@ import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import PhoneInput from '../../components/Common/PhoneInput';
 import PageHeader from '../../components/Common/PageHeader';
 import AutoSaveField, { AutoSaveHandle } from '../../components/Common/AutoSaveField';
+import DateField from '../../components/Common/DateField';
+import ItemScheduleEditor from '../MenuManagement/ItemScheduleEditor';
 import ReservationSettingsTab from '../../components/Settings/ReservationSettingsTab';
 import AutoPrintPreviewModal from '../../components/Settings/AutoPrintPreviewModal';
 import ZonesAndGroupsCard from './components/ZonesAndGroupsCard';
@@ -800,6 +802,11 @@ const SettingsPage: React.FC = () => {
   const [takeawayAddSearch, setTakeawayAddSearch] = useState('');
   const [takeawayJustAddedId, setTakeawayJustAddedId] = useState<number | null>(null);
   const takeawayInputRef = useRef<HTMLInputElement | null>(null);
+  // Item Time Restrictions (per-item mobile availability) — mirrors the takeaway override UX.
+  const [showItemSchedAdd, setShowItemSchedAdd] = useState(false);
+  const [itemSchedAddSearch, setItemSchedAddSearch] = useState('');
+  const [itemSchedJustAddedId, setItemSchedJustAddedId] = useState<number | null>(null);
+  const itemSchedInputRef = useRef<HTMLInputElement | null>(null);
 
   // Load settings from localStorage or use defaults
   const loadSettings = () => {
@@ -985,7 +992,7 @@ const SettingsPage: React.FC = () => {
     show_featured: boolean;
     show_popular: boolean;
     popular_excluded_category_ids: number[];
-    category_schedules: Array<{ category_id: number; start_time: string; end_time: string }>;
+    category_schedules: Array<{ category_id: number; start_time: string; end_time: string; days?: number[]; start_date?: string | null; end_date?: string | null; display?: 'hide' | 'disable' }>;
     pause_ordering: boolean;
     pause_message: string;
   }>({ show_featured: true, show_popular: true, popular_excluded_category_ids: [], category_schedules: [], pause_ordering: false, pause_message: '' });
@@ -4644,35 +4651,7 @@ const SettingsPage: React.FC = () => {
                   </SettingsCard>
                 )}
 
-                {/* Mobile Order Alerts — staff notification UX */}
-                <SettingsCard style={{ gridColumn: '1 / -1' }}>
-                  <CardTitle>{t('settings:settingsPage.mobileOrderAlerts', 'Mobile Order Alerts')}</CardTitle>
-                  <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
-                    {t('settings:settingsPage.mobileOrderAlertsHint', 'How staff are notified when a new mobile/QR order arrives. Sidebar badge and Floor Plan dot are always shown.')}
-                  </p>
-                  <Toggle>
-                    <ToggleLabel>{t('settings:settingsPage.alertBannerOnAllPages', 'Show notification banner on all pages')}</ToggleLabel>
-                    <AutoSaveField onSave={handleSave} type="toggle">
-                      <ToggleSwitch>
-                        <ToggleInput
-                          type="checkbox"
-                          checked={operationSettings.mobileOrderAlerts?.bannerEnabled !== false}
-                          onChange={(e) => {
-                            setOperationSettings(prev => ({
-                              ...prev,
-                              mobileOrderAlerts: { ...(prev.mobileOrderAlerts || { bannerEnabled: true, soundEnabled: true, soundType: 'bell' }), bannerEnabled: e.target.checked }
-                            }));
-                          }}
-                        />
-                        <ToggleSlider />
-                      </ToggleSwitch>
-                    </AutoSaveField>
-                  </Toggle>
-                  <p style={{ color: '#6B7C93', fontSize: '13px', marginTop: '8px' }}>
-                    {t('settings:settingsPage.mobileAlertSoundMoved', 'The new-order alert sound is now set in Operations → Order Notification Sounds (shared across all screens).')}
-                  </p>
-                </SettingsCard>
-
+                {/* Pause ordering — emergency stop, placed 2nd right under Mobile Order entry */}
                 <SettingsCard style={{ gridColumn: '1 / -1', borderLeft: mobileSettings.pause_ordering ? '4px solid #DC2626' : undefined }}>
                   <CardTitle>{t('settings:settingsPage.pauseOrdering')}</CardTitle>
                   <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
@@ -4703,6 +4682,78 @@ const SettingsPage: React.FC = () => {
                     </FormGroup>
                   )}
                 </SettingsCard>
+
+                {/* Quick Order + Mobile Order Alerts — paired side by side (2-col). */}
+                <div style={{ gridColumn: '1 / -1' }}>
+                <SettingsGrid>
+                <SettingsCard>
+                  <CardTitle>{t('settings:settingsPage.quickOrder')}</CardTitle>
+                  <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
+                    Allow customers to order without providing contact information
+                  </p>
+                  <Toggle>
+                      <ToggleLabel>
+                        <span>{t('settings:settingsPage.allowQuickOrder')}</span>
+                        <span style={{ fontSize: '12px', color: '#6B7280', fontWeight: 400, marginLeft: '8px' }}>(No customer info required)</span>
+                      </ToggleLabel>
+                      <AutoSaveField ref={mobileOrderQuickOrderRef} onSave={handleSave} type="toggle">
+                      <ToggleSwitch>
+                        <ToggleInput type="checkbox" checked={operationSettings.allowQuickOrder !== false}
+                          onChange={(e) => { setOperationSettings(prev => ({ ...prev, allowQuickOrder: e.target.checked })); mobileOrderQuickOrderRef.current?.triggerSave(); }} />
+                        <ToggleSlider />
+                      </ToggleSwitch>
+                      </AutoSaveField>
+                    </Toggle>
+                  <p style={{ color: '#6B7280', fontSize: '12px', marginTop: '8px' }}>
+                    {operationSettings.allowQuickOrder !== false
+                      ? 'Customers can place orders without entering their name or phone number'
+                      : 'Customers must sign in as Guest or Member to place an order'}
+                  </p>
+                  {operationSettings.allowQuickOrder !== false && (
+                    <div style={{
+                      marginTop: '12px',
+                      padding: '12px 14px',
+                      background: '#EEF2FF',
+                      border: '1px solid #C7D2FE',
+                      borderRadius: '8px',
+                      color: '#3730A3',
+                      fontSize: '13px',
+                      lineHeight: 1.5
+                    }}>
+                      {t('settings:settingsPage.quickOrderCallout')}
+                    </div>
+                  )}
+                </SettingsCard>
+
+                <SettingsCard>
+                  <CardTitle>{t('settings:settingsPage.mobileOrderAlerts', 'Mobile Order Alerts')}</CardTitle>
+                  <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
+                    {t('settings:settingsPage.mobileOrderAlertsHint', 'How staff are notified when a new mobile/QR order arrives. Sidebar badge and Floor Plan dot are always shown.')}
+                  </p>
+                  <Toggle>
+                    <ToggleLabel>{t('settings:settingsPage.alertBannerOnAllPages', 'Show notification banner on all pages')}</ToggleLabel>
+                    <AutoSaveField onSave={handleSave} type="toggle">
+                      <ToggleSwitch>
+                        <ToggleInput
+                          type="checkbox"
+                          checked={operationSettings.mobileOrderAlerts?.bannerEnabled !== false}
+                          onChange={(e) => {
+                            setOperationSettings(prev => ({
+                              ...prev,
+                              mobileOrderAlerts: { ...(prev.mobileOrderAlerts || { bannerEnabled: true, soundEnabled: true, soundType: 'bell' }), bannerEnabled: e.target.checked }
+                            }));
+                          }}
+                        />
+                        <ToggleSlider />
+                      </ToggleSwitch>
+                    </AutoSaveField>
+                  </Toggle>
+                  <p style={{ color: '#6B7C93', fontSize: '13px', marginTop: '8px' }}>
+                    {t('settings:settingsPage.mobileAlertSoundMoved', 'The new-order alert sound is now set in Operations → Order Notification Sounds (shared across all screens).')}
+                  </p>
+                </SettingsCard>
+                </SettingsGrid>
+                </div>
 
                 <SettingsCard>
                   <CardTitle>{t('settings:settingsPage.orderTypes')}</CardTitle>
@@ -4962,191 +5013,6 @@ const SettingsPage: React.FC = () => {
                   </SettingsCard>
                 )}
 
-                <SettingsCard>
-                  <CardTitle>{t('settings:settingsPage.quickOrder')}</CardTitle>
-                  <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
-                    Allow customers to order without providing contact information
-                  </p>
-                  <Toggle>
-                      <ToggleLabel>
-                        <span>{t('settings:settingsPage.allowQuickOrder')}</span>
-                        <span style={{ fontSize: '12px', color: '#6B7280', fontWeight: 400, marginLeft: '8px' }}>(No customer info required)</span>
-                      </ToggleLabel>
-                      <AutoSaveField ref={mobileOrderQuickOrderRef} onSave={handleSave} type="toggle">
-                      <ToggleSwitch>
-                        <ToggleInput type="checkbox" checked={operationSettings.allowQuickOrder !== false}
-                          onChange={(e) => { setOperationSettings(prev => ({ ...prev, allowQuickOrder: e.target.checked })); mobileOrderQuickOrderRef.current?.triggerSave(); }} />
-                        <ToggleSlider />
-                      </ToggleSwitch>
-                      </AutoSaveField>
-                    </Toggle>
-                  <p style={{ color: '#6B7280', fontSize: '12px', marginTop: '8px' }}>
-                    {operationSettings.allowQuickOrder !== false
-                      ? 'Customers can place orders without entering their name or phone number'
-                      : 'Customers must sign in as Guest or Member to place an order'}
-                  </p>
-                  {operationSettings.allowQuickOrder !== false && (
-                    <div style={{
-                      marginTop: '12px',
-                      padding: '12px 14px',
-                      background: '#EEF2FF',
-                      border: '1px solid #C7D2FE',
-                      borderRadius: '8px',
-                      color: '#3730A3',
-                      fontSize: '13px',
-                      lineHeight: 1.5
-                    }}>
-                      {t('settings:settingsPage.quickOrderCallout')}
-                    </div>
-                  )}
-                </SettingsCard>
-
-                <SettingsCard>
-                  <CardTitle>{t('settings:settingsPage.displayOptions')}</CardTitle>
-                  <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
-                    Control which sections appear on the mobile menu
-                  </p>
-                  <Toggle>
-                      <ToggleLabel>{t('settings:settingsPage.showFeaturedMenu')}</ToggleLabel>
-                      <AutoSaveField ref={mobileOrderShowFeaturedRef} onSave={handleSave} type="toggle">
-                      <ToggleSwitch>
-                        <ToggleInput type="checkbox" checked={mobileSettings.show_featured}
-                          onChange={(e) => { setMobileSettings(prev => ({ ...prev, show_featured: e.target.checked })); mobileOrderShowFeaturedRef.current?.triggerSave(); }} />
-                        <ToggleSlider />
-                      </ToggleSwitch>
-                      </AutoSaveField>
-                    </Toggle>
-                  <p style={{ color: '#6B7280', fontSize: '12px', marginTop: '4px', marginBottom: '12px' }}>
-                    Display recommended items in a dedicated tab (set in Menu Management)
-                  </p>
-                  <Toggle>
-                      <ToggleLabel>{t('settings:settingsPage.showPopularMenu')}</ToggleLabel>
-                      <AutoSaveField ref={mobileOrderShowPopularRef} onSave={handleSave} type="toggle">
-                      <ToggleSwitch>
-                        <ToggleInput type="checkbox" checked={mobileSettings.show_popular}
-                          onChange={(e) => { setMobileSettings(prev => ({ ...prev, show_popular: e.target.checked })); mobileOrderShowPopularRef.current?.triggerSave(); }} />
-                        <ToggleSlider />
-                      </ToggleSwitch>
-                      </AutoSaveField>
-                    </Toggle>
-                  <p style={{ color: '#6B7280', fontSize: '12px', marginTop: '4px' }}>
-                    Show best-selling items based on recent order history
-                  </p>
-                </SettingsCard>
-
-                {mobileSettings.show_popular && categories.length > 0 && (
-                  <SettingsCard>
-                    <CardTitle>{t('settings:settingsPage.popularMenuCategories')}</CardTitle>
-                    <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
-                      {t('settings:settingsPage.popularMenuCategoriesHint')}
-                    </p>
-                    {categories.map((cat: any) => {
-                      const isExcluded = (mobileSettings.popular_excluded_category_ids || []).includes(cat.id);
-                      return (
-                        <Toggle key={cat.id}>
-                            <ToggleLabel style={{ fontSize: '13px' }}>{cat.emoji || '🍽️'} {cat.name}</ToggleLabel>
-                            <AutoSaveField ref={(h: AutoSaveHandle | null) => { if (h) paymentRefsMap.current.set(`popular-${cat.id}`, h); }} onSave={handleSave} type="toggle">
-                            <ToggleSwitch>
-                              <ToggleInput type="checkbox" checked={!isExcluded}
-                                onChange={(e) => {
-                                  setMobileSettings(prev => {
-                                    const ids = prev.popular_excluded_category_ids.filter(id => id !== cat.id);
-                                    if (!e.target.checked) ids.push(cat.id);
-                                    return { ...prev, popular_excluded_category_ids: ids };
-                                  });
-                                  paymentRefsMap.current.get(`popular-${cat.id}`)?.triggerSave();
-                                }} />
-                              <ToggleSlider />
-                            </ToggleSwitch>
-                            </AutoSaveField>
-                          </Toggle>
-                      );
-                    })}
-                  </SettingsCard>
-                )}
-
-                <SettingsCard>
-                  <CardTitle>{t('settings:settingsPage.categoryTimeRestrictions')}</CardTitle>
-                  <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
-                    Restrict specific categories to certain hours on mobile order only. Categories without a schedule are always visible.
-                  </p>
-                  <AutoSaveField ref={mobileOrderCategorySchedulesRef} onSave={handleSave} type="list">
-                    <>
-                      {(mobileSettings.category_schedules || []).map((sched, index) => {
-                        const cat = categories.find((c: any) => c.id === sched.category_id || c.id?.toString() === sched.category_id?.toString());
-                        return (
-                          <div key={index} style={{ background: '#F9FAFB', padding: '16px', borderRadius: '8px', marginBottom: '12px', border: '1px solid #C7CED6' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                              <Label style={{ margin: 0 }}>{cat ? `${cat.emoji || '🍽️'} ${cat.name}` : `Category #${sched.category_id}`}</Label>
-                              <button type="button" onClick={() => {
-                                setMobileSettings(prev => ({ ...prev, category_schedules: prev.category_schedules.filter((_, i) => i !== index) }));
-                                mobileOrderCategorySchedulesRef.current?.triggerSave();
-                              }} style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', fontSize: '14px', padding: '4px 8px' }}>{t('settings:settingsPage.remove')}</button>
-                            </div>
-                            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                              <FormGroup style={{ flex: 1, marginBottom: 0 }}>
-                                <Label>{t('settings:settingsPage.availableFrom')}</Label>
-                                <Input type="time" value={sched.start_time}
-                                  onChange={(e) => {
-                                    setMobileSettings(prev => {
-                                      const arr = [...prev.category_schedules];
-                                      arr[index] = { ...arr[index], start_time: e.target.value };
-                                      return { ...prev, category_schedules: arr };
-                                    });
-                                    mobileOrderCategorySchedulesRef.current?.triggerSave();
-                                  }} />
-                              </FormGroup>
-                              <FormGroup style={{ flex: 1, marginBottom: 0 }}>
-                                <Label>{t('settings:settingsPage.availableUntil')}</Label>
-                                <Input type="time" value={sched.end_time}
-                                  onChange={(e) => {
-                                    setMobileSettings(prev => {
-                                      const arr = [...prev.category_schedules];
-                                      arr[index] = { ...arr[index], end_time: e.target.value };
-                                      return { ...prev, category_schedules: arr };
-                                    });
-                                    mobileOrderCategorySchedulesRef.current?.triggerSave();
-                                  }} />
-                              </FormGroup>
-                            </div>
-                          </div>
-                        );
-                      })}
-                      {(() => {
-                        const scheduledIds = new Set((mobileSettings.category_schedules || []).map(s => s.category_id?.toString()));
-                        const availableCats = categories.filter((c: any) => !scheduledIds.has(c.id?.toString()));
-                        if (availableCats.length === 0) return (
-                          <p style={{ color: '#6B7280', fontSize: '13px', textAlign: 'center', padding: '12px' }}>{t('settings:settingsPage.allCategoriesHaveSchedulesAssigned')}</p>
-                        );
-                        return (
-                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                            <select
-                              id="add-schedule-cat"
-                              style={{ flex: 1, padding: '12px 16px', border: '1px solid #C7CED6', borderRadius: '8px', fontSize: '14px', background: 'white' }}
-                            >
-                              {availableCats.map((cat: any) => (
-                                <option key={cat.id} value={cat.id}>{cat.emoji || '🍽️'} {cat.name}</option>
-                              ))}
-                            </select>
-                            <button type="button" onClick={() => {
-                              const sel = document.getElementById('add-schedule-cat') as HTMLSelectElement;
-                              if (!sel?.value) return;
-                              const catId = parseInt(sel.value);
-                              setMobileSettings(prev => ({
-                                ...prev,
-                                category_schedules: [...prev.category_schedules, { category_id: catId, start_time: '09:00', end_time: '22:00' }]
-                              }));
-                              mobileOrderCategorySchedulesRef.current?.triggerSave();
-                            }} style={{ padding: '10px 16px', background: '#F0F4FF', border: '1px dashed #635BFF', borderRadius: '8px', color: '#635BFF', fontSize: '14px', fontWeight: '500', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                              Add Schedule
-                            </button>
-                          </div>
-                        );
-                      })()}
-                    </>
-                  </AutoSaveField>
-                </SettingsCard>
-
                 {operationSettings.orderTypes?.delivery && (
                 <SettingsCard>
                   <CardTitle>{t('settings:settingsPage.deliveryPricingSettings')}</CardTitle>
@@ -5218,6 +5084,360 @@ const SettingsPage: React.FC = () => {
                   )}
                 </SettingsCard>
                 )}
+
+                <SettingsCard>
+                  <CardTitle>{t('settings:settingsPage.displayOptions')}</CardTitle>
+                  <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
+                    Control which sections appear on the mobile menu
+                  </p>
+                  <Toggle>
+                      <ToggleLabel>{t('settings:settingsPage.showFeaturedMenu')}</ToggleLabel>
+                      <AutoSaveField ref={mobileOrderShowFeaturedRef} onSave={handleSave} type="toggle">
+                      <ToggleSwitch>
+                        <ToggleInput type="checkbox" checked={mobileSettings.show_featured}
+                          onChange={(e) => { setMobileSettings(prev => ({ ...prev, show_featured: e.target.checked })); mobileOrderShowFeaturedRef.current?.triggerSave(); }} />
+                        <ToggleSlider />
+                      </ToggleSwitch>
+                      </AutoSaveField>
+                    </Toggle>
+                  <p style={{ color: '#6B7280', fontSize: '12px', marginTop: '4px', marginBottom: '12px' }}>
+                    Display recommended items in a dedicated tab (set in Menu Management)
+                  </p>
+                  <Toggle>
+                      <ToggleLabel>{t('settings:settingsPage.showPopularMenu')}</ToggleLabel>
+                      <AutoSaveField ref={mobileOrderShowPopularRef} onSave={handleSave} type="toggle">
+                      <ToggleSwitch>
+                        <ToggleInput type="checkbox" checked={mobileSettings.show_popular}
+                          onChange={(e) => { setMobileSettings(prev => ({ ...prev, show_popular: e.target.checked })); mobileOrderShowPopularRef.current?.triggerSave(); }} />
+                        <ToggleSlider />
+                      </ToggleSwitch>
+                      </AutoSaveField>
+                    </Toggle>
+                  <p style={{ color: '#6B7280', fontSize: '12px', marginTop: '4px' }}>
+                    Show best-selling items based on recent order history
+                  </p>
+
+                  {/* Source categories — a sub-setting of "Show Popular Menu", shown only when it's on. */}
+                  {mobileSettings.show_popular && categories.length > 0 && (
+                    <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #E6EBF1' }}>
+                      <Label style={{ marginBottom: '4px' }}>{t('settings:settingsPage.popularMenuCategories')}</Label>
+                      <p style={{ color: '#6B7280', fontSize: '12px', marginTop: 0, marginBottom: '12px' }}>
+                        {t('settings:settingsPage.popularMenuCategoriesHint')}
+                      </p>
+                      {categories.map((cat: any) => {
+                        const isExcluded = (mobileSettings.popular_excluded_category_ids || []).includes(cat.id);
+                        return (
+                          <Toggle key={cat.id}>
+                            <ToggleLabel style={{ fontSize: '13px' }}>{cat.emoji || '🍽️'} {cat.name}</ToggleLabel>
+                            <AutoSaveField ref={(h: AutoSaveHandle | null) => { if (h) paymentRefsMap.current.set(`popular-${cat.id}`, h); }} onSave={handleSave} type="toggle">
+                            <ToggleSwitch>
+                              <ToggleInput type="checkbox" checked={!isExcluded}
+                                onChange={(e) => {
+                                  setMobileSettings(prev => {
+                                    const ids = prev.popular_excluded_category_ids.filter(id => id !== cat.id);
+                                    if (!e.target.checked) ids.push(cat.id);
+                                    return { ...prev, popular_excluded_category_ids: ids };
+                                  });
+                                  paymentRefsMap.current.get(`popular-${cat.id}`)?.triggerSave();
+                                }} />
+                              <ToggleSlider />
+                            </ToggleSwitch>
+                            </AutoSaveField>
+                          </Toggle>
+                        );
+                      })}
+                    </div>
+                  )}
+                </SettingsCard>
+
+                {/* Time restrictions — Category + Item side by side (2-col); inputs stack vertically inside each narrow card. */}
+                <div style={{ gridColumn: '1 / -1' }}>
+                <SettingsGrid>
+                <SettingsCard>
+                  <CardTitle>{t('settings:settingsPage.categoryTimeRestrictions')}</CardTitle>
+                  <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
+                    Restrict specific categories to certain hours on mobile order only. Categories without a schedule are always visible.
+                  </p>
+                  <AutoSaveField ref={mobileOrderCategorySchedulesRef} onSave={handleSave} type="list">
+                    <>
+                      {(mobileSettings.category_schedules || []).map((sched, index) => {
+                        const cat = categories.find((c: any) => c.id === sched.category_id || c.id?.toString() === sched.category_id?.toString());
+                        return (
+                          <div key={index} style={{ background: '#F9FAFB', padding: '16px', borderRadius: '8px', marginBottom: '12px', border: '1px solid #C7CED6' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                              <Label style={{ margin: 0 }}>{cat ? `${cat.emoji || '🍽️'} ${cat.name}` : `Category #${sched.category_id}`}</Label>
+                              <button type="button" onClick={() => {
+                                setMobileSettings(prev => ({ ...prev, category_schedules: prev.category_schedules.filter((_, i) => i !== index) }));
+                                mobileOrderCategorySchedulesRef.current?.triggerSave();
+                              }} style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', fontSize: '14px', padding: '4px 8px' }}>{t('settings:settingsPage.remove')}</button>
+                            </div>
+                            <div style={{ display: 'flex', gap: '10px', flexDirection: 'column', alignItems: 'stretch' }}>
+                              <FormGroup style={{ flex: 1, marginBottom: 0 }}>
+                                <Label>{t('settings:settingsPage.availableFrom')}</Label>
+                                <Input type="time" value={sched.start_time}
+                                  onChange={(e) => {
+                                    setMobileSettings(prev => {
+                                      const arr = [...prev.category_schedules];
+                                      arr[index] = { ...arr[index], start_time: e.target.value };
+                                      return { ...prev, category_schedules: arr };
+                                    });
+                                    mobileOrderCategorySchedulesRef.current?.triggerSave();
+                                  }} />
+                              </FormGroup>
+                              <FormGroup style={{ flex: 1, marginBottom: 0 }}>
+                                <Label>{t('settings:settingsPage.availableUntil')}</Label>
+                                <Input type="time" value={sched.end_time}
+                                  onChange={(e) => {
+                                    setMobileSettings(prev => {
+                                      const arr = [...prev.category_schedules];
+                                      arr[index] = { ...arr[index], end_time: e.target.value };
+                                      return { ...prev, category_schedules: arr };
+                                    });
+                                    mobileOrderCategorySchedulesRef.current?.triggerSave();
+                                  }} />
+                              </FormGroup>
+                            </div>
+
+                            {/* Days of week — none selected = every day */}
+                            <div style={{ marginTop: '12px' }}>
+                              <Label>{t('settings:settingsPage.scheduleDays', 'Days')}</Label>
+                              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                {[0, 1, 2, 3, 4, 5, 6].map(d => {
+                                  const days = Array.isArray(sched.days) ? sched.days : [];
+                                  const on = days.includes(d);
+                                  return (
+                                    <button key={d} type="button"
+                                      onClick={() => {
+                                        setMobileSettings(prev => {
+                                          const arr = [...prev.category_schedules];
+                                          const cur = Array.isArray(arr[index].days) ? arr[index].days! : [];
+                                          const next = cur.includes(d) ? cur.filter(x => x !== d) : [...cur, d].sort((a, b) => a - b);
+                                          arr[index] = { ...arr[index], days: next };
+                                          return { ...prev, category_schedules: arr };
+                                        });
+                                        mobileOrderCategorySchedulesRef.current?.triggerSave();
+                                      }}
+                                      style={{ width: '42px', height: '36px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 500,
+                                        border: on ? '1px solid #635BFF' : '1px solid #C7CED6',
+                                        background: on ? '#635BFF' : '#FFFFFF', color: on ? '#FFFFFF' : '#4B5563' }}>
+                                      {t('settings:settingsPage.weekdayShortList', 'Su,Mo,Tu,We,Th,Fr,Sa').split(',')[d]}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                              {(!sched.days || sched.days.length === 0) && (
+                                <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>{t('settings:settingsPage.everyDay', 'Every day')}</div>
+                              )}
+                            </div>
+
+                            {/* Event date range — optional, for limited-time events */}
+                            <div style={{ marginTop: '12px', display: 'flex', gap: '10px', flexDirection: 'column' }}>
+                              <FormGroup style={{ flex: 1, marginBottom: 0 }}>
+                                <Label>{t('settings:settingsPage.eventStart', 'Event start (optional)')}</Label>
+                                <DateField value={sched.start_date || ''} placeholder={t('settings:settingsPage.noDateLimit', 'No limit')}
+                                  onChange={(v) => {
+                                    setMobileSettings(prev => {
+                                      const arr = [...prev.category_schedules];
+                                      arr[index] = { ...arr[index], start_date: v || null };
+                                      return { ...prev, category_schedules: arr };
+                                    });
+                                    mobileOrderCategorySchedulesRef.current?.triggerSave();
+                                  }} />
+                              </FormGroup>
+                              <FormGroup style={{ flex: 1, marginBottom: 0 }}>
+                                <Label>{t('settings:settingsPage.eventEnd', 'Event end (optional)')}</Label>
+                                <DateField value={sched.end_date || ''} placeholder={t('settings:settingsPage.noDateLimit', 'No limit')}
+                                  onChange={(v) => {
+                                    setMobileSettings(prev => {
+                                      const arr = [...prev.category_schedules];
+                                      arr[index] = { ...arr[index], end_date: v || null };
+                                      return { ...prev, category_schedules: arr };
+                                    });
+                                    mobileOrderCategorySchedulesRef.current?.triggerSave();
+                                  }} />
+                              </FormGroup>
+                            </div>
+
+                            {/* Off-schedule display mode */}
+                            <FormGroup style={{ marginTop: '12px', marginBottom: 0 }}>
+                              <Label>{t('settings:settingsPage.whenOffSchedule', 'When off-schedule')}</Label>
+                              <select value={sched.display || 'hide'}
+                                onChange={(e) => {
+                                  setMobileSettings(prev => {
+                                    const arr = [...prev.category_schedules];
+                                    arr[index] = { ...arr[index], display: e.target.value as 'hide' | 'disable' };
+                                    return { ...prev, category_schedules: arr };
+                                  });
+                                  mobileOrderCategorySchedulesRef.current?.triggerSave();
+                                }}
+                                style={{ width: '100%', padding: '12px 16px', border: '1px solid #C7CED6', borderRadius: '8px', fontSize: '14px', background: 'white' }}>
+                                <option value="hide">{t('settings:settingsPage.offScheduleHide', 'Hide from menu')}</option>
+                                <option value="disable">{t('settings:settingsPage.offScheduleDisable', 'Show as unavailable')}</option>
+                              </select>
+                            </FormGroup>
+                          </div>
+                        );
+                      })}
+                      {(() => {
+                        const scheduledIds = new Set((mobileSettings.category_schedules || []).map(s => s.category_id?.toString()));
+                        const availableCats = categories.filter((c: any) => !scheduledIds.has(c.id?.toString()));
+                        if (availableCats.length === 0) return (
+                          <p style={{ color: '#6B7280', fontSize: '13px', textAlign: 'center', padding: '12px' }}>{t('settings:settingsPage.allCategoriesHaveSchedulesAssigned')}</p>
+                        );
+                        return (
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <select
+                              id="add-schedule-cat"
+                              style={{ flex: 1, padding: '12px 16px', border: '1px solid #C7CED6', borderRadius: '8px', fontSize: '14px', background: 'white' }}
+                            >
+                              {availableCats.map((cat: any) => (
+                                <option key={cat.id} value={cat.id}>{cat.emoji || '🍽️'} {cat.name}</option>
+                              ))}
+                            </select>
+                            <button type="button" onClick={() => {
+                              const sel = document.getElementById('add-schedule-cat') as HTMLSelectElement;
+                              if (!sel?.value) return;
+                              const catId = parseInt(sel.value);
+                              setMobileSettings(prev => ({
+                                ...prev,
+                                category_schedules: [...prev.category_schedules, { category_id: catId, start_time: '09:00', end_time: '22:00', days: [], display: 'hide' }]
+                              }));
+                              mobileOrderCategorySchedulesRef.current?.triggerSave();
+                            }} style={{ padding: '10px 16px', background: '#F0F4FF', border: '1px dashed #635BFF', borderRadius: '8px', color: '#635BFF', fontSize: '14px', fontWeight: '500', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                              Add Schedule
+                            </button>
+                          </div>
+                        );
+                      })()}
+                    </>
+                  </AutoSaveField>
+                </SettingsCard>
+
+                {/* By Item — per-item availability (Product.availability). Mirrors the By Category list. */}
+                <SettingsCard>
+                  <CardTitle>{t('settings:settingsPage.itemTimeRestrictions', 'Item Time Restrictions')}</CardTitle>
+                  <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
+                    {t('settings:settingsPage.itemTimeRestrictionsHint', 'Restrict individual menu items to certain hours or days on mobile order (e.g. a weekday-only dish). Items without a schedule are always available.')}
+                  </p>
+                  {(() => {
+                    const scheduled = allProducts.filter((p: any) => p.availability && typeof p.availability === 'object');
+                    const eligible = allProducts.filter((p: any) => !p.availability);
+                    const searchLower = itemSchedAddSearch.trim().toLowerCase();
+                    const filtered = searchLower
+                      ? eligible.filter((p: any) => (p.name && p.name.toLowerCase().includes(searchLower)) || (p.code && String(p.code).toLowerCase().includes(searchLower)))
+                      : eligible;
+                    const catById = new Map<string, any>(categories.map((c: any) => [String(c.id), c]));
+                    const getCatFor = (prod: any) => catById.get(String(prod.categoryId ?? prod.category_id ?? prod.category));
+                    const dropdownOpen = showItemSchedAdd;
+                    const defaultSched = { start_time: '09:00', end_time: '22:00', days: [], display: 'hide' as const };
+                    const putAvail = async (id: number, availability: any) => {
+                      const token = getAuthToken();
+                      await fetch(`/api/menu/product/${id}?restaurantId=${user?.restaurantId}`, {
+                        method: 'PUT',
+                        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ availability })
+                      });
+                    };
+                    const addSched = async (prod: any) => {
+                      setAllProducts(prev => prev.map((p: any) => p.id === prod.id ? { ...p, availability: defaultSched } : p));
+                      setItemSchedAddSearch(''); setShowItemSchedAdd(false); itemSchedInputRef.current?.blur();
+                      setItemSchedJustAddedId(prod.id);
+                      setTimeout(() => setItemSchedJustAddedId((cur) => cur === prod.id ? null : cur), 1800);
+                      await putAvail(prod.id, defaultSched);
+                    };
+                    return (
+                      <>
+                        <div style={{ position: 'relative', marginBottom: '12px' }}>
+                          <input
+                            ref={itemSchedInputRef}
+                            type="text"
+                            placeholder={t('settings:settingsPage.searchItemToSchedule', 'Search menu item to schedule...') as string}
+                            value={itemSchedAddSearch}
+                            onChange={(e) => setItemSchedAddSearch(e.target.value)}
+                            onFocus={() => setShowItemSchedAdd(true)}
+                            onBlur={() => { setTimeout(() => setShowItemSchedAdd(false), 200); }}
+                            onKeyDown={(e) => { if (e.key === 'Escape') { setItemSchedAddSearch(''); (e.target as HTMLInputElement).blur(); } }}
+                            disabled={eligible.length === 0 && !itemSchedAddSearch}
+                            style={{
+                              width: '100%', padding: '10px 12px 10px 36px',
+                              border: `1px solid ${dropdownOpen ? '#635BFF' : '#C7CED6'}`,
+                              borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box',
+                              background: `white url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2'><circle cx='11' cy='11' r='7'/><line x1='21' y1='21' x2='16.65' y2='16.65'/></svg>") no-repeat 12px center`,
+                              boxShadow: dropdownOpen ? '0 0 0 3px rgba(99, 91, 255, 0.1)' : 'none',
+                              transition: 'border-color 0.15s, box-shadow 0.15s'
+                            }}
+                          />
+                          {dropdownOpen && (
+                            <div onMouseDown={(e) => e.preventDefault()} style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, maxHeight: '280px', overflowY: 'auto', background: 'white', border: '1px solid #C7CED6', borderRadius: '8px', boxShadow: '0 8px 16px rgba(0,0,0,0.12)', zIndex: 100 }}>
+                              {eligible.length === 0 ? (
+                                <div style={{ padding: '14px', textAlign: 'center', color: '#6B7280', fontSize: '13px' }}>
+                                  {t('settings:settingsPage.allItemsScheduled', 'All menu items already have a schedule.')}
+                                </div>
+                              ) : filtered.length === 0 ? (
+                                <div style={{ padding: '14px', textAlign: 'center', color: '#6B7280', fontSize: '13px' }}>
+                                  {t('settings:settingsPage.noMatchingMenuItems', 'No matching menu items.')}
+                                </div>
+                              ) : (
+                                filtered.slice(0, 20).map((item: any) => {
+                                  const cat = getCatFor(item);
+                                  return (
+                                    <div key={item.id} onClick={() => addSched(item)}
+                                      style={{ padding: '12px 16px', cursor: 'pointer', fontSize: '13px', color: '#0A2540', borderBottom: '1px solid #F1F4F8', display: 'flex', alignItems: 'center', gap: '12px', background: 'white', transition: 'background 0.1s' }}
+                                      onMouseEnter={(e) => e.currentTarget.style.background = '#F5F3FF'}
+                                      onMouseLeave={(e) => e.currentTarget.style.background = 'white'}>
+                                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        {cat && <span style={{ color: '#4B5563', marginRight: '6px' }}>{cat.emoji}</span>}
+                                        <span style={{ fontWeight: 500 }}>{item.name}</span>
+                                      </span>
+                                    </div>
+                                  );
+                                })
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {scheduled.length === 0 ? (
+                          <div style={{ padding: '24px', background: '#F9FAFB', border: '1px dashed #C7CED6', borderRadius: '8px', textAlign: 'center', color: '#4B5563', fontSize: '13px', lineHeight: 1.5 }}>
+                            {allProducts.length === 0
+                              ? t('settings:settingsPage.noMenuItemsForSchedule', 'No menu items yet. Add menu items first to set per-item schedules.')
+                              : t('settings:settingsPage.noItemSchedulesHint', 'No items are time-restricted. Search above to schedule a specific item.')}
+                          </div>
+                        ) : (
+                          scheduled.map((prod: any) => {
+                            const cat = getCatFor(prod);
+                            return (
+                              <div key={prod.id} style={{ background: itemSchedJustAddedId === prod.id ? '#EEF2FF' : '#F9FAFB', padding: '16px', borderRadius: '8px', marginBottom: '12px', border: '1px solid #C7CED6', transition: 'background 1.2s ease' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                                  <Label style={{ margin: 0 }}>{cat ? `${cat.emoji || '🍽️'} ` : ''}{prod.name}</Label>
+                                  <button type="button"
+                                    title={t('settings:settingsPage.removeItemSchedule', 'Remove schedule (always available)') as string}
+                                    onClick={async () => {
+                                      setAllProducts(prev => prev.map((p: any) => p.id === prod.id ? { ...p, availability: null } : p));
+                                      await putAvail(prod.id, null);
+                                    }}
+                                    style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', fontSize: '14px', padding: '4px 8px' }}>
+                                    {t('settings:settingsPage.remove')}
+                                  </button>
+                                </div>
+                                <AutoSaveField type="list" debounceMs={1200} onSave={async () => {
+                                  const cur = allProducts.find((p: any) => p.id === prod.id);
+                                  await putAvail(prod.id, cur?.availability ?? null);
+                                }}>
+                                  <ItemScheduleEditor hideToggle value={prod.availability} onChange={(v) => {
+                                    setAllProducts(prev => prev.map((p: any) => p.id === prod.id ? { ...p, availability: v } : p));
+                                  }} />
+                                </AutoSaveField>
+                              </div>
+                            );
+                          })
+                        )}
+                      </>
+                    );
+                  })()}
+                </SettingsCard>
+                </SettingsGrid>
+                </div>
 
               </SettingsGrid>
             </>

@@ -9,6 +9,7 @@ import ConfirmDialog from '../../components/Common/ConfirmDialog';
 import ConfirmModal from '../../components/ConfirmModal';
 import NumberInputModal from '../../components/Common/NumberInputModal';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
+import ItemScheduleEditor from './ItemScheduleEditor';
 // Common UI components
 import {
   Modal as UIModal,
@@ -1298,6 +1299,7 @@ const MenuManagementPage: React.FC = () => {
       set_display_order: 0,
       recipe_id: formData.recipe_id || null,
       takeaway_charge: formData.takeaway_charge ?? 0,
+      availability: formData.availability ?? null,
       directIngredients: !formData.recipe_id ? directIngredients : undefined
     } as any;
 
@@ -1336,7 +1338,8 @@ const MenuManagementPage: React.FC = () => {
       set_items: null,  // v2 로 전환 — set_groups 가 단일 소스
       set_display_order: formData.set_display_order || 0,
       after_meal: formData.after_meal || false,
-      takeaway_charge: formData.takeaway_charge ?? 0
+      takeaway_charge: formData.takeaway_charge ?? 0,
+      availability: formData.availability ?? null
     };
 
     // 저장 결과를 기다리고 실패 시 실제 사유를 표시 — 무음 실패(모달만 닫힘) 방지.
@@ -1769,6 +1772,13 @@ const MenuManagementPage: React.FC = () => {
           </UIFormGroup>
 
           <UIFormGroup>
+            <ItemScheduleEditor
+              value={formData.availability as any}
+              onChange={(v) => setFormData({ ...formData, availability: v as any })}
+            />
+          </UIFormGroup>
+
+          <UIFormGroup>
             <FormLabel>{t('menu:menuManagementPage.emojiIcon')}</FormLabel>
             <EmojiPicker>
               {emojiOptions['other'].map((emoji: string) => (
@@ -2018,6 +2028,13 @@ const MenuManagementPage: React.FC = () => {
           </UIFormGroup>
 
           <UIFormGroup>
+            <ItemScheduleEditor
+              value={formData.availability as any}
+              onChange={(v) => setFormData({ ...formData, availability: v as any })}
+            />
+          </UIFormGroup>
+
+          <UIFormGroup>
             <FormLabel>{t('menu:menuManagementPage.emojiIcon')}</FormLabel>
             <EmojiPicker>
               {emojiOptions['other'].map((emoji: string) => (
@@ -2247,6 +2264,13 @@ const MenuManagementPage: React.FC = () => {
               <span style={{ fontSize: '14px', color: '#0A2540', fontWeight: 500 }}>{t('menu:menuManagementPage.afterMeal', { defaultValue: 'After meal' })}</span>
               <span style={{ fontSize: '12px', color: '#4B5563' }}>{t('menu:menuManagementPage.afterMealHint', { defaultValue: 'Serve after the main course (e.g. dessert)' })}</span>
             </label>
+          </UIFormGroup>
+
+          <UIFormGroup>
+            <ItemScheduleEditor
+              value={formData.availability as any}
+              onChange={(v) => setFormData({ ...formData, availability: v as any })}
+            />
           </UIFormGroup>
 
           <UIFormGroup>

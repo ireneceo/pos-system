@@ -112,6 +112,40 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
   }
 });
 
+// P1-2 (2026-06-08): webhook amount cross-check. The mark-paid sites used to
+// trust the event blindly and write paid_amount = invoice.total_amount. If a
+// gateway reports a captured amount that is LESS than the invoice total
+// (underpayment / partial capture / forged-but-cheaper event), we must NOT mark
+// the invoice fully paid. Conservative by design — we only HOLD on a clear
+// underpayment or a currency mismatch; when the gateway amount is unreadable we
+// proceed (best-effort) so legitimate payments are never blocked by a parsing gap.
+const AMOUNT_TOLERANCE = 0.01;
+async function passesAmountCrossCheck(invoice, gatewayAmount, gatewayCurrency, ctx) {
+  const amt = Number(gatewayAmount);
+  if (!Number.isFinite(amt) || amt <= 0) return true; // can't read amount → don't block
+
+  const expected = Number(invoice.total_amount) || 0;
+
+  if (gatewayCurrency && invoice.currency &&
+      String(gatewayCurrency).toUpperCase() !== String(invoice.currency).toUpperCase()) {
+    await systemLogger.warn('payment', `${ctx.gateway}-webhook`, 'Currency mismatch on paid webhook — holding', {
+      invoice: invoice.invoice_number, gateway_currency: gatewayCurrency, invoice_currency: invoice.currency,
+      gateway_amount: amt, invoice_total: expected, event_id: ctx.eventId
+    });
+    await invoice.update({ payment_notes: `Held: gateway currency ${gatewayCurrency} ≠ invoice ${invoice.currency} (gateway amount ${amt})` });
+    return false;
+  }
+
+  if (amt + AMOUNT_TOLERANCE < expected) {
+    await systemLogger.error('security', `${ctx.gateway}-webhook`, 'Underpayment on paid webhook — NOT marking paid', {
+      invoice: invoice.invoice_number, gateway_amount: amt, invoice_total: expected, event_id: ctx.eventId
+    });
+    await invoice.update({ payment_notes: `Held: gateway reported ${amt} < invoice total ${expected}` });
+    return false;
+  }
+  return true;
+}
+
 async function processStripeEvent(event) {
   switch (event.type) {
     case 'checkout.session.completed': {
@@ -132,6 +166,8 @@ async function processStripeEvent(event) {
         if (invoiceId) {
           const invoice = await Invoice.findByPk(parseInt(invoiceId, 10));
           if (invoice && invoice.status !== 'paid') {
+            const gwAmount = typeof session.amount_total === 'number' ? session.amount_total / 100 : null;
+            if (!(await passesAmountCrossCheck(invoice, gwAmount, session.currency, { gateway: 'stripe', eventId: event.id }))) break;
             await invoice.update({
               status: 'paid',
               paid_at: new Date(),
@@ -199,6 +235,9 @@ async function processStripeEvent(event) {
       if (!invoiceId) break;
       const invoice = await Invoice.findByPk(invoiceId);
       if (invoice && invoice.status !== 'paid') {
+        const gwAmount = typeof pi.amount_received === 'number' ? pi.amount_received / 100
+          : (typeof pi.amount === 'number' ? pi.amount / 100 : null);
+        if (!(await passesAmountCrossCheck(invoice, gwAmount, pi.currency, { gateway: 'stripe', eventId: event.id }))) break;
         await invoice.update({
           status: 'paid', paid_at: new Date(), paid_amount: invoice.total_amount,
           payment_method: 'stripe', payment_provider: 'stripe', gateway: 'stripe',
@@ -235,15 +274,23 @@ router.post('/paypal', express.raw({ type: 'application/json' }), async (req, re
   }
 
   // signature 검증 (issuer=system 의 webhookId 기준)
+  // P0-4 (2026-06-08): fail-closed. An unverified PayPal webhook must NEVER
+  // mutate invoices/subscriptions — a forged PAYMENT.CAPTURE.COMPLETED carrying a
+  // known invoice_id would otherwise mark it paid (and restore the subscription)
+  // without any real payment. This mirrors the Stripe handler above, which already
+  // rejects when no webhook secret is configured. The previous "graceful degrade"
+  // branch processed the event unverified — that was the fail-open gap.
+  // Operational requirement: the system PayPal webhookId MUST be configured in prod
+  // (payment_settings) or every PayPal webhook is rejected here.
   const webhookId = await getWebhookIdForIssuer('system', null);
-  if (webhookId) {
-    const ok = await verifyPayPalSignature(req, event, webhookId);
-    if (!ok) {
-      await systemLogger.error('security', 'paypal-webhook', 'Signature verification failed');
-      return res.status(400).json({ error: 'Webhook signature verification failed' });
-    }
-  } else {
-    await systemLogger.warn('payment', 'paypal-webhook', 'No webhookId configured — graceful degrade');
+  if (!webhookId) {
+    await systemLogger.error('security', 'paypal-webhook', 'No webhookId configured — rejecting unverified webhook (fail-closed)');
+    return res.status(400).json({ error: 'PayPal webhookId not configured' });
+  }
+  const ok = await verifyPayPalSignature(req, event, webhookId);
+  if (!ok) {
+    await systemLogger.error('security', 'paypal-webhook', 'Signature verification failed');
+    return res.status(400).json({ error: 'Webhook signature verification failed' });
   }
 
   let { isNew, dbRow } = await recordWebhookEvent({
@@ -351,6 +398,9 @@ async function processPayPalEvent(event) {
       if (!invoiceId) break;
       const invoice = await Invoice.findByPk(parseInt(invoiceId, 10));
       if (invoice && invoice.status !== 'paid') {
+        const amtObj = r.amount || r.purchase_units?.[0]?.amount || {};
+        const gwAmount = amtObj.value != null ? parseFloat(amtObj.value) : null;
+        if (!(await passesAmountCrossCheck(invoice, gwAmount, amtObj.currency_code, { gateway: 'paypal', eventId: event.id }))) break;
         await invoice.update({
           status: 'paid', paid_at: new Date(), paid_amount: invoice.total_amount,
           payment_method: 'paypal', payment_provider: 'paypal', gateway: 'paypal',
@@ -378,3 +428,5 @@ async function processPayPalEvent(event) {
 }
 
 module.exports = router;
+// Exposed for unit testing the P1-2 amount cross-check decision in isolation.
+module.exports.passesAmountCrossCheck = passesAmountCrossCheck;

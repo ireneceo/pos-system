@@ -173,6 +173,24 @@ async function startInvoiceCheckout({
   success_url, cancel_url
 }) {
   const stripe = await getStripeForIssuer(issuer_type, issuer_id);
+
+  // P1-3 (2026-06-08): reuse an existing OPEN checkout session for this invoice
+  // instead of opening a second one. Two concurrent open sessions can each
+  // produce a successful payment_intent (double charge at the gateway) while the
+  // invoice only credits once — the second webhook sees status='paid' and skips.
+  // A still-open prior session is returned as-is; expired/complete ones fall
+  // through to a fresh session. (Stripe returns url=null once not open.)
+  if (invoice.gateway_session_id) {
+    try {
+      const existing = await stripe.checkout.sessions.retrieve(invoice.gateway_session_id);
+      if (existing && existing.status === 'open' && existing.url) {
+        return { url: existing.url, session_id: existing.id, reused: true };
+      }
+    } catch (e) {
+      // unknown/stale session id — create a new one below
+    }
+  }
+
   const customer = await getOrCreateStripeCustomer({ stripe, issuer_type, issuer_id, payer_type, payer_id });
 
   const currency = (invoice.currency || 'MYR').toLowerCase();

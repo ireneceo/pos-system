@@ -508,6 +508,68 @@ class SubscriptionScheduler {
   }
 
   /**
+   * Restore an ENTITY (Brand General / Foodcourt General / Restaurant Owner)
+   * subscription to Active when their subscription invoice is paid.
+   *
+   * P0-1 (2026-06-08): the periodic processEntitySubscriptions() only reloads
+   * entities whose subscription_status is IN ('trial','overdue') — a SUSPENDED
+   * entity is excluded, so once suspended it was never re-evaluated and paying
+   * its invoice did nothing (handleInvoicePaid only restored restaurant_id
+   * invoices). This is the payment-side counterpart so an entity payment lifts
+   * the suspension immediately, regardless of which paid path triggered it.
+   *
+   * Entity subscription data lives on the USERS row, and these invoices carry
+   * payer_id = that owner User's id (verified against live data: brand_manager
+   * payer_id → Brand General user, foodcourt_manager → Foodcourt General,
+   * restaurant_owner → Restaurant Owner). So payer_id resolves the User directly.
+   */
+  async restoreEntitySubscription(payerType, payerId) {
+    try {
+      if (!['brand_manager', 'foodcourt_manager', 'restaurant_owner'].includes(payerType)) {
+        return { success: false, error: `Not an entity payer_type: ${payerType}` };
+      }
+      if (!payerId) return { success: false, error: 'payerId required' };
+
+      const user = await User.findByPk(payerId);
+      if (!user) return { success: false, error: 'Entity user not found' };
+
+      // Only restore if currently in overdue or suspended status
+      if (!['overdue', 'suspended'].includes(user.subscription_status)) {
+        return { success: true, message: 'Entity is not in a suspended state' };
+      }
+
+      const previousStatus = user.subscription_status;
+      await user.update({
+        subscription_status: 'active',
+        grace_period_start: null
+      });
+
+      console.log(`✓ Entity subscription restored for ${user.name || user.username} (${payerType}): ${previousStatus} -> Active`);
+
+      // Audit trail (system-triggered — invoice paid hook)
+      try {
+        const { logSystemActivity } = require('../utils/activityLogger');
+        await logSystemActivity({
+          action_type: 'update',
+          entity_type: 'entity_subscription',
+          entity_id: user.id,
+          entity_name: user.name || user.username,
+          changes: { subscription_status: { from: previousStatus, to: 'active' } },
+          description: `Entity subscription restored: ${user.name || user.username} (${payerType}, ${previousStatus} → active)`
+        });
+      } catch (e) {
+        console.error('[restoreEntitySubscription] audit log error:', e.message);
+      }
+
+      return { success: true, previousStatus };
+
+    } catch (error) {
+      console.error('✗ Error restoring entity subscription:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * Start a trial period for a new restaurant
    */
   async startTrial(restaurantId) {

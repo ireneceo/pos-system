@@ -649,6 +649,15 @@ function definePaymentTests() {
   test('payment', '없는 주문 capture-paypal-order → 404', async () => {
     return (await request('POST', '/orders/99999999/capture-paypal-order', { orderId: 'xxx' })).status === 404;
   });
+  // P0-4: 서명 안 된 PayPal webhook 은 절대 처리되면 안 됨 (fail-closed).
+  // 위조 PAYMENT.CAPTURE.COMPLETED 를 invoice_id 만 넣어 보내도 paid 처리/200 'received' 금지.
+  test('payment', 'P0-4 위조 PayPal webhook → 거부(미처리)', async () => {
+    const r = await request('POST', '/webhooks/paypal', {
+      id: 'WH-HC-FORGED', event_type: 'PAYMENT.CAPTURE.COMPLETED',
+      resource: { custom_id: '99999999', amount: { value: '0.01', currency_code: 'MYR' } }
+    });
+    return r.status >= 400 && r.body?.received !== true;
+  });
 }
 
 // ============================================

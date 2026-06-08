@@ -56,3 +56,58 @@ describe('Invoice — schema invariants', () => {
     });
   });
 });
+
+describe('P1-1 — invoice total never negative (recomputeInvoiceTotals cap)', () => {
+  const { recomputeInvoiceTotals } = require('../utils/invoiceCalculation');
+
+  test('fixed discount > subtotal caps discount at subtotal, total floored at 0', () => {
+    const r = recomputeInvoiceTotals(
+      { discount_type: 'fixed', discount_value: 500, additional_charges: [] },
+      [{ calculated_amount: 100 }]
+    );
+    expect(r.header.discount_amount).toBe(100);
+    expect(r.header.total_amount).toBe(0);
+  });
+
+  test('percentage > 100 caps discount at subtotal, total floored at 0', () => {
+    const r = recomputeInvoiceTotals(
+      { discount_type: 'percentage', discount_value: 150, additional_charges: [] },
+      [{ calculated_amount: 80 }]
+    );
+    expect(r.header.discount_amount).toBe(80);
+    expect(r.header.total_amount).toBe(0);
+  });
+
+  test('normal discount + charges unchanged (no regression)', () => {
+    const r = recomputeInvoiceTotals(
+      { discount_type: 'percentage', discount_value: 10, additional_charges: [{ name: 'SST', amount: 6 }] },
+      [{ calculated_amount: 100 }]
+    );
+    expect(r.header.discount_amount).toBe(10);
+    expect(r.header.total_amount).toBe(96);
+  });
+});
+
+describe('P1-2 — webhook amount cross-check (passesAmountCrossCheck)', () => {
+  const { passesAmountCrossCheck } = require('../routes/webhooks-payments');
+  const mkInv = (total, currency) => ({ invoice_number: 'INV-T', total_amount: total, currency, async update() {} });
+
+  test('exact / within-tolerance / overpayment → allow paid', async () => {
+    expect(await passesAmountCrossCheck(mkInv(100, 'MYR'), 100, 'MYR', { gateway: 'stripe', eventId: 'e1' })).toBe(true);
+    expect(await passesAmountCrossCheck(mkInv(100, 'MYR'), 99.995, 'MYR', { gateway: 'stripe', eventId: 'e2' })).toBe(true);
+    expect(await passesAmountCrossCheck(mkInv(100, 'MYR'), 120, 'MYR', { gateway: 'paypal', eventId: 'e3' })).toBe(true);
+  });
+
+  test('clear underpayment → HOLD (do not mark paid)', async () => {
+    expect(await passesAmountCrossCheck(mkInv(100, 'MYR'), 90, 'MYR', { gateway: 'stripe', eventId: 'e4' })).toBe(false);
+  });
+
+  test('currency mismatch → HOLD', async () => {
+    expect(await passesAmountCrossCheck(mkInv(100, 'MYR'), 100, 'USD', { gateway: 'stripe', eventId: 'e5' })).toBe(false);
+  });
+
+  test('unreadable amount (null/0) → allow (best-effort, never block legit payments)', async () => {
+    expect(await passesAmountCrossCheck(mkInv(100, 'MYR'), null, 'MYR', { gateway: 'stripe', eventId: 'e6' })).toBe(true);
+    expect(await passesAmountCrossCheck(mkInv(100, 'MYR'), 0, 'MYR', { gateway: 'stripe', eventId: 'e7' })).toBe(true);
+  });
+});
