@@ -316,6 +316,87 @@ function defineSecurityTests({ customerToken, member, restId }) {
     const r = await request('PUT', `/membership/settings/${otherRid}`, { is_active: true }, { Authorization: `Bearer ${tk}` });
     return r.status === 403;
   });
+
+  // Cross-tenant IDOR — Phase 1 (2026-06-08): query-param scoped endpoints that
+  // previously trusted ?restaurantId blindly (coupons / option-groups / store).
+  test('security', '다른 RA가 cross-tenant /coupons?restaurantId → 403', async () => {
+    const User = require('../models/User');
+    const ra = await User.findOne({ where: { role: 'Restaurant Admin' } });
+    if (!ra || !ra.restaurant_id) return true;
+    const otherRid = ra.restaurant_id === restId ? restId + 1 : restId;
+    const tk = jwt.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const r = await request('GET', `/coupons?restaurantId=${otherRid}`, null, { Authorization: `Bearer ${tk}` });
+    return r.status === 403;
+  });
+  test('security', '다른 RA가 cross-tenant /option-groups?restaurantId → 403', async () => {
+    const User = require('../models/User');
+    const ra = await User.findOne({ where: { role: 'Restaurant Admin' } });
+    if (!ra || !ra.restaurant_id) return true;
+    const otherRid = ra.restaurant_id === restId ? restId + 1 : restId;
+    const tk = jwt.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const r = await request('GET', `/option-groups?restaurantId=${otherRid}`, null, { Authorization: `Bearer ${tk}` });
+    return r.status === 403;
+  });
+  test('security', '다른 RA가 cross-tenant /store/settings?restaurantId → 403', async () => {
+    const User = require('../models/User');
+    const ra = await User.findOne({ where: { role: 'Restaurant Admin' } });
+    if (!ra || !ra.restaurant_id) return true;
+    const otherRid = ra.restaurant_id === restId ? restId + 1 : restId;
+    const tk = jwt.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const r = await request('GET', `/store/settings?restaurantId=${otherRid}`, null, { Authorization: `Bearer ${tk}` });
+    return r.status === 403;
+  });
+  // 폐기된 미인증 레거시 대시보드 라우트는 더 이상 전 매장 집계를 200으로 누출하면 안 됨
+  // (기존: 익명 200 → 폐기 후: 401 차단). recent-orders / stats / order-status 표본.
+  test('security', '익명 /dashboard/recent-orders → 200 아님 (집계 누출 차단)', async () => {
+    const r = await request('GET', '/dashboard/recent-orders', null, {});
+    return r.status === 401 || r.status === 404;
+  });
+  test('security', '익명 /dashboard/stats → 200 아님 (집계 누출 차단)', async () => {
+    const r = await request('GET', '/dashboard/stats?restaurant_id=1', null, {});
+    return r.status === 401 || r.status === 404;
+  });
+
+  // Tier gate (P0-3, 2026-06-08) — Advanced restaurant features must be paywalled
+  // at the API layer, not just hidden in the UI. Find a non-demo RA whose effective
+  // module set (own plan ∪ brand/foodcourt plan) lacks inventory_management and
+  // assert the inventory API returns 403. (Skips/passes if no such restaurant.)
+  test('security', 'tier gate — 모듈없는 매장 재고 API → 403', async () => {
+    const Restaurant = require('../models/Restaurant');
+    const User = require('../models/User');
+    const { resolveRestaurantModules } = require('../middleware/requireModule');
+    const ras = await User.findAll({ where: { role: 'Restaurant Admin' }, limit: 40 });
+    for (const ra of ras) {
+      if (!ra.restaurant_id) continue;
+      const rest = await Restaurant.findByPk(ra.restaurant_id);
+      if (!rest || rest.is_demo) continue;
+      const mods = await resolveRestaurantModules(rest);
+      if (mods.includes('inventory_management')) continue; // need a non-holder
+      const tk = jwt.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+      const r = await request('GET', `/restaurants/${rest.id}/inventory`, null, { Authorization: `Bearer ${tk}` });
+      return r.status === 403;
+    }
+    return true; // no suitable restaurant available → pass
+  });
+  // The brand-pushed read path (brand-ingredients) must NOT be tier-gated — a
+  // franchise branch always sees HQ-provided ingredients regardless of its tier.
+  test('security', 'tier gate — brand-ingredients 읽기는 비차단', async () => {
+    const Restaurant = require('../models/Restaurant');
+    const User = require('../models/User');
+    const { resolveRestaurantModules } = require('../middleware/requireModule');
+    const ras = await User.findAll({ where: { role: 'Restaurant Admin' }, limit: 40 });
+    for (const ra of ras) {
+      if (!ra.restaurant_id) continue;
+      const rest = await Restaurant.findByPk(ra.restaurant_id);
+      if (!rest || rest.is_demo) continue;
+      const mods = await resolveRestaurantModules(rest);
+      if (mods.includes('inventory_management') || mods.includes('ingredients')) continue;
+      const tk = jwt.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+      const r = await request('GET', `/restaurants/${rest.id}/brand-ingredients`, null, { Authorization: `Bearer ${tk}` });
+      return r.status !== 403; // not tier-blocked (200 or other non-403)
+    }
+    return true;
+  });
 }
 
 // ============================================
@@ -324,7 +405,7 @@ function defineSecurityTests({ customerToken, member, restId }) {
 function definePosTests({ adminToken }) {
   const auth = { Authorization: `Bearer ${adminToken}` };
 
-  test('pos', 'admin /dashboard/stats → 200', async () => (await request('GET', '/dashboard/stats?restaurant_id=1', null, auth)).status === 200);
+  test('pos', 'admin /dashboard/restaurant/1/stats → 200', async () => (await request('GET', '/dashboard/restaurant/1/stats', null, auth)).status === 200);
   test('pos', 'admin /orders/restaurant/1 → 200', async () => (await request('GET', '/orders/restaurant/1', null, auth)).status === 200);
   test('pos', 'admin /menu → 200', async () => (await request('GET', '/menu?restaurantId=1', null, auth)).status === 200);
   test('pos', 'admin /invoices → 200', async () => (await request('GET', '/invoices', null, auth)).status === 200);

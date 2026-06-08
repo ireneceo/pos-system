@@ -329,6 +329,39 @@ const getManagerScope = (user) => {
   return { scoped: false };
 };
 
+// Row-level tenant check for cases where the target restaurant_id comes from a
+// fetched row (not params/query/body) — e.g. /coupons/:id, /option-groups/:id,
+// PATCH /orders/:id. Mirrors checkRestaurantAccess role logic. Returns boolean.
+// (checkRestaurantAccess can't be chained on routes whose :id is the resource id,
+//  because it would mistake req.params.id for the target restaurant id.)
+const userCanAccessRestaurant = async (user, targetRestaurantId) => {
+  if (!user || targetRestaurantId === undefined || targetRestaurantId === null) return false;
+  if (user.role === 'System Admin') return true;
+  const target = parseInt(targetRestaurantId);
+
+  if (user.role === 'Restaurant Admin' || user.role === 'Staff') {
+    return !!user.restaurant_id && parseInt(user.restaurant_id) === target;
+  }
+
+  if (user.role === 'Restaurant Owner') {
+    const ownership = await RestaurantManager.findOne({
+      where: { restaurant_id: target, manager_id: user.id, relationship_type: 'ownership' }
+    });
+    return !!ownership;
+  }
+
+  if (user.role.includes('Manager') || user.role.includes('General')) {
+    const restaurant = await Restaurant.findByPk(target, {
+      include: [{ model: User, as: 'managers', where: { id: user.id }, required: false }]
+    });
+    if (!restaurant) return false;
+    const hasAccess = restaurant.managers && restaurant.managers.length > 0;
+    return hasAccess || restaurant.admin_id === user.id;
+  }
+
+  return false;
+};
+
 module.exports = {
   authenticateToken,
   optionalAuthenticateToken,
@@ -336,6 +369,7 @@ module.exports = {
   requirePosCounter,
   userCanOperatePosCounter,
   checkRestaurantAccess,
+  userCanAccessRestaurant,
   checkSubscriptionStatus,
   demoProtection,
   getManagerScope

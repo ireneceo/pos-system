@@ -548,7 +548,14 @@
       "Bash(awk '/router.post\\\\\\(.\\\\/staging.|router.post\\\\\\(.\\\\/bulk.|router.post\\\\\\(.\\\\/.,.*async/{found=NR} END{}' routes/purchase-orders-crud.js)",
       "Bash(sed -n '600,720p' routes/purchase-orders-crud.js)",
       "Bash(sed -n '190,215p' src/pages/FloorPlan/FloorPlanPage.tsx)",
-      "Bash(sed -n '1680,1700p' src/pages/FloorPlan/FloorPlanPage.tsx)"
+      "Bash(sed -n '1680,1700p' src/pages/FloorPlan/FloorPlanPage.tsx)",
+      "Bash(awk '$1>800 && $2!=\"total\"')",
+      "Bash(sed 's/.js$//')",
+      "Bash(cp routes/dashboard.js /tmp/dashboard.js.bak)",
+      "Bash(sed -i '19,330d' routes/dashboard.js)",
+      "Bash(sed -n '12,25p' routes/dashboard.js)",
+      "Bash(sed -n '1,35p' routes/inventory-core.js)",
+      "Bash(sed -n '1,30p' routes/ingredients.js)"
     ],
     "deny": [],
     "ask": []

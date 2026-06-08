@@ -3,8 +3,18 @@ const router = express.Router();
 const { Recipe, Ingredient, RecipeIngredient, Restaurant, Product, RecipeCategory, Category, RestaurantIngredientCost } = require('../models');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const { canEditRecipe, isBrandManager } = require('../middleware/recipeAuth');
+const { requireRestaurantModule } = require('../middleware/requireModule');
 const { generateRecipeCode } = require('../utils/codeGenerator');
 const { processImage, deleteOldImages } = require('../utils/imageProcessor');
+
+// Tier gate (P0-3, 2026-06-08): a restaurant managing its OWN recipes is an
+// Advanced-tier feature (recipe_management module — Enterprise, or granted via
+// brand/foodcourt plan). Scoped to the restaurant's own recipe paths only.
+// NOT applied to /restaurants/:id/brand-recipes (read of HQ-pushed recipes) so a
+// franchise branch can always see the brand's recipes regardless of its own tier.
+const recipeGate = requireRestaurantModule('recipe_management', 'restaurantId');
+router.use('/restaurants/:restaurantId/recipes', authenticateToken, recipeGate);
+router.use('/restaurants/:restaurantId/products/create-from-recipe', authenticateToken, recipeGate);
 
 // ============================================
 // Brand Recipes (Brand General/Manager)

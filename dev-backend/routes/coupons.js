@@ -4,7 +4,7 @@ const Coupon = require('../models/Coupon');
 const RestaurantCustomer = require('../models/RestaurantCustomer');
 const Order = require('../models/Order');
 const { Op } = require('sequelize');
-const { authenticateToken, optionalAuthenticateToken } = require('../middleware/auth');
+const { authenticateToken, optionalAuthenticateToken, userCanAccessRestaurant } = require('../middleware/auth');
 const { authenticateAdminOrCustomerSelf } = require('../middleware/customerAuth');
 
 // Get all coupons for a restaurant
@@ -15,6 +15,10 @@ router.get('/', authenticateToken, async (req, res) => {
 
     if (!finalRestaurantId) {
       return res.status(400).json({ success: false, error: { message: 'Restaurant ID is required', code: 'VALIDATION_ERROR' } });
+    }
+
+    if (!(await userCanAccessRestaurant(req.user, finalRestaurantId))) {
+      return res.status(403).json({ success: false, error: { message: 'Access denied to this restaurant', code: 'FORBIDDEN' } });
     }
 
     const whereCondition = {
@@ -355,6 +359,10 @@ router.get('/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, error: { message: 'Coupon not found', code: 'NOT_FOUND' } });
     }
 
+    if (!(await userCanAccessRestaurant(req.user, coupon.restaurant_id))) {
+      return res.status(403).json({ success: false, error: { message: 'Access denied to this coupon', code: 'FORBIDDEN' } });
+    }
+
     res.json({ success: true, data: coupon });
   } catch (error) {
     console.error('✗ [COUPONS] Error fetching coupon:', error);
@@ -390,6 +398,10 @@ router.post('/', authenticateToken, async (req, res) => {
 
     if (!finalRestaurantId || !code || !type || value === undefined) {
       return res.status(400).json({ success: false, error: { message: 'Restaurant ID, code, type, and value are required', code: 'VALIDATION_ERROR' } });
+    }
+
+    if (!(await userCanAccessRestaurant(req.user, finalRestaurantId))) {
+      return res.status(403).json({ success: false, error: { message: 'Access denied to this restaurant', code: 'FORBIDDEN' } });
     }
 
     // Check for duplicate code
@@ -439,6 +451,10 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
     if (!coupon) {
       return res.status(404).json({ success: false, error: { message: 'Coupon not found', code: 'NOT_FOUND' } });
+    }
+
+    if (!(await userCanAccessRestaurant(req.user, coupon.restaurant_id))) {
+      return res.status(403).json({ success: false, error: { message: 'Access denied to this coupon', code: 'FORBIDDEN' } });
     }
 
     const {
@@ -513,6 +529,10 @@ router.delete('/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, error: { message: 'Coupon not found', code: 'NOT_FOUND' } });
     }
 
+    if (!(await userCanAccessRestaurant(req.user, coupon.restaurant_id))) {
+      return res.status(403).json({ success: false, error: { message: 'Access denied to this coupon', code: 'FORBIDDEN' } });
+    }
+
     await coupon.destroy();
 
     console.log(`✓ [COUPONS] Deleted coupon ${coupon.code}`);
@@ -531,6 +551,10 @@ router.post('/:id/use', authenticateToken, async (req, res) => {
 
     if (!coupon) {
       return res.status(404).json({ success: false, error: { message: 'Coupon not found', code: 'NOT_FOUND' } });
+    }
+
+    if (!(await userCanAccessRestaurant(req.user, coupon.restaurant_id))) {
+      return res.status(403).json({ success: false, error: { message: 'Access denied to this coupon', code: 'FORBIDDEN' } });
     }
 
     await coupon.update({

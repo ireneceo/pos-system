@@ -2162,29 +2162,25 @@ router.get('/:id/allowed-routes', authenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
     }
 
-    // Demo restaurants: use highest plan for full access
+    // Effective modules = restaurant's own plan ∪ brand/foodcourt entity plan
+    // (P0-2 union, 2026-06-08). Mirrors the backend gate resolveRestaurantModules
+    // so the UI never hides a feature the API would actually allow for a
+    // brand-owned branch entitled via the brand/foodcourt plan.
+    const { resolveRestaurantModules } = require('../middleware/requireModule');
     const effectivePlanType = restaurant.is_demo ? 'Enterprise Plan' : restaurant.plan_type;
 
-    // Find plan
-    const plan = await PlanTemplate.findOne({
-      where: { display_name: effectivePlanType }
-    });
-
-    if (!plan) {
-      // If no plan found, return empty routes (restricted access)
-      return res.json({
-        restaurant_id: restaurant.id,
-        plan_type: effectivePlanType,
-        included_modules: [],
-        allowed_routes: []
+    let includedModuleCodes;
+    if (restaurant.is_demo) {
+      const entPlan = await PlanTemplate.findOne({
+        where: { display_name: 'Enterprise Plan', plan_target: 'restaurant' }
       });
+      includedModuleCodes = entPlan?.included_modules || [];
+    } else {
+      includedModuleCodes = await resolveRestaurantModules(restaurant);
     }
 
-    // Get included modules from plan
-    const includedModuleCodes = plan.included_modules || [];
-
-    if (includedModuleCodes.length === 0) {
-      // No modules included, return empty routes
+    if (!includedModuleCodes || includedModuleCodes.length === 0) {
+      // No modules → restricted access (empty routes)
       return res.json({
         restaurant_id: restaurant.id,
         plan_type: effectivePlanType,

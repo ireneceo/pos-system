@@ -18,10 +18,21 @@ const { Recipe, Ingredient, RecipeIngredient } = require('../models');
 const CompanySettings = require('../models/CompanySettings');
 const { Op } = require('sequelize');
 const { authenticateToken, checkRestaurantAccess, requireRole } = require('../middleware/auth');
+const { requireRestaurantModule } = require('../middleware/requireModule');
 const { validateRestaurantCreation } = require('../middleware/validation');
 const jwt = require('jsonwebtoken');
 const { getTodayBounds, getRestaurantTimezone } = require('../utils/dateTimeHelper');
 const { deleteOldImages, saveImageToFile } = require('../utils/imageProcessor');
+
+// Tier gate (P0-3, 2026-06-08): restaurant-owned ingredient management is an
+// Advanced-tier feature (inventory_management OR ingredients module — mirrors the
+// frontend ui_routes for /ingredients). This router (mounted in the
+// /api/restaurants barrel) is the primary handler for /:rid/ingredients, so the
+// gate must live here too — the ingredients.js gate only covers the fall-through
+// paths it serves at /api. Scoped to the /:restaurantId/ingredients prefix so
+// sibling /:restaurantId/* routes in the barrel are unaffected.
+const restaurantIngredientGate = requireRestaurantModule(['inventory_management', 'ingredients'], 'restaurantId');
+router.use('/:restaurantId/ingredients', authenticateToken, restaurantIngredientGate);
 
 // base64 data URL이 들어오면 디스크 파일로 저장하고 URL 반환.
 // 이미 URL이면 그대로, 빈/null이면 null. ingredient image_url 표준화.

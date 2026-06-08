@@ -175,3 +175,91 @@ health-check 통합 외 unit test 없음, CI 연동 없음 (deploy-to-production
 - Entity Polymorphic — `reference_entity_polymorphic`
 - Invoice consistency — `reference_invoice_consistency`
 - Suspended pin — `reference_suspended_pin`
+
+---
+
+## 8. 첫 유료 멀티지점 브랜드 출시 전수감사 (2026-06-08)
+
+> **계기:** 여러 지점을 가진 브랜드 회사가 **처음으로 유료 구독 고객**이 됨. 출시 전 5개 영역(멀티테넌시 격리 / 구독·결제 정확성 / 요금제 게이팅 / 브랜드→지점 전파 / 구조 정리) 라인 단위 전수조사.
+> **방법:** 5개 병렬 코드 감사(읽기 전용, 인쇄 보호파일 무접촉). 모든 항목 `파일:라인` 근거.
+> **확정된 비즈니스 결정 (Irene, 2026-06-08):**
+> 1. **멀티지점 청구 모델 = 지점별 인보이스 경로로 통일.** 브랜드 플랜 = 활성 지점 수 × 단가를 `EntityPlanRestaurant` 기반 인보이스로 청구. Stripe/PayPal 은 **인보이스 Checkout 결제(mode=payment)만** 사용하고 Stripe Subscriptions(자동 recurring) 경로는 멀티지점 브랜드에 쓰지 않는다. (이유: 현 `line_items quantity=1` 고정이 지점 수를 반영 못 해 과소청구. 인보이스 경로는 이미 지점별 청구 모델을 가짐.)
+> 2. **착수 순서 = 전체 설계 문서 먼저** → 단계별 구현 (이 §8 이 그 설계 문서).
+
+### 8.1 핵심 구조 진단 — 청구 체계 이원화 (모든 P0 결제 결함의 뿌리)
+
+현재 **두 개의 평행 구독 청구 체계가 서로 동기화되지 않는다**:
+
+| | A. Stripe/PayPal Subscriptions API | B. 로컬 인보이스 스케줄러 |
+|---|---|---|
+| 위치 | `routes/payments.js` → `services/stripeCheckoutService.js` | `services/invoiceScheduler.js` + `subscriptionScheduler.js` |
+| 동작 | 게이트웨이가 매월 자동 charge → `Subscription` 테이블에만 mirror | cron 이 `Invoice` 행 생성, 결제는 Checkout/수동 |
+| 접근차단(suspended) 판정 | **건드리지 않음** | `Restaurant.status` / `User.subscription_status` 가 결정 |
+
+→ 접근 차단을 결정하는 건 B 의 상태 필드인데, A 의 결제 성공 webhook 이 B 를 갱신하지 않는다. **"멀티지점 브랜드 Stripe 구독" 이 정확히 두 체계의 틈에 빠진다.** 결정 1(B 경로 통일)이 이 뿌리를 제거한다.
+
+### 8.2 P0 — 출시 전 차단 (돈 / 접근 / 격리 직결)
+
+| ID | 결함 | 근거 (`파일:라인`) | 증상 | 수정 설계 |
+|----|------|--------------------|------|-----------|
+| **P0-1** | 엔티티 구독 결제 → suspended 복구 부재 | `webhooks-payments.js:173` (`invoice.paid` 로그만), `invoiceLifecycle.js:39` + `subscriptionScheduler.js:421` (restaurant_id 있는 인보이스만 복구, brand/foodcourt/owner 는 'elsewhere' 주석뿐 — 실제 부재). `subscriptionScheduler.js:389` 는 suspended 를 로드 대상에서 제외 | 브랜드가 매월 정상 결제해도 접근 차단 영구 지속 | `handleInvoicePaid` 에 `payer_type ∈ {brand_manager, foodcourt_manager, restaurant_owner}` → 해당 User `subscription_status='active'` 복구 분기 추가. 결정1 통일 후 인보이스 결제가 유일 복구 트리거 |
+| **P0-2** | 멀티지점 entitlement 소스 분리 | `requireModule.js:202` + `restaurants-crud.js:2166` 는 `restaurant.plan_type` 만 읽음. 브랜드 플랜 배정 `brands-plans.js:429` 는 `EntityPlanRestaurant` 에만 쓰고 `plan_type` 미설정 | 게이트 추가해도 브랜드 지점은 entitlement 안 보여 fail-open/오작동 | **단일 resolver** 도입 — `resolveBranchModules(restaurant)` 가 `restaurant.plan_type` 없으면 `EntityPlanRestaurant→EntityPlan.included_modules` 로 폴백. `requireRestaurantModule`/`allowed-routes` 양쪽이 이 resolver 사용 |
+| **P0-3** | Advanced 기능 백엔드 게이팅 부재 (UI만 차단) | `requireModule.js:8` 주석 스스로 "curl 통과" 경고. 게이트 0: `inventory-core.js`(auth+access만), `ingredients.js`/`recipes.js`, `purchase-orders-crud.js:91`(role만), `purchase-invoices.js`, `supplier-directory.js`, `brand-inventory.js`, `brand-products.js` | 베이직 지점이 API 직접 호출로 Advanced 전부 사용 | 모범 패턴(`supplier-products.js:77` `baseGates` router-level) 복제 — 각 라우터 `router.use(requireRestaurantModule(...))` / `requireBrandModule(...)`. P0-2 resolver 위에 얹음 |
+| **P0-4** | PayPal webhook fail-open | `webhooks-payments.js:238` webhookId 미설정 시 서명검증 통째 skip, `:347` `custom_id`(invoice_id)만으로 paid 처리 | webhookId 누락 시 인증 없는 외부 POST 로 임의 청구서 무료 결제완료 | webhookId 없으면 **fail-closed (400)**. graceful degrade 제거. Stripe 는 이미 `constructEvent` 강제(양호) |
+| **P0-5** | 대시보드 미인증 + 미스코프 | `dashboard.js:20/118/174/190/212` (`authenticateToken` 없음, "legacy" 주석, restaurant 필터 없음) | 토큰 없이 전 매장 매출·최근주문(고객명/금액) 노출 | 라우터 `router.use(authenticateToken)` + `req.user.restaurant_id` WHERE 강제. `/admin/stats` 는 `requireRole('System Admin')`. 미사용이면 라우트 폐기 |
+| **P0-6** | cross-tenant IDOR (소유권 검사 누락) | `coupons.js`(라우터 전체 `checkRestaurantAccess` 0), `optionGroups.js:67/168/275`(`:id` row 검사 없음), `store.js:16`(GET /settings 검사 없음 — PUT만 있음), `orders-crud.js:882/1275/1321/1505/2083`(PATCH status/discount/items/item-delete 소유권 누락) | 지점A 가 `?restaurant_id=B` / id 순회로 지점B 데이터 열람·수정·삭제 | 모범 `inventory-core.js:29`(`router.use('/:restaurantId', checkRestaurantAccess)`) + `menu.js`(`checkProductTenant` row-level) 패턴 복제. `:id` 핸들러에 `row.restaurant_id !== req.user.restaurant_id && role!=='System Admin'` → 403 |
+
+### 8.3 P1 — 정확성 / 무결성 (출시 직후 우선)
+
+| ID | 결함 | 근거 | 수정 |
+|----|------|------|------|
+| **P1-1** | fixed 할인 음수 인보이스 | 스케줄러 `invoiceScheduler.js:240` 는 `Math.min` 캡, 권위 함수 `recomputeInvoiceTotals` 는 캡 없이 사용 → total 음수 → `stripeCheckoutService.js:180` `amount<=0` throw 로 결제 불능 | `recomputeInvoiceTotals` 에 `discountAmount = Math.min(round2(dv), subtotal)` + `total = Math.max(0, ...)` |
+| **P1-2** | webhook 금액 cross-check 부재 | `webhooks-payments.js:138/267/355` 게이트웨이 실결제액과 `invoice.total_amount` 대조 없이 무조건 paid | 게이트웨이 보고액 ≠ DB 금액이면 flag/보류 |
+| **P1-3** | 중복 결제 세션 가드 부재 | `payments.js:114` `gateway_session_id` 이미 있어도 새 세션 생성 차단 안 함 | 진행 중 세션 재사용 또는 차단 |
+| **P1-4** | 브랜드 대납 결제 차단 가능 | `payments.js:32` `ensurePayerAccess` 가 brand owner 의 소속 지점(`restaurant.brand_id ∈ 내 브랜드`) 결제 케이스 누락 → 403 | brand 소유 지점 대납 허용 분기 (결정1 핵심 흐름) |
+| **P1-5** | health-check 취약점 은폐 + 커버 0 | `health-check.js:327` 미인증 레거시 200 을 "정상 통과"로 검증(취약점 은폐). payment 카테고리는 "없는 주문 404" 3건뿐 — 게이팅/IDOR/복구 커버 0 | P0 수정 후 **익명차단·cross-tenant 403·게이팅·suspended복구·인보이스 금액무결성** 케이스 영구 추가 |
+| **P1-6** | 신규 지점 브랜드 메뉴 backfill 부재 | `restaurants-crud.js:1125/1656` brand_id 세팅 시 `pushBrandMenuToRestaurants` 호출 0, afterCreate 훅 없음 | brand_id 최초 세팅 시 해당 브랜드 `is_active` BrandMenu 전체 best-effort backfill |
+| **P1-7** | lock 미강제 (전파 우회) | `menu.js:549` lockKey 맵 5필드뿐 — `set_items`/`sort_order`/`display_order` 누락. DELETE `:897` 는 lock 검사 자체 없음 | lockKey 맵에 set_items/sort_order 추가, DELETE 에 brand_menu_id+lock 가드 |
+
+### 8.4 P2 — 구조 / 아키텍처 정리 (출시와 병행 가능)
+
+- **models/index.js 6개 미등록** — `ActivityLog/CompanySettings/Coupon/ContactInquiry/Content/ContentCategory` 가 중앙 레지스트리 우회(직접 require). index.js require+exports 등록 + 라우트 `db.X` 통일.
+- **비대 파일** — `SettingsPage.tsx` **8055줄**(최우선 탭별 분리), `restaurants-crud.js` 2235, `contracts.js` 1452, Admin/Manager `RestaurantsPage` 2867/2981(역할별 중복 의심). (인쇄 보호파일 `POSTerminalPage`/`MainLayout`/`KitchenDisplayPage`/`orders-crud` 는 분리 보류.)
+- **응답 형식 비표준 27건** (`res.json({error})`) — `restaurants-crud.js` 9건 등. 수정 범위 내에서 `{success:false, message}` 통일. (webhook 8건은 외부 수신용, 제외.)
+- **스캐폴드 페이지 9개** (UI만, API 미연동 — FoodcourtManagement/TenantSupport/SecurityPage/BackupRestorePage/SystemConfigPage 등) — **유료 고객 노출 전 숨김 또는 완성**. "클릭하면 빈 화면" 신뢰 손상 방지.
+- **CLAUDE.md 문서 드리프트** — 보안표가 존재하지 않는 `app.js` 지칭(실제 server.js). 문서만 교정.
+
+### 8.5 P3 — 추가 전수검사 권장 (코드 수정 아님, 검증 활동)
+
+1. **실데이터 entitlement 정합성 실측** — 실제 들어올 브랜드 매장의 `plan_type` vs `EntityPlanRestaurant` 불일치를 운영 DB 로 확인(P0-2 가 실제로 어떻게 터지는지).
+2. **결제 webhook sandbox e2e** — Stripe/PayPal 테스트 구독 1건 결제 → suspended 해제까지 실제로 흐르는지(P0-1 검증). 운영 webhook URL 절대 금지, sandbox 만.
+3. **BG 멀티지점 headless sweep** — `scripts/headless-page-sweep.js` 를 멀티지점 BG 계정으로 1바퀴(빈 메뉴/스캐폴드 페이지 mount 확인).
+
+### 8.6 실행 순서 (단계별, 각 단계 후 검증 + Irene 확인)
+
+```
+Phase 0 (설계)        ← 이 §8 (완료, 2026-06-08)
+Phase 1 (격리)        P0-5, P0-6  — 모범 패턴 복제, 부작용 적고 즉효. health-check 익명/IDOR 케이스 동반 추가
+Phase 2 (게이팅 기반)  P0-2 단일 resolver → P0-3 라우터 게이트. resolver 먼저(게이트의 토대)
+Phase 3 (결제 정확성)  P0-1, P0-4, P1-1~P1-4 — 결정1(지점별 인보이스 통일) 반영. ★sandbox e2e 필수, 인쇄급 신중
+Phase 4 (전파)        P1-6, P1-7
+Phase 5 (안전망)       P1-5 health-check 영구 확장 (Phase1~3 각 케이스 누적)
+Phase 6 (구조)         P2 — 병행 가능, 우선순위 낮음
+```
+
+> **검증 게이트(각 Phase 공통):** build:dev 성공 → 실 API 호출 검증(저장/조회 라운드트립) → health-check 전체 통과 → 멀티지점 BG 계정 실흐름 → check-print-guard 0(인쇄 무관 확인). Phase 3 은 sandbox 결제 e2e 추가 의무. **운영 배포는 Phase 별 Irene `/배포` 명시 지시만.**
+
+### 8.8 구현 진행 상태 (2026-06-08, DEV 미배포)
+
+- **Phase 1 (격리) — 완료·검증.** P0-5 dashboard 미인증 5라우트 폐기. P0-6 IDOR 가드(coupons/optionGroups/store/orders PATCH 5 + merge). auth.js `userCanAccessRestaurant` 헬퍼. health-check IDOR 11케이스 추가. 실호출 7/7 차단·본인지점 정상. print-guard 재bless. **98→100/100.**
+- **Phase 2 (게이팅) — 진행중.**
+  - P0-2 **완료**: `resolveRestaurantModules`(plan_type ∪ 활성 EntityPlanRestaurant→EntityPlan, 합집합) 단일 resolver. `requireRestaurantModule` 이를 사용 + 배열 any-of. `allowed-routes`도 동일 resolver(UI=백엔드 일치).
+  - P0-3 **Wave A 완료**(레스토랑 Advanced): inventory(inventory-routes barrel) / recipes(recipes.js) / ingredients(restaurants-ingredients.js + ingredients.js). path-prefix로 좁혀 fall-through 안전. brand-* 읽기 비차단. **실측 과차단 0건.** health-check tier gate 2케이스. **100/100.**
+  - P0-3 **Wave B 남음**: 브랜드 Advanced(brand_products/brand_inventory/brand_recipes — requireBrandModule, brand owner plan_type 기반 이미 동작) + buyer 버티컬(PO/구매인보이스/공급사디렉토리; buyer_* 모듈은 전 레스토랑 플랜 포함→레스토랑 buyer 차단대상 0, brand/fc buyer는 entity 기준 필요).
+  - ⚠ **운영 배포 전 필수**: 운영 DB로 §8.5-1 영향측정 재실행 + 실 Enterprise 지점 200 허용 확인(dev엔 비데모 Enterprise 0개). 그 후 /배포.
+- **Phase 3~6 미착수** (결제 통일 / 전파 / 안전망 / 구조).
+
+### 8.7 영향 받는 파일 (수정 예정 — 인쇄 보호파일 제외)
+
+- 백엔드: `routes/dashboard.js`, `coupons.js`, `optionGroups.js`, `store.js`, `orders-crud.js`(※ print 블록 무접촉, PATCH 소유권 가드만), `payments.js`, `webhooks-payments.js`, `menu.js`, `restaurants-crud.js`, `inventory-core.js`/`ingredients.js`/`recipes.js`/`purchase-orders-crud.js`/`brand-products.js`/`brand-inventory.js`(게이트 추가), `middleware/requireModule.js`(resolver), `services/invoiceLifecycle.js`/`subscriptionScheduler.js`/`invoiceScheduler.js`, `utils/invoiceCalculation.js`, `models/index.js`, `scripts/health-check.js`
+- 문서: 이 문서(§8), `CLAUDE.md`(app.js 교정), 결제 상세는 `PAYMENT_ARCHITECTURE.md` 교차참조

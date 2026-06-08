@@ -889,6 +889,13 @@ router.patch('/:id', authenticateToken, async (req, res) => {
         throw new Error('Order not found');
       }
 
+      // IDOR guard: cross-restaurant order mutation. Same ownership pattern as
+      // GET /:id (line ~150). System Admin sees all. (No print routing touched.)
+      if (req.user?.restaurant_id && Number(req.user.restaurant_id) !== Number(order.restaurant_id)
+          && req.user.role !== 'System Admin') {
+        throw new Error('FORBIDDEN_CROSS_RESTAURANT');
+      }
+
       // Payment proof history 관리: reject 시 current → history로 이동
       if (req.body.payment_status === 'rejected' && order.payment_proof) {
         let proof = typeof order.payment_proof === 'string' ? JSON.parse(order.payment_proof) : order.payment_proof;
@@ -984,6 +991,9 @@ router.patch('/:id', authenticateToken, async (req, res) => {
   } catch (error) {
     if (error.message === 'Order not found') {
       return res.status(404).json({ success: false, error: error.message });
+    }
+    if (error.message === 'FORBIDDEN_CROSS_RESTAURANT') {
+      return res.status(403).json({ success: false, error: { message: 'Forbidden', code: 'FORBIDDEN' } });
     }
     console.error('✗ Order 업데이트 실패:', error.message);
     console.error(error.stack);
@@ -1276,6 +1286,11 @@ router.patch('/:id/apply-discount', authenticateToken, async (req, res) => {
   try {
     const order = await Order.findByPk(req.params.id);
     if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+    // IDOR guard (same pattern as GET /:id). System Admin sees all.
+    if (req.user?.restaurant_id && Number(req.user.restaurant_id) !== Number(order.restaurant_id)
+        && req.user.role !== 'System Admin') {
+      return res.status(403).json({ success: false, error: { message: 'Forbidden', code: 'FORBIDDEN' } });
+    }
     const subtotal = parseFloat(order.subtotal || 0);
     const takeaway = parseFloat(order.takeaway_charge || 0);
     const maxD = Math.max(0, subtotal + takeaway); // never below zero
@@ -1325,6 +1340,12 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
 
     if (!order) {
       return res.status(404).json({ success: false, error: { message: 'Order not found', code: 'NOT_FOUND' } });
+    }
+
+    // IDOR guard (same pattern as GET /:id). System Admin sees all.
+    if (req.user?.restaurant_id && Number(req.user.restaurant_id) !== Number(order.restaurant_id)
+        && req.user.role !== 'System Admin') {
+      return res.status(403).json({ success: false, error: { message: 'Forbidden', code: 'FORBIDDEN' } });
     }
 
     // 주문 취소는 카운터 전용 액션 → 서빙 전용 직원 차단(2026-06-03). 단계 이동(준비/서빙 등)은 허용.
@@ -1509,6 +1530,12 @@ router.patch('/:id/items', authenticateToken, async (req, res) => {
 
     if (!order) {
       return res.status(404).json({ success: false, error: { message: 'Order not found', code: 'NOT_FOUND' } });
+    }
+
+    // IDOR guard (same pattern as GET /:id). System Admin sees all.
+    if (req.user?.restaurant_id && Number(req.user.restaurant_id) !== Number(order.restaurant_id)
+        && req.user.role !== 'System Admin') {
+      return res.status(403).json({ success: false, error: { message: 'Forbidden', code: 'FORBIDDEN' } });
     }
 
     // snapshot for audit diff
@@ -1709,6 +1736,13 @@ router.post('/merge', authenticateToken, async (req, res) => {
         throw new Error('Cannot merge orders from different restaurants');
       }
 
+      // IDOR guard: caller must own the restaurant these orders belong to.
+      // (Same ownership pattern as GET /:id; orders all share one restaurant_id here.)
+      if (req.user?.restaurant_id && Number(req.user.restaurant_id) !== Number(orders[0].restaurant_id)
+          && req.user.role !== 'System Admin') {
+        throw new Error('FORBIDDEN_CROSS_RESTAURANT');
+      }
+
       for (const order of orders) {
         if (order.payment_status === 'completed') {
           throw new Error(`Order ${order.order_number} is already paid and cannot be merged`);
@@ -1883,6 +1917,9 @@ router.post('/merge', authenticateToken, async (req, res) => {
 
   } catch (error) {
     console.error('✗ [MERGE] Error:', error.message);
+    if (error.message === 'FORBIDDEN_CROSS_RESTAURANT') {
+      return res.status(403).json({ success: false, error: { message: 'Forbidden', code: 'FORBIDDEN' } });
+    }
     res.status(400).json({ success: false, error: error.message });
   }
 });
@@ -2089,6 +2126,12 @@ router.delete('/:id/items/:itemIndex', authenticateToken, requirePosCounter, asy
 
     if (!order) {
       return res.status(404).json({ success: false, error: { message: 'Order not found', code: 'NOT_FOUND' } });
+    }
+
+    // IDOR guard (same pattern as GET /:id). System Admin sees all.
+    if (req.user?.restaurant_id && Number(req.user.restaurant_id) !== Number(order.restaurant_id)
+        && req.user.role !== 'System Admin') {
+      return res.status(403).json({ success: false, error: { message: 'Forbidden', code: 'FORBIDDEN' } });
     }
 
     // Only allow deletion before payment

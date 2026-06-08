@@ -4,8 +4,18 @@ const { Ingredient, IngredientCategory, Restaurant, Supplier, RestaurantIngredie
 const { Op } = require('sequelize');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const { isBrandManager } = require('../middleware/recipeAuth');
+const { requireRestaurantModule } = require('../middleware/requireModule');
 const { generateIngredientCode } = require('../utils/codeGenerator');
 const { deleteOldImages, saveImageToFile } = require('../utils/imageProcessor');
+
+// Tier gate (P0-3, 2026-06-08): a restaurant managing its OWN ingredients /
+// ingredient costs is an Advanced-tier feature (inventory_management OR
+// ingredients module — mirrors the frontend ui_routes for /ingredients). Scoped
+// to the restaurant's own ingredient paths only. NOT applied to
+// /restaurants/:id/brand-ingredients (read of HQ-pushed ingredients).
+const ingredientGate = requireRestaurantModule(['inventory_management', 'ingredients'], 'restaurantId');
+router.use('/restaurants/:restaurantId/ingredients', authenticateToken, ingredientGate);
+router.use('/restaurants/:restaurantId/ingredient-costs', authenticateToken, ingredientGate);
 
 async function normalizeIngredientImage(value, scopeId) {
   if (value == null) return null;

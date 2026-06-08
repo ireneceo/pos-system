@@ -1,6 +1,33 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-05 (v3.50 운영 배포 — 주방디스플레이 헤더 계정 로그인(PIN 전환) + Takeout 필터 1줄 + 아이템리스트 필터 폭. Backup 20260605_191333, smoke 9/9. 직전 v3.49: 입력란 흰 배경/Takeout 라벨/결제 여백.)
+> **최종 업데이트:** 2026-06-08 (첫 유료 멀티지점 브랜드 출시 전수감사 + 하드닝 Phase 1·2 — DEV 미배포. 지점 격리(IDOR) 완료 + 요금제 게이팅 Wave A 완료. 설계=docs/OPERATIONAL_READINESS_AUDIT.md §8. 직전 v3.50 운영: 주방디스플레이 헤더 로그인/Takeout 필터.)
+
+## ✅ 완료: 첫 유료 멀티지점 브랜드 출시 하드닝 — Phase 1·2 (2026-06-08, DEV 미배포)
+
+> 계기: 여러 지점 브랜드가 처음으로 유료 구독 고객이 됨. 5영역 전수감사(격리/결제/게이팅/전파/구조) → 설계 `docs/OPERATIONAL_READINESS_AUDIT.md §8`. 결정(Irene): 청구=지점별 인보이스 통일 / 전체 설계 먼저 → 단계별 구현·매 단계 /검증.
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 전수감사(5영역) | 멀티테넌시/결제/게이팅/전파/구조 라인단위 조사 → P0~P3 + 설계문서 §8 | ✅ |
+| P0-5 대시보드 누출 | 미인증·미스코프 레거시 5라우트 폐기(전 매장 집계 익명 누출 차단) | ✅ |
+| P0-6 지점 간 IDOR | auth.js `userCanAccessRestaurant` 헬퍼 + coupons/optionGroups/store/orders PATCH 5핸들러·merge 소유권 가드 | ✅ |
+| P0-2 게이팅 resolver | `resolveRestaurantModules`(매장 plan_type 모듈 ∪ 활성 entity plan 모듈, 합집합). requireRestaurantModule 배열 any-of. allowed-routes 정렬(UI=백엔드) | ✅ |
+| P0-3 게이팅 Wave A | 레스토랑 Advanced(재고/레시피/재료) 백엔드 게이트. path-prefix로 좁혀 fall-through 안전. 본사 제공(brand-*) 읽기 비차단 | ✅ |
+| 안전망 | health-check IDOR 11 + tier gate 2 케이스 영구 추가. **100/100** | ✅ |
+| 검증 | 실호출 IDOR 7/7 차단·게이트 Basic 403/demo bypass/allowed-routes union. 영향측정 과차단 0건. hydration 0/타임존 0/print-guard green | ✅ |
+
+### 수정된 파일
+- 백엔드: `middleware/auth.js`, `middleware/requireModule.js`, `routes/{dashboard,coupons,optionGroups,store,orders-crud,inventory-routes,recipes,ingredients,restaurants-ingredients,restaurants-crud}.js`, `scripts/health-check.js`, `scripts/print-guard.manifest.json`
+- 문서: `docs/OPERATIONAL_READINESS_AUDIT.md` §8
+
+### 남은 것 (다음 세션 — 미착수)
+- Phase 2 Wave B: 브랜드 Advanced(brand_products/brand_inventory/brand_recipes) + buyer 버티컬(PO/구매인보이스/공급사디렉토리) 게이팅
+- ⚠ 운영 배포 전: 운영 DB로 영향측정 재실행 + 실 Enterprise 지점 200 허용 확인(dev엔 비데모 Enterprise 0개) → 그 후 /배포
+- Phase 3(결제 지점별 인보이스 통일·sandbox e2e) / Phase 4(전파) / Phase 5(안전망) / Phase 6(구조)
+
+---
 
 ## ✅ 완료(v3.48 운영 배포 2026-06-05): 주문 알림음 통합 + 아이템취소 티켓 + 발주 안내
 

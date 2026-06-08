@@ -13,7 +13,7 @@ const {
 } = require('../utils/settingsGuard');
 
 // Get store settings
-router.get('/settings', authenticateToken, async (req, res) => {
+router.get('/settings', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const restaurantId = req.query.restaurantId || req.user.restaurant_id;
 

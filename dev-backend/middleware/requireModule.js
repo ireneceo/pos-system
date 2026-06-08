@@ -170,15 +170,62 @@ function requireSupplierModule(moduleCode) {
 }
 
 /**
- * Check a restaurant's subscription plan for a module code.
- * Resolves modules from Restaurant.plan_type → PlanTemplate.included_modules.
+ * Resolve the EFFECTIVE module set of a restaurant (branch) as the UNION of:
+ *   (a) its own subscription — restaurant.plan_type → PlanTemplate(restaurant).included_modules
+ *   (b) any ACTIVE brand/foodcourt entity plan assigned to this branch —
+ *       EntityPlanRestaurant → EntityPlan.included_modules
  *
- * Use for routes that gate Restaurant-tier addon features (e.g. reservations).
+ * Why a union (P0-2, 2026-06-08): a multi-branch brand assigns entitlements to
+ * its branches via EntityPlanRestaurant, NOT by setting restaurant.plan_type.
+ * Reading plan_type alone would wrongly deny features a branch is entitled to
+ * through the brand plan. Union is intentionally permissive — adding a backend
+ * module gate can therefore never strip access a paying customer already had via
+ * EITHER source. Demo restaurants bypass upstream (caller checks is_demo).
+ */
+async function resolveRestaurantModules(restaurant) {
+  if (!restaurant) return [];
+  const PlanTemplate = require('../models/PlanTemplate');
+  const EntityPlan = require('../models/EntityPlan');
+  const EntityPlanRestaurant = require('../models/EntityPlanRestaurant');
+  const set = new Set();
+
+  // (a) own restaurant subscription
+  if (restaurant.plan_type) {
+    const plan = await PlanTemplate.findOne({
+      where: { [Op.or]: [{ display_name: restaurant.plan_type }, { name: restaurant.plan_type }], plan_target: 'restaurant' }
+    });
+    for (const m of (plan?.included_modules || [])) set.add(m);
+  }
+
+  // (b) brand/foodcourt entity plans assigned to this branch (active only)
+  const links = await EntityPlanRestaurant.findAll({
+    where: { restaurant_id: restaurant.id, is_active: true },
+    include: [{ model: EntityPlan, as: 'plan' }]
+  });
+  for (const link of links) {
+    for (const m of (link.plan?.included_modules || [])) set.add(m);
+  }
+
+  return Array.from(set);
+}
+
+/**
+ * Check a restaurant's subscription plan for a module code.
+ * Resolves modules via resolveRestaurantModules (own plan ∪ brand/foodcourt plan).
+ *
+ * `moduleCode` may be a single code OR an array of codes — access is granted if
+ * the restaurant has ANY of them. This mirrors the frontend's route gating,
+ * where a page is shown if ANY owned module's ui_routes covers it (e.g. the
+ * /ingredients page is granted by either `inventory_management` OR `ingredients`).
+ * Using any-of keeps the API gate from being stricter than the UI.
+ *
+ * Use for routes that gate Restaurant-tier addon features (inventory, recipes…).
  * `restaurantIdParam` defaults to 'restaurant_id' but accepts 'id' for routes
  * like `/restaurants/:id/...`.
  */
 function requireRestaurantModule(moduleCode, restaurantIdParam = 'restaurant_id') {
   const Restaurant = require('../models/Restaurant');
+  const required = Array.isArray(moduleCode) ? moduleCode : [moduleCode];
   return async (req, res, next) => {
     if (!req.user) return res.status(401).json({ success: false, message: 'Not authenticated' });
     if (req.user.role === 'System Admin') return next();
@@ -196,30 +243,15 @@ function requireRestaurantModule(moduleCode, restaurantIdParam = 'restaurant_id'
     const restaurant = await Restaurant.findByPk(restaurantId);
     if (!restaurant) return res.status(404).json({ success: false, message: 'Restaurant not found' });
 
-    // Demo / Enterprise → bypass (consistent with other entity gates)
+    // Demo → bypass (consistent with other entity gates)
     if (restaurant.is_demo) return next();
 
-    const planType = restaurant.plan_type;
-    if (!planType) {
+    const modules = await resolveRestaurantModules(restaurant);
+    if (!required.some(code => modules.includes(code))) {
       return res.status(403).json({
         success: false, code: 'MODULE_NOT_INCLUDED',
-        message: `This feature (${moduleCode}) requires an active subscription.`,
-        required_module: moduleCode
-      });
-    }
-
-    const PlanTemplate = require('../models/PlanTemplate');
-    const { Op } = require('sequelize');
-    const plan = await PlanTemplate.findOne({
-      where: { [Op.or]: [{ display_name: planType }, { name: planType }], plan_target: 'restaurant' }
-    });
-    const modules = plan?.included_modules || [];
-
-    if (!modules.includes(moduleCode)) {
-      return res.status(403).json({
-        success: false, code: 'MODULE_NOT_INCLUDED',
-        message: `This feature (${moduleCode}) is not included in the current subscription plan (${planType}).`,
-        required_module: moduleCode
+        message: `This feature (${required.join('/')}) is not included in the current subscription plan${restaurant.plan_type ? ` (${restaurant.plan_type})` : ''}.`,
+        required_module: required[0]
       });
     }
     next();
@@ -233,5 +265,6 @@ module.exports = {
   requireContractEntityModule,
   requireSupplierModule,
   resolveEntityModules,
-  resolveSupplierModules
+  resolveSupplierModules,
+  resolveRestaurantModules
 };

@@ -3,7 +3,7 @@ const router = express.Router();
 const OptionGroup = require('../models/OptionGroup');
 const Option = require('../models/Option');
 const { OptionIngredient, Ingredient } = require('../models');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, userCanAccessRestaurant } = require('../middleware/auth');
 
 // All routes require authentication
 router.use(authenticateToken);
@@ -13,6 +13,12 @@ router.get('/', async (req, res) => {
   try {
     // Allow restaurantId from query parameter (for System Admin)
     const restaurantId = req.query.restaurantId || req.user?.restaurant_id;
+
+    // Tenant isolation: if a target restaurant is resolved, the caller must own it.
+    // (No target = System Admin global listing — existing behaviour preserved.)
+    if (restaurantId && !(await userCanAccessRestaurant(req.user, restaurantId))) {
+      return res.status(403).json({ success: false, error: { message: 'Access denied to this restaurant', code: 'FORBIDDEN' } });
+    }
 
     // Build where clause
     const whereClause = { isActive: true };
@@ -83,6 +89,10 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ success: false, error: { message: 'Option group not found', code: 'NOT_FOUND' } });
     }
 
+    if (optionGroup.restaurant_id && !(await userCanAccessRestaurant(req.user, optionGroup.restaurant_id))) {
+      return res.status(403).json({ success: false, error: { message: 'Access denied to this option group', code: 'FORBIDDEN' } });
+    }
+
     res.json({ success: true, data: optionGroup });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -96,6 +106,11 @@ router.post('/', async (req, res) => {
 
     if (!name) {
       return res.status(400).json({ success: false, error: { message: 'Option group name is required', code: 'VALIDATION_ERROR' } });
+    }
+
+    const targetRestaurantId = req.body.restaurantId || req.body.restaurant_id || null;
+    if (targetRestaurantId && !(await userCanAccessRestaurant(req.user, targetRestaurantId))) {
+      return res.status(403).json({ success: false, error: { message: 'Access denied to this restaurant', code: 'FORBIDDEN' } });
     }
 
     // Create option group (support both camelCase and snake_case)
@@ -172,6 +187,10 @@ router.put('/:id', async (req, res) => {
     const optionGroup = await OptionGroup.findByPk(req.params.id);
     if (!optionGroup) {
       return res.status(404).json({ success: false, error: { message: 'Option group not found', code: 'NOT_FOUND' } });
+    }
+
+    if (optionGroup.restaurant_id && !(await userCanAccessRestaurant(req.user, optionGroup.restaurant_id))) {
+      return res.status(403).json({ success: false, error: { message: 'Access denied to this option group', code: 'FORBIDDEN' } });
     }
 
     // 브랜드 잠금 가드 (lock 갭 수정): 이 옵션그룹이 브랜드메뉴 미러이고, 이를 사용하는 상품 중
@@ -277,6 +296,10 @@ router.delete('/:id', async (req, res) => {
     const optionGroup = await OptionGroup.findByPk(req.params.id);
     if (!optionGroup) {
       return res.status(404).json({ success: false, error: { message: 'Option group not found', code: 'NOT_FOUND' } });
+    }
+
+    if (optionGroup.restaurant_id && !(await userCanAccessRestaurant(req.user, optionGroup.restaurant_id))) {
+      return res.status(403).json({ success: false, error: { message: 'Access denied to this option group', code: 'FORBIDDEN' } });
     }
 
     // Soft delete: set isActive to false
