@@ -1,8 +1,8 @@
 {
   "note": "🔒 PRINT GUARD baseline — 인쇄/주문 생명선 파일 지문. 변경 승인 시에만 갱신.",
-  "blessed_at": "2026-06-08T08:21:22.965Z",
+  "blessed_at": "2026-06-09T12:55:50.082Z",
   "files": {
-    "dev-frontend/src/utils/billPrint.js": "0c785e80bc601339d25519641d8188fa53d3533506a53363f8517eda9016b13f",
+    "dev-frontend/src/utils/billPrint.js": "cc8ad4902e0291abc8d0d2118755b81ce332a82e747575f40d11cd551ab67ca3",
     "dev-frontend/src/hooks/useAutoPrintPoller.ts": "9bc98d1dc78c4a61a64c17388463562e5ed2c143801c6d2d42a3403b29f233f5",
     "dev-backend/utils/stationEnrichment.js": "a0641a41a155422a19b5baecb60599c7760b9a7bd249af874e6f004187091165",
     "dev-backend/utils/orderTotals.js": "3f6960d1cb7ed88ea7762f2fa736994aca79dfbf086984f2738ce8390ed84b53",

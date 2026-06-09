@@ -572,7 +572,14 @@
       "Bash(awk 'NR>=6592 && NR<=7200 && /<\\\\/SettingsCard>/{print NR\": \"$0}' src/pages/Settings/SettingsPage.tsx)",
       "Bash(awk 'NR>=6592 && /<\\\\/SettingsCard>/{print NR; c++; if\\(c>=1\\) exit}' src/pages/Settings/SettingsPage.tsx)",
       "Bash(perl -0pi -e 's/FormLabel/Label/g; s/FormInput/Input/g;' src/pages/Settings/SettingsPage.tsx)",
-      "Bash(awk '/Consolidated Order Ticket card/,/Receipt Customization/' src/pages/Settings/SettingsPage.tsx)"
+      "Bash(awk '/Consolidated Order Ticket card/,/Receipt Customization/' src/pages/Settings/SettingsPage.tsx)",
+      "Bash(echo \"DEV tables: $\\(node -e \"console.log\\(Object.keys\\(JSON.parse\\(require\\('fs'\\).readFileSync\\('/tmp/deploy_dev_schema.json','utf-8'\\)\\)\\).length\\)\"\\)\")",
+      "Bash(scp -q irene@87.106.78.146:/tmp/deploy_prod_schema.json /tmp/deploy_prod_schema.json)",
+      "Bash(scp -q /tmp/fix-thefire-billing.js irene@87.106.78.146:/var/www/production-backend/fix-thefire-billing.js)",
+      "Bash(awk 'NR>=346 && NR<=395 && /router\\\\.\\(post|put\\)|req.body|const \\\\{|=.*req\\\\.body/' routes/restaurants-subscription.js)",
+      "Bash(awk -F: '$1>=1180 && $1<=1300 || $1>=1820 && $1<=1920')",
+      "Bash(awk -F: '$1>=1180 && $1<=1320 || $1>=1820 && $1<=1930')",
+      "Bash(awk -F: '$1>=1100 && $1<=1270')"
     ],
     "deny": [],
     "ask": []
