@@ -1,9 +1,9 @@
 # Purple POS — 개발 세션 상태
 
-<!-- AUTOSAVE-STALE-BANNER -->
-> **[AUTO-SAVE STALE] (2026-06-09 01:20, idle 17727s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
-> 변경된 작업 파일: brand.json,brand.json brand.json,brand.json
-<!-- /AUTOSAVE-STALE-BANNER -->
+<!-- STALE 배너 정정(2026-06-09 /개발시작): git HEAD 대조 완료.
+  - aaf94180(20:55): v3.51 작업(Phase 3 결제 + 메뉴/아이템 스케줄 + 이모지 피커 + Settings 모바일주문) 정상 커밋 — narrative 일치, 운영 배포 완료.
+  - 43eb202e(01:20): brand.json 4개 언어에 "productsTab.distribution.*" i18n 키 9개만 추가됨. 참조 코드 0건(고아 키). = Phase 4(전파) 브랜드 제품 타겟팅(전 매장/특정 브랜드/특정 매장)을 직전 세션이 i18n만 선반영하고 중단한 흔적. 구현 미착수. Phase 4 착수 시 이 키 재사용. -->
+
 
 ## 현재 작업 상태
 **마지막 업데이트:** 2026-06-08

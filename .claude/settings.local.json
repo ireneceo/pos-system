@@ -563,7 +563,8 @@
       "Bash(sed -n '5362,5370p' pages/Settings/SettingsPage.tsx)",
       "Bash(awk 'NR>=5360 && NR<=5460 { if \\($0 ~ /<\\\\/SettingsCard>|<SettingsCard|orderTypes\\\\?\\\\.delivery|^\\\\s*\\\\\\)\\\\}\\\\s*$|takeaway|deliveryPricingSettings|reservation/\\) print NR\": \"$0 }' pages/Settings/SettingsPage.tsx)",
       "Bash(sed -n '32,42p' routes/brand-products.js)",
-      "Bash(sed -n '43,115p' routes/brand-products.js)"
+      "Bash(sed -n '43,115p' routes/brand-products.js)",
+      "Bash(echo \"grep_exit=$?\")"
     ],
     "deny": [],
     "ask": []

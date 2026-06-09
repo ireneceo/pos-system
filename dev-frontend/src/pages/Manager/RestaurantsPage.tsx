@@ -581,6 +581,7 @@ const ManagerRestaurantsPage: React.FC = () => {
 
   const [newRestaurant, setNewRestaurant] = useState({
     name: '',
+    branchName: '',
     managerId: '',
     email: '',
     phone: '',
@@ -867,6 +868,7 @@ const ManagerRestaurantsPage: React.FC = () => {
 
     setNewRestaurant({
       name: '',
+      branchName: '',
       managerId: managerId,
       email: '',
       phone: '',
@@ -968,6 +970,7 @@ const ManagerRestaurantsPage: React.FC = () => {
 
       const restaurantData: any = {
         name: newRestaurant.name,
+        branch_name: newRestaurant.branchName || null,
         address: newRestaurant.address,
         address_line_2: (newRestaurant as any).addressLine2 || null,
         city: newRestaurant.city,
@@ -1040,7 +1043,7 @@ const ManagerRestaurantsPage: React.FC = () => {
           const transformedRestaurants: Restaurant[] = data.map((restaurant: any) => ({
             id: restaurant.id.toString(),
             name: restaurant.name,
-            branchName: restaurant.name,
+            branchName: restaurant.branch_name || '',
             location: restaurant.address || restaurant.location || 'No address provided',
             address: restaurant.address || restaurant.location || 'No address provided',
             phone: restaurant.phone || 'No phone provided',
@@ -1077,6 +1080,7 @@ const ManagerRestaurantsPage: React.FC = () => {
         // Reset form
         setNewRestaurant({
           name: '',
+          branchName: '',
           managerId: '',
           email: '',
           phone: '',
@@ -1191,6 +1195,7 @@ const ManagerRestaurantsPage: React.FC = () => {
 
     setNewRestaurant({
       name: restaurant.name,
+      branchName: (restaurant as any).branch_name || (restaurant as any).branchName || '',
       managerId: '',
       email: restaurant.email,
       phone: restaurant.phone,
@@ -1514,6 +1519,7 @@ const ManagerRestaurantsPage: React.FC = () => {
         const token = getAuthToken();
         const updateData: any = {
           name: newRestaurant.name,
+          branch_name: newRestaurant.branchName || null,
           email: newRestaurant.email,
           phone: newRestaurant.phone,
           address: newRestaurant.address,
@@ -1556,6 +1562,7 @@ const ManagerRestaurantsPage: React.FC = () => {
               ? {
                   ...rest,
                   name: newRestaurant.name,
+                  branchName: newRestaurant.branchName,
                   email: newRestaurant.email,
                   phone: newRestaurant.phone,
                   address: newRestaurant.address,
@@ -1575,6 +1582,7 @@ const ManagerRestaurantsPage: React.FC = () => {
           setEditingRestaurant(null);
           setNewRestaurant({
             name: '',
+            branchName: '',
             managerId: '',
             email: '',
             phone: '',
@@ -1883,6 +1891,16 @@ const ManagerRestaurantsPage: React.FC = () => {
                   />
                 </FormGroup>
 
+                <FormGroup style={{gridColumn: '1 / -1'}}>
+                  <FormLabel>Branch Name</FormLabel>
+                  <FormInput
+                    type="text"
+                    placeholder="e.g., Bukit Bintang — for multiple branches sharing the same restaurant name"
+                    value={newRestaurant.branchName}
+                    onChange={(e) => setNewRestaurant({...newRestaurant, branchName: e.target.value})}
+                  />
+                </FormGroup>
+
                 {/* Restaurant Admin Section */}
                 <div style={{gridColumn: '1 / -1', marginTop: '8px', marginBottom: '4px'}}>
                   <h3 style={{margin: 0, fontSize: '16px', fontWeight: '600', color: '#0A2540', borderBottom: '2px solid #635BFF', paddingBottom: '8px'}}>
@@ -1991,7 +2009,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                 )}
 
                 <FormGroup>
-                  <FormLabel>Email Address *</FormLabel>
+                  <FormLabel>Email Address</FormLabel>
                   <FormInput
                     type="email"
                     placeholder="restaurant@example.com"
@@ -2001,7 +2019,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>Phone Number *</FormLabel>
+                  <FormLabel>Phone Number</FormLabel>
                   <PhoneInput
                     value={newRestaurant.phone}
                     onChange={(value) => setNewRestaurant({...newRestaurant, phone: value})}
@@ -2225,8 +2243,18 @@ const ManagerRestaurantsPage: React.FC = () => {
                   />
                 </FormGroup>
 
+                <FormGroup style={{gridColumn: '1 / -1'}}>
+                  <FormLabel>Branch Name</FormLabel>
+                  <FormInput
+                    type="text"
+                    placeholder="e.g., Bukit Bintang — for multiple branches sharing the same restaurant name"
+                    value={newRestaurant.branchName}
+                    onChange={(e) => setNewRestaurant({...newRestaurant, branchName: e.target.value})}
+                  />
+                </FormGroup>
+
                 <FormGroup>
-                  <FormLabel>Email Address *</FormLabel>
+                  <FormLabel>Email Address</FormLabel>
                   <FormInput
                     type="email"
                     placeholder="restaurant@example.com"
@@ -2236,7 +2264,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>Phone Number *</FormLabel>
+                  <FormLabel>Phone Number</FormLabel>
                   <PhoneInput
                     value={newRestaurant.phone}
                     onChange={(value) => setNewRestaurant({...newRestaurant, phone: value})}
