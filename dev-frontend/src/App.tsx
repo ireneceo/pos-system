@@ -469,6 +469,11 @@ function App() {
               <Router>
                 <AuthProvider>
                 <StoreProvider>
+                  {/* ConsolidatedTicketRunner removed 2026-06-09 — the consolidated
+                      order ticket is now produced by the existing kitchen-print mirror
+                      (billPrint.printKitchenTicketViaRawBT) routed to the configured
+                      printer, so it covers new orders + cancel/move with no duplicate.
+                      The separate poller was redundant and caused double prints. */}
                   <StaffProvider>
                     <MenuProvider>
                       <PaymentStatusProvider>

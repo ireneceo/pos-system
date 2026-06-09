@@ -134,59 +134,109 @@ router.get('/installer', (req, res) => {
       // also write USER_DIR as a fallback so the cert survives even if the user
       // declines UAC. If UAC is declined we keep going (USER_DIR is still valid
       // but a lower-priority hit, so the prompt may stay until QZ is restarted).
-      const lines = [
-        '@echo off',
-        'setlocal EnableDelayedExpansion',
-        '',
-        'rem ---- Self-elevate to admin so we can write to %PROGRAMDATA% ----',
-        'net session >nul 2>&1',
-        'if %errorlevel% neq 0 (',
-        '  echo Requesting administrator permission to install system-wide ...',
-        '  powershell -Command "Start-Process -FilePath \'%~f0\' -Verb RunAs" >nul 2>&1',
-        '  if !errorlevel! neq 0 (',
-        '    echo UAC declined — installing to user folder only ^(lower priority^).',
-        '    goto :USERONLY',
-        '  )',
-        '  exit /b 0',
-        ')',
-        '',
-        'echo Installing PurpleHere QZ Tray Certificate ^(system-wide^) ...',
-        'set "SYSTARGET=%PROGRAMDATA%\\qz"',
-        'if not exist "%SYSTARGET%" mkdir "%SYSTARGET%"',
-        '> "%SYSTARGET%\\override.crt" (',
-      ];
+      // ONE-CLICK combined installer (.bat). A single file does everything so the
+      // merchant never visits qz.io or moves a certificate by hand:
+      //   1) self-elevate to admin
+      //   2) install the QZ Tray app itself if missing — download the official,
+      //      code-signed v2.2.6 installer from GitHub, run NSIS silent `/S`
+      //      (interactive fallback if silent didn't land the exe)
+      //   3) write our override.crt → %PROGRAMDATA%\qz + %APPDATA%\qz (auto-trust,
+      //      kills the per-print "Allow?" prompt)
+      //   4) (re)launch QZ Tray so it loads the freshly-installed cert
+      const QZ_VERSION = '2.2.6';
       const certEchoLines = [];
       cert.split('\n').forEach(line => {
-        // `(` `)` `^` `&` `|` `>` `<` `%` `!` 가 cmd 에서 reserved — 안전하게 escape
+        // `(` `)` `^` `&` `|` `>` `<` `%` `!` are reserved in cmd — escape with ^
         const escaped = line.replace(/[\^&|<>()%!]/g, '^$&');
         certEchoLines.push(`  echo ${escaped}`);
       });
-      lines.push(...certEchoLines);
-      lines.push(')');
-      lines.push('echo   wrote %SYSTARGET%\\override.crt');
-      lines.push('');
-      lines.push(':USERONLY');
-      lines.push('echo Installing user-level fallback ...');
-      lines.push('set "USRTARGET=%APPDATA%\\qz"');
-      lines.push('if not exist "%USRTARGET%" mkdir "%USRTARGET%"');
-      lines.push('> "%USRTARGET%\\override.crt" (');
-      lines.push(...certEchoLines);
-      lines.push(')');
-      lines.push('echo   wrote %USRTARGET%\\override.crt');
-      lines.push('');
-      lines.push('echo.');
-      lines.push('echo ============================================');
-      lines.push('echo  Certificate installed.');
-      lines.push('echo ============================================');
-      lines.push('echo.');
-      lines.push('echo Next: right-click the QZ Tray tray icon ^> Exit,');
-      lines.push('echo       then relaunch QZ Tray from the Start menu.');
-      lines.push('echo       After that, return to PurpleHere and press');
-      lines.push('echo       "Auto-Configure ^& Test" in Settings ^> Printer.');
-      lines.push('echo.');
-      lines.push('pause');
+      const writeCert = (varName) => [
+        `if not exist "%${varName}%" mkdir "%${varName}%"`,
+        `> "%${varName}%\\override.crt" (`,
+        ...certEchoLines,
+        ')',
+        `echo   - trust certificate written to %${varName}%\\override.crt`,
+      ];
+      const lines = [
+        '@echo off',
+        'setlocal EnableDelayedExpansion',
+        'title PurpleHere Printer Setup',
+        '',
+        'rem ===== Self-elevate to administrator =====',
+        'net session >nul 2>&1',
+        'if %errorlevel% neq 0 (',
+        '  echo Requesting administrator permission ...',
+        '  powershell -Command "Start-Process -FilePath \'%~f0\' -Verb RunAs" >nul 2>&1',
+        '  exit /b 0',
+        ')',
+        '',
+        'echo ============================================',
+        'echo   PurpleHere Printer Setup',
+        'echo ============================================',
+        'echo.',
+        '',
+        'rem ===== Step 1: install the QZ Tray app if it is missing =====',
+        'set "QZEXE=%ProgramFiles%\\QZ Tray\\qz-tray.exe"',
+        'if exist "%QZEXE%" (',
+        '  echo [1/3] QZ Tray printing app already installed.',
+        ') else (',
+        '  echo [1/3] Downloading QZ Tray printing app ...',
+        '  set "ARCH=x86_64"',
+        '  if /I "%PROCESSOR_ARCHITECTURE%"=="ARM64" set "ARCH=arm64"',
+        `  set "QZURL=https://github.com/qzind/tray/releases/download/v${QZ_VERSION}/qz-tray-${QZ_VERSION}-!ARCH!.exe"`,
+        '  set "QZDL=%TEMP%\\qz-tray-setup.exe"',
+        '  powershell -Command "try { [Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; (New-Object Net.WebClient).DownloadFile(\'!QZURL!\',\'!QZDL!\') } catch { exit 1 }"',
+        '  if not exist "!QZDL!" (',
+        '    echo.',
+        '    echo  ERROR: could not download QZ Tray. Check the internet connection,',
+        '    echo         then run this file again.',
+        '    echo.',
+        '    pause',
+        '    exit /b 1',
+        '  )',
+        '  echo  Installing QZ Tray ^(this can take a minute^) ...',
+        '  start /wait "" "!QZDL!" /S',
+        '  timeout /t 6 /nobreak >nul',
+        '  if not exist "%QZEXE%" (',
+        '    echo  Finishing QZ Tray install ^(follow the installer window^) ...',
+        '    start /wait "" "!QZDL!"',
+        '  )',
+        ')',
+        '',
+        'rem ===== Step 2: install the trust certificate (no more Allow prompts) =====',
+        'echo [2/3] Installing trust certificate ...',
+        'rem (a) QZ Tray install folder — the HIGHEST-priority location QZ reads.',
+        'rem     We run as admin (self-elevated above) so we can write here.',
+        'if exist "%ProgramFiles%\\QZ Tray\\" (',
+        '  > "%ProgramFiles%\\QZ Tray\\override.crt" (',
+        ...certEchoLines,
+        '  )',
+        '  echo   - trust certificate written to %ProgramFiles%\\QZ Tray\\override.crt',
+        ')',
+        'rem (b) shared + per-user data folders — fallbacks so trust survives reinstalls.',
+        'set "SYSTARGET=%PROGRAMDATA%\\qz"',
+        ...writeCert('SYSTARGET'),
+        'set "USRTARGET=%APPDATA%\\qz"',
+        ...writeCert('USRTARGET'),
+        '',
+        'rem ===== Step 3: (re)start QZ Tray so it loads the new certificate =====',
+        'echo [3/3] Starting QZ Tray ...',
+        'taskkill /F /IM qz-tray.exe /T >nul 2>&1',
+        'timeout /t 2 /nobreak >nul',
+        'if exist "%QZEXE%" ( start "" "%QZEXE%" )',
+        '',
+        'echo.',
+        'echo ============================================',
+        'echo  Done. QZ Tray is installed and trusted.',
+        'echo ============================================',
+        'echo.',
+        'echo Next: go back to PurpleHere ^> Settings ^> Printer',
+        'echo       and click "Check Connection".',
+        'echo.',
+        'pause',
+      ];
       const body = lines.join('\r\n');
-      res.setHeader('Content-Disposition', 'attachment; filename="install-purplehere-cert.bat"');
+      res.setHeader('Content-Disposition', 'attachment; filename="PurpleHere-Printer-Setup.bat"');
       res.type('application/octet-stream').send(body);
       return;
     }

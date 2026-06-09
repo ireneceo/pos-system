@@ -80,6 +80,16 @@ Order.init({
     defaultValue: false,
     comment: 'Pending bill auto-print flag. Set true on merge (mobile 같은 테이블 추가).'
   },
+  // 2026-06-09: consolidated_printed_at — independent print-state for the optional
+  // "Consolidated Order Ticket" (whole order on one ticket to a configurable printer,
+  // e.g. a kitchen main printer). Tracked separately from per-item printed_at so the
+  // consolidated-ticket poller never interferes with the station/kitchen print cycle.
+  // NULL = not yet consolidated-printed. Stamped by PATCH /consolidated-print/:id/printed.
+  consolidated_printed_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'When the optional consolidated order ticket was printed (independent of needs_print).'
+  },
   order_type: {
     type: DataTypes.ENUM('dine_in', 'takeaway', 'delivery', 'pickup', 'reservation_deposit'),
     defaultValue: 'dine_in'

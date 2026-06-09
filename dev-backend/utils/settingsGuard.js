@@ -94,6 +94,14 @@ function guardPrinterSettings(incomingRaw, existingRaw, restaurantId = '?') {
     }
   }
 
+  // consolidatedOrderTicket — 전체 sub-object 보존 (kitchenPrinter 와 동일 패턴)
+  if (existing.consolidatedOrderTicket && Object.keys(existing.consolidatedOrderTicket).length > 0) {
+    if (!incoming.consolidatedOrderTicket || isEmptyObj(incoming.consolidatedOrderTicket)) {
+      merged.consolidatedOrderTicket = existing.consolidatedOrderTicket;
+      preserved.push('consolidatedOrderTicket');
+    }
+  }
+
   // workstations — 빈 배열로 박혀 와도 existing 보존
   const exWs = Array.isArray(existing.workstations) ? existing.workstations : [];
   const inWs = Array.isArray(incoming.workstations) ? incoming.workstations : null;

@@ -315,6 +315,9 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
               kitchenPrinter: ps.kitchenPrinter || { enabled: false, name: '', autoPrint: false, printPerItem: false },
               ...(ps.kitchenStationPrinters ? { kitchenStationPrinters: ps.kitchenStationPrinters } : {}),
               ...(Array.isArray(ps.workstations) ? { workstations: ps.workstations } : {}),
+              // Consolidated Order Ticket — whole order on one ticket to a chosen
+              // printer (e.g. kitchen main), printed alongside station tickets.
+              ...(ps.consolidatedOrderTicket ? { consolidatedOrderTicket: ps.consolidatedOrderTicket } : {}),
               // include receiptSettings so POS/LiveOrders/FloorPlan can read
               // copiesAfterPayment / autoOpenDrawer from one consistent source
               // (was previously only in localStorage['receiptSettings'], which

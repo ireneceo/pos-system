@@ -2413,6 +2413,10 @@ const FloorPlanPage: React.FC = () => {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))', gap: 8, maxHeight: 320, overflowY: 'auto' }}>
                 {(floorPlan.tables || [])
                   .filter(tb => String(tb.id) !== String(selectedTableId))
+                  // Only real tables are valid move destinations — exclude fixtures
+                  // (counter / entrance / kitchen / wall / door …) which have a
+                  // non-'table' tableType. A fixture is never an order destination.
+                  .filter(tb => !tb.tableType || tb.tableType === 'table')
                   .filter(tb => {
                     const q = moveSearch.trim().toLowerCase();
                     if (!q) return true;

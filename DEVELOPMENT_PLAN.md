@@ -1,6 +1,23 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-08 (첫 유료 멀티지점 브랜드 출시 전수감사 + 하드닝 Phase 1·2 — DEV 미배포. 지점 격리(IDOR) 완료 + 요금제 게이팅 Wave A 완료. 설계=docs/OPERATIONAL_READINESS_AUDIT.md §8. 직전 v3.50 운영: 주방디스플레이 헤더 로그인/Takeout 필터.)
+> **최종 업데이트:** 2026-06-09 (v3.54 운영 배포 후 통합티켓 재구조 = DEV 미배포·실프린터 대기. v3.52 멀티지점 브런치명 / v3.53 QZ 원클릭 설치 / v3.54 통합 오더티켓+미리보기 다국어 모두 배포 완료.)
+
+## ⚠️ DEV 미배포 (실프린터 눈확인 + bless + 배포 대기): 통합 오더티켓 재구조 (2026-06-09)
+
+> thefire02(rest 24) 운영 테스트에서 v3.54 통합티켓(별도 폴러)이 **중복 발행 + 취소/이동 시 지정 프린터 누락**으로 드러남. Irene 지시("포스로 가는 통합티켓 그대로 [지정 프린터로]")대로 재구조.
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 별도 폴러 제거 | v3.54의 `ConsolidatedTicketRunner`/poller App 마운트 해제 (중복 원인) | ✅ DEV |
+| 미러 라우팅화 | 기존 주방인쇄 미러(`printKitchenTicketViaRawBT`)가 `consolidatedOrderTicket.address` 지정 프린터로 통합티켓 발행. 미설정 시 기존 bill 미러 그대로(하위호환) | ✅ DEV |
+| 효과 | 통합티켓 = 지정 프린터(MASTER/스테이션/카운터) 1곳·1장, 새주문+취소+이동 전부(미러는 전 경로). 스테이션 티켓 그대로 | ✅ DEV |
+| 테이블 이동 fixture 제외 | 이동 대상 목록에서 키친/입구/카운터 등 고정요소 제외(`!tableType \|\| ==='table'`) | ✅ DEV |
+| ⚠ 남음 | **billPrint.js 인쇄변경 → 실프린터 눈확인(1장만/지정 프린터/중복0) → `check-print-guard.js --bless` → /배포.** 운영은 아직 v3.54(별도폴러). dead code(consolidated-print route/column/poller 파일) 정리 별도 | ☐ |
+
+### 수정 파일
+- 프론트🔒: `utils/billPrint.js`(미러 대상 라우팅) / 프론트: `App.tsx`(폴러 마운트 제거), `pages/FloorPlan/FloorPlanPage.tsx`(fixture 필터)
+
+---
 
 ## ✅ 완료: 첫 유료 멀티지점 브랜드 출시 하드닝 — Phase 1·2 (2026-06-08, DEV 미배포)
 

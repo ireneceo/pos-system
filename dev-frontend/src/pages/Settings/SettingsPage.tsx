@@ -726,6 +726,15 @@ const SettingsPage: React.FC = () => {
     },
     kitchenStationPrinters: {} as Record<string, { name: string; autoPrint: boolean; address?: string; method?: PrinterMethod }>,
     workstations: [] as Array<{ id: string; name: string; billPrinter: { enabled: boolean; name: string; autoPrint: boolean; method: PrinterMethod; address: string } }>,
+    // Consolidated Order Ticket — whole order on ONE ticket to a chosen printer
+    // (e.g. kitchen main), printed ALONGSIDE per-station kitchen tickets. Fully
+    // independent of the existing auto-print path (own poller + print-state).
+    consolidatedOrderTicket: {
+      enabled: false,
+      method: 'qztray' as PrinterMethod,
+      address: '',
+      autoPrint: false
+    },
     // Emergency Routing Mode — single flag, no backup/restore dance. When true,
     // runtime print routing redirects every kitchen ticket to the active bill
     // (counter) printer. Toggle OFF instantly restores original routing because
@@ -1407,6 +1416,12 @@ const SettingsPage: React.FC = () => {
               // after Add/Edit Workstation appeared to wipe the change. Now hydrated
               // from DB, and the next handleSave/PUT round-trips it back intact.
               workstations: Array.isArray(dbSettings.workstations) ? dbSettings.workstations : [],
+              consolidatedOrderTicket: {
+                enabled: dbSettings.consolidatedOrderTicket?.enabled ?? false,
+                method: dbSettings.consolidatedOrderTicket?.method || 'qztray',
+                address: dbSettings.consolidatedOrderTicket?.address || '',
+                autoPrint: dbSettings.consolidatedOrderTicket?.autoPrint ?? false
+              },
               emergencyMode: !!dbSettings.emergencyMode,
               emergencyEnabledAt: dbSettings.emergencyEnabledAt || null
             } as any);
@@ -1426,7 +1441,8 @@ const SettingsPage: React.FC = () => {
             localStorage.setItem('printerSettings', JSON.stringify({
               billPrinter: dbSettings.billPrinter || { enabled: false, name: '', autoPrint: false, address: '' },
               kitchenPrinter: dbSettings.kitchenPrinter || { enabled: false, name: '', autoPrint: false, printPerItem: false, address: '' },
-              ...(dbSettings.kitchenStationPrinters ? { kitchenStationPrinters: dbSettings.kitchenStationPrinters } : {})
+              ...(dbSettings.kitchenStationPrinters ? { kitchenStationPrinters: dbSettings.kitchenStationPrinters } : {}),
+              ...(dbSettings.consolidatedOrderTicket ? { consolidatedOrderTicket: dbSettings.consolidatedOrderTicket } : {})
             }));
           }
         }
@@ -2164,6 +2180,7 @@ const SettingsPage: React.FC = () => {
             kitchenPrinter: printerSettings.kitchenPrinter,
             kitchenStationPrinters: printerSettings.kitchenStationPrinters,
             workstations: printerSettings.workstations || [],  // CRITICAL: was missing — every AutoSaveField save wiped workstations from DB
+            consolidatedOrderTicket: (printerSettings as any).consolidatedOrderTicket || { enabled: false, method: 'qztray', address: '', autoPrint: false },
             emergencyMode: !!(printerSettings as any).emergencyMode,
             emergencyEnabledAt: (printerSettings as any).emergencyEnabledAt || null,
             receiptSettings: receiptSettings
@@ -5798,7 +5815,7 @@ const SettingsPage: React.FC = () => {
                     cursor: 'pointer'
                   }}
                 >
-                  자동 인쇄 미리보기 / Auto-Print Preview
+                  {t('settings:autoPrintPreview.title')}
                 </button>
               </div>
 
@@ -5915,27 +5932,43 @@ const SettingsPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* QZ Tray panel */}
+                {/* QZ Tray panel — clean 3-step setup: 1) Install  2) Check  3) Find printers */}
                 {printerGuideTab === 'qztray' && (
                   <div>
-                    <p style={{ fontSize: '13px', color: '#1F2937', lineHeight: 1.6, marginBottom: '12px' }}>
+                    <p style={{ fontSize: '13px', color: '#1F2937', lineHeight: 1.6, marginBottom: '16px' }}>
                       {t('settings:printer.methodGuide.qzDesc')}
                     </p>
 
-                    {/* Auto-Configure & Test — 1-click flagship. Probes every link
-                        (SDK → app → version → signed handshake → silent print)
-                        and shows per-step pass/fail so the shop knows exactly
-                        what to fix. On failure, a "Send diagnostics to support"
-                        button files a SupportTicket automatically. */}
-                    <div style={{ marginBottom: '14px', padding: '16px', background: '#FAFBFF', border: '2px solid #635BFF', borderRadius: '10px' }}>
+                    {/* ───── STEP 1 — Install (one file installs QZ Tray + certificate) ───── */}
+                    <div style={{ marginBottom: '12px', padding: '16px', background: '#FAFBFF', border: '1px solid #E2E8F0', borderRadius: '10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                        <span style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#635BFF', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 700, flexShrink: 0 }}>1</span>
+                        <span style={{ fontSize: '14px', fontWeight: 700, color: '#312E81' }}>{t('settings:printer.methodGuide.qzStep1Title', 'Install the printing app')}</span>
+                      </div>
+                      <p style={{ fontSize: '12px', color: '#4B5563', lineHeight: 1.6, margin: '0 0 10px 34px' }}>
+                        {t('settings:printer.methodGuide.qzStep1Desc', 'Download this once and run it. It sets up everything in one go — the QZ Tray app and the trust certificate — so there are no extra steps and no permission pop-ups.')}
+                      </p>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginLeft: '34px' }}>
+                        <button type="button"
+                          onClick={() => window.open('/api/qz-tray/installer?os=windows', '_blank')}
+                          style={{ padding: '10px 18px', fontSize: '13px', fontWeight: 700, border: 'none', borderRadius: '8px', background: '#635BFF', color: '#fff', cursor: 'pointer' }}
+                        >{t('settings:printer.methodGuide.qzStep1WinBtn', 'Download Printer Setup (Windows)')}</button>
+                        <button type="button"
+                          onClick={() => window.open('/api/qz-tray/installer?os=mac', '_blank')}
+                          style={{ padding: '10px 18px', fontSize: '13px', fontWeight: 600, border: '1px solid #635BFF', borderRadius: '8px', background: '#fff', color: '#635BFF', cursor: 'pointer' }}
+                        >{t('settings:printer.methodGuide.qzStep1MacBtn', 'macOS')}</button>
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#6B7280', marginTop: '10px', marginLeft: '34px', lineHeight: 1.6 }}>
+                        {t('settings:printer.methodGuide.qzStep1Note', 'Run it on every POS device that prints (each counter PC). Kitchen Display tablets do not need it — they only show orders.')}
+                      </div>
+                    </div>
+
+                    {/* ───── STEP 2 — Check connection (running + trusted, no Allow prompt) ───── */}
+                    <div style={{ marginBottom: '12px', padding: '16px', background: '#FAFBFF', border: '1px solid #E2E8F0', borderRadius: '10px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '8px' }}>
-                        <div>
-                          <div style={{ fontSize: '14px', fontWeight: 700, color: '#312E81' }}>
-                            {t('settings:printer.methodGuide.qzAutoTestTitle', 'Auto-Configure & Test')}
-                          </div>
-                          <div style={{ fontSize: '12px', color: '#4B5563' }}>
-                            {t('settings:printer.methodGuide.qzAutoTestDesc', 'One click — checks the app, certificate, and silent printing in 5 seconds.')}
-                          </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#635BFF', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 700, flexShrink: 0 }}>2</span>
+                          <span style={{ fontSize: '14px', fontWeight: 700, color: '#312E81' }}>{t('settings:printer.methodGuide.qzStep2Title', 'Check the connection')}</span>
                         </div>
                         <button type="button" disabled={qzDiagRunning}
                           onClick={async () => {
@@ -5954,25 +5987,25 @@ const SettingsPage: React.FC = () => {
                                 } catch { /* non-fatal */ }
                               }
                             } catch (e: any) {
-                              setQzDiagSteps([{ key: 'crash', label: 'Diagnostic crashed', status: 'failed', detail: String(e?.message || e) }]);
+                              setQzDiagSteps([{ key: 'crash', label: t('settings:printer.methodGuide.qzDiagCrashed', 'Diagnostic crashed'), status: 'failed', detail: String(e?.message || e) }]);
                             } finally {
                               setQzDiagRunning(false);
                             }
                           }}
                           style={{
-                            padding: '10px 20px', fontSize: '14px', fontWeight: 700,
-                            border: 'none', borderRadius: '8px',
-                            background: '#635BFF', color: '#fff',
-                            cursor: qzDiagRunning ? 'wait' : 'pointer',
-                            opacity: qzDiagRunning ? 0.6 : 1,
-                            minWidth: '200px',
-                            transition: 'opacity 0.15s'
+                            padding: '10px 18px', fontSize: '13px', fontWeight: 700,
+                            border: 'none', borderRadius: '8px', background: '#635BFF', color: '#fff',
+                            cursor: qzDiagRunning ? 'wait' : 'pointer', opacity: qzDiagRunning ? 0.6 : 1,
+                            minWidth: '160px', transition: 'opacity 0.15s'
                           }}
-                        >{qzDiagRunning ? t('settings:printer.methodGuide.qzAutoTestRunning', 'Testing…') : t('settings:printer.methodGuide.qzAutoTestBtn', 'Auto-Configure & Test')}</button>
+                        >{qzDiagRunning ? t('settings:printer.methodGuide.qzAutoTestRunning', 'Checking…') : t('settings:printer.methodGuide.qzStep2Btn', 'Check Connection')}</button>
                       </div>
+                      <p style={{ fontSize: '12px', color: '#4B5563', lineHeight: 1.6, margin: '0 0 0 34px' }}>
+                        {t('settings:printer.methodGuide.qzStep2Desc', 'Confirms QZ Tray is running and trusted (no "Allow this print?" pop-up). Run this after installing.')}
+                      </p>
 
                       {qzDiagSteps.length > 0 && (
-                        <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <div style={{ marginTop: '12px', marginLeft: '34px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                           {qzDiagSteps.map(s => (
                             <div key={s.key} style={{
                               padding: '10px 12px',
@@ -6044,93 +6077,48 @@ const SettingsPage: React.FC = () => {
                       )}
                     </div>
 
-                    {/* Quick action row */}
-                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '14px' }}>
-                      <button type="button"
-                        onClick={async () => {
-                          setQzTrayStatus('connecting');
-                          try {
-                            if (isQZTrayConnected()) await disconnectQZTray();
-                            const ok = await connectQZTray();
-                            setQzTrayStatus(ok ? 'connected' : 'disconnected');
-                            if (ok) {
-                              const printers = await getQZTrayPrinters();
-                              setQzTrayPrinters(printers);
-                            }
-                          } catch { setQzTrayStatus('disconnected'); }
-                        }}
-                        style={{ padding: '8px 14px', fontSize: '13px', border: '1px solid #635BFF', borderRadius: '6px', background: qzTrayStatus === 'connected' ? '#fff' : '#635BFF', color: qzTrayStatus === 'connected' ? '#635BFF' : '#fff', cursor: 'pointer', fontWeight: 600 }}
-                      >{qzTrayStatus === 'connecting' ? t('settings:printer.methodGuide.qzConnectingBtn') : qzTrayStatus === 'connected' ? t('settings:printer.methodGuide.qzReconnectBtn') : t('settings:printer.methodGuide.qzTestBtn')}</button>
-                      <button type="button"
-                        onClick={() => window.open('/api/qz-tray/certificate/download', '_blank')}
-                        style={{ padding: '8px 14px', fontSize: '13px', border: '1px solid #10B981', borderRadius: '6px', background: '#ECFDF5', color: '#065F46', cursor: 'pointer', fontWeight: 600 }}
-                      >{t('settings:printer.methodGuide.qzDownloadCertBtn')}</button>
-                      <button type="button"
-                        onClick={() => setShowQzGuide(true)}
-                        style={{ padding: '8px 14px', fontSize: '13px', border: '1px solid #635BFF', borderRadius: '6px', background: '#F5F3FF', color: '#635BFF', cursor: 'pointer', fontWeight: 500 }}
-                      >{t('settings:printer.methodGuide.qzFullSetupBtn')}</button>
-                    </div>
-
-                    {/* Status line */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#1F2937', flexWrap: 'wrap' }}>
-                      <div style={{
-                        width: '8px', height: '8px', borderRadius: '50%',
-                        background: qzTrayStatus === 'connected' ? '#10B981' : qzTrayStatus === 'connecting' ? '#F59E0B' : '#9CA3AF'
-                      }} />
-                      <span style={{ fontWeight: 500 }}>
-                        {qzTrayStatus === 'connected' ? t('settings:printer.methodGuide.qzStatusConnected') : qzTrayStatus === 'connecting' ? t('settings:printer.methodGuide.qzStatusConnecting') : t('settings:printer.methodGuide.qzStatusDisconnected')}
-                      </span>
-                      {qzTrayPrinters.length > 0 && (
-                        <span style={{ color: '#4B5563' }}>
-                          {t('settings:printer.methodGuide.qzDetectedPrinters')} <strong>{qzTrayPrinters.join(', ')}</strong>
-                        </span>
-                      )}
-                    </div>
-
-                    {/* One-click auto-installer — the recommended path. Downloads
-                        a tiny script (.bat / .command / .sh) that embeds the cert,
-                        creates the QZ Tray folder if missing, and copies the cert
-                        in. User just double-clicks → done. No %APPDATA% spelunking. */}
-                    <div style={{ marginTop: '14px', padding: '14px 16px', background: '#EEF2FF', border: '2px solid #635BFF', borderRadius: '8px' }}>
-                      <div style={{ fontSize: '13px', fontWeight: 700, color: '#312E81', marginBottom: '6px' }}>
-                        {t('settings:printer.methodGuide.qzAutoInstallTitle', '★ One-click install (recommended)')}
+                    {/* ───── STEP 3 — Find printers (detect this device's printers) ───── */}
+                    <div style={{ padding: '16px', background: '#FAFBFF', border: '1px solid #E2E8F0', borderRadius: '10px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#635BFF', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 700, flexShrink: 0 }}>3</span>
+                          <span style={{ fontSize: '14px', fontWeight: 700, color: '#312E81' }}>{t('settings:printer.methodGuide.qzStep3Title', 'Find your printers')}</span>
+                        </div>
+                        <button type="button"
+                          onClick={async () => {
+                            setQzTrayStatus('connecting');
+                            try {
+                              if (isQZTrayConnected()) await disconnectQZTray();
+                              const ok = await connectQZTray();
+                              setQzTrayStatus(ok ? 'connected' : 'disconnected');
+                              if (ok) {
+                                const printers = await getQZTrayPrinters();
+                                setQzTrayPrinters(printers);
+                              }
+                            } catch { setQzTrayStatus('disconnected'); }
+                          }}
+                          style={{ padding: '10px 18px', fontSize: '13px', fontWeight: 700, border: 'none', borderRadius: '8px', background: '#635BFF', color: '#fff', cursor: 'pointer', minWidth: '160px' }}
+                        >{qzTrayStatus === 'connecting' ? t('settings:printer.methodGuide.qzConnectingBtn') : t('settings:printer.methodGuide.qzStep3Btn', 'Find Printers')}</button>
                       </div>
-                      <p style={{ fontSize: '12px', color: '#312E81', lineHeight: 1.6, margin: '0 0 10px' }}>
-                        {t('settings:printer.methodGuide.qzAutoInstallDesc', 'Download the installer for your operating system, double-click it, and the certificate is placed in the right folder automatically. No file paths to find, no hidden folders.')}
+                      <p style={{ fontSize: '12px', color: '#4B5563', lineHeight: 1.6, margin: '0 0 0 34px' }}>
+                        {t('settings:printer.methodGuide.qzStep3Desc', 'Detects the printers connected to this device. Then assign each one in the printer cards below (bill printer, kitchen printer).')}
                       </p>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                        <button type="button"
-                          onClick={() => window.open('/api/qz-tray/installer?os=windows', '_blank')}
-                          style={{ padding: '8px 14px', fontSize: '13px', fontWeight: 600, border: 'none', borderRadius: '6px', background: '#635BFF', color: '#fff', cursor: 'pointer' }}
-                        >{t('settings:printer.methodGuide.qzAutoInstallWindows', 'Windows installer (.bat)')}</button>
-                        <button type="button"
-                          onClick={() => window.open('/api/qz-tray/installer?os=mac', '_blank')}
-                          style={{ padding: '8px 14px', fontSize: '13px', fontWeight: 600, border: '1px solid #635BFF', borderRadius: '6px', background: '#fff', color: '#635BFF', cursor: 'pointer' }}
-                        >{t('settings:printer.methodGuide.qzAutoInstallMac', 'macOS installer (.command)')}</button>
-                        <button type="button"
-                          onClick={() => window.open('/api/qz-tray/installer?os=linux', '_blank')}
-                          style={{ padding: '8px 14px', fontSize: '13px', fontWeight: 600, border: '1px solid #635BFF', borderRadius: '6px', background: '#fff', color: '#635BFF', cursor: 'pointer' }}
-                        >{t('settings:printer.methodGuide.qzAutoInstallLinux', 'Linux installer (.sh)')}</button>
-                      </div>
-                      <div style={{ fontSize: '11px', color: '#4338CA', marginTop: '8px', fontStyle: 'italic' }}>
-                        {t('settings:printer.methodGuide.qzAutoInstallAfter', 'After running the installer, right-click the QZ Tray tray icon → Exit, then launch QZ Tray again. Done.')}
-                      </div>
-                    </div>
 
-                    {/* Manual install (fallback) — collapsed by default visual weight. */}
-                    <div style={{ marginTop: '10px', padding: '12px 16px', background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: '6px', fontSize: '12px', color: '#4B5563', lineHeight: 1.6 }}>
-                      <strong>{t('settings:printer.methodGuide.qzManualInstallTitle', 'Manual install (advanced)')}</strong>
-                      <ol style={{ margin: '6px 0 0 18px', padding: 0 }}>
-                        <li>{t('settings:printer.methodGuide.qzCertStep1')}</li>
-                        <li>{t('settings:printer.methodGuide.qzCertStep2')}
-                          <ul style={{ margin: '2px 0 0 16px' }}>
-                            <li>Windows: <code>%APPDATA%\qz\override.crt</code> <span style={{ color: '#635BFF', fontWeight: 500 }}>({t('settings:printer.methodGuide.qzWinRHint', 'Win+R → paste %APPDATA%\\qz → Enter')})</span></li>
-                            <li>macOS: <code>~/Library/Application Support/Qz/override.crt</code></li>
-                            <li>Linux: <code>/usr/share/qz/override.crt</code></li>
-                          </ul>
-                        </li>
-                        <li>{t('settings:printer.methodGuide.qzCertStep3')}</li>
-                      </ol>
+                      {/* Status line */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#1F2937', flexWrap: 'wrap', marginTop: '12px', marginLeft: '34px' }}>
+                        <div style={{
+                          width: '8px', height: '8px', borderRadius: '50%',
+                          background: qzTrayStatus === 'connected' ? '#10B981' : qzTrayStatus === 'connecting' ? '#F59E0B' : '#9CA3AF'
+                        }} />
+                        <span style={{ fontWeight: 500 }}>
+                          {qzTrayStatus === 'connected' ? t('settings:printer.methodGuide.qzStatusConnected') : qzTrayStatus === 'connecting' ? t('settings:printer.methodGuide.qzStatusConnecting') : t('settings:printer.methodGuide.qzStatusDisconnected')}
+                        </span>
+                        {qzTrayPrinters.length > 0 && (
+                          <span style={{ color: '#4B5563' }}>
+                            {t('settings:printer.methodGuide.qzDetectedPrinters')} <strong>{qzTrayPrinters.join(', ')}</strong>
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -6171,108 +6159,11 @@ const SettingsPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* QZ Tray Connection Status & Guide */}
-                {!printerSettingsLoading && printerMode === 'qztray' && (
-                  <div style={{ marginTop: '16px', padding: '14px 16px', background: '#F1F4F8', border: '1px solid #E2E8F0', borderRadius: '8px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                        <div style={{
-                          width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0,
-                          background: qzTrayStatus === 'connected' ? '#10B981' : qzTrayStatus === 'connecting' ? '#F59E0B' : '#EF4444'
-                        }} />
-                        <span style={{ fontSize: '14px', fontWeight: 500, color: '#1F2937' }}>
-                          {qzTrayStatus === 'connected' ? 'Connected to QZ Tray' : qzTrayStatus === 'connecting' ? 'Connecting...' : 'QZ Tray Not Connected'}
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                        <button type="button"
-                          onClick={() => setShowQzGuide(true)}
-                          style={{
-                            padding: '6px 14px', fontSize: '13px', border: '1px solid #635BFF', borderRadius: '6px',
-                            background: '#F5F3FF', color: '#635BFF', cursor: 'pointer', fontWeight: 500
-                          }}
-                        >
-                          Setup Guide
-                        </button>
-                        <button type="button"
-                          onClick={() => window.open('/api/qz-tray/certificate/download', '_blank')}
-                          title="Install this on your POS device to stop the per-print permission prompt"
-                          style={{
-                            padding: '6px 14px', fontSize: '13px', border: '1px solid #10B981', borderRadius: '6px',
-                            background: '#ECFDF5', color: '#065F46', cursor: 'pointer', fontWeight: 500
-                          }}
-                        >
-                          Download Certificate
-                        </button>
-                        <button type="button"
-                          onClick={async () => {
-                            setQzTrayStatus('connecting');
-                            try {
-                              if (isQZTrayConnected()) await disconnectQZTray();
-                              const ok = await connectQZTray();
-                              setQzTrayStatus(ok ? 'connected' : 'disconnected');
-                              if (ok) {
-                                const printers = await getQZTrayPrinters();
-                                setQzTrayPrinters(printers);
-                              }
-                            } catch {
-                              setQzTrayStatus('disconnected');
-                            }
-                          }}
-                          style={{
-                            padding: '6px 14px', fontSize: '13px', border: '1px solid #6B7280', borderRadius: '6px',
-                            background: '#fff', color: '#1F2937', cursor: 'pointer'
-                          }}
-                        >
-                          {qzTrayStatus === 'connecting' ? 'Connecting...' : 'Test Connection'}
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Certificate install instructions — eliminates per-print permission prompt */}
-                    <div style={{ padding: '12px 16px', background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: '6px', fontSize: '13px', color: '#065F46', lineHeight: '1.6', marginBottom: '10px' }}>
-                      <strong>Stop "Allow this print?" prompts (one-time):</strong>
-                      <ol style={{ margin: '6px 0 0 18px', padding: 0 }}>
-                        <li>Click <strong>Download Certificate</strong> above → saves <code>override.crt</code>.</li>
-                        <li>Move <code>override.crt</code> into the QZ Tray folder for this OS:
-                          <ul style={{ margin: '4px 0 0 16px' }}>
-                            <li>Windows: <code>%APPDATA%\qz\override.crt</code></li>
-                            <li>macOS: <code>~/Library/Application Support/Qz/override.crt</code></li>
-                            <li>Linux: <code>/usr/share/qz/override.crt</code></li>
-                          </ul>
-                        </li>
-                        <li>Right-click the QZ Tray tray icon → <strong>Exit</strong>, then relaunch QZ Tray.</li>
-                      </ol>
-                      <div style={{ marginTop: '6px', fontSize: '12px' }}>After that, prints go through silently. No prompt.</div>
-                    </div>
-
-                    <div style={{ padding: '12px 16px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '6px', fontSize: '13px', color: '#92400E', lineHeight: '1.6', marginBottom: '10px' }}>
-                      <strong>Important:</strong> Install QZ Tray on <strong>every POS device</strong> that prints
-                      (main counter PC, sub counter PC, any other POS workstation). Each device
-                      uses its own QZ Tray instance.
-                      <br />
-                      <br />
-                      <strong>Multi-POS tip:</strong> leave each printer's address <em>blank</em> below to use
-                      that device's OS default printer — main POS prints to the main counter printer,
-                      sub POS prints to the sub counter printer, automatically.
-                      <br />
-                      <br />
-                      Kitchen Display tablets do not need QZ Tray (they only show orders).
-                    </div>
-
-                    <div style={{ fontSize: '12px', color: '#4B5563', lineHeight: '1.6' }}>
-                      QZ Tray connects your browser to network printers via LAN.{' '}
-                      <span style={{ color: '#635BFF', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => window.open('https://qz.io/download/', '_blank')}>
-                        Download QZ Tray
-                      </span>
-                    </div>
-                    {qzTrayPrinters.length > 0 && (
-                      <div style={{ marginTop: '10px', fontSize: '12px', color: '#4B5563' }}>
-                        <strong>{t('settings:printer.detectedPrinters')}</strong> {qzTrayPrinters.join(', ')}
-                      </div>
-                    )}
-                  </div>
-                )}
+                {/* (Removed) The old hardcoded QZ Tray status/cert block lived here. It
+                    duplicated the connection status + cert download + setup steps and was
+                    not translated (English/Korean leaked into every language). The clean,
+                    i18n'd 3-step guide above (Install → Check → Find printers) is now the
+                    single source. */}
 
                 {/* QZ Tray Setup Guide Modal */}
                 {showQzGuide && (
@@ -7070,6 +6961,114 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                       (취소·이동은 주방이 무조건 알아야 함). printCancellationTicket 설정 삭제. */}
                 </SettingsCard>
               )}
+
+              {/* ─── Consolidated Order Ticket card ─── whole order on ONE ticket to a
+                  chosen printer (e.g. kitchen main), printed ALONGSIDE station tickets.
+                  Independent of the existing auto-print path (own poller + print-state). */}
+              <SettingsCard style={{ marginTop: '24px' }}>
+                <CardTitle>{t('settings:printer.consolidated.title', 'Consolidated Order Ticket')}</CardTitle>
+                <p style={{ color: '#4B5563', marginBottom: '20px', fontSize: '14px' }}>
+                  {t('settings:printer.consolidated.desc', 'Print the whole order on a single ticket to one printer (e.g. a kitchen main printer). It prints alongside the per-station kitchen tickets — it does not replace them.')}
+                </p>
+                {(() => {
+                  const co: any = (printerSettings as any).consolidatedOrderTicket || { enabled: false, method: 'qztray', address: '', autoPrint: false };
+                  const saveCo = async (patch: any) => {
+                    const next = { ...co, ...patch };
+                    const newPS = { ...printerSettings, consolidatedOrderTicket: next };
+                    setPrinterSettings(newPS as any);
+                    try { localStorage.setItem('printerSettings', JSON.stringify({ ...(JSON.parse(localStorage.getItem('printerSettings') || '{}')), consolidatedOrderTicket: next })); } catch {}
+                    if (user?.restaurantId) {
+                      try {
+                        const token = getAuthToken();
+                        const r = await fetch(`/api/restaurants/${user.restaurantId}`, {
+                          method: 'PUT',
+                          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ printer_settings: newPS })
+                        });
+                        const d = await r.json();
+                        setSaveStatus({ type: d.success ? 'success' : 'error', message: d.success ? t('settings:settingsPage.saved', 'Saved') : 'Save failed' });
+                      } catch { setSaveStatus({ type: 'error', message: 'Save failed' }); }
+                      setTimeout(() => setSaveStatus(null), 2000);
+                    }
+                  };
+                  const isLan = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(co.address || '');
+                  return (
+                    <>
+                      <Toggle style={{ marginBottom: co.enabled ? '16px' : '0' }}>
+                        <ToggleLabel>
+                          {t('settings:printer.consolidated.enable', 'Enable consolidated ticket')}
+                          <span style={{ display: 'block', fontSize: '11px', fontWeight: 400, color: '#6B7280', marginTop: '2px' }}>{t('settings:printer.consolidated.enableHint', 'Send a one-page order summary to a single printer.')}</span>
+                        </ToggleLabel>
+                        <ToggleSwitch>
+                          <ToggleInput type="checkbox" checked={!!co.enabled} onChange={(e) => saveCo({ enabled: e.target.checked })} />
+                          <ToggleSlider />
+                        </ToggleSwitch>
+                      </Toggle>
+
+                      {co.enabled && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                          <FormGroup>
+                            <Label>{t('settings:printer.consolidated.method', 'Connection method')}</Label>
+                            <select value={co.method || 'qztray'} onChange={(e) => saveCo({ method: e.target.value })}
+                              style={{ width: '100%', padding: '10px 12px', border: '1px solid #C7CED6', borderRadius: '8px', fontSize: '14px', background: '#fff' }}>
+                              <option value="qztray">QZ Tray (LAN / USB)</option>
+                              <option value="browser">{t('settings:printer.consolidated.methodBrowser', 'Browser print dialog')}</option>
+                            </select>
+                          </FormGroup>
+
+                          {co.method !== 'browser' && (
+                            <>
+                              <FormGroup>
+                                <Label>{t('settings:printer.consolidated.printer', 'Printer (IP:Port or name)')}</Label>
+                                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                  <Input type="text" placeholder="192.168.1.50:9100" value={co.address || ''}
+                                    onChange={(e) => saveCo({ address: e.target.value })} style={{ flex: 1, minWidth: '180px' }} />
+                                  <button type="button"
+                                    onClick={async () => {
+                                      setSaveStatus({ type: 'success', message: t('settings:printer.consolidated.testing', 'Sending test…') });
+                                      try { const ok = await qzTrayTestPrint(co.address || ''); setSaveStatus({ type: ok ? 'success' : 'error', message: ok ? t('settings:printer.consolidated.testSent', 'Test sent') : t('settings:printer.consolidated.testFail', 'Test failed') }); }
+                                      catch { setSaveStatus({ type: 'error', message: t('settings:printer.consolidated.testFail', 'Test failed') }); }
+                                      setTimeout(() => setSaveStatus(null), 2500);
+                                    }}
+                                    style={{ padding: '10px 16px', fontSize: '13px', fontWeight: 600, border: '1px solid #635BFF', borderRadius: '8px', background: '#F0EFFF', color: '#635BFF', cursor: 'pointer' }}
+                                  >{t('settings:printer.consolidated.test', 'Test Print')}</button>
+                                </div>
+                                {!isLan && (
+                                  <div style={{ fontSize: '11px', color: '#6B7280', marginTop: '6px' }}>
+                                    {t('settings:printer.consolidated.printerHint', 'Leave blank for this device\'s default printer, type an OS printer name, or enter IP:Port for a LAN printer.')}
+                                  </div>
+                                )}
+                              </FormGroup>
+
+                              {qzTrayPrinters.length > 0 && (
+                                <FormGroup>
+                                  <Label>{t('settings:printer.consolidated.pickDetected', 'Or pick a detected printer')}</Label>
+                                  <select value={co.address || ''} onChange={(e) => saveCo({ address: e.target.value })}
+                                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #C7CED6', borderRadius: '8px', fontSize: '14px', background: '#fff' }}>
+                                    <option value="">{t('settings:printer.consolidated.defaultOption', '— Device default printer —')}</option>
+                                    {qzTrayPrinters.map(p => <option key={p} value={p}>{p}</option>)}
+                                  </select>
+                                </FormGroup>
+                              )}
+                            </>
+                          )}
+
+                          <Toggle>
+                            <ToggleLabel>
+                              {t('settings:printer.consolidated.autoPrint', 'Auto-print on new orders')}
+                              <span style={{ display: 'block', fontSize: '11px', fontWeight: 400, color: '#6B7280', marginTop: '2px' }}>{t('settings:printer.consolidated.autoPrintHint', 'Automatically print the consolidated ticket when a new order arrives.')}</span>
+                            </ToggleLabel>
+                            <ToggleSwitch>
+                              <ToggleInput type="checkbox" checked={!!co.autoPrint} onChange={(e) => saveCo({ autoPrint: e.target.checked })} />
+                              <ToggleSlider />
+                            </ToggleSwitch>
+                          </Toggle>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </SettingsCard>
 
               {/* Receipt Customization */}
               <SettingsCard style={{ marginTop: '24px' }}>

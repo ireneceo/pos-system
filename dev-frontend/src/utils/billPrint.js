@@ -2451,12 +2451,24 @@ export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerNa
     // produced the customer-facing receipt format — wrong UX. Must use the
     // kitchen ticket HTML so the counter copy looks like the kitchen copy.
     // Runs FIRST so station routing's `return` below doesn't block it.
+    // 2026-06-09: the unified order ticket can now target a CONFIGURABLE printer —
+    // Settings → "Consolidated Order Ticket" (e.g. a kitchen MAIN printer) — instead
+    // of only the bill printer. When that feature is enabled it takes precedence and
+    // the bill mirror is NOT also sent (one unified ticket, no duplicate). Otherwise
+    // the legacy mirrorToBillPrinter → bill printer behaviour is unchanged. The
+    // ticket itself is identical to the proven counter mirror; only the target
+    // address changes. Fires for every kitchen path (new order + cancel/move
+    // reprints), so the consolidated copy always matches the station tickets.
+    const __co = settings.consolidatedOrderTicket;
+    const __coOn = !!(__co && __co.enabled);
     const __bpMirror = getActiveBillPrinter();
-    if (settings.kitchenPrinter?.mirrorToBillPrinter && __bpMirror && __bpMirror.enabled && __bpMirror.address) {
+    const __unifiedAddr = __coOn ? (__co.address || '') : (__bpMirror && __bpMirror.address);
+    const __unifiedOn = __coOn || (settings.kitchenPrinter?.mirrorToBillPrinter && __bpMirror && __bpMirror.enabled && __bpMirror.address);
+    if (__unifiedOn) {
       setTimeout(() => {
         try {
-          const billAddr = __bpMirror.address;
-          const isLanIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(billAddr);
+          const billAddr = __unifiedAddr;
+          const isLanIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(billAddr || '');
           // Tag each item with its target station name so the counter mirror
           // ticket shows inline [KQ1] [KQ2] [BARPR] next to each item — cashier
           // can verify station routing at a glance (2026-05-28 The Fire 매장

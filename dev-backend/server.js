@@ -382,6 +382,7 @@ app.use('/api/auth', authRouter);
 // The endpoints only return a generic certificate + sign arbitrary text; they expose
 // no merchant data and the private key never leaves the server.
 app.use('/api/qz-tray', require('./routes/qz-tray'));
+app.use('/api/consolidated-print', require('./routes/consolidated-print'));  // Consolidated Order Ticket — independent print-state (additive; never touches existing auto-print path)
 app.use('/api/referrals', require('./routes/referrals'));  // Referral System — mount EARLY (before /api fall-through routers) so public validate-code/track-click are not gated by another router's middleware
 
 // Reservations (v3.29) — staff first (more specific path-level guards), then public.

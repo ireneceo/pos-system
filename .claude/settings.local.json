@@ -564,7 +564,15 @@
       "Bash(awk 'NR>=5360 && NR<=5460 { if \\($0 ~ /<\\\\/SettingsCard>|<SettingsCard|orderTypes\\\\?\\\\.delivery|^\\\\s*\\\\\\)\\\\}\\\\s*$|takeaway|deliveryPricingSettings|reservation/\\) print NR\": \"$0 }' pages/Settings/SettingsPage.tsx)",
       "Bash(sed -n '32,42p' routes/brand-products.js)",
       "Bash(sed -n '43,115p' routes/brand-products.js)",
-      "Bash(echo \"grep_exit=$?\")"
+      "Bash(echo \"grep_exit=$?\")",
+      "WebFetch(domain:api.github.com)",
+      "Bash(sed -n '1,4p')",
+      "Bash(awk 'NR>=5928 && NR<=6075 && /<button/{c++} END{print \"  <button 개수:\", c}' src/pages/Settings/SettingsPage.tsx)",
+      "Bash(awk 'NR>=5928 && NR<=6075 && /type=\"button\"/{c++} END{print \"  type=\\\\\"button\\\\\" 개수:\", c}' src/pages/Settings/SettingsPage.tsx)",
+      "Bash(awk 'NR>=6592 && NR<=7200 && /<\\\\/SettingsCard>/{print NR\": \"$0}' src/pages/Settings/SettingsPage.tsx)",
+      "Bash(awk 'NR>=6592 && /<\\\\/SettingsCard>/{print NR; c++; if\\(c>=1\\) exit}' src/pages/Settings/SettingsPage.tsx)",
+      "Bash(perl -0pi -e 's/FormLabel/Label/g; s/FormInput/Input/g;' src/pages/Settings/SettingsPage.tsx)",
+      "Bash(awk '/Consolidated Order Ticket card/,/Receipt Customization/' src/pages/Settings/SettingsPage.tsx)"
     ],
     "deny": [],
     "ask": []

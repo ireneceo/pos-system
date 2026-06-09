@@ -12,6 +12,8 @@
  */
 import React, { useEffect, useState, useCallback } from 'react';
 import styled from 'styled-components';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { getAuthToken } from '../../utils/auth';
 import {
   ModalOverlay, ModalContent, ModalHeader, ModalTitle, CloseButton,
@@ -140,12 +142,14 @@ const EmptyState = styled.div`
   color: #6B7280;
 `;
 
-const formatOrderLabel = (p: Preview) => {
+const formatOrderLabel = (p: Preview, t: TFunction) => {
   const time = new Date(p.createdAt).toLocaleString('en-MY', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-  return `${p.orderNumber} — ${time} (${p.source || 'pos'}, ${p.totalItems}건)`;
+  const items = t('settings:autoPrintPreview.itemsCount', { count: p.totalItems });
+  return `${p.orderNumber} — ${time} (${p.source || 'pos'}, ${items})`;
 };
 
 const AutoPrintPreviewModal: React.FC<Props> = ({ restaurantId, onClose }) => {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [previews, setPreviews] = useState<Preview[]>([]);
@@ -195,10 +199,10 @@ const AutoPrintPreviewModal: React.FC<Props> = ({ restaurantId, onClose }) => {
       });
       const j = await r.json();
       if (!r.ok || !j.success) throw new Error(j?.message || `HTTP ${r.status}`);
-      setHealMsg({ kind: 'ok', text: j.data?.message || '완료' });
+      setHealMsg({ kind: 'ok', text: j.data?.message || t('settings:autoPrintPreview.done') });
       await load();
     } catch (e: any) {
-      setHealMsg({ kind: 'err', text: e?.message || 'Self-heal failed' });
+      setHealMsg({ kind: 'err', text: e?.message || t('settings:autoPrintPreview.selfHealFailed') });
     } finally {
       setHealing(null);
     }
@@ -210,22 +214,21 @@ const AutoPrintPreviewModal: React.FC<Props> = ({ restaurantId, onClose }) => {
     <ModalOverlay onClick={onClose}>
       <WideModal onClick={e => e.stopPropagation()}>
         <ModalHeader>
-          <ModalTitle>자동 인쇄 미리보기</ModalTitle>
+          <ModalTitle>{t('settings:autoPrintPreview.title')}</ModalTitle>
           <CloseButton onClick={onClose}>✕</CloseButton>
         </ModalHeader>
         <ModalBody>
           <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 12, lineHeight: 1.5 }}>
-            최근 주문이 station 별로 어떻게 인쇄될지 미리 확인합니다. 실제로 인쇄하지 않습니다.
-            아래 경고는 매장 인쇄기 설정과 메뉴 station 매핑에서 잡힌 실제 문제입니다.
+            {t('settings:autoPrintPreview.desc')}
           </div>
 
           {meta && (
             <HeaderBar>
-              <span>매장 DB 등록 station: <b>{meta.dbActiveStationCount}개</b></span>
-              <span>인쇄기 설정된 station: <b>{meta.configuredStationCount}개</b></span>
+              <span>{t('settings:autoPrintPreview.dbStations')}: <b>{meta.dbActiveStationCount}</b></span>
+              <span>{t('settings:autoPrintPreview.configuredStations')}: <b>{meta.configuredStationCount}</b></span>
               {meta.dbActiveStationCount > meta.configuredStationCount && (
                 <span style={{ color: '#B91C1C', fontWeight: 600 }}>
-                  ⚠ {meta.dbActiveStationCount - meta.configuredStationCount}개 station 인쇄기 미설정
+                  ⚠ {t('settings:autoPrintPreview.unconfiguredWarn', { count: meta.dbActiveStationCount - meta.configuredStationCount })}
                 </span>
               )}
             </HeaderBar>
@@ -241,7 +244,7 @@ const AutoPrintPreviewModal: React.FC<Props> = ({ restaurantId, onClose }) => {
                   disabled={!!healing}
                   style={{ padding: '8px 14px', borderRadius: 6, border: '1px solid #635BFF', background: healing === 'seed-missing' ? '#E0DFFF' : '#F0EFFF', color: '#635BFF', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
                 >
-                  {healing === 'seed-missing' ? '시드 중...' : '자동 수정 — 미설정 station 에 placeholder 시드'}
+                  {healing === 'seed-missing' ? t('settings:autoPrintPreview.seeding') : t('settings:autoPrintPreview.seedBtn')}
                 </button>
               )}
               <button
@@ -250,7 +253,7 @@ const AutoPrintPreviewModal: React.FC<Props> = ({ restaurantId, onClose }) => {
                 disabled={!!healing}
                 style={{ padding: '8px 14px', borderRadius: 6, border: '1px solid #EAB308', background: healing === 'clear-stuck' ? '#FEF3C7' : '#FFFBEB', color: '#92400E', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
               >
-                {healing === 'clear-stuck' ? '해제 중...' : '자동 수정 — 1시간 이상 stuck print flag 해제'}
+                {healing === 'clear-stuck' ? t('settings:autoPrintPreview.clearing') : t('settings:autoPrintPreview.clearBtn')}
               </button>
             </div>
           )}
@@ -260,20 +263,20 @@ const AutoPrintPreviewModal: React.FC<Props> = ({ restaurantId, onClose }) => {
             </div>
           )}
 
-          {loading && <EmptyState>로딩 중...</EmptyState>}
-          {error && <WarningBox severity="high">불러오기 실패: {error}</WarningBox>}
+          {loading && <EmptyState>{t('settings:autoPrintPreview.loading')}</EmptyState>}
+          {error && <WarningBox severity="high">{t('settings:autoPrintPreview.loadFailed')}: {error}</WarningBox>}
 
           {!loading && !error && previews.length === 0 && (
-            <EmptyState>최근 주문이 없습니다.</EmptyState>
+            <EmptyState>{t('settings:autoPrintPreview.noOrders')}</EmptyState>
           )}
 
           {!loading && !error && previews.length > 0 && (
             <>
               <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontSize: 12, color: '#6B7280', marginBottom: 6 }}>주문 선택</label>
+                <label style={{ display: 'block', fontSize: 12, color: '#6B7280', marginBottom: 6 }}>{t('settings:autoPrintPreview.selectOrder')}</label>
                 <FormSelect value={selectedId ?? ''} onChange={e => setSelectedId(parseInt(e.target.value, 10))}>
                   {previews.map(p => (
-                    <option key={p.orderId} value={p.orderId}>{formatOrderLabel(p)}</option>
+                    <option key={p.orderId} value={p.orderId}>{formatOrderLabel(p, t)}</option>
                   ))}
                 </FormSelect>
               </div>
@@ -284,9 +287,9 @@ const AutoPrintPreviewModal: React.FC<Props> = ({ restaurantId, onClose }) => {
                     <div style={{ marginBottom: 12 }}>
                       {selected.warnings.map((w, i) => (
                         <WarningBox key={i} severity={w.type === 'station_no_printer' ? 'high' : 'med'}>
-                          <b>{w.type === 'station_no_printer' ? '인쇄기 미설정' : w.type === 'unmapped_items' ? '메뉴 미배정' : '설정 drift'}</b> — {w.message}
+                          <b>{w.type === 'station_no_printer' ? t('settings:autoPrintPreview.warnNoPrinter') : w.type === 'unmapped_items' ? t('settings:autoPrintPreview.warnUnmapped') : t('settings:autoPrintPreview.warnDrift')}</b> — {w.message}
                           {w.itemNames && w.itemNames.length > 0 && (
-                            <div style={{ marginTop: 4, fontSize: 12 }}>해당 메뉴: {w.itemNames.join(', ')}</div>
+                            <div style={{ marginTop: 4, fontSize: 12 }}>{t('settings:autoPrintPreview.affectedItems')}: {w.itemNames.join(', ')}</div>
                           )}
                         </WarningBox>
                       ))}
@@ -294,7 +297,7 @@ const AutoPrintPreviewModal: React.FC<Props> = ({ restaurantId, onClose }) => {
                   )}
 
                   {selected.stations.length === 0 ? (
-                    <EmptyState>이 주문에 매핑된 station 인쇄기가 없습니다.</EmptyState>
+                    <EmptyState>{t('settings:autoPrintPreview.noStations')}</EmptyState>
                   ) : (
                     selected.stations.map(s => (
                       <StationCard key={s.stationId}>
@@ -304,7 +307,7 @@ const AutoPrintPreviewModal: React.FC<Props> = ({ restaurantId, onClose }) => {
                             {s.printerName ? (
                               <>{s.printerName}{s.printerAddress ? ` @ ${s.printerAddress}` : ''} · {s.method || '-'}</>
                             ) : (
-                              <NoConfig>인쇄기 미설정</NoConfig>
+                              <NoConfig>{t('settings:autoPrintPreview.warnNoPrinter')}</NoConfig>
                             )}
                           </StationMeta>
                         </StationHeader>
@@ -312,7 +315,7 @@ const AutoPrintPreviewModal: React.FC<Props> = ({ restaurantId, onClose }) => {
                           <ItemRow key={idx}>
                             <span><ItemQty>{it.quantity}×</ItemQty>{it.name}</span>
                             <span style={{ color: '#9CA3AF', fontSize: 11 }}>
-                              {it.kitchen_station_id ? `station=${it.kitchen_station_id}` : <span style={{ color: '#DC2626' }}>unmapped → 첫 station 흡수</span>}
+                              {it.kitchen_station_id ? `station=${it.kitchen_station_id}` : <span style={{ color: '#DC2626' }}>{t('settings:autoPrintPreview.unmappedAbsorb')}</span>}
                             </span>
                           </ItemRow>
                         ))}
@@ -325,8 +328,8 @@ const AutoPrintPreviewModal: React.FC<Props> = ({ restaurantId, onClose }) => {
           )}
         </ModalBody>
         <ModalFooter>
-          <ModalButton variant="secondary" onClick={load} disabled={loading}>새로고침</ModalButton>
-          <ModalButton variant="primary" onClick={onClose}>닫기</ModalButton>
+          <ModalButton variant="secondary" onClick={load} disabled={loading}>{t('settings:autoPrintPreview.refresh')}</ModalButton>
+          <ModalButton variant="primary" onClick={onClose}>{t('settings:autoPrintPreview.close')}</ModalButton>
         </ModalFooter>
       </WideModal>
     </ModalOverlay>
