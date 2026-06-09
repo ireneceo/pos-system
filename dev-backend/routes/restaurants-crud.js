@@ -1073,6 +1073,38 @@ router.post('/', authenticateToken, requireRole(
     // Subscription can be activated later via PUT.
     const activateSubscription = req.body.activate_subscription !== false;
 
+    // Derive subscription start / status / trial from the requested service start date.
+    // A FUTURE service start => account is in TRIAL until that date, then billed from the
+    // start date (invoice created from subscription_start by createInitialInvoice below).
+    // Mirrors the PUT handler and applies to ALL roles (not System-Admin-only).
+    let subStartDate = null, subEndDate = null, derivedStatus = null, derivedTrialEnd = null;
+    if (activateSubscription) {
+      subStartDate = req.body.subscriptionStart ? new Date(req.body.subscriptionStart) : new Date();
+      if (req.body.subscriptionEnd) {
+        subEndDate = new Date(req.body.subscriptionEnd);
+      } else {
+        const cycle = req.body.billingCycle || req.body.billing_cycle || 'monthly';
+        subEndDate = new Date(subStartDate);
+        if (cycle === 'annual') subEndDate.setFullYear(subEndDate.getFullYear() + 1);
+        else subEndDate.setMonth(subEndDate.getMonth() + 1);
+        subEndDate.setDate(subEndDate.getDate() - 1);
+      }
+      const todayMid = new Date(); todayMid.setHours(0, 0, 0, 0);
+      const startMid = new Date(subStartDate); startMid.setHours(0, 0, 0, 0);
+      if (startMid > todayMid) {
+        // Service hasn't started yet → trial until the day before the start date
+        derivedStatus = 'trial';
+        const tEnd = new Date(startMid); tEnd.setDate(tEnd.getDate() - 1);
+        derivedTrialEnd = tEnd;
+      } else {
+        // Starts today/past → honor requested status (trial requires a future start)
+        const requested = req.body.status;
+        const validStatuses = ['active', 'inactive', 'overdue', 'suspended', 'expired', 'cancelled'];
+        derivedStatus = validStatuses.includes(requested) ? requested : 'active';
+        derivedTrialEnd = null;
+      }
+    }
+
     // Map frontend fields to database fields
     const restaurantData = {
       name: req.body.name,
@@ -1097,7 +1129,7 @@ router.post('/', authenticateToken, requireRole(
         : null,
       currency: req.body.currency || 'MYR',
       billing_cycle: activateSubscription ? (req.body.billingCycle || req.body.billing_cycle || 'monthly') : null,
-      status: (() => {
+      status: activateSubscription ? derivedStatus : (() => {
         const requestedStatus = req.body.status;
         const validStatuses = ['active', 'inactive', 'trial', 'overdue', 'suspended', 'expired', 'cancelled'];
         if (!validStatuses.includes(requestedStatus)) return 'active';
@@ -1105,22 +1137,9 @@ router.post('/', authenticateToken, requireRole(
         if (requestedStatus === 'trial' && req.user.role !== 'System Admin') return 'active';
         return requestedStatus;
       })(),
-      subscription_start: activateSubscription
-        ? (req.body.subscriptionStart ? new Date(req.body.subscriptionStart) : new Date())
-        : null,
-      subscription_end: activateSubscription
-        ? (() => {
-            if (req.body.subscriptionEnd) return new Date(req.body.subscriptionEnd);
-            // Auto-calc end = start + cycle - 1 day when frontend didn't supply it
-            const start = req.body.subscriptionStart ? new Date(req.body.subscriptionStart) : new Date();
-            const cycle = req.body.billingCycle || req.body.billing_cycle || 'monthly';
-            const end = new Date(start);
-            if (cycle === 'annual') end.setFullYear(end.getFullYear() + 1);
-            else end.setMonth(end.getMonth() + 1);
-            end.setDate(end.getDate() - 1);
-            return end;
-          })()
-        : null,
+      subscription_start: activateSubscription ? subStartDate : null,
+      subscription_end: activateSubscription ? subEndDate : null,
+      trial_end_date: activateSubscription ? derivedTrialEnd : null,
       subscription_snapshot: activateSubscription ? planSnapshot : null,
       brand_id: req.body.brand_id || null,
       foodcourt_id: req.body.foodcourt_id || null,
@@ -1182,16 +1201,12 @@ router.post('/', authenticateToken, requireRole(
       catch (e) { console.warn('[restaurant create] admin verification email skip:', e && e.message); }
     }
 
-    // Auto-start trial period if status is 'trial'
-    if (restaurant.status === 'trial') {
-      try {
-        const subscriptionScheduler = require('../services/subscriptionScheduler');
-        await subscriptionScheduler.startTrial(restaurant.id);
-        console.log(`✓ Trial auto-started for restaurant: ${restaurant.name}`);
-      } catch (trialError) {
-        console.error('[Trial] Auto-start failed:', trialError.message);
-      }
-    }
+    // NOTE: Do NOT call subscriptionScheduler.startTrial() here.
+    // Trial status, trial_end_date and subscription_start are already set correctly
+    // above (future service start => trial until the day before start). startTrial()
+    // would clobber subscription_start back to today and generate a duplicate invoice
+    // from today (the canonical invoice is created from subscription_start by
+    // createInitialInvoice below). The signup path (authService) still uses startTrial.
 
     // Send Welcome Email (non-blocking, uses creator's SMTP)
     if (adminUser && (adminAction === 'create' || adminAction === 'assign')) {
@@ -1593,7 +1608,9 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
       const startMid = new Date(effectiveStart);
       startMid.setHours(0, 0, 0, 0);
       if (startMid > todayMid) {
-        if (updateData.status === undefined) updateData.status = 'trial';
+        // Future service start must be trial (service hasn't begun) — force it even if
+        // the client sent status='active', so billing waits until the start date.
+        updateData.status = 'trial';
         const tEnd = new Date(startMid);
         tEnd.setDate(tEnd.getDate() - 1);
         updateData.trial_end_date = tEnd;

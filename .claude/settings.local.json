@@ -579,7 +579,10 @@
       "Bash(awk 'NR>=346 && NR<=395 && /router\\\\.\\(post|put\\)|req.body|const \\\\{|=.*req\\\\.body/' routes/restaurants-subscription.js)",
       "Bash(awk -F: '$1>=1180 && $1<=1300 || $1>=1820 && $1<=1920')",
       "Bash(awk -F: '$1>=1180 && $1<=1320 || $1>=1820 && $1<=1930')",
-      "Bash(awk -F: '$1>=1100 && $1<=1270')"
+      "Bash(awk -F: '$1>=1100 && $1<=1270')",
+      "Bash(sed -n '260,300p' services/subscriptionInvoiceService.js)",
+      "Bash(sed -n '595,640p' services/subscriptionScheduler.js)",
+      "Bash(awk -F: '$1>=1600 && $1<=1825')"
     ],
     "deny": [],
     "ask": []
