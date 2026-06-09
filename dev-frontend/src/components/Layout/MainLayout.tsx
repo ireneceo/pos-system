@@ -1286,15 +1286,31 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               // Station-only mode 허용: master autoPrint OFF + any station autoPrint ON → fire stations.
               const _kitchenAuto = _kpEnabled && _kpAuto;
               if (_kitchenAuto) {
-                const kitchenPrintData = { ...printData, items: kitchenItemsRaw.map(mapItem) };
-                let ok: any = true;
-                try { ok = await billPrintMod.printKitchenTicketViaRawBT(kitchenPrintData, printStoreInfo); }
-                catch (e: any) { console.error('[poll] kitchen print failed:', e); ok = false; }
-                if (ok === false) {
-                  try { window.dispatchEvent(new CustomEvent('autoprint-failed', { detail: { orderNumber: ord.order_number, scope: 'kitchen' } })); } catch {}
-                } else {
-                  kitchenPrinted = true;
+                // 2026-06-09 (Irene "새주문 2장"): ATOMIC CLAIM before printing — mirrors
+                // useAutoPrintPoller. A new order's localStorage 'autoprint-poke' wakes
+                // every same-origin window at once, so this poller and the hook used to
+                // both print before either marked it → 2 tickets. The atomic claim
+                // (needs_print true→false) lets only ONE win → 1 ticket, like table-move
+                // (which has no poke). On failure /print-rearm retries (no permanent block).
+                let _claimed = false;
+                try {
+                  const _cr = await fetch(`/api/orders/${ord.id}/print-claim`, { method: 'PATCH', headers: _h });
+                  const _cj = await _cr.json().catch(() => null);
+                  _claimed = !!(_cj && _cj.claimed);
+                } catch (e: any) { _claimed = false; }
+                if (_claimed) {
+                  const kitchenPrintData = { ...printData, items: kitchenItemsRaw.map(mapItem) };
+                  let ok: any = true;
+                  try { ok = await billPrintMod.printKitchenTicketViaRawBT(kitchenPrintData, printStoreInfo); }
+                  catch (e: any) { console.error('[poll] kitchen print failed:', e); ok = false; }
+                  if (ok === false) {
+                    try { await fetch(`/api/orders/${ord.id}/print-rearm`, { method: 'PATCH', headers: _h }); } catch {}
+                    try { window.dispatchEvent(new CustomEvent('autoprint-failed', { detail: { orderNumber: ord.order_number, scope: 'kitchen' } })); } catch {}
+                  } else {
+                    kitchenPrinted = true;
+                  }
                 }
+                // not claimed → another device already owns this ticket, skip silently
               }
             }
             if (kitchenPrinted) {

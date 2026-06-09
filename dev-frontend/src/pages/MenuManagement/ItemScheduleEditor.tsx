@@ -28,7 +28,10 @@ interface Props {
 }
 
 const labelStyle: React.CSSProperties = { fontSize: '12px', fontWeight: 600, color: '#4B5563', marginBottom: '4px' };
-const inputStyle: React.CSSProperties = { width: '100%', padding: '10px 12px', border: '1px solid #C7CED6', borderRadius: '8px', fontSize: '14px', background: '#FFFFFF' };
+// maxWidth/minWidth/boxSizing guarantee the field never exceeds its container —
+// native <input type="time"> (12-hour "09:00 AM" + clock icon) has a wide intrinsic
+// size that could otherwise spill past a narrow card on the store screen.
+const inputStyle: React.CSSProperties = { width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box', display: 'block', padding: '10px 12px', border: '1px solid #C7CED6', borderRadius: '8px', fontSize: '14px', background: '#FFFFFF' };
 
 const ItemScheduleEditor: React.FC<Props> = ({ value, onChange, hideToggle }) => {
   const { t } = useTranslation();

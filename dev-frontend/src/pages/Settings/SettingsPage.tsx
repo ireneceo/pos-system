@@ -683,7 +683,6 @@ const SettingsPage: React.FC = () => {
   const kitchenPrinterAutoPrintRef = useRef<AutoSaveHandle>(null);
   const kitchenPrinterToggleRef = useRef<AutoSaveHandle>(null);
   const printPerItemToggleRef = useRef<AutoSaveHandle>(null);
-  const mirrorToBillPrinterRef = useRef<AutoSaveHandle>(null);
   const receiptMembershipToggleRef = useRef<AutoSaveHandle>(null);
   const membershipActiveToggleRef = useRef<AutoSaveHandle>(null);
   const checkoutDisplayPhoneRef = useRef<AutoSaveHandle>(null);
@@ -5177,6 +5176,39 @@ const SettingsPage: React.FC = () => {
                   </p>
                   <AutoSaveField ref={mobileOrderCategorySchedulesRef} onSave={handleSave} type="list">
                     <>
+                      {/* Add-schedule control pinned at the TOP (mirrors Item Time Restrictions
+                          search placement) so it's always reachable without scrolling past the list. */}
+                      {(() => {
+                        const scheduledIds = new Set((mobileSettings.category_schedules || []).map(s => s.category_id?.toString()));
+                        const availableCats = categories.filter((c: any) => !scheduledIds.has(c.id?.toString()));
+                        if (availableCats.length === 0) return (
+                          <p style={{ color: '#6B7280', fontSize: '13px', textAlign: 'center', padding: '12px' }}>{t('settings:settingsPage.allCategoriesHaveSchedulesAssigned')}</p>
+                        );
+                        return (
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '16px' }}>
+                            <select
+                              id="add-schedule-cat"
+                              style={{ flex: 1, minWidth: 0, boxSizing: 'border-box', padding: '12px 16px', border: '1px solid #C7CED6', borderRadius: '8px', fontSize: '14px', background: 'white' }}
+                            >
+                              {availableCats.map((cat: any) => (
+                                <option key={cat.id} value={cat.id}>{cat.emoji || '🍽️'} {cat.name}</option>
+                              ))}
+                            </select>
+                            <button type="button" onClick={() => {
+                              const sel = document.getElementById('add-schedule-cat') as HTMLSelectElement;
+                              if (!sel?.value) return;
+                              const catId = parseInt(sel.value);
+                              setMobileSettings(prev => ({
+                                ...prev,
+                                category_schedules: [...prev.category_schedules, { category_id: catId, start_time: '09:00', end_time: '22:00', days: [], display: 'hide' }]
+                              }));
+                              mobileOrderCategorySchedulesRef.current?.triggerSave();
+                            }} style={{ padding: '10px 16px', background: '#F0F4FF', border: '1px dashed #635BFF', borderRadius: '8px', color: '#635BFF', fontSize: '14px', fontWeight: '500', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                              Add Schedule
+                            </button>
+                          </div>
+                        );
+                      })()}
                       {(mobileSettings.category_schedules || []).map((sched, index) => {
                         const cat = categories.find((c: any) => c.id === sched.category_id || c.id?.toString() === sched.category_id?.toString());
                         return (
@@ -5295,37 +5327,6 @@ const SettingsPage: React.FC = () => {
                           </div>
                         );
                       })}
-                      {(() => {
-                        const scheduledIds = new Set((mobileSettings.category_schedules || []).map(s => s.category_id?.toString()));
-                        const availableCats = categories.filter((c: any) => !scheduledIds.has(c.id?.toString()));
-                        if (availableCats.length === 0) return (
-                          <p style={{ color: '#6B7280', fontSize: '13px', textAlign: 'center', padding: '12px' }}>{t('settings:settingsPage.allCategoriesHaveSchedulesAssigned')}</p>
-                        );
-                        return (
-                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                            <select
-                              id="add-schedule-cat"
-                              style={{ flex: 1, padding: '12px 16px', border: '1px solid #C7CED6', borderRadius: '8px', fontSize: '14px', background: 'white' }}
-                            >
-                              {availableCats.map((cat: any) => (
-                                <option key={cat.id} value={cat.id}>{cat.emoji || '🍽️'} {cat.name}</option>
-                              ))}
-                            </select>
-                            <button type="button" onClick={() => {
-                              const sel = document.getElementById('add-schedule-cat') as HTMLSelectElement;
-                              if (!sel?.value) return;
-                              const catId = parseInt(sel.value);
-                              setMobileSettings(prev => ({
-                                ...prev,
-                                category_schedules: [...prev.category_schedules, { category_id: catId, start_time: '09:00', end_time: '22:00', days: [], display: 'hide' }]
-                              }));
-                              mobileOrderCategorySchedulesRef.current?.triggerSave();
-                            }} style={{ padding: '10px 16px', background: '#F0F4FF', border: '1px dashed #635BFF', borderRadius: '8px', color: '#635BFF', fontSize: '14px', fontWeight: '500', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                              Add Schedule
-                            </button>
-                          </div>
-                        );
-                      })()}
                     </>
                   </AutoSaveField>
                 </SettingsCard>
@@ -6553,6 +6554,27 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                                   <div style={{ fontSize: '11px', color: '#9CA3AF', fontStyle: 'italic' }}>{t('settings:printer.workstations.shopWideHint')}</div>
                                 </div>
                               )}
+
+                              {/* Full-order (consolidated) ticket to THIS POS. 2026-06-09 (Irene):
+                                  one toggle per POS row — replaces the separate "Consolidated Order
+                                  Ticket" card AND the redundant mirror-to-counter checkbox, and scales
+                                  to any number of POS (add more with "+ Add Workstation"). */}
+                              <AutoSaveField onSave={handleSave} type="toggle">
+                              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginTop: '12px', cursor: 'pointer' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={!!(ws as any).consolidatedTicket}
+                                  onChange={(e) => updateWs({ consolidatedTicket: e.target.checked })}
+                                  style={{ width: '16px', height: '16px', accentColor: '#635BFF', marginTop: '2px' }}
+                                />
+                                <span style={{ fontSize: '13px', color: '#1F2937' }}>
+                                  {t('settings:printer.workstations.consolidatedTicket', 'Print full order ticket here')}
+                                  <span style={{ display: 'block', fontSize: '11px', fontWeight: 400, color: '#6B7280', marginTop: '2px' }}>
+                                    {t('settings:printer.workstations.consolidatedTicketHint', 'Print the whole order on one ticket to this POS, alongside the per-station kitchen tickets — it does not replace them.')}
+                                  </span>
+                                </span>
+                              </label>
+                              </AutoSaveField>
                             </>
                           )}
                         </div>
@@ -6932,143 +6954,13 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                     </AutoSaveField>
                   </Toggle>
 
-                  <Toggle style={{ marginTop: '16px' }}>
-                    <div style={{ flex: 1 }}>
-                      <ToggleLabel style={{ marginBottom: '4px' }}>{t('settings:printer.mirrorToBillLabel')}</ToggleLabel>
-                      <p style={{ fontSize: '12px', color: '#4B5563', margin: 0 }}>
-                        {t('settings:printer.mirrorToBillDesc')}
-                      </p>
-                    </div>
-                    <AutoSaveField ref={mirrorToBillPrinterRef} onSave={handleSave} type="toggle">
-                    <ToggleSwitch>
-                      <ToggleInput
-                        type="checkbox"
-                        checked={printerSettings.kitchenPrinter.mirrorToBillPrinter ?? false}
-                        onChange={(e) => {
-                          setPrinterSettings(prev => ({
-                            ...prev,
-                            kitchenPrinter: { ...prev.kitchenPrinter, mirrorToBillPrinter: e.target.checked }
-                          }));
-                          mirrorToBillPrinterRef.current?.triggerSave();
-                        }}
-                      />
-                      <ToggleSlider />
-                    </ToggleSwitch>
-                    </AutoSaveField>
-                  </Toggle>
-
+                  {/* 2026-06-09 (Irene): the "mirror full order to counter" checkbox was removed —
+                      it duplicated the consolidated ticket. Full-order printing is now a per-POS
+                      toggle in the Workstations section ("Print full order ticket here"). */}
                   {/* 2026-06-02 확정 스펙 v2: 취소 티켓은 설정 토글 없이 항상 발송
                       (취소·이동은 주방이 무조건 알아야 함). printCancellationTicket 설정 삭제. */}
                 </SettingsCard>
               )}
-
-              {/* ─── Consolidated Order Ticket card ─── whole order on ONE ticket to a
-                  chosen printer (e.g. kitchen main), printed ALONGSIDE station tickets.
-                  Independent of the existing auto-print path (own poller + print-state). */}
-              <SettingsCard style={{ marginTop: '24px' }}>
-                <CardTitle>{t('settings:printer.consolidated.title', 'Consolidated Order Ticket')}</CardTitle>
-                <p style={{ color: '#4B5563', marginBottom: '20px', fontSize: '14px' }}>
-                  {t('settings:printer.consolidated.desc', 'Print the whole order on a single ticket to one printer (e.g. a kitchen main printer). It prints alongside the per-station kitchen tickets — it does not replace them.')}
-                </p>
-                {(() => {
-                  const co: any = (printerSettings as any).consolidatedOrderTicket || { enabled: false, method: 'qztray', address: '', autoPrint: false };
-                  const saveCo = async (patch: any) => {
-                    const next = { ...co, ...patch };
-                    const newPS = { ...printerSettings, consolidatedOrderTicket: next };
-                    setPrinterSettings(newPS as any);
-                    try { localStorage.setItem('printerSettings', JSON.stringify({ ...(JSON.parse(localStorage.getItem('printerSettings') || '{}')), consolidatedOrderTicket: next })); } catch {}
-                    if (user?.restaurantId) {
-                      try {
-                        const token = getAuthToken();
-                        const r = await fetch(`/api/restaurants/${user.restaurantId}`, {
-                          method: 'PUT',
-                          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ printer_settings: newPS })
-                        });
-                        const d = await r.json();
-                        setSaveStatus({ type: d.success ? 'success' : 'error', message: d.success ? t('settings:settingsPage.saved', 'Saved') : 'Save failed' });
-                      } catch { setSaveStatus({ type: 'error', message: 'Save failed' }); }
-                      setTimeout(() => setSaveStatus(null), 2000);
-                    }
-                  };
-                  const isLan = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(co.address || '');
-                  return (
-                    <>
-                      <Toggle style={{ marginBottom: co.enabled ? '16px' : '0' }}>
-                        <ToggleLabel>
-                          {t('settings:printer.consolidated.enable', 'Enable consolidated ticket')}
-                          <span style={{ display: 'block', fontSize: '11px', fontWeight: 400, color: '#6B7280', marginTop: '2px' }}>{t('settings:printer.consolidated.enableHint', 'Send a one-page order summary to a single printer.')}</span>
-                        </ToggleLabel>
-                        <ToggleSwitch>
-                          <ToggleInput type="checkbox" checked={!!co.enabled} onChange={(e) => saveCo({ enabled: e.target.checked })} />
-                          <ToggleSlider />
-                        </ToggleSwitch>
-                      </Toggle>
-
-                      {co.enabled && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                          <FormGroup>
-                            <Label>{t('settings:printer.consolidated.method', 'Connection method')}</Label>
-                            <select value={co.method || 'qztray'} onChange={(e) => saveCo({ method: e.target.value })}
-                              style={{ width: '100%', padding: '10px 12px', border: '1px solid #C7CED6', borderRadius: '8px', fontSize: '14px', background: '#fff' }}>
-                              <option value="qztray">QZ Tray (LAN / USB)</option>
-                              <option value="browser">{t('settings:printer.consolidated.methodBrowser', 'Browser print dialog')}</option>
-                            </select>
-                          </FormGroup>
-
-                          {co.method !== 'browser' && (
-                            <>
-                              <FormGroup>
-                                <Label>{t('settings:printer.consolidated.printer', 'Printer (IP:Port or name)')}</Label>
-                                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                  <Input type="text" placeholder="192.168.1.50:9100" value={co.address || ''}
-                                    onChange={(e) => saveCo({ address: e.target.value })} style={{ flex: 1, minWidth: '180px' }} />
-                                  <button type="button"
-                                    onClick={async () => {
-                                      setSaveStatus({ type: 'success', message: t('settings:printer.consolidated.testing', 'Sending test…') });
-                                      try { const ok = await qzTrayTestPrint(co.address || ''); setSaveStatus({ type: ok ? 'success' : 'error', message: ok ? t('settings:printer.consolidated.testSent', 'Test sent') : t('settings:printer.consolidated.testFail', 'Test failed') }); }
-                                      catch { setSaveStatus({ type: 'error', message: t('settings:printer.consolidated.testFail', 'Test failed') }); }
-                                      setTimeout(() => setSaveStatus(null), 2500);
-                                    }}
-                                    style={{ padding: '10px 16px', fontSize: '13px', fontWeight: 600, border: '1px solid #635BFF', borderRadius: '8px', background: '#F0EFFF', color: '#635BFF', cursor: 'pointer' }}
-                                  >{t('settings:printer.consolidated.test', 'Test Print')}</button>
-                                </div>
-                                {!isLan && (
-                                  <div style={{ fontSize: '11px', color: '#6B7280', marginTop: '6px' }}>
-                                    {t('settings:printer.consolidated.printerHint', 'Leave blank for this device\'s default printer, type an OS printer name, or enter IP:Port for a LAN printer.')}
-                                  </div>
-                                )}
-                              </FormGroup>
-
-                              {qzTrayPrinters.length > 0 && (
-                                <FormGroup>
-                                  <Label>{t('settings:printer.consolidated.pickDetected', 'Or pick a detected printer')}</Label>
-                                  <select value={co.address || ''} onChange={(e) => saveCo({ address: e.target.value })}
-                                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #C7CED6', borderRadius: '8px', fontSize: '14px', background: '#fff' }}>
-                                    <option value="">{t('settings:printer.consolidated.defaultOption', '— Device default printer —')}</option>
-                                    {qzTrayPrinters.map(p => <option key={p} value={p}>{p}</option>)}
-                                  </select>
-                                </FormGroup>
-                              )}
-                            </>
-                          )}
-
-                          <Toggle>
-                            <ToggleLabel>
-                              {t('settings:printer.consolidated.autoPrint', 'Auto-print on new orders')}
-                              <span style={{ display: 'block', fontSize: '11px', fontWeight: 400, color: '#6B7280', marginTop: '2px' }}>{t('settings:printer.consolidated.autoPrintHint', 'Automatically print the consolidated ticket when a new order arrives.')}</span>
-                            </ToggleLabel>
-                            <ToggleSwitch>
-                              <ToggleInput type="checkbox" checked={!!co.autoPrint} onChange={(e) => saveCo({ autoPrint: e.target.checked })} />
-                              <ToggleSlider />
-                            </ToggleSwitch>
-                          </Toggle>
-                        </div>
-                      )}
-                    </>
-                  );
-                })()}
-              </SettingsCard>
 
               {/* Receipt Customization */}
               <SettingsCard style={{ marginTop: '24px' }}>

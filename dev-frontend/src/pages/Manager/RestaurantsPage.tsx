@@ -988,7 +988,9 @@ const ManagerRestaurantsPage: React.FC = () => {
         plan_type: newRestaurant.planType,
         plan_amount: parseFloat(newRestaurant.planAmount),
         currency: newRestaurant.currency,
-        status: 'active',
+        // Status is derived server-side from subscription_start (future start → trial).
+        // Send the form value rather than hardcoding so the backend can honor it for today/past starts.
+        status: newRestaurant.status,
         billing_cycle: newRestaurant.billingCycle,
         payment_model: newRestaurant.paymentModel === 'manager'
           ? (user?.role === 'Foodcourt General' || user?.role === 'Foodcourt Manager' ? 'foodcourt_manager' : 'brand_manager')

@@ -2459,16 +2459,39 @@ export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerNa
     // ticket itself is identical to the proven counter mirror; only the target
     // address changes. Fires for every kitchen path (new order + cancel/move
     // reprints), so the consolidated copy always matches the station tickets.
+    // 2026-06-09 (Irene "POS별 통합티켓"): the consolidated/counter ticket mirrors the
+    // whole order to ONE-OR-MORE POS (counter) printers. Each workstation carries a
+    // `consolidatedTicket` toggle; when ON we send the unified ticket to THAT POS's
+    // already-configured billPrinter (a real, tested printer) — so adding a 2nd POS just
+    // adds a 2nd toggle (1 POS = 1 ticket). This replaces the old single free-typed
+    // consolidatedOrderTicket.address (the "MASTER" typo that silently failed). Legacy
+    // consolidatedOrderTicket.{enabled,address} and kitchenPrinter.mirrorToBillPrinter are
+    // kept as fallbacks so shops configured the old way keep working. Dedup by address so
+    // the same physical printer never gets two consolidated copies.
+    const __unifiedTargets = [];
+    const __addTarget = (addr, method) => {
+      const a = (addr || '').trim();
+      const m = method || 'qztray';
+      if (__unifiedTargets.some(t => t.address === a && t.method === m)) return;
+      __unifiedTargets.push({ address: a, method: m });
+    };
+    const __wss = Array.isArray(settings.workstations) ? settings.workstations : [];
+    __wss.forEach(ws => {
+      const bp = ws && ws.billPrinter;
+      if (ws && ws.consolidatedTicket && bp && bp.enabled !== false && (bp.address || bp.method === 'browser')) {
+        __addTarget(bp.address, bp.method);
+      }
+    });
+    // Legacy fallbacks (back-compat for shops set up before per-POS toggles).
     const __co = settings.consolidatedOrderTicket;
-    const __coOn = !!(__co && __co.enabled);
+    if (__co && __co.enabled && __co.address) __addTarget(__co.address, __co.method);
     const __bpMirror = getActiveBillPrinter();
-    const __unifiedAddr = __coOn ? (__co.address || '') : (__bpMirror && __bpMirror.address);
-    const __unifiedOn = __coOn || (settings.kitchenPrinter?.mirrorToBillPrinter && __bpMirror && __bpMirror.enabled && __bpMirror.address);
-    if (__unifiedOn) {
+    if (settings.kitchenPrinter?.mirrorToBillPrinter && __bpMirror && __bpMirror.enabled && __bpMirror.address) {
+      __addTarget(__bpMirror.address, __bpMirror.method);
+    }
+    if (__unifiedTargets.length > 0) {
       setTimeout(() => {
         try {
-          const billAddr = __unifiedAddr;
-          const isLanIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(billAddr || '');
           // Tag each item with its target station name so the counter mirror
           // ticket shows inline [KQ1] [KQ2] [BARPR] next to each item — cashier
           // can verify station routing at a glance (2026-05-28 The Fire 매장
@@ -2477,13 +2500,17 @@ export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerNa
           // noStationBox: 통합 티켓은 상단 단일 station 박스 생략(여러 스테이션 혼재).
           // 라우팅은 아이템별 인라인 [KQ1][KQ2] 태그로 확인. (KQ1 박스만 찍히던 오류 제거)
           const unifiedTicket = { ...tagged, groupLabel: 'COUNTER', printedAt: 'COUNTER', noStationBox: true, showItemStations: true };
-          if (isLanIP) {
-            sendViaQZTray(generateKitchenTicketContent(unifiedTicket, storeInfo), billAddr)
-              .catch(e => console.warn('Kitchen → counter mirror print failed:', e && e.message));
-          } else {
-            sendHTMLViaQZTray(generateHTMLKitchenTicket(unifiedTicket, storeInfo), billAddr)
-              .catch(e => console.warn('Kitchen → counter mirror print failed:', e && e.message));
-          }
+          __unifiedTargets.forEach(tgt => {
+            const billAddr = tgt.address;
+            const isLanIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(billAddr || '');
+            if (isLanIP) {
+              sendViaQZTray(generateKitchenTicketContent(unifiedTicket, storeInfo), billAddr)
+                .catch(e => console.warn('Kitchen → counter mirror print failed:', e && e.message));
+            } else {
+              sendHTMLViaQZTray(generateHTMLKitchenTicket(unifiedTicket, storeInfo), billAddr)
+                .catch(e => console.warn('Kitchen → counter mirror print failed:', e && e.message));
+            }
+          });
         } catch (e) {
           console.warn('Kitchen → counter mirror trigger failed:', e && e.message);
         }

@@ -583,7 +583,14 @@
       "Bash(sed -n '260,300p' services/subscriptionInvoiceService.js)",
       "Bash(sed -n '595,640p' services/subscriptionScheduler.js)",
       "Bash(awk -F: '$1>=1600 && $1<=1825')",
-      "Bash(scp -q /tmp/disable-consolidated.js irene@87.106.78.146:/var/www/production-backend/disable-consolidated.js)"
+      "Bash(scp -q /tmp/disable-consolidated.js irene@87.106.78.146:/var/www/production-backend/disable-consolidated.js)",
+      "Bash(sed -n '46,54p' src/index.css)",
+      "Bash(sed -n '5,14p' src/styles/GlobalStyles.ts)",
+      "Bash(awk 'NR>=6980 && NR<=7090 {print NR\": \"$0}' src/pages/Settings/SettingsPage.tsx)",
+      "Bash(sed -i '6965,7048d' src/pages/Settings/SettingsPage.tsx)",
+      "Bash(awk 'NR>=6958 && NR<=6970 {print NR\": \"$0}' src/pages/Settings/SettingsPage.tsx)",
+      "Bash(awk '/const updateData/,/};/' src/pages/Manager/RestaurantsPage.tsx)",
+      "Bash(scp -o ConnectTimeout=10 /tmp/prod-nginx.conf irene@87.106.78.146:/tmp/sw-nginx.conf)"
     ],
     "deny": [],
     "ask": []

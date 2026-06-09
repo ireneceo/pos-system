@@ -1079,9 +1079,16 @@ router.post('/', authenticateToken, requireRole(
     // Mirrors the PUT handler and applies to ALL roles (not System-Admin-only).
     let subStartDate = null, subEndDate = null, derivedStatus = null, derivedTrialEnd = null;
     if (activateSubscription) {
-      subStartDate = req.body.subscriptionStart ? new Date(req.body.subscriptionStart) : new Date();
-      if (req.body.subscriptionEnd) {
-        subEndDate = new Date(req.body.subscriptionEnd);
+      // Accept BOTH camelCase and snake_case — the Manager/RestaurantsPage form sends
+      // subscription_start/subscription_end (snake), like it does plan_type/billing_cycle.
+      // Without the snake fallback the future service date never reached this logic, so a
+      // future start silently defaulted to today → no trial, immediate billing (the
+      // thefire branch bug). Mirrors the planType/billingCycle dual-read above.
+      const _subStart = req.body.subscriptionStart || req.body.subscription_start;
+      const _subEnd = req.body.subscriptionEnd || req.body.subscription_end;
+      subStartDate = _subStart ? new Date(_subStart) : new Date();
+      if (_subEnd) {
+        subEndDate = new Date(_subEnd);
       } else {
         const cycle = req.body.billingCycle || req.body.billing_cycle || 'monthly';
         subEndDate = new Date(subStartDate);
@@ -1488,11 +1495,14 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
         updateData.grace_period_start = null;
       }
     }
-    if (req.body.subscriptionStart !== undefined) {
-      updateData.subscription_start = req.body.subscriptionStart ? new Date(req.body.subscriptionStart) : null;
+    // Accept BOTH camelCase and snake_case (mirrors billing_cycle below + the create handler).
+    const _putSubStart = req.body.subscriptionStart !== undefined ? req.body.subscriptionStart : req.body.subscription_start;
+    const _putSubEnd = req.body.subscriptionEnd !== undefined ? req.body.subscriptionEnd : req.body.subscription_end;
+    if (_putSubStart !== undefined) {
+      updateData.subscription_start = _putSubStart ? new Date(_putSubStart) : null;
     }
-    if (req.body.subscriptionEnd !== undefined) {
-      updateData.subscription_end = req.body.subscriptionEnd ? new Date(req.body.subscriptionEnd) : null;
+    if (_putSubEnd !== undefined) {
+      updateData.subscription_end = _putSubEnd ? new Date(_putSubEnd) : null;
     }
     if (req.body.billingCycle !== undefined || req.body.billing_cycle !== undefined) {
       updateData.billing_cycle = req.body.billingCycle || req.body.billing_cycle;

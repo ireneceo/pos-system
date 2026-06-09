@@ -161,16 +161,37 @@ export function useAutoPrintPoller(opts: {
                 : (ord.order_date ? new Date(ord.order_date).getTime() : 0));
               const _isBacklog = !!(_autoEnabledAt && _ordMs && _ordMs < _autoEnabledAt);
               if (_kitchenAuto && !_isBacklog) {
-                const kitchenPrintData = { ...printData, items: kitchenItemsRaw.map(mapItem) };
-                let ok: any = true;
-                try { ok = await billPrintMod.printKitchenTicketViaRawBT(kitchenPrintData, printStoreInfo); }
-                catch (e: any) { console.error('[autoPrint] kitchen failed:', e); ok = false; }
-                if (ok === false) {
-                  // Rule 6: notify POS, keep needs_print=true so next cycle retries.
-                  try { window.dispatchEvent(new CustomEvent('autoprint-failed', { detail: { orderNumber: ord.order_number, scope: 'kitchen' } })); } catch {}
-                } else {
-                  kitchenPrinted = true;
+                // 2026-06-09 (Irene "새주문 2장"): ATOMIC CLAIM before printing.
+                // A new order broadcasts an 'autoprint-poke' via localStorage, so EVERY
+                // same-origin window/device polls at the SAME instant → two pollers
+                // (this hook + MainLayout._printPollFn) both printed the kitchen ticket
+                // before either marked it → 2 tickets. Table-move/cancel have NO poke, so
+                // their staggered intervals let /printed win first → 1 ticket. The atomic
+                // claim (needs_print true→false) lets only ONE caller win → 1 ticket,
+                // identical to table-move. On print failure we /print-rearm so another
+                // device or the next cycle retries (no permanent "claimed-but-unprinted"
+                // block — the outage that made us drop pre-claim before).
+                let _claimed = false;
+                try {
+                  const _cr = await fetch(`/api/orders/${ord.id}/print-claim`, { method: 'PATCH', headers: _h });
+                  const _cj = await _cr.json().catch(() => null);
+                  _claimed = !!(_cj && _cj.claimed);
+                } catch (e: any) { _claimed = false; }
+                if (_claimed) {
+                  const kitchenPrintData = { ...printData, items: kitchenItemsRaw.map(mapItem) };
+                  let ok: any = true;
+                  try { ok = await billPrintMod.printKitchenTicketViaRawBT(kitchenPrintData, printStoreInfo); }
+                  catch (e: any) { console.error('[autoPrint] kitchen failed:', e); ok = false; }
+                  if (ok === false) {
+                    // re-arm so another device / next cycle retries (no permanent block)
+                    try { await fetch(`/api/orders/${ord.id}/print-rearm`, { method: 'PATCH', headers: _h }); } catch {}
+                    // Rule 6: notify POS so the cashier knows the ticket didn't print.
+                    try { window.dispatchEvent(new CustomEvent('autoprint-failed', { detail: { orderNumber: ord.order_number, scope: 'kitchen' } })); } catch {}
+                  } else {
+                    kitchenPrinted = true;
+                  }
                 }
+                // not claimed → another device already owns this ticket, skip silently
               }
             }
 

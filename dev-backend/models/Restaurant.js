@@ -606,7 +606,10 @@ Restaurant.init({
         billPrinter: { ...defaultBill },
         kitchenPrinter: { ...defaultKitchen },
         workstations: [
-          { id: 'ws_default', name: 'Main POS', billPrinter: { ...defaultBill } }
+          // consolidatedTicket: when true, this POS/counter also prints the whole-order
+          // consolidated ticket to its billPrinter (Irene 2026-06-09 per-POS toggle —
+          // replaces the single free-typed consolidatedOrderTicket.address).
+          { id: 'ws_default', name: 'Main POS', billPrinter: { ...defaultBill }, consolidatedTicket: false }
         ]
       };
       if (!rawValue) {
@@ -646,18 +649,21 @@ Restaurant.init({
           merged.workstations = [{
             id: 'ws_default',
             name: 'Main POS',
-            billPrinter: { ...defaultBill, ...merged.billPrinter }
+            billPrinter: { ...defaultBill, ...merged.billPrinter },
+            consolidatedTicket: false
           }];
         } else {
           // Fill in any missing fields on saved workstations.
           merged.workstations = parsed.workstations.map((ws, idx) => ({
             id: ws.id || `ws_${idx}`,
             name: ws.name || `Workstation ${idx + 1}`,
-            billPrinter: { ...defaultBill, ...(ws.billPrinter || {}) }
+            billPrinter: { ...defaultBill, ...(ws.billPrinter || {}) },
+            // Preserve the per-POS consolidated-ticket toggle (else map() would drop it).
+            consolidatedTicket: !!ws.consolidatedTicket
           }));
           // Ensure at least one workstation always exists (never let it become empty).
           if (merged.workstations.length === 0) {
-            merged.workstations = [{ id: 'ws_default', name: 'Main POS', billPrinter: { ...defaultBill, ...merged.billPrinter } }];
+            merged.workstations = [{ id: 'ws_default', name: 'Main POS', billPrinter: { ...defaultBill, ...merged.billPrinter }, consolidatedTicket: false }];
           }
         }
         return merged;

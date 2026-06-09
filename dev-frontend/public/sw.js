@@ -10,7 +10,7 @@
  * caching SPA shell would conflict. If future offline support is needed, layer Workbox separately.
  */
 
-const SW_VERSION = '3.50-kds-login-filters-20260605';
+const SW_VERSION = '3.55-print-claim-dedup-20260609';
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
