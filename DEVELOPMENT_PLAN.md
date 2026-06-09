@@ -1,21 +1,33 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-09 (v3.54 운영 배포 후 통합티켓 재구조 = DEV 미배포·실프린터 대기. v3.52 멀티지점 브런치명 / v3.53 QZ 원클릭 설치 / v3.54 통합 오더티켓+미리보기 다국어 모두 배포 완료.)
+> **최종 업데이트:** 2026-06-09 (저녁 — 통합티켓 재구조 운영 배포했으나 실프린터 검증 실패→설정 OFF. thefire01/02/03 구독/인보이스 데이터 정정 완료. 구독 시작일/트라이얼 코드 수정 백엔드만 됨·프론트/검증/배포 미완. 버전 미상승.)
 
-## ⚠️ DEV 미배포 (실프린터 눈확인 + bless + 배포 대기): 통합 오더티켓 재구조 (2026-06-09)
+## ⚠️ 미완 — 다음 세션 (2026-06-09 저녁)
 
-> thefire02(rest 24) 운영 테스트에서 v3.54 통합티켓(별도 폴러)이 **중복 발행 + 취소/이동 시 지정 프린터 누락**으로 드러남. Irene 지시("포스로 가는 통합티켓 그대로 [지정 프린터로]")대로 재구조.
+### 1. 통합 오더티켓 — 배포했으나 실프린터 실패 → 설정 OFF로 임시 안정화
+
+> 통합티켓 재구조(billPrint.js 지정 프린터 1장 발행)를 운영 배포(Backup 20260609_130201, print-guard bless). Irene 선택=배포 후 매장 확인. **실프린터 테스트 실패.**
 
 | 작업 | 설명 | 상태 |
 |------|------|:----:|
-| 별도 폴러 제거 | v3.54의 `ConsolidatedTicketRunner`/poller App 마운트 해제 (중복 원인) | ✅ DEV |
-| 미러 라우팅화 | 기존 주방인쇄 미러(`printKitchenTicketViaRawBT`)가 `consolidatedOrderTicket.address` 지정 프린터로 통합티켓 발행. 미설정 시 기존 bill 미러 그대로(하위호환) | ✅ DEV |
-| 효과 | 통합티켓 = 지정 프린터(MASTER/스테이션/카운터) 1곳·1장, 새주문+취소+이동 전부(미러는 전 경로). 스테이션 티켓 그대로 | ✅ DEV |
-| 테이블 이동 fixture 제외 | 이동 대상 목록에서 키친/입구/카운터 등 고정요소 제외(`!tableType \|\| ==='table'`) | ✅ DEV |
-| ⚠ 남음 | **billPrint.js 인쇄변경 → 실프린터 눈확인(1장만/지정 프린터/중복0) → `check-print-guard.js --bless` → /배포.** 운영은 아직 v3.54(별도폴러). dead code(consolidated-print route/column/poller 파일) 정리 별도 | ☐ |
+| 재구조 배포 | 별도 폴러 제거 + 미러를 `consolidatedOrderTicket.address` 지정 프린터로 1장 발행 | ✅ 배포됨 |
+| 실프린터 실패 | 통합티켓 안 나옴(주소 "MASTER"=실프린터 없음→조용히 실패) + BAR 2장 중복(SW 미bump 캐시 의심) | ✗ 실패 |
+| 임시 안정화 | thefire02/03 `consolidatedOrderTicket.enabled=false` raw-update(스테이션 티켓만). 백업 운영 `/tmp/printer-settings-backup-*.json` | ✅ |
+| ⚠ 남음 | 제대로 = (A)실프린터 목록 선택 단일설정 / (B)스테이션별 통합옵션 중 Irene 결정 → dev → **실프린터 확인 후 재배포+bless**. memory `project_consolidated_ticket_prod_fail` | ☐ |
 
-### 수정 파일
-- 프론트🔒: `utils/billPrint.js`(미러 대상 라우팅) / 프론트: `App.tsx`(폴러 마운트 제거), `pages/FloorPlan/FloorPlanPage.tsx`(fixture 필터)
+### 2. 구독 시작일/트라이얼 코드 수정 — 백엔드 완료, 프론트/검증/배포 미완
+
+> thefire(BG)가 Manager 페이지로 지점 추가 시 즉시 유료/오늘부터 청구되던 버그. 미래 시작일→트라이얼 자동 + 시작일부터 청구로 수정.
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 백엔드 | `restaurants-crud.js` create=미래시작 trial자동+trial_end+startTrial클로버/이중인보이스 제거, update=미래시작 trial강제 | ✅ DEV |
+| 프론트 | `Manager/RestaurantsPage.tsx:991` `status:'active'`→폼값 | ☐ 미완 |
+| 검증/배포 | 데모 실API(미래시작→trial/인보이스 시작일기준, 당일→active) → /배포. 결제코드라 실API 필수 | ☐ |
+
+### 수정 파일 (DEV)
+- 백엔드: `routes/restaurants-crud.js`(구독 trial 파생) — auto-save 커밋됨
+- 프론트🔒: `utils/billPrint.js`(통합티켓 미러 라우팅, 운영 배포됨)
 
 ---
 

@@ -1,31 +1,34 @@
 # Purple POS — 개발 세션 상태
 
-<!-- AUTOSAVE-STALE-BANNER -->
-> **[AUTO-SAVE STALE] (2026-06-09 13:50, idle 3699s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
-> 변경된 작업 파일: restaurants-crud.js
-<!-- /AUTOSAVE-STALE-BANNER -->
-
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-06-09
-**버전:** v3.54 (2026-06-09 운영 배포, Backup 20260609_103649, smoke 9/9)
-**작업 상태:** 진행 중 — 통합 오더티켓 재구조 (DEV 완료, **실프린터 눈확인 + print-guard bless + 배포 대기**)
+**마지막 업데이트:** 2026-06-09 (저녁 — 인쇄 firefight + 구독 코드 수정 미완)
+**버전:** v3.54 운영 (※ 오늘 통합티켓 재구조 배포했으나 실프린터 검증 실패 → 버전 미상승 보류)
+**작업 상태:** 두 갈래 미완 — (1) 통합티켓 제대로 고치기 (2) 구독 시작일/트라이얼 코드 수정 /검증·/배포
 
-### 진행 중인 작업
-- **통합 오더티켓 재구조 (thefire02 운영 테스트 발 — DEV 완료, 미배포)**
-  - 배경: v3.54 통합티켓(별도 폴러 방식)이 thefire02(rest 24) 실테스트에서 **중복 발행 + 취소/이동 시 지정 프린터 누락**. Irene 지시 = "포스로 가는 기존 통합티켓(미러) 그대로 [지정 프린터로]".
-  - DEV 수정 완료: ① 별도 폴러(`ConsolidatedTicketRunner`) App 마운트 제거 ② 기존 주방인쇄 미러(`billPrint.printKitchenTicketViaRawBT` 2454~)가 `consolidatedOrderTicket.address`(설정값) 지정 프린터로 통합티켓 발행 — 미설정 매장은 기존 bill 미러 그대로(하위호환). → 통합티켓 1곳·1장, 새주문+취소+이동 전부, 스테이션 티켓 그대로.
-  - ③ (별건) 테이블 이동 대상 목록 fixture(키친/입구/카운터) 제외.
-  - **검증 상태**: build/hydration/i18n/mount 전부 통과. health-check 100/101(유일 실패=billPrint 무결성 플래그=의도 인쇄변경). print-guard billPrint 1건 플래그(정상).
-  - **⚠ 남은 의무 단계 (다음)**: (1) **/배포** → (2) thefire02에서 통합 프린터 지정 후 새주문 1건 = **1장만·지정 프린터로** + 취소/이동 확인(Irene 눈확인) → (3) `cd dev-backend && node scripts/check-print-guard.js --bless`. **운영은 아직 v3.54(별도폴러=중복). 배포 전까지 운영 통합 토글 OFF 권장.**
-  - dead code 정리(consolidated-print route/column/migrate/poller·util·hook 파일 = 이제 미사용): 안정화 후 별도.
+### 미완 — 다음 세션 (둘 다 미배포·미검증)
 
-### 완료된 작업 (이번 세션 — 운영 배포 완료)
-- **v3.52** (Backup 20260609_071746): 멀티지점 브런치명(Branch Name) 입력(매장 추가/수정 폼, BG) + 매장 추가 폼 레스토랑 Email/Phone 옵션화(거짓 `*` 제거, 백엔드 무검증·nullable). Admin Email은 필수 유지.
-- **v3.53** (Backup 20260609_084352): QZ 프린터 **원클릭 설치파일**(`PurpleHere-Printer-Setup.bat` 하나로 QZ앱 다운로드+무인설치+인증서→`C:\Program Files\QZ Tray\`+ProgramData+APPDATA 기록+QZ 재시작) + 설정 프린터 화면 3단계(설치→연결확인→프린터찾기) 정리 + 중복 하드코딩 블록 제거 + i18n 4언어.
-- **v3.54** (Backup 20260609_103649): 통합 오더티켓 v1(별도 폴러, 기본OFF) + 자동인쇄 미리보기 모달 다국어(버튼 단일언어 + 내용 4언어). ※ 통합티켓은 위 재구조로 대체 진행 중.
+**1. 통합 오더티켓 — 운영 배포했으나 실프린터 검증 실패 → 설정으로 임시 OFF**
+  - 오늘 통합티켓 재구조(billPrint.js)를 **운영 배포**(Backup `20260609_130201`, smoke 9/9, print-guard 오늘 bless). Irene 선택=배포 후 매장 확인.
+  - **실프린터 결과 실패**: 통합티켓 안 나옴 + BAR 2장 중복. 원인 확정 = `consolidatedOrderTicket.address="MASTER"` 인데 **MASTER 라는 실제 프린터가 없음**(실제명: KQ1/KQ2/KITCHEN 1·2/BAR/POS-80C) → QZ 인쇄 조용히 실패. BAR 2장은 SW_VERSION 미bump(운영 3.50 그대로)로 기기가 옛 v3.54 캐시 번들(별도폴러 중복) 가능성.
+  - **임시 안정화 완료**: thefire02/03(rest 24/25) `consolidatedOrderTicket.enabled=false` raw-update(주소 MASTER 보존). 백업 운영 `/tmp/printer-settings-backup-2026-06-09T13-54-33-295Z.json`. → 스테이션 티켓만 인쇄(검증된 동작). rest16은 원래 null.
+  - **다음**: Irene 매장 새로고침 후 재테스트(BAR 여전히 2장이면 SW bump/롤백). 통합티켓 제대로 = **(A) 실제 프린터 목록에서 선택하는 단일 설정** 또는 **(B) 스테이션별 "통합티켓도 보내기" 옵션** 중 Irene 결정 → dev 구현 + **실프린터 확인 후에만 재배포 + --bless**. ("MASTER" 직접 타이핑 제거가 핵심)
+  - billPrint.js 는 현재 운영에 재구조 코드 있음(통합은 설정 OFF로 비활성). print-guard 는 오늘 bless 된 새 기준.
+
+**2. 구독 시작일/트라이얼 코드 수정 — 백엔드 완료, 프론트 미완, 미검증·미배포**
+  - 배경: thefire(BG)가 Manager/RestaurantsPage 로 지점 추가 시 `status:'active'` 하드코딩 + create 핸들러에 trial 파생 로직 없음 → 미래 시작일·트라이얼 불가 → thefire02/03 가 오늘부터 즉시 유료/청구됨. (운영 데이터는 정정 완료 — 아래 완료 항목)
+  - **DEV 수정 완료(백엔드)**: `routes/restaurants-crud.js` create 핸들러에 "미래 시작 → trial 자동 + trial_end_date 설정 + startTrial 클로버/이중인보이스 제거(createInitialInvoice 단일경로)" 추가. update 핸들러는 미래시작 시 trial 강제. (signup=authService startTrial 경로는 그대로)
+  - **미완(프론트)**: `dev-frontend/src/pages/Manager/RestaurantsPage.tsx:991` `status:'active'` 하드코딩을 `newRestaurant.status`(폼값)로 교체 — **아직 안 함**(인쇄 firefight 로 중단). 폼엔 시작일 DateField 이미 있음(line 2150).
+  - **다음**: 프론트 1줄 수정 → build → **/검증**(데모매장 실API: 미래시작 생성→trial+trial_end+인보이스 1장 시작일 기준 / 당일시작→active 정상) → **/배포**. ⚠ 결제/청구 코드라 실API 검증 필수, 미검증 배포 절대 금지.
+
+### 완료된 작업 (이번 세션 — 운영 반영 완료)
+- **통합티켓 재구조 배포 + 임시 OFF** (Backup 20260609_130201) — 위 1번 참조. 배포는 됐으나 실프린터 실패로 통합 기능은 설정 OFF.
+- **thefire01/02/03 구독/인보이스 운영 데이터 정정**: 3지점 모두 status=trial, subscription_start=2026-07-01, trial_end=2026-06-30 으로 정정. 잘못 발행된 6/9청구 2건(INV76/77) void, rest16 8월→7월(INV51 RM179), rest24/25 신규 7월 인보이스(INV-260609003/004 RM99). 백업 운영 `/tmp/thefire-billing-backup-2026-06-09T13-12-38-239Z.json`. ※ INV-260412003(RM12,880)은 **진짜 하드웨어 청구서**(Xiaomi Pad/모니터/셋업, 4/20 연체)라 안 건드림 — Irene 별도 결정 필요.
+- **v3.52~v3.54** (Backup 071746/084352/103649): 브런치명 입력 / QZ 원클릭 설치 / 통합티켓 v1 + 미리보기 다국어. (오전 배포)
 
 ### 다음 확정 작업
-- **통합 오더티켓 재구조 마무리 (Irene 지시)**: /배포 → thefire02 실프린터 눈확인(1장만/지정 프린터/취소·이동) → print-guard --bless. (위 진행 중 항목의 남은 단계)
+1. **구독 코드 수정 마무리**: Manager/RestaurantsPage.tsx:991 프론트 1줄 → /검증 → /배포 (위 2번)
+2. **통합티켓 제대로**: 설계 A/B Irene 결정 → dev 구현 → 실프린터 확인 → 재배포 (위 1번)
+3. **INV-260412003 RM12,880 하드웨어 청구서** 처리 방향 Irene 결정
 
 ### 후속 후보 (아이디어 메모, 확정 X)
 > 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.

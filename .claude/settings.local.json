@@ -582,7 +582,8 @@
       "Bash(awk -F: '$1>=1100 && $1<=1270')",
       "Bash(sed -n '260,300p' services/subscriptionInvoiceService.js)",
       "Bash(sed -n '595,640p' services/subscriptionScheduler.js)",
-      "Bash(awk -F: '$1>=1600 && $1<=1825')"
+      "Bash(awk -F: '$1>=1600 && $1<=1825')",
+      "Bash(scp -q /tmp/disable-consolidated.js irene@87.106.78.146:/var/www/production-backend/disable-consolidated.js)"
     ],
     "deny": [],
     "ask": []

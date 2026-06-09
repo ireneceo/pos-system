@@ -6,14 +6,17 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
-### 2026-06-09 (DEV — 실프린터 확인 + bless + 배포 대기)
-- 통합 오더티켓 재구조 — v3.54의 별도 폴러(중복/취소·이동 누락 유발) 제거하고, 기존 주방인쇄 미러를 "보낼 프린터 지정 가능"하게 바꿔 통합티켓이 지정 프린터(MASTER 또는 주방 스테이션 등) 1곳으로 1장만 발행(새주문+취소+이동 전부). billPrint.js 인쇄 변경 → 실프린터 눈확인 후 print-guard --bless 필요. (운영 thefire02는 아직 v3.54 별도폴러 버전)
-- 테이블 이동 대상 목록에서 고정요소(키친/입구/카운터 등) 제외 — 실제 테이블만 선택지로 표시
+### 2026-06-09 (저녁 — 운영 배포했으나 실프린터 검증 실패 → 설정 OFF, 버전 미상승)
+- 통합 오더티켓 재구조 — 별도 폴러 제거 + 주방인쇄 미러를 지정 프린터로 1장 발행. **운영 배포(Backup 20260609_130201, print-guard bless)했으나 실프린터 테스트 실패**: 통합티켓 안 나옴(설정 주소 "MASTER"가 실제 프린터 아님) + BAR 2장 중복. → thefire02/03 통합티켓 **설정 OFF로 임시 안정화**(스테이션 티켓만). 제대로 고치기(실프린터 목록 선택식)는 다음 세션. memory `project_consolidated_ticket_prod_fail`
+- 테이블 이동 대상 목록에서 고정요소(키친/입구/카운터 등) 제외 — 실제 테이블만 선택지로 표시 (배포됨)
+
+### 진행 중 (다음 세션 — 미배포)
+- 구독 시작일/트라이얼 코드 수정 — 미래 시작일 지정 시 트라이얼 자동 + 시작일부터 청구. 백엔드(restaurants-crud create/update) 완료, 프론트(Manager/RestaurantsPage:991) 미완. 결제/청구 코드라 실API 검증 후 배포. memory `project_thefire_billing_trial_fix`
 
 ### 미배포 (다음 세션)
 - 주방 디스플레이(KDS) 준비시간 타이머 적용 — 인쇄 보호 파일이라 실프린터 화면 앞에서 확인 후 적용 (docs/PREP_TIME_TRACKING.md §6)
 - 설정 저장 보호 가드(빈값 덮어쓰기 차단) 구현 — 분석 완료(`store.js:97` 무방비 외 4건), Irene 결정(hydration marker) 후. memory `project_settings_guard_analysis`
-- BG dashboard 자동 trial 판정 + user 29 데이터 정정
+- BG dashboard 자동 trial 판정 + user 29 데이터 정정 (thefire BG 8/1 suspended 정리 포함)
 
 ---
 
