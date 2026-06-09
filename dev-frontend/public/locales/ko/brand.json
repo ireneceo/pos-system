@@ -685,5 +685,14 @@
   "brandMenuCategoriesPage.emptyHint": "메뉴 항목을 \"메인\", \"음료\" 같은 카테고리로 묶으세요.",
   "brandMenuOptionGroupsPage.confirmDeleteTitle": "옵션 그룹 삭제",
   "brandMenuOptionGroupsPage.cannotDeleteTitle": "옵션 그룹 삭제 불가",
-  "brandMenuOptionGroupsPage.emptyHint": "사이즈(S/M/L)나 매운맛 같은 추가옵션·변형. 여러 메뉴에서 재사용 가능."
+  "brandMenuOptionGroupsPage.emptyHint": "사이즈(S/M/L)나 매운맛 같은 추가옵션·변형. 여러 메뉴에서 재사용 가능.",
+  "productsTab.distribution.label": "판매 범위",
+  "productsTab.distribution.all": "전체 가맹점",
+  "productsTab.distribution.allDesc": "내 모든 브랜드의 모든 가맹점에 자동 노출",
+  "productsTab.distribution.specificBrands": "특정 브랜드만",
+  "productsTab.distribution.specificBrandsDesc": "선택한 브랜드의 모든 가맹점",
+  "productsTab.distribution.specificRestaurants": "특정 지점만",
+  "productsTab.distribution.specificRestaurantsDesc": "선택한 가맹점만 발주 가능",
+  "productsTab.distribution.targetBrands": "대상 브랜드",
+  "productsTab.distribution.targetRestaurants": "대상 가맹점"
 }

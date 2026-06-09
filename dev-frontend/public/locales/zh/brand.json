@@ -685,5 +685,14 @@
   "brandMenuCategoriesPage.emptyHint": "将菜单项分组,如\"主菜\"或\"饮料\"。",
   "brandMenuOptionGroupsPage.confirmDeleteTitle": "删除选项组",
   "brandMenuOptionGroupsPage.cannotDeleteTitle": "无法删除选项组",
-  "brandMenuOptionGroupsPage.emptyHint": "加料和变化,如\"尺寸\"(S/M/L)或\"辣度\"。可在多个菜单中复用。"
+  "brandMenuOptionGroupsPage.emptyHint": "加料和变化,如\"尺寸\"(S/M/L)或\"辣度\"。可在多个菜单中复用。",
+  "productsTab.distribution.label": "分销范围",
+  "productsTab.distribution.all": "全部门店",
+  "productsTab.distribution.allDesc": "自动展示给我所有品牌的所有门店",
+  "productsTab.distribution.specificBrands": "仅特定品牌",
+  "productsTab.distribution.specificBrandsDesc": "所选品牌的所有门店",
+  "productsTab.distribution.specificRestaurants": "仅特定门店",
+  "productsTab.distribution.specificRestaurantsDesc": "仅所选门店可订购",
+  "productsTab.distribution.targetBrands": "目标品牌",
+  "productsTab.distribution.targetRestaurants": "目标门店"
 }

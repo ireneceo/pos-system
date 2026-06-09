@@ -685,5 +685,14 @@
   "brandMenuCategoriesPage.emptyHint": "Kumpulkan item menu dalam kategori seperti \"Hidangan Utama\" atau \"Minuman\".",
   "brandMenuOptionGroupsPage.confirmDeleteTitle": "Padam kumpulan pilihan",
   "brandMenuOptionGroupsPage.cannotDeleteTitle": "Tidak boleh padam kumpulan pilihan",
-  "brandMenuOptionGroupsPage.emptyHint": "Tambahan dan variasi seperti \"Saiz\" (S/M/L) atau \"Tahap pedas\". Boleh diguna semula merentas pelbagai menu."
+  "brandMenuOptionGroupsPage.emptyHint": "Tambahan dan variasi seperti \"Saiz\" (S/M/L) atau \"Tahap pedas\". Boleh diguna semula merentas pelbagai menu.",
+  "productsTab.distribution.label": "Pengedaran",
+  "productsTab.distribution.all": "Semua Restoran",
+  "productsTab.distribution.allDesc": "Auto-papar ke semua restoran merentas semua jenama saya",
+  "productsTab.distribution.specificBrands": "Jenama Tertentu Sahaja",
+  "productsTab.distribution.specificBrandsDesc": "Semua restoran jenama terpilih",
+  "productsTab.distribution.specificRestaurants": "Restoran Tertentu Sahaja",
+  "productsTab.distribution.specificRestaurantsDesc": "Hanya restoran terpilih boleh memesan",
+  "productsTab.distribution.targetBrands": "Jenama Sasaran",
+  "productsTab.distribution.targetRestaurants": "Restoran Sasaran"
 }
