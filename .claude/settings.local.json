@@ -590,7 +590,9 @@
       "Bash(sed -i '6965,7048d' src/pages/Settings/SettingsPage.tsx)",
       "Bash(awk 'NR>=6958 && NR<=6970 {print NR\": \"$0}' src/pages/Settings/SettingsPage.tsx)",
       "Bash(awk '/const updateData/,/};/' src/pages/Manager/RestaurantsPage.tsx)",
-      "Bash(scp -o ConnectTimeout=10 /tmp/prod-nginx.conf irene@87.106.78.146:/tmp/sw-nginx.conf)"
+      "Bash(scp -o ConnectTimeout=10 /tmp/prod-nginx.conf irene@87.106.78.146:/tmp/sw-nginx.conf)",
+      "Bash(sed -n '1,45p' /var/www/dev-backend/models/BrandProductBrand.js)",
+      "Bash(sed -n '1,45p' /var/www/dev-backend/models/BrandProductCategory.js)"
     ],
     "deny": [],
     "ask": []
