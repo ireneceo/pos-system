@@ -6548,7 +6548,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                                       onChange={(e) => setReceiptSettings(prev => ({ ...prev, autoOpenDrawer: e.target.checked }))}
                                       style={{ width: '16px', height: '16px', accentColor: '#635BFF' }}
                                     />
-                                    <span style={{ fontSize: '13px', color: '#1F2937' }}>{t('settings:printer.workstations.autoOpenDrawer')}</span>
+                                    <span style={{ fontSize: '13px', color: '#1F2937' }}>{t('settings:printer.workstations.autoOpenDrawer', 'Auto-open cash drawer on cash payment')}</span>
                                   </label>
                                   </AutoSaveField>
                                   <div style={{ fontSize: '11px', color: '#9CA3AF', fontStyle: 'italic' }}>{t('settings:printer.workstations.shopWideHint')}</div>

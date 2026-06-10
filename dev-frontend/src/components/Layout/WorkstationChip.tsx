@@ -43,6 +43,16 @@ const ChipButton = styled.button`
 
   .icon { font-size: 14px; }
   .caret { font-size: 10px; color: #4B5563; margin-left: 2px; }
+
+  /* Compact on the mobile header (≤768px) so it never overflows the fixed 80px bar and
+     pushes the title/actions off-screen. Drop the "Workstation:" label + max-width the
+     name; the dropdown header ("This device prints to") still gives full context. */
+  @media (max-width: 768px) {
+    padding: 6px 8px;
+    max-width: 120px;
+    .label { display: none; }
+    & > span:not(.caret):not(.label) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  }
 `;
 
 const Menu = styled.div`
@@ -157,8 +167,10 @@ export const WorkstationChip: React.FC<WorkstationChipProps> = ({ restaurantId }
     return () => document.removeEventListener('mousedown', onClick);
   }, [open]);
 
-  // Nothing to choose from (single-POS shop) — hide the chip entirely.
-  if (workstations.length === 0) return null;
+  // Single-POS shops (0 or 1 workstation) never need the switcher — hide it entirely.
+  // The model always returns a default "Main POS", so a 1-workstation shop must NOT
+  // see "Workstation: Main POS" cluttering the header — only multi-POS shops (≥2) do.
+  if (workstations.length <= 1) return null;
 
   const active = workstations.find(w => w.id === activeId) || workstations[0];
 

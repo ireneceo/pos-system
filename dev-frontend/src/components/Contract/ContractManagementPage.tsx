@@ -124,7 +124,10 @@ const ContractManagementPage: React.FC<ContractManagementPageProps> = ({ entityT
       const p = new URLSearchParams(prev);
       p.set('tab', t);
       p.delete('id');
-      if (t === 'archive') p.set('view', 'list');
+      // Don't mutate the shared `view` param for Archive — the render already forces a
+      // list there (pipeline only shows when `view==='pipeline' && tab==='active'`), and the
+      // toggle is hidden on Archive. Forcing view='list' here used to overwrite the user's
+      // Active-Pipeline preference so returning to Active showed List instead of Pipeline.
       return p;
     }, { replace: true });
     setStageFilter('');

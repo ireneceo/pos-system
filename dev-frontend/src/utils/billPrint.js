@@ -1809,6 +1809,14 @@ export function getPrinterSettings() {
  * @returns {Promise<boolean>} Success status
  */
 export async function printBillViaRawBT(orderData, storeInfo, printerName) {
+  // 현금박스는 현금결제일 때만 열린다 (Irene 2026-06-10). 폴러/POS 가 "현금결제 시 현금박스
+  // 자동오픈" 설정이 켜져 있으면 마지막 영수증 copy 에 __drawerPulse 를 실어 보내는데, 여기서
+  // 주문의 결제수단이 cash 일 때만 통과시킨다 → 카드/온라인/후불(counter) 결제는 박스 안 열림.
+  // 단일 chokepoint — 5개 인쇄 호출처 + 아래 모든 인쇄 방식(QZ/ESC-POS/RawBT)을 한 번에 커버.
+  if (orderData && orderData.__drawerPulse) {
+    const __pmRawDraw = String(orderData.paymentMethod || '').toLowerCase().replace(/[_\s-]/g, '');
+    if (__pmRawDraw !== 'cash') orderData = { ...orderData, __drawerPulse: false };
+  }
   try {
     // Check if bill printer is enabled
     const settings = getPrinterSettings();

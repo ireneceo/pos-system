@@ -506,6 +506,11 @@ const MenuPage: React.FC = () => {
   const [featuredItems, setFeaturedItems] = useState<MenuItem[]>([]);
   const [popularItems, setPopularItems] = useState<(MenuItem & { orderCount?: number })[]>([]);
   const [showFeaturedTab, setShowFeaturedTab] = useState(false);
+  // True once the background featured/popular fetch has finished. The "fall back to the
+  // first category" guard must wait for this — otherwise, while those items are still
+  // loading, shouldShow is briefly false and the default jumps off the (first) Featured/
+  // Popular tab onto the 2nd tab. (Irene 2026-06-10: "들어가면 두번째 탭이 디폴트")
+  const [featuredLoaded, setFeaturedLoaded] = useState(false);
   // 영업중 뱃지(#7)를 시간 흐름에 따라 갱신 — 1분마다 재평가 (open→break→closed 자동 전환)
   const [nowTick, setNowTick] = useState(0);
 
@@ -736,9 +741,12 @@ const MenuPage: React.FC = () => {
             })));
           }
         }
+        // Featured/Popular load done — now the fallback guard may run (see effect below).
+        setFeaturedLoaded(true);
       } catch (e) {
         setError('Failed to load menu');
         setIsLoading(false);
+        setFeaturedLoaded(true); // unblock the fallback guard even if the bg fetch errored
       }
     };
     init();
@@ -787,7 +795,9 @@ const MenuPage: React.FC = () => {
     }
     // 폴백: 기본을 __featured__ 로 잡았는데 실제 featured/popular 아이템이 0개면
     // (설정만 켜져있고 데이터 없음) 첫 카테고리로 되돌린다 → 빈 탭 방지.
-    if (!shouldShow && selectedCategory === '__featured__' && !isSearchMode && categories.length > 0) {
+    // ⚠ featuredLoaded 가 true 일 때만 — 로딩 중(아이템 미도착)엔 shouldShow 가 잠깐 false 라
+    // 폴백이 성급히 발동해 첫(Featured/Popular) 탭에서 2번째 탭으로 튀던 버그를 막는다.
+    if (featuredLoaded && !shouldShow && selectedCategory === '__featured__' && !isSearchMode && categories.length > 0) {
       const firstId = categories[0].id.toString();
       setSelectedCategory(firstId);
       // init 이 featured 기본일 땐 menuItems 를 안 채웠으므로(featured 별도 렌더),
@@ -795,7 +805,7 @@ const MenuPage: React.FC = () => {
       const cached = categoryCacheRef.current.get(firstId);
       if (cached) setMenuItems(cached);
     }
-  }, [mobileSettings, featuredItems, popularItems, categories]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [mobileSettings, featuredItems, popularItems, categories, featuredLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle category change — 탭 아래 리스트만 교체, 페이지 리로드 없음
   const handleCategoryChange = useCallback(async (categoryId: string) => {

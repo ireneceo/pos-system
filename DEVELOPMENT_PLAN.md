@@ -1,6 +1,34 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-09 (저녁 — 통합티켓 재구조 운영 배포했으나 실프린터 검증 실패→설정 OFF. thefire01/02/03 구독/인보이스 데이터 정정 완료. 구독 시작일/트라이얼 코드 수정 백엔드만 됨·프론트/검증/배포 미완. 버전 미상승.)
+> **최종 업데이트:** 2026-06-10 (인쇄①새주문2장 dedup + 인쇄②통합티켓 POS행토글 + 구독trial 필드버그 수정 + nginx sw.js no-cache + 이메일로고? 수정 + 직원버그리포트 5건 검토·수정 + 모바일 인기탭 디폴트 + POS 현금박스/필수옵션 — 3회 운영 배포. 버전 미상승.)
+
+## ✅ 완료: 인쇄·구독·POS·이메일 대규모 수정 + 운영 배포 (2026-06-10)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 인쇄① 새주문 2장→1장 | 두 폴러에 원자적 /print-claim + 실패 시 /print-rearm. SW 3.55 bump | ✅ 배포 |
+| 인쇄② 통합티켓 POS행 토글 | "MASTER" 자유입력 폐기 → 각 워크스테이션 행에 "Print full order ticket here" 토글. 별도 카드+중복 체크박스 제거 | ✅ 배포 |
+| 구독 시작일/트라이얼 | **🐞 /검증이 잡은 실버그**: create 핸들러 `req.body.subscriptionStart`(camel)만 읽어 snake 미수신→trial 파생 무동작. create/put에 snake 폴백 추가. 미래시작→trial+시작일 인보이스 검증 9/9 | ✅ 배포 |
+| nginx sw.js no-cache | 운영 nginx가 sw.js까지 immutable 1년 → CF가 옛 SW 캐시(만성 stale-bundle 뿌리). `location = /sw.js` no-cache 추가 | ✅ 운영적용 |
+| 이메일 로고 ? 깨짐 | notificationService 첨부로직이 branding 수신자에 cid:purplehere-logo 미첨부. "html이 cid 참조하면 branding 무관 항상 첨부"로 수정 (4/4) | ✅ 배포 |
+| 직원 버그리포트 5건 검토 | FG-1(등록불가)=부정확(자동도출), BG-1(Admin필수)=설계상정상 / 진짜버그: BG-2 멀티브랜드 레시피 brand_id 누락→생성400, FG-2 Tenancy 뷰리셋, FG-3 인벤토리 헤더 반응형 → 수정 | ✅ 배포 |
+| 모바일 인기/Featured 탭 | 인기탭(첫탭)인데 둘째 탭 디폴트되던 레이스(featuredLoaded 플래그) | ✅ 배포 |
+| POS #2 현금박스 | 결제수단 무관 열리던 것 → billPrint 단일게이트로 현금결제에만. 라벨 변경 | ✅ 배포(실드로어 매장확인 대기) |
+| POS #3 필수옵션 | 카드클릭 바로담겨 필수옵션 무시 → 필수옵션 있으면 카드클릭=옵션모달+미선택 주문차단 (end-to-end 검증) | ✅ 배포 |
+| 이메일 인증 검토 | 변경→재인증·미인증 알림차단·추가시 인증메일 모두 이미 구현 확인 (변경 불필요) | ✅ 검토 |
+
+### 수정된 파일
+- 백엔드: `routes/restaurants-crud.js`(구독 폴백), `utils/notificationService.js`(이메일 로고), `models/Restaurant.js`(consolidatedTicket)
+- 프론트: `hooks/useAutoPrintPoller.ts`·`components/Layout/MainLayout.tsx`·`utils/billPrint.js`(인쇄claim+현금박스), `public/sw.js`(bump), `pages/Settings/SettingsPage.tsx`(통합티켓토글), `pages/BrandProductRecipe/ProductRecipesTab.tsx`(brand_id), `components/Contract/ContractManagementPage.tsx`(뷰리셋), `components/Inventory/styles.ts`(반응형), `components/Layout/WorkstationChip.tsx`(단일POS숨김), `mobile/pages/MenuPage.tsx`(탭디폴트), `pages/POSTerminal/POSTerminalPage.tsx`(필수옵션)
+- 인프라: 운영 nginx `/sw.js` no-cache
+
+### 미완 (다음)
+- 인쇄①② + #2 현금박스 — 매장 실프린터/물리 드로어 확인(배포 후만 가능)
+- gitconsulting/with MIN 발주 데모 Phase 2(운영 시딩) — dev 검증 14/14 완료, Irene 운영실행 지시 대기
+
+---
 
 ## ⚠️ 미완 — 다음 세션 (2026-06-09 저녁)
 

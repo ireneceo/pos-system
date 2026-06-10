@@ -1,5 +1,5 @@
 import styled from 'styled-components';
-import { TableHeader, TableRow } from '../UI';
+import { TableHeader, TableRow, MobileGrid, MobileLabel, MobileValue } from '../UI';
 
 export const InfoBox = styled.div`
   background: #F0F4FF;
@@ -244,28 +244,35 @@ export const IngredientMeta = styled.div`
  * because nth-child cannot reach MobileValue items nested inside MobileGrid
  * (which uses display: contents).
  */
+// 1024–1280px is too narrow for the 9-column grid AND too wide to trigger the base
+// card layout (≤1024) — so the header stayed a grid while rows half-collapsed, leaving the
+// header misaligned with the data ("Actions" wrapping, columns not lining up). Fix: switch
+// the inventory table to the CARD layout for the whole ≤1280 band (hide the header, stack
+// each row with its MobileLabels) so header and rows always agree. The base ≤1024 rules
+// still apply below that; this just raises the card breakpoint for inventory only.
 export const InventoryTableHeader = styled(TableHeader)`
   @media (max-width: 1280px) {
-    grid-template-columns: 2.5fr 1fr 1fr 150px 280px;
-
-    & .col-min,
-    & .col-cost,
-    & .col-supplier,
-    & .col-last {
-      display: none;
-    }
+    display: none;
   }
 `;
 
 export const InventoryTableRow = styled(TableRow)`
   @media (max-width: 1280px) {
-    grid-template-columns: 2.5fr 1fr 1fr 150px 280px;
+    display: block;
+    padding: 16px;
 
-    & .col-min,
-    & .col-cost,
-    & .col-supplier,
-    & .col-last {
-      display: none;
+    /* Replicate the base ≤1024 card layout (2-up label/value pairs) at ≤1280 for inventory. */
+    ${MobileGrid} {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    ${MobileValue} {
+      flex: 1 1 calc(50% - 5px);
+      min-width: 140px;
+    }
+    ${MobileLabel} {
+      display: block;
     }
   }
 `;

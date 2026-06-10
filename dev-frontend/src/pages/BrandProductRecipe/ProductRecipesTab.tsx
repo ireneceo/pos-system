@@ -1065,6 +1065,10 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ brandId: brandIdP
       setSaving(true);
 
       const payload = {
+        // brand_id is REQUIRED by the backend for multi-brand Brand Generals (a BG that
+        // owns >1 brand has no single fallback). Without it, recipe creation 400'd and the
+        // Brand Menu "Linked Recipe" dropdown stayed empty. brandId = the selected brand.
+        brand_id: brandId,
         name: formData.name,
         description: formData.description || null,
         category_id: formData.category_id ? parseInt(formData.category_id) : null,

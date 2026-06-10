@@ -1253,7 +1253,7 @@ const POSTerminalPage: React.FC = () => {
   const restaurantId = useRestaurantId();
   const { addOrder } = useOrders();
   const { getTakeawayCharge, operationSettings, getStoreInfo } = useStore();
-  const { categories: allCategories, menuItems, getItemsByCategory, loadMenuByCategory, isLoadingMenu } = useMenu();
+  const { categories: allCategories, menuItems, getItemsByCategory, loadMenuByCategory, isLoadingMenu, optionGroups: allOptionGroups } = useMenu();
 
   // 2026-05-28 매장 critical: backend-driven auto-print polling. POSTerminal 은
   // MainLayout 안에 mount 안 되므로 (fullscreen route), 이 hook 으로 같은
@@ -1800,10 +1800,22 @@ const POSTerminalPage: React.FC = () => {
     return () => { s.disconnect(); };
   }, [restaurantId]);
 
+  // 이 상품에 "필수" 옵션 그룹이 하나라도 있나? (OptionModal 의 해석 규칙과 동일 — id 느슨 매칭)
+  const itemRequiresOptions = (menuItem: MenuItemType): boolean => {
+    const groups = (menuItem as any).optionGroups;
+    if (!Array.isArray(groups) || groups.length === 0) return false;
+    const ids = groups.map((g: any) => String(g));
+    return (allOptionGroups || []).some((g: any) => ids.includes(String(g.id)) && g.required);
+  };
+
   const handleAddItemDirectly = (menuItem: MenuItemType) => {
     if (effSoldOut(menuItem)) return;
     // 세트 v2 → 선택 모달 (구성품 택1/옵션 선택 필요)
     if (isV2Set(menuItem)) { setSetModalProduct(menuItem); setShowSetModal(true); return; }
+    // 필수 옵션이 있는 상품은 카드 어디를 눌러도 옵션 모달을 띄운다 (Irene 2026-06-10):
+    // 옵션 미선택 상태로 주문이 들어가 혼란이 생기던 문제 방지. OptionModal 이 필수 미선택 시
+    // 확인 버튼을 막으므로(line 116-118) 옵션 없이는 담을 수 없다. (필수옵션 없는 상품은 그대로 바로담기.)
+    if (itemRequiresOptions(menuItem)) { setSelectedMenuItem(menuItem); setShowOptionModal(true); return; }
 
     // For set menus, convert set_items to options format (as strings)
     let setMenuOptions: string[] = [];

@@ -221,14 +221,20 @@ async function sendNotification(recipientUserId, category, mailOptions) {
     const { _title, _body, _lang, ...cleanOptions } = mailOptions;
     const transporter = emailService.createTransporter(smtp.settings);
 
-    // 첨부 정책 (unreferenced attachment 가 본문 하단에 표시되는 문제 방지):
-    //  - branding 있음 (entity) → entity 로고만, PurpleHere 로고 첨부 안 함
-    //  - branding 없음 (PurpleHere 기본) + html 에 cid:purplehere-logo 참조 → 자동 첨부
+    // 첨부 정책 — 깨진 로고("?") 방지를 위해 "실제 렌더된 html 이 참조하는 cid" 기준으로 첨부:
+    //  - 브랜드 로고: html 이 branding 으로 재렌더된 경우(=_title/_body 메타 보유)만 첨부.
+    //    재렌더 안 된 메일에 브랜드 로고를 붙이면 cid 불일치(unreferenced)로 하단에 떠버린다.
+    //  - PurpleHere 로고: 최종 html 이 cid:purplehere-logo 를 참조하면 branding 유무와 무관하게
+    //    항상 첨부. (PO 알림처럼 render-meta 없이 만든 메일은 branding 수신자라도 재렌더가 안 돼
+    //    cid:purplehere-logo 가 남는데, 옛 `!branding` 가드가 이때 첨부를 건너뛰어 로고가 깨졌음.)
     //  - 기존 cleanOptions.attachments 는 그대로 유지 (caller 가 명시적으로 넣은 것)
     let finalAttachments = [...(cleanOptions.attachments || [])];
-    if (branding?.logoAttachment) {
+    const reRenderedWithBranding = !!(branding && _title && _body);
+    if (reRenderedWithBranding && branding?.logoAttachment) {
       finalAttachments.push(...branding.logoAttachment);
-    } else if (!branding && renderedHtml && renderedHtml.includes('cid:purplehere-logo')) {
+    }
+    if (renderedHtml && renderedHtml.includes('cid:purplehere-logo')
+        && !finalAttachments.some(a => a && a.cid === 'purplehere-logo')) {
       const { getLogoAttachment } = require('./emailTemplates');
       finalAttachments.push(...getLogoAttachment());
     }
