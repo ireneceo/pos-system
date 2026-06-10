@@ -22,6 +22,7 @@
 - **이메일 인증 검토**: 변경→재인증·미인증 알림차단·추가시 인증메일 다 이미 구현 확인 (변경 불필요).
 
 ### 다음 확정 작업
+- **🔒 POS 직접결제 빌 복사 매수 미반영 (2026-06-10 Irene 보고)**: 레스토랑 프린터 설정의 빌 복사 매수(예: 2장)가 **POS Terminal "결제하기" 직접 결제 경로에서만 무시됨** — 자동 1장만 나오고 매수 설정이 안 먹힘. **PayLater + Floor Plan 결제는 정상**(설정대로 2장 출력). → POS 직접 인쇄 블록(`POSTerminalPage.tsx` 직접 인쇄)이 빌 복사 매수 설정을 안 읽고 1장 고정인 듯. PayLater/FloorPlan 경로(poller/billPrint 복사 루프)와 대조해 동일하게. 🔒 보호 파일(billPrint.js `printBillViaRawBT`/`sendHTMLViaQZTray`, POSTerminalPage 직접인쇄) → **Irene 승인 받음 + 한 번에 하나 + 실프린터 매수 눈확인 필수**. ([[feedback_print_code_caution]] [[reference_kitchen_print_pipeline]])
 - **gitconsulting/with MIN 발주 데모 Phase 2 (운영 시딩)**: dev 검증 14/14 완료(BG#6/brand4/rest10에 Packaging+ingredient매핑→발주→Trade Invoice→결제+전상태). 운영용=BG23/brand1(with MIN)/rest10/SELLER_USER=23 native + 기존 Packaging(cat11,20제품) 매핑으로 조정 필요. **Irene "운영 실행" 지시 대기.** 스크립트는 삭제됨(세션-state 참고로 재작성).
 
 ### 후속 후보 (아이디어 메모, 확정 X)
