@@ -569,7 +569,14 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, message: 'forceMergeIntoOrderId not found or not in this restaurant' });
     }
 
-    if (!skipAutoMerge && orderData.restaurant_id && orderData.table_number) {
+    // 2026-06-11 (Irene): off-table 주문(takeaway/pickup/delivery)은 테이블의 기존 dine-in
+    // 계산서에 자동 병합하지 않는다 — 명시적으로 takeaway 를 고른 주문은 항상 별도 takeaway 로
+    // 남아 Takeout 리스트에 보여야 한다. (2026-05-27 '같은 테이블=한 계산서' 자동병합은 dine-in
+    // 끼리만. 스태프가 의도적으로 합치려면 forceMergeIntoOrderId 명시 머지(위 분기)로.)
+    const __otNorm = (orderData.order_type || 'dine_in').toString().replace(/[_\s-]/g, '').toLowerCase();
+    const __isOffTableOrder = __otNorm === 'takeaway' || __otNorm === 'pickup' || __otNorm === 'delivery';
+
+    if (!skipAutoMerge && !__isOffTableOrder && orderData.restaurant_id && orderData.table_number) {
       const mergeableOrder = await findMergeableOrder(
         orderData.restaurant_id,
         orderData.table_number,

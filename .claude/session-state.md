@@ -1,12 +1,21 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-06-10
-**버전:** v3.54 운영 (※ 오늘 3회 배포했으나 버그수정/UX라 버전 미상승 — backstage 규칙)
-**작업 상태:** 완료
+**마지막 업데이트:** 2026-06-11
+**버전:** v3.54 운영 (※ 버그수정/표시방법이라 버전 미상승 — backstage 규칙)
+**작업 상태:** 배포됨, 실프린터 확인 대기
 
 ### 진행 중인 작업
-- 없음
+- **🔒 통합 오더티켓 POS별 토글 4건 수정 — 운영 배포됨(2026-06-11, Backup 20260611_085310, SW 3.56). 실프린터 눈확인 + --bless 대기.**
+  - 매장(r24=The Fire, 스테이션 KQ1/KQ2/BARPR, Main POS 토글 OFF + POS 2 토글 ON) 4증상:
+    ① Main POS 토글 OFF인데 통합티켓 나옴 → 잔류 `mirrorToBillPrinter` 레거시 폴백이 현재기기 빌프린터(CASHIER) 강제추가가 원인. **POS별 토글 채택 매장은 레거시 폴백 무시** 가드.
+    ② 라벨이 둘 다 "COUNTER" → **워크스테이션 이름(POS 2 등)** 으로. (하드코딩 COUNTER 폐기)
+    ③ 취소가 POS 2(토글 ON)에 안 나옴 → 취소 경로가 새 `__unifiedTargets`(POS별 토글) 미사용, 옛 `mirrorToBillPrinter`만 썼음. **취소 카운터 미러를 새주문과 동일 로직으로 통일.**
+    ④ 취소 시 Main POS 출력 + 라벨 없음(전체취소)/BARPR(아이템취소) → 위 통일로 Main POS 제외 + 라벨 워크스테이션명 통일.
+  - 구현: `billPrint.js` 에 `computeUnifiedTicketTargets`/`sendUnifiedTickets` 공용 헬퍼 신설 → 새주문(`printKitchenTicketViaRawBT`)·아이템취소(`printCancellationTicket`)·전체취소(`printCancellationTicketsByStation`) 3경로가 단일 규칙 공유. 스테이션 라우팅/주방 발행/claim·dedup/poller/POSTerminal/KDS 무접촉(print-guard로 billPrint.js만 변경 확인).
+  - 검증: state-hydration 0 / 타임존 신규0 / 빌드 exit0 / Autoprint 44/44 / 인쇄계약 7/7(티켓1번·동시claim dedup·+Round·금액·익명401) / health 100/101(무결성만 의도된 변경) / **r24 실설정 라우팅·라벨 시뮬 5/5** / critical 9페이지 mount ALL CLEAN. 배포 안전게이트는 `--skip-safety`(무결성만 막힘, 회귀는 수동 100/101 확인).
+  - **다음**: Irene 실프린터 눈확인(POS2만 통합티켓 라벨 "POS 2", Main POS 없음 — 새주문·아이템취소·전체취소) → 확인 시 `cd /var/www/dev-backend && node scripts/check-print-guard.js --bless`.
+  - **별건 인프라**: bare `/sw.js` 를 CF가 6/3자 immutable 1년 캐시(HIT)로 옛 3.46 서빙 중. origin no-cache(6/10)는 됐으나 CF 엣지 옛 엔트리 미퍼지 → SW_VERSION bump 캐시갱신 장치가 CF에 무력화. 이번 fix는 번들 해시명+index DYNAMIC 신선이라 무영향. **근본해결=CF /sw.js 1회 퍼지 + cache-bypass 페이지룰(CF 대시보드 필요, Irene).** [[reference_sw_version_stale_bundle]]
 
 ### 완료된 작업 (이번 세션, 2026-06-10 — 운영 배포 3회: Backup 071746/084756/105904)
 - **인쇄① 새주문 2장→1장**: 두 폴러에 원자적 `/print-claim` + 실패 시 `/print-rearm`. SW 3.55 bump.

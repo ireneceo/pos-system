@@ -610,7 +610,9 @@
       "Bash(sed -n '1,6p' DEVELOPMENT_PLAN.md)",
       "Bash(sed -n '/\\\\[Unreleased\\\\]/,/^## \\\\[/p' CHANGELOG.md)",
       "Bash(sed -n '1,5p' DEVELOPMENT_PLAN.md)",
-      "Bash(sed -n '3,6p' .claude/session-state.md)"
+      "Bash(sed -n '3,6p' .claude/session-state.md)",
+      "Bash(scp -q -o ConnectTimeout=8 /tmp/dump_thefire03.js irene@87.106.78.146:/var/www/production-backend/__tmp_dump_thefire03.js)",
+      "Bash(rm -f /tmp/dump_thefire03.js)"
     ],
     "deny": [],
     "ask": []

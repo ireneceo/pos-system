@@ -2476,54 +2476,13 @@ export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerNa
     // consolidatedOrderTicket.{enabled,address} and kitchenPrinter.mirrorToBillPrinter are
     // kept as fallbacks so shops configured the old way keep working. Dedup by address so
     // the same physical printer never gets two consolidated copies.
-    const __unifiedTargets = [];
-    const __addTarget = (addr, method) => {
-      const a = (addr || '').trim();
-      const m = method || 'qztray';
-      if (__unifiedTargets.some(t => t.address === a && t.method === m)) return;
-      __unifiedTargets.push({ address: a, method: m });
-    };
-    const __wss = Array.isArray(settings.workstations) ? settings.workstations : [];
-    __wss.forEach(ws => {
-      const bp = ws && ws.billPrinter;
-      if (ws && ws.consolidatedTicket && bp && bp.enabled !== false && (bp.address || bp.method === 'browser')) {
-        __addTarget(bp.address, bp.method);
-      }
-    });
-    // Legacy fallbacks (back-compat for shops set up before per-POS toggles).
-    const __co = settings.consolidatedOrderTicket;
-    if (__co && __co.enabled && __co.address) __addTarget(__co.address, __co.method);
-    const __bpMirror = getActiveBillPrinter();
-    if (settings.kitchenPrinter?.mirrorToBillPrinter && __bpMirror && __bpMirror.enabled && __bpMirror.address) {
-      __addTarget(__bpMirror.address, __bpMirror.method);
-    }
-    if (__unifiedTargets.length > 0) {
-      setTimeout(() => {
-        try {
-          // Tag each item with its target station name so the counter mirror
-          // ticket shows inline [KQ1] [KQ2] [BARPR] next to each item — cashier
-          // can verify station routing at a glance (2026-05-28 The Fire 매장
-          // 영업 1일차 보고: station 라벨 누락으로 어디로 가는지 불명).
-          const tagged = tagTicketWithStations(orderData, 'COUNTER', settings);
-          // noStationBox: 통합 티켓은 상단 단일 station 박스 생략(여러 스테이션 혼재).
-          // 라우팅은 아이템별 인라인 [KQ1][KQ2] 태그로 확인. (KQ1 박스만 찍히던 오류 제거)
-          const unifiedTicket = { ...tagged, groupLabel: 'COUNTER', printedAt: 'COUNTER', noStationBox: true, showItemStations: true };
-          __unifiedTargets.forEach(tgt => {
-            const billAddr = tgt.address;
-            const isLanIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(billAddr || '');
-            if (isLanIP) {
-              sendViaQZTray(generateKitchenTicketContent(unifiedTicket, storeInfo), billAddr)
-                .catch(e => console.warn('Kitchen → counter mirror print failed:', e && e.message));
-            } else {
-              sendHTMLViaQZTray(generateHTMLKitchenTicket(unifiedTicket, storeInfo), billAddr)
-                .catch(e => console.warn('Kitchen → counter mirror print failed:', e && e.message));
-            }
-          });
-        } catch (e) {
-          console.warn('Kitchen → counter mirror trigger failed:', e && e.message);
-        }
-      }, 200);
-    }
+    // 2026-06-11 (Irene, The Fire 매장): 통합/카운터 오더티켓 대상·발행을 단일 헬퍼로 통일.
+    //  ① 워크스테이션 "Print full order ticket here" 토글을 한 곳이라도 채택한 매장은
+    //     레거시 폴백(mirrorToBillPrinter / consolidatedOrderTicket)을 무시 → 토글 안 한 Main POS
+    //     로 통합티켓이 새던 오발행 차단(UI에서 제거된 옛 mirrorToBillPrinter 잔류값 때문이었음).
+    //  ② 통합티켓 상단 라벨 = 해당 워크스테이션 이름(예: Main POS / POS 2). "COUNTER" 하드코딩 폐기.
+    //  새 주문·취소가 동일한 sendUnifiedTickets 규칙을 공유(아래 정의). 스테이션 라우팅/주방 발행 무접촉.
+    sendUnifiedTickets(orderData, storeInfo, settings, { voided: false });
 
     // 2026-05-27: Station routing — if the shop configured kitchenStationPrinters,
     // bucket items by station and send each station its own ticket. Without this
@@ -3956,6 +3915,86 @@ function buildVoidTicketData(orderData, reason) {
 }
 
 /**
+ * 통합/카운터 오더티켓 대상 계산 (2026-06-11) — 새 주문·취소 공용.
+ * 워크스테이션별 "Print full order ticket here"(consolidatedTicket) 토글이 켜진 POS 의
+ * 빌프린터로 1장씩(주소+방식 중복 제거). 토글을 한 곳이라도 채택한 매장은 레거시 폴백
+ * (mirrorToBillPrinter / consolidatedOrderTicket)을 무시 — 옛 잔류값이 토글 안 한 Main POS 로
+ * 통합티켓을 오발행하던 문제 차단. 미채택(레거시) 매장은 기존 폴백 그대로(동작 100% 유지).
+ * 각 대상은 워크스테이션 이름(label)을 들고 가, 티켓 상단에 "COUNTER" 대신 POS 이름이 찍힌다.
+ */
+function computeUnifiedTicketTargets(settings) {
+  const targets = [];
+  const add = (addr, method, label) => {
+    const a = (addr || '').trim();
+    const m = method || 'qztray';
+    if (targets.some(t => t.address === a && t.method === m)) return;
+    targets.push({ address: a, method: m, label: label || 'COUNTER' });
+  };
+  const wss = Array.isArray(settings.workstations) ? settings.workstations : [];
+  let adopted = false; // 매장이 POS별 토글을 도입했는가
+  wss.forEach(ws => {
+    if (ws && ws.consolidatedTicket) {
+      adopted = true;
+      const bp = ws.billPrinter;
+      if (bp && bp.enabled !== false && (bp.address || bp.method === 'browser')) {
+        add(bp.address, bp.method, ws.name);
+      }
+    }
+  });
+  if (!adopted) {
+    // Legacy fallbacks (back-compat for shops set up before per-POS toggles).
+    const co = settings.consolidatedOrderTicket;
+    if (co && co.enabled && co.address) add(co.address, co.method, 'COUNTER');
+    const bpMirror = getActiveBillPrinter();
+    if (settings.kitchenPrinter && settings.kitchenPrinter.mirrorToBillPrinter && bpMirror && bpMirror.enabled && bpMirror.address) {
+      add(bpMirror.address, bpMirror.method, 'COUNTER');
+    }
+  }
+  return targets;
+}
+
+/**
+ * 통합/카운터 오더티켓 발행 (2026-06-11) — 새 주문(voided=false)·취소(voided=true) 공용.
+ * 대상별로 상단 라벨 = 워크스테이션 이름, 아이템별 인라인 스테이션 태그([KQ1][KQ2]) 유지.
+ * fire-and-forget(기존 미러와 동일 200ms 지연). 스테이션 라우팅/주방 발행과는 완전히 별개 경로.
+ */
+function sendUnifiedTickets(orderData, storeInfo, settings, opts) {
+  try {
+    const targets = computeUnifiedTicketTargets(settings);
+    if (targets.length === 0) return;
+    const voided = !!(opts && opts.voided);
+    const reason = opts && opts.reason;
+    setTimeout(() => {
+      try {
+        const base = voided ? buildVoidTicketData(orderData, reason) : orderData;
+        // Tag each item with its station name so the counter copy shows inline
+        // [KQ1] [KQ2] [BARPR] next to each item — cashier verifies routing at a glance.
+        const tagged = tagTicketWithStations(base, 'COUNTER', settings);
+        targets.forEach(tgt => {
+          const label = (tgt.label || 'COUNTER').toUpperCase();
+          // noStationBox: 통합 티켓은 상단 단일 station 박스 생략(여러 스테이션 혼재).
+          // groupLabel/printedAt = 해당 워크스테이션 이름. voided 플래그는 base 에서 보존됨.
+          const ticket = { ...tagged, groupLabel: label, printedAt: label, noStationBox: true, showItemStations: true };
+          const billAddr = tgt.address;
+          const isLanIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(billAddr || '');
+          if (isLanIP) {
+            sendViaQZTray(generateKitchenTicketContent(ticket, storeInfo), billAddr)
+              .catch(e => console.warn('Unified ticket print failed:', e && e.message));
+          } else {
+            sendHTMLViaQZTray(generateHTMLKitchenTicket(ticket, storeInfo), billAddr)
+              .catch(e => console.warn('Unified ticket print failed:', e && e.message));
+          }
+        });
+      } catch (e) {
+        console.warn('Unified ticket trigger failed:', e && e.message);
+      }
+    }, 200);
+  } catch (e) {
+    console.warn('Unified ticket setup failed:', e && e.message);
+  }
+}
+
+/**
  * Print a cancellation ticket to the kitchen printer.
  * Returns Promise<boolean>. Silent no-op when kitchen printer disabled or option OFF.
  */
@@ -3984,13 +4023,12 @@ export async function printCancellationTicket(orderData, storeInfo, reason, prin
     const escpos = generateKitchenTicketContent(buildVoidTicketData(orderData, reason), storeInfo);
     const targetPrinter = printerName || settings.kitchenPrinter.name;
 
-    // Mirror to bill printer (same toggle as normal kitchen tickets)
-    const __bpMirror = getActiveBillPrinter(); if (!suppressMirror && settings.kitchenPrinter.mirrorToBillPrinter && __bpMirror && __bpMirror.enabled) {
-      setTimeout(() => {
-        printCancellationToCounter(orderData, storeInfo, reason).catch(e =>
-          console.warn('Cancellation → counter mirror failed:', e && e.message)
-        );
-      }, 200);
+    // 통합/카운터 미러 — 새 주문과 동일한 POS별 토글/라벨 규칙(2026-06-11). 토글 채택 매장은
+    // 토글된 POS(예: POS 2)로 워크스테이션 이름 라벨과 함께, 미채택 매장은 레거시 동작 유지.
+    // (mirrorToBillPrinter 게이트는 computeUnifiedTicketTargets 안에서 처리.) suppressMirror 면 skip
+    // — 주문취소(printCancellationTicketsByStation)가 전체 1장만 따로 미러하기 위함.
+    if (!suppressMirror) {
+      sendUnifiedTickets(orderData, storeInfo, settings, { voided: true, reason });
     }
 
     // QZ Tray — station 주소 우선(R9/R10 station 라우팅), 없으면 master kitchen 주소(기존 동작).
@@ -4081,14 +4119,10 @@ export async function printCancellationTicketsByStation(orderData, storeInfo, re
       if (i < mappedIds.length - 1) await new Promise(r => setTimeout(r, 800));
     }
 
-    // 빌 미러 — 전체 취소 주문 1장만 (station별 중복 방지).
-    if (settings.kitchenPrinter.mirrorToBillPrinter) {
-      const bp = getActiveBillPrinter();
-      if (bp && bp.enabled) {
-        try { await printCancellationToCounter(orderData, storeInfo, reason); }
-        catch (e) { console.warn('[CANCEL STATION] 빌 미러 실패:', e && e.message); }
-      }
-    }
+    // 통합/카운터 미러 — 전체 취소 주문 1장(station별 중복 방지). 새 주문과 동일한
+    // POS별 토글/라벨 규칙(2026-06-11): 토글 채택 매장은 토글된 POS 로 워크스테이션 이름 라벨,
+    // 미채택 매장은 레거시 mirrorToBillPrinter 동작(가드는 computeUnifiedTicketTargets 내부).
+    sendUnifiedTickets(orderData, storeInfo, settings, { voided: true, reason });
     return true;
   } catch (e) {
     console.error('[CANCEL STATION] failed:', e && e.message);

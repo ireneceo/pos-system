@@ -1569,11 +1569,20 @@ const POSTerminalPage: React.FC = () => {
   // 로 생성된 availableTables 와 mismatch 가능. fromFloorPlan 일 때는 사용자가 직접 클릭한
   // 식별자를 신뢰하고 강제 setTableNumber 한다 — 그렇지 않으면 주문이 빈 table 로 생성되어
   // Floor Plan 에 attach 되지 않는 버그가 재현됨.
+  // 2026-06-11 (Irene): URL 의 table 파라미터가 명시적 Takeaway 선택을 덮어쓰면 안 된다.
+  // "+ Takeaway Walk-in" 진입은 order_type=takeaway 를 함께 넘기므로, 테이블이 붙어도
+  // takeaway 를 유지한다(takeaway-with-table → Takeout 리스트에 정상 노출). 또한 dine-in
+  // 강제를 최초 1회로 한정해, availableTables 비동기 로드가 사용자의 나중 Takeaway 토글을
+  // 다시 dine-in 으로 되돌리던 레이스도 막는다.
+  const tableOrderTypeInitRef = useRef(false);
   useEffect(() => {
     if (!initialTableFromUrl) return;
     if (fromFloorPlan || availableTables.length === 0 || availableTables.includes(initialTableFromUrl)) {
       setTableNumber(initialTableFromUrl);
-      setOrderType('dine-in');
+      if (!tableOrderTypeInitRef.current) {
+        tableOrderTypeInitRef.current = true;
+        if (searchParams.get('order_type') !== 'takeaway') setOrderType('dine-in');
+      }
     }
   }, [initialTableFromUrl, availableTables, fromFloorPlan]);
 
