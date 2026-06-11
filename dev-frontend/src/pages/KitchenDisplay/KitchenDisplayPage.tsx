@@ -742,8 +742,14 @@ const KitchenDisplayPage: React.FC = () => {
       // 기존 KDS 세트 렌더가 '구성품(=메뉴) + 옵션' 을 보여주게 한다. (레거시 set_items 폴백)
       const comps = Array.isArray(item.set_components) ? item.set_components : null;
       const legacy = (item.is_set_menu && Array.isArray(item.set_items) && item.set_items.length > 0) ? item.set_items : null;
+      // 2026-06-11 (Irene, 매장 KDS 회귀): 세트 구성품 단계가 매 재조회마다 pending 으로 리셋되던 버그.
+      // KDS 는 구성품 cooking 단계를 set_items 에 쓰는데, 여기 읽기는 set_components 를 우선한다.
+      // 그런데 set_components 구조엔 status 필드가 없어, 그대로 읽으면 단계가 전부 사라진다(→pending).
+      // composition(이름/옵션/수량)은 set_components(단일소스) 그대로 쓰되, 단계값만 이미 저장된
+      // set_items[동일 index] 에서 폴백해 KDS 가 진행한 구성품 단계를 보존한다. (일반 아이템 무관)
+      const prevSetItems = Array.isArray(item.set_items) ? item.set_items : [];
       const srcSet = (comps && comps.length > 0)
-        ? comps.map((c: any) => ({ name: c.name, quantity: (c.qty || 1), options: Array.isArray(c.options) ? c.options : [], status: c.status }))
+        ? comps.map((c: any, ci: number) => ({ name: c.name, quantity: (c.qty || 1), options: Array.isArray(c.options) ? c.options : [], status: c.status ?? prevSetItems[ci]?.status }))
         : legacy;
       if (srcSet && srcSet.length > 0) {
         const setItems = srcSet.map((si: any, setIndex: number) => ({

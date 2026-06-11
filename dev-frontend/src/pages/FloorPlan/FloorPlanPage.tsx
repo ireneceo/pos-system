@@ -2072,6 +2072,12 @@ const FloorPlanPage: React.FC = () => {
                         </div>
                         {/* 주문타입 배지 (Takeaway/Pickup/Delivery) */}
                         <div style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.3px', color: typeMeta.text, background: typeMeta.bg, border: `1px solid ${typeMeta.border}`, borderRadius: 6, padding: '2px 7px' }}>{typeMeta.label}</div>
+                        {/* 테이블 번호 칩 — 테이블에 붙은 takeaway 는 그 테이블로 갖다줘야 하므로 번호 표시(2026-06-11 Irene) */}
+                        {(o.table_number || o.tableNumber) && (
+                          <div style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.3px', color: 'var(--pos-text, #0A2540)', background: 'var(--pos-surface-alt, #EEF2F7)', border: '1px solid var(--pos-border, #D5DEE8)', borderRadius: 6, padding: '2px 7px' }}>
+                            {t('floorplan:floorPlanPage.tableChip', { defaultValue: 'Table {{n}}', n: o.table_number || o.tableNumber })}
+                          </div>
+                        )}
                         {/* 상태 배지 */}
                         <div style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: palette.text, background: palette.bg, border: `1px solid ${palette.border}`, borderRadius: 999, padding: '2px 8px' }}>{status}</div>
                         {/* 고객 + 픽업시간/배달존 + 품목 미리보기 (가변) */}

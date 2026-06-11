@@ -1,6 +1,31 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-10 (인쇄①새주문2장 dedup + 인쇄②통합티켓 POS행토글 + 구독trial 필드버그 수정 + nginx sw.js no-cache + 이메일로고? 수정 + 직원버그리포트 5건 검토·수정 + 모바일 인기탭 디폴트 + POS 현금박스/필수옵션 — 3회 운영 배포. 버전 미상승.)
+> **최종 업데이트:** 2026-06-11 (통합티켓 POS별토글 4건 운영배포 + 테이블 takeaway 유지/Takeout 테이블칩 + KDS 세트구성품 단계리셋 수정 + 전화면 실시간 동기화 구조 감사·설계. 단계 드리프트 근본원인 확정.)
+
+## ✅ 완료: 통합티켓 4건 배포 + takeaway/KDS 수정 + 실시간동기화 설계 (2026-06-11)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 통합 오더티켓 POS별 토글 4건 | ①Main POS 토글OFF 오발행 차단(레거시 mirror 폴백 가드) ②라벨=워크스테이션명 ③취소도 POS별 토글 통일 ④취소 라벨 통일. billPrint 공용 sendUnifiedTickets/computeUnifiedTicketTargets | ✅ 운영배포(3.56) |
+| 테이블 takeaway 유지 | POSTerminalPage:1576 effect가 order_type=takeaway 덮어쓰던 것 수정 + 강제 1회한정(레이스 제거) | ✅ DEV(미배포) |
+| takeaway auto-merge 제외 | 백엔드 off-table(takeaway/pickup/delivery)은 테이블 dine_in에 자동병합 안 함(Irene 선택) | ✅ DEV(미배포) |
+| Takeout 테이블 칩 | 테이블 붙은 takeaway는 "Table B-4" 칩 표시(배달위치), 4언어 | ✅ DEV(미배포) |
+| KDS 세트 구성품 단계 리셋 | set_components(status없음) 읽기우선 vs set_items 쓰기 → processRawOrderItems 폴백 | ✅ DEV(미배포) |
+| 전화면 실시간 동기화 감사·설계 | 5화면 데이터소스/소켓/단계도출 실측 매핑 → 단계 드리프트 근본원인 확정. docs/ORDER_REALTIME_SYNC_UNIFICATION.md | ✅ 설계완료 |
+
+### 수정된 파일
+- 프론트🔒: `utils/billPrint.js`(통합티켓 통일), `pages/POSTerminal/POSTerminalPage.tsx`(takeaway 유지), `pages/KitchenDisplay/KitchenDisplayPage.tsx`(세트구성품 폴백)
+- 프론트: `pages/FloorPlan/FloorPlanPage.tsx`(Takeout 칩), `public/sw.js`(3.58), locale floorplan ×4
+- 백엔드🔒: `routes/orders-crud.js`(off-table auto-merge 제외)
+- 문서: `docs/ORDER_REALTIME_SYNC_UNIFICATION.md`(신규 — 진단+설계+문제 레지스트리 P1~P7)
+
+### 미해결 (다음 — docs/ORDER_REALTIME_SYNC_UNIFICATION.md §4-B 레지스트리)
+- ⭐ 전화면 주문 단계 실시간 동기화 통일 (Irene "밤에 정석대로"). 단계 드리프트(order.status↔item.status 비대칭 cascade) 단일 단계 모델로 해결.
+- 미배포 dev 묶음(SW 3.58: KDS 세트구성품 + takeaway 3건) /배포 대기. 통합티켓(3.56) 실프린터 확인+--bless 대기.
+
+---
 
 ## ✅ 완료: 인쇄·구독·POS·이메일 대규모 수정 + 운영 배포 (2026-06-10)
 

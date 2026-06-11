@@ -43,6 +43,7 @@
   "floorPlanPage.type_takeaway": "테이크아웃",
   "floorPlanPage.type_pickup": "픽업",
   "floorPlanPage.type_delivery": "배달",
+  "floorPlanPage.tableChip": "테이블 {{n}}",
   "floorPlanPage.noTypeOrders": "현재 {{type}} 주문 없음",
   "floorPlanPage.pickupAt": "픽업 {{t}}",
   "floorPlanPage.newOrderReceived": "새 주문",

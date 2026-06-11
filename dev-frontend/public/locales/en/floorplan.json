@@ -43,6 +43,7 @@
   "floorPlanPage.type_takeaway": "Takeaway",
   "floorPlanPage.type_pickup": "Pickup",
   "floorPlanPage.type_delivery": "Delivery",
+  "floorPlanPage.tableChip": "Table {{n}}",
   "floorPlanPage.noTypeOrders": "No {{type}} orders right now",
   "floorPlanPage.pickupAt": "Pickup {{t}}",
   "floorPlanPage.newOrderReceived": "New order received",

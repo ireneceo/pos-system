@@ -612,7 +612,10 @@
       "Bash(sed -n '1,5p' DEVELOPMENT_PLAN.md)",
       "Bash(sed -n '3,6p' .claude/session-state.md)",
       "Bash(scp -q -o ConnectTimeout=8 /tmp/dump_thefire03.js irene@87.106.78.146:/var/www/production-backend/__tmp_dump_thefire03.js)",
-      "Bash(rm -f /tmp/dump_thefire03.js)"
+      "Bash(rm -f /tmp/dump_thefire03.js)",
+      "Bash(xargs -r -n1 basename)",
+      "Bash(sed -n '3,6p' /var/www/.claude/session-state.md)",
+      "Bash(sed -n '7,12p' /var/www/CHANGELOG.md)"
     ],
     "deny": [],
     "ask": []

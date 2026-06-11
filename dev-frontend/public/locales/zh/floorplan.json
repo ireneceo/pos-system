@@ -43,6 +43,7 @@
   "floorPlanPage.type_takeaway": "外带",
   "floorPlanPage.type_pickup": "自取",
   "floorPlanPage.type_delivery": "配送",
+  "floorPlanPage.tableChip": "桌号 {{n}}",
   "floorPlanPage.noTypeOrders": "暂无{{type}}订单",
   "floorPlanPage.pickupAt": "自取 {{t}}",
   "floorPlanPage.newOrderReceived": "新订单",

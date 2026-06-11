@@ -43,6 +43,7 @@
   "floorPlanPage.type_takeaway": "Bawa Pulang",
   "floorPlanPage.type_pickup": "Ambil Sendiri",
   "floorPlanPage.type_delivery": "Penghantaran",
+  "floorPlanPage.tableChip": "Meja {{n}}",
   "floorPlanPage.noTypeOrders": "Tiada pesanan {{type}} buat masa ini",
   "floorPlanPage.pickupAt": "Ambil {{t}}",
   "floorPlanPage.newOrderReceived": "Pesanan baharu",
