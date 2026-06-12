@@ -1,12 +1,25 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-06-12 (오후 — v3.55 후속 운영버그 2건 **운영 배포 완료**, Backup 20260612_082237, smoke 9/9)
-**버전:** v3.55 운영 + 오후 후속 수정 배포됨 (버전 상승 여부 Irene 답변 대기)
-**작업 상태:** 배포 완료 + 운영 실측 검증 완료 — **Cloudflare sw.js 퍼지(Irene 대시보드 수동)만 남음**
+**마지막 업데이트:** 2026-06-12 (오후 — 운영 배포 3회: ①티켓범위/이모지 082237 ②모바일 테이블유지/확대 085130 ③스탭크래시/부팅자동복구/SW우회 093826, smoke 9/9×3)
+**버전:** v3.55 운영 + 오후 후속 수정 7건 배포됨 (버전 상승 여부 Irene 답변 대기 — 묻기만 했고 미정)
+**작업 상태:** 배포·운영검증 완료, 세션 저장 후 종료
 
 ### 진행 중인 작업
 - 없음
+
+### 오후 3차 배포 (Backup 20260612_093826) — 스탭 로그인/캐시 3건
+- **이메일 없는 스탭 크래시 근본수정** — Staff ID 방식 스탭(r16:kq1/kq2/server1, email NULL)이 로그인/PIN전환 직후 `email.split('@')` 크래시 → 전 앱 ErrorBoundary("Something went wrong", 재로그인 불가로 보임). StaffContext:134(주범, StaffProvider가 앱 전체 래핑) + AuthContext 4곳 + 스탭검색 3곳 가드. **운영 실재현(크래시) → 배포 후 같은 계정 PASS 실검증**(r16:kq1 → Kitchen Display 정상 렌더).
+- **부팅 크래시 자동 복구** (Irene "캐시문제면 자동으로 지우게") — index.tsx ErrorBoundary: 진입 15초 내 크래시면 SW등록+caches 1회 자동 삭제 후 reload (sessionStorage `__boot_recover_done` 루프가드, auth_token 보존).
+- **SW 배포전달 우회** — `navigator.serviceWorker.register('/sw.js?b=<main해시>')` 빌드별 URL → CF에 1년 캐시로 박힌 옛 /sw.js(6/3, 3.46) 영구 우회. nginx exact-match no-store는 쿼리에도 적용 확인. SW 3.62.
+- thefire01pos "로그인 안 됨"의 정체 = 자격증명 아님(API 200 + 새브라우저 실로그인 정상) — **기기가 옛 캐시 번들**. 기기 1회 강력새로고침 필요(이후는 위 장치들이 자동).
+
+### r16 스탭 구조 (Irene 안내 완료)
+- 기기 로그인=thefire01pos(POS+서빙+주방 한정, 관리자기능 없음), 직원 교대=PIN 전환(KQ1/KQ2=주방만, SERVER1=서빙만). 비밀번호는 해시라 조회 불가 — Staff Edit에서 재설정. 개별 로그인 시 아이디는 `r16:kq1` 전체 형식.
+
+### 오후 2차 배포 (Backup 20260612_085130) — 모바일 2건
+- **주문 후 테이블번호 유지** — clearCart(결제성공 4페이지 호출)가 tableNumber/orderType까지 지워 홈 복귀 시 테이블 소실 → 장바구니만 비우게 수정 (QR 재스캔이 ?table=로 재시딩하므로 다음 손님 안전). 검증: e2e(QR진입→홈복귀 T1 유지+배지) + 운영번들 removeItem('tableNumber') 0곳 계약.
+- **테이블 입력 화면 확대 수정** — SearchableSelect 내부 input 14px → iOS가 16px 미만 입력 포커스 시 자동 확대. 테이블 picker 한정 16px override(TableSelectWrap). 공용 컴포넌트 무접촉.
 
 ### 🚨 Irene 액션 대기 (배포 후속)
 1. **Cloudflare 캐시 퍼지** — 대시보드 → Caching → Custom Purge → `https://purplehere.com/sw.js`. 엣지가 6/3에 캐시한 SW 3.46(1y immutable)을 계속 서빙 중이라 **5/30 이후 모든 SW bump(3.47~3.61)가 매장 기기에 미도달** (nginx no-store 수정은 6/9에 됐지만 이미 캐시된 항목엔 무효). 퍼지하면 기기들이 3.61 받고 자동 캐시삭제+강제새로고침.

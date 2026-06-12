@@ -131,7 +131,9 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // AuthContext의 user를 Staff 형태로 변환
       const staffFromAuth: Staff = {
         id: user.id,
-        username: user.email.split('@')[0],
+        // 이메일 없는 스탭(PIN 전용, Staff ID 방식) — email.split 크래시가 로그인 직후
+        // 전체 앱을 ErrorBoundary 로 떨어뜨리던 운영 사고 (2026-06-12). null 가드 필수.
+        username: user.email ? user.email.split('@')[0] : (user.name || 'staff'),
         name: user.name,
         email: user.email,
         phone: '',
@@ -307,7 +309,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return staffList.filter(staff => 
       staff.name.toLowerCase().includes(lowercaseQuery) ||
       staff.username.toLowerCase().includes(lowercaseQuery) ||
-      staff.email.toLowerCase().includes(lowercaseQuery) ||
+      (staff.email && staff.email.toLowerCase().includes(lowercaseQuery)) ||
       staff.phone.includes(query)
     );
   };

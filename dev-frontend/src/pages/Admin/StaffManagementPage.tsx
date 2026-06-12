@@ -589,7 +589,7 @@ const AdminStaffManagementPage: React.FC = () => {
     
     // Search filter
     if (searchQuery && !staff.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
-        !staff.email.toLowerCase().includes(searchQuery.toLowerCase()) &&
+        !(staff.email && staff.email.toLowerCase().includes(searchQuery.toLowerCase())) &&
         !(staff.restaurantName && staff.restaurantName.toLowerCase().includes(searchQuery.toLowerCase()))) {
       return false;
     }

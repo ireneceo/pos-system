@@ -32,6 +32,31 @@ class ErrorBoundary extends React.Component<
       sessionStorage.setItem('__chunk_reload_done', '1');
       console.warn('[ErrorBoundary] ChunkLoadError detected → hard reloading to pick up fresh main.js');
       window.location.reload();
+      return;
+    }
+    // Boot-window crash auto-recovery (Irene 2026-06-12): a stale SW/cache pairing
+    // an OLD bundle with a NEW backend repeatedly broke store logins ("로그인이 안
+    // 된다" = boot crash, not credentials). If the app crashes within the first
+    // 15s after navigation (login/boot phase — no in-progress user work to lose),
+    // wipe SW registrations + caches ONCE and reload clean. Auth token in
+    // localStorage is untouched, so a logged-in user comes back logged in.
+    const bootMs = (() => { try { return performance.now(); } catch { return Infinity; } })();
+    if (bootMs < 15000 && !sessionStorage.getItem('__boot_recover_done')) {
+      sessionStorage.setItem('__boot_recover_done', '1');
+      console.warn('[ErrorBoundary] boot crash → auto-clearing SW + caches, reloading once');
+      (async () => {
+        try {
+          if ('serviceWorker' in navigator) {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(regs.map((r) => r.unregister().catch(() => {})));
+          }
+        } catch (_) { /* non-fatal */ }
+        try {
+          const names = await caches.keys();
+          await Promise.all(names.map((n) => caches.delete(n)));
+        } catch (_) { /* non-fatal */ }
+        window.location.reload();
+      })();
     }
   }
   resetError = () => this.setState({ hasError: false, error: null });
@@ -73,7 +98,20 @@ startBuildVersionWatcher();
 // Errors are non-fatal: app degrades to in-app socket toaster only.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js', { scope: '/' }).then((reg) => {
+    // 2026-06-12: register with a per-build query (?b=<main.js hash>) so the SW
+    // script URL changes every deploy. Cloudflare had cached the bare /sw.js for
+    // a YEAR (immutable, edge entry from 6/3) — every SW_VERSION bump since 5/30
+    // silently never reached store devices. A new URL per build is a guaranteed
+    // edge-cache MISS → origin serves fresh (no-store since 6/9) → devices
+    // self-update again. Stable within a build, so no reinstall loop.
+    const buildId = (() => {
+      try {
+        const s = document.querySelector('script[src*="/static/js/main."]') as HTMLScriptElement | null;
+        const m = s?.src.match(/main\.([a-f0-9]+)\.js/);
+        return m ? m[1] : '1';
+      } catch { return '1'; }
+    })();
+    navigator.serviceWorker.register(`/sw.js?b=${buildId}`, { scope: '/' }).then((reg) => {
       // 2026-06-04 (Irene): kiosk POS devices that never navigate were getting
       // stuck on an OLD service worker serving an OLD bundle — a plain app reopen
       // didn't help (the old SW intercepts and serves its cached main.js), so

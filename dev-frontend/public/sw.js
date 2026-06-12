@@ -10,7 +10,7 @@
  * caching SPA shell would conflict. If future offline support is needed, layer Workbox separately.
  */
 
-const SW_VERSION = '3.61-ticketscope-persist-20260612';
+const SW_VERSION = '3.62-staff-noemail-bootrecover-20260612';
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {

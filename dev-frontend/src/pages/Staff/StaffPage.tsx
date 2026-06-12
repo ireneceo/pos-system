@@ -406,7 +406,7 @@ const StaffPage: React.FC = () => {
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       if (!staff.name.toLowerCase().includes(q) &&
-          !staff.email.toLowerCase().includes(q) &&
+          !(staff.email && staff.email.toLowerCase().includes(q)) &&
           !staff.department.toLowerCase().includes(q)) {
         return false;
       }

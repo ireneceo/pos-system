@@ -11,6 +11,8 @@
 |------|------|:----:|
 | 통합티켓 스테이션 범위 저장 복귀 | 근본원인=Restaurant.js printer_settings getter가 workstations를 고정 키로 재조립 → 읽기마다 consolidatedStations 소실 → UI 풀오더 복귀 + 재저장 시 DB 소실(운영 r24 발생). 수정: getter `...ws` 전 키 보존 + settingsGuard 키 단위 보존(stale echo 방어) + SettingsPage localStorage sync workstations 보강. 실API 3/3 + health 101/101 + print-guard 8/8 | ✅ DEV |
 | 브랜드메뉴 사진/이모지 | 사진 17건=이전 공유참조 사고로 원본 소실(백업 부재, BG 재업로드만 가능 — 목록 session-state). 이모지 fallback: 카드 회색 아이콘 → menu.emoji 48px 우선. 실브라우저 🥡 확인 | ✅ DEV |
+| 모바일 주문 후 테이블 유지 (2차 배포 085130) | clearCart가 tableNumber/orderType까지 지워 주문 완료→홈 복귀 시 테이블 소실(추가주문 불가). 장바구니만 비우게 수정 — QR 재스캔이 ?table= 재시딩. e2e + 운영번들 removeItem 0곳 계약 검증 | ✅ 운영 |
+| 모바일 테이블 입력 화면 확대 (2차 배포 085130) | SearchableSelect input 14px → iOS 16px 미만 포커스 자동확대. picker 한정 16px override, 공용 컴포넌트 무접촉 | ✅ 운영 |
 
 > 배포 후: r24 POS 2 스테이션 칩 재선택 + 실프린터 종이 확인(Irene). **배포 전 운영 프린터 설정 저장 금지** — 저장하면 r16 [12,13]도 getter strip 경유로 소실.
 

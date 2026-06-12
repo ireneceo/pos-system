@@ -493,7 +493,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             const userData: User = {
               id: apiUser.id?.toString() || '1',
               email: apiUser.email,
-              name: apiUser.username || apiUser.email.split('@')[0],
+              name: apiUser.username || (apiUser.email ? apiUser.email.split('@')[0] : 'Staff'),
               role: apiUser.role as UserRole,
               restaurantId: apiUser.restaurant_id?.toString() || null,
               managerId: apiUser.manager_id?.toString() || null,
@@ -560,7 +560,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const userData: User = {
             id: apiUser.id?.toString() || '1',
             email: apiUser.email,
-            name: apiUser.username || apiUser.email.split('@')[0],
+            name: apiUser.username || (apiUser.email ? apiUser.email.split('@')[0] : 'Staff'),
             role: apiUser.role as UserRole,
             restaurantId: apiUser.restaurant_id?.toString() || null,
             managerId: apiUser.manager_id?.toString() || null,
@@ -627,7 +627,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const userData: User = {
             id: apiUser.id?.toString() || '1',
             email: apiUser.email,
-            name: apiUser.username || apiUser.email.split('@')[0],
+            name: apiUser.username || (apiUser.email ? apiUser.email.split('@')[0] : 'Staff'),
             role: apiUser.role as UserRole,
             restaurantId: apiUser.restaurant_id?.toString() || null,
             managerId: apiUser.manager_id?.toString() || null,
@@ -709,7 +709,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const newUser: User = {
       id: userData.id?.toString(),
       email: userData.email,
-      name: userData.name || userData.username || userData.email.split('@')[0],
+      // PIN 전환 스탭은 email 이 없을 수 있다 (Staff ID 방식, 2026-06-12 운영 크래시).
+      name: userData.name || userData.username || (userData.email ? userData.email.split('@')[0] : 'Staff'),
       role: userData.role as UserRole,
       restaurantId: userData.restaurant_id?.toString() || null,
       restaurant_id: userData.restaurant_id || null,

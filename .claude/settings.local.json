@@ -644,7 +644,10 @@
       "Bash(sed -n '240,250p' routes/brand-menus.js)",
       "Bash(sed -n '318,330p' routes/brand-menus.js)",
       "Bash(scp -q /var/www/dev-backend/scripts/migrations/add_product_set_only.sql irene@87.106.78.146:/tmp/add_set_only.sql)",
-      "Bash(scp -q /tmp/prod-verify.js irene@87.106.78.146:/var/www/production-backend/tmp-prod-verify.js)"
+      "Bash(scp -q /tmp/prod-verify.js irene@87.106.78.146:/var/www/production-backend/tmp-prod-verify.js)",
+      "Bash(sed -n '310,314p' src/contexts/StaffContext.tsx)",
+      "Bash(sed -n '405,413p' src/pages/Staff/StaffPage.tsx)",
+      "Bash(sed -n '589,595p' src/pages/Admin/StaffManagementPage.tsx)"
     ],
     "deny": [],
     "ask": []
