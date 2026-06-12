@@ -305,16 +305,15 @@ export const MobileOrderProvider: React.FC<MobileOrderProviderProps> = ({ childr
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   
-  // Clear cart — clears the whole ordering session (cart + orderType + tableNumber)
-  // together so a finished/abandoned session never leaves a stale table behind for
-  // the next visit. A fresh scan re-seeds tableNumber/orderType from the ?table= /
-  // ?order_type= URL params on OrderTypePage.
+  // Clear cart ONLY — keep tableNumber/orderType. Irene rule (2026-06-12): the
+  // customer is still seated at the table after ordering (came in via the table
+  // QR), so going Home must keep the table — additional orders land on the SAME
+  // table without re-entering it. A fresh QR scan re-seeds tableNumber/orderType
+  // from the ?table=/?order_type= URL params on OrderTypePage, so the next
+  // customer at this table never inherits a stale value.
   const clearCart = useCallback(() => {
     setCartItemsState([]);
     localStorage.removeItem('mobile_cart');
-    localStorage.removeItem('tableNumber');
-    localStorage.removeItem('orderType');
-    setOrderTypeState(null);
   }, []);
   
   // Get currency from current store or default to 'MYR'

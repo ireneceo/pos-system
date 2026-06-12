@@ -302,6 +302,13 @@ const TableManualInput = styled.div`
   margin-top: 12px;
 `;
 
+// iOS Safari auto-zooms (and shifts the layout) when focusing an input whose
+// font-size is under 16px. SearchableSelect's inner input is 14px — override to
+// 16px here so picking/typing the table number never zooms (Irene 2026-06-12).
+const TableSelectWrap = styled.div`
+  input { font-size: 16px; }
+`;
+
 const TableManualBtn = styled.button`
   padding: 12px 16px;
   border: none;
@@ -824,13 +831,15 @@ const OrderTypePage: React.FC = () => {
                 {t('common:selectYourTableHint', 'Please choose the table you are seated at to continue your dine-in order.')}
               </TablePickerHint>
               {hasTables ? (
-                <SearchableSelect
-                  options={tables.map(tb => ({ value: tb, label: tb }))}
-                  value={null}
-                  onChange={(v) => { if (v != null && String(v).trim()) handleTablePicked(String(v)); }}
-                  placeholder={t('common:searchTablePlaceholder', 'Search table number')}
-                  noOptionsMessage={t('common:noTableMatch', 'No matching table. Check the number on your table.')}
-                />
+                <TableSelectWrap>
+                  <SearchableSelect
+                    options={tables.map(tb => ({ value: tb, label: tb }))}
+                    value={null}
+                    onChange={(v) => { if (v != null && String(v).trim()) handleTablePicked(String(v)); }}
+                    placeholder={t('common:searchTablePlaceholder', 'Search table number')}
+                    noOptionsMessage={t('common:noTableMatch', 'No matching table. Check the number on your table.')}
+                  />
+                </TableSelectWrap>
               ) : (
                 <>
                   <TableSearchInput

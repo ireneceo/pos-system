@@ -1,17 +1,28 @@
 # Purple POS — 개발 세션 상태
 
-<!-- AUTOSAVE-STALE-BANNER -->
-> **[AUTO-SAVE STALE] (2026-06-12 07:50, idle 1943s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
-> 변경된 작업 파일: Restaurant.js,settingsGuard.js sw.js,BrandMenusPage.tsx SettingsPage.tsx
-<!-- /AUTOSAVE-STALE-BANNER -->
-
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-06-12
-**버전:** v3.55 운영 (2026-06-12 배포, Backup 20260612_063050, smoke 9/9 + 운영 demo 실검증 13/13)
-**작업 상태:** 완료 — 배포 끝, 세션 마무리
+**마지막 업데이트:** 2026-06-12 (오후 — v3.55 후속 운영버그 2건 **운영 배포 완료**, Backup 20260612_082237, smoke 9/9)
+**버전:** v3.55 운영 + 오후 후속 수정 배포됨 (버전 상승 여부 Irene 답변 대기)
+**작업 상태:** 배포 완료 + 운영 실측 검증 완료 — **Cloudflare sw.js 퍼지(Irene 대시보드 수동)만 남음**
 
 ### 진행 중인 작업
 - 없음
+
+### 🚨 Irene 액션 대기 (배포 후속)
+1. **Cloudflare 캐시 퍼지** — 대시보드 → Caching → Custom Purge → `https://purplehere.com/sw.js`. 엣지가 6/3에 캐시한 SW 3.46(1y immutable)을 계속 서빙 중이라 **5/30 이후 모든 SW bump(3.47~3.61)가 매장 기기에 미도달** (nginx no-store 수정은 6/9에 됐지만 이미 캐시된 항목엔 무효). 퍼지하면 기기들이 3.61 받고 자동 캐시삭제+강제새로고침.
+2. 퍼지 전이라도: 매장 인쇄 기기(POS 1 등) **수동 새로고침/PWA 재시작 1회** → 새 번들 즉시 적용 (index.html은 캐시 안 묶임).
+3. r24 POS 2 통합티켓 스테이션 칩 **재선택** (버그로 소실됐던 것 — 이제 저장 유지됨). r16 POS 1 [12,13]=KQ1+KQ2 는 **내가 운영 DB에 복원 완료** (07:57 옛 코드 화면 저장으로 지워졌던 것).
+4. 실프린터 종이 확인 — 워크스테이션별 통합티켓 + 스테이션 범위.
+
+### 이번 오후 세션 완료 (2026-06-12 오후, DEV 미배포 — SW 3.61)
+1. **통합티켓 스테이션 범위 "저장해도 풀오더로 복귀" 근본수정** (Irene 운영 보고)
+   - 근본원인: `models/Restaurant.js` printer_settings **getter가 workstations를 {id,name,billPrinter,consolidatedTicket} 고정 키로 재조립** → 저장은 돼도 모든 API 읽기에서 `consolidatedStations` 소실 → UI 풀오더 복귀 → 그 상태로 재저장하면 DB에서도 소실(운영 r24 실제 발생, r16은 [12,13] DB 잔존)
+   - 수정 3겹: ①Restaurant.js getter `...ws` spread 전 키 보존(핵심) ②settingsGuard 워크스테이션 키 단위 보존(stale 번들 echo 방어 — ct/cs 키 없으면 existing 보존, `[]`는 명시 해제로 정상 저장) ③SettingsPage 하이드레이션 localStorage sync에 workstations 누락 보강(설정 페이지 방문 시 billPrint가 레거시 풀오더 풀백으로 떨어지던 구멍)
+   - 검증: 가드 단위 7/7 + 실API r38 3/3(저장/stale echo/해제+원복) + health 101/101 + print-guard 8/8 무변경 + settings?tab=printer mount 클린
+   - **배포 후 Irene**: r24 POS 2 스테이션 칩 재선택(이미 소실) + 실프린터 종이 확인. **배포 전 운영에서 프린터 설정 저장 금지**(저장하면 r16 [12,13]도 소실).
+2. **브랜드메뉴 사진 소실 확인 + 이모지 fallback** (Irene 운영 보고)
+   - 사진: 원본 파일이 이전 공유참조 사고로 이미 소실(6/8 이후 업로드 백업 전부 부재, weekly=DB만 — 복구 불가). 어제 정리는 정당(죽은 참조만 NULL). **The Fire 브랜드메뉴 17건 BG 재업로드 필요**: 옛날통닭세트/김치&참치볶음밥/떡볶이/비빔국수/생수/딸기초코라떼/조리퐁쉐이크/로터스빙수/크로플5종(블루베리·찰리누텔라·로터스·바나나·딸기)/치즈라면/순두부라면/소고기라면/Steam Rice. 재업로드하면 copyImageToOwnedFile로 전 매장 복원+재발 방지.
+   - 이모지: BrandMenusPage 카드 fallback이 회색 아이콘뿐 → menu.emoji 우선(48px) 표시로 수정. 실브라우저 🥡 렌더 확인.
 
 ### 완료된 작업 (이번 세션, 2026-06-11 밤 ~ 06-12)
 - **⭐ 전 화면 주문 단계 실시간 동기화 통일 (Irene "정석대로") — v3.55 배포.** 백엔드 단일 단계 모델(orders-crud: 주문단위 이동=아이템·세트구성품 양방향 동행(P1), 아이템 변경=주문 min roll-up, void 포함) + 공용 `OrdersRealtimeContext`/`orderStage.ts`(table-status 1:1 클라 파생) + LiveOrders·FloorPlan(캔버스/아이템뷰/Takeout) 전환·table-status 의존 제거. 검증: 실API 23×3 + 크로스화면 e2e(≤2s·리프레시0, 실반영 ~10ms)×3.

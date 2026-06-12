@@ -1,6 +1,18 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-12 (⭐ v3.55 운영 배포 — 실시간 동기화 통일 + set_only + 통합티켓 범위 + 이미지 소유권. Backup 20260612_063050, smoke 9/9, 운영검증 13/13)
+> **최종 업데이트:** 2026-06-12 오후 (v3.55 후속 운영버그 2건 **운영 배포** — Backup 20260612_082237, smoke 9/9. 잔여: Cloudflare sw.js 퍼지(수동) + r24 칩 재선택 + 실프린터)
+
+## ✅ 운영 배포: v3.55 후속 운영버그 2건 (2026-06-12 오후, Backup 20260612_082237 — SW 3.61)
+
+> 배포 후 운영 실측: Restaurant getter가 r16 [12,13] 보존 왕복 확인(직접 모델 read), r16 POS 1 선택값 DB 복원(07:57 옛 코드 화면 저장이 지운 것), settingsGuard 키 보존 배포 확인.
+> **발견: Cloudflare가 sw.js를 6/3 캐시(1y immutable)한 채 서빙 → 5/30 이후 SW bump 전부 매장 미도달.** nginx no-store는 6/9에 수정됐으나 기캐시 항목엔 무효 — **Irene 대시보드 Custom Purge(`https://purplehere.com/sw.js`) 필요.** 퍼지 시 기기 자동 새로고침(3.61 SW가 캐시삭제+강제 reload).
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 통합티켓 스테이션 범위 저장 복귀 | 근본원인=Restaurant.js printer_settings getter가 workstations를 고정 키로 재조립 → 읽기마다 consolidatedStations 소실 → UI 풀오더 복귀 + 재저장 시 DB 소실(운영 r24 발생). 수정: getter `...ws` 전 키 보존 + settingsGuard 키 단위 보존(stale echo 방어) + SettingsPage localStorage sync workstations 보강. 실API 3/3 + health 101/101 + print-guard 8/8 | ✅ DEV |
+| 브랜드메뉴 사진/이모지 | 사진 17건=이전 공유참조 사고로 원본 소실(백업 부재, BG 재업로드만 가능 — 목록 session-state). 이모지 fallback: 카드 회색 아이콘 → menu.emoji 48px 우선. 실브라우저 🥡 확인 | ✅ DEV |
+
+> 배포 후: r24 POS 2 스테이션 칩 재선택 + 실프린터 종이 확인(Irene). **배포 전 운영 프린터 설정 저장 금지** — 저장하면 r16 [12,13]도 getter strip 경유로 소실.
 
 ## ✅ 운영 배포: v3.55 (2026-06-12, Backup 20260612_063050)
 
