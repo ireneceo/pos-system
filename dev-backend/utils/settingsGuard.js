@@ -110,6 +110,28 @@ function guardPrinterSettings(incomingRaw, existingRaw, restaurantId = '?') {
     preserved.push('workstations');
   }
 
+  // workstation 키 단위 보존 (2026-06-12) — 옛 번들/먼저 열어둔 설정 페이지가 자기 메모리의
+  // stale workstations 를 통째로 echo 하면, 그 뒤에 저장된 새 키(consolidatedTicket /
+  // consolidatedStations)가 last-write-wins 로 조용히 증발한다 (r24 통합티켓 범위 소실 실사고).
+  // incoming workstation(id 매칭)에 키 자체가 없으면 existing 값을 보존. 의도적 해제는
+  // 키가 항상 실려 오므로(consolidatedStations: []) 정상 저장된다.
+  const wsAfter = Array.isArray(merged.workstations) ? merged.workstations : null;
+  if (wsAfter && exWs.length > 0) {
+    const exById = new Map(exWs.filter(w => w && w.id).map(w => [w.id, w]));
+    let preservedWsKeys = false;
+    merged.workstations = wsAfter.map(w => {
+      if (!w || !w.id) return w;
+      const ex = exById.get(w.id);
+      if (!ex) return w;
+      const out = { ...w };
+      for (const key of ['consolidatedTicket', 'consolidatedStations']) {
+        if (!(key in out) && (key in ex)) { out[key] = ex[key]; preservedWsKeys = true; }
+      }
+      return out;
+    });
+    if (preservedWsKeys) preserved.push('workstations(per-ws keys)');
+  }
+
   // kitchenStationPrinters — 전체 손실 / 부분 손실 모두 보존
   const exStations = (existing.kitchenStationPrinters && typeof existing.kitchenStationPrinters === 'object')
     ? existing.kitchenStationPrinters : {};

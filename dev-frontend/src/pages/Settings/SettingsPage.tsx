@@ -1441,6 +1441,11 @@ const SettingsPage: React.FC = () => {
               billPrinter: dbSettings.billPrinter || { enabled: false, name: '', autoPrint: false, address: '' },
               kitchenPrinter: dbSettings.kitchenPrinter || { enabled: false, name: '', autoPrint: false, printPerItem: false, address: '' },
               ...(dbSettings.kitchenStationPrinters ? { kitchenStationPrinters: dbSettings.kitchenStationPrinters } : {}),
+              // 2026-06-12: workstations 누락이 통합티켓 회귀를 만들던 구멍 — StoreContext 의
+              // sync 는 workstations 를 포함하는데 여기서 빼고 덮어써, 설정 페이지를 한 번
+              // 방문하면 localStorage 에서 consolidatedTicket/consolidatedStations 가 사라져
+              // billPrint 가 레거시(풀오더 mirror) 폴백으로 떨어졌다. StoreContext 와 동일 구성 유지.
+              ...(Array.isArray(dbSettings.workstations) ? { workstations: dbSettings.workstations } : {}),
               ...(dbSettings.consolidatedOrderTicket ? { consolidatedOrderTicket: dbSettings.consolidatedOrderTicket } : {})
             }));
           }

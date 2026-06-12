@@ -654,7 +654,12 @@ Restaurant.init({
           }];
         } else {
           // Fill in any missing fields on saved workstations.
+          // 2026-06-12: spread ws first — this map used to rebuild each workstation with a
+          // fixed key list, so every API read silently dropped newer keys. consolidatedStations
+          // (통합티켓 스테이션 범위) was saved fine but stripped on read → UI showed "Full order"
+          // again and the next save wiped it from the DB too. Keep ALL saved keys.
           merged.workstations = parsed.workstations.map((ws, idx) => ({
+            ...ws,
             id: ws.id || `ws_${idx}`,
             name: ws.name || `Workstation ${idx + 1}`,
             billPrinter: { ...defaultBill, ...(ws.billPrinter || {}) },

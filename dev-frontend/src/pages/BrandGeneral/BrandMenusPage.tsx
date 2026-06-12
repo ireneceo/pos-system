@@ -842,7 +842,9 @@ const BrandMenusPage: React.FC = () => {
             {sortItems(menus.map(m => ({ ...m, price: m.recommended_price, display_order: (m as any).sort_order })), sortKey).map(m => (
               <Card key={m.id}>
                 <CardImage $src={m.image_url}>
-                  {!m.image_url && <UtensilsCrossed />}
+                  {!m.image_url && (m.emoji
+                    ? <span style={{ fontSize: '48px', lineHeight: 1 }}>{m.emoji}</span>
+                    : <UtensilsCrossed />)}
                 </CardImage>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                   <CardTitle>{m.name}</CardTitle>
