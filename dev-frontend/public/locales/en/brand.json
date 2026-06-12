@@ -694,5 +694,6 @@
   "productsTab.distribution.specificRestaurants": "Specific Restaurants Only",
   "productsTab.distribution.specificRestaurantsDesc": "Only selected restaurants can order",
   "productsTab.distribution.targetBrands": "Target Brands",
-  "productsTab.distribution.targetRestaurants": "Target Restaurants"
+  "productsTab.distribution.targetRestaurants": "Target Restaurants",
+  "brandMenusPage.setOnly": "Set menu use only — not sold separately (hidden from POS & mobile ordering at restaurants)"
 }

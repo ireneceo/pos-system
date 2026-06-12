@@ -1223,7 +1223,13 @@ router.post('/:id/move-table', authenticateToken, async (req, res) => {
         io.of('/orders').to(room).emit('order-items-added', {
           orderId: outcome.destinationOrderId, orderNumber: plain.order_number,
           tableNumber: plain.table_number, orderGroup: outcome.orderGroup,
-          addedItems: outcome.addedItems, itemCount: (outcome.addedItems || []).length
+          addedItems: outcome.addedItems, itemCount: (outcome.addedItems || []).length,
+          // 2026-06-12 (Irene): 테이블이동 머지를 일반 +Round 추가주문과 구분 —
+          // FloorPlan/LiveOrders 배너가 "New Items Added" 대신 "Orders Merged" 로
+          // 표기할 수 있게 출처를 명시한다(additive 필드 — 기존 소비자 무영향).
+          viaTableMove: true,
+          mergedFromTable: outcome.sourceTableNumber || null,
+          mergedFromOrderNumber: outcome.mergedFromOrderNumber || null
         });
         // 2026-06-02: KDS 가 "이 주문이 다른 테이블/주문에 합쳐졌다" 를 명시 안내(팝업).
         // 이동(table-moved)과 같은 채널, merged 플래그로 문구만 분기. 인쇄 무관(화면 안내).
@@ -1339,6 +1345,54 @@ router.patch('/:id/apply-discount', authenticateToken, async (req, res) => {
 // Status order for forward/backward detection
 const STATUS_ORDER = { outstanding: 0, pending: 1, preparing: 2, ready: 3, served: 4, completed: 5, cancelled: -1 };
 
+// ── 단일 단계 모델 (2026-06-12, Irene "전 화면 주문 단계 실시간 동기화 통일") ──────
+// 근본원인(P1): order.status(주문 단위)와 order_items[].status(아이템 단위)가 별도 저장인데
+// 전파가 비대칭이었다 — 전진 served/completed 만 아이템에 강제, 되돌리기는 미전파 →
+// "완료→되돌린 주문이 KDS 에 안 뜸 / 아이템리스트 5 vs KDS 3" 드리프트.
+// 원칙: ① 주문 단위 이동은 아이템이 같이 다닌다(전진=목표 미달 아이템 끌어올림, 되돌리기=
+//        목표 초과 아이템 내림). ② 아이템 단위 이동은 주문 단계가 아이템 최저(min) 단계로
+//        따라온다(roll-up, 상한 served — completed 전환은 재고차감·포인트 부수효과가 있는
+//        /status 경로 전용). cancelled/outstanding/awaiting_payment 는 결제·취소 축이므로 무접촉.
+const COOK_LVL = { pending: 1, preparing: 2, ready: 3, served: 4, completed: 5 };
+
+// 주문 단위 이동을 아이템(+세트 구성품)에 동행시킨다. direction 은 주문 단계의 이동
+// 방향(전진/되돌리기) 기준 — 아이템별로 방향을 따로 판정하면 전진 중 앞서간 아이템을
+// 끌어내리는 오동작이 생긴다. 같은 단계 재전송(no-op PATCH)은 호출부에서 걸러진다.
+function cascadeItemsToOrderStatus(items, targetStatus, isForwardMove) {
+  const targetLvl = COOK_LVL[targetStatus];
+  if (!targetLvl || !Array.isArray(items)) return items;
+  const lvlOf = (s) => COOK_LVL[s] || COOK_LVL.pending; // 미지정 status = pending 취급
+  const carry = (entry) => {
+    if (!entry || typeof entry !== 'object') return entry;
+    const lvl = lvlOf(entry.status);
+    if (isForwardMove ? lvl < targetLvl : lvl > targetLvl) return { ...entry, status: targetStatus };
+    return entry;
+  };
+  return items.map(item => {
+    if (!item || typeof item !== 'object') return item;
+    let out = carry(item);
+    if (Array.isArray(out.set_items)) out = { ...out, set_items: out.set_items.map(carry) };
+    if (Array.isArray(out.set_components)) out = { ...out, set_components: out.set_components.map(carry) };
+    return out;
+  });
+}
+
+// 아이템 단계 → 주문 단계 roll-up. 쿠킹 범위의 주문에서만, 아이템 최저(min) 단계를
+// 주문 단계로 파생한다. completed 아이템은 served 로 취급(roll-up 상한).
+// 반환: 바뀌어야 할 새 주문 status 또는 null(변경 불필요/비대상).
+function deriveOrderStatusFromItems(items, currentOrderStatus) {
+  if (!['pending', 'preparing', 'ready', 'served'].includes(currentOrderStatus)) return null;
+  if (!Array.isArray(items) || items.length === 0) return null;
+  const CAP = 4; // served
+  const minLvl = items.reduce((m, it) => {
+    const lvl = Math.min(COOK_LVL[it && it.status] || COOK_LVL.pending, CAP);
+    return Math.min(m, lvl);
+  }, CAP);
+  const BY_LVL = { 1: 'pending', 2: 'preparing', 3: 'ready', 4: 'served' };
+  const derived = BY_LVL[minLvl];
+  return derived && derived !== currentOrderStatus ? derived : null;
+}
+
 // Update order status
 router.patch('/:id/status', authenticateToken, async (req, res) => {
   try {
@@ -1380,23 +1434,25 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
       updateData.served_at = served_at ? new Date(served_at) : new Date();
     }
 
-    // If marking as served/completed, set all item statuses to completed
-    if ((finalStatus === 'served' || finalStatus === 'completed') && order.order_items) {
-      try {
-        const items = Array.isArray(order.order_items) ? order.order_items : JSON.parse(order.order_items);
-        const completedItems = items.map(item => ({
-          ...item,
-          status: 'completed'
-        }));
-        updateData.order_items = completedItems;
-      } catch (e) {
-        console.error('Failed to update item statuses:', e);
+    // ── 단일 단계 모델: 주문 단위 이동은 아이템이 같이 다닌다 (2026-06-12) ─────────
+    // 전진: 목표 단계 미달 아이템을 목표 단계로 끌어올림 (served→'served', completed→'completed'
+    //       — 이전엔 served 인데도 아이템을 'completed' 로 강제해 주문↔아이템이 안 맞았다).
+    // 되돌리기: 목표 단계를 넘어선 아이템을 목표 단계로 내림 — 이전 "revert 시 아이템 유지"가
+    //       P1(완료→되돌린 주문이 KDS 에 안 뜸, 아이템리스트 5 vs KDS 3)의 근본원인.
+    // 세트 구성품(set_items/set_components)도 동일 규칙으로 동행. 같은 단계 재전송은 무접촉.
+    // cancelled/outstanding/awaiting_payment 는 COOK_LVL 밖이라 cascade 안 탐(기존 동일).
+    {
+      const _prevLvl = COOK_LVL[order.status] || 0;
+      const _targetLvl = COOK_LVL[finalStatus];
+      if (_targetLvl && _targetLvl !== _prevLvl && order.order_items) {
+        try {
+          const items = Array.isArray(order.order_items) ? order.order_items : JSON.parse(order.order_items);
+          updateData.order_items = cascadeItemsToOrderStatus(items, finalStatus, _targetLvl > _prevLvl);
+        } catch (e) {
+          console.error('Failed to cascade item statuses:', e);
+        }
       }
     }
-
-    // When reverting order status, do NOT reset individual item statuses.
-    // Items that were already started/completed should keep their status
-    // (only the user can manually change individual item statuses).
 
     // Track if status changed to completed (for inventory deduction)
     const wasCompleted = order.status === 'completed';
@@ -1593,6 +1649,19 @@ router.patch('/:id/items', authenticateToken, async (req, res) => {
       order_items: _itemsToSave
     };
 
+    // ── 단일 단계 모델: 아이템 → 주문 roll-up (2026-06-12) ─────────────────────
+    // 아이템 단위 이동(전진·되돌리기 모두)이 곧바로 주문 단계에 반영된다 — 주문 단계 =
+    // 아이템 최저(min) 단계. 이전엔 프론트 3곳(LiveOrders/FloorPlan/TableDetailPanel)이
+    // "전부 served 면 /status served" 를 제각각 호출했고 되돌리기는 아무도 반영 안 해
+    // 화면마다 단계가 달랐다. roll-up 상한은 served(— completed 는 재고차감·포인트
+    // 부수효과가 있는 /status 경로 전용). 쿠킹 범위 밖 주문(outstanding 등)은 무접촉.
+    const _prevOrderStatusItems = order.status;
+    const _rolledStatus = deriveOrderStatusFromItems(_itemsToSave, order.status);
+    if (_rolledStatus) {
+      updateData.status = _rolledStatus;
+      if (_rolledStatus === 'served' && !order.served_at) updateData.served_at = new Date();
+    }
+
     // Recalculate total_amount if requested or if items changed significantly
     if (recalculateTotal && Array.isArray(_itemsToSave)) {
       const newTotal = _itemsToSave.reduce((sum, item) => {
@@ -1616,6 +1685,19 @@ router.patch('/:id/items', authenticateToken, async (req, res) => {
         try { plainItemsOrder.order_items = JSON.parse(plainItemsOrder.order_items); } catch(e) { plainItemsOrder.order_items = []; }
       }
       io.of('/orders').to(`restaurant_${order.restaurant_id}`).emit('order-updated', plainItemsOrder);
+    }
+
+    // ── Audit log — roll-up 으로 주문 단계가 따라 움직였으면 status_change 기록 ────
+    if (_rolledStatus && _rolledStatus !== _prevOrderStatusItems) {
+      logOrderActionSafe({
+        orderId: order.id, restaurantId: order.restaurant_id,
+        actionType: 'status_change', fromStatus: _prevOrderStatusItems, toStatus: _rolledStatus,
+        performedByUserId: req.body.kds_staff_id || req.user?.id,
+        performedByName: req.body.kds_staff_name || req.user?.full_name || req.user?.username,
+        performedByRole: req.body.kds_staff_id ? 'staff' : (['System Admin','Restaurant Admin'].includes(req.user?.role) ? 'admin' : 'staff'),
+        source: req.body.source || (req.body.kds_staff_id ? 'kds' : 'pos'),
+        metadata: { derived_from_items: true }
+      });
     }
 
     // ── Audit log — items modified (item_modified) ────────────────
@@ -2244,6 +2326,14 @@ router.delete('/:id/items/:itemIndex', authenticateToken, requirePosCounter, asy
     // undefined `newTotal` → DELETE-ITEM threw "newTotal is not defined" and the
     // item removal failed. Define it from the recomputed total.
     const newTotal = order.total_amount;
+
+    // ── 단일 단계 모델: 아이템 제거 후 남은 아이템 min 단계로 주문 단계 roll-up ──
+    // (예: 유일하게 안 나간 아이템을 void → 남은 전부 ready 면 주문도 ready 로)
+    const _voidRolled = deriveOrderStatusFromItems(orderItems, order.status);
+    if (_voidRolled) {
+      order.status = _voidRolled;
+      if (_voidRolled === 'served' && !order.served_at) order.served_at = new Date();
+    }
 
     await order.save();
 

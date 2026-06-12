@@ -1,6 +1,67 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-11 (통합티켓 POS별토글 4건 운영배포 + 테이블 takeaway 유지/Takeout 테이블칩 + KDS 세트구성품 단계리셋 수정 + 전화면 실시간 동기화 구조 감사·설계. 단계 드리프트 근본원인 확정.)
+> **최종 업데이트:** 2026-06-12 (⭐ v3.55 운영 배포 — 실시간 동기화 통일 + set_only + 통합티켓 범위 + 이미지 소유권. Backup 20260612_063050, smoke 9/9, 운영검증 13/13)
+
+## ✅ 운영 배포: v3.55 (2026-06-12, Backup 20260612_063050)
+
+> 이번 밤 작업 전체 배포. 검증: 풀 /검증(hydration 0 / 타임존 신규 0 / health 101/101 / print 8/8 bless / mount 7라우트 / 동기화 e2e) → 배포 → **운영 demo 실검증 13/13**(주문 전과정 단일 단계 모델 + 인쇄 계약 + set_only + 스테이션 자동정리) + 운영 critical 5페이지 mount 클린 + SW 3.60 서빙 확인.
+> DB 마이그: products/brand_menus.set_only (배포 전 선적용, `scripts/migrations/add_product_set_only.sql`). print-guard bless(Irene 승인 — 실프린터 테스트는 운영에서만 가능).
+> **남은 실프린터 확인(Irene)**: 통합티켓 워크스테이션별 발행 + 스테이션 범위 티켓 (실제 종이 출력).
+> **Irene 결정 대기**: thefire02 닭갈비라면 스테이션 충돌(개별 KQ2 vs 카테고리 KQ1 — 현재 KQ2로 인쇄) / BG 브랜드메뉴 이미지 재업로드(원본 파일 소실).
+
+## ✅ 완료: thefire 운영 3건 + 브랜드 set_only 전파 (2026-06-12 아침 2차)
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 주방스테이션 잔존 정리 (운영 r24) | 전메뉴 개별선택→카테고리 전환 후 개별배정 113건 잔존 실측. 잉여 97건 운영 NULL(라우팅 무변화, 스냅샷 보관). dev: PUT 저장 시 잉여 자동정리 + 배정 UI 충돌 예외(⚠) 표시. **충돌 1건(닭갈비라면 KQ2 vs 카테고리 KQ1) Irene 결정 대기** | ✅ 운영정리+DEV |
+| 브랜드 푸시 이미지 깨짐 근본수정 | 원인=이미지 참조 공유(원본 교체 시 파일 삭제→전매장 깨짐). copyImageToOwnedFile 소유권 복사 + deleteOldImages brand-menus 보호 + POS img onError 가드. 운영 죽은 참조 68건(brand_menus 17+products 51, r16/24/25) NULL. **BG 이미지 재업로드 1회 필요** | ✅ 운영정리+DEV |
+| 브랜드메뉴 set_only 전파 | BrandMenu.set_only + BG 폼 토글 + 푸시 상속 + 버전 sync 마다 브랜드 값 추종. 마이그 add_product_set_only.sql 에 brand_menus 포함 | ✅ DEV (검증 9/9) |
+
+---
+
+## ✅ 완료: 세트 전용 단품 + 통합티켓 스테이션 범위 (2026-06-12 아침, DEV 미배포 SW 3.60)
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 세트 전용 단품 (set_only) | Product.set_only 신설 — 세트 구성용 단품을 단품 판매에서 제외. 메뉴관리 토글+배지 / POS 그리드·카테고리탭 숨김 / LiveOrders·TableDetailPanel 추가주문 숨김 / 모바일 서버필터+빈 카테고리 탭 숨김. 세트 구성 resolve·스테이션 라우팅 무영향. **운영 배포 시 `scripts/migrations/add_product_set_only.sql` 실행 필수** | ✅ DEV (실API 10/10 + 브라우저 4/4) |
+| 스테이션 배정 화면 정리 | 세트메뉴는 배정 목록·카테고리 라우팅에서 제외(구성품이 각자 라우팅 — 혼동 제거), 세트만 있는 카테고리 숨김, set_only 단품은 "Set only" 배지로 정상 표시 | ✅ DEV |
+| 통합티켓 스테이션 범위 (🔒 Irene 명시 요청) | workstations[].consolidatedStations — 워크스테이션별로 주방 스테이션 선택 시 그 스테이션 품목만 모은 통합티켓(예: 주방용=바 제외). 미선택=전체(기존 동일). 미배정 품목은 포함(누락 방지), 범위 품목 0이면 발행 생략. 취소 통합티켓 동일 범위. **실프린터 확인=배포 후 Irene** | ✅ DEV (코드/빌드/설정 mount 검증) |
+
+---
+
+## ✅ 완료: 전 화면 주문 단계 실시간 동기화 통일 (2026-06-12, DEV 미배포)
+
+> Irene 지시 "밤에 정석대로". 설계 docs/ORDER_REALTIME_SYNC_UNIFICATION.md 의 P1·P2 근본 해결.
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 백엔드 단일 단계 모델 | 주문단위 이동=아이템(+세트구성품) **양방향 동행**(전진 끌어올림/되돌리기 내림 — P1 근본수정) + 아이템 변경=주문단계 min **자동 roll-up**(상한 served, /items·void) + same-status 무접촉 + cancelled/outstanding 무접촉. `cascadeItemsToOrderStatus`/`deriveOrderStatusFromItems` | ✅ DEV |
+| 공용 실시간 스토어 | `contexts/OrdersRealtimeContext.tsx` — 단일 fetch(오늘·전단계) + 6종 소켓 단일 reducer(in-place) + 초단위 단조가드 + 재연결 재동기화 + 30s 안전폴링 | ✅ 신규 |
+| 단일 단계 유틸 | `utils/orderStage.ts` — 단계 레벨/도출 + 백엔드 table-status `buildOrderInfo` 1:1 클라 파생(`deriveTableStatusMaps`) + off-table 필터 | ✅ 신규 |
+| Live Orders 전환 | 공용 스토어 소비(오늘=실시간/과거=히스토리 fetch 분리), items-added 주문 미갱신 구멍 해소, 중복 roll-up /status 호출 제거 | ✅ DEV |
+| Floor Plan 전환 | 캔버스+아이템뷰+Takeout 모두 공용 스토어 파생 — **table-status 의존 제거**, 2s debounce 전체 refetch → in-place, 미구독이던 deleted/voided/moved 도 반영, 15s Takeout 폴링 제거 | ✅ DEV |
+| TableDetailPanel | 중복 roll-up /status 호출 제거(백엔드 단일화 — 이중 emit 레이스 차단) | ✅ DEV |
+| KDS | **무접촉** — 이미 6종 구독+미보유 upsert+버전가드 보유, 백엔드 cascade 만으로 정합(되돌린 주문 컬럼 복귀). 인쇄 핸들러 0 접촉 | ✅ 확인 |
+| 🐞 검증이 잡은 실버그 ① | 단조가드 ms 비교 — created(메모리 ms)·updated(DB 초절삭)가 같은 초에 역전 drop → 화면 고착. 초 단위 비교로 수정 | ✅ |
+| 🐞 KDS 만성 "리프레시해야 보임" 근본수정 (2026-06-04 미진단 건) | KDS order-created/updated 의 `restaurant_id !== user.restaurantId` 엄격비교 — restaurantId 가 문자열이라 **모든 소켓 이벤트 무시**, 30s 폴링만 갱신되던 것. 숫자 비교 + verOf 초단위 교정. **display-only(shouldAutoPrint=false 하드 확인, 인쇄 무접촉)**. KDS e2e 3회 6/6 (~60ms) | ✅ DEV |
+| KDS 아이템뷰 준비시간 타이머 | 그룹카드(earliestTime + defaultPreparationTimePerItem 설정) + Ready 카드에 PrepTimerChip — 주문뷰/플로어 아이템리스트와 동일 신호등. 표시 전용 | ✅ DEV |
+| 테이블이동 머지 배너 구분 | move-table merge 의 order-items-added 에 viaTableMove/mergedFrom* 플래그(additive) → FloorPlan·LiveOrders 배너 "Orders Merged"+출발 주문/테이블 명시 (구: "New Items Added" 혼동). i18n 4언어 | ✅ DEV |
+| KDS 아이템뷰 반응형 + 타이머 (이전 스타일 유지) | Irene 최종: 구조는 **이전 그대로**(교차주문 같은-아이템 합치기 + merge limits 설정 + 출처표시 + 배치 + Merge칩 — 합쳐진 카드는 테이블/주문번호 여러 개라 이전 스타일이 정답). 변경 2가지만: ①긴 메뉴명이 버튼을 화면 밖으로 밀던 overflow 수정(카드 minWidth:0/wordBreak/flexShrink + 공통 PageHeader ≤768 액션영역 shrink — 실측 75px/16px 이탈→0) ②준비시간 신호등을 우측 버튼 옆에 추가(아이템단위 설정 기준, 제목 비부착). 검증 10/10 | ✅ DEV |
+
+### 검증
+- 백엔드 실API 23케이스(S1~S9: 전진/아이템단위/되돌리기/세트구성품/same-status/cancelled/void roll-up/소켓 payload) **3회 연속 23/23**
+- health-check **100/101** (실패 1 = 이전 세션 3.56 print-guard --bless 대기분, 오늘 변경 무관 — git diff 로 인쇄 키워드 0접촉 증명)
+- critical 5라우트(live-orders/floor-plan×3뷰/kitchen) Playwright mount: 크래시 0·console.error 0·ErrorBoundary 0
+- 크로스화면 e2e(생성/전진/되돌리기/삭제 → 타화면 ≤2s·리프레시 0) 3회 연속 — 단조가드 수정 후 통과 확인
+
+### 수정된 파일
+- 백엔드: `routes/orders-crud.js` (단계 핸들러 5 hunk — pending-print/printed/kitchen_items 무접촉)
+- 프론트 신규: `contexts/OrdersRealtimeContext.tsx`, `utils/orderStage.ts`
+- 프론트: `pages/LiveOrders/LiveOrdersPage.tsx`, `pages/FloorPlan/{FloorPlanPage,TableDetailPanel}.tsx`, `public/sw.js`(3.59)
+
+---
 
 ## ✅ 완료: 통합티켓 4건 배포 + takeaway/KDS 수정 + 실시간동기화 설계 (2026-06-11)
 

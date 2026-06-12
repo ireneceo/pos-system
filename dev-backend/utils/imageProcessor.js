@@ -278,6 +278,12 @@ async function deleteOldImages(oldUrls) {
   for (const url of urls) {
     if (!url || typeof url !== 'string' || !url.startsWith('/uploads/')) continue;
 
+    // 2026-06-12 (thefire02 이미지 소실 사고): /uploads/brand-menus/ 파일은 BG 소유 공유
+    // 자산 — 여러 매장의 푸시된 Product 가 같은 파일을 참조한다. 매장 제품 이미지 교체가
+    // 이 파일을 지우면 다른 매장 전부가 깨진다. 브랜드 파일은 절대 여기서 지우지 않는다
+    // (브랜드메뉴 자체 수정 시 교체는 brand-menus 라우트가 관리).
+    if (url.includes('/brand-menus/')) continue;
+
     const filePath = path.join('/var/www', url);
     try {
       await fs.unlink(filePath);
@@ -307,6 +313,30 @@ async function deleteOldImages(oldUrls) {
  * @param {object} options - { maxWidth, maxHeight, quality }
  * @returns {Promise<string|null>} 저장된 파일의 URL 경로 (예: '/uploads/logos/brand-logo.png')
  */
+/**
+ * 기존 /uploads/ 파일을 새 소유 경로로 복사 (2026-06-12, thefire02 이미지 소실 사고 재발 방지).
+ * 브랜드메뉴가 매장 제품 이미지 URL 을 "참조만" 하면, 원본 제품이 이미지를 교체할 때 옛 파일이
+ * 삭제돼 브랜드메뉴와 푸시된 전 매장 이미지가 한꺼번에 깨진다. 등록/수정 시 자기 파일로 복사해
+ * 소유권을 가져온다. 원본이 이미 없으면 null 반환(죽은 참조를 저장하지 않음).
+ * @returns {Promise<string|null>} 새 URL 또는 null
+ */
+async function copyImageToOwnedFile(url, { subdir, filename } = {}) {
+  if (!url || typeof url !== 'string' || !url.startsWith('/uploads/')) return null;
+  try {
+    const srcPath = path.join('/var/www', url);
+    const ext = (path.extname(srcPath) || '.jpg').toLowerCase();
+    const dir = path.join('/var/www/uploads', subdir || 'misc');
+    await fs.mkdir(dir, { recursive: true });
+    const destName = `${filename || 'copy_' + Date.now()}${ext}`;
+    const destPath = path.join(dir, destName);
+    await fs.copyFile(srcPath, destPath);
+    return `/uploads/${subdir || 'misc'}/${destName}`;
+  } catch (e) {
+    // 원본 소실 등 — 죽은 참조를 만들지 않도록 null
+    return null;
+  }
+}
+
 async function saveImageToFile(base64Image, fixedFilename, options = {}) {
   if (!base64Image || typeof base64Image !== 'string') return null;
 
@@ -373,6 +403,7 @@ async function normalizeImageField(value, { subdir, filename, maxWidth, maxHeigh
 }
 
 module.exports = {
+  copyImageToOwnedFile,
   processImage,
   createThumbnail,
   optimizeImage,

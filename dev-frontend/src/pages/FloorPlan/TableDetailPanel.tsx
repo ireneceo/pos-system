@@ -668,7 +668,8 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
           }
           return { ...i, category_id: i.category_id || i.categoryId, optionGroups: Array.isArray(optionGroups) ? optionGroups : [] };
         });
-        setMenuItems(normalizedItems.filter((i: any) => i.is_available !== false));
+        // set_only = 세트 구성 전용 단품 — 추가주문에서도 단품 담기 불가 (2026-06-12)
+        setMenuItems(normalizedItems.filter((i: any) => i.is_available !== false && !i.set_only));
       }
     } catch (err) {
       console.error('Failed to fetch menu:', err);
@@ -829,14 +830,8 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
       });
 
       if (res.ok) {
-        const allServed = updatedItems.every((i: any) => i.status === 'served');
-        if (allServed && ['pending', 'preparing', 'ready'].includes(orderStatus)) {
-          await fetch(`/api/orders/${statusInfo.orderId}/status`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify({ status: 'served' })
-          });
-        }
+        // 주문 단계 롤업은 백엔드 단일 단계 모델이 처리 (2026-06-12, PATCH /items 가
+        // 아이템 min 단계로 주문 단계를 같은 쓰기에서 파생 — 별도 /status 호출 제거).
         onOrderUpdated();
       }
     } catch (_) { /* silently fail */ }

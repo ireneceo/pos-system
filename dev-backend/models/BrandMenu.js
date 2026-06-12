@@ -25,6 +25,7 @@ const BrandMenu = sequelize.define('BrandMenu', {
   currency:          { type: DataTypes.STRING(3), defaultValue: 'MYR' },
   is_active:         { type: DataTypes.BOOLEAN, defaultValue: true },
   after_meal:        { type: DataTypes.BOOLEAN, defaultValue: false, comment: 'Serve after the main meal (e.g. dessert). Registration flag only.' },
+  set_only:          { type: DataTypes.BOOLEAN, defaultValue: false, comment: '2026-06-12: 세트 구성 전용 — 단품 판매 안 함. 푸시/동기화 시 매장 Product.set_only 로 전파.' },
   sort_order:        { type: DataTypes.INTEGER, defaultValue: 0 },
   version:           { type: DataTypes.INTEGER, defaultValue: 1, comment: 'Bumps on every edit; Restaurants compare to detect pending updates' },
   distribution_mode: { type: DataTypes.ENUM('auto', 'manual'), defaultValue: 'manual' },

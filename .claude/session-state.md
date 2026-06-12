@@ -1,33 +1,38 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-06-11
-**버전:** v3.54 운영 (버그수정/표시방법이라 버전 미상승 — backstage 규칙)
-**작업 상태:** 완료 (Irene 이동, 실시간 동기화 통일은 밤에 정석대로 착수 예정)
+**마지막 업데이트:** 2026-06-12
+**버전:** v3.55 운영 (2026-06-12 배포, Backup 20260612_063050, smoke 9/9 + 운영 demo 실검증 13/13)
+**작업 상태:** 완료 — 배포 끝, 세션 마무리
 
 ### 진행 중인 작업
-- 없음 (전 작업 dev 완료 / 설계 완료. 구현 대기는 "다음 확정 작업" 참고)
+- 없음
 
-### 완료된 작업 (이번 세션, 2026-06-11)
-- **통합 오더티켓 POS별 토글 4건 — 운영 배포(3.56, Backup 20260611_085310).** ①Main POS 토글OFF 오발행 차단(레거시 mirror 폴백을 토글채택 매장서 무시) ②티켓 라벨=워크스테이션명(COUNTER 하드코딩 폐기) ③취소도 새주문과 동일 POS별 토글 통일 ④취소 라벨 통일. billPrint 공용 `sendUnifiedTickets`/`computeUnifiedTicketTargets` 신설. **실프린터 눈확인 + `check-print-guard.js --bless` 대기.**
-- **테이블 takeaway → takeaway 유지 (DEV, 미배포)** — POSTerminalPage:1576 effect가 table 파라미터 있으면 order_type=takeaway 덮어쓰던 것 수정(takeaway면 강제 안 함 + dine-in 강제 1회한정으로 availableTables 레이스 제거). 백엔드 off-table auto-merge 제외(Irene "항상 별도 takeaway"). Takeout 리스트에 테이블칩 "Table B-4"(4언어).
-- **KDS 세트 구성품 단계 리셋 수정 (DEV, 미배포)** — set_components(status필드 없음) 읽기우선 vs set_items 쓰기 불일치 → processRawOrderItems 에서 `c.status ?? prevSetItems[ci]?.status` 폴백. 운영 #006 실데이터로 증명.
-- **전 화면 실시간 동기화 구조 감사·설계** — 5화면 데이터소스/소켓/단계도출 실측. 근본원인 = order.status↔item.status **단계 드리프트**(역방향 revert 시 아이템 미전파, orders-crud.js:1397; 전진은 전파). 설계 `docs/ORDER_REALTIME_SYNC_UNIFICATION.md`(진단+목표구조+안전롤아웃+문제 레지스트리 P1~P7).
+### 완료된 작업 (이번 세션, 2026-06-11 밤 ~ 06-12)
+- **⭐ 전 화면 주문 단계 실시간 동기화 통일 (Irene "정석대로") — v3.55 배포.** 백엔드 단일 단계 모델(orders-crud: 주문단위 이동=아이템·세트구성품 양방향 동행(P1), 아이템 변경=주문 min roll-up, void 포함) + 공용 `OrdersRealtimeContext`/`orderStage.ts`(table-status 1:1 클라 파생) + LiveOrders·FloorPlan(캔버스/아이템뷰/Takeout) 전환·table-status 의존 제거. 검증: 실API 23×3 + 크로스화면 e2e(≤2s·리프레시0, 실반영 ~10ms)×3.
+- **KDS 만성 "리프레시해야 보임" 근본수정** — ①`restaurant_id !== user.restaurantId` 문자열/숫자 엄격비교로 전 소켓 이벤트 무시(6/4 미진단 건의 정체) ②버전가드 ms 역전(생성=메모리 ms vs 갱신=DB 초절삭). KDS e2e 3회 6/6.
+- **KDS 아이템뷰** — 준비시간 신호등(버튼 옆) + 긴 메뉴명/768px overflow 수정(+공통 PageHeader ≤768 shrink). 구조는 이전 그대로(교차주문 합치기+merge limits 유지 — Irene 확정). 소켓 신규주문도 fetch 와 동일 세트 전개(rawToKitchenOrder 통일).
+- **테이블이동 머지 배너** — "Orders Merged" + 출발 주문/테이블 명시(viaTableMove 플래그). i18n 4언어.
+- **세트 전용 단품(set_only)** — Product/BrandMenu 플래그 + 메뉴관리·BG 토글 + POS/모바일/추가주문 숨김(빈 카테고리 탭 숨김) + 푸시/sync 전파(브랜드 판매정책 추종). 마이그 `add_product_set_only.sql`(운영 선적용 완료).
+- **주방스테이션 배정 정리** — 세트메뉴 배정 제외 + 저장 시 잉여 개별배정 자동정리 + 충돌 예외 ⚠ 표시. **운영 r24 잉여 97건 정리**(스냅샷 `.claude/r24-repair-log-20260612.txt`).
+- **통합티켓 워크스테이션별 스테이션 범위** (🔒 Irene 명시) — `consolidatedStations` 칩 선택, 범위 필터(미배정 포함=silent drop 방지, 0개면 발행 생략), 취소 동일. print-guard bless.
+- **브랜드 이미지 소실 사고 근본수정** — 참조→복사 소유(copyImageToOwnedFile) + deleteOldImages brand-menus 보호 + POS img onError. **운영 죽은 참조 68건(brand_menus 17+products 51, The Fire 3매장) 정리.**
+- **/검증 풀패스 + v3.55 배포** — hydration 0 / 타임존 신규 0 / health 101/101 / print 8/8 / mount 7라우트 / 운영 demo 13/13 / 운영 critical 5페이지 mount / SW 3.60.
 
 ### 다음 확정 작업
-- **⭐ 전 화면 주문 단계 실시간 동기화 통일 (Irene 2026-06-11 명시 "이따 밤에, 정석대로"). 최우선.**
-  - 설계: `docs/ORDER_REALTIME_SYNC_UNIFICATION.md` (§4-B 문제 레지스트리 P1~P7 = 나중에 하나씩 정석 원인파악). 메모리 [[project_realtime_sync_unification]].
-  - 핵심: 단일 단계 모델(order↔item 양방향 일관 cascade 또는 단일 파생) + 공용 OrdersRealtimeProvider(단일 `/orders` 소스 + 6종 소켓 단일 reducer) + 단일 단계유틸 → 5화면 필터링만. table-status 의존 제거.
-  - 정석: 설계→구현→매 Phase 검증(한 화면 조치→전 화면 ≤2s·리프레시0·동일단계 3회연속). KDS는 🔒 보호파일이라 마지막 Phase, 인쇄 무접촉.
-  - **추측 수정 금지** — 각 문제(P1~P7) 코드+데이터로 검증 후 처리 ([[feedback_investigate_dont_ask]]).
+- 없음 — 지시 대기
 
 ### 후속 후보 (아이디어 메모, 확정 X)
 > 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.
 
-- 미배포 dev 묶음(SW 3.58: KDS 세트구성품 + 테이블 takeaway 3건) → /배포 시 함께. 통합티켓(3.56)은 운영에 이미 있음.
-- 통합티켓 4건 실프린터 눈확인 후 `--bless` (billPrint+POSTerminal+orders-crud 무결성).
-- 🔒 POS 직접결제 빌 복사 매수 미반영 (POSTerminalPage 직접인쇄 1장고정, P7).
-- gitconsulting/with MIN 발주 데모 Phase 2 (운영 시딩, Irene "운영 실행" 지시 대기).
+- **Irene 확인 2건 (v3.55 후속)**: ①실프린터 종이 확인 — 워크스테이션별 통합티켓 + 스테이션 범위 티켓 ②BG 브랜드메뉴 이미지 재업로드(원본 소실 — 재업로드하면 전 매장 복원, 이후 안전)
+- **Irene 결정 1건**: thefire02 닭갈비라면 스테이션 충돌 — 개별→KQ2 vs 카테고리(Ramyun & Noddle)→KQ1, 현재 KQ2로 인쇄. 의도한 예외면 유지, 아니면 정리(→KQ1)
+- 구독 시작일/트라이얼 프론트 마무리 — Manager/RestaurantsPage:991 `status:'active'`→폼값 (백엔드는 배포됨). memory [[project_thefire_billing_trial_fix]]
+- 설정 저장 보호 가드(빈값 덮어쓰기 차단) — 분석 완료, Irene 결정(hydration marker) 후 구현. memory [[project_settings_guard_analysis]]
+- BG dashboard 자동 trial 판정 + user 29 데이터 정정
+- pending-print 가 is_deleted 주문을 안 거르는 엣지(🔒 인쇄 라우트 — 한 줄 필터, Irene 승인 시)
+- KDS acceptVersion 의 ms 비교는 초단위로 교정했으나, 운영 중 추가 echo 레이스 관찰 시 OrdersRealtimeProvider 로의 Phase 4 전환 검토 (설계문서 §3)
+- gitconsulting/with MIN 발주 데모 Phase 2 (운영 시딩, Irene "운영 실행" 지시 대기)
 
 ---
 

@@ -4,7 +4,6 @@ import { PosDisplayThemeStyle, getPosTheme, setPosTheme, POS_THEME_MODES, PosThe
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { FloorPlanData, DEFAULT_FLOOR_PLAN, TableStatusInfo, ORDER_STATUS_COLORS, getOrderStatusColors, getTableNodeStatusColors, getOrderTypeColors } from './types';
-import { calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import FloorPlanCanvas from './FloorPlanCanvas';
 import TableDetailPanel from './TableDetailPanel';
 import ItemListView from './ItemListView';
@@ -26,6 +25,8 @@ import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
 import { useStore } from '../../contexts/StoreContext';
+import { OrdersRealtimeProvider, useOrdersRealtime } from '../../contexts/OrdersRealtimeContext';
+import { deriveTableStatusMaps, filterOffTableOrders } from '../../utils/orderStage';
 import { useAutoPrintPoller } from '../../hooks/useAutoPrintPoller';
 import { openCustomerDisplay, isAutoOpenEnabled } from '../../utils/customerDisplay';
 
@@ -295,6 +296,26 @@ const FloorPlanPage: React.FC = () => {
   const { user, switchUser, logout, canOperatePOS } = useAuth();
   const { getStoreInfo, operationSettings } = useStore();
 
+  // ── 공용 실시간 주문 스토어 (2026-06-12, 단일 소스) ─────────────────────────
+  // table-status 엔드포인트 의존 제거 — 점유맵/이력/Takeout 모두 같은 오늘 주문
+  // 배열에서 파생(utils/orderStage). 소켓 6종은 Provider 의 단일 reducer 가 in-place
+  // 갱신하므로 이 화면은 debounce refetch 없이 즉시 반영된다.
+  const {
+    orders: rtOrders,
+    ordersReady: rtOrdersReady,
+    connected,
+    refetch: refetchOrders,
+    subscribe: subscribeOrders,
+  } = useOrdersRealtime();
+  // 매장 설정 "결제 완료 시 테이블 비우기" — 점유맵 파생에 필요 (백엔드 table-status 와 동일 규칙)
+  const [clearTableOnPayment, setClearTableOnPayment] = useState(false);
+  // elapsedMinutes 표시 갱신용 30s tick (이전 폴링 주기와 동일)
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNowTick(Date.now()), 30000);
+    return () => clearInterval(id);
+  }, []);
+
   // 2026-05-28 매장 critical: backend-driven auto-print polling (fullscreen page,
   // MainLayout 안 mount). 매장 device 가 FloorPlan 켜둔 상태에서 모바일/POS
   // 주문 발생 시 polling 으로 catch + 인쇄 + PATCH.
@@ -366,8 +387,9 @@ const FloorPlanPage: React.FC = () => {
       return next;
     }, { replace: true });
   }, [setSearchParams]);
-  const [takeawayOrders, setTakeawayOrders] = useState<any[]>([]);
-  const [takeawayLoading, setTakeawayLoading] = useState(false);
+  // Off-table 주문 — 공용 스토어에서 파생 (별도 fetch/폴링 제거)
+  const takeawayOrders = useMemo(() => filterOffTableOrders(rtOrders), [rtOrders]);
+  const takeawayLoading = !rtOrdersReady;
   // Off-table 통합 뷰: 매장이 켠 주문타입 + 타입 필터(All/takeaway/pickup/delivery)
   const [restaurantOrderTypes, setRestaurantOrderTypes] = useState<{ takeaway: boolean; pickup: boolean; delivery: boolean }>({ takeaway: true, pickup: false, delivery: false });
   const [offTableFilter, setOffTableFilter] = useState<'all' | 'takeaway' | 'pickup' | 'delivery'>('all');
@@ -383,9 +405,12 @@ const FloorPlanPage: React.FC = () => {
       tables: floorPlan.tables.filter(t => t.group_id && groupIdsInZone.has(t.group_id))
     };
   }, [floorPlan, activeZoneFilter]);
-  const [tableStatuses, setTableStatuses] = useState<Record<string, TableStatusInfo>>({});
-  // 오늘 per-table 이력(완료 포함) — 우측 패널 탭 소스. 보드 점유(tableStatuses)와 분리.
-  const [tableHistory, setTableHistory] = useState<Record<string, TableStatusInfo[]>>({});
+  // 점유맵 + 오늘 per-table 이력(완료 포함) — 공용 스토어에서 파생 (백엔드 table-status
+  // buildOrderInfo 와 1:1 동일 규칙, utils/orderStage.deriveTableStatusMaps).
+  const { data: tableStatuses, history: tableHistory } = useMemo(
+    () => deriveTableStatusMaps(rtOrders, { clearTableOnPayment, now: nowTick }),
+    [rtOrders, clearTableOnPayment, nowTick]
+  );
   // 서빙 토글 낙관적 override (orderId:itemIndex → {status, ts}) — stale poll 되돌림 방지.
   const [serveOverrides, setServeOverrides] = useState<Record<string, { status: string; ts: number }>>({});
   // Items 뷰 필터용 메타 — 카테고리(제품명→카테고리) + 주방 스테이션(id→이름).
@@ -418,14 +443,12 @@ const FloorPlanPage: React.FC = () => {
     })();
     return () => { alive = false; };
   }, [restaurantId]);
-  const [connected, setConnected] = useState(false);
+  // connected — 공용 OrdersRealtimeProvider 의 소켓 연결 상태 사용 (위에서 구조분해)
   const [clock, setClock] = useState('');
   const [loading, setLoading] = useState(true);
   const [currency, setCurrency] = useState('');
   const [timezone, setTimezone] = useState('Asia/Kuala_Lumpur');
   const [qrMode, setQrMode] = useState<'static' | 'session'>('static');
-  const debounceRef = useRef<NodeJS.Timeout | null>(null);
-  const socketRef = useRef<any>(null);
   const checkoutSocketRef = useRef<any>(null);
 
   // Detail panel
@@ -481,8 +504,10 @@ const FloorPlanPage: React.FC = () => {
     tableNumber: string | null;
     orderGroup: number;
     itemCount: number;
-    kind?: 'items' | 'order';        // 'order' = 새 주문, 'items' = 추가 품목
+    kind?: 'items' | 'order' | 'merge'; // 'order'=새 주문, 'items'=추가 품목, 'merge'=테이블이동 머지
     orderType?: string;              // off-table 라우팅용 (takeaway/pickup/delivery)
+    mergedFromTable?: string | null;     // merge: 출발 테이블
+    mergedFromOrderNumber?: string | null; // merge: 합쳐진(소멸) 주문번호
   } | null>(null);
 
   // Clock (restaurant timezone) — POS Terminal 과 동일 포맷, 단 년도 제외.
@@ -507,72 +532,12 @@ const FloorPlanPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [operationSettings?.timeZone]);
 
-  // Fetch table statuses
-  const fetchStatuses = useCallback(async () => {
-    try {
-      const token = getAuthToken();
-      const res = await fetch(`/api/restaurants/${restaurantId}/table-status`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setTableStatuses(data.data || {});
-        setTableHistory(data.history || {});
-      }
-    } catch (err) {
-      console.error('Failed to fetch table statuses:', err);
-    }
-  }, [restaurantId]);
-
-  // Fetch active takeaway orders for the "Today" period — same boundary the dine-in canvas
-  // uses (see backend /table-status which filters createdAt to today in restaurant timezone).
-  // Floor Plan is an operational "today's work" screen, so takeaway must match that scope —
-  // not all-time history. Older orders live in Live Orders with its date filter.
-  const fetchTakeawayOrders = useCallback(async () => {
-    if (!restaurantId) return;
-    try {
-      setTakeawayLoading(true);
-      const token = getAuthToken();
-      const range = calculatePeriodDateRange('today', timezone);
-      const params = new URLSearchParams({
-        page: '1', limit: '200', includeCompleted: 'true'
-      });
-      if (range.start) params.append('startDate', range.start);
-      if (range.end) params.append('endDate', range.end);
-      const res = await fetch(`/api/orders/restaurant/${restaurantId}?${params}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        // Off-table 통합: 테이블에 안 매인 주문(테이크아웃·픽업·배달)을 한 리스트로. 백엔드는
-        // 전 타입 반환하므로 여기서 off-table 타입만 남기고 cancelled 는 제외(바닥 캔버스와 동일).
-        const list = Array.isArray(data.data) ? data.data : [];
-        const OFF_TABLE = new Set(['takeaway', 'pickup', 'delivery']);
-        const taList = list.filter((o: any) => {
-          const ot = (o.order_type || o.orderType || '').toString().replace(/[_\s]/g, '').toLowerCase();
-          if (!OFF_TABLE.has(ot)) return false;
-          if ((o.status || '').toString() === 'cancelled') return false;
-          return true;
-        });
-        setTakeawayOrders(taList);
-      }
-    } catch (err) {
-      console.error('Failed to fetch takeaway orders:', err);
-    } finally {
-      setTakeawayLoading(false);
-    }
-  }, [restaurantId, timezone]);
-
-  // Initial takeaway fetch + refresh when entering the view + light polling while the view is open.
-  useEffect(() => {
-    fetchTakeawayOrders();
-  }, [fetchTakeawayOrders]);
-  useEffect(() => {
-    if (activeView !== 'takeaway') return;
-    fetchTakeawayOrders();
-    const id = setInterval(fetchTakeawayOrders, 15000);
-    return () => clearInterval(id);
-  }, [activeView, fetchTakeawayOrders]);
+  // ── 단일 소스 전환 (2026-06-12) ──────────────────────────────────────────────
+  // 기존 fetchStatuses(table-status 전체 refetch)/fetchTakeawayOrders(별도 fetch+15s 폴링)는
+  // 공용 스토어 재동기화 한 가지로 통일. 점유맵/이력/Takeout 은 위의 useMemo 파생이라
+  // 소켓 in-place 갱신만으로 즉시 따라온다. (액션 직후 보정용 best-effort 호출은 유지.)
+  const fetchStatuses = useCallback(async () => { await refetchOrders(); }, [refetchOrders]);
+  const fetchTakeawayOrders = fetchStatuses; // 동일 소스 — 호출부 계약 유지
 
   // Off-table 뷰: 켠 타입 목록 + 타입필터 적용된 표시 목록
   const normOffTableType = (o: any) => (o.order_type || o.orderType || '').toString().replace(/[_\s]/g, '').toLowerCase();
@@ -597,10 +562,6 @@ const FloorPlanPage: React.FC = () => {
     return filtered.sort((a, b) => offTableSort === 'amount' ? amt(b) - amt(a) : ts(b) - ts(a));
   }, [takeawayOrders, offTableFilter, offTableSearch, offTableSort]);
 
-  const debouncedFetch = useCallback(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => fetchStatuses(), 2000);
-  }, [fetchStatuses]);
 
   // Load floor plan + initial statuses + payment settings + membership settings
   useEffect(() => {
@@ -625,6 +586,8 @@ const FloorPlanPage: React.FC = () => {
             ? JSON.parse(restaurant.table_settings)
             : restaurant.table_settings;
           if (ts.qrMode) setQrMode(ts.qrMode);
+          // 점유맵 파생 규칙 — 백엔드 table-status 와 동일 (결제 완료 시 테이블 비우기)
+          setClearTableOnPayment(ts.clearTableOnPayment === true);
         }
         if (restaurant.operation_settings) {
           const opSettings = typeof restaurant.operation_settings === 'string'
@@ -666,30 +629,14 @@ const FloorPlanPage: React.FC = () => {
 
     load();
     loadMembership();
-    fetchStatuses();
-  }, [restaurantId, fetchStatuses]);
+  }, [restaurantId]);
 
-  // Socket.IO for real-time updates
+  // ── 배너/알림음 (2026-06-12, 표시 전용 구독) ─────────────────────────────────
+  // 데이터 갱신은 공용 스토어의 단일 reducer 가 처리한다(소켓 6종 in-place — 기존에
+  // 미구독이던 order-deleted/item-voided/table-moved 까지 포함). 여기서는 off-table
+  // 새 주문 배너 + 추가주문 배너 + 알림음만 구독한다.
   useEffect(() => {
-    if (!restaurantId) return;
-
-    const socket = io('/orders', {
-      transports: ['websocket', 'polling'],
-      reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionAttempts: 10
-    });
-
-    socket.on('connect', () => {
-      setConnected(true);
-      socket.emit('join-restaurant', restaurantId);
-      fetchStatuses();
-    });
-
-    socket.on('disconnect', () => setConnected(false));
-    socket.on('order-updated', () => debouncedFetch());
-    socket.on('order-created', (order: any) => {
-      debouncedFetch();
+    const offCreated = subscribeOrders('order-created', (order: any) => {
       // off-table 새 주문(테이크/픽업/배달)은 바닥에 안 떠서 놓치기 쉬움 → 배너로 알림.
       // 테이블 주문은 캔버스에 불이 들어오므로 배너 생략.
       const ot = (order?.order_type || order?.orderType || '').toString().replace(/[_\s]/g, '').toLowerCase();
@@ -715,15 +662,7 @@ const FloorPlanPage: React.FC = () => {
         } catch { /* ignore */ }
       }
     });
-    socket.on('order-items-added', (data: {
-      orderId: number;
-      orderNumber: string;
-      tableNumber: string | null;
-      orderGroup: number;
-      addedItems: any[];
-      itemCount: number;
-    }) => {
-      debouncedFetch();
+    const offItemsAdded = subscribeOrders('order-items-added', (data: any) => {
       setItemsAddedAlert({
         isVisible: true,
         orderId: data.orderId,
@@ -731,18 +670,15 @@ const FloorPlanPage: React.FC = () => {
         tableNumber: data.tableNumber,
         orderGroup: data.orderGroup,
         itemCount: data.itemCount,
-        kind: 'items',
+        // 테이블이동 머지는 "추가주문"이 아니라 "주문 합침"으로 표기 (Irene 2026-06-12 —
+        // 직원이 머지했는데 추가주문 안내가 떠서 혼동). 백엔드 viaTableMove 플래그 분기.
+        kind: data.viaTableMove ? 'merge' : 'items',
+        mergedFromTable: data.mergedFromTable || null,
+        mergedFromOrderNumber: data.mergedFromOrderNumber || null,
       });
     });
-    socket.on('new-order', () => debouncedFetch());
-
-    socketRef.current = socket;
-
-    return () => {
-      socket.disconnect();
-      socketRef.current = null;
-    };
-  }, [restaurantId, fetchStatuses, debouncedFetch]);
+    return () => { offCreated(); offItemsAdded(); };
+  }, [subscribeOrders]);
 
   // Checkout Display 소켓 (고객 화면 연동)
   useEffect(() => {
@@ -756,11 +692,7 @@ const FloorPlanPage: React.FC = () => {
     return () => { cs.disconnect(); checkoutSocketRef.current = null; };
   }, [restaurantId]);
 
-  // Polling fallback (30s)
-  useEffect(() => {
-    const id = setInterval(() => fetchStatuses(), 30000);
-    return () => clearInterval(id);
-  }, [fetchStatuses]);
+  // (30s 안전 폴링은 공용 OrdersRealtimeProvider 가 수행 — 페이지 자체 폴링 제거)
 
   // 2026-05-27: Mirror selected table → Customer Display in real time.
   // Lets the customer see their bill before they walk to the counter (table
@@ -1037,16 +969,9 @@ const FloorPlanPage: React.FC = () => {
         body: JSON.stringify({ order_items: updated, allowItemRevert: !makeServed })
       });
       if (res.ok) {
-        // 롤업: 모든 최상위 아이템이 served → 주문 status=served (best-effort)
-        const allServed = updated.every((it: any) => String(it.status) === 'served');
-        const ostatus = String((src && (src.orderStatus || src.status)) || '');
-        if (allServed && ['pending', 'preparing', 'ready'].includes(ostatus)) {
-          fetch(`/api/orders/${orderId}/status`, {
-            method: 'PATCH', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify({ status: 'served' })
-          }).catch(() => {});
-        }
-        await fetchStatuses(); if (typeof fetchTakeawayOrders === 'function') fetchTakeawayOrders();
+        // 롤업은 백엔드 단일 단계 모델이 처리 (PATCH /items 가 아이템 min 단계로 주문
+        // 단계를 같은 쓰기에서 파생 — 별도 /status 호출 제거로 이중 emit 레이스 차단).
+        await fetchStatuses();
       } else { setServeOverrides(prev => { const n = { ...prev }; delete n[key]; return n; }); }
     } catch (err) {
       console.error('Failed to toggle item served:', err);
@@ -1623,7 +1548,7 @@ const FloorPlanPage: React.FC = () => {
         }}>
           <style>{`@keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }`}</style>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-            <div style={{ fontWeight: 700, fontSize: '15px', color: '#92400E' }}>{itemsAddedAlert.kind === 'order' ? t('floorplan:floorPlanPage.newOrderReceived', { defaultValue: 'New order received' }) : t('floorplan:floorPlanPage.newItemsAdded')}</div>
+            <div style={{ fontWeight: 700, fontSize: '15px', color: '#92400E' }}>{itemsAddedAlert.kind === 'order' ? t('floorplan:floorPlanPage.newOrderReceived', { defaultValue: 'New order received' }) : itemsAddedAlert.kind === 'merge' ? t('floorplan:floorPlanPage.ordersMerged', { defaultValue: 'Orders Merged' }) : t('floorplan:floorPlanPage.newItemsAdded')}</div>
             <button onClick={() => setItemsAddedAlert(null)} style={{
               background: 'none', border: 'none', fontSize: '20px',
               cursor: 'pointer', color: '#92400E', padding: '0', lineHeight: 1
@@ -1637,6 +1562,16 @@ const FloorPlanPage: React.FC = () => {
             <br />
             {itemsAddedAlert.kind === 'order' ? (
               <span>{itemsAddedAlert.itemCount} item{itemsAddedAlert.itemCount > 1 ? 's' : ''}</span>
+            ) : itemsAddedAlert.kind === 'merge' ? (
+              // 테이블이동 머지 — "+Order/added" 가 아니라 어디서 합쳐졌는지 명시 (혼동 방지)
+              <>
+                <span style={{ background: '#FCD34D', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                  {itemsAddedAlert.mergedFromOrderNumber ? `Order ${itemsAddedAlert.mergedFromOrderNumber}` : 'Order'}
+                  {itemsAddedAlert.mergedFromTable ? ` (Table ${itemsAddedAlert.mergedFromTable})` : ''}
+                </span>
+                {' '}{t('floorplan:floorPlanPage.mergedIntoThisOrder', { defaultValue: 'merged into this order' })}
+                {' '}· {itemsAddedAlert.itemCount} item{itemsAddedAlert.itemCount > 1 ? 's' : ''}
+              </>
             ) : (
               <>
                 <span style={{ background: '#FCD34D', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
@@ -2477,4 +2412,14 @@ const FloorPlanPage: React.FC = () => {
   );
 };
 
-export default FloorPlanPage;
+// 공용 실시간 주문 스토어로 감싼 진입점 — 페이지 내부는 useOrdersRealtime() 으로 소비.
+const FloorPlanPageWithRealtime: React.FC = () => {
+  const { restaurantId } = useParams<{ restaurantId: string }>();
+  return (
+    <OrdersRealtimeProvider restaurantId={restaurantId}>
+      <FloorPlanPage />
+    </OrdersRealtimeProvider>
+  );
+};
+
+export default FloorPlanPageWithRealtime;

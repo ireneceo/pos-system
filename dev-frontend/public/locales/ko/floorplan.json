@@ -182,5 +182,7 @@
   "itemList.minAgo": "{{n}}분 전",
   "itemList.hrAgo": "{{h}}시간 {{m}}분 전",
   "floorPlanPage.sortTime": "정렬: 주문시간",
-  "floorPlanPage.sortAmount": "정렬: 금액"
+  "floorPlanPage.sortAmount": "정렬: 금액",
+  "floorPlanPage.ordersMerged": "주문 합침",
+  "floorPlanPage.mergedIntoThisOrder": "이 주문으로 합쳐짐"
 }

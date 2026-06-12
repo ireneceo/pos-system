@@ -3924,11 +3924,16 @@ function buildVoidTicketData(orderData, reason) {
  */
 function computeUnifiedTicketTargets(settings) {
   const targets = [];
-  const add = (addr, method, label) => {
+  // 2026-06-12 (Irene): stations = 워크스테이션별 통합티켓 범위(주방 스테이션 id 배열).
+  // null/빈배열 = 전체 주문(기존과 동일). 같은 프린터라도 범위가 다르면 별도 발행이므로
+  // 중복 제거 키에 범위 서명을 포함한다.
+  const add = (addr, method, label, stations) => {
     const a = (addr || '').trim();
     const m = method || 'qztray';
-    if (targets.some(t => t.address === a && t.method === m)) return;
-    targets.push({ address: a, method: m, label: label || 'COUNTER' });
+    const st = Array.isArray(stations) && stations.length > 0 ? stations.map(Number) : null;
+    const sig = st ? st.slice().sort((x, y) => x - y).join(',') : '';
+    if (targets.some(t => t.address === a && t.method === m && (t._stSig || '') === sig)) return;
+    targets.push({ address: a, method: m, label: label || 'COUNTER', stations: st, _stSig: sig });
   };
   const wss = Array.isArray(settings.workstations) ? settings.workstations : [];
   let adopted = false; // 매장이 POS별 토글을 도입했는가
@@ -3937,7 +3942,7 @@ function computeUnifiedTicketTargets(settings) {
       adopted = true;
       const bp = ws.billPrinter;
       if (bp && bp.enabled !== false && (bp.address || bp.method === 'browser')) {
-        add(bp.address, bp.method, ws.name);
+        add(bp.address, bp.method, ws.name, ws.consolidatedStations);
       }
     }
   });
@@ -3951,6 +3956,21 @@ function computeUnifiedTicketTargets(settings) {
     }
   }
   return targets;
+}
+
+// 통합티켓 범위 필터용 아이템 스테이션 해석 — tagTicketWithStations 와 동일 체인
+// (백엔드 enriched kitchen_station_id 우선, 이름→스테이션 localStorage 맵 폴백).
+// 스테이션 미배정(null) 아이템은 범위 티켓에도 포함한다 — 매핑 누락으로 주방 티켓에서
+// 품목이 조용히 빠지는 사고(silent drop)보다 한 줄 더 찍히는 쪽이 안전 (2026-06-12).
+function _unifiedItemStationId(item) {
+  let menuStationMap = {};
+  try {
+    const saved = localStorage.getItem('kitchenStationMenuMap');
+    if (saved) menuStationMap = JSON.parse(saved);
+  } catch (e) { /* non-fatal */ }
+  const itemName = (item.menuItem && item.menuItem.name) || item.name;
+  const sid = item.kitchen_station_id || (itemName ? menuStationMap[itemName] : null);
+  return sid != null ? Number(sid) : null;
 }
 
 /**
@@ -3972,9 +3992,26 @@ function sendUnifiedTickets(orderData, storeInfo, settings, opts) {
         const tagged = tagTicketWithStations(base, 'COUNTER', settings);
         targets.forEach(tgt => {
           const label = (tgt.label || 'COUNTER').toUpperCase();
+          // 2026-06-12 (Irene): 워크스테이션별 범위 — 선택한 주방 스테이션의 품목만 모은
+          // 통합티켓(예: 주방 워크스테이션은 BAR 메뉴 제외). 미배정 품목은 누락 방지를
+          // 위해 포함. 범위 품목이 0개면 그 워크스테이션엔 발행 생략(빈 티켓 방지).
+          let scoped = tagged;
+          if (Array.isArray(tgt.stations) && tgt.stations.length > 0) {
+            const want = new Set(tgt.stations.map(Number));
+            const scopedItems = (tagged.items || []).filter(it => {
+              const sid = _unifiedItemStationId(it);
+              return sid == null || want.has(sid);
+            });
+            const hasScopedItem = scopedItems.some(it => {
+              const sid = _unifiedItemStationId(it);
+              return sid != null && want.has(sid);
+            });
+            if (!hasScopedItem) return; // 이 범위 품목 없음 → 이 워크스테이션 발행 생략
+            scoped = { ...tagged, items: scopedItems };
+          }
           // noStationBox: 통합 티켓은 상단 단일 station 박스 생략(여러 스테이션 혼재).
           // groupLabel/printedAt = 해당 워크스테이션 이름. voided 플래그는 base 에서 보존됨.
-          const ticket = { ...tagged, groupLabel: label, printedAt: label, noStationBox: true, showItemStations: true };
+          const ticket = { ...scoped, groupLabel: label, printedAt: label, noStationBox: true, showItemStations: true };
           const billAddr = tgt.address;
           const isLanIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(billAddr || '');
           if (isLanIP) {

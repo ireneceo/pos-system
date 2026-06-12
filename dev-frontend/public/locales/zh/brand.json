@@ -694,5 +694,6 @@
   "productsTab.distribution.specificRestaurants": "仅特定门店",
   "productsTab.distribution.specificRestaurantsDesc": "仅所选门店可订购",
   "productsTab.distribution.targetBrands": "目标品牌",
-  "productsTab.distribution.targetRestaurants": "目标门店"
+  "productsTab.distribution.targetRestaurants": "目标门店",
+  "brandMenusPage.setOnly": "仅用于套餐 — 不单独销售（在门店POS和手机点餐中隐藏）"
 }

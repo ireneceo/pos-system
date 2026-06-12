@@ -19,7 +19,7 @@ const router = express.Router();
 const { Op } = require('sequelize');
 const { authenticateToken } = require('../middleware/auth');
 const { requireBGScope } = require('../middleware/brandScope');
-const { normalizeImageField } = require('../utils/imageProcessor');
+const { normalizeImageField, copyImageToOwnedFile } = require('../utils/imageProcessor');
 const {
   Brand, Restaurant, ProductRecipe, BrandMenu, BrandMenuCategory,
   BrandMenuOptionGroup, BrandMenuOption, BrandMenuOptionGroupLink, Product
@@ -208,7 +208,7 @@ router.post('/', authenticateToken, requireBGScope, async (req, res) => {
   try {
     const {
       brand_id, category_id, product_recipe_id, name, description, image_url, emoji,
-      recommended_price, currency, is_active, after_meal, sort_order, distribution_mode,
+      recommended_price, currency, is_active, after_meal, set_only, sort_order, distribution_mode,
       option_group_ids, locks, is_set_menu, set_items, set_groups
     } = req.body;
     // Accept both nested locks{} and flat lock_* — nested wins if provided
@@ -246,13 +246,23 @@ router.post('/', authenticateToken, requireBGScope, async (req, res) => {
       maxWidth: 800, maxHeight: 800
     });
 
+    // 2026-06-12 (thefire02 이미지 소실 사고): 매장 제품 등 타 경로(/uploads/products/...)의
+    // 이미지를 "참조만" 하면 원본 교체 시 파일이 삭제돼 브랜드메뉴+푸시된 전 매장이 깨진다.
+    // 외부 /uploads/ 참조는 brand-menus 소유 파일로 복사. 원본이 이미 없으면 null(죽은 참조 차단).
+    let ownedImage = normalizedImage;
+    if (ownedImage && ownedImage.startsWith('/uploads/') && !ownedImage.includes('/brand-menus/')) {
+      ownedImage = await copyImageToOwnedFile(ownedImage, {
+        subdir: 'brand-menus', filename: `brand_menu_${brand_id}_${Date.now()}`
+      });
+    }
+
     const menu = await BrandMenu.create({
       brand_id, category_id: category_id || null,
       product_recipe_id: product_recipe_id || null,
       name: name.trim(), description: description || null,
-      image_url: normalizedImage, emoji: emoji || null,
+      image_url: ownedImage, emoji: emoji || null,
       recommended_price: recommended_price || 0, currency: currency || 'MYR',
-      is_active: is_active !== false, after_meal: after_meal === true, sort_order: sort_order || 0,
+      is_active: is_active !== false, after_meal: after_meal === true, set_only: set_only === true, sort_order: sort_order || 0,
       version: 1,
       distribution_mode: resolvedDistribution,
       lock_name: resolvedLock(lock_name, 'name'),
@@ -312,7 +322,7 @@ router.put('/:id', authenticateToken, requireBGScope, async (req, res) => {
 
     const body = req.body || {};
     const updatable = ['category_id', 'product_recipe_id', 'name', 'description', 'emoji',
-      'recommended_price', 'currency', 'is_active', 'after_meal', 'sort_order', 'distribution_mode',
+      'recommended_price', 'currency', 'is_active', 'after_meal', 'set_only', 'sort_order', 'distribution_mode',
       'lock_name', 'lock_price', 'lock_category', 'lock_image', 'lock_options',
       'is_set_menu', 'set_items', 'set_groups', 'lock_set_items', 'lock_sort_order'];
     const update = {};
@@ -324,6 +334,12 @@ router.put('/:id', authenticateToken, requireBGScope, async (req, res) => {
         filename: `brand_menu_${menu.brand_id}_${menu.id}_${Date.now()}`,
         maxWidth: 800, maxHeight: 800
       });
+      // 외부 /uploads/ 참조 → brand-menus 소유 파일로 복사 (2026-06-12, 위 POST 와 동일 사유)
+      if (update.image_url && update.image_url.startsWith('/uploads/') && !update.image_url.includes('/brand-menus/')) {
+        update.image_url = await copyImageToOwnedFile(update.image_url, {
+          subdir: 'brand-menus', filename: `brand_menu_${menu.brand_id}_${menu.id}_${Date.now()}`
+        });
+      }
     }
     update.version = menu.version + 1;
     await menu.update(update, { transaction: t });

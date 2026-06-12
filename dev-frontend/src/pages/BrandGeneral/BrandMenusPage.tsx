@@ -1193,6 +1193,7 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
   const [selectedOptionGroupIds, setSelectedOptionGroupIds] = useState<number[]>([]);
   // 식후 제공(디저트 등) 등록 플래그 — 매장 Product 와 동일
   const [afterMeal, setAfterMeal] = useState<boolean>(!!(menu as any)?.after_meal);
+  const [setOnly, setSetOnly] = useState<boolean>(!!(menu as any)?.set_only);
   // 순서 강제 — 켜면 이 메뉴의 브랜드 순서를 산하 매장 메뉴 순서로 고정(매장이 못 바꿈)
   const [lockSortOrder, setLockSortOrder] = useState<boolean>(!!(menu as any)?.lock_sort_order);
   // Set menu support — mirrors Restaurant Product (is_set_menu + set_items[])
@@ -1273,6 +1274,7 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
         // them from brand.menu_settings defaults (Settings tab is the single source).
         option_group_ids: selectedOptionGroupIds,
         after_meal: afterMeal,
+        set_only: setOnly,
         lock_sort_order: lockSortOrder,
         is_set_menu: isSetMenu,
         // v2 슬롯 저장 + 레거시 set_items 는 set_groups 구성품에서 파생(하위호환 표시용)
@@ -1445,6 +1447,20 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
           <span>{t('brand:brandMenusPage.afterMeal', { defaultValue: 'After meal — serve after the main course (e.g. dessert)' })}</span>
         </FormLabel>
       </UIFormGroup>
+
+      {!isSetMenu && (
+      <UIFormGroup>
+        <FormLabel style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={setOnly}
+            onChange={(e) => setSetOnly(e.target.checked)}
+            style={{ width: 16, height: 16, cursor: 'pointer' }}
+          />
+          <span>{t('brand:brandMenusPage.setOnly', { defaultValue: 'Set menu use only — not sold separately (hidden from POS & mobile ordering at restaurants)' })}</span>
+        </FormLabel>
+      </UIFormGroup>
+      )}
 
       <UIFormGroup style={{ marginTop: 24 }}>
         <FormLabel style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>

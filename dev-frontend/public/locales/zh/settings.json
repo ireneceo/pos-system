@@ -1060,5 +1060,9 @@
   "printer.consolidated.testSent": "测试已发送",
   "printer.consolidated.testFail": "测试失败",
   "printer.consolidated.autoPrint": "新订单时自动打印",
-  "printer.consolidated.autoPrintHint": "新订单到达时自动打印合并小票。"
+  "printer.consolidated.autoPrintHint": "新订单到达时自动打印合并小票。",
+  "settingsPage.setOnlyBadge": "仅套餐",
+  "printer.workstations.consolidatedStations": "票据范围 — 厨房工位",
+  "printer.workstations.consolidatedStationsHint": "仅打印所选工位的菜品。不选择 = 整单。",
+  "printer.workstations.allStations": "整单"
 }

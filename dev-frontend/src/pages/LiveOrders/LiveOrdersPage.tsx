@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import ReactDOM from 'react-dom';
-import { io, Socket } from 'socket.io-client';
+import { io } from 'socket.io-client';
 import PageHeader from '../../components/Common/PageHeader';
 import { useAuth } from '../../contexts/AuthContext';
 import { getTableLabel, FloorPlanLike } from '../../utils/tableLabel';
 import PaymentModal from '../../components/POSTerminal/PaymentModal';
 import OptionModal from '../../components/POSTerminal/OptionModal';
 import { useStore } from '../../contexts/StoreContext';
+import { OrdersRealtimeProvider, useOrdersRealtime } from '../../contexts/OrdersRealtimeContext';
 import { formatCurrency } from '../../utils/currency';
 import { formatPaymentDisplay } from '../../constants';
 import {
@@ -53,7 +54,20 @@ const LiveOrdersPage: React.FC = () => {
   const { t } = useTranslation('orders');
   const { user } = useAuth();
   const { getStoreInfo, operationSettings, paymentSettings } = useStore();
-  const [orders, setOrders] = useState<DbOrder[]>([]); // Paginated orders for display
+
+  // ── 공용 실시간 주문 스토어 (2026-06-12, 단일 소스) ─────────────────────────
+  // 오늘(라이브) 범위는 OrdersRealtimeProvider 가 단일 fetch + 소켓 단일 reducer 로
+  // 유지한다. 이 화면은 탭/검색 필터링만. 과거 날짜 조회(히스토리)는 변하지 않는
+  // 데이터라 기존 서버 fetch 경로(historicalOrders)를 유지한다.
+  const {
+    orders: rtOrders,
+    connected: rtConnected,
+    refetch: refetchOrders,
+    applyOrder,
+    removeOrder,
+    subscribe: subscribeOrders,
+  } = useOrdersRealtime();
+  const [historicalOrders, setHistoricalOrders] = useState<DbOrder[]>([]); // 과거 기간 조회 전용
   const [orderCounts, setOrderCounts] = useState<{
     all: number; outstanding: number; pending: number; preparing: number;
     ready: number; served: number; completed: number; cancelled: number;
@@ -62,7 +76,6 @@ const LiveOrdersPage: React.FC = () => {
     totalSales: number; avgAmount: number; maxAmount: number; orderCount: number;
   }>({ totalSales: 0, avgAmount: 0, maxAmount: 0, orderCount: 0 });
   const [salesThreshold, setSalesThreshold] = useState(20);
-  const [, setSocket] = useState<Socket | null>(null);
   const [activeTab, setActiveTab] = useState('all');
   const [selectedOrder, setSelectedOrder] = useState<DbOrder | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -109,6 +122,25 @@ const LiveOrdersPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showSettlement, setShowSettlement] = useState(false);
 
+  // 라이브 스코프 = 오늘 + 커스텀 기간 아님 → 공용 실시간 스토어 사용 (소켓 in-place).
+  // 과거/커스텀 기간 → historicalOrders (변하지 않는 데이터, 서버 fetch).
+  const isLiveScope = activePeriod === 'today' && !isCustomDateRange;
+  const orders = React.useMemo<DbOrder[]>(() => {
+    const base = isLiveScope ? (rtOrders as DbOrder[]) : historicalOrders;
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return base;
+    // 서버 search 와 동일 필드(order_number/customer_name/customer_phone/table_number) 클라 필터
+    return base.filter(o => [o.order_number, o.customer_name, o.customer_phone, o.table_number]
+      .some(v => (v || '').toString().toLowerCase().includes(q)));
+  }, [isLiveScope, rtOrders, historicalOrders, searchQuery]);
+
+  // 낙관 갱신 — 라이브 스코프는 공용 스토어에, 히스토리는 로컬 state 에 반영.
+  const patchOrderLocal = useCallback((orderId: number, patch: Partial<DbOrder>) => {
+    const inRt = rtOrders.find((o: any) => o.id === orderId);
+    if (inRt) applyOrder({ ...inRt, ...patch });
+    setHistoricalOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...patch } : o));
+  }, [rtOrders, applyOrder]);
+
   // Payment Verification Modal (for Confirm button in table list)
   const [verifyOrder, setVerifyOrder] = useState<DbOrder | null>(null);
 
@@ -146,6 +178,9 @@ const LiveOrdersPage: React.FC = () => {
     tableNumber: string | null;
     orderGroup: number;
     itemCount: number;
+    viaTableMove?: boolean;              // 테이블이동 머지 → "Orders Merged" 표기
+    mergedFromTable?: string | null;
+    mergedFromOrderNumber?: string | null;
   } | null>(null);
 
 
@@ -194,9 +229,16 @@ const LiveOrdersPage: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Fetch orders from database with server-side filtering
+  // Fetch orders — 라이브 스코프(오늘)는 공용 스토어 재동기화로 위임, 과거/커스텀 기간만
+  // 서버 fetch (변하지 않는 데이터). 호출부 계약(액션 실패 시 보정 등)은 그대로 유지.
   const fetchOrders = useCallback(async () => {
     if (!user?.restaurantId) return;
+
+    if (isLiveScope) {
+      await refetchOrders();
+      setIsLoading(false);
+      return;
+    }
 
     try {
       const params = new URLSearchParams({
@@ -224,7 +266,7 @@ const LiveOrdersPage: React.FC = () => {
       const result = await response.json();
 
       if (result.success && result.data) {
-        setOrders(result.data);
+        setHistoricalOrders(result.data);
         if (result.pagination) {
           setCurrentPage(result.pagination.currentPage);
           setTotalPages(result.pagination.totalPages);
@@ -236,7 +278,7 @@ const LiveOrdersPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [user?.restaurantId, dateRange.start, dateRange.end, searchQuery, activeTab]);
+  }, [user?.restaurantId, dateRange.start, dateRange.end, searchQuery, activeTab, isLiveScope, refetchOrders]);
 
   // Fetch order counts for tab badges (optimized - no full data fetch)
   const fetchOrderCounts = useCallback(async () => {
@@ -289,124 +331,42 @@ const LiveOrdersPage: React.FC = () => {
     return () => { cs.disconnect(); };
   }, [user?.restaurantId]);
 
-  // Store playNotificationSound in ref to avoid socket reconnection on audio state changes
+  // Store playNotificationSound in ref to avoid subscribe-effect churn on audio state changes
   const playNotificationSoundRef = useRef(playNotificationSound);
   const fetchOrderCountsRef = useRef(fetchOrderCounts);
-  // 2026-05-31 (Irene): keep latest fetchOrders in a ref so the socket effect can
-  // re-sync on (re)connect without listing fetchOrders in its deps (which would
-  // tear down/recreate the socket on every filter change).
-  const fetchOrdersRef = useRef(fetchOrders);
   useEffect(() => {
     playNotificationSoundRef.current = playNotificationSound;
   }, [playNotificationSound]);
   useEffect(() => {
     fetchOrderCountsRef.current = fetchOrderCounts;
   }, [fetchOrderCounts]);
+  // ── 실시간 갱신 (2026-06-12, 공용 스토어 전환) ───────────────────────────────
+  // 주문 데이터 in-place 갱신·30s 안전 폴링·재연결 재동기화는 OrdersRealtimeProvider 가
+  // 담당한다. 여기는 표시 전용 구독만: 알림음 / 탭 카운트 / 추가주문 배너.
+  // (이전엔 order-items-added 가 배너만 띄우고 주문 데이터를 안 갱신해 추가 품목이
+  //  리프레시 전까지 안 보였다 — 공용 reducer 가 동행 order-updated 로 즉시 갱신.)
   useEffect(() => {
-    fetchOrdersRef.current = fetchOrders;
-  }, [fetchOrders]);
-  // 2026-05-31 (Irene): 30s safety poll. Belt-and-suspenders for the case where the
-  // socket silently stalls without firing a disconnect/connect cycle (so the
-  // reconnect re-fetch above never runs). Mirrors KDS's 30s poll. Uses the ref so
-  // changing tab/date filters doesn't tear down & recreate the interval.
-  useEffect(() => {
-    if (!user?.restaurantId) return;
-    const id = setInterval(() => fetchOrdersRef.current(), 30000);
-    return () => clearInterval(id);
-  }, [user?.restaurantId]);
-
-  // Initialize Socket.IO connection
-  useEffect(() => {
-    if (!user?.restaurantId) {
-      return;
-    }
-
-    const newSocket = io('/orders', {
-      transports: ['websocket', 'polling']
-    });
-
-    newSocket.on('connect', () => {
-      console.log('Connected to Socket.IO /orders namespace');
-      newSocket.emit('join-restaurant', user.restaurantId);
-      // 2026-05-31 (Irene): re-sync the full list on every (re)connect. A staff
-      // tablet/monitor whose socket dropped (sleep / PWA background / network blip)
-      // misses every order-created emit during the gap; without this re-fetch the
-      // missed orders never appear until a manual refresh. (KDS already does this.)
-      fetchOrdersRef.current();
-      fetchOrderCountsRef.current();
-    });
-
-    newSocket.on('connect_error', (error) => {
-      console.error('Socket.IO connection error:', error);
-    });
-
-    newSocket.on('order-created', (order: DbOrder) => {
-      console.log('Socket: order-created', order.id);
-      setOrders(prev => [order, ...prev]);
-      // Update counts optimistically
+    const offCreated = subscribeOrders('order-created', (order: any) => {
       setOrderCounts(prev => ({
         ...prev,
         all: prev.all + 1,
         [order.status]: (prev[order.status as keyof typeof prev] || 0) + 1
       }));
-
-      // Play notification sound for new order (use ref to avoid dependency)
       playNotificationSoundRef.current();
       fetchOrderCountsRef.current(); // Refresh stats (Total Sales, Avg, Max)
       window.dispatchEvent(new Event('refreshBadgeCounts'));
     });
-
-    newSocket.on('order-updated', (order: DbOrder) => {
-      console.log('Socket: order-updated', order.id, order.status);
-      setOrders(prev => {
-        const oldOrder = prev.find(o => o.id === order.id);
-        // Update counts if status changed
-        if (oldOrder && oldOrder.status !== order.status) {
-          setOrderCounts(counts => ({
-            ...counts,
-            [oldOrder.status]: Math.max(0, (counts[oldOrder.status as keyof typeof counts] || 0) - 1),
-            [order.status]: (counts[order.status as keyof typeof counts] || 0) + 1
-          }));
-        }
-        return prev.map(o => o.id === order.id ? order : o);
-      });
-      fetchOrderCountsRef.current(); // Refresh stats
+    const offUpdated = subscribeOrders('order-updated', () => {
+      fetchOrderCountsRef.current(); // 탭 카운트/통계는 서버 집계로 재동기화
       window.dispatchEvent(new Event('refreshBadgeCounts'));
     });
-
-    newSocket.on('order-deleted', ({ id }: { id: number }) => {
-      console.log('Socket: order-deleted', id);
-      setOrders(prev => {
-        const deletedOrder = prev.find(o => o.id === id);
-        if (deletedOrder) {
-          setOrderCounts(counts => ({
-            ...counts,
-            all: Math.max(0, counts.all - 1),
-            [deletedOrder.status]: Math.max(0, (counts[deletedOrder.status as keyof typeof counts] || 0) - 1)
-          }));
-        }
-        return prev.filter(o => o.id !== id);
-      });
-      fetchOrderCountsRef.current(); // Refresh stats
+    const offDeleted = subscribeOrders('order-deleted', () => {
+      fetchOrderCountsRef.current();
       window.dispatchEvent(new Event('refreshBadgeCounts'));
     });
-
-    // New items added to existing order (merged order notification)
-    newSocket.on('order-items-added', (data: {
-      orderId: number;
-      orderNumber: string;
-      tableNumber: string | null;
-      orderGroup: number;
-      addedItems: any[];
-      itemCount: number;
-    }) => {
-      console.log('Socket: order-items-added', data.orderId, `+Order ${data.orderGroup}`);
-
-      // Play notification sound
+    const offItemsAdded = subscribeOrders('order-items-added', (data: any) => {
       playNotificationSoundRef.current();
-
       fetchOrderCountsRef.current(); // Refresh stats (amount changed)
-
       // Show alert notification (stays until manually dismissed or View Order clicked)
       setItemsAddedAlert({
         isVisible: true,
@@ -414,16 +374,20 @@ const LiveOrdersPage: React.FC = () => {
         orderNumber: data.orderNumber,
         tableNumber: data.tableNumber,
         orderGroup: data.orderGroup,
-        itemCount: data.itemCount
+        itemCount: data.itemCount,
+        // 테이블이동 머지는 "추가주문"이 아니라 "주문 합침"으로 표기 (Irene 2026-06-12)
+        viaTableMove: !!data.viaTableMove,
+        mergedFromTable: data.mergedFromTable || null,
+        mergedFromOrderNumber: data.mergedFromOrderNumber || null
       });
     });
+    return () => { offCreated(); offUpdated(); offDeleted(); offItemsAdded(); };
+  }, [subscribeOrders]);
 
-    setSocket(newSocket);
-
-    return () => {
-      newSocket.disconnect();
-    };
-  }, [user?.restaurantId]); // Removed playNotificationSound - using ref instead
+  // (재)연결 시 탭 카운트 재동기화 — 주문 리스트는 Provider 가 connect 시 자체 재동기화.
+  useEffect(() => {
+    if (rtConnected) fetchOrderCountsRef.current();
+  }, [rtConnected]);
 
   // Initial fetch
   useEffect(() => {
@@ -700,14 +664,15 @@ const LiveOrdersPage: React.FC = () => {
     const now = new Date().toISOString();
     const oldStatus = orders.find(o => o.id === orderId)?.status;
 
-    // Optimistically update UI immediately
-    setOrders(prev => prev.map(order =>
-      order.id === orderId ? {
-        ...order, status: newStatus,
+    // Optimistically update UI immediately (공용 스토어/히스토리 양쪽 반영)
+    {
+      const cur = orders.find(o => o.id === orderId);
+      patchOrderLocal(orderId, {
+        status: newStatus,
         ...(setKitchenReady && { kitchen_ready: true }),
-        ...((newStatus === 'served' || newStatus === 'completed') && !order.served_at && { served_at: now })
-      } : order
-    ));
+        ...((newStatus === 'served' || newStatus === 'completed') && !cur?.served_at && { served_at: now })
+      } as Partial<DbOrder>);
+    }
 
     if (oldStatus && oldStatus !== newStatus) {
       setOrderCounts(prev => ({
@@ -872,7 +837,8 @@ const LiveOrdersPage: React.FC = () => {
           }
           return { ...i, category_id: i.category_id || i.categoryId, optionGroups: Array.isArray(optionGroups) ? optionGroups : [] };
         });
-        setMenuItems(normalizedItems.filter((i: any) => i.is_available !== false));
+        // set_only = 세트 구성 전용 단품 — 추가주문(Add Items)에서도 단품 담기 불가 (2026-06-12)
+        setMenuItems(normalizedItems.filter((i: any) => i.is_available !== false && !i.set_only));
         if (categories.length > 0) {
           setAddItemsSelectedCategory(String(categories[0].id));
         }
@@ -1206,17 +1172,9 @@ const LiveOrdersPage: React.FC = () => {
       });
       const result = await res.json();
       if (result.success) {
-        let updatedOrder = result.data;
-        const allServed = updatedItems.every((i: any) => i.status === 'served' || i.status === 'completed');
-        if (allServed && ['pending', 'preparing', 'ready'].includes(selectedOrder.status)) {
-          const sres = await fetch(`/api/orders/${selectedOrder.id}/status`, {
-            ...getFetchOptions({ method: 'PATCH' }),
-            body: JSON.stringify({ status: 'served' })
-          });
-          const sresult = await sres.json().catch(() => null);
-          if (sresult && sresult.success && sresult.data) updatedOrder = sresult.data;
-        }
-        if (updatedOrder) setSelectedOrder(updatedOrder);
+        // 주문 단계 롤업은 백엔드 단일 단계 모델이 처리 (PATCH /items 응답에 이미
+        // 파생된 주문 단계 포함 — 별도 /status 호출 제거로 이중 emit 레이스 차단).
+        if (result.data) setSelectedOrder(result.data);
         fetchOrders();
       } else {
         showToast(result.error || result.message || 'Failed to update item', 'error');
@@ -1344,7 +1302,8 @@ const LiveOrdersPage: React.FC = () => {
   const confirmDeleteOrder = async () => {
     if (orderToDelete) {
       const orderIdToDelete = orderToDelete;
-      setOrders(prev => prev.filter(o => o.id !== orderIdToDelete));
+      removeOrder(orderIdToDelete);
+      setHistoricalOrders(prev => prev.filter(o => o.id !== orderIdToDelete));
       setShowDeleteConfirm(false);
       setOrderToDelete(null);
       try {
@@ -1368,7 +1327,7 @@ const LiveOrdersPage: React.FC = () => {
     if (!orderToCancel) return;
     // Snapshot order BEFORE marking cancelled — used for cancellation ticket print.
     const orderSnapshot = orders.find(o => o.id === orderToCancel);
-    setOrders(prev => prev.map(order => order.id === orderToCancel ? { ...order, status: 'cancelled' as any } : order));
+    patchOrderLocal(orderToCancel, { status: 'cancelled' as any });
     setShowCancelConfirm(false);
     if (selectedOrder?.id === orderToCancel) handleCloseModal();
     try {
@@ -1583,17 +1542,30 @@ const LiveOrdersPage: React.FC = () => {
             }
           `}</style>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-            <div style={{ fontWeight: 700, fontSize: '15px', color: '#92400E' }}>New Items Added</div>
+            <div style={{ fontWeight: 700, fontSize: '15px', color: '#92400E' }}>{itemsAddedAlert.viaTableMove ? 'Orders Merged' : 'New Items Added'}</div>
             <button onClick={() => setItemsAddedAlert(null)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#92400E', padding: '0', lineHeight: 1 }}>×</button>
           </div>
           <div style={{ color: '#78350F', fontSize: '14px', marginBottom: '12px' }}>
             <strong>Order {itemsAddedAlert.orderNumber}</strong>
             {itemsAddedAlert.tableNumber && ` (Table ${itemsAddedAlert.tableNumber})`}
             <br />
-            <span style={{ background: '#FCD34D', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
-              +Order {itemsAddedAlert.orderGroup}
-            </span>
-            {' '}{itemsAddedAlert.itemCount} item{itemsAddedAlert.itemCount > 1 ? 's' : ''} added
+            {itemsAddedAlert.viaTableMove ? (
+              // 테이블이동 머지 — 어디서 합쳐졌는지 명시 ("+Order N added" 혼동 방지)
+              <>
+                <span style={{ background: '#FCD34D', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                  {itemsAddedAlert.mergedFromOrderNumber ? `Order ${itemsAddedAlert.mergedFromOrderNumber}` : 'Order'}
+                  {itemsAddedAlert.mergedFromTable ? ` (Table ${itemsAddedAlert.mergedFromTable})` : ''}
+                </span>
+                {' '}merged into this order · {itemsAddedAlert.itemCount} item{itemsAddedAlert.itemCount > 1 ? 's' : ''}
+              </>
+            ) : (
+              <>
+                <span style={{ background: '#FCD34D', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                  +Order {itemsAddedAlert.orderGroup}
+                </span>
+                {' '}{itemsAddedAlert.itemCount} item{itemsAddedAlert.itemCount > 1 ? 's' : ''} added
+              </>
+            )}
           </div>
           <button
             onClick={() => {
@@ -2182,4 +2154,11 @@ const LiveOrdersPage: React.FC = () => {
   );
 };
 
-export default LiveOrdersPage;
+// 공용 실시간 주문 스토어로 감싼 진입점 — 페이지 내부는 useOrdersRealtime() 으로 소비.
+const LiveOrdersPageWithRealtime: React.FC = () => (
+  <OrdersRealtimeProvider>
+    <LiveOrdersPage />
+  </OrdersRealtimeProvider>
+);
+
+export default LiveOrdersPageWithRealtime;

@@ -683,10 +683,15 @@ const KitchenDisplayPage: React.FC = () => {
   // pending-reset (which bumps updatedAt) still shows correctly. Display-only — no
   // print/routing change.
   const orderVersionRef = useRef<Map<string, number>>(new Map());
+  // 2026-06-12: 버전 = updatedAt **초 단위 절삭** (display-only). order-created 는 메모리
+  // Date(ms 포함, 예 .847)인데 order-updated 는 DB reload 후 DATETIME 초 절삭(.000) —
+  // ms 비교면 같은 초 안의 생성→단계변경이 "과거"로 보여 drop 되고 카드가 이전 단계에
+  // 고착된다(OrdersRealtimeProvider 에서 실측 재현·수정한 것과 동일 패턴). 같은 초 =
+  // 수용(소켓은 연결당 FIFO — 최종 emit 이 마지막에 적용돼 최종 상태 정합).
   const verOf = (raw: any): number => {
     const t = raw?.updatedAt || raw?.updated_at;
     const ms = t ? new Date(t).getTime() : 0;
-    return Number.isFinite(ms) ? ms : 0;
+    return Number.isFinite(ms) ? Math.floor(ms / 1000) : 0;
   };
   // Returns false if `raw` is older than what we already applied for this order.
   const acceptVersion = (idStr: string, raw: any): boolean => {
@@ -708,6 +713,7 @@ const KitchenDisplayPage: React.FC = () => {
   });
 
   const [preparingBatches, setPreparingBatches] = useState<PreparingBatch[]>([]);
+  const [itemMergeSettings, setItemMergeSettings] = useState<{ time_limit: number; max_count: number }>({ time_limit: 0, max_count: 0 });
 
   // ─── Sound toggle ───
   // 사운드 mute 키 = KDS 전용(Live Orders 와 분리 — 더 이상 'sound_enabled' 공유 안 함). 종류=스테이션 alert_sound.
@@ -720,7 +726,6 @@ const KitchenDisplayPage: React.FC = () => {
   const urlStationApplied = useRef(false);
 
   // ─── Item Merge Settings ───
-  const [itemMergeSettings, setItemMergeSettings] = useState<{ time_limit: number; max_count: number }>({ time_limit: 0, max_count: 0 });
   // menuName → station_id 매핑 (카테고리 or 프로덕트 기반, 프로덕트 오버라이드 우선)
   const [menuStationMap, setMenuStationMap] = useState<Map<string, number>>(new Map());
 
@@ -1024,69 +1029,23 @@ const KitchenDisplayPage: React.FC = () => {
     });
 
     newSocket.on('order-created', (order: any) => {
-      if (order.restaurant_id !== user.restaurantId) return;
+      // 2026-06-12 (display-only fix): user.restaurantId 는 AuthContext 가 항상 문자열('5')로
+      // 만들고 소켓 payload 의 restaurant_id 는 숫자(5)라, 엄격비교(!==)가 모든 이벤트를
+      // 조용히 버려 KDS 가 30s 폴링으로만 갱신됐다 — "KDS 리프레시해야 보임"(2026-06-04
+      // 미진단)의 근본원인. 숫자 비교로 교정. 인쇄 경로는 무접촉(shouldAutoPrint=false 하드).
+      if (order.restaurant_id != null && Number(order.restaurant_id) !== Number(user.restaurantId)) return;
 
       let orderItems = order.order_items || [];
       if (typeof orderItems === 'string') {
         try { orderItems = JSON.parse(orderItems); } catch { orderItems = []; }
       }
 
-      const expandedItems: any[] = [];
-      orderItems.forEach((item: any, itemIndex: number) => {
-        const specialInstructions = item.special_instructions || '';
-        const setMenuMatch = specialInstructions.match(/^\[(.*?)\]/);
-
-        if (setMenuMatch) {
-          const setItemsText = setMenuMatch[1];
-          const setItems = setItemsText.split(',').map((s: string) => s.trim());
-          setItems.forEach((setItemText: string, setIndex: number) => {
-            const match = setItemText.match(/^(.*?)\s+x(\d+)$/);
-            if (match) {
-              const [, itemName, itemQty] = match;
-              expandedItems.push({
-                id: `item-${order.id}-${itemIndex}-set-${setIndex}`,
-                name: itemName.trim(),
-                quantity: parseInt(itemQty) * item.quantity,
-                options: [],
-                status: item.status || 'pending',
-                isSetItem: true,
-                parentSetName: item.name
-              });
-            }
-          });
-          if (item.options && item.options.length > 0) {
-            expandedItems.push({
-              id: `item-${order.id}-${itemIndex}`,
-              name: `${item.name} (Options)`,
-              quantity: item.quantity,
-              options: item.options,
-              status: item.status || 'pending'
-            });
-          }
-        } else {
-          expandedItems.push({
-            id: `item-${order.id}-${itemIndex}`,
-            name: item.name || item.menuItem?.name || 'Item',
-            quantity: item.quantity,
-            options: item.options || [],
-            status: item.status || 'pending'
-          });
-        }
-      });
-
-      const newOrder: KitchenOrder = {
-        id: order.id.toString(),
-        orderNumber: order.order_number,
-        pickupNumber: order.order_number.split('-')[1] || order.order_number.slice(-3),
-        items: expandedItems,
-        status: order.status || 'pending',
-        orderTime: new Date(order.createdAt || Date.now()),
-        tableNumber: order.table_number,
-        customerName: order.customer_name,
-        orderType: order.order_type || 'dine-in',
-        source: order.source || 'pos',
-        scheduledPickupTime: order.scheduled_pickup_time || null
-      };
+      // 2026-06-12 (display-only fix): 새 주문 카드를 fetch/order-updated 경로와 동일한
+      // rawToKitchenOrder(→processRawOrderItems)로 구성한다. 이전 인라인 로직은
+      // special_instructions "[...]" 패턴만 세트로 인식하는 레거시라, set_components
+      // 기반 세트 주문이 다음 30s 폴링까지 구성품 없이 통째 표시됐다(아이템뷰에서
+      // 구성품 단위 작업 불가). 인쇄 블록은 아래 raw orderItems 를 그대로 사용(무접촉).
+      const newOrder: KitchenOrder = rawToKitchenOrder(order);
 
       orderVersionRef.current.set(order.id.toString(), verOf(order));
       setOrders(prev => [newOrder, ...prev]);
@@ -1279,7 +1238,9 @@ const KitchenDisplayPage: React.FC = () => {
     });
 
     newSocket.on('order-updated', (order: any) => {
-      if (order.restaurant_id !== user.restaurantId) return;
+      // 2026-06-12 (display-only fix): order-created 와 동일 — 문자열/숫자 엄격비교가
+      // 모든 단계변경 이벤트를 버리던 것 교정. 숫자 비교.
+      if (order.restaurant_id != null && Number(order.restaurant_id) !== Number(user.restaurantId)) return;
       // Drop stale echoes (older updatedAt than already applied) — prevents the
       // ready→pending revert. Applies to removal too, so an old "preparing" echo
       // can't re-add an order a newer "served" echo already cleared.
@@ -2638,10 +2599,13 @@ const KitchenDisplayPage: React.FC = () => {
     await Promise.all(statusUpdates);
   };
 
-  // Pending/Preparing 공통 그룹 카드 렌더링
+  // Pending/Preparing 공통 그룹 카드 렌더링 — 이전 구조 그대로 (2026-06-12 Irene 확정:
+  // 교차주문 같은-아이템 합치기 + merge limits + 출처 표시 모두 기존 유지).
+  // 변경 2가지만: ① 반응형 — 긴 메뉴명이 버튼을 화면 밖으로 밀지 않게(minWidth:0/
+  // wordBreak/flexShrink, 768px 실측 75px 이탈 수정) ② 준비시간 신호등을 우측 버튼
+  // 무리 옆(제목에 붙이지 않음)에 — 아이템 단위 설정(defaultPreparationTimePerItem) 기준.
   const renderGroupCard = (group: MenuGroup, idx: number, column: 'pending' | 'preparing') => {
     const totalQty = group.plainQty + group.optionSources.reduce((s, o) => s + o.quantity, 0);
-
 
     const plainLabelMap = new Map<string, number>();
     group.plainSources.forEach(s => {
@@ -2651,6 +2615,13 @@ const KitchenDisplayPage: React.FC = () => {
       .map(([label, qty]) => qty > 1 ? `${label} x${qty}` : label)
       .join(', ');
 
+    const groupElapsedMin = Math.max(0, Math.floor((currentTime.getTime() - group.earliestTime.getTime()) / 60000));
+    const groupPrep = computePrepFromElapsed(
+      groupElapsedMin,
+      Number(operationSettings?.defaultPreparationTimePerItem) || 10,
+      Number(operationSettings?.prepUrgentThreshold) || 80
+    );
+
     const actionColor = column === 'pending' ? '#F59E0B' : '#3B82F6';
     const isSingle = totalQty <= 1;
     const actionLabel = column === 'pending'
@@ -2658,12 +2629,13 @@ const KitchenDisplayPage: React.FC = () => {
       : (isSingle ? 'Done' : 'Done All');
     return (
       <GroupCard key={`${column}-group-${idx}`}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <GroupMenuName>
-            {group.formattedName}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+          <GroupMenuName style={{ minWidth: 0, flex: 1 }}>
+            <span style={{ wordBreak: 'break-word' }}>{group.formattedName}</span>
             {totalQty > 1 && <ItemQty highlight>x {totalQty}</ItemQty>}
           </GroupMenuName>
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+            {groupPrep && <PrepTimerChip prep={groupPrep} />}
             {column === 'preparing' && (
               <RevertBtn style={{ padding: '10px 14px', fontSize: '14px' }}
                 onClick={() => handleGroupBatch(group, 'revert', column)}>↺</RevertBtn>
@@ -2936,7 +2908,11 @@ const KitchenDisplayPage: React.FC = () => {
             </OrderLeft>
             <OrderRight>
               <OrderId>{order.orderNumber}</OrderId>
-              <ElapsedTime>{elapsedTime}m</ElapsedTime>
+              {/* 2026-06-12: 아이템뷰 Ready 카드에도 주문뷰와 동일한 준비시간 신호등 */}
+              {(() => {
+                const prep = computePrepFromElapsed(elapsedTime, Number(operationSettings?.defaultPreparationTime) || 15, Number(operationSettings?.prepUrgentThreshold) || 80);
+                return prep ? <PrepTimerChip prep={prep} /> : <ElapsedTime>{elapsedTime}m</ElapsedTime>;
+              })()}
             </OrderRight>
           </OrderHeader>
 

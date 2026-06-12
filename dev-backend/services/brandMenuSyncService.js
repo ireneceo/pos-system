@@ -201,6 +201,8 @@ async function syncBrandMenuToRestaurant({ brandMenuId, restaurantId, transactio
     }
     // 브랜드가 순서를 강제(lock_sort_order)하면 매장 상품 display_order 를 브랜드 sort_order 로 고정
     if (locks.sort_order) updates.display_order = brandMenu.sort_order || 0;
+    // set_only(세트 전용 — 단품 판매 안 함)는 브랜드 판매정책 → 버전 sync 마다 브랜드 값으로 갱신 (2026-06-12)
+    updates.set_only = brandMenu.set_only === true;
     // emoji / description always refreshed (not in lock matrix per spec — informational)
     if (brandMenu.emoji) updates.emoji = brandMenu.emoji;
     if (brandMenu.description) updates.description = brandMenu.description;
@@ -227,6 +229,7 @@ async function syncBrandMenuToRestaurant({ brandMenuId, restaurantId, transactio
     set_groups: await translateSetGroupsForRestaurant(brandMenu.set_groups, restaurantId, transaction),
     is_active: false,
     after_meal: brandMenu.after_meal === true, // 식후 제공 플래그 상속(초기 푸시). 이후엔 매장이 소유.
+    set_only: brandMenu.set_only === true, // 세트 전용(단품 판매 안 함) — 브랜드 판매정책이므로 sync 에서도 항상 갱신 (2026-06-12)
     display_order: locks.sort_order ? (brandMenu.sort_order || 0) : 0, // 순서 강제 시 브랜드 순서 상속
     soldOut: false,
     // Sync tracking

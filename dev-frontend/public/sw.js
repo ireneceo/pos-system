@@ -10,7 +10,7 @@
  * caching SPA shell would conflict. If future offline support is needed, layer Workbox separately.
  */
 
-const SW_VERSION = '3.58-kds-setcomp-status-20260611';
+const SW_VERSION = '3.60-setonly-ticketscope-20260612';
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {

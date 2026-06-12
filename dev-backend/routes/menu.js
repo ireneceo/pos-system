@@ -246,6 +246,8 @@ router.get('/', checkRestaurantAccess, async (req, res) => {
         is_active: prod.is_active !== false,  // 기본값 true
         // 식후 제공(디저트 등) 등록 플래그
         after_meal: prod.after_meal || false,
+        // 세트 구성 전용 단품 — 단품 판매 안 함 (POS/모바일 주문 화면 숨김, 2026-06-12)
+        set_only: prod.set_only === true,
         // 관리자 지정 상품 순서(카테고리 내). 0 = 미설정
         display_order: prod.display_order || 0,
         // Kitchen Station 배정

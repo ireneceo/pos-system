@@ -1060,5 +1060,9 @@
   "printer.consolidated.testSent": "테스트 전송됨",
   "printer.consolidated.testFail": "테스트 실패",
   "printer.consolidated.autoPrint": "새 주문 시 자동 인쇄",
-  "printer.consolidated.autoPrintHint": "새 주문이 들어오면 통합 티켓을 자동으로 인쇄합니다."
+  "printer.consolidated.autoPrintHint": "새 주문이 들어오면 통합 티켓을 자동으로 인쇄합니다.",
+  "settingsPage.setOnlyBadge": "세트 전용",
+  "printer.workstations.consolidatedStations": "티켓 범위 — 주방 스테이션",
+  "printer.workstations.consolidatedStationsHint": "선택한 스테이션의 메뉴만 이 통합티켓에 인쇄합니다. 아무것도 선택 안 하면 전체 주문.",
+  "printer.workstations.allStations": "전체 주문"
 }

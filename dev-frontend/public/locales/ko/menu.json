@@ -131,5 +131,8 @@
   "setOrder.multi": "다중 선택",
   "menuPage.availableWhen": "{{when}} 가능",
   "menuPage.unavailableNow": "현재 이용 불가",
-  "menuPage.weekdayShortList": "일,월,화,수,목,금,토"
+  "menuPage.weekdayShortList": "일,월,화,수,목,금,토",
+  "menuManagementPage.setOnly": "세트 전용 (단품 판매 안 함)",
+  "menuManagementPage.setOnlyHint": "단품으로 팔지 않는 메뉴 — POS·모바일 주문 화면에서 숨겨지고, 세트 구성과 주방 스테이션 배정에는 그대로 사용됩니다",
+  "menuManagementPage.setOnlyBadge": "세트 전용"
 }

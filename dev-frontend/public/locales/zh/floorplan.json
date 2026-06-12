@@ -182,5 +182,7 @@
   "itemList.minAgo": "{{n}}分钟前",
   "itemList.hrAgo": "{{h}}小时{{m}}分钟前",
   "floorPlanPage.sortTime": "排序：下单时间",
-  "floorPlanPage.sortAmount": "排序：金额"
+  "floorPlanPage.sortAmount": "排序：金额",
+  "floorPlanPage.ordersMerged": "订单已合并",
+  "floorPlanPage.mergedIntoThisOrder": "已并入此订单"
 }

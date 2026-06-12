@@ -131,5 +131,8 @@
   "setOrder.multi": "pilih berbilang",
   "menuPage.availableWhen": "Tersedia {{when}}",
   "menuPage.unavailableNow": "Tidak tersedia buat masa ini",
-  "menuPage.weekdayShortList": "Ah,Is,Se,Ra,Kh,Ju,Sa"
+  "menuPage.weekdayShortList": "Ah,Is,Se,Ra,Kh,Ju,Sa",
+  "menuManagementPage.setOnly": "Untuk menu set sahaja",
+  "menuManagementPage.setOnlyHint": "Tidak dijual berasingan — disembunyikan daripada pesanan POS & mudah alih, masih digunakan dalam menu set dan penghalaan stesen dapur",
+  "menuManagementPage.setOnlyBadge": "SET SAHAJA"
 }

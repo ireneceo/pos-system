@@ -882,6 +882,7 @@ const MenuManagementPage: React.FC = () => {
     is_set_menu: false,
     is_featured: false,
     after_meal: false,
+    set_only: false,
     set_items: [],
     set_display_order: 0,
     recipe_id: null,
@@ -1044,6 +1045,7 @@ const MenuManagementPage: React.FC = () => {
       image: '',
       optionGroups: [],
       is_set_menu: false,
+      set_only: false,
       set_items: [],
       set_display_order: 0,
       recipe_id: null,
@@ -1064,6 +1066,7 @@ const MenuManagementPage: React.FC = () => {
       image: '',
       optionGroups: [],
       is_set_menu: true,
+      set_only: false,  // 세트 자체는 세트전용 단품 불가
       set_items: [],
       set_display_order: 0,
       recipe_id: null,
@@ -1084,6 +1087,7 @@ const MenuManagementPage: React.FC = () => {
       image: item.image || '',      // Preserve image or empty string
       optionGroups: item.optionGroups || [],
       is_set_menu: item.is_set_menu || false,
+      set_only: (item as any).set_only || false,
       set_items: item.set_items || [],
       set_display_order: item.set_display_order || 0,
       recipe_id: item.recipe_id || null,
@@ -1295,6 +1299,7 @@ const MenuManagementPage: React.FC = () => {
       is_set_menu: false,
       is_featured: formData.is_featured || false,
       after_meal: formData.after_meal || false,
+      set_only: formData.set_only || false,
       set_items: [],
       set_display_order: 0,
       recipe_id: formData.recipe_id || null,
@@ -1334,6 +1339,7 @@ const MenuManagementPage: React.FC = () => {
       optionGroups: selectedOptionGroups,
       soldOut: false,
       is_set_menu: true,
+      set_only: false,  // 세트 자체는 세트전용 단품이 될 수 없음
       set_groups: cleanGroups,
       set_items: null,  // v2 로 전환 — set_groups 가 단일 소스
       set_display_order: formData.set_display_order || 0,
@@ -1495,6 +1501,7 @@ const MenuManagementPage: React.FC = () => {
               <MenuCard key={item.id} soldOut={item.soldOut} inactive={item.is_active === false}>
                 <MenuImage>
                   {item.is_set_menu && <SetBadge>{t('menu:menuManagementPage.set')}</SetBadge>}
+                  {(item as any).set_only && <SetBadge style={{ background: '#7C3AED' }}>{t('menu:menuManagementPage.setOnlyBadge', { defaultValue: 'SET ONLY' })}</SetBadge>}
                   {item.is_featured && <SetBadge style={{ background: '#635BFF', left: item.is_set_menu ? '52px' : '8px' }}>{t('menu:menuManagementPage.featured')}</SetBadge>}
                   {item.brand_menu_id && (() => {
                     const locks = item.brand_menu_locks_snapshot || {};
@@ -1771,6 +1778,17 @@ const MenuManagementPage: React.FC = () => {
             </label>
           </UIFormGroup>
 
+          {!formData.is_set_menu && (
+          <UIFormGroup>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+              <input type="checkbox" checked={(formData as any).set_only || false}
+                onChange={(e) => setFormData({ ...formData, set_only: e.target.checked } as any)} />
+              <span style={{ fontSize: '14px', color: '#0A2540', fontWeight: 500 }}>{t('menu:menuManagementPage.setOnly', { defaultValue: 'Set menu use only' })}</span>
+              <span style={{ fontSize: '12px', color: '#4B5563' }}>{t('menu:menuManagementPage.setOnlyHint', { defaultValue: 'Not sold separately — hidden from POS & mobile ordering, still available inside set menus and kitchen station routing' })}</span>
+            </label>
+          </UIFormGroup>
+          )}
+
           <UIFormGroup>
             <ItemScheduleEditor
               value={formData.availability as any}
@@ -2027,6 +2045,17 @@ const MenuManagementPage: React.FC = () => {
             </label>
           </UIFormGroup>
 
+          {!formData.is_set_menu && (
+          <UIFormGroup>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+              <input type="checkbox" checked={(formData as any).set_only || false}
+                onChange={(e) => setFormData({ ...formData, set_only: e.target.checked } as any)} />
+              <span style={{ fontSize: '14px', color: '#0A2540', fontWeight: 500 }}>{t('menu:menuManagementPage.setOnly', { defaultValue: 'Set menu use only' })}</span>
+              <span style={{ fontSize: '12px', color: '#4B5563' }}>{t('menu:menuManagementPage.setOnlyHint', { defaultValue: 'Not sold separately — hidden from POS & mobile ordering, still available inside set menus and kitchen station routing' })}</span>
+            </label>
+          </UIFormGroup>
+          )}
+
           <UIFormGroup>
             <ItemScheduleEditor
               value={formData.availability as any}
@@ -2265,6 +2294,17 @@ const MenuManagementPage: React.FC = () => {
               <span style={{ fontSize: '12px', color: '#4B5563' }}>{t('menu:menuManagementPage.afterMealHint', { defaultValue: 'Serve after the main course (e.g. dessert)' })}</span>
             </label>
           </UIFormGroup>
+
+          {!formData.is_set_menu && (
+          <UIFormGroup>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+              <input type="checkbox" checked={(formData as any).set_only || false}
+                onChange={(e) => setFormData({ ...formData, set_only: e.target.checked } as any)} />
+              <span style={{ fontSize: '14px', color: '#0A2540', fontWeight: 500 }}>{t('menu:menuManagementPage.setOnly', { defaultValue: 'Set menu use only' })}</span>
+              <span style={{ fontSize: '12px', color: '#4B5563' }}>{t('menu:menuManagementPage.setOnlyHint', { defaultValue: 'Not sold separately — hidden from POS & mobile ordering, still available inside set menus and kitchen station routing' })}</span>
+            </label>
+          </UIFormGroup>
+          )}
 
           <UIFormGroup>
             <ItemScheduleEditor

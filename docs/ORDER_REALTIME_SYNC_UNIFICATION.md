@@ -1,7 +1,11 @@
 # 주문 단계 실시간 동기화 통일 설계 (Order Realtime Stage Sync Unification)
 
 > 작성: 2026-06-11 · 계기: Irene 매장 보고 — "아이템리스트 5 / KDS 3 안 맞고, 리프레시해야 나오고, 어디서 조치해도 실시간 동기화 안 됨. 모두 같은 곳에서 정보를 가져오게. 정석대로, 제대로 작동 안 하면 못 쓴다."
-> 상태: **설계 (구현 미착수)** · 구현은 Irene 승인 후. 매장 영업 중 + KDS 보호파일 포함이라 안전 단계 롤아웃 필수.
+> 상태: **✅ 구현 완료 + v3.55 운영 배포 (2026-06-12)**. 구현 결과:
+> - 백엔드 단일 단계 모델(orders-crud.js `COOK_LVL`/`cascadeItemsToOrderStatus`/`deriveOrderStatusFromItems`) — 주문단위 이동=아이템 양방향 동행(P1 해결), 아이템 이동=주문 min roll-up(/items·void), 프론트 3곳 중복 roll-up 호출 제거.
+> - 공용 `contexts/OrdersRealtimeContext.tsx` + `utils/orderStage.ts`(table-status 1:1 클라 파생) — LiveOrders·FloorPlan(캔버스/아이템뷰/Takeout) 전환, table-status 의존 제거(P2 해결).
+> - KDS 는 §3 Phase 4 전환 대신 **무접촉 정합**: 이미 6종 구독+upsert+버전가드 보유. 단, 실측이 잡은 2버그 수정 — ①`restaurant_id !== user.restaurantId` 문자열/숫자 엄격비교로 **모든 소켓 이벤트 무시**(만성 "리프레시해야 보임"의 정체) ②버전가드 ms 비교(생성=메모리 ms vs 갱신=DB 초절삭 → 같은 초 전환 drop). **교훈: 소켓 restaurant 비교는 Number()==Number(), 버전 비교는 초 단위.**
+> - 검증: 실API 23케이스×3회 + 크로스화면 e2e(≤2s·리프레시0, 실반영 ~10ms)×3회 + KDS e2e×3회 + 운영 demo 13/13.
 
 ## 0. 문제 한 줄 요약
 5개 화면(Live Orders / Floor Plan 캔버스 / Floor Plan 아이템리스트 / Takeout / KDS)이 **① 데이터 소스 ② 소켓 갱신 ③ 단계 도출**을 제각각으로 해서, 같은 주문이 화면마다 다르게/늦게 보이고 리프레시가 필요하다.
@@ -101,12 +105,12 @@
 
 | # | 증상 (Irene 보고) | 의심 영역 / 메모 | 상태 |
 |---|------|------|------|
-| P1 | 완료→되돌린 주문이 KDS에 안 뜸 / 5(아이템리스트) vs 3(KDS) | §1-C′ 단계 드리프트 (orders-crud.js:1397 역방향 미전파). 단일 단계 모델로 해결 | 원인확정, 미수정 |
-| P2 | 어느 화면(라이브/플로어/아이템리스트/테이크아웃/KDS)에서 조치해도 실시간 동기화 안 됨, 리프레시해야 보임 | §1-A 소스 둘로 분리(table-status vs orders) + §1-B 소켓 구독 불일치(FloorPlan deleted/voided/moved 미구독, LiveOrders items-added 주문 미갱신) | 원인확정, 미수정 |
+| P1 | 완료→되돌린 주문이 KDS에 안 뜸 / 5(아이템리스트) vs 3(KDS) | §1-C′ 단계 드리프트 (orders-crud.js:1397 역방향 미전파). 단일 단계 모델로 해결 | ✅ 해결·배포 (v3.55) |
+| P2 | 어느 화면(라이브/플로어/아이템리스트/테이크아웃/KDS)에서 조치해도 실시간 동기화 안 됨, 리프레시해야 보임 | §1-A 소스 둘로 분리(table-status vs orders) + §1-B 소켓 구독 불일치 + **추가 실측: KDS restaurant_id 타입 엄격비교로 전 이벤트 무시 + 버전가드 ms 역전** | ✅ 해결·배포 (v3.55) |
 | P3 | Floor Plan Table B-4 served인데 테이블 회색 — 맞나? | §1-D served→#6B7280 의도된 매핑이나 (a)디자인 적절성 (b)order.status가 실제와 어긋나면(P1) 색도 어긋남. 데이터로 B-4 실단계 재확인 필요 | 미확인 |
-| P4 | KDS 세트 구성품 단계가 재조회마다 리셋 / 아이템뷰가 구성품 status대로 안 보임 | set_components(status없음) 읽기우선 vs set_items 쓰기 → processRawOrderItems 폴백 수정함. 단 근본은 set_components↔set_items 단일화 필요(§2-B) | **수정됨(dev, 미배포 SW3.58)**, 근본통합은 P1/P2와 함께 |
-| P5 | (구) 통합 오더티켓 POS별 토글 4건 | 운영 배포됨(3.56). 실프린터 눈확인 + check-print-guard --bless 대기 | 배포됨, 확인대기 |
-| P6 | (구) 테이블 takeaway가 dine_in으로 / Takeout 미표시 + 테이블칩 | POSTerminalPage:1576 + 백엔드 off-table auto-merge 제외 + Takeout 칩 | **수정됨(dev, 미배포 SW3.58)** |
+| P4 | KDS 세트 구성품 단계가 재조회마다 리셋 / 아이템뷰가 구성품 status대로 안 보임 | processRawOrderItems 폴백 + 소켓 order-created 경로도 rawToKitchenOrder 로 통일(레거시 인라인 세트 전개 제거) | ✅ 해결·배포 (v3.55) |
+| P5 | (구) 통합 오더티켓 POS별 토글 4건 | 배포됨(3.56) + v3.55 에서 워크스테이션별 스테이션 범위(consolidatedStations) 추가. print-guard bless 완료 | ✅ 배포 — **실프린터 눈확인만 대기(Irene)** |
+| P6 | (구) 테이블 takeaway가 dine_in으로 / Takeout 미표시 + 테이블칩 | POSTerminalPage:1576 + 백엔드 off-table auto-merge 제외 + Takeout 칩 | ✅ 배포 (v3.55) |
 | P7 | (구) POS 직접결제 빌 복사 매수 미반영 | POSTerminalPage 직접인쇄 1장고정. 🔒 인쇄 보호 | 미착수 |
 
 > 미배포 dev 묶음(SW 3.58): P4 + P6. /배포 시 함께. P5(3.56)는 운영에 이미 있음.

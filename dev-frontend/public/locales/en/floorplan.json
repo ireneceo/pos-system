@@ -182,5 +182,7 @@
   "itemList.minAgo": "{{n}}m ago",
   "itemList.hrAgo": "{{h}}h {{m}}m ago",
   "floorPlanPage.sortTime": "Sort: Order time",
-  "floorPlanPage.sortAmount": "Sort: Amount"
+  "floorPlanPage.sortAmount": "Sort: Amount",
+  "floorPlanPage.ordersMerged": "Orders Merged",
+  "floorPlanPage.mergedIntoThisOrder": "merged into this order"
 }

@@ -216,7 +216,8 @@ router.get('/menu/:slug', async (req, res) => {
     const productWhere = {
       restaurant_id: restaurantId,
       soldOut: false,
-      is_active: true   // 2026-05-29: hide deactivated menu items from the customer mobile menu (was missing → disabled items stayed orderable)
+      is_active: true,   // 2026-05-29: hide deactivated menu items from the customer mobile menu (was missing → disabled items stayed orderable)
+      set_only: false    // 2026-06-12: 세트 구성 전용 단품(단품 판매 안 함) — 고객 주문 화면 숨김 (세트 구성으로는 주문 가능)
     };
 
     // Filter by category if specified.
@@ -416,9 +417,18 @@ router.get('/menu/:slug', async (req, res) => {
     // Mobile display settings
     const mobileSettings = restaurant.mobile_settings || { show_featured: true, show_popular: true };
 
+    // 2026-06-12: 판매 가능한 단품이 하나도 없는 카테고리(전부 세트 전용 set_only)는 탭에서 숨김.
+    // soldOut 은 기존 동작 유지(품절만 있는 카테고리는 지금처럼 빈 탭) — set_only 로 인한 빈 탭만 차단.
+    const _sellableCatRows = await Product.findAll({
+      where: { restaurant_id: restaurantId, is_active: true, set_only: false },
+      attributes: ['category'], raw: true
+    });
+    const _sellableCatSet = new Set(_sellableCatRows.map(p => String(p.category)));
+    const sellableCategories = categories.filter(c => _sellableCatSet.has(String(c.id)) || _sellableCatSet.has(String(c.name)));
+
     res.json({
       success: true,
-      data: { categories, items, mobile_settings: mobileSettings },
+      data: { categories: sellableCategories, items, mobile_settings: mobileSettings },
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
@@ -589,7 +599,7 @@ router.get('/featured/:slug', async (req, res) => {
     if (!restaurant) return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
 
     const products = await Product.findAll({
-      where: { restaurant_id: restaurant.id, is_featured: true, soldOut: false },
+      where: { restaurant_id: restaurant.id, is_featured: true, soldOut: false, is_active: true, set_only: false },
       order: [['id', 'ASC']]
     });
 
@@ -678,7 +688,7 @@ router.get('/popular/:slug', async (req, res) => {
     }
 
     // Fetch product details
-    const productWhere = { id: topIds, soldOut: false, is_active: true };
+    const productWhere = { id: topIds, soldOut: false, is_active: true, set_only: false };
 
     // Exclude categories from popular (mobile_settings.popular_excluded_category_ids)
     const mobileSettings = restaurant.mobile_settings || {};

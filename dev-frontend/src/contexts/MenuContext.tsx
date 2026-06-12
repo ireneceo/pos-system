@@ -23,6 +23,8 @@ export interface MenuItem {
   optionGroups?: string[];
   preparationTime?: number;
   is_set_menu?: boolean;
+  // 세트 구성 전용 단품 — 단품 판매 안 함 (POS/모바일 주문 화면 숨김, 2026-06-12)
+  set_only?: boolean;
   set_items?: SetMenuItem[];
   set_groups?: any[] | null;  // 세트 v2 슬롯 (SET_MENU_REDESIGN)
   set_display_order?: number;
@@ -274,6 +276,7 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
             optionGroups: parsedOptionGroups,
             preparationTime: item.preparationTime || 15,
             is_set_menu: item.is_set_menu || false,
+            set_only: item.set_only === true,  // 세트 구성 전용 단품 — 주문 화면 숨김 (2026-06-12)
             set_items: item.set_items || undefined,
             set_groups: (() => {
               // Defensive parse — set_groups can arrive as a (double-)encoded JSON
@@ -460,6 +463,7 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
             optionGroups: parsedOptionGroups,
             preparationTime: item.preparationTime || 15,
             is_set_menu: item.is_set_menu || false,
+            set_only: item.set_only === true,  // 세트 구성 전용 단품 — 주문 화면 숨김 (2026-06-12)
             set_items: item.set_items || undefined,
             set_groups: (() => {
               // Defensive parse — set_groups can arrive as a (double-)encoded JSON

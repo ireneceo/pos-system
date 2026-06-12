@@ -621,7 +621,8 @@ cd /var/www/dev-backend && node tests/print-route-matrix.js
 | # | 규칙 |
 |---|------|
 | 1 | **주방 자동발행 ON**: 주문 들어오면 즉시 **모든 주방 station 에 발행**. 각 station 은 자기 메뉴만 (station 별 라우팅). 이것도 "오더티켓". |
-| 2 | **"POS 미러링" ON** (`kitchenPrinter.mirrorToBillPrinter`): POS(빌프린터)에 **통합 오더티켓 1장** 추가 발행. #1 과 독립. |
+| 2 | **"POS 미러링" ON** (`kitchenPrinter.mirrorToBillPrinter`): POS(빌프린터)에 **통합 오더티켓 1장** 추가 발행. #1 과 독립. (레거시 — 토글 채택 매장은 #2-b 가 대체) |
+| 2-b | **워크스테이션별 통합티켓** (v3.55, `workstations[].consolidatedTicket` + `consolidatedStations`): 각 POS 행 토글 ON 이면 그 POS 빌프린터로 통합티켓 1장. `consolidatedStations` 에 주방 스테이션을 고르면 **그 스테이션 품목만 모은 범위 티켓**(예: 주방용=BAR 제외), 미선택=전체 주문. 스테이션 **미배정 품목은 범위 티켓에도 포함**(매핑 누락으로 품목이 조용히 빠지는 사고 방지), 범위 품목 0개면 그 POS 발행 생략(빈 티켓 방지). 취소 통합티켓도 동일 범위. 구현 = `computeUnifiedTicketTargets`(범위 운반 + dedup 키에 범위 서명) / `sendUnifiedTickets`(범위 필터). |
 | 3 | **빌 자동발행 ON** (`billPrinter.autoPrint`): 결제되면 영수증 자동발행, 설정한 매수대로. |
 | 4 | **출처 무관 동일**: POS / Floor Plan / 모바일오더 어디서 온 주문이든 #1~#3 동일하게 동작. |
 | 5 | **추가 주문(+Round)**: 추가된 품목만 발행 (이전 품목 재발행 금지). `printed_at` per-item 히스토리. |

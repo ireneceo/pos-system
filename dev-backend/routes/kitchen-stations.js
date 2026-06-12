@@ -265,6 +265,29 @@ router.put('/:id', authenticateToken, requireRole('System Admin', 'Restaurant Ad
       }
     }
 
+    // ── 잉여 개별 배정 자동 정리 (2026-06-12, Irene/thefire02 보고) ──────────────
+    // "전체 메뉴 개별 선택 → 카테고리 방식 전환" 후에도 제품 단위 배정이 그대로 남아
+    // UI 에 잔존 표시되고, 이후 카테고리 스테이션을 바꿔도 옛 개별 배정이 우선해 라우팅이
+    // 안 따라오던 문제. 카테고리가 같은 스테이션으로 라우팅되면 그 카테고리 제품의 동일
+    // 스테이션 개별 배정은 잉여이므로 비운다. **다른 스테이션을 가리키는 개별 배정은
+    // 의도적 예외(override)일 수 있어 유지** — UI 에 예외로 표시된다.
+    if (category_ids !== undefined || product_ids !== undefined) {
+      const routedCats = await Category.findAll({
+        where: { restaurant_id: station.restaurant_id, kitchen_station_id: { [Op.ne]: null } },
+        attributes: ['id', 'name', 'kitchen_station_id']
+      });
+      for (const rc of routedCats) {
+        await Product.update(
+          { kitchen_station_id: null },
+          { where: {
+              restaurant_id: station.restaurant_id,
+              kitchen_station_id: rc.kitchen_station_id,
+              category: { [Op.in]: [String(rc.id), rc.name] }
+          } }
+        );
+      }
+    }
+
     // Fetch updated station with associations
     const updated = await KitchenStation.findByPk(station.id, {
       include: [

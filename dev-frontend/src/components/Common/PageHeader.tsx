@@ -58,6 +58,12 @@ const HeaderActions = styled.div`
 
   @media (max-width: 768px) {
     gap: 8px;
+    /* 2026-06-12: 좁은 화면에서 flex-shrink:0 고정 때문에 마지막 액션(⚙ 등)이
+       화면 밖으로 16px 밀려 잘리던 것 — ≤768px 에서만 축소/줄바꿈 허용. */
+    flex-shrink: 1;
+    min-width: 0;
+    flex-wrap: wrap;
+    justify-content: flex-end;
   }
 `;
 

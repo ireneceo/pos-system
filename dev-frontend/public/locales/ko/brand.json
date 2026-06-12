@@ -694,5 +694,6 @@
   "productsTab.distribution.specificRestaurants": "특정 지점만",
   "productsTab.distribution.specificRestaurantsDesc": "선택한 가맹점만 발주 가능",
   "productsTab.distribution.targetBrands": "대상 브랜드",
-  "productsTab.distribution.targetRestaurants": "대상 가맹점"
+  "productsTab.distribution.targetRestaurants": "대상 가맹점",
+  "brandMenusPage.setOnly": "세트 전용 — 단품 판매 안 함 (매장 POS·모바일 주문에서 숨김)"
 }

@@ -143,6 +143,11 @@ Product.init({
     defaultValue: false,
     comment: 'Serve after the main meal (e.g. dessert). Registration flag only.'
   },
+  set_only: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    comment: '2026-06-12 (Irene): 세트 구성 전용 단품 — 단품 판매 안 함. POS/모바일 주문 화면 숨김. 세트 구성 resolve·주방 스테이션 배정·메뉴 관리에는 정상 노출.'
+  },
   display_order: {
     type: DataTypes.INTEGER,
     defaultValue: 0,

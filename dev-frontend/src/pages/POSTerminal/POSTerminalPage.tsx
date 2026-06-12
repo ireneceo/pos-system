@@ -1271,7 +1271,14 @@ const POSTerminalPage: React.FC = () => {
   useAutoPrintPoller({ restaurantId: user?.restaurantId, enabled: !!user?.restaurantId && !isFloorPlanOverlay, getStoreInfo });
 
   // POS Terminal shows only active categories (customer-facing view)
-  const categories = allCategories.filter(cat => cat.isActive !== false);
+  // 2026-06-12: 아이템이 전부 세트 구성 전용(set_only)인 카테고리는 탭째 숨김 —
+  // 들어가도 주문 가능한 단품이 0개라 빈 탭만 보이기 때문. 아이템이 아예 없는
+  // 카테고리는 기존처럼 표시(신규 카테고리 작성 흐름 유지).
+  const categories = allCategories.filter(cat => {
+    if (cat.isActive === false) return false;
+    const catItems = menuItems.filter((i: any) => String(i.category) === String(cat.id));
+    return catItems.length === 0 || catItems.some((i: any) => !i.set_only);
+  });
   const {
     updateCustomerOrderStats,
     searchCustomers
@@ -1687,6 +1694,10 @@ const POSTerminalPage: React.FC = () => {
       // 일반 모드: 선택된 카테고리 메뉴만 표시
       items = getItemsByCategory(selectedCategory);
     }
+
+    // 세트 구성 전용 단품(set_only)은 단품 주문 불가 — POS 그리드에서 숨김 (2026-06-12).
+    // 세트 구성으로는 POSSetModal(set_groups_resolved)이 product_id 로 직접 resolve 하므로 무관.
+    items = items.filter((item: any) => !item.set_only);
 
     // 정렬 적용 — 모든 카테고리 / 검색 / All 결과에 일관 적용.
     // mutate 회피 위해 slice() 로 카피.
@@ -3238,7 +3249,9 @@ const POSTerminalPage: React.FC = () => {
                       {item.is_set_menu && <SetBadge>{'SET'}</SetBadge>}
                       <MenuImage hasImage={!!item.image}>
                         {item.image ? (
-                          <img src={item.image} alt={item.name} loading="lazy" decoding="async" />
+                          // onError: 파일 소실(dead ref) 시 깨진 아이콘 대신 숨김 (2026-06-12 thefire02 사고 가드)
+                          <img src={item.image} alt={item.name} loading="lazy" decoding="async"
+                            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
                         ) : (
                           item.emoji
                         )}

@@ -1060,5 +1060,9 @@
   "printer.consolidated.testSent": "Test sent",
   "printer.consolidated.testFail": "Test failed",
   "printer.consolidated.autoPrint": "Auto-print on new orders",
-  "printer.consolidated.autoPrintHint": "Automatically print the consolidated ticket when a new order arrives."
+  "printer.consolidated.autoPrintHint": "Automatically print the consolidated ticket when a new order arrives.",
+  "settingsPage.setOnlyBadge": "Set only",
+  "printer.workstations.consolidatedStations": "Ticket scope — kitchen stations",
+  "printer.workstations.consolidatedStationsHint": "Select stations to print only their items on this ticket. Nothing selected = full order.",
+  "printer.workstations.allStations": "Full order"
 }

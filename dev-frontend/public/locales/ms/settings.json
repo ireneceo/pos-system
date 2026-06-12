@@ -1060,5 +1060,9 @@
   "printer.consolidated.testSent": "Ujian dihantar",
   "printer.consolidated.testFail": "Ujian gagal",
   "printer.consolidated.autoPrint": "Auto-cetak pesanan baharu",
-  "printer.consolidated.autoPrintHint": "Cetak tiket bersepadu secara automatik apabila pesanan baharu tiba."
+  "printer.consolidated.autoPrintHint": "Cetak tiket bersepadu secara automatik apabila pesanan baharu tiba.",
+  "settingsPage.setOnlyBadge": "Set sahaja",
+  "printer.workstations.consolidatedStations": "Skop tiket — stesen dapur",
+  "printer.workstations.consolidatedStationsHint": "Pilih stesen untuk mencetak item stesen itu sahaja. Tiada pilihan = pesanan penuh.",
+  "printer.workstations.allStations": "Pesanan penuh"
 }

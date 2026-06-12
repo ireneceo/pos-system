@@ -182,5 +182,7 @@
   "itemList.minAgo": "{{n}}m lalu",
   "itemList.hrAgo": "{{h}}j {{m}}m lalu",
   "floorPlanPage.sortTime": "Isih: Masa pesanan",
-  "floorPlanPage.sortAmount": "Isih: Jumlah"
+  "floorPlanPage.sortAmount": "Isih: Jumlah",
+  "floorPlanPage.ordersMerged": "Pesanan Digabungkan",
+  "floorPlanPage.mergedIntoThisOrder": "digabungkan ke dalam pesanan ini"
 }

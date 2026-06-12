@@ -6575,6 +6575,53 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                                 </span>
                               </label>
                               </AutoSaveField>
+
+                              {/* 2026-06-12 (Irene): 통합티켓 스테이션 범위 — 주방 쪽 워크스테이션은
+                                  바 메뉴를 뺀(=선택한 주방 스테이션 메뉴만 모은) 통합티켓이 필요.
+                                  미선택(전체) = 기존과 동일한 전체 주문 티켓. */}
+                              {!!(ws as any).consolidatedTicket && kitchenStations.length > 0 && (
+                                <div style={{ marginTop: '8px', marginLeft: '26px' }}>
+                                  <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '6px' }}>
+                                    {t('settings:printer.workstations.consolidatedStations', 'Ticket scope — kitchen stations')}
+                                    <span style={{ display: 'block', fontSize: '11px', color: '#9CA3AF', marginTop: '1px' }}>
+                                      {t('settings:printer.workstations.consolidatedStationsHint', 'Select stations to print only their items on this ticket. Nothing selected = full order.')}
+                                    </span>
+                                  </div>
+                                  <AutoSaveField onSave={handleSave} type="toggle">
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                    {(() => {
+                                      const sel: number[] = Array.isArray((ws as any).consolidatedStations) ? (ws as any).consolidatedStations : [];
+                                      const allOn = sel.length === 0;
+                                      const chip = (active: boolean): React.CSSProperties => ({
+                                        padding: '6px 12px', borderRadius: '16px', fontSize: '12px', fontWeight: 600,
+                                        cursor: 'pointer', border: `1px solid ${active ? '#C7D2FE' : '#E5E7EB'}`,
+                                        background: active ? '#F0EFFF' : 'white', color: active ? '#4F46E5' : '#6B7280'
+                                      });
+                                      return (
+                                        <>
+                                          <button type="button" style={chip(allOn)}
+                                            onClick={() => updateWs({ consolidatedStations: [] })}>
+                                            {t('settings:printer.workstations.allStations', 'Full order')}
+                                          </button>
+                                          {kitchenStations.map((st: any) => {
+                                            const on = sel.includes(Number(st.id));
+                                            return (
+                                              <button key={st.id} type="button" style={chip(on)}
+                                                onClick={() => {
+                                                  const next = on ? sel.filter(id => id !== Number(st.id)) : [...sel, Number(st.id)];
+                                                  updateWs({ consolidatedStations: next });
+                                                }}>
+                                                {st.name}
+                                              </button>
+                                            );
+                                          })}
+                                        </>
+                                      );
+                                    })()}
+                                  </div>
+                                  </AutoSaveField>
+                                </div>
+                              )}
                             </>
                           )}
                         </div>
@@ -7495,7 +7542,12 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                         {t('settings:settingsPage.assignCategoriesHint')}
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', maxHeight: '240px', overflowY: 'auto' }}>
-                        {allCategories.map((cat: any) => {
+                        {allCategories.filter((cat: any) => {
+                          // 2026-06-12 (Irene): 세트메뉴만 있는 카테고리는 스테이션 라우팅 비대상 —
+                          // 세트는 구성품이 각자 스테이션으로 라우팅되므로 여기 떠 있으면 혼동만 준다.
+                          const catProds = allProducts.filter((p: any) => String(p.categoryId ?? p.category_id ?? p.category) === String(cat.id));
+                          return catProds.length === 0 || catProds.some((p: any) => !p.is_set_menu);
+                        }).map((cat: any) => {
                           const isChecked = stationForm.category_ids.includes(cat.id);
                           // Check if assigned to another station
                           const otherStation = kitchenStations.find((s: any) =>
@@ -7545,8 +7597,10 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                         });
 
                         // Group products by category
+                        // 2026-06-12 (Irene): 세트메뉴는 스테이션 배정 비대상(구성품이 각자 라우팅) → 목록 제외.
+                        // 세트 구성 전용 단품(set_only)은 배정 대상이므로 그대로 표시.
                         const grouped = new Map<string, { catName: string; emoji: string; items: any[] }>();
-                        allProducts.forEach((p: any) => {
+                        allProducts.filter((p: any) => !p.is_set_menu).forEach((p: any) => {
                           const catId = String(p.categoryId ?? p.category_id ?? p.category ?? '');
                           const catMeta = allCategories.find((c: any) => String(c.id) === catId);
                           const key = catMeta ? String(catMeta.id) : '__uncategorized__';
@@ -7582,6 +7636,27 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                                   {/* 2026-06-03: 카테고리가 이미 스테이션에 배정(라우팅)됐으면 개별 메뉴 목록을
                                       숨긴다 — 카테고리 배정만으로 그 안 메뉴가 전부 자동 라우팅되므로(혼란 방지).
                                       라우팅 안 된 카테고리만 개별 항목을 펼쳐 예외 지정용으로 보여준다. */}
+                                  {/* 2026-06-12 (Irene/thefire02): 라우팅된 카테고리 안에 "다른 스테이션을
+                                      가리키는 개별 배정"이 숨어 있으면(개별 우선이라 실제 라우팅을 지배)
+                                      보이지 않아 혼동 — 예외만 경고로 노출한다. 잉여(같은 스테이션) 개별
+                                      배정은 저장 시 백엔드가 자동 정리. */}
+                                  {defaultStation && (() => {
+                                    const conflicts = group.items.filter((prod: any) =>
+                                      prod.kitchen_station_id != null && Number(prod.kitchen_station_id) !== Number(defaultStation.id));
+                                    if (conflicts.length === 0) return null;
+                                    return (
+                                      <div style={{ paddingLeft: '4px', marginBottom: '4px' }}>
+                                        {conflicts.map((prod: any) => {
+                                          const st = kitchenStations.find((s: any) => Number(s.id) === Number(prod.kitchen_station_id));
+                                          return (
+                                            <div key={prod.id} style={{ fontSize: '12px', color: '#B45309', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '6px', padding: '5px 8px', marginBottom: '4px' }}>
+                                              ⚠ {t('settings:settingsPage.stationOverrideNotice', { item: prod.name, station: st?.name || `#${prod.kitchen_station_id}`, defaultValue: '{{item}} is individually routed to {{station}} (overrides this category)' })}
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    );
+                                  })()}
                                   {!defaultStation && (
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingLeft: '4px' }}>
                                     {group.items.map((prod: any) => {
@@ -7604,6 +7679,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                                             }}
                                           />
                                           <span style={{ fontSize: '14px', color: '#0A2540' }}>{prod.name}</span>
+                                          {prod.set_only && <span style={{ fontSize: '11px', color: '#7C3AED', background: '#F0EFFF', padding: '1px 6px', borderRadius: '4px' }}>{t('settings:settingsPage.setOnlyBadge', 'Set only')}</span>}
                                           {otherStation && <span style={{ fontSize: '11px', color: '#8898AA' }}>({t('settings:settingsPage.overriddenBy', { station: otherStation.name })})</span>}
                                         </label>
                                       );
