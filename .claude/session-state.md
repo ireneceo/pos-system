@@ -1,12 +1,38 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-06-13 저녁 (삭제/취소 PIN 손실방지 게이트 구현 완료 — DEV 미배포, 검증 통과)
-**버전:** v3.55 운영 + 오후 후속 수정 7건 배포됨 (버전 상승 여부 Irene 답변 대기 — 묻기만 했고 미정)
-**작업 상태:** 완료
+**마지막 업데이트:** 2026-06-13 21:xx (임시저장 — 업무 종료, 이따 재개)
+**버전:** v3.56 코드 운영 배포 완료(삭제/취소 PIN 게이트). **CHANGELOG/버전표기/릴리즈공지 미완** — 공지 수신자 문제 때문에 보류.
+**작업 상태:** 중단 (이어서 재개 예정)
+
+---
+
+## ⚡ 빠른 재개 (새 세션에서 이것만 붙여넣기)
+```
+session-state.md 읽고 이어서 개발해.
+```
+
+---
+
+## 🔖 지금 중단 지점
+
+**마지막 작업:** v3.56(삭제/취소 PIN 게이트) 운영 배포 완료 + SW 3.63 재배포. 이후 Irene 질문("공지가 thefire에 안 감")으로 **공지 수신자 시스템 진단** 수행.
+
+**바로 다음 작업 (Irene 지시 — 최우선):**
+1. **고객 trial 과 test 를 분리한다. 트라이얼(체험) 고객은 공지를 받아야 한다.** 현재 `is_test` 하나로 뭉뚱그려 트라이얼 실고객(The Fire 등)이 공지에서 제외됨 → 잘못. trial 고객 = 실고객이므로 공지 수신 대상.
+2. 그 위에서 v3.56 릴리즈 공지/블로그 발송 (현재 미발송).
+
+**맥락 유지할 것 (이번 진단 결과 — 운영 실데이터):**
+- **공지 수신자 로직**(`scripts/create-release-post.js`): `is_demo=false AND is_test=false` 매장 전체 + 역할유저(SysAdmin/Brand/Foodcourt/Owner)에게 NoticeRecipient 생성. target_type='all'.
+- **운영 실태**: 전체 21매장 중 is_test=true 10, is_demo=true 9 → **공지 수신대상 단 2매장 + 2유저**. v3.51~54 공지 총수신 4명. 사실상 공지가 거의 아무에게도 안 감.
+- **The Fire(실 유료/트라이얼 고객) 전부 is_test=true** (user#29 thefire/BG, #32 thefire01/RA rid16, #50 thefire02/rid24, #51 thefire03/rid25, rest#5/16/24/25) → 릴리즈 공지 0건 수신.
+- **is_test 영향 범위**: 공지뿐 아니라 invoiceScheduler/subscriptionScheduler(청구)도. → trial/test 분리 시 청구 로직 영향 점검 필수.
+- **is_test=true & is_demo=false 매장 10개**: The Fire×4(r5/16/24/25=실고객) + lua_test/lualua(진짜테스트) + Korean noodle/Seoul Table Kitchen/K-Bowl House/Bamboo Garden Café(분류 필요).
+- **시스템문의 자동글 정체**: `routes/qz-tray.js:382` 가 프린터 진단 시 자동 SupportTicket 생성(customerId=POS유저) → 매장 본인 시스템문의에 `[QZ Tray] printing diagnostic...` 뜸(직원이 쓴 거 아님). thefire01 8건, 전체 169 technical 중 다수. (별도 처리 보류 — 매장 목록 숨기고 SysAdmin만 보게 할지 결정 대기)
+- 미해결 질문(내가 AskUserQuestion 띄웠다 reject됨): trial/test 분리 방식 + v3.56 공지 시점 + QZ 티켓 가시성.
 
 ### 진행 중인 작업
-- 없음
+- **고객 trial/test 분리 + 트라이얼 고객 공지 수신 보장** (Irene 지시, 다음 세션 최우선). 설계→구현 필요.
 
 ### 완료된 작업 (2026-06-13 저녁) — 삭제/취소 PIN 손실방지 게이트 (DEV 미배포)
 설계 `docs/VOID_PIN_GATE_DESIGN.md` 전체 구현. 예방(PIN 게이트) + 추적(사장 감시 리포트) 두 축.
@@ -31,9 +57,15 @@
 - **배포 후 Irene 실프린터 sanity**: 취소/아이템삭제 시 취소표 종이 1장 정상 출력(인쇄 동작 무변경이라 기존과 동일해야).
 - 버전 상승 여부 Irene 답변 대기.
 
-### 다음 확정 작업 (Irene 지시: "이 구현은 다음 섹션에 할게")
-- ~~삭제/취소 PIN 손실방지 게이트~~ → **✅ 구현 완료 (2026-06-13 저녁, DEV 미배포)**. 위 참조.
-- **브랜드메뉴 레스토랑 적용범위** — `docs/BRAND_MENU_SYSTEM.md` §14. 연결(opt-in) 방식. scope_mode(all/selected)+brand_menu_restaurants+Product.brand_scope_active(숨김+보존)+Brand.menu_settings.default_scope. 활성(RA)·범위(BG) 분리. (다음 작업 후보)
+### 다음 확정 작업 (Irene 지시)
+1. **고객 trial/test 분리 + 트라이얼 고객 공지 수신 보장** (2026-06-13 Irene 지시, 최우선). 현재 is_test 하나로 묶여 트라이얼 실고객이 공지 제외됨 → trial≠test 분리. 위 "중단 지점" 진단결과 참조. 청구 스케줄러 영향 점검 필수.
+2. v3.56 릴리즈 공지/블로그 발송 (위 1 해결 후). + CHANGELOG [Unreleased]→[v3.56] 이동 + 버전표기.
+3. ~~삭제/취소 PIN 게이트~~ ✅ 완료·배포(v3.56).
+4. (후보) 브랜드메뉴 레스토랑 적용범위 — `docs/BRAND_MENU_SYSTEM.md` §14. scope_mode + Product.brand_scope_active. 활성(RA)·범위(BG) 분리.
+
+### 배포 후 잔여 확인 (Irene)
+- 실프린터 sanity: 취소/아이템삭제 시 취소표 1장 정상(인쇄 무변경이라 기존 동일해야).
+- Cloudflare Custom Purge `https://purplehere.com/sw.js` 필요 — 안 하면 SW 3.63 매장 미도달(운영 sw.js 현재 3.46 캐시 서빙).
 
 ### 후속 후보 (아이디어 메모, 확정 X)
 > 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.
