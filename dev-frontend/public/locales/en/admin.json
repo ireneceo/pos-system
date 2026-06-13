@@ -1463,5 +1463,9 @@
     "errors": {
       "required": "Code and Name are required"
     }
-  }
+  },
+  "staffManagementPage.authorizations": "Authorizations",
+  "staffManagementPage.authorizationsHint": "Approvals this staff can grant with their PIN (optional).",
+  "staffManagementPage.voidAuthorize": "Void / Cancel approval",
+  "staffManagementPage.voidAuthorizeDesc": "Can approve item deletes & order cancellations with their PIN (when the PIN gate is on)."
 }

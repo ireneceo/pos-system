@@ -1064,5 +1064,7 @@
   "settingsPage.setOnlyBadge": "세트 전용",
   "printer.workstations.consolidatedStations": "티켓 범위 — 주방 스테이션",
   "printer.workstations.consolidatedStationsHint": "선택한 스테이션의 메뉴만 이 통합티켓에 인쇄합니다. 아무것도 선택 안 하면 전체 주문.",
-  "printer.workstations.allStations": "전체 주문"
+  "printer.workstations.allStations": "전체 주문",
+  "operations.requireVoidPinLabel": "삭제/취소 시 PIN 승인 요구",
+  "operations.requireVoidPinDesc": "켜면 아이템 삭제나 주문 취소에 권한 있는 PIN이 필요합니다. 로그인 계정은 바뀌지 않습니다."
 }

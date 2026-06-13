@@ -11,6 +11,7 @@ import { computePrepFromElapsed, PrepTimerChip } from '../../utils/prepTimer';
 import { printBillViaRawBT, printKitchenTicketViaRawBT, printTableQR, printCancellationTicket, printCancellationTicketsByStation, getPrinterSettings } from '../../utils/billPrint';
 import { previewStationBuckets, KitchenTicketSendPrompt } from '../../components/Print/KitchenTicketSendModal';
 import OptionModal from '../../components/POSTerminal/OptionModal';
+import VoidPinModal from '../../components/POSTerminal/VoidPinModal';
 import { Modal, ModalButton } from '../../components/UI';
 import OrderActionHistory from '../LiveOrders/OrderActionHistory';
 import { useTranslation } from 'react-i18next';
@@ -642,6 +643,9 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
     onConfirm: () => void;
   } | null>(null);
 
+  // 손실방지 PIN 게이트 — requireVoidPin 매장에서 삭제/취소 전 권한 PIN 확인.
+  const [voidGate, setVoidGate] = useState<{ run: (pin: string) => void } | null>(null);
+
   // ─── Add Items View state (like LiveOrders) ───
   const [showAddItemsView, setShowAddItemsView] = useState(false);
   const [menuItems, setMenuItems] = useState<any[]>([]);
@@ -839,125 +843,149 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
   };
 
   // Map item.status → display token. 'completed' 는 레거시 데이터; served 와 같은 의미로 처리.
+  // 실제 아이템 삭제 — 손실방지 게이트(handleDeleteItem) 통과 후 호출. voidPin 은 백엔드 재검증용.
+  const performDeleteItem = async (itemIndex: number, itemName: string, voidPin?: string | null) => {
+    if (!statusInfo?.orderId) return;
+    const wasInKitchen = !['awaiting_payment', 'pending'].includes(String(statusInfo.orderStatus || ''));
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`/api/orders/${statusInfo.orderId}/items/${itemIndex}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ void_pin: voidPin || undefined })
+      });
+      const result = await res.json().catch(() => ({} as any));
+      if (res.ok && result.success !== false) {
+        onOrderUpdated();
+        // 확정 스펙 v2 (2026-06-02): 주방에 간(printed) 아이템 삭제는 항상 취소표 발송
+        // + 알림형 팝업. 미발행 아이템은 주방이 알 필요 없음 → skip.
+        try {
+          const removed = result.removedItem || {};
+          // 2026-06-03: printed_at 기준(상태 무관). 자동발행 ON 매장은 pending 중 이미 인쇄됨.
+          if (removed.was_printed || removed.printed_at) {
+            const settings = getPrinterSettings();
+            const sid = removed.kitchen_station_id;
+            const sp = (sid != null && settings?.kitchenStationPrinters?.[String(sid)]) || null;
+            const stPrinter = (sp && sp.name) || undefined;
+            const stAddr = (sp && sp.address) || undefined;
+            const sInfo = (typeof getStoreInfo === 'function') ? getStoreInfo() : {};
+            const printData: any = {
+              orderNumber: statusInfo.orderNumber, order_number: statusInfo.orderNumber,
+              tableNumber: tableNumber || undefined,
+              cancelTitle: '*** ITEM CANCELLED ***',
+              cancelFooter: '>> DO NOT PREPARE <<',
+              // station명 — 저장된 stationName 없으면 프린터 설정의 stationName 폴백 (주문취소/테이블이동과 동일).
+              stationLabel: removed.stationName || (sp && sp.stationName) || undefined,
+              items: [{ name: removed.name || itemName, quantity: removed.quantity || 1, kitchen_station_id: sid, stationName: removed.stationName || (sp && sp.stationName) || undefined }]
+            };
+            const doPrint = () => printCancellationTicket(printData, sInfo, 'Item voided', stPrinter, stAddr)
+              .catch((e: any) => console.warn('FloorPlan item void print failed:', e && e.message));
+            const _kp: any = (settings as any)?.kitchenPrinter;
+            const _autoOn = !!(_kp && _kp.enabled && _kp.autoPrint);
+            if (_autoOn) doPrint();
+            onKitchenTicketSent && onKitchenTicketSent({
+              run: doPrint, autoSent: _autoOn, ticketType: '*** ITEM CANCELLED ***',
+              description: _autoOn ? '취소된 아이템 — 해당 주방에 발송됨' : '취소된 아이템 — [발송]을 눌러 주방에 전송',
+              stations: previewStationBuckets(printData.items, settings)
+            });
+          }
+        } catch (e: any) { console.warn('FloorPlan void-ticket step skipped:', e?.message); }
+      }
+    } catch (_) { /* silently fail */ }
+  };
+
   const handleDeleteItem = (itemIndex: number, itemName: string) => {
     if (!statusInfo?.orderId) return;
+    // 손실방지 게이트: requireVoidPin 매장은 PIN 모달이 곧 확인 단계 (PIN 통과 = 삭제 실행).
+    if ((operationSettings as any)?.requireVoidPin) {
+      setVoidGate({ run: (pin: string) => performDeleteItem(itemIndex, itemName, pin) });
+      return;
+    }
     setConfirmModal({
       title: 'Delete Item',
       message: `Delete "${itemName}" from this order?`,
-      onConfirm: async () => {
-        setConfirmModal(null);
-        const wasInKitchen = !['awaiting_payment', 'pending'].includes(String(statusInfo.orderStatus || ''));
-        try {
-          const token = getAuthToken();
-          const res = await fetch(`/api/orders/${statusInfo.orderId}/items/${itemIndex}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          const result = await res.json().catch(() => ({} as any));
-          if (res.ok && result.success !== false) {
-            onOrderUpdated();
-            // 확정 스펙 v2 (2026-06-02): 주방에 간(printed) 아이템 삭제는 항상 취소표 발송
-            // + 알림형 팝업. 미발행 아이템은 주방이 알 필요 없음 → skip.
-            try {
-              const removed = result.removedItem || {};
-              // 2026-06-03: printed_at 기준(상태 무관). 자동발행 ON 매장은 pending 중 이미 인쇄됨.
-              if (removed.was_printed || removed.printed_at) {
-                const settings = getPrinterSettings();
-                const sid = removed.kitchen_station_id;
-                const sp = (sid != null && settings?.kitchenStationPrinters?.[String(sid)]) || null;
-                const stPrinter = (sp && sp.name) || undefined;
-                const stAddr = (sp && sp.address) || undefined;
-                const sInfo = (typeof getStoreInfo === 'function') ? getStoreInfo() : {};
-                const printData: any = {
-                  orderNumber: statusInfo.orderNumber, order_number: statusInfo.orderNumber,
-                  tableNumber: tableNumber || undefined,
-                  cancelTitle: '*** ITEM CANCELLED ***',
-                  cancelFooter: '>> DO NOT PREPARE <<',
-                  // station명 — 저장된 stationName 없으면 프린터 설정의 stationName 폴백 (주문취소/테이블이동과 동일).
-                  stationLabel: removed.stationName || (sp && sp.stationName) || undefined,
-                  items: [{ name: removed.name || itemName, quantity: removed.quantity || 1, kitchen_station_id: sid, stationName: removed.stationName || (sp && sp.stationName) || undefined }]
-                };
-                const doPrint = () => printCancellationTicket(printData, sInfo, 'Item voided', stPrinter, stAddr)
-                  .catch((e: any) => console.warn('FloorPlan item void print failed:', e && e.message));
-                const _kp: any = (settings as any)?.kitchenPrinter;
-                const _autoOn = !!(_kp && _kp.enabled && _kp.autoPrint);
-                if (_autoOn) doPrint();
-                onKitchenTicketSent && onKitchenTicketSent({
-                  run: doPrint, autoSent: _autoOn, ticketType: '*** ITEM CANCELLED ***',
-                  description: _autoOn ? '취소된 아이템 — 해당 주방에 발송됨' : '취소된 아이템 — [발송]을 눌러 주방에 전송',
-                  stations: previewStationBuckets(printData.items, settings)
-                });
-              }
-            } catch (e: any) { console.warn('FloorPlan void-ticket step skipped:', e?.message); }
-          }
-        } catch (_) { /* silently fail */ }
-      }
+      onConfirm: () => { setConfirmModal(null); performDeleteItem(itemIndex, itemName, null); }
     });
+  };
+
+  // 실제 주문 취소 — 손실방지 게이트(handleCancelOrder) 통과 후 호출. voidPin 은 백엔드 재검증용.
+  const performCancelOrder = async (voidPin?: string | null) => {
+    if (!statusInfo?.orderId) return;
+    setLoading(true);
+    try {
+      const token = getAuthToken();
+      // 확정 스펙 v2 (2026-06-02): 취소표 station 라우팅을 위해 취소 전 주문 상세(발행된
+      // 아이템의 kitchen_station_id/printed_at)를 가져온다. table-status 요약엔 없음.
+      let fullItems: any[] = [];
+      // 2026-06-03: 상태 무관 항상 주문 상세 조회 → printed_at 으로 발행 여부 판단.
+      // (자동발행 ON 매장은 pending 중 이미 인쇄 → 상태 기준이면 취소표 누락)
+      try {
+        const r = await fetch(`/api/orders/${statusInfo.orderId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const j = await r.json();
+        const od = j.data || j;
+        let oi = od.order_items;
+        if (typeof oi === 'string') { try { oi = JSON.parse(oi); } catch { oi = []; } }
+        fullItems = Array.isArray(oi) ? oi : [];
+      } catch { /* fetch best-effort */ }
+      const cancelRes = await fetch(`/api/orders/${statusInfo.orderId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ status: 'cancelled', void_pin: voidPin || undefined })
+      });
+      const cancelJson = await cancelRes.json().catch(() => ({} as any));
+      // 게이트 거부(VOID_PIN_*) 등 취소 실패 시 취소표를 발행하지 않는다.
+      if (!cancelRes.ok || cancelJson.success === false) {
+        onOrderUpdated();
+        setLoading(false);
+        return;
+      }
+      onOrderUpdated();
+      // 취소는 항상 발송(주방이 무조건 알아야) + 발송 후 알림형 팝업. 발행된 아이템만.
+      try {
+        const printedItems = fullItems.filter(it => it && (it.printed_at || it.printed));
+        if (printedItems.length > 0) {
+          const settings = getPrinterSettings();
+          const sInfo = (typeof getStoreInfo === 'function') ? getStoreInfo() : {};
+          const printData: any = {
+            orderNumber: statusInfo.orderNumber, order_number: statusInfo.orderNumber,
+            tableNumber: tableNumber || undefined,
+            cancelTitle: '*** ORDER CANCELLED ***',
+            cancelFooter: '>> DO NOT PREPARE - ALL CANCELLED <<',
+            items: printedItems.map(it => ({
+              quantity: it.quantity || 1,
+              name: it.name || (it.menuItem && it.menuItem.name) || '',
+              kitchen_station_id: it.kitchen_station_id ?? null,
+              stationName: it.stationName || it.station_name,
+              set_components: it.set_components
+            }))
+          };
+          const doPrint = () => printCancellationTicketsByStation(printData, sInfo, 'Cancelled by staff')
+            .catch((e: any) => console.warn('FloorPlan cancel print failed:', e && e.message));
+          const _kpO: any = (settings as any)?.kitchenPrinter;
+          const _autoOnO = !!(_kpO && _kpO.enabled && _kpO.autoPrint);
+          if (_autoOnO) doPrint();
+          onKitchenTicketSent && onKitchenTicketSent({
+            run: doPrint, autoSent: _autoOnO, ticketType: '*** ORDER CANCELLED ***',
+            description: _autoOnO ? `주문 ${printData.orderNumber} — 해당 주방에 발송됨` : `주문 ${printData.orderNumber} — [발송]을 눌러 주방에 전송`,
+            stations: previewStationBuckets(printData.items, settings)
+          });
+        }
+      } catch (e: any) { console.warn('FloorPlan cancel-ticket step skipped:', e?.message); }
+    } catch (_) { /* silently fail */ }
+    setLoading(false);
   };
 
   const handleCancelOrder = () => {
     if (!statusInfo?.orderId) return;
+    // 손실방지 게이트: requireVoidPin 매장은 PIN 모달이 곧 확인 단계 (PIN 통과 = 취소 실행).
+    if ((operationSettings as any)?.requireVoidPin) {
+      setVoidGate({ run: (pin: string) => performCancelOrder(pin) });
+      return;
+    }
     setConfirmModal({
       title: 'Cancel Order',
       message: 'Are you sure you want to cancel this order? This action cannot be undone.',
-      onConfirm: async () => {
-        setConfirmModal(null);
-        setLoading(true);
-        try {
-          const token = getAuthToken();
-          // 확정 스펙 v2 (2026-06-02): 취소표 station 라우팅을 위해 취소 전 주문 상세(발행된
-          // 아이템의 kitchen_station_id/printed_at)를 가져온다. table-status 요약엔 없음.
-          let fullItems: any[] = [];
-          // 2026-06-03: 상태 무관 항상 주문 상세 조회 → printed_at 으로 발행 여부 판단.
-          // (자동발행 ON 매장은 pending 중 이미 인쇄 → 상태 기준이면 취소표 누락)
-          try {
-            const r = await fetch(`/api/orders/${statusInfo.orderId}`, { headers: { 'Authorization': `Bearer ${token}` } });
-            const j = await r.json();
-            const od = j.data || j;
-            let oi = od.order_items;
-            if (typeof oi === 'string') { try { oi = JSON.parse(oi); } catch { oi = []; } }
-            fullItems = Array.isArray(oi) ? oi : [];
-          } catch { /* fetch best-effort */ }
-          await fetch(`/api/orders/${statusInfo.orderId}/status`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify({ status: 'cancelled' })
-          });
-          onOrderUpdated();
-          // 취소는 항상 발송(주방이 무조건 알아야) + 발송 후 알림형 팝업. 발행된 아이템만.
-          try {
-            const printedItems = fullItems.filter(it => it && (it.printed_at || it.printed));
-            if (printedItems.length > 0) {
-              const settings = getPrinterSettings();
-              const sInfo = (typeof getStoreInfo === 'function') ? getStoreInfo() : {};
-              const printData: any = {
-                orderNumber: statusInfo.orderNumber, order_number: statusInfo.orderNumber,
-                tableNumber: tableNumber || undefined,
-                cancelTitle: '*** ORDER CANCELLED ***',
-                cancelFooter: '>> DO NOT PREPARE - ALL CANCELLED <<',
-                items: printedItems.map(it => ({
-                  quantity: it.quantity || 1,
-                  name: it.name || (it.menuItem && it.menuItem.name) || '',
-                  kitchen_station_id: it.kitchen_station_id ?? null,
-                  stationName: it.stationName || it.station_name,
-                  set_components: it.set_components
-                }))
-              };
-              const doPrint = () => printCancellationTicketsByStation(printData, sInfo, 'Cancelled by staff')
-                .catch((e: any) => console.warn('FloorPlan cancel print failed:', e && e.message));
-              const _kpO: any = (settings as any)?.kitchenPrinter;
-              const _autoOnO = !!(_kpO && _kpO.enabled && _kpO.autoPrint);
-              if (_autoOnO) doPrint();
-              onKitchenTicketSent && onKitchenTicketSent({
-                run: doPrint, autoSent: _autoOnO, ticketType: '*** ORDER CANCELLED ***',
-                description: _autoOnO ? `주문 ${printData.orderNumber} — 해당 주방에 발송됨` : `주문 ${printData.orderNumber} — [발송]을 눌러 주방에 전송`,
-                stations: previewStationBuckets(printData.items, settings)
-              });
-            }
-          } catch (e: any) { console.warn('FloorPlan cancel-ticket step skipped:', e?.message); }
-        } catch (_) { /* silently fail */ }
-        setLoading(false);
-      }
+      onConfirm: () => { setConfirmModal(null); performCancelOrder(null); }
     });
   };
 
@@ -2063,6 +2091,18 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
             </ConfirmActions>
           </ConfirmBox>
         </ConfirmOverlay>
+      )}
+
+      {/* 손실방지 PIN 게이트 — requireVoidPin 매장에서 삭제/취소 승인 (세션 무변경). */}
+      {voidGate && (
+        <VoidPinModal
+          show={true}
+          restaurantId={restaurantId}
+          title={t('orders:voidPin.title', { defaultValue: 'Authorization required' })}
+          subtitle={t('orders:voidPin.subtitle', { defaultValue: 'Enter a manager PIN to void or cancel' })}
+          onClose={() => setVoidGate(null)}
+          onApproved={(_by, pin) => { const g = voidGate; setVoidGate(null); g?.run(pin); }}
+        />
       )}
 
       {showHistory && statusInfo?.orderId && (

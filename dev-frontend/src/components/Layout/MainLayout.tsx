@@ -1862,7 +1862,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           { path: `/restaurant/${rid}/reports?tab=payment`, label: t('reports:reportsPage.paymentAnalysis', 'Payment Analysis'), visible: true },
           { path: `/restaurant/${rid}/reports?tab=menu`, label: t('reports:reportsPage.menuAnalysis', 'Menu Analysis'), visible: true },
           { path: `/restaurant/${rid}/reports?tab=customers`, label: t('reports:reportsPage.customerInsights', 'Customer Insights'), visible: true },
-          { path: `/restaurant/${rid}/reports?tab=operations`, label: t('reports:reportsPage.operations', 'Operations'), visible: true }
+          { path: `/restaurant/${rid}/reports?tab=operations`, label: t('reports:reportsPage.operations', 'Operations'), visible: true },
+          // 삭제/취소 감사 — 손실방지 감시. Owner/Admin 만 노출 (직원이 자기 삭제 이력 못 가리게).
+          { path: `/restaurant/${rid}/reports?tab=void-log`, label: t('reports:voidLog.tab', 'Void & Cancel Log'), visible: user?.role === 'Restaurant Admin' || user?.role === 'Restaurant Owner' }
         ].filter(i => i.visible !== false),
         visible: isRouteAllowed(`/restaurant/${rid}/reports`)
       },

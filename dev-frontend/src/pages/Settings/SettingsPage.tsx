@@ -651,6 +651,7 @@ const SettingsPage: React.FC = () => {
   const mobileOrderDeliveryRef = useRef<AutoSaveHandle>(null);
   const requirePaymentBeforeKitchenRef = useRef<AutoSaveHandle>(null);
   const requirePinForDiscountRef = useRef<AutoSaveHandle>(null);  // #5 할인 PIN 승인 토글
+  const requireVoidPinRef = useRef<AutoSaveHandle>(null);  // 삭제/취소 PIN 승인 토글 (손실방지)
   const mobileOrderQuickOrderRef = useRef<AutoSaveHandle>(null);
   const mobileOrderShowFeaturedRef = useRef<AutoSaveHandle>(null);
   const mobileOrderShowPopularRef = useRef<AutoSaveHandle>(null);
@@ -4956,6 +4957,30 @@ const SettingsPage: React.FC = () => {
                             const v = e.target.checked;
                             setOperationSettings(prev => ({ ...prev, requirePinForDiscount: v } as any));
                             requirePinForDiscountRef.current?.triggerSave();
+                          }}
+                        />
+                        <ToggleSlider />
+                      </ToggleSwitch>
+                    </AutoSaveField>
+                  </Toggle>
+
+                  {/* 삭제/취소 PIN 승인 토글 — 손실방지(직원 횡령 감시). 로그인 계정은 바뀌지 않음. */}
+                  <Toggle>
+                    <div style={{ flex: 1 }}>
+                      <ToggleLabel style={{ marginBottom: '4px' }}>{t('settings:operations.requireVoidPinLabel', { defaultValue: 'Require PIN approval to void / cancel' })}</ToggleLabel>
+                      <p style={{ fontSize: '12px', color: '#4B5563', margin: 0 }}>
+                        {t('settings:operations.requireVoidPinDesc', { defaultValue: 'When on, deleting an item or cancelling an order needs an authorized PIN. The login account does not change.' })}
+                      </p>
+                    </div>
+                    <AutoSaveField ref={requireVoidPinRef} onSave={handleSave} type="toggle">
+                      <ToggleSwitch>
+                        <ToggleInput
+                          type="checkbox"
+                          checked={!!(operationSettings as any).requireVoidPin}
+                          onChange={(e) => {
+                            const v = e.target.checked;
+                            setOperationSettings(prev => ({ ...prev, requireVoidPin: v } as any));
+                            requireVoidPinRef.current?.triggerSave();
                           }}
                         />
                         <ToggleSlider />

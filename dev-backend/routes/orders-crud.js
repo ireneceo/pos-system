@@ -18,6 +18,7 @@ const ActivityLog = require('../models/ActivityLog');
 const { logActivity } = require('../utils/activityLogger');
 const { getTodayBounds, getOrderDatePrefix, getRestaurantTimezone } = require('../utils/dateTimeHelper');
 const { checkPaymentMethodAllowed } = require('../utils/paymentMethodGuard');
+const { enforceVoidPin } = require('../utils/voidPinGuard');
 const { enrichItemsWithStation } = require('../utils/stationEnrichment');
 const { round2, computeOrderTotals } = require('../utils/orderTotals');
 
@@ -1419,6 +1420,17 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
       });
     }
 
+    // 손실방지 게이트(설계 §4.4): requireVoidPin 매장은 취소 전에 권한 PIN 재검증.
+    // 진입부에서만 차단 — 인쇄/취소표 발행 로직(프론트)과 무관. 게이트 OFF 매장은 무영향.
+    let voidApprover = null;
+    if (status === 'cancelled') {
+      const gate = await enforceVoidPin(order.restaurant_id, req.body.void_pin);
+      if (!gate.ok) {
+        return res.status(gate.status).json({ success: false, code: gate.code, message: gate.message });
+      }
+      voidApprover = gate.approver; // 게이트 OFF 면 null
+    }
+
     // Served + 결제완료 → 자동으로 completed로 점프 (순방향 진행일 때만, revert 제외)
     const isForward = STATUS_ORDER[status] > STATUS_ORDER[order.status];
     const finalStatus = (status === 'served' && order.payment_status === 'completed' && isForward) ? 'completed' : status;
@@ -1479,7 +1491,14 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
         performedByUserId: auditPerformerId, performedByName: auditPerformerName, performedByRole: auditRole,
         source: auditSource,
         reason: (req.body.reason && String(req.body.reason).trim()) || 'No reason provided',
-        metadata: { previous_status: prevStatus }
+        // 손실방지 감사(설계 §4.5): 금액·결제상태·결제수단·승인자 캡처 → 사장 감시 리포트의 핵심.
+        metadata: {
+          previous_status: prevStatus,
+          amount: parseFloat(order.total_amount) || 0,
+          payment_status: order.payment_status || null,
+          payment_method: order.payment_method || null,
+          approved_by_pin: voidApprover || null
+        }
       });
     } else if (prevStatus !== finalStatus) {
       logOrderActionSafe({
@@ -2223,6 +2242,17 @@ router.delete('/:id/items/:itemIndex', authenticateToken, requirePosCounter, asy
       return res.status(403).json({ success: false, error: { message: 'Forbidden', code: 'FORBIDDEN' } });
     }
 
+    // 손실방지 게이트(설계 §4.4): requireVoidPin 매장은 아이템 삭제 전에 권한 PIN 재검증.
+    // 진입부에서만 차단 — VOID 취소표 발행(소켓 item-voided → 프론트)과 무관. 게이트 OFF 면 무영향.
+    let voidApprover = null;
+    {
+      const gate = await enforceVoidPin(order.restaurant_id, req.body.void_pin);
+      if (!gate.ok) {
+        return res.status(gate.status).json({ success: false, code: gate.code, message: gate.message });
+      }
+      voidApprover = gate.approver; // 게이트 OFF 면 null
+    }
+
     // Only allow deletion before payment
     if (order.payment_status === 'completed') {
       return res.status(400).json({ success: false, error: { message: 'Cannot remove items from a paid order', code: 'VALIDATION_ERROR' } });
@@ -2377,9 +2407,14 @@ router.delete('/:id/items/:itemIndex', authenticateToken, requirePosCounter, asy
       performedByRole: _kdsStaffIdDel ? 'staff' : (['System Admin','Restaurant Admin'].includes(req.user?.role) ? 'admin' : 'staff'),
       source: req.body.source || (_kdsStaffIdDel ? 'kds' : 'pos'),
       reason: req.body.reason || null,
+      // 손실방지 감사(설계 §4.5): 지운 금액·결제상태·결제수단·승인자 캡처 → 사장 감시 리포트.
       metadata: {
         removed_item: { name: removedItem.name, price: removedItem.price, quantity: removedItem.quantity },
-        new_total: newTotal
+        new_total: newTotal,
+        amount: round2(itemTotal),
+        payment_status: order.payment_status || null,
+        payment_method: order.payment_method || null,
+        approved_by_pin: voidApprover || null
       }
     });
 

@@ -294,6 +294,45 @@ const WorkAccessPicker: React.FC<{ value: string[]; onChange: (perms: string[]) 
   );
 };
 
+// 승인 권한(예: 삭제/취소 승인) — work-screen 접근과 별개. permissions 배열의 *_authorize 키만 토글.
+// 관리자급(Admin/Owner/Manager)은 자동 보유 → 이 선택은 Staff 에게 부여할 때만 의미.
+// docs/VOID_PIN_GATE_DESIGN.md §4.2
+const AUTHORIZATION_OPTS = [
+  { key: 'void_authorize', labelKey: 'staffManagementPage.voidAuthorize', label: 'Void / Cancel approval', descKey: 'staffManagementPage.voidAuthorizeDesc', desc: 'Can approve item deletes & order cancellations with their PIN (when the PIN gate is on).' },
+];
+const AuthorizationsPicker: React.FC<{ value: string[]; onChange: (perms: string[]) => void; t: any }> = ({ value, onChange, t }) => {
+  const has = (k: string) => value.includes(k);
+  const toggle = (k: string) => {
+    onChange(has(k) ? value.filter(p => p !== k) : [...value, k]);
+  };
+  return (
+    <div>
+      <Label style={{ marginBottom: 4 }}>{t('admin:staffManagementPage.authorizations', { defaultValue: 'Authorizations' })}</Label>
+      <div style={{ fontSize: 12, color: '#6B7C93', marginBottom: 10 }}>
+        {t('admin:staffManagementPage.authorizationsHint', { defaultValue: 'Approvals this staff can grant with their PIN (optional).' })}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {AUTHORIZATION_OPTS.map(o => {
+          const on = has(o.key);
+          return (
+            <label key={o.key} style={{
+              display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 14px', cursor: 'pointer',
+              border: `1px solid ${on ? '#635BFF' : '#C7CED6'}`, borderRadius: 8,
+              background: on ? '#F0F4FF' : '#FFFFFF', transition: 'all .15s'
+            }}>
+              <input type="checkbox" checked={on} onChange={() => toggle(o.key)} style={{ marginTop: 2, width: 18, height: 18, accentColor: '#635BFF', cursor: 'pointer' }} />
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#0A2540' }}>{t(`admin:${o.labelKey}`, { defaultValue: o.label })}</div>
+                <div style={{ fontSize: 12, color: '#6B7C93', marginTop: 2 }}>{t(`admin:${o.descKey}`, { defaultValue: o.desc })}</div>
+              </div>
+            </label>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 const Input = styled.input`
   padding: 12px 16px;
   border: 1px solid #C7CED6;
@@ -1795,6 +1834,13 @@ const AdminStaffManagementPage: React.FC = () => {
                     onChange={(perms) => setNewStaff(prev => ({ ...prev, workAccess: perms }))}
                     t={t}
                   />
+                  <div style={{ marginTop: 14 }}>
+                    <AuthorizationsPicker
+                      value={newStaff.workAccess}
+                      onChange={(perms) => setNewStaff(prev => ({ ...prev, workAccess: perms }))}
+                      t={t}
+                    />
+                  </div>
                 </FormGroup>
               )}
 
@@ -2023,6 +2069,13 @@ const AdminStaffManagementPage: React.FC = () => {
                         onChange={(perms) => setEditingStaff({ ...editingStaff, permissions: perms })}
                         t={t}
                       />
+                      <div style={{ marginTop: 14 }}>
+                        <AuthorizationsPicker
+                          value={Array.isArray(editingStaff.permissions) ? editingStaff.permissions : []}
+                          onChange={(perms) => setEditingStaff({ ...editingStaff, permissions: perms })}
+                          t={t}
+                        />
+                      </div>
                     </FormGroup>
                   )}
                 </FormGrid>

@@ -1463,5 +1463,9 @@
     "errors": {
       "required": "代码和名称是必填项"
     }
-  }
+  },
+  "staffManagementPage.authorizations": "授权",
+  "staffManagementPage.authorizationsHint": "此员工可用其 PIN 授予的批准（可选）。",
+  "staffManagementPage.voidAuthorize": "作废/取消批准",
+  "staffManagementPage.voidAuthorizeDesc": "开启 PIN 门控时，可用其 PIN 批准删除商品和取消订单。"
 }

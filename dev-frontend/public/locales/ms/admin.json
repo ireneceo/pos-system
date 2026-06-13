@@ -1463,5 +1463,9 @@
     "errors": {
       "required": "Kod dan Nama diperlukan"
     }
-  }
+  },
+  "staffManagementPage.authorizations": "Kebenaran",
+  "staffManagementPage.authorizationsHint": "Kelulusan yang boleh diberi kakitangan ini dengan PIN mereka (pilihan).",
+  "staffManagementPage.voidAuthorize": "Kelulusan batal / pembatalan",
+  "staffManagementPage.voidAuthorizeDesc": "Boleh meluluskan pemadaman item & pembatalan pesanan dengan PIN mereka (apabila pintu PIN dihidupkan)."
 }

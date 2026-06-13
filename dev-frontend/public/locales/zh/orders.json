@@ -133,5 +133,7 @@
   "ticketSend.sentTitle": "已发送至厨房",
   "ticketSend.sentList": "已发送以下内容：",
   "ticketSend.resend": "重新发送",
-  "ticketSend.close": "关闭"
+  "ticketSend.close": "关闭",
+  "voidPin.title": "需要授权",
+  "voidPin.subtitle": "请输入管理员 PIN 以作废或取消"
 }

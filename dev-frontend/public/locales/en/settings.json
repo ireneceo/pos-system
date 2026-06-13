@@ -1064,5 +1064,7 @@
   "settingsPage.setOnlyBadge": "Set only",
   "printer.workstations.consolidatedStations": "Ticket scope — kitchen stations",
   "printer.workstations.consolidatedStationsHint": "Select stations to print only their items on this ticket. Nothing selected = full order.",
-  "printer.workstations.allStations": "Full order"
+  "printer.workstations.allStations": "Full order",
+  "operations.requireVoidPinLabel": "Require PIN approval to void / cancel",
+  "operations.requireVoidPinDesc": "When on, deleting an item or cancelling an order needs an authorized PIN. The login account does not change."
 }

@@ -133,5 +133,7 @@
   "ticketSend.sentTitle": "주방에 발송됨",
   "ticketSend.sentList": "다음 내용을 발송했습니다:",
   "ticketSend.resend": "재발송",
-  "ticketSend.close": "닫기"
+  "ticketSend.close": "닫기",
+  "voidPin.title": "승인 필요",
+  "voidPin.subtitle": "삭제/취소하려면 관리자 PIN을 입력하세요"
 }

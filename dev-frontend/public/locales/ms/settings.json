@@ -1064,5 +1064,7 @@
   "settingsPage.setOnlyBadge": "Set sahaja",
   "printer.workstations.consolidatedStations": "Skop tiket — stesen dapur",
   "printer.workstations.consolidatedStationsHint": "Pilih stesen untuk mencetak item stesen itu sahaja. Tiada pilihan = pesanan penuh.",
-  "printer.workstations.allStations": "Pesanan penuh"
+  "printer.workstations.allStations": "Pesanan penuh",
+  "operations.requireVoidPinLabel": "Perlukan kelulusan PIN untuk batal",
+  "operations.requireVoidPinDesc": "Apabila dihidupkan, memadam item atau membatalkan pesanan memerlukan PIN yang dibenarkan. Akaun log masuk tidak berubah."
 }

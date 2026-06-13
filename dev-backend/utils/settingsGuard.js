@@ -25,7 +25,10 @@ const OPERATION_SETTINGS_ALLOWED_KEYS = new Set([
   'cashRounding', 'roundingApplyTo', 'pagerSystem', 'takeawayPricing',
   'deliveryPricing', 'loyaltyTiers', 'orderTypes', 'pickupSettings',
   'takeawaySettings', 'allowQuickOrder', 'breakTimes', 'mobileOrderProcessing',
-  'mobileOrderAlerts', 'requirePaymentBeforeKitchen', 'checkout_display', 'orderSounds'
+  'mobileOrderAlerts', 'requirePaymentBeforeKitchen', 'checkout_display', 'orderSounds',
+  // PIN 승인 게이트 — requirePinForDiscount 는 토글 UI 가 있었으나 화이트리스트 누락으로
+  // 저장 시 조용히 stripped 되던 잠복 버그(2026-06-13 발견). requireVoidPin 과 함께 등록.
+  'requirePinForDiscount', 'requireVoidPin'
 ]);
 
 function parseJsonSafe(v) {

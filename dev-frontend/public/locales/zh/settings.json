@@ -1064,5 +1064,7 @@
   "settingsPage.setOnlyBadge": "仅套餐",
   "printer.workstations.consolidatedStations": "票据范围 — 厨房工位",
   "printer.workstations.consolidatedStationsHint": "仅打印所选工位的菜品。不选择 = 整单。",
-  "printer.workstations.allStations": "整单"
+  "printer.workstations.allStations": "整单",
+  "operations.requireVoidPinLabel": "作废/取消需 PIN 批准",
+  "operations.requireVoidPinDesc": "开启后，删除商品或取消订单需输入授权 PIN。登录账户不会更改。"
 }

@@ -1,5 +1,10 @@
 # Purple POS — 개발 세션 상태
 
+<!-- AUTOSAVE-STALE-BANNER -->
+> **[AUTO-SAVE STALE] (2026-06-13 12:50, idle 2043s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
+> 변경된 작업 파일: order-audit.js,orders-crud.js staff.js,server.js settingsGuard.js,voidPinGuard.js admin.json,orders.json reports.json,settings.json admin.json,orders.json
+<!-- /AUTOSAVE-STALE-BANNER -->
+
 ## 현재 작업 상태
 **마지막 업데이트:** 2026-06-13 (백로그 정정 + 운영데이터 수정 2건 + DEV 버그수정 2건(미배포) + 기획설계 2건)
 **버전:** v3.55 운영 + 오후 후속 수정 7건 배포됨 (버전 상승 여부 Irene 답변 대기 — 묻기만 했고 미정)

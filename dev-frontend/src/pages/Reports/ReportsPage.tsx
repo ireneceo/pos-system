@@ -190,7 +190,7 @@ const StaffMealBanner = styled.div`
 `;
 
 // 타입 정의
-type TabType = 'sales' | 'details' | 'menu' | 'customers' | 'operations' | 'payment';
+type TabType = 'sales' | 'details' | 'menu' | 'customers' | 'operations' | 'payment' | 'void-log';
 // PeriodType imported from DatePeriodFilter component
 
 // 차트 색상
@@ -202,6 +202,16 @@ const ReportsPage: React.FC = () => {
   const { operationSettings, paymentSettings } = useStore();
 
   const [activeTab, handleTabChange] = useTabParam<TabType>('sales');
+
+  // 삭제/취소 감사 로그(Void & Cancellation Log) — 손실방지 감시. Owner/Admin 전용.
+  const canViewVoidLog = ['Restaurant Admin', 'Restaurant Owner', 'System Admin'].includes(user?.role || '');
+  const [voidLog, setVoidLog] = useState<{ rows: any[]; summary: any; staff: any[]; timeZone?: string }>(
+    { rows: [], summary: { count: 0, totalAmount: 0, paidCount: 0, cashPaidCount: 0, cashPaidAmount: 0 }, staff: [] }
+  );
+  const [voidLogLoading, setVoidLogLoading] = useState(false);
+  const [voidStaffFilter, setVoidStaffFilter] = useState('');
+  const [voidPaymentFilter, setVoidPaymentFilter] = useState('all');
+  const [voidActionFilter, setVoidActionFilter] = useState('all');
 
   const [activePeriod, setActivePeriod] = useState<PeriodType>('month');
   const [dateRange, setDateRange] = useState(() => calculatePeriodDateRange('month'));
@@ -514,6 +524,30 @@ const ReportsPage: React.FC = () => {
   useEffect(() => {
     fetchReportsSummary();
   }, [fetchReportsSummary]);
+
+  // 삭제/취소 감사 로그 — 탭 활성 + Owner/Admin 일 때만 조회 (기간/필터 변경 시 재조회).
+  useEffect(() => {
+    if (activeTab !== 'void-log' || !user?.restaurantId || !canViewVoidLog) return;
+    const ctrl = new AbortController();
+    (async () => {
+      setVoidLogLoading(true);
+      try {
+        const params = new URLSearchParams();
+        if (dateRange.start) params.set('start', dateRange.start);
+        if (dateRange.end) params.set('end', dateRange.end);
+        if (voidStaffFilter) params.set('staffId', voidStaffFilter);
+        if (voidPaymentFilter !== 'all') params.set('paymentStatus', voidPaymentFilter);
+        if (voidActionFilter !== 'all') params.set('actionType', voidActionFilter);
+        const res = await fetch(`/api/order-audit/restaurant/${user.restaurantId}/void-log?${params.toString()}`, {
+          headers: { Authorization: `Bearer ${getAuthToken()}` }, signal: ctrl.signal
+        });
+        const j = await res.json();
+        if (j.success && j.data) setVoidLog(j.data);
+      } catch (e) { /* abort/네트워크 오류 무시 */ }
+      finally { setVoidLogLoading(false); }
+    })();
+    return () => ctrl.abort();
+  }, [activeTab, user?.restaurantId, canViewVoidLog, dateRange.start, dateRange.end, voidStaffFilter, voidPaymentFilter, voidActionFilter]);
 
   // What and Why: 서버 집계 데이터에서 피크 타임 직접 계산
   const peakTimesData = useMemo(() => {
@@ -972,6 +1006,11 @@ const ReportsPage: React.FC = () => {
             <Tab active={activeTab === 'operations'} onClick={() => handleTabChange('operations')}>
               Operations
             </Tab>
+            {canViewVoidLog && (
+              <Tab active={activeTab === 'void-log'} onClick={() => handleTabChange('void-log')}>
+                {t('reports:voidLog.tab', { defaultValue: 'Void & Cancel Log' })}
+              </Tab>
+            )}
           </Tabs>
 
           {/* Sales Tab - CSS로 숨기기 (탭 전환 시 state 유지) */}
@@ -1722,6 +1761,121 @@ const ReportsPage: React.FC = () => {
                 </div>
               )}
           </div>
+
+          {/* Void & Cancellation Log — 손실방지 감시 (Owner/Admin 전용). 현금 결제 완료분 빨강 강조. */}
+          {canViewVoidLog && (
+          <div style={{ display: activeTab === 'void-log' ? 'block' : 'none' }}>
+            <FilterComponent />
+
+            {/* 필터 행: 직원 / 결제상태 / 액션종류 */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, margin: '8px 0 20px' }}>
+              <select
+                value={voidStaffFilter}
+                onChange={(e) => setVoidStaffFilter(e.target.value)}
+                style={{ padding: '8px 12px', border: '1px solid #C7CED6', borderRadius: 6, background: '#fff', color: '#0A2540', fontSize: 13 }}
+              >
+                <option value="">{t('reports:voidLog.allStaff', { defaultValue: 'All staff' })}</option>
+                {voidLog.staff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+              <select
+                value={voidPaymentFilter}
+                onChange={(e) => setVoidPaymentFilter(e.target.value)}
+                style={{ padding: '8px 12px', border: '1px solid #C7CED6', borderRadius: 6, background: '#fff', color: '#0A2540', fontSize: 13 }}
+              >
+                <option value="all">{t('reports:voidLog.allPayments', { defaultValue: 'All payment states' })}</option>
+                <option value="paid">{t('reports:voidLog.paidOnly', { defaultValue: 'Paid only' })}</option>
+                <option value="unpaid">{t('reports:voidLog.unpaidOnly', { defaultValue: 'Unpaid only' })}</option>
+              </select>
+              <select
+                value={voidActionFilter}
+                onChange={(e) => setVoidActionFilter(e.target.value)}
+                style={{ padding: '8px 12px', border: '1px solid #C7CED6', borderRadius: 6, background: '#fff', color: '#0A2540', fontSize: 13 }}
+              >
+                <option value="all">{t('reports:voidLog.allActions', { defaultValue: 'All actions' })}</option>
+                <option value="cancelled">{t('reports:voidLog.actionCancelled', { defaultValue: 'Order cancelled' })}</option>
+                <option value="item_removed">{t('reports:voidLog.actionItemRemoved', { defaultValue: 'Item voided' })}</option>
+              </select>
+            </div>
+
+            <StatsRow>
+              <StatCard color="#2563EB">
+                <StatLabel>{t('reports:voidLog.totalEvents', { defaultValue: 'Total events' })}</StatLabel>
+                <StatValue>{(voidLog.summary?.count || 0).toLocaleString()}</StatValue>
+                <StatDescription>{t('reports:voidLog.inPeriod', { defaultValue: 'In selected period' })}</StatDescription>
+              </StatCard>
+              <StatCard color="#7C3AED">
+                <StatLabel>{t('reports:voidLog.totalAmount', { defaultValue: 'Total voided amount' })}</StatLabel>
+                <StatValue>{formatCurrency(voidLog.summary?.totalAmount || 0, operationSettings.currency)}</StatValue>
+                <StatDescription>{t('reports:voidLog.itemsAndOrders', { defaultValue: 'Items + cancelled orders' })}</StatDescription>
+              </StatCard>
+              <StatCard color="#DC2626">
+                <StatLabel>{t('reports:voidLog.cashPaidVoids', { defaultValue: 'Cash-paid voids' })}</StatLabel>
+                <StatValue>{(voidLog.summary?.cashPaidCount || 0).toLocaleString()}</StatValue>
+                <StatDescription>{formatCurrency(voidLog.summary?.cashPaidAmount || 0, operationSettings.currency)} · {t('reports:voidLog.highRisk', { defaultValue: 'highest risk' })}</StatDescription>
+              </StatCard>
+            </StatsRow>
+
+            <TableCard style={{ marginTop: 24 }}>
+              <ChartTitle>{t('reports:voidLog.tableTitle', { defaultValue: 'Void & Cancellation events' })}</ChartTitle>
+              {voidLogLoading ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>{t('reports:reportsPage.loading', { defaultValue: 'Loading...' })}</div>
+              ) : (voidLog.rows.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>
+                  {t('reports:voidLog.empty', { defaultValue: 'No void or cancellation events in this period.' })}
+                </div>
+              ) : (
+                <DataTable>
+                  <DataTableHead>
+                    <tr>
+                      <DataTableHeaderCell align="left">{t('reports:voidLog.colTime', { defaultValue: 'Time' })}</DataTableHeaderCell>
+                      <DataTableHeaderCell align="left">{t('reports:voidLog.colAction', { defaultValue: 'Action' })}</DataTableHeaderCell>
+                      <DataTableHeaderCell align="left">{t('reports:voidLog.colOrder', { defaultValue: 'Order' })}</DataTableHeaderCell>
+                      <DataTableHeaderCell align="left">{t('reports:voidLog.colItem', { defaultValue: 'Item' })}</DataTableHeaderCell>
+                      <DataTableHeaderCell align="right">{t('reports:voidLog.colAmount', { defaultValue: 'Amount' })}</DataTableHeaderCell>
+                      <DataTableHeaderCell align="left">{t('reports:voidLog.colPayment', { defaultValue: 'Payment' })}</DataTableHeaderCell>
+                      <DataTableHeaderCell align="left">{t('reports:voidLog.colStaff', { defaultValue: 'Staff' })}</DataTableHeaderCell>
+                      <DataTableHeaderCell align="left">{t('reports:voidLog.colApprovedBy', { defaultValue: 'Approved by' })}</DataTableHeaderCell>
+                      <DataTableHeaderCell align="left">{t('reports:voidLog.colReason', { defaultValue: 'Reason' })}</DataTableHeaderCell>
+                    </tr>
+                  </DataTableHead>
+                  <tbody>
+                    {voidLog.rows.map((r: any) => (
+                      <DataTableRow key={r.id} style={r.is_cash_paid ? { background: '#FEF2F2' } : undefined}>
+                        <DataTableCell align="left">{formatDateTime(r.created_at, operationSettings)}</DataTableCell>
+                        <DataTableCell align="left">
+                          {r.action_type === 'cancelled'
+                            ? t('reports:voidLog.actionCancelled', { defaultValue: 'Order cancelled' })
+                            : t('reports:voidLog.actionItemRemoved', { defaultValue: 'Item voided' })}
+                        </DataTableCell>
+                        <DataTableCell align="left">
+                          #{r.order_number || r.order_id}{r.table_number ? ` · ${r.table_number}` : ''}
+                        </DataTableCell>
+                        <DataTableCell align="left">{r.removed_item ? `${r.removed_item.name}${r.removed_item.quantity ? ` ×${r.removed_item.quantity}` : ''}` : '—'}</DataTableCell>
+                        <DataTableCell align="right">{formatCurrency(r.amount || 0, operationSettings.currency)}</DataTableCell>
+                        <DataTableCell align="left">
+                          <span style={{
+                            display: 'inline-block', padding: '2px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600,
+                            background: r.is_cash_paid ? '#FEE2E2' : (r.is_paid ? '#FEF3C7' : '#F1F4F8'),
+                            color: r.is_cash_paid ? '#B91C1C' : (r.is_paid ? '#92400E' : '#4B5563')
+                          }}>
+                            {r.is_paid
+                              ? (r.is_cash_paid
+                                  ? t('reports:voidLog.paidCash', { defaultValue: 'PAID · CASH' })
+                                  : t('reports:voidLog.paid', { defaultValue: 'Paid' }))
+                              : t('reports:voidLog.unpaid', { defaultValue: 'Unpaid' })}
+                          </span>
+                        </DataTableCell>
+                        <DataTableCell align="left">{r.performed_by_name || '—'}</DataTableCell>
+                        <DataTableCell align="left">{r.approved_by || '—'}</DataTableCell>
+                        <DataTableCell align="left">{r.reason || '—'}</DataTableCell>
+                      </DataTableRow>
+                    ))}
+                  </tbody>
+                </DataTable>
+              ))}
+            </TableCard>
+          </div>
+          )}
 
         </Content>
       </ReportsContainer>

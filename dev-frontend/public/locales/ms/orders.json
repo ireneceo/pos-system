@@ -133,5 +133,7 @@
   "ticketSend.sentTitle": "Dihantar ke dapur",
   "ticketSend.sentList": "Dihantar yang berikut:",
   "ticketSend.resend": "Hantar semula",
-  "ticketSend.close": "Tutup"
+  "ticketSend.close": "Tutup",
+  "voidPin.title": "Kebenaran diperlukan",
+  "voidPin.subtitle": "Masukkan PIN pengurus untuk batal item atau pesanan"
 }

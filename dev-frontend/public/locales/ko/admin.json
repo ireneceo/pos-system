@@ -1463,5 +1463,9 @@
     "errors": {
       "required": "코드와 이름은 필수입니다"
     }
-  }
+  },
+  "staffManagementPage.authorizations": "승인 권한",
+  "staffManagementPage.authorizationsHint": "이 직원이 PIN으로 승인할 수 있는 권한 (선택).",
+  "staffManagementPage.voidAuthorize": "삭제/취소 승인",
+  "staffManagementPage.voidAuthorizeDesc": "PIN 게이트가 켜진 경우, 자기 PIN으로 아이템 삭제·주문 취소를 승인할 수 있습니다."
 }

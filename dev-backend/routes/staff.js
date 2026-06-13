@@ -143,10 +143,12 @@ router.post('/verify-pin-permission', async (req, res) => {
     try {
       const { ActivityLog } = require('../models');
       if (ActivityLog) {
+        // 감사 라벨을 권한별로 구분 (void_authorize → void_pin_*, 그 외 → discount_pin_*).
+        const labelBase = wanted === 'void_authorize' ? 'void_pin' : 'discount_pin';
         await ActivityLog.create({
           restaurant_id: restaurantId,
           user_id: req.user.id,
-          action: authorized ? 'discount_pin_approved' : 'discount_pin_denied',
+          action: authorized ? `${labelBase}_approved` : `${labelBase}_denied`,
           details: JSON.stringify({ approver_id: staff.id, approver: staff.full_name || staff.email, permission: wanted, requested_by: req.user.id })
         });
       }

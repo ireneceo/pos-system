@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { getTableLabel, FloorPlanLike } from '../../utils/tableLabel';
 import PaymentModal from '../../components/POSTerminal/PaymentModal';
 import OptionModal from '../../components/POSTerminal/OptionModal';
+import VoidPinModal from '../../components/POSTerminal/VoidPinModal';
 import { useStore } from '../../contexts/StoreContext';
 import { OrdersRealtimeProvider, useOrdersRealtime } from '../../contexts/OrdersRealtimeContext';
 import { formatCurrency } from '../../utils/currency';
@@ -85,6 +86,9 @@ const LiveOrdersPage: React.FC = () => {
   const [orderToCancel, setOrderToCancel] = useState<number | null>(null);
   const [showDeleteItemConfirm, setShowDeleteItemConfirm] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ index: number; name: string } | null>(null);
+  // 손실방지 PIN 게이트 — requireVoidPin 매장에서 삭제/취소 전 권한 PIN 확인.
+  // run(pin) = PIN 통과 후 실행할 실제 삭제/취소 동작. null = 모달 닫힘.
+  const [voidGate, setVoidGate] = useState<{ run: (pin: string) => void } | null>(null);
   // S1 autoPrint OFF(수동) 매장: 취소/아이템취소 후 "주방에 취소 티켓 인쇄?" 확인 프롬프트.
   const [cancelPrintPrompt, setCancelPrintPrompt] = useState<KitchenTicketSendPrompt | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -1080,14 +1084,14 @@ const LiveOrdersPage: React.FC = () => {
 
   // reason: a quick-pick reason string (품절/고객변심/주문실수/기타) printed on the
   // kitchen VOID ticket. The backend persists it in the audit log + item-voided event.
-  const confirmDeleteItem = async (reason?: string) => {
+  const confirmDeleteItem = async (reason?: string, voidPin?: string | null) => {
     if (!selectedOrder || !itemToDelete) return;
     // Snapshot the order's status BEFORE delete to decide if the kitchen already
     // got this item (same wasInKitchen gate as whole-order cancel).
     const wasInKitchen = !['awaiting_payment', 'pending'].includes(String((selectedOrder as any).status || ''));
     try {
       const response = await fetch(`/api/orders/${selectedOrder.id}/items/${itemToDelete.index}`, {
-        ...getFetchOptions({ method: 'DELETE', body: JSON.stringify({ reason: reason || null }) })
+        ...getFetchOptions({ method: 'DELETE', body: JSON.stringify({ reason: reason || null, void_pin: voidPin || undefined }) })
       });
       const result = await response.json();
       if (result.success) {
@@ -1137,7 +1141,7 @@ const LiveOrdersPage: React.FC = () => {
           }
         } catch (e: any) { console.warn('void-ticket step skipped:', e?.message); }
       } else {
-        showToast(result.error || 'Failed to remove item', 'error');
+        showToast(result.message || result.error || 'Failed to remove item', 'error');
       }
     } catch (error) {
       console.error('Error deleting item:', error);
@@ -1145,6 +1149,16 @@ const LiveOrdersPage: React.FC = () => {
     } finally {
       setShowDeleteItemConfirm(false);
       setItemToDelete(null);
+    }
+  };
+
+  // 사유 선택 후 손실방지 게이트 통과 → 실제 삭제. requireVoidPin OFF 면 바로 삭제.
+  const beginDeleteItemWithReason = (reason: string) => {
+    setShowDeleteItemConfirm(false); // 사유 모달만 닫고 itemToDelete 는 유지 (confirmDeleteItem 이 사용 후 정리)
+    if ((operationSettings as any)?.requireVoidPin) {
+      setVoidGate({ run: (pin: string) => confirmDeleteItem(reason, pin) });
+    } else {
+      confirmDeleteItem(reason, null);
     }
   };
 
@@ -1320,10 +1334,15 @@ const LiveOrdersPage: React.FC = () => {
 
   const handleCancelOrder = (orderId: number) => {
     setOrderToCancel(orderId);
-    setShowCancelConfirm(true);
+    // 손실방지 게이트: requireVoidPin 매장은 PIN 모달이 곧 확인 단계 (PIN 통과 = 취소 실행).
+    if ((operationSettings as any)?.requireVoidPin) {
+      setVoidGate({ run: (pin: string) => confirmCancelOrder(pin) });
+    } else {
+      setShowCancelConfirm(true);
+    }
   };
 
-  const confirmCancelOrder = async () => {
+  const confirmCancelOrder = async (voidPin?: string | null) => {
     if (!orderToCancel) return;
     // Snapshot order BEFORE marking cancelled — used for cancellation ticket print.
     const orderSnapshot = orders.find(o => o.id === orderToCancel);
@@ -1332,10 +1351,12 @@ const LiveOrdersPage: React.FC = () => {
     if (selectedOrder?.id === orderToCancel) handleCloseModal();
     try {
       const response = await fetch(`/api/orders/${orderToCancel}/status`, getFetchOptions({
-        method: 'PATCH', body: JSON.stringify({ status: 'cancelled' })
+        method: 'PATCH', body: JSON.stringify({ status: 'cancelled', void_pin: voidPin || undefined })
       }));
       const result = await response.json();
       if (!result.success) {
+        // 게이트 거부/실패 → 낙관적 취소 롤백(재조회) + 사유 안내.
+        if (result.message) showToast(result.message, 'error');
         fetchOrders();
       } else if (orderSnapshot) {
         // Cancellation ticket — 키친 진입 가능성 있는 상태에서만 (pending/awaiting_payment 는 키친 미진입 추정).
@@ -1945,11 +1966,23 @@ const LiveOrdersPage: React.FC = () => {
 
         {/* Cancel Order Confirmation Modal */}
         {showCancelConfirm && (
-        <CommonModal isOpen={true} onClose={cancelCancelOrder} title="Cancel Order" footer={<><ActionButton variant="secondary" onClick={cancelCancelOrder}>{t('orders:liveOrdersPage.noKeepOrder')}</ActionButton><ActionButton onClick={confirmCancelOrder} style={{ background: '#FF6B6B', borderColor: '#FF6B6B', color: 'white' }}>{t('orders:liveOrdersPage.yesCancelOrder')}</ActionButton></>}>
+        <CommonModal isOpen={true} onClose={cancelCancelOrder} title="Cancel Order" footer={<><ActionButton variant="secondary" onClick={cancelCancelOrder}>{t('orders:liveOrdersPage.noKeepOrder')}</ActionButton><ActionButton onClick={() => confirmCancelOrder()} style={{ background: '#FF6B6B', borderColor: '#FF6B6B', color: 'white' }}>{t('orders:liveOrdersPage.yesCancelOrder')}</ActionButton></>}>
               <p style={{ margin: 0, fontSize: '14px', lineHeight: '1.6' }}>
                 Are you sure you want to cancel this order? The order history will be kept for your records.
               </p>
         </CommonModal>
+        )}
+
+        {/* 손실방지 PIN 게이트 — requireVoidPin 매장에서 삭제/취소 승인 (세션 무변경). */}
+        {voidGate && (
+          <VoidPinModal
+            show={true}
+            restaurantId={(user?.restaurantId as any) || ''}
+            title={t('orders:voidPin.title', { defaultValue: 'Authorization required' })}
+            subtitle={t('orders:voidPin.subtitle', { defaultValue: 'Enter a manager PIN to void or cancel' })}
+            onClose={() => setVoidGate(null)}
+            onApproved={(_by, pin) => { const g = voidGate; setVoidGate(null); g?.run(pin); }}
+          />
         )}
 
         {/* Remove Item — reason quick-pick. The reason prints on the kitchen VOID
@@ -1975,7 +2008,7 @@ const LiveOrdersPage: React.FC = () => {
                   <button
                     key={r.key}
                     type="button"
-                    onClick={() => confirmDeleteItem(r.label)}
+                    onClick={() => beginDeleteItemWithReason(r.label)}
                     style={{ padding: '14px 8px', borderRadius: 8, border: '1px solid #E6EBF1', background: '#fff', color: '#0A2540', fontWeight: 600, fontSize: 14, cursor: 'pointer', minHeight: 52 }}
                   >
                     {r.label}

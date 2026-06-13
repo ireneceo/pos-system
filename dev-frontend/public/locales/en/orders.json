@@ -133,5 +133,7 @@
   "ticketSend.sentTitle": "Sent to kitchen",
   "ticketSend.sentList": "Sent the following:",
   "ticketSend.resend": "Resend",
-  "ticketSend.close": "Close"
+  "ticketSend.close": "Close",
+  "voidPin.title": "Authorization required",
+  "voidPin.subtitle": "Enter a manager PIN to void or cancel"
 }
