@@ -1812,7 +1812,7 @@ const POSTerminalPage: React.FC = () => {
   // 전 POS/모바일 실시간 반영 — 다른 기기가 토글하면 회색 처리
   useEffect(() => {
     if (!restaurantId) return;
-    const s = io('/orders', { transports: ['websocket', 'polling'] });
+    const s = io('/orders', { transports: ['websocket', 'polling'], auth: { token: getAuthToken() } });
     s.on('connect', () => s.emit('join-restaurant', restaurantId));
     s.on('product-soldout', (d: { id: number; soldOut: boolean }) => {
       setSoldOutOverride(p => ({ ...p, [String(d.id)]: d.soldOut }));
@@ -2729,7 +2729,7 @@ const POSTerminalPage: React.FC = () => {
   const checkoutSocketRef = useRef<Socket | null>(null);
   useEffect(() => {
     if (!user?.restaurantId) return;
-    const socket = io('/checkout-display', { transports: ['websocket', 'polling'] });
+    const socket = io('/checkout-display', { transports: ['websocket', 'polling'], auth: { token: getAuthToken() } });
     checkoutSocketRef.current = socket;
     socket.on('connect', () => { socket.emit('join-restaurant', user.restaurantId); });
     // Receive customer phone from checkout display

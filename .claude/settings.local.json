@@ -652,7 +652,10 @@
       "Bash(sed -n '/async function enforceVoidPin/,/^}/p' dev-backend/utils/voidPinGuard.js)",
       "Bash(sed -n '/if \\(status === .cancelled.\\) {/,/voidApprover = gate.approver/p' dev-backend/routes/orders-crud.js)",
       "Bash(awk 'NR<=4985 && \\(/activeTab ===|activeSection ===|=== .general.|=== .operation|CardTitle>|SectionTitle>|<h[23]|section ===/\\) {print NR\": \"$0}' pages/Settings/SettingsPage.tsx)",
-      "Bash(awk \"/activeTab === 'operations'/{f=1} f&&/CardTitle>/{print NR\\\\\": \\\\\"\\\\$0} f&&/activeTab === '\\(?!operations\\)/&&!/operations/{exit}\" pages/Settings/SettingsPage.tsx)"
+      "Bash(awk \"/activeTab === 'operations'/{f=1} f&&/CardTitle>/{print NR\\\\\": \\\\\"\\\\$0} f&&/activeTab === '\\(?!operations\\)/&&!/operations/{exit}\" pages/Settings/SettingsPage.tsx)",
+      "Bash(rm -f /tmp/check-flags.js)",
+      "Bash(sed -n '1,60p' CHANGELOG.md)",
+      "Bash(ls CHANGELOG.md dev-frontend/CHANGELOG.md dev-backend/CHANGELOG.md)"
     ],
     "deny": [],
     "ask": []

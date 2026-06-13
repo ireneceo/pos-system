@@ -3,6 +3,7 @@ import styled, { keyframes } from 'styled-components';
 import { useParams } from 'react-router-dom';
 import { io, Socket } from 'socket.io-client';
 import { formatCurrency } from '../../utils/currency';
+import { getAuthToken } from '../../utils/auth';
 import { COUNTRIES, formatPhoneNumber } from '../../utils/phoneUtils';
 import { useTranslation } from 'react-i18next';
 
@@ -206,7 +207,7 @@ const CheckoutDisplayPage: React.FC = () => {
 
   useEffect(() => {
     if (!restaurantId) return;
-    const socket = io('/checkout-display', { transports: ['websocket', 'polling'] });
+    const socket = io('/checkout-display', { transports: ['websocket', 'polling'], auth: { token: getAuthToken() } });
     socketRef.current = socket;
     socket.on('connect', () => { socket.emit('join-restaurant', restaurantId); setConnected(true); });
     socket.on('disconnect', () => setConnected(false));

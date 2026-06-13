@@ -329,7 +329,7 @@ const LiveOrdersPage: React.FC = () => {
   const checkoutSocketRef = useRef<any>(null);
   useEffect(() => {
     if (!user?.restaurantId) return;
-    const cs = io('/checkout-display', { transports: ['websocket', 'polling'] });
+    const cs = io('/checkout-display', { transports: ['websocket', 'polling'], auth: { token: getAuthToken() } });
     cs.on('connect', () => cs.emit('join-restaurant', user.restaurantId));
     checkoutSocketRef.current = cs;
     return () => { cs.disconnect(); };

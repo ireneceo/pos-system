@@ -161,6 +161,7 @@ export const OrdersRealtimeProvider: React.FC<{
 
     const socket = io('/orders', {
       transports: ['websocket', 'polling'],
+      auth: { token: getAuthToken() }, // socket auth (Expand 단계): 서버 미강제 시 무시됨 — 동작 무변경
       reconnection: true,
       reconnectionDelay: 1000,
     });

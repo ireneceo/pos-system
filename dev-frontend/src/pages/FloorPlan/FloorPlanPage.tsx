@@ -683,7 +683,7 @@ const FloorPlanPage: React.FC = () => {
   // Checkout Display 소켓 (고객 화면 연동)
   useEffect(() => {
     if (!restaurantId) return;
-    const cs = io('/checkout-display', { transports: ['websocket', 'polling'] });
+    const cs = io('/checkout-display', { transports: ['websocket', 'polling'], auth: { token: getAuthToken() } });
     cs.on('connect', () => cs.emit('join-restaurant', restaurantId));
     cs.on('customer-checkin', (data: any) => {
       // 고객 체크인 수신 — 필요시 처리

@@ -648,7 +648,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
 
   useEffect(() => {
     if (!user || sellerId == null) return;
-    const sock: Socket = io('/orders', { transports: ['websocket', 'polling'], withCredentials: true });
+    const sock: Socket = io('/orders', { transports: ['websocket', 'polling'], withCredentials: true, auth: { token: getAuthToken() } });
     sock.on('connect', () => {
       sock.emit('join-seller', { seller_type: sellerScope, seller_id: sellerId });
     });

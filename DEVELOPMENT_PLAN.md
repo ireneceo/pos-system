@@ -1,6 +1,25 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-13 (백로그 실측 정정 + 운영 데이터 수정 2건 + DEV 버그수정 2건(미배포) + 기획설계 2건. 상세 아래.)
+> **최종 업데이트:** 2026-06-13 저녁 (The Fire 공지누락 데이터수정 + v3.56 릴리즈 공지/블로그 발송 + 소켓 인증 Phase A 운영배포 + Cloudflare 캐시 퍼지. 상세 아래.)
+
+## ✅ 완료: 공지 수신 복구 + v3.56 릴리즈 발송 + 소켓 인증 하드닝 Phase A (2026-06-13 저녁)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| The Fire 공지 누락 수정 | trial 고객(The Fire 본사 BG + 지점 r16/24/25 + 소속 유저)이 `is_test=true`(테스트 계정) 오분류로 공지·청구에서 제외되던 데이터 오류. User 8 + Restaurant 3 `is_test=false` 로 정정. 코드 변경 0. 공지 쿼리는 trial/active 안 보고 is_demo·is_test만 봄 | ✅ 운영 |
+| v3.56 릴리즈 공지/블로그 발송 | 마지막 공지 v3.54 이후 v3.55 미공지분+v3.56 묶음. 본문=공통/역할별(매장사장/본사) 정리. 공지#56(운영) 수신 8명(The Fire 4/4) + 블로그 release-v3.56. **언어별 라벨을 실제 UI i18n과 대조 교정**(KO '삭제/취소 감사', '관리자 PIN 승인' 등) | ✅ 운영 |
+| 소켓 인증 하드닝 Phase A | `/orders`·`/checkout-display`·`/kitchen`·`/display` 소켓 무인증+클라id 신뢰 → 타 매장 라이브주문 누출. Expand/Contract 정석 중 **Phase A(Expand)**: 11개 소켓에 `auth:{token}` 추가(동작 무변경). 인쇄 무관(HTTP 폴러). 운영 배포+검증 완료 | ✅ 운영 |
+| Cloudflare sw.js 캐시 퍼지 | 6/3 잘못 박힌 1년 캐시로 매장이 v3.46(5/30)에 묶여 있던 것 → Custom Purge. 매장이 최신 3.63 받기 시작(BYPASS 전환, 재발 안 함) | ✅ 운영 |
+
+### 수정된 파일
+- 프론트(소켓 auth Phase A): `contexts/OrdersRealtimeContext.tsx`, `pages/{KitchenDisplay,CustomerDisplay,CheckoutDisplay,FloorPlan,LiveOrders,IncomingOrders,POSTerminal}`, `components/Layout/MainLayout.tsx`🔒 (소켓 줄만, 인쇄코드 0접촉)
+- 문서: `docs/SOCKET_AUTH_HARDENING.md`(신규), `CHANGELOG.md`
+- 운영 데이터(git 외): The Fire User 8 + Restaurant 3 is_test=false / 공지#56 + 블로그 release-v3.56
+- print-guard: socket-only 재확인 후 bless(manifest 갱신)
+
+---
 
 ## ✅ 완료: 백로그 정정 + 운영 데이터 수정 + DEV 버그수정 + 기획설계 (2026-06-13)
 

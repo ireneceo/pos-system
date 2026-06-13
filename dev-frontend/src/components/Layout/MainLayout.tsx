@@ -1136,7 +1136,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   useEffect(() => {
     if (!userRestaurantId || !isOrderRole) return;
 
-    const socket = io('/orders', { transports: ['websocket', 'polling'] });
+    const socket = io('/orders', { transports: ['websocket', 'polling'], auth: { token: getAuthToken() } });
     globalSocketRef.current = socket;
 
     socket.on('connect', () => {
@@ -1371,7 +1371,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
   useEffect(() => {
     if (!sellerScope) return;
-    const sock = io('/orders', { transports: ['websocket', 'polling'] });
+    const sock = io('/orders', { transports: ['websocket', 'polling'], auth: { token: getAuthToken() } });
     sock.on('connect', () => {
       sock.emit('join-seller', { seller_type: sellerScope.type, seller_id: sellerScope.id });
     });
