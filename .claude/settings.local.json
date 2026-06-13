@@ -658,7 +658,10 @@
       "Bash(ls CHANGELOG.md dev-frontend/CHANGELOG.md dev-backend/CHANGELOG.md)",
       "Bash(BASE_URL=https://dev.purplehere.com TOKEN='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjE2MywiaWF0IjoxNzgxMzc4MDU4LCJleHAiOjE3ODEzNzk4NTh9.uU4BLI3FXRwz-LS_F9N_XbkO3BO6z5LNumksROBDDVQ' RID=1 node scripts/tmp-responsive-audit.js)",
       "Bash(rm -f /tmp/responsive-audit/*.png)",
-      "Bash(BASE_URL=https://dev.purplehere.com node scripts/tmp-responsive-audit.js)"
+      "Bash(BASE_URL=https://dev.purplehere.com node scripts/tmp-responsive-audit.js)",
+      "Bash(mkdir -p /var/www/backups/dev-daily/__CMDSUB_OUTPUT__)",
+      "Bash(tar -czf /var/www/backups/dev-daily/__CMDSUB_OUTPUT__/dev-backend.tar.gz --exclude=node_modules -C /var/www dev-backend)",
+      "Bash(tar -czf /var/www/backups/dev-daily/__CMDSUB_OUTPUT__/dev-frontend.tar.gz --exclude=node_modules --exclude=build -C /var/www dev-frontend)"
     ],
     "deny": [],
     "ask": []
