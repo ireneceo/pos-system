@@ -1,6 +1,30 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-12 오후 (v3.55 후속 운영버그 2건 **운영 배포** — Backup 20260612_082237, smoke 9/9. 잔여: Cloudflare sw.js 퍼지(수동) + r24 칩 재선택 + 실프린터)
+> **최종 업데이트:** 2026-06-13 (백로그 실측 정정 + 운영 데이터 수정 2건 + DEV 버그수정 2건(미배포) + 기획설계 2건. 상세 아래.)
+
+## ✅ 완료: 백로그 정정 + 운영 데이터 수정 + DEV 버그수정 + 기획설계 (2026-06-13)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 백로그 stale 정정 | 구독 트라이얼 프론트(이미 완료·배포), 설정 anti-wipe 가드(이미 완료, 기능테스트 13/13) — 백로그 "미완/보류" 표기가 stale 이라 재조사 헛수고 방지 위해 정정 | ✅ 확인 |
+| thefire02(r24) 닭갈비라면 스테이션 | 운영 데이터: product 650 개별배정 KQ2 제거(NULL) → Ramyun&Noddle 카테고리 KQ1 따라가게(다른 라면과 동일). 버그 아님(개별>카테고리 우선순위 정상). 백업 + enrich 검증 KQ1 | ✅ 운영 |
+| thefire 본사 BG(user29) 7/1 정렬 | 운영 데이터: status suspended→trial, 시작 8/1→7/1, trial_end→6/30, 인보이스 RM499 기간 7/1 재발행. 6/9 사고때 레스토랑만 고치고 BG 누락된 잔여 데이터 | ✅ 운영 |
+| 🐞 BG 구독 미래시작 강제 trial | `users.js` PUT 구독 수정경로가 status 명시 시 trial 파생 안 하던 갭(user29 drift 원인) → 레스토랑·생성경로처럼 강제 trial. 실API 6/6 | ✅ DEV(미배포) |
+| pending-print is_deleted 필터 | `orders-crud.js` 인쇄 대기열이 삭제(soft-delete) 주문 안 거르던 엣지 → `is_deleted:false` 추가(유령티켓 차단). 인쇄 방식 무변경. 실API 3/3 + 인쇄계약 7/7 | ✅ DEV(미배포, 🔒 배포후 bless) |
+| 기획설계: 삭제/취소 PIN 게이트 | 손실방지(직원 현금 횡령 감시). 권한 PIN(세션전환X) + 사장 감시 리포트. `docs/VOID_PIN_GATE_DESIGN.md` | ✅ 설계 |
+| 기획설계: 브랜드메뉴 레스토랑 범위 | 연결(opt-in) 방식 판단. scope_mode + Product.brand_scope_active(숨김+보존). `docs/BRAND_MENU_SYSTEM.md` §14 | ✅ 설계 |
+
+### 수정된 파일
+- `dev-backend/routes/users.js` (BG 미래시작 강제 trial)
+- `dev-backend/routes/orders-crud.js` 🔒 (pending-print is_deleted 필터)
+- `docs/VOID_PIN_GATE_DESIGN.md` (신규 설계)
+- `docs/BRAND_MENU_SYSTEM.md` (§14 적용범위 설계 추가)
+- 운영 데이터(git 외): r24 product 650, user29 구독+인보이스
+
+---
+
 
 ## ✅ 운영 배포: v3.55 후속 운영버그 2건 (2026-06-12 오후, Backup 20260612_082237 — SW 3.61)
 

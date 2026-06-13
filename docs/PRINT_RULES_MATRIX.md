@@ -455,7 +455,7 @@ needs_print 는 **백엔드 공유 플래그**(기기별 아님). 한 기기가 
 ### 9-5. 검증 분담 (API vs 실프린터)
 | 검증 가능 (API/백엔드 — `/검증`) | 실프린터 눈 (Irene — `/운영검증`) |
 |----------------------------------|-----------------------------------|
-| pending-print 큐 / `printed_at` 도장 / `needs_print` clear | 종이 1장 정확히 (중복 0) |
+| pending-print 큐 / `printed_at` 도장 / `needs_print` clear (큐는 `is_deleted:false` 만 — 삭제주문 유령티켓 차단, 2026-06-13 DEV) | 종이 1장 정확히 (중복 0) |
 | station_id 분배 결과 / removedItem payload / `noticeHeader` 플래그 | 헤더 문구·줄긋기 시각 |
 | 게이트 분기 (S1~S6 조합별 호출 여부) | 한글 raster 정상 |
 | 동시 print-claim N개→1개 (중복 방지) | Issue 1 오버레이 1장 |

@@ -810,11 +810,17 @@ router.put('/:id', authenticateToken, demoProtection, async (req, res) => {
       const startMid = new Date(effectiveStart);
       startMid.setHours(0, 0, 0, 0);
       if (startMid > todayMid) {
-        if (updateData.subscription_status === undefined) updateData.subscription_status = 'trial';
+        // Future service start MUST be trial (service hasn't begun) — force it even
+        // if the client/form sent status='active'/'suspended', mirroring the create
+        // path (line ~516) and restaurants-crud PUT. A soft (=== undefined) guard let
+        // a future-start BG/FG account be saved active/suspended → the user 29 (thefire
+        // BG) drift on 2026-06-13. Billing must wait until the start date.
+        updateData.subscription_status = 'trial';
         const tEnd = new Date(startMid);
         tEnd.setDate(tEnd.getDate() - 1);
         updateData.trial_end_date = tEnd;
       } else {
+        // Starts today/past → honor requested status (trial requires a future start)
         if (updateData.subscription_status === undefined) updateData.subscription_status = 'active';
         updateData.trial_end_date = null;
       }

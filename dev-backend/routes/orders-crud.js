@@ -2511,6 +2511,9 @@ router.get('/restaurant/:restaurantId/pending-print', authenticateToken, async (
     const orders = await Order.findAll({
       where: {
         restaurant_id: restaurantId,
+        is_deleted: false, // 2026-06-13: exclude soft-deleted orders — a deleted order
+        // with needs_print still set could otherwise reprint as a ghost ticket. No change
+        // to print method/routing/timing for live orders; only filters out deleted ones.
         [Op.or]: [{ needs_print: true }, { needs_bill: true }]
       },
       order: [['createdAt', 'ASC']],

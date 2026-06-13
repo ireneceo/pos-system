@@ -302,3 +302,91 @@ RA → DELETE product (brand_menu_id 있어도 허용) — 프론트가 "Unlink 
 - **health-check**: 80/80 PASS.
 - **빌드**: main.c679b6ef.js, lazy chunk 4개 (3398, 9121, 8858, 9161) 모두 nginx 200.
 - **State hydration**: 0 warning.
+
+---
+
+## 14. 레스토랑 적용 범위 (Scope) — 설계 (2026-06-13, 미구현)
+
+> Irene 요청: BG 브랜드메뉴가 레스토랑마다 적용/미적용될 수 있어야 함. 예) 레스토랑1=본사 직영점 → 신메뉴 먼저 시도, 다른 가맹점엔 그 메뉴 없음. "제외 기능 vs 연결 기능" 중 판단 요청.
+
+### 14.1 판단: **연결(opt-in allowlist) 방식** (제외 아님)
+
+실측 결과 현재 시스템은 **이미 연결 방식**이다 — 브랜드메뉴는 **push한 레스토랑에만** Product(`brand_menu_id` FK)로 생성되고, 안 한 매장엔 아예 없다. push 대상 = `restaurant_ids: "all" | [ids]`. 즉 "직영점만 먼저"는 이미 가능(직영점에만 push). 이 위에 **선언적 범위 관리**를 정식화한다.
+
+| | 연결(opt-in) — 브랜드 채택 | 제외(default-all) — 푸드코트 방식 |
+|---|---|---|
+| 기본 | 아무 매장에도 없음, BG가 넣을 곳 선택 | 전 매장에 깔림, 뺄 곳 선택 |
+| 신메뉴 위험 | 선택한 곳에만 → 실험 격리(안전) | 전 가맹점 자동 노출(위험) |
+| 적합 | **브랜드**(매장마다 메뉴 다름 = 정상) | 푸드코트(공통 메뉴 풀) — `FoodcourtProductRestaurant` |
+
+→ 브랜드는 연결 방식이 자연스럽고 안전. 푸드코트의 제외 방식은 그 도메인에 맞는 별개 설계.
+
+### 14.2 활성/비활성(RA) vs 적용범위(BG) — 명확 분리
+
+| 층위 | 주체 | 의미 | 필드 |
+|------|------|------|------|
+| **적용 범위** | **BG(본사)** | 이 메뉴를 이 매장에 **줄지/뺄지** | `BrandMenu.scope_mode` + `brand_menu_restaurants` allowlist → `Product.brand_scope_active` |
+| **활성화** | **RA(매장)** | 받은 메뉴를 **팔지/품절** | `Product.is_active` |
+
+POS/모바일 노출 = `brand_scope_active(BG) AND is_active(RA)`. 두 권한이 안 겹친다. BG가 범위에서 빼면 RA가 못 켠다(숨김 유지).
+
+### 14.3 스키마 (제안)
+
+```sql
+-- BrandMenu: 범위 모드
+ALTER TABLE brand_menus
+  ADD COLUMN scope_mode ENUM('all','selected') NOT NULL DEFAULT 'all';
+  -- 'all'     = 산하 전 레스토랑 자동 대상
+  -- 'selected'= 아래 allowlist 에 든 레스토랑만
+
+-- selected 일 때 대상 allowlist (FoodcourtProductRestaurant 선례 동일 패턴)
+CREATE TABLE brand_menu_restaurants (
+  id INT PK AI,
+  brand_menu_id INT NOT NULL,   -- FK brand_menus
+  restaurant_id INT NOT NULL,   -- FK restaurants
+  UNIQUE (brand_menu_id, restaurant_id),
+  KEY (restaurant_id)
+);
+
+-- Product: BG 범위 가시성(활성화와 분리)
+ALTER TABLE products
+  ADD COLUMN brand_scope_active BOOLEAN NOT NULL DEFAULT true;
+  -- true=범위 안 / false=BG가 범위에서 뺌(숨김+보존, RA is_active 무관하게 비노출)
+
+-- Brand: 새 메뉴 기본 범위 모드 (Irene 확정: 브랜드별 기본모드 설정)
+-- Brand.menu_settings(JSON) 에 default_scope: 'all'|'selected' 추가
+```
+
+### 14.4 동작 (Irene 2026-06-13 확정)
+
+- **새 메뉴 기본 범위** = `Brand.menu_settings.default_scope` (BG가 자기 브랜드 철학 선택: 균일 브랜드='all', 직영점-실험형='selected'). 메뉴 생성 시 그 값을 `scope_mode`에 시드.
+- **범위에 매장 추가** → `brandMenuSyncService.syncBrandMenuToRestaurant` 호출(Product 생성/`brand_scope_active=true`). 이미 retract됐던 매장이면 `brand_scope_active=true`로 복원.
+- **범위에서 매장 제거 = 숨김+보존**(확정): Product 삭제하지 않고 `brand_scope_active=false`로 숨김. 과거 주문 이력/RA 로컬 편집(가격 등) 보존. 나중에 다시 넣으면 복원.
+- **scope_mode='all'**: 산하 신규 매장이 생기면 자동 대상(기존 push-all 흐름). `'selected'`면 allowlist 변화로만 대상 변동.
+- **버전 동기화(version bump)**: 현재 linked Product 전체 대상 그대로 — `brand_scope_active=false`(retracted) 매장은 보존만 하고 노출/재동기 제외(또는 복원 시 최신 동기).
+
+### 14.5 UI (BG)
+
+- 브랜드메뉴 편집/distribution 화면에 **"적용 매장(Scope)"** 컨트롤: `전체` / `지정` 토글 + 지정 시 산하 매장 체크리스트(현 `/push` 대상 선택 UI를 선언적 범위로 승격).
+- 브랜드 설정에 **"새 메뉴 기본 범위"** (전체/지정) — `menu_settings.default_scope`.
+- distribution 표에 매장별 상태: 범위밖 / 범위안·미동기 / in_sync / pending_update / RA 비활성.
+
+### 14.6 영향/파일 touch list (구현 시)
+
+| 영역 | 파일 | 변경 |
+|------|------|------|
+| 모델 | `models/BrandMenu.js`(scope_mode), 신규 `models/BrandMenuRestaurant.js`, `models/Product.js`(brand_scope_active), `models/Brand.js`(menu_settings.default_scope) | + 멱등 마이그 |
+| 전파 | `services/brandMenuSyncService.js` | scope 추가=sync / 제거=retract(scope_active=false) |
+| 라우트 | `routes/brand-menus.js` | scope CRUD(전체/지정+allowlist), distribution 응답에 scope 상태 |
+| 노출 게이트 | 메뉴 조회(POS/모바일/menu.js) | `brand_scope_active AND is_active` 필터 |
+| UI | BG 브랜드메뉴 화면 + 브랜드 설정 | 적용매장 선택 + 기본범위 |
+
+### 14.7 검증 시나리오 (구현 후)
+
+1. default_scope='selected' 브랜드: 새 메뉴 → 아무 매장에도 안 깔림.
+2. 직영점1만 범위 추가 → 1에만 Product(scope_active=true), 2·3엔 없음.
+3. 직영점1 RA 활성(is_active=true) → 1 메뉴판 노출 / 2·3 미노출.
+4. 가맹점2 범위 추가 → 2에 생성(is_active=false 대기), RA 활성해야 노출.
+5. BG가 2를 범위 제거 → 2에서 숨김(Product 보존, 주문이력 유지), 재추가 시 복원.
+6. scope='all' + 신규 매장 생성 → 자동 대상.
+7. 노출 = scope_active AND is_active 교집합 확인(둘 중 하나라도 false면 비노출).
