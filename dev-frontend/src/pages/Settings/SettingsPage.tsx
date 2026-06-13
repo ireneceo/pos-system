@@ -3497,6 +3497,62 @@ const SettingsPage: React.FC = () => {
                 )}
               </SettingsCard>
 
+              {/* 관리자 PIN 승인 — 손실방지/보안 정책 (할인 + 삭제·취소). POS 카운터 동작이라 운영 탭에 배치. */}
+              <SettingsCard>
+                <CardTitle>{t('settings:operations.managerApprovalsTitle', { defaultValue: 'Manager PIN Approvals' })}</CardTitle>
+                <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
+                  {t('settings:operations.managerApprovalsDesc', { defaultValue: 'Require an authorized PIN before sensitive counter actions, to prevent and track misuse. The login account does not change — the PIN only confirms who approved.' })}
+                </p>
+
+                {/* 할인 PIN 승인 토글 */}
+                <Toggle>
+                  <div style={{ flex: 1 }}>
+                    <ToggleLabel style={{ marginBottom: '4px' }}>{t('settings:operations.requirePinForDiscountLabel', { defaultValue: 'Require PIN approval for discounts' })}</ToggleLabel>
+                    <p style={{ fontSize: '12px', color: '#4B5563', margin: 0 }}>
+                      {t('settings:operations.requirePinForDiscountDesc', { defaultValue: 'When on, applying a discount requires a manager PIN.' })}
+                    </p>
+                  </div>
+                  <AutoSaveField ref={requirePinForDiscountRef} onSave={handleSave} type="toggle">
+                    <ToggleSwitch>
+                      <ToggleInput
+                        type="checkbox"
+                        checked={!!(operationSettings as any).requirePinForDiscount}
+                        onChange={(e) => {
+                          const v = e.target.checked;
+                          setOperationSettings(prev => ({ ...prev, requirePinForDiscount: v } as any));
+                          requirePinForDiscountRef.current?.triggerSave();
+                        }}
+                      />
+                      <ToggleSlider />
+                    </ToggleSwitch>
+                  </AutoSaveField>
+                </Toggle>
+
+                {/* 삭제/취소 PIN 승인 토글 — 손실방지(직원 횡령 감시). 로그인 계정은 바뀌지 않음. */}
+                <Toggle>
+                  <div style={{ flex: 1 }}>
+                    <ToggleLabel style={{ marginBottom: '4px' }}>{t('settings:operations.requireVoidPinLabel', { defaultValue: 'Require PIN approval to void / cancel' })}</ToggleLabel>
+                    <p style={{ fontSize: '12px', color: '#4B5563', margin: 0 }}>
+                      {t('settings:operations.requireVoidPinDesc', { defaultValue: 'When on, deleting an item or cancelling an order needs an authorized PIN. The login account does not change.' })}
+                    </p>
+                  </div>
+                  <AutoSaveField ref={requireVoidPinRef} onSave={handleSave} type="toggle">
+                    <ToggleSwitch>
+                      <ToggleInput
+                        type="checkbox"
+                        checked={!!(operationSettings as any).requireVoidPin}
+                        onChange={(e) => {
+                          const v = e.target.checked;
+                          setOperationSettings(prev => ({ ...prev, requireVoidPin: v } as any));
+                          requireVoidPinRef.current?.triggerSave();
+                        }}
+                      />
+                      <ToggleSlider />
+                    </ToggleSwitch>
+                  </AutoSaveField>
+                </Toggle>
+              </SettingsCard>
+
               <SettingsCard>
                 <CardTitle>{t('settings:settingsPage.taxServiceCharge')}</CardTitle>
                 <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
@@ -4940,53 +4996,6 @@ const SettingsPage: React.FC = () => {
                     </AutoSaveField>
                   </Toggle>
 
-                  {/* 할인 PIN 승인 토글 (#5) */}
-                  <Toggle>
-                    <div style={{ flex: 1 }}>
-                      <ToggleLabel style={{ marginBottom: '4px' }}>{t('settings:operations.requirePinForDiscountLabel', { defaultValue: 'Require PIN approval for discounts' })}</ToggleLabel>
-                      <p style={{ fontSize: '12px', color: '#4B5563', margin: 0 }}>
-                        {t('settings:operations.requirePinForDiscountDesc', { defaultValue: 'When on, applying a discount requires a manager PIN.' })}
-                      </p>
-                    </div>
-                    <AutoSaveField ref={requirePinForDiscountRef} onSave={handleSave} type="toggle">
-                      <ToggleSwitch>
-                        <ToggleInput
-                          type="checkbox"
-                          checked={!!(operationSettings as any).requirePinForDiscount}
-                          onChange={(e) => {
-                            const v = e.target.checked;
-                            setOperationSettings(prev => ({ ...prev, requirePinForDiscount: v } as any));
-                            requirePinForDiscountRef.current?.triggerSave();
-                          }}
-                        />
-                        <ToggleSlider />
-                      </ToggleSwitch>
-                    </AutoSaveField>
-                  </Toggle>
-
-                  {/* 삭제/취소 PIN 승인 토글 — 손실방지(직원 횡령 감시). 로그인 계정은 바뀌지 않음. */}
-                  <Toggle>
-                    <div style={{ flex: 1 }}>
-                      <ToggleLabel style={{ marginBottom: '4px' }}>{t('settings:operations.requireVoidPinLabel', { defaultValue: 'Require PIN approval to void / cancel' })}</ToggleLabel>
-                      <p style={{ fontSize: '12px', color: '#4B5563', margin: 0 }}>
-                        {t('settings:operations.requireVoidPinDesc', { defaultValue: 'When on, deleting an item or cancelling an order needs an authorized PIN. The login account does not change.' })}
-                      </p>
-                    </div>
-                    <AutoSaveField ref={requireVoidPinRef} onSave={handleSave} type="toggle">
-                      <ToggleSwitch>
-                        <ToggleInput
-                          type="checkbox"
-                          checked={!!(operationSettings as any).requireVoidPin}
-                          onChange={(e) => {
-                            const v = e.target.checked;
-                            setOperationSettings(prev => ({ ...prev, requireVoidPin: v } as any));
-                            requireVoidPinRef.current?.triggerSave();
-                          }}
-                        />
-                        <ToggleSlider />
-                      </ToggleSwitch>
-                    </AutoSaveField>
-                  </Toggle>
                 </SettingsCard>
 
                 {operationSettings.orderTypes?.pickup && (

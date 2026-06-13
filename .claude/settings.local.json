@@ -647,7 +647,12 @@
       "Bash(scp -q /tmp/prod-verify.js irene@87.106.78.146:/var/www/production-backend/tmp-prod-verify.js)",
       "Bash(sed -n '310,314p' src/contexts/StaffContext.tsx)",
       "Bash(sed -n '405,413p' src/pages/Staff/StaffPage.tsx)",
-      "Bash(sed -n '589,595p' src/pages/Admin/StaffManagementPage.tsx)"
+      "Bash(sed -n '589,595p' src/pages/Admin/StaffManagementPage.tsx)",
+      "Bash(awk '/Void & Cancellation Log — 손실방지/,/^          \\\\\\)\\\\}/' pages/Reports/ReportsPage.tsx)",
+      "Bash(sed -n '/async function enforceVoidPin/,/^}/p' dev-backend/utils/voidPinGuard.js)",
+      "Bash(sed -n '/if \\(status === .cancelled.\\) {/,/voidApprover = gate.approver/p' dev-backend/routes/orders-crud.js)",
+      "Bash(awk 'NR<=4985 && \\(/activeTab ===|activeSection ===|=== .general.|=== .operation|CardTitle>|SectionTitle>|<h[23]|section ===/\\) {print NR\": \"$0}' pages/Settings/SettingsPage.tsx)",
+      "Bash(awk \"/activeTab === 'operations'/{f=1} f&&/CardTitle>/{print NR\\\\\": \\\\\"\\\\$0} f&&/activeTab === '\\(?!operations\\)/&&!/operations/{exit}\" pages/Settings/SettingsPage.tsx)"
     ],
     "deny": [],
     "ask": []

@@ -1066,5 +1066,7 @@
   "printer.workstations.consolidatedStationsHint": "Pilih stesen untuk mencetak item stesen itu sahaja. Tiada pilihan = pesanan penuh.",
   "printer.workstations.allStations": "Pesanan penuh",
   "operations.requireVoidPinLabel": "Perlukan kelulusan PIN untuk batal",
-  "operations.requireVoidPinDesc": "Apabila dihidupkan, memadam item atau membatalkan pesanan memerlukan PIN yang dibenarkan. Akaun log masuk tidak berubah."
+  "operations.requireVoidPinDesc": "Apabila dihidupkan, memadam item atau membatalkan pesanan memerlukan PIN yang dibenarkan. Akaun log masuk tidak berubah.",
+  "operations.managerApprovalsTitle": "Kelulusan PIN Pengurus",
+  "operations.managerApprovalsDesc": "Perlukan PIN yang dibenarkan sebelum tindakan kaunter sensitif, untuk mencegah dan menjejak penyalahgunaan. Akaun log masuk tidak berubah — PIN hanya mengesahkan siapa yang meluluskan."
 }

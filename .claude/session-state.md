@@ -1,17 +1,20 @@
 # Purple POS — 개발 세션 상태
 
-<!-- AUTOSAVE-STALE-BANNER -->
-> **[AUTO-SAVE STALE] (2026-06-13 12:50, idle 2043s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
-> 변경된 작업 파일: order-audit.js,orders-crud.js staff.js,server.js settingsGuard.js,voidPinGuard.js admin.json,orders.json reports.json,settings.json admin.json,orders.json
-<!-- /AUTOSAVE-STALE-BANNER -->
-
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-06-13 (백로그 정정 + 운영데이터 수정 2건 + DEV 버그수정 2건(미배포) + 기획설계 2건)
+**마지막 업데이트:** 2026-06-13 저녁 (삭제/취소 PIN 손실방지 게이트 구현 완료 — DEV 미배포, 검증 통과)
 **버전:** v3.55 운영 + 오후 후속 수정 7건 배포됨 (버전 상승 여부 Irene 답변 대기 — 묻기만 했고 미정)
 **작업 상태:** 완료
 
 ### 진행 중인 작업
 - 없음
+
+### 완료된 작업 (2026-06-13 저녁) — 삭제/취소 PIN 손실방지 게이트 (DEV 미배포)
+설계 `docs/VOID_PIN_GATE_DESIGN.md` 전체 구현. 예방(PIN 게이트) + 추적(사장 감시 리포트) 두 축.
+- **백엔드**: `utils/voidPinGuard.js`(신규 enforceVoidPin) / `routes/orders-crud.js` 🔒 DELETE items·PATCH status(cancelled) 진입부 PIN 재검증 + audit metadata(금액·결제상태·결제수단·승인자) — **인쇄 파이프라인 0 접촉**(git diff 증명) / `routes/order-audit.js`(신규 Void&Cancel Log 조회, Owner/Admin 전용, server.js 마운트) / `staff.js` verify-pin-permission 은 이미 제네릭(void_authorize 분기 불필요) — audit 라벨만 권한별 구분.
+- **프론트**: `components/POSTerminal/VoidPinModal.tsx`(신규, DiscountPinModal 복제 onApproved=(by,pin)) / LiveOrders·FloorPlan TableDetailPanel 삭제/취소 전 토글 게이트(perform*+handle* 분리) / SettingsPage operation 토글(할인 PIN 옆) / StaffManagement AuthorizationsPicker(void_authorize) / ReportsPage 'Void & Cancel Log' 탭(현금완료 빨강, Owner/Admin) + MainLayout 사이드바.
+- **🐞 보너스 버그수정**: `requirePinForDiscount` 가 settingsGuard 화이트리스트 누락으로 저장 시 stripped 되던 잠복 버그 발견 → requireVoidPin 과 함께 등록.
+- **검증**: 빌드(내 파일 0경고) + 실API 16/16(7시나리오 전부) + health 100/101(실패1=의도된 print-guard 무결성, 인쇄계약 8/8 통과) + i18n verify 0 errors(4언어) + Playwright mount 7/7 clean.
+- **🔒 print-guard**: orders-crud.js + MainLayout.tsx 플래그(둘 다 인쇄코드 무접촉 증명). **배포 후 실프린터 확인 → `check-print-guard.js --bless`**(설계 §4.4).
 
 ### 완료된 작업 (이번 세션 2026-06-13)
 - **백로그 stale 정정** — 구독 트라이얼 프론트(이미 완료·배포), 설정 anti-wipe 가드(이미 완료, 기능테스트 13/13 + 실API 5/5) 재확인. 메모리/백로그 "미완/보류" 표기가 stale 이라 정정.
@@ -21,13 +24,16 @@
 - **DEV(미배포, 🔒): pending-print is_deleted 필터** — `orders-crud.js` 인쇄 대기열이 삭제주문 안 거르던 엣지 → `is_deleted:false`(유령티켓 차단). 인쇄방식 무변경. 실API 3/3 + 인쇄계약 7/7. **배포후 실프린터 확인+bless 필요.**
 - **기획설계 2건** (구현 미착수, 아래 다음 확정 작업).
 
-### 미배포 DEV 변경 (다음 /배포 대상) — 2건
-1. `users.js` BG/유저 구독 수정경로 미래시작=강제 trial
-2. `orders-crud.js` pending-print is_deleted 필터 (🔒 — 배포 후 실프린터 확인+`check-print-guard.js --bless`)
+### ✅ 운영 배포 완료 (2026-06-13 저녁) — 삭제/취소 PIN 게이트 + 미배포분 동반 배포
+- `deploy-to-production.sh --auto` exit 0 + 운영 직접검증: 헬스 200(production)/order-audit 라우트 401/프론트 번들 void-log 포함.
+- print-guard bless 완료(Irene 승인, 인쇄코드 무접촉+주문회귀0 검증 후). 설정 토글 위치=Operations 탭 "Manager PIN Approvals" 카드(할인PIN과 묶음).
+- 동반 배포된 기존 미배포분: `users.js` BG 미래시작 강제 trial, `orders-crud.js` pending-print is_deleted 필터.
+- **배포 후 Irene 실프린터 sanity**: 취소/아이템삭제 시 취소표 종이 1장 정상 출력(인쇄 동작 무변경이라 기존과 동일해야).
+- 버전 상승 여부 Irene 답변 대기.
 
 ### 다음 확정 작업 (Irene 지시: "이 구현은 다음 섹션에 할게")
-- **삭제/취소 PIN 손실방지 게이트** — `docs/VOID_PIN_GATE_DESIGN.md`. 직원 현금 횡령 감시. ①권한 PIN(verify-pin-permission 재사용=세션전환 없음) ②사장 감시 리포트(Void&Cancel Log). 적용=아이템삭제+주문취소. 🔒 orders-crud 진입부.
-- **브랜드메뉴 레스토랑 적용범위** — `docs/BRAND_MENU_SYSTEM.md` §14. 연결(opt-in) 방식. scope_mode(all/selected)+brand_menu_restaurants+Product.brand_scope_active(숨김+보존)+Brand.menu_settings.default_scope. 활성(RA)·범위(BG) 분리.
+- ~~삭제/취소 PIN 손실방지 게이트~~ → **✅ 구현 완료 (2026-06-13 저녁, DEV 미배포)**. 위 참조.
+- **브랜드메뉴 레스토랑 적용범위** — `docs/BRAND_MENU_SYSTEM.md` §14. 연결(opt-in) 방식. scope_mode(all/selected)+brand_menu_restaurants+Product.brand_scope_active(숨김+보존)+Brand.menu_settings.default_scope. 활성(RA)·범위(BG) 분리. (다음 작업 후보)
 
 ### 후속 후보 (아이디어 메모, 확정 X)
 > 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.
