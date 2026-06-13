@@ -655,7 +655,10 @@
       "Bash(awk \"/activeTab === 'operations'/{f=1} f&&/CardTitle>/{print NR\\\\\": \\\\\"\\\\$0} f&&/activeTab === '\\(?!operations\\)/&&!/operations/{exit}\" pages/Settings/SettingsPage.tsx)",
       "Bash(rm -f /tmp/check-flags.js)",
       "Bash(sed -n '1,60p' CHANGELOG.md)",
-      "Bash(ls CHANGELOG.md dev-frontend/CHANGELOG.md dev-backend/CHANGELOG.md)"
+      "Bash(ls CHANGELOG.md dev-frontend/CHANGELOG.md dev-backend/CHANGELOG.md)",
+      "Bash(BASE_URL=https://dev.purplehere.com TOKEN='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjE2MywiaWF0IjoxNzgxMzc4MDU4LCJleHAiOjE3ODEzNzk4NTh9.uU4BLI3FXRwz-LS_F9N_XbkO3BO6z5LNumksROBDDVQ' RID=1 node scripts/tmp-responsive-audit.js)",
+      "Bash(rm -f /tmp/responsive-audit/*.png)",
+      "Bash(BASE_URL=https://dev.purplehere.com node scripts/tmp-responsive-audit.js)"
     ],
     "deny": [],
     "ask": []

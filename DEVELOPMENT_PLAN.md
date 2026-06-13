@@ -12,6 +12,7 @@
 | v3.56 릴리즈 공지/블로그 발송 | 마지막 공지 v3.54 이후 v3.55 미공지분+v3.56 묶음. 본문=공통/역할별(매장사장/본사) 정리. 공지#56(운영) 수신 8명(The Fire 4/4) + 블로그 release-v3.56. **언어별 라벨을 실제 UI i18n과 대조 교정**(KO '삭제/취소 감사', '관리자 PIN 승인' 등) | ✅ 운영 |
 | 소켓 인증 하드닝 Phase A | `/orders`·`/checkout-display`·`/kitchen`·`/display` 소켓 무인증+클라id 신뢰 → 타 매장 라이브주문 누출. Expand/Contract 정석 중 **Phase A(Expand)**: 11개 소켓에 `auth:{token}` 추가(동작 무변경). 인쇄 무관(HTTP 폴러). 운영 배포+검증 완료 | ✅ 운영 |
 | Cloudflare sw.js 캐시 퍼지 | 6/3 잘못 박힌 1년 캐시로 매장이 v3.46(5/30)에 묶여 있던 것 → Custom Purge. 매장이 최신 3.63 받기 시작(BYPASS 전환, 재발 안 함) | ✅ 운영 |
+| 태블릿 레이아웃 점검 (코드 0) | 9"/10"(1024×600·768·1280×800) Playwright 실측. **LiveOrders 상태 탭 줄 1024폭 208px 넘침→"Completed" 잘림+좌우흔들림** 확인(overflow-x:auto, 사이드바 squeeze). KDS/FloorPlan은 데모 오늘자 active 0이라 미재현 → 다음세션 A(시드 후 전수점검+수정) | ✅ 점검 |
 
 ### 수정된 파일
 - 프론트(소켓 auth Phase A): `contexts/OrdersRealtimeContext.tsx`, `pages/{KitchenDisplay,CustomerDisplay,CheckoutDisplay,FloorPlan,LiveOrders,IncomingOrders,POSTerminal}`, `components/Layout/MainLayout.tsx`🔒 (소켓 줄만, 인쇄코드 0접촉)
