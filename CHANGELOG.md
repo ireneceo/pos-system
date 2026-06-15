@@ -6,7 +6,8 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
-### 2026-06-15 (운영 데이터 작업 — 코드 변경 아님, 버전 미상승)
+### 2026-06-15 (운영 배포 완료 — 버전 미상승 backstage/UI 패치)
+- 라이브 오더 상태 탭 태블릿 표시 — 1024 태블릿에서 상태 필터 탭(8개)이 가로로 잘려 스크롤되던 것을 2줄로 펼쳐 모두 보이게 수정(데스크톱은 1줄 유지). LiveOrders+ReservationsTimeline 적용. (Backup 20260615_084256)
 - (운영 데이터) The Fire 주문내역 삭제 — Irene 요청. thefire01 지난주(6/8~) 16건 + thefire02/03 전체 삭제(빈 내역). 32건 hard delete + 백업 보관(/var/www/backups/thefire-*-20260615.json)
 
 ### 2026-06-13 저녁 (운영 배포 완료 — 버전 미상승 backstage/security)

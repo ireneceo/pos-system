@@ -209,27 +209,16 @@ export const SearchIcon = styled.span`
 
 export const StatusTabs = styled.div`
   display: flex;
-  gap: 24px;
+  /* 2026-06-15 태블릿: 가로스크롤(overflow-x:auto) 대신 줄바꿈 — 1024 태블릿에서 8개 탭이
+     780px 폭에 안 들어가 가로스크롤+끝탭 잘림(Completed) 발생하던 것 해소. 데스크톱(≥1280)은
+     1줄 유지, 태블릿은 2줄로 전부 노출. 터치 UX(가로 스트립 스크롤 회피). */
+  flex-wrap: wrap;
+  gap: 8px 24px;
   margin-bottom: 32px;
   border-bottom: 1px solid #C7CED6;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
 
-  &::-webkit-scrollbar {
-    height: 3px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: #F1F4F8;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: #64748B;
-    border-radius: 3px;
-  }
-
-  &::-webkit-scrollbar-thumb:hover {
-    background: #64748B;
+  @media (max-width: 1100px) {
+    gap: 8px 16px;
   }
 `;
 

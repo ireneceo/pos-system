@@ -14,6 +14,7 @@
 | 신규매장 자동대상 | 브랜드 신규 매장 → scope='all' 활성 브랜드메뉴 자동 적용(비활성) | ✅ 운영(v3.57) |
 | 검증도구 하드닝 | headless-page-sweep 빈렌더(EMPTY_RENDER) 감지 + BG 경로 stale 13개 교정 | ✅ DEV |
 | (운영 데이터) The Fire 주문 삭제 | Irene 요청 — thefire01(rid16) 지난주(6/8~) 16건 + thefire02(rid24) 14건 전부 + thefire03(rid25) 2건 전부 = 32건 hard delete(+order_actions 216). rid16 이전 128건 유지, 24/25 빈 내역. 백업: `/var/www/backups/thefire-orders-delete-backup-20260615.json`(+children). 운영 검증: 헬스 ok·에러 0 | ✅ 운영 |
+| 태블릿 레이아웃 점검+수정 (버전 미상승 UI 패치) | 실측(데모 r38 active주문 시드, Playwright 1024×768/600/1280×800) — 실제 넘침 1곳뿐: LiveOrders StatusTabs 8탭 1024폭 208px 넘침→가로스크롤+끝탭잘림. 수정 `styles.ts` overflow-x:auto→flex-wrap:wrap(gap 8x24, ≤1100px 8x16) → 태블릿 2줄 전부노출/데스크톱 1줄. KDS/FloorPlan/아이템뷰는 깨끗 확인. 영향=LiveOrders+ReservationsTimeline 2곳. 운영 배포(Backup 20260615_084256)+라이브 측정(넘침 0)+주문루트 16/16 확인 | ✅ 운영 |
 
 ---
 

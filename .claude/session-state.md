@@ -1,9 +1,9 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-06-15 (v3.57 배포 + 운영 주문 검증 + The Fire 주문삭제)
-**버전:** v3.57 (2026-06-15, 브랜드메뉴 적용범위). 직전 v3.56(6/13 삭제PIN게이트), v3.55(6/12 실시간동기화).
-**작업 상태:** v3.57 배포·운영검증·공지 완료. The Fire 주문삭제 완료. 운영 헬스 ok·에러 0.
+**마지막 업데이트:** 2026-06-15 (v3.57 + 태블릿 StatusTabs 패치 배포 + 운영 주문루트 재검증)
+**버전:** v3.57 (태블릿 패치는 버전 미상승 UI 패치로 동반 배포). 직전 v3.56(6/13), v3.55(6/12).
+**작업 상태:** 전부 운영 배포·검증 완료. 운영 헬스 ok·에러 0·주문루트 16/16.
 
 ---
 
@@ -24,6 +24,7 @@ session-state.md 읽고 이어서 개발해.
 - **버전 정정**: 세션 시작 시 v3.55로 오인(stale) → 실제 v3.56(6/13 배포)이라 오늘은 v3.57.
 - **배포 후 운영 주문 프로세스 전수 검증** (Irene 요청) — 운영 데모(rid13)에서 주방/서빙 단계·티켓·void/cancel·PIN게이트·+Round·is_deleted 18/18 통과. 마커기반+설정/PIN 원복+테스트주문 7건 정리.
 - **(운영 데이터) The Fire 주문내역 삭제** (Irene 요청) — thefire01(rid16) 지난주 6/8~ 16건 + thefire02(rid24) 14건 전부 + thefire03(rid25) 2건 전부 = 32건 hard delete(+order_actions 216). rid16 이전 128건 유지·24/25 빈 내역. 백업 `/var/www/backups/thefire-orders-delete-backup-20260615.json`(+children). [[project_thefire_order_deletion_0615]]
+- **태블릿 StatusTabs 패치 운영 배포 + 주문루트 재검증** (Irene 지시) — LiveOrders 상태탭 태블릿 wrap 수정 운영 배포(Backup 20260615_084256, 안전게이트 8/8·101/101). 운영 라이브 측정 1024 넘침 0/2줄, 운영 주문 생명주기(주방/서빙·티켓·void/cancel·PIN·메뉴) 16/16. 버전 미상승 UI 패치(릴리즈노트 생략).
 
 ### 완료된 작업 (이전 세션 2026-06-13 저녁)
 - **The Fire 공지 누락 수정** (운영 데이터) — trial 실고객이 `is_test=true` 오분류로 공지·청구 제외 → User 8 + Restaurant 3 `is_test=false`. 코드 0. "trial/test 분리"는 오진(trial=기존 status). 백업 `/tmp/thefire-istest-backup.json`.
@@ -33,7 +34,7 @@ session-state.md 읽고 이어서 개발해.
 - **태블릿 레이아웃 점검** (코드 변경 0, 점검만) — 9"/10"(1024×600·768·1280×800) Playwright 실로그인 측정. **확인: LiveOrders 상태 탭 줄이 1024 폭에서 208px 넘침 → "Completed" 잘림 + 좌우 흔들림(overflow-x:auto, 사이드바 열림 시 콘텐츠 ~780px). 1280은 정상.** KDS/FloorPlan/아이템뷰는 데모가 오늘자 active 주문 0이라 재현 불가 → 다음 세션 A.
 
 ### 다음 확정 작업 (Irene 지시)
-1. **[A] 태블릿 레이아웃 오버플로우 전수 점검 + 수정** (Irene "A로, 다음 세션") — 데모 r38에 **오늘자 active 주문 여러 건**(pending/preparing/ready, 긴 메뉴명·세트 포함) + 주방 스테이션·존 추가로 과밀 재현 → KDS·FloorPlan·아이템뷰·LiveOrders를 1024×600/768/1280×800에서 점검 → `overflow-x:auto` 가로 스트립(탭·칩·통계줄)이 넘쳐 흔들리는 것 전부 수정. **재현 도구**: Playwright 단일 context 데모 RA 퀵로그인('RESTAURANT ADMIN' 카드 클릭) + 내부 넘침 탐지(el.scrollWidth-el.clientWidth>8 & overflowX!=visible). **주의: r38 과거주문 364건 있으나 live뷰는 오늘자만 → active 주문 생성 필요.** 끝나면 시드 정리.
+1. ~~[A] 태블릿 레이아웃 오버플로우 전수 점검+수정~~ → **✅ 운영 배포 완료 (2026-06-15, v3.57 후속 패치·버전 미상승, Backup 20260615_084256)**. 실측 결과 **실제 넘침 1곳**: LiveOrders `StatusTabs`(8탭 1024폭 208px→가로스크롤+끝탭잘림). 수정 `styles.ts` overflow-x:auto→flex-wrap:wrap(gap 8x24, ≤1100px 8x16) → 태블릿 2줄 전부노출/데스크톱 1줄. 영향=LiveOrders+ReservationsTimeline 2곳(IncomingOrders는 자체 RLStatusTabs라 무관). KDS/FloorPlan/아이템뷰는 깨끗. **운영 라이브 측정 넘침 0 + 주문루트 16/16 + 헬스 ok 확인.**
 2. **[소켓 Phase B] 백엔드 인증 강제** — 매장 기기가 Phase A 새 번들 받은 뒤(며칠 뒤 확인). `io.of().use()` JWT + `userCanAccessRestaurant`로 join 검증. 설계 docs/SOCKET_AUTH_HARDENING.md §3. [[project_socket_auth_hardening]]
 
 ### 후속 후보 (아이디어 메모, 확정 X)
