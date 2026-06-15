@@ -130,10 +130,21 @@ async function issueSoaForPair({
   const recipients = await getBuyerRecipientUserIds(buyerEntityType, buyerEntityId);
   if (recipients.length === 0) return { issued: false, reason: 'no_recipients' };
 
+  // Resolve issued_by (Invoice.issued_by is NOT NULL) — 발행자 entity 의 owner_id.
+  // createTradeInvoice(purchaseOrderService) 와 동일 규칙. 누락 시 monthly SOA 생성이
+  // notNull 위반으로 매월 전부 실패하던 버그 수정 (2026-06-15, 런타임 검증으로 발견).
+  let issuedBy = 1;
+  try {
+    if (issuerType === 'supplier') { const sc = await SupplierCompany.findByPk(issuerId, { attributes: ['owner_id'] }); if (sc?.owner_id) issuedBy = sc.owner_id; }
+    else if (issuerType === 'brand') { const b = await Brand.findByPk(issuerId, { attributes: ['owner_id'] }); if (b?.owner_id) issuedBy = b.owner_id; }
+    else if (issuerType === 'foodcourt') { const fc = await Foodcourt.findByPk(issuerId, { attributes: ['owner_id'] }); if (fc?.owner_id) issuedBy = fc.owner_id; }
+  } catch (_) { /* fallback 1 유지 */ }
+
   const soaInvoice = await sequelize.transaction(async (t) => {
     const newSoa = await Invoice.create({
       invoice_number: soaInvoiceNumber,
       invoice_category: 'soa',
+      issued_by: issuedBy,
       issuer_type: issuerType,
       issuer_id: issuerId,
       payer_type: payer.payer_type,
