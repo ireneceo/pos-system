@@ -1,9 +1,9 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-06-15 (v3.57 + 태블릿 StatusTabs 패치 배포 + 운영 주문루트 재검증)
-**버전:** v3.57 (태블릿 패치는 버전 미상승 UI 패치로 동반 배포). 직전 v3.56(6/13), v3.55(6/12).
-**작업 상태:** 전부 운영 배포·검증 완료. 운영 헬스 ok·에러 0·주문루트 16/16.
+**마지막 업데이트:** 2026-06-15 (BG 월청구 정상화 + 명세서 수동생성 운영 배포)
+**버전:** v3.57 (이후 backstage 배포: 태블릿패치/소켓PhaseB/BG월청구 — 전부 버전 미상승). 직전 v3.56(6/13), v3.55(6/12).
+**작업 상태:** 전부 운영 배포·검증 완료. 운영 헬스 ok·에러 0.
 
 ---
 
@@ -16,6 +16,12 @@ session-state.md 읽고 이어서 개발해.
 
 ### 진행 중인 작업
 - 없음 (소켓 Phase B 모니터 모드 운영 배포 완료 — 아래 "다음 확정 작업"에 강제 전환 단계 대기)
+
+### 완료된 작업 (2026-06-15 후반) — BG 발주→인보이스→월청구 정상화 (운영 배포, v3.57 backstage)
+- **레스토랑→BG 발주→거래인보이스→월 SOA 시스템은 ~95% 기구축 상태였으나 핵심 버그로 월청구가 깨져 있었음.** 런타임 e2e로 발견: `soaScheduler.issueSoaForPair` 의 Invoice.create 가 `issued_by`(NOT NULL) 누락 → 월 SOA 생성이 매번 실패(supplier/brand/foodcourt 전부). 발행자 owner_id 로 resolve해 수정. **운영엔 monthly_soa 매장 0이라 잠복(라이브 피해 없던) 버그.**
+- **월 명세서 수동 생성 추가**: `soaScheduler.generateSoaNow` + `POST /api/{brand|foodcourt}/soa/:rid/generate`(소유권검증·멱등) + BillingTermsModal "지금 명세서 생성" 버튼(monthly_soa 저장 매장에). 매월 1일 자동발행 안 기다리고 즉시.
+- **검증**: dev e2e 14/14(발주→confirm→ship→receive→거래인보이스 자동발행→월SOA errors:0→RA수신) + 수동생성 9/9 + health 101/101 + print-guard 8/8 + build 0. **운영 검증**: 수동생성→SOA(issued_by채워짐)→링크→멱등 + 보안차단, 데모 rid13 원복(오염0, monthly_soa 0 원상). [[project_bg_fg_as_seller]] [[reference_bg_fg_trade_billing]]
+- **참고(미해결 아님)**: PO 진입은 IngredientSellerProduct 매핑 필요하나 카탈로그 발주 UI(`/ingredients/from-catalog`)가 재료+매핑 자동생성 → UI상 "바로 사용" 가능 확인.
 
 ### 완료된 작업 (2026-06-15) — v3.57 브랜드메뉴 적용범위
 - **브랜드메뉴 레스토랑 적용범위(Scope) 전체 구현 + v3.57 운영 배포.** 연결(opt-in) 방식. 백엔드: 마이그(products.brand_scope_active + brand_menus.scope_mode + brand_menu_restaurants, 운영 선적용 additive) + BrandMenuRestaurant 모델 + brandMenuSyncService(resolveScopeTargetIds/applyScopeToBrandMenu(refreshMode=membership|sync)/setBrandMenuScope/syncAllScopedMenusToNewRestaurant, sync 시 brand_scope_active 복원) + brand-menus 라우트(create scope 시드+reconcile / PUT scope-aware / GET·PUT /:id/scope / push 범위제약 OUT_OF_SCOPE / distribution+settings default_scope) + 노출게이트 menu.js+mobile-public.js(brand_scope_active) + 신규매장 훅 restaurants-crud. 프론트: BrandMenusPage ScopePickerModal+카드 Scope버튼/배지+설정탭 default_scope. 노출=brand_scope_active(BG범위) AND is_active(RA활성).

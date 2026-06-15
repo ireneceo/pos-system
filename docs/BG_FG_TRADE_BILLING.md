@@ -281,4 +281,11 @@ SupplierCustomersPage의 edit modal 패턴 그대로.
 
 ---
 
+## 구현 후속 (2026-06-15, 운영 배포 — v3.57 backstage)
+
+런타임 e2e 검증으로 발견·수정:
+- **🐞 월 SOA 생성 항상 실패 버그**: `soaScheduler.issueSoaForPair` 의 `Invoice.create` 가 `issued_by`(NOT NULL) 를 빠뜨려 monthly SOA 발행이 매번 notNull 위반으로 실패(supplier/brand/foodcourt 전부). 코드·빌드·health 다 통과하지만 실행해야만 드러남(운영 monthly_soa 매장 0이라 잠복). → 발행자 entity owner_id 로 resolve(createTradeInvoice 와 동일). **이 수정으로 월청구가 비로소 실제 동작.**
+- **수동 명세서 생성 추가**: 매월 1일 cron 을 안 기다리고 즉시 발행. `soaScheduler.generateSoaNow(issuerType, issuerId, restaurantId)` — 안 묶인(parent_soa_invoice_id=null) 거래인보이스 전부를 한 SOA 로 묶음(멱등). 엔드포인트 `POST /api/brand/soa/:rid/generate` + `POST /api/foodcourt/soa/:rid/generate`(소유권 검증). UI: `BillingTermsModal` 에 monthly_soa 저장 매장 한정 "Generate now" 버튼.
+- 검증: dev e2e 14/14 + 수동생성 9/9, 운영 실측(SOA issued_by 채워짐·링크·멱등·보안차단), 데모 데이터 원복.
+
 **End of design.**

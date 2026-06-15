@@ -1,6 +1,28 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-15 (v3.57 운영 배포 — 브랜드메뉴 레스토랑 적용범위. 상세 아래.)
+> **최종 업데이트:** 2026-06-15 (BG 발주→인보이스→월청구 정상화 + 명세서 수동생성 운영 배포. 상세 아래.)
+
+## ✅ 운영 배포: BG 발주→거래인보이스→월청구(SOA) 정상화 + 명세서 수동생성 (2026-06-15, Backup 20260615_161034, v3.57 backstage)
+
+> Irene 요청 "BG에게 레스토랑 발주→인보이스→월발행 제대로 바로 사용". 시스템은 ~95% 기구축이었으나 **런타임 e2e로 핵심 버그 발견**: 월 SOA 스케줄러가 `issued_by`(NOT NULL) 누락으로 매번 실패 → 월청구가 켜는 순간 깨지는 상태(운영 monthly_soa 매장 0이라 잠복). 코드리뷰·빌드·health 다 통과하던 한 줄 누락 — 실호출로만 잡힘.
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 월 SOA issued_by 버그 수정 | `soaScheduler.issueSoaForPair` Invoice.create 에 issued_by=발행자 owner_id 추가(거래인보이스와 동일 규칙). 월 명세서 자동발행 정상화(supplier/brand/foodcourt 전부) | ✅ 운영 |
+| 월 명세서 수동 생성 | `soaScheduler.generateSoaNow` + `POST /api/{brand|foodcourt}/soa/:rid/generate`(소유권검증·멱등) + BillingTermsModal "지금 명세서 생성" 버튼(monthly_soa 매장에). 매월 1일 자동발행 안 기다리고 즉시 발행 | ✅ 운영 |
+
+### 검증
+- dev 실API: 발주→confirm→ship→receive→**거래인보이스 자동발행**→**월 SOA(errors:0)**→RA 수신 e2e **14/14** + 수동생성 **9/9**(생성·소유권404·SOA정합·링크·멱등·보안401) + health 101/101 + print-guard 8/8 + build 0
+- 운영 검증: 수동생성→SOA(issued_by 채워짐)→링크→멱등 + 보안차단. 데모 rid13 원복(오염0, monthly_soa 0 원상)
+- 진입점: 카탈로그 발주 UI(`/ingredients/from-catalog`)가 재료+매핑 자동생성 → "바로 사용" 가능 확인
+
+### 수정된 파일
+- `dev-backend/services/soaScheduler.js` (issued_by 수정 + generateSoaNow)
+- `dev-backend/routes/brand-soa.js`, `dev-backend/routes/foodcourt-soa.js` (generate 엔드포인트)
+- `dev-frontend/src/components/Billing/BillingTermsModal.tsx` ("지금 명세서 생성" 버튼)
+
+---
+
 
 ## ✅ 운영 배포: v3.57 — 브랜드메뉴 레스토랑 적용범위 (2026-06-15, Backup 20260615_055313)
 
