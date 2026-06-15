@@ -661,7 +661,13 @@
       "Bash(BASE_URL=https://dev.purplehere.com node scripts/tmp-responsive-audit.js)",
       "Bash(mkdir -p /var/www/backups/dev-daily/__CMDSUB_OUTPUT__)",
       "Bash(tar -czf /var/www/backups/dev-daily/__CMDSUB_OUTPUT__/dev-backend.tar.gz --exclude=node_modules -C /var/www dev-backend)",
-      "Bash(tar -czf /var/www/backups/dev-daily/__CMDSUB_OUTPUT__/dev-frontend.tar.gz --exclude=node_modules --exclude=build -C /var/www dev-frontend)"
+      "Bash(tar -czf /var/www/backups/dev-daily/__CMDSUB_OUTPUT__/dev-frontend.tar.gz --exclude=node_modules --exclude=build -C /var/www dev-frontend)",
+      "Bash(awk 'NR>=1169 && NR<=1340 && /t\\\\.commit|await t\\\\.commit|res\\\\.status\\\\\\(201|res\\\\.json|return res/' routes/restaurants-crud.js)",
+      "Bash(awk -F: '$1>1169 && $1<1360')",
+      "Bash(awk -F: '$1>1169 && $1<1320')",
+      "Bash(sed -n '1295,1316p' routes/restaurants-crud.js)",
+      "Bash(awk -F: '$1>1594 && $1<1720')",
+      "Bash(echo \"BUILD EXIT: $?\")"
     ],
     "deny": [],
     "ask": []

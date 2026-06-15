@@ -1208,6 +1208,16 @@ router.post('/', authenticateToken, requireRole(
       catch (e) { console.warn('[restaurant create] admin verification email skip:', e && e.message); }
     }
 
+    // 브랜드 신규 매장 → scope_mode='all' 활성 브랜드메뉴 자동 적용(비활성 상품 생성). §14.7 #6
+    // best-effort: 실패해도 매장 생성에 영향 없음. 'selected' 메뉴는 BG가 직접 범위에 추가해야 함.
+    if (restaurant.brand_id) {
+      try {
+        const { syncAllScopedMenusToNewRestaurant } = require('../services/brandMenuSyncService');
+        const r = await syncAllScopedMenusToNewRestaurant({ restaurantId: restaurant.id, brandId: restaurant.brand_id });
+        if (r.created > 0) console.log(`[restaurant create] auto-applied ${r.created} brand menus (scope=all) to restaurant ${restaurant.id}`);
+      } catch (e) { console.warn('[restaurant create] brand menu scope auto-apply skip:', e && e.message); }
+    }
+
     // NOTE: Do NOT call subscriptionScheduler.startTrial() here.
     // Trial status, trial_end_date and subscription_start are already set correctly
     // above (future service start => trial until the day before start). startTrial()

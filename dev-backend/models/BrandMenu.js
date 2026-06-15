@@ -29,6 +29,8 @@ const BrandMenu = sequelize.define('BrandMenu', {
   sort_order:        { type: DataTypes.INTEGER, defaultValue: 0 },
   version:           { type: DataTypes.INTEGER, defaultValue: 1, comment: 'Bumps on every edit; Restaurants compare to detect pending updates' },
   distribution_mode: { type: DataTypes.ENUM('auto', 'manual'), defaultValue: 'manual' },
+  // 적용범위(Scope): 'all'=산하 전 레스토랑 / 'selected'=brand_menu_restaurants allowlist 만 (2026-06-15, §14)
+  scope_mode:        { type: DataTypes.ENUM('all', 'selected'), allowNull: false, defaultValue: 'all' },
   lock_name:         { type: DataTypes.BOOLEAN, defaultValue: false },
   lock_price:        { type: DataTypes.BOOLEAN, defaultValue: false },
   lock_category:     { type: DataTypes.BOOLEAN, defaultValue: false },

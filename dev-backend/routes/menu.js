@@ -121,7 +121,9 @@ router.get('/', checkRestaurantAccess, async (req, res) => {
     });
 
     // Build product query
-    const productWhere = { restaurant_id: restaurantId };
+    // brand_scope_active: BG가 적용범위에서 뺀 상품(retracted)은 숨김 — POS/관리 목록에서 제외.
+    // 보존(soft)이므로 DB엔 남아있고 재추가 시 복원. 일반 단품/독립상품은 기본값 true 라 영향 없음. §14
+    const productWhere = { restaurant_id: restaurantId, brand_scope_active: true };
     if (categoryId) {
       productWhere.category = categoryId;
     }

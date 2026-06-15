@@ -46,6 +46,7 @@ const BrandMenuCategory = require('./BrandMenuCategory');
 const BrandMenuOptionGroup = require('./BrandMenuOptionGroup');
 const BrandMenuOption = require('./BrandMenuOption');
 const BrandMenuOptionGroupLink = require('./BrandMenuOptionGroupLink');
+const BrandMenuRestaurant = require('./BrandMenuRestaurant');
 const Supplier = require('./Supplier');
 const SupplierCategory = require('./SupplierCategory');
 const SupplierBrand = require('./SupplierBrand');
@@ -910,6 +911,17 @@ BrandMenuOptionGroup.belongsToMany(BrandMenu, {
 BrandMenu.hasMany(Product, { foreignKey: 'brand_menu_id', as: 'linkedProducts' });
 Product.belongsTo(BrandMenu, { foreignKey: 'brand_menu_id', as: 'brandMenu' });
 
+// BrandMenu scope allowlist (scope_mode='selected') — 2026-06-15 §14
+BrandMenu.belongsToMany(Restaurant, {
+  through: BrandMenuRestaurant, foreignKey: 'brand_menu_id', otherKey: 'restaurant_id', as: 'scopeRestaurants'
+});
+Restaurant.belongsToMany(BrandMenu, {
+  through: BrandMenuRestaurant, foreignKey: 'restaurant_id', otherKey: 'brand_menu_id', as: 'scopedBrandMenus'
+});
+BrandMenu.hasMany(BrandMenuRestaurant, { foreignKey: 'brand_menu_id', as: 'scopeRows' });
+BrandMenuRestaurant.belongsTo(BrandMenu, { foreignKey: 'brand_menu_id', as: 'brandMenu' });
+BrandMenuRestaurant.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
+
 // Restaurant.OptionGroup → BrandMenuOptionGroup (mirror sync)
 BrandMenuOptionGroup.hasMany(OptionGroup, { foreignKey: 'brand_menu_option_group_id', as: 'mirrors' });
 OptionGroup.belongsTo(BrandMenuOptionGroup, { foreignKey: 'brand_menu_option_group_id', as: 'sourceGroup' });
@@ -963,6 +975,7 @@ module.exports = {
   BrandMenuOptionGroup,
   BrandMenuOption,
   BrandMenuOptionGroupLink,
+  BrandMenuRestaurant,
   Supplier,
   SupplierCategory,
   SupplierBrand,

@@ -22,11 +22,12 @@ const { requireBGScope } = require('../middleware/brandScope');
 const { normalizeImageField, copyImageToOwnedFile } = require('../utils/imageProcessor');
 const {
   Brand, Restaurant, ProductRecipe, BrandMenu, BrandMenuCategory,
-  BrandMenuOptionGroup, BrandMenuOption, BrandMenuOptionGroupLink, Product
+  BrandMenuOptionGroup, BrandMenuOption, BrandMenuOptionGroupLink, BrandMenuRestaurant, Product
 } = require('../models');
 const {
   syncBrandMenuToRestaurant, pushBrandMenuToRestaurants,
-  markPendingForBrandMenu, softUnlinkProductsFromBrandMenu
+  markPendingForBrandMenu, softUnlinkProductsFromBrandMenu,
+  resolveScopeTargetIds, applyScopeToBrandMenu, setBrandMenuScope
 } = require('../services/brandMenuSyncService');
 
 // Ownership guard — BG가 이 brand 를 소유하는지 (System Admin 은 통과)
@@ -44,7 +45,8 @@ async function assertBrandOwnership(req, brandId) {
 const DEFAULT_MENU_SETTINGS = {
   default_distribution_mode: 'manual',
   default_locks: { name: false, price: false, category: false, image: false, options: false },
-  default_push_target: 'all'
+  default_push_target: 'all',
+  default_scope: 'all'  // 새 메뉴의 기본 적용범위 (브랜드별 철학: 균일='all' / 직영실험형='selected') §14
 };
 
 function mergeMenuSettings(stored) {
@@ -58,7 +60,8 @@ function mergeMenuSettings(stored) {
       image: !!(s.default_locks?.image),
       options: !!(s.default_locks?.options)
     },
-    default_push_target: s.default_push_target === 'selected' ? 'selected' : 'all'
+    default_push_target: s.default_push_target === 'selected' ? 'selected' : 'all',
+    default_scope: s.default_scope === 'selected' ? 'selected' : 'all'
   };
 }
 
@@ -236,6 +239,10 @@ router.post('/', authenticateToken, requireBGScope, async (req, res) => {
     const resolvedDistribution = distribution_mode === 'auto' || distribution_mode === 'manual'
       ? distribution_mode
       : defaults.default_distribution_mode;
+    // 적용범위(Scope): 명시값 우선, 없으면 브랜드 기본(default_scope) §14
+    const resolvedScope = req.body.scope_mode === 'all' || req.body.scope_mode === 'selected'
+      ? req.body.scope_mode
+      : defaults.default_scope;
     const resolvedLock = (explicit, key) =>
       explicit === true || explicit === false ? explicit : defaults.default_locks[key];
 
@@ -265,6 +272,7 @@ router.post('/', authenticateToken, requireBGScope, async (req, res) => {
       is_active: is_active !== false, after_meal: after_meal === true, set_only: set_only === true, sort_order: sort_order || 0,
       version: 1,
       distribution_mode: resolvedDistribution,
+      scope_mode: resolvedScope,
       lock_name: resolvedLock(lock_name, 'name'),
       lock_price: resolvedLock(lock_price, 'price'),
       lock_category: resolvedLock(lock_category, 'category'),
@@ -292,15 +300,23 @@ router.post('/', authenticateToken, requireBGScope, async (req, res) => {
 
     await t.commit();
 
-    // Auto-push if configured (outside transaction — best-effort per restaurant)
-    let pushResult = null;
-    if (menu.distribution_mode === 'auto') {
-      const rests = await Restaurant.findAll({ where: { brand_id }, attributes: ['id'] });
-      const rids = rests.map(r => r.id);
-      pushResult = await pushBrandMenuToRestaurants({ brandMenuId: menu.id, restaurantIds: rids });
+    // 적용범위 reconcile (트랜잭션 밖 — 매장별 best-effort). §14
+    // scope 가 곧 "이 메뉴가 적용되는 매장" → 그 매장에 Product 생성(비활성, RA 가 활성화).
+    // 'all' → 산하 전 매장 / 'selected' → allowlist. distribution_mode=auto 면 콘텐츠 즉시 sync.
+    // (구 auto-push-all 로직을 선언적 scope reconcile 로 대체)
+    let scopeResult = null;
+    try {
+      scopeResult = await setBrandMenuScope({
+        brandMenuId: menu.id,
+        scopeMode: resolvedScope,
+        restaurantIds: Array.isArray(req.body.scope_restaurant_ids) ? req.body.scope_restaurant_ids : [],
+        refreshMode: menu.distribution_mode === 'auto' ? 'sync' : 'membership'
+      });
+    } catch (e) {
+      console.error('[brand-menus] create scope reconcile error:', e.message);
     }
 
-    res.status(201).json({ success: true, data: { menu, push: pushResult } });
+    res.status(201).json({ success: true, data: { menu, push: scopeResult, scope: scopeResult } });
   } catch (e) {
     await t.rollback();
     console.error('[brand-menus] create error:', e);
@@ -358,20 +374,39 @@ router.put('/:id', authenticateToken, requireBGScope, async (req, res) => {
       }
     }
 
-    // Mark pending or auto-sync
-    if (menu.distribution_mode === 'auto') {
-      // Re-sync all linked products
-      const linked = await Product.findAll({ where: { brand_menu_id: menu.id }, attributes: ['restaurant_id'], transaction: t });
-      const rids = [...new Set(linked.map(p => p.restaurant_id))];
-      // Execute outside transaction for per-restaurant resilience
-      await t.commit();
-      const result = await pushBrandMenuToRestaurants({ brandMenuId: menu.id, restaurantIds: rids });
-      return res.json({ success: true, data: { menu, push: result } });
-    } else {
-      await markPendingForBrandMenu(menu.id, t);
-      await t.commit();
-      return res.json({ success: true, data: { menu } });
+    // 필드 변경 커밋 → scope/콘텐츠 reconcile 는 트랜잭션 밖(매장별 best-effort). §14
+    const distributionMode = update.distribution_mode || menu.distribution_mode;
+    const scopeProvided = body.scope_mode !== undefined || body.scope_restaurant_ids !== undefined;
+    const effectiveScopeMode = (body.scope_mode === 'all' || body.scope_mode === 'selected')
+      ? body.scope_mode : menu.scope_mode;
+    await t.commit();
+
+    const refreshMode = distributionMode === 'auto' ? 'sync' : 'membership';
+    let scopeResult = null;
+    try {
+      if (scopeProvided) {
+        // 명시된 scope (모드/allowlist) 저장 + reconcile. allowlist 미제공 시 기존 유지.
+        let scopeIds;
+        if (body.scope_restaurant_ids !== undefined) {
+          scopeIds = Array.isArray(body.scope_restaurant_ids) ? body.scope_restaurant_ids : [];
+        } else {
+          const rows = await BrandMenuRestaurant.findAll({ where: { brand_menu_id: menu.id }, attributes: ['restaurant_id'] });
+          scopeIds = rows.map(r => r.restaurant_id);
+        }
+        scopeResult = await setBrandMenuScope({ brandMenuId: menu.id, scopeMode: effectiveScopeMode, restaurantIds: scopeIds, refreshMode });
+      } else {
+        // scope 변경 없음 → 현재 범위 기준 콘텐츠 전파만 (auto=refresh, manual=membership+pending)
+        scopeResult = await applyScopeToBrandMenu({ brandMenuId: menu.id, refreshMode });
+      }
+      // manual 분배: 범위 내 기존 노출 상품을 pending 으로 표시 (콘텐츠 변경 알림 — RA 가 pull)
+      if (distributionMode !== 'auto') {
+        await markPendingForBrandMenu(menu.id);
+      }
+    } catch (e) {
+      console.error('[brand-menus] update scope reconcile error:', e.message);
     }
+
+    return res.json({ success: true, data: { menu, push: scopeResult, scope: scopeResult } });
   } catch (e) {
     try { await t.rollback(); } catch (_) {}
     console.error('[brand-menus] update error:', e);
@@ -498,19 +533,22 @@ router.post('/:id/push', authenticateToken, requireBGScope, async (req, res) => 
       return res.status(403).json({ success: false, message: 'Brand not owned' });
     }
 
+    // push 대상은 적용범위(scope) 안으로 제한 — 범위 밖 매장엔 푸시 불가(범위에 먼저 추가). §14
+    const scopeTargets = await resolveScopeTargetIds(menu);
+    const scopeSet = new Set(scopeTargets);
+
     let restaurantIds;
     if (req.body.restaurant_ids === 'all') {
-      const rests = await Restaurant.findAll({ where: { brand_id: menu.brand_id }, attributes: ['id'] });
-      restaurantIds = rests.map(r => r.id);
+      restaurantIds = scopeTargets;  // "all" = 범위 내 전체
     } else if (Array.isArray(req.body.restaurant_ids)) {
-      // Validate all belong to this brand
-      const rests = await Restaurant.findAll({
-        where: { id: req.body.restaurant_ids, brand_id: menu.brand_id }, attributes: ['id']
-      });
-      if (rests.length !== req.body.restaurant_ids.length) {
-        return res.status(400).json({ success: false, message: 'Some restaurants do not belong to this brand' });
+      const outOfScope = req.body.restaurant_ids.filter(id => !scopeSet.has(Number(id)) && !scopeSet.has(id));
+      if (outOfScope.length > 0) {
+        return res.status(400).json({
+          success: false, message: 'Some restaurants are outside this menu\'s scope. Add them to the scope first.',
+          code: 'OUT_OF_SCOPE', out_of_scope: outOfScope
+        });
       }
-      restaurantIds = rests.map(r => r.id);
+      restaurantIds = req.body.restaurant_ids.map(Number);
     } else {
       return res.status(400).json({ success: false, message: 'restaurant_ids array or "all" required' });
     }
@@ -538,25 +576,67 @@ router.get('/:id/distribution', authenticateToken, requireBGScope, async (req, r
     });
     const products = await Product.findAll({
       where: { brand_menu_id: menu.id },
-      attributes: ['id', 'restaurant_id', 'brand_menu_synced_version', 'brand_menu_link_status', 'brand_menu_synced_at']
+      attributes: ['id', 'restaurant_id', 'brand_menu_synced_version', 'brand_menu_link_status', 'brand_menu_synced_at', 'brand_scope_active', 'is_active']
     });
     const productMap = new Map(products.map(p => [p.restaurant_id, p]));
+    // 적용범위(scope) — 어떤 매장이 범위 안인지 §14
+    const scopeTargets = new Set(await resolveScopeTargetIds(menu));
 
     const data = rests.map(r => {
       const p = productMap.get(r.id);
+      const inScope = scopeTargets.has(r.id);
       return {
         restaurant_id: r.id, restaurant_name: r.name, branch_name: r.branch_name, slug: r.slug,
         local_product_id: p?.id || null,
         synced_version: p?.brand_menu_synced_version || null,
         link_status: p?.brand_menu_link_status || 'never_synced',
-        synced_at: p?.brand_menu_synced_at || null
+        synced_at: p?.brand_menu_synced_at || null,
+        in_scope: inScope,
+        scope_active: p ? p.brand_scope_active !== false : false,  // retracted 여부
+        ra_active: p ? p.is_active !== false : null  // RA 활성화 여부 (노출 = scope_active AND ra_active)
       };
     });
 
-    res.json({ success: true, data });
+    res.json({ success: true, data, scope_mode: menu.scope_mode });
   } catch (e) {
     console.error('[brand-menus] distribution error:', e);
     res.status(500).json({ success: false, message: 'Failed to fetch distribution' });
+  }
+});
+
+// GET /api/brand-menus/:id/scope — 현재 적용범위 (mode + allowlist) §14
+router.get('/:id/scope', authenticateToken, requireBGScope, async (req, res) => {
+  try {
+    const menu = await BrandMenu.findByPk(parseInt(req.params.id, 10), { attributes: ['id', 'brand_id', 'scope_mode'] });
+    if (!menu) return res.status(404).json({ success: false, message: 'Brand menu not found' });
+    if (!(await assertBrandOwnership(req, menu.brand_id))) {
+      return res.status(403).json({ success: false, message: 'Brand not owned' });
+    }
+    const rows = await BrandMenuRestaurant.findAll({ where: { brand_menu_id: menu.id }, attributes: ['restaurant_id'] });
+    res.json({ success: true, data: { scope_mode: menu.scope_mode, restaurant_ids: rows.map(r => r.restaurant_id) } });
+  } catch (e) {
+    console.error('[brand-menus] scope GET error:', e);
+    res.status(500).json({ success: false, message: 'Failed to fetch scope' });
+  }
+});
+
+// PUT /api/brand-menus/:id/scope  body: { scope_mode: 'all'|'selected', restaurant_ids: [..] }
+// 적용범위 설정 + 선언적 reconcile(범위 추가=생성/복원, 제거=숨김+보존). §14
+router.put('/:id/scope', authenticateToken, requireBGScope, async (req, res) => {
+  try {
+    const menu = await BrandMenu.findByPk(parseInt(req.params.id, 10), { attributes: ['id', 'brand_id', 'distribution_mode'] });
+    if (!menu) return res.status(404).json({ success: false, message: 'Brand menu not found' });
+    if (!(await assertBrandOwnership(req, menu.brand_id))) {
+      return res.status(403).json({ success: false, message: 'Brand not owned' });
+    }
+    const scopeMode = req.body.scope_mode === 'selected' ? 'selected' : 'all';
+    const restaurantIds = Array.isArray(req.body.restaurant_ids) ? req.body.restaurant_ids : [];
+    const refreshMode = menu.distribution_mode === 'auto' ? 'sync' : 'membership';
+    const result = await setBrandMenuScope({ brandMenuId: menu.id, scopeMode, restaurantIds, refreshMode });
+    res.json({ success: true, data: result });
+  } catch (e) {
+    console.error('[brand-menus] scope PUT error:', e);
+    res.status(500).json({ success: false, message: 'Failed to set scope' });
   }
 });
 

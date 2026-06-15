@@ -160,7 +160,10 @@ async function syncBrandMenuToRestaurant({ brandMenuId, restaurantId, transactio
       brand_menu_synced_version: brandMenu.version,
       brand_menu_synced_at: new Date(),
       brand_menu_locks_snapshot: locks,
-      brand_menu_link_status: 'in_sync'
+      brand_menu_link_status: 'in_sync',
+      // 범위에 (다시) 들어온 매장은 가시성 복원 — retract 됐던 상품도 살아남(숨김+보존)
+      // RA 로컬 편집/주문이력 보존된 채 다시 노출. (2026-06-15 §14)
+      brand_scope_active: true
     };
     if (locks.name || !product.name) updates.name = brandMenu.name;
     if (locks.price) updates.price = brandMenu.recommended_price;
@@ -267,6 +270,148 @@ async function pushBrandMenuToRestaurants({ brandMenuId, restaurantIds }) {
 }
 
 /**
+ * Resolve the set of restaurant ids that a brand menu currently applies to.
+ *   scope_mode='all'      → every restaurant under the brand.
+ *   scope_mode='selected' → the brand_menu_restaurants allowlist, intersected with
+ *                           the brand's restaurants (guards against stale rows).
+ * Returns a de-duplicated array of restaurant ids. (2026-06-15 §14)
+ */
+async function resolveScopeTargetIds(brandMenu, transaction) {
+  const { BrandMenuRestaurant } = require('../models');
+  const brandRests = await Restaurant.findAll({
+    where: { brand_id: brandMenu.brand_id }, attributes: ['id'], transaction
+  });
+  const brandRidSet = new Set(brandRests.map(r => r.id));
+  if (brandMenu.scope_mode !== 'selected') {
+    return [...brandRidSet];
+  }
+  const rows = await BrandMenuRestaurant.findAll({
+    where: { brand_menu_id: brandMenu.id }, attributes: ['restaurant_id'], transaction
+  });
+  // allowlist ∩ brand restaurants (drop any restaurant that left the brand)
+  return [...new Set(rows.map(r => r.restaurant_id).filter(id => brandRidSet.has(id)))];
+}
+
+/**
+ * Declarative scope reconciler — make the restaurant world match a brand menu's scope.
+ * Scope is a MEMBERSHIP concern, kept orthogonal to content propagation:
+ *
+ *   per in-scope restaurant:
+ *     - no product yet            → create (fresh content, inactive). [both modes]
+ *     - product exists, retracted → restore (brand_scope_active=true) + content sync,
+ *                                   because it was hidden and needs current content. [both]
+ *     - product exists, visible   → refreshMode='sync'      → content sync (refresh)
+ *                                   refreshMode='membership' → left untouched (caller
+ *                                     decides edit propagation: auto-sync vs mark-pending)
+ *   out-of-scope linked products  → retract (brand_scope_active=false): hidden but PRESERVED
+ *                                   (RA edits + order history survive; re-adding restores).
+ *
+ * Each restaurant syncs in its own transaction for per-store resilience. Retract is one bulk update.
+ * Returns { targets, created, restored, refreshed, retracted, failed:[{restaurant_id,error}] }.
+ */
+async function applyScopeToBrandMenu({ brandMenuId, refreshMode = 'membership' }) {
+  const brandMenu = await BrandMenu.findByPk(brandMenuId);
+  if (!brandMenu) throw new Error(`BrandMenu ${brandMenuId} not found`);
+
+  const targetIds = await resolveScopeTargetIds(brandMenu);
+  const result = { targets: targetIds.length, created: 0, restored: 0, refreshed: 0, retracted: 0, failed: [] };
+
+  for (const rid of targetIds) {
+    const t = await Product.sequelize.transaction();
+    try {
+      const before = await Product.findOne({
+        where: { restaurant_id: rid, brand_menu_id: brandMenuId },
+        attributes: ['id', 'brand_scope_active'], transaction: t
+      });
+      const isRetracted = before && before.brand_scope_active === false;
+      const needsContent = !before || isRetracted || refreshMode === 'sync';
+      if (needsContent) {
+        const { created } = await syncBrandMenuToRestaurant({ brandMenuId, restaurantId: rid, transaction: t });
+        if (created) result.created++;
+        else if (isRetracted) result.restored++;
+        else result.refreshed++;
+      }
+      // visible product + membership mode → leave content to caller (no-op here)
+      await t.commit();
+    } catch (e) {
+      await t.rollback();
+      result.failed.push({ restaurant_id: rid, error: e.message, code: e.code });
+    }
+  }
+
+  // Retract every linked product NOT in the target set (preserve, don't delete)
+  const retractWhere = { brand_menu_id: brandMenuId, brand_scope_active: true };
+  if (targetIds.length > 0) retractWhere.restaurant_id = { [Op.notIn]: targetIds };
+  const [retracted] = await Product.update({ brand_scope_active: false }, { where: retractWhere });
+  result.retracted = retracted;
+
+  return result;
+}
+
+/**
+ * Persist a brand menu's scope_mode + allowlist, then reconcile. Validates that
+ * allowlist restaurants belong to the brand. Returns the reconcile result.
+ *   refreshMode: 'sync' (auto distribution) | 'membership' (manual — caller marks pending).
+ */
+async function setBrandMenuScope({ brandMenuId, scopeMode, restaurantIds, refreshMode = 'membership' }) {
+  const { BrandMenuRestaurant } = require('../models');
+  const brandMenu = await BrandMenu.findByPk(brandMenuId);
+  if (!brandMenu) throw new Error(`BrandMenu ${brandMenuId} not found`);
+
+  const mode = scopeMode === 'selected' ? 'selected' : 'all';
+  const t = await BrandMenu.sequelize.transaction();
+  try {
+    await brandMenu.update({ scope_mode: mode }, { transaction: t });
+    if (mode === 'selected') {
+      // validate ids belong to the brand
+      const valid = await Restaurant.findAll({
+        where: { id: Array.isArray(restaurantIds) ? restaurantIds : [], brand_id: brandMenu.brand_id },
+        attributes: ['id'], transaction: t
+      });
+      const validIds = valid.map(r => r.id);
+      // replace allowlist
+      await BrandMenuRestaurant.destroy({ where: { brand_menu_id: brandMenuId }, transaction: t });
+      for (const rid of validIds) {
+        await BrandMenuRestaurant.create({ brand_menu_id: brandMenuId, restaurant_id: rid }, { transaction: t });
+      }
+    } else {
+      // 'all' — allowlist is irrelevant; clear it to avoid stale rows
+      await BrandMenuRestaurant.destroy({ where: { brand_menu_id: brandMenuId }, transaction: t });
+    }
+    await t.commit();
+  } catch (e) {
+    await t.rollback();
+    throw e;
+  }
+
+  return applyScopeToBrandMenu({ brandMenuId, refreshMode });
+}
+
+/**
+ * When a new restaurant joins a brand, auto-target it with every active brand menu
+ * whose scope_mode='all' (scenario §14.7 #6). Best-effort, per-menu transaction.
+ * 'selected'-scoped menus are NOT auto-added (BG must opt the new store in).
+ */
+async function syncAllScopedMenusToNewRestaurant({ restaurantId, brandId }) {
+  const menus = await BrandMenu.findAll({
+    where: { brand_id: brandId, scope_mode: 'all', is_active: true }, attributes: ['id']
+  });
+  const result = { menus: menus.length, created: 0, failed: [] };
+  for (const m of menus) {
+    const t = await Product.sequelize.transaction();
+    try {
+      await syncBrandMenuToRestaurant({ brandMenuId: m.id, restaurantId, transaction: t });
+      await t.commit();
+      result.created++;
+    } catch (e) {
+      await t.rollback();
+      result.failed.push({ brand_menu_id: m.id, error: e.message });
+    }
+  }
+  return result;
+}
+
+/**
  * Mark Restaurant.Product rows of a brand menu as pending_update (does not actually sync).
  * Used when BG edits a menu or option group with distribution_mode='manual'.
  */
@@ -352,6 +497,10 @@ module.exports = {
   buildLocksSnapshot,
   syncBrandMenuToRestaurant,
   pushBrandMenuToRestaurants,
+  resolveScopeTargetIds,
+  applyScopeToBrandMenu,
+  setBrandMenuScope,
+  syncAllScopedMenusToNewRestaurant,
   markPendingForBrandMenu,
   bumpMenusUsingOptionGroup,
   softUnlinkProductsFromBrandMenu,

@@ -12,7 +12,7 @@ import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
-import { Lock, Building2, Edit2, Copy, Trash2, Send, ChevronDown, ChevronUp, UtensilsCrossed, Clock, Info, ArrowRight } from 'lucide-react';
+import { Lock, Building2, Edit2, Copy, Trash2, Send, ChevronDown, ChevronUp, UtensilsCrossed, Clock, Info, ArrowRight, Target } from 'lucide-react';
 import PageHeader from '../../components/Common/PageHeader';
 import { Modal as CommonModal, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormTextArea } from '../../components/UI';
 import SearchableSelect from '../../components/Common/SearchableSelect';
@@ -36,6 +36,7 @@ interface MenuSettings {
   default_distribution_mode: 'auto' | 'manual';
   default_locks: { name: boolean; price: boolean; category: boolean; image: boolean; options: boolean };
   default_push_target: 'all' | 'selected';
+  default_scope: 'all' | 'selected';
 }
 
 const SettingsCard = styled.div`
@@ -478,6 +479,7 @@ interface BrandMenu {
   image_url: string | null; emoji: string | null;
   recommended_price: number; currency: string;
   version: number; distribution_mode: 'auto' | 'manual';
+  scope_mode?: 'all' | 'selected';
   locks: { name: boolean; price: boolean; category: boolean; image: boolean; options: boolean; set_items?: boolean };
   is_set_menu?: boolean;
   set_items?: Array<{ brand_menu_id: number; name: string; quantity: number }> | null;
@@ -526,6 +528,7 @@ const BrandMenusPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [pushConfirm, setPushConfirm] = useState<{ menuId: number; menuName: string } | null>(null);
   const [pushPicker, setPushPicker] = useState<{ menuId: number; menuName: string } | null>(null);
+  const [scopePicker, setScopePicker] = useState<{ menuId: number; menuName: string } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ menuId: number; menuName: string } | null>(null);
   const [pushResult, setPushResult] = useState<{ menuId: number; pushed: number; created: number; updated: number } | null>(null);
   const [copyTarget, setCopyTarget] = useState<{ menuId: number; menuName: string } | null>(null);
@@ -891,6 +894,11 @@ const BrandMenusPage: React.FC = () => {
                   <IconBtn type="button" onClick={() => setEditingMenu(m)} title={t('common:button.edit')}>
                     <Edit2 /> {t('common:button.edit')}
                   </IconBtn>
+                  <IconBtn type="button" onClick={() => setScopePicker({ menuId: m.id, menuName: m.name })} title={t('brand:brandMenusPage.scopeTitle', 'Which restaurants this menu applies to')}>
+                    <Target /> {m.scope_mode === 'selected'
+                      ? t('brand:brandMenusPage.scopeSelected', 'Scope: Selected')
+                      : t('brand:brandMenusPage.scopeAll', 'Scope: All')}
+                  </IconBtn>
                   <IconBtn type="button" onClick={() => handlePushClick(m)} title={t('brand:brandMenusPage.pushToAllNow', 'Push to All Now')}>
                     <Send /> {t('brand:brandMenusPage.push', 'Push')}
                   </IconBtn>
@@ -936,6 +944,15 @@ const BrandMenusPage: React.FC = () => {
               setPushPicker(null);
               await performPush(id, ids);
             }}
+          />
+        )}
+
+        {scopePicker && (
+          <ScopePickerModal
+            menuId={scopePicker.menuId}
+            menuName={scopePicker.menuName}
+            onClose={() => setScopePicker(null)}
+            onSaved={() => { setScopePicker(null); loadMenus(); }}
           />
         )}
 
@@ -1680,6 +1697,33 @@ const MenuSettingsTab: React.FC<{ brandId: number | null; brandName: string }> =
           </div>
         </RadioRow>
       </SettingsCard>
+
+      <SettingsCard>
+        <SettingsSectionTitle>{t('brand:brandMenusPage.settingsScopeTitle', 'Default scope for new menus')}</SettingsSectionTitle>
+        <SettingsSectionHint>
+          {t('brand:brandMenusPage.settingsScopeHint', 'Scope = which restaurants a menu applies to. A new menu starts with this setting; you can change it per menu via the Scope button.')}
+        </SettingsSectionHint>
+        <RadioRow>
+          <AutoSaveField onSave={persist} type="toggle">
+            <input type="radio" name="defscope" checked={settings.default_scope === 'all'}
+              onChange={() => setSettings({ ...settings, default_scope: 'all' })} />
+          </AutoSaveField>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 500 }}>{t('brand:brandMenusPage.scopeDefaultAll', 'Apply to all restaurants')}</div>
+            <div style={{ fontSize: 12, color: '#4B5563' }}>{t('brand:brandMenusPage.scopeDefaultAllHint', 'New menus apply to every restaurant under this brand (and ones added later). Best for uniform, single-concept brands.')}</div>
+          </div>
+        </RadioRow>
+        <RadioRow>
+          <AutoSaveField onSave={persist} type="toggle">
+            <input type="radio" name="defscope" checked={settings.default_scope === 'selected'}
+              onChange={() => setSettings({ ...settings, default_scope: 'selected' })} />
+          </AutoSaveField>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 500 }}>{t('brand:brandMenusPage.scopeDefaultSelected', 'Start with no restaurants')}</div>
+            <div style={{ fontSize: 12, color: '#4B5563' }}>{t('brand:brandMenusPage.scopeDefaultSelectedHint', 'New menus apply nowhere until you pick restaurants in the Scope dialog. Best for brands that trial items at a flagship store first.')}</div>
+          </div>
+        </RadioRow>
+      </SettingsCard>
     </div>
   );
 };
@@ -1693,6 +1737,9 @@ interface DistributionRow {
   branch_name: string | null;
   link_status: 'in_sync' | 'pending_update' | 'unlinked' | 'never_synced';
   synced_version: number | null;
+  in_scope?: boolean;       // §14 적용범위 안인지
+  scope_active?: boolean;   // retracted 여부 (false=숨김+보존)
+  ra_active?: boolean | null;  // RA 활성화 여부
 }
 
 const PickerRow = styled.label`
@@ -1822,6 +1869,127 @@ const PushPickerModal: React.FC<{
             </PickerRow>
           ))}
         </>
+      )}
+    </CommonModal>
+  );
+};
+
+// 적용범위(Scope) 설정 모달 — 이 메뉴가 "어느 매장에 적용되는지"(BG 결정). §14
+// 활성화(RA is_active)와 별개: 범위에 넣으면 그 매장에 상품 생성(비활성), 빼면 숨김+보존.
+const ScopePickerModal: React.FC<{
+  menuId: number;
+  menuName: string;
+  onClose: () => void;
+  onSaved: () => void;
+}> = ({ menuId, menuName, onClose, onSaved }) => {
+  const { t } = useTranslation(['brand', 'common']);
+  const [rows, setRows] = useState<DistributionRow[]>([]);
+  const [mode, setMode] = useState<'all' | 'selected'>('all');
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const [sr, dr] = await Promise.all([
+          fetch(`/api/brand-menus/${menuId}/scope`, { headers: authHeaders() }),
+          fetch(`/api/brand-menus/${menuId}/distribution`, { headers: authHeaders() })
+        ]);
+        const sj = await sr.json(); const dj = await dr.json();
+        if (!sr.ok || !sj.success) throw new Error(sj.message || 'Load failed');
+        setMode(sj.data?.scope_mode === 'selected' ? 'selected' : 'all');
+        setSelected(new Set<number>(sj.data?.restaurant_ids || []));
+        if (dr.ok && dj.success) setRows(dj.data || []);
+      } catch (e: any) {
+        setErr(e?.message || 'Load failed');
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [menuId]);
+
+  const toggle = (rid: number) => {
+    const next = new Set(selected);
+    if (next.has(rid)) next.delete(rid); else next.add(rid);
+    setSelected(next);
+  };
+
+  const save = async () => {
+    setSaving(true); setErr(null);
+    try {
+      const r = await fetch(`/api/brand-menus/${menuId}/scope`, {
+        method: 'PUT', headers: authHeaders(),
+        body: JSON.stringify({ scope_mode: mode, restaurant_ids: mode === 'selected' ? Array.from(selected) : [] })
+      });
+      const j = await r.json();
+      if (!r.ok || !j.success) throw new Error(j.message || 'Save failed');
+      onSaved();
+    } catch (e: any) {
+      setErr(e?.message || 'Save failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <CommonModal
+      isOpen={true}
+      onClose={onClose}
+      title={t('brand:brandMenusPage.scopeModalTitle', { name: menuName, defaultValue: `Where does "${menuName}" apply?` })}
+      footer={
+        <>
+          <ThemedButton variant="cancel" onClick={onClose}>{t('common:button.cancel', 'Cancel')}</ThemedButton>
+          <ThemedButton variant="primary" onClick={save} disabled={saving || (mode === 'selected' && selected.size === 0)}>
+            {saving ? t('common:label.saving', 'Saving...') : t('common:button.save', 'Save')}
+          </ThemedButton>
+        </>
+      }
+    >
+      {err && <div style={{ padding: 12, background: '#FEE2E2', color: '#DC2626', borderRadius: 8, marginBottom: 12, fontSize: 13 }}>{err}</div>}
+      <div style={{ background: '#F8F7FF', border: '1px solid #E6E3FF', borderRadius: 8, padding: '10px 12px', marginBottom: 16, fontSize: 12, color: '#374151', lineHeight: 1.5 }}>
+        {t('brand:brandMenusPage.scopeIntro', 'Scope decides WHICH restaurants carry this menu. Each restaurant then turns it on/off itself (activation). Removing a restaurant from scope hides the menu there but keeps its data — re-add to restore.')}
+      </div>
+
+      <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '10px 0', cursor: 'pointer', fontSize: 14, color: '#0A2540' }}>
+        <input type="radio" name="scopeMode" checked={mode === 'all'} onChange={() => setMode('all')} style={{ marginTop: 3, accentColor: '#635BFF' }} />
+        <span>
+          <strong>{t('brand:brandMenusPage.scopeAllLabel', 'All restaurants')}</strong>
+          <div style={{ fontSize: 12, color: '#4B5563', marginTop: 2 }}>{t('brand:brandMenusPage.scopeAllHint', 'Every restaurant under this brand — including ones added later — carries this menu.')}</div>
+        </span>
+      </label>
+      <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '10px 0', cursor: 'pointer', fontSize: 14, color: '#0A2540' }}>
+        <input type="radio" name="scopeMode" checked={mode === 'selected'} onChange={() => setMode('selected')} style={{ marginTop: 3, accentColor: '#635BFF' }} />
+        <span>
+          <strong>{t('brand:brandMenusPage.scopeSelectedLabel', 'Selected restaurants only')}</strong>
+          <div style={{ fontSize: 12, color: '#4B5563', marginTop: 2 }}>{t('brand:brandMenusPage.scopeSelectedHint', 'Only the restaurants you tick. Good for trialling a new item at a flagship store first.')}</div>
+        </span>
+      </label>
+
+      {mode === 'selected' && (
+        <div style={{ marginTop: 12, borderTop: '1px solid #E6EBF1', paddingTop: 12 }}>
+          {loading ? (
+            <div style={{ padding: 24, textAlign: 'center', color: '#4B5563' }}>{t('common:label.loading', 'Loading...')}</div>
+          ) : rows.length === 0 ? (
+            <div style={{ padding: 24, textAlign: 'center', color: '#4B5563' }}>
+              {t('brand:brandMenusPage.pushPickerEmpty', 'No franchise restaurants under this brand yet. Add restaurants in All Brands or Franchise tab first.')}
+            </div>
+          ) : (
+            rows.map(r => (
+              <PickerRow key={r.restaurant_id}>
+                <input type="checkbox" checked={selected.has(r.restaurant_id)} onChange={() => toggle(r.restaurant_id)} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 500, color: '#0A2540' }}>{r.restaurant_name}</div>
+                  {r.branch_name && <div style={{ fontSize: 12, color: '#4B5563' }}>{r.branch_name}</div>}
+                </div>
+                {r.in_scope && r.scope_active === false && (
+                  <StatusBadge $color="#92400E" $bg="#FEF3C7">{t('brand:brandMenusPage.scopeRetracted', 'Hidden — preserved')}</StatusBadge>
+                )}
+              </PickerRow>
+            ))
+          )}
+        </div>
       )}
     </CommonModal>
   );

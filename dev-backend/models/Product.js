@@ -178,6 +178,14 @@ Product.init({
     allowNull: true,
     comment: 'Current sync state with the linked BrandMenu. NULL = never synced.'
   },
+  // BG 적용범위(Scope) 가시성 — false = BG가 이 매장 범위에서 제외(숨김+보존). RA is_active 와 별개.
+  // 노출 = brand_scope_active(BG) AND is_active(RA). (2026-06-15, §14)
+  brand_scope_active: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true,
+    comment: 'BG scope visibility — false=retracted by brand (hidden+preserved). Independent of RA is_active.'
+  },
   takeaway_charge: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: true,
