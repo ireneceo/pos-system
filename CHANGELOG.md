@@ -6,14 +6,28 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+### 2026-06-15 (운영 데이터 작업 — 코드 변경 아님, 버전 미상승)
+- (운영 데이터) The Fire 주문내역 삭제 — Irene 요청. thefire01 지난주(6/8~) 16건 + thefire02/03 전체 삭제(빈 내역). 32건 hard delete + 백업 보관(/var/www/backups/thefire-*-20260615.json)
+
 ### 2026-06-13 저녁 (운영 배포 완료 — 버전 미상승 backstage/security)
 - 소켓 인증 하드닝 Phase A — 라이브 주문 소켓에 로그인 토큰 전송 시작(동작 무변경, 매장 간 데이터 격리의 1단계). Phase B(서버 강제)는 매장이 새 버전 받은 뒤. (docs/SOCKET_AUTH_HARDENING.md)
 - (운영 데이터) The Fire 공지 누락 수정 — trial 실고객이 '테스트 계정'으로 잘못 분류돼 공지·청구에서 빠지던 것 정정 → 공지 정상 수신
 - (인프라) Cloudflare sw.js 캐시 퍼지 — 매장이 5/30 옛 버전에 묶여 있던 것 해소, 최신 버전 전달 복구
 
 ### 기획설계 (구현 대기)
-- 브랜드메뉴 레스토랑 적용범위 — 연결(opt-in) 방식. scope_mode + Product.brand_scope_active(숨김+보존). (docs/BRAND_MENU_SYSTEM.md §14)
 - 소켓 인증 Phase B — 백엔드 인증 강제(`io.of().use()` JWT + userCanAccessRestaurant). 매장이 Phase A 받은 뒤. (docs/SOCKET_AUTH_HARDENING.md)
+
+---
+
+## [v3.57] — 2026-06-15 배포 (브랜드메뉴 레스토랑 적용범위 · Backup 20260615_055313, smoke 9/9)
+
+> 운영 DB 마이그(선적용): products.brand_scope_active + brand_menus.scope_mode + brand_menu_restaurants 테이블 (additive, 하위호환 — 기존 상품 758/758 노출 유지). 안전게이트 print-guard 8/8 + health 101/101 + 주문 생명주기 21/21 + scope 19/19 통과.
+
+### 본사(브랜드) 사장
+- 브랜드메뉴 적용 매장 선택(Scope) — 메뉴마다 "전체 매장" 또는 "지정 매장만" 적용을 선택. 직영점에 신메뉴를 먼저 시도하고 다른 가맹점엔 안 보이게 할 수 있음. 메뉴 카드의 Scope 버튼.
+- 범위에서 매장 빼기 = 숨김+보존 — 매장에서 메뉴가 사라지되 데이터(가격 편집·주문 이력)는 보존, 다시 넣으면 복원
+- 적용 범위(본사 결정)와 활성화(매장 ON/OFF)를 분리 — 노출 = 범위 안 + 매장 활성화 둘 다일 때만
+- 브랜드 설정 → 새 메뉴 기본 범위(전체/지정) 선택 (브랜드 운영 방식에 맞게)
 
 ---
 

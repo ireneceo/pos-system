@@ -1,6 +1,21 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-13 저녁 (The Fire 공지누락 데이터수정 + v3.56 릴리즈 공지/블로그 발송 + 소켓 인증 Phase A 운영배포 + Cloudflare 캐시 퍼지. 상세 아래.)
+> **최종 업데이트:** 2026-06-15 (v3.57 운영 배포 — 브랜드메뉴 레스토랑 적용범위. 상세 아래.)
+
+## ✅ 운영 배포: v3.57 — 브랜드메뉴 레스토랑 적용범위 (2026-06-15, Backup 20260615_055313)
+
+> Irene 지시로 docs/BRAND_MENU_SYSTEM.md §14 전체 구현 → 검증 → 배포. 연결(opt-in) 방식.
+> **운영 DB 마이그(선적용·additive)**: products.brand_scope_active + brand_menus.scope_mode + brand_menu_restaurants (`scripts/migrations/add_brand_menu_scope.sql`). 하위호환: 기존 상품 758/758 노출 유지.
+> **검증**: 실API scope 19/19 + 주문 생명주기(주방/서빙) 21/21 + order-totals 11/11 + health 101/101 + print-guard 8/8 + build 0 + mount 21/21 + 실브라우저 클릭-스루 PASS. 운영 스모크 9/9.
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 브랜드메뉴 적용범위(Scope) | scope_mode(all/selected) + brand_menu_restaurants allowlist + Product.brand_scope_active(범위제거=숨김+보존). 적용범위(BG)와 활성화(RA is_active) 분리, 노출=교집합. BG ScopePickerModal + 카드 Scope 버튼 + 설정 default_scope | ✅ 운영(v3.57) |
+| 신규매장 자동대상 | 브랜드 신규 매장 → scope='all' 활성 브랜드메뉴 자동 적용(비활성) | ✅ 운영(v3.57) |
+| 검증도구 하드닝 | headless-page-sweep 빈렌더(EMPTY_RENDER) 감지 + BG 경로 stale 13개 교정 | ✅ DEV |
+| (운영 데이터) The Fire 주문 삭제 | Irene 요청 — thefire01(rid16) 지난주(6/8~) 16건 + thefire02(rid24) 14건 전부 + thefire03(rid25) 2건 전부 = 32건 hard delete(+order_actions 216). rid16 이전 128건 유지, 24/25 빈 내역. 백업: `/var/www/backups/thefire-orders-delete-backup-20260615.json`(+children). 운영 검증: 헬스 ok·에러 0 | ✅ 운영 |
+
+---
 
 ## ✅ 완료: 공지 수신 복구 + v3.56 릴리즈 발송 + 소켓 인증 하드닝 Phase A (2026-06-13 저녁)
 

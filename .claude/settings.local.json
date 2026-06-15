@@ -667,7 +667,11 @@
       "Bash(awk -F: '$1>1169 && $1<1320')",
       "Bash(sed -n '1295,1316p' routes/restaurants-crud.js)",
       "Bash(awk -F: '$1>1594 && $1<1720')",
-      "Bash(echo \"BUILD EXIT: $?\")"
+      "Bash(echo \"BUILD EXIT: $?\")",
+      "Bash(xargs -I{} sh -c 'grep -oE \"Hidden[^\\\\\"]{0,20}\" {} | head -2')",
+      "Bash(scp -q irene@87.106.78.146:/tmp/thefire-orders-delete-backup-20260615.json /var/www/backups/)",
+      "Bash(scp -q irene@87.106.78.146:/tmp/thefire-children-backup-20260615.json /var/www/backups/)",
+      "Bash(awk '{print $9, $5\"bytes\"}')"
     ],
     "deny": [],
     "ask": []

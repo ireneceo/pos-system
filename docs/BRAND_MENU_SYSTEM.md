@@ -305,7 +305,13 @@ RA → DELETE product (brand_menu_id 있어도 허용) — 프론트가 "Unlink 
 
 ---
 
-## 14. 레스토랑 적용 범위 (Scope) — 설계 (2026-06-13, 미구현)
+## 14. 레스토랑 적용 범위 (Scope) — ✅ 구현 완료 (2026-06-15, DEV 미배포)
+
+> **구현 요약(2026-06-15)**: 마이그 `scripts/migrations/add_brand_menu_scope.sql`(products.brand_scope_active + brand_menus.scope_mode + brand_menu_restaurants 테이블, 멱등) · 모델 `BrandMenuRestaurant` + BrandMenu.scope_mode + Product.brand_scope_active + index.js association · 서비스 `brandMenuSyncService`(resolveScopeTargetIds / applyScopeToBrandMenu(refreshMode) / setBrandMenuScope / syncAllScopedMenusToNewRestaurant, sync 시 brand_scope_active 복원) · 라우트 `brand-menus.js`(create scope 시드+reconcile, PUT scope-aware, GET·PUT /:id/scope, push 범위제약 OUT_OF_SCOPE, distribution+settings default_scope) · 노출게이트 menu.js(POS/관리) + mobile-public.js 4곳(`brand_scope_active:true`) · 신규매장 훅 restaurants-crud.js · 프론트 BrandMenusPage(ScopePickerModal + 카드 Scope 버튼/배지 + 설정탭 default_scope).
+> **검증**: 실API 21/21(§14.7 전 시나리오 + 모바일게이트 + distribution/scope + 보안 cross-brand 403/anonymous 401) · build 0 TS err · health 101/101 · print-guard 8/8 무접촉 · state-hydration 0 · 타임존 신규 0 · i18n 0 err · 게이트 부작용 0(128상품 전부 노출) · **실브라우저 클릭-스루 PASS**(Scope 버튼→모달→All/Selected→매장 체크박스 5→Save→PUT /scope 200→영속 확인, `/pos/brand-menus`) · BG mount 21/21. 배포 시 `add_brand_menu_scope.sql` 선적용 필수.
+> **검증 도구 수정(2026-06-15)**: headless-page-sweep 가 빈 렌더(React #root 자식 0 = 잘못된 라우트/무음 mount 실패)를 EMPTY_RENDER 로 잡도록 하드닝(기존엔 빈 바디를 "OK" 오판). BG_ROUTES 의 stale 경로 13개를 실제 App.tsx 라우트로 교정(brand-menus = `/pos/brand-menus`). 이전 "BG 23/23 OK"는 다수가 빈 렌더 false positive 였음.
+
+### 14.0 (원 설계 — 2026-06-13)
 
 > Irene 요청: BG 브랜드메뉴가 레스토랑마다 적용/미적용될 수 있어야 함. 예) 레스토랑1=본사 직영점 → 신메뉴 먼저 시도, 다른 가맹점엔 그 메뉴 없음. "제외 기능 vs 연결 기능" 중 판단 요청.
 

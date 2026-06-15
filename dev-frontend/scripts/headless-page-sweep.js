@@ -66,30 +66,30 @@ const RA_ROUTES = [
   `/restaurant/${RA_RID}/history`,
 ];
 
+// 2026-06-15: 실제 App.tsx 라우트로 교정 + 빈-렌더 감지 추가. 기존 목록의 다수 경로가
+// router 에 없어(예: /pos/brand/general/restaurants) 빈 렌더를 "OK"로 오판하던 false positive 제거.
 const BG_ROUTES = [
   '/pos/brand/general/dashboard',
-  '/pos/brand/general/restaurants',
-  '/pos/brand/general/staff',
-  '/pos/brand/general/managers',
-  '/pos/brand/general/franchise',
-  '/pos/brand/general/brand-products',
-  '/pos/brand/general/recipe-management',
-  '/pos/brand/general/brand-menus',
-  '/pos/brand/general/brand-menu-categories',
-  '/pos/brand/general/brand-menu-option-groups',
-  '/pos/brand/general/invoices',
-  '/pos/brand/general/trade-invoices',
-  '/pos/brand/general/purchase-orders',
-  '/pos/brand/general/suppliers',
-  '/pos/brand/general/plans',
+  '/pos/admin/restaurants',
+  '/pos/admin/staff',
+  '/pos/admin/managers',
+  '/pos/brand/franchise',
+  '/pos/brand-products',
+  '/pos/brand-product-recipes',
+  '/pos/brand-menus',                 // 브랜드메뉴 (적용범위 Scope 포함)
+  '/pos/brand-menus?tab=categories',  // Categories 탭
+  '/pos/brand-menus?tab=options',     // Option groups 탭
+  '/pos/brand/invoices',
+  '/pos/brand/trade-invoices',
+  '/pos/brand/plans',
   '/pos/brand/general/subscriptions',
   '/pos/brand/general/reports',
   '/pos/brand/general/notices',
   '/pos/brand/general/work-manuals',
   '/pos/brand/general/system-inquiry',
   '/pos/brand/general/operation-inquiry',
-  '/pos/brand/general/profile',
-  '/pos/brand/general/notification-settings',
+  '/pos/profile',
+  '/pos/admin/notification-settings',
 ];
 
 // Strings that indicate the ErrorBoundary fallback rendered.
@@ -127,8 +127,13 @@ async function visitRoute(context, route, label) {
     // Settle async data loads
     await page.waitForTimeout(2500);
     const bodyText = await page.evaluate(() => document.body?.innerText?.slice(0, 5000) || '');
+    // 2026-06-15: 빈 렌더 감지 — React 가 #root 에 아무것도 안 그리면(잘못된 라우트/무음 mount 실패)
+    // 예전엔 bodyText 가 비어 ERROR_BOUNDARY 마커도 없어서 "OK" 로 오판했다(false positive).
+    const rootKids = await page.evaluate(() => document.getElementById('root')?.children?.length || 0);
     fallbackDetected = ERROR_BOUNDARY_MARKERS.some(m => bodyText.includes(m));
-    status = fallbackDetected ? 'ERROR_BOUNDARY' : 'OK';
+    if (fallbackDetected) status = 'ERROR_BOUNDARY';
+    else if (rootKids === 0 || bodyText.trim().length === 0) status = 'EMPTY_RENDER';
+    else status = 'OK';
   } catch (e) {
     status = 'TIMEOUT/NAV_FAIL: ' + e.message.slice(0, 80);
   }
