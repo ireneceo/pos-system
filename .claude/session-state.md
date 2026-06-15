@@ -15,7 +15,7 @@ session-state.md 읽고 이어서 개발해.
 ---
 
 ### 진행 중인 작업
-- 없음
+- 없음 (소켓 Phase B 모니터 모드 운영 배포 완료 — 아래 "다음 확정 작업"에 강제 전환 단계 대기)
 
 ### 완료된 작업 (2026-06-15) — v3.57 브랜드메뉴 적용범위
 - **브랜드메뉴 레스토랑 적용범위(Scope) 전체 구현 + v3.57 운영 배포.** 연결(opt-in) 방식. 백엔드: 마이그(products.brand_scope_active + brand_menus.scope_mode + brand_menu_restaurants, 운영 선적용 additive) + BrandMenuRestaurant 모델 + brandMenuSyncService(resolveScopeTargetIds/applyScopeToBrandMenu(refreshMode=membership|sync)/setBrandMenuScope/syncAllScopedMenusToNewRestaurant, sync 시 brand_scope_active 복원) + brand-menus 라우트(create scope 시드+reconcile / PUT scope-aware / GET·PUT /:id/scope / push 범위제약 OUT_OF_SCOPE / distribution+settings default_scope) + 노출게이트 menu.js+mobile-public.js(brand_scope_active) + 신규매장 훅 restaurants-crud. 프론트: BrandMenusPage ScopePickerModal+카드 Scope버튼/배지+설정탭 default_scope. 노출=brand_scope_active(BG범위) AND is_active(RA활성).
@@ -35,7 +35,7 @@ session-state.md 읽고 이어서 개발해.
 
 ### 다음 확정 작업 (Irene 지시)
 1. ~~[A] 태블릿 레이아웃 오버플로우 전수 점검+수정~~ → **✅ 운영 배포 완료 (2026-06-15, v3.57 후속 패치·버전 미상승, Backup 20260615_084256)**. 실측 결과 **실제 넘침 1곳**: LiveOrders `StatusTabs`(8탭 1024폭 208px→가로스크롤+끝탭잘림). 수정 `styles.ts` overflow-x:auto→flex-wrap:wrap(gap 8x24, ≤1100px 8x16) → 태블릿 2줄 전부노출/데스크톱 1줄. 영향=LiveOrders+ReservationsTimeline 2곳(IncomingOrders는 자체 RLStatusTabs라 무관). KDS/FloorPlan/아이템뷰는 깨끗. **운영 라이브 측정 넘침 0 + 주문루트 16/16 + 헬스 ok 확인.**
-2. **[소켓 Phase B] 백엔드 인증 강제** — 매장 기기가 Phase A 새 번들 받은 뒤(며칠 뒤 확인). `io.of().use()` JWT + `userCanAccessRestaurant`로 join 검증. 설계 docs/SOCKET_AUTH_HARDENING.md §3. [[project_socket_auth_hardening]]
+2. **[소켓 Phase B 강제 전환] — 모니터 모드 운영 배포 완료(2026-06-15, Backup 20260615_133815). 남은 1스텝 = ENFORCE 켜기.** 구현(socketService.js 4네임스페이스 makeSocketAuth + join 신원검증) 배포됨, 현재 모니터(동작 무변경, 토큰 채택률 로깅). **전환 방법**: 운영 로그 `[socket-auth][monitor] no-token 핸드셰이크` 가 실매장 트래픽에서 거의 0인지 며칠 관찰 → 0이면 운영 `SOCKET_AUTH_ENFORCE=true` env + `pm2 restart production-backend --update-env` → **구멍 차단**(코드 재배포 불필요). 관찰 중 특정 매장이 계속 no-token이면 그 기기 강력새로고침(옛 번들). 검증: 모니터 2/2+강제 5/5. [[project_socket_auth_hardening]]
 
 ### 후속 후보 (아이디어 메모, 확정 X)
 > 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.

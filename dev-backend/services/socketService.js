@@ -1,6 +1,79 @@
 const socketIO = require('socket.io');
 const { createAdapter } = require('@socket.io/redis-adapter');
 const { createClient } = require('redis');
+const jwt = require('jsonwebtoken');
+const { userCanAccessRestaurant } = require('../middleware/auth');
+
+// ────────────────────────────────────────────────────────────────────────────
+// Socket Auth Hardening — Phase B (docs/SOCKET_AUTH_HARDENING.md §3)
+// 라이브 주문 소켓(/orders·/checkout-display·/kitchen·/display)에 JWT 인증 + room 검증.
+//
+// 무중단 롤아웃: SOCKET_AUTH_ENFORCE 로 강제 시점을 제어.
+//   - false(기본=모니터): 토큰 없어도 끊지 않음. 토큰 채택률만 로깅(매장이 Phase A
+//     번들을 받았는지 실측). 인증 신원이 있으면 join 도 검증하되, 모니터 모드에선
+//     거부 대신 로깅만 → **동작 무변경(회귀 0)**.
+//   - true(강제): 토큰 없음/위조 → 연결 거부. join-restaurant/seller/buyer 를 인증
+//     신원으로 검증, 불일치 시 join 거부. ← 실제 구멍이 막히는 단계.
+// 매장 기기가 Phase A 토큰을 충분히 보내는 게 로그로 확인되면 env 만 켜고 재시작.
+// ────────────────────────────────────────────────────────────────────────────
+const SOCKET_AUTH_ENFORCE = process.env.SOCKET_AUTH_ENFORCE === 'true';
+
+// 모니터 모드 토큰 채택률 로깅 — namespace 별 30초 throttle (로그 폭주 방지).
+const _authMonitor = {};
+function logTokenMonitor(ns, reason) {
+  const key = ns + ':' + reason;
+  const now = Date.now();
+  _authMonitor[key] = _authMonitor[key] || { count: 0, last: 0 };
+  _authMonitor[key].count++;
+  if (now - _authMonitor[key].last > 30000) {
+    console.warn(`[socket-auth][monitor] ${ns} ${reason} 핸드셰이크 ${_authMonitor[key].count}건 (강제 시 거부됨 — 매장 Phase A 미도달 신호)`);
+    _authMonitor[key].last = now;
+    _authMonitor[key].count = 0;
+  }
+}
+
+// 소켓 핸드셰이크 JWT 검증 미들웨어. 토큰 유효 → socket.data.user 부착.
+// 모니터 모드: 토큰 없음/위조여도 next()(허용). 강제 모드: 거부.
+function makeSocketAuth(nsName) {
+  return (socket, next) => {
+    const token = (socket.handshake.auth && socket.handshake.auth.token) ||
+                  socket.handshake.headers?.authorization?.replace(/^Bearer\s+/, '');
+    if (token) {
+      try {
+        const d = jwt.verify(token, process.env.JWT_SECRET);
+        socket.data.user = {
+          id: d.userId || d.id, role: d.role, restaurant_id: d.restaurant_id,
+          brand_id: d.brand_id, foodcourt_id: d.foodcourt_id
+        };
+        return next();
+      } catch (err) {
+        if (SOCKET_AUTH_ENFORCE) return next(new Error('auth: invalid token'));
+        logTokenMonitor(nsName, 'invalid-token');
+        return next();
+      }
+    }
+    if (SOCKET_AUTH_ENFORCE) return next(new Error('auth: token missing'));
+    logTokenMonitor(nsName, 'no-token');
+    return next();
+  };
+}
+
+// join-restaurant room 검증 — 인증 신원 기준. 허용 여부 boolean 반환.
+// 강제 모드: 권한 없으면 false(=join 거부). 모니터 모드: 로깅만 하고 true(=동작 무변경).
+async function canJoinRestaurant(socket, restaurantId, nsName) {
+  const user = socket.data.user;
+  if (!user) {
+    // 토큰 없는 클라(모니터 모드에서만 도달) — 기존 동작 유지(허용).
+    return !SOCKET_AUTH_ENFORCE;
+  }
+  let ok = false;
+  try { ok = await userCanAccessRestaurant(user, restaurantId); } catch { ok = false; }
+  if (!ok && !SOCKET_AUTH_ENFORCE) {
+    logTokenMonitor(nsName, `cross-restaurant-join(user ${user.id}→r${restaurantId})`);
+    return true; // 모니터: 거부 안 함
+  }
+  return ok;
+}
 
 function initSocketServer(server) {
   // Configure Socket.IO with CORS
@@ -54,8 +127,10 @@ function initSocketServer(server) {
   });
 
   // Orders namespace for Live Orders page (Restaurant LiveOrders + Sprint 5 Live Sales Orders)
+  io.of('/orders').use(makeSocketAuth('/orders'));
   io.of('/orders').on('connection', (socket) => {
-    socket.on('join-restaurant', (restaurantId) => {
+    socket.on('join-restaurant', async (restaurantId) => {
+      if (!(await canJoinRestaurant(socket, restaurantId, '/orders'))) return; // 강제 모드: 권한 없으면 join 거부
       socket.join(`restaurant_${restaurantId}`);
     });
 
@@ -65,15 +140,39 @@ function initSocketServer(server) {
       const sellerType = String(payload.seller_type || '').toLowerCase();
       const sellerId = payload.seller_id != null ? parseInt(payload.seller_id, 10) : 0;
       if (!['supplier', 'brand', 'foodcourt', 'system_admin'].includes(sellerType)) return;
+      // 강제 모드: 인증 신원과 seller 신원 일치 검증 (System Admin=전체 허용)
+      if (SOCKET_AUTH_ENFORCE) {
+        const u = socket.data.user;
+        if (!u) return;
+        if (u.role !== 'System Admin') {
+          const idMatch =
+            (sellerType === 'brand' && parseInt(u.brand_id) === sellerId) ||
+            (sellerType === 'foodcourt' && parseInt(u.foodcourt_id) === sellerId) ||
+            (sellerType === 'supplier'); // supplier 신원은 토큰에 없음 — 추후 강화(현재 supplier 룸은 민감도 낮음)
+          if (!idMatch) return;
+        }
+      }
       socket.join(`seller_${sellerType}_${sellerId || 0}`);
     });
 
     // Sprint 5: Buyer side updates (PO status mirror)
-    socket.on('join-buyer', (payload) => {
+    socket.on('join-buyer', async (payload) => {
       if (!payload || typeof payload !== 'object') return;
       const buyerType = String(payload.buyer_type || '').toLowerCase();
       const buyerId = payload.buyer_id != null ? parseInt(payload.buyer_id, 10) : 0;
       if (!['restaurant', 'brand', 'foodcourt'].includes(buyerType)) return;
+      // 강제 모드: buyer 신원 검증 (restaurant 는 접근권한, brand/foodcourt 는 소유 id 일치)
+      if (SOCKET_AUTH_ENFORCE) {
+        const u = socket.data.user;
+        if (!u) return;
+        if (u.role !== 'System Admin') {
+          let ok = false;
+          if (buyerType === 'restaurant') { try { ok = await userCanAccessRestaurant(u, buyerId); } catch { ok = false; } }
+          else if (buyerType === 'brand') ok = parseInt(u.brand_id) === buyerId;
+          else if (buyerType === 'foodcourt') ok = parseInt(u.foodcourt_id) === buyerId;
+          if (!ok) return;
+        }
+      }
       socket.join(`buyer_${buyerType}_${buyerId}`);
     });
 
@@ -83,6 +182,7 @@ function initSocketServer(server) {
   });
 
   // Kitchen namespace
+  io.of('/kitchen').use(makeSocketAuth('/kitchen'));
   io.of('/kitchen').on('connection', (socket) => {
     socket.on('new-order', (order) => {
       io.of('/kitchen').emit('new-order', order);
@@ -94,6 +194,7 @@ function initSocketServer(server) {
   });
 
   // Display namespace
+  io.of('/display').use(makeSocketAuth('/display'));
   io.of('/display').on('connection', (socket) => {
     socket.on('order-completed', (pickupNumber) => {
       io.of('/display').emit('pickup-completed', pickupNumber);
@@ -145,8 +246,10 @@ function initSocketServer(server) {
   // 테이블 클릭하면 됨.
   const cartCache = new Map(); // restaurantId(string) → { cart, customer, ts }
 
+  io.of('/checkout-display').use(makeSocketAuth('/checkout-display'));
   io.of('/checkout-display').on('connection', (socket) => {
-    socket.on('join-restaurant', (restaurantId) => {
+    socket.on('join-restaurant', async (restaurantId) => {
+      if (!(await canJoinRestaurant(socket, restaurantId, '/checkout-display'))) return; // 강제 모드: 권한 없으면 거부
       const rid = String(restaurantId);
       socket.join(`restaurant_${rid}`);
       const cached = cartCache.get(rid);
