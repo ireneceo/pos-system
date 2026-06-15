@@ -86,6 +86,36 @@ const ResetLink = styled.button`
   &:disabled { opacity: 0.5; cursor: not-allowed; }
 `;
 
+const GenerateSection = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 16px;
+  padding: 14px 16px;
+  background: #F8F7FF;
+  border: 1px solid #E6E3FF;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #0A2540;
+`;
+
+const GenerateHint = styled.div`
+  font-size: 12px;
+  color: #4B5563;
+  margin-top: 2px;
+`;
+
+const GenResultBox = styled.div<{ $ok?: boolean }>`
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  background: ${p => p.$ok ? '#ECFDF5' : '#FEF2F2'};
+  border: 1px solid ${p => p.$ok ? '#A7F3D0' : '#FCA5A5'};
+  color: ${p => p.$ok ? '#059669' : '#DC2626'};
+`;
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -108,13 +138,41 @@ const BillingTermsModal: React.FC<Props> = ({
   const [form, setForm] = useState<PaymentTermsFormState>(DEFAULT_TERMS);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [genResult, setGenResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
   useEffect(() => {
     if (open) {
       setForm(termsFromBackend(currentTerms));
       setError(null);
+      setGenResult(null);
     }
   }, [open, currentTerms]);
+
+  // 온디맨드 월명세서 생성 — 매월 1일 자동 발행을 기다리지 않고 지금 발행.
+  // 미청구(안 묶인) 거래내역을 한 장의 명세서(SOA)로 묶음. (2026-06-15)
+  const generateNow = async () => {
+    if (!restaurantId || generating) return;
+    setGenerating(true); setGenResult(null);
+    try {
+      const res = await fetch(`/api/${entityType}/soa/${restaurantId}/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getAuthToken()}` }
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setGenResult({ ok: true, msg: t('billing:generate.success', 'Statement generated and sent to the restaurant.') as string });
+      } else if (data.code === 'no_invoices') {
+        setGenResult({ ok: false, msg: t('billing:generate.noInvoices', 'Nothing to statement — no unbilled orders for this restaurant.') as string });
+      } else {
+        setGenResult({ ok: false, msg: data?.message || (t('billing:generate.failed', 'Could not generate statement.') as string) });
+      }
+    } catch (err) {
+      setGenResult({ ok: false, msg: t('billing:generate.failed', 'Could not generate statement.') as string });
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   const endpoint = `/api/${entityType}/restaurants/${restaurantId}/billing-terms`;
 
@@ -304,6 +362,23 @@ const BillingTermsModal: React.FC<Props> = ({
         </UIFormGroup>
         {error && <ErrorBox>{error}</ErrorBox>}
       </form>
+
+      {/* 온디맨드 월명세서 — 이미 월청구(SOA)로 저장된 매장에만 노출. 매월 1일 자동발행을
+          기다리지 않고 지금 미청구 거래를 한 장의 명세서로 묶어 발행. (2026-06-15) */}
+      {currentTerms?.invoice_cycle === 'monthly_soa' && (
+        <GenerateSection>
+          <div>
+            <strong>{t('billing:generate.title', 'Monthly statement')}</strong>
+            <GenerateHint>{t('billing:generate.hint', 'Statements auto-issue on the 1st of each month. Generate one now for any unbilled orders.')}</GenerateHint>
+          </div>
+          <ModalButton type="button" onClick={generateNow} disabled={generating}>
+            {generating ? t('common:saving', 'Saving...') : t('billing:generate.action', 'Generate now')}
+          </ModalButton>
+        </GenerateSection>
+      )}
+      {genResult && (
+        <GenResultBox $ok={genResult.ok}>{genResult.msg}</GenResultBox>
+      )}
     </CommonModal>
   );
 };

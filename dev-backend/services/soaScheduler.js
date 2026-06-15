@@ -198,7 +198,7 @@ async function issueSoaForPair({
   });
 
   await sendNotificationBatch(recipients, 'monthly_soa', mail);
-  return { issued: true, totalDue, currency, invoiceCount: invoices.length };
+  return { issued: true, soaId: soaInvoice.id, totalDue, currency, invoiceCount: invoices.length };
 }
 
 /**
@@ -389,6 +389,59 @@ async function processMonthlySoa(referenceDate = new Date()) {
 }
 
 /**
+ * On-demand SOA generation — BG/FG operator triggers a statement NOW instead of
+ * waiting for the 1st-of-month cron. Bundles ALL currently-unbundled trade invoices
+ * for one issuer↔restaurant pair (any month), into a single SOA. Idempotent
+ * (issueSoaForPair only picks parent_soa_invoice_id=null rows). (2026-06-15)
+ *
+ * @param {('brand'|'foodcourt')} issuerType
+ * @param {number} issuerId  — brand_id | foodcourt_id
+ * @param {number} restaurantId
+ * @returns {Promise<{issued:boolean, soaId?:number, reason?:string}>}
+ */
+async function generateSoaNow({ issuerType, issuerId, restaurantId }) {
+  if (!['brand', 'foodcourt'].includes(issuerType)) return { issued: false, reason: 'bad_issuer_type' };
+  const restaurant = await Restaurant.findByPk(restaurantId, {
+    attributes: ['id', 'name', 'brand_id', 'foodcourt_id', 'brand_billing_terms', 'foodcourt_billing_terms']
+  });
+  if (!restaurant) return { issued: false, reason: 'restaurant_not_found' };
+
+  const terms = issuerType === 'brand' ? restaurant.brand_billing_terms : restaurant.foodcourt_billing_terms;
+  const ownerField = issuerType === 'brand' ? restaurant.brand_id : restaurant.foodcourt_id;
+  if (parseInt(ownerField, 10) !== parseInt(issuerId, 10)) return { issued: false, reason: 'not_owned' };
+
+  const Model = issuerType === 'brand' ? Brand : Foodcourt;
+  const seller = await Model.findByPk(issuerId, { attributes: ['id', 'name'] });
+  if (!seller) return { issued: false, reason: 'seller_not_found' };
+
+  const now = new Date();
+  const dueDay = parseInt(terms?.payment_due_day, 10) || 15;
+  // dueDate = 이번달 dueDay (이미 지났으면 다음달) — 수동 발행이라 미래 마감일 보장
+  let dueRef = new Date(now.getFullYear(), now.getMonth(), 1);
+  if (now.getDate() > dueDay) dueRef = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  // 안 묶인 거래인보이스 전부 포함 (월 무관) — 넓은 범위
+  const rangeStart = new Date(2000, 0, 1);
+  const rangeEnd = now;
+  const stamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+  const prefix = issuerType === 'brand' ? 'BRD' : 'FC';
+  const soaInvoiceNumber = `SOA-${prefix}${issuerId}-R${restaurantId}-M${stamp}`;
+
+  const result = await issueSoaForPair({
+    issuerType, issuerId,
+    payer: { payer_type: 'restaurant', payer_id: restaurantId },
+    buyerEntityType: 'restaurant', buyerEntityId: restaurantId,
+    sellerName: seller.name || (issuerType === 'brand' ? 'Brand' : 'Foodcourt'),
+    sellerCurrency: terms?.currency,
+    dueDay,
+    referenceDate: dueRef,
+    lastMonthStart: rangeStart,
+    lastMonthEnd: rangeEnd,
+    soaInvoiceNumber
+  });
+  return { issued: !!result.issued, soaId: result.soaId, reason: result.reason };
+}
+
+/**
  * Register the cron schedule. Runs at 00:30 on the 1st of each month.
  */
 function startSoaCron() {
@@ -401,6 +454,7 @@ function startSoaCron() {
 
 module.exports = {
   processMonthlySoa,
+  generateSoaNow,
   startSoaCron,
   computePayerForBuyer
 };

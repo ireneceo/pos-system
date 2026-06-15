@@ -225,6 +225,47 @@ router.post(
 );
 
 // ──────────────────────────────────────────────────────────────────────────────
+// POST /api/brand/soa/:restaurantId/generate
+// On-demand monthly statement — bundle this restaurant's currently-unbundled brand
+// trade invoices into a SOA NOW (instead of waiting for the 1st-of-month cron).
+// Idempotent: only unbundled invoices are picked. (2026-06-15)
+// ──────────────────────────────────────────────────────────────────────────────
+router.post(
+  '/brand/soa/:restaurantId/generate',
+  authenticateToken,
+  requireBrandScope(),
+  async (req, res) => {
+    try {
+      const restaurantId = parseInt(req.params.restaurantId, 10);
+      if (!Number.isFinite(restaurantId)) {
+        return res.status(404).json({ success: false, message: 'Restaurant not found' });
+      }
+      const brandIds = brandIdsFromScope(req);
+      const restaurant = await Restaurant.findByPk(restaurantId, { attributes: ['id', 'brand_id'] });
+      if (!restaurant || !restaurant.brand_id) {
+        return res.status(404).json({ success: false, message: 'Restaurant not found' });
+      }
+      if (brandIds && !brandIds.includes(restaurant.brand_id)) {
+        return res.status(404).json({ success: false, message: 'Restaurant not found' });
+      }
+
+      const { generateSoaNow } = require('../services/soaScheduler');
+      const result = await generateSoaNow({ issuerType: 'brand', issuerId: restaurant.brand_id, restaurantId });
+      if (!result.issued) {
+        const msg = result.reason === 'no_invoices'
+          ? 'No unbilled invoices to statement (nothing outstanding to bundle).'
+          : (result.reason === 'no_recipients' ? 'No recipients to notify.' : 'Could not generate statement.');
+        return res.status(400).json({ success: false, code: result.reason, message: msg });
+      }
+      res.json({ success: true, data: { soa_invoice_id: result.soaId } });
+    } catch (err) {
+      console.error('POST /api/brand/soa/:id/generate error:', err);
+      res.status(500).json({ success: false, message: 'Failed to generate statement' });
+    }
+  }
+);
+
+// ──────────────────────────────────────────────────────────────────────────────
 // GET /api/brand/trade-invoices
 // List trade invoices issued by this brand (across all its restaurants).
 // Used by BG/Brand Manager TradeInvoicesPage. Mirrors supplier trade invoice list.

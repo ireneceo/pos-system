@@ -201,6 +201,38 @@ router.post(
 );
 
 // ──────────────────────────────────────────────────────────────────────────────
+// POST /api/foodcourt/soa/:restaurantId/generate — 온디맨드 월명세서 (brand 미러). (2026-06-15)
+// ──────────────────────────────────────────────────────────────────────────────
+router.post(
+  '/foodcourt/soa/:restaurantId/generate',
+  authenticateToken,
+  requireFoodcourtScope,
+  async (req, res) => {
+    try {
+      const restaurantId = parseInt(req.params.restaurantId, 10);
+      if (!Number.isFinite(restaurantId)) return res.status(404).json({ success: false, message: 'Restaurant not found' });
+      const foodcourtIds = foodcourtIdsFromScope(req);
+      const restaurant = await Restaurant.findByPk(restaurantId, { attributes: ['id', 'foodcourt_id'] });
+      if (!restaurant || !restaurant.foodcourt_id) return res.status(404).json({ success: false, message: 'Restaurant not found' });
+      if (foodcourtIds && !foodcourtIds.includes(restaurant.foodcourt_id)) return res.status(404).json({ success: false, message: 'Restaurant not found' });
+
+      const { generateSoaNow } = require('../services/soaScheduler');
+      const result = await generateSoaNow({ issuerType: 'foodcourt', issuerId: restaurant.foodcourt_id, restaurantId });
+      if (!result.issued) {
+        const msg = result.reason === 'no_invoices'
+          ? 'No unbilled invoices to statement (nothing outstanding to bundle).'
+          : (result.reason === 'no_recipients' ? 'No recipients to notify.' : 'Could not generate statement.');
+        return res.status(400).json({ success: false, code: result.reason, message: msg });
+      }
+      res.json({ success: true, data: { soa_invoice_id: result.soaId } });
+    } catch (err) {
+      console.error('POST /api/foodcourt/soa/:id/generate error:', err);
+      res.status(500).json({ success: false, message: 'Failed to generate statement' });
+    }
+  }
+);
+
+// ──────────────────────────────────────────────────────────────────────────────
 // GET /api/foodcourt/trade-invoices
 // ──────────────────────────────────────────────────────────────────────────────
 router.get(

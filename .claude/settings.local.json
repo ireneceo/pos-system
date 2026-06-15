@@ -675,7 +675,9 @@
       "Bash(SOCKET_AUTH_ENFORCE=true pm2 restart dev-backend --update-env)",
       "Bash(pm2 delete *)",
       "Bash(pm2 start *)",
-      "Bash(pm2 env *)"
+      "Bash(pm2 env *)",
+      "Bash(pkill -f \"require\\('./routes/brand-soa\")",
+      "Bash(pkill -f \"brand-soa.js'\\); console\")"
     ],
     "deny": [],
     "ask": []
