@@ -46,7 +46,10 @@ session-state.md 읽고 이어서 개발해.
 
 ### 다음 확정 작업 (Irene 지시)
 1. ~~[A] 태블릿 레이아웃 오버플로우 전수 점검+수정~~ → **✅ 운영 배포 완료 (2026-06-15, v3.57 후속 패치·버전 미상승, Backup 20260615_084256)**. 실측 결과 **실제 넘침 1곳**: LiveOrders `StatusTabs`(8탭 1024폭 208px→가로스크롤+끝탭잘림). 수정 `styles.ts` overflow-x:auto→flex-wrap:wrap(gap 8x24, ≤1100px 8x16) → 태블릿 2줄 전부노출/데스크톱 1줄. 영향=LiveOrders+ReservationsTimeline 2곳(IncomingOrders는 자체 RLStatusTabs라 무관). KDS/FloorPlan/아이템뷰는 깨끗. **운영 라이브 측정 넘침 0 + 주문루트 16/16 + 헬스 ok 확인.**
-2. **[소켓 Phase B 강제 전환] — 모니터 모드 운영 배포 완료(2026-06-15, Backup 20260615_133815). 남은 1스텝 = ENFORCE 켜기.** 구현(socketService.js 4네임스페이스 makeSocketAuth + join 신원검증) 배포됨, 현재 모니터(동작 무변경, 토큰 채택률 로깅). **전환 방법**: 운영 로그 `[socket-auth][monitor] no-token 핸드셰이크` 가 실매장 트래픽에서 거의 0인지 며칠 관찰 → 0이면 운영 `SOCKET_AUTH_ENFORCE=true` env + `pm2 restart production-backend --update-env` → **구멍 차단**(코드 재배포 불필요). 관찰 중 특정 매장이 계속 no-token이면 그 기기 강력새로고침(옛 번들). 검증: 모니터 2/2+강제 5/5. [[project_socket_auth_hardening]]
+2. **[소켓 Phase B 강제 전환] — 모니터 계측 강화 완료(DEV, 미배포). 다음=계측 배포→며칠 관찰→ENFORCE.**
+   - **2026-06-16 점검**: 운영 pm2 로그로는 판단 불가(소켓/주문 활동이 out.log에 거의 안 남음 — no-token 0건은 데이터부족이지 안전신호 아님). 모니터 모드 유지 확인(tokenless 운영 연결됨=구멍 열림).
+   - **계측 강화함**: `socketService.js` 인메모리 영속 카운터(byNs withToken/withoutToken/invalidToken/crossRestaurant + noTokenSources 출처힌트) + `GET /api/socket-auth-monitor`(System Admin). throttle 로그와 별개로 항상 누적. 검증: 카운터 증가 정확 + 강제모드 회귀(tokenless 거부) + health 101/101 + print-guard 8/8.
+   - **다음 절차**: ①계측 `/배포` ②영업일 1~2일 후 `GET /api/socket-auth-monitor` 조회 ③`total.withoutToken ≈ 0` & withToken 트래픽 충분 → 운영 `SOCKET_AUTH_ENFORCE=true`+`pm2 restart --update-env`로 구멍 차단. noTokenSources에 출처 남으면 그 매장 기기 강력새로고침(옛 번들). 검증: 모니터 2/2+강제 5/5. [[project_socket_auth_hardening]]
 
 ### 후속 후보 (아이디어 메모, 확정 X)
 > 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.
