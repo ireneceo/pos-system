@@ -1,6 +1,56 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-15 (BG 발주→인보이스→월청구 정상화 + 명세서 수동생성 운영 배포. 상세 아래.)
+> **최종 업데이트:** 2026-06-16 (데모 리포트 14건 전수 수정 — 미배포, dev 완료. 상세 아래.)
+
+## ✅ 완료: 데모 리포트 14건 전수 수정 (2026-06-16, 미배포 — dev 완료)
+
+> 6/9 데모 리포트(Owner/Foodcourt General/Brand General 3역할). **데모 한정이 아니라 전체유저 공유 코드 버그**로 처리. 주문 프로세스는 절대 미접촉(print-guard 8/8 바이트 무변경으로 증명).
+
+### 완료된 작업
+
+| # | 항목 | 처리 | 상태 |
+|---|------|------|:----:|
+| Owner-1 | 결제창 QR 대신 음식사진 | QR 정사각 검증(squareHint, 전체유저) + brand K-DINE 잘못된 이미지 제거 | ✅ |
+| Owner-2 | 레스토랑 등록 안 됨 | 재현=이미 정상(201), 무변경 | ✅ |
+| Owner-3 | 공지 등록 안 됨 | author_name null 폴백 | ✅ |
+| FG-1 | 매장추가 푸드코트 선택 없음 | FG 자기 foodcourt 자동연결 | ✅ |
+| FG-2 | Tenancy 탭전환 pipeline→list 리셋 | 이미 수정됨(setTab view 미변경) 확인 | ✅ |
+| FG-3 | 인벤토리 테이블 헤더 보더/반응형 | DataTableContainer overflow:hidden | ✅ |
+| FG-4 | 상품폼 'After meal' 제거 | 체크박스 제거 | ✅ |
+| FG-5 | 공급업체 직접 추가 불가 | FG endpoint 분기 | ✅ |
+| FG-6 | 쿠폰 레이아웃/매장적용 | 완전 목업 → 별도 기획건 분리 | ◻ 보류 |
+| BG-1-1 | Admin 추가 매장선택 강제 | 선택식 전환 | ✅ |
+| BG-1-2 | 등록 Admin 정보수정 안 됨 | supervisor 권한 + demoProtection self 한정 | ✅ |
+| BG-1-3 | Deactivate 동작 안 함 | is_active 컬럼 신설 + 마이그 + 로그인 차단 | ✅ |
+| BG-2 | Linked Recipe 안 뜸 | 재현=이미 정상(API 200) | ✅ |
+| BG-3 | 공지 댓글 삭제 안 됨 | 재현=이미 정상 | ✅ |
+| BG-4 | 인보이스 카테고리 생성 안 됨 | handleSaveCategory 연결 | ✅ |
+| BG-5 | 판매범위 한글 노출 | t() 영문 i18n | ✅ |
+
+### 수정된 파일
+- `dev-backend/middleware/auth.js` (demoProtection self 한정)
+- `dev-backend/routes/users.js` (supervisor 수정권한 + 자기비활성 차단)
+- `dev-backend/services/authService.js` · `routes/auth.js` (비활성 로그인 차단)
+- `dev-backend/models/User.js` + `scripts/migrate-user-is-active.js` (is_active 컬럼)
+- `dev-backend/routes/notices.js` (author_name 폴백)
+- `dev-frontend/src/components/Common/ImageUploadDropzone.tsx` (squareHint)
+- `dev-frontend/src/components/UI/DataTable.tsx` (헤더 모서리 클립)
+- `dev-frontend/src/pages/{Admin,BrandGeneral,FoodcourtGeneral}/*PaymentSettingsPage.tsx` (QR squareHint)
+- `dev-frontend/src/pages/BrandGeneral/{BrandInvoicesPage,invoices/BrandInvoiceCategoryManager}.tsx`
+- `dev-frontend/src/pages/BrandProductManagement/BrandProductsTab.tsx` · `FoodcourtGeneral/FoodcourtProductsTab.tsx`
+- `dev-frontend/src/components/Suppliers/SupplierFormModal.tsx` · `pages/Suppliers/AllSuppliersView.tsx`
+- `dev-frontend/src/pages/Manager/RestaurantsPage.tsx`
+- `deploy-to-production.sh` (migrate-user-is-active 9a-2 등록)
+
+### 검증
+- print-guard 8/8(주문/인쇄 무변경) · health-check 101/101 · state-hydration 0 · timezone 신규 0 · build TS 0
+- 주문 E2E(생성→KDS pending→+Round→금액재계산→printed→preparing→ready→served→completed→삭제) 전구간 통과
+- 실 브라우저 mount RA 48/48 OK(live-orders/floor-plan/items/kitchen/pos/display 크래시 0)
+- BG-1-2/1-3 수정·비활성·로그인차단·자기비활성차단·타브랜드 차단 실호출 통과
+
+---
+
+> **이전 업데이트:** 2026-06-15 (BG 발주→인보이스→월청구 정상화 + 명세서 수동생성 운영 배포. 상세 아래.)
 
 ## ✅ 운영 배포: BG 발주→거래인보이스→월청구(SOA) 정상화 + 명세서 수동생성 (2026-06-15, Backup 20260615_161034, v3.57 backstage)
 
