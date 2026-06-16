@@ -178,7 +178,7 @@ const BrandInvoicesPage: React.FC = () => {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<InvoiceCategory | null>(null);
   const [categoryFormData, setCategoryFormData] = useState({ name: '', code: '', description: '' });
-  const [savingCategory] = useState(false);
+  const [savingCategory, setSavingCategory] = useState(false);
   const [deleteCategoryModalOpen, setDeleteCategoryModalOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<InvoiceCategory | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
@@ -467,6 +467,41 @@ const BrandInvoicesPage: React.FC = () => {
     setShowCategoryModal(false);
     setEditingCategory(null);
     setCategoryFormData({ name: '', code: '', description: '' });
+  };
+
+  // 2026-06-16: invoice 카테고리 생성/수정 핸들러가 누락돼 있어 [Create] 버튼이 동작하지 않던 것 수정.
+  // 백엔드 POST/PUT /api/invoices/categories 는 정상(재현 201). 프론트 연결만 추가.
+  const handleSaveCategory = async () => {
+    if (savingCategory || !categoryFormData.name || !categoryFormData.code) return;
+    setSavingCategory(true);
+    try {
+      const token = getAuthToken();
+      const url = editingCategory
+        ? `/api/invoices/categories/${editingCategory.id}`
+        : '/api/invoices/categories';
+      const response = await fetch(url, {
+        method: editingCategory ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
+        body: JSON.stringify({
+          name: categoryFormData.name,
+          code: categoryFormData.code,
+          description: categoryFormData.description || null
+        })
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        handleCloseCategoryModal();
+        fetchInvoiceCategories();
+      } else {
+        setSuccessMessage(data.message || data.error || 'Failed to save category');
+        setShowSuccessModal(true);
+      }
+    } catch (error) {
+      setSuccessMessage('Failed to save category');
+      setShowSuccessModal(true);
+    } finally {
+      setSavingCategory(false);
+    }
   };
 
   const handleDeleteCategoryConfirm = async () => {
@@ -1513,6 +1548,7 @@ const BrandInvoicesPage: React.FC = () => {
             setCategoryToDelete={setCategoryToDelete}
             handleCloseCategoryModal={handleCloseCategoryModal}
             handleDeleteCategoryConfirm={handleDeleteCategoryConfirm}
+            handleSaveCategory={handleSaveCategory}
           />
         )}
 

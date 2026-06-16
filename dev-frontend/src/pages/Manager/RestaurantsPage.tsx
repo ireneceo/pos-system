@@ -955,16 +955,19 @@ const ManagerRestaurantsPage: React.FC = () => {
       }
       if (newRestaurant.foodcourt_id) {
         autoFoodcourtId = parseInt(newRestaurant.foodcourt_id);
-      } else if (user?.role === 'Foodcourt Manager') {
+      } else if (user?.role === 'Foodcourt Manager' || user?.role === 'Foodcourt General') {
+        // 2026-06-16 FG-1: Foodcourt General 도 자기 단일 푸드코트로 자동연결.
+        // FG 는 foodcourt_id 1:1 이므로 별도 선택 필드 불필요(추가 매장이 등록 안 되던 원인).
         autoFoodcourtId = (user as any)?.foodcourt_id || null;
       }
-      // Brand/Foodcourt General must pick a brand/foodcourt
+      // Brand General 은 여러 brand 소유 가능 → brand 선택 필수.
       if (user?.role === 'Brand General' && !autoBrandId) {
         setFormError('Please select a brand to link this restaurant to.');
         return;
       }
+      // Foodcourt General 은 위에서 자기 푸드코트로 자동연결됨 — 그래도 없으면(이상상황) 안내.
       if (user?.role === 'Foodcourt General' && !autoFoodcourtId) {
-        setFormError('Please select a foodcourt to link this restaurant to.');
+        setFormError('Your account is not linked to a foodcourt. Contact System Admin.');
         return;
       }
 

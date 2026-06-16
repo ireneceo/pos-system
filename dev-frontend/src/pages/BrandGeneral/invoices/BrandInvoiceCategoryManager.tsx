@@ -38,6 +38,7 @@ interface BrandInvoiceCategoryManagerProps {
   setCategoryToDelete: (category: InvoiceCategory | null) => void;
   handleCloseCategoryModal: () => void;
   handleDeleteCategoryConfirm: () => void;
+  handleSaveCategory: () => void;
 }
 
 const BrandInvoiceCategoryManager: React.FC<BrandInvoiceCategoryManagerProps> = ({
@@ -55,6 +56,7 @@ const BrandInvoiceCategoryManager: React.FC<BrandInvoiceCategoryManagerProps> = 
   setCategoryToDelete,
   handleCloseCategoryModal,
   handleDeleteCategoryConfirm,
+  handleSaveCategory,
 }) => {
   const { t } = useTranslation('brand');
 
@@ -139,7 +141,7 @@ const BrandInvoiceCategoryManager: React.FC<BrandInvoiceCategoryManagerProps> = 
 
       {/* Category Modal */}
       {showCategoryModal && (
-        <CommonModal isOpen={true} onClose={handleCloseCategoryModal} title={editingCategory ? 'Edit Category' : 'Add Category'} footer={<><Button variant="secondary" type="button" onClick={handleCloseCategoryModal}>{t('brand:brandInvoicesPage.cancel')}</Button><Button variant="primary" type="submit" disabled={savingCategory || !categoryFormData.name || !categoryFormData.code}> {savingCategory ? 'Saving...' : (editingCategory ? 'Update' : 'Create')} </Button></>}>
+        <CommonModal isOpen={true} onClose={handleCloseCategoryModal} title={editingCategory ? 'Edit Category' : 'Add Category'} footer={<><Button variant="secondary" type="button" onClick={handleCloseCategoryModal}>{t('brand:brandInvoicesPage.cancel')}</Button><Button variant="primary" type="button" onClick={handleSaveCategory} disabled={savingCategory || !categoryFormData.name || !categoryFormData.code}> {savingCategory ? 'Saving...' : (editingCategory ? 'Update' : 'Create')} </Button></>}>
 
           <FormGroup>
             <FormLabel>Name *</FormLabel>
