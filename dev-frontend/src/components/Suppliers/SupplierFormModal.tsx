@@ -54,8 +54,10 @@ export default function SupplierFormModal({ isOpen, onClose, onSaved, supplier }
 
   const role = user?.role;
   const restaurantId = (user as any)?.restaurantId || (user as any)?.restaurant_id;
+  const foodcourtId = (user as any)?.foodcourtId || (user as any)?.foodcourt_id;
   const isRestaurant = role === 'Restaurant Admin' || role === 'Restaurant Owner';
   const isBrand = role === 'Brand General' || role === 'Brand Manager';
+  const isFoodcourt = role === 'Foodcourt General' || role === 'Foodcourt Manager';
 
   useEffect(() => {
     if (!isOpen) return;
@@ -91,6 +93,14 @@ export default function SupplierFormModal({ isOpen, onClose, onSaved, supplier }
     if (isRestaurant && restaurantId) {
       return {
         url: id ? `/api/restaurants/${restaurantId}/suppliers/${id}` : `/api/restaurants/${restaurantId}/suppliers`,
+        method: id ? 'PUT' : 'POST',
+      };
+    }
+    // 2026-06-16 FG-5: Foodcourt General/Manager 분기 누락으로 공급업체 추가/수정이 막혔음
+    // (resolveUrl null → "No supplier endpoint"). 백엔드 /api/foodcourts/:id/suppliers 는 존재.
+    if (isFoodcourt && foodcourtId) {
+      return {
+        url: id ? `/api/foodcourts/${foodcourtId}/suppliers/${id}` : `/api/foodcourts/${foodcourtId}/suppliers`,
         method: id ? 'PUT' : 'POST',
       };
     }

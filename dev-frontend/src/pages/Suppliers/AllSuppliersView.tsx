@@ -181,6 +181,10 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
     if (role === 'Brand General' || role === 'Brand Manager') {
       return `/api/suppliers/${id}`;
     }
+    // 2026-06-16 FG-5: Foodcourt 분기 누락으로 FG 공급업체 수정/삭제 endpoint 가 null 이던 것.
+    if ((role === 'Foodcourt General' || role === 'Foodcourt Manager') && foodcourtId) {
+      return `/api/foodcourts/${foodcourtId}/suppliers/${id}`;
+    }
     return null;
   };
 
