@@ -729,13 +729,7 @@ const FoodcourtProductsTab: React.FC<FoodcourtProductsTabProps> = ({
               </CheckboxLabel>
             </UIFormGroup>
 
-            <UIFormGroup style={{ marginBottom: 0 }}>
-              <CheckboxLabel>
-                <input type="checkbox" checked={formData.after_meal}
-                  onChange={(e) => setFormData({ ...formData, after_meal: e.target.checked })} />
-                {t('foodcourt:products.afterMeal', { defaultValue: 'After meal (serve after main course, e.g. dessert)' })}
-              </CheckboxLabel>
-            </UIFormGroup>
+            {/* 2026-06-16: 'After meal' 필드 제거 (Irene 데모 리포트) — 푸드코트 상품 폼엔 불필요. */}
 
             {formError && <ErrorBox>{formError}</ErrorBox>}
           </form>

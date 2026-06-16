@@ -1121,7 +1121,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
             )}
 
             <UIFormGroup>
-              <FormLabel>{'판매 범위 (Distribution)'}</FormLabel>
+              <FormLabel>{t('brandProducts.distribution.label', { defaultValue: 'Distribution Scope' })}</FormLabel>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '8px 0' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                   <input
@@ -1130,7 +1130,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                     checked={formData.distribution_mode === 'all'}
                     onChange={() => setFormData(prev => ({ ...prev, distribution_mode: 'all' }))}
                   />
-                  <span><strong>전체 가맹점</strong> — 내 모든 브랜드의 모든 가맹점에 자동 노출</span>
+                  <span><strong>{t('brandProducts.distribution.allTitle', { defaultValue: 'All franchises' })}</strong> — {t('brandProducts.distribution.allDesc', { defaultValue: 'Automatically available to every franchise across all my brands' })}</span>
                 </label>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                   <input
@@ -1139,7 +1139,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                     checked={formData.distribution_mode === 'specific_brands'}
                     onChange={() => setFormData(prev => ({ ...prev, distribution_mode: 'specific_brands' }))}
                   />
-                  <span><strong>특정 브랜드만</strong> — 선택한 브랜드의 모든 가맹점</span>
+                  <span><strong>{t('brandProducts.distribution.brandsTitle', { defaultValue: 'Specific brands only' })}</strong> — {t('brandProducts.distribution.brandsDesc', { defaultValue: 'All franchises in the selected brands' })}</span>
                 </label>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                   <input
@@ -1148,7 +1148,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                     checked={formData.distribution_mode === 'specific_restaurants'}
                     onChange={() => setFormData(prev => ({ ...prev, distribution_mode: 'specific_restaurants' }))}
                   />
-                  <span><strong>특정 지점만</strong> — 선택한 가맹점만 발주 가능</span>
+                  <span><strong>{t('brandProducts.distribution.restaurantsTitle', { defaultValue: 'Specific restaurants only' })}</strong> — {t('brandProducts.distribution.restaurantsDesc', { defaultValue: 'Only the selected franchises can order' })}</span>
                 </label>
               </div>
             </UIFormGroup>
