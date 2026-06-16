@@ -84,7 +84,7 @@ const reservationScheduler = require('./services/reservationScheduler');
 const base64ImageSweep = require('./services/base64ImageSweep');
 const { startSoaCron } = require('./services/soaScheduler');
 const { errorHandler } = require('./middleware/errorHandler');
-const { initSocketServer } = require('./services/socketService');
+const { initSocketServer, getSocketAuthStats } = require('./services/socketService');
 
 // PID 파일 관리 - PM2 사용 시 비활성화 (PM2가 프로세스 관리)
 // PM2 환경에서는 PID 파일 관리가 불필요하고 권한 문제를 일으킬 수 있음
@@ -504,6 +504,10 @@ app.use('/api', foodcourtFloorPlansRouter);  // Floor plans — /foodcourt-branc
 const { exec } = require('child_process');
 const { authenticateToken, requireRole } = require('./middleware/auth');
 app.use('/api/system-logs', authenticateToken, requireRole('System Admin'), systemLogsRouter);
+// 소켓 인증 모니터 통계 (Phase B 강제 전환 안전 판단용 — withToken vs withoutToken 비율 + 토큰없는 클라 출처). 2026-06-16
+app.get('/api/socket-auth-monitor', authenticateToken, requireRole('System Admin'), (req, res) => {
+  res.json({ success: true, data: getSocketAuthStats() });
+});
 app.post('/api/deploy', authenticateToken, requireRole('System Admin'), (req, res) => {
   console.log('Deployment request received from:', req.user?.email);
 

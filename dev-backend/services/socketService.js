@@ -18,7 +18,29 @@ const { userCanAccessRestaurant } = require('../middleware/auth');
 // ────────────────────────────────────────────────────────────────────────────
 const SOCKET_AUTH_ENFORCE = process.env.SOCKET_AUTH_ENFORCE === 'true';
 
-// 모니터 모드 토큰 채택률 로깅 — namespace 별 30초 throttle (로그 폭주 방지).
+// ────────────────────────────────────────────────────────────────────────────
+// 모니터 계측 (2026-06-16 강화) — 강제 전환 전 "매장이 토큰을 보내는지" 실데이터 수집.
+// pm2 콘솔 로그는 휘발/누락이라 판단 불가했음 → 인메모리 영속 카운터 + 조회 엔드포인트.
+// throttle 로그(폭주 방지)는 유지하되, 카운터는 throttle 없이 항상 누적.
+//   GET /api/socket-auth-monitor (System Admin) 로 조회 → withToken vs withoutToken 비율 + 토큰없는 매장 목록.
+// 카운터가 "withoutToken≈0 + 안정적 트래픽"이면 강제 전환 안전.
+// ────────────────────────────────────────────────────────────────────────────
+const socketAuthStats = {
+  startedAt: new Date().toISOString(),
+  byNs: {},                 // ns → { withToken, withoutToken, invalidToken, crossRestaurant }
+  noTokenSources: {},       // origin/ua 힌트 → count (토큰 안 보내는 클라 식별)
+  total: { withToken: 0, withoutToken: 0, invalidToken: 0, crossRestaurant: 0 }
+};
+function bump(ns, field, hint) {
+  socketAuthStats.byNs[ns] = socketAuthStats.byNs[ns] || { withToken: 0, withoutToken: 0, invalidToken: 0, crossRestaurant: 0 };
+  socketAuthStats.byNs[ns][field] = (socketAuthStats.byNs[ns][field] || 0) + 1;
+  socketAuthStats.total[field] = (socketAuthStats.total[field] || 0) + 1;
+  if (field === 'withoutToken' && hint) {
+    socketAuthStats.noTokenSources[hint] = (socketAuthStats.noTokenSources[hint] || 0) + 1;
+  }
+}
+function getSocketAuthStats() { return socketAuthStats; }
+
 const _authMonitor = {};
 function logTokenMonitor(ns, reason) {
   const key = ns + ':' + reason;
@@ -45,13 +67,18 @@ function makeSocketAuth(nsName) {
           id: d.userId || d.id, role: d.role, restaurant_id: d.restaurant_id,
           brand_id: d.brand_id, foodcourt_id: d.foodcourt_id
         };
+        bump(nsName, 'withToken');
         return next();
       } catch (err) {
+        bump(nsName, 'invalidToken');
         if (SOCKET_AUTH_ENFORCE) return next(new Error('auth: invalid token'));
         logTokenMonitor(nsName, 'invalid-token');
         return next();
       }
     }
+    // 토큰 없는 연결 — 어디서 왔는지 힌트 수집(강제 시 끊길 클라 식별).
+    const hint = (socket.handshake.headers?.origin || socket.handshake.headers?.referer || 'unknown');
+    bump(nsName, 'withoutToken', hint);
     if (SOCKET_AUTH_ENFORCE) return next(new Error('auth: token missing'));
     logTokenMonitor(nsName, 'no-token');
     return next();
@@ -69,6 +96,7 @@ async function canJoinRestaurant(socket, restaurantId, nsName) {
   let ok = false;
   try { ok = await userCanAccessRestaurant(user, restaurantId); } catch { ok = false; }
   if (!ok && !SOCKET_AUTH_ENFORCE) {
+    bump(nsName, 'crossRestaurant', `user${user.id}→r${restaurantId}`);
     logTokenMonitor(nsName, `cross-restaurant-join(user ${user.id}→r${restaurantId})`);
     return true; // 모니터: 거부 안 함
   }
@@ -303,4 +331,4 @@ function initSocketServer(server) {
   return io;
 }
 
-module.exports = { initSocketServer };
+module.exports = { initSocketServer, getSocketAuthStats };
