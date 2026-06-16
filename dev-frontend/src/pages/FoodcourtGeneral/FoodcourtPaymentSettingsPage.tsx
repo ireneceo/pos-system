@@ -880,6 +880,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
                         changeButtonText="Change QR Code"
                         removeButtonText="Remove QR Code"
                         imageAltText="Payment QR Code"
+                        squareHint
                       />
                       <FormGroup style={{ marginTop: '16px' }}>
                         <Label>{t('foodcourt:foodcourtPaymentSettingsPage.description')}</Label>

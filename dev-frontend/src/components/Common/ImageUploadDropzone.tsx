@@ -13,6 +13,9 @@ interface ImageUploadDropzoneProps {
   changeButtonText?: string;
   removeButtonText?: string;
   imageAltText?: string;
+  /** QR 결제 이미지처럼 정사각형이어야 하는 업로드에서만 true.
+   *  정사각에서 크게 벗어나면(QR 아닌 사진 등) 업로드 전 경고/확인. (Owner-1) */
+  squareHint?: boolean;
 }
 
 const Container = styled.div`
@@ -179,7 +182,8 @@ const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
   showRemoveButton = true,
   changeButtonText = 'Change Image',
   removeButtonText = 'Remove Image',
-  imageAltText = 'Uploaded'
+  imageAltText = 'Uploaded',
+  squareHint = false
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -260,6 +264,19 @@ const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
     reader.onload = async (event) => {
       const img = new Image();
       img.onload = async () => {
+        // QR 결제 이미지 검증 (Owner-1): QR 코드는 정사각형. 비율이 1:1 에서 크게
+        // 벗어나면(가로/세로 사진 등) QR 이 아닐 가능성이 높아 경고 후 확인받는다.
+        if (squareHint && img.width && img.height) {
+          const ratio = img.width / img.height;
+          if (ratio < 0.8 || ratio > 1.25) {
+            const proceed = window.confirm(
+              'This image is not square — QR codes are usually square.\n' +
+              'A non-QR photo may have been selected by mistake. Upload anyway?'
+            );
+            if (!proceed) { setIsUploading(false); return; }
+          }
+        }
+
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         if (!ctx) {
