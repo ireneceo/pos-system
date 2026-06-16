@@ -682,7 +682,8 @@
       "Bash(sed -n '199,253p' middleware/validation.js)",
       "Bash(sed -n '1240,1256p' pages/BrandGeneral/BrandMenusPage.tsx)",
       "Bash(sed -n '728,740p' pages/FoodcourtGeneral/FoodcourtProductsTab.tsx)",
-      "Bash(awk 'NR>=600 && NR<=700 && /deactivate|is_active|method:|\\\\/api\\\\/users|fetch/' pages/Manager/AdminManagementPage.tsx)"
+      "Bash(awk 'NR>=600 && NR<=700 && /deactivate|is_active|method:|\\\\/api\\\\/users|fetch/' pages/Manager/AdminManagementPage.tsx)",
+      "Bash(awk '{print $2}')"
     ],
     "deny": [],
     "ask": []

@@ -16,11 +16,16 @@ export const DataTableContainer = styled.div`
   border-radius: 12px;
   border: 1px solid #C7CED6;
   width: 100%;
+  /* 헤더(#F1F4F8) 사각 모서리가 둥근 컨테이너 밖으로 삐져나오는 문제(FG-3) 해결.
+     LiveOrders(주문화면)는 이 컨테이너를 쓰지 않으므로 영향 없음. */
+  overflow: hidden;
 
   @media (max-width: 1024px) {
     background: transparent;
     border: none;
     border-radius: 0;
+    /* 모바일은 행이 카드로 바뀌어 box-shadow/hover translateY 가 잘리면 안 됨 */
+    overflow: visible;
   }
 `;
 
