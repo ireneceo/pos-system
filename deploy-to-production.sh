@@ -330,7 +330,8 @@ for SPRINT_MIG in \
     scripts/migrate-takeaway-charge-nullable.js \
     scripts/migrate-brand-set-groups.js \
     scripts/migrate-order-action-table-moved.js \
-    scripts/migrate-consolidated-print.js; do
+    scripts/migrate-consolidated-print.js \
+    scripts/migrate-user-is-active.js; do
     if ssh $PROD_SERVER "test -f $REMOTE_PROD_BACKEND/$SPRINT_MIG"; then
         log "Running $(basename $SPRINT_MIG)..."
         SPRINT_OUTPUT=$(ssh $PROD_SERVER "cd $REMOTE_PROD_BACKEND && node $SPRINT_MIG 2>&1") || true

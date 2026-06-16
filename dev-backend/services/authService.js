@@ -82,6 +82,14 @@ async function login(emailOrUsername, password) {
     throw new Error('Invalid email/username or password');
   }
 
+  // 2026-06-16 (BG-1-3): deactivated accounts cannot log in. An admin/owner/manager
+  // explicitly disabled this user via Admin management. Distinct from suspended (billing).
+  if (user.is_active === false) {
+    const err = new Error('This account has been deactivated. Contact your administrator.');
+    err.code = 'ACCOUNT_DEACTIVATED';
+    throw err;
+  }
+
   // Suspended accounts are NOT blocked from logging in — they need access to
   // the invoice payment page to settle the overdue balance and restore service.
   // The frontend (ProtectedRoute) detects subscription_status / restaurantStatus

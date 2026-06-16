@@ -33,6 +33,9 @@ router.post('/login', validateLogin, async (req, res, next) => {
     if (error.code === 'ACCOUNT_SUSPENDED') {
       return errorResponse(res, error.message, 403, 'ACCOUNT_SUSPENDED');
     }
+    if (error.code === 'ACCOUNT_DEACTIVATED') {
+      return errorResponse(res, error.message, 403, 'ACCOUNT_DEACTIVATED');
+    }
     if (error.code === 'EMAIL_NOT_VERIFIED') {
       return res.status(403).json({
         success: false,

@@ -162,6 +162,16 @@ User.init({
     allowNull: true,
     comment: 'Subscription status for Restaurant Owner'
   },
+  // 2026-06-16 (BG-1-3): account active flag. Deactivated users (false) cannot log in.
+  // Used by Admin/Staff management (Activate/Deactivate). Default true; existing rows
+  // backfilled to true by migration so no one is locked out. Distinct from
+  // subscription_status (billing) — this is an explicit admin enable/disable switch.
+  is_active: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true,
+    comment: 'Admin enable/disable switch. false = blocked from login.'
+  },
   subscription_start: {
     type: DataTypes.DATE,
     allowNull: true

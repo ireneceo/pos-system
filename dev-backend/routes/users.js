@@ -4,7 +4,7 @@ const User = require('../models/User');
 const Brand = require('../models/Brand');
 const Foodcourt = require('../models/Foodcourt');
 const bcrypt = require('bcrypt');
-const { authenticateToken, requireRole, demoProtection } = require('../middleware/auth');
+const { authenticateToken, requireRole, demoProtection, userCanAccessRestaurant } = require('../middleware/auth');
 const { logActivity } = require('../utils/activityLogger');
 
 // Get all users (System Admin only)
@@ -662,10 +662,21 @@ router.put('/:id', authenticateToken, demoProtection, async (req, res) => {
       user.restaurant_id === req.user.restaurant_id &&
       user.role === 'Staff';
 
-    if (!isSelf && !isSysAdmin && !isRestaurantAdminMatch) {
+    // 2026-06-16 BG-1-2/1-3: BG/FG 가 자기 산하 매장의 Restaurant Admin 을 수정/비활성할 수 있어야 함.
+    // (목록 조회는 허용하면서 수정만 403 이던 비대칭 — 가맹점 Admin 정보수정/Deactivate 가 막혔음)
+    // userCanAccessRestaurant 가 BG=brand 소유, FG=foodcourt 소유, Owner=ownership 을 검증.
+    let isSupervisorMatch = false;
+    const supervisorRoles = ['Brand General', 'Brand Manager', 'Foodcourt General', 'Foodcourt Manager', 'Restaurant Owner'];
+    if (!isSelf && !isSysAdmin && !isRestaurantAdminMatch &&
+        supervisorRoles.includes(req.user.role) &&
+        user.restaurant_id && ['Restaurant Admin', 'Staff'].includes(user.role)) {
+      try { isSupervisorMatch = await userCanAccessRestaurant(req.user, user.restaurant_id); } catch { isSupervisorMatch = false; }
+    }
+
+    if (!isSelf && !isSysAdmin && !isRestaurantAdminMatch && !isSupervisorMatch) {
       return res.status(403).json({
         success: false,
-        message: 'You can only edit your own account or staff in your restaurant.',
+        message: 'You can only edit your own account, staff in your restaurant, or admins of restaurants you oversee.',
         code: 'NOT_PERMITTED'
       });
     }
@@ -685,6 +696,14 @@ router.put('/:id', authenticateToken, demoProtection, async (req, res) => {
         success: false,
         message: 'Restaurant Admin cannot reassign staff to another restaurant.',
         code: 'TENANT_CHANGE_NOT_ALLOWED'
+      });
+    }
+    // 2026-06-16 (BG-1-3): can't deactivate your own account (would lock yourself out).
+    if (isSelf && req.body.is_active === false) {
+      return res.status(400).json({
+        success: false,
+        message: 'You cannot deactivate your own account.',
+        code: 'CANNOT_DEACTIVATE_SELF'
       });
     }
   } catch (e) {

@@ -301,15 +301,24 @@ const checkSubscriptionStatus = async (req, res, next) => {
   }
 };
 
-// Block demo/test accounts from modifying their own account (password, email, profile)
+// Block demo/test accounts from modifying their OWN account (password, email, profile).
+// 2026-06-16 (BG-1-2): scoped to self only. A demo/test account must still be able to
+// manage OTHER users (e.g. a demo Brand General editing/deactivating its franchise
+// Restaurant Admins) so the demo can showcase user-management features. The daily reset
+// only needs to protect the shared demo login's own credentials.
+// Routes without a :id param (self-only routes) are treated as self → still blocked.
 const demoProtection = (req, res, next) => {
   if (req.user && (req.user.is_demo || req.user.is_test)) {
-    return res.status(403).json({
-      success: false,
-      message: req.user.is_demo
-        ? 'Demo accounts cannot modify account settings. This account resets daily.'
-        : 'Test accounts cannot modify account settings.'
-    });
+    const targetId = req.params.id;
+    const isSelf = targetId === undefined || String(targetId) === String(req.user.id);
+    if (isSelf) {
+      return res.status(403).json({
+        success: false,
+        message: req.user.is_demo
+          ? 'Demo accounts cannot modify account settings. This account resets daily.'
+          : 'Test accounts cannot modify account settings.'
+      });
+    }
   }
   next();
 };
