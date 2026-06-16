@@ -369,7 +369,9 @@ router.post('/', authenticateToken, async (req, res) => {
       title,
       content,
       author_id: user.id,
-      author_name: user.full_name,
+      // author_name 은 NOT NULL — full_name 이 비어있는 계정(데모 owner 등)도 안전하게.
+      // 2026-06-16: owner 데모 공지 생성이 'author_name cannot be null' 로 500 나던 것 수정.
+      author_name: user.full_name || user.email || user.role || 'User',
       author_role: user.role,
       target_type,
       target_roles: target_type === 'role' ? target_roles : null,

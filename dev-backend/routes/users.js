@@ -346,14 +346,15 @@ router.post('/', authenticateToken, async (req, res) => {
       return res.status(400).json({ success: false, error: { message: 'Email is required', code: 'VALIDATION_ERROR' } });
     }
 
-    // Restaurant-scoped roles must be tied to a restaurant at creation time.
-    // Creating a Restaurant Admin / Staff without restaurant_id leaves the account
-    // in a dangling state where login succeeds but every restaurant-scoped API
-    // fails with 403/404 (no `checkRestaurantAccess` context).
-    if ((role === 'Restaurant Admin' || role === 'Staff') && !finalRestaurantId) {
+    // Staff 는 restaurant_id 가 필수 — 내부 username 네임스페이스(r{rid}:{id})와 PIN 전환이
+    // restaurant_id 에 묶이기 때문(아래 effectiveUsername). 레스토랑 없으면 staff 식별 불가.
+    // Restaurant Admin 은 2026-06-16 부터 레스토랑 선택식(Irene 결정): BG 가 가맹점 배정 전에
+    // Admin 계정을 먼저 만들 수 있어야 함(레스토랑 등록 시 Admin 이 필수라 닭-달걀 모순 해소).
+    // 미배정 Admin 은 로그인되나 매장 기능은 배정 전까지 제한됨(프론트에서 안내).
+    if (role === 'Staff' && !finalRestaurantId) {
       return res.status(400).json({
         success: false,
-        error: `${role} requires a restaurant. Please select the restaurant this account belongs to.`
+        error: 'Staff requires a restaurant. Please select the restaurant this account belongs to.'
       });
     }
 
