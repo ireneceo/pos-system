@@ -37,7 +37,7 @@
   "zonesGroups.poolMetric": "{{placed}} / {{pool}}",
   "zonesGroups.zonePoolMeta": "已放置 {{placed}} / 池 {{pool}}",
   "zonesGroups.poolSize": "桌台池大小（桌台数量）",
-  "zonesGroups.poolSizeHelp": "为此分组定义的桌台总数。桌台不会在此处放置到平面图上 — 请在 Floor Plan Editor 中将每一个桌台拖放到画布上。",
+  "zonesGroups.poolSizeHelp": "此分组的桌台总数。桌台会自动放置到平面图上 — 可在 Floor Plan Editor 中调整位置或形状。",
   "zonesGroups.poolMinPlaced": "桌台池大小不能低于 {{count}} — 已有这么多桌台放置在 Floor Plan 上。请先在 Floor Plan Editor 中移除它们。",
   "zonesGroups.defaultSeats": "每桌默认座位数",
   "zonesGroups.labelUpdateDesc": "前缀更改时,现有桌台标签将自动更新。",

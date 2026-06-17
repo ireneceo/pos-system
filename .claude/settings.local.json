@@ -683,7 +683,10 @@
       "Bash(sed -n '1240,1256p' pages/BrandGeneral/BrandMenusPage.tsx)",
       "Bash(sed -n '728,740p' pages/FoodcourtGeneral/FoodcourtProductsTab.tsx)",
       "Bash(awk 'NR>=600 && NR<=700 && /deactivate|is_active|method:|\\\\/api\\\\/users|fetch/' pages/Manager/AdminManagementPage.tsx)",
-      "Bash(awk '{print $2}')"
+      "Bash(awk '{print $2}')",
+      "Bash(head -60 scripts/test-tables-qr-sidebar.js)",
+      "Bash(head -60 dev-frontend/scripts/test-tables-qr-sidebar.js)",
+      "Bash(awk 'NR>=714 && NR<=860' routes/restaurants-crud.js)"
     ],
     "deny": [],
     "ask": []

@@ -37,7 +37,7 @@
   "zonesGroups.poolMetric": "{{placed}} / {{pool}}",
   "zonesGroups.zonePoolMeta": "{{placed}} placed / {{pool}} in pool",
   "zonesGroups.poolSize": "Pool size (number of tables)",
-  "zonesGroups.poolSizeHelp": "Total tables defined for this group. Tables are NOT placed on the floor here — open Floor Plan Editor to drop each one onto the canvas.",
+  "zonesGroups.poolSizeHelp": "Total tables for this group. Tables are placed on the floor plan automatically — open Floor Plan Editor to rearrange or reshape them.",
   "zonesGroups.poolMinPlaced": "Pool size cannot drop below {{count}} — that many tables are already on the floor plan. Remove them from Floor Plan Editor first.",
   "zonesGroups.defaultSeats": "Default seats per table",
   "zonesGroups.labelUpdateDesc": "Existing table labels will update automatically when the prefix changes.",

@@ -361,6 +361,69 @@ const EmptyMsg = styled.div`
 const uid = (prefix: string) => `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 const sanitizePrefix = (s: string) => String(s || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 3);
 
+// ── Auto-placement ──────────────────────────────────────────────
+// When a group is created (or its pool grows) in Settings, the slots are placed onto the
+// canvas right away in a tidy grid — skipping cells that overlap existing tables/fixtures —
+// so the tables appear on the Floor Plan immediately without manual dragging. The user can
+// still rearrange / reshape any of them in the Floor Plan Editor afterwards.
+// (Reverses the v3.39 "pool-only, place manually" behaviour per Irene 2026-06-17: store owners
+//  expected tables added in Settings to show up on the floor automatically.)
+const TABLE_SIZE = 70;
+const PLACE_GAP = 30;
+
+const makeAutoTable = (group: FloorTableGroup, n: number, x: number, y: number): FloorTable => ({
+  id: `ft-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}-${n}`,
+  tableNumber: String(n),
+  label: computeTableLabel(group.prefix || '', n),
+  shape: 'round',
+  x, y,
+  width: TABLE_SIZE,
+  height: TABLE_SIZE,
+  rotation: 0,
+  seats: 4,
+  tableType: 'table',
+  group_id: group.id
+});
+
+// Place the given slot numbers for `group` onto the canvas, avoiding overlap with anything
+// already on `fp.tables`. Returns the new FloorTable[] to append.
+const autoPlaceSlots = (fp: FloorPlanData, group: FloorTableGroup, numbers: number[]): FloorTable[] => {
+  const CW = fp.canvasWidth || 1200;
+  const CH = fp.canvasHeight || 800;
+  const step = TABLE_SIZE + PLACE_GAP;   // 100
+  const margin = 40;
+  const occupied = (fp.tables || []).map(t => ({ x: t.x, y: t.y, w: t.width || TABLE_SIZE, h: t.height || TABLE_SIZE }));
+  const overlaps = (cx: number, cy: number) => occupied.some(o =>
+    Math.abs(cx - o.x) < (TABLE_SIZE + o.w) / 2 + 8 &&
+    Math.abs(cy - o.y) < (TABLE_SIZE + o.h) / 2 + 8
+  );
+  const result: FloorTable[] = [];
+  let extra = 0;
+  for (const n of numbers) {
+    let placed = false;
+    for (let row = 0; row < 200 && !placed; row++) {
+      const cy = margin + TABLE_SIZE / 2 + row * step;
+      for (let cx = margin + TABLE_SIZE / 2; cx <= CW - TABLE_SIZE / 2 && !placed; cx += step) {
+        if (overlaps(cx, cy)) continue;
+        const tbl = makeAutoTable(group, n, cx, cy);
+        result.push(tbl);
+        occupied.push({ x: cx, y: cy, w: TABLE_SIZE, h: TABLE_SIZE });
+        placed = true;
+      }
+    }
+    if (!placed) {
+      // Canvas full — stack just below it so nothing is lost (user can drag up later).
+      const cx = margin + TABLE_SIZE / 2 + (extra % 8) * step;
+      const cy = CH + TABLE_SIZE / 2 + Math.floor(extra / 8) * step;
+      const tbl = makeAutoTable(group, n, cx, cy);
+      result.push(tbl);
+      occupied.push({ x: cx, y: cy, w: TABLE_SIZE, h: TABLE_SIZE });
+      extra++;
+    }
+  }
+  return result;
+};
+
 const ZonesAndGroupsCard: React.FC<ZonesAndGroupsCardProps> = ({ restaurantId, restaurantName, authToken, qrCodeBaseUrl, restaurantSlug }) => {
   const { t } = useTranslation('settings');
   const [floorPlan, setFloorPlan] = useState<FloorPlanData>(DEFAULT_FLOOR_PLAN);
@@ -518,10 +581,9 @@ const ZonesAndGroupsCard: React.FC<ZonesAndGroupsCardProps> = ({ restaurantId, r
       }
     }
 
-    // v3.39 hotfix #3 redesign — group is a POOL definition. Settings stores `slot_count`; the
-    // tables themselves are NOT auto-placed on the floor. Floor Plan Editor consumes the pool
-    // (slot_count) and lets the user drop each slot onto the canvas. The old "auto-grid all N
-    // tables on the floor at (50,50)" behaviour has been removed because it surprised users.
+    // Group is a POOL definition (slot_count). As of 2026-06-17 the pool slots are AUTO-PLACED onto
+    // the canvas here (tidy grid, overlap-avoiding) so the tables show on the Floor Plan immediately.
+    // The Floor Plan Editor is still used to rearrange/reshape/delete them afterwards.
     let next: FloorPlanData;
     if (groupModal.mode === 'add') {
       const slotCount = Math.max(0, Math.min(200, parseInt(groupModal.tableCount, 10) || 0));
@@ -531,28 +593,43 @@ const ZonesAndGroupsCard: React.FC<ZonesAndGroupsCardProps> = ({ restaurantId, r
         id: newGroupId, zone_id: groupModal.zoneId, name, prefix, sort_order: sortOrder,
         slot_count: slotCount
       };
+      // Auto-place all slots (1..slotCount) on the floor.
+      const placedTables = slotCount > 0
+        ? autoPlaceSlots(floorPlan, newGroup, Array.from({ length: slotCount }, (_, i) => i + 1))
+        : [];
       next = {
         ...floorPlan,
-        table_groups: [...(floorPlan.table_groups || []), newGroup]
-        // tables: untouched — user adds via Floor Plan Editor
+        table_groups: [...(floorPlan.table_groups || []), newGroup],
+        tables: [...(floorPlan.tables || []), ...placedTables]
       };
     } else {
       // Edit — name + prefix + slot_count 변경. Reducing slot_count below the number of already
       // placed tables is prevented (user must remove tables from the Floor Plan Editor first).
+      // Growing the pool auto-places the newly added slots; existing labels are refreshed for prefix.
       const placedInGroup = (floorPlan.tables || []).filter(t => t.group_id === groupModal.groupId);
       const placedCount = placedInGroup.length;
       const wantedSlotCount = Math.max(0, Math.min(200, parseInt(groupModal.tableCount, 10) || 0));
       const slotCount = Math.max(wantedSlotCount, placedCount);  // floor cannot lose placed tables
+      const targetGroup = (floorPlan.table_groups || []).find(g => g.id === groupModal.groupId);
+      const groupForLabel: FloorTableGroup = { ...(targetGroup as FloorTableGroup), prefix };
+      // Which pool numbers 1..slotCount are not yet on the floor → auto-place them.
+      const placedNums = new Set(placedInGroup.map(t => String(t.tableNumber)));
+      const missing: number[] = [];
+      for (let i = 1; i <= slotCount; i++) if (!placedNums.has(String(i))) missing.push(i);
+      const newlyPlaced = missing.length ? autoPlaceSlots(floorPlan, groupForLabel, missing) : [];
       next = {
         ...floorPlan,
         table_groups: (floorPlan.table_groups || []).map(g =>
           g.id === groupModal.groupId ? { ...g, name, prefix, slot_count: slotCount } : g
         ),
-        tables: floorPlan.tables.map(t =>
-          t.group_id === groupModal.groupId
-            ? { ...t, label: computeTableLabel(prefix, t.tableNumber) }
-            : t
-        )
+        tables: [
+          ...floorPlan.tables.map(t =>
+            t.group_id === groupModal.groupId
+              ? { ...t, label: computeTableLabel(prefix, t.tableNumber) }
+              : t
+          ),
+          ...newlyPlaced
+        ]
       };
     }
     await onChange(next);
@@ -785,7 +862,7 @@ const ZonesAndGroupsCard: React.FC<ZonesAndGroupsCardProps> = ({ restaurantId, r
             onChange={(e) => setGroupModal(s => ({ ...s, tableCount: e.target.value }))}
             style={{ maxWidth: '160px' }}
           />
-          <HintText>{t('zonesGroups.poolSizeHelp', 'Total tables defined for this group. Tables are NOT placed on the floor here — open Floor Plan Editor to drop each one onto the canvas.')}</HintText>
+          <HintText>{t('zonesGroups.poolSizeHelp', 'Total tables for this group. Tables are placed on the floor plan automatically — open Floor Plan Editor to rearrange or reshape them.')}</HintText>
         </FormRow>
         {groupModal.mode === 'edit' && (() => {
           const placedInGroup = (floorPlan.tables || []).filter(t => t.group_id === groupModal.groupId).length;

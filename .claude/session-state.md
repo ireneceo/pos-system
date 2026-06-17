@@ -6,7 +6,13 @@
 **작업 상태:** 완료 — dev 검증 끝, 운영 배포 대기
 
 ### 진행 중인 작업
-- 없음
+- 없음 (운영시간+라스트오더는 설계 완료, 구현은 Irene go 대기 — docs/BUSINESS_HOURS_LAST_ORDER.md)
+
+### 2026-06-17 추가 작업
+- **thefire03(rid25) 운영 데이터 수정 2건 (배포 무관, DB 직접·이미 반영)**:
+  - 모바일 메뉴 0건 → 상품 126개 is_active=1 활성화. 원인=브랜드메뉴 푸시는 비활성 생성(설계), 매장 미활성화. 백업 thefire03-isactive-backup-20260617.json
+  - 플로어플랜 B그룹 7슬롯 0배치 → B-1~7 배치(B-1 가로 rectangle 110x70, B-2~7 square 70x70). 백업 thefire03-floorplan-*-20260617.json
+- **floor-plan 자동배치 근본수정 (dev 완료·배포대기)**: ZonesAndGroupsCard.tsx autoPlaceSlots — 그룹 생성/풀증가 시 캔버스 자동배치(겹침회피). v3.39 수동정책 뒤집음. poolSizeHelp i18n 4언어. e2e PASS / print-guard 8/8 / health 101/101 / build TS0
 
 ### 완료된 작업 (이번 세션)
 - 데모 리포트 14건 전수 수정 (Owner/FG/BG 3역할) — 전체유저 공유코드 버그로 처리, 주문 프로세스 미접촉
@@ -21,7 +27,9 @@
 
 ### 다음 확정 작업
 - **운영 배포** (Irene 지시: "이따가 레스토랑 운영 안 할 때 /배포"). 배포 시 migrate-user-is-active.js 자동 실행됨(9a-2).
+  - 배포분: 데모 리포트 14건(코드) + **floor-plan 자동배치(ZonesAndGroupsCard 6/17)**.
   - 배포 후: 운영 데모 브랜드에 같은 잘못된 QR 이미지가 있으면 1회 데이터 정리 또는 매장 재업로드(검증이 안내).
+- **운영시간+라스트오더 구현** — 설계 완료(docs/BUSINESS_HOURS_LAST_ORDER.md). 비즈니스 결정 확정(요일별 라스트오더 명시시각 / 모바일만 차단 / 메뉴노출+버튼비활성). Irene go 하면 구현 착수.
 
 ### 후속 후보 (아이디어 메모, 확정 X)
 > 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.

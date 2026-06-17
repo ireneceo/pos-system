@@ -409,8 +409,13 @@ router.post('/product', checkRestaurantAccess, async (req, res) => {
     const restaurant = await Restaurant.findByPk(restaurantId);
 
     if (restaurant && restaurant.menu_item_limit && restaurant.menu_item_limit > 0) {
+      // 2026-06-17 franchise fix: brand-pushed menus (brand_menu_id != null) are the BRAND's content,
+      // not items the restaurant added — they must NOT count against the restaurant's plan limit.
+      // Otherwise a brand that pushes more items than the plan allows (e.g. 126 brand menus on a
+      // 100-item plan) blocks the restaurant from adding even its first own item. The limit now
+      // governs only the restaurant's OWN products.
       const currentItemCount = await Product.count({
-        where: { restaurant_id: restaurantId }
+        where: { restaurant_id: restaurantId, brand_menu_id: null }
       });
 
       if (currentItemCount >= restaurant.menu_item_limit) {
@@ -740,8 +745,13 @@ router.post('/product/:id/copy', checkProductTenant, async (req, res) => {
     // Check menu item limit
     const restaurant = await Restaurant.findByPk(restaurantId);
     if (restaurant && restaurant.menu_item_limit && restaurant.menu_item_limit > 0) {
+      // 2026-06-17 franchise fix: brand-pushed menus (brand_menu_id != null) are the BRAND's content,
+      // not items the restaurant added — they must NOT count against the restaurant's plan limit.
+      // Otherwise a brand that pushes more items than the plan allows (e.g. 126 brand menus on a
+      // 100-item plan) blocks the restaurant from adding even its first own item. The limit now
+      // governs only the restaurant's OWN products.
       const currentItemCount = await Product.count({
-        where: { restaurant_id: restaurantId }
+        where: { restaurant_id: restaurantId, brand_menu_id: null }
       });
 
       if (currentItemCount >= restaurant.menu_item_limit) {

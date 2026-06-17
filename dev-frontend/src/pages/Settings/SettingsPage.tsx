@@ -1511,33 +1511,48 @@ const SettingsPage: React.FC = () => {
       const token = getAuthToken();
       const authHeaders = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
 
-      const [stationsRes, categoriesRes, productsRes, restaurantRes] = await Promise.all([
+      // 2026-06-17 매장 critical fix: 이전엔 Promise.all 로 4개 fetch 를 묶어서, categories/menu/
+      // restaurant 중 **하나라도** 실패하거나(페이지 self-reload 시 fetch abort 포함) reject 되면
+      // 전체가 catch 로 빠져 setKitchenStations 가 호출되지 않았다 → kitchenStations=[] → 주방
+      // 스테이션 프린터 카드(KQ1/KQ2 등)가 통째로 사라져 "프린터 설정이 날아간 것처럼" 보였다
+      // (DB 데이터는 멀쩡 — 표시만 소실). allSettled 로 각 fetch 를 독립 처리해, menu 등이 실패해도
+      // 스테이션 목록은 자기 fetch 만 성공하면 항상 로드된다. 모든 매장 공통 회귀 차단.
+      const [stationsRes, categoriesRes, productsRes, restaurantRes] = await Promise.allSettled([
         fetch(`/api/kitchen-stations?restaurant_id=${user.restaurantId}`, { headers: authHeaders }),
         fetch(`/api/categories?restaurant_id=${user.restaurantId}`, { headers: authHeaders }),
         fetch(`/api/menu?restaurant_id=${user.restaurantId}`, { headers: authHeaders }),
         fetch(`/api/restaurants/${user.restaurantId}`, { headers: authHeaders })
       ]);
 
-      if (stationsRes.ok) {
-        const stationsData = await stationsRes.json();
-        setKitchenStations(stationsData.data?.stations || []);
+      // Each block is independent — a failure in one fetch never blocks the others.
+      if (stationsRes.status === 'fulfilled' && stationsRes.value.ok) {
+        try {
+          const stationsData = await stationsRes.value.json();
+          setKitchenStations(stationsData.data?.stations || []);
+        } catch (e) { console.error('parse kitchen-stations failed:', e); }
       }
-      if (categoriesRes.ok) {
-        const catData = await categoriesRes.json();
-        setAllCategories(Array.isArray(catData) ? catData : (catData.data || []));
+      if (categoriesRes.status === 'fulfilled' && categoriesRes.value.ok) {
+        try {
+          const catData = await categoriesRes.value.json();
+          setAllCategories(Array.isArray(catData) ? catData : (catData.data || []));
+        } catch (e) { console.error('parse categories failed:', e); }
       }
-      if (productsRes.ok) {
-        const prodData = await productsRes.json();
-        const items = prodData.data?.items || prodData.data || [];
-        setAllProducts(Array.isArray(items) ? items : []);
+      if (productsRes.status === 'fulfilled' && productsRes.value.ok) {
+        try {
+          const prodData = await productsRes.value.json();
+          const items = prodData.data?.items || prodData.data || [];
+          setAllProducts(Array.isArray(items) ? items : []);
+        } catch (e) { console.error('parse menu failed:', e); }
       }
-      if (restaurantRes.ok) {
-        const restData = await restaurantRes.json();
-        const restaurant = restData.data || restData;
-        if (restaurant.kitchen_item_merge) {
-          setItemMergeTimeLimit(restaurant.kitchen_item_merge.time_limit || 0);
-          setItemMergeMaxCount(restaurant.kitchen_item_merge.max_count || 0);
-        }
+      if (restaurantRes.status === 'fulfilled' && restaurantRes.value.ok) {
+        try {
+          const restData = await restaurantRes.value.json();
+          const restaurant = restData.data || restData;
+          if (restaurant.kitchen_item_merge) {
+            setItemMergeTimeLimit(restaurant.kitchen_item_merge.time_limit || 0);
+            setItemMergeMaxCount(restaurant.kitchen_item_merge.max_count || 0);
+          }
+        } catch (e) { console.error('parse restaurant failed:', e); }
       }
     } catch (error) {
       console.error('Failed to load kitchen stations:', error);
@@ -6724,7 +6739,12 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                     </AutoSaveField>
                   </Toggle>
 
-                  {printerSettings.kitchenPrinter.enabled && (
+                  {/* 2026-06-17 매장 critical fix: per-station kitchen printer config (KQ1→KITCHEN 1 등)이
+                      단일 "Enable Kitchen Printer" 토글 뒤에 숨겨져 있었다. 스테이션 기반 인쇄를 쓰는 매장은
+                      이 토글이 OFF 라서 — 실제 station 프린터 설정이 DB 에 멀쩡히 있어도 — 화면에서 통째로
+                      사라져 "프린터 설정이 날아간 것처럼" 보였다(스테이션을 쓰는 모든 매장 공통). 스테이션이
+                      하나라도 있으면 토글과 무관하게 station 프린터 설정을 항상 표시한다. */}
+                  {(printerSettings.kitchenPrinter.enabled || kitchenStations.length > 0) && (
                     <>
                       {/* Per-printer method selector (default for kitchen + when no stations).
                           Each station can override below. */}

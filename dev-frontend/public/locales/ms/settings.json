@@ -37,7 +37,7 @@
   "zonesGroups.poolMetric": "{{placed}} / {{pool}}",
   "zonesGroups.zonePoolMeta": "{{placed}} diletakkan / {{pool}} dalam kolam",
   "zonesGroups.poolSize": "Saiz kolam (bilangan meja)",
-  "zonesGroups.poolSizeHelp": "Jumlah meja yang ditakrifkan untuk kumpulan ini. Meja TIDAK diletakkan pada pelan lantai di sini — buka Floor Plan Editor untuk meletakkan setiap satu pada kanvas.",
+  "zonesGroups.poolSizeHelp": "Jumlah meja untuk kumpulan ini. Meja diletakkan pada pelan lantai secara automatik — buka Floor Plan Editor untuk susun semula atau ubah bentuk.",
   "zonesGroups.poolMinPlaced": "Saiz kolam tidak boleh kurang daripada {{count}} — seberapa banyak meja sudah ada pada pelan lantai. Buang dari Floor Plan Editor terlebih dahulu.",
   "zonesGroups.defaultSeats": "Tempat duduk lalai setiap meja",
   "zonesGroups.labelUpdateDesc": "Label meja sedia ada akan dikemas kini secara automatik apabila awalan ditukar.",

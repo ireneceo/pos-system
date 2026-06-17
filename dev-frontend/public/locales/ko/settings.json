@@ -37,7 +37,7 @@
   "zonesGroups.poolMetric": "{{placed}} / {{pool}}",
   "zonesGroups.zonePoolMeta": "{{placed}} 배치 / {{pool}} 풀",
   "zonesGroups.poolSize": "풀 크기 (테이블 수)",
-  "zonesGroups.poolSizeHelp": "이 그룹에 정의되는 총 테이블 수. 여기서 자동 배치되지 않습니다 — Floor Plan Editor 를 열어 직접 하나씩 캔버스에 배치하세요.",
+  "zonesGroups.poolSizeHelp": "이 그룹의 총 테이블 수. 플로어 플랜에 자동으로 배치됩니다 — 위치/모양 변경은 Floor Plan Editor 에서 하세요.",
   "zonesGroups.poolMinPlaced": "풀 크기는 {{count}} 미만으로 줄일 수 없습니다 — 이미 그만큼의 테이블이 Floor Plan 에 배치되어 있습니다. Floor Plan Editor 에서 먼저 제거하세요.",
   "zonesGroups.defaultSeats": "테이블당 기본 좌석 수",
   "zonesGroups.labelUpdateDesc": "접두어가 변경되면 기존 테이블 라벨도 자동으로 업데이트됩니다.",
