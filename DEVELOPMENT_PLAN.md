@@ -1,6 +1,21 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-18 (브랜드 메뉴 UX 3종 + 이미지 업로드 CORS 수정 + 데모/floor-plan 누적분 **운영 배포 완료**. 상세 아래.)
+> **최종 업데이트:** 2026-06-18 (운영시간+라스트오더 **기획 확정** — 구현 다음 세션. 그 아래 v3.58 배포 이력.)
+
+## 📐 기획 확정(미구현): 운영시간(요일별) + 라스트오더 게이트 (2026-06-18)
+
+> 코드 변경 0 — 설계·교차검증만. 구현은 다음 세션. 상세 = `docs/BUSINESS_HOURS_LAST_ORDER.md` §9.
+
+| 결정 | 내용 |
+|------|------|
+| 주문유형 차등 게이트 | dine-in/takeaway(즉시)=마감 차단 / **pickup(예약)=차단 X, 운영시간으로 픽업시간 유도**(업계 표준, Irene 지시) / delivery=성격따라 |
+| 게이트 단일소스 | `utils/businessHours.js` 신규 — `getOrderingState`(즉시) + `getPickupSlots`(예약, 프론트·서버 공유) |
+| 재사용 발견 | PaymentPage `generateTimeSlots` + `Order.scheduled_pickup_time` 기존 골격 → businessHours로 확장(신규 UI 아님) |
+| UI/UX 확정 | "주문불가" 화면 통일(공통 배너), 배너 위치, 장바구니 in-flight, 설정 7행표 복사단축/시드 |
+| 안전 | DB 마이그 불필요(JSON 키), settingsGuard 화이트리스트 필수, 인쇄/주문코드 🔒 무접촉 |
+
+---
+
 
 ## ✅ 운영 배포: 브랜드 메뉴 UX + 이미지 업로드 CORS 수정 (v3.58, 2026-06-18, Backup 20260618_010728, SW 3.64)
 

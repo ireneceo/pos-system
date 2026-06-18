@@ -97,4 +97,69 @@ operation_settings.businessHours = {
 
 ## 8. 범위 밖(후속 후보)
 - 공휴일/특정일자 오버라이드(이벤트 휴무) — `availabilitySchedule` 의 start_date/end_date 패턴으로 확장 가능. 이번 범위 제외(요일 단위까지).
+  - **실수요 확인(2026-06-18)**: operation_tickets `DEMO-OT-001 "Need to update operating hours for Ramadan"` = 라마단 가변시간 = 특정일/기간 오버라이드 실수요. 요일 단위 다음 우선 후속.
 - "마감 X분 전 자동 라스트오더" 오프셋 모드 — 이번엔 요일별 명시만.
+- (후속 메모) 마감으로 차단된 모바일 주문 시도 카운트 로깅 → 사장이 라스트오더 시각 조정 판단 시그널.
+
+---
+
+## 9. 기획 확정 (2026-06-18 세션 — UI/UX + 서비스기획 교차검증 후)
+
+> 설계(§1~8)의 데이터·게이트 아키텍처는 견고. 아래는 실측·교차검증으로 **추가 확정**된 화면 구성 + 주문유형 차등 규칙. 구현은 다음 세션.
+
+### 9-1. 핵심 수정 — 주문유형별 차등 게이트 (업계 표준)
+"모바일 주문 일괄 차단"은 폐기. **즉시주문 vs 예약주문 분리** (order-ahead 표준: 스타벅스/맥도날드).
+
+| 주문유형 | 성격 | 마감/라스트오더 후 |
+|---------|------|-------------------|
+| dine-in | 즉시 | 차단 → 소프트배너 + 결제 비활성 |
+| takeaway | 즉시 | 동일 차단 |
+| **pickup** | **예약** | **차단 안 함.** 픽업시간 선택을 운영시간으로 **유도**(유효 슬롯만 노출) — Irene 2026-06-18 지시 |
+| delivery | (활성 시) | 즉시형=takeaway 규칙 / 예약형=pickup 규칙 |
+
+### 9-2. 픽업 유도 로직 (Irene 지시 "운영시간에 맞춰 픽업시간 선택")
+- **재사용 발견**: `PaymentPage.tsx`에 픽업 슬롯 생성기 `generateTimeSlots`(약 1142~1196) + `isImmediatePickup`(ASAP) 토글 + `Order.scheduled_pickup_time` 컬럼 **이미 존재**. 단 현재는 단일 `openingTime/closingTime`만 + 오늘 슬롯만 + lastOrder 미반영.
+- **확장**: `generateTimeSlots` → businessHours 요일맵 + `lastOrder` 상한 + 다음영업일 롤오버. 신규 UI 아님, 기존 함수 확장.
+  - 영업중 & 라스트오더 전 → "ASAP(~prepMin)" + 오늘 남은 슬롯(라스트오더 상한)
+  - 마감/라스트오더 후/오늘 휴무 → ASAP 숨김, 가장 빠른 슬롯 = 다음 영업일 오픈부터. 배너 "지금 마감 — 가장 빠른 픽업: 수요일 11:00"
+  - 휴무일 스킵, overnight 윈도우, 최대 7일 horizon.
+
+### 9-3. 게이트 단일소스 (`utils/businessHours.js`)
+- `getOrderingState(opSettings, now)` → **즉시주문**(dine-in/takeaway) 게이트 + status/today/nextOpen/message_key
+- `getPickupSlots(opSettings, now, days=7)` → **예약주문** 유효 슬롯 배열. 프론트 `generateTimeSlots` + 서버 검증이 **공유**하는 1소스
+
+### 9-4. 서버 강제 (`routes/mobile-orders.js` POST /order)
+- dine-in/takeaway: `immediateCanOrder=false` → `400 {code:'ORDERING_CLOSED'}`
+- pickup/delivery: `scheduled_pickup_time`이 `getPickupSlots` 밖 → `400 {code:'INVALID_PICKUP_TIME'}` (마감이라고 무조건 막지 않음 — 미래 유효 슬롯이면 통과)
+- POS/orders-crud/인쇄 경로 🔒 무접촉.
+
+### 9-5. UI/UX 구성 확정 (30년차 디자이너 관점 — 실측 후 처방)
+1. **"주문 불가" 화면 통일**: 현재 수동 pause = 메뉴 가린 하드블록 카드(`OrderTypePage.tsx:685`, 이모지 `⏸`). 신규 스케줄 마감 = 소프트(메뉴노출+버튼비활성+배너). 같은 "주문 못함"인데 시각언어 2종 → 공통 `OrderingUnavailableBanner`(severity 2단: emergency=수동pause / scheduled=마감) + **이모지 제거**(메모리 no-emoji).
+2. **배너 위치**: 흐름 OrderType→Menu→Item→Cart→Payment. Menu/Item/Cart 상단 sticky 배너 1개(글로벌 설명) + Cart/Payment 1차 액션만 비활성. 개별 메뉴 Add 버튼은 비활성만(툴팁 중복 금지).
+3. **장바구니 in-flight**: 담는 중 라스트오더 경과 시 Cart 상단 "라스트오더(21:30) 종료 — 카운터 주문" + 결제 비활성. 서버 400 메시지와 동일 카피.
+4. **설정 7행 표(입력 35개) 필수 패턴**: ① "평일 일괄적용/전체 복사" 단축 ② 휴무 토글 시 행 dim ③ 첫 enable 시 openingTime/closingTime로 7일 시드 ④ lastOrder placeholder "마감과 같음"(생략=마감) ⑤ 표준 컴포넌트(현 breakTimes 인라인 styled `Delete` 답습 금지).
+5. **휴게(breakTimes) vs 라스트오더 역할 구분**: 이번 범위 breakTimes=게이트 비대상(표시 유지). 설정 화면 라벨로 구분("영업/라스트오더=주문차단" vs "휴게=픽업안내").
+
+### 9-6. 서비스기획 완결 보강
+- 휴무 → 다음영업일 안내 카피 명시("수요일 11시 오픈").
+- 운영자 신뢰: enable 시 "지금부터 시간표대로 자동관리" 확인 + 현재상태 미리보기("지금: 영업중") 1줄.
+
+### 9-7. 확정 WBS (구현 다음 세션 — 순서: A 백엔드코어 → 실API검증 → B 프론트 → C i18n+검증)
+| Phase | 파일 | 작업 |
+|-------|------|------|
+| A1 | `utils/businessHours.js` (신규) | `getOrderingState` + `getPickupSlots` |
+| A2 | `utils/settingsGuard.js` | `OPERATION_KEYS`에 `businessHours` (anti-wipe 필수) |
+| A3 | `routes/mobile-public.js` `/store/:slug` | `ordering` 블록 추가, `canOrder` 단일소스 |
+| A4 | `routes/mobile-orders.js` POST /order | 유형분기: ORDERING_CLOSED / INVALID_PICKUP_TIME |
+| B1 | `pages/Settings/SettingsPage.tsx` (운영탭) | enable 토글 + 요일 7행표 + 복사단축 + 시드 |
+| B2 | `mobile/contexts/MobileOrderContext.tsx` | `/store.ordering` 소비, pause와 OR 결합 |
+| B3 | `mobile/pages/OrderTypePage.tsx` 등 | dine-in/takeaway 소프트배너+비활성 (pickup 차단 X), 통일 배너 |
+| B4 | `public/sw.js` | SW_VERSION bump |
+| B5 | `mobile/pages/PaymentPage.tsx` `generateTimeSlots` | businessHours+lastOrder+다음영업일 롤오버 (`getPickupSlots` 호출로 교체) |
+| C | locales en/ko/zh/ms | 마감/라스트오더/휴무/픽업유도 메시지 + 설정 라벨, glossary 우선 |
+
+### 9-8. 검증 게이트 (완료 기준)
+- 단위: `getOrderingState` 경계 6종 + overnight + `getPickupSlots`(영업중/마감후/휴무일/다음영업일 롤오버) `now` 주입
+- 실API: 라스트오더 후 dine-in POST→400 ORDERING_CLOSED / pickup 미래슬롯 POST→정상 / pickup 무효슬롯→400 INVALID_PICKUP_TIME / 동시각 POS 정상(무영향)
+- 하위호환: `enabled:false` 매장 canOrder:true 회귀 0
+- settingsGuard 저장→GET 키 보존 / mount 0크래시 / print-guard 8/8 / health 101+ / build TS 0 / SW bump
