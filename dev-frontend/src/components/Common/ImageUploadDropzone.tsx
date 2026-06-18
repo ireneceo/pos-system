@@ -169,7 +169,9 @@ const getApiBaseUrl = (): string => {
   if (window.location.hostname === 'dev.purplehere.com') {
     return 'https://dev.purplehere.com';
   }
-  return 'https://purplehere.com';
+  // 운영: 현재 페이지와 같은 origin 사용 (apex/www 무관). apex 하드코딩 시
+  // www.purplehere.com 접속자는 업로드가 cross-origin 이 되어 CORS 차단됐음.
+  return window.location.origin;
 };
 
 const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({

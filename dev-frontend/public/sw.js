@@ -10,7 +10,7 @@
  * caching SPA shell would conflict. If future offline support is needed, layer Workbox separately.
  */
 
-const SW_VERSION = '3.63-voidpin-20260613';
+const SW_VERSION = '3.64-menuux-imgupload-20260618';
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {

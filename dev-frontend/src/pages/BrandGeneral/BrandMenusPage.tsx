@@ -1728,7 +1728,7 @@ const MenuSettingsTab: React.FC<{ brandId: number | null; brandName: string }> =
         <ToggleRow>
           <ToggleInfo>
             <strong>{t('brand:brandMenusPage.enforceMenuOrder', 'Lock menu order across all restaurants')}</strong>
-            <div>{t('brand:brandMenusPage.enforceMenuOrderHint', 'When ON: every restaurant displays menus in the order you set under the Menus tab (use the up/down arrows in "Menu order" sort), and restaurants cannot reorder them. When OFF: each restaurant arranges its own menu order freely.')}</div>
+            <div>{t('brand:brandMenusPage.enforceMenuOrderHint', 'When ON: every restaurant displays menus in the order you set under the Menus tab (switch the sort to "Menu order" and drag the cards), and restaurants cannot reorder them. When OFF: each restaurant arranges its own menu order freely.')}</div>
           </ToggleInfo>
           <AutoSaveField onSave={persist} type="toggle">
             <Switch type="checkbox" role="switch" aria-checked={settings.enforce_menu_order}

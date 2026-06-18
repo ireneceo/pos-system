@@ -1,6 +1,36 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-16 (데모 리포트 14건 전수 수정 — 미배포, dev 완료. 상세 아래.)
+> **최종 업데이트:** 2026-06-18 (브랜드 메뉴 UX 3종 + 이미지 업로드 CORS 수정 + 데모/floor-plan 누적분 **운영 배포 완료**. 상세 아래.)
+
+## ✅ 운영 배포: 브랜드 메뉴 UX + 이미지 업로드 CORS 수정 (2026-06-18, Backup 20260618_010728, SW 3.64)
+
+> 6/16 데모 14건 + 6/17 floor-plan 자동배치 + 6/18 메뉴 UX/이미지 업로드를 묶어 운영 배포. Smoke 9/9, 안전게이트(print-guard 8/8 + health 101/101) 통과. 주문/인쇄 코드 바이트 무변경.
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 목록 리프레시 튐 수정 | 37페이지 일괄 `{loading ?}` → `{loading && <list>.length===0 ?}` (첫 로딩만 placeholder, 갱신은 스크롤 위치 유지). 렌더 가드만, 로직 미접촉 | ✅ |
+| 브랜드 메뉴 드래그 순서 | "Menu order(custom)" 정렬 시 카드 핸들 드래그 → `PUT /brand-menus/reorder/bulk` 즉시 저장. 구 화살표 제거 | ✅ |
+| Enforce 전체 토글 | 메뉴별 체크박스 제거 → 설정 탭 `enforce_menu_order` 1토글. 저장 시 산하 `lock_sort_order` 일괄 동기화(단일 source) | ✅ |
+| 이미지 업로드 CORS | `ImageUploadDropzone` 운영 fallback이 apex 하드코딩 → www 접속 시 cross-origin 차단. `window.location.origin`(same-origin)으로 수정 | ✅ |
+| 안내문 정정 | enforceMenuOrderHint가 제거된 "up/down arrows" 안내 → "drag the cards" 로 수정 | ✅ |
+| 운영 데모 데이터 위생 | Seoul BBQ House(데모) 취소건 39건 needs_print 누적 → pending-print 윈도우 막힘 → 정리(코드 무관) | ✅ |
+
+### 수정된 파일
+- `dev-backend/routes/brand-menus.js` (enforce_menu_order + reorder/bulk)
+- `dev-frontend/src/pages/BrandGeneral/BrandMenusPage.tsx` (드래그 + 토글 + 안내문)
+- `dev-frontend/src/components/Common/ImageUploadDropzone.tsx` (same-origin 업로드)
+- `dev-frontend/public/sw.js` (SW_VERSION 3.64)
+- 리프레시 가드 37개 페이지 (.tsx)
+
+### 검증 (운영 실서버)
+- 단계 변경 전구간: create→preparing→ready→served→completed 전부 http 200 + DB 정확 · 금액 정확 · soft-delete · 감사로그 정상
+- 운영 health-check(localhost:3002) print 계약: 인쇄후 pending사라짐 / +Round 새품목만 / 동시claim 1개만 / 세금공식 / 익명401 전부 통과
+- brand-menus HTTP: reorder 200·역전, settings ON/OFF 동기화, GET 왕복, IDOR 403, 익명 401
+- mount sweep 70/70 · hydration 0 · timezone 신규 0 · i18n Errors 0
+
+---
 
 ## ✅ 완료: 데모 리포트 14건 전수 수정 (2026-06-16, 미배포 — dev 완료)
 
