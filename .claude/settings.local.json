@@ -691,7 +691,8 @@
       "Bash(bash /tmp/analyze_loading.sh)",
       "Bash(bash /tmp/extract_pattern.sh)",
       "Bash(bash /tmp/final_analysis.sh)",
-      "Bash(bash /tmp/kdetect.sh)"
+      "Bash(bash /tmp/kdetect.sh)",
+      "Bash(EOF)"
     ],
     "deny": [],
     "ask": []
