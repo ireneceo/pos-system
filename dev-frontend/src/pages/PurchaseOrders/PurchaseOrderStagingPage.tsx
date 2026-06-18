@@ -152,7 +152,7 @@ const PurchaseOrderStagingPage: React.FC = () => {
 
   const shareViaWhatsApp = (po: POStaging) => {
     if (!po.seller?.phone) {
-      setAlertDlg({ title: t('staging.noPhoneTitle', 'No Phone Number') as string, message: t('staging.noPhone', '공급업체 전화번호가 등록되지 않았습니다.') as string });
+      setAlertDlg({ title: t('staging.noPhoneTitle', 'No Phone Number') as string, message: t('staging.noPhone', 'No phone number is registered for this seller.') as string });
       return;
     }
     const phone = po.seller.phone.replace(/\D/g, '');
@@ -161,14 +161,14 @@ const PurchaseOrderStagingPage: React.FC = () => {
       `Items: ${(po.items || []).length}\n` +
       `Total: ${po.currency || 'MYR'} ${parseFloat(po.total_amount || '0').toFixed(2)}\n` +
       `${po.expected_delivery_date ? 'Expected: ' + po.expected_delivery_date + '\n' : ''}` +
-      `\n발주서 PDF 가 별도로 전달됩니다.`
+      `\nThe purchase order PDF will be sent separately.`
     );
     window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
   };
 
   const shareViaEmail = (po: POStaging) => {
     if (!po.seller?.email) {
-      setAlertDlg({ title: t('staging.noEmailTitle', 'No Email') as string, message: t('staging.noEmail', '공급업체 이메일이 등록되지 않았습니다.') as string });
+      setAlertDlg({ title: t('staging.noEmailTitle', 'No Email') as string, message: t('staging.noEmail', 'No email address is registered for this seller.') as string });
       return;
     }
     const subject = encodeURIComponent(`Purchase Order ${po.po_number || '#' + po.id}`);

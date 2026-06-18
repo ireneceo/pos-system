@@ -116,7 +116,7 @@ router.get('/preview/:restaurantId', authenticateToken, async (req, res) => {
             type: 'station_no_printer',
             stationId: sid,
             stationName: dbStation?.name || `Station #${sid}`,
-            message: `${dbStation?.name || 'Station #' + sid} 인쇄기 미설정 — 해당 메뉴는 첫 번째 station 으로 흡수되어 인쇄됨`
+            message: `${dbStation?.name || 'Station #' + sid} has no printer configured — its items are absorbed into the first station and printed there`
           });
         }
       });
@@ -128,7 +128,7 @@ router.get('/preview/:restaurantId', authenticateToken, async (req, res) => {
           type: 'unmapped_items',
           count: orphans.length,
           itemNames: orphans.map(it => it.menuItem?.name || it.name || '(unnamed)').slice(0, 8),
-          message: `${orphans.length}개 메뉴 station 미배정 — 카테고리 또는 메뉴 단위 station 매핑 필요`
+          message: `${orphans.length} item(s) have no station assigned — station mapping is required at the category or menu level`
         });
       }
 
@@ -142,7 +142,7 @@ router.get('/preview/:restaurantId', authenticateToken, async (req, res) => {
             type: 'station_drift',
             count: missing.length,
             stationNames: missing.map(s => s.name),
-            message: `매장에 ${activeStations.length}개 station 등록되어 있으나 인쇄기 설정은 ${configuredStationIds.length}개만 됨. 미설정 station 의 메뉴는 첫 station 으로 흡수됨.`
+            message: `This restaurant has ${activeStations.length} station(s) registered but only ${configuredStationIds.length} have a printer configured. Items for unconfigured stations are absorbed into the first station.`
           });
         }
       }
@@ -208,7 +208,7 @@ router.post('/clear-stuck-print-flags/:restaurantId', authenticateToken, async (
     });
 
     if (stuck.length === 0) {
-      return res.json({ success: true, data: { cleared: 0, message: '오래된 stuck flag 없음' } });
+      return res.json({ success: true, data: { cleared: 0, message: 'No stale stuck flags' } });
     }
 
     const ids = stuck.map(o => o.id);
@@ -219,7 +219,7 @@ router.post('/clear-stuck-print-flags/:restaurantId', authenticateToken, async (
         cleared: ids.length,
         orderIds: ids,
         orderNumbers: stuck.map(o => o.order_number),
-        message: `${ids.length}개 주문의 stuck print flag 해제`
+        message: `Cleared stuck print flags on ${ids.length} order(s)`
       }
     });
   } catch (e) {
@@ -270,7 +270,7 @@ router.post('/seed-missing-printer-configs/:restaurantId', authenticateToken, as
     });
 
     if (seeded.length === 0) {
-      return res.json({ success: true, data: { seeded: 0, message: '모든 active station 에 인쇄기 설정 있음' } });
+      return res.json({ success: true, data: { seeded: 0, message: 'All active stations have a printer configured' } });
     }
 
     await restaurant.update({
@@ -282,7 +282,7 @@ router.post('/seed-missing-printer-configs/:restaurantId', authenticateToken, as
       data: {
         seeded: seeded.length,
         stations: seeded,
-        message: `${seeded.length}개 station 에 placeholder 설정 시드 — Settings 에서 인쇄기 IP 입력 필요`
+        message: `Seeded placeholder configs for ${seeded.length} station(s) — enter the printer IP in Settings`
       }
     });
   } catch (e) {

@@ -134,5 +134,12 @@
   "menuPage.weekdayShortList": "Ah,Is,Se,Ra,Kh,Ju,Sa",
   "menuManagementPage.setOnly": "Untuk menu set sahaja",
   "menuManagementPage.setOnlyHint": "Tidak dijual berasingan — disembunyikan daripada pesanan POS & mudah alih, masih digunakan dalam menu set dan penghalaan stesen dapur",
-  "menuManagementPage.setOnlyBadge": "SET SAHAJA"
+  "menuManagementPage.setOnlyBadge": "SET SAHAJA",
+  "itemDetail.setIncludes": "Set ini termasuk:",
+  "itemDetail.required": "Wajib",
+  "itemDetail.quantity": "Kuantiti",
+  "itemDetail.specialInstructions": "Arahan Khas",
+  "itemDetail.specialPlaceholder": "Sebarang permintaan khas? (pilihan)",
+  "itemDetail.addedToCart": "Ditambah ke Troli",
+  "itemDetail.addToCart": "Tambah ke Troli"
 }

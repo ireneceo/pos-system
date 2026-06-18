@@ -708,5 +708,15 @@
   "enterTablePlaceholder": "테이블 번호를 입력하세요",
   "noTableMatch": "일치하는 테이블이 없습니다. 테이블의 번호를 확인하세요.",
   "selectTableToContinue": "계속하려면 테이블을 선택해 주세요.",
-  "storeNotLoaded": "매장 정보를 불러오는 중입니다. 잠시 후 다시 시도해 주세요."
+  "storeNotLoaded": "매장 정보를 불러오는 중입니다. 잠시 후 다시 시도해 주세요.",
+  "deliveryZone.within": "{{km}}km 이내",
+  "printFailBanner": {
+    "scopeBill": "영수증",
+    "scopeKitchen": "주방",
+    "failed": "{{scope}} 자동인쇄 실패. 자동 재시도 중입니다.",
+    "failedOrder": "{{scope}} 자동인쇄 실패 — 주문 {{n}}. 자동 재시도 중입니다.",
+    "hint": "계속 실패하면 QZ Tray 실행 여부와 프린터 연결 / 프린터 이름을 확인하세요.",
+    "printerSettings": "프린터 설정",
+    "dismiss": "닫기"
+  }
 }

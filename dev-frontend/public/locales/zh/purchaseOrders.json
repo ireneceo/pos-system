@@ -327,5 +327,15 @@
       "connect": "连接",
       "asSeparate": "+ 作为独立食材添加"
     }
+  },
+  "staging": {
+    "noPhoneTitle": "无电话号码",
+    "noPhone": "该供应商未登记电话号码。",
+    "noEmailTitle": "无电子邮箱",
+    "noEmail": "该供应商未登记电子邮箱。"
+  },
+  "unitCompat": {
+    "diff": "{{a}} ↔ {{b}}：数量单位不一致 — 需手动输入",
+    "incompatible": "{{a}} 与 {{b}} 不兼容。请手动输入或作为单独的原料添加"
   }
 }

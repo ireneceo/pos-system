@@ -202,9 +202,9 @@ const BrandMenuOptionGroupsPage: React.FC<Props> = ({ brandId }) => {
               <Label>{t('brand:brandMenuOptionGroupsPage.selection', 'Selection')}</Label>
               <Row>
                 <Toggle><input type="checkbox" checked={form.required} onChange={(e) => setForm({ ...form, required: e.target.checked })} />{t('brand:brandMenuOptionGroupsPage.required', 'Required')}</Toggle>
-                <span style={{ color: '#4B5563', fontSize: 13 }}>Min</span>
+                <span style={{ color: '#4B5563', fontSize: 13 }}>{t('brandMenuOptionGroupsPage.minSelect', 'Min')}</span>
                 <Input style={{ width: 70 }} type="number" min={0} value={form.min} onChange={(e) => setForm({ ...form, min: parseInt(e.target.value) || 0 })} />
-                <span style={{ color: '#4B5563', fontSize: 13 }}>Max</span>
+                <span style={{ color: '#4B5563', fontSize: 13 }}>{t('brandMenuOptionGroupsPage.maxSelect', 'Max')}</span>
                 <Input style={{ width: 70 }} type="number" min={1} value={form.max} onChange={(e) => setForm({ ...form, max: parseInt(e.target.value) || 1 })} />
               </Row>
             </FormGroup>

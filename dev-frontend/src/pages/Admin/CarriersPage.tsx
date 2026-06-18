@@ -386,7 +386,7 @@ const CarriersPage: React.FC = () => {
           <div style={{ marginTop: 18, padding: 14, background: '#F1F4F8', border: '1px dashed #64748B', borderRadius: 10, fontSize: 13, color: '#475569' }}>
             <strong style={{ color: '#0A2540' }}>{t('admin:carriers.webhook.title', 'Webhook Integration')}</strong>
             <div style={{ marginTop: 6 }}>
-              {t('admin:carriers.webhook.addModeHint', 'Carrier를 먼저 저장한 뒤 다시 열어서 webhook을 설정하세요. (저장 직후 자동으로 편집 모드로 전환됩니다.)')}
+              {t('admin:carriers.webhook.addModeHint', 'Save the carrier first, then reopen it to configure the webhook. (You will switch to edit mode automatically right after saving.)')}
             </div>
           </div>
         )}
@@ -430,7 +430,7 @@ const CarriersPage: React.FC = () => {
                 {secretConfirm && (
                   <div style={{ marginTop: 12, padding: 10, background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: 8 }}>
                     <div style={{ fontSize: 12, color: '#92400E', marginBottom: 8, fontWeight: 600 }}>
-                      {t('admin:carriers.webhook.regenerateWarning', '주의: 이 작업은 기존 secret을 즉시 무효화합니다. carrier 콘솔에 새 secret을 등록하기 전까지는 webhook 호출이 실패합니다.')}
+                      {t('admin:carriers.webhook.regenerateWarning', 'Warning: this immediately invalidates the existing secret. Webhook calls will fail until you register the new secret in the carrier console.')}
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <ThemedButton size="small" variant="danger" onClick={regenerateSecret}>{t('admin:carriers.webhook.regenerateConfirm', 'Confirm & Regenerate')}</ThemedButton>
@@ -441,7 +441,7 @@ const CarriersPage: React.FC = () => {
                 {revealedSecret && (
                   <div style={{ marginTop: 12, padding: 12, background: '#FEE2E2', border: '2px solid #DC2626', borderRadius: 8 }}>
                     <div style={{ fontSize: 12, color: '#991B1B', fontWeight: 700, marginBottom: 8 }}>
-                      {t('admin:carriers.webhook.copyOnce', '주의: 이 secret은 다시 볼 수 없습니다. 지금 carrier 콘솔에 등록하세요.')}
+                      {t('admin:carriers.webhook.copyOnce', 'Warning: this secret cannot be viewed again. Register it in the carrier console now.')}
                     </div>
                     <code style={{ display: 'block', padding: 10, background: 'white', border: '1px solid #FCA5A5', borderRadius: 6, fontSize: 12, wordBreak: 'break-all', userSelect: 'all' }}>
                       {revealedSecret}

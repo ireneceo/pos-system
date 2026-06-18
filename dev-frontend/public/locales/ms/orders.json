@@ -135,5 +135,9 @@
   "ticketSend.resend": "Hantar semula",
   "ticketSend.close": "Tutup",
   "voidPin.title": "Kebenaran diperlukan",
-  "voidPin.subtitle": "Masukkan PIN pengurus untuk batal item atau pesanan"
+  "voidPin.subtitle": "Masukkan PIN pengurus untuk batal item atau pesanan",
+  "cancelledItem.sentToKitchen": "Item dibatalkan — dihantar ke dapurnya",
+  "cancelledItem.pressSend": "Item dibatalkan — tekan [Hantar] untuk hantar ke dapur",
+  "orderCancel.sentToKitchen": "Pesanan {{orderNumber}} — dihantar ke dapurnya",
+  "orderCancel.pressSend": "Pesanan {{orderNumber}} — tekan [Hantar] untuk hantar ke dapur"
 }

@@ -135,5 +135,9 @@
   "ticketSend.resend": "重新发送",
   "ticketSend.close": "关闭",
   "voidPin.title": "需要授权",
-  "voidPin.subtitle": "请输入管理员 PIN 以作废或取消"
+  "voidPin.subtitle": "请输入管理员 PIN 以作废或取消",
+  "cancelledItem.sentToKitchen": "已取消项目 — 已发送至对应厨房",
+  "cancelledItem.pressSend": "已取消项目 — 按[发送]以发送至厨房",
+  "orderCancel.sentToKitchen": "订单 {{orderNumber}} — 已发送至对应厨房",
+  "orderCancel.pressSend": "订单 {{orderNumber}} — 点击 [发送] 推送到厨房"
 }

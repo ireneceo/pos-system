@@ -167,7 +167,7 @@ router.get('/:restaurantId/ingredients', authenticateToken, checkRestaurantAcces
     res.json({ success: true, data: ingredients });
   } catch (error) {
     console.error('Get restaurant ingredients error:', error);
-    res.status(500).json({ success: false, error: { message: '재료 목록 조회 실패', code: 'INTERNAL_ERROR' } });
+    res.status(500).json({ success: false, error: { message: 'Failed to load ingredients', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -238,7 +238,7 @@ router.post('/:restaurantId/ingredients', authenticateToken, checkRestaurantAcce
     res.json({ success: true, data: ingredient });
   } catch (error) {
     console.error('Create restaurant ingredient error:', error);
-    res.status(500).json({ error: error.message || '재료 생성 실패' });
+    res.status(500).json({ error: error.message || 'Failed to create ingredient' });
   }
 });
 
@@ -446,7 +446,7 @@ router.put('/:restaurantId/ingredients/:ingredientId', authenticateToken, checkR
     const { ingredientId } = req.params;
     const { code, name, category, unit, unit_cost, supplier_name, min_stock, image_url, ingredient_category_id, base_quantity, supplier_id, track_stock } = req.body;
     const ingredient = await Ingredient.findByPk(ingredientId);
-    if (!ingredient) return res.status(404).json({ success: false, error: { message: '재료를 찾을 수 없습니다', code: 'NOT_FOUND' } });
+    if (!ingredient) return res.status(404).json({ success: false, error: { message: 'Ingredient not found', code: 'NOT_FOUND' } });
 
     // Build update object with only provided fields
     const updateData = {};
@@ -473,7 +473,7 @@ router.put('/:restaurantId/ingredients/:ingredientId', authenticateToken, checkR
     res.json({ success: true, data: ingredient });
   } catch (error) {
     console.error('Update restaurant ingredient error:', error);
-    res.status(500).json({ success: false, error: { message: '재료 수정 실패', code: 'INTERNAL_ERROR' } });
+    res.status(500).json({ success: false, error: { message: 'Failed to update ingredient', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -481,12 +481,12 @@ router.delete('/:restaurantId/ingredients/:ingredientId', authenticateToken, che
   try {
     const { ingredientId } = req.params;
     const ingredient = await Ingredient.findByPk(ingredientId);
-    if (!ingredient) return res.status(404).json({ success: false, error: { message: '재료를 찾을 수 없습니다', code: 'NOT_FOUND' } });
+    if (!ingredient) return res.status(404).json({ success: false, error: { message: 'Ingredient not found', code: 'NOT_FOUND' } });
     await ingredient.destroy();
-    res.json({ success: true, message: '재료가 삭제되었습니다' });
+    res.json({ success: true, message: 'Ingredient deleted' });
   } catch (error) {
     console.error('Delete restaurant ingredient error:', error);
-    res.status(500).json({ success: false, error: { message: '재료 삭제 실패', code: 'INTERNAL_ERROR' } });
+    res.status(500).json({ success: false, error: { message: 'Failed to delete ingredient', code: 'INTERNAL_ERROR' } });
   }
 });
 

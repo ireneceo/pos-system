@@ -327,5 +327,15 @@
       "connect": "Connect",
       "asSeparate": "+ Add as separate ingredient"
     }
+  },
+  "staging": {
+    "noPhoneTitle": "No Phone Number",
+    "noPhone": "No phone number is registered for this seller.",
+    "noEmailTitle": "No Email",
+    "noEmail": "No email address is registered for this seller."
+  },
+  "unitCompat": {
+    "diff": "{{a}} ↔ {{b}}: unit mismatch — manual entry required",
+    "incompatible": "{{a}} and {{b}} are incompatible. Enter manually or add as a separate ingredient"
   }
 }

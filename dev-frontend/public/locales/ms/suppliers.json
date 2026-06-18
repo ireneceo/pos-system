@@ -19,5 +19,10 @@
   "suppliersPage.notes": "Nota",
   "suppliersPage.close": "Tutup",
   "suppliersPage.supplierName": "Pembekal Nama",
-  "suppliersPage.status": "Status"
+  "suppliersPage.status": "Status",
+  "sellerType": {
+    "brand": "Ibu Pejabat Jenama",
+    "foodcourt": "Ibu Pejabat Medan Selera",
+    "contract": "Kontrak"
+  }
 }

@@ -695,5 +695,13 @@
   "productsTab.distribution.specificRestaurantsDesc": "仅所选门店可订购",
   "productsTab.distribution.targetBrands": "目标品牌",
   "productsTab.distribution.targetRestaurants": "目标门店",
-  "brandMenusPage.setOnly": "仅用于套餐 — 不单独销售（在门店POS和手机点餐中隐藏）"
+  "brandMenusPage.setOnly": "仅用于套餐 — 不单独销售（在门店POS和手机点餐中隐藏）",
+  "brandMenuOptionGroupsPage.minSelect": "最少",
+  "brandMenuOptionGroupsPage.maxSelect": "最多",
+  "brandMenusPage.required": "必选",
+  "brandMenusPage.optional": "可选",
+  "brandMenusPage.single": "单选",
+  "brandMenusPage.multi": "多选",
+  "brandProductsTab.targetBrands": "目标品牌",
+  "brandProductsTab.targetRestaurants": "目标门店"
 }

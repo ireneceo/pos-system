@@ -30,8 +30,33 @@ const QUALITY_SETTINGS = {
   original: 85
 };
 
-function generateImageFilename() {
-  return `${Date.now()}_${crypto.randomBytes(8).toString('hex')}`;
+/**
+ * 항목명을 영어(ASCII) 슬러그로 변환. 한글/한자 등 비ASCII 문자는 제거.
+ * - 소문자, 공백/특수문자는 하이픈, 연속 하이픈 축약, 최대 40자
+ * - 변환 후 남는 ASCII 가 없으면(예: 순수 한글명) null 반환 → 호출부가 fallback 사용
+ *   (Irene 2026-06-18 지시: 모든 업로드 파일명은 영어)
+ */
+function slugifyName(name) {
+  if (!name || typeof name !== 'string') return null;
+  const slug = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')   // ASCII 영숫자 외 전부 하이픈 (한글 등 비ASCII 포함)
+    .replace(/^-+|-+$/g, '')        // 앞뒤 하이픈 제거
+    .replace(/-+/g, '-')            // 연속 하이픈 축약
+    .slice(0, 40)
+    .replace(/-+$/g, '');           // slice 후 끝 하이픈 정리
+  return slug || null;
+}
+
+/**
+ * 영어 파일명 생성: `{slug}_{shortRandom}` 또는 fallback 사용.
+ * 슬러그로 사람이 알아보되, 짧은 랜덤으로 충돌/유니크 보장.
+ * @param {string} [nameHint] 항목명(상품명 등) — ASCII 슬러그로 변환
+ * @param {string} [fallback] 슬러그 불가 시 영어 접두사 (예: 'product')
+ */
+function generateImageFilename(nameHint, fallback = 'image') {
+  const slug = slugifyName(nameHint) || fallback;
+  return `${slug}_${crypto.randomBytes(4).toString('hex')}`;
 }
 
 /**
@@ -54,7 +79,7 @@ function generateImageFilename() {
  *   - PNG: 투명도 보존, .png 확장자 유지
  *   - 그 외 (JPEG 등): .jpg로 통일
  */
-async function processImage(base64Image) {
+async function processImage(base64Image, nameHint) {
   if (!base64Image || typeof base64Image !== 'string') {
     return null;
   }
@@ -88,7 +113,7 @@ async function processImage(base64Image) {
     await fs.mkdir(PRODUCTS_DIR, { recursive: true });
     await fs.mkdir(PRODUCTS_THUMB_DIR, { recursive: true });
 
-    const filename = generateImageFilename();
+    const filename = generateImageFilename(nameHint, 'product');
 
     // SVG: 원본 그대로 저장 (리사이즈 불필요, 썸네일도 SVG 자체 사용)
     if (mimeSubtype === 'svg+xml') {
@@ -404,6 +429,8 @@ async function normalizeImageField(value, { subdir, filename, maxWidth, maxHeigh
 
 module.exports = {
   copyImageToOwnedFile,
+  slugifyName,
+  generateImageFilename,
   processImage,
   createThumbnail,
   optimizeImage,

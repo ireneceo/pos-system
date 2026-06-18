@@ -692,7 +692,12 @@
       "Bash(bash /tmp/extract_pattern.sh)",
       "Bash(bash /tmp/final_analysis.sh)",
       "Bash(bash /tmp/kdetect.sh)",
-      "Bash(EOF)"
+      "Bash(EOF)",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(echo \"grep exit: $?\")",
+      "Bash(getfacl public/locales/en/brand.json)",
+      "Bash(echo \"grep-exit: $?\")",
+      "Bash(awk '/neutral/{print NR\": \"$0}' /tmp/build-final.log)"
     ],
     "deny": [],
     "ask": []

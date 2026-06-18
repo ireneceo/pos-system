@@ -1462,10 +1462,54 @@
     },
     "errors": {
       "required": "코드와 이름은 필수입니다"
+    },
+    "webhook": {
+      "addModeHint": "Carrier를 먼저 저장한 뒤 다시 열어서 webhook을 설정하세요. (저장 직후 자동으로 편집 모드로 전환됩니다.)",
+      "regenerateWarning": "주의: 이 작업은 기존 secret을 즉시 무효화합니다. carrier 콘솔에 새 secret을 등록하기 전까지는 webhook 호출이 실패합니다.",
+      "copyOnce": "주의: 이 secret은 다시 볼 수 없습니다. 지금 carrier 콘솔에 등록하세요."
     }
   },
   "staffManagementPage.authorizations": "승인 권한",
   "staffManagementPage.authorizationsHint": "이 직원이 PIN으로 승인할 수 있는 권한 (선택).",
   "staffManagementPage.voidAuthorize": "삭제/취소 승인",
-  "staffManagementPage.voidAuthorizeDesc": "PIN 게이트가 켜진 경우, 자기 PIN으로 아이템 삭제·주문 취소를 승인할 수 있습니다."
+  "staffManagementPage.voidAuthorizeDesc": "PIN 게이트가 켜진 경우, 자기 PIN으로 아이템 삭제·주문 취소를 승인할 수 있습니다.",
+  "schedulerMonitor": {
+    "helpTitle": "이 페이지는 무엇인가요?",
+    "helpDesc": "시스템이 매일 또는 주기적으로 자동 실행하는 백그라운드 작업(cron jobs)의 실행 결과를 확인하는 페이지입니다. 구독 알림 발송, 인보이스 자동 발송, 계약 만료 체크 등의 자동화 작업이 정상 작동하는지 모니터링하고, 실패한 작업의 원인을 추적할 수 있습니다."
+  },
+  "schedulerJobs": {
+    "subscription-reminder": {
+      "label": "구독 만료 알림",
+      "desc": "체험/구독 종료 D-3·7·14일 전 자동 알림 발송"
+    },
+    "invoice-reminder": {
+      "label": "인보이스 발송 리마인더",
+      "desc": "미발송/연체 인보이스 일일 자동 발송"
+    },
+    "soa-statement": {
+      "label": "월간 SOA 발송",
+      "desc": "Statement of Account 매월 1일 자동 발송"
+    },
+    "contract-expiry-reminder": {
+      "label": "계약 만료 알림",
+      "desc": "레스토랑 계약 만료 임박 자동 알림"
+    },
+    "invoice-overdue-suspend": {
+      "label": "연체 자동 정지",
+      "desc": "연체 30일 경과 시 계정 자동 suspend"
+    },
+    "po-auto-cancel": {
+      "label": "발주 자동 취소",
+      "desc": "오래된 미수령 PO 자동 취소"
+    },
+    "inventory-low-stock-alert": {
+      "label": "재고 부족 알림",
+      "desc": "안전재고 미만 재료 자동 알림"
+    }
+  },
+  "carrierWebhooks": {
+    "helpTitle": "이 페이지는 무엇인가요?",
+    "helpDesc": "외부 배송사(Lalamove, GrabExpress 등)가 PO 배송 상태(픽업 완료, 운송중, 배송 완료, 실패 등)를 알려올 때마다 자동으로 기록되는 이벤트입니다. 실패한 이벤트는 Retry 버튼으로 재처리하고, \"Send Simulate Event\"로 테스트 이벤트를 발송할 수 있습니다. carrier별 webhook URL과 secret 설정은 ",
+    "helpDesc2": " 페이지에서 관리합니다."
+  }
 }

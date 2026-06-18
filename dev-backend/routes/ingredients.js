@@ -162,7 +162,7 @@ router.get('/brands/:brandId/ingredients', authenticateToken, isBrandManager, as
     res.json({ success: true, data: ingredients });
   } catch (error) {
     console.error('Get brand ingredients error:', error);
-    res.status(500).json({ success: false, error: { message: '재료 목록 조회 실패', code: 'INTERNAL_ERROR' } });
+    res.status(500).json({ success: false, error: { message: 'Failed to load ingredients', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -431,15 +431,15 @@ router.delete('/brands/:brandId/ingredients/:ingredientId', authenticateToken, i
 
     const ingredient = await Ingredient.findByPk(ingredient_id);
     if (!ingredient) {
-      return res.status(404).json({ success: false, error: { message: '재료를 찾을 수 없습니다', code: 'NOT_FOUND' } });
+      return res.status(404).json({ success: false, error: { message: 'Ingredient not found', code: 'NOT_FOUND' } });
     }
 
     await ingredient.destroy();
 
-    res.json({ success: true, message: '재료가 삭제되었습니다' });
+    res.json({ success: true, message: 'Ingredient deleted' });
   } catch (error) {
     console.error('Delete brand ingredient error:', error);
-    res.status(500).json({ success: false, error: { message: '재료 삭제 실패', code: 'INTERNAL_ERROR' } });
+    res.status(500).json({ success: false, error: { message: 'Failed to delete ingredient', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -543,7 +543,7 @@ router.get('/restaurants/:restaurantId/ingredients', authenticateToken, checkRes
     res.json({ success: true, data: ingredients });
   } catch (error) {
     console.error('Get restaurant ingredients error:', error);
-    res.status(500).json({ success: false, error: { message: '재료 목록 조회 실패', code: 'INTERNAL_ERROR' } });
+    res.status(500).json({ success: false, error: { message: 'Failed to load ingredients', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -734,15 +734,15 @@ router.delete('/restaurants/:restaurantId/ingredients/:ingredientId', authentica
 
     const ingredient = await Ingredient.findByPk(ingredientId);
     if (!ingredient) {
-      return res.status(404).json({ success: false, error: { message: '재료를 찾을 수 없습니다', code: 'NOT_FOUND' } });
+      return res.status(404).json({ success: false, error: { message: 'Ingredient not found', code: 'NOT_FOUND' } });
     }
 
     await ingredient.destroy();
 
-    res.json({ success: true, message: '재료가 삭제되었습니다' });
+    res.json({ success: true, message: 'Ingredient deleted' });
   } catch (error) {
     console.error('Delete restaurant ingredient error:', error);
-    res.status(500).json({ success: false, error: { message: '재료 삭제 실패', code: 'INTERNAL_ERROR' } });
+    res.status(500).json({ success: false, error: { message: 'Failed to delete ingredient', code: 'INTERNAL_ERROR' } });
   }
 });
 

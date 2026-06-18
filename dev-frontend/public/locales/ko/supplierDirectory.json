@@ -203,6 +203,18 @@
     "terminated": "종료됨",
     "none": "계약 없음"
   },
+  "externalSupplier": {
+    "title": "외부 공급업체 등록",
+    "submit": "등록",
+    "nameRequired": "공급업체 이름은 필수입니다.",
+    "hint": "시스템에 가입 안 된 공급업체를 직접 등록합니다. 이 공급업체로의 발주는 자동 발송되지 않으며, PDF 다운로드 또는 WhatsApp 으로 직접 보내야 합니다.",
+    "name": "공급업체 이름",
+    "phone": "연락처 (전화)",
+    "email": "이메일",
+    "minOrder": "최소 주문 금액",
+    "deliveryPolicy": "배송 정책 (자유 텍스트)",
+    "deliveryPolicyPlaceholder": "예: 월/수/금 배송. 100RM 이상 무료 배송. 24시간 전 주문 필요."
+  },
   "common": {
     "save": "저장",
     "cancel": "취소",

@@ -5659,7 +5659,7 @@ const SettingsPage: React.FC = () => {
                           }}
                           title={t('settings:printer.troubleshoot.openTitle', 'Open the printer troubleshooting guide')}
                         >
-                          {t('settings:printer.troubleshoot.openBtn', '문제 해결 가이드 ?')}
+                          {t('settings:printer.troubleshoot.openBtn', 'Troubleshooting guide ?')}
                         </button>
                       </div>
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -7183,7 +7183,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                   <div style={{ background: '#fff', borderRadius: '12px', maxWidth: '640px', width: '100%', padding: '28px', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                       <h2 style={{ margin: 0, fontSize: '18px', color: '#1F2937' }}>
-                        {t('settings:printer.troubleshoot.title', '프린터 문제 해결 가이드')}
+                        {t('settings:printer.troubleshoot.title', 'Printer Troubleshooting Guide')}
                       </h2>
                       <button type="button" onClick={() => setShowPrinterTroubleshoot(false)} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#4B5563', padding: '4px' }}>&times;</button>
                     </div>
@@ -7191,66 +7191,66 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                     {/* Scenario 1 — QZ Tray prompt keeps appearing */}
                     <div style={{ marginBottom: '20px', padding: '14px 16px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '8px' }}>
                       <div style={{ fontSize: '14px', fontWeight: 700, color: '#92400E', marginBottom: '8px' }}>
-                        {t('settings:printer.troubleshoot.s1Title', '권한 알림이 계속 뜨거나 "다시 묻지 않기" 체크박스가 비활성')}
+                        {t('settings:printer.troubleshoot.s1Title', 'Permission prompt keeps appearing, or the "Don\'t ask again" checkbox is disabled')}
                       </div>
                       <p style={{ fontSize: '12px', color: '#92400E', lineHeight: 1.6, margin: '0 0 10px' }}>
-                        {t('settings:printer.troubleshoot.s1Why', '이전 시도의 거부 기록이 QZ Tray 에 캐시되어 있을 때 발생합니다. 새 인증서가 정상 검증되어도 옛 거부 기록이 우선합니다. 캐시를 비우고 한 번에 처음부터 다시 설치하면 됩니다.')}
+                        {t('settings:printer.troubleshoot.s1Why', 'This happens when a "denied" record from a previous attempt is cached in QZ Tray. Even if the new certificate validates correctly, the old denial takes priority. Clear the cache and reinstall from scratch in one go.')}
                       </p>
                       <ol style={{ margin: '8px 0 0 18px', padding: 0, fontSize: '12px', color: '#7C2D12', lineHeight: 1.8 }}>
-                        <li>{t('settings:printer.troubleshoot.s1Step1', 'QZ Tray 트레이 아이콘 우클릭 → Tools → Manage Sites → PurpleHere / dev.purplehere.com / purplehere.com 항목 모두 "Remove"')}</li>
-                        <li>{t('settings:printer.troubleshoot.s1Step2', 'QZ Tray 트레이 아이콘 우클릭 → Exit (완전 종료)')}</li>
-                        <li>{t('settings:printer.troubleshoot.s1Step3', '브라우저에서 Ctrl+Shift+R (강력 새로고침)')}</li>
-                        <li>{t('settings:printer.troubleshoot.s1Step4', 'QZ Tray 탭의 "원클릭 설치 (.bat)" 다운로드 → 더블클릭 → "Certificate installed" 확인 후 닫기')}</li>
-                        <li>{t('settings:printer.troubleshoot.s1Step5', '시작메뉴에서 QZ Tray 다시 실행')}</li>
-                        <li>{t('settings:printer.troubleshoot.s1Step6', 'QZ Tray 탭의 "QZ Tray 연결 테스트" 클릭 → prompt 의 "remember" 체크 + Allow → 끝')}</li>
+                        <li>{t('settings:printer.troubleshoot.s1Step1', 'Right-click the QZ Tray tray icon → Tools → Manage Sites → "Remove" every PurpleHere / dev.purplehere.com / purplehere.com entry')}</li>
+                        <li>{t('settings:printer.troubleshoot.s1Step2', 'Right-click the QZ Tray tray icon → Exit (fully quit)')}</li>
+                        <li>{t('settings:printer.troubleshoot.s1Step3', 'In the browser, press Ctrl+Shift+R (hard refresh)')}</li>
+                        <li>{t('settings:printer.troubleshoot.s1Step4', 'On the QZ Tray tab, download "One-click install (.bat)" → double-click → confirm "Certificate installed" then close')}</li>
+                        <li>{t('settings:printer.troubleshoot.s1Step5', 'Launch QZ Tray again from the Start menu')}</li>
+                        <li>{t('settings:printer.troubleshoot.s1Step6', 'On the QZ Tray tab, click "Test QZ Tray connection" → check "remember" in the prompt + Allow → done')}</li>
                       </ol>
                     </div>
 
                     {/* Scenario 2 — Kitchen printer doesn't print */}
                     <div style={{ marginBottom: '20px', padding: '14px 16px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px' }}>
                       <div style={{ fontSize: '14px', fontWeight: 700, color: '#7F1D1D', marginBottom: '8px' }}>
-                        {t('settings:printer.troubleshoot.s2Title', '주방 프린터에서 티켓이 안 나옴 (캐셔는 정상)')}
+                        {t('settings:printer.troubleshoot.s2Title', 'Tickets not printing at the kitchen printer (cashier printer is fine)')}
                       </div>
                       <p style={{ fontSize: '12px', color: '#7F1D1D', lineHeight: 1.6, margin: '0 0 10px' }}>
-                        {t('settings:printer.troubleshoot.s2Why', '주방 프린터 전원/연결/IP 설정 문제일 가능성. 정상화 전까지 위의 비상 모드를 켜서 영업을 멈추지 마세요 — 모든 티켓이 캐셔 프린터로 라우팅됩니다.')}
+                        {t('settings:printer.troubleshoot.s2Why', 'This is likely a kitchen printer power, connection, or IP setting issue. Until it is fixed, turn on the emergency mode above so business does not stop — all tickets will be routed to the cashier printer.')}
                       </p>
                       <ol style={{ margin: '8px 0 0 18px', padding: 0, fontSize: '12px', color: '#7F1D1D', lineHeight: 1.8 }}>
-                        <li>{t('settings:printer.troubleshoot.s2Step1', '주방 프린터 전원 / 용지 확인')}</li>
-                        <li>{t('settings:printer.troubleshoot.s2Step2', 'POS PC 에서 명령 프롬프트 → "ping 192.168.x.x" (주방 프린터 IP) 응답 확인')}</li>
-                        <li>{t('settings:printer.troubleshoot.s2Step3', 'Settings → Printer → Kitchen Printer 카드의 "Test" 버튼')}</li>
-                        <li>{t('settings:printer.troubleshoot.s2Step4', '여전히 안 나오면 → 비상 모드 ON → 캐셔 프린터로 출력 받아 매장 운영 유지 → 영업 시간 후 점검')}</li>
+                        <li>{t('settings:printer.troubleshoot.s2Step1', 'Check the kitchen printer power / paper')}</li>
+                        <li>{t('settings:printer.troubleshoot.s2Step2', 'On the POS PC, open Command Prompt → "ping 192.168.x.x" (the kitchen printer IP) and confirm it responds')}</li>
+                        <li>{t('settings:printer.troubleshoot.s2Step3', 'Click the "Test" button on the Settings → Printer → Kitchen Printer card')}</li>
+                        <li>{t('settings:printer.troubleshoot.s2Step4', 'If it still does not print → turn emergency mode ON → print to the cashier printer to keep the store running → inspect after business hours')}</li>
                       </ol>
                     </div>
 
                     {/* Scenario 3 — Network down */}
                     <div style={{ marginBottom: '20px', padding: '14px 16px', background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: '8px' }}>
                       <div style={{ fontSize: '14px', fontWeight: 700, color: '#075985', marginBottom: '8px' }}>
-                        {t('settings:printer.troubleshoot.s3Title', '인터넷이 끊겼거나 라우터가 다운')}
+                        {t('settings:printer.troubleshoot.s3Title', 'Internet is down or the router is offline')}
                       </div>
                       <p style={{ fontSize: '12px', color: '#075985', lineHeight: 1.6, margin: '0 0 10px' }}>
-                        {t('settings:printer.troubleshoot.s3Why', '캐셔 프린터를 USB / Bluetooth 직결로 사용 중이면 비상 모드 ON 만으로 운영 가능. LAN 프린터만 있다면 핫스팟 연결.')}
+                        {t('settings:printer.troubleshoot.s3Why', 'If the cashier printer is connected directly via USB / Bluetooth, just turning emergency mode ON keeps you running. If you only have LAN printers, connect to a hotspot.')}
                       </p>
                       <ol style={{ margin: '8px 0 0 18px', padding: 0, fontSize: '12px', color: '#0C4A6E', lineHeight: 1.8 }}>
-                        <li>{t('settings:printer.troubleshoot.s3Step1', 'POS 를 휴대폰 모바일 핫스팟에 연결 (PurpleHere API 호출용)')}</li>
-                        <li>{t('settings:printer.troubleshoot.s3Step2', 'Wi-Fi 없는 구형 PC: USB Wi-Fi 동글 (TP-Link Nano / Mercusys / ASUS USB Adapter) 끼우고 핫스팟 연결')}</li>
-                        <li>{t('settings:printer.troubleshoot.s3Step3', '캐셔 프린터가 USB 직결이면 그대로 인쇄 가능. LAN 프린터는 라우터 복구까지 못 씀.')}</li>
-                        <li>{t('settings:printer.troubleshoot.s3Step4', '비상 모드 ON → 모든 티켓 캐셔로 라우팅 → 직원이 직접 전달')}</li>
+                        <li>{t('settings:printer.troubleshoot.s3Step1', 'Connect the POS to your phone\'s mobile hotspot (so it can call the PurpleHere API)')}</li>
+                        <li>{t('settings:printer.troubleshoot.s3Step2', 'Older PC without Wi-Fi: plug in a USB Wi-Fi dongle (TP-Link Nano / Mercusys / ASUS USB Adapter) and connect to the hotspot')}</li>
+                        <li>{t('settings:printer.troubleshoot.s3Step3', 'If the cashier printer is connected directly via USB, it can still print as usual. LAN printers cannot be used until the router is restored.')}</li>
+                        <li>{t('settings:printer.troubleshoot.s3Step4', 'Turn emergency mode ON → all tickets route to the cashier → staff hand them over directly')}</li>
                       </ol>
                     </div>
 
                     {/* Scenario 4 — printer not silent */}
                     <div style={{ marginBottom: '8px', padding: '14px 16px', background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: '8px' }}>
                       <div style={{ fontSize: '14px', fontWeight: 700, color: '#1F2937', marginBottom: '8px' }}>
-                        {t('settings:printer.troubleshoot.s4Title', '인쇄할 때마다 OS 다이얼로그가 뜸 (Enter 눌러야 함)')}
+                        {t('settings:printer.troubleshoot.s4Title', 'An OS dialog appears on every print (you have to press Enter)')}
                       </div>
                       <p style={{ fontSize: '12px', color: '#4B5563', lineHeight: 1.6, margin: 0 }}>
-                        {t('settings:printer.troubleshoot.s4Why', '현재 연결 방법이 "브라우저 인쇄"이기 때문입니다. 무음 인쇄가 필요하면 QZ Tray (Windows) 또는 RawBT (Android) 로 전환하세요. 위의 "어떤 방법을 선택해야 할까?" 표에서 매장 환경별 권장 방법 확인.')}
+                        {t('settings:printer.troubleshoot.s4Why', 'This is because the current connection method is "Browser printing". If you need silent printing, switch to QZ Tray (Windows) or RawBT (Android). Check the recommended method for your store setup in the "Which method should I choose?" table above.')}
                       </p>
                     </div>
 
                     <div style={{ marginTop: '16px', textAlign: 'right' }}>
                       <button type="button" onClick={() => setShowPrinterTroubleshoot(false)} style={{ padding: '10px 20px', fontSize: '14px', fontWeight: 600, background: '#635BFF', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
-                        {t('settings:printer.troubleshoot.close', '닫기')}
+                        {t('settings:printer.troubleshoot.close', 'Close')}
                       </button>
                     </div>
                   </div>

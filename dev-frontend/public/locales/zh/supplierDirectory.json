@@ -203,6 +203,18 @@
     "terminated": "已终止",
     "none": "无合同"
   },
+  "externalSupplier": {
+    "title": "登记外部供应商",
+    "submit": "登记",
+    "nameRequired": "供应商名称为必填项。",
+    "hint": "登记未在系统注册的供应商。向该供应商发出的采购订单不会自动发送，您需要自行下载 PDF 或通过 WhatsApp 发送。",
+    "name": "供应商名称",
+    "phone": "联系电话",
+    "email": "邮箱",
+    "minOrder": "最低订购金额",
+    "deliveryPolicy": "配送政策（自由文本）",
+    "deliveryPolicyPlaceholder": "例如：周一/周三/周五配送。满 RM100 免运费。需提前 24 小时下单。"
+  },
   "common": {
     "save": "保存",
     "cancel": "取消",

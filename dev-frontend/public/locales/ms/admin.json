@@ -1462,10 +1462,54 @@
     },
     "errors": {
       "required": "Kod dan Nama diperlukan"
+    },
+    "webhook": {
+      "addModeHint": "Simpan pembawa dahulu, kemudian buka semula untuk mengkonfigurasi webhook. (Anda akan bertukar ke mod sunting secara automatik sebaik sahaja menyimpan.)",
+      "regenerateWarning": "Amaran: ini membatalkan secret sedia ada dengan serta-merta. Panggilan webhook akan gagal sehingga anda mendaftarkan secret baharu dalam konsol pembawa.",
+      "copyOnce": "Amaran: secret ini tidak boleh dilihat semula. Daftarkannya dalam konsol pembawa sekarang."
     }
   },
   "staffManagementPage.authorizations": "Kebenaran",
   "staffManagementPage.authorizationsHint": "Kelulusan yang boleh diberi kakitangan ini dengan PIN mereka (pilihan).",
   "staffManagementPage.voidAuthorize": "Kelulusan batal / pembatalan",
-  "staffManagementPage.voidAuthorizeDesc": "Boleh meluluskan pemadaman item & pembatalan pesanan dengan PIN mereka (apabila pintu PIN dihidupkan)."
+  "staffManagementPage.voidAuthorizeDesc": "Boleh meluluskan pemadaman item & pembatalan pesanan dengan PIN mereka (apabila pintu PIN dihidupkan).",
+  "schedulerMonitor": {
+    "helpTitle": "Apakah halaman ini?",
+    "helpDesc": "Halaman ini menunjukkan hasil tugas latar belakang (cron jobs) yang dijalankan sistem secara automatik setiap hari atau mengikut jadual. Anda boleh memantau sama ada tugas automatik seperti peringatan langganan, penghantaran invois automatik, dan semakan tamat tempoh kontrak berfungsi dengan betul, serta mengesan punca tugas yang gagal."
+  },
+  "schedulerJobs": {
+    "subscription-reminder": {
+      "label": "Peringatan Langganan",
+      "desc": "Menghantar peringatan automatik 3, 7, dan 14 hari sebelum percubaan atau langganan tamat"
+    },
+    "invoice-reminder": {
+      "label": "Peringatan Invois",
+      "desc": "Menghantar invois yang belum dihantar atau tertunggak secara automatik setiap hari"
+    },
+    "soa-statement": {
+      "label": "SOA Bulanan",
+      "desc": "Menghantar Statement of Account secara automatik pada 1 haribulan setiap bulan"
+    },
+    "contract-expiry-reminder": {
+      "label": "Peringatan Tamat Kontrak",
+      "desc": "Menghantar makluman automatik apabila kontrak restoran hampir tamat"
+    },
+    "invoice-overdue-suspend": {
+      "label": "Penggantungan Auto Tertunggak",
+      "desc": "Menggantung akaun secara automatik 30 hari selepas invois tertunggak"
+    },
+    "po-auto-cancel": {
+      "label": "Auto Batal Pesanan Belian",
+      "desc": "Membatalkan pesanan belian lama yang belum diterima secara automatik"
+    },
+    "inventory-low-stock-alert": {
+      "label": "Makluman Stok Rendah",
+      "desc": "Menghantar makluman automatik untuk bahan di bawah paras stok keselamatan"
+    }
+  },
+  "carrierWebhooks": {
+    "helpTitle": "Apakah halaman ini?",
+    "helpDesc": "Ini adalah peristiwa yang direkodkan secara automatik setiap kali pembawa luar (Lalamove, GrabExpress, dll.) melaporkan status penghantaran PO (telah diambil, dalam transit, telah dihantar, gagal, dll.). Peristiwa yang gagal boleh diproses semula dengan butang Retry, dan anda boleh menghantar peristiwa ujian dengan \"Send Simulate Event\". URL webhook dan secret bagi setiap pembawa diuruskan di halaman ",
+    "helpDesc2": "."
+  }
 }

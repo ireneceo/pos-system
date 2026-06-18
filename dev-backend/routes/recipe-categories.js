@@ -36,7 +36,7 @@ router.get('/brands/:brandId/recipe-categories', authenticateToken, isBrandManag
     res.json({ success: true, data: result });
   } catch (error) {
     console.error('Get brand recipe categories error:', error);
-    res.status(500).json({ success: false, error: { message: '카테고리 목록 조회 실패', code: 'INTERNAL_ERROR' } });
+    res.status(500).json({ success: false, error: { message: 'Failed to load categories', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -51,7 +51,7 @@ router.post('/brands/:brandId/recipe-categories', authenticateToken, isBrandMana
     const { name, description, emoji, display_order } = req.body;
 
     if (!name || !name.trim()) {
-      return res.status(400).json({ success: false, error: { message: '카테고리 이름은 필수입니다', code: 'VALIDATION_ERROR' } });
+      return res.status(400).json({ success: false, error: { message: 'Category name is required', code: 'VALIDATION_ERROR' } });
     }
 
     // 중복 확인
@@ -59,7 +59,7 @@ router.post('/brands/:brandId/recipe-categories', authenticateToken, isBrandMana
       where: { brand_id, name: name.trim() }
     });
     if (existing) {
-      return res.status(400).json({ success: false, error: { message: '이미 존재하는 카테고리 이름입니다', code: 'VALIDATION_ERROR' } });
+      return res.status(400).json({ success: false, error: { message: 'A category with this name already exists', code: 'VALIDATION_ERROR' } });
     }
 
     // display_order 자동 설정
@@ -82,7 +82,7 @@ router.post('/brands/:brandId/recipe-categories', authenticateToken, isBrandMana
     res.json({ success: true, data: category });
   } catch (error) {
     console.error('Create brand recipe category error:', error);
-    res.status(500).json({ success: false, error: { message: '카테고리 생성 실패', code: 'INTERNAL_ERROR' } });
+    res.status(500).json({ success: false, error: { message: 'Failed to create category', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -99,7 +99,7 @@ router.put('/brands/:brandId/recipe-categories/reorder', authenticateToken, isBr
     const { orders } = req.body; // [{ id: 1, display_order: 0 }, { id: 2, display_order: 1 }, ...]
 
     if (!orders || !Array.isArray(orders)) {
-      return res.status(400).json({ success: false, error: { message: '순서 정보가 필요합니다', code: 'VALIDATION_ERROR' } });
+      return res.status(400).json({ success: false, error: { message: 'Order information is required', code: 'VALIDATION_ERROR' } });
     }
 
     for (const item of orders) {
@@ -109,10 +109,10 @@ router.put('/brands/:brandId/recipe-categories/reorder', authenticateToken, isBr
       );
     }
 
-    res.json({ success: true, message: '순서가 변경되었습니다' });
+    res.json({ success: true, message: 'Order updated' });
   } catch (error) {
     console.error('Reorder brand recipe categories error:', error);
-    res.status(500).json({ success: false, error: { message: '순서 변경 실패', code: 'INTERNAL_ERROR' } });
+    res.status(500).json({ success: false, error: { message: 'Failed to update order', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -132,7 +132,7 @@ router.put('/brands/:brandId/recipe-categories/:categoryId', authenticateToken, 
     });
 
     if (!category) {
-      return res.status(404).json({ success: false, error: { message: '카테고리를 찾을 수 없습니다', code: 'NOT_FOUND' } });
+      return res.status(404).json({ success: false, error: { message: 'Category not found', code: 'NOT_FOUND' } });
     }
 
     // 이름 중복 확인 (자기 자신 제외)
@@ -141,7 +141,7 @@ router.put('/brands/:brandId/recipe-categories/:categoryId', authenticateToken, 
         where: { brand_id, name: name.trim() }
       });
       if (existing) {
-        return res.status(400).json({ success: false, error: { message: '이미 존재하는 카테고리 이름입니다', code: 'VALIDATION_ERROR' } });
+        return res.status(400).json({ success: false, error: { message: 'A category with this name already exists', code: 'VALIDATION_ERROR' } });
       }
     }
 
@@ -156,7 +156,7 @@ router.put('/brands/:brandId/recipe-categories/:categoryId', authenticateToken, 
     res.json({ success: true, data: category });
   } catch (error) {
     console.error('Update brand recipe category error:', error);
-    res.status(500).json({ success: false, error: { message: '카테고리 수정 실패', code: 'INTERNAL_ERROR' } });
+    res.status(500).json({ success: false, error: { message: 'Failed to update category', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -175,7 +175,7 @@ router.delete('/brands/:brandId/recipe-categories/:categoryId', authenticateToke
     });
 
     if (!category) {
-      return res.status(404).json({ success: false, error: { message: '카테고리를 찾을 수 없습니다', code: 'NOT_FOUND' } });
+      return res.status(404).json({ success: false, error: { message: 'Category not found', code: 'NOT_FOUND' } });
     }
 
     // 해당 카테고리를 사용하는 레시피가 있는지 확인
@@ -185,16 +185,16 @@ router.delete('/brands/:brandId/recipe-categories/:categoryId', authenticateToke
 
     if (recipeCount > 0) {
       return res.status(400).json({
-        error: `이 카테고리에 ${recipeCount}개의 레시피가 있습니다. 먼저 레시피의 카테고리를 변경해주세요.`
+        error: `This category has ${recipeCount} recipe(s). Please change those recipes' category first.`
       });
     }
 
     await category.destroy();
 
-    res.json({ success: true, message: '카테고리가 삭제되었습니다' });
+    res.json({ success: true, message: 'Category deleted' });
   } catch (error) {
     console.error('Delete brand recipe category error:', error);
-    res.status(500).json({ success: false, error: { message: '카테고리 삭제 실패', code: 'INTERNAL_ERROR' } });
+    res.status(500).json({ success: false, error: { message: 'Failed to delete category', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -213,7 +213,7 @@ router.get('/restaurants/:restaurantId/recipe-categories', authenticateToken, as
 
     const restaurant = await Restaurant.findByPk(restaurant_id);
     if (!restaurant) {
-      return res.status(404).json({ success: false, error: { message: '레스토랑을 찾을 수 없습니다', code: 'NOT_FOUND' } });
+      return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
     }
 
     const result = {
@@ -260,7 +260,7 @@ router.get('/restaurants/:restaurantId/recipe-categories', authenticateToken, as
     res.json({ success: true, data: result });
   } catch (error) {
     console.error('Get restaurant recipe categories error:', error);
-    res.status(500).json({ success: false, error: { message: '카테고리 목록 조회 실패', code: 'INTERNAL_ERROR' } });
+    res.status(500).json({ success: false, error: { message: 'Failed to load categories', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -276,11 +276,11 @@ router.post('/restaurants/:restaurantId/recipe-categories', authenticateToken, a
 
     const restaurant = await Restaurant.findByPk(restaurant_id);
     if (!restaurant) {
-      return res.status(404).json({ success: false, error: { message: '레스토랑을 찾을 수 없습니다', code: 'NOT_FOUND' } });
+      return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
     }
 
     if (!name || !name.trim()) {
-      return res.status(400).json({ success: false, error: { message: '카테고리 이름은 필수입니다', code: 'VALIDATION_ERROR' } });
+      return res.status(400).json({ success: false, error: { message: 'Category name is required', code: 'VALIDATION_ERROR' } });
     }
 
     // 중복 확인
@@ -288,7 +288,7 @@ router.post('/restaurants/:restaurantId/recipe-categories', authenticateToken, a
       where: { restaurant_id, name: name.trim() }
     });
     if (existing) {
-      return res.status(400).json({ success: false, error: { message: '이미 존재하는 카테고리 이름입니다', code: 'VALIDATION_ERROR' } });
+      return res.status(400).json({ success: false, error: { message: 'A category with this name already exists', code: 'VALIDATION_ERROR' } });
     }
 
     // display_order 자동 설정
@@ -311,7 +311,7 @@ router.post('/restaurants/:restaurantId/recipe-categories', authenticateToken, a
     res.json({ success: true, data: category });
   } catch (error) {
     console.error('Create restaurant recipe category error:', error);
-    res.status(500).json({ success: false, error: { message: '카테고리 생성 실패', code: 'INTERNAL_ERROR' } });
+    res.status(500).json({ success: false, error: { message: 'Failed to create category', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -328,7 +328,7 @@ router.put('/restaurants/:restaurantId/recipe-categories/reorder', authenticateT
     const { orders } = req.body; // [{ id, display_order }, ...]
 
     if (!orders || !Array.isArray(orders)) {
-      return res.status(400).json({ success: false, error: { message: '순서 정보가 필요합니다', code: 'VALIDATION_ERROR' } });
+      return res.status(400).json({ success: false, error: { message: 'Order information is required', code: 'VALIDATION_ERROR' } });
     }
 
     for (const item of orders) {
@@ -338,10 +338,10 @@ router.put('/restaurants/:restaurantId/recipe-categories/reorder', authenticateT
       );
     }
 
-    res.json({ success: true, message: '순서가 변경되었습니다' });
+    res.json({ success: true, message: 'Order updated' });
   } catch (error) {
     console.error('Reorder restaurant recipe categories error:', error);
-    res.status(500).json({ success: false, error: { message: '순서 변경 실패', code: 'INTERNAL_ERROR' } });
+    res.status(500).json({ success: false, error: { message: 'Failed to update order', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -361,7 +361,7 @@ router.put('/restaurants/:restaurantId/recipe-categories/:categoryId', authentic
     });
 
     if (!category) {
-      return res.status(404).json({ success: false, error: { message: '카테고리를 찾을 수 없습니다', code: 'NOT_FOUND' } });
+      return res.status(404).json({ success: false, error: { message: 'Category not found', code: 'NOT_FOUND' } });
     }
 
     // 이름 중복 확인 (자기 자신 제외)
@@ -370,7 +370,7 @@ router.put('/restaurants/:restaurantId/recipe-categories/:categoryId', authentic
         where: { restaurant_id, name: name.trim() }
       });
       if (existing) {
-        return res.status(400).json({ success: false, error: { message: '이미 존재하는 카테고리 이름입니다', code: 'VALIDATION_ERROR' } });
+        return res.status(400).json({ success: false, error: { message: 'A category with this name already exists', code: 'VALIDATION_ERROR' } });
       }
     }
 
@@ -385,7 +385,7 @@ router.put('/restaurants/:restaurantId/recipe-categories/:categoryId', authentic
     res.json({ success: true, data: category });
   } catch (error) {
     console.error('Update restaurant recipe category error:', error);
-    res.status(500).json({ success: false, error: { message: '카테고리 수정 실패', code: 'INTERNAL_ERROR' } });
+    res.status(500).json({ success: false, error: { message: 'Failed to update category', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -404,7 +404,7 @@ router.delete('/restaurants/:restaurantId/recipe-categories/:categoryId', authen
     });
 
     if (!category) {
-      return res.status(404).json({ success: false, error: { message: '카테고리를 찾을 수 없습니다', code: 'NOT_FOUND' } });
+      return res.status(404).json({ success: false, error: { message: 'Category not found', code: 'NOT_FOUND' } });
     }
 
     // 해당 카테고리를 사용하는 레시피가 있는지 확인
@@ -414,16 +414,16 @@ router.delete('/restaurants/:restaurantId/recipe-categories/:categoryId', authen
 
     if (recipeCount > 0) {
       return res.status(400).json({
-        error: `이 카테고리에 ${recipeCount}개의 레시피가 있습니다. 먼저 레시피의 카테고리를 변경해주세요.`
+        error: `This category has ${recipeCount} recipe(s). Please change those recipes' category first.`
       });
     }
 
     await category.destroy();
 
-    res.json({ success: true, message: '카테고리가 삭제되었습니다' });
+    res.json({ success: true, message: 'Category deleted' });
   } catch (error) {
     console.error('Delete restaurant recipe category error:', error);
-    res.status(500).json({ success: false, error: { message: '카테고리 삭제 실패', code: 'INTERNAL_ERROR' } });
+    res.status(500).json({ success: false, error: { message: 'Failed to delete category', code: 'INTERNAL_ERROR' } });
   }
 });
 

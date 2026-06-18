@@ -1068,5 +1068,35 @@
   "operations.requireVoidPinLabel": "作废/取消需 PIN 批准",
   "operations.requireVoidPinDesc": "开启后，删除商品或取消订单需输入授权 PIN。登录账户不会更改。",
   "operations.managerApprovalsTitle": "经理 PIN 批准",
-  "operations.managerApprovalsDesc": "在敏感的柜台操作前要求授权 PIN，以预防和追踪滥用。登录账户不会更改，PIN 仅确认由谁批准。"
+  "operations.managerApprovalsDesc": "在敏感的柜台操作前要求授权 PIN，以预防和追踪滥用。登录账户不会更改，PIN 仅确认由谁批准。",
+  "printer": {
+    "troubleshoot": {
+      "openTitle": "打开打印机故障排除指南",
+      "openBtn": "故障排除指南 ?",
+      "title": "打印机故障排除指南",
+      "s1Title": "权限提示反复出现，或\"不再询问\"复选框被禁用",
+      "s1Why": "这是因为之前尝试的\"拒绝\"记录被缓存在 QZ Tray 中。即使新证书验证通过，旧的拒绝记录仍优先生效。请清除缓存并一次性从头重新安装。",
+      "s1Step1": "右键点击 QZ Tray 托盘图标 → Tools → Manage Sites → 将所有 PurpleHere / dev.purplehere.com / purplehere.com 条目\"Remove\"",
+      "s1Step2": "右键点击 QZ Tray 托盘图标 → Exit（完全退出）",
+      "s1Step3": "在浏览器中按 Ctrl+Shift+R（强制刷新）",
+      "s1Step4": "在 QZ Tray 标签页下载\"一键安装 (.bat)\" → 双击 → 确认\"Certificate installed\"后关闭",
+      "s1Step5": "从开始菜单重新启动 QZ Tray",
+      "s1Step6": "在 QZ Tray 标签页点击\"测试 QZ Tray 连接\" → 在提示中勾选\"remember\" + Allow → 完成",
+      "s2Title": "厨房打印机不出票（收银打印机正常）",
+      "s2Why": "这很可能是厨房打印机的电源、连接或 IP 设置问题。在修复之前，请打开上方的应急模式以免营业中断 —— 所有票据将路由到收银打印机。",
+      "s2Step1": "检查厨房打印机电源 / 纸张",
+      "s2Step2": "在 POS 电脑上打开命令提示符 →\"ping 192.168.x.x\"（厨房打印机 IP）并确认有响应",
+      "s2Step3": "点击 设置 → 打印机 → 厨房打印机 卡片上的\"Test\"按钮",
+      "s2Step4": "如果仍不出票 → 打开应急模式 → 用收银打印机出票以维持营业 → 营业时间后再检修",
+      "s3Title": "网络中断或路由器离线",
+      "s3Why": "如果收银打印机通过 USB / 蓝牙直连，只需打开应急模式即可继续运营。如果只有 LAN 打印机，请连接热点。",
+      "s3Step1": "将 POS 连接到手机的移动热点（以便调用 PurpleHere API）",
+      "s3Step2": "没有 Wi-Fi 的旧电脑：插入 USB Wi-Fi 适配器（TP-Link Nano / Mercusys / ASUS USB Adapter）并连接热点",
+      "s3Step3": "如果收银打印机通过 USB 直连，仍可正常打印。LAN 打印机在路由器恢复前无法使用。",
+      "s3Step4": "打开应急模式 → 所有票据路由到收银 → 员工直接传递",
+      "s4Title": "每次打印都弹出操作系统对话框（需按 Enter）",
+      "s4Why": "这是因为当前连接方式是\"浏览器打印\"。如需静默打印，请切换到 QZ Tray（Windows）或 RawBT（Android）。请在上方\"我应该选择哪种方式？\"表格中查看适合您门店环境的推荐方式。",
+      "close": "关闭"
+    }
+  }
 }

@@ -135,5 +135,9 @@
   "ticketSend.resend": "재발송",
   "ticketSend.close": "닫기",
   "voidPin.title": "승인 필요",
-  "voidPin.subtitle": "삭제/취소하려면 관리자 PIN을 입력하세요"
+  "voidPin.subtitle": "삭제/취소하려면 관리자 PIN을 입력하세요",
+  "cancelledItem.sentToKitchen": "취소된 아이템 — 해당 주방에 발송됨",
+  "cancelledItem.pressSend": "취소된 아이템 — [발송]을 눌러 주방에 전송",
+  "orderCancel.sentToKitchen": "주문 {{orderNumber}} — 해당 주방에 발송됨",
+  "orderCancel.pressSend": "주문 {{orderNumber}} — [발송]을 눌러 주방에 전송"
 }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import styled from 'styled-components';
 import { useNavigate, useParams } from 'react-router-dom';
 import MobileLayout from '../components/common/MobileLayout';
@@ -180,6 +181,7 @@ interface DeliveryZone {
 }
 
 const DeliveryAddressPage: React.FC = () => {
+  const { t } = useTranslation('common');
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { currentStore, currency } = useMobileOrder();
@@ -200,7 +202,7 @@ const DeliveryAddressPage: React.FC = () => {
           console.warn('⚠️ No currentStore.id available');
           // Use default zones
           setDeliveryZones([
-            { id: 'zone-a', name: 'Zone A (City Center)', fee: 3.00, description: '3km 이내' },
+            { id: 'zone-a', name: 'Zone A (City Center)', fee: 3.00, description: t('deliveryZone.within', 'within {{km}}km', { km: 3 }) },
             { id: 'zone-b', name: 'Zone B (Near City)', fee: 5.00, description: '3-5km' },
             { id: 'zone-c', name: 'Zone C (Suburbs)', fee: 8.00, description: '5-10km' }
           ]);
@@ -221,7 +223,7 @@ const DeliveryAddressPage: React.FC = () => {
           } else {
             // Default zones
             setDeliveryZones([
-              { id: 'zone-a', name: 'Zone A (City Center)', fee: 3.00, description: '3km 이내' },
+              { id: 'zone-a', name: 'Zone A (City Center)', fee: 3.00, description: t('deliveryZone.within', 'within {{km}}km', { km: 3 }) },
               { id: 'zone-b', name: 'Zone B (Near City)', fee: 5.00, description: '3-5km' },
               { id: 'zone-c', name: 'Zone C (Suburbs)', fee: 8.00, description: '5-10km' }
             ]);
@@ -234,7 +236,7 @@ const DeliveryAddressPage: React.FC = () => {
         console.error('Failed to load delivery settings:', error);
         // Use default zones
         setDeliveryZones([
-          { id: 'zone-a', name: 'Zone A (City Center)', fee: 3.00, description: '3km 이내' },
+          { id: 'zone-a', name: 'Zone A (City Center)', fee: 3.00, description: t('deliveryZone.within', 'within {{km}}km', { km: 3 }) },
           { id: 'zone-b', name: 'Zone B (Near City)', fee: 5.00, description: '3-5km' },
           { id: 'zone-c', name: 'Zone C (Suburbs)', fee: 8.00, description: '5-10km' }
         ]);

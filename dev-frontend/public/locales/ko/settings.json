@@ -1068,5 +1068,35 @@
   "operations.requireVoidPinLabel": "삭제/취소 시 PIN 승인 요구",
   "operations.requireVoidPinDesc": "켜면 아이템 삭제나 주문 취소에 권한 있는 PIN이 필요합니다. 로그인 계정은 바뀌지 않습니다.",
   "operations.managerApprovalsTitle": "관리자 PIN 승인",
-  "operations.managerApprovalsDesc": "민감한 카운터 동작 전에 권한 PIN을 요구해 오남용을 예방·추적합니다. 로그인 계정은 바뀌지 않으며, PIN은 누가 승인했는지만 확인합니다."
+  "operations.managerApprovalsDesc": "민감한 카운터 동작 전에 권한 PIN을 요구해 오남용을 예방·추적합니다. 로그인 계정은 바뀌지 않으며, PIN은 누가 승인했는지만 확인합니다.",
+  "printer": {
+    "troubleshoot": {
+      "openTitle": "프린터 문제 해결 가이드 열기",
+      "openBtn": "문제 해결 가이드 ?",
+      "title": "프린터 문제 해결 가이드",
+      "s1Title": "권한 알림이 계속 뜨거나 \"다시 묻지 않기\" 체크박스가 비활성",
+      "s1Why": "이전 시도의 거부 기록이 QZ Tray 에 캐시되어 있을 때 발생합니다. 새 인증서가 정상 검증되어도 옛 거부 기록이 우선합니다. 캐시를 비우고 한 번에 처음부터 다시 설치하면 됩니다.",
+      "s1Step1": "QZ Tray 트레이 아이콘 우클릭 → Tools → Manage Sites → PurpleHere / dev.purplehere.com / purplehere.com 항목 모두 \"Remove\"",
+      "s1Step2": "QZ Tray 트레이 아이콘 우클릭 → Exit (완전 종료)",
+      "s1Step3": "브라우저에서 Ctrl+Shift+R (강력 새로고침)",
+      "s1Step4": "QZ Tray 탭의 \"원클릭 설치 (.bat)\" 다운로드 → 더블클릭 → \"Certificate installed\" 확인 후 닫기",
+      "s1Step5": "시작메뉴에서 QZ Tray 다시 실행",
+      "s1Step6": "QZ Tray 탭의 \"QZ Tray 연결 테스트\" 클릭 → prompt 의 \"remember\" 체크 + Allow → 끝",
+      "s2Title": "주방 프린터에서 티켓이 안 나옴 (캐셔는 정상)",
+      "s2Why": "주방 프린터 전원/연결/IP 설정 문제일 가능성. 정상화 전까지 위의 비상 모드를 켜서 영업을 멈추지 마세요 — 모든 티켓이 캐셔 프린터로 라우팅됩니다.",
+      "s2Step1": "주방 프린터 전원 / 용지 확인",
+      "s2Step2": "POS PC 에서 명령 프롬프트 → \"ping 192.168.x.x\" (주방 프린터 IP) 응답 확인",
+      "s2Step3": "Settings → Printer → Kitchen Printer 카드의 \"Test\" 버튼",
+      "s2Step4": "여전히 안 나오면 → 비상 모드 ON → 캐셔 프린터로 출력 받아 매장 운영 유지 → 영업 시간 후 점검",
+      "s3Title": "인터넷이 끊겼거나 라우터가 다운",
+      "s3Why": "캐셔 프린터를 USB / Bluetooth 직결로 사용 중이면 비상 모드 ON 만으로 운영 가능. LAN 프린터만 있다면 핫스팟 연결.",
+      "s3Step1": "POS 를 휴대폰 모바일 핫스팟에 연결 (PurpleHere API 호출용)",
+      "s3Step2": "Wi-Fi 없는 구형 PC: USB Wi-Fi 동글 (TP-Link Nano / Mercusys / ASUS USB Adapter) 끼우고 핫스팟 연결",
+      "s3Step3": "캐셔 프린터가 USB 직결이면 그대로 인쇄 가능. LAN 프린터는 라우터 복구까지 못 씀.",
+      "s3Step4": "비상 모드 ON → 모든 티켓 캐셔로 라우팅 → 직원이 직접 전달",
+      "s4Title": "인쇄할 때마다 OS 다이얼로그가 뜸 (Enter 눌러야 함)",
+      "s4Why": "현재 연결 방법이 \"브라우저 인쇄\"이기 때문입니다. 무음 인쇄가 필요하면 QZ Tray (Windows) 또는 RawBT (Android) 로 전환하세요. 위의 \"어떤 방법을 선택해야 할까?\" 표에서 매장 환경별 권장 방법 확인.",
+      "close": "닫기"
+    }
+  }
 }

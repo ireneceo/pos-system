@@ -764,10 +764,10 @@ const NewPurchaseOrderPage: React.FC = () => {
     }
     // count→count: 같은 ENUM 안에서도 변환 모름 (piece vs pack 등) — 사용자 입력
     if (UNIT_COUNT.includes(a) && UNIT_COUNT.includes(b)) {
-      return { auto: null, compatible: false, note: `${a} ↔ ${b}: 수량 단위 차이 — 수동 입력 필요` };
+      return { auto: null, compatible: false, note: t('unitCompat.diff', '{{a}} ↔ {{b}}: unit mismatch — manual entry required', { a, b }) as string };
     }
     // cross-group (weight ↔ volume ↔ count): 호환 안 됨
-    return { auto: null, compatible: false, note: `${a}와 ${b}는 호환되지 않습니다. 수동 입력하거나 별도 재료로 추가 권장` };
+    return { auto: null, compatible: false, note: t('unitCompat.incompatible', '{{a}} and {{b}} are incompatible. Enter manually or add as a separate ingredient', { a, b }) as string };
   };
 
   const ensureIngredientAndAddToCart = async (row: CatalogRow, selectedOptions: SelectedOption[], adjustedUnitPrice: number, qty?: number, overrideConversion?: number) => {

@@ -134,5 +134,12 @@
   "menuPage.weekdayShortList": "일,월,화,수,목,금,토",
   "menuManagementPage.setOnly": "세트 전용 (단품 판매 안 함)",
   "menuManagementPage.setOnlyHint": "단품으로 팔지 않는 메뉴 — POS·모바일 주문 화면에서 숨겨지고, 세트 구성과 주방 스테이션 배정에는 그대로 사용됩니다",
-  "menuManagementPage.setOnlyBadge": "세트 전용"
+  "menuManagementPage.setOnlyBadge": "세트 전용",
+  "itemDetail.setIncludes": "이 세트 구성:",
+  "itemDetail.required": "필수",
+  "itemDetail.quantity": "수량",
+  "itemDetail.specialInstructions": "특별 요청사항",
+  "itemDetail.specialPlaceholder": "특별한 요청이 있으신가요? (선택)",
+  "itemDetail.addedToCart": "장바구니에 추가됨",
+  "itemDetail.addToCart": "장바구니에 추가"
 }

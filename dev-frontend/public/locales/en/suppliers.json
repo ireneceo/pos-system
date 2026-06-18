@@ -19,5 +19,10 @@
   "suppliersPage.notes": "Notes",
   "suppliersPage.close": "Close",
   "suppliersPage.supplierName": "Supplier Name",
-  "suppliersPage.status": "Status"
+  "suppliersPage.status": "Status",
+  "sellerType": {
+    "brand": "Brand HQ",
+    "foodcourt": "Foodcourt HQ",
+    "contract": "Contract"
+  }
 }

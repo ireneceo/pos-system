@@ -452,7 +452,7 @@ router.post('/product', checkRestaurantAccess, async (req, res) => {
       // base64 이미지면 파일로 저장
       else if (productData.image.startsWith('data:image/')) {
         try {
-          const processedImages = await processImage(productData.image);
+          const processedImages = await processImage(productData.image, productData.name);
           if (processedImages && processedImages.original) {
             productData.image = processedImages.original;
             productData.image_thumbnail = processedImages.thumbnail;
@@ -630,7 +630,7 @@ router.put('/product/:id', checkProductTenant, async (req, res) => {
       // base64 이미지면 파일로 저장
       else if (updateData.image.startsWith('data:image/')) {
         try {
-          const processedImages = await processImage(updateData.image);
+          const processedImages = await processImage(updateData.image, updateData.name || product.name);
           if (processedImages && processedImages.original) {
             updateData.image = processedImages.original;
             updateData.image_thumbnail = processedImages.thumbnail;
@@ -929,7 +929,22 @@ router.delete('/product/:id', checkProductTenant, async (req, res) => {
     const productName = product.name;
     const productId = product.id;
     const productRestaurantId = product.restaurant_id;
+    const deletedImage = product.image;
     await product.destroy();
+
+    // 고아 이미지 정리: 삭제된 상품의 이미지 파일을 지운다. 단 다른 상품이 같은 파일을
+    // 참조하면(공유 자산) 절대 지우지 않는다(2026-06-12 thefire 공유삭제 사고 방지).
+    // deleteOldImages 는 /brand-menus/(BG 공유)도 자체 보호 + 썸네일까지 정리.
+    if (deletedImage && typeof deletedImage === 'string' && deletedImage.startsWith('/uploads/')) {
+      try {
+        const stillUsed = await Product.count({ where: { image: deletedImage } });
+        if (stillUsed === 0) {
+          await deleteOldImages(deletedImage);
+        }
+      } catch (e) {
+        console.error('Orphan image cleanup on delete failed:', e.message);
+      }
+    }
 
     logActivity(req, {
       action_type: 'delete',

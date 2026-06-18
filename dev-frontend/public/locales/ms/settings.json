@@ -1068,5 +1068,35 @@
   "operations.requireVoidPinLabel": "Perlukan kelulusan PIN untuk batal",
   "operations.requireVoidPinDesc": "Apabila dihidupkan, memadam item atau membatalkan pesanan memerlukan PIN yang dibenarkan. Akaun log masuk tidak berubah.",
   "operations.managerApprovalsTitle": "Kelulusan PIN Pengurus",
-  "operations.managerApprovalsDesc": "Perlukan PIN yang dibenarkan sebelum tindakan kaunter sensitif, untuk mencegah dan menjejak penyalahgunaan. Akaun log masuk tidak berubah — PIN hanya mengesahkan siapa yang meluluskan."
+  "operations.managerApprovalsDesc": "Perlukan PIN yang dibenarkan sebelum tindakan kaunter sensitif, untuk mencegah dan menjejak penyalahgunaan. Akaun log masuk tidak berubah — PIN hanya mengesahkan siapa yang meluluskan.",
+  "printer": {
+    "troubleshoot": {
+      "openTitle": "Buka panduan penyelesaian masalah pencetak",
+      "openBtn": "Panduan penyelesaian masalah ?",
+      "title": "Panduan Penyelesaian Masalah Pencetak",
+      "s1Title": "Gesaan kebenaran sentiasa muncul, atau kotak semak \"Jangan tanya lagi\" dinyahdayakan",
+      "s1Why": "Ini berlaku apabila rekod \"ditolak\" daripada percubaan sebelumnya disimpan dalam cache QZ Tray. Walaupun sijil baharu disahkan dengan betul, penolakan lama diutamakan. Kosongkan cache dan pasang semula dari awal sekali gus.",
+      "s1Step1": "Klik kanan ikon dulang QZ Tray → Tools → Manage Sites → \"Remove\" setiap entri PurpleHere / dev.purplehere.com / purplehere.com",
+      "s1Step2": "Klik kanan ikon dulang QZ Tray → Exit (keluar sepenuhnya)",
+      "s1Step3": "Dalam pelayar, tekan Ctrl+Shift+R (muat semula paksa)",
+      "s1Step4": "Pada tab QZ Tray, muat turun \"Pemasangan satu klik (.bat)\" → klik dua kali → sahkan \"Certificate installed\" kemudian tutup",
+      "s1Step5": "Lancarkan QZ Tray semula daripada menu Start",
+      "s1Step6": "Pada tab QZ Tray, klik \"Uji sambungan QZ Tray\" → tandakan \"remember\" dalam gesaan + Allow → selesai",
+      "s2Title": "Tiket tidak dicetak di pencetak dapur (pencetak juruwang berfungsi)",
+      "s2Why": "Ini berkemungkinan masalah kuasa, sambungan atau tetapan IP pencetak dapur. Sehingga ia dibaiki, hidupkan mod kecemasan di atas supaya perniagaan tidak terhenti — semua tiket akan dihalakan ke pencetak juruwang.",
+      "s2Step1": "Periksa kuasa / kertas pencetak dapur",
+      "s2Step2": "Pada PC POS, buka Command Prompt → \"ping 192.168.x.x\" (IP pencetak dapur) dan sahkan ia memberi respons",
+      "s2Step3": "Klik butang \"Test\" pada kad Settings → Printer → Kitchen Printer",
+      "s2Step4": "Jika ia masih tidak mencetak → hidupkan mod kecemasan → cetak ke pencetak juruwang untuk mengekalkan operasi kedai → periksa selepas waktu perniagaan",
+      "s3Title": "Internet terputus atau penghala di luar talian",
+      "s3Why": "Jika pencetak juruwang disambung terus melalui USB / Bluetooth, hanya menghidupkan mod kecemasan sudah membolehkan anda terus beroperasi. Jika anda hanya ada pencetak LAN, sambung ke hotspot.",
+      "s3Step1": "Sambungkan POS ke hotspot mudah alih telefon anda (supaya ia boleh memanggil API PurpleHere)",
+      "s3Step2": "PC lama tanpa Wi-Fi: pasang dongel Wi-Fi USB (TP-Link Nano / Mercusys / ASUS USB Adapter) dan sambung ke hotspot",
+      "s3Step3": "Jika pencetak juruwang disambung terus melalui USB, ia masih boleh mencetak seperti biasa. Pencetak LAN tidak boleh digunakan sehingga penghala dipulihkan.",
+      "s3Step4": "Hidupkan mod kecemasan → semua tiket dihalakan ke juruwang → kakitangan menyerahkannya secara terus",
+      "s4Title": "Dialog OS muncul pada setiap cetakan (anda perlu tekan Enter)",
+      "s4Why": "Ini kerana kaedah sambungan semasa ialah \"Cetakan pelayar\". Jika anda perlukan cetakan senyap, tukar kepada QZ Tray (Windows) atau RawBT (Android). Semak kaedah yang disyorkan untuk persediaan kedai anda dalam jadual \"Kaedah manakah perlu saya pilih?\" di atas.",
+      "close": "Tutup"
+    }
+  }
 }

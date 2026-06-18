@@ -28,9 +28,9 @@ export function setPosTheme(mode: PosThemeMode): void {
 }
 
 export const POS_THEME_LABELS: Record<PosThemeMode, string> = {
-  light: '밝게',
-  contrast: '고대비',
-  dark: '어둡게',
+  light: 'Light',
+  contrast: 'High Contrast',
+  dark: 'Dark',
 };
 
 /**

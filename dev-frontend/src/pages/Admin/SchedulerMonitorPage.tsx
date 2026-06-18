@@ -48,15 +48,15 @@ function fmtDuration(ms: number | null): string {
   return `${(ms / 60_000).toFixed(1)}m`;
 }
 
-// Cron job 식별자 → 사용자 친화 라벨/설명
+// Cron job id → user-friendly label/description (English defaults; i18n via schedulerJobs.<id>.*)
 const JOB_LABELS: Record<string, { label: string; desc: string }> = {
-  'subscription-reminder':       { label: '구독 만료 알림',       desc: '체험/구독 종료 D-3·7·14일 전 자동 알림 발송' },
-  'invoice-reminder':            { label: '인보이스 발송 리마인더', desc: '미발송/연체 인보이스 일일 자동 발송' },
-  'soa-statement':               { label: '월간 SOA 발송',         desc: 'Statement of Account 매월 1일 자동 발송' },
-  'contract-expiry-reminder':    { label: '계약 만료 알림',         desc: '레스토랑 계약 만료 임박 자동 알림' },
-  'invoice-overdue-suspend':     { label: '연체 자동 정지',         desc: '연체 30일 경과 시 계정 자동 suspend' },
-  'po-auto-cancel':              { label: '발주 자동 취소',         desc: '오래된 미수령 PO 자동 취소' },
-  'inventory-low-stock-alert':   { label: '재고 부족 알림',         desc: '안전재고 미만 재료 자동 알림' },
+  'subscription-reminder':       { label: 'Subscription Reminder',      desc: 'Sends automatic reminders 3, 7, and 14 days before a trial or subscription ends' },
+  'invoice-reminder':            { label: 'Invoice Reminder',           desc: 'Sends unsent or overdue invoices automatically each day' },
+  'soa-statement':               { label: 'Monthly SOA',                desc: 'Sends the Statement of Account automatically on the 1st of each month' },
+  'contract-expiry-reminder':    { label: 'Contract Expiry Reminder',   desc: 'Sends automatic alerts when a restaurant contract is about to expire' },
+  'invoice-overdue-suspend':     { label: 'Overdue Auto-Suspend',       desc: 'Automatically suspends accounts 30 days after an invoice becomes overdue' },
+  'po-auto-cancel':              { label: 'Purchase Order Auto-Cancel',  desc: 'Automatically cancels old unreceived purchase orders' },
+  'inventory-low-stock-alert':   { label: 'Low Stock Alert',            desc: 'Sends automatic alerts for ingredients below the safety stock level' },
 };
 
 // results 객체 → 사람이 읽을 수 있는 한 줄
@@ -70,7 +70,7 @@ function summarizeResults(results: Record<string, any> | null, error: string | n
     const friendly = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     parts.push(`${friendly}: ${v}`);
   }
-  return parts.length ? parts.join(' · ') : '결과 없음';
+  return parts.length ? parts.join(' · ') : 'No results';
 }
 
 const SchedulerMonitorPage: React.FC = () => {
@@ -123,9 +123,9 @@ const SchedulerMonitorPage: React.FC = () => {
 
       <Content>
         <HelpBox>
-          <HelpTitle>{t('schedulerMonitor.helpTitle', '이 페이지는 무엇인가요?')}</HelpTitle>
+          <HelpTitle>{t('schedulerMonitor.helpTitle', 'What is this page?')}</HelpTitle>
           <HelpDesc>
-            {t('schedulerMonitor.helpDesc', '시스템이 매일 또는 주기적으로 자동 실행하는 백그라운드 작업(cron jobs)의 실행 결과를 확인하는 페이지입니다. 구독 알림 발송, 인보이스 자동 발송, 계약 만료 체크 등의 자동화 작업이 정상 작동하는지 모니터링하고, 실패한 작업의 원인을 추적할 수 있습니다.')}
+            {t('schedulerMonitor.helpDesc', 'This page shows the results of background tasks (cron jobs) that the system runs automatically every day or on a schedule. You can monitor whether automated tasks such as subscription reminders, automatic invoice sending, and contract expiry checks are working correctly, and trace the cause of any failed runs.')}
           </HelpDesc>
         </HelpBox>
 
@@ -143,8 +143,8 @@ const SchedulerMonitorPage: React.FC = () => {
             const meta = JOB_LABELS[j.job_name];
             return (
               <JobCard key={j.job_name}>
-                <JobName>{meta?.label || j.job_name}</JobName>
-                {meta?.desc && <JobDesc>{meta.desc}</JobDesc>}
+                <JobName>{meta ? t('schedulerJobs.' + j.job_name + '.label', meta.label) : j.job_name}</JobName>
+                {meta?.desc && <JobDesc>{t('schedulerJobs.' + j.job_name + '.desc', meta.desc)}</JobDesc>}
                 {!meta && <JobCode>{j.job_name}</JobCode>}
                 <JobMetaRow>
                   <StatusPill $bg={sc.bg} $fg={sc.fg}>{j.latest_status || '—'}</StatusPill>
@@ -222,7 +222,7 @@ const SchedulerMonitorPage: React.FC = () => {
                 const jobMeta = JOB_LABELS[r.job_name];
                 return (
                   <DataTableRow key={r.id}>
-                    <DataTableCell data-label={t('schedulerMonitor.job', 'Job')}>{jobMeta?.label || r.job_name}</DataTableCell>
+                    <DataTableCell data-label={t('schedulerMonitor.job', 'Job')}>{jobMeta ? t('schedulerJobs.' + r.job_name + '.label', jobMeta.label) : r.job_name}</DataTableCell>
                     <DataTableCell data-label={t('schedulerMonitor.startedAt', 'Started')}>{formatTime(r.started_at)}</DataTableCell>
                     <DataTableCell data-label={t('schedulerMonitor.duration', 'Duration')}>{fmtDuration(r.duration_ms)}</DataTableCell>
                     <DataTableCell data-label={t('schedulerMonitor.status', 'Status')}><StatusPill $bg={sc.bg} $fg={sc.fg}>{r.status}</StatusPill></DataTableCell>

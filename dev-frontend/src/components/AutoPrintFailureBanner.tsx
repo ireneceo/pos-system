@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 /**
  * AutoPrintFailureBanner — PRINT_RULES_MATRIX rule 6: when an auto-print fails,
@@ -10,6 +11,7 @@ import React, { useEffect, useState } from 'react';
  * Non-blocking fixed banner (does not cover the POS). Dismissible.
  */
 const AutoPrintFailureBanner: React.FC = () => {
+  const { t } = useTranslation('common');
   const [fail, setFail] = useState<{ orderNumber?: string; scope?: string; at: number } | null>(null);
 
   useEffect(() => {
@@ -23,7 +25,9 @@ const AutoPrintFailureBanner: React.FC = () => {
 
   if (!fail) return null;
 
-  const scopeLabel = fail.scope === 'bill' ? '영수증' : '주방';
+  const scopeLabel = fail.scope === 'bill'
+    ? t('printFailBanner.scopeBill', 'Receipt')
+    : t('printFailBanner.scopeKitchen', 'Kitchen');
 
   return (
     <div
@@ -37,21 +41,24 @@ const AutoPrintFailureBanner: React.FC = () => {
     >
       <span style={{ fontSize: 18 }}>⚠</span>
       <span>
-        {scopeLabel} 자동인쇄 실패{fail.orderNumber ? ` — 주문 ${fail.orderNumber}` : ''}. 자동 재시도 중입니다.
-        계속 실패하면 <b>QZ Tray 실행 여부</b>와 <b>프린터 연결 / 프린터 이름</b>을 확인하세요.
+        {fail.orderNumber
+          ? t('printFailBanner.failedOrder', '{{scope}} auto-print failed — order {{n}}. Retrying automatically.', { scope: scopeLabel, n: fail.orderNumber })
+          : t('printFailBanner.failed', '{{scope}} auto-print failed. Retrying automatically.', { scope: scopeLabel })}
+        {' '}
+        {t('printFailBanner.hint', 'If it keeps failing, check whether QZ Tray is running and the printer connection / printer name.')}
       </span>
       <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
         <button
           onClick={() => { try { window.location.href = '/pos/restaurant/settings?tab=printer'; } catch { setFail(null); } }}
           style={{ background: '#fff', color: '#FF6B6B', border: 'none', borderRadius: 6, padding: '6px 12px', fontWeight: 700, cursor: 'pointer' }}
         >
-          프린터 설정
+          {t('printFailBanner.printerSettings', 'Printer Settings')}
         </button>
         <button
           onClick={() => setFail(null)}
           style={{ background: 'transparent', color: '#fff', border: '1px solid rgba(255,255,255,0.7)', borderRadius: 6, padding: '6px 12px', fontWeight: 700, cursor: 'pointer' }}
         >
-          닫기
+          {t('printFailBanner.dismiss', 'Dismiss')}
         </button>
       </span>
     </div>

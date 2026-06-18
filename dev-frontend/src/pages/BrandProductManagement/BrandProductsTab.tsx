@@ -1155,7 +1155,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
 
             {formData.distribution_mode === 'specific_brands' && (
               <UIFormGroup>
-                <FormLabel>{'대상 브랜드'}</FormLabel>
+                <FormLabel>{t('brandProductsTab.targetBrands', 'Target Brands')}</FormLabel>
                 <CheckboxGroup>
                   {brands.map(brand => (
                     <CheckboxItem key={brand.id}>
@@ -1173,7 +1173,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
 
             {formData.distribution_mode === 'specific_restaurants' && (
               <UIFormGroup>
-                <FormLabel>{'대상 가맹점'}</FormLabel>
+                <FormLabel>{t('brandProductsTab.targetRestaurants', 'Target Stores')}</FormLabel>
                 {restaurants.length === 0 ? (
                   <div style={{ padding: 12, background: '#F9FAFB', borderRadius: 8, color: '#4B5563', fontSize: 13 }}>
                     No restaurants available.

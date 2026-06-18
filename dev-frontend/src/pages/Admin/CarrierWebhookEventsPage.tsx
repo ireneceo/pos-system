@@ -260,12 +260,12 @@ const CarrierWebhookEventsPage: React.FC = () => {
       <Content>
         <div style={{ background: '#F1F5F9', border: '1px solid #64748B', borderRadius: 10, padding: '14px 18px', marginBottom: 20, fontSize: 13, color: '#334155', lineHeight: 1.6 }}>
           <div style={{ fontWeight: 600, color: '#0A2540', marginBottom: 6 }}>
-            {t('admin:carrierWebhooks.helpTitle', '이 페이지는 무엇인가요?')}
+            {t('admin:carrierWebhooks.helpTitle', 'What is this page?')}
           </div>
           <div>
-            {t('admin:carrierWebhooks.helpDesc', '외부 배송사(Lalamove, GrabExpress 등)가 PO 배송 상태(픽업 완료, 운송중, 배송 완료, 실패 등)를 알려올 때마다 자동으로 기록되는 이벤트입니다. 실패한 이벤트는 Retry 버튼으로 재처리하고, "Send Simulate Event"로 테스트 이벤트를 발송할 수 있습니다. carrier별 webhook URL과 secret 설정은 ')}
+            {t('admin:carrierWebhooks.helpDesc', 'These are events recorded automatically whenever an external carrier (Lalamove, GrabExpress, etc.) reports the delivery status of a PO (picked up, in transit, delivered, failed, etc.). Failed events can be reprocessed with the Retry button, and you can send a test event with "Send Simulate Event". The webhook URL and secret for each carrier are managed on the ')}
             <a href="/pos/admin/carriers" style={{ color: '#635BFF', fontWeight: 600 }}>Carriers</a>
-            {t('admin:carrierWebhooks.helpDesc2', ' 페이지에서 관리합니다.')}
+            {t('admin:carrierWebhooks.helpDesc2', ' page.')}
           </div>
         </div>
         <StatsRow>

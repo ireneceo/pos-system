@@ -327,5 +327,15 @@
       "connect": "Pautkan",
       "asSeparate": "+ Tambah sebagai bahan berasingan"
     }
+  },
+  "staging": {
+    "noPhoneTitle": "Tiada Nombor Telefon",
+    "noPhone": "Tiada nombor telefon didaftarkan untuk penjual ini.",
+    "noEmailTitle": "Tiada E-mel",
+    "noEmail": "Tiada alamat e-mel didaftarkan untuk penjual ini."
+  },
+  "unitCompat": {
+    "diff": "{{a}} ↔ {{b}}: unit tidak sepadan — kemasukan manual diperlukan",
+    "incompatible": "{{a}} dan {{b}} tidak serasi. Masukkan secara manual atau tambah sebagai bahan berasingan"
   }
 }

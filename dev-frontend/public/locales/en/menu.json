@@ -134,5 +134,12 @@
   "menuPage.weekdayShortList": "Su,Mo,Tu,We,Th,Fr,Sa",
   "menuManagementPage.setOnly": "Set menu use only",
   "menuManagementPage.setOnlyHint": "Not sold separately — hidden from POS & mobile ordering, still available inside set menus and kitchen station routing",
-  "menuManagementPage.setOnlyBadge": "SET ONLY"
+  "menuManagementPage.setOnlyBadge": "SET ONLY",
+  "itemDetail.setIncludes": "This set includes:",
+  "itemDetail.required": "Required",
+  "itemDetail.quantity": "Quantity",
+  "itemDetail.specialInstructions": "Special Instructions",
+  "itemDetail.specialPlaceholder": "Any special requests? (optional)",
+  "itemDetail.addedToCart": "Added to Cart",
+  "itemDetail.addToCart": "Add to Cart"
 }

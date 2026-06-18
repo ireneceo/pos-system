@@ -42,7 +42,9 @@
   "terminal.categoryAll": "All",
   "terminal.simpleMode": "Compact",
   "terminal.photoMode": "Image",
-  "terminal.themeLight": "Light", "terminal.themeContrast": "High Contrast", "terminal.themeDark": "Dark",
+  "terminal.themeLight": "Light",
+  "terminal.themeContrast": "High Contrast",
+  "terminal.themeDark": "Dark",
   "terminal.switchToSimple": "Switch to compact mode",
   "terminal.switchToPhoto": "Switch to image mode",
   "terminal.options": "Options",
@@ -56,5 +58,9 @@
   "mergeChoice.subtitle": "Table {{table}} already has {{count}} pending order(s). Add to one, or create a separate order?",
   "mergeChoice.addToThis": "Add to this →",
   "mergeChoice.cancel": "Cancel",
-  "mergeChoice.separate": "Create separate order"
+  "mergeChoice.separate": "Create separate order",
+  "optionModal.cancel": "Cancel",
+  "optionModal.addToOrder": "Add to Order",
+  "optionModal.customizeOrder": "Customize Order",
+  "optionModal.quantity": "Quantity"
 }

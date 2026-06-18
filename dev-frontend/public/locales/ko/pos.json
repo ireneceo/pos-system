@@ -42,7 +42,9 @@
   "terminal.categoryAll": "전체",
   "terminal.simpleMode": "컴팩트",
   "terminal.photoMode": "이미지",
-  "terminal.themeLight": "밝게", "terminal.themeContrast": "고대비", "terminal.themeDark": "어둡게",
+  "terminal.themeLight": "밝게",
+  "terminal.themeContrast": "고대비",
+  "terminal.themeDark": "어둡게",
   "terminal.switchToSimple": "컴팩트 모드로 전환",
   "terminal.switchToPhoto": "이미지 모드로 전환",
   "terminal.options": "옵션",
@@ -56,5 +58,9 @@
   "mergeChoice.subtitle": "{{table}} 테이블에 진행 중인 주문 {{count}}건. 기존에 추가하시겠어요, 별도 주문을 만드시겠어요?",
   "mergeChoice.addToThis": "이 주문에 추가 →",
   "mergeChoice.cancel": "취소",
-  "mergeChoice.separate": "별도 주문 생성"
+  "mergeChoice.separate": "별도 주문 생성",
+  "optionModal.cancel": "취소",
+  "optionModal.addToOrder": "주문에 추가",
+  "optionModal.customizeOrder": "주문 맞춤설정",
+  "optionModal.quantity": "수량"
 }

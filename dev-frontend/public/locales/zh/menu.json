@@ -134,5 +134,12 @@
   "menuPage.weekdayShortList": "日,一,二,三,四,五,六",
   "menuManagementPage.setOnly": "仅用于套餐",
   "menuManagementPage.setOnlyHint": "不单独销售 — 在POS和手机点餐中隐藏，但仍可用于套餐组合和厨房工位分配",
-  "menuManagementPage.setOnlyBadge": "仅套餐"
+  "menuManagementPage.setOnlyBadge": "仅套餐",
+  "itemDetail.setIncludes": "此套餐包含：",
+  "itemDetail.required": "必选",
+  "itemDetail.quantity": "数量",
+  "itemDetail.specialInstructions": "特殊要求",
+  "itemDetail.specialPlaceholder": "有任何特殊要求吗？（可选）",
+  "itemDetail.addedToCart": "已加入购物车",
+  "itemDetail.addToCart": "加入购物车"
 }

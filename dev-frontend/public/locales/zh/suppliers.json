@@ -19,5 +19,10 @@
   "suppliersPage.notes": "备注",
   "suppliersPage.close": "关闭",
   "suppliersPage.supplierName": "供应商 名称",
-  "suppliersPage.status": "状态"
+  "suppliersPage.status": "状态",
+  "sellerType": {
+    "brand": "品牌总部",
+    "foodcourt": "美食广场总部",
+    "contract": "合同"
+  }
 }

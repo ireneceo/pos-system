@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useMenu } from '../../contexts/MenuContext';
 import { Modal, ModalButton as Button, FormLabel as Label } from '../UI/Modal';
 import {
@@ -53,6 +54,7 @@ interface OptionModalProps {
 }
 
 const OptionModal: React.FC<OptionModalProps> = ({ isOpen, onClose, menuItem, onConfirm }) => {
+  const { t } = useTranslation('pos');
   const { optionGroups: allOptionGroups } = useMenu();
   const { operationSettings } = useStore();
   const [quantity, setQuantity] = useState(1);
@@ -155,10 +157,10 @@ const OptionModal: React.FC<OptionModalProps> = ({ isOpen, onClose, menuItem, on
   const footer = (
     <>
       <Button variant="secondary" onClick={handleClose}>
-        Cancel
+        {t('optionModal.cancel', 'Cancel')}
       </Button>
       <Button variant="primary" onClick={handleConfirm} disabled={!isValid()}>
-        Add to Order
+        {t('optionModal.addToOrder', 'Add to Order')}
       </Button>
     </>
   );
@@ -167,7 +169,7 @@ const OptionModal: React.FC<OptionModalProps> = ({ isOpen, onClose, menuItem, on
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title="Customize Order"
+      title={t('optionModal.customizeOrder', 'Customize Order')}
       footer={footer}
     >
       <ProductInfo>
@@ -237,7 +239,7 @@ const OptionModal: React.FC<OptionModalProps> = ({ isOpen, onClose, menuItem, on
       ))}
 
       <Section>
-        <Label>Quantity</Label>
+        <Label>{t('optionModal.quantity', 'Quantity')}</Label>
         <QuantityControl>
           <QuantityButton 
             onClick={() => setQuantity(Math.max(1, quantity - 1))}

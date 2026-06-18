@@ -489,13 +489,13 @@ router.delete('/brand-product-option-groups/:groupId', authenticateToken, requir
 
     if (linkedProducts > 0) {
       return res.status(400).json({
-        error: `이 옵션 그룹이 ${linkedProducts}개 제품에 연결되어 있습니다. 먼저 제품에서 연결을 해제해주세요.`
+        error: `This option group is linked to ${linkedProducts} product(s). Please unlink it from those products first.`
       });
     }
 
     await optionGroup.destroy();
 
-    res.json({ success: true, message: '옵션 그룹이 삭제되었습니다' });
+    res.json({ success: true, message: 'Option group deleted' });
   } catch (error) {
     console.error('Delete option group error:', error);
     res.status(500).json({ success: false, error: { message: 'Failed to delete option group', code: 'INTERNAL_ERROR' } });

@@ -708,5 +708,15 @@
   "enterTablePlaceholder": "Enter your table number",
   "noTableMatch": "No matching table. Check the number on your table.",
   "selectTableToContinue": "Please select your table to continue.",
-  "storeNotLoaded": "Store is still loading. Please wait a moment and try again."
+  "storeNotLoaded": "Store is still loading. Please wait a moment and try again.",
+  "deliveryZone.within": "within {{km}}km",
+  "printFailBanner": {
+    "scopeBill": "Receipt",
+    "scopeKitchen": "Kitchen",
+    "failed": "{{scope}} auto-print failed. Retrying automatically.",
+    "failedOrder": "{{scope}} auto-print failed — order {{n}}. Retrying automatically.",
+    "hint": "If it keeps failing, check whether QZ Tray is running and the printer connection / printer name.",
+    "printerSettings": "Printer Settings",
+    "dismiss": "Dismiss"
+  }
 }

@@ -708,5 +708,15 @@
   "enterTablePlaceholder": "Masukkan nombor meja anda",
   "noTableMatch": "Tiada meja sepadan. Semak nombor pada meja anda.",
   "selectTableToContinue": "Sila pilih meja anda untuk meneruskan.",
-  "storeNotLoaded": "Kedai masih dimuatkan. Sila tunggu sebentar dan cuba lagi."
+  "storeNotLoaded": "Kedai masih dimuatkan. Sila tunggu sebentar dan cuba lagi.",
+  "deliveryZone.within": "dalam {{km}}km",
+  "printFailBanner": {
+    "scopeBill": "Resit",
+    "scopeKitchen": "Dapur",
+    "failed": "Cetakan automatik {{scope}} gagal. Mencuba semula secara automatik.",
+    "failedOrder": "Cetakan automatik {{scope}} gagal — pesanan {{n}}. Mencuba semula secara automatik.",
+    "hint": "Jika masih gagal, semak sama ada QZ Tray sedang berjalan dan sambungan pencetak / nama pencetak.",
+    "printerSettings": "Tetapan Pencetak",
+    "dismiss": "Tutup"
+  }
 }

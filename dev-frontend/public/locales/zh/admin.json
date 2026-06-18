@@ -1462,10 +1462,54 @@
     },
     "errors": {
       "required": "代码和名称是必填项"
+    },
+    "webhook": {
+      "addModeHint": "请先保存承运商，然后重新打开以配置 webhook。（保存后将自动切换到编辑模式。）",
+      "regenerateWarning": "警告：此操作会立即使现有 secret 失效。在承运商控制台中注册新 secret 之前，webhook 调用将失败。",
+      "copyOnce": "警告：此 secret 无法再次查看。请立即在承运商控制台中注册。"
     }
   },
   "staffManagementPage.authorizations": "授权",
   "staffManagementPage.authorizationsHint": "此员工可用其 PIN 授予的批准（可选）。",
   "staffManagementPage.voidAuthorize": "作废/取消批准",
-  "staffManagementPage.voidAuthorizeDesc": "开启 PIN 门控时，可用其 PIN 批准删除商品和取消订单。"
+  "staffManagementPage.voidAuthorizeDesc": "开启 PIN 门控时，可用其 PIN 批准删除商品和取消订单。",
+  "schedulerMonitor": {
+    "helpTitle": "此页面是什么？",
+    "helpDesc": "此页面显示系统每天或定期自动运行的后台任务（cron jobs）的执行结果。您可以监控订阅提醒发送、发票自动发送、合同到期检查等自动化任务是否正常运行，并追踪失败任务的原因。"
+  },
+  "schedulerJobs": {
+    "subscription-reminder": {
+      "label": "订阅到期提醒",
+      "desc": "在试用/订阅结束前第 3、7、14 天自动发送提醒"
+    },
+    "invoice-reminder": {
+      "label": "发票发送提醒",
+      "desc": "每日自动发送未发送/逾期的发票"
+    },
+    "soa-statement": {
+      "label": "每月对账单",
+      "desc": "每月 1 日自动发送对账单（Statement of Account）"
+    },
+    "contract-expiry-reminder": {
+      "label": "合同到期提醒",
+      "desc": "餐厅合同即将到期时自动发送提醒"
+    },
+    "invoice-overdue-suspend": {
+      "label": "逾期自动暂停",
+      "desc": "发票逾期满 30 天后自动暂停账户"
+    },
+    "po-auto-cancel": {
+      "label": "采购单自动取消",
+      "desc": "自动取消长期未收货的采购单"
+    },
+    "inventory-low-stock-alert": {
+      "label": "库存不足提醒",
+      "desc": "对低于安全库存的食材自动发送提醒"
+    }
+  },
+  "carrierWebhooks": {
+    "helpTitle": "此页面是什么？",
+    "helpDesc": "每当外部承运商（Lalamove、GrabExpress 等）报告采购单的配送状态（已取件、运送中、已送达、失败等）时，都会自动记录这些事件。失败的事件可使用 Retry 按钮重新处理，您也可以使用“Send Simulate Event”发送测试事件。每个承运商的 webhook URL 和 secret 设置在 ",
+    "helpDesc2": " 页面中管理。"
+  }
 }

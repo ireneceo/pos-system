@@ -299,7 +299,7 @@ router.put('/brands/:brandId/suppliers/:supplierId', authenticateToken, isBrandM
     res.json({ success: true, data: supplier });
   } catch (error) {
     console.error('Update brand supplier error:', error);
-    res.status(500).json({ success: false, error: { message: '공급업체 수정 실패', code: 'INTERNAL_ERROR' } });
+    res.status(500).json({ success: false, error: { message: 'Failed to update supplier', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -321,10 +321,10 @@ router.delete('/brands/:brandId/suppliers/:supplierId', authenticateToken, isBra
 
     await supplier.destroy();
 
-    res.json({ success: true, message: '공급업체가 삭제되었습니다' });
+    res.json({ success: true, message: 'Supplier deleted' });
   } catch (error) {
     console.error('Delete brand supplier error:', error);
-    res.status(500).json({ success: false, error: { message: '공급업체 삭제 실패', code: 'INTERNAL_ERROR' } });
+    res.status(500).json({ success: false, error: { message: 'Failed to delete supplier', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -358,7 +358,7 @@ router.get('/restaurants/:restaurantId/suppliers', authenticateToken, checkResta
     res.json({ success: true, data: suppliers });
   } catch (error) {
     console.error('Get restaurant suppliers error:', error);
-    res.status(500).json({ success: false, error: { message: '공급업체 목록 조회 실패', code: 'INTERNAL_ERROR' } });
+    res.status(500).json({ success: false, error: { message: 'Failed to load suppliers', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -372,7 +372,7 @@ router.get('/restaurants/:restaurantId/brand-suppliers', authenticateToken, chec
 
     const restaurant = await Restaurant.findByPk(restaurantId);
     if (!restaurant) {
-      return res.status(404).json({ success: false, error: { message: '레스토랑을 찾을 수 없습니다', code: 'NOT_FOUND' } });
+      return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
     }
 
     // 브랜드에 속하지 않은 레스토랑
@@ -405,7 +405,7 @@ router.get('/restaurants/:restaurantId/brand-suppliers', authenticateToken, chec
     res.json({ success: true, data: brandSuppliers });
   } catch (error) {
     console.error('Get brand suppliers for restaurant error:', error);
-    res.status(500).json({ success: false, error: { message: '브랜드 공급업체 조회 실패', code: 'INTERNAL_ERROR' } });
+    res.status(500).json({ success: false, error: { message: 'Failed to load brand suppliers', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -419,7 +419,7 @@ router.get('/restaurants/:restaurantId/all-suppliers', authenticateToken, checkR
 
     const restaurant = await Restaurant.findByPk(restaurantId);
     if (!restaurant) {
-      return res.status(404).json({ success: false, error: { message: '레스토랑을 찾을 수 없습니다', code: 'NOT_FOUND' } });
+      return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
     }
 
     const supplierInclude = [
@@ -462,7 +462,7 @@ router.get('/restaurants/:restaurantId/all-suppliers', authenticateToken, checkR
     });
   } catch (error) {
     console.error('Get all suppliers for restaurant error:', error);
-    res.status(500).json({ success: false, error: { message: '공급업체 조회 실패', code: 'INTERNAL_ERROR' } });
+    res.status(500).json({ success: false, error: { message: 'Failed to load supplier', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -476,7 +476,7 @@ router.post('/restaurants/:restaurantId/suppliers', authenticateToken, checkRest
     const { code, name, contact_name, phone, email, address, address_line_2, city, state, postal_code, country, business_number, bank_name, bank_account, payment_terms, notes, supplier_category_id } = req.body;
 
     if (!name) {
-      return res.status(400).json({ success: false, error: { message: '공급업체 이름은 필수입니다', code: 'VALIDATION_ERROR' } });
+      return res.status(400).json({ success: false, error: { message: 'Supplier name is required', code: 'VALIDATION_ERROR' } });
     }
 
     // Auto-generate code if not provided
@@ -508,7 +508,7 @@ router.post('/restaurants/:restaurantId/suppliers', authenticateToken, checkRest
     res.json({ success: true, data: supplier });
   } catch (error) {
     console.error('Create restaurant supplier error:', error);
-    res.status(500).json({ success: false, error: { message: '공급업체 생성 실패', code: 'INTERNAL_ERROR' } });
+    res.status(500).json({ success: false, error: { message: 'Failed to create supplier', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -523,12 +523,12 @@ router.put('/restaurants/:restaurantId/suppliers/:supplierId', authenticateToken
 
     const supplier = await Supplier.findByPk(supplierId);
     if (!supplier) {
-      return res.status(404).json({ success: false, error: { message: '공급업체를 찾을 수 없습니다', code: 'NOT_FOUND' } });
+      return res.status(404).json({ success: false, error: { message: 'Supplier not found', code: 'NOT_FOUND' } });
     }
 
     // 브랜드 공급업체는 레스토랑에서 수정 불가
     if (supplier.owner_type === 'brand') {
-      return res.status(403).json({ success: false, error: { message: '브랜드 공급업체는 수정할 수 없습니다', code: 'FORBIDDEN' } });
+      return res.status(403).json({ success: false, error: { message: 'Brand suppliers cannot be modified', code: 'FORBIDDEN' } });
     }
 
     await supplier.update({
@@ -555,7 +555,7 @@ router.put('/restaurants/:restaurantId/suppliers/:supplierId', authenticateToken
     res.json({ success: true, data: supplier });
   } catch (error) {
     console.error('Update restaurant supplier error:', error);
-    res.status(500).json({ success: false, error: { message: '공급업체 수정 실패', code: 'INTERNAL_ERROR' } });
+    res.status(500).json({ success: false, error: { message: 'Failed to update supplier', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -569,20 +569,20 @@ router.delete('/restaurants/:restaurantId/suppliers/:supplierId', authenticateTo
 
     const supplier = await Supplier.findByPk(supplierId);
     if (!supplier) {
-      return res.status(404).json({ success: false, error: { message: '공급업체를 찾을 수 없습니다', code: 'NOT_FOUND' } });
+      return res.status(404).json({ success: false, error: { message: 'Supplier not found', code: 'NOT_FOUND' } });
     }
 
     // 브랜드 공급업체는 레스토랑에서 삭제 불가
     if (supplier.owner_type === 'brand') {
-      return res.status(403).json({ success: false, error: { message: '브랜드 공급업체는 삭제할 수 없습니다', code: 'FORBIDDEN' } });
+      return res.status(403).json({ success: false, error: { message: 'Brand suppliers cannot be deleted', code: 'FORBIDDEN' } });
     }
 
     await supplier.destroy();
 
-    res.json({ success: true, message: '공급업체가 삭제되었습니다' });
+    res.json({ success: true, message: 'Supplier deleted' });
   } catch (error) {
     console.error('Delete restaurant supplier error:', error);
-    res.status(500).json({ success: false, error: { message: '공급업체 삭제 실패', code: 'INTERNAL_ERROR' } });
+    res.status(500).json({ success: false, error: { message: 'Failed to delete supplier', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -606,7 +606,7 @@ router.get('/brands/:brandId/supplier-categories', authenticateToken, isBrandMan
     res.json({ success: true, data: categories });
   } catch (error) {
     console.error('Get brand supplier categories error:', error);
-    res.status(500).json({ success: false, error: { message: '카테고리 목록 조회 실패', code: 'INTERNAL_ERROR' } });
+    res.status(500).json({ success: false, error: { message: 'Failed to load categories', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -620,7 +620,7 @@ router.post('/brands/:brandId/supplier-categories', authenticateToken, isBrandMa
     const { name, description, color, display_order } = req.body;
 
     if (!name) {
-      return res.status(400).json({ success: false, error: { message: '카테고리 이름은 필수입니다', code: 'VALIDATION_ERROR' } });
+      return res.status(400).json({ success: false, error: { message: 'Category name is required', code: 'VALIDATION_ERROR' } });
     }
 
     const category = await SupplierCategory.create({
@@ -636,7 +636,7 @@ router.post('/brands/:brandId/supplier-categories', authenticateToken, isBrandMa
     res.json({ success: true, data: category });
   } catch (error) {
     console.error('Create brand supplier category error:', error);
-    res.status(500).json({ success: false, error: { message: '카테고리 생성 실패', code: 'INTERNAL_ERROR' } });
+    res.status(500).json({ success: false, error: { message: 'Failed to create category', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -651,7 +651,7 @@ router.put('/brands/:brandId/supplier-categories/:categoryId', authenticateToken
 
     const category = await SupplierCategory.findByPk(categoryId);
     if (!category) {
-      return res.status(404).json({ success: false, error: { message: '카테고리를 찾을 수 없습니다', code: 'NOT_FOUND' } });
+      return res.status(404).json({ success: false, error: { message: 'Category not found', code: 'NOT_FOUND' } });
     }
 
     await category.update({
@@ -665,7 +665,7 @@ router.put('/brands/:brandId/supplier-categories/:categoryId', authenticateToken
     res.json({ success: true, data: category });
   } catch (error) {
     console.error('Update brand supplier category error:', error);
-    res.status(500).json({ success: false, error: { message: '카테고리 수정 실패', code: 'INTERNAL_ERROR' } });
+    res.status(500).json({ success: false, error: { message: 'Failed to update category', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -679,7 +679,7 @@ router.delete('/brands/:brandId/supplier-categories/:categoryId', authenticateTo
 
     const category = await SupplierCategory.findByPk(categoryId);
     if (!category) {
-      return res.status(404).json({ success: false, error: { message: '카테고리를 찾을 수 없습니다', code: 'NOT_FOUND' } });
+      return res.status(404).json({ success: false, error: { message: 'Category not found', code: 'NOT_FOUND' } });
     }
 
     // 해당 카테고리를 사용하는 공급업체의 카테고리를 null로 변경
@@ -690,10 +690,10 @@ router.delete('/brands/:brandId/supplier-categories/:categoryId', authenticateTo
 
     await category.destroy();
 
-    res.json({ success: true, message: '카테고리가 삭제되었습니다' });
+    res.json({ success: true, message: 'Category deleted' });
   } catch (error) {
     console.error('Delete brand supplier category error:', error);
-    res.status(500).json({ success: false, error: { message: '카테고리 삭제 실패', code: 'INTERNAL_ERROR' } });
+    res.status(500).json({ success: false, error: { message: 'Failed to delete category', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -717,7 +717,7 @@ router.get('/restaurants/:restaurantId/supplier-categories', authenticateToken, 
     res.json({ success: true, data: categories });
   } catch (error) {
     console.error('Get restaurant supplier categories error:', error);
-    res.status(500).json({ success: false, error: { message: '카테고리 목록 조회 실패', code: 'INTERNAL_ERROR' } });
+    res.status(500).json({ success: false, error: { message: 'Failed to load categories', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -731,7 +731,7 @@ router.get('/restaurants/:restaurantId/brand-supplier-categories', authenticateT
 
     const restaurant = await Restaurant.findByPk(restaurantId);
     if (!restaurant) {
-      return res.status(404).json({ success: false, error: { message: '레스토랑을 찾을 수 없습니다', code: 'NOT_FOUND' } });
+      return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
     }
 
     if (!restaurant.brand_id) {
@@ -746,7 +746,7 @@ router.get('/restaurants/:restaurantId/brand-supplier-categories', authenticateT
     res.json({ success: true, data: categories });
   } catch (error) {
     console.error('Get brand supplier categories for restaurant error:', error);
-    res.status(500).json({ success: false, error: { message: '브랜드 카테고리 조회 실패', code: 'INTERNAL_ERROR' } });
+    res.status(500).json({ success: false, error: { message: 'Failed to load brand categories', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -760,7 +760,7 @@ router.post('/restaurants/:restaurantId/supplier-categories', authenticateToken,
     const { name, description, color, display_order } = req.body;
 
     if (!name) {
-      return res.status(400).json({ success: false, error: { message: '카테고리 이름은 필수입니다', code: 'VALIDATION_ERROR' } });
+      return res.status(400).json({ success: false, error: { message: 'Category name is required', code: 'VALIDATION_ERROR' } });
     }
 
     const category = await SupplierCategory.create({
@@ -776,7 +776,7 @@ router.post('/restaurants/:restaurantId/supplier-categories', authenticateToken,
     res.json({ success: true, data: category });
   } catch (error) {
     console.error('Create restaurant supplier category error:', error);
-    res.status(500).json({ success: false, error: { message: '카테고리 생성 실패', code: 'INTERNAL_ERROR' } });
+    res.status(500).json({ success: false, error: { message: 'Failed to create category', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -791,11 +791,11 @@ router.put('/restaurants/:restaurantId/supplier-categories/:categoryId', authent
 
     const category = await SupplierCategory.findByPk(categoryId);
     if (!category) {
-      return res.status(404).json({ success: false, error: { message: '카테고리를 찾을 수 없습니다', code: 'NOT_FOUND' } });
+      return res.status(404).json({ success: false, error: { message: 'Category not found', code: 'NOT_FOUND' } });
     }
 
     if (category.owner_type === 'brand') {
-      return res.status(403).json({ success: false, error: { message: '브랜드 카테고리는 수정할 수 없습니다', code: 'FORBIDDEN' } });
+      return res.status(403).json({ success: false, error: { message: 'Brand categories cannot be modified', code: 'FORBIDDEN' } });
     }
 
     await category.update({
@@ -809,7 +809,7 @@ router.put('/restaurants/:restaurantId/supplier-categories/:categoryId', authent
     res.json({ success: true, data: category });
   } catch (error) {
     console.error('Update restaurant supplier category error:', error);
-    res.status(500).json({ success: false, error: { message: '카테고리 수정 실패', code: 'INTERNAL_ERROR' } });
+    res.status(500).json({ success: false, error: { message: 'Failed to update category', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -823,11 +823,11 @@ router.delete('/restaurants/:restaurantId/supplier-categories/:categoryId', auth
 
     const category = await SupplierCategory.findByPk(categoryId);
     if (!category) {
-      return res.status(404).json({ success: false, error: { message: '카테고리를 찾을 수 없습니다', code: 'NOT_FOUND' } });
+      return res.status(404).json({ success: false, error: { message: 'Category not found', code: 'NOT_FOUND' } });
     }
 
     if (category.owner_type === 'brand') {
-      return res.status(403).json({ success: false, error: { message: '브랜드 카테고리는 삭제할 수 없습니다', code: 'FORBIDDEN' } });
+      return res.status(403).json({ success: false, error: { message: 'Brand categories cannot be deleted', code: 'FORBIDDEN' } });
     }
 
     // 해당 카테고리를 사용하는 공급업체의 카테고리를 null로 변경
@@ -838,10 +838,10 @@ router.delete('/restaurants/:restaurantId/supplier-categories/:categoryId', auth
 
     await category.destroy();
 
-    res.json({ success: true, message: '카테고리가 삭제되었습니다' });
+    res.json({ success: true, message: 'Category deleted' });
   } catch (error) {
     console.error('Delete restaurant supplier category error:', error);
-    res.status(500).json({ success: false, error: { message: '카테고리 삭제 실패', code: 'INTERNAL_ERROR' } });
+    res.status(500).json({ success: false, error: { message: 'Failed to delete category', code: 'INTERNAL_ERROR' } });
   }
 });
 

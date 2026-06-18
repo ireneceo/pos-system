@@ -42,7 +42,9 @@
   "terminal.categoryAll": "Semua",
   "terminal.simpleMode": "Padat",
   "terminal.photoMode": "Imej",
-  "terminal.themeLight": "Terang", "terminal.themeContrast": "Kontras Tinggi", "terminal.themeDark": "Gelap",
+  "terminal.themeLight": "Terang",
+  "terminal.themeContrast": "Kontras Tinggi",
+  "terminal.themeDark": "Gelap",
   "terminal.switchToSimple": "Tukar ke mod padat",
   "terminal.switchToPhoto": "Tukar ke mod imej",
   "terminal.options": "Pilihan",
@@ -56,5 +58,9 @@
   "mergeChoice.subtitle": "Meja {{table}} sudah mempunyai {{count}} pesanan belum selesai. Tambah ke satu, atau buat pesanan berasingan?",
   "mergeChoice.addToThis": "Tambah ke ini →",
   "mergeChoice.cancel": "Batal",
-  "mergeChoice.separate": "Buat pesanan berasingan"
+  "mergeChoice.separate": "Buat pesanan berasingan",
+  "optionModal.cancel": "Batal",
+  "optionModal.addToOrder": "Tambah ke Pesanan",
+  "optionModal.customizeOrder": "Sesuaikan Pesanan",
+  "optionModal.quantity": "Kuantiti"
 }

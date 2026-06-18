@@ -135,5 +135,9 @@
   "ticketSend.resend": "Resend",
   "ticketSend.close": "Close",
   "voidPin.title": "Authorization required",
-  "voidPin.subtitle": "Enter a manager PIN to void or cancel"
+  "voidPin.subtitle": "Enter a manager PIN to void or cancel",
+  "cancelledItem.sentToKitchen": "Cancelled item — sent to its kitchen",
+  "cancelledItem.pressSend": "Cancelled item — press [Send] to dispatch to kitchen",
+  "orderCancel.sentToKitchen": "Order {{orderNumber}} — sent to its kitchen",
+  "orderCancel.pressSend": "Order {{orderNumber}} — press [Send] to dispatch to kitchen"
 }

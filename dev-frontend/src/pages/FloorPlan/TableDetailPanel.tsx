@@ -885,7 +885,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
             if (_autoOn) doPrint();
             onKitchenTicketSent && onKitchenTicketSent({
               run: doPrint, autoSent: _autoOn, ticketType: '*** ITEM CANCELLED ***',
-              description: _autoOn ? '취소된 아이템 — 해당 주방에 발송됨' : '취소된 아이템 — [발송]을 눌러 주방에 전송',
+              description: _autoOn ? t('cancelledItem.sentToKitchen', 'Cancelled item — sent to its kitchen') : t('cancelledItem.pressSend', 'Cancelled item — press [Send] to dispatch to kitchen'),
               stations: previewStationBuckets(printData.items, settings)
             });
           }
@@ -966,7 +966,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
           if (_autoOnO) doPrint();
           onKitchenTicketSent && onKitchenTicketSent({
             run: doPrint, autoSent: _autoOnO, ticketType: '*** ORDER CANCELLED ***',
-            description: _autoOnO ? `주문 ${printData.orderNumber} — 해당 주방에 발송됨` : `주문 ${printData.orderNumber} — [발송]을 눌러 주방에 전송`,
+            description: _autoOnO ? t('orderCancel.sentToKitchen', 'Order {{orderNumber}} — sent to its kitchen', { orderNumber: printData.orderNumber }) : t('orderCancel.pressSend', 'Order {{orderNumber}} — press [Send] to dispatch to kitchen', { orderNumber: printData.orderNumber }),
             stations: previewStationBuckets(printData.items, settings)
           });
         }

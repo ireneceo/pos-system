@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import styled from 'styled-components';
 import { useParams, useNavigate } from 'react-router-dom';
 import MobileLayout from '../components/common/MobileLayout';
@@ -325,6 +326,7 @@ const PriceDisplay = styled.span`
 `;
 
 const ItemDetailPage: React.FC = () => {
+  const { t } = useTranslation(['menu', 'common']);
   const { slug, itemId } = useParams<{ slug: string; itemId: string }>();
   const navigate = useNavigate();
   const { addToCart, currency } = useMobileOrder();
@@ -677,7 +679,7 @@ const ItemDetailPage: React.FC = () => {
       {/* 레거시 세트(set_items, resolve 없음) 폴백 표시 */}
       {!isSet && item.is_set_menu && item.set_items && item.set_items.length > 0 && (
         <SetMenuSection>
-          <SetMenuTitle>This set includes:</SetMenuTitle>
+          <SetMenuTitle>{t('itemDetail.setIncludes', 'This set includes:')}</SetMenuTitle>
           <SetMenuItems>
             {item.set_items.map((setItem: any, index: number) => (
               <SetMenuItem key={index}>• {setItem.name} x{setItem.quantity}</SetMenuItem>
@@ -690,7 +692,7 @@ const ItemDetailPage: React.FC = () => {
         <OptionSection key={group.id}>
           <OptionTitle>
             {group.name}
-            {group.required && <RequiredBadge>Required</RequiredBadge>}
+            {group.required && <RequiredBadge>{t('itemDetail.required', 'Required')}</RequiredBadge>}
           </OptionTitle>
 
           {!group.multiple ? (
@@ -734,7 +736,7 @@ const ItemDetailPage: React.FC = () => {
       
       <QuantitySection>
         <div style={{ fontSize: '16px', fontWeight: 600, color: '#1F2937' }}>
-          Quantity
+          {t('itemDetail.quantity', 'Quantity')}
         </div>
         <QuantityControl>
           <QuantityButton 
@@ -756,11 +758,11 @@ const ItemDetailPage: React.FC = () => {
       
       <SpecialInstructions>
         <div style={{ fontSize: '16px', fontWeight: 600, color: '#1F2937', marginBottom: '8px' }}>
-          Special Instructions
+          {t('itemDetail.specialInstructions', 'Special Instructions')}
         </div>
         <InstructionsInput
           rows={3}
-          placeholder="Any special requests? (optional)"
+          placeholder={t('itemDetail.specialPlaceholder', 'Any special requests? (optional)')}
           value={instructions}
           onChange={(e) => setInstructions(e.target.value)}
         />
@@ -772,10 +774,10 @@ const ItemDetailPage: React.FC = () => {
         style={justAdded ? { background: '#10B981' } : undefined}
       >
         {justAdded ? (
-          <span>✓ Added to Cart</span>
+          <span>✓ {t('itemDetail.addedToCart', 'Added to Cart')}</span>
         ) : (
           <>
-            <span>Add to Cart</span>
+            <span>{t('itemDetail.addToCart', 'Add to Cart')}</span>
             <PriceDisplay>{formatCurrency(calculateTotal(), currency)}</PriceDisplay>
           </>
         )}

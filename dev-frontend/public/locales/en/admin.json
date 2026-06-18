@@ -1462,10 +1462,54 @@
     },
     "errors": {
       "required": "Code and Name are required"
+    },
+    "webhook": {
+      "addModeHint": "Save the carrier first, then reopen it to configure the webhook. (You will switch to edit mode automatically right after saving.)",
+      "regenerateWarning": "Warning: this immediately invalidates the existing secret. Webhook calls will fail until you register the new secret in the carrier console.",
+      "copyOnce": "Warning: this secret cannot be viewed again. Register it in the carrier console now."
     }
   },
   "staffManagementPage.authorizations": "Authorizations",
   "staffManagementPage.authorizationsHint": "Approvals this staff can grant with their PIN (optional).",
   "staffManagementPage.voidAuthorize": "Void / Cancel approval",
-  "staffManagementPage.voidAuthorizeDesc": "Can approve item deletes & order cancellations with their PIN (when the PIN gate is on)."
+  "staffManagementPage.voidAuthorizeDesc": "Can approve item deletes & order cancellations with their PIN (when the PIN gate is on).",
+  "schedulerMonitor": {
+    "helpTitle": "What is this page?",
+    "helpDesc": "This page shows the results of background tasks (cron jobs) that the system runs automatically every day or on a schedule. You can monitor whether automated tasks such as subscription reminders, automatic invoice sending, and contract expiry checks are working correctly, and trace the cause of any failed runs."
+  },
+  "schedulerJobs": {
+    "subscription-reminder": {
+      "label": "Subscription Reminder",
+      "desc": "Sends automatic reminders 3, 7, and 14 days before a trial or subscription ends"
+    },
+    "invoice-reminder": {
+      "label": "Invoice Reminder",
+      "desc": "Sends unsent or overdue invoices automatically each day"
+    },
+    "soa-statement": {
+      "label": "Monthly SOA",
+      "desc": "Sends the Statement of Account automatically on the 1st of each month"
+    },
+    "contract-expiry-reminder": {
+      "label": "Contract Expiry Reminder",
+      "desc": "Sends automatic alerts when a restaurant contract is about to expire"
+    },
+    "invoice-overdue-suspend": {
+      "label": "Overdue Auto-Suspend",
+      "desc": "Automatically suspends accounts 30 days after an invoice becomes overdue"
+    },
+    "po-auto-cancel": {
+      "label": "Purchase Order Auto-Cancel",
+      "desc": "Automatically cancels old unreceived purchase orders"
+    },
+    "inventory-low-stock-alert": {
+      "label": "Low Stock Alert",
+      "desc": "Sends automatic alerts for ingredients below the safety stock level"
+    }
+  },
+  "carrierWebhooks": {
+    "helpTitle": "What is this page?",
+    "helpDesc": "These are events recorded automatically whenever an external carrier (Lalamove, GrabExpress, etc.) reports the delivery status of a PO (picked up, in transit, delivered, failed, etc.). Failed events can be reprocessed with the Retry button, and you can send a test event with \"Send Simulate Event\". The webhook URL and secret for each carrier are managed on the ",
+    "helpDesc2": " page."
+  }
 }

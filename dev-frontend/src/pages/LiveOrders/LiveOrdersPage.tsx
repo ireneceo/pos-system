@@ -1137,7 +1137,7 @@ const LiveOrdersPage: React.FC = () => {
             const _kp: any = (settings as any)?.kitchenPrinter;
             const _autoOn = !!(_kp && _kp.enabled && _kp.autoPrint);
             if (_autoOn) doPrint();
-            setCancelPrintPrompt({ run: doPrint, autoSent: _autoOn, ticketType: '*** ITEM CANCELLED ***', description: _autoOn ? '취소된 아이템 — 해당 주방에 발송됨' : '취소된 아이템 — [발송]을 눌러 주방에 전송', stations: previewStationBuckets(printData.items, settings) });
+            setCancelPrintPrompt({ run: doPrint, autoSent: _autoOn, ticketType: '*** ITEM CANCELLED ***', description: _autoOn ? t('cancelledItem.sentToKitchen', 'Cancelled item — sent to its kitchen') : t('cancelledItem.pressSend', 'Cancelled item — press [Send] to dispatch to kitchen'), stations: previewStationBuckets(printData.items, settings) });
           }
         } catch (e: any) { console.warn('void-ticket step skipped:', e?.message); }
       } else {
@@ -1394,7 +1394,7 @@ const LiveOrdersPage: React.FC = () => {
             const _kpO: any = _ps?.kitchenPrinter;
             const _autoOnO = !!(_kpO && _kpO.enabled && _kpO.autoPrint);
             if (_autoOnO) doPrint();
-            setCancelPrintPrompt({ run: doPrint, autoSent: _autoOnO, ticketType: '*** ORDER CANCELLED ***', description: _autoOnO ? `주문 ${printData.orderNumber} — 해당 주방에 발송됨` : `주문 ${printData.orderNumber} — [발송]을 눌러 주방에 전송`, stations: previewStationBuckets(printData.items, _ps) });
+            setCancelPrintPrompt({ run: doPrint, autoSent: _autoOnO, ticketType: '*** ORDER CANCELLED ***', description: _autoOnO ? t('orderCancel.sentToKitchen', 'Order {{orderNumber}} — sent to its kitchen', { orderNumber: printData.orderNumber }) : t('orderCancel.pressSend', 'Order {{orderNumber}} — press [Send] to dispatch to kitchen', { orderNumber: printData.orderNumber }), stations: previewStationBuckets(printData.items, _ps) });
           } catch (e) {
             console.warn('Cancellation ticket trigger error:', (e as any) && (e as any).message);
           }

@@ -19,5 +19,10 @@
   "suppliersPage.notes": "메모",
   "suppliersPage.close": "닫기",
   "suppliersPage.supplierName": "공급업체 이름",
-  "suppliersPage.status": "상태"
+  "suppliersPage.status": "상태",
+  "sellerType": {
+    "brand": "브랜드 본부",
+    "foodcourt": "푸드코트 본부",
+    "contract": "계약"
+  }
 }

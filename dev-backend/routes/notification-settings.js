@@ -162,7 +162,7 @@ router.get('/:entityType/:entityId', authenticateToken, async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('알림 설정 조회 에러:', error);
-    res.status(500).json({ success: false, error: { message: '알림 설정을 조회할 수 없습니다.', code: 'INTERNAL_ERROR' } });
+    res.status(500).json({ success: false, error: { message: 'Failed to load notification settings', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -279,10 +279,10 @@ router.post('/:entityType/:entityId', authenticateToken, async (req, res) => {
       });
     }
 
-    res.json({ success: true, message: '알림 설정이 저장되었습니다.' });
+    res.json({ success: true, message: 'Notification settings saved' });
   } catch (error) {
     console.error('알림 설정 저장 에러:', error);
-    res.status(500).json({ success: false, error: { message: '알림 설정을 저장할 수 없습니다.', code: 'INTERNAL_ERROR' } });
+    res.status(500).json({ success: false, error: { message: 'Failed to save notification settings', code: 'INTERNAL_ERROR' } });
   }
 });
 

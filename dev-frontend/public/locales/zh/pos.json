@@ -42,7 +42,9 @@
   "terminal.categoryAll": "全部",
   "terminal.simpleMode": "紧凑",
   "terminal.photoMode": "图片",
-  "terminal.themeLight": "明亮", "terminal.themeContrast": "高对比", "terminal.themeDark": "深色",
+  "terminal.themeLight": "明亮",
+  "terminal.themeContrast": "高对比",
+  "terminal.themeDark": "深色",
   "terminal.switchToSimple": "切换为紧凑模式",
   "terminal.switchToPhoto": "切换为图片模式",
   "terminal.options": "选项",
@@ -56,5 +58,9 @@
   "mergeChoice.subtitle": "餐桌 {{table}} 已有 {{count}} 笔待结订单。添加到现有订单或创建新订单？",
   "mergeChoice.addToThis": "加入此订单 →",
   "mergeChoice.cancel": "取消",
-  "mergeChoice.separate": "创建独立订单"
+  "mergeChoice.separate": "创建独立订单",
+  "optionModal.cancel": "取消",
+  "optionModal.addToOrder": "加入订单",
+  "optionModal.customizeOrder": "自定义订单",
+  "optionModal.quantity": "数量"
 }

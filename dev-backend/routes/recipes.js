@@ -64,7 +64,7 @@ router.post('/brands/:brandId/recipes', authenticateToken, isBrandManager, async
 
     // 필수 필드 검증
     if (!name || !name.trim()) {
-      return res.status(400).json({ success: false, error: { message: '레시피 이름은 필수입니다', code: 'VALIDATION_ERROR' } });
+      return res.status(400).json({ success: false, error: { message: 'Recipe name is required', code: 'VALIDATION_ERROR' } });
     }
 
     // 이미지 처리 (base64 → 파일 저장)
@@ -403,7 +403,7 @@ router.post('/restaurants/:restaurantId/recipes', authenticateToken, checkRestau
 
     // 필수 필드 검증
     if (!name || !name.trim()) {
-      return res.status(400).json({ success: false, error: { message: '레시피 이름은 필수입니다', code: 'VALIDATION_ERROR' } });
+      return res.status(400).json({ success: false, error: { message: 'Recipe name is required', code: 'VALIDATION_ERROR' } });
     }
 
     // 이미지 처리 (base64 → 파일 저장)

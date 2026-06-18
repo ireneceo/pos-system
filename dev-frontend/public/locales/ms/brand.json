@@ -695,5 +695,13 @@
   "productsTab.distribution.specificRestaurantsDesc": "Hanya restoran terpilih boleh memesan",
   "productsTab.distribution.targetBrands": "Jenama Sasaran",
   "productsTab.distribution.targetRestaurants": "Restoran Sasaran",
-  "brandMenusPage.setOnly": "Untuk menu set sahaja — tidak dijual berasingan (disembunyikan daripada pesanan POS & mudah alih restoran)"
+  "brandMenusPage.setOnly": "Untuk menu set sahaja — tidak dijual berasingan (disembunyikan daripada pesanan POS & mudah alih restoran)",
+  "brandMenuOptionGroupsPage.minSelect": "Min",
+  "brandMenuOptionGroupsPage.maxSelect": "Maks",
+  "brandMenusPage.required": "Wajib",
+  "brandMenusPage.optional": "Pilihan",
+  "brandMenusPage.single": "Tunggal",
+  "brandMenusPage.multi": "Berbilang",
+  "brandProductsTab.targetBrands": "Jenama Sasaran",
+  "brandProductsTab.targetRestaurants": "Kedai Sasaran"
 }

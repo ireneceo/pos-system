@@ -203,6 +203,18 @@
     "terminated": "Terminated",
     "none": "No Contract"
   },
+  "externalSupplier": {
+    "title": "Register External Supplier",
+    "submit": "Register",
+    "nameRequired": "Supplier name is required.",
+    "hint": "Register a supplier that is not signed up on the system. Purchase orders to this supplier are not sent automatically — you need to download the PDF or send it via WhatsApp yourself.",
+    "name": "Supplier Name",
+    "phone": "Contact (Phone)",
+    "email": "Email",
+    "minOrder": "Minimum Order Amount",
+    "deliveryPolicy": "Delivery Policy (free text)",
+    "deliveryPolicyPlaceholder": "e.g. Delivery on Mon/Wed/Fri. Free delivery above RM100. Order 24 hours in advance."
+  },
   "common": {
     "save": "Save",
     "cancel": "Cancel",

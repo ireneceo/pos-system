@@ -345,7 +345,7 @@ const SupplierDirectoryPage: React.FC = () => {
 
   const submitExternal = async () => {
     if (!externalForm.name.trim()) {
-      setExternalError(t('externalSupplier.nameRequired', '공급업체 이름은 필수입니다.') as string);
+      setExternalError(t('externalSupplier.nameRequired', 'Supplier name is required.') as string);
       return;
     }
     setExternalSubmitting(true);
@@ -466,7 +466,7 @@ const SupplierDirectoryPage: React.FC = () => {
       <Modal
         isOpen={showExternalModal}
         onClose={() => setShowExternalModal(false)}
-        title={t('externalSupplier.title', '외부 공급업체 등록') as string}
+        title={t('externalSupplier.title', 'Register External Supplier') as string}
         size="medium"
         footer={
           <>
@@ -480,11 +480,11 @@ const SupplierDirectoryPage: React.FC = () => {
         }
       >
         <div style={{ fontSize: 12, color: '#4B5563', marginBottom: 14, lineHeight: 1.5 }}>
-          {t('externalSupplier.hint', '시스템에 가입 안 된 공급업체를 직접 등록합니다. 이 공급업체로의 발주는 자동 발송되지 않으며, PDF 다운로드 또는 WhatsApp 으로 직접 보내야 합니다.')}
+          {t('externalSupplier.hint', 'Register a supplier that is not signed up on the system. Purchase orders to this supplier are not sent automatically — you need to download the PDF or send it via WhatsApp yourself.')}
         </div>
         <FormRow>
           <FormGroup>
-            <FormLabel>{t('externalSupplier.name', '공급업체 이름')} *</FormLabel>
+            <FormLabel>{t('externalSupplier.name', 'Supplier Name')} *</FormLabel>
             <FormInput
               value={externalForm.name}
               onChange={(e) => setExternalForm(p => ({ ...p, name: e.target.value }))}
@@ -493,7 +493,7 @@ const SupplierDirectoryPage: React.FC = () => {
             />
           </FormGroup>
           <FormGroup>
-            <FormLabel>{t('externalSupplier.phone', '연락처 (전화)')}</FormLabel>
+            <FormLabel>{t('externalSupplier.phone', 'Contact (Phone)')}</FormLabel>
             <FormInput
               value={externalForm.phone}
               onChange={(e) => setExternalForm(p => ({ ...p, phone: e.target.value }))}
@@ -503,7 +503,7 @@ const SupplierDirectoryPage: React.FC = () => {
         </FormRow>
         <FormRow>
           <FormGroup>
-            <FormLabel>{t('externalSupplier.email', '이메일')}</FormLabel>
+            <FormLabel>{t('externalSupplier.email', 'Email')}</FormLabel>
             <FormInput
               type="email"
               value={externalForm.email}
@@ -512,7 +512,7 @@ const SupplierDirectoryPage: React.FC = () => {
             />
           </FormGroup>
           <FormGroup>
-            <FormLabel>{t('externalSupplier.minOrder', '최소 주문 금액')}</FormLabel>
+            <FormLabel>{t('externalSupplier.minOrder', 'Minimum Order Amount')}</FormLabel>
             <FormInput
               type="number"
               min="0"
@@ -540,12 +540,12 @@ const SupplierDirectoryPage: React.FC = () => {
           defaultCountry="MY"
         />
         <FormGroup>
-          <FormLabel>{t('externalSupplier.deliveryPolicy', '배송 정책 (자유 텍스트)')}</FormLabel>
+          <FormLabel>{t('externalSupplier.deliveryPolicy', 'Delivery Policy (free text)')}</FormLabel>
           <FormTextArea
             rows={3}
             value={externalForm.delivery_policy}
             onChange={(e) => setExternalForm(p => ({ ...p, delivery_policy: e.target.value }))}
-            placeholder={t('externalSupplier.deliveryPolicyPlaceholder', '예: 월/수/금 배송. 100RM 이상 무료 배송. 24시간 전 주문 필요.') as string}
+            placeholder={t('externalSupplier.deliveryPolicyPlaceholder', 'e.g. Delivery on Mon/Wed/Fri. Free delivery above RM100. Order 24 hours in advance.') as string}
           />
         </FormGroup>
         {externalError && (

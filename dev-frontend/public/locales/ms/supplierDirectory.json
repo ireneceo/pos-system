@@ -203,6 +203,18 @@
     "terminated": "Ditamatkan",
     "none": "Tiada Kontrak"
   },
+  "externalSupplier": {
+    "title": "Daftar Pembekal Luar",
+    "submit": "Daftar",
+    "nameRequired": "Nama pembekal diperlukan.",
+    "hint": "Daftar pembekal yang belum mendaftar dalam sistem. Pesanan belian kepada pembekal ini tidak dihantar secara automatik — anda perlu memuat turun PDF atau menghantarnya melalui WhatsApp sendiri.",
+    "name": "Nama Pembekal",
+    "phone": "Hubungan (Telefon)",
+    "email": "E-mel",
+    "minOrder": "Jumlah Pesanan Minimum",
+    "deliveryPolicy": "Dasar Penghantaran (teks bebas)",
+    "deliveryPolicyPlaceholder": "cth. Penghantaran pada Isnin/Rabu/Jumaat. Penghantaran percuma melebihi RM100. Pesan 24 jam lebih awal."
+  },
   "common": {
     "save": "Simpan",
     "cancel": "Batal",

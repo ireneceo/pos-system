@@ -695,5 +695,13 @@
   "productsTab.distribution.specificRestaurantsDesc": "Only selected restaurants can order",
   "productsTab.distribution.targetBrands": "Target Brands",
   "productsTab.distribution.targetRestaurants": "Target Restaurants",
-  "brandMenusPage.setOnly": "Set menu use only — not sold separately (hidden from POS & mobile ordering at restaurants)"
+  "brandMenusPage.setOnly": "Set menu use only — not sold separately (hidden from POS & mobile ordering at restaurants)",
+  "brandMenuOptionGroupsPage.minSelect": "Min",
+  "brandMenuOptionGroupsPage.maxSelect": "Max",
+  "brandMenusPage.required": "Required",
+  "brandMenusPage.optional": "Optional",
+  "brandMenusPage.single": "Single",
+  "brandMenusPage.multi": "Multi",
+  "brandProductsTab.targetBrands": "Target Brands",
+  "brandProductsTab.targetRestaurants": "Target Stores"
 }

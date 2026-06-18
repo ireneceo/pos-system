@@ -285,7 +285,7 @@ const SuppliersPage: React.FC = () => {
             if (br?.id) parents.push({
               id: `bg-${br.id}`, name: br.name, email: br.email || null,
               phone: br.phone || null, contact_name: null,
-              _source: 'brand_parent', _label: 'BRAND HQ', _category: { name: '가맹본부', color: '#6D28D9' }
+              _source: 'brand_parent', _label: 'BRAND HQ', _category: { name: t('sellerType.brand', 'Brand HQ'), color: '#6D28D9' }
             });
           }
           if (rest?.foodcourt_id) {
@@ -294,7 +294,7 @@ const SuppliersPage: React.FC = () => {
             if (fc?.id) parents.push({
               id: `fg-${fc.id}`, name: fc.name, email: fc.email || null,
               phone: fc.phone || null, contact_name: null,
-              _source: 'foodcourt_parent', _label: 'FOODCOURT', _category: { name: '푸드코트 본부', color: '#9D174D' }
+              _source: 'foodcourt_parent', _label: 'FOODCOURT', _category: { name: t('sellerType.foodcourt', 'Foodcourt HQ'), color: '#9D174D' }
             });
           }
         }
@@ -309,7 +309,7 @@ const SuppliersPage: React.FC = () => {
             id: `c-${sc.id || c.supplier_company_id}`,
             name: sc.name || '—', email: sc.email || null,
             phone: sc.phone || null, contact_name: null,
-            _source: 'contract', _label: 'CONTRACTED', _category: { name: '계약', color: '#166534' }
+            _source: 'contract', _label: 'CONTRACTED', _category: { name: t('sellerType.contract', 'Contract'), color: '#166534' }
           };
         });
         setContractSellers(contractItems);

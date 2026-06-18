@@ -1068,5 +1068,35 @@
   "operations.requireVoidPinLabel": "Require PIN approval to void / cancel",
   "operations.requireVoidPinDesc": "When on, deleting an item or cancelling an order needs an authorized PIN. The login account does not change.",
   "operations.managerApprovalsTitle": "Manager PIN Approvals",
-  "operations.managerApprovalsDesc": "Require an authorized PIN before sensitive counter actions, to prevent and track misuse. The login account does not change — the PIN only confirms who approved."
+  "operations.managerApprovalsDesc": "Require an authorized PIN before sensitive counter actions, to prevent and track misuse. The login account does not change — the PIN only confirms who approved.",
+  "printer": {
+    "troubleshoot": {
+      "openTitle": "Open the printer troubleshooting guide",
+      "openBtn": "Troubleshooting guide ?",
+      "title": "Printer Troubleshooting Guide",
+      "s1Title": "Permission prompt keeps appearing, or the \"Don't ask again\" checkbox is disabled",
+      "s1Why": "This happens when a \"denied\" record from a previous attempt is cached in QZ Tray. Even if the new certificate validates correctly, the old denial takes priority. Clear the cache and reinstall from scratch in one go.",
+      "s1Step1": "Right-click the QZ Tray tray icon → Tools → Manage Sites → \"Remove\" every PurpleHere / dev.purplehere.com / purplehere.com entry",
+      "s1Step2": "Right-click the QZ Tray tray icon → Exit (fully quit)",
+      "s1Step3": "In the browser, press Ctrl+Shift+R (hard refresh)",
+      "s1Step4": "On the QZ Tray tab, download \"One-click install (.bat)\" → double-click → confirm \"Certificate installed\" then close",
+      "s1Step5": "Launch QZ Tray again from the Start menu",
+      "s1Step6": "On the QZ Tray tab, click \"Test QZ Tray connection\" → check \"remember\" in the prompt + Allow → done",
+      "s2Title": "Tickets not printing at the kitchen printer (cashier printer is fine)",
+      "s2Why": "This is likely a kitchen printer power, connection, or IP setting issue. Until it is fixed, turn on the emergency mode above so business does not stop — all tickets will be routed to the cashier printer.",
+      "s2Step1": "Check the kitchen printer power / paper",
+      "s2Step2": "On the POS PC, open Command Prompt → \"ping 192.168.x.x\" (the kitchen printer IP) and confirm it responds",
+      "s2Step3": "Click the \"Test\" button on the Settings → Printer → Kitchen Printer card",
+      "s2Step4": "If it still does not print → turn emergency mode ON → print to the cashier printer to keep the store running → inspect after business hours",
+      "s3Title": "Internet is down or the router is offline",
+      "s3Why": "If the cashier printer is connected directly via USB / Bluetooth, just turning emergency mode ON keeps you running. If you only have LAN printers, connect to a hotspot.",
+      "s3Step1": "Connect the POS to your phone's mobile hotspot (so it can call the PurpleHere API)",
+      "s3Step2": "Older PC without Wi-Fi: plug in a USB Wi-Fi dongle (TP-Link Nano / Mercusys / ASUS USB Adapter) and connect to the hotspot",
+      "s3Step3": "If the cashier printer is connected directly via USB, it can still print as usual. LAN printers cannot be used until the router is restored.",
+      "s3Step4": "Turn emergency mode ON → all tickets route to the cashier → staff hand them over directly",
+      "s4Title": "An OS dialog appears on every print (you have to press Enter)",
+      "s4Why": "This is because the current connection method is \"Browser printing\". If you need silent printing, switch to QZ Tray (Windows) or RawBT (Android). Check the recommended method for your store setup in the \"Which method should I choose?\" table above.",
+      "close": "Close"
+    }
+  }
 }
