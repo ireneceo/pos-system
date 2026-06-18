@@ -625,7 +625,7 @@ const OwnerPerformance: React.FC = () => {
             </StatCard>
           </StatsGrid>
 
-          {loading ? (
+          {loading && sortedRestaurants.length === 0 ? (
             <EmptyState>
               <p>{t('owner:ownerPerformance.loadingPerformanceData')}</p>
             </EmptyState>

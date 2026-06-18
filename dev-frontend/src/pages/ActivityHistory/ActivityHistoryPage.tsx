@@ -301,7 +301,7 @@ const ActivityHistoryPage: React.FC = () => {
             )}
           </DatePeriodFilter>
 
-          {loading ? (
+          {loading && logs.length === 0 ? (
             <LoadingState>{t('admin:activityHistoryPage.loadingActivityLogs')}</LoadingState>
           ) : logs.length === 0 ? (
             <ActivityList>

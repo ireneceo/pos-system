@@ -586,7 +586,7 @@ const NoticesPage: React.FC = () => {
         </FilterBar>
 
         {/* Notices List */}
-        {loading ? (
+        {loading && filteredNotices.length === 0 ? (
           <LoadingText>{t('settings:noticesPage.loadingNotices')}</LoadingText>
         ) : filteredNotices.length === 0 ? (
           <EmptyState>

@@ -225,7 +225,7 @@ const SupplierStaffPage: React.FC = () => {
               </tr>
             </DataTableHead>
             <tbody>
-              {loading ? (
+              {loading && filteredRows.length === 0 ? (
                 <tr><td colSpan={6}><DataTableEmpty>...</DataTableEmpty></td></tr>
               ) : filteredRows.length === 0 ? (
                 <tr>

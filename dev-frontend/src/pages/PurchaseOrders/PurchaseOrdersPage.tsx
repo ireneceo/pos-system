@@ -818,7 +818,7 @@ const PurchaseOrdersPage: React.FC = () => {
               </tr>
             </DataTableHead>
             <tbody>
-              {loading ? (
+              {loading && filteredRows.length === 0 ? (
                 <tr><td colSpan={9}><DataTableEmpty>{t('list.loading')}</DataTableEmpty></td></tr>
               ) : filteredRows.length === 0 ? (
                 <tr>

@@ -352,7 +352,7 @@ const SupplierDashboard: React.FC = () => {
       <Content>
         {error && <ErrorBanner>{error}</ErrorBanner>}
 
-        {loading ? (
+        {loading && !data ? (
           <LoadingSkeleton>
             <SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard />
             <SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard />

@@ -276,7 +276,7 @@ const PurchaseOrderStagingPage: React.FC = () => {
       </PageHeader>
 
       <Content style={{ paddingBottom: 80 }}>
-        {loading ? (
+        {loading && pos.length === 0 ? (
           <Empty>{t('common:loading', 'Loading…')}</Empty>
         ) : pos.length === 0 ? (
           <Empty>

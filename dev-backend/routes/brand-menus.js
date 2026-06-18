@@ -46,7 +46,10 @@ const DEFAULT_MENU_SETTINGS = {
   default_distribution_mode: 'manual',
   default_locks: { name: false, price: false, category: false, image: false, options: false },
   default_push_target: 'all',
-  default_scope: 'all'  // 새 메뉴의 기본 적용범위 (브랜드별 철학: 균일='all' / 직영실험형='selected') §14
+  default_scope: 'all',  // 새 메뉴의 기본 적용범위 (브랜드별 철학: 균일='all' / 직영실험형='selected') §14
+  // 브랜드 전체 순서 고정 — 켜면 산하 모든 매장이 브랜드 메뉴 순서를 따르고 매장이 못 바꿈.
+  // (구 per-menu lock_sort_order 토글 대체 — 순서는 목록 전체 개념이라 메뉴별 토글이 혼동을 줬음)
+  enforce_menu_order: false
 };
 
 function mergeMenuSettings(stored) {
@@ -61,7 +64,8 @@ function mergeMenuSettings(stored) {
       options: !!(s.default_locks?.options)
     },
     default_push_target: s.default_push_target === 'selected' ? 'selected' : 'all',
-    default_scope: s.default_scope === 'selected' ? 'selected' : 'all'
+    default_scope: s.default_scope === 'selected' ? 'selected' : 'all',
+    enforce_menu_order: !!(s.enforce_menu_order)
   };
 }
 
@@ -92,6 +96,12 @@ router.put('/settings', authenticateToken, requireBGScope, async (req, res) => {
     if (!brand) return res.status(404).json({ success: false, message: 'Brand not found' });
     const merged = mergeMenuSettings(req.body.settings);
     await brand.update({ menu_settings: merged });
+    // 브랜드 전체 순서 고정은 단일 source — 저장 시 산하 모든 메뉴의 lock_sort_order 를 일괄 동기화.
+    // 켜면 다음 push/sync 때 매장 메뉴가 브랜드 순서로 고정, 끄면 매장이 자유 정렬.
+    await BrandMenu.update(
+      { lock_sort_order: merged.enforce_menu_order === true },
+      { where: { brand_id: brandId } }
+    );
     res.json({ success: true, data: merged });
   } catch (e) {
     console.error('[brand-menus] settings PUT error:', e);
@@ -282,7 +292,8 @@ router.post('/', authenticateToken, requireBGScope, async (req, res) => {
       set_items: Array.isArray(set_items) ? set_items : null,
       set_groups: Array.isArray(set_groups) ? set_groups : null,
       lock_set_items: resolvedLock(lock_set_items, 'set_items'),
-      lock_sort_order: req.body.lock_sort_order === true
+      // 순서 고정은 브랜드 전체 설정(enforce_menu_order)이 단일 source — 새 메뉴도 브랜드 값 상속
+      lock_sort_order: defaults.enforce_menu_order === true
     }, { transaction: t });
 
     // Option group links
@@ -340,7 +351,8 @@ router.put('/:id', authenticateToken, requireBGScope, async (req, res) => {
     const updatable = ['category_id', 'product_recipe_id', 'name', 'description', 'emoji',
       'recommended_price', 'currency', 'is_active', 'after_meal', 'set_only', 'sort_order', 'distribution_mode',
       'lock_name', 'lock_price', 'lock_category', 'lock_image', 'lock_options',
-      'is_set_menu', 'set_items', 'set_groups', 'lock_set_items', 'lock_sort_order'];
+      'is_set_menu', 'set_items', 'set_groups', 'lock_set_items'];
+      // lock_sort_order 는 PUT 에서 받지 않음 — 브랜드 전체 설정(enforce_menu_order)이 단일 source
     const update = {};
     for (const k of updatable) if (k in body) update[k] = body[k];
 

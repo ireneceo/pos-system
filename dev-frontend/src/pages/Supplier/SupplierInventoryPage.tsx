@@ -427,7 +427,7 @@ const SupplierInventoryPage: React.FC = () => {
               </tr>
             </DataTableHead>
             <tbody>
-              {loading ? (
+              {loading && rows.length === 0 ? (
                 <tr>
                   <td colSpan={9}>
                     <DataTableEmpty>{t('common:loading', 'Loading...')}</DataTableEmpty>

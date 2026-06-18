@@ -1144,7 +1144,7 @@ const HardwareQuotesPage: React.FC = () => {
             </FilterSelect>
           </FilterBar>
 
-          {loading ? (
+          {loading && filteredQuotes.length === 0 ? (
             <EmptyState>{t('admin:hardwareQuotesPage.loading')}</EmptyState>
           ) : filteredQuotes.length === 0 ? (
             <div style={{

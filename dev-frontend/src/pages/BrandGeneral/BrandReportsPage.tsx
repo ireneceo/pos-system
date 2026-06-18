@@ -1115,7 +1115,7 @@ const BrandReportsPage: React.FC = () => {
           {/* Sales Tab */}
           <div style={{ display: activeTab === 'sales' ? 'block' : 'none' }}>
             <FilterComponent />
-            {loading ? (
+            {loading && filteredOrders.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px' }}>{t('brand:brandReportsPage.loading')}</div>
             ) : filteredOrders.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>{t('brand:brandReportsPage.noOrderDataAvailableForTheSelectedPeriod')}</div>
@@ -1190,7 +1190,7 @@ const BrandReportsPage: React.FC = () => {
           {/* Sales Details Tab */}
           <div style={{ display: activeTab === 'details' ? 'block' : 'none' }}>
             <FilterComponent />
-            {loading ? (
+            {loading && filteredOrders.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px' }}>{t('brand:brandReportsPage.loading')}</div>
             ) : filteredOrders.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>{t('brand:brandReportsPage.noOrderDataAvailableForTheSelectedPeriod')}</div>

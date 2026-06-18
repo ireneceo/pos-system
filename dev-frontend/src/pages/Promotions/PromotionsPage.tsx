@@ -678,7 +678,7 @@ const CouponsPage: React.FC = () => {
           <SectionCard>
             <SectionTitle>{'Coupon List'}</SectionTitle>
 
-            {loading ? (
+            {loading && coupons.length === 0 ? (
               <LoadingSpinner>{'Loading coupons...'}</LoadingSpinner>
             ) : error ? (
               <EmptyState>

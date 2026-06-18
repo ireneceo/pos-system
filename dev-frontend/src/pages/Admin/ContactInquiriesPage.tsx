@@ -719,7 +719,7 @@ const ContactInquiriesPage: React.FC = () => {
             />
           </FilterBar>
 
-          {loading ? (
+          {loading && filteredInquiries.length === 0 ? (
             <EmptyState>{t('admin:contactInquiriesPage.loading')}</EmptyState>
           ) : filteredInquiries.length === 0 ? (
             <EmptyState>{t('admin:contactInquiriesPage.noInquiriesFound')}</EmptyState>

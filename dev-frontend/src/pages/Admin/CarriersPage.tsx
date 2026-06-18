@@ -263,7 +263,7 @@ const CarriersPage: React.FC = () => {
               </tr>
             </DataTableHead>
             <tbody>
-              {loading ? (
+              {loading && items.length === 0 ? (
                 <tr><td colSpan={7}><DataTableEmpty>Loading…</DataTableEmpty></td></tr>
               ) : items.length === 0 ? (
                 <tr><td colSpan={7}><DataTableEmpty>{t('admin:carriers.empty', 'No carriers yet')}</DataTableEmpty></td></tr>

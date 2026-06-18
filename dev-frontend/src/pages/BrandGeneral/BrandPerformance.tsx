@@ -920,7 +920,7 @@ const BrandPerformance: React.FC = () => {
             </StatCard>
           </StatsGrid>
 
-          {loading ? (
+          {loading && sortedRestaurants.length === 0 ? (
             <EmptyState>
               <p>{t('brand:brandPerformance.loadingPerformanceData')}</p>
             </EmptyState>

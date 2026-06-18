@@ -617,7 +617,7 @@ const SupplierContractsPage: React.FC = () => {
           </Tab>
         </Tabs>
 
-        {loading ? (
+        {loading && currentRows.length === 0 ? (
           <Empty>{t('directory.loading')}</Empty>
         ) : currentRows.length === 0 ? (
           <Empty>

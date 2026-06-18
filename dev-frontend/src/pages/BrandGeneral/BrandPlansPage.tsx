@@ -1141,7 +1141,7 @@ const BrandPlansPage: React.FC = () => {
           </FilterSelect>
         </FilterBar>
 
-        {loading ? (
+        {loading && filteredPlans.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 0', color: '#4B5563' }}>{t('brand:brandPlansPage.loadingPlans')}</div>
         ) : filteredPlans.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 0', color: '#4B5563' }}>

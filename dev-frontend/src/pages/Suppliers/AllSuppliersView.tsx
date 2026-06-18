@@ -314,7 +314,7 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
           </div>
         )}
       </FilterBar>
-      {loading ? (
+      {loading && filtered.length === 0 ? (
         <EmptyState><div style={{ fontSize: 14, color: '#4B5563' }}>Loading...</div></EmptyState>
       ) : filtered.length === 0 ? (
         <EmptyState>

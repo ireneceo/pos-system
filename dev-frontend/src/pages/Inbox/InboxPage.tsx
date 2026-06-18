@@ -108,7 +108,7 @@ const InboxPage: React.FC = () => {
           </RightControls>
         </Toolbar>
 
-        {loading ? (
+        {loading && filtered.length === 0 ? (
           <Skeleton>{[0,1,2,3,4,5].map(i => <SkeletonRow key={i} />)}</Skeleton>
         ) : filtered.length === 0 ? (
           <Empty>

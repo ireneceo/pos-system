@@ -670,7 +670,7 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
             />
           </FilterBar>
 
-          {loading ? (
+          {loading && filteredSubscriptions.length === 0 ? (
             <LoadingSpinner>{t('foodcourt:foodcourtSubscriptionsPage.loadingSubscriptionData')}</LoadingSpinner>
           ) : filteredSubscriptions.length === 0 ? (
             <EmptyState>

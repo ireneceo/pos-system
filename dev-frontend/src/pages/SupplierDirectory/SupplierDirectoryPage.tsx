@@ -414,7 +414,7 @@ const SupplierDirectoryPage: React.FC = () => {
           </div>
         </FilterBar>
 
-        {loading ? (
+        {loading && rows.length === 0 ? (
           <CardGrid>
             {Array.from({ length: 8 }).map((_, i) => (
               <SkeletonCard key={i} as="div">

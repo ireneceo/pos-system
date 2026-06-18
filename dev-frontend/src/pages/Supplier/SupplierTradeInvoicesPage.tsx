@@ -241,7 +241,7 @@ const SupplierTradeInvoicesPage: React.FC = () => {
               </tr>
             </DataTableHead>
             <tbody>
-              {loading ? (
+              {loading && filteredRows.length === 0 ? (
                 <tr><td colSpan={7}><DataTableEmpty>...</DataTableEmpty></td></tr>
               ) : filteredRows.length === 0 ? (
                 <tr>

@@ -251,7 +251,7 @@ export default function ReservationsTimelinePage() {
             </tr>
           </DataTableHead>
           <tbody>
-            {loading ? (
+            {loading && filteredList.length === 0 ? (
               <tr><td colSpan={8}><DataTableEmpty>Loading…</DataTableEmpty></td></tr>
             ) : filteredList.length === 0 ? (
               <tr><td colSpan={8}><DataTableEmpty>No reservations</DataTableEmpty></td></tr>

@@ -236,7 +236,7 @@ const BrandTradeInvoicesPage: React.FC<Props> = ({ entityType = 'brand' }) => {
               </tr>
             </DataTableHead>
             <tbody>
-              {loading ? (
+              {loading && filteredRows.length === 0 ? (
                 <tr><td colSpan={7}><DataTableEmpty>...</DataTableEmpty></td></tr>
               ) : filteredRows.length === 0 ? (
                 <tr>

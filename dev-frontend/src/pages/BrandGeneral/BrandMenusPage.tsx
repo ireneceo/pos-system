@@ -12,7 +12,7 @@ import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
-import { Lock, Building2, Edit2, Copy, Trash2, Send, ChevronDown, ChevronUp, UtensilsCrossed, Clock, Info, ArrowRight, Target } from 'lucide-react';
+import { Lock, Building2, Edit2, Copy, Trash2, Send, ChevronDown, UtensilsCrossed, Clock, Info, ArrowRight, Target, GripVertical } from 'lucide-react';
 import PageHeader from '../../components/Common/PageHeader';
 import { Modal as CommonModal, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormTextArea } from '../../components/UI';
 import SearchableSelect from '../../components/Common/SearchableSelect';
@@ -37,6 +37,8 @@ interface MenuSettings {
   default_locks: { name: boolean; price: boolean; category: boolean; image: boolean; options: boolean };
   default_push_target: 'all' | 'selected';
   default_scope: 'all' | 'selected';
+  // 브랜드 전체 — 켜면 산하 모든 매장이 브랜드 메뉴 순서를 따르고 매장이 못 바꿈 (메뉴별 토글 대체)
+  enforce_menu_order: boolean;
 }
 
 const SettingsCard = styled.div`
@@ -312,16 +314,48 @@ const Grid = styled.div`
   margin-top: 16px;
 `;
 
-const Card = styled.div`
+const Card = styled.div<{ $dragging?: boolean; $dragOver?: boolean }>`
   background: white;
-  border: 1px solid #C7CED6;
+  border: 1px solid ${p => p.$dragOver ? '#635BFF' : '#C7CED6'};
   border-radius: 12px;
   padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  transition: all 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s, opacity 0.15s;
+  opacity: ${p => p.$dragging ? 0.4 : 1};
+  box-shadow: ${p => p.$dragOver ? '0 0 0 2px rgba(99,91,255,0.35)' : 'none'};
   &:hover { border-color: #635BFF; box-shadow: 0 2px 8px rgba(99, 91, 255, 0.06); }
+`;
+
+// 메뉴 순서 드래그 핸들 — 'Menu order(manual)' 정렬에서만 노출
+const DragHandle = styled.div`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+  color: #9CA3AF;
+  cursor: grab;
+  padding: 2px;
+  margin-bottom: -6px;
+  &:active { cursor: grabbing; }
+  svg { width: 18px; height: 18px; }
+  &:hover { color: #635BFF; }
+`;
+
+// 드래그 안내 배너
+const ReorderHint = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #4338CA;
+  background: #F0EFFF;
+  border: 1px solid #C7D2FE;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-top: 16px;
+  svg { width: 15px; height: 15px; flex-shrink: 0; }
 `;
 
 const CardImage = styled.div<{ $src?: string | null }>`
@@ -399,6 +433,7 @@ const DistDot = styled.span<{ $bg: string }>`
 
 const CardActions = styled.div`
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: auto;
   border-top: 1px solid #F1F4F8;
@@ -418,8 +453,10 @@ const IconBtn = styled.button`
   font-size: 12px;
   cursor: pointer;
   transition: all 0.15s;
+  min-width: 0;
+  white-space: nowrap;
   &:hover { border-color: #635BFF; color: #635BFF; }
-  svg { width: 14px; height: 14px; }
+  svg { width: 14px; height: 14px; flex-shrink: 0; }
 `;
 
 const EmptyState = styled.div`
@@ -591,27 +628,37 @@ const BrandMenusPage: React.FC = () => {
 
   useEffect(() => { loadMenus(); }, [loadMenus]);
 
-  // 브랜드 메뉴 순서 재정렬(위/아래) — 'Menu order(manual)' 정렬일 때만 노출. sort_order 0..N 저장.
-  // lock_sort_order 켜진 메뉴는 push 시 매장 순서로 강제됨.
+  // 브랜드 메뉴 순서 — 'Menu order(manual)' 정렬일 때 카드를 드래그해 재정렬. sort_order 0..N 저장.
+  // lock_sort_order(설정 enforce_menu_order) 켜진 메뉴는 push 시 이 순서가 매장에 강제됨.
   const reorderBrandInFlight = useRef(false);
-  const handleMoveBrandMenu = async (menuId: number, dir: 'up' | 'down') => {
+  const [dragId, setDragId] = useState<number | null>(null);
+  const [overId, setOverId] = useState<number | null>(null);
+
+  const persistBrandOrder = async (orderedIds: number[]) => {
     if (reorderBrandInFlight.current || !selectedBrandId) return;
-    const sorted = sortItems(menus.map(m => ({ ...m, price: m.recommended_price, display_order: (m as any).sort_order })), 'custom');
-    const idx = sorted.findIndex(m => m.id === menuId);
-    const swapIdx = dir === 'up' ? idx - 1 : idx + 1;
-    if (idx < 0 || swapIdx < 0 || swapIdx >= sorted.length) return;
-    const reordered = [...sorted];
-    [reordered[idx], reordered[swapIdx]] = [reordered[swapIdx], reordered[idx]];
-    const order = reordered.map(m => Number(m.id));
     reorderBrandInFlight.current = true;
     try {
       await fetch('/api/brand-menus/reorder/bulk', {
         method: 'PUT', headers: authHeaders(),
-        body: JSON.stringify({ brand_id: selectedBrandId, order })
+        body: JSON.stringify({ brand_id: selectedBrandId, order: orderedIds })
       });
       await loadMenus();
     } catch { /* silent */ }
     finally { reorderBrandInFlight.current = false; }
+  };
+
+  const handleDropOnMenu = async (targetId: number) => {
+    const src = dragId;
+    setDragId(null); setOverId(null);
+    if (src == null || src === targetId) return;
+    const sorted = sortItems(menus.map(m => ({ ...m, price: m.recommended_price, display_order: (m as any).sort_order })), 'custom');
+    const ids = sorted.map(m => Number(m.id));
+    const from = ids.indexOf(src);
+    const to = ids.indexOf(targetId);
+    if (from < 0 || to < 0) return;
+    const [moved] = ids.splice(from, 1);
+    ids.splice(to, 0, moved);
+    await persistBrandOrder(ids);
   };
 
   // Cache brand-level menu defaults so handlePushClick can decide which modal to open.
@@ -811,7 +858,7 @@ const BrandMenusPage: React.FC = () => {
           <div style={{ padding: 12, background: '#FEE2E2', color: '#DC2626', borderRadius: 8, marginBottom: 16, fontSize: 13 }}>{error}</div>
         )}
 
-        {loading ? (
+        {loading && menus.length === 0 ? (
           <EmptyState>{t('common:label.loading', 'Loading...')}</EmptyState>
         ) : menus.length === 0 ? (
           <>
@@ -841,9 +888,36 @@ const BrandMenusPage: React.FC = () => {
           </EmptyState>
           </>
         ) : (
+          <>
+          {sortKey === 'custom' ? (
+            <ReorderHint>
+              <GripVertical />
+              {t('brand:brandMenusPage.reorderHint', 'Drag the handle (top-left of each card) to set the menu order. If "Lock menu order" is on in Settings, restaurants display menus in this exact order.')}
+            </ReorderHint>
+          ) : (
+            <ReorderHint style={{ background: '#F9FAFB', borderColor: '#E5E7EB', color: '#6B7280' }}>
+              <Info />
+              {t('brand:brandMenusPage.reorderSwitchHint', 'To arrange the menu order, switch the sort above to "Menu order (manual)" — then drag cards to reorder.')}
+            </ReorderHint>
+          )}
           <Grid>
             {sortItems(menus.map(m => ({ ...m, price: m.recommended_price, display_order: (m as any).sort_order })), sortKey).map(m => (
-              <Card key={m.id}>
+              <Card key={m.id}
+                $dragging={dragId === m.id}
+                $dragOver={overId === m.id && dragId !== null && dragId !== m.id}
+                onDragOver={sortKey === 'custom' ? (e) => { e.preventDefault(); if (overId !== m.id) setOverId(m.id); } : undefined}
+                onDrop={sortKey === 'custom' ? (e) => { e.preventDefault(); handleDropOnMenu(m.id); } : undefined}
+              >
+                {sortKey === 'custom' && (
+                  <DragHandle
+                    draggable
+                    onDragStart={(e) => { setDragId(m.id); e.dataTransfer.effectAllowed = 'move'; }}
+                    onDragEnd={() => { setDragId(null); setOverId(null); }}
+                    title={t('brand:brandMenusPage.dragToReorder', 'Drag to reorder') as string}
+                  >
+                    <GripVertical />
+                  </DragHandle>
+                )}
                 <CardImage $src={m.image_url}>
                   {!m.image_url && (m.emoji
                     ? <span style={{ fontSize: '48px', lineHeight: 1 }}>{m.emoji}</span>
@@ -881,16 +955,6 @@ const BrandMenusPage: React.FC = () => {
                   <span style={{ color: '#6B7280', marginLeft: 'auto' }}>v{m.version}</span>
                 </DistributionLine>
                 <CardActions>
-                  {sortKey === 'custom' && (
-                    <>
-                      <IconBtn type="button" onClick={() => handleMoveBrandMenu(m.id, 'up')} title={t('brand:brandMenusPage.moveUp', { defaultValue: 'Move up' })}>
-                        <ChevronUp />
-                      </IconBtn>
-                      <IconBtn type="button" onClick={() => handleMoveBrandMenu(m.id, 'down')} title={t('brand:brandMenusPage.moveDown', { defaultValue: 'Move down' })}>
-                        <ChevronDown />
-                      </IconBtn>
-                    </>
-                  )}
                   <IconBtn type="button" onClick={() => setEditingMenu(m)} title={t('common:button.edit')}>
                     <Edit2 /> {t('common:button.edit')}
                   </IconBtn>
@@ -912,6 +976,7 @@ const BrandMenusPage: React.FC = () => {
               </Card>
             ))}
           </Grid>
+          </>
         )}
 
         {showAddModal && (
@@ -1213,8 +1278,7 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
   // 식후 제공(디저트 등) 등록 플래그 — 매장 Product 와 동일
   const [afterMeal, setAfterMeal] = useState<boolean>(!!(menu as any)?.after_meal);
   const [setOnly, setSetOnly] = useState<boolean>(!!(menu as any)?.set_only);
-  // 순서 강제 — 켜면 이 메뉴의 브랜드 순서를 산하 매장 메뉴 순서로 고정(매장이 못 바꿈)
-  const [lockSortOrder, setLockSortOrder] = useState<boolean>(!!(menu as any)?.lock_sort_order);
+  // 순서 고정은 메뉴별 토글에서 브랜드 전체 설정(Settings 탭 enforce_menu_order)으로 이동 — 여기서는 다루지 않음
   // Set menu support — mirrors Restaurant Product (is_set_menu + set_items[])
   const [isSetMenu, setIsSetMenu] = useState<boolean>(!!menu?.is_set_menu);
   // v2 세트 슬롯 — 매장과 동일한 SetMenuBuilder 사용 (구성품 product_id = brand_menu_id)
@@ -1294,7 +1358,6 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
         option_group_ids: selectedOptionGroupIds,
         after_meal: afterMeal,
         set_only: setOnly,
-        lock_sort_order: lockSortOrder,
         is_set_menu: isSetMenu,
         // v2 슬롯 저장 + 레거시 set_items 는 set_groups 구성품에서 파생(하위호환 표시용)
         set_groups: isSetMenu ? setGroups : null,
@@ -1485,18 +1548,6 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
         <FormLabel style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
           <input
             type="checkbox"
-            checked={lockSortOrder}
-            onChange={(e) => setLockSortOrder(e.target.checked)}
-            style={{ width: 16, height: 16, cursor: 'pointer' }}
-          />
-          <span>{t('brand:brandMenusPage.lockSortOrder', { defaultValue: 'Enforce display order on restaurants (use the brand menu order; restaurants cannot reorder)' })}</span>
-        </FormLabel>
-      </UIFormGroup>
-
-      <UIFormGroup style={{ marginTop: 24 }}>
-        <FormLabel style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-          <input
-            type="checkbox"
             checked={isSetMenu}
             onChange={(e) => setIsSetMenu(e.target.checked)}
             style={{ width: 16, height: 16, cursor: 'pointer' }}
@@ -1667,6 +1718,24 @@ const MenuSettingsTab: React.FC<{ brandId: number | null; brandName: string }> =
             </AutoSaveField>
           </ToggleRow>
         ))}
+      </SettingsCard>
+
+      <SettingsCard>
+        <SettingsSectionTitle>{t('brand:brandMenusPage.settingsMenuOrderTitle', 'Menu display order')}</SettingsSectionTitle>
+        <SettingsSectionHint>
+          {t('brand:brandMenusPage.settingsMenuOrderHint', 'Controls whether restaurants keep your menu arrangement. This applies to ALL menus in this brand at once.')}
+        </SettingsSectionHint>
+        <ToggleRow>
+          <ToggleInfo>
+            <strong>{t('brand:brandMenusPage.enforceMenuOrder', 'Lock menu order across all restaurants')}</strong>
+            <div>{t('brand:brandMenusPage.enforceMenuOrderHint', 'When ON: every restaurant displays menus in the order you set under the Menus tab (use the up/down arrows in "Menu order" sort), and restaurants cannot reorder them. When OFF: each restaurant arranges its own menu order freely.')}</div>
+          </ToggleInfo>
+          <AutoSaveField onSave={persist} type="toggle">
+            <Switch type="checkbox" role="switch" aria-checked={settings.enforce_menu_order}
+              checked={settings.enforce_menu_order}
+              onChange={(e) => setSettings({ ...settings, enforce_menu_order: e.target.checked })} />
+          </AutoSaveField>
+        </ToggleRow>
       </SettingsCard>
 
       <SettingsCard>

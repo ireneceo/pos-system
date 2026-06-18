@@ -1044,7 +1044,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
         </div>
       </ListControlsBar>
 
-      {loading ? (
+      {loading && filteredIngredients.length === 0 ? (
         <EmptyState>
           <EmptyTitle>{'Loading...'}</EmptyTitle>
         </EmptyState>

@@ -589,7 +589,7 @@ const FoodcourtFloorPlanPage: React.FC = () => {
 
       <MainContent>
         <CanvasWrapper>
-          {loading ? (
+          {loading && floorPlans.length === 0 ? (
             <LoadingScreen>{t('common.loading', 'Loading...')}</LoadingScreen>
           ) : floorPlans.length === 0 ? (
             <div style={{ padding: 32, display: 'flex', justifyContent: 'center' }}>

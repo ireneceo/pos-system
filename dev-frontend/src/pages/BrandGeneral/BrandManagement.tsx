@@ -383,7 +383,7 @@ const BrandManagement: React.FC = () => {
             </StatCard>
           </StatsGrid>
 
-          {loading ? (
+          {loading && brands.length === 0 ? (
             <EmptyState>
               <p>{t('brand:brandManagement.loadingBrands')}</p>
             </EmptyState>

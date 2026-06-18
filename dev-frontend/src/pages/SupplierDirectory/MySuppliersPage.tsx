@@ -390,7 +390,7 @@ const MySuppliersPage: React.FC = () => {
               </tr>
             </DataTableHead>
             <tbody>
-              {loading ? (
+              {loading && filteredRows.length === 0 ? (
                 <tr><td colSpan={5}><DataTableEmpty>{t('directory.loading')}</DataTableEmpty></td></tr>
               ) : filteredRows.length === 0 ? (
                 <tr>

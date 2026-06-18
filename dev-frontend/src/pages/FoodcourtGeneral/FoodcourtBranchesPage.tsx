@@ -110,7 +110,7 @@ const FoodcourtBranchesPage: React.FC = () => {
 
       <Content>
         {error && <div style={{ color: '#DC2626', fontSize: 14, marginBottom: 16 }}>{error}</div>}
-        {loading ? (
+        {loading && branches.length === 0 ? (
           <DataTableEmpty>{t('common.loading', 'Loading...')}</DataTableEmpty>
         ) : branches.length === 0 ? (
           <EmptyState
