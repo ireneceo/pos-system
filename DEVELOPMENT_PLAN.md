@@ -1,6 +1,26 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-19 (**v3.59 운영 배포** — 운영시간+라스트오더, 취소사유 설정, 발주 통화버그 수정, QZ/이메일 정리. Backup 20260619_065629, Smoke 9/9.)
+> **최종 업데이트:** 2026-06-19 (v3.59 배포 후 추가 개발 — 운영 피드백 P1-4 스탭 PIN 로그인 + P2-5 현금관리(Cash-up) + PayPal 알림 노이즈. **DEV 완료·미배포**, 밤 배포 예정.)
+
+## 📦 DEV 완료·미배포 (2026-06-19, v3.59 이후 — 밤 배포 예정)
+
+> with MIN Cafe 운영 피드백 큐 진행분. 검증: build0 · health 101/101 · print-guard 8/8(bless) · i18n0 · 데모세션 실렌더 · 백엔드 E2E.
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| P1-4 스탭 PIN 로그인 | verify-pin 전용 `pinLimiter`(브루트포스 차단, 16회째 429 실증) + 로그인 "직원 PIN" 모드(온스크린 패드) + `loginWithPin` + 공용단말 매장기억. RA 비번리셋·6/3 직원작업은 기존/배포됨 | ✅ DEV |
+| P2-5 현금관리 Cash-up | 신규 `CashierShift`+`CashReconciliation` 모델 + `/api/cash` 라우트(open/expected/reconcile/close, E2E 15/15) + **4단계 위저드**(블라인드 카운트→variance→Z-Report) + 사이드바/라우트/i18n. 마감현금→익일 개시현금 carry-forward | ✅ DEV(Phase1) |
+| PayPal 웹훅 알림 | 서명실패 error→warn 강등(PayPal 미사용 매장 봇 노이즈 알림 중단) + 출처 기록 | ✅ DEV |
+
+### 수정/신규 파일
+- 백엔드: `models/CashierShift.js`·`CashReconciliation.js`·`index.js` / `routes/cash-management.js`·`webhooks-payments.js` / `server.js`(pinLimiter+cash mount) / `scripts/migrate-cash-management-tables.js`
+- 프론트: `pages/CashManagement/CashUpPage.tsx` / `pages/Login/StaffPinLogin.tsx`·`LoginPage.tsx` / `contexts/AuthContext.tsx` / `components/Layout/MainLayout.tsx` / `App.tsx` / `i18n.ts` / locales(cash ns + nav.cashUp)
+- 마이그(deploy 등록): migrate-cash-management-tables (+ 기존 currency·qz 미배포분)
+- 설계: `docs/CASH_MANAGEMENT_SHIFT_CLOSE.md` · `docs/PRODUCTION_FEEDBACK_DESIGN_2026-06.md`
+
+---
+
+> **이전:** 2026-06-19 (**v3.59 운영 배포** — 운영시간+라스트오더, 취소사유 설정, 발주 통화버그 수정, QZ/이메일 정리. Backup 20260619_065629, Smoke 9/9.)
 
 ## ✅ 운영 배포: v3.59 (2026-06-19, Backup 20260619_065629)
 - 운영시간(요일별)+라스트오더 게이트(모바일 자동마감, 픽업 시간유도, POS 무영향) / 취소·삭제 사유 설정(끔·선택·필수 + 서버강제 + 라이브오더·플로어플랜 일관) / 발주 통화 RM=MYR 정규화 버그 수정 / 이미지 파일명 영어화+i18n / (백스테이지) QZ 진단 티켓 분리·이메일 is_test 바운스 가드.

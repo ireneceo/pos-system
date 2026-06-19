@@ -90,6 +90,7 @@ const CustomerDisplayPage = React.lazy(() => import('./pages/CustomerDisplay/Cus
 const CheckoutDisplayPage = React.lazy(() => import('./pages/CheckoutDisplay/CheckoutDisplayPage'));
 const PromotionsPage = React.lazy(() => import('./pages/Promotions/PromotionsPage'));
 const ReportsPage = React.lazy(() => import('./pages/Reports/ReportsPage'));
+const CashUpPage = React.lazy(() => import('./pages/CashManagement/CashUpPage'));
 const SettingsPage = React.lazy(() => import('./pages/Settings/SettingsPage'));
 const MenuManagementPage = React.lazy(() => import('./pages/MenuManagement/MenuManagementPage'));
 const CategoryManagementPage = React.lazy(() => import('./pages/CategoryManagement/CategoryManagementPage'));
@@ -1169,6 +1170,11 @@ function App() {
                       <Route path="/restaurant/:restaurantId/reservations" element={
                         <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin', 'Staff']}>
                           <ReservationsTimelinePage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/restaurant/:restaurantId/cash-up" element={
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin', 'Restaurant Owner', 'Staff']}>
+                          <CashUpPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/restaurant/:restaurantId/menu" element={

@@ -718,5 +718,6 @@
     "hint": "Jika masih gagal, semak sama ada QZ Tray sedang berjalan dan sambungan pencetak / nama pencetak.",
     "printerSettings": "Tetapan Pencetak",
     "dismiss": "Tutup"
-  }
+  },
+  "nav.cashUp": "Tutup Tunai"
 }

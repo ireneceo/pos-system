@@ -718,5 +718,6 @@
     "hint": "If it keeps failing, check whether QZ Tray is running and the printer connection / printer name.",
     "printerSettings": "Printer Settings",
     "dismiss": "Dismiss"
-  }
+  },
+  "nav.cashUp": "Cash Up"
 }

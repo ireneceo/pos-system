@@ -9,6 +9,8 @@ const InvoiceCategory = require('./InvoiceCategory');
 const Order = require('./Order');
 const OrderAction = require('./OrderAction');
 const OrderPayment = require('./OrderPayment');
+const CashierShift = require('./CashierShift');
+const CashReconciliation = require('./CashReconciliation');
 const RestaurantDailyStats = require('./RestaurantDailyStats');
 const PlanTemplate = require('./PlanTemplate');
 const OperationTicket = require('./OperationTicket');
@@ -926,6 +928,12 @@ BrandMenuRestaurant.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 're
 BrandMenuOptionGroup.hasMany(OptionGroup, { foreignKey: 'brand_menu_option_group_id', as: 'mirrors' });
 OptionGroup.belongsTo(BrandMenuOptionGroup, { foreignKey: 'brand_menu_option_group_id', as: 'sourceGroup' });
 
+// Cash management — 교대(Shift) ↔ 대조(Reconciliation) ↔ 매장
+CashierShift.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
+CashierShift.hasMany(CashReconciliation, { foreignKey: 'shift_id', as: 'reconciliations' });
+CashReconciliation.belongsTo(CashierShift, { foreignKey: 'shift_id', as: 'shift' });
+CashReconciliation.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
+
 module.exports = {
   User,
   Restaurant,
@@ -938,6 +946,8 @@ module.exports = {
   Order,
   OrderAction,
   OrderPayment,
+  CashierShift,
+  CashReconciliation,
   RestaurantDailyStats,
   PlanTemplate,
   OperationTicket,

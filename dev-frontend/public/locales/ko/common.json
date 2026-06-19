@@ -718,5 +718,6 @@
     "hint": "계속 실패하면 QZ Tray 실행 여부와 프린터 연결 / 프린터 이름을 확인하세요.",
     "printerSettings": "프린터 설정",
     "dismiss": "닫기"
-  }
+  },
+  "nav.cashUp": "현금 마감"
 }

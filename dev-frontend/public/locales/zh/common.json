@@ -718,5 +718,6 @@
     "hint": "如果持续失败，请检查 QZ Tray 是否运行以及打印机连接 / 打印机名称。",
     "printerSettings": "打印机设置",
     "dismiss": "关闭"
-  }
+  },
+  "nav.cashUp": "现金结算"
 }
