@@ -127,7 +127,7 @@ const defaultOperationSettings: OperationSettings = {
   taxRate: 6,
   serviceChargeEnabled: false,
   serviceChargeRate: 10,
-  currency: 'RM', // Default currency
+  currency: 'MYR', // Default currency (ISO code; displays as RM)
   cashRounding: 0.05, // Default cash rounding
   roundingApplyTo: 'cash_only', // Default rounding application
   pagerSystem: {

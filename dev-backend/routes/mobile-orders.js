@@ -11,6 +11,7 @@ const { sequelize } = require('../config/database');
 const { getTodayBounds, getOrderDatePrefix, getRestaurantTimezone } = require('../utils/dateTimeHelper');
 const { generateOrderNumber } = require('./mobile-helpers');
 const { checkPaymentMethodAllowed, checkOrderTypeEnabled } = require('../utils/paymentMethodGuard');
+const { getOrderingState, isValidPickupTime } = require('../utils/businessHours');
 const { logOrderActionSafe } = require('../services/orderAuditLog');
 const { enrichItemsWithStation } = require('../utils/stationEnrichment');
 const { round2, computeOrderTotals } = require('../utils/orderTotals');
@@ -170,6 +171,28 @@ router.post('/order', async (req, res) => {
     });
     if (!otGuard.ok) {
       return res.status(400).json({ success: false, error: { message: otGuard.message, code: otGuard.code } });
+    }
+
+    // Defence D: business-hours + last-order gate (utils/businessHours, single source).
+    // Immediate orders (dine-in / takeaway / ASAP-pickup with no scheduled time) are blocked
+    // after last order or outside opening hours. Pickup/delivery PRE-orders that carry a
+    // scheduled time are NOT blocked by "now" — instead the scheduled instant must fall inside
+    // a valid open..lastOrder window. POS/internal paths (orders-crud) stay untouched: staff
+    // can always order. enabled:false / absent → no gate (full backward compat).
+    {
+      const nowGate = new Date();
+      const state = getOrderingState(restaurant.operation_settings, nowGate);
+      if (state.enabled) {
+        const isScheduledType = (actualOrderType === 'pickup' || actualOrderType === 'delivery');
+        const scheduledAt = scheduledPickupTime ? new Date(scheduledPickupTime) : null;
+        if (isScheduledType && scheduledAt) {
+          if (!isValidPickupTime(restaurant.operation_settings, nowGate, scheduledAt)) {
+            return res.status(400).json({ success: false, error: { message: 'The selected pickup time is outside operating hours. Please choose another time.', code: 'INVALID_PICKUP_TIME' } });
+          }
+        } else if (!state.canOrder) {
+          return res.status(400).json({ success: false, error: { message: 'Mobile ordering is currently closed. Please order at the counter or check back later.', code: 'ORDERING_CLOSED', status: state.status } });
+        }
+      }
     }
 
     // Defence C: dine-in table requirement (table_settings.tableNumberRequired).

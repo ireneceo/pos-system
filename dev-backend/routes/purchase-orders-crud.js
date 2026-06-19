@@ -37,6 +37,7 @@ const { requireBuyerRole } = require('../middleware/buyerScope');
 const { sanitizeString } = require('../middleware/validation');
 const { appendTrackingEvent, emitPoEvent } = require('../services/poRealtimeService');
 const { sendNotificationBatch, getSupplierAdminIds, getBrandManagerIds, getFoodcourtManagerIds } = require('../utils/notificationService');
+const { normalizeCurrencyCode, sameCurrency } = require('../utils/currency');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com');
 
@@ -798,15 +799,18 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
     const f = await Foodcourt.findByPk(parseInt(seller_entity_id, 10), { attributes: ['currency'] }).catch(() => null);
     sellerCurrency = f?.currency || null;
   }
-  if (sellerCurrency && sellerCurrency !== buyerCurrency) {
+  // Compare by ISO code so a display symbol matches its code (RM == MYR). Without
+  // normalization a restaurant saved as "RM" and a brand saved as "MYR" — the same
+  // currency — were wrongly blocked (with MIN Cafe production report 2026-06-18).
+  if (sellerCurrency && !sameCurrency(sellerCurrency, buyerCurrency)) {
     return {
       ok: false, status: 400,
       body: {
         success: false,
         code: 'CURRENCY_MISMATCH',
-        message: `Currency mismatch: buyer uses ${buyerCurrency}, seller uses ${sellerCurrency}. Align currencies in payment settings or supplier contract before ordering.`,
-        buyerCurrency,
-        sellerCurrency,
+        message: `Currency mismatch: buyer uses ${normalizeCurrencyCode(buyerCurrency)}, seller uses ${normalizeCurrencyCode(sellerCurrency)}. Align currencies in payment settings or supplier contract before ordering.`,
+        buyerCurrency: normalizeCurrencyCode(buyerCurrency),
+        sellerCurrency: normalizeCurrencyCode(sellerCurrency),
         settingsUrl: '/pos/settings'
       }
     };

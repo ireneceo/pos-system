@@ -55,7 +55,9 @@ SupportTicket.init({
     defaultValue: 'medium'
   },
   category: {
-    type: DataTypes.ENUM('general', 'technical', 'billing', 'feature-request', 'bug-report'),
+    // 'diagnostic' = QZ Tray printing diagnostics. Admin-only channel — hidden from
+    // the merchant support inbox so it doesn't clutter shops that don't use QZ.
+    type: DataTypes.ENUM('general', 'technical', 'billing', 'feature-request', 'bug-report', 'diagnostic'),
     defaultValue: 'general'
   },
   attachments: {

@@ -1098,5 +1098,23 @@
       "s4Why": "현재 연결 방법이 \"브라우저 인쇄\"이기 때문입니다. 무음 인쇄가 필요하면 QZ Tray (Windows) 또는 RawBT (Android) 로 전환하세요. 위의 \"어떤 방법을 선택해야 할까?\" 표에서 매장 환경별 권장 방법 확인.",
       "close": "닫기"
     }
-  }
+  },
+  "settingsPage.businessHours.title": "영업시간 & 라스트오더",
+  "settingsPage.businessHours.description": "요일별 영업시간과 라스트오더 시각을 설정합니다. 켜면 모바일 고객은 영업시간(라스트오더까지)에만 주문할 수 있습니다. 카운터(POS) 주문은 차단되지 않으며, 픽업 예약은 가능한 시간으로 안내됩니다.",
+  "settingsPage.businessHours.enableLabel": "영업시간으로 모바일 주문 관리",
+  "settingsPage.businessHours.copyMon": "월요일을 모든 요일에 적용",
+  "settingsPage.businessHours.closed": "휴무",
+  "settingsPage.businessHours.columnsHint": "열: 오픈 — 라스트오더 — 마감. 라스트오더를 비우면 마감 시각을 사용합니다.",
+  "settingsPage.businessHours.weekday.mon": "월요일",
+  "settingsPage.businessHours.weekday.tue": "화요일",
+  "settingsPage.businessHours.weekday.wed": "수요일",
+  "settingsPage.businessHours.weekday.thu": "목요일",
+  "settingsPage.businessHours.weekday.fri": "금요일",
+  "settingsPage.businessHours.weekday.sat": "토요일",
+  "settingsPage.businessHours.weekday.sun": "일요일",
+  "operations.requireCancelReasonLabel": "취소/삭제 사유",
+  "operations.requireCancelReasonDesc": "아이템 삭제나 주문 취소 시 직원이 사유를 입력하게 할지. 사유는 취소/보이드 기록에 모입니다.",
+  "operations.cancelReasonOff": "끔",
+  "operations.cancelReasonOptional": "선택",
+  "operations.cancelReasonRequired": "필수"
 }

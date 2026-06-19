@@ -9,6 +9,7 @@ import {
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { API_BASE_URL } from '../../config/api';
 import MobileAlertModal from '../components/common/MobileAlertModal';
+import OrderingBanner from '../components/OrderingBanner';
 import SearchableSelect from '../../components/Common/SearchableSelect';
 
 const Container = styled.div`
@@ -354,6 +355,7 @@ interface StoreData {
   pauseMessage?: string;
   tableNumberRequired?: boolean;
   floorTables?: string[];
+  ordering?: import('../contexts/MobileOrderContext').OrderingState;
 }
 
 const OrderTypePage: React.FC = () => {
@@ -412,7 +414,8 @@ const OrderTypePage: React.FC = () => {
               pauseOrdering: !!result.data.pauseOrdering,
               pauseMessage: result.data.pauseMessage || '',
               tableNumberRequired: !!result.data.tableNumberRequired,
-              floorTables: Array.isArray(result.data.floorTables) ? result.data.floorTables : []
+              floorTables: Array.isArray(result.data.floorTables) ? result.data.floorTables : [],
+              ordering: result.data.ordering
             });
           }
         }
@@ -722,10 +725,24 @@ const OrderTypePage: React.FC = () => {
               </div>
             );
           }
+          // Business-hours/last-order gate: immediate types (dine-in/takeaway/delivery)
+          // are blocked when closed; pickup pre-order stays available (guided to a valid time).
+          const timeClosed = !!(storeData?.ordering?.enabled && !storeData.ordering.canOrder);
+          const disabledCardStyle: React.CSSProperties = { opacity: 0.45, cursor: 'not-allowed' };
           return (
             <>
+              {timeClosed && (
+                <OrderingBanner
+                  ordering={storeData?.ordering}
+                  pickupAvailable={!!orderTypes.pickup}
+                  style={{ marginBottom: '16px' }}
+                />
+              )}
               {orderTypes.dineIn && (
-                <OptionCard onClick={() => handleOrderTypeSelection('dine-in')}>
+                <OptionCard
+                  onClick={timeClosed ? undefined : () => handleOrderTypeSelection('dine-in')}
+                  style={timeClosed ? disabledCardStyle : undefined}
+                >
                   <OptionIcon><Utensils /></OptionIcon>
                   <OptionBody>
                     <OptionTitle>Dine In</OptionTitle>
@@ -735,7 +752,10 @@ const OrderTypePage: React.FC = () => {
                 </OptionCard>
               )}
               {orderTypes.takeaway && (
-                <OptionCard onClick={() => handleOrderTypeSelection('takeaway')}>
+                <OptionCard
+                  onClick={timeClosed ? undefined : () => handleOrderTypeSelection('takeaway')}
+                  style={timeClosed ? disabledCardStyle : undefined}
+                >
                   <OptionIcon><ShoppingBag /></OptionIcon>
                   <OptionBody>
                     <OptionTitle>Takeaway</OptionTitle>
@@ -763,7 +783,10 @@ const OrderTypePage: React.FC = () => {
                 </OptionCard>
               )}
               {orderTypes.delivery && (
-                <OptionCard onClick={() => handleOrderTypeSelection('delivery')}>
+                <OptionCard
+                  onClick={timeClosed ? undefined : () => handleOrderTypeSelection('delivery')}
+                  style={timeClosed ? disabledCardStyle : undefined}
+                >
                   <OptionIcon><Truck /></OptionIcon>
                   <OptionBody>
                     <OptionTitle>Delivery</OptionTitle>

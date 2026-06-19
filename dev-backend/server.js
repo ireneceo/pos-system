@@ -186,6 +186,17 @@ const mobileOrderLimiter = rateLimit({
 });
 app.use('/api/mobile/order', mobileOrderLimiter);
 
+// Staff PIN verification — a 4-digit PIN is far weaker than a password (10k combos),
+// and /staff/verify-pin is unauthenticated + accepts restaurant_id in the body. The
+// general apiLimiter (1000/15min) is far too loose to stop PIN brute-force, so throttle
+// this endpoint hard (per IP). Required before exposing PIN as a primary login (P1-4).
+const pinLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 15,
+  message: { success: false, error: { message: 'Too many PIN attempts, please try again later.', code: 'PIN_RATE_LIMITED' } }
+});
+app.use('/api/staff/verify-pin', pinLimiter);
+
 // Payment Gateway Webhooks (v3.24+) — Stripe + PayPal 통합 라우터, signature + dedupe + 8 종 처리
 // MUST be before express.json() for raw body signature verification
 app.use('/api/webhooks', require('./routes/webhooks-payments'));

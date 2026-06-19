@@ -1424,6 +1424,16 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
     // 진입부에서만 차단 — 인쇄/취소표 발행 로직(프론트)과 무관. 게이트 OFF 매장은 무영향.
     let voidApprover = null;
     if (status === 'cancelled') {
+      // 취소 사유 강제 — operation_settings.requireCancelReason 가 명시적 'required' 일 때만 거부.
+      // (미설정/기본값은 자동·시스템 취소를 깨지 않도록 관대; UI 는 required 기본.) print-neutral.
+      try {
+        const rRow = await Restaurant.findByPk(order.restaurant_id, { attributes: ['operation_settings'] });
+        const mode = rRow && rRow.operation_settings && rRow.operation_settings.requireCancelReason;
+        const hasReason = req.body.reason && String(req.body.reason).trim();
+        if (mode === 'required' && !hasReason) {
+          return res.status(400).json({ success: false, code: 'CANCEL_REASON_REQUIRED', message: 'A cancellation reason is required.' });
+        }
+      } catch (_e) { /* 조회 실패 시 막지 않음 */ }
       const gate = await enforceVoidPin(order.restaurant_id, req.body.void_pin);
       if (!gate.ok) {
         return res.status(gate.status).json({ success: false, code: gate.code, message: gate.message });
@@ -2246,6 +2256,15 @@ router.delete('/:id/items/:itemIndex', authenticateToken, requirePosCounter, asy
     // 진입부에서만 차단 — VOID 취소표 발행(소켓 item-voided → 프론트)과 무관. 게이트 OFF 면 무영향.
     let voidApprover = null;
     {
+      // 아이템 삭제 사유 강제 — requireCancelReason 가 명시적 'required' 일 때만 거부. print-neutral.
+      try {
+        const rRow = await Restaurant.findByPk(order.restaurant_id, { attributes: ['operation_settings'] });
+        const mode = rRow && rRow.operation_settings && rRow.operation_settings.requireCancelReason;
+        const hasReason = req.body.reason && String(req.body.reason).trim();
+        if (mode === 'required' && !hasReason) {
+          return res.status(400).json({ success: false, code: 'CANCEL_REASON_REQUIRED', message: 'A reason is required to remove an item.' });
+        }
+      } catch (_e) { /* 조회 실패 시 막지 않음 */ }
       const gate = await enforceVoidPin(order.restaurant_id, req.body.void_pin);
       if (!gate.ok) {
         return res.status(gate.status).json({ success: false, code: gate.code, message: gate.message });

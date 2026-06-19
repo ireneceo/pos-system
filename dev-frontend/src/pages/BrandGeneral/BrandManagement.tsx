@@ -148,7 +148,7 @@ interface BrandFormData {
 }
 
 const CURRENCY_OPTIONS = [
-  { value: 'RM', label: 'RM - Malaysian Ringgit' },
+  { value: 'MYR', label: 'RM - Malaysian Ringgit' },
   { value: 'USD', label: 'USD - US Dollar' },
   { value: 'SGD', label: 'SGD - Singapore Dollar' },
   { value: 'JPY', label: 'JPY - Japanese Yen' },
@@ -181,7 +181,7 @@ const BrandManagement: React.FC = () => {
     phone: '',
     address: '',
     website: '',
-    currency: 'RM'
+    currency: 'MYR'
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
@@ -240,7 +240,7 @@ const BrandManagement: React.FC = () => {
       postal_code: '',
       country: 'MY',
       website: '',
-      currency: 'RM'
+      currency: 'MYR'
     });
     setShowModal(true);
   };

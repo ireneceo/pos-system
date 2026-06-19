@@ -289,7 +289,16 @@ router.post('/paypal', express.raw({ type: 'application/json' }), async (req, re
   }
   const ok = await verifyPayPalSignature(req, event, webhookId);
   if (!ok) {
-    await systemLogger.error('security', 'paypal-webhook', 'Signature verification failed');
+    // PayPal isn't used for live payments here (no active stores), so unverifiable POSTs to this
+    // public URL are internet noise / endpoint probes. The request is correctly rejected (fail-closed,
+    // nothing mutated). Log at WARNING — not ERROR — so it no longer pages an hourly alert email, while
+    // keeping an audit trail with source so a genuine misconfiguration stays diagnosable.
+    await systemLogger.warn('security', 'paypal-webhook', 'Signature verification failed (rejected)', {
+      ip: req.headers['x-forwarded-for'] || req.ip || (req.connection && req.connection.remoteAddress) || null,
+      ua: req.headers['user-agent'] || null,
+      event_type: (event && event.event_type) || null,
+      event_id: (event && event.id) || null
+    });
     return res.status(400).json({ error: 'Webhook signature verification failed' });
   }
 

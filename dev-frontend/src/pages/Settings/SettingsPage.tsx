@@ -453,6 +453,20 @@ interface BreakTime {
   end: string;
 }
 
+// 요일별 운영시간 + 라스트오더 게이트 (operation_settings.businessHours).
+// enabled:false → 시간 게이트 없음(레거시). 모바일 주문 차단은 backend businessHours 가 단일소스.
+type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
+interface DayHours {
+  closed: boolean;
+  open?: string;
+  lastOrder?: string;
+  close?: string;
+}
+interface BusinessHours {
+  enabled: boolean;
+  days: Partial<Record<DayKey, DayHours>>;
+}
+
 interface OperationSettings {
   openingTime: string;
   closingTime: string;
@@ -547,6 +561,7 @@ interface OperationSettings {
   };
   allowQuickOrder: boolean;
   breakTimes: BreakTime[];
+  businessHours: BusinessHours;
 }
 
 // PaymentSettings interface removed - not used
@@ -634,6 +649,7 @@ const SettingsPage: React.FC = () => {
 
   // Operations tab AutoSave refs (toggles & list)
   const breakTimesRef = useRef<AutoSaveHandle>(null);
+  const businessHoursRef = useRef<AutoSaveHandle>(null);
   const prepTrackingToggleRef = useRef<AutoSaveHandle>(null);
   const taxToggleRef = useRef<AutoSaveHandle>(null);
   const serviceChargeToggleRef = useRef<AutoSaveHandle>(null);
@@ -652,6 +668,7 @@ const SettingsPage: React.FC = () => {
   const requirePaymentBeforeKitchenRef = useRef<AutoSaveHandle>(null);
   const requirePinForDiscountRef = useRef<AutoSaveHandle>(null);  // #5 할인 PIN 승인 토글
   const requireVoidPinRef = useRef<AutoSaveHandle>(null);  // 삭제/취소 PIN 승인 토글 (손실방지)
+  const requireCancelReasonRef = useRef<AutoSaveHandle>(null);  // 취소/삭제 사유 off|optional|required
   const mobileOrderQuickOrderRef = useRef<AutoSaveHandle>(null);
   const mobileOrderShowFeaturedRef = useRef<AutoSaveHandle>(null);
   const mobileOrderShowPopularRef = useRef<AutoSaveHandle>(null);
@@ -853,7 +870,7 @@ const SettingsPage: React.FC = () => {
           // default OFF — 신규 매장 + 미설정 운영 매장은 기존 동작 그대로 (자동 키친 진입). ON 시 결제 후 키친.
           requirePaymentBeforeKitchen: false
         },
-        currency: 'RM',
+        currency: 'MYR',
         cashRounding: 0.05,
         roundingApplyTo: 'cash_only',
         pagerSystem: {
@@ -922,7 +939,8 @@ const SettingsPage: React.FC = () => {
           packagingNote: ''
         },
         allowQuickOrder: true,
-        breakTimes: []
+        breakTimes: [],
+        businessHours: { enabled: false, days: {} }
       }
     };
 
@@ -1257,7 +1275,8 @@ const SettingsPage: React.FC = () => {
               },
               allowQuickOrder: restaurant.operation_settings.allowQuickOrder !== undefined
                 ? restaurant.operation_settings.allowQuickOrder : defaultOps.allowQuickOrder,
-              breakTimes: restaurant.operation_settings.breakTimes || defaultOps.breakTimes
+              breakTimes: restaurant.operation_settings.breakTimes || defaultOps.breakTimes,
+              businessHours: restaurant.operation_settings.businessHours || defaultOps.businessHours
             } : defaultOps;
 
             // Override with currency settings from restaurant table (these take priority)
@@ -3335,6 +3354,98 @@ const SettingsPage: React.FC = () => {
                 </FormGroup>
               </SettingsCard>
 
+              {/* Business Hours (per-day) + Last Order — gates mobile customer ordering by time.
+                  Counter (POS) orders are never blocked; pickup pre-orders are guided to a valid time. */}
+              <SettingsCard>
+                <CardTitle>{t('settings:settingsPage.businessHours.title', 'Business Hours & Last Order')}</CardTitle>
+                <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
+                  {t('settings:settingsPage.businessHours.description', 'Set opening hours per day and a last-order time. When on, mobile customers can order only during opening hours (until last order). Counter (POS) orders are never blocked; pickup pre-orders are guided to a valid time.')}
+                </p>
+                <AutoSaveField ref={businessHoursRef} onSave={handleSave} type="list">
+                  {(() => {
+                    const DAYS: { key: DayKey; label: string }[] = [
+                      { key: 'mon', label: t('settings:settingsPage.businessHours.weekday.mon', 'Monday') },
+                      { key: 'tue', label: t('settings:settingsPage.businessHours.weekday.tue', 'Tuesday') },
+                      { key: 'wed', label: t('settings:settingsPage.businessHours.weekday.wed', 'Wednesday') },
+                      { key: 'thu', label: t('settings:settingsPage.businessHours.weekday.thu', 'Thursday') },
+                      { key: 'fri', label: t('settings:settingsPage.businessHours.weekday.fri', 'Friday') },
+                      { key: 'sat', label: t('settings:settingsPage.businessHours.weekday.sat', 'Saturday') },
+                      { key: 'sun', label: t('settings:settingsPage.businessHours.weekday.sun', 'Sunday') }
+                    ];
+                    const bh: BusinessHours = operationSettings.businessHours || { enabled: false, days: {} };
+                    const getDay = (k: DayKey): DayHours => bh.days[k] || { closed: false, open: '', lastOrder: '', close: '' };
+                    const commit = (next: BusinessHours) => {
+                      setOperationSettings(prev => ({ ...prev, businessHours: next }));
+                      businessHoursRef.current?.triggerSave();
+                    };
+                    const updateDay = (k: DayKey, patch: Partial<DayHours>) => {
+                      commit({ ...bh, days: { ...bh.days, [k]: { ...getDay(k), ...patch } } });
+                    };
+                    const setEnabled = (val: boolean) => {
+                      let days = bh.days;
+                      if (val && Object.keys(days).length === 0) {
+                        const seedOpen = operationSettings.openingTime || '09:00';
+                        const seedClose = operationSettings.closingTime || '22:00';
+                        days = Object.fromEntries(DAYS.map(d => [d.key, { closed: false, open: seedOpen, lastOrder: '', close: seedClose }])) as BusinessHours['days'];
+                      }
+                      commit({ enabled: val, days });
+                    };
+                    const copyMonToAll = () => {
+                      const mon = getDay('mon');
+                      const days = Object.fromEntries(DAYS.map(d => [d.key, { ...mon }])) as BusinessHours['days'];
+                      commit({ ...bh, days });
+                    };
+                    return (
+                      <>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: bh.enabled ? '16px' : '0' }}>
+                          <ToggleLabel>{t('settings:settingsPage.businessHours.enableLabel', 'Manage mobile ordering by business hours')}</ToggleLabel>
+                          <ToggleSwitch>
+                            <ToggleInput type="checkbox" checked={!!bh.enabled} onChange={(e) => setEnabled(e.target.checked)} />
+                            <ToggleSlider />
+                          </ToggleSwitch>
+                        </div>
+
+                        {bh.enabled && (
+                          <>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '10px' }}>
+                              <button type="button" onClick={copyMonToAll}
+                                style={{ padding: '6px 12px', background: 'white', color: '#635BFF', border: '1px solid #635BFF', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}>
+                                {t('settings:settingsPage.businessHours.copyMon', 'Apply Monday to all days')}
+                              </button>
+                            </div>
+
+                            {DAYS.map(d => {
+                              const day = getDay(d.key);
+                              return (
+                                <div key={d.key} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px', padding: '10px 12px', background: '#F1F4F8', borderRadius: '8px', opacity: day.closed ? 0.6 : 1 }}>
+                                  <div style={{ width: '92px', fontSize: '14px', fontWeight: 500, color: '#0A2540' }}>{d.label}</div>
+                                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#4B5563', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                    <input type="checkbox" checked={!!day.closed} onChange={(e) => updateDay(d.key, { closed: e.target.checked })} />
+                                    {t('settings:settingsPage.businessHours.closed', 'Closed')}
+                                  </label>
+                                  {!day.closed && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1, flexWrap: 'wrap' }}>
+                                      <Input type="time" aria-label={`${d.label} open`} value={day.open || ''} onChange={(e) => updateDay(d.key, { open: e.target.value })} style={{ width: '108px' }} />
+                                      <span style={{ color: '#9CA3AF' }}>—</span>
+                                      <Input type="time" aria-label={`${d.label} last order`} value={day.lastOrder || ''} onChange={(e) => updateDay(d.key, { lastOrder: e.target.value })} style={{ width: '108px' }} />
+                                      <span style={{ color: '#9CA3AF' }}>—</span>
+                                      <Input type="time" aria-label={`${d.label} close`} value={day.close || ''} onChange={(e) => updateDay(d.key, { close: e.target.value })} style={{ width: '108px' }} />
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                            <p style={{ color: '#6B7280', fontSize: '12px', marginTop: '4px' }}>
+                              {t('settings:settingsPage.businessHours.columnsHint', 'Columns: open — last order — close. Leave last order empty to use the closing time.')}
+                            </p>
+                          </>
+                        )}
+                      </>
+                    );
+                  })()}
+                </AutoSaveField>
+              </SettingsCard>
+
               <SettingsCard>
                 <CardTitle>{t('settings:settingsPage.breakTimes')}</CardTitle>
                 <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
@@ -3566,6 +3677,43 @@ const SettingsPage: React.FC = () => {
                     </ToggleSwitch>
                   </AutoSaveField>
                 </Toggle>
+
+                {/* 취소/삭제 사유 — off | optional | required (기본 required). 사유는 Void & Cancel 로그로 모임. */}
+                <div style={{ marginTop: '4px' }}>
+                  <ToggleLabel style={{ marginBottom: '4px', display: 'block' }}>{t('settings:operations.requireCancelReasonLabel', { defaultValue: 'Reason for void / cancel' })}</ToggleLabel>
+                  <p style={{ fontSize: '12px', color: '#4B5563', margin: '0 0 8px' }}>
+                    {t('settings:operations.requireCancelReasonDesc', { defaultValue: 'Whether staff must give a reason when deleting an item or cancelling an order. Reasons feed the void & cancel log.' })}
+                  </p>
+                  <AutoSaveField ref={requireCancelReasonRef} onSave={handleSave} type="toggle">
+                    <div style={{ display: 'inline-flex', border: '1px solid #E6EBF1', borderRadius: '8px', overflow: 'hidden' }}>
+                      {[
+                        { v: 'off', label: t('settings:operations.cancelReasonOff', { defaultValue: 'Off' }) },
+                        { v: 'optional', label: t('settings:operations.cancelReasonOptional', { defaultValue: 'Optional' }) },
+                        { v: 'required', label: t('settings:operations.cancelReasonRequired', { defaultValue: 'Required' }) }
+                      ].map(opt => {
+                        const cur = (operationSettings as any).requireCancelReason || 'required';
+                        const active = cur === opt.v;
+                        return (
+                          <button
+                            key={opt.v}
+                            type="button"
+                            aria-pressed={active}
+                            onClick={() => {
+                              setOperationSettings(prev => ({ ...prev, requireCancelReason: opt.v } as any));
+                              requireCancelReasonRef.current?.triggerSave();
+                            }}
+                            style={{
+                              padding: '8px 16px', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 600,
+                              background: active ? '#635BFF' : 'white', color: active ? 'white' : '#6B7C93'
+                            }}
+                          >
+                            {opt.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </AutoSaveField>
+                </div>
               </SettingsCard>
 
               <SettingsCard>
@@ -3742,7 +3890,7 @@ const SettingsPage: React.FC = () => {
                   <Label>{t('settings:settingsPage.currency')}</Label>
                   <AutoSaveField onSave={handleSave} type="select">
                     <Select
-                      value={currencySettings.currency}
+                      value={currencySettings.currency === 'RM' ? 'MYR' : currencySettings.currency}
                       onChange={(e) => {
                         setCurrencySettings(prev => ({ ...prev, currency: e.target.value }));
                       }}
@@ -3772,12 +3920,14 @@ const SettingsPage: React.FC = () => {
                         : Object.keys(allCurrencies);
                       const seen = new Set<string>();
                       return currencies.map(code => {
-                        const displayCode = code === 'MYR' ? 'RM' : code;
-                        if (seen.has(displayCode)) return null;
-                        seen.add(displayCode);
+                        // Store the ISO code as the value (RM is a display symbol → MYR).
+                        // Saving "RM" caused PO currency-mismatch vs brands saved as "MYR".
+                        const iso = code === 'RM' ? 'MYR' : code;
+                        if (seen.has(iso)) return null;
+                        seen.add(iso);
                         return (
-                          <option key={displayCode} value={displayCode}>
-                            {allCurrencies[code] || code}
+                          <option key={iso} value={iso}>
+                            {allCurrencies[iso] || allCurrencies[code] || iso}
                           </option>
                         );
                       });

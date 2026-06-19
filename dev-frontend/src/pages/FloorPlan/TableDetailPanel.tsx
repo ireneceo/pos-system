@@ -645,6 +645,8 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
 
   // 손실방지 PIN 게이트 — requireVoidPin 매장에서 삭제/취소 전 권한 PIN 확인.
   const [voidGate, setVoidGate] = useState<{ run: (pin: string) => void } | null>(null);
+  const [cancelReasonOpen, setCancelReasonOpen] = useState(false);
+  const [deleteItemTarget, setDeleteItemTarget] = useState<{ index: number; name: string } | null>(null);
 
   // ─── Add Items View state (like LiveOrders) ───
   const [showAddItemsView, setShowAddItemsView] = useState(false);
@@ -844,7 +846,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
 
   // Map item.status → display token. 'completed' 는 레거시 데이터; served 와 같은 의미로 처리.
   // 실제 아이템 삭제 — 손실방지 게이트(handleDeleteItem) 통과 후 호출. voidPin 은 백엔드 재검증용.
-  const performDeleteItem = async (itemIndex: number, itemName: string, voidPin?: string | null) => {
+  const performDeleteItem = async (itemIndex: number, itemName: string, voidPin?: string | null, reason?: string | null) => {
     if (!statusInfo?.orderId) return;
     const wasInKitchen = !['awaiting_payment', 'pending'].includes(String(statusInfo.orderStatus || ''));
     try {
@@ -852,7 +854,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
       const res = await fetch(`/api/orders/${statusInfo.orderId}/items/${itemIndex}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ void_pin: voidPin || undefined })
+        body: JSON.stringify({ void_pin: voidPin || undefined, reason: reason || undefined })
       });
       const result = await res.json().catch(() => ({} as any));
       if (res.ok && result.success !== false) {
@@ -896,20 +898,38 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
 
   const handleDeleteItem = (itemIndex: number, itemName: string) => {
     if (!statusInfo?.orderId) return;
-    // 손실방지 게이트: requireVoidPin 매장은 PIN 모달이 곧 확인 단계 (PIN 통과 = 삭제 실행).
-    if ((operationSettings as any)?.requireVoidPin) {
-      setVoidGate({ run: (pin: string) => performDeleteItem(itemIndex, itemName, pin) });
+    const mode = (operationSettings as any)?.requireCancelReason || 'required';
+    if (mode === 'off') {
+      // 사유 없이 삭제 — requireVoidPin 매장은 PIN 게이트, 아니면 단순 확인.
+      if ((operationSettings as any)?.requireVoidPin) {
+        setVoidGate({ run: (pin: string) => performDeleteItem(itemIndex, itemName, pin, '') });
+        return;
+      }
+      setConfirmModal({
+        title: 'Delete Item',
+        message: `Delete "${itemName}" from this order?`,
+        onConfirm: () => { setConfirmModal(null); performDeleteItem(itemIndex, itemName, null, ''); }
+      });
       return;
     }
-    setConfirmModal({
-      title: 'Delete Item',
-      message: `Delete "${itemName}" from this order?`,
-      onConfirm: () => { setConfirmModal(null); performDeleteItem(itemIndex, itemName, null); }
-    });
+    // optional / required: 사유 퀵픽 먼저 (아이템삭제도 사유 캡처 — Void & Cancel 로그).
+    setDeleteItemTarget({ index: itemIndex, name: itemName });
+  };
+
+  // 아이템 삭제 사유 선택 → requireVoidPin 매장은 PIN 게이트, 아니면 즉시 삭제.
+  const beginDeleteItemWithReason = (reason: string) => {
+    const tgt = deleteItemTarget;
+    setDeleteItemTarget(null);
+    if (!tgt) return;
+    if ((operationSettings as any)?.requireVoidPin) {
+      setVoidGate({ run: (pin: string) => performDeleteItem(tgt.index, tgt.name, pin, reason) });
+    } else {
+      performDeleteItem(tgt.index, tgt.name, null, reason);
+    }
   };
 
   // 실제 주문 취소 — 손실방지 게이트(handleCancelOrder) 통과 후 호출. voidPin 은 백엔드 재검증용.
-  const performCancelOrder = async (voidPin?: string | null) => {
+  const performCancelOrder = async (voidPin?: string | null, reason?: string | null) => {
     if (!statusInfo?.orderId) return;
     setLoading(true);
     try {
@@ -930,7 +950,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
       const cancelRes = await fetch(`/api/orders/${statusInfo.orderId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ status: 'cancelled', void_pin: voidPin || undefined })
+        body: JSON.stringify({ status: 'cancelled', void_pin: voidPin || undefined, reason: reason || undefined })
       });
       const cancelJson = await cancelRes.json().catch(() => ({} as any));
       // 게이트 거부(VOID_PIN_*) 등 취소 실패 시 취소표를 발행하지 않는다.
@@ -977,16 +997,30 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
 
   const handleCancelOrder = () => {
     if (!statusInfo?.orderId) return;
-    // 손실방지 게이트: requireVoidPin 매장은 PIN 모달이 곧 확인 단계 (PIN 통과 = 취소 실행).
-    if ((operationSettings as any)?.requireVoidPin) {
-      setVoidGate({ run: (pin: string) => performCancelOrder(pin) });
+    const mode = (operationSettings as any)?.requireCancelReason || 'required';
+    if (mode === 'off') {
+      // 사유 없이 취소 — requireVoidPin 매장은 PIN 게이트, 아니면 단순 확인.
+      if ((operationSettings as any)?.requireVoidPin) {
+        setVoidGate({ run: (pin: string) => performCancelOrder(pin, '') });
+        return;
+      }
+      setConfirmModal({
+        title: 'Cancel Order',
+        message: 'Are you sure you want to cancel this order? This action cannot be undone.',
+        onConfirm: () => { setConfirmModal(null); performCancelOrder(null, ''); }
+      });
       return;
     }
-    setConfirmModal({
-      title: 'Cancel Order',
-      message: 'Are you sure you want to cancel this order? This action cannot be undone.',
-      onConfirm: () => { setConfirmModal(null); performCancelOrder(null); }
-    });
+    // optional / required: 사유 먼저 받는다(LiveOrders 와 동일 흐름). 이후 PIN 게이트.
+    setCancelReasonOpen(true);
+  };
+  const beginCancelWithReason = (reason: string) => {
+    setCancelReasonOpen(false);
+    if ((operationSettings as any)?.requireVoidPin) {
+      setVoidGate({ run: (pin: string) => performCancelOrder(pin, reason) });
+    } else {
+      performCancelOrder(null, reason);
+    }
   };
 
   const handleRevertStatus = async () => {
@@ -2092,6 +2126,104 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
           </ConfirmBox>
         </ConfirmOverlay>
       )}
+
+      {/* Cancel Order — reason quick-pick (mirrors LiveOrders). Reason → void & cancel log. */}
+      {cancelReasonOpen && (() => {
+        const mode = (operationSettings as any)?.requireCancelReason || 'required';
+        return (
+        <Modal isOpen onClose={() => setCancelReasonOpen(false)} title={t('orders:orderCancel.title', { defaultValue: 'Cancel Order' })} size="small">
+          <div style={{ padding: '2px' }}>
+            <p style={{ margin: '0 0 14px', fontSize: 14, color: '#0A2540', lineHeight: 1.5 }}>
+              {t('orders:orderCancel.confirm', { defaultValue: 'Cancel this order? Choose a reason — it is saved to the void & cancel log. The order history is kept.' })}
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
+              {[
+                { key: 'soldOut', label: t('orders:voidItem.reasonSoldOut', { defaultValue: 'Sold out' }) },
+                { key: 'customerChange', label: t('orders:voidItem.reasonCustomer', { defaultValue: 'Customer changed mind' }) },
+                { key: 'orderMistake', label: t('orders:voidItem.reasonMistake', { defaultValue: 'Order mistake' }) },
+                { key: 'other', label: t('orders:voidItem.reasonOther', { defaultValue: 'Other' }) }
+              ].map(r => (
+                <button
+                  key={r.key}
+                  type="button"
+                  onClick={() => beginCancelWithReason(r.label)}
+                  style={{ padding: '14px 8px', borderRadius: 8, border: '1px solid #E6EBF1', background: '#fff', color: '#0A2540', fontWeight: 600, fontSize: 14, cursor: 'pointer', minHeight: 52 }}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => setCancelReasonOpen(false)}
+                style={{ padding: '10px 18px', borderRadius: 8, border: '1px solid #E6EBF1', background: '#fff', color: '#6B7C93', fontWeight: 600, cursor: 'pointer' }}
+              >
+                {t('orders:liveOrdersPage.noKeepOrder', { defaultValue: 'Keep order' })}
+              </button>
+              {mode === 'optional' && (
+                <button
+                  type="button"
+                  onClick={() => { setCancelReasonOpen(false); beginCancelWithReason(''); }}
+                  style={{ padding: '10px 18px', borderRadius: 8, border: '1px solid #FF6B6B', background: '#FF6B6B', color: 'white', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  {t('orders:orderCancel.skipReason', { defaultValue: 'Cancel without reason' })}
+                </button>
+              )}
+            </div>
+          </div>
+        </Modal>
+        );
+      })()}
+
+      {/* Delete Item — reason quick-pick (mode optional/required; 'off' uses a plain confirm). */}
+      {deleteItemTarget && (() => {
+        const mode = (operationSettings as any)?.requireCancelReason || 'required';
+        return (
+        <Modal isOpen onClose={() => setDeleteItemTarget(null)} title={t('orders:voidItem.title', { defaultValue: 'Remove Item' })} size="small">
+          <div style={{ padding: '2px' }}>
+            <p style={{ margin: '0 0 14px', fontSize: 14, color: '#0A2540', lineHeight: 1.5 }}>
+              {t('orders:voidItem.confirm', { defaultValue: 'Remove "{{name}}"? Choose a reason — it prints on the kitchen void ticket.', name: deleteItemTarget.name })}
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
+              {[
+                { key: 'soldOut', label: t('orders:voidItem.reasonSoldOut', { defaultValue: 'Sold out' }) },
+                { key: 'customerChange', label: t('orders:voidItem.reasonCustomer', { defaultValue: 'Customer changed mind' }) },
+                { key: 'orderMistake', label: t('orders:voidItem.reasonMistake', { defaultValue: 'Order mistake' }) },
+                { key: 'other', label: t('orders:voidItem.reasonOther', { defaultValue: 'Other' }) }
+              ].map(r => (
+                <button
+                  key={r.key}
+                  type="button"
+                  onClick={() => beginDeleteItemWithReason(r.label)}
+                  style={{ padding: '14px 8px', borderRadius: 8, border: '1px solid #E6EBF1', background: '#fff', color: '#0A2540', fontWeight: 600, fontSize: 14, cursor: 'pointer', minHeight: 52 }}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => setDeleteItemTarget(null)}
+                style={{ padding: '10px 18px', borderRadius: 8, border: '1px solid #E6EBF1', background: '#fff', color: '#6B7C93', fontWeight: 600, cursor: 'pointer' }}
+              >
+                {t('common:cancel', { defaultValue: 'Cancel' })}
+              </button>
+              {mode === 'optional' && (
+                <button
+                  type="button"
+                  onClick={() => beginDeleteItemWithReason('')}
+                  style={{ padding: '10px 18px', borderRadius: 8, border: '1px solid #FF6B6B', background: '#FF6B6B', color: 'white', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  {t('orders:voidItem.skipReason', { defaultValue: 'Remove without reason' })}
+                </button>
+              )}
+            </div>
+          </div>
+        </Modal>
+        );
+      })()}
 
       {/* 손실방지 PIN 게이트 — requireVoidPin 매장에서 삭제/취소 승인 (세션 무변경). */}
       {voidGate && (

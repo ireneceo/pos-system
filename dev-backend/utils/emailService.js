@@ -164,18 +164,25 @@ async function screenRecipients(rawTo, opts = {}) {
   const dropped = [];
   for (const addr of list) {
     if (!emailLooksValid(addr)) { dropped.push({ addr, why: 'invalid/placeholder' }); continue; }
-    if (allowUnverified) { kept.push(addr); continue; }
-    // 유저 테이블에 있고 명시적으로 email_verified=false 면 차단.
+    // 유저 테이블 조회: is_test(시드/테스트 계정)는 실재하지 않는 메일박스라 항상 차단(바운스 원천 — 예:
+    // test-admin@purplehere.com 은 진짜 도메인+verified=true 라 기존 가드를 통과해 바운스했음).
+    // email_verified=false 는 allowUnverified(인증/초대 메일) 가 아닐 때만 차단.
+    let row = null;
     try {
       const rows = await sequelize.query(
-        'SELECT email_verified FROM users WHERE email = :e LIMIT 1',
+        'SELECT email_verified, is_test FROM users WHERE email = :e LIMIT 1',
         { replacements: { e: addr }, type: QueryTypes.SELECT }
       );
-      if (rows[0] && (rows[0].email_verified === false || rows[0].email_verified === 0)) {
-        dropped.push({ addr, why: 'email_verified=false' });
-        continue;
-      }
+      row = rows[0] || null;
     } catch (_e) { /* DB 조회 실패 시 막지 않음 — 발송 흐름 우선 */ }
+    if (row && (row.is_test === true || row.is_test === 1)) {
+      dropped.push({ addr, why: 'is_test account' });
+      continue;
+    }
+    if (!allowUnverified && row && (row.email_verified === false || row.email_verified === 0)) {
+      dropped.push({ addr, why: 'email_verified=false' });
+      continue;
+    }
     kept.push(addr);
   }
   return { ok: kept.length > 0, to: Array.isArray(rawTo) ? kept : kept[0], dropped };

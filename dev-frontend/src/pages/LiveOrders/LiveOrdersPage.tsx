@@ -1334,15 +1334,11 @@ const LiveOrdersPage: React.FC = () => {
 
   const handleCancelOrder = (orderId: number) => {
     setOrderToCancel(orderId);
-    // 손실방지 게이트: requireVoidPin 매장은 PIN 모달이 곧 확인 단계 (PIN 통과 = 취소 실행).
-    if ((operationSettings as any)?.requireVoidPin) {
-      setVoidGate({ run: (pin: string) => confirmCancelOrder(pin) });
-    } else {
-      setShowCancelConfirm(true);
-    }
+    // 사유 먼저 받는다(아이템 보이드와 동일 흐름). requireVoidPin 매장은 사유 선택 후 PIN 게이트로 이어짐.
+    setShowCancelConfirm(true);
   };
 
-  const confirmCancelOrder = async (voidPin?: string | null) => {
+  const confirmCancelOrder = async (voidPin?: string | null, reason?: string | null) => {
     if (!orderToCancel) return;
     // Snapshot order BEFORE marking cancelled — used for cancellation ticket print.
     const orderSnapshot = orders.find(o => o.id === orderToCancel);
@@ -1351,7 +1347,7 @@ const LiveOrdersPage: React.FC = () => {
     if (selectedOrder?.id === orderToCancel) handleCloseModal();
     try {
       const response = await fetch(`/api/orders/${orderToCancel}/status`, getFetchOptions({
-        method: 'PATCH', body: JSON.stringify({ status: 'cancelled', void_pin: voidPin || undefined })
+        method: 'PATCH', body: JSON.stringify({ status: 'cancelled', void_pin: voidPin || undefined, reason: reason || undefined })
       }));
       const result = await response.json();
       if (!result.success) {
@@ -1404,6 +1400,15 @@ const LiveOrdersPage: React.FC = () => {
     finally { setOrderToCancel(null); }
   };
 
+  // 사유 선택 → requireVoidPin 매장은 PIN 게이트, 아니면 즉시 취소 (아이템 보이드 beginDeleteItemWithReason 과 동일).
+  const beginCancelOrderWithReason = (reason: string) => {
+    if ((operationSettings as any)?.requireVoidPin) {
+      setShowCancelConfirm(false);
+      setVoidGate({ run: (pin: string) => confirmCancelOrder(pin, reason) });
+    } else {
+      confirmCancelOrder(null, reason);
+    }
+  };
   const cancelCancelOrder = () => { setOrderToCancel(null); setShowCancelConfirm(false); };
 
   const handlePaymentClick = (order: DbOrder, e?: React.MouseEvent) => {
@@ -1965,13 +1970,61 @@ const LiveOrdersPage: React.FC = () => {
         <KitchenTicketSendModal prompt={cancelPrintPrompt} onClose={() => setCancelPrintPrompt(null)} t={t} />
 
         {/* Cancel Order Confirmation Modal */}
-        {showCancelConfirm && (
-        <CommonModal isOpen={true} onClose={cancelCancelOrder} title="Cancel Order" footer={<><ActionButton variant="secondary" onClick={cancelCancelOrder}>{t('orders:liveOrdersPage.noKeepOrder')}</ActionButton><ActionButton onClick={() => confirmCancelOrder()} style={{ background: '#FF6B6B', borderColor: '#FF6B6B', color: 'white' }}>{t('orders:liveOrdersPage.yesCancelOrder')}</ActionButton></>}>
-              <p style={{ margin: 0, fontSize: '14px', lineHeight: '1.6' }}>
-                Are you sure you want to cancel this order? The order history will be kept for your records.
+        {/* Cancel Order — reason quick-pick (mirrors item void). Reason saves to the
+            void & cancel log; requireVoidPin stores then go through the PIN gate. */}
+        {showCancelConfirm && (() => {
+          const mode = (operationSettings as any)?.requireCancelReason || 'required';
+          return (
+          <CommonModal isOpen={true} onClose={cancelCancelOrder} title={t('orders:orderCancel.title', { defaultValue: 'Cancel Order' })} size="small">
+            <div style={{ padding: '2px' }}>
+              <p style={{ margin: '0 0 14px', fontSize: 14, color: '#0A2540', lineHeight: 1.5 }}>
+                {mode === 'off'
+                  ? t('orders:orderCancel.confirmNoReason', { defaultValue: 'Cancel this order? The order history is kept.' })
+                  : t('orders:orderCancel.confirm', { defaultValue: 'Cancel this order? Choose a reason — it is saved to the void & cancel log. The order history is kept.' })}
               </p>
-        </CommonModal>
-        )}
+              {mode !== 'off' && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
+                  {[
+                    { key: 'soldOut', label: t('orders:voidItem.reasonSoldOut', { defaultValue: 'Sold out' }) },
+                    { key: 'customerChange', label: t('orders:voidItem.reasonCustomer', { defaultValue: 'Customer changed mind' }) },
+                    { key: 'orderMistake', label: t('orders:voidItem.reasonMistake', { defaultValue: 'Order mistake' }) },
+                    { key: 'other', label: t('orders:voidItem.reasonOther', { defaultValue: 'Other' }) }
+                  ].map(r => (
+                    <button
+                      key={r.key}
+                      type="button"
+                      onClick={() => beginCancelOrderWithReason(r.label)}
+                      style={{ padding: '14px 8px', borderRadius: 8, border: '1px solid #E6EBF1', background: '#fff', color: '#0A2540', fontWeight: 600, fontSize: 14, cursor: 'pointer', minHeight: 52 }}
+                    >
+                      {r.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={cancelCancelOrder}
+                  style={{ padding: '10px 18px', borderRadius: 8, border: '1px solid #E6EBF1', background: '#fff', color: '#6B7C93', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  {t('orders:liveOrdersPage.noKeepOrder', { defaultValue: 'Keep order' })}
+                </button>
+                {(mode === 'off' || mode === 'optional') && (
+                  <button
+                    type="button"
+                    onClick={() => beginCancelOrderWithReason('')}
+                    style={{ padding: '10px 18px', borderRadius: 8, border: '1px solid #FF6B6B', background: '#FF6B6B', color: 'white', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    {mode === 'off'
+                      ? t('orders:orderCancel.confirmBtn', { defaultValue: 'Cancel order' })
+                      : t('orders:orderCancel.skipReason', { defaultValue: 'Cancel without reason' })}
+                  </button>
+                )}
+              </div>
+            </div>
+          </CommonModal>
+          );
+        })()}
 
         {/* 손실방지 PIN 게이트 — requireVoidPin 매장에서 삭제/취소 승인 (세션 무변경). */}
         {voidGate && (
@@ -1987,7 +2040,9 @@ const LiveOrdersPage: React.FC = () => {
 
         {/* Remove Item — reason quick-pick. The reason prints on the kitchen VOID
             ticket (if the item already reached the kitchen) and is saved to audit. */}
-        {showDeleteItemConfirm && (
+        {showDeleteItemConfirm && (() => {
+          const mode = (operationSettings as any)?.requireCancelReason || 'required';
+          return (
           <CommonModal
             isOpen={showDeleteItemConfirm}
             onClose={() => { setShowDeleteItemConfirm(false); setItemToDelete(null); }}
@@ -1996,26 +2051,30 @@ const LiveOrdersPage: React.FC = () => {
           >
             <div style={{ padding: '2px' }}>
               <p style={{ margin: '0 0 14px', fontSize: 14, color: '#0A2540', lineHeight: 1.5 }}>
-                {t('orders:voidItem.confirm', { defaultValue: 'Remove "{{name}}"? Choose a reason — it prints on the kitchen void ticket.', name: itemToDelete?.name || '' })}
+                {mode === 'off'
+                  ? t('orders:voidItem.confirmNoReason', { defaultValue: 'Remove "{{name}}" from this order?', name: itemToDelete?.name || '' })
+                  : t('orders:voidItem.confirm', { defaultValue: 'Remove "{{name}}"? Choose a reason — it prints on the kitchen void ticket.', name: itemToDelete?.name || '' })}
               </p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
-                {[
-                  { key: 'soldOut', label: t('orders:voidItem.reasonSoldOut', { defaultValue: 'Sold out' }) },
-                  { key: 'customerChange', label: t('orders:voidItem.reasonCustomer', { defaultValue: 'Customer changed mind' }) },
-                  { key: 'orderMistake', label: t('orders:voidItem.reasonMistake', { defaultValue: 'Order mistake' }) },
-                  { key: 'other', label: t('orders:voidItem.reasonOther', { defaultValue: 'Other' }) }
-                ].map(r => (
-                  <button
-                    key={r.key}
-                    type="button"
-                    onClick={() => beginDeleteItemWithReason(r.label)}
-                    style={{ padding: '14px 8px', borderRadius: 8, border: '1px solid #E6EBF1', background: '#fff', color: '#0A2540', fontWeight: 600, fontSize: 14, cursor: 'pointer', minHeight: 52 }}
-                  >
-                    {r.label}
-                  </button>
-                ))}
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              {mode !== 'off' && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
+                  {[
+                    { key: 'soldOut', label: t('orders:voidItem.reasonSoldOut', { defaultValue: 'Sold out' }) },
+                    { key: 'customerChange', label: t('orders:voidItem.reasonCustomer', { defaultValue: 'Customer changed mind' }) },
+                    { key: 'orderMistake', label: t('orders:voidItem.reasonMistake', { defaultValue: 'Order mistake' }) },
+                    { key: 'other', label: t('orders:voidItem.reasonOther', { defaultValue: 'Other' }) }
+                  ].map(r => (
+                    <button
+                      key={r.key}
+                      type="button"
+                      onClick={() => beginDeleteItemWithReason(r.label)}
+                      style={{ padding: '14px 8px', borderRadius: 8, border: '1px solid #E6EBF1', background: '#fff', color: '#0A2540', fontWeight: 600, fontSize: 14, cursor: 'pointer', minHeight: 52 }}
+                    >
+                      {r.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                 <button
                   type="button"
                   onClick={() => { setShowDeleteItemConfirm(false); setItemToDelete(null); }}
@@ -2023,10 +2082,22 @@ const LiveOrdersPage: React.FC = () => {
                 >
                   {t('common:cancel', { defaultValue: 'Cancel' })}
                 </button>
+                {(mode === 'off' || mode === 'optional') && (
+                  <button
+                    type="button"
+                    onClick={() => beginDeleteItemWithReason('')}
+                    style={{ padding: '10px 18px', borderRadius: 8, border: '1px solid #FF6B6B', background: '#FF6B6B', color: 'white', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    {mode === 'off'
+                      ? t('orders:voidItem.removeBtn', { defaultValue: 'Remove' })
+                      : t('orders:voidItem.skipReason', { defaultValue: 'Remove without reason' })}
+                  </button>
+                )}
               </div>
             </div>
           </CommonModal>
-        )}
+          );
+        })()}
 
         {/* Payment Verification Modal */}
         <PaymentVerificationModal

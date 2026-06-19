@@ -1098,5 +1098,23 @@
       "s4Why": "这是因为当前连接方式是\"浏览器打印\"。如需静默打印，请切换到 QZ Tray（Windows）或 RawBT（Android）。请在上方\"我应该选择哪种方式？\"表格中查看适合您门店环境的推荐方式。",
       "close": "关闭"
     }
-  }
+  },
+  "settingsPage.businessHours.title": "营业时间和最后点餐",
+  "settingsPage.businessHours.description": "按每天设置营业时间和最后点餐时间。开启后，手机顾客只能在营业时间内（截至最后点餐）下单。柜台(POS)订单不受限制；自取预订会引导至有效时间。",
+  "settingsPage.businessHours.enableLabel": "按营业时间管理手机点餐",
+  "settingsPage.businessHours.copyMon": "将周一应用到所有日子",
+  "settingsPage.businessHours.closed": "休息",
+  "settingsPage.businessHours.columnsHint": "列：开始 — 最后点餐 — 结束。最后点餐留空则使用结束时间。",
+  "settingsPage.businessHours.weekday.mon": "周一",
+  "settingsPage.businessHours.weekday.tue": "周二",
+  "settingsPage.businessHours.weekday.wed": "周三",
+  "settingsPage.businessHours.weekday.thu": "周四",
+  "settingsPage.businessHours.weekday.fri": "周五",
+  "settingsPage.businessHours.weekday.sat": "周六",
+  "settingsPage.businessHours.weekday.sun": "周日",
+  "operations.requireCancelReasonLabel": "作废/取消原因",
+  "operations.requireCancelReasonDesc": "员工删除商品或取消订单时是否必须填写原因。原因将汇入作废/取消记录。",
+  "operations.cancelReasonOff": "关闭",
+  "operations.cancelReasonOptional": "可选",
+  "operations.cancelReasonRequired": "必填"
 }

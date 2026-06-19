@@ -13,6 +13,17 @@ interface OrderTypes {
   delivery: boolean;
 }
 
+// Business-hours + last-order gate state (from /store `ordering`, single source = backend businessHours).
+// enabled:false → no time gate (legacy). canOrder gates immediate orders (dine-in/takeaway/ASAP).
+export interface OrderingState {
+  enabled: boolean;
+  canOrder: boolean;
+  status: 'open' | 'before_open' | 'after_last_order' | 'after_close' | 'closed_today' | 'disabled';
+  today?: { closed: boolean; open?: string | null; lastOrder?: string | null; close?: string | null } | null;
+  message_key?: string | null;
+  nextOpen?: { inDays: number; dow: number; open: string } | null;
+}
+
 interface Store {
   id: string;
   slug: string;
@@ -32,6 +43,7 @@ interface Store {
   orderTypes?: OrderTypes;
   breakTimes?: BreakTime[];
   cashless?: boolean;  // 매장이 cash method 끔 (payment_settings.cash.enabled === false)
+  ordering?: OrderingState;  // business-hours + last-order gate
 }
 
 interface SetMenuItem {

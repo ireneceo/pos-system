@@ -480,7 +480,7 @@ const OwnerDashboardPage: React.FC = () => {
   const [compareData, setCompareData] = useState<any[]>([]);
   const [alerts, setAlerts] = useState<Array<{ type: 'warning' | 'info' | 'success'; title: string; message: string; link?: string }>>([]);
   const [subscriptionInfo, setSubscriptionInfo] = useState<{ planType?: string; status?: string; daysLeft?: number }>({});
-  const [currency, setCurrency] = useState('RM');
+  const [currency, setCurrency] = useState('MYR');
   const [badgeCounts, setBadgeCounts] = useState({ systemInquiry: 0, operationInquiry: 0, notices: 0, invoices: 0 });
 
   useEffect(() => {

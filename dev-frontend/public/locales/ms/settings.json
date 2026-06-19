@@ -1098,5 +1098,23 @@
       "s4Why": "Ini kerana kaedah sambungan semasa ialah \"Cetakan pelayar\". Jika anda perlukan cetakan senyap, tukar kepada QZ Tray (Windows) atau RawBT (Android). Semak kaedah yang disyorkan untuk persediaan kedai anda dalam jadual \"Kaedah manakah perlu saya pilih?\" di atas.",
       "close": "Tutup"
     }
-  }
+  },
+  "settingsPage.businessHours.title": "Waktu Operasi & Pesanan Terakhir",
+  "settingsPage.businessHours.description": "Tetapkan waktu buka setiap hari dan waktu pesanan terakhir. Apabila dihidupkan, pelanggan mudah alih hanya boleh memesan dalam waktu operasi (sehingga pesanan terakhir). Pesanan kaunter (POS) tidak disekat; tempahan ambil sendiri dipandu ke masa yang sah.",
+  "settingsPage.businessHours.enableLabel": "Urus pesanan mudah alih mengikut waktu operasi",
+  "settingsPage.businessHours.copyMon": "Guna Isnin untuk semua hari",
+  "settingsPage.businessHours.closed": "Tutup",
+  "settingsPage.businessHours.columnsHint": "Lajur: buka — pesanan terakhir — tutup. Biarkan pesanan terakhir kosong untuk guna waktu tutup.",
+  "settingsPage.businessHours.weekday.mon": "Isnin",
+  "settingsPage.businessHours.weekday.tue": "Selasa",
+  "settingsPage.businessHours.weekday.wed": "Rabu",
+  "settingsPage.businessHours.weekday.thu": "Khamis",
+  "settingsPage.businessHours.weekday.fri": "Jumaat",
+  "settingsPage.businessHours.weekday.sat": "Sabtu",
+  "settingsPage.businessHours.weekday.sun": "Ahad",
+  "operations.requireCancelReasonLabel": "Sebab void / batal",
+  "operations.requireCancelReasonDesc": "Sama ada kakitangan mesti beri sebab semasa memadam item atau membatalkan pesanan. Sebab disimpan ke log void & batal.",
+  "operations.cancelReasonOff": "Tutup",
+  "operations.cancelReasonOptional": "Pilihan",
+  "operations.cancelReasonRequired": "Wajib"
 }

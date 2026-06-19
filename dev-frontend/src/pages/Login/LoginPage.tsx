@@ -3,6 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { useAuth } from '../../contexts/AuthContext';
 import { LanguageSelector } from '../../components/Common';
+import StaffPinLogin from './StaffPinLogin';
 import { useTranslation } from 'react-i18next';
 import { useRoleDisplayName } from '../../utils/roleDisplay';
 
@@ -452,6 +453,7 @@ const LoginPage: React.FC = () => {
   const brandLogo = '/uploads/logos/brand-logo.png';
   const [showPassword, setShowPassword] = useState(false);
   const [showTestAccounts, setShowTestAccounts] = useState(false);
+  const [pinMode, setPinMode] = useState(false);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -572,6 +574,8 @@ const LoginPage: React.FC = () => {
             <LogoImage src={brandLogo} alt="Brand Logo" />
           )}
 
+          {pinMode && <StaffPinLogin onBack={() => setPinMode(false)} />}
+          {!pinMode && (
           <Form onSubmit={handleSubmit}>
             <InputGroup>
               <Label>{t('auth:loginPage.emailOrUsername')}</Label>
@@ -663,7 +667,18 @@ const LoginPage: React.FC = () => {
               {isLoading ? 'Signing in...' : 'Sign In'}
             </Button>
           </Form>
-          
+          )}
+
+          {!pinMode && (
+            <button
+              type="button"
+              onClick={() => setPinMode(true)}
+              style={{ width: '100%', height: 44, marginTop: 10, borderRadius: 10, border: '1px solid #E6EBF1', background: '#fff', color: '#635BFF', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+            >
+              {t('auth:staffPin.staffEntry', { defaultValue: 'Staff sign-in with PIN' })}
+            </button>
+          )}
+
           <Divider />
 
           <BottomLinks>

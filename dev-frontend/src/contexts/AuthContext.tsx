@@ -43,6 +43,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   loginAsDemo: (key: string) => Promise<boolean>;
+  loginWithPin: (restaurantId: string, pin: string) => Promise<{ ok: boolean; error?: string }>;
   logout: () => void;
   switchUser: (token: string, userData: SwitchUserData) => void;
   updateUser: (userData: Partial<User>) => void;
@@ -581,6 +582,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setUser(userData);
           // JWT 토큰 저장
           setAuthToken(result.data.token);
+          // 공용 단말이 자기 매장을 기억 → 이후 직원 PIN 로그인에서 매장코드 입력 없이 PIN만.
+          if (userData.restaurantId) {
+            try { localStorage.setItem('pos_device_restaurant', JSON.stringify({ id: userData.restaurantId, name: userData.restaurantName || '' })); } catch {}
+          }
           // i18n 언어 동기화
           if (apiUser.preferred_language) {
             i18n.changeLanguage(apiUser.preferred_language);
@@ -655,6 +660,53 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return false;
     } catch (error) {
       throw error;
+    }
+  };
+
+  // Staff PIN login (shared POS terminal). Resolves restaurant + PIN via /staff/verify-pin
+  // (rate-limited server-side) so staff log in without knowing their namespaced username.
+  const loginWithPin = async (restaurantId: string, pin: string): Promise<{ ok: boolean; error?: string }> => {
+    try {
+      const response = await fetch('/api/staff/verify-pin', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ restaurant_id: restaurantId, pin_code: pin })
+      });
+      const result = await response.json().catch(() => ({} as any));
+      if (response.ok && result.success && result.token && result.user) {
+        const apiUser = result.user;
+        const loginPermissions = apiUser.role === 'Staff' && Array.isArray(apiUser.permissions)
+          ? apiUser.permissions
+          : ROLE_PERMISSIONS[apiUser.role as UserRole] || [];
+        const userData: User = {
+          id: apiUser.id?.toString() || '',
+          email: apiUser.email || null,
+          name: apiUser.name || apiUser.username || 'Staff',
+          role: apiUser.role as UserRole,
+          restaurantId: apiUser.restaurant_id?.toString() || null,
+          managerId: apiUser.manager_id?.toString() || null,
+          brand_id: apiUser.brand_id || null,
+          foodcourt_id: apiUser.foodcourt_id || null,
+          permissions: loginPermissions,
+          restaurantStatus: null,
+          restaurantName: apiUser.restaurantName || null,
+          isDemo: false,
+          isTest: false,
+          emailVerified: true,
+          restaurantIsDemo: false,
+          restaurantIsTest: false,
+          subscriptionStatus: null,
+          preferred_language: apiUser.preferred_language || 'en'
+        };
+        setUser(userData);
+        setAuthToken(result.token);
+        return { ok: true };
+      }
+      if (response.status === 429) return { ok: false, error: (result?.error?.message) || 'Too many attempts. Please try again later.' };
+      return { ok: false, error: (result?.error?.message) || 'Invalid PIN' };
+    } catch (e: any) {
+      return { ok: false, error: e?.message || 'PIN login failed' };
     }
   };
 
@@ -845,6 +897,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isLoading,
     login,
     loginAsDemo,
+    loginWithPin,
     logout,
     switchUser,
     updateUser,

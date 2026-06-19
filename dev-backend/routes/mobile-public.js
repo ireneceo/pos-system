@@ -13,6 +13,7 @@ const { Op } = require('sequelize');
 const { parseImageData, getProductEmoji, TableQRSession } = require('./mobile-helpers');
 const { buildSetResolved } = require('../utils/setMenu');
 const { isWithinSchedule, offScheduleMode } = require('../utils/availabilitySchedule');
+const { getOrderingState, getPickupSlots } = require('../utils/businessHours');
 
 router.get('/verify-qr', async (req, res) => {
   try {
@@ -143,12 +144,40 @@ router.get('/store/:slug', async (req, res) => {
       takeawaySettings: operationSettings.takeawaySettings || { prepMinutes: 15, packagingNote: '' },
       // Temporary ordering pause — when enabled, mobile page shows the message instead of menu
       pauseOrdering: !!(restaurant.mobile_settings && restaurant.mobile_settings.pause_ordering),
-      pauseMessage: (restaurant.mobile_settings && restaurant.mobile_settings.pause_message) || ''
+      pauseMessage: (restaurant.mobile_settings && restaurant.mobile_settings.pause_message) || '',
+      // Business-hours + last-order gate (single source = utils/businessHours).
+      // enabled:false / absent → { enabled:false, canOrder:true } = legacy behaviour (no time gate).
+      // Mobile uses `ordering.canOrder` to gate immediate orders (dine-in/takeaway/ASAP-pickup);
+      // pickup pre-order time slots are constrained by businessHours on the PaymentPage instead.
+      ordering: getOrderingState(operationSettings, new Date())
     };
 
     res.json({ success: true, data: store });
   } catch (error) {
     console.error('Error fetching store:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Valid pre-order pickup time slots, constrained to business hours + last order.
+// Single source = utils/businessHours.getPickupSlots (same logic as the order gate).
+// Returns { enabled:false } when the gate is OFF → frontend falls back to legacy slots.
+router.get('/pickup-slots/:slug', async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const restaurant = await Restaurant.findOne({ where: { slug } });
+    if (!restaurant) {
+      return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
+    }
+    const os = restaurant.operation_settings || {};
+    const lead = (os.pickupSettings && Number(os.pickupSettings.prepMinutes)) || 30;
+    const slots = getPickupSlots(os, new Date(), { days: 7, stepMin: 30, leadMin: lead });
+    if (slots === null) {
+      return res.json({ success: true, data: { enabled: false, slots: [] } });
+    }
+    res.json({ success: true, data: { enabled: true, leadMinutes: lead, slots } });
+  } catch (error) {
+    console.error('Error fetching pickup slots:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

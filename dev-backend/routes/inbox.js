@@ -126,7 +126,8 @@ async function fetchNotices({ user, ctx, unreadOnly, before }) {
 }
 
 async function fetchSupportTickets({ user, unreadOnly, before }) {
-  const where = { customerId: String(user.id) };
+  // QZ diagnostics are an admin-only channel — never surface them in the merchant inbox.
+  const where = { customerId: String(user.id), category: { [Op.ne]: 'diagnostic' } };
   if (unreadOnly) where.status = { [Op.in]: TICKET_OPEN_STATUSES };
   if (before) where.createdAt = { [Op.lt]: before };
 

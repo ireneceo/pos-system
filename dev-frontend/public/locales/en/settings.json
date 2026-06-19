@@ -1098,5 +1098,23 @@
       "s4Why": "This is because the current connection method is \"Browser printing\". If you need silent printing, switch to QZ Tray (Windows) or RawBT (Android). Check the recommended method for your store setup in the \"Which method should I choose?\" table above.",
       "close": "Close"
     }
-  }
+  },
+  "settingsPage.businessHours.title": "Business Hours & Last Order",
+  "settingsPage.businessHours.description": "Set opening hours per day and a last-order time. When on, mobile customers can order only during opening hours (until last order). Counter (POS) orders are never blocked; pickup pre-orders are guided to a valid time.",
+  "settingsPage.businessHours.enableLabel": "Manage mobile ordering by business hours",
+  "settingsPage.businessHours.copyMon": "Apply Monday to all days",
+  "settingsPage.businessHours.closed": "Closed",
+  "settingsPage.businessHours.columnsHint": "Columns: open — last order — close. Leave last order empty to use the closing time.",
+  "settingsPage.businessHours.weekday.mon": "Monday",
+  "settingsPage.businessHours.weekday.tue": "Tuesday",
+  "settingsPage.businessHours.weekday.wed": "Wednesday",
+  "settingsPage.businessHours.weekday.thu": "Thursday",
+  "settingsPage.businessHours.weekday.fri": "Friday",
+  "settingsPage.businessHours.weekday.sat": "Saturday",
+  "settingsPage.businessHours.weekday.sun": "Sunday",
+  "operations.requireCancelReasonLabel": "Reason for void / cancel",
+  "operations.requireCancelReasonDesc": "Whether staff must give a reason when deleting an item or cancelling an order. Reasons feed the void & cancel log.",
+  "operations.cancelReasonOff": "Off",
+  "operations.cancelReasonOptional": "Optional",
+  "operations.cancelReasonRequired": "Required"
 }

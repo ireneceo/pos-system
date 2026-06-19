@@ -567,6 +567,8 @@ const PaymentPage: React.FC = () => {
   const [selectedPickupTime, setSelectedPickupTime] = useState<string | null>(null);
   const [isImmediatePickup, setIsImmediatePickup] = useState(true);
   const [availablePickupSlots, setAvailablePickupSlots] = useState<string[]>([]);
+  // Business-hours pickup slots grouped by day (from /pickup-slots). null = legacy (today-only) mode.
+  const [pickupDays, setPickupDays] = useState<Array<{ date: string; dow: number; times: string[] }> | null>(null);
 
   // Guest info inline form state — restore from localStorage via guestInfo
   const [guestName, setGuestName] = useState(() => guestInfo?.name || '');
@@ -661,6 +663,13 @@ const PaymentPage: React.FC = () => {
   const getScheduledPickupDateTime = () => {
     if (orderType !== 'pickup' || isImmediatePickup || !selectedPickupTime) {
       return null;
+    }
+    // Business-hours slots carry a date ("YYYY-MM-DDTHH:MM"); legacy slots are "HH:MM" = today.
+    // Either way we build a local-time instant — the server re-validates against the store
+    // timezone (isValidPickupTime), so an out-of-hours pick is rejected server-side.
+    if (selectedPickupTime.includes('T')) {
+      const dt = new Date(selectedPickupTime);
+      return isNaN(dt.getTime()) ? null : dt.toISOString();
     }
     const today = new Date();
     const [hour, min] = selectedPickupTime.split(':').map(Number);
@@ -1191,10 +1200,33 @@ const PaymentPage: React.FC = () => {
       return slots;
     };
 
-    const slots = generateTimeSlots();
-    console.log('📦 Generated pickup time slots:', slots);
-    setAvailablePickupSlots(slots);
-  }, [orderType, operationSettings, currentStore]);
+    // Prefer business-hours-constrained slots from the server (single source =
+    // backend businessHours.getPickupSlots). Falls back to the legacy today-only
+    // generator when the gate is OFF (enabled:false).
+    let cancelled = false;
+    (async () => {
+      try {
+        const resp = await fetch(`/api/mobile/pickup-slots/${slug}`);
+        const result = await resp.json();
+        if (cancelled) return;
+        if (result?.success && result.data?.enabled) {
+          setPickupDays((result.data.slots || []).map((g: any) => ({ date: g.date, dow: g.dow, times: g.times })));
+          setAvailablePickupSlots([]);
+          // Store closed right now → hide "as soon as possible", force a scheduled time.
+          const canAsap = !currentStore?.ordering?.enabled || !!currentStore?.ordering?.canOrder;
+          if (!canAsap) setIsImmediatePickup(false);
+          return;
+        }
+      } catch (e) {
+        // fall through to legacy
+      }
+      if (cancelled) return;
+      setPickupDays(null);
+      const slots = generateTimeSlots();
+      setAvailablePickupSlots(slots);
+    })();
+    return () => { cancelled = true; };
+  }, [orderType, operationSettings, currentStore, slug]);
 
   // Helper function to save delivery address to member profile
   const saveDeliveryAddressToMember = async () => {
@@ -2329,84 +2361,111 @@ const PaymentPage: React.FC = () => {
           <Section>
             <SectionTitle>Pickup Time *</SectionTitle>
 
-            <button
-              type="button"
-              onClick={() => {
-                setIsImmediatePickup(true);
-                setSelectedPickupTime(null);
-              }}
-              style={{
-                width: '100%',
-                padding: '16px',
-                marginBottom: '12px',
-                border: `1px solid ${isImmediatePickup ? '#635BFF' : '#C7CED6'}`,
-                borderRadius: '8px',
-                background: isImmediatePickup ? '#F0F4FF' : 'white',
-                color: isImmediatePickup ? '#635BFF' : '#0A2540',
-                fontSize: '15px',
-                fontWeight: '500',
-                cursor: 'pointer',
-                transition: 'all 0.15s'
-              }}
-            >
-              Ready as soon as possible
-            </button>
+            {/* "As soon as possible" — only when the store is open right now (gate off or canOrder). */}
+            {(!currentStore?.ordering?.enabled || currentStore?.ordering?.canOrder) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsImmediatePickup(true);
+                  setSelectedPickupTime(null);
+                }}
+                style={{
+                  width: '100%',
+                  padding: '16px',
+                  marginBottom: '12px',
+                  border: `1px solid ${isImmediatePickup ? '#635BFF' : '#C7CED6'}`,
+                  borderRadius: '8px',
+                  background: isImmediatePickup ? '#F0F4FF' : 'white',
+                  color: isImmediatePickup ? '#635BFF' : '#0A2540',
+                  fontSize: '15px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s'
+                }}
+              >
+                Ready as soon as possible
+              </button>
+            )}
 
             <div style={{ fontSize: '14px', fontWeight: '600', color: '#0A2540', marginBottom: '12px', textAlign: 'center' }}>
-              Or schedule a pickup time
+              {pickupDays ? 'Choose a pickup time within opening hours' : 'Or schedule a pickup time'}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
-              {availablePickupSlots.map(slot => {
-                const [hour, min] = slot.split(':').map(Number);
+            {(() => {
+              const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+              const fmtRange = (timeStr: string) => {
+                const [hour, min] = timeStr.split(':').map(Number);
                 const startPeriod = hour >= 12 ? 'PM' : 'AM';
                 const startHour12 = hour % 12 || 12;
-
-                // Calculate end time (30 minutes later)
-                const endMinutes = (hour * 60 + min + 30);
-                const endHour = Math.floor(endMinutes / 60);
+                const endMinutes = hour * 60 + min + 30;
+                const endHour = Math.floor(endMinutes / 60) % 24;
                 const endMin = endMinutes % 60;
                 const endPeriod = endHour >= 12 ? 'PM' : 'AM';
                 const endHour12 = endHour % 12 || 12;
-
-                // Format: "9:00 - 9:30 AM" or "11:30 AM - 12:00 PM"
                 const startTime = `${startHour12}:${min.toString().padStart(2, '0')}`;
                 const endTime = `${endHour12}:${endMin.toString().padStart(2, '0')}`;
-                const displayTime = startPeriod === endPeriod
+                return startPeriod === endPeriod
                   ? `${startTime} - ${endTime} ${endPeriod}`
                   : `${startTime} ${startPeriod} - ${endTime} ${endPeriod}`;
+              };
+              const slotButton = (value: string, timeStr: string) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => { setIsImmediatePickup(false); setSelectedPickupTime(value); }}
+                  style={{
+                    padding: '12px 8px',
+                    border: `1px solid ${!isImmediatePickup && selectedPickupTime === value ? '#635BFF' : '#C7CED6'}`,
+                    borderRadius: '8px',
+                    background: !isImmediatePickup && selectedPickupTime === value ? '#F0F4FF' : 'white',
+                    color: !isImmediatePickup && selectedPickupTime === value ? '#635BFF' : '#0A2540',
+                    fontSize: '13px',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  {fmtRange(timeStr)}
+                </button>
+              );
 
+              // Business-hours mode: slots grouped by day; each value carries its date (YYYY-MM-DDTHH:MM).
+              if (pickupDays) {
+                if (pickupDays.length === 0) {
+                  return (
+                    <div style={{ textAlign: 'center', color: '#4B5563', padding: '20px' }}>
+                      No available pickup times
+                    </div>
+                  );
+                }
+                const now = new Date();
+                const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                return pickupDays.map(day => (
+                  <div key={day.date} style={{ marginBottom: '16px' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#4B5563', marginBottom: '8px' }}>
+                      {day.date === todayStr ? 'Today' : `${WEEKDAYS[day.dow]} ${day.date.slice(5)}`}
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+                      {day.times.map(tm => slotButton(`${day.date}T${tm}`, tm))}
+                    </div>
+                  </div>
+                ));
+              }
+
+              // Legacy mode: today-only flat grid.
+              if (availablePickupSlots.length === 0) {
                 return (
-                  <button
-                    key={slot}
-                    type="button"
-                    onClick={() => {
-                      setIsImmediatePickup(false);
-                      setSelectedPickupTime(slot);
-                    }}
-                    style={{
-                      padding: '12px 8px',
-                      border: `1px solid ${!isImmediatePickup && selectedPickupTime === slot ? '#635BFF' : '#C7CED6'}`,
-                      borderRadius: '8px',
-                      background: !isImmediatePickup && selectedPickupTime === slot ? '#F0F4FF' : 'white',
-                      color: !isImmediatePickup && selectedPickupTime === slot ? '#635BFF' : '#0A2540',
-                      fontSize: '13px',
-                      fontWeight: '500',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s'
-                    }}
-                  >
-                    {displayTime}
-                  </button>
+                  <div style={{ textAlign: 'center', color: '#4B5563', padding: '20px' }}>
+                    No available pickup times for today
+                  </div>
                 );
-              })}
-            </div>
-
-            {availablePickupSlots.length === 0 && (
-              <div style={{ textAlign: 'center', color: '#4B5563', padding: '20px' }}>
-                No available pickup times for today
-              </div>
-            )}
+              }
+              return (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+                  {availablePickupSlots.map(slot => slotButton(slot, slot))}
+                </div>
+              );
+            })()}
           </Section>
         )}
 

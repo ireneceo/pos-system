@@ -32,6 +32,8 @@ router.get('/', authenticateToken, async (req, res) => {
     if (status) where.status = status;
     if (priority) where.priority = priority;
     if (category) where.category = category;
+    // Merchants never see QZ diagnostic tickets (admin-only channel). Admin sees all.
+    if (user.role !== 'System Admin' && !category) where.category = { [Op.ne]: 'diagnostic' };
 
     if (search) {
       where[Op.or] = [

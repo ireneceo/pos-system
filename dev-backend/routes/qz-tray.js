@@ -353,6 +353,15 @@ router.post('/diagnose', authenticateToken, async (req, res) => {
     if (typeof payload.scope === 'string' && payload.scope.startsWith('auto-')) {
       return res.status(202).json({ success: true, skipped: 'auto-telemetry suppressed' });
     }
+    // Only file a ticket when there is an actual printing problem. A healthy probe
+    // (browser print, connected, autoPrint simply off) is not an issue — filing it
+    // spammed the support inbox of shops that don't even use QZ (with MIN Cafe report).
+    const hasProblem = payload.connected === false
+      || payload.silentPrint === 'failed'
+      || (payload.lastError && String(payload.lastError).trim() && String(payload.lastError).trim() !== '(none)');
+    if (!hasProblem) {
+      return res.status(202).json({ success: true, skipped: 'no printing problem detected' });
+    }
     const timestamp = Date.now();
     const random = Math.floor(Math.random() * 1000);
     const ticketNumber = `QZ-${new Date().getFullYear()}-${String(timestamp % 10000)}-${String(random).padStart(3, '0')}`;
@@ -390,9 +399,9 @@ router.post('/diagnose', authenticateToken, async (req, res) => {
       restaurantName,
       subject: `[QZ Tray] printing diagnostic from ${restaurantName || 'shop'}`,
       description,
-      // SupportTicket.category ENUM doesn't have 'printing' — file as 'technical'.
-      // The "[QZ Tray]" subject prefix makes printing tickets greppable in the admin inbox.
-      category: 'technical',
+      // Admin-only diagnostic channel — hidden from the merchant support inbox so QZ
+      // printing diagnostics don't clutter shops (esp. those not using QZ).
+      category: 'diagnostic',
       priority: payload.silentPrint === 'failed' || payload.connected === false ? 'high' : 'medium',
       status: 'open'
     });
