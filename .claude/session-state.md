@@ -57,9 +57,11 @@
 **Irene 확정 방향:** (1) 시재관리=현금서랍 별개, **POS(access_pos) 권한 스탭 사용** (2) 마감(전수단 대조+close+Z-Report)=**기존 Daily Settlement에 통합**.
 - **✅ 1단계 완료(커밋 3f9cde2d)**: 사이드바 'Cash Up'(RA/Owner) → '시재관리'(cash-drawer, access_pos 포함) · 라우트 /cash-drawer(+/cash-up 호환) · i18n nav.cashDrawer 4언어.
 - **✅ 2단계 완료(커밋 be73c414 doc + 다음 feat 커밋)**: ① **FinalSettlementPanel(신규)** = Daily Settlement 모달에 "최종 마감" — 전수단 블라인드 실제입력→reconcile(예상 대조)→수단별 차이(과부족)→close→Z-Report. 매니저(RA/Owner)+오늘+open shift 만 노출. 엔진 재사용, 인쇄는 printSettlementReport export만(🔒billPrint 무수정). ② **CashUpPage→시재관리 재작성** = 현금 책임관리 전용(개시현금·입출금·현재시재 원장·서랍). 전수단 마감 제거. ③ i18n cash.json 4언어. 검증: build0·i18n0·mount(cash-drawer/floor/live)0크래시·health 107/107·print-guard 8/8(MainLayout 사이드바 print-neutral re-bless).
-- **⬜ 3단계 남음(소): 마감 이력(shift/history) 화면** — GET /shift/history 데이터 저장됨, 조회 UI만 추가(Daily Settlement 또는 시재관리에 이력 탭/리스트).
-  - 현 구현 사실: computeExpected 가 cash/card(type)/other(qr/ewallet) 수단별 SUM. card_type=POS PaymentModal 캡처. **카드 결제기 자동연동 없음 → 마감 때 단말 배치영수증 수동입력**(비연동 표준 — FinalSettlementPanel hint 에 안내됨).
-- **배포 보류 권고:** Cash 관련은 실프린터(Z-Report) 확인까지 보류. PIN·예약·취소사유·하드닝·보안픽스는 배포 가능.
+- **✅ 3단계 완료(커밋 4eb31357): 마감 이력** — FinalSettlementPanel 에 지난 마감(reconciled/closed) 리스트(날짜·캐셔·마감현금·현금차이) + 항목별 Z-Report 재인쇄(저장 zreport). 매니저, 접기/펼치기.
+  - 현 구현 사실: computeExpected 가 cash/card(type)/other(qr/ewallet) 수단별 SUM. card_type=POS PaymentModal 캡처. **카드 결제기 자동연동 없음 → 마감 때 단말 배치영수증 수동입력**(비연동 표준 — FinalSettlementPanel hint 안내).
+- **✅ Cash Up 재설계 전체 완료**(시재관리 분리+POS권한 / 최종마감 Daily Settlement 통합 / 마감 이력). 검증: build0·i18n0·API 16/16·mount0·health107/107·print-guard8/8·hydration0·timezone신규0.
+- **인쇄 정정(Irene 지적):** Z-Report 는 **내용(HTML)만 신규, 방식(printSettlementReport/billPrint) 무수정** → 배포 막을 사유 아님. 종이 레이아웃은 배포 후 매장 프린터에서 눈으로 확인(정상 절차).
+- **배포 대기:** 미배포 묶음 전체(PIN·예약·취소사유·하드닝·보안 IDOR픽스·시재/마감 재설계) `/배포` 지시 시 한 번에. SW_VERSION bump + 마이그 5종.
 
 ### (이전) 배포 대기
 - **배포 (Irene 내일 테스트 후 지시 시)**: 미배포 묶음 전체(6/19 PIN로그인[+차단버그 수정]·PayPal·취소사유 + Cash-up Phase1·2 + 하드닝 + P2-6 예약↔플로어 + 예약-주문 루프) `/배포`. 마이그 **5종**(currency·qz·cash-management·reservation-fpti·cash-phase2, deploy 9a-2 등록됨 — PIN 픽스는 코드만이라 신규 마이그 없음). **SW_VERSION bump 필요**(프론트 변경). 배포 후 운영검증 + 실프린터 확인(Z-Report·드로어·주방티켓·유효 PIN).
