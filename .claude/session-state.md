@@ -3,7 +3,18 @@
 ## 현재 작업 상태
 **마지막 업데이트:** 2026-06-20 (운영 배포 완료)
 **버전:** **v3.60 운영 배포됨 (2026-06-20, Backup 20260620_155323).** SW_VERSION=3.66-pin-cash-settlement-20260620.
-**작업 상태:** **🚀 v3.60 운영 배포 완료 (2026-06-20, 스모크 9/9). 릴리즈 노트/블로그/공지 발행 완료.** 묶음: PIN 로그인 + 현금 시재관리/최종마감(Daily Settlement) + 예약↔플로어+예약-주문 루프 + 취소사유 + 30년차 하드닝 + 보안 IDOR 픽스. 마이그 5종(cash-management·cash-phase2·reservation-fpti·currency·qz)+user-is-active 적용. **스키마 prod=dev 144테이블 일치.**
+**작업 상태:** **🚀 v3.60 운영 배포 완료 (2026-06-20, 스모크 9/9).** 이후 **운영 테스트 피드백 반영분 dev 누적(미배포)** — 다음 `/배포` 대상.
+
+### 📌 v3.60 이후 dev 누적 (미배포, Irene 테스트 피드백 반영 — 다음 배포 대상)
+- **시재/캐시드로워 재구성**: '오늘의 캐시드로워'(라이브오더·플로어플랜 상단 버튼 모달) + '시재관리'(좌측 사이드바)=회계 리스트(현금 입출금 내역, 기간필터 오늘/어제/7·30일/전체/직접, 날짜별 그룹+소계+총계). 신규 백엔드 GET /cash/restaurant/:id/movements(+startDate/endDate).
+- **최종마감(FinalSettlementPanel)**: Back/Confirm 버튼 정렬 수정 + 마감확정 시 Z-Report 자동 빌프린트(별개) + 표헤더 i18n.
+- **취소 모달 'Other' → 직접 사유 입력**.
+- **테이블맵 예약 항상 표시**(deriveReservedTableMap 리드 하한 제거 — 오늘 예정예약 전부 표시, reservedSoon 플래그).
+- **예약 임박 테이블 워크인 주문 차단**(경고+매니저 강행) + 설정>예약 order_block_lead_minutes(0=끔). 체크인 손님은 통과.
+- 테스트 매장5(Test3) 시딩: 주문 5건(현금43·visa32·master15.5·ewallet12.9) + 입출금 2건.
+- 검증: 각 변경 build0·i18n0·mount0크래시·print-guard8/8·movements IDOR 4/4. 커밋 다수(~315632cd·f5507bc4·9ab79dbd).
+- 미배포 사항: 신규 GET /movements 엔드포인트(배포 시 백엔드 동기화로 반영, 신규 마이그 불필요 — reservation_settings는 JSON). SW_VERSION 추가 bump 필요.
+- **참고(회귀 아님)**: 플로어 우측패널 아이템 ×삭제는 '미결제+2품목이상'만(마지막품목 백엔드 삭제거부, 주문취소 유도, 6/3부터). 묶음: PIN 로그인 + 현금 시재관리/최종마감(Daily Settlement) + 예약↔플로어+예약-주문 루프 + 취소사유 + 30년차 하드닝 + 보안 IDOR 픽스. 마이그 5종(cash-management·cash-phase2·reservation-fpti·currency·qz)+user-is-active 적용. **스키마 prod=dev 144테이블 일치.**
 - **배포 후 매장 실프린터 확인 필요**: 주방 티켓 · Z-Report 종이 · 캐시드로어 개방 · 유효 PIN 실로그인.
 - **CHANGELOG/버전업/릴리즈노트/블로그·공지**: Irene 버전업 결정 후 진행(배포 skill 절차).
 
