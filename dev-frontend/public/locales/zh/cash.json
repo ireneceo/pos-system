@@ -95,5 +95,8 @@
   "searchPlaceholder": "搜索原因 / 经手人…",
   "settings": "设置",
   "todayMovements": "今日现金存取",
-  "noMovementsToday": "今天暂无。"
+  "noMovementsToday": "今天暂无。",
+  "settlementAdj": "结算调整",
+  "cashOverAtSettlement": "结算时现金溢余",
+  "cashShortAtSettlement": "结算时现金短缺"
 }

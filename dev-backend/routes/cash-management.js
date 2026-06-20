@@ -240,6 +240,28 @@ router.post('/restaurant/:restaurantId/shift/:id/close', authenticateToken, chec
       };
       await recon.update({ zreport });
     }
+
+    // 현금 차이(over/short)를 시재 원장에 자동 기입 — 마감 '확정' 시점에만(Irene 지시).
+    // variance.cash > 0 = 실제 현금이 예상보다 많음(over) → in / < 0 = 부족(short) → out.
+    // source='settlement' 로 수동 입출금과 구분, 시스템 감사기록(수정/삭제 불가).
+    // computeMovements(Z-Report)는 위에서 이미 계산되어 이 조정이 이중계상되지 않음.
+    // carryover(다음 개시현금)는 closing_balance(실제 센 현금) 기준이라 영향 없음.
+    {
+      const cashVar = round2((recon.variance && recon.variance.cash) || 0);
+      const already = await CashMovement.findOne({ where: { shift_id: shift.id, source: 'settlement' } });
+      if (cashVar !== 0 && !already) {
+        await CashMovement.create({
+          shift_id: shift.id,
+          restaurant_id: restaurantId,
+          type: cashVar > 0 ? 'in' : 'out',
+          amount: Math.abs(cashVar),
+          reason: cashVar > 0 ? 'Cash over at settlement' : 'Cash short at settlement',
+          source: 'settlement',
+          created_by_id: req.user.id || null,
+          created_by_name: req.user.full_name || req.user.username || null
+        });
+      }
+    }
     res.json({ success: true, data: { shift, reconciliation: recon } });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
@@ -297,6 +319,7 @@ router.put('/restaurant/:restaurantId/movement/:movementId', authenticateToken, 
     const restaurantId = parseInt(req.params.restaurantId, 10);
     const mv = await CashMovement.findOne({ where: { id: req.params.movementId, restaurant_id: restaurantId } });
     if (!mv) return res.status(404).json({ success: false, message: 'Movement not found' });
+    if (mv.source === 'settlement') return res.status(400).json({ success: false, code: 'SETTLEMENT_LOCKED', message: 'Settlement adjustments cannot be edited.' });
     const upd = {};
     if (req.body.type === 'in' || req.body.type === 'out') upd.type = req.body.type;
     if (req.body.amount != null) { const a = round2(req.body.amount); if (!(a > 0)) return res.status(400).json({ success: false, code: 'INVALID_MOVEMENT', message: 'amount must be > 0' }); upd.amount = a; }
@@ -312,6 +335,7 @@ router.delete('/restaurant/:restaurantId/movement/:movementId', authenticateToke
     const restaurantId = parseInt(req.params.restaurantId, 10);
     const mv = await CashMovement.findOne({ where: { id: req.params.movementId, restaurant_id: restaurantId } });
     if (!mv) return res.status(404).json({ success: false, message: 'Movement not found' });
+    if (mv.source === 'settlement') return res.status(400).json({ success: false, code: 'SETTLEMENT_LOCKED', message: 'Settlement adjustments cannot be deleted.' });
     await mv.destroy();
     res.json({ success: true });
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }

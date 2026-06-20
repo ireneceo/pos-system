@@ -95,5 +95,8 @@
   "searchPlaceholder": "Search reason / staff…",
   "settings": "Settings",
   "todayMovements": "Today's cash in / out",
-  "noMovementsToday": "None yet today."
+  "noMovementsToday": "None yet today.",
+  "settlementAdj": "Settlement",
+  "cashOverAtSettlement": "Cash over at settlement",
+  "cashShortAtSettlement": "Cash short at settlement"
 }

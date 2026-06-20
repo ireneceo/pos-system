@@ -12,6 +12,9 @@ const CashMovement = sequelize.define('CashMovement', {
   type: { type: DataTypes.ENUM('in', 'out'), allowNull: false },
   amount: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
   reason: { type: DataTypes.STRING(255), allowNull: true },
+  // manual = 직원이 직접 넣은 입출금 / settlement = 파이널 마감 확정 시 현금 차이(over/short) 자동 조정.
+  // settlement 행은 시스템 감사기록 → 수정/삭제 불가, 원장에서 구분 표시.
+  source: { type: DataTypes.ENUM('manual', 'settlement'), allowNull: false, defaultValue: 'manual' },
   created_by_id: { type: DataTypes.INTEGER, allowNull: true },
   created_by_name: { type: DataTypes.STRING, allowNull: true }
 }, {

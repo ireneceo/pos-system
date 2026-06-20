@@ -106,26 +106,36 @@ const CashLedger: React.FC<Props> = ({ restaurantId, dateRange, search }) => {
             <tr><td colSpan={6}><DataTableEmpty>{t('cash:noMovements', { defaultValue: 'No cash in/out records yet.' })}</DataTableEmpty></td></tr>
           ) : rows.map(m => {
             const isIn = m.type === 'in';
+            const isSettlement = m.source === 'settlement';
             return (
               <DataTableRow key={m.id}>
                 <DataTableCell data-label={t('cash:colDateTime', { defaultValue: 'Date / Time' })}>{dt(m.created_at || m.createdAt)}</DataTableCell>
                 <DataTableCell data-label={t('cash:colType', { defaultValue: 'Type' })}>
                   <span style={{ fontWeight: 700, color: isIn ? '#10B981' : '#FF6B6B' }}>{isIn ? t('cash:paidIn', { defaultValue: 'Cash in' }) : t('cash:paidOut', { defaultValue: 'Cash out' })}</span>
+                  {isSettlement && (
+                    <span style={{ marginLeft: 8, display: 'inline-block', fontSize: 11, fontWeight: 600, color: '#635BFF', background: '#EEF0FF', border: '1px solid #DADCFF', borderRadius: 10, padding: '1px 8px', verticalAlign: 'middle' }}>
+                      {t('cash:settlementAdj', { defaultValue: 'Settlement' })}
+                    </span>
+                  )}
                 </DataTableCell>
-                <DataTableCell data-label={t('cash:movementReason', { defaultValue: 'Reason' })}>{m.reason || '—'}</DataTableCell>
+                <DataTableCell data-label={t('cash:movementReason', { defaultValue: 'Reason' })}>{isSettlement ? (isIn ? t('cash:cashOverAtSettlement', { defaultValue: 'Cash over at settlement' }) : t('cash:cashShortAtSettlement', { defaultValue: 'Cash short at settlement' })) : (m.reason || '—')}</DataTableCell>
                 <DataTableCell data-label={t('cash:colBy', { defaultValue: 'By' })}>{m.created_by_name || '—'}</DataTableCell>
                 <DataTableCell data-label={t('cash:colAmount', { defaultValue: 'Amount' })} align="right">
                   <DataTableAmount highlight style={{ color: isIn ? '#10B981' : '#FF6B6B' }}>{isIn ? '+ ' : '− '}{fc(m.amount)}</DataTableAmount>
                 </DataTableCell>
                 <DataTableCell data-label={t('cash:colActions', { defaultValue: 'Actions' })} align="center">
-                  <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'center' }}>
-                    <IconButton type="button" title={t('common:button.edit', { defaultValue: 'Edit' })} onClick={() => setEdit({ ...m, amount: String(m.amount) })}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" /></svg>
-                    </IconButton>
-                    <IconButton type="button" title={t('common:button.delete', { defaultValue: 'Delete' })} onClick={() => setDelTarget(m)}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-                    </IconButton>
-                  </div>
+                  {isSettlement ? (
+                    <span style={{ color: '#9CA3AF', fontSize: 13 }}>—</span>
+                  ) : (
+                    <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'center' }}>
+                      <IconButton type="button" title={t('common:button.edit', { defaultValue: 'Edit' })} onClick={() => setEdit({ ...m, amount: String(m.amount) })}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" /></svg>
+                      </IconButton>
+                      <IconButton type="button" title={t('common:button.delete', { defaultValue: 'Delete' })} onClick={() => setDelTarget(m)}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                      </IconButton>
+                    </div>
+                  )}
                 </DataTableCell>
               </DataTableRow>
             );

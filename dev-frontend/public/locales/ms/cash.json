@@ -95,5 +95,8 @@
   "searchPlaceholder": "Cari sebab / staf…",
   "settings": "Tetapan",
   "todayMovements": "Tunai masuk/keluar hari ini",
-  "noMovementsToday": "Belum ada hari ini."
+  "noMovementsToday": "Belum ada hari ini.",
+  "settlementAdj": "Penyelarasan",
+  "cashOverAtSettlement": "Tunai lebih semasa penutupan",
+  "cashShortAtSettlement": "Tunai kurang semasa penutupan"
 }
