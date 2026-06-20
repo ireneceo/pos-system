@@ -13,10 +13,17 @@
 - **재검증 결과:** 신규 4기능 실라우트 통합검증 **33/33**(데모38, 전량 원복) · health **104/104** · print-guard **8/8** · build 0 · hydration 0 · timezone 0 · mount(cash-up·reservations·/pos·/login) 0크래시.
 - **커밋:** `910b23be` (staff.js + health-check.js). dev 백엔드 재시작 완료 → dev.purplehere.com 반영. 배포 시 묶음에 포함. **미배포.**
 
-### 🧪 다음 세션 최우선 — Irene 수동 테스트
-- **`docs/TEST_CHECKLIST_2026-06-20.md`** — 6/19~6/20 미배포 묶음을 Irene가 dev(dev.purplehere.com)에서 직접 테스트할 항목 정리. 다음 세션 진입 시 이 파일부터 안내.
-  - 직원 PIN 로그인 / 현금관리 Cash-up(+인출입금) / 취소사유 설정 / 예약↔플로어+체크인+예약-주문 루프 / 주문 전과정 회귀.
-  - ⚠️ 실프린터 항목(Z-Report 종이·캐시드로어·주방티켓) + 유효 PIN 실로그인 = **배포 후** 매장 실프린터에서 최종 확인.
+### 🧪 다음 세션 최우선 — Irene 내일 dev 수동 테스트 (이후 `/배포`)
+**진입 시 `docs/TEST_CHECKLIST_2026-06-20.md` 부터 안내.** 장소=dev.purplehere.com, 평소 매장관리자 계정 로그인. 권장 순서:
+
+1. **직원 PIN 로그인** ← 이번에 고친 부분, **여기부터**. 로그인 화면 "직원 PIN" 전환 → 온스크린 숫자패드로 PIN 입력 → 로그인됨. (자동검증 통과: 유효PIN→토큰 / 틀린PIN→차단 / 누락→안내)
+2. **현금관리 Cash-up** (사이드바 Cash Up → /cash-up): 교대시작(개시현금 자동제시) → 카운트(예상금액 안 보임=블라인드) → 차이공개("RM2 부족"+신호등) → 마감(마감현금 다음교대 이월) + 인출/입금 팝업.
+3. **취소사유 설정** (설정): 끔/선택/필수 전환 → 필수일 때 사유 없이 취소 막힘.
+4. **예약↔플로어 + 루프**: 예약에 테이블 배정 → 같은시간 같은테이블 이중예약 차단 → 플로어 "예약됨" 배지 → Arrived(도착) 시 POS 자동열림 → 주문생성=예약 seated → 결제완료=예약 completed.
+5. **주문 전과정 회귀** (생명선): 생성/단계진행/결제/추가주문/테이블이동/삭제.
+
+⚠️ **실프린터·실드로어 항목은 dev 불가 → 배포 후 매장에서만**: Z-Report 종이 출력 / 캐시드로어 개방 / 주방티켓(1장+추가분) / 매장 실 PIN 로그인. dev 에선 버튼 동작(에러없음)까지만 확인.
+- 자동검증은 끝났으니(33/33 실라우트 + health 104/104 + mount 0크래시) **사람 눈 확인이 필요한 화면 흐름 위주**로 보면 됨.
 
 ### 진행 중인 작업
 - 없음
@@ -30,7 +37,7 @@
 - 검증: 주문루트 30/30 · 예약루프 10/10 · 하드닝 13/13 · Cash Phase2 18/18 · health 101/101 · 인쇄계약 8/8 · build0 · hydration0 · timezone0 · i18n0 · print-guard 8/8(orders-crud print-neutral re-bless) · mount 변경 critical 전수 0크래시.
 
 ### 다음 확정 작업
-- **배포 (Irene 지시 시)**: 미배포 묶음 전체(6/19 PIN·PayPal·취소사유 + Cash-up Phase1·2 + 하드닝 + P2-6 예약↔플로어 + 예약-주문 루프) `/배포`. 마이그 **5종**(currency·qz·cash-management·reservation-fpti·cash-phase2, deploy 9a-2 등록됨). **SW_VERSION bump 필요**(프론트 변경). 배포 후 운영검증 + 실프린터 확인(Z-Report·드로어·주방티켓·유효 PIN).
+- **배포 (Irene 내일 테스트 후 지시 시)**: 미배포 묶음 전체(6/19 PIN로그인[+차단버그 수정]·PayPal·취소사유 + Cash-up Phase1·2 + 하드닝 + P2-6 예약↔플로어 + 예약-주문 루프) `/배포`. 마이그 **5종**(currency·qz·cash-management·reservation-fpti·cash-phase2, deploy 9a-2 등록됨 — PIN 픽스는 코드만이라 신규 마이그 없음). **SW_VERSION bump 필요**(프론트 변경). 배포 후 운영검증 + 실프린터 확인(Z-Report·드로어·주방티켓·유효 PIN).
 
 ### 후속 후보 (아이디어 메모, 확정 X)
 > 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.

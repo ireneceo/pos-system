@@ -1,6 +1,23 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-20 (6/19 묶음 전수재검증 + **P2-6 예약↔플로어플랜** + **P2-5 Cash-up Phase2** + **30년차 감사 하드닝**(Cash 횡령누명/권한/블라인드·예약 이중예약/유령배지/루프) 완료. 전부 **DEV·미배포**, Irene 지시 시 함께 배포. ⚠️배포후 Z-Report 종이·드로어 실프린터 확인 필요. 상세=session-state + docs CASH/RESERVATION 하드닝 절.)
+> **최종 업데이트:** 2026-06-20 (미배포 묶음 **전수 재검증 + PIN 로그인 버그 수정**. 6/19 묶음 + **P2-6 예약↔플로어플랜** + **P2-5 Cash-up Phase2** + **30년차 감사 하드닝**. 전부 **DEV·미배포**, Irene 지시 시 함께 배포. ⚠️배포후 Z-Report 종이·드로어 실프린터 확인 필요. 상세=session-state + docs CASH/RESERVATION 하드닝 절.)
+
+## ✅ 완료: 미배포 묶음 전수 재검증 + PIN 로그인 버그 수정 (2026-06-20, DEV·미배포)
+
+> Irene 요청으로 미배포 묶음을 **실라우트 익명/실호출** 기준 재검증. build/health/mount 통과에도 PIN 로그인이 실제론 동작 불가였던 버그를 익명 HTTP 호출로 발견·수정. 🔒 인쇄 생명선 무영향(staff.js·health-check.js만 변경, print-guard 8/8).
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| PIN 로그인 차단 버그 수정(P0) | `routes/staff.js` router.use(authenticateToken) 가 1차 로그인 /verify-pin 까지 막아 익명 PIN 로그인 무조건 401. /verify-pin 만 가드 위로 분리해 공개화. verify-pin-permission·GET /staff 는 인증 유지 | ✅ |
+| 회귀 영구 안전망 | health-check 3건 추가(101→104/104): 익명 verify-pin 공개(누락→400)·익명 /staff→401·익명 verify-pin-permission→401 | ✅ |
+| 실라우트 통합검증 33/33 | PIN로그인4·Cash-up 전체사이클+하드닝13·취소사유3·예약+이중예약4·예약-주문 루프8 (데모38, 전량 원복) | ✅ |
+| mount 재검증 | cash-up·reservations·/pos(PIN로그인)·/login 0크래시 | ✅ |
+
+### 수정된 파일
+- `dev-backend/routes/staff.js`
+- `dev-backend/scripts/health-check.js`
+
+---
 
 ## ✅ 완료: 30년차 감사 하드닝 + 예약-주문 루프 + UI 통일 (2026-06-20, DEV·미배포)
 
