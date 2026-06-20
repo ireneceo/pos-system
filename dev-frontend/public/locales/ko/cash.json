@@ -57,5 +57,8 @@
   "closeFail": "마감 실패",
   "byMethodActualVar": "수단별 — 실제 / 차이",
   "history": "마감 이력",
-  "reprintZ": "Z-Report"
+  "reprintZ": "Z-Report",
+  "colExpected": "예상",
+  "colActual": "실제",
+  "colDiff": "차이"
 }

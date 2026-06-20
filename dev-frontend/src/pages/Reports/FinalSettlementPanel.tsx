@@ -290,11 +290,14 @@ const PrimaryBtn: React.FC<{ children: React.ReactNode; disabled?: boolean; onCl
 const GhostBtn: React.FC<{ children: React.ReactNode; onClick: () => void }> = ({ children, onClick }) => (
   <button type="button" onClick={onClick} style={{ height: 48, padding: '0 18px', borderRadius: 10, border: `1px solid ${C.border}`, background: '#fff', color: C.subtle, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{children}</button>
 );
-const HeadRow: React.FC = () => (
-  <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr 1fr', fontSize: 11, color: C.subtle, textTransform: 'uppercase', letterSpacing: '0.3px', padding: '8px 4px 6px', marginTop: 8 }}>
-    <span /><span style={{ textAlign: 'right' }}>Expected</span><span style={{ textAlign: 'right' }}>Actual</span><span style={{ textAlign: 'right' }}>Diff</span>
-  </div>
-);
+const HeadRow: React.FC = () => {
+  const { t } = useTranslation();
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr 1fr', fontSize: 11, color: C.subtle, textTransform: 'uppercase', letterSpacing: '0.3px', padding: '8px 4px 6px', marginTop: 8 }}>
+      <span /><span style={{ textAlign: 'right' }}>{t('cash:colExpected', { defaultValue: 'Expected' })}</span><span style={{ textAlign: 'right' }}>{t('cash:colActual', { defaultValue: 'Actual' })}</span><span style={{ textAlign: 'right' }}>{t('cash:colDiff', { defaultValue: 'Diff' })}</span>
+    </div>
+  );
+};
 const VarRow: React.FC<{ label: string; expected: number; counted: number; diff: number; fc: (n: number) => string; t: any }> = ({ label, expected, counted, diff, fc, t }) => {
   const d = Math.round(Number(diff) * 100) / 100;
   const color = d === 0 ? C.match : (Math.abs(d) < 5 ? C.warnAmt : C.bad);

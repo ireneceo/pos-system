@@ -57,5 +57,8 @@
   "closeFail": "Close failed",
   "byMethodActualVar": "By method — actual / variance",
   "history": "Settlement history",
-  "reprintZ": "Z-Report"
+  "reprintZ": "Z-Report",
+  "colExpected": "Expected",
+  "colActual": "Actual",
+  "colDiff": "Diff"
 }

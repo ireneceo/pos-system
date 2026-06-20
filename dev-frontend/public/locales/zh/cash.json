@@ -57,5 +57,8 @@
   "closeFail": "结算失败",
   "byMethodActualVar": "按方式 — 实际 / 差异",
   "history": "结算历史",
-  "reprintZ": "Z-Report"
+  "reprintZ": "Z-Report",
+  "colExpected": "预期",
+  "colActual": "实际",
+  "colDiff": "差异"
 }

@@ -57,5 +57,8 @@
   "closeFail": "Penutupan gagal",
   "byMethodActualVar": "Mengikut kaedah — sebenar / varians",
   "history": "Sejarah Penyelesaian",
-  "reprintZ": "Z-Report"
+  "reprintZ": "Z-Report",
+  "colExpected": "Jangkaan",
+  "colActual": "Sebenar",
+  "colDiff": "Beza"
 }
