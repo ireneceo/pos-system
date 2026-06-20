@@ -21,6 +21,7 @@ import { formatDateTime } from '../../utils/timezone';
 import { getRestaurantTimezone } from '../../utils/timezone';
 import DailySettlementPrint from '../Reports/DailySettlementPrint';
 import CashDrawerModal from '../../components/CashManagement/CashDrawerModal';
+import FinalSettlementModal from '../../components/CashManagement/FinalSettlementModal';
 import io from 'socket.io-client';
 import { useTranslation } from 'react-i18next';
 
@@ -424,7 +425,8 @@ const FloorPlanPage: React.FC = () => {
     () => deriveReservedTableMap(reservations, {
       leadMinutes: reservationLeadMinutes,
       now: nowTick,
-      formatTime: (iso: string) => formatDateTime(iso, operationSettings, { hour: '2-digit', minute: '2-digit' }),
+      // 오늘 예약만 표시 → 시간만(년/월/일 undefined 로 기본옵션 덮어 시간만 출력).
+      formatTime: (iso: string) => formatDateTime(iso, operationSettings, { year: undefined, month: undefined, day: undefined, hour: '2-digit', minute: '2-digit' } as any),
       // 오늘 주문 이력(점유/완료/비움)이 있는 테이블키 → arrived 예약 유령 배지 억제
       suppressArrivedKeys: new Set(Object.keys(tableHistory || {}))
     }),
@@ -516,6 +518,7 @@ const FloorPlanPage: React.FC = () => {
   // Daily Settlement
   const [showSettlement, setShowSettlement] = useState(false);
   const [showCashDrawer, setShowCashDrawer] = useState(false);
+  const [showFinalSettlement, setShowFinalSettlement] = useState(false);
   const [cdInfoModal, setCdInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
 
   // POS overlay (for New Order only)
@@ -1763,6 +1766,14 @@ const FloorPlanPage: React.FC = () => {
             Daily Settlement
           </BackBtn>
           )}
+          {canOperatePOS && (
+          <BackBtn type="button" onClick={() => setShowFinalSettlement(true)} title="Final Settlement" style={{ background: '#635BFF', color: '#fff', borderColor: '#635BFF' }}>
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '15px', height: '15px' }}>
+              <path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            {t('cash:finalSettlement', { defaultValue: 'Final Settlement' })}
+          </BackBtn>
+          )}
           {canOperatePOS && !isNarrow && (
             <>
               <BackBtn type="button"
@@ -2418,6 +2429,7 @@ const FloorPlanPage: React.FC = () => {
         onClose={() => setShowSettlement(false)}
       />
       <CashDrawerModal restaurantId={user?.restaurantId || restaurantId} isOpen={showCashDrawer} onClose={() => setShowCashDrawer(false)} />
+      <FinalSettlementModal isOpen={showFinalSettlement} onClose={() => setShowFinalSettlement(false)} />
 
       {/* 예약 임박 테이블 워크인 주문 경고 (매니저 강행 허용) */}
       {reserveWarn && (

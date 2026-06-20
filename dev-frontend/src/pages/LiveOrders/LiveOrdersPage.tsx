@@ -28,6 +28,7 @@ import ConfirmModal from '../../components/ConfirmModal';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import DailySettlementPrint from '../Reports/DailySettlementPrint';
 import CashDrawerModal from '../../components/CashManagement/CashDrawerModal';
+import FinalSettlementModal from '../../components/CashManagement/FinalSettlementModal';
 import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
 
@@ -128,6 +129,7 @@ const LiveOrdersPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showSettlement, setShowSettlement] = useState(false);
   const [showCashDrawer, setShowCashDrawer] = useState(false);
+  const [showFinalSettlement, setShowFinalSettlement] = useState(false);
 
   // 라이브 스코프 = 오늘 + 커스텀 기간 아님 → 공용 실시간 스토어 사용 (소켓 in-place).
   // 과거/커스텀 기간 → historicalOrders (변하지 않는 데이터, 서버 fetch).
@@ -1685,6 +1687,20 @@ const LiveOrdersPage: React.FC = () => {
               </svg>
               Daily Settlement
             </button>
+            <button
+              onClick={() => setShowFinalSettlement(true)} title="Final Settlement"
+              style={{
+                display: 'flex', alignItems: 'center', gap: '8px',
+                padding: '8px 16px', background: '#635BFF', color: '#fff',
+                border: '1px solid #635BFF', borderRadius: '6px', cursor: 'pointer',
+                fontSize: '14px', fontWeight: 600, flexShrink: 0
+              }}
+            >
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '16px', height: '16px' }}>
+                <path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              {t('cash:finalSettlement', { defaultValue: 'Final Settlement' })}
+            </button>
           </FilterToolbar>
 
           <StatusTabs>
@@ -2294,6 +2310,7 @@ const LiveOrdersPage: React.FC = () => {
 
       <DailySettlementPrint isOpen={showSettlement} onClose={() => setShowSettlement(false)} />
       <CashDrawerModal restaurantId={user?.restaurantId} isOpen={showCashDrawer} onClose={() => setShowCashDrawer(false)} />
+      <FinalSettlementModal isOpen={showFinalSettlement} onClose={() => setShowFinalSettlement(false)} />
     </>
   );
 };

@@ -9,7 +9,6 @@ import { getPaymentMethodLabel } from '../../constants';
 import { printSettlementReport } from '../../utils/billPrint';
 import { useTranslation } from 'react-i18next';
 import DateField from '../../components/Common/DateField';
-import FinalSettlementPanel from './FinalSettlementPanel';
 
 import { getAuthToken } from '../../utils/auth';
 // ─── Types ───────────────────────────────────────────────────────
@@ -771,9 +770,6 @@ const DailySettlementPrint: React.FC<DailySettlementPrintProps> = ({ isOpen, onC
             />
           </div>
         </DateSelector>
-
-        {/* 최종 마감 (전수단 실제입력 → 예상 대조 → 차이 → close + Z-Report). 오늘+open shift+매니저만 노출. */}
-        <FinalSettlementPanel selectedDate={selectedDate} today={today} />
 
         {/* Receipt content */}
         {loading ? (
