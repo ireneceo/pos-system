@@ -192,7 +192,10 @@ export const deriveReservedTableMap = (
     const reservedAtMs = new Date(r.reserved_at).getTime();
     if (!reservedAtMs || Number.isNaN(reservedAtMs)) continue;
     const turnMs = (Number(r.turn_minutes) || 90) * 60000;
-    if (now < reservedAtMs - leadMs || now > reservedAtMs + turnMs) continue;
+    // 표시 정책(2026-06-21 Irene): 예약 있는 테이블은 테이블맵에서 '항상' 보이게 — 오늘 예정
+    // 예약(턴 종료 전)은 리드타임과 무관하게 표시. leadMs 는 '임박'(soon) 강조/주문보류 판정에만 사용.
+    if (now > reservedAtMs + turnMs) continue;
+    const soon = now >= reservedAtMs - leadMs; // 리드창 안 = 임박
 
     // 같은 키에 이미 더 임박한 예약이 있으면 유지
     const existing = map[key];
@@ -209,6 +212,7 @@ export const deriveReservedTableMap = (
       customerName: r.guest_name || null,
       reservationId: r.id,
       reservedAt: r.reserved_at,
+      reservedSoon: soon,
       reservedLabel: timeLabel ? `Reserved ${timeLabel}` : 'Reserved'
     } as TableStatusInfo;
   }

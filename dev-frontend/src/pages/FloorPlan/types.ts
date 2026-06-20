@@ -108,6 +108,7 @@ export interface TableStatusInfo {
   reservationId?: number;
   reservedLabel?: string;   // e.g. "Reserved 7:00 PM" (already timezone-formatted)
   reservedAt?: string;      // ISO of reserved_at (for sorting/detail)
+  reservedSoon?: boolean;   // 리드타임 내 임박 예약(강조/주문보류). false=오늘 예정(표시만).
 }
 
 // Default v2 floor plan — 새 매장 진입 시 사용. 옛 매장은 backend lazy migrate 가 v1→v2 변환.
