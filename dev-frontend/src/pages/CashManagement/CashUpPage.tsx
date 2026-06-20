@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import styled from 'styled-components';
@@ -39,13 +39,22 @@ const CashUpPage: React.FC = () => {
   const { t } = useTranslation();
   const { restaurantId } = useParams<{ restaurantId: string }>();
   const store = useStore();
-  const tz = store?.operationSettings?.timeZone;
+  // 매장 타임존 — 미로딩 시 KL 폴백(CashDrawerOps 와 동일). 없으면 브라우저 로컬로 "today" 가
+  // 매장 자정 경계와 어긋나 당일 내역이 누락됨(예: KL 새벽이 UTC 전날) → 반드시 매장 tz 기준.
+  const tz = store?.operationSettings?.timeZone || 'Asia/Kuala_Lumpur';
 
   const [activePeriod, setActivePeriod] = useState<PeriodType>('today');
   const [dateRange, setDateRange] = useState(() => calculatePeriodDateRange('today', tz));
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
   const [search, setSearch] = useState('');
   const [showCashDrawer, setShowCashDrawer] = useState(false);
+
+  // tz 가 store 에서 뒤늦게 로딩되면(첫 렌더 시 undefined → KL 폴백) 현재 기간을 매장 tz 기준으로 재계산.
+  // 커스텀 날짜 선택 중에는 건드리지 않음.
+  useEffect(() => {
+    if (!isCustomDateRange) setDateRange(calculatePeriodDateRange(activePeriod, tz));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tz]);
 
   const handlePeriodChange = (p: PeriodType) => { setActivePeriod(p); setIsCustomDateRange(false); setDateRange(calculatePeriodDateRange(p, tz)); };
   const handleCalendarRangeSelect = (start: string, end: string) => { setIsCustomDateRange(true); setActivePeriod('custom'); setDateRange({ start, end }); };

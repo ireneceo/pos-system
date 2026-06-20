@@ -193,7 +193,7 @@ export const ActionButton = styled.button`
 
 // 아이콘 버튼
 export const IconButton = styled.button<{ variant?: 'default' | 'edit' | 'delete' | 'view' }>`
-  padding: 6px 10px;
+  padding: 6px;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s;
