@@ -1,6 +1,22 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-20 (**백스테이지 운영 배포 완료** — 시재 차이 원장 자동기입 + 시재 "오늘" 타임존 버그 픽스 + 액션버튼 통일. Backup 20260620_193147, 스모크 9/9, 운영 검증 통과(source 컬럼 prod 적용·익명 401·페이지 200). 버전 미상승(백스테이지). 직전 v3.60 = PIN 로그인 + 시재관리/최종마감 + 예약↔플로어 등.)
+> **최종 업데이트:** 2026-06-20 (**백스테이지 운영 배포 완료** — 할인 PIN 승인이 금액/% 할인·결제창에서도 뜨도록 누락 경로 게이트. Backup 20260620_195910, 스모크 9/9, 운영 검증 통과(번들 main.46dad59d·익명 401·pos 200). 버전 미상승. 같은 날 앞서 시재 차이 원장 자동기입+시재 tz 버그+액션버튼 통일도 배포. 직전 정식판 v3.60.)
+
+## ✅ 완료: 할인 PIN 승인 누락 경로 게이트 (2026-06-20, 백스테이지 운영 배포)
+
+> 매장 설정 '할인 PIN 필수'(requirePinForDiscount) ON 이어도 PIN 모달이 안 뜨던 문제. 원인=PIN 게이트가 정책버튼(Staff/VIP) 경로에만 있고 실제 쓰는 ①POS 금액할인 ②POS %할인 ③결제창(PaymentModal) 할인 3경로가 설정을 아예 검사 안 함(역할 무관 누구에게도 안 뜸). 🔒 인쇄 블록 무변경(diff 0 print-line, print-guard re-bless 8/8).
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| POS 금액/% 할인 게이트 | `handleCustomAmountConfirm`/`handleCustomPercentConfirm` 를 requirePinForDiscount 뒤로. `pendingDiscount.kind`(fixed/percent) 추가, onApproved 분기 적용 | ✅ |
+| 결제창 할인 게이트 | `PaymentModal.handleApplyPaymentDiscount` → `doApplyPaymentDiscount` 분리 + PIN 게이트 + DiscountPinModal. restaurantId prop 전달 | ✅ |
+| 백엔드 확인 | `verify-pin-permission`(discount_authorize) 기존 정상 — Admin/Owner/Manager 역할 또는 권한보유 직원만 승인, 세션 전환 없음(손실방지) | ✅ |
+| 검증 | build exit0, hydration0, print-guard 8/8, health 107/107, 주문 라이프사이클+할인 재계산(17.8→5할인 12.8) 실API, verify-pin-permission 실API, POS mount 0크래시, 운영 검증 통과 | ✅ |
+
+### 수정된 파일
+- `dev-frontend/src/pages/POSTerminal/POSTerminalPage.tsx`, `dev-frontend/src/components/POSTerminal/PaymentModal.tsx`
+
+---
 
 ## ✅ 완료: 시재 차이 원장 자동기입 + 시재 "오늘" 타임존 버그 픽스 + 액션버튼 통일 (2026-06-20, 백스테이지 운영 배포)
 
