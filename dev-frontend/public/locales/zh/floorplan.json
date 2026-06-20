@@ -184,5 +184,11 @@
   "floorPlanPage.sortTime": "排序：下单时间",
   "floorPlanPage.sortAmount": "排序：金额",
   "floorPlanPage.ordersMerged": "订单已合并",
-  "floorPlanPage.mergedIntoThisOrder": "已并入此订单"
+  "floorPlanPage.mergedIntoThisOrder": "已并入此订单",
+  "reserveWarn": {
+    "title": "该桌即将有预订",
+    "body": "此桌在 {{time}} 有 {{guest}} 的预订。仍要开始堂食(walk-in)点单吗？",
+    "keep": "保留预订",
+    "proceed": "仍要点单"
+  }
 }

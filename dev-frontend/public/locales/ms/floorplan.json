@@ -184,5 +184,11 @@
   "floorPlanPage.sortTime": "Isih: Masa pesanan",
   "floorPlanPage.sortAmount": "Isih: Jumlah",
   "floorPlanPage.ordersMerged": "Pesanan Digabungkan",
-  "floorPlanPage.mergedIntoThisOrder": "digabungkan ke dalam pesanan ini"
+  "floorPlanPage.mergedIntoThisOrder": "digabungkan ke dalam pesanan ini",
+  "reserveWarn": {
+    "title": "Meja akan ditempah",
+    "body": "Meja ini ada tempahan pada {{time}} untuk {{guest}}. Mulakan pesanan walk-in juga?",
+    "keep": "Kekalkan tempahan",
+    "proceed": "Pesan juga"
+  }
 }

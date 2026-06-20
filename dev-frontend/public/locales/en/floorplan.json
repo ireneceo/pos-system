@@ -184,5 +184,11 @@
   "floorPlanPage.sortTime": "Sort: Order time",
   "floorPlanPage.sortAmount": "Sort: Amount",
   "floorPlanPage.ordersMerged": "Orders Merged",
-  "floorPlanPage.mergedIntoThisOrder": "merged into this order"
+  "floorPlanPage.mergedIntoThisOrder": "merged into this order",
+  "reserveWarn": {
+    "title": "Table reserved soon",
+    "body": "This table has a reservation at {{time}} for {{guest}}. Start a walk-in order anyway?",
+    "keep": "Keep reserved",
+    "proceed": "Order anyway"
+  }
 }

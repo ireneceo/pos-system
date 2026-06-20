@@ -16,6 +16,7 @@ interface ReservationSettings {
     max_covers_per_slot: number;
     advance_booking_days: number;
     floor_lead_minutes: number;   // P2-6: 플로어플랜에 예약을 미리 띄우는 리드타임(분)
+    order_block_lead_minutes: number; // 예약 전 워크인 주문차단 리드타임(분). 0=끔. 임박 예약 테이블 워크인 주문 시 경고.
   };
   cancellation_policy: {
     free_until_hours: number;
@@ -30,7 +31,7 @@ interface ReservationSettings {
 const DEFAULTS: ReservationSettings = {
   enabled: false,
   auto_confirm: false,
-  slot: { min_party: 1, max_party: 20, turn_time_minutes: 90, min_advance_hours: 1, duration_minutes: 30, max_covers_per_slot: 40, advance_booking_days: 60, floor_lead_minutes: 120 },
+  slot: { min_party: 1, max_party: 20, turn_time_minutes: 90, min_advance_hours: 1, duration_minutes: 30, max_covers_per_slot: 40, advance_booking_days: 60, floor_lead_minutes: 120, order_block_lead_minutes: 0 },
   cancellation_policy: { free_until_hours: 24 },
   no_show_policy: { grace_minutes: 30, block_after_count: 3 },
   closed_dates: []
@@ -49,6 +50,7 @@ export default function ReservationSettingsTab() {
   const turnTimeRef = useRef<AutoSaveHandle>(null);
   const advanceHoursRef = useRef<AutoSaveHandle>(null);
   const floorLeadRef = useRef<AutoSaveHandle>(null);
+  const orderBlockRef = useRef<AutoSaveHandle>(null);
   const cancelHoursRef = useRef<AutoSaveHandle>(null);
   const graceRef = useRef<AutoSaveHandle>(null);
   const blockAfterRef = useRef<AutoSaveHandle>(null);
@@ -163,6 +165,14 @@ export default function ReservationSettingsTab() {
                 onChange={v => { setSettings({ ...settings, slot: { ...settings.slot, floor_lead_minutes: v } }); floorLeadRef.current?.triggerSave(); }} />
             </AutoSaveField>
             <Sub>How early a table shows "Reserved" on the floor plan before the booking time.</Sub>
+          </Field>
+          <Field>
+            <Label>Block walk-in orders before reservation (minutes)</Label>
+            <AutoSaveField ref={orderBlockRef} onSave={save}>
+              <Number value={settings.slot.order_block_lead_minutes} min={0} max={240} step={15}
+                onChange={v => { setSettings({ ...settings, slot: { ...settings.slot, order_block_lead_minutes: v } }); orderBlockRef.current?.triggerSave(); }} />
+            </AutoSaveField>
+            <Sub>0 = off. Starting a walk-in order on a reserved table within this window warns staff (manager can proceed). Check-in of the reserved guest is never blocked.</Sub>
           </Field>
         </Grid>
       </Card>

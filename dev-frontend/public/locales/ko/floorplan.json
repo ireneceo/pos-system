@@ -184,5 +184,11 @@
   "floorPlanPage.sortTime": "정렬: 주문시간",
   "floorPlanPage.sortAmount": "정렬: 금액",
   "floorPlanPage.ordersMerged": "주문 합침",
-  "floorPlanPage.mergedIntoThisOrder": "이 주문으로 합쳐짐"
+  "floorPlanPage.mergedIntoThisOrder": "이 주문으로 합쳐짐",
+  "reserveWarn": {
+    "title": "곧 예약된 테이블",
+    "body": "이 테이블은 {{time}}에 {{guest}} 예약이 있습니다. 그래도 워크인 주문을 진행할까요?",
+    "keep": "예약 유지",
+    "proceed": "그래도 주문"
+  }
 }

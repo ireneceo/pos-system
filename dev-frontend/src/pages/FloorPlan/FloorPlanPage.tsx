@@ -415,6 +415,10 @@ const FloorPlanPage: React.FC = () => {
   // 예약↔플로어플랜 (P2-6) — 오늘 confirmed/arrived 예약 + 리드타임(설정).
   const [reservations, setReservations] = useState<any[]>([]);
   const [reservationLeadMinutes, setReservationLeadMinutes] = useState(120);
+  // 예약 전 주문차단 리드타임(분) — 0=끔. 워크인 주문이 임박 예약 테이블에 들어올 때 경고(매니저 강행 허용).
+  const [orderBlockLeadMinutes, setOrderBlockLeadMinutes] = useState(0);
+  // 경고 모달: 예약 임박 테이블 워크인 주문 시 { reservation, opts } 보관 → '그래도 주문' 시 override 진행.
+  const [reserveWarn, setReserveWarn] = useState<{ reservation: any; opts?: any } | null>(null);
   // '예약됨' 점유맵 — 임박 리드창 안 + 활성 주문 없는 테이블만 (점유 우선 병합은 아래).
   const reservedMap = useMemo(
     () => deriveReservedTableMap(reservations, {
@@ -635,6 +639,8 @@ const FloorPlanPage: React.FC = () => {
             : restaurant.reservation_settings;
           const lead = Number(rs?.slot?.floor_lead_minutes);
           if (Number.isFinite(lead) && lead >= 0) setReservationLeadMinutes(lead);
+          const blk = Number(rs?.slot?.order_block_lead_minutes);
+          if (Number.isFinite(blk) && blk >= 0) setOrderBlockLeadMinutes(blk);
         }
       } catch (err) {
         console.error('Failed to load floor plan:', err);
@@ -1147,7 +1153,30 @@ const FloorPlanPage: React.FC = () => {
   // (POSOverlayHeader with × Close) is the only close path, and Floor Plan state (zone filter, statuses,
   // socket subscription) is preserved by staying in this route.
   // Add new launch types here as new opts keys; do not split into separate functions.
-  const handleNewOrder = (opts?: { takeaway?: boolean; mergeOrderId?: number; guests?: number }) => {
+  // 예약 임박 테이블 워크인 주문 차단(경고+강행). 'confirmed'(미도착) 예약만 — 체크인(arrived) 손님은 통과.
+  const findBlockingReservation = () => {
+    if (!orderBlockLeadMinutes || orderBlockLeadMinutes <= 0) return null;
+    if (!selectedTableId && !selectedTable) return null;
+    const now = Date.now();
+    const leadMs = orderBlockLeadMinutes * 60000;
+    for (const r of (reservations || [])) {
+      if (!r || r.status !== 'confirmed') continue;
+      const key = r.floor_plan_table_id || r.table_number;
+      if (key !== selectedTableId && key !== selectedTable) continue;
+      const at = new Date(r.reserved_at).getTime();
+      if (!at || Number.isNaN(at)) continue;
+      const turnMs = (Number(r.turn_minutes) || 90) * 60000;
+      if (now >= at - leadMs && now <= at + turnMs) return r;
+    }
+    return null;
+  };
+
+  const handleNewOrder = (opts?: { takeaway?: boolean; mergeOrderId?: number; guests?: number; override?: boolean }) => {
+    // 워크인(매장식사 신규)만 검사 — 포장/체크인/Add-items 머지는 제외.
+    if (!opts?.takeaway && !opts?.mergeOrderId && !opts?.override) {
+      const br = findBlockingReservation();
+      if (br) { setReserveWarn({ reservation: br, opts }); return; }
+    }
     const params = new URLSearchParams();
     // Add Items (#7) — 기존 주문에 머지(새 주문 생성 방지). POS 가 forceMergeIntoOrderId 로 합친다.
     if (opts?.mergeOrderId) params.set('mergeOrderId', String(opts.mergeOrderId));
@@ -2389,6 +2418,31 @@ const FloorPlanPage: React.FC = () => {
         onClose={() => setShowSettlement(false)}
       />
       <CashDrawerModal restaurantId={user?.restaurantId || restaurantId} isOpen={showCashDrawer} onClose={() => setShowCashDrawer(false)} />
+
+      {/* 예약 임박 테이블 워크인 주문 경고 (매니저 강행 허용) */}
+      {reserveWarn && (
+        <CommonModal isOpen onClose={() => setReserveWarn(null)} title={t('floorplan:reserveWarn.title', { defaultValue: 'Table reserved soon' })} size="small">
+          <div style={{ padding: 2 }}>
+            <p style={{ margin: '0 0 14px', fontSize: 14, color: '#0A2540', lineHeight: 1.6 }}>
+              {t('floorplan:reserveWarn.body', {
+                defaultValue: 'This table has a reservation at {{time}} for {{guest}}. Start a walk-in order anyway?',
+                time: (() => { try { return formatDateTime(reserveWarn.reservation.reserved_at, operationSettings, { hour: '2-digit', minute: '2-digit' }); } catch { return ''; } })(),
+                guest: reserveWarn.reservation.guest_name || '-'
+              })}
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button type="button" onClick={() => setReserveWarn(null)}
+                style={{ padding: '10px 18px', borderRadius: 8, border: '1px solid #E6EBF1', background: '#fff', color: '#6B7C93', fontWeight: 600, cursor: 'pointer' }}>
+                {t('floorplan:reserveWarn.keep', { defaultValue: 'Keep reserved' })}
+              </button>
+              <button type="button" onClick={() => { const o = reserveWarn.opts; setReserveWarn(null); handleNewOrder({ ...(o || {}), override: true }); }}
+                style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: '#F59E0B', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>
+                {t('floorplan:reserveWarn.proceed', { defaultValue: 'Order anyway' })}
+              </button>
+            </div>
+          </div>
+        </CommonModal>
+      )}
 
       {/* ── Table Move picker ───────────────────────────────────────────────
           Pick a destination table for the order being moved. Occupied tables are
