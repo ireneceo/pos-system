@@ -52,10 +52,14 @@
 - **Irene 테스트 체크리스트 작성** — `docs/TEST_CHECKLIST_2026-06-20.md`.
 - 검증: 주문루트 30/30 · 예약루프 10/10 · 하드닝 13/13 · Cash Phase2 18/18 · health 101/101 · 인쇄계약 8/8 · build0 · hydration0 · timezone0 · i18n0 · print-guard 8/8(orders-crud print-neutral re-bless) · mount 변경 critical 전수 0크래시.
 
-### 다음 확정 작업 (Cash Up 재설계 — 2026-06-20 Irene 결정)
-- **Cash Up 시재/마감 분리 재설계**: 업계표준대로 (1) **시재관리**=현금서랍 전용(개시현금·입출금·마감현금 이월) (2) **결제마감(settlement/Z-Report)**=**모든 결제수단(현금·카드타입별·QR·이월렛 등) 전수 대조**. 둘을 별도 흐름으로 분리 + **히스토리 화면 추가**(현재 GET /shift/history 데이터는 저장되나 UI 없음) + 사이드바 메뉴 재배치(최상위 단독 → 리포트/정산 하위 검토).
-  - 현 구현 사실: computeExpected 가 이미 cash/card(type)/other(=qr/ewallet) 수단별 SUM. card_type 은 POS PaymentModal 에서 캡처(requireCardType 토글). **카드 결제기 자동연동 없음 — 마감 때 단말 배치영수증 보고 수동입력**(비연동 표준). 이 점 UI 안내 필요.
-  - 미배포 Cash Up 은 이 재설계 전까지 **배포 보류 권고**. PIN·예약·취소사유·하드닝은 배포 가능.
+### 진행 중 — Cash Up 시재/마감 분리 재설계 (2026-06-20 Irene 결정, 2단계 중 1단계 완료)
+**핵심 발견:** 마감/데일리 스테이트먼트는 **이미 존재** — `Reports/DailySettlementPrint.tsx`(총매출·할인·세금·순매출·수단별·카드타입별·취소/미수 모달)가 **FloorPlanPage·LiveOrdersPage·ReportsPage 3곳에서 이미 열림**. Irene가 원한 "마감=플로어/라이브" 위치에 이미 있음. 그래서 "Cash Up" 단독메뉴가 중복/혼란.
+**Irene 확정 방향:** (1) 시재관리=현금서랍 별개, **POS(access_pos) 권한 스탭 사용** (2) 마감(전수단 대조+close+Z-Report)=**기존 Daily Settlement에 통합**.
+- **✅ 1단계 완료(커밋 3f9cde2d)**: 사이드바 'Cash Up'(RA/Owner) → '시재관리'(cash-drawer, access_pos 포함) · 라우트 /cash-drawer(+/cash-up 호환) · i18n nav.cashDrawer 4언어. build/i18n/mount 검증.
+- **⬜ 2단계 남음(다음)**: ① DailySettlementPrint 에 "교대 마감" 섹션 추가 — 현재 open shift 의 전수단 블라인드 카운트→대조(variance)→마감확정(close)→Z-Report (매니저 RA/Owner 게이트). buildZReportHTML(CashUpPage 에 있음) 공유 util 화. ② CashUpPage(시재관리) 를 **현금서랍 전용**으로 정리(개시현금·입출금·서랍·현금카운트만, 카드/전수단 reconcile·close 제거→마감으로 이동). ③ shift/history UI(마감 이력) 노출.
+  - ⚠️ DailySettlementPrint 는 FloorPlan/LiveOrders(인쇄 인접)에서 렌더 → **기존 print 로직 무수정, 신규 섹션만 추가**. billPrint 무수정.
+  - 현 구현 사실: computeExpected 가 cash/card(type)/other(qr/ewallet) 수단별 SUM. card_type=POS PaymentModal 캡처. **카드 결제기 자동연동 없음 → 마감 때 단말 배치영수증 수동입력**(비연동 표준, UI 안내 필요).
+- **배포 보류 권고:** Cash Up 관련은 2단계 완료까지 보류. PIN·예약·취소사유·하드닝·보안픽스는 배포 가능.
 
 ### (이전) 배포 대기
 - **배포 (Irene 내일 테스트 후 지시 시)**: 미배포 묶음 전체(6/19 PIN로그인[+차단버그 수정]·PayPal·취소사유 + Cash-up Phase1·2 + 하드닝 + P2-6 예약↔플로어 + 예약-주문 루프) `/배포`. 마이그 **5종**(currency·qz·cash-management·reservation-fpti·cash-phase2, deploy 9a-2 등록됨 — PIN 픽스는 코드만이라 신규 마이그 없음). **SW_VERSION bump 필요**(프론트 변경). 배포 후 운영검증 + 실프린터 확인(Z-Report·드로어·주방티켓·유효 PIN).
