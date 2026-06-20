@@ -55,11 +55,11 @@
 ### 진행 중 — Cash Up 시재/마감 분리 재설계 (2026-06-20 Irene 결정, 2단계 중 1단계 완료)
 **핵심 발견:** 마감/데일리 스테이트먼트는 **이미 존재** — `Reports/DailySettlementPrint.tsx`(총매출·할인·세금·순매출·수단별·카드타입별·취소/미수 모달)가 **FloorPlanPage·LiveOrdersPage·ReportsPage 3곳에서 이미 열림**. Irene가 원한 "마감=플로어/라이브" 위치에 이미 있음. 그래서 "Cash Up" 단독메뉴가 중복/혼란.
 **Irene 확정 방향:** (1) 시재관리=현금서랍 별개, **POS(access_pos) 권한 스탭 사용** (2) 마감(전수단 대조+close+Z-Report)=**기존 Daily Settlement에 통합**.
-- **✅ 1단계 완료(커밋 3f9cde2d)**: 사이드바 'Cash Up'(RA/Owner) → '시재관리'(cash-drawer, access_pos 포함) · 라우트 /cash-drawer(+/cash-up 호환) · i18n nav.cashDrawer 4언어. build/i18n/mount 검증.
-- **⬜ 2단계 남음(다음)**: ① DailySettlementPrint 에 "교대 마감" 섹션 추가 — 현재 open shift 의 전수단 블라인드 카운트→대조(variance)→마감확정(close)→Z-Report (매니저 RA/Owner 게이트). buildZReportHTML(CashUpPage 에 있음) 공유 util 화. ② CashUpPage(시재관리) 를 **현금서랍 전용**으로 정리(개시현금·입출금·서랍·현금카운트만, 카드/전수단 reconcile·close 제거→마감으로 이동). ③ shift/history UI(마감 이력) 노출.
-  - ⚠️ DailySettlementPrint 는 FloorPlan/LiveOrders(인쇄 인접)에서 렌더 → **기존 print 로직 무수정, 신규 섹션만 추가**. billPrint 무수정.
-  - 현 구현 사실: computeExpected 가 cash/card(type)/other(qr/ewallet) 수단별 SUM. card_type=POS PaymentModal 캡처. **카드 결제기 자동연동 없음 → 마감 때 단말 배치영수증 수동입력**(비연동 표준, UI 안내 필요).
-- **배포 보류 권고:** Cash Up 관련은 2단계 완료까지 보류. PIN·예약·취소사유·하드닝·보안픽스는 배포 가능.
+- **✅ 1단계 완료(커밋 3f9cde2d)**: 사이드바 'Cash Up'(RA/Owner) → '시재관리'(cash-drawer, access_pos 포함) · 라우트 /cash-drawer(+/cash-up 호환) · i18n nav.cashDrawer 4언어.
+- **✅ 2단계 완료(커밋 be73c414 doc + 다음 feat 커밋)**: ① **FinalSettlementPanel(신규)** = Daily Settlement 모달에 "최종 마감" — 전수단 블라인드 실제입력→reconcile(예상 대조)→수단별 차이(과부족)→close→Z-Report. 매니저(RA/Owner)+오늘+open shift 만 노출. 엔진 재사용, 인쇄는 printSettlementReport export만(🔒billPrint 무수정). ② **CashUpPage→시재관리 재작성** = 현금 책임관리 전용(개시현금·입출금·현재시재 원장·서랍). 전수단 마감 제거. ③ i18n cash.json 4언어. 검증: build0·i18n0·mount(cash-drawer/floor/live)0크래시·health 107/107·print-guard 8/8(MainLayout 사이드바 print-neutral re-bless).
+- **⬜ 3단계 남음(소): 마감 이력(shift/history) 화면** — GET /shift/history 데이터 저장됨, 조회 UI만 추가(Daily Settlement 또는 시재관리에 이력 탭/리스트).
+  - 현 구현 사실: computeExpected 가 cash/card(type)/other(qr/ewallet) 수단별 SUM. card_type=POS PaymentModal 캡처. **카드 결제기 자동연동 없음 → 마감 때 단말 배치영수증 수동입력**(비연동 표준 — FinalSettlementPanel hint 에 안내됨).
+- **배포 보류 권고:** Cash 관련은 실프린터(Z-Report) 확인까지 보류. PIN·예약·취소사유·하드닝·보안픽스는 배포 가능.
 
 ### (이전) 배포 대기
 - **배포 (Irene 내일 테스트 후 지시 시)**: 미배포 묶음 전체(6/19 PIN로그인[+차단버그 수정]·PayPal·취소사유 + Cash-up Phase1·2 + 하드닝 + P2-6 예약↔플로어 + 예약-주문 루프) `/배포`. 마이그 **5종**(currency·qz·cash-management·reservation-fpti·cash-phase2, deploy 9a-2 등록됨 — PIN 픽스는 코드만이라 신규 마이그 없음). **SW_VERSION bump 필요**(프론트 변경). 배포 후 운영검증 + 실프린터 확인(Z-Report·드로어·주방티켓·유효 PIN).
