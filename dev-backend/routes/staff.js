@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 
 // PIN 로그인 (P1-4) — 공용 POS 단말 1차 로그인. 토큰이 없는 익명 상태에서 호출되므로
 // 반드시 router.use(authenticateToken) "위"에 두어 공개로 노출한다. (server.js 의 pinLimiter
@@ -89,7 +89,8 @@ router.post('/verify-pin', async (req, res) => {
 router.use(authenticateToken);
 
 // Get all staff for a restaurant
-router.get('/', async (req, res) => {
+// checkRestaurantAccess: 교차테넌트 차단 — 없으면 타매장 staff 명단+pin_code 유출(IDOR P0, 2026-06-20 감사).
+router.get('/', checkRestaurantAccess, async (req, res) => {
   try {
     const restaurantId = req.query.restaurantId || req.user.restaurant_id;
 
@@ -123,7 +124,9 @@ router.get('/', async (req, res) => {
 router.post('/verify-pin-permission', async (req, res) => {
   try {
     const { pin_code, permission } = req.body;
-    const restaurantId = req.body.restaurant_id || req.user.restaurant_id;
+    // 교차테넌트 PIN 프로빙 차단 — restaurant_id 는 항상 인증 사용자 매장으로 고정(body 무시).
+    // (body 신뢰 시 타매장 매니저 PIN 무차별 추측 가능 — pinLimiter 는 /verify-pin 만 보호) (감사 P1).
+    const restaurantId = req.user.restaurant_id;
     if (!pin_code || !restaurantId) {
       return res.status(400).json({ success: false, message: 'PIN code and restaurant ID are required' });
     }

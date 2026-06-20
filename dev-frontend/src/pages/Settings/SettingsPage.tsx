@@ -1682,13 +1682,19 @@ const SettingsPage: React.FC = () => {
   useEffect(() => {
     const savedTableSettings = localStorage.getItem('tableSettings');
     if (savedTableSettings) {
-      const parsedSettings = JSON.parse(savedTableSettings);
+      let parsedSettings: any;
+      try {
+        parsedSettings = JSON.parse(savedTableSettings);
+      } catch {
+        // 손상된 캐시 → 크래시 대신 무시(설정 페이지 mount 보호). 형제 파서(:951,:1479)와 동일 패턴.
+        return;
+      }
       // Merge with current defaults so newly-added fields (e.g. externalQRs) are
       // not lost when loading legacy localStorage payloads that pre-date them.
       setTableSettings(prev => ({
         ...prev,
         ...parsedSettings,
-        externalQRs: Array.isArray(parsedSettings.externalQRs) ? parsedSettings.externalQRs : [],
+        externalQRs: Array.isArray(parsedSettings?.externalQRs) ? parsedSettings.externalQRs : [],
       }));
     }
   }, []);

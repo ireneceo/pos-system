@@ -324,6 +324,34 @@ function defineSecurityTests({ customerToken, member, restId }) {
     const r = await request('PUT', `/membership/settings/${otherRid}`, { is_active: true }, { Authorization: `Bearer ${tk}` });
     return r.status === 403;
   });
+  // Cross-tenant IDOR — 2026-06-20 감사로 발견·수정 (?restaurantId 무검증). 영구 가드.
+  test('security', '다른 RA가 cross-tenant /staff?restaurantId → 403 (직원명단+PIN 유출 차단)', async () => {
+    const User = require('../models/User');
+    const ra = await User.findOne({ where: { role: 'Restaurant Admin' } });
+    if (!ra || !ra.restaurant_id) return true;
+    const otherRid = ra.restaurant_id === restId ? restId + 1 : restId;
+    const tk = jwt.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const r = await request('GET', `/staff?restaurantId=${otherRid}`, null, { Authorization: `Bearer ${tk}` });
+    return r.status === 403;
+  });
+  test('security', '다른 RA가 cross-tenant /categories?restaurantId → 403', async () => {
+    const User = require('../models/User');
+    const ra = await User.findOne({ where: { role: 'Restaurant Admin' } });
+    if (!ra || !ra.restaurant_id) return true;
+    const otherRid = ra.restaurant_id === restId ? restId + 1 : restId;
+    const tk = jwt.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const r = await request('GET', `/categories?restaurantId=${otherRid}`, null, { Authorization: `Bearer ${tk}` });
+    return r.status === 403;
+  });
+  test('security', '다른 RA가 cross-tenant /import/history?restaurant_id → 403 (대량입력 IDOR)', async () => {
+    const User = require('../models/User');
+    const ra = await User.findOne({ where: { role: 'Restaurant Admin' } });
+    if (!ra || !ra.restaurant_id) return true;
+    const otherRid = ra.restaurant_id === restId ? restId + 1 : restId;
+    const tk = jwt.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const r = await request('GET', `/import/history?restaurant_id=${otherRid}`, null, { Authorization: `Bearer ${tk}` });
+    return r.status === 403;
+  });
 
   // Cross-tenant IDOR — Phase 1 (2026-06-08): query-param scoped endpoints that
   // previously trusted ?restaurantId blindly (coupons / option-groups / store).

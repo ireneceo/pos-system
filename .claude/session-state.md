@@ -5,6 +5,22 @@
 **버전:** v3.59 운영 배포됨 (2026-06-19, Backup 20260619_065629). (버전은 /배포 시에만 갱신)
 **작업 상태:** 완료. 미배포 묶음(6/19~6/20) 전수 재검증 완료 — **Irene 수동 테스트 + 배포 지시 대기**.
 
+### 🔒 배포 전 전체 아키텍처 감사 (2026-06-20, 병렬 3에이전트) — 보안 IDOR 클러스터 발견·수정
+**배포 판정: 런타임 초록불이나 교차테넌트 IDOR 클러스터 발견 → 수정 후 배포 가능.** 감사로 찾은 P0/P1 수정 완료:
+- **staff.js GET / IDOR + PIN 유출(P0)**: `?restaurantId=타매장` 으로 타매장 직원명단+pin_code 유출 가능했음 → `checkRestaurantAccess` 추가. 실호출 검증 타매장403/자기200.
+- **staff.js verify-pin-permission 교차테넌트 PIN 프로빙(P1)**: restaurant_id 를 req.user 로 고정(body 무시).
+- **import.js 교차테넌트 대량입력(P0)**: execute-categories/menu/options/orders 가 body.restaurant_id 신뢰 → 타매장에 메뉴/카테고리/옵션 WRITE 가능했음 → `checkRestaurantAccess` 추가(멀티파트라 upload 뒤). history/stats IDOR 읽기 + undo/:batchId 교차테넌트 삭제도 가드.
+- **categories.js GET / IDOR 읽기(P0)**: `checkRestaurantAccess` 추가.
+- **SettingsPage.tsx JSON.parse 크래시(P0 프론트)**: tableSettings 손상 시 설정페이지 mount 크래시 → try/catch 가드.
+- **server.js 프로세스 크래시 가드(P1)**: unhandledRejection 로깅(워커 생존)·uncaughtException graceful 종료 추가.
+- **영구 가드**: health-check IDOR 3건 추가(104→**107/107**): 교차테넌트 staff/categories/import.
+- **오탐 정정**: optionGroups.js 는 이미 userCanAccessRestaurant 가드 있음(변경X). contracts.js 는 entity 범위로 1차 차단(엣지케이스만, 보류).
+- 검증: health **107/107** · print-guard **8/8**(생명선 무영향) · build 0(Settings) · mount(settings·cash-up) 0크래시.
+- **남은 정리(P1/P2, 배포 비차단)**: restaurants-crud.js 등 레거시 `{error:}` 응답형식(9곳)·오버사이즈 파일(orders-crud 2752줄·SettingsPage 8451줄 등)·npm audit HIGH(거의 transitive ws/socket.io, `npm audit fix` 비파괴). 신규 페이지 i18n(예약 타임라인 하드코딩·CashUp 헤더). → 다음 사이클.
+
+### 📘 인앱 Docs/매뉴얼 시스템 기획 (2026-06-20, Irene 지시)
+- **`docs/IN_APP_DOCS_MANUAL_SYSTEM.md`** 작성. 핵심: 랜딩=인앱Docs=AddonModule **단일 콘텐츠 소스(DocArticle + module_code 매핑)** 동기화 + 사이드바 Docs + **팝아웃 창** + 컨텍스트 도움말. 5 Phase 로드맵. Cash Up 재설계 결과를 첫 Article 샘플로. **미결정 3건**(저장=DB권장 / 랜딩 즉시전환 / 편집권한)은 Irene 결정 대기.
+
 ### 🐛 재검증 중 발견·수정 (2026-06-20) — PIN 로그인 차단 버그
 - **증상:** 신규 P1-4 직원 PIN 로그인이 **익명 상태에서 항상 401** → PIN 로그인 자체가 동작 불가.
 - **원인:** `routes/staff.js` 의 `router.use(authenticateToken)` 가 1차 로그인용 `/verify-pin` 까지 막음 (authenticateToken 은 Authorization 헤더만 읽고 쿠키 폴백 없음 → 토큰 없는 로그인은 무조건 401). server.js 주석은 "verify-pin = unauthenticated primary login" 으로 의도 명시 → router-level 가드가 누락 검토.
@@ -36,7 +52,12 @@
 - **Irene 테스트 체크리스트 작성** — `docs/TEST_CHECKLIST_2026-06-20.md`.
 - 검증: 주문루트 30/30 · 예약루프 10/10 · 하드닝 13/13 · Cash Phase2 18/18 · health 101/101 · 인쇄계약 8/8 · build0 · hydration0 · timezone0 · i18n0 · print-guard 8/8(orders-crud print-neutral re-bless) · mount 변경 critical 전수 0크래시.
 
-### 다음 확정 작업
+### 다음 확정 작업 (Cash Up 재설계 — 2026-06-20 Irene 결정)
+- **Cash Up 시재/마감 분리 재설계**: 업계표준대로 (1) **시재관리**=현금서랍 전용(개시현금·입출금·마감현금 이월) (2) **결제마감(settlement/Z-Report)**=**모든 결제수단(현금·카드타입별·QR·이월렛 등) 전수 대조**. 둘을 별도 흐름으로 분리 + **히스토리 화면 추가**(현재 GET /shift/history 데이터는 저장되나 UI 없음) + 사이드바 메뉴 재배치(최상위 단독 → 리포트/정산 하위 검토).
+  - 현 구현 사실: computeExpected 가 이미 cash/card(type)/other(=qr/ewallet) 수단별 SUM. card_type 은 POS PaymentModal 에서 캡처(requireCardType 토글). **카드 결제기 자동연동 없음 — 마감 때 단말 배치영수증 보고 수동입력**(비연동 표준). 이 점 UI 안내 필요.
+  - 미배포 Cash Up 은 이 재설계 전까지 **배포 보류 권고**. PIN·예약·취소사유·하드닝은 배포 가능.
+
+### (이전) 배포 대기
 - **배포 (Irene 내일 테스트 후 지시 시)**: 미배포 묶음 전체(6/19 PIN로그인[+차단버그 수정]·PayPal·취소사유 + Cash-up Phase1·2 + 하드닝 + P2-6 예약↔플로어 + 예약-주문 루프) `/배포`. 마이그 **5종**(currency·qz·cash-management·reservation-fpti·cash-phase2, deploy 9a-2 등록됨 — PIN 픽스는 코드만이라 신규 마이그 없음). **SW_VERSION bump 필요**(프론트 변경). 배포 후 운영검증 + 실프린터 확인(Z-Report·드로어·주방티켓·유효 PIN).
 
 ### 후속 후보 (아이디어 메모, 확정 X)

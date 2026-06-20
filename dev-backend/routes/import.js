@@ -3,7 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const csv = require('csv-parser');
 const { Readable } = require('stream');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, checkRestaurantAccess, userCanAccessRestaurant } = require('../middleware/auth');
 const Category = require('../models/Category');
 const Product = require('../models/Product');
 const OptionGroup = require('../models/OptionGroup');
@@ -172,7 +172,7 @@ router.post('/preview', authenticateToken, upload.single('file'), async (req, re
 /**
  * POST /api/import/execute-categories
  */
-router.post('/execute-categories', authenticateToken, upload.single('file'), async (req, res) => {
+router.post('/execute-categories', authenticateToken, upload.single('file'), checkRestaurantAccess, async (req, res) => {
   try {
     const restaurantId = req.body.restaurant_id || req.user.restaurant_id;
     if (!restaurantId) return res.status(400).json({ success: false, message: 'restaurant_id is required' });
@@ -232,7 +232,7 @@ router.post('/execute-categories', authenticateToken, upload.single('file'), asy
 /**
  * POST /api/import/execute-menu
  */
-router.post('/execute-menu', authenticateToken, upload.single('file'), async (req, res) => {
+router.post('/execute-menu', authenticateToken, upload.single('file'), checkRestaurantAccess, async (req, res) => {
   try {
     const restaurantId = req.body.restaurant_id || req.user.restaurant_id;
     if (!restaurantId) return res.status(400).json({ success: false, message: 'restaurant_id is required' });
@@ -327,7 +327,7 @@ router.post('/execute-menu', authenticateToken, upload.single('file'), async (re
 /**
  * POST /api/import/execute-options
  */
-router.post('/execute-options', authenticateToken, upload.single('file'), async (req, res) => {
+router.post('/execute-options', authenticateToken, upload.single('file'), checkRestaurantAccess, async (req, res) => {
   try {
     const restaurantId = req.body.restaurant_id || req.user.restaurant_id;
     if (!restaurantId) return res.status(400).json({ success: false, message: 'restaurant_id is required' });
@@ -422,7 +422,7 @@ router.post('/execute-options', authenticateToken, upload.single('file'), async 
 /**
  * POST /api/import/execute-orders
  */
-router.post('/execute-orders', authenticateToken, upload.single('file'), async (req, res) => {
+router.post('/execute-orders', authenticateToken, upload.single('file'), checkRestaurantAccess, async (req, res) => {
   try {
     const restaurantId = req.body.restaurant_id || req.user.restaurant_id;
     if (!restaurantId) return res.status(400).json({ success: false, message: 'restaurant_id is required' });
@@ -615,7 +615,7 @@ router.post('/apply-matching', authenticateToken, async (req, res) => {
  * GET /api/import/history
  * Import 히스토리 조회
  */
-router.get('/history', authenticateToken, async (req, res) => {
+router.get('/history', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const restaurantId = req.query.restaurant_id || req.user.restaurant_id;
     if (!restaurantId) return res.status(400).json({ success: false, message: 'restaurant_id is required' });
@@ -641,6 +641,10 @@ router.delete('/undo/:batchId', authenticateToken, async (req, res) => {
     const { batchId } = req.params;
     const history = await ImportHistory.findOne({ where: { batch_id: batchId } });
     if (!history) return res.status(404).json({ success: false, message: 'Import batch not found' });
+    // 교차테넌트 undo(삭제) 차단 — 배치 소유 매장 접근권 확인 (IDOR write, 2026-06-20 감사 P0).
+    if (!(await userCanAccessRestaurant(req.user, history.restaurant_id))) {
+      return res.status(403).json({ success: false, message: 'Access denied to this import batch' });
+    }
     if (history.status === 'undone') return res.status(400).json({ success: false, message: 'Already undone' });
 
     const ids = JSON.parse(history.imported_ids || '[]');
@@ -673,7 +677,7 @@ router.delete('/undo/:batchId', authenticateToken, async (req, res) => {
  * GET /api/import/stats
  * 현재 DB의 카테고리/메뉴/주문 건수 조회
  */
-router.get('/stats', authenticateToken, async (req, res) => {
+router.get('/stats', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const restaurantId = req.query.restaurant_id || req.user.restaurant_id;
     if (!restaurantId) return res.status(400).json({ success: false, message: 'restaurant_id is required' });

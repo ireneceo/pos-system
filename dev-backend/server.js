@@ -140,6 +140,18 @@ process.on('SIGINT', () => {
   });
 });
 
+// 프로세스 크래시 가드 (2026-06-20 감사) — 미처리 Promise 거부는 Node 15+ 에서 기본 워커 종료.
+// 요청 단위 거부로 매장 전체 백엔드가 죽으면 영업 마비 → 로깅만 하고 살린다(가용성 우선).
+process.on('unhandledRejection', (reason) => {
+  console.error('[FATAL] Unhandled Promise Rejection:', reason);
+});
+// uncaughtException 은 프로세스 상태가 불확실 → 로깅 후 graceful 종료(PM2 가 재시작).
+process.on('uncaughtException', (err) => {
+  console.error('[FATAL] Uncaught Exception:', err);
+  try { server.close(() => process.exit(1)); } catch { process.exit(1); }
+  setTimeout(() => process.exit(1), 5000).unref();
+});
+
 // ============================================
 // 보안 미들웨어 설정
 // ============================================

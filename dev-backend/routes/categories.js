@@ -3,14 +3,15 @@ const router = express.Router();
 const Product = require('../models/Product');
 const Category = require('../models/Category');
 const { Op } = require('sequelize');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const { logActivity } = require('../utils/activityLogger');
 
 // Apply authentication to all routes
 router.use(authenticateToken);
 
 // Get all categories
-router.get('/', async (req, res) => {
+// checkRestaurantAccess: query.restaurantId 교차테넌트 차단 (IDOR read, 2026-06-20 감사 P0).
+router.get('/', checkRestaurantAccess, async (req, res) => {
   try {
     // Allow restaurantId from query parameter (for System Admin)
     const restaurantId = req.query.restaurantId || req.user.restaurant_id;
