@@ -1,6 +1,24 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-20 (**v3.60 운영 배포 완료** — PIN 로그인 + 시재관리/최종마감(Daily Settlement) + 예약↔플로어+예약-주문 루프 + 취소사유 + 30년차 하드닝 + 보안 IDOR 픽스. Backup 20260620_155323, 스모크 9/9, 스키마 prod=dev 일치. ⚠️배포후 Z-Report 종이·드로어·주방티켓·유효 PIN 매장 실프린터 확인 필요.)
+> **최종 업데이트:** 2026-06-20 (**백스테이지 운영 배포 완료** — 시재 차이 원장 자동기입 + 시재 "오늘" 타임존 버그 픽스 + 액션버튼 통일. Backup 20260620_193147, 스모크 9/9, 운영 검증 통과(source 컬럼 prod 적용·익명 401·페이지 200). 버전 미상승(백스테이지). 직전 v3.60 = PIN 로그인 + 시재관리/최종마감 + 예약↔플로어 등.)
+
+## ✅ 완료: 시재 차이 원장 자동기입 + 시재 "오늘" 타임존 버그 픽스 + 액션버튼 통일 (2026-06-20, 백스테이지 운영 배포)
+
+> 파이널 마감 후 현금 차이(over/short) 처리 방식 질문에서 출발 → Irene "원장에 자동 기입" 선택. 마감 **확정 시점에만** 차이를 시재 원장에 자동 기록. 추가로 라이브오더에서 넣은 현금이 시재관리 화면에 안 보이던 버그(타임존 "오늘" 오계산) + 액션 아이콘 직사각/정사각 불일치를 잡음. 🔒 인쇄 생명선 무영향(print-guard 8/8).
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 현금 차이 원장 자동기입 | `cash_movements.source`(manual/settlement) 신설. close 엔드포인트: variance.cash≠0 시 over→in/short→out 1줄 자동 기록(computeMovements 이후라 이중계상 없음, carryover=closing_balance라 무영향). settlement 행 PUT/DELETE 차단(SETTLEMENT_LOCKED). 멱등 마이그+배포 등록 | ✅ |
+| 시재 "오늘" 타임존 버그 | `CashUpPage` 가 tz 미로딩 시 브라우저 로컬로 today 계산 → 서버 UTC가 매장 새벽이면 당일 입출금 누락. KL 폴백 + tz 하이드레이션 후 dateRange 재계산. (실측: undefined→6/20 빈목록, KL→6/21 3건) | ✅ |
+| 액션 아이콘버튼 통일 | 공용 `components/UI/IconButton` padding 6px 10px→6px(라이브오더 동일 32×32 정사각). 33곳 일괄. 텍스트 사용처 0건 확인 | ✅ |
+| 검증 | health 107/107, print 8/8, 금액공식 11/11, 주문 라이프사이클(생성→단계→취소) 실호출, 반응형 6페이지×3폭 overflow 0, POS터미널 mount 0크래시, 운영 검증 통과 | ✅ |
+
+### 수정된 파일
+- `dev-backend/models/CashMovement.js`, `dev-backend/routes/cash-management.js`, `dev-backend/scripts/migrate-cash-movement-source.js`, `deploy-to-production.sh`
+- `dev-frontend/src/components/CashManagement/CashLedger.tsx`, `dev-frontend/src/pages/CashManagement/CashUpPage.tsx`, `dev-frontend/src/components/UI/TableComponents.tsx`
+- `dev-frontend/public/locales/{en,ko,zh,ms}/cash.json`
+
+---
 
 ## ✅ 완료: 미배포 묶음 전수 재검증 + PIN 로그인 버그 수정 (2026-06-20, DEV·미배포)
 
