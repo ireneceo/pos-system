@@ -6,6 +6,7 @@ import { useStore } from '../../contexts/StoreContext';
 import PageHeader from '../../components/Common/PageHeader';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import CashLedger from '../../components/CashManagement/CashLedger';
+import CashDrawerModal from '../../components/CashManagement/CashDrawerModal';
 
 // 시재관리(Cash Management) = 현금 입출금 회계 리스트 — 라이브오더 동일 구조(PageHeader + FilterToolbar + DataTable).
 // 운영(개시·캐시인/아웃·드로어)은 라이브오더/플로어플랜의 Today's Cash Drawer.
@@ -28,6 +29,11 @@ const ClearSearchButton = styled.button`
   width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 12px; color: #4B5563; padding: 0; line-height: 1;
   &:hover { background: #6B7280; }
 `;
+const HeaderBtn = styled.button`
+  display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: #F4F6F9; color: #0A2540;
+  border: 1px solid #C7CED6; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; flex-shrink: 0;
+  &:hover { background: #E6EBF1; }
+`;
 
 const CashUpPage: React.FC = () => {
   const { t } = useTranslation();
@@ -39,17 +45,21 @@ const CashUpPage: React.FC = () => {
   const [dateRange, setDateRange] = useState(() => calculatePeriodDateRange('today', tz));
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
   const [search, setSearch] = useState('');
+  const [showCashDrawer, setShowCashDrawer] = useState(false);
 
   const handlePeriodChange = (p: PeriodType) => { setActivePeriod(p); setIsCustomDateRange(false); setDateRange(calculatePeriodDateRange(p, tz)); };
   const handleCalendarRangeSelect = (start: string, end: string) => { setIsCustomDateRange(true); setActivePeriod('custom'); setDateRange({ start, end }); };
 
   return (
     <div>
-      <PageHeader
-        title={t('cash:cashMgmtTitle', { defaultValue: 'Cash Management' })}
-        settingsHref={restaurantId ? `/restaurant/${restaurantId}/settings?tab=operations` : undefined}
-        settingsLabel={t('cash:settings', { defaultValue: 'Settings' })}
-      />
+      <PageHeader title={t('cash:cashMgmtTitle', { defaultValue: 'Cash Management' })}>
+        <HeaderBtn type="button" onClick={() => setShowCashDrawer(true)} title="Today's Cash Drawer">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '16px', height: '16px' }}>
+            <path d="M2 8h20M2 8l2-4h16l2 4M2 8v10a2 2 0 002 2h16a2 2 0 002-2V8M9 13h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          {t('cash:todayCashDrawer', { defaultValue: "Today's Cash Drawer" })}
+        </HeaderBtn>
+      </PageHeader>
       <Content>
         <FilterToolbar>
           <div>
