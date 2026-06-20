@@ -4,48 +4,36 @@ import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
 import { formatDateTime } from '../../utils/timezone';
 import { getAuthToken } from '../../utils/auth';
-import DateRangeField from '../Common/DateRangeField';
-import { Modal, FormInput, ModalButton } from '../UI/Modal';
-import { C } from './cashUi';
+import {
+  DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty, DataTableAmount,
+  Modal as CommonModal, FormInput, ModalButton
+} from '../UI';
 
-// 시재 현금 입출금 회계 리스트 (통장식). 탭(오늘/과거/전체/기간) + 날짜별 그룹 + 소계/총계 + 수정/삭제.
-// 운영(개시·캐시인/아웃)은 Today's Cash Drawer(라이브/플로어). 여긴 조회·정정 전용 회계 화면.
+// 현금 입출금 회계 리스트 — 라이브오더와 동일 DataTable. 부모(시재관리 페이지)가 기간필터(dateRange) 전달.
+// 통장식 +/- 내역(날짜·사유·담당) + 행별 수정/삭제. 운영(개시·캐시인/아웃)은 Today's Cash Drawer.
 
-interface Props { restaurantId?: string; }
-type Tab = 'today' | 'past' | 'all' | 'range';
+interface Props { restaurantId?: string; dateRange: { start: string; end: string }; search?: string; }
 
-const CashLedger: React.FC<Props> = ({ restaurantId }) => {
+const CashLedger: React.FC<Props> = ({ restaurantId, dateRange, search }) => {
   const { t } = useTranslation();
   const store = useStore();
   const currency = store?.operationSettings?.currency || 'MYR';
   const opSettings = store?.operationSettings;
-  const tz = opSettings?.timeZone || 'Asia/Kuala_Lumpur';
   const fc = (n: number) => formatCurrency(Number(n) || 0, currency);
 
-  const [tab, setTab] = useState<Tab>('today');
-  const [custom, setCustom] = useState<{ start: string; end: string }>({ start: '', end: '' });
   const [list, setList] = useState<any[]>([]);
   const [summary, setSummary] = useState<{ totalIn: number; totalOut: number; net: number; count: number }>({ totalIn: 0, totalOut: 0, net: 0, count: 0 });
   const [loading, setLoading] = useState(false);
-  const [edit, setEdit] = useState<any | null>(null);   // 수정 중 movement
+  const [edit, setEdit] = useState<any | null>(null);
   const [delTarget, setDelTarget] = useState<any | null>(null);
   const [busy, setBusy] = useState(false);
-
-  const tzDay = useCallback((off = 0) => new Date(Date.now() + off * 86400000).toLocaleDateString('en-CA', { timeZone: tz }), [tz]);
-
-  const bounds = useMemo(() => {
-    if (tab === 'today') return { start: tzDay(0), end: tzDay(0) };
-    if (tab === 'past') return { start: '', end: tzDay(-1) };       // 어제까지 전부
-    if (tab === 'range') return { start: custom.start, end: custom.end };
-    return { start: '', end: '' };                                   // all
-  }, [tab, custom, tzDay]);
 
   const fetchList = useCallback(async () => {
     if (!restaurantId) return;
     setLoading(true);
     const qs = new URLSearchParams({ limit: '2000' });
-    if (bounds.start) qs.set('startDate', bounds.start);
-    if (bounds.end) qs.set('endDate', bounds.end);
+    if (dateRange.start) qs.set('startDate', dateRange.start);
+    if (dateRange.end) qs.set('endDate', dateRange.end);
     try {
       const r = await fetch(`/api/cash/restaurant/${restaurantId}/movements?${qs.toString()}`, { credentials: 'include' });
       const j = await r.json().catch(() => null);
@@ -53,7 +41,7 @@ const CashLedger: React.FC<Props> = ({ restaurantId }) => {
       setSummary(j?.summary || { totalIn: 0, totalOut: 0, net: 0, count: 0 });
     } catch { setList([]); }
     finally { setLoading(false); }
-  }, [restaurantId, bounds]);
+  }, [restaurantId, dateRange.start, dateRange.end]);
 
   useEffect(() => { fetchList(); }, [fetchList]);
 
@@ -81,124 +69,93 @@ const CashLedger: React.FC<Props> = ({ restaurantId }) => {
     if (status === 200) { setDelTarget(null); fetchList(); }
   };
 
-  const groups = useMemo(() => {
-    const dKey = (d: any) => { try { return new Date(d).toLocaleDateString('en-CA', { timeZone: tz }); } catch { return ''; } };
-    const dLabel = (d: any) => { try { return formatDateTime(d, opSettings, { year: 'numeric', month: 'short', day: 'numeric' }); } catch { return ''; } };
-    const g: any[] = [];
-    for (const m of list) {
-      const k = dKey(m.created_at || m.createdAt);
-      let grp = g.find(x => x.k === k);
-      if (!grp) { grp = { k, label: dLabel(m.created_at || m.createdAt), items: [], inSum: 0, outSum: 0 }; g.push(grp); }
-      grp.items.push(m);
-      if (m.type === 'in') grp.inSum += Number(m.amount) || 0; else grp.outSum += Number(m.amount) || 0;
-    }
-    return g;
-  }, [list, tz, opSettings]);
+  const rows = useMemo(() => {
+    const q = (search || '').trim().toLowerCase();
+    if (!q) return list;
+    return list.filter(m => (m.reason || '').toLowerCase().includes(q) || (m.created_by_name || '').toLowerCase().includes(q) || String(m.amount).includes(q));
+  }, [list, search]);
 
-  const tLabel = (d: any) => { try { return formatDateTime(d, opSettings, { hour: '2-digit', minute: '2-digit' }); } catch { return ''; } };
-  const TABS: { k: Tab; label: string }[] = [
-    { k: 'today', label: t('cash:rangeToday', { defaultValue: 'Today' }) },
-    { k: 'past', label: t('cash:rangePast', { defaultValue: 'Past' }) },
-    { k: 'all', label: t('cash:rangeAll', { defaultValue: 'All' }) },
-    { k: 'range', label: t('cash:rangeCustom', { defaultValue: 'Date range' }) },
-  ];
+  const dt = (d: any) => { try { return formatDateTime(d, opSettings, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch { return ''; } };
 
   return (
     <div>
-      {/* 탭 (라이브오더식) */}
-      <div style={{ display: 'flex', gap: 4, borderBottom: `1px solid ${C.border}`, marginBottom: 14, overflowX: 'auto' }}>
-        {TABS.map(x => (
-          <button key={x.k} type="button" onClick={() => setTab(x.k)}
-            style={{ padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap',
-              color: tab === x.k ? C.primary : C.subtle, borderBottom: tab === x.k ? `2px solid ${C.primary}` : '2px solid transparent', marginBottom: -1 }}>
-            {x.label}
-          </button>
-        ))}
-      </div>
-      {tab === 'range' && (
-        <div style={{ marginBottom: 14, maxWidth: 320 }}>
-          <DateRangeField startDate={custom.start} endDate={custom.end} onChange={(s: string, e: string) => setCustom({ start: s, end: e })} />
-        </div>
-      )}
-
-      {/* 총계 (통장 요약) */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: C.bg, borderRadius: 8, padding: '12px 16px', marginBottom: 12, flexWrap: 'wrap', gap: 6 }}>
-        <span style={{ fontSize: 13, color: C.subtle, fontWeight: 600 }}>{t('cash:total', { defaultValue: 'Total' })} · {summary.count}</span>
-        <span style={{ fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
-          <span style={{ color: C.match }}>+{fc(summary.totalIn)}</span>{'   '}
-          <span style={{ color: C.bad }}>−{fc(summary.totalOut)}</span>{'   '}
-          <span style={{ color: C.text }}>· {t('cash:netLabel', { defaultValue: 'Net' })} {fc(summary.net)}</span>
-        </span>
+      {/* 통장 요약(합계) — 표 위 한 줄 */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 18, padding: '0 4px 10px', fontSize: 13, fontWeight: 600, fontVariantNumeric: 'tabular-nums', flexWrap: 'wrap' }}>
+        <span style={{ color: '#6B7C93' }}>{t('cash:total', { defaultValue: 'Total' })} {summary.count}</span>
+        <span style={{ color: '#10B981' }}>+ {fc(summary.totalIn)}</span>
+        <span style={{ color: '#FF6B6B' }}>− {fc(summary.totalOut)}</span>
+        <span style={{ color: '#0A2540' }}>{t('cash:netLabel', { defaultValue: 'Net' })} {fc(summary.net)}</span>
       </div>
 
-      {loading ? (
-        <div style={{ fontSize: 13, color: C.subtle, padding: '16px 0', textAlign: 'center' }}>{t('common:loading', { defaultValue: 'Loading…' })}</div>
-      ) : groups.length === 0 ? (
-        <div style={{ fontSize: 13, color: C.subtle, padding: '16px 0', textAlign: 'center' }}>{t('cash:noMovements', { defaultValue: 'No cash in/out records yet.' })}</div>
-      ) : (
-        <div>
-          {groups.map(g => (
-            <div key={g.k} style={{ marginTop: 8 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '6px 2px', borderBottom: `2px solid ${C.border}` }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{g.label}</span>
-                <span style={{ fontSize: 12, color: C.subtle, fontVariantNumeric: 'tabular-nums' }}>
-                  <span style={{ color: C.match }}>+{fc(g.inSum)}</span> / <span style={{ color: C.bad }}>−{fc(g.outSum)}</span> · {t('cash:netLabel', { defaultValue: 'Net' })} {fc(g.inSum - g.outSum)}
-                </span>
-              </div>
-              {g.items.map((m: any) => {
-                const isIn = m.type === 'in';
-                return (
-                  <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '10px 2px', borderBottom: `1px solid ${C.border}` }}>
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>
-                        <span style={{ color: isIn ? C.match : C.bad }}>{isIn ? t('cash:paidIn', { defaultValue: 'Cash in' }) : t('cash:paidOut', { defaultValue: 'Cash out' })}</span>
-                        {m.reason ? <span style={{ color: C.subtle, fontWeight: 500 }}> · {m.reason}</span> : null}
-                      </div>
-                      <div style={{ fontSize: 12, color: C.subtle }}>{tLabel(m.created_at || m.createdAt)}{m.created_by_name ? ` · ${m.created_by_name}` : ''}</div>
-                    </div>
-                    <span style={{ fontSize: 15, fontWeight: 700, color: isIn ? C.match : C.bad, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{isIn ? '+' : '−'} {fc(m.amount)}</span>
-                    <div style={{ display: 'flex', gap: 4 }}>
-                      <button type="button" title={t('common:button.edit', { defaultValue: 'Edit' })} onClick={() => setEdit({ ...m, amount: String(m.amount) })}
-                        style={{ width: 30, height: 30, borderRadius: 6, border: `1px solid ${C.border}`, background: '#fff', color: C.subtle, cursor: 'pointer', fontSize: 13 }}>✎</button>
-                      <button type="button" title={t('common:button.delete', { defaultValue: 'Delete' })} onClick={() => setDelTarget(m)}
-                        style={{ width: 30, height: 30, borderRadius: 6, border: `1px solid ${C.border}`, background: '#fff', color: C.bad, cursor: 'pointer', fontSize: 15 }}>×</button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ))}
-        </div>
-      )}
+      <DataTable>
+        <DataTableHead>
+          <tr>
+            <DataTableHeaderCell>{t('cash:colDateTime', { defaultValue: 'Date / Time' })}</DataTableHeaderCell>
+            <DataTableHeaderCell>{t('cash:colType', { defaultValue: 'Type' })}</DataTableHeaderCell>
+            <DataTableHeaderCell>{t('cash:movementReason', { defaultValue: 'Reason' })}</DataTableHeaderCell>
+            <DataTableHeaderCell>{t('cash:colBy', { defaultValue: 'By' })}</DataTableHeaderCell>
+            <DataTableHeaderCell align="right">{t('cash:colAmount', { defaultValue: 'Amount' })}</DataTableHeaderCell>
+            <DataTableHeaderCell align="center" width="110px">{t('cash:colActions', { defaultValue: 'Actions' })}</DataTableHeaderCell>
+          </tr>
+        </DataTableHead>
+        <tbody>
+          {loading ? (
+            <tr><td colSpan={6}><DataTableEmpty>{t('common:loading', { defaultValue: 'Loading…' })}</DataTableEmpty></td></tr>
+          ) : rows.length === 0 ? (
+            <tr><td colSpan={6}><DataTableEmpty>{t('cash:noMovements', { defaultValue: 'No cash in/out records yet.' })}</DataTableEmpty></td></tr>
+          ) : rows.map(m => {
+            const isIn = m.type === 'in';
+            return (
+              <DataTableRow key={m.id}>
+                <DataTableCell data-label={t('cash:colDateTime', { defaultValue: 'Date / Time' })}>{dt(m.created_at || m.createdAt)}</DataTableCell>
+                <DataTableCell data-label={t('cash:colType', { defaultValue: 'Type' })}>
+                  <span style={{ fontWeight: 700, color: isIn ? '#10B981' : '#FF6B6B' }}>{isIn ? t('cash:paidIn', { defaultValue: 'Cash in' }) : t('cash:paidOut', { defaultValue: 'Cash out' })}</span>
+                </DataTableCell>
+                <DataTableCell data-label={t('cash:movementReason', { defaultValue: 'Reason' })}>{m.reason || '—'}</DataTableCell>
+                <DataTableCell data-label={t('cash:colBy', { defaultValue: 'By' })}>{m.created_by_name || '—'}</DataTableCell>
+                <DataTableCell data-label={t('cash:colAmount', { defaultValue: 'Amount' })} align="right">
+                  <DataTableAmount highlight style={{ color: isIn ? '#10B981' : '#FF6B6B' }}>{isIn ? '+ ' : '− '}{fc(m.amount)}</DataTableAmount>
+                </DataTableCell>
+                <DataTableCell data-label={t('cash:colActions', { defaultValue: 'Actions' })} align="center">
+                  <button type="button" title={t('common:button.edit', { defaultValue: 'Edit' })} onClick={() => setEdit({ ...m, amount: String(m.amount) })}
+                    style={{ width: 32, height: 32, borderRadius: 6, border: '1px solid #E6EBF1', background: '#fff', color: '#6B7C93', cursor: 'pointer', fontSize: 13, marginRight: 6 }}>✎</button>
+                  <button type="button" title={t('common:button.delete', { defaultValue: 'Delete' })} onClick={() => setDelTarget(m)}
+                    style={{ width: 32, height: 32, borderRadius: 6, border: '1px solid #E6EBF1', background: '#fff', color: '#FF6B6B', cursor: 'pointer', fontSize: 16 }}>×</button>
+                </DataTableCell>
+              </DataTableRow>
+            );
+          })}
+        </tbody>
+      </DataTable>
 
       {/* 수정 모달 */}
       {edit && (
-        <Modal isOpen onClose={() => setEdit(null)} title={t('cash:editMovement', { defaultValue: 'Edit cash movement' })} size="small"
+        <CommonModal isOpen onClose={() => setEdit(null)} title={t('cash:editMovement', { defaultValue: 'Edit cash movement' })} size="small"
           footer={<>
             <ModalButton onClick={() => setEdit(null)}>{t('cash:cancel', { defaultValue: 'Cancel' })}</ModalButton>
             <ModalButton variant="primary" disabled={busy} onClick={saveEdit}>{busy ? '…' : t('cash:save', { defaultValue: 'Save' })}</ModalButton>
           </>}>
           <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
             <button type="button" onClick={() => setEdit({ ...edit, type: 'in' })}
-              style={{ flex: 1, height: 44, borderRadius: 8, border: `1px solid ${edit.type === 'in' ? C.match : C.border}`, background: edit.type === 'in' ? '#ECFDF5' : '#fff', color: edit.type === 'in' ? C.match : C.text, fontWeight: 600, cursor: 'pointer' }}>{t('cash:paidIn', { defaultValue: 'Cash in' })}</button>
+              style={{ flex: 1, height: 44, borderRadius: 8, border: `1px solid ${edit.type === 'in' ? '#10B981' : '#E6EBF1'}`, background: edit.type === 'in' ? '#ECFDF5' : '#fff', color: edit.type === 'in' ? '#10B981' : '#0A2540', fontWeight: 600, cursor: 'pointer' }}>{t('cash:paidIn', { defaultValue: 'Cash in' })}</button>
             <button type="button" onClick={() => setEdit({ ...edit, type: 'out' })}
-              style={{ flex: 1, height: 44, borderRadius: 8, border: `1px solid ${edit.type === 'out' ? C.bad : C.border}`, background: edit.type === 'out' ? '#FFF1F1' : '#fff', color: edit.type === 'out' ? C.bad : C.text, fontWeight: 600, cursor: 'pointer' }}>{t('cash:paidOut', { defaultValue: 'Cash out' })}</button>
+              style={{ flex: 1, height: 44, borderRadius: 8, border: `1px solid ${edit.type === 'out' ? '#FF6B6B' : '#E6EBF1'}`, background: edit.type === 'out' ? '#FFF1F1' : '#fff', color: edit.type === 'out' ? '#FF6B6B' : '#0A2540', fontWeight: 600, cursor: 'pointer' }}>{t('cash:paidOut', { defaultValue: 'Cash out' })}</button>
           </div>
           <FormInput type="number" value={edit.amount} onChange={e => setEdit({ ...edit, amount: e.target.value })} placeholder="0.00" />
           <FormInput value={edit.reason || ''} onChange={e => setEdit({ ...edit, reason: e.target.value })} placeholder={t('cash:movementReason', { defaultValue: 'Reason (optional)' })} style={{ marginTop: 10 }} />
-        </Modal>
+        </CommonModal>
       )}
       {/* 삭제 확인 */}
       {delTarget && (
-        <Modal isOpen onClose={() => setDelTarget(null)} title={t('cash:deleteMovement', { defaultValue: 'Delete cash movement' })} size="small"
+        <CommonModal isOpen onClose={() => setDelTarget(null)} title={t('cash:deleteMovement', { defaultValue: 'Delete cash movement' })} size="small"
           footer={<>
             <ModalButton onClick={() => setDelTarget(null)}>{t('cash:cancel', { defaultValue: 'Cancel' })}</ModalButton>
             <ModalButton variant="danger" disabled={busy} onClick={doDelete}>{busy ? '…' : t('common:button.delete', { defaultValue: 'Delete' })}</ModalButton>
           </>}>
-          <p style={{ fontSize: 14, color: C.text, margin: 0 }}>
+          <p style={{ fontSize: 14, color: '#0A2540', margin: 0 }}>
             {t('cash:deleteConfirm', { defaultValue: 'Delete this {{type}} of {{amount}}?', type: delTarget.type === 'in' ? t('cash:paidIn', { defaultValue: 'Cash in' }) : t('cash:paidOut', { defaultValue: 'Cash out' }), amount: fc(delTarget.amount) })}
           </p>
-        </Modal>
+        </CommonModal>
       )}
     </div>
   );

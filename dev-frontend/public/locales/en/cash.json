@@ -86,5 +86,12 @@
   "deleteConfirm": "Delete this {{type}} of {{amount}}?",
   "cashMgmtSubtitle": "Cash in/out accounting history. Manage today's cash drawer from Today's Cash Drawer (Live Orders / Floor Plan).",
   "startFinalSettlement": "Start final settlement",
-  "finalSettlementHint2": "The Daily Settlement above prints the expected report (before count). Final settlement = enter the actual amount per method, compare, then print the final report."
+  "finalSettlementHint2": "The Daily Settlement above prints the expected report (before count). Final settlement = enter the actual amount per method, compare, then print the final report.",
+  "colDateTime": "Date / Time",
+  "colType": "Type",
+  "colBy": "By",
+  "colAmount": "Amount",
+  "colActions": "Actions",
+  "searchPlaceholder": "Search reason / staff…",
+  "settings": "Settings"
 }

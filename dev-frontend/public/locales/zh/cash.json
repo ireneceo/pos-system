@@ -86,5 +86,12 @@
   "deleteConfirm": "删除此 {{type}} {{amount}}？",
   "cashMgmtSubtitle": "现金存取会计记录。今日现金管理请在实时订单/楼面图的 Today's Cash Drawer。",
   "startFinalSettlement": "开始最终结算",
-  "finalSettlementHint2": "上方 Daily Settlement 打印预期结算表(核对前)。最终结算 = 输入各方式实际金额 → 比对 → 打印最终(确定)报表。"
+  "finalSettlementHint2": "上方 Daily Settlement 打印预期结算表(核对前)。最终结算 = 输入各方式实际金额 → 比对 → 打印最终(确定)报表。",
+  "colDateTime": "日期 / 时间",
+  "colType": "类型",
+  "colBy": "经手人",
+  "colAmount": "金额",
+  "colActions": "操作",
+  "searchPlaceholder": "搜索原因 / 经手人…",
+  "settings": "设置"
 }
