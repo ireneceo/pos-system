@@ -55,5 +55,7 @@
   "reconcile": "예상과 대조",
   "reconcileFail": "대조 실패",
   "closeFail": "마감 실패",
-  "byMethodActualVar": "수단별 — 실제 / 차이"
+  "byMethodActualVar": "수단별 — 실제 / 차이",
+  "history": "마감 이력",
+  "reprintZ": "Z-Report"
 }

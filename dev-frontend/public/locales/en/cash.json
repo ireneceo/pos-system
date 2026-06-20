@@ -55,5 +55,7 @@
   "reconcile": "Compare with expected",
   "reconcileFail": "Reconcile failed",
   "closeFail": "Close failed",
-  "byMethodActualVar": "By method — actual / variance"
+  "byMethodActualVar": "By method — actual / variance",
+  "history": "Settlement history",
+  "reprintZ": "Z-Report"
 }

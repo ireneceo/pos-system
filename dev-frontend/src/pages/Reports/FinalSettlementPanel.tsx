@@ -55,6 +55,8 @@ const FinalSettlementPanel: React.FC<Props> = ({ selectedDate, today }) => {
   const [note, setNote] = useState('');
   const [zreport, setZreport] = useState<any>(null);
   const [loaded, setLoaded] = useState(false);
+  const [history, setHistory] = useState<any[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
 
   const fc = (n: number) => formatCurrency(Number(n) || 0, currency);
 
@@ -95,6 +97,9 @@ const FinalSettlementPanel: React.FC<Props> = ({ selectedDate, today }) => {
     } else {
       setShift(null);
     }
+    // 마감 이력 (지난 교대 close 기록)
+    const h = await api('/shift/history?limit=10');
+    setHistory(Array.isArray(h.j?.data) ? h.j.data : []);
     setLoaded(true);
   }, [api, restaurantId, isManager]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -132,13 +137,58 @@ const FinalSettlementPanel: React.FC<Props> = ({ selectedDate, today }) => {
     api(`/shift/${shift.id}/zreport-printed`, { method: 'POST', body: JSON.stringify({}) }).catch(() => {});
   };
 
-  // 매니저 아님 / 오늘 아님 / 열린 교대 없음 → 마감 패널 미노출(요약만 표시)
+  const reprintZ = async (z: any) => {
+    if (!z) return;
+    try { await printSettlementReport(buildZReportHTML(z, fc, store?.getStoreInfo?.() || {}, t, store?.operationSettings)); } catch { /* 비치명 */ }
+  };
+
+  const opSettings = store?.operationSettings;
+  const dtShort = (d: any) => { try { return formatDateTime(d, opSettings, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch { return ''; } };
+
+  const renderHistory = () => {
+    const closed = (history || []).filter(s => s.status === 'reconciled' || s.status === 'closed');
+    if (!closed.length) return null;
+    return (
+      <div style={{ borderTop: `1px solid ${C.border}`, marginTop: 14, paddingTop: 12 }}>
+        <button type="button" onClick={() => setShowHistory(v => !v)}
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{t('cash:history', { defaultValue: 'Settlement history' })} ({closed.length})</span>
+          <span style={{ fontSize: 13, color: C.subtle }}>{showHistory ? '▲' : '▼'}</span>
+        </button>
+        {showHistory && (
+          <div style={{ marginTop: 10 }}>
+            {closed.map(s => {
+              const r = (s.reconciliations && s.reconciliations[0]) || {};
+              const vc = Number(r.variance?.cash || 0);
+              const vColor = vc === 0 ? C.match : (Math.abs(vc) < 5 ? C.warnAmt : C.bad);
+              const vWord = vc === 0 ? t('cash:matches', { defaultValue: 'Matches' }) : (vc > 0 ? t('cash:over', { defaultValue: '{{a}} over', a: fc(vc) }) : t('cash:short', { defaultValue: '{{a}} short', a: fc(Math.abs(vc)) }));
+              return (
+                <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '10px 0', borderTop: `1px solid ${C.border}`, flexWrap: 'wrap' }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: C.text }}>{dtShort(s.closed_at || s.opened_at)}</div>
+                    <div style={{ fontSize: 12, color: C.subtle }}>{s.cashier_name || '-'} · {t('cash:closingBalance', { defaultValue: 'Closing cash' })} {fc(r.closing_balance || 0)}</div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 12.5, fontWeight: 600, color: vColor }}>{vWord}</span>
+                    {r.zreport && <button type="button" onClick={() => reprintZ(r.zreport)} style={{ height: 34, padding: '0 12px', borderRadius: 8, border: `1px solid ${C.border}`, background: '#fff', color: C.text, fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>{t('cash:reprintZ', { defaultValue: 'Z-Report' })}</button>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // 매니저 아님 / 오늘 아님 → 미노출
   if (!isManager || selectedDate !== today || !loaded) return null;
   if (!shift) {
     return (
       <Wrap>
         <Title>{t('cash:finalSettlement', { defaultValue: 'Final Settlement' })}</Title>
         <Muted>{t('cash:noOpenShift', { defaultValue: 'No open shift to settle. Start a shift in Cash Drawer first.' })}</Muted>
+        {renderHistory()}
       </Wrap>
     );
   }
@@ -210,6 +260,8 @@ const FinalSettlementPanel: React.FC<Props> = ({ selectedDate, today }) => {
           <PrimaryBtn onClick={printZ} style={{ marginTop: 10 }}>{t('cash:print', { defaultValue: 'Print Z-Report' })}</PrimaryBtn>
         </div>
       )}
+
+      {renderHistory()}
     </Wrap>
   );
 };

@@ -55,5 +55,7 @@
   "reconcile": "Banding dengan jangkaan",
   "reconcileFail": "Penyelarasan gagal",
   "closeFail": "Penutupan gagal",
-  "byMethodActualVar": "Mengikut kaedah — sebenar / varians"
+  "byMethodActualVar": "Mengikut kaedah — sebenar / varians",
+  "history": "Sejarah Penyelesaian",
+  "reprintZ": "Z-Report"
 }

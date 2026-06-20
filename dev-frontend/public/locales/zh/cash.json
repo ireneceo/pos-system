@@ -55,5 +55,7 @@
   "reconcile": "与预期核对",
   "reconcileFail": "核对失败",
   "closeFail": "结算失败",
-  "byMethodActualVar": "按方式 — 实际 / 差异"
+  "byMethodActualVar": "按方式 — 实际 / 差异",
+  "history": "结算历史",
+  "reprintZ": "Z-Report"
 }
