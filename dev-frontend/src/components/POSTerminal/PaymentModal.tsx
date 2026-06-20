@@ -11,6 +11,7 @@ import {
 import styled from 'styled-components';
 import { formatCurrency } from '../../utils/currency';
 import { useStore } from '../../contexts/StoreContext';
+import DiscountPinModal from './DiscountPinModal';
 
 import { getAuthToken } from '../../utils/auth';
 const OrderSummary = styled.div`
@@ -412,14 +413,15 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   const [discountMode, setDiscountMode] = useState<'amount' | 'percent'>('amount');
   const [applyingDiscount, setApplyingDiscount] = useState(false);
   const [liveTotalOverride, setLiveTotalOverride] = useState<number | null>(null);
+  const [showDiscountPin, setShowDiscountPin] = useState(false);  // #5 결제창 할인 PIN 승인
 
   // Adjusted total after point discount
   // total = full payment 모드일 때 결제할 금액 (point discount 적용)
   // splitMode 면 선택 아이템 합계가 결제 amount
   const total = liveTotalOverride != null ? liveTotalOverride : originalTotal - pointDiscount;
 
-  // Apply a manual discount (amount or %) to this existing order at payment time.
-  const handleApplyPaymentDiscount = async () => {
+  // 실제 할인 적용(서버 apply-discount). PIN 승인 후/불필요 시 호출.
+  const doApplyPaymentDiscount = async () => {
     if (!orderId || applyingDiscount) return;
     const raw = parseFloat(discountInput);
     if (isNaN(raw) || raw < 0) return;
@@ -438,6 +440,19 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       console.error('apply payment discount failed', e);
     }
     setApplyingDiscount(false);
+  };
+
+  // Apply a manual discount (amount or %) to this existing order at payment time.
+  // 매장 설정 'PIN 승인 필요' ON + 실제 할인(>0) 이면 PIN 모달 먼저(#5). POS 할인과 동일 정책.
+  const handleApplyPaymentDiscount = async () => {
+    if (!orderId || applyingDiscount) return;
+    const raw = parseFloat(discountInput);
+    if (isNaN(raw) || raw < 0) return;
+    if (raw > 0 && !!(operationSettings as any)?.requirePinForDiscount) {
+      setShowDiscountPin(true);
+      return;
+    }
+    doApplyPaymentDiscount();
   };
 
   // Get available payment methods for POS
@@ -1290,6 +1305,13 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
           )}
         </InputSection>
       )}
+      <DiscountPinModal
+        show={showDiscountPin}
+        restaurantId={restaurantId as any}
+        title="Discount Approval"
+        onClose={() => setShowDiscountPin(false)}
+        onApproved={() => { setShowDiscountPin(false); doApplyPaymentDiscount(); }}
+      />
     </Modal>
   );
 };

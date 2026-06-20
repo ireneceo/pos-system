@@ -1359,7 +1359,7 @@ const POSTerminalPage: React.FC = () => {
   const [showCashierPinModal, setShowCashierPinModal] = useState(false);
   // 할인 승인 PIN (#5) — 터치 numpad 모달 + 승인 후 적용할 보류 할인
   const [showDiscountPin, setShowDiscountPin] = useState(false);
-  const [pendingDiscount, setPendingDiscount] = useState<{ name: string; value: number } | null>(null);
+  const [pendingDiscount, setPendingDiscount] = useState<{ name: string; value: number; kind?: 'fixed' | 'percent' } | null>(null);
   const [showCustomPercentModal, setShowCustomPercentModal] = useState(false);
   const [brandLogo, setBrandLogo] = useState<string>('');
   const [paymentMethods, setPaymentMethods] = useState<any>(null);
@@ -2152,25 +2152,35 @@ const POSTerminalPage: React.FC = () => {
 
   const handleCustomAmountConfirm = (value: string) => {
     const amount = parseFloat(value);
-    if (!isNaN(amount) && amount >= 0) {
-      setDiscount(amount);
-      setAppliedDiscountPolicy(null); // Clear percentage discount when applying fixed amount
-    }
     setShowCustomAmountModal(false);
+    if (isNaN(amount) || amount < 0) return;
+    // 매장 설정 'PIN 승인 필요' ON + 실제 할인(>0) 이면 PIN 모달로 승인 후 적용 (#5).
+    if (amount > 0 && !!(operationSettings as any)?.requirePinForDiscount) {
+      setPendingDiscount({ name: formatCurrency(amount, operationSettings.currency), value: amount, kind: 'fixed' });
+      setShowDiscountPin(true);
+      return;
+    }
+    setDiscount(amount);
+    setAppliedDiscountPolicy(null); // Clear percentage discount when applying fixed amount
   };
 
   const handleCustomPercentConfirm = (value: string) => {
     const percentage = parseFloat(value);
-    if (!isNaN(percentage) && percentage >= 0 && percentage <= 100) {
-      const discountValue = subtotal * (percentage / 100);
-      setAppliedDiscountPolicy({
-        name: `${percentage}%`,
-        discount: discountValue,
-        requiresApproval: false
-      });
-      setDiscount(0); // Clear fixed discount when applying custom percentage
-    }
     setShowCustomPercentModal(false);
+    if (isNaN(percentage) || percentage < 0 || percentage > 100) return;
+    const discountValue = subtotal * (percentage / 100);
+    // 매장 설정 'PIN 승인 필요' ON + 실제 할인(>0) 이면 PIN 모달로 승인 후 적용 (#5).
+    if (percentage > 0 && !!(operationSettings as any)?.requirePinForDiscount) {
+      setPendingDiscount({ name: `${percentage}%`, value: discountValue, kind: 'percent' });
+      setShowDiscountPin(true);
+      return;
+    }
+    setAppliedDiscountPolicy({
+      name: `${percentage}%`,
+      discount: discountValue,
+      requiresApproval: false
+    });
+    setDiscount(0); // Clear fixed discount when applying custom percentage
   };
 
   const handleLogout = () => {
@@ -3784,6 +3794,7 @@ const POSTerminalPage: React.FC = () => {
         customerTier={customerTier}
         membershipSettings={membershipSettings}
         selectedCustomerId={selectedCustomerForOrder?.id}
+        restaurantId={restaurantId as any}
       />
       
       {selectedMenuItem && (
@@ -3994,8 +4005,15 @@ const POSTerminalPage: React.FC = () => {
         onClose={() => { setShowDiscountPin(false); setPendingDiscount(null); }}
         onApproved={() => {
           if (pendingDiscount) {
-            setAppliedDiscountPolicy({ name: pendingDiscount.name, discount: pendingDiscount.value, requiresApproval: true });
-            setDiscount(0);
+            if (pendingDiscount.kind === 'fixed') {
+              // 금액 할인 — 고정 금액 적용
+              setDiscount(pendingDiscount.value);
+              setAppliedDiscountPolicy(null);
+            } else {
+              // % 또는 정책 할인
+              setAppliedDiscountPolicy({ name: pendingDiscount.name, discount: pendingDiscount.value, requiresApproval: true });
+              setDiscount(0);
+            }
           }
           setShowDiscountPin(false);
           setPendingDiscount(null);
