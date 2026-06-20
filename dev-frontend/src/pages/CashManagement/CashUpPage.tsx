@@ -38,6 +38,7 @@ const CashUpPage: React.FC = () => {
   const [drawerMsg, setDrawerMsg] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [moveLog, setMoveLog] = useState<any[]>([]);
 
   const fc = (n: number) => formatCurrency(Number(n) || 0, currency);
 
@@ -59,6 +60,9 @@ const CashUpPage: React.FC = () => {
       setShift(null);
       setStep('start');
     }
+    // 현금 입출금 전체 내역 (과거 모든 교대 포함)
+    const h = await api('/movements?limit=100');
+    setMoveLog(Array.isArray(h.j?.data) ? h.j.data : []);
   }, [api]);
 
   useEffect(() => { load(); }, [load]);
@@ -82,7 +86,10 @@ const CashUpPage: React.FC = () => {
       method: 'POST', body: JSON.stringify({ type: mvForm.type, amount, reason: mvForm.reason || null })
     });
     setBusy(false);
-    if (status === 200) { setMovements(j?.movements || movements); setMvForm(null); }
+    if (status === 200) {
+      setMovements(j?.movements || movements); setMvForm(null);
+      const h = await api('/movements?limit=100'); setMoveLog(Array.isArray(h.j?.data) ? h.j.data : []);
+    }
     else setError(j?.message || t('cash:movementFail', { defaultValue: 'Movement failed' }));
   };
 
@@ -159,6 +166,35 @@ const CashUpPage: React.FC = () => {
             </div>
           </div>
         </Card>
+      )}
+
+      {/* 현금 입출금 내역 — 과거 모든 교대 포함 (넣다/뺐다 기록) */}
+      {step !== 'loading' && (
+        <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 12, padding: 20, marginTop: 16 }}>
+          <Label>{t('cash:movementLog', { defaultValue: 'Cash in / out history' })}</Label>
+          {moveLog.length === 0 ? (
+            <div style={{ fontSize: 13, color: C.subtle, padding: '8px 0' }}>{t('cash:noMovements', { defaultValue: 'No cash in/out records yet.' })}</div>
+          ) : (
+            <div>
+              {moveLog.map(m => {
+                const isIn = m.type === 'in';
+                const when = (() => { try { return formatDateTime(m.created_at || m.createdAt, opSettings, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch { return ''; } })();
+                return (
+                  <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '11px 0', borderTop: `1px solid ${C.border}` }}>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>
+                        <span style={{ color: isIn ? C.match : C.bad }}>{isIn ? t('cash:paidIn', { defaultValue: 'Cash in' }) : t('cash:paidOut', { defaultValue: 'Cash out' })}</span>
+                        {m.reason ? <span style={{ color: C.subtle, fontWeight: 500 }}> · {m.reason}</span> : null}
+                      </div>
+                      <div style={{ fontSize: 12, color: C.subtle }}>{when}{m.created_by_name ? ` · ${m.created_by_name}` : ''}</div>
+                    </div>
+                    <span style={{ fontSize: 15, fontWeight: 700, color: isIn ? C.match : C.bad, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{isIn ? '+' : '−'} {fc(m.amount)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       )}
 
       {/* 입출금 입력 — 표준 Modal + 터치 숫자패드 */}

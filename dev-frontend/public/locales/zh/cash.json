@@ -60,5 +60,13 @@
   "reprintZ": "Z-Report",
   "colExpected": "预期",
   "colActual": "实际",
-  "colDiff": "差异"
+  "colDiff": "差异",
+  "shiftHistory": "班次历史",
+  "open": "进行中",
+  "openNow": "进行中",
+  "closingShort": "结存",
+  "movementLog": "现金存取记录",
+  "noMovements": "暂无现金存取记录。",
+  "zAutoPrinted": "Z-Report 已发送至账单打印机。结存现金将结转为次日备用金。",
+  "reprintZ2": "重印 Z-Report"
 }

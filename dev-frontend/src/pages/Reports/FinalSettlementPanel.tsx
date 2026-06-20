@@ -127,15 +127,22 @@ const FinalSettlementPanel: React.FC<Props> = ({ selectedDate, today }) => {
     setBusy(true); setError('');
     const { status, j } = await api(`/shift/${shift.id}/close`, { method: 'POST', body: JSON.stringify({}) });
     setBusy(false);
-    if (status === 200) { setZreport(j?.data?.reconciliation?.zreport || null); setStep('closed'); }
+    if (status === 200) {
+      const z = j?.data?.reconciliation?.zreport || null;
+      setZreport(z); setStep('closed');
+      // 마감 확정 즉시 Z-Report 빌프린트 자동 출력 (Daily Settlement 요약과 별개 — 확정된 최종 마감 문서).
+      if (z) doPrintZ(z);
+    }
     else setError(j?.message || t('cash:closeFail', { defaultValue: 'Close failed' }));
   };
 
-  const printZ = async () => {
-    if (!zreport) return;
-    try { await printSettlementReport(buildZReportHTML(zreport, fc, store?.getStoreInfo?.() || {}, t, store?.operationSettings)); } catch { /* 인쇄 실패 비치명 */ }
-    api(`/shift/${shift.id}/zreport-printed`, { method: 'POST', body: JSON.stringify({}) }).catch(() => {});
+  const doPrintZ = async (z?: any) => {
+    const zz = z || zreport;
+    if (!zz) return;
+    try { await printSettlementReport(buildZReportHTML(zz, fc, store?.getStoreInfo?.() || {}, t, store?.operationSettings)); } catch { /* 인쇄 실패 비치명 */ }
+    if (shift) api(`/shift/${shift.id}/zreport-printed`, { method: 'POST', body: JSON.stringify({}) }).catch(() => {});
   };
+  const printZ = () => doPrintZ();
 
   const reprintZ = async (z: any) => {
     if (!z) return;
@@ -245,9 +252,9 @@ const FinalSettlementPanel: React.FC<Props> = ({ selectedDate, today }) => {
           <textarea value={note} onChange={e => setNote(e.target.value)} rows={2}
             placeholder={t('cash:note', { defaultValue: 'Note (optional)' })}
             style={{ width: '100%', border: `1px solid ${C.border}`, borderRadius: 8, padding: 10, fontSize: 14, marginTop: 10, resize: 'vertical', background: '#fff' }} />
-          <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 8, marginTop: 10, alignItems: 'stretch' }}>
             <GhostBtn onClick={() => setStep('counting')}>{t('cash:back', { defaultValue: 'Back' })}</GhostBtn>
-            <PrimaryBtn disabled={busy} onClick={close} style={{ flex: 1 }}>{busy ? '…' : t('cash:confirmClose', { defaultValue: 'Confirm & close shift' })}</PrimaryBtn>
+            <PrimaryBtn disabled={busy} onClick={close} style={{ flex: 1, width: 'auto', marginTop: 0 }}>{busy ? '…' : t('cash:confirmClose', { defaultValue: 'Confirm & close shift' })}</PrimaryBtn>
           </div>
         </>
       )}
@@ -256,8 +263,8 @@ const FinalSettlementPanel: React.FC<Props> = ({ selectedDate, today }) => {
       {step === 'closed' && (
         <div style={{ textAlign: 'center', padding: '8px 0' }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: C.match, marginBottom: 4 }}>{t('cash:closedTitle', { defaultValue: 'Shift closed' })}</div>
-          <Muted>{t('cash:closedHint', { defaultValue: 'Closing cash carries over as tomorrow\'s opening float.' })}</Muted>
-          <PrimaryBtn onClick={printZ} style={{ marginTop: 10 }}>{t('cash:print', { defaultValue: 'Print Z-Report' })}</PrimaryBtn>
+          <Muted>{t('cash:zAutoPrinted', { defaultValue: 'Z-Report sent to the bill printer. Closing cash carries over as tomorrow\'s opening float.' })}</Muted>
+          <PrimaryBtn onClick={printZ} style={{ marginTop: 10 }}>{t('cash:reprintZ2', { defaultValue: 'Reprint Z-Report' })}</PrimaryBtn>
         </div>
       )}
 

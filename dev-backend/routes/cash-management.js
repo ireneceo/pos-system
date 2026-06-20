@@ -291,7 +291,7 @@ router.post('/restaurant/:restaurantId/shift/:id/movement', authenticateToken, c
   }
 });
 
-// GET 인출/입금 내역
+// GET 인출/입금 내역 (단일 교대)
 router.get('/restaurant/:restaurantId/shift/:id/movements', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const restaurantId = parseInt(req.params.restaurantId, 10);
@@ -301,6 +301,23 @@ router.get('/restaurant/:restaurantId/shift/:id/movements', authenticateToken, c
     });
     const mv = await computeMovements(req.params.id);
     res.json({ success: true, data: list, movements: mv });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// GET 현금 입출금 전체 내역 (매장 단위, 과거 모든 교대 포함) — 시재관리 입출금 로그용.
+router.get('/restaurant/:restaurantId/movements', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const restaurantId = parseInt(req.params.restaurantId, 10);
+    const limit = Math.min(parseInt(req.query.limit, 10) || 100, 300);
+    const list = await CashMovement.findAll({
+      where: { restaurant_id: restaurantId },
+      include: [{ model: CashierShift, as: 'shift', attributes: ['business_date', 'cashier_name'] }],
+      order: [['created_at', 'DESC']],
+      limit
+    });
+    res.json({ success: true, data: list });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
   }

@@ -60,5 +60,13 @@
   "reprintZ": "Z-Report",
   "colExpected": "예상",
   "colActual": "실제",
-  "colDiff": "차이"
+  "colDiff": "차이",
+  "shiftHistory": "교대 이력",
+  "open": "진행 중",
+  "openNow": "진행 중",
+  "closingShort": "마감",
+  "movementLog": "현금 입출금 내역",
+  "noMovements": "현금 입출금 기록이 아직 없습니다.",
+  "zAutoPrinted": "Z-Report를 빌 프린터로 출력했습니다. 마감현금은 다음날 개시현금으로 이월됩니다.",
+  "reprintZ2": "Z-Report 재인쇄"
 }

@@ -60,5 +60,13 @@
   "reprintZ": "Z-Report",
   "colExpected": "Expected",
   "colActual": "Actual",
-  "colDiff": "Diff"
+  "colDiff": "Diff",
+  "shiftHistory": "Shift history",
+  "open": "Open",
+  "openNow": "in progress",
+  "closingShort": "Closing",
+  "movementLog": "Cash in / out history",
+  "noMovements": "No cash in/out records yet.",
+  "zAutoPrinted": "Z-Report sent to the bill printer. Closing cash carries over as tomorrow's opening float.",
+  "reprintZ2": "Reprint Z-Report"
 }
