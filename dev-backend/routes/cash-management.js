@@ -7,7 +7,7 @@ const router = express.Router();
 const { Op, fn, col, literal } = require('sequelize');
 const { CashierShift, CashReconciliation, CashMovement, PaymentMethodSetting, OrderPayment } = require('../models');
 const { authenticateToken, checkRestaurantAccess, requirePosCounter } = require('../middleware/auth');
-const { getRestaurantTimezone } = require('../utils/dateTimeHelper');
+const { getRestaurantTimezone, getDateBounds } = require('../utils/dateTimeHelper');
 const Restaurant = require('../models/Restaurant');
 
 const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
@@ -342,9 +342,12 @@ router.get('/restaurant/:restaurantId/movements', authenticateToken, checkRestau
     const { startDate, endDate } = req.query;
     if (startDate || endDate) {
       where.created_at = {};
-      // date-only(YYYY-MM-DD) → 하루 경계로 확장. ISO datetime 이면 그대로.
-      if (startDate) where.created_at[Op.gte] = new Date(/^\d{4}-\d{2}-\d{2}$/.test(startDate) ? `${startDate}T00:00:00` : startDate);
-      if (endDate) where.created_at[Op.lte] = new Date(/^\d{4}-\d{2}-\d{2}$/.test(endDate) ? `${endDate}T23:59:59.999` : endDate);
+      // date-only(YYYY-MM-DD) 는 매장 타임존 기준 하루 경계(UTC instant)로 변환 — 자정 근처 누락 방지.
+      const r = await Restaurant.findByPk(restaurantId, { attributes: ['operation_settings'] });
+      const tz = getRestaurantTimezone(r);
+      const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s);
+      if (startDate) where.created_at[Op.gte] = isDate(startDate) ? getDateBounds(startDate, tz).startOfDay : new Date(startDate);
+      if (endDate) where.created_at[Op.lte] = isDate(endDate) ? getDateBounds(endDate, tz).endOfDay : new Date(endDate);
     }
     const list = await CashMovement.findAll({
       where,
