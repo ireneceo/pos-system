@@ -163,5 +163,8 @@
   "orderCancel.skipReason": "无原因取消",
   "voidItem.confirmNoReason": "从此订单中删除\"{{name}}\"？",
   "voidItem.removeBtn": "删除",
-  "voidItem.skipReason": "无原因删除"
+  "voidItem.skipReason": "无原因删除",
+  "voidItem": {
+    "otherReasonPlaceholder": "请输入原因"
+  }
 }

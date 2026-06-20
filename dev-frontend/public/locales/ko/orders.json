@@ -163,5 +163,8 @@
   "orderCancel.skipReason": "사유 없이 취소",
   "voidItem.confirmNoReason": "\"{{name}}\"을(를) 이 주문에서 삭제할까요?",
   "voidItem.removeBtn": "삭제",
-  "voidItem.skipReason": "사유 없이 삭제"
+  "voidItem.skipReason": "사유 없이 삭제",
+  "voidItem": {
+    "otherReasonPlaceholder": "사유를 입력하세요"
+  }
 }

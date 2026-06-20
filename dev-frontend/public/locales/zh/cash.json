@@ -68,5 +68,16 @@
   "movementLog": "现金存取记录",
   "noMovements": "暂无现金存取记录。",
   "zAutoPrinted": "Z-Report 已发送至账单打印机。结存现金将结转为次日备用金。",
-  "reprintZ2": "重印 Z-Report"
+  "reprintZ2": "重印 Z-Report",
+  "totalAll": "总计",
+  "netLabel": "净额",
+  "cashMgmtTitle": "备用金管理",
+  "todayCashDrawer": "今日现金抽屉",
+  "rangeToday": "今天",
+  "rangeYesterday": "昨天",
+  "range7": "7天",
+  "range30": "30天",
+  "rangeAll": "全部",
+  "rangeCustom": "自定义",
+  "total": "总计"
 }

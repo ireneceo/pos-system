@@ -68,5 +68,16 @@
   "movementLog": "Cash in / out history",
   "noMovements": "No cash in/out records yet.",
   "zAutoPrinted": "Z-Report sent to the bill printer. Closing cash carries over as tomorrow's opening float.",
-  "reprintZ2": "Reprint Z-Report"
+  "reprintZ2": "Reprint Z-Report",
+  "totalAll": "Total (all)",
+  "netLabel": "Net",
+  "cashMgmtTitle": "Cash Management",
+  "todayCashDrawer": "Today's Cash Drawer",
+  "rangeToday": "Today",
+  "rangeYesterday": "Yesterday",
+  "range7": "7 days",
+  "range30": "30 days",
+  "rangeAll": "All",
+  "rangeCustom": "Custom",
+  "total": "Total"
 }

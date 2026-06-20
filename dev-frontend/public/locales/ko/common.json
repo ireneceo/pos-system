@@ -720,5 +720,6 @@
     "dismiss": "닫기"
   },
   "nav.cashUp": "현금 마감",
-  "nav.cashDrawer": "시재관리"
+  "nav.cashDrawer": "시재관리",
+  "back": "뒤로"
 }

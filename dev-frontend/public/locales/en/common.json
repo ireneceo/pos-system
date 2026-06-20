@@ -720,5 +720,6 @@
     "dismiss": "Dismiss"
   },
   "nav.cashUp": "Cash Up",
-  "nav.cashDrawer": "Cash Drawer"
+  "nav.cashDrawer": "Cash Drawer",
+  "back": "Back"
 }

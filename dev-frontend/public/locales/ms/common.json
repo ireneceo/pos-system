@@ -720,5 +720,6 @@
     "dismiss": "Tutup"
   },
   "nav.cashUp": "Tutup Tunai",
-  "nav.cashDrawer": "Laci Tunai"
+  "nav.cashDrawer": "Laci Tunai",
+  "back": "Kembali"
 }

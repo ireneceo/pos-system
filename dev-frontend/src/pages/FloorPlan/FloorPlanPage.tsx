@@ -20,6 +20,7 @@ import CashierPinModal from '../../components/POSTerminal/CashierPinModal';
 import { formatDateTime } from '../../utils/timezone';
 import { getRestaurantTimezone } from '../../utils/timezone';
 import DailySettlementPrint from '../Reports/DailySettlementPrint';
+import CashDrawerModal from '../../components/CashManagement/CashDrawerModal';
 import io from 'socket.io-client';
 import { useTranslation } from 'react-i18next';
 
@@ -510,6 +511,7 @@ const FloorPlanPage: React.FC = () => {
 
   // Daily Settlement
   const [showSettlement, setShowSettlement] = useState(false);
+  const [showCashDrawer, setShowCashDrawer] = useState(false);
   const [cdInfoModal, setCdInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
 
   // POS overlay (for New Order only)
@@ -1717,6 +1719,14 @@ const FloorPlanPage: React.FC = () => {
               좁은 화면(≤1280px, 10인치 단말)에선 Customer Display/Open Drawer 만 설정(gear)
               드롭다운으로 수납한다. Daily Settlement 은 마감 핵심 동작이라 좁은 화면에서도 인라인 유지(Irene). */}
           {canOperatePOS && (
+          <BackBtn type="button" onClick={() => setShowCashDrawer(true)} title="Cash Drawer">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '15px', height: '15px' }}>
+              <path d="M2 8h20M2 8l2-4h16l2 4M2 8v10a2 2 0 002 2h16a2 2 0 002-2V8M9 13h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            {t('cash:todayCashDrawer', { defaultValue: "Today's Cash Drawer" })}
+          </BackBtn>
+          )}
+          {canOperatePOS && (
           <BackBtn type="button" onClick={() => setShowSettlement(true)} title="Daily Settlement">
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '15px', height: '15px' }}>
               <path d="M6 9V2H18V9M6 18H4C2.89543 18 2 17.1046 2 16V11C2 9.89543 2.89543 9 4 9H20C21.1046 9 22 9.89543 22 11V16C22 17.1046 21.1046 18 20 18H18M6 14H18V22H6V14Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -2378,6 +2388,7 @@ const FloorPlanPage: React.FC = () => {
         isOpen={showSettlement}
         onClose={() => setShowSettlement(false)}
       />
+      <CashDrawerModal restaurantId={user?.restaurantId || restaurantId} isOpen={showCashDrawer} onClose={() => setShowCashDrawer(false)} />
 
       {/* ── Table Move picker ───────────────────────────────────────────────
           Pick a destination table for the order being moved. Occupied tables are

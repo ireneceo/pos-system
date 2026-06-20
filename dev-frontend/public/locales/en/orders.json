@@ -163,5 +163,8 @@
   "orderCancel.skipReason": "Cancel without reason",
   "voidItem.confirmNoReason": "Remove \"{{name}}\" from this order?",
   "voidItem.removeBtn": "Remove",
-  "voidItem.skipReason": "Remove without reason"
+  "voidItem.skipReason": "Remove without reason",
+  "voidItem": {
+    "otherReasonPlaceholder": "Type the reason"
+  }
 }

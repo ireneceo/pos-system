@@ -27,6 +27,7 @@ import { formatDateTime as formatDateTimeUtil } from '../../utils/timezone';
 import ConfirmModal from '../../components/ConfirmModal';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import DailySettlementPrint from '../Reports/DailySettlementPrint';
+import CashDrawerModal from '../../components/CashManagement/CashDrawerModal';
 import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
 
@@ -83,6 +84,7 @@ const LiveOrdersPage: React.FC = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [orderToDelete, setOrderToDelete] = useState<number | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [cancelOther, setCancelOther] = useState<string | null>(null); // 'Other' 선택 시 직접 입력 (null=미선택)
   const [orderToCancel, setOrderToCancel] = useState<number | null>(null);
   const [showDeleteItemConfirm, setShowDeleteItemConfirm] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ index: number; name: string } | null>(null);
@@ -125,6 +127,7 @@ const LiveOrdersPage: React.FC = () => {
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSettlement, setShowSettlement] = useState(false);
+  const [showCashDrawer, setShowCashDrawer] = useState(false);
 
   // 라이브 스코프 = 오늘 + 커스텀 기간 아님 → 공용 실시간 스토어 사용 (소켓 in-place).
   // 과거/커스텀 기간 → historicalOrders (변하지 않는 데이터, 서버 fetch).
@@ -1409,7 +1412,7 @@ const LiveOrdersPage: React.FC = () => {
       confirmCancelOrder(null, reason);
     }
   };
-  const cancelCancelOrder = () => { setOrderToCancel(null); setShowCancelConfirm(false); };
+  const cancelCancelOrder = () => { setOrderToCancel(null); setShowCancelConfirm(false); setCancelOther(null); };
 
   const handlePaymentClick = (order: DbOrder, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -1655,9 +1658,23 @@ const LiveOrdersPage: React.FC = () => {
               <span className="download-label">{t('orders:liveOrdersPage.downloadCsv')}</span>
             </DownloadButton>
             <button
-              onClick={() => setShowSettlement(true)} title="Daily Settlement"
+              onClick={() => setShowCashDrawer(true)} title="Cash Drawer"
               style={{
                 marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px',
+                padding: '8px 16px', background: '#F4F6F9', color: '#0A2540',
+                border: '1px solid #C7CED6', borderRadius: '6px', cursor: 'pointer',
+                fontSize: '14px', fontWeight: 500, flexShrink: 0
+              }}
+            >
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '16px', height: '16px' }}>
+                <path d="M2 8h20M2 8l2-4h16l2 4M2 8v10a2 2 0 002 2h16a2 2 0 002-2V8M9 13h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              {t('cash:todayCashDrawer', { defaultValue: "Today's Cash Drawer" })}
+            </button>
+            <button
+              onClick={() => setShowSettlement(true)} title="Daily Settlement"
+              style={{
+                display: 'flex', alignItems: 'center', gap: '8px',
                 padding: '8px 16px', background: '#F4F6F9', color: '#0A2540',
                 border: '1px solid #C7CED6', borderRadius: '6px', cursor: 'pointer',
                 fontSize: '14px', fontWeight: 500, flexShrink: 0
@@ -1982,7 +1999,7 @@ const LiveOrdersPage: React.FC = () => {
                   ? t('orders:orderCancel.confirmNoReason', { defaultValue: 'Cancel this order? The order history is kept.' })
                   : t('orders:orderCancel.confirm', { defaultValue: 'Cancel this order? Choose a reason — it is saved to the void & cancel log. The order history is kept.' })}
               </p>
-              {mode !== 'off' && (
+              {mode !== 'off' && cancelOther === null && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
                   {[
                     { key: 'soldOut', label: t('orders:voidItem.reasonSoldOut', { defaultValue: 'Sold out' }) },
@@ -1993,12 +2010,34 @@ const LiveOrdersPage: React.FC = () => {
                     <button
                       key={r.key}
                       type="button"
-                      onClick={() => beginCancelOrderWithReason(r.label)}
+                      onClick={() => { if (r.key === 'other') { setCancelOther(''); } else { beginCancelOrderWithReason(r.label); } }}
                       style={{ padding: '14px 8px', borderRadius: 8, border: '1px solid #E6EBF1', background: '#fff', color: '#0A2540', fontWeight: 600, fontSize: 14, cursor: 'pointer', minHeight: 52 }}
                     >
                       {r.label}
                     </button>
                   ))}
+                </div>
+              )}
+              {mode !== 'off' && cancelOther !== null && (
+                <div style={{ marginBottom: 14 }}>
+                  <input
+                    autoFocus
+                    value={cancelOther}
+                    onChange={e => setCancelOther(e.target.value)}
+                    placeholder={t('orders:voidItem.otherReasonPlaceholder', { defaultValue: 'Type the reason' })}
+                    style={{ width: '100%', padding: '12px 14px', borderRadius: 8, border: '1px solid #E6EBF1', fontSize: 14, color: '#0A2540', background: '#fff', boxSizing: 'border-box' }}
+                  />
+                  <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                    <button type="button" onClick={() => setCancelOther(null)}
+                      style={{ padding: '10px 16px', borderRadius: 8, border: '1px solid #E6EBF1', background: '#fff', color: '#6B7C93', fontWeight: 600, cursor: 'pointer' }}>
+                      {t('common:back', { defaultValue: 'Back' })}
+                    </button>
+                    <button type="button" disabled={!cancelOther.trim()}
+                      onClick={() => beginCancelOrderWithReason(cancelOther.trim())}
+                      style={{ flex: 1, padding: '10px 16px', borderRadius: 8, border: 'none', background: cancelOther.trim() ? '#FF6B6B' : '#C7CED6', color: '#fff', fontWeight: 600, cursor: cancelOther.trim() ? 'pointer' : 'not-allowed' }}>
+                      {t('orders:orderCancel.confirmBtn', { defaultValue: 'Cancel order' })}
+                    </button>
+                  </div>
                 </div>
               )}
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
@@ -2254,6 +2293,7 @@ const LiveOrdersPage: React.FC = () => {
       )}
 
       <DailySettlementPrint isOpen={showSettlement} onClose={() => setShowSettlement(false)} />
+      <CashDrawerModal restaurantId={user?.restaurantId} isOpen={showCashDrawer} onClose={() => setShowCashDrawer(false)} />
     </>
   );
 };

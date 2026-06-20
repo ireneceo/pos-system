@@ -68,5 +68,16 @@
   "movementLog": "Sejarah tunai masuk/keluar",
   "noMovements": "Tiada rekod tunai masuk/keluar lagi.",
   "zAutoPrinted": "Z-Report dihantar ke pencetak bil. Tunai tutup dibawa ke hadapan sebagai apungan esok.",
-  "reprintZ2": "Cetak semula Z-Report"
+  "reprintZ2": "Cetak semula Z-Report",
+  "totalAll": "Jumlah (semua)",
+  "netLabel": "Bersih",
+  "cashMgmtTitle": "Pengurusan Tunai",
+  "todayCashDrawer": "Laci Tunai Hari Ini",
+  "rangeToday": "Hari ini",
+  "rangeYesterday": "Semalam",
+  "range7": "7 hari",
+  "range30": "30 hari",
+  "rangeAll": "Semua",
+  "rangeCustom": "Tersuai",
+  "total": "Jumlah"
 }

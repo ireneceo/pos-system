@@ -306,18 +306,30 @@ router.get('/restaurant/:restaurantId/shift/:id/movements', authenticateToken, c
   }
 });
 
-// GET 현금 입출금 전체 내역 (매장 단위, 과거 모든 교대 포함) — 시재관리 입출금 로그용.
+// GET 현금 입출금 전체 내역 (매장 단위, 과거 모든 교대 포함) — 시재관리 회계 리스트용.
+// 기간필터: ?startDate&endDate (ISO datetime). 없으면 전체. created_at 기준.
 router.get('/restaurant/:restaurantId/movements', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const restaurantId = parseInt(req.params.restaurantId, 10);
-    const limit = Math.min(parseInt(req.query.limit, 10) || 100, 300);
+    const limit = Math.min(parseInt(req.query.limit, 10) || 500, 2000);
+    const where = { restaurant_id: restaurantId };
+    const { startDate, endDate } = req.query;
+    if (startDate || endDate) {
+      where.created_at = {};
+      // date-only(YYYY-MM-DD) → 하루 경계로 확장. ISO datetime 이면 그대로.
+      if (startDate) where.created_at[Op.gte] = new Date(/^\d{4}-\d{2}-\d{2}$/.test(startDate) ? `${startDate}T00:00:00` : startDate);
+      if (endDate) where.created_at[Op.lte] = new Date(/^\d{4}-\d{2}-\d{2}$/.test(endDate) ? `${endDate}T23:59:59.999` : endDate);
+    }
     const list = await CashMovement.findAll({
-      where: { restaurant_id: restaurantId },
+      where,
       include: [{ model: CashierShift, as: 'shift', attributes: ['business_date', 'cashier_name'] }],
       order: [['created_at', 'DESC']],
       limit
     });
-    res.json({ success: true, data: list });
+    // 합계(필터 범위 내)
+    let totalIn = 0, totalOut = 0;
+    for (const m of list) { if (m.type === 'in') totalIn += Number(m.amount) || 0; else totalOut += Number(m.amount) || 0; }
+    res.json({ success: true, data: list, summary: { totalIn: round2(totalIn), totalOut: round2(totalOut), net: round2(totalIn - totalOut), count: list.length } });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
   }

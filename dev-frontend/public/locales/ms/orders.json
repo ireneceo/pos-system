@@ -163,5 +163,8 @@
   "orderCancel.skipReason": "Batal tanpa sebab",
   "voidItem.confirmNoReason": "Buang \"{{name}}\" daripada pesanan ini?",
   "voidItem.removeBtn": "Buang",
-  "voidItem.skipReason": "Buang tanpa sebab"
+  "voidItem.skipReason": "Buang tanpa sebab",
+  "voidItem": {
+    "otherReasonPlaceholder": "Taip sebab"
+  }
 }

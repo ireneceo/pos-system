@@ -68,5 +68,16 @@
   "movementLog": "현금 입출금 내역",
   "noMovements": "현금 입출금 기록이 아직 없습니다.",
   "zAutoPrinted": "Z-Report를 빌 프린터로 출력했습니다. 마감현금은 다음날 개시현금으로 이월됩니다.",
-  "reprintZ2": "Z-Report 재인쇄"
+  "reprintZ2": "Z-Report 재인쇄",
+  "totalAll": "전체 합계",
+  "netLabel": "순액",
+  "cashMgmtTitle": "시재관리",
+  "todayCashDrawer": "오늘의 캐시드로워",
+  "rangeToday": "오늘",
+  "rangeYesterday": "어제",
+  "range7": "7일",
+  "range30": "30일",
+  "rangeAll": "전체",
+  "rangeCustom": "직접",
+  "total": "합계"
 }
