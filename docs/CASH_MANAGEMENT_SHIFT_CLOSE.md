@@ -3,6 +3,45 @@
 > 출처: with MIN Cafe 운영 피드백(2026-06-18) "시재관리 필요. 현금결제 기록·항목 사전등록, 마감 때 캐시/카드(종류별)/기타 집계 + 실제 잔액 입력·대조(오차 안내), 마감현금=익일 시작현금, 캐시드로어 자동열림, 마감 최종토탈 프린트(데일리스테이트먼트는 체크 전, 이건 체크 완료 후)."
 > 상태: 설계 + 구현 진행(2026-06-19). 업계표준 POS Cash-up/Z-Report 정렬.
 
+---
+
+## 0. 재설계 v2 (2026-06-20, Irene 정정) — **두 기능으로 명확히 분리**
+
+> 정정 배경: 초판이 "Cash Up" 단독 메뉴 하나에 (현금시재 + 전수단 마감)을 섞어 혼란. Irene 지시로 **시재관리(현금 책임관리)** 와 **최종 마감(전수단 실제입력 대조)** 를 분리하고, 마감은 기존 **Daily Settlement** 와 연결한다. 업계표준(아래 출처)과 정렬.
+
+### ① 시재관리 (Cash Management / 현금 드로어 책임관리) — 현금 전용, **POS 권한 스탭**
+- 목적 = **현금 책임 추적**. "넣다/뺐다"가 핵심이 아니라 **개시·예상·실제·차이·이월**의 현금 회계.
+- 흐름: 개시현금(float, 직전 마감현금 자동제시) → 영업 중 현금 입금/출금(paid-in/out, 부차) → **예상현금 = 개시 + 현금매출 − 현금출금**(자동) → 마감 시 **실제 현금 블라인드 카운트** → **차이(over/short)** → 마감현금 일부를 **다음 교대 개시현금으로 이월**.
+- 위치: 사이드바 "시재관리"(cash-drawer), **access_pos 권한**(캐셔/스탭). ✅ 1단계(메뉴·권한·라우트·i18n) 완료(커밋 3f9cde2d).
+
+### ② 최종 마감 (Final Settlement / Tender Declaration) — **전 결제수단**, 매니저, **Daily Settlement 연결**
+- 목적 = 카드기·이월렛이 POS와 금액 **연동 안 되므로**, 마감자가 **실물 확인 후 실제 금액을 수단별로 직접 입력 → 시스템 예상과 비교 → 문제(차이) 표시**. 이게 **실제 파이널 마감**.
+- **Daily Settlement = 예상(시스템 기록) 측.** 마감자가 그 옆에 **실제** 입력:
+  - 현금 = 시재관리 카운트값
+  - **카드(종류별) = 카드 단말기 배치 정산 출력**을 보고 입력
+  - QR / 이월렛 = 각 앱/정산 화면 확인 후 입력
+- 시스템: 수단별 **예상 vs 실제 → 차이(over/short) + 문제 플래그**. 확정(close) → **Z-Report**(수단별 예상/실제/차이 + 마감현금).
+- 위치: 기존 **Daily Settlement**(플로어플랜·라이브오더·리포트에 이미 있음)에 **"최종 마감(실제 입력·대조)" 단계 추가**. 매니저(RA/Owner) 게이트.
+
+### 데이터/엔진 — 대부분 이미 존재 (UI 연결이 핵심)
+- 백엔드 `computeExpected` = 수단별 예상 SUM(현금·카드타입·other=QR/이월렛) — **있음**.
+- `reconcile` = 실제 입력 → 수단별 variance — **있음**.
+- 모델 CashierShift / CashReconciliation / CashMovement / PaymentMethodSetting — **있음**.
+- 즉 **엔진은 있고, "예상 옆 실제 입력칸 + 수단별 차이표"를 Daily Settlement 에 붙이는 UI** + 시재/마감 화면 분리가 남은 작업.
+
+### 업계표준 근거 (조사 2026-06-20)
+- **블라인드 카운트**(예상 안 보고 실물 먼저) → expected − counted = variance(over/short).
+- **카드는 단말기 배치 정산서 출력**으로 POS 합계와 대조(미연동 보완) = "tender declaration".
+- **Z-Report** = 수단별 매출/예상현금/차이 마감 문서. 출처: growexx End-of-Day Reconciliation / restaurantassociation Balance a Cash Drawer / Lightspeed Money In-Out / MS Dynamics shift-drawer management.
+
+### 구현 단계
+1. ✅ 시재관리 메뉴/권한/라우트 분리 (완료)
+2. ⬜ 시재관리 페이지를 **현금 책임관리 전용**으로 정리(개시·예상현금·블라인드 현금카운트·차이·이월·입출금·드로어). 전수단 reconcile/close 제거.
+3. ⬜ Daily Settlement 에 **"최종 마감" 단계** 추가: 수단별 예상(좌) + 실제 입력(우) + 차이 + 확정 close + Z-Report. (⚠️ Z-Report 인쇄는 🔒인쇄규칙 — Irene 승인+실프린터 확인. 기존 print 로직 무수정, 신규 섹션만 추가.)
+4. ⬜ 마감 이력(shift/history) 화면.
+
+---
+
 ## 1. 현재 상태(실측) — 전무, 신규 구축
 - Shift/CashDrawer/Reconciliation 모델·라우트·페이지 **0**.
 - 재사용 토대: `OrderPayment`(payment_method/card_type/amount_received/change_amount/cashier_id) · `dashboard.js reports-summary`(수단별 집계) · `DailySettlementPrint.tsx`(영수증 UI 템플릿) · `billPrint.js` 드로어킥(현금결제만, 🔒보호파일 — 읽기전용).
