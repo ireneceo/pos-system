@@ -11,7 +11,7 @@
 - **수정:** `/verify-pin`(로그인) 라우트만 `router.use(authenticateToken)` **위로** 이동해 공개화. `verify-pin-permission`(할인/취소 승인, req.user 의존)·`GET /staff`(직원목록 PIN 노출)는 **인증 유지**. pinLimiter 가 브루트포스 방어.
 - **영구 가드:** health-check 에 3건 추가(101→**104/104**): ①익명 verify-pin 공개(누락PIN→400) ②익명 /staff→401 ③익명 verify-pin-permission→401.
 - **재검증 결과:** 신규 4기능 실라우트 통합검증 **33/33**(데모38, 전량 원복) · health **104/104** · print-guard **8/8** · build 0 · hydration 0 · timezone 0 · mount(cash-up·reservations·/pos·/login) 0크래시.
-- **미커밋 변경 2파일:** `dev-backend/routes/staff.js`, `dev-backend/scripts/health-check.js` (dev 백엔드 재시작 완료 → dev.purplehere.com 에 반영됨). 배포 시 묶음에 포함.
+- **커밋:** `910b23be` (staff.js + health-check.js). dev 백엔드 재시작 완료 → dev.purplehere.com 반영. 배포 시 묶음에 포함. **미배포.**
 
 ### 🧪 다음 세션 최우선 — Irene 수동 테스트
 - **`docs/TEST_CHECKLIST_2026-06-20.md`** — 6/19~6/20 미배포 묶음을 Irene가 dev(dev.purplehere.com)에서 직접 테스트할 항목 정리. 다음 세션 진입 시 이 파일부터 안내.
