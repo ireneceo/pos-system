@@ -108,6 +108,40 @@ async function autoNoShow() {
   return marked;
 }
 
+// 체크인 후 방치된 예약 자동 마감 (P2-6 하드닝) — arrived/seated 가 reserved_at + turn + grace 를
+// 지나면 completed 로. 루프 미완(arrived 영구 잔류 → 플로어 '예약됨' 유령 배지)을 막고 분석 닫음.
+// reservation_count 는 생성 시 이미 +1 했으므로 여기선 last_reservation_at 만 갱신(이중계산 방지).
+async function autoCompleteStale() {
+  const list = await Reservation.findAll({
+    where: {
+      status: { [Op.in]: ['arrived', 'seated'] },
+      reserved_at: { [Op.lt]: new Date(Date.now() - 30 * 60 * 1000) }  // 최소 30분 지난 것만 후보
+    },
+    limit: 200
+  });
+  let done = 0;
+  for (const r of list) {
+    const restaurant = await Restaurant.findByPk(r.restaurant_id);
+    if (!restaurant) continue;
+    const settings = restaurant.reservation_settings || {};
+    const turn = Number(r.turn_minutes) || settings.slot?.turn_time_minutes || 90;
+    const grace = settings.no_show_policy?.grace_minutes ?? NO_SHOW_GRACE_MINUTES_DEFAULT;
+    const staleAfterMs = new Date(r.reserved_at).getTime() + (turn + grace) * 60000;
+    if (Date.now() < staleAfterMs) continue;  // 아직 turn+grace 안 지남
+    try {
+      await r.update({ status: 'completed', completed_at: new Date() });
+      if (r.customer_id) {
+        const c = await RestaurantCustomer.findByPk(r.customer_id);
+        if (c) await c.update({ last_reservation_at: new Date() });
+      }
+      done++;
+    } catch (e) {
+      logger.warn(`[ReservationScheduler] auto-complete failed for #${r.id}:`, e.message);
+    }
+  }
+  return done;
+}
+
 async function runHourly() {
   let run;
   try {
@@ -118,10 +152,11 @@ async function runHourly() {
     const r24 = await send24hReminders();
     const r2 = await send2hReminders();
     const noShow = await autoNoShow();
-    logger.info(`[ReservationScheduler] reminders 24h=${r24} 2h=${r2} no_show=${noShow}`);
+    const completed = await autoCompleteStale();
+    logger.info(`[ReservationScheduler] reminders 24h=${r24} 2h=${r2} no_show=${noShow} auto_completed=${completed}`);
     if (run) await run.update({
       status: 'success', finished_at: new Date(),
-      results: { reminders_24h: r24, reminders_2h: r2, no_show: noShow }
+      results: { reminders_24h: r24, reminders_2h: r2, no_show: noShow, auto_completed: completed }
     });
     return { success: true, reminders_24h: r24, reminders_2h: r2, no_show: noShow };
   } catch (err) {

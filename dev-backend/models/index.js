@@ -11,6 +11,8 @@ const OrderAction = require('./OrderAction');
 const OrderPayment = require('./OrderPayment');
 const CashierShift = require('./CashierShift');
 const CashReconciliation = require('./CashReconciliation');
+const CashMovement = require('./CashMovement');
+const PaymentMethodSetting = require('./PaymentMethodSetting');
 const RestaurantDailyStats = require('./RestaurantDailyStats');
 const PlanTemplate = require('./PlanTemplate');
 const OperationTicket = require('./OperationTicket');
@@ -933,6 +935,12 @@ CashierShift.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restauran
 CashierShift.hasMany(CashReconciliation, { foreignKey: 'shift_id', as: 'reconciliations' });
 CashReconciliation.belongsTo(CashierShift, { foreignKey: 'shift_id', as: 'shift' });
 CashReconciliation.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
+// Phase 2 — 인출/입금(CashMovement) ↔ 교대 / 결제수단 사전등록(PaymentMethodSetting) ↔ 매장
+CashierShift.hasMany(CashMovement, { foreignKey: 'shift_id', as: 'movements' });
+CashMovement.belongsTo(CashierShift, { foreignKey: 'shift_id', as: 'shift' });
+CashMovement.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
+PaymentMethodSetting.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
+Restaurant.hasMany(PaymentMethodSetting, { foreignKey: 'restaurant_id', as: 'paymentMethodSettings' });
 
 module.exports = {
   User,
@@ -948,6 +956,8 @@ module.exports = {
   OrderPayment,
   CashierShift,
   CashReconciliation,
+  CashMovement,
+  PaymentMethodSetting,
   RestaurantDailyStats,
   PlanTemplate,
   OperationTicket,

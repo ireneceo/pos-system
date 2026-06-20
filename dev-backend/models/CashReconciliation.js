@@ -62,6 +62,16 @@ const CashReconciliation = sequelize.define('CashReconciliation', {
   notes: {
     type: DataTypes.TEXT,
     allowNull: true
+  },
+  // Phase 2 — Z-Report 요약(주문수·총매출·수단별·인출입금·차이·마감현금) + 인쇄 시각.
+  // 별도 ZReport 테이블 대신 대조와 1:1 이므로 여기에 보관(설계 §3 ZReport 단순화).
+  zreport: {
+    type: DataTypes.JSON,
+    allowNull: true
+  },
+  zreport_printed_at: {
+    type: DataTypes.DATE,
+    allowNull: true
   }
 }, {
   tableName: 'cash_reconciliations',

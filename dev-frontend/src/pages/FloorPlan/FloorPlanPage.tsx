@@ -26,7 +26,7 @@ import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
 import { useStore } from '../../contexts/StoreContext';
 import { OrdersRealtimeProvider, useOrdersRealtime } from '../../contexts/OrdersRealtimeContext';
-import { deriveTableStatusMaps, filterOffTableOrders } from '../../utils/orderStage';
+import { deriveTableStatusMaps, deriveReservedTableMap, filterOffTableOrders } from '../../utils/orderStage';
 import { useAutoPrintPoller } from '../../hooks/useAutoPrintPoller';
 import { openCustomerDisplay, isAutoOpenEnabled } from '../../utils/customerDisplay';
 
@@ -411,6 +411,26 @@ const FloorPlanPage: React.FC = () => {
     () => deriveTableStatusMaps(rtOrders, { clearTableOnPayment, now: nowTick }),
     [rtOrders, clearTableOnPayment, nowTick]
   );
+  // 예약↔플로어플랜 (P2-6) — 오늘 confirmed/arrived 예약 + 리드타임(설정).
+  const [reservations, setReservations] = useState<any[]>([]);
+  const [reservationLeadMinutes, setReservationLeadMinutes] = useState(120);
+  // '예약됨' 점유맵 — 임박 리드창 안 + 활성 주문 없는 테이블만 (점유 우선 병합은 아래).
+  const reservedMap = useMemo(
+    () => deriveReservedTableMap(reservations, {
+      leadMinutes: reservationLeadMinutes,
+      now: nowTick,
+      formatTime: (iso: string) => formatDateTime(iso, operationSettings, { hour: '2-digit', minute: '2-digit' }),
+      // 오늘 주문 이력(점유/완료/비움)이 있는 테이블키 → arrived 예약 유령 배지 억제
+      suppressArrivedKeys: new Set(Object.keys(tableHistory || {}))
+    }),
+    [reservations, reservationLeadMinutes, nowTick, operationSettings, tableHistory]
+  );
+  // 캔버스/패널용 병합맵 — 점유(활성 주문)가 예약을 덮어쓴다(occupied 우선).
+  const canvasTableStatuses = useMemo(
+    () => ({ ...reservedMap, ...tableStatuses }),
+    [reservedMap, tableStatuses]
+  );
+
   // 서빙 토글 낙관적 override (orderId:itemIndex → {status, ts}) — stale poll 되돌림 방지.
   const [serveOverrides, setServeOverrides] = useState<Record<string, { status: string; ts: number }>>({});
   // Items 뷰 필터용 메타 — 카테고리(제품명→카테고리) + 주방 스테이션(id→이름).
@@ -606,6 +626,14 @@ const FloorPlanPage: React.FC = () => {
         if (restaurant.payment_settings) {
           setPaymentMethods(restaurant.payment_settings);
         }
+        // 예약↔플로어플랜 (P2-6): 리드타임(설정) — 활성 주문 없는 테이블에 예약을 미리 띄우는 창.
+        if (restaurant.reservation_settings) {
+          const rs = typeof restaurant.reservation_settings === 'string'
+            ? JSON.parse(restaurant.reservation_settings)
+            : restaurant.reservation_settings;
+          const lead = Number(rs?.slot?.floor_lead_minutes);
+          if (Number.isFinite(lead) && lead >= 0) setReservationLeadMinutes(lead);
+        }
       } catch (err) {
         console.error('Failed to load floor plan:', err);
       } finally {
@@ -630,6 +658,59 @@ const FloorPlanPage: React.FC = () => {
     load();
     loadMembership();
   }, [restaurantId]);
+
+  // 예약↔플로어플랜 (P2-6) — 오늘 예약 로드 + 60초 주기 갱신. deriveReservedTableMap 이
+  // confirmed/arrived + 리드창으로 거른다. 점유는 별도 소켓 스토어가 담당(여기는 예약만).
+  const loadReservations = useCallback(async () => {
+    if (!restaurantId) return;
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`/api/reservations/restaurant/${restaurantId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) return;
+      const j = await res.json();
+      setReservations(Array.isArray(j?.data) ? j.data : []);
+    } catch (_) { /* optional — 예약 표시는 비치명적 */ }
+  }, [restaurantId]);
+
+  useEffect(() => {
+    loadReservations();
+    const iv = setInterval(loadReservations, 60000);
+    return () => clearInterval(iv);
+  }, [loadReservations]);
+
+  // 예약 체크인 수신 (P2-6) — ReservationsTimelinePage 의 arrived 네비
+  // (?seatReservation&tableId&table&guests) 를 받아 해당 테이블 선택 + POS 자동 진입
+  // (인원 prefill). 한 번만 처리하고 쿼리 정리(새로고침 재발 방지). TDZ 회피 위해
+  // handleNewOrder 대신 POS URL 직접 구성.
+  const checkinHandledRef = useRef<string | null>(null);
+  useEffect(() => {
+    const seatId = searchParams.get('seatReservation');
+    const tableId = searchParams.get('tableId');
+    if (!seatId || !tableId || !restaurantId) return;
+    if (checkinHandledRef.current === seatId) return;  // 이 체크인은 이미 처리(연속 체크인은 seatId 가 달라 통과)
+    if (!floorPlan || !(floorPlan.tables || []).some(t => t.id === tableId)) return; // 플로어플랜 로드 대기
+    checkinHandledRef.current = seatId;
+
+    const match = (floorPlan.tables || []).find(t => t.id === tableId);
+    const tableLabel = searchParams.get('table') || (match ? (match.label || match.tableNumber) : '');
+    const guests = Number(searchParams.get('guests')) || 0;
+
+    setSelectedTableId(tableId);
+    const params = new URLSearchParams();
+    if (tableLabel) params.set('table', tableLabel);
+    params.set('tableId', tableId);
+    if (guests > 0) params.set('guests', String(guests));
+    params.set('from', 'floor-plan-overlay');
+    setPosUrl(`/restaurant/${restaurantId}/pos-terminal?${params.toString()}`);
+    setShowPOS(true);
+
+    // 쿼리 정리 — 새로고침 시 재트리거 방지
+    const cleaned = new URLSearchParams(searchParams);
+    ['seatReservation', 'tableId', 'table', 'guests'].forEach(k => cleaned.delete(k));
+    setSearchParams(cleaned, { replace: true });
+  }, [searchParams, floorPlan, restaurantId, setSearchParams]);
 
   // ── 배너/알림음 (2026-06-12, 표시 전용 구독) ─────────────────────────────────
   // 데이터 갱신은 공용 스토어의 단일 reducer 가 처리한다(소켓 6종 in-place — 기존에
@@ -1064,7 +1145,7 @@ const FloorPlanPage: React.FC = () => {
   // (POSOverlayHeader with × Close) is the only close path, and Floor Plan state (zone filter, statuses,
   // socket subscription) is preserved by staying in this route.
   // Add new launch types here as new opts keys; do not split into separate functions.
-  const handleNewOrder = (opts?: { takeaway?: boolean; mergeOrderId?: number }) => {
+  const handleNewOrder = (opts?: { takeaway?: boolean; mergeOrderId?: number; guests?: number }) => {
     const params = new URLSearchParams();
     // Add Items (#7) — 기존 주문에 머지(새 주문 생성 방지). POS 가 forceMergeIntoOrderId 로 합친다.
     if (opts?.mergeOrderId) params.set('mergeOrderId', String(opts.mergeOrderId));
@@ -1085,6 +1166,8 @@ const FloorPlanPage: React.FC = () => {
       params.set('table', selectedTable);
       params.set('tableId', selectedTableId);
     }
+    // 예약 체크인 (P2-6) — 인원 prefill. POSTerminal 이 guests 쿼리를 guest_count 로 적재.
+    if (opts?.guests && opts.guests > 0) params.set('guests', String(opts.guests));
     params.set('from', 'floor-plan-overlay');
     setPosUrl(`/restaurant/${restaurantId}/pos-terminal?${params.toString()}`);
     setShowPOS(true);
@@ -1519,6 +1602,10 @@ const FloorPlanPage: React.FC = () => {
   const selectedStatusInfo = (safeOrderIndex >= 0 && selectedOrders[safeOrderIndex])
     ? selectedOrders[safeOrderIndex]
     : selectedTableData;
+  // 예약 배너 — 활성 주문이 없는(점유 아님) 테이블에 임박 예약이 있을 때만. 주문 로직 무영향.
+  const selectedReservation = (selectedTableId && !selectedTableData)
+    ? (reservedMap[selectedTableId] || (selectedTable ? reservedMap[selectedTable] : undefined))
+    : undefined;
   // 탭을 보일지: 주문이 여러 개거나, 빈 테이블이라도 오늘 완료 이력이 있으면.
   const showOrderTabs = selectedOrders.length > 1 || (!selectedTableData && selectedOrders.length >= 1);
 
@@ -1872,7 +1959,7 @@ const FloorPlanPage: React.FC = () => {
           ) : activeView === 'floor' ? (
             <FloorPlanCanvas
               floorPlan={filteredFloorPlan}
-              tableStatuses={tableStatuses}
+              tableStatuses={canvasTableStatuses}
               onTableClick={handleTableClick}
               onTableMouseDown={(_e, id) => startTablePress(id)}
               onTableTouchStart={(_e, id) => startTablePress(id)}
@@ -2052,6 +2139,7 @@ const FloorPlanPage: React.FC = () => {
           <TableDetailPanel
             tableNumber={selectedTable}
             statusInfo={selectedStatusInfo}
+            reservationInfo={selectedReservation}
             tableInfo={selectedTableInfo}
             currency={currency}
             timezone={timezone}

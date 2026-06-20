@@ -5,6 +5,7 @@ const express = require('express');
 const router = express.Router();
 const Order = require('../models/Order');
 const Restaurant = require('../models/Restaurant');
+const Reservation = require('../models/Reservation');
 const Coupon = require('../models/Coupon');
 const { logOrderActionSafe } = require('../services/orderAuditLog');
 const OrderAction = require('../models/OrderAction');
@@ -21,6 +22,26 @@ const { checkPaymentMethodAllowed } = require('../utils/paymentMethodGuard');
 const { enforceVoidPin } = require('../utils/voidPinGuard');
 const { enrichItemsWithStation } = require('../utils/stationEnrichment');
 const { round2, computeOrderTotals } = require('../utils/orderTotals');
+
+// 예약-주문 자동 링크 (P2-6, 인쇄 무관) — dine-in 주문이 'arrived'(체크인) 예약이 걸린
+// 테이블에서 생성되면 그 예약을 주문에 연결(order.reservation_id) + 예약 arrived→seated.
+// 테이블 기반 매칭이라 POS/모바일/플로어 전 경로 동일 동작. arrived 만 매칭(미래 confirmed
+// 예약은 워크인 오링크 방지 위해 제외). 최근 6시간 내 도착분만.
+async function linkArrivedReservationToOrder(order) {
+  try {
+    if (!order || order.reservation_id) return;
+    const otNorm = String(order.order_type || 'dine_in').replace(/[_\s-]/g, '').toLowerCase();
+    if (otNorm !== 'dinein') return;
+    if (!order.floor_plan_table_id && !order.table_number) return;
+    const where = { restaurant_id: order.restaurant_id, status: 'arrived', reserved_at: { [Op.gte]: new Date(Date.now() - 6 * 3600000) } };
+    if (order.floor_plan_table_id) where.floor_plan_table_id = order.floor_plan_table_id;
+    else where.table_number = order.table_number;
+    const r = await Reservation.findOne({ where, order: [['reserved_at', 'DESC']] });
+    if (!r) return;
+    await order.update({ reservation_id: r.id });
+    await r.update({ status: 'seated', seated_at: new Date() });
+  } catch (e) { /* non-fatal — 링크 실패가 주문 생성을 막지 않음 */ }
+}
 
 // coupon_code 로 쿠폰 메타(type/value/max_discount)를 조회. 머지/삭제 시 % 쿠폰을
 // 새 소계로 정확히 재계산하기 위함. 없으면 null → 비례 재계산 fallback.
@@ -801,6 +822,10 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
       }
     }
 
+    // 예약-주문 자동 링크 (P2-6) — 인쇄 무관. dine-in 주문이 'arrived' 예약 걸린 테이블에서
+    // 생성되면 reservation_id 연결 + 예약 arrived→seated (체크인 루프). 실패는 비치명.
+    await linkArrivedReservationToOrder(order);
+
     // Process points usage if provided
     if (order.points_used && order.points_used > 0 && order.customer_id && order.restaurant_id) {
       try {
@@ -1483,6 +1508,22 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
 
     await order.update(updateData);
     await order.reload(); // Ensure we have the latest data
+
+    // 예약-주문 루프 닫기 (P2-6, 인쇄 무관) — 연결된 주문이 completed 되면 예약 seated→completed.
+    // (백스톱: reservationScheduler.autoCompleteStale 이 turn+grace 후에도 닫음.) 실패 비치명.
+    if (willBeCompleted && !wasCompleted && order.reservation_id) {
+      try {
+        const resv = await Reservation.findByPk(order.reservation_id);
+        if (resv && ['arrived', 'seated'].includes(resv.status)) {
+          await resv.update({ status: 'completed', completed_at: new Date() });
+          if (resv.customer_id) {
+            const RC = require('../models/RestaurantCustomer');
+            const c = await RC.findByPk(resv.customer_id);
+            if (c) await c.update({ last_reservation_at: new Date() });
+          }
+        }
+      } catch (e) { /* non-fatal */ }
+    }
 
     // ── Order Action audit log — fire-and-forget (실패해도 메인 흐름 영향 0) ─────
     // KDS PIN staff 정보 — req.body.kds_staff_id / kds_staff_name 으로 전달 (KDS PIN 흐름)

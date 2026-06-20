@@ -1342,6 +1342,15 @@ const POSTerminalPage: React.FC = () => {
     const mid = searchParams.get('mergeOrderId');
     if (mid && /^\d+$/.test(mid)) setForceMergeOrderId(parseInt(mid, 10));
   }, [searchParams]);
+
+  // 예약 체크인 (P2-6) — Floor Plan 에서 guests 쿼리로 진입하면 인원 prefill. 인쇄 무관.
+  useEffect(() => {
+    const g = searchParams.get('guests');
+    if (g && /^\d+$/.test(g)) {
+      const n = parseInt(g, 10);
+      if (n > 0) setGuestCount(n);
+    }
+  }, [searchParams]);
   const [pagerNumber, setPagerNumber] = useState('');
   const [pagerSearchQuery, setPagerSearchQuery] = useState('');
   const [showPagerDropdown, setShowPagerDropdown] = useState(false);

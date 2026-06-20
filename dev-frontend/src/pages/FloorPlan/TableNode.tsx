@@ -249,14 +249,16 @@ const TableNode: React.FC<TableNodeProps> = React.memo(({
           </SeatsLabel>
           {!isEditing && statusInfo && status !== 'available' && (
             <StatusInfo $textColor={colors.text}>
-              {isStaffMeal ? 'Staff Meal' : ({
-                pending: 'Pending',
-                preparing: 'Preparing',
-                ready: 'Ready',
-                served: 'Served',
-                awaiting_payment: 'Awaiting Pay',
-                outstanding: 'Outstanding'
-              } as Record<string, string>)[statusInfo.orderStatus || ''] || 'Occupied'}
+              {status === 'reserved'
+                ? (statusInfo.reservedLabel || 'Reserved')
+                : isStaffMeal ? 'Staff Meal' : ({
+                  pending: 'Pending',
+                  preparing: 'Preparing',
+                  ready: 'Ready',
+                  served: 'Served',
+                  awaiting_payment: 'Awaiting Pay',
+                  outstanding: 'Outstanding'
+                } as Record<string, string>)[statusInfo.orderStatus || ''] || 'Occupied'}
             </StatusInfo>
           )}
         </>

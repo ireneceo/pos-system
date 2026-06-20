@@ -35,12 +35,14 @@ interface TableDetailPanelProps {
   // Dine-in specifics (table label, seats, QR, "Leaved", Available empty-state) are hidden when null.
   tableNumber: string | null;
   statusInfo: TableStatusInfo | undefined;
+  // 예약↔플로어플랜 (P2-6) — 활성 주문 없는 테이블에 임박 예약이 있을 때만 전달됨.
+  reservationInfo?: TableStatusInfo | undefined;
   tableInfo: FloorTable | undefined;
   currency: string;
   timezone?: string;
   restaurantId: number;
   onClose: () => void;
-  onNewOrder: (opts?: { takeaway?: boolean; mergeOrderId?: number }) => void;
+  onNewOrder: (opts?: { takeaway?: boolean; mergeOrderId?: number; guests?: number }) => void;
   onStatusChange: (orderId: number, newStatus: string) => Promise<void>;
   onPayment: () => void;
   onNavigateToPOS: () => void;
@@ -557,6 +559,7 @@ const getPreviousStatus = (current: string): string | null => {
 const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
   tableNumber,
   statusInfo,
+  reservationInfo,
   tableInfo,
   currency,
   timezone,
@@ -2055,13 +2058,33 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
         )
       ) : (
         <>
+          {reservationInfo && (
+            <div style={{
+              margin: '12px 16px 0', padding: '12px 14px', borderRadius: 8,
+              background: '#DBEAFE', border: '1px solid #2563EB'
+            }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#1D4ED8', letterSpacing: 0.3 }}>
+                {(reservationInfo.reservedLabel || 'Reserved').toUpperCase()}
+              </div>
+              <div style={{ marginTop: 4, fontSize: 14, fontWeight: 600, color: '#0A2540' }}>
+                {reservationInfo.customerName || 'Guest'}
+                {reservationInfo.guestCount ? ` · ${reservationInfo.guestCount} guests` : ''}
+              </div>
+              <div style={{ marginTop: 2, fontSize: 12, color: '#1D4ED8' }}>
+                {'New Order will check this guest in.'}
+              </div>
+            </div>
+          )}
           <EmptyState>
             <span style={{ fontSize: 40, opacity: 0.3 }}>&#x25CB;</span>
-            <p>{'This table is available'}</p>
+            <p>{reservationInfo ? 'Reserved — start order to check in' : 'This table is available'}</p>
           </EmptyState>
           <ActionGroup>
-            <ActionBtn $variant="primary" onClick={onNewOrder}>
-              + New Order
+            <ActionBtn
+              $variant="primary"
+              onClick={() => onNewOrder(reservationInfo?.guestCount ? { guests: Number(reservationInfo.guestCount) } : undefined)}
+            >
+              {reservationInfo ? 'Check in (New Order)' : 'New Order'}
             </ActionBtn>
             {qrMode === 'session' && (
             <>

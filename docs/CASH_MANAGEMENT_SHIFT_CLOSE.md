@@ -51,7 +51,19 @@
 
 ## 6. 단계
 - **Phase 1(MVP, 본 구현)**: CashierShift + CashReconciliation 모델 + open/expected/reconcile/close API + 마감 UI. 현금 중심 대조 + closing_balance carry-forward.
-- **Phase 2**: PaymentMethodSetting 사전등록 + ZReport 프린트 정식화 + 캐시드로어 수동오픈(billPrint 🔒 → Irene 승인+실프린터) + 인출/입금(paid in/out).
+- **Phase 2 (구현 완료 2026-06-20, DEV·미배포)**: 4파트 — ①인출/입금(paid in/out) `CashMovement` 모델+API, 현금예상=개시+현금매출+입금−출금 반영 ②Z-Report 정식화(요약 JSON+`zreport_printed_at` 를 CashReconciliation 에 보관 — 별도 ZReport 테이블 대신 1:1 단순화, 설계 §3 ZReport 갈음) + `printSettlementReport` 호출(빌 인쇄와 동일 경로) ③캐시드로어 수동오픈 `openCashDrawer` 호출 ④`PaymentMethodSetting` 사전등록 CRUD+병합.
+  - 🔒 **billPrint.js 무수정** — 기존 export(`printSettlementReport`/`openCashDrawer`)만 CashUpPage 에서 호출. print-guard 8/8 GREEN(방식/라우팅 무변경).
+  - **물리 검증 미완**: Z-Report 실제 종이 출력 + 드로어 실제 개방은 **Irene 실프린터 눈 확인 필수**(헤드리스 불가). 배포 후 확인.
+  - 마이그: `migrate-cash-phase2.js`(cash_movements + payment_method_settings + cash_reconciliations.zreport/zreport_printed_at, deploy 9a-2 등록). 검증: build0·hydration0·i18n0·print-guard8/8·health101/101·실API 18/18·mount0.
+- **향후(미구현)**: 다중 동시 교대(단말별), 인출 사유 카테고리 통계.
+
+### Phase 2 하드닝 (2026-06-20, 30년차 감사 반영) — DEV·미배포
+> 적대적 코드리뷰로 발견한 P0/P1 결함 수정. billPrint/orders-crud 등 🔒 보호 파일 무접촉(print-guard 8/8 GREEN).
+- **P0 — 취소/삭제 주문 결제 제외**: `computeExpected` 가 cancelled/is_deleted 주문 결제까지 합산해 expected 현금을 부풀려 '가짜 부족'(직원 횡령 누명)을 만들던 결함. dashboard 매출과 동일 규칙으로 제외(스코프 서브쿼리). 실증: 취소60 제외→expected.cash=40.
+- **P0 — 권한 게이트**: cash 쓰기 라우트(open/reconcile/close/movement/zreport-printed/payment-methods)에 `requirePosCounter`(현금박스/정산 권한) 적용. 서빙전용 직원 open→403 실증.
+- **P1 — 대조 무결성**: reconcile non-open 거부 + **1교대 1대조 upsert**(첫 variance 은폐 방지), 대조 후 movement 잠금(ALREADY_RECONCILED), 대조 없는 close 거부(NO_RECONCILIATION).
+- **P1 — 진짜 블라인드 카운트**: `/expected` 가 예상 '금액'을 카운트 전 클라에 보내던 누수 제거 → 수단 키만 전송. 실제 금액/variance 는 reconcile 응답에서만 공개.
+- 검증: 적대 API 13/13 + health101/101 + print-guard8/8 + mount0. (잔여 후속: 동시 open DB 유니크 가드, 통화별 variance 임계값.)
 
 ## 8. 프론트 UX 확정 (2026-06-19, 글로벌 POS 표준 + 극단적 단순함)
 **원칙:** ① 블라인드 카운트(예상 숨기고 실물 먼저 입력 → 손실방지 표준) ② 1화면 1결정 위저드 ③ 차이=평문+신호등색 ④ 터치 숫자패드(키보드 없음).

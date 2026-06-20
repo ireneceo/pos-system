@@ -49,7 +49,7 @@ export interface FloorTable {
   group_id?: string;             // v2 only — FK -> FloorTableGroup.id (v1 데이터에는 없을 수 있음)
 }
 
-export type TableStatus = 'available' | 'occupied' | 'ready' | 'needs-attention' | 'completed';
+export type TableStatus = 'available' | 'occupied' | 'ready' | 'needs-attention' | 'completed' | 'reserved';
 
 export interface OrderItemSummary {
   name: string;
@@ -104,6 +104,10 @@ export interface TableStatusInfo {
   paymentProof?: { image?: string; reference?: string; file_name?: string; uploaded_at?: string } | null;
   // Multi-order support: all active orders for this table
   orders?: TableStatusInfo[];
+  // Reservation overlay (P2-6) — set when status==='reserved' (no active order)
+  reservationId?: number;
+  reservedLabel?: string;   // e.g. "Reserved 7:00 PM" (already timezone-formatted)
+  reservedAt?: string;      // ISO of reserved_at (for sorting/detail)
 }
 
 // Default v2 floor plan — 새 매장 진입 시 사용. 옛 매장은 backend lazy migrate 가 v1→v2 변환.
@@ -154,7 +158,10 @@ export const STATUS_COLORS: Record<TableStatus, { bg: string; border: string; te
   occupied: { bg: '#EDE9FE', border: '#7C3AED', text: '#6D28D9' },
   ready: { bg: '#DCFCE7', border: '#16A34A', text: '#15803D' },
   'needs-attention': { bg: '#FEE2E2', border: '#DC2626', text: '#B91C1C' },
-  completed: { bg: 'var(--pos-table-empty-bg, #F1F4F8)', border: 'var(--pos-table-empty-border, #4B5563)', text: 'var(--pos-table-empty-text, #1F2937)' }
+  completed: { bg: 'var(--pos-table-empty-bg, #F1F4F8)', border: 'var(--pos-table-empty-border, #4B5563)', text: 'var(--pos-table-empty-text, #1F2937)' },
+  // 2026-06-20 (P2-6): 예약됨 — 활성 주문 없는 테이블에 임박 예약이 있을 때. 점유(보라)와
+  //   구분되는 연블루. 점유 테이블은 occupied 우선이라 reserved 로 덮이지 않음.
+  reserved: { bg: '#DBEAFE', border: '#2563EB', text: '#1D4ED8' }
 };
 
 export const STATUS_LABELS: Record<TableStatus, string> = {
@@ -162,7 +169,8 @@ export const STATUS_LABELS: Record<TableStatus, string> = {
   occupied: 'Occupied',
   ready: 'Ready',
   'needs-attention': 'Attention',
-  completed: 'Completed'
+  completed: 'Completed',
+  reserved: 'Reserved'
 };
 
 // Order-level status colors — unified pastel palette for floor plan

@@ -57,6 +57,38 @@ router.get('/restaurant/:restaurant_id/pending', authenticateToken, checkRestaur
 // ────────────────────────────────────────────────────────────────────────────
 // POST /restaurant/:restaurant_id  (staff direct create — phone reservation)
 // ────────────────────────────────────────────────────────────────────────────
+// 테이블 배정 검증 (P2-6 하드닝) — FPTI 실재 + 실제 테이블(픽스처 거부) + 이중예약 충돌.
+// 반환 {ok, tableNumber} 또는 {ok:false, status, code, message}.
+async function validateTableAssignment(restaurant, restaurantId, fpti, reservedAtDate, turnMin, excludeId) {
+  const tables = (restaurant.floor_plan && restaurant.floor_plan.tables) || [];
+  const match = tables.find((t) => t.id === fpti);
+  if (!match) return { ok: false, status: 400, code: 'TABLE_NOT_FOUND', message: 'Table not found in floor plan.' };
+  // 픽스처(주방/카운터/입구)는 예약 대상 아님
+  if (match.tableType && match.tableType !== 'table') {
+    return { ok: false, status: 400, code: 'NOT_A_TABLE', message: 'That spot is not a seatable table.' };
+  }
+  // 이중예약 충돌 — 같은 테이블에 [reserved_at, reserved_at+turn] 겹치는 활성 예약이 있으면 거부.
+  const newStart = reservedAtDate.getTime();
+  const newEnd = newStart + (Number(turnMin) || 90) * 60000;
+  const windowMs = 8 * 3600000; // 후보를 ±8h 로 좁혀 조회 후 JS 로 정밀 겹침 판정
+  const where = {
+    restaurant_id: restaurantId,
+    floor_plan_table_id: fpti,
+    status: { [Op.in]: ['confirmed', 'arrived', 'seated'] },
+    reserved_at: { [Op.between]: [new Date(newStart - windowMs), new Date(newEnd + windowMs)] }
+  };
+  if (excludeId) where.id = { [Op.ne]: excludeId };
+  const candidates = await Reservation.findAll({ where });
+  for (const c of candidates) {
+    const cStart = new Date(c.reserved_at).getTime();
+    const cEnd = cStart + (Number(c.turn_minutes) || 90) * 60000;
+    if (newStart < cEnd && cStart < newEnd) {
+      return { ok: false, status: 409, code: 'TABLE_DOUBLE_BOOKED', message: `Table already reserved for ${c.guest_name} at that time.` };
+    }
+  }
+  return { ok: true, tableNumber: match.tableNumber || match.label || null };
+}
+
 router.post('/restaurant/:restaurant_id', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const restaurantId = parseInt(req.params.restaurant_id);
@@ -69,6 +101,15 @@ router.post('/restaurant/:restaurant_id', authenticateToken, checkRestaurantAcce
     const settings = restaurant.reservation_settings || {};
     const slot = settings.slot || {};
 
+    // 테이블 배정 (P2-6) — FPTI 전달 시 실재+실제테이블+이중예약 검증 후 번호 파생.
+    let fpti = req.body.floor_plan_table_id || null;
+    let resolvedTableNumber = table_number || null;
+    if (fpti) {
+      const v = await validateTableAssignment(restaurant, restaurantId, fpti, new Date(reserved_at), slot.turn_time_minutes || 90, null);
+      if (!v.ok) return res.status(v.status).json({ success: false, code: v.code, message: v.message });
+      if (!resolvedTableNumber) resolvedTableNumber = v.tableNumber;
+    }
+
     const reservation = await Reservation.create({
       restaurant_id: restaurantId,
       guest_name,
@@ -77,7 +118,8 @@ router.post('/restaurant/:restaurant_id', authenticateToken, checkRestaurantAcce
       reserved_at: new Date(reserved_at),
       party_size,
       turn_minutes: slot.turn_time_minutes || 90,
-      table_number: table_number || null,
+      table_number: resolvedTableNumber,
+      floor_plan_table_id: fpti,
       status: 'confirmed',                        // staff 직접 생성은 즉시 확정
       notes: notes || null,
       source: 'staff_phone',                      // staff 가 만든 모든 예약 (전화·내방·등록 모두 동일)
@@ -167,7 +209,10 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
 });
 
 // ────────────────────────────────────────────────────────────────────────────
-// PATCH /:id/table — assign table number
+// PATCH /:id/table — assign floor-plan table (FPTI) + number (P2-6)
+//   body { floor_plan_table_id?, table_number? }. FPTI 전달 시 매장 플로어플랜에
+//   실재하는지 검증하고, 라벨/번호를 자동 파생해 둘 다 저장(Order 패턴과 동일).
+//   FPTI 없이 번호만 와도(레거시/번호 직접입력) 허용. 빈 값 → 배정 해제.
 // ────────────────────────────────────────────────────────────────────────────
 router.patch('/:id/table', authenticateToken, async (req, res) => {
   try {
@@ -176,7 +221,19 @@ router.patch('/:id/table', authenticateToken, async (req, res) => {
     req.params.restaurantId = r.restaurant_id;
     await new Promise((resolve) => checkRestaurantAccess(req, res, () => resolve()));
     if (res.headersSent) return;
-    await r.update({ table_number: req.body.table_number || null });
+
+    const fpti = req.body.floor_plan_table_id || null;
+    let tableNumber = req.body.table_number || null;
+
+    if (fpti) {
+      // 실재 + 실제테이블(픽스처 거부) + 이중예약 충돌 검증 (자기 자신 제외)
+      const restaurant = await Restaurant.findByPk(r.restaurant_id, { attributes: ['floor_plan'] });
+      const v = await validateTableAssignment(restaurant, r.restaurant_id, fpti, new Date(r.reserved_at), r.turn_minutes || 90, r.id);
+      if (!v.ok) return res.status(v.status).json({ success: false, code: v.code, message: v.message });
+      if (!tableNumber) tableNumber = v.tableNumber;
+    }
+
+    await r.update({ floor_plan_table_id: fpti, table_number: tableNumber });
     res.json({ success: true, data: r });
   } catch (e) {
     res.status(500).json({ success: false, message: 'Failed to assign table' });

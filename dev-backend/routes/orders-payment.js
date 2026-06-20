@@ -5,6 +5,8 @@ const express = require('express');
 const router = express.Router();
 const Order = require('../models/Order');
 const Restaurant = require('../models/Restaurant');
+const Reservation = require('../models/Reservation');
+const RestaurantCustomer = require('../models/RestaurantCustomer');
 const Coupon = require('../models/Coupon');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
@@ -380,6 +382,21 @@ router.post('/:id/payments', authenticateToken, requirePosCounter, async (req, r
       updateData.status = 'pending';
     }
     await order.update(updateData);
+
+    // 예약-주문 루프 닫기 (P2-6) — 연결된 예약이 있고 완납되면 예약 completed (결제완료 시 자동완료).
+    // 백스톱: orders-crud completed 전이 + reservationScheduler.autoCompleteStale. 실패 비치명.
+    if (fullyPaid && order.reservation_id) {
+      try {
+        const resv = await Reservation.findByPk(order.reservation_id);
+        if (resv && ['arrived', 'seated'].includes(resv.status)) {
+          await resv.update({ status: 'completed', completed_at: new Date() });
+          if (resv.customer_id) {
+            const c = await RestaurantCustomer.findByPk(resv.customer_id);
+            if (c) await c.update({ last_reservation_at: new Date() });
+          }
+        }
+      } catch (e) { /* non-fatal */ }
+    }
 
     // Audit log
     logOrderActionSafe({

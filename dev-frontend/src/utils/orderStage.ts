@@ -163,3 +163,55 @@ export const deriveTableStatusMaps = (
 
   return { data, history };
 };
+
+/**
+ * 오늘 예약 배열 → Floor Plan '예약됨' 점유맵 (P2-6).
+ *  - 대상: confirmed/arrived 상태 + floor_plan_table_id 또는 table_number 배정된 것
+ *  - 표시 창: now ∈ [reserved_at - leadMinutes, reserved_at + turn_minutes]
+ *    (임박 리드타임 — 예약시간 전부터 turn 종료까지만 '예약됨'으로 띄움)
+ *  - 키: floor_plan_table_id 우선, 폴백 table_number (점유맵과 동일 규칙)
+ *  - 같은 테이블에 창 겹친 예약이 여럿이면 가장 임박한(reserved_at 빠른) 것
+ *  주의: 점유(활성 주문) 우선이므로 호출부에서 점유맵에 이미 있는 키는 제외해 병합한다.
+ */
+export const deriveReservedTableMap = (
+  reservations: any[],
+  opts: { leadMinutes?: number; now?: number; formatTime?: (iso: string) => string; suppressArrivedKeys?: Set<string> } = {}
+): Record<string, TableStatusInfo> => {
+  const now = opts.now ?? Date.now();
+  const leadMs = (opts.leadMinutes ?? 120) * 60000;
+  const map: Record<string, TableStatusInfo> = {};
+
+  for (const r of (reservations || [])) {
+    if (!r || !['confirmed', 'arrived'].includes(r.status)) continue;
+    const key = r.floor_plan_table_id || r.table_number;
+    if (!key) continue;
+    // 유령 배지 방지(P1): 체크인(arrived)한 예약인데 그 테이블이 오늘 이미 주문을 받았으면
+    // (주문 생성/완료/비움) 배지 숨김 — 손님이 이미 앉아 주문했거나 떠난 테이블. confirmed(미도착
+    // 미래 예약)는 영향 없음(점심 후 저녁예약도 정상 표시).
+    if (r.status === 'arrived' && opts.suppressArrivedKeys && opts.suppressArrivedKeys.has(key)) continue;
+    const reservedAtMs = new Date(r.reserved_at).getTime();
+    if (!reservedAtMs || Number.isNaN(reservedAtMs)) continue;
+    const turnMs = (Number(r.turn_minutes) || 90) * 60000;
+    if (now < reservedAtMs - leadMs || now > reservedAtMs + turnMs) continue;
+
+    // 같은 키에 이미 더 임박한 예약이 있으면 유지
+    const existing = map[key];
+    if (existing && existing.reservedAt && new Date(existing.reservedAt).getTime() <= reservedAtMs) continue;
+
+    const timeLabel = opts.formatTime ? opts.formatTime(r.reserved_at) : '';
+    map[key] = {
+      tableNumber: r.table_number || '',
+      status: 'reserved',
+      orderCount: 0,
+      totalAmount: 0,
+      elapsedMinutes: 0,
+      guestCount: r.party_size ?? null,
+      customerName: r.guest_name || null,
+      reservationId: r.id,
+      reservedAt: r.reserved_at,
+      reservedLabel: timeLabel ? `Reserved ${timeLabel}` : 'Reserved'
+    } as TableStatusInfo;
+  }
+
+  return map;
+};

@@ -1,10 +1,77 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-19 (v3.59 배포 후 추가 개발 — 운영 피드백 P1-4 스탭 PIN 로그인 + P2-5 현금관리(Cash-up) + PayPal 알림 노이즈. **DEV 완료·미배포**, 밤 배포 예정.)
+> **최종 업데이트:** 2026-06-20 (6/19 묶음 전수재검증 + **P2-6 예약↔플로어플랜** + **P2-5 Cash-up Phase2** + **30년차 감사 하드닝**(Cash 횡령누명/권한/블라인드·예약 이중예약/유령배지/루프) 완료. 전부 **DEV·미배포**, Irene 지시 시 함께 배포. ⚠️배포후 Z-Report 종이·드로어 실프린터 확인 필요. 상세=session-state + docs CASH/RESERVATION 하드닝 절.)
 
-## 📦 DEV 완료·미배포 (2026-06-19, v3.59 이후 — 밤 배포 예정)
+## ✅ 완료: 30년차 감사 하드닝 + 예약-주문 루프 + UI 통일 (2026-06-20, DEV·미배포)
 
-> with MIN Cafe 운영 피드백 큐 진행분. 검증: build0 · health 101/101 · print-guard 8/8(bless) · i18n0 · 데모세션 실렌더 · 백엔드 E2E.
+> 적대적 코드리뷰(독립 에이전트 2)로 P0/P1 결함 수정 + 예약 생명주기 자동화 완성. 🔒 인쇄 생명선: orders-crud 변경은 전부 print-neutral(diff 증명+인쇄계약 7/7+re-bless), billPrint 무수정 → print-guard 8/8 GREEN.
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Cash 횡령누명 버그(P0) | computeExpected 가 취소/삭제 주문 결제까지 합산 → '가짜 부족' → cancelled/is_deleted 제외(dashboard 동일 규칙) | ✅ |
+| Cash 권한 게이트(P0) | cash 쓰기 라우트 무권한 → requirePosCounter(현금박스/정산) 적용, 서빙전용 차단 | ✅ |
+| Cash 대조 무결성(P1) | non-open 재대조 거부 + 1교대1대조 upsert + 대조후 movement 잠금 + 대조없는 close 거부 | ✅ |
+| 진짜 블라인드 카운트(P1) | /expected 가 예상금액을 카운트 전 클라에 전송 → 수단키만 전송, 금액은 reconcile 후 공개 | ✅ |
+| 예약 이중예약/픽스처(P1) | 같은 테이블 시간겹침 예약 409 차단 + 주방/카운터 픽스처 배정 거부 | ✅ |
+| 예약 유령배지/체크인가드 | 오늘 주문이력 테이블 arrived 배지 억제 + checkinHandledRef seatId 키잉(연속 체크인) | ✅ |
+| 예약 스케줄러 자동완료 | arrived/seated 방치분 turn+grace 후 자동 completed | ✅ |
+| **예약-주문 루프 완성** | Order.reservation_id 테이블기반 자동링크(POSTerminal 무수정) + arrived→seated(주문생성) + **결제완료 시 seated→completed** | ✅ |
+| UI 통일 | Cash 인출/입금 커스텀 오버레이 → 표준 Modal, `+` prefix 제거, 예약 floor_lead 설정 컨트롤 | ✅ |
+| 데모 위생 | 과거 테스트 잔재(주문↔결제↔예약 FK연쇄) 전량 정리 | ✅ |
+
+### 수정/신규 파일
+- 백엔드: `routes/cash-management.js`·`orders-crud.js`(🔒 print-neutral)·`orders-payment.js`·`reservations-staff.js` / `services/reservationScheduler.js` / `models/CashMovement.js`·`PaymentMethodSetting.js`(신규)·`CashReconciliation.js`·`Reservation.js`·`index.js` / `scripts/migrate-cash-phase2.js`·`migrate-reservation-floor-plan-table.js`(신규)
+- 프론트: `pages/CashManagement/CashUpPage.tsx` / `pages/FloorPlan/{FloorPlanPage,TableDetailPanel,TableNode,types}` / `pages/Reservations/ReservationsTimelinePage.tsx` / `components/Settings/ReservationSettingsTab.tsx` / `utils/orderStage.ts` / locales cash 4언어
+- 문서: `docs/TEST_CHECKLIST_2026-06-20.md`(신규, Irene 테스트 가이드) · CASH/RESERVATION 설계 하드닝 절
+
+### 검증
+- 실 API: 주문루트 30/30 · 예약-주문루프 10/10 · 하드닝 13/13 · Cash Phase2 18/18 · health 101/101 · 인쇄계약 8/8
+- 정적: build 0 · hydration 0 · timezone 0 · i18n 0 · print-guard 8/8 · mount 변경 critical 전수 0크래시
+- ⚠️ 실프린터(Z-Report 종이·드로어·주방티켓) + 유효 PIN 실로그인 = 배포 후 최종 확인 (`docs/TEST_CHECKLIST_2026-06-20.md`)
+
+---
+
+## 📦 DEV 완료·미배포 (2026-06-20, P2-5 Cash-up Phase2)
+
+> Phase1(교대 open/count/reconcile/close) 위에 4파트 확장. 🔒 billPrint.js 무수정(기존 export 호출만) → print-guard 8/8 GREEN. 설계 `docs/CASH_MANAGEMENT_SHIFT_CLOSE.md` §6.
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 인출/입금 (paid in/out) | `CashMovement` 모델+API. 현금예상=개시+현금매출+입금−출금. count 단계 Cash in/out UI + 순액 표시 | ✅ DEV |
+| Z-Report 정식화 | close 시 요약 JSON(매출·수단별·인출입금·차이·마감현금) + `zreport_printed_at`. 기존 `printSettlementReport` 호출 인쇄 | ✅ DEV |
+| 캐시드로어 수동오픈 | 기존 `openCashDrawer` 호출 버튼(count·done 단계) | ✅ DEV |
+| 결제수단 사전등록 | `PaymentMethodSetting` 모델+GET/PUT+reconcile 병합 | ✅ DEV |
+
+검증: build0·hydration0·timezone신규0·i18n0·health101/101·실API **18/18**·mount0·print-guard8/8. ⚠️**물리 인쇄(Z-Report 종이/드로어 개방)는 Irene 실프린터 눈 확인 필수**(헤드리스 불가).
+
+### 수정/신규 파일
+- 백엔드: `models/CashMovement.js`·`PaymentMethodSetting.js`(신규)·`CashReconciliation.js`(zreport 컬럼)·`index.js` / `routes/cash-management.js` / `scripts/migrate-cash-phase2.js`(신규) / `deploy-to-production.sh`(9a-2)
+- 프론트: `pages/CashManagement/CashUpPage.tsx` / `public/locales/{en,ko,zh,ms}/cash.json`
+
+---
+
+## 📦 DEV 완료·미배포 (2026-06-20, P2-6 예약↔플로어플랜)
+
+> 예약을 특정 테이블에 FPTI 로 연결 + 플로어플랜 '예약됨' 표시(임박 리드타임) + 체크인 POS 자동진입(인원 prefill). 주문·인쇄 생명선 무접촉(POSTerminal 은 print-neutral guests effect 1줄, 인쇄계약 7/7 통과 후 re-bless 8/8). 설계 `docs/RESERVATION_SYSTEM.md` §7.
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 예약↔테이블 연결 | `Reservation.floor_plan_table_id`(FPTI) + 멱등 마이그 + PATCH/POST FPTI 실재검증(가짜→400)·번호 자동파생 | ✅ DEV |
+| 플로어 '예약됨' 표시 | TableStatus 'reserved'(연블루) + `deriveReservedTableMap`(리드창 slot.floor_lead_minutes 기본120 + 점유 우선) + 60초 갱신 + TableNode 배지 + 패널 배너 | ✅ DEV |
+| 체크인 흐름 | Reservations arrived→플로어플랜 네비 → POS 오버레이 자동진입 + guest_count prefill(POSTerminal print-neutral effect) | ✅ DEV |
+
+검증: build0 · hydration0 · timezone신규0 · i18n0 · health 101/101 · 실API+로직 10/10(FPTI검증·리드창·점유우선·익명401) · mount(floor-plan·reservations·체크인수신) 크래시0 · print-guard 8/8.
+
+### 수정/신규 파일
+- 백엔드: `models/Reservation.js` · `routes/reservations-staff.js` · `scripts/migrate-reservation-floor-plan-table.js`(신규) · `deploy-to-production.sh`(9a-2)
+- 프론트: `pages/FloorPlan/{FloorPlanPage,TableNode,TableDetailPanel,types}.tsx` · `pages/Reservations/ReservationsTimelinePage.tsx` · `pages/POSTerminal/POSTerminalPage.tsx`(🔒 print-neutral 1줄) · `utils/orderStage.ts`
+- 설계: `docs/RESERVATION_SYSTEM.md` §7
+
+---
+
+## 📦 DEV 완료·미배포 (2026-06-19, v3.59 이후 — 전수 재검증 완료 2026-06-20)
+
+> with MIN Cafe 운영 피드백 큐 진행분. 2026-06-20 전수 재검증: build0 · health 101/101 · print-guard 8/8(bless) · i18n0 · 실API 19/19 · pinLimiter 429 실증 · mount 크래시0. 유효PIN 실로그인만 운영 검증 권장.
 
 | 작업 | 설명 | 상태 |
 |------|------|:----:|

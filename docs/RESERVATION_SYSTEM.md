@@ -369,3 +369,56 @@ STATUS_LABEL: 동일 + `pending→Pending` / `cancelled→Cancelled`. underscore
 10. ReservationShare WhatsApp 텍스트 빌드 + 운영 검증
 
 `/검증` 10단계 + health-check 73/73.
+
+---
+
+## 7. 예약 ↔ 플로어플랜 연동 (P2-6, 2026-06-20)
+
+> 배경: R1 예약 시스템은 플로어플랜 v2(FPTI = `floor_plan.tables[].id`)보다 먼저 만들어져 테이블을 **`table_number` 텍스트로만** 보관 → 플로어플랜과 구조적 연결 0. 플로어플랜 점유는 **활성 주문에서만** 파생되어 예약을 전혀 모름. 이 절은 예약을 특정 테이블에 FPTI 로 연결하고, 플로어플랜에 '예약됨' 상태를 표시하며, 체크인 시 POS 자동 진입(인원 prefill)까지 잇는다. **주문·인쇄 생명선 무접촉**(billPrint/poller/orders-crud 인쇄 블록 0).
+
+### 7-A. 결정 사항 (Irene 승인 2026-06-20)
+| 결정 | 내용 |
+|------|------|
+| 예약 표시 시점 | **임박 리드타임** — 활성 주문 없는 테이블만, 예약시간 `lead_minutes`(설정, 기본 120분) 전부터 turn 종료까지 '예약됨' + "예약 HH:MM" 배지 (OpenTable/Resy 방식). |
+| 체크인 후 동작 | **POS 자동 진입 + 인원 prefill** — arrived/seated 시 해당 테이블로 POS 오버레이 자동 진입 + `guest_count = party_size` 자동 입력. |
+| 점유 충돌 | 활성 주문 있는 테이블은 **점유(occupied) 우선** — 예약과 겹쳐도 차단/경고 없이 점유색 유지(직원 흐름 방해 금지). |
+
+### 7-B. DB 스키마 (모델 신규 X — 컬럼 1개)
+- `Reservation.floor_plan_table_id` VARCHAR(64) NULL — Order 와 동일한 FPTI 참조(예: `t_abc123`). FK 아님(플로어플랜은 Restaurant JSON). `table_number` 는 표시/히스토리용으로 병행 저장(Order 패턴과 동일).
+- 마이그: `scripts/migrate-reservation-floor-plan-table.js` (멱등 ADD COLUMN, 정보스키마 가드). deploy-to-production.sh 9a-2 등록. `sync-database.js --alter` 컬럼 드롭 사고 방지 위해 전용 멱등 마이그 사용([[reference_sync_alter_drops_columns]]).
+
+### 7-C. `reservation_settings` 확장
+- `slot.floor_lead_minutes`(신규, 기본 120) — 플로어플랜에 예약을 미리 띄우는 리드타임. settingsGuard 화이트리스트 추가 필수([[project_settings_guard_analysis]]).
+
+### 7-D. 백엔드 라우트
+- `PATCH /reservations/:id/table` 확장 — body `{ floor_plan_table_id, table_number }`. 전달된 FPTI 가 매장 `floor_plan.tables[]` 에 실재하는지 검증(없으면 400). 둘 다 저장(번호는 라벨에서 파생 폴백).
+- `PATCH /reservations/:id/status` — arrived/seated 응답에 배정 테이블(`floor_plan_table_id`, `table_number`) 포함(이미 모델 전체 반환).
+- 스케줄러: no_show/cancel 시 hold 해제는 **자동** — 플로어 파생이 confirmed/arrived 상태만 보므로 상태가 벗어나면 즉시 사라짐(추가 코드 0).
+
+### 7-E. 프론트엔드
+- `types.ts` — `TableStatus` 에 `'reserved'` 추가 + STATUS_COLORS(연블루 `#DBEAFE/#2563EB/#1D4ED8`) + STATUS_LABELS.
+- `utils/orderStage.ts` — `deriveReservedTableMap(reservations, { leadMinutes, now })` → FPTI/번호 키 → 예약정보. confirmed/arrived + `now ∈ [reserved_at - lead, reserved_at + turn]` 인 것만. **점유맵에 이미 있는 키는 제외**(점유 우선).
+- `FloorPlanPage` — 오늘 예약 fetch(GET list date=today) → reserved 병합(활성 주문 없는 테이블만) + 배지. 체크인 네비 query(`seatReservation`,`tableId`,`table`,`guests`) 읽어 테이블 선택 + POS 자동 오버레이.
+- `handleNewOrder({ guests })` — `guests` 를 POS URL 에 부가.
+- `POSTerminalPage` — **print-neutral 1줄 effect**: `searchParams.get('guests')` → `setGuestCount`. 🔒 인쇄 블록 무접촉(print-guard 로 증명 후 re-bless).
+- `TableDetailPanel` — reserved 테이블 클릭 시 게스트/인원/시간 표시.
+- `ReservationsTimelinePage` — 테이블 드롭다운 value=FPTI(번호 병행 전송), arrived/seated 버튼 → 플로어플랜 체크인 네비.
+- i18n `reservation` ns 4언어: reserved 라벨/배지/체크인.
+
+### 7-F. 테스트
+1. PATCH /:id/table FPTI 검증 — 실재 FPTI 200 / 가짜 FPTI 400
+2. deriveReservedTableMap — 리드창 안=reserved / 밖=없음 / 점유 테이블=제외
+3. 체크인 arrived → 플로어 네비 + POS guests prefill
+4. no_show 전환 → 플로어 reserved 사라짐(상태 파생)
+5. mount: FloorPlan/Reservations 크래시 0
+6. print-guard: POSTerminal 외 인쇄 7파일 무변경, POSTerminal 은 guests effect 만(인쇄블록 0)
+
+### 7-G. 하드닝 (2026-06-20, 30년차 감사 반영) — DEV·미배포
+> 적대적 리뷰로 발견한 루프 미완/충돌/유령 결함 수정. 보호 파일 무접촉(print-guard 8/8).
+- **체크인 루프 닫기**: 체크인(arrived)/착석(seated) 예약이 영구 잔류하던 문제 → `reservationScheduler.autoCompleteStale`(reserved_at + turn + grace 경과 시 자동 completed, last_reservation_at 갱신, reservation_count 이중계산 방지).
+- **예약-주문 직접 링크 (2026-06-20 완성)**: `Order.reservation_id` 자동 연결 — **테이블 기반 매칭**(POSTerminal 무수정). dine-in 주문이 'arrived' 예약 걸린 테이블에서 생성되면(`orders-crud linkArrivedReservationToOrder`, 인쇄 무관) reservation_id 연결 + 예약 arrived→seated. **결제 완료 시**(`orders-payment POST /:id/payments` fullyPaid) 예약 seated→completed(요구사항 "결제완료 시 자동완료"). orders-crud completed 전이 + 스케줄러가 백스톱. arrived 만 매칭(미래 confirmed=워크인 오링크 방지, 6h 윈도우). 🔒 orders-crud print-neutral(diff 증명+인쇄계약7/7+re-bless), orders-payment 비보호. 실 API 루프 10/10(링크·seated·결제완료→completed·오링크방지).
+- **유령 배지 제거(P1)**: 오늘 주문 이력 있는 테이블의 arrived 예약은 플로어 '예약됨' 배지 억제(`deriveReservedTableMap` suppressArrivedKeys = tableHistory 키). confirmed 미래예약은 영향 없음(점심 후 저녁예약 정상).
+- **이중예약 충돌(P1)**: 테이블 배정(PATCH/POST) 시 같은 FPTI 에 시간 겹치는 confirmed/arrived/seated 예약 있으면 409 TABLE_DOUBLE_BOOKED. 실증.
+- **픽스처 거부(P1)**: FPTI 가 주방/카운터/입구 픽스처면 400 NOT_A_TABLE.
+- **체크인 가드(P2)**: FloorPlan checkinHandledRef 를 seatId 로 키잉 → 같은 세션 연속 체크인 정상 동작.
+- 검증: 적대 API 13/13(이중예약·권한 등 cash 포함) + mount 4/4 + health101/101.

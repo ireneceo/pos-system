@@ -17,6 +17,7 @@ const Reservation = sequelize.define('Reservation', {
     defaultValue: 'pending'
   },
   table_number: { type: DataTypes.STRING(20), allowNull: true },
+  floor_plan_table_id: { type: DataTypes.STRING(64), allowNull: true, comment: 'Floor plan v2 tables[].id (e.g. t_abc123). Links reservation to a specific table for floor-plan reserved display + check-in. NULL = unassigned/legacy.' },
   notes: { type: DataTypes.TEXT, allowNull: true, comment: 'Customer-supplied notes (allergies, birthday, requests)' },
   deposit_order_id: { type: DataTypes.INTEGER, allowNull: true, references: { model: 'orders', key: 'id' }, comment: 'FK to Order when deposit was prepaid' },
   source: {

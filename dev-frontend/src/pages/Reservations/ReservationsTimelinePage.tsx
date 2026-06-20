@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { useAuth } from '../../contexts/AuthContext';
 import { useStore } from '../../contexts/StoreContext';
@@ -29,6 +30,7 @@ interface Reservation {
   turn_minutes: number;
   status: 'pending' | 'confirmed' | 'arrived' | 'seated' | 'completed' | 'cancelled' | 'no_show';
   table_number: string | null;
+  floor_plan_table_id: string | null;
   notes: string | null;
   source: 'customer_mobile' | 'staff_phone' | 'walk_in';
 }
@@ -106,6 +108,7 @@ function tomorrowInTz(tz: string): string {
 
 export default function ReservationsTimelinePage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { storeInfo } = useStore();
   const tz = storeInfo?.timeZone || 'Asia/Kuala_Lumpur';
   const restaurantId = user?.restaurantId ? Number(user.restaurantId) : undefined;
@@ -175,14 +178,27 @@ export default function ReservationsTimelinePage() {
     return counts;
   }, [list, pendingList]);
 
-  const changeStatus = async (id: number, status: string) => {
+  const changeStatus = async (r: Reservation, status: string) => {
     const token = getAuthToken();
-    const res = await fetch(`/api/reservations/${id}/status`, {
+    const res = await fetch(`/api/reservations/${r.id}/status`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ status })
     });
-    if (res.ok) reload();
+    if (!res.ok) return;
+    // 체크인 (P2-6) — arrived 시 배정 테이블이 있으면 플로어플랜으로 이동해 POS 자동 진입
+    // (인원 prefill). 테이블 미배정이면 목록만 갱신.
+    if (status === 'arrived' && r.floor_plan_table_id && restaurantId) {
+      const params = new URLSearchParams({
+        seatReservation: String(r.id),
+        tableId: r.floor_plan_table_id,
+        guests: String(r.party_size || 0)
+      });
+      if (r.table_number) params.set('table', r.table_number);
+      navigate(`/restaurant/${restaurantId}/floor-plan?${params.toString()}`);
+      return;
+    }
+    reload();
   };
 
   const deleteReservation = async (id: number) => {
@@ -194,18 +210,23 @@ export default function ReservationsTimelinePage() {
     if (res.ok) { setConfirmDelete(null); reload(); }
   };
 
-  const assignTable = async (id: number, table_number: string | null) => {
+  // FPTI 우선 배정 — 드롭다운 value=floor_plan_table_id. 빈 값=배정 해제.
+  const assignTable = async (id: number, fpti: string | null) => {
     const token = getAuthToken();
+    const t = fpti ? tables.find(tb => tb.id === fpti) : null;
     const res = await fetch(`/api/reservations/${id}/table`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ table_number })
+      body: JSON.stringify({
+        floor_plan_table_id: fpti,
+        table_number: t ? (t.tableNumber || t.label || null) : null
+      })
     });
     if (res.ok) reload();
   };
 
   const handleXClick = (r: Reservation) => {
-    if (r.status !== 'cancelled') changeStatus(r.id, 'cancelled');
+    if (r.status !== 'cancelled') changeStatus(r, 'cancelled');
     else setConfirmDelete(r.id);
   };
 
@@ -277,13 +298,13 @@ export default function ReservationsTimelinePage() {
                       <span>{r.table_number || '—'}</span>
                     ) : (
                       <TableSelect
-                        value={r.table_number || ''}
+                        value={r.floor_plan_table_id || ''}
                         onChange={e => assignTable(r.id, e.target.value || null)}
                         title="Assign table"
                       >
                         <option value="">—</option>
                         {tables.map(t => (
-                          <option key={t.id} value={t.tableNumber}>
+                          <option key={t.id} value={t.id}>
                             {t.label || `Table ${t.tableNumber}`}{t.seats ? ` (${t.seats})` : ''}
                           </option>
                         ))}
@@ -298,14 +319,14 @@ export default function ReservationsTimelinePage() {
                         return (
                           <ActionButton
                             key={s}
-                            onClick={() => changeStatus(r.id, s)}
+                            onClick={() => changeStatus(r, s)}
                             style={{ background: c, borderColor: c, color: 'white' }}
                           >{ACTION_LABEL[s] || s}</ActionButton>
                         );
                       })}
                       {next.includes('no_show') && (
                         <ActionButton
-                          onClick={() => changeStatus(r.id, 'no_show')}
+                          onClick={() => changeStatus(r, 'no_show')}
                           style={{ background: '#F4F6F9', borderColor: '#C7CED6', color: '#4B5563' }}
                         >{ACTION_LABEL.no_show}</ActionButton>
                       )}
@@ -372,7 +393,8 @@ function CreateModal({ restaurantId, defaultDate, tables, onClose, onCreated }: 
     guest_phone: '',
     guest_email: '',
     notes: '',
-    table_number: ''
+    table_number: '',
+    floor_plan_table_id: ''
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -381,12 +403,16 @@ function CreateModal({ restaurantId, defaultDate, tables, onClose, onCreated }: 
     if (!form.guest_name || !form.guest_phone) { setError('Name and phone required'); return; }
     setBusy(true); setError(null);
     const reserved_at = new Date(`${form.reserved_date}T${form.reserved_time}:00`).toISOString();
+    const selectedTable = form.floor_plan_table_id ? tables.find(t => t.id === form.floor_plan_table_id) : null;
     try {
       const token = getAuthToken();
       const res = await fetch(`/api/reservations/restaurant/${restaurantId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ ...form, reserved_at })
+        body: JSON.stringify({
+          ...form, reserved_at,
+          table_number: selectedTable ? (selectedTable.tableNumber || selectedTable.label) : (form.table_number || null)
+        })
       });
       const json = await res.json();
       if (!json.success) throw new Error(json.message || 'Failed');
@@ -430,10 +456,10 @@ function CreateModal({ restaurantId, defaultDate, tables, onClose, onCreated }: 
           {tables.length === 0 ? (
             <FormInput value={form.table_number} onChange={e => setForm({ ...form, table_number: e.target.value })} placeholder="optional" />
           ) : (
-            <FormSelect value={form.table_number} onChange={e => setForm({ ...form, table_number: e.target.value })}>
+            <FormSelect value={form.floor_plan_table_id} onChange={e => setForm({ ...form, floor_plan_table_id: e.target.value })}>
               <option value="">— No table —</option>
               {tables.map(t => (
-                <option key={t.id} value={t.tableNumber}>
+                <option key={t.id} value={t.id}>
                   {t.label || `Table ${t.tableNumber}`} ({t.seats} seats)
                 </option>
               ))}
