@@ -3,22 +3,17 @@ import { useTranslation } from 'react-i18next';
 import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
 import { formatDateTime } from '../../utils/timezone';
-import { Modal, FormInput, ModalButton } from '../UI/Modal';
+import { FormInput } from '../UI/Modal';
 import { openCashDrawer } from '../../utils/billPrint'; // 🔒 billPrint 미수정 — 드로어킥 export만 호출
 import { C, num, round2, Card, Label, Hint, Amount, Ledger, Primary, Chip, Pad } from './cashUi';
 
-// 오늘의 캐시드로워 (운영) — 개시현금 · 현금 입출금 · 현재 시재 · 드로어 열기.
-// 사이드바 시재관리 + 라이브오더/플로어플랜 모달에서 공용. 전수단 마감은 Daily Settlement.
+// 오늘의 캐시드로워 (운영) — 개시현금 · 캐시인/아웃(인라인 토글+숫자패드, 팝업 위 팝업 없음) · 현재시재 · 드로어.
+// 라이브오더/플로어플랜 모달에서 사용. 회계 내역/정정은 좌측 '시재관리'.
 
 type Step = 'loading' | 'start' | 'running';
+type Entry = { type: 'in' | 'out'; amount: string; reason: string };
 
-interface Props {
-  restaurantId?: string;
-  /** 입출금/교대 변경 시 부모(회계 리스트)에 갱신 신호 */
-  onChange?: () => void;
-  /** 모달 등 컴팩트 컨텍스트 — 제목/설명 숨김 */
-  compact?: boolean;
-}
+interface Props { restaurantId?: string; onChange?: () => void; compact?: boolean; }
 
 const CashDrawerOps: React.FC<Props> = ({ restaurantId, onChange, compact }) => {
   const { t } = useTranslation();
@@ -31,7 +26,7 @@ const CashDrawerOps: React.FC<Props> = ({ restaurantId, onChange, compact }) => 
   const [suggestedFloat, setSuggestedFloat] = useState(0);
   const [openingFloat, setOpeningFloat] = useState('');
   const [movements, setMovements] = useState<{ paidIn: number; paidOut: number; net: number }>({ paidIn: 0, paidOut: 0, net: 0 });
-  const [mvForm, setMvForm] = useState<{ type: 'in' | 'out'; amount: string; reason: string } | null>(null);
+  const [entry, setEntry] = useState<Entry | null>(null);     // 인라인 캐시인/아웃 입력 (null=미입력)
   const [drawerMsg, setDrawerMsg] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -52,10 +47,7 @@ const CashDrawerOps: React.FC<Props> = ({ restaurantId, onChange, compact }) => 
       const ex = await api(`/shift/${j.data.id}/expected`);
       setMovements(ex.j?.data?.movements || { paidIn: 0, paidOut: 0, net: 0 });
       setStep('running');
-    } else {
-      setShift(null);
-      setStep('start');
-    }
+    } else { setShift(null); setStep('start'); }
   }, [api, restaurantId]);
 
   useEffect(() => { load(); }, [load]);
@@ -70,16 +62,16 @@ const CashDrawerOps: React.FC<Props> = ({ restaurantId, onChange, compact }) => 
     else setError(j?.message || t('cash:startFail', { defaultValue: 'Could not start shift' }));
   };
 
-  const submitMovement = async () => {
-    if (!mvForm || !shift) return;
-    const amount = num(mvForm.amount);
+  const submitEntry = async () => {
+    if (!entry || !shift) return;
+    const amount = num(entry.amount);
     if (!(amount > 0)) { setError(t('cash:movementAmountError', { defaultValue: 'Enter an amount greater than 0' })); return; }
     setBusy(true); setError('');
     const { status, j } = await api(`/shift/${shift.id}/movement`, {
-      method: 'POST', body: JSON.stringify({ type: mvForm.type, amount, reason: mvForm.reason || null })
+      method: 'POST', body: JSON.stringify({ type: entry.type, amount, reason: entry.reason || null })
     });
     setBusy(false);
-    if (status === 200) { setMovements(j?.movements || movements); setMvForm(null); onChange?.(); }
+    if (status === 200) { setMovements(j?.movements || movements); setEntry(null); onChange?.(); }
     else setError(j?.message || t('cash:movementFail', { defaultValue: 'Movement failed' }));
   };
 
@@ -94,6 +86,8 @@ const CashDrawerOps: React.FC<Props> = ({ restaurantId, onChange, compact }) => 
 
   const floatPress = (d: string) => setOpeningFloat(p => (d === '.' && p.includes('.')) ? p : (p + d).slice(0, 12));
   const floatBack = () => setOpeningFloat(p => p.slice(0, -1));
+  const entryPress = (d: string) => setEntry(e => e && ({ ...e, amount: (d === '.' && e.amount.includes('.')) ? e.amount : (e.amount + d).slice(0, 12) }));
+  const entryBack = () => setEntry(e => e && ({ ...e, amount: e.amount.slice(0, -1) }));
 
   const onHand = shift ? round2(Number(shift.opening_float || 0) + Number(movements.net || 0)) : 0;
 
@@ -130,14 +124,32 @@ const CashDrawerOps: React.FC<Props> = ({ restaurantId, onChange, compact }) => 
               <Ledger label={t('cash:cashOnHand', { defaultValue: 'Cash on hand (float + movements)' })} value={fc(onHand)} bold />
             </div>
           </div>
-          <Hint>{t('cash:openedAt', { defaultValue: 'Shift opened {{when}}', when: (() => { try { return formatDateTime(shift.opened_at, opSettings, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch { return ''; } })() })}</Hint>
 
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <Chip onClick={() => setMvForm({ type: 'in', amount: '', reason: '' })}>{t('cash:paidIn', { defaultValue: 'Cash in' })}</Chip>
-            <Chip onClick={() => setMvForm({ type: 'out', amount: '', reason: '' })}>{t('cash:paidOut', { defaultValue: 'Cash out' })}</Chip>
+          {/* 캐시인/아웃 토글 (인라인) + 드로어 */}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Chip active={entry?.type === 'in'} onClick={() => setEntry(e => ({ type: 'in', amount: e?.amount || '', reason: e?.reason || '' }))}>{t('cash:paidIn', { defaultValue: 'Cash in' })}</Chip>
+            <Chip active={entry?.type === 'out'} onClick={() => setEntry(e => ({ type: 'out', amount: e?.amount || '', reason: e?.reason || '' }))}>{t('cash:paidOut', { defaultValue: 'Cash out' })}</Chip>
             <Chip onClick={handleOpenDrawer}>{t('cash:openDrawer', { defaultValue: 'Open drawer' })}</Chip>
           </div>
           {drawerMsg && <div style={{ fontSize: 12, color: C.subtle, marginTop: 8 }}>{drawerMsg}</div>}
+
+          {/* 인라인 입력 패널 (팝업 위 팝업 없음 — POS/핀로그인처럼) */}
+          {entry && (
+            <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, padding: 14, marginTop: 12 }}>
+              <div style={{ textAlign: 'center', fontSize: 13, fontWeight: 600, color: entry.type === 'in' ? C.match : C.bad, marginBottom: 4 }}>
+                {entry.type === 'in' ? t('cash:paidIn', { defaultValue: 'Cash in' }) : t('cash:paidOut', { defaultValue: 'Cash out' })}
+              </div>
+              <div style={{ fontSize: 30, fontWeight: 700, color: C.text, textAlign: 'center', padding: '2px 0 10px' }}>{fc(num(entry.amount))}</div>
+              <Pad onPress={entryPress} onBack={entryBack} />
+              <FormInput value={entry.reason} onChange={e => setEntry(f => f && ({ ...f, reason: e.target.value }))}
+                placeholder={t('cash:movementReason', { defaultValue: 'Reason (optional)' })} style={{ marginTop: 12 }} />
+              <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                <button type="button" onClick={() => setEntry(null)} style={{ height: 48, padding: '0 18px', borderRadius: 10, border: `1px solid ${C.border}`, background: '#fff', color: C.subtle, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('cash:cancel', { defaultValue: 'Cancel' })}</button>
+                <button type="button" disabled={busy || !(num(entry.amount) > 0)} onClick={submitEntry}
+                  style={{ flex: 1, height: 48, borderRadius: 10, border: 'none', background: (busy || !(num(entry.amount) > 0)) ? '#C7CED6' : C.primary, color: '#fff', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>{busy ? '…' : t('cash:save', { defaultValue: 'Save' })}</button>
+              </div>
+            </div>
+          )}
 
           <div style={{ borderTop: `1px solid ${C.border}`, marginTop: 16, paddingTop: 14 }}>
             <div style={{ fontSize: 13, color: C.subtle, lineHeight: 1.5 }}>
@@ -145,28 +157,6 @@ const CashDrawerOps: React.FC<Props> = ({ restaurantId, onChange, compact }) => 
             </div>
           </div>
         </Card>
-      )}
-
-      {mvForm && (
-        <Modal
-          isOpen={true}
-          onClose={() => setMvForm(null)}
-          title={mvForm.type === 'in' ? t('cash:paidIn', { defaultValue: 'Cash in' }) : t('cash:paidOut', { defaultValue: 'Cash out' })}
-          size="small"
-          footer={
-            <>
-              <ModalButton onClick={() => setMvForm(null)}>{t('cash:cancel', { defaultValue: 'Cancel' })}</ModalButton>
-              <ModalButton variant="primary" disabled={busy} onClick={submitMovement}>{busy ? '…' : t('cash:save', { defaultValue: 'Save' })}</ModalButton>
-            </>
-          }
-        >
-          <div style={{ fontSize: 30, fontWeight: 700, color: C.text, textAlign: 'center', padding: '4px 0 12px' }}>{fc(num(mvForm.amount))}</div>
-          <Pad onPress={(d) => setMvForm(f => f && ({ ...f, amount: (d === '.' && f.amount.includes('.')) ? f.amount : (f.amount + d).slice(0, 12) }))}
-            onBack={() => setMvForm(f => f && ({ ...f, amount: f.amount.slice(0, -1) }))} />
-          <FormInput value={mvForm.reason} onChange={e => setMvForm(f => f && ({ ...f, reason: e.target.value }))}
-            placeholder={t('cash:movementReason', { defaultValue: 'Reason (optional)' })}
-            style={{ marginTop: 12 }} />
-        </Modal>
       )}
     </div>
   );

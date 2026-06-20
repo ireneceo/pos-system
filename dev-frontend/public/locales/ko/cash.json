@@ -79,5 +79,12 @@
   "range30": "30일",
   "rangeAll": "전체",
   "rangeCustom": "직접",
-  "total": "합계"
+  "total": "합계",
+  "rangePast": "과거",
+  "editMovement": "현금 입출금 수정",
+  "deleteMovement": "현금 입출금 삭제",
+  "deleteConfirm": "이 {{type}} {{amount}} 을(를) 삭제할까요?",
+  "cashMgmtSubtitle": "현금 입출금 회계 내역. 오늘 현금 관리는 라이브오더/플로어플랜의 Today's Cash Drawer 에서.",
+  "startFinalSettlement": "최종 마감 시작",
+  "finalSettlementHint2": "위 Daily Settlement 는 예상 정산표(확정 전)를 인쇄합니다. 최종 마감 = 수단별 실제 금액 입력 → 대조 → 최종(확정) 리포트 인쇄."
 }

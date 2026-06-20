@@ -57,6 +57,7 @@ const FinalSettlementPanel: React.FC<Props> = ({ selectedDate, today }) => {
   const [loaded, setLoaded] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [expanded, setExpanded] = useState(false); // 최종 마감 흐름은 기본 접힘 — Daily Settlement(확정전 인쇄)와 분리
 
   const fc = (n: number) => formatCurrency(Number(n) || 0, currency);
 
@@ -202,13 +203,21 @@ const FinalSettlementPanel: React.FC<Props> = ({ selectedDate, today }) => {
 
   return (
     <Wrap>
-      <Title>{t('cash:finalSettlement', { defaultValue: 'Final Settlement' })}</Title>
-      <Muted>{t('cash:finalSettlementHint', { defaultValue: 'Check the card terminal batch, cash drawer and e-wallet apps, then enter the ACTUAL amount for each method. The system compares against expected and flags differences.' })}</Muted>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <Title>{t('cash:finalSettlement', { defaultValue: 'Final Settlement' })}</Title>
+        {!expanded && step !== 'closed' && (
+          <button type="button" onClick={() => setExpanded(true)}
+            style={{ height: 38, padding: '0 16px', borderRadius: 8, border: 'none', background: C.primary, color: '#fff', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>
+            {t('cash:startFinalSettlement', { defaultValue: 'Start final settlement' })}
+          </button>
+        )}
+      </div>
+      <Muted>{t('cash:finalSettlementHint2', { defaultValue: 'The Daily Settlement above prints the expected report (before count). Final settlement = enter the actual amount per method, compare, then print the final report.' })}</Muted>
 
       {error && <ErrBox>{error}</ErrBox>}
 
-      {/* 1) 블라인드 실제 입력 (예상 비공개) */}
-      {(step === 'idle' || step === 'counting') && (
+      {/* 1) 블라인드 실제 입력 (예상 비공개) — 펼침 시에만 */}
+      {expanded && (step === 'idle' || step === 'counting') && (
         <>
           <div style={{ marginTop: 12 }}>
             {methods.map(m => (

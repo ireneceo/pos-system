@@ -79,5 +79,12 @@
   "range30": "30 hari",
   "rangeAll": "Semua",
   "rangeCustom": "Tersuai",
-  "total": "Jumlah"
+  "total": "Jumlah",
+  "rangePast": "Lepas",
+  "editMovement": "Edit pergerakan tunai",
+  "deleteMovement": "Padam pergerakan tunai",
+  "deleteConfirm": "Padam {{type}} {{amount}} ini?",
+  "cashMgmtSubtitle": "Sejarah perakaunan tunai masuk/keluar. Urus laci tunai hari ini di Today's Cash Drawer (Pesanan Langsung / Pelan Lantai).",
+  "startFinalSettlement": "Mula penyelesaian akhir",
+  "finalSettlementHint2": "Daily Settlement di atas mencetak laporan jangkaan (sebelum kira). Penyelesaian akhir = masukkan jumlah sebenar setiap kaedah, banding, kemudian cetak laporan akhir."
 }

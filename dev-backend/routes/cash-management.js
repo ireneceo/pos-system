@@ -291,6 +291,32 @@ router.post('/restaurant/:restaurantId/shift/:id/movement', authenticateToken, c
   }
 });
 
+// PUT 입출금 수정 (회계 정정 — 잘못 입력 수정). counter 권한.
+router.put('/restaurant/:restaurantId/movement/:movementId', authenticateToken, checkRestaurantAccess, requirePosCounter, async (req, res) => {
+  try {
+    const restaurantId = parseInt(req.params.restaurantId, 10);
+    const mv = await CashMovement.findOne({ where: { id: req.params.movementId, restaurant_id: restaurantId } });
+    if (!mv) return res.status(404).json({ success: false, message: 'Movement not found' });
+    const upd = {};
+    if (req.body.type === 'in' || req.body.type === 'out') upd.type = req.body.type;
+    if (req.body.amount != null) { const a = round2(req.body.amount); if (!(a > 0)) return res.status(400).json({ success: false, code: 'INVALID_MOVEMENT', message: 'amount must be > 0' }); upd.amount = a; }
+    if ('reason' in req.body) upd.reason = req.body.reason || null;
+    await mv.update(upd);
+    res.json({ success: true, data: mv });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
+// DELETE 입출금 삭제 (회계 정정). counter 권한.
+router.delete('/restaurant/:restaurantId/movement/:movementId', authenticateToken, checkRestaurantAccess, requirePosCounter, async (req, res) => {
+  try {
+    const restaurantId = parseInt(req.params.restaurantId, 10);
+    const mv = await CashMovement.findOne({ where: { id: req.params.movementId, restaurant_id: restaurantId } });
+    if (!mv) return res.status(404).json({ success: false, message: 'Movement not found' });
+    await mv.destroy();
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+});
+
 // GET 인출/입금 내역 (단일 교대)
 router.get('/restaurant/:restaurantId/shift/:id/movements', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {

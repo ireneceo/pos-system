@@ -79,5 +79,12 @@
   "range30": "30 days",
   "rangeAll": "All",
   "rangeCustom": "Custom",
-  "total": "Total"
+  "total": "Total",
+  "rangePast": "Past",
+  "editMovement": "Edit cash movement",
+  "deleteMovement": "Delete cash movement",
+  "deleteConfirm": "Delete this {{type}} of {{amount}}?",
+  "cashMgmtSubtitle": "Cash in/out accounting history. Manage today's cash drawer from Today's Cash Drawer (Live Orders / Floor Plan).",
+  "startFinalSettlement": "Start final settlement",
+  "finalSettlementHint2": "The Daily Settlement above prints the expected report (before count). Final settlement = enter the actual amount per method, compare, then print the final report."
 }
