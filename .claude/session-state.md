@@ -1,9 +1,17 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-06-20 (/개발완료)
+**마지막 업데이트:** 2026-06-20 (재검증 — 실라우트 통합검증 + 버그 1건 수정)
 **버전:** v3.59 운영 배포됨 (2026-06-19, Backup 20260619_065629). (버전은 /배포 시에만 갱신)
-**작업 상태:** 완료. 미배포 묶음(6/19~6/20) 전수 검증 완료 — **Irene 수동 테스트 + 배포 지시 대기**.
+**작업 상태:** 완료. 미배포 묶음(6/19~6/20) 전수 재검증 완료 — **Irene 수동 테스트 + 배포 지시 대기**.
+
+### 🐛 재검증 중 발견·수정 (2026-06-20) — PIN 로그인 차단 버그
+- **증상:** 신규 P1-4 직원 PIN 로그인이 **익명 상태에서 항상 401** → PIN 로그인 자체가 동작 불가.
+- **원인:** `routes/staff.js` 의 `router.use(authenticateToken)` 가 1차 로그인용 `/verify-pin` 까지 막음 (authenticateToken 은 Authorization 헤더만 읽고 쿠키 폴백 없음 → 토큰 없는 로그인은 무조건 401). server.js 주석은 "verify-pin = unauthenticated primary login" 으로 의도 명시 → router-level 가드가 누락 검토.
+- **수정:** `/verify-pin`(로그인) 라우트만 `router.use(authenticateToken)` **위로** 이동해 공개화. `verify-pin-permission`(할인/취소 승인, req.user 의존)·`GET /staff`(직원목록 PIN 노출)는 **인증 유지**. pinLimiter 가 브루트포스 방어.
+- **영구 가드:** health-check 에 3건 추가(101→**104/104**): ①익명 verify-pin 공개(누락PIN→400) ②익명 /staff→401 ③익명 verify-pin-permission→401.
+- **재검증 결과:** 신규 4기능 실라우트 통합검증 **33/33**(데모38, 전량 원복) · health **104/104** · print-guard **8/8** · build 0 · hydration 0 · timezone 0 · mount(cash-up·reservations·/pos·/login) 0크래시.
+- **미커밋 변경 2파일:** `dev-backend/routes/staff.js`, `dev-backend/scripts/health-check.js` (dev 백엔드 재시작 완료 → dev.purplehere.com 에 반영됨). 배포 시 묶음에 포함.
 
 ### 🧪 다음 세션 최우선 — Irene 수동 테스트
 - **`docs/TEST_CHECKLIST_2026-06-20.md`** — 6/19~6/20 미배포 묶음을 Irene가 dev(dev.purplehere.com)에서 직접 테스트할 항목 정리. 다음 세션 진입 시 이 파일부터 안내.

@@ -4,44 +4,13 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { authenticateToken } = require('../middleware/auth');
 
-// Apply authentication to all routes
-router.use(authenticateToken);
-
-// Get all staff for a restaurant
-router.get('/', async (req, res) => {
-  try {
-    const restaurantId = req.query.restaurantId || req.user.restaurant_id;
-
-    if (!restaurantId) {
-      return res.status(400).json({ success: false, error: { message: 'Restaurant ID is required', code: 'VALIDATION_ERROR' } });
-    }
-
-    const staff = await User.findAll({
-      where: {
-        restaurant_id: restaurantId,
-        role: ['Restaurant Admin', 'Staff']
-      },
-      attributes: ['id', 'username', 'email', 'full_name', 'role', 'department', 'phone', 'pin_code', 'createdAt']
-    });
-
-    res.json({
-      success: true,
-      data: staff
-    });
-  } catch (error) {
-    console.error('Error fetching staff:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-// Verify PIN for POS cashier quick switch (실제 로그인 전환 - JWT 재발급)
+// PIN 로그인 (P1-4) — 공용 POS 단말 1차 로그인. 토큰이 없는 익명 상태에서 호출되므로
+// 반드시 router.use(authenticateToken) "위"에 두어 공개로 노출한다. (server.js 의 pinLimiter
+// 가 브루트포스 방어.) 아래 router.use 밑에 두면 모든 로그인 시도가 401 로 막힌다.
 router.post('/verify-pin', async (req, res) => {
   try {
     const { pin_code } = req.body;
-    const restaurantId = req.body.restaurant_id || req.user.restaurant_id;
+    const restaurantId = req.body.restaurant_id || (req.user && req.user.restaurant_id);
 
     if (!pin_code || !restaurantId) {
       return res.status(400).json({ success: false, error: { message: 'PIN code and restaurant ID are required', code: 'VALIDATION_ERROR' } });
@@ -109,6 +78,39 @@ router.post('/verify-pin', async (req, res) => {
     });
   } catch (error) {
     console.error('Error verifying PIN:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Apply authentication to all routes below (verify-pin login above is public on purpose)
+router.use(authenticateToken);
+
+// Get all staff for a restaurant
+router.get('/', async (req, res) => {
+  try {
+    const restaurantId = req.query.restaurantId || req.user.restaurant_id;
+
+    if (!restaurantId) {
+      return res.status(400).json({ success: false, error: { message: 'Restaurant ID is required', code: 'VALIDATION_ERROR' } });
+    }
+
+    const staff = await User.findAll({
+      where: {
+        restaurant_id: restaurantId,
+        role: ['Restaurant Admin', 'Staff']
+      },
+      attributes: ['id', 'username', 'email', 'full_name', 'role', 'department', 'phone', 'pin_code', 'createdAt']
+    });
+
+    res.json({
+      success: true,
+      data: staff
+    });
+  } catch (error) {
+    console.error('Error fetching staff:', error);
     res.status(500).json({
       success: false,
       error: error.message

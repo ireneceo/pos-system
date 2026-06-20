@@ -207,6 +207,14 @@ function defineSecurityTests({ customerToken, member, restId }) {
   test('security', '익명 addon-modules → 401', async () => (await request('GET', '/addon-modules')).status === 401);
   test('security', '익명 mobile/orders 필터없이 → 400 (전체 덤프 방지)', async () => (await request('GET', '/mobile/orders')).status === 400);
   test('security', '익명 membership/customer/:rid/:cid → 401', async () => (await request('GET', '/membership/customer/1/1')).status === 401);
+  // PIN 로그인(P1-4)은 익명 1차 로그인 → 인증 게이트 뒤에 숨으면 안 됨(=auth 401 금지). 누락 body → 핸들러 400.
+  // (2026-06-20 회귀: staff.js router.use(authenticateToken) 가 verify-pin 로그인을 막아 모든 PIN 로그인 401.)
+  test('security', '익명 staff/verify-pin 로그인 라우트 공개(누락 PIN → 400, auth 401 아님)', async () => {
+    const r = await request('POST', '/staff/verify-pin', { restaurant_id: 1 });
+    return r.status === 400;
+  });
+  test('security', '익명 staff (직원목록 PIN 노출) → 401 (목록은 보호 유지)', async () => (await request('GET', '/staff')).status === 401);
+  test('security', '익명 staff/verify-pin-permission(승인) → 401 (승인은 인증 유지)', async () => (await request('POST', '/staff/verify-pin-permission', { pin_code: '0000', restaurant_id: 1 })).status === 401);
 
   // IDOR 방어
   test('security', 'customer가 다른사람 stats → 403 (IDOR 방어)', async () => {

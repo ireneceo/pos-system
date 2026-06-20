@@ -10,6 +10,8 @@
 
 ## 1. 직원 PIN 로그인 (P1-4)
 
+> ⚠️ **2026-06-20 재검증 중 버그 발견·수정:** 익명 상태에서 PIN 로그인이 항상 401 로 막히던 문제(staff.js router-level 인증 가드가 1차 로그인까지 차단). `/verify-pin` 만 공개로 분리해 수정. 실라우트 검증 통과(유효PIN→토큰, 틀린PIN→401, 누락→400). dev 반영 완료 — 아래 화면 테스트 가능.
+
 **어디:** 로그인 화면
 
 - [ ] 로그인 화면에 **"직원 PIN"** 전환 버튼이 보인다
@@ -97,9 +99,11 @@
 ---
 
 ## 이미 자동검증됨 (참고 — 사람 재확인 불필요)
-- 실 API: 주문루트 30/30 · 예약루프 10/10 · 하드닝 13/13 · Cash Phase2 18/18 · health 101/101 · 인쇄계약 8/8
-- 정적: build 0 · hydration 0 · timezone 0 · i18n 0 · print-guard 8/8
-- 실 브라우저 mount: 변경 critical 페이지 전수 크래시 0
+- 실 API: 주문루트 30/30 · 예약루프 10/10 · 하드닝 13/13 · Cash Phase2 18/18 · 인쇄계약 8/8
+- **재검증(2026-06-20) 실라우트 통합검증 33/33** (PIN로그인 4 · Cash-up 전체사이클+하드닝 13 · 취소사유 3 · 예약+이중예약 4 · 예약-주문 루프 8 / 데모38 · 전량 원복)
+- health **104/104** (PIN 공개 가드 3건 추가) · print-guard 8/8
+- 정적: build 0 · hydration 0 · timezone 0 · i18n 0
+- 실 브라우저 mount: cash-up · reservations · /pos(PIN로그인) · /login 크래시 0
 
 ## 운영 배포 시 (Irene `/배포` 지시)
 - 마이그 5종: currency · qz · cash-management · reservation-fpti · cash-phase2 (deploy 9a-2 등록됨)
