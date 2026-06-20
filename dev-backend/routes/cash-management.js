@@ -272,9 +272,9 @@ router.post('/restaurant/:restaurantId/shift/:id/movement', authenticateToken, c
     const shift = await CashierShift.findOne({ where: { id: req.params.id, restaurant_id: restaurantId } });
     if (!shift) return res.status(404).json({ success: false, message: 'Shift not found' });
     if (shift.status !== 'open') return res.status(400).json({ success: false, code: 'SHIFT_NOT_OPEN', message: 'Shift is not open.' });
-    // 대조(카운트) 이후 현금이동 금지 — 카운트한 스냅샷을 사후에 흔들어 감사기록을 무력화하는 것 방지(P1).
-    const reconciled = await CashReconciliation.findOne({ where: { shift_id: shift.id }, attributes: ['id'] });
-    if (reconciled) return res.status(400).json({ success: false, code: 'ALREADY_RECONCILED', message: 'Drawer already counted — cash movements are locked. Re-count if needed.' });
+    // 교대가 열려있는 동안 캐시인/아웃은 항상 허용(일상 운영). 단, Final Settlement '대조' 프리뷰가
+    // 남아있으면 그 스냅샷은 이제 stale → 무효화(삭제)하여 매니저가 다시 대조하도록. (마감=close 만 잠금.)
+    await CashReconciliation.destroy({ where: { shift_id: shift.id } });
     const type = req.body.type === 'out' ? 'out' : (req.body.type === 'in' ? 'in' : null);
     const amount = round2(req.body.amount);
     if (!type || !(amount > 0)) return res.status(400).json({ success: false, code: 'INVALID_MOVEMENT', message: 'type (in/out) and positive amount required.' });

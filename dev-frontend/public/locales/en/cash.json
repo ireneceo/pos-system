@@ -93,5 +93,7 @@
   "colAmount": "Amount",
   "colActions": "Actions",
   "searchPlaceholder": "Search reason / staff…",
-  "settings": "Settings"
+  "settings": "Settings",
+  "todayMovements": "Today's cash in / out",
+  "noMovementsToday": "None yet today."
 }

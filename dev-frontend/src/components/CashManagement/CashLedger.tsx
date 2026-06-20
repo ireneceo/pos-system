@@ -6,6 +6,7 @@ import { formatDateTime } from '../../utils/timezone';
 import { getAuthToken } from '../../utils/auth';
 import {
   DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty, DataTableAmount,
+  IconButton,
   Modal as CommonModal, FormInput, ModalButton
 } from '../UI';
 
@@ -117,10 +118,10 @@ const CashLedger: React.FC<Props> = ({ restaurantId, dateRange, search }) => {
                   <DataTableAmount highlight style={{ color: isIn ? '#10B981' : '#FF6B6B' }}>{isIn ? '+ ' : '− '}{fc(m.amount)}</DataTableAmount>
                 </DataTableCell>
                 <DataTableCell data-label={t('cash:colActions', { defaultValue: 'Actions' })} align="center">
-                  <button type="button" title={t('common:button.edit', { defaultValue: 'Edit' })} onClick={() => setEdit({ ...m, amount: String(m.amount) })}
-                    style={{ width: 32, height: 32, borderRadius: 6, border: '1px solid #E6EBF1', background: '#fff', color: '#6B7C93', cursor: 'pointer', fontSize: 13, marginRight: 6 }}>✎</button>
-                  <button type="button" title={t('common:button.delete', { defaultValue: 'Delete' })} onClick={() => setDelTarget(m)}
-                    style={{ width: 32, height: 32, borderRadius: 6, border: '1px solid #E6EBF1', background: '#fff', color: '#FF6B6B', cursor: 'pointer', fontSize: 16 }}>×</button>
+                  <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'center' }}>
+                    <IconButton variant="edit" type="button" title={t('common:button.edit', { defaultValue: 'Edit' })} onClick={() => setEdit({ ...m, amount: String(m.amount) })}>✎</IconButton>
+                    <IconButton variant="delete" type="button" title={t('common:button.delete', { defaultValue: 'Delete' })} onClick={() => setDelTarget(m)}>✕</IconButton>
+                  </div>
                 </DataTableCell>
               </DataTableRow>
             );

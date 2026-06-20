@@ -93,5 +93,7 @@
   "colAmount": "金额",
   "colActions": "操作",
   "searchPlaceholder": "搜索原因 / 经手人…",
-  "settings": "设置"
+  "settings": "设置",
+  "todayMovements": "今日现金存取",
+  "noMovementsToday": "今天暂无。"
 }

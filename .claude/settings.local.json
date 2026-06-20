@@ -702,7 +702,8 @@
       "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjE2MywiaWF0IjoxNzgxOTI4MzQ1LCJleHAiOjE3ODE5MzAxNDV9.6XEJmKy1dsNuYGHHRv2zC4xd47KeRLtJQSdFAgjlTUw\" RID=1 node scripts/mount-reservation-floor.js)",
       "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjE2MywiaWF0IjoxNzgxOTMyNzQyLCJleHAiOjE3ODE5MzQyNDJ9.VxuFg1EfqA35K-HYmr66D0ywuCamZWFUTzUCIUYmPnI\" RID=1 node scripts/_t_ui.js)",
       "Bash(awk '{print $9, $5\"B\"}')",
-      "Bash(echo \"DONE\")"
+      "Bash(echo \"DONE\")",
+      "Bash(awk 'NR>=30 && NR<=52' src/pages/LiveOrders/LiveOrdersPage.tsx)"
     ],
     "deny": [],
     "ask": []

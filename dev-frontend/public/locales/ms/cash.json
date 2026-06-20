@@ -93,5 +93,7 @@
   "colAmount": "Jumlah",
   "colActions": "Tindakan",
   "searchPlaceholder": "Cari sebab / staf…",
-  "settings": "Tetapan"
+  "settings": "Tetapan",
+  "todayMovements": "Tunai masuk/keluar hari ini",
+  "noMovementsToday": "Belum ada hari ini."
 }

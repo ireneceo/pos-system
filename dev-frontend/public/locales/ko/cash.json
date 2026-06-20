@@ -93,5 +93,7 @@
   "colAmount": "금액",
   "colActions": "관리",
   "searchPlaceholder": "사유 / 담당 검색…",
-  "settings": "설정"
+  "settings": "설정",
+  "todayMovements": "오늘 현금 입출금",
+  "noMovementsToday": "오늘 아직 없음."
 }
