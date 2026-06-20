@@ -1172,6 +1172,12 @@ function App() {
                           <ReservationsTimelinePage />
                         </ProtectedRoute>
                       } />
+                      {/* 시재관리(현금서랍) — POS 카운터 권한 스탭 포함. 마감(결제마감)은 Daily Settlement(플로어/라이브). /cash-up 은 구 경로 호환. */}
+                      <Route path="/restaurant/:restaurantId/cash-drawer" element={
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin', 'Restaurant Owner', 'Staff']}>
+                          <CashUpPage />
+                        </ProtectedRoute>
+                      } />
                       <Route path="/restaurant/:restaurantId/cash-up" element={
                         <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin', 'Restaurant Owner', 'Staff']}>
                           <CashUpPage />

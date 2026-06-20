@@ -719,5 +719,6 @@
     "printerSettings": "프린터 설정",
     "dismiss": "닫기"
   },
-  "nav.cashUp": "현금 마감"
+  "nav.cashUp": "현금 마감",
+  "nav.cashDrawer": "시재관리"
 }

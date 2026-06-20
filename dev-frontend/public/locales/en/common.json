@@ -719,5 +719,6 @@
     "printerSettings": "Printer Settings",
     "dismiss": "Dismiss"
   },
-  "nav.cashUp": "Cash Up"
+  "nav.cashUp": "Cash Up",
+  "nav.cashDrawer": "Cash Drawer"
 }

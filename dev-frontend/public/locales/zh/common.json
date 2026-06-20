@@ -719,5 +719,6 @@
     "printerSettings": "打印机设置",
     "dismiss": "关闭"
   },
-  "nav.cashUp": "现金结算"
+  "nav.cashUp": "现金结算",
+  "nav.cashDrawer": "备用金管理"
 }

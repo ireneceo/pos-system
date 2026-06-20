@@ -1825,7 +1825,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       // System Access — 각각 1뎁스 단독, 새 창으로 열림 (좌측 메뉴 없는 풀화면)
       { id: 'pos-terminal', label: t('nav.posTerminal', 'POS Terminal'), icon: <Monitor />, path: `/restaurant/${rid}/pos-terminal`, openInNewTab: true, visible: isRouteAllowed(`/restaurant/${rid}/pos-terminal`) && canOpenStaffRoute(`/restaurant/${rid}/pos-terminal`) },
       { id: 'floor-plan', label: t('nav.floorPlan', 'Floor Plan'), icon: <LayoutGrid />, path: `/restaurant/${rid}/floor-plan`, openInNewTab: true, visible: isRouteAllowed(`/restaurant/${rid}/floor-plan`) && canOpenStaffRoute(`/restaurant/${rid}/floor-plan`) },
-      { id: 'cash-up', label: t('nav.cashUp', 'Cash Up'), icon: <CreditCard />, path: `/restaurant/${rid}/cash-up`, visible: user?.role === 'Restaurant Admin' || user?.role === 'Restaurant Owner' },
+      // 시재관리(현금서랍) — 마감(결제마감)과 분리. POS 카운터 권한 스탭도 사용(현금 개시·입출금·서랍). 마감은 Daily Settlement(플로어/라이브) 담당.
+      { id: 'cash-drawer', label: t('nav.cashDrawer', 'Cash Drawer'), icon: <CreditCard />, path: `/restaurant/${rid}/cash-drawer`, visible: user?.role === 'Restaurant Owner' || hasMenuPermission('access_pos') },
       { id: 'kitchen', label: t('nav.kitchenDisplay', 'Kitchen Display'), icon: <ChefHat />, path: `/restaurant/${rid}/kitchen`, openInNewTab: true, visible: isRouteAllowed(`/restaurant/${rid}/kitchen`) && canOpenStaffRoute(`/restaurant/${rid}/kitchen`) },
       { id: 'pickup-display', label: t('nav.pickupDisplay', 'Pickup Display'), icon: <Tv />, path: `/restaurant/${rid}/display`, openInNewTab: true, visible: isRouteAllowed(`/restaurant/${rid}/display`) && canOpenStaffRoute(`/restaurant/${rid}/display`) },
       { id: 'mobile-order', label: t('nav.mobileOrder', 'Mobile Order'), icon: <Smartphone />, path: '/mobile', openInNewTab: true, mobileOrder: true, visible: isRouteAllowed('/mobile/:slug/menu') },

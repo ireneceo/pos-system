@@ -719,5 +719,6 @@
     "printerSettings": "Tetapan Pencetak",
     "dismiss": "Tutup"
   },
-  "nav.cashUp": "Tutup Tunai"
+  "nav.cashUp": "Tutup Tunai",
+  "nav.cashDrawer": "Laci Tunai"
 }
