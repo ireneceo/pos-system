@@ -40,5 +40,20 @@
   "sales": "各方式销售",
   "totalSales": "总销售额",
   "paymentCount": "付款笔数",
-  "cashVariance": "现金差异"
+  "cashVariance": "现金差异",
+  "cashDrawerTitle": "备用金管理",
+  "cashDrawerSubtitle": "管理现金抽屉：开始备用金、现金存取、库存现金。全部支付方式的最终结算在 Daily Settlement 中完成。",
+  "currentDrawer": "当前现金抽屉",
+  "cashOnHand": "库存现金（备用金 + 存取）",
+  "openedAt": "班次开始于 {{when}}",
+  "settleInDailyHint": "如需结束班次，请在 Daily Settlement（楼面图/实时订单）中执行“最终结算”——将每种支付方式（现金、按卡类型、电子钱包）与预期核对。",
+  "startFail": "无法开始班次",
+  "movementFail": "存取处理失败",
+  "finalSettlement": "最终结算",
+  "finalSettlementHint": "查看刷卡机批结算、现金抽屉和电子钱包应用，然后输入每种方式的实际金额。系统将与预期比较并标记差异。",
+  "noOpenShift": "没有可结算的班次。请先在备用金管理中开始班次。",
+  "reconcile": "与预期核对",
+  "reconcileFail": "核对失败",
+  "closeFail": "结算失败",
+  "byMethodActualVar": "按方式 — 实际 / 差异"
 }

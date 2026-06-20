@@ -40,5 +40,20 @@
   "sales": "Sales by method",
   "totalSales": "Total sales",
   "paymentCount": "Payments",
-  "cashVariance": "Cash variance"
+  "cashVariance": "Cash variance",
+  "cashDrawerTitle": "Cash Drawer",
+  "cashDrawerSubtitle": "Manage the cash drawer: opening float, cash in/out, and cash on hand. Final settlement (all payment methods) is done in Daily Settlement.",
+  "currentDrawer": "Current cash drawer",
+  "cashOnHand": "Cash on hand (float + movements)",
+  "openedAt": "Shift opened {{when}}",
+  "settleInDailyHint": "To close the shift, run Final Settlement in Daily Settlement (Floor Plan / Live Orders) — count every payment method (cash, card by type, e-wallet) against expected.",
+  "startFail": "Could not start shift",
+  "movementFail": "Movement failed",
+  "finalSettlement": "Final Settlement",
+  "finalSettlementHint": "Check the card terminal batch, cash drawer and e-wallet apps, then enter the ACTUAL amount for each method. The system compares against expected and flags differences.",
+  "noOpenShift": "No open shift to settle. Start a shift in Cash Drawer first.",
+  "reconcile": "Compare with expected",
+  "reconcileFail": "Reconcile failed",
+  "closeFail": "Close failed",
+  "byMethodActualVar": "By method — actual / variance"
 }

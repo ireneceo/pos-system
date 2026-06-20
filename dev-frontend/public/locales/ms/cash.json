@@ -40,5 +40,20 @@
   "sales": "Jualan ikut kaedah",
   "totalSales": "Jumlah jualan",
   "paymentCount": "Bayaran",
-  "cashVariance": "Varians tunai"
+  "cashVariance": "Varians tunai",
+  "cashDrawerTitle": "Laci Tunai",
+  "cashDrawerSubtitle": "Urus laci tunai: apungan permulaan, tunai masuk/keluar, dan tunai di tangan. Penyelesaian akhir (semua kaedah bayaran) dibuat di Daily Settlement.",
+  "currentDrawer": "Laci tunai semasa",
+  "cashOnHand": "Tunai di tangan (apungan + pergerakan)",
+  "openedAt": "Syif dibuka {{when}}",
+  "settleInDailyHint": "Untuk menutup syif, jalankan Penyelesaian Akhir di Daily Settlement (Pelan Lantai / Pesanan Langsung) — kira setiap kaedah bayaran (tunai, kad mengikut jenis, e-dompet) berbanding jangkaan.",
+  "startFail": "Tidak dapat memulakan syif",
+  "movementFail": "Pergerakan gagal",
+  "finalSettlement": "Penyelesaian Akhir",
+  "finalSettlementHint": "Semak batch terminal kad, laci tunai dan aplikasi e-dompet, kemudian masukkan jumlah SEBENAR bagi setiap kaedah. Sistem membandingkan dengan jangkaan dan menanda perbezaan.",
+  "noOpenShift": "Tiada syif terbuka untuk diselesaikan. Mulakan syif di Laci Tunai dahulu.",
+  "reconcile": "Banding dengan jangkaan",
+  "reconcileFail": "Penyelarasan gagal",
+  "closeFail": "Penutupan gagal",
+  "byMethodActualVar": "Mengikut kaedah — sebenar / varians"
 }
