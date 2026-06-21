@@ -707,7 +707,8 @@
       "Bash(awk '/<PaymentModal/,/\\\\/>/' src/pages/POSTerminal/POSTerminalPage.tsx)",
       "Bash(awk 'NR>=457 && NR<=720 && /subtotal/' routes/orders-crud.js)",
       "Bash(awk 'NR>=457 && NR<=900 {print NR\": \"$0}' routes/orders-crud.js)",
-      "Bash(awk '/body: JSON.stringify\\\\\\(\\\\{|orderPayload|orderData *=/{f=1} f&&/subtotal/{print NR\": \"$0} f&&/\\\\}\\\\\\)/{c++; if\\(c>0 && /restaurant_id/\\)f=f}' src/pages/POSTerminal/POSTerminalPage.tsx)"
+      "Bash(awk '/body: JSON.stringify\\\\\\(\\\\{|orderPayload|orderData *=/{f=1} f&&/subtotal/{print NR\": \"$0} f&&/\\\\}\\\\\\)/{c++; if\\(c>0 && /restaurant_id/\\)f=f}' src/pages/POSTerminal/POSTerminalPage.tsx)",
+      "Bash(xxd)"
     ],
     "deny": [],
     "ask": []

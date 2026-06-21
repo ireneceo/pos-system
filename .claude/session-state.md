@@ -6,7 +6,12 @@
 **작업 상태:** 완료 (운영 배포 + 운영 검증 통과)
 
 ### 진행 중인 작업
-- 없음
+- 시재(Cash Management) 2건 dev 수정 완료·검증 통과 — **운영 미배포(Irene /배포 대기)**
+  1. **Today's Cash Drawer 버튼 무반응 버그** — CashUpPage 가 CashDrawerModal 을 import만 하고 JSX 렌더 누락 → 클릭해도 모달 안 뜸. `<CashDrawerModal>` 렌더 추가(onClose 시 reloadKey bump).
+  2. **페이지↔팝업 계산 불일치 동기화(Option A)** — 원인: 같은 cash_movements 테이블이지만 팝업=개시현금+입금−출금=현재드로어(147), 페이지=순액만(122). 페이지에도 팝업과 '동일한' 엔드포인트(/shift/current + /shift/{id}/expected)로 드로어 요약(개시/입금/출금/현재드로어) 표시. '오늘'+열린shift 일 때만 노출(과거기간은 회계순액 유지). CashLedger hideSummary prop 으로 중복 요약줄 숨김.
+  - 검증: build 성공, 실API(rest5 shift45: 개시25/입213/출91/onHand147 페이지=팝업 동일, ledger net122=147−25), health 107/107, print-guard 8/8(인쇄 무변경)
+  - 파일: CashUpPage.tsx, CashLedger.tsx (인쇄 무관)
+  - 알려진 잔여(범위 외): 팝업 하단 'Today's cash in/out' 리스트는 달력-오늘 기준, 상단 요약은 shift 기준 — 단일 shift 매장은 일치. 추후 필요 시 정리.
 
 ### 완료된 작업 (이번 세션)
 - 할인 PIN 승인 누락 경로 게이트 — 설정 '할인 PIN 필수' ON 시 POS 금액할인·% 할인·결제창(PaymentModal) 할인 3경로 모두 PIN 모달 뜨도록(기존엔 정책버튼만 검사). pendingDiscount.kind 분기, doApplyPaymentDiscount 분리. 🔒 POS 인쇄블록 무변경(print-guard re-bless 8/8)

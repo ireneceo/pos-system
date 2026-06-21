@@ -13,9 +13,9 @@ import {
 // 현금 입출금 회계 리스트 — 라이브오더와 동일 DataTable. 부모(시재관리 페이지)가 기간필터(dateRange) 전달.
 // 통장식 +/- 내역(날짜·사유·담당) + 행별 수정/삭제. 운영(개시·캐시인/아웃)은 Today's Cash Drawer.
 
-interface Props { restaurantId?: string; dateRange: { start: string; end: string }; search?: string; }
+interface Props { restaurantId?: string; dateRange: { start: string; end: string }; search?: string; reloadKey?: number; hideSummary?: boolean; }
 
-const CashLedger: React.FC<Props> = ({ restaurantId, dateRange, search }) => {
+const CashLedger: React.FC<Props> = ({ restaurantId, dateRange, search, reloadKey, hideSummary }) => {
   const { t } = useTranslation();
   const store = useStore();
   const currency = store?.operationSettings?.currency || 'MYR';
@@ -44,7 +44,7 @@ const CashLedger: React.FC<Props> = ({ restaurantId, dateRange, search }) => {
     finally { setLoading(false); }
   }, [restaurantId, dateRange.start, dateRange.end]);
 
-  useEffect(() => { fetchList(); }, [fetchList]);
+  useEffect(() => { fetchList(); }, [fetchList, reloadKey]);
 
   const api = (path: string, opts: RequestInit) => {
     const token = getAuthToken();
@@ -80,13 +80,15 @@ const CashLedger: React.FC<Props> = ({ restaurantId, dateRange, search }) => {
 
   return (
     <div>
-      {/* 통장 요약(합계) — 표 위 한 줄 */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 18, padding: '0 4px 10px', fontSize: 13, fontWeight: 600, fontVariantNumeric: 'tabular-nums', flexWrap: 'wrap' }}>
-        <span style={{ color: '#6B7C93' }}>{t('cash:total', { defaultValue: 'Total' })} {summary.count}</span>
-        <span style={{ color: '#10B981' }}>+ {fc(summary.totalIn)}</span>
-        <span style={{ color: '#FF6B6B' }}>− {fc(summary.totalOut)}</span>
-        <span style={{ color: '#0A2540' }}>{t('cash:netLabel', { defaultValue: 'Net' })} {fc(summary.net)}</span>
-      </div>
+      {/* 통장 요약(합계) — 표 위 한 줄. 드로어 요약(Today's Cash Drawer)이 위에 떠 있으면 중복이라 숨김. */}
+      {!hideSummary && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 18, padding: '0 4px 10px', fontSize: 13, fontWeight: 600, fontVariantNumeric: 'tabular-nums', flexWrap: 'wrap' }}>
+          <span style={{ color: '#6B7C93' }}>{t('cash:total', { defaultValue: 'Total' })} {summary.count}</span>
+          <span style={{ color: '#10B981' }}>+ {fc(summary.totalIn)}</span>
+          <span style={{ color: '#FF6B6B' }}>− {fc(summary.totalOut)}</span>
+          <span style={{ color: '#0A2540' }}>{t('cash:netLabel', { defaultValue: 'Net' })} {fc(summary.net)}</span>
+        </div>
+      )}
 
       <DataTable>
         <DataTableHead>
