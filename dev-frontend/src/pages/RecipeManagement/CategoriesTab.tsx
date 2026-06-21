@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ConfirmModal from '../../components/ConfirmModal';
 import styled from 'styled-components';
-import { Carrot, UtensilsCrossed } from 'lucide-react';
+import { Carrot, UtensilsCrossed, FolderOpen } from 'lucide-react';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { useAuth } from '../../contexts/AuthContext';
@@ -578,7 +578,7 @@ const CategoriesTab: React.FC<CategoriesTabProps> = ({ brandId, restaurantId, on
 
       {recipeCategories.length === 0 ? (
         <EmptyState>
-          <EmptyIcon>📂</EmptyIcon>
+          <EmptyIcon><FolderOpen size={48} color="#9CA3AF" /></EmptyIcon>
           <EmptyTitle>{t('recipes:categoriesTab.noRecipeCategoriesYet')}</EmptyTitle>
           <EmptyDescription>
             Create categories to organize your recipes

@@ -352,7 +352,7 @@ const ManagerReportsPage: React.FC = () => {
               <div>
                 <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#0A2540', marginBottom: '16px' }}>{t('admin:managerReportsPage.orderDistribution')}</h4>
                 <ChartPlaceholder>
-                  🍰 Order distribution pie chart
+                  Order distribution pie chart
                   <div style={{ fontSize: '12px', marginTop: '8px', opacity: 0.7 }}>
                     Distribution by restaurant/category
                   </div>
@@ -439,9 +439,6 @@ const ManagerReportsPage: React.FC = () => {
                     <DataTableRow key={index}>
                       <DataTableCell data-label={t('admin:managerReportsPage.rank')} style={{ fontWeight: '600' }}>
                         #{index + 1}
-                        {index === 0 && ' 🥇'}
-                        {index === 1 && ' 🥈'}
-                        {index === 2 && ' 🥉'}
                       </DataTableCell>
                       <DataTableCell data-label={t('admin:managerReportsPage.itemName')} style={{ fontWeight: '600' }}>{item.name}</DataTableCell>
                       <DataTableCell data-label={t('admin:managerReportsPage.quantitySold')}>{item.quantity}</DataTableCell>

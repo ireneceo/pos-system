@@ -56,6 +56,10 @@ interface MyIngredientRow {
   ingredientCategory?: { id: number; name: string; emoji?: string | null } | null;
   sellers: SellerOpt[];
   track_stock?: boolean;
+  // BG (brands) only — set when this row is a BG ProductIngredient (Stock Item),
+  // not a brand ingredient. Carried into the cart so submit can emit product_ingredient_id.
+  product_ingredient_id?: number;
+  is_product_ingredient?: boolean;
 }
 
 interface CatalogRow {
@@ -85,6 +89,9 @@ interface CartRow {
   available_sellers: SellerOpt[];
   selected_options?: SelectedOption[];
   adjusted_unit_price?: number;  // base + 옵션 price_adjustment 합
+  // BG (brands) only — set when the source row is a BG ProductIngredient (Stock Item).
+  // submit emits { product_ingredient_id, ... } instead of { ingredient_id, ... }.
+  product_ingredient_id?: number;
 }
 
 const PageWrap = styled.div`
@@ -546,7 +553,7 @@ const NewPurchaseOrderPage: React.FC = () => {
   const [toast, setToast] = useState<string | null>(null);
   const [optionModal, setOptionModal] = useState<{ row: CatalogRow; product: any } | null>(null);
   // Connect mode — mine 탭의 unlinked ingredient 를 catalog 항목과 연결할 때 사용
-  const [connectTarget, setConnectTarget] = useState<{ id: number; name: string; unit?: string } | null>(null);
+  const [connectTarget, setConnectTarget] = useState<{ id: number; name: string; unit?: string; product_ingredient_id?: number } | null>(null);
   // mine 탭에 untracked (track_stock=false) ingredient 표시 여부. 기본은 숨김 — 양념같이 추적 안 하는 건 발주 흐름 분리.
   const [showUntracked, setShowUntracked] = useState(false);
   // unit_conversion 입력 modal — connect 시 1 seller_unit = ? ingredient_unit
@@ -579,10 +586,50 @@ const NewPurchaseOrderPage: React.FC = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const j = await res.json();
-      setMyList(res.ok && j.success && Array.isArray(j.data) ? j.data : []);
+      const ingredientRows: MyIngredientRow[] =
+        res.ok && j.success && Array.isArray(j.data) ? j.data : [];
+
+      // BG (brands) only — also surface BG Stock Items (ProductIngredient) that have
+      // a seller-source mapping. Merged alongside brand ingredients, both visible.
+      // Restaurant / Foodcourt paths skip this entirely (behavior unchanged).
+      let productIngredientRows: MyIngredientRow[] = [];
+      if (buyerEntity?.type === 'brands') {
+        try {
+          const piRes = await fetch(
+            '/api/product-ingredients?include=sellers',
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          const piJson = await piRes.json();
+          const piData: any[] = piRes.ok && piJson.success && Array.isArray(piJson.data) ? piJson.data : [];
+          productIngredientRows = piData
+            .filter((item) => Array.isArray(item.sellers) && item.sellers.length > 0)
+            .map((item): MyIngredientRow => ({
+              id: 0,
+              name: item.name,
+              unit: item.unit ?? null,
+              product_ingredient_id: item.id,
+              is_product_ingredient: true,
+              track_stock: true,
+              sellers: (item.sellers as any[]).map((s): SellerOpt => ({
+                id: s.id,
+                seller_product_id: s.seller_product_id,
+                seller_type: s.seller_type,
+                seller_entity_id: s.seller_entity_id ?? null,
+                seller_name: s.seller_name,
+                unit_price: Number(s.unit_price) || 0,
+                unit_conversion: Number(s.unit_conversion) || 1,
+                min_order_quantity: Number(s.min_order_quantity) || 1,
+                lead_time_days: Number(s.lead_time_days) || 0,
+                is_preferred: !!s.is_preferred,
+              })),
+            }));
+        } catch { /* BG stock-item fetch is additive; ignore failures */ }
+      }
+
+      setMyList([...ingredientRows, ...productIngredientRows]);
     } catch { setMyList([]); }
     finally { setLoadingMine(false); }
-  }, [buyerApiBase]);
+  }, [buyerApiBase, buyerEntity]);
 
   const fetchCatalog = useCallback(async () => {
     setLoadingCatalog(true);
@@ -675,6 +722,15 @@ const NewPurchaseOrderPage: React.FC = () => {
   const cartQtyOf = (ingredientId: number) =>
     cart.filter(r => r.ingredient_id === ingredientId).reduce((s, r) => s + r.quantity, 0);
 
+  // BG Stock Item rows share ingredient_id 0, so the helpers above can't tell them apart.
+  // These match by cart_key (`pi-${product_ingredient_id}`) — used ONLY by the BG render path.
+  const isInCartByKey = (key: string) => cart.some(r => r.cart_key === key);
+  const cartQtyOfByKey = (key: string) =>
+    cart.filter(r => r.cart_key === key).reduce((s, r) => s + r.quantity, 0);
+  const incCartQtyByKey = (key: string, delta: number = 1) => {
+    setCart(prev => prev.map(r => r.cart_key === key ? { ...r, quantity: Math.max(0, r.quantity + delta) } : r));
+  };
+
   const addMineToCart = (row: MyIngredientRow) => {
     // 발주처 필터가 활성화돼 있으면 그 seller로 발주. 아니면 preferred → 첫 항목.
     let preferred: SellerOpt | undefined;
@@ -688,7 +744,11 @@ const NewPurchaseOrderPage: React.FC = () => {
       setToast(t('newPo.toast.needLink', { name: row.name, defaultValue: '"{{name}}" needs to be linked to a supplier first' }) as string);
       return;
     }
-    const key = buildCartKey(row.id);
+    // BG Stock Item rows share ingredient id 0 — namespace their cart_key by
+    // product_ingredient_id so distinct stock items don't collide into one cart row.
+    const key = row.product_ingredient_id
+      ? `pi-${row.product_ingredient_id}`
+      : buildCartKey(row.id);
     if (cart.some(r => r.cart_key === key)) {
       setCart(prev => prev.map(r => r.cart_key === key ? { ...r, quantity: r.quantity + 1 } : r));
       return;
@@ -700,7 +760,8 @@ const NewPurchaseOrderPage: React.FC = () => {
       ingredient_unit: row.unit || '',
       selected_seller_id: preferred.id,
       quantity: Math.max(1, preferred.min_order_quantity || 1),
-      available_sellers: row.sellers
+      available_sellers: row.sellers,
+      ...(row.product_ingredient_id ? { product_ingredient_id: row.product_ingredient_id } : {})
     }]);
     setToast(t('newPo.toast.added', { name: row.name, defaultValue: '"{{name}}" added to cart' }) as string);
   };
@@ -774,6 +835,8 @@ const NewPurchaseOrderPage: React.FC = () => {
     if (!buyerApiBase) return;
     try {
       const token = getAuthToken();
+      // BG (brands) 는 ProductIngredient 패밀리 → 전용 endpoint. RA/FC 는 기존 경로 100% 유지.
+      const isBG = buyerEntity?.type === 'brands';
       // Seller type 분기 — supplier / brand / foodcourt 모두 동일 endpoint, body 키만 다름
       const sellerType = (row.supplier as any)?.seller_type || 'supplier';
       const body: any =
@@ -783,8 +846,16 @@ const NewPurchaseOrderPage: React.FC = () => {
       // Connect mode — 기존 ingredient 에 매핑만 추가 + unit_conversion 결정
       let autoConvNote: string | null = null;
       if (connectTarget?.id) {
-        body.existing_ingredient_id = connectTarget.id;
-        const ingUnit = connectTarget.unit || (myList.find(m => m.id === connectTarget.id)?.unit) || '';
+        if (isBG) {
+          body.existing_product_ingredient_id = connectTarget.product_ingredient_id;
+        } else {
+          body.existing_ingredient_id = connectTarget.id;
+        }
+        const ingUnit = connectTarget.unit
+          || (isBG
+              ? myList.find(m => m.product_ingredient_id === connectTarget.product_ingredient_id)?.unit
+              : myList.find(m => m.id === connectTarget.id)?.unit)
+          || '';
         const sellerUnit = row.unit || '';
         if (overrideConversion != null) {
           body.unit_conversion = overrideConversion;
@@ -800,7 +871,10 @@ const NewPurchaseOrderPage: React.FC = () => {
           }
         }
       }
-      const res = await fetch(`${buyerApiBase}/ingredients/from-catalog`, {
+      const fromCatalogUrl = isBG
+        ? '/api/product-ingredients/from-catalog'
+        : `${buyerApiBase}/ingredients/from-catalog`;
+      const res = await fetch(fromCatalogUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(body)
@@ -825,7 +899,11 @@ const NewPurchaseOrderPage: React.FC = () => {
         is_preferred: !!map.is_preferred
       };
       const optionIds = selectedOptions.map(o => o.option_id);
-      const cart_key = buildCartKey(ing.id, optionIds);
+      // BG: ProductIngredient 패밀리 → mine-tab 과 동일하게 cart_key 를 pi-{id} 로 namespace + row 에 product_ingredient_id 부착.
+      // RA/FC: 기존 ingredient 기반 cart_key 유지 (변경 없음).
+      const cart_key = isBG && optionIds.length === 0
+        ? `pi-${ing.id}`
+        : buildCartKey(ing.id, optionIds);
       const baseQty = qty ?? Math.max(1, seller.min_order_quantity);
 
       const existing = cart.find(r => r.cart_key === cart_key);
@@ -834,14 +912,15 @@ const NewPurchaseOrderPage: React.FC = () => {
       } else {
         setCart(prev => [...prev, {
           cart_key,
-          ingredient_id: ing.id,
+          ingredient_id: isBG ? 0 : ing.id,
           ingredient_name: ing.name,
           ingredient_unit: ing.unit || '',
           selected_seller_id: seller.id,
           quantity: baseQty,
           available_sellers: [seller],
           selected_options: selectedOptions.length ? selectedOptions : undefined,
-          adjusted_unit_price: selectedOptions.length ? adjustedUnitPrice : undefined
+          adjusted_unit_price: selectedOptions.length ? adjustedUnitPrice : undefined,
+          ...(isBG ? { product_ingredient_id: ing.id } : {})
         }]);
       }
       if (j.data.connected) {
@@ -916,11 +995,20 @@ const NewPurchaseOrderPage: React.FC = () => {
         return {
           seller_type: g.seller_type,
           seller_entity_id: g.seller_entity_id,
-          items: g.items.map(({ row, seller }) => ({
-            ingredient_id: row.ingredient_id,
-            ingredient_seller_product_id: seller.id,
-            quantity_ordered: row.quantity
-          })),
+          items: g.items.map(({ row, seller }) => (
+            row.product_ingredient_id
+              ? {
+                  // BG Stock Item (ProductIngredient) — backend accepts product_ingredient_id.
+                  product_ingredient_id: row.product_ingredient_id,
+                  ingredient_seller_product_id: seller.id,
+                  quantity_ordered: row.quantity
+                }
+              : {
+                  ingredient_id: row.ingredient_id,
+                  ingredient_seller_product_id: seller.id,
+                  quantity_ordered: row.quantity
+                }
+          )),
           expected_delivery_date: expectedDate || null,
           delivery_address: deliveryAddress.trim() || null,
           notes: baseNotes
@@ -959,7 +1047,7 @@ const NewPurchaseOrderPage: React.FC = () => {
         <MainPane>
           <TabBar>
             <TabBtn $active={tab === 'mine'} onClick={() => { setTab('mine'); setCategoryFilter('all'); setSearch(''); }}>
-              {t('newPo.tabMine', 'My Ingredients')}
+              {t('newPo.tabMine', 'My Stock Items')}
             </TabBtn>
             <TabBtn $active={tab === 'catalog'} onClick={() => { setTab('catalog'); setCategoryFilter('all'); setSupplierFilter('all'); setSearch(''); }}>
               {t('newPo.tabCatalog', 'Supplier Catalog')}
@@ -1060,7 +1148,7 @@ const NewPurchaseOrderPage: React.FC = () => {
                 <Empty>{t('common:loading', 'Loading…')}</Empty>
               ) : filteredMy.length === 0 ? (
                 <Empty>
-                  <strong>{t('newPo.empty.mine.title', 'No ingredients found')}</strong>
+                  <strong>{t('newPo.empty.mine.title', 'No linked stock items')}</strong>
                   <div style={{ marginTop: 8, fontSize: 12.5, color: '#4B5563', lineHeight: 1.6, maxWidth: 440 }}>
                     {t('newPo.empty.mine.desc', 'Open the Supplier Catalog tab and click a product to order it — it’s added to your inventory automatically. If that tab is empty too, connect a brand or supplier first (see the Supplier Catalog tab for how).')}
                   </div>
@@ -1068,24 +1156,28 @@ const NewPurchaseOrderPage: React.FC = () => {
               ) : (
                 <Grid>
                   {filteredMy.map(row => {
-                    const inCart = isInCart(row.id);
-                    const qInCart = cartQtyOf(row.id);
+                    // BG Stock Item rows are identified by cart_key (`pi-${product_ingredient_id}`)
+                    // since their ingredient_id is 0; normal rows keep the existing id-based lookup.
+                    const piKey = row.product_ingredient_id ? `pi-${row.product_ingredient_id}` : null;
+                    const reactKey = piKey || row.id;
+                    const inCart = piKey ? isInCartByKey(piKey) : isInCart(row.id);
+                    const qInCart = piKey ? cartQtyOfByKey(piKey) : cartQtyOf(row.id);
                     const hasSeller = row.sellers && row.sellers.length > 0;
                     const minPrice = hasSeller ? Math.min(...row.sellers.map(s => s.unit_price)) : 0;
                     const cat = row.ingredientCategory;
                     return (
                       <Card
-                        key={row.id}
+                        key={reactKey}
                         type="button"
                         onClick={() => {
                           if (!hasSeller) {
                             // 발주처 미연결 — inline modal 띄움 (페이지 이동 X, catalog 탭 자동 검색 X)
-                            setConnectTarget({ id: row.id, name: row.name, unit: row.unit || '' });
+                            setConnectTarget({ id: row.id, name: row.name, unit: row.unit || '', product_ingredient_id: row.product_ingredient_id });
                             return;
                           }
                           addMineToCart(row);
                         }}
-                        onDoubleClick={() => hasSeller && incCartQty(row.id, 1)}
+                        onDoubleClick={() => hasSeller && (piKey ? incCartQtyByKey(piKey, 1) : incCartQty(row.id, 1))}
                       >
                         <BadgeRow>
                           {inCart && <Badge $variant="cart">×{qInCart}</Badge>}

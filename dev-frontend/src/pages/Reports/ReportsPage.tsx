@@ -1309,9 +1309,6 @@ const ReportsPage: React.FC = () => {
                             color: index < 3 ? (index === 0 ? '#FFB800' : index === 1 ? '#0EA5E9' : '#6FCF97') : '#0A2540'
                           }}>
                             #{index + 1}
-                            {index === 0 && ' 🥇'}
-                            {index === 1 && ' 🥈'}
-                            {index === 2 && ' 🥉'}
                           </DataTableCell>
                           <DataTableCell data-label={t('reports:reportsPage.menuItem')} style={{ fontWeight: 600 }}>{menu.name}</DataTableCell>
                           <DataTableCell data-label={t('reports:reportsPage.category')}>
@@ -1405,9 +1402,6 @@ const ReportsPage: React.FC = () => {
                                 color: index < 3 ? (index === 0 ? '#FFB800' : index === 1 ? '#0EA5E9' : '#6FCF97') : '#0A2540'
                               }}>
                                 #{index + 1}
-                                {index === 0 && ' 🥇'}
-                                {index === 1 && ' 🥈'}
-                                {index === 2 && ' 🥉'}
                               </DataTableCell>
                               <DataTableCell data-label={t('reports:reportsPage.name')} style={{ fontWeight: 600 }}>{customerData.customer?.name || 'Guest'}</DataTableCell>
                               <DataTableCell data-label={t('reports:reportsPage.phone')}>{customerData.customer?.phone || '-'}</DataTableCell>
@@ -1502,7 +1496,7 @@ const ReportsPage: React.FC = () => {
                               backgroundColor: index === 0 ? '#FEF3C7' : 'transparent'
                             }}>
                               <DataTableCell data-label={t('reports:reportsPage.timeSlot')} style={{ fontWeight: 600 }}>
-                                {index === 0 && '🔥 '}{item.time}
+                                {item.time}
                               </DataTableCell>
                               <DataTableCell data-label={t('reports:reportsPage.orders')}>{item.orders}</DataTableCell>
                               <DataTableCell data-label={t('reports:reportsPage.revenue')}>{formatCurrency(item.revenue, operationSettings.currency)}</DataTableCell>

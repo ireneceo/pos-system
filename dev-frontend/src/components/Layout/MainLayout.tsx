@@ -18,7 +18,7 @@ import { useRoleDisplayName } from '../../utils/roleDisplay';
 import { useAllowedRoutes } from '../../hooks/useAllowedRoutes';
 
 import { getAuthToken } from '../../utils/auth';
-import { LayoutDashboard, Users, Truck, Briefcase, MessageSquare, CreditCard, Settings as SettingsIcon, ChevronsLeft, ChevronsRight, LogOut, Activity, Store, Package, ShoppingCart, FileText, Monitor, LayoutGrid, ChefHat, Tv, Smartphone, TrendingUp, Download, Building2, MapPin, Gift, Bell } from 'lucide-react';
+import { LayoutDashboard, Users, Truck, Briefcase, MessageSquare, CreditCard, Settings as SettingsIcon, ChevronsLeft, ChevronsRight, LogOut, Activity, Store, Package, ShoppingCart, FileText, Monitor, LayoutGrid, ChefHat, Tv, Smartphone, TrendingUp, Download, Building2, MapPin, Gift, Bell, Target } from 'lucide-react';
 import { usePwaInstall } from '../../contexts/PwaInstallContext';
 
 // System Admin 2-tier sidebar widths
@@ -1515,6 +1515,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         visible: isRouteAllowed('/pos/brand/franchise-map')
       },
       {
+        id: 'performance', label: t('nav.performance'), icon: <Target />,
+        path: '/pos/brand/general/performance',
+        visible: isRouteAllowed('/pos/brand/general/performance')
+      },
+      {
         id: 'brands', label: t('nav.section.brands', 'Brands'), icon: <Building2 />,
         items: [
           { path: '/pos/brand/general/management', label: t('nav.allBrands', 'All Brands'), visible: isRouteAllowed('/pos/brand/general/management') },
@@ -1543,19 +1548,14 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                  ))
       },
       {
-        id: 'products', label: t('nav.section.productsInventory'), icon: <Package />,
+        id: 'products', label: t('nav.section.products'), icon: <Package />,
         items: [
           { path: '/pos/brand-products', label: t('nav.products'), visible: isRouteAllowed('/pos/brand-products') },
-          { path: '/pos/brand-product-recipes', label: t('nav.productRecipes'), visible: isRouteAllowed('/pos/brand-product-recipes') },
-          { path: '/pos/brand-ingredients', label: t('nav.ingredients'), visible: isRouteAllowed('/pos/brand-ingredients') },
-          { path: '/pos/suppliers', label: t('nav.suppliers'), visible: isRouteAllowed('/pos/suppliers') },
-          { path: '/pos/brand-inventory', label: t('nav.inventory'), visible: isRouteAllowed('/pos/brand-inventory') }
+          { path: '/pos/brand-product-recipes', label: t('nav.productRecipes'), visible: isRouteAllowed('/pos/brand-product-recipes') }
         ].filter(i => i.visible !== false),
         visible: hasManagerPermission('products') && (
           isRouteAllowed('/pos/brand-products') ||
-          isRouteAllowed('/pos/brand-product-recipes') ||
-          isRouteAllowed('/pos/brand-ingredients') ||
-          isRouteAllowed('/pos/brand-inventory')
+          isRouteAllowed('/pos/brand-product-recipes')
         )
       },
       {
@@ -1563,10 +1563,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         items: [
           { path: '/pos/brand/invoices', label: t('nav.invoices'), hasPending: badgeCounts.invoices > 0, visible: isRouteAllowed('/pos/brand/invoices') },
           { path: '/pos/brand/trade-invoices', label: t('nav.tradeInvoices', 'Trade Invoices'), visible: isRouteAllowed('/pos/brand/trade-invoices') },
-          { path: '/pos/brand/general/performance', label: t('nav.performance'), visible: isRouteAllowed('/pos/brand/general/performance') },
-          { path: '/pos/manager/coupons', label: t('nav.coupons'), visible: isRouteAllowed('/pos/manager/coupons') },
           { path: '/pos/purchase-orders', label: t('nav.purchaseOrder', 'Purchase Order'), visible: hasManagerPermission('products') && isRouteAllowed('/pos/purchase-orders') },
           { path: '/pos/purchase-orders/history', label: t('nav.orderHistory', 'Order History'), visible: hasManagerPermission('products') && isRouteAllowed('/pos/purchase-orders') },
+          { path: '/pos/brand-ingredients', label: t('nav.stockItems', 'Stock Items'), visible: isRouteAllowed('/pos/brand-ingredients') },
+          { path: '/pos/brand-inventory', label: t('nav.inventory'), visible: isRouteAllowed('/pos/brand-inventory') },
+          { path: '/pos/suppliers', label: t('nav.suppliers'), visible: isRouteAllowed('/pos/suppliers') },
+          { path: '/pos/manager/coupons', label: t('nav.coupons'), visible: isRouteAllowed('/pos/manager/coupons') },
         ].filter(i => i.visible !== false),
         visible: hasManagerPermission('operations') || hasManagerPermission('products')
       },

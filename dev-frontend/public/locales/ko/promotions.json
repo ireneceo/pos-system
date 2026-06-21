@@ -1,0 +1,119 @@
+{
+  "title": "쿠폰",
+  "addCoupon": "쿠폰 추가",
+  "createCoupon": "쿠폰 생성",
+  "createFirstCoupon": "첫 쿠폰 만들기",
+  "couponList": "쿠폰 목록",
+  "loading": "불러오는 중…",
+  "loadingCoupons": "쿠폰을 불러오는 중...",
+  "retry": "다시 시도",
+  "noCouponsYet": "아직 생성된 쿠폰이 없습니다",
+  "noCouponsHint": "아직 쿠폰이 없습니다. \"쿠폰 추가\"를 눌러 매장용 쿠폰을 만드세요.",
+  "noOwnerLinked": "아직 계정에 연결된 브랜드 또는 푸드코트가 없습니다.",
+  "linkedTo": "연결됨:",
+  "table": {
+    "code": "코드",
+    "name": "이름",
+    "discount": "할인",
+    "appliesTo": "적용 대상",
+    "target": "대상",
+    "validUntil": "유효 기간",
+    "usage": "사용량",
+    "used": "사용됨",
+    "status": "상태",
+    "actions": "작업"
+  },
+  "status": {
+    "active": "활성",
+    "inactive": "비활성",
+    "expired": "만료됨"
+  },
+  "target": {
+    "all": "전체",
+    "customers": "고객 {{count}}명",
+    "allCustomers": "전체 고객",
+    "specificCustomers": "특정 고객",
+    "membershipTiers": "멤버십 등급"
+  },
+  "actions": {
+    "edit": "편집",
+    "activate": "활성화",
+    "deactivate": "비활성화",
+    "delete": "삭제",
+    "cancel": "취소",
+    "save": "저장",
+    "saving": "저장 중…"
+  },
+  "scope": {
+    "allRestaurants": "전 매장 ({{count}})",
+    "selected": "{{count}}개 선택됨"
+  },
+  "modal": {
+    "addTitle": "쿠폰 추가",
+    "editTitle": "쿠폰 편집",
+    "createTitle": "새 쿠폰 생성",
+    "updateCoupon": "쿠폰 수정"
+  },
+  "form": {
+    "code": "코드",
+    "couponCode": "쿠폰 코드",
+    "name": "이름",
+    "discountType": "할인 유형",
+    "discountTypeCap": "할인 유형",
+    "percentage": "비율 (%)",
+    "fixedAmountMyr": "정액 (MYR)",
+    "fixedAmountRm": "정액 (RM)",
+    "value": "값",
+    "discountValue": "할인 값",
+    "minOrder": "최소 주문",
+    "minOrderAmount": "최소 주문 금액",
+    "maxDiscount": "최대 할인",
+    "maxDiscountNa": "최대 할인 (해당 없음)",
+    "maxDiscountForPercent": "최대 할인 (비율용)",
+    "usageLimit": "사용 한도",
+    "status": "상태",
+    "validityPeriod": "유효 기간",
+    "validFromUntil": "시작일 — 종료일",
+    "applyTo": "적용 대상",
+    "targetAudience": "대상 고객",
+    "description": "설명",
+    "noCap": "한도 없음",
+    "noLimit": "제한 없음",
+    "unlimited": "무제한",
+    "codePlaceholder": "SUMMER10",
+    "namePlaceholder": "여름 프로모션",
+    "nameExample": "예: 여름 세일 10% 할인",
+    "codeExample": "예: SAVE10",
+    "descriptionPlaceholder": "선택 설명...",
+    "zero": "0"
+  },
+  "applyScope": {
+    "allRestaurants": "전 매장",
+    "inThisBrand": "이 브랜드 내",
+    "inThisFoodcourt": "이 푸드코트 내",
+    "selectedRestaurants": "선택 매장",
+    "pickSpecific": "특정 매장 선택",
+    "noRestaurants": "매장을 찾을 수 없습니다."
+  },
+  "customers": {
+    "searchPlaceholder": "이름 또는 전화번호로 고객 검색...",
+    "loading": "고객을 불러오는 중...",
+    "none": "고객을 찾을 수 없습니다",
+    "selected_one": "고객 {{count}}명 선택됨",
+    "selected_other": "고객 {{count}}명 선택됨"
+  },
+  "errors": {
+    "codeRequired": "쿠폰 코드를 입력하세요.",
+    "valueGreaterThanZero": "할인 값은 0보다 커야 합니다.",
+    "selectRestaurant": "매장을 하나 이상 선택하세요.",
+    "saveFailed": "쿠폰 저장에 실패했습니다.",
+    "loadFailed": "쿠폰을 불러오지 못했습니다",
+    "generic": "오류가 발생했습니다. 다시 시도하세요."
+  },
+  "delete": {
+    "title": "쿠폰 삭제",
+    "groupMessage": "{{count}}개 매장에서 쿠폰 \"{{code}}\"을(를) 삭제할까요? 되돌릴 수 없습니다.",
+    "confirmMessage": "쿠폰 \"{{code}}\"을(를) 정말 삭제하시겠습니까?",
+    "linkedMessage": "쿠폰 \"{{code}}\"은(는) 외부 QR({{names}})에 연결되어 있습니다. 삭제하면 해당 QR의 파트너 할인이 제거됩니다(해당 QR로 만든 주문에 이 할인이 자동 적용되지 않습니다). 계속할까요?"
+  }
+}

@@ -22,6 +22,7 @@ import ConfirmModal from '../../components/ConfirmModal';
 import { useTabParam } from '../../hooks/useTabParam';
 import { getPrinterMode, setPrinterMode, connectQZTray, disconnectQZTray, isQZTrayConnected, getQZTrayPrinters, qzTrayTestPrint, getActiveWorkstationId, setActiveWorkstationId, runQZDiagnostic, printHTMLContent } from '../../utils/billPrint';
 import { getCurrencySymbol } from '../../utils/currency';
+import { getRestaurantTimezone } from '../../utils/timezone';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
@@ -6021,7 +6022,7 @@ const SettingsPage: React.FC = () => {
 
                     {isEm && enabledAt && (
                       <div style={{ fontSize: '12px', color: '#7F1D1D', marginBottom: '10px' }}>
-                        {t('settings:printer.emergency.enabledFor', 'Active for {{minutes}} minute(s)', { minutes: minutesOn })} · {new Date(enabledAt).toLocaleString()}
+                        {t('settings:printer.emergency.enabledFor', 'Active for {{minutes}} minute(s)', { minutes: minutesOn })} · {new Date(enabledAt).toLocaleString('en-MY', { timeZone: getRestaurantTimezone(operationSettings) })}
                       </div>
                     )}
 

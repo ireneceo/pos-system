@@ -726,7 +726,7 @@ const OptionFormButton = styled.button<{ variant?: 'primary' | 'secondary' | 'da
         return `
           background: #EF4444;
           color: white;
-          &:hover { background: #DC2626; }
+          &:hover { background: #B91C1C; }
         `;
       case 'secondary':
         return `

@@ -12,6 +12,7 @@ import { Tabs, Tab } from '../../components/Common/TabComponents';
 import DateRangeField from '../../components/Common/DateRangeField';
 import { useTabParam } from '../../hooks/useTabParam';
 import { useTranslation } from 'react-i18next';
+import { Ban, ClipboardList } from 'lucide-react';
 
 // 매출 데이터 타입 정의
 interface SalesTransaction {
@@ -1222,7 +1223,6 @@ const SalesPage: React.FC = () => {
 
     <div class="footer">
         <p>{t('reports:salesPage.generatedByPurpleHerePos')}</p>
-        <p>🤖 Generated with Claude Code</p>
     </div>
 </body>
 </html>`;
@@ -1340,7 +1340,6 @@ const SalesPage: React.FC = () => {
 
     <div class="footer">
         <p>{t('reports:salesPage.generatedByPurpleHerePos')}</p>
-        <p>🤖 Generated with Claude Code</p>
     </div>
 </body>
 </html>`;
@@ -1366,7 +1365,7 @@ const SalesPage: React.FC = () => {
       <>
         <SalesContainer>
           <EmptyState>
-            <EmptyStateIcon>🚫</EmptyStateIcon>
+            <EmptyStateIcon><Ban size={48} color="#9CA3AF" /></EmptyStateIcon>
             <EmptyStateText>
               Access Denied
             </EmptyStateText>
@@ -1826,7 +1825,7 @@ const SalesPage: React.FC = () => {
                     
                     {detailTransactions.length === 0 ? (
                       <EmptyState>
-                        <EmptyStateIcon>📋</EmptyStateIcon>
+                        <EmptyStateIcon><ClipboardList size={48} color="#9CA3AF" /></EmptyStateIcon>
                         <EmptyStateText>
                           No transactions found for this date
                         </EmptyStateText>

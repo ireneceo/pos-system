@@ -472,6 +472,14 @@ ProductIngredientCategory.hasMany(ProductIngredient, { foreignKey: 'category_id'
 ProductIngredient.hasMany(ProductRecipeIngredient, { foreignKey: 'ingredient_id', as: 'recipeIngredients' });
 ProductRecipeIngredient.belongsTo(ProductIngredient, { foreignKey: 'ingredient_id', as: 'ingredient' });
 
+// BG 재고아이템(ProductIngredient) ↔ 공용 공급망(공급업체상품·발주·재고) 연결
+IngredientSellerProduct.belongsTo(ProductIngredient, { foreignKey: 'product_ingredient_id', as: 'productIngredient' });
+ProductIngredient.hasMany(IngredientSellerProduct, { foreignKey: 'product_ingredient_id', as: 'sellerProducts' });
+PurchaseOrderItem.belongsTo(ProductIngredient, { foreignKey: 'product_ingredient_id', as: 'productIngredient' });
+ProductIngredient.hasMany(PurchaseOrderItem, { foreignKey: 'product_ingredient_id', as: 'purchaseOrderItems' });
+InventoryTransaction.belongsTo(ProductIngredient, { foreignKey: 'product_ingredient_id', as: 'productIngredient' });
+ProductIngredient.hasMany(InventoryTransaction, { foreignKey: 'product_ingredient_id', as: 'inventoryTransactions' });
+
 // BrandProduct - ProductRecipe association
 BrandProduct.belongsTo(ProductRecipe, { foreignKey: 'product_recipe_id', as: 'productRecipe' });
 ProductRecipe.hasMany(BrandProduct, { foreignKey: 'product_recipe_id', as: 'brandProducts' });

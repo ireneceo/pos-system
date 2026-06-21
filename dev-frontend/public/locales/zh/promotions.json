@@ -1,0 +1,119 @@
+{
+  "title": "优惠券",
+  "addCoupon": "添加优惠券",
+  "createCoupon": "创建优惠券",
+  "createFirstCoupon": "创建您的第一张优惠券",
+  "couponList": "优惠券列表",
+  "loading": "加载中…",
+  "loadingCoupons": "正在加载优惠券...",
+  "retry": "重试",
+  "noCouponsYet": "尚未创建优惠券",
+  "noCouponsHint": "暂无优惠券。点击\"添加优惠券\"为您的餐厅创建一张。",
+  "noOwnerLinked": "您的账户尚未关联任何品牌或美食广场。",
+  "linkedTo": "已关联：",
+  "table": {
+    "code": "代码",
+    "name": "名称",
+    "discount": "折扣",
+    "appliesTo": "适用范围",
+    "target": "对象",
+    "validUntil": "有效期至",
+    "usage": "使用情况",
+    "used": "已使用",
+    "status": "状态",
+    "actions": "操作"
+  },
+  "status": {
+    "active": "启用",
+    "inactive": "停用",
+    "expired": "已过期"
+  },
+  "target": {
+    "all": "全部",
+    "customers": "{{count}} 位顾客",
+    "allCustomers": "所有顾客",
+    "specificCustomers": "指定顾客",
+    "membershipTiers": "会员等级"
+  },
+  "actions": {
+    "edit": "编辑",
+    "activate": "启用",
+    "deactivate": "停用",
+    "delete": "删除",
+    "cancel": "取消",
+    "save": "保存",
+    "saving": "保存中…"
+  },
+  "scope": {
+    "allRestaurants": "所有餐厅 ({{count}})",
+    "selected": "已选 {{count}} 家"
+  },
+  "modal": {
+    "addTitle": "添加优惠券",
+    "editTitle": "编辑优惠券",
+    "createTitle": "创建新优惠券",
+    "updateCoupon": "更新优惠券"
+  },
+  "form": {
+    "code": "代码",
+    "couponCode": "优惠券代码",
+    "name": "名称",
+    "discountType": "折扣类型",
+    "discountTypeCap": "折扣类型",
+    "percentage": "百分比 (%)",
+    "fixedAmountMyr": "固定金额 (MYR)",
+    "fixedAmountRm": "固定金额 (RM)",
+    "value": "数值",
+    "discountValue": "折扣数值",
+    "minOrder": "最低订单",
+    "minOrderAmount": "最低订单金额",
+    "maxDiscount": "最高折扣",
+    "maxDiscountNa": "最高折扣 (不适用)",
+    "maxDiscountForPercent": "最高折扣 (按百分比)",
+    "usageLimit": "使用次数限制",
+    "status": "状态",
+    "validityPeriod": "有效期",
+    "validFromUntil": "起始日 — 结束日",
+    "applyTo": "适用范围",
+    "targetAudience": "目标对象",
+    "description": "说明",
+    "noCap": "无上限",
+    "noLimit": "无限制",
+    "unlimited": "无限制",
+    "codePlaceholder": "SUMMER10",
+    "namePlaceholder": "夏季促销",
+    "nameExample": "例如：夏季促销 10% 折扣",
+    "codeExample": "例如：SAVE10",
+    "descriptionPlaceholder": "可选说明...",
+    "zero": "0"
+  },
+  "applyScope": {
+    "allRestaurants": "所有餐厅",
+    "inThisBrand": "本品牌内",
+    "inThisFoodcourt": "本美食广场内",
+    "selectedRestaurants": "指定餐厅",
+    "pickSpecific": "选择特定餐厅",
+    "noRestaurants": "未找到餐厅。"
+  },
+  "customers": {
+    "searchPlaceholder": "按姓名或电话搜索顾客...",
+    "loading": "正在加载顾客...",
+    "none": "未找到顾客",
+    "selected_one": "已选 {{count}} 位顾客",
+    "selected_other": "已选 {{count}} 位顾客"
+  },
+  "errors": {
+    "codeRequired": "请输入优惠券代码。",
+    "valueGreaterThanZero": "折扣数值必须大于 0。",
+    "selectRestaurant": "请至少选择一家餐厅。",
+    "saveFailed": "保存优惠券失败。",
+    "loadFailed": "加载优惠券失败",
+    "generic": "发生错误，请重试。"
+  },
+  "delete": {
+    "title": "删除优惠券",
+    "groupMessage": "从 {{count}} 家餐厅删除优惠券\"{{code}}\"？此操作无法撤销。",
+    "confirmMessage": "确定要删除优惠券\"{{code}}\"吗？",
+    "linkedMessage": "优惠券\"{{code}}\"已关联外部二维码（{{names}}）。删除将移除这些二维码的合作折扣（通过这些二维码下的订单将不再自动应用此折扣）。是否继续？"
+  }
+}

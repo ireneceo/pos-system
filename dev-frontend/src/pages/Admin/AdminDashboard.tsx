@@ -1476,9 +1476,9 @@ const AdminDashboard: React.FC = () => {
               <div>
                 <h4>{t('admin:adminDashboard.healthScoreDistribution')}</h4>
                 <div style={{ padding: '20px', background: '#F1F4F8', borderRadius: '12px' }}>
-                  <p>🟢 Healthy (80-100): {managers.filter(m => m.healthScore >= 80).length} accounts</p>
-                  <p>🟡 At Risk (60-79): {managers.filter(m => m.healthScore >= 60 && m.healthScore < 80).length} accounts</p>
-                  <p>🔴 Critical (&lt;60): {managers.filter(m => m.healthScore < 60).length} accounts</p>
+                  <p><span style={{ color: '#10B981' }}>●</span> Healthy (80-100): {managers.filter(m => m.healthScore >= 80).length} accounts</p>
+                  <p><span style={{ color: '#F59E0B' }}>●</span> At Risk (60-79): {managers.filter(m => m.healthScore >= 60 && m.healthScore < 80).length} accounts</p>
+                  <p><span style={{ color: '#FF6B6B' }}>●</span> Critical (&lt;60): {managers.filter(m => m.healthScore < 60).length} accounts</p>
                 </div>
               </div>
               <div>

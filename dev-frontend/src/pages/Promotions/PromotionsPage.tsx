@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import styled from 'styled-components';
 import { Modal as CommonModal } from '../../components/UI';
 import { EmptyState } from '../../components/UI/TableComponents';
@@ -375,6 +376,7 @@ interface CustomerOption {
 }
 
 const CouponsPage: React.FC = () => {
+  const { t } = useTranslation('promotions');
   const { user } = useAuth();
   const { operationSettings } = useStore();
   const restaurantId = user?.restaurantId;
@@ -449,10 +451,10 @@ const CouponsPage: React.FC = () => {
       if (result.success) {
         setCoupons(result.data);
       } else {
-        setError(result.error || 'Failed to load coupons');
+        setError(result.error || t('errors.loadFailed'));
       }
     } catch (err) {
-      setError('Failed to load coupons');
+      setError(t('errors.loadFailed'));
       console.error('Error fetching coupons:', err);
     } finally {
       setLoading(false);
@@ -534,11 +536,11 @@ const CouponsPage: React.FC = () => {
   const handleSaveCoupon = async () => {
     // Validation
     if (!couponForm.code.trim()) {
-      setFormError('Coupon code is required');
+      setFormError(t('errors.codeRequired'));
       return;
     }
     if (!couponForm.value || parseFloat(couponForm.value) <= 0) {
-      setFormError('Discount value must be greater than 0');
+      setFormError(t('errors.valueGreaterThanZero'));
       return;
     }
 
@@ -584,10 +586,10 @@ const CouponsPage: React.FC = () => {
         setShowModal(false);
         fetchCoupons();
       } else {
-        setFormError(result.error || 'Failed to save coupon');
+        setFormError(result.error || t('errors.saveFailed'));
       }
     } catch (err) {
-      setFormError('Failed to save coupon');
+      setFormError(t('errors.saveFailed'));
       console.error('Error saving coupon:', err);
     } finally {
       setSaving(false);
@@ -670,33 +672,33 @@ const CouponsPage: React.FC = () => {
   return (
     <>
       <CouponsContainer>
-        <PageHeader title="Coupons">
-          <Button primary onClick={handleCreateCoupon}>{'Create Coupon'}</Button>
+        <PageHeader title={t('title')}>
+          <Button primary onClick={handleCreateCoupon}>{t('createCoupon')}</Button>
         </PageHeader>
 
         <Content>
           <SectionCard>
-            <SectionTitle>{'Coupon List'}</SectionTitle>
+            <SectionTitle>{t('couponList')}</SectionTitle>
 
             {loading && coupons.length === 0 ? (
-              <LoadingSpinner>{'Loading coupons...'}</LoadingSpinner>
+              <LoadingSpinner>{t('loadingCoupons')}</LoadingSpinner>
             ) : error ? (
               <EmptyState>
                 <EmptyStateText>{error}</EmptyStateText>
-                <Button onClick={fetchCoupons}>{'Retry'}</Button>
+                <Button onClick={fetchCoupons}>{t('retry')}</Button>
               </EmptyState>
             ) : coupons.length > 0 ? (
               <DataTable>
                 <DataTableHead>
                   <tr>
-                    <DataTableHeaderCell align="left">{'Code'}</DataTableHeaderCell>
-                    <DataTableHeaderCell align="left">{'Name'}</DataTableHeaderCell>
-                    <DataTableHeaderCell align="right">{'Discount'}</DataTableHeaderCell>
-                    <DataTableHeaderCell align="center">{'Target'}</DataTableHeaderCell>
-                    <DataTableHeaderCell align="center">{'Valid Until'}</DataTableHeaderCell>
-                    <DataTableHeaderCell align="center">{'Usage'}</DataTableHeaderCell>
-                    <DataTableHeaderCell align="center">{'Status'}</DataTableHeaderCell>
-                    <DataTableHeaderCell align="right">{'Actions'}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{t('table.code')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{t('table.name')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="right">{t('table.discount')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">{t('table.target')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">{t('table.validUntil')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">{t('table.usage')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">{t('table.status')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="right">{t('table.actions')}</DataTableHeaderCell>
                   </tr>
                 </DataTableHead>
                 <tbody>
@@ -704,49 +706,49 @@ const CouponsPage: React.FC = () => {
                     const status = getCouponStatus(coupon);
                     return (
                       <DataTableRow key={coupon.id}>
-                        <DataTableCell data-label="Code" style={{ fontWeight: 600 }}>
+                        <DataTableCell data-label={t('table.code')} style={{ fontWeight: 600 }}>
                           {coupon.code}
                           {(couponLinkedQRs[coupon.id] || []).length > 0 && (
                             <div style={{ marginTop: '4px', fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0F0FF', padding: '2px 8px', borderRadius: '10px', display: 'inline-block' }}>
-                              Linked to: {couponLinkedQRs[coupon.id].join(', ')}
+                              {t('linkedTo')} {couponLinkedQRs[coupon.id].join(', ')}
                             </div>
                           )}
                         </DataTableCell>
-                        <DataTableCell data-label="Name">{coupon.name || '-'}</DataTableCell>
-                        <DataTableCell data-label="Discount" align="right">{formatDiscount(coupon)}</DataTableCell>
-                        <DataTableCell data-label="Target" align="center">
+                        <DataTableCell data-label={t('table.name')}>{coupon.name || '-'}</DataTableCell>
+                        <DataTableCell data-label={t('table.discount')} align="right">{formatDiscount(coupon)}</DataTableCell>
+                        <DataTableCell data-label={t('table.target')} align="center">
                           {coupon.target_type === 'all' ? (
-                            <TargetBadge>{'All'}</TargetBadge>
+                            <TargetBadge>{t('target.all')}</TargetBadge>
                           ) : coupon.target_type === 'customers' ? (
-                            <TargetBadge>{coupon.target_customer_ids?.length || 0} Customers</TargetBadge>
+                            <TargetBadge>{t('target.customers', { count: coupon.target_customer_ids?.length || 0 })}</TargetBadge>
                           ) : coupon.target_type === 'tiers' ? (
                             <TargetBadge>{coupon.target_loyalty_tiers?.join(', ') || '-'}</TargetBadge>
                           ) : (
-                            <TargetBadge>{'All'}</TargetBadge>
+                            <TargetBadge>{t('target.all')}</TargetBadge>
                           )}
                         </DataTableCell>
-                        <DataTableCell data-label="Valid Until" align="center">{formatDate(coupon.valid_until)}</DataTableCell>
-                        <DataTableCell data-label="Usage" align="center">
+                        <DataTableCell data-label={t('table.validUntil')} align="center">{formatDate(coupon.valid_until)}</DataTableCell>
+                        <DataTableCell data-label={t('table.usage')} align="center">
                           {coupon.usage_count} / {coupon.usage_limit || '∞'}
                         </DataTableCell>
-                        <DataTableCell data-label="Status" align="center">
+                        <DataTableCell data-label={t('table.status')} align="center">
                           <StatusBadge status={status}>
-                            {status}
+                            {t(`status.${status}`)}
                           </StatusBadge>
                         </DataTableCell>
                         <DataTableCell data-label="" align="right" mobileFullWidth>
                           <ActionButtons>
                             <ActionButton onClick={() => handleEditCoupon(coupon)}>
-                              Edit
+                              {t('actions.edit')}
                             </ActionButton>
                             <ActionButton onClick={() => handleToggleStatus(coupon)}>
-                              {coupon.is_active ? 'Deactivate' : 'Activate'}
+                              {coupon.is_active ? t('actions.deactivate') : t('actions.activate')}
                             </ActionButton>
                             <ActionButton
                               className="danger"
                               onClick={() => handleDeleteCoupon(coupon)}
                             >
-                              Delete
+                              {t('actions.delete')}
                             </ActionButton>
                           </ActionButtons>
                         </DataTableCell>
@@ -757,8 +759,8 @@ const CouponsPage: React.FC = () => {
               </DataTable>
             ) : (
               <EmptyState>
-                <EmptyStateText>{'No coupons created yet'}</EmptyStateText>
-                <Button primary onClick={handleCreateCoupon}>{'Create Your First Coupon'}</Button>
+                <EmptyStateText>{t('noCouponsYet')}</EmptyStateText>
+                <Button primary onClick={handleCreateCoupon}>{t('createFirstCoupon')}</Button>
               </EmptyState>
             )}
           </SectionCard>
@@ -766,41 +768,41 @@ const CouponsPage: React.FC = () => {
 
         {/* 쿠폰 생성/편집 모달 */}
         {showModal && (
-        <CommonModal isOpen={true} onClose={() => setShowModal(false)} title={editingCoupon ? 'Edit Coupon' : 'Create New Coupon'} footer={<><Button onClick={() => setShowModal(false)} disabled={saving}>{'Cancel'}</Button><Button primary onClick={handleSaveCoupon} disabled={saving}>{saving ? 'Saving...' : (editingCoupon ? 'Update Coupon' : 'Create Coupon')}</Button></>}>
+        <CommonModal isOpen={true} onClose={() => setShowModal(false)} title={editingCoupon ? t('modal.editTitle') : t('modal.createTitle')} footer={<><Button onClick={() => setShowModal(false)} disabled={saving}>{t('actions.cancel')}</Button><Button primary onClick={handleSaveCoupon} disabled={saving}>{saving ? t('actions.saving') : (editingCoupon ? t('modal.updateCoupon') : t('createCoupon'))}</Button></>}>
               <FormGroup>
-                <Label>Coupon Code *</Label>
+                <Label>{t('form.couponCode')} *</Label>
                 <Input
                   type="text"
                   value={couponForm.code}
                   onChange={(e) => setCouponForm({ ...couponForm, code: e.target.value.toUpperCase() })}
-                  placeholder="e.g., SAVE10"
+                  placeholder={t('form.codeExample')}
                 />
               </FormGroup>
 
               <FormGroup>
-                <Label>{'Name'}</Label>
+                <Label>{t('form.name')}</Label>
                 <Input
                   type="text"
                   value={couponForm.name}
                   onChange={(e) => setCouponForm({ ...couponForm, name: e.target.value })}
-                  placeholder="e.g., 10% Off Summer Sale"
+                  placeholder={t('form.nameExample')}
                 />
               </FormGroup>
 
               <FormRow>
                 <FormGroup>
-                  <Label>{'Discount Type'}</Label>
+                  <Label>{t('form.discountTypeCap')}</Label>
                   <Select
                     value={couponForm.type}
                     onChange={(e) => setCouponForm({ ...couponForm, type: e.target.value as 'percentage' | 'fixed' })}
                   >
-                    <option value="percentage">Percentage (%)</option>
-                    <option value="fixed">{'Fixed Amount (RM)'}</option>
+                    <option value="percentage">{t('form.percentage')}</option>
+                    <option value="fixed">{t('form.fixedAmountRm')}</option>
                   </Select>
                 </FormGroup>
 
                 <FormGroup>
-                  <Label>Discount Value *</Label>
+                  <Label>{t('form.discountValue')} *</Label>
                   <Input
                     type="number"
                     value={couponForm.value}
@@ -814,7 +816,7 @@ const CouponsPage: React.FC = () => {
 
               <FormRow>
                 <FormGroup>
-                  <Label>{'Min Order Amount'}</Label>
+                  <Label>{t('form.minOrderAmount')}</Label>
                   <Input
                     type="number"
                     value={couponForm.min_order}
@@ -826,12 +828,12 @@ const CouponsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <Label>Max Discount (for %)</Label>
+                  <Label>{t('form.maxDiscountForPercent')}</Label>
                   <Input
                     type="number"
                     value={couponForm.max_discount}
                     onChange={(e) => setCouponForm({ ...couponForm, max_discount: e.target.value })}
-                    placeholder="No limit"
+                    placeholder={t('form.noLimit')}
                     step="0.01"
                     min="0"
                     disabled={couponForm.type !== 'percentage'}
@@ -841,7 +843,7 @@ const CouponsPage: React.FC = () => {
 
               <FormRow>
                 <FormGroup style={{ gridColumn: 'span 2' }}>
-                  <Label>{'Valid From — Valid Until'}</Label>
+                  <Label>{t('form.validFromUntil')}</Label>
                   <DateRangeField
                     startDate={couponForm.valid_from}
                     endDate={couponForm.valid_until}
@@ -851,18 +853,18 @@ const CouponsPage: React.FC = () => {
               </FormRow>
 
               <FormGroup>
-                <Label>{'Usage Limit'}</Label>
+                <Label>{t('form.usageLimit')}</Label>
                 <Input
                   type="number"
                   value={couponForm.usage_limit}
                   onChange={(e) => setCouponForm({ ...couponForm, usage_limit: e.target.value })}
-                  placeholder="Unlimited"
+                  placeholder={t('form.unlimited')}
                   min="1"
                 />
               </FormGroup>
 
               <FormGroup>
-                <Label>{'Target Audience'}</Label>
+                <Label>{t('form.targetAudience')}</Label>
                 <RadioGroup>
                   <RadioLabel>
                     <input
@@ -871,7 +873,7 @@ const CouponsPage: React.FC = () => {
                       checked={couponForm.target_type === 'all'}
                       onChange={() => setCouponForm({ ...couponForm, target_type: 'all', target_customer_ids: [], target_loyalty_tiers: [] })}
                     />
-                    All Customers
+                    {t('target.allCustomers')}
                   </RadioLabel>
                   <RadioLabel>
                     <input
@@ -880,7 +882,7 @@ const CouponsPage: React.FC = () => {
                       checked={couponForm.target_type === 'customers'}
                       onChange={() => setCouponForm({ ...couponForm, target_type: 'customers', target_loyalty_tiers: [] })}
                     />
-                    Specific Customers
+                    {t('target.specificCustomers')}
                   </RadioLabel>
                   <RadioLabel>
                     <input
@@ -889,7 +891,7 @@ const CouponsPage: React.FC = () => {
                       checked={couponForm.target_type === 'tiers'}
                       onChange={() => setCouponForm({ ...couponForm, target_type: 'tiers', target_customer_ids: [] })}
                     />
-                    Membership Tiers
+                    {t('target.membershipTiers')}
                   </RadioLabel>
                 </RadioGroup>
 
@@ -897,13 +899,13 @@ const CouponsPage: React.FC = () => {
                   <>
                     <CustomerSearchInput
                       type="text"
-                      placeholder="Search customers by name or phone..."
+                      placeholder={t('customers.searchPlaceholder')}
                       value={customerSearch}
                       onChange={(e) => setCustomerSearch(e.target.value)}
                     />
                     <CustomerList>
                       {loadingCustomers ? (
-                        <CustomerItem>{'Loading customers...'}</CustomerItem>
+                        <CustomerItem>{t('customers.loading')}</CustomerItem>
                       ) : customers
                           .filter(c =>
                             c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
@@ -935,11 +937,11 @@ const CouponsPage: React.FC = () => {
                         c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
                         c.phone.includes(customerSearch)
                       ).length === 0 && (
-                        <CustomerItem>{'No customers found'}</CustomerItem>
+                        <CustomerItem>{t('customers.none')}</CustomerItem>
                       )}
                     </CustomerList>
                     <SelectedCount>
-                      {couponForm.target_customer_ids.length} customer{couponForm.target_customer_ids.length !== 1 ? 's' : ''} selected
+                      {t('customers.selected', { count: couponForm.target_customer_ids.length })}
                     </SelectedCount>
                   </>
                 )}
@@ -969,11 +971,11 @@ const CouponsPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>{'Description'}</Label>
+                <Label>{t('form.description')}</Label>
                 <TextArea
                   value={couponForm.description}
                   onChange={(e) => setCouponForm({ ...couponForm, description: e.target.value })}
-                  placeholder="Optional description..."
+                  placeholder={t('form.descriptionPlaceholder')}
                 />
               </FormGroup>
 
@@ -984,16 +986,16 @@ const CouponsPage: React.FC = () => {
 
       <ConfirmModal
         isOpen={showDeleteConfirm}
-        title="Delete Coupon"
+        title={t('delete.title')}
         message={
           deletingCoupon && (couponLinkedQRs[deletingCoupon.id] || []).length > 0
-            ? `Coupon "${deletingCoupon.code}" is linked to External QR(s): ${couponLinkedQRs[deletingCoupon.id].join(', ')}. Deleting will remove the partner discount from those QRs (orders made via those QRs will no longer auto-apply this discount). Continue?`
-            : `Are you sure you want to delete coupon "${deletingCoupon?.code}"?`
+            ? t('delete.linkedMessage', { code: deletingCoupon.code, names: couponLinkedQRs[deletingCoupon.id].join(', ') })
+            : t('delete.confirmMessage', { code: deletingCoupon?.code })
         }
         onConfirm={confirmDeleteCoupon}
         onCancel={() => { setShowDeleteConfirm(false); setDeletingCoupon(null); }}
-        confirmText="Delete"
-        cancelText="Cancel"
+        confirmText={t('actions.delete')}
+        cancelText={t('actions.cancel')}
         type="danger"
       />
     </>

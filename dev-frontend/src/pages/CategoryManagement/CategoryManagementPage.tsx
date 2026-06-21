@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
+import { FolderOpen } from 'lucide-react';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { useMenu } from '../../contexts/MenuContext';
 import ConfirmDialog from '../../components/Common/ConfirmDialog';
@@ -501,7 +502,7 @@ const CategoryManagementPage: React.FC = () => {
       <Content>
         {categoriesWithCount.length === 0 ? (
           <EmptyState>
-          <EmptyIcon>📂</EmptyIcon>
+          <EmptyIcon><FolderOpen size={48} color="#9CA3AF" /></EmptyIcon>
           <EmptyTitle>{'No categories yet'}</EmptyTitle>
           <EmptyDescription>
             Create your first category to organize your menu items

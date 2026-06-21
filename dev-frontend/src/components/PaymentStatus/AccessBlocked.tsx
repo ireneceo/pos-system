@@ -182,7 +182,7 @@ export const AccessBlocked: React.FC = () => {
         
         <ActionSection>
           <PayButton onClick={goToInvoices}>
-            🧾 View & Pay Invoices
+            View & Pay Invoices
           </PayButton>
           
           <LogoutButton onClick={logout}>
@@ -194,9 +194,9 @@ export const AccessBlocked: React.FC = () => {
           <HelpTitle>Need Help?</HelpTitle>
           <ContactInfo>
             <strong>Support Team:</strong><br />
-            📧 Email: billing@orderhere.com<br />
-            📞 Phone: +60 3-1234-5678<br />
-            🕐 Hours: Mon-Fri 9AM-6PM (GMT+8)<br />
+            Email: billing@orderhere.com<br />
+            Phone: +60 3-1234-5678<br />
+            Hours: Mon-Fri 9AM-6PM (GMT+8)<br />
             <br />
             <strong>Payment Methods:</strong><br />
             • Online Banking Transfer<br />

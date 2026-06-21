@@ -861,7 +861,7 @@ const FoodcourtFloorPlanPage: React.FC = () => {
               {contract && contract.financial_redacted && (
                 <Section>
                   <SectionTitle>{t('floorPlan.sec.financial', 'Financial Terms')}</SectionTitle>
-                  <EmptyHint>🔒 {t('floorPlan.fin.redacted', 'Financial terms are visible to Foodcourt General and System Admin only')}</EmptyHint>
+                  <EmptyHint>{t('floorPlan.fin.redacted', 'Financial terms are visible to Foodcourt General and System Admin only')}</EmptyHint>
                 </Section>
               )}
               {ft && Object.keys(ft).length > 0 && (

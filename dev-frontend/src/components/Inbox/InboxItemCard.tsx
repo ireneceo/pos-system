@@ -11,9 +11,9 @@ interface Props {
 }
 
 const ICONS: Record<string, string> = {
-  notice: '📢',
-  support_ticket: '🎫',
-  operation_ticket: '🛠'
+  notice: '●',
+  support_ticket: '●',
+  operation_ticket: '●'
 };
 
 const InboxItemCard: React.FC<Props> = ({ item, onClick, showTypeBadge = true }) => {

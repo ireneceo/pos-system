@@ -1113,7 +1113,7 @@ const FoodcourtGeneralDashboard: React.FC = () => {
                   <h4>{t('foodcourt:foodcourtGeneralDashboard.revenueForecast', 'Revenue Forecast (Monthly)')}</h4>
                 </OpsCardHeader>
                 {tenancyOps.revenue_forecast?.financial_redacted ? (
-                  <OpsEmpty>🔒 {t('foodcourt:foodcourtGeneralDashboard.forecastRedacted', 'Forecast hidden for your role')}</OpsEmpty>
+                  <OpsEmpty>{t('foodcourt:foodcourtGeneralDashboard.forecastRedacted', 'Forecast hidden for your role')}</OpsEmpty>
                 ) : (
                   <>
                     <ForecastValue>

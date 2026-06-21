@@ -1,0 +1,119 @@
+{
+  "title": "Coupons",
+  "addCoupon": "Add Coupon",
+  "createCoupon": "Create Coupon",
+  "createFirstCoupon": "Create Your First Coupon",
+  "couponList": "Coupon List",
+  "loading": "Loading…",
+  "loadingCoupons": "Loading coupons...",
+  "retry": "Retry",
+  "noCouponsYet": "No coupons created yet",
+  "noCouponsHint": "No coupons yet. Click \"Add Coupon\" to create one for your restaurants.",
+  "noOwnerLinked": "No brand or foodcourt is linked to your account yet.",
+  "linkedTo": "Linked to:",
+  "table": {
+    "code": "Code",
+    "name": "Name",
+    "discount": "Discount",
+    "appliesTo": "Applies to",
+    "target": "Target",
+    "validUntil": "Valid Until",
+    "usage": "Usage",
+    "used": "Used",
+    "status": "Status",
+    "actions": "Actions"
+  },
+  "status": {
+    "active": "Active",
+    "inactive": "Inactive",
+    "expired": "Expired"
+  },
+  "target": {
+    "all": "All",
+    "customers": "{{count}} Customers",
+    "allCustomers": "All Customers",
+    "specificCustomers": "Specific Customers",
+    "membershipTiers": "Membership Tiers"
+  },
+  "actions": {
+    "edit": "Edit",
+    "activate": "Activate",
+    "deactivate": "Deactivate",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "save": "Save",
+    "saving": "Saving…"
+  },
+  "scope": {
+    "allRestaurants": "All restaurants ({{count}})",
+    "selected": "{{count}} selected"
+  },
+  "modal": {
+    "addTitle": "Add Coupon",
+    "editTitle": "Edit Coupon",
+    "createTitle": "Create New Coupon",
+    "updateCoupon": "Update Coupon"
+  },
+  "form": {
+    "code": "Code",
+    "couponCode": "Coupon Code",
+    "name": "Name",
+    "discountType": "Discount type",
+    "discountTypeCap": "Discount Type",
+    "percentage": "Percentage (%)",
+    "fixedAmountMyr": "Fixed amount (MYR)",
+    "fixedAmountRm": "Fixed Amount (RM)",
+    "value": "Value",
+    "discountValue": "Discount Value",
+    "minOrder": "Min. order",
+    "minOrderAmount": "Min Order Amount",
+    "maxDiscount": "Max. discount",
+    "maxDiscountNa": "Max. discount (n/a)",
+    "maxDiscountForPercent": "Max Discount (for %)",
+    "usageLimit": "Usage limit",
+    "status": "Status",
+    "validityPeriod": "Validity period",
+    "validFromUntil": "Valid From — Valid Until",
+    "applyTo": "Apply to",
+    "targetAudience": "Target Audience",
+    "description": "Description",
+    "noCap": "No cap",
+    "noLimit": "No limit",
+    "unlimited": "Unlimited",
+    "codePlaceholder": "SUMMER10",
+    "namePlaceholder": "Summer promo",
+    "nameExample": "e.g., 10% Off Summer Sale",
+    "codeExample": "e.g., SAVE10",
+    "descriptionPlaceholder": "Optional description...",
+    "zero": "0"
+  },
+  "applyScope": {
+    "allRestaurants": "All restaurants",
+    "inThisBrand": "in this brand",
+    "inThisFoodcourt": "in this foodcourt",
+    "selectedRestaurants": "Selected restaurants",
+    "pickSpecific": "Pick specific ones",
+    "noRestaurants": "No restaurants found."
+  },
+  "customers": {
+    "searchPlaceholder": "Search customers by name or phone...",
+    "loading": "Loading customers...",
+    "none": "No customers found",
+    "selected_one": "{{count}} customer selected",
+    "selected_other": "{{count}} customers selected"
+  },
+  "errors": {
+    "codeRequired": "Coupon code is required.",
+    "valueGreaterThanZero": "Discount value must be greater than 0.",
+    "selectRestaurant": "Select at least one restaurant.",
+    "saveFailed": "Failed to save coupon.",
+    "loadFailed": "Failed to load coupons",
+    "generic": "An error occurred. Please try again."
+  },
+  "delete": {
+    "title": "Delete coupon",
+    "groupMessage": "Delete coupon \"{{code}}\" from {{count}} restaurant(s)? This cannot be undone.",
+    "confirmMessage": "Are you sure you want to delete coupon \"{{code}}\"?",
+    "linkedMessage": "Coupon \"{{code}}\" is linked to External QR(s): {{names}}. Deleting will remove the partner discount from those QRs (orders made via those QRs will no longer auto-apply this discount). Continue?"
+  }
+}

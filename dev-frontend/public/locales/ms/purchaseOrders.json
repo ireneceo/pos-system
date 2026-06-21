@@ -250,7 +250,7 @@
     "cart": {
       "title": "Troli",
       "col": {
-        "ingredient": "Bahan",
+        "ingredient": "Item Stok",
         "qty": "Kuantiti",
         "vendor": "Pembekal",
         "unitPrice": "Harga",
@@ -283,7 +283,7 @@
       "empty": "Troli kosong.",
       "failed": "Gagal mencipta"
     },
-    "tabMine": "Bahan Saya",
+    "tabMine": "Item Stok Saya",
     "tabCatalog": "Katalog Pembekal",
     "searchPlaceholder": "Cari produk...",
     "allSuppliers": "Semua pembekal",
@@ -298,7 +298,7 @@
     "cartEmpty": "Klik kad untuk masuk troli.",
     "empty": {
       "mine": {
-        "title": "Tiada bahan dipautkan",
+        "title": "Tiada item stok terpaut",
         "desc": "Buka tab Katalog Pembekal dan klik produk untuk memesannya — ia ditambah ke inventori secara automatik. Jika tab itu juga kosong, sambung jenama atau pembekal dahulu (lihat tab Katalog Pembekal untuk caranya)."
       },
       "catalog": {

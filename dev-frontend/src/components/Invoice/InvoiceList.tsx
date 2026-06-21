@@ -1,5 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
+import { FileText } from 'lucide-react';
 import { Invoice, InvoiceListProps, CURRENCY_CONFIG } from './types';
 import InvoiceStatusBadge from './InvoiceStatusBadge';
 import { formatDate } from '../../utils/timezone';
@@ -276,7 +277,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({
   if (!invoices || invoices.length === 0) {
     return (
       <EmptyState>
-        <EmptyIcon>📄</EmptyIcon>
+        <EmptyIcon><FileText size={48} color="#9CA3AF" /></EmptyIcon>
         <EmptyTitle>No invoices found</EmptyTitle>
         <EmptyDesc>
           {mode === 'issuer'

@@ -83,7 +83,7 @@ if [ "$SKIP_SAFETY" = true ]; then
 else
     cd $LOCAL_DEV_BACKEND
 
-    log "Safety gate (1/2): 🔒 인쇄/주문 보호 파일 무결성..."
+    log "Safety gate (1/4): 🔒 인쇄/주문 보호 파일 무결성..."
     if ! node scripts/check-print-guard.js --quiet; then
         error "🔒 인쇄/주문 보호 파일이 변경됨. 의도한 인쇄 변경이고 실프린터 확인까지 끝났으면
        'cd dev-backend && node scripts/check-print-guard.js --bless' 후 재배포.
@@ -91,13 +91,19 @@ else
     fi
     success "보호 파일 무결성 OK (생명선 안전)"
 
-    log "Safety gate (2/3): 🧾 인쇄 데이터 필드 계약 (세트 구성품 누락 방지)..."
+    log "Safety gate (2/4): 🧾 인쇄 데이터 필드 계약 (세트 구성품 누락 방지)..."
     if ! node scripts/check-print-field-contract.js; then
         error "인쇄 항목 변환에서 세트 구성품 필드(set_components) 누락 — 빌/주방에 'SET' 만 찍히는 회귀. 해당 mapItem 수정 후 재배포. (긴급 우회: --skip-safety)"
     fi
     success "인쇄 필드 계약 OK (세트 구성품 전 경로 통과)"
 
-    log "Safety gate (3/3): 회귀 테스트 (health-check, 인쇄 계약 + 보안 + API 88건)..."
+    log "Safety gate (3/4): 🎨 디자인 단일 기준(RA=표준) — 신규 위반 차단..."
+    if ! node scripts/check-design-guard.js --summary; then
+        error "🎨 신규 디자인 위반 — 공용 컴포넌트(DataTable/Button/StatCard/Modal) 미사용·장식 이모지·일반 danger 에 #FF6B6B 등 CLAUDE.md '🎨 디자인 단일 기준' 위반. 공용/RA 기준으로 고칠 것. 정식 변경이면 'node scripts/check-design-guard.js --bless'. (긴급 우회: --skip-safety)"
+    fi
+    success "디자인 단일 기준 OK (신규 위반 0)"
+
+    log "Safety gate (4/4): 회귀 테스트 (health-check, 인쇄 계약 + 보안 + API 88건)..."
     if ! node scripts/health-check.js --quiet; then
         error "회귀 테스트 실패 — 인쇄/주문/보안 등 기능 회귀 감지. 위 실패 항목 수정 후 재배포. (긴급 우회: --skip-safety)"
     fi
@@ -339,7 +345,8 @@ for SPRINT_MIG in \
     scripts/migrate-cash-phase2.js \
     scripts/migrate-cash-movement-source.js \
     scripts/migrate-coupon-scope.js \
-    scripts/migrate-po-owner-approval.js; do
+    scripts/migrate-po-owner-approval.js \
+    scripts/migrate-bg-product-supply-chain.js; do
     if ssh $PROD_SERVER "test -f $REMOTE_PROD_BACKEND/$SPRINT_MIG"; then
         log "Running $(basename $SPRINT_MIG)..."
         SPRINT_OUTPUT=$(ssh $PROD_SERVER "cd $REMOTE_PROD_BACKEND && node $SPRINT_MIG 2>&1") || true

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import styled from 'styled-components';
 import {
   Modal as CommonModal, ModalButton, FormGroup, FormInput, FormLabel, FormSelect, FormRow,
@@ -71,6 +72,7 @@ const emptyForm = {
 };
 
 const ManagerPromotionsPage: React.FC = () => {
+  const { t } = useTranslation('promotions');
   const { user } = useAuth();
   const isBrand = user?.role === 'Brand General' || user?.role === 'Brand Manager';
 
@@ -148,9 +150,9 @@ const ManagerPromotionsPage: React.FC = () => {
 
   const save = async () => {
     setFormError(null);
-    if (!form.code.trim()) { setFormError('Coupon code is required.'); return; }
-    if (!form.value || parseFloat(form.value) <= 0) { setFormError('Discount value must be greater than 0.'); return; }
-    if (form.scope_mode === 'selected' && form.restaurant_ids.length === 0) { setFormError('Select at least one restaurant.'); return; }
+    if (!form.code.trim()) { setFormError(t('errors.codeRequired')); return; }
+    if (!form.value || parseFloat(form.value) <= 0) { setFormError(t('errors.valueGreaterThanZero')); return; }
+    if (form.scope_mode === 'selected' && form.restaurant_ids.length === 0) { setFormError(t('errors.selectRestaurant')); return; }
     setSaving(true);
     const payload: any = {
       ownerType, ownerId, scope_mode: form.scope_mode,
@@ -167,8 +169,8 @@ const ManagerPromotionsPage: React.FC = () => {
       const r = await fetch(url, { method: editing ? 'PUT' : 'POST', headers: authHeaders(), body: JSON.stringify(payload) });
       const j = await r.json().catch(() => null);
       if (r.ok && j?.success) { setShowModal(false); fetchGroups(); }
-      else setFormError(j?.message || 'Failed to save coupon.');
-    } catch { setFormError('An error occurred. Please try again.'); }
+      else setFormError(j?.message || t('errors.saveFailed'));
+    } catch { setFormError(t('errors.generic')); }
     finally { setSaving(false); }
   };
 
@@ -181,55 +183,55 @@ const ManagerPromotionsPage: React.FC = () => {
   };
 
   const scopeLabel = (g: CouponGroup) => g.scope_mode === 'all'
-    ? `All restaurants (${g.restaurant_count})`
-    : `${g.restaurant_count} selected`;
+    ? t('scope.allRestaurants', { count: g.restaurant_count })
+    : t('scope.selected', { count: g.restaurant_count });
 
   return (
     <div>
-      <PageHeader title="Coupons">
+      <PageHeader title={t('title')}>
         {isBrand && brands.length > 1 && (
           <BrandSelect value={selectedBrandId ?? ''} onChange={e => { const id = parseInt(e.target.value, 10); setSelectedBrandId(id); localStorage.setItem('bg.selectedBrandId', String(id)); }}>
             {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
           </BrandSelect>
         )}
-        <PrimaryBtn type="button" onClick={openCreate} disabled={!ownerId}>Add Coupon</PrimaryBtn>
+        <PrimaryBtn type="button" onClick={openCreate} disabled={!ownerId}>{t('addCoupon')}</PrimaryBtn>
       </PageHeader>
 
       <Content>
         {!ownerId ? (
-          <DataTableEmpty>No brand or foodcourt is linked to your account yet.</DataTableEmpty>
+          <DataTableEmpty>{t('noOwnerLinked')}</DataTableEmpty>
         ) : (
           <DataTable>
             <DataTableHead>
               <tr>
-                <DataTableHeaderCell>Code</DataTableHeaderCell>
-                <DataTableHeaderCell>Name</DataTableHeaderCell>
-                <DataTableHeaderCell>Discount</DataTableHeaderCell>
-                <DataTableHeaderCell>Applies to</DataTableHeaderCell>
-                <DataTableHeaderCell>Status</DataTableHeaderCell>
-                <DataTableHeaderCell align="right">Used</DataTableHeaderCell>
-                <DataTableHeaderCell align="center" width="100px">Actions</DataTableHeaderCell>
+                <DataTableHeaderCell>{t('table.code')}</DataTableHeaderCell>
+                <DataTableHeaderCell>{t('table.name')}</DataTableHeaderCell>
+                <DataTableHeaderCell>{t('table.discount')}</DataTableHeaderCell>
+                <DataTableHeaderCell>{t('table.appliesTo')}</DataTableHeaderCell>
+                <DataTableHeaderCell>{t('table.status')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="right">{t('table.used')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="center" width="100px">{t('table.actions')}</DataTableHeaderCell>
               </tr>
             </DataTableHead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7}><DataTableEmpty>Loading…</DataTableEmpty></td></tr>
+                <tr><td colSpan={7}><DataTableEmpty>{t('loading')}</DataTableEmpty></td></tr>
               ) : groups.length === 0 ? (
-                <tr><td colSpan={7}><DataTableEmpty>No coupons yet. Click "Add Coupon" to create one for your restaurants.</DataTableEmpty></td></tr>
+                <tr><td colSpan={7}><DataTableEmpty>{t('noCouponsHint')}</DataTableEmpty></td></tr>
               ) : groups.map(g => (
                 <DataTableRow key={g.scope_group_id}>
-                  <DataTableCell data-label="Code"><strong>{g.code}</strong></DataTableCell>
-                  <DataTableCell data-label="Name">{g.name || '—'}</DataTableCell>
-                  <DataTableCell data-label="Discount">{g.type === 'percentage' ? `${g.value}%` : fc(g.value)}</DataTableCell>
-                  <DataTableCell data-label="Applies to" title={g.restaurant_names.join(', ')}>{scopeLabel(g)}</DataTableCell>
-                  <DataTableCell data-label="Status"><Pill on={g.is_active}>{g.is_active ? 'Active' : 'Inactive'}</Pill></DataTableCell>
-                  <DataTableCell data-label="Used" align="right">{g.usage_count_total}</DataTableCell>
-                  <DataTableCell data-label="Actions" align="center">
+                  <DataTableCell data-label={t('table.code')}><strong>{g.code}</strong></DataTableCell>
+                  <DataTableCell data-label={t('table.name')}>{g.name || '—'}</DataTableCell>
+                  <DataTableCell data-label={t('table.discount')}>{g.type === 'percentage' ? `${g.value}%` : fc(g.value)}</DataTableCell>
+                  <DataTableCell data-label={t('table.appliesTo')} title={g.restaurant_names.join(', ')}>{scopeLabel(g)}</DataTableCell>
+                  <DataTableCell data-label={t('table.status')}><Pill on={g.is_active}>{g.is_active ? t('status.active') : t('status.inactive')}</Pill></DataTableCell>
+                  <DataTableCell data-label={t('table.used')} align="right">{g.usage_count_total}</DataTableCell>
+                  <DataTableCell data-label={t('table.actions')} align="center">
                     <div style={{ display: 'inline-flex', gap: 6 }}>
-                      <IconBtn type="button" title="Edit" onClick={() => openEdit(g)}>
+                      <IconBtn type="button" title={t('actions.edit')} onClick={() => openEdit(g)}>
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" /></svg>
                       </IconBtn>
-                      <IconBtn type="button" title="Delete" onClick={() => setDelTarget(g)}>
+                      <IconBtn type="button" title={t('actions.delete')} onClick={() => setDelTarget(g)}>
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                       </IconBtn>
                     </div>
@@ -242,65 +244,65 @@ const ManagerPromotionsPage: React.FC = () => {
       </Content>
 
       {showModal && (
-        <CommonModal isOpen onClose={() => setShowModal(false)} title={editing ? 'Edit Coupon' : 'Add Coupon'} size="medium"
+        <CommonModal isOpen onClose={() => setShowModal(false)} title={editing ? t('modal.editTitle') : t('modal.addTitle')} size="medium"
           footer={<>
-            <ModalButton onClick={() => setShowModal(false)}>Cancel</ModalButton>
-            <ModalButton variant="primary" disabled={saving} onClick={save}>{saving ? 'Saving…' : 'Save'}</ModalButton>
+            <ModalButton onClick={() => setShowModal(false)}>{t('actions.cancel')}</ModalButton>
+            <ModalButton variant="primary" disabled={saving} onClick={save}>{saving ? t('actions.saving') : t('actions.save')}</ModalButton>
           </>}>
           {formError && <ErrorBox>{formError}</ErrorBox>}
 
           <FormRow>
             <FormGroup>
-              <FormLabel>Code *</FormLabel>
-              <FormInput value={form.code} onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })} placeholder="SUMMER10" />
+              <FormLabel>{t('form.code')} *</FormLabel>
+              <FormInput value={form.code} onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })} placeholder={t('form.codePlaceholder')} />
             </FormGroup>
             <FormGroup>
-              <FormLabel>Name</FormLabel>
-              <FormInput value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Summer promo" />
+              <FormLabel>{t('form.name')}</FormLabel>
+              <FormInput value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder={t('form.namePlaceholder')} />
             </FormGroup>
           </FormRow>
 
           <FormRow>
             <FormGroup>
-              <FormLabel>Discount type *</FormLabel>
+              <FormLabel>{t('form.discountType')} *</FormLabel>
               <FormSelect value={form.type} onChange={e => setForm({ ...form, type: e.target.value as 'percentage' | 'fixed' })}>
-                <option value="percentage">Percentage (%)</option>
-                <option value="fixed">Fixed amount (MYR)</option>
+                <option value="percentage">{t('form.percentage')}</option>
+                <option value="fixed">{t('form.fixedAmountMyr')}</option>
               </FormSelect>
             </FormGroup>
             <FormGroup>
-              <FormLabel>Value *</FormLabel>
+              <FormLabel>{t('form.value')} *</FormLabel>
               <FormInput type="number" value={form.value} onChange={e => setForm({ ...form, value: e.target.value })} placeholder={form.type === 'percentage' ? '10' : '5.00'} />
             </FormGroup>
           </FormRow>
 
           <FormRow>
             <FormGroup>
-              <FormLabel>Min. order</FormLabel>
+              <FormLabel>{t('form.minOrder')}</FormLabel>
               <FormInput type="number" value={form.min_order} onChange={e => setForm({ ...form, min_order: e.target.value })} placeholder="0" />
             </FormGroup>
             <FormGroup>
-              <FormLabel>{form.type === 'percentage' ? 'Max. discount' : 'Max. discount (n/a)'}</FormLabel>
-              <FormInput type="number" value={form.max_discount} onChange={e => setForm({ ...form, max_discount: e.target.value })} placeholder="No cap" disabled={form.type !== 'percentage'} />
+              <FormLabel>{form.type === 'percentage' ? t('form.maxDiscount') : t('form.maxDiscountNa')}</FormLabel>
+              <FormInput type="number" value={form.max_discount} onChange={e => setForm({ ...form, max_discount: e.target.value })} placeholder={t('form.noCap')} disabled={form.type !== 'percentage'} />
             </FormGroup>
           </FormRow>
 
           <FormRow>
             <FormGroup>
-              <FormLabel>Usage limit</FormLabel>
-              <FormInput type="number" value={form.usage_limit} onChange={e => setForm({ ...form, usage_limit: e.target.value })} placeholder="Unlimited" />
+              <FormLabel>{t('form.usageLimit')}</FormLabel>
+              <FormInput type="number" value={form.usage_limit} onChange={e => setForm({ ...form, usage_limit: e.target.value })} placeholder={t('form.unlimited')} />
             </FormGroup>
             <FormGroup>
-              <FormLabel>Status</FormLabel>
+              <FormLabel>{t('form.status')}</FormLabel>
               <FormSelect value={form.is_active ? '1' : '0'} onChange={e => setForm({ ...form, is_active: e.target.value === '1' })}>
-                <option value="1">Active</option>
-                <option value="0">Inactive</option>
+                <option value="1">{t('status.active')}</option>
+                <option value="0">{t('status.inactive')}</option>
               </FormSelect>
             </FormGroup>
           </FormRow>
 
           <FormGroup>
-            <FormLabel>Validity period</FormLabel>
+            <FormLabel>{t('form.validityPeriod')}</FormLabel>
             <DateRangeField
               startDate={form.valid_from} endDate={form.valid_until}
               onChange={(start: string, end: string) => setForm({ ...form, valid_from: start, valid_until: end })}
@@ -308,18 +310,18 @@ const ManagerPromotionsPage: React.FC = () => {
           </FormGroup>
 
           <FormGroup>
-            <FormLabel>Apply to *</FormLabel>
+            <FormLabel>{t('form.applyTo')} *</FormLabel>
             <ScopeChoice>
               <ScopeOption type="button" active={form.scope_mode === 'all'} onClick={() => setForm({ ...form, scope_mode: 'all' })}>
-                All restaurants<span>{restaurants.length} {isBrand ? 'in this brand' : 'in this foodcourt'}</span>
+                {t('applyScope.allRestaurants')}<span>{restaurants.length} {isBrand ? t('applyScope.inThisBrand') : t('applyScope.inThisFoodcourt')}</span>
               </ScopeOption>
               <ScopeOption type="button" active={form.scope_mode === 'selected'} onClick={() => setForm({ ...form, scope_mode: 'selected' })}>
-                Selected restaurants<span>Pick specific ones</span>
+                {t('applyScope.selectedRestaurants')}<span>{t('applyScope.pickSpecific')}</span>
               </ScopeOption>
             </ScopeChoice>
             {form.scope_mode === 'selected' && (
               <RestaurantGrid>
-                {restaurants.length === 0 ? <span style={{ fontSize: 13, color: '#6B7C93' }}>No restaurants found.</span> :
+                {restaurants.length === 0 ? <span style={{ fontSize: 13, color: '#6B7C93' }}>{t('applyScope.noRestaurants')}</span> :
                   restaurants.map(r => (
                     <CheckRow key={r.id}>
                       <input type="checkbox" checked={form.restaurant_ids.includes(r.id)} onChange={() => toggleRestaurant(r.id)} />
@@ -335,9 +337,9 @@ const ManagerPromotionsPage: React.FC = () => {
       {delTarget && (
         <ConfirmModal
           isOpen
-          title="Delete coupon"
-          message={`Delete coupon "${delTarget.code}" from ${delTarget.restaurant_count} restaurant(s)? This cannot be undone.`}
-          confirmText="Delete"
+          title={t('delete.title')}
+          message={t('delete.groupMessage', { code: delTarget.code, count: delTarget.restaurant_count })}
+          confirmText={t('actions.delete')}
           type="danger"
           onConfirm={doDelete}
           onCancel={() => setDelTarget(null)}

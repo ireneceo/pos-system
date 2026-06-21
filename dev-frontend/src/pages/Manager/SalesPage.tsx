@@ -504,7 +504,7 @@ const ManagerSalesPage: React.FC = () => {
                 color: '#4B5563',
                 fontSize: '14px'
               }}>
-                🍰 Distribution chart will be implemented
+                Distribution chart will be implemented
               </div>
             </ChartCard>
           </ChartsGrid>

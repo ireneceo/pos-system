@@ -24,6 +24,7 @@ const {
   PurchaseOrderReturn,
   IngredientSellerProduct,
   Ingredient,
+  ProductIngredient,
   SupplierContract,
   SupplierCompany,
   InventoryBatch,
@@ -397,6 +398,26 @@ router.post('/purchase-orders/:id/mark-received', async (req, res) => {
     const items = await PurchaseOrderItem.findAll({ where: { purchase_order_id: po.id }, transaction: t });
     const Ingredient = require('../models/Ingredient');
     for (const item of items) {
+      // BG 재고아이템(ProductIngredient) 수령 — 정상 전량 재고 반영 (RA Ingredient 경로와 분리)
+      if (item.product_ingredient_id) {
+        const pIng = await ProductIngredient.findByPk(item.product_ingredient_id, { transaction: t });
+        if (!pIng) continue;
+        const convB = parseFloat(item.unit_conversion) || 1;
+        const qtyB = parseFloat(item.quantity_ordered) || 0;
+        if (qtyB <= 0) continue;
+        const deltaB = Math.round(qtyB * convB * 100) / 100;
+        const curB = parseFloat(pIng.current_stock) || 0;
+        const newB = pIng.track_stock !== false ? Math.round((curB + deltaB) * 100) / 100 : curB;
+        await InventoryTransaction.create({
+          entity_type: po.entity_type, entity_id: po.entity_id,
+          product_ingredient_id: item.product_ingredient_id,
+          transaction_type: 'purchase', quantity_change: deltaB,
+          unit: pIng.unit, stock_after: newB, purchase_order_id: po.id,
+          notes: `PO ${po.po_number} mark-received`, created_by: req.user.id
+        }, { transaction: t });
+        if (pIng.track_stock !== false) await pIng.update({ current_stock: newB }, { transaction: t });
+        continue;
+      }
       if (!item.ingredient_id) continue;
       const ingredient = await Ingredient.findByPk(item.ingredient_id, { transaction: t });
       if (!ingredient) continue;
@@ -709,6 +730,36 @@ router.post('/purchase-orders/:id/receive', async (req, res) => {
           await t.rollback();
           return res.status(400).json({ success: false, message: 'Each split requires quantity > 0' });
         }
+      }
+
+      // BG 재고아이템(ProductIngredient) 수령 — 정상분만 재고 반영 (split/damage 미적용, RA Ingredient 경로와 분리)
+      if (item.product_ingredient_id) {
+        const pIng = await ProductIngredient.findByPk(item.product_ingredient_id, { lock: t.LOCK.UPDATE, transaction: t });
+        if (!pIng) {
+          await t.rollback();
+          return res.status(400).json({ success: false, message: `Product ingredient ${item.product_ingredient_id} not found` });
+        }
+        const convB = parseFloat(item.unit_conversion) || 1;
+        let curB = parseFloat(pIng.current_stock) || 0;
+        let normalB = 0;
+        for (const split of splits) {
+          if (split.reason !== null) continue; // BG: 정상분만 재고 반영
+          const qty = split.quantity;
+          normalB = Math.round((normalB + qty) * 100) / 100;
+          const deltaB = Math.round(qty * convB * 100) / 100;
+          const newB = pIng.track_stock !== false ? Math.round((curB + deltaB) * 100) / 100 : curB;
+          await InventoryTransaction.create({
+            entity_type: po.entity_type, entity_id: po.entity_id,
+            product_ingredient_id: item.product_ingredient_id,
+            transaction_type: 'purchase', quantity_change: deltaB,
+            unit: pIng.unit, stock_after: newB, purchase_order_id: po.id,
+            notes: `PO ${po.po_number} receive`, created_by: req.user.id
+          }, { transaction: t });
+          if (pIng.track_stock !== false) await pIng.update({ current_stock: newB }, { transaction: t });
+          curB = newB;
+        }
+        await item.update({ quantity_received: Math.round((alreadyReceived + normalB) * 100) / 100 }, { transaction: t });
+        continue;
       }
 
       // Lock ingredient row to prevent race with FIFO deduction

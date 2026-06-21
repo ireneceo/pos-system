@@ -702,6 +702,47 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
 
   const validatedItems = [];
   for (const raw of items) {
+    // BG 재고아이템(ProductIngredient) 라인 — RA ingredient_id 경로와 분리
+    if (raw.product_ingredient_id) {
+      const piId = parseInt(raw.product_ingredient_id, 10);
+      const qtyB = parseFloat(raw.quantity_ordered);
+      if (!Number.isFinite(piId) || !(qtyB > 0)) {
+        return { ok: false, status: 400, body: { success: false, message: 'Each item requires product_ingredient_id and quantity_ordered > 0' } };
+      }
+      const ProductIngredient = require('../models/ProductIngredient');
+      const pIng = await ProductIngredient.findByPk(piId, { transaction });
+      // 소유권: BG 본인(owner_user_id===생성자) 만. 공용 모델이라 유저 단위.
+      if (!pIng || (pIng.owner_user_id != null && pIng.owner_user_id !== userId)) {
+        return { ok: false, status: 400, body: { success: false, message: `Stock item ${piId} not accessible to this buyer` } };
+      }
+      let convB = 1, priceB = 0, mappingB = raw.ingredient_seller_product_id || null;
+      if (seller_type !== 'system_admin') {
+        const mw = { product_ingredient_id: piId, seller_type, seller_entity_id: seller_entity_id ? parseInt(seller_entity_id, 10) : null, is_active: true };
+        if (raw.ingredient_seller_product_id) mw.id = raw.ingredient_seller_product_id;
+        const mapping = await IngredientSellerProduct.findOne({ where: mw, transaction });
+        if (!mapping) {
+          return { ok: false, status: 400, body: { success: false, code: 'MAPPING_REQUIRED', message: `Stock item ${piId} is not mapped to this seller` } };
+        }
+        mappingB = mapping.id; convB = parseFloat(mapping.unit_conversion) || 1; priceB = parseFloat(mapping.unit_price) || 0;
+      }
+      const fConv = raw.unit_conversion != null ? (parseFloat(raw.unit_conversion) || 1) : convB;
+      const fPrice = raw.unit_price != null ? (parseFloat(raw.unit_price) || 0) : priceB;
+      validatedItems.push({
+        ingredient_id: null,
+        product_ingredient_id: piId,
+        ingredient_seller_product_id: mappingB,
+        quantity_ordered: qtyB,
+        quantity_received: 0,
+        unit: raw.unit || pIng.unit || null,
+        unit_price: fPrice,
+        unit_conversion: fConv,
+        line_total: Math.round((qtyB * fPrice) * 100) / 100,
+        notes: raw.notes ? sanitizeString(String(raw.notes)).slice(0, 255) : null,
+        description: pIng.name ? String(pIng.name).slice(0, 255) : null
+      });
+      continue;
+    }
+
     const ingredientId = parseInt(raw.ingredient_id, 10);
     const qty = parseFloat(raw.quantity_ordered);
     if (!Number.isFinite(ingredientId) || !(qty > 0)) {

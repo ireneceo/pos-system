@@ -146,8 +146,8 @@ const ResultLink = styled.input`
 
 const InlineCopyBtn = styled.button<{ copied?: boolean }>`
   padding: 6px 12px;
-  border: 1px solid ${p => (p.copied ? '#16A34A' : '#C7CED6')};
-  background: ${p => (p.copied ? '#16A34A' : 'white')};
+  border: 1px solid ${p => (p.copied ? '#10B981' : '#C7CED6')};
+  background: ${p => (p.copied ? '#10B981' : 'white')};
   color: ${p => (p.copied ? 'white' : '#1F2937')};
   border-radius: 6px;
   font-size: 12px;

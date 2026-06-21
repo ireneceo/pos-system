@@ -117,7 +117,7 @@ const ModalButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger'
   cursor: pointer;
   transition: all 0.15s;
   border: ${p => p.variant === 'primary' || p.variant === 'danger' ? 'none' : '1px solid #C7CED6'};
-  background: ${p => p.variant === 'primary' ? '#635BFF' : p.variant === 'danger' ? '#DC2626' : 'white'};
+  background: ${p => p.variant === 'primary' ? '#635BFF' : p.variant === 'danger' ? '#EF4444' : 'white'};
   color: ${p => p.variant === 'primary' || p.variant === 'danger' ? 'white' : '#4B5563'};
   &:hover:not(:disabled) {
     background: ${p => p.variant === 'primary' ? '#5A51E6' : p.variant === 'danger' ? '#B91C1C' : '#F1F4F8'};

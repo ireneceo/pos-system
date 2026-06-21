@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { Inbox } from 'lucide-react';
 import { fetchInbox, markNoticeRead, markAllRead, InboxItem, InboxFilter } from './inboxApi';
 import InboxItemCard from './InboxItemCard';
 
@@ -137,7 +138,7 @@ const InboxDrawer: React.FC<Props> = ({ open, onClose, onItemRead }) => {
             </SkeletonList>
           ) : visibleItems.length === 0 ? (
             <EmptyState>
-              <EmptyIcon aria-hidden="true">📬</EmptyIcon>
+              <EmptyIcon aria-hidden="true"><Inbox size={48} color="#9CA3AF" /></EmptyIcon>
               <EmptyTitle>{t('inbox.empty.title', "You're all caught up!")}</EmptyTitle>
               <EmptyDesc>
                 {unreadOnly

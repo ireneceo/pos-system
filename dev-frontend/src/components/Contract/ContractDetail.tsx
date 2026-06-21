@@ -104,11 +104,6 @@ const RequiredBanner = styled.div`
   margin-bottom: 16px;
 `;
 
-const RequiredIcon = styled.span`
-  font-size: 16px;
-  color: #B45309;
-`;
-
 const RequiredText = styled.span`
   font-size: 14px;
   color: #78350F;
@@ -161,10 +156,6 @@ const ExpiryBanner = styled.div<{ urgent: boolean }>`
   gap: 12px;
   flex-wrap: wrap;
   margin-bottom: 16px;
-`;
-
-const ExpiryIcon = styled.span`
-  font-size: 16px;
 `;
 
 const ExpiryText = styled.span`
@@ -1173,7 +1164,6 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
         const urgent = days <= 7;
         return (
           <ExpiryBanner urgent={urgent}>
-            <ExpiryIcon>{urgent ? '🔴' : '⚠'}</ExpiryIcon>
             <ExpiryText>
               <strong>{t('detail.expiryBannerTitle', 'Contract expiring in')} {days} {t('detail.days', 'days')}</strong>
               {' · '}
@@ -1192,7 +1182,6 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
 
       {sectionRequirements.length > 0 && (
         <RequiredBanner>
-          <RequiredIcon>⚠</RequiredIcon>
           <RequiredText>
             {sectionRequirements.length} {t('detail.bannerRequired', 'required field(s) missing')}
           </RequiredText>
@@ -1464,7 +1453,7 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
               )}
               {currencyLocked && (
                 <div style={{ fontSize: '11px', color: '#4B5563', marginTop: '4px' }}>
-                  🔒 {t('detail.currencyLocked', 'Currency is locked — invoices have been issued')}
+                  {t('detail.currencyLocked', 'Currency is locked — invoices have been issued')}
                 </div>
               )}
             </FormGroup>

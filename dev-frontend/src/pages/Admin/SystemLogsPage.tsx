@@ -325,9 +325,6 @@ const ExportOption = styled.div`
   }
 `;
 
-const ExportIcon = styled.div`
-  font-size: 24px;
-`;
 
 const ExportInfo = styled.div`
   flex: 1;
@@ -345,11 +342,6 @@ const ExportDesc = styled.div`
   color: #4B5563;
 `;
 
-const WarningIcon = styled.div`
-  font-size: 48px;
-  text-align: center;
-  margin-bottom: 16px;
-`;
 
 const WarningText = styled.div`
   font-size: 18px;
@@ -1142,7 +1134,7 @@ const SystemLogsPage: React.FC = () => {
               >
                 {autoScroll ? '✓ Auto-scroll' : 'Auto-scroll'}
               </BaseButton>
-              <BaseButton variant="secondary" onClick={handleRefresh}>🔄 Refresh</BaseButton>
+              <BaseButton variant="secondary" onClick={handleRefresh}>Refresh</BaseButton>
             </LogsActions>
           </LogsHeader>
           <LogsList ref={logsListRef}>
@@ -1215,21 +1207,18 @@ const SystemLogsPage: React.FC = () => {
           <p>Select the format for exporting {filteredLogs.length} log entries:</p>
           <ExportOptions>
             <ExportOption onClick={() => confirmExport('csv')}>
-              <ExportIcon>📊</ExportIcon>
               <ExportInfo>
                 <ExportTitle>{'CSV Format'}</ExportTitle>
                 <ExportDesc>{'Comma-separated values for spreadsheet analysis'}</ExportDesc>
               </ExportInfo>
             </ExportOption>
             <ExportOption onClick={() => confirmExport('json')}>
-              <ExportIcon>📄</ExportIcon>
               <ExportInfo>
                 <ExportTitle>{'JSON Format'}</ExportTitle>
                 <ExportDesc>{'Structured data with full details'}</ExportDesc>
               </ExportInfo>
             </ExportOption>
             <ExportOption onClick={() => confirmExport('txt')}>
-              <ExportIcon>📝</ExportIcon>
               <ExportInfo>
                 <ExportTitle>{'Text Format'}</ExportTitle>
                 <ExportDesc>{'Human-readable log format'}</ExportDesc>
@@ -1254,7 +1243,6 @@ const SystemLogsPage: React.FC = () => {
             </ModalActions>
           }
         >
-          <WarningIcon>⚠️</WarningIcon>
           <WarningText>
             Are you sure you want to clear all system logs?
           </WarningText>

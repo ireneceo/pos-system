@@ -235,11 +235,6 @@ const FileInfo = styled.div`
   border-left: 3px solid #10B981;
 `;
 
-const WarningIcon = styled.div`
-  font-size: 48px;
-  text-align: center;
-  margin-bottom: 16px;
-`;
 
 const WarningText = styled.div`
   font-size: 18px;
@@ -547,7 +542,6 @@ const SystemConfigPage: React.FC = () => {
                 </>
               }
             >
-              <WarningIcon>⚠️</WarningIcon>
               <WarningText>
                 <strong>{t('admin:systemConfigPage.areYouSureYouWantToRestartTheSystem')}</strong>
               </WarningText>

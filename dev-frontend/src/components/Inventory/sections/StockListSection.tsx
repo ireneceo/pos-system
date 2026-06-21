@@ -206,7 +206,7 @@ const StockListSection: React.FC<Props> = ({
                           {item.image_url ? (
                             <img src={item.image_url} alt={item.name} />
                           ) : (
-                            <span style={{ fontSize: '16px', color: '#6B7280' }}>📦</span>
+                            <span />
                           )}
                         </StockItemImage>
                         <StockItemDetails>
@@ -396,7 +396,7 @@ const StockListSection: React.FC<Props> = ({
                           {item.image_url ? (
                             <img src={item.image_url} alt={item.name} />
                           ) : (
-                            <span style={{ fontSize: '16px', color: '#6B7280' }}>🥗</span>
+                            <span />
                           )}
                         </StockItemImage>
                         <StockItemDetails>

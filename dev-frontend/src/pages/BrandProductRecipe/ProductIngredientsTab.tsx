@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
-import { EmptyState } from '../../components/UI/TableComponents';
+import { EmptyState, IconButton } from '../../components/UI/TableComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import ListControlsBar from '../../components/Common/ListControlsBar';
 import SortDropdown, { SortKey, sortItems } from '../../components/Common/SortDropdown';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormRow as UIFormRow } from '../../components/UI/Modal';
 import ConfirmModal from '../../components/ConfirmModal';
+import SearchableSelect from '../../components/Common/SearchableSelect';
 import { fetchAPI } from '../../utils/api';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
@@ -14,6 +15,7 @@ import { formatCurrency } from '../../utils/currency';
 
 import { getAuthToken } from '../../utils/auth';
 interface ProductIngredientsTabProps {
+  brandId?: number | null;
   onCountChange?: (count: number) => void;
   categoryRefreshKey?: number;
 }
@@ -35,11 +37,44 @@ interface Ingredient {
   base_quantity: number;
   unit_cost: number;
   supplier_name: string | null;
+  supplier_id: number | null;
   min_stock: number;
   min_order: number;
   current_stock: number;
   track_stock: boolean;
   is_active: boolean;
+  sellers?: Array<{
+    id: number;
+    seller_product_id?: number;
+    seller_type: 'supplier' | 'brand' | 'foodcourt';
+    seller_entity_id: number | null;
+    seller_name?: string;
+    unit_price?: number;
+    is_preferred?: boolean;
+  }>;
+}
+
+// 재고아이템 ↔ 공급업체 상품 매핑 (발주 연결). 이 매핑이 있어야 발주(PO)에서 주문 가능.
+interface SellerSource {
+  id: number;
+  seller_type: 'supplier' | 'system_admin' | 'brand' | 'foodcourt';
+  seller_entity_id: number | null;
+  seller_product_id: number;
+  unit_price: number;
+  unit_conversion: number;
+  min_order_quantity: number;
+  lead_time_days: number;
+  is_preferred: boolean;
+}
+
+// /api/supplier-catalog 응답 row (NewPurchaseOrderPage fetchCatalog 와 동일 shape)
+interface CatalogRow {
+  id: number;
+  name: string;
+  unit?: string | null;
+  unit_price: number;
+  category_name?: string | null;
+  supplier?: { id: number; name: string; seller_type?: 'supplier' | 'brand' | 'foodcourt' } | null;
 }
 
 const IngredientsGrid = styled.div`
@@ -366,11 +401,23 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
     base_quantity: '1',
     unit_cost: '0',
     supplier_name: '',
+    supplier_id: '' as string | number,
     min_stock: '0',
     min_order: '0',
     current_stock: '0',
     track_stock: true
   });
+
+  // ── Supplier Products (seller-sources) — 발주 연결용 매핑 (editing existing item only) ──
+  const [sellerSources, setSellerSources] = useState<SellerSource[]>([]);
+  const [catalog, setCatalog] = useState<CatalogRow[]>([]);
+  const [sourceForm, setSourceForm] = useState<{ seller_product_id: number | null; unit_price: string; unit_conversion: string; is_preferred: boolean }>({
+    seller_product_id: null,
+    unit_price: '',
+    unit_conversion: '1',
+    is_preferred: false
+  });
+  const [savingSource, setSavingSource] = useState(false);
 
   useEffect(() => {
     if (defaultCurrency) {
@@ -382,7 +429,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
     try {
       setLoading(true);
       const [ingredientsRes, categoriesRes] = await Promise.all([
-        fetchAPI('/api/product-ingredients'),
+        fetchAPI('/api/product-ingredients?include=sellers'),
         fetchAPI('/api/product-ingredient-categories')
       ]);
 
@@ -405,8 +452,13 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
   }, [fetchData, categoryRefreshKey]);
 
   const handleOpenModal = (ingredient?: Ingredient) => {
+    setSellerSources([]);
+    setSourceForm({ seller_product_id: null, unit_price: '', unit_conversion: '1', is_preferred: false });
     if (ingredient) {
       setEditingIngredient(ingredient);
+      // 기존 아이템 — 발주 연결 매핑 + 카탈로그 로드
+      loadSellerSources(ingredient.id);
+      loadCatalog();
       setFormData({
         name: ingredient.name,
         category_id: ingredient.category_id?.toString() || '',
@@ -415,6 +467,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
         base_quantity: ingredient.base_quantity.toString(),
         unit_cost: ingredient.unit_cost.toString(),
         supplier_name: ingredient.supplier_name || '',
+        supplier_id: ingredient.supplier_id || '',
         min_stock: ingredient.min_stock.toString(),
         min_order: ingredient.min_order.toString(),
         current_stock: ingredient.current_stock.toString(),
@@ -430,6 +483,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
         base_quantity: '1',
         unit_cost: '0',
         supplier_name: '',
+        supplier_id: '',
         min_stock: '0',
         min_order: '0',
         current_stock: '0',
@@ -442,6 +496,8 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingIngredient(null);
+    setSellerSources([]);
+    setSourceForm({ seller_product_id: null, unit_price: '', unit_conversion: '1', is_preferred: false });
     setFormData({
       name: '',
       category_id: '',
@@ -450,6 +506,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
       base_quantity: '1',
       unit_cost: '0',
       supplier_name: '',
+      supplier_id: '',
       min_stock: '0',
       min_order: '0',
       current_stock: '0',
@@ -465,6 +522,83 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
         setFormData({ ...formData, image_url: reader.result as string });
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  // ── Supplier Products (seller-sources) ──
+  const loadSellerSources = useCallback(async (ingredientId: number) => {
+    try {
+      const res = await fetchAPI(`/api/product-ingredients/${ingredientId}/seller-sources`);
+      setSellerSources(res?.success && Array.isArray(res.data) ? res.data : []);
+    } catch (error) {
+      console.error('Failed to load seller sources:', error);
+      setSellerSources([]);
+    }
+  }, []);
+
+  // 발주 카탈로그 (구매 가능한 공급업체 상품) — NewPurchaseOrderPage fetchCatalog 와 동일 소스
+  const loadCatalog = useCallback(async () => {
+    try {
+      const res = await fetchAPI('/api/supplier-catalog');
+      setCatalog(res?.success && Array.isArray(res.data) ? res.data : []);
+    } catch (error) {
+      console.error('Failed to load supplier catalog:', error);
+      setCatalog([]);
+    }
+  }, []);
+
+  // 매핑 추가 (POST). 성공 시 목록만 재조회 (success toast 없음).
+  const handleAddSellerSource = async () => {
+    if (!editingIngredient || !sourceForm.seller_product_id) return;
+    const picked = catalog.find(c => c.id === sourceForm.seller_product_id);
+    if (!picked) return;
+    const price = parseFloat(sourceForm.unit_price);
+    if (!(price >= 0)) {
+      setInfoModal({ open: true, title: 'Unit Price Required', message: 'Enter a valid unit price (≥ 0).' });
+      return;
+    }
+    try {
+      setSavingSource(true);
+      const res = await fetchAPI(`/api/product-ingredients/${editingIngredient.id}/seller-sources`, {
+        method: 'POST',
+        body: JSON.stringify({
+          seller_type: picked.supplier?.seller_type || 'supplier',
+          seller_entity_id: picked.supplier?.id ?? null,
+          seller_product_id: picked.id,
+          unit_price: price,
+          unit_conversion: parseFloat(sourceForm.unit_conversion) || 1,
+          is_preferred: sourceForm.is_preferred
+        })
+      });
+      if (res?.success) {
+        setSourceForm({ seller_product_id: null, unit_price: '', unit_conversion: '1', is_preferred: false });
+        await loadSellerSources(editingIngredient.id);
+      } else {
+        setInfoModal({ open: true, title: 'Add Failed', message: res?.message || 'Failed to add supplier product.' });
+      }
+    } catch (error) {
+      console.error('Failed to add seller source:', error);
+      setInfoModal({ open: true, title: 'Add Failed', message: 'Failed to add supplier product. Please try again.' });
+    } finally {
+      setSavingSource(false);
+    }
+  };
+
+  // 매핑 삭제 (DELETE). 성공 시 목록만 재조회.
+  const handleDeleteSellerSource = async (mappingId: number) => {
+    if (!editingIngredient) return;
+    try {
+      const res = await fetchAPI(`/api/product-ingredients/${editingIngredient.id}/seller-sources/${mappingId}`, {
+        method: 'DELETE'
+      });
+      if (res?.success) {
+        await loadSellerSources(editingIngredient.id);
+      } else {
+        setInfoModal({ open: true, title: 'Remove Failed', message: res?.message || 'Failed to remove supplier product.' });
+      }
+    } catch (error) {
+      console.error('Failed to delete seller source:', error);
+      setInfoModal({ open: true, title: 'Remove Failed', message: 'Failed to remove supplier product. Please try again.' });
     }
   };
 
@@ -490,7 +624,6 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
           unit: formData.unit,
           base_quantity: parseFloat(formData.base_quantity) || 1,
           unit_cost: parseFloat(formData.unit_cost) || 0,
-          supplier_name: formData.supplier_name || null,
           min_stock: parseFloat(formData.min_stock) || 0,
           min_order: parseFloat(formData.min_order) || 0,
           current_stock: parseFloat(formData.current_stock) || 0,
@@ -526,6 +659,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
           base_quantity: ingredient.base_quantity,
           unit_cost: ingredient.unit_cost,
           supplier_name: ingredient.supplier_name,
+          supplier_id: ingredient.supplier_id,
           min_stock: ingredient.min_stock,
           min_order: ingredient.min_order,
           current_stock: ingredient.current_stock,
@@ -613,7 +747,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
       <ListControlsBar>
         <SearchInput
           type="text"
-          placeholder="Search ingredients..."
+          placeholder="Search stock items..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
@@ -638,7 +772,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
             </button>
           </div>
           <ThemedButton variant="primary" onClick={() => handleOpenModal()}>
-            New Ingredient
+            New Stock Item
           </ThemedButton>
         </div>
       </ListControlsBar>
@@ -699,12 +833,30 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
                   <InfoLabel>{'Base Qty / Unit'}</InfoLabel>
                   <InfoValue>{Number(ingredient.base_quantity || 1)} {ingredient.unit}</InfoValue>
                 </InfoRow>
-                {ingredient.supplier_name && (
-                  <InfoRow>
-                    <InfoLabel>{'Supplier'}</InfoLabel>
-                    <InfoValue>{ingredient.supplier_name}</InfoValue>
-                  </InfoRow>
-                )}
+                {/* 발주처(seller) 연결 — 재고 품목 ↔ 공급업체 상품 매핑(읽기전용). seller-source 섹션에서 관리. */}
+                {(() => {
+                  const sellers = Array.isArray(ingredient.sellers) ? ingredient.sellers : [];
+                  if (sellers.length === 0) return null;
+                  return (
+                    <InfoRow>
+                      <InfoLabel>{'Sellers'}</InfoLabel>
+                      <InfoValue style={{ display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'flex-end' }}>
+                        {sellers.map(s => (
+                          <span key={s.id} style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 4,
+                            padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 600,
+                            background: s.seller_type === 'brand' ? '#EDE9FE' : s.seller_type === 'foodcourt' ? '#FCE7F3' : '#DCFCE7',
+                            color: s.seller_type === 'brand' ? '#6D28D9' : s.seller_type === 'foodcourt' ? '#9D174D' : '#166534'
+                          }}>
+                            {s.seller_type === 'brand' ? 'BRAND' : s.seller_type === 'foodcourt' ? 'FC' : 'SUP'}
+                            {s.seller_name ? ` · ${s.seller_name}` : ''}
+                            {s.unit_price != null ? ` · ${formatCurrency(Number(s.unit_price), selectedCurrency)}` : ''}
+                          </span>
+                        ))}
+                      </InfoValue>
+                    </InfoRow>
+                  );
+                })()}
                 {ingredient.code && (
                   <InfoRow>
                     <InfoLabel>{'Code'}</InfoLabel>
@@ -759,7 +911,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
       <Modal
         isOpen={showModal}
         onClose={handleCloseModal}
-        title={editingIngredient ? 'Edit Ingredient' : 'New Ingredient'}
+        title={editingIngredient ? 'Edit Stock Item' : 'New Stock Item'}
         size="medium"
       >
         <form onSubmit={(e) => { e.preventDefault(); handleSave(); }} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -844,15 +996,141 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
               />
             </UIFormGroup>
             <UIFormGroup>
-              <FormLabel>{'Supplier'}</FormLabel>
+              <FormLabel>{'Minimum Stock'}</FormLabel>
               <FormInput
-                type="text"
-                value={formData.supplier_name}
-                onChange={(e) => setFormData({ ...formData, supplier_name: e.target.value })}
-                placeholder="Supplier name"
+                type="number"
+                value={formData.min_stock}
+                onChange={(e) => setFormData({ ...formData, min_stock: e.target.value })}
+                placeholder="0"
               />
             </UIFormGroup>
           </UIFormRow>
+
+          {/* Supplier Products (발주 연결) — 기존 아이템 편집 시에만. 매핑이 있어야 발주(PO)에서 주문 가능. */}
+          {editingIngredient && (
+            <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: '16px' }}>
+              <div style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540', marginBottom: '4px' }}>
+                Supplier Products
+              </div>
+              <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '12px' }}>
+                Map this item to a supplier's catalog product so you can order it on a purchase order.
+              </div>
+
+              {sellerSources.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+                  {sellerSources.map(src => {
+                    const cat = catalog.find(c => c.id === src.seller_product_id && (c.supplier?.seller_type || 'supplier') === src.seller_type);
+                    const sellerName = cat?.supplier?.name || (src.seller_type === 'system_admin' ? 'System Admin' : 'Supplier');
+                    return (
+                      <div key={src.id} style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
+                        padding: '10px 12px', background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: '8px'
+                      }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: '13px', fontWeight: 600, color: '#0A2540' }}>{sellerName}</span>
+                            {src.is_preferred && (
+                              <span style={{ fontSize: '10px', fontWeight: 700, color: '#166534', background: '#DCFCE7', padding: '2px 8px', borderRadius: '999px' }}>
+                                PREFERRED
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>
+                            {cat?.name || `Product #${src.seller_product_id}`}
+                            {' · '}{formatCurrency(Number(src.unit_price), selectedCurrency)}
+                          </div>
+                        </div>
+                        <IconButton
+                          type="button"
+                          variant="delete"
+                          onClick={() => handleDeleteSellerSource(src.id)}
+                          title="Remove supplier product"
+                          aria-label="Remove supplier product"
+                        >
+                          ✕
+                        </IconButton>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div style={{ fontSize: '13px', color: '#6B7280', marginBottom: '16px' }}>
+                  No supplier product linked yet.
+                </div>
+              )}
+
+              <div style={{ background: '#F4F6F9', borderRadius: '8px', padding: '12px' }}>
+                <UIFormGroup>
+                  <FormLabel>Add supplier product</FormLabel>
+                  <SearchableSelect
+                    options={catalog.map(c => ({
+                      value: c.id,
+                      label: c.name,
+                      subLabel: [c.supplier?.name, c.unit ? c.unit : null].filter(Boolean).join(' · ') || undefined
+                    }))}
+                    value={sourceForm.seller_product_id}
+                    onChange={(val) => {
+                      const picked = catalog.find(c => c.id === val);
+                      setSourceForm(prev => ({
+                        ...prev,
+                        seller_product_id: (val as number) || null,
+                        // 카탈로그 단가를 기본 unit_price 로 prefill (편집 가능)
+                        unit_price: picked ? String(picked.unit_price ?? '') : prev.unit_price
+                      }));
+                    }}
+                    placeholder="Search catalog products..."
+                    noOptionsMessage="No catalog products found"
+                  />
+                </UIFormGroup>
+
+                <UIFormRow style={{ marginTop: '12px' }}>
+                  <UIFormGroup>
+                    <FormLabel>Unit Price ({selectedCurrency})</FormLabel>
+                    <FormInput
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={sourceForm.unit_price}
+                      onChange={(e) => setSourceForm(prev => ({ ...prev, unit_price: e.target.value }))}
+                      placeholder="0.00"
+                    />
+                  </UIFormGroup>
+                  <UIFormGroup>
+                    <FormLabel>Unit Conversion</FormLabel>
+                    <FormInput
+                      type="number"
+                      step="0.001"
+                      min="0.001"
+                      value={sourceForm.unit_conversion}
+                      onChange={(e) => setSourceForm(prev => ({ ...prev, unit_conversion: e.target.value }))}
+                      placeholder="1"
+                    />
+                  </UIFormGroup>
+                </UIFormRow>
+
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '12px', fontSize: '13px', color: '#0A2540', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={sourceForm.is_preferred}
+                    onChange={(e) => setSourceForm(prev => ({ ...prev, is_preferred: e.target.checked }))}
+                    style={{ margin: 0 }}
+                  />
+                  Preferred supplier for this item
+                </label>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
+                  <ModalButton
+                    type="button"
+                    variant="primary"
+                    onClick={handleAddSellerSource}
+                    disabled={savingSource || !sourceForm.seller_product_id}
+                  >
+                    {savingSource ? 'Adding...' : 'Add supplier product'}
+                  </ModalButton>
+                </div>
+              </div>
+            </div>
+          )}
 
           <ButtonGroup>
             <ModalButton type="button" variant="secondary" onClick={handleCloseModal}>

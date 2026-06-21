@@ -99,7 +99,7 @@ const BrandIngredientsPage: React.FC = () => {
       <Content>
         <Tabs>
           <Tab active={activeTab === 'ingredients'} onClick={() => handleTabChange('ingredients')}>
-            Ingredients <Badge count={ingredientsCount} showZero />
+            Stock Items <Badge count={ingredientsCount} showZero />
           </Tab>
           <Tab active={activeTab === 'ingredient-categories'} onClick={() => handleTabChange('ingredient-categories')}>
             Categories <Badge count={ingredientCategoriesCount} showZero />

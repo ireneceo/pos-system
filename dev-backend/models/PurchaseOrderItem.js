@@ -4,7 +4,8 @@ const { sequelize } = require('../config/database');
 const PurchaseOrderItem = sequelize.define('PurchaseOrderItem', {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   purchase_order_id: { type: DataTypes.INTEGER, allowNull: false },
-  ingredient_id: { type: DataTypes.INTEGER, allowNull: false },
+  ingredient_id: { type: DataTypes.INTEGER, allowNull: true, comment: 'RA/brand Ingredient. BG ProductIngredient 주문이면 null' },
+  product_ingredient_id: { type: DataTypes.INTEGER, allowNull: true, comment: 'BG 재고아이템(ProductIngredient) 주문. ingredient_id 와 둘 중 하나만' },
   ingredient_seller_product_id: {
     type: DataTypes.INTEGER, allowNull: true,
     comment: 'snapshot of which seller product was used'

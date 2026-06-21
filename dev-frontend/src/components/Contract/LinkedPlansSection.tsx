@@ -357,7 +357,7 @@ const LinkedPlansSection: React.FC<LinkedPlansSectionPropsExt> = ({
                     {ep.name || 'Plan'}
                     {mismatch && (
                       <MismatchBadge title={mismatch}>
-                        ⚠ {t('detail.planMismatch', 'Contract/Plan mismatch')}
+                        {t('detail.planMismatch', 'Contract/Plan mismatch')}
                       </MismatchBadge>
                     )}
                   </PlanName>
@@ -511,7 +511,7 @@ const LinkedPlansSection: React.FC<LinkedPlansSectionPropsExt> = ({
           </PreviewTitle>
           {preview.financial_redacted ? (
             <div style={{ fontSize: 12, color: '#6B7280', fontStyle: 'italic' }}>
-              🔒 {t('detail.financialRedacted', 'Amounts hidden for your role')}
+              {t('detail.financialRedacted', 'Amounts hidden for your role')}
             </div>
           ) : (
             <>

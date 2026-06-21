@@ -398,6 +398,40 @@ router.post('/:id/ship', async (req, res) => {
           }, { transaction: t });
         }
       }
+      // BG (브랜드 판매자) 출고 — BrandProduct 레시피(BOM)로 ProductIngredient 차감 (RA 주문차감 미러).
+      // 같은 트랜잭션. 레시피 없으면 차감 없음(RA 동일). supplier 분기와 별개·격리.
+      if (locked.seller_type === 'brand' && locked.seller_entity_id) {
+        const { BrandProduct, ProductRecipeIngredient, ProductIngredient, InventoryTransaction } = require('../models');
+        const bItems = await PurchaseOrderItem.findAll({ where: { purchase_order_id: locked.id }, transaction: t });
+        for (const it of bItems) {
+          if (!it.ingredient_seller_product_id) continue;
+          const mapping = await IngredientSellerProduct.findByPk(it.ingredient_seller_product_id, { transaction: t });
+          if (!mapping || !mapping.seller_product_id) continue;
+          const bp = await BrandProduct.findByPk(mapping.seller_product_id, { transaction: t });
+          if (!bp || !bp.product_recipe_id) continue; // 레시피 없으면 차감 없음
+          const recipeIngs = await ProductRecipeIngredient.findAll({ where: { recipe_id: bp.product_recipe_id }, transaction: t });
+          const soldQty = parseFloat(it.quantity_ordered) || 0;
+          for (const ri of recipeIngs) {
+            const pIng = await ProductIngredient.findByPk(ri.ingredient_id, { lock: t.LOCK.UPDATE, transaction: t });
+            if (!pIng) continue;
+            const useQty = Math.round((parseFloat(ri.quantity) || 0) * soldQty * 100) / 100;
+            if (useQty <= 0) continue;
+            const cur = parseFloat(pIng.current_stock) || 0;
+            const newStock = pIng.track_stock !== false ? Math.round((cur - useQty) * 100) / 100 : cur;
+            if (pIng.track_stock !== false) await pIng.update({ current_stock: newStock }, { transaction: t });
+            await InventoryTransaction.create({
+              entity_type: 'brand', entity_id: locked.seller_entity_id,
+              product_ingredient_id: pIng.id,
+              transaction_type: 'order_deduct',
+              quantity_change: -useQty,
+              unit: pIng.unit, stock_after: newStock,
+              purchase_order_id: locked.id,
+              notes: `Sold on PO ${locked.po_number} (${bp.name})`,
+              created_by: req.user?.id || null
+            }, { transaction: t });
+          }
+        }
+      }
       return { po: locked, newTracking: tracking };
     });
     po = result.po;

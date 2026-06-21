@@ -843,7 +843,7 @@ const FoodcourtTenancyMapPage: React.FC = () => {
                   <DetailSection>
                     <DetailSectionTitle>{t('floorPlan.sec.financial', 'Financial Terms')}</DetailSectionTitle>
                     <div style={{ fontSize: 12, color: '#6B7280', fontStyle: 'italic' }}>
-                      🔒 {t('floorPlan.fin.redacted', 'Financial terms are visible to Foodcourt General and System Admin only')}
+                      {t('floorPlan.fin.redacted', 'Financial terms are visible to Foodcourt General and System Admin only')}
                     </div>
                   </DetailSection>
                 )}

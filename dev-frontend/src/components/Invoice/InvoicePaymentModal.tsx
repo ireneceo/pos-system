@@ -140,11 +140,6 @@ const PaymentMethodCard = styled.button<{ selected: boolean; disabled?: boolean 
   }
 `;
 
-const MethodIcon = styled.div`
-  font-size: 24px;
-  margin-bottom: 8px;
-`;
-
 const MethodName = styled.div`
   font-size: 14px;
   font-weight: 500;
@@ -359,7 +354,6 @@ const InvoicePaymentModal: React.FC<Props> = ({
                 onClick={() => setPaymentMethod('bank_transfer')}
                 disabled={!bankTransferEnabled}
               >
-                <MethodIcon>🏦</MethodIcon>
                 <MethodName>Bank Transfer</MethodName>
                 <MethodDesc>Manual bank transfer</MethodDesc>
               </PaymentMethodCard>
@@ -369,7 +363,6 @@ const InvoicePaymentModal: React.FC<Props> = ({
                 onClick={() => setPaymentMethod('stripe')}
                 disabled={!stripeEnabled}
               >
-                <MethodIcon>💳</MethodIcon>
                 <MethodName>Credit Card</MethodName>
                 <MethodDesc>{stripeEnabled ? 'Via Stripe' : 'Coming soon'}</MethodDesc>
               </PaymentMethodCard>
@@ -379,7 +372,6 @@ const InvoicePaymentModal: React.FC<Props> = ({
                 onClick={() => setPaymentMethod('paypal')}
                 disabled={!paypalEnabled}
               >
-                <MethodIcon>🅿️</MethodIcon>
                 <MethodName>PayPal</MethodName>
                 <MethodDesc>{paypalEnabled ? 'Pay with PayPal' : 'Coming soon'}</MethodDesc>
               </PaymentMethodCard>
@@ -389,7 +381,6 @@ const InvoicePaymentModal: React.FC<Props> = ({
                 onClick={() => setPaymentMethod('qr_payment')}
                 disabled={!qrEnabled}
               >
-                <MethodIcon>📱</MethodIcon>
                 <MethodName>QR Payment</MethodName>
                 <MethodDesc>{qrEnabled ? 'Scan to pay' : 'Coming soon'}</MethodDesc>
               </PaymentMethodCard>

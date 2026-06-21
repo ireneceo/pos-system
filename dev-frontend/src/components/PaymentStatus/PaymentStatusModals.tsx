@@ -180,7 +180,7 @@ const FeatureList = styled.ul`
     padding-left: 8px;
     
     &::before {
-      content: '⛔';
+      content: '•';
       position: absolute;
       left: -16px;
       top: 0;

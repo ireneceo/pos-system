@@ -281,6 +281,21 @@ date.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', timeZone:
 - **PM2 실행 파일: `server.js`만 사용** (app.js는 제거됨)
 - 라우트 등록, 미들웨어, 스케줄러 모두 server.js에서 관리
 
+### 🎨 디자인 단일 기준 (RA = 표준, 2026-06-21)
+
+> 가이드는 많은데 안 지켜진 이유 = 애매했거나 강제가 없어서. 아래는 **단호한 단일 기준**. 새 코드는 무조건 따른다. 일반 "감사 도구"가 아래와 다른 말을 하면 **아래가 이긴다**.
+
+1. **RA(레스토랑 관리자) 페이지 = 디자인 기준.** Irene가 가장 정돈해 둔 곳. 다른 역할/덜 정돈된 페이지는 RA에 맞춘다. 주먹구구 페이지에서 아무거나 베껴 쓰지 말 것. 상세 = 메모리 [[reference_ra_design_standard]].
+2. **공용 컴포넌트 의무 (새로 styled로 만들지 말 것):** 표=`components/UI/DataTable`, 버튼=`components/UI/Button`·행 액션=`IconButton`(32×32), StatCard=`components/UI/StatCard`(DashboardStatCard), 모달=`components/UI/Modal`·확인=`ConfirmModal`, Select=`SelectComponents`, 페이지 헤더=`PageComponents`, 날짜=`DateField`/`DateRangeField`, 주소=`<AddressFields>`. 로컬 `styled.button`/`styled.table`/로컬 StatCard **신규 금지**.
+3. **색 (절대 혼동 금지):**
+   - 일반 danger(삭제/취소/제거) 버튼 빨강 = **`#EF4444`** (border #DC2626, hover #B91C1C). 공용 Button.tsx·ThemedButton·RA InvoicesPage 기준.
+   - `#FF6B6B` 는 **LiveOrders 스테이지 액션버튼 전용 팔레트**(#10B981/#9CA3AF/#F59E0B/#FF6B6B). 일반 danger 버튼에 쓰지 말 것 — 별개 계열.
+   - primary = `#635BFF`. 인라인 hex 남발 금지.
+4. **아이콘/이모지:** 대시보드·시스템 진입 아이콘 = **미니멀 기하 유니코드 글리프**(`▦ ◐ □ ◯ ◉ ≡ ● ▬`) — 이게 RA 표준. **이모지도 lucide도 아님. 유지.** 일반 감사의 "☰→lucide" 권고는 **틀림**. / 장식 컬러 이모지(🔒🟢⚠📦🔍 등) **금지** → 텍스트/기하 글리프. 빈 상태 = `DataTableEmpty` 순수 텍스트. / 단, 상품·카테고리 아이콘 데이터·이모지 피커·국기·텍스트 글리프(✓✕↺)·인쇄 보호 주석은 **기능이라 건드리지 말 것**.
+5. **구현 전 1회 실측 의무:** 색·컴포넌트를 "바꾸기" 전, 반드시 **RA 페이지(또는 공용 컴포넌트 정의)가 실제로 뭘 쓰는지 grep으로 확인**하고 맞춘다. 추측·일반팔레트 맹신 금지(2026-06-21 danger 빨강 오변경 교훈).
+
+**자동 강제:** `cd dev-backend && node scripts/check-design-guard.js` — 신규 로컬 styled.button/table·로컬 StatCard·장식 이모지·일반 danger #FF6B6B 를 잡는다. 배포 게이트(3/4)가 fail-closed 로 자동 실행(신규 위반 시 배포 차단). 기존 부채는 baseline(점진 교체 대상). 정식 변경이면 `--bless`. timezone-check / print-guard 와 동일 모델.
+
 ---
 
 ## 프로젝트 구조

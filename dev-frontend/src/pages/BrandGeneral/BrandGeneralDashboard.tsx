@@ -1095,7 +1095,7 @@ const BrandGeneralDashboard: React.FC = () => {
                   <h4>{t('brand:brandGeneralDashboard.royaltyForecast', 'Royalty Forecast (Monthly)')}</h4>
                 </OpsCardHeader>
                 {franchiseOps.revenue_forecast?.financial_redacted ? (
-                  <OpsEmpty>🔒 {t('brand:brandGeneralDashboard.forecastRedacted', 'Forecast hidden for your role')}</OpsEmpty>
+                  <OpsEmpty>{t('brand:brandGeneralDashboard.forecastRedacted', 'Forecast hidden for your role')}</OpsEmpty>
                 ) : (
                   <>
                     <ForecastValue>

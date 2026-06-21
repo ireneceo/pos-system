@@ -1,0 +1,119 @@
+{
+  "title": "Kupon",
+  "addCoupon": "Tambah Kupon",
+  "createCoupon": "Cipta Kupon",
+  "createFirstCoupon": "Cipta Kupon Pertama Anda",
+  "couponList": "Senarai Kupon",
+  "loading": "Memuatkan…",
+  "loadingCoupons": "Memuatkan kupon...",
+  "retry": "Cuba semula",
+  "noCouponsYet": "Belum ada kupon dicipta",
+  "noCouponsHint": "Belum ada kupon. Klik \"Tambah Kupon\" untuk mencipta satu bagi restoran anda.",
+  "noOwnerLinked": "Tiada jenama atau medan selera dipautkan ke akaun anda lagi.",
+  "linkedTo": "Dipautkan ke:",
+  "table": {
+    "code": "Kod",
+    "name": "Nama",
+    "discount": "Diskaun",
+    "appliesTo": "Terpakai untuk",
+    "target": "Sasaran",
+    "validUntil": "Sah Sehingga",
+    "usage": "Penggunaan",
+    "used": "Digunakan",
+    "status": "Status",
+    "actions": "Tindakan"
+  },
+  "status": {
+    "active": "Aktif",
+    "inactive": "Tidak Aktif",
+    "expired": "Tamat Tempoh"
+  },
+  "target": {
+    "all": "Semua",
+    "customers": "{{count}} Pelanggan",
+    "allCustomers": "Semua Pelanggan",
+    "specificCustomers": "Pelanggan Tertentu",
+    "membershipTiers": "Peringkat Keahlian"
+  },
+  "actions": {
+    "edit": "Sunting",
+    "activate": "Aktifkan",
+    "deactivate": "Nyahaktif",
+    "delete": "Padam",
+    "cancel": "Batal",
+    "save": "Simpan",
+    "saving": "Menyimpan…"
+  },
+  "scope": {
+    "allRestaurants": "Semua restoran ({{count}})",
+    "selected": "{{count}} dipilih"
+  },
+  "modal": {
+    "addTitle": "Tambah Kupon",
+    "editTitle": "Edit Kupon",
+    "createTitle": "Cipta Kupon Baharu",
+    "updateCoupon": "Kemas Kini Kupon"
+  },
+  "form": {
+    "code": "Kod",
+    "couponCode": "Kod Kupon",
+    "name": "Nama",
+    "discountType": "Jenis diskaun",
+    "discountTypeCap": "Jenis Diskaun",
+    "percentage": "Peratusan (%)",
+    "fixedAmountMyr": "Jumlah tetap (MYR)",
+    "fixedAmountRm": "Jumlah Tetap (RM)",
+    "value": "Nilai",
+    "discountValue": "Nilai Diskaun",
+    "minOrder": "Pesanan min.",
+    "minOrderAmount": "Jumlah Pesanan Minimum",
+    "maxDiscount": "Diskaun maks.",
+    "maxDiscountNa": "Diskaun maks. (tidak berkenaan)",
+    "maxDiscountForPercent": "Diskaun Maks (untuk %)",
+    "usageLimit": "Had penggunaan",
+    "status": "Status",
+    "validityPeriod": "Tempoh sah",
+    "validFromUntil": "Sah Dari — Sah Sehingga",
+    "applyTo": "Terpakai untuk",
+    "targetAudience": "Sasaran Audiens",
+    "description": "Penerangan",
+    "noCap": "Tiada had",
+    "noLimit": "Tiada had",
+    "unlimited": "Tanpa had",
+    "codePlaceholder": "SUMMER10",
+    "namePlaceholder": "Promosi musim panas",
+    "nameExample": "cth., Diskaun 10% Jualan Musim Panas",
+    "codeExample": "cth., SAVE10",
+    "descriptionPlaceholder": "Penerangan pilihan...",
+    "zero": "0"
+  },
+  "applyScope": {
+    "allRestaurants": "Semua restoran",
+    "inThisBrand": "dalam jenama ini",
+    "inThisFoodcourt": "dalam medan selera ini",
+    "selectedRestaurants": "Restoran dipilih",
+    "pickSpecific": "Pilih yang tertentu",
+    "noRestaurants": "Tiada restoran ditemui."
+  },
+  "customers": {
+    "searchPlaceholder": "Cari pelanggan mengikut nama atau telefon...",
+    "loading": "Memuatkan pelanggan...",
+    "none": "Tiada pelanggan ditemui",
+    "selected_one": "{{count}} pelanggan dipilih",
+    "selected_other": "{{count}} pelanggan dipilih"
+  },
+  "errors": {
+    "codeRequired": "Kod kupon diperlukan.",
+    "valueGreaterThanZero": "Nilai diskaun mesti lebih daripada 0.",
+    "selectRestaurant": "Pilih sekurang-kurangnya satu restoran.",
+    "saveFailed": "Gagal menyimpan kupon.",
+    "loadFailed": "Gagal memuatkan kupon",
+    "generic": "Ralat berlaku. Sila cuba lagi."
+  },
+  "delete": {
+    "title": "Padam kupon",
+    "groupMessage": "Padam kupon \"{{code}}\" daripada {{count}} restoran? Ini tidak boleh dibatalkan.",
+    "confirmMessage": "Adakah anda pasti mahu memadam kupon \"{{code}}\"?",
+    "linkedMessage": "Kupon \"{{code}}\" dipautkan ke QR Luaran: {{names}}. Memadam akan mengeluarkan diskaun rakan kongsi daripada QR tersebut (pesanan melalui QR itu tidak lagi akan menggunakan diskaun ini secara automatik). Teruskan?"
+  }
+}

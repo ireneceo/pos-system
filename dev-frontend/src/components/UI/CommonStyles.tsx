@@ -308,7 +308,7 @@ export const AlertMessage = styled.div<{
     content: '${props => {
       switch (props.variant) {
         case 'error': return '✕';
-        case 'warning': return '⚠';
+        case 'warning': return '!';
         case 'info': return 'ℹ';
         default: return '✓';
       }

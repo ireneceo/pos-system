@@ -289,11 +289,6 @@ const ToggleSlider = styled.span`
 
 // Modal now imported from common/Modal
 
-const WarningIcon = styled.div`
-  font-size: 48px;
-  text-align: center;
-  margin-bottom: 16px;
-`;
 
 const WarningText = styled.div`
   font-size: 18px;
@@ -591,7 +586,6 @@ const SecurityPage: React.FC = () => {
             </>
           }
         >
-          <WarningIcon>⚠️</WarningIcon>
           <WarningText>
             <strong>{t('admin:securityPage.areYouSureYouWantToLockAllActiveUserSessions')}</strong>
           </WarningText>

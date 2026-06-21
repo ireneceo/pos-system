@@ -933,7 +933,7 @@ const BrandSubscriptionsPage: React.FC = () => {
                         padding: '12px 14px', background: '#FFFBEB', border: '1px solid #F59E0B',
                         borderRadius: 8, color: '#92400E', fontSize: 13, marginTop: 8, lineHeight: 1.5
                       }}>
-                        ⚠ {t('brand:brandSubscriptionsPage.changeScheduledHint', 'The new plan will NOT take effect immediately. Current plan stays billable until the end of this cycle — the new plan activates on the next billing cycle date and the next invoice will reflect the new plan.')}
+                        {t('brand:brandSubscriptionsPage.changeScheduledHint', 'The new plan will NOT take effect immediately. Current plan stays billable until the end of this cycle — the new plan activates on the next billing cycle date and the next invoice will reflect the new plan.')}
                       </div>
                     )}
 

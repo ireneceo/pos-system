@@ -238,13 +238,11 @@ const ImportDataTab: React.FC<ImportDataTabProps> = ({ restaurantId }) => {
               <div style={{ fontSize: '14px', color: '#4B5563', textAlign: 'center' }}>
                 {file ? (
                   <>
-                    <div style={{ fontSize: '20px', marginBottom: '8px' }}>📄</div>
                     <strong style={{ color: '#1F2937' }}>{file.name}</strong>
                     <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>{(file.size / 1024).toFixed(1)} KB — Click to change</div>
                   </>
                 ) : (
                   <>
-                    <div style={{ fontSize: '20px', marginBottom: '8px' }}>📤</div>
                     <strong style={{ color: '#1F2937' }}>Click to upload CSV file</strong>
                     <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>Any column order. Max 5MB.</div>
                   </>
@@ -331,7 +329,7 @@ const ImportDataTab: React.FC<ImportDataTabProps> = ({ restaurantId }) => {
             {/* Warnings */}
             {!Object.values(mapping).includes('date') && (
               <div style={{ padding: '10px 14px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '6px', marginBottom: '12px', fontSize: '13px', color: '#991B1B' }}>
-                ⚠ "Order Date" is required. Please map one of your columns.
+                "Order Date" is required. Please map one of your columns.
               </div>
             )}
 

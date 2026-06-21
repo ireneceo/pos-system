@@ -250,7 +250,7 @@
     "cart": {
       "title": "장바구니",
       "col": {
-        "ingredient": "재료",
+        "ingredient": "재고 품목",
         "qty": "수량",
         "vendor": "공급업체",
         "unitPrice": "단가",
@@ -283,7 +283,7 @@
       "empty": "Cart가 비어 있습니다.",
       "failed": "PO 생성 실패"
     },
-    "tabMine": "내 재료",
+    "tabMine": "내 재고 품목",
     "tabCatalog": "공급업체 상품",
     "searchPlaceholder": "상품 검색...",
     "allSuppliers": "모든 공급업체",
@@ -298,7 +298,7 @@
     "cartEmpty": "카드를 클릭해 cart에 추가하세요.",
     "empty": {
       "mine": {
-        "title": "연결된 재료가 없습니다",
+        "title": "연결된 재고 품목 없음",
         "desc": "\"공급업체 상품\" 탭에서 상품을 클릭해 발주하면 자동으로 재고에 추가됩니다. 그 탭도 비어 있으면 먼저 브랜드나 공급처를 연결하세요(연결 방법은 공급업체 상품 탭 참고)."
       },
       "catalog": {

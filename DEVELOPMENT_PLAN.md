@@ -1,6 +1,24 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-21 #2 (**운영 피드백 Round2 — 발주 오너승인 + 위생 3건 — DEV·미배포**. IOI Mall Food Court 6/21 신규 support_tickets 재확인 후 "오프라인 빼고 다" 구현. 검증: 빌드 exit0, health 107/107, print-guard 8/8(re-bless), 발주승인 실API 17/17+통합 6/6, mount 3/3 클린. SW=3.69.)
+> **최종 업데이트:** 2026-06-21 #4 (**다른 역할 관리화면을 RA 디자인 기준에 맞춤 — 0위험 이모지 정리 — DEV·미배포**. RA=정돈 기준([[reference_ra_design_standard]]): 대시보드 아이콘=기하 글리프(이모지/lucide 아님·유지), 빈상태=텍스트만, 컬러 이모지 0. BG/FG/Admin 관리화면의 🔒/⚠/🟢🟡🔴 8지점만 제거(기하 글리프 보존). /검증 통과: hydration0·타임존신규0·build exit0·health 107/107·print-guard 8/8·i18n 0·서빙200. SW=3.71.)
+>
+> **이전 #3:** 전면 디자인 통일성 전수감사 + "눈에 보이는 것부터" 1차 수정(버튼 팔레트색·빈상태/랭킹 이모지·쿠폰 i18n·타임존 2건). SW=3.70.
+
+## ✅ 완료: 전면 디자인 통일성 전수감사 + 1차 수정 (2026-06-21 #3, DEV·미배포)
+
+> Irene "전수검사 — 모든 사용 루트, 글로벌 통일 컴포넌트 사용 여부" 지시. general-purpose 에이전트 6개 병렬 감사(모달/버튼/폼/이모지/레이아웃/타임존·i18n). **핵심 발견: 표준 컴포넌트는 글로벌 수준으로 갖춰졌으나 적용률이 낮음** — 표준 IconButton/ActionButton import 각 1곳뿐, 로컬 styled.button 338개(144파일), 공용 Card 컴포넌트 부재.
+
+| 항목 | 수정 | 상태 |
+|------|------|:----:|
+| 팔레트 밖 버튼색 | 파랑 #2563EB→#10B981, 잘못된 빨강 #EF4444/#DC2626→#FF6B6B, off-green #16A34A→#10B981 (5파일) | ✅ |
+| 빈상태/랭킹 이모지 | 🥇🥈🥉→텍스트 rank, 🍰/🔥/🤖 제거, 빈상태 이모지→lucide 아이콘 (13파일) | ✅ |
+| 쿠폰 2페이지 i18n | ManagerPromotionsPage+PromotionsPage 0%→완전 번역. promotions ns 신설+4언어 95키 | ✅ |
+| 타임존 2건 | CheckoutDisplay:384·SettingsPage:6024(print-neutral 표시) → getRestaurantTimezone | ✅ |
+| 프린터영역 타임존/이모지 | AutoPrintPreviewModal·thermalPrinter·POSTerminal·KitchenDisplay | flag-only 보류 |
+
+검증: build exit0(74초)+dev배포 · i18n:verify 0 error · health 107/107 · print-guard 8/8(보호파일 무변경). 기존 경고 1건(SupplierInvoiceSettingsPage:153 Badge variant=neutral, 범위 밖·미수정). **미수정 대규모(추가 지시 시): 버튼 338개·수제 table·StatCard·PageHeader 표준화 + 공용 Card 신설 + 모달/alert 81건 + native select 37건 + 잠금🔒 이모지 8파일.**
+
+---
 
 ## ✅ 완료: 운영 피드백 Round2 — 발주 오너 승인 + 위생 3건 (2026-06-21 #2, DEV·미배포)
 

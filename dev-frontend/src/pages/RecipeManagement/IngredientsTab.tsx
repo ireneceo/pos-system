@@ -214,7 +214,7 @@ const CostInput = styled.input`
 
 const CostSaveButton = styled.button`
   padding: 4px 8px;
-  background: #2563EB;
+  background: #10B981;
   color: white;
   border: none;
   border-radius: 4px;
@@ -222,7 +222,7 @@ const CostSaveButton = styled.button`
   cursor: pointer;
 
   &:hover {
-    background: #1D4ED8;
+    background: #059669;
   }
 `;
 
@@ -1014,7 +1014,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
       <ListControlsBar>
         <SearchInput
           type="text"
-          placeholder="Search ingredients..."
+          placeholder="Search stock items..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
@@ -1039,7 +1039,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
             </button>
           </div>
           <ThemedButton variant="primary" onClick={() => handleOpenModal(null)}>
-            New Ingredient
+            New Stock Item
           </ThemedButton>
         </div>
       </ListControlsBar>
@@ -1308,7 +1308,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
       <Modal
         isOpen={showModal}
         onClose={handleCloseModal}
-        title={selectedIngredient ? 'Edit Ingredient' : 'New Ingredient'}
+        title={selectedIngredient ? 'Edit Stock Item' : 'New Stock Item'}
         size="medium"
         footer={(
           <>

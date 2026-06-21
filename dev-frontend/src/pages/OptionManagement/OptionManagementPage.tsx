@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
+import { Settings } from 'lucide-react';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { useMenu } from '../../contexts/MenuContext';
 import { Modal, ModalButton } from '../../components/UI/Modal';
@@ -74,7 +75,7 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
           background: #EF4444;
           color: white;
           &:hover {
-            background: #DC2626;
+            background: #B91C1C;
           }
         `;
       case 'secondary':
@@ -516,7 +517,7 @@ const OptionManagementPage: React.FC = () => {
         <Content>
           {optionGroups.length === 0 ? (
             <EmptyState>
-              <EmptyIcon>⚙️</EmptyIcon>
+              <EmptyIcon><Settings size={48} color="#9CA3AF" /></EmptyIcon>
               <EmptyTitle>{t('menu:optionManagementPage.noOptionGroupsYet')}</EmptyTitle>
               <EmptyDescription>
                 Create your first option group to add customizable options to your menu items

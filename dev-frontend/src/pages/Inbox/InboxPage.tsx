@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { Inbox } from 'lucide-react';
 import { fetchInbox, markNoticeRead, markAllRead, InboxItem, InboxFilter } from '../../components/Inbox/inboxApi';
 import InboxItemCard from '../../components/Inbox/InboxItemCard';
 
@@ -112,7 +113,7 @@ const InboxPage: React.FC = () => {
           <Skeleton>{[0,1,2,3,4,5].map(i => <SkeletonRow key={i} />)}</Skeleton>
         ) : filtered.length === 0 ? (
           <Empty>
-            <EmptyIcon aria-hidden="true">📭</EmptyIcon>
+            <EmptyIcon aria-hidden="true"><Inbox size={48} color="#9CA3AF" /></EmptyIcon>
             <EmptyTitle>{t('inbox.empty.title', "You're all caught up!")}</EmptyTitle>
             <EmptyDesc>
               {search.trim()

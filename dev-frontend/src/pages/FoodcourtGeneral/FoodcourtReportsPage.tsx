@@ -1232,7 +1232,7 @@ const FoodcourtReportsPage: React.FC = () => {
                     return (
                       <DataTableRow key={index} style={{ backgroundColor: index < 3 ? (index === 0 ? '#FFF9E6' : index === 1 ? '#F0F9FF' : '#F0FDF4') : 'transparent' }}>
                         <DataTableCell data-label={t('foodcourt:foodcourtReportsPage.rank')} style={{ fontWeight: 600, color: index < 3 ? (index === 0 ? '#FFB800' : index === 1 ? '#0EA5E9' : '#6FCF97') : '#0A2540' }}>
-                          #{index + 1}{index === 0 && ' 🥇'}{index === 1 && ' 🥈'}{index === 2 && ' 🥉'}
+                          #{index + 1}
                         </DataTableCell>
                         <DataTableCell data-label={t('foodcourt:foodcourtReportsPage.menuItem')} style={{ fontWeight: 600 }}>{menu.name}</DataTableCell>
                         <DataTableCell data-label={t('foodcourt:foodcourtReportsPage.category')}><span style={{ padding: '2px 6px', borderRadius: '4px', fontSize: '11px', backgroundColor: '#F1F4F8', color: '#4B5563' }}>{menu.category}</span></DataTableCell>

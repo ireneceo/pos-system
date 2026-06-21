@@ -6,6 +6,9 @@ import { formatCurrency } from '../../utils/currency';
 import { getAuthToken } from '../../utils/auth';
 import { COUNTRIES, formatPhoneNumber } from '../../utils/phoneUtils';
 import { useTranslation } from 'react-i18next';
+import { useStore } from '../../contexts/StoreContext';
+import { getRestaurantTimezone } from '../../utils/timezone';
+import { ShoppingCart } from 'lucide-react';
 
 const fadeIn = keyframes`from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}`;
 
@@ -159,6 +162,8 @@ interface CustomerInfo { id: number; name: string; phone: string; points: number
 
 const CheckoutDisplayPage: React.FC = () => {
   const { t } = useTranslation('pos');
+  const { operationSettings } = useStore();
+  const timezone = getRestaurantTimezone(operationSettings);
   const { restaurantId } = useParams<{ restaurantId: string }>();
   const [phoneNumber, setPhoneNumber] = useState('');
   const [countryCode, setCountryCode] = useState('MY');
@@ -381,7 +386,7 @@ const CheckoutDisplayPage: React.FC = () => {
                 <div style={{ color: '#0A2540', fontWeight: 500 }}>{cart.orderInfo.sourceLabel === 'mobile' ? 'Mobile' : cart.orderInfo.sourceLabel === 'pos-terminal' ? 'POS Terminal' : cart.orderInfo.sourceLabel === 'floor-plan' ? 'Floor Plan' : 'POS'}</div>
                 {cart.orderInfo.createdAt && (<>
                   <div style={{ color: '#6B7280' }}>{t('pos:checkoutDisplayPage.time', 'Time')}</div>
-                  <div style={{ color: '#0A2540', fontWeight: 500 }}>{new Date(cart.orderInfo.createdAt).toLocaleString()}</div>
+                  <div style={{ color: '#0A2540', fontWeight: 500 }}>{new Date(cart.orderInfo.createdAt).toLocaleString('en-MY', { timeZone: timezone })}</div>
                 </>)}
                 <div style={{ color: '#6B7280' }}>{t('pos:checkoutDisplayPage.payment', 'Payment')}</div>
                 <div style={{ color: cart.orderInfo.paymentStatus === 'completed' ? '#10B981' : '#F59E0B', fontWeight: 600, textTransform: 'capitalize' }}>{cart.orderInfo.paymentStatus || 'pending'}</div>
@@ -522,7 +527,7 @@ const CheckoutDisplayPage: React.FC = () => {
             </>
           ) : (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#6B7280' }}>
-              <div style={{ fontSize: '40px', marginBottom: '12px', opacity: 0.3 }}>🛒</div>
+              <div style={{ marginBottom: '12px', opacity: 0.3 }}><ShoppingCart size={40} /></div>
               <div style={{ fontSize: '16px' }}>{t('pos:checkoutDisplayPage.waitingForOrder')}</div>
               <div style={{ fontSize: '13px', marginTop: '4px' }}>{t('pos:checkoutDisplayPage.itemsWillAppearHereAsTheCashierAddsThem')}</div>
             </div>

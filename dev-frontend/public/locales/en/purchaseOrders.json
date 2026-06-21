@@ -250,7 +250,7 @@
     "cart": {
       "title": "Cart",
       "col": {
-        "ingredient": "Ingredient",
+        "ingredient": "Stock Item",
         "qty": "Qty",
         "vendor": "Vendor",
         "unitPrice": "Unit Price",
@@ -283,7 +283,7 @@
       "empty": "Cart is empty.",
       "failed": "Failed to create POs"
     },
-    "tabMine": "My Ingredients",
+    "tabMine": "My Stock Items",
     "tabCatalog": "Supplier Catalog",
     "searchPlaceholder": "Search products...",
     "allSuppliers": "All suppliers",
@@ -298,7 +298,7 @@
     "cartEmpty": "Click a card to add to cart.",
     "empty": {
       "mine": {
-        "title": "No linked ingredients",
+        "title": "No linked stock items",
         "desc": "Open the Supplier Catalog tab and click a product to order it — it’s added to your inventory automatically. If that tab is empty too, connect a brand or supplier first (see the Supplier Catalog tab for how)."
       },
       "catalog": {

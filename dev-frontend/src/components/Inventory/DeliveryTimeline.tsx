@@ -207,7 +207,6 @@ const DeliveryTimeline: React.FC<DeliveryTimelineProps> = ({
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
           {(carrier_name || carrier_code) && (
             <CarrierBadge>
-              <span>📦</span>
               {carrier_name || carrier_code}
               {tracking_number ? ` · ${tracking_number}` : ''}
             </CarrierBadge>

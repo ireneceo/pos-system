@@ -250,7 +250,7 @@
     "cart": {
       "title": "购物车",
       "col": {
-        "ingredient": "食材",
+        "ingredient": "库存项目",
         "qty": "数量",
         "vendor": "供应商",
         "unitPrice": "单价",
@@ -283,7 +283,7 @@
       "empty": "购物车为空。",
       "failed": "创建失败"
     },
-    "tabMine": "我的食材",
+    "tabMine": "我的库存项目",
     "tabCatalog": "供应商目录",
     "searchPlaceholder": "搜索产品...",
     "allSuppliers": "所有供应商",
@@ -298,7 +298,7 @@
     "cartEmpty": "点击卡片加入购物车。",
     "empty": {
       "mine": {
-        "title": "没有已链接的食材",
+        "title": "无关联库存项目",
         "desc": "在“供应商产品”标签中点击产品下单，会自动加入库存。如果该标签也是空的，请先连接品牌或供应商（连接方法见供应商产品标签）。"
       },
       "catalog": {

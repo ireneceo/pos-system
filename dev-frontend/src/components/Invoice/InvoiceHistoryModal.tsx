@@ -1,6 +1,7 @@
 import React from 'react';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
+import { History } from 'lucide-react';
 import { Modal as CommonModal } from '../UI';
 import { useStore } from '../../contexts/StoreContext';
 import { formatDateTime } from '../../utils/timezone';
@@ -45,7 +46,7 @@ const InvoiceHistoryModal: React.FC<Props> = ({ isOpen, onClose, invoiceNumber, 
     >
       {sorted.length === 0 ? (
         <Empty>
-          <EmptyIcon aria-hidden="true">📜</EmptyIcon>
+          <EmptyIcon aria-hidden="true"><History size={48} color="#9CA3AF" /></EmptyIcon>
           <EmptyTitle>{t('invoiceHistory.empty', 'No modifications recorded yet')}</EmptyTitle>
           <EmptyDesc>{t('invoiceHistory.emptyDesc', 'Edits to this invoice will appear here as a timeline.')}</EmptyDesc>
         </Empty>

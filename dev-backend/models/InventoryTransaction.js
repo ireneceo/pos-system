@@ -26,7 +26,12 @@ InventoryTransaction.init({
   },
   ingredient_id: {
     type: DataTypes.INTEGER,
-    allowNull: false
+    allowNull: true
+  },
+  product_ingredient_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'BG 재고아이템(ProductIngredient) 거래. ingredient_id 와 둘 중 하나만'
   },
   transaction_type: {
     type: DataTypes.ENUM(
