@@ -330,6 +330,9 @@ const adminSupplierInvitationsRouter = require('./routes/admin-supplier-invitati
 const supplierDirectoryRouter = require('./routes/supplier-directory');
 // Sprint 3 — Supply Chain Design 3 (Purchase orders + ingredient ↔ seller mapping)
 const purchaseOrdersRouter = require('./routes/purchase-orders');
+// 발주 오너 승인 (2026-06-21) — 멀티매장 오너 scope. purchaseOrdersRouter "앞"에 마운트하여
+// /purchase-orders/:id/approve|reject + /pending-approval 이 requireBuyerRole 을 건너뛰게 함.
+const purchaseOrdersApprovalRouter = require('./routes/purchase-orders-approval');
 // Phase 2 (2026-04-27) — Buyer-side seller picker
 const buyerSellersRouter = require('./routes/buyer-sellers');
 // Sprint 5 (2026-04-27) — Carrier catalog (delivery tracking)
@@ -476,6 +479,8 @@ app.use('/api/seller-orders', sellerOrdersRouter);  // routes are relative insid
 // Sprint 2 — Supply Chain Design 2
 app.use('/api', supplierDirectoryRouter);  // exposes /api/supplier-directory + /api/supplier-contracts
 // Sprint 3 — Supply Chain Design 3
+// 발주 오너 승인 라우터를 먼저 마운트(승인/반려/대기큐가 requireBuyerRole 일괄가드를 건너뛰도록)
+app.use('/api', purchaseOrdersApprovalRouter);  // /api/purchase-orders/{pending-approval,:id/approve,:id/reject}
 app.use('/api', purchaseOrdersRouter);  // exposes /api/purchase-orders/*
 // Phase 2 (2026-04-27) — Buyer-side seller picker
 app.use('/api', buyerSellersRouter);  // exposes /api/buyer-sellers

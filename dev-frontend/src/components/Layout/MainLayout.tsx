@@ -1724,10 +1724,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         items: [
           { path: '/pos/owner/invoices', label: t('nav.invoices'), hasPending: badgeCounts.invoices > 0, visible: isRouteAllowed('/pos/owner/invoices') },
           { path: '/pos/owner/performance', label: t('nav.performance'), visible: isRouteAllowed('/pos/owner/performance') },
+          { path: '/pos/owner/po-approvals', label: t('nav.poApprovals', 'PO Approvals'), hasPending: (badgeCounts.poApprovals || 0) > 0, visible: isRouteAllowed('/pos/owner/po-approvals') },
           { path: '/pos/purchase-orders', label: t('nav.purchaseOrder', 'Purchase Order'), visible: isRouteAllowed('/pos/purchase-orders') },
           { path: '/pos/purchase-orders/history', label: t('nav.orderHistory', 'Order History'), visible: isRouteAllowed('/pos/purchase-orders') },
         ].filter(i => i.visible !== false),
-        visible: isRouteAllowed('/pos/owner/invoices') || isRouteAllowed('/pos/owner/performance') || isRouteAllowed('/pos/purchase-orders')
+        visible: isRouteAllowed('/pos/owner/invoices') || isRouteAllowed('/pos/owner/performance') || isRouteAllowed('/pos/owner/po-approvals') || isRouteAllowed('/pos/purchase-orders')
       },
       {
         id: 'reports', label: t('nav.reports', 'Reports'), icon: <TrendingUp />,

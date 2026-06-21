@@ -36,55 +36,8 @@ const { authenticateToken } = require('../middleware/auth');
 const { requireBuyerRole } = require('../middleware/buyerScope');
 const { sanitizeString } = require('../middleware/validation');
 const { appendTrackingEvent, emitPoEvent } = require('../services/poRealtimeService');
-const { sendNotificationBatch, getSupplierAdminIds, getBrandManagerIds, getFoodcourtManagerIds } = require('../utils/notificationService');
-
-const FRONTEND_URL = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com');
-
-/**
- * Notify seller (Supplier Admin / Brand General / Foodcourt General) when a new PO is submitted.
- * Sends email via sendNotificationBatch with category 'seller_order_received'.
- * Recipients honor their notification preferences. Errors do not block PO submit.
- */
-async function fireSellerSubmittedNotification(po) {
-  try {
-    let userIds = [];
-    if (po.seller_type === 'supplier' && po.seller_entity_id) {
-      userIds = await getSupplierAdminIds(po.seller_entity_id);
-    } else if (po.seller_type === 'brand' && po.seller_entity_id) {
-      userIds = await getBrandManagerIds(po.seller_entity_id);
-    } else if (po.seller_type === 'foodcourt' && po.seller_entity_id) {
-      userIds = await getFoodcourtManagerIds(po.seller_entity_id);
-    }
-    if (userIds.length === 0) return;
-    let buyerName = 'A buyer';
-    try {
-      const Restaurant = require('../models/Restaurant');
-      const Brand = require('../models/Brand');
-      const Foodcourt = require('../models/Foodcourt');
-      if (po.entity_type === 'restaurant') {
-        const r = await Restaurant.findByPk(po.entity_id, { attributes: ['name'] });
-        if (r?.name) buyerName = r.name;
-      } else if (po.entity_type === 'brand') {
-        const b = await Brand.findByPk(po.entity_id, { attributes: ['name'] });
-        if (b?.name) buyerName = b.name;
-      } else if (po.entity_type === 'foodcourt') {
-        const f = await Foodcourt.findByPk(po.entity_id, { attributes: ['name'] });
-        if (f?.name) buyerName = f.name;
-      }
-    } catch (_) { /* keep default */ }
-    const { sellerOrderReceivedEmail } = require('../utils/notificationTemplates');
-    const mail = sellerOrderReceivedEmail({
-      buyerName,
-      poNumber: po.po_number,
-      total: po.total_amount,
-      currency: po.currency || 'MYR',
-      link: `${FRONTEND_URL}/pos/seller-orders`
-    });
-    await sendNotificationBatch(userIds, 'seller_order_received', mail);
-  } catch (e) {
-    console.error('[purchase-orders] fireSellerSubmittedNotification error:', e.message);
-  }
-}
+const { isApprovalRequiredForRestaurant } = require('../utils/poOwnerApproval');
+const { fireSellerSubmittedNotification, fireOwnerApprovalPendingNotification } = require('../services/poNotifications');
 
 // Path-level guards so unrelated /api/* fall-throughs aren't blocked by buyer-role.
 router.use('/purchase-orders', authenticateToken, requireBuyerRole);
@@ -555,19 +508,43 @@ router.post('/purchase-orders/:id/submit', async (req, res) => {
         e.code = 'EMPTY_ITEMS';
         throw e;
       }
+      // Owner approval gate — restaurant POs only, when an Owner is connected
+      // and operation_settings.requirePoOwnerApproval !== false (default ON).
+      let needsApproval = false;
+      if (locked.entity_type === 'restaurant') {
+        const restaurant = await Restaurant.findByPk(locked.entity_id, {
+          attributes: ['id', 'operation_settings'], transaction: t
+        });
+        needsApproval = await isApprovalRequiredForRestaurant(restaurant);
+      }
       const now = new Date();
-      const tracking = appendTrackingEvent(locked, 'submitted');
-      await locked.update({
-        status: 'submitted',
-        submitted_at: now,
-        tracking_info: tracking
-      }, { transaction: t });
+      if (needsApproval) {
+        const tracking = appendTrackingEvent(locked, 'pending_approval', 'Awaiting Owner approval');
+        await locked.update({
+          status: 'pending_approval',
+          approval_required: true,
+          tracking_info: tracking
+        }, { transaction: t });
+      } else {
+        const tracking = appendTrackingEvent(locked, 'submitted');
+        await locked.update({
+          status: 'submitted',
+          submitted_at: now,
+          tracking_info: tracking
+        }, { transaction: t });
+      }
       return locked;
     });
-    emitPoEvent(req, po, 'seller-order-created');
 
-    // Notify seller asynchronously — don't block response
-    setImmediate(() => fireSellerSubmittedNotification(po));
+    if (po.status === 'pending_approval') {
+      // Do NOT notify seller yet — wait for Owner approval. Notify Owner instead.
+      emitPoEvent(req, po, 'seller-order-updated');
+      setImmediate(() => fireOwnerApprovalPendingNotification(po));
+    } else {
+      emitPoEvent(req, po, 'seller-order-created');
+      // Notify seller asynchronously — don't block response
+      setImmediate(() => fireSellerSubmittedNotification(po));
+    }
 
     res.json({ success: true, data: po });
   } catch (err) {

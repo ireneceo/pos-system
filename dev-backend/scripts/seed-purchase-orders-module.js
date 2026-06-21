@@ -9,7 +9,7 @@ const MODULE = {
   description: 'Create and manage purchase orders to suppliers',
   category: 'basic',
   target_user_type: 'all',
-  ui_routes: ['/pos/purchase-orders'],
+  ui_routes: ['/pos/purchase-orders', '/pos/purchase-orders/history', '/pos/owner/po-approvals'],
   features: ['Create PO', 'Receive', 'PAR Level suggestions', 'Status tracking'],
   dependencies: ['buyer_supplier_directory', 'buyer_supplier_contracts']
 };

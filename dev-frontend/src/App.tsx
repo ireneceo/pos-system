@@ -188,6 +188,7 @@ const OwnerInvoicesPage = React.lazy(() => import('./pages/Owner/OwnerInvoicesPa
 const OwnerNoticesPage = React.lazy(() => import('./pages/Owner/NoticesPage'));
 const OwnerSystemInquiryPage = React.lazy(() => import('./pages/Owner/OwnerSystemInquiryPage'));
 const OwnerOperationInquiryPage = React.lazy(() => import('./pages/Owner/OwnerOperationInquiryPage'));
+const OwnerPoApprovalsPage = React.lazy(() => import('./pages/Owner/OwnerPoApprovalsPage'));
 
 // Manager Role Specific Pages
 const FoodcourtManagement = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtManagement'));
@@ -769,6 +770,11 @@ function App() {
                       <Route path="/pos/owner/invoices" element={
                         <ProtectedRoute requiredRole={['Restaurant Owner']}>
                           <OwnerInvoicesPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/owner/po-approvals" element={
+                        <ProtectedRoute requiredRole={['Restaurant Owner']}>
+                          <OwnerPoApprovalsPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/owner/notices" element={

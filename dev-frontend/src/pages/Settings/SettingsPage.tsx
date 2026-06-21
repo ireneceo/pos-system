@@ -669,6 +669,7 @@ const SettingsPage: React.FC = () => {
   const requirePinForDiscountRef = useRef<AutoSaveHandle>(null);  // #5 할인 PIN 승인 토글
   const requireVoidPinRef = useRef<AutoSaveHandle>(null);  // 삭제/취소 PIN 승인 토글 (손실방지)
   const requireCancelReasonRef = useRef<AutoSaveHandle>(null);  // 취소/삭제 사유 off|optional|required
+  const requirePoOwnerApprovalRef = useRef<AutoSaveHandle>(null);  // 발주 오너 승인 (오너 연결 시 기본 ON)
   const mobileOrderQuickOrderRef = useRef<AutoSaveHandle>(null);
   const mobileOrderShowFeaturedRef = useRef<AutoSaveHandle>(null);
   const mobileOrderShowPopularRef = useRef<AutoSaveHandle>(null);
@@ -3720,6 +3721,30 @@ const SettingsPage: React.FC = () => {
                     </div>
                   </AutoSaveField>
                 </div>
+
+                {/* 발주 오너 승인 — 오너가 연결된 매장에서 발주를 공급처로 보내기 전 오너 승인 필요. 오너 연결 시 기본 ON. */}
+                <Toggle style={{ marginTop: '4px' }}>
+                  <div style={{ flex: 1 }}>
+                    <ToggleLabel style={{ marginBottom: '4px' }}>{t('settings:operations.requirePoOwnerApprovalLabel', { defaultValue: 'Require Owner approval for purchase orders' })}</ToggleLabel>
+                    <p style={{ fontSize: '12px', color: '#4B5563', margin: 0 }}>
+                      {t('settings:operations.requirePoOwnerApprovalDesc', { defaultValue: 'When on and an Owner is connected, purchase orders need Owner approval before they are sent to the supplier. Default on when an Owner is connected.' })}
+                    </p>
+                  </div>
+                  <AutoSaveField ref={requirePoOwnerApprovalRef} onSave={handleSave} type="toggle">
+                    <ToggleSwitch>
+                      <ToggleInput
+                        type="checkbox"
+                        checked={(operationSettings as any).requirePoOwnerApproval !== false}
+                        onChange={(e) => {
+                          const v = e.target.checked;
+                          setOperationSettings(prev => ({ ...prev, requirePoOwnerApproval: v } as any));
+                          requirePoOwnerApprovalRef.current?.triggerSave();
+                        }}
+                      />
+                      <ToggleSlider />
+                    </ToggleSwitch>
+                  </AutoSaveField>
+                </Toggle>
               </SettingsCard>
 
               <SettingsCard>

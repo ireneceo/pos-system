@@ -17,7 +17,7 @@ const PurchaseOrder = sequelize.define('PurchaseOrder', {
 
   status: {
     type: DataTypes.ENUM(
-      'draft', 'submitted', 'confirmed', 'shipped',
+      'draft', 'pending_approval', 'submitted', 'confirmed', 'shipped',
       'in_transit',
       'delivered', 'partial_received', 'received',
       'cancelled', 'closed', 'delivery_failed'
@@ -57,7 +57,15 @@ const PurchaseOrder = sequelize.define('PurchaseOrder', {
   // External supplier invoice upload (manual)
   external_invoice_url: { type: DataTypes.TEXT, allowNull: true, comment: 'Uploaded invoice file URL (external supplier only)' },
   external_invoice_filename: { type: DataTypes.STRING(255), allowNull: true },
-  external_invoice_uploaded_at: { type: DataTypes.DATE, allowNull: true }
+  external_invoice_uploaded_at: { type: DataTypes.DATE, allowNull: true },
+
+  // Owner approval workflow (2026-06-21) — restaurant POs gated on connected Owner approval
+  approval_required: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false, comment: 'Snapshot at submit: this PO required Owner approval' },
+  approved_by_user_id: { type: DataTypes.INTEGER, allowNull: true, comment: 'Owner who approved (User.id)' },
+  approved_at: { type: DataTypes.DATE, allowNull: true },
+  rejected_by_user_id: { type: DataTypes.INTEGER, allowNull: true, comment: 'Owner who rejected (User.id)' },
+  rejected_at: { type: DataTypes.DATE, allowNull: true },
+  rejected_reason: { type: DataTypes.TEXT, allowNull: true }
 }, {
   tableName: 'purchase_orders',
   timestamps: true,

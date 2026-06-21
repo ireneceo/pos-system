@@ -538,6 +538,67 @@ function sellerOrderReceivedEmail({ buyerName, poNumber, total, currency, link }
 }
 
 /**
+ * PO Approval Pending — sent to connected Owner when a restaurant PO awaits approval (2026-06-21).
+ */
+function poApprovalPendingEmail({ buyerName, poNumber, total, currency, link }) {
+  const title = 'Purchase Order Awaiting Your Approval';
+  const safeBuyer = (buyerName || 'Your restaurant').toString().slice(0, 120);
+  const safePo = (poNumber || '—').toString().slice(0, 80);
+  const body = `
+    <p style="color:#374151;font-size:16px;margin:0 0 16px;">
+      <strong>${safeBuyer}</strong> has created a purchase order that needs your approval before it is sent to the supplier.
+    </p>
+    ${infoTable(
+      infoRow('PO Number', safePo) +
+      infoRow('Restaurant', safeBuyer) +
+      infoRow('Total', `<span style="color:${BRAND_COLOR};font-weight:700;">${fmtMoney(total, currency)}</span>`) +
+      infoRow('Status', '<span style="color:#F59E0B;font-weight:600;">Awaiting Owner Approval</span>')
+    )}
+    <p style="color:#6B7280;font-size:14px;margin:0 0 16px;line-height:1.6;">
+      Please review and approve or reject this order. It will only be sent to the supplier after your approval.
+    </p>
+    ${ctaButton('Review Order', link || `${BASE_URL}/pos/owner/po-approvals`)}`;
+
+  return withRenderMeta({
+    subject: `PO ${safePo} needs your approval — ${safeBuyer}`,
+    html: wrapTemplate(title, body, 'en'),
+    text: `Purchase order ${safePo} from ${safeBuyer} (${fmtMoney(total, currency)}) is awaiting your approval.`
+  }, title, body, 'en');
+}
+
+/**
+ * PO Approval Result — sent to the PO creator when the Owner approves or rejects (2026-06-21).
+ */
+function poApprovalResultEmail({ poNumber, approved, reason, total, currency, link }) {
+  const safePo = (poNumber || '—').toString().slice(0, 80);
+  const title = approved ? 'Purchase Order Approved' : 'Purchase Order Rejected';
+  const statusHtml = approved
+    ? '<span style="color:#10B981;font-weight:600;">Approved — sent to supplier</span>'
+    : '<span style="color:#FF6B6B;font-weight:600;">Rejected — returned to draft</span>';
+  const reasonRow = (!approved && reason)
+    ? infoRow('Reason', (reason || '').toString().slice(0, 300))
+    : '';
+  const body = `
+    <p style="color:#374151;font-size:16px;margin:0 0 16px;">
+      Your purchase order <strong>${safePo}</strong> has been
+      <strong>${approved ? 'approved' : 'rejected'}</strong> by the Owner.
+    </p>
+    ${infoTable(
+      infoRow('PO Number', safePo) +
+      infoRow('Total', `<span style="color:${BRAND_COLOR};font-weight:700;">${fmtMoney(total, currency)}</span>`) +
+      infoRow('Status', statusHtml) +
+      reasonRow
+    )}
+    ${ctaButton('View Order', link || `${BASE_URL}/pos/purchase-orders/history`)}`;
+
+  return withRenderMeta({
+    subject: `${title} — ${safePo}`,
+    html: wrapTemplate(title, body, 'en'),
+    text: `Purchase order ${safePo} has been ${approved ? 'approved and sent to the supplier' : 'rejected' + (reason ? ` (${reason})` : '')}.`
+  }, title, body, 'en');
+}
+
+/**
  * Trade Invoice Created — sent to Buyer (Restaurant/Brand/Foodcourt) when supplier issues a trade invoice.
  */
 function tradeInvoiceCreatedEmail({ sellerName, invoiceNumber, total, currency, dueDate, link, timezone }) {
@@ -789,6 +850,8 @@ module.exports = {
   supplierContractTerminatedEmail,
   // Sprint 4 — Supply Chain Order Lifecycle
   sellerOrderReceivedEmail,
+  poApprovalPendingEmail,
+  poApprovalResultEmail,
   tradeInvoiceCreatedEmail,
   tradeInvoicePaidEmail,
   monthlySoaEmail,

@@ -1009,3 +1009,44 @@ F-3에서 예고한 마이그레이션이 Sprint 7에서 완료됨:
 
 **상세 설계**: `docs/SUPPLY_CHAIN_SPRINT_7.md`
 
+
+---
+
+## G. 오너 승인 워크플로우 (2026-06-21, with MIN Cafe 발주관리 추가요청 #2)
+
+> 운영 피드백(IOI Mall Food Court, ticket 6/21 05:32): "레스토랑 발주를 오너가 확인·승인하고 발주완료 처리하는 과정. 오너 연결 시 기본 ON, 설정으로 on/off." 🔒 인쇄·결제 코드 무접촉.
+
+### G-1. 단일소스 감사 (요청 #1 결과)
+레스토랑·BG·FG 발주는 **이미 단일 컴포넌트/단일 백엔드**다 — "작은 거 하나 고치면 같이 수정"은 구조적으로 보장됨:
+- 프론트: `pages/PurchaseOrders/{NewPurchaseOrderPage,PurchaseOrdersPage,PurchaseOrderDetailPage}.tsx` 한 세트. 역할 분기는 *구매자 엔티티 resolve*(`NewPurchaseOrderPage:506~516`)와 *인보이스 리다이렉트*(`DetailPage:432~435`)뿐, 발주 기능 자체엔 분기 없음.
+- 백엔드: `purchase-orders-crud.js`/`-workflow.js` 전부 `req.buyerEntity`(역할→entity_type 단일 resolve, `buyerScope` 미들웨어) 기반. PO 모델 `entity_type`(restaurant/brand/foodcourt)로 통합. BG 전용 생성·제출 분기 없음(감사 완료).
+- 차이는 BG가 브랜드제품을 발주처로 갖는 것뿐(데이터), 코드 아님.
+
+### G-2. 승인 흐름
+```
+draft ──submit──▶ (오너승인 ON & 오너연결) pending_approval ──오너 승인──▶ submitted(→판매자)
+                                              └──오너 반려──▶ draft (rejected_reason)
+        (OFF 또는 오너 미연결) ───────────────────────────────▶ submitted (기존 동작)
+```
+- 오너 연결 = `restaurant_managers.relationship_type='ownership'` 행 존재. 승인 주체 = 그 `manager_id`(Restaurant Owner). 다수 오너면 누구나 승인 가능.
+- BG/FG 발주(brand/foodcourt buyer)는 오너 개념 없음 → 항상 기존 즉시 submit.
+
+### G-3. 설정
+- `operation_settings.requirePoOwnerApproval ∈ true|false`. **오너 연결 시 기본 ON**(키 미설정이면 오너 연결 여부로 effective 결정), 미연결이면 무효.
+- `utils/settingsGuard.js` `OPERATION_SETTINGS_ALLOWED_KEYS` 에 `requirePoOwnerApproval` 추가(anti-wipe 필수).
+- 위치: SettingsPage 발주/운영 섹션 토글(세그먼트, 표준 컴포넌트).
+
+### G-4. 모델 변경 (멱등 마이그 + deploy 9a-2 등록)
+- `purchase_orders.status` ENUM 에 `pending_approval` 추가(draft 다음 논리 위치).
+- 신규 컬럼: `approval_required`(BOOLEAN, 제출 시점 스냅샷), `approved_by_user_id`(INT null), `approved_at`(DATE null), `rejected_reason`(TEXT null), `rejected_by_user_id`(INT null), `rejected_at`(DATE null).
+
+### G-5. API
+- `POST /purchase-orders/:id/submit` — 레스토랑 buyer + 오너연결 + 설정 ON 이면 `pending_approval`(판매자 통지 보류, 오너 통지). 그 외 기존대로 `submitted`.
+- `POST /purchase-orders/:id/approve` — 오너 전용(ownership 검증). pending_approval→submitted + 판매자 통지(기존 fireSellerSubmittedNotification 재사용). approved_by/at 기록.
+- `POST /purchase-orders/:id/reject` — 오너 전용. pending_approval→draft + rejected_reason + 레스토랑 통지.
+- 알림 카테고리 추가: `po_approval_pending`(→오너), `po_approval_result`(→레스토랑 작성자).
+
+### G-6. 프론트
+- 레스토랑: 발주 리스트/상세에 `pending_approval` 상태 배지("오너 승인 대기") + 작성자에게 반려 사유 표시.
+- 오너: 발주 승인 큐(표준 DataTable) + 승인(ConfirmModal)/반려(사유 Modal). 사이드바 배지(badgeCounts) 선택.
+- 통일 컴포넌트 전면 사용(Modal/ConfirmModal/FormGroup/DataTable/StatusBadge/ActionButton).

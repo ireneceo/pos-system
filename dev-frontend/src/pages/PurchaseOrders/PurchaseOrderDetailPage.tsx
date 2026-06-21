@@ -72,7 +72,7 @@ const EmbeddedFooter = styled.div`
   z-index: 1;
 `;
 
-type POStatus = 'draft' | 'submitted' | 'confirmed' | 'shipped' | 'in_transit' | 'delivered' | 'partial_received' | 'received' | 'cancelled' | 'closed' | 'delivery_failed';
+type POStatus = 'draft' | 'pending_approval' | 'submitted' | 'confirmed' | 'shipped' | 'in_transit' | 'delivered' | 'partial_received' | 'received' | 'cancelled' | 'closed' | 'delivery_failed';
 
 // Sprint 7: discrepancy reasons
 type DiscrepancyReason = null | 'short' | 'damaged' | 'wrong_item' | 'pending';
@@ -113,6 +113,9 @@ interface PODetail {
   received_at?: string | null;
   cancelled_at?: string | null;
   cancellation_reason?: string | null;
+  rejected_reason?: string | null;
+  rejected_at?: string | null;
+  approval_required?: boolean;
   tracking_number?: string | null;
   items: POItem[];
 }
@@ -402,6 +405,7 @@ const TotalsBox = styled.div`
 
 const StatusVariantMap: Record<POStatus, 'success' | 'warning' | 'error' | 'info'> = {
   draft: 'info',
+  pending_approval: 'warning',
   closed: 'success',
   delivery_failed: 'error',
   in_transit: 'warning',
@@ -1016,6 +1020,23 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
           </div>
         ) : !detail ? null : (
           <>
+            {detail.status === 'pending_approval' && (
+              <div style={{
+                background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8,
+                padding: '12px 16px', marginBottom: 16, color: '#92400E', fontSize: 14
+              }}>
+                {t('detail.awaitingApproval', 'This purchase order is awaiting Owner approval before it is sent to the supplier.')}
+              </div>
+            )}
+            {detail.status === 'draft' && detail.rejected_reason && (
+              <div style={{
+                background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8,
+                padding: '12px 16px', marginBottom: 16, color: '#991B1B', fontSize: 14
+              }}>
+                <strong>{t('detail.rejectedByOwner', 'Rejected by Owner')}:</strong> {detail.rejected_reason}
+              </div>
+            )}
+
             <Section>
               <h3>{t('detail.timeline.title')}</h3>
               {renderTimeline()}

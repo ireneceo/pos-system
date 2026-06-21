@@ -204,6 +204,7 @@
   },
   "status": {
     "draft": "草稿",
+    "pending_approval": "等待批准",
     "submitted": "已提交",
     "confirmed": "已确认",
     "shipped": "已发货",
@@ -337,5 +338,36 @@
   "unitCompat": {
     "diff": "{{a}} ↔ {{b}}：数量单位不一致 — 需手动输入",
     "incompatible": "{{a}} 与 {{b}} 不兼容。请手动输入或作为单独的原料添加"
+  },
+  "ownerApprovals": {
+    "title": "采购订单审批",
+    "subtitle": "在采购订单发送给供应商之前，审核并批准来自您餐厅的订单。",
+    "pending": "等待批准",
+    "table": {
+      "poNumber": "采购单号",
+      "restaurant": "餐厅",
+      "seller": "供应商",
+      "items": "项目",
+      "total": "合计",
+      "createdAt": "创建时间",
+      "actions": "操作"
+    },
+    "approve": "批准",
+    "reject": "拒绝",
+    "approveTitle": "批准采购订单",
+    "approveConfirm": "批准“{{po}}”？它将被发送给供应商。",
+    "rejectTitle": "拒绝采购订单",
+    "rejectReasonLabel": "拒绝原因",
+    "rejectReasonPlaceholder": "让餐厅知道此订单被拒绝的原因",
+    "rejectSubmit": "拒绝订单",
+    "empty": {
+      "title": "没有等待批准的订单",
+      "hint": "当您餐厅的采购订单需要批准时，将显示在此处。"
+    },
+    "loading": "正在加载审批...",
+    "loadFailed": "加载审批失败。",
+    "approved": "订单已批准并发送给供应商。",
+    "rejected": "订单已拒绝。",
+    "actionFailed": "操作失败，请重试。"
   }
 }

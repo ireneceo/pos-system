@@ -13,7 +13,8 @@ const {
   Restaurant,
   RestaurantManager,
   Brand,
-  Foodcourt
+  Foodcourt,
+  PurchaseOrder
 } = require('../models');
 
 // Helper: count unread comments on entities authored by this user
@@ -138,6 +139,10 @@ router.get('/', authenticateToken, async (req, res) => {
           status: { [Op.in]: ['open', 'in-progress'] }
         }
       });
+      // 발주 오너 승인 대기 (2026-06-21)
+      counts.poApprovals = rIds.length ? await PurchaseOrder.count({
+        where: { entity_type: 'restaurant', entity_id: { [Op.in]: rIds }, status: 'pending_approval' }
+      }) : 0;
     }
 
     // --- Notices (exclude self-authored notices from badge count) ---

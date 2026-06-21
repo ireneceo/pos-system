@@ -31,7 +31,10 @@ const OPERATION_SETTINGS_ALLOWED_KEYS = new Set([
   'requirePinForDiscount', 'requireVoidPin', 'requireCancelReason',
   // 요일별 운영시간 + 라스트오더 게이트(JSON). 화이트리스트 누락 시 저장 round-trip 에서
   // 조용히 stripped → 5/31 The Fire 패턴 재발. businessHours 도 반드시 보존.
-  'businessHours'
+  'businessHours',
+  // 발주 오너 승인 게이트(2026-06-21). 오너 연결 시 기본 ON. 화이트리스트 누락 시
+  // 저장 round-trip 에서 조용히 stripped → 게이트 무력화. 반드시 보존.
+  'requirePoOwnerApproval'
 ]);
 
 function parseJsonSafe(v) {

@@ -711,7 +711,8 @@
       "Bash(xxd)",
       "Bash(cp /tmp/bugd-browser.cjs /var/www/dev-frontend/bugd-browser.cjs)",
       "Bash(rm -f /var/www/dev-frontend/bugd-browser.cjs)",
-      "Bash(awk '/userCanAccessRestaurant = async|const userCanAccessRestaurant|async function userCanAccessRestaurant/,/^}/' middleware/auth.js)"
+      "Bash(awk '/userCanAccessRestaurant = async|const userCanAccessRestaurant|async function userCanAccessRestaurant/,/^}/' middleware/auth.js)",
+      "Bash(scp -o ConnectTimeout=8 /tmp/prod_feedback_query.js irene@87.106.78.146:/var/www/production-backend/tmp_feedback_query.js)"
     ],
     "deny": [],
     "ask": []

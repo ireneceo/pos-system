@@ -204,6 +204,7 @@
   },
   "status": {
     "draft": "Draft",
+    "pending_approval": "Awaiting Approval",
     "submitted": "Submitted",
     "confirmed": "Confirmed",
     "shipped": "Shipped",
@@ -337,5 +338,36 @@
   "unitCompat": {
     "diff": "{{a}} ↔ {{b}}: unit mismatch — manual entry required",
     "incompatible": "{{a}} and {{b}} are incompatible. Enter manually or add as a separate ingredient"
+  },
+  "ownerApprovals": {
+    "title": "Purchase Order Approvals",
+    "subtitle": "Review and approve purchase orders from your restaurants before they are sent to suppliers.",
+    "pending": "Awaiting approval",
+    "table": {
+      "poNumber": "PO Number",
+      "restaurant": "Restaurant",
+      "seller": "Seller",
+      "items": "Items",
+      "total": "Total",
+      "createdAt": "Created",
+      "actions": "Actions"
+    },
+    "approve": "Approve",
+    "reject": "Reject",
+    "approveTitle": "Approve Purchase Order",
+    "approveConfirm": "Approve \"{{po}}\"? It will be sent to the supplier.",
+    "rejectTitle": "Reject Purchase Order",
+    "rejectReasonLabel": "Reason for rejection",
+    "rejectReasonPlaceholder": "Let the restaurant know why this order is rejected",
+    "rejectSubmit": "Reject Order",
+    "empty": {
+      "title": "No orders awaiting approval",
+      "hint": "Purchase orders from your restaurants appear here when they need your approval."
+    },
+    "loading": "Loading approvals...",
+    "loadFailed": "Failed to load approvals.",
+    "approved": "Order approved and sent to the supplier.",
+    "rejected": "Order rejected.",
+    "actionFailed": "Action failed. Please try again."
   }
 }

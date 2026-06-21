@@ -1,5 +1,10 @@
 # Purple POS — 개발 세션 상태
 
+<!-- AUTOSAVE-STALE-BANNER -->
+> **[AUTO-SAVE STALE] (2026-06-21 08:45, idle 2039s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
+> 변경된 작업 파일: deploy-to-production.sh,PurchaseOrder.js badgeCounts.js,notification-settings.js purchase-orders-approval.js,purchase-orders-workflow.js migrate-po-owner-approval.js,seed-purchase-orders-module.js server.js,poNotifications.js notificationTemplates.js,poOwnerApproval.js
+<!-- /AUTOSAVE-STALE-BANNER -->
+
 ## 현재 작업 상태
 **마지막 업데이트:** 2026-06-21 (데모 버그 8건 + 다매장 쿠폰 신축 + 시재 드로어 동기화 — DEV 완료·검증 통과·운영 미배포)
 **버전:** **v3.60 운영 배포됨 (2026-06-20).** 이후 백스테이지 배포 2건(버전 미상승). 6/21 작업은 DEV 미배포. SW_VERSION=3.68-demo-bugfixes-coupons-20260621.

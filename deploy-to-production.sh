@@ -338,7 +338,8 @@ for SPRINT_MIG in \
     scripts/migrate-reservation-floor-plan-table.js \
     scripts/migrate-cash-phase2.js \
     scripts/migrate-cash-movement-source.js \
-    scripts/migrate-coupon-scope.js; do
+    scripts/migrate-coupon-scope.js \
+    scripts/migrate-po-owner-approval.js; do
     if ssh $PROD_SERVER "test -f $REMOTE_PROD_BACKEND/$SPRINT_MIG"; then
         log "Running $(basename $SPRINT_MIG)..."
         SPRINT_OUTPUT=$(ssh $PROD_SERVER "cd $REMOTE_PROD_BACKEND && node $SPRINT_MIG 2>&1") || true

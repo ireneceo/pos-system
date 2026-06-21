@@ -204,6 +204,7 @@
   },
   "status": {
     "draft": "Draf",
+    "pending_approval": "Menunggu Kelulusan",
     "submitted": "Dihantar",
     "confirmed": "Disahkan",
     "shipped": "Dihantar",
@@ -337,5 +338,36 @@
   "unitCompat": {
     "diff": "{{a}} ↔ {{b}}: unit tidak sepadan — kemasukan manual diperlukan",
     "incompatible": "{{a}} dan {{b}} tidak serasi. Masukkan secara manual atau tambah sebagai bahan berasingan"
+  },
+  "ownerApprovals": {
+    "title": "Kelulusan Pesanan Belian",
+    "subtitle": "Semak dan luluskan pesanan belian daripada restoran anda sebelum dihantar kepada pembekal.",
+    "pending": "Menunggu kelulusan",
+    "table": {
+      "poNumber": "No. Pesanan",
+      "restaurant": "Restoran",
+      "seller": "Penjual",
+      "items": "Item",
+      "total": "Jumlah",
+      "createdAt": "Dicipta",
+      "actions": "Tindakan"
+    },
+    "approve": "Luluskan",
+    "reject": "Tolak",
+    "approveTitle": "Luluskan Pesanan Belian",
+    "approveConfirm": "Luluskan \"{{po}}\"? Ia akan dihantar kepada pembekal.",
+    "rejectTitle": "Tolak Pesanan Belian",
+    "rejectReasonLabel": "Sebab penolakan",
+    "rejectReasonPlaceholder": "Beritahu restoran sebab pesanan ini ditolak",
+    "rejectSubmit": "Tolak Pesanan",
+    "empty": {
+      "title": "Tiada pesanan menunggu kelulusan",
+      "hint": "Pesanan belian daripada restoran anda akan dipaparkan di sini apabila memerlukan kelulusan anda."
+    },
+    "loading": "Memuatkan kelulusan...",
+    "loadFailed": "Gagal memuat kelulusan.",
+    "approved": "Pesanan diluluskan dan dihantar kepada pembekal.",
+    "rejected": "Pesanan ditolak.",
+    "actionFailed": "Tindakan gagal. Sila cuba lagi."
   }
 }

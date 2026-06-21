@@ -1116,5 +1116,7 @@
   "operations.requireCancelReasonDesc": "Sama ada kakitangan mesti beri sebab semasa memadam item atau membatalkan pesanan. Sebab disimpan ke log void & batal.",
   "operations.cancelReasonOff": "Tutup",
   "operations.cancelReasonOptional": "Pilihan",
-  "operations.cancelReasonRequired": "Wajib"
+  "operations.cancelReasonRequired": "Wajib",
+  "operations.requirePoOwnerApprovalLabel": "Perlukan kelulusan Pemilik untuk pesanan belian",
+  "operations.requirePoOwnerApprovalDesc": "Apabila dihidupkan dan Pemilik disambungkan, pesanan belian memerlukan kelulusan Pemilik sebelum dihantar kepada pembekal. Lalai hidup apabila Pemilik disambungkan."
 }

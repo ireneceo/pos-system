@@ -235,7 +235,7 @@ const ItemTable = styled.table`
   th.num { text-align: right; }
 `;
 
-type POStatus = 'draft' | 'submitted' | 'confirmed' | 'shipped' | 'partial_received' | 'received' | 'cancelled';
+type POStatus = 'draft' | 'pending_approval' | 'submitted' | 'confirmed' | 'shipped' | 'partial_received' | 'received' | 'cancelled';
 
 interface POListRow {
   id: number;
@@ -370,6 +370,7 @@ const SuggestionList = styled.ul`
 
 const StatusVariantMap: Record<POStatus, 'success' | 'warning' | 'error' | 'info'> = {
   draft: 'info',
+  pending_approval: 'warning',
   submitted: 'warning',
   confirmed: 'warning',
   shipped: 'info',
@@ -379,7 +380,7 @@ const StatusVariantMap: Record<POStatus, 'success' | 'warning' | 'error' | 'info
 };
 
 function isPendingStatus(s: POStatus): boolean {
-  return s === 'submitted' || s === 'confirmed';
+  return s === 'pending_approval' || s === 'submitted' || s === 'confirmed';
 }
 
 const PurchaseOrdersPage: React.FC = () => {

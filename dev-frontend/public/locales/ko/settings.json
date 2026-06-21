@@ -1116,5 +1116,7 @@
   "operations.requireCancelReasonDesc": "아이템 삭제나 주문 취소 시 직원이 사유를 입력하게 할지. 사유는 취소/보이드 기록에 모입니다.",
   "operations.cancelReasonOff": "끔",
   "operations.cancelReasonOptional": "선택",
-  "operations.cancelReasonRequired": "필수"
+  "operations.cancelReasonRequired": "필수",
+  "operations.requirePoOwnerApprovalLabel": "발주 시 오너 승인 필요",
+  "operations.requirePoOwnerApprovalDesc": "오너가 연결된 매장에서, 발주를 공급처로 보내기 전 오너 승인이 필요합니다. 오너 연결 시 기본 켜짐."
 }

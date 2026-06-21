@@ -204,6 +204,7 @@
   },
   "status": {
     "draft": "작성 중",
+    "pending_approval": "승인 대기",
     "submitted": "제출됨",
     "confirmed": "확정",
     "shipped": "배송 중",
@@ -337,5 +338,36 @@
   "unitCompat": {
     "diff": "{{a}} ↔ {{b}}: 수량 단위 차이 — 수동 입력 필요",
     "incompatible": "{{a}}와 {{b}}는 호환되지 않습니다. 수동 입력하거나 별도 재료로 추가 권장"
+  },
+  "ownerApprovals": {
+    "title": "발주 승인",
+    "subtitle": "공급처로 보내기 전, 매장의 발주를 검토하고 승인합니다.",
+    "pending": "승인 대기",
+    "table": {
+      "poNumber": "발주 번호",
+      "restaurant": "매장",
+      "seller": "공급처",
+      "items": "품목",
+      "total": "합계",
+      "createdAt": "생성일",
+      "actions": "작업"
+    },
+    "approve": "승인",
+    "reject": "반려",
+    "approveTitle": "발주 승인",
+    "approveConfirm": "\"{{po}}\" 발주를 승인할까요? 공급처로 전송됩니다.",
+    "rejectTitle": "발주 반려",
+    "rejectReasonLabel": "반려 사유",
+    "rejectReasonPlaceholder": "매장에 반려 사유를 알려주세요",
+    "rejectSubmit": "반려하기",
+    "empty": {
+      "title": "승인 대기 중인 발주가 없습니다",
+      "hint": "매장의 발주가 승인이 필요할 때 여기에 표시됩니다."
+    },
+    "loading": "승인 목록을 불러오는 중...",
+    "loadFailed": "승인 목록을 불러오지 못했습니다.",
+    "approved": "발주가 승인되어 공급처로 전송되었습니다.",
+    "rejected": "발주가 반려되었습니다.",
+    "actionFailed": "작업에 실패했습니다. 다시 시도해주세요."
   }
 }

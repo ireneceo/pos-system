@@ -1116,5 +1116,7 @@
   "operations.requireCancelReasonDesc": "员工删除商品或取消订单时是否必须填写原因。原因将汇入作废/取消记录。",
   "operations.cancelReasonOff": "关闭",
   "operations.cancelReasonOptional": "可选",
-  "operations.cancelReasonRequired": "必填"
+  "operations.cancelReasonRequired": "必填",
+  "operations.requirePoOwnerApprovalLabel": "采购订单需要店主批准",
+  "operations.requirePoOwnerApprovalDesc": "开启且已连接店主时，采购订单在发送给供应商之前需要店主批准。连接店主时默认开启。"
 }

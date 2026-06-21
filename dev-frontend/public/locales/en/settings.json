@@ -1116,5 +1116,7 @@
   "operations.requireCancelReasonDesc": "Whether staff must give a reason when deleting an item or cancelling an order. Reasons feed the void & cancel log.",
   "operations.cancelReasonOff": "Off",
   "operations.cancelReasonOptional": "Optional",
-  "operations.cancelReasonRequired": "Required"
+  "operations.cancelReasonRequired": "Required",
+  "operations.requirePoOwnerApprovalLabel": "Require Owner approval for purchase orders",
+  "operations.requirePoOwnerApprovalDesc": "When on and an Owner is connected, purchase orders need Owner approval before they are sent to the supplier. Default on when an Owner is connected."
 }
