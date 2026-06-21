@@ -303,11 +303,14 @@ router.post('/', authenticateToken, async (req, res) => {
   console.log('🔄 POST /api/users - Request received');
   console.log('📝 Request body:', req.body);
 
-  // Tenant guard: only System Admin and Restaurant Admin can create users.
-  if (!['System Admin', 'Restaurant Admin'].includes(req.user.role)) {
+  // Tenant guard: System Admin (any role), Restaurant Admin (own Staff), and
+  // Brand/Foodcourt General (Restaurant Admins under their owned brand/foodcourt).
+  // BG/FG were previously excluded → "Add Admin" always 403'd, blocking franchise
+  // admin creation (chicken-and-egg with restaurant create). Scope enforced below.
+  if (!['System Admin', 'Restaurant Admin', 'Brand General', 'Foodcourt General'].includes(req.user.role)) {
     return res.status(403).json({
       success: false,
-      error: `This action requires System Admin or Restaurant Admin. Your role is ${req.user.role}.`,
+      error: `This action requires System Admin, Restaurant Admin, or Brand/Foodcourt General. Your role is ${req.user.role}.`,
       code: 'INSUFFICIENT_ROLE'
     });
   }
@@ -337,6 +340,29 @@ router.post('/', authenticateToken, async (req, res) => {
           error: 'Restaurant Admin can only create staff members (role=Staff). To add another admin, contact System Admin.',
           code: 'ROLE_NOT_ALLOWED'
         });
+      }
+    }
+
+    // Brand/Foodcourt General guards: may create Restaurant Admins only, and only for
+    // restaurants under their owned brand/foodcourt. restaurant_id may be omitted
+    // (deferred assignment — admin created first, restaurant later). Cannot escalate.
+    if (req.user.role === 'Brand General' || req.user.role === 'Foodcourt General') {
+      if (role !== 'Restaurant Admin') {
+        return res.status(403).json({
+          success: false,
+          error: `${req.user.role} can only create Restaurant Admin accounts.`,
+          code: 'ROLE_NOT_ALLOWED'
+        });
+      }
+      if (finalRestaurantId) {
+        const allowed = await userCanAccessRestaurant(req.user, finalRestaurantId);
+        if (!allowed) {
+          return res.status(403).json({
+            success: false,
+            error: 'You can only add admins to restaurants under your own brand or foodcourt.',
+            code: 'NOT_PERMITTED'
+          });
+        }
       }
     }
 

@@ -437,22 +437,6 @@ const OperationInquiryPage: React.FC = () => {
     window.dispatchEvent(new Event('refreshBadgeCounts'));
   };
 
-  const handleCloseTicketFromModal = async () => {
-    if (!selectedTicket) return;
-    try {
-      const res = await fetch(`/api/operation-tickets/${selectedTicket.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'closed' })
-      });
-      if (res.ok) {
-        await fetchTickets();
-        setSelectedTicket(null);
-        window.dispatchEvent(new Event('refreshBadgeCounts'));
-      }
-    } catch (err) { /* silent */ }
-  };
-
   const handleUpdateStatus = async () => {
     if (!selectedTicket) return;
 
@@ -573,7 +557,7 @@ const OperationInquiryPage: React.FC = () => {
 
           {/* Detail Modal */}
           {selectedTicket && (
-            <CommonModal isOpen={true} onClose={() => setSelectedTicket(null)} title={selectedTicket.ticketNumber} size="large" footer={selectedTicket.status !== 'closed' ? <Button variant="primary" onClick={handleCloseTicketFromModal}>{t('admin:operationInquiryPage.closeTicket', 'Close Ticket')}</Button> : undefined}>
+            <CommonModal isOpen={true} onClose={() => setSelectedTicket(null)} title={selectedTicket.ticketNumber} size="large" footer={detailStatus !== selectedTicket.status ? <Button variant="primary" onClick={handleUpdateStatus}>{t('admin:operationInquiryPage.save', 'Save')}</Button> : undefined}>
                   <InfoBox>
                     <InfoRow>
                       <InfoLabel>{t('admin:operationInquiryPage.subject')}</InfoLabel>
@@ -616,13 +600,7 @@ const OperationInquiryPage: React.FC = () => {
                         <option value="resolved">{t('admin:operationInquiryPage.resolved')}</option>
                         <option value="closed">{t('admin:operationInquiryPage.closed')}</option>
                       </Select>
-                      <Button
-                        variant="primary"
-                        onClick={handleUpdateStatus}
-                        disabled={detailStatus === selectedTicket.status}
-                      >
-                        Save
-                      </Button>
+                      {/* 저장은 모달 푸터의 기본 버튼(선택한 상태 저장)으로 통일 — 푸터의 하드코딩 'closed' 버그 제거. */}
                     </StatusRow>
                   </FormGroup>
 

@@ -512,7 +512,8 @@ const ManagerAdminManagementPage: React.FC = () => {
     if (!createForm.username.trim()) { setCreateError('Username is required'); return; }
     if (!createForm.full_name.trim()) { setCreateError('Full Name is required'); return; }
     if (!createForm.email.trim()) { setCreateError('Email is required'); return; }
-    if (!createForm.restaurant_id) { setCreateError('Please select a restaurant'); return; }
+    // 매장 선택은 선택사항 — 가맹점 등록 전에 Admin 을 먼저 만들 수 있어야 함(닭-달걀 해소).
+    // 미선택 시 restaurant_id 미전송 → 미배정 Admin(로그인 가능, 매장 배정 전까지 매장기능 제한).
 
     try {
       const token = getToken();
@@ -525,7 +526,7 @@ const ManagerAdminManagementPage: React.FC = () => {
           full_name: createForm.full_name.trim(),
           phone: createForm.phone.trim() || null,
           role: 'Restaurant Admin',
-          restaurant_id: parseInt(createForm.restaurant_id),
+          ...(createForm.restaurant_id ? { restaurant_id: parseInt(createForm.restaurant_id) } : {}),
         })
       });
 
@@ -760,7 +761,7 @@ const ManagerAdminManagementPage: React.FC = () => {
         {createError && <ErrorMessage>{createError}</ErrorMessage>}
 
         <UIFormGroup>
-          <FormLabel>Restaurant *</FormLabel>
+          <FormLabel>Restaurant</FormLabel>
           <RestaurantSearchContainer>
             <FormInput
               type="text"

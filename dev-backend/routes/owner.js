@@ -475,13 +475,22 @@ router.post('/restaurants/:restaurantId/claim', requireRole('Restaurant Owner'),
       return res.status(409).json({ success: false, message: 'This restaurant is already linked to another owner' });
     }
 
-    // Ownership 생성
-    await RestaurantManager.create({
-      restaurant_id: restaurantId,
-      manager_id: req.user.id,
-      relationship_type: 'ownership',
-      is_primary: false
+    // 매장 생성(POST /api/restaurants)이 managerIds 로 같은 (restaurant, owner) 에 'oversight' 행을 먼저
+    // 만들어 둔다. UNIQUE(restaurant_id, manager_id) 때문에 ownership 행을 새로 만들면 위반 → 생성한 매장이
+    // ownership 행을 못 얻어 Owner 목록(ownership 필터)에서 빠지던 근본원인. 기존 행이 있으면 ownership 으로 승격.
+    const existingLink = await RestaurantManager.findOne({
+      where: { restaurant_id: restaurantId, manager_id: req.user.id }
     });
+    if (existingLink) {
+      await existingLink.update({ relationship_type: 'ownership' });
+    } else {
+      await RestaurantManager.create({
+        restaurant_id: restaurantId,
+        manager_id: req.user.id,
+        relationship_type: 'ownership',
+        is_primary: false
+      });
+    }
 
     console.log(`[OWNER] Restaurant claimed: ${restaurantId} "${restaurant.name}" by owner ${req.user.id}`);
 

@@ -1,5 +1,10 @@
 # Purple POS — 개발 세션 상태
 
+<!-- AUTOSAVE-STALE-BANNER -->
+> **[AUTO-SAVE STALE] (2026-06-21 05:35, idle 2087s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
+> 변경된 작업 파일: auth.js,owner.js users.js,work-manuals.js sw.js,OperationInquiryPage.tsx SystemInquiryPage.tsx,BrandProductRecipePage.tsx ProductRecipeCategoriesTab.tsx,OperationInquiryPage.tsx SystemInquiryPage.tsx,AdminManagementPage.tsx
+<!-- /AUTOSAVE-STALE-BANNER -->
+
 ## 현재 작업 상태
 **마지막 업데이트:** 2026-06-20 (백스테이지 운영 배포 2건 + 운영 검증 완료)
 **버전:** **v3.60 운영 배포됨 (2026-06-20).** 이후 백스테이지 배포 2건(버전 미상승): ①시재 차이 원장 자동기입+시재 tz 버그+액션버튼 통일(Backup 20260620_193147) ②할인 PIN 누락경로 게이트(Backup 20260620_195910, 번들 main.46dad59d). SW_VERSION=3.66-pin-cash-settlement-20260620.

@@ -361,11 +361,25 @@ const userCanAccessRestaurant = async (user, targetRestaurantId) => {
 
   if (user.role.includes('Manager') || user.role.includes('General')) {
     const restaurant = await Restaurant.findByPk(target, {
-      include: [{ model: User, as: 'managers', where: { id: user.id }, required: false }]
+      include: [{ model: User, as: 'managers', where: { id: user.id }, required: false }],
+      attributes: ['id', 'admin_id', 'brand_id', 'foodcourt_id']
     });
     if (!restaurant) return false;
     const hasAccess = restaurant.managers && restaurant.managers.length > 0;
-    return hasAccess || restaurant.admin_id === user.id;
+    if (hasAccess || restaurant.admin_id === user.id) return true;
+    // Brand General owns brands → grant access to any restaurant under an owned brand
+    // (mirrors the restaurant-list scope GET /restaurants/manager/:id). The manager-join
+    // table alone misses brand restaurants without an explicit oversight row → write gate
+    // (deactivate admin, etc.) wrongly 403'd while the list showed them. Same for Foodcourt.
+    if (user.role === 'Brand General' && restaurant.brand_id) {
+      const owns = await Brand.findOne({ where: { id: restaurant.brand_id, owner_id: user.id }, attributes: ['id'] });
+      if (owns) return true;
+    }
+    if (user.role === 'Foodcourt General' && restaurant.foodcourt_id) {
+      const owns = await Foodcourt.findOne({ where: { id: restaurant.foodcourt_id, owner_id: user.id }, attributes: ['id'] });
+      if (owns) return true;
+    }
+    return false;
   }
 
   return false;

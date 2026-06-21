@@ -746,7 +746,10 @@ const OwnerRestaurantsPage: React.FC = () => {
 
       if (response.ok) {
         const result = await response.json();
-        const newRestId = result.id || result.data?.id;
+        // 백엔드 POST /api/restaurants 는 { success, restaurant } 형태로 응답 → restaurant.id 를 먼저 읽는다.
+        // (예전엔 result.id/result.data.id 만 봐서 항상 undefined → claim 누락 → ownership row 미생성 →
+        //  생성한 매장이 Owner 목록에 안 뜨던 근본원인.)
+        const newRestId = result.restaurant?.id || result.id || result.data?.id;
 
         // Auto-link ownership for the new restaurant
         if (newRestId) {

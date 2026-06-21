@@ -453,13 +453,18 @@ router.post('/from-notice/:noticeId', authenticateToken, async (req, res) => {
       scopeFields.restaurant_id = scope.filter.restaurant_id;
     } else if (restaurant_id) {
       scopeFields.restaurant_id = parseInt(restaurant_id);
+    } else if (scope.ownedRestaurantIds && scope.ownedRestaurantIds.length > 0) {
+      // Owner가 매장을 지정하지 않으면 매뉴얼이 restaurant_id=null 로 만들어져 목록(restaurant_id IN owned)에서 빠진다.
+      // 첫 소유 매장으로 귀속해 바로 보이게 한다(추후 재배정 가능).
+      scopeFields.restaurant_id = scope.ownedRestaurantIds[0];
     }
 
     const manual = await WorkManual.create({
       title: notice.title,
       content: notice.content,
       author_id: req.user.id,
-      author_name: req.user.full_name,
+      // full_name 이 비어도(데모/이름 미설정 계정) NOT NULL 위반 500 안 나도록 폴백. 클릭 무반응의 근본원인이었음.
+      author_name: req.user.full_name || req.user.username || req.user.email || req.user.role,
       author_role: req.user.role,
       category_id: null,
       attachments: notice.getDataValue('attachments'),

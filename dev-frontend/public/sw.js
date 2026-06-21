@@ -10,7 +10,7 @@
  * caching SPA shell would conflict. If future offline support is needed, layer Workbox separately.
  */
 
-const SW_VERSION = '3.66-pin-cash-settlement-20260620';
+const SW_VERSION = '3.67-demo-bugfixes-20260621';
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {

@@ -278,6 +278,8 @@ const ProductRecipeCategoriesTab: React.FC<ProductRecipeCategoriesTabProps> = ({
       const response = await fetchAPI(url, {
         method,
         body: JSON.stringify({
+          // 다중 브랜드 BG는 서버가 단일-브랜드 폴백을 못 쓰므로 활성 브랜드를 명시 전송(미전송 시 400 "brand_id required").
+          brand_id: brandId,
           name: formData.name.trim(),
           emoji: formData.emoji || null,
           description: formData.description.trim() || null

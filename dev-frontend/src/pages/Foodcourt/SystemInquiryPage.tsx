@@ -734,11 +734,11 @@ const SystemInquiryPage: React.FC = () => {
                         value={newTicket.category}
                         onChange={(e) => setNewTicket({...newTicket, category: e.target.value})}
                       >
+                        <option value="general">{t('common:systemInquiryPage.general')}</option>
                         <option value="technical">{t('common:systemInquiryPage.technicalIssue')}</option>
-                        <option value="account">{t('common:systemInquiryPage.accountManagement')}</option>
                         <option value="billing">{t('common:systemInquiryPage.billing')}</option>
-                        <option value="feature">{t('common:systemInquiryPage.featureRequest')}</option>
-                        <option value="other">{t('common:systemInquiryPage.other')}</option>
+                        <option value="feature-request">{t('common:systemInquiryPage.featureRequest')}</option>
+                        <option value="bug-report">{t('common:systemInquiryPage.bugReport')}</option>
                       </FormSelect>
                     </FormGroup>
                   </FormRow>

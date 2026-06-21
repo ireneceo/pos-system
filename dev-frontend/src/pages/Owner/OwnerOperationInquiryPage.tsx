@@ -566,23 +566,6 @@ const OwnerOperationInquiryPage: React.FC = () => {
     }
   };
 
-  const handleCloseTicketFromModal = async () => {
-    if (!selectedTicket) return;
-    try {
-      const token = getAuthToken();
-      const res = await fetch(`/api/operation-tickets/${selectedTicket.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ status: 'closed' })
-      });
-      if (res.ok) {
-        setTickets(prev => prev.map(t => t.id === selectedTicket.id ? { ...t, status: 'closed' as OperationTicket['status'] } : t));
-        setSelectedTicket(null);
-        window.dispatchEvent(new Event('refreshBadgeCounts'));
-      }
-    } catch (err) { /* silent */ }
-  };
-
   const handleStatusChange = async () => {
     if (!selectedTicket || detailStatus === selectedTicket.status) return;
 
@@ -804,7 +787,7 @@ const OwnerOperationInquiryPage: React.FC = () => {
 
           {/* Detail Modal */}
           {selectedTicket && (
-            <CommonModal isOpen={true} onClose={() => setSelectedTicket(null)} title={selectedTicket.ticketNumber} size="large" footer={selectedTicket.status !== 'closed' ? <Button variant="primary" onClick={handleCloseTicketFromModal}>{t('owner:ownerOperationInquiryPage.closeTicket', 'Close Ticket')}</Button> : undefined}>
+            <CommonModal isOpen={true} onClose={() => setSelectedTicket(null)} title={selectedTicket.ticketNumber} size="large" footer={detailStatus !== selectedTicket.status ? <Button variant="primary" onClick={handleStatusChange}>{t('owner:ownerOperationInquiryPage.save', 'Save')}</Button> : undefined}>
                   <InfoBox>
                     <InfoRow>
                       <InfoLabel>Subject:</InfoLabel>
@@ -852,11 +835,7 @@ const OwnerOperationInquiryPage: React.FC = () => {
                         <option value="resolved">{t('owner:ownerOperationInquiryPage.resolved')}</option>
                         <option value="closed">{t('owner:ownerOperationInquiryPage.closed')}</option>
                       </FormSelect>
-                      {detailStatus !== selectedTicket.status && (
-                        <Button variant="primary" onClick={handleStatusChange} style={{ padding: '10px 16px', fontSize: '13px' }}>
-                          Save
-                        </Button>
-                      )}
+                      {/* 저장은 모달 푸터의 기본 버튼(선택한 상태 저장)으로 통일 — 푸터의 하드코딩 'closed' 버그 제거. */}
                     </div>
                   </FormGroup>
 

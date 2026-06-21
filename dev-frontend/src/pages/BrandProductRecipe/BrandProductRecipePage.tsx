@@ -29,7 +29,16 @@ const BrandProductRecipePage: React.FC = () => {
   const [recipeCategoryRefreshKey, setRecipeCategoryRefreshKey] = useState(0);
 
   const [brands, setBrands] = useState<OwnedBrand[] | null>(null);
-  const [selectedBrandId, setSelectedBrandId] = useState<number | null>(null);
+  // 활성 브랜드는 Brand Menus 와 같은 localStorage 키('bg.selectedBrandId')를 공유 — 두 화면이 다른 브랜드를
+  // 가리켜 'Linked Recipe' 드롭다운이 비던 문제 방지. 한 곳에서 브랜드를 바꾸면 다른 곳도 같은 브랜드를 본다.
+  const [selectedBrandId, setSelectedBrandId] = useState<number | null>(() => {
+    const saved = localStorage.getItem('bg.selectedBrandId');
+    return saved ? Number(saved) : null;
+  });
+  const pickBrand = (id: number | null) => {
+    setSelectedBrandId(id);
+    if (id != null) localStorage.setItem('bg.selectedBrandId', String(id));
+  };
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -42,7 +51,14 @@ const BrandProductRecipePage: React.FC = () => {
           id: b.id, name: b.name
         }));
         setBrands(list);
-        if (list.length > 0) setSelectedBrandId(list[0].id);
+        // 저장된 브랜드가 소유 목록에 있으면 유지, 없으면 첫 브랜드로(키 동기화).
+        if (list.length > 0) {
+          setSelectedBrandId(prev => {
+            const valid = prev != null && list.some(b => b.id === prev) ? prev : list[0].id;
+            localStorage.setItem('bg.selectedBrandId', String(valid));
+            return valid;
+          });
+        }
       } catch (e: any) {
         if (!cancelled) setLoadError(e?.message || 'Failed to load brands');
       }
@@ -100,7 +116,7 @@ const BrandProductRecipePage: React.FC = () => {
           <select
             aria-label={t('brand:brandProductRecipePage.brandSelector', 'Brand') as string}
             value={selectedBrandId ?? ''}
-            onChange={(e) => setSelectedBrandId(parseInt(e.target.value, 10))}
+            onChange={(e) => pickBrand(parseInt(e.target.value, 10))}
             style={{
               padding: '8px 12px',
               borderRadius: 6,
