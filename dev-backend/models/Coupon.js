@@ -123,6 +123,28 @@ Coupon.init({
     set(value) {
       this.setDataValue('target_loyalty_tiers', value ? JSON.stringify(value) : null);
     }
+  },
+  // 다매장 타게팅(scope) — FG/BG "전 매장 / 선택 매장" 발행. 쿠폰은 매장당 1행으로 materialize 되고
+  // 아래 컬럼은 형제 행 묶음 관리용. NULL = 매장관리자가 만든 단일매장 쿠폰(영향 없음). migrate-coupon-scope.js
+  scope_group_id: {
+    type: DataTypes.STRING(40),
+    allowNull: true,
+    comment: 'Groups sibling coupon rows created together for multi-restaurant targeting'
+  },
+  scope_owner_type: {
+    type: DataTypes.ENUM('brand', 'foodcourt'),
+    allowNull: true,
+    comment: 'Issuer scope owner type (Brand General / Foodcourt General)'
+  },
+  scope_owner_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'brand_id or foodcourt_id of the issuer'
+  },
+  scope_mode: {
+    type: DataTypes.ENUM('all', 'selected'),
+    allowNull: true,
+    comment: 'Targeting mode at issue time: all restaurants under the owner, or a selected subset'
   }
 }, {
   sequelize: database.sequelize,

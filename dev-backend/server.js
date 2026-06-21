@@ -356,6 +356,7 @@ const productIngredientCategoriesRouter = require('./routes/product-ingredient-c
 const generalStockCategoriesRouter = require('./routes/general-stock-categories');
 const generalStockRouter = require('./routes/general-stock');
 const couponsRouter = require('./routes/coupons');
+const couponGroupsRouter = require('./routes/coupon-groups');
 const uploadRouter = require('./routes/upload');
 const publicRouter = require('./routes/public');
 const contentsRouter = require('./routes/contents');
@@ -399,6 +400,7 @@ app.use('/', indexRouter);
 // API 라우터들
 // IMPORTANT: coupons must be before /api mounted routers to prevent /:id matching
 app.use('/api/coupons', couponsRouter);
+app.use('/api/coupon-groups', couponGroupsRouter);
 app.use('/api/upload', uploadRouter);
 app.use('/api/public', publicRouter);
 app.use('/api/contents', contentsRouter);

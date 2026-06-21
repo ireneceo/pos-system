@@ -1,39 +1,40 @@
 # Purple POS — 개발 세션 상태
 
-<!-- AUTOSAVE-STALE-BANNER -->
-> **[AUTO-SAVE STALE] (2026-06-21 05:35, idle 2087s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
-> 변경된 작업 파일: auth.js,owner.js users.js,work-manuals.js sw.js,OperationInquiryPage.tsx SystemInquiryPage.tsx,BrandProductRecipePage.tsx ProductRecipeCategoriesTab.tsx,OperationInquiryPage.tsx SystemInquiryPage.tsx,AdminManagementPage.tsx
-<!-- /AUTOSAVE-STALE-BANNER -->
-
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-06-20 (백스테이지 운영 배포 2건 + 운영 검증 완료)
-**버전:** **v3.60 운영 배포됨 (2026-06-20).** 이후 백스테이지 배포 2건(버전 미상승): ①시재 차이 원장 자동기입+시재 tz 버그+액션버튼 통일(Backup 20260620_193147) ②할인 PIN 누락경로 게이트(Backup 20260620_195910, 번들 main.46dad59d). SW_VERSION=3.66-pin-cash-settlement-20260620.
-**작업 상태:** 완료 (운영 배포 + 운영 검증 통과)
+**마지막 업데이트:** 2026-06-21 (데모 버그 8건 + 다매장 쿠폰 신축 + 시재 드로어 동기화 — DEV 완료·검증 통과·운영 미배포)
+**버전:** **v3.60 운영 배포됨 (2026-06-20).** 이후 백스테이지 배포 2건(버전 미상승). 6/21 작업은 DEV 미배포. SW_VERSION=3.68-demo-bugfixes-coupons-20260621.
+**작업 상태:** 완료 (DEV 검증 통과) — **운영 배포 대기(Irene /배포)**
 
 ### 진행 중인 작업
-- 시재(Cash Management) 2건 dev 수정 완료·검증 통과 — **운영 미배포(Irene /배포 대기)**
-  1. **Today's Cash Drawer 버튼 무반응 버그** — CashUpPage 가 CashDrawerModal 을 import만 하고 JSX 렌더 누락 → 클릭해도 모달 안 뜸. `<CashDrawerModal>` 렌더 추가(onClose 시 reloadKey bump).
-  2. **페이지↔팝업 계산 불일치 동기화(Option A)** — 원인: 같은 cash_movements 테이블이지만 팝업=개시현금+입금−출금=현재드로어(147), 페이지=순액만(122). 페이지에도 팝업과 '동일한' 엔드포인트(/shift/current + /shift/{id}/expected)로 드로어 요약(개시/입금/출금/현재드로어) 표시. '오늘'+열린shift 일 때만 노출(과거기간은 회계순액 유지). CashLedger hideSummary prop 으로 중복 요약줄 숨김.
-  - 검증: build 성공, 실API(rest5 shift45: 개시25/입213/출91/onHand147 페이지=팝업 동일, ledger net122=147−25), health 107/107, print-guard 8/8(인쇄 무변경)
-  - 파일: CashUpPage.tsx, CashLedger.tsx (인쇄 무관)
-  - 알려진 잔여(범위 외): 팝업 하단 'Today's cash in/out' 리스트는 달력-오늘 기준, 상단 요약은 shift 기준 — 단일 shift 매장은 일치. 추후 필요 시 정리.
+- 없음
 
-### 완료된 작업 (이번 세션)
-- 할인 PIN 승인 누락 경로 게이트 — 설정 '할인 PIN 필수' ON 시 POS 금액할인·% 할인·결제창(PaymentModal) 할인 3경로 모두 PIN 모달 뜨도록(기존엔 정책버튼만 검사). pendingDiscount.kind 분기, doApplyPaymentDiscount 분리. 🔒 POS 인쇄블록 무변경(print-guard re-bless 8/8)
-- (앞서) 현금 차이 원장 자동기입(cash_movements.source), 시재 "오늘" tz 버그 픽스, 액션 IconButton 정사각 통일
-- 검증 — health 107/107, print-guard 8/8, hydration 0, 금액공식 11/11, 주문 라이프사이클+할인 재계산(17.8→5할인 12.8) 실API, verify-pin-permission 실API(권한없는 staff/틀린PIN→거부·익명 401), POS터미널 mount 0크래시, 반응형 overflow 0
-- 운영 배포 2건 + 운영 검증(번들 라이브 확인·익명 401·pos 200·스키마 신규차이 0)
+### 완료된 작업 (이번 세션, 2026-06-21 · DEV 검증 통과 · 운영 미배포)
+- **데모 버그 8건 일괄 수정** (운영 데모=고객사 노출용, "6/16 수정 반영 안 됨" 보고를 3개 역할 병렬 조사로 근본원인 확정):
+  - FG/Brand System Inquiry 등록 실패(500) — create 카테고리값이 ENUM 밖 → 유효값
+  - BG Recipe category 등록(400) — brand_id 미전송 → 전송
+  - BG Linked Recipe 드롭다운 빔 — 브랜드 선택 상태 localStorage 키 공유
+  - BG Add Admin 매장필수(403) — users.js allow-list에 BG/FG(소유권 스코프·매장 optional) + 프론트 필수 해제
+  - BG Deactivate(403) — auth.js userCanAccessRestaurant 에 브랜드/푸드코트 소유권 분기 추가
+  - Owner 추가매장 목록 안 보임 — 응답 shape + claim oversight→ownership 승격([[reference_owner_restaurant_claim]])
+  - Owner Operation Inquiry Status 항상 closed — 푸터 하드코딩 제거(4파일), 드롭다운 선택 저장
+  - Owner send-to-work-manual 무반응(500) — author_name null 폴백 + Owner 매장 귀속
+  - (이미 dev 정상이던 FG 매장추가·BG 댓글삭제는 SW bump+빌드로 데모 반영)
+- **시재(Cash Management)** — Today's Cash Drawer 버튼 렌더 누락 수정 + 페이지에 팝업과 동일 드로어 잔액(개시+입−출) 표시로 계산 동기화
+- **다매장 쿠폰 신축(FG/BG)** — "전 매장/선택 매장" 타게팅. 매장당 1행 materialize + scope_group_id 묶음(결제/검증/orders-crud 무변경). migrate-coupon-scope.js(coupons 4컬럼, deploy 9a-2 등록) + routes/coupon-groups.js + ManagerPromotionsPage 전면 교체. 설계=docs/COUPON_MULTI_RESTAURANT.md, [[reference_coupon_groups]]
+- **검증(/검증 10단계 전부 실행)**: 실API 16/16(Write→Read 왕복) · 쿠폰 백엔드 9/9 · 실브라우저 mount 10/10(pageerror/console/ErrorBoundary 0) · health 107/107 · print-guard 8/8(인쇄 무관) · state-hydration 0 · timezone 신규 0 · i18n:verify 0 error
 
 ### 다음 확정 작업
 - 없음 — 지시 대기
+  (단, **운영 배포 미실행 상태**: Irene 이 "쿠폰까지 만들고 한 번에 배포" 결정 → /배포 시 6/21 작업 전체 + 밀려있던 6/16 수정이 운영 반영. migrate-coupon-scope.js 가 deploy 9a-2 에서 자동 실행됨)
 
 ### 후속 후보 (아이디어 메모, 확정 X)
 > 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.
 
-- 인앱 Docs/매뉴얼 시스템 — `docs/IN_APP_DOCS_MANUAL_SYSTEM.md` 기획만 됨. Irene "Docs 기획은 그 다음 볼게"
-- 매장 실프린터 확인 대기 — Z-Report 종이·드로어·주방티켓(v3.60 시재/마감) + 마감프린트가 워크스테이션 Bill printer(QZ)로 직접 나가는지 현장 확인
-- 할인 PIN: 매장에 discount_authorize 권한 직원/관리자 PIN 세팅돼 있는지(없으면 승인 불가) — 운영 안내 여지
-- 시재: 영업일 경계(business_date) vs 달력 "오늘" 정합성(야간 교대) 점검 여지
+- 새 쿠폰 페이지 i18n — 현재 영어 라벨 하드코딩(기존 쿠폰 PromotionsPage 도 영어). 4언어 t() 적용 여지
+- FG-B 쿠폰 후속 — 고객/등급 타게팅, 쿠폰 사용 리포트(매장별 사용수), 만료 자동 비활성
+- 인앱 Docs/매뉴얼 시스템 — docs/IN_APP_DOCS_MANUAL_SYSTEM.md 기획만 됨
+- 매장 실프린터 확인 대기 — Z-Report 종이·드로어·주방티켓(v3.60 시재/마감) 현장 눈확인
+- 운영시간(요일별)+라스트오더 게이트 — 기획 확정·미구현(설계 문서 있음)
 
 ---
 

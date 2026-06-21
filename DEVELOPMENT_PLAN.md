@@ -1,6 +1,37 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-20 (**백스테이지 운영 배포 완료** — 할인 PIN 승인이 금액/% 할인·결제창에서도 뜨도록 누락 경로 게이트. Backup 20260620_195910, 스모크 9/9, 운영 검증 통과(번들 main.46dad59d·익명 401·pos 200). 버전 미상승. 같은 날 앞서 시재 차이 원장 자동기입+시재 tz 버그+액션버튼 통일도 배포. 직전 정식판 v3.60.)
+> **최종 업데이트:** 2026-06-21 (**데모 버그 8건 일괄 수정 + 다매장 쿠폰 기능 신축 — DEV·미배포, 운영 배포 대기**. 운영 데모(고객사 노출용)에서 보고된 FG/BG/Owner 버그 근본원인 수정 + 시재 Today's Cash Drawer 버튼/계산 동기화 + FG/BG "전 매장/선택 매장" 쿠폰 신축. 검증: 실API 16/16, 실브라우저 mount 10/10, health 107/107, print-guard 8/8(인쇄 무관). SW=3.68. 한 번에 운영 배포 예정(Irene 결정).)
+
+## ✅ 완료: 데모 버그 8건 + 다매장 쿠폰 신축 + 시재 드로어 동기화 (2026-06-21, DEV·미배포)
+
+> 운영 데모(purplehere.com, 고객사 노출)에서 FG/BG/Owner 데모 계정 버그가 보고됨("6/16 수정 반영 안 됨"). 3개 역할 병렬 조사로 근본원인 확정 후 수정. 인쇄/결제 핵심 코드 무접촉.
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| FG/Brand System Inquiry 등록(500) | create 모달 카테고리값(account/feature/other)이 SupportTicket ENUM 밖 → 유효값(general/technical/billing/feature-request/bug-report) | ✅ |
+| BG Recipe category 등록(400) | 다중브랜드 BG가 brand_id 미전송 → POST body에 brand_id 추가 | ✅ |
+| BG Linked Recipe 드롭다운 빔 | Brand Menus/Recipe 페이지 브랜드 선택 상태 분리 → localStorage `bg.selectedBrandId` 키 공유 | ✅ |
+| BG Add Admin 매장필수→생성불가(403) | users.js POST allow-list에 BG/FG 추가(role=Restaurant Admin·소유권 스코프·매장 optional) + 프론트 필수 해제 | ✅ |
+| BG Deactivate 안 됨(403) | auth.js userCanAccessRestaurant 에 Brand.owner_id/Foodcourt.owner_id 소유권 분기 추가 | ✅ |
+| Owner 추가매장 목록 안 보임 | ①프론트 응답 shape(result.restaurant?.id) ②claim 이 oversight→ownership 승격(UNIQUE 충돌 회피) | ✅ |
+| Owner Operation Inquiry Status 항상 closed | 모달 푸터 "Close Ticket" 하드코딩 제거 → 드롭다운 선택 상태 저장(Owner/Brand/Foodcourt/Manager 4파일, Restaurant 제출자 닫기는 의도적 유지) | ✅ |
+| Owner send-to-work-manual 무반응(500) | work-manuals.js author_name null 폴백 + Owner 매장 미지정 시 첫 소유매장 귀속 | ✅ |
+| 시재 Today's Cash Drawer 버튼 무반응 | CashUpPage 가 CashDrawerModal 렌더 누락 → 추가 | ✅ |
+| 시재 페이지↔팝업 계산 동기화 | 페이지에도 팝업과 동일 엔드포인트로 드로어 잔액(개시+입−출) 표시(오늘+열린shift) | ✅ |
+| **다매장 쿠폰 신축(FG/BG)** | "전 매장/선택 매장" 타게팅. 매장당 1행 materialize + scope_group_id 묶음(결제/검증 무변경). migrate-coupon-scope.js + coupon-groups.js + ManagerPromotionsPage 전면 교체 | ✅ |
+
+### 수정/신규 파일
+- 백엔드: `middleware/auth.js`, `routes/users.js`, `routes/owner.js`, `routes/work-manuals.js`, `models/Coupon.js`, `routes/coupon-groups.js`(신규), `scripts/migrate-coupon-scope.js`(신규), `server.js`, `deploy-to-production.sh`(9a-2 마이그 등록)
+- 프론트: `Foodcourt/SystemInquiryPage.tsx`, `Brand/SystemInquiryPage.tsx`, `BrandProductRecipe/{BrandProductRecipePage,ProductRecipeCategoriesTab}.tsx`, `Manager/{AdminManagementPage,ManagerPromotionsPage,OperationInquiryPage}.tsx`, `Owner/{OwnerOperationInquiryPage,OwnerRestaurantsPage}.tsx`, `Brand/OperationInquiryPage.tsx`, `Foodcourt/OperationInquiryPage.tsx`, `CashManagement/CashUpPage.tsx`, `components/CashManagement/CashLedger.tsx`, `public/sw.js`(3.68)
+- 문서: `docs/COUPON_MULTI_RESTAURANT.md`(신규)
+
+### 검증
+- 실API 16/16(Write→Read 왕복·역할별·에러케이스·정리) / 쿠폰 백엔드 9/9 / 실브라우저 mount 10/10(pageerror·console·ErrorBoundary 0) / health 107/107 / print-guard 8/8 / state-hydration 0 / timezone 신규 0 / i18n:verify 0 error
+- 알려진 갭: 신규 쿠폰 페이지 영어 라벨 하드코딩(i18n 미적용) — 후속 후보
+
+---
 
 ## ✅ 완료: 할인 PIN 승인 누락 경로 게이트 (2026-06-20, 백스테이지 운영 배포)
 
