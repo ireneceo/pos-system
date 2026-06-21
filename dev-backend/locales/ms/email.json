@@ -1,6 +1,7 @@
 {
   "footer": {
     "automated": "Ini adalah mesej automatik daripada {{company}}.",
+    "noReply": "Ini alamat hantar sahaja — sila jangan balas e-mel ini.",
     "managePreferences": "Urus tetapan pemberitahuan",
     "unsubscribe": "Nyahlanggan"
   },

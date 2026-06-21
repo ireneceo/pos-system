@@ -17,6 +17,7 @@
  *   On any detection: a `system_health` notification fires to System Admins.
  */
 const cron = require('node-cron');
+const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
 const { SchedulerRun, User } = require('../models');
 const { sendNotification } = require('../utils/notificationService');
@@ -66,7 +67,20 @@ async function scanColumn({ table, column }, sampleLimit = 3) {
 
 async function notifyAdmins(findings) {
   try {
-    const admins = await User.findAll({ where: { role: 'System Admin' }, attributes: ['id', 'email'] });
+    // 내부 헬스 알림은 "플랫폼 운영자"에게만. role='System Admin' 이면서 어떤 테넌트에도
+    // 묶이지 않은(restaurant/brand/foodcourt/supplier 미할당) 진짜 플랫폼 관리자만 수신.
+    // → 잘못 부여된 테넌트 계정(매장 admin 등)에 base64 sweep 메일이 새는 것을 차단
+    //   (2026-06-21 운영 피드백 R2-②: "System Admin 채널 전용, 매장 인박스 차단").
+    const admins = await User.findAll({
+      where: {
+        role: 'System Admin',
+        restaurant_id: { [Op.is]: null },
+        brand_id: { [Op.is]: null },
+        foodcourt_id: { [Op.is]: null },
+        supplier_company_id: { [Op.is]: null }
+      },
+      attributes: ['id', 'email']
+    });
     if (admins.length === 0) return 0;
     const totalRows = findings.reduce((s, f) => s + f.rows, 0);
     const totalMB = (findings.reduce((s, f) => s + f.total_bytes, 0) / 1024 / 1024).toFixed(2);

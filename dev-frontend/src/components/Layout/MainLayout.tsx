@@ -1027,6 +1027,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     invoices: 0,
     pendingOrders: 0,
     livePoCount: 0,  // Sprint 6: incoming PO submissions for sellers
+    poApprovals: 0,  // 2026-06-21: 오너 발주 승인 대기
     unreadComments: { notices: 0, systemInquiry: 0, operationInquiry: 0 }
   });
 

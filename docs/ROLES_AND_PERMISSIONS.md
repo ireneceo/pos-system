@@ -185,6 +185,7 @@ System Admin (최고 관리자)
 - ✅ **주문 내역 조회**: 읽기 전용 (처리 불가)
 - ✅ **인보이스 조회**: 모든 issuer의 인보이스 확인
 - ✅ **인보이스 결제**: payment_model='restaurant_owner'일 때 결제 제출
+- ✅ **발주 승인** (2026-06-21): 소유 레스토랑 발주를 공급처 전송 전 승인/반려 (`requirePoOwnerApproval` ON 시). 상세 `docs/PURCHASE_ORDER_SYSTEM.md §G`
 - ❌ **메뉴 관리**: Restaurant Admin 영역
 - ❌ **주문 처리**: Restaurant Admin/Staff 영역
 - ❌ **직원 관리**: Restaurant Admin 영역
@@ -200,6 +201,7 @@ System Admin (최고 관리자)
 ### 접근 가능 페이지
 - `/pos/owner/dashboard` (통합 대시보드)
 - `/pos/owner/restaurants` (소유 레스토랑 목록)
+- `/pos/owner/po-approvals` (발주 승인 큐 - 2026-06-21)
 - `/pos/owner/statistics` (비교 통계)
 - `/pos/owner/orders` (주문 내역 - 읽기 전용)
 - `/pos/owner/reports` (리포트)

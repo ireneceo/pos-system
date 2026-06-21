@@ -1,6 +1,7 @@
 {
   "footer": {
     "automated": "这是来自 {{company}} 的自动消息。",
+    "noReply": "这是仅发送地址 — 请勿回复此邮件。",
     "managePreferences": "管理通知设置",
     "unsubscribe": "退订"
   },

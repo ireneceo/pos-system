@@ -1,6 +1,7 @@
 {
   "footer": {
     "automated": "This is an automated message from {{company}}.",
+    "noReply": "This is a send-only address — please do not reply to this email.",
     "managePreferences": "Manage notification preferences",
     "unsubscribe": "Unsubscribe"
   },

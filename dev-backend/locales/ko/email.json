@@ -1,6 +1,7 @@
 {
   "footer": {
     "automated": "{{company}}에서 발송된 자동 메시지입니다.",
+    "noReply": "발신전용 주소입니다 — 이 메일에는 회신하실 수 없습니다.",
     "managePreferences": "알림 설정 관리",
     "unsubscribe": "수신 거부"
   },

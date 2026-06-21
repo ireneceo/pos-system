@@ -96,7 +96,7 @@ function emailLayout(bodyContent, issuerInfo, lang) {
         <!-- Footer -->
         <tr><td style="padding:20px 32px;border-top:1px solid #EEEEF0;">
           <p style="margin:0;color:#9CA3AF;font-size:12px;line-height:1.6;text-align:center;">
-            ${getEmailText(emailLang, 'footer.automated', { company: footerText })}${hasIssuer ? '' : '<br><a href="' + platformUrl + '/notification-preferences" style="color:#6B7280;text-decoration:underline;">' + getEmailText(emailLang, 'footer.managePreferences') + '</a><br><a href="' + platformUrl + '" style="color:#6B7280;text-decoration:none;">' + platformUrl.replace(/^https?:\/\//, '') + '</a>'}${hasIssuer && issuerInfo.website ? '<br><a href="' + issuerInfo.website + '" style="color:#6B7280;text-decoration:none;">' + issuerInfo.website.replace(/^https?:\/\//, '') + '</a>' : ''}
+            ${getEmailText(emailLang, 'footer.automated', { company: footerText })}<br>${getEmailText(emailLang, 'footer.noReply')}${hasIssuer ? '' : '<br><a href="' + platformUrl + '/notification-preferences" style="color:#6B7280;text-decoration:underline;">' + getEmailText(emailLang, 'footer.managePreferences') + '</a><br><a href="' + platformUrl + '" style="color:#6B7280;text-decoration:none;">' + platformUrl.replace(/^https?:\/\//, '') + '</a>'}${hasIssuer && issuerInfo.website ? '<br><a href="' + issuerInfo.website + '" style="color:#6B7280;text-decoration:none;">' + issuerInfo.website.replace(/^https?:\/\//, '') + '</a>' : ''}
           </p>
         </td></tr>
       </table>

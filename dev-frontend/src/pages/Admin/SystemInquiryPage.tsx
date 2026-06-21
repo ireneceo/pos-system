@@ -198,6 +198,12 @@ const TicketDescription = styled.div`
   border-radius: 8px;
   border-left: 3px solid #C7CED6;
   word-break: break-word;
+  /* 리스트 미리보기: 2줄 truncate (2026-06-21 운영 피드백 #4) */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
 `;
 
 const TicketMeta = styled.div`

@@ -270,10 +270,11 @@ if (req.user.role === 'Restaurant Owner') {
 | F2-6 | OwnerInvoicesPage | pages/Owner/OwnerInvoicesPage.tsx (신규) |
 | F2-A | Admin 페이지 Owner 연결 UI | pages/Admin/* |
 
-### Phase 3: 향후 확장 (발주 승인 등) - 이번 개발 범위 아님
-- Purchase Order 시스템 구축 시 Owner 승인 워크플로우 추가
-- Owner → Admin 발주 승인/거부 기능
-- 레스토랑별 발주 설정 (Owner 승인 필요 여부)
+### Phase 3: 발주 오너 승인 — ✅ 구현 완료 (2026-06-21)
+- ✅ Purchase Order 오너 승인 워크플로우 (submit → pending_approval → 오너 승인 → 판매자 전송 / 반려 → draft)
+- ✅ Owner → Admin 발주 승인/거부 기능 (오너 전용 `/pos/owner/po-approvals` 승인 큐)
+- ✅ 레스토랑별 발주 설정 (`operation_settings.requirePoOwnerApproval`, 오너 연결 시 기본 ON)
+- 상세 설계·구현: `docs/PURCHASE_ORDER_SYSTEM.md §G`, 메모리 [[reference_po_owner_approval]]
 
 ---
 

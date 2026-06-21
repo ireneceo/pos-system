@@ -1,6 +1,24 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-21 (**데모 버그 8건 일괄 수정 + 다매장 쿠폰 기능 신축 — DEV·미배포, 운영 배포 대기**. 운영 데모(고객사 노출용)에서 보고된 FG/BG/Owner 버그 근본원인 수정 + 시재 Today's Cash Drawer 버튼/계산 동기화 + FG/BG "전 매장/선택 매장" 쿠폰 신축. 검증: 실API 16/16, 실브라우저 mount 10/10, health 107/107, print-guard 8/8(인쇄 무관). SW=3.68. 한 번에 운영 배포 예정(Irene 결정).)
+> **최종 업데이트:** 2026-06-21 #2 (**운영 피드백 Round2 — 발주 오너승인 + 위생 3건 — DEV·미배포**. IOI Mall Food Court 6/21 신규 support_tickets 재확인 후 "오프라인 빼고 다" 구현. 검증: 빌드 exit0, health 107/107, print-guard 8/8(re-bless), 발주승인 실API 17/17+통합 6/6, mount 3/3 클린. SW=3.69.)
+
+## ✅ 완료: 운영 피드백 Round2 — 발주 오너 승인 + 위생 3건 (2026-06-21 #2, DEV·미배포)
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 발주 #1 BG=레스토랑 동일구조 | 구조체크 감사 — 이미 단일 컴포넌트+단일 백엔드(entity_type/buyerEntity), BG 전용 분기 0. 코드 변경 없음(고정·문서화) | ✓ |
+| 발주 #2 오너 승인 워크플로우 | submit→pending_approval→오너 승인(→판매자)/반려(→draft). 오너연결 시 기본 ON. status ENUM+승인컬럼(멱등 마이그), requirePoOwnerApproval(settingsGuard), 별도 승인 라우터(멀티매장 오너 scope), 알림 2종, 오너 승인 큐 페이지+사이드바+badge+설정토글+상세 배너 | ✓ |
+| R2-② base64 sweep 메일 | sweep 수신자를 테넌트 미바인딩 진짜 System Admin 으로 제한(매장 누출 차단) | ✓ |
+| R2-③ 메일 발신전용 표시 | 공통 emailLayout 푸터에 발신전용·수신불가(4언어). 전체 메일 적용 | ✓ |
+| R2-④ 문의 리스트 truncate | System Inquiry 7페이지 본문 2줄 clamp(상세 모달 무영향) | ✓ |
+
+수정/신규: 백엔드 `models/PurchaseOrder.js`·`routes/purchase-orders-approval.js`(신규)·`purchase-orders-workflow.js`·`badgeCounts.js`·`notification-settings.js`·`services/poNotifications.js`(신규)·`utils/poOwnerApproval.js`(신규)·`notificationTemplates.js`·`settingsGuard.js`·`services/base64ImageSweep.js`·`utils/emailTemplates.js`·`scripts/migrate-po-owner-approval.js`(신규)·`seed-purchase-orders-module.js`·`server.js`·`deploy-to-production.sh`(9a-2) / 프론트 `pages/Owner/OwnerPoApprovalsPage.tsx`(신규)·`PurchaseOrders/{PurchaseOrdersPage,PurchaseOrderDetailPage}.tsx`·`Settings/SettingsPage.tsx`·`Layout/MainLayout.tsx`·`App.tsx`·SystemInquiry 7페이지·locales(purchaseOrders/common/settings/email)·`sw.js`(3.69) / 설계 `docs/PURCHASE_ORDER_SYSTEM.md §G`·`PRODUCTION_FEEDBACK_DESIGN_2026-06.md Round2`. 미착수: ⑤ 오프라인 sync(별도 자문).
+
+---
+
+## ✅ 완료: 데모 버그 8건 일괄 수정 + 다매장 쿠폰 기능 신축 (2026-06-21 #1, DEV·미배포)
+
+> **데모 버그 8건 일괄 수정 + 다매장 쿠폰 기능 신축 — DEV·미배포, 운영 배포 대기**. 운영 데모(고객사 노출용)에서 보고된 FG/BG/Owner 버그 근본원인 수정 + 시재 Today's Cash Drawer 버튼/계산 동기화 + FG/BG "전 매장/선택 매장" 쿠폰 신축. 검증: 실API 16/16, 실브라우저 mount 10/10, health 107/107, print-guard 8/8(인쇄 무관). SW=3.68. 한 번에 운영 배포 예정(Irene 결정).)
 
 ## ✅ 완료: 데모 버그 8건 + 다매장 쿠폰 신축 + 시재 드로어 동기화 (2026-06-21, DEV·미배포)
 

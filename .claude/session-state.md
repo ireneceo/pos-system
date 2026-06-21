@@ -1,19 +1,24 @@
 # Purple POS — 개발 세션 상태
 
-<!-- AUTOSAVE-STALE-BANNER -->
-> **[AUTO-SAVE STALE] (2026-06-21 08:45, idle 2039s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
-> 변경된 작업 파일: deploy-to-production.sh,PurchaseOrder.js badgeCounts.js,notification-settings.js purchase-orders-approval.js,purchase-orders-workflow.js migrate-po-owner-approval.js,seed-purchase-orders-module.js server.js,poNotifications.js notificationTemplates.js,poOwnerApproval.js
-<!-- /AUTOSAVE-STALE-BANNER -->
-
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-06-21 (데모 버그 8건 + 다매장 쿠폰 신축 + 시재 드로어 동기화 — DEV 완료·검증 통과·운영 미배포)
-**버전:** **v3.60 운영 배포됨 (2026-06-20).** 이후 백스테이지 배포 2건(버전 미상승). 6/21 작업은 DEV 미배포. SW_VERSION=3.68-demo-bugfixes-coupons-20260621.
+**마지막 업데이트:** 2026-06-21 (운영 피드백 Round2 — 발주 오너승인 + 위생 3건 — DEV 완료·검증 통과·운영 미배포)
+**버전:** **v3.60 운영 배포됨 (2026-06-20).** 이후 백스테이지 배포 2건. 6/21 작업(데모버그·쿠폰 + Round2)은 DEV 미배포. SW_VERSION=3.69-po-owner-approval-feedback-r2-20260621.
 **작업 상태:** 완료 (DEV 검증 통과) — **운영 배포 대기(Irene /배포)**
 
 ### 진행 중인 작업
 - 없음
 
-### 완료된 작업 (이번 세션, 2026-06-21 · DEV 검증 통과 · 운영 미배포)
+### 완료된 작업 (이번 세션 #2, 2026-06-21 · 운영 피드백 Round2 · DEV 검증 통과 · 운영 미배포)
+> 운영 support_tickets 재확인(IOI Mall Food Court 6/21 신규) → "오프라인 운영 빼고 다 해" 지시. 6/18~19 건은 직전 사이클에 이미 처리됨.
+- **발주관리 #1 (BG=레스토랑 동일구조)** — 구조체크 감사: 이미 단일 컴포넌트(`pages/PurchaseOrders/*`)+단일 백엔드(`entity_type`/`buyerEntity`). BG 전용 분기 없음 확인(코드 변경 0). 설계 PURCHASE_ORDER_SYSTEM.md §G-1.
+- **발주관리 #2 (오너 승인 워크플로우)** — 레스토랑 발주 submit→(오너연결&설정ON)pending_approval→오너 승인→submitted(판매자) / 반려→draft(사유). 오너연결 시 기본 ON. PO status ENUM+`pending_approval`+승인/반려 컬럼(멱등 마이그 deploy 9a-2), `requirePoOwnerApproval`(settingsGuard 화이트리스트), 별도 승인 라우터(멀티매장 오너 scope, purchaseOrdersRouter 앞 마운트), 알림 2종, 오너 승인 큐 페이지(표준 컴포넌트)+사이드바+badge, 설정 토글, 상세 pending/반려 배너. 설계 §G.
+- **R2-② base64 sweep 메일** — sweep 알림 수신자를 테넌트 미바인딩 진짜 System Admin 으로 제한(매장 누출 차단). 티켓 미생성 확인.
+- **R2-③ 메일 발신전용 표시** — 공통 emailLayout 푸터에 발신전용·수신불가 1줄(4언어). 플랫폼+매장발송 메일 전체 적용.
+- **R2-④ 문의 리스트 truncate** — System Inquiry 7개 페이지 TicketDescription 2줄 clamp(상세 모달 영향 없음).
+- **검증**: 빌드 exit0(78초) · health 107/107 · print-guard 8/8(MainLayout 사이드바=print-neutral 증명 후 re-bless) · i18n 0 error · 발주승인 실API 17/17+통합 6/6(allowed-routes·badge·승인·반려·회귀없음) · mount 3/3 클린(오너승인큐·설정operations·발주이력)
+- 미착수: ⑤ 오프라인 복원력 sync 아키텍처(별도 자문). 신규 쿠폰 페이지 i18n.
+
+### 완료된 작업 (이번 세션 #1, 2026-06-21 · DEV 검증 통과 · 운영 미배포)
 - **데모 버그 8건 일괄 수정** (운영 데모=고객사 노출용, "6/16 수정 반영 안 됨" 보고를 3개 역할 병렬 조사로 근본원인 확정):
   - FG/Brand System Inquiry 등록 실패(500) — create 카테고리값이 ENUM 밖 → 유효값
   - BG Recipe category 등록(400) — brand_id 미전송 → 전송
@@ -35,6 +40,7 @@
 ### 후속 후보 (아이디어 메모, 확정 X)
 > 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.
 
+- ⑤ 오프라인 복원력 sync 아키텍처 — IOI Mall Food Court 6/21 요청(풀 오프라인 아님, 일시 끊김 대비). 별도 설계 자문 필요(미착수)
 - 새 쿠폰 페이지 i18n — 현재 영어 라벨 하드코딩(기존 쿠폰 PromotionsPage 도 영어). 4언어 t() 적용 여지
 - FG-B 쿠폰 후속 — 고객/등급 타게팅, 쿠폰 사용 리포트(매장별 사용수), 만료 자동 비활성
 - 인앱 Docs/매뉴얼 시스템 — docs/IN_APP_DOCS_MANUAL_SYSTEM.md 기획만 됨
