@@ -21,6 +21,7 @@
 | 인보이스 to_pay→All (전 역할) | 결제대기 탭 기간 기본 'all'(미결제 안 가림). Restaurant·Owner 수정/Brand·Foodcourt 기존/Manager 해당없음 | ✅ |
 | 공급업체 Staff 행 액션 | AllSuppliersView ownEndpoint 에 Staff 누락→Edit/Delete no-op 수정 | ✅ |
 | 재고 편집모달 연결섹션 | New/Edit 모달에 "공급업체 연결/외부공급업체 등록"(현재셀러 칩). New는 "저장 먼저" 안내 | ✅ |
+| ConnectSellerModal 스태킹 | 편집모달(body portal)에서 열 때 ConnectSellerModal(인라인)이 뒤로 깔림 → createPortal(body) 통일로 위에 뜸. SW=3.87 | ✅ |
 | 반응형 10인치 실측 | 4페이지+시재드로어/파이널마감 모달, 1024·800px·주문데이터 유무 모두 가로넘침 0(데모38 시드 측정). 재현 흔들림 없어 수정 불필요 | ✅ |
 
 ### 수정/신규 파일
