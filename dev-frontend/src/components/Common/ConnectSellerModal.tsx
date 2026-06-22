@@ -14,6 +14,7 @@
  *   body: { supplier_product_id | brand_product_id | foodcourt_product_id, existing_ingredient_id, unit_conversion? }
  */
 import React, { useEffect, useMemo, useState } from 'react';
+import ReactDOM from 'react-dom';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
@@ -222,7 +223,9 @@ export default function ConnectSellerModal({ open, ingredient, buyerApiBase, onC
 
   const isIncompatible = conversionInfo && conversionInfo.auto == null;
 
-  return (
+  // Portal to body — 표준 Modal(components/UI/Modal)도 body portal 이라, 인라인 렌더 시
+  // 편집 모달 뒤로 깔리던 문제(같은 z-index 1000) 방지. portal 끼리는 렌더 순서로 위에 뜸.
+  return ReactDOM.createPortal((
     <Backdrop onClick={onClose}>
       <Panel onClick={(e) => e.stopPropagation()}>
         <Header>
@@ -319,5 +322,5 @@ export default function ConnectSellerModal({ open, ingredient, buyerApiBase, onC
         </Footer>
       </Panel>
     </Backdrop>
-  );
+  ), document.body);
 }

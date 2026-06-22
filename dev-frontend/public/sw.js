@@ -10,7 +10,7 @@
  * caching SPA shell would conflict. If future offline support is needed, layer Workbox separately.
  */
 
-const SW_VERSION = '3.86-suppliers-ingmodal-invoices-20260622';
+const SW_VERSION = '3.87-connectmodal-portal-20260622';
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
