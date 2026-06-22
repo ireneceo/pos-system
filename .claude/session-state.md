@@ -1,5 +1,10 @@
 # Purple POS — 개발 세션 상태
 
+<!-- AUTOSAVE-STALE-BANNER -->
+> **[AUTO-SAVE STALE] (2026-06-22 05:25, idle 2076s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
+> 변경된 작업 파일: sw.js,IncomingOrdersView.tsx NewPurchaseOrderPage.tsx
+<!-- /AUTOSAVE-STALE-BANNER -->
+
 ## 현재 작업 상태
 **마지막 업데이트:** 2026-06-21 #5 (장식 이모지 앱 전역 제거 + danger 빨강 RA 표준 재통일 — 0위험 — DEV 완료·/검증 통과·운영 미배포)
 **버전:** **v3.60 운영 배포됨 (2026-06-20).** 이후 백스테이지 배포 2건. 6/21 작업(데모버그·쿠폰 + Round2 + 디자인 1~3차)은 DEV 미배포. SW_VERSION=3.73-design-unify-danger-red-20260621.

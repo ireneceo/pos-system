@@ -167,6 +167,8 @@ const MainPane = styled.div`
 
 const TabBar = styled.div`
   display: flex;
+  height: 49px;
+  box-sizing: border-box;
   border-bottom: 1px solid #C7CED6;
   background: white;
   flex-shrink: 0;
@@ -174,6 +176,7 @@ const TabBar = styled.div`
 
 const TabBtn = styled.button<{ $active: boolean }>`
   flex: 1;
+  box-sizing: border-box;
   padding: 14px 20px;
   background: transparent;
   border: none;
@@ -371,7 +374,11 @@ const CartPane = styled.div`
 `;
 
 const CartHeader = styled.div`
-  padding: 14px 20px;
+  height: 49px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
   border-bottom: 1px solid #C7CED6;
   font-size: 14px;
   font-weight: 600;
@@ -517,11 +524,14 @@ const NewPurchaseOrderPage: React.FC = () => {
     if (['Restaurant Admin', 'Restaurant Owner', 'Staff'].includes(role || '') && user.restaurantId) {
       return { type: 'restaurants' as const, id: user.restaurantId };
     }
-    if (['Brand General', 'Brand Manager'].includes(role || '') && (user as any).brandId) {
-      return { type: 'brands' as const, id: (user as any).brandId };
+    // AuthContext user 객체는 brand_id / foodcourt_id (snake_case) 로 들고 있다(restaurantId 만 camelCase).
+    // 예전엔 brandId/foodcourtId (camelCase) 를 읽어 항상 undefined → BG/FG buyerEntity=null →
+    // fetchMine 조기 return → "No linked stock items"(stock item 은 owner 단위라 실제론 있는데 안 뜸).
+    if (['Brand General', 'Brand Manager'].includes(role || '') && (user as any).brand_id) {
+      return { type: 'brands' as const, id: (user as any).brand_id };
     }
-    if (['Foodcourt General', 'Foodcourt Manager'].includes(role || '') && (user as any).foodcourtId) {
-      return { type: 'foodcourts' as const, id: (user as any).foodcourtId };
+    if (['Foodcourt General', 'Foodcourt Manager'].includes(role || '') && (user as any).foodcourt_id) {
+      return { type: 'foodcourts' as const, id: (user as any).foodcourt_id };
     }
     return null;
   }, [user]);

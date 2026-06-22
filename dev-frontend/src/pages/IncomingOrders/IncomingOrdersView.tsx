@@ -470,8 +470,11 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
   // reads `dateRange` at definition time. Declaring later → TDZ at component
   // first render ("Cannot access X before initialization").
   const [newPoIds, setNewPoIds] = useState<Set<number>>(new Set());
-  const [activePeriod, setActivePeriod] = useState<PeriodType>('today');
-  const [dateRange, setDateRange] = useState(() => calculatePeriodDateRange('today', 'Asia/Kuala_Lumpur'));
+  // 기본 기간 = 'all'. 입고 발주(B2B)는 며칠씩 대기하는 저빈도 주문이라 '오늘'로 좁히면
+  // 탭 카운트(/stats=전체)는 7건인데 목록(created_at=오늘)은 0건이 되어 "숫자만 뜨고 내역 안 나옴".
+  // 카운트가 전체 기준이므로 목록 기본도 전체로 맞춰 일치시킨다. (사용자는 필터로 좁힐 수 있음)
+  const [activePeriod, setActivePeriod] = useState<PeriodType>('all');
+  const [dateRange, setDateRange] = useState(() => calculatePeriodDateRange('all', 'Asia/Kuala_Lumpur'));
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('seller_sound_enabled') !== 'false');
 

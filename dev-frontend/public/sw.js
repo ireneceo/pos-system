@@ -10,7 +10,7 @@
  * caching SPA shell would conflict. If future offline support is needed, layer Workbox separately.
  */
 
-const SW_VERSION = '3.79-po-mine-stockitem-naming-20260621';
+const SW_VERSION = '3.80-po-buyerentity-incoming-filter-20260622';
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
