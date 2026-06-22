@@ -490,6 +490,13 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [ingredientCategories, setIngredientCategories] = useState<IngredientCategory[]>([]);
   const [connectTarget, setConnectTarget] = useState<Ingredient | null>(null);
+  // 경로② — 이 재고(stock item)를 외부공급업체 상품으로 등록 (솔루션 미가입 공급업체용).
+  const [extTarget, setExtTarget] = useState<Ingredient | null>(null);
+  const [extSuppliers, setExtSuppliers] = useState<Array<{ id: number; name: string }>>([]);
+  // supplier_name = 입력/선택한 공급업체명. 저장 시 같은 이름이 있으면 재사용, 없으면 생성(중복 방지).
+  const [extForm, setExtForm] = useState<{ supplier_name: string; unit_price: string; min_order_quantity: string }>({ supplier_name: '', unit_price: '', min_order_quantity: '' });
+  const [extSaving, setExtSaving] = useState(false);
+  const [extError, setExtError] = useState<string | null>(null);
   // Track Stock pending value (AutoSaveField onSave 가 onChange 직후 호출됨)
   const trackPendingRef = useRef<Record<number, boolean>>({});
   const [loading, setLoading] = useState(true);
@@ -730,6 +737,89 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
     } catch (error) {
       console.error('Failed to reset my cost:', error);
     }
+  };
+
+  // 새 목록을 받아 카드 갱신 + (편집 모달이 열려 있으면) selectedIngredient 의 sellers 도 동기화.
+  const applyReloadedList = (newList: Ingredient[]) => {
+    setIngredients(newList);
+    setSelectedIngredient(prev => prev ? (newList.find(i => i.id === prev.id) || prev) : prev);
+  };
+
+  // 경로② 후 카드 즉시 갱신 (seller 배지 반영) — onConnected 와 동일 로직.
+  const reloadWithSellers = () => {
+    const token = getAuthToken();
+    const url = isBrandRole && brandId
+      ? `/api/brands/${brandId}/ingredients?include=sellers`
+      : `/api/restaurants/${effectiveRestaurantId}/ingredients?include=sellers`;
+    fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(j => {
+        const newList = Array.isArray(j?.data) ? j.data : [];
+        if (isRestaurantAdmin && effectiveRestaurantId) {
+          fetch(`/api/restaurants/${effectiveRestaurantId}/brand-ingredients`, { headers: { Authorization: `Bearer ${token}` } })
+            .then(r => r.json())
+            .then(bj => { const brandList = Array.isArray(bj?.data) ? bj.data : []; applyReloadedList([...brandList, ...newList]); })
+            .catch(() => applyReloadedList(newList));
+        } else applyReloadedList(newList);
+      })
+      .catch(() => {});
+  };
+
+  // 이 재고를 외부공급업체 상품으로 등록 — 내가 등록한 외부공급업체 목록 로드 + 모달 열기.
+  const openExtRegister = async (ing: Ingredient) => {
+    setExtTarget(ing);
+    setExtForm({ supplier_name: '', unit_price: '', min_order_quantity: '' });
+    setExtError(null);
+    let list: Array<{ id: number; name: string }> = [];
+    try {
+      const token = getAuthToken();
+      const r = await fetch('/api/external-suppliers', { headers: { Authorization: `Bearer ${token}` } });
+      const j = await r.json().catch(() => null);
+      list = Array.isArray(j?.data) ? j.data : [];
+    } catch { list = []; }
+    setExtSuppliers(list);
+  };
+
+  // 입력한 공급업체명으로: 같은 이름 있으면 재사용, 없으면 생성 → 상품 등록 + 매핑.
+  const saveExtRegister = async () => {
+    if (!extTarget) return;
+    setExtError(null);
+    const name = extForm.supplier_name.trim();
+    if (!name) { setExtError('Type a supplier name.'); return; }
+    if (!extForm.unit_price || parseFloat(extForm.unit_price) < 0) { setExtError('Enter a valid price.'); return; }
+    setExtSaving(true);
+    try {
+      const token = getAuthToken();
+      // 같은 이름 외부공급업체가 이미 있으면 재사용(중복 생성 방지), 없으면 새로 생성.
+      let supplierId: number | null = null;
+      const match = extSuppliers.find(s => s.name.trim().toLowerCase() === name.toLowerCase());
+      if (match) { supplierId = match.id; }
+      else {
+        const sr = await fetch('/api/external-suppliers', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ name })
+        });
+        const sj = await sr.json().catch(() => null);
+        if (!sr.ok || !sj?.success) { setExtError(sj?.message || 'Failed to add supplier.'); setExtSaving(false); return; }
+        supplierId = sj.data?.supplier?.id;
+      }
+      const cr = await fetch(`/api/external-suppliers/${supplierId}/products`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name: extTarget.name, unit: extTarget.unit || 'kg', unit_price: parseFloat(extForm.unit_price), min_order_quantity: extForm.min_order_quantity ? parseInt(extForm.min_order_quantity, 10) : 1 })
+      });
+      const cj = await cr.json().catch(() => null);
+      if (!cr.ok || !cj?.success) { setExtError(cj?.message || 'Failed to create product.'); setExtSaving(false); return; }
+      const supplierProductId = cj.data.id;
+      const buyerApiBase = isBrandRole && brandId ? `/api/brands/${brandId}` : `/api/restaurants/${effectiveRestaurantId}`;
+      const mr = await fetch(`${buyerApiBase}/ingredients/from-catalog`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ supplier_product_id: supplierProductId, existing_ingredient_id: extTarget.id, unit_conversion: 1, unit_price: parseFloat(extForm.unit_price) })
+      });
+      const mj = await mr.json().catch(() => null);
+      if (!mr.ok || !mj?.success) { setExtError(mj?.message || 'Created product, but failed to link it.'); setExtSaving(false); return; }
+      setExtTarget(null); reloadWithSellers();
+    } catch { setExtError('An error occurred. Please try again.'); }
+    finally { setExtSaving(false); }
   };
 
   const fetchIngredients = async () => {
@@ -1233,20 +1323,35 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                             ))}
                           </div>
                         )}
-                        <button
-                          type="button"
-                          onClick={goConnect}
-                          style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 6,
-                            padding: '4px 10px', borderRadius: 6,
-                            background: sellers.length === 0 ? '#FEF3C7' : '#EEF2FF',
-                            border: `1px solid ${sellers.length === 0 ? '#FDE68A' : '#C7D2FE'}`,
-                            color: sellers.length === 0 ? '#92400E' : '#3730A3',
-                            fontSize: 12, fontWeight: 600, cursor: 'pointer'
-                          }}
-                        >
-                          {sellers.length === 0 ? 'No seller — click to connect →' : '+ Add another seller'}
-                        </button>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                          <button
+                            type="button"
+                            onClick={goConnect}
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 6,
+                              padding: '4px 10px', borderRadius: 6,
+                              background: sellers.length === 0 ? '#FEF3C7' : '#EEF2FF',
+                              border: `1px solid ${sellers.length === 0 ? '#FDE68A' : '#C7D2FE'}`,
+                              color: sellers.length === 0 ? '#92400E' : '#3730A3',
+                              fontSize: 12, fontWeight: 600, cursor: 'pointer'
+                            }}
+                          >
+                            {sellers.length === 0 ? 'No seller — click to connect →' : 'Add another seller'}
+                          </button>
+                          {/* 솔루션 미가입 외부공급업체로 이 재고를 바로 등록(상품 생성 + 매핑) */}
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); openExtRegister(ingredient); }}
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 6,
+                              padding: '4px 10px', borderRadius: 6,
+                              background: '#fff', border: '1px solid #C7CED6', color: '#4B5563',
+                              fontSize: 12, fontWeight: 600, cursor: 'pointer'
+                            }}
+                          >
+                            Register on external supplier
+                          </button>
+                        </div>
                       </InfoValue>
                     </InfoRow>
                   );
@@ -1444,6 +1549,90 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
             </UIFormGroup>
           </UIFormRow>
 
+          {/* Suppliers — 재고를 발주처(seller)/외부공급업체에 연결.
+              연결은 ingredient_id 매핑이 필요 → 새로 만들 때(id 없음)는 저장 후로 안내.
+              연결/외부등록 모달은 컴포넌트 하단에 단일 렌더(connectTarget/extTarget) — 여기선 핸들러만 호출(중복 정의 X). */}
+          <div style={{ borderTop: '1px solid #F1F4F8', paddingTop: '16px' }}>
+            <FormLabel>{'Suppliers'}</FormLabel>
+            {selectedIngredient ? (
+              <>
+                {/* 현재 연결된 발주처(있으면) */}
+                {Array.isArray(selectedIngredient.sellers) && selectedIngredient.sellers.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, margin: '6px 0 10px' }}>
+                    {selectedIngredient.sellers.map(s => (
+                      <span key={s.id} style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 4,
+                        padding: '2px 8px', borderRadius: 12, fontSize: 11, fontWeight: 600,
+                        background: s.seller_type === 'brand' ? '#EDE9FE' : s.seller_type === 'foodcourt' ? '#FCE7F3' : '#DCFCE7',
+                        color: s.seller_type === 'brand' ? '#6D28D9' : s.seller_type === 'foodcourt' ? '#9D174D' : '#166534'
+                      }}>
+                        {s.seller_type === 'brand' ? 'BRAND' : s.seller_type === 'foodcourt' ? 'FC' : 'SUP'}
+                        {s.seller_name ? ` · ${s.seller_name}` : ''}
+                        {s.unit_price != null ? ` · ${formatCurrency(Number(s.unit_price), selectedCurrency)}` : ''}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
+                  <button
+                    type="button"
+                    onClick={() => { setConnectTarget(selectedIngredient); }}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                      padding: '6px 12px', borderRadius: 6,
+                      background: '#EEF2FF', border: '1px solid #C7D2FE', color: '#3730A3',
+                      fontSize: 13, fontWeight: 600, cursor: 'pointer'
+                    }}
+                  >
+                    Connect supplier product
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { openExtRegister(selectedIngredient); }}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                      padding: '6px 12px', borderRadius: 6,
+                      background: '#fff', border: '1px solid #C7CED6', color: '#4B5563',
+                      fontSize: 13, fontWeight: 600, cursor: 'pointer'
+                    }}
+                  >
+                    Register on external supplier
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
+                <button
+                  type="button"
+                  disabled
+                  title="Save the stock item first, then connect suppliers"
+                  style={{
+                    padding: '6px 12px', borderRadius: 6,
+                    background: '#F4F6F9', border: '1px solid #C7CED6', color: '#9CA3AF',
+                    fontSize: 13, fontWeight: 600, cursor: 'not-allowed'
+                  }}
+                >
+                  Connect supplier product
+                </button>
+                <button
+                  type="button"
+                  disabled
+                  title="Save the stock item first, then connect suppliers"
+                  style={{
+                    padding: '6px 12px', borderRadius: 6,
+                    background: '#F4F6F9', border: '1px solid #C7CED6', color: '#9CA3AF',
+                    fontSize: 13, fontWeight: 600, cursor: 'not-allowed'
+                  }}
+                >
+                  Register on external supplier
+                </button>
+                <div style={{ flexBasis: '100%', fontSize: 12, color: '#4B5563', marginTop: 2 }}>
+                  Save the stock item first, then connect suppliers.
+                </div>
+              </div>
+            )}
+          </div>
+
         </form>
       </Modal>
 
@@ -1588,16 +1777,78 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                   .then(r => r.json())
                   .then(bj => {
                     const brandList = Array.isArray(bj?.data) ? bj.data : [];
-                    setIngredients([...brandList, ...newList]);
+                    applyReloadedList([...brandList, ...newList]);
                   })
-                  .catch(() => setIngredients(newList));
+                  .catch(() => applyReloadedList(newList));
               } else {
-                setIngredients(newList);
+                applyReloadedList(newList);
               }
             })
             .catch(() => {});
         }}
       />
+      {/* 경로② — 이 재고를 외부공급업체 상품으로 등록 */}
+      {extTarget && (
+        <Modal
+          isOpen
+          onClose={() => setExtTarget(null)}
+          title="Buy from an external supplier"
+          size="small"
+          footer={<>
+            <ModalButton variant="secondary" onClick={() => setExtTarget(null)}>Cancel</ModalButton>
+            <ModalButton variant="primary" disabled={extSaving} onClick={saveExtRegister}>{extSaving ? '…' : 'Save'}</ModalButton>
+          </>}
+        >
+          {extError && <div style={{ background: '#FEF2F2', border: '1px solid #FCA5A5', color: '#DC2626', borderRadius: 8, padding: '10px 14px', marginBottom: 12, fontSize: 13 }}>{extError}</div>}
+          <div style={{ fontSize: 13, color: '#4B5563', marginBottom: 12 }}>
+            Record that you buy <strong style={{ color: '#0A2540' }}>{extTarget.name}</strong> from a supplier that isn't on the platform, at a set price. You can reuse the same supplier for many ingredients.
+          </div>
+          <UIFormGroup>
+            <FormLabel>Supplier *</FormLabel>
+            <FormInput
+              type="text"
+              value={extForm.supplier_name}
+              onChange={(e) => setExtForm({ ...extForm, supplier_name: e.target.value })}
+              placeholder="Type a supplier name (e.g. Lim's Butcher)"
+            />
+            {(() => {
+              const q = extForm.supplier_name.trim().toLowerCase();
+              const exact = extSuppliers.some(s => s.name.trim().toLowerCase() === q);
+              const matches = q ? extSuppliers.filter(s => s.name.toLowerCase().includes(q) && s.name.trim().toLowerCase() !== q).slice(0, 5) : extSuppliers.slice(0, 5);
+              return (
+                <>
+                  {matches.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                      {matches.map(s => (
+                        <button key={s.id} type="button" onClick={() => setExtForm({ ...extForm, supplier_name: s.name })}
+                          style={{ padding: '4px 10px', borderRadius: 14, border: '1px solid #C7D2FE', background: '#EEF2FF', color: '#3730A3', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                          {s.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {q && (
+                    <div style={{ marginTop: 6, fontSize: 12, color: exact ? '#166534' : '#6B7280' }}>
+                      {exact ? '↻ Uses your existing supplier (no duplicate).' : '+ New supplier — will be created.'}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+          </UIFormGroup>
+          <UIFormRow>
+            <UIFormGroup>
+              <FormLabel>Unit price *</FormLabel>
+              <FormInput type="number" step="0.01" min="0" value={extForm.unit_price} onChange={(e) => setExtForm({ ...extForm, unit_price: e.target.value })} placeholder={`0.00 /${extTarget.unit || 'unit'}`} />
+            </UIFormGroup>
+            <UIFormGroup>
+              <FormLabel>Min. order qty</FormLabel>
+              <FormInput type="number" min="1" value={extForm.min_order_quantity} onChange={(e) => setExtForm({ ...extForm, min_order_quantity: e.target.value })} placeholder="1" />
+            </UIFormGroup>
+          </UIFormRow>
+        </Modal>
+      )}
+
       <ConfirmModal
         isOpen={infoModal.open}
         title={infoModal.title}

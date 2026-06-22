@@ -288,9 +288,11 @@ const OwnerInvoicesPage: React.FC = () => {
   const [restaurants, setRestaurants] = useState<RestaurantOption[]>([]);
   const [selectedRestaurant, setSelectedRestaurant] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [activePeriod, setActivePeriod] = useState<PeriodType>('month');
+  // to_pay(결제대기) 탭은 기간 기본값 'all' — 오래된 미결제가 가려져 결제 누락되는 것 방지. all 탭은 'month'.
+  const tabDefaultPeriod = (t: string | null): PeriodType => (t === 'to_pay' ? 'all' : 'month');
+  const [activePeriod, setActivePeriod] = useState<PeriodType>(() => tabDefaultPeriod(searchParams.get('tab')));
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
-  const [dateRange, setDateRange] = useState(() => calculatePeriodDateRange('month'));
+  const [dateRange, setDateRange] = useState(() => calculatePeriodDateRange(tabDefaultPeriod(searchParams.get('tab'))));
 
   // Modal states
   const [showViewModal, setShowViewModal] = useState(false);
@@ -311,6 +313,10 @@ const OwnerInvoicesPage: React.FC = () => {
   const activeTab = (searchParams.get('tab') as TabType) || 'all';
   const handleTabChange = (tab: TabType) => {
     setSearchParams({ tab });
+    const def = tabDefaultPeriod(tab);
+    setActivePeriod(def);
+    setIsCustomDateRange(false);
+    setDateRange(calculatePeriodDateRange(def));
   };
 
   // Period filter handlers

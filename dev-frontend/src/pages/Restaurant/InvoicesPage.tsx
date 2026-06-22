@@ -305,9 +305,12 @@ const RestaurantInvoicesPage: React.FC = () => {
   const [allInvoices, setAllInvoices] = useState<Invoice[]>([]);
   const [invoicesToPay, setInvoicesToPay] = useState<Invoice[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [activePeriod, setActivePeriod] = useState<PeriodType>('month');
+  // to_pay(결제대기) 탭은 기간 기본값 'all' — 한 달 넘은 미결제 인보이스가 가려져 결제 누락되는 것 방지.
+  // 'all'(전체 인보이스 브라우즈) 탭은 'month' 기본. (incoming-orders 와 동일 사상: 액션 필요한 목록은 안 가린다.)
+  const tabDefaultPeriod = (t: string | null): PeriodType => (t === 'to_pay' ? 'all' : 'month');
+  const [activePeriod, setActivePeriod] = useState<PeriodType>(() => tabDefaultPeriod(searchParams.get('tab')));
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
-  const [dateRange, setDateRange] = useState(() => calculatePeriodDateRange('month'));
+  const [dateRange, setDateRange] = useState(() => calculatePeriodDateRange(tabDefaultPeriod(searchParams.get('tab'))));
 
   // Modal states
   const [showViewModal, setShowViewModal] = useState(false);
@@ -333,6 +336,11 @@ const RestaurantInvoicesPage: React.FC = () => {
   const activeTab = (searchParams.get('tab') as TabType) || 'all';
   const handleTabChange = (tab: TabType) => {
     setSearchParams({ tab });
+    // 탭별 기본 기간 적용 — to_pay 로 가면 'all'(안 가림), all 로 가면 'month'.
+    const def = tabDefaultPeriod(tab);
+    setActivePeriod(def);
+    setIsCustomDateRange(false);
+    setDateRange(calculatePeriodDateRange(def));
   };
 
   // Period filter handlers

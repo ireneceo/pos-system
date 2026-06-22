@@ -49,8 +49,11 @@ router.get('/brands/:brandId/ingredients', authenticateToken, isBrandManager, as
     const userBrands = await Brand.findAll({ where: { owner_id: req.user.id }, attributes: ['id'] });
     const allBrandIds = userBrands.map(b => b.id);
 
+    // 소유 브랜드의 재료만. 예전엔 `OR brand_id IS NULL` 이 붙어 전 시스템의 모든 '레스토랑' 재료
+    // (brand_id=null, restaurant_id 보유)를 끌어와 BG 에게 타 매장 재료 수십 건이 누출됐다(교차 테넌트).
+    // 레스토랑 재료는 brand 재료가 아니므로 여기 절대 포함되면 안 됨. allBrandIds 빈 배열이면 빈 결과.
     const ingredients = await Ingredient.findAll({
-      where: { brand_id: { [Op.or]: [{ [Op.in]: allBrandIds }, null] } },
+      where: { brand_id: { [Op.in]: allBrandIds } },
       order: [['name', 'ASC']],
       include: [
         {

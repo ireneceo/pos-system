@@ -21,7 +21,7 @@
 
 const express = require('express');
 const router = express.Router();
-const { Op } = require('sequelize');
+const { Op, fn, col } = require('sequelize');
 const {
   SupplierCompany,
   SupplierContract,
@@ -47,7 +47,9 @@ const PUBLIC_SUPPLIER_ATTRS = [
   'company_name', 'trade_name',
   'email', 'phone', 'website',
   'address', 'address_line_2', 'city', 'state', 'postal_code', 'country',
-  'status', 'created_at'
+  'status', 'created_at',
+  // 외부공급업체(내가 등록) 상품관리 UI 노출 판별용
+  'is_system_registered', 'registered_by_entity_type', 'registered_by_entity_id'
 ];
 
 // Buyer-only middleware applied per-path so unrelated /api/* requests
@@ -939,6 +941,144 @@ router.put('/external-suppliers/:id', async (req, res) => {
   } catch (err) {
     console.error('PUT /api/external-suppliers/:id error:', err);
     res.status(500).json({ success: false, message: 'Failed to update external supplier' });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// 외부공급업체 상품 (External supplier products) — buyer 가 솔루션 미가입 공급업체의 상품을 직접 등록/관리.
+// SupplierProduct 생성은 원래 Supplier Admin 만 가능했으나, 외부공급업체는 로그인할 일이 없어
+// buyer 가 대신 등록해야 발주 가능. 안전: 내가 등록한 외부공급업체(is_system_registered=false +
+// registered_by_entity = 나)에만 허용 → 플랫폼 가입 공급업체 카탈로그는 절대 못 건드림.
+// docs/EXTERNAL_SUPPLIER_PRODUCTS.md
+// ──────────────────────────────────────────────────────────────────────────────
+
+// 소유 외부공급업체 검증. 통과 시 SupplierCompany 반환, 실패 시 응답 보내고 null.
+async function loadOwnedExternalSupplier(req, res) {
+  if (!req.buyerEntity) { res.status(400).json({ success: false, message: 'Buyer context required' }); return null; }
+  const id = parseInt(req.params.id, 10);
+  const sc = await SupplierCompany.findByPk(id);
+  if (!sc) { res.status(404).json({ success: false, message: 'Supplier not found' }); return null; }
+  if (sc.is_system_registered) {
+    res.status(403).json({ success: false, code: 'NOT_EXTERNAL', message: 'Only external (non-platform) suppliers you registered can be managed here' });
+    return null;
+  }
+  if (sc.registered_by_entity_type !== req.buyerEntity.type || sc.registered_by_entity_id !== req.buyerEntity.id) {
+    res.status(403).json({ success: false, message: 'Not your supplier' });
+    return null;
+  }
+  return sc;
+}
+
+// SupplierProduct 입력 검증 (supplier-products.js create 미러). { value } 또는 { error }.
+function buildProductFields(body) {
+  const name = sanitizeString(body.name || '');
+  if (!name) return { error: 'Product name is required' };
+  if (body.unit_price === undefined || body.unit_price === null || body.unit_price === '') return { error: 'unit_price is required' };
+  const unit_price = parseFloat(body.unit_price);
+  if (!Number.isFinite(unit_price) || unit_price < 0) return { error: 'unit_price must be a non-negative number' };
+  const base_quantity = body.base_quantity !== undefined && body.base_quantity !== '' ? parseFloat(body.base_quantity) : 1;
+  if (!Number.isFinite(base_quantity) || base_quantity < 0) return { error: 'base_quantity must be a non-negative number' };
+  const min_order_quantity = body.min_order_quantity !== undefined && body.min_order_quantity !== '' ? parseInt(body.min_order_quantity, 10) : 1;
+  if (!Number.isInteger(min_order_quantity) || min_order_quantity < 1) return { error: 'min_order_quantity must be >= 1' };
+  const lead_time_days = body.lead_time_days !== undefined && body.lead_time_days !== '' ? parseInt(body.lead_time_days, 10) : 0;
+  if (!Number.isInteger(lead_time_days) || lead_time_days < 0) return { error: 'lead_time_days must be a non-negative integer' };
+  return { value: {
+    name, unit_price, base_quantity, min_order_quantity, lead_time_days,
+    unit: body.unit ? sanitizeString(String(body.unit)) : null,
+    description: body.description ? sanitizeString(String(body.description)) : null,
+    image_url: body.image_url || null,
+    image_thumbnail: body.image_thumbnail || null,
+    emoji: body.emoji ? sanitizeString(String(body.emoji)) : null,
+    is_active: body.is_active !== false
+  } };
+}
+
+// GET /api/external-suppliers — 내가 등록한 외부공급업체 목록 (+상품수)
+router.get('/external-suppliers', async (req, res) => {
+  if (!req.buyerEntity) return res.status(400).json({ success: false, message: 'Buyer context required' });
+  try {
+    const companies = await SupplierCompany.findAll({
+      where: {
+        is_system_registered: false,
+        registered_by_entity_type: req.buyerEntity.type,
+        registered_by_entity_id: req.buyerEntity.id,
+        status: 'active'
+      },
+      order: [['name', 'ASC']]
+    });
+    const ids = companies.map(c => c.id);
+    const counts = ids.length
+      ? await SupplierProduct.findAll({ where: { supplier_company_id: { [Op.in]: ids } }, attributes: ['supplier_company_id', [fn('COUNT', col('id')), 'cnt']], group: ['supplier_company_id'], raw: true })
+      : [];
+    const cntMap = Object.fromEntries(counts.map(c => [c.supplier_company_id, Number(c.cnt)]));
+    res.json({ success: true, data: companies.map(c => ({ id: c.id, name: c.name, phone: c.phone, email: c.email, product_count: cntMap[c.id] || 0 })) });
+  } catch (err) {
+    console.error('GET /api/external-suppliers error:', err);
+    res.status(500).json({ success: false, message: 'Failed to load external suppliers' });
+  }
+});
+
+// GET /api/external-suppliers/:id/products — 그 외부공급업체 상품 목록
+router.get('/external-suppliers/:id/products', async (req, res) => {
+  const sc = await loadOwnedExternalSupplier(req, res); if (!sc) return;
+  try {
+    const products = await SupplierProduct.findAll({
+      where: { supplier_company_id: sc.id },
+      include: [{ model: SupplierProductCategory, as: 'category', attributes: ['id', 'name', 'emoji'] }],
+      order: [['name', 'ASC']]
+    });
+    res.json({ success: true, data: products });
+  } catch (err) {
+    console.error('GET /api/external-suppliers/:id/products error:', err);
+    res.status(500).json({ success: false, message: 'Failed to load products' });
+  }
+});
+
+// POST /api/external-suppliers/:id/products — 외부공급업체 상품 등록
+router.post('/external-suppliers/:id/products', async (req, res) => {
+  const sc = await loadOwnedExternalSupplier(req, res); if (!sc) return;
+  try {
+    const built = buildProductFields(req.body || {});
+    if (built.error) return res.status(400).json({ success: false, message: built.error });
+    const count = await SupplierProduct.count({ where: { supplier_company_id: sc.id }, paranoid: false });
+    const sku = req.body.sku ? sanitizeString(String(req.body.sku)) : `SP-${sc.id}-${String(count + 1).padStart(4, '0')}`;
+    const product = await SupplierProduct.create({ supplier_company_id: sc.id, sku, current_stock: 0, low_stock_threshold: 0, sort_order: 0, ...built.value });
+    const created = await SupplierProduct.findByPk(product.id, { include: [{ model: SupplierProductCategory, as: 'category', attributes: ['id', 'name', 'emoji'] }] });
+    res.status(201).json({ success: true, data: created });
+  } catch (err) {
+    console.error('POST /api/external-suppliers/:id/products error:', err);
+    res.status(500).json({ success: false, message: 'Failed to create product' });
+  }
+});
+
+// PUT /api/external-suppliers/:id/products/:productId — 수정
+router.put('/external-suppliers/:id/products/:productId', async (req, res) => {
+  const sc = await loadOwnedExternalSupplier(req, res); if (!sc) return;
+  try {
+    const product = await SupplierProduct.findByPk(parseInt(req.params.productId, 10));
+    if (!product || product.supplier_company_id !== sc.id) return res.status(404).json({ success: false, message: 'Product not found' });
+    const built = buildProductFields(req.body || {});
+    if (built.error) return res.status(400).json({ success: false, message: built.error });
+    await product.update(built.value);
+    const updated = await SupplierProduct.findByPk(product.id, { include: [{ model: SupplierProductCategory, as: 'category', attributes: ['id', 'name', 'emoji'] }] });
+    res.json({ success: true, data: updated });
+  } catch (err) {
+    console.error('PUT /api/external-suppliers/:id/products/:productId error:', err);
+    res.status(500).json({ success: false, message: 'Failed to update product' });
+  }
+});
+
+// DELETE /api/external-suppliers/:id/products/:productId — soft delete
+router.delete('/external-suppliers/:id/products/:productId', async (req, res) => {
+  const sc = await loadOwnedExternalSupplier(req, res); if (!sc) return;
+  try {
+    const product = await SupplierProduct.findByPk(parseInt(req.params.productId, 10));
+    if (!product || product.supplier_company_id !== sc.id) return res.status(404).json({ success: false, message: 'Product not found' });
+    await product.destroy();
+    res.json({ success: true });
+  } catch (err) {
+    console.error('DELETE /api/external-suppliers/:id/products/:productId error:', err);
+    res.status(500).json({ success: false, message: 'Failed to delete product' });
   }
 });
 

@@ -175,7 +175,9 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
   const foodcourtId = (user as any)?.foodcourtId || (user as any)?.foodcourt_id;
 
   const ownEndpoint = (id: number): string | null => {
-    if ((role === 'Restaurant Admin' || role === 'Restaurant Owner') && restaurantId) {
+    // Staff 도 fetchAll 에서 own 공급업체를 보므로(아래 199행 분기) Edit/Delete endpoint 가 있어야 한다.
+    // 누락 시 url=null → 행 액션(수정/삭제)이 조용히 무반응(no-op). 백엔드 checkRestaurantAccess 는 Staff 허용.
+    if ((role === 'Restaurant Admin' || role === 'Restaurant Owner' || role === 'Staff') && restaurantId) {
       return `/api/restaurants/${restaurantId}/suppliers/${id}`;
     }
     if (role === 'Brand General' || role === 'Brand Manager') {

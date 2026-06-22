@@ -724,7 +724,8 @@
       "Bash(wait)",
       "Bash(awk '/purchase-orders\\\\/bulk/,/^}\\\\\\)/' routes/purchase-orders-crud.js)",
       "Bash(xargs -I{} echo \"에러로그 매칭 {}건\\(0 기대\\)\")",
-      "Bash(xargs -I{} echo \"치명에러 {}건\\(0기대\\)\")"
+      "Bash(xargs -I{} echo \"치명에러 {}건\\(0기대\\)\")",
+      "Bash(awk 'NR>=1100 && NR<=1265 && \\(/showDetailModal/||/selectedIngredient/||/\\\\.map\\\\\\(\\\\\\(ingredient/||/IngredientCard/||/InfoRow/||/Sellers/\\)' IngredientsTab.tsx)"
     ],
     "deny": [],
     "ask": []

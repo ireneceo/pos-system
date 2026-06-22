@@ -1,8 +1,40 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-21 #4 (**다른 역할 관리화면을 RA 디자인 기준에 맞춤 — 0위험 이모지 정리 — DEV·미배포**. RA=정돈 기준([[reference_ra_design_standard]]): 대시보드 아이콘=기하 글리프(이모지/lucide 아님·유지), 빈상태=텍스트만, 컬러 이모지 0. BG/FG/Admin 관리화면의 🔒/⚠/🟢🟡🔴 8지점만 제거(기하 글리프 보존). /검증 통과: hydration0·타임존신규0·build exit0·health 107/107·print-guard 8/8·i18n 0·서빙200. SW=3.71.)
+> **최종 업데이트:** 2026-06-22 (**발주/공급업체 흐름 + 데이터누출 + 인보이스/반응형 — DEV·미배포**. 외부공급업체 상품 등록(RA 2경로) + 교차테넌트 재료 누출 차단 + 발주 buyerEntity 필드 + 인보이스 to_pay→All(전역할) + 공급업체 Staff액션 + 재고 편집모달 연결섹션 + 반응형 10인치 실측. /검증 통과: hydration0·타임존0·build·health 107/107·print-guard 8/8·design0·i18n0·mount 8/8. SW=3.86.)
 >
-> **이전 #3:** 전면 디자인 통일성 전수감사 + "눈에 보이는 것부터" 1차 수정(버튼 팔레트색·빈상태/랭킹 이모지·쿠폰 i18n·타임존 2건). SW=3.70.
+> **이전 #4:** 다른 역할 관리화면을 RA 디자인 기준에 맞춤(이모지 정리). SW=3.71.
+
+## ✅ 완료: 발주·공급업체 흐름 + 누출차단 + 인보이스/반응형 (2026-06-22, DEV·미배포)
+
+> Irene 연쇄 피드백: 발주 화면에 stock item 안 뜸 → 교차테넌트 누출 발견 → BG/RA 평행체인 확정 → 외부공급업체 상품 등록 신축(RA 우선) → 인보이스 결제탭/반응형/공급업체 줄줄이.
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 발주 incoming-orders 날짜필터 | 카운트=전체인데 목록=오늘 필터라 안 뜸 → 기본 기간 'all'(Supplier/BG/FG 공유뷰) | ✅ |
+| 발주 buyerEntity 필드 오타 | `user.brandId`(camel) 읽어 BG/FG undefined→"No linked stock items". `brand_id`/`foodcourt_id`(snake)로 | ✅ |
+| 발주 Cart 높이 정렬 | TabBar·CartHeader 49px 고정으로 회색선 연결(RA 공유 페이지) | ✅ |
+| **교차테넌트 재료 누출 차단** | `GET /api/brands/:id/ingredients` 의 `brand_id IS NULL` 절이 전 시스템 레스토랑 재료 누출 → 소유 브랜드만 | ✅ |
+| BG 재고=ProductIngredient 단일소스 | 발주 "My Stock Items"가 brand Ingredient 섞던 것 제거(owner 공유 stock만) | ✅ |
+| **외부공급업체 상품 등록(RA, 2경로)** | 솔루션 미가입 공급업체 상품을 buyer가 직접 등록. ①SupplierProfile Add/Edit/Delete ②재고에서 "Register on external supplier"(입력→검색→없으면 생성). 소유권 가드(is_system_registered=false+registered_by=나) | ✅ |
+| 인보이스 to_pay→All (전 역할) | 결제대기 탭 기간 기본 'all'(미결제 안 가림). Restaurant·Owner 수정/Brand·Foodcourt 기존/Manager 해당없음 | ✅ |
+| 공급업체 Staff 행 액션 | AllSuppliersView ownEndpoint 에 Staff 누락→Edit/Delete no-op 수정 | ✅ |
+| 재고 편집모달 연결섹션 | New/Edit 모달에 "공급업체 연결/외부공급업체 등록"(현재셀러 칩). New는 "저장 먼저" 안내 | ✅ |
+| 반응형 10인치 실측 | 4페이지+시재드로어/파이널마감 모달, 1024·800px·주문데이터 유무 모두 가로넘침 0(데모38 시드 측정). 재현 흔들림 없어 수정 불필요 | ✅ |
+
+### 수정/신규 파일
+- 백엔드: `routes/supplier-directory.js`(외부공급업체 상품 CRUD+PUBLIC_SUPPLIER_ATTRS), `routes/ingredients.js`(누출 차단)
+- 프론트: `PurchaseOrders/NewPurchaseOrderPage.tsx`, `SupplierDirectory/SupplierProfilePage.tsx`, `Suppliers/AllSuppliersView.tsx`, `RecipeManagement/IngredientsTab.tsx`, `Restaurant/InvoicesPage.tsx`, `Owner/OwnerInvoicesPage.tsx`, `IncomingOrders/IncomingOrdersView.tsx`, `CashManagement/{CashUpPage,CashLedger}` + `public/sw.js`(3.86)
+- 문서: `docs/EXTERNAL_SUPPLIER_PRODUCTS.md`, `docs/COUPON_MULTI_RESTAURANT.md`
+
+### 검증
+- /검증 10단계 통과: hydration 0·timezone 신규 0·build·API 8/8(외부공급업체 CRUD·소유권 403·누출 0·익명 401)·mount 8/8·health 107/107·print-guard 8/8(POS·KDS 인쇄파일 무변경)·design 0·i18n 0
+- 메모리: [[reference_external_supplier_products]] [[reference_bg_ra_product_chains]] [[reference_user_object_snake_case]] [[reference_owner_restaurant_claim]]
+
+---
+
+## ✅ 완료: 전면 디자인 통일성 전수감사 + 1차 수정 (2026-06-21 #3, DEV·미배포)
 
 ## ✅ 완료: 전면 디자인 통일성 전수감사 + 1차 수정 (2026-06-21 #3, DEV·미배포)
 

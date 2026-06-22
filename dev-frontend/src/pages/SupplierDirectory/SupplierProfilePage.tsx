@@ -5,10 +5,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container, Header, Title, Content,
   Modal as CommonModal, ModalButton,
-  FormGroup as UIFormGroup, FormLabel, FormTextArea, FormInput
+  FormGroup as UIFormGroup, FormLabel, FormTextArea, FormInput, FormSelect
 } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
+import ConfirmModal from '../../components/ConfirmModal';
 import { useAuth } from '../../contexts/AuthContext';
 import { getAuthToken } from '../../utils/auth';
 import { formatAddress, AppLocale } from '../../utils/formatAddress';
@@ -53,6 +54,9 @@ interface SupplierProfile {
   products?: ProductRow[];
   product_categories?: ProductCategory[];
   currency?: string | null;
+  is_system_registered?: boolean;
+  registered_by_entity_type?: string | null;
+  registered_by_entity_id?: number | null;
   my_contract?: {
     id?: number | null;
     status: 'none' | 'requested' | 'active' | 'rejected' | 'terminated';
@@ -402,6 +406,78 @@ const SupplierProfilePage: React.FC = () => {
     return { type: '', name: '' };
   }, [user]);
 
+  // 내 entity id (소유 외부공급업체 판별용). RA=restaurantId / BG=brand_id / FG=foodcourt_id
+  const myEntityId = useMemo<number | null>(() => {
+    if (!user) return null;
+    if (user.role === 'Brand General' || user.role === 'Brand Manager') return (user as any).brand_id ?? null;
+    if (user.role === 'Foodcourt General' || user.role === 'Foodcourt Manager') return (user as any).foodcourt_id ?? null;
+    return user.restaurantId ? Number(user.restaurantId) : null;
+  }, [user]);
+
+  // "내가 등록한 외부공급업체" 일 때만 상품 등록/수정/삭제 UI 노출. 플랫폼 가입 공급업체 카탈로그는 못 건드림.
+  const isOwnedExternal = !!profile && profile.is_system_registered === false
+    && profile.registered_by_entity_type === buyerEntity.type
+    && myEntityId != null && Number(profile.registered_by_entity_id) === Number(myEntityId);
+
+  const EMPTY_PRODUCT = { name: '', unit: 'kg', unit_price: '', min_order_quantity: '', lead_time_days: '' };
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<ProductRow | null>(null);
+  const [productForm, setProductForm] = useState<{ name: string; unit: string; unit_price: string; min_order_quantity: string; lead_time_days: string }>(EMPTY_PRODUCT);
+  const [savingProduct, setSavingProduct] = useState(false);
+  const [productError, setProductError] = useState<string | null>(null);
+  const [deletingProduct, setDeletingProduct] = useState<ProductRow | null>(null);
+
+  const openAddProduct = () => { setEditingProduct(null); setProductForm(EMPTY_PRODUCT); setProductError(null); setShowProductModal(true); };
+  const openEditProduct = (p: ProductRow) => {
+    setEditingProduct(p);
+    setProductForm({
+      name: p.name || '', unit: p.unit || 'kg', unit_price: String(p.unit_price ?? ''),
+      min_order_quantity: p.min_order_quantity != null ? String(p.min_order_quantity) : '',
+      lead_time_days: ''
+    });
+    setProductError(null); setShowProductModal(true);
+  };
+
+  const saveProduct = async () => {
+    if (!profile) return;
+    setProductError(null);
+    if (!productForm.name.trim()) { setProductError(t('extProduct.nameRequired', { defaultValue: 'Product name is required.' }) as string); return; }
+    if (!productForm.unit_price || parseFloat(productForm.unit_price) < 0) { setProductError(t('extProduct.priceRequired', { defaultValue: 'Enter a valid price.' }) as string); return; }
+    setSavingProduct(true);
+    const payload = {
+      name: productForm.name.trim(), unit: productForm.unit,
+      unit_price: parseFloat(productForm.unit_price),
+      min_order_quantity: productForm.min_order_quantity ? parseInt(productForm.min_order_quantity, 10) : 1,
+      lead_time_days: productForm.lead_time_days ? parseInt(productForm.lead_time_days, 10) : 0
+    };
+    try {
+      const token = getAuthToken();
+      const url = editingProduct
+        ? `/api/external-suppliers/${profile.id}/products/${editingProduct.id}`
+        : `/api/external-suppliers/${profile.id}/products`;
+      const res = await fetch(url, {
+        method: editingProduct ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.success) { setShowProductModal(false); fetchProfile(); }
+      else setProductError(data?.message || (t('extProduct.saveFailed', { defaultValue: 'Failed to save product.' }) as string));
+    } catch { setProductError(t('extProduct.saveFailed', { defaultValue: 'Failed to save product.' }) as string); }
+    finally { setSavingProduct(false); }
+  };
+
+  const doDeleteProduct = async () => {
+    if (!profile || !deletingProduct) return;
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`/api/external-suppliers/${profile.id}/products/${deletingProduct.id}`, {
+        method: 'DELETE', headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) { setDeletingProduct(null); fetchProfile(); }
+    } catch { /* noop */ }
+  };
+
   const submitRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     if (requestSubmitting || !profile) return;
@@ -583,6 +659,9 @@ const SupplierProfilePage: React.FC = () => {
 
         <Section>
           <SectionTitle>{t('profile.catalog')}</SectionTitle>
+          {isOwnedExternal && (
+            <InfoBox>{t('extProduct.hint', { defaultValue: "This is an external supplier you registered. Add the products you buy from them — they'll be orderable from your stock items." })}</InfoBox>
+          )}
           <FilterBar>
             <SearchInput
               type="text"
@@ -603,10 +682,22 @@ const SupplierProfilePage: React.FC = () => {
                 ))}
               </FilterSelect>
             )}
+            {isOwnedExternal && (
+              <ThemedButton variant="primary" onClick={openAddProduct} style={{ marginLeft: 'auto' }}>
+                {t('extProduct.add', { defaultValue: 'Add Product' })}
+              </ThemedButton>
+            )}
           </FilterBar>
 
           {filteredProducts.length === 0 ? (
-            <EmptyBox>{t('profile.noProducts')}</EmptyBox>
+            <EmptyBox>
+              {t('profile.noProducts')}
+              {isOwnedExternal && (
+                <div style={{ marginTop: 12 }}>
+                  <ThemedButton variant="primary" onClick={openAddProduct}>{t('extProduct.add', { defaultValue: 'Add Product' })}</ThemedButton>
+                </div>
+              )}
+            </EmptyBox>
           ) : (
             <ProductGrid>
               {filteredProducts.map(p => (
@@ -622,6 +713,12 @@ const SupplierProfilePage: React.FC = () => {
                   </ProductPrice>
                   {p.min_order_quantity != null && Number(p.min_order_quantity) > 0 && (
                     <ProductMeta>{t('profile.moq', { n: Number(p.min_order_quantity) })}</ProductMeta>
+                  )}
+                  {isOwnedExternal && (
+                    <div style={{ display: 'flex', gap: 8, marginTop: 'auto', paddingTop: 8 }}>
+                      <ThemedButton size="small" variant="outline" onClick={() => openEditProduct(p)} style={{ flex: 1 }}>{t('common:button.edit', { defaultValue: 'Edit' })}</ThemedButton>
+                      <ThemedButton size="small" variant="outline" onClick={() => setDeletingProduct(p)} style={{ flex: 1 }}>{t('common:button.delete', { defaultValue: 'Delete' })}</ThemedButton>
+                    </div>
                   )}
                 </ProductCard>
               ))}
@@ -678,6 +775,60 @@ const SupplierProfilePage: React.FC = () => {
           {requestError && <ErrorBox>{requestError}</ErrorBox>}
         </form>
       </CommonModal>
+
+      {/* 외부공급업체 상품 등록/수정 */}
+      {showProductModal && (
+        <CommonModal
+          isOpen
+          onClose={() => setShowProductModal(false)}
+          title={editingProduct ? t('extProduct.editTitle', { defaultValue: 'Edit Product' }) as string : t('extProduct.addTitle', { defaultValue: 'Add Product' }) as string}
+          size="small"
+          footer={<>
+            <ModalButton variant="secondary" onClick={() => setShowProductModal(false)}>{t('common:button.cancel', { defaultValue: 'Cancel' })}</ModalButton>
+            <ModalButton variant="primary" disabled={savingProduct} onClick={saveProduct}>{savingProduct ? '…' : t('common:button.save', { defaultValue: 'Save' })}</ModalButton>
+          </>}
+        >
+          {productError && <ErrorBox style={{ marginTop: 0, marginBottom: 12 }}>{productError}</ErrorBox>}
+          <UIFormGroup>
+            <FormLabel>{t('extProduct.name', { defaultValue: 'Product name' })} *</FormLabel>
+            <FormInput type="text" value={productForm.name} onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} placeholder={t('extProduct.namePlaceholder', { defaultValue: 'e.g. Chicken Breast' }) as string} />
+          </UIFormGroup>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <UIFormGroup style={{ flex: 1 }}>
+              <FormLabel>{t('extProduct.unitPrice', { defaultValue: 'Unit price' })} *</FormLabel>
+              <FormInput type="number" step="0.01" min="0" value={productForm.unit_price} onChange={(e) => setProductForm({ ...productForm, unit_price: e.target.value })} placeholder="0.00" />
+            </UIFormGroup>
+            <UIFormGroup style={{ flex: 1 }}>
+              <FormLabel>{t('extProduct.unit', { defaultValue: 'Unit' })}</FormLabel>
+              <FormSelect value={productForm.unit} onChange={(e) => setProductForm({ ...productForm, unit: e.target.value })}>
+                {['kg', 'g', 'L', 'ml', 'piece', 'pack', 'can', 'bottle'].map(u => <option key={u} value={u}>{u}</option>)}
+              </FormSelect>
+            </UIFormGroup>
+          </div>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <UIFormGroup style={{ flex: 1 }}>
+              <FormLabel>{t('extProduct.moq', { defaultValue: 'Min. order qty' })}</FormLabel>
+              <FormInput type="number" min="1" value={productForm.min_order_quantity} onChange={(e) => setProductForm({ ...productForm, min_order_quantity: e.target.value })} placeholder="1" />
+            </UIFormGroup>
+            <UIFormGroup style={{ flex: 1 }}>
+              <FormLabel>{t('extProduct.leadTime', { defaultValue: 'Lead time (days)' })}</FormLabel>
+              <FormInput type="number" min="0" value={productForm.lead_time_days} onChange={(e) => setProductForm({ ...productForm, lead_time_days: e.target.value })} placeholder="0" />
+            </UIFormGroup>
+          </div>
+        </CommonModal>
+      )}
+
+      {deletingProduct && (
+        <ConfirmModal
+          isOpen
+          title={t('extProduct.deleteTitle', { defaultValue: 'Delete product' }) as string}
+          message={t('extProduct.deleteConfirm', { defaultValue: `Delete "${deletingProduct.name}"? This cannot be undone.`, name: deletingProduct.name }) as string}
+          confirmText={t('common:button.delete', { defaultValue: 'Delete' }) as string}
+          type="danger"
+          onConfirm={doDeleteProduct}
+          onCancel={() => setDeletingProduct(null)}
+        />
+      )}
     </Container>
   );
 };

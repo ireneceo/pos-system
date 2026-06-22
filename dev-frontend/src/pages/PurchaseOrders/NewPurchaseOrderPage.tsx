@@ -591,17 +591,21 @@ const NewPurchaseOrderPage: React.FC = () => {
     setLoadingMine(true);
     try {
       const token = getAuthToken();
-      const res = await fetch(
-        `${buyerApiBase}/ingredients?include=sellers`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      const j = await res.json();
-      const ingredientRows: MyIngredientRow[] =
-        res.ok && j.success && Array.isArray(j.data) ? j.data : [];
+      // BG 의 재고(Stock Items)는 owner_user_id 단위 ProductIngredient 가 단일 소스(브랜드 무관, owner 공유) —
+      // 매장의 stock 관리 UI(ProductIngredientsTab)와 동일. 그래서 BG 는 brand Ingredient 목록을 부르지 않는다.
+      // (예전엔 /api/brands/{id}/ingredients 를 같이 불러 타 매장 레스토랑 재료가 섞여 보이던 문제.)
+      // Restaurant / Foodcourt 는 자기 ingredients 엔드포인트 유지.
+      let ingredientRows: MyIngredientRow[] = [];
+      if (buyerEntity?.type !== 'brands') {
+        const res = await fetch(
+          `${buyerApiBase}/ingredients?include=sellers`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        const j = await res.json();
+        ingredientRows = res.ok && j.success && Array.isArray(j.data) ? j.data : [];
+      }
 
-      // BG (brands) only — also surface BG Stock Items (ProductIngredient) that have
-      // a seller-source mapping. Merged alongside brand ingredients, both visible.
-      // Restaurant / Foodcourt paths skip this entirely (behavior unchanged).
+      // BG (brands) only — Stock Items = owner-scoped ProductIngredient with a seller-source mapping.
       let productIngredientRows: MyIngredientRow[] = [];
       if (buyerEntity?.type === 'brands') {
         try {
