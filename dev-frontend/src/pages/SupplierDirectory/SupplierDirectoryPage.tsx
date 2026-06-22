@@ -407,11 +407,7 @@ const SupplierDirectoryPage: React.FC = () => {
               ))}
             </FilterSelect>
           )}
-          <div style={{ marginLeft: 'auto' }}>
-            <ThemedButton variant="primary" onClick={() => setShowExternalModal(true)}>
-              {t('directory.addExternal', 'External Supplier')}
-            </ThemedButton>
-          </div>
+          {/* 2026-06-22 (Irene): 외부공급업체 등록은 Direct 탭으로 이동. Find 는 솔루션(플랫폼) 업체 찾기 전용. */}
         </FilterBar>
 
         {loading && rows.length === 0 ? (

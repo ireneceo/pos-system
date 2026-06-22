@@ -192,6 +192,14 @@ export function useAutoPrintPoller(opts: {
                   }
                 }
                 // not claimed → another device already owns this ticket, skip silently
+              } else if (_isBacklog) {
+                // 2026-06-22 (Irene): pre-enable backlog — clear needs_print so it
+                // leaves the oldest-20 pending-print window. Otherwise stale backlog
+                // rows permanently occupy the window and genuinely NEW orders fall
+                // outside it → never auto-print ("주문 밀리면 자동인쇄 안 됨"). Manual
+                // Kitchen Ticket button still works (it prints from order_items, not
+                // needs_print). No printed_at stamped → not counted as printed.
+                try { await fetch(`/api/orders/${ord.id}/print-dismiss`, { method: 'PATCH', headers: _h }); } catch {}
               }
             }
 

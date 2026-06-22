@@ -1214,6 +1214,18 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         // 없이 정상 경로를 타면 모바일 주문도 cashier 로 안전하게 나간다.
         // (POS 직접경로와의 중복은 printed_at 히스토리 + __autoPrintInflight 로 방지)
         const activeBill = billPrintMod.getActiveBillPrinter();
+        // 2026-06-22 (Irene): backlog cutoff — MUST mirror useAutoPrintPoller. This
+        // poller previously had NO cutoff, so toggling autoPrint OFF→ON flushed ALL
+        // pre-enable orders ("체크하면 이전 주문티켓이 나옴"). enabledAt = first time autoPrint
+        // is observed ON (shared localStorage key, survives reload); orders created
+        // before it are backlog → skipped + dismissed. OFF clears it. Both pollers use
+        // the SAME key so the cutoff is consistent across hook + this layout poller.
+        const _kpAutoNow = !!(printSettings.kitchenPrinter && printSettings.kitchenPrinter.autoPrint);
+        const _stAutoNow = Object.values(printSettings.kitchenStationPrinters || {}).some((s: any) => s?.autoPrint);
+        const _anyAutoNow = _kpAutoNow || _stAutoNow;
+        let _autoEnabledAt = parseInt(localStorage.getItem('kitchenAutoPrintEnabledAt') || '0', 10) || 0;
+        if (_anyAutoNow && !_autoEnabledAt) { _autoEnabledAt = Date.now(); try { localStorage.setItem('kitchenAutoPrintEnabledAt', String(_autoEnabledAt)); } catch {} }
+        if (!_anyAutoNow && _autoEnabledAt) { try { localStorage.removeItem('kitchenAutoPrintEnabledAt'); } catch {} _autoEnabledAt = 0; }
         // 2026-05-28: KDS 페이지에서도 폴링 활성. KDS socket 이 빠른 첫 path 이고
         // 폴링이 fail-safe (socket 누락 / device 다중 / 일시 단절 시). KDS socket
         // 핸들러는 인쇄 성공 시 PATCH /printed 호출 → 폴링은 자동 skip.
@@ -1286,7 +1298,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               const _stationAutoPrint = Object.values(printSettings.kitchenStationPrinters || {}).some((s: any) => s?.autoPrint);
               // Station-only mode 허용: master autoPrint OFF + any station autoPrint ON → fire stations.
               const _kitchenAuto = _kpEnabled && _kpAuto;
-              if (_kitchenAuto) {
+              // 2026-06-22 (Irene): backlog cutoff (mirror useAutoPrintPoller). Don't
+              // auto-print orders created BEFORE this autoPrint session began.
+              const _ordMs = ord.created_at ? new Date(ord.created_at).getTime()
+                : (ord.createdAt ? new Date(ord.createdAt).getTime()
+                : (ord.order_date ? new Date(ord.order_date).getTime() : 0));
+              const _isBacklog = !!(_autoEnabledAt && _ordMs && _ordMs < _autoEnabledAt);
+              if (_kitchenAuto && !_isBacklog) {
                 // 2026-06-09 (Irene "새주문 2장"): ATOMIC CLAIM before printing — mirrors
                 // useAutoPrintPoller. A new order's localStorage 'autoprint-poke' wakes
                 // every same-origin window at once, so this poller and the hook used to
@@ -1312,6 +1330,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   }
                 }
                 // not claimed → another device already owns this ticket, skip silently
+              } else if (_isBacklog) {
+                // 2026-06-22 (Irene): pre-enable backlog — clear needs_print so it
+                // leaves the oldest-20 pending-print window (else stale rows starve
+                // genuinely new orders → "주문 밀리면 자동인쇄 안 됨"). Manual Kitchen
+                // Ticket button still works (prints from order_items, not needs_print).
+                try { await fetch(`/api/orders/${ord.id}/print-dismiss`, { method: 'PATCH', headers: _h }); } catch {}
               }
             }
             if (kitchenPrinted) {

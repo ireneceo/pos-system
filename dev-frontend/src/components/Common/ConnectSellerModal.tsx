@@ -36,7 +36,7 @@ const Header = styled.div`
 const SearchBar = styled.div`
   padding: 12px 24px; border-bottom: 1px solid #C7CED6;
   input {
-    width: 100%; padding: 8px 12px; border: 1px solid #C7CED6; border-radius: 6px;
+    width: 100%; box-sizing: border-box; padding: 8px 12px; border: 1px solid #C7CED6; border-radius: 6px;
     font-size: 14px; color: #0A2540;
     &:focus { outline: none; border-color: #635BFF; box-shadow: 0 0 0 3px rgba(99,91,255,0.1); }
   }

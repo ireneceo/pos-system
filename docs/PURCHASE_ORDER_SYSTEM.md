@@ -1050,3 +1050,29 @@ draft ──submit──▶ (오너승인 ON & 오너연결) pending_approval �
 - 레스토랑: 발주 리스트/상세에 `pending_approval` 상태 배지("오너 승인 대기") + 작성자에게 반려 사유 표시.
 - 오너: 발주 승인 큐(표준 DataTable) + 승인(ConfirmModal)/반려(사유 Modal). 사이드바 배지(badgeCounts) 선택.
 - 통일 컴포넌트 전면 사용(Modal/ConfirmModal/FormGroup/DataTable/StatusBadge/ActionButton).
+
+---
+
+## H. 발주 카트·Staging 흐름 정리 (2026-06-22, Irene 연쇄 피드백)
+
+### H-1. 개념 모델 (확정)
+- **`/pos/purchase-orders` = "Planned Order"(담는 곳)**. 우측 패널은 담기용(이전 "Cart" → "Planned Order"로 개명). 카트는 **buyer 별 localStorage**(`po-cart:{type}:{id}`)로 영속화 — 제출 안 하고 이동해도 유지(로드-가드+skipSave 로 user 늦은 로딩 시 wipe 방지). **제출 시에만** 비워짐(중복 제출 방지).
+- **`/pos/purchase-orders/staging` (Pending POs) = 실질 카트**. 제출하면 공급업체별 draft PO 로 쌓이고, 검토 후 **Submit All** 로 최종 발송.
+- 카트 페이지 상단에 **"Pending POs (N) →"** 링크(staging 바로가기, draft 수 표시).
+
+### H-2. 같은 공급업체 = 한 PO (합치기)
+- **bulk 제출(mergeDraft)**: `createPurchaseOrderCore` 가 같은 `entity+seller_type+seller_entity_id` 의 draft 가 있으면 새로 안 만들고 거기에 품목 합치고 총액 누적(가장 오래된 draft 기준).
+- **staging 자동 통합**: staging 진입(fetchDrafts)마다 `POST /api/purchase-orders/consolidate-drafts` 호출 — 같은 공급업체 draft 들을 oldest 로 합치고 나머지 soft-delete. 항상 공급업체당 1 PO 유지.
+- ⚠️ **PurchaseOrder 는 paranoid(soft-delete)** — destroy 는 deleted_at 세팅. raw SQL count 는 deleted_at 필터 안 하면 오해 유발(모델 쿼리로 확인).
+
+### H-3. 삭제
+- **PO 폐기**: `DELETE /api/purchase-orders/:id` — draft 전용·owner-scoped·라인아이템 함께 삭제. cancel(기록 남김)과 달리 완전 제거. staging 각 PO "Discard".
+- **아이템별 삭제**: `DELETE /api/purchase-orders/:id/items/:itemId` — draft·owner·총액 재계산. 마지막 품목 삭제 시 PO 도 삭제. staging 각 품목 행 "×".
+
+### H-4. 품목 이름 / 외부발송 내용
+- draft 조회(`?status=draft`)가 품목에 `product_name`(description snapshot || ingredient.name) 동봉 — 이전 "Item #id" 대신 실제 이름.
+- 외부공급업체 PO: **WhatsApp/Email 내용에 실제 품목 목록(이름×수량@단가)+총액**. WhatsApp 번호 미등록 시 `wa.me/?text=` (번호 생략)으로 열어 연락처 선택 발송.
+
+### H-5. 수정 파일
+- 백엔드: `routes/purchase-orders-crud.js`(bulk mergeDraft, draft 품목 product_name), `routes/purchase-orders-workflow.js`(DELETE PO / DELETE item / consolidate-drafts)
+- 프론트: `pages/PurchaseOrders/NewPurchaseOrderPage.tsx`(카트 영속화·Planned Order 개명·Pending POs 링크), `PurchaseOrderStagingPage.tsx`(자동통합·Discard·아이템 × 삭제·품목명·WhatsApp/Email 내용·헤더 80px), `public/sw.js`(3.89)

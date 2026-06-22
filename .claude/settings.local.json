@@ -725,7 +725,15 @@
       "Bash(awk '/purchase-orders\\\\/bulk/,/^}\\\\\\)/' routes/purchase-orders-crud.js)",
       "Bash(xargs -I{} echo \"에러로그 매칭 {}건\\(0 기대\\)\")",
       "Bash(xargs -I{} echo \"치명에러 {}건\\(0기대\\)\")",
-      "Bash(awk 'NR>=1100 && NR<=1265 && \\(/showDetailModal/||/selectedIngredient/||/\\\\.map\\\\\\(\\\\\\(ingredient/||/IngredientCard/||/InfoRow/||/Sellers/\\)' IngredientsTab.tsx)"
+      "Bash(awk 'NR>=1100 && NR<=1265 && \\(/showDetailModal/||/selectedIngredient/||/\\\\.map\\\\\\(\\\\\\(ingredient/||/IngredientCard/||/InfoRow/||/Sellers/\\)' IngredientsTab.tsx)",
+      "Bash(cp /tmp/check-demo-email.js ./check-demo-email.js)",
+      "Bash(rm -f ./check-demo-email.js)",
+      "Bash(scp -q -o ConnectTimeout=8 dev-backend/utils/notificationService.js irene@87.106.78.146:/var/www/production-backend/utils/notificationService.js)",
+      "Bash(xargs -I{} sh -c \"grep -n 'all-suppliers' {}\")",
+      "Bash(node compare-schema.js --export --out /tmp/dev_schema.json)",
+      "Bash(ssh -o ConnectTimeout=8 irene@87.106.78.146 \"cd /var/www/production-backend && node compare-schema.js --export --out /tmp/prod_schema.json 2>/dev/null\")",
+      "Bash(scp -q -o ConnectTimeout=8 irene@87.106.78.146:/tmp/prod_schema.json /tmp/prod_schema.json)",
+      "Bash(scp -q irene@87.106.78.146:/tmp/p.json /tmp/p.json)"
     ],
     "deny": [],
     "ask": []

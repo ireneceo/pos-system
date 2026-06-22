@@ -17,7 +17,7 @@
  *   카드 클릭 = cart 추가. 카탈로그 클릭 시 ingredient 자동 생성 + 매핑.
  *   Submit → POST /purchase-orders/bulk → vendor 별 PO 자동 생성.
  */
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -538,6 +538,9 @@ const NewPurchaseOrderPage: React.FC = () => {
   // 기존 코드 호환: restaurantId 변수 (string | number | null)
   const restaurantId = buyerEntity?.id;
   const buyerApiBase = buyerEntity ? `/api/${buyerEntity.type}/${buyerEntity.id}` : null;
+  // 2026-06-22 (Irene): 발주 장바구니 영속화. 메모리뿐이라 페이지 이탈 시 담은 내역이 사라지던 문제.
+  // buyer 별 localStorage 키에 저장 → 돌아와도 카트 유지. 제출 성공 시 클리어.
+  const cartStorageKey = buyerEntity ? `po-cart:${buyerEntity.type}:${buyerEntity.id}` : null;
 
   const [tab, setTab] = useTabParam<'mine' | 'catalog'>('mine');
   const [search, setSearch] = useState('');
@@ -554,7 +557,51 @@ const NewPurchaseOrderPage: React.FC = () => {
   const [catalogCategories, setCatalogCategories] = useState<Array<{ id: number; name: string; emoji?: string | null }>>([]);
   const [loadingCatalog, setLoadingCatalog] = useState(false);
 
-  const [cart, setCart] = useState<CartRow[]>([]);
+  // 카트 영속화 (Irene): user(AuthContext) 가 첫 렌더에 늦게 오면 cartStorageKey 가 처음엔 null →
+  // 그때 빈 카트로 저장돼 기존 카트가 날아가던 버그. 로드-가드 + skipSave 로 "덮어쓰기 wipe" 방지.
+  const cartLoadedKeyRef = useRef<string | null>(null);
+  const skipCartSaveRef = useRef(false);
+  const [cart, setCart] = useState<CartRow[]>(() => {
+    try {
+      if (!cartStorageKey) return [];
+      cartLoadedKeyRef.current = cartStorageKey; // 마운트 시 user 준비됐으면 즉시 로드
+      const raw = localStorage.getItem(cartStorageKey);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch { return []; }
+  });
+  // key 가 첫 렌더엔 없다가 (user 늦게 로딩) 나중에 생기면 그때 로드.
+  useEffect(() => {
+    if (!cartStorageKey || cartLoadedKeyRef.current === cartStorageKey) return;
+    cartLoadedKeyRef.current = cartStorageKey;
+    skipCartSaveRef.current = true; // 이 로드로 인한 setCart 가 빈값 저장을 유발하지 않도록
+    try {
+      const raw = localStorage.getItem(cartStorageKey);
+      const parsed = raw ? JSON.parse(raw) : [];
+      setCart(Array.isArray(parsed) ? parsed : []);
+    } catch { /* keep current */ }
+  }, [cartStorageKey]);
+  // 저장: 로드 완료된 key 에 한해서만. 로드 직후 1회는 skip (wipe 방지).
+  useEffect(() => {
+    if (!cartStorageKey || cartLoadedKeyRef.current !== cartStorageKey) return;
+    if (skipCartSaveRef.current) { skipCartSaveRef.current = false; return; }
+    try { localStorage.setItem(cartStorageKey, JSON.stringify(cart)); } catch { /* quota/serialize 무시 */ }
+  }, [cart, cartStorageKey]);
+  // 대기중(draft) PO 수 — 헤더에서 staging(Pending POs) 으로 바로 가는 링크 + 카운트.
+  const [pendingCount, setPendingCount] = useState(0);
+  useEffect(() => {
+    const token = getAuthToken();
+    if (!token) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch('/api/purchase-orders?status=draft', { headers: { Authorization: `Bearer ${token}` } });
+        const j = await r.json().catch(() => null);
+        if (!cancelled && r.ok && j?.success) setPendingCount(Array.isArray(j.data) ? j.data.length : 0);
+      } catch { /* noop */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
   const [currencyConfirm, setCurrencyConfirm] = useState<{ message: string; settingsUrl: string } | null>(null);
   const [expectedDate, setExpectedDate] = useState('');
   const [deliveryAddress, setDeliveryAddress] = useState('');
@@ -1043,6 +1090,9 @@ const NewPurchaseOrderPage: React.FC = () => {
         setError(j?.message || t('newPo.error.failed', 'Failed to create POs') as string);
         return;
       }
+      // 제출 성공 → 카트는 draft PO 로 옮겨졌으므로 비운다(메모리 + localStorage).
+      try { if (cartStorageKey) localStorage.removeItem(cartStorageKey); } catch { /* noop */ }
+      setCart([]);
       navigate('/pos/purchase-orders/staging');
     } catch (e: any) {
       setError(e?.message || 'Network error');
@@ -1055,6 +1105,9 @@ const NewPurchaseOrderPage: React.FC = () => {
     <PageWrap>
       <PageHeader>
         <PageTitle>{t('newPo.title', 'Purchase Order')}</PageTitle>
+        <ThemedButton variant="outline" onClick={() => navigate('/pos/purchase-orders/staging')}>
+          {t('newPo.pendingLink', 'Pending POs')}{pendingCount > 0 ? ` (${pendingCount})` : ''} →
+        </ThemedButton>
       </PageHeader>
 
       <Layout>
@@ -1351,7 +1404,7 @@ const NewPurchaseOrderPage: React.FC = () => {
 
         <CartPane>
           <CartHeader>
-            {t('newPo.cart.title', 'Cart')} {cart.length > 0 && `(${cart.length})`}
+            {t('newPo.cart.title', 'Planned Order')} {cart.length > 0 && `(${cart.length})`}
           </CartHeader>
           <CartScroll>
             {cart.length === 0 ? (

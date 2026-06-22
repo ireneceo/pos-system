@@ -1,10 +1,37 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-22 (**발주/공급업체 흐름 + 데이터누출 + 인보이스/반응형 — DEV·미배포**. 외부공급업체 상품 등록(RA 2경로) + 교차테넌트 재료 누출 차단 + 발주 buyerEntity 필드 + 인보이스 to_pay→All(전역할) + 공급업체 Staff액션 + 재고 편집모달 연결섹션 + 반응형 10인치 실측. /검증 통과: hydration0·타임존0·build·health 107/107·print-guard 8/8·design0·i18n0·mount 8/8. SW=3.86.)
+> **최종 업데이트:** 2026-06-22 (**v3.61 운영 배포 완료** — 6/21~6/22 묶음 전체 + 발주 UX 대정리 + 플로어플랜 핫픽스. Backup 20260622_204037/211326, Smoke 9/9, 스키마 dev=운영 완전일치, SW=3.90. /검증 통과: health 107/107·주문생명주기 10/10·print-guard 8/8·hydration0·timezone0·design0·i18n0·플로어플랜 mount 768~1600 가로넘침0.)
 >
-> **이전 #4:** 다른 역할 관리화면을 RA 디자인 기준에 맞춤(이모지 정리). SW=3.71.
+> **이전:** 발주/공급업체 흐름 + 데이터누출 + 인보이스/반응형(DEV). SW=3.86.
 
-## ✅ 완료: 발주·공급업체 흐름 + 누출차단 + 인보이스/반응형 (2026-06-22, DEV·미배포)
+## ✅ 완료: v3.61 운영 배포 — 발주 UX 대정리 + 외부공급업체 + 핫픽스 (2026-06-22)
+
+> Irene 연쇄 피드백으로 발주(PO)·공급업체 흐름을 전면 정리하고 6/21~6/22 묶음 전체를 운영 배포(v3.61). 이어 이메일 바운스·자동프린트·플로어플랜 핫픽스까지.
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 이메일 바운스 차단 | notificationService is_test 가드(restaurant_id 없는 Owner/BG/FG/Supplier 데모계정 반송) + 데모계정 is_test 정규화. surgical 운영배포 | ✅ |
+| 자동프린트 Q1/Q2 | OFF→ON 토글 시 옛 티켓 폭주(MainLayout cutoff 누락) + 주문 밀릴 때 신규 미인쇄(backlog starvation). cutoff 미러 + print-dismiss. billPrint 무수정 | ✅ |
+| 발주 같은 공급업체 합치기 | bulk mergeDraft + staging 진입 시 consolidate-drafts(공급업체당 1 PO). PurchaseOrder paranoid 주의 | ✅ |
+| 발주 아이템/PO 삭제 | DELETE PO(draft) + DELETE item(draft, 총액재계산·빈PO자동삭제) + staging × / Discard | ✅ |
+| 발주 카트 영속화 | NewPurchaseOrderPage 카트 localStorage(load-guard+skipSave, user 늦은로딩 wipe 방지). "Cart"→"Planned Order" + Pending POs 링크 | ✅ |
+| 외부공급업체 | 디렉토리 프라이버시(내가 등록한 것만) + 재료에서 선택방식 등록 + from-legacy 브리지(suppliers→supplier_companies) + WhatsApp/Email 품목목록·번호선택. ConnectSellerModal 검색창 정렬 | ✅ |
+| 품목 이름 표시 | draft 조회가 product_name 동봉(이전 "Item #id") | ✅ |
+| 플로어플랜 핫픽스 | 새 주문 알림음 모든 주문에(테이블 포함) + 헤더 반응형(≤1440 gear 수납·테마 축약) | ✅ |
+| 스키마 정합 | dev=운영 완전일치(고아 컬럼 users.push_preferences 제거) 144=144 | ✅ |
+
+### 수정된 파일
+- 백엔드: `utils/notificationService.js`·`routes/orders-crud.js`·`purchase-orders-crud.js`·`purchase-orders-workflow.js`·`supplier-directory.js`·`ingredients.js`·`models/Supplier.js`·`scripts/migrate-supplier-company-bridge.js`·`deploy-to-production.sh`
+- 프론트: `hooks/useAutoPrintPoller.ts`·`components/Layout/MainLayout.tsx`·`Common/ConnectSellerModal.tsx`·`pages/PurchaseOrders/{NewPurchaseOrderPage,PurchaseOrderStagingPage,PurchaseOrderDetailPage}.tsx`·`Suppliers/AllSuppliersView.tsx`·`SupplierDirectory/SupplierDirectoryPage.tsx`·`RecipeManagement/IngredientsTab.tsx`·`FloorPlan/FloorPlanPage.tsx`·`public/sw.js`
+- 문서: `docs/PURCHASE_ORDER_SYSTEM.md §H`·`docs/EXTERNAL_SUPPLIER_PRODUCTS.md §8~10`·`docs/BG_OPERATION_MENU_PARITY.md`(신규)
+
+### 검증/배포
+- /검증 통과(health 107/107·생명주기 10/10·print-guard 8/8·hydration0·timezone0·design0·i18n0·mount). 운영 배포 2회(Backup 20260622_204037·211326, Smoke 9/9). 스키마 dev=운영 완전일치. SW=3.90.
+- 잔여: 실프린터 종이 확인(autoprint·방식코드 무변경 저위험), 플로어플랜 소리 실주문 귀확인.
+
+---
+
+## ✅ 완료: 발주·공급업체 흐름 + 누출차단 + 인보이스/반응형 (2026-06-22, v3.61 에 포함 배포됨)
 
 > Irene 연쇄 피드백: 발주 화면에 stock item 안 뜸 → 교차테넌트 누출 발견 → BG/RA 평행체인 확정 → 외부공급업체 상품 등록 신축(RA 우선) → 인보이스 결제탭/반응형/공급업체 줄줄이.
 

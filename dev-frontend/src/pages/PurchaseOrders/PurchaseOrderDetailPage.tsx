@@ -1215,6 +1215,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
 
       {/* Receive Modal */}
       <CommonModal
+        zIndex={embedded ? 1200 : undefined}
         isOpen={receiveOpen}
         onClose={() => !receiveSubmitting && setReceiveOpen(false)}
         title={t('receive.modalTitle') as string}
@@ -1336,6 +1337,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
 
       {/* Cancel Modal */}
       <CommonModal
+        zIndex={embedded ? 1200 : undefined}
         isOpen={cancelOpen}
         onClose={() => !cancelSubmitting && setCancelOpen(false)}
         title={t('cancel.modalTitle') as string}
@@ -1384,6 +1386,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
 
       {/* Mark Shipped Modal */}
       <CommonModal
+        zIndex={embedded ? 1200 : undefined}
         isOpen={shippedOpen}
         onClose={() => !shippedSubmitting && setShippedOpen(false)}
         title={t('markShipped.modalTitle') as string}
@@ -1420,6 +1423,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
 
       {/* Sprint 6 — Returns Modal */}
       <CommonModal
+        zIndex={embedded ? 1200 : undefined}
         isOpen={showReturnsModal}
         onClose={() => !returnSubmitting && setShowReturnsModal(false)}
         title={t('detail.returns.title', 'Request Return') as string}

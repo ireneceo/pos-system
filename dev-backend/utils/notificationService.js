@@ -176,8 +176,19 @@ async function sendNotification(recipientUserId, category, mailOptions) {
 
     // 1-a. Reject unverified emails. Marketing / system notifications shouldn't
     //      hit addresses the user never confirmed they own.
-    if (user.email_verified === false) {
+    if (user.email_verified === false || user.email_verified === 0) {
       console.log(`[Notification] Skip: user ${recipientUserId} email not verified (${user.email})`);
+      return;
+    }
+
+    // 1-a2. Reject test / demo seed accounts. Their synthetic @purplehere.com
+    //       addresses have no real mailbox → Gmail bounces flood the sender.
+    //       The 1-c restaurant gate below only catches restaurant-bound users;
+    //       Owner / Brand General / Foodcourt General / Supplier Admin accounts
+    //       have restaurant_id = NULL so it never fires for them. The is_test
+    //       flag is the reliable signal. Mirrors emailService.screenRecipients.
+    if (user.is_test === true || user.is_test === 1) {
+      console.log(`[Notification] Skip: user ${recipientUserId} is_test account (${user.email})`);
       return;
     }
 

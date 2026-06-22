@@ -35,6 +35,12 @@ Supplier.init({
     allowNull: true,
     comment: 'Foodcourt id for owner_type=foodcourt (kept for indexability; main scope via owner_user_id)'
   },
+  // 2026-06-22 (Irene): bridge → supplier_companies (외부공급업체 체계). 상품등록/발주 필요 시 find-or-create 링크.
+  supplier_company_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Bridge to supplier_companies for product catalog / purchase orders'
+  },
   // Category
   supplier_category_id: {
     type: DataTypes.INTEGER,

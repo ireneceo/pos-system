@@ -2682,6 +2682,34 @@ router.patch('/:id/print-claim', authenticateToken, async (req, res) => {
   }
 });
 
+// 2026-06-22 (Irene): backlog DISMISS. The frontend backlog cutoff ("autoPrint ON
+// prints only orders created AFTER the enable time") used to SKIP pre-enable orders
+// while leaving needs_print=true. Those stale rows permanently occupied the
+// oldest-20 pending-print window, so once ≥20 accumulated, genuinely NEW orders fell
+// outside the window and never auto-printed ("주문 밀리면 자동인쇄 안 됨"). This clears
+// needs_print for a backlog order WITHOUT stamping printed_at, so it leaves the
+// auto-print queue but stays manually printable (the Kitchen Ticket button prints
+// from order_items, not needs_print). needs_bill is left untouched (bill path is
+// independent). Same DB effect as print-claim but a distinct name = distinct intent
+// (not "I printed this", but "this pre-enable order is not for auto-print").
+router.patch('/:id/print-dismiss', authenticateToken, async (req, res) => {
+  try {
+    const o = await Order.findByPk(req.params.id);
+    if (!o) return res.status(404).json({ success: false, message: 'Order not found' });
+    if (req.user.role !== 'System Admin' && parseInt(req.user.restaurant_id) !== o.restaurant_id) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+    const [affected] = await Order.update(
+      { needs_print: false },
+      { where: { id: o.id, needs_print: true } }
+    );
+    res.json({ success: true, dismissed: affected > 0 });
+  } catch (e) {
+    console.error('[print-dismiss] error:', e.message);
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
 // Clear ONLY needs_bill — used by a device that auto-printed the receipt but did
 // not win the kitchen claim (another device owns the kitchen ticket). Keeps the
 // kitchen print history (printed_at) untouched.

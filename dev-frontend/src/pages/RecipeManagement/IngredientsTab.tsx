@@ -494,7 +494,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
   const [extTarget, setExtTarget] = useState<Ingredient | null>(null);
   const [extSuppliers, setExtSuppliers] = useState<Array<{ id: number; name: string }>>([]);
   // supplier_name = 입력/선택한 공급업체명. 저장 시 같은 이름이 있으면 재사용, 없으면 생성(중복 방지).
-  const [extForm, setExtForm] = useState<{ supplier_name: string; unit_price: string; min_order_quantity: string }>({ supplier_name: '', unit_price: '', min_order_quantity: '' });
+  const [extForm, setExtForm] = useState<{ supplier_id: number | null; unit_price: string; min_order_quantity: string }>({ supplier_id: null, unit_price: '', min_order_quantity: '' });
   const [extSaving, setExtSaving] = useState(false);
   const [extError, setExtError] = useState<string | null>(null);
   // Track Stock pending value (AutoSaveField onSave 가 onChange 직후 호출됨)
@@ -768,7 +768,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
   // 이 재고를 외부공급업체 상품으로 등록 — 내가 등록한 외부공급업체 목록 로드 + 모달 열기.
   const openExtRegister = async (ing: Ingredient) => {
     setExtTarget(ing);
-    setExtForm({ supplier_name: '', unit_price: '', min_order_quantity: '' });
+    setExtForm({ supplier_id: null, unit_price: '', min_order_quantity: '' });
     setExtError(null);
     let list: Array<{ id: number; name: string }> = [];
     try {
@@ -784,25 +784,15 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
   const saveExtRegister = async () => {
     if (!extTarget) return;
     setExtError(null);
-    const name = extForm.supplier_name.trim();
-    if (!name) { setExtError('Type a supplier name.'); return; }
+    // 2026-06-22 (Irene 확정): 자유입력 즉석생성이 아니라 "이미 등록된 외부공급업체를 선택"한다.
+    // 외부공급업체 자체 등록은 Suppliers(공급업체 디렉토리)에서 하고, 여기선 선택만 → 이 재료를
+    // 그 업체 상품으로 등록(SupplierProduct) + 매핑(from-catalog) → 발주 가능. docs §8.
+    const supplierId = extForm.supplier_id;
+    if (!supplierId) { setExtError('Select an external supplier.'); return; }
     if (!extForm.unit_price || parseFloat(extForm.unit_price) < 0) { setExtError('Enter a valid price.'); return; }
     setExtSaving(true);
     try {
       const token = getAuthToken();
-      // 같은 이름 외부공급업체가 이미 있으면 재사용(중복 생성 방지), 없으면 새로 생성.
-      let supplierId: number | null = null;
-      const match = extSuppliers.find(s => s.name.trim().toLowerCase() === name.toLowerCase());
-      if (match) { supplierId = match.id; }
-      else {
-        const sr = await fetch('/api/external-suppliers', {
-          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ name })
-        });
-        const sj = await sr.json().catch(() => null);
-        if (!sr.ok || !sj?.success) { setExtError(sj?.message || 'Failed to add supplier.'); setExtSaving(false); return; }
-        supplierId = sj.data?.supplier?.id;
-      }
       const cr = await fetch(`/api/external-suppliers/${supplierId}/products`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ name: extTarget.name, unit: extTarget.unit || 'kg', unit_price: parseFloat(extForm.unit_price), min_order_quantity: extForm.min_order_quantity ? parseInt(extForm.min_order_quantity, 10) : 1 })
@@ -1805,36 +1795,19 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
           </div>
           <UIFormGroup>
             <FormLabel>Supplier *</FormLabel>
-            <FormInput
-              type="text"
-              value={extForm.supplier_name}
-              onChange={(e) => setExtForm({ ...extForm, supplier_name: e.target.value })}
-              placeholder="Type a supplier name (e.g. Lim's Butcher)"
-            />
-            {(() => {
-              const q = extForm.supplier_name.trim().toLowerCase();
-              const exact = extSuppliers.some(s => s.name.trim().toLowerCase() === q);
-              const matches = q ? extSuppliers.filter(s => s.name.toLowerCase().includes(q) && s.name.trim().toLowerCase() !== q).slice(0, 5) : extSuppliers.slice(0, 5);
-              return (
-                <>
-                  {matches.length > 0 && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
-                      {matches.map(s => (
-                        <button key={s.id} type="button" onClick={() => setExtForm({ ...extForm, supplier_name: s.name })}
-                          style={{ padding: '4px 10px', borderRadius: 14, border: '1px solid #C7D2FE', background: '#EEF2FF', color: '#3730A3', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                          {s.name}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {q && (
-                    <div style={{ marginTop: 6, fontSize: 12, color: exact ? '#166534' : '#6B7280' }}>
-                      {exact ? '↻ Uses your existing supplier (no duplicate).' : '+ New supplier — will be created.'}
-                    </div>
-                  )}
-                </>
-              );
-            })()}
+            {extSuppliers.length > 0 ? (
+              <SearchableSelect
+                options={extSuppliers.map(s => ({ value: s.id, label: s.name }))}
+                value={extForm.supplier_id}
+                onChange={(v) => setExtForm({ ...extForm, supplier_id: v == null ? null : Number(v) })}
+                placeholder="Select an external supplier"
+                noOptionsMessage="No external suppliers found"
+              />
+            ) : (
+              <div style={{ fontSize: 13, color: '#6B7280', background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: 8, padding: '10px 12px' }}>
+                No external suppliers registered yet. Add one in the <strong style={{ color: '#0A2540' }}>Suppliers</strong> menu first, then come back to register this ingredient as their product.
+              </div>
+            )}
           </UIFormGroup>
           <UIFormRow>
             <UIFormGroup>

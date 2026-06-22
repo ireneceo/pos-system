@@ -27,6 +27,7 @@ const {
   SupplierContract,
   SupplierProduct,
   SupplierProductCategory,
+  Supplier,
   User,
   Restaurant,
   Brand,
@@ -127,15 +128,28 @@ router.get('/supplier-directory', async (req, res) => {
     const where = { status: 'active' };
     if (country) where.country = String(country).toUpperCase();
     if (state) where.state = String(state);
+    // 2026-06-22 (Irene): 외부공급업체는 등록한 본인에게만 보인다(프라이버시).
+    // 디렉토리/검색에는 (a) 시스템 가입 공급업체(공개 마켓) + (b) 내 buyerEntity 가 등록한
+    // 외부공급업체만 노출. 남의 외부공급업체(is_system_registered=false + registered_by≠나)는 제외.
+    const and = [];
+    if (req.buyerEntity) {
+      and.push({ [Op.or]: [
+        { is_system_registered: true },
+        { is_system_registered: false, registered_by_entity_type: req.buyerEntity.type, registered_by_entity_id: req.buyerEntity.id }
+      ] });
+    } else {
+      and.push({ is_system_registered: true });
+    }
     if (search && String(search).trim()) {
       const term = `%${String(search).trim()}%`;
-      where[Op.or] = [
+      and.push({ [Op.or]: [
         { name: { [Op.like]: term } },
         { company_name: { [Op.like]: term } },
         { description: { [Op.like]: term } },
         { city: { [Op.like]: term } }
-      ];
+      ] });
     }
+    if (and.length) where[Op.and] = and;
 
     // category_id filter requires JOIN through SupplierProduct → distinct supplier ids
     let categoryFilteredIds = null;
@@ -911,6 +925,65 @@ router.post('/external-suppliers', async (req, res) => {
     if (!t.finished) await t.rollback();
     console.error('POST /api/external-suppliers error:', err);
     res.status(500).json({ success: false, message: 'Failed to register external supplier' });
+  }
+});
+
+// POST /api/external-suppliers/from-legacy/:legacyId — 레거시 suppliers(OWN) 디렉토리 항목을
+// 외부공급업체 체계(supplier_companies)로 브리지. 상품등록/발주가 필요한 OWN 공급업체에서 호출.
+// find-or-create: 이미 링크돼 있으면 그 id 반환, 없으면 미러 supplier_company + active contract 생성 +
+// suppliers.supplier_company_id 링크. (레거시 행/재고 FK 는 그대로 — 회귀 0.) docs §10 브리지.
+router.post('/external-suppliers/from-legacy/:legacyId', async (req, res) => {
+  if (!req.buyerEntity) return res.status(400).json({ success: false, message: 'Buyer context required' });
+  const t = await SupplierCompany.sequelize.transaction();
+  try {
+    const legacyId = parseInt(req.params.legacyId, 10);
+    const legacy = await Supplier.findByPk(legacyId);
+    if (!legacy) { await t.rollback(); return res.status(404).json({ success: false, message: 'Supplier not found' }); }
+    const owns =
+      (req.buyerEntity.type === 'restaurant' && legacy.owner_type === 'restaurant' && Number(legacy.restaurant_id) === req.buyerEntity.id) ||
+      (req.buyerEntity.type === 'brand' && legacy.owner_type === 'brand' && Number(legacy.brand_id) === req.buyerEntity.id) ||
+      (req.buyerEntity.type === 'foodcourt' && legacy.owner_type === 'foodcourt' && Number(legacy.foodcourt_id) === req.buyerEntity.id);
+    if (!owns) { await t.rollback(); return res.status(403).json({ success: false, message: 'Not your supplier' }); }
+
+    // 이미 브리지됨 → 그 supplier_company 반환 (멱등)
+    if (legacy.supplier_company_id) {
+      const existing = await SupplierCompany.findByPk(legacy.supplier_company_id);
+      if (existing) { await t.commit(); return res.json({ success: true, data: { supplier_company_id: existing.id, bridged: false } }); }
+    }
+
+    const company = await SupplierCompany.create({
+      name: sanitizeString(String(legacy.name || 'Supplier')).slice(0, 255),
+      status: 'active',
+      is_system_registered: false,
+      registered_by_entity_type: req.buyerEntity.type,
+      registered_by_entity_id: req.buyerEntity.id,
+      phone: legacy.phone ? String(legacy.phone).slice(0, 20) : null,
+      email: legacy.email ? String(legacy.email).slice(0, 100) : null,
+      address: legacy.address || null,
+      city: legacy.city || null,
+      state: legacy.state || null,
+      postal_code: legacy.postal_code || null,
+      country: legacy.country ? String(legacy.country).toUpperCase().slice(0, 2) : 'MY',
+      description: legacy.notes || null
+    }, { transaction: t });
+
+    await SupplierContract.create({
+      entity_type: req.buyerEntity.type,
+      entity_id: req.buyerEntity.id,
+      supplier_company_id: company.id,
+      status: 'active',
+      requested_by_user_id: req.user.id
+    }, { transaction: t });
+
+    legacy.supplier_company_id = company.id;
+    await legacy.save({ transaction: t });
+
+    await t.commit();
+    res.status(201).json({ success: true, data: { supplier_company_id: company.id, bridged: true } });
+  } catch (err) {
+    if (!t.finished) await t.rollback();
+    console.error('POST /api/external-suppliers/from-legacy error:', err);
+    res.status(500).json({ success: false, message: 'Failed to link supplier' });
   }
 });
 

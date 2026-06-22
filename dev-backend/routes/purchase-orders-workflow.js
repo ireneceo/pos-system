@@ -1088,4 +1088,123 @@ router.post('/purchase-orders/:id/cancel', async (req, res) => {
   }
 });
 
+// ============================================
+// DELETE /api/purchase-orders/:id — DRAFT 전용 폐기(완전 삭제). 2026-06-22 (Irene)
+// staging 은 cart 가 아니라 "발송 전 draft 검토" 영역인데, 카트 제출마다 draft 가 쌓이기만 하고
+// 개별 제거 수단이 없었다. cancel 은 'cancelled' 기록을 남겨 history 를 더럽히므로, 발송 안 한
+// draft 는 라인아이템과 함께 완전 삭제한다. draft 외 상태는 거부(발송된 PO 는 cancel/returns 사용).
+// owner-scoped (checkPOOwnership) — 남의 PO 는 404.
+// ============================================
+router.delete('/purchase-orders/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) return res.status(404).json({ success: false, message: 'Purchase order not found' });
+    const PurchaseOrderItem = require('../models/PurchaseOrderItem');
+    await database.sequelize.transaction(async (t) => {
+      const locked = await PurchaseOrder.findByPk(id, { lock: t.LOCK.UPDATE, transaction: t });
+      if (!locked) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+      if (!checkPOOwnership(locked, req)) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+      if (locked.status !== 'draft') {
+        const e = new Error(`Only draft orders can be discarded (current: '${locked.status}').`);
+        e.code = 'BAD_STATUS'; throw e;
+      }
+      await PurchaseOrderItem.destroy({ where: { purchase_order_id: id }, transaction: t });
+      await locked.destroy({ transaction: t });
+    });
+    res.json({ success: true });
+  } catch (err) {
+    if (err.code === 'NOT_FOUND') return res.status(404).json({ success: false, message: 'Purchase order not found' });
+    if (err.code === 'BAD_STATUS') return res.status(400).json({ success: false, message: err.message });
+    console.error('DELETE /api/purchase-orders/:id error:', err);
+    res.status(500).json({ success: false, message: 'Failed to discard purchase order' });
+  }
+});
+
+// ============================================
+// DELETE /api/purchase-orders/:id/items/:itemId — DRAFT PO 의 개별 품목 삭제. 2026-06-22 (Irene)
+// 총액 재계산. 마지막 품목 삭제 시 빈 PO 는 함께 삭제(빈 발주서 방지). draft 전용 + owner-scoped.
+// ============================================
+router.delete('/purchase-orders/:id/items/:itemId', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const itemId = parseInt(req.params.itemId, 10);
+    if (!Number.isFinite(id) || !Number.isFinite(itemId)) return res.status(404).json({ success: false, message: 'Not found' });
+    const out = await database.sequelize.transaction(async (t) => {
+      const po = await PurchaseOrder.findByPk(id, { lock: t.LOCK.UPDATE, transaction: t });
+      if (!po) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+      if (!checkPOOwnership(po, req)) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+      if (po.status !== 'draft') { const e = new Error(`Only draft order items can be removed (status '${po.status}').`); e.code = 'BAD_STATUS'; throw e; }
+      const item = await PurchaseOrderItem.findOne({ where: { id: itemId, purchase_order_id: id }, transaction: t });
+      if (!item) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+      await item.destroy({ transaction: t });
+      const remaining = await PurchaseOrderItem.findAll({ where: { purchase_order_id: id }, transaction: t });
+      if (remaining.length === 0) {
+        await po.destroy({ transaction: t });
+        return { po_deleted: true };
+      }
+      let subtotal = 0;
+      for (const r of remaining) subtotal += Math.round((parseFloat(r.quantity_ordered) || 0) * (parseFloat(r.unit_price) || 0) * 100) / 100;
+      subtotal = Math.round(subtotal * 100) / 100;
+      await po.update({ subtotal, tax_amount: 0, total_amount: subtotal }, { transaction: t });
+      return { po_deleted: false, total_amount: subtotal };
+    });
+    res.json({ success: true, data: out });
+  } catch (err) {
+    if (err.code === 'NOT_FOUND') return res.status(404).json({ success: false, message: 'Not found' });
+    if (err.code === 'BAD_STATUS') return res.status(400).json({ success: false, message: err.message });
+    console.error('DELETE /api/purchase-orders/:id/items/:itemId error:', err);
+    res.status(500).json({ success: false, message: 'Failed to remove item' });
+  }
+});
+
+// ============================================
+// POST /api/purchase-orders/consolidate-drafts — 같은 공급업체(buyer+seller)의 draft PO 들을
+// 하나로 합친다(가장 오래된 PO 로 품목 이동 + 총액 누적, 나머지 삭제). 2026-06-22 (Irene
+// "같은 공급업체는 합쳐라"). 발주 전(draft) 만 — 제출된 PO 는 손대지 않음. owner-scoped.
+// 이후 카트 제출(bulk mergeDraft)이 단일 draft 를 유지한다.
+// ============================================
+router.post('/purchase-orders/consolidate-drafts', async (req, res) => {
+  try {
+    if (!req.buyerEntity) return res.status(400).json({ success: false, message: 'Buyer context required' });
+    const { Op } = require('sequelize');
+    const result = await database.sequelize.transaction(async (t) => {
+      const drafts = await PurchaseOrder.findAll({
+        where: { entity_type: req.buyerEntity.type, entity_id: req.buyerEntity.id, status: 'draft' },
+        order: [['created_at', 'ASC']],
+        lock: t.LOCK.UPDATE, transaction: t
+      });
+      // group by seller_type:seller_entity_id
+      const groups = {};
+      for (const d of drafts) {
+        const key = `${d.seller_type}:${d.seller_entity_id == null ? 'null' : d.seller_entity_id}`;
+        (groups[key] = groups[key] || []).push(d);
+      }
+      let mergedGroups = 0, removed = 0;
+      for (const key of Object.keys(groups)) {
+        const list = groups[key];
+        if (list.length < 2) continue;
+        const primary = list[0]; // oldest
+        for (let i = 1; i < list.length; i++) {
+          const dup = list[i];
+          await PurchaseOrderItem.update({ purchase_order_id: primary.id }, { where: { purchase_order_id: dup.id }, transaction: t });
+          await dup.destroy({ transaction: t });
+          removed++;
+        }
+        // recompute primary total from all its items
+        const items = await PurchaseOrderItem.findAll({ where: { purchase_order_id: primary.id }, transaction: t });
+        let subtotal = 0;
+        for (const r of items) subtotal += Math.round((parseFloat(r.quantity_ordered) || 0) * (parseFloat(r.unit_price) || 0) * 100) / 100;
+        subtotal = Math.round(subtotal * 100) / 100;
+        await primary.update({ subtotal, tax_amount: 0, total_amount: subtotal }, { transaction: t });
+        mergedGroups++;
+      }
+      return { mergedGroups, removed };
+    });
+    res.json({ success: true, data: result });
+  } catch (err) {
+    console.error('POST /api/purchase-orders/consolidate-drafts error:', err);
+    res.status(500).json({ success: false, message: 'Failed to consolidate drafts' });
+  }
+});
+
 module.exports = router;

@@ -312,9 +312,16 @@ router.get('/purchase-orders', async (req, res) => {
     // includeItems 일 때만 items 배열 동봉
     let itemsByPo = {};
     if (includeItems && ids.length) {
-      const allItems = await PurchaseOrderItem.findAll({ where: { purchase_order_id: { [Op.in]: ids } } });
+      // 2026-06-22 (Irene): 품목 이름을 함께 (staging 표시 + WhatsApp/Email 내용). description 스냅샷 우선,
+      // 없으면 ingredient.name. (Item #id 만 보이던 문제)
+      const allItems = await PurchaseOrderItem.findAll({
+        where: { purchase_order_id: { [Op.in]: ids } },
+        include: [{ model: Ingredient, as: 'ingredient', attributes: ['id', 'name'], required: false }]
+      });
       for (const it of allItems) {
-        (itemsByPo[it.purchase_order_id] = itemsByPo[it.purchase_order_id] || []).push(it);
+        const plain = it.toJSON();
+        plain.product_name = plain.description || (plain.ingredient && plain.ingredient.name) || null;
+        (itemsByPo[plain.purchase_order_id] = itemsByPo[plain.purchase_order_id] || []).push(plain);
       }
     }
 
@@ -663,7 +670,7 @@ async function checkCreditLimit({ buyerEntity, seller_type, seller_entity_id, co
   };
 }
 
-async function createPurchaseOrderCore({ buyerEntity, userId, payload, transaction, poNumberOffset = 0 }) {
+async function createPurchaseOrderCore({ buyerEntity, userId, payload, transaction, poNumberOffset = 0, mergeDraft = false }) {
   const { seller_type, seller_entity_id, items, expected_delivery_date, delivery_address, notes } = payload || {};
 
   // Buyer 엔티티 default 배송지 결정 — payload 미지정 시
@@ -886,6 +893,39 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
     };
   }
 
+  // 2026-06-22 (Irene): 같은 공급업체끼리 합치기. 카트(bulk) 제출 시 동일 buyer+seller 의 draft PO 가
+  // 이미 staging 에 있으면 새 PO 를 또 만들지 않고 그 draft 에 품목을 합치고 총액을 누적한다.
+  // (이전엔 제출할 때마다 같은 공급업체라도 PO 가 따로따로 쌓였음.) draft 만 대상 — 제출된 PO 는 별개.
+  if (mergeDraft) {
+    const existing = await PurchaseOrder.findOne({
+      where: {
+        entity_type: buyerEntity.type,
+        entity_id: buyerEntity.id,
+        seller_type,
+        seller_entity_id: seller_entity_id ? parseInt(seller_entity_id, 10) : null,
+        status: 'draft'
+      },
+      order: [['created_at', 'ASC']],
+      transaction,
+      lock: transaction.LOCK.UPDATE
+    });
+    if (existing) {
+      const itemsToCreate = validatedItems.map(it => ({ ...it, purchase_order_id: existing.id }));
+      await PurchaseOrderItem.bulkCreate(itemsToCreate, { transaction });
+      const mergedSubtotal = Math.round(((parseFloat(existing.subtotal) || 0) + totals.subtotal) * 100) / 100;
+      const mergedTotal = Math.round(((parseFloat(existing.total_amount) || 0) + totals.total_amount) * 100) / 100;
+      await existing.update({
+        subtotal: mergedSubtotal,
+        tax_amount: (parseFloat(existing.tax_amount) || 0) + totals.tax_amount,
+        total_amount: mergedTotal,
+        // 배송지/예정일/메모는 기존 draft 유지(있으면), 없으면 새 값 채움
+        expected_delivery_date: existing.expected_delivery_date || expected_delivery_date || null,
+        delivery_address: existing.delivery_address || (resolvedDeliveryAddress ? sanitizeString(String(resolvedDeliveryAddress)) : null)
+      }, { transaction });
+      return { ok: true, po: existing, merged: true };
+    }
+  }
+
   const poNumber = await generatePoNumber(buyerEntity, poNumberOffset);
 
   const po = await PurchaseOrder.create({
@@ -963,7 +1003,7 @@ router.post('/purchase-orders/bulk', async (req, res) => {
     for (let i = 0; i < groups.length; i++) {
       const g = groups[i];
       const result = await createPurchaseOrderCore({
-        buyerEntity: req.buyerEntity, userId: req.user.id, payload: g, transaction: t, poNumberOffset: i
+        buyerEntity: req.buyerEntity, userId: req.user.id, payload: g, transaction: t, poNumberOffset: i, mergeDraft: true
       });
       if (!result.ok) {
         await t.rollback();

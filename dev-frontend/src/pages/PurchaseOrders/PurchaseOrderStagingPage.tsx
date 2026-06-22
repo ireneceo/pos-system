@@ -15,6 +15,7 @@ import { Container, Content } from '../../components/UI';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { getAuthToken } from '../../utils/auth';
 import AlertDialog from '../../components/Common/AlertDialog';
+import ConfirmModal from '../../components/ConfirmModal';
 
 interface POItem { id: number; ingredient_id: number; quantity_ordered: string; unit_price: string; }
 interface POSeller { id: number; name: string; phone?: string | null; email?: string | null; is_system_registered: boolean; }
@@ -36,12 +37,23 @@ const PageHeader = styled.div`
   background: white;
   padding: 16px 32px;
   border-bottom: 1px solid #C7CED6;
+  height: 80px;
+  min-height: 80px;
+  max-height: 80px;
+  box-sizing: border-box;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;
+
+  @media (max-width: 768px) {
+    padding: 16px;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+  }
 `;
 const PageTitle = styled.h1` font-size: 24px; font-weight: 700; color: #0A2540; margin: 0; `;
-const PageSub = styled.div` font-size: 13px; color: #4B5563; margin-top: 4px; `;
 
 const POList = styled.div` display: flex; flex-direction: column; gap: 16px; max-width: 920px; margin: 0 auto; padding: 24px 0; `;
 
@@ -115,11 +127,15 @@ const PurchaseOrderStagingPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [alertDlg, setAlertDlg] = useState<{ title: string; message: string } | null>(null);
+  const [discardTarget, setDiscardTarget] = useState<POStaging | null>(null);
+  const [discarding, setDiscarding] = useState(false);
 
   const fetchDrafts = useCallback(async () => {
     setLoading(true);
     try {
       const token = getAuthToken();
+      // 2026-06-22 (Irene "같은 공급업체는 합쳐라"): 열 때마다 같은 공급업체 draft 를 한 PO 로 통합한 뒤 조회.
+      try { await fetch('/api/purchase-orders/consolidate-drafts', { method: 'POST', headers: { Authorization: `Bearer ${token}` } }); } catch { /* non-fatal */ }
       const res = await fetch('/api/purchase-orders?status=draft', {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -134,6 +150,28 @@ const PurchaseOrderStagingPage: React.FC = () => {
   }, []);
 
   useEffect(() => { fetchDrafts(); }, [fetchDrafts]);
+
+  // draft PO 폐기 — staging 에 쌓인 발송 전 draft 를 개별 제거(완전 삭제). 카트와 달리 staging 은
+  // 누적 검토 영역이라 빼는 수단이 필요. DELETE /purchase-orders/:id (draft 전용, 서버 가드).
+  const doDiscard = async () => {
+    if (!discardTarget) return;
+    setDiscarding(true);
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`/api/purchase-orders/${discardTarget.id}`, {
+        method: 'DELETE', headers: { Authorization: `Bearer ${token}` }
+      });
+      const j = await res.json().catch(() => null);
+      if (res.ok && j?.success) {
+        setPos(prev => prev.filter(p => p.id !== discardTarget.id));
+        setDiscardTarget(null);
+      } else {
+        setAlertDlg({ title: t('common:error', 'Error') as string, message: j?.message || (t('staging.discardFailed', 'Failed to discard PO') as string) });
+      }
+    } catch {
+      setAlertDlg({ title: t('common:error', 'Error') as string, message: t('staging.discardFailed', 'Failed to discard PO') as string });
+    } finally { setDiscarding(false); }
+  };
 
   const externalPOs = useMemo(() => pos.filter(p => p.seller && !p.seller.is_system_registered), [pos]);
   const systemPOs = useMemo(() => pos.filter(p => !p.seller || p.seller.is_system_registered), [pos]);
@@ -150,19 +188,24 @@ const PurchaseOrderStagingPage: React.FC = () => {
       });
   };
 
+  // PO 품목을 사람이 읽을 수 있는 줄목록으로 (이름 × 수량 @ 단가). 이름 없으면 #id.
+  const itemLines = (po: POStaging) => (po.items || []).map((it: any) =>
+    `- ${it.product_name || it.ingredient_name || ('Item #' + it.ingredient_id)} x ${parseFloat(it.quantity_ordered).toFixed(2)} @ ${parseFloat(it.unit_price).toFixed(2)}`
+  ).join('\n');
+
   const shareViaWhatsApp = (po: POStaging) => {
-    if (!po.seller?.phone) {
-      setAlertDlg({ title: t('staging.noPhoneTitle', 'No Phone Number') as string, message: t('staging.noPhone', 'No phone number is registered for this seller.') as string });
-      return;
-    }
-    const phone = po.seller.phone.replace(/\D/g, '');
+    const cur = po.currency || 'MYR';
     const text = encodeURIComponent(
-      `[Purchase Order ${po.po_number || '#' + po.id}]\n\n` +
-      `Items: ${(po.items || []).length}\n` +
-      `Total: ${po.currency || 'MYR'} ${parseFloat(po.total_amount || '0').toFixed(2)}\n` +
-      `${po.expected_delivery_date ? 'Expected: ' + po.expected_delivery_date + '\n' : ''}` +
-      `\nThe purchase order PDF will be sent separately.`
+      `[Purchase Order ${po.po_number || '#' + po.id}]\n` +
+      `${po.seller?.name ? 'Supplier: ' + po.seller.name + '\n' : ''}\n` +
+      `Items:\n${itemLines(po) || '(none)'}\n\n` +
+      `Total: ${cur} ${parseFloat(po.total_amount || '0').toFixed(2)}\n` +
+      `${po.expected_delivery_date ? 'Expected delivery: ' + po.expected_delivery_date + '\n' : ''}` +
+      `${po.delivery_address ? 'Deliver to: ' + po.delivery_address + '\n' : ''}` +
+      `\nPlease confirm this order.`
     );
+    // 번호가 등록돼 있으면 그 번호로, 없으면 번호 없이 열어 WhatsApp 에서 연락처 선택해 보냄.
+    const phone = po.seller?.phone ? po.seller.phone.replace(/\D/g, '') : '';
     window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
   };
 
@@ -174,9 +217,9 @@ const PurchaseOrderStagingPage: React.FC = () => {
     const subject = encodeURIComponent(`Purchase Order ${po.po_number || '#' + po.id}`);
     const body = encodeURIComponent(
       `Dear ${po.seller.name},\n\nWe would like to place a purchase order:\n\n` +
-      `PO #: ${po.po_number || po.id}\n` +
+      `PO #: ${po.po_number || po.id}\n\n` +
+      `Items:\n${itemLines(po) || '(none)'}\n\n` +
       `Total: ${po.currency || 'MYR'} ${parseFloat(po.total_amount || '0').toFixed(2)}\n` +
-      `Items: ${(po.items || []).length}\n` +
       `${po.expected_delivery_date ? 'Expected: ' + po.expected_delivery_date + '\n' : ''}` +
       `${po.delivery_address ? 'Delivery to: ' + po.delivery_address + '\n' : ''}` +
       `\nFull PO attached. Please confirm receipt.\n\nThank you.`
@@ -209,6 +252,19 @@ const PurchaseOrderStagingPage: React.FC = () => {
     }
   };
 
+  // 아이템별 삭제 (draft). 마지막 품목이면 서버가 PO 도 함께 삭제 → 목록 갱신.
+  const removeItem = async (poId: number, itemId: number) => {
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`/api/purchase-orders/${poId}/items/${itemId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+      const j = await res.json().catch(() => null);
+      if (res.ok && j?.success) { fetchDrafts(); }
+      else setAlertDlg({ title: t('common:error', 'Error') as string, message: j?.message || (t('staging.removeItemFailed', 'Failed to remove item') as string) });
+    } catch {
+      setAlertDlg({ title: t('common:error', 'Error') as string, message: t('staging.removeItemFailed', 'Failed to remove item') as string });
+    }
+  };
+
   const renderPO = (po: POStaging, isExternal: boolean) => (
     <POCard key={po.id} $external={isExternal}>
       <POHead>
@@ -229,12 +285,13 @@ const PurchaseOrderStagingPage: React.FC = () => {
 
       {(po.items || []).length > 0 && (
         <ItemsBlock>
-          {(po.items || []).slice(0, 5).map(it => (
-            <div key={it.id}>· Item #{it.ingredient_id} × {parseFloat(it.quantity_ordered).toFixed(2)} @ {parseFloat(it.unit_price).toFixed(2)}</div>
+          {(po.items || []).map(it => (
+            <div key={it.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <span>· {(it as any).product_name || (it as any).ingredient_name || `Item #${it.ingredient_id}`} × {parseFloat(it.quantity_ordered).toFixed(2)} @ {parseFloat(it.unit_price).toFixed(2)}</span>
+              <button type="button" onClick={() => removeItem(po.id, it.id)} title={t('staging.removeItem', 'Remove item') as string}
+                style={{ border: 'none', background: 'transparent', color: '#9CA3AF', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: '0 4px' }}>×</button>
+            </div>
           ))}
-          {(po.items || []).length > 5 && (
-            <div style={{ color: '#6B7280' }}>+ {(po.items || []).length - 5} more</div>
-          )}
         </ItemsBlock>
       )}
 
@@ -253,12 +310,22 @@ const PurchaseOrderStagingPage: React.FC = () => {
             <ThemedButton variant="outline" size="small" onClick={() => shareViaEmail(po)}>
               {t('staging.email', 'Email')}
             </ThemedButton>
+            <ThemedButton variant="ghost" size="small" onClick={() => setDiscardTarget(po)}>
+              {t('staging.discard', 'Discard')}
+            </ThemedButton>
           </Actions>
         </>
       ) : (
-        <InfoLine>
-          {t('staging.systemHint', 'This PO will be auto-sent to the supplier upon final submit.')}
-        </InfoLine>
+        <>
+          <InfoLine>
+            {t('staging.systemHint', 'This PO will be auto-sent to the supplier upon final submit.')}
+          </InfoLine>
+          <Actions>
+            <ThemedButton variant="ghost" size="small" onClick={() => setDiscardTarget(po)}>
+              {t('staging.discard', 'Discard')}
+            </ThemedButton>
+          </Actions>
+        </>
       )}
     </POCard>
   );
@@ -268,7 +335,6 @@ const PurchaseOrderStagingPage: React.FC = () => {
       <PageHeader>
         <div>
           <PageTitle>{t('staging.title', 'Pending Purchase Orders')}</PageTitle>
-          <PageSub>{t('staging.subtitle', 'Review each PO. External suppliers must be sent manually before final submit.')}</PageSub>
         </div>
         <ThemedButton variant="ghost" onClick={() => navigate('/pos/purchase-orders')}>
           {t('staging.back', '← Back to Cart')}
@@ -332,6 +398,17 @@ const PurchaseOrderStagingPage: React.FC = () => {
         onClose={() => setAlertDlg(null)}
         title={alertDlg?.title || ''}
         message={alertDlg?.message || ''}
+      />
+
+      <ConfirmModal
+        isOpen={!!discardTarget}
+        title={t('staging.discardConfirm.title', 'Discard this PO?') as string}
+        message={t('staging.discardConfirm.desc', 'This draft PO will be permanently removed. It has not been sent to the supplier.') as string}
+        onConfirm={doDiscard}
+        onCancel={() => !discarding && setDiscardTarget(null)}
+        confirmText={(discarding ? t('staging.discarding', 'Discarding…') : t('staging.discard', 'Discard')) as string}
+        cancelText={t('common:cancel', 'Cancel') as string}
+        type="danger"
       />
     </Container>
   );

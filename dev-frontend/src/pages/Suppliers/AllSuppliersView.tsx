@@ -18,13 +18,14 @@ import { getAuthToken } from '../../utils/auth';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
-import { Building2, Store, FileText, Share2, User } from 'lucide-react';
+import { Building2, Store, FileText, Share2, User, Truck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ConfirmModal from '../../components/ConfirmModal';
 import SupplierFormModal from '../../components/Suppliers/SupplierFormModal';
 import SupplierViewModal from '../../components/Suppliers/SupplierViewModal';
+import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormRow as UIFormRow } from '../../components/UI/Modal';
 
-export type SourceKey = 'own' | 'brand_shared' | 'contract' | 'brand_parent' | 'foodcourt_parent';
+export type SourceKey = 'own' | 'brand_shared' | 'contract' | 'brand_parent' | 'foodcourt_parent' | 'external';
 interface Row {
   key: string;
   id: number;
@@ -70,6 +71,7 @@ const SourceTag = styled.div<{ $source: SourceKey }>`
       case 'contract': return '#DCFCE7';
       case 'brand_shared': return '#FEF3C7';
       case 'own': return '#EEF2FF';
+      case 'external': return '#CCFBF1';
     }
   }};
   color: ${p => {
@@ -79,6 +81,7 @@ const SourceTag = styled.div<{ $source: SourceKey }>`
       case 'contract': return '#166534';
       case 'brand_shared': return '#92400E';
       case 'own': return '#3730A3';
+      case 'external': return '#0F766E';
     }
   }};
   svg { width: 11px; height: 11px; }
@@ -125,6 +128,7 @@ function iconOf(source: SourceKey) {
     case 'contract': return <FileText />;
     case 'brand_shared': return <Share2 />;
     case 'own': return <User />;
+    case 'external': return <Truck />;
   }
 }
 function labelOf(source: SourceKey, t: any): string {
@@ -134,6 +138,7 @@ function labelOf(source: SourceKey, t: any): string {
     case 'contract': return t('supplier:source.contract', 'CONTRACTED');
     case 'brand_shared': return t('supplier:source.brandShared', 'BRAND SHARED');
     case 'own': return t('supplier:source.own', 'OWN');
+    case 'external': return t('supplier:source.external', 'EXTERNAL');
   }
 }
 function sourceNoteOf(source: SourceKey, t: any): string {
@@ -143,6 +148,7 @@ function sourceNoteOf(source: SourceKey, t: any): string {
     case 'contract': return t('supplier:viewNote.contract', 'Linked via active supplier contract. Manage in the Contracts tab.');
     case 'brand_parent': return t('supplier:viewNote.brandParent', 'Your parent Brand HQ — read-only.');
     case 'foodcourt_parent': return t('supplier:viewNote.foodcourtParent', 'Your parent Foodcourt HQ — read-only.');
+    case 'external': return t('supplier:viewNote.external', 'An external supplier you registered. Open it to manage its products (catalog).');
   }
 }
 
@@ -168,6 +174,11 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
   const [deleting, setDeleting] = useState<Row | null>(null);
   const [editing, setEditing] = useState<Row | null>(null);
   const [adding, setAdding] = useState(false);
+  // 2026-06-22 (Irene): Direct 탭 외부공급업체 등록 (Find 에서 이동). 등록 후 프로필로 이동해 상품 등록.
+  const [extReg, setExtReg] = useState<{ name: string; contact_person: string; phone: string; email: string } | null>(null);
+  const [extRegSaving, setExtRegSaving] = useState(false);
+  const [extRegError, setExtRegError] = useState<string | null>(null);
+  const [bridging, setBridging] = useState<number | null>(null);
 
   const role = user?.role;
   const restaurantId = (user as any)?.restaurantId || (user as any)?.restaurant_id;
@@ -233,6 +244,15 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
         });
       }
 
+      // 2026-06-22 (Irene): 내가 등록한 외부공급업체(supplier_companies) — Direct 탭에 노출.
+      // id = supplier_company id → 카드 클릭 시 프로필(/pos/suppliers/directory/:id)에서 상품(Catalog) 등록.
+      if (enabled.has('external')) {
+        const ext = await fetch(`/api/external-suppliers`, auth).then(r => r.json()).catch(() => ({}));
+        (ext.data || []).forEach((s: any) => {
+          list.push({ key: `x-${s.id}`, id: s.id, name: s.name, source: 'external', email: s.email, phone: s.phone, raw: { ...s, product_count: s.product_count } });
+        });
+      }
+
       if ((role === 'Restaurant Admin' || role === 'Restaurant Owner' || role === 'Staff') && restaurantId) {
         if (enabled.has('brand_parent') || enabled.has('foodcourt_parent')) {
           const rest = await fetch(`/api/restaurants/${restaurantId}`, auth).then(r => r.json()).catch(() => ({}));
@@ -257,6 +277,44 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
   }, [user, enabled, role, restaurantId, brandId, foodcourtId]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  // OWN(레거시) 공급업체 → 상품등록 진입: 외부공급업체 체계로 브리지(find-or-create) 후 프로필로 이동.
+  const openOwnProducts = async (r: Row) => {
+    setBridging(r.id);
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`/api/external-suppliers/from-legacy/${r.id}`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+      const j = await res.json().catch(() => null);
+      if (res.ok && j?.success && j.data?.supplier_company_id) {
+        navigate(`/pos/suppliers/directory/${j.data.supplier_company_id}`);
+      } else {
+        setInfoModal({ open: true, title: t('common:error', 'Error') as string, message: j?.message || (t('supplier:external.failed', 'Failed to open products.') as string) });
+      }
+    } catch {
+      setInfoModal({ open: true, title: t('common:error', 'Error') as string, message: t('supplier:external.failed', 'Failed to open products.') as string });
+    } finally { setBridging(null); }
+  };
+
+  const submitExtReg = async () => {
+    if (!extReg) return;
+    const name = extReg.name.trim();
+    if (!name) { setExtRegError(t('supplier:external.nameRequired', 'Supplier name is required.') as string); return; }
+    setExtRegSaving(true); setExtRegError(null);
+    try {
+      const token = getAuthToken();
+      const res = await fetch('/api/external-suppliers', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name, contact_person: extReg.contact_person || undefined, phone: extReg.phone || undefined, email: extReg.email || undefined })
+      });
+      const j = await res.json().catch(() => null);
+      if (!res.ok || !j?.success) { setExtRegError(j?.message || (t('supplier:external.failed', 'Failed to register supplier.') as string)); setExtRegSaving(false); return; }
+      const newId = j.data?.supplier?.id;
+      setExtReg(null); setExtRegSaving(false);
+      // 등록 직후 그 업체 프로필로 이동 → Catalog 에서 상품 등록 (한 흐름).
+      if (newId) navigate(`/pos/suppliers/directory/${newId}`);
+      else fetchAll();
+    } catch { setExtRegError(t('supplier:external.failed', 'Failed to register supplier.') as string); setExtRegSaving(false); }
+  };
 
   const handleDelete = async (r: Row) => {
     const url = ownEndpoint(r.id);
@@ -340,12 +398,20 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
                 <ActionButton onClick={() => setViewing(r)}>{t('common:view', 'View')}</ActionButton>
                 {r.source === 'own' && (
                   <>
+                    <ActionButton variant="primary" disabled={bridging === r.id} onClick={() => openOwnProducts(r)}>
+                      {bridging === r.id ? '…' : t('supplier:card.manageProducts', 'Products')}
+                    </ActionButton>
                     <ActionButton onClick={() => setEditing(r)}>{t('common:edit', 'Edit')}</ActionButton>
                     <ActionButton variant="danger" onClick={() => setDeleting(r)}>{t('common:delete', 'Delete')}</ActionButton>
                   </>
                 )}
                 {r.source === 'contract' && (
                   <ActionButton variant="primary" onClick={handleOpenContract}>{t('supplier:card.openContract', 'Open Contract')}</ActionButton>
+                )}
+                {r.source === 'external' && (
+                  <ActionButton variant="primary" onClick={() => navigate(`/pos/suppliers/directory/${r.id}`)}>
+                    {t('supplier:card.manageProducts', 'Products')}{r.raw?.product_count ? ` (${r.raw.product_count})` : ''}
+                  </ActionButton>
                 )}
               </CardActions>
             </Card>
@@ -388,6 +454,42 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
         type="info"
         singleButton
       />
+
+      {extReg && (
+        <Modal
+          isOpen={!!extReg}
+          onClose={() => setExtReg(null)}
+          title={t('supplier:external.register', 'Register External Supplier') as string}
+          size="small"
+          footer={<>
+            <ModalButton variant="secondary" onClick={() => setExtReg(null)} disabled={extRegSaving}>{t('common:cancel', 'Cancel')}</ModalButton>
+            <ModalButton variant="primary" onClick={submitExtReg} disabled={extRegSaving}>{extRegSaving ? '…' : t('supplier:external.submit', 'Register & Add Products')}</ModalButton>
+          </>}
+        >
+          {extRegError && <div style={{ background: '#FEF2F2', border: '1px solid #FCA5A5', color: '#DC2626', borderRadius: 8, padding: '10px 14px', marginBottom: 12, fontSize: 13 }}>{extRegError}</div>}
+          <div style={{ fontSize: 13, color: '#4B5563', marginBottom: 12 }}>
+            {t('supplier:external.hint', "Register a supplier that isn't on the platform. After saving, you'll add the products you buy from them so this ingredient can be ordered.")}
+          </div>
+          <UIFormGroup>
+            <FormLabel>{t('supplier:external.name', 'Supplier name')} *</FormLabel>
+            <FormInput type="text" value={extReg.name} onChange={(e) => setExtReg({ ...extReg, name: e.target.value })} placeholder={t('supplier:external.namePlaceholder', "e.g. Lim's Butcher") as string} />
+          </UIFormGroup>
+          <UIFormRow>
+            <UIFormGroup>
+              <FormLabel>{t('supplier:external.contact', 'Contact person')}</FormLabel>
+              <FormInput type="text" value={extReg.contact_person} onChange={(e) => setExtReg({ ...extReg, contact_person: e.target.value })} />
+            </UIFormGroup>
+            <UIFormGroup>
+              <FormLabel>{t('supplier:external.phone', 'Phone')}</FormLabel>
+              <FormInput type="text" value={extReg.phone} onChange={(e) => setExtReg({ ...extReg, phone: e.target.value })} />
+            </UIFormGroup>
+          </UIFormRow>
+          <UIFormGroup>
+            <FormLabel>{t('supplier:external.email', 'Email')}</FormLabel>
+            <FormInput type="email" value={extReg.email} onChange={(e) => setExtReg({ ...extReg, email: e.target.value })} />
+          </UIFormGroup>
+        </Modal>
+      )}
     </div>
   );
 }

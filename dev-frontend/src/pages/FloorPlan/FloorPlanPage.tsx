@@ -341,7 +341,7 @@ const FloorPlanPage: React.FC = () => {
   // 설정(gear) 드롭다운으로 수납. CSS 미디어와 충돌 없게 JS 로 단일 판정.
   const [isNarrow, setIsNarrow] = useState(false);
   useEffect(() => {
-    const mq = window.matchMedia('(max-width: 1280px)');
+    const mq = window.matchMedia('(max-width: 1440px)');
     const apply = () => setIsNarrow(mq.matches);
     apply();
     mq.addEventListener('change', apply);
@@ -729,9 +729,18 @@ const FloorPlanPage: React.FC = () => {
   // 새 주문 배너 + 추가주문 배너 + 알림음만 구독한다.
   useEffect(() => {
     const offCreated = subscribeOrders('order-created', (order: any) => {
-      // off-table 새 주문(테이크/픽업/배달)은 바닥에 안 떠서 놓치기 쉬움 → 배너로 알림.
-      // 테이블 주문은 캔버스에 불이 들어오므로 배너 생략.
       const ot = (order?.order_type || order?.orderType || '').toString().replace(/[_\s]/g, '').toLowerCase();
+      // 새 주문 도착 알림음 — 2026-06-23 (Irene): 라이브오더처럼 "모든" 새 주문(테이블/오프테이블)에 울린다.
+      // (이전엔 off-table 분기 안에만 있어 dine-in 테이블 주문엔 소리가 안 났음.) Settings on/off + 종류 + 기기 mute(fp_ready_audio).
+      try {
+        const cfg = floorSoundRef.current;
+        let localOn = true; try { localOn = localStorage.getItem('fp_ready_audio') !== '0'; } catch { /* ignore */ }
+        if ((cfg?.enabled !== false) && localOn) {
+          import('../../utils/notificationSound').then(({ playPresetSound }) => playPresetSound((cfg?.type || 'bell') as any, 0.85)).catch(() => {});
+        }
+      } catch { /* ignore */ }
+      // off-table 새 주문(테이크/픽업/배달)은 바닥에 안 떠서 놓치기 쉬움 → 배너로 알림.
+      // 테이블 주문은 캔버스에 불이 들어오므로 배너만 생략(소리는 위에서 이미 울림).
       if (['takeaway', 'pickup', 'delivery'].includes(ot)) {
         const cnt = (order?.order_items || order?.orderItems || []).reduce((s: number, it: any) => s + (parseInt(it.quantity, 10) || 1), 0);
         setItemsAddedAlert({
@@ -744,14 +753,6 @@ const FloorPlanPage: React.FC = () => {
           kind: 'order',
           orderType: ot,
         });
-        // 새 주문 도착 알림음(Floor Plan) — Settings on/off + 종류, 기기 mute(fp_ready_audio).
-        try {
-          const cfg = floorSoundRef.current;
-          let localOn = true; try { localOn = localStorage.getItem('fp_ready_audio') !== '0'; } catch { /* ignore */ }
-          if ((cfg?.enabled !== false) && localOn) {
-            import('../../utils/notificationSound').then(({ playPresetSound }) => playPresetSound((cfg?.type || 'bell') as any, 0.85)).catch(() => {});
-          }
-        } catch { /* ignore */ }
       }
     });
     const offItemsAdded = subscribeOrders('order-items-added', (data: any) => {
@@ -1750,7 +1751,7 @@ const FloorPlanPage: React.FC = () => {
           {/* 액션 버튼 순서: Daily Settlement(항상 인라인) · Customer Display · Open Drawer.
               좁은 화면(≤1280px, 10인치 단말)에선 Customer Display/Open Drawer 만 설정(gear)
               드롭다운으로 수납한다. Daily Settlement 은 마감 핵심 동작이라 좁은 화면에서도 인라인 유지(Irene). */}
-          {canOperatePOS && (
+          {canOperatePOS && !isNarrow && (
           <BackBtn type="button" onClick={() => setShowCashDrawer(true)} title="Cash Drawer">
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '15px', height: '15px' }}>
               <path d="M2 8h20M2 8l2-4h16l2 4M2 8v10a2 2 0 002 2h16a2 2 0 002-2V8M9 13h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -1766,7 +1767,7 @@ const FloorPlanPage: React.FC = () => {
             Daily Settlement
           </BackBtn>
           )}
-          {canOperatePOS && (
+          {canOperatePOS && !isNarrow && (
           <BackBtn type="button" onClick={() => setShowFinalSettlement(true)} title="Final Settlement" style={{ background: '#635BFF', color: '#fff', borderColor: '#635BFF' }}>
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '15px', height: '15px' }}>
               <path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -1819,14 +1820,14 @@ const FloorPlanPage: React.FC = () => {
               <button key={m} type="button"
                 onClick={() => selectPosTheme(m)}
                 aria-pressed={posTheme === m}
-                title={label}
+                title={label as string}
                 style={{
-                  minWidth: 40, height: 30, padding: '0 10px', fontSize: 12, fontWeight: 600,
+                  minWidth: isNarrow ? 30 : 40, height: 30, padding: isNarrow ? '0 6px' : '0 10px', fontSize: 12, fontWeight: 600,
                   border: 'none', borderRadius: 6, cursor: 'pointer', whiteSpace: 'nowrap',
                   background: posTheme === m ? 'var(--pos-brand, var(--pos-brand, #635BFF))' : 'transparent',
                   color: posTheme === m ? '#FFFFFF' : 'var(--pos-text-muted, var(--pos-text-muted, #4B5563))',
                 }}
-              >{label}</button>
+              >{isNarrow ? (label as string).charAt(0) : label}</button>
               );
             })}
           </div>
@@ -1852,8 +1853,9 @@ const FloorPlanPage: React.FC = () => {
           {(() => {
             const gearItems: OverflowMenuItem[] = [];
             if (isNarrow && canOperatePOS) {
-              // Daily Settlement 은 항상 인라인 → 드롭다운엔 Customer Display/Open Drawer 만 수납.
-              // 서빙 전용 직원(canOperatePOS=false)에겐 카운터 항목 자체를 넣지 않는다.
+              // 좁은 화면(≤1440): Daily Settlement 만 인라인 유지(Irene), 나머지 카운터 액션은 gear 수납.
+              gearItems.push({ id: 'cash-drawer', label: t('cash:todayCashDrawer', { defaultValue: "Today's Cash Drawer" }) as string, onClick: () => setShowCashDrawer(true) });
+              gearItems.push({ id: 'final-settlement', label: t('cash:finalSettlement', { defaultValue: 'Final Settlement' }) as string, onClick: () => setShowFinalSettlement(true) });
               gearItems.push({
                 id: 'customer-display', label: 'Customer Display', indicator: isAutoOpenEnabled(),
                 onClick: async () => {
