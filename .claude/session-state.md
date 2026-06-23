@@ -1,20 +1,18 @@
 # Purple POS — 개발 세션 상태
 
-<!-- AUTOSAVE-STALE-BANNER -->
-> **[AUTO-SAVE STALE] (2026-06-23 09:25, idle 13095s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
-> 변경된 작업 파일: test-onorder.js
-<!-- /AUTOSAVE-STALE-BANNER -->
-
 ## 현재 작업 상태
 **마지막 업데이트:** 2026-06-22
 **버전:** **v3.61 운영 배포 완료** (2026-06-22). 배포 2회 Backup 20260622_204037·211326, Smoke 9/9, 스키마 dev=운영 완전일치(144=144), SW=3.90.
 **작업 상태:** 완료
 
-### 진행 중인 작업 (DEV·미커밋 — auto-save 2c01c798 06-23 06:20, 검증 안 됨)
-- **발주/재고 개선 묶음** (narrative 미반영분, /개발시작 정정 2026-06-23):
-  1. 입고예정(on-order) 뱃지 — 활성 발주(submitted~partial_received)의 (ordered−received)×conversion 을 ingredient별 집계해 재고 목록에 "↧ N incoming" 표시 + 가장 빠른 입고예정일. `inventory-core.js`(GET inventory 응답에 on_order_quantity/on_order_delivery_date)·`Inventory/types.ts`·`Inventory/sections/StockListSection.tsx`
-  2. "Add to My Stock" 양방향 등록 — 카탈로그 상품을 주문 없이 스톡아이템으로 등록(ensureIngredientAndAddToCart stockOnly 옵션) + 셀러 SearchableSelect·미분류 버킷·최신순 정렬 필터. `NewPurchaseOrderPage.tsx`·`supplier-directory.js`(catalog created_at DESC)·purchaseOrders.json(4언어 키)
-  - 상태: 코드 작성만, build/검증/실API 미실행. 이어서 마무리 후 /검증 필요.
+### 진행 중인 작업
+- 없음 (발주/재고 개선 묶음 검증 완료 — 아래)
+
+### 완료된 작업 (이번 세션 추가, 2026-06-23 — DEV·미배포)
+- **발주/재고 개선 묶음** (auto-save 2c01c798 마무리 + 검증):
+  1. 입고예정(on-order) 뱃지 — 활성 발주(submitted~partial_received)의 (ordered−received)×conversion 을 ingredient별 집계해 재고 목록에 "↧ N incoming" + 가장 빠른 입고예정일. `inventory-core.js`·`Inventory/types.ts`·`Inventory/sections/StockListSection.tsx`
+  2. "Add to My Stock" 양방향 등록 — 카탈로그 상품을 주문 없이 스톡아이템으로 등록(stockOnly) + 셀러 SearchableSelect·미분류 버킷·최신순 정렬. `NewPurchaseOrderPage.tsx`·`supplier-directory.js`(catalog created_at DESC)·purchaseOrders.json(4언어)
+  - 검증: build exit0+dev배포(SW 현행)·on_order 실API 8/8(수식 (5-2)×3=9 정확+정리복귀)·supplier-catalog 200 서버정렬·RA/BG ingredients created_at 확인·print-guard 8/8·design 신규0·i18n 0·health 107/107. 운영 배포 대기(Irene /배포).
 
 ### 완료된 작업 (이번 세션, v3.61)
 - 이메일 바운스 차단 — notificationService is_test 가드 + 데모계정 정규화 (surgical 운영배포)
