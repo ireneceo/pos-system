@@ -22,6 +22,7 @@ const CashDrawerOps: React.FC<Props> = ({ restaurantId, onChange, compact }) => 
   const [step, setStep] = useState<Step>('loading');
   const [shift, setShift] = useState<any>(null);
   const [suggestedFloat, setSuggestedFloat] = useState(0);
+  const [floatMode, setFloatMode] = useState<'carryover' | 'fixed'>('carryover');
   const [openingFloat, setOpeningFloat] = useState('');
   const [movements, setMovements] = useState<{ paidIn: number; paidOut: number; net: number }>({ paidIn: 0, paidOut: 0, net: 0 });
   const [amt, setAmt] = useState('');          // 키패드 입력 금액
@@ -55,7 +56,13 @@ const CashDrawerOps: React.FC<Props> = ({ restaurantId, onChange, compact }) => 
       setMovements(ex.j?.data?.movements || { paidIn: 0, paidOut: 0, net: 0 });
       setStep('running');
       loadTodayMoves();
-    } else { setShift(null); setStep('start'); }
+    } else {
+      setShift(null);
+      // 개시 추천 시재 — 매장 설정(고정/이월) 기준값을 시작화면에 표시. 직원이 키패드로 수정 가능.
+      setSuggestedFloat(Number(j?.suggestedFloat) || 0);
+      setFloatMode(j?.floatMode === 'fixed' ? 'fixed' : 'carryover');
+      setStep('start');
+    }
   }, [api, restaurantId, loadTodayMoves]);
 
   useEffect(() => { load(); }, [load]);
@@ -115,7 +122,9 @@ const CashDrawerOps: React.FC<Props> = ({ restaurantId, onChange, compact }) => 
         <Box>
           <Label>{t('cash:openingCash', { defaultValue: 'Opening cash in drawer' })}</Label>
           <Amount>{openingFloat ? fc(num(openingFloat)) : fc(suggestedFloat)}</Amount>
-          <Hint>{t('cash:openingHint', { defaultValue: 'Count the cash you are starting with. Suggested = last closing balance.' })}</Hint>
+          <Hint>{floatMode === 'fixed'
+            ? t('cash:openingHintFixed', { defaultValue: 'Suggested = fixed daily float from settings. Adjust if your count differs.' })
+            : t('cash:openingHint', { defaultValue: 'Count the cash you are starting with. Suggested = last closing balance.' })}</Hint>
           <Pad onPress={floatPress} onBack={floatBack} />
           <Primary disabled={busy} onClick={startShift}>{busy ? '…' : t('cash:startShift', { defaultValue: 'Start shift' })}</Primary>
         </Box>

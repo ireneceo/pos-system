@@ -68,12 +68,35 @@ async function computeMovements(shiftId) {
   return { paidIn, paidOut, net: round2(paidIn - paidOut) };
 }
 
-// GET 현재 open 교대
+// 개시 시재(opening float) 기본값 — 매장 설정 operation_settings.cashFloat.openingMode 에 따라:
+//   'fixed'     → 고정 금액(fixedAmount). 매일 같은 금액으로 리셋. (Irene 2026-06-23)
+//   'carryover' → 직전 교대 마감현금 이월. 기본/레거시 동작.
+// 설정이 없으면 carryover(하위호환).
+async function computeSuggestedFloat(restaurantId, opSettings) {
+  let cf = opSettings && opSettings.cashFloat;
+  if (typeof cf === 'string') { try { cf = JSON.parse(cf); } catch { cf = null; } }
+  if (cf && cf.openingMode === 'fixed') {
+    return round2(cf.fixedAmount);
+  }
+  const lastRec = await CashReconciliation.findOne({ where: { restaurant_id: restaurantId, closing_balance: { [Op.ne]: null } }, order: [['reconciled_at', 'DESC']] });
+  return (lastRec && lastRec.closing_balance != null) ? round2(lastRec.closing_balance) : 0;
+}
+
+// GET 현재 open 교대 (+ 미개시 시 다음 개시 추천 시재 — 시작화면 pre-fill 용)
 router.get('/restaurant/:restaurantId/shift/current', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const restaurantId = parseInt(req.params.restaurantId, 10);
     const shift = await CashierShift.findOne({ where: { restaurant_id: restaurantId, status: 'open' }, order: [['opened_at', 'DESC']] });
-    res.json({ success: true, data: shift });
+    let suggestedFloat;
+    let floatMode = 'carryover';
+    if (!shift) {
+      const restaurant = await Restaurant.findByPk(restaurantId, { attributes: ['operation_settings'] });
+      const op = restaurant && restaurant.operation_settings;
+      const cf = (op && typeof op.cashFloat === 'string') ? (() => { try { return JSON.parse(op.cashFloat); } catch { return null; } })() : (op && op.cashFloat);
+      floatMode = (cf && cf.openingMode === 'fixed') ? 'fixed' : 'carryover';
+      suggestedFloat = await computeSuggestedFloat(restaurantId, op);
+    }
+    res.json({ success: true, data: shift, suggestedFloat, floatMode });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
   }
@@ -87,13 +110,11 @@ router.post('/restaurant/:restaurantId/shift/open', authenticateToken, checkRest
     if (existing) {
       return res.status(400).json({ success: false, code: 'SHIFT_ALREADY_OPEN', message: 'A shift is already open. Close it first.' });
     }
-    // 직전 교대 마감현금 → 개시현금 기본값
-    let suggested = 0;
-    const lastRec = await CashReconciliation.findOne({ where: { restaurant_id: restaurantId, closing_balance: { [Op.ne]: null } }, order: [['reconciled_at', 'DESC']] });
-    if (lastRec && lastRec.closing_balance != null) suggested = round2(lastRec.closing_balance);
+    // 개시현금 기본값 — 매장 설정(cashFloat.openingMode)에 따라 고정/이월. 직원이 입력하면 그 값 우선.
+    const restaurant = await Restaurant.findByPk(restaurantId, { attributes: ['operation_settings'] });
+    const suggested = await computeSuggestedFloat(restaurantId, restaurant && restaurant.operation_settings);
     const opening_float = req.body.opening_float != null ? round2(req.body.opening_float) : suggested;
 
-    const restaurant = await Restaurant.findByPk(restaurantId, { attributes: ['operation_settings'] });
     const tz = getRestaurantTimezone(restaurant);
     const shift = await CashierShift.create({
       restaurant_id: restaurantId,
