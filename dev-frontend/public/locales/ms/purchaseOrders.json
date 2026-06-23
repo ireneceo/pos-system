@@ -319,7 +319,8 @@
       "linked": "\"{{name}}\" ditambah ke inventori",
       "connected": "\"{{name}}\" dipautkan ke pembekal ✓",
       "connectHint": "Klik item katalog untuk memautkan \"{{name}}\"",
-      "addedAsSeparate": "Ditambah sebagai bahan berasingan (unit/spesifikasi berbeza)."
+      "addedAsSeparate": "Ditambah sebagai bahan berasingan (unit/spesifikasi berbeza).",
+      "stockRegistered": "\"{{name}}\" ditambah ke Item Stok Saya"
     },
     "showUntracked": "Tunjuk yang tidak dijejak",
     "conversion": {
@@ -327,7 +328,14 @@
       "help": "Contoh — bahan dalam kg, kotak 10kg: masukkan 10. Bahan dalam piece, dulang 30: masukkan 30.",
       "connect": "Pautkan",
       "asSeparate": "+ Tambah sebagai bahan berasingan"
-    }
+    },
+    "addToStock": "Tambah ke Stok Saya",
+    "addToStockHint": "Tambah ke Item Stok Saya tanpa membuat pesanan",
+    "allSellers": "Semua penjual",
+    "noCategories": "Tiada kategori",
+    "noSellers": "Tiada penjual",
+    "allCategoriesFilter": "Semua kategori",
+    "uncategorized": "Tidak dikategori"
   },
   "staging": {
     "noPhoneTitle": "Tiada Nombor Telefon",

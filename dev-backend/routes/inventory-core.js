@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { Op } = require('sequelize');
 const database = require('../config/database');
-const { Ingredient, InventoryTransaction, StockTake, StockTakeItem, StockAlert, Restaurant, InventoryBatch, GeneralStock, GeneralStockTransaction, Supplier, RestaurantIngredientCost } = require('../models');
+const { Ingredient, InventoryTransaction, StockTake, StockTakeItem, StockAlert, Restaurant, InventoryBatch, GeneralStock, GeneralStockTransaction, Supplier, RestaurantIngredientCost, PurchaseOrder, PurchaseOrderItem } = require('../models');
 const { getStartOfMonth, getRestaurantTimezone } = require('../utils/dateTimeHelper');
 
 // 레스토랑의 코스트 오버라이드 맵 조회 헬퍼
@@ -69,6 +69,45 @@ router.get('/:restaurantId/inventory', async (req, res) => {
       order: [['name', 'ASC']]
     });
 
+    // 입고예정(on-order) — 활성 발주(주문됐으나 미입고)의 남은 수량을 ingredient 별로 집계.
+    // 재고 증가 공식과 동일하게 (quantity_ordered - quantity_received) × unit_conversion 로 재고단위 환산.
+    // 목적: "이미 발주해서 들어올 양"을 미리 보여 중복 발주 방지.
+    const ACTIVE_PO_STATUSES = ['submitted', 'confirmed', 'shipped', 'in_transit', 'delivered', 'partial_received'];
+    const onOrderMap = {}; // ingredient_id → { qty, date }
+    const ingIds = ingredients.map(i => i.id);
+    if (ingIds.length > 0) {
+      const activePOs = await PurchaseOrder.findAll({
+        where: {
+          entity_type: 'restaurant',
+          entity_id: restaurantId,
+          status: { [Op.in]: ACTIVE_PO_STATUSES }
+        },
+        attributes: ['id', 'expected_delivery_date'],
+        include: [{
+          model: PurchaseOrderItem,
+          as: 'items',
+          attributes: ['ingredient_id', 'quantity_ordered', 'quantity_received', 'unit_conversion'],
+          where: { ingredient_id: { [Op.in]: ingIds } },
+          required: true
+        }]
+      });
+      for (const po of activePOs) {
+        for (const it of (po.items || [])) {
+          const remaining = (parseFloat(it.quantity_ordered) || 0) - (parseFloat(it.quantity_received) || 0);
+          if (remaining <= 0) continue;
+          const conv = parseFloat(it.unit_conversion) || 1;
+          const add = Math.round(remaining * conv * 100) / 100;
+          const cur = onOrderMap[it.ingredient_id] || { qty: 0, date: null };
+          cur.qty = Math.round((cur.qty + add) * 100) / 100;
+          // 가장 빠른 입고예정일
+          if (po.expected_delivery_date && (!cur.date || po.expected_delivery_date < cur.date)) {
+            cur.date = po.expected_delivery_date;
+          }
+          onOrderMap[it.ingredient_id] = cur;
+        }
+      }
+    }
+
     // Add stock status
     ingredients = ingredients.map(ing => {
       const currentStock = parseFloat(ing.current_stock) || 0;
@@ -81,9 +120,12 @@ router.get('/:restaurantId/inventory', async (req, res) => {
         stockStatus = 'low_stock';
       }
 
+      const onOrder = onOrderMap[ing.id] || null;
       return {
         ...ing.toJSON(),
-        stock_status: stockStatus
+        stock_status: stockStatus,
+        on_order_quantity: onOrder ? onOrder.qty : 0,
+        on_order_delivery_date: onOrder ? onOrder.date : null
       };
     });
 

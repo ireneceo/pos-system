@@ -30,6 +30,9 @@ export interface IngredientStock {
   stock_status: StockStatus;
   supplier_id: number | null;
   supplier_name: string | null;
+  // 입고예정 — 이미 발주됐으나 미입고된 수량(재고단위 환산) + 가장 빠른 입고예정일.
+  on_order_quantity?: number;
+  on_order_delivery_date?: string | null;
   supplier?: {
     id: number;
     name: string;

@@ -28,6 +28,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { getAuthToken } from '../../utils/auth';
 import SupplierOptionModal, { SupplierOptionGroup, SelectedOption } from './SupplierOptionModal';
 import ConnectSellerModal from '../../components/Common/ConnectSellerModal';
+import SearchableSelect from '../../components/Common/SearchableSelect';
 import ConfirmDialog from '../../components/Common/ConfirmDialog';
 import { Modal as UIModal } from '../../components/UI/Modal';
 
@@ -56,6 +57,7 @@ interface MyIngredientRow {
   ingredientCategory?: { id: number; name: string; emoji?: string | null } | null;
   sellers: SellerOpt[];
   track_stock?: boolean;
+  created_at?: string | null;
   // BG (brands) only — set when this row is a BG ProductIngredient (Stock Item),
   // not a brand ingredient. Carried into the cart so submit can emit product_ingredient_id.
   product_ingredient_id?: number;
@@ -220,6 +222,13 @@ const FilterSel = styled.select`
   cursor: pointer;
   outline: none;
   &:focus { border-color: #635BFF; }
+`;
+
+// 검색 가능한 고급 셀렉트(SearchableSelect)를 필터 행에서 인라인으로 쓰기 위한 폭 래퍼.
+const FilterSelectBox = styled.div`
+  width: 200px;
+  min-width: 170px;
+  flex-shrink: 0;
 `;
 
 const CategoryRow = styled.div`
@@ -671,6 +680,7 @@ const NewPurchaseOrderPage: React.FC = () => {
               product_ingredient_id: item.id,
               is_product_ingredient: true,
               track_stock: true,
+              created_at: item.created_at ?? null,
               sellers: (item.sellers as any[]).map((s): SellerOpt => ({
                 id: s.id,
                 seller_product_id: s.seller_product_id,
@@ -737,12 +747,27 @@ const NewPurchaseOrderPage: React.FC = () => {
     return Array.from(map.values());
   }, [myList]);
 
+  // 미분류(카테고리 없는 스톡아이템)가 하나라도 있으면 카테고리 필터에 "미분류" 버킷 노출.
+  // "Add to My Stock" 으로 카탈로그에서 바로 등록한 항목은 카테고리가 비어 여기 잡힌다.
+  const UNCAT = '__uncat__';
+  const hasUncategorizedMine = useMemo(
+    () => myList.some(r => !r.ingredient_category_id && (showUntracked || r.track_stock !== false)),
+    [myList, showUntracked]
+  );
+
   const filteredMy = useMemo(() => {
     const q = search.trim().toLowerCase();
+    const ts = (r: MyIngredientRow) => (r.created_at ? new Date(r.created_at).getTime() : 0);
     return myList.filter(r => {
       // Track in Inventory 토글 OFF 이면 mine 탭에서 숨김 (showUntracked=true 일 때만 노출)
       if (!showUntracked && r.track_stock === false) return false;
-      if (categoryFilter !== 'all' && String(r.ingredient_category_id || '') !== categoryFilter) return false;
+      if (categoryFilter !== 'all') {
+        if (categoryFilter === UNCAT) {
+          if (r.ingredient_category_id) return false;
+        } else if (String(r.ingredient_category_id || '') !== categoryFilter) {
+          return false;
+        }
+      }
       // 발주처 필터 — 해당 seller 매핑된 ingredient만
       if (mineSellerFilter !== 'all') {
         const [t, idStr] = mineSellerFilter.split(':');
@@ -757,7 +782,7 @@ const NewPurchaseOrderPage: React.FC = () => {
         ...(r.sellers || []).map(s => s.seller_name || '')
       ];
       return haystack.some(s => s.toLowerCase().includes(q));
-    });
+    }).sort((a, b) => ts(b) - ts(a)); // 최신 등록 순 (newest first)
   }, [myList, search, categoryFilter, showUntracked, mineSellerFilter]);
 
   // mine 탭 발주처(seller) 목록 — myList의 모든 sellers union (중복 제거)
@@ -842,6 +867,13 @@ const NewPurchaseOrderPage: React.FC = () => {
     await ensureIngredientAndAddToCart(row, [], row.unit_price);
   };
 
+  // 양방향 등록 — 카탈로그 상품을 "주문 없이" 내 스톡아이템으로 등록(공급업체 매핑 포함).
+  // 등록 후 My Stock Items 탭에 바로 나타나고, 카탈로그 행은 "Linked" 로 전환된다.
+  const registerCatalogToStock = async (row: CatalogRow) => {
+    if (!buyerApiBase) return;
+    await ensureIngredientAndAddToCart(row, [], row.unit_price, undefined, undefined, { stockOnly: true });
+  };
+
   const openCatalogOptionModal = (row: CatalogRow) => {
     if (row.option_groups && row.option_groups.length > 0) {
       setOptionModal({ row, product: row });
@@ -892,7 +924,7 @@ const NewPurchaseOrderPage: React.FC = () => {
     return { auto: null, compatible: false, note: t('unitCompat.incompatible', '{{a}} and {{b}} are incompatible. Enter manually or add as a separate ingredient', { a, b }) as string };
   };
 
-  const ensureIngredientAndAddToCart = async (row: CatalogRow, selectedOptions: SelectedOption[], adjustedUnitPrice: number, qty?: number, overrideConversion?: number) => {
+  const ensureIngredientAndAddToCart = async (row: CatalogRow, selectedOptions: SelectedOption[], adjustedUnitPrice: number, qty?: number, overrideConversion?: number, opts: { stockOnly?: boolean } = {}) => {
     if (!buyerApiBase) return;
     try {
       const token = getAuthToken();
@@ -947,6 +979,15 @@ const NewPurchaseOrderPage: React.FC = () => {
       }
       const ing = j.data.ingredient;
       const map = j.data.mapping;
+      // 양방향 등록 — 카탈로그에서 "주문 없이 내 스톡으로만 등록". 카트 담기를 건너뛰고
+      // 스톡 목록(mine)·카탈로그(already_mapped 갱신)만 새로고침한다.
+      if (opts.stockOnly) {
+        setToast(t('newPo.toast.stockRegistered', { name: ing.name, defaultValue: '"{{name}}" added to My Stock Items' }) as string);
+        setConnectTarget(null);
+        fetchMine();
+        fetchCatalog();
+        return;
+      }
       const seller: SellerOpt = {
         id: map.id,
         seller_product_id: map.seller_product_id,
@@ -1113,7 +1154,7 @@ const NewPurchaseOrderPage: React.FC = () => {
       <Layout>
         <MainPane>
           <TabBar>
-            <TabBtn $active={tab === 'mine'} onClick={() => { setTab('mine'); setCategoryFilter('all'); setSearch(''); }}>
+            <TabBtn $active={tab === 'mine'} onClick={() => { setTab('mine'); setCategoryFilter('all'); setMineSellerFilter('all'); setSearch(''); }}>
               {t('newPo.tabMine', 'My Stock Items')}
             </TabBtn>
             <TabBtn $active={tab === 'catalog'} onClick={() => { setTab('catalog'); setCategoryFilter('all'); setSupplierFilter('all'); setSearch(''); }}>
@@ -1155,16 +1196,39 @@ const NewPurchaseOrderPage: React.FC = () => {
                 {catalogSuppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
               </FilterSel>
             )}
+            {tab === 'mine' && (myCategories.length > 0 || hasUncategorizedMine) && (
+              <FilterSelectBox>
+                <SearchableSelect
+                  options={[
+                    ...myCategories.map(c => ({
+                      value: String(c.id),
+                      label: `${c.emoji ? c.emoji + ' ' : ''}${c.name}`,
+                    })),
+                    ...(hasUncategorizedMine ? [{ value: UNCAT, label: t('newPo.uncategorized', '미분류') as string }] : []),
+                  ]}
+                  value={categoryFilter === 'all' ? null : categoryFilter}
+                  onChange={(val) => setCategoryFilter(val == null ? 'all' : String(val))}
+                  placeholder={t('newPo.allCategoriesFilter', 'All categories') as string}
+                  allowClear
+                  noOptionsMessage={t('newPo.noCategories', 'No categories') as string}
+                />
+              </FilterSelectBox>
+            )}
             {tab === 'mine' && mineSellers.length > 0 && (
-              <FilterSel value={mineSellerFilter} onChange={(e) => setMineSellerFilter(e.target.value)}>
-                <option value="all">{t('newPo.allSellers', 'All sellers')}</option>
-                {mineSellers.map(s => (
-                  <option key={s.key} value={s.key}>
-                    {s.type === 'brand' ? '🏢 ' : s.type === 'foodcourt' ? '🏬 ' : '📦 '}
-                    {s.name} ({s.count})
-                  </option>
-                ))}
-              </FilterSel>
+              <FilterSelectBox>
+                <SearchableSelect
+                  options={mineSellers.map(s => ({
+                    value: s.key,
+                    label: `${s.name} (${s.count})`,
+                    subLabel: s.type === 'brand' ? 'Brand' : s.type === 'foodcourt' ? 'Foodcourt' : 'Supplier',
+                  }))}
+                  value={mineSellerFilter === 'all' ? null : mineSellerFilter}
+                  onChange={(val) => setMineSellerFilter(val == null ? 'all' : String(val))}
+                  placeholder={t('newPo.allSellers', 'All sellers') as string}
+                  allowClear
+                  noOptionsMessage={t('newPo.noSellers', 'No sellers') as string}
+                />
+              </FilterSelectBox>
             )}
             {tab === 'mine' && untrackedCount > 0 && (
               <label style={{
@@ -1185,29 +1249,22 @@ const NewPurchaseOrderPage: React.FC = () => {
             )}
           </FilterRow>
 
-          <CategoryRow>
-            <CategoryChip $active={categoryFilter === 'all'} onClick={() => setCategoryFilter('all')}>
-              {t('newPo.allCategories', 'All')}
-            </CategoryChip>
-            {tab === 'mine' && myCategories.map(c => (
-              <CategoryChip
-                key={c.id}
-                $active={categoryFilter === String(c.id)}
-                onClick={() => setCategoryFilter(String(c.id))}
-              >
-                {c.emoji ? `${c.emoji} ` : ''}{c.name}
+          {tab === 'catalog' && (
+            <CategoryRow>
+              <CategoryChip $active={categoryFilter === 'all'} onClick={() => setCategoryFilter('all')}>
+                {t('newPo.allCategories', 'All')}
               </CategoryChip>
-            ))}
-            {tab === 'catalog' && catalogCategories.map(c => (
-              <CategoryChip
-                key={c.id}
-                $active={categoryFilter === String(c.id)}
-                onClick={() => setCategoryFilter(String(c.id))}
-              >
-                {c.emoji ? `${c.emoji} ` : ''}{c.name}
-              </CategoryChip>
-            ))}
-          </CategoryRow>
+              {catalogCategories.map(c => (
+                <CategoryChip
+                  key={c.id}
+                  $active={categoryFilter === String(c.id)}
+                  onClick={() => setCategoryFilter(String(c.id))}
+                >
+                  {c.emoji ? `${c.emoji} ` : ''}{c.name}
+                </CategoryChip>
+              ))}
+            </CategoryRow>
+          )}
 
           <ScrollArea>
             {tab === 'mine' ? (
@@ -1372,27 +1429,47 @@ const NewPurchaseOrderPage: React.FC = () => {
                         </CardMeta>
                         <CardPrice>{p.unit_price.toFixed(2)}</CardPrice>
                         <CardMeta>{p.supplier?.name || ''}{p.sku ? ` · ${p.sku}` : ''}</CardMeta>
-                        {p.has_options && (
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); openCatalogOptionModal(p); }}
-                            style={{
-                              marginTop: 8,
-                              padding: '6px 12px',
-                              border: '1px solid #635BFF',
-                              borderRadius: 8,
-                              background: '#EEF2FF',
-                              color: '#635BFF',
-                              fontWeight: 700,
-                              fontSize: 12,
-                              cursor: 'pointer',
-                              alignSelf: 'flex-start',
-                              fontFamily: 'inherit',
-                            }}
-                          >
-                            {t('newPo.optionsButton', 'Options')}
-                          </button>
-                        )}
+                        <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                          {p.has_options && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); openCatalogOptionModal(p); }}
+                              style={{
+                                padding: '6px 12px',
+                                border: '1px solid #635BFF',
+                                borderRadius: 8,
+                                background: '#EEF2FF',
+                                color: '#635BFF',
+                                fontWeight: 700,
+                                fontSize: 12,
+                                cursor: 'pointer',
+                                fontFamily: 'inherit',
+                              }}
+                            >
+                              {t('newPo.optionsButton', 'Options')}
+                            </button>
+                          )}
+                          {!p.already_mapped && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); registerCatalogToStock(p); }}
+                              title={t('newPo.addToStockHint', 'Add to My Stock Items without ordering') as string}
+                              style={{
+                                padding: '6px 12px',
+                                border: '1px solid #C7CED6',
+                                borderRadius: 8,
+                                background: '#FFFFFF',
+                                color: '#0A2540',
+                                fontWeight: 700,
+                                fontSize: 12,
+                                cursor: 'pointer',
+                                fontFamily: 'inherit',
+                              }}
+                            >
+                              {t('newPo.addToStock', 'Add to My Stock')}
+                            </button>
+                          )}
+                        </div>
                       </Card>
                     );
                   })}

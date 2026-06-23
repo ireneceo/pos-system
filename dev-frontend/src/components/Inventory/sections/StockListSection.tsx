@@ -435,6 +435,15 @@ const StockListSection: React.FC<Props> = ({
                           <span style={{ fontSize: '13px', color: '#4B5563' }}>{item.unit}</span>
                         </EditableStock>
                       )}
+                      {Number(item.on_order_quantity) > 0 && (
+                        <div
+                          title={item.on_order_delivery_date ? `Expected delivery: ${formatDate(item.on_order_delivery_date)}` : 'On order — already purchased'}
+                          style={{ display: 'inline-block', marginTop: 4, fontSize: 10, padding: '1px 6px',
+                            background: '#E0F2FE', color: '#075985', borderRadius: 999, fontWeight: 600 }}
+                        >
+                          ↧ {formatStock(item.on_order_quantity)} {item.unit} incoming
+                        </div>
+                      )}
                     </MobileValue>
                     <MobileValue className="col-min">
                       <MobileLabel>Min / Prediction</MobileLabel>

@@ -319,7 +319,8 @@
       "linked": "\"{{name}}\"이(가) 내 재고에 추가됨",
       "connected": "\"{{name}}\" 발주처 연결 완료 ✓",
       "connectHint": "카탈로그에서 항목을 클릭해 \"{{name}}\"를 연결하세요",
-      "addedAsSeparate": "별도 재료로 추가됨 (단위/규격 다름)."
+      "addedAsSeparate": "별도 재료로 추가됨 (단위/규격 다름).",
+      "stockRegistered": "\"{{name}}\" 내 스톡아이템에 추가됨"
     },
     "showUntracked": "추적 안함 표시",
     "conversion": {
@@ -327,7 +328,14 @@
       "help": "예 — 우리 재료가 kg일 때 10kg 박스 상품: 10 입력. piece일 때 30개 트레이: 30 입력.",
       "connect": "연결",
       "asSeparate": "+ 별도 재료로 추가"
-    }
+    },
+    "addToStock": "내 스톡에 추가",
+    "addToStockHint": "주문 없이 내 스톡아이템으로 등록",
+    "allSellers": "전체 발주처",
+    "noCategories": "카테고리 없음",
+    "noSellers": "발주처 없음",
+    "allCategoriesFilter": "전체 카테고리",
+    "uncategorized": "미분류"
   },
   "staging": {
     "noPhoneTitle": "전화번호 없음",

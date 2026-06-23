@@ -637,7 +637,7 @@ router.get('/supplier-catalog', async (req, res) => {
           required: false
         }
       ],
-      order: [['name', 'ASC']],
+      order: [['created_at', 'DESC']], // 최신 등록 순 (newest first) — My Stock 탭과 일관
       limit: 200,
       subQuery: false
     });

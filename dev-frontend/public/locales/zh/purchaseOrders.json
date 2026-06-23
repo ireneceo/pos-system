@@ -319,7 +319,8 @@
       "linked": "\"{{name}}\"已加入库存",
       "connected": "\"{{name}}\" 已连接供应商 ✓",
       "connectHint": "点击目录项目以连接 \"{{name}}\"",
-      "addedAsSeparate": "已作为独立食材添加 (单位/规格不同)。"
+      "addedAsSeparate": "已作为独立食材添加 (单位/规格不同)。",
+      "stockRegistered": "\"{{name}}\" 已加入我的库存项目"
     },
     "showUntracked": "显示未追踪",
     "conversion": {
@@ -327,7 +328,14 @@
       "help": "示例 — 食材以kg为单位时,10kg箱装商品输入10。以piece为单位时,30件装托盘输入30。",
       "connect": "连接",
       "asSeparate": "+ 作为独立食材添加"
-    }
+    },
+    "addToStock": "加入我的库存",
+    "addToStockHint": "无需下单即可加入我的库存项目",
+    "allSellers": "全部供应商",
+    "noCategories": "无类别",
+    "noSellers": "无供应商",
+    "allCategoriesFilter": "全部类别",
+    "uncategorized": "未分类"
   },
   "staging": {
     "noPhoneTitle": "无电话号码",

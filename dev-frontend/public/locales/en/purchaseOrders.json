@@ -319,7 +319,8 @@
       "linked": "\"{{name}}\" added to your inventory",
       "connected": "\"{{name}}\" connected to a supplier ✓",
       "connectHint": "Pick a catalog item to connect \"{{name}}\"",
-      "addedAsSeparate": "Added as a separate ingredient (different unit/spec)."
+      "addedAsSeparate": "Added as a separate ingredient (different unit/spec).",
+      "stockRegistered": "\"{{name}}\" added to My Stock Items"
     },
     "showUntracked": "Show untracked",
     "conversion": {
@@ -327,7 +328,14 @@
       "help": "Example — a 10kg box of an ingredient measured in kg: enter 10. A 30-piece tray measured in piece: enter 30.",
       "connect": "Connect",
       "asSeparate": "+ Add as separate ingredient"
-    }
+    },
+    "addToStock": "Add to My Stock",
+    "addToStockHint": "Add to My Stock Items without ordering",
+    "allSellers": "All sellers",
+    "noCategories": "No categories",
+    "noSellers": "No sellers",
+    "allCategoriesFilter": "All categories",
+    "uncategorized": "Uncategorized"
   },
   "staging": {
     "noPhoneTitle": "No Phone Number",
