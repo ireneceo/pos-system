@@ -282,6 +282,10 @@ export async function openCashDrawer() {
  * user will see the "Allow" prompt, which is the legacy behaviour.
  */
 let _qzSecurityConfigured = false;
+// QZ Tray 데스크톱 버전에 맞춘 서명 알고리즘. 기본 SHA512(QZ 2.2.x+, 예: POS1 — 무변경).
+// connectQZTray 가 연결 후 버전을 감지해 2.1.x(Windows 7) 면 'SHA1' 로 바꾼다(아래).
+// 서명 promise 가 이 값을 백엔드 /sign?algorithm= 로 전달 → 구버전 QZ 의 anonymous/Allow 루프 해소.
+let _qzSignAlgo = 'SHA512';
 
 function setupQZSecurity() {
   if (_qzSecurityConfigured) return;
@@ -321,7 +325,7 @@ function setupQZSecurity() {
   qz.security.setSignaturePromise(function(toSign) {
     return function(resolve, reject) {
       console.log('[QZ Tray] signing payload (' + (toSign || '').length + ' chars)');
-      fetch('/api/qz-tray/sign', {
+      fetch('/api/qz-tray/sign?algorithm=' + encodeURIComponent(_qzSignAlgo), {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
         body: toSign
@@ -368,7 +372,23 @@ export async function connectQZTray() {
       await qz.websocket.connect({ retries: 2, delay: 0.5 });
     }
     qzConnected = true;
-    console.log('QZ Tray connected');
+    // 2026-06-23 (Irene): QZ 데스크톱 버전 감지 → 2.1.x(Windows 7) 는 SHA1 서명으로.
+    // 2.2.x+(POS1 등)는 SHA512 유지(무변경). 우리 SDK(2.2.5)가 보내는 SHA512 서명을
+    // 구버전 2.1.6 이 검증 못 해 "Validity: Invalid / anonymous" → Allow 무한이던 문제 해소.
+    try {
+      const ver = await qz.api.getVersion();
+      const parts = String(ver || '').split('.');
+      const major = parseInt(parts[0], 10) || 0;
+      const minor = parseInt(parts[1], 10) || 0;
+      const useSha1 = major < 2 || (major === 2 && minor < 2); // < 2.2 → SHA1
+      _qzSignAlgo = useSha1 ? 'SHA1' : 'SHA512';
+      if (typeof qz.security.setSignatureAlgorithm === 'function') {
+        qz.security.setSignatureAlgorithm(_qzSignAlgo);
+      }
+      console.log('QZ Tray connected — version ' + ver + ', signing ' + _qzSignAlgo);
+    } catch (e) {
+      console.warn('QZ version detect failed, keeping ' + _qzSignAlgo, e && e.message);
+    }
     return true;
   } catch (err) {
     qzConnected = false;

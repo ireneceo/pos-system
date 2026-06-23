@@ -1,8 +1,34 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-22 (**v3.61 운영 배포 완료** — 6/21~6/22 묶음 전체 + 발주 UX 대정리 + 플로어플랜 핫픽스. Backup 20260622_204037/211326, Smoke 9/9, 스키마 dev=운영 완전일치, SW=3.90. /검증 통과: health 107/107·주문생명주기 10/10·print-guard 8/8·hydration0·timezone0·design0·i18n0·플로어플랜 mount 768~1600 가로넘침0.)
+> **최종 업데이트:** 2026-06-23 (**v3.62 운영 배포 완료** — thefire 실사용 준비 7건: 직원 PIN 전환 수정 · 시재 개시모드(이월/고정) · 마감 폰트 통일 · 통합오더티켓 'Full' 수동인쇄 · 로그인 직원 PIN 우선 · 설정 QR 인쇄버튼 · Windows 7/8 QZ 설치 수정. Backup 20260623_124849, Smoke 9/9, SW=3.95. /검증 통과: health 107/107·print-guard 8/8(billPrint 무수정)·hydration0·timezone0·design0·i18n0·mount(floor-plan/settings/cash-up/pos) crash0.)
 >
-> **이전:** 발주/공급업체 흐름 + 데이터누출 + 인보이스/반응형(DEV). SW=3.86.
+> **이전:** v3.61 발주 UX 대정리 + 외부공급업체 + 플로어플랜 핫픽스. SW=3.90.
+
+## ✅ 완료: v3.62 + 백스테이지 — thefire 실사용 셋업 (2026-06-23)
+
+> 매장 The Fire(rid=16) 2번째 POS(Windows 7) 실사용 셋업 종일 대응. v3.62 정식 배포 + 백스테이지 3회.
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| v3.62 정식 (7건) | PIN전환 회귀수정 · 시재 개시모드(이월/고정) · 마감 폰트 통일(Noto Sans KR) · 통합오더티켓 'Full' 수동버튼 · 로그인 직원 PIN 우선(묶인 기기) · 설정 QR 인쇄버튼(테이블+Quick-entry) · QZ Win7 설치(OS감지→2.1.6, certutil) | ✅ |
+| QZ Win7 자바루프 | `/api/qz-tray/java` 프록시(Temurin11 MSI) + .bat Step0 Java 무인설치 → QZ 2.1.x JRE 미내장 루프 해소. POS2 설치성공 | ✅ |
+| QZ 버전감지 서명(A) | connectQZTray 가 qz.api.getVersion()→ <2.2면 SHA1, else SHA512(POS1 무변경). 백엔드 /sign?algorithm=. POS2 anonymous/Allow 해소 | ✅ |
+| POS1 자동인쇄 전담(B) | 두 폴러 게이트(ws>1 && active autoPrint=false→skip). 다중POS 자동인쇄 중복(폰트 다른 2장) 제거. POS1 무변경 | ✅ |
+| 모바일 메뉴 탭 복원 | 상세→뒤로 시 탭 리셋 버그. replaceState({})→history.state 보존 (RR history key 보존) | ✅ |
+| 서빙직원 Full 버튼 | FloorPlan items 뷰 서빙(access_serving)직원 결제버튼 자리에 큰 'Print Full Order Ticket' | ✅ |
+| thefire 데이터 정리 | rid16 시재/마감 테스트데이터 백업후 삭제. 스키마 dev=운영 144=144 identical 확인 | ✅ |
+
+### 수정된 파일
+- 백엔드: `routes/qz-tray.js`(java/app 프록시·.bat Win7·버전서명) · `routes/cash-management.js`(cashFloat) · `utils/settingsGuard.js`
+- 프론트: `utils/billPrint.js`(버전감지 서명) · `hooks/useAutoPrintPoller.ts` · `components/Layout/MainLayout.tsx`(폴러 게이트) · `components/POSTerminal/CashierPinModal.tsx` · `pages/FloorPlan/TableDetailPanel.tsx` · `pages/Login/LoginPage.tsx` · `pages/Reports/{FinalSettlementPanel,DailySettlementPrint}.tsx` · `pages/Settings/{SettingsPage,components/ZonesAndGroupsCard}.tsx` · `components/CashManagement/CashDrawerOps.tsx` · `mobile/pages/MenuPage.tsx` · locales(settings 4언어) · `public/sw.js`(3.99)
+
+### 미해결
+- POS2 통합티켓 미출력 — POS1이 POS2 프린터(KitBar)를 다른 이름으로 잡아 못 닿음. 정석=POS2 토글끄기 or POS1에 "KitBar" 이름 통일(코드X). Irene 결정 대기.
+- POS2 Allow(SHA1 가설) 실기기 최종확인 대기.
+
+---
 
 ## ✅ 완료: v3.61 운영 배포 — 발주 UX 대정리 + 외부공급업체 + 핫픽스 (2026-06-22)
 

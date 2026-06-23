@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { QRCodeCanvas, QRCodeSVG } from 'qrcode.react';
 import { FloorPlanData, FloorZone, FloorTableGroup, FloorTable, DEFAULT_FLOOR_PLAN, computeTableLabel } from '../../FloorPlan/types';
 import Modal from '../../../components/UI/Modal';
+import { printTableQR } from '../../../utils/billPrint';
 import ConfirmModal from '../../../components/ConfirmModal';
 
 // ============================================================
@@ -21,6 +22,7 @@ interface ZonesAndGroupsCardProps {
   authToken?: string | null;
   qrCodeBaseUrl?: string;      // Table QR generation
   restaurantSlug?: string;     // Table QR URL
+  timeZone?: string;           // 매장 타임존 — QR 인쇄 시 "Printed:" 시각 표기
 }
 
 const Card = styled.div`
@@ -424,7 +426,7 @@ const autoPlaceSlots = (fp: FloorPlanData, group: FloorTableGroup, numbers: numb
   return result;
 };
 
-const ZonesAndGroupsCard: React.FC<ZonesAndGroupsCardProps> = ({ restaurantId, restaurantName, authToken, qrCodeBaseUrl, restaurantSlug }) => {
+const ZonesAndGroupsCard: React.FC<ZonesAndGroupsCardProps> = ({ restaurantId, restaurantName, authToken, qrCodeBaseUrl, restaurantSlug, timeZone }) => {
   const { t } = useTranslation('settings');
   const [floorPlan, setFloorPlan] = useState<FloorPlanData>(DEFAULT_FLOOR_PLAN);
   const [loading, setLoading] = useState(true);
@@ -789,6 +791,8 @@ const ZonesAndGroupsCard: React.FC<ZonesAndGroupsCardProps> = ({ restaurantId, r
             activeZoneFilter={activeZoneFilter}
             qrCodeBaseUrl={qrCodeBaseUrl || ''}
             restaurantSlug={restaurantSlug || ''}
+            restaurantName={restaurantName || ''}
+            timeZone={timeZone}
             t={t}
           />
         </QRSection>
@@ -942,10 +946,12 @@ interface TableQRGridContentProps {
   activeZoneFilter: string;
   qrCodeBaseUrl: string;
   restaurantSlug: string;
+  restaurantName: string;
+  timeZone?: string;
   t: (key: string, options?: any) => string;
 }
 
-const TableQRGridContent: React.FC<TableQRGridContentProps> = ({ tables, groups, activeZoneFilter, qrCodeBaseUrl, restaurantSlug, t }) => {
+const TableQRGridContent: React.FC<TableQRGridContentProps> = ({ tables, groups, activeZoneFilter, qrCodeBaseUrl, restaurantSlug, restaurantName, timeZone, t }) => {
   // Filter tables by selected zone + EXCLUDE fixtures (counter/entrance/kitchen are not seating).
   const filteredTables = useMemo(() => {
     const realTables = tables.filter(t => !t.tableType || t.tableType === 'table');
@@ -986,6 +992,14 @@ const TableQRGridContent: React.FC<TableQRGridContentProps> = ({ tables, groups,
     a.click();
   };
 
+  // 고정 테이블 QR 을 영수증 프린터로 인쇄 — FloorPlan 테이블 QR 인쇄와 동일한 printTableQR 사용
+  // (이 단말의 활성 빌 프린터로 라우팅). 정적 QR 이라 만료(expiresAt)=null. 시각 표기는 매장 타임존.
+  const handlePrintQR = async (label: string) => {
+    const canvas = document.getElementById(`table-qr-canvas-${label}`) as HTMLCanvasElement | null;
+    if (!canvas) return;
+    await printTableQR(label, canvas, restaurantName || 'Restaurant', null, timeZone || null, false);
+  };
+
   if (filteredTables.length === 0) {
     return <EmptyMsg>{t('zonesGroups.noTablesInZone')}</EmptyMsg>;
   }
@@ -1013,6 +1027,7 @@ const TableQRGridContent: React.FC<TableQRGridContentProps> = ({ tables, groups,
               <QRActionBtn type="button" onClick={() => handleCopy(url)} title={t('zonesGroups.copyTitle')}>{t('zonesGroups.copy')}</QRActionBtn>
               <QRActionBtn type="button" onClick={() => handleDownloadSVG(label)} title={t('zonesGroups.downloadSvgTitle')}>{t('zonesGroups.downloadSvg')}</QRActionBtn>
               <QRActionBtn type="button" onClick={() => handleDownloadPNG(label)} title={t('zonesGroups.downloadPngTitle')}>{t('zonesGroups.downloadPng')}</QRActionBtn>
+              <QRActionBtn type="button" onClick={() => handlePrintQR(label)} title={t('zonesGroups.printTitle')}>{t('zonesGroups.print')}</QRActionBtn>
             </TableQRActions>
           </TableQRItem>
         );

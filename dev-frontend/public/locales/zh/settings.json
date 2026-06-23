@@ -55,6 +55,8 @@
   "zonesGroups.copy": "复制",
   "zonesGroups.downloadSvg": "SVG",
   "zonesGroups.downloadPng": "PNG",
+  "zonesGroups.print": "打印",
+  "zonesGroups.printTitle": "在小票打印机上打印此二维码",
   "zonesGroups.copyTitle": "复制 URL",
   "zonesGroups.downloadSvgTitle": "下载 SVG",
   "zonesGroups.downloadPngTitle": "下载 PNG",

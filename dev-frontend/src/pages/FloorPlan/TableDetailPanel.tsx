@@ -8,7 +8,7 @@ import { formatPaymentDisplay } from '../../constants';
 import { useStore } from '../../contexts/StoreContext';
 import { formatDateTime } from '../../utils/timezone';
 import { computePrepFromElapsed, PrepTimerChip } from '../../utils/prepTimer';
-import { printBillViaRawBT, printKitchenTicketViaRawBT, printTableQR, printCancellationTicket, printCancellationTicketsByStation, getPrinterSettings } from '../../utils/billPrint';
+import { printBillViaRawBT, printKitchenTicketViaRawBT, printTableQR, printCancellationTicket, printCancellationTicketsByStation, getPrinterSettings, tagTicketWithStations, generateHTMLKitchenTicket, generateKitchenTicketContent, printSettlementReport, getActiveBillPrinter, getActiveWorkstationId } from '../../utils/billPrint';
 import { previewStationBuckets, KitchenTicketSendPrompt } from '../../components/Print/KitchenTicketSendModal';
 import OptionModal from '../../components/POSTerminal/OptionModal';
 import VoidPinModal from '../../components/POSTerminal/VoidPinModal';
@@ -1201,6 +1201,22 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
     await printKitchenTicketViaRawBT(orderData, getStoreInfo());
   };
 
+  // 통합 오더티켓 수동 인쇄 (Irene 2026-06-23) — 전체 주문 한 장을 "누른 이 포스"의 빌 프린터로.
+  // 🔒 billPrint 무수정: 자동발행(sendUnifiedTickets)과 동일한 통합티켓을 exported 빌더로 만들고,
+  // printSettlementReport(이 디바이스 활성 빌 프린터로 보내는 범용 함수, bill 스코프)로 출력 →
+  // 인쇄 방식/라우팅(생명선) 무접촉, 트리거만 추가. 토글 켠 포스가 아니라 누른 포스로 나간다.
+  const handlePrintConsolidatedTicket = async () => {
+    const orderData = buildKitchenDataForPrint();
+    if (!orderData || items.length === 0) return;
+    const settings = getPrinterSettings();
+    const wsId = getActiveWorkstationId();
+    const ws = (settings.workstations || []).find((w: any) => w && w.id === wsId);
+    const label = String(ws?.name || getActiveBillPrinter()?.name || 'COUNTER').toUpperCase();
+    const tagged = tagTicketWithStations(orderData, label, settings);
+    const ticket = { ...tagged, groupLabel: label, printedAt: label, noStationBox: true, showItemStations: true };
+    await printSettlementReport(generateHTMLKitchenTicket(ticket, getStoreInfo()), generateKitchenTicketContent(ticket, getStoreInfo()));
+  };
+
   const handlePrintQR = async () => {
     if (qrLoading) return;
     setQrLoading(true);
@@ -1961,6 +1977,13 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                     Payment
                   </ActionBtn>
                 )}
+                {/* 서빙(홀) 전용 직원 — 결제 권한이 없어 결제버튼이 안 뜨는 자리에, 통합 오더티켓
+                    인쇄 버튼을 크게 노출(Table Actions 접힘 속 작은 아이콘 대신 주 액션으로). (Irene 2026-06-23) */}
+                {!canOperatePOS && items.length > 0 && orderStatus !== 'cancelled' && (
+                  <ActionBtn $variant="secondary" onClick={handlePrintConsolidatedTicket}>
+                    {t('floorplan:tableDetailPanel.printFullTicket', { defaultValue: 'Print Full Order Ticket' })}
+                  </ActionBtn>
+                )}
               </ActionRow>
 
               {/* ── 테이블 작업 — 접이식 (#1, 기본 접힘): 프린트/QR/Cancel/Leaved ── */}
@@ -1984,6 +2007,15 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                     <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                   </svg>
                   Ticket
+                </IconButton>
+                <IconButton onClick={handlePrintConsolidatedTicket} title="Print full order ticket to this POS">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="4" y="3" width="16" height="18" rx="1"/>
+                    <line x1="8" y1="8" x2="16" y2="8"/>
+                    <line x1="8" y1="12" x2="16" y2="12"/>
+                    <line x1="8" y1="16" x2="13" y2="16"/>
+                  </svg>
+                  Full
                 </IconButton>
                 {hasAddedItems && (
                   <IconButton onClick={handlePrintLatestGroupTicket} title="+Order Ticket" style={{ background: '#FEF3C7', color: '#92400E' }}>

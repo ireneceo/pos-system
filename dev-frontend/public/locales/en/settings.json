@@ -55,6 +55,8 @@
   "zonesGroups.copy": "Copy",
   "zonesGroups.downloadSvg": "SVG",
   "zonesGroups.downloadPng": "PNG",
+  "zonesGroups.print": "Print",
+  "zonesGroups.printTitle": "Print this QR on the receipt printer",
   "zonesGroups.copyTitle": "Copy URL",
   "zonesGroups.downloadSvgTitle": "Download SVG",
   "zonesGroups.downloadPngTitle": "Download PNG",

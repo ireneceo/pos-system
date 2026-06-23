@@ -453,7 +453,21 @@ const LoginPage: React.FC = () => {
   const brandLogo = '/uploads/logos/brand-logo.png';
   const [showPassword, setShowPassword] = useState(false);
   const [showTestAccounts, setShowTestAccounts] = useState(false);
-  const [pinMode, setPinMode] = useState(false);
+  // 이미 매장에 묶인 기기(pos_device_restaurant 가 localStorage 에 있음 — 로그아웃해도 유지)면
+  // 로그인 화면을 직원 PIN 패드로 먼저 연다. 관리자 이메일 폼은 "Use email sign-in"(매니저 로그인)
+  // 한 탭으로 접근. 처음 한 번 관리자 로그인으로 기기를 묶고 나면, 로그아웃 후에도 직원이 관리자
+  // 폼을 거치지 않고 PIN 만으로 들어가게 한다. (2026-06-23 Irene) 보안: 새 통로 아님(PIN 은
+  // 원래 한 탭이면 노출), 기본 상태가 저권한이 되어 오히려 안전. /verify-pin 은 pinLimiter 로 보호.
+  const [pinMode, setPinMode] = useState<boolean>(() => {
+    try {
+      const raw = localStorage.getItem('pos_device_restaurant');
+      if (raw) {
+        const d = JSON.parse(raw);
+        return !!(d && d.id);
+      }
+    } catch { /* localStorage 불가/파싱실패 → 기본 이메일 폼 */ }
+    return false;
+  });
 
   // Redirect if already logged in
   useEffect(() => {

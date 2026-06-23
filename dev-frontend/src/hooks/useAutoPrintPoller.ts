@@ -54,6 +54,18 @@ export function useAutoPrintPoller(opts: {
         // 없이 정상 경로를 타면 모바일 주문도 cashier 로 안전하게 나간다.
         // (POS 직접경로와의 중복은 printed_at 히스토리 + __autoPrintInflight 로 방지)
         const activeBill = billPrintMod.getActiveBillPrinter();
+
+        // 2026-06-23 (Irene): 다중 POS 매장 자동인쇄 중복 방지. 워크스테이션이 2개 이상이고
+        // 이 단말의 워크스테이션 billPrinter.autoPrint 가 false 면, 이 단말은 "자동인쇄 주체"가
+        // 아니다(예: POS2 = 주문입력 전용). 자동인쇄를 건너뛴다 → 자동인쇄 주체(autoPrint=true,
+        // 보통 메인 POS1)만 인쇄해 같은 주문이 두 단말에서 두 번 찍히던 문제 제거(폰트 다른 2장).
+        // 단일 POS/미구성 매장은 영향 없음(workstations<=1 이면 미적용). autoPrint=true 단말(POS1)
+        // 은 이 게이트를 절대 안 타므로 동작 100% 무변경.
+        const _wsList = Array.isArray((printSettings as any).workstations) ? (printSettings as any).workstations : [];
+        if (_wsList.length > 1 && activeBill && activeBill.autoPrint === false) {
+          return;
+        }
+
         const path = locationRef.current || window.location.pathname;
         const isOnKDS = path.includes('/kitchen') || path.includes('/kds');
 

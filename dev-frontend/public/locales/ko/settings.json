@@ -55,6 +55,8 @@
   "zonesGroups.copy": "복사",
   "zonesGroups.downloadSvg": "SVG",
   "zonesGroups.downloadPng": "PNG",
+  "zonesGroups.print": "인쇄",
+  "zonesGroups.printTitle": "이 QR을 영수증 프린터로 인쇄",
   "zonesGroups.copyTitle": "URL 복사",
   "zonesGroups.downloadSvgTitle": "SVG 다운로드",
   "zonesGroups.downloadPngTitle": "PNG 다운로드",

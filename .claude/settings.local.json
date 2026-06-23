@@ -727,7 +727,13 @@
       "Bash(xargs -I{} echo \"치명에러 {}건\\(0기대\\)\")",
       "Bash(awk 'NR>=1100 && NR<=1265 && \\(/showDetailModal/||/selectedIngredient/||/\\\\.map\\\\\\(\\\\\\(ingredient/||/IngredientCard/||/InfoRow/||/Sellers/\\)' IngredientsTab.tsx)",
       "Bash(echo \"exit $?\")",
-      "Bash(echo \"rm exit: $?\")"
+      "Bash(echo \"rm exit: $?\")",
+      "Bash(pkill -f \"require\\('./routes/cash\")",
+      "Bash(pkill -f \"modules load\")",
+      "Bash(awk '/export async function printTableQR|^async function printTableQR|function printTableQR/{f=1} f{print NR\": \"$0} f&&/getActiveBillPrinter|getPrinterMethod|shouldUseQZTray|sendHTMLViaQZTray|printHTMLContent|return/{c++} f&&c>8&&/^}/{exit}' src/utils/billPrint.js)",
+      "Bash(awk 'NR>=1{} /export async function printBillViaRawBT|^async function printBillViaRawBT/{f=1} f{print NR\": \"$0} f&&/^}/{cnt++; if\\(cnt>=1 && /^}/\\) {c++}} f&&c>=1{exit}' src/utils/billPrint.js)",
+      "Bash(awk '/export async function printKitchenTicketViaRawBT|function printKitchenTicketViaRawBT/{f=1} f&&NR<=l+30{print NR\": \"$0} f&&!l{l=NR} f&&/kitchenPrinter|getActiveBillPrinter|station|kitchenStationPrinters|address|name =/{c++} f&&c>3{exit}' src/utils/billPrint.js)",
+      "Bash(scp -q -o ConnectTimeout=8 irene@87.106.78.146:/tmp/prod_schema.json /tmp/prod_schema.json)"
     ],
     "deny": [],
     "ask": []

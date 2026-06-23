@@ -1214,6 +1214,14 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         // 없이 정상 경로를 타면 모바일 주문도 cashier 로 안전하게 나간다.
         // (POS 직접경로와의 중복은 printed_at 히스토리 + __autoPrintInflight 로 방지)
         const activeBill = billPrintMod.getActiveBillPrinter();
+
+        // 2026-06-23 (Irene): 다중 POS 자동인쇄 중복 방지 — useAutoPrintPoller 와 동일 게이트.
+        // 워크스테이션 2개 이상 + 이 단말 워크스테이션 autoPrint=false 면 자동인쇄 주체 아님(POS2)
+        // → 건너뜀. 자동인쇄 주체(autoPrint=true, 보통 POS1)만 인쇄. 단일 POS/POS1 무영향.
+        const _wsListML = Array.isArray((printSettings as any).workstations) ? (printSettings as any).workstations : [];
+        if (_wsListML.length > 1 && activeBill && activeBill.autoPrint === false) {
+          return;
+        }
         // 2026-06-22 (Irene): backlog cutoff — MUST mirror useAutoPrintPoller. This
         // poller previously had NO cutoff, so toggling autoPrint OFF→ON flushed ALL
         // pre-enable orders ("체크하면 이전 주문티켓이 나옴"). enabledAt = first time autoPrint

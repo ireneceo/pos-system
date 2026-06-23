@@ -335,7 +335,9 @@ function buildZReportHTML(z: any, fc: (n: number) => string, store: any, t: any,
   const dt = (d: any) => { try { return formatDateTime(d, opSettings, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch { return ''; } };
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
     @page { size: 80mm auto; margin: 0; }
-    body { width: 76mm; margin: 0 auto; font-family: 'Courier New', monospace; font-size: 12px; color: #000; padding: 6px 4px; }
+    /* 마감 Z-Report 폰트·스타일을 빌/주문티켓(billPrint PRINT_STYLES)과 동일하게 — 가독성 통일 (2026-06-23 Irene).
+       정렬은 flex(justify-content:space-between)라 sans-serif 로 바꿔도 컬럼 안 깨짐. */
+    body { width: 76mm; margin: 0 auto; font-family: 'Noto Sans KR', 'Noto Sans', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif; font-size: 12px; line-height: 1.3; color: #000; padding: 6px 4px; }
     h2 { text-align:center; font-size: 15px; margin: 4px 0; }
     .sub { text-align:center; font-size: 11px; margin-bottom: 6px; }
     hr { border: none; border-top: 1px dashed #000; margin: 6px 0; }

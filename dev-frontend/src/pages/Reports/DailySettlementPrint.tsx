@@ -632,7 +632,9 @@ const DailySettlementPrint: React.FC<DailySettlementPrintProps> = ({ isOpen, onC
     <style>
       @page { size: 80mm auto; margin: 0; }
       @media print { body { margin: 0; padding: 0; } .no-print { display: none; } * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }
-      body { font-family: 'Lucida Console', 'Courier New', monospace; font-size: 14px; font-weight: 600; color: #000; width: 80mm; max-width: 80mm; margin: 0 auto; padding: 5mm; box-sizing: border-box; -webkit-font-smoothing: none; letter-spacing: 0.3px; }
+      /* 데일리 마감 폰트를 빌/주문티켓(billPrint PRINT_STYLES)과 동일 sans-serif 로 — 가독성 통일 (2026-06-23 Irene).
+         정렬은 flex(justify-content:space-between)라 monospace 아니어도 컬럼 유지. 굵기는 thermal 가독성 위해 600 유지. */
+      body { font-family: 'Noto Sans KR', 'Noto Sans', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif; font-size: 12px; font-weight: 600; line-height: 1.3; color: #000; width: 80mm; max-width: 80mm; margin: 0 auto; padding: 5mm; box-sizing: border-box; }
     </style></head><body>${html}</body></html>`;
   }, [data, selectedDate, currency, storeSettings, paymentSettings, timeZone]);
 

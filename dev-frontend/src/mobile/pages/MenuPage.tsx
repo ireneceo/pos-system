@@ -758,7 +758,10 @@ const MenuPage: React.FC = () => {
     try {
       const url = new URL(window.location.href);
       if (catId) url.searchParams.set('cat', catId); else url.searchParams.delete('cat');
-      window.history.replaceState({}, '', url.toString());
+      // 2026-06-23 (Irene): 기존 history.state 를 보존한다. 이전엔 {} 로 덮어써서 React Router 의
+      // history key/state 가 지워지고, 상세→뒤로가기(navigate(-1)) 시 ?cat 복원이 깨져 탭이
+      // 첫 카테고리로 리셋되던 버그. state 유지하면 뒤로가기 시 그 탭 그대로 복원된다.
+      window.history.replaceState(window.history.state, '', url.toString());
     } catch { /* silent — URL API 미지원 환경 */ }
   }, []);
 

@@ -163,13 +163,22 @@ const CashierPinModal: React.FC<CashierPinModalProps> = ({ show, onClose, onVeri
     setError('');
     try {
       const token = getAuthToken();
+      // /verify-pin 은 공개 라우트(authenticateToken 위)라 토큰만으론 req.user 가 안 채워진다.
+      // → restaurant_id 를 반드시 body 로 보내야 한다. 기기가 기억하는 매장(pos_device_restaurant,
+      // StaffPinLogin 과 동일 소스)에서 해석. (2026-06-23: 이 누락으로 POS/FloorPlan PIN 전환이
+      // 400 으로 실패하던 회귀 수정.)
+      let restaurantId: number | string | null = null;
+      try {
+        const raw = localStorage.getItem('pos_device_restaurant');
+        if (raw) { const d = JSON.parse(raw); if (d && d.id) restaurantId = d.id; }
+      } catch { /* ignore */ }
       const response = await fetch('/api/staff/verify-pin', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ pin_code: fullPin })
+        body: JSON.stringify(restaurantId != null ? { pin_code: fullPin, restaurant_id: restaurantId } : { pin_code: fullPin })
       });
 
       const data = await response.json();

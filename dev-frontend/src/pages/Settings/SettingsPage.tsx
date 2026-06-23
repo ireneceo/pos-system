@@ -20,7 +20,7 @@ import ZonesAndGroupsCard from './components/ZonesAndGroupsCard';
 import AddressFields from '../../components/Form/AddressFields';
 import ConfirmModal from '../../components/ConfirmModal';
 import { useTabParam } from '../../hooks/useTabParam';
-import { getPrinterMode, setPrinterMode, connectQZTray, disconnectQZTray, isQZTrayConnected, getQZTrayPrinters, qzTrayTestPrint, getActiveWorkstationId, setActiveWorkstationId, runQZDiagnostic, printHTMLContent } from '../../utils/billPrint';
+import { getPrinterMode, setPrinterMode, connectQZTray, disconnectQZTray, isQZTrayConnected, getQZTrayPrinters, qzTrayTestPrint, getActiveWorkstationId, setActiveWorkstationId, runQZDiagnostic, printHTMLContent, printTableQR } from '../../utils/billPrint';
 import { getCurrencySymbol } from '../../utils/currency';
 import { getRestaurantTimezone } from '../../utils/timezone';
 import { useTranslation } from 'react-i18next';
@@ -669,6 +669,7 @@ const SettingsPage: React.FC = () => {
   const requirePaymentBeforeKitchenRef = useRef<AutoSaveHandle>(null);
   const requirePinForDiscountRef = useRef<AutoSaveHandle>(null);  // #5 할인 PIN 승인 토글
   const requireVoidPinRef = useRef<AutoSaveHandle>(null);  // 삭제/취소 PIN 승인 토글 (손실방지)
+  const cashFloatRef = useRef<AutoSaveHandle>(null);  // 개시 시재 모드 (이월/고정)
   const requireCancelReasonRef = useRef<AutoSaveHandle>(null);  // 취소/삭제 사유 off|optional|required
   const requirePoOwnerApprovalRef = useRef<AutoSaveHandle>(null);  // 발주 오너 승인 (오너 연결 시 기본 ON)
   const mobileOrderQuickOrderRef = useRef<AutoSaveHandle>(null);
@@ -3631,6 +3632,70 @@ const SettingsPage: React.FC = () => {
                 )}
               </SettingsCard>
 
+              {/* 개시 시재 모드 — 교대 시작 시 개시현금 기본값을 직전 마감액 이월(carryover) 또는 매일 고정금액(fixed)으로. (2026-06-23) */}
+              <SettingsCard>
+                <CardTitle>{t('settings:operations.openingFloatTitle', { defaultValue: 'Opening Cash Float' })}</CardTitle>
+                <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
+                  {t('settings:operations.openingFloatDesc', { defaultValue: 'How the opening cash in the drawer is set when a cashier starts a shift.' })}
+                </p>
+                <div style={{ marginBottom: '4px' }}>
+                  <ToggleLabel style={{ marginBottom: '4px', display: 'block' }}>{t('settings:operations.openingFloatModeLabel', { defaultValue: 'Opening float mode' })}</ToggleLabel>
+                  <p style={{ fontSize: '12px', color: '#4B5563', margin: '0 0 8px' }}>
+                    {t('settings:operations.openingFloatModeDesc', { defaultValue: 'Carryover = the next shift starts with the previous shift’s closing cash. Fixed = every shift starts with the same amount you set below.' })}
+                  </p>
+                  <AutoSaveField ref={cashFloatRef} onSave={handleSave} type="toggle">
+                    <div style={{ display: 'inline-flex', border: '1px solid #E6EBF1', borderRadius: '8px', overflow: 'hidden' }}>
+                      {[
+                        { v: 'carryover', label: t('settings:operations.floatModeCarryover', { defaultValue: 'Carry over' }) },
+                        { v: 'fixed', label: t('settings:operations.floatModeFixed', { defaultValue: 'Fixed daily' }) }
+                      ].map(opt => {
+                        const cur = ((operationSettings as any).cashFloat?.openingMode) || 'carryover';
+                        const active = cur === opt.v;
+                        return (
+                          <button
+                            key={opt.v}
+                            type="button"
+                            aria-pressed={active}
+                            onClick={() => {
+                              setOperationSettings(prev => ({ ...prev, cashFloat: { ...(prev as any).cashFloat, openingMode: opt.v } } as any));
+                              cashFloatRef.current?.triggerSave();
+                            }}
+                            style={{
+                              padding: '8px 16px', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 600,
+                              background: active ? '#635BFF' : 'white', color: active ? 'white' : '#6B7C93'
+                            }}
+                          >
+                            {opt.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </AutoSaveField>
+                </div>
+                {((operationSettings as any).cashFloat?.openingMode === 'fixed') && (
+                  <div style={{ marginTop: '14px' }}>
+                    <ToggleLabel style={{ marginBottom: '4px', display: 'block' }}>{t('settings:operations.fixedFloatAmountLabel', { defaultValue: 'Fixed opening amount' })}</ToggleLabel>
+                    <p style={{ fontSize: '12px', color: '#4B5563', margin: '0 0 8px' }}>
+                      {t('settings:operations.fixedFloatAmountDesc', { defaultValue: 'Every shift will start pre-filled with this amount. Staff can still adjust if their count differs.' })}
+                    </p>
+                    <AutoSaveField ref={cashFloatRef} onSave={handleSave} type="text">
+                      <Input
+                        type="text"
+                        inputMode="decimal"
+                        style={{ maxWidth: '200px' }}
+                        value={String((operationSettings as any).cashFloat?.fixedAmount ?? '')}
+                        placeholder="0.00"
+                        onChange={(e) => {
+                          const raw = e.target.value.replace(/[^0-9.]/g, '');
+                          setOperationSettings(prev => ({ ...prev, cashFloat: { ...(prev as any).cashFloat, openingMode: 'fixed', fixedAmount: raw } } as any));
+                        }}
+                        onBlur={() => cashFloatRef.current?.triggerSave()}
+                      />
+                    </AutoSaveField>
+                  </div>
+                )}
+              </SettingsCard>
+
               {/* 관리자 PIN 승인 — 손실방지/보안 정책 (할인 + 삭제·취소). POS 카운터 동작이라 운영 탭에 배치. */}
               <SettingsCard>
                 <CardTitle>{t('settings:operations.managerApprovalsTitle', { defaultValue: 'Manager PIN Approvals' })}</CardTitle>
@@ -4504,6 +4569,7 @@ const SettingsPage: React.FC = () => {
                     authToken={getAuthToken()}
                     qrCodeBaseUrl={tableSettings.qrCodeBaseUrl}
                     restaurantSlug={restaurantSlug}
+                    timeZone={operationSettings.timeZone}
                   />
                 </div>
               )}
@@ -4723,6 +4789,15 @@ const SettingsPage: React.FC = () => {
                                 }}
                                 title="Download PNG"
                               >PNG</ActionButton>
+                              {/* 고정 QR 영수증 프린터 인쇄 — 테이블 QR 과 동일한 printTableQR (이 단말 활성 빌 프린터). */}
+                              <ActionButton
+                                onClick={() => {
+                                  const canvas = document.getElementById(`qr-${idSafe}`) as HTMLCanvasElement | null;
+                                  if (!canvas) return;
+                                  printTableQR(card.label, canvas, storeSettings.name || 'Restaurant', null, operationSettings.timeZone || null, false);
+                                }}
+                                title={t('settings:zonesGroups.printTitle', { defaultValue: 'Print this QR on the receipt printer' })}
+                              >{t('settings:zonesGroups.print', { defaultValue: 'Print' })}</ActionButton>
                             </TableActions>
                           </TableItem>
                         );

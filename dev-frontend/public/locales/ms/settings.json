@@ -55,6 +55,8 @@
   "zonesGroups.copy": "Salin",
   "zonesGroups.downloadSvg": "SVG",
   "zonesGroups.downloadPng": "PNG",
+  "zonesGroups.print": "Cetak",
+  "zonesGroups.printTitle": "Cetak QR ini pada pencetak resit",
   "zonesGroups.copyTitle": "Salin URL",
   "zonesGroups.downloadSvgTitle": "Muat turun SVG",
   "zonesGroups.downloadPngTitle": "Muat turun PNG",

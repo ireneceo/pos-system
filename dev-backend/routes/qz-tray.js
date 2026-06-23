@@ -88,13 +88,85 @@ router.get('/certificate/download', (req, res) => {
 router.post('/sign', express.text({ type: '*/*', limit: '256kb' }), (req, res) => {
   try {
     const toSign = req.body || '';
-    const signer = crypto.createSign('RSA-SHA512');
+    // QZ Tray 데스크톱 버전별 서명 알고리즘. 2.2.x+ = SHA512(기본, POS1 무변경). Windows 7 의
+    // QZ 2.1.x 는 SHA512 검증을 못 맞춰 "Validity: Invalid / anonymous" → Allow 팝업 무한.
+    // 프론트가 connectQZTray 에서 버전 감지해 ?algorithm=SHA1 을 붙여 보낸다(2.1.x 만).
+    const algo = String(req.query.algorithm || 'SHA512').toUpperCase() === 'SHA1' ? 'SHA1' : 'SHA512';
+    const signer = crypto.createSign('RSA-' + algo);
     signer.update(toSign);
     const signature = signer.sign(loadPrivateKey(), 'base64');
     res.type('text/plain').send(signature);
   } catch (err) {
     console.error('[QZ Tray] Sign failed:', err.message);
     res.status(500).type('text/plain').send('');
+  }
+});
+
+/**
+ * QZ Tray app installer PROXY — streams the official QZ Tray installer through
+ * our own server so the one-click .bat can download it from THIS domain (which
+ * the merchant's browser already reached over TLS 1.2) instead of GitHub.
+ *
+ * Why: on Windows 7 the in-script GitHub download fails (old .NET PowerShell
+ * can't negotiate TLS 1.2 to github.com), surfacing as a misleading "check the
+ * internet" error. Downloading from our domain via certutil (WinINet — same
+ * stack as the browser that already loaded the site) sidesteps that entirely.
+ *
+ *   ?win7=1            → QZ Tray 2.1.6 (last line that supports Windows 7 SP1)
+ *   else  &arch=...    → QZ Tray 2.2.6 (Windows 10/11, x86_64 | arm64)
+ * Public (no auth) — same as /installer; it only proxies a public release asset.
+ */
+router.get('/app', async (req, res) => {
+  try {
+    const win7 = ['1', 'true', 'yes'].includes(String(req.query.win7 || '').toLowerCase());
+    const arch = String(req.query.arch || 'x86_64').toLowerCase() === 'arm64' ? 'arm64' : 'x86_64';
+    const url = win7
+      ? 'https://github.com/qzind/tray/releases/download/v2.1.6/qz-tray-2.1.6+3.exe'
+      : `https://github.com/qzind/tray/releases/download/v2.2.6/qz-tray-2.2.6-${arch}.exe`;
+    const upstream = await fetch(url, { redirect: 'follow' });
+    if (!upstream.ok || !upstream.body) {
+      return res.status(502).json({ success: false, message: 'Could not fetch QZ Tray installer upstream' });
+    }
+    res.setHeader('Content-Disposition', 'attachment; filename="qz-tray-setup.exe"');
+    res.setHeader('Content-Type', 'application/octet-stream');
+    const len = upstream.headers.get('content-length');
+    if (len) res.setHeader('Content-Length', len);
+    const { Readable } = require('stream');
+    Readable.fromWeb(upstream.body).pipe(res);
+  } catch (e) {
+    res.status(502).json({ success: false, message: e.message });
+  }
+});
+
+/**
+ * Java (JRE 11) installer PROXY — streams the Eclipse Temurin OpenJDK 11 JRE
+ * MSI through our server. QZ Tray 2.1.x (the Windows 7/8 line) does NOT bundle a
+ * JRE and pops a "Java is required → download from adoptium.net" loop; on old
+ * Windows that adoptium download fails (TLS) so it never ends. We pre-install
+ * Java from THIS domain (certutil/WinINet) before running QZ so the loop never
+ * appears.  ?arch=x64 (default) | x86  → matches the OS bitness.
+ * Temurin 11.0.21+9 has both x64 and x86-32 Windows JRE MSIs. Public (no auth).
+ */
+router.get('/java', async (req, res) => {
+  try {
+    const x86 = ['x86', 'x86-32', 'x32', '32'].includes(String(req.query.arch || '').toLowerCase());
+    const tag = 'jdk-11.0.21+9';
+    const file = x86
+      ? 'OpenJDK11U-jre_x86-32_windows_hotspot_11.0.21_9.msi'
+      : 'OpenJDK11U-jre_x64_windows_hotspot_11.0.21_9.msi';
+    const url = `https://github.com/adoptium/temurin11-binaries/releases/download/${encodeURIComponent(tag)}/${file}`;
+    const upstream = await fetch(url, { redirect: 'follow' });
+    if (!upstream.ok || !upstream.body) {
+      return res.status(502).json({ success: false, message: 'Could not fetch Java runtime upstream' });
+    }
+    res.setHeader('Content-Disposition', 'attachment; filename="qz-java-runtime.msi"');
+    res.setHeader('Content-Type', 'application/octet-stream');
+    const len = upstream.headers.get('content-length');
+    if (len) res.setHeader('Content-Length', len);
+    const { Readable } = require('stream');
+    Readable.fromWeb(upstream.body).pipe(res);
+  } catch (e) {
+    res.status(502).json({ success: false, message: e.message });
   }
 });
 
@@ -144,6 +216,12 @@ router.get('/installer', (req, res) => {
       //      kills the per-print "Allow?" prompt)
       //   4) (re)launch QZ Tray so it loads the freshly-installed cert
       const QZ_VERSION = '2.2.6';
+      // The .bat downloads the QZ Tray app from OUR domain (this same host) so the
+      // merchant's PC only needs to reach a site its browser already opened — fixes
+      // Windows 7 where the direct GitHub TLS download fails. See /app proxy above.
+      const safeHost = (req.get('host') || 'purplehere.com').replace(/[^a-zA-Z0-9.\-:]/g, '');
+      const appBase = `https://${safeHost}/api/qz-tray/app`;
+      const javaBase = `https://${safeHost}/api/qz-tray/java`;
       const certEchoLines = [];
       cert.split('\n').forEach(line => {
         // `(` `)` `^` `&` `|` `>` `<` `%` `!` are reserved in cmd — escape with ^
@@ -175,31 +253,91 @@ router.get('/installer', (req, res) => {
         'echo ============================================',
         'echo.',
         '',
+        'rem ===== Step 0: detect OS + ensure Java on Windows 7/8/8.1 =====',
+        'rem QZ Tray 2.1.x (the only line that runs on Win7/8) does NOT bundle Java and',
+        'rem loops on a "download Java from adoptium.net" prompt that fails on old Windows.',
+        'rem So we install the matching Temurin JRE 11 ourselves FIRST, from this domain.',
+        'set "WIN7=0"',
+        'ver | findstr /C:"6.1." /C:"6.2." /C:"6.3." >nul && set "WIN7=1"',
+        'set "JARCH=x86"',
+        'if /I "%PROCESSOR_ARCHITECTURE%"=="AMD64" set "JARCH=x64"',
+        'if /I "%PROCESSOR_ARCHITECTURE%"=="ARM64" set "JARCH=x64"',
+        'if defined PROCESSOR_ARCHITEW6432 set "JARCH=x64"',
+        'if "%WIN7%"=="1" (',
+        '  set "HASJAVA=0"',
+        '  java -version >nul 2>&1 && set "HASJAVA=1"',
+        '  if exist "%ProgramFiles%\\Eclipse Adoptium\\" set "HASJAVA=1"',
+        '  if exist "%ProgramFiles(x86)%\\Eclipse Adoptium\\" set "HASJAVA=1"',
+        '  if "!HASJAVA!"=="1" (',
+        '    echo [Java] Java runtime already present.',
+        '  ) else (',
+        '    echo [Java] Installing Java runtime for QZ Tray ^(Windows 7/8 needs this^) ...',
+        `    set "JREURL=${javaBase}?arch=!JARCH!"`,
+        '    set "JREMSI=%TEMP%\\qz-java-runtime.msi"',
+        '    if exist "!JREMSI!" del /f /q "!JREMSI!" >nul 2>&1',
+        '    certutil.exe -urlcache -split -f "!JREURL!" "!JREMSI!" >nul 2>&1',
+        '    if not exist "!JREMSI!" powershell -Command "try { [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor 3072 } catch {}; try { (New-Object Net.WebClient).DownloadFile(\'!JREURL!\',\'!JREMSI!\') } catch {}" >nul 2>&1',
+        '    if not exist "!JREMSI!" bitsadmin /transfer qzjre /download /priority normal "!JREURL!" "!JREMSI!" >nul 2>&1',
+        '    if exist "!JREMSI!" (',
+        '      echo  Installing Java ^(silent, about a minute^) ...',
+        '      msiexec /i "!JREMSI!" /qn /norestart ADDLOCAL=FeatureMain,FeatureEnvironment,FeatureJavaHome,FeatureOracleJavaSoft',
+        '      timeout /t 5 /nobreak >nul',
+        '      rem Make the just-installed Java visible to THIS session so the QZ installer below finds it',
+        '      rem (msiexec sets the system vars, but our already-running cmd would not see them).',
+        '      for /d %%D in ("%ProgramFiles%\\Eclipse Adoptium\\jre-11*") do set "JAVA_HOME=%%~fD"',
+        '      for /d %%D in ("%ProgramFiles(x86)%\\Eclipse Adoptium\\jre-11*") do set "JAVA_HOME=%%~fD"',
+        '      if defined JAVA_HOME set "PATH=!JAVA_HOME!\\bin;!PATH!"',
+        '    ) else (',
+        '      echo  WARNING: could not auto-install Java. If QZ Tray asks for Java, install',
+        '      echo           "Temurin JRE 11" ^(!JARCH!^) manually, then re-run this file.',
+        '    )',
+        '  )',
+        ')',
+        'echo.',
+        '',
         'rem ===== Step 1: install the QZ Tray app if it is missing =====',
         'set "QZEXE=%ProgramFiles%\\QZ Tray\\qz-tray.exe"',
+        'if exist "%ProgramFiles(x86)%\\QZ Tray\\qz-tray.exe" set "QZEXE=%ProgramFiles(x86)%\\QZ Tray\\qz-tray.exe"',
         'if exist "%QZEXE%" (',
         '  echo [1/3] QZ Tray printing app already installed.',
         ') else (',
-        '  echo [1/3] Downloading QZ Tray printing app ...',
         '  set "ARCH=x86_64"',
         '  if /I "%PROCESSOR_ARCHITECTURE%"=="ARM64" set "ARCH=arm64"',
-        `  set "QZURL=https://github.com/qzind/tray/releases/download/v${QZ_VERSION}/qz-tray-${QZ_VERSION}-!ARCH!.exe"`,
+        `  if "!WIN7!"=="1" ( set "QZURL=${appBase}?win7=1" ) else ( set "QZURL=${appBase}?arch=!ARCH!" )`,
         '  set "QZDL=%TEMP%\\qz-tray-setup.exe"',
-        '  powershell -Command "try { [Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; (New-Object Net.WebClient).DownloadFile(\'!QZURL!\',\'!QZDL!\') } catch { exit 1 }"',
+        '  if exist "!QZDL!" del /f /q "!QZDL!" >nul 2>&1',
+        '  if "!WIN7!"=="1" ( echo [1/3] Windows 7 detected - downloading compatible QZ Tray ... ) else ( echo [1/3] Downloading QZ Tray printing app ... )',
+        '  rem (a) certutil uses WinINet - the SAME network stack as the browser that already',
+        '  rem     reached this site - so it works on Win7 where PowerShell .NET TLS fails.',
+        '  certutil.exe -urlcache -split -f "!QZURL!" "!QZDL!" >nul 2>&1',
+        '  rem (b) fallback: PowerShell forcing NUMERIC TLS 1.2 (3072). The enum name "Tls12"',
+        '  rem     is undefined on old Win7 .NET, but the integer value still works.',
+        '  if not exist "!QZDL!" (',
+        '    powershell -Command "try { [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor 3072 } catch {}; try { (New-Object Net.WebClient).DownloadFile(\'!QZURL!\',\'!QZDL!\') } catch {}" >nul 2>&1',
+        '  )',
+        '  rem (c) last-resort fallback: bitsadmin.',
+        '  if not exist "!QZDL!" (',
+        '    bitsadmin /transfer qzdl /download /priority normal "!QZURL!" "!QZDL!" >nul 2>&1',
+        '  )',
         '  if not exist "!QZDL!" (',
         '    echo.',
-        '    echo  ERROR: could not download QZ Tray. Check the internet connection,',
-        '    echo         then run this file again.',
+        '    echo  ERROR: could not download the printer app.',
+        '    echo   - Make sure this PC can open purplehere.com in a web browser.',
+        '    echo   - On Windows 7: install the latest Windows Updates ^(adds TLS 1.2^), then retry.',
         '    echo.',
         '    pause',
         '    exit /b 1',
         '  )',
         '  echo  Installing QZ Tray ^(this can take a minute^) ...',
         '  start /wait "" "!QZDL!" /S',
-        '  timeout /t 6 /nobreak >nul',
+        '  timeout /t 8 /nobreak >nul',
+        '  if exist "%ProgramFiles%\\QZ Tray\\qz-tray.exe" set "QZEXE=%ProgramFiles%\\QZ Tray\\qz-tray.exe"',
+        '  if exist "%ProgramFiles(x86)%\\QZ Tray\\qz-tray.exe" set "QZEXE=%ProgramFiles(x86)%\\QZ Tray\\qz-tray.exe"',
         '  if not exist "%QZEXE%" (',
         '    echo  Finishing QZ Tray install ^(follow the installer window^) ...',
         '    start /wait "" "!QZDL!"',
+        '    if exist "%ProgramFiles%\\QZ Tray\\qz-tray.exe" set "QZEXE=%ProgramFiles%\\QZ Tray\\qz-tray.exe"',
+        '    if exist "%ProgramFiles(x86)%\\QZ Tray\\qz-tray.exe" set "QZEXE=%ProgramFiles(x86)%\\QZ Tray\\qz-tray.exe"',
         '  )',
         ')',
         '',
@@ -212,6 +350,13 @@ router.get('/installer', (req, res) => {
         ...certEchoLines,
         '  )',
         '  echo   - trust certificate written to %ProgramFiles%\\QZ Tray\\override.crt',
+        ')',
+        'rem (a2) 32-bit install path (common on Windows 7) — write the cert there too.',
+        'if exist "%ProgramFiles(x86)%\\QZ Tray\\" (',
+        '  > "%ProgramFiles(x86)%\\QZ Tray\\override.crt" (',
+        ...certEchoLines,
+        '  )',
+        '  echo   - trust certificate written to %ProgramFiles(x86)%\\QZ Tray\\override.crt',
         ')',
         'rem (b) shared + per-user data folders — fallbacks so trust survives reinstalls.',
         'set "SYSTARGET=%PROGRAMDATA%\\qz"',
