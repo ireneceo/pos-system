@@ -958,7 +958,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const sidebarNavRef = React.useRef<HTMLDivElement>(null);
   const { logout, currentStaff, isLoggedIn } = useStaff();
   const { user, logout: authLogout, canOpenStaffRoute } = useAuth();
-  const { operationSettings } = useStore();
+  // 2026-06-24 (Irene "티켓 시간이 매장 타임존 안 맞음"): getStoreInfo 를 반드시 destructure.
+  // 이전엔 폴러(_printPollFn)가 bare `getStoreInfo` 를 참조했는데 스코프에 없어 undefined →
+  // typeof !== 'function' → printStoreInfo={} → storeInfo.timeZone 없음 → 기기 로컬시간으로 인쇄됐다.
+  // 이제 context getStoreInfo() 가 timeZone(operationSettings.timeZone) + 매장정보를 담아 반환.
+  const { operationSettings, getStoreInfo } = useStore();
   const { t } = useTranslation();
   // Mobile order alerts: accumulate pending notifications until staff acks
   const [mobileAlertOrders, setMobileAlertOrders] = useState<Array<{ id: number | string; orderNumber?: string; tableNumber?: string | null; customerName?: string; total?: number; createdAt?: string }>>([]);
@@ -1270,7 +1274,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             const kitchenItemsRaw = (ord.pending_reprint && ord.pending_reprint.data && Array.isArray(ord.pending_reprint.data.items) && ord.pending_reprint.data.items.length > 0)
               ? ord.pending_reprint.data.items
               : (Array.isArray(ord.kitchen_items) ? ord.kitchen_items : items);
-            const printStoreInfo = (typeof getStoreInfo === 'function') ? getStoreInfo() : {} as any;
+            const printStoreInfo: any = (typeof getStoreInfo === 'function') ? getStoreInfo() : {};
+            // timeZone 보장 — 매장 타임존으로 인쇄(기기 로컬시간 금지). operationSettings 폴백.
+            if (!printStoreInfo.timeZone) printStoreInfo.timeZone = (operationSettingsRef.current && (operationSettingsRef.current as any).timeZone) || 'Asia/Kuala_Lumpur';
             const mapItem = (it: any) => ({
               menuItem: { name: it.menu_item_name || it.name || (it.menuItem && it.menuItem.name) || 'Item', price: parseFloat(it.price || (it.menuItem && it.menuItem.price) || '0') },
               quantity: it.quantity || 1,
