@@ -38,4 +38,5 @@ const TARGETS = [
   }
   console.log(`DONE — total ${total} rows cleaned.`);
   await sequelize.close();
-})();
+  process.exit(0); // 배포 SSH 가 종료를 기다리며 멈추지 않도록 명시적 exit (sequelize 핸들 잔류 방지)
+})().catch((e) => { console.error('migrate-strip-cashier-namespace error:', e.message); process.exit(1); });

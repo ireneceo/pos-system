@@ -10,7 +10,7 @@
  * caching SPA shell would conflict. If future offline support is needed, layer Workbox separately.
  */
 
-const SW_VERSION = '4.10-ticket-timezone-poller-fix-20260624';
+const SW_VERSION = '4.11-staff-name-strip-20260624';
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {

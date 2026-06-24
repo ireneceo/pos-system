@@ -1,10 +1,40 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-24 (thefire 인쇄 정확성·속도 대응 운영 배포 SW 4.06→4.10: 모든 프린트루트 DB통일·취소표 삭제레이스 수정·이동 from→to·타임존 실수정·POS권한 프린터설정. 속도 잔여=서버 4GB 메모리 병목→8GB 업그레이드 결정. 아래.)
+> **최종 업데이트:** 2026-06-24 #2 (8GB 확인 + 운영문의 16건 대조 + 직원ID 표시 strip 운영배포 SW 4.11 + 모바일 크로스셀 기획설계. 운영 라이프사이클 ALL PASS. 아래.)
+>
+> **이전:** 2026-06-24 (thefire 인쇄 정확성·속도 대응 운영 배포 SW 4.06→4.10: 모든 프린트루트 DB통일·취소표 삭제레이스 수정·이동 from→to·타임존 실수정·POS권한 프린터설정. 속도 잔여=서버 4GB 메모리 병목→8GB 업그레이드 결정.)
 >
 > **이전:** 2026-06-23 (**v3.62 운영 배포 완료** — thefire 실사용 준비 7건: 직원 PIN 전환 수정 · 시재 개시모드(이월/고정) · 마감 폰트 통일 · 통합오더티켓 'Full' 수동인쇄 · 로그인 직원 PIN 우선 · 설정 QR 인쇄버튼 · Windows 7/8 QZ 설치 수정. Backup 20260623_124849, Smoke 9/9, SW=3.95. /검증 통과: health 107/107·print-guard 8/8(billPrint 무수정)·hydration0·timezone0·design0·i18n0·mount(floor-plan/settings/cash-up/pos) crash0.)
 >
 > **이전:** v3.61 발주 UX 대정리 + 외부공급업체 + 플로어플랜 핫픽스. SW=3.90.
+
+## ✅ 완료: 8GB 확인 + 운영문의 대응 + 직원ID 표시 strip 배포 + 모바일 크로스셀 설계 (2026-06-24 #2)
+
+> 운영서버 8GB 업그레이드 확인 → 운영 문의 16건 대조(다수 기해결) → 신규 버그 A 운영 배포(인쇄 무관) → 테스트주문 정리 → 메뉴sync 종결 → 모바일 크로스셀 기획설계.
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 8GB 업그레이드 확인 | RAM 4→8GB(available 5.6GB), 메모리 압박 해소. swap 잔재 1.1GB 무해. CPU 2코어·디스크83% 유지 | ✅ |
+| 운영 문의 16건 대조 | truncate·발신전용·발주오너승인·직원PIN·시재·이메일중복 등 다수 기해결 확인. 진짜 남은 건 A·E·오프라인/예약 | ✅ |
+| **A 직원ID 네임스페이스 표시 strip (운영배포 SW 4.11)** | SERVER1이 `r16:server1`로 보이던 버그. AuthContext displayStaffName + 백엔드 폴백 strip(orders-payment/cash-management) + 화면 strip(LiveOrders/OrderDetail) + cashier_name 1회 백필. **인쇄 무접촉(print-guard 8/8)** | ✅ |
+| B 권한 리셋 / D MYR·RM 통화 | 운영 실측 결과 이미 해결 확인(마이그 6/24 루프제거·sameCurrency 배포) | ✅ |
+| C rid=16 테스트주문 정리 | 6/24 cancelled 테스트주문 31건 백업후 삭제, 완료(실)주문 4건 보존 | ✅ |
+| E 메뉴sync 종결 | 실영업점(본점 rid16) 메뉴 동기화 정상(0 pending). 미반영은 주문0건 빈 분점(24/25)뿐 → 손님 영향 없음. 원인=manual 전송모드(버그 아님) | ✅ |
+| 모바일 크로스셀 기획설계 | docs/MOBILE_ADDON_CROSS_SELL.md 저장(①상품수동연결→②추천카테고리[Dessert/Drink 자동+체크] 폴백, RA+BG 동기화, 담은직후 바텀시트). **구현은 승인 후 보류** | ✅ |
+| 배포 사고 수정 | migrate-strip-cashier-namespace.js process.exit 누락→배포 11분 정지. kill -9 해소 + exit 추가 영구수정 | ✅ |
+
+### 검증
+- 운영 라이프사이클 ALL PASS(주문 생성→단계 preparing/ready/served→결제→프린트claim→cancel, cashier strip 실증 `r5:lifecycletest`→`lifecycletest`)
+- 운영 health-check 106/107(1건=운영에 없는 dev소스경로 찾는 print-guard 오탐) · DEV print-guard 8/8 · 스모크 9/9 · /검증(hydration0·timezone신규0·build·health107)
+
+### 수정/신규 파일
+- 프론트: `contexts/AuthContext.tsx`·`utils/staffName.ts`(신규)·`pages/LiveOrders/{LiveOrdersPage,OrderDetailModal}.tsx`·`public/sw.js`(4.11)
+- 백엔드: `utils/staffName.js`(신규)·`routes/orders-payment.js`·`routes/cash-management.js`·`scripts/migrate-strip-cashier-namespace.js`(신규)·`deploy-to-production.sh`
+- 문서: `docs/MOBILE_ADDON_CROSS_SELL.md`(신규 설계)
+
+---
 
 ## ✅ 완료: thefire 인쇄지연 운영 진단 + 테스트주문 정리 + 다음작업 확정 (2026-06-24)
 

@@ -760,7 +760,15 @@
       "Bash(sed -i 's/created_at/createdAt/g' tickets.js)",
       "Bash(scp -o ConnectTimeout=8 tickets.js irene@87.106.78.146:/var/www/production-backend/tickets.js)",
       "Bash(ssh -o ConnectTimeout=15 irene@87.106.78.146 \"cd /var/www/production-backend && node tickets.js 2>&1; rm -f tickets.js\")",
-      "Bash(scp -o ConnectTimeout=8 /tmp/claude-1000/-var-www/4db5027e-bdea-466c-8559-8eea6dca04c8/scratchpad/verify.js irene@87.106.78.146:/var/www/production-backend/verify.js)"
+      "Bash(scp -o ConnectTimeout=8 /tmp/claude-1000/-var-www/4db5027e-bdea-466c-8559-8eea6dca04c8/scratchpad/verify.js irene@87.106.78.146:/var/www/production-backend/verify.js)",
+      "Bash(scp -o ConnectTimeout=8 /tmp/claude-1000/-var-www/4db5027e-bdea-466c-8559-8eea6dca04c8/scratchpad/del-cancelled.js irene@87.106.78.146:/var/www/production-backend/del-cancelled.js)",
+      "Bash(scp -o ConnectTimeout=8 /var/www/dev-backend/scripts/migrate-strip-cashier-namespace.js irene@87.106.78.146:/var/www/production-backend/scripts/migrate-strip-cashier-namespace.js)",
+      "Bash(echo \"EXIT=$? \\(124=여전히 hang, 0=정상종료\\)\")",
+      "Bash(sed -i 's/updated_at/updatedAt/g; s/brand_menu_synced_at sa/brand_menu_synced_at sa/g' esync.js)",
+      "Bash(scp -o ConnectTimeout=8 esync.js irene@87.106.78.146:/var/www/production-backend/esync.js)",
+      "Bash(scp -o ConnectTimeout=8 /tmp/claude-1000/-var-www/4db5027e-bdea-466c-8559-8eea6dca04c8/scratchpad/lifecycle.js irene@87.106.78.146:/var/www/production-backend/lifecycle.js)",
+      "Bash(sed -i \"s/LIFECYCLE99/LC9/\" lifecycle.js)",
+      "Bash(scp -o ConnectTimeout=8 lifecycle.js irene@87.106.78.146:/var/www/production-backend/lifecycle.js)"
     ],
     "deny": [],
     "ask": []
