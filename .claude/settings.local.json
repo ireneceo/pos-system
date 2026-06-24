@@ -733,7 +733,12 @@
       "Bash(awk '/export async function printTableQR|^async function printTableQR|function printTableQR/{f=1} f{print NR\": \"$0} f&&/getActiveBillPrinter|getPrinterMethod|shouldUseQZTray|sendHTMLViaQZTray|printHTMLContent|return/{c++} f&&c>8&&/^}/{exit}' src/utils/billPrint.js)",
       "Bash(awk 'NR>=1{} /export async function printBillViaRawBT|^async function printBillViaRawBT/{f=1} f{print NR\": \"$0} f&&/^}/{cnt++; if\\(cnt>=1 && /^}/\\) {c++}} f&&c>=1{exit}' src/utils/billPrint.js)",
       "Bash(awk '/export async function printKitchenTicketViaRawBT|function printKitchenTicketViaRawBT/{f=1} f&&NR<=l+30{print NR\": \"$0} f&&!l{l=NR} f&&/kitchenPrinter|getActiveBillPrinter|station|kitchenStationPrinters|address|name =/{c++} f&&c>3{exit}' src/utils/billPrint.js)",
-      "Bash(scp -q -o ConnectTimeout=8 irene@87.106.78.146:/tmp/prod_schema.json /tmp/prod_schema.json)"
+      "Bash(scp -q -o ConnectTimeout=8 irene@87.106.78.146:/tmp/prod_schema.json /tmp/prod_schema.json)",
+      "Bash(awk 'NR<=6{printf \"%-6s %5s%%  %6sMB  %s\\\\n\",$1,$4,int\\($6/1024\\),$11}')",
+      "Bash(scp -q /tmp/claude-1000/-var-www/c835f020-d124-4253-aa4b-f1bf36733967/scratchpad/survey-thefire16.js irene@87.106.78.146:/var/www/production-backend/_survey_tf16.js)",
+      "Bash(scp -q /tmp/claude-1000/-var-www/c835f020-d124-4253-aa4b-f1bf36733967/scratchpad/delete-thefire16.js irene@87.106.78.146:/var/www/production-backend/_delete_tf16.js)",
+      "Bash(scp -q /tmp/claude-1000/-var-www/c835f020-d124-4253-aa4b-f1bf36733967/scratchpad/delete-thefire16-v2.js irene@87.106.78.146:/var/www/production-backend/_del2.js)",
+      "Bash(scp -q \"irene@87.106.78.146:/var/www/backups/thefire16-*-testdelete-2026-06-24T0909.json\" /var/www/backups/)"
     ],
     "deny": [],
     "ask": []

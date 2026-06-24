@@ -1,8 +1,33 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-23 (**v3.62 운영 배포 완료** — thefire 실사용 준비 7건: 직원 PIN 전환 수정 · 시재 개시모드(이월/고정) · 마감 폰트 통일 · 통합오더티켓 'Full' 수동인쇄 · 로그인 직원 PIN 우선 · 설정 QR 인쇄버튼 · Windows 7/8 QZ 설치 수정. Backup 20260623_124849, Smoke 9/9, SW=3.95. /검증 통과: health 107/107·print-guard 8/8(billPrint 무수정)·hydration0·timezone0·design0·i18n0·mount(floor-plan/settings/cash-up/pos) crash0.)
+> **최종 업데이트:** 2026-06-24 (thefire 인쇄지연 사고 운영 진단 + 다음 작업 확정. 코드 변경 없음. 별건: 6/24 오전 KDS 직원전환 통일은 DEV·미배포 — 아래.)
+>
+> **이전:** 2026-06-23 (**v3.62 운영 배포 완료** — thefire 실사용 준비 7건: 직원 PIN 전환 수정 · 시재 개시모드(이월/고정) · 마감 폰트 통일 · 통합오더티켓 'Full' 수동인쇄 · 로그인 직원 PIN 우선 · 설정 QR 인쇄버튼 · Windows 7/8 QZ 설치 수정. Backup 20260623_124849, Smoke 9/9, SW=3.95. /검증 통과: health 107/107·print-guard 8/8(billPrint 무수정)·hydration0·timezone0·design0·i18n0·mount(floor-plan/settings/cash-up/pos) crash0.)
 >
 > **이전:** v3.61 발주 UX 대정리 + 외부공급업체 + 플로어플랜 핫픽스. SW=3.90.
+
+## ✅ 완료: thefire 인쇄지연 운영 진단 + 테스트주문 정리 + 다음작업 확정 (2026-06-24)
+
+> 코드 변경 없는 운영/조사 세션. thefire01(rid=16) "주문 인쇄 3~5분 지연 후 추가주문 미출력" 보고 → 운영서버 직접 조사. 결론: **인쇄 파이프라인 정상, 인프라(DB/메모리) 불안정이 근본.**
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 인쇄지연 사고 운영 진단 | needs_print 누적 0(윈도우 막힘 아님). T-28(#14152)은 8분 지연 후 출력됨(08:38). "추가주문 미출력"=주문이 DB에 아예 없음=인터넷 끊김 중 생성요청 실패(오프라인 재전송 큐 부재). 근본=06:41 MySQL 재기동 + 08:32 백엔드 수동재시작 + 4GB/PlanQ공유/swap 946MB 사용/innodb_buffer_pool 128MB | ✅ |
+| 운영 자원 실측 비교 | dev=8GB(여유5.2G)/4코어 vs 운영=4GB(여유1.5G,swap사용중)/2코어/디스크81%. 운영이 PlanQ(q-note 495MB+node 194MB)와 공유 | ✅ |
+| thefire01 테스트주문 삭제 | rid=16 지난주~지금(06-14↑) active 주문 **10건**(id 14061~14152) 백업후 하드삭제. 자식 order_actions 69건 동반. payments/points/reservations 0. 5월말 101건은 범위밖 보존 | ✅ |
+| 다음 작업 확정(Irene) | 순서: ①운영서버 PlanQ 분리 ②모바일오더 애드온 ③오프라인 대응 설계문서. session-state 기록 | ✅ |
+| 6/24 오전 KDS 작업 정정 | auto-save에 묻혀있던 KDS 전용 PIN게이트 제거→헤더 PIN모달 통일(SW4.00, print-guard 8/8). STALE 배너 정정. **DEV·미배포** | ✅ |
+
+### 백업 위치
+- 운영+개발: `/var/www/backups/thefire16-orders-testdelete-2026-06-24T0909.json`(주문10) · `thefire16-orderchildren-testdelete-2026-06-24T0909.json`(order_actions 69)
+
+### 변경 파일 (코드 무변경 — 문서/상태만)
+- `.claude/session-state.md` · `DEVELOPMENT_PLAN.md` · `CHANGELOG.md` · memory
+- (별건·기커밋) 6/24 오전 KDS: `pages/KitchenDisplay/KitchenDisplayPage.tsx`·삭제 `KdsPinGate.tsx`/`useKdsStaff.ts`·`mobile/pages/MenuPage.tsx`·`public/sw.js`(4.00)·`CLAUDE.md`·`docs/KITCHEN_DISPLAY_RULES.md`
+
+---
 
 ## ✅ 완료: v3.62 + 백스테이지 — thefire 실사용 셋업 (2026-06-23)
 

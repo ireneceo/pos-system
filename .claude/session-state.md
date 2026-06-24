@@ -1,14 +1,20 @@
 # Purple POS — 개발 세션 상태
 
-<!-- AUTOSAVE-STALE-BANNER -->
-> **[AUTO-SAVE STALE] (2026-06-24 08:40, idle 2021s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
-> 변경된 작업 파일: CLAUDE.md,print-guard.manifest.json sw.js,MenuPage.tsx KdsPinGate.tsx,KitchenDisplayPage.tsx useKdsStaff.ts,KITCHEN_DISPLAY_RULES.md
-<!-- /AUTOSAVE-STALE-BANNER -->
+### 진행 중(DEV·미배포, 2026-06-24 오전): KDS 전용 PIN 게이트 제거 → 헤더 PIN 모달 통일
+> /개발시작(6/24) STALE 배너 정정: auto-save 8b82c5f1 에 narrative 없던 6/24 오전 KDS 작업이 담김. git HEAD 대조해 아래로 정정.
+- **변경**: KDS 전용 직원 PIN 게이트 제거 — `KdsPinGate.tsx`·`useKdsStaff.ts` 삭제, `KitchenDisplayPage.tsx` 의 kdsStaff/kdsBody(kds_staff_id) 제거. 헤더 "Logged in" PIN 모달(`CashierPinModal`)로 직원 전환 통일(POS/FloorPlan 과 동일 방식). 모바일 메뉴 뒤로가기 탭복원 포함.
+- **CLAUDE.md + docs/KITCHEN_DISPLAY_RULES.md**: 🔒 "KDS 단계 표시/이동 보호" 절대규칙 섹션 신설(2026-06-24).
+- **상태**: print-guard 08:12 re-bless 8/8 통과, SW `4.00-kds-switchstaff-mobilebacktab-20260624` bump 완료. **운영 미배포**(HEAD=auto-save). 빌드/`/검증` 실행 여부 불명 → 배포 전 /검증 재실행 필요.
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-06-23 (야간 thefire 실사용 셋업)
-**버전:** **v3.62 + 백스테이지 다수 운영 배포**. 최종 SW=**3.99**. 스키마 dev=운영 완전일치(144=144 identical, no migration).
-**작업 상태:** 완료 (배터리 부족 — /개발완료)
+**마지막 업데이트:** 2026-06-24 (thefire 인쇄지연 운영 진단 + 테스트주문 정리 + 다음작업 확정)
+**버전:** **v3.62 + 백스테이지 다수 운영 배포**. 최종 SW=**4.00**(KDS switchstaff·미배포). 스키마 dev=운영 완전일치(144=144 identical, no migration).
+**작업 상태:** 완료
+
+### 완료된 작업 (이번 세션, 2026-06-24 — 코드 무변경 운영/조사)
+- **thefire01 인쇄지연 사고 운영 진단**: "T-28 주문 3~5분 지연 후 추가주문 미출력" → 운영서버 직접조사. needs_print 누적 0(윈도우 막힘 아님), T-28(#14152)은 08:38 출력됨(8분 지연), 추가주문은 **DB에 아예 없음**(인터넷 끊김 중 생성요청 실패=오프라인 재전송 큐 부재). 근본=06:41 MySQL 재기동 + 08:32 백엔드 수동재시작 + 운영 4GB/PlanQ공유/swap946MB/buffer128MB. 인쇄코드 버그 아님. 메모리 [[reference_prod_server_resource_constraint]].
+- **thefire01 테스트주문 삭제(운영)**: rid=16 지난주~지금(06-14↑) active 주문 **10건**(id 14061~14152) 백업후 하드삭제 + 자식 order_actions 69건. payments/points/reservations 0. 5월말 active 101건은 "지난주" 범위밖이라 **보존**(Irene 추가지시 시 삭제 가능). 백업 운영+dev `/var/www/backups/thefire16-{orders,orderchildren}-testdelete-2026-06-24T0909.json`.
+- **6/24 오전 KDS 작업 STALE 정정**: auto-save 8b82c5f1 에 묻혀있던 KDS 전용 PIN게이트 제거→헤더 PIN모달 통일. SW 4.00 bump·print-guard 8/8. **DEV·미배포**(아래 진행중 블록).
 
 ### 오늘(6/23) 운영 배포 전체 (시간순)
 1. **v3.62**(Backup 124849,SW3.95): PIN전환·시재모드(이월/고정)·마감폰트·통합티켓"Full"·로그인PIN우선·QR인쇄·QZ Win7설치.
@@ -69,7 +75,14 @@
 - 스키마 정합 — 고아 컬럼 users.push_preferences 제거 → dev=운영 완전일치
 - with MIN QZ 진단 티켓 168건 정리 + 응대 (운영)
 
-### 다음 확정 작업
+### 다음 확정 작업 (Irene 확정 순서 2026-06-24: 서버분리 → 애드온 → 오프라인대응)
+> 배경: 6/24 thefire 인쇄지연 사고 조사 → 운영서버(4GB, PlanQ 공유, swap 946MB 이미 사용, MySQL buffer pool 128MB) 자원 부족이 근본. 인쇄 코드 버그 아님.
+
+1. **[1순위] 운영서버에서 PlanQ 분리** — 운영 박스(87.106.78.146)가 PlanQ(q-note 495MB + planq-backend 194MB ≈ 690MB, 재시작 110회=불안정 이웃)와 4GB RAM/2코어 공유. 분리하면 메모리 ~700MB 즉시 확보 + 불안정 제거. 후속(여유생기면): RAM 8~16GB 증설 → MySQL innodb_buffer_pool 1~2GB, 디스크 81%(여유23G) 정리, 백엔드 PM2 cluster. ⚠️ **인프라 작업 — PlanQ는 절대 건드리지 말 것 규칙 있음([[reference_planq_server]]). 분리는 Irene/인프라 협의 필요.**
+2. **[2순위] 모바일오더 애드온(Add-on) 기능** — 모바일 주문을 유료 애드온 모듈로. 패턴: tier-gating 3계층([[reference_tier_gating]]: requireModule 미들웨어 + MODULE_GATED_ROUTES + hasModule UI) + 신기능 롤아웃 체크리스트([[feedback_new_feature_rollout]]: AddonModule 등록 + Plan template + sidebar + 랜딩 + FAQ + i18n). **착수 시 범위 상세(무엇을 게이트할지: 모바일메뉴 전체 vs 특정기능) Irene에게 1회 확인 필요.**
+3. **[3순위] 오프라인 대응 설계 문서(`docs/`)** — 6/24 인쇄지연 사고 근본대응. 그린필드(현재 sw.js 오프라인 캐싱 의도적 미적용, 설계문서 0). 3덩어리: ①주문 오프라인 큐+재전송(IndexedDB 영속, 재연결 시 자동전송) ②서버 dedup(클라 생성 고유키로 중복주문/🔒중복인쇄 차단 — 인쇄 생명선 직결, 신중) ③미전송 상태 UX("전송대기/미전송" 표시). 설계 단계만 — 구현은 승인 후. /기능설계 급.
+
+### 다음 확정 작업 (대기, 위 3건 이후)
 - **브랜드제너럴(BG) 오퍼레이션 메뉴 동일 적용 (Irene 확정 2026-06-22)** — RA 발주·공급업체 흐름을 BG에 맞게. 상당부분 buyer-agnostic이라 이미 동작(검증 필요) + BG 재고(ProductIngredient) 화면 진입점 대응. 계획서 `docs/BG_OPERATION_MENU_PARITY.md`. 발주 전체 `docs/PURCHASE_ORDER_SYSTEM.md §H`.
 
 ### 후속 후보 (아이디어 메모, 확정 X)
