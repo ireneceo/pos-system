@@ -14,7 +14,7 @@ const { sequelize } = require('../config/database');
 const { executeQuery, executeTransaction } = require('../utils/queryWrapper');
 const { deductInventoryForOrder } = require('../services/inventoryDeductionService');
 const { earnPointsForOrder, refundPointsForOrder, usePointsForOrder } = require('../services/pointService');
-const { authenticateToken, optionalAuthenticateToken, requireRole, requirePosCounter, userCanOperatePosCounter } = require('../middleware/auth');
+const { authenticateToken, optionalAuthenticateToken, requireRole, requirePosCounter, userCanOperatePosCounter, requireVoidAccess, userCanVoid } = require('../middleware/auth');
 const ActivityLog = require('../models/ActivityLog');
 const { logActivity } = require('../utils/activityLogger');
 const { getTodayBounds, getOrderDatePrefix, getRestaurantTimezone } = require('../utils/dateTimeHelper');
@@ -1435,13 +1435,14 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
       return res.status(403).json({ success: false, error: { message: 'Forbidden', code: 'FORBIDDEN' } });
     }
 
-    // 주문 취소는 카운터 전용 액션 → 서빙 전용 직원 차단(2026-06-03). 단계 이동(준비/서빙 등)은 허용.
+    // 주문 취소는 void 권한(access_void) 직원만 → 서버(홀)·서빙 전용 직원 차단
+    // (2026-06-24 access_void 분리; 이전엔 access_pos 통합). 단계 이동(준비/서빙 등)은 허용.
     // docs/SERVING_VIEW_DESIGN.md §7. (이 PATCH 는 단계이동·취소 양쪽에 쓰이므로 status 로 분기.)
-    if (status === 'cancelled' && !userCanOperatePosCounter(req.user)) {
+    if (status === 'cancelled' && !userCanVoid(req.user)) {
       return res.status(403).json({
         success: false,
-        error: 'Cancelling an order requires counter (POS) permission.',
-        code: 'POS_COUNTER_REQUIRED'
+        error: 'Cancelling an order requires void/cancel permission.',
+        code: 'VOID_ACCESS_REQUIRED'
       });
     }
 
@@ -2275,8 +2276,9 @@ router.post('/:id/merge-items', authenticateToken, async (req, res) => {
 
 // DELETE /api/orders/:id/items/:itemIndex
 // Remove a specific item from order (only before payment)
-// 아이템 void(삭제) = 카운터 전용. 서빙 전용 직원 차단(2026-06-03). 서빙 토글(PATCH /items)은 허용.
-router.delete('/:id/items/:itemIndex', authenticateToken, requirePosCounter, async (req, res) => {
+// 아이템 void(삭제) = void 권한(access_void) 직원만. 서버(홀)·서빙 전용 직원 차단
+// (2026-06-24 access_void 분리). 서빙 토글(PATCH /items)은 허용.
+router.delete('/:id/items/:itemIndex', authenticateToken, requireVoidAccess, async (req, res) => {
   try {
     const orderId = req.params.id;
     const itemIndex = parseInt(req.params.itemIndex);

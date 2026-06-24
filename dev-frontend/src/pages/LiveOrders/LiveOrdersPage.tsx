@@ -55,7 +55,7 @@ import PaymentVerificationModal from './PaymentVerificationModal';
 
 const LiveOrdersPage: React.FC = () => {
   const { t } = useTranslation('orders');
-  const { user } = useAuth();
+  const { user, canTakePayment, canVoid } = useAuth();
   const { getStoreInfo, operationSettings, paymentSettings } = useStore();
 
   // ── 공용 실시간 주문 스토어 (2026-06-12, 단일 소스) ─────────────────────────
@@ -1885,13 +1885,13 @@ const LiveOrdersPage: React.FC = () => {
                             else { const previousStatus = getPreviousStatus(order.status); if (previousStatus) handleStatusChange(order.id, previousStatus); }
                           }} title="Revert to previous status">↺</ActionButton>
                         )}
-                        {(order.payment_status === 'pending' || order.payment_status === 'partial') && (
+                        {canTakePayment && (order.payment_status === 'pending' || order.payment_status === 'partial') && (
                           <ActionButton onClick={(e) => handlePaymentClick(order, e)}
                             style={order.status === 'served' ? { background: '#10B981', borderColor: '#10B981', color: 'white' } : { background: '#F4F6F9', color: '#4B5563', border: '1px solid #C7CED6' }}>
                             {order.payment_status === 'partial' ? 'Continue Payment' : 'Payment'}
                           </ActionButton>
                         )}
-                        {(order.payment_status as any) === 'payment_verification_pending' && (
+                        {canTakePayment && (order.payment_status as any) === 'payment_verification_pending' && (
                           <ActionButton onClick={(e) => { e.stopPropagation(); setVerifyOrder(order); }}
                             style={{ background: '#10B981', borderColor: '#10B981', color: 'white' }}>Confirm Payment</ActionButton>
                         )}
@@ -1921,10 +1921,12 @@ const LiveOrdersPage: React.FC = () => {
                             </IconButton>
                           ) : null;
                         })()}
-                        <IconButton onClick={(e) => { e.stopPropagation(); order.status === 'cancelled' ? handleDeleteOrder(order.id) : handleCancelOrder(order.id); }}
-                          title={order.status === 'cancelled' ? "Remove Order" : "Cancel Order"}>
-                          <IconSymbol>✕</IconSymbol>
-                        </IconButton>
+                        {canVoid && (
+                          <IconButton onClick={(e) => { e.stopPropagation(); order.status === 'cancelled' ? handleDeleteOrder(order.id) : handleCancelOrder(order.id); }}
+                            title={order.status === 'cancelled' ? "Remove Order" : "Cancel Order"}>
+                            <IconSymbol>✕</IconSymbol>
+                          </IconButton>
+                        )}
                       </ActionButtonsGroup>
                     </DataTableCell>
                   </DataTableRow>
@@ -1972,6 +1974,8 @@ const LiveOrdersPage: React.FC = () => {
           paymentSettings={paymentSettings}
           getStoreInfo={getStoreInfo}
           user={user}
+          canTakePayment={canTakePayment}
+          canVoid={canVoid}
           formatDateTime={formatDateTime}
           isOutstanding={isOutstanding}
           formatStatusDisplay={formatStatusDisplay}

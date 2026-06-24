@@ -11,6 +11,16 @@
 **버전:** **v3.62 + 백스테이지 다수 운영 배포**. 최종 SW=**4.00**(KDS switchstaff·미배포). 스키마 dev=운영 완전일치(144=144 identical, no migration).
 **작업 상태:** 완료
 
+### 진행 중(DEV·미배포, 2026-06-24): 서버(홀) 역할 — 결제·취소 분리 권한
+- **요구(Irene)**: 서버 직원이 "결제·주문취소만 빼고 다" 가능해야. 기존 access_pos 하나가 주문+결제+취소/void 다 묶여 불가였음. 정석=권한 분리(임시조치 금지 [[feedback_always_canonical_no_stopgap]]).
+- **설계**: `access_payment`(결제)·`access_void`(취소/품목void) 신설. access_pos=주문/품목추가/테이블이동/POS/인쇄. 서버=access_pos+access_serving(payment/void 없음). 하위호환 마이그(기존 access_pos 전원 +payment+void). Admin/RA/Owner는 역할로 항상 허용.
+- **백엔드**: `middleware/auth.js`(requirePaymentAccess/requireVoidAccess/userCanTakePayment/userCanVoid) · `orders-payment.js`(결제→requirePaymentAccess) · `orders-crud.js`🔒(취소 게이트 userCanVoid·품목삭제 requireVoidAccess, 인쇄블록 무관) · `scripts/migrate-staff-payment-void-perms.js`(신규) · deploy 9a-2 등록.
+- **프론트**: `AuthContext`(canTakePayment/canVoid) · POSTerminal(Pay Now 숨김→Pay Later primary) · LiveOrders+OrderDetailModal(결제·취소 버튼 게이트) · FloorPlan TableDetailPanel(결제/취소/품목삭제 게이트, 결제권한 없으면 Full티켓 노출) · StaffManagement/StaffPage(체크박스 2개) · i18n 4언어 · SW **4.01**.
+- **검증**: 백엔드 게이트 실API **7/7**(서버 주문OK·결제403 PAYMENT_ACCESS_REQUIRED·취소403 VOID_ACCESS_REQUIRED·결제/void권한시 허용·권한복원) · build 통과(신규경고0) · health **107/107** · print-guard re-bless 8/8(게이트만, 인쇄 무관 diff 확인) · i18n 0 err · dev 마이그 12명 · 4페이지 mount crash0(pageerror0/ErrorBoundary0). **운영 배포 대기(Irene /배포)+실기기 눈확인**.
+- **POS 오버레이(검정바) 안 닫힘/2줄 버그 — 수정 완료(DEV·미배포)**: 근본=닫힘이 `from=floor-plan-overlay` 쿼리파라미터 의존 → iframe 내부 navigate 시 유실 → 닫힘메시지 미발신 + iframe 안에서 floor-plan navigate되어 중첩(2줄). 수정 2건: ①POSTerminal OrderCompleteModal onClose 가 `window.parent !== window`(iframe 직접판정)로 항상 부모에 닫힘메시지+iframe 내부 navigate 금지 ②FloorPlan 메시지 리스너를 fetchStatusesRef 로 1회만 등록(소켓 재생성 때 리스너 탈부착 사이 메시지 유실 창 제거). SW **4.02**. print-guard re-bless(POSTerminal 보호파일, 인쇄 무관 확인). build 통과. 실기기 클릭 검증은 Irene.
+- **LiveOrders "Proceed Without Payment"는 서버도 가능**(취소·결제 아님)로 둠.
+- **미결정(Irene)**: ① 현금관리(Cash drawer/정산)는 아직 access_pos라 서버도 접근됨 — "결제 빼고 다"에 현금취급 포함할지. ② 리프레시 버튼 추가(FloorPlan/LiveOrders/KDS) — Irene 의견 대기. ③ "Live/Offline" 표시는 소켓연결 상태(이미 online/offline 표시 정상). 오프라인 큐는 별도 task#3.
+
 ### 완료된 작업 (이번 세션, 2026-06-24 — 코드 무변경 운영/조사)
 - **thefire01 인쇄지연 사고 운영 진단**: "T-28 주문 3~5분 지연 후 추가주문 미출력" → 운영서버 직접조사. needs_print 누적 0(윈도우 막힘 아님), T-28(#14152)은 08:38 출력됨(8분 지연), 추가주문은 **DB에 아예 없음**(인터넷 끊김 중 생성요청 실패=오프라인 재전송 큐 부재). 근본=06:41 MySQL 재기동 + 08:32 백엔드 수동재시작 + 운영 4GB/PlanQ공유/swap946MB/buffer128MB. 인쇄코드 버그 아님. 메모리 [[reference_prod_server_resource_constraint]].
 - **thefire01 테스트주문 삭제(운영)**: rid=16 지난주~지금(06-14↑) active 주문 **10건**(id 14061~14152) 백업후 하드삭제 + 자식 order_actions 69건. payments/points/reservations 0. 5월말 active 101건은 "지난주" 범위밖이라 **보존**(Irene 추가지시 시 삭제 가능). 백업 운영+dev `/var/www/backups/thefire16-{orders,orderchildren}-testdelete-2026-06-24T0909.json`.

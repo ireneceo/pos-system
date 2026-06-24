@@ -295,7 +295,7 @@ const FloorPlanPage: React.FC = () => {
   const { t } = useTranslation('floorplan');
   const { restaurantId } = useParams<{ restaurantId: string }>();
   const navigate = useNavigate();
-  const { user, switchUser, logout, canOperatePOS } = useAuth();
+  const { user, switchUser, logout, canOperatePOS, canTakePayment, canVoid } = useAuth();
   const { getStoreInfo, operationSettings } = useStore();
 
   // ── 공용 실시간 주문 스토어 (2026-06-12, 단일 소스) ─────────────────────────
@@ -897,18 +897,22 @@ const FloorPlanPage: React.FC = () => {
     });
   }, [selectedTableId, selectedOrderIndex, tableStatuses, restaurantId, currency, floorPlan]);
 
-  // Listen for POS complete message from iframe
+  // Listen for POS complete message from iframe. 리스너는 단 한 번만 등록한다 —
+  // fetchStatuses 가 자주 새로 만들어져(소켓/폴링) 리스너가 떼였다 붙는 사이에 닫힘 메시지가
+  // 도착하면 오버레이가 안 닫히는(검정바 잔존) 창이 생겼다. ref 로 최신 함수를 가리켜 제거. (2026-06-24)
+  const fetchStatusesRef = useRef(fetchStatuses);
+  fetchStatusesRef.current = fetchStatuses;
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'pos-order-complete' || event.data?.type === 'pos-close') {
         setShowPOS(false);
         setPosUrl('');
-        fetchStatuses();
+        fetchStatusesRef.current();
       }
     };
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [fetchStatuses]);
+  }, []);
 
   // Table click → toggle detail panel. Receives Floor Plan v2 tables[].id, so
   // multiple zones with the same tableNumber stay isolated.
@@ -2214,6 +2218,8 @@ const FloorPlanPage: React.FC = () => {
             floorPlan={floorPlan}
             onKitchenTicketSent={setMovePrintPrompt}
             canOperatePOS={canOperatePOS}
+            canTakePayment={canTakePayment}
+            canVoid={canVoid}
           />
         )}
 
@@ -2293,6 +2299,8 @@ const FloorPlanPage: React.FC = () => {
               floorPlan={floorPlan}
               onKitchenTicketSent={setMovePrintPrompt}
             canOperatePOS={canOperatePOS}
+            canTakePayment={canTakePayment}
+            canVoid={canVoid}
             />
           );
         })()}

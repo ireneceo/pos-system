@@ -49,9 +49,13 @@ interface AuthContextType {
   updateUser: (userData: Partial<User>) => void;
   updateLanguage: (language: string) => Promise<void>;
   hasPermission: (permission: string) => boolean;
-  // 카운터 전용 액션(결제/취소/void/현금박스/정산) 가능 여부. Restaurant/System Admin 항상 true,
+  // 카운터 접근(주문/품목추가/테이블이동/현금박스/정산) 가능 여부. Restaurant/System Admin 항상 true,
   // Staff 는 'access_pos' 권한 보유 시만. 없으면 서빙/주방 전용 직원. docs/STAFF_ACCESS_AND_IDENTITY_DESIGN.md
   canOperatePOS: boolean;
+  // 결제 받기 가능 여부('access_payment'). 서버(홀) 역할은 false → 결제 버튼 숨김. (2026-06-24 분리)
+  canTakePayment: boolean;
+  // 주문 취소/품목 void 가능 여부('access_void'). 서버(홀) 역할은 false → 취소/삭제 버튼 숨김. (2026-06-24 분리)
+  canVoid: boolean;
   canAccessRoute: (route: string) => boolean;
   // Staff 운영 페이지 접근(주방/포스/서빙 키 기반). 비-Staff 는 항상 true.
   canOpenStaffRoute: (path: string) => boolean;
@@ -844,11 +848,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return user.permissions?.includes(permission) || false;
   };
 
-  // 포스/카운터 접근(메뉴 가시성 + 결제/취소/void/현금박스/정산 액션). 백엔드 requirePosCounter 와 동일 식.
-  // access_pos 단일 키로 통합(2026-06-03). docs/STAFF_ACCESS_AND_IDENTITY_DESIGN.md
+  // 포스/카운터 접근(메뉴 가시성 + 주문/품목추가/테이블이동/현금박스/정산 액션). 백엔드 requirePosCounter 와 동일 식.
+  // access_pos 단일 키(2026-06-03). 2026-06-24: 결제·취소void 는 아래 별도 권한으로 분리(서버 역할).
   const canOperatePOS = !!user && (
     user.role === 'System Admin' || user.role === 'Restaurant Admin' ||
     (user.permissions?.includes('access_pos') || false)
+  );
+
+  // 결제 받기 권한(access_payment). 서버(홀) 역할은 이게 없어 결제 버튼이 숨겨짐.
+  // 백엔드 requirePaymentAccess 와 동일 식. Admin/RA/Owner 는 역할로 항상 허용.
+  const canTakePayment = !!user && (
+    user.role === 'System Admin' || user.role === 'Restaurant Admin' || user.role === 'Restaurant Owner' ||
+    (user.permissions?.includes('access_payment') || false)
+  );
+
+  // 주문 취소/품목 void 권한(access_void). 서버(홀) 역할은 이게 없어 취소/삭제 버튼이 숨겨짐.
+  // 백엔드 requireVoidAccess 와 동일 식. Admin/RA/Owner 는 역할로 항상 허용.
+  const canVoid = !!user && (
+    user.role === 'System Admin' || user.role === 'Restaurant Admin' || user.role === 'Restaurant Owner' ||
+    (user.permissions?.includes('access_void') || false)
   );
 
   const canAccessRoute = (route: string): boolean => {
@@ -904,6 +922,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     updateLanguage,
     hasPermission,
     canOperatePOS,
+    canTakePayment,
+    canVoid,
     canAccessRoute,
     canOpenStaffRoute,
     staffHomePath,

@@ -10,7 +10,7 @@
  * caching SPA shell would conflict. If future offline support is needed, layer Workbox separately.
  */
 
-const SW_VERSION = '4.00-kds-switchstaff-mobilebacktab-20260624';
+const SW_VERSION = '4.02-server-role-overlay-close-20260624';
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {

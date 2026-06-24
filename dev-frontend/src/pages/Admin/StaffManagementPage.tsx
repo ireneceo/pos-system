@@ -251,8 +251,10 @@ const Label = styled.label`
 // 직원 작업 접근(주방/포스/서빙) 선택 — permissions 배열의 access_* 키만 토글, 나머지 키는 보존.
 // docs/STAFF_ACCESS_AND_IDENTITY_DESIGN.md §4
 const WORK_ACCESS_OPTS = [
-  { key: 'access_pos', labelKey: 'staffManagementPage.accessPos', label: 'POS / Counter', descKey: 'staffManagementPage.accessPosDesc', desc: 'POS Terminal, Live Orders, Floor Plan with payment/cancel/void' },
-  { key: 'access_serving', labelKey: 'staffManagementPage.accessServing', label: 'Serving', descKey: 'staffManagementPage.accessServingDesc', desc: 'Floor Plan serving (item list) — no payment/cancel' },
+  { key: 'access_pos', labelKey: 'staffManagementPage.accessPos', label: 'POS / Counter', descKey: 'staffManagementPage.accessPosDesc', desc: 'POS Terminal, Live Orders, Floor Plan — orders, add items, move table' },
+  { key: 'access_payment', labelKey: 'staffManagementPage.accessPayment', label: 'Payment', descKey: 'staffManagementPage.accessPaymentDesc', desc: 'Take payment on orders. Off = server takes orders but cannot collect payment' },
+  { key: 'access_void', labelKey: 'staffManagementPage.accessVoid', label: 'Cancel / Void', descKey: 'staffManagementPage.accessVoidDesc', desc: 'Cancel orders & void items. Off = server cannot cancel or remove items' },
+  { key: 'access_serving', labelKey: 'staffManagementPage.accessServing', label: 'Serving', descKey: 'staffManagementPage.accessServingDesc', desc: 'Floor Plan serving (item list) — no orders/payment' },
   { key: 'access_kitchen', labelKey: 'staffManagementPage.accessKitchen', label: 'Kitchen', descKey: 'staffManagementPage.accessKitchenDesc', desc: 'Kitchen Display only' },
 ];
 const WorkAccessPicker: React.FC<{ value: string[]; onChange: (perms: string[]) => void; t: any }> = ({ value, onChange, t }) => {

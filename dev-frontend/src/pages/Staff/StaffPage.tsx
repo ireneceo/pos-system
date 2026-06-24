@@ -46,8 +46,10 @@ const MENU_GROUPS = [
 
 // 작업 접근(운영 화면) — 직원이 보는 작업 화면 결정. docs/STAFF_ACCESS_AND_IDENTITY_DESIGN.md
 const WORK_ACCESS = [
-  { key: 'access_pos', label: 'POS / Counter — POS Terminal, Live Orders, Floor Plan (payment/cancel/void)' },
-  { key: 'access_serving', label: 'Serving — Floor Plan serving (item list), no payment/cancel' },
+  { key: 'access_pos', label: 'POS / Counter — orders, add items, move table' },
+  { key: 'access_payment', label: 'Payment — take payment (off = server cannot collect payment)' },
+  { key: 'access_void', label: 'Cancel / Void — cancel orders & void items (off = server cannot cancel)' },
+  { key: 'access_serving', label: 'Serving — Floor Plan serving (item list), no orders/payment' },
   { key: 'access_kitchen', label: 'Kitchen — Kitchen Display only' },
 ];
 

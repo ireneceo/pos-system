@@ -53,6 +53,8 @@ interface OrderDetailModalProps {
   paymentSettings: any;
   getStoreInfo: () => any;
   user: any;
+  canTakePayment?: boolean;
+  canVoid?: boolean;
   formatDateTime: (date?: Date | string) => string;
   isOutstanding: (order: DbOrder) => boolean;
   formatStatusDisplay: (status: string) => string;
@@ -93,6 +95,8 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   paymentSettings,
   getStoreInfo,
   user,
+  canTakePayment = true,
+  canVoid = true,
   formatDateTime,
   isOutstanding,
   formatStatusDisplay
@@ -131,16 +135,16 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
             {['Restaurant Admin', 'Restaurant Owner', 'System Admin'].includes(user?.role) && (
               <ActionButton variant="secondary" onClick={() => handleDeleteOrder(selectedOrder.id)} style={{ background: '#4B5563', borderColor: '#4B5563', color: 'white' }}>{t('orders:liveOrdersPage.remove')}</ActionButton>
             )}
-            {selectedOrder.status !== 'cancelled' && selectedOrder.status !== 'completed' && (
+            {canVoid && selectedOrder.status !== 'cancelled' && selectedOrder.status !== 'completed' && (
               <ActionButton onClick={() => handleCancelOrder(selectedOrder.id)} style={{ background: '#FF6B6B', borderColor: '#FF6B6B', color: 'white' }}>{t('orders:liveOrdersPage.cancelOrder')}</ActionButton>
             )}
             {isOutstanding(selectedOrder) && selectedOrder.status !== 'pending' && (selectedOrder.payment_status as any) !== 'payment_verification_pending' && (selectedOrder.payment_status as any) !== 'rejected' && (
               <ActionButton onClick={() => { handleStatusChange(selectedOrder.id, 'pending'); handleCloseModal(); }} style={{ background: '#F59E0B', borderColor: '#F59E0B', color: 'white' }}>{t('orders:liveOrdersPage.proceedWithoutPayment')}</ActionButton>
             )}
-            {selectedOrder.payment_status === 'pending' && (
+            {canTakePayment && selectedOrder.payment_status === 'pending' && (
               <ActionButton onClick={() => handlePaymentClick(selectedOrder)} style={{ background: '#10B981', borderColor: '#10B981', color: 'white' }}>{t('orders:liveOrdersPage.payment')}</ActionButton>
             )}
-            {(selectedOrder.payment_status as any) === 'payment_verification_pending' && (
+            {canTakePayment && (selectedOrder.payment_status as any) === 'payment_verification_pending' && (
               <ActionButton onClick={() => setVerifyOrder(selectedOrder)} style={{ background: '#10B981', borderColor: '#10B981', color: 'white' }}>{t('orders:liveOrdersPage.confirmPayment')}</ActionButton>
             )}
             {selectedOrder.payment_status === 'pending' && !['served', 'completed', 'cancelled'].includes(selectedOrder.status) && (
@@ -753,8 +757,8 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                           <span>{formatCurrency(item.quantity * parseFloat(item.price || item.menuItem?.price || 0), operationSettings.currency)}</span>
                         </ItemPrice>
                       </ItemInfo>
-                      {/* Delete button - only show before payment and if more than 1 item */}
-                      {selectedOrder.payment_status !== 'completed' && items.length > 1 && (
+                      {/* Delete button - void 권한(canVoid) + 결제 전 + 2개 이상일 때만 */}
+                      {canVoid && selectedOrder.payment_status !== 'completed' && items.length > 1 && (
                         <button type="button"
                           onClick={() => handleDeleteOrderItem(item._originalIndex, item.name || item.menuItem?.name || 'Item')}
                           style={{

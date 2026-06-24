@@ -97,6 +97,44 @@ const requirePosCounter = (req, res, next) => {
   next();
 };
 
+// 2026-06-24: access_pos 에서 결제(payment) 와 취소/void 를 별도 권한으로 분리.
+// 목적 = "서버(홀) 역할": 주문/테이블이동/서빙은 되지만 결제·주문취소는 못하게.
+// Admin/RA/Owner 는 역할로 항상 허용(매니저 무영향). 기존 access_pos 직원은
+// 마이그레이션으로 access_payment/access_void 를 함께 받아 동작 보존(하위호환).
+const PAYMENT_VOID_ROLES = ['System Admin', 'Restaurant Admin', 'Restaurant Owner'];
+const userCanTakePayment = (user) =>
+  !!user && (PAYMENT_VOID_ROLES.includes(user.role) || (Array.isArray(user.permissions) && user.permissions.includes('access_payment')));
+const userCanVoid = (user) =>
+  !!user && (PAYMENT_VOID_ROLES.includes(user.role) || (Array.isArray(user.permissions) && user.permissions.includes('access_void')));
+
+const requirePaymentAccess = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ success: false, error: { message: 'Authentication required', code: 'UNAUTHORIZED' } });
+  }
+  if (!userCanTakePayment(req.user)) {
+    return res.status(403).json({
+      success: false,
+      error: 'This action requires payment permission. This staff member cannot take payments.',
+      code: 'PAYMENT_ACCESS_REQUIRED'
+    });
+  }
+  next();
+};
+
+const requireVoidAccess = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ success: false, error: { message: 'Authentication required', code: 'UNAUTHORIZED' } });
+  }
+  if (!userCanVoid(req.user)) {
+    return res.status(403).json({
+      success: false,
+      error: 'This action requires void/cancel permission. This staff member cannot cancel or void orders.',
+      code: 'VOID_ACCESS_REQUIRED'
+    });
+  }
+  next();
+};
+
 // Check if Restaurant Admin/Staff can access the restaurant
 //
 // Resolves the target restaurantId in this order:
@@ -391,6 +429,10 @@ module.exports = {
   requireRole,
   requirePosCounter,
   userCanOperatePosCounter,
+  requirePaymentAccess,
+  userCanTakePayment,
+  requireVoidAccess,
+  userCanVoid,
   checkRestaurantAccess,
   userCanAccessRestaurant,
   checkSubscriptionStatus,

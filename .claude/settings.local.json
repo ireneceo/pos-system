@@ -738,7 +738,10 @@
       "Bash(scp -q /tmp/claude-1000/-var-www/c835f020-d124-4253-aa4b-f1bf36733967/scratchpad/survey-thefire16.js irene@87.106.78.146:/var/www/production-backend/_survey_tf16.js)",
       "Bash(scp -q /tmp/claude-1000/-var-www/c835f020-d124-4253-aa4b-f1bf36733967/scratchpad/delete-thefire16.js irene@87.106.78.146:/var/www/production-backend/_delete_tf16.js)",
       "Bash(scp -q /tmp/claude-1000/-var-www/c835f020-d124-4253-aa4b-f1bf36733967/scratchpad/delete-thefire16-v2.js irene@87.106.78.146:/var/www/production-backend/_del2.js)",
-      "Bash(scp -q \"irene@87.106.78.146:/var/www/backups/thefire16-*-testdelete-2026-06-24T0909.json\" /var/www/backups/)"
+      "Bash(scp -q \"irene@87.106.78.146:/var/www/backups/thefire16-*-testdelete-2026-06-24T0909.json\" /var/www/backups/)",
+      "Bash(echo \"빌드 시작\\(백그라운드\\). PID=$!\")",
+      "Bash(NODE_PATH=/var/www/dev-frontend/node_modules node /tmp/claude-1000/-var-www/c835f020-d124-4253-aa4b-f1bf36733967/scratchpad/mount4.js)",
+      "Bash(awk '/const handleAddOrder = async/,/^  };/' src/pages/POSTerminal/POSTerminalPage.tsx)"
     ],
     "deny": [],
     "ask": []

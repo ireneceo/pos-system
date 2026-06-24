@@ -67,8 +67,12 @@ interface TableDetailPanelProps {
   // 확정 스펙 v2 (2026-06-02): 취소/아이템삭제 후 "주방에 발송됨" 알림 팝업.
   // FloorPlanPage 가 KitchenTicketSendModal 을 렌더하므로 prompt 를 위로 올린다.
   onKitchenTicketSent?: (prompt: KitchenTicketSendPrompt) => void;
-  // 카운터(POS) 운영 권한. false(서빙 전용 직원) → 결제/취소/void 버튼 숨김. docs/SERVING_VIEW_DESIGN.md
+  // 카운터(POS) 운영 권한. false(서빙 전용 직원) → 주문/품목추가/테이블이동 등 카운터 액션 숨김. docs/SERVING_VIEW_DESIGN.md
   canOperatePOS?: boolean;
+  // 결제 권한(access_payment). false(서버/홀 역할) → 결제 버튼 숨김 + Full티켓 버튼 노출. (2026-06-24)
+  canTakePayment?: boolean;
+  // 취소/void 권한(access_void). false(서버/홀 역할) → 주문취소·품목삭제 버튼 숨김. (2026-06-24)
+  canVoid?: boolean;
 }
 
 // ─── Styled Components ───
@@ -581,7 +585,9 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
   qrMode = 'static',
   floorPlan,
   onKitchenTicketSent,
-  canOperatePOS = true
+  canOperatePOS = true,
+  canTakePayment = true,
+  canVoid = true
 }) => {
   const [loading, setLoading] = useState(false);
   // 우측 패널 접기 (#1): 테이블 작업(QR/프린트/Cancel/Leaved) 기본 접힘 → 주문내역 가독성 확보.
@@ -1778,7 +1784,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                                   </ItemName>
                                 </ItemInfo>
                                 <ItemPrice>{formatCurrency(item.price * item.quantity, currency)}</ItemPrice>
-                                {canOperatePOS && paymentStatus !== 'completed' && items.length > 1 && (
+                                {canVoid && paymentStatus !== 'completed' && items.length > 1 && (
                                   <DeleteItemBtn onClick={() => handleDeleteItem(originalIndex, item.name)} title="Delete item">&times;</DeleteItemBtn>
                                 )}
                               </ItemRow>
@@ -1845,7 +1851,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                             <ItemPrice>
                               {formatCurrency(item.price * item.quantity, currency)}
                             </ItemPrice>
-                            {canOperatePOS && paymentStatus !== 'completed' && items.length > 1 && (
+                            {canVoid && paymentStatus !== 'completed' && items.length > 1 && (
                               <DeleteItemBtn
                                 onClick={() => handleDeleteItem(originalIndex, item.name)}
                                 title="Delete item"
@@ -1953,8 +1959,8 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                 </ActionBtn>
               )}
 
-              {/* Confirm Payment — 증빙 확인 모달 열기 (카운터 전용) */}
-              {canOperatePOS && paymentStatus === 'payment_verification_pending' && (
+              {/* Confirm Payment — 증빙 확인 모달 열기 (결제 권한 전용) */}
+              {canTakePayment && paymentStatus === 'payment_verification_pending' && (
                 <ActionBtn $variant="success" onClick={handleConfirmPaymentClick} disabled={loading}>
                   Confirm Payment
                 </ActionBtn>
@@ -1968,8 +1974,8 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                     Add Items
                   </ActionBtn>
                 )}
-                {/* Payment — LiveOrders와 동일: payment_status=pending (카운터 전용) */}
-                {canOperatePOS && paymentStatus === 'pending' && (
+                {/* Payment — LiveOrders와 동일: payment_status=pending (결제 권한 전용) */}
+                {canTakePayment && paymentStatus === 'pending' && (
                   <ActionBtn
                     $variant={orderStatus === 'served' ? 'success' : 'secondary'}
                     onClick={onPayment}
@@ -1977,9 +1983,10 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                     Payment
                   </ActionBtn>
                 )}
-                {/* 서빙(홀) 전용 직원 — 결제 권한이 없어 결제버튼이 안 뜨는 자리에, 통합 오더티켓
-                    인쇄 버튼을 크게 노출(Table Actions 접힘 속 작은 아이콘 대신 주 액션으로). (Irene 2026-06-23) */}
-                {!canOperatePOS && items.length > 0 && orderStatus !== 'cancelled' && (
+                {/* 결제 권한이 없는 직원(서버/홀·서빙 전용) — 결제버튼이 안 뜨는 자리에, 통합 오더티켓
+                    인쇄 버튼을 크게 노출(Table Actions 접힘 속 작은 아이콘 대신 주 액션으로). (Irene 2026-06-23,
+                    2026-06-24 서버 역할 포함 위해 !canOperatePOS → !canTakePayment) */}
+                {!canTakePayment && items.length > 0 && orderStatus !== 'cancelled' && (
                   <ActionBtn $variant="secondary" onClick={handlePrintConsolidatedTicket}>
                     {t('floorplan:tableDetailPanel.printFullTicket', { defaultValue: 'Print Full Order Ticket' })}
                   </ActionBtn>
@@ -2047,8 +2054,8 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                     {t('floorplan:tableDetailPanel.moveTable', { defaultValue: 'Move Table' })}
                   </ActionBtn>
                 )}
-                {/* Cancel Order (카운터 전용) */}
-                {canOperatePOS && orderStatus !== 'cancelled' && orderStatus !== 'completed' && (
+                {/* Cancel Order (void 권한 전용) */}
+                {canVoid && orderStatus !== 'cancelled' && orderStatus !== 'completed' && (
                   <ActionBtn $variant="danger" onClick={handleCancelOrder} disabled={loading}>
                     Cancel Order
                   </ActionBtn>

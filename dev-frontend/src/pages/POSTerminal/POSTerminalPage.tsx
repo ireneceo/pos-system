@@ -1249,7 +1249,7 @@ const POSTerminalPage: React.FC = () => {
   // 2026-05-27: tableId (Floor Plan v2 tables[].id) disambiguates same tableNumber across zones.
   // Bound to the order as floor_plan_table_id when creating dine-in orders from Floor Plan.
   const floorPlanTableIdFromUrl = searchParams.get('tableId');
-  const { user, switchUser, logout: authLogout } = useAuth();
+  const { user, switchUser, logout: authLogout, canTakePayment } = useAuth();
   const restaurantId = useRestaurantId();
   const { addOrder } = useOrders();
   const { getTakeawayCharge, operationSettings, getStoreInfo } = useStore();
@@ -3762,12 +3762,16 @@ const POSTerminalPage: React.FC = () => {
             >
               Clear
             </ActionBtn>
-            <ActionBtn variant="secondary" onClick={handleAddOrder}>
+            {/* 서버(홀) 역할은 결제 권한이 없어 "Pay Now" 숨김 → "Pay Later"(주문만 전송)로 주문.
+                이 때 Pay Later 를 primary 로 강조해 주 액션이 비지 않게. (2026-06-24 access_payment 분리) */}
+            <ActionBtn variant={canTakePayment ? 'secondary' : 'primary'} onClick={handleAddOrder}>
               Pay Later
             </ActionBtn>
-            <ActionBtn variant="primary" onClick={handlePayment}>
-              Pay Now
-            </ActionBtn>
+            {canTakePayment && (
+              <ActionBtn variant="primary" onClick={handlePayment}>
+                Pay Now
+              </ActionBtn>
+            )}
           </OrderActions>
         </OrderSection>
       </MainLayout>
@@ -3825,7 +3829,11 @@ const POSTerminalPage: React.FC = () => {
           isOpen={showOrderCompleteModal}
           onClose={() => {
             handleResetPOS();
-            if (isFloorPlanOverlay && window.parent !== window) {
+            // Floor Plan 오버레이에서 POS Terminal 은 iframe 안에서 돈다. iframe 이면 — `from`
+            // 쿼리파라미터(내부 내비게이션 시 유실 가능)에 의존하지 말고 — window.parent 로 직접
+            // 판정해 항상 부모에 닫힘 메시지를 보낸다. iframe 안에서 절대 navigate 하지 않는다:
+            // 그러면 Floor Plan 이 오버레이 안에 중첩돼 "검정바 안 닫힘 / 2줄" 버그가 난다. (2026-06-24)
+            if (window.parent !== window) {
               window.parent.postMessage({ type: 'pos-order-complete' }, '*');
             } else if (fromFloorPlan) {
               navigate(`/restaurant/${restaurantId}/floor-plan`);
