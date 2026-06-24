@@ -10,7 +10,7 @@
  * caching SPA shell would conflict. If future offline support is needed, layer Workbox separately.
  */
 
-const SW_VERSION = '4.03-other-device-pos-autoprint-20260624';
+const SW_VERSION = '4.05-tablemove-reroute-custdisplay-20260624';
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {

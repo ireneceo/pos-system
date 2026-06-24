@@ -102,7 +102,11 @@ export function useAutoPrintPoller(opts: {
             // (backend `kitchen_items`). On a +Round add this is just the new
             // rows, so previously-sent items never reprint. Falls back to the
             // full list for older backends that don't send kitchen_items.
-            const kitchenItemsRaw = Array.isArray(ord.kitchen_items) ? ord.kitchen_items : items;
+            // 2026-06-24: 아이템 void 재발행이면 backend 가 pending_reprint.data.items 에 "뺀 품목"만
+            // 담아 보낸다 → 그 품목만 VOID 티켓으로 인쇄(나머지 품목은 그대로). 일반/이동/취소는 평소대로.
+            const kitchenItemsRaw = (ord.pending_reprint && ord.pending_reprint.data && Array.isArray(ord.pending_reprint.data.items) && ord.pending_reprint.data.items.length > 0)
+              ? ord.pending_reprint.data.items
+              : (Array.isArray(ord.kitchen_items) ? ord.kitchen_items : items);
             const printStoreInfo = (typeof getStoreInfo === 'function') ? getStoreInfo() : {};
             const mapItem = (it: any) => ({
               menuItem: { name: it.menu_item_name || it.name || (it.menuItem && it.menuItem.name) || 'Item', price: parseFloat(it.price || (it.menuItem && it.menuItem.price) || '0') },
@@ -122,6 +126,9 @@ export function useAutoPrintPoller(opts: {
               stationName: it.stationName || null
             });
             const printData: any = {
+              // 2026-06-24: 테이블이동 재발행이면 "TABLE CHANGED" 안내 헤더(주방이 옛 티켓 버리게).
+              // backend 가 pending_reprint.notice 에 담아 보낸다. 일반 신규주문은 notice 없음.
+              ...(ord.pending_reprint && ord.pending_reprint.notice ? { noticeHeader: ord.pending_reprint.notice } : {}),
               orderNumber: ord.order_number,
               pickupNumber: ord.order_number ? String(ord.order_number).split('-')[1] : '',
               tableNumber: ord.table_number || undefined,

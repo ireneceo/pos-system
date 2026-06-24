@@ -892,13 +892,18 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
             const doPrint = () => printCancellationTicket(printData, sInfo, 'Item voided', stPrinter, stAddr)
               .catch((e: any) => console.warn('FloorPlan item void print failed:', e && e.message));
             const _kp: any = (settings as any)?.kitchenPrinter;
-            const _autoOn = !!(_kp && _kp.enabled && _kp.autoPrint);
-            if (_autoOn) doPrint();
-            onKitchenTicketSent && onKitchenTicketSent({
-              run: doPrint, autoSent: _autoOn, ticketType: '*** ITEM CANCELLED ***',
-              description: _autoOn ? t('cancelledItem.sentToKitchen', 'Cancelled item — sent to its kitchen') : t('cancelledItem.pressSend', 'Cancelled item — press [Send] to dispatch to kitchen'),
-              stations: previewStationBuckets(printData.items, settings)
-            });
+            const _stV = Object.values((settings as any)?.kitchenStationPrinters || {}).some((s: any) => s?.autoPrint);
+            const _autoOn = !!((_kp && _kp.enabled && _kp.autoPrint) || _stV);
+            // 2026-06-24 (Irene): void 취소표 자동발행은 backend(needs_print + pending_reprint.data) → 인쇄
+            // 전담 POS 폴러가 처리(누른 기기/계정 무관). 프론트 직접 발행 제거(중복 방지). autoPrint OFF 면
+            // 폴러가 안 찍으므로 수동 [Send] 프롬프트만.
+            if (!_autoOn) {
+              onKitchenTicketSent && onKitchenTicketSent({
+                run: doPrint, autoSent: false, ticketType: '*** ITEM CANCELLED ***',
+                description: t('cancelledItem.pressSend', 'Cancelled item — press [Send] to dispatch to kitchen'),
+                stations: previewStationBuckets(printData.items, settings)
+              });
+            }
           }
         } catch (e: any) { console.warn('FloorPlan void-ticket step skipped:', e?.message); }
       }
@@ -991,13 +996,18 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
           const doPrint = () => printCancellationTicketsByStation(printData, sInfo, 'Cancelled by staff')
             .catch((e: any) => console.warn('FloorPlan cancel print failed:', e && e.message));
           const _kpO: any = (settings as any)?.kitchenPrinter;
-          const _autoOnO = !!(_kpO && _kpO.enabled && _kpO.autoPrint);
-          if (_autoOnO) doPrint();
-          onKitchenTicketSent && onKitchenTicketSent({
-            run: doPrint, autoSent: _autoOnO, ticketType: '*** ORDER CANCELLED ***',
-            description: _autoOnO ? t('orderCancel.sentToKitchen', 'Order {{orderNumber}} — sent to its kitchen', { orderNumber: printData.orderNumber }) : t('orderCancel.pressSend', 'Order {{orderNumber}} — press [Send] to dispatch to kitchen', { orderNumber: printData.orderNumber }),
-            stations: previewStationBuckets(printData.items, settings)
-          });
+          const _stO = Object.values((settings as any)?.kitchenStationPrinters || {}).some((s: any) => s?.autoPrint);
+          const _autoOnO = !!((_kpO && _kpO.enabled && _kpO.autoPrint) || _stO);
+          // 2026-06-24 (Irene): 취소표 자동발행은 backend(needs_print + pending_reprint) → 인쇄 전담 POS
+          // 폴러가 처리한다(누른 기기/계정 무관, 자동인쇄 계정차이 제거). 프론트 직접 발행 제거(중복 방지).
+          // autoPrint(주방 master OR 스테이션) OFF 면 폴러가 안 찍으므로 수동 [Send] 프롬프트만.
+          if (!_autoOnO) {
+            onKitchenTicketSent && onKitchenTicketSent({
+              run: doPrint, autoSent: false, ticketType: '*** ORDER CANCELLED ***',
+              description: t('orderCancel.pressSend', 'Order {{orderNumber}} — press [Send] to dispatch to kitchen', { orderNumber: printData.orderNumber }),
+              stations: previewStationBuckets(printData.items, settings)
+            });
+          }
         }
       } catch (e: any) { console.warn('FloorPlan cancel-ticket step skipped:', e?.message); }
     } catch (_) { /* silently fail */ }

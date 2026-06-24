@@ -829,7 +829,7 @@
   "settingsPage.customerDisplay.title": "Paparan Pelanggan (Monitor Dwi)",
   "settingsPage.customerDisplay.description": "Tunjukkan butiran pesanan pada monitor kedua menghadap pelanggan (skrin belakang POS). Klik Buka Sekarang selepas menyambung monitor kedua — pelayar anda akan minta kebenaran sekali, kemudian mengingatinya.",
   "settingsPage.customerDisplay.openNow": "Buka Sekarang",
-  "settingsPage.customerDisplay.autoOpenLabel": "Buka semula automatik bila POS Terminal mula (selepas klik pertama)",
+  "settingsPage.customerDisplay.autoOpenLabel": "Buka semula automatik bila POS Terminal mula — staf bayaran sahaja (bukan pelayan pesanan sahaja)",
   "settingsPage.customerDisplay.showPhoneInputLabel": "Tunjukkan input nombor telefon pada skrin pelanggan (untuk keahlian)",
   "settingsPage.customerDisplay.showPhoneInputHelp": "Tutup = skrin pelanggan hanya menunjukkan ringkasan pesanan. Buka jika anda kutip telefon untuk poin/keahlian.",
   "settingsPage.customerDisplay.resetPosition": "Tetapkan Semula Kedudukan",

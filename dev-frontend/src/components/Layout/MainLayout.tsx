@@ -1253,7 +1253,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             const items = Array.isArray(ord.order_items) ? ord.order_items : (typeof ord.order_items === 'string' ? (() => { try { return JSON.parse(ord.order_items); } catch { return []; } })() : []);
             // 2026-05-29: kitchen ticket prints ONLY not-yet-printed items
             // (backend `kitchen_items`) so a +Round add never reprints prior rows.
-            const kitchenItemsRaw = Array.isArray(ord.kitchen_items) ? ord.kitchen_items : items;
+            // 2026-06-24: 아이템 void 재발행이면 pending_reprint.data.items(뺀 품목)만 VOID 인쇄(미러).
+            const kitchenItemsRaw = (ord.pending_reprint && ord.pending_reprint.data && Array.isArray(ord.pending_reprint.data.items) && ord.pending_reprint.data.items.length > 0)
+              ? ord.pending_reprint.data.items
+              : (Array.isArray(ord.kitchen_items) ? ord.kitchen_items : items);
             const printStoreInfo = (typeof getStoreInfo === 'function') ? getStoreInfo() : {} as any;
             const mapItem = (it: any) => ({
               menuItem: { name: it.menu_item_name || it.name || (it.menuItem && it.menuItem.name) || 'Item', price: parseFloat(it.price || (it.menuItem && it.menuItem.price) || '0') },
@@ -1268,6 +1271,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               stationName: it.stationName || null
             });
             const printData: any = {
+              // 2026-06-24: 테이블이동 재발행이면 "TABLE CHANGED" 안내 헤더(useAutoPrintPoller 미러).
+              ...(ord.pending_reprint && ord.pending_reprint.notice ? { noticeHeader: ord.pending_reprint.notice } : {}),
               orderNumber: ord.order_number,
               pickupNumber: ord.order_number ? String(ord.order_number).split('-')[1] : '',
               tableNumber: ord.table_number || undefined,

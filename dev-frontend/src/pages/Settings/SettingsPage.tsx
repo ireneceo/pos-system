@@ -4535,7 +4535,7 @@ const SettingsPage: React.FC = () => {
                       onChange={(e) => setAutoOpenEnabled(e.target.checked)}
                       style={{ width: 16, height: 16, accentColor: '#635BFF' }}
                     />
-                    {t('settings:settingsPage.customerDisplay.autoOpenLabel', 'Auto-reopen when POS Terminal starts (after first click)')}
+                    {t('settings:settingsPage.customerDisplay.autoOpenLabel', 'Auto-reopen when POS Terminal starts — payment staff only (not order-only servers)')}
                   </label>
                 </div>
 

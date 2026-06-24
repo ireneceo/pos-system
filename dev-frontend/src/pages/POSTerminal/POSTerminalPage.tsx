@@ -1443,11 +1443,15 @@ const POSTerminalPage: React.FC = () => {
     };
   }, []);
 
-  // Customer Display auto-reopen (one-shot on next user gesture if pref enabled)
+  // Customer Display auto-reopen (one-shot on next user gesture if pref enabled).
+  // 2026-06-24 (Irene): 결제 권한(canTakePayment) 있는 직원만 자동오픈. 고객 디스플레이는 결제(고객에게
+  // 주문/금액 보여주기)용이라, 주문만 하고 결제 안 하는 서버(홀) 역할에는 안 뜬다. POS 기능(주문)=access_pos
+  // 와 별개 — 결제 권한 기준.
   useEffect(() => {
     if (!user?.restaurantId) return;
+    if (!canTakePayment) return;
     return tryAutoReopen(user.restaurantId);
-  }, [user?.restaurantId]);
+  }, [user?.restaurantId, canTakePayment]);
 
   // activeCashier 제거 - PIN 전환 시 AuthContext user가 직접 교체됨
 

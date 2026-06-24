@@ -829,7 +829,7 @@
   "settingsPage.customerDisplay.title": "Customer Display (Dual Monitor)",
   "settingsPage.customerDisplay.description": "Show order details on a second monitor facing the customer (POS rear screen). Click Open Now after connecting the secondary monitor — your browser will ask once for permission, then remember it.",
   "settingsPage.customerDisplay.openNow": "Open Now",
-  "settingsPage.customerDisplay.autoOpenLabel": "Auto-reopen when POS Terminal starts (after first click)",
+  "settingsPage.customerDisplay.autoOpenLabel": "Auto-reopen when POS Terminal starts — payment staff only (not order-only servers)",
   "settingsPage.customerDisplay.showPhoneInputLabel": "Show phone number entry on customer screen (for membership)",
   "settingsPage.customerDisplay.showPhoneInputHelp": "Off = customer screen shows only order summary. Turn on if you collect customer phone for points/membership.",
   "settingsPage.customerDisplay.resetPosition": "Reset Position",

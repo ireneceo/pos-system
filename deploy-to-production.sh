@@ -349,7 +349,8 @@ for SPRINT_MIG in \
     scripts/migrate-bg-product-supply-chain.js \
     scripts/migrate-supplier-company-bridge.js \
     scripts/migrate-staff-payment-void-perms.js \
-    scripts/migrate-print-claim-recovery.js; do
+    scripts/migrate-print-claim-recovery.js \
+    scripts/migrate-pending-reprint.js; do
     if ssh $PROD_SERVER "test -f $REMOTE_PROD_BACKEND/$SPRINT_MIG"; then
         log "Running $(basename $SPRINT_MIG)..."
         SPRINT_OUTPUT=$(ssh $PROD_SERVER "cd $REMOTE_PROD_BACKEND && node $SPRINT_MIG 2>&1") || true

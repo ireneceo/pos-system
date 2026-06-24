@@ -1547,16 +1547,19 @@ const FloorPlanPage: React.FC = () => {
           //  나가는 건 맞지 않다고 Irene 확정 — 취소/이동 모두 설정대로.)
           const _kpMove: any = printSettings.kitchenPrinter;
           const _autoOnMove = !!(_kpMove && _kpMove.enabled && _kpMove.autoPrint);
-          if (_autoOnMove) doReissue();
-          setMovePrintPrompt({
-            run: doReissue,
-            autoSent: _autoOnMove,
-            ticketType: _moveNotice.title,
-            description: _autoOnMove
-              ? (onOccupied === 'merge' ? '머지 — 이전 티켓들 버리고 이 티켓 사용 (발송됨)' : '테이블 이동 — 이전 티켓 버리고 이 티켓 사용 (발송됨)')
-              : (onOccupied === 'merge' ? '머지 — [Send]를 눌러 주방에 전송' : '테이블 이동 — [Send]를 눌러 주방에 전송'),
-            stations: previewStationBuckets(printed, printSettings),
-          });
+          // 2026-06-24 (Irene): 평범한 테이블이동 재발행은 backend(needs_print + pending_reprint) → 인쇄
+          // 전담 POS 폴러가 새 테이블로 처리한다. 누른 기기/계정 무관(자동인쇄 계정차이 제거), 중복
+          // 방지를 위해 프론트 직접 재발행 제거. 머지(merge)는 아직 backend 미처리라 기존 직접 경로 유지.
+          if (onOccupied === 'merge') {
+            if (_autoOnMove) doReissue();
+            setMovePrintPrompt({
+              run: doReissue,
+              autoSent: _autoOnMove,
+              ticketType: _moveNotice.title,
+              description: _autoOnMove ? '머지 — 이전 티켓들 버리고 이 티켓 사용 (발송됨)' : '머지 — [Send]를 눌러 주방에 전송',
+              stations: previewStationBuckets(printed, printSettings),
+            });
+          }
         }
       } catch (e: any) { console.warn('[move-table] reprint step skipped:', e?.message); }
 

@@ -83,6 +83,22 @@ Order.init({
     defaultValue: null,
     comment: 'When a device print-claimed this order (cleared on /printed). Stale = auto re-armed.'
   },
+  // 2026-06-24: 테이블이동·취소·void 재인쇄도 "누른 기기 직접인쇄" → "DB → 인쇄 전담 POS 폴러"로 통일.
+  // pending_reprint = { type:'move'|'cancel'|'void', data:{...인쇄데이터 스냅샷} }. 액션 라우트가 설정,
+  // 폴러가 type 에 맞는 기존 인쇄함수 호출 후 NULL. reprint_claimed_at = print_claimed_at 와 동일한
+  // 죽은-claim 자동복구. 누가/어느 기기/어느 계정으로 했든 인쇄 전담 POS 가 인쇄. (PRINT_DB_DRIVEN_DISPATCH)
+  pending_reprint: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: null,
+    comment: 'Queued reprint job {type, data} for table-move/cancel/void. POS poller prints + clears.'
+  },
+  reprint_claimed_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    defaultValue: null,
+    comment: 'When a device claimed the pending_reprint (cleared on done). Stale = auto re-armed.'
+  },
   // 2026-05-28: needs_bill — separate flag for cashier bill receipt auto-print.
   // Set true on merge (mobile 같은 테이블 추가 = staff 주문관리용 누적 영수증).
   // Single new orders 는 false (결제 버튼 시점에만 bill 인쇄).

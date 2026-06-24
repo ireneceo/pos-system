@@ -1211,6 +1211,25 @@ router.post('/:id/move-table', authenticateToken, async (req, res) => {
       if (typeof items === 'string') { try { items = JSON.parse(items); } catch { items = []; } }
       const printedItems = (Array.isArray(items) ? items : []).filter(it => it && (it.printed_at || it.printed));
 
+      // 2026-06-24 (Irene): 이동 재인쇄를 "누른 기기 직접인쇄" → "DB → 인쇄 전담 POS 폴러" 로 통일.
+      // 누가/어느 기기/어느 계정으로 이동했든 인쇄 전담 POS 가 새 테이블로 재발행한다(자동인쇄는
+      // 계정 무관해야 정상 — Irene). 이미 주방에 나간 품목이 있으면 needs_print 켜고 그 품목들의
+      // printed_at 을 비워(새 테이블로 다시 발행) + pending_reprint 에 "TABLE CHANGED" 안내를 담아
+      // 폴러가 헤더로 찍고, /printed 가 비운다. 죽은 claim 자동복구(print_claimed_at)도 그대로 적용.
+      // 인쇄 방식(billPrint) 무변경 — 트리거를 기기→DB로 옮긴 것뿐. 프론트 직접 재인쇄는 제거.
+      if (printedItems.length > 0) {
+        const clearedItems = (Array.isArray(items) ? items : []).map(it => {
+          if (!it || typeof it !== 'object') return it;
+          const c = { ...it }; delete c.printed_at; delete c.printed; return c;
+        });
+        await order.update({
+          order_items: clearedItems,
+          needs_print: true,
+          print_claimed_at: null,
+          pending_reprint: { type: 'move', notice: { title: '** TABLE CHANGED **', lines: ['Discard the previous ticket.', 'Use THIS ticket.'] } }
+        }, { transaction: t });
+      }
+
       return {
         kind: 'moved',
         order,
@@ -1509,6 +1528,25 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
 
     await order.update(updateData);
     await order.reload(); // Ensure we have the latest data
+
+    // 2026-06-24 (Irene): 주문취소 취소표를 "누른 기기 직접인쇄" → "DB → 인쇄 전담 POS 폴러" 로 통일.
+    // 취소표 = 일반 오더티켓 + CANCELLED (PRINT_RULES_MATRIX §8.6). 이미 주방에 나간 품목이 있으면
+    // needs_print 켜고 printed_at 비워(전체 CANCELLED 티켓) + pending_reprint notice. 누른 기기/계정 무관
+    // (자동인쇄 계정차이 제거). 인쇄 방식(billPrint) 무변경 — 트리거를 기기→DB로 옮긴 것뿐.
+    if (finalStatus === 'cancelled') {
+      try {
+        let citems = order.order_items; if (typeof citems === 'string') { try { citems = JSON.parse(citems); } catch { citems = []; } }
+        const hadPrinted = (Array.isArray(citems) ? citems : []).some(it => it && (it.printed_at || it.printed));
+        if (hadPrinted) {
+          const cleared = (Array.isArray(citems) ? citems : []).map(it => { if (!it || typeof it !== 'object') return it; const c = { ...it }; delete c.printed_at; delete c.printed; return c; });
+          const _creason = (req.body.reason && String(req.body.reason).trim()) || '';
+          await order.update({
+            order_items: cleared, needs_print: true, print_claimed_at: null,
+            pending_reprint: { type: 'cancel', notice: { title: '** ORDER CANCELLED **', lines: _creason ? ['Reason: ' + _creason, 'Do NOT make this order.'] : ['Do NOT make this order.'] } }
+          });
+        }
+      } catch (_e) { console.error('[cancel-reprint] queue error:', _e.message); }
+    }
 
     // 예약-주문 루프 닫기 (P2-6, 인쇄 무관) — 연결된 주문이 completed 되면 예약 seated→completed.
     // (백스톱: reservationScheduler.autoCompleteStale 이 turn+grace 후에도 닫음.) 실패 비치명.
@@ -2386,6 +2424,17 @@ router.delete('/:id/items/:itemIndex', authenticateToken, requireVoidAccess, asy
     order.subtotal = newSubtotal;
     order.order_items = orderItems;
 
+    // 2026-06-24 (Irene): 아이템 void 취소표를 "누른 기기 직접인쇄" → "DB → 인쇄 전담 POS 폴러" 로 통일.
+    // 이미 주방에 나간 품목(printed_at)을 뺐을 때만 VOID 티켓. 뺀 품목 1개 스냅샷을 pending_reprint.data
+    // 에 담아 needs_print 켠다(다른 품목 printed_at 유지). 폴러가 그 스냅샷을 ITEM VOIDED 헤더와 함께
+    // 인쇄. 누른 기기/계정 무관. 인쇄 방식(billPrint) 무변경 — 트리거를 기기→DB로 옮긴 것뿐.
+    if (removedItem && (removedItem.printed_at || removedItem.printed)) {
+      const _vreason = (req.body.reason && String(req.body.reason).trim()) || '';
+      order.needs_print = true;
+      order.print_claimed_at = null;
+      order.pending_reprint = { type: 'void', notice: { title: '** ITEM VOIDED **', lines: _vreason ? ['Reason: ' + _vreason, 'Do NOT make this item.'] : ['Do NOT make this item.'] }, data: { items: [removedItem] } };
+    }
+
     // 2026-05-29: 아이템 삭제도 머지와 동일한 정식 공식(computeOrderTotals)으로
     // 전체 재계산. 세금·서비스차지는 새 할인후금액 기준, % 할인정책·쿠폰은 줄어든
     // 소계 기준으로 재계산, 고정 할인·포인트는 유지. (이전 코드는 rate>0 만 보고
@@ -2611,7 +2660,7 @@ router.get('/restaurant/:restaurantId/pending-print', authenticateToken, async (
     // 를 되살려(needs_print=true) 인쇄 전담 POS 가 다음 폴에서 받게 한다. 불변식상 print_claimed_at
     // 가 NOT NULL 인 채로 STALE = "claim됐으나 인쇄 미확인" 뿐이라 중복 인쇄 위험 없음(인쇄확인되면
     // NULL). 인쇄 방식·라우팅 무변경 — 분실 방지 트리거만. 기기 설정 무관(노트북/서버 어디서 넣어도 OK).
-    const STALE_CLAIM_SEC = 30;
+    const STALE_CLAIM_SEC = 10;  // 죽은 claim 복구 대기. 실제 인쇄확인(1~3초)보다 충분히 길어 중복 안전, 빠른 복구.
     try {
       await Order.sequelize.query(
         `UPDATE orders SET needs_print = true, print_claimed_at = NULL
@@ -2788,11 +2837,13 @@ router.patch('/:id/printed', authenticateToken, async (req, res) => {
       return it;
     });
     // 인쇄확인 = print_claimed_at NULL 로 지운다(불변식: NULL ⟺ 인쇄확인됨). → 자동복구 대상 아님.
+    // pending_reprint(테이블이동 "TABLE CHANGED" 안내 등)도 인쇄확인되면 비운다(1회 후 정리).
     await o.update({
       ...(changed ? { order_items: stamped } : {}),
       needs_print: false,
       needs_bill: false,
-      print_claimed_at: null
+      print_claimed_at: null,
+      pending_reprint: null
     });
     res.json({ success: true });
   } catch (e) {

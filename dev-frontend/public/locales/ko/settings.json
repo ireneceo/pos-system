@@ -829,7 +829,7 @@
   "settingsPage.customerDisplay.title": "고객 디스플레이 (듀얼 모니터)",
   "settingsPage.customerDisplay.description": "POS 뒷면에 부착된 보조 모니터에 주문 내역을 표시합니다. 보조 모니터를 연결한 후 \"지금 열기\"를 클릭하세요 — 브라우저가 한 번 권한을 요청한 뒤 다음부터는 자동 기억합니다.",
   "settingsPage.customerDisplay.openNow": "지금 열기",
-  "settingsPage.customerDisplay.autoOpenLabel": "POS 터미널 시작 시 자동 재오픈 (첫 클릭 후)",
+  "settingsPage.customerDisplay.autoOpenLabel": "POS 터미널 시작 시 자동 재오픈 — 결제 권한 직원만 (주문 전용 서버 제외)",
   "settingsPage.customerDisplay.showPhoneInputLabel": "고객 화면에 전화번호 입력 표시 (멤버십용)",
   "settingsPage.customerDisplay.showPhoneInputHelp": "OFF = 고객 화면에 주문 내역만 표시. 포인트/멤버십 운영하는 매장만 ON.",
   "settingsPage.customerDisplay.resetPosition": "위치 재설정",
