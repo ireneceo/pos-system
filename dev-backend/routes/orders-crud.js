@@ -2605,6 +2605,22 @@ router.get('/restaurant/:restaurantId/pending-print', authenticateToken, async (
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
     const { Op } = require('sequelize');
+    // 2026-06-24 (Irene): 죽은 claim 자동복구. 어느 기기가 print-claim(needs_print→false,
+    // print_claimed_at=NOW) 했는데 STALE_CLAIM_SEC 안에 인쇄확인(/printed → print_claimed_at NULL)
+    // 도 재무장(/print-rearm)도 안 오면 = 그 기기가 실제로 못 찍은 죽은 claim. 자동으로 needs_print
+    // 를 되살려(needs_print=true) 인쇄 전담 POS 가 다음 폴에서 받게 한다. 불변식상 print_claimed_at
+    // 가 NOT NULL 인 채로 STALE = "claim됐으나 인쇄 미확인" 뿐이라 중복 인쇄 위험 없음(인쇄확인되면
+    // NULL). 인쇄 방식·라우팅 무변경 — 분실 방지 트리거만. 기기 설정 무관(노트북/서버 어디서 넣어도 OK).
+    const STALE_CLAIM_SEC = 30;
+    try {
+      await Order.sequelize.query(
+        `UPDATE orders SET needs_print = true, print_claimed_at = NULL
+         WHERE restaurant_id = :rid AND is_deleted = false
+           AND needs_print = false AND print_claimed_at IS NOT NULL
+           AND print_claimed_at < (NOW() - INTERVAL :sec SECOND)`,
+        { replacements: { rid: restaurantId, sec: STALE_CLAIM_SEC } }
+      );
+    } catch (reErr) { console.error('[pending-print] stale-claim recovery error:', reErr.message); }
     const orders = await Order.findAll({
       where: {
         restaurant_id: restaurantId,
@@ -2673,8 +2689,10 @@ router.patch('/:id/print-claim', authenticateToken, async (req, res) => {
     if (req.user.role !== 'System Admin' && parseInt(req.user.restaurant_id) !== o.restaurant_id) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
+    // 2026-06-24: claim 시 print_claimed_at=NOW 기록. /printed 가 NULL 로 지운다. NULL 이 아닌 채로
+    // STALE 해지면(인쇄확인 미도착=죽은 claim) pending-print 가 자동 re-arm 한다(분실 방지).
     const [affected] = await Order.update(
-      { needs_print: false },
+      { needs_print: false, print_claimed_at: require('sequelize').fn('NOW') },
       { where: { id: o.id, needs_print: true } }
     );
     res.json({ success: true, claimed: affected > 0 });
@@ -2701,8 +2719,9 @@ router.patch('/:id/print-dismiss', authenticateToken, async (req, res) => {
     if (req.user.role !== 'System Admin' && parseInt(req.user.restaurant_id) !== o.restaurant_id) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
+    // dismiss = "이 주문은 자동인쇄 대상 아님"(백로그). print_claimed_at NULL 로 둬 자동복구 대상에서 제외.
     const [affected] = await Order.update(
-      { needs_print: false },
+      { needs_print: false, print_claimed_at: null },
       { where: { id: o.id, needs_print: true } }
     );
     res.json({ success: true, dismissed: affected > 0 });
@@ -2738,7 +2757,8 @@ router.patch('/:id/print-rearm', authenticateToken, async (req, res) => {
     if (req.user.role !== 'System Admin' && parseInt(req.user.restaurant_id) !== o.restaurant_id) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
-    await o.update({ needs_print: true });
+    // re-arm = 다시 인쇄 대기열로. print_claimed_at NULL 로 지워 죽은 claim 표시 해제.
+    await o.update({ needs_print: true, print_claimed_at: null });
     res.json({ success: true });
   } catch (e) {
     console.error('[print-rearm] error:', e.message);
@@ -2767,10 +2787,12 @@ router.patch('/:id/printed', authenticateToken, async (req, res) => {
       if (it && !it.printed_at) { changed = true; return { ...it, printed_at: now }; }
       return it;
     });
+    // 인쇄확인 = print_claimed_at NULL 로 지운다(불변식: NULL ⟺ 인쇄확인됨). → 자동복구 대상 아님.
     await o.update({
       ...(changed ? { order_items: stamped } : {}),
       needs_print: false,
-      needs_bill: false
+      needs_bill: false,
+      print_claimed_at: null
     });
     res.json({ success: true });
   } catch (e) {

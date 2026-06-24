@@ -72,6 +72,17 @@ Order.init({
     defaultValue: false,
     comment: 'Pending kitchen auto-print flag. Set true on Order.create. Cleared by frontend.'
   },
+  // 2026-06-24: print-claim 자동복구. 어느 기기가 print-claim(needs_print→false) 하면 NOW 기록.
+  // /printed(인쇄확인)·/print-rearm·/print-dismiss 시 NULL. pending-print 조회 시 NOT NULL 이면서
+  // STALE(>STALE_CLAIM_SEC) 이면 = 인쇄확인이 안 온 죽은 claim → 자동 re-arm(needs_print=true) 해
+  // 인쇄 전담 POS 가 받게 한다. 불변식: print_claimed_at NOT NULL ⟺ "claim됐으나 인쇄 미확인".
+  // 기기 설정 무관·분실 0. (docs/PRINT_DB_DRIVEN_DISPATCH.md)
+  print_claimed_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    defaultValue: null,
+    comment: 'When a device print-claimed this order (cleared on /printed). Stale = auto re-armed.'
+  },
   // 2026-05-28: needs_bill — separate flag for cashier bill receipt auto-print.
   // Set true on merge (mobile 같은 테이블 추가 = staff 주문관리용 누적 영수증).
   // Single new orders 는 false (결제 버튼 시점에만 bill 인쇄).
