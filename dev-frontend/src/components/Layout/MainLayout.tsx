@@ -1334,7 +1334,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               const _ordMs = ord.created_at ? new Date(ord.created_at).getTime()
                 : (ord.createdAt ? new Date(ord.createdAt).getTime()
                 : (ord.order_date ? new Date(ord.order_date).getTime() : 0));
-              const _isBacklog = !!(_autoEnabledAt && _ordMs && _ordMs < _autoEnabledAt);
+              // 2026-06-24 (Irene): 취소/삭제/이동 안내 재발행(pending_reprint)은 절대 backlog 로
+              // 보지 않는다. 오래된 주문이라도 "지금" 취소한 것이라 현재 동작 — dismiss 하면 취소표 분실.
+              const _isBacklog = !!(_autoEnabledAt && _ordMs && _ordMs < _autoEnabledAt) && !ord.pending_reprint;
               if (_kitchenAuto && !_isBacklog) {
                 // 2026-06-09 (Irene "새주문 2장"): ATOMIC CLAIM before printing — mirrors
                 // useAutoPrintPoller. A new order's localStorage 'autoprint-poke' wakes

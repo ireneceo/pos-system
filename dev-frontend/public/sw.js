@@ -10,7 +10,7 @@
  * caching SPA shell would conflict. If future offline support is needed, layer Workbox separately.
  */
 
-const SW_VERSION = '4.08-move-fast-fromto-posSettings-20260624';
+const SW_VERSION = '4.09-cancel-ticket-survives-delete-20260624';
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {

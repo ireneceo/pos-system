@@ -2665,20 +2665,34 @@ router.get('/restaurant/:restaurantId/pending-print', authenticateToken, async (
     const STALE_CLAIM_SEC = 10;  // 죽은 claim 복구 대기. 실제 인쇄확인(1~3초)보다 충분히 길어 중복 안전, 빠른 복구.
     try {
       await Order.sequelize.query(
+        // 2026-06-24 (Irene "취소했는데 프린트 안나옴"): 취소/삭제/이동 안내 재발행은 주문이
+        // claim 직후 삭제(is_deleted=1)되는 레이스에 취약했다(취소→3초뒤 주문삭제 → claim된 채
+        // 인쇄확인 못오고 삭제되어 stale복구 제외 → 취소표 영구분실). 명시적 재발행(pending_reprint
+        // NOT NULL)은 삭제됐어도 죽은 claim 을 복구한다(단 최근 5분 claim 만 — 오래된 건 주방이 이미
+        // 처리했으므로 되살리지 않음). 일반 라이브 주문(is_deleted=false)은 종전과 동일(상한 없음).
         `UPDATE orders SET needs_print = true, print_claimed_at = NULL
-         WHERE restaurant_id = :rid AND is_deleted = false
+         WHERE restaurant_id = :rid
            AND needs_print = false AND print_claimed_at IS NOT NULL
-           AND print_claimed_at < (NOW() - INTERVAL :sec SECOND)`,
+           AND print_claimed_at < (NOW() - INTERVAL :sec SECOND)
+           AND ( is_deleted = false
+                 OR (pending_reprint IS NOT NULL AND print_claimed_at > (NOW() - INTERVAL 300 SECOND)) )`,
         { replacements: { rid: restaurantId, sec: STALE_CLAIM_SEC } }
       );
     } catch (reErr) { console.error('[pending-print] stale-claim recovery error:', reErr.message); }
     const orders = await Order.findAll({
       where: {
         restaurant_id: restaurantId,
-        is_deleted: false, // 2026-06-13: exclude soft-deleted orders — a deleted order
-        // with needs_print still set could otherwise reprint as a ghost ticket. No change
-        // to print method/routing/timing for live orders; only filters out deleted ones.
-        [Op.or]: [{ needs_print: true }, { needs_bill: true }]
+        [Op.or]: [
+          // 일반 라이브 주문: 삭제 안 된 것만. 2026-06-13: 삭제됐는데 needs_print 가 남은 주문이
+          // 고스트 티켓으로 재인쇄되는 사고 방지. 인쇄 방식/라우팅/타이밍 무변경.
+          { is_deleted: false, [Op.or]: [{ needs_print: true }, { needs_bill: true }] },
+          // 2026-06-24 (Irene "취소했는데 프린트 안나옴"): 명시적 재발행(취소/삭제/이동 안내,
+          // pending_reprint NOT NULL)은 주문이 삭제됐어도 1회 인쇄한다. 취소는 보통 주문삭제를
+          // 동반하는데(claim 직후 is_deleted=1), 위 is_deleted=false 필터가 취소표까지 큐에서
+          // 빼버려 분실됐다. 고스트와 달리 이건 직원의 명시적 현재 동작이라 인쇄돼야 한다.
+          // /printed 가 needs_print=false + pending_reprint=null 로 1회 후 정리(중복 없음).
+          { needs_print: true, pending_reprint: { [Op.ne]: null } }
+        ]
       },
       order: [['createdAt', 'ASC']],
       limit: 20
