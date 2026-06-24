@@ -348,9 +348,11 @@ for SPRINT_MIG in \
     scripts/migrate-po-owner-approval.js \
     scripts/migrate-bg-product-supply-chain.js \
     scripts/migrate-supplier-company-bridge.js \
-    scripts/migrate-staff-payment-void-perms.js \
     scripts/migrate-print-claim-recovery.js \
     scripts/migrate-pending-reprint.js; do
+    # 2026-06-24: migrate-staff-payment-void-perms.js 는 재실행 목록에서 제거함. 매 배포마다 돌면
+    # access_pos 직원 전원에게 결제·취소 권한을 다시 추가해서, 매장이 의도적으로 끈 권한(예: 서버
+    # 역할)을 도로 켜버린다. 최초 1회 백필은 이미 운영 적용됨. 직원 권한은 직원관리 UI 가 단일소스.
     if ssh $PROD_SERVER "test -f $REMOTE_PROD_BACKEND/$SPRINT_MIG"; then
         log "Running $(basename $SPRINT_MIG)..."
         SPRINT_OUTPUT=$(ssh $PROD_SERVER "cd $REMOTE_PROD_BACKEND && node $SPRINT_MIG 2>&1") || true
