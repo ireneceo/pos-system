@@ -1268,7 +1268,7 @@ const POSTerminalPage: React.FC = () => {
   // already polls for this restaurant, so the overlay must NOT poll too. This
   // does NOT change the print METHOD/ROUTING — only suppresses the redundant
   // second poller. Standalone POS (not overlay) keeps polling as before.
-  useAutoPrintPoller({ restaurantId: user?.restaurantId, enabled: !!user?.restaurantId && !isFloorPlanOverlay, getStoreInfo });
+  useAutoPrintPoller({ restaurantId: user?.restaurantId || (user as any)?.restaurant_id, enabled: !!(user?.restaurantId || (user as any)?.restaurant_id) && !isFloorPlanOverlay, getStoreInfo });
 
   // POS Terminal shows only active categories (customer-facing view)
   // 2026-06-12: 아이템이 전부 세트 구성 전용(set_only)인 카테고리는 탭째 숨김 —

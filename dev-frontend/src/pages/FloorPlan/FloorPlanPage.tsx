@@ -321,7 +321,7 @@ const FloorPlanPage: React.FC = () => {
   // 2026-05-28 매장 critical: backend-driven auto-print polling (fullscreen page,
   // MainLayout 안 mount). 매장 device 가 FloorPlan 켜둔 상태에서 모바일/POS
   // 주문 발생 시 polling 으로 catch + 인쇄 + PATCH.
-  useAutoPrintPoller({ restaurantId: user?.restaurantId, enabled: !!user?.restaurantId, getStoreInfo });
+  useAutoPrintPoller({ restaurantId: user?.restaurantId || (user as any)?.restaurant_id, enabled: !!(user?.restaurantId || (user as any)?.restaurant_id), getStoreInfo });
 
   // Prefetch is intentionally disabled here. Initial implementation triggered
   // POS Terminal chunk download during Floor Plan idle, but the observed effect
