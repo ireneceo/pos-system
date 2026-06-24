@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-24 (thefire 인쇄지연 사고 운영 진단 + 다음 작업 확정. 코드 변경 없음. 별건: 6/24 오전 KDS 직원전환 통일은 DEV·미배포 — 아래.)
+> **최종 업데이트:** 2026-06-24 (thefire 인쇄 정확성·속도 대응 운영 배포 SW 4.06→4.10: 모든 프린트루트 DB통일·취소표 삭제레이스 수정·이동 from→to·타임존 실수정·POS권한 프린터설정. 속도 잔여=서버 4GB 메모리 병목→8GB 업그레이드 결정. 아래.)
 >
 > **이전:** 2026-06-23 (**v3.62 운영 배포 완료** — thefire 실사용 준비 7건: 직원 PIN 전환 수정 · 시재 개시모드(이월/고정) · 마감 폰트 통일 · 통합오더티켓 'Full' 수동인쇄 · 로그인 직원 PIN 우선 · 설정 QR 인쇄버튼 · Windows 7/8 QZ 설치 수정. Backup 20260623_124849, Smoke 9/9, SW=3.95. /검증 통과: health 107/107·print-guard 8/8(billPrint 무수정)·hydration0·timezone0·design0·i18n0·mount(floor-plan/settings/cash-up/pos) crash0.)
 >
@@ -7282,6 +7282,32 @@ Brand General이 등록한 재료(Ingredient)의 표준 코스트(Brand Cost)에
 - `dev-frontend/src/components/Contract/LinkedPlansSection.tsx` (View all plans, 마법사 제거)
 - `dev-frontend/src/components/Contract/ContractDetail.tsx` (+ Issue One-time 제거)
 - `dev-frontend/public/locales/{en,ko,zh,ms}/{brand,foodcourt,admin,contract}.json`
+
+---
+
+## ✅ 완료: thefire 인쇄 정확성·속도 대응 + 서버 진단 (2026-06-24, 운영 배포 SW 4.06→4.10)
+
+> thefire01(rid=16) 실사용 중 인쇄 보고 연쇄 대응. **인쇄 "방식"(billPrint)은 무변경**, 트리거·데이터·전달만 정석화. 운영 배포 다수(safety gate 107/107·smoke 9/9 매회 통과). **속도 잔여는 코드 아닌 운영서버 메모리(4GB·swap 1.1GB 사용)** 로 확정 → Irene 서버 8GB 업그레이드 결정(PlanQ 공유 유지 가능).
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 서버 역할(주문전용) 권한 분리 | access_payment/access_void 분리. 결제·주문취소만 빼고 다 가능. 마이그 재실행 제거(배포마다 권한 도로 켜짐 방지) | ✅ |
+| 모든 프린트 루트 DB 통일 | 신규·이동·취소·void → "DB needs_print → 인쇄 전담 POS 폴러". 누가/어느 기기/계정이든 POS1 인쇄. 중복=atomic print-claim 으로 1장 | ✅ |
+| 소켓→즉시 인쇄 | order-created/items-added/updated 수신 시 메인 POS 즉시 폴링(120ms debounce). 이동/취소 5초주기 대기 제거 | ✅ |
+| 취소표 삭제 레이스 분실 수정 | 취소→claim→3초뒤 주문삭제 시 취소표 영구분실. pending_reprint(취소/삭제/이동)은 is_deleted 여도 1회 인쇄 + 죽은claim 복구(최근5분). 고스트(안내없음)는 차단 유지 | ✅ |
+| 이동 티켓 이전→새 테이블 | 주방티켓 맨 아래 "이전(취소선) → 새" 표기. backend pending_reprint.notice fromTable/toTable | ✅ |
+| 티켓 시간 매장 타임존 실수정 | MainLayout 폴러 getStoreInfo 미선언→printStoreInfo={}→기기 로컬시간. getStoreInfo destructure + operationSettings.timeZone 폴백. billPrint 13곳 timeZone | ✅ |
+| POS 권한에 프린터/주방 설정 열기 | access_pos 도 Printer·Kitchen Stations 탭. 비관리자 POS 계정서도 인쇄 정상화 | ✅ |
+| 인쇄 속도 근본 진단 | 인쇄지연 26~305초=서버 swap(4GB 중 free 268MB, swap 1.1GB 사용)으로 claim 왕복 굼뜸. claim-before-print 는 무중복 위해 필수→빠른 서버가 답. Irene 8GB 결정 | ✅ |
+
+### 수정된 파일
+- `dev-backend/routes/orders-crud.js` (pending-print 필터+죽은claim복구, 취소/이동/void pending_reprint, 권한 게이트)
+- `dev-backend/models/Order.js` (print_claimed_at/pending_reprint/reprint_claimed_at), `dev-backend/middleware/auth.js` (payment/void 권한)
+- `dev-frontend/src/components/Layout/MainLayout.tsx` (소켓 즉시폴링·getStoreInfo·backlog 예외·POS설정메뉴)
+- `dev-frontend/src/hooks/useAutoPrintPoller.ts`, `dev-frontend/src/utils/billPrint.js` (timeZone·이동 from→to)
+- `dev-frontend/src/pages/{FloorPlan,POSTerminal,Settings}/*`, `dev-frontend/public/sw.js` (4.10)
 
 ---
 
