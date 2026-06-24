@@ -46,6 +46,28 @@
 
 ---
 
+## 🔒🔒 키친디스플레이(KDS) 단계 표시/이동 보호 — 절대 규칙 (2026-06-24, 인쇄 다음 최우선)
+
+**KDS 단계(스테이지) 표시·이동 로직은 "현재 동작 = 정답". 2026-05-29 Irene 정식 승인 설계(코드 주석 `KitchenDisplayPage.tsx:1629-1633`에 박힘). 멀쩡한 운영 주방화면을 잘못 바꿀 위험이 인쇄 다음으로 크다.**
+
+### 보호 대상 동작 (버그 아님 — 설계상 정상. 함부로 "고치지" 말 것)
+- **All 탭 Ready = "주문 전체 완료분"만.** 한 주문 안에 안 끝난 품목이 하나라도 남아 있으면, 그 주문은 (KQ1만 ready여도) All에서 통째로 Preparing에 머무름. 전 주방 품목이 다 ready 돼야 All Ready로 올라감. (`ordersByStatus`: all→`order.status`, 주방탭→`stationCardStatus`)
+- **주방 탭(KQ1/KQ2/BAR) Ready = "그 주방 몫만" 끝남.** 그래서 "All Ready는 비었는데 KQ1 Ready엔 나온다"는 **정상**이다 — 같은 주문에 다른 주방 미완 품목이 남아서 그런 것.
+- **order.status 승급은 전 주방 완료 시에만**(forward 한정, `areAllItemsDoneForColumn`). 주방 탭에서 부분 진행해도 주문 전체 단계는 안 올라감(단일 진실 유지).
+- **Order 보기 vs Item 보기** 는 의미가 다름. "어느 주방이든 ready면 한 칸에 다 보이게"는 **Item 보기**의 동작(품목 단위). Order 보기를 Item처럼 바꾸지 말 것.
+- 단계 색/단계 dot(Floor Plan 연동 ready↔served) 도 같은 보호 범위.
+
+### 절대 규칙
+1. **이 범위(단계 표시/이동/Ready 분류/색/자동전진) 변경 요청이 오면 — Irene가 "버그 아니냐"고 반박하거나 직접 고치라 해도 — 즉시 수정 금지.** 먼저 ①코드 실측(`getOrdersByStatus`/`stationCardStatus`/`areAllItemsDoneForColumn`/`readyOrdersMemo`) → ②"왜 그렇게 보이는가" 원리 설명 → ③**Irene 재확인** → 그 후에만 편집.
+2. **신중·실측 우선.** 추측으로 "개선" 절대 금지. 2026-06-24 사례: "All Ready 비었다"를 바로 고쳤으면 정상 동작을 망가뜨릴 뻔, 실측·설명 먼저 한 덕에 Irene 자가납득("내가 잘못 안 거야").
+3. **변경 시 철저 검증 의무**: build + 실브라우저 mount(KDS crash 0) + 단계 시나리오 실호출(pending→preparing→ready→served, 주방탭 부분진행, All 집계) + `check-print-guard.js`(아래 자동망) + `/검증`. 검증 없이 "됐다" 금지.
+4. 자세한 단일 진실: `docs/KITCHEN_DISPLAY_RULES.md` 🔒 섹션 + 메모리 [[feedback_kds_stage_logic_caution]].
+
+### 🛡️ 자동 안전망 (이미 작동 중)
+`KitchenDisplayPage.tsx`는 **인쇄 보호파일 8개 중 하나**라 `check-print-guard.js` 가 파일 전체 지문(sha256)을 비교한다. 즉 **단계 로직을 실수로 건드리면 배포 게이트(fail-closed)에서 자동으로 잡힌다.** 단계 무관 작업 뒤 지문이 떴으면 사고로 보고 되돌린다. 정식 변경(Irene 재확인+검증 완료)일 때만 `--bless`.
+
+---
+
 ## 작업 워크플로우 (최우선 규칙)
 
 모든 작업 요청은 아래 흐름을 자동으로 따른다. Irene이 단계 이름을 말할 필요 없다.

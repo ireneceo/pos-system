@@ -1,8 +1,37 @@
 # Kitchen Display 규칙서
 
-> **최종 업데이트:** 2026-03-17
+> **최종 업데이트:** 2026-06-24
 > **관련 파일:** `dev-frontend/src/pages/KitchenDisplay/KitchenDisplayPage.tsx`
-> **관련 문서:** `docs/ORDER_MERGE_RULES.md` (주문 자동 합침 규칙)
+> **관련 문서:** `docs/ORDER_MERGE_RULES.md` (주문 자동 합침 규칙) · `CLAUDE.md` 🔒 "KDS 단계 표시/이동 보호" 섹션
+
+---
+
+## 🔒 단계 표시/이동 — 단일 진실 (현재 동작 = 정답, 함부로 고치지 말 것)
+
+> **2026-05-29 Irene 정식 승인 설계** (`KitchenDisplayPage.tsx:1629-1633` 주석). 아래는 **버그가 아니라 의도된 동작**이다. 변경 요청이 오면 — Irene가 반박하거나 직접 고치라 해도 — **즉시 수정 금지**, 먼저 실측·설명하고 **Irene 재확인** 후에만 손댄다. (CLAUDE.md 🔒 절대규칙)
+
+### "All Ready는 비었는데 KQ1/KQ2 Ready엔 나온다" = 정상이다
+
+| 탭 | Ready 칸에 올라오는 기준 | 코드 |
+|----|------------------------|------|
+| **All** | **주문 전체가 완료** — 그 주문의 **모든 주방** 품목이 ready 이상이어야 함 | `ordersByStatus`: `selectedStation==='all'` → `order.status==='ready'` |
+| **KQ1/KQ2/BAR (주방 탭)** | **그 주방 몫만** ready (그 주방 품목 중 최저 단계가 ready) | `stationCardStatus(order)` = 그 주방 품목 최저 STAGE_LEVEL |
+
+- **카드 1장 = 주문 1건** (Order 보기). 카드는 그 주문에서 **"가장 안 끝난 품목" 기준**으로 **한 칸에만** 놓인다.
+- 그래서 한 주문에 KQ1·KQ2 품목이 섞여 있고 KQ1만 ready면 → 그 주문 카드는 (KQ2 미완이라) **통째로 Preparing**에 머문다. **KQ1의 ready 품목은 그 카드 안에 같이 들어있다** (사라진 게 아님).
+- 같은 주문의 **안 끝난 품목이 다 ready** 되어야 비로소 All의 Ready로 올라간다.
+
+### order.status 승급 규칙
+- `order.status` 승급(preparing→ready 등)은 **전 주방 품목이 다 done일 때만**, **forward(전진)만** (`areAllItemsDoneForColumn`). 주방 탭에서 부분 진행해도 주문 전체 단계는 안 올라간다 — **단일 진실 유지**.
+
+### "어느 주방이든 ready면 한 칸에 다 보이게" 를 원하면 = Item(품목) 보기
+- 그건 **Order 보기를 고치는 게 아니라 Item 보기의 동작**이다. Item 보기는 품목 단위라, 주문 전체가 안 끝나도 ready 품목이 Ready 칸에 바로 뜬다.
+- **Order 보기를 Item 보기처럼 바꾸지 말 것.** 보기 토글(상단)로 해결되는 사안이다.
+
+### 변경 시 의무
+1. 실측: `getOrdersByStatus` / `ordersByStatus` / `stationCardStatus` / `areAllItemsDoneForColumn` / `readyOrdersMemo`
+2. 원리 설명 → **Irene 재확인**
+3. 철저 검증: build + KDS mount crash 0 + 단계 시나리오 실호출(pending→preparing→ready→served·주방탭 부분진행·All 집계) + `check-print-guard.js`(이 파일은 인쇄 보호파일이라 지문 자동 감시) + `/검증`
 
 ---
 
@@ -241,9 +270,11 @@
 
 ---
 
-## 8. KDS 직원 PIN 로그인 (2026-05-22 추가)
+## 8. KDS 직원 PIN 로그인 (2026-05-22 추가 → **2026-06-24 제거됨**)
 
-### 목적
+> **제거됨 (2026-06-24, Irene 승인):** 헤더 좌측 "Switch staff"(KdsPinGate/useKdsStaff)는 제거. 이유=①`/verify-pin`이 공개 라우트(6/20)로 바뀌어 `restaurant_id` 미전송 시 400 에러로 사실상 동작 불가였고 ②우측 "Logged in"(CashierPinModal)이 이미 세션 유저 전환+audit 기록을 하므로 **중복**. 이후 KDS 액션의 audit 주체 = 우측 PIN 모달로 전환된 현재 로그인 유저. 파일 `KdsPinGate.tsx`/`useKdsStaff.ts` 삭제. 아래는 옛 사양(히스토리).
+
+### (옛 사양) 목적
 주방마다 서로 다른 직원이 작업. 누가 어느 ticket 을 진행했는지 추적 필요 (Order Action History 와 연동).
 
 ### 흐름

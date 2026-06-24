@@ -13,8 +13,6 @@ import CashierPinModal from '../../components/POSTerminal/CashierPinModal';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
-import KdsPinGate from './KdsPinGate';
-import { useKdsStaff } from './useKdsStaff';
 import OrderActionHistory from '../LiveOrders/OrderActionHistory';
 // Helper function to format pickup time as range (e.g., "9:00 - 9:30 AM").
 // Uses restaurant timezone so the time matches the kitchen's local clock
@@ -830,14 +828,8 @@ const KitchenDisplayPage: React.FC = () => {
     return true;
   };
 
-  // ─── KDS PIN Staff session (per-station staff login on top of RA JWT) ───
-  const { staff: kdsStaff, login: kdsLogin, logout: kdsLogout } = useKdsStaff();
-
   // ─── Order History popover (floating panel anchored from KDS card) ───
   const [historyOrderId, setHistoryOrderId] = useState<number | null>(null);
-
-  // ─── KDS PIN gate (opt-in, opened via "Switch staff" header button) ───
-  const [showPinGate, setShowPinGate] = useState(false);
 
   // ─── API helper ───
   const apiHeaders = () => {
@@ -845,16 +837,12 @@ const KitchenDisplayPage: React.FC = () => {
     return { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) };
   };
 
-  // Helper to attach KDS staff identity to mutating requests.
-  // If a per-station PIN staff is signed in, use that; otherwise fall back to the
-  // current logged-in user (RA). Always tag source='kds' so the audit trail
-  // can distinguish KDS actions from POS actions.
+  // Helper to attach KDS identity to mutating requests. The audit trail uses the
+  // currently logged-in user (switched via the header "Logged in" PIN modal).
+  // Always tag source='kds' so the audit can distinguish KDS actions from POS.
   const kdsBody = useCallback((extra: Record<string, any> = {}) => {
-    if (kdsStaff) {
-      return { ...extra, kds_staff_id: kdsStaff.id, kds_staff_name: kdsStaff.name, source: 'kds' };
-    }
     return { ...extra, source: 'kds' };
-  }, [kdsStaff]);
+  }, []);
 
   // ─── Fetch all orders (source of truth) ───
   const fetchOrders = useCallback(async () => {
@@ -3030,10 +3018,6 @@ const KitchenDisplayPage: React.FC = () => {
     });
   };
 
-  // Active KDS performer — uses the per-station PIN staff if signed in, otherwise
-  // falls back to the currently logged-in user (RA). audit log uses this identity.
-  const activePerformerName = kdsStaff?.name || user?.name || user?.full_name || user?.username || 'Staff';
-
   return (
     <Container>
       {/* 주방 안내 팝업 — 최신 안내 1건씩, 확인 눌러야 닫힘(+알림음 정지). */}
@@ -3160,39 +3144,6 @@ const KitchenDisplayPage: React.FC = () => {
             </ViewToggle>
           )}
 
-          {/* 4) Staff badge — 2 lines: name / Switch staff or Sign out */}
-          <div style={{
-            display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center',
-            padding: '0 12px', minHeight: 36, boxSizing: 'border-box',
-            background: kdsStaff ? '#F0F4FF' : '#F1F4F8',
-            borderRadius: 8,
-            border: `1px solid ${kdsStaff ? '#DDD9FF' : '#C7CED6'}`,
-            lineHeight: 1.2
-          }}>
-            <span style={{
-              fontSize: 12, fontWeight: 600,
-              color: kdsStaff ? '#3B30D9' : '#0A2540',
-              whiteSpace: 'nowrap', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis'
-            }}>
-              {activePerformerName}
-            </span>
-            <button
-              type="button"
-              onClick={kdsStaff ? kdsLogout : () => setShowPinGate(true)}
-              title={kdsStaff
-                ? t('pin.logout', 'Sign out staff')
-                : t('pin.switchStaffTitle', 'Sign in as a different kitchen staff for accurate audit logs')}
-              style={{
-                border: 'none', background: 'transparent', cursor: 'pointer',
-                color: kdsStaff ? '#3B30D9' : '#4B5563',
-                fontWeight: 500, fontSize: 10, padding: 0,
-                marginTop: 2, textAlign: 'left', whiteSpace: 'nowrap'
-              }}
-            >
-              {kdsStaff ? t('pin.logout', 'Sign out') : t('pin.switchStaff', 'Switch staff')}
-            </button>
-          </div>
-
           {/* 5) Sound toggle */}
           <button
             onClick={() => { setAudioEnabled(prev => { const next = !prev; localStorage.setItem('kds_sound_enabled', String(next)); return next; }); }}
@@ -3306,14 +3257,6 @@ const KitchenDisplayPage: React.FC = () => {
         </Column>
       </KanbanBoard>
       </ContentArea>
-
-      {showPinGate && (
-        <KdsPinGate
-          onAuthenticated={(s) => { kdsLogin(s); setShowPinGate(false); }}
-          onCancel={() => setShowPinGate(false)}
-          stationName={selectedStation === 'all' ? undefined : kitchenStations.find(s => s.id === selectedStation)?.name}
-        />
-      )}
 
       {/* 계정 PIN 전환 (Floor Plan / POS Terminal 과 동일 동작) */}
       <CashierPinModal

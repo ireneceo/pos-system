@@ -494,7 +494,13 @@ const MenuPage: React.FC = () => {
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [allMenuItems, setAllMenuItems] = useState<MenuItem[]>([]); // 검색용 전체 메뉴
-  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  // 2026-06-24: URL ?cat 으로 초기화한다. 그러지 않으면 상세→뒤로가기 시 popstate 가
+  // ?cat=<탭> 엔트리로 정상 복원해도, 아래 URL 동기화 effect 가 마운트 시 초기값('')으로
+  // 먼저 돌아 ?cat 을 지워버리고 → init() 이 빈 URL 을 읽어 featured 로 폴백, 탭이 리셋됐다.
+  // (6/23 history.state 보존 fix 의 잔여 버그.) 초기값을 URL 에서 읽으면 effect 가 안 지운다.
+  const [selectedCategory, setSelectedCategory] = useState<string>(() => {
+    try { return new URLSearchParams(window.location.search).get('cat') || ''; } catch { return ''; }
+  });
   const [previousCategory, setPreviousCategory] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchMode, setIsSearchMode] = useState(false);
