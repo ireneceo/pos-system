@@ -4,6 +4,7 @@ import i18n from '../i18n';
 
 import { getAuthToken, setAuthToken, clearAuthToken } from '../utils/auth';
 import { setOn401Handler } from '../utils/httpClient';
+import { displayStaffName } from '../utils/staffName';
 export type UserRole = 'System Admin' | 'Foodcourt General' | 'Brand General' | 'Foodcourt Manager' | 'Brand Manager' | 'Restaurant Owner' | 'Restaurant Admin' | 'Staff' | 'Supplier Admin' | 'Supplier Staff' | 'Referral Partner';
 
 export interface User {
@@ -498,7 +499,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             const userData: User = {
               id: apiUser.id?.toString() || '1',
               email: apiUser.email,
-              name: apiUser.username || (apiUser.email ? apiUser.email.split('@')[0] : 'Staff'),
+              name: displayStaffName(apiUser.full_name, apiUser.username, apiUser.email ? apiUser.email.split('@')[0] : 'Staff'),
               role: apiUser.role as UserRole,
               restaurantId: apiUser.restaurant_id?.toString() || null,
               managerId: apiUser.manager_id?.toString() || null,
@@ -565,7 +566,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const userData: User = {
             id: apiUser.id?.toString() || '1',
             email: apiUser.email,
-            name: apiUser.username || (apiUser.email ? apiUser.email.split('@')[0] : 'Staff'),
+            name: displayStaffName(apiUser.full_name, apiUser.username, apiUser.email ? apiUser.email.split('@')[0] : 'Staff'),
             role: apiUser.role as UserRole,
             restaurantId: apiUser.restaurant_id?.toString() || null,
             managerId: apiUser.manager_id?.toString() || null,
@@ -636,7 +637,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const userData: User = {
             id: apiUser.id?.toString() || '1',
             email: apiUser.email,
-            name: apiUser.username || (apiUser.email ? apiUser.email.split('@')[0] : 'Staff'),
+            name: displayStaffName(apiUser.full_name, apiUser.username, apiUser.email ? apiUser.email.split('@')[0] : 'Staff'),
             role: apiUser.role as UserRole,
             restaurantId: apiUser.restaurant_id?.toString() || null,
             managerId: apiUser.manager_id?.toString() || null,
@@ -686,7 +687,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const userData: User = {
           id: apiUser.id?.toString() || '',
           email: apiUser.email || null,
-          name: apiUser.name || apiUser.username || 'Staff',
+          name: apiUser.name || displayStaffName(apiUser.full_name, apiUser.username, 'Staff'),
           role: apiUser.role as UserRole,
           restaurantId: apiUser.restaurant_id?.toString() || null,
           managerId: apiUser.manager_id?.toString() || null,

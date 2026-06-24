@@ -752,7 +752,15 @@
       "Bash(sed -i 's#useAutoPrintPoller\\({ restaurantId: user?.restaurantId, enabled: !!user?.restaurantId \\\\&\\\\& !isFloorPlanOverlay, getStoreInfo }\\);#useAutoPrintPoller\\({ restaurantId: user?.restaurantId || \\(user as any\\)?.restaurant_id, enabled: !!\\(user?.restaurantId || \\(user as any\\)?.restaurant_id\\) \\\\&\\\\& !isFloorPlanOverlay, getStoreInfo }\\);#' src/pages/POSTerminal/POSTerminalPage.tsx)",
       "Bash(awk '/finalStatus === .cancelled.|hadPrinted|pending_reprint.*cancel/{print NR\": \"$0}' routes/orders-crud.js)",
       "Bash(sed -i \"s/4.08-move-fast-fromto-posSettings-20260624/4.09-cancel-ticket-survives-delete-20260624/\" public/sw.js)",
-      "Bash(sed -i \"s/4.09-cancel-ticket-survives-delete-20260624/4.10-ticket-timezone-poller-fix-20260624/\" public/sw.js)"
+      "Bash(sed -i \"s/4.09-cancel-ticket-survives-delete-20260624/4.10-ticket-timezone-poller-fix-20260624/\" public/sw.js)",
+      "Bash(scp -o ConnectTimeout=8 /tmp/claude-1000/-var-www/4db5027e-bdea-466c-8559-8eea6dca04c8/scratchpad/prod-diag.js irene@87.106.78.146:/var/www/production-backend/prod-diag.js)",
+      "Bash(scp -o ConnectTimeout=8 /tmp/claude-1000/-var-www/4db5027e-bdea-466c-8559-8eea6dca04c8/scratchpad/prod-diag2.js irene@87.106.78.146:/var/www/production-backend/prod-diag2.js)",
+      "Bash(scp -o ConnectTimeout=8 /tmp/claude-1000/-var-www/4db5027e-bdea-466c-8559-8eea6dca04c8/scratchpad/backlog.js irene@87.106.78.146:/var/www/production-backend/backlog.js)",
+      "Bash(scp -o ConnectTimeout=8 /tmp/claude-1000/-var-www/4db5027e-bdea-466c-8559-8eea6dca04c8/scratchpad/tickets.js irene@87.106.78.146:/var/www/production-backend/tickets.js)",
+      "Bash(sed -i 's/created_at/createdAt/g' tickets.js)",
+      "Bash(scp -o ConnectTimeout=8 tickets.js irene@87.106.78.146:/var/www/production-backend/tickets.js)",
+      "Bash(ssh -o ConnectTimeout=15 irene@87.106.78.146 \"cd /var/www/production-backend && node tickets.js 2>&1; rm -f tickets.js\")",
+      "Bash(scp -o ConnectTimeout=8 /tmp/claude-1000/-var-www/4db5027e-bdea-466c-8559-8eea6dca04c8/scratchpad/verify.js irene@87.106.78.146:/var/www/production-backend/verify.js)"
     ],
     "deny": [],
     "ask": []

@@ -10,6 +10,7 @@ import VoidPinModal from '../../components/POSTerminal/VoidPinModal';
 import { useStore } from '../../contexts/StoreContext';
 import { OrdersRealtimeProvider, useOrdersRealtime } from '../../contexts/OrdersRealtimeContext';
 import { formatCurrency } from '../../utils/currency';
+import { stripStaffNs } from '../../utils/staffName';
 import { formatPaymentDisplay } from '../../constants';
 import {
   DataTable,
@@ -1810,7 +1811,7 @@ const LiveOrdersPage: React.FC = () => {
                         )}
                         {order.pager_number && (<><br />Pager: {order.pager_number}</>)}
                         {order.order_type === 'pickup' && (<><br /><span style={{ color: '#8B5CF6', fontWeight: 500 }}>Pickup: {order.scheduled_pickup_time ? formatPickupTimeRange(order.scheduled_pickup_time) : 'ASAP'}</span></>)}
-                        {order.cashier_name && (<><br /><span style={{ color: '#8898AA', fontSize: '11px' }}>Cashier: {order.cashier_name}</span></>)}
+                        {order.cashier_name && (<><br /><span style={{ color: '#8898AA', fontSize: '11px' }}>Cashier: {stripStaffNs(order.cashier_name)}</span></>)}
                       </CustomerInfo>
                     </DataTableCell>
                     <DataTableCell data-label="ITEMS">

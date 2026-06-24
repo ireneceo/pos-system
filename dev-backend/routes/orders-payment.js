@@ -10,6 +10,7 @@ const RestaurantCustomer = require('../models/RestaurantCustomer');
 const Coupon = require('../models/Coupon');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
+const { stripStaffNs } = require('../utils/staffName');
 const { executeQuery, executeTransaction } = require('../utils/queryWrapper');
 const { deductInventoryForOrder } = require('../services/inventoryDeductionService');
 const { earnPointsForOrder, refundPointsForOrder, usePointsForOrder } = require('../services/pointService');
@@ -363,7 +364,7 @@ router.post('/:id/payments', authenticateToken, requirePaymentAccess, async (req
       change_amount: change_amount != null ? parseFloat(change_amount) : null,
       receipt_number: receiptNumber,
       cashier_id: req.user?.id || null,
-      cashier_name: cashier_name || req.user?.full_name || req.user?.username || null,
+      cashier_name: stripStaffNs(cashier_name || req.user?.full_name || req.user?.username) || null,
       paid_at: new Date()
     });
 

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Modal as CommonModal } from '../../components/UI';
 import OrderActionHistory from './OrderActionHistory';
 import { formatCurrency } from '../../utils/currency';
+import { stripStaffNs } from '../../utils/staffName';
 import { formatPaymentDisplay } from '../../constants';
 import { formatDateTime as formatDateTimeUtil } from '../../utils/timezone';
 import { generateHTMLBill, generateHTMLKitchenTicket, tagTicketWithStations, getPrinterSettings } from '../../utils/billPrint';
@@ -584,7 +585,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
             {selectedOrder.cashier_name && (
               <DetailRow>
                 <DetailLabel>Cashier:</DetailLabel>
-                <DetailValue>{selectedOrder.cashier_name}</DetailValue>
+                <DetailValue>{stripStaffNs(selectedOrder.cashier_name)}</DetailValue>
               </DetailRow>
             )}
           </OrderDetailSection>

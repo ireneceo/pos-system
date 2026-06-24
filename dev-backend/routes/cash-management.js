@@ -8,6 +8,7 @@ const { Op, fn, col, literal } = require('sequelize');
 const { CashierShift, CashReconciliation, CashMovement, PaymentMethodSetting, OrderPayment } = require('../models');
 const { authenticateToken, checkRestaurantAccess, requirePosCounter } = require('../middleware/auth');
 const { getRestaurantTimezone, getDateBounds } = require('../utils/dateTimeHelper');
+const { stripStaffNs } = require('../utils/staffName');
 const Restaurant = require('../models/Restaurant');
 
 const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
@@ -119,7 +120,7 @@ router.post('/restaurant/:restaurantId/shift/open', authenticateToken, checkRest
     const shift = await CashierShift.create({
       restaurant_id: restaurantId,
       cashier_id: req.user.id || null,
-      cashier_name: req.user.full_name || req.user.username || null,
+      cashier_name: stripStaffNs(req.user.full_name || req.user.username) || null,
       business_date: businessDate(tz),
       opened_at: new Date(),
       opening_float,
