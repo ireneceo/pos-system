@@ -948,8 +948,8 @@ export function generateBillContent(orderData, storeInfo) {
     content += formatLine('Pickup #:', orderData.pickupNumber) + CMD.LINE_FEED;
   }
 
-  const dateStr = orderData.date.toLocaleDateString('en-MY');
-  const timeStr = orderData.date.toLocaleTimeString('en-MY', {
+  const dateStr = orderData.date.toLocaleDateString('en-MY', { timeZone: (storeInfo && storeInfo.timeZone) || undefined });
+  const timeStr = orderData.date.toLocaleTimeString('en-MY', { timeZone: (storeInfo && storeInfo.timeZone) || undefined,
     hour: '2-digit',
     minute: '2-digit',
     hour12: true
@@ -1309,8 +1309,8 @@ export function generateHTMLBill(orderData, storeInfo) {
     customQrDataUrl = customQrImage;
   }
   const currencySymbol = getCurrencySymbol(orderData.currency);
-  const dateStr = orderData.date.toLocaleDateString('en-MY');
-  const timeStr = orderData.date.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: true });
+  const dateStr = orderData.date.toLocaleDateString('en-MY', { timeZone: (storeInfo && storeInfo.timeZone) || undefined });
+  const timeStr = orderData.date.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: (storeInfo && storeInfo.timeZone) || undefined });
 
   // Order-type label — always shown in the meta row (Type:). Big top banner is
   // reserved for pickup scheduled time / delivery address which need emphasis,
@@ -1516,7 +1516,7 @@ export function generateHTMLBill(orderData, storeInfo) {
  * Generate HTML Kitchen Ticket for PC browser print
  */
 export function generateHTMLKitchenTicket(orderData, storeInfo) {
-  const timeStr = orderData.date.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: true });
+  const timeStr = orderData.date.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: (storeInfo && storeInfo.timeZone) || undefined });
   const orderSource = orderData.orderSource === 'mobile' ? 'MOBILE ORDER' : 'POS';
 
   // 취소표 통일 (2026-06-04): 취소표는 별도 디자인 폐기 → 이 일반 오더티켓 생성기를 그대로
@@ -1686,7 +1686,7 @@ function generateHTMLAdditionalItemsTicket(orderData, storeInfo) {
   const addedItems = orderData.items.filter(item => item.added_at);
   if (addedItems.length === 0) return null;
 
-  const timeStr = new Date().toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: true });
+  const timeStr = new Date().toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: (storeInfo && storeInfo.timeZone) || undefined });
 
   const itemsHtml = addedItems.map(item => {
     const itemName = escapeHtmlForPrint(item.menuItem?.name || item.name);
@@ -2002,7 +2002,7 @@ export function generateKitchenTicketContent(orderData, storeInfo) {
   content += CMD.DASHED_LINE + CMD.LINE_FEED;
   content += formatLine('Order:', orderData.orderNumber) + CMD.LINE_FEED;
 
-  const timeStr = orderData.date.toLocaleTimeString('en-MY', {
+  const timeStr = orderData.date.toLocaleTimeString('en-MY', { timeZone: (storeInfo && storeInfo.timeZone) || undefined,
     hour: '2-digit',
     minute: '2-digit',
     hour12: true
@@ -2264,7 +2264,7 @@ export function generateSingleItemKitchenTicket(orderData, item, itemIndex, tota
   content += CMD.DASHED_LINE + CMD.LINE_FEED;
   content += formatLine('Order:', orderData.orderNumber) + CMD.LINE_FEED;
 
-  const timeStr = orderData.date.toLocaleTimeString('en-MY', {
+  const timeStr = orderData.date.toLocaleTimeString('en-MY', { timeZone: (storeInfo && storeInfo.timeZone) || undefined,
     hour: '2-digit',
     minute: '2-digit',
     hour12: true
@@ -2362,7 +2362,7 @@ export function generateSingleItemKitchenTicket(orderData, item, itemIndex, tota
  * Each item gets its own page with page-break
  */
 function generateHTMLMultiPageKitchenTickets(orderData, storeInfo) {
-  const timeStr = orderData.date.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: true });
+  const timeStr = orderData.date.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: (storeInfo && storeInfo.timeZone) || undefined });
   const orderSource = orderData.orderSource === 'mobile' ? 'MOBILE ORDER' : 'POS';
   const totalItems = orderData.items.length;
 
@@ -2825,7 +2825,7 @@ export function generateAdditionalItemsTicketContent(orderData, storeInfo) {
   content += CMD.DASHED_LINE + CMD.LINE_FEED;
   content += formatLine('Order:', orderData.orderNumber) + CMD.LINE_FEED;
 
-  const timeStr = new Date().toLocaleTimeString('en-MY', {
+  const timeStr = new Date().toLocaleTimeString('en-MY', { timeZone: (storeInfo && storeInfo.timeZone) || undefined,
     hour: '2-digit',
     minute: '2-digit',
     hour12: true
@@ -3021,7 +3021,7 @@ export function generateKitchenTicketPreview(orderData, storeInfo) {
   lines.push('------------------------------------------------');
   lines.push('Order:                          ' + orderData.orderNumber);
 
-  const timeStr = orderData.date.toLocaleTimeString('en-MY', {
+  const timeStr = orderData.date.toLocaleTimeString('en-MY', { timeZone: (storeInfo && storeInfo.timeZone) || undefined,
     hour: '2-digit',
     minute: '2-digit',
     hour12: true
@@ -3673,8 +3673,8 @@ function generateStationKitchenTicket(orderData, storeInfo, stationName, ticketI
   content += formatLine('Order:', orderData.orderNumber) + CMD.LINE_FEED;
 
   const timeStr = orderData.date
-    ? orderData.date.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: true })
-    : new Date().toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: true });
+    ? orderData.date.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: (storeInfo && storeInfo.timeZone) || undefined })
+    : new Date().toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: (storeInfo && storeInfo.timeZone) || undefined });
   content += formatLine('Time:', timeStr) + CMD.LINE_FEED;
 
   // Table / Pager / Pickup
