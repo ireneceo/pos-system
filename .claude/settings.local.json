@@ -749,7 +749,8 @@
       "Bash(pgrep -f react-scripts)",
       "Bash(sed -i \"s/4.05-tablemove-reroute-custdisplay-20260624/4.06-all-print-routes-pos1-20260624/\" public/sw.js)",
       "Bash(sed -i 's#useAutoPrintPoller\\({ restaurantId: user?.restaurantId, enabled: !!user?.restaurantId, getStoreInfo }\\);#useAutoPrintPoller\\({ restaurantId: user?.restaurantId || \\(user as any\\)?.restaurant_id, enabled: !!\\(user?.restaurantId || \\(user as any\\)?.restaurant_id\\), getStoreInfo }\\);#' src/pages/FloorPlan/FloorPlanPage.tsx)",
-      "Bash(sed -i 's#useAutoPrintPoller\\({ restaurantId: user?.restaurantId, enabled: !!user?.restaurantId \\\\&\\\\& !isFloorPlanOverlay, getStoreInfo }\\);#useAutoPrintPoller\\({ restaurantId: user?.restaurantId || \\(user as any\\)?.restaurant_id, enabled: !!\\(user?.restaurantId || \\(user as any\\)?.restaurant_id\\) \\\\&\\\\& !isFloorPlanOverlay, getStoreInfo }\\);#' src/pages/POSTerminal/POSTerminalPage.tsx)"
+      "Bash(sed -i 's#useAutoPrintPoller\\({ restaurantId: user?.restaurantId, enabled: !!user?.restaurantId \\\\&\\\\& !isFloorPlanOverlay, getStoreInfo }\\);#useAutoPrintPoller\\({ restaurantId: user?.restaurantId || \\(user as any\\)?.restaurant_id, enabled: !!\\(user?.restaurantId || \\(user as any\\)?.restaurant_id\\) \\\\&\\\\& !isFloorPlanOverlay, getStoreInfo }\\);#' src/pages/POSTerminal/POSTerminalPage.tsx)",
+      "Bash(awk '/finalStatus === .cancelled.|hadPrinted|pending_reprint.*cancel/{print NR\": \"$0}' routes/orders-crud.js)"
     ],
     "deny": [],
     "ask": []

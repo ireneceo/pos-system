@@ -1226,7 +1226,9 @@ router.post('/:id/move-table', authenticateToken, async (req, res) => {
           order_items: clearedItems,
           needs_print: true,
           print_claimed_at: null,
-          pending_reprint: { type: 'move', notice: { title: '** TABLE CHANGED **', lines: ['Discard the previous ticket.', 'Use THIS ticket.'] } }
+          // fromTable/toTable: 티켓 맨 아래 테이블 라인에 "이전(취소선) → 새" 로 표기(어느 테이블에서
+          // 어디로 옮겼는지 주방이 즉시 알게). 프론트 billPrint 가 noticeHeader.fromTable/toTable 로 렌더.
+          pending_reprint: { type: 'move', fromTable: sourceTableNumber || null, toTable: destinationTableNumber || null, notice: { title: '** TABLE CHANGED **', fromTable: sourceTableNumber || null, toTable: destinationTableNumber || null, lines: ['Discard the previous ticket.', 'Use THIS ticket.'] } }
         }, { transaction: t });
       }
 

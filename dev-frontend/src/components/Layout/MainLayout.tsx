@@ -1155,8 +1155,21 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       });
     };
 
+    // 2026-06-24 (Irene "인쇄 느림 / 테이블이동 특히 느림"): 소켓 이벤트는 서버가 매장
+    // 모든 기기에 푸시한다. 어느 기기·계정에서 주문/추가/이동/취소/삭제를 해도 메인 POS 가
+    // 그 즉시 폴링 → 인쇄. 신규주문은 same-device 'autoprint-poke' 로 빨랐지만, 다른 기기
+    // (노트북/서버 태블릿)·테이블이동/취소/삭제(poke 없음)는 POS1 의 5초 주기를 기다려 느렸다.
+    // 폴링은 print-claim(needs_print true→false) 이라 중복 인쇄 없음. socket 은 트리거만,
+    // 인쇄 주체는 _printPollFn(폴러). 120ms 디바운스로 버스트 합침.
+    let _pokePollTimer: any = null;
+    const _pokePoll = () => {
+      if (_pokePollTimer) return;
+      _pokePollTimer = setTimeout(() => { _pokePollTimer = null; try { _printPollFn(); } catch {} }, 120);
+    };
+
     socket.on('order-created', (payload: any) => {
       fetchBadgeCounts();
+      _pokePoll();
       const isMobile = payload?.source === 'mobile';
       if (isMobile) {
         const cfg = operationSettingsRef.current?.mobileOrderAlerts;
@@ -1189,7 +1202,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         playIfNotOnSoundPage('bell');
       }
     });
-    socket.on('order-items-added', () => { playIfNotOnSoundPage('bell'); fetchBadgeCounts(); });
+    socket.on('order-items-added', () => { playIfNotOnSoundPage('bell'); fetchBadgeCounts(); _pokePoll(); });
 
     // 2026-05-28 매장 critical: backend-driven auto-print polling. socket 의존
     // 자체 제거. 매장 device 가 어떤 페이지에 있든 10초 polling 으로 backend
@@ -1381,10 +1394,14 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         setMobileAlertOrders(prev => prev.filter(a => String(a.id) !== String(payload.id)));
       }
       fetchBadgeCounts();
+      // 테이블이동/취소/아이템삭제 재발행은 backend 가 needs_print 를 다시 세우고 order-updated
+      // 를 쏜다 → 메인 POS 가 즉시 폴링해 안내티켓(TABLE CHANGED/CANCELLED/VOID) 인쇄.
+      _pokePoll();
     });
 
     return () => {
       if (_printPollTimer) clearInterval(_printPollTimer);
+      if (_pokePollTimer) clearTimeout(_pokePollTimer);
       socket.disconnect();
       globalSocketRef.current = null;
     };
@@ -1947,8 +1964,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           // 2-depth siblings that previously lived as tabs inside Store Settings
           { path: `/restaurant/${rid}/settings?tab=tablesQr`, label: t('nav.tablesQr', 'Tables & QR'), visible: hasMenuPermission('settings') },
           { path: `/restaurant/${rid}/settings?tab=payment`, label: t('nav.paymentMethods', 'Payment Methods'), visible: hasMenuPermission('settings') },
-          { path: `/restaurant/${rid}/settings?tab=printer`, label: t('nav.printer', 'Printer'), visible: hasMenuPermission('settings') },
-          { path: `/restaurant/${rid}/settings?tab=kitchenStations`, label: t('nav.kitchenStations', 'Kitchen Stations'), visible: hasMenuPermission('settings') },
+          // 2026-06-24 (Irene): 프린터/주방 스테이션 설정은 POS 권한(access_pos)에도 연다 —
+          // 매장 POS 직원이 프린터를 직접 설정/진단할 수 있어야(설정 전체 권한 없이도). route 는
+          // 이미 Staff 허용, 탭 내용은 role 게이트 없이 ?tab= 으로 렌더. 다른 설정 탭은 그대로 settings 권한.
+          { path: `/restaurant/${rid}/settings?tab=printer`, label: t('nav.printer', 'Printer'), visible: hasMenuPermission('settings') || hasMenuPermission('access_pos') },
+          { path: `/restaurant/${rid}/settings?tab=kitchenStations`, label: t('nav.kitchenStations', 'Kitchen Stations'), visible: hasMenuPermission('settings') || hasMenuPermission('access_pos') },
           { path: `/restaurant/${rid}/settings?tab=mobileOrder`, label: t('nav.mobileOrder', 'Mobile Order'), visible: hasMenuPermission('settings') },
           { path: `/restaurant/${rid}/settings?tab=reservation`, label: t('nav.reservation', 'Reservation'), visible: hasMenuPermission('settings') },
           { path: `/restaurant/${rid}/settings?tab=membership`, label: t('nav.membership', 'Membership'), visible: hasMenuPermission('settings') },

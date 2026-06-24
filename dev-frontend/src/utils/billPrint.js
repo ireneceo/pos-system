@@ -1625,7 +1625,17 @@ export function generateHTMLKitchenTicket(orderData, storeInfo) {
   // Table / pager / pickup big number (skipFooterLocation suppresses for group prints)
   let pickupHtml = '';
   if (!orderData.skipFooterLocation) {
-    if (orderData.tableNumber) {
+    // 2026-06-24 (Irene): 테이블이동 재발행 티켓은 맨 아래 테이블 라인에 "이전(취소선) → 새"
+    // 로 표기 — 주방이 어느 테이블에서 어디로 옮겼는지 즉시 안다. noticeHeader.fromTable/toTable
+    // (backend pending_reprint.notice) 가 있을 때만. 공간 절약 위해 'TABLE' 라벨 생략, 번호만.
+    const _nhMove = orderData.noticeHeader && typeof orderData.noticeHeader === 'object'
+      && orderData.noticeHeader.fromTable != null && orderData.noticeHeader.toTable != null
+      && String(orderData.noticeHeader.fromTable) !== String(orderData.noticeHeader.toTable);
+    if (_nhMove) {
+      const _ft = escapeHtmlForPrint(String(orderData.noticeHeader.fromTable));
+      const _tt = escapeHtmlForPrint(String(orderData.noticeHeader.toTable));
+      pickupHtml = `<div class="big-number"><span style="text-decoration:line-through;font-weight:700;">${_ft}</span> &rarr; ${_tt}</div>`;
+    } else if (orderData.tableNumber) {
       pickupHtml = `<div class="big-number">TABLE ${escapeHtmlForPrint(orderData.tableNumber)}</div>`;
     } else if (orderData.pagerNumber) {
       pickupHtml = `<div class="big-number">PAGER ${escapeHtmlForPrint(orderData.pagerNumber)}</div>`;
