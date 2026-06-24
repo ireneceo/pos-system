@@ -741,7 +741,8 @@
       "Bash(scp -q \"irene@87.106.78.146:/var/www/backups/thefire16-*-testdelete-2026-06-24T0909.json\" /var/www/backups/)",
       "Bash(echo \"빌드 시작\\(백그라운드\\). PID=$!\")",
       "Bash(NODE_PATH=/var/www/dev-frontend/node_modules node /tmp/claude-1000/-var-www/c835f020-d124-4253-aa4b-f1bf36733967/scratchpad/mount4.js)",
-      "Bash(awk '/const handleAddOrder = async/,/^  };/' src/pages/POSTerminal/POSTerminalPage.tsx)"
+      "Bash(awk '/const handleAddOrder = async/,/^  };/' src/pages/POSTerminal/POSTerminalPage.tsx)",
+      "Bash(sed -i \"s/4.02-server-role-overlay-close-20260624/4.03-other-device-pos-autoprint-20260624/\" public/sw.js)"
     ],
     "deny": [],
     "ask": []

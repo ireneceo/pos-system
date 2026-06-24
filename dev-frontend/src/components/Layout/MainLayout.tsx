@@ -1218,8 +1218,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         // 2026-06-23 (Irene): 다중 POS 자동인쇄 중복 방지 — useAutoPrintPoller 와 동일 게이트.
         // 워크스테이션 2개 이상 + 이 단말 워크스테이션 autoPrint=false 면 자동인쇄 주체 아님(POS2)
         // → 건너뜀. 자동인쇄 주체(autoPrint=true, 보통 POS1)만 인쇄. 단일 POS/POS1 무영향.
+        // 2026-06-24 (Irene): + 워크스테이션 미선택 기기(노트북/서버 태블릿)도 인쇄 큐 미접근.
+        // 미선택이면 getActiveBillPrinter() 가 workstations[0](=메인 POS) 폴백을 물려받아 자기가
+        // 주문을 claim 후 인쇄 실패→분실시켰다. 이걸 막아 다른 디바이스 POS주문도 "모바일처럼"
+        // 메인 POS 가 인쇄. 인쇄 방식 무변경 — "누가 집어가나" 조건만.
         const _wsListML = Array.isArray((printSettings as any).workstations) ? (printSettings as any).workstations : [];
-        if (_wsListML.length > 1 && activeBill && activeBill.autoPrint === false) {
+        const _wsIdML = billPrintMod.getActiveWorkstationId();
+        if (_wsListML.length > 1 && (!_wsIdML || (activeBill && activeBill.autoPrint === false))) {
           return;
         }
         // 2026-06-22 (Irene): backlog cutoff — MUST mirror useAutoPrintPoller. This

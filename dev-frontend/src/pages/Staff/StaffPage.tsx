@@ -45,11 +45,12 @@ const MENU_GROUPS = [
 ];
 
 // 작업 접근(운영 화면) — 직원이 보는 작업 화면 결정. docs/STAFF_ACCESS_AND_IDENTITY_DESIGN.md
+// 체크 = 그 권한을 줌(허용). 서버(홀) 역할 = POS/Counter 만 켜고 Payment·Cancel/Void 는 끈다.
 const WORK_ACCESS = [
-  { key: 'access_pos', label: 'POS / Counter — orders, add items, move table' },
-  { key: 'access_payment', label: 'Payment — take payment (off = server cannot collect payment)' },
-  { key: 'access_void', label: 'Cancel / Void — cancel orders & void items (off = server cannot cancel)' },
-  { key: 'access_serving', label: 'Serving — Floor Plan serving (item list), no orders/payment' },
+  { key: 'access_pos', label: 'POS / Counter — take orders, add items, move tables' },
+  { key: 'access_payment', label: 'Payment — collect payment from customers' },
+  { key: 'access_void', label: 'Cancel / Void — cancel orders and void items' },
+  { key: 'access_serving', label: 'Serving — serve only (item list), no ordering' },
   { key: 'access_kitchen', label: 'Kitchen — Kitchen Display only' },
 ];
 

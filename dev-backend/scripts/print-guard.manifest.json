@@ -1,12 +1,12 @@
 {
   "note": "🔒 PRINT GUARD baseline — 인쇄/주문 생명선 파일 지문. 변경 승인 시에만 갱신.",
-  "blessed_at": "2026-06-24T10:02:23.503Z",
+  "blessed_at": "2026-06-24T11:06:09.710Z",
   "files": {
     "dev-frontend/src/utils/billPrint.js": "c461acdc9f0de3485f2c918bf46a8a21ccd0cff677490eeb44909a7076db37d1",
-    "dev-frontend/src/hooks/useAutoPrintPoller.ts": "3c997997c905fd0d979a9eca3ed0e2ce7a705de0b7026a0b166bec62c9b46d33",
+    "dev-frontend/src/hooks/useAutoPrintPoller.ts": "d48bb94544e386f8267322337ba1502ed48df2387bfce4ad6d0c0f8dd2b4625d",
     "dev-backend/utils/stationEnrichment.js": "a0641a41a155422a19b5baecb60599c7760b9a7bd249af874e6f004187091165",
     "dev-backend/utils/orderTotals.js": "3f6960d1cb7ed88ea7762f2fa736994aca79dfbf086984f2738ce8390ed84b53",
-    "dev-frontend/src/components/Layout/MainLayout.tsx": "9c278aca0bdf66b930c5fe1945a4dfb750fe11c5e3ab40c562af883152b5ed81",
+    "dev-frontend/src/components/Layout/MainLayout.tsx": "9452faad3c79b14596cc12be4ea1c8cf67261c78b9ae708a3c2abe9b16533f5a",
     "dev-frontend/src/pages/KitchenDisplay/KitchenDisplayPage.tsx": "edc2723177b55b10be543766827a5d5d7fdb4db8f04e17de5654358830a68b84",
     "dev-frontend/src/pages/POSTerminal/POSTerminalPage.tsx": "ccc8238aa5a27e7141110aa25335b0c78365b0c4ff821c9c0aa305dadfdc24f4",
     "dev-backend/routes/orders-crud.js": "14d098fa691c8493bc7cdfc423f44a4000f50b72e475e27847885cdea5295984"

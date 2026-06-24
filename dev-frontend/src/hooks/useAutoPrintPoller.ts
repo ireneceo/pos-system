@@ -61,8 +61,15 @@ export function useAutoPrintPoller(opts: {
         // 보통 메인 POS1)만 인쇄해 같은 주문이 두 단말에서 두 번 찍히던 문제 제거(폰트 다른 2장).
         // 단일 POS/미구성 매장은 영향 없음(workstations<=1 이면 미적용). autoPrint=true 단말(POS1)
         // 은 이 게이트를 절대 안 타므로 동작 100% 무변경.
+        // 2026-06-24 (Irene): 다른 디바이스 POS주문도 "모바일처럼" 메인 POS 가 인쇄하게.
+        // 모바일이 되는 이유 = 넣은 기기가 자기 주문을 가로채지 않아서다. 프린터 없는 기기는
+        // 워크스테이션 미선택(getActiveWorkstationId()=null)이라 getActiveBillPrinter() 가
+        // workstations[0](=메인 POS) 를 폴백으로 물려받아 자기가 주문을 claim 후 인쇄 실패→분실시켰다.
+        // 다중 POS 매장에서 워크스테이션 미선택 기기는 인쇄 큐를 안 만진다(메인 POS 가 전담). 인쇄
+        // 방식 무변경 — "누가 집어가나" 조건만. 단일 POS/미구성 매장(workstations<=1)은 무영향.
         const _wsList = Array.isArray((printSettings as any).workstations) ? (printSettings as any).workstations : [];
-        if (_wsList.length > 1 && activeBill && activeBill.autoPrint === false) {
+        const _wsId = billPrintMod.getActiveWorkstationId();
+        if (_wsList.length > 1 && (!_wsId || (activeBill && activeBill.autoPrint === false))) {
           return;
         }
 
