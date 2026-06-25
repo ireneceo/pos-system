@@ -19,7 +19,8 @@
 const { Op } = require('sequelize');
 const {
   BrandMenu, BrandMenuCategory, BrandMenuOption, BrandMenuOptionGroup,
-  BrandMenuOptionGroupLink, Restaurant, Product, OptionGroup, Option, Category
+  BrandMenuOptionGroupLink, Restaurant, Product, OptionGroup, Option, Category,
+  BrandMenuRecommendation, ProductRecommendation
 } = require('../models');
 
 const LOCK_FIELDS = ['name', 'price', 'category', 'image', 'options'];
@@ -492,10 +493,74 @@ function computeMenuDiff(product, brandMenu, localCategoryName) {
   return { fields, is_new_menu: false };
 }
 
+// ──────────────────────────────────────────────────────────────────────────
+// #11c 모바일 크로스셀 — 브랜드 추천을 가맹점으로 동기화 (설계 §4.2)
+// brand_menu_recommendations(BG) → product_recommendations(매장, origin='brand').
+// 가맹점 자기 추천(origin='restaurant')은 절대 안 건드림. 매핑 안 되는 brand 분만 제거.
+// ──────────────────────────────────────────────────────────────────────────
+async function syncBrandRecommendationsToRestaurant({ brandId, restaurantId, transaction = null }) {
+  const brandRecs = await BrandMenuRecommendation.findAll({ where: { brand_id: brandId }, transaction });
+
+  // brand_menu_id → 그 매장의 로컬 product id (브랜드메뉴 sync 로 이미 생성됨)
+  const bmIds = new Set();
+  brandRecs.forEach(r => { bmIds.add(Number(r.brand_menu_id)); bmIds.add(Number(r.recommended_brand_menu_id)); });
+  const prods = bmIds.size
+    ? await Product.findAll({ where: { restaurant_id: restaurantId, brand_menu_id: { [Op.in]: [...bmIds] }, is_active: true }, attributes: ['id', 'brand_menu_id'], transaction })
+    : [];
+  const localByBm = new Map(prods.map(p => [Number(p.brand_menu_id), p.id]));
+
+  const keep = new Set();
+  let synced = 0;
+  for (const r of brandRecs) {
+    const baseLocal = localByBm.get(Number(r.brand_menu_id));
+    const recLocal = localByBm.get(Number(r.recommended_brand_menu_id));
+    if (!baseLocal || !recLocal || baseLocal === recLocal) continue; // 양쪽 매핑 안 되면 skip
+
+    const [row, created] = await ProductRecommendation.findOrCreate({
+      where: { product_id: baseLocal, recommended_product_id: recLocal },
+      defaults: {
+        restaurant_id: restaurantId, product_id: baseLocal, recommended_product_id: recLocal,
+        origin: 'brand', brand_menu_recommendation_id: r.id, is_locked: !!r.is_locked, sort_order: r.sort_order || 0,
+      },
+      transaction,
+    });
+    if (created) { keep.add(row.id); synced++; }
+    else if (row.origin === 'brand') {
+      await row.update({ restaurant_id: restaurantId, brand_menu_recommendation_id: r.id, is_locked: !!r.is_locked, sort_order: r.sort_order || 0 }, { transaction });
+      keep.add(row.id); synced++;
+    }
+    // else: 같은 pair 의 origin='restaurant' 행이 이미 존재 → 그 추천은 이미 표시됨, 매장 행 보존.
+  }
+
+  // 더 이상 존재하지 않는 brand 분 제거 (origin='brand' 만, restaurant 분 무접촉)
+  const existingBrand = await ProductRecommendation.findAll({ where: { restaurant_id: restaurantId, origin: 'brand' }, attributes: ['id'], transaction });
+  const stale = existingBrand.filter(r => !keep.has(r.id)).map(r => r.id);
+  if (stale.length) await ProductRecommendation.destroy({ where: { id: { [Op.in]: stale } }, transaction });
+
+  return { synced, removed: stale.length };
+}
+
+// 브랜드의 모든 가맹점에 추천 동기화 (BG PUT 저장 시 호출)
+async function syncBrandRecommendationsToAllRestaurants({ brandId }) {
+  const restaurants = await Restaurant.findAll({ where: { brand_id: brandId }, attributes: ['id'] });
+  const results = [];
+  for (const r of restaurants) {
+    try {
+      const res = await syncBrandRecommendationsToRestaurant({ brandId, restaurantId: r.id });
+      results.push({ restaurant_id: r.id, ...res });
+    } catch (e) {
+      results.push({ restaurant_id: r.id, error: e.message });
+    }
+  }
+  return results;
+}
+
 module.exports = {
   LOCK_FIELDS,
   buildLocksSnapshot,
   syncBrandMenuToRestaurant,
+  syncBrandRecommendationsToRestaurant,
+  syncBrandRecommendationsToAllRestaurants,
   pushBrandMenuToRestaurants,
   resolveScopeTargetIds,
   applyScopeToBrandMenu,

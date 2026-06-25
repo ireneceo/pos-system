@@ -438,6 +438,8 @@ app.use('/api/categories', categoriesRouter);
 // External QR ↔ Coupon mapping — must mount BEFORE restaurantsRouter (inventory-core uses
 // router.use(authenticateToken) which would otherwise gate all /api/restaurants/* requests)
 app.use('/api/restaurants', require('./routes/external-qrs').router);
+// #11c 크로스셀 RA 추천 — restaurantsRouter 보다 먼저(구체 경로 우선, fall-through 회피)
+app.use('/api/restaurants', require('./routes/recommendations'));
 app.use('/api/restaurants', restaurantsRouter);
 app.use('/api/restaurant', restaurantsRouter); // Support singular form for backward compatibility
 app.use('/api/plans', plansRouter);

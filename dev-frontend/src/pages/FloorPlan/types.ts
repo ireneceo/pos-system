@@ -99,6 +99,7 @@ export interface TableStatusInfo {
   serviceChargeRate?: number;
   taxRate?: number;
   orderCreatedAt?: string;
+  updatedAt?: string | null;   // row version for stale-write guard (item 5)
   notes?: string | null;
   orderType?: string;
   paymentProof?: { image?: string; reference?: string; file_name?: string; uploaded_at?: string } | null;

@@ -760,5 +760,27 @@ router.get('/popular/:slug', async (req, res) => {
   }
 });
 
+// #11c 모바일 크로스셀 — 담은 상품에 대한 추천(공개, slug→restaurant 해석).
+// 설계 §3.3/1.1: ①수동연결 → ②추천카테고리 → []. 활성·재고·자신제외, 최대 6.
+router.get('/:slug/products/:productId/recommendations', async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const productId = parseInt(req.params.productId, 10);
+    if (!Number.isFinite(productId)) {
+      return res.status(400).json({ success: false, message: 'Invalid productId' });
+    }
+    const restaurant = await Restaurant.findOne({ where: { slug }, attributes: ['id'] });
+    if (!restaurant) return res.status(404).json({ success: false, message: 'Restaurant not found' });
+
+    const { resolveRecommendations } = require('../utils/crossSell');
+    const data = await resolveRecommendations(restaurant.id, productId, 6);
+    // 이미지 URL 정규화(메뉴 응답과 동일 헬퍼)
+    const out = data.map(p => ({ ...p, image: p.image ? parseImageData(p.image) : null }));
+    res.json({ success: true, data: out });
+  } catch (error) {
+    console.error('GET mobile recommendations:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to load recommendations' });
+  }
+});
 
 module.exports = router;

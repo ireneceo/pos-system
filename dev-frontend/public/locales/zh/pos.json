@@ -62,5 +62,17 @@
   "optionModal.cancel": "取消",
   "optionModal.addToOrder": "加入订单",
   "optionModal.customizeOrder": "自定义订单",
-  "optionModal.quantity": "数量"
+  "optionModal.quantity": "数量",
+  "pOSTerminalPage": {
+    "addOrderNote": "添加订单备注",
+    "orderNote": "订单备注",
+    "orderNotePlaceholder": "例如：过敏信息、生日、特殊要求…",
+    "noteChips": {
+      "noOnion": "不要洋葱",
+      "lessSpicy": "少辣",
+      "noIce": "去冰",
+      "allergy": "过敏",
+      "birthday": "生日"
+    }
+  }
 }

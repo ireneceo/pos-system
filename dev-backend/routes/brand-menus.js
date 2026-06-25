@@ -22,12 +22,14 @@ const { requireBGScope } = require('../middleware/brandScope');
 const { normalizeImageField, copyImageToOwnedFile } = require('../utils/imageProcessor');
 const {
   Brand, Restaurant, ProductRecipe, BrandMenu, BrandMenuCategory,
-  BrandMenuOptionGroup, BrandMenuOption, BrandMenuOptionGroupLink, BrandMenuRestaurant, Product
+  BrandMenuOptionGroup, BrandMenuOption, BrandMenuOptionGroupLink, BrandMenuRestaurant, Product,
+  BrandMenuRecommendation
 } = require('../models');
 const {
   syncBrandMenuToRestaurant, pushBrandMenuToRestaurants,
   markPendingForBrandMenu, softUnlinkProductsFromBrandMenu,
-  resolveScopeTargetIds, applyScopeToBrandMenu, setBrandMenuScope
+  resolveScopeTargetIds, applyScopeToBrandMenu, setBrandMenuScope,
+  syncBrandRecommendationsToAllRestaurants
 } = require('../services/brandMenuSyncService');
 
 // Ownership guard — BG가 이 brand 를 소유하는지 (System Admin 은 통과)
@@ -188,6 +190,63 @@ router.get('/:id', authenticateToken, requireBGScope, async (req, res) => {
   } catch (e) {
     console.error('[brand-menus] detail error:', e);
     res.status(500).json({ success: false, message: 'Failed to fetch brand menu' });
+  }
+});
+
+// #11c 크로스셀 — BG 브랜드메뉴 추천 연결 (설계 §3.2). 저장 시 가맹점 동기화.
+router.get('/:id/recommendations', authenticateToken, requireBGScope, async (req, res) => {
+  try {
+    const brandMenuId = parseInt(req.params.id, 10);
+    const menu = await BrandMenu.findByPk(brandMenuId, { attributes: ['id', 'brand_id'] });
+    if (!menu) return res.status(404).json({ success: false, message: 'Brand menu not found' });
+    if (!(await assertBrandOwnership(req, menu.brand_id))) {
+      return res.status(403).json({ success: false, message: 'Brand not owned' });
+    }
+    const recs = await BrandMenuRecommendation.findAll({ where: { brand_menu_id: brandMenuId }, order: [['sort_order', 'ASC'], ['id', 'ASC']] });
+    const recIds = recs.map(r => r.recommended_brand_menu_id);
+    const menus = recIds.length ? await BrandMenu.findAll({ where: { id: { [Op.in]: recIds }, brand_id: menu.brand_id }, attributes: ['id', 'name', 'image'] }) : [];
+    const byId = new Map(menus.map(m => [m.id, m]));
+    const data = recs.map(r => ({
+      id: r.id, recommended_brand_menu_id: r.recommended_brand_menu_id,
+      name: byId.get(r.recommended_brand_menu_id)?.name || `#${r.recommended_brand_menu_id}`,
+      image: byId.get(r.recommended_brand_menu_id)?.image || null,
+      sort_order: r.sort_order, is_locked: r.is_locked,
+    }));
+    res.json({ success: true, data });
+  } catch (e) {
+    console.error('[brand-menus] get recommendations error:', e);
+    res.status(500).json({ success: false, message: 'Failed to load recommendations' });
+  }
+});
+
+router.put('/:id/recommendations', authenticateToken, requireBGScope, async (req, res) => {
+  try {
+    const brandMenuId = parseInt(req.params.id, 10);
+    const menu = await BrandMenu.findByPk(brandMenuId, { attributes: ['id', 'brand_id'] });
+    if (!menu) return res.status(404).json({ success: false, message: 'Brand menu not found' });
+    if (!(await assertBrandOwnership(req, menu.brand_id))) {
+      return res.status(403).json({ success: false, message: 'Brand not owned' });
+    }
+    const ids = Array.isArray(req.body.recommended_brand_menu_ids) ? req.body.recommended_brand_menu_ids.map(Number).filter(Number.isFinite) : [];
+    const isLocked = req.body.is_locked === true;
+    const cleanIds = [...new Set(ids.filter(id => id !== brandMenuId))];
+    if (cleanIds.length) {
+      const owned = await BrandMenu.findAll({ where: { id: { [Op.in]: cleanIds }, brand_id: menu.brand_id }, attributes: ['id'] });
+      const set = new Set(owned.map(m => m.id));
+      for (const id of cleanIds) if (!set.has(id)) return res.status(400).json({ success: false, message: `Brand menu ${id} not in this brand` });
+    }
+    await BrandMenuRecommendation.destroy({ where: { brand_menu_id: brandMenuId } });
+    let order = 0;
+    for (const recId of cleanIds) {
+      await BrandMenuRecommendation.create({ brand_id: menu.brand_id, brand_menu_id: brandMenuId, recommended_brand_menu_id: recId, sort_order: order, is_locked: isLocked });
+      order++;
+    }
+    // 저장 후 가맹점 동기화 (설계 §4.1)
+    const sync = await syncBrandRecommendationsToAllRestaurants({ brandId: menu.brand_id });
+    res.json({ success: true, data: { saved: cleanIds.length, synced_restaurants: sync.length } });
+  } catch (e) {
+    console.error('[brand-menus] put recommendations error:', e);
+    res.status(500).json({ success: false, message: 'Failed to save recommendations' });
   }
 });
 

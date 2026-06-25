@@ -104,7 +104,10 @@ export const buildTableOrderInfo = (order: any, now: number = Date.now()): Table
     serviceChargeRate: parseFloat(order.service_charge_rate || 0),
     taxRate: parseFloat(order.tax_rate || 0),
     orderCreatedAt: createdAt,
-    notes: null,
+    // 2026-06-26 (item 5): carry the row version so serve toggles can send
+    // base_updated_at and the backend can reject a stale full-array overwrite.
+    updatedAt: order.updatedAt || order.updated_at || null,
+    notes: order.notes || null,
     orderType: order.order_type || 'dine_in',
     paymentProof: order.payment_proof || null,
   } as TableStatusInfo;

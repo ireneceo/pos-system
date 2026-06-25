@@ -203,8 +203,11 @@ router.get('/mergeable', authenticateToken, async (req, res) => {
         restaurant_id: restaurantId,
         table_number: tableNumber,
         // order_type 무관 — 같은 테이블 + 결제전 = 동일 손님 으로 통일.
+        // 2026-06-26 (item 4): 'served' 제외하면 다 먹고 미결제인 테이블에 추가주문이
+        // 새 빌로 갈라짐 → served 허용. table_cleared 가드로 비운 테이블만 차단.
         payment_status: 'pending',
-        status: { [Op.notIn]: ['served', 'completed', 'cancelled'] },
+        status: { [Op.notIn]: ['completed', 'cancelled'] },
+        table_cleared: { [Op.not]: true },
         createdAt: { [Op.between]: [todayStart, todayEnd] },
         is_deleted: { [Op.not]: true },
         [Op.and]: [
@@ -267,14 +270,23 @@ async function findMergeableOrder(restaurantId, tableNumber, orderType, newOrder
   // mobile orders actually hit (PaymentPage POSTs to /api/orders with
   // source:'mobile'); leaving order_type filtered here meant a takeaway-then-
   // dine-in sequence at the same table created two separate bills.
+  // 2026-06-26 (item 4): 'served' was excluded here, which split the bill when a
+  // guest finished eating (status='served') but had NOT paid yet (payment_status
+  // 'pending') and ordered another round — the new order became a separate bill
+  // (B-5 #026/#030). The shop's rule is "same table + payment pending = one bill"
+  // regardless of stage, so served-but-unpaid must still merge. We only add a
+  // table_cleared guard so a table that was explicitly freed (or auto-freed on
+  // payment) never absorbs a fresh order. payment_status:'pending' already keeps
+  // paid orders out.
   const queryOptions = {
     where: {
       restaurant_id: restaurantId,
       table_number: tableNumber,
       payment_status: 'pending',
       status: {
-        [Op.notIn]: ['served', 'completed', 'cancelled']
+        [Op.notIn]: ['completed', 'cancelled']
       },
+      table_cleared: { [Op.not]: true },
       createdAt: {
         [Op.between]: [todayStart, todayEnd]
       },
@@ -1725,6 +1737,33 @@ router.patch('/:id/items', authenticateToken, async (req, res) => {
     if (req.user?.restaurant_id && Number(req.user.restaurant_id) !== Number(order.restaurant_id)
         && req.user.role !== 'System Admin') {
       return res.status(403).json({ success: false, error: { message: 'Forbidden', code: 'FORBIDDEN' } });
+    }
+
+    // ── STALE-WRITE GUARD (2026-06-26, item 5) — optimistic concurrency ───────
+    // order_items is a FULL-ARRAY replace, so a device working from a stale cache
+    // (it missed a concurrent edit during a connection blip) silently overwrites
+    // another device's change. Reported case: T-3 계란찜 was reduced 2→1 on one POS,
+    // then a 'served' write from a second POS carrying the cached [계란찜×2] restored
+    // qty to 2 (only the total looked new). The forward-only guard below clamps
+    // cooking STATUS but NOT quantities/removals, so it cannot catch this. A client
+    // may send base_updated_at = the updatedAt it last read; if the row moved on
+    // since (>1s newer), reject with 409 STALE_WRITE and return the current order so
+    // the client refreshes and re-applies. Opt-in: callers that omit base_updated_at
+    // behave exactly as before — no regression for KDS or any other writer. The 1s
+    // tolerance absorbs DATETIME second-precision and rapid same-device edits (a real
+    // stale write is many seconds old). No print routing touched.
+    const _baseTs = req.body.base_updated_at ? new Date(req.body.base_updated_at).getTime() : null;
+    if (_baseTs != null && !Number.isNaN(_baseTs) && order.updatedAt
+        && (new Date(order.updatedAt).getTime() - _baseTs) > 1000) {
+      let _curItems = order.order_items;
+      if (typeof _curItems === 'string') { try { _curItems = JSON.parse(_curItems); } catch { _curItems = []; } }
+      const _plain = order.get ? order.get({ plain: true }) : order;
+      _plain.order_items = _curItems;
+      return res.status(409).json({
+        success: false, code: 'STALE_WRITE',
+        message: 'This order was just changed on another device. Refresh and try again.',
+        data: _plain
+      });
     }
 
     // snapshot for audit diff

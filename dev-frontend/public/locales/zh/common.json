@@ -726,5 +726,19 @@
   },
   "nav.cashUp": "现金结算",
   "nav.cashDrawer": "备用金管理",
-  "back": "返回"
+  "back": "返回",
+  "retry": "重试",
+  "clear": "清除",
+  "payment": {
+    "orderNote": "订单备注（可选）",
+    "orderNotePlaceholder": "例如：过敏信息、不需餐具、生日…"
+  },
+  "itemDetail": {
+    "recommend": {
+      "title": "您可能也喜欢",
+      "subtitle": "为您的订单增添一点",
+      "keepAdding": "继续添加",
+      "viewCart": "查看购物车"
+    }
+  }
 }

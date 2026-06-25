@@ -726,5 +726,19 @@
   },
   "nav.cashUp": "현금 마감",
   "nav.cashDrawer": "시재관리",
-  "back": "뒤로"
+  "back": "뒤로",
+  "retry": "다시 시도",
+  "clear": "지우기",
+  "payment": {
+    "orderNote": "주문 메모 (선택)",
+    "orderNotePlaceholder": "예: 알레르기, 수저 불필요, 생일…"
+  },
+  "itemDetail": {
+    "recommend": {
+      "title": "함께 주문하면 좋아요",
+      "subtitle": "주문에 조금 더 추가해보세요",
+      "keepAdding": "계속 담기",
+      "viewCart": "장바구니"
+    }
+  }
 }

@@ -69,10 +69,15 @@ async function findMergeableOrderMobile(restaurantId, tableNumber, orderType, tr
       table_number: tableNumber,
       // order_type filter removed — see note above. POS auto-merge in
       // orders-crud.js applies the same rule (table + pending = one bill).
+      // 2026-06-26 (item 4): 'served' removed from the exclusion so a guest who
+      // finished eating (served) but has not paid still merges a new mobile round
+      // into the same bill; table_cleared guard keeps freed tables out. Kept in
+      // sync with orders-crud.js findMergeableOrder.
       payment_status: 'pending',
       status: {
-        [Op.notIn]: ['served', 'completed', 'cancelled']
+        [Op.notIn]: ['completed', 'cancelled']
       },
+      table_cleared: { [Op.not]: true },
       // Only merge orders from today (same date condition)
       createdAt: {
         [Op.between]: [todayStart, todayEnd]
@@ -120,7 +125,9 @@ function normalizeTableLabelMobile(s) {
 
 router.post('/order', async (req, res) => {
   try {
-    const { items, paymentMethod, customerInfo, orderType, tableNumber, floorPlanTableId, storeId, scheduledPickupTime, skipAutoMerge } = req.body;
+    const { items, paymentMethod, customerInfo, orderType, tableNumber, floorPlanTableId, storeId, scheduledPickupTime, skipAutoMerge, notes } = req.body;
+    // 2026-06-26 (#11 리마크): 주문 전체 메모. 모든 주문유형(dine-in/takeaway/pickup/delivery) 허용.
+    const orderNotes = (notes != null && String(notes).trim()) ? String(notes).trim().slice(0, 500) : null;
 
     // Debug logging
     console.log('📝 Mobile order received:');
@@ -308,6 +315,10 @@ router.post('/order', async (req, res) => {
         // requirePaymentBeforeKitchen=true doesn't auto-send to the kitchen
         // when the customer adds more items but hasn't paid yet.
         const preserveOutstanding = mergeableOrder.status === 'outstanding';
+        // #11 리마크: 새 라운드에 메모가 있으면 기존 메모에 덧붙임(덮어쓰지 않음).
+        const mergedNotes = orderNotes
+          ? (mergeableOrder.notes ? `${mergeableOrder.notes}\n${orderNotes}` : orderNotes).slice(0, 500)
+          : mergeableOrder.notes;
         await mergeableOrder.update({
           order_items: mergedItems,
           subtotal: itemsSubtotal,
@@ -316,6 +327,7 @@ router.post('/order', async (req, res) => {
           discount_policy_amount: totals.discountPolicyAmount,
           coupon_discount: totals.couponDiscount,
           total_amount: newTotal,
+          notes: mergedNotes,
           status: preserveOutstanding ? 'outstanding' : 'pending',
           // 2026-05-28: 같은 테이블 모바일 추가 = kitchen ticket 만 (주방 추가
           // 주문 받아야 함). bill 은 절대 안 나옴 — 결제 버튼 시점에만.
@@ -441,6 +453,7 @@ router.post('/order', async (req, res) => {
             payment_status: 'pending',
             order_number: orderNumber,
             scheduled_pickup_time: scheduledPickupTime ? new Date(scheduledPickupTime) : null,
+            notes: orderNotes,
             order_items: enrichedItems
           };
           console.log('    restaurant_id:', orderData.restaurant_id);
@@ -523,6 +536,7 @@ router.post('/order', async (req, res) => {
         order_date: new Date().toISOString(),
         scheduled_pickup_time: scheduledPickupTime || null,
         source: 'mobile',
+        notes: orderPlain.notes || null,
         order_items: enrichedItems,
         createdAt: order.createdAt,
         updatedAt: order.updatedAt

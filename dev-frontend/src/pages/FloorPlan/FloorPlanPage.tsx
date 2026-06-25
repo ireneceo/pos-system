@@ -340,6 +340,18 @@ const FloorPlanPage: React.FC = () => {
   // 좁은 화면(≤1280px, 10인치 단말)에서 Daily Settlement/Customer Display/Open Drawer 를
   // 설정(gear) 드롭다운으로 수납. CSS 미디어와 충돌 없게 JS 로 단일 판정.
   const [isNarrow, setIsNarrow] = useState(false);
+  // 2026-06-26 (item 10): collapse the header action row to reclaim vertical space
+  // on tablets. Remembered per-device in localStorage. ZoneFilterBar below stays.
+  const [headerCollapsed, setHeaderCollapsed] = useState<boolean>(() => {
+    try { return localStorage.getItem('floorplan_header_collapsed') === '1'; } catch { return false; }
+  });
+  const toggleHeaderCollapsed = useCallback(() => {
+    setHeaderCollapsed(prev => {
+      const next = !prev;
+      try { localStorage.setItem('floorplan_header_collapsed', next ? '1' : '0'); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 1440px)');
     const apply = () => setIsNarrow(mq.matches);
@@ -1063,13 +1075,19 @@ const FloorPlanPage: React.FC = () => {
       const res = await fetch(`/api/orders/${orderId}/items`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ order_items: updated, allowItemRevert: !makeServed })
+        // 2026-06-26 (item 5): carry the version we last read so a stale serve
+        // toggle can't clobber a concurrent qty/item edit (backend → 409 STALE_WRITE).
+        body: JSON.stringify({ order_items: updated, allowItemRevert: !makeServed, base_updated_at: src.updatedAt || src.updated_at })
       });
       if (res.ok) {
         // 롤업은 백엔드 단일 단계 모델이 처리 (PATCH /items 가 아이템 min 단계로 주문
         // 단계를 같은 쓰기에서 파생 — 별도 /status 호출 제거로 이중 emit 레이스 차단).
         await fetchStatuses();
-      } else { setServeOverrides(prev => { const n = { ...prev }; delete n[key]; return n; }); }
+      } else {
+        // 409 STALE_WRITE 포함 모든 실패: 낙관적 override 해제 후 서버 진실로 재동기화.
+        setServeOverrides(prev => { const n = { ...prev }; delete n[key]; return n; });
+        await fetchStatuses();
+      }
     } catch (err) {
       console.error('Failed to toggle item served:', err);
       setServeOverrides(prev => { const n = { ...prev }; delete n[key]; return n; });
@@ -1748,6 +1766,16 @@ const FloorPlanPage: React.FC = () => {
       <Header>
         <HeaderLeft>
           <HeaderTitle>{t('floorplan:floorPlanPage.floorPlan')}</HeaderTitle>
+          {/* 2026-06-26 (item 10): collapse/expand the header action row (persisted). */}
+          <BackBtn
+            type="button"
+            onClick={toggleHeaderCollapsed}
+            title={headerCollapsed ? t('floorplan:floorPlanPage.expandHeader', 'Expand header') : t('floorplan:floorPlanPage.collapseHeader', 'Collapse header')}
+            aria-label={headerCollapsed ? 'Expand header' : 'Collapse header'}
+            style={{ padding: '6px 10px' }}
+          >
+            {headerCollapsed ? '▾' : '▴'}
+          </BackBtn>
           <BackBtn onClick={() => navigate(`/restaurant/${restaurantId}/dashboard`)}>
             &larr; {t('nav.dashboard', 'Dashboard')}
           </BackBtn>
@@ -1756,6 +1784,7 @@ const FloorPlanPage: React.FC = () => {
             {connected ? 'Live' : 'Offline'}
           </ConnectionStatus>
         </HeaderLeft>
+        {!headerCollapsed && (
         <HeaderRight>
           {/* 로그인 표시 = 사용자 아이콘 + 이름 (클릭 → PIN 전환). 역할 단정 "Cashier:" 라벨 없음
               — 로그인 주체가 관리자/오너일 수 있어 "Cashier" 가 부정확하던 문제. POS Terminal 과 동일. */}
@@ -1925,6 +1954,7 @@ const FloorPlanPage: React.FC = () => {
             );
           })()}
         </HeaderRight>
+        )}
       </Header>
 
       {/* Single chip bar — zones on the left, view-mode chips on the right.
@@ -2285,6 +2315,7 @@ const FloorPlanPage: React.FC = () => {
             serviceChargeRate: num(o.service_charge_rate),
             taxRate: num(o.tax_rate),
             orderCreatedAt: orderTime,
+            updatedAt: o.updatedAt || o.updated_at || null, // item 5 stale-write guard
             notes: o.notes ?? null,
             orderType: normOffTableType(o) || 'takeaway',
             scheduledPickupTime: o.scheduled_pickup_time ?? null,
@@ -2324,12 +2355,17 @@ const FloorPlanPage: React.FC = () => {
 
       </MainContent>
 
-      <FloorPlanStatsBar
-        tables={filteredFloorPlan.tables}
-        tableStatuses={tableStatuses}
-        currency={currency}
-        restaurantId={Number(restaurantId)}
-      />
+      {/* 2026-06-26 (item 10): serving-only staff (!canTakePayment) don't deal with
+          revenue/occupancy stats — hide the bar so it doesn't eat ~2 rows of their
+          table view. Payment-capable roles still see it. */}
+      {canTakePayment && (
+        <FloorPlanStatsBar
+          tables={filteredFloorPlan.tables}
+          tableStatuses={tableStatuses}
+          currency={currency}
+          restaurantId={Number(restaurantId)}
+        />
+      )}
 
       {/* Customer Display 안내 모달 (POS Terminal 과 동일 패턴) */}
       {cdInfoModal.open && (

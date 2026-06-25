@@ -1352,6 +1352,22 @@ const POSTerminalPage: React.FC = () => {
     }
   }, [searchParams]);
   const [pagerNumber, setPagerNumber] = useState('');
+  // 2026-06-26 (#11 리마크): 주문 전체 메모(알레르기·생일 등). 빠른선택 칩 + 자유입력.
+  // 자동저장 = 작성 중 draft 를 매장별 localStorage 에 보존(탭 전환/새로고침에도 유지),
+  // 주문 발행 시 비움. 품목별 메모(special_instructions)와 별개의 주문 단위 메모.
+  const REMARK_DRAFT_KEY = `posOrderRemarkDraft_${restaurantId || 'x'}`;
+  const [orderRemark, setOrderRemark] = useState<string>(() => {
+    try { return localStorage.getItem(`posOrderRemarkDraft_${restaurantId || 'x'}`) || ''; } catch { return ''; }
+  });
+  const [showRemarkBox, setShowRemarkBox] = useState<boolean>(() => {
+    try { return !!localStorage.getItem(`posOrderRemarkDraft_${restaurantId || 'x'}`); } catch { return false; }
+  });
+  useEffect(() => {
+    try {
+      if (orderRemark) localStorage.setItem(REMARK_DRAFT_KEY, orderRemark);
+      else localStorage.removeItem(REMARK_DRAFT_KEY);
+    } catch { /* ignore */ }
+  }, [orderRemark, REMARK_DRAFT_KEY]);
   const [pagerSearchQuery, setPagerSearchQuery] = useState('');
   const [showPagerDropdown, setShowPagerDropdown] = useState(false);
   const [showCustomAmountModal, setShowCustomAmountModal] = useState(false);
@@ -2301,7 +2317,8 @@ const POSTerminalPage: React.FC = () => {
       cashier_id: user?.id ? Number(user.id) : null,
       cashier_name: user?.name || null,
       // 사용자가 "기존 주문에 추가" 선택했으면 명시 머지.
-      forceMergeIntoOrderId: forceMergeOrderId || undefined
+      forceMergeIntoOrderId: forceMergeOrderId || undefined,
+      notes: orderRemark.trim() || undefined,  // #11 리마크
     };
 
       console.log('🟡 Calling addOrder with orderNumber:', newOrder.orderNumber);
@@ -2351,6 +2368,7 @@ const POSTerminalPage: React.FC = () => {
       setAppliedCoupon(null);
       setAppliedDiscountPolicy(null);
       setCouponCode('');
+      setOrderRemark(''); setShowRemarkBox(false);  // #11 리마크 발행 후 비움
       setTableNumber('');
       setGuestCount(0);
       setPagerNumber('');
@@ -2540,7 +2558,8 @@ const POSTerminalPage: React.FC = () => {
       pagerNumber: pagerNumber || undefined,
       cashier_id: user?.id ? Number(user.id) : null,
       cashier_name: user?.name || null,
-      forceMergeIntoOrderId: forceMergeOrderId || undefined
+      forceMergeIntoOrderId: forceMergeOrderId || undefined,
+      notes: orderRemark.trim() || undefined,  // #11 리마크
     };
 
       const savedOrder: any = await addOrder(newOrder, user?.restaurantId ? Number(user.restaurantId) : undefined);
@@ -2686,6 +2705,7 @@ const POSTerminalPage: React.FC = () => {
       setAppliedCoupon(null);
       setAppliedDiscountPolicy(null);
       setCouponCode('');
+      setOrderRemark(''); setShowRemarkBox(false);  // #11 리마크 발행 후 비움
       setTableNumber('');
       setGuestCount(0);
       setPagerNumber('');
@@ -3573,6 +3593,85 @@ const POSTerminalPage: React.FC = () => {
                   <SummaryValue>{currency} {total.toFixed(2)}</SummaryValue>
                 </TotalRow>
               </OrderSummary>
+
+              {/* 2026-06-26 (#11 리마크): 주문 전체 메모. 빠른선택 칩 + 자유입력(자동저장).
+                  품목별 메모와 별개. 터치 타겟 44px, 흰 입력 배경, POS 토큰. */}
+              <div style={{ marginTop: 12 }}>
+                {!showRemarkBox && !orderRemark ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowRemarkBox(true)}
+                    style={{
+                      width: '100%', minHeight: 44, padding: '0 14px', borderRadius: 10, cursor: 'pointer',
+                      background: 'var(--pos-surface-2, #F8FAFC)', color: 'var(--pos-text-muted, #64748B)',
+                      border: '1px dashed var(--pos-border, #E2E8F0)', fontSize: 14, fontWeight: 500,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    }}
+                  >
+                    {t('pos:pOSTerminalPage.addOrderNote', 'Add order note')}
+                  </button>
+                ) : (
+                  <div style={{
+                    border: '1px solid var(--pos-border, #E2E8F0)', borderRadius: 10,
+                    padding: 12, background: 'var(--pos-surface, #fff)',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--pos-text, #0F172A)' }}>
+                        {t('pos:pOSTerminalPage.orderNote', 'Order note')}
+                      </span>
+                      {orderRemark && (
+                        <button
+                          type="button"
+                          onClick={() => setOrderRemark('')}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--pos-text-muted, #64748B)', padding: 4 }}
+                        >
+                          {t('common:clear', 'Clear')}
+                        </button>
+                      )}
+                    </div>
+                    {/* 빠른선택 칩 — 탭하면 메모에 덧붙임 */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+                      {[
+                        t('pos:pOSTerminalPage.noteChips.noOnion', 'No onion'),
+                        t('pos:pOSTerminalPage.noteChips.lessSpicy', 'Less spicy'),
+                        t('pos:pOSTerminalPage.noteChips.noIce', 'No ice'),
+                        t('pos:pOSTerminalPage.noteChips.allergy', 'Allergy'),
+                        t('pos:pOSTerminalPage.noteChips.birthday', 'Birthday'),
+                      ].map((chip) => (
+                        <button
+                          key={chip}
+                          type="button"
+                          onClick={() => setOrderRemark(prev => {
+                            const has = prev.split(',').map(s => s.trim()).includes(chip);
+                            if (has) return prev;
+                            return prev.trim() ? `${prev.replace(/[,\s]+$/, '')}, ${chip}` : chip;
+                          })}
+                          style={{
+                            minHeight: 36, padding: '0 12px', borderRadius: 18, cursor: 'pointer',
+                            background: 'var(--pos-surface-2, #F1F5F9)', color: 'var(--pos-text, #334155)',
+                            border: '1px solid var(--pos-border, #E2E8F0)', fontSize: 13, fontWeight: 500,
+                          }}
+                        >
+                          {chip}
+                        </button>
+                      ))}
+                    </div>
+                    <textarea
+                      value={orderRemark}
+                      onChange={(e) => setOrderRemark(e.target.value)}
+                      placeholder={t('pos:pOSTerminalPage.orderNotePlaceholder', 'e.g. allergy info, birthday, special request…') as string}
+                      rows={2}
+                      maxLength={500}
+                      style={{
+                        width: '100%', resize: 'vertical', minHeight: 48, padding: '10px 12px',
+                        borderRadius: 8, border: '1px solid var(--pos-border, #E2E8F0)',
+                        background: '#fff', color: 'var(--pos-text, #0F172A)', fontSize: 14,
+                        fontFamily: 'inherit', lineHeight: 1.5, boxSizing: 'border-box',
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
 
               <DiscountSection>
                 <DiscountRow>

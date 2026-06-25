@@ -588,6 +588,9 @@ const PaymentPage: React.FC = () => {
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [deliveryPhone, setDeliveryPhone] = useState('');
   const [deliveryNotes, setDeliveryNotes] = useState('');
+  // 2026-06-26 (#11 리마크): 주문 전체 메모 — 전 주문유형(dine-in/takeaway/pickup/delivery).
+  // delivery_info.notes(배송 기사용)와 별개의 주방/매장용 주문 메모.
+  const [orderNote, setOrderNote] = useState('');
   const [selectedZone, setSelectedZone] = useState<string | null>(null);
   const [deliveryZones, setDeliveryZones] = useState<Array<{id: string; name: string; fee: number; description: string}>>([]);
 
@@ -1450,6 +1453,7 @@ const PaymentPage: React.FC = () => {
               payment_status: 'pending',
               kitchen_ready: false,
               order_date: new Date(),
+              notes: orderNote.trim() || null,  // #11 리마크 주문 메모 (전 주문유형)
               order_items: cartItems.map(item => {
                 // Calculate unit price including options
                 const unitPriceWithOptions = item.totalPrice / item.quantity;
@@ -1716,6 +1720,7 @@ const PaymentPage: React.FC = () => {
               payment_status: 'pending',
               kitchen_ready: false,
               order_date: new Date(),
+              notes: orderNote.trim() || null,  // #11 리마크 주문 메모 (전 주문유형)
               order_items: cartItems.map(item => {
                 const unitPriceWithOptions = item.totalPrice / item.quantity;
                 const optionDetails = item.selectedOptionsData?.map(opt => ({
@@ -2511,6 +2516,18 @@ const PaymentPage: React.FC = () => {
             })()}
           </Section>
         )}
+
+        {/* 2026-06-26 (#11 리마크): 주문 메모 — 전 주문유형 공통. 품목별 메모와 별개. */}
+        <Section>
+          <SectionTitle>{t('payment.orderNote', 'Order Note (Optional)')}</SectionTitle>
+          <TextArea
+            placeholder={t('payment.orderNotePlaceholder', 'e.g. allergy info, no cutlery, birthday…') as string}
+            value={orderNote}
+            onChange={(e) => setOrderNote(e.target.value)}
+            maxLength={500}
+            style={{ minHeight: '60px' }}
+          />
+        </Section>
 
         <Section>
           <SectionTitle>Coupon Code</SectionTitle>

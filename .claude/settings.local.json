@@ -788,7 +788,14 @@
       "Bash(echo \"BUILD7_EXIT=$?\")",
       "Bash(echo \"BUILD8_EXIT=$?\")",
       "Bash(awk 'NR>=2489 && NR<=2600 && /res\\\\.json|res\\\\.status|removedItem|data:|pending_reprint|await order.save|reload/' routes/orders-crud.js)",
-      "Bash(awk -F: '$1>=2489 && $1<=2600')"
+      "Bash(awk -F: '$1>=2489 && $1<=2600')",
+      "Bash(awk 'NR>=1754 && NR<=2010 && /<\\\\/Header>/ {print NR\": \"$0}' src/pages/FloorPlan/FloorPlanPage.tsx)",
+      "Bash(perl -0pi -e 's/      forceMergeIntoOrderId: forceMergeOrderId \\\\|\\\\| undefined\\\\n    \\\\};/      forceMergeIntoOrderId: forceMergeOrderId || undefined,\\\\n      notes: orderRemark.trim\\(\\) || undefined,  \\\\/\\\\/ #11 \\\\xeb\\\\xa6\\\\xac\\\\xeb\\\\xa7\\\\x88\\\\xed\\\\x81\\\\xac\\\\n    };/g' src/pages/POSTerminal/POSTerminalPage.tsx)",
+      "Bash(perl -0pi -e 's/      setOrderItems\\\\\\(\\\\[\\\\]\\\\\\);\\\\n      setDiscount\\\\\\(0\\\\\\);\\\\n      setAppliedCoupon\\\\\\(null\\\\\\);\\\\n      setAppliedDiscountPolicy\\\\\\(null\\\\\\);\\\\n      setCouponCode\\\\\\(\\\\x27\\\\x27\\\\\\);/      setOrderItems\\([]\\);\\\\n      setDiscount\\(0\\);\\\\n      setAppliedCoupon\\(null\\);\\\\n      setAppliedDiscountPolicy\\(null\\);\\\\n      setCouponCode\\(\\\\x27\\\\x27\\);\\\\n      setOrderRemark\\(\\\\x27\\\\x27\\); setShowRemarkBox\\(false\\);  \\\\/\\\\/ #11 \\\\xeb\\\\xa6\\\\xac\\\\xeb\\\\xa7\\\\x88\\\\xed\\\\x81\\\\xac \\\\xeb\\\\xb0\\\\x9c\\\\xed\\\\x96\\\\x89 \\\\xed\\\\x9b\\\\x84 \\\\xeb\\\\xb9\\\\x84\\\\xec\\\\x9b\\\\x80/g' src/pages/POSTerminal/POSTerminalPage.tsx)",
+      "Bash(perl -0pi -e 's/              payment_status: \\\\x27pending\\\\x27,\\\\n              kitchen_ready: false,\\\\n              order_date: new Date\\\\\\(\\\\\\),/              payment_status: \\\\x27pending\\\\x27,\\\\n              kitchen_ready: false,\\\\n              order_date: new Date\\(\\),\\\\n              notes: orderNote.trim\\(\\) || null,  \\\\/\\\\/ #11 \\\\xeb\\\\xa6\\\\xac\\\\xeb\\\\xa7\\\\x88\\\\xed\\\\x81\\\\xac \\\\xec\\\\xa3\\\\xbc\\\\xeb\\\\xac\\\\xb8 \\\\xeb\\\\xa9\\\\x94\\\\xeb\\\\xaa\\\\xa8 \\(\\\\xec\\\\xa0\\\\x84 \\\\xec\\\\xa3\\\\xbc\\\\xeb\\\\xac\\\\xb8\\\\xec\\\\x9c\\\\xa0\\\\xed\\\\x98\\\\x95\\)/g' src/mobile/pages/PaymentPage.tsx)",
+      "Bash(echo \"BUILD2 EXIT: $?\")",
+      "Bash(echo \"BUILD3 EXIT: $?\")",
+      "Bash(echo \"BUILD4 EXIT: $?\")"
     ],
     "deny": [],
     "ask": []

@@ -1101,7 +1101,9 @@
       "s4Title": "An OS dialog appears on every print (you have to press Enter)",
       "s4Why": "This is because the current connection method is \"Browser printing\". If you need silent printing, switch to QZ Tray (Windows) or RawBT (Android). Check the recommended method for your store setup in the \"Which method should I choose?\" table above.",
       "close": "Close"
-    }
+    },
+    "loading": "Loading printer settings…",
+    "loadError": "Couldn't load printer settings — check the connection and retry. The values shown may not be your saved settings, and changes will not be saved until this succeeds."
   },
   "settingsPage.businessHours.title": "Business Hours & Last Order",
   "settingsPage.businessHours.description": "Set opening hours per day and a last-order time. When on, mobile customers can order only during opening hours (until last order). Counter (POS) orders are never blocked; pickup pre-orders are guided to a valid time.",

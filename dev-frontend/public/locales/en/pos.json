@@ -62,5 +62,17 @@
   "optionModal.cancel": "Cancel",
   "optionModal.addToOrder": "Add to Order",
   "optionModal.customizeOrder": "Customize Order",
-  "optionModal.quantity": "Quantity"
+  "optionModal.quantity": "Quantity",
+  "pOSTerminalPage": {
+    "addOrderNote": "Add order note",
+    "orderNote": "Order note",
+    "orderNotePlaceholder": "e.g. allergy info, birthday, special request…",
+    "noteChips": {
+      "noOnion": "No onion",
+      "lessSpicy": "Less spicy",
+      "noIce": "No ice",
+      "allergy": "Allergy",
+      "birthday": "Birthday"
+    }
+  }
 }

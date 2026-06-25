@@ -726,5 +726,19 @@
   },
   "nav.cashUp": "Cash Up",
   "nav.cashDrawer": "Cash Drawer",
-  "back": "Back"
+  "back": "Back",
+  "retry": "Retry",
+  "clear": "Clear",
+  "payment": {
+    "orderNote": "Order Note (Optional)",
+    "orderNotePlaceholder": "e.g. allergy info, no cutlery, birthday…"
+  },
+  "itemDetail": {
+    "recommend": {
+      "title": "You might also like",
+      "subtitle": "Add a little extra to your order",
+      "keepAdding": "Keep adding",
+      "viewCart": "View cart"
+    }
+  }
 }

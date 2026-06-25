@@ -1194,9 +1194,19 @@ const LiveOrdersPage: React.FC = () => {
     try {
       const res = await fetch(`/api/orders/${selectedOrder.id}/items`, {
         ...getFetchOptions({ method: 'PATCH' }),
-        body: JSON.stringify({ order_items: updatedItems, allowItemRevert: _allowRevert })
+        // 2026-06-26 (item 5): send the version we last read so the backend rejects
+        // (409 STALE_WRITE) instead of clobbering if another device changed this
+        // order meanwhile. On conflict we adopt the server's current copy and ask
+        // the user to retry — never silently overwrite.
+        body: JSON.stringify({ order_items: updatedItems, allowItemRevert: _allowRevert, base_updated_at: (selectedOrder as any).updatedAt || (selectedOrder as any).updated_at })
       });
       const result = await res.json();
+      if (res.status === 409 && result?.code === 'STALE_WRITE') {
+        if (result.data) setSelectedOrder(result.data);
+        fetchOrders();
+        showToast('Order changed on another device — refreshed. Please try again.', 'error');
+        return;
+      }
       if (result.success) {
         // 주문 단계 롤업은 백엔드 단일 단계 모델이 처리 (PATCH /items 응답에 이미
         // 파생된 주문 단계 포함 — 별도 /status 호출 제거로 이중 emit 레이스 차단).

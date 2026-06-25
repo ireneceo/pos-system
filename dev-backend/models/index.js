@@ -22,6 +22,9 @@ const Customer = require('./Customer');
 const RestaurantCustomer = require('./RestaurantCustomer');
 const Product = require('./Product');
 const Category = require('./Category');
+// #11c 모바일 크로스셀
+const ProductRecommendation = require('./ProductRecommendation');
+const BrandMenuRecommendation = require('./BrandMenuRecommendation');
 const OptionGroup = require('./OptionGroup');
 const Option = require('./Option');
 const OptionIngredient = require('./OptionIngredient');
@@ -237,6 +240,14 @@ Restaurant.hasMany(Product, { foreignKey: 'restaurant_id', as: 'products' });
 // Category - Restaurant associations
 Category.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
 Restaurant.hasMany(Category, { foreignKey: 'restaurant_id', as: 'categories' });
+
+// #11c 크로스셀 — ProductRecommendation: 기준상품/추천상품 → products.id (방향성 N:N)
+ProductRecommendation.belongsTo(Product, { foreignKey: 'product_id', as: 'baseProduct' });
+ProductRecommendation.belongsTo(Product, { foreignKey: 'recommended_product_id', as: 'recommendedProduct' });
+Product.hasMany(ProductRecommendation, { foreignKey: 'product_id', as: 'recommendations' });
+// BrandMenuRecommendation: 기준/추천 브랜드메뉴 → brand_menus.id
+BrandMenuRecommendation.belongsTo(BrandMenu, { foreignKey: 'brand_menu_id', as: 'baseBrandMenu' });
+BrandMenuRecommendation.belongsTo(BrandMenu, { foreignKey: 'recommended_brand_menu_id', as: 'recommendedBrandMenu' });
 
 // OptionGroup - Option associations
 OptionGroup.hasMany(Option, {
@@ -975,6 +986,8 @@ module.exports = {
   RestaurantCustomer,
   Product,
   Category,
+  ProductRecommendation,
+  BrandMenuRecommendation,
   OptionGroup,
   Option,
   OptionIngredient,

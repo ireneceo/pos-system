@@ -51,6 +51,12 @@ Order.init({
     defaultValue: null,
     comment: 'Number of guests at the table (dine-in only)'
   },
+  notes: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    defaultValue: null,
+    comment: 'Order-level remark / 주문 메모 (e.g. allergy, birthday). Item-level notes live in order_items.'
+  },
   pager_number: {
     type: DataTypes.STRING(10),
     allowNull: true,

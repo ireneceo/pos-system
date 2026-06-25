@@ -9,6 +9,7 @@ import api from '../services/api';
 import { formatCurrency } from '../../utils/currency';
 import MobileSetOrder from '../components/MobileSetOrder';
 import { isSetSelectionValid } from '../../utils/setMenu';
+import RecommendationSheet, { RecItem } from '../components/RecommendationSheet';
 
 const ItemHeader = styled.div`
   background: white;
@@ -329,7 +330,10 @@ const ItemDetailPage: React.FC = () => {
   const { t } = useTranslation(['menu', 'common']);
   const { slug, itemId } = useParams<{ slug: string; itemId: string }>();
   const navigate = useNavigate();
-  const { addToCart, currency } = useMobileOrder();
+  const { addToCart, currency, cartItems } = useMobileOrder();
+  // #11c 크로스셀 — 담은 직후 추천 바텀시트
+  const [recItems, setRecItems] = useState<RecItem[]>([]);
+  const [showRecSheet, setShowRecSheet] = useState(false);
   const { getItemById, optionGroups } = useMenu();
   
   const [item, setItem] = useState<any>(null);
@@ -614,6 +618,34 @@ const ItemDetailPage: React.FC = () => {
     // 고객이 직접 뒤로가기를 누르면 직전 탭(?cat=)으로 정확히 복원된다(#2).
     setJustAdded(true);
     setTimeout(() => setJustAdded(false), 1800);
+    // #11c 크로스셀 — 담은 직후 추천 조회. 결과 있으면 바텀시트(데드엔드 없음: 없으면 미표시).
+    if (slug && item?.id) fetchAndOpenRecommendations(Number(item.id));
+  };
+
+  // 담은 상품에 대한 추천 — 이미 장바구니에 있는 것 + 방금 담은 것 제외(설계 §1.1).
+  const fetchAndOpenRecommendations = async (productId: number) => {
+    try {
+      const res = await fetch(`/api/mobile/${slug}/products/${productId}/recommendations`);
+      if (!res.ok) return;
+      const json = await res.json();
+      const list: RecItem[] = Array.isArray(json?.data) ? json.data : [];
+      const inCart = new Set((cartItems || []).map((ci: any) => ci.menuItem?.id).filter(Boolean));
+      const filtered = list.filter(r => r.id !== productId && !inCart.has(r.id));
+      if (filtered.length) { setRecItems(filtered); setShowRecSheet(true); }
+    } catch { /* 추천 실패는 무시 — 주문 흐름 영향 없음 */ }
+  };
+
+  // 추천 카드 탭 = 담기. 세트/옵션은 정확한 구성을 위해 상세로 이동(블라인드 담기 방지).
+  const handleAddRecommended = (rec: RecItem) => {
+    if (rec.is_set_menu) {
+      setShowRecSheet(false);
+      navigate(`/mobile/${slug}/item/${rec.id}`);
+      return;
+    }
+    const recMenuItem: any = { id: rec.id, name: rec.name, price: typeof rec.price === 'number' ? rec.price : parseFloat(String(rec.price)) || 0, image: rec.image || undefined, is_set_menu: false };
+    addToCart(recMenuItem, 1, []);
+    // 담은 항목은 시트에서 제거 — 중복 방지 + 진행감
+    setRecItems(prev => prev.filter(r => r.id !== rec.id));
   };
   
   if (isLoading) {
@@ -782,6 +814,17 @@ const ItemDetailPage: React.FC = () => {
           </>
         )}
       </AddToCartButton>
+
+      {/* #11c 크로스셀 — 담은 직후 추천 바텀시트 */}
+      <RecommendationSheet
+        isOpen={showRecSheet}
+        items={recItems}
+        currency={currency}
+        cartCount={(cartItems || []).reduce((s: number, ci: any) => s + (ci.quantity || 0), 0)}
+        onClose={() => setShowRecSheet(false)}
+        onAdd={handleAddRecommended}
+        onGoToCart={() => { setShowRecSheet(false); navigate(`/mobile/${slug}/cart`); }}
+      />
     </MobileLayout>
   );
 };

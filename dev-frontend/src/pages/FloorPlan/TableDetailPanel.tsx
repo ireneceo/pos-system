@@ -851,12 +851,17 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
       const res = await fetch(`/api/orders/${statusInfo.orderId}/items`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ order_items: updatedItems, allowItemRevert: _allowRevert })
+        // 2026-06-26 (item 5): send the version we last read so a stale serve toggle
+        // can't clobber a concurrent qty/item edit (backend → 409 STALE_WRITE).
+        body: JSON.stringify({ order_items: updatedItems, allowItemRevert: _allowRevert, base_updated_at: statusInfo.updatedAt || undefined })
       });
 
       if (res.ok) {
         // 주문 단계 롤업은 백엔드 단일 단계 모델이 처리 (2026-06-12, PATCH /items 가
         // 아이템 min 단계로 주문 단계를 같은 쓰기에서 파생 — 별도 /status 호출 제거).
+        onOrderUpdated();
+      } else {
+        // 409 STALE_WRITE 포함: 서버 진실로 재동기화 (옛 캐시로 덮어쓰지 않음).
         onOrderUpdated();
       }
     } catch (_) { /* silently fail */ }

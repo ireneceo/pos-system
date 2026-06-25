@@ -62,5 +62,17 @@
   "optionModal.cancel": "취소",
   "optionModal.addToOrder": "주문에 추가",
   "optionModal.customizeOrder": "주문 맞춤설정",
-  "optionModal.quantity": "수량"
+  "optionModal.quantity": "수량",
+  "pOSTerminalPage": {
+    "addOrderNote": "주문 메모 추가",
+    "orderNote": "주문 메모",
+    "orderNotePlaceholder": "예: 알레르기, 생일, 특별 요청…",
+    "noteChips": {
+      "noOnion": "양파 빼기",
+      "lessSpicy": "덜 맵게",
+      "noIce": "얼음 빼기",
+      "allergy": "알레르기",
+      "birthday": "생일"
+    }
+  }
 }

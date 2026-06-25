@@ -36,6 +36,13 @@ const Category = sequelize.define('Category', {
     type: DataTypes.INTEGER,
     allowNull: true,
     comment: 'Kitchen station assignment (category mode)'
+  },
+  // #11c 모바일 크로스셀: NULL=이름 자동감지 / true=강제 추천 카테고리 / false=강제 제외
+  is_recommendation_source: {
+    type: DataTypes.BOOLEAN,
+    allowNull: true,
+    defaultValue: null,
+    comment: 'Cross-sell recommendation source override (null=auto by name)'
   }
 }, {
   tableName: 'categories',

@@ -62,5 +62,17 @@
   "optionModal.cancel": "Batal",
   "optionModal.addToOrder": "Tambah ke Pesanan",
   "optionModal.customizeOrder": "Sesuaikan Pesanan",
-  "optionModal.quantity": "Kuantiti"
+  "optionModal.quantity": "Kuantiti",
+  "pOSTerminalPage": {
+    "addOrderNote": "Tambah nota pesanan",
+    "orderNote": "Nota pesanan",
+    "orderNotePlaceholder": "cth. alahan, hari jadi, permintaan khas…",
+    "noteChips": {
+      "noOnion": "Tanpa bawang",
+      "lessSpicy": "Kurang pedas",
+      "noIce": "Tanpa ais",
+      "allergy": "Alahan",
+      "birthday": "Hari jadi"
+    }
+  }
 }

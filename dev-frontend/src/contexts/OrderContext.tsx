@@ -152,6 +152,7 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
         cashier_id: (order as any).cashier_id || null,
         cashier_name: (order as any).cashier_name || null,
         guest_count: (order as any).guest_count || null,
+        notes: (order as any).notes || null,  // 2026-06-26 (#11 리마크): 주문 메모
         order_items: order.items.map(item => ({
           id: item.id,
           name: item.menuItem.name,

@@ -64,7 +64,8 @@
     "takeawayCharge": "外带费",
     "printToKitchenTitle": "打印到厨房？",
     "dontPrint": "不打印",
-    "printTicket": "打印工单"
+    "printTicket": "打印工单",
+    "orderNote": "订单备注"
   },
   "brandMenuUpdatesPage.title": "品牌菜单更新",
   "brandMenuUpdatesPage.allSyncedTitle": "已全部同步",

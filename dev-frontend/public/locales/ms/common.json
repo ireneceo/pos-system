@@ -726,5 +726,19 @@
   },
   "nav.cashUp": "Tutup Tunai",
   "nav.cashDrawer": "Laci Tunai",
-  "back": "Kembali"
+  "back": "Kembali",
+  "retry": "Cuba semula",
+  "clear": "Kosongkan",
+  "payment": {
+    "orderNote": "Nota Pesanan (Pilihan)",
+    "orderNotePlaceholder": "cth. maklumat alahan, tiada kutleri, hari jadi…"
+  },
+  "itemDetail": {
+    "recommend": {
+      "title": "Anda mungkin juga suka",
+      "subtitle": "Tambah sedikit lagi pada pesanan anda",
+      "keepAdding": "Terus tambah",
+      "viewCart": "Lihat troli"
+    }
+  }
 }

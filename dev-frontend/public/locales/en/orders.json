@@ -64,7 +64,8 @@
     "takeawayCharge": "Takeaway Charge",
     "printToKitchenTitle": "Print to kitchen?",
     "dontPrint": "Don't print",
-    "printTicket": "Print ticket"
+    "printTicket": "Print ticket",
+    "orderNote": "Order Note"
   },
   "brandMenuUpdatesPage.title": "Brand Menu Updates",
   "brandMenuUpdatesPage.allSyncedTitle": "All synced",

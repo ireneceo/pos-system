@@ -64,7 +64,8 @@
     "takeawayCharge": "Caj Bungkus",
     "printToKitchenTitle": "Cetak ke dapur?",
     "dontPrint": "Jangan cetak",
-    "printTicket": "Cetak tiket"
+    "printTicket": "Cetak tiket",
+    "orderNote": "Nota Pesanan"
   },
   "brandMenuUpdatesPage.title": "Kemas Kini Menu Jenama",
   "brandMenuUpdatesPage.allSyncedTitle": "Semua disegerakkan",

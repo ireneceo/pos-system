@@ -1101,7 +1101,9 @@
       "s4Title": "Dialog OS muncul pada setiap cetakan (anda perlu tekan Enter)",
       "s4Why": "Ini kerana kaedah sambungan semasa ialah \"Cetakan pelayar\". Jika anda perlukan cetakan senyap, tukar kepada QZ Tray (Windows) atau RawBT (Android). Semak kaedah yang disyorkan untuk persediaan kedai anda dalam jadual \"Kaedah manakah perlu saya pilih?\" di atas.",
       "close": "Tutup"
-    }
+    },
+    "loading": "Memuatkan tetapan pencetak…",
+    "loadError": "Tidak dapat memuatkan tetapan pencetak — semak sambungan dan cuba semula. Nilai yang dipaparkan mungkin bukan tetapan tersimpan anda, dan perubahan tidak akan disimpan sehingga ini berjaya."
   },
   "settingsPage.businessHours.title": "Waktu Operasi & Pesanan Terakhir",
   "settingsPage.businessHours.description": "Tetapkan waktu buka setiap hari dan waktu pesanan terakhir. Apabila dihidupkan, pelanggan mudah alih hanya boleh memesan dalam waktu operasi (sehingga pesanan terakhir). Pesanan kaunter (POS) tidak disekat; tempahan ambil sendiri dipandu ke masa yang sah.",

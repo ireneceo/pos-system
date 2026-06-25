@@ -64,7 +64,8 @@
     "takeawayCharge": "포장료",
     "printToKitchenTitle": "주방에 인쇄할까요?",
     "dontPrint": "인쇄 안 함",
-    "printTicket": "티켓 인쇄"
+    "printTicket": "티켓 인쇄",
+    "orderNote": "주문 메모"
   },
   "brandMenuUpdatesPage.title": "브랜드 메뉴 업데이트",
   "brandMenuUpdatesPage.allSyncedTitle": "모두 동기화됨",

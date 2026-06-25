@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import styled from 'styled-components';
 import { QRCodeCanvas, QRCodeSVG } from 'qrcode.react';
 import { TabContainer, Tab, OrderControls } from '../../components/UI';
@@ -788,6 +788,12 @@ const SettingsPage: React.FC = () => {
     return 'rawbt';
   });
   const [printerSettingsLoading, setPrinterSettingsLoading] = useState(true);
+  // 2026-06-26 (item 7): printer settings failed to load from the server (a
+  // connection blip returned non-OK / threw). We must NOT render the default
+  // all-off cards as if they were real (staff misread it as "printers gone") and
+  // must keep save blocked so a blind AutoSave can't persist the empty defaults
+  // over the live DB config. true = "couldn't load — connection issue, retry".
+  const [printerSettingsError, setPrinterSettingsError] = useState(false);
   const [qzTrayStatus, setQzTrayStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
   // 2026-05-27: 1-click self-test for the QZ Tray pipeline. Replaces the
   // manual "download cert → find folder → restart → cross fingers" flow with a
@@ -1398,11 +1404,11 @@ const SettingsPage: React.FC = () => {
   }, [activeTab, user?.restaurantId]);
 
   // Load printer settings from DB
-  useEffect(() => {
-    const loadPrinterSettings = async () => {
+  const loadPrinterSettings = useCallback(async () => {
       if (!user?.restaurantId) return;
 
       setPrinterSettingsLoading(true);
+      setPrinterSettingsError(false);
       try {
         const token = getAuthToken();
         const response = await fetch(`/api/restaurants/${user.restaurantId}`, {
@@ -1412,7 +1418,13 @@ const SettingsPage: React.FC = () => {
           }
         });
 
-        if (response.ok) {
+        if (!response.ok) {
+          // Server reachable but returned an error (auth blip / 5xx). Do NOT silently
+          // keep the all-off defaults — flag the error so the UI shows a retry banner
+          // and save stays blocked (item 7). Throw into the catch for one handler.
+          throw new Error(`HTTP ${response.status}`);
+        }
+        {
           const restaurant = await response.json();
           if (restaurant.printer_settings) {
             const dbSettings = restaurant.printer_settings;
@@ -1478,7 +1490,12 @@ const SettingsPage: React.FC = () => {
         }
       } catch (e) {
         console.error('Failed to load printer settings from DB:', e);
-        // Fallback to localStorage
+        // 2026-06-26 (item 7): couldn't load from the server. Flag the error so the
+        // printer tab shows a clear "couldn't load — retry" banner instead of the
+        // all-off defaults, and so save stays blocked (the strengthened guard below
+        // checks printerSettingsError too). We still hydrate from localStorage for a
+        // best-effort display, but it's treated as non-authoritative (not saved).
+        setPrinterSettingsError(true);
         const savedPrinterSettings = localStorage.getItem('printerSettings');
         if (savedPrinterSettings) {
           try {
@@ -1496,10 +1513,11 @@ const SettingsPage: React.FC = () => {
       } finally {
         setPrinterSettingsLoading(false);
       }
-    };
-
-    loadPrinterSettings();
   }, [user?.restaurantId]);
+
+  useEffect(() => {
+    loadPrinterSettings();
+  }, [loadPrinterSettings]);
 
   // Load active coupons for External QR partner-discount linking
   useEffect(() => {
@@ -2230,7 +2248,9 @@ const SettingsPage: React.FC = () => {
           // AutoSaveField(결제 토글 등)가 로드 완료 전에 handleSave 를 발동하면, 화면 초기
           // 기본값(올-off kitchenPrinter)이 그대로 PUT 돼 운영 프린터 설정을 덮어쓰던 사고의
           // 근본 차단. 로드 완료 후에는 state 가 DB 값과 동일하므로 포함해도 안전하다.
-          ...(printerSettingsLoading ? {} : {
+          // 2026-06-26 (item 7): 로드 실패(printerSettingsError)도 동일하게 제외 —
+          // localStorage 폴백은 비권위적이라 운영 DB 를 덮어쓰면 안 됨.
+          ...((printerSettingsLoading || printerSettingsError) ? {} : {
             printer_settings: {
               printerMode: printerMode,
               billPrinter: printerSettings.billPrinter,
@@ -2244,8 +2264,8 @@ const SettingsPage: React.FC = () => {
             }
           })
         };
-        if (printerSettingsLoading) {
-          console.warn('⏳ [Lock①] printer_settings not yet loaded — excluded from save to protect live printer config');
+        if (printerSettingsLoading || printerSettingsError) {
+          console.warn('⏳ [Lock①] printer_settings not loaded (loading/error) — excluded from save to protect live printer config');
         }
 
         console.log('📦 Request body (first 500 chars):', JSON.stringify(requestBody).substring(0, 500));
@@ -5807,6 +5827,40 @@ const SettingsPage: React.FC = () => {
                     : t('settings:printer.adminOnlyReadonly', 'Printer settings can only be changed by the Restaurant Admin. Your account is view-only — any changes here will not be saved.')}
                 </span>
               </div>
+              {/* 2026-06-26 (item 7): load-state banner. A connection blip can make the
+                  server return non-OK; without this the tab silently rendered the all-off
+                  defaults, which staff misread as "the printers disappeared" (the DB was
+                  fine). Show an explicit loading / error state and, on error, a Retry that
+                  re-fetches. Save is independently blocked while loading or errored. */}
+              {printerSettingsLoading && (
+                <div style={{
+                  padding: '10px 14px', marginBottom: 16, borderRadius: 8, fontSize: 13,
+                  background: '#F3F4F6', border: '1px solid #E5E7EB', color: '#374151'
+                }}>
+                  {t('settings:printer.loading', 'Loading printer settings…')}
+                </div>
+              )}
+              {!printerSettingsLoading && printerSettingsError && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+                  padding: '12px 14px', marginBottom: 16, borderRadius: 8, fontSize: 13,
+                  background: '#FEF3F2', border: '1px solid #FECDCA', color: '#B42318'
+                }}>
+                  <span>
+                    {t('settings:printer.loadError', "Couldn't load printer settings — check the connection and retry. The values shown may not be your saved settings, and changes will not be saved until this succeeds.")}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => loadPrinterSettings()}
+                    style={{
+                      flexShrink: 0, padding: '6px 14px', borderRadius: 6, fontSize: 13, fontWeight: 600,
+                      cursor: 'pointer', background: '#B42318', color: '#fff', border: 'none'
+                    }}
+                  >
+                    {t('common:retry', 'Retry')}
+                  </button>
+                </div>
+              )}
               {/* ★ Emergency Routing Mode — top of the printer tab so it's the
                   first thing staff see when something breaks. Red when ON. The
                   flag is a single boolean; print routing checks it at runtime and

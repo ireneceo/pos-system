@@ -508,6 +508,15 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                 </DetailValue>
               </DetailRow>
             )}
+            {/* 2026-06-26 (#11 리마크): 주문 메모 — 알레르기/생일 등. 직원이 화면에서 바로 확인. */}
+            {(selectedOrder as any).notes && String((selectedOrder as any).notes).trim() && (
+              <DetailRow>
+                <DetailLabel>{t('orders:liveOrdersPage.orderNote', 'Order Note')}:</DetailLabel>
+                <DetailValue style={{ whiteSpace: 'pre-wrap', color: '#B45309', fontWeight: 600 }}>
+                  {String((selectedOrder as any).notes).trim()}
+                </DetailValue>
+              </DetailRow>
+            )}
           </OrderDetailSection>
 
           {/* Delivery Information */}
