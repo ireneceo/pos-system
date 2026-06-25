@@ -710,6 +710,9 @@
   "enterTablePlaceholder": "Masukkan nombor meja anda",
   "noTableMatch": "Tiada meja sepadan. Semak nombor pada meja anda.",
   "selectTableToContinue": "Sila pilih meja anda untuk meneruskan.",
+  "cartEmptyHint": "Troli anda kosong.",
+  "enterContactToContinue": "Sila masukkan nama dan telefon anda untuk meneruskan.",
+  "selectPaymentToContinue": "Sila pilih kaedah pembayaran untuk meneruskan.",
   "storeNotLoaded": "Kedai masih dimuatkan. Sila tunggu sebentar dan cuba lagi.",
   "deliveryZone.within": "dalam {{km}}km",
   "printFailBanner": {

@@ -286,9 +286,17 @@ export function useAutoPrintPoller(opts: {
     const socketPoke = () => { if (socketPokeTimer) return; socketPokeTimer = setTimeout(() => { socketPokeTimer = null; pollFn(); }, 120); };
     try {
       socket = io('/orders', { transports: ['websocket', 'polling'], auth: { token: getAuthToken() } });
-      socket.on('connect', () => { try { socket?.emit('join-restaurant', restaurantId); } catch {} });
+      // 2026-06-25 (Irene "모바일 주문 인쇄 늦을 때 있음"): 소켓이 잠깐 끊겼다 재연결되면
+      // 끊긴 사이 들어온 주문(order-created 놓침)을 즉시 따라잡는다(연결 직후 1회 폴링). 끊김
+      // 순간 들어온 주문이 최대 5초 폴링을 기다리던 지연 제거. 인쇄 주체·중복방지는 그대로.
+      socket.on('connect', () => { try { socket?.emit('join-restaurant', restaurantId); } catch {} socketPoke(); });
       socket.on('order-created', socketPoke);
       socket.on('order-items-added', socketPoke);
+      // 2026-06-25 (Irene "이동/아이템취소 인쇄 느림"): 테이블이동(table-moved)·아이템 void(item-voided)
+      // 재발행도 needs_print 를 켜지만 이 두 이벤트를 구독 안 해 5초 폴링까지 늦게 나갔다. 신규주문과
+      // 동일하게 즉시 트리거(120ms 디바운스). 인쇄 주체·중복방지(print-claim)는 그대로 — 트리거만 추가.
+      socket.on('table-moved', socketPoke);
+      socket.on('item-voided', socketPoke);
     } catch {}
 
     return () => { cancelled = true; if (timer) clearInterval(timer); if (socketPokeTimer) clearTimeout(socketPokeTimer); try { socket?.disconnect(); } catch {} window.removeEventListener('autoprint-poke', onPoke); window.removeEventListener('storage', onStoragePoke); };

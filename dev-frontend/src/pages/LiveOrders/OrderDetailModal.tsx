@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal as CommonModal } from '../../components/UI';
 import OrderActionHistory from './OrderActionHistory';
+import TableMoveTrail from './TableMoveTrail';
 import { formatCurrency } from '../../utils/currency';
 import { stripStaffNs } from '../../utils/staffName';
 import { formatPaymentDisplay } from '../../constants';
@@ -669,6 +670,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                 return ' — ' + t('common:itemServe.servedCount', { served, total: its.length });
               })()}
             </SectionTitle>
+            {selectedOrder.id && <TableMoveTrail orderId={selectedOrder.id} />}
             {(() => {
               const items = selectedOrder.order_items && Array.isArray(selectedOrder.order_items) ? selectedOrder.order_items : [];
               // 활성 주문이면 단계 무관하게 홀 직원이 품목별 Served 토글 가능 (Floor Plan 과 동일).

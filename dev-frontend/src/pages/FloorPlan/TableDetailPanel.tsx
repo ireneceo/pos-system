@@ -14,6 +14,7 @@ import OptionModal from '../../components/POSTerminal/OptionModal';
 import VoidPinModal from '../../components/POSTerminal/VoidPinModal';
 import { Modal, ModalButton } from '../../components/UI';
 import OrderActionHistory from '../LiveOrders/OrderActionHistory';
+import TableMoveTrail from '../LiveOrders/TableMoveTrail';
 import { useTranslation } from 'react-i18next';
 import { getTableLabel } from '../../utils/tableLabel';
 
@@ -99,12 +100,25 @@ const Panel = styled.div`
 `;
 
 const PanelHeader = styled.div`
-  padding: 16px 20px;
+  padding: 10px 20px;
   border-bottom: 1px solid var(--pos-border, #C7CED6);
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   flex-shrink: 0;
+`;
+
+// 2026-06-25 (Irene 10인치): 제목 + 메타(seats·min) + 배지(상태·결제)를 한 줄로 묶어
+// 헤더를 2줄(제목 / 메타+배지)로 압축. 이전엔 3줄(제목·메타·배지)이라 주문영역을 잡아먹었다.
+const HeaderMetaRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--pos-text-muted, #4B5563);
+  font-weight: 500;
 `;
 
 const TableTitle = styled.div`
@@ -114,15 +128,6 @@ const TableTitle = styled.div`
     color: var(--pos-text, #0A2540);
     margin: 0;
   }
-`;
-
-const TableMeta = styled.div`
-  display: flex;
-  gap: 12px;
-  margin-top: 4px;
-  font-size: 12px;
-  color: var(--pos-text-muted, #4B5563);
-  font-weight: 500;
 `;
 
 const CloseBtn = styled.button`
@@ -310,12 +315,17 @@ const NotesBox = styled.div`
 `;
 
 const ActionGroup = styled.div`
-  padding: 12px 20px;
+  padding: 10px 20px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
   flex-shrink: 0;
   border-top: 1px solid var(--pos-border, #C7CED6);
+  /* 2026-06-25 (Irene 10인치 "버튼 부분 아래로 내릴 수 있게 / 높이값 안먹게"): 하단 버튼 영역이
+     커져도 주문 리스트를 통째로 밀어내지 않게 높이 상한 + 자체 스크롤. 작은 화면(10")에서 버튼이
+     많/길어도 이 블록만 스크롤되고 위 주문영역은 보존된다. */
+  max-height: 52vh;
+  overflow-y: auto;
 `;
 
 const ActionBtn = styled.button<{ $variant: 'primary' | 'secondary' | 'success' | 'danger' | 'link' }>`
@@ -1408,36 +1418,34 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
           ) : (
             <h3>Takeaway · {statusInfo?.orderNumber || (statusInfo?.orderId ? `#${statusInfo.orderId}` : '')}</h3>
           )}
-          <TableMeta>
+          {/* 2026-06-25 (Irene 10인치): 메타(seats·min) + 상태/결제 배지를 한 줄(wrap)로 → 헤더 2줄. */}
+          <HeaderMetaRow>
             {tableNumber && statusInfo?.guestCount ? (
               <span>{statusInfo.guestCount} guests</span>
             ) : tableNumber && tableInfo ? (
               <span>{tableInfo.seats} seats</span>
             ) : null}
             {isOccupied && <span>{statusInfo!.elapsedMinutes}min</span>}
-          </TableMeta>
-          {isOccupied && (
-            <BadgeRow>
-              <StatusBadge $color={statusColors.text} $bg={statusColors.bg}>
-                {STATUS_LABELS[orderStatus] || statusInfo!.status}
-              </StatusBadge>
-              <StatusBadge $color={paymentStatusColors.color} $bg={paymentStatusColors.bg}>
-                {paymentStatus === 'completed' || paymentStatus === 'paid' ? 'Paid' :
-                 paymentStatus === 'rejected' ? 'Rejected' :
-                 paymentStatus === 'payment_verification_pending' ? 'Verifying' : 'Unpaid'}
-              </StatusBadge>
-              {operationSettings?.prepTimeTracking && ['pending', 'preparing', 'ready'].includes(orderStatus) && (() => {
-                // 주문단위 타이머 — 테이블 전체가 얼마나 기다렸나(목표=주문 준비시간). 단일 소스 prepTimer.
-                const prep = computePrepFromElapsed(statusInfo!.elapsedMinutes || 0, Number(operationSettings?.defaultPreparationTime) || 15, Number(operationSettings?.prepUrgentThreshold) || 80);
-                return prep ? <PrepTimerChip prep={prep} /> : null;
-              })()}
-            </BadgeRow>
-          )}
-          {!isOccupied && (
-            <BadgeRow>
+            {isOccupied ? (
+              <>
+                <StatusBadge $color={statusColors.text} $bg={statusColors.bg}>
+                  {STATUS_LABELS[orderStatus] || statusInfo!.status}
+                </StatusBadge>
+                <StatusBadge $color={paymentStatusColors.color} $bg={paymentStatusColors.bg}>
+                  {paymentStatus === 'completed' || paymentStatus === 'paid' ? 'Paid' :
+                   paymentStatus === 'rejected' ? 'Rejected' :
+                   paymentStatus === 'payment_verification_pending' ? 'Verifying' : 'Unpaid'}
+                </StatusBadge>
+                {operationSettings?.prepTimeTracking && ['pending', 'preparing', 'ready'].includes(orderStatus) && (() => {
+                  // 주문단위 타이머 — 테이블 전체가 얼마나 기다렸나(목표=주문 준비시간). 단일 소스 prepTimer.
+                  const prep = computePrepFromElapsed(statusInfo!.elapsedMinutes || 0, Number(operationSettings?.defaultPreparationTime) || 15, Number(operationSettings?.prepUrgentThreshold) || 80);
+                  return prep ? <PrepTimerChip prep={prep} /> : null;
+                })()}
+              </>
+            ) : (
               <StatusBadge $color={statusColors.text} $bg={statusColors.bg}>{'Available'}</StatusBadge>
-            </BadgeRow>
-          )}
+            )}
+          </HeaderMetaRow>
         </TableTitle>
         <CloseBtn onClick={onClose}>&times;</CloseBtn>
       </PanelHeader>
@@ -1683,6 +1691,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                     </button>
                   )}
                 </SectionTitle>
+                {statusInfo!.orderId && <TableMoveTrail orderId={statusInfo!.orderId} />}
                 <InfoGrid>
                   <InfoItem>
                     <InfoLabel>{'Customer'}</InfoLabel>
@@ -1997,8 +2006,9 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                     인쇄 버튼을 크게 노출(Table Actions 접힘 속 작은 아이콘 대신 주 액션으로). (Irene 2026-06-23,
                     2026-06-24 서버 역할 포함 위해 !canOperatePOS → !canTakePayment) */}
                 {!canTakePayment && items.length > 0 && orderStatus !== 'cancelled' && (
-                  <ActionBtn $variant="secondary" onClick={handlePrintConsolidatedTicket}>
-                    {t('floorplan:tableDetailPanel.printFullTicket', { defaultValue: 'Print Full Order Ticket' })}
+                  /* 2026-06-25 (Irene 10인치): 버튼명 짧게 "Print Full Order" + nowrap(2줄 방지). */
+                  <ActionBtn $variant="secondary" onClick={handlePrintConsolidatedTicket} style={{ whiteSpace: 'nowrap' }}>
+                    {t('floorplan:tableDetailPanel.printFullTicket', { defaultValue: 'Print Full Order' })}
                   </ActionBtn>
                 )}
               </ActionRow>

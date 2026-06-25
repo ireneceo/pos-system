@@ -141,6 +141,11 @@ const OrderActionHistory: React.FC<Props> = ({ orderId, timeZone }) => {
         const statusFlow = a.from_status || a.to_status
           ? `${a.from_status || '—'} → ${a.to_status || '—'}`
           : null;
+        // 테이블 이동(table_moved): metadata.from_table → to_table 을 "X → Y" 로 보여준다(2026-06-25 Irene).
+        const _md = a.metadata || {};
+        const moveFlow = a.action_type === 'table_moved' && (_md.from_table != null || _md.to_table != null)
+          ? `${_md.from_table ?? '—'} → ${_md.to_table ?? '—'}${_md.mode === 'merged' ? ` (${t('history.mergedTag', 'merged')})` : ''}`
+          : null;
         return (
           <Item key={a.id} critical={critical}>
             <TimeCol>{fmtDateTime(a.created_at, timeZone)}</TimeCol>
@@ -148,6 +153,7 @@ const OrderActionHistory: React.FC<Props> = ({ orderId, timeZone }) => {
               <ActionLine critical={critical}>
                 {actionLabel}
                 {statusFlow && <span style={{ marginLeft: 8, fontWeight: 500, color: '#4B5563' }}>{statusFlow}</span>}
+                {moveFlow && <span style={{ marginLeft: 8, fontWeight: 700, color: '#635BFF' }}>{moveFlow}</span>}
               </ActionLine>
               <Meta>
                 <span>{a.performed_by_name || 'System'}</span>

@@ -772,7 +772,8 @@
       "Bash(echo \"BUILD2 exit=$?\")",
       "Bash(echo \"BUILD3 exit=$?\")",
       "Bash(echo \"BUILD4 exit=$?\")",
-      "Bash(echo \"BUILD5 exit=$?\")"
+      "Bash(echo \"BUILD5 exit=$?\")",
+      "Bash(echo \"BUILD2_EXIT=$?\")"
     ],
     "deny": [],
     "ask": []

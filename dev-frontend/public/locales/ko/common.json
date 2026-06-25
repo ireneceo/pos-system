@@ -710,6 +710,9 @@
   "enterTablePlaceholder": "테이블 번호를 입력하세요",
   "noTableMatch": "일치하는 테이블이 없습니다. 테이블의 번호를 확인하세요.",
   "selectTableToContinue": "계속하려면 테이블을 선택해 주세요.",
+  "cartEmptyHint": "장바구니가 비어 있습니다.",
+  "enterContactToContinue": "계속하려면 이름과 전화번호를 입력해 주세요.",
+  "selectPaymentToContinue": "계속하려면 결제수단을 선택해 주세요.",
   "storeNotLoaded": "매장 정보를 불러오는 중입니다. 잠시 후 다시 시도해 주세요.",
   "deliveryZone.within": "{{km}}km 이내",
   "printFailBanner": {

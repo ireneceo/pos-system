@@ -255,6 +255,34 @@ const ErrorMessage = styled.div`
   margin-bottom: 16px;
 `;
 
+// 2026-06-25 (Irene): 결제버튼이 비활성화일 때 "왜 안 되는지" 손님에게 안내(테이블/정보/결제수단
+// 미충족). 회색 버튼만 덩그러니 떠서 손님이 알 수 없던 불친절 해결. PayButton 바로 위 고정 안내바.
+const PayHint = styled.div`
+  position: fixed;
+  bottom: 122px; /* PayButton(68px) 바로 위 */
+  left: 8px;
+  right: 8px;
+  background: #FEF3C7;
+  color: #92400E;
+  border: 1px solid #FCD34D;
+  border-radius: 10px;
+  padding: 9px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.35;
+  z-index: 102;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+
+  @media (min-width: 768px) {
+    max-width: 600px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    bottom: 138px;
+  }
+`;
+
 const PayButton = styled.button`
   position: fixed;
   bottom: 68px; /* Space for bottom navigation */
@@ -1857,6 +1885,17 @@ const PaymentPage: React.FC = () => {
                       ).join(', ')}
                     </ItemSetItems>
                   )}
+                  {/* 2026-06-25 (Irene): 손님이 주문 시 고른 옵션을 결제화면에도 표시(이전엔 누락) */}
+                  {(() => {
+                    const raw = (Array.isArray((item as any).selectedOptions) && (item as any).selectedOptions.length)
+                      ? (item as any).selectedOptions
+                      : (Array.isArray((item as any).selectedOptionsData) ? (item as any).selectedOptionsData : []);
+                    const names = raw.map((o: any) => typeof o === 'string' ? o : (o?.name || o?.optionName || '')).filter(Boolean);
+                    return names.length > 0 ? <ItemSetItems>{names.join(', ')}</ItemSetItems> : null;
+                  })()}
+                  {(item as any).specialInstructions && String((item as any).specialInstructions).trim() && (
+                    <ItemSetItems>📝 {(item as any).specialInstructions}</ItemSetItems>
+                  )}
                 </ItemInfo>
                 <ItemPrice>{formatCurrency(item.totalPrice, currency)}</ItemPrice>
               </ItemRow>
@@ -2865,7 +2904,17 @@ const PaymentPage: React.FC = () => {
 
         </Section>
       </Container>
-      
+
+      {/* 2026-06-25 (Irene): 결제버튼 비활성화 사유를 손님에게 안내(첫 미충족 항목). */}
+      {!isProcessing && (() => {
+        let hint = '';
+        if (cartItems.length === 0) hint = t('common:cartEmptyHint', 'Your cart is empty.');
+        else if (tableRequired && orderType === 'dine-in' && !selectedTable) hint = t('common:selectTableToContinue', 'Please select your table to continue.');
+        else if (!currentCustomer && !guestInfo) hint = t('common:enterContactToContinue', 'Please enter your name and phone to continue.');
+        else if (!paymentMethod) hint = t('common:selectPaymentToContinue', 'Please select a payment method to continue.');
+        return hint ? <PayHint>{hint}</PayHint> : null;
+      })()}
+
       <PayButton
         onClick={handlePayment}
         disabled={isProcessing || cartItems.length === 0 || !paymentMethod || (!currentCustomer && !guestInfo) || (tableRequired && orderType === 'dine-in' && !selectedTable)}

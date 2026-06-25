@@ -10,7 +10,7 @@
  * caching SPA shell would conflict. If future offline support is needed, layer Workbox separately.
  */
 
-const SW_VERSION = '4.12-socket-instant-print-cutoff-20260625';
+const SW_VERSION = '4.14-mobile-payhint-options-floorplan10in-20260625';
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {

@@ -710,6 +710,9 @@
   "enterTablePlaceholder": "Enter your table number",
   "noTableMatch": "No matching table. Check the number on your table.",
   "selectTableToContinue": "Please select your table to continue.",
+  "cartEmptyHint": "Your cart is empty.",
+  "enterContactToContinue": "Please enter your name and phone to continue.",
+  "selectPaymentToContinue": "Please select a payment method to continue.",
   "storeNotLoaded": "Store is still loading. Please wait a moment and try again.",
   "deliveryZone.within": "within {{km}}km",
   "printFailBanner": {

@@ -710,6 +710,9 @@
   "enterTablePlaceholder": "输入您的餐桌号",
   "noTableMatch": "没有匹配的餐桌。请核对餐桌上的编号。",
   "selectTableToContinue": "请选择您的餐桌以继续。",
+  "cartEmptyHint": "您的购物车是空的。",
+  "enterContactToContinue": "请输入您的姓名和电话以继续。",
+  "selectPaymentToContinue": "请选择付款方式以继续。",
   "storeNotLoaded": "店铺正在加载中，请稍候再试。",
   "deliveryZone.within": "{{km}}公里以内",
   "printFailBanner": {

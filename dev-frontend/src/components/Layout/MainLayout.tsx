@@ -1146,6 +1146,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
     socket.on('connect', () => {
       socket.emit('join-restaurant', userRestaurantId);
+      // 2026-06-25 (Irene "모바일 주문 인쇄 늦을 때"): 재연결 직후 1회 폴링 — 소켓이 끊긴 사이
+      // 들어온 주문(order-created 놓침)을 5초 안 기다리고 즉시 따라잡는다. (_pokePoll 은 아래에서
+      // 정의되며, 이 콜백은 연결 후 비동기 실행이라 호출 시점엔 항상 초기화돼 있음.)
+      try { _pokePoll(); } catch {}
     });
 
     const playIfNotOnSoundPage = (preset: 'bell' | 'beep' | 'triple' | 'urgent' | 'melody' | 'deep' = 'bell') => {
@@ -1207,6 +1211,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       }
     });
     socket.on('order-items-added', () => { playIfNotOnSoundPage('bell'); fetchBadgeCounts(); _pokePoll(); });
+    // 2026-06-25 (Irene "이동/아이템취소 인쇄 느림"): 위 주석(1162~)의 "이동/취소도 즉시"는 구현이
+    // 빠져 있었다 — table-moved(이동)·item-voided(아이템 void) 재발행이 needs_print 를 켜도 이 두
+    // 이벤트를 구독 안 해 5초 주기를 기다렸다. 신규주문과 동일하게 즉시 폴링 트리거. 인쇄 주체=폴러,
+    // 중복방지=print-claim 그대로 (트리거만 추가).
+    socket.on('table-moved', () => { fetchBadgeCounts(); _pokePoll(); });
+    socket.on('item-voided', () => { _pokePoll(); });
 
     // 2026-05-28 매장 critical: backend-driven auto-print polling. socket 의존
     // 자체 제거. 매장 device 가 어떤 페이지에 있든 10초 polling 으로 backend

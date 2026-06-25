@@ -1139,11 +1139,15 @@ const LiveOrdersPage: React.FC = () => {
             const reasonLabel = reason ? `Item voided — ${reason}` : 'Item voided';
             const doPrint = () => printCancellationTicket(printData, sInfo, reasonLabel, stPrinter, stAddr)
               .catch(e => console.warn('Item void print failed:', e && e.message));
-            // 자동발행(master) ON → 자동 발송 / OFF → 팝업으로 수동 발송 (Irene 2026-06-03).
+            // 2026-06-25 (Irene): 자동발행(master) ON 매장은 백엔드 poller(DELETE /items 가 set 한
+            // pending_reprint 'void' → ITEM VOIDED 헤더)가 단일 void 표를 인쇄. 프론트 직접 인쇄는
+            // 중복(2장) + 비표준 사고라 자동 모드에선 제거(취소·이동과 동일 DB→poller 단일소스).
+            // 수동발행(master OFF) 매장은 poller 자동인쇄 안 하므로 기존 [Send] 프롬프트 유지.
             const _kp: any = (settings as any)?.kitchenPrinter;
             const _autoOn = !!(_kp && _kp.enabled && _kp.autoPrint);
-            if (_autoOn) doPrint();
-            setCancelPrintPrompt({ run: doPrint, autoSent: _autoOn, ticketType: '*** ITEM CANCELLED ***', description: _autoOn ? t('cancelledItem.sentToKitchen', 'Cancelled item — sent to its kitchen') : t('cancelledItem.pressSend', 'Cancelled item — press [Send] to dispatch to kitchen'), stations: previewStationBuckets(printData.items, settings) });
+            if (!_autoOn) {
+              setCancelPrintPrompt({ run: doPrint, autoSent: false, ticketType: '*** ITEM CANCELLED ***', description: t('cancelledItem.pressSend', 'Cancelled item — press [Send] to dispatch to kitchen'), stations: previewStationBuckets(printData.items, settings) });
+            }
           }
         } catch (e: any) { console.warn('void-ticket step skipped:', e?.message); }
       } else {
@@ -1392,11 +1396,16 @@ const LiveOrdersPage: React.FC = () => {
             const _ps: any = (() => { try { return require('../../utils/billPrint').getPrinterSettings(); } catch { return {}; } })();
             const doPrint = () => printCancellationTicketsByStation(printData, sInfo, 'Cancelled by staff')
               .catch(e => console.warn('Cancellation print failed:', e && e.message));
-            // 자동발행(master) ON → 자동 발송 / OFF → 팝업 수동 발송 (Irene 2026-06-03).
+            // 2026-06-25 (Irene "취소 종이 2장"): 자동발행(master) ON 매장은 백엔드 poller(PATCH /status
+            // 가 set 한 pending_reprint 'cancel' → noticeHeader 배너)가 단일 취소표를 인쇄한다. 프론트
+            // 직접 인쇄(printCancellationTicketsByStation)는 그 위에 비표준(밑줄 없는) 1장을 더 찍어
+            // 2장 사고였다 → 자동 모드에선 제거(테이블이동 unification 과 동일하게 DB→poller 단일소스).
+            // 수동발행(master OFF) 매장은 poller 가 자동인쇄 안 하므로 기존 [Send] 프롬프트 경로 유지.
             const _kpO: any = _ps?.kitchenPrinter;
             const _autoOnO = !!(_kpO && _kpO.enabled && _kpO.autoPrint);
-            if (_autoOnO) doPrint();
-            setCancelPrintPrompt({ run: doPrint, autoSent: _autoOnO, ticketType: '*** ORDER CANCELLED ***', description: _autoOnO ? t('orderCancel.sentToKitchen', 'Order {{orderNumber}} — sent to its kitchen', { orderNumber: printData.orderNumber }) : t('orderCancel.pressSend', 'Order {{orderNumber}} — press [Send] to dispatch to kitchen', { orderNumber: printData.orderNumber }), stations: previewStationBuckets(printData.items, _ps) });
+            if (!_autoOnO) {
+              setCancelPrintPrompt({ run: doPrint, autoSent: false, ticketType: '*** ORDER CANCELLED ***', description: t('orderCancel.pressSend', 'Order {{orderNumber}} — press [Send] to dispatch to kitchen', { orderNumber: printData.orderNumber }), stations: previewStationBuckets(printData.items, _ps) });
+            }
           } catch (e) {
             console.warn('Cancellation ticket trigger error:', (e as any) && (e as any).message);
           }

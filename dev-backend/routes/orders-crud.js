@@ -1217,19 +1217,34 @@ router.post('/:id/move-table', authenticateToken, async (req, res) => {
       // printed_at 을 비워(새 테이블로 다시 발행) + pending_reprint 에 "TABLE CHANGED" 안내를 담아
       // 폴러가 헤더로 찍고, /printed 가 비운다. 죽은 claim 자동복구(print_claimed_at)도 그대로 적용.
       // 인쇄 방식(billPrint) 무변경 — 트리거를 기기→DB로 옮긴 것뿐. 프론트 직접 재인쇄는 제거.
-      if (printedItems.length > 0) {
-        const clearedItems = (Array.isArray(items) ? items : []).map(it => {
-          if (!it || typeof it !== 'object') return it;
-          const c = { ...it }; delete c.printed_at; delete c.printed; return c;
-        });
-        await order.update({
-          order_items: clearedItems,
+      //
+      // 2026-06-25 (Irene "2번 옮겼는데 1장만 나옴"): 직전 이동 재발행이 아직 인쇄되기 전
+      // (needs_print=true + pending_reprint.type='move')에 또 옮기면, move#1 이 이미 printed_at 을
+      // 비워 두 번째 move 에선 printedItems 가 비어 → 새 안내를 못 만들고 옛 from→to 1장만 나갔다.
+      // 직전 이동이 대기 중이면 fromTable 은 '맨 처음 출발지'를 유지하고 toTable 만 최종 목적지로
+      // 갱신한다 → 빠른 연속 이동도 '최초 → 최종' 1장으로 정확히 인쇄(물리적으로 이미 찍힌 티켓은
+      // 합칠 수 없으므로, 시간 간격이 있어 move#1 이 먼저 인쇄됐으면 자연히 2장 — 의도된 동작).
+      let _priorReprint = order.pending_reprint;
+      if (typeof _priorReprint === 'string') { try { _priorReprint = JSON.parse(_priorReprint); } catch { _priorReprint = null; } }
+      const _priorMovePending = !!(order.needs_print && _priorReprint && _priorReprint.type === 'move');
+      const _originFrom = (_priorMovePending && _priorReprint.fromTable != null) ? _priorReprint.fromTable : (sourceTableNumber || null);
+      if (printedItems.length > 0 || _priorMovePending) {
+        const _reprintUpdate = {
           needs_print: true,
           print_claimed_at: null,
           // fromTable/toTable: 티켓 맨 아래 테이블 라인에 "이전(취소선) → 새" 로 표기(어느 테이블에서
           // 어디로 옮겼는지 주방이 즉시 알게). 프론트 billPrint 가 noticeHeader.fromTable/toTable 로 렌더.
-          pending_reprint: { type: 'move', fromTable: sourceTableNumber || null, toTable: destinationTableNumber || null, notice: { title: '** TABLE CHANGED **', fromTable: sourceTableNumber || null, toTable: destinationTableNumber || null, lines: ['Discard the previous ticket.', 'Use THIS ticket.'] } }
-        }, { transaction: t });
+          pending_reprint: { type: 'move', fromTable: _originFrom, toTable: destinationTableNumber || null, notice: { title: '** TABLE CHANGED **', fromTable: _originFrom, toTable: destinationTableNumber || null, lines: ['Discard the previous ticket.', 'Use THIS ticket.'] } }
+        };
+        // 새로 주방에 간 품목이 있으면 그 printed_at 만 비운다(새 테이블로 다시 발행). 직전 이동만
+        // 대기 중(printedItems 비었음)이면 order_items 는 건드리지 않는다(이미 비워져 있음).
+        if (printedItems.length > 0) {
+          _reprintUpdate.order_items = (Array.isArray(items) ? items : []).map(it => {
+            if (!it || typeof it !== 'object') return it;
+            const c = { ...it }; delete c.printed_at; delete c.printed; return c;
+          });
+        }
+        await order.update(_reprintUpdate, { transaction: t });
       }
 
       return {
@@ -1889,7 +1904,8 @@ router.get('/:id/actions', authenticateToken, async (req, res) => {
     const actions = await OrderAction.findAll({
       where: { order_id: order.id },
       order: [['created_at', 'ASC']],
-      attributes: ['id', 'action_type', 'from_status', 'to_status', 'performed_by_name', 'performed_by_role', 'source', 'reason', 'created_at']
+      // metadata 포함(2026-06-25): table_moved 의 from_table/to_table 를 프론트가 "X → Y" 로 표시.
+      attributes: ['id', 'action_type', 'from_status', 'to_status', 'performed_by_name', 'performed_by_role', 'source', 'reason', 'metadata', 'created_at']
     });
     res.json({ success: true, data: actions });
   } catch (error) {
