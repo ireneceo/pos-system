@@ -1251,8 +1251,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         // before it are backlog → skipped + dismissed. OFF clears it. Both pollers use
         // the SAME key so the cutoff is consistent across hook + this layout poller.
         const _kpAutoNow = !!(printSettings.kitchenPrinter && printSettings.kitchenPrinter.autoPrint);
-        const _stAutoNow = Object.values(printSettings.kitchenStationPrinters || {}).some((s: any) => s?.autoPrint);
-        const _anyAutoNow = _kpAutoNow || _stAutoNow;
+        // 2026-06-25 (Irene "인쇄 폭주"): 백로그 컷오프를 실제 인쇄 게이트(_kitchenAuto = kitchenPrinter
+        // enabled && autoPrint, 마스터)와 동일 기준으로 판정. 이전엔 스테이션 autoPrint 까지 OR 로 봐서,
+        // 마스터만 꺼지고 스테이션은 켜진 상태(wipe)에선 컷오프 미리셋 → 마스터 복구 시 백로그 우르르 인쇄.
+        const _kpEnabledNow = (printSettings.kitchenPrinter?.enabled !== false);
+        const _anyAutoNow = _kpEnabledNow && _kpAutoNow;
         let _autoEnabledAt = parseInt(localStorage.getItem('kitchenAutoPrintEnabledAt') || '0', 10) || 0;
         if (_anyAutoNow && !_autoEnabledAt) { _autoEnabledAt = Date.now(); try { localStorage.setItem('kitchenAutoPrintEnabledAt', String(_autoEnabledAt)); } catch {} }
         if (!_anyAutoNow && _autoEnabledAt) { try { localStorage.removeItem('kitchenAutoPrintEnabledAt'); } catch {} _autoEnabledAt = 0; }

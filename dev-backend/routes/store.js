@@ -127,6 +127,12 @@ router.put('/settings', authenticateToken, async (req, res) => {
     }
     console.log('✓ Access control passed');
 
+    // 2026-06-25 (Irene): printer_settings 는 레스토랑 관리자(또는 System Admin)만 변경 가능.
+    // 매장 직원(Staff)·기타 역할이 다른 설정을 저장할 때 printer_settings 를 함께 덮어쓰지
+    // 못하게 막는다 (thefire kitchenPrinter wipe 재발 방지의 한 축). 권한 없는 사용자의 저장에서는
+    // printer_settings 필드를 통째로 건너뛰어 기존 DB 값을 보존한다.
+    const canEditPrinterSettings = req.user.role === 'Restaurant Admin' || req.user.role === 'System Admin';
+
     // Validate currency against system-allowed currencies
     if (req.body.currency) {
       try {
@@ -193,6 +199,31 @@ router.put('/settings', authenticateToken, async (req, res) => {
 
     allowedFields.forEach(field => {
       if (req.body[field] !== undefined) {
+        // RA-only printer_settings gate (2026-06-25) — 비-RA 저장은 프린터 설정 보존.
+        // 예외(Irene): 비상 라우팅 모드(emergencyMode)는 영업 중 프린터 고장 시 직원도 즉시
+        // 켜야 하므로 허용한다 — emergencyMode/emergencyEnabledAt 만 기존값에 머지하고 나머지는
+        // 통째로 보존(직원의 미로드/stale payload 가 실제 프린터 설정을 못 덮게).
+        if (field === 'printer_settings' && !canEditPrinterSettings) {
+          try {
+            const _rawEx = restaurant.getDataValue('printer_settings');
+            const existingPs = _rawEx ? (typeof _rawEx === 'string' ? JSON.parse(_rawEx) : _rawEx) : {};
+            const incomingPs = typeof req.body.printer_settings === 'string'
+              ? JSON.parse(req.body.printer_settings) : (req.body.printer_settings || {});
+            if (typeof incomingPs.emergencyMode === 'boolean' && incomingPs.emergencyMode !== existingPs.emergencyMode) {
+              existingPs.emergencyMode = incomingPs.emergencyMode;
+              existingPs.emergencyEnabledAt = incomingPs.emergencyMode
+                ? (incomingPs.emergencyEnabledAt || new Date().toISOString())
+                : null;
+              restaurant.printer_settings = existingPs;
+              console.warn(`  🟠 printer_settings: non-RA(${req.user.role}) emergencyMode=${incomingPs.emergencyMode} 만 반영, 나머지 보존`);
+            } else {
+              console.warn(`  🔒 printer_settings skipped (role=${req.user.role}) — RA only (emergency 변화 없음)`);
+            }
+          } catch (e) {
+            console.warn('  🔒 printer_settings skipped (non-RA, parse error)');
+          }
+          return; // 비-RA 는 전체 printer_settings 적용 안 함 (emergency 만 위에서 머지)
+        }
         console.log(`  ✏️  ${field}:`, field === 'payment_settings' || field === 'operation_settings'
           ? `[JSON ${typeof req.body[field]}]`
           : req.body[field]);

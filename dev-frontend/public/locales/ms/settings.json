@@ -1072,6 +1072,8 @@
   "operations.managerApprovalsTitle": "Kelulusan PIN Pengurus",
   "operations.managerApprovalsDesc": "Perlukan PIN yang dibenarkan sebelum tindakan kaunter sensitif, untuk mencegah dan menjejak penyalahgunaan. Akaun log masuk tidak berubah — PIN hanya mengesahkan siapa yang meluluskan.",
   "printer": {
+    "adminOnlyNotice": "Tetapan pencetak hanya boleh diubah oleh Pentadbir Restoran.",
+    "adminOnlyReadonly": "Tetapan pencetak hanya boleh diubah oleh Pentadbir Restoran. Perubahan di sini tidak akan disimpan — kecuali Mod Penghalaan Kecemasan yang boleh ditogol oleh mana-mana kakitangan.",
     "troubleshoot": {
       "openTitle": "Buka panduan penyelesaian masalah pencetak",
       "openBtn": "Panduan penyelesaian masalah ?",

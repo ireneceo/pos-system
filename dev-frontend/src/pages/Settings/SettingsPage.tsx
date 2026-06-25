@@ -622,6 +622,9 @@ const defaultMembershipSettings: MembershipSettings = {
 const SettingsPage: React.FC = () => {
   const { t } = useTranslation('settings');
   const { user } = useAuth();
+  // 2026-06-25 (Irene): 프린터 설정은 레스토랑 관리자(또는 System Admin)만 변경 가능.
+  // 백엔드(routes/store.js)도 동일하게 강제 — 비-RA 저장 시 printer_settings 통째 무시.
+  const canEditPrinterSettings = user?.role === 'Restaurant Admin' || user?.role === 'System Admin';
   const { updateSettings } = useStore();
   const { categories } = useMenu();
   const { setTheme, resetTheme, isDefaultTheme } = useBrandTheme();
@@ -2222,18 +2225,28 @@ const SettingsPage: React.FC = () => {
           cash_rounding: currencySettings.cashRounding,
           rounding_apply_to: currencySettings.roundingApplyTo,
           kitchen_item_merge: { time_limit: itemMergeTimeLimit, max_count: itemMergeMaxCount },
-          printer_settings: {
-            printerMode: printerMode,
-            billPrinter: printerSettings.billPrinter,
-            kitchenPrinter: printerSettings.kitchenPrinter,
-            kitchenStationPrinters: printerSettings.kitchenStationPrinters,
-            workstations: printerSettings.workstations || [],  // CRITICAL: was missing — every AutoSaveField save wiped workstations from DB
-            consolidatedOrderTicket: (printerSettings as any).consolidatedOrderTicket || { enabled: false, method: 'qztray', address: '', autoPrint: false },
-            emergencyMode: !!(printerSettings as any).emergencyMode,
-            emergencyEnabledAt: (printerSettings as any).emergencyEnabledAt || null,
-            receiptSettings: receiptSettings
-          }
+          // 2026-06-25 Lock① (thefire kitchenPrinter wipe): printer_settings 가 DB 에서
+          // 완전히 로드되기 전(printerSettingsLoading)에는 저장 payload 에서 제외한다. 무관한
+          // AutoSaveField(결제 토글 등)가 로드 완료 전에 handleSave 를 발동하면, 화면 초기
+          // 기본값(올-off kitchenPrinter)이 그대로 PUT 돼 운영 프린터 설정을 덮어쓰던 사고의
+          // 근본 차단. 로드 완료 후에는 state 가 DB 값과 동일하므로 포함해도 안전하다.
+          ...(printerSettingsLoading ? {} : {
+            printer_settings: {
+              printerMode: printerMode,
+              billPrinter: printerSettings.billPrinter,
+              kitchenPrinter: printerSettings.kitchenPrinter,
+              kitchenStationPrinters: printerSettings.kitchenStationPrinters,
+              workstations: printerSettings.workstations || [],  // CRITICAL: was missing — every AutoSaveField save wiped workstations from DB
+              consolidatedOrderTicket: (printerSettings as any).consolidatedOrderTicket || { enabled: false, method: 'qztray', address: '', autoPrint: false },
+              emergencyMode: !!(printerSettings as any).emergencyMode,
+              emergencyEnabledAt: (printerSettings as any).emergencyEnabledAt || null,
+              receiptSettings: receiptSettings
+            }
+          })
         };
+        if (printerSettingsLoading) {
+          console.warn('⏳ [Lock①] printer_settings not yet loaded — excluded from save to protect live printer config');
+        }
 
         console.log('📦 Request body (first 500 chars):', JSON.stringify(requestBody).substring(0, 500));
         console.log('💳 Payment settings being saved:', JSON.stringify(paymentMethods).substring(0, 300));
@@ -5778,6 +5791,22 @@ const SettingsPage: React.FC = () => {
 
           {activeTab === 'printer' && (
             <>
+              {/* 2026-06-25 (Irene): 프린터 설정 변경 권한 안내 — 레스토랑 관리자 전용.
+                  백엔드(routes/store.js)에서도 비-RA 저장 시 printer_settings 를 무시한다. */}
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '10px 14px', marginBottom: 16,
+                background: canEditPrinterSettings ? '#F3F4F6' : '#FEF3F2',
+                border: `1px solid ${canEditPrinterSettings ? '#E5E7EB' : '#FECDCA'}`,
+                borderRadius: 8, fontSize: 13,
+                color: canEditPrinterSettings ? '#374151' : '#B42318'
+              }}>
+                <span>
+                  {canEditPrinterSettings
+                    ? t('settings:printer.adminOnlyNotice', 'Printer settings can only be changed by the Restaurant Admin.')
+                    : t('settings:printer.adminOnlyReadonly', 'Printer settings can only be changed by the Restaurant Admin. Your account is view-only — any changes here will not be saved.')}
+                </span>
+              </div>
               {/* ★ Emergency Routing Mode — top of the printer tab so it's the
                   first thing staff see when something breaks. Red when ON. The
                   flag is a single boolean; print routing checks it at runtime and

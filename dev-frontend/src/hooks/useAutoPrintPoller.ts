@@ -12,6 +12,7 @@
  * 잡고 나머지는 PATCH fail → skip.
  */
 import { useEffect, useRef } from 'react';
+import { io, Socket } from 'socket.io-client';
 import { getAuthToken } from '../utils/auth';
 
 export function useAutoPrintPoller(opts: {
@@ -83,8 +84,13 @@ export function useAutoPrintPoller(opts: {
         // 주문은 자동인쇄 skip(needs_print 유지 → 오더티켓 버튼 수동 가능). OFF 면 enabledAt clear
         // → 다음 ON 때 새로 잡혀 그 이전 백로그는 자동 제외.
         const _kpAutoNow = !!(printSettings.kitchenPrinter && printSettings.kitchenPrinter.autoPrint);
-        const _stAutoNow = Object.values(printSettings.kitchenStationPrinters || {}).some((s: any) => s?.autoPrint);
-        const _anyAutoNow = _kpAutoNow || _stAutoNow;
+        // 2026-06-25 (Irene "인쇄 폭주"): 백로그 컷오프는 실제 인쇄 게이트(_kitchenAuto =
+        // kitchenPrinter.enabled && autoPrint, 마스터)와 동일 기준으로 "자동인쇄 켜짐"을 판정한다.
+        // 이전엔 스테이션 autoPrint 까지 OR(_stAutoNow) 로 봐서, 마스터만 꺼지고 스테이션은 켜진
+        // 상태(wipe 사고)에선 "한 번도 꺼진 적 없음"으로 오판 → 컷오프 미리셋 → 마스터 복구 시 아침
+        // 백로그가 우르르 인쇄됐다. 게이트와 동일 기준으로 맞춰, 마스터 off→on 시 옛 백로그는 dismiss.
+        const _kpEnabledNow = (printSettings.kitchenPrinter?.enabled !== false);
+        const _anyAutoNow = _kpEnabledNow && _kpAutoNow;
         let _autoEnabledAt = parseInt(localStorage.getItem('kitchenAutoPrintEnabledAt') || '0', 10) || 0;
         if (_anyAutoNow && !_autoEnabledAt) { _autoEnabledAt = Date.now(); try { localStorage.setItem('kitchenAutoPrintEnabledAt', String(_autoEnabledAt)); } catch {} }
         if (!_anyAutoNow && _autoEnabledAt) { try { localStorage.removeItem('kitchenAutoPrintEnabledAt'); } catch {} _autoEnabledAt = 0; }
@@ -267,6 +273,24 @@ export function useAutoPrintPoller(opts: {
     // in OTHER same-origin windows → the printing device runs pollFn immediately.
     const onStoragePoke = (e: StorageEvent) => { if (e.key === 'autoprint-poke') pollFn(); };
     window.addEventListener('storage', onStoragePoke);
-    return () => { cancelled = true; if (timer) clearInterval(timer); window.removeEventListener('autoprint-poke', onPoke); window.removeEventListener('storage', onStoragePoke); };
+
+    // 2026-06-25 (Irene "소켓 즉시화"): MainLayout 폴러(_printPollFn)엔 order-created 소켓
+    // 트리거가 있지만(120ms 디바운스 → 즉시 폴링), 전체화면 페이지(POS Terminal/KDS/FloorPlan)는
+    // MainLayout 이 미mount 라 이 hook 만 돈다. 여기엔 socket 이 없어 다른 기기(POS2)·모바일 주문을
+    // 최대 intervalMs(5s) 기다려 느렸다(인쇄 전담 기기가 그 화면에 떠 있을 때 = thefire 케이스).
+    // MainLayout 과 동일 패턴으로 order-created/items-added 소켓에 즉시 폴링을 건다.
+    // ★ socket 은 "트리거만" — 인쇄 주체는 pollFn(폴러), 중복방지는 print-claim/__autoPrintInflight,
+    //   안전망은 interval 폴링. 소켓 누락·단절 시에도 폴링이 fail-safe (분실 0 유지). 인쇄 방식 무변경.
+    let socket: Socket | null = null;
+    let socketPokeTimer: any = null;
+    const socketPoke = () => { if (socketPokeTimer) return; socketPokeTimer = setTimeout(() => { socketPokeTimer = null; pollFn(); }, 120); };
+    try {
+      socket = io('/orders', { transports: ['websocket', 'polling'], auth: { token: getAuthToken() } });
+      socket.on('connect', () => { try { socket?.emit('join-restaurant', restaurantId); } catch {} });
+      socket.on('order-created', socketPoke);
+      socket.on('order-items-added', socketPoke);
+    } catch {}
+
+    return () => { cancelled = true; if (timer) clearInterval(timer); if (socketPokeTimer) clearTimeout(socketPokeTimer); try { socket?.disconnect(); } catch {} window.removeEventListener('autoprint-poke', onPoke); window.removeEventListener('storage', onStoragePoke); };
   }, [restaurantId, enabled, intervalMs, getStoreInfo]);
 }

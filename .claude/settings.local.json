@@ -768,7 +768,11 @@
       "Bash(scp -o ConnectTimeout=8 esync.js irene@87.106.78.146:/var/www/production-backend/esync.js)",
       "Bash(scp -o ConnectTimeout=8 /tmp/claude-1000/-var-www/4db5027e-bdea-466c-8559-8eea6dca04c8/scratchpad/lifecycle.js irene@87.106.78.146:/var/www/production-backend/lifecycle.js)",
       "Bash(sed -i \"s/LIFECYCLE99/LC9/\" lifecycle.js)",
-      "Bash(scp -o ConnectTimeout=8 lifecycle.js irene@87.106.78.146:/var/www/production-backend/lifecycle.js)"
+      "Bash(scp -o ConnectTimeout=8 lifecycle.js irene@87.106.78.146:/var/www/production-backend/lifecycle.js)",
+      "Bash(echo \"BUILD2 exit=$?\")",
+      "Bash(echo \"BUILD3 exit=$?\")",
+      "Bash(echo \"BUILD4 exit=$?\")",
+      "Bash(echo \"BUILD5 exit=$?\")"
     ],
     "deny": [],
     "ask": []

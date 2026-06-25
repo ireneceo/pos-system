@@ -25,6 +25,16 @@
    - station 라우팅은 item.kitchen_station_id 로 분배(`enrichItemsWithStation`/`resolveProductId`). +Round 는 printed_at 히스토리로 추가분만.
 6. 자세한 단일 진실: `docs/PRINT_RULES_MATRIX.md` 🔒 섹션 + 메모리 [[reference_kitchen_print_pipeline]].
 
+### 🔒 확정된 인쇄 구조·프로세스 결정 (2026-06-25, 번복 금지 — 재논의·되돌리기 절대 금지)
+
+> 2026-06-25 인쇄 구조를 두고 하루 종일 왔다갔다 한 끝에 **확정**. 아래는 결론. 다음 세션에서 다시 "하이브리드 해야 하지 않나 / 되돌리자"로 **재논의 금지**. Irene 새 명시 지시 있을 때만 변경.
+
+1. **인쇄 구조 = "지정 인쇄 스테이션이 서버 경유로 인쇄"가 우리 솔루션의 표준이자 정답.** 우리는 **모바일오더 기준** 솔루션이고, 모바일/QR 주문은 출처(손님 폰)에 프린터가 없어 **무조건 서버→지정 POS**가 인쇄해야 한다(= 업계 표준, Toast/Square 도 온라인주문은 이 방식). **풀 하이브리드(각 POS 가 자기 주문 로컬 즉시인쇄)는 필수 아님 = 선택**(카운터에서 프린터 달린 POS 로 주문받는 매장 전용). thefire 처럼 프린터 POS 가 주문을 거의 안 넣으면 하이브리드는 **무의미**. 설계=`docs/PRINT_DB_DRIVEN_DISPATCH.md §6`.
+2. **소켓은 "폴링 위 가속"으로만 쓴다. 소켓으로 폴링을 대체/제거 절대 금지.** 소켓은 매장에서 잘 끊겨(PWA refresh/모니터 sleep), 소켓 인쇄만 의존하면 끊긴 순간 **티켓 분실**. **폴링이 단일 소스+안전망(분실 0), 소켓은 즉시 트리거(120ms 디바운스), `print-claim`이 중복방지.** (2026-06-25 useAutoPrintPoller·MainLayout 둘 다 적용.)
+3. **백로그 컷오프(`_anyAutoNow`/`kitchenAutoPrintEnabledAt`) = 실제 인쇄 게이트(`_kitchenAuto = kitchenPrinter.enabled && autoPrint`, 마스터)와 동일 기준.** 스테이션 autoPrint OR 금지 — 마스터만 꺼지고 스테이션 켜진 상태에서 컷오프 미리셋 → 마스터 복구 시 **백로그 우르르 인쇄(2026-06-25 아침 폭주)**.
+4. **프린터 설정은 레스토랑 관리자(+System Admin)만 변경, 비상모드(emergencyMode)만 직원 예외.** 설정 wipe 방지 자물쇠 3개(프론트 로드가드 + settingsGuard 미로드보존 + store.js RA게이트). 상세 메모리 [[project_printer_settings_wipe_locks]].
+5. **프로세스: "한 번에 하나"를 빌미로 매장을 여러 번 왕복시키지 말 것.** 인쇄 변경은 추측 금지(설계+승인+실프린터 확인)이되, **안 되던 것·관련 수정은 다 묶어서 한 번에 고치고 매장 실프린터 테스트는 1회**로 끝낸다. 자동 검증(build/regression/health/mount/print-guard)은 내가 다 하고, Irene 는 종이 확인 1회.
+
 ### 🛡️ 자동 안전망 (사고 예방)
 인쇄 무관 기능을 확장하다 위 생명선 코드를 실수로 건드리는 사고를 자동 감지·차단한다.
 

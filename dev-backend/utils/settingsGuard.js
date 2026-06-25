@@ -171,6 +171,31 @@ function guardPrinterSettings(incomingRaw, existingRaw, restaurantId = '?') {
     }
   }
 
+  // 2026-06-25 (thefire kitchenPrinter wipe) — 미로드/기본값 저장 방어.
+  // 설정 페이지가 프린터 설정을 DB 에서 다 불러오기 전에 무관한 AutoSaveField(결제 토글 등)가
+  // 저장을 발동하면, 화면 초기 기본값(올-off kitchenPrinter + 빈 workstations + 빈 stations)이
+  // 그대로 PUT 된다. 빈 workstations/stations 는 위에서 보존됐지만, "값은 있는데 전부 꺼진"
+  // kitchenPrinter 는 비어있지 않아 통과 → 운영 주방 자동인쇄가 조용히 꺼졌다(2026-06-24 사고).
+  // 신호: existing 에는 workstations/stations 가 있는데 incoming 은 둘 다 비어 있음 = 미로드 payload.
+  // 이 경우 kitchenPrinter + billPrinter 도 기존값으로 보존한다. 정상 저장은 항상 workstations/
+  // stations 를 실어 오므로(로드 완료 상태) 오탐 없음.
+  const exHadWs = Array.isArray(existing.workstations) && existing.workstations.length > 0;
+  const exHadStations = existing.kitchenStationPrinters && typeof existing.kitchenStationPrinters === 'object'
+    && Object.keys(existing.kitchenStationPrinters).length > 0;
+  const inWsEmpty = !Array.isArray(incoming.workstations) || incoming.workstations.length === 0;
+  const inStationsEmpty = !incoming.kitchenStationPrinters || typeof incoming.kitchenStationPrinters !== 'object'
+    || Object.keys(incoming.kitchenStationPrinters).length === 0;
+  if ((exHadWs || exHadStations) && inWsEmpty && inStationsEmpty) {
+    if (existing.kitchenPrinter && Object.keys(existing.kitchenPrinter).length > 0) {
+      merged.kitchenPrinter = existing.kitchenPrinter;
+      preserved.push('kitchenPrinter(unloaded-payload)');
+    }
+    if (existing.billPrinter && Object.keys(existing.billPrinter).length > 0) {
+      merged.billPrinter = existing.billPrinter;
+      preserved.push('billPrinter(unloaded-payload)');
+    }
+  }
+
   // receiptSettings — receiptLogo 빈 string + existing 에 값 있으면 보존
   if (existing.receiptSettings && existing.receiptSettings.receiptLogo) {
     const inRecv = incoming.receiptSettings || {};

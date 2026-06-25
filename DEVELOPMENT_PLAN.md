@@ -1,12 +1,41 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-24 #2 (8GB 확인 + 운영문의 16건 대조 + 직원ID 표시 strip 운영배포 SW 4.11 + 모바일 크로스셀 기획설계. 운영 라이프사이클 ALL PASS. 아래.)
+> **최종 업데이트:** 2026-06-25 (thefire 무인쇄 근본수리: 설정 wipe 방지 자물쇠3개+RA권한잠금 운영배포 → 소켓 즉시화+백로그 컷오프 빈틈 수리 운영배포 SW 4.12. 인쇄 구조 결정 CLAUDE.md 박제. 운영 디스크 83%→21%. 아래.)
+>
+> **이전:** 2026-06-24 #2 (8GB 확인 + 운영문의 16건 대조 + 직원ID 표시 strip 운영배포 SW 4.11 + 모바일 크로스셀 기획설계. 운영 라이프사이클 ALL PASS.)
 >
 > **이전:** 2026-06-24 (thefire 인쇄 정확성·속도 대응 운영 배포 SW 4.06→4.10: 모든 프린트루트 DB통일·취소표 삭제레이스 수정·이동 from→to·타임존 실수정·POS권한 프린터설정. 속도 잔여=서버 4GB 메모리 병목→8GB 업그레이드 결정.)
 >
 > **이전:** 2026-06-23 (**v3.62 운영 배포 완료** — thefire 실사용 준비 7건: 직원 PIN 전환 수정 · 시재 개시모드(이월/고정) · 마감 폰트 통일 · 통합오더티켓 'Full' 수동인쇄 · 로그인 직원 PIN 우선 · 설정 QR 인쇄버튼 · Windows 7/8 QZ 설치 수정. Backup 20260623_124849, Smoke 9/9, SW=3.95. /검증 통과: health 107/107·print-guard 8/8(billPrint 무수정)·hydration0·timezone0·design0·i18n0·mount(floor-plan/settings/cash-up/pos) crash0.)
 >
 > **이전:** v3.61 발주 UX 대정리 + 외부공급업체 + 플로어플랜 핫픽스. SW=3.90.
+
+## ✅ 완료: thefire 무인쇄 근본수리 — 설정 wipe 방지 + 소켓 즉시화 + 컷오프 빈틈 (2026-06-25)
+
+> 매장 The Fire 무인쇄 사고. 원인=인쇄 코드가 아니라 **설정 미로드 자동저장이 주방 프린터 마스터를 OFF로 덮음**(wipe). 근본수리 후, 아침 누적분 flush 폭주까지 컷오프 빈틈으로 잡고, 소켓 즉시화로 5초 지연 제거. 인쇄 구조 결정을 CLAUDE.md에 박제(번복 방지).
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 무인쇄 근본원인 증거 확정 | 운영 wipe된 kitchenPrinter가 SettingsPage 초기 기본값과 8필드 일치 + DB 일별덤프로 6/24→6/25 마스터 flip 증명(추측 아님) | ✅ |
+| 설정 wipe 방지 자물쇠 3개 (운영배포 #1) | ①프론트 로드가드(미로드 시 printer_settings 저장 제외) ②settingsGuard 미로드payload 보존 ③store.js RA전용+비상모드 직원예외 +안내(4언어)+회귀테스트 5건. **인쇄 핵심파일 무변경(8/8)** | ✅ |
+| 소켓 즉시화 + 컷오프 수리 (운영배포 #2, SW4.12) | useAutoPrintPoller에 order-created 소켓 트리거(전체화면 폴러 5초지연 제거, 폴링=안전망·claim=중복방지) + 컷오프(_anyAutoNow)를 인쇄게이트(마스터)와 동일기준으로(off→on 폭주 방지). print-guard bless | ✅ |
+| 운영 thefire 마스터 복구 | DB에서 kitchenPrinter enabled/autoPrint=true 복구(워크스테이션·스테이션 무변경) | ✅ |
+| 운영 디스크 정리 | 83%→21%(배포백업 362→20개, 77G→4.8G). 보안모니터 메일 원인 | ✅ |
+| 인쇄 구조 결정 박제 | CLAUDE.md 🔒섹션 "확정된 인쇄 구조·프로세스 결정(번복 금지)" — 지정스테이션 서버경유 인쇄=표준, 하이브리드 선택, 소켓=폴링가속만, 컷오프=마스터기준, RA전용, 매장 1회테스트 | ✅ |
+
+### 검증
+- 배포 #1: print-guard 8/8 · health 107/107 · jest 5/5 · 실HTTP e2e 6/6 · i18n0 · design0 · 프린터설정탭 mount 크래시0. Backup 20260625_072026, Smoke 9/9.
+- 배포 #2: build · autoprint-regression 44/44 · health 107/107 · hydration0 · POS/KDS/플로어 mount 크래시0 · print-guard bless. Backup 20260625_075239, Smoke 9/9, SW 4.12.
+- 실프린터 종이 확인 = Irene 매장 테스트 1회(대기).
+
+### 수정/신규 파일
+- 백엔드: `routes/store.js`·`utils/settingsGuard.js`·`tests/settings-guard.test.js`(신규)·`scripts/print-guard.manifest.json`(bless)
+- 프론트: `pages/Settings/SettingsPage.tsx`·`hooks/useAutoPrintPoller.ts`·`components/Layout/MainLayout.tsx`·`public/sw.js`(4.12)·locales(settings 4언어)
+- 문서: `CLAUDE.md`(🔒 확정 결정)·`docs/PRINT_DB_DRIVEN_DISPATCH.md §6`(하이브리드 설계)·메모리 [[project_printer_settings_wipe_locks]]
+
+---
 
 ## ✅ 완료: 8GB 확인 + 운영문의 대응 + 직원ID 표시 strip 배포 + 모바일 크로스셀 설계 (2026-06-24 #2)
 
