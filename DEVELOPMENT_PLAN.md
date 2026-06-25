@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-25 (thefire 무인쇄 근본수리: 설정 wipe 방지 자물쇠3개+RA권한잠금 운영배포 → 소켓 즉시화+백로그 컷오프 빈틈 수리 운영배포 SW 4.12. 인쇄 구조 결정 CLAUDE.md 박제. 운영 디스크 83%→21%. 아래.)
+> **최종 업데이트:** 2026-06-25 #2 (하이브리드 로컬 인쇄 운영배포 SW 4.16 신규주문 → 4.17 이동/취소/void. POS1이 자기 동작을 폴러 안 기다리고 즉시 로컬 인쇄. BAR 미인쇄 원인 진단 = POS1 QZ가 "BAR" 프린터 미도달(설정·코드 정상). 아래.)
+>
+> **이전:** 2026-06-25 (thefire 무인쇄 근본수리: 설정 wipe 방지 자물쇠3개+RA권한잠금 운영배포 → 소켓 즉시화+백로그 컷오프 빈틈 수리 운영배포 SW 4.12. 인쇄 구조 결정 CLAUDE.md 박제. 운영 디스크 83%→21%.)
 >
 > **이전:** 2026-06-24 #2 (8GB 확인 + 운영문의 16건 대조 + 직원ID 표시 strip 운영배포 SW 4.11 + 모바일 크로스셀 기획설계. 운영 라이프사이클 ALL PASS.)
 >
@@ -9,6 +11,36 @@
 > **이전:** 2026-06-23 (**v3.62 운영 배포 완료** — thefire 실사용 준비 7건: 직원 PIN 전환 수정 · 시재 개시모드(이월/고정) · 마감 폰트 통일 · 통합오더티켓 'Full' 수동인쇄 · 로그인 직원 PIN 우선 · 설정 QR 인쇄버튼 · Windows 7/8 QZ 설치 수정. Backup 20260623_124849, Smoke 9/9, SW=3.95. /검증 통과: health 107/107·print-guard 8/8(billPrint 무수정)·hydration0·timezone0·design0·i18n0·mount(floor-plan/settings/cash-up/pos) crash0.)
 >
 > **이전:** v3.61 발주 UX 대정리 + 외부공급업체 + 플로어플랜 핫픽스. SW=3.90.
+
+## ✅ 완료: 하이브리드 로컬 인쇄 (POS1 즉시 인쇄) — 운영배포 (2026-06-25 #2)
+
+> thefire 매장 POS↔서버 와이파이 불안정으로 폴러(서버경유) 자동인쇄가 지연/누락. **POS1이 자기 처리한 동작을 폴러 사이클 안 기다리고 그 자리에서 즉시 로컬(QZ) 인쇄**하도록 추가. billPrint(인쇄 방식/라우팅) **무변경** — "언제/누가 찍나"만 즉시로. 폴러는 무수정 fallback(크로스기기·모바일). 상세 = [[project_hybrid_local_print]], docs/THEFIRE_REMAINING_WORK_PLAN.md §1.
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 신규파일 hybridKitchenPrint.ts | `printOrderKitchenNow(ord, getStoreInfo)` — atomic claim 중복0 + print-rearm fallback + 표준 noticeHeader 재사용 + POS1만(master gate, POS2/미선택/KDS skip) | ✅ v4.16 |
+| 신규주문 하이브리드 | POSTerminal 두 생성경로(결제없이/결제포함) savedOrder→즉시 로컬 | ✅ v4.16 |
+| 이동/취소/void 하이브리드 | FloorPlanPage(이동)·LiveOrders(취소)·TableDetailPanel(취소+void) 자동모드 분기, `pending_reprint` 가드(없으면 skip) | ✅ v4.17 |
+| 데이터흐름 실증 | 생성/이동/취소/void 응답에 needs_print·pending_reprint·printed_at·station_id 존재 API 검증, claim 1st=true/2nd=false | ✅ |
+| 검증·배포 | build·autoprint44·health107·hydration0·design0·print-guard8/8(POSTerminal bless)·POS/FloorPlan mount crash0. Smoke 9/9 ×2. Backup 20260625_140705·142900 | ✅ |
+
+### BAR 미인쇄 원인 진단 (코드/설정 정상, 물리 도달 문제 — 인계)
+- 실측: station 14(BAR) `address="BAR"`(설정 살아있음), 빌이 `POS-80C`로 잘 나오듯 코드도 `.address`로 QZ 프린터 지정(billPrint:3382). **즉 코드·설정 정상.**
+- **원인 = POS1의 QZ Tray가 "BAR" 프린터에 미도달**(KITCHEN/KITCHEN 2는 잡힘). QZ는 이름 못 찾으면 기본프린터로 떨어뜨리고, `mirrorToBillPrinter=true`라 전체가 POS-80C 미러로 나가 `printed_at`은 찍힘 → BAR 전용 프린터엔 0장.
+- **인계 결정 필요**: (A) BAR가 POS1 네트워크 공유인데 윈도우 프린터 이름이 "BAR" 맞나 → 이름만 맞추면 끝 / (B) BAR가 POS2에만 물림 → POS2가 BAR 스테이션만 자동인쇄하는 구조로.
+
+### 수정된 파일
+- `dev-frontend/src/utils/hybridKitchenPrint.ts` (신규)
+- `dev-frontend/src/pages/POSTerminal/POSTerminalPage.tsx`
+- `dev-frontend/src/pages/FloorPlan/FloorPlanPage.tsx`
+- `dev-frontend/src/pages/FloorPlan/TableDetailPanel.tsx`
+- `dev-frontend/src/pages/LiveOrders/LiveOrdersPage.tsx`
+- `dev-frontend/public/sw.js` (SW 4.16→4.17)
+- `docs/THEFIRE_REMAINING_WORK_PLAN.md` (§1 갱신)
+
+---
 
 ## ✅ 완료: thefire 무인쇄 근본수리 — 설정 wipe 방지 + 소켓 즉시화 + 컷오프 빈틈 (2026-06-25)
 

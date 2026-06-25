@@ -982,6 +982,7 @@ const LiveOrdersPage: React.FC = () => {
         taxRate: parseFloat((selectedOrder as any).tax_rate || '6'),
         total: parseFloat((selectedOrder as any).final_price || selectedOrder.total_amount || '0'),
         paymentMethod: selectedOrder.payment_method || 'cash',
+        cardType: (selectedOrder as any).card_type || null,
         amountReceived: parseFloat((selectedOrder as any).amount_received || '0'),
         change: parseFloat((selectedOrder as any).change || '0'),
         cashierName: (selectedOrder as any).cashier_name || null
@@ -1029,6 +1030,7 @@ const LiveOrdersPage: React.FC = () => {
         taxRate: parseFloat((orderToPrint as any).tax_rate || '6'),
         total: parseFloat((orderToPrint as any).final_price || orderToPrint.total_amount || '0'),
         paymentMethod: orderToPrint.payment_method || 'cash',
+        cardType: (orderToPrint as any).card_type || null,
         amountReceived: parseFloat((orderToPrint as any).amount_received || '0'),
         change: parseFloat((orderToPrint as any).change || '0'),
         cashierName: (orderToPrint as any).cashier_name || null
@@ -1405,6 +1407,19 @@ const LiveOrdersPage: React.FC = () => {
             const _autoOnO = !!(_kpO && _kpO.enabled && _kpO.autoPrint);
             if (!_autoOnO) {
               setCancelPrintPrompt({ run: doPrint, autoSent: false, ticketType: '*** ORDER CANCELLED ***', description: t('orderCancel.pressSend', 'Order {{orderNumber}} — press [Send] to dispatch to kitchen', { orderNumber: printData.orderNumber }), stations: previewStationBuckets(printData.items, _ps) });
+            } else if (result.data && result.data.pending_reprint) {
+              // 2026-06-25 (Irene 하이브리드): 자동모드(=인쇄 전담 POS)면 이 POS가 취소표를
+              // 폴러 안 기다리고 즉시 로컬 인쇄. result.data.pending_reprint(백엔드가 set 한 표준
+              // ** ORDER CANCELLED ** noticeHeader)를 그대로 재사용 → billPrint 무변경/새 디자인 0,
+              // 폴러가 찍을 것과 동일. atomic claim 으로 폴러와 중복 0. 실패/게이트밖이면 poke(폴러 fallback).
+              (async () => {
+                try {
+                  const { printOrderKitchenNow } = await import('../../utils/hybridKitchenPrint');
+                  const _ok = await printOrderKitchenNow(result.data, getStoreInfo);
+                  if (_ok) return;
+                } catch (_e) { /* fall through */ }
+                try { window.dispatchEvent(new CustomEvent('autoprint-poke')); localStorage.setItem('autoprint-poke', String(Date.now())); } catch {}
+              })();
             }
           } catch (e) {
             console.warn('Cancellation ticket trigger error:', (e as any) && (e as any).message);
@@ -1524,6 +1539,7 @@ const LiveOrdersPage: React.FC = () => {
           discount: parseFloat((paidOrderRef as any).discount || '0'),
           total: parseFloat((paidOrderRef as any).total_amount || '0'),
           paymentMethod: method,
+          cardType: method === 'card' ? (cardType || null) : null,
           cashierName: (paidOrderRef as any).cashier_name || null,
           amountReceived: amountReceived,
           change: change

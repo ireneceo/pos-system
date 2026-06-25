@@ -685,6 +685,10 @@ const PaymentPage: React.FC = () => {
   // Calculate takeaway charge (using existing function from StoreContext)
   // localStorage (shares lifecycle with cart) — see MobileOrderContext lifecycle note.
   const orderType = localStorage.getItem('orderType') as 'dine-in' | 'takeaway' | 'pickup' | 'delivery' || 'dine-in';
+  // 2026-06-25 (Irene "3 테이블 모바일 주문 못함"): orderType 형식 정규화 — 'dine-in'/'dine_in' 둘 다
+  // 다인으로 취급. Floor Plan QR/세션/구버전이 'dine_in'(언더스코어)으로 들어오면 테이블 선택칸이
+  // 숨고(조건이 'dine-in' 하이픈만 봄) 결제버튼이 잠겨 손님이 갇히던 문제 방지. 테이블칸·결제 게이트 공용.
+  const isDineIn = orderType === 'dine-in' || orderType === 'dine_in';
 
   // Get scheduled pickup time from state (not sessionStorage anymore)
   // Convert time slot (HH:mm) to full datetime for today
@@ -1325,7 +1329,7 @@ const PaymentPage: React.FC = () => {
 
     // Dine-in table requirement — the store mandates a table number. Button is
     // already disabled in this state, but double-check so a stale render can't slip through.
-    if (tableRequired && orderType === 'dine-in' && !selectedTable) {
+    if (tableRequired && isDineIn && !selectedTable) {
       setError(t('common:selectTableToContinue', 'Please select your table to continue.'));
       return;
     }
@@ -1894,7 +1898,7 @@ const PaymentPage: React.FC = () => {
                     return names.length > 0 ? <ItemSetItems>{names.join(', ')}</ItemSetItems> : null;
                   })()}
                   {(item as any).specialInstructions && String((item as any).specialInstructions).trim() && (
-                    <ItemSetItems>📝 {(item as any).specialInstructions}</ItemSetItems>
+                    <ItemSetItems>* {(item as any).specialInstructions}</ItemSetItems>
                   )}
                 </ItemInfo>
                 <ItemPrice>{formatCurrency(item.totalPrice, currency)}</ItemPrice>
@@ -2762,7 +2766,7 @@ const PaymentPage: React.FC = () => {
           </Section>
         )}
 
-        {localStorage.getItem('orderType') === 'dine-in' && (availableTables.length > 0 || tableRequired) && (
+        {isDineIn && (availableTables.length > 0 || tableRequired) && (
           <TableSection>
             <SectionTitle>Table Number{tableRequired ? ' *' : ''}</SectionTitle>
             <TableSelect
@@ -2909,7 +2913,7 @@ const PaymentPage: React.FC = () => {
       {!isProcessing && (() => {
         let hint = '';
         if (cartItems.length === 0) hint = t('common:cartEmptyHint', 'Your cart is empty.');
-        else if (tableRequired && orderType === 'dine-in' && !selectedTable) hint = t('common:selectTableToContinue', 'Please select your table to continue.');
+        else if (tableRequired && isDineIn && !selectedTable) hint = t('common:selectTableToContinue', 'Please select your table to continue.');
         else if (!currentCustomer && !guestInfo) hint = t('common:enterContactToContinue', 'Please enter your name and phone to continue.');
         else if (!paymentMethod) hint = t('common:selectPaymentToContinue', 'Please select a payment method to continue.');
         return hint ? <PayHint>{hint}</PayHint> : null;
@@ -2917,7 +2921,7 @@ const PaymentPage: React.FC = () => {
 
       <PayButton
         onClick={handlePayment}
-        disabled={isProcessing || cartItems.length === 0 || !paymentMethod || (!currentCustomer && !guestInfo) || (tableRequired && orderType === 'dine-in' && !selectedTable)}
+        disabled={isProcessing || cartItems.length === 0 || !paymentMethod || (!currentCustomer && !guestInfo) || (tableRequired && isDineIn && !selectedTable)}
       >
         {isProcessing ? (
           <>

@@ -773,7 +773,22 @@
       "Bash(echo \"BUILD3 exit=$?\")",
       "Bash(echo \"BUILD4 exit=$?\")",
       "Bash(echo \"BUILD5 exit=$?\")",
-      "Bash(echo \"BUILD2_EXIT=$?\")"
+      "Bash(echo \"BUILD2_EXIT=$?\")",
+      "Bash(echo \"BUILD3_EXIT=$?\")",
+      "Bash(echo \"BUILD4_EXIT=$?\")",
+      "Bash(awk 'NR>=1650 && NR<=1700 && /function |generateHTML|generateKitchen|generateBill|export/' src/utils/billPrint.js)",
+      "Bash(awk 'NR>=2790 && NR<=2840 && /function |generate|export/' src/utils/billPrint.js)",
+      "Bash(echo \"BUILD5_EXIT=$?\")",
+      "Bash(awk '/const handlePrintConsolidatedTicket/,/^  };/' src/pages/FloorPlan/TableDetailPanel.tsx)",
+      "Bash(awk '/printSettlementReport.*=.*async|function printSettlementReport|export async function printSettlementReport/,/^}/' src/utils/billPrint.js)",
+      "Bash(awk '/export function getActiveBillPrinter/,/^}/' src/utils/billPrint.js)",
+      "Bash(awk '/const buildKitchenDataForPrint/,/^  };/' src/pages/FloorPlan/TableDetailPanel.tsx)",
+      "Bash(awk 'NR>=1518 && NR<=1740' src/utils/billPrint.js)",
+      "Bash(echo \"BUILD6_EXIT=$?\")",
+      "Bash(echo \"BUILD7_EXIT=$?\")",
+      "Bash(echo \"BUILD8_EXIT=$?\")",
+      "Bash(awk 'NR>=2489 && NR<=2600 && /res\\\\.json|res\\\\.status|removedItem|data:|pending_reprint|await order.save|reload/' routes/orders-crud.js)",
+      "Bash(awk -F: '$1>=2489 && $1<=2600')"
     ],
     "deny": [],
     "ask": []

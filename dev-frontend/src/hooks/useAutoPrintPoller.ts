@@ -151,6 +151,9 @@ export function useAutoPrintPoller(opts: {
               discount: parseFloat(ord.discount || '0'),
               total: parseFloat(ord.total_amount || '0'),
               paymentMethod: ord.payment_method || 'counter',
+              // 2026-06-25 (Irene "빌에 카드타입 안 나옴"): 주문 card_type(snake) → 빌의 cardType(camel)
+              // 으로 전달. billPrint.paymentMethodLabel 이 카드+타입을 라벨에 붙임(인쇄 로직 무변경).
+              cardType: ord.card_type || null,
               cashierName: ord.source === 'mobile' ? 'Mobile Order' : 'POS'
             };
 
@@ -286,9 +289,8 @@ export function useAutoPrintPoller(opts: {
     const socketPoke = () => { if (socketPokeTimer) return; socketPokeTimer = setTimeout(() => { socketPokeTimer = null; pollFn(); }, 120); };
     try {
       socket = io('/orders', { transports: ['websocket', 'polling'], auth: { token: getAuthToken() } });
-      // 2026-06-25 (Irene "모바일 주문 인쇄 늦을 때 있음"): 소켓이 잠깐 끊겼다 재연결되면
-      // 끊긴 사이 들어온 주문(order-created 놓침)을 즉시 따라잡는다(연결 직후 1회 폴링). 끊김
-      // 순간 들어온 주문이 최대 5초 폴링을 기다리던 지연 제거. 인쇄 주체·중복방지는 그대로.
+      // 2026-06-25 (Irene "모바일 주문 인쇄 늦을 때 있음"): 소켓 재연결 직후 1회 폴링 — 끊긴 사이
+      // 들어온 주문을 즉시 따라잡는다(이미 운영 반영·bless됨). 중복방지는 print-claim 으로 그대로.
       socket.on('connect', () => { try { socket?.emit('join-restaurant', restaurantId); } catch {} socketPoke(); });
       socket.on('order-created', socketPoke);
       socket.on('order-items-added', socketPoke);

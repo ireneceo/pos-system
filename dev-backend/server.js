@@ -172,9 +172,13 @@ app.use(securityHeaders);
 app.use(sqlInjectionProtection);
 
 // Rate Limiting - API 요청 제한 (IP당 15분에 1000회)
+// 2026-06-25 (Irene "429 로그인오류"): rate limit 은 IP당인데 매장 전 기기(POS1/2·KDS·손님폰)가
+// 한 공인 IP(NAT)를 공유한다. 폴러(5초마다 × 여러 기기)+모바일주문+설정로드가 한 IP로 합산돼
+// 1000/15min 을 넘겨 site-settings 등이 429 로 막혔다. 다기기 매장 현실에 맞게 상향(여전히 유한 →
+// DoS 방어 유지). 인증된 요청은 더 관대해도 안전하지만 우선 한도만 올림.
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 1000,
+  max: 5000,
   message: { success: false, error: 'Too many requests, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false
@@ -202,9 +206,12 @@ app.use('/api/mobile/order', mobileOrderLimiter);
 // and /staff/verify-pin is unauthenticated + accepts restaurant_id in the body. The
 // general apiLimiter (1000/15min) is far too loose to stop PIN brute-force, so throttle
 // this endpoint hard (per IP). Required before exposing PIN as a primary login (P1-4).
+// 2026-06-25 (Irene "429"): 15/15min 은 IP당이라 매장(NAT, 여러 직원 PIN 전환 + 재시도)에서 금방
+// 초과돼 로그인이 막혔다. 50/15min 으로 — 정상 매장 사용엔 충분, 4자리 PIN brute-force(10k조합)는
+// 여전히 비실용적으로 느림(≈42시간) + 매장이 즉시 알아챔. 보안/사용성 균형.
 const pinLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 15,
+  max: 50,
   message: { success: false, error: { message: 'Too many PIN attempts, please try again later.', code: 'PIN_RATE_LIMITED' } }
 });
 app.use('/api/staff/verify-pin', pinLimiter);

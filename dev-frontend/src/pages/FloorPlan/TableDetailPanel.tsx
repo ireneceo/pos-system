@@ -913,6 +913,19 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                 description: t('cancelledItem.pressSend', 'Cancelled item — press [Send] to dispatch to kitchen'),
                 stations: previewStationBuckets(printData.items, settings)
               });
+            } else if (result.data && result.data.pending_reprint) {
+              // 2026-06-25 (Irene 하이브리드): 자동모드(=인쇄 전담 POS1)면 ITEM VOIDED 취소표를
+              // 폴러 안 기다리고 즉시 로컬 인쇄. result.data.pending_reprint(표준 ** ITEM VOIDED **
+              // noticeHeader + data.items=뺀 품목)를 그대로 재사용 → billPrint 무변경/새 디자인 0.
+              // claim 으로 폴러와 중복 0. POS2 는 게이트로 false → POS1 폴러가 처리(크로스기기).
+              (async () => {
+                try {
+                  const { printOrderKitchenNow } = await import('../../utils/hybridKitchenPrint');
+                  const _ok = await printOrderKitchenNow(result.data, getStoreInfo);
+                  if (_ok) return;
+                } catch (_e) { /* fall through */ }
+                try { window.dispatchEvent(new CustomEvent('autoprint-poke')); localStorage.setItem('autoprint-poke', String(Date.now())); } catch {}
+              })();
             }
           }
         } catch (e: any) { console.warn('FloorPlan void-ticket step skipped:', e?.message); }
@@ -1017,6 +1030,18 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
               description: t('orderCancel.pressSend', 'Order {{orderNumber}} — press [Send] to dispatch to kitchen', { orderNumber: printData.orderNumber }),
               stations: previewStationBuckets(printData.items, settings)
             });
+          } else if (cancelJson.data && cancelJson.data.pending_reprint) {
+            // 2026-06-25 (Irene 하이브리드): 자동모드(=인쇄 전담 POS1)면 취소표를 폴러 안 기다리고
+            // 즉시 로컬 인쇄. cancelJson.data.pending_reprint(표준 ** ORDER CANCELLED ** noticeHeader)
+            // 재사용 → billPrint 무변경/새 디자인 0. claim 으로 폴러와 중복 0. POS2 는 게이트로 false.
+            (async () => {
+              try {
+                const { printOrderKitchenNow } = await import('../../utils/hybridKitchenPrint');
+                const _ok = await printOrderKitchenNow(cancelJson.data, getStoreInfo);
+                if (_ok) return;
+              } catch (_e) { /* fall through */ }
+              try { window.dispatchEvent(new CustomEvent('autoprint-poke')); localStorage.setItem('autoprint-poke', String(Date.now())); } catch {}
+            })();
           }
         }
       } catch (e: any) { console.warn('FloorPlan cancel-ticket step skipped:', e?.message); }

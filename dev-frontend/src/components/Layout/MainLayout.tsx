@@ -1146,9 +1146,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
     socket.on('connect', () => {
       socket.emit('join-restaurant', userRestaurantId);
-      // 2026-06-25 (Irene "모바일 주문 인쇄 늦을 때"): 재연결 직후 1회 폴링 — 소켓이 끊긴 사이
-      // 들어온 주문(order-created 놓침)을 5초 안 기다리고 즉시 따라잡는다. (_pokePoll 은 아래에서
-      // 정의되며, 이 콜백은 연결 후 비동기 실행이라 호출 시점엔 항상 초기화돼 있음.)
+      // 2026-06-25 (Irene): 재연결 직후 1회 폴링(이미 운영 반영·bless됨). 중복방지=print-claim.
       try { _pokePoll(); } catch {}
     });
 
@@ -1321,6 +1319,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               discount: parseFloat(ord.discount || '0'),
               total: parseFloat(ord.total_amount || '0'),
               paymentMethod: ord.payment_method || 'counter',
+              // 2026-06-25 (Irene "빌에 카드타입 안 나옴"): card_type(snake) → cardType(camel) 전달.
+              cardType: ord.card_type || null,
               cashierName: ord.source === 'mobile' ? 'Mobile Order' : 'POS'
             };
             // Bill — payment_status='completed' (모바일 QR 즉시 결제 / 결제 완료) + needs_bill 시

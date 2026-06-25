@@ -2125,6 +2125,7 @@ const POSTerminalPage: React.FC = () => {
 
     // Get discount policies from promotion management system
     const discountPolicies: {[key: string]: {discount: string; requiresApproval: boolean; status: string}} = {
+      '10%': { discount: '10%', requiresApproval: false, status: 'active' },  // 2026-06-25 (Irene): 10% 빠른 할인 추가
       'Staff': { discount: '20%', requiresApproval: false, status: 'active' },
       'VIP': { discount: '15%', requiresApproval: true, status: 'active' }
     };
@@ -2367,10 +2368,18 @@ const POSTerminalPage: React.FC = () => {
       // printed_at dedup. We just nudge the poller to run immediately so the ticket
       // still comes out fast instead of waiting for the next 5s poll. (KDS stays
       // display-only.) needs_print is set by the backend on creation.
-      // Nudge the auto-print poller immediately — same realm via CustomEvent, and OTHER
-      // realms (Floor Plan parent / other terminals) via a localStorage 'storage' event —
-      // so the device that actually has the printers prints now, not on its next ~5s poll.
-      try { window.dispatchEvent(new CustomEvent('autoprint-poke')); localStorage.setItem('autoprint-poke', String(Date.now())); } catch {}
+      // 2026-06-25 (Irene 하이브리드): 이 POS가 "자기 주문"을 그 자리에서 즉시 로컬(QZ) 인쇄 —
+      // 폴러 사이클/서버fetch 안 기다림. savedOrder=백엔드 enrich 응답(snake)이라 옛 "cart 직접인쇄"
+      // divergence 중복 회피 + 동일 atomic claim 으로 폴러와 중복 0. 성공=완료(claim→폴러 skip).
+      // 실패/게이트밖(이 기기가 인쇄주체 아님)이면 폴러 poke(fallback: 지정 POS가 처리).
+      (async () => {
+        try {
+          const { printOrderKitchenNow } = await import('../../utils/hybridKitchenPrint');
+          const _ok = await printOrderKitchenNow(savedOrder, getStoreInfo);
+          if (_ok) return;
+        } catch (_e) { /* fall through to poke */ }
+        try { window.dispatchEvent(new CustomEvent('autoprint-poke')); localStorage.setItem('autoprint-poke', String(Date.now())); } catch {}
+      })();
 
       console.log('POS - Order added without payment:', savedOrder?.orderNumber);
     } catch (error) {
@@ -2659,10 +2668,17 @@ const POSTerminalPage: React.FC = () => {
       // bucketing, printed_at dedup), identical to the table-move reissue path. A
       // +Round (payment for existing order) prints only the new rows via the poller's
       // kitchen_items filter. We nudge the poller to run immediately for prompt output.
-      // Nudge the auto-print poller immediately — same realm via CustomEvent, and OTHER
-      // realms (Floor Plan parent / other terminals) via a localStorage 'storage' event —
-      // so the device that actually has the printers prints now, not on its next ~5s poll.
-      try { window.dispatchEvent(new CustomEvent('autoprint-poke')); localStorage.setItem('autoprint-poke', String(Date.now())); } catch {}
+      // 2026-06-25 (Irene 하이브리드): 결제처리 POS가 "이 주문"의 주방티켓을 즉시 로컬(QZ)
+      // 인쇄(빌은 위에서 이미 직접인쇄). savedOrder=백엔드 enrich(snake) + atomic claim →
+      // 폴러와 중복 0. 성공=완료. 실패/게이트밖이면 poke(폴러 fallback).
+      (async () => {
+        try {
+          const { printOrderKitchenNow } = await import('../../utils/hybridKitchenPrint');
+          const _ok = await printOrderKitchenNow(savedOrder, getStoreInfo);
+          if (_ok) return;
+        } catch (_e) { /* fall through to poke */ }
+        try { window.dispatchEvent(new CustomEvent('autoprint-poke')); localStorage.setItem('autoprint-poke', String(Date.now())); } catch {}
+      })();
 
       // Clear the order
       setOrderItems([]);
@@ -3701,6 +3717,12 @@ const POSTerminalPage: React.FC = () => {
 
                 <DiscountRow>
                   <QuickDiscountButtons>
+                    <QuickDiscountBtn
+                      active={appliedDiscountPolicy?.name === '10%'}
+                      onClick={() => handleApplyDiscountPolicy('10%')}
+                    >
+                      10%
+                    </QuickDiscountBtn>
                     <QuickDiscountBtn
                       active={appliedDiscountPolicy?.name === 'Staff'}
                       onClick={() => handleApplyDiscountPolicy('Staff')}

@@ -7719,7 +7719,11 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                   });
 
                   // hybrid 미배정: product 자체 override 없고 + 속한 카테고리도 station 매핑 없는 것
+                  // 2026-06-25 (Irene): 세트메뉴(is_set_menu)는 제외 — 세트는 한 주방에 지정하는 게 아니라
+                  // 구성품(set_components)마다 각자 주방으로 라우팅된다(stationEnrichment + billPrint 버킷팅).
+                  // 따라서 세트 부모를 "미배정"으로 경고하거나 주방에 선택하게 하면 안 된다(잘못된 안내).
                   const trulyUnassignedProds = allProducts.filter((p: any) => {
+                    if (p.is_set_menu || p.isSetMenu || p.set_menu) return false;
                     if (productToStation.has(Number(p.id))) return false;
                     const catId = Number(p.categoryId ?? p.category_id);
                     return !catToStation.has(catId);

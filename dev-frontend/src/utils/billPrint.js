@@ -1545,8 +1545,11 @@ export function generateHTMLKitchenTicket(orderData, storeInfo) {
       : (Array.isArray(item.set_items) && item.set_items.length > 0 ? item.set_items : null);
     const hasSetComps = !!_comps;
     // 세트 자체 옵션(A) — 구성품(B)과 별개. 둘 다 표기.
+    // 2026-06-25 (Irene): 옵션을 별표 대신 "블랙배경 흰글씨 박스 + 15px"(제목 18px보단 작게)로 — 주방이
+    // 옵션을 확 알아보게. 인쇄 방식 무변경, 콘텐츠 스타일만.
+    const _optBox = (txt) => `<div class="item-option" style="font-size:15px;font-weight:700;background:#000;color:#fff;padding:2px 7px;display:inline-block;border-radius:3px;margin:2px 0;">${escapeHtmlForPrint(txt)}</div>`;
     const setLevelOptionsHtml = (item.options || []).map(opt =>
-      `<div class="item-option" style="font-size:13px;font-weight:600;">★ ${escapeHtmlForPrint(typeof opt === 'string' ? opt : (opt?.name || ''))}</div>`
+      _optBox(typeof opt === 'string' ? opt : (opt?.name || ''))
     ).join('');
     // Per-item special request (2026-05-31 Irene) — kitchen must see it.
     const _si = item.special_instructions || item.specialInstructions || '';
@@ -1560,7 +1563,7 @@ export function generateHTMLKitchenTicket(orderData, storeInfo) {
         if (!cn) return '';
         const cq = (Number(qty) || 1) * (Number(c.qty) || 1);
         const co = Array.isArray(c.options) && c.options.length
-          ? `<div class="item-option" style="font-size:13px;font-weight:600;">★ ${escapeHtmlForPrint(c.options.join(', '))}</div>` : '';
+          ? _optBox(c.options.join(', ')) : '';
         // 구성품은 각자 걸린 주방을 표시(통합 티켓 전용). 부모 세트 태그 대신 구성품 자기 station.
         return `<div class="item-name" style="font-size:18px;font-weight:700;">${_strike(`${cq} × ${cn}`)}${_stationTag(c.stationName)}</div>${co}`;
       }).join('');
@@ -1696,7 +1699,9 @@ function generateHTMLAdditionalItemsTicket(orderData, storeInfo) {
   const addedItems = orderData.items.filter(item => item.added_at);
   if (addedItems.length === 0) return null;
 
-  const timeStr = new Date().toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: (storeInfo && storeInfo.timeZone) || undefined });
+  // 2026-06-25 (Irene "오더티켓 시간=주문시간"): 인쇄시각(now) 대신 추가분이 담긴 시각(added_at) 사용.
+  const _addAt = (addedItems[0] && addedItems[0].added_at) || orderData.date || null;
+  const timeStr = (_addAt ? new Date(_addAt) : new Date()).toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: (storeInfo && storeInfo.timeZone) || undefined });
 
   const itemsHtml = addedItems.map(item => {
     const itemName = escapeHtmlForPrint(item.menuItem?.name || item.name);
@@ -2835,7 +2840,10 @@ export function generateAdditionalItemsTicketContent(orderData, storeInfo) {
   content += CMD.DASHED_LINE + CMD.LINE_FEED;
   content += formatLine('Order:', orderData.orderNumber) + CMD.LINE_FEED;
 
-  const timeStr = new Date().toLocaleTimeString('en-MY', { timeZone: (storeInfo && storeInfo.timeZone) || undefined,
+  // 2026-06-25 (Irene "오더티켓 시간=주문시간"): 인쇄 지연돼도 "찍은 시각(now)"이 아니라 그 추가분이
+  // 담긴 시각(added_at)을 찍는다. 추가분 added_at 없으면 주문시각(orderData.date) 폴백. 인쇄 방식 무변경.
+  const _addAt = (addedItems[0] && addedItems[0].added_at) || orderData.date || null;
+  const timeStr = (_addAt ? new Date(_addAt) : new Date()).toLocaleTimeString('en-MY', { timeZone: (storeInfo && storeInfo.timeZone) || undefined,
     hour: '2-digit',
     minute: '2-digit',
     hour12: true
@@ -3607,17 +3615,26 @@ async function printKitchenTicketsByStation(orderData, storeInfo, settings) {
       // mirror already carries the whole order, reprint the failed items at the counter
       // so staff can hand-deliver. Never lose a ticket silently.
       try { window.dispatchEvent(new CustomEvent('autoprint-failed', { detail: { scope: 'kitchen-station', stations: failedStations.map(f => f.stationName) } })); } catch (_) {}
-      if (!(settings.kitchenPrinter && settings.kitchenPrinter.mirrorToBillPrinter)) {
+      // 2026-06-25 (Irene "Table10 3장 중복"): 한 스테이션이 (재시도 후에도) 실패해도, 그 품목이
+      // mirror(빌프린터 미러, thefire=ON) 또는 카운터 폴백으로 커버되면 주문은 "처리됨"이다. 그땐
+      // true 를 반환해 폴러가 re-arm(needs_print 재설정 → 전체 재인쇄)하지 않게 한다 → 성공한 주방이
+      // 다시 안 찍힘(중복 0). 어디로도 못 커버한 경우만 allOk(false) 그대로 → 폴러 재시도. 인쇄 방식/
+      // 스테이션 라우팅 무변경 — "부분실패 후 재인쇄 정책"만 정밀화(영구실패 무한중복 근본 제거).
+      const _mirrorOn = !!(settings.kitchenPrinter && settings.kitchenPrinter.mirrorToBillPrinter);
+      let _failedCovered = _mirrorOn;
+      if (!_mirrorOn) {
         try {
           const failedItems = failedStations.flatMap(f => stationItems[f.stationId] || []);
           const bp = getActiveBillPrinter();
           if (failedItems.length > 0 && bp && bp.enabled && bp.address) {
             const fallbackData = { ...orderData, items: failedItems, noStationBox: true,
               noticeHeader: { title: '** STATION PRINT FAILED — DELIVER MANUALLY **', lines: failedStations.map(f => `${f.stationName}: not printed at station`) } };
-            await sendToRawBTPrinter(fallbackData, storeInfo, settings, bp.name, 'COUNTER', bp.address, null);
+            const _fr = await sendToRawBTPrinter(fallbackData, storeInfo, settings, bp.name, 'COUNTER', bp.address, null);
+            _failedCovered = (_fr !== false);
           }
         } catch (e) { console.warn('🍳 Station fallback to counter failed:', e && e.message); }
       }
+      if (_failedCovered) return true;
     }
     return allOk;
   }

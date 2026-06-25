@@ -1559,6 +1559,20 @@ const FloorPlanPage: React.FC = () => {
               description: _autoOnMove ? '머지 — 이전 티켓들 버리고 이 티켓 사용 (발송됨)' : '머지 — [Send]를 눌러 주방에 전송',
               stations: previewStationBuckets(printed, printSettings),
             });
+          } else if (result.data && result.data.pending_reprint) {
+            // 2026-06-25 (Irene 하이브리드): 평범한 이동도 "인쇄 전담 POS(POS1)"면 폴러 안 기다리고
+            // 즉시 로컬 재발행. result.data.pending_reprint(백엔드가 set 한 표준 ** TABLE CHANGED **
+            // noticeHeader + fromTable/toTable)를 그대로 재사용 → billPrint 무변경/새 디자인 0,
+            // 폴러가 찍을 것과 동일. POS2/서빙태블릿은 util 게이트로 false → POS1 폴러가 처리(크로스기기).
+            // atomic claim 으로 폴러와 중복 0. 실패/게이트밖이면 poke(폴러 fallback).
+            (async () => {
+              try {
+                const { printOrderKitchenNow } = await import('../../utils/hybridKitchenPrint');
+                const _ok = await printOrderKitchenNow(result.data, getStoreInfo);
+                if (_ok) return;
+              } catch (_e) { /* fall through */ }
+              try { window.dispatchEvent(new CustomEvent('autoprint-poke')); localStorage.setItem('autoprint-poke', String(Date.now())); } catch {}
+            })();
           }
         }
       } catch (e: any) { console.warn('[move-table] reprint step skipped:', e?.message); }
