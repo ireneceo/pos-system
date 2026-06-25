@@ -795,7 +795,10 @@
       "Bash(perl -0pi -e 's/              payment_status: \\\\x27pending\\\\x27,\\\\n              kitchen_ready: false,\\\\n              order_date: new Date\\\\\\(\\\\\\),/              payment_status: \\\\x27pending\\\\x27,\\\\n              kitchen_ready: false,\\\\n              order_date: new Date\\(\\),\\\\n              notes: orderNote.trim\\(\\) || null,  \\\\/\\\\/ #11 \\\\xeb\\\\xa6\\\\xac\\\\xeb\\\\xa7\\\\x88\\\\xed\\\\x81\\\\xac \\\\xec\\\\xa3\\\\xbc\\\\xeb\\\\xac\\\\xb8 \\\\xeb\\\\xa9\\\\x94\\\\xeb\\\\xaa\\\\xa8 \\(\\\\xec\\\\xa0\\\\x84 \\\\xec\\\\xa3\\\\xbc\\\\xeb\\\\xac\\\\xb8\\\\xec\\\\x9c\\\\xa0\\\\xed\\\\x98\\\\x95\\)/g' src/mobile/pages/PaymentPage.tsx)",
       "Bash(echo \"BUILD2 EXIT: $?\")",
       "Bash(echo \"BUILD3 EXIT: $?\")",
-      "Bash(echo \"BUILD4 EXIT: $?\")"
+      "Bash(echo \"BUILD4 EXIT: $?\")",
+      "Bash(echo \"빌드 PID: $!\")",
+      "Bash(cp /tmp/claude-1000/-var-www/1007d4d1-2947-462d-a82a-e3dffd5a7cf6/scratchpad/test-recs.js ./test-recs-tmp.js)",
+      "Bash(rm -f test-recs-tmp.js)"
     ],
     "deny": [],
     "ask": []
