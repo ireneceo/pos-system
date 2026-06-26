@@ -1,5 +1,10 @@
 # Purple POS — 개발 세션 상태
 
+<!-- AUTOSAVE-STALE-BANNER -->
+> **[AUTO-SAVE STALE] (2026-06-26 02:30, idle 2061s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
+> 변경된 작업 파일: print-guard.manifest.json,sw.js billPrint.js
+<!-- /AUTOSAVE-STALE-BANNER -->
+
 ## 현재 작업 상태
 **마지막 업데이트:** 2026-06-26 #5 (thefire 잔여 #2·#3·#6·#9·#11c 전부 + 합본주문 표시·빌·우측패널·터치UX 운영배포)
 **버전:** v3.62 + 백스테이지(여러 차례 운영 배포). 인쇄방식 무접촉 원칙, 단 Irene 명시요청분(#2 취소표·#3 빌·#6 매수)은 내용/매수만 변경(방식·트리거 무변경) + 실프린터 확인 대기.

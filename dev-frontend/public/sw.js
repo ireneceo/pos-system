@@ -10,7 +10,7 @@
  * caching SPA shell would conflict. If future offline support is needed, layer Workbox separately.
  */
 
-const SW_VERSION = '4.17-hybrid-move-cancel-void-localprint-20260625';
+const SW_VERSION = '4.18-kitchen-ticket-option-spacing-20260626';
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {

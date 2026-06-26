@@ -1554,7 +1554,8 @@ export function generateHTMLKitchenTicket(orderData, storeInfo) {
     // 세트 자체 옵션(A) — 구성품(B)과 별개. 둘 다 표기.
     // 2026-06-25 (Irene): 옵션을 별표 대신 "블랙배경 흰글씨 박스 + 15px"(제목 18px보단 작게)로 — 주방이
     // 옵션을 확 알아보게. 인쇄 방식 무변경, 콘텐츠 스타일만.
-    const _optBox = (txt) => `<div class="item-option" style="font-size:15px;font-weight:700;background:#000;color:#fff;padding:2px 7px;display:inline-block;border-radius:3px;margin:2px 0;">${escapeHtmlForPrint(txt)}</div>`;
+    // 2026-06-26 (Irene): 옵션 박스 사이 우측 간격 6px — 옵션 2~3개일 때 검정배경끼리 붙어 1개처럼 보이던 것 분리(개수 명확). 인쇄 방식 무변경, 간격만.
+    const _optBox = (txt) => `<div class="item-option" style="font-size:15px;font-weight:700;background:#000;color:#fff;padding:2px 7px;display:inline-block;border-radius:3px;margin:2px 6px 2px 0;">${escapeHtmlForPrint(txt)}</div>`;
     const setLevelOptionsHtml = (item.options || []).map(opt =>
       _optBox(typeof opt === 'string' ? opt : (opt?.name || ''))
     ).join('');

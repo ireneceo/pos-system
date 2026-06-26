@@ -813,7 +813,9 @@
       "Bash(scp -q /tmp/claude-1000/-var-www/1007d4d1-2947-462d-a82a-e3dffd5a7cf6/scratchpad/prod-verify.js irene@87.106.78.146:/var/www/production-backend/_prod-verify.js)",
       "Bash(scp -q /tmp/claude-1000/-var-www/1007d4d1-2947-462d-a82a-e3dffd5a7cf6/scratchpad/r5-check.js irene@87.106.78.146:/var/www/production-backend/_r5-check.js)",
       "Bash(scp -q /tmp/claude-1000/-var-www/1007d4d1-2947-462d-a82a-e3dffd5a7cf6/scratchpad/r5-orders2.js irene@87.106.78.146:/var/www/production-backend/_r5-orders2.js)",
-      "Bash(echo \"rsync exit: $?\")"
+      "Bash(echo \"rsync exit: $?\")",
+      "Bash(sed -i \"s/'navigator','qz', src/'navigator', src/; s/dom.window.navigator, {}\\);/dom.window.navigator\\);/\" /tmp/claude-1000/-var-www/1007d4d1-2947-462d-a82a-e3dffd5a7cf6/scratchpad/verify_optbox.js)",
+      "Bash(NODE_PATH=/var/www/dev-frontend/node_modules node /tmp/claude-1000/-var-www/1007d4d1-2947-462d-a82a-e3dffd5a7cf6/scratchpad/verify_optbox.js)"
     ],
     "deny": [],
     "ask": []
