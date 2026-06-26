@@ -769,13 +769,25 @@ router.get('/:slug/products/:productId/recommendations', async (req, res) => {
     if (!Number.isFinite(productId)) {
       return res.status(400).json({ success: false, message: 'Invalid productId' });
     }
-    const restaurant = await Restaurant.findOne({ where: { slug }, attributes: ['id'] });
+    const restaurant = await Restaurant.findOne({ where: { slug }, attributes: ['id', 'operation_settings'] });
     if (!restaurant) return res.status(404).json({ success: false, message: 'Restaurant not found' });
+
+    // 애드온(크로스셀) 마스터 토글 — 기본 OFF(2026-06-26 Irene): 관리자가 설정에서 명시적으로
+    // 켰을 때(=== true)만 추천 노출. 미설정(undefined/null/false)=꺼짐 → 시트 자체가 안 뜸.
+    let ops = restaurant.operation_settings || {};
+    if (typeof ops === 'string') { try { ops = JSON.parse(ops); } catch { ops = {}; } }
+    if (!ops || ops.crossSellEnabled !== true) {
+      return res.json({ success: true, data: [] });
+    }
 
     const { resolveRecommendations } = require('../utils/crossSell');
     const data = await resolveRecommendations(restaurant.id, productId, 6);
-    // 이미지 URL 정규화(메뉴 응답과 동일 헬퍼)
-    const out = data.map(p => ({ ...p, image: p.image ? parseImageData(p.image) : null }));
+    // 이미지 URL 정규화 — 정상 메뉴 응답과 동일하게 "문자열 URL"만 추출(parseImageData 는 {thumbnail,medium,original}
+    // 객체를 반환하므로 그대로 넣으면 카드가 url([object Object]) 로 깨진다). thumbnail 우선.
+    const out = data.map(p => {
+      const parsed = p.image ? parseImageData(p.image) : null;
+      return { ...p, image: parsed ? (parsed.thumbnail || parsed.medium || parsed.original || null) : null };
+    });
     res.json({ success: true, data: out });
   } catch (error) {
     console.error('GET mobile recommendations:', error.message);

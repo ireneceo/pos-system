@@ -37,7 +37,10 @@ const OPERATION_SETTINGS_ALLOWED_KEYS = new Set([
   'requirePoOwnerApproval',
   // 개시 시재 모드(2026-06-23). { openingMode:'carryover'|'fixed', fixedAmount }.
   // 화이트리스트 누락 시 저장 round-trip 에서 조용히 stripped → 고정시재 설정 무력화. 반드시 보존.
-  'cashFloat'
+  'cashFloat',
+  // 모바일 애드온(크로스셀) 추천 마스터 토글(2026-06-26). false=모바일 주문에서 "함께 추천" 시트 비활성.
+  // 화이트리스트 누락 시 저장 round-trip 에서 조용히 stripped → 토글이 저장 안 됨. 반드시 보존.
+  'crossSellEnabled'
 ]);
 
 function parseJsonSafe(v) {

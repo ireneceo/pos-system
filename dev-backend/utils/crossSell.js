@@ -50,6 +50,7 @@ async function resolveRecommendations(restaurantId, productId, limit = 6) {
     attributes: ['recommended_product_id', 'sort_order', 'origin'],
   });
 
+  const baseCategory = (base.category || '').toString().trim();
   let candidates = [];
   if (links.length) {
     const recIds = [...new Set(links.map(l => l.recommended_product_id))];
@@ -69,9 +70,14 @@ async function resolveRecommendations(restaurantId, productId, limit = 6) {
     }
   }
 
+  // 자동 카테고리 모드(②)에서만 "보고 있는 상품과 같은 카테고리"를 제외한다.
+  // 예: 디저트를 보는 중이면 다른 디저트 대신 음료만 추천(정석 크로스셀). 수동 연결(①)은
+  // 매장이 일부러 고른 것이라 같은 카테고리여도 그대로 노출한다.
+  const isAutoCategory = links.length === 0;
   const out = [];
   for (const p of candidates) {
     if (p.id === Number(productId)) continue;     // 자신 제외
+    if (isAutoCategory && baseCategory && (p.category || '').toString().trim() === baseCategory) continue; // 같은 카테고리 제외(자동 모드)
     if (!visible(p) || !inStock(p)) continue;
     out.push({
       id: p.id, name: p.name, price: p.price,

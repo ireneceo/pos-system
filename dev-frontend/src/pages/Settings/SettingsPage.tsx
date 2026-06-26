@@ -561,6 +561,7 @@ interface OperationSettings {
     packagingNote: string;
   };
   allowQuickOrder: boolean;
+  crossSellEnabled?: boolean;
   breakTimes: BreakTime[];
   businessHours: BusinessHours;
 }
@@ -676,6 +677,7 @@ const SettingsPage: React.FC = () => {
   const requireCancelReasonRef = useRef<AutoSaveHandle>(null);  // 취소/삭제 사유 off|optional|required
   const requirePoOwnerApprovalRef = useRef<AutoSaveHandle>(null);  // 발주 오너 승인 (오너 연결 시 기본 ON)
   const mobileOrderQuickOrderRef = useRef<AutoSaveHandle>(null);
+  const crossSellEnabledRef = useRef<AutoSaveHandle>(null);
   const mobileOrderShowFeaturedRef = useRef<AutoSaveHandle>(null);
   const mobileOrderShowPopularRef = useRef<AutoSaveHandle>(null);
   const mobileOrderCategorySchedulesRef = useRef<AutoSaveHandle>(null);
@@ -951,6 +953,7 @@ const SettingsPage: React.FC = () => {
           packagingNote: ''
         },
         allowQuickOrder: true,
+        crossSellEnabled: false,
         breakTimes: [],
         businessHours: { enabled: false, days: {} }
       }
@@ -1287,6 +1290,8 @@ const SettingsPage: React.FC = () => {
               },
               allowQuickOrder: restaurant.operation_settings.allowQuickOrder !== undefined
                 ? restaurant.operation_settings.allowQuickOrder : defaultOps.allowQuickOrder,
+              crossSellEnabled: restaurant.operation_settings.crossSellEnabled !== undefined
+                ? restaurant.operation_settings.crossSellEnabled : defaultOps.crossSellEnabled,
               breakTimes: restaurant.operation_settings.breakTimes || defaultOps.breakTimes,
               businessHours: restaurant.operation_settings.businessHours || defaultOps.businessHours
             } : defaultOps;
@@ -5137,6 +5142,31 @@ const SettingsPage: React.FC = () => {
                 </SettingsCard>
                 </SettingsGrid>
                 </div>
+
+                {/* #11c 모바일 애드온(크로스셀) 추천 마스터 토글 */}
+                <SettingsCard>
+                  <CardTitle>{t('settings:settingsPage.crossSell', 'Add-on Recommendations')}</CardTitle>
+                  <p style={{ color: '#4B5563', marginBottom: '16px', fontSize: '14px' }}>
+                    {t('settings:settingsPage.crossSellHint', 'Show a "You might also like" suggestion (e.g. desserts, drinks) after a customer adds an item on mobile ordering.')}
+                  </p>
+                  <Toggle>
+                    <ToggleLabel>
+                      <span>{t('settings:settingsPage.crossSellEnable', 'Show add-on recommendations')}</span>
+                    </ToggleLabel>
+                    <AutoSaveField ref={crossSellEnabledRef} onSave={handleSave} type="toggle">
+                      <ToggleSwitch>
+                        <ToggleInput type="checkbox" checked={operationSettings.crossSellEnabled === true}
+                          onChange={(e) => { setOperationSettings(prev => ({ ...prev, crossSellEnabled: e.target.checked })); crossSellEnabledRef.current?.triggerSave(); }} />
+                        <ToggleSlider />
+                      </ToggleSwitch>
+                    </AutoSaveField>
+                  </Toggle>
+                  <p style={{ color: '#6B7280', fontSize: '12px', marginTop: '8px' }}>
+                    {operationSettings.crossSellEnabled === true
+                      ? t('settings:settingsPage.crossSellOnHint', 'Recommendations are shown. Items from the same category as the viewed product are skipped automatically.')
+                      : t('settings:settingsPage.crossSellOffHint', 'No add-on suggestions are shown on mobile ordering.')}
+                  </p>
+                </SettingsCard>
 
                 <SettingsCard>
                   <CardTitle>{t('settings:settingsPage.orderTypes')}</CardTitle>

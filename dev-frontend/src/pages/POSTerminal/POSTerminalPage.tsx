@@ -2080,13 +2080,21 @@ const POSTerminalPage: React.FC = () => {
   };
 
   const handleApplyDiscount = (amount: number) => {
-    // Toggle: if same discount is clicked again, reset to 0
+    // Toggle: if same discount is clicked again, reset to 0 (할인 해제는 PIN 불필요)
     if (discount === amount) {
       setDiscount(0);
       setAppliedDiscountPolicy(null);
-    } else {
-      setDiscount(amount);
+      return;
     }
+    // 매장 설정 'PIN 승인 필요' ON + 실제 할인(>0) 이면 PIN 모달로 승인 후 적용 (#5).
+    // 금액 프리셋 버튼(RM5/10/15)도 커스텀 금액·% 할인과 동일하게 PIN 게이트를 탄다
+    // (2026-06-26 Irene: 금액 선택 시 PIN 이 안 뜨던 누락 경로 수정). [[reference_discount_pin_gate]]
+    if (amount > 0 && !!(operationSettings as any)?.requirePinForDiscount) {
+      setPendingDiscount({ name: formatCurrency(amount, operationSettings.currency), value: amount, kind: 'fixed' });
+      setShowDiscountPin(true);
+      return;
+    }
+    setDiscount(amount);
   };
 
   const handleApplyCoupon = async (codeOverride?: string) => {
