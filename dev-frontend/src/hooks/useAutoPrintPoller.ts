@@ -215,13 +215,11 @@ export function useAutoPrintPoller(opts: {
                   _claimed = !!(_cj && _cj.claimed);
                 } catch (e: any) { _claimed = false; }
                 if (_claimed) {
-                  // 2026-06-26 (Irene "추가주문 2번 / 같은 아이템 2-3번"): heartbeat — 인쇄가 도는
-                  // 동안 print_claimed_at 을 5초마다 갱신해 "살아서 인쇄 중"인 claim 이 stale 로
-                  // 빠져 자동복구(needs_print 되살림)되는 걸 막는다 → 폴러/다른기기 재인쇄 중복 0.
-                  let _hb: any = setInterval(() => { fetch(`/api/orders/${ord.id}/print-heartbeat`, { method: 'PATCH', headers: _h }).catch(() => {}); }, 5000);
-                  // 추가주문(+Round)은 "그 회차(order_group) 품목만" 따로 1장씩 — 미인쇄분이 여러
-                  // 회차 쌓여 있어도(끊김 후 catch-up) 회차별로 쪼개 발행 → 누적/전체뭉치 0, 분실 0.
-                  // 안내 재발행(pending_reprint: 취소/이동/void 안내)은 회차 분할 안 함(특정 안내 묶음).
+                  // 추가주문(+Round)은 "그 회차(order_group) 품목만" 따로 1장씩 — 미인쇄분이 여러 회차
+                  // 쌓여도(끊김 후 catch-up) 회차별로 쪼개 발행(누적/전체뭉치 0, 분실 0). 안내 재발행
+                  // (pending_reprint: 취소/이동/void)은 분할 안 함. 신규 단일주문은 회차 1개=기존과 동일 1장.
+                  // 2026-06-26: heartbeat 제거 — claim 갱신이 죽은-claim 복구 안전망을 무력화해 hang 인쇄
+                  // 분실 사고 유발(06:43 롤백). 회차별 인쇄만 재적용(안전망 보존).
                   const _isReprint = !!(ord.pending_reprint && ord.pending_reprint.data && Array.isArray(ord.pending_reprint.data.items) && ord.pending_reprint.data.items.length > 0);
                   let _batches: any[][];
                   if (_isReprint) {
@@ -232,16 +230,14 @@ export function useAutoPrintPoller(opts: {
                     _batches = [..._bg.keys()].sort((a, b) => Number(a) - Number(b)).map(g => _bg.get(g)!);
                   }
                   let ok: any = true;
-                  try {
-                    for (let bi = 0; bi < _batches.length; bi++) {
-                      const kitchenPrintData = { ...printData, items: _batches[bi].map(mapItem) };
-                      let r: any = true;
-                      try { r = await billPrintMod.printKitchenTicketViaRawBT(kitchenPrintData, printStoreInfo); }
-                      catch (e: any) { console.error('[autoPrint] kitchen failed:', e); r = false; }
-                      if (r === false) ok = false;
-                      if (bi < _batches.length - 1) await new Promise(res => setTimeout(res, 700));
-                    }
-                  } finally { if (_hb) { clearInterval(_hb); _hb = null; } }
+                  for (let bi = 0; bi < _batches.length; bi++) {
+                    const kitchenPrintData = { ...printData, items: _batches[bi].map(mapItem) };
+                    let r: any = true;
+                    try { r = await billPrintMod.printKitchenTicketViaRawBT(kitchenPrintData, printStoreInfo); }
+                    catch (e: any) { console.error('[autoPrint] kitchen failed:', e); r = false; }
+                    if (r === false) ok = false;
+                    if (bi < _batches.length - 1) await new Promise(res => setTimeout(res, 700));
+                  }
                   if (ok === false) {
                     // re-arm so another device / next cycle retries (no permanent block)
                     try { await fetch(`/api/orders/${ord.id}/print-rearm`, { method: 'PATCH', headers: _h }); } catch {}

@@ -90,12 +90,8 @@ export async function printOrderKitchenNow(ord: any, getStoreInfo: () => any): P
       const _cr = await fetch(`/api/orders/${ord.id}/print-claim`, { method: 'PATCH', headers: _h });
       const _cj = await _cr.json().catch(() => null);
       if (!(_cj && _cj.claimed)) return false; // 이미 누가 claim → 즉시인쇄 skip(폴러가 처리했거나 중복방지)
-      // 2026-06-26 (Irene "추가주문 2번 / 같은 아이템 2-3번"): heartbeat — 인쇄 도는 동안
-      // print_claimed_at 5초 갱신 → "살아서 인쇄 중" claim 이 stale 자동복구로 되살아나 폴러가
-      // 또 찍는 중복 차단. 진짜 죽으면 박동 멈춰 10초 뒤 정상 복구(분실 방지 유지).
-      let _hb: any = setInterval(() => { fetch(`/api/orders/${ord.id}/print-heartbeat`, { method: 'PATCH', headers: _h }).catch(() => {}); }, 5000);
-      // 추가주문(+Round)은 "그 회차(order_group) 품목만" 따로 1장씩 — 미인쇄분이 여러 회차 쌓여
-      // 있어도 회차별로 쪼개 발행(누적/전체뭉치 0, 분실 0). 안내 재발행(pending_reprint)은 분할 안 함.
+      // 추가주문(+Round)은 회차(order_group)별 1장. 안내 재발행(pending_reprint)은 분할 안 함.
+      // 신규 단일주문은 회차 1개=기존과 동일 1장. heartbeat 없음(분실 복구 안전망 보존 — 06:43 사고 교훈).
       const _isReprint = !!(ord.pending_reprint && ord.pending_reprint.data && Array.isArray(ord.pending_reprint.data.items) && ord.pending_reprint.data.items.length > 0);
       let _batches: any[][];
       if (_isReprint) {
@@ -106,15 +102,13 @@ export async function printOrderKitchenNow(ord: any, getStoreInfo: () => any): P
         _batches = [..._bg.keys()].sort((a, b) => Number(a) - Number(b)).map(g => _bg.get(g)!);
       }
       let ok: any = true;
-      try {
-        for (let bi = 0; bi < _batches.length; bi++) {
-          let r: any = true;
-          try { r = await billPrintMod.printKitchenTicketViaRawBT({ ...printData, items: _batches[bi].map(mapItem) }, printStoreInfo); }
-          catch (e) { r = false; }
-          if (r === false) ok = false;
-          if (bi < _batches.length - 1) await new Promise(res => setTimeout(res, 700));
-        }
-      } finally { if (_hb) { clearInterval(_hb); _hb = null; } }
+      for (let bi = 0; bi < _batches.length; bi++) {
+        let r: any = true;
+        try { r = await billPrintMod.printKitchenTicketViaRawBT({ ...printData, items: _batches[bi].map(mapItem) }, printStoreInfo); }
+        catch (e) { r = false; }
+        if (r === false) ok = false;
+        if (bi < _batches.length - 1) await new Promise(res => setTimeout(res, 700));
+      }
       if (ok === false) {
         // 실패 → re-arm 해서 폴러(fallback)가 재시도(분실 0).
         try { await fetch(`/api/orders/${ord.id}/print-rearm`, { method: 'PATCH', headers: _h }); } catch {}

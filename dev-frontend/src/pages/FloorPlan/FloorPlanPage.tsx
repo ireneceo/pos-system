@@ -542,6 +542,13 @@ const FloorPlanPage: React.FC = () => {
 
   // POS overlay (for New Order only)
   const [showPOS, setShowPOS] = useState(false);
+  // 2026-06-26 (Irene): 고객디스플레이를 "테이블 선택 후에" 열면 미러 effect 의존성이 안 바뀌어
+  // 빈 화면 → 재탭해야 나오던 문제. CD 열 때 이 nonce 를 올려 현재 선택 카트를 강제 재emit한다.
+  const [cdNonce, setCdNonce] = useState(0);
+  const bumpCdMirror = useCallback(() => {
+    setCdNonce(n => n + 1);                              // 이미 열린 CD 즉시 재동기화
+    setTimeout(() => setCdNonce(n => n + 1), 1500);      // 새로 연 CD 가 소켓 연결된 뒤 재emit
+  }, []);
   const [posUrl, setPosUrl] = useState('');
 
   // Items added alert (like LiveOrders)
@@ -914,7 +921,7 @@ const FloorPlanPage: React.FC = () => {
         phone: order.customerPhone || ''
       } : null)
     });
-  }, [selectedTableId, selectedOrderIndex, tableStatuses, restaurantId, currency, floorPlan]);
+  }, [selectedTableId, selectedOrderIndex, tableStatuses, restaurantId, currency, floorPlan, cdNonce]);
 
   // Listen for POS complete message from iframe. 리스너는 단 한 번만 등록한다 —
   // fetchStatuses 가 자주 새로 만들어져(소켓/폴링) 리스너가 떼였다 붙는 사이에 닫힘 메시지가
@@ -1840,6 +1847,7 @@ const FloorPlanPage: React.FC = () => {
               <BackBtn type="button"
                 onClick={async () => {
                   const result = await openCustomerDisplay(restaurantId || '');
+                  bumpCdMirror();
                   if (result.title && result.message) {
                     setCdInfoModal({ open: true, title: result.title, message: result.message });
                   }
@@ -1920,6 +1928,7 @@ const FloorPlanPage: React.FC = () => {
                 id: 'customer-display', label: 'Customer Display', indicator: isAutoOpenEnabled(),
                 onClick: async () => {
                   const result = await openCustomerDisplay(restaurantId || '');
+                  bumpCdMirror();
                   if (result.title && result.message) setCdInfoModal({ open: true, title: result.title, message: result.message });
                 }
               });

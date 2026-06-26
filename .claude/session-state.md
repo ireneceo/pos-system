@@ -1,8 +1,18 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-06-26 #5 (thefire 잔여 #2·#3·#6·#9·#11c 전부 + 합본주문 표시·빌·우측패널·터치UX 운영배포)
-**버전:** v3.62 + 백스테이지(여러 차례 운영 배포). 인쇄방식 무접촉 원칙, 단 Irene 명시요청분(#2 취소표·#3 빌·#6 매수)은 내용/매수만 변경(방식·트리거 무변경) + 실프린터 확인 대기.
+**마지막 업데이트:** 2026-06-26 #6 (추가주문 인쇄 중복/누적 근본수정 + 모바일 애드온 기본OFF + 할인PIN 금액경로 + Takeaway walk-in 테이블)
+**버전:** v3.62 + 백스테이지. SW 4.19-round-print-dedup.
+
+### 운영 배포 완료 (2026-06-26 #6) — 추가주문 인쇄 중복 근본수정 (SW 4.19)
+- **추가주문(+Round) 인쇄 2번/누적/통합재전송/스테이션2-3번 = 단일 근본원인 stale-claim 10초 재무장.** 운영 주문 014(rid16 T-5) printed_at 실데이터로 확정. 수정 3종(생명선): ①**heartbeat**(인쇄 중 5초 claim 갱신→재무장중복0, hybrid+poller) ②**회차(order_group)별 1장**(통합도 회차별, 미인쇄 회차 쌓여도 따로, pending_reprint 분할안함) ③**취소/이동 티켓 served 제외**(printed_at 유지→kitchen_items 제외). **신규주문 무변경**(단일회차=1장, heartbeat는 5초 초과 시만). 상세 [[reference_round_print_duplication_fix]].
+- 검증: autoprint regression **44/44** · health **107/107** · field-contract · **cancel/move served-제외 실API PASS** · print-guard bless. Backup 20260626_053737, Smoke 9/9.
+- **실프린터 확인 필요(Irene)**: POS1에서 추가주문 2~3번 연속 → 회차별 1장씩·중복0 / 통합도 회차별 / 취소·이동표에 이미 served 품목 빠짐.
+- **모바일 애드온 기본 OFF**(미설정=꺼짐, 관리자가 설정 토글로 켬) — 운영 `data:[]` 확인. 이미지 버그(객체→문자열 URL)·같은카테고리 자동제외 포함. crossSell.js·mobile-public.js·settingsGuard(crossSellEnabled)·SettingsPage·4언어. (Backup 045303)
+- **할인 PIN 금액경로** — 프리셋 금액버튼(RM5/10/15) handleApplyDiscount 가 PIN 게이트 우회하던 버그 수정(커스텀 금액·%와 동일). [[reference_discount_pin_gate]]
+- **Takeaway walk-in 테이블번호** — FloorPlan "+Walk-in"이 직전 선택테이블을 붙이던 버그. walkIn 플래그로 walk-in은 테이블 강제 미부착(카운터픽업).
+- **KDS Item뷰 Ready 보류**: Item뷰 Ready의 ready판정이 선택주방 미스코프(다른주방 ready면 이 탭에 뜸) 발견했으나, Irene가 인쇄 우선으로 redirect → KDS 미수정(보호규칙: 동작확정 후). 다음.
+- **(이전 #5)** thefire 잔여 #2·#3·#6·#9·#11c 전부 + 합본주문 UI 운영배포.
 
 ### 운영 배포 완료 (2026-06-26, 다회) — thefire 잔여 전부 + 합본주문 UI 정돈
 - **#2 부분수량 취소 / #3 합본빌(혼합차지) / #6 주방매수 / #9 오프라인큐 / #11c 크로스셀(RA Add·Edit·세트·카테고리·BG·모바일)** — 전 진입점 전수감사 후 갭(모바일머지·테이블합본·add-items·단일스테이션·QR/Bank/POS오프라인·Add모달추천) 수정. jest 20/20.
@@ -17,6 +27,11 @@
 
 ### 진행 중인 작업
 - 없음
+
+### 다음 작업 (Irene 2026-06-26 #6 저녁/후속 — 저장만, 밤에 수정)
+1. **KDS 추가주문 표시 — 추가분만 + "추가주문" 라벨** (밤에 수정): 주방디스플레이에 추가주문(+Round) 들어갈 때 **이전 주문 품목까지 같이 표시 말고, 그 추가분만** 보이고 **"추가주문"이라고 명시**. (인쇄는 이미 회차별 1장으로 분리 완료 — KDS 표시도 같은 원칙. KDS는 보호영역이라 동작확정+실측 후 수정.) **검증·저장만 했고 밤에 구현.**
+2. **고객디스플레이 — 결제팝업 떠도 우측패널 미러링 유지** (소통만): 현재 고객디스플레이가 POS 우측패널(주문내역)을 미러링하는데, **PaymentModal 열리면 미러링이 끊김**. 결제창 떠 있어도 우측 주문패널이 계속 고객화면에 보여야 함. CustomerDisplay/checkoutSocket 경로. 미구현, 소통만.
+3. **모바일 더블오더 인지 보조 (아이디어 회의)**: 고객이 모바일로 같은 주문 2번 하는 일 잦음 → POS1이 취소해야 함. "친절·다정하게" 중복 인지 돕는 UX 아이디어. ①고객측 발주 직전 "방금 같은 주문 하셨어요, 또 주문할까요?" 부드러운 확인(소스에서 차단=가장 친절) ②POS/KDS 도착 시 "같은 테이블 비슷한 주문 방금 들어옴 — 중복일 수 있어요" 비차단 안내배너 ③같은테이블 모바일주문 그룹+중복가능 태그. (idempotency_key는 기술적 더블탭만 막음, 고객 의도적 재주문은 못 막음 → ①이 핵심.) 미확정 브레인스토밍.
 
 ### 다음 확정 작업
 - **풀스크린 Floor Plan** (Irene 명시 지시): ①헤더의 ▴ 접기 버튼(#10에서 넣은 것) 제거 ②"Main/Takeout/Items + Takeaway" 라인 우측에 풀스크린 토글 아이콘 → 누르면 맨 위 헤더 + 맨 아래 통계바(FloorPlanStatsBar) 숨겨 업무영역만 풀로. FloorPlanPage.tsx headerCollapsed(352)/toggle(355)/버튼(1779-1785)/`{!headerCollapsed&&}`(1794) 제거 + fullScreen 상태로 Header(1773)·StatsBar 조건부.

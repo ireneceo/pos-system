@@ -816,7 +816,8 @@
       "Bash(echo \"rsync exit: $?\")",
       "Bash(sed -i \"s/'navigator','qz', src/'navigator', src/; s/dom.window.navigator, {}\\);/dom.window.navigator\\);/\" /tmp/claude-1000/-var-www/1007d4d1-2947-462d-a82a-e3dffd5a7cf6/scratchpad/verify_optbox.js)",
       "Bash(NODE_PATH=/var/www/dev-frontend/node_modules node /tmp/claude-1000/-var-www/1007d4d1-2947-462d-a82a-e3dffd5a7cf6/scratchpad/verify_optbox.js)",
-      "Bash(awk 'NR>=1490 && NR<=1552 && /router\\\\.\\(patch|put|post\\)/ {print NR\": \"$0}' routes/orders-crud.js)"
+      "Bash(awk 'NR>=1490 && NR<=1552 && /router\\\\.\\(patch|put|post\\)/ {print NR\": \"$0}' routes/orders-crud.js)",
+      "Bash(awk 'NR>=900 && NR<=930 && /\\\\}, \\\\[/ {print NR\": \"$0}' pages/FloorPlan/FloorPlanPage.tsx)"
     ],
     "deny": [],
     "ask": []
