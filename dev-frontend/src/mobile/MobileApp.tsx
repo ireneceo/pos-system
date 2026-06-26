@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
+import { initOfflineOrderFlush } from '../utils/offlineOrderQueue';
 import { MobileOrderProvider } from './contexts/MobileOrderContext';
 import { CustomerProvider } from '../contexts/CustomerContext';
 import { StaffProvider } from '../contexts/StaffContext';
@@ -23,6 +24,8 @@ import ReservationsListPage from './pages/ReservationsListPage';
 import ReservationDetailPage from './pages/ReservationDetailPage';
 
 const MobileApp: React.FC = () => {
+  // #9 오프라인 주문 큐 — 앱 진입 시 1회, online 복귀/주기 flush 등록(끊긴 중 큐잉된 주문 자동 전송).
+  useEffect(() => { initOfflineOrderFlush(); }, []);
   return (
     <CustomerProvider>
       <StaffProvider>

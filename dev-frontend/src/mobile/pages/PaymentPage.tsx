@@ -11,6 +11,7 @@ import api from '../services/api';
 import { formatCurrency } from '../../utils/currency';
 import PhoneInput from '../components/common/PhoneInput';
 import { mobileFetch } from '../utils/mobileApi';
+import { ensureIdempotencyKey, enqueueOrder, genIdempotencyKey } from '../../utils/offlineOrderQueue';
 
 const Container = styled.div`
   padding-bottom: 100px;
@@ -1479,11 +1480,22 @@ const PaymentPage: React.FC = () => {
             };
 
             console.log('💾 Saving order to DATABASE...');
-            const response = await fetch('/api/orders', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(dbOrderData)
-            });
+            // #9 오프라인 큐 — 멱등키 부여(재전송/더블탭 중복생성 방지) + 네트워크 끊김 시 큐잉.
+            ensureIdempotencyKey(dbOrderData);
+            let response: Response;
+            try {
+              response = await fetch('/api/orders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dbOrderData)
+              });
+            } catch (netErr) {
+              // 연결 끊김 — 주문을 잃지 않게 로컬 큐에 저장. 재연결 시 자동 전송(서버 멱등으로 중복 0).
+              enqueueOrder('/api/orders', dbOrderData);
+              setError(t('common:offlineQueued', { defaultValue: 'No connection — your order is saved and will be placed automatically once you are back online.' }) as string);
+              setIsProcessing(false);
+              return;
+            }
 
             if (!response.ok) {
               throw new Error('Failed to save order to database');
@@ -1585,7 +1597,10 @@ const PaymentPage: React.FC = () => {
           }
 
           // Don't create order yet - just store data for the payment confirmation page
+          // #9 오프라인 큐 — 멱등키를 미리 부여(QR/Bank 결제확인 페이지가 이 payload 를 그대로 전송 →
+          // 재전송/더블탭 시 서버가 같은 key 로 중복생성 방지).
           const pendingOrderData = {
+            idempotency_key: genIdempotencyKey(),
             restaurant_id: resolvedRestaurantId,
             customer_name: orderCustomer ? orderCustomer.name : (orderGuestInfo ? orderGuestInfo.name || 'Guest' : 'Guest'),
             customer_phone: orderCustomer ? orderCustomer.phone : (orderGuestInfo ? orderGuestInfo.phone || null : null),
@@ -1744,7 +1759,8 @@ const PaymentPage: React.FC = () => {
             };
 
             console.log('💾 Creating order for online payment...');
-
+            // #9 오프라인 큐 — 멱등키 부여(재전송/더블탭 중복생성 방지).
+            ensureIdempotencyKey(dbOrderData);
             const response = await fetch('/api/orders', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },

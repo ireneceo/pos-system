@@ -1316,7 +1316,10 @@ const KitchenDisplayPage: React.FC = () => {
         id: noticeId, kind: 'void',
         orderNumber: data.orderNumber || String(data.orderId),
         tableNumber: data.tableNumber || undefined,
-        itemText: `${vi.quantity || 1} × ${vi.name || 'Item'}`,
+        // #2 부분수량 취소 — "N 취소, M 계속" 명확 표시(전량취소면 기존과 동일).
+        itemText: data.isPartial && data.remainingQuantity != null
+          ? `${data.cancelledQuantity || vi.quantity || 1} × ${vi.name || 'Item'} — cancelled (keep ${data.remainingQuantity})`
+          : `${vi.quantity || 1} × ${vi.name || 'Item'}`,
         reason: data.reason || undefined,
         at: Date.now()
       }, ...prev].slice(0, 8));

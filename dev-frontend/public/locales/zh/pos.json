@@ -74,5 +74,7 @@
       "allergy": "过敏",
       "birthday": "生日"
     }
-  }
+  },
+  "pOSTerminalPage.noteChips.noRice": "不要米饭",
+  "pOSTerminalPage.recentNote": "最近"
 }

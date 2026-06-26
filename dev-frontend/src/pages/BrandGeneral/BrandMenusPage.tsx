@@ -1297,6 +1297,8 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
     return [];
   });
   const [allBrandMenus, setAllBrandMenus] = useState<Array<{ id: string; name: string; optionGroups?: string[] }>>([]);
+  // #11c 크로스셀 — 추천으로 연결할 다른 브랜드메뉴(저장 시 가맹점 동기화)
+  const [selectedRecommendationIds, setSelectedRecommendationIds] = useState<number[]>([]);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -1341,6 +1343,19 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
     })();
   }, [menu]);
 
+  // #11c 크로스셀 — 기존 추천 연결 로드
+  useEffect(() => {
+    if (!menu) return;
+    (async () => {
+      try {
+        const r = await fetch(`/api/brand-menus/${menu.id}/recommendations`, { headers: authHeaders() });
+        if (!r.ok) return;
+        const j = await r.json();
+        if (Array.isArray(j.data)) setSelectedRecommendationIds(j.data.map((x: any) => Number(x.recommended_brand_menu_id)).filter((n: number) => Number.isFinite(n)));
+      } catch (e) { /* silent */ }
+    })();
+  }, [menu]);
+
   const handleSave = async () => {
     if (!name.trim()) { setSaveError(t('brand:brandMenusPage.errors.nameRequired', 'Name is required')); return; }
     if (!categoryId) { setSaveError(t('brand:brandMenusPage.errors.categoryRequired', 'Category is required')); return; }
@@ -1373,6 +1388,16 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
       const r = await fetch(url, { method, headers: authHeaders(), body: JSON.stringify(body) });
       const j = await r.json();
       if (!r.ok || !j.success) throw new Error(j.message || 'Save failed');
+      // #11c 크로스셀 — 메뉴 저장 성공 후 추천 연결 저장(가맹점 동기화는 백엔드가 처리). 세트메뉴는 추천 대상 아님.
+      const savedId = isEdit ? menu!.id : (j.data?.id ?? j.data?.menu?.id);
+      if (savedId && !isSetMenu) {
+        try {
+          await fetch(`/api/brand-menus/${savedId}/recommendations`, {
+            method: 'PUT', headers: authHeaders(),
+            body: JSON.stringify({ recommended_brand_menu_ids: selectedRecommendationIds })
+          });
+        } catch (e) { /* 추천 저장 실패는 메뉴 저장을 막지 않음 */ }
+      }
       onSaved();
     } catch (e: any) {
       setSaveError(e?.message || 'Save failed');
@@ -1517,6 +1542,60 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
           </>
         )}
       </UIFormGroup>
+
+      {/* #11c 크로스셀 — 추천 메뉴 연결(저장 시 가맹점 동기화). 세트메뉴는 대상 아님. */}
+      {!isSetMenu && (
+      <UIFormGroup style={{ marginTop: 24 }}>
+        <FormLabel>
+          {t('brand:brandMenusPage.recommendMenus', { defaultValue: 'Recommended add-ons' })}
+          {selectedRecommendationIds.length > 0 && ` (${selectedRecommendationIds.length})`}
+        </FormLabel>
+        <div style={{ fontSize: 13, color: '#6B7280', margin: '-2px 0 10px' }}>
+          {t('brand:brandMenusPage.recommendMenusHint', { defaultValue: 'Suggested to customers after they add this item. Synced to all linked restaurants on save.' })}
+        </div>
+        {allBrandMenus.length === 0 ? (
+          <div style={{ fontSize: 13, color: '#6B7280', padding: '10px 14px', border: '1px dashed #C7CED6', borderRadius: 8 }}>
+            {t('brand:brandMenusPage.noOtherMenus', { defaultValue: 'No other menus available to recommend yet.' })}
+          </div>
+        ) : (
+          <>
+            <SearchableSelect
+              options={allBrandMenus
+                .filter(m => !selectedRecommendationIds.includes(Number(m.id)))
+                .map(m => ({ value: Number(m.id), label: m.name }))}
+              value={null}
+              onChange={(v) => {
+                if (v == null) return;
+                const id = Number(v);
+                if (id && !selectedRecommendationIds.includes(id)) {
+                  setSelectedRecommendationIds([...selectedRecommendationIds, id]);
+                }
+              }}
+              placeholder={t('brand:brandMenusPage.selectMenuToRecommend', { defaultValue: 'Select a menu to recommend...' }) as string}
+              noOptionsMessage={t('brand:brandMenusPage.allMenusAdded', { defaultValue: 'All menus already added' }) as string}
+              allowClear={false}
+            />
+            <SelectedChipsContainer>
+              {selectedRecommendationIds.map((mid, index) => {
+                const m = allBrandMenus.find(x => Number(x.id) === mid);
+                return (
+                  <OptionGroupChip key={mid}>
+                    <ChipOrderBadge>{index + 1}</ChipOrderBadge>
+                    <ChipName>{m ? m.name : `#${mid}`}</ChipName>
+                    <ChipRemoveButton
+                      onClick={() => setSelectedRecommendationIds(selectedRecommendationIds.filter(id => id !== mid))}
+                      title={t('common:button.remove', 'Remove') as string}
+                    >
+                      ×
+                    </ChipRemoveButton>
+                  </OptionGroupChip>
+                );
+              })}
+            </SelectedChipsContainer>
+          </>
+        )}
+      </UIFormGroup>
+      )}
 
       <UIFormGroup style={{ marginTop: 24 }}>
         <FormLabel style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>

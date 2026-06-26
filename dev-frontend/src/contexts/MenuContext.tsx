@@ -77,6 +77,8 @@ export interface MenuCategory {
   order: number;
   isActive?: boolean;
   kitchen_station_id?: number | null;
+  // #11c 크로스셀 — true=강제 추천포함 / false=강제 제외 / null|undefined=이름 자동감지
+  is_recommendation_source?: boolean | null;
 }
 
 interface MenuContextType {
@@ -89,7 +91,7 @@ interface MenuContextType {
   getItemById: (itemId: string) => MenuItem | undefined;
   loadMenuByCategory: (categoryId: string) => Promise<void>;
   updateMenuItem: (item: MenuItem) => Promise<void>;
-  addMenuItem: (item: MenuItem) => Promise<void>;
+  addMenuItem: (item: MenuItem) => Promise<MenuItem | void>;
   removeMenuItem: (itemId: string) => Promise<void>;
   toggleItemSoldOut: (itemId: string) => Promise<void>;
   addCategory: (category: Omit<MenuCategory, 'id'> & { id?: string }) => Promise<void>;
@@ -231,7 +233,8 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
             emoji: cat.emoji || categoryEmojis[idx % categoryEmojis.length],
             order: cat.displayOrder !== undefined ? cat.displayOrder : idx,
             isActive: cat.isActive !== undefined ? cat.isActive : true,
-            kitchen_station_id: cat.kitchen_station_id || null
+            kitchen_station_id: cat.kitchen_station_id || null,
+            is_recommendation_source: cat.is_recommendation_source ?? null
           };
         });
 
@@ -691,6 +694,8 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
       // 성공 시 로컬 상태 업데이트 (최신 아이템이 맨 앞에 오도록)
       const newItems = [createdItem, ...menuItems];
       setMenuItems(newItems);
+      // #11c: 신규 등록 직후 추천 연결을 저장할 수 있게 생성된 상품(실제 id 포함)을 반환.
+      return createdItem;
     } catch (error) {
 
       throw error;

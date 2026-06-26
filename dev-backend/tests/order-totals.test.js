@@ -131,3 +131,70 @@ describe('computeOrderTotals — 포장요금/배달요금', () => {
     expect(r.total).toBe(121.6);        // 110 + 6.6 + 5
   });
 });
+
+// #3 합본 빌(혼합차지) — 서비스차지는 dine-in 품목에만, 세금은 전체. 순수 주문은 기존과 동일.
+const { mixedDineInSubtotal } = require('../utils/orderTotals');
+
+describe('#3 혼합차지 (mixedDineInSubtotal + computeOrderTotals dineInSubtotal)', () => {
+  test('순수 주문(전부 dine-in)은 null → 기존 동작', () => {
+    expect(mixedDineInSubtotal([{ price: 10, quantity: 2 }], 'dine_in')).toBeNull();
+  });
+  test('순수 takeaway 주문도 null → 기존 동작(서비스차지 안 깎임)', () => {
+    expect(mixedDineInSubtotal([{ item_order_type: 'takeaway', price: 10, quantity: 1 }], 'takeaway')).toBeNull();
+  });
+  test('혼합(다인인 30 + 테이크웨이 20) → dine-in 소계 30', () => {
+    const items = [
+      { price: 10, quantity: 3 }, // dine-in (태그 없음 = 주문타입)
+      { item_order_type: 'takeaway', price: 10, quantity: 2 }
+    ];
+    expect(mixedDineInSubtotal(items, 'dine_in')).toBe(30);
+  });
+
+  test('dineInSubtotal=null 이면 서비스차지 전체 기준(기존)', () => {
+    const r = computeOrderTotals({ newSubtotal: 100, oldSubtotal: 100, oldServiceCharge: 10, serviceChargeRate: 10, oldTax: 6, taxRate: 6 });
+    expect(r.serviceCharge).toBe(10); // 100 × 10%
+    expect(r.tax).toBe(6);            // 100 × 6%
+  });
+
+  test('혼합: 서비스차지는 dine-in 60%만(60), 세금은 전체(6)', () => {
+    // 소계 100 (dine-in 60 + takeaway 40), 서비스차지율 10%, 세율 6%
+    const r = computeOrderTotals({
+      newSubtotal: 100, oldSubtotal: 100,
+      oldServiceCharge: 10, serviceChargeRate: 10,
+      oldTax: 6, taxRate: 6,
+      dineInSubtotal: 60
+    });
+    expect(r.serviceCharge).toBe(6); // 100 × 10% × (60/100) = 6 (테이크웨이 40엔 서비스차지 없음)
+    expect(r.tax).toBe(6);           // 세금은 전체 100 × 6% = 6
+  });
+
+  test('혼합 + 할인: 서비스차지 base 는 afterDiscount × dine-in 비율', () => {
+    // 소계 100, 고정할인 20 → afterDiscount 80. dine-in 50%(50). 서비스차지 10%.
+    const r = computeOrderTotals({
+      newSubtotal: 100, oldSubtotal: 100, discount: 20,
+      oldServiceCharge: 10, serviceChargeRate: 10,
+      dineInSubtotal: 50
+    });
+    // afterDiscount 80 × 10% × 0.5 = 4
+    expect(r.serviceCharge).toBe(4);
+  });
+
+  test('dineInSubtotal >= newSubtotal(전부 dine-in 취급) → 기존과 동일', () => {
+    const r = computeOrderTotals({ newSubtotal: 100, oldSubtotal: 100, oldServiceCharge: 10, serviceChargeRate: 10, dineInSubtotal: 100 });
+    expect(r.serviceCharge).toBe(10);
+  });
+});
+
+describe('#3 합본 takeaway 포장비 (서비스차지는 dine-in만, 포장비/세금은 별개)', () => {
+  test('dine-in 100 + takeaway 40 + 포장비 3: 서비스차지=10(dine-in만), 세금=8.58(전체+포장), 총=161.58', () => {
+    const r = computeOrderTotals({ newSubtotal: 140, oldSubtotal: 140, takeawayCharge: 3,
+      oldServiceCharge: 10, serviceChargeRate: 10, oldTax: 6, taxRate: 6, dineInSubtotal: 100 });
+    expect(r.serviceCharge).toBe(10);   // 포장비는 서비스차지에 안 섞임
+    expect(r.tax).toBe(8.58);           // (140+3)×6%
+    expect(r.total).toBe(161.58);       // 140 + 3 + 10 + 8.58
+  });
+  test('포장비 있어도 순수 dine-in(dineInSubtotal=null)은 서비스차지 전체 기준', () => {
+    const r = computeOrderTotals({ newSubtotal: 100, oldSubtotal: 100, takeawayCharge: 5, oldServiceCharge: 10, serviceChargeRate: 10 });
+    expect(r.serviceCharge).toBe(10.5); // (100+5)×10% — 포장비 있는 순수주문은 기존대로 base 포함
+  });
+});

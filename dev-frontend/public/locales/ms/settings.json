@@ -1124,5 +1124,9 @@
   "operations.cancelReasonOptional": "Pilihan",
   "operations.cancelReasonRequired": "Wajib",
   "operations.requirePoOwnerApprovalLabel": "Perlukan kelulusan Pemilik untuk pesanan belian",
-  "operations.requirePoOwnerApprovalDesc": "Apabila dihidupkan dan Pemilik disambungkan, pesanan belian memerlukan kelulusan Pemilik sebelum dihantar kepada pembekal. Lalai hidup apabila Pemilik disambungkan."
+  "operations.requirePoOwnerApprovalDesc": "Apabila dihidupkan dan Pemilik disambungkan, pesanan belian memerlukan kelulusan Pemilik sebelum dihantar kepada pembekal. Lalai hidup apabila Pemilik disambungkan.",
+  "printer.kitchenCopies": "Salinan Cetakan",
+  "printer.copies1": "1 salinan",
+  "printer.copies2": "2 salinan",
+  "printer.copies3": "3 salinan"
 }

@@ -21,7 +21,7 @@ const { getTodayBounds, getOrderDatePrefix, getRestaurantTimezone } = require('.
 const { checkPaymentMethodAllowed } = require('../utils/paymentMethodGuard');
 const { enforceVoidPin } = require('../utils/voidPinGuard');
 const { enrichItemsWithStation } = require('../utils/stationEnrichment');
-const { round2, computeOrderTotals } = require('../utils/orderTotals');
+const { round2, computeOrderTotals, mixedDineInSubtotal } = require('../utils/orderTotals');
 
 // 예약-주문 자동 링크 (P2-6, 인쇄 무관) — dine-in 주문이 'arrived'(체크인) 예약이 걸린
 // 테이블에서 생성되면 그 예약을 주문에 연결(order.reservation_id) + 예약 arrived→seated.
@@ -348,8 +348,13 @@ async function findMergeableOrder(restaurantId, tableNumber, orderType, newOrder
 }
 
 // Helper: Merge items into existing order
-async function mergeItemsIntoOrder(existingOrder, newItems, transaction = null) {
+// #3 합본 빌: incomingOrderType = 합쳐 들어오는 주문의 order_type. 그 품목을 item_order_type 으로
+// 태깅 → 혼합(테이크웨이+다인인) 시 서비스차지를 dine-in 품목에만 매긴다(computeOrderTotals dineInSubtotal).
+async function mergeItemsIntoOrder(existingOrder, newItems, transaction = null, incomingOrderType = null, incomingTakeawayCharge = 0) {
   const now = new Date().toISOString();
+  // #3 합본 빌: 합쳐 들어오는 takeaway 주문의 포장비(프론트가 매장 설정 takeawayPricing 대로 계산해 보낸 값)를
+  // 기존 주문 포장비에 더한다. 설정값을 그대로 적용 — 머지 때 버려지던 버그 수정.
+  const combinedTakeawayCharge = (parseFloat(existingOrder.takeaway_charge) || 0) + (parseFloat(incomingTakeawayCharge) || 0);
 
   // Get current items
   let currentItems = existingOrder.order_items || [];
@@ -378,11 +383,13 @@ async function mergeItemsIntoOrder(existingOrder, newItems, transaction = null) 
   const enrichedNewItems = await enrichItemsWithStation(existingOrder.restaurant_id, newItems);
 
   // Add new items with added_at timestamp and order_group
+  // #3: 들어오는 주문타입을 품목에 태깅(혼합차지 판정용). 기존 태그가 있으면 보존.
   const itemsWithTimestamp = enrichedNewItems.map(item => ({
     ...item,
     status: 'pending',
     added_at: now,
-    order_group: nextGroup
+    order_group: nextGroup,
+    ...(incomingOrderType ? { item_order_type: item.item_order_type || incomingOrderType } : {})
   }));
 
   const mergedItems = [...currentItems, ...itemsWithTimestamp];
@@ -409,7 +416,7 @@ async function mergeItemsIntoOrder(existingOrder, newItems, transaction = null) 
   const totals = computeOrderTotals({
     newSubtotal: itemsSubtotal,
     oldSubtotal,
-    takeawayCharge: existingOrder.takeaway_charge,
+    takeawayCharge: combinedTakeawayCharge, // #3 합본: 기존 + 들어온 takeaway 포장비(설정대로)
     deliveryFee: existingOrder.delivery_fee,
     discount: existingOrder.discount,
     oldDiscountPolicyAmount: existingOrder.discount_policy_amount,
@@ -419,7 +426,9 @@ async function mergeItemsIntoOrder(existingOrder, newItems, transaction = null) 
     oldTax: existingOrder.tax,
     taxRate: existingOrder.tax_rate,
     oldServiceCharge: existingOrder.service_charge,
-    serviceChargeRate: existingOrder.service_charge_rate
+    serviceChargeRate: existingOrder.service_charge_rate,
+    // #3 합본 빌: 혼합(테이크웨이+다인인)이면 서비스차지를 dine-in 품목에만. 순수 주문이면 null=기존.
+    dineInSubtotal: mixedDineInSubtotal(mergedItems, existingOrder.order_type)
   });
   const { tax, serviceCharge } = totals;
   const newTotal = totals.total;
@@ -440,6 +449,7 @@ async function mergeItemsIntoOrder(existingOrder, newItems, transaction = null) 
   await existingOrder.update({
     order_items: mergedItems,
     subtotal: itemsSubtotal,
+    takeaway_charge: combinedTakeawayCharge, // #3 합본: 들어온 takeaway 포장비 영속화
     tax,
     service_charge: serviceCharge,
     discount_policy_amount: totals.discountPolicyAmount,
@@ -487,6 +497,17 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Restaurant not found' });
     }
     const timezone = getRestaurantTimezone(restaurant);
+
+    // #9 오프라인 주문 큐 — 멱등. 끊긴 중 큐에 쌓였던 주문이 재연결 시 재전송될 때, 같은
+    // idempotency_key(클라 UUID)가 이미 처리됐으면 새로 만들지 않고 기존 주문을 그대로 돌려준다(중복생성 0).
+    const _idemKey = (orderData.idempotency_key || orderData.idempotencyKey || '').toString().slice(0, 64) || null;
+    if (_idemKey) {
+      orderData.idempotency_key = _idemKey;
+      const existingIdem = await Order.findOne({ where: { idempotency_key: _idemKey } });
+      if (existingIdem) {
+        return res.status(200).json({ success: true, data: existingIdem, idempotent: true, message: 'Order already created (idempotent replay)' });
+      }
+    }
 
     // Defence: payment_method × order_type. Only enforced for mobile-sourced orders —
     // POS staff sees all enabled methods regardless of order_type (operator judgment).
@@ -580,7 +601,7 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
       const force = await Order.findByPk(orderData.forceMergeIntoOrderId);
       if (force && force.restaurant_id === orderData.restaurant_id) {
         const newItems = orderData.order_items || orderData.items || [];
-        const mergeResult = await mergeItemsIntoOrder(force, newItems);
+        const mergeResult = await mergeItemsIntoOrder(force, newItems, null, orderData.order_type, orderData.takeaway_charge); // #3 들어온 takeaway 포장비 전달
         const io = req.app.get('io');
         if (io) {
           const room = `restaurant_${force.restaurant_id}`;
@@ -610,7 +631,10 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
     const __otNorm = (orderData.order_type || 'dine_in').toString().replace(/[_\s-]/g, '').toLowerCase();
     const __isOffTableOrder = __otNorm === 'takeaway' || __otNorm === 'pickup' || __otNorm === 'delivery';
 
-    if (!skipAutoMerge && !__isOffTableOrder && orderData.restaurant_id && orderData.table_number) {
+    // #3 합본 빌(2026-06-26, Irene): 테이블번호가 있는 off-table(테이크웨이/픽업) 주문은 그 테이블의
+    // 기존 dine-in 계산서에 머지(별도/덮어쓰기 금지). 품목은 item_order_type 으로 태깅돼 서비스차지가
+    // dine-in 품목에만 붙는다(혼합차지). 테이블 없는 순수 takeaway 는 table_number 가 없어 그대로 별도 유지.
+    if (!skipAutoMerge && orderData.restaurant_id && orderData.table_number) {
       const mergeableOrder = await findMergeableOrder(
         orderData.restaurant_id,
         orderData.table_number,
@@ -621,11 +645,11 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
       );
 
       if (mergeableOrder) {
-        console.log(`🔀 [AUTO-MERGE] Found mergeable order ${mergeableOrder.id} for table ${orderData.table_number}`);
+        console.log(`🔀 [AUTO-MERGE] Found mergeable order ${mergeableOrder.id} for table ${orderData.table_number} (incoming ${orderData.order_type})`);
 
         // Merge items into existing order (support both 'items' and 'order_items')
         const newItems = orderData.order_items || orderData.items || [];
-        const mergeResult = await mergeItemsIntoOrder(mergeableOrder, newItems);
+        const mergeResult = await mergeItemsIntoOrder(mergeableOrder, newItems, null, orderData.order_type, orderData.takeaway_charge); // #3 들어온 takeaway 포장비 전달
 
         console.log(`✓ [AUTO-MERGE] Merged ${mergeResult.addedItems.length} items into order ${mergeableOrder.id} (group: ${mergeResult.orderGroup})`);
 
@@ -1181,7 +1205,7 @@ router.post('/:id/move-table', authenticateToken, async (req, res) => {
           // Merge THIS order's items into the destination order, then cancel this one.
           let myItems = order.order_items || [];
           if (typeof myItems === 'string') { try { myItems = JSON.parse(myItems); } catch { myItems = []; } }
-          const mergeResult = await mergeItemsIntoOrder(destOrder, myItems, t);
+          const mergeResult = await mergeItemsIntoOrder(destOrder, myItems, t, order.order_type); // #3 혼합차지: 소스 주문 타입 태깅
           // Soft-cancel the now-empty source order so it leaves the source table.
           await order.update({ status: 'cancelled', is_deleted: true, table_cleared: true }, { transaction: t });
           return {
@@ -1393,7 +1417,9 @@ router.patch('/:id/apply-discount', authenticateToken, async (req, res) => {
       coupon,
       pointDiscount: parseFloat(order.point_discount || 0),
       oldTax: parseFloat(order.tax || 0), taxRate: parseFloat(order.tax_rate || 0),
-      oldServiceCharge: parseFloat(order.service_charge || 0), serviceChargeRate: parseFloat(order.service_charge_rate || 0)
+      oldServiceCharge: parseFloat(order.service_charge || 0), serviceChargeRate: parseFloat(order.service_charge_rate || 0),
+      // #3 혼합차지: 할인 적용 후에도 서비스차지는 dine-in 품목 기준(순수 주문이면 null=기존)
+      dineInSubtotal: mixedDineInSubtotal(order.order_items, order.order_type)
     });
     await order.update({
       discount: D,
@@ -2100,7 +2126,9 @@ router.post('/merge', authenticateToken, async (req, res) => {
         oldTax: target.tax,
         taxRate: target.tax_rate,
         oldServiceCharge: target.service_charge,
-        serviceChargeRate: target.service_charge_rate
+        serviceChargeRate: target.service_charge_rate,
+        // #3 혼합차지: 테이블 합본 후에도 서비스차지는 dine-in 품목 기준(순수면 null=기존)
+        dineInSubtotal: mixedDineInSubtotal(targetItems, target.order_type)
       });
 
       // Update target order
@@ -2224,7 +2252,7 @@ router.post('/:id/add-items', authenticateToken, async (req, res) => {
     // /add-items route had its own raw item-map without enrichment, so POS
     // 추가주문 (Live Orders 의 메뉴 추가 흐름) 에 station 라우팅이 빠지고
     // additional-items kitchen ticket 도 폴링 path 에서 누락됐다.
-    const mergeResult = await mergeItemsIntoOrder(order, items);
+    const mergeResult = await mergeItemsIntoOrder(order, items, null, req.body.order_type); // #3 혼합차지: 추가분 타입 태깅(다르면 혼합)
     const newItemsWithTimestamp = mergeResult.addedItems;
     const newTotal = mergeResult.newTotal;
 
@@ -2326,7 +2354,7 @@ router.post('/:id/merge-items', authenticateToken, async (req, res) => {
     }
 
     // Use mergeItemsIntoOrder for consistent order_group handling
-    const mergeResult = await mergeItemsIntoOrder(order, items);
+    const mergeResult = await mergeItemsIntoOrder(order, items, null, req.body.order_type); // #3 혼합차지: 추가분 타입 태깅(다르면 혼합)
 
     console.log(`✓ [MERGE-ITEMS] Added ${mergeResult.addedItems.length} items to order ${order.id} (group: ${mergeResult.orderGroup}, source: ${source || 'unknown'})`);
 
@@ -2432,14 +2460,22 @@ router.delete('/:id/items/:itemIndex', authenticateToken, requireVoidAccess, asy
       return res.status(400).json({ success: false, error: { message: 'Invalid item index', code: 'VALIDATION_ERROR' } });
     }
 
-    // Cannot delete last item - must cancel order instead
-    if (orderItems.length === 1) {
+    // #2 부분수량 취소 — "3개 중 1개만 취소". cancelQty 미지정/≥수량 = 기존 전량삭제(하위호환).
+    const itemToRemove = orderItems[itemIndex];
+    const origQty = Math.max(1, Number(itemToRemove.quantity) || 1);
+    let cancelQty = req.body.cancelQty != null ? parseInt(req.body.cancelQty, 10) : origQty;
+    if (!Number.isFinite(cancelQty) || cancelQty < 1) cancelQty = origQty;
+    if (cancelQty > origQty) cancelQty = origQty;
+    const isPartial = cancelQty < origQty;
+    const remainingQty = origQty - cancelQty;
+
+    // 마지막 한 줄 전량삭제만 금지(주문취소로 유도). 부분취소(잔여>0)는 마지막 줄이어도 허용.
+    if (orderItems.length === 1 && !isPartial) {
       return res.status(400).json({ success: false, error: { message: 'Cannot remove the last item. Please cancel the order instead.', code: 'VALIDATION_ERROR' } });
     }
 
-    // Calculate what the new subtotal would be BEFORE removing the item
-    const itemToRemove = orderItems[itemIndex];
-    const itemTotal = itemToRemove.quantity * parseFloat(itemToRemove.price || 0);
+    // Calculate what the new subtotal would be BEFORE removing the item (취소분 = cancelQty 만큼만 차감)
+    const itemTotal = cancelQty * parseFloat(itemToRemove.price || 0);
     const currentSubtotal = orderItems.reduce((sum, item) => {
       return sum + (item.quantity * parseFloat(item.price || 0));
     }, 0);
@@ -2473,9 +2509,17 @@ router.delete('/:id/items/:itemIndex', authenticateToken, requireVoidAccess, asy
       }
     }
 
-    // Remove the item
-    const removedItem = orderItems.splice(itemIndex, 1)[0];
-    console.log(`🗑️ [DELETE-ITEM] Removing item: ${removedItem.name} from order ${orderId}`);
+    // 취소된 "분량" 스냅샷(quantity = cancelQty) — VOID 티켓·감사·소켓·응답에 공통 사용.
+    const removedItem = { ...itemToRemove, quantity: cancelQty };
+    if (isPartial) {
+      // 부분취소: 줄은 남기고 수량만 차감.
+      orderItems[itemIndex] = { ...itemToRemove, quantity: remainingQty };
+      console.log(`🗑️ [DELETE-ITEM] Partial cancel: ${removedItem.name} ${cancelQty}/${origQty} (remaining ${remainingQty}) from order ${orderId}`);
+    } else {
+      // 전량취소: 줄 제거.
+      orderItems.splice(itemIndex, 1);
+      console.log(`🗑️ [DELETE-ITEM] Removing item: ${removedItem.name} from order ${orderId}`);
+    }
 
     // Update subtotal and items
     order.subtotal = newSubtotal;
@@ -2487,9 +2531,18 @@ router.delete('/:id/items/:itemIndex', authenticateToken, requireVoidAccess, asy
     // 인쇄. 누른 기기/계정 무관. 인쇄 방식(billPrint) 무변경 — 트리거를 기기→DB로 옮긴 것뿐.
     if (removedItem && (removedItem.printed_at || removedItem.printed)) {
       const _vreason = (req.body.reason && String(req.body.reason).trim()) || '';
+      const _vlines = [];
+      if (_vreason) _vlines.push('Reason: ' + _vreason);
+      // #2 부분취소: 주방에 "취소 분량 / 계속 만들 잔여" 명확히. (notice.lines = 기존에 인쇄되는 내용필드)
+      if (isPartial) {
+        _vlines.push('Cancelled ' + cancelQty + ' of ' + origQty + '.');
+        _vlines.push('KEEP making ' + remainingQty + '.');
+      } else {
+        _vlines.push('Do NOT make this item.');
+      }
       order.needs_print = true;
       order.print_claimed_at = null;
-      order.pending_reprint = { type: 'void', notice: { title: '** ITEM VOIDED **', lines: _vreason ? ['Reason: ' + _vreason, 'Do NOT make this item.'] : ['Do NOT make this item.'] }, data: { items: [removedItem] } };
+      order.pending_reprint = { type: 'void', notice: { title: '** ITEM VOIDED **', lines: _vlines }, data: { items: [removedItem] } };
     }
 
     // 2026-05-29: 아이템 삭제도 머지와 동일한 정식 공식(computeOrderTotals)으로
@@ -2513,7 +2566,9 @@ router.delete('/:id/items/:itemIndex', authenticateToken, requireVoidAccess, asy
       oldTax: prevTax,
       taxRate: order.tax_rate,
       oldServiceCharge: prevServiceCharge,
-      serviceChargeRate: order.service_charge_rate
+      serviceChargeRate: order.service_charge_rate,
+      // #3 혼합차지: 부분/전량 취소 후에도 서비스차지는 남은 dine-in 품목 기준(순수 주문이면 null=기존).
+      dineInSubtotal: mixedDineInSubtotal(orderItems, order.order_type)
     });
     order.service_charge = totals.serviceCharge;
     order.tax = totals.tax;
@@ -2617,6 +2672,10 @@ router.delete('/:id/items/:itemIndex', authenticateToken, requireVoidAccess, asy
           was_printed: !!(removedItem.printed_at || removedItem.printed),
           options: Array.isArray(removedItem.options) ? removedItem.options : []
         },
+        // #2 부분취소 — KDS 가 "N 취소, M 잔존" 표시. 전량취소면 isPartial=false.
+        isPartial,
+        cancelledQuantity: cancelQty,
+        remainingQuantity: remainingQty,
         reason: req.body.reason || null,
         voidedBy: req.user.username || req.user.email,
         voidedAt: new Date().toISOString()

@@ -703,5 +703,10 @@
   "brandMenusPage.single": "단일",
   "brandMenusPage.multi": "다중",
   "brandProductsTab.targetBrands": "대상 브랜드",
-  "brandProductsTab.targetRestaurants": "대상 가맹점"
+  "brandProductsTab.targetRestaurants": "대상 가맹점",
+  "brandMenusPage.recommendMenus": "추천 메뉴 연결",
+  "brandMenusPage.recommendMenusHint": "손님이 이 메뉴를 담은 후 추천으로 제안됩니다. 저장 시 연결된 모든 매장에 동기화됩니다.",
+  "brandMenusPage.noOtherMenus": "추천할 다른 메뉴가 아직 없습니다.",
+  "brandMenusPage.selectMenuToRecommend": "추천할 메뉴 선택...",
+  "brandMenusPage.allMenusAdded": "모든 메뉴가 이미 추가됨"
 }

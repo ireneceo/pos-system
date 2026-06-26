@@ -703,5 +703,10 @@
   "brandMenusPage.single": "Tunggal",
   "brandMenusPage.multi": "Berbilang",
   "brandProductsTab.targetBrands": "Jenama Sasaran",
-  "brandProductsTab.targetRestaurants": "Kedai Sasaran"
+  "brandProductsTab.targetRestaurants": "Kedai Sasaran",
+  "brandMenusPage.recommendMenus": "Tambahan disyorkan",
+  "brandMenusPage.recommendMenusHint": "Dicadangkan kepada pelanggan selepas mereka menambah item ini. Diselaraskan ke semua restoran berkaitan apabila disimpan.",
+  "brandMenusPage.noOtherMenus": "Tiada menu lain tersedia untuk dicadangkan lagi.",
+  "brandMenusPage.selectMenuToRecommend": "Pilih menu untuk dicadangkan...",
+  "brandMenusPage.allMenusAdded": "Semua menu telah ditambah"
 }

@@ -171,5 +171,6 @@
   "voidItem.skipReason": "无原因删除",
   "voidItem": {
     "otherReasonPlaceholder": "请输入原因"
-  }
+  },
+  "voidItem.cancelHowMany": "取消数量"
 }

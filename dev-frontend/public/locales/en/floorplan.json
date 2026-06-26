@@ -190,5 +190,9 @@
     "body": "This table has a reservation at {{time}} for {{guest}}. Start a walk-in order anyway?",
     "keep": "Keep reserved",
     "proceed": "Order anyway"
-  }
+  },
+  "itemTag.takeaway": "TAKEAWAY",
+  "itemTag.pickup": "PICKUP",
+  "itemTag.delivery": "DELIVERY",
+  "itemTag.dine_in": "DINE-IN"
 }

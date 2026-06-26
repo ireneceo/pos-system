@@ -57,6 +57,13 @@ Order.init({
     defaultValue: null,
     comment: 'Order-level remark / 주문 메모 (e.g. allergy, birthday). Item-level notes live in order_items.'
   },
+  idempotency_key: {
+    type: DataTypes.STRING(64),
+    allowNull: true,
+    defaultValue: null,
+    unique: true,
+    comment: '#9 오프라인 주문 큐: 클라가 만든 UUID. 같은 key 재전송 시 새 주문 생성 안 하고 기존 주문 반환(중복방지).'
+  },
   pager_number: {
     type: DataTypes.STRING(10),
     allowNull: true,

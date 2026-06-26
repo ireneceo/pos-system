@@ -190,5 +190,9 @@
     "body": "此桌在 {{time}} 有 {{guest}} 的预订。仍要开始堂食(walk-in)点单吗？",
     "keep": "保留预订",
     "proceed": "仍要点单"
-  }
+  },
+  "itemTag.takeaway": "外带",
+  "itemTag.pickup": "自取",
+  "itemTag.delivery": "外送",
+  "itemTag.dine_in": "堂食"
 }

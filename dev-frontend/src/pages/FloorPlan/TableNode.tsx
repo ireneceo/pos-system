@@ -60,10 +60,11 @@ const NodeWrapper = styled.div<{
 `;
 
 const TableLabel = styled.div<{ $textColor: string }>`
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 20px;
+  font-weight: 800;
   color: ${p => p.$textColor};
-  line-height: 1;
+  line-height: 1.05;
+  letter-spacing: 0.2px;
 `;
 
 const SeatsLabel = styled.div<{ $textColor: string }>`
@@ -98,15 +99,18 @@ const StaffMealBadge = styled.div`
 
 const MultiOrderBadge = styled.div`
   position: absolute;
-  top: -6px;
-  left: -6px;
-  min-width: 18px;
-  height: 18px;
-  border-radius: 9px;
+  top: -8px;
+  left: -8px;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 12px;
   background: #635BFF;
   color: white;
-  font-size: 9px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 800;
+  border: 2px solid var(--pos-surface, #fff);
+  box-shadow: 0 1px 4px rgba(15,23,42,0.18);
   display: flex;
   align-items: center;
   justify-content: center;

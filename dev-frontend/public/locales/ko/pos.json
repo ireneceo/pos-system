@@ -74,5 +74,7 @@
       "allergy": "알레르기",
       "birthday": "생일"
     }
-  }
+  },
+  "pOSTerminalPage.noteChips.noRice": "밥 빼기",
+  "pOSTerminalPage.recentNote": "최근"
 }

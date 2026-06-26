@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import ConfirmModal from '../../components/ConfirmModal';
 import styled from 'styled-components';
 import { io, Socket } from 'socket.io-client';
@@ -1368,6 +1368,33 @@ const POSTerminalPage: React.FC = () => {
       else localStorage.removeItem(REMARK_DRAFT_KEY);
     } catch { /* ignore */ }
   }, [orderRemark, REMARK_DRAFT_KEY]);
+  // #11 리마크 — 프리셋 + "이전에 쓴 리마크" 히스토리(매장별 localStorage). 칩 나열 대신
+  // 입력란에 타이핑하면 프리셋+이전 리마크가 검색돼 선택(자동완성). 자유입력도 그대로 가능.
+  const REMARK_PRESETS = useMemo(() => [
+    t('pos:pOSTerminalPage.noteChips.noOnion', 'No onion'),
+    t('pos:pOSTerminalPage.noteChips.lessSpicy', 'Less spicy'),
+    t('pos:pOSTerminalPage.noteChips.noIce', 'No ice'),
+    t('pos:pOSTerminalPage.noteChips.noRice', 'No rice'),
+    t('pos:pOSTerminalPage.noteChips.allergy', 'Allergy'),
+    t('pos:pOSTerminalPage.noteChips.birthday', 'Birthday'),
+  ], [t]);
+  const REMARK_HISTORY_KEY = `posOrderRemarkHistory_${restaurantId || 'x'}`;
+  const [remarkHistory, setRemarkHistory] = useState<string[]>(() => {
+    try { const a = JSON.parse(localStorage.getItem(`posOrderRemarkHistory_${restaurantId || 'x'}`) || '[]'); return Array.isArray(a) ? a : []; } catch { return []; }
+  });
+  const [remarkFocused, setRemarkFocused] = useState(false);
+  // 발행된 리마크를 히스토리에 누적(중복 제거, 최신순, 최대 30). 콤마로 묶인 건 분해 저장.
+  const pushRemarkHistory = useCallback((text: string) => {
+    const parts = (text || '').split(',').map(s => s.trim()).filter(Boolean);
+    if (!parts.length) return;
+    setRemarkHistory(prev => {
+      const merged = [...parts, ...prev.filter(p => !parts.some(np => np.toLowerCase() === p.toLowerCase()))]
+        .filter((v, i, a) => a.findIndex(x => x.toLowerCase() === v.toLowerCase()) === i)
+        .slice(0, 30);
+      try { localStorage.setItem(REMARK_HISTORY_KEY, JSON.stringify(merged)); } catch { /* ignore */ }
+      return merged;
+    });
+  }, [REMARK_HISTORY_KEY]);
   const [pagerSearchQuery, setPagerSearchQuery] = useState('');
   const [showPagerDropdown, setShowPagerDropdown] = useState(false);
   const [showCustomAmountModal, setShowCustomAmountModal] = useState(false);
@@ -2368,6 +2395,7 @@ const POSTerminalPage: React.FC = () => {
       setAppliedCoupon(null);
       setAppliedDiscountPolicy(null);
       setCouponCode('');
+      if (orderRemark.trim()) pushRemarkHistory(orderRemark); // #11 발행된 리마크를 검색 히스토리에 저장
       setOrderRemark(''); setShowRemarkBox(false);  // #11 리마크 발행 후 비움
       setTableNumber('');
       setGuestCount(0);
@@ -2400,9 +2428,14 @@ const POSTerminalPage: React.FC = () => {
       })();
 
       console.log('POS - Order added without payment:', savedOrder?.orderNumber);
-    } catch (error) {
+    } catch (error: any) {
       console.error('POS - Error adding order:', error);
-      setInfoModal({ open: true, title: 'Order Failed', message: 'Failed to create order. Please try again.' });
+      // #9 오프라인 큐 — 연결 끊김 시 주문은 로컬 큐에 저장됨. "다시 시도/재입력" 금지(재연결 시 자동 전송, 중복 0).
+      if (error?.message === 'OFFLINE_QUEUED') {
+        setInfoModal({ open: true, title: 'Saved offline', message: 'No connection — the order is saved and will be sent automatically when you are back online. Do NOT re-enter it.' });
+      } else {
+        setInfoModal({ open: true, title: 'Order Failed', message: 'Failed to create order. Please try again.' });
+      }
     } finally {
       setIsProcessingPayment(false);
     }
@@ -2705,6 +2738,7 @@ const POSTerminalPage: React.FC = () => {
       setAppliedCoupon(null);
       setAppliedDiscountPolicy(null);
       setCouponCode('');
+      if (orderRemark.trim()) pushRemarkHistory(orderRemark); // #11 발행된 리마크를 검색 히스토리에 저장
       setOrderRemark(''); setShowRemarkBox(false);  // #11 리마크 발행 후 비움
       setTableNumber('');
       setGuestCount(0);
@@ -2714,9 +2748,14 @@ const POSTerminalPage: React.FC = () => {
       setCustomerSearchQuery('');
 
       console.log('POS - Payment processing completed:', savedOrder?.orderNumber);
-    } catch (error) {
+    } catch (error: any) {
       console.error('POS - Error processing payment:', error);
-      setInfoModal({ open: true, title: 'Payment Failed', message: 'Failed to process payment. Please try again.' });
+      // #9 오프라인 큐 — 연결 끊김 시 주문은 저장됨. 재입력 금지(재연결 시 자동 전송, 중복 0).
+      if (error?.message === 'OFFLINE_QUEUED') {
+        setInfoModal({ open: true, title: 'Saved offline', message: 'No connection — the order is saved and will be sent automatically when you are back online. Do NOT re-enter it.' });
+      } else {
+        setInfoModal({ open: true, title: 'Payment Failed', message: 'Failed to process payment. Please try again.' });
+      }
     } finally {
       setIsProcessingPayment(false);
     }
@@ -3629,46 +3668,67 @@ const POSTerminalPage: React.FC = () => {
                         </button>
                       )}
                     </div>
-                    {/* 빠른선택 칩 — 탭하면 메모에 덧붙임 */}
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
-                      {[
-                        t('pos:pOSTerminalPage.noteChips.noOnion', 'No onion'),
-                        t('pos:pOSTerminalPage.noteChips.lessSpicy', 'Less spicy'),
-                        t('pos:pOSTerminalPage.noteChips.noIce', 'No ice'),
-                        t('pos:pOSTerminalPage.noteChips.allergy', 'Allergy'),
-                        t('pos:pOSTerminalPage.noteChips.birthday', 'Birthday'),
-                      ].map((chip) => (
-                        <button
-                          key={chip}
-                          type="button"
-                          onClick={() => setOrderRemark(prev => {
-                            const has = prev.split(',').map(s => s.trim()).includes(chip);
-                            if (has) return prev;
-                            return prev.trim() ? `${prev.replace(/[,\s]+$/, '')}, ${chip}` : chip;
-                          })}
-                          style={{
-                            minHeight: 36, padding: '0 12px', borderRadius: 18, cursor: 'pointer',
-                            background: 'var(--pos-surface-2, #F1F5F9)', color: 'var(--pos-text, #334155)',
-                            border: '1px solid var(--pos-border, #E2E8F0)', fontSize: 13, fontWeight: 500,
-                          }}
-                        >
-                          {chip}
-                        </button>
-                      ))}
+                    {/* #11 리마크 — 입력란에 타이핑하면 프리셋 + 이전에 쓴 리마크가 검색돼 선택(자동완성).
+                        칩 나열 대신 검색식. 자유입력도 그대로 가능. (주소 State/City 검색입력과 동일 철학) */}
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type="text"
+                        value={orderRemark}
+                        onChange={(e) => setOrderRemark(e.target.value)}
+                        onFocus={() => setRemarkFocused(true)}
+                        onBlur={() => setTimeout(() => setRemarkFocused(false), 180)}
+                        placeholder={t('pos:pOSTerminalPage.orderNotePlaceholder', 'Type to search notes — e.g. No rice, allergy, birthday…') as string}
+                        maxLength={500}
+                        style={{
+                          width: '100%', minHeight: 48, padding: '12px 14px',
+                          borderRadius: 8, border: '1px solid var(--pos-border, #E2E8F0)',
+                          background: '#fff', color: 'var(--pos-text, #0F172A)', fontSize: 14,
+                          fontFamily: 'inherit', boxSizing: 'border-box',
+                        }}
+                      />
+                      {remarkFocused && (() => {
+                        const parts = orderRemark.split(',').map(s => s.trim());
+                        const activeTerm = (parts[parts.length - 1] || '').toLowerCase();
+                        const used = new Set(parts.filter(Boolean).map(s => s.toLowerCase()));
+                        const pool = [...REMARK_PRESETS, ...remarkHistory]
+                          .filter((v, i, a) => a.findIndex(x => x.toLowerCase() === v.toLowerCase()) === i);
+                        const matches = pool.filter(s => !used.has(s.toLowerCase()) && (activeTerm === '' || s.toLowerCase().includes(activeTerm))).slice(0, 8);
+                        if (!matches.length) return null;
+                        return (
+                          <div style={{
+                            position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 30,
+                            background: '#fff', border: '1px solid var(--pos-border, #E2E8F0)', borderRadius: 10,
+                            boxShadow: '0 8px 24px rgba(15,23,42,0.12)', overflow: 'hidden', maxHeight: 264, overflowY: 'auto',
+                          }}>
+                            {matches.map((s) => {
+                              const isHistory = !REMARK_PRESETS.some(p => p.toLowerCase() === s.toLowerCase());
+                              return (
+                                <button
+                                  key={s}
+                                  type="button"
+                                  onMouseDown={(e) => e.preventDefault()}
+                                  onClick={() => setOrderRemark(() => {
+                                    const ps = orderRemark.split(',').map(x => x.trim());
+                                    ps[ps.length - 1] = s;
+                                    return ps.filter(Boolean).join(', ');
+                                  })}
+                                  style={{
+                                    width: '100%', minHeight: 44, padding: '0 14px', cursor: 'pointer', textAlign: 'left',
+                                    background: '#fff', border: 'none', borderBottom: '1px solid var(--pos-surface-2, #F1F5F9)',
+                                    color: 'var(--pos-text, #0F172A)', fontSize: 14, fontWeight: 500,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                                    WebkitTapHighlightColor: 'transparent',
+                                  }}
+                                >
+                                  <span>{s}</span>
+                                  {isHistory && <span style={{ fontSize: 11, color: 'var(--pos-text-muted, #94A3B8)' }}>{t('pos:pOSTerminalPage.recentNote', 'recent')}</span>}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
                     </div>
-                    <textarea
-                      value={orderRemark}
-                      onChange={(e) => setOrderRemark(e.target.value)}
-                      placeholder={t('pos:pOSTerminalPage.orderNotePlaceholder', 'e.g. allergy info, birthday, special request…') as string}
-                      rows={2}
-                      maxLength={500}
-                      style={{
-                        width: '100%', resize: 'vertical', minHeight: 48, padding: '10px 12px',
-                        borderRadius: 8, border: '1px solid var(--pos-border, #E2E8F0)',
-                        background: '#fff', color: 'var(--pos-text, #0F172A)', fontSize: 14,
-                        fontFamily: 'inherit', lineHeight: 1.5, boxSizing: 'border-box',
-                      }}
-                    />
                   </div>
                 )}
               </div>

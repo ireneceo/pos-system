@@ -703,5 +703,10 @@
   "brandMenusPage.single": "单选",
   "brandMenusPage.multi": "多选",
   "brandProductsTab.targetBrands": "目标品牌",
-  "brandProductsTab.targetRestaurants": "目标门店"
+  "brandProductsTab.targetRestaurants": "目标门店",
+  "brandMenusPage.recommendMenus": "推荐加购菜单",
+  "brandMenusPage.recommendMenusHint": "顾客加入此菜单后向其推荐。保存时同步到所有关联餐厅。",
+  "brandMenusPage.noOtherMenus": "暂无其他可推荐的菜单。",
+  "brandMenusPage.selectMenuToRecommend": "选择要推荐的菜单...",
+  "brandMenusPage.allMenusAdded": "所有菜单均已添加"
 }

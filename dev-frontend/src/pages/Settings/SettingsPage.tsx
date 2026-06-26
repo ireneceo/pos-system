@@ -747,7 +747,7 @@ const SettingsPage: React.FC = () => {
       printCancellationTicket: true,        // 주문 취소 시 키친에 "CANCELLED" ticket 자동 인쇄
       method: 'qztray' as PrinterMethod
     },
-    kitchenStationPrinters: {} as Record<string, { name: string; autoPrint: boolean; address?: string; method?: PrinterMethod }>,
+    kitchenStationPrinters: {} as Record<string, { name: string; autoPrint: boolean; address?: string; method?: PrinterMethod; copies?: number }>,
     workstations: [] as Array<{ id: string; name: string; billPrinter: { enabled: boolean; name: string; autoPrint: boolean; method: PrinterMethod; address: string } }>,
     // Consolidated Order Ticket — whole order on ONE ticket to a chosen printer
     // (e.g. kitchen main), printed ALONGSIDE per-station kitchen tickets. Fully
@@ -7167,6 +7167,32 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                                           <option value="browser">USB / Browser print (OS default)</option>
                                           <option value="qztray">Network / Local (via QZ Tray)</option>
                                           <option value="rawbt">Android tablet (via RawBT)</option>
+                                        </select>
+                                        </AutoSaveField>
+                                      </div>
+
+                                      {/* #6 주방 스테이션 인쇄 매수 (1~3장) — 인쇄 방식/라우팅 무변경, 같은 ticket 을 N번 발행 */}
+                                      <div style={{ marginBottom: '8px' }}>
+                                        <label style={{ display: 'block', fontSize: '12px', color: '#4B5563', marginBottom: '4px' }}>{t('settings:printer.kitchenCopies', { defaultValue: 'Print Copies' })}</label>
+                                        <AutoSaveField onSave={handleSave} type="select">
+                                        <select
+                                          value={String(sp.copies || 1)}
+                                          onChange={(e) => setPrinterSettings(prev => ({
+                                            ...prev,
+                                            kitchenStationPrinters: {
+                                              ...prev.kitchenStationPrinters,
+                                              [station.id]: {
+                                                ...(prev.kitchenStationPrinters?.[station.id] || { name: '', autoPrint: true }),
+                                                copies: parseInt(e.target.value, 10) || 1,
+                                                stationName: station.name
+                                              } as any
+                                            }
+                                          }))}
+                                          style={{ width: '100%', padding: '6px 10px', border: '1px solid #6B7280', borderRadius: '6px', fontSize: '13px', background: '#fff' }}
+                                        >
+                                          <option value="1">{t('settings:printer.copies1', { defaultValue: '1 copy' })}</option>
+                                          <option value="2">{t('settings:printer.copies2', { defaultValue: '2 copies' })}</option>
+                                          <option value="3">{t('settings:printer.copies3', { defaultValue: '3 copies' })}</option>
                                         </select>
                                         </AutoSaveField>
                                       </div>

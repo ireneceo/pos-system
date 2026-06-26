@@ -139,8 +139,14 @@ const CloseBtn = styled.button`
   padding: 2px 6px;
   border-radius: 4px;
   flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: filter 0.12s ease, background 0.15s ease;
 
-  &:hover { background: var(--pos-surface-2, #F1F4F8); }
+  @media (hover: hover) { &:hover { background: var(--pos-surface-2, #F1F4F8); } }
+  &:active { filter: brightness(0.9); }
+  &:focus { outline: none; }
+  &:focus-visible { outline: 2px solid #635BFF; outline-offset: 1px; }
 `;
 
 const BadgeRow = styled.div`
@@ -288,11 +294,16 @@ const DeleteItemBtn = styled.button`
   align-items: center;
   justify-content: center;
   margin-top: 1px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: filter 0.12s ease, color 0.15s ease, background 0.15s ease;
 
-  &:hover {
-    color: #DC2626;
-    background: #FEE2E2;
+  @media (hover: hover) {
+    &:hover { color: #DC2626; background: #FEE2E2; }
   }
+  &:active { filter: brightness(0.9); }
+  &:focus { outline: none; }
+  &:focus-visible { outline: 2px solid #635BFF; outline-offset: 1px; }
 `;
 
 const SummaryRow = styled.div<{ $bold?: boolean }>`
@@ -328,6 +339,9 @@ const ActionGroup = styled.div`
   overflow-y: auto;
 `;
 
+// 터치스크린 안정 피드백: hover 색변경은 마우스 기기에서만(@media hover) — 터치에서 탭 후 색이
+// 들러붙던 문제 해결(특히 고대비에서 회색→어두운 border 로 굳던 현상). 누름 피드백은 :active 로만
+// (손 떼면 즉시 복귀). 색을 안 바꾸고 "살짝 눌리는" 촉각감(scale+brightness)이라 올드 터치에서도 안정적.
 const ActionBtn = styled.button<{ $variant: 'primary' | 'secondary' | 'success' | 'danger' | 'link' }>`
   width: 100%;
   padding: 16px;
@@ -335,23 +349,31 @@ const ActionBtn = styled.button<{ $variant: 'primary' | 'secondary' | 'success' 
   font-size: 17px;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: transform 0.08s ease, filter 0.12s ease, background 0.15s ease;
   border: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 
   ${p => {
     switch (p.$variant) {
       case 'primary':
-        return `background: #635BFF; color: white; &:hover { background: #5A51E6; }`;
+        return `background: #635BFF; color: white; @media (hover: hover) { &:hover { background: #5A51E6; } }`;
       case 'success':
-        return `background: #10B981; color: white; border: 1px solid #10B981; &:hover { background: #059669; }`;
+        return `background: #10B981; color: white; border: 1px solid #10B981; @media (hover: hover) { &:hover { background: #059669; } }`;
       case 'secondary':
-        return `background: var(--pos-surface-2, #F4F6F9); color: var(--pos-text-muted, #4B5563); border: 1px solid var(--pos-border, #C7CED6); &:hover { background: var(--pos-border, #C7CED6); }`;
+        return `background: var(--pos-surface-2, #F4F6F9); color: var(--pos-text-muted, #4B5563); border: 1px solid var(--pos-border, #C7CED6); @media (hover: hover) { &:hover { background: var(--pos-border, #C7CED6); } }`;
       case 'danger':
-        return `background: var(--pos-surface, white); color: #DC2626; border: 1px solid #FCA5A5; &:hover { background: #FEF2F2; }`;
+        return `background: var(--pos-surface, white); color: #DC2626; border: 1px solid #FCA5A5; @media (hover: hover) { &:hover { background: #FEF2F2; } }`;
       case 'link':
-        return `background: none; color: var(--pos-text-muted, #4B5563); font-size: 13px; font-weight: 500; padding: 6px; &:hover { color: var(--pos-text, #1F2937); }`;
+        return `background: none; color: var(--pos-text-muted, #4B5563); font-size: 13px; font-weight: 500; padding: 6px; @media (hover: hover) { &:hover { color: var(--pos-text, #1F2937); } }`;
     }
   }}
+
+  /* 누르는 동안만 — 떼면 즉시 원상복귀(터치/마우스 공통, 색 안 굳음) */
+  &:active { transform: scale(0.975); filter: brightness(0.94); }
+  &:focus { outline: none; }
+  &:focus-visible { outline: 2px solid #635BFF; outline-offset: 2px; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
 `;
 
 const ActionRow = styled.div`
@@ -395,7 +417,7 @@ const IconButton = styled.button`
   border: 1px solid var(--pos-border, #C7CED6);
   border-radius: 8px;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: transform 0.08s ease, filter 0.12s ease, background 0.15s ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -405,15 +427,18 @@ const IconButton = styled.button`
   font-weight: 600;
   color: var(--pos-text-muted, #4B5563);
   white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 
-  &:hover {
-    background: var(--pos-border, #C7CED6);
-    transform: translateY(-1px);
+  /* hover 색변경은 마우스에서만(터치 탭 후 색 굳음 방지). */
+  @media (hover: hover) {
+    &:hover { background: var(--pos-border, #C7CED6); transform: translateY(-1px); }
   }
-
-  &:active {
-    transform: translateY(0);
-  }
+  /* 누르는 동안만 — 떼면 즉시 복귀. 색 안 굳고 살짝 눌리는 촉각감. */
+  &:active { transform: scale(0.97); filter: brightness(0.94); }
+  &:focus { outline: none; }
+  &:focus-visible { outline: 2px solid #635BFF; outline-offset: 2px; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
 `;
 
 const IconSymbol = styled.span`
@@ -503,13 +528,18 @@ const ConfirmBtn = styled.button<{ $danger?: boolean }>`
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: transform 0.08s ease, filter 0.12s ease, background 0.15s ease;
   border: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 
   ${p => p.$danger
-    ? `background: #FEF2F2; color: #EF4444; border: 1px solid #EF4444; &:hover { background: #FEE2E2; }`
-    : `background: #F1F4F8; color: #1F2937; &:hover { background: #C7CED6; }`
+    ? `background: #FEF2F2; color: #EF4444; border: 1px solid #EF4444; @media (hover: hover) { &:hover { background: #FEE2E2; } }`
+    : `background: #F1F4F8; color: #1F2937; @media (hover: hover) { &:hover { background: #C7CED6; } }`
   }
+  &:active { transform: scale(0.97); filter: brightness(0.94); }
+  &:focus { outline: none; }
+  &:focus-visible { outline: 2px solid #635BFF; outline-offset: 2px; }
 `;
 
 const QRStatusInfo = styled.div`
@@ -665,7 +695,9 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
   // 손실방지 PIN 게이트 — requireVoidPin 매장에서 삭제/취소 전 권한 PIN 확인.
   const [voidGate, setVoidGate] = useState<{ run: (pin: string) => void } | null>(null);
   const [cancelReasonOpen, setCancelReasonOpen] = useState(false);
-  const [deleteItemTarget, setDeleteItemTarget] = useState<{ index: number; name: string } | null>(null);
+  const [deleteItemTarget, setDeleteItemTarget] = useState<{ index: number; name: string; maxQty: number } | null>(null);
+  // #2 부분수량 취소 — 취소 수량(기본 = 전량)
+  const [cancelQty, setCancelQty] = useState(1);
 
   // ─── Add Items View state (like LiveOrders) ───
   const [showAddItemsView, setShowAddItemsView] = useState(false);
@@ -870,7 +902,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
 
   // Map item.status → display token. 'completed' 는 레거시 데이터; served 와 같은 의미로 처리.
   // 실제 아이템 삭제 — 손실방지 게이트(handleDeleteItem) 통과 후 호출. voidPin 은 백엔드 재검증용.
-  const performDeleteItem = async (itemIndex: number, itemName: string, voidPin?: string | null, reason?: string | null) => {
+  const performDeleteItem = async (itemIndex: number, itemName: string, voidPin?: string | null, reason?: string | null, cancelQty?: number) => {
     if (!statusInfo?.orderId) return;
     const wasInKitchen = !['awaiting_payment', 'pending'].includes(String(statusInfo.orderStatus || ''));
     try {
@@ -878,7 +910,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
       const res = await fetch(`/api/orders/${statusInfo.orderId}/items/${itemIndex}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ void_pin: voidPin || undefined, reason: reason || undefined })
+        body: JSON.stringify({ void_pin: voidPin || undefined, reason: reason || undefined, cancelQty: cancelQty || undefined })
       });
       const result = await res.json().catch(() => ({} as any));
       if (res.ok && result.success !== false) {
@@ -938,11 +970,11 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
     } catch (_) { /* silently fail */ }
   };
 
-  const handleDeleteItem = (itemIndex: number, itemName: string) => {
+  const handleDeleteItem = (itemIndex: number, itemName: string, maxQty: number = 1) => {
     if (!statusInfo?.orderId) return;
     const mode = (operationSettings as any)?.requireCancelReason || 'required';
     if (mode === 'off') {
-      // 사유 없이 삭제 — requireVoidPin 매장은 PIN 게이트, 아니면 단순 확인.
+      // 사유 없이 삭제 — requireVoidPin 매장은 PIN 게이트, 아니면 단순 확인. (off 모드는 전량삭제)
       if ((operationSettings as any)?.requireVoidPin) {
         setVoidGate({ run: (pin: string) => performDeleteItem(itemIndex, itemName, pin, '') });
         return;
@@ -955,18 +987,20 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
       return;
     }
     // optional / required: 사유 퀵픽 먼저 (아이템삭제도 사유 캡처 — Void & Cancel 로그).
-    setDeleteItemTarget({ index: itemIndex, name: itemName });
+    setCancelQty(Math.max(1, maxQty)); // 기본 = 전량
+    setDeleteItemTarget({ index: itemIndex, name: itemName, maxQty: Math.max(1, maxQty) });
   };
 
-  // 아이템 삭제 사유 선택 → requireVoidPin 매장은 PIN 게이트, 아니면 즉시 삭제.
+  // 아이템 삭제 사유 선택 → requireVoidPin 매장은 PIN 게이트, 아니면 즉시 삭제. (#2 부분수량 cancelQty 전달)
   const beginDeleteItemWithReason = (reason: string) => {
     const tgt = deleteItemTarget;
+    const qty = cancelQty;
     setDeleteItemTarget(null);
     if (!tgt) return;
     if ((operationSettings as any)?.requireVoidPin) {
-      setVoidGate({ run: (pin: string) => performDeleteItem(tgt.index, tgt.name, pin, reason) });
+      setVoidGate({ run: (pin: string) => performDeleteItem(tgt.index, tgt.name, pin, reason, qty) });
     } else {
-      performDeleteItem(tgt.index, tgt.name, null, reason);
+      performDeleteItem(tgt.index, tgt.name, null, reason, qty);
     }
   };
 
@@ -1725,32 +1759,26 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                 <InfoGrid>
                   <InfoItem>
                     <InfoLabel>{'Customer'}</InfoLabel>
-                    <InfoValue>{statusInfo!.customerName || 'Walk-in'}</InfoValue>
+                    {/* "Walk-in Customer" → "Walk-in" (항목이 Customer 라 중복 제거) */}
+                    <InfoValue>{(!statusInfo!.customerName || statusInfo!.customerName === 'Walk-in Customer') ? 'Walk-in' : statusInfo!.customerName}</InfoValue>
                   </InfoItem>
-                  {statusInfo!.customerPhone && (
+                  {/* 실제 전화번호(숫자 포함)일 때만 — 없거나 source 값이 잘못 들어온 경우 숨김 */}
+                  {statusInfo!.customerPhone && /\d/.test(String(statusInfo!.customerPhone)) && (
                     <InfoItem>
                       <InfoLabel>{'Phone'}</InfoLabel>
                       <InfoValue>{statusInfo!.customerPhone}</InfoValue>
                     </InfoItem>
                   )}
-                  <InfoItem>
-                    <InfoLabel>{'Type'}</InfoLabel>
-                    <InfoValue>{(statusInfo!.orderType || 'dine_in').replace(/_/g, ' ').toUpperCase()}</InfoValue>
-                  </InfoItem>
+                  {/* Type 제거 — Floor Plan 은 모두 dine-in, takeaway 는 Takeout 리스트(별도). 품목별 takeaway 는 아래 줄에 표시. */}
                   <InfoItem>
                     <InfoLabel>{'Source'}</InfoLabel>
                     <InfoValue>{SOURCE_LABELS[statusInfo!.orderSource || 'pos'] || statusInfo!.orderSource}</InfoValue>
                   </InfoItem>
                   <InfoItem>
                     <InfoLabel>{'Time'}</InfoLabel>
-                    <InfoValue>{formatDT(statusInfo!.orderCreatedAt)}</InfoValue>
+                    <InfoValue style={{ whiteSpace: 'nowrap' }}>{formatDT(statusInfo!.orderCreatedAt)}</InfoValue>
                   </InfoItem>
-                  {statusInfo!.paymentMethod && (
-                    <InfoItem>
-                      <InfoLabel>{'Payment'}</InfoLabel>
-                      <InfoValue>{formatPaymentDisplay(statusInfo!.paymentMethod, statusInfo!.cardType, paymentSettings || undefined)}</InfoValue>
-                    </InfoItem>
-                  )}
+                  {/* Payment 제거 — 결제상태(unpaid/pending)는 패널 상단 헤더 배지에 이미 표시(중복). */}
                   {paymentProof && (
                     <InfoItem>
                       <InfoLabel>{'Receipt'}</InfoLabel>
@@ -1834,7 +1862,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                                 </ItemInfo>
                                 <ItemPrice>{formatCurrency(item.price * item.quantity, currency)}</ItemPrice>
                                 {canVoid && paymentStatus !== 'completed' && items.length > 1 && (
-                                  <DeleteItemBtn onClick={() => handleDeleteItem(originalIndex, item.name)} title="Delete item">&times;</DeleteItemBtn>
+                                  <DeleteItemBtn onClick={() => handleDeleteItem(originalIndex, item.name, Number(item.quantity) || 1)} title="Delete item">&times;</DeleteItemBtn>
                                 )}
                               </ItemRow>
                               {setComps.map((c: any, ci: number) => {
@@ -1887,6 +1915,12 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                             <ItemInfo>
                               <ItemName $completed={isServed}>
                                 {item.name} <ItemQty>x{item.quantity}</ItemQty>
+                                {/* #3 합본 빌 — 테이블 주문에 섞인 테이크웨이/픽업 품목을 줄에 표시(혼란 0). */}
+                                {['takeaway', 'pickup', 'delivery'].includes(String(item.item_order_type || '')) && (
+                                  <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: '#fff', background: '#F59E0B', padding: '1px 6px', borderRadius: 6, letterSpacing: 0.3, verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                                    {t(`floorplan:itemTag.${item.item_order_type}`, { defaultValue: String(item.item_order_type).toUpperCase() })}
+                                  </span>
+                                )}
                               </ItemName>
                               {optionsStr && <ItemOptions>{optionsStr}</ItemOptions>}
                               {Array.isArray(item.set_components) && item.set_components.length > 0 && (
@@ -1902,7 +1936,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                             </ItemPrice>
                             {canVoid && paymentStatus !== 'completed' && items.length > 1 && (
                               <DeleteItemBtn
-                                onClick={() => handleDeleteItem(originalIndex, item.name)}
+                                onClick={() => handleDeleteItem(originalIndex, item.name, Number(item.quantity) || 1)}
                                 title="Delete item"
                               >
                                 &times;
@@ -2297,6 +2331,19 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
             <p style={{ margin: '0 0 14px', fontSize: 14, color: '#0A2540', lineHeight: 1.5 }}>
               {t('orders:voidItem.confirm', { defaultValue: 'Remove "{{name}}"? Choose a reason — it prints on the kitchen void ticket.', name: deleteItemTarget.name })}
             </p>
+            {/* #2 부분수량 취소 — 줄 수량 2개 이상이면 "몇 개 취소" 스텝퍼(기본 전량) */}
+            {(deleteItemTarget.maxQty || 1) > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 12px', marginBottom: 14, background: '#F6F8FB', border: '1px solid #E6EBF1', borderRadius: 8 }}>
+                <span style={{ fontSize: 14, fontWeight: 600, color: '#0A2540' }}>{t('orders:voidItem.cancelHowMany', { defaultValue: 'Cancel quantity' })}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <button type="button" aria-label="decrease" onClick={() => setCancelQty(q => Math.max(1, q - 1))} disabled={cancelQty <= 1}
+                    style={{ width: 44, height: 44, borderRadius: 8, border: '1px solid #E6EBF1', background: '#fff', color: '#0A2540', fontSize: 22, fontWeight: 700, cursor: cancelQty <= 1 ? 'not-allowed' : 'pointer', opacity: cancelQty <= 1 ? 0.5 : 1 }}>−</button>
+                  <span style={{ minWidth: 56, textAlign: 'center', fontSize: 16, fontWeight: 700, color: '#0A2540' }}>{cancelQty} / {deleteItemTarget.maxQty}</span>
+                  <button type="button" aria-label="increase" onClick={() => setCancelQty(q => Math.min(deleteItemTarget.maxQty || 1, q + 1))} disabled={cancelQty >= (deleteItemTarget.maxQty || 1)}
+                    style={{ width: 44, height: 44, borderRadius: 8, border: '1px solid #E6EBF1', background: '#fff', color: '#0A2540', fontSize: 22, fontWeight: 700, cursor: cancelQty >= (deleteItemTarget.maxQty || 1) ? 'not-allowed' : 'pointer', opacity: cancelQty >= (deleteItemTarget.maxQty || 1) ? 0.5 : 1 }}>+</button>
+                </div>
+              </div>
+            )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
               {[
                 { key: 'soldOut', label: t('orders:voidItem.reasonSoldOut', { defaultValue: 'Sold out' }) },

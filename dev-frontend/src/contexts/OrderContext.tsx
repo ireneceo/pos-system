@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 import { getAuthToken } from '../utils/auth';
+import { ensureIdempotencyKey, enqueueOrder } from '../utils/offlineOrderQueue';
 export interface OrderItem {
   id: string;
   menuItem: {
@@ -86,6 +87,13 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
   };
 
   // Load orders from API on mount
+  // #9 오프라인 주문 큐 — POS 앱 진입 시 1회, online 복귀/주기 flush 등록(끊긴 중 큐잉된 POS 주문 자동 전송).
+  useEffect(() => {
+    let cancelled = false;
+    import('../utils/offlineOrderQueue').then(({ initOfflineOrderFlush }) => { if (!cancelled) initOfflineOrderFlush(); });
+    return () => { cancelled = true; };
+  }, []);
+
   useEffect(() => {
     const loadOrders = async () => {
       try {
@@ -169,13 +177,23 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
         })),
         // Backend Phase 1 — 명시 선택 머지: forceMergeIntoOrderId 가 있으면 그 주문에 머지.
         // 없으면 POS 의 default skipAutoMerge 로 별도 주문 생성.
-        forceMergeIntoOrderId: (order as any).forceMergeIntoOrderId || undefined
+        forceMergeIntoOrderId: (order as any).forceMergeIntoOrderId || undefined,
+        // #9 오프라인 큐 — 멱등키(재전송/더블탭 중복생성 방지). order 객체에 이미 있으면 재사용.
+        idempotency_key: (order as any).idempotency_key || undefined
       };
+      ensureIdempotencyKey(backendOrder); // 없으면 생성
 
-      const response = await fetch('/api/orders', getFetchOptions({
-        method: 'POST',
-        body: JSON.stringify(backendOrder),
-      }));
+      let response: Response;
+      try {
+        response = await fetch('/api/orders', getFetchOptions({
+          method: 'POST',
+          body: JSON.stringify(backendOrder),
+        }));
+      } catch (netErr) {
+        // #9 연결 끊김 — POS 주문을 잃지 않게 로컬 큐에 저장(재연결 시 자동 전송, 서버 멱등으로 중복 0).
+        enqueueOrder('/api/orders', backendOrder, getAuthToken());
+        throw new Error('OFFLINE_QUEUED'); // 호출부가 "오프라인 저장됨" 처리
+      }
 
       if (!response.ok) {
         const errorText = await response.text();

@@ -1124,5 +1124,9 @@
   "operations.cancelReasonOptional": "可选",
   "operations.cancelReasonRequired": "必填",
   "operations.requirePoOwnerApprovalLabel": "采购订单需要店主批准",
-  "operations.requirePoOwnerApprovalDesc": "开启且已连接店主时，采购订单在发送给供应商之前需要店主批准。连接店主时默认开启。"
+  "operations.requirePoOwnerApprovalDesc": "开启且已连接店主时，采购订单在发送给供应商之前需要店主批准。连接店主时默认开启。",
+  "printer.kitchenCopies": "打印份数",
+  "printer.copies1": "1份",
+  "printer.copies2": "2份",
+  "printer.copies3": "3份"
 }

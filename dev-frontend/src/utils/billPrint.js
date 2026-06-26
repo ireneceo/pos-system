@@ -882,7 +882,7 @@ export function generateBillContent(orderData, storeInfo) {
   // Compute order type label — printed in meta row below, not as a big top banner.
   const _orderTypeLabel =
     orderData.orderType === 'pickup' ? 'PICKUP' :
-    (orderData.orderType === 'takeaway' || (orderData.takeawayCharge && orderData.takeawayCharge > 0)) ? 'TAKEAWAY' :
+    (orderData.orderType === 'takeaway' || (!orderData.orderType && orderData.takeawayCharge && orderData.takeawayCharge > 0)) ? 'TAKEAWAY' :
     orderData.orderType === 'delivery' ? 'DELIVERY' :
     'DINE-IN';
 
@@ -1317,7 +1317,7 @@ export function generateHTMLBill(orderData, storeInfo) {
   // not for the type itself.
   const orderTypeLabel =
     orderData.orderType === 'pickup' ? 'PICKUP' :
-    (orderData.orderType === 'takeaway' || (orderData.takeawayCharge && orderData.takeawayCharge > 0)) ? 'TAKEAWAY' :
+    (orderData.orderType === 'takeaway' || (!orderData.orderType && orderData.takeawayCharge && orderData.takeawayCharge > 0)) ? 'TAKEAWAY' :
     orderData.orderType === 'delivery' ? 'DELIVERY' :
     'DINE-IN';
 
@@ -1386,8 +1386,15 @@ export function generateHTMLBill(orderData, storeInfo) {
     </div>
   `;
 
+  // #3 합본 빌 — 합본 주문(테이블+테이크웨이)에서 어느 품목이 takeaway 인지 줄에 표시.
+  const _billHasMixed = Array.isArray(orderData.items)
+    && orderData.items.some(it => ['takeaway','pickup','delivery'].includes(it.item_order_type || it.menuItem?.item_order_type || ''))
+    && orderData.items.some(it => !['takeaway','pickup','delivery'].includes(it.item_order_type || it.menuItem?.item_order_type || ''));
   const itemsHtml = orderData.items.map(item => {
     const itemName = escapeHtmlForPrint(item.menuItem.name);
+    const _itType = item.item_order_type || item.menuItem?.item_order_type || '';
+    const _itTag = (_billHasMixed && ['takeaway','pickup','delivery'].includes(_itType))
+      ? ` <span style="font-size:9px;font-weight:700;border:1px solid #000;border-radius:3px;padding:0 3px;">${_itType.toUpperCase()}</span>` : '';
     const qty = item.quantity;
     const price = item.menuItem.price;
     const total = qty * price;
@@ -1404,7 +1411,7 @@ export function generateHTMLBill(orderData, storeInfo) {
     // 2026-05-29: 단가(@ unit price) 라인 제거 (매장 요청) — 수량 + 품명 + 합계만.
     return `
       <div class="item">
-        <div class="item-row"><span class="ih-qty">${qty}</span><span class="item-name">${itemName}</span><span class="item-price">${total.toFixed(2)}</span></div>
+        <div class="item-row"><span class="ih-qty">${qty}</span><span class="item-name">${itemName}${_itTag}</span><span class="item-price">${total.toFixed(2)}</span></div>
         ${setItemsHtml}
         ${optionsHtml}
       </div>
@@ -3533,13 +3540,26 @@ async function printKitchenTicketsByStation(orderData, storeInfo, settings) {
   const loadMenuStationMap = _loadKitchenStationMenuMap;
   const bucketItemsByStation = (menuStationMap) => _bucketItemsByStation(orderData.items, stationPrinters, menuStationMap);
 
+  // #6 주방 스테이션 매수 — 모든 분기(단일/무매핑/RawBT/Browser)가 copies 를 지키도록 단일 헬퍼.
+  // 인쇄 방식/라우팅 무변경: 같은 ticket 을 같은 방식·같은 프린터로 sp.copies 회 보낼 뿐(기본 1).
+  const sendStation = async (od, sp, sName, sId) => {
+    const copies = Math.max(1, Math.min(3, parseInt(sp && sp.copies, 10) || 1));
+    let firstResult;
+    for (let c = 1; c <= copies; c++) {
+      if (c > 1) await new Promise(r => setTimeout(r, 500));
+      const r = await sendToRawBTPrinter(od, storeInfo, settings, sp.name, sName, sp.address, sId);
+      if (c === 1) firstResult = r;
+    }
+    return firstResult;
+  };
+
   // Single station: send everything to it
   if (stationIds.length === 1) {
     const stationId = stationIds[0];
     const sp = stationPrinters[stationId];
     const stationName = sp.stationName || 'Kitchen';
     console.log(`🍳 Single station — sending all to: ${sp.name} (${stationName})`);
-    return await sendToRawBTPrinter(orderData, storeInfo, settings, sp.name, stationName, sp.address, stationId);
+    return await sendStation(orderData, sp, stationName, stationId); // #6 매수 적용
   }
 
   // Multi-station, QZ Tray: route per-station to different network IPs / OS printers
@@ -3559,7 +3579,7 @@ async function printKitchenTicketsByStation(orderData, storeInfo, settings) {
       const stationId = stationIds[0];
       const sp = stationPrinters[stationId];
       console.log(`🍳 QZ Tray: no menu-station map — sending all to first station: ${sp.stationName}`);
-      return await sendToRawBTPrinter(orderData, storeInfo, settings, sp.name, sp.stationName || 'Kitchen', sp.address, stationId);
+      return await sendStation(orderData, sp, sp.stationName || 'Kitchen', stationId); // #6 매수 적용
     }
 
     // Merge unmapped items into the FIRST station's ticket so they print on the
@@ -3601,6 +3621,19 @@ async function printKitchenTicketsByStation(orderData, storeInfo, settings) {
       stationResults.push({ stationId, stationName, ok, error: lastErr && lastErr.message });
       if (!ok) {
         console.error(`🍳 Station ${stationName} ALL attempts failed — moving to next station to avoid cascade.`);
+      }
+      // #6 주방 스테이션 매수 — 첫 1장(위 루프) 성공 후, 같은 ticket 을 같은 방식·같은 프린터로 copies-1 회 추가 발행.
+      // 인쇄 방식/라우팅/스테이션 선택은 전혀 바꾸지 않고 "보내는 횟수"만 늘린다(설정 kitchenStationPrinters[id].copies, 기본 1).
+      const stationCopies = Math.max(1, Math.min(3, parseInt(sp.copies, 10) || 1));
+      if (ok && stationCopies > 1) {
+        for (let c = 2; c <= stationCopies; c++) {
+          await new Promise(r => setTimeout(r, 500));
+          try {
+            await sendToRawBTPrinter({ ...orderData, items }, storeInfo, settings, sp.name, stationName, sp.address, stationId);
+          } catch (e) {
+            console.error(`🍳 Station ${stationName} copy ${c}/${stationCopies} failed:`, e && e.message);
+          }
+        }
       }
       if (i < mappedStationIds.length - 1) await new Promise(r => setTimeout(r, 800));
     }
@@ -3644,7 +3677,7 @@ async function printKitchenTicketsByStation(orderData, storeInfo, settings) {
     const stationId = stationIds[0];
     const sp = stationPrinters[stationId];
     console.log(`🍳 RawBT with ${stationIds.length} stations — sending combined ticket to first station`);
-    return await sendToRawBTPrinter(orderData, storeInfo, settings, sp.name, null, sp.address, stationId);
+    return await sendStation(orderData, sp, null, stationId); // #6 매수 적용
   }
 
   // Multi-station, Browser: separate page per station
@@ -3654,7 +3687,7 @@ async function printKitchenTicketsByStation(orderData, storeInfo, settings) {
     const stationId = stationIds[0];
     const sp = stationPrinters[stationId];
     console.log(`🍳 Browser: no menu-station map — sending all to first station: ${sp.name}`);
-    return await sendToRawBTPrinter(orderData, storeInfo, settings, sp.name, sp.stationName || 'Kitchen', sp.address, stationId);
+    return await sendStation(orderData, sp, sp.stationName || 'Kitchen', stationId); // #6 매수 적용
   }
 
   const mappedStationIds = Object.keys(stationItems);
@@ -3668,7 +3701,7 @@ async function printKitchenTicketsByStation(orderData, storeInfo, settings) {
     const sp = stationPrinters[stationId];
     const items = stationItems[stationId];
     const stationName = sp.stationName || `Station ${stationId}`;
-    await sendToRawBTPrinter({ ...orderData, items }, storeInfo, settings, sp.name, stationName, sp.address, stationId);
+    await sendStation({ ...orderData, items }, sp, stationName, stationId); // #6 매수 적용 (Browser 분기)
     if (i < mappedStationIds.length - 1) await new Promise(r => setTimeout(r, 700));
   }
 

@@ -798,7 +798,22 @@
       "Bash(echo \"BUILD4 EXIT: $?\")",
       "Bash(echo \"빌드 PID: $!\")",
       "Bash(cp /tmp/claude-1000/-var-www/1007d4d1-2947-462d-a82a-e3dffd5a7cf6/scratchpad/test-recs.js ./test-recs-tmp.js)",
-      "Bash(rm -f test-recs-tmp.js)"
+      "Bash(rm -f test-recs-tmp.js)",
+      "Bash(echo \"빌드 시작 PID $!\")",
+      "Bash(echo \"빌드 시작 PID $!. 빌드 진행 중입니다.\")",
+      "Bash(echo \"빌드 시작 PID $!. 빌드 진행 중입니다 \\(백그라운드\\).\")",
+      "Bash(echo \"최종 빌드 PID $!. 진행 중.\")",
+      "Bash(sed -i 's/o.created_at/o.createdAt/' identify-orders.js)",
+      "Bash(scp -q identify-orders.js irene@87.106.78.146:/var/www/production-backend/_identify-orders.js)",
+      "Bash(awk 'NR>=2325 && NR<=2480 && /catch *\\\\\\(/ {print NR\": \"$0}' POSTerminalPage.tsx)",
+      "Bash(awk 'NR>=2565 && NR<=2720 && /catch *\\\\\\(/ {print NR\": \"$0}' POSTerminalPage.tsx)",
+      "Bash(echo \"빌드 시작 PID $!. 진행 중.\")",
+      "Bash(awk '/Building frontend/{f=1} f' /tmp/claude-1000/-var-www/1007d4d1-2947-462d-a82a-e3dffd5a7cf6/scratchpad/deploy2.log)",
+      "Bash(scp -q /tmp/claude-1000/-var-www/1007d4d1-2947-462d-a82a-e3dffd5a7cf6/scratchpad/prod-gap.js irene@87.106.78.146:/var/www/production-backend/_prod-gap.js)",
+      "Bash(scp -q /tmp/claude-1000/-var-www/1007d4d1-2947-462d-a82a-e3dffd5a7cf6/scratchpad/prod-verify.js irene@87.106.78.146:/var/www/production-backend/_prod-verify.js)",
+      "Bash(scp -q /tmp/claude-1000/-var-www/1007d4d1-2947-462d-a82a-e3dffd5a7cf6/scratchpad/r5-check.js irene@87.106.78.146:/var/www/production-backend/_r5-check.js)",
+      "Bash(scp -q /tmp/claude-1000/-var-www/1007d4d1-2947-462d-a82a-e3dffd5a7cf6/scratchpad/r5-orders2.js irene@87.106.78.146:/var/www/production-backend/_r5-orders2.js)",
+      "Bash(echo \"rsync exit: $?\")"
     ],
     "deny": [],
     "ask": []

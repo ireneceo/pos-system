@@ -141,5 +141,10 @@
   "itemDetail.specialInstructions": "Special Instructions",
   "itemDetail.specialPlaceholder": "Any special requests? (optional)",
   "itemDetail.addedToCart": "Added to Cart",
-  "itemDetail.addToCart": "Add to Cart"
+  "itemDetail.addToCart": "Add to Cart",
+  "menuManagementPage.crossSell.title": "Recommend with this item",
+  "menuManagementPage.crossSell.hint": "Shown to customers as add-ons right after they add this item to the cart. Leave empty to auto-suggest from dessert/drink categories.",
+  "menuManagementPage.crossSell.addPlaceholder": "Select a product to recommend...",
+  "menuManagementPage.crossSell.brandLocked": "Brand",
+  "menuManagementPage.crossSell.remove": "Remove"
 }

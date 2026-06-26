@@ -171,5 +171,6 @@
   "voidItem.skipReason": "사유 없이 삭제",
   "voidItem": {
     "otherReasonPlaceholder": "사유를 입력하세요"
-  }
+  },
+  "voidItem.cancelHowMany": "취소 수량"
 }

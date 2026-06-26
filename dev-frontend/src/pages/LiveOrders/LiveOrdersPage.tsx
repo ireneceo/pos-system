@@ -89,7 +89,9 @@ const LiveOrdersPage: React.FC = () => {
   const [cancelOther, setCancelOther] = useState<string | null>(null); // 'Other' 선택 시 직접 입력 (null=미선택)
   const [orderToCancel, setOrderToCancel] = useState<number | null>(null);
   const [showDeleteItemConfirm, setShowDeleteItemConfirm] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState<{ index: number; name: string } | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<{ index: number; name: string; maxQty: number } | null>(null);
+  // #2 부분수량 취소 — 취소할 수량(기본 = 줄 전체 수량 = 전량삭제)
+  const [cancelQty, setCancelQty] = useState(1);
   // 손실방지 PIN 게이트 — requireVoidPin 매장에서 삭제/취소 전 권한 PIN 확인.
   // run(pin) = PIN 통과 후 실행할 실제 삭제/취소 동작. null = 모달 닫힘.
   const [voidGate, setVoidGate] = useState<{ run: (pin: string) => void } | null>(null);
@@ -1015,7 +1017,8 @@ const LiveOrdersPage: React.FC = () => {
               name: item.menu_item_name || item.name || (item.menuItem && item.menuItem.name) || 'Unknown Item',
               price: parseFloat(item.price || (item.menuItem && item.menuItem.price) || '0')
             },
-            quantity: item.quantity || 1, options: itemOptions
+            quantity: item.quantity || 1, options: itemOptions,
+            item_order_type: item.item_order_type || undefined // #3 합본 빌 — 품목별 dine-in/takeaway 표시용
           };
         }),
         subtotal: parseFloat((orderToPrint as any).subtotal || '0'),
@@ -1086,7 +1089,10 @@ const LiveOrdersPage: React.FC = () => {
   // Delete item from order (only before payment)
   const handleDeleteOrderItem = (itemIndex: number, itemName: string) => {
     if (!selectedOrder) return;
-    setItemToDelete({ index: itemIndex, name: itemName });
+    const items = (selectedOrder as any).order_items || [];
+    const q = Math.max(1, Number(items[itemIndex]?.quantity) || 1);
+    setItemToDelete({ index: itemIndex, name: itemName, maxQty: q });
+    setCancelQty(q); // 기본 = 전량
     setShowDeleteItemConfirm(true);
   };
 
@@ -1099,7 +1105,7 @@ const LiveOrdersPage: React.FC = () => {
     const wasInKitchen = !['awaiting_payment', 'pending'].includes(String((selectedOrder as any).status || ''));
     try {
       const response = await fetch(`/api/orders/${selectedOrder.id}/items/${itemToDelete.index}`, {
-        ...getFetchOptions({ method: 'DELETE', body: JSON.stringify({ reason: reason || null, void_pin: voidPin || undefined }) })
+        ...getFetchOptions({ method: 'DELETE', body: JSON.stringify({ reason: reason || null, void_pin: voidPin || undefined, cancelQty }) })
       });
       const result = await response.json();
       if (result.success) {
@@ -1822,6 +1828,10 @@ const LiveOrdersPage: React.FC = () => {
                       <OrderNumber onClick={() => handleOrderClick(order)}>
                         {order.order_number}
                         {order.order_type === 'takeaway' && (<OrderTypeBadge>{t('orders:liveOrdersPage.takeaway')}</OrderTypeBadge>)}
+                        {/* #3 합본 — 테이블(dine-in) 주문에 takeaway 품목이 섞이면 테이블번호와 함께 Takeaway 배지(기존 색 그대로) */}
+                        {order.order_type !== 'takeaway' && Array.isArray((order as any).order_items) && (order as any).order_items.some((i: any) => ['takeaway', 'pickup', 'delivery'].includes(i.item_order_type)) && (
+                          <OrderTypeBadge>{t('orders:liveOrdersPage.takeaway')}</OrderTypeBadge>
+                        )}
                         {order.order_type === 'pickup' && (<OrderTypeBadge style={{ background: '#EDE9FE', color: '#7C3AED' }}>{t('orders:liveOrdersPage.pickup')}</OrderTypeBadge>)}
                         {order.order_type === 'delivery' && (<OrderTypeBadge style={{ background: '#D1FAE5', color: '#059669' }}>{t('orders:liveOrdersPage.delivery')}</OrderTypeBadge>)}
                         {order.source === 'mobile' && (<OrderTypeBadge style={{ background: '#DBEAFE', color: '#2563EB' }}>{t('orders:liveOrdersPage.mobile')}</OrderTypeBadge>)}
@@ -2150,6 +2160,27 @@ const LiveOrdersPage: React.FC = () => {
                   ? t('orders:voidItem.confirmNoReason', { defaultValue: 'Remove "{{name}}" from this order?', name: itemToDelete?.name || '' })
                   : t('orders:voidItem.confirm', { defaultValue: 'Remove "{{name}}"? Choose a reason — it prints on the kitchen void ticket.', name: itemToDelete?.name || '' })}
               </p>
+              {/* #2 부분수량 취소 — 줄 수량이 2개 이상이면 "몇 개 취소" 스텝퍼 (기본 전량) */}
+              {(itemToDelete?.maxQty || 1) > 1 && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 12px', marginBottom: 14, background: '#F6F8FB', border: '1px solid #E6EBF1', borderRadius: 8 }}>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: '#0A2540' }}>
+                    {t('orders:voidItem.cancelHowMany', { defaultValue: 'Cancel quantity' })}
+                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <button type="button" aria-label="decrease"
+                      onClick={() => setCancelQty(q => Math.max(1, q - 1))}
+                      disabled={cancelQty <= 1}
+                      style={{ width: 44, height: 44, borderRadius: 8, border: '1px solid #E6EBF1', background: '#fff', color: '#0A2540', fontSize: 22, fontWeight: 700, cursor: cancelQty <= 1 ? 'not-allowed' : 'pointer', opacity: cancelQty <= 1 ? 0.5 : 1 }}>−</button>
+                    <span style={{ minWidth: 56, textAlign: 'center', fontSize: 16, fontWeight: 700, color: '#0A2540' }}>
+                      {cancelQty} / {itemToDelete?.maxQty}
+                    </span>
+                    <button type="button" aria-label="increase"
+                      onClick={() => setCancelQty(q => Math.min(itemToDelete?.maxQty || 1, q + 1))}
+                      disabled={cancelQty >= (itemToDelete?.maxQty || 1)}
+                      style={{ width: 44, height: 44, borderRadius: 8, border: '1px solid #E6EBF1', background: '#fff', color: '#0A2540', fontSize: 22, fontWeight: 700, cursor: cancelQty >= (itemToDelete?.maxQty || 1) ? 'not-allowed' : 'pointer', opacity: cancelQty >= (itemToDelete?.maxQty || 1) ? 0.5 : 1 }}>+</button>
+                  </div>
+                </div>
+              )}
               {mode !== 'off' && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
                   {[

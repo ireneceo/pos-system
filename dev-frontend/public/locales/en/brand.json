@@ -703,5 +703,10 @@
   "brandMenusPage.single": "Single",
   "brandMenusPage.multi": "Multi",
   "brandProductsTab.targetBrands": "Target Brands",
-  "brandProductsTab.targetRestaurants": "Target Stores"
+  "brandProductsTab.targetRestaurants": "Target Stores",
+  "brandMenusPage.recommendMenus": "Recommended add-ons",
+  "brandMenusPage.recommendMenusHint": "Suggested to customers after they add this item. Synced to all linked restaurants on save.",
+  "brandMenusPage.noOtherMenus": "No other menus available to recommend yet.",
+  "brandMenusPage.selectMenuToRecommend": "Select a menu to recommend...",
+  "brandMenusPage.allMenusAdded": "All menus already added"
 }

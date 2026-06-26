@@ -263,6 +263,31 @@ const Input = styled.input`
     box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
   }
 `;
+// #11c 크로스셀 — 카테고리 추천소스 선택(자동/항상포함/제외)
+const Select = styled.select`
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid #C7CED6;
+  border-radius: 8px;
+  font-size: 14px;
+  background: #FFFFFF;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+  }
+`;
+const Hint = styled.p`
+  margin: 8px 0 0 0;
+  font-size: 12px;
+  color: #6B7280;
+  line-height: 1.5;
+`;
 
 const EmojiPicker = styled.div`
   display: grid;
@@ -322,7 +347,15 @@ interface Category {
   order: number;
   itemCount?: number;
   isActive?: boolean;
+  is_recommendation_source?: boolean | null;
 }
+
+// #11c 크로스셀 — 카테고리 이름이 자동감지 추천 키워드(디저트/음료 등)에 걸리는지 (백엔드 crossSell.js 와 동일 키워드)
+const REC_KEYWORDS = ['dessert', 'desserts', '디저트', 'drink', 'drinks', '음료', '음료수', 'beverage', 'beverages'];
+const autoDetectsAsRecommendation = (name: string) => {
+  const n = (name || '').trim().toLowerCase();
+  return !!n && REC_KEYWORDS.some(k => n.includes(k));
+};
 
 const CategoryManagementPage: React.FC = () => {
   const { categories, menuItems, addCategory, updateCategory, deleteCategory, reorderCategories } = useMenu();
@@ -331,10 +364,12 @@ const CategoryManagementPage: React.FC = () => {
   const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   const [categoryToDelete, setCategoryToDelete] = useState<{ id: string; name: string; itemCount: number } | null>(null);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{ name: string; emoji: string; is_recommendation_source: boolean | null }>({
     name: '',
-    emoji: '🍽️'
+    emoji: '🍽️',
+    is_recommendation_source: null
   });
+  const [recSaving, setRecSaving] = useState(false);
 
   const emojiOptions = [
     '🍔', '🍕', '🍗', '🥗', '🍜', '🍝', '🍤', '🥘', '🍛', '🍲',
@@ -358,13 +393,15 @@ const CategoryManagementPage: React.FC = () => {
       setEditingCategory(category);
       setFormData({
         name: category.name,
-        emoji: category.emoji
+        emoji: category.emoji,
+        is_recommendation_source: category.is_recommendation_source ?? null
       });
     } else {
       setEditingCategory(null);
       setFormData({
         name: '',
-        emoji: '🍽️'
+        emoji: '🍽️',
+        is_recommendation_source: null
       });
     }
     setIsModalOpen(true);
@@ -375,8 +412,29 @@ const CategoryManagementPage: React.FC = () => {
     setEditingCategory(null);
     setFormData({
       name: '',
-      emoji: '🍽️'
+      emoji: '🍽️',
+      is_recommendation_source: null
     });
+  };
+
+  // #11c 크로스셀 — 카테고리 추천소스 플래그 저장(true=항상포함 / false=제외 / null=자동감지)
+  const saveRecommendationSource = async (categoryId: string, value: boolean | null) => {
+    const pathParts = window.location.pathname.split('/');
+    const restaurantIndex = pathParts.indexOf('restaurant');
+    const restaurantId = restaurantIndex >= 0 ? pathParts[restaurantIndex + 1] : null;
+    if (!restaurantId) return;
+    const token = getAuthToken();
+    setRecSaving(true);
+    try {
+      const res = await fetch(`/api/restaurants/${restaurantId}/categories/${categoryId}/recommendation-source`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ value })
+      });
+      if (!res.ok) throw new Error('Failed to update recommendation source');
+    } finally {
+      setRecSaving(false);
+    }
   };
 
   const handleSave = async () => {
@@ -385,14 +443,20 @@ const CategoryManagementPage: React.FC = () => {
     try {
       if (editingCategory) {
         await updateCategory(editingCategory.id, {
-          ...formData,
+          name: formData.name,
+          emoji: formData.emoji,
           id: editingCategory.id,
           order: editingCategory.order
         });
+        // #11c 크로스셀 — 추천소스 플래그 변경 시에만 전용 엔드포인트로 저장(name/emoji 와 별개)
+        if ((formData.is_recommendation_source ?? null) !== (editingCategory.is_recommendation_source ?? null)) {
+          await saveRecommendationSource(editingCategory.id, formData.is_recommendation_source);
+        }
       } else {
         const newCategory = {
           id: `cat-${Date.now()}`,
-          ...formData,
+          name: formData.name,
+          emoji: formData.emoji,
           order: categories.length
         };
         await addCategory(newCategory);
@@ -603,6 +667,33 @@ const CategoryManagementPage: React.FC = () => {
             ))}
           </EmojiPicker>
         </FormGroup>
+
+        {editingCategory && (
+          <FormGroup>
+            <Label>{'Show in Recommendations'}</Label>
+            <Select
+              value={formData.is_recommendation_source === true ? 'on' : formData.is_recommendation_source === false ? 'off' : 'auto'}
+              onChange={(e) => {
+                const v = e.target.value;
+                setFormData({ ...formData, is_recommendation_source: v === 'on' ? true : v === 'off' ? false : null });
+              }}
+              disabled={recSaving}
+            >
+              <option value="auto">Auto-detect</option>
+              <option value="on">Always show as add-on</option>
+              <option value="off">Never show as add-on</option>
+            </Select>
+            <Hint>
+              {formData.is_recommendation_source === true
+                ? 'Items in this category are always offered as add-ons after a customer adds to cart.'
+                : formData.is_recommendation_source === false
+                  ? 'Items in this category are never offered as add-ons.'
+                  : autoDetectsAsRecommendation(formData.name)
+                    ? `Auto: "${formData.name}" looks like a dessert/drink category, so its items are offered as add-ons.`
+                    : 'Auto: this category is not offered as add-ons unless its name looks like a dessert/drink. Used only when a product has no manual recommendations.'}
+            </Hint>
+          </FormGroup>
+        )}
 
       </UIModal>
 

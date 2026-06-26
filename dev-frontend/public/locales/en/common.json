@@ -740,5 +740,6 @@
       "keepAdding": "Keep adding",
       "viewCart": "View cart"
     }
-  }
+  },
+  "offlineQueued": "No connection — your order is saved and will be placed automatically once you are back online."
 }

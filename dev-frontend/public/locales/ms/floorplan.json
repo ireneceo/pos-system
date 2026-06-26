@@ -190,5 +190,9 @@
     "body": "Meja ini ada tempahan pada {{time}} untuk {{guest}}. Mulakan pesanan walk-in juga?",
     "keep": "Kekalkan tempahan",
     "proceed": "Pesan juga"
-  }
+  },
+  "itemTag.takeaway": "BUNGKUS",
+  "itemTag.pickup": "AMBIL",
+  "itemTag.delivery": "HANTAR",
+  "itemTag.dine_in": "MAKAN SINI"
 }

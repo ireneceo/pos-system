@@ -958,6 +958,10 @@ const MenuManagementPage: React.FC = () => {
   }, []);
 
   const [selectedOptionGroups, setSelectedOptionGroups] = useState<string[]>([]);
+  // #11c 크로스셀 — 함께 추천할 상품. 매장분(origin='restaurant', 편집가능) + 브랜드 잠금분(표시만).
+  const [selectedRecommendations, setSelectedRecommendations] = useState<string[]>([]);
+  const [lockedRecommendations, setLockedRecommendations] = useState<{ id: number; name: string }[]>([]);
+  const [recommendationsLoading, setRecommendationsLoading] = useState(false);
 
   const emojiOptions = {
     other: [
@@ -1052,6 +1056,8 @@ const MenuManagementPage: React.FC = () => {
       takeaway_charge: 0
     });
     setSelectedOptionGroups([]);
+    setSelectedRecommendations([]);
+    setLockedRecommendations([]);
     setSetMenuItems([]);
     setShowAddModal(true);
   };
@@ -1073,14 +1079,57 @@ const MenuManagementPage: React.FC = () => {
       takeaway_charge: 0
     });
     setSelectedOptionGroups([]);
+    setSelectedRecommendations([]);
+    setLockedRecommendations([]);
     setSetMenuItems([]);
     setSetGroups([]);
     setSetMenuError("");
     setShowSetMenuModal(true);
   };
 
+  // #11c 크로스셀 — URL 에서 restaurantId 추출(파일 내 다른 호출과 동일 패턴)
+  const getRestaurantIdFromPath = (): string | null => {
+    const pathParts = window.location.pathname.split('/');
+    const idx = pathParts.indexOf('restaurant');
+    return idx >= 0 ? pathParts[idx + 1] : null;
+  };
+
+  // #11c 크로스셀 — 상품의 기존 추천 연결 로드(매장분=편집, 브랜드 잠금분=표시만)
+  const loadProductRecommendations = async (productId: string | number) => {
+    const restaurantId = getRestaurantIdFromPath();
+    if (!restaurantId) return;
+    setRecommendationsLoading(true);
+    setSelectedRecommendations([]);
+    setLockedRecommendations([]);
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`/api/restaurants/${restaurantId}/products/${productId}/recommendations`, {
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) }
+      });
+      const data = await res.json();
+      if (res.ok && data.success && Array.isArray(data.data)) {
+        const editable: string[] = [];
+        const locked: { id: number; name: string }[] = [];
+        data.data.forEach((r: any) => {
+          if (r.is_locked || r.origin === 'brand') {
+            locked.push({ id: r.recommended_product_id, name: r.name });
+          } else {
+            editable.push(String(r.recommended_product_id));
+          }
+        });
+        setSelectedRecommendations(editable);
+        setLockedRecommendations(locked);
+      }
+    } catch {
+      /* 추천 로드 실패는 무시 — 상품 편집 자체는 가능해야 함 */
+    } finally {
+      setRecommendationsLoading(false);
+    }
+  };
+
   const handleEditItem = (item: MenuItemType) => {
     setEditingItem(item);
+    loadProductRecommendations(item.id); // #11c — 단품·세트 모두 기존 추천 로드
     setFormData({
       ...item,
       emoji: item.emoji || '🍽️',  // Preserve emoji or use default
@@ -1308,8 +1357,27 @@ const MenuManagementPage: React.FC = () => {
       directIngredients: !formData.recipe_id ? directIngredients : undefined
     } as any;
 
-    addMenuItem(newItem);
+    (async () => {
+      const created = await addMenuItem(newItem);
+      // #11c 크로스셀 — 신규 상품 생성 직후, 선택한 추천 상품을 그 새 id 로 저장.
+      const newId = created && (created as any).id;
+      if (newId && selectedRecommendations.length > 0) {
+        try {
+          const restaurantId = getRestaurantIdFromPath();
+          if (restaurantId) {
+            const token = getAuthToken();
+            await fetch(`/api/restaurants/${restaurantId}/products/${newId}/recommendations`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+              body: JSON.stringify({ recommended_ids: selectedRecommendations.map(Number).filter(n => Number.isFinite(n)) })
+            });
+          }
+        } catch { /* 추천 저장 실패는 상품 등록을 막지 않음 */ }
+      }
+    })();
     setDirectIngredients([]);
+    setSelectedRecommendations([]);
+    setLockedRecommendations([]);
     setShowAddModal(false);
   };
 
@@ -1351,15 +1419,33 @@ const MenuManagementPage: React.FC = () => {
     // 저장 결과를 기다리고 실패 시 실제 사유를 표시 — 무음 실패(모달만 닫힘) 방지.
     (async () => {
       try {
+        let savedSetId: any = editingItem?.id;
         if (editingItem) {
           await updateMenuItem(newSetMenu);
         } else {
-          await addMenuItem(newSetMenu);
+          const created = await addMenuItem(newSetMenu);
+          savedSetId = created && (created as any).id;
+        }
+        // #11c 크로스셀 — 세트메뉴도 "함께 추천할 상품" 저장(신규=생성 id, 편집=기존 id).
+        if (savedSetId) {
+          try {
+            const restaurantId = getRestaurantIdFromPath();
+            if (restaurantId) {
+              const token = getAuthToken();
+              await fetch(`/api/restaurants/${restaurantId}/products/${savedSetId}/recommendations`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+                body: JSON.stringify({ recommended_ids: selectedRecommendations.map(Number).filter(n => Number.isFinite(n)) })
+              });
+            }
+          } catch { /* 추천 저장 실패는 세트 저장을 막지 않음 */ }
         }
         setShowSetMenuModal(false);
         setEditingItem(null);
         setSetMenuItems([]);
         setSetGroups([]);
+        setSelectedRecommendations([]);
+        setLockedRecommendations([]);
         setSetMenuError('');
       } catch (err: any) {
         // 백엔드가 친절한 문구를 주지만, 혹시 날 메시지가 와도 SQL/FK 흔적은 가린다.
@@ -1372,16 +1458,33 @@ const MenuManagementPage: React.FC = () => {
     })();
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (editingItem) {
+      const editingId = editingItem.id;
       const updatedItem = {
         ...editingItem,
         ...formData,
         optionGroups: selectedOptionGroups,
         directIngredients: !formData.recipe_id ? directIngredients : undefined
       } as any;
-      updateMenuItem(updatedItem);
+      await updateMenuItem(updatedItem);
+      // #11c 크로스셀 — 매장분 추천(origin='restaurant')만 교체. 브랜드 잠금분은 백엔드가 보존.
+      try {
+        const restaurantId = getRestaurantIdFromPath();
+        if (restaurantId) {
+          const token = getAuthToken();
+          await fetch(`/api/restaurants/${restaurantId}/products/${editingId}/recommendations`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+            body: JSON.stringify({ recommended_ids: selectedRecommendations.map(Number).filter(n => Number.isFinite(n)) })
+          });
+        }
+      } catch {
+        /* 추천 저장 실패는 상품 저장을 막지 않음 */
+      }
       setDirectIngredients([]);
+      setSelectedRecommendations([]);
+      setLockedRecommendations([]);
       setShowEditModal(false);
       setEditingItem(null);
     }
@@ -1922,6 +2025,51 @@ const MenuManagementPage: React.FC = () => {
               </SelectedChipsContainer>
             </UIFormGroup>
           </OptionGroupSectionTitle>
+
+          {/* #11c 크로스셀 — 신규 상품에도 "함께 추천할 상품"(저장 시 새 상품 id 로 연결) */}
+          <OptionGroupSectionTitle>
+            <UIFormGroup>
+              <FormLabel>
+                {t('menu:menuManagementPage.crossSell.title', { defaultValue: 'Recommend with this item' })}
+                {selectedRecommendations.length > 0 && ` (${selectedRecommendations.length})`}
+              </FormLabel>
+              <div style={{ fontSize: '12px', color: '#6B7280', margin: '-4px 0 8px' }}>
+                {t('menu:menuManagementPage.crossSell.hint', { defaultValue: 'Shown to customers as add-ons right after they add this item to the cart. Leave empty to auto-suggest from dessert/drink categories.' })}
+              </div>
+              <OptionGroupSelect
+                value=""
+                onChange={(e) => {
+                  if (e.target.value && !selectedRecommendations.includes(e.target.value)) {
+                    setSelectedRecommendations([...selectedRecommendations, e.target.value]);
+                  }
+                }}
+              >
+                <option value="">{t('menu:menuManagementPage.crossSell.addPlaceholder', { defaultValue: 'Select a product to recommend...' })}</option>
+                {menuItems
+                  .filter(m => !m.is_set_menu && (m as any).is_active !== false && !selectedRecommendations.includes(String(m.id)))
+                  .map(m => (
+                    <option key={m.id} value={m.id}>{m.code ? `${m.code} ` : ''}{m.name}</option>
+                  ))}
+              </OptionGroupSelect>
+              <SelectedChipsContainer>
+                {selectedRecommendations.map((recId, index) => {
+                  const prod = menuItems.find(m => String(m.id) === String(recId));
+                  return (
+                    <OptionGroupChip key={recId}>
+                      <ChipOrderBadge>{index + 1}</ChipOrderBadge>
+                      <ChipName>{prod ? prod.name : `#${recId}`}</ChipName>
+                      <ChipRemoveButton
+                        onClick={() => setSelectedRecommendations(selectedRecommendations.filter(id => id !== recId))}
+                        title={t('menu:menuManagementPage.crossSell.remove', { defaultValue: 'Remove' })}
+                      >
+                        ×
+                      </ChipRemoveButton>
+                    </OptionGroupChip>
+                  );
+                })}
+              </SelectedChipsContainer>
+            </UIFormGroup>
+          </OptionGroupSectionTitle>
         </UIModal>
 
         {/* Edit Item Modal */}
@@ -2189,6 +2337,69 @@ const MenuManagementPage: React.FC = () => {
               </SelectedChipsContainer>
             </UIFormGroup>
           </OptionGroupSectionTitle>
+
+          {/* #11c 크로스셀 — 함께 추천할 상품 (손님이 담은 직후 추천) */}
+          <OptionGroupSectionTitle>
+            <UIFormGroup>
+              <FormLabel>
+                {t('menu:menuManagementPage.crossSell.title', { defaultValue: 'Recommend with this item' })}
+                {selectedRecommendations.length + lockedRecommendations.length > 0 && ` (${selectedRecommendations.length + lockedRecommendations.length})`}
+              </FormLabel>
+              <div style={{ fontSize: '12px', color: '#6B7280', margin: '-4px 0 8px' }}>
+                {t('menu:menuManagementPage.crossSell.hint', { defaultValue: 'Shown to customers as add-ons right after they add this item to the cart. Leave empty to auto-suggest from dessert/drink categories.' })}
+              </div>
+
+              <OptionGroupSelect
+                value=""
+                disabled={recommendationsLoading}
+                onChange={(e) => {
+                  if (e.target.value && !selectedRecommendations.includes(e.target.value)) {
+                    setSelectedRecommendations([...selectedRecommendations, e.target.value]);
+                  }
+                }}
+              >
+                <option value="">{t('menu:menuManagementPage.crossSell.addPlaceholder', { defaultValue: 'Select a product to recommend...' })}</option>
+                {menuItems
+                  .filter(m => String(m.id) !== String(editingItem?.id)
+                    && !m.is_set_menu
+                    && (m as any).is_active !== false
+                    && !selectedRecommendations.includes(String(m.id))
+                    && !lockedRecommendations.some(l => String(l.id) === String(m.id)))
+                  .map(m => (
+                    <option key={m.id} value={m.id}>
+                      {m.code ? `${m.code} ` : ''}{m.name}
+                    </option>
+                  ))}
+              </OptionGroupSelect>
+
+              <SelectedChipsContainer>
+                {/* 브랜드 잠금분 — 표시만(삭제 불가) */}
+                {lockedRecommendations.map((l, index) => (
+                  <OptionGroupChip key={`locked-${l.id}`} style={{ opacity: 0.7 }}>
+                    <ChipOrderBadge>{index + 1}</ChipOrderBadge>
+                    <ChipName>{l.name}</ChipName>
+                    <ChipBadge type="required">{t('menu:menuManagementPage.crossSell.brandLocked', { defaultValue: 'Brand' })}</ChipBadge>
+                  </OptionGroupChip>
+                ))}
+                {/* 매장분 — 편집 가능 */}
+                {selectedRecommendations.map((recId, index) => {
+                  const prod = menuItems.find(m => String(m.id) === String(recId));
+                  return (
+                    <OptionGroupChip key={recId}>
+                      <ChipOrderBadge>{lockedRecommendations.length + index + 1}</ChipOrderBadge>
+                      <ChipName>{prod ? prod.name : `#${recId}`}</ChipName>
+                      <ChipRemoveButton
+                        onClick={() => setSelectedRecommendations(selectedRecommendations.filter(id => id !== recId))}
+                        title={t('menu:menuManagementPage.crossSell.remove', { defaultValue: 'Remove' })}
+                      >
+                        ×
+                      </ChipRemoveButton>
+                    </OptionGroupChip>
+                  );
+                })}
+              </SelectedChipsContainer>
+            </UIFormGroup>
+          </OptionGroupSectionTitle>
         </UIModal>
 
         {/* Set Menu Modal */}
@@ -2342,6 +2553,38 @@ const MenuManagementPage: React.FC = () => {
             onChange={(base64) => setFormData({ ...formData, image: base64 })}
             label="Set Menu Image"
           />
+
+          {/* #11c 크로스셀 — 세트메뉴에도 "함께 추천할 상품" */}
+          <UIFormGroup>
+            <FormLabel>
+              {t('menu:menuManagementPage.crossSell.title', { defaultValue: 'Recommend with this item' })}
+              {selectedRecommendations.length > 0 && ` (${selectedRecommendations.length})`}
+            </FormLabel>
+            <div style={{ fontSize: '12px', color: '#6B7280', margin: '-4px 0 8px' }}>
+              {t('menu:menuManagementPage.crossSell.hint', { defaultValue: 'Shown to customers as add-ons right after they add this item to the cart.' })}
+            </div>
+            <OptionGroupSelect
+              value=""
+              onChange={(e) => { if (e.target.value && !selectedRecommendations.includes(e.target.value)) setSelectedRecommendations([...selectedRecommendations, e.target.value]); }}
+            >
+              <option value="">{t('menu:menuManagementPage.crossSell.addPlaceholder', { defaultValue: 'Select a product to recommend...' })}</option>
+              {menuItems
+                .filter(m => String(m.id) !== String(editingItem?.id) && !m.is_set_menu && (m as any).is_active !== false && !selectedRecommendations.includes(String(m.id)))
+                .map(m => (<option key={m.id} value={m.id}>{m.code ? `${m.code} ` : ''}{m.name}</option>))}
+            </OptionGroupSelect>
+            <SelectedChipsContainer>
+              {selectedRecommendations.map((recId, index) => {
+                const prod = menuItems.find(m => String(m.id) === String(recId));
+                return (
+                  <OptionGroupChip key={recId}>
+                    <ChipOrderBadge>{index + 1}</ChipOrderBadge>
+                    <ChipName>{prod ? prod.name : `#${recId}`}</ChipName>
+                    <ChipRemoveButton onClick={() => setSelectedRecommendations(selectedRecommendations.filter(id => id !== recId))} title={t('menu:menuManagementPage.crossSell.remove', { defaultValue: 'Remove' })}>×</ChipRemoveButton>
+                  </OptionGroupChip>
+                );
+              })}
+            </SelectedChipsContainer>
+          </UIFormGroup>
 
           <UIFormGroup>
             <FormLabel>{t('menu:menuManagementPage.displayOrderForSortingSetMenus')}</FormLabel>

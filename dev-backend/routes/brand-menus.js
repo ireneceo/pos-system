@@ -204,12 +204,12 @@ router.get('/:id/recommendations', authenticateToken, requireBGScope, async (req
     }
     const recs = await BrandMenuRecommendation.findAll({ where: { brand_menu_id: brandMenuId }, order: [['sort_order', 'ASC'], ['id', 'ASC']] });
     const recIds = recs.map(r => r.recommended_brand_menu_id);
-    const menus = recIds.length ? await BrandMenu.findAll({ where: { id: { [Op.in]: recIds }, brand_id: menu.brand_id }, attributes: ['id', 'name', 'image'] }) : [];
+    const menus = recIds.length ? await BrandMenu.findAll({ where: { id: { [Op.in]: recIds }, brand_id: menu.brand_id }, attributes: ['id', 'name', 'image_url'] }) : [];
     const byId = new Map(menus.map(m => [m.id, m]));
     const data = recs.map(r => ({
       id: r.id, recommended_brand_menu_id: r.recommended_brand_menu_id,
       name: byId.get(r.recommended_brand_menu_id)?.name || `#${r.recommended_brand_menu_id}`,
-      image: byId.get(r.recommended_brand_menu_id)?.image || null,
+      image: byId.get(r.recommended_brand_menu_id)?.image_url || null,
       sort_order: r.sort_order, is_locked: r.is_locked,
     }));
     res.json({ success: true, data });

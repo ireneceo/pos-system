@@ -152,7 +152,9 @@ router.get('/', checkRestaurantAccess, async (req, res) => {
       emoji: cat.emoji || '🍽️',
       displayOrder: cat.displayOrder,
       isActive: cat.isActive,
-      kitchen_station_id: cat.kitchen_station_id || null
+      kitchen_station_id: cat.kitchen_station_id || null,
+      // #11c 크로스셀 — 카테고리 추천소스 플래그(true=강제포함 / false=강제제외 / null=이름 자동감지)
+      is_recommendation_source: cat.is_recommendation_source ?? null
     }));
 
     // Transform products to ensure emoji and optionGroups are included

@@ -14,7 +14,7 @@ const { checkPaymentMethodAllowed, checkOrderTypeEnabled } = require('../utils/p
 const { getOrderingState, isValidPickupTime } = require('../utils/businessHours');
 const { logOrderActionSafe } = require('../services/orderAuditLog');
 const { enrichItemsWithStation } = require('../utils/stationEnrichment');
-const { round2, computeOrderTotals } = require('../utils/orderTotals');
+const { round2, computeOrderTotals, mixedDineInSubtotal } = require('../utils/orderTotals');
 const Coupon = require('../models/Coupon');
 
 // coupon_code → 쿠폰 메타 (머지 시 % 쿠폰 정확 재계산)
@@ -269,11 +269,14 @@ router.post('/order', async (req, res) => {
         const enrichedNewItems = await enrichItemsWithStation(restaurantId, baseNewItems);
 
         // Add new items with added_at timestamp and order_group
+        // #3 합본 빌: 모바일 takeaway+테이블이 dine-in 에 머지될 때도 품목을 incoming 타입으로 태깅
+        // → 서비스차지가 dine-in 품목에만(혼합차지). (orders-crud auto-merge 와 동일 처리)
         const newItemsWithTimestamp = enrichedNewItems.map(item => ({
           ...item,
           status: 'pending',
           added_at: now,
-          order_group: nextGroup
+          order_group: nextGroup,
+          ...(actualOrderType ? { item_order_type: item.item_order_type || actualOrderType } : {})
         }));
 
         const mergedItems = [...currentItems, ...newItemsWithTimestamp];
@@ -307,7 +310,9 @@ router.post('/order', async (req, res) => {
           oldTax: mergeableOrder.tax,
           taxRate: mergeableOrder.tax_rate,
           oldServiceCharge: mergeableOrder.service_charge,
-          serviceChargeRate: mergeableOrder.service_charge_rate
+          serviceChargeRate: mergeableOrder.service_charge_rate,
+          // #3 혼합차지: 혼합(테이크웨이+다인인)이면 서비스차지를 dine-in 품목에만(순수면 null=기존)
+          dineInSubtotal: mixedDineInSubtotal(mergedItems, mergeableOrder.order_type)
         });
         const newTotal = totals.total;
 

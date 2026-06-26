@@ -1124,5 +1124,9 @@
   "operations.cancelReasonOptional": "Optional",
   "operations.cancelReasonRequired": "Required",
   "operations.requirePoOwnerApprovalLabel": "Require Owner approval for purchase orders",
-  "operations.requirePoOwnerApprovalDesc": "When on and an Owner is connected, purchase orders need Owner approval before they are sent to the supplier. Default on when an Owner is connected."
+  "operations.requirePoOwnerApprovalDesc": "When on and an Owner is connected, purchase orders need Owner approval before they are sent to the supplier. Default on when an Owner is connected.",
+  "printer.kitchenCopies": "Print Copies",
+  "printer.copies1": "1 copy",
+  "printer.copies2": "2 copies",
+  "printer.copies3": "3 copies"
 }

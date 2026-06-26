@@ -85,13 +85,20 @@ const ZoneChip = styled.button<{ active: boolean }>`
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: transform 0.08s ease, filter 0.12s ease, background 0.15s ease;
   white-space: nowrap;
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 
-  &:hover { background: ${p => p.active ? '#514DD6' : 'var(--pos-surface-2, #F5F7FA)'}; }
+  /* hover 색변경은 마우스에서만 — 터치 탭 후 색 굳음 방지. */
+  @media (hover: hover) {
+    &:hover { background: ${p => p.active ? '#514DD6' : 'var(--pos-surface-2, #F5F7FA)'}; }
+  }
+  &:active { transform: scale(0.97); filter: brightness(0.95); }
+  &:focus { outline: none; }
   &:focus-visible { outline: 2px solid var(--pos-brand, #635BFF); outline-offset: 2px; }
 `;
 const ZoneChipCount = styled.span`

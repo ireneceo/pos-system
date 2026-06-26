@@ -682,6 +682,9 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
             {selectedOrder.id && <TableMoveTrail orderId={selectedOrder.id} />}
             {(() => {
               const items = selectedOrder.order_items && Array.isArray(selectedOrder.order_items) ? selectedOrder.order_items : [];
+              // #3 합본: 한 주문에 dine-in + takeaway 품목이 섞였으면 품목마다 구분 표시.
+              const _OFF = ['takeaway', 'pickup', 'delivery'];
+              const _isMixedOrder = items.some((i: any) => _OFF.includes(i.item_order_type)) && items.some((i: any) => !_OFF.includes(i.item_order_type || ''));
               // 활성 주문이면 단계 무관하게 홀 직원이 품목별 Served 토글 가능 (Floor Plan 과 동일).
               const orderActive = ['pending', 'preparing', 'ready', 'served'].includes(selectedOrder.status);
               // Add original index to each item for deletion
@@ -748,7 +751,15 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                         />
                       )}
                       <ItemInfo style={{ flex: 1 }}>
-                        <ItemName>{item.name || item.menuItem?.name || 'Item'}</ItemName>
+                        <ItemName>
+                          {item.name || item.menuItem?.name || 'Item'}
+                          {/* #3 합본 — 섞인 주문에서 takeaway 품목만 배지(나머지는 dine-in, 기본). 색=액션 팔레트 #F59E0B */}
+                          {_isMixedOrder && _OFF.includes(item.item_order_type) && (
+                            <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 700, color: '#fff', padding: '1px 6px', borderRadius: 6, letterSpacing: 0.3, verticalAlign: 'middle', whiteSpace: 'nowrap', background: '#F59E0B' }}>
+                              {t(`floorplan:itemTag.${item.item_order_type}`, { defaultValue: String(item.item_order_type).toUpperCase() })}
+                            </span>
+                          )}
+                        </ItemName>
                         {item.options && item.options.length > 0 && (
                           <ItemOptions>
                             {Array.isArray(item.options) ? item.options.join(', ') : item.options}
@@ -835,7 +846,12 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
             )}
             {(selectedOrder as any).service_charge > 0 && (
               <TotalRow>
-                <span>Service Charge ({(selectedOrder as any).service_charge_rate || 10}%)</span>
+                <span>Service Charge ({(selectedOrder as any).service_charge_rate || 10}%){(() => {
+                  const it = Array.isArray(selectedOrder.order_items) ? selectedOrder.order_items : [];
+                  const off = ['takeaway', 'pickup', 'delivery'];
+                  // #3 합본: 섞인 주문이면 서비스차지가 dine-in 품목에만 붙는다는 걸 명시.
+                  return it.some((i: any) => off.includes(i.item_order_type)) && it.some((i: any) => !off.includes(i.item_order_type || '')) ? ' · dine-in' : '';
+                })()}</span>
                 <span>{formatCurrency(Number((selectedOrder as any).service_charge), operationSettings.currency)}</span>
               </TotalRow>
             )}
