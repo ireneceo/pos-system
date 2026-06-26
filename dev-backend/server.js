@@ -524,6 +524,7 @@ app.use('/api/work-manuals', workManualsRouter);  // Work Manuals (업무매뉴�
 app.use('/api/badge-counts', badgeCountsRouter);  // Sidebar badge counts
 app.use('/api/kitchen-stations', kitchenStationsRouter);  // Kitchen station management
 app.use('/api/diagnostic/autoprint', autoprintDiagnosticRouter);  // Auto-print preview + self-test
+app.use('/api/print-events', require('./routes/print-events'));  // Print Visibility & Diagnostics (additive; never touches existing print path)
 app.use('/api/system-products', systemProductsRouter);  // System products (hardware)
 app.use('/api/system-product-categories', systemProductCategoriesRouter);  // System product categories
 app.use('/api/system-product-option-groups', systemProductOptionGroupsRouter);  // System product option groups

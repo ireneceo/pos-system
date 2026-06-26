@@ -1,5 +1,10 @@
 # Purple POS — 개발 세션 상태
 
+<!-- AUTOSAVE-STALE-BANNER -->
+> **[AUTO-SAVE STALE] (2026-06-26 08:45, idle 1924s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
+> 변경된 작업 파일: PrintEvent.js,index.js print-events.js,migrate-create-print-events.js server.js,KitchenDisplayPage.tsx PRINT_VISIBILITY_DIAGNOSTICS.md
+<!-- /AUTOSAVE-STALE-BANNER -->
+
 ## 현재 작업 상태
 **마지막 업데이트:** 2026-06-26 #6 (추가주문 인쇄 중복/누적 근본수정 + 모바일 애드온 기본OFF + 할인PIN 금액경로 + Takeaway walk-in 테이블)
 **버전:** v3.62 + 백스테이지. SW 4.19-round-print-dedup.

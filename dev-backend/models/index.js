@@ -145,6 +145,9 @@ const PushLog = require('./PushLog');
 // Reservations (v3.29+)
 const Reservation = require('./Reservation');
 
+// Print Visibility & Diagnostics (2026-06-26) — additive log, no print-path change
+const PrintEvent = require('./PrintEvent');
+
 // Define associations
 // Brand - Restaurant associations
 Brand.hasMany(Restaurant, { foreignKey: 'brand_id', as: 'restaurants' });
@@ -1105,5 +1108,7 @@ module.exports = {
   PushSubscription,
   PushLog,
   // Reservations (v3.29+)
-  Reservation
+  Reservation,
+  // Print Visibility & Diagnostics (2026-06-26)
+  PrintEvent
 };
