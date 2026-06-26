@@ -4,7 +4,14 @@
 **마지막 업데이트:** 2026-06-26 #6 (추가주문 인쇄 중복/누적 근본수정 + 모바일 애드온 기본OFF + 할인PIN 금액경로 + Takeaway walk-in 테이블)
 **버전:** v3.62 + 백스테이지. SW 4.19-round-print-dedup.
 
-### 운영 배포 완료 (2026-06-26 #6) — 추가주문 인쇄 중복 근본수정 (SW 4.19)
+### 🔴 인쇄 장애 + 근본수정 (2026-06-26 #6, SW 4.21→4.22) — heartbeat 사고 교훈
+- **사고**: +Round 중복수정 때 넣은 **heartbeat(인쇄 중 print_claimed_at 5초 갱신)가 "죽은-claim 자동복구(10초)" 분실 안전망을 무력화** → thefire 와이파이로 QZ 인쇄가 hang하면 영영 복구·재시도 안 됨 → **신규주문 통째 무인쇄(통합·KQ1·KQ2 전부)**. 06:43 긴급 롤백으로 즉시 복구 확인(=heartbeat가 범인 확정). **회차별 인쇄는 무죄**(신규 단일주문 = 회차1개 = 기존과 동일 경로, 논리적으로 증명).
+- **근본수정(forward, 롤백 아님)**: **heartbeat 완전 제거** + **회차별(order_group) 인쇄만 유지** + 취소/이동 served 제외 재적용. 신규주문 경로 무변경. autoprint regression 44 + 빌드 검증 후 배포(SW 4.21, Backup 070015). 중복은 회차별로 티켓 작아져 자연 감소.
+- **교훈**: claim 갱신류는 **분실 복구 안전망을 끄지 않는지** 반드시 검토. 분실>중복(분실이 훨씬 치명적). 인쇄 변경은 **배포 전 build(autoprint regression) 필수**. [[reference_round_print_duplication_fix]] 갱신요.
+- **서브드 주문 결제 전 편집** (SW 4.22, Backup 071218): 백엔드 가드 4곳('served' 제외, 결제완료는 차단 유지) + FloorPlan Add Items 버튼 노출. mergeItemsIntoOrder가 추가 시 status→pending+needs_print(주방 재발행). 데모 실API 통과. PIN 게이트는 추후.
+- **Takeaway walk-in 테이블 / 고객디스플레이 #3 재탭(cdNonce)** 도 이 배포에 포함.
+
+### (이전) 운영 배포 (2026-06-26 #6 초반) — 추가주문 인쇄 중복 근본수정 (SW 4.19, 사고로 롤백됨)
 - **추가주문(+Round) 인쇄 2번/누적/통합재전송/스테이션2-3번 = 단일 근본원인 stale-claim 10초 재무장.** 운영 주문 014(rid16 T-5) printed_at 실데이터로 확정. 수정 3종(생명선): ①**heartbeat**(인쇄 중 5초 claim 갱신→재무장중복0, hybrid+poller) ②**회차(order_group)별 1장**(통합도 회차별, 미인쇄 회차 쌓여도 따로, pending_reprint 분할안함) ③**취소/이동 티켓 served 제외**(printed_at 유지→kitchen_items 제외). **신규주문 무변경**(단일회차=1장, heartbeat는 5초 초과 시만). 상세 [[reference_round_print_duplication_fix]].
 - 검증: autoprint regression **44/44** · health **107/107** · field-contract · **cancel/move served-제외 실API PASS** · print-guard bless. Backup 20260626_053737, Smoke 9/9.
 - **실프린터 확인 필요(Irene)**: POS1에서 추가주문 2~3번 연속 → 회차별 1장씩·중복0 / 통합도 회차별 / 취소·이동표에 이미 served 품목 빠짐.
@@ -27,6 +34,11 @@
 
 ### 진행 중인 작업
 - 없음
+
+### 🔻 대기 — 다음 세션 (2026-06-26 #6 미완)
+1. **고객디스플레이 #1·#2 (미완, 화면확인 필요)**: #3 재탭(cdNonce 강제 재emit)은 ✅배포(4.22). 남은 #1 "주문입력 중 고객화면 안 보임"(POS오버레이 iframe vs FloorPlan 부모 emit 경쟁) + #2 "결제팝업 뜨면 CD 닫힘"(PaymentModal·POS오버레이 닫기 둘 다 cart-clear 안 쏨 — 정적코드로 blank 트리거 못 잡음). **Irene 5초 화면확인 필요**: ⓐ주문입력 중 CD에 뭐? ⓑ결제팝업 직후 CD 뭐로 바뀜? ⓒ결제는 오버레이 안/밖? (키패드·빈화면=cart-clear 수신 / "Thank you"=checkout-complete 일찍 쏘임 — 고칠 곳 다름). 결제흐름이라 추측수정 금지. CheckoutDisplayPage(수신)·FloorPlanPage 822 미러effect·POSTerminal 2888.
+2. **KDS 추가주문 표시 — 추가분만 + "추가주문" 라벨** (밤): 인쇄는 회차별 분리 완료, KDS 표시도 같은 원칙. 보호영역(동작확정+실측 후).
+3. **삭제 안되던 진짜 원인 후속**: 서브드 결제전 삭제·추가는 ✅허용 배포. 단 그 400 에러를 POS UI가 명확히 안 보여줘 "안 없어지는 에러"로 보였음 — 에러 안내 개선 검토.
 
 ### 다음 작업 (Irene 2026-06-26 #6 저녁/후속 — 저장만, 밤에 수정)
 1. **KDS 추가주문 표시 — 추가분만 + "추가주문" 라벨** (밤에 수정): 주방디스플레이에 추가주문(+Round) 들어갈 때 **이전 주문 품목까지 같이 표시 말고, 그 추가분만** 보이고 **"추가주문"이라고 명시**. (인쇄는 이미 회차별 1장으로 분리 완료 — KDS 표시도 같은 원칙. KDS는 보호영역이라 동작확정+실측 후 수정.) **검증·저장만 했고 밤에 구현.**
