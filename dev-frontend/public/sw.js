@@ -10,7 +10,7 @@
  * caching SPA shell would conflict. If future offline support is needed, layer Workbox separately.
  */
 
-const SW_VERSION = '4.21-round-noheartbeat-20260626';
+const SW_VERSION = '4.22-served-editable-20260626';
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {

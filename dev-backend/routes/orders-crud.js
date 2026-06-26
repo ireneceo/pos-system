@@ -2035,7 +2035,7 @@ router.post('/merge', authenticateToken, async (req, res) => {
         if (order.payment_status === 'completed') {
           throw new Error(`Order ${order.order_number} is already paid and cannot be merged`);
         }
-        if (['served', 'completed', 'cancelled'].includes(order.status)) {
+        if (['completed', 'cancelled'].includes(order.status)) {
           throw new Error(`Order ${order.order_number} has status "${order.status}" and cannot be merged`);
         }
       }
@@ -2246,7 +2246,7 @@ router.post('/:id/add-items', authenticateToken, async (req, res) => {
       return res.status(400).json({ success: false, error: { message: 'Cannot add items to a paid order', code: 'VALIDATION_ERROR' } });
     }
 
-    if (['served', 'completed', 'cancelled'].includes(order.status)) {
+    if (['completed', 'cancelled'].includes(order.status)) {
       return res.status(400).json({
         success: false,
         error: `Cannot add items to an order with status "${order.status}"`
@@ -2353,7 +2353,7 @@ router.post('/:id/merge-items', authenticateToken, async (req, res) => {
       return res.status(400).json({ success: false, error: { message: 'Cannot add items to a paid order', code: 'VALIDATION_ERROR' } });
     }
 
-    if (['served', 'completed', 'cancelled'].includes(order.status)) {
+    if (['completed', 'cancelled'].includes(order.status)) {
       return res.status(400).json({
         success: false,
         error: `Cannot add items to an order with status "${order.status}"`
@@ -2450,7 +2450,7 @@ router.delete('/:id/items/:itemIndex', authenticateToken, requireVoidAccess, asy
       return res.status(400).json({ success: false, error: { message: 'Cannot remove items from a paid order', code: 'VALIDATION_ERROR' } });
     }
 
-    if (['served', 'completed', 'cancelled'].includes(order.status)) {
+    if (['completed', 'cancelled'].includes(order.status)) {
       return res.status(400).json({
         success: false,
         error: `Cannot remove items from an order with status "${order.status}"`

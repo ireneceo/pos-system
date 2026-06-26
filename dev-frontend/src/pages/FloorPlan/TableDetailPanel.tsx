@@ -2052,7 +2052,8 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
               <ActionRow>
                 {/* Add Items (#7) — 인라인 검색카트(터치 부적합) 대신 New Order 와 동일하게 POSOverlay(풀 POS).
                     테이블에 핀되어 POS 자동머지가 기존 주문에 추가. */}
-                {paymentStatus === 'pending' && !['served', 'completed', 'cancelled'].includes(orderStatus) && (
+                {/* 2026-06-26 (Irene): 서브드 주문도 결제 전이면 추가 가능 — 'served' 제외. 결제완료(paymentStatus!=='pending')는 그대로 숨김. */}
+                {paymentStatus === 'pending' && !['completed', 'cancelled'].includes(orderStatus) && (
                   <ActionBtn $variant="secondary" onClick={() => onNewOrder({ mergeOrderId: statusInfo!.orderId || undefined })}>
                     Add Items
                   </ActionBtn>
