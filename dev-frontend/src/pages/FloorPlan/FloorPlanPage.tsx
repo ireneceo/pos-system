@@ -1204,7 +1204,7 @@ const FloorPlanPage: React.FC = () => {
     return null;
   };
 
-  const handleNewOrder = (opts?: { takeaway?: boolean; mergeOrderId?: number; guests?: number; override?: boolean }) => {
+  const handleNewOrder = (opts?: { takeaway?: boolean; walkIn?: boolean; mergeOrderId?: number; guests?: number; override?: boolean }) => {
     // 워크인(매장식사 신규)만 검사 — 포장/체크인/Add-items 머지는 제외.
     if (!opts?.takeaway && !opts?.mergeOrderId && !opts?.override) {
       const br = findBlockingReservation();
@@ -1218,7 +1218,10 @@ const FloorPlanPage: React.FC = () => {
     // T20 ticket). Walk-in takeaway (no selected table) stays counter-pickup.
     if (opts?.takeaway) {
       params.set('order_type', 'takeaway');
-      if (selectedTable && selectedTableId) {
+      // 2026-06-26 (Irene): "Walk-in" 포장은 항상 카운터 픽업(테이블 없음). 직전에 선택된 테이블이
+      // 남아 있어도 walk-in 의도면 절대 테이블을 붙이지 않는다. (테이블 손님이 포장 요청 → 그 테이블
+      // 빌에 유지하는 동작은 walkIn 플래그 없이 호출하는 별도 진입점 전용. 1216~ 주석 참고.)
+      if (!opts.walkIn && selectedTable && selectedTableId) {
         params.set('table', selectedTable);
         params.set('tableId', selectedTableId);
       }
@@ -2026,7 +2029,7 @@ const FloorPlanPage: React.FC = () => {
           <ZoneChip
             type="button"
             active={false}
-            onClick={() => handleNewOrder({ takeaway: true })}
+            onClick={() => handleNewOrder({ takeaway: true, walkIn: true })}
             title={t('floorplan:floorPlanPage.takeawayWalkInHint', 'Start a new walk-in takeaway order')}
             style={{ color: 'var(--pos-brand, #635BFF)', borderColor: 'var(--pos-brand, #635BFF)' }}
           >

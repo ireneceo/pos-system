@@ -1245,7 +1245,9 @@ router.post('/:id/move-table', authenticateToken, async (req, res) => {
       // kitchenStationPrinters config. We surface the printed items + their station.
       let items = order.order_items || [];
       if (typeof items === 'string') { try { items = JSON.parse(items); } catch { items = []; } }
-      const printedItems = (Array.isArray(items) ? items : []).filter(it => it && (it.printed_at || it.printed));
+      // 2026-06-26 (Irene "이미 다 완료한 건 이동 갈 필요 없지"): 이미 served/completed(손님에게
+      // 이미 나간) 품목은 테이블이동 재발행 대상에서 제외 — 주방에 다시 안 보낸다.
+      const printedItems = (Array.isArray(items) ? items : []).filter(it => it && (it.printed_at || it.printed) && it.status !== 'served' && it.status !== 'completed');
 
       // 2026-06-24 (Irene): 이동 재인쇄를 "누른 기기 직접인쇄" → "DB → 인쇄 전담 POS 폴러" 로 통일.
       // 누가/어느 기기/어느 계정으로 이동했든 인쇄 전담 POS 가 새 테이블로 재발행한다(자동인쇄는
@@ -1277,6 +1279,8 @@ router.post('/:id/move-table', authenticateToken, async (req, res) => {
         if (printedItems.length > 0) {
           _reprintUpdate.order_items = (Array.isArray(items) ? items : []).map(it => {
             if (!it || typeof it !== 'object') return it;
+            // served/completed 품목은 새 테이블로 다시 발행하지 않는다(이미 손님에게 나감) → printed_at 유지.
+            if (it.status === 'served' || it.status === 'completed') return it;
             const c = { ...it }; delete c.printed_at; delete c.printed; return c;
           });
         }
@@ -1591,9 +1595,13 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
     if (finalStatus === 'cancelled') {
       try {
         let citems = order.order_items; if (typeof citems === 'string') { try { citems = JSON.parse(citems); } catch { citems = []; } }
-        const hadPrinted = (Array.isArray(citems) ? citems : []).some(it => it && (it.printed_at || it.printed));
+        // 2026-06-26 (Irene "이미 다 완료한 건 취소 갈 필요 없지"): 이미 served/completed(손님에게
+        // 이미 나간) 품목은 취소표에서 제외 — printed_at 을 유지해 kitchen_items 에서 빠지므로 취소표에
+        // 안 실린다. 전부 served 면 hadPrinted=false → 취소표 자체가 안 나간다.
+        const _notServed = (it) => it && it.status !== 'served' && it.status !== 'completed';
+        const hadPrinted = (Array.isArray(citems) ? citems : []).some(it => it && (it.printed_at || it.printed) && _notServed(it));
         if (hadPrinted) {
-          const cleared = (Array.isArray(citems) ? citems : []).map(it => { if (!it || typeof it !== 'object') return it; const c = { ...it }; delete c.printed_at; delete c.printed; return c; });
+          const cleared = (Array.isArray(citems) ? citems : []).map(it => { if (!it || typeof it !== 'object') return it; if (!_notServed(it)) return it; const c = { ...it }; delete c.printed_at; delete c.printed; return c; });
           const _creason = (req.body.reason && String(req.body.reason).trim()) || '';
           await order.update({
             order_items: cleared, needs_print: true, print_claimed_at: null,
@@ -2877,6 +2885,32 @@ router.patch('/:id/print-claim', authenticateToken, async (req, res) => {
     res.json({ success: true, claimed: affected > 0 });
   } catch (e) {
     console.error('[print-claim] error:', e.message);
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// 2026-06-26 (Irene "추가주문 2번 / 같은 아이템 2-3번"): print HEARTBEAT.
+// 인쇄가 느린 매장(와이파이 혼잡 + 스테이션 매수 + BAR 재시도)에서 한 번의 인쇄가
+// STALE_CLAIM_SEC(10초)를 넘기면, pending-print 의 죽은-claim 자동복구가 "아직 살아서
+// 인쇄 중인" 주문을 죽은 claim 으로 오인해 needs_print 를 되살렸다 → 폴러/다른기기가 또
+// 인쇄(중복). 인쇄 진행 중 클라가 이 엔드포인트를 주기적으로 호출해 print_claimed_at 을
+// 갱신하면, 살아있는 claim 은 절대 stale 로 안 빠진다(중복 0). 진짜 죽은 기기는 박동이
+// 멈춰 10초 뒤 정상 복구(분실 방지 안전망 그대로). claim 된 상태(needs_print=false +
+// print_claimed_at NOT NULL)만 갱신 — 이미 /printed 로 정리됐거나 미claim 이면 무영향.
+router.patch('/:id/print-heartbeat', authenticateToken, async (req, res) => {
+  try {
+    const o = await Order.findByPk(req.params.id, { attributes: ['id', 'restaurant_id'] });
+    if (!o) return res.status(404).json({ success: false, message: 'Order not found' });
+    if (req.user.role !== 'System Admin' && parseInt(req.user.restaurant_id) !== o.restaurant_id) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+    const [affected] = await Order.update(
+      { print_claimed_at: require('sequelize').fn('NOW') },
+      { where: { id: o.id, needs_print: false, print_claimed_at: { [require('sequelize').Op.ne]: null } } }
+    );
+    res.json({ success: true, refreshed: affected > 0 });
+  } catch (e) {
+    console.error('[print-heartbeat] error:', e.message);
     res.status(500).json({ success: false, message: e.message });
   }
 });
