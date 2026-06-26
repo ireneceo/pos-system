@@ -43,6 +43,19 @@
   "notice": {
     "moveTitle": "餐桌已移动",
     "sameOrder": "同一订单 — 请勿重复制作。",
-    "mergedAtTable": "已与 {{table}} 的现有订单合并"
+    "mergedAtTable": "已与 {{table}} 的现有订单合并",
+    "notPrintedTitle": "票据未打印",
+    "notPrintedBody": "此票据未能打印。",
+    "fallbackTitle": "打印到了其他打印机",
+    "fallbackBody": "已打印到其他打印机。",
+    "fallbackHint": "无法连接指定的工作站打印机。请检查打印机。",
+    "reason": "原因",
+    "printNowHint": "按“立即打印”在此处打印。",
+    "printNow": "立即打印",
+    "dismiss": "关闭"
+  },
+  "badge": {
+    "notPrinted": "未打印",
+    "wrongPrinter": "打印机错误"
   }
 }

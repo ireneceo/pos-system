@@ -1,13 +1,26 @@
 # Purple POS — 개발 세션 상태
 
-<!-- AUTOSAVE-STALE-BANNER -->
-> **[AUTO-SAVE STALE] (2026-06-26 08:45, idle 1924s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
-> 변경된 작업 파일: PrintEvent.js,index.js print-events.js,migrate-create-print-events.js server.js,KitchenDisplayPage.tsx PRINT_VISIBILITY_DIAGNOSTICS.md
-<!-- /AUTOSAVE-STALE-BANNER -->
-
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-06-26 #6 (추가주문 인쇄 중복/누적 근본수정 + 모바일 애드온 기본OFF + 할인PIN 금액경로 + Takeaway walk-in 테이블)
-**버전:** v3.62 + 백스테이지. SW 4.19-round-print-dedup.
+**마지막 업데이트:** 2026-06-26 #7 (🆕 인쇄 가시성 & 진단 — KDS 미인쇄 팝업/표시 + 스테이션 라우팅 수동인쇄. **DEV 진행중·미배포**. Irene 개발서버 확인 예정)
+**버전:** v3.62 + 백스테이지. SW 4.22-round-print-dedup. (인쇄 가시성 기능은 SW bump 안 함 — 미배포)
+
+### 🆕 진행중 (2026-06-26 #7) — 인쇄 가시성 & 진단 (Irene 아이디어, DEV·미배포)
+> 목적: 매장 인쇄 누락을 직원이 "솔루션 문제"로 오해 → **안됐을 때만 표시 + 취소처럼 팝업 + 이유 + 누적기록(환경/인터넷 추적) + 주방에서 수동 인쇄**. 설계 = `docs/PRINT_VISIBILITY_DIAGNOSTICS.md`. **생명선(카운터 폴러 자동인쇄)은 한 줄도 안 바뀜 — KDS는 원래 인쇄주체 아님 = 순수 신규 추가**(Irene 정정: "새로운거니까 지금 문제 또 만드는 거 아니잖아" = 맞음).
+>
+> **Irene 확정 스코프**: ①안됐을 때만 알림+취소같은 팝업 ②스테이션별 인쇄(각자 거) + All=모든 스테이션 분배 ③이유=누적로그+진단화면 ④가짜초록(BAR처럼 다른프린터로 나가 printed_at만 찍힘) 같이 잡기 ⑤플로어플랜=표시만(인쇄는 KDS).
+
+**✅ 완료(DEV, 검증됨):**
+- **Task1 백엔드 토대**: `models/PrintEvent.js` + `scripts/migrate-create-print-events.js`(print_events 테이블, 멱등·실행완료) + `routes/print-events.js`(POST 로그 / GET `/restaurant/:id/status` 미인쇄+사유 / GET `/restaurant/:id/summary` 진단집계) + server.js 마운트 + models/index.js 등록. **orders-crud 생명선 무접촉.** API **7/7** PASS(익명401·검증400·로그·미인쇄감지·가짜초록 fallback표면화·집계·교차매장403). 테스트 데이터·파일 정리완료.
+- **Task2+3 KDS 팝업/표시/스테이션 인쇄**(`KitchenDisplayPage.tsx`): ①print-status 15초 폴링 → 현재 스테이션 스코프 미인쇄만 카드 배지("NOT PRINTED" 빨강 / fallback "WRONG PRINTER" 앰버) + 취소팝업 미러 팝업("인쇄 안 됨/이유/[지금 인쇄][닫기]") ②`printOrderTicket`이 kitchen_station_id 보존 → `printKitchenTicketViaRawBT`가 자동 스테이션 라우팅(스테이션탭=그 스테이션만, All=전품목 각 스테이션 분배) ③`printUnprintedNow`=카운터 폴러와 동일 안전계약(print-claim→인쇄→/printed, 실패시 /print-rearm, 중복0). i18n 4언어(notice.* + badge.*). **build green(경고는 전부 기존 baseline), mount OK(KDS/items/floor-plan/display 크래시0·EB0)**.
+
+**⬜ 남음(미착수):**
+- **Task4 생명선 접점(관찰만)**: `useAutoPrintPoller.ts` 사유분기(master_off/qz_error/backlog)에서 POST /print-events 기록 + `billPrint.js` QZ함수가 `qz.printers.find()`로 의도프린터 미도달 대조→usedFallback 보고(라우팅/타이밍/방식 무변경=가짜초록 소스). **billPrint=진짜 생명선 → 신중+print-guard bless+실프린터 1회.** (qz.printers.find 587/607, getDefault 폴백 657-659 확인 = 감지 가능 입증됨)
+- **Task5 플로어플랜 표시(표시만)+진단화면**: FloorPlan/TableDetailPanel print-status 배지+사유모달(인쇄버튼 없음) + Settings/Reports 인쇄진단 패널(사유별 카운트/타임라인, RA 표준).
+- **Task6 검증 전부 + 실프린터 1회**(Irene): 스테이션/All 수동인쇄 라우팅·폴백 앰버·미인쇄 팝업.
+
+**수정/신규 파일(이번 #7)**: (신규) `models/PrintEvent.js`·`scripts/migrate-create-print-events.js`·`routes/print-events.js`·`docs/PRINT_VISIBILITY_DIAGNOSTICS.md`·`dev-frontend/scripts/mount-check-print-visibility.js` / (수정) `server.js`·`models/index.js`·`pages/KitchenDisplay/KitchenDisplayPage.tsx`·locales(en/ko/zh/ms kitchen.json notice+badge). **billPrint·useAutoPrintPoller·orders-crud 무접촉(생명선 안전).**
+**재개 시**: docs/PRINT_VISIBILITY_DIAGNOSTICS.md §9 구현순서 4→5→6. billPrint 폴백감지는 Irene 승인+실프린터 동반 필요.
+**(보류) 다음 확정 작업이었던 풀스크린 Floor Plan**: 이 기능 요청으로 잠시 보류 — 미착수.
 
 ### 🔴 인쇄 장애 + 근본수정 (2026-06-26 #6, SW 4.21→4.22) — heartbeat 사고 교훈
 - **사고**: +Round 중복수정 때 넣은 **heartbeat(인쇄 중 print_claimed_at 5초 갱신)가 "죽은-claim 자동복구(10초)" 분실 안전망을 무력화** → thefire 와이파이로 QZ 인쇄가 hang하면 영영 복구·재시도 안 됨 → **신규주문 통째 무인쇄(통합·KQ1·KQ2 전부)**. 06:43 긴급 롤백으로 즉시 복구 확인(=heartbeat가 범인 확정). **회차별 인쇄는 무죄**(신규 단일주문 = 회차1개 = 기존과 동일 경로, 논리적으로 증명).
@@ -38,7 +51,12 @@
 - **남은 것**: 풀스크린 Floor Plan(▴접기 제거 + Main/Takeout/Items 라인 우측 풀스크린 토글로 헤더+하단통계 숨김) — 코드 미착수, 다음.
 
 ### 진행 중인 작업
-- 없음
+- **인쇄 가시성 & 진단 (2026-06-26 #7)** — Task1·2·3 DEV 완료·검증, Task4(billPrint 폴백·poller 로그)·5(플로어플랜·진단화면)·6(검증·실프린터) 남음. 상세 ↑ "🆕 진행중" 블록 + docs/PRINT_VISIBILITY_DIAGNOSTICS.md. **미배포 — Irene 개발서버 확인 후 재개.**
+
+### 🆕 계획 저장됨 (2026-06-26 #7, 설계만 — 아직 구현 0, Irene "지금 말고")
+- **안정감(Perceived Stability) 이니셔티브** = `docs/PERCEIVED_STABILITY_INITIATIVE.md`. 배경: Irene "다른 POS는 안정적인데 우리 건 어설프고 자잘한 문제". 진단=버그 무한정 아님, "만지는 느낌(상호작용 계층)" 미정비. Phase0(증거)→1(핫스크린 폴리시)→2(일관성)→3(가드레일). **Irene 선택 = "증거 먼저".**
+- **제대로된 검증 방법** = `docs/SYSTEM_VERIFICATION_METHOD.md`. 7계층(L0 정적가드/L1 헬스/L2 전체흐름시뮬/L3 카오스race/L4 불변식/L5 체감품질스캔/L6 실프린터·실눈). **🔒 안전계약: 인쇄=상태만 검증(종이 출력 안 함)·모바일오더=데모 공개경로+정리·생명선 무수정·운영은 읽기전용.** 기존 verify-order-lifecycle.js 확장. 신규 5스크립트(verify-order-flow/chaos/invariants·perceived-quality-scan·게이트묶음).
+- **재개 시 시작순서**: 검증엔진 L2/L3/L5 1차 구축(데모,안전) → 핫스크린 Top20 증거 → 백로그 보고 → Irene 우선순위 → Phase1. **인쇄·모바일오더 무접촉 불변.**
 
 ### 🔻 대기 — 다음 세션 (2026-06-26 #6 미완)
 1. **고객디스플레이 #1·#2 (미완, 화면확인 필요)**: #3 재탭(cdNonce 강제 재emit)은 ✅배포(4.22). 남은 #1 "주문입력 중 고객화면 안 보임"(POS오버레이 iframe vs FloorPlan 부모 emit 경쟁) + #2 "결제팝업 뜨면 CD 닫힘"(PaymentModal·POS오버레이 닫기 둘 다 cart-clear 안 쏨 — 정적코드로 blank 트리거 못 잡음). **Irene 5초 화면확인 필요**: ⓐ주문입력 중 CD에 뭐? ⓑ결제팝업 직후 CD 뭐로 바뀜? ⓒ결제는 오버레이 안/밖? (키패드·빈화면=cart-clear 수신 / "Thank you"=checkout-complete 일찍 쏘임 — 고칠 곳 다름). 결제흐름이라 추측수정 금지. CheckoutDisplayPage(수신)·FloorPlanPage 822 미러effect·POSTerminal 2888.

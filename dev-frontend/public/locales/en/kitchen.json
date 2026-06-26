@@ -43,6 +43,19 @@
   "notice": {
     "moveTitle": "Table Moved",
     "sameOrder": "Same order — do NOT make it again.",
-    "mergedAtTable": "Combined with the order already at {{table}}"
+    "mergedAtTable": "Combined with the order already at {{table}}",
+    "notPrintedTitle": "Ticket NOT Printed",
+    "notPrintedBody": "this ticket did NOT print.",
+    "fallbackTitle": "Printed to a Different Printer",
+    "fallbackBody": "printed to a different printer.",
+    "fallbackHint": "The intended station printer was unreachable. Check the printer.",
+    "reason": "Reason",
+    "printNowHint": "Press “Print now” to print it here.",
+    "printNow": "Print now",
+    "dismiss": "Dismiss"
+  },
+  "badge": {
+    "notPrinted": "NOT PRINTED",
+    "wrongPrinter": "WRONG PRINTER"
   }
 }

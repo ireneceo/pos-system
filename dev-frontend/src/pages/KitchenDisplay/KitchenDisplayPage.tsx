@@ -1475,11 +1475,14 @@ const KitchenDisplayPage: React.FC = () => {
       const order = ordersRef.current.find(o => String(o.id) === key);
       if (!order) { try { await fetch(`/api/orders/${orderId}/print-rearm`, { method: 'PATCH', headers: _h }); } catch {} return; }
       // 스테이션 탭이면 그 스테이션 품목만, All 이면 전 품목(각 스테이션 프린터로 분배).
+      // refs 로 최신 스테이션/매핑 참조(useCallback [] deps 라 stale 콜백 회피).
       const cur = selectedStationRef.current;
+      const map = menuStationMapRef.current;
+      const inStation = (name: string) => { if (cur === 'all') return true; const sid = map.get(name); return sid === undefined || sid === cur; };
       const items = cur === 'all' ? order.items : order.items.filter(it =>
         (it.is_set_menu && it.set_items && it.set_items.length > 0)
-          ? it.set_items.some(si => isItemInSelectedStation(si.name))
-          : isItemInSelectedStation(it.name));
+          ? it.set_items.some((si: any) => inStation(si.name))
+          : inStation(it.name));
       let ok: any = true;
       try { ok = await printOrderTicket(order, items.length > 0 ? items : order.items); }
       catch { ok = false; }
@@ -2171,6 +2174,17 @@ const KitchenDisplayPage: React.FC = () => {
             )}
             {order.orderType === 'delivery' && (
               <OrderTypeBadge variant="delivery">{t('kitchen:kitchenDisplayPage.delivery')}</OrderTypeBadge>
+            )}
+            {/* 2026-06-26 (Irene): 안됐을 때만 표시 — 미인쇄(빨강) / 다른 프린터로 나감(앰버). */}
+            {unprintedIds.has(String(order.id)) && (
+              <NotPrintedBadge title={t('kitchen:notice.notPrintedTitle', { defaultValue: 'Ticket NOT Printed' })}>
+                {t('kitchen:badge.notPrinted', { defaultValue: 'NOT PRINTED' })}
+              </NotPrintedBadge>
+            )}
+            {!unprintedIds.has(String(order.id)) && fallbackIds.has(String(order.id)) && (
+              <NotPrintedBadge $fallback title={t('kitchen:notice.fallbackTitle', { defaultValue: 'Printed to a Different Printer' })}>
+                {t('kitchen:badge.wrongPrinter', { defaultValue: 'WRONG PRINTER' })}
+              </NotPrintedBadge>
             )}
           </OrderLeft>
           <OrderRight>
@@ -3172,7 +3186,11 @@ const KitchenDisplayPage: React.FC = () => {
                   ? t('kitchen:notice.voidTitle', { defaultValue: 'Item Cancelled' })
                   : n.kind === 'order-cancel'
                     ? t('kitchen:notice.orderCancelTitle', { defaultValue: 'Order Cancelled' })
-                    : t('kitchen:notice.moveTitle', { defaultValue: 'Table Moved' })}
+                    : n.kind === 'not-printed'
+                      ? t('kitchen:notice.notPrintedTitle', { defaultValue: 'Ticket NOT Printed' })
+                      : n.kind === 'fallback'
+                        ? t('kitchen:notice.fallbackTitle', { defaultValue: 'Printed to a Different Printer' })
+                        : t('kitchen:notice.moveTitle', { defaultValue: 'Table Moved' })}
               </NoticeHead>
               <NoticeBody>
                 {n.kind === 'void' ? (
@@ -3193,6 +3211,26 @@ const KitchenDisplayPage: React.FC = () => {
                     </div>
                     {n.itemText ? <div className="sub"><strong>{n.itemText}</strong></div> : null}
                     <div className="sub">{t('kitchen:notice.doNotMakeOrder', { defaultValue: 'Stop preparing this order.' })}</div>
+                  </>
+                ) : n.kind === 'not-printed' ? (
+                  <>
+                    <div>
+                      {t('kitchen:notice.order', { defaultValue: 'Order' })} #{n.orderNumber}
+                      {n.tableNumber ? ` · ${n.tableNumber}` : ''} — {t('kitchen:notice.notPrintedBody', { defaultValue: 'this ticket did NOT print.' })}
+                    </div>
+                    {n.itemText ? <div className="sub"><strong>{n.itemText}</strong></div> : null}
+                    {n.reasonText ? <div className="sub">{t('kitchen:notice.reason', { defaultValue: 'Reason' })}: {n.reasonText}</div> : null}
+                    <div className="sub">{t('kitchen:notice.printNowHint', { defaultValue: 'Press “Print now” to print it here.' })}</div>
+                  </>
+                ) : n.kind === 'fallback' ? (
+                  <>
+                    <div>
+                      {t('kitchen:notice.order', { defaultValue: 'Order' })} #{n.orderNumber} — {t('kitchen:notice.fallbackBody', { defaultValue: 'printed to a different printer.' })}
+                    </div>
+                    <div className="sub">
+                      {(n.intended || '?')}<span className="arrow"> → </span>{(n.actual || '?')}
+                    </div>
+                    <div className="sub">{t('kitchen:notice.fallbackHint', { defaultValue: 'The intended station printer was unreachable. Check the printer.' })}</div>
                   </>
                 ) : (
                   <>
@@ -3216,9 +3254,20 @@ const KitchenDisplayPage: React.FC = () => {
                   </>
                 )}
               </NoticeBody>
-              <NoticeConfirm $kind={n.kind} type="button" onClick={dismiss}>
-                {t('kitchen:notice.confirm', { defaultValue: 'OK, got it' })}
-              </NoticeConfirm>
+              {n.kind === 'not-printed' ? (
+                <NoticeActions>
+                  <NoticePrintBtn type="button" onClick={async () => { if (n.orderId != null) await printUnprintedNow(n.orderId); dismiss(); }}>
+                    {t('kitchen:notice.printNow', { defaultValue: 'Print now' })}
+                  </NoticePrintBtn>
+                  <NoticeDismissBtn type="button" onClick={dismiss}>
+                    {t('kitchen:notice.dismiss', { defaultValue: 'Dismiss' })}
+                  </NoticeDismissBtn>
+                </NoticeActions>
+              ) : (
+                <NoticeConfirm $kind={n.kind} type="button" onClick={dismiss}>
+                  {t('kitchen:notice.confirm', { defaultValue: 'OK, got it' })}
+                </NoticeConfirm>
+              )}
               {kitchenNotices.length > 1 && (
                 <NoticeCount>{t('kitchen:notice.more', { defaultValue: '{{count}} more notice(s)', count: kitchenNotices.length - 1 })}</NoticeCount>
               )}
