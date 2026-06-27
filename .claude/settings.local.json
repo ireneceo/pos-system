@@ -823,7 +823,8 @@
       "Bash(TS=fix node scripts/repro-addon-flow.js)",
       "Bash(TS=verify node scripts/repro-addon-flow.js)",
       "Bash(TS=v2 node scripts/repro-addon-flow.js)",
-      "Bash(echo \"design-guard exit=$?\")"
+      "Bash(echo \"design-guard exit=$?\")",
+      "Bash(scp -q /tmp/claude-1000/-var-www/7da12f7e-c8ab-4429-969d-9ed83994589e/scratchpad/prod_probe.js irene@87.106.78.146:/var/www/production-backend/zz_probe.js)"
     ],
     "deny": [],
     "ask": []

@@ -1,5 +1,10 @@
 # Purple POS — 개발 세션 상태
 
+<!-- AUTOSAVE-STALE-BANNER -->
+> **[AUTO-SAVE STALE] (2026-06-27 09:05, idle 9091s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
+> 변경된 작업 파일: probe_tmp.js
+<!-- /AUTOSAVE-STALE-BANNER -->
+
 ## 현재 작업 상태
 **마지막 업데이트:** 2026-06-27 (🆕 모바일오더 더블오더 방지 + 애드온 카드 버그수정 **운영 배포 완료**. #7 인쇄가시성은 배포에서 격리(미배포 유지)). SW 4.23.
 **버전:** v3.63 (2026-06-27 배포). SW 4.23-mobile-addon-cards.
