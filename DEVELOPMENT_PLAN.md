@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-27 #2 (**thefire 브랜드메뉴 대청소 — 운영 데이터 작업, 코드 무수정**. ①126개 옵션·세트구성 thefire01/02/03 동일화 ②"수요일 세트 안나옴"=LUNCH MENU 카테고리 비활성→활성 + 요일 런치스케줄 3매장 동일 ③thefire02/03 메뉴 표시·카테고리 thefire01과 완전동일(rid24 124개 활성화) ④**브랜드메뉴/옵션/치킨윙 한글 전부 제거**(메뉴119+옵션96+상품363, 한글잔존0). 세트 전파 영구수정(brandMenuSyncService.js) /배포 대기. 신규 백로그 `docs/POS_MENU_IMPROVEMENT_BACKLOG.md`(13건).)
+> **최종 업데이트:** 2026-06-27 #3 (**thefire02 라이브 인쇄 긴급대응 — 운영 배포**. 신규/추가주문 BAR 늦음·KQ 중복·통합 지연 근본수리. ①**QZ keepalive**(연결 idle 끊김→첫인쇄 16초 멈춤 해결, SW 4.33) ②**발송순서 = 주방 스테이션 먼저 → 통합(POS1→MASTER 맨뒤)**, 느린 통합 2장이 BAR 막던 것 해결(SW 4.34) ③**통합티켓 "정확히 1번" 가드**(POS1 통합 중복 제거) ④**아이템취소 = 취소품목의 그 회차(order_group) 오더티켓 기준** 재발행(API+DB 검증완료) ⑤backend station-printed PATCH + print-trace 로깅(안정 검증루트). 인쇄 발송 단일기준 정리. **다음 섹션 대기**: 머지(R8) served제외+"Table1+Table2"표시 / 자동발행기준·KDS 안내표시 검토.)
+>
+> **이전:** 2026-06-27 #2 (**thefire 브랜드메뉴 대청소 — 운영 데이터 작업, 코드 무수정**. ①126개 옵션·세트구성 thefire01/02/03 동일화 ②"수요일 세트 안나옴"=LUNCH MENU 카테고리 비활성→활성 + 요일 런치스케줄 3매장 동일 ③thefire02/03 메뉴 표시·카테고리 thefire01과 완전동일(rid24 124개 활성화) ④**브랜드메뉴/옵션/치킨윙 한글 전부 제거**(메뉴119+옵션96+상품363, 한글잔존0). 세트 전파 영구수정(brandMenuSyncService.js) /배포 대기. 신규 백로그 `docs/POS_MENU_IMPROVEMENT_BACKLOG.md`(13건).)
 >
 > **이전:** 2026-06-27 (**v3.63 운영 배포** — 모바일 더블오더 방지(자동복귀+스티키 카트바) + 애드온 추천 카드 버그수정(사진/이모지/기본글리프 폴백·재진입 유지·자동이동제거)+자동폴백. SW 4.23, Smoke 9/9, Backup 20260627_061214. **#7 인쇄가시성은 배포에서 격리(print-guard 8/8 무변경·운영번들 print-events 0건)** — 인쇄/주문/단계 완전 무접촉.)
 >
@@ -17,6 +19,34 @@
 > **이전:** 2026-06-23 (**v3.62 운영 배포 완료** — thefire 실사용 준비 7건: 직원 PIN 전환 수정 · 시재 개시모드(이월/고정) · 마감 폰트 통일 · 통합오더티켓 'Full' 수동인쇄 · 로그인 직원 PIN 우선 · 설정 QR 인쇄버튼 · Windows 7/8 QZ 설치 수정. Backup 20260623_124849, Smoke 9/9, SW=3.95. /검증 통과: health 107/107·print-guard 8/8(billPrint 무수정)·hydration0·timezone0·design0·i18n0·mount(floor-plan/settings/cash-up/pos) crash0.)
 >
 > **이전:** v3.61 발주 UX 대정리 + 외부공급업체 + 플로어플랜 핫픽스. SW=3.90.
+
+## ✅ 완료: thefire02 라이브 인쇄 긴급대응 — 발송순서·QZ keepalive·아이템취소 회차 (2026-06-27 #3, 운영 배포)
+
+> thefire02(rid24) 영업 중 "신규/추가주문 BAR만 늦게, KQ 중복, 통합 지연" 라이브 신고. 종일 추측 반복 끝에 **로그(print-trace)로 실측해 근본 2개 확정.** 인쇄 발송 단일기준도 정리.
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| QZ keepalive | QZ 웹소켓이 idle(주문 뜸한 20분) 동안 끊겨 다음 첫 인쇄가 재연결(Win7 SHA1 핸드셰이크 retries×2)로 ~16초 매달림 → 그동안 claim 쥐어 재무장→폴러 늦게/중복. 20초 keepalive(getVersion ping + idle중 백그라운드 선재연결)로 항상 warm. SW 4.33 | ✅ |
+| 발송 순서 = 스테이션 먼저 → 통합 | keepalive 후 KQ1 +2초인데 KQ2/BAR +16초 = 통합 2장(POS1=CASHIER+KQ POS=MASTER, 전체오더라 길다)이 QZ 한줄큐에서 BAR 앞을 막던 것. printKitchenTicketViaRawBT: 스테이션 라우팅 await 후 sendUnifiedTickets. MASTER는 설정상 Main POS 뒤라 맨 끝. SW 4.34 | ✅ |
+| 통합티켓 "정확히 1번" 가드 | 하이브리드+폴러가 통합을 2번 찍던 "POS1 통합 두 장" → consolidated-print/:id/claim(consolidated_printed_at null→now) atomic 가드. 새 라운드(추가/이동/취소/void)는 백엔드가 리셋해 재발행 | ✅ |
+| 아이템취소 = 그 회차 오더티켓 기준 | 취소품목이 원래 찍힌 회차(order_group) 품목만 + 취소 줄긋기 재발행(전체합본 아님). 주방이 레일의 그 회차 티켓과 짝맞춤. API+DB 실검증(회차1 취소→회차1만 / 회차0 취소→회차0만, served 제외) | ✅ |
+| 안정 검증루트 | backend `PATCH /:id/station-printed`(스테이션별 printed_at 즉시도장→재무장 시 그 스테이션 중복0) + `[print-trace]` 로깅(station-printed/stale-recovery). 내가 운영로그로 직접 타이밍 진단 가능 | ✅ |
+| 인쇄 발송 단일기준 정리 | 액션(신규/추가/이동/아이템취소/주문취소)×3채널(스테이션/POS1통합/MASTER통합) 발송표 확정. 세트구성품+옵션·특별요청·부분취소·미배정폴백·served제외 등 디테일 코드감사(대부분 구현됨 확인) | ✅ |
+
+### 수정된 파일 (운영 배포 완료 — SW 4.34)
+- `dev-frontend/src/utils/billPrint.js` (QZ keepalive·발송순서·통합가드·strikethrough·per-station PATCH)
+- `dev-frontend/src/hooks/useAutoPrintPoller.ts` · `dev-frontend/src/utils/hybridKitchenPrint.ts` (__consolidatedClaim·voided·_voided·isAddedRound)
+- `dev-backend/routes/orders-crud.js` (consolidated_printed_at 리셋·station-printed PATCH·print-trace·아이템취소 회차스코프)
+- `dev-backend/routes/consolidated-print.js` (claim 엔드포인트)
+
+### ⚠ 다음 섹션 대기 (Irene 지시 — 저장됨)
+1. **머지(R8) 2개 수정** (확인받기로 함): ①점유테이블 이동=머지 재발행에서 **served 제외**(orders-crud 1223줄 `printedItems`에 필터 없음 — 다른 액션과 불일치) ②머지 티켓 테이블 줄 **"Table1 + Table2"** 표시(현재 FloorPlanPage 1564줄 목적지 테이블 하나만). 헤더 "TABLE CHANGED + MERGED"는 유지.
+2. **프린트 자동발행(autoPrint) 기준 검토 + KDS(주방디스플레이)에서 제대로 안내/표시하는지 검토** (취소/이동/머지 팝업이 탭기준으로 맞게 뜨는지 등).
+3. 실프린터 눈 확인: 옵션 있는 세트구성품 옵션 렌더 + 4.34 발송순서/keepalive/아이템취소 회차 종이 확인. 확인 후 `check-print-guard.js --bless`.
+
+---
 
 ## ✅ 완료: thefire 브랜드메뉴 3매장 완전동기화 + 수요일 세트 표시 수정 (2026-06-27 #2, 운영 데이터)
 

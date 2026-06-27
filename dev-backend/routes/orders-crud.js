@@ -460,7 +460,9 @@ async function mergeItemsIntoOrder(existingOrder, newItems, transaction = null, 
     // additional-items kitchen ticket regardless of which page each POS
     // device is on. Without this, only a device sitting on KDS would
     // receive the socket-based fast-path; everyone else missed the print.
-    needs_print: true
+    needs_print: true,
+    // +Round/merge = 새 라운드 → 통합 가드 리셋(추가분 통합 카피 재발행). 새주문 hybrid+poller 더블만 가드, 재인쇄는 단일 소스라 안전.
+    consolidated_printed_at: null
   }, updateOptions);
 
   await existingOrder.reload(updateOptions);
@@ -1270,6 +1272,8 @@ router.post('/:id/move-table', authenticateToken, async (req, res) => {
         const _reprintUpdate = {
           needs_print: true,
           print_claimed_at: null,
+          // 테이블 이동 = 새 라운드 → 통합 가드 리셋(이동 안내 통합 카피 재발행).
+          consolidated_printed_at: null,
           // fromTable/toTable: 티켓 맨 아래 테이블 라인에 "이전(취소선) → 새" 로 표기(어느 테이블에서
           // 어디로 옮겼는지 주방이 즉시 알게). 프론트 billPrint 가 noticeHeader.fromTable/toTable 로 렌더.
           pending_reprint: { type: 'move', fromTable: _originFrom, toTable: destinationTableNumber || null, notice: { title: '** TABLE CHANGED **', fromTable: _originFrom, toTable: destinationTableNumber || null, lines: ['Discard the previous ticket.', 'Use THIS ticket.'] } }
@@ -1604,6 +1608,8 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
           const _creason = (req.body.reason && String(req.body.reason).trim()) || '';
           await order.update({
             order_items: cleared, needs_print: true, print_claimed_at: null,
+            // 주문취소 = 새 라운드 → 통합 가드 리셋(취소 안내 통합 카피 재발행).
+            consolidated_printed_at: null,
             pending_reprint: { type: 'cancel', notice: { title: '** ORDER CANCELLED **', lines: _creason ? ['Reason: ' + _creason, 'Do NOT make this order.'] : ['Do NOT make this order.'] } }
           });
         }
@@ -2549,14 +2555,19 @@ router.delete('/:id/items/:itemIndex', authenticateToken, requireVoidAccess, asy
       }
       order.needs_print = true;
       order.print_claimed_at = null;
-      // 2026-06-27 (Irene): 아이템 취소 = 테이블이동처럼 "전체 오더 재발행 + 취소품목만 줄긋기 + 이전 티켓 버려" 안내.
-      // 잔여 전체(정상) + 취소분량(_voided=true=글자 줄긋기) 을 한 티켓에 → 주방이 옛 티켓 버리고 이 완전한 새 티켓 사용.
-      // 이미 끝난(served/completed) 품목은 제외 — 주방 헷갈림 방지(전체취소표와 동일 규칙).
-      // printPerItem 분기는 백엔드에서 안 함(데이터는 항상 전체) — billPrint 가 균일하게 품목 1장씩/전체로 쪼갬.
+      // 아이템 void = 새 라운드 → 통합 가드 리셋(void 안내 통합 카피 재발행). MASTER(KQ POS) 미도달이면 자연히 안 감(#3).
+      order.consolidated_printed_at = null;
+      // 2026-06-27 (Irene 확정): 취소표는 "취소품목이 원래 찍힌 그 회차(order_group) 오더티켓"과 똑같게 —
+      // 그 회차 품목만 + 취소품목 줄긋기. (전체 합본 아님.) 이유: 주방이 레일에 걸린 "그 회차 오더티켓"과
+      // 짝맞춰 정확히 이해해야 함. 신규(group0)에서 취소 → group0(=처음 오더티켓) 품목만. +Round(group N)에서
+      // 취소 → 그 라운드 오더티켓 품목만. 주문취소(type=cancel)가 data.items 없이 order_group 배치로 회차별
+      // 분할되는 것과 동일 결과 — 아이템취소도 회차 기준으로 통일. served/completed 품목은 제외(주방 혼동 방지).
       const _vNotServed = (it) => it && it.status !== 'served' && it.status !== 'completed';
+      const _vRound = removedItem.order_group != null ? Number(removedItem.order_group) : 0;
+      const _vSameRound = (it) => (it && it.order_group != null ? Number(it.order_group) : 0) === _vRound;
       const _voidLines = [..._vlines, 'Discard the previous ticket.', 'Use THIS ticket.'];
       const _voidItems = [
-        ...(Array.isArray(orderItems) ? orderItems : []).filter(_vNotServed).map(it => ({ ...it, _voided: false })),
+        ...(Array.isArray(orderItems) ? orderItems : []).filter(it => _vNotServed(it) && _vSameRound(it)).map(it => ({ ...it, _voided: false })),
         { ...removedItem, _voided: true }
       ];
       order.pending_reprint = { type: 'void', notice: { title: '** ITEM CANCELLED **', lines: _voidLines }, data: { items: _voidItems } };

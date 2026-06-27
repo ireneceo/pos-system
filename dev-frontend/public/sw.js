@@ -10,7 +10,7 @@
  * caching SPA shell would conflict. If future offline support is needed, layer Workbox separately.
  */
 
-const SW_VERSION = '4.31-reachability-guard-20260627';
+const SW_VERSION = '4.34-stations-before-consolidated-20260627';
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {

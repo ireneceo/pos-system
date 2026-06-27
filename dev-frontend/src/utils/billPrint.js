@@ -351,6 +351,25 @@ function setupQZSecurity() {
  * QZ Tray는 PC에 설치된 프로그램으로, localhost:8182에서 WebSocket 서버를 실행한다.
  * 브라우저가 이 WebSocket에 연결하면 네트워크 프린터로 데이터를 전송할 수 있다.
  */
+let _qzKeepaliveTimer = null;
+// 2026-06-27 (Irene, thefire02 "16초 멈춤"): QZ 웹소켓이 idle(주문 뜸한 시간) 동안 끊기면, 다음 첫 인쇄가
+// qz.websocket.connect 재연결(Win7 SHA1 핸드셰이크 retries×2)로 ~16초 매달린다(로그: 20분 간격 주문마다
+// 16초 공백 → stale-recovery 재무장 → 폴러 늦게/중복 KQ 2장의 단일 뿌리). 백그라운드 keepalive 로 연결을
+// 항상 warm 유지 → 인쇄 경로는 재연결 비용 0. 끊겼으면 인쇄 "전에" 미리 재연결. 인쇄 방식/라우팅/내용 무변경.
+function _startQZKeepalive() {
+  if (_qzKeepaliveTimer) return;
+  _qzKeepaliveTimer = setInterval(() => {
+    try {
+      if (qz.websocket.isActive()) {
+        try { qz.api.getVersion().catch(() => {}); } catch (_) { /* 가벼운 핑으로 idle 드롭 방지 */ }
+      } else if (!qzConnecting) {
+        qzConnected = false;            // idle 중 끊김 → 백그라운드 선재연결(다음 인쇄 16초 안 매달리게)
+        connectQZTray().catch(() => {});
+      }
+    } catch (_) { /* non-fatal */ }
+  }, 20000);
+}
+
 export async function connectQZTray() {
   if (qzConnected && qz.websocket.isActive()) return true;
   if (qzConnecting) {
@@ -389,6 +408,7 @@ export async function connectQZTray() {
     } catch (e) {
       console.warn('QZ version detect failed, keeping ' + _qzSignAlgo, e && e.message);
     }
+    _startQZKeepalive(); // 연결 성공 후 keepalive 가동(중복 가드 내장) — idle 드롭→16초 재연결 방지.
     return true;
   } catch (err) {
     qzConnected = false;
@@ -2540,15 +2560,19 @@ export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerNa
     // legacy global kitchenPrinter.address received tickets), so shops that
     // moved to station printers saw nothing print after payment even though
     // the "Test print" button worked.
-    // 통합/카운터 오더티켓(스테이션 유무 무관, 한 번 — 신규/취소 동일 경로). 큐 막힘 방지의 근본은
-    // 순서 조정이 아니라, autoPrint=false 워크스테이션(예: KQ POS→도달안되는 MASTER)을
-    // computeUnifiedTicketTargets 에서 제외하는 것 (아래). 그래야 BAR 가 그 뒤에 안 밀린다.
-    sendUnifiedTickets(orderData, storeInfo, settings, { voided: false });
+    // 2026-06-27 (Irene, 정정): BAR 늦음의 진짜 원인 = MASTER 미도달이 아니라(다 네트워크 공유라 잘 나옴),
+    // 통합티켓(전체오더=길고, POS1+KQ POS 2장)이 QZ 한-줄 큐에서 KQ1 다음·BAR 앞에 끼어 ~14초 인쇄하느라
+    // 그 뒤 KQ2·BAR 가 밀린 것(로그 14642: KQ1 +2초 → 14초 공백 → KQ2/BAR +16초). → 주방 스테이션
+    // (KQ1·KQ2·BAR)을 먼저 다 보낸 뒤 통합을 맨 뒤로 보낸다. 통합은 그대로 전부 나오되 BAR 뒤로 비킴.
+    // (단일배치=신규주문이면 통합 내용=전체주문 그대로 — 순서만 바뀜, 내용/대상/방식 무변경.)
     const stationPrinters = settings.kitchenStationPrinters;
     const hasStationPrinters = stationPrinters && Object.keys(stationPrinters).length > 0;
     if (hasStationPrinters && !printerName) {
-      return await printKitchenTicketsByStation(orderData, storeInfo, settings);
+      const _stRes = await printKitchenTicketsByStation(orderData, storeInfo, settings);
+      sendUnifiedTickets(orderData, storeInfo, settings, { voided: false }); // 스테이션 다 나간 뒤 통합(BAR 안 막힘)
+      return _stRes;
     }
+    sendUnifiedTickets(orderData, storeInfo, settings, { voided: false }); // 비-스테이션(레거시 단일 프린터)
 
     // kitchenPrinter.enabled 체크 — Station 유무 관계없이 동일
     if (!settings.kitchenPrinter.enabled) {
@@ -4130,14 +4154,6 @@ function sendUnifiedTickets(orderData, storeInfo, settings, opts) {
         // Tag each item with its station name so the counter copy shows inline
         // [KQ1] [KQ2] [BARPR] next to each item — cashier verifies routing at a glance.
         const tagged = tagTicketWithStations(base, 'COUNTER', settings);
-        // 2026-06-27 (Irene): 기기-인지 도달성 가드. 통합티켓은 "이 자동인쇄 기기"(예: Main POS)가 보낸다.
-        // 그 기기에서 도달 안 되는 프린터(예: KQ POS 의 "MASTER" = 다른 PC 에 물린 프린터)로 쏘면 QZ 큐
-        // (한 줄 순차처리)가 ~12초 막혀 주방 스테이션(BAR)까지 뒤로 밀린다(신규/추가주문 BAR 늦음·재무장·KQ 중복 근본).
-        // → "이 기기가 실제 연결한 프린터" 목록(qz.printers.find())에 없는 OS 프린터 대상은 건너뛴다.
-        // 워크스테이션 등록(consolidatedTicket)은 존중 — 도달되는 기기에선 그대로 인쇄. 목록을 못 받으면
-        // (QZ 미연결 등) 가드 생략 = 기존 동작(회귀 0). LAN IP·browser 대상은 비적용.
-        let _reachable = null;
-        try { const _pl = await qz.printers.find(); if (Array.isArray(_pl)) _reachable = new Set(_pl.map(p => String(p))); } catch (e) { /* 못 받으면 가드 생략 */ }
         targets.forEach(tgt => {
           const label = (tgt.label || 'COUNTER').toUpperCase();
           // 2026-06-12 (Irene): 워크스테이션별 범위 — 선택한 주방 스테이션의 품목만 모은
@@ -4162,11 +4178,6 @@ function sendUnifiedTickets(orderData, storeInfo, settings, opts) {
           const ticket = { ...scoped, groupLabel: label, printedAt: label, noStationBox: true, showItemStations: true };
           const billAddr = tgt.address;
           const isLanIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(billAddr || '');
-          // 기기-인지 도달성: 이 기기가 연결 못 한 OS 프린터 대상이면 건너뜀(큐 막힘 방지). LAN IP/browser 제외.
-          if (!isLanIP && tgt.method !== 'browser' && billAddr && _reachable && !_reachable.has(String(billAddr))) {
-            console.warn(`[print] 통합티켓 건너뜀 — 이 기기에서 프린터 "${billAddr}" 도달 불가(다른 PC 프린터일 수 있음).`);
-            return;
-          }
           if (isLanIP) {
             sendViaQZTray(generateKitchenTicketContent(ticket, storeInfo), billAddr)
               .catch(e => console.warn('Unified ticket print failed:', e && e.message));
