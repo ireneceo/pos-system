@@ -11,8 +11,7 @@
 ### 1-1. ✅ 브랜드메뉴 이름 한글 제거 (일괄 정리) — 완료 (2026-06-27 운영 적용)
 규칙 3가지(Irene): (a)한글+구분자`l` 제거 "망고 크로플 l Mango Croffle"→`Mango Croffle` (b)한글만→제거 (c)한글 뒤 수량 등 비한글이면 한글만 제거 "후라이드 치킨 윙 16pcs l…"→`16pcs l…`.
 - **적용 결과:** brand5 메뉴 119개 이름 + 3매장(rid16/24/25) 상품 357개 한글 제거. 한글 잔존 0 검증. 빈 이름 0. RA커스텀 보존(0건). 알고리즘=한글제거 후 잔여 " l " 좌측이 수량(\d pcs)이면 유지(치킨윙), 아니면 영문측만(잔여조각 100/&/UFO/(2인) 등 제거). 백업 `/var/www/backups/thefire-brandmenu-names-20260627.json`.
-- **남은 확인(소):** 치킨윙 8pcs/16pcs 는 규칙c대로 "8pcs l Fried Chicken Wing (2 flavors)" 로 " l " 유지 중 → Irene 가 " l "도 빼길 원하면 "8pcs Fried Chicken Wing (2 flavors)" 로 추가 정리.
-- **옵션 이름 한글(예: 치킨 소스 "꿀간장치킨 l Soy Honey…")은 아직 안 건드림** — 메뉴 이름만 처리. 옵션도 제거할지 별도 확인(다음 섹션).
+- **(2차 완료, Irene 추가지시)** 옵션 이름 + 치킨윙 " l " 까지 전부 제거: 브랜드옵션 24 + 매장옵션 72 + 치킨윙 메뉴2·상품6. 옵션 구분자 "I"(대문자i)도 처리, 이모지 보존. 옵션그룹·카테고리·Product.category 는 원래 한글0. **전 테이블 한글잔존 0.** 백업 `thefire-options-names-20260627.json`. 치킨윙="8pcs Fried Chicken Wing (2 flavors)".
 
 ### 1-2. 🐞 브랜드메뉴 순서 드래그 — 실제로 안 됨 (버그, 원인규명 필요)
 - **정정:** 코드 경로(DragHandle draggable→onDragStart→onDrop→handleDropOnMenu→persistBrandOrder→`PUT /api/brand-menus/reorder/bulk`→loadMenus)는 있으나 **실사용에서 드래그 재정렬이 안 됨**(Irene 확인). "Menu order(manual)" 정렬에서만 핸들 노출되는데 그래도 안 됨.
