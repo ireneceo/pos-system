@@ -1531,7 +1531,9 @@ export function generateHTMLKitchenTicket(orderData, storeInfo) {
   // 오더티켓과 같은 모양 + 큰 CANCELLED 도장이라 레일의 원본 티켓과 즉시 짝맞춤 가능(업계 표준).
   // ⚠ voided 가 false(평소 주문)면 _strike 는 원문 그대로 → 일반 티켓 출력 100% 불변.
   const _void = !!orderData.voided;
-  const _strike = (t) => _void ? `<span style="text-decoration:line-through;">${t}</span>` : t;
+  // 2026-06-27 (Irene): 취소선은 인자(on)로 켠다 — 품목별 적용 가능(전체취소=모든 품목, 아이템취소=그 품목만).
+  // thermal 가독성 위해 줄 두껍게(text-decoration-thickness). voided=false 평소 주문은 on=false → 불변.
+  const _strike = (t, on) => on ? `<span style="text-decoration:line-through;text-decoration-thickness:3px;">${t}</span>` : t;
 
   // Items — kitchen format: large qty × name + starred options + inline station tag
   // The station tag lets POS staff (when this ticket comes out at the counter)
@@ -1545,6 +1547,8 @@ export function generateHTMLKitchenTicket(orderData, storeInfo) {
   const itemsHtml = orderData.items.map(item => {
     const itemName = escapeHtmlForPrint(item.menuItem?.name || item.name);
     const qty = item.quantity;
+    // 2026-06-27 (Irene): 품목별 취소선 판정 — 전체취소(_void)면 모든 품목, 아이템취소면 그 품목(item._voided)만.
+    const _iv = _void || !!(item && item._voided);
     const stationTagHtml = _stationTag(item.stationName);
     // 세트 구성품: set_components 우선, 없으면 레거시 set_items 폴백(둘 다 메뉴명 보유).
     // (테이블이동/구주문이 set_components 없이 set_items 만 들고 와도 메뉴명 크게 펼침)
@@ -1573,11 +1577,11 @@ export function generateHTMLKitchenTicket(orderData, storeInfo) {
         const co = Array.isArray(c.options) && c.options.length
           ? _optBox(c.options.join(', ')) : '';
         // 구성품은 각자 걸린 주방을 표시(통합 티켓 전용). 부모 세트 태그 대신 구성품 자기 station.
-        return `<div class="item-name" style="font-size:18px;font-weight:700;">${_strike(`${cq} × ${cn}`)}${_stationTag(c.stationName)}</div>${co}`;
+        return `<div class="item-name" style="font-size:18px;font-weight:700;">${_strike(`${cq} × ${cn}`, _iv)}${_stationTag(c.stationName)}</div>${co}`;
       }).join('');
       return `
       <div class="item">
-        <div style="font-size:11px;font-weight:600;letter-spacing:0.3px;color:#000;">↳ ${_strike(itemName)}</div>
+        <div style="font-size:11px;font-weight:600;letter-spacing:0.3px;color:#000;">↳ ${_strike(itemName, _iv)}</div>
         ${compsHtml}
         ${setLevelOptionsHtml}
         ${siHtml}
@@ -1586,7 +1590,7 @@ export function generateHTMLKitchenTicket(orderData, storeInfo) {
     }
     return `
       <div class="item">
-        <div class="item-name" style="font-size:18px;font-weight:700;">${_strike(`${qty} × ${itemName}`)}${stationTagHtml}</div>
+        <div class="item-name" style="font-size:18px;font-weight:700;">${_strike(`${qty} × ${itemName}`, _iv)}${stationTagHtml}</div>
         ${setLevelOptionsHtml}
         ${siHtml}
       </div>
@@ -1653,6 +1657,11 @@ export function generateHTMLKitchenTicket(orderData, storeInfo) {
     } else {
       const pickupNum = orderData.pickupNumber || (orderData.orderNumber ? orderData.orderNumber.split('-')[1] : '000');
       pickupHtml = `<div class="big-number">PICKUP ${escapeHtmlForPrint(pickupNum)}</div>`;
+    }
+    // 2026-06-27 (Irene): 추가주문(+Round) 이면 번호 옆에 "+Added" — 주방이 "이건 추가분"임을 즉시 알게.
+    // 폴러/하이브리드가 회차(order_group>0, 단 재발행 아님)일 때만 isAddedRound 켠다.
+    if (orderData.isAddedRound && pickupHtml) {
+      pickupHtml = pickupHtml.replace('</div>', ' <span style="font-size:0.55em;font-weight:800;vertical-align:middle;">+Added</span></div>');
     }
   }
 
@@ -2525,14 +2534,16 @@ export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerNa
     //     로 통합티켓이 새던 오발행 차단(UI에서 제거된 옛 mirrorToBillPrinter 잔류값 때문이었음).
     //  ② 통합티켓 상단 라벨 = 해당 워크스테이션 이름(예: Main POS / POS 2). "COUNTER" 하드코딩 폐기.
     //  새 주문·취소가 동일한 sendUnifiedTickets 규칙을 공유(아래 정의). 스테이션 라우팅/주방 발행 무접촉.
-    sendUnifiedTickets(orderData, storeInfo, settings, { voided: false });
-
     // 2026-05-27: Station routing — if the shop configured kitchenStationPrinters,
     // bucket items by station and send each station its own ticket. Without this
     // branch, auto-print on payment ignored station printers entirely (only the
     // legacy global kitchenPrinter.address received tickets), so shops that
     // moved to station printers saw nothing print after payment even though
     // the "Test print" button worked.
+    // 통합/카운터 오더티켓(스테이션 유무 무관, 한 번 — 신규/취소 동일 경로). 큐 막힘 방지의 근본은
+    // 순서 조정이 아니라, autoPrint=false 워크스테이션(예: KQ POS→도달안되는 MASTER)을
+    // computeUnifiedTicketTargets 에서 제외하는 것 (아래). 그래야 BAR 가 그 뒤에 안 밀린다.
+    sendUnifiedTickets(orderData, storeInfo, settings, { voided: false });
     const stationPrinters = settings.kitchenStationPrinters;
     const hasStationPrinters = stationPrinters && Object.keys(stationPrinters).length > 0;
     if (hasStationPrinters && !printerName) {
@@ -3533,6 +3544,14 @@ function _bucketItemsByStation(items, stationPrinters, menuStationMap) {
 }
 
 async function printKitchenTicketsByStation(orderData, storeInfo, settings) {
+  // 2026-06-27 (Irene): 아이템취소 재발행은 "취소품목이 속한 스테이션"만 발행 — 무관 스테이션(KQ 등) 제외.
+  // (추가주문이 새 품목 스테이션만 가는 것과 동일 패턴.) 통합/오더티켓(sendUnifiedTickets)은
+  // printKitchenTicketViaRawBT 에서 이미 전체오더로 발행됨 → 여기선 스테이션 발행만 좁힘.
+  // 전체취소(orderData.voided=true)·테이블이동·추가주문·일반주문은 필터 미적용 = 동작 100% 그대로.
+  if (!orderData.voided && Array.isArray(orderData.items) && orderData.items.some(it => it && it._voided)) {
+    const _vSt = new Set(orderData.items.filter(it => it && it._voided).map(it => it.kitchen_station_id != null ? Number(it.kitchen_station_id) : null));
+    orderData = { ...orderData, items: orderData.items.filter(it => _vSt.has(it.kitchen_station_id != null ? Number(it.kitchen_station_id) : null)) };
+  }
   const stationPrinters = settings.kitchenStationPrinters || {};
   const stationIds = Object.keys(stationPrinters);
 
@@ -3620,6 +3639,17 @@ async function printKitchenTicketsByStation(orderData, storeInfo, settings) {
         if (attempt === 1) await new Promise(r => setTimeout(r, 600));
       }
       stationResults.push({ stationId, stationName, ok, error: lastErr && lastErr.message });
+      // 2026-06-27 (Irene): 이 스테이션 성공 즉시 "스테이션별 인쇄확인"(printed_at). 느린 다른 스테이션(BAR)이
+      // hang 해 죽은-claim 복구가 재무장해도, 이미 찍은 이 스테이션은 kitchen_items 에서 빠져 재인쇄 0(KQ 중복 제거).
+      // fire-and-forget(인쇄 안 느리게). 자동인쇄 경로(폴러/하이브리드 = orderId+token 보유)만 적용 — 수동 무영향.
+      if (ok && stationId != null) {
+        try {
+          const _pc = orderData && orderData.__consolidatedClaim;
+          if (_pc && _pc.orderId && _pc.token) {
+            fetch(`/api/orders/${_pc.orderId}/station-printed`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${_pc.token}` }, body: JSON.stringify({ stationId: Number(stationId) }) }).catch(() => {});
+          }
+        } catch (e) { /* non-fatal */ }
+      }
       if (!ok) {
         console.error(`🍳 Station ${stationName} ALL attempts failed — moving to next station to avoid cascade.`);
       }
@@ -3655,8 +3685,23 @@ async function printKitchenTicketsByStation(orderData, storeInfo, settings) {
       // 다시 안 찍힘(중복 0). 어디로도 못 커버한 경우만 allOk(false) 그대로 → 폴러 재시도. 인쇄 방식/
       // 스테이션 라우팅 무변경 — "부분실패 후 재인쇄 정책"만 정밀화(영구실패 무한중복 근본 제거).
       const _mirrorOn = !!(settings.kitchenPrinter && settings.kitchenPrinter.mirrorToBillPrinter);
-      let _failedCovered = _mirrorOn;
-      if (!_mirrorOn) {
+      // 2026-06-27 (Irene "POS1 두 장"): 통합티켓(consolidatedTicket)이 이미 그 실패 품목을 이 단말의
+      // 빌프린터로 찍었으면, 카운터 구조 인쇄는 같은 프린터에 같은 품목을 또 찍는 중복(POS1 두 장)이다.
+      // 통합티켓에 품목이 다 있으니 분실 위험 0 → 구조 생략. 통합티켓이 그 빌프린터를 커버하지 않는
+      // 매장은 기존대로 카운터 구조(분실 방지) 유지. 라우팅/방식 무변경 — 중복 한 장만 제거. 일반 적용.
+      let _consolidatedCoversCounter = false;
+      try {
+        const _bpNow = getActiveBillPrinter();
+        const _bpAddr = ((_bpNow && _bpNow.address) || '').trim();
+        if (_bpAddr) {
+          const _utTargets = computeUnifiedTicketTargets(settings);
+          const _failedSids = failedStations.map(f => Number(f.stationId));
+          _consolidatedCoversCounter = _failedSids.length > 0 && _failedSids.every(sid =>
+            _utTargets.some(t => t.address === _bpAddr && (!t.stations || t.stations.length === 0 || t.stations.includes(sid))));
+        }
+      } catch (e) { /* non-fatal */ }
+      let _failedCovered = _mirrorOn || _consolidatedCoversCounter;
+      if (!_failedCovered) {
         try {
           const failedItems = failedStations.flatMap(f => stationItems[f.stationId] || []);
           const bp = getActiveBillPrinter();
@@ -4065,12 +4110,34 @@ function sendUnifiedTickets(orderData, storeInfo, settings, opts) {
     if (targets.length === 0) return;
     const voided = !!(opts && opts.voided);
     const reason = opts && opts.reason;
-    setTimeout(() => {
+    setTimeout(async () => {
       try {
+        // 통합티켓 "정확히 한 번" 가드 (2026-06-27, Irene): 자동인쇄(폴러·하이브리드)가 넘긴
+        // __consolidatedClaim 이 있을 때만 적용. 첫 발행만 claim 성공 → 인쇄, re-arm/재시도 재실행은
+        // claim 실패 → skip(중복 0, "POS1 통합 두 장" 근본수정). 새 라운드(+Round/이동/취소/void)는
+        // 백엔드가 consolidated_printed_at 을 리셋해 정상 재발행. 취소/void 안내(voided)·수동 재인쇄
+        // (__consolidatedClaim 없음)는 항상 발행(무영향). 주방/스테이션 즉시인쇄는 이미 위에서 완료 → 속도 무영향.
+        // 클레임 실패/네트워크오류는 분실 방지 위해 그냥 발행(기존 동작, 회귀 0).
+        const _cc = (!voided && orderData && orderData.__consolidatedClaim) || null;
+        if (_cc && _cc.orderId && _cc.token) {
+          try {
+            const _r = await fetch(`/api/consolidated-print/${_cc.orderId}/claim`, { method: 'PATCH', headers: { Authorization: `Bearer ${_cc.token}` } });
+            const _j = await _r.json().catch(() => null);
+            if (_j && _j.claimed === false) return; // 이미 발행됨 → 중복 skip
+          } catch (e) { /* 발행 진행 */ }
+        }
         const base = voided ? buildVoidTicketData(orderData, reason) : orderData;
         // Tag each item with its station name so the counter copy shows inline
         // [KQ1] [KQ2] [BARPR] next to each item — cashier verifies routing at a glance.
         const tagged = tagTicketWithStations(base, 'COUNTER', settings);
+        // 2026-06-27 (Irene): 기기-인지 도달성 가드. 통합티켓은 "이 자동인쇄 기기"(예: Main POS)가 보낸다.
+        // 그 기기에서 도달 안 되는 프린터(예: KQ POS 의 "MASTER" = 다른 PC 에 물린 프린터)로 쏘면 QZ 큐
+        // (한 줄 순차처리)가 ~12초 막혀 주방 스테이션(BAR)까지 뒤로 밀린다(신규/추가주문 BAR 늦음·재무장·KQ 중복 근본).
+        // → "이 기기가 실제 연결한 프린터" 목록(qz.printers.find())에 없는 OS 프린터 대상은 건너뛴다.
+        // 워크스테이션 등록(consolidatedTicket)은 존중 — 도달되는 기기에선 그대로 인쇄. 목록을 못 받으면
+        // (QZ 미연결 등) 가드 생략 = 기존 동작(회귀 0). LAN IP·browser 대상은 비적용.
+        let _reachable = null;
+        try { const _pl = await qz.printers.find(); if (Array.isArray(_pl)) _reachable = new Set(_pl.map(p => String(p))); } catch (e) { /* 못 받으면 가드 생략 */ }
         targets.forEach(tgt => {
           const label = (tgt.label || 'COUNTER').toUpperCase();
           // 2026-06-12 (Irene): 워크스테이션별 범위 — 선택한 주방 스테이션의 품목만 모은
@@ -4095,6 +4162,11 @@ function sendUnifiedTickets(orderData, storeInfo, settings, opts) {
           const ticket = { ...scoped, groupLabel: label, printedAt: label, noStationBox: true, showItemStations: true };
           const billAddr = tgt.address;
           const isLanIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(billAddr || '');
+          // 기기-인지 도달성: 이 기기가 연결 못 한 OS 프린터 대상이면 건너뜀(큐 막힘 방지). LAN IP/browser 제외.
+          if (!isLanIP && tgt.method !== 'browser' && billAddr && _reachable && !_reachable.has(String(billAddr))) {
+            console.warn(`[print] 통합티켓 건너뜀 — 이 기기에서 프린터 "${billAddr}" 도달 불가(다른 PC 프린터일 수 있음).`);
+            return;
+          }
           if (isLanIP) {
             sendViaQZTray(generateKitchenTicketContent(ticket, storeInfo), billAddr)
               .catch(e => console.warn('Unified ticket print failed:', e && e.message));

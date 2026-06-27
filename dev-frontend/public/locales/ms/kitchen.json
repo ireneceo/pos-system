@@ -43,19 +43,6 @@
   "notice": {
     "moveTitle": "Meja Dipindahkan",
     "sameOrder": "Pesanan sama — JANGAN buat lagi.",
-    "mergedAtTable": "Digabung dengan pesanan sedia ada di {{table}}",
-    "notPrintedTitle": "Tiket TIDAK Dicetak",
-    "notPrintedBody": "tiket ini TIDAK dicetak.",
-    "fallbackTitle": "Dicetak ke Pencetak Lain",
-    "fallbackBody": "dicetak ke pencetak lain.",
-    "fallbackHint": "Pencetak stesen yang dituju tidak dapat dihubungi. Sila semak pencetak.",
-    "reason": "Sebab",
-    "printNowHint": "Tekan “Cetak sekarang” untuk mencetak di sini.",
-    "printNow": "Cetak sekarang",
-    "dismiss": "Tutup"
-  },
-  "badge": {
-    "notPrinted": "TIDAK DICETAK",
-    "wrongPrinter": "PENCETAK SALAH"
+    "mergedAtTable": "Digabung dengan pesanan sedia ada di {{table}}"
   }
 }

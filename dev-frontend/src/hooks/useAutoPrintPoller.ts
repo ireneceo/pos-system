@@ -129,12 +129,17 @@ export function useAutoPrintPoller(opts: {
               special_instructions: it.special_instructions || it.specialInstructions || '',
               // 2026-05-28: stationName backend-enriched (single source).
               // print 함수가 item.stationName 으로 inline tag + station header.
-              stationName: it.stationName || null
+              stationName: it.stationName || null,
+              // 2026-06-27 (Irene): 아이템취소 품목별 줄긋기 플래그 보존(백엔드 pending_reprint.data.items 가 표시).
+              _voided: !!it._voided
             });
             const printData: any = {
               // 2026-06-24: 테이블이동 재발행이면 "TABLE CHANGED" 안내 헤더(주방이 옛 티켓 버리게).
               // backend 가 pending_reprint.notice 에 담아 보낸다. 일반 신규주문은 notice 없음.
               ...(ord.pending_reprint && ord.pending_reprint.notice ? { noticeHeader: ord.pending_reprint.notice } : {}),
+              // 2026-06-27 (Irene): 취소선 복구 — 전체취소(type=cancel)면 모든 품목 줄긋기(voided), 아이템취소는
+              // 품목별 _voided(백엔드가 해당 품목만 표시). 하이브리드 도입 후 voided 누락으로 줄이 안 그어지던 버그 수정.
+              ...(ord.pending_reprint && ord.pending_reprint.type === 'cancel' ? { voided: true } : {}),
               orderNumber: ord.order_number,
               pickupNumber: ord.order_number ? String(ord.order_number).split('-')[1] : '',
               tableNumber: ord.table_number || undefined,
@@ -154,7 +159,10 @@ export function useAutoPrintPoller(opts: {
               // 2026-06-25 (Irene "빌에 카드타입 안 나옴"): 주문 card_type(snake) → 빌의 cardType(camel)
               // 으로 전달. billPrint.paymentMethodLabel 이 카드+타입을 라벨에 붙임(인쇄 로직 무변경).
               cardType: ord.card_type || null,
-              cashierName: ord.source === 'mobile' ? 'Mobile Order' : 'POS'
+              cashierName: ord.source === 'mobile' ? 'Mobile Order' : 'POS',
+              // 2026-06-27 (Irene): 통합티켓 "한 번만" 가드 신호 — 자동인쇄(폴러)가 주문 id+토큰을 넘겨
+              // sendUnifiedTickets 가 라운드당 통합 1회만 발행(re-arm 재실행 시 중복 0). 수동/취소안내엔 없음(항상 발행).
+              __consolidatedClaim: { orderId: ord.id, token: tok }
             };
 
             // Bill — payment 완료된 주문만 polling 으로 인쇄 (모바일 QR 즉시
@@ -231,7 +239,9 @@ export function useAutoPrintPoller(opts: {
                   }
                   let ok: any = true;
                   for (let bi = 0; bi < _batches.length; bi++) {
-                    const kitchenPrintData = { ...printData, items: _batches[bi].map(mapItem) };
+                    const kitchenPrintData = { ...printData, items: _batches[bi].map(mapItem),
+                      // 2026-06-27 (Irene): 추가주문 회차(order_group>0, 재발행 아님)면 +Added 표시.
+                      isAddedRound: !_isReprint && !!(_batches[bi][0] && Number(_batches[bi][0].order_group) > 0) };
                     let r: any = true;
                     try { r = await billPrintMod.printKitchenTicketViaRawBT(kitchenPrintData, printStoreInfo); }
                     catch (e: any) { console.error('[autoPrint] kitchen failed:', e); r = false; }

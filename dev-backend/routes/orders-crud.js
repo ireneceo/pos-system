@@ -2549,7 +2549,17 @@ router.delete('/:id/items/:itemIndex', authenticateToken, requireVoidAccess, asy
       }
       order.needs_print = true;
       order.print_claimed_at = null;
-      order.pending_reprint = { type: 'void', notice: { title: '** ITEM VOIDED **', lines: _vlines }, data: { items: [removedItem] } };
+      // 2026-06-27 (Irene): 아이템 취소 = 테이블이동처럼 "전체 오더 재발행 + 취소품목만 줄긋기 + 이전 티켓 버려" 안내.
+      // 잔여 전체(정상) + 취소분량(_voided=true=글자 줄긋기) 을 한 티켓에 → 주방이 옛 티켓 버리고 이 완전한 새 티켓 사용.
+      // 이미 끝난(served/completed) 품목은 제외 — 주방 헷갈림 방지(전체취소표와 동일 규칙).
+      // printPerItem 분기는 백엔드에서 안 함(데이터는 항상 전체) — billPrint 가 균일하게 품목 1장씩/전체로 쪼갬.
+      const _vNotServed = (it) => it && it.status !== 'served' && it.status !== 'completed';
+      const _voidLines = [..._vlines, 'Discard the previous ticket.', 'Use THIS ticket.'];
+      const _voidItems = [
+        ...(Array.isArray(orderItems) ? orderItems : []).filter(_vNotServed).map(it => ({ ...it, _voided: false })),
+        { ...removedItem, _voided: true }
+      ];
+      order.pending_reprint = { type: 'void', notice: { title: '** ITEM CANCELLED **', lines: _voidLines }, data: { items: _voidItems } };
     }
 
     // 2026-05-29: 아이템 삭제도 머지와 동일한 정식 공식(computeOrderTotals)으로
@@ -2783,9 +2793,12 @@ router.get('/restaurant/:restaurantId/pending-print', authenticateToken, async (
     // 를 되살려(needs_print=true) 인쇄 전담 POS 가 다음 폴에서 받게 한다. 불변식상 print_claimed_at
     // 가 NOT NULL 인 채로 STALE = "claim됐으나 인쇄 미확인" 뿐이라 중복 인쇄 위험 없음(인쇄확인되면
     // NULL). 인쇄 방식·라우팅 무변경 — 분실 방지 트리거만. 기기 설정 무관(노트북/서버 어디서 넣어도 OK).
-    const STALE_CLAIM_SEC = 10;  // 죽은 claim 복구 대기. 실제 인쇄확인(1~3초)보다 충분히 길어 중복 안전, 빠른 복구.
+    // 2026-06-27 롤백: 30초로 늘렸더니 BAR 재시도(재인쇄)가 사라져 BAR가 아예 미인쇄(주문 누락)됐다.
+    // BAR 프린터가 첫 시도엔 소리만 나고 안 찍히고 재시도에서 찍히는 상태라, 재시도가 필요. 10초로 원복.
+    // (KQ 중복은 "실패 스테이션만 재시도"로 따로 근본수정 예정 — per-station printed 추적.)
+    const STALE_CLAIM_SEC = 10;
     try {
-      await Order.sequelize.query(
+      const _reRes = await Order.sequelize.query(
         // 2026-06-24 (Irene "취소했는데 프린트 안나옴"): 취소/삭제/이동 안내 재발행은 주문이
         // claim 직후 삭제(is_deleted=1)되는 레이스에 취약했다(취소→3초뒤 주문삭제 → claim된 채
         // 인쇄확인 못오고 삭제되어 stale복구 제외 → 취소표 영구분실). 명시적 재발행(pending_reprint
@@ -2799,6 +2812,9 @@ router.get('/restaurant/:restaurantId/pending-print', authenticateToken, async (
                  OR (pending_reprint IS NOT NULL AND print_claimed_at > (NOW() - INTERVAL 300 SECOND)) )`,
         { replacements: { rid: restaurantId, sec: STALE_CLAIM_SEC } }
       );
+      // 인쇄 추적(검증 루트): 죽은-claim 복구가 재무장한 주문 수. >0 = 느린/끊긴 인쇄로 폴러 재시도 발동.
+      // per-station 추적 정상이면 재시도는 안 찍힌 스테이션(BAR)만 → 이미 찍은 KQ 재인쇄 0.
+      try { const _ra = (_reRes && _reRes[0] && _reRes[0].affectedRows) || 0; if (_ra > 0) console.log(`[print-trace] stale-recovery re-armed=${_ra} rid=${restaurantId}`); } catch {}
     } catch (reErr) { console.error('[pending-print] stale-claim recovery error:', reErr.message); }
     const orders = await Order.findAll({
       where: {
@@ -2948,6 +2964,39 @@ router.patch('/:id/print-rearm', authenticateToken, async (req, res) => {
     res.json({ success: true });
   } catch (e) {
     console.error('[print-rearm] error:', e.message);
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// 2026-06-27 (Irene, thefire02 신규/추가 KQ 중복): 스테이션별 인쇄확인. 한 주방(KQ1/KQ2)이 찍히는
+// 즉시 "그 스테이션 품목만" printed_at 찍는다(needs_print/print_claimed_at 는 안 건드림 — 전체 인쇄는
+// 아직 진행 중, BAR 등 느린 스테이션 남음). 효과: BAR 가 hang 해 죽은-claim 복구(10초)가 재무장해도
+// 폴러의 kitchen_items 는 "안 찍힌 BAR 만" → 이미 찍은 KQ 는 재인쇄 안 됨(KQ 중복 0). 실패 스테이션만
+// 재시도 = Irene "하이브리드 조건 통합". 신규·추가·이동·취소 모든 경로 공통(stationId 별 멱등).
+router.patch('/:id/station-printed', authenticateToken, async (req, res) => {
+  try {
+    const stationId = req.body && req.body.stationId != null ? Number(req.body.stationId) : null;
+    if (stationId == null || Number.isNaN(stationId)) return res.status(400).json({ success: false, message: 'stationId required' });
+    const o = await Order.findByPk(req.params.id);
+    if (!o) return res.status(404).json({ success: false, message: 'Order not found' });
+    if (req.user.role !== 'System Admin' && parseInt(req.user.restaurant_id) !== o.restaurant_id) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+    const items = Array.isArray(o.order_items)
+      ? o.order_items
+      : (typeof o.order_items === 'string' ? (() => { try { return JSON.parse(o.order_items); } catch { return []; } })() : []);
+    const now = new Date().toISOString();
+    let changed = false;
+    const stamped = items.map(it => {
+      if (it && !it.printed_at && Number(it.kitchen_station_id) === stationId) { changed = true; return { ...it, printed_at: now }; }
+      return it;
+    });
+    if (changed) await o.update({ order_items: stamped });
+    // 인쇄 추적(검증 루트): 같은 주문·같은 station 이 두 번 찍히면 changed=true 한 번 + (재인쇄 시도)변화. 정상=station당 1회.
+    console.log(`[print-trace] station-printed order=${req.params.id} rid=${o.restaurant_id} station=${stationId} changed=${changed}`);
+    res.json({ success: true, data: { stationId, changed } });
+  } catch (e) {
+    console.error('[station-printed] error:', e.message);
     res.status(500).json({ success: false, message: e.message });
   }
 });

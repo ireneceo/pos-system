@@ -46,10 +46,8 @@ const NoticeOverlay = styled.div`
   background: rgba(10, 37, 64, 0.55);
   display: flex; align-items: center; justify-content: center; padding: 24px;
 `;
-// 2026-06-26 (Irene 인쇄 가시성): 'not-printed'(인쇄 실패/미인쇄 — 빨강, [지금 인쇄] 버튼) +
-// 'fallback'(가짜초록 — 의도 프린터 미도달로 다른 프린터에 나감, 앰버 경고).
-type NoticeKind = 'void' | 'move' | 'order-cancel' | 'not-printed' | 'fallback';
-const isRedKind = (k: NoticeKind) => k === 'void' || k === 'order-cancel' || k === 'not-printed';
+type NoticeKind = 'void' | 'move' | 'order-cancel';
+const isRedKind = (k: NoticeKind) => k === 'void' || k === 'order-cancel';
 const NoticeCard = styled.div<{ $kind: NoticeKind }>`
   background: #fff; border-radius: 16px; width: 100%; max-width: 520px;
   border-top: 8px solid ${p => isRedKind(p.$kind) ? '#FF6B6B' : '#F59E0B'};
@@ -76,26 +74,6 @@ const NoticeConfirm = styled.button<{ $kind: NoticeKind }>`
 `;
 const NoticeCount = styled.div`
   text-align: center; padding: 10px; font-size: 13px; color: #6B7C93; background: #F1F4F8;
-`;
-// 2026-06-26: not-printed 팝업의 2버튼(지금 인쇄 / 닫기). 취소팝업 NoticeConfirm 과 같은 톤.
-const NoticeActions = styled.div`
-  display: flex; border-top: 1px solid #EDF1F5;
-`;
-const NoticePrintBtn = styled.button`
-  flex: 1; border: none; cursor: pointer; padding: 18px; min-height: 60px;
-  font-size: 18px; font-weight: 800; color: #fff; background: #10B981;
-  &:disabled { opacity: 0.6; cursor: default; }
-`;
-const NoticeDismissBtn = styled.button`
-  flex: 1; border: none; cursor: pointer; padding: 18px; min-height: 60px;
-  font-size: 18px; font-weight: 700; color: #fff; background: #9CA3AF;
-`;
-// 2026-06-26: 카드의 "미인쇄" 배지(안됐을 때만). 빨강=미인쇄, 앰버=다른 프린터로 나감.
-const NotPrintedBadge = styled.span<{ $fallback?: boolean }>`
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 3px 9px; border-radius: 6px; font-size: 12px; font-weight: 800;
-  color: #fff; background: ${p => p.$fallback ? '#F59E0B' : '#FF6B6B'};
-  letter-spacing: 0.02em;
 `;
 
 const ContentArea = styled.div`
@@ -753,20 +731,10 @@ const KitchenDisplayPage: React.FC = () => {
   // 2026-06-01 (Irene): 인쇄 대신 화면 팝업+알림음으로 주방에 알림. 확인 눌러야 닫힘.
   // 전체 탭(selectedStation='all') 이면 모든 안내, 특정 스테이션 탭이면 그 스테이션
   // 아이템이 걸린 안내만 표시(스테이션 무관 아이템은 모든 탭에 표시).
-  type KitchenNotice = { id: string; kind: NoticeKind; orderNumber: string; tableNumber?: string; toTable?: string; itemText?: string; reason?: string; merged?: boolean; intoOrderNumber?: string; at: number;
-    // 2026-06-26 인쇄 가시성: not-printed/fallback 전용
-    orderId?: string | number; reasonText?: string; intended?: string; actual?: string };
+  type KitchenNotice = { id: string; kind: NoticeKind; orderNumber: string; tableNumber?: string; toTable?: string; itemText?: string; reason?: string; merged?: boolean; intoOrderNumber?: string; at: number };
   const [kitchenNotices, setKitchenNotices] = useState<KitchenNotice[]>([]);
   // 같은 주문 취소가 order-updated 재방출로 중복 팝업되지 않도록 1회만.
   const cancelledNoticeRef = useRef<Set<string>>(new Set());
-  // 2026-06-26 (Irene 인쇄 가시성): 미인쇄/폴백 표시. 안됐을 때만.
-  //  - unprintedIds: 카드에 "미인쇄" 배지 표시할 주문(persistent, 폴링으로 갱신)
-  //  - fallbackIds: 카드에 "다른 프린터" 앰버 배지
-  //  - notifiedPrintRef: 팝업 1회 dedupe(주문+종류). 인쇄/해소되면 풀어 재알림 가능
-  const [unprintedIds, setUnprintedIds] = useState<Set<string>>(new Set());
-  const [fallbackIds, setFallbackIds] = useState<Set<string>>(new Set());
-  const notifiedPrintRef = useRef<Set<string>>(new Set());
-  const manualPrintingRef = useRef<Set<string>>(new Set());
 
   // ─── Shared: raw order_items → KitchenOrder items 변환 ───
   const processRawOrderItems = (orderId: string | number, rawItems: any[]): KitchenOrder['items'] => {
@@ -1453,102 +1421,6 @@ const KitchenDisplayPage: React.FC = () => {
   useEffect(() => { menuStationMapRef.current = menuStationMap; }, [menuStationMap]);
   useEffect(() => { audioEnabledRef.current = audioEnabled; }, [audioEnabled]);
 
-  // 2026-06-26 (Irene 인쇄 가시성): 미인쇄 주문을 폴링해 "안됐을 때만" 표시(카드 배지) +
-  // 취소팝업처럼 팝업으로 알림. 평소엔 조용. 인쇄 동작/생명선(카운터 폴러)은 무변경 — 여기선
-  // 서버의 print-status(읽기)만 보고 화면 표시 + 직원이 [지금 인쇄] 누르면 그때만 발행.
-  const ordersRef = useRef(orders);
-  useEffect(() => { ordersRef.current = orders; }, [orders]);
-
-  // [지금 인쇄] — 미인쇄 주문을 KDS 에서 수동 발행. 카운터 폴러와 동일한 안전계약을 그대로
-  // 따른다: print-claim(원자적)으로 한 주체만 잡고 → 스테이션 라우팅 인쇄 → 성공 시 /printed,
-  // 실패 시 /print-rearm. claim 못 잡으면 = 다른 기기가 이미 인쇄 중 → 조용히 종료(중복 0).
-  // KDS 가 자동인쇄를 하는 게 아니라(표시전용 유지) 직원의 명시적 클릭에만 1회 발행한다.
-  const printUnprintedNow = useCallback(async (orderId: string | number) => {
-    const key = String(orderId);
-    if (manualPrintingRef.current.has(key)) return;
-    manualPrintingRef.current.add(key);
-    const _h = apiHeaders();
-    try {
-      const cr = await fetch(`/api/orders/${orderId}/print-claim`, { method: 'PATCH', headers: _h });
-      const cj = await cr.json().catch(() => null);
-      if (!(cj && cj.claimed)) { return; } // 다른 기기가 이미 잡음 — 중복 방지
-      const order = ordersRef.current.find(o => String(o.id) === key);
-      if (!order) { try { await fetch(`/api/orders/${orderId}/print-rearm`, { method: 'PATCH', headers: _h }); } catch {} return; }
-      // 스테이션 탭이면 그 스테이션 품목만, All 이면 전 품목(각 스테이션 프린터로 분배).
-      // refs 로 최신 스테이션/매핑 참조(useCallback [] deps 라 stale 콜백 회피).
-      const cur = selectedStationRef.current;
-      const map = menuStationMapRef.current;
-      const inStation = (name: string) => { if (cur === 'all') return true; const sid = map.get(name); return sid === undefined || sid === cur; };
-      const items = cur === 'all' ? order.items : order.items.filter(it =>
-        (it.is_set_menu && it.set_items && it.set_items.length > 0)
-          ? it.set_items.some((si: any) => inStation(si.name))
-          : inStation(it.name));
-      let ok: any = true;
-      try { ok = await printOrderTicket(order, items.length > 0 ? items : order.items); }
-      catch { ok = false; }
-      if (ok === false) { try { await fetch(`/api/orders/${orderId}/print-rearm`, { method: 'PATCH', headers: _h }); } catch {} }
-      else { try { await fetch(`/api/orders/${orderId}/printed`, { method: 'PATCH', headers: _h }); } catch {}
-        setUnprintedIds(prev => { const n = new Set(prev); n.delete(key); return n; }); }
-    } catch { /* non-fatal */ }
-    finally { manualPrintingRef.current.delete(key); }
-  }, []); // refs only — stable
-
-  // print-status 폴링: 미인쇄 + 가짜초록(fallback). 현재 스테이션 스코프만 표시/팝업.
-  useEffect(() => {
-    const rid = (user as any)?.restaurantId;
-    if (!rid) return;
-    let cancelled = false;
-    const poll = async () => {
-      try {
-        const r = await fetch(`/api/print-events/restaurant/${rid}/status`, { headers: apiHeaders() });
-        if (!r.ok) return;
-        const j = await r.json().catch(() => null);
-        const data = (j && j.data) || {};
-        if (cancelled) return;
-        const cur = selectedStationRef.current;
-        const inScope = (stationIds: any[]) => cur === 'all' || !Array.isArray(stationIds) || stationIds.length === 0 || stationIds.includes(cur);
-
-        // 미인쇄
-        const unprinted: any[] = Array.isArray(data.unprinted) ? data.unprinted.filter((u: any) => inScope(u.stationIds)) : [];
-        setUnprintedIds(new Set(unprinted.map((u: any) => String(u.orderId))));
-        for (const u of unprinted) {
-          const dk = `np:${u.orderId}`;
-          if (notifiedPrintRef.current.has(dk)) continue;
-          notifiedPrintRef.current.add(dk);
-          const shown = (u.items || []).slice(0, 3).map((it: any) => `${it.quantity || 1} × ${it.name || 'Item'}`).join(', ');
-          const itemText = shown + ((u.items || []).length > 3 ? ` +${u.items.length - 3}` : '');
-          setKitchenNotices(prev => [{
-            id: `notprint-${u.orderId}-${Date.now()}`, kind: 'not-printed',
-            orderId: u.orderId, orderNumber: u.orderNumber || String(u.orderId),
-            tableNumber: u.tableNumber || undefined, itemText, reasonText: u.reasonText, at: Date.now()
-          }, ...prev].slice(0, 8));
-          try { import('../../utils/notificationSound').then(({ startRepeatingSound }) => audioEnabledRef.current && startRepeatingSound('bell')); } catch {}
-        }
-
-        // 가짜초록(fallback)
-        const fbs: any[] = Array.isArray(data.fallbacks) ? data.fallbacks : [];
-        setFallbackIds(new Set(fbs.map((f: any) => String(f.orderId))));
-        for (const f of fbs) {
-          const dk = `fb:${f.orderId}:${f.at}`;
-          if (notifiedPrintRef.current.has(dk)) continue;
-          notifiedPrintRef.current.add(dk);
-          setKitchenNotices(prev => [{
-            id: `fallback-${f.orderId}-${Date.now()}`, kind: 'fallback',
-            orderId: f.orderId, orderNumber: f.orderNumber || String(f.orderId),
-            reasonText: f.reasonText, intended: f.intended, actual: f.actual, at: Date.now()
-          }, ...prev].slice(0, 8));
-          try { import('../../utils/notificationSound').then(({ startRepeatingSound }) => audioEnabledRef.current && startRepeatingSound('bell')); } catch {}
-        }
-        // dedupe 셋 무한증가 방지(주문 사라지면 정리)
-        if (notifiedPrintRef.current.size > 200) notifiedPrintRef.current.clear();
-      } catch { /* silent */ }
-    };
-    poll();
-    const iv = setInterval(poll, 15000);
-    return () => { cancelled = true; clearInterval(iv); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [(user as any)?.restaurantId]);
-
   const getItemCode = (itemName: string): string => {
     const menuItem = menuItems.find(m => m.name === itemName);
     return menuItem?.code || '';
@@ -1639,13 +1511,7 @@ const KitchenDisplayPage: React.FC = () => {
     printKitchenTicketViaRawBT(orderData, getStoreInfo());
   };
 
-  // 2026-06-26 (Irene): 스테이션 라우팅 보존. 이전엔 item 의 kitchen_station_id/stationName 을
-  // 떼고 generic 으로 보내서 "프린트설정에 맞게 안 들어왔다"(스테이션 프린터로 라우팅 X). station
-  // 정보를 실으면 printKitchenTicketViaRawBT(printerName 없음)가 자동으로 스테이션별 분배한다:
-  //  · 스테이션 탭 → itemsOverride 가 그 스테이션 품목 → 그 스테이션 프린터로
-  //  · All 탭     → 전 품목 → 각 스테이션 프린터로 분배(모든 주방스테이션에 각자 것)
-  // KDS=표시전용·자동인쇄 안 함 규칙과 무관(직원이 누르는 수동). 결과를 await 로 돌려준다.
-  const printOrderTicket = async (order: KitchenOrder, itemsOverride?: any[]) => {
+  const printOrderTicket = (order: KitchenOrder, itemsOverride?: any[]) => {
     const orderData = {
       orderNumber: order.orderNumber,
       date: order.orderTime,
@@ -1659,13 +1525,10 @@ const KitchenDisplayPage: React.FC = () => {
         options: item.options || [],
         special_instructions: item.special_instructions || '',
         is_set_menu: item.is_set_menu || false,
-        set_items: item.set_items || [],
-        // 스테이션 라우팅 키 보존(단일 소스). 없으면 메뉴명→스테이션 맵으로 폴백 해석(billPrint 내부).
-        kitchen_station_id: (item as any).kitchen_station_id ?? menuStationMapRef.current.get(item.name || '') ?? null,
-        stationName: (item as any).stationName || null
+        set_items: item.set_items || []
       }))
     };
-    return await printKitchenTicketViaRawBT(orderData, getStoreInfo());
+    printKitchenTicketViaRawBT(orderData, getStoreInfo());
   };
 
   const updateOrderStatus = async (orderId: string, newStatus: KitchenOrder['status']) => {
@@ -2174,17 +2037,6 @@ const KitchenDisplayPage: React.FC = () => {
             )}
             {order.orderType === 'delivery' && (
               <OrderTypeBadge variant="delivery">{t('kitchen:kitchenDisplayPage.delivery')}</OrderTypeBadge>
-            )}
-            {/* 2026-06-26 (Irene): 안됐을 때만 표시 — 미인쇄(빨강) / 다른 프린터로 나감(앰버). */}
-            {unprintedIds.has(String(order.id)) && (
-              <NotPrintedBadge title={t('kitchen:notice.notPrintedTitle', { defaultValue: 'Ticket NOT Printed' })}>
-                {t('kitchen:badge.notPrinted', { defaultValue: 'NOT PRINTED' })}
-              </NotPrintedBadge>
-            )}
-            {!unprintedIds.has(String(order.id)) && fallbackIds.has(String(order.id)) && (
-              <NotPrintedBadge $fallback title={t('kitchen:notice.fallbackTitle', { defaultValue: 'Printed to a Different Printer' })}>
-                {t('kitchen:badge.wrongPrinter', { defaultValue: 'WRONG PRINTER' })}
-              </NotPrintedBadge>
             )}
           </OrderLeft>
           <OrderRight>
@@ -3186,11 +3038,7 @@ const KitchenDisplayPage: React.FC = () => {
                   ? t('kitchen:notice.voidTitle', { defaultValue: 'Item Cancelled' })
                   : n.kind === 'order-cancel'
                     ? t('kitchen:notice.orderCancelTitle', { defaultValue: 'Order Cancelled' })
-                    : n.kind === 'not-printed'
-                      ? t('kitchen:notice.notPrintedTitle', { defaultValue: 'Ticket NOT Printed' })
-                      : n.kind === 'fallback'
-                        ? t('kitchen:notice.fallbackTitle', { defaultValue: 'Printed to a Different Printer' })
-                        : t('kitchen:notice.moveTitle', { defaultValue: 'Table Moved' })}
+                    : t('kitchen:notice.moveTitle', { defaultValue: 'Table Moved' })}
               </NoticeHead>
               <NoticeBody>
                 {n.kind === 'void' ? (
@@ -3211,26 +3059,6 @@ const KitchenDisplayPage: React.FC = () => {
                     </div>
                     {n.itemText ? <div className="sub"><strong>{n.itemText}</strong></div> : null}
                     <div className="sub">{t('kitchen:notice.doNotMakeOrder', { defaultValue: 'Stop preparing this order.' })}</div>
-                  </>
-                ) : n.kind === 'not-printed' ? (
-                  <>
-                    <div>
-                      {t('kitchen:notice.order', { defaultValue: 'Order' })} #{n.orderNumber}
-                      {n.tableNumber ? ` · ${n.tableNumber}` : ''} — {t('kitchen:notice.notPrintedBody', { defaultValue: 'this ticket did NOT print.' })}
-                    </div>
-                    {n.itemText ? <div className="sub"><strong>{n.itemText}</strong></div> : null}
-                    {n.reasonText ? <div className="sub">{t('kitchen:notice.reason', { defaultValue: 'Reason' })}: {n.reasonText}</div> : null}
-                    <div className="sub">{t('kitchen:notice.printNowHint', { defaultValue: 'Press “Print now” to print it here.' })}</div>
-                  </>
-                ) : n.kind === 'fallback' ? (
-                  <>
-                    <div>
-                      {t('kitchen:notice.order', { defaultValue: 'Order' })} #{n.orderNumber} — {t('kitchen:notice.fallbackBody', { defaultValue: 'printed to a different printer.' })}
-                    </div>
-                    <div className="sub">
-                      {(n.intended || '?')}<span className="arrow"> → </span>{(n.actual || '?')}
-                    </div>
-                    <div className="sub">{t('kitchen:notice.fallbackHint', { defaultValue: 'The intended station printer was unreachable. Check the printer.' })}</div>
                   </>
                 ) : (
                   <>
@@ -3254,20 +3082,9 @@ const KitchenDisplayPage: React.FC = () => {
                   </>
                 )}
               </NoticeBody>
-              {n.kind === 'not-printed' ? (
-                <NoticeActions>
-                  <NoticePrintBtn type="button" onClick={async () => { if (n.orderId != null) await printUnprintedNow(n.orderId); dismiss(); }}>
-                    {t('kitchen:notice.printNow', { defaultValue: 'Print now' })}
-                  </NoticePrintBtn>
-                  <NoticeDismissBtn type="button" onClick={dismiss}>
-                    {t('kitchen:notice.dismiss', { defaultValue: 'Dismiss' })}
-                  </NoticeDismissBtn>
-                </NoticeActions>
-              ) : (
-                <NoticeConfirm $kind={n.kind} type="button" onClick={dismiss}>
-                  {t('kitchen:notice.confirm', { defaultValue: 'OK, got it' })}
-                </NoticeConfirm>
-              )}
+              <NoticeConfirm $kind={n.kind} type="button" onClick={dismiss}>
+                {t('kitchen:notice.confirm', { defaultValue: 'OK, got it' })}
+              </NoticeConfirm>
               {kitchenNotices.length > 1 && (
                 <NoticeCount>{t('kitchen:notice.more', { defaultValue: '{{count}} more notice(s)', count: kitchenNotices.length - 1 })}</NoticeCount>
               )}

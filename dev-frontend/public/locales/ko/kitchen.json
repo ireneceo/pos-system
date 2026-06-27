@@ -43,19 +43,6 @@
   "notice": {
     "moveTitle": "테이블 이동",
     "sameOrder": "같은 주문입니다 — 다시 만들지 마세요.",
-    "mergedAtTable": "{{table}} 의 기존 주문과 합쳐졌습니다",
-    "notPrintedTitle": "티켓 인쇄 안 됨",
-    "notPrintedBody": "이 티켓이 인쇄되지 않았습니다.",
-    "fallbackTitle": "다른 프린터로 출력됨",
-    "fallbackBody": "다른 프린터로 출력되었습니다.",
-    "fallbackHint": "지정한 스테이션 프린터에 연결되지 않았습니다. 프린터를 확인하세요.",
-    "reason": "사유",
-    "printNowHint": "“지금 인쇄”를 눌러 여기서 인쇄하세요.",
-    "printNow": "지금 인쇄",
-    "dismiss": "닫기"
-  },
-  "badge": {
-    "notPrinted": "인쇄 안 됨",
-    "wrongPrinter": "다른 프린터"
+    "mergedAtTable": "{{table}} 의 기존 주문과 합쳐졌습니다"
   }
 }

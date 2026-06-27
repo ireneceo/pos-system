@@ -56,10 +56,14 @@ export async function printOrderKitchenNow(ord: any, getStoreInfo: () => any): P
       is_set_menu: it.is_set_menu || false,
       set_components: Array.isArray(it.set_components) ? it.set_components : undefined,
       special_instructions: it.special_instructions || it.specialInstructions || '',
-      stationName: it.stationName || null
+      stationName: it.stationName || null,
+      // 2026-06-27 (Irene): 아이템취소 품목별 줄긋기 플래그 보존.
+      _voided: !!it._voided
     });
     const printData: any = {
       ...(ord.pending_reprint && ord.pending_reprint.notice ? { noticeHeader: ord.pending_reprint.notice } : {}),
+      // 2026-06-27 (Irene): 취소선 복구 — 전체취소(type=cancel)면 모든 품목 줄긋기(voided), 아이템취소는 품목별 _voided.
+      ...(ord.pending_reprint && ord.pending_reprint.type === 'cancel' ? { voided: true } : {}),
       orderNumber: ord.order_number,
       pickupNumber: ord.order_number ? String(ord.order_number).split('-')[1] : '',
       tableNumber: ord.table_number || undefined,
@@ -77,7 +81,10 @@ export async function printOrderKitchenNow(ord: any, getStoreInfo: () => any): P
       total: parseFloat(ord.total_amount || '0'),
       paymentMethod: ord.payment_method || 'counter',
       cardType: ord.card_type || null,
-      cashierName: ord.source === 'mobile' ? 'Mobile Order' : 'POS'
+      cashierName: ord.source === 'mobile' ? 'Mobile Order' : 'POS',
+      // 2026-06-27 (Irene): 통합티켓 "한 번만" 가드 신호 — 하이브리드(즉시) 발행분도 폴러 재실행과
+      // 동일 클레임을 공유 → 통합 카피 라운드당 1회(중복 0). 수동/취소안내엔 없음(항상 발행).
+      __consolidatedClaim: { orderId: ord.id, token: tok }
     };
 
     // 같은 기기 폴러와 동시 인쇄 방지(폴러와 공유하는 in-memory 플래그).
@@ -104,7 +111,9 @@ export async function printOrderKitchenNow(ord: any, getStoreInfo: () => any): P
       let ok: any = true;
       for (let bi = 0; bi < _batches.length; bi++) {
         let r: any = true;
-        try { r = await billPrintMod.printKitchenTicketViaRawBT({ ...printData, items: _batches[bi].map(mapItem) }, printStoreInfo); }
+        try { r = await billPrintMod.printKitchenTicketViaRawBT({ ...printData, items: _batches[bi].map(mapItem),
+          // 2026-06-27 (Irene): 추가주문 회차(order_group>0, 재발행 아님)면 +Added 표시.
+          isAddedRound: !_isReprint && !!(_batches[bi][0] && Number(_batches[bi][0].order_group) > 0) }, printStoreInfo); }
         catch (e) { r = false; }
         if (r === false) ok = false;
         if (bi < _batches.length - 1) await new Promise(res => setTimeout(res, 700));

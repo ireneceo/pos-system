@@ -1,6 +1,18 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
+
+### ⚠️ 2026-06-27 #3 — thefire02 인쇄 종일 대응 (운영 배포 다수 + 롤백 오락가락 사고)
+**현재 운영 배포 상태(SW 4.27 / Irene 실프린터 재확인 중):**
+- ✅ **통합티켓 1장씩**(consolidated 가드): sendUnifiedTickets 에 `consolidated_printed_at` 원자적 클레임(`routes/consolidated-print.js` `/claim` + 폴러/하이브리드 `__consolidatedClaim` 신호). re-arm/재시도해도 통합 1회. 새 라운드(+Round/이동/취소/void)는 백엔드가 가드 리셋. **Irene "1장씩 잘나와" 확인됨.**
+- ◑ **취소 티켓 묶음**(실프린터 재확인 중): 줄긋기(폴러/하이브리드 `voided`/per-item `_voided` 전달 + 생성기 per-item line-through 두께↑) · 아이템취소=전체오더+취소품목만 줄긋기+"이전티켓 버려"+served제외 · 아이템취소 스테이션 필터(취소품목 스테이션만) · +Added(추가주문 회차) · printPerItem 균일.
+- 🔴 **신규주문 KQ 중복 + BAR 늦음/미인쇄 = 미해결(별개, 라이브 무접촉)**: thefire02 BAR 프린터가 첫 시도 소리만·재시도서 출력(느린 큐). 10초 "죽은-claim 복구"가 그 재시도 유발 → KQ 재인쇄(중복). STALE 30초로 늘렸더니 BAR 재시도까지 없애 BAR 미인쇄 → **롤백**. 근본수정 = **per-station 인쇄추적(실패 스테이션만 재시도)** — **데모서 신중히**. 요구사항 전체 = `docs/POS_MENU_IMPROVEMENT_BACKLOG.md` "그룹 X".
+- 🛠 **수정파일(미커밋, dev)**: `billPrint.js`·`useAutoPrintPoller.ts`·`hybridKitchenPrint.ts`·`routes/orders-crud.js`(STALE=10 원래값)·`routes/consolidated-print.js`·`public/sw.js`(4.27). #7 인쇄가시성은 배포마다 격리.
+- 📌 **교훈(메모리화 요)**: 라이브 인쇄 생명선을 급하게 여러 번 + 롤백 오락가락 → 매장 마비 + 좋은 작업까지 날릴 뻔. **데모 설계·검증 후에만, 한 번에 하나, 부분 롤백(문제난 변경만)**. [[feedback_print_code_caution]] [[feedback_professional_disciplined_no_arbitrary_change]].
+- **롤백 백업**: 백엔드 `/var/www/backups/consolidated-fix-20260627_152853/`, 프론트 `prod-frontend-build-20260627_142052_printfix`(v3.63).
+
+---
+
 **마지막 업데이트:** 2026-06-27 #2 (🆕 thefire 브랜드메뉴 대청소 — 3매장 옵션·세트 동기화 + 수요일세트(LUNCH카테고리 활성화) + 02/03 메뉴 thefire01과 동일화 + **메뉴/옵션/치킨윙 한글 전부 제거** + POS개선 백로그 13건 정리. **전부 운영 데이터/문서 작업, 인쇄·생명선 무접촉**. 세트 전파 영구수정(brandMenuSyncService.js)은 **dev 커밋됨·미배포**(Irene "이따 배포").)
 **버전:** v3.63 (2026-06-27 배포). SW 4.23-mobile-addon-cards.
 **작업 상태:** 완료 (지시 대기)

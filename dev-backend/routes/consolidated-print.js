@@ -97,4 +97,31 @@ router.patch('/:id/printed', authenticateToken, async (req, res) => {
   }
 });
 
+// ATOMIC claim — print the CONSOLIDATED order ticket EXACTLY ONCE per round.
+// The first caller to flip consolidated_printed_at NULL→now wins (claimed:true)
+// and prints the consolidated copy; the hybrid's immediate print + the poller's
+// re-run (after a station-fail re-arm) both call this, so the loser gets
+// claimed:false and skips → the counter never gets a duplicate consolidated.
+// Stations are unaffected (they dedupe via per-item printed_at). A NEW round
+// (+Round / table-move / cancel / item-void) resets consolidated_printed_at to
+// NULL in orders-crud so the next round legitimately reprints. This is the
+// consolidated-side analogue of /print-claim and never touches the station path.
+router.patch('/:id/claim', authenticateToken, async (req, res) => {
+  try {
+    const o = await Order.findByPk(req.params.id, { attributes: ['id', 'restaurant_id'] });
+    if (!o) return res.status(404).json({ success: false, message: 'Order not found' });
+    if (req.user.role !== 'System Admin' && parseInt(req.user.restaurant_id) !== parseInt(o.restaurant_id)) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+    const [affected] = await Order.update(
+      { consolidated_printed_at: new Date() },
+      { where: { id: o.id, consolidated_printed_at: null } }
+    );
+    res.json({ success: true, claimed: affected > 0 });
+  } catch (e) {
+    console.error('[consolidated-print/claim] error:', e.message);
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
 module.exports = router;
