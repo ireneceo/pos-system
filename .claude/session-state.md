@@ -31,6 +31,7 @@
 > **신규 검증 스크립트(보관)**: `dev-frontend/scripts/repro-addon-flow.js`.
 > **남음(Irene)**: 실기기에서 ①애드온 켠 매장 추천 이모지/사진 ②추천 담고 재진입 시 ✓유지 ③토글만 켜도 폴백으로 뜨는지. 배포는 /배포 시(SW bump).
 >
+> **(이어서) 브랜드메뉴 이름 한글 제거 — 운영 적용 완료**: brand5 메뉴 119개 이름 + 3매장 상품 357개에서 한글 제거(한글잔존 0 검증). 규칙=(a)한글+`l`구분자 제거→영문 (b)한글만 제거 (c)한글 뒤 수량(\d pcs)이면 유지("8pcs l Fried…"), 잔여조각(100/&/UFO/(2인))은 영문측만. 빈이름0·RA커스텀0. 백업 `/var/www/backups/thefire-brandmenu-names-20260627.json`. **남은확인:** 치킨윙 " l " 도 뺄지 + 옵션이름 한글(미처리)도 뺄지.
 > **(이어서) thefire02/03 메뉴 표시·설정 thefire01과 완전동일화**: Irene "메뉴관련 모든 건 다 똑같이 thefire01처럼 제대로 나오게 + 설정도 맞춰". 실측 차이=①thefire02(rid24) 124개 비활성(thefire01은 다 켜짐) ②카테고리 순서·이모지 다름(thefire01=Stew #0+LUNCH🍽️, 02/03=Chicken #0+이모지없음). **적용**: rid24 브랜드상품 124개 is_active=true + rid24/25 카테고리 isActive/displayOrder/emoji 를 rid16 기준 정렬(각 5개). 검증: rid24·25 vs rid16 is_active/display_order/set_only/availability/category 차이 **전부 0**(active 126/126). **soldOut(품절)은 매장별 실시간 재고라 미변경**(rid16=22·rid24=3·rid25=0, 02/03이 오히려 더 많이 노출=문제없음). 비브랜드 로컬상품 0. 백업 `/var/www/backups/thefire{24,25}-menustate-20260627.json`. 인프라설정(프린터/결제/운영) 무접촉.
 > **B4 (추가 신고: "이모티콘/사진 아무것도 안나와") — 근본수정**: 메뉴는 이모지 없는 상품에 기본 `🍽️` 를 줌(`MenuPage:631,1092` `item.emoji||'🍽️'`)는데 추천 카드는 raw emoji(null) 그대로라 빈칸. rid5 실측: active 19개 중 **9개가 이모지·이미지 둘 다 없음**(Bibimbap·Steamed Rice·Soju 등) → 빈 카드. **수정**: `RecommendationSheet` Thumb 를 메뉴와 동일하게 `이미지>이모지>기본글리프('\\u{1F37D}')` 로 → 모든 카드가 사진/이모지/🍽 중 하나 보장(빈 카드 0). 폴백 추천에 이모지 상품(🍽️🍜) 섞이는 것도 확인. 이스케이프 사용은 design-guard decorative-emoji 회피(메뉴 리터럴은 baseline). 검증: DOM 카드 279=IMAGE, 335=🍽. build green(main.31a3ef85)·design-guard exit0. (헤드리스는 컬러폰트 없어 □처럼 보여도 DOM엔 글리프 존재 = 실폰 정상.)
 
@@ -104,7 +105,7 @@
 3. **모바일 더블오더 인지 보조 (아이디어 회의)**: 고객이 모바일로 같은 주문 2번 하는 일 잦음 → POS1이 취소해야 함. "친절·다정하게" 중복 인지 돕는 UX 아이디어. ①고객측 발주 직전 "방금 같은 주문 하셨어요, 또 주문할까요?" 부드러운 확인(소스에서 차단=가장 친절) ②POS/KDS 도착 시 "같은 테이블 비슷한 주문 방금 들어옴 — 중복일 수 있어요" 비차단 안내배너 ③같은테이블 모바일주문 그룹+중복가능 태그. (idempotency_key는 기술적 더블탭만 막음, 고객 의도적 재주문은 못 막음 → ①이 핵심.) 미확정 브레인스토밍.
 
 ### 다음 확정 작업
-- **★ POS/브랜드메뉴 개선 묶음 (2026-06-27 Irene 지시 13건)** = `docs/POS_MENU_IMPROVEMENT_BACKLOG.md`. 한글이름제거(dry-run후)·브랜드메뉴순서(이미됨,manual전환 안내)·옵션 솔드아웃(신규)·현금관리 PIN게이트(신규)·할인 RM표시·아이템별 메모+온스크린키보드·브랜드메뉴 RA옵션추가·View팝업 저장버그·**POS+플로어플랜 헤더접기(=풀스크린FloorPlan 확정작업, ▴화살표 삭제)**·카테고리 칩여백·카테고리 페이지탭·테이블넘버 검색창 같은행. 상태(신규/부분/버그/이미됨) 문서에 표기. **착수순서 Irene 우선순위 대기.**
+- **★ POS/브랜드메뉴 개선 묶음 (2026-06-27 Irene 지시)** = `docs/POS_MENU_IMPROVEMENT_BACKLOG.md`. **Irene "다음 섹션에서 계속" — 항목 더 추가될 예정.** 현재: ✅한글이름제거(적용완료)·🐞브랜드메뉴 드래그순서 안됨(silent catch 의심)·🆕옵션 솔드아웃·🆕현금관리 PIN게이트·할인 RM표시·🆕POS 아이템별 메모+온스크린키보드(메모는 모바일만 있고 POS엔 없음)·브랜드메뉴 RA옵션추가·🐞View팝업 저장버그·**POS+플로어플랜 헤더접기(=풀스크린FloorPlan 확정작업, ▴화살표 삭제)**·카테고리 칩여백·카테고리 페이지탭·테이블넘버 검색창 같은행. **착수순서 Irene 우선순위 대기.**
 - **(배포 대기) 브랜드메뉴 세트전파 영구수정 배포** (Irene "이따 배포할게"): `dev-backend/services/brandMenuSyncService.js` 세트구성 항상미러 수정이 미커밋/미배포. /배포 하면 운영 반영(안 하면 BG 세트 재편집 시 가맹점 미전파 재발). **이번 배포는 #7 인쇄가시성이 HEAD에 미배포로 섞여있어 [[reference_selective_deploy_isolation]] 격리 필요**(print-guard 8/8 확인). 모바일 더블오더/애드온도 dev엔 있으나 v3.63로 이미 배포됨.
 - **풀스크린 Floor Plan** (Irene 명시 지시): ①헤더의 ▴ 접기 버튼(#10에서 넣은 것) 제거 ②"Main/Takeout/Items + Takeaway" 라인 우측에 풀스크린 토글 아이콘 → 누르면 맨 위 헤더 + 맨 아래 통계바(FloorPlanStatsBar) 숨겨 업무영역만 풀로. FloorPlanPage.tsx headerCollapsed(352)/toggle(355)/버튼(1779-1785)/`{!headerCollapsed&&}`(1794) 제거 + fullScreen 상태로 Header(1773)·StatsBar 조건부.
 
