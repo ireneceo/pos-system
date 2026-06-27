@@ -197,12 +197,18 @@ async function syncBrandMenuToRestaurant({ brandMenuId, restaurantId, transactio
       for (const id of localOptionGroupIds) if (!merged.includes(id)) merged.push(id);
       updates.optionGroups = merged;
     }
-    if (locks.set_items) {
-      updates.is_set_menu = !!brandMenu.is_set_menu;
-      updates.set_items = brandMenu.set_items || null;
-      // v2 set_groups — 구성품 brand_menu_id 를 매장 상품 id 로 변환해 미러
-      updates.set_groups = await translateSetGroupsForRestaurant(brandMenu.set_groups, restaurantId, transaction);
-    }
+    // Set composition (is_set_menu / set_items / set_groups) is BG-defined and ALWAYS
+    // mirrors to the restaurant on push — same philosophy as options above (BG-defined
+    // content carries over even without a lock). The brand lock matrix only exposes
+    // name/price/category/image/options (no per-menu "set lock" exists in the UI or in
+    // brand default_locks), so gating set composition on locks.set_items — a flag that can
+    // never be turned on — meant adding/removing set components never reached franchises
+    // that already had the set menu (only the home restaurant, edited directly, looked
+    // correct). Always re-mirror so set changes propagate like options. (2026-06-27 fix)
+    updates.is_set_menu = !!brandMenu.is_set_menu;
+    updates.set_items = brandMenu.set_items || null;
+    // v2 set_groups — 구성품 brand_menu_id 를 매장 상품 id 로 변환해 미러
+    updates.set_groups = await translateSetGroupsForRestaurant(brandMenu.set_groups, restaurantId, transaction);
     // 브랜드가 순서를 강제(lock_sort_order)하면 매장 상품 display_order 를 브랜드 sort_order 로 고정
     if (locks.sort_order) updates.display_order = brandMenu.sort_order || 0;
     // set_only(세트 전용 — 단품 판매 안 함)는 브랜드 판매정책 → 버전 sync 마다 브랜드 값으로 갱신 (2026-06-12)

@@ -824,7 +824,10 @@
       "Bash(TS=verify node scripts/repro-addon-flow.js)",
       "Bash(TS=v2 node scripts/repro-addon-flow.js)",
       "Bash(echo \"design-guard exit=$?\")",
-      "Bash(scp -q /tmp/claude-1000/-var-www/7da12f7e-c8ab-4429-969d-9ed83994589e/scratchpad/prod_probe.js irene@87.106.78.146:/var/www/production-backend/zz_probe.js)"
+      "Bash(scp -q /tmp/claude-1000/-var-www/7da12f7e-c8ab-4429-969d-9ed83994589e/scratchpad/prod_probe.js irene@87.106.78.146:/var/www/production-backend/zz_probe.js)",
+      "Bash(cp /tmp/claude-1000/-var-www/7ad11803-0d8c-4bb3-aa21-6d98d23d5029/scratchpad/probe-brand.js /var/www/dev-backend/probe-brand.js)",
+      "Bash(rm -f /var/www/dev-backend/probe-brand.js)",
+      "Bash(scp -q /tmp/sl.js irene@87.106.78.146:/var/www/production-backend/sl.js)"
     ],
     "deny": [],
     "ask": []
