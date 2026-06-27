@@ -20,9 +20,11 @@
 ```
 ① A 에 수동 연결한 추천상품이 있으면        → 그걸 표시 (맞춤, 최우선)
 ② 없으면 → "추천 카테고리"의 상품을 표시      → (Dessert/Drink 자동감지 + 카테고리 체크)
-③ 그것도 없으면 → 추천 안 뜸 (그냥 담기고 끝)
+③ 그것도 없으면 → 다른 카테고리 노출상품 자동 폴백 (토글만 켜도 뜸, 세트 제외)   ← v3.63 추가
 ```
-- 공통 필터(모든 소스): `is_active=true`, 재고 있는 것(`track_stock=false` 또는 `current_stock>0`), **담은 상품 자신 제외**, **이미 장바구니에 있는 상품 제외**(프론트), 최대 6개.
+- 공통 필터(모든 소스): `is_active=true`, 재고 있는 것(`track_stock=false` 또는 `current_stock>0`), **담은 상품 자신 제외**, 최대 6개.
+- **(v3.63 변경)** 추천은 그 상품에 대해 **항상 동일하게** 표시한다 — 장바구니에 이미 있는 상품도 빼지 않고 **✓(담김)** 로 표시(재탭 무효). 재진입해도 추천이 사라지지 않게.
+- **(v3.63 변경)** API 응답에 `emoji` 포함. 카드 썸네일은 **이미지 > 상품 이모지 > 기본 글리프(🍽)** 순으로 항상 무언가 표시(메뉴 카드와 동일, 빈 카드 0).
 
 ### 1.2 "추천 카테고리" 판정 (②)
 - **자동 감지**: 카테고리 이름이 키워드(`dessert, desserts, 디저트, drink, drinks, 음료, beverage, beverages, 음료수` — 대소문자·공백 무시)에 매칭되면 자동으로 추천 카테고리.
@@ -93,7 +95,7 @@
 ### 3.3 모바일 (공개, restaurant 스코프)
 | METHOD / PATH | 인증 | 응답 |
 |---|---|---|
-| GET `/api/mobile/:slug/products/:productId/recommendations` | 없음(공개), slug→restaurant 해석 | `{success,data:[{id,name,price,image,...}]}` — 1.1 로직 적용(①→②→[]), 활성·재고·자신제외, 최대 6 |
+| GET `/api/mobile/:slug/products/:productId/recommendations` | 없음(공개), slug→restaurant 해석 | `{success,data:[{id,name,price,image,emoji,...}]}` — 1.1 로직 적용(①→②→③폴백), 활성·재고·자신제외, 최대 6. 마스터 토글 `crossSellEnabled` OFF면 `[]` |
 - 위치: `routes/mobile-public.js` (또는 menu.js 인접). inventory-core fall-through 회피 위해 mount 순서 주의([[reference_external_qr_coupon]] 패턴).
 
 ---

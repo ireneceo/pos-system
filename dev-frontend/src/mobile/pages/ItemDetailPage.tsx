@@ -614,38 +614,47 @@ const ItemDetailPage: React.FC = () => {
     };
 
     addToCart(itemWithOptions, quantity, selectedOptions, instructions);
-    // #1: 담아도 리스트로 자동 복귀하지 않는다 — 상세에 머물며 "담음" 피드백만 보여주고,
-    // 고객이 직접 뒤로가기를 누르면 직전 탭(?cat=)으로 정확히 복원된다(#2).
+    // 담은 직후: "✓ 담음" 짧게 보여준 뒤 메뉴 리스트로 자동 복귀(추천 있으면 시트 먼저).
+    // 막다른 상세페이지에 머물지 않게 해 더블오더(같은 상품 반복 담기)를 막는다.
     setJustAdded(true);
     setTimeout(() => setJustAdded(false), 1800);
-    // #11c 크로스셀 — 담은 직후 추천 조회. 결과 있으면 바텀시트(데드엔드 없음: 없으면 미표시).
+    // 담은 직후 추천 조회. 추천 있으면 바텀시트, 없으면(애드온 OFF/추천 0) 메뉴 리스트로 자동 복귀.
     if (slug && item?.id) fetchAndOpenRecommendations(Number(item.id));
+    else returnToListAfterAdd();
   };
 
-  // 담은 상품에 대한 추천 — 이미 장바구니에 있는 것 + 방금 담은 것 제외(설계 §1.1).
+  // 담은 뒤 메뉴 리스트로 자동 복귀 — 막다른 상세페이지를 제거해 더블오더를 막는다.
+  // 짧은 "✓ 담음" 확인 후 뒤로가기 → 직전 탭(?cat=)/스크롤이 브라우저 히스토리로 정확히 복원(#2).
+  const returnToListAfterAdd = () => {
+    setTimeout(() => navigate(-1), 550);
+  };
+
+  // 담은 상품에 대한 추천 — 그 상품의 추천을 "항상 동일하게" 보여준다. 자기 자신만 제외.
+  // (장바구니 필터로 빼지 않음 → 재진입해도 그대로 뜨고, 이미 담은 건 카드에 ✓ 로 표시.)
   const fetchAndOpenRecommendations = async (productId: number) => {
+    let opened = false;
     try {
       const res = await fetch(`/api/mobile/${slug}/products/${productId}/recommendations`);
-      if (!res.ok) return;
-      const json = await res.json();
-      const list: RecItem[] = Array.isArray(json?.data) ? json.data : [];
-      const inCart = new Set((cartItems || []).map((ci: any) => ci.menuItem?.id).filter(Boolean));
-      const filtered = list.filter(r => r.id !== productId && !inCart.has(r.id));
-      if (filtered.length) { setRecItems(filtered); setShowRecSheet(true); }
+      if (res.ok) {
+        const json = await res.json();
+        const list: RecItem[] = Array.isArray(json?.data) ? json.data : [];
+        const filtered = list.filter(r => r.id !== productId);
+        if (filtered.length) { setRecItems(filtered); setShowRecSheet(true); opened = true; }
+      }
     } catch { /* 추천 실패는 무시 — 주문 흐름 영향 없음 */ }
+    if (!opened) returnToListAfterAdd();   // 추천 없음 → 리스트로 복귀(데드엔드 제거)
   };
 
   // 추천 카드 탭 = 담기. 세트/옵션은 정확한 구성을 위해 상세로 이동(블라인드 담기 방지).
+  // 카드는 사라지지 않고 ✓ 로 바뀐다(시트 비어 메뉴로 튀던 버그 제거). 이동은 명시적 닫기/장바구니로만.
   const handleAddRecommended = (rec: RecItem) => {
     if (rec.is_set_menu) {
       setShowRecSheet(false);
       navigate(`/mobile/${slug}/item/${rec.id}`);
       return;
     }
-    const recMenuItem: any = { id: rec.id, name: rec.name, price: typeof rec.price === 'number' ? rec.price : parseFloat(String(rec.price)) || 0, image: rec.image || undefined, is_set_menu: false };
-    addToCart(recMenuItem, 1, []);
-    // 담은 항목은 시트에서 제거 — 중복 방지 + 진행감
-    setRecItems(prev => prev.filter(r => r.id !== rec.id));
+    const recMenuItem: any = { id: rec.id, name: rec.name, price: typeof rec.price === 'number' ? rec.price : parseFloat(String(rec.price)) || 0, image: rec.image || undefined, emoji: rec.emoji || undefined, is_set_menu: false };
+    addToCart(recMenuItem, 1, []);   // 동일구성 자동 머지(qty+1) — 카드의 ✓ 는 cartItems 에서 파생
   };
   
   if (isLoading) {
@@ -821,7 +830,8 @@ const ItemDetailPage: React.FC = () => {
         items={recItems}
         currency={currency}
         cartCount={(cartItems || []).reduce((s: number, ci: any) => s + (ci.quantity || 0), 0)}
-        onClose={() => setShowRecSheet(false)}
+        addedIds={(cartItems || []).map((ci: any) => ci.menuItem?.id).filter(Boolean)}
+        onClose={() => { setShowRecSheet(false); navigate(-1); }}
         onAdd={handleAddRecommended}
         onGoToCart={() => { setShowRecSheet(false); navigate(`/mobile/${slug}/cart`); }}
       />

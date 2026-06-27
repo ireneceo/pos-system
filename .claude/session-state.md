@@ -1,8 +1,37 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-06-26 #7 (🆕 인쇄 가시성 & 진단 — KDS 미인쇄 팝업/표시 + 스테이션 라우팅 수동인쇄. **DEV 진행중·미배포**. Irene 개발서버 확인 예정)
-**버전:** v3.62 + 백스테이지. SW 4.22-round-print-dedup. (인쇄 가시성 기능은 SW bump 안 함 — 미배포)
+**마지막 업데이트:** 2026-06-27 (🆕 모바일오더 더블오더 방지 + 애드온 카드 버그수정 **운영 배포 완료**. #7 인쇄가시성은 배포에서 격리(미배포 유지)). SW 4.23.
+**버전:** v3.63 (2026-06-27 배포). SW 4.23-mobile-addon-cards.
+
+### ✅ 운영 배포 완료 (2026-06-27) — 모바일 애드온/더블오더 UX (Smoke 9/9, Backup 20260627_061214)
+> 모바일오더 더블오더 방지(자동복귀+스티키 카트바) + 애드온 추천 버그 4개(emoji/사진 폴백·재진입 유지·자동이동제거·이모지 기본글리프) + 자동폴백(토글만 켜도). **인쇄/주문/단계 무접촉.**
+> **🔒 배포 격리(중요)**: HEAD에 직전세션 #7 인쇄가시성(KitchenDisplayPage +203줄·print-events 백엔드)이 미배포 커밋돼 있어, 배포 시 #7 파일 11개를 직전배포본(e9ef2e40)으로 임시 되돌려 **add-on만** 내보냄. **print-guard 8/8 무변경·health 107/107·운영번들 print-events 참조 0건 확인**(= 운영 KDS/인쇄 완전 무변경). 배포 후 #7은 dev에 복원(여전히 미배포·Task4/5/6 미완).
+> 변경: crossSell.js(emoji+③폴백)·RecommendationSheet/ItemDetailPage/MenuPage·menu.json×4·sw.js(4.23). 설계근거 docs/MOBILE_ADDON_CROSS_SELL.md.
+
+### 🆕 DEV 완료·검증 (2026-06-27) — 모바일오더 더블오더 방지 UX (Irene 삽입 요청, 미배포)
+> 문제: 모바일 상세페이지에서 담은 뒤 **막다른 화면(dead-end)** 에 머물러 "주문된 건가?" 불안 → 같은 상품 이중주문. Irene 지시 = 담으면 리스트로 돌려보내기 + 애드온 ON 시 "계속/완료" 인지 안 되는 문제 고급 UX 해결. **AskUserQuestion 으로 애드온 ON 흐름 = A안(추천시트+명확한 2버튼) Irene 선택.**
+>
+> **원칙**: 담은 직후 막다른 상세 제거 → 메뉴 리스트로 자동 복귀 + 항상 보이는 스티키 카트바(담길 때 수량 톡 튀는 애니메이션)로 "담겼다+주문하기" 단일 경로. 손님이 카트 커지는 걸 눈으로 봄 = 더블오더 차단.
+>
+> **구현(5파일, 생명선 무접촉)**: ①`ItemDetailPage.tsx` — 담은 뒤 추천 없으면(애드온 OFF/추천0) 0.55초 "✓담음" 후 navigate(-1) 자동복귀, 추천 있으면 시트. 시트 닫기/No thanks/추천 다담음 전부 리스트 복귀(데드엔드 제거). ②`RecommendationSheet.tsx` — 헤더 초록✓"장바구니에 담았어요" 확인 + "이것도 함께?" 부제, 좌버튼 "Keep adding"→"No thanks"(닫고 리스트로), menu/common ns. ③`MenuPage.tsx` — 꺼져있던 FloatingCartButton(`{false&&}`) 제거 → 풀폭 스티키 CartBar(🛒[수량] View cart ··· RM합계 ›) + qtyBump/슬라이드업 + 하단 여백 spacer. ④locales en/ko/zh/ms menu.json(recommend.added/title/subtitle/noThanks/viewCart + cartBar.viewCart).
+> **검증(실측)**: build green(67초, 경고=기존 baseline) · i18n verify Errors0(4언어 키 OK) · design-guard 신규0(exit0) · **print-guard = 내 변경 무관(KitchenDisplay 델타는 #7 print-visibility 펜딩분, 내 working-tree 아님)** · **실 브라우저 헤드리스 플로우: order-type→menu→item191 mount OK·crash0·EB0 → Add=메뉴 자동복귀 → 스티키 카트바 present, console/page err NONE**. 스크린샷 /tmp/mobile-cart-final.png.
+> **남음(Irene)**: 개발서버 실기기 확인 — 특히 **애드온 ON 매장의 추천시트 경로**(데모 cross-sell 데이터 없어 헤드리스론 자동복귀 경로만 탐, 시트 onClose→navigate(-1) 로직은 동일). 배포는 /배포 지시 시. SW bump 필요(모바일 번들).
+> **신규 검증 스크립트(보관)**: `dev-frontend/scripts/mount-check-mobile-cart.js`.
+
+### 🆕 DEV 완료·검증 (2026-06-27 이어서) — 애드온(크로스셀) 버그 3개 수정 + 자동폴백 (Irene "이랬다저랬다 엉망" 신고)
+> Irene 신고: 애드온이 "처음엔 잘 나오다 클릭하면 리스트 사라지고 재진입하면 안나오고 이랬다저랬다" + "이모지·사진 안나옴". **헤드리스로 kdine-korean 상품15(추천 279·335) 전과정 재현해 버그 3개 확정·수정**(추측 아님).
+>
+> **재현·근본원인·수정:**
+> - **B1 이모지/사진 안나옴**: 추천 API가 `emoji` 미반환 + 카드 Thumb 이모지 폴백 없음 → 이모지상품(대부분)·이미지없는상품 빈칸. **수정**: `crossSell.js` PUBLIC_PRODUCT_ATTRS+출력에 emoji 추가, `RecommendationSheet` Thumb에 `<ThumbEmoji>` 폴백(이미지>이모지>그라데이션). (이미지 URL은 200 정상, 헤드리스는 컬러이모지 폰트없어 □ — DOM에 🍚 들어감 확인.)
+> - **B2 재진입 시 추천 사라짐**: 담은 추천을 장바구니 필터로 제외 → 같은 상품 다시 들어가면 0개. **수정**: `ItemDetailPage.fetchAndOpenRecommendations` 장바구니 필터 제거(자기자신만 제외) → 추천 항상 동일 표시, 담긴 건 카드에 **✓ + 재탭 무효**(addedIds prop).
+> - **B3 마지막 카드 탭→메뉴로 튐**: 시트 비면 `navigate(-1)` 자동이동. **수정**: `handleAddRecommended`에서 카드제거·navigate 제거(카드 안 사라지고 ✓로). 이동은 명시적 No thanks/장바구니/닫기만.
+> - **자동폴백(③, Irene 승인 "토글만 켜도 뜨게")**: `crossSell.js` ①수동·②추천카테고리 둘 다 없으면 **다른 카테고리 노출상품**을 보완추천(같은카테고리 제외, 세트 제외, limit40). 검증: 추천소스 없던 상품 279가 6개 추천 반환.
+> **재검증(헤드리스 재현 v2)**: 첫Add→시트2카드 / 추천탭→카드 ✓유지(안사라짐) / 마지막탭→**item 유지(메뉴 안튐)** / **재진입→시트 그대로(둘다✓)** / cart 정상증가 / emoji DOM 🍚 YES. build green(main.e5cf4604) · design-guard exit0 · health 106/107(동일 pre-existing KitchenDisplay뿐, crossSell 회귀0) · 데모 mount crash0·EB0. **pm2 restart dev-backend 함(crossSell.js).** 데모 crossSell·335.emoji 임시변경 전부 원복.
+> **신규 검증 스크립트(보관)**: `dev-frontend/scripts/repro-addon-flow.js`.
+> **남음(Irene)**: 실기기에서 ①애드온 켠 매장 추천 이모지/사진 ②추천 담고 재진입 시 ✓유지 ③토글만 켜도 폴백으로 뜨는지. 배포는 /배포 시(SW bump).
+>
+> **B4 (추가 신고: "이모티콘/사진 아무것도 안나와") — 근본수정**: 메뉴는 이모지 없는 상품에 기본 `🍽️` 를 줌(`MenuPage:631,1092` `item.emoji||'🍽️'`)는데 추천 카드는 raw emoji(null) 그대로라 빈칸. rid5 실측: active 19개 중 **9개가 이모지·이미지 둘 다 없음**(Bibimbap·Steamed Rice·Soju 등) → 빈 카드. **수정**: `RecommendationSheet` Thumb 를 메뉴와 동일하게 `이미지>이모지>기본글리프('\\u{1F37D}')` 로 → 모든 카드가 사진/이모지/🍽 중 하나 보장(빈 카드 0). 폴백 추천에 이모지 상품(🍽️🍜) 섞이는 것도 확인. 이스케이프 사용은 design-guard decorative-emoji 회피(메뉴 리터럴은 baseline). 검증: DOM 카드 279=IMAGE, 335=🍽. build green(main.31a3ef85)·design-guard exit0. (헤드리스는 컬러폰트 없어 □처럼 보여도 DOM엔 글리프 존재 = 실폰 정상.)
 
 ### 🆕 진행중 (2026-06-26 #7) — 인쇄 가시성 & 진단 (Irene 아이디어, DEV·미배포)
 > 목적: 매장 인쇄 누락을 직원이 "솔루션 문제"로 오해 → **안됐을 때만 표시 + 취소처럼 팝업 + 이유 + 누적기록(환경/인터넷 추적) + 주방에서 수동 인쇄**. 설계 = `docs/PRINT_VISIBILITY_DIAGNOSTICS.md`. **생명선(카운터 폴러 자동인쇄)은 한 줄도 안 바뀜 — KDS는 원래 인쇄주체 아님 = 순수 신규 추가**(Irene 정정: "새로운거니까 지금 문제 또 만드는 거 아니잖아" = 맞음).
@@ -50,8 +79,11 @@
 - **실프린터 확인 대기(Irene)**: #6 매수 N장 / #2 부분취소표 "Cancelled N of M / KEEP" / #3 합본빌(Type DINE-IN·품목 TAKEAWAY 태그·서비스차지 dine-in·포장비 takeaway).
 - **남은 것**: 풀스크린 Floor Plan(▴접기 제거 + Main/Takeout/Items 라인 우측 풀스크린 토글로 헤더+하단통계 숨김) — 코드 미착수, 다음.
 
+### 완료된 작업 (이번 세션 2026-06-27)
+- **모바일 더블오더 방지 + 애드온 추천 카드 버그수정 → v3.63 운영 배포** (Smoke 9/9, SW 4.23). 상세 ↑ "✅ 운영 배포 완료 (2026-06-27)" 블록. (line 98 "모바일 더블오더 인지 보조" 아이디어 중 카트-UX 측면을 이걸로 해결 — 소스측 "방금 같은 주문" 확인은 여전히 후속 후보.)
+
 ### 진행 중인 작업
-- **인쇄 가시성 & 진단 (2026-06-26 #7)** — Task1·2·3 DEV 완료·검증, Task4(billPrint 폴백·poller 로그)·5(플로어플랜·진단화면)·6(검증·실프린터) 남음. 상세 ↑ "🆕 진행중" 블록 + docs/PRINT_VISIBILITY_DIAGNOSTICS.md. **미배포 — Irene 개발서버 확인 후 재개.**
+- **인쇄 가시성 & 진단 (2026-06-26 #7)** — Task1·2·3 DEV 완료·검증, Task4(billPrint 폴백·poller 로그)·5(플로어플랜·진단화면)·6(검증·실프린터) 남음. 상세 ↑ "🆕 진행중" 블록 + docs/PRINT_VISIBILITY_DIAGNOSTICS.md. **미배포(v3.63 배포 때 격리됨) — Irene 개발서버 확인 후 재개.**
 
 ### 🆕 계획 저장됨 (2026-06-26 #7, 설계만 — 아직 구현 0, Irene "지금 말고")
 - **안정감(Perceived Stability) 이니셔티브** = `docs/PERCEIVED_STABILITY_INITIATIVE.md`. 배경: Irene "다른 POS는 안정적인데 우리 건 어설프고 자잘한 문제". 진단=버그 무한정 아님, "만지는 느낌(상호작용 계층)" 미정비. Phase0(증거)→1(핫스크린 폴리시)→2(일관성)→3(가드레일). **Irene 선택 = "증거 먼저".**

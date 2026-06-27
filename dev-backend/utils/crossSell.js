@@ -34,7 +34,7 @@ function visible(p) {
   return p.is_active !== false && p.brand_scope_active !== false;
 }
 
-const PUBLIC_PRODUCT_ATTRS = ['id', 'name', 'price', 'image', 'image_thumbnail', 'category', 'is_set_menu', 'description'];
+const PUBLIC_PRODUCT_ATTRS = ['id', 'name', 'price', 'image', 'image_thumbnail', 'emoji', 'category', 'is_set_menu', 'description'];
 
 /**
  * @returns {Promise<Array>} 추천 상품 목록(공개 필드). 최대 limit.
@@ -68,6 +68,17 @@ async function resolveRecommendations(restaurantId, productId, limit = 6) {
         order: [['display_order', 'ASC'], ['id', 'DESC']],
       });
     }
+    // ③ 폴백 — 명시 추천(①)도 추천카테고리(②)도 없으면, 토글만 켜도 보이도록
+    //    "다른 카테고리"의 노출 상품을 보완 추천으로(같은 카테고리 제외는 아래 루프가 처리).
+    //    세트는 정확한 구성이 필요하니 폴백에선 제외(수동연결로만 추천).
+    if (candidates.length === 0) {
+      candidates = await Product.findAll({
+        where: { restaurant_id: restaurantId, is_active: true, is_set_menu: false },
+        attributes: [...PUBLIC_PRODUCT_ATTRS, 'is_active', 'brand_scope_active', 'track_stock', 'current_stock'],
+        order: [['display_order', 'ASC'], ['id', 'DESC']],
+        limit: 40,
+      });
+    }
   }
 
   // 자동 카테고리 모드(②)에서만 "보고 있는 상품과 같은 카테고리"를 제외한다.
@@ -82,6 +93,7 @@ async function resolveRecommendations(restaurantId, productId, limit = 6) {
     out.push({
       id: p.id, name: p.name, price: p.price,
       image: p.image || p.image_thumbnail || null,
+      emoji: p.emoji || null,
       category: p.category, is_set_menu: p.is_set_menu, description: p.description || null,
     });
     if (out.length >= limit) break;

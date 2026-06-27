@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import styled from 'styled-components';
+import styled, { keyframes, css } from 'styled-components';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Utensils, ShoppingBag, Clock, Truck, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -427,28 +427,57 @@ const EmptyState = styled.div`
   }
 `;
 
-const FloatingCartButton = styled.button`
+// 스티키 카트 바 — 메뉴 리스트 하단(하단 nav 위)에 항상 보이는 단일 "주문하기" 경로.
+// 담은 직후 손님이 리스트로 돌아오면 이 바로 카트가 커진 걸 보고 안심한다(더블오더 방지).
+const barSlideUp = keyframes`from { transform: translateY(120%); opacity: 0; } to { transform: translateY(0); opacity: 1; }`;
+const qtyBump = keyframes`0% { transform: scale(1); } 40% { transform: scale(1.28); } 100% { transform: scale(1); }`;
+
+const CartBar = styled.button`
   position: fixed;
-  bottom: 80px;
+  bottom: 68px; /* 하단 nav 위 (AddToCartButton 과 동일 기준) */
+  left: 16px;
   right: 16px;
+  height: 56px;
   background: #635BFF;
-  color: white;
+  color: #fff;
   border: none;
-  border-radius: 50px;
-  padding: 12px 20px;
-  font-size: 14px;
-  font-weight: 600;
-  box-shadow: 0 4px 12px rgba(99, 91, 255, 0.3);
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(99, 91, 255, 0.34);
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
+  padding: 0 16px 0 14px;
   cursor: pointer;
-  z-index: 90;
-  transition: transform 0.2s;
+  z-index: 95;
+  animation: ${barSlideUp} 0.26s cubic-bezier(0.22, 1, 0.36, 1);
 
-  &:active {
-    transform: scale(0.95);
+  @media (min-width: 768px) {
+    max-width: 568px;
+    left: 50%;
+    margin-left: -284px;
+    bottom: 88px;
   }
+  &:active { filter: brightness(0.96); }
+`;
+
+const CartBarLeft = styled.span`
+  display: flex; align-items: center; gap: 10px; min-width: 0;
+`;
+const CartQtyPill = styled.span<{ $bump?: boolean }>`
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 26px; height: 26px; padding: 0 7px;
+  background: rgba(255, 255, 255, 0.22); border-radius: 9px;
+  font-size: 14px; font-weight: 700; line-height: 1;
+  ${p => p.$bump && css`animation: ${qtyBump} 0.42s ease;`}
+`;
+const CartBarLabel = styled.span`
+  font-size: 15px; font-weight: 700;
+`;
+const CartBarRight = styled.span`
+  display: flex; align-items: center; gap: 10px;
+`;
+const CartBarTotal = styled.span`
+  font-size: 15px; font-weight: 700;
 `;
 
 const LoadTrigger = styled.div`
@@ -480,12 +509,27 @@ const MenuPage: React.FC = () => {
     currentStore,
     setCurrentStore,
     cartItems,
+    cartTotal,
     currency,
     isLoading,
     setIsLoading,
     setError,
     orderType
   } = useMobileOrder();
+
+  // 스티키 카트 바 — 담길 때마다 수량 배지가 톡 튀어 "담겼다"를 즉시 알린다(더블오더 방지).
+  const cartQty = cartItems.reduce((s, ci: any) => s + (ci.quantity || 0), 0);
+  const [cartBump, setCartBump] = useState(false);
+  const prevQtyRef = useRef(cartQty);
+  useEffect(() => {
+    if (cartQty > prevQtyRef.current) {
+      setCartBump(true);
+      const id = setTimeout(() => setCartBump(false), 420);
+      prevQtyRef.current = cartQty;
+      return () => clearTimeout(id);
+    }
+    prevQtyRef.current = cartQty;
+  }, [cartQty]);
 
   // Preserve table number across the picker round-trip so dine-in QR stays sticky.
   // localStorage (not sessionStorage) so it survives mobile tab eviction like the cart.
@@ -1242,15 +1286,29 @@ const MenuPage: React.FC = () => {
         </EmptyState>
       )}
 
-      {false && cartItems.length > 0 && (
-        <FloatingCartButton onClick={handleCartClick}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M9 22C9.55228 22 10 21.5523 10 21C10 20.4477 9.55228 20 9 20C8.44772 20 8 20.4477 8 21C8 21.5523 8.44772 22 9 22Z" stroke="currentColor" strokeWidth="2"/>
-            <path d="M20 22C20.5523 22 21 21.5523 21 21C21 20.4477 20.5523 20 20 20C19.4477 20 19 20.4477 19 21C19 21.5523 19.4477 22 20 22Z" stroke="currentColor" strokeWidth="2"/>
-            <path d="M1 1H5L7.68 14.39C7.77144 14.8504 8.02191 15.264 8.38755 15.5583C8.75318 15.8526 9.2107 16.009 9.68 16H19.4C19.8693 16.009 20.3268 15.8526 20.6925 15.5583C21.0581 15.264 21.3086 14.8504 21.4 14.39L23 6H6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-          View Cart ({cartItems.length})
-        </FloatingCartButton>
+      {/* 카트 바가 마지막 메뉴 항목을 가리지 않도록 하단 여백 확보 */}
+      {cartItems.length > 0 && <div style={{ height: '72px' }} aria-hidden="true" />}
+
+      {cartItems.length > 0 && (
+        <CartBar
+          type="button"
+          onClick={handleCartClick}
+          aria-label={`${t('menu:cartBar.viewCart', 'View cart')} — ${cartQty} · ${formatCurrency(cartTotal, currency)}`}
+        >
+          <CartBarLeft>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M9 22C9.55228 22 10 21.5523 10 21C10 20.4477 9.55228 20 9 20C8.44772 20 8 20.4477 8 21C8 21.5523 8.44772 22 9 22Z" stroke="currentColor" strokeWidth="2"/>
+              <path d="M20 22C20.5523 22 21 21.5523 21 21C21 20.4477 20.5523 20 20 20C19.4477 20 19 20.4477 19 21C19 21.5523 19.4477 22 20 22Z" stroke="currentColor" strokeWidth="2"/>
+              <path d="M1 1H5L7.68 14.39C7.77144 14.8504 8.02191 15.264 8.38755 15.5583C8.75318 15.8526 9.2107 16.009 9.68 16H19.4C19.8693 16.009 20.3268 15.8526 20.6925 15.5583C21.0581 15.264 21.3086 14.8504 21.4 14.39L23 6H6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <CartQtyPill $bump={cartBump}>{cartQty}</CartQtyPill>
+            <CartBarLabel>{t('menu:cartBar.viewCart', 'View cart')}</CartBarLabel>
+          </CartBarLeft>
+          <CartBarRight>
+            <CartBarTotal>{formatCurrency(cartTotal, currency)}</CartBarTotal>
+            <ChevronRight size={20} />
+          </CartBarRight>
+        </CartBar>
       )}
     </MobileLayout>
   );
