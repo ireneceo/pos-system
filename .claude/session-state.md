@@ -31,6 +31,7 @@
 > **신규 검증 스크립트(보관)**: `dev-frontend/scripts/repro-addon-flow.js`.
 > **남음(Irene)**: 실기기에서 ①애드온 켠 매장 추천 이모지/사진 ②추천 담고 재진입 시 ✓유지 ③토글만 켜도 폴백으로 뜨는지. 배포는 /배포 시(SW bump).
 >
+> **(이어서) thefire02/03 메뉴 표시·설정 thefire01과 완전동일화**: Irene "메뉴관련 모든 건 다 똑같이 thefire01처럼 제대로 나오게 + 설정도 맞춰". 실측 차이=①thefire02(rid24) 124개 비활성(thefire01은 다 켜짐) ②카테고리 순서·이모지 다름(thefire01=Stew #0+LUNCH🍽️, 02/03=Chicken #0+이모지없음). **적용**: rid24 브랜드상품 124개 is_active=true + rid24/25 카테고리 isActive/displayOrder/emoji 를 rid16 기준 정렬(각 5개). 검증: rid24·25 vs rid16 is_active/display_order/set_only/availability/category 차이 **전부 0**(active 126/126). **soldOut(품절)은 매장별 실시간 재고라 미변경**(rid16=22·rid24=3·rid25=0, 02/03이 오히려 더 많이 노출=문제없음). 비브랜드 로컬상품 0. 백업 `/var/www/backups/thefire{24,25}-menustate-20260627.json`. 인프라설정(프린터/결제/운영) 무접촉.
 > **B4 (추가 신고: "이모티콘/사진 아무것도 안나와") — 근본수정**: 메뉴는 이모지 없는 상품에 기본 `🍽️` 를 줌(`MenuPage:631,1092` `item.emoji||'🍽️'`)는데 추천 카드는 raw emoji(null) 그대로라 빈칸. rid5 실측: active 19개 중 **9개가 이모지·이미지 둘 다 없음**(Bibimbap·Steamed Rice·Soju 등) → 빈 카드. **수정**: `RecommendationSheet` Thumb 를 메뉴와 동일하게 `이미지>이모지>기본글리프('\\u{1F37D}')` 로 → 모든 카드가 사진/이모지/🍽 중 하나 보장(빈 카드 0). 폴백 추천에 이모지 상품(🍽️🍜) 섞이는 것도 확인. 이스케이프 사용은 design-guard decorative-emoji 회피(메뉴 리터럴은 baseline). 검증: DOM 카드 279=IMAGE, 335=🍽. build green(main.31a3ef85)·design-guard exit0. (헤드리스는 컬러폰트 없어 □처럼 보여도 DOM엔 글리프 존재 = 실폰 정상.)
 
 ### 🆕 진행중 (2026-06-26 #7) — 인쇄 가시성 & 진단 (Irene 아이디어, DEV·미배포)
@@ -108,6 +109,7 @@
 
 ### 후속 후보 (아이디어 메모, 확정 X)
 > 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.
+- **★ 네트워크 회복력 (Irene "너무 중요", 2026-06-27)** = `docs/THEFIRE_REMAINING_WORK_PLAN.md` 상단 ★섹션. ①핫스팟/동글 사용안내 + 연결상태 가시화(온라인/오프라인 배지) ②오프라인 주문 무손실 보완(현재 주문생성 큐만 → 피드백·생성외동작·메뉴캐시·인쇄연동·flush신뢰성·검증). 인쇄 무관. 설계만, 미착수.
 - **thefire 목요일 THU 세트화** — bm#238 "목요일 THU"가 브랜드에서 is_set_menu=false·구성품 없음(=세트 아님, 월화수만 세트). 목요일도 세트여야 하면 BG에서 세트 구성 필요(다른 요일세트 참고해 만들면 3매장 sync). Irene 미확정.
 - **deploy-to-production.sh 안정화** — "Building frontend"에서 멈춰 프론트 미반영 빈번(deploy4/6/7). 매번 수동 rsync 처리 중. 근본수리 필요.
 - **우측 패널 버튼 숨김 토글**(Table Actions 영역 위 버튼 접기) — Irene "어때?" 제안, 미확정.
