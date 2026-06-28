@@ -243,7 +243,7 @@ const OptionModal: React.FC<OptionModalProps> = ({ isOpen, onClose, menuItem, on
                 >
                   <div style={so ? { textDecoration: 'line-through' } : undefined}>{option.name}</div>
                   {so ? (
-                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#B91C1C', marginTop: '2px' }}>{t('terminal.soldOut', { defaultValue: 'Sold out' })}</div>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#DC2626', marginTop: '2px' }}>{t('terminal.soldOut', { defaultValue: 'Sold out' })}</div>
                   ) : option.price > 0 && (
                     <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '2px' }}>
                       +{formatCurrency(option.price, operationSettings.currency)}
@@ -276,7 +276,7 @@ const OptionModal: React.FC<OptionModalProps> = ({ isOpen, onClose, menuItem, on
                     <CheckboxText style={so ? { textDecoration: 'line-through' } : undefined}>{option.name}</CheckboxText>
                   </div>
                   {so ? (
-                    <CheckboxPrice style={{ color: '#B91C1C', fontWeight: 700 }}>{t('terminal.soldOut', { defaultValue: 'Sold out' })}</CheckboxPrice>
+                    <CheckboxPrice style={{ color: '#DC2626', fontWeight: 700 }}>{t('terminal.soldOut', { defaultValue: 'Sold out' })}</CheckboxPrice>
                   ) : option.price > 0 && (
                     <CheckboxPrice>+{formatCurrency(option.price, operationSettings.currency)}</CheckboxPrice>
                   )}

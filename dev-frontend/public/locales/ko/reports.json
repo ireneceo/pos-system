@@ -172,5 +172,19 @@
   "voidLog.colReason": "사유",
   "voidLog.paid": "결제완료",
   "voidLog.unpaid": "미결제",
-  "voidLog.paidCash": "결제완료 · 현금"
+  "voidLog.paidCash": "결제완료 · 현금",
+  "dailySettlementPrint.finalSettlement": "최종 마감",
+  "dailySettlementPrint.endOfDayClose": "영업 종료 최종 마감",
+  "staffMealSettlement.title": "직원식 정산",
+  "staffMealSettlement.close": "닫기",
+  "staffMealSettlement.print": "인쇄",
+  "staffMealSettlement.date": "날짜",
+  "staffMealSettlement.noStaffMeals": "이 날짜의 직원식이 없습니다.",
+  "settlementMenu.settlement": "마감",
+  "settlementMenu.daily": "일일 정산",
+  "settlementMenu.dailyDesc": "당일 매출 요약",
+  "settlementMenu.final": "최종 마감",
+  "settlementMenu.finalDesc": "영업 종료 최종 마감",
+  "settlementMenu.staffMeal": "직원식 정산",
+  "settlementMenu.staffMealDesc": "당일 직원식"
 }

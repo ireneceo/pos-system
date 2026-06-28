@@ -16,6 +16,9 @@ import { getAuthToken } from '../../utils/auth';
 interface DailySettlementPrintProps {
   isOpen: boolean;
   onClose: () => void;
+  // 2026-06-28 (Irene): 'final' = 비시재 매장도 쓸 수 있는 '최종 마감'(매출 기준 end-of-day close).
+  // 시재 대조(드로어 close)는 Today's Cash Drawer 에 그대로 — 여기선 매출 Z-리포트만. 기본 'daily'.
+  mode?: 'daily' | 'final';
 }
 
 interface SettlementFinancials {
@@ -418,7 +421,8 @@ const formatDateDisplay = (dateStr: string): string => {
 
 // ─── Component ───────────────────────────────────────────────────
 
-const DailySettlementPrint: React.FC<DailySettlementPrintProps> = ({ isOpen, onClose }) => {
+const DailySettlementPrint: React.FC<DailySettlementPrintProps> = ({ isOpen, onClose, mode = 'daily' }) => {
+  const isFinal = mode === 'final';
   const { t, i18n } = useTranslation('reports');
   const { user } = useAuth();
   const { storeSettings, operationSettings, paymentSettings } = useStore();
@@ -530,7 +534,11 @@ const DailySettlementPrint: React.FC<DailySettlementPrintProps> = ({ isOpen, onC
     html += `<div style="text-align:center;padding-bottom:12px;margin-bottom:12px;border-bottom:2px solid #000">${storeHeader}</div>`;
 
     // Title
-    html += `<div style="text-align:center;font-size:16px;font-weight:900;letter-spacing:2px;margin:12px 0;padding:8px 0;border-top:1px dashed #666;border-bottom:1px dashed #666">${t('reports:dailySettlementPrint.dailySettlement', 'DAILY SETTLEMENT')}</div>`;
+    const settlementTitle = isFinal
+      ? t('reports:dailySettlementPrint.finalSettlement', 'FINAL SETTLEMENT')
+      : t('reports:dailySettlementPrint.dailySettlement', 'DAILY SETTLEMENT');
+    html += `<div style="text-align:center;font-size:16px;font-weight:900;letter-spacing:2px;margin:12px 0;padding:8px 0;border-top:1px dashed #666;border-bottom:1px dashed #666">${settlementTitle}</div>`;
+    if (isFinal) html += `<div style="text-align:center;font-size:11px;color:#333;margin:-6px 0 8px">${t('reports:dailySettlementPrint.endOfDayClose', 'End-of-day final close')}</div>`;
 
     // Date / Printed
     html += row('Date:', formatDateDisplay(selectedDate));
@@ -636,7 +644,7 @@ const DailySettlementPrint: React.FC<DailySettlementPrintProps> = ({ isOpen, onC
          정렬은 flex(justify-content:space-between)라 monospace 아니어도 컬럼 유지. 굵기는 thermal 가독성 위해 600 유지. */
       body { font-family: 'Noto Sans KR', 'Noto Sans', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif; font-size: 12px; font-weight: 600; line-height: 1.3; color: #000; width: 80mm; max-width: 80mm; margin: 0 auto; padding: 5mm; box-sizing: border-box; }
     </style></head><body>${html}</body></html>`;
-  }, [data, selectedDate, currency, storeSettings, paymentSettings, timeZone]);
+  }, [data, selectedDate, currency, storeSettings, paymentSettings, timeZone, isFinal, t]);
 
   const handlePrint = () => {
     const htmlContent = generateSettlementHTML();
@@ -745,7 +753,7 @@ const DailySettlementPrint: React.FC<DailySettlementPrintProps> = ({ isOpen, onC
       <ModalContainer onClick={(e) => e.stopPropagation()}>
         {/* Screen-only header */}
         <ModalHeader className="no-print">
-          <ModalTitle>{t('reports:dailySettlementPrint.dailySettlementReport')}</ModalTitle>
+          <ModalTitle>{isFinal ? t('reports:dailySettlementPrint.finalSettlement', 'Final Settlement') : t('reports:dailySettlementPrint.dailySettlementReport')}</ModalTitle>
           <CloseButton onClick={onClose}>&times;</CloseButton>
         </ModalHeader>
 
@@ -807,7 +815,7 @@ const DailySettlementPrint: React.FC<DailySettlementPrintProps> = ({ isOpen, onC
             </ReceiptHeader>
 
             {/* ─── Report Title ─── */}
-            <ReceiptTitle>{t('reports:dailySettlementPrint.dailySettlement')}</ReceiptTitle>
+            <ReceiptTitle>{isFinal ? t('reports:dailySettlementPrint.finalSettlement', 'FINAL SETTLEMENT') : t('reports:dailySettlementPrint.dailySettlement')}</ReceiptTitle>
 
             <ReceiptSection>
               <ReceiptRow>

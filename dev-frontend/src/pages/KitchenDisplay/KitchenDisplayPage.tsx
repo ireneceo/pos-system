@@ -3247,7 +3247,7 @@ const KitchenDisplayPage: React.FC = () => {
               title={t('kitchen:cancelledOrders.title', { defaultValue: 'Cancelled orders' })}
               style={{
                 minHeight: 36, padding: '0 12px', borderRadius: 8, border: '1px solid #FCA5A5',
-                background: '#FEF2F2', color: '#B91C1C', fontWeight: 700, fontSize: 13,
+                background: '#FEF2F2', color: '#DC2626', fontWeight: 700, fontSize: 13,
                 cursor: 'pointer', flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6,
                 whiteSpace: 'nowrap'
               }}

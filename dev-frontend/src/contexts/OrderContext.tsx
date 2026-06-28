@@ -170,6 +170,10 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
           menuItem: item.menuItem,
           is_set_menu: (item.menuItem as any).is_set_menu || false,
           set_items: (item.menuItem as any).set_items || [],
+          // 4-1 품목별 메모 + 스탭밀 직원이름 — 이 map 이 화이트리스트라 명시하지 않으면 백엔드로
+          // 전달되지 않는다(둘 다 주방티켓/빌/정산서에 출력되어야 함).
+          ...((item as any).special_instructions ? { special_instructions: (item as any).special_instructions } : {}),
+          ...((item as any).staff_name ? { staff_name: (item as any).staff_name } : {}),
           // 2026-06-05: 세트 구성품(고른 항목+옵션) 누락 버그 수정 — 카운터/모바일 동일하게 전달.
           // 없으면 FloorPlan·KDS 가 set_items(전체 정의)로 폴백→전 메뉴 폭발+옵션 소실.
           // 모바일(PaymentPage)은 이미 set_components 를 보냄. 단일소스 일치.

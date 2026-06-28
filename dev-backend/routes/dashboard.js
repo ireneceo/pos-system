@@ -561,6 +561,110 @@ router.get('/restaurant/:restaurantId/earliest-order', authenticateToken, checkR
   }
 });
 
+// 2026-06-28 (Irene): 스탭밀(직원식) 전용 데이터 — 매장 타임존 기준 하루치 UTC 경계 계산 헬퍼.
+// reports-summary 와 동일 로직을 작은 형태로 재사용(이 두 엔드포인트가 같이 씀).
+function staffMealUTCBounds(dateStr, tz) {
+  const tzOffset = new Date().toLocaleString('en-US', { timeZone: tz, timeZoneName: 'shortOffset' });
+  const m = tzOffset.match(/GMT([+-]\d+)/);
+  const offsetHours = m ? parseInt(m[1]) : 8;
+  const start = new Date(`${dateStr}T00:00:00`); start.setHours(start.getHours() - offsetHours);
+  const end = new Date(`${dateStr}T23:59:59.999`); end.setHours(end.getHours() - offsetHours);
+  return { start, end };
+}
+
+/**
+ * Staff Meal 이름 자동완성 — 과거 스탭밀 주문의 품목에 쓰인 직원 이름 distinct 목록.
+ * PaymentModal 의 품목별 직원이름 입력칸에서 이미 쓴 이름을 추천하는 데 사용.
+ */
+router.get('/restaurant/:restaurantId/staff-meal-names', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const recent = await Order.findAll({
+      where: { restaurant_id: restaurantId, payment_method: 'staffMeal' },
+      attributes: ['order_items'],
+      order: [['order_date', 'DESC']],
+      limit: 400
+    });
+    const names = new Set();
+    recent.forEach(o => {
+      let items = o.order_items;
+      if (typeof items === 'string') { try { items = JSON.parse(items); } catch { items = []; } }
+      (Array.isArray(items) ? items : []).forEach(it => {
+        const nm = (it && it.staff_name || '').toString().trim();
+        if (nm) names.add(nm);
+      });
+    });
+    res.json({ success: true, data: Array.from(names).sort((a, b) => a.localeCompare(b)) });
+  } catch (error) {
+    console.error('staff-meal-names error:', error);
+    res.status(500).json({ success: false, message: 'Failed to load staff meal names' });
+  }
+});
+
+/**
+ * Staff Meal Settlement — 하루 마감분(일별 배치). 그날 스탭밀 주문 전체 + 품목별 직원이름 + 합계.
+ * Daily Settlement 처럼 하루치를 모아 정산서로 인쇄(프론트 billPrint 재사용, 인쇄엔진 무변경).
+ */
+router.get('/restaurant/:restaurantId/staff-meal-settlement', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const date = req.query.date;
+    if (!date) return res.status(400).json({ success: false, message: 'date required' });
+
+    const restaurant = await Restaurant.findByPk(restaurantId);
+    if (!restaurant) return res.status(404).json({ success: false, message: 'Restaurant not found' });
+    const tz = (restaurant.operation_settings || {}).timeZone || 'Asia/Kuala_Lumpur';
+    const { start, end } = staffMealUTCBounds(date, tz);
+
+    const orders = await Order.findAll({
+      where: {
+        restaurant_id: restaurantId,
+        payment_method: 'staffMeal',
+        order_date: { [Op.gte]: start, [Op.lte]: end },
+        status: 'completed',
+        [Op.or]: [{ is_deleted: false }, { is_deleted: null }]
+      },
+      attributes: ['id', 'order_number', 'order_date', 'order_type', 'total_amount', 'subtotal', 'order_items', 'table_number'],
+      order: [['order_date', 'ASC']]
+    });
+
+    let grandTotal = 0;
+    let itemCount = 0;
+    const result = orders.map(o => {
+      let items = o.order_items;
+      if (typeof items === 'string') { try { items = JSON.parse(items); } catch { items = []; } }
+      const cleanItems = (Array.isArray(items) ? items : []).map(it => {
+        const qty = Number(it.quantity) || 1;
+        itemCount += qty;
+        return {
+          name: it.name || it.product_name || 'Item',
+          quantity: qty,
+          price: Number(it.price) || Number(it.unit_price) || 0,
+          staff_name: (it.staff_name || '').toString().trim() || null,
+          options: it.options || it.selectedOptions || it.option_groups || null,
+          special_instructions: it.special_instructions || null
+        };
+      });
+      grandTotal += Number(o.total_amount) || 0;
+      return {
+        id: o.id,
+        order_number: o.order_number,
+        order_date: o.order_date,
+        order_type: o.order_type,
+        table_number: o.table_number,
+        total_amount: Number(o.total_amount) || 0,
+        subtotal: Number(o.subtotal) || 0,
+        items: cleanItems
+      };
+    });
+
+    res.json({ success: true, data: { date, timeZone: tz, orders: result, orderCount: result.length, itemCount, grandTotal } });
+  } catch (error) {
+    console.error('staff-meal-settlement error:', error);
+    res.status(500).json({ success: false, message: 'Failed to load staff meal settlement' });
+  }
+});
+
 /**
  * Reports Aggregation API
  * What and Why: 대량 데이터 클라이언트 처리 대신 서버에서 집계하여 성능 최적화

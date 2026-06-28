@@ -649,12 +649,19 @@ const RestaurantInvoicesPage: React.FC = () => {
         invoice.status?.toLowerCase().includes(searchLower) ||
         invoice.categoryDisplayName?.toLowerCase().includes(searchLower);
 
-      // Date filter
+      // Date filter — 발행일 기준. 2026-06-28 (Irene): 두 가지를 날짜로 숨기지 않는다 —
+      //  ① 미결제(액션 필요) 인보이스: 발행일이 한 달을 넘겨도 All 탭에서 사라지면 결제 누락.
+      //     (to_pay 탭이 기간 'all' 인 것과 같은 철학 — 액션 필요한 건 안 가린다.)
+      //  ② 발행일이 없거나 파싱 불가한 인보이스: 조용히 목록에서 빠지는 사고 방지.
+      const ACTIONABLE = ['pending_payment', 'overdue', 'payment_submitted', 'sent'];
       const invoiceDate = new Date(invoice.issueDate);
       const startDate = new Date(dateRange.start);
       const endDate = new Date(dateRange.end);
       endDate.setHours(23, 59, 59, 999);
-      const matchesDate = invoiceDate >= startDate && invoiceDate <= endDate;
+      const matchesDate =
+        ACTIONABLE.includes(invoice.status) || isNaN(invoiceDate.getTime())
+          ? true
+          : (invoiceDate >= startDate && invoiceDate <= endDate);
 
       return matchesSearch && matchesDate;
     });

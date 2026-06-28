@@ -172,5 +172,19 @@
   "voidLog.colReason": "Sebab",
   "voidLog.paid": "Dibayar",
   "voidLog.unpaid": "Belum dibayar",
-  "voidLog.paidCash": "DIBAYAR · TUNAI"
+  "voidLog.paidCash": "DIBAYAR · TUNAI",
+  "dailySettlementPrint.finalSettlement": "PENYELESAIAN AKHIR",
+  "dailySettlementPrint.endOfDayClose": "Penutupan akhir hari",
+  "staffMealSettlement.title": "Penyelesaian Makan Staf",
+  "staffMealSettlement.close": "Tutup",
+  "staffMealSettlement.print": "Cetak",
+  "staffMealSettlement.date": "Tarikh",
+  "staffMealSettlement.noStaffMeals": "Tiada makan staf pada hari ini.",
+  "settlementMenu.settlement": "Penyelesaian",
+  "settlementMenu.daily": "Penyelesaian Harian",
+  "settlementMenu.dailyDesc": "Ringkasan jualan hari ini",
+  "settlementMenu.final": "Penyelesaian Akhir",
+  "settlementMenu.finalDesc": "Penutupan akhir hari",
+  "settlementMenu.staffMeal": "Penyelesaian Makan Staf",
+  "settlementMenu.staffMealDesc": "Makan staf hari ini"
 }

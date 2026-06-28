@@ -172,5 +172,19 @@
   "voidLog.colReason": "Reason",
   "voidLog.paid": "Paid",
   "voidLog.unpaid": "Unpaid",
-  "voidLog.paidCash": "PAID · CASH"
+  "voidLog.paidCash": "PAID · CASH",
+  "dailySettlementPrint.finalSettlement": "FINAL SETTLEMENT",
+  "dailySettlementPrint.endOfDayClose": "End-of-day final close",
+  "staffMealSettlement.title": "Staff Meal Settlement",
+  "staffMealSettlement.close": "Close",
+  "staffMealSettlement.print": "Print",
+  "staffMealSettlement.date": "Date",
+  "staffMealSettlement.noStaffMeals": "No staff meals on this day.",
+  "settlementMenu.settlement": "Settlement",
+  "settlementMenu.daily": "Daily Settlement",
+  "settlementMenu.dailyDesc": "Sales summary for the day",
+  "settlementMenu.final": "Final Settlement",
+  "settlementMenu.finalDesc": "End-of-day final close",
+  "settlementMenu.staffMeal": "Staff Meal Settlement",
+  "settlementMenu.staffMealDesc": "Staff meals for the day"
 }

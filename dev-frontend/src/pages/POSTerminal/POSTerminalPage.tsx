@@ -2541,7 +2541,7 @@ const POSTerminalPage: React.FC = () => {
     setShowPaymentModal(true);
   };
 
-  const handleConfirmPayment = async (method: string, amountReceived?: number, change?: number, pointsUsed?: number, pointDiscountAmount?: number, cardType?: string) => {
+  const handleConfirmPayment = async (method: string, amountReceived?: number, change?: number, pointsUsed?: number, pointDiscountAmount?: number, cardType?: string, staffNames?: string[]) => {
     // 중복 실행 방지
     if (isProcessingPayment) {
       console.warn('POS - Payment already in progress, ignoring duplicate call');
@@ -2601,7 +2601,7 @@ const POSTerminalPage: React.FC = () => {
         // backend enrich 와 동등하게 작동.
         const _catStationMap = new Map<string, number>();
         (categories as any[]).forEach((c: any) => { if (c.kitchen_station_id) _catStationMap.set(String(c.id), c.kitchen_station_id); });
-        return orderItems.map(item => {
+        return orderItems.map((item, _payIdx) => {
           let itemPrice = item.menuItem.price;
           if (item.selectedOptions && item.selectedOptions.length > 0) {
             const optionsTotal = item.selectedOptions.reduce((sum, opt) => sum + opt.price, 0);
@@ -2626,7 +2626,8 @@ const POSTerminalPage: React.FC = () => {
             set_items: item.menuItem.set_items || [],
             set_components: (item as any).set_components || undefined,
             kitchen_station_id: ksid,
-            special_instructions: item.special_instructions || undefined // 4-1 품목별 메모(주방티켓/빌)
+            special_instructions: item.special_instructions || undefined, // 4-1 품목별 메모(주방티켓/빌)
+            staff_name: (staffNames && staffNames[_payIdx] && staffNames[_payIdx].trim()) || undefined // 스탭밀 직원이름(영수증/정산서)
           };
         });
       })(),

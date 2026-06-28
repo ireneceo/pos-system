@@ -172,5 +172,19 @@
   "voidLog.colReason": "原因",
   "voidLog.paid": "已付款",
   "voidLog.unpaid": "未付款",
-  "voidLog.paidCash": "已付款 · 现金"
+  "voidLog.paidCash": "已付款 · 现金",
+  "dailySettlementPrint.finalSettlement": "最终结算",
+  "dailySettlementPrint.endOfDayClose": "营业结束最终结算",
+  "staffMealSettlement.title": "员工餐结算",
+  "staffMealSettlement.close": "关闭",
+  "staffMealSettlement.print": "打印",
+  "staffMealSettlement.date": "日期",
+  "staffMealSettlement.noStaffMeals": "当天没有员工餐。",
+  "settlementMenu.settlement": "结算",
+  "settlementMenu.daily": "每日结算",
+  "settlementMenu.dailyDesc": "当日销售汇总",
+  "settlementMenu.final": "最终结算",
+  "settlementMenu.finalDesc": "营业结束最终结算",
+  "settlementMenu.staffMeal": "员工餐结算",
+  "settlementMenu.staffMealDesc": "当日员工餐"
 }

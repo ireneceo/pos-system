@@ -233,7 +233,7 @@ interface PaymentModalProps {
   takeawayCharge?: number;
   discountAmount?: number;
   couponDiscount?: number;
-  onConfirmPayment: (paymentMethod: string, amountReceived?: number, change?: number, pointsUsed?: number, pointDiscount?: number, cardType?: string) => void;
+  onConfirmPayment: (paymentMethod: string, amountReceived?: number, change?: number, pointsUsed?: number, pointDiscount?: number, cardType?: string, staffNames?: string[]) => void;
   paymentMethods?: any;
   taxRate?: number;
   serviceChargeRate?: number;
@@ -414,6 +414,12 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   const [applyingDiscount, setApplyingDiscount] = useState(false);
   const [liveTotalOverride, setLiveTotalOverride] = useState<number | null>(null);
   const [showDiscountPin, setShowDiscountPin] = useState(false);  // #5 결제창 할인 PIN 승인
+
+  // 2026-06-28 (Irene): Staff Meal — 품목별 '직원 이름'(영수증의 "zafry*" 자리) + 자동완성.
+  // staffNames 는 orderItems 인덱스에 정렬. 이미 쓴 이름은 datalist 로 추천.
+  const [staffNames, setStaffNames] = useState<string[]>([]);
+  const [staffNameOptions, setStaffNameOptions] = useState<string[]>([]);
+  const [savingStaffNames, setSavingStaffNames] = useState(false);
 
   // Adjusted total after point discount
   // total = full payment 모드일 때 결제할 금액 (point discount 적용)
@@ -638,7 +644,28 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       }
     }
   }, [availableMethods, paymentMethod]);
-  
+
+  // 모달이 새로 열리면 직원이름 입력 초기화 (이전 주문 값 잔존 방지).
+  useEffect(() => {
+    if (isOpen) setStaffNames([]);
+  }, [isOpen, orderId]);
+
+  // Staff Meal 선택 시 과거 직원 이름 자동완성 목록 로드 (1회).
+  useEffect(() => {
+    if (!isOpen || paymentMethod !== 'staffMeal' || !restaurantId) return;
+    if (staffNameOptions.length > 0) return;
+    const tk = getAuthToken();
+    if (!tk) return;
+    let alive = true;
+    fetch(`/api/dashboard/restaurant/${restaurantId}/staff-meal-names`, {
+      headers: { 'Authorization': `Bearer ${tk}` }
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(j => { if (alive && j?.success && Array.isArray(j.data)) setStaffNameOptions(j.data); })
+      .catch(() => { /* 자동완성 실패는 비치명 */ });
+    return () => { alive = false; };
+  }, [isOpen, paymentMethod, restaurantId, staffNameOptions.length]);
+
   const handleCashAmountChange = (value: string) => {
     const cleanValue = value.replace(/[^0-9.]/g, '');
     setCashAmount(cleanValue);
@@ -707,6 +734,26 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     }
   };
 
+  // Staff Meal 확정: 품목별 직원이름을 (1) 이미 존재하는 주문이면 전용 엔드포인트로 저장,
+  // (2) POS 신규주문(orderId 없음)이면 onConfirmPayment 로 넘겨 생성 items 에 실음.
+  const confirmStaffMeal = async () => {
+    const names = orderItems.map((_, idx) => (staffNames[idx] || '').trim());
+    const hasAny = names.some(n => n.length > 0);
+    if (orderId && hasAny) {
+      try {
+        setSavingStaffNames(true);
+        const tk = getAuthToken();
+        await fetch(`/api/orders/${orderId}/staff-meal-names`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${tk}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ staff_names: names })
+        });
+      } catch { /* 이름 저장 실패는 결제를 막지 않음 (비치명) */ }
+      finally { setSavingStaffNames(false); }
+    }
+    onConfirmPayment(paymentMethod, undefined, undefined, 0, 0, undefined, hasAny ? names : undefined);
+  };
+
   const handleConfirm = () => {
     if (splitMode) {
       handleSplitConfirm();
@@ -720,7 +767,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     } else if (paymentMethod === 'card') {
       onConfirmPayment(paymentMethod, undefined, undefined, pointsToUse, pointDiscount, cardType);
     } else if (paymentMethod === 'staffMeal') {
-      onConfirmPayment(paymentMethod, undefined, undefined, 0, 0);
+      confirmStaffMeal();
     } else {
       onConfirmPayment(paymentMethod, undefined, undefined, pointsToUse, pointDiscount);
     }
@@ -1262,16 +1309,55 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       )}
 
       {paymentMethod === 'staffMeal' && (
-        <div style={{
-          background: '#FFF7ED',
-          border: '1px solid #FDBA74',
-          borderRadius: '8px',
-          padding: '12px 16px',
-          fontSize: '13px',
-          color: '#9A3412',
-          lineHeight: '1.5'
-        }}>
-          Staff meal is recorded at full price but excluded from revenue reports.
+        <div>
+          <div style={{
+            background: '#FFF7ED',
+            border: '1px solid #FDBA74',
+            borderRadius: '8px',
+            padding: '12px 16px',
+            fontSize: '13px',
+            color: '#9A3412',
+            lineHeight: '1.5',
+            marginBottom: orderItems.length > 0 ? '12px' : 0
+          }}>
+            Staff meal is recorded at full price but excluded from revenue reports.
+          </div>
+          {orderItems.length > 0 && (
+            <div>
+              <Label>Staff name per item</Label>
+              <datalist id="staff-meal-name-options">
+                {staffNameOptions.map((n, i) => <option key={i} value={n} />)}
+              </datalist>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px' }}>
+                {orderItems.map((it, idx) => (
+                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ flex: '1 1 0', minWidth: 0, fontSize: '13px', color: '#0A2540', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {it.quantity} × {it.name}
+                    </div>
+                    <input
+                      type="text"
+                      list="staff-meal-name-options"
+                      placeholder="Staff name"
+                      value={staffNames[idx] || ''}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setStaffNames(prev => {
+                          const next = [...prev];
+                          while (next.length < orderItems.length) next.push('');
+                          next[idx] = v;
+                          return next;
+                        });
+                      }}
+                      style={{
+                        flex: '0 0 150px', padding: '8px 10px', fontSize: '13px',
+                        border: '1px solid #C7CED6', borderRadius: '6px', background: '#FFFFFF', color: '#0A2540'
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

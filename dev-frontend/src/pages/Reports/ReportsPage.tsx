@@ -16,7 +16,7 @@ import {
 } from 'recharts';
 import PageHeader from '../../components/Common/PageHeader';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
-import DailySettlementPrint from './DailySettlementPrint';
+import SettlementMenu from '../../components/Settlement/SettlementMenu';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
@@ -227,9 +227,6 @@ const ReportsPage: React.FC = () => {
 
   // What and Why: 서버 집계 데이터 - 10000개 주문 클라이언트 처리 대신 서버에서 집계된 요약 데이터 사용
   const [reportsSummary, setReportsSummary] = useState<any>(null);
-
-  // Daily Settlement Print modal
-  const [showSettlement, setShowSettlement] = useState(false);
 
   // Payment Analysis tab state
   const [cardTypeFilter, setCardTypeFilter] = useState<string>('all');
@@ -964,20 +961,7 @@ const ReportsPage: React.FC = () => {
         </svg>
         Download
       </button>
-      <button
-        onClick={() => setShowSettlement(true)}
-        style={{
-          display: 'flex', alignItems: 'center', gap: '8px',
-          padding: '8px 16px', background: '#F4F6F9', color: '#0A2540',
-          border: '1px solid #C7CED6', borderRadius: '6px', cursor: 'pointer',
-          fontSize: '14px'
-        }}
-      >
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '16px', height: '16px' }}>
-          <path d="M6 9V2H18V9M6 18H4C2.89543 18 2 17.1046 2 16V11C2 9.89543 2.89543 9 4 9H20C21.1046 9 22 9.89543 22 11V16C22 17.1046 21.1046 18 20 18H18M6 14H18V22H6V14Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-        Daily Settlement
-      </button>
+      <SettlementMenu />
     </DatePeriodFilter>
   );
 
@@ -1873,11 +1857,6 @@ const ReportsPage: React.FC = () => {
 
         </Content>
       </ReportsContainer>
-
-      <DailySettlementPrint
-        isOpen={showSettlement}
-        onClose={() => setShowSettlement(false)}
-      />
     </>
   );
 };

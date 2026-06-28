@@ -75,7 +75,7 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
           background: #EF4444;
           color: white;
           &:hover {
-            background: #B91C1C;
+            background: #DC2626;
           }
         `;
       case 'secondary':
@@ -601,7 +601,7 @@ const OptionManagementPage: React.FC = () => {
                             borderRadius: 6, cursor: 'pointer', whiteSpace: 'nowrap',
                             border: '1px solid ' + (so ? '#DC2626' : '#C7CED6'),
                             background: so ? '#FEF2F2' : '#FFFFFF',
-                            color: so ? '#B91C1C' : '#6B7C93'
+                            color: so ? '#DC2626' : '#6B7C93'
                           }}
                         >
                           {so ? t('optionSoldOut.soldOut', { defaultValue: 'Sold out' }) : t('optionSoldOut.inStock', { defaultValue: 'In stock' })}

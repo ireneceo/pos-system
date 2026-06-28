@@ -316,6 +316,41 @@ router.get('/:id/payments', authenticateToken, async (req, res) => {
 });
 
 // POST /api/orders/:id/payments — record a (possibly partial) payment
+// 2026-06-28 (Irene): Staff Meal 결제 시 품목별 '직원 이름' 저장 — 영수증/스탭밀 정산서에
+// 누가 먹었는지 품목마다 표기(샘플 영수증의 "zafry*" 자리). 이미 존재하는 주문(FloorPlan/분할)에
+// 결제 직전 PaymentModal 이 호출. POS 신규주문은 생성 items 에 staff_name 을 직접 실음(별도 경로).
+// order_items 의 데이터 필드만 추가 — 인쇄 dispatch 무관.
+router.post('/:id/staff-meal-names', authenticateToken, requirePaymentAccess, async (req, res) => {
+  try {
+    const order = await Order.findByPk(req.params.id);
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+    if (req.user?.restaurant_id && Number(req.user.restaurant_id) !== Number(order.restaurant_id)
+        && !['System Admin'].includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Forbidden' });
+    }
+    const { staff_names } = req.body || {};
+    if (!Array.isArray(staff_names)) {
+      return res.status(400).json({ success: false, message: 'staff_names array required' });
+    }
+    let items = order.order_items;
+    if (typeof items === 'string') { try { items = JSON.parse(items); } catch { items = []; } }
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.json({ success: true, data: { updated: 0 } });
+    }
+    let updated = 0;
+    const merged = items.map((it, idx) => {
+      const nm = (staff_names[idx] || '').toString().trim();
+      if (nm) { updated++; return { ...it, staff_name: nm }; }
+      return it;
+    });
+    await order.update({ order_items: merged });
+    res.json({ success: true, data: { updated } });
+  } catch (error) {
+    console.error('staff-meal-names save error:', error);
+    res.status(500).json({ success: false, message: 'Failed to save staff meal names' });
+  }
+});
+
 // Body: { amount, payment_method, items_paid?, amount_received?, change_amount?, card_type?, transaction_id?, cashier_name? }
 // 카운터 결제 기록(현금/카드 수납) — 결제권한(access_payment) 직원만. 서버(홀)·서빙 전용
 // 직원은 차단(2026-06-24 access_payment 분리). 모바일 게스트는 이 경로가 아닌

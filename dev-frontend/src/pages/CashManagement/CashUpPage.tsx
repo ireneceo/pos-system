@@ -9,6 +9,7 @@ import { formatCurrency } from '../../utils/currency';
 import CashLedger from '../../components/CashManagement/CashLedger';
 import CashDrawerModal from '../../components/CashManagement/CashDrawerModal';
 import { C, round2, Ledger } from '../../components/CashManagement/cashUi';
+import SettlementMenu from '../../components/Settlement/SettlementMenu';
 
 // 시재관리(Cash Management) = 현금 입출금 회계 리스트 — 라이브오더 동일 구조(PageHeader + FilterToolbar + DataTable).
 // 운영(개시·캐시인/아웃·드로어)은 라이브오더/플로어플랜의 Today's Cash Drawer.
@@ -97,6 +98,7 @@ const CashUpPage: React.FC = () => {
           </svg>
           {t('cash:todayCashDrawer', { defaultValue: "Today's Cash Drawer" })}
         </HeaderBtn>
+        <SettlementMenu />
       </PageHeader>
       <Content>
         <FilterToolbar>
