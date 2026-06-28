@@ -95,6 +95,7 @@ interface MenuContextType {
   addMenuItem: (item: MenuItem) => Promise<MenuItem | void>;
   removeMenuItem: (itemId: string) => Promise<void>;
   toggleItemSoldOut: (itemId: string) => Promise<void>;
+  applyOptionSoldOut: (optionId: string, soldOut: boolean) => void;  // 2026-06-28 (2-1 M1) 옵션 품절 공유상태 반영(토글/소켓)
   addCategory: (category: Omit<MenuCategory, 'id'> & { id?: string }) => Promise<void>;
   updateCategory: (categoryId: string, updates: Partial<MenuCategory>) => Promise<void>;
   deleteCategory: (categoryId: string) => Promise<void>;
@@ -734,6 +735,15 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
     }
   };
 
+  // 2026-06-28 (2-1 M1): 옵션 품절 상태를 공유 optionGroups 에 반영 — 토글 성공 직후/소켓 수신 시.
+  // (이전엔 컴포넌트 로컬 override 만이라 모달 재오픈 시 되살아나고 타 기기 미반영이었음.)
+  const applyOptionSoldOut = useCallback((optionId: string, soldOut: boolean) => {
+    setOptionGroups(prev => prev.map(g => ({
+      ...g,
+      options: (g.options || []).map(o => String(o.id) === String(optionId) ? { ...o, sold_out: soldOut } : o)
+    })));
+  }, []);
+
   const toggleItemSoldOut = async (itemId: string) => {
     try {
       const item = menuItems.find(i => i.id === itemId);
@@ -1042,6 +1052,7 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
       addMenuItem,
       removeMenuItem,
       toggleItemSoldOut,
+      applyOptionSoldOut,
       addCategory,
       updateCategory,
       deleteCategory,

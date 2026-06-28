@@ -27,6 +27,7 @@
   - ✅ 설정 UI 토글(Irene 필수 "핀 설정 꼭 있어야") SettingsPage 추가, **기본 OFF=안전**(OFF면 기존+access_payment만 좁힘). mount clean.
   - ✅ **PIN 진입 UX 완료**: CashPinModal(VoidPinModal 미러, verify-pin-permission access_payment) + 3개 컴포넌트(CashDrawerOps·CashLedger·FinalSettlementPanel)에 withCashPin 게이트 + cash_pin 동봉(첫 쓰기 전 PIN 1회→세션 보유, CASH_PIN_* 오류 시 재요청). design-guard numpad bless. 게이트API 6/6 재검증·cash-up/settings mount0·hydration0·i18n0·build green. **3-1 완성** — 토글 ON 시 정상 동작.
 - **[완료·dev] 4-1 POS 아이템별 메모** (POS 보호파일, 인쇄 라인 diff 0): 장바구니 각 품목에 "Add note"→표준 input(터치=OS 온스크린 키보드, 물리키보드 매장도 그대로 — 별도 키보드 컴포넌트 불요). special_instructions 를 OrderItemType + 양쪽 주문 페이로드(handleAddOrder/handleConfirmPayment)에 연결 → 주방티켓/빌 출력은 billPrint가 기존 처리. 주문단위 메모 잘림은 #11(6/26)에서 이미 스크롤영역 재배치. mount0·hydration0·design0·build green. (남은 4-1 항목 없음.)
+- **[완료·dev] 머지(R8) 2건** (Irene 원래 "다음 확정 작업"): ①orders-crud 머지 재발행 printedItems 에 served/completed 제외(clean-move 1252 패턴 일치) — API검증(머지 시 served 제외·ready 포함). ②FloorPlanPage 머지 티켓 tableNumber "출발 + 목적지"(sourceTableNumber 사용), 헤더 ** TABLE CHANGED + MERGED ** 유지. 일반 이동은 목적지만. guards hydration0/design0, FloorPlan SPA mount 정상(test-critical ❌는 콜드딥링크 인증레이스 아티팩트). **⚠ 인쇄 라우팅 → 실프린터 종이 확인 후 배포.**
 - **[검증] 운영검증 read-only 통과**: 운영 health·역할 스모크·익명401·**운영 백엔드 KDS 되돌리기 min-stage 파생 정상**(is_test 매장5 생성→검증→삭제). 실고객매장 무변경. dashboard "실패"=테스트경로 오타(실경로 200).
 - **공통:** 전부 dev만, **운영 미배포**. print-guard 5건(POSTerminalPage·KitchenDisplayPage=의도된 레이아웃/KDS, 인쇄라인 diff0 / billPrint·poller·orders-crud=6/27 미검증 핫픽스). 블랭킷 bless라 **실프린터 확인 때 일괄 bless** — 임의 bless 금지.
 

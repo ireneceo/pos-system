@@ -1275,7 +1275,7 @@ const POSTerminalPage: React.FC = () => {
   const restaurantId = useRestaurantId();
   const { addOrder } = useOrders();
   const { getTakeawayCharge, operationSettings, getStoreInfo } = useStore();
-  const { categories: allCategories, menuItems, getItemsByCategory, loadMenuByCategory, isLoadingMenu, optionGroups: allOptionGroups } = useMenu();
+  const { categories: allCategories, menuItems, getItemsByCategory, loadMenuByCategory, isLoadingMenu, optionGroups: allOptionGroups, applyOptionSoldOut } = useMenu();
 
   // 2026-05-28 매장 critical: backend-driven auto-print polling. POSTerminal 은
   // MainLayout 안에 mount 안 되므로 (fullscreen route), 이 hook 으로 같은
@@ -1924,6 +1924,10 @@ const POSTerminalPage: React.FC = () => {
     s.on('connect', () => s.emit('join-restaurant', restaurantId));
     s.on('product-soldout', (d: { id: number; soldOut: boolean }) => {
       setSoldOutOverride(p => ({ ...p, [String(d.id)]: d.soldOut }));
+    });
+    // 2026-06-28 (2-1 M1): 옵션 품절 실시간 — 타 기기 토글을 공유 optionGroups 에 반영.
+    s.on('option-soldout', (d: { id: number; soldOut: boolean }) => {
+      applyOptionSoldOut(String(d.id), d.soldOut);
     });
     return () => { s.disconnect(); };
   }, [restaurantId]);

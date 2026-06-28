@@ -371,7 +371,7 @@ type OptionItemData = { id: string; name: string; price: number; ingredient_id?:
 
 const OptionManagementPage: React.FC = () => {
   const { t } = useTranslation('menu');
-  const { optionGroups, addOptionGroup, updateOptionGroup, deleteOptionGroup } = useMenu();
+  const { optionGroups, addOptionGroup, updateOptionGroup, deleteOptionGroup, applyOptionSoldOut } = useMenu();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deletingGroupId, setDeletingGroupId] = useState<string | null>(null);
@@ -401,6 +401,7 @@ const OptionManagementPage: React.FC = () => {
         body: JSON.stringify({ soldOut: next })
       });
       if (!res.ok) throw new Error('toggle failed');
+      applyOptionSoldOut(opt.id, next); // 2026-06-28 (M1) 공유 optionGroups 반영
     } catch {
       setOptSoldOut(p => ({ ...p, [opt.id]: !next })); // 실패 시 원복
     }

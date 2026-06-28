@@ -1567,7 +1567,11 @@ const FloorPlanPage: React.FC = () => {
             noticeHeader: _moveNotice,
             orderNumber: ord.order_number,
             pickupNumber: ord.order_number ? String(ord.order_number).split('-')[1] : '',
-            tableNumber: destTable || ord.table_number || undefined,
+            // 2026-06-28 (R8, Irene): 머지 티켓은 "출발 + 목적지" 두 테이블 표시(소스+목적지),
+            // 일반 이동은 목적지만. 헤더 ** TABLE CHANGED + MERGED ** 와 함께 주방이 양쪽 옛 티켓을 버림.
+            tableNumber: (onOccupied === 'merge' && (result as any).sourceTableNumber && (destTable || ord.table_number))
+              ? `${(result as any).sourceTableNumber} + ${destTable || ord.table_number}`
+              : (destTable || ord.table_number || undefined),
             pagerNumber: ord.pager_number || undefined,
             date: new Date(ord.order_date || ord.createdAt || Date.now()),
             orderType: ord.order_type === 'dine_in' ? 'dine-in' : (ord.order_type || 'dine-in'),

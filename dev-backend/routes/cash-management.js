@@ -6,7 +6,7 @@ const express = require('express');
 const router = express.Router();
 const { Op, fn, col, literal } = require('sequelize');
 const { CashierShift, CashReconciliation, CashMovement, PaymentMethodSetting, OrderPayment } = require('../models');
-const { authenticateToken, checkRestaurantAccess, requirePosCounter, userCanTakePayment } = require('../middleware/auth');
+const { authenticateToken, checkRestaurantAccess, userCanTakePayment, requirePaymentAccess } = require('../middleware/auth');
 const { getRestaurantTimezone, getDateBounds } = require('../utils/dateTimeHelper');
 const { stripStaffNs } = require('../utils/staffName');
 const { enforceCashPin } = require('../utils/cashPinGuard');
@@ -428,7 +428,9 @@ router.get('/restaurant/:restaurantId/movements', authenticateToken, checkRestau
 });
 
 // POST Z-Report 인쇄 기록 (실제 인쇄는 프론트 billPrint 재사용 — 방식 무변경)
-router.post('/restaurant/:restaurantId/shift/:id/zreport-printed', authenticateToken, checkRestaurantAccess, cashWriteGate, async (req, res) => {
+// 2026-06-28 (3-1 보완 M3): Z리포트 "인쇄됨" 마커는 현금 변동이 아니라 인쇄 로그 → PIN 게이트 제외
+// (결제권한만). PIN 게이트면 수동 재인쇄(reload 후 ref 빈 상태)에서 400 으로 타임스탬프 기록 실패.
+router.post('/restaurant/:restaurantId/shift/:id/zreport-printed', authenticateToken, checkRestaurantAccess, requirePaymentAccess, async (req, res) => {
   try {
     const restaurantId = parseInt(req.params.restaurantId, 10);
     const recon = await CashReconciliation.findOne({ where: { shift_id: req.params.id, restaurant_id: restaurantId }, order: [['reconciled_at', 'DESC']] });

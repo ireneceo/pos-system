@@ -1220,7 +1220,9 @@ router.post('/:id/move-table', authenticateToken, async (req, res) => {
             addedItems: mergeResult.addedItems, orderGroup: mergeResult.orderGroup,
             // 2026-06-01: 머지도 재발행 가능하게 — source 의 "이미 주방에 간"(printed) 아이템을
             // 반환. 프론트가 TABLE CHANGED + MERGED 헤더로 목적지 station 에 재발행한다.
-            printedItems: (Array.isArray(myItems) ? myItems : []).filter(it => it && (it.printed_at || it.printed))
+            // 2026-06-28 (R8, Irene): 이미 served/completed 품목은 재발행 제외 — clean move(1252)·
+            // 취소·아이템취소와 동일 정책(서브된 지 한참 된 걸 머지 때 주방에 다시 안 보냄).
+            printedItems: (Array.isArray(myItems) ? myItems : []).filter(it => it && (it.printed_at || it.printed) && it.status !== 'served' && it.status !== 'completed')
           };
         }
         // Default: block, hand the UI the destination order summary to decide.

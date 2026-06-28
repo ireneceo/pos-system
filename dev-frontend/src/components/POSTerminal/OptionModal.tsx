@@ -56,7 +56,7 @@ interface OptionModalProps {
 
 const OptionModal: React.FC<OptionModalProps> = ({ isOpen, onClose, menuItem, onConfirm }) => {
   const { t } = useTranslation('pos');
-  const { optionGroups: allOptionGroups } = useMenu();
+  const { optionGroups: allOptionGroups, applyOptionSoldOut } = useMenu();
   const { operationSettings } = useStore();
   const [quantity, setQuantity] = useState(1);
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
@@ -118,6 +118,7 @@ const OptionModal: React.FC<OptionModalProps> = ({ isOpen, onClose, menuItem, on
         body: JSON.stringify({ soldOut: next })
       });
       if (!res.ok) throw new Error('fail');
+      applyOptionSoldOut(opt.id, next); // 2026-06-28 (M1) 공유 optionGroups 반영 → 재오픈/타 기기 일관
     } catch { setOptSoldOut(p => ({ ...p, [opt.id]: !next })); }
   };
   const startOptLongPress = (opt: any) => { lpFired.current = false; lpTimer.current = setTimeout(() => { lpFired.current = true; toggleOptSoldOut(opt); }, 600); };
