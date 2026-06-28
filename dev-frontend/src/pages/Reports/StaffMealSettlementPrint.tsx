@@ -19,7 +19,7 @@ interface StaffMealItem {
   name: string;
   quantity: number;
   price: number;
-  staff_name: string | null;
+  staff_names: string[];
   options: any;
   special_instructions: string | null;
 }
@@ -161,7 +161,10 @@ const StaffMealSettlementPrint: React.FC<Props> = ({ isOpen, onClose }) => {
         html += `<div style="font-size:10px;color:#333;margin-bottom:4px">Order: ${o.order_number || o.id}</div>`;
         o.items.forEach((it) => {
           html += `<div style="display:flex;justify-content:space-between;align-items:baseline;padding:1px 0;font-size:13px;font-weight:600"><span style="flex:1;padding-right:8px">${it.quantity} × ${it.name}</span><span style="text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums">${fc(it.price * it.quantity)}</span></div>`;
-          if (it.staff_name) html += `<div style="font-size:12px;padding-left:14px;color:#000">${it.staff_name}*</div>`;
+          // 수량만큼 직원 이름(같은 메뉴 2개=2명). 각 줄에 한 명씩.
+          (it.staff_names || []).map(n => (n || '').trim()).filter(Boolean).forEach(nm => {
+            html += `<div style="font-size:12px;padding-left:14px;color:#000">${nm}*</div>`;
+          });
           optionLabels(it.options).forEach(op => {
             html += `<div style="font-size:11px;padding-left:14px;color:#333">- ${op}</div>`;
           });
@@ -204,7 +207,7 @@ const StaffMealSettlementPrint: React.FC<Props> = ({ isOpen, onClose }) => {
     <Modal isOpen={isOpen} onClose={onClose} title={t('reports:staffMealSettlement.title', 'Staff Meal Settlement')} size="medium" footer={footer}>
       <div style={{ marginBottom: '16px', maxWidth: '240px' }}>
         <Label>{t('reports:staffMealSettlement.date', 'Date')}</Label>
-        <DateField value={selectedDate} onChange={(v: string) => setSelectedDate(v)} />
+        <DateField value={selectedDate} onChange={(v: string) => setSelectedDate(v)} dropdownPortal />
       </div>
       {loading ? (
         <div style={{ textAlign: 'center', padding: '32px', color: '#6B7C93' }}>{t('common:loading', 'Loading...')}</div>

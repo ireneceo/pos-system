@@ -9,6 +9,7 @@
  *   <DateField value={dueDate} onChange={setDueDate} disabled placeholder="Select date" />
  */
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import ReactDOM from 'react-dom';
 import styled from 'styled-components';
 import { getRestaurantTimezone } from '../../utils/timezone';
 
@@ -23,6 +24,9 @@ interface DateFieldProps {
   id?: string;
   name?: string;
   required?: boolean;
+  // 2026-06-28 (Irene): 모달(overflow 잘림 + footer 가림) 안에서 쓸 때 캘린더를 body 로 portal
+  // → footer 뒤로 깔리거나 잘리지 않음. 기본 false(기존 동작 그대로, 다른 사용처 무영향).
+  dropdownPortal?: boolean;
 }
 
 const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
@@ -88,6 +92,7 @@ const DateField: React.FC<DateFieldProps> = ({
   id,
   name,
   required,
+  dropdownPortal,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const today = new Date();
@@ -95,6 +100,24 @@ const DateField: React.FC<DateFieldProps> = ({
   const [viewMonth, setViewMonth] = useState(initial.getMonth());
   const [viewYear, setViewYear] = useState(initial.getFullYear());
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [portalCoords, setPortalCoords] = useState<{ top: number; left: number } | null>(null);
+
+  // portal 모드: 입력칸 위치 기준으로 캘린더 fixed 좌표 계산(열 때 + 스크롤/리사이즈 시 갱신).
+  useEffect(() => {
+    if (!dropdownPortal || !isOpen) return;
+    const compute = () => {
+      const r = wrapperRef.current?.getBoundingClientRect();
+      if (r) setPortalCoords({ top: r.bottom + 6, left: r.left });
+    };
+    compute();
+    window.addEventListener('scroll', compute, true);
+    window.addEventListener('resize', compute);
+    return () => {
+      window.removeEventListener('scroll', compute, true);
+      window.removeEventListener('resize', compute);
+    };
+  }, [dropdownPortal, isOpen]);
 
   const selected = parseDate(value || '');
   const minDate = parseDate(min || '');
@@ -112,9 +135,10 @@ const DateField: React.FC<DateFieldProps> = ({
   // Outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
-      }
+      const t = e.target as Node;
+      const inWrapper = wrapperRef.current && wrapperRef.current.contains(t);
+      const inPanel = panelRef.current && panelRef.current.contains(t); // portal 캘린더 클릭은 바깥 아님
+      if (!inWrapper && !inPanel) setIsOpen(false);
     };
     if (isOpen) document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -214,26 +238,35 @@ const DateField: React.FC<DateFieldProps> = ({
       </InputDisplay>
       {/* Hidden input for form submission */}
       <input type="hidden" name={name} value={value || ''} />
-      {isOpen && (
-        <PickerPanel>
-          <CalendarHeader>
-            <NavButton onClick={handlePrevMonth} type="button" aria-label="Previous month">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="15 18 9 12 15 6" />
-              </svg>
-            </NavButton>
-            <NavButton onClick={handleNextMonth} type="button" aria-label="Next month">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="9 6 15 12 9 18" />
-              </svg>
-            </NavButton>
-          </CalendarHeader>
-          <CalendarBody>{renderMonth()}</CalendarBody>
-          <Footer>
-            <TodayButton type="button" onClick={() => handleDayClick(new Date())}>Today</TodayButton>
-          </Footer>
-        </PickerPanel>
-      )}
+      {isOpen && (() => {
+        const panel = (
+          <PickerPanel
+            ref={panelRef}
+            style={dropdownPortal && portalCoords
+              ? { position: 'fixed', top: portalCoords.top, left: portalCoords.left, zIndex: 3000 }
+              : undefined}
+          >
+            <CalendarHeader>
+              <NavButton onClick={handlePrevMonth} type="button" aria-label="Previous month">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="15 18 9 12 15 6" />
+                </svg>
+              </NavButton>
+              <NavButton onClick={handleNextMonth} type="button" aria-label="Next month">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="9 6 15 12 9 18" />
+                </svg>
+              </NavButton>
+            </CalendarHeader>
+            <CalendarBody>{renderMonth()}</CalendarBody>
+            <Footer>
+              <TodayButton type="button" onClick={() => handleDayClick(new Date())}>Today</TodayButton>
+            </Footer>
+          </PickerPanel>
+        );
+        // 모달 안에서는 body 로 portal → overflow 잘림/footer 가림 회피.
+        return dropdownPortal ? ReactDOM.createPortal(panel, document.body) : panel;
+      })()}
     </Wrapper>
   );
 };

@@ -233,7 +233,7 @@ interface PaymentModalProps {
   takeawayCharge?: number;
   discountAmount?: number;
   couponDiscount?: number;
-  onConfirmPayment: (paymentMethod: string, amountReceived?: number, change?: number, pointsUsed?: number, pointDiscount?: number, cardType?: string, staffNames?: string[]) => void;
+  onConfirmPayment: (paymentMethod: string, amountReceived?: number, change?: number, pointsUsed?: number, pointDiscount?: number, cardType?: string, staffNames?: string[][]) => void;
   paymentMethods?: any;
   taxRate?: number;
   serviceChargeRate?: number;
@@ -415,9 +415,9 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   const [liveTotalOverride, setLiveTotalOverride] = useState<number | null>(null);
   const [showDiscountPin, setShowDiscountPin] = useState(false);  // #5 결제창 할인 PIN 승인
 
-  // 2026-06-28 (Irene): Staff Meal — 품목별 '직원 이름'(영수증의 "zafry*" 자리) + 자동완성.
-  // staffNames 는 orderItems 인덱스에 정렬. 이미 쓴 이름은 datalist 로 추천.
-  const [staffNames, setStaffNames] = useState<string[]>([]);
+  // 2026-06-28 (Irene): Staff Meal — '직원 이름'을 품목의 **수량(단위)만큼** 입력(같은 메뉴 2개=2명).
+  // unitNames[itemIdx] = [unit0 이름, unit1 이름, ...]. 이미 쓴 이름은 datalist 로 추천.
+  const [unitNames, setUnitNames] = useState<Record<number, string[]>>({});
   const [staffNameOptions, setStaffNameOptions] = useState<string[]>([]);
   const [savingStaffNames, setSavingStaffNames] = useState(false);
 
@@ -647,7 +647,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 
   // 모달이 새로 열리면 직원이름 입력 초기화 (이전 주문 값 잔존 방지).
   useEffect(() => {
-    if (isOpen) setStaffNames([]);
+    if (isOpen) setUnitNames({});
   }, [isOpen, orderId]);
 
   // Staff Meal 선택 시 과거 직원 이름 자동완성 목록 로드 (1회).
@@ -737,8 +737,11 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   // Staff Meal 확정: 품목별 직원이름을 (1) 이미 존재하는 주문이면 전용 엔드포인트로 저장,
   // (2) POS 신규주문(orderId 없음)이면 onConfirmPayment 로 넘겨 생성 items 에 실음.
   const confirmStaffMeal = async () => {
-    const names = orderItems.map((_, idx) => (staffNames[idx] || '').trim());
-    const hasAny = names.some(n => n.length > 0);
+    // 품목별 수량만큼의 이름 배열(같은 메뉴 2개=2명). names[itemIdx] = [unit0, unit1, ...].
+    const names = orderItems.map((it, idx) =>
+      Array.from({ length: Math.max(1, it.quantity || 1) }, (_, u) => (unitNames[idx]?.[u] || '').trim())
+    );
+    const hasAny = names.some(arr => arr.some(n => n.length > 0));
     if (orderId && hasAny) {
       try {
         setSavingStaffNames(true);
@@ -1324,37 +1327,46 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
           </div>
           {orderItems.length > 0 && (
             <div>
-              <Label>Staff name per item</Label>
+              <Label>Staff name per serving</Label>
               <datalist id="staff-meal-name-options">
                 {staffNameOptions.map((n, i) => <option key={i} value={n} />)}
               </datalist>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px' }}>
-                {orderItems.map((it, idx) => (
-                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ flex: '1 1 0', minWidth: 0, fontSize: '13px', color: '#0A2540', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {it.quantity} × {it.name}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '6px' }}>
+                {orderItems.map((it, idx) => {
+                  const qty = Math.max(1, it.quantity || 1);
+                  return (
+                    <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <div style={{ fontSize: '13px', fontWeight: 600, color: '#0A2540' }}>
+                        {it.quantity} × {it.name}
+                      </div>
+                      {/* 수량만큼 이름칸 — 같은 메뉴 2개면 2명 입력 */}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', paddingLeft: '8px' }}>
+                        {Array.from({ length: qty }).map((_, u) => (
+                          <input
+                            key={u}
+                            type="text"
+                            list="staff-meal-name-options"
+                            placeholder={qty > 1 ? `#${u + 1} name` : 'Staff name'}
+                            value={unitNames[idx]?.[u] || ''}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setUnitNames(prev => {
+                                const arr = [...(prev[idx] || [])];
+                                while (arr.length < qty) arr.push('');
+                                arr[u] = v;
+                                return { ...prev, [idx]: arr };
+                              });
+                            }}
+                            style={{
+                              flex: '0 0 140px', padding: '8px 10px', fontSize: '13px',
+                              border: '1px solid #C7CED6', borderRadius: '6px', background: '#FFFFFF', color: '#0A2540'
+                            }}
+                          />
+                        ))}
+                      </div>
                     </div>
-                    <input
-                      type="text"
-                      list="staff-meal-name-options"
-                      placeholder="Staff name"
-                      value={staffNames[idx] || ''}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        setStaffNames(prev => {
-                          const next = [...prev];
-                          while (next.length < orderItems.length) next.push('');
-                          next[idx] = v;
-                          return next;
-                        });
-                      }}
-                      style={{
-                        flex: '0 0 150px', padding: '8px 10px', fontSize: '13px',
-                        border: '1px solid #C7CED6', borderRadius: '6px', background: '#FFFFFF', color: '#0A2540'
-                      }}
-                    />
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

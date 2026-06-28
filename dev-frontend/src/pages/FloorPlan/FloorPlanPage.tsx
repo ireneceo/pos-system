@@ -20,6 +20,7 @@ import CashierPinModal from '../../components/POSTerminal/CashierPinModal';
 import { formatDateTime } from '../../utils/timezone';
 import { getRestaurantTimezone } from '../../utils/timezone';
 import DailySettlementPrint from '../Reports/DailySettlementPrint';
+import SettlementMenu from '../../components/Settlement/SettlementMenu';
 import CashDrawerModal from '../../components/CashManagement/CashDrawerModal';
 import FinalSettlementModal from '../../components/CashManagement/FinalSettlementModal';
 import io from 'socket.io-client';
@@ -115,12 +116,21 @@ const Header = styled.div`
   justify-content: space-between;
   align-items: center;
   flex-shrink: 0;
+  /* 2026-06-28 (Irene): 10인치 등 좁은 화면에서 헤더가 가로로 넘쳐 "레이아웃 나가던" 문제 —
+     줄바꿈 허용으로 화면 밖으로 밀리지 않게(넘치면 2줄). 자식도 줄어들 수 있게 min-width:0. */
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  & > * { min-width: 0; }
+  @media (max-width: 1024px) {
+    padding: 10px 14px;
+  }
 `;
 
 const HeaderLeft = styled.div`
   display: flex;
   align-items: center;
   gap: 16px;
+  flex-wrap: wrap;
 `;
 
 const HeaderTitle = styled.h1`
@@ -150,6 +160,8 @@ const HeaderRight = styled.div`
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 
   @media (max-width: 1280px) {
     gap: 8px;
@@ -1837,21 +1849,10 @@ const FloorPlanPage: React.FC = () => {
             {t('cash:todayCashDrawer', { defaultValue: "Today's Cash Drawer" })}
           </BackBtn>
           )}
+          {/* 2026-06-28 (Irene): Daily/Final 따로 였던 걸 "마감 ▾" 하나로 통합 + Staff Meal 추가.
+              Daily/Final 은 이 화면의 기존 모달 재사용(시재 FinalSettlementModal 보존). */}
           {canOperatePOS && (
-          <BackBtn type="button" onClick={() => setShowSettlement(true)} title="Daily Settlement">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '15px', height: '15px' }}>
-              <path d="M6 9V2H18V9M6 18H4C2.89543 18 2 17.1046 2 16V11C2 9.89543 2.89543 9 4 9H20C21.1046 9 22 9.89543 22 11V16C22 17.1046 21.1046 18 20 18H18M6 14H18V22H6V14Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            Daily Settlement
-          </BackBtn>
-          )}
-          {canOperatePOS && !isNarrow && (
-          <BackBtn type="button" onClick={() => setShowFinalSettlement(true)} title="Final Settlement" style={{ background: '#635BFF', color: '#fff', borderColor: '#635BFF' }}>
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '15px', height: '15px' }}>
-              <path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            {t('cash:finalSettlement', { defaultValue: 'Final Settlement' })}
-          </BackBtn>
+            <SettlementMenu onDaily={() => setShowSettlement(true)} onFinal={() => setShowFinalSettlement(true)} />
           )}
           {canOperatePOS && !isNarrow && (
             <>

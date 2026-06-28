@@ -28,6 +28,7 @@ import { formatDateTime as formatDateTimeUtil } from '../../utils/timezone';
 import ConfirmModal from '../../components/ConfirmModal';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import DailySettlementPrint from '../Reports/DailySettlementPrint';
+import SettlementMenu from '../../components/Settlement/SettlementMenu';
 import CashDrawerModal from '../../components/CashManagement/CashDrawerModal';
 import FinalSettlementModal from '../../components/CashManagement/FinalSettlementModal';
 import { useTranslation } from 'react-i18next';
@@ -1715,34 +1716,9 @@ const LiveOrdersPage: React.FC = () => {
               </svg>
               {t('cash:todayCashDrawer', { defaultValue: "Today's Cash Drawer" })}
             </button>
-            <button
-              onClick={() => setShowSettlement(true)} title="Daily Settlement"
-              style={{
-                display: 'flex', alignItems: 'center', gap: '8px',
-                padding: '8px 16px', background: '#F4F6F9', color: '#0A2540',
-                border: '1px solid #C7CED6', borderRadius: '6px', cursor: 'pointer',
-                fontSize: '14px', fontWeight: 500, flexShrink: 0
-              }}
-            >
-              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '16px', height: '16px' }}>
-                <path d="M6 9V2H18V9M6 18H4C2.89543 18 2 17.1046 2 16V11C2 9.89543 2.89543 9 4 9H20C21.1046 9 22 9.89543 22 11V16C22 17.1046 21.1046 18 20 18H18M6 14H18V22H6V14Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              Daily Settlement
-            </button>
-            <button
-              onClick={() => setShowFinalSettlement(true)} title="Final Settlement"
-              style={{
-                display: 'flex', alignItems: 'center', gap: '8px',
-                padding: '8px 16px', background: '#635BFF', color: '#fff',
-                border: '1px solid #635BFF', borderRadius: '6px', cursor: 'pointer',
-                fontSize: '14px', fontWeight: 600, flexShrink: 0
-              }}
-            >
-              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '16px', height: '16px' }}>
-                <path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              {t('cash:finalSettlement', { defaultValue: 'Final Settlement' })}
-            </button>
+            {/* 2026-06-28 (Irene): Daily/Final 따로 였던 걸 "마감 ▾" 하나로 통합 + Staff Meal 추가.
+                Daily/Final 은 이 화면 기존 모달 재사용(시재 FinalSettlementModal 보존). */}
+            <SettlementMenu onDaily={() => setShowSettlement(true)} onFinal={() => setShowFinalSettlement(true)} />
           </FilterToolbar>
 
           <StatusTabs>

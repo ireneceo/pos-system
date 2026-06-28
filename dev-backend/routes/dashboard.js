@@ -590,8 +590,9 @@ router.get('/restaurant/:restaurantId/staff-meal-names', authenticateToken, chec
       let items = o.order_items;
       if (typeof items === 'string') { try { items = JSON.parse(items); } catch { items = []; } }
       (Array.isArray(items) ? items : []).forEach(it => {
-        const nm = (it && it.staff_name || '').toString().trim();
-        if (nm) names.add(nm);
+        // staff_names(수량별 배열) 우선, 구버전 staff_name(단일) 호환.
+        const arr = Array.isArray(it && it.staff_names) ? it.staff_names : (it && it.staff_name ? [it.staff_name] : []);
+        arr.forEach(n => { const nm = (n || '').toString().trim(); if (nm) names.add(nm); });
       });
     });
     res.json({ success: true, data: Array.from(names).sort((a, b) => a.localeCompare(b)) });
@@ -636,11 +637,15 @@ router.get('/restaurant/:restaurantId/staff-meal-settlement', authenticateToken,
       const cleanItems = (Array.isArray(items) ? items : []).map(it => {
         const qty = Number(it.quantity) || 1;
         itemCount += qty;
+        // staff_names = 수량별 직원이름 배열(같은 메뉴 2개=2명). 구버전 staff_name(단일) 호환.
+        const staffNames = Array.isArray(it.staff_names)
+          ? it.staff_names.map(n => (n || '').toString().trim())
+          : (it.staff_name ? [String(it.staff_name).trim()] : []);
         return {
           name: it.name || it.product_name || 'Item',
           quantity: qty,
           price: Number(it.price) || Number(it.unit_price) || 0,
-          staff_name: (it.staff_name || '').toString().trim() || null,
+          staff_names: staffNames,
           options: it.options || it.selectedOptions || it.option_groups || null,
           special_instructions: it.special_instructions || null
         };

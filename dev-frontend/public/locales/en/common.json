@@ -743,5 +743,7 @@
   },
   "offlineQueued": "No connection — your order is saved and will be placed automatically once you are back online.",
   "save": "Save",
-  "cancel": "Cancel"
+  "cancel": "Cancel",
+  "offlineBanner": "Offline — internet disconnected. Will recover automatically when reconnected.",
+  "offlineReconnecting": "Connection restored — syncing…"
 }

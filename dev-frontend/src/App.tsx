@@ -15,6 +15,8 @@ import ScrollToTop from './components/ScrollToTop';
 import CookieConsentBanner from './components/Common/CookieConsentBanner';
 import PosLayout from './components/Layout/PosLayout';
 import { PwaInstallProvider } from './contexts/PwaInstallContext';
+import { OfflineProvider } from './contexts/OfflineContext';
+import OfflineBanner from './components/Offline/OfflineBanner';
 import NotificationToaster from './components/Common/NotificationToaster';
 import PwaInstallBanner from './components/Common/PwaInstallBanner';
 // Login Page (keep static - frequently used, first contact)
@@ -480,10 +482,12 @@ function App() {
                     <MenuProvider>
                       <PaymentStatusProvider>
                       <PwaInstallProvider>
+                       <OfflineProvider>
                         <ScrollToTop />
                         <CookieConsentBanner />
                         <NotificationToaster />
                         <PwaInstallBanner />
+                        <OfflineBanner />
                       <Suspense fallback={<PageLoader />}>
                       <Routes>
                       {/* ===== PUBLIC ROUTES (No MainLayout) ===== */}
@@ -1489,6 +1493,7 @@ function App() {
                       </Route>{/* End PosLayout */}
                     </Routes>
                     </Suspense>
+                       </OfflineProvider>
                       </PwaInstallProvider>
                       </PaymentStatusProvider>
                     </MenuProvider>

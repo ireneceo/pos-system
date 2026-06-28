@@ -5,12 +5,15 @@
  *  - Receive web push messages and display notifications.
  *  - Handle notification clicks: focus existing tab on same-origin URL, otherwise open new window.
  *  - Maintain App Badging API count (when payload.badge is a number).
- *
- * Caching is intentionally NOT done here — POS pages are auth-gated, deferred chunks update via BUILD_ID,
- * caching SPA shell would conflict. If future offline support is needed, layer Workbox separately.
+ *  - 오프라인 캐싱 (2026-06-28, OFFLINE_MODE_DESIGN §2단계): **network-first + 오프라인일 때만 cache-fallback**.
+ *    온라인은 항상 네트워크 우선이라 신선도/stale-chunk 무회귀(기존 철학 유지), 끊겼을 때만 캐시로 셸·메뉴 로드.
+ *    캐시는 SW_VERSION 네임스페이스 → 새 배포(install)가 옛 캐시 전체 삭제로 stale-chunk 차단.
  */
 
-const SW_VERSION = '4.34-stations-before-consolidated-20260627';
+const SW_VERSION = '4.35-offline-cache-20260628';
+const RUNTIME_CACHE = `pos-runtime-${SW_VERSION}`;
+// 오프라인에 캐시할 API GET (메뉴/설정/플로어플랜 — 끊겨도 주문화면이 뜨게). 그 외 API 는 캐시 안 함.
+const API_CACHE_PATTERNS = [/\/api\/menu(\b|\/|\?)/, /\/api\/mobile\/.*menu/, /\/restaurants\/\d+\/floor-plan/, /\/api\/.*\/operation-settings/, /\/api\/.*\/store/];
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
@@ -40,19 +43,46 @@ self.addEventListener('activate', (event) => {
   })());
 });
 
-// Network-first fetch for the SPA shell + bundled JS/CSS — Chrome's "stale
-// disk cache 404" trap can't bite if we never hit the cache. We don't add
-// anything to caches.* here, just let the network handle it.
+// network-first + 오프라인 cache-fallback.
+// 온라인: 항상 네트워크 먼저 → 신선도 유지(기존 동작 무회귀, stale-chunk 트랩 회피).
+// 성공 응답은 SW_VERSION 캐시에 적재. 네트워크 실패(오프라인)일 때만 캐시로 응답.
+async function networkFirst(req, fallbackKey) {
+  let cache;
+  try { cache = await caches.open(RUNTIME_CACHE); } catch (_) { cache = null; }
+  try {
+    const res = await fetch(req);
+    if (cache && res && res.ok && res.type === 'basic') {
+      try { await cache.put(req, res.clone()); } catch (_) { /* quota/opaque */ }
+    }
+    return res;
+  } catch (_) {
+    // 오프라인 — 캐시에서 (네비게이션은 캐시된 index '/' 로 폴백 → 앱 셸 부팅).
+    if (cache) {
+      const hit = await cache.match(req) || (fallbackKey ? await cache.match(fallbackKey) : null);
+      if (hit) return hit;
+    }
+    return Response.error();
+  }
+}
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
-  try {
-    const url = new URL(req.url);
-    if (url.origin !== self.location.origin) return;
-    if (url.pathname.startsWith('/static/') || url.pathname === '/' || url.pathname.endsWith('.html')) {
-      event.respondWith(fetch(req).catch(() => Response.error()));
-    }
-  } catch (_) { /* non-fatal */ }
+  let url;
+  try { url = new URL(req.url); } catch (_) { return; }
+  if (url.origin !== self.location.origin) return;
+
+  const isNav = req.mode === 'navigate' || url.pathname === '/' || url.pathname.endsWith('.html');
+  const isStatic = url.pathname.startsWith('/static/');
+  const isApiCacheable = url.pathname.startsWith('/api/') && API_CACHE_PATTERNS.some((re) => re.test(url.pathname + url.search));
+
+  if (isNav) {
+    // 네비게이션: 온라인=네트워크, 오프라인=캐시된 '/'(셸) 로 앱 부팅.
+    event.respondWith(networkFirst(req, '/'));
+  } else if (isStatic || isApiCacheable) {
+    event.respondWith(networkFirst(req));
+  }
+  // 그 외(쓰기·기타 API)는 가로채지 않음 — 평소대로 네트워크.
 });
 
 /**

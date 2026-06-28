@@ -338,9 +338,13 @@ router.post('/:id/staff-meal-names', authenticateToken, requirePaymentAccess, as
       return res.json({ success: true, data: { updated: 0 } });
     }
     let updated = 0;
+    // staff_names[idx] = 그 품목의 수량만큼 이름 배열(같은 메뉴 2개=2명). 빈칸은 제거하지 않고 위치 보존.
     const merged = items.map((it, idx) => {
-      const nm = (staff_names[idx] || '').toString().trim();
-      if (nm) { updated++; return { ...it, staff_name: nm }; }
+      const arr = staff_names[idx];
+      if (Array.isArray(arr) && arr.some(n => (n || '').toString().trim())) {
+        updated++;
+        return { ...it, staff_names: arr.map(n => (n || '').toString().trim()) };
+      }
       return it;
     });
     await order.update({ order_items: merged });

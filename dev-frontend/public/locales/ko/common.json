@@ -743,5 +743,7 @@
   },
   "offlineQueued": "연결 없음 — 주문이 저장되었고 다시 온라인이 되면 자동으로 전송됩니다.",
   "save": "저장",
-  "cancel": "취소"
+  "cancel": "취소",
+  "offlineBanner": "오프라인 — 인터넷 연결이 끊겼습니다. 연결되면 자동 복구됩니다.",
+  "offlineReconnecting": "연결 복구됨 — 동기화 중…"
 }

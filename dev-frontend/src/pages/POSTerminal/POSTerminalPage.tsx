@@ -58,6 +58,15 @@ const Header = styled.div`
   justify-content: space-between;
   align-items: center;
 
+  /* 2026-06-28 (Irene): 10인치 태블릿(≤1280)에서 헤더 내용(직원·Customer Display·테마토글 등)이
+     가로로 넘쳐 "레이아웃 나가던" 문제 — 고정 80px·nowrap 해제하고 줄바꿈 허용(넘치면 2줄). */
+  @media (max-width: 1280px) {
+    height: auto;
+    max-height: none;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+  }
+
   @media (max-width: 768px) {
     padding: 16px;
     height: auto;
@@ -93,6 +102,8 @@ const HeaderInfo = styled.div`
   align-items: center;
   gap: 16px;
   color: var(--pos-text, #0A2540);
+  flex-wrap: wrap;
+  justify-content: flex-end;
 
   @media (max-width: 1280px) {
     gap: 10px;
@@ -2580,7 +2591,7 @@ const POSTerminalPage: React.FC = () => {
     setShowPaymentModal(true);
   };
 
-  const handleConfirmPayment = async (method: string, amountReceived?: number, change?: number, pointsUsed?: number, pointDiscountAmount?: number, cardType?: string, staffNames?: string[]) => {
+  const handleConfirmPayment = async (method: string, amountReceived?: number, change?: number, pointsUsed?: number, pointDiscountAmount?: number, cardType?: string, staffNames?: string[][]) => {
     // 중복 실행 방지
     if (isProcessingPayment) {
       console.warn('POS - Payment already in progress, ignoring duplicate call');
@@ -2666,7 +2677,7 @@ const POSTerminalPage: React.FC = () => {
             set_components: (item as any).set_components || undefined,
             kitchen_station_id: ksid,
             special_instructions: item.special_instructions || undefined, // 4-1 품목별 메모(주방티켓/빌)
-            staff_name: (staffNames && staffNames[_payIdx] && staffNames[_payIdx].trim()) || undefined // 스탭밀 직원이름(영수증/정산서)
+            staff_names: (staffNames && Array.isArray(staffNames[_payIdx]) && staffNames[_payIdx].some(Boolean)) ? staffNames[_payIdx] : undefined // 스탭밀 직원이름(수량만큼, 영수증/정산서)
           };
         });
       })(),

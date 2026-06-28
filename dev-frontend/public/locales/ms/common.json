@@ -743,5 +743,7 @@
   },
   "offlineQueued": "Tiada sambungan — pesanan anda disimpan dan akan dihantar secara automatik apabila anda dalam talian semula.",
   "save": "Simpan",
-  "cancel": "Batal"
+  "cancel": "Batal",
+  "offlineBanner": "Luar talian — internet terputus. Pulih automatik apabila disambung semula.",
+  "offlineReconnecting": "Sambungan dipulihkan — menyegerak…"
 }

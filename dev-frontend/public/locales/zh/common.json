@@ -743,5 +743,7 @@
   },
   "offlineQueued": "无网络连接 — 您的订单已保存，恢复在线后将自动下单。",
   "save": "保存",
-  "cancel": "取消"
+  "cancel": "取消",
+  "offlineBanner": "离线 — 网络已断开，恢复后将自动同步。",
+  "offlineReconnecting": "连接已恢复 — 同步中…"
 }

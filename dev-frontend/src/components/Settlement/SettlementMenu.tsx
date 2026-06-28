@@ -15,9 +15,13 @@ type OpenModal = null | 'daily' | 'final' | 'staffMeal';
 interface SettlementMenuProps {
   // 호스트 헤더 톤에 맞추기 위한 작은 변형(선택). 기본은 Reports 헤더 버튼 톤.
   variant?: 'light' | 'plain';
+  // 호스트가 이미 Daily/Final 모달을 갖고 있으면(Floor Plan·Live Orders 의 DailySettlementPrint·
+  // FinalSettlementModal=시재 정산) 그걸 재사용하도록 콜백을 넘긴다. 없으면 내부 모달 사용(Reports 등).
+  onDaily?: () => void;
+  onFinal?: () => void;
 }
 
-const SettlementMenu: React.FC<SettlementMenuProps> = ({ variant = 'light' }) => {
+const SettlementMenu: React.FC<SettlementMenuProps> = ({ variant = 'light', onDaily, onFinal }) => {
   const { t } = useTranslation('reports');
   const [open, setOpen] = useState(false);
   const [modal, setModal] = useState<OpenModal>(null);
@@ -33,7 +37,13 @@ const SettlementMenu: React.FC<SettlementMenuProps> = ({ variant = 'light' }) =>
     return () => document.removeEventListener('mousedown', onDoc);
   }, [open]);
 
-  const choose = (m: OpenModal) => { setModal(m); setOpen(false); };
+  const choose = (m: OpenModal) => {
+    setOpen(false);
+    // 호스트 콜백이 있으면 호스트 모달 사용(Daily/Final), 없으면 내부 모달.
+    if (m === 'daily' && onDaily) { onDaily(); return; }
+    if (m === 'final' && onFinal) { onFinal(); return; }
+    setModal(m);
+  };
 
   const items: Array<{ key: Exclude<OpenModal, null>; label: string; desc: string }> = [
     { key: 'daily', label: t('settlementMenu.daily', 'Daily Settlement'), desc: t('settlementMenu.dailyDesc', 'Sales summary for the day') },

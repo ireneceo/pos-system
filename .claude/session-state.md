@@ -1,14 +1,20 @@
 # Purple POS — 개발 세션 상태
 
-<!-- AUTOSAVE-STALE-BANNER -->
-> **[AUTO-SAVE STALE] (2026-06-28 19:45, idle 1849s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
-> 변경된 작업 파일: _tmp_uname.js,mark-demo-accounts.js admin.json,common.json pos.json,admin.json common.json,pos.json admin.json,common.json pos.json,admin.json
-<!-- /AUTOSAVE-STALE-BANNER -->
-
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-06-28
-**버전:** v3.63 (2026-06-27 배포). SW 4.34. **dev 작업 중(미배포)** — 현장 레이아웃 + KDS 보완.
-**작업 상태:** 진행 중 ("남은 모든 개발" — Irene 2026-06-28 지시. 안전영역부터 완성도 있게, 보호영역은 컨펌 후)
+**마지막 업데이트:** 2026-06-28 (밤, 세션 종료)
+**버전:** **v3.64 운영 배포 완료** (+ 스탭밀 수량별 이름 + 반응형 헤더 = 추가 배포 LIVE). SW 4.35(오프라인캐시).
+**작업 상태:** **오프라인 모드(POS1 허브) 구현 중** — 1·2단계 dev 완료(미배포), 3단계부터 다음 세션.
+
+### ▶ 다음 확정 작업 (다음 세션 재개점) — 오프라인 모드 3단계
+- 설계서: **`docs/OFFLINE_MODE_DESIGN.md`** / 메모리 [[project_offline_mode]] (진행상황·결정·재사용맵 전부 있음).
+- ✅ 1단계 OfflineContext(/api/health 핑·히스테리시스)+OfflineBanner+App 전역래핑 — 검증완료(배너 실동작 헤드리스 실증).
+- ✅ 2단계 sw.js network-first+오프라인 cache-fallback(셸·메뉴캐시, SW_VERSION 4.35) — 검증완료(오프라인 재로드 셸 렌더 실증).
+- ⬜ **3단계(여기부터)**: IndexedDB LocalStore + operation 로그(append-only), 기존 `utils/offlineOrderQueue.ts` 흡수.
+- ⬜ 4 오프라인 전 작업 기록 / 5 SyncEngine(순서재생·opId멱등·번호매핑·401복구)+서버 opId가드 / 6 로컬인쇄(🔒실프린터·bless) / 7 데모전사이클+운영검증.
+- **누적 dev, 미배포** — 로컬인쇄(6단계)까지 완성돼 "쓸만"해지면 한 번에 배포(반쪽 배포 금지).
+
+### (이전) 진행 중인 작업 (2026-06-28 — v3.64로 운영 배포 완료분)
+- **[배포완료]** 현장 레이아웃 묶음
 
 ### 진행 중인 작업 (2026-06-28, dev 미배포 — /검증 통과분)
 - **[완료·dev] 현장 레이아웃 묶음**

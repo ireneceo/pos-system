@@ -840,7 +840,9 @@
       "Bash(awk 'NR>=1255 && NR<=1380 && \\(/kind/ || /res.json/ || /sourceTableNumber/ || /merged/\\)' dev-backend/routes/orders-crud.js)",
       "Bash(NODE_PATH=/var/www/dev-frontend/node_modules node /tmp/claude-1000/-var-www/b2fbf862-1e0f-4904-a615-06435ba2f514/scratchpad/opt-mount.js)",
       "Bash(NODE_PATH=/var/www/dev-frontend/node_modules node /tmp/claude-1000/-var-www/b2fbf862-1e0f-4904-a615-06435ba2f514/scratchpad/fp-warm.js)",
-      "Bash(scp -q -o StrictHostKeyChecking=no /tmp/claude-1000/-var-www/b2fbf862-1e0f-4904-a615-06435ba2f514/scratchpad/prod-notice-fix.js irene@87.106.78.146:/var/www/production-backend/_tmp_notice_fix.js)"
+      "Bash(scp -q -o StrictHostKeyChecking=no /tmp/claude-1000/-var-www/b2fbf862-1e0f-4904-a615-06435ba2f514/scratchpad/prod-notice-fix.js irene@87.106.78.146:/var/www/production-backend/_tmp_notice_fix.js)",
+      "Bash(:)",
+      "Bash(awk '/return \\\\\\(/{f=1} f&&/<Header>/{p=1} p{print NR\": \"$0} p&&/<\\\\/Header>/{exit}' src/pages/POSTerminal/POSTerminalPage.tsx)"
     ],
     "deny": [],
     "ask": []
