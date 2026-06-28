@@ -3700,42 +3700,42 @@ const POSTerminalPage: React.FC = () => {
               <OrderSummary>
                 <SummaryRow>
                   <SummaryLabel>{'Subtotal'}</SummaryLabel>
-                  <SummaryValue>{subtotal.toFixed(2)}</SummaryValue>
+                  <SummaryValue>{currency} {subtotal.toFixed(2)}</SummaryValue>
                 </SummaryRow>
                 {takeawayCharge > 0 && (
                   <SummaryRow>
                     <SummaryLabel>{'Takeaway Charge'}</SummaryLabel>
-                    <SummaryValue>{takeawayCharge.toFixed(2)}</SummaryValue>
+                    <SummaryValue>{currency} {takeawayCharge.toFixed(2)}</SummaryValue>
                   </SummaryRow>
                 )}
                 {discountAmount > 0 && (
                   <SummaryRow>
                     <SummaryLabel>{'Discount'}</SummaryLabel>
-                    <SummaryValue style={{ color: 'var(--pos-positive, #10B981)' }}>-{discountAmount.toFixed(2)}</SummaryValue>
+                    <SummaryValue style={{ color: 'var(--pos-positive, #10B981)' }}>-{currency} {discountAmount.toFixed(2)}</SummaryValue>
                   </SummaryRow>
                 )}
                 {appliedCoupon && (
                   <SummaryRow>
                     <SummaryLabel>Coupon ({appliedCoupon.code})</SummaryLabel>
-                    <SummaryValue style={{ color: 'var(--pos-positive, #10B981)' }}>-{couponDiscount.toFixed(2)}</SummaryValue>
+                    <SummaryValue style={{ color: 'var(--pos-positive, #10B981)' }}>-{currency} {couponDiscount.toFixed(2)}</SummaryValue>
                   </SummaryRow>
                 )}
                 {appliedDiscountPolicy && (
                   <SummaryRow>
                     <SummaryLabel>Discount ({appliedDiscountPolicy.name})</SummaryLabel>
-                    <SummaryValue style={{ color: 'var(--pos-positive, #10B981)' }}>-{policyDiscount.toFixed(2)}</SummaryValue>
+                    <SummaryValue style={{ color: 'var(--pos-positive, #10B981)' }}>-{currency} {policyDiscount.toFixed(2)}</SummaryValue>
                   </SummaryRow>
                 )}
                 {operationSettings.serviceChargeEnabled && serviceCharge > 0 && (
                   <SummaryRow>
                     <SummaryLabel>Service Charge ({operationSettings.serviceChargeRate}%)</SummaryLabel>
-                    <SummaryValue>{serviceCharge.toFixed(2)}</SummaryValue>
+                    <SummaryValue>{currency} {serviceCharge.toFixed(2)}</SummaryValue>
                   </SummaryRow>
                 )}
                 {operationSettings.taxEnabled && tax > 0 && (
                   <SummaryRow>
                     <SummaryLabel>Tax ({operationSettings.taxRate}%)</SummaryLabel>
-                    <SummaryValue>{tax.toFixed(2)}</SummaryValue>
+                    <SummaryValue>{currency} {tax.toFixed(2)}</SummaryValue>
                   </SummaryRow>
                 )}
                 <TotalRow>
