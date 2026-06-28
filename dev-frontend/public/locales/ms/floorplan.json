@@ -35,6 +35,8 @@
   "floorPlanPage.dineIn": "Makan Di Sini",
   "floorPlanPage.takeawayWalkIn": "+ Bungkus (Walk-in)",
   "floorPlanPage.takeawayWalkInHint": "Mulakan pesanan bungkus walk-in baharu di POS Terminal",
+  "floorPlanPage.fullscreen": "Skrin penuh",
+  "floorPlanPage.exitFullscreen": "Keluar skrin penuh",
   "floorPlanPage.takeawayView": "Bungkus",
   "floorPlanPage.offTableView": "Bawa Pulang",
   "floorPlanPage.offTableSearch": "Cari no. pesanan, pelanggan, item",

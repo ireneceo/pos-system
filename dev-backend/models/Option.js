@@ -31,6 +31,13 @@ const Option = sequelize.define('Option', {
   isActive: {
     type: DataTypes.BOOLEAN,
     defaultValue: true
+  },
+  // 2026-06-28 (2-1): 옵션 품절(sold-out). 상품 soldOut(Product.soldOut)과 동일 개념 —
+  // 운영 자율(직원 토글 허용), is_active(메뉴 노출)와 별개. 품절이면 주문화면에서 선택 불가.
+  sold_out: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false
   }
 }, {
   tableName: 'options',

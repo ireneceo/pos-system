@@ -384,6 +384,27 @@ const OptionManagementPage: React.FC = () => {
   });
   const [newOption, setNewOption] = useState<OptionItemData>({ id: '', name: '', price: 0, ingredient_id: null, ingredient_quantity: 1 });
   const [ingredients, setIngredients] = useState<{id: number; name: string; unit: string; unit_cost: number}[]>([]);
+  // 2026-06-28 (2-1): 옵션 품절 토글 — 낙관적 오버레이(서버 저장 + 소켓). 상품 솔드아웃과 동일 패턴.
+  const [optSoldOut, setOptSoldOut] = useState<Record<string, boolean>>({});
+  const effOptSoldOut = (opt: any) => optSoldOut[opt.id] ?? !!opt.sold_out;
+  const handleToggleOptionSoldOut = async (opt: any) => {
+    const next = !effOptSoldOut(opt);
+    setOptSoldOut(p => ({ ...p, [opt.id]: next }));
+    try {
+      const token = getAuthToken();
+      const pathParts = window.location.pathname.split('/');
+      const ridIdx = pathParts.indexOf('restaurant');
+      const rid = ridIdx >= 0 ? pathParts[ridIdx + 1] : null;
+      const res = await fetch(`/api/menu/option/${opt.id}/toggle-soldout${rid ? `?restaurantId=${rid}` : ''}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ soldOut: next })
+      });
+      if (!res.ok) throw new Error('toggle failed');
+    } catch {
+      setOptSoldOut(p => ({ ...p, [opt.id]: !next })); // 실패 시 원복
+    }
+  };
 
   // Fetch ingredients
   React.useEffect(() => {
@@ -559,16 +580,34 @@ const OptionManagementPage: React.FC = () => {
                   </OptionGroupHeader>
                   
                   <OptionsList>
-                    {group.options.map(option => (
+                    {group.options.map(option => {
+                      const so = effOptSoldOut(option);
+                      return (
                       <OptionItem key={option.id}>
                         <OptionItemInfo>
-                          <OptionItemName>{option.name}</OptionItemName>
+                          <OptionItemName style={so ? { textDecoration: 'line-through', opacity: 0.6 } : undefined}>{option.name}</OptionItemName>
                           {option.price > 0 && (
                             <OptionItemPrice>+RM {option.price.toFixed(2)}</OptionItemPrice>
                           )}
                         </OptionItemInfo>
+                        {/* 2026-06-28 (2-1): 옵션 품절 토글 (직원 허용, 상품 솔드아웃과 동일) */}
+                        <button
+                          type="button"
+                          onClick={() => handleToggleOptionSoldOut(option)}
+                          title={so ? t('optionSoldOut.backInStock', { defaultValue: 'Back in stock' }) : t('optionSoldOut.markSoldOut', { defaultValue: 'Mark sold out' })}
+                          style={{
+                            marginLeft: 'auto', fontSize: 12, fontWeight: 600, padding: '4px 10px',
+                            borderRadius: 6, cursor: 'pointer', whiteSpace: 'nowrap',
+                            border: '1px solid ' + (so ? '#DC2626' : '#C7CED6'),
+                            background: so ? '#FEF2F2' : '#FFFFFF',
+                            color: so ? '#B91C1C' : '#6B7C93'
+                          }}
+                        >
+                          {so ? t('optionSoldOut.soldOut', { defaultValue: 'Sold out' }) : t('optionSoldOut.inStock', { defaultValue: 'In stock' })}
+                        </button>
                       </OptionItem>
-                    ))}
+                      );
+                    })}
                   </OptionsList>
                 </OptionGroupCard>
               ))}

@@ -40,6 +40,7 @@
   "pOSTerminalPage.discount": "折扣",
   "pOSTerminalPage.total": "总计",
   "terminal.categoryAll": "全部",
+  "terminal.soldOut": "已售罄",
   "terminal.simpleMode": "紧凑",
   "terminal.photoMode": "图片",
   "terminal.themeLight": "明亮",

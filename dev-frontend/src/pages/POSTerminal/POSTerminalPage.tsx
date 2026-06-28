@@ -312,48 +312,59 @@ const CategoryBar = styled.div`
   background: var(--pos-surface, #FFFFFF);
   border-bottom: 1px solid var(--pos-border, #C7CED6);
 `;
-const CategoryTabs = styled.div<{ $expanded?: boolean }>`
+// 2026-06-28 (5-3): 카테고리는 한 줄 유지(nowrap) + ‹ › 페이지 이동. 스크롤바는 숨기고
+// 터치 스와이프는 허용. 펼치기(여러 줄 wrap) 방식 폐지 — 메뉴 영역을 안 가리도록.
+const CategoryTabs = styled.div`
   display: flex;
-  flex-wrap: ${p => p.$expanded ? 'wrap' : 'nowrap'};
+  flex-wrap: nowrap;
   align-items: center;
-  padding: 10px 16px;
-  gap: 8px;
-  row-gap: ${p => p.$expanded ? '8px' : '0'};
-  overflow-x: ${p => p.$expanded ? 'hidden' : 'auto'};
-  overflow-y: ${p => p.$expanded ? 'auto' : 'visible'};
-  max-height: ${p => p.$expanded ? '40vh' : 'none'};
-
-  &::-webkit-scrollbar {
-    height: 4px;
-  }
-  &::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  &::-webkit-scrollbar-thumb {
-    background: #C7D2FE;
-    border-radius: 3px;
-  }
+  flex: 1;
+  min-width: 0;
+  gap: 6px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  &::-webkit-scrollbar { height: 0; width: 0; }
 `;
-// 펼치기/접기 화살표 = 탭 줄에 녹는 은은한 컨트롤(액션버튼 아님). 우측 빈 컬럼 X.
-const CategoryExpandToggle = styled.button`
-  min-height: 48px;
-  width: 40px;
+// 2026-06-28 (5-3): 카테고리 페이저 — 칩 줄을 감싸 좌우 ‹ › + 페이지 표시.
+const CategoryPager = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+`;
+const CategoryPageBtn = styled.button`
+  width: 36px;
+  min-height: 44px;
   flex-shrink: 0;
   display: inline-flex; align-items: center; justify-content: center;
   border: none;
   background: transparent;
   color: var(--pos-border-strong, #6B7280); cursor: pointer; transition: all 0.15s;
-  &:hover { background: #F5F6F8; color: var(--pos-brand, #635BFF); }
+  font-size: 22px; line-height: 1;
+  border-radius: 8px;
+  &:hover:not(:disabled) { background: #F5F6F8; color: var(--pos-brand, #635BFF); }
+  &:disabled { opacity: 0.3; cursor: default; }
+`;
+const CategoryPageInd = styled.span`
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--pos-text-muted, #6B7280);
+  min-width: 34px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 `;
 
-// 카테고리 = 중요한 선택 → 상품 옵션(RadioButton)과 동일 디자인. 선택 = 브랜드 테두리+틴트+글씨, 기본 = 흰 박스+또렷 테두리. 클릭 48px.
+// 카테고리 = 중요한 선택 → 상품 옵션(RadioButton)과 동일 디자인. 선택 = 브랜드 테두리+틴트+글씨, 기본 = 흰 박스+또렷 테두리.
+// 2026-06-28 (5-2): 컴팩트 — min-height 48→44(터치 최소), padding 0 16→0 12, font 15→14.
 const CategoryTab = styled.button<{ active: boolean }>`
-  min-height: 48px;
-  padding: 0 16px;
+  min-height: 44px;
+  padding: 0 12px;
   border: 1px solid ${props => props.active ? 'var(--pos-brand, #635BFF)' : 'var(--pos-border-strong, #B9C2CC)'};
   background: ${props => props.active ? 'var(--pos-brand-tint, rgba(99,91,255,0.1))' : 'var(--pos-control, #FFFFFF)'};
   border-radius: 8px;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
@@ -552,6 +563,16 @@ const OrderSection = styled.div`
   flex-direction: column;
 `;
 
+// 2026-06-28 (5-4): 고객검색 + 테이블넘버 + 게스트를 한 행에 묶음(좁으면 wrap). 세로공간 절약.
+const TopControlsRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  flex-wrap: wrap;
+`;
+
+// (Pager Number 섹션에서 재사용 — 5-4 후에도 유지)
 const TableNumberSection = styled.div`
   padding: 8px 16px;
   display: flex;
@@ -1236,6 +1257,7 @@ interface OrderItemType {
   quantity: number;
   options?: string[];  // For display purposes (option names)
   selectedOptions?: SelectedOption[];  // For price calculation
+  special_instructions?: string;  // 2026-06-28 (4-1) 품목별 메모 — 주방티켓/빌에 출력(billPrint)
 }
 
 const POSTerminalPage: React.FC = () => {
@@ -1287,14 +1309,38 @@ const POSTerminalPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   // 카테고리 바 펼치기(전체 보기) — 토글로 열어두거나 닫음. 카테고리 선택해도 닫히지 않음(원할 때만 닫게).
   // 펼친 카테고리 탭은 닫기 전까지 유지 (새로고침/재진입에도). 기기별 저장.
-  const [categoryExpanded, setCategoryExpanded] = useState<boolean>(() => {
-    try { return localStorage.getItem('pos_category_expanded') === '1'; } catch { return false; }
+  // 2026-06-28 (5-1): POS 풀스크린 — 주문 받을 때 상단 헤더를 숨겨 세로공간 확보. 기기별 기억.
+  const [posFullscreen, setPosFullscreen] = useState<boolean>(() => {
+    try { return localStorage.getItem('pos_fullscreen') === '1'; } catch { return false; }
   });
-  const toggleCategoryExpanded = () => setCategoryExpanded(v => {
+  const togglePosFullscreen = () => setPosFullscreen(v => {
     const nv = !v;
-    try { localStorage.setItem('pos_category_expanded', nv ? '1' : '0'); } catch { /* ignore */ }
+    try { localStorage.setItem('pos_fullscreen', nv ? '1' : '0'); } catch { /* ignore */ }
     return nv;
   });
+  // 2026-06-28 (5-3): 카테고리 페이지네이션 — 한 줄 유지 + ‹ › 로 페이지 이동(세로로 안 길어져 메뉴 안 가림).
+  const categoryTabsRef = useRef<HTMLDivElement>(null);
+  const [catPage, setCatPage] = useState<{ cur: number; total: number }>({ cur: 1, total: 1 });
+  const recomputeCatPage = useCallback(() => {
+    const el = categoryTabsRef.current;
+    if (!el) return;
+    const w = el.clientWidth || 1;
+    const total = Math.max(1, Math.ceil(el.scrollWidth / w));
+    const cur = Math.min(total, Math.round(el.scrollLeft / w) + 1);
+    setCatPage(prev => (prev.cur === cur && prev.total === total) ? prev : { cur, total });
+  }, []);
+  const scrollCatPage = (dir: -1 | 1) => {
+    const el = categoryTabsRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir * Math.max(1, el.clientWidth - 24), behavior: 'smooth' });
+  };
+  // 카테고리 페이지 표시 재계산 — 카테고리 변동/창 크기/풀스크린 토글(폭 변동) 시.
+  useEffect(() => {
+    recomputeCatPage();
+    const onResize = () => recomputeCatPage();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [recomputeCatPage, categories.length, posFullscreen]);
   const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   const [previousCategory, setPreviousCategory] = useState<string | null>(null); // 검색 전 카테고리 저장
   const [searchQuery, setSearchQuery] = useState('');
@@ -1383,6 +1429,12 @@ const POSTerminalPage: React.FC = () => {
     try { const a = JSON.parse(localStorage.getItem(`posOrderRemarkHistory_${restaurantId || 'x'}`) || '[]'); return Array.isArray(a) ? a : []; } catch { return []; }
   });
   const [remarkFocused, setRemarkFocused] = useState(false);
+  // 2026-06-28 (4-1): 품목별 메모 — 어느 품목의 메모 입력이 열렸는지(토글). 표준 input 이라
+  // 터치 단말은 OS 온스크린 키보드, 물리 키보드 매장은 그대로 타이핑(둘 다 지원, 별도 키보드 불필요).
+  const [itemMemoOpen, setItemMemoOpen] = useState<Record<string, boolean>>({});
+  const setItemMemo = useCallback((id: string, text: string) => {
+    setOrderItems(prev => prev.map(it => it.id === id ? { ...it, special_instructions: text } : it));
+  }, []);
   // 발행된 리마크를 히스토리에 누적(중복 제거, 최신순, 최대 30). 콤마로 묶인 건 분해 저장.
   const pushRemarkHistory = useCallback((text: string) => {
     const parts = (text || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -2323,7 +2375,8 @@ const POSTerminalPage: React.FC = () => {
             is_set_menu: item.menuItem.is_set_menu || false,
             set_items: item.menuItem.set_items || [],
             set_components: (item as any).set_components || undefined,
-            kitchen_station_id: ksid
+            kitchen_station_id: ksid,
+            special_instructions: item.special_instructions || undefined // 4-1 품목별 메모(주방티켓/빌)
           };
         });
       })(),
@@ -2568,7 +2621,8 @@ const POSTerminalPage: React.FC = () => {
             is_set_menu: item.menuItem.is_set_menu || false,
             set_items: item.menuItem.set_items || [],
             set_components: (item as any).set_components || undefined,
-            kitchen_station_id: ksid
+            kitchen_station_id: ksid,
+            special_instructions: item.special_instructions || undefined // 4-1 품목별 메모(주방티켓/빌)
           };
         });
       })(),
@@ -3061,6 +3115,7 @@ const POSTerminalPage: React.FC = () => {
   return (
     <POSContainer data-pos-theme={posTheme}>
       <PosDisplayThemeStyle />
+      {!posFullscreen && (
       <Header>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <Logo onClick={handleResetPOS}>
@@ -3182,6 +3237,7 @@ const POSTerminalPage: React.FC = () => {
           </div>
         </HeaderInfo>
       </Header>
+      )}
 
       <MainLayout>
         <MenuSection>
@@ -3252,43 +3308,67 @@ const POSTerminalPage: React.FC = () => {
                 {t('pos:terminal.simpleMode', 'Compact')}
               </ViewToggleBtn>
             </ViewToggle>
+            {/* 2026-06-28 (5-1): 풀스크린 토글 — 상단 헤더 숨김/표시. SearchSection은 항상 보여 나가기도 여기서. */}
+            <button
+              type="button"
+              onClick={togglePosFullscreen}
+              title={posFullscreen ? t('pos:terminal.exitFullscreen', { defaultValue: 'Exit fullscreen' }) : t('pos:terminal.fullscreen', { defaultValue: 'Fullscreen' })}
+              aria-label={posFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+              style={{ width: 36, height: 36, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--pos-border, #C7CED6)', borderRadius: 6, background: 'var(--pos-surface, #fff)', color: 'var(--pos-text, #0A2540)', cursor: 'pointer' }}
+            >
+              {posFullscreen ? (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 14h6v6m10-10h-6V4M14 10l7-7M3 21l7-7"/></svg>
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3m13-5v3a2 2 0 0 1-2 2h-3"/></svg>
+              )}
+            </button>
           </SearchSection>
 
           <CategoryBar>
-          <CategoryTabs $expanded={categoryExpanded}>
-            {/* "All" tab is only available in Simple mode — text rendering scales,
-                but loading every category's images at once is too slow for large menus. */}
-            {displayMode === 'simple' && (
-              <CategoryTab
-                active={selectedCategory === 'all' && !isSearchMode}
-                onClick={() => handleCategorySelect('all')}
-              >
-                {t('pos:terminal.categoryAll', 'All')}
-              </CategoryTab>
+          <CategoryPager>
+            {catPage.total > 1 && (
+              <CategoryPageBtn
+                type="button"
+                onClick={() => scrollCatPage(-1)}
+                disabled={catPage.cur <= 1}
+                title={t('pos:terminal.prevCategories', { defaultValue: 'Previous categories' })}
+                aria-label="Previous categories"
+              >‹</CategoryPageBtn>
             )}
-            {categories.map(category => (
-              <CategoryTab
-                key={category.id}
-                active={selectedCategory === category.id && !isSearchMode}
-                onClick={() => handleCategorySelect(category.id)}
-              >
-                {category.emoji} {category.name}
-              </CategoryTab>
-            ))}
-            <CategoryExpandToggle
-              type="button"
-              onClick={toggleCategoryExpanded}
-              title={categoryExpanded
-                ? t('pos:terminal.collapseCategories', { defaultValue: 'Collapse categories' })
-                : t('pos:terminal.expandCategories', { defaultValue: 'Show all categories' })}
-              aria-label={categoryExpanded ? 'Collapse categories' : 'Show all categories'}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                style={{ transform: categoryExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
-            </CategoryExpandToggle>
-          </CategoryTabs>
+            <CategoryTabs ref={categoryTabsRef} onScroll={recomputeCatPage}>
+              {/* "All" tab is only available in Simple mode — text rendering scales,
+                  but loading every category's images at once is too slow for large menus. */}
+              {displayMode === 'simple' && (
+                <CategoryTab
+                  active={selectedCategory === 'all' && !isSearchMode}
+                  onClick={() => handleCategorySelect('all')}
+                >
+                  {t('pos:terminal.categoryAll', 'All')}
+                </CategoryTab>
+              )}
+              {categories.map(category => (
+                <CategoryTab
+                  key={category.id}
+                  active={selectedCategory === category.id && !isSearchMode}
+                  onClick={() => handleCategorySelect(category.id)}
+                >
+                  {category.emoji} {category.name}
+                </CategoryTab>
+              ))}
+            </CategoryTabs>
+            {catPage.total > 1 && (
+              <>
+                <CategoryPageBtn
+                  type="button"
+                  onClick={() => scrollCatPage(1)}
+                  disabled={catPage.cur >= catPage.total}
+                  title={t('pos:terminal.nextCategories', { defaultValue: 'More categories' })}
+                  aria-label="More categories"
+                >›</CategoryPageBtn>
+                <CategoryPageInd>{catPage.cur}/{catPage.total}</CategoryPageInd>
+              </>
+            )}
+          </CategoryPager>
           </CategoryBar>
 
           {isSearchMode && (
@@ -3422,7 +3502,9 @@ const POSTerminalPage: React.FC = () => {
             </OrderTypeBtn>
           </OrderTypeToggle>
 
-          <CustomerSearchSection>
+          {/* 2026-06-28 (5-4): 고객 검색 + 테이블넘버를 한 행으로 — 우측 패널 세로공간 절약. */}
+          <TopControlsRow>
+          <CustomerSearchSection style={{ flex: 1, minWidth: 0, padding: 0 }}>
             {selectedCustomerForOrder ? (
               <SelectedCustomerDisplay>
                 <SelectedCustomerInfo>
@@ -3479,40 +3561,37 @@ const POSTerminalPage: React.FC = () => {
             )}
           </CustomerSearchSection>
 
-          {/* Table input shown for BOTH dine-in AND takeaway.
+          {/* Table input shown for BOTH dine-in AND takeaway (5-4: 검색창과 한 행).
               2026-05-27: takeaway can also pin to a table — the shop wants the
-              order to land on that table's open bill (e.g. a guest at T20
-              orders a coffee to go). Guest count stays dine-in-only because
-              it doesn't apply to takeaway. */}
+              order to land on that table's open bill. Guest count stays dine-in-only.
+              라벨은 공간 절약 위해 제거하고 placeholder/aria-label 로 의미 전달. */}
           {(orderType === 'dine-in' || orderType === 'takeaway') && availableTables.length > 0 && (
-            <TableNumberSection>
-              <TableNumberLabel>Table Number:</TableNumberLabel>
-              <TableNumberSelect
-                value={tableNumber}
-                onChange={(e) => setTableNumber(e.target.value)}
-              >
-                <option value="">{orderType === 'takeaway' ? 'No table (counter pickup)' : 'Free Seating'}</option>
-                {availableTables.map(table => (
-                  <option key={table} value={table}>{table}</option>
-                ))}
-              </TableNumberSelect>
-              {orderType === 'dine-in' && tableNumber && (
-                <>
-                  <TableNumberLabel>Guests:</TableNumberLabel>
-                  <TableNumberSelect
-                    value={guestCount}
-                    onChange={(e) => setGuestCount(Number(e.target.value))}
-                    style={{ width: '80px' }}
-                  >
-                    <option value={0}>-</option>
-                    {[1,2,3,4,5,6,7,8,9,10,12,15,20].map(n => (
-                      <option key={n} value={n}>{n}</option>
-                    ))}
-                  </TableNumberSelect>
-                </>
-              )}
-            </TableNumberSection>
+            <TableNumberSelect
+              aria-label="Table Number"
+              value={tableNumber}
+              onChange={(e) => setTableNumber(e.target.value)}
+              style={{ width: 150, flexShrink: 0 }}
+            >
+              <option value="">{orderType === 'takeaway' ? 'No table' : 'Free Seating'}</option>
+              {availableTables.map(table => (
+                <option key={table} value={table}>{`Table ${table}`}</option>
+              ))}
+            </TableNumberSelect>
           )}
+          {orderType === 'dine-in' && tableNumber && availableTables.length > 0 && (
+            <TableNumberSelect
+              aria-label="Guests"
+              value={guestCount}
+              onChange={(e) => setGuestCount(Number(e.target.value))}
+              style={{ width: 90, flexShrink: 0 }}
+            >
+              <option value={0}>Guests</option>
+              {[1,2,3,4,5,6,7,8,9,10,12,15,20].map(n => (
+                <option key={n} value={n}>{`${n} guests`}</option>
+              ))}
+            </TableNumberSelect>
+          )}
+          </TopControlsRow>
 
           {orderItems.length === 0 ? (
             <EmptyOrder>
@@ -3565,6 +3644,26 @@ const POSTerminalPage: React.FC = () => {
                           </>
                         );
                       })()}
+                      {/* 2026-06-28 (4-1): 품목별 메모 — 표준 input(터치=OS 키보드, 물리키보드 매장도 그대로).
+                          메모 있거나 열렸을 때만 입력칸, 아니면 "Add note" 텍스트 버튼(No-plus 규칙). */}
+                      {(itemMemoOpen[item.id] || item.special_instructions) ? (
+                        <input
+                          type="text"
+                          value={item.special_instructions || ''}
+                          onChange={(e) => setItemMemo(item.id, e.target.value)}
+                          placeholder={t('pos:pOSTerminalPage.itemNotePlaceholder', { defaultValue: 'Item note (e.g. no onion)' })}
+                          autoFocus={!!itemMemoOpen[item.id] && !item.special_instructions}
+                          style={{ marginTop: 6, width: '100%', maxWidth: 240, height: 34, boxSizing: 'border-box', padding: '0 10px', fontSize: 13, border: '1px solid var(--pos-border, #C7CED6)', borderRadius: 6, background: '#FFFFFF', color: '#1F2937' }}
+                        />
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setItemMemoOpen(p => ({ ...p, [item.id]: true }))}
+                          style={{ marginTop: 4, background: 'transparent', border: 'none', color: 'var(--pos-text-muted, #64748B)', fontSize: 12, fontWeight: 500, cursor: 'pointer', padding: 0, textAlign: 'left' }}
+                        >
+                          {t('pos:pOSTerminalPage.addItemNote', { defaultValue: 'Add note' })}
+                        </button>
+                      )}
                     </ItemInfo>
                     <ItemControls>
                       <QuantityControl>

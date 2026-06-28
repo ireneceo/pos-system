@@ -733,6 +733,10 @@ const KitchenDisplayPage: React.FC = () => {
   // 아이템이 걸린 안내만 표시(스테이션 무관 아이템은 모든 탭에 표시).
   type KitchenNotice = { id: string; kind: NoticeKind; orderNumber: string; tableNumber?: string; toTable?: string; itemText?: string; reason?: string; merged?: boolean; intoOrderNumber?: string; at: number };
   const [kitchenNotices, setKitchenNotices] = useState<KitchenNotice[]>([]);
+  // 2026-06-28 (#4): 취소된 주문 확인용 — 상단 "취소 N" → 팝업 목록. 표시 전용(단계/인쇄 무관).
+  type CancelledEntry = { id: string; orderNumber: string; tableNumber?: string; items: string; at: number };
+  const [cancelledOrders, setCancelledOrders] = useState<CancelledEntry[]>([]);
+  const [showCancelledModal, setShowCancelledModal] = useState(false);
   // 같은 주문 취소가 order-updated 재방출로 중복 팝업되지 않도록 1회만.
   const cancelledNoticeRef = useRef<Set<string>>(new Set());
 
@@ -872,7 +876,11 @@ const KitchenDisplayPage: React.FC = () => {
         setOrders(prev => {
           const prevIds = new Set(prev.map(o => o.id));
           const newOrders = kitchenOrders.filter(o => !prevIds.has(o.id));
-          if (newOrders.length > 0) playNotificationSoundRef.current();
+          // 2026-06-28 (#3 사운드 탭 기준): 폴링으로 들어온 신규주문도 "현재 보고 있는 탭(스테이션)"
+          // 기준으로만 울리게 — 새 주문들의 아이템을 넘겨 playNotificationSound 가 스테이션 필터를
+          // 적용하도록. 인자 없이 호출하던 기존 코드는 필터를 못 해 All 기준으로 울리던 버그였다.
+          // (소켓 경로 order-created 는 이미 아이템을 넘겨 필터됨.)
+          if (newOrders.length > 0) playNotificationSoundRef.current(newOrders.flatMap(o => o.items || []));
           return kitchenOrders;
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1247,6 +1255,18 @@ const KitchenDisplayPage: React.FC = () => {
           // 주문이다. 따라서 취소 팝업은 "printed 된 것만"이 아니라 화면에 떴던(=order_items 가 있는)
           // 주문이면 자동발행 ON/OFF 무관하게 뜬다. (현재 station 탭 필터는 그대로 유지.)
           const printed = (rawItems || []);
+          // 2026-06-28 (#4): 취소 검토 목록에 적재 — 스테이션 무관 전체(완료 전 확인용). 중복 방지.
+          {
+            const shownAll = (printed || []).slice(0, 4).map((it: any) => `${it.quantity || 1} × ${it.name || 'Item'}`).join(', ');
+            const itemsTextAll = shownAll + ((printed?.length || 0) > 4 ? ` +${printed.length - 4}` : '');
+            setCancelledOrders(prev => prev.some(c => c.id === String(order.id)) ? prev : [{
+              id: String(order.id),
+              orderNumber: order.order_number || String(order.id),
+              tableNumber: order.table_number || undefined,
+              items: itemsTextAll || '—',
+              at: Date.now()
+            }, ...prev].slice(0, 50));
+          }
           if (printed.length > 0) {
             const curStation = selectedStationRef.current;
             const relevant = curStation === 'all' || printed.some((it: any) => {
@@ -1349,7 +1369,7 @@ const KitchenDisplayPage: React.FC = () => {
         intoOrderNumber: data.intoOrderNumber || undefined,
         at: Date.now()
       }, ...prev].slice(0, 8));
-      try { import('../../utils/notificationSound').then(({ startRepeatingSound }) => audioEnabled && startRepeatingSound('bell')); } catch {}
+      try { import('../../utils/notificationSound').then(({ startRepeatingSound }) => audioEnabledRef.current && startRepeatingSound('bell')); } catch {}
     });
 
     setSocket(newSocket);
@@ -1637,6 +1657,19 @@ const KitchenDisplayPage: React.FC = () => {
   const STAGE_LEVEL: Record<string, number> = { pending: 0, preparing: 1, ready: 2, served: 3, completed: 3 };
   const LEVEL_STAGE = ['pending', 'preparing', 'ready', 'served'] as const;
 
+  // 2026-06-28 (#1 아이템 단위 되돌리기): 주문 단계 = 아이템 최저(min) 단계.
+  // 백엔드 deriveOrderStatusFromItems(orders-crud.js:1491)와 동일 계약(top-level 아이템 기준,
+  // cap=served, 쿠킹범위만). **되돌리기 경로 전용** — 한 품목만 내려도 주문 단계가 그 최저로
+  // 따라오게 해 낙관적 UI 가 백엔드 파생과 일치(소켓 도착 전 어긋남 제거). 전진(승급) 로직은
+  // 기존 그대로(전 품목 완료 시에만, areAllItemsDoneForColumn) — 이 함수는 거기 쓰지 않는다.
+  const deriveOrderStatusLocal = (items: KitchenOrder['items'], current: string): KitchenOrder['status'] | null => {
+    if (!['pending', 'preparing', 'ready', 'served'].includes(current)) return null;
+    if (!Array.isArray(items) || items.length === 0) return null;
+    const minLvl = items.reduce((m, it) => Math.min(m, Math.min(STAGE_LEVEL[(it && it.status) || 'pending'] ?? 0, 3)), 3);
+    const derived = (LEVEL_STAGE[minLvl] || 'served') as KitchenOrder['status'];
+    return derived !== current ? derived : null;
+  };
+
   // 선택된 주방 아이템들의 상태만 수집 (세트메뉴 구성품 포함)
   const collectStationItemStatuses = (order: KitchenOrder): string[] => {
     const out: string[] = [];
@@ -1690,7 +1723,17 @@ const KitchenDisplayPage: React.FC = () => {
       }
       return inScope(item.name) ? { ...item, status: adjust(item.status) } : item;
     });
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, items: updatedItems as any } : o));
+    setOrders(prev => prev.map(o => {
+      if (o.id !== orderId) return o;
+      const nextO = { ...o, items: updatedItems as any };
+      // 2026-06-28 (#1): 되돌리기(force)면 주문 단계를 아이템 최저 단계로 즉시 맞춤(백엔드 파생과
+      // 동일). 전진(force 아님)은 아래 areAllItemsDoneForColumn 으로만 승급 — 보호규칙 유지.
+      if (opts.force) {
+        const d = deriveOrderStatusLocal(updatedItems as any, o.status);
+        if (d) nextO.status = d;
+      }
+      return nextO;
+    }));
     try {
       const res = await fetch(`/api/orders/${orderId}/items`, {
         method: 'PATCH', credentials: 'include', headers: apiHeaders(),
@@ -2120,8 +2163,10 @@ const KitchenDisplayPage: React.FC = () => {
                     onClick={() => {
                       const prevStatus = cardStatus === 'preparing' ? 'pending' : cardStatus === 'ready' ? 'preparing' : null;
                       if (!prevStatus) return;
-                      if (selectedStation === 'all') updateOrderStatus(order.id, prevStatus);
-                      else setStationItemsStage(order.id, prevStatus as KitchenOrder['status'], { force: true });
+                      // 2026-06-28 (#1): 되돌리기는 항상 아이템을 내리고 주문 단계는 아이템 최저로 파생.
+                      // (All 탭도 setStationItemsStage(force) 로 통일 — 기존 All 탭은 order.status 만
+                      // 내리고 item.status 는 그대로라 "아이템이 started 로 남는 모순"이 있었다.)
+                      setStationItemsStage(order.id, prevStatus as KitchenOrder['status'], { force: true });
                     }}
                   >↺</RevertBtn>
                 )}
@@ -2210,7 +2255,7 @@ const KitchenDisplayPage: React.FC = () => {
         )}
         {cardStatus === 'preparing' && totalItems > 1 && (
           <ActionRow>
-            <RevertBtn onClick={() => selectedStation === 'all' ? updateOrderStatus(order.id, 'pending') : setStationItemsStage(order.id, 'pending', { force: true })}>↺</RevertBtn>
+            <RevertBtn onClick={() => setStationItemsStage(order.id, 'pending', { force: true })}>↺</RevertBtn>
             <ActionBtn color="#3B82F6" onClick={() => selectedStation === 'all' ? markAllItemsCompletedAndReady(order.id) : setStationItemsStage(order.id, 'ready')}>
               Mark Ready
             </ActionBtn>
@@ -2218,7 +2263,7 @@ const KitchenDisplayPage: React.FC = () => {
         )}
         {cardStatus === 'ready' && totalItems > 1 && (
           <ActionRow>
-            <RevertBtn onClick={() => selectedStation === 'all' ? updateOrderStatus(order.id, 'preparing') : setStationItemsStage(order.id, 'preparing', { force: true })}>↺</RevertBtn>
+            <RevertBtn onClick={() => setStationItemsStage(order.id, 'preparing', { force: true })}>↺</RevertBtn>
             <ActionBtn color="#10B981" onClick={() => selectedStation === 'all' ? markAllServed(order.id) : setStationItemsStage(order.id, 'served')}>
               Serve All
             </ActionBtn>
@@ -2499,19 +2544,13 @@ const KitchenDisplayPage: React.FC = () => {
       if (!update) return o;
       const updated = { ...o, items: update.updatedItems as any };
 
-      // revert 시: 모든 아이템이 이전 상태이면 주문도 이전 상태로
+      // 2026-06-28 (#1): 되돌리기 시 주문 단계 = 아이템 최저(min) 단계(백엔드 파생과 동일).
+      // 이전엔 "모든 아이템이 이전 상태일 때만" 내려서, 한 품목만 되돌리면 주문 단계가 안 따라와
+      // 아이템뷰 Preparing 에서 다른 품목이 사라지는 등 화면이 어긋났다(#2). 이제 한 품목만
+      // 내려도 주문 단계가 그 최저로 따라온다.
       if (direction === 'revert') {
-        const prevOrderStatus: Record<string, string> = { preparing: 'pending', ready: 'preparing' };
-        const prevStatus = prevOrderStatus[o.status];
-        if (prevStatus) {
-          const allReverted = update.updatedItems.every((it: any) => {
-            if (it.is_set_menu && it.set_items && it.set_items.length > 0) {
-              return it.set_items.every((si: any) => (si.status || 'pending') === prevStatus);
-            }
-            return (it.status || 'pending') === prevStatus;
-          });
-          if (allReverted) updated.status = prevStatus as any;
-        }
+        const d = deriveOrderStatusLocal(update.updatedItems as any, o.status);
+        if (d) updated.status = d;
       }
       return updated;
     }).filter(o => {
@@ -2571,21 +2610,10 @@ const KitchenDisplayPage: React.FC = () => {
           const next = nextOrderStatus[order.status];
           if (next) return updateOrderStatus(orderId, next);
         }
-      } else {
-        const prevOrderStatus: Record<string, KitchenOrder['status']> = {
-          preparing: 'pending', ready: 'preparing', served: 'ready',
-        };
-        const prevStatus = prevOrderStatus[order.status];
-        if (prevStatus) {
-          const allReverted = updatedItems.every(it => {
-            if (it.is_set_menu && it.set_items && it.set_items.length > 0) {
-              return it.set_items.every((si: any) => (si.status || 'pending') === prevStatus);
-            }
-            return (it.status || 'pending') === prevStatus;
-          });
-          if (allReverted) return updateOrderStatus(orderId, prevStatus);
-        }
       }
+      // 2026-06-28 (#1): 되돌리기는 위 /items PATCH(allowItemRevert)에서 백엔드가 주문 단계를
+      // 아이템 최저로 파생·저장하고 소켓으로 내려준다 → 별도 /status 호출 불필요(예전 allReverted
+      // 분기는 한 품목만 되돌리면 주문 단계가 안 따라오던 원인). 낙관적 단계는 위에서 이미 맞췄다.
       return Promise.resolve();
     });
     await Promise.all(statusUpdates);
@@ -2697,7 +2725,10 @@ const KitchenDisplayPage: React.FC = () => {
       };
       let hasItems = false;
 
-      orders.filter(o => ['preparing', 'pending'].includes(o.status)).forEach(order => {
+      // 2026-06-28 (#2): 아이템뷰는 "아이템 상태"로 분류해야 한다 — 주문 상태로 게이트하면 #1
+      // 되돌리기로 주문 단계가 내려간 주문의 preparing 품목이 통째로 사라진다. 쿠킹범위 전체를
+      // 훑되 아래 per-item status 체크(=== 'preparing')가 실제 필터를 한다(중복은 batchedItemIds 로 방지).
+      orders.filter(o => ['pending', 'preparing', 'ready'].includes(o.status)).forEach(order => {
         const label = order.tableNumber
           ? (/[A-Za-z]/.test(String(order.tableNumber)) ? String(order.tableNumber) : `T${String(order.tableNumber).replace(/^T/i, '')}`)
           : order.pagerNumber
@@ -2748,8 +2779,9 @@ const KitchenDisplayPage: React.FC = () => {
       if (hasItems) groups.push(group);
     });
 
-    // 2) 배치에 없는 preparing 아이템 — 각각 개별 카드 (합치지 않음)
-    orders.filter(o => o.status === 'preparing').forEach(order => {
+    // 2) 배치에 없는 preparing 아이템 — 각각 개별 카드 (합치지 않음).
+    // 2026-06-28 (#2): 주문 상태가 아니라 아이템 상태로 분류(아래 status==='preparing' 체크가 필터).
+    orders.filter(o => ['pending', 'preparing', 'ready'].includes(o.status)).forEach(order => {
       const label = order.tableNumber
         ? (/[A-Za-z]/.test(String(order.tableNumber)) ? String(order.tableNumber) : `T${String(order.tableNumber).replace(/^T/i, '')}`)
         : order.pagerNumber
@@ -2949,8 +2981,14 @@ const KitchenDisplayPage: React.FC = () => {
                             return it;
                           });
 
-                          // 즉시 UI 반영
-                          setOrders(prev => prev.map(o => o.id === order.id ? { ...o, items: updatedItems as any } : o));
+                          // 즉시 UI 반영 (#1: 주문 단계도 아이템 최저로 파생 — 백엔드와 동일)
+                          setOrders(prev => prev.map(o => {
+                            if (o.id !== order.id) return o;
+                            const nextO = { ...o, items: updatedItems as any };
+                            const d = deriveOrderStatusLocal(updatedItems as any, o.status);
+                            if (d) nextO.status = d;
+                            return nextO;
+                          }));
 
                           // 배치 등록 (Ready→Preparing 되돌린 아이템은 개별 카드로)
                           setPreparingBatches(prev => [...prev, {
@@ -2970,17 +3008,10 @@ const KitchenDisplayPage: React.FC = () => {
                             });
                             const result = await response.json();
                             if (!result.success) { fetchOrders(); return; }
-
-                            // ready/served 아이템이 하나도 없으면 주문을 preparing으로
-                            const hasReadyOrServed = updatedItems.some(it => {
-                              if (it.is_set_menu && it.set_items && it.set_items.length > 0) {
-                                return it.set_items.some(si => si.status === 'ready' || si.status === 'served' || si.status === 'completed');
-                              }
-                              return it.status === 'ready' || it.status === 'served' || it.status === 'completed';
-                            });
-                            if (!hasReadyOrServed && order.status === 'ready') {
-                              await updateOrderStatus(order.id, 'preparing');
-                            }
+                            // 2026-06-28 (#1): 주문 단계는 위 /items PATCH 에서 백엔드가 아이템 최저로
+                            // 파생·저장하고 소켓으로 내려준다(낙관적 단계는 위 setOrders 에서 이미 맞춤).
+                            // 예전 "ready/served 하나도 없을 때만 preparing" 분기는 한 품목만 되돌리면
+                            // 주문 단계가 안 따라오던 원인 → 제거.
                           } catch { fetchOrders(); }
                         }}>↺</RevertBtn>
                     )}
@@ -3023,6 +3054,46 @@ const KitchenDisplayPage: React.FC = () => {
 
   return (
     <Container>
+      {/* 2026-06-28 (#4) 취소 주문 확인 팝업 — 오늘 취소된 주문 목록(완료 전 검토). 표시 전용. */}
+      {showCancelledModal && (
+        <div
+          onClick={() => setShowCancelledModal(false)}
+          style={{ position: 'fixed', inset: 0, zIndex: 1200, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+        >
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 12, width: 'min(560px, 94vw)', maxHeight: '82vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+            <div style={{ padding: '14px 20px', borderBottom: '1px solid #E6EBF1', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#0A2540' }}>
+                {t('kitchen:cancelledOrders.title', { defaultValue: 'Cancelled orders' })} ({cancelledOrders.length})
+              </div>
+              <button type="button" onClick={() => setShowCancelledModal(false)} aria-label="Close" style={{ border: 'none', background: 'transparent', fontSize: 20, cursor: 'pointer', color: '#6B7C93' }}>×</button>
+            </div>
+            <div style={{ padding: 4, overflowY: 'auto' }}>
+              {cancelledOrders.length === 0 ? (
+                <div style={{ padding: 32, textAlign: 'center', color: '#6B7C93', fontSize: 14 }}>
+                  {t('kitchen:cancelledOrders.empty', { defaultValue: 'No cancelled orders today.' })}
+                </div>
+              ) : cancelledOrders.map(c => (
+                <div key={c.id} style={{ padding: '10px 12px', borderBottom: '1px solid #F1F4F8', display: 'flex', gap: 12, alignItems: 'baseline' }}>
+                  <div style={{ fontWeight: 700, color: '#0A2540', fontSize: 14, minWidth: 64 }}>#{c.orderNumber}</div>
+                  <div style={{ color: '#6B7C93', fontSize: 13, minWidth: 52 }}>{c.tableNumber ? `T-${c.tableNumber}` : '—'}</div>
+                  <div style={{ flex: 1, color: '#1F2937', fontSize: 13 }}>{c.items}</div>
+                  <div style={{ color: '#8898AA', fontSize: 12, whiteSpace: 'nowrap' }}>
+                    {new Date(c.at).toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', timeZone: operationSettings?.timeZone })}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={{ padding: '12px 20px', borderTop: '1px solid #E6EBF1', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button type="button" onClick={() => setCancelledOrders([])} style={{ padding: '8px 14px', borderRadius: 6, border: '1px solid #C7CED6', background: '#fff', color: '#1F2937', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                {t('kitchen:cancelledOrders.clear', { defaultValue: 'Clear list' })}
+              </button>
+              <button type="button" onClick={() => setShowCancelledModal(false)} style={{ padding: '8px 14px', borderRadius: 6, border: 'none', background: '#635BFF', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                {t('kitchen:cancelledOrders.close', { defaultValue: 'Close' })}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* 주방 안내 팝업 — 최신 안내 1건씩, 확인 눌러야 닫힘(+알림음 정지). */}
       {kitchenNotices.length > 0 && (() => {
         const n = kitchenNotices[0];
@@ -3167,6 +3238,23 @@ const KitchenDisplayPage: React.FC = () => {
               }}
             />
           </button>
+
+          {/* 2026-06-28 (#4) 취소 주문 확인 — 오늘 취소된 주문(완료 전 확인). 클릭 시 목록 팝업. */}
+          {cancelledOrders.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowCancelledModal(true)}
+              title={t('kitchen:cancelledOrders.title', { defaultValue: 'Cancelled orders' })}
+              style={{
+                minHeight: 36, padding: '0 12px', borderRadius: 8, border: '1px solid #FCA5A5',
+                background: '#FEF2F2', color: '#B91C1C', fontWeight: 700, fontSize: 13,
+                cursor: 'pointer', flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6,
+                whiteSpace: 'nowrap'
+              }}
+            >
+              {t('kitchen:cancelledOrders.badge', { defaultValue: 'Cancelled' })} {cancelledOrders.length}
+            </button>
+          )}
 
           {/* 6) Live + Time — 끝쪽, Settings ⚙ 직전. 2줄 컴팩트. */}
           <div style={{

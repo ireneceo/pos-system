@@ -1074,6 +1074,8 @@
   "printer.workstations.allStations": "整单",
   "operations.requireVoidPinLabel": "作废/取消需 PIN 批准",
   "operations.requireVoidPinDesc": "开启后，删除商品或取消订单需输入授权 PIN。登录账户不会更改。",
+  "operations.requirePinForCashMgmtLabel": "现金管理需 PIN",
+  "operations.requirePinForCashMgmtDesc": "开启后，开启/关闭钱箱、现金存取和调整需输入有支付权限的 PIN。登录账户不会更改。",
   "operations.managerApprovalsTitle": "经理 PIN 批准",
   "operations.managerApprovalsDesc": "在敏感的柜台操作前要求授权 PIN，以预防和追踪滥用。登录账户不会更改，PIN 仅确认由谁批准。",
   "printer": {

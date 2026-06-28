@@ -833,7 +833,10 @@
       "Bash(scp -q irene@87.106.78.146:/var/www/production-backend/routes/consolidated-print.js ./prod-consolidated-print.js)",
       "Bash(scp -q irene@87.106.78.146:/var/www/production-backend/routes/orders-crud.js ./prod-orders-crud.js)",
       "Bash(scp -q routes/orders-crud.js irene@87.106.78.146:/var/www/production-backend/routes/orders-crud.js)",
-      "Bash(scp -q routes/consolidated-print.js irene@87.106.78.146:/var/www/production-backend/routes/consolidated-print.js)"
+      "Bash(scp -q routes/consolidated-print.js irene@87.106.78.146:/var/www/production-backend/routes/consolidated-print.js)",
+      "Bash(NODE_PATH=/var/www/dev-frontend/node_modules node /tmp/claude-1000/-var-www/b2fbf862-1e0f-4904-a615-06435ba2f514/scratchpad/fp-mount.js)",
+      "Bash(NODE_PATH=/var/www/dev-frontend/node_modules node /tmp/claude-1000/-var-www/b2fbf862-1e0f-4904-a615-06435ba2f514/scratchpad/kds-mount.js)",
+      "Bash(NODE_PATH=/var/www/dev-backend/node_modules node /tmp/claude-1000/-var-www/b2fbf862-1e0f-4904-a615-06435ba2f514/scratchpad/31-debug.js)"
     ],
     "deny": [],
     "ask": []

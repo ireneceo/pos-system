@@ -1,4 +1,11 @@
 {
+  "cancelledOrders": {
+    "title": "취소된 주문",
+    "badge": "취소",
+    "empty": "오늘 취소된 주문이 없습니다.",
+    "clear": "목록 비우기",
+    "close": "닫기"
+  },
   "kitchenDisplayPage.takeaway": "포장",
   "kitchenDisplayPage.delivery": "배달",
   "kitchenDisplayPage.serveAll": "전체 서빙",

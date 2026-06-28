@@ -35,6 +35,8 @@
   "floorPlanPage.dineIn": "Dine-In",
   "floorPlanPage.takeawayWalkIn": "+ 테이크아웃 (Walk-in)",
   "floorPlanPage.takeawayWalkInHint": "POS Terminal 에서 새 walk-in takeaway 주문 시작",
+  "floorPlanPage.fullscreen": "전체화면",
+  "floorPlanPage.exitFullscreen": "전체화면 종료",
   "floorPlanPage.takeawayView": "테이크아웃",
   "floorPlanPage.offTableView": "포장·배달",
   "floorPlanPage.offTableSearch": "주문번호 · 고객 · 품목 검색",

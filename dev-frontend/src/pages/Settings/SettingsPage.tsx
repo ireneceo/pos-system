@@ -673,6 +673,7 @@ const SettingsPage: React.FC = () => {
   const requirePaymentBeforeKitchenRef = useRef<AutoSaveHandle>(null);
   const requirePinForDiscountRef = useRef<AutoSaveHandle>(null);  // #5 할인 PIN 승인 토글
   const requireVoidPinRef = useRef<AutoSaveHandle>(null);  // 삭제/취소 PIN 승인 토글 (손실방지)
+  const requirePinForCashMgmtRef = useRef<AutoSaveHandle>(null);  // 2026-06-28 (3-1) 현금관리 PIN 승인 토글
   const cashFloatRef = useRef<AutoSaveHandle>(null);  // 개시 시재 모드 (이월/고정)
   const requireCancelReasonRef = useRef<AutoSaveHandle>(null);  // 취소/삭제 사유 off|optional|required
   const requirePoOwnerApprovalRef = useRef<AutoSaveHandle>(null);  // 발주 오너 승인 (오너 연결 시 기본 ON)
@@ -3782,6 +3783,30 @@ const SettingsPage: React.FC = () => {
                           const v = e.target.checked;
                           setOperationSettings(prev => ({ ...prev, requireVoidPin: v } as any));
                           requireVoidPinRef.current?.triggerSave();
+                        }}
+                      />
+                      <ToggleSlider />
+                    </ToggleSwitch>
+                  </AutoSaveField>
+                </Toggle>
+
+                {/* 2026-06-28 (3-1): 현금관리 PIN 승인 토글 — 결제권한 직원 PIN 필요(손실방지). 기본 OFF. */}
+                <Toggle>
+                  <div style={{ flex: 1 }}>
+                    <ToggleLabel style={{ marginBottom: '4px' }}>{t('settings:operations.requirePinForCashMgmtLabel', { defaultValue: 'Require PIN for cash management' })}</ToggleLabel>
+                    <p style={{ fontSize: '12px', color: '#4B5563', margin: 0 }}>
+                      {t('settings:operations.requirePinForCashMgmtDesc', { defaultValue: 'When on, opening/closing the cash drawer, pay-in/out and adjustments need a payment-authorized PIN. The login account does not change.' })}
+                    </p>
+                  </div>
+                  <AutoSaveField ref={requirePinForCashMgmtRef} onSave={handleSave} type="toggle">
+                    <ToggleSwitch>
+                      <ToggleInput
+                        type="checkbox"
+                        checked={!!(operationSettings as any).requirePinForCashMgmt}
+                        onChange={(e) => {
+                          const v = e.target.checked;
+                          setOperationSettings(prev => ({ ...prev, requirePinForCashMgmt: v } as any));
+                          requirePinForCashMgmtRef.current?.triggerSave();
                         }}
                       />
                       <ToggleSlider />

@@ -1074,6 +1074,8 @@
   "printer.workstations.allStations": "전체 주문",
   "operations.requireVoidPinLabel": "삭제/취소 시 PIN 승인 요구",
   "operations.requireVoidPinDesc": "켜면 아이템 삭제나 주문 취소에 권한 있는 PIN이 필요합니다. 로그인 계정은 바뀌지 않습니다.",
+  "operations.requirePinForCashMgmtLabel": "현금관리 시 PIN 요구",
+  "operations.requirePinForCashMgmtDesc": "켜면 시재 개시/마감, 입출금, 조정에 결제권한 PIN이 필요합니다. 로그인 계정은 바뀌지 않습니다.",
   "operations.managerApprovalsTitle": "관리자 PIN 승인",
   "operations.managerApprovalsDesc": "민감한 카운터 동작 전에 권한 PIN을 요구해 오남용을 예방·추적합니다. 로그인 계정은 바뀌지 않으며, PIN은 누가 승인했는지만 확인합니다.",
   "printer": {

@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../contexts/StoreContext';
+import CashPinModal from './CashPinModal';
 import { formatCurrency } from '../../utils/currency';
 import { formatDateTime } from '../../utils/timezone';
 import { getAuthToken } from '../../utils/auth';
@@ -28,6 +29,18 @@ const CashLedger: React.FC<Props> = ({ restaurantId, dateRange, search, reloadKe
   const [edit, setEdit] = useState<any | null>(null);
   const [delTarget, setDelTarget] = useState<any | null>(null);
   const [busy, setBusy] = useState(false);
+  // 2026-06-28 (3-1): 현금관리 PIN 게이트 (CashDrawerOps 와 동일 패턴).
+  const requireCashPin = !!(opSettings as any)?.requirePinForCashMgmt;
+  const cashPinRef = useRef<string>('');
+  const [showCashPin, setShowCashPin] = useState(false);
+  const pendingRef = useRef<((pin: string | undefined) => void) | null>(null);
+  const withCashPin = useCallback((fn: (pin: string | undefined) => void) => {
+    if (!requireCashPin) { fn(undefined); return; }
+    if (cashPinRef.current) { fn(cashPinRef.current); return; }
+    pendingRef.current = fn;
+    setShowCashPin(true);
+  }, [requireCashPin]);
+  const onCashError = (code?: string) => { if (code === 'CASH_PIN_INVALID' || code === 'CASH_PIN_REQUIRED') cashPinRef.current = ''; };
 
   const fetchList = useCallback(async () => {
     if (!restaurantId) return;
@@ -53,21 +66,29 @@ const CashLedger: React.FC<Props> = ({ restaurantId, dateRange, search, reloadKe
     }).then(r => r.json().then(j => ({ status: r.status, j })).catch(() => ({ status: r.status, j: null })));
   };
 
-  const saveEdit = async () => {
+  const saveEdit = () => {
     if (!edit) return;
     const amt = Math.round((parseFloat(edit.amount) || 0) * 100) / 100;
     if (!(amt > 0)) return;
-    setBusy(true);
-    const { status } = await api(`/movement/${edit.id}`, { method: 'PUT', body: JSON.stringify({ type: edit.type, amount: amt, reason: edit.reason || null }) });
-    setBusy(false);
-    if (status === 200) { setEdit(null); fetchList(); }
+    withCashPin(async (pin) => {
+      setBusy(true);
+      const body: any = { type: edit.type, amount: amt, reason: edit.reason || null };
+      if (pin) body.cash_pin = pin;
+      const { status, j } = await api(`/movement/${edit.id}`, { method: 'PUT', body: JSON.stringify(body) });
+      setBusy(false);
+      if (status === 200) { setEdit(null); fetchList(); }
+      else onCashError(j?.code);
+    });
   };
-  const doDelete = async () => {
+  const doDelete = () => {
     if (!delTarget) return;
-    setBusy(true);
-    const { status } = await api(`/movement/${delTarget.id}`, { method: 'DELETE' });
-    setBusy(false);
-    if (status === 200) { setDelTarget(null); fetchList(); }
+    withCashPin(async (pin) => {
+      setBusy(true);
+      const { status, j } = await api(`/movement/${delTarget.id}`, { method: 'DELETE', body: JSON.stringify(pin ? { cash_pin: pin } : {}) });
+      setBusy(false);
+      if (status === 200) { setDelTarget(null); fetchList(); }
+      else onCashError(j?.code);
+    });
   };
 
   const rows = useMemo(() => {
@@ -80,6 +101,18 @@ const CashLedger: React.FC<Props> = ({ restaurantId, dateRange, search, reloadKe
 
   return (
     <div>
+      {/* 2026-06-28 (3-1): 현금관리 PIN 게이트 모달 — 설정 ON 시 정정/삭제 전 결제권한 PIN. */}
+      <CashPinModal
+        show={showCashPin}
+        restaurantId={restaurantId || ''}
+        onClose={() => { setShowCashPin(false); pendingRef.current = null; }}
+        onApproved={(_by, pin) => {
+          cashPinRef.current = pin;
+          setShowCashPin(false);
+          const fn = pendingRef.current; pendingRef.current = null;
+          if (fn) fn(pin);
+        }}
+      />
       {/* 통장 요약(합계) — 표 위 한 줄. 드로어 요약(Today's Cash Drawer)이 위에 떠 있으면 중복이라 숨김. */}
       {!hideSummary && (
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 18, padding: '0 4px 10px', fontSize: 13, fontWeight: 600, fontVariantNumeric: 'tabular-nums', flexWrap: 'wrap' }}>

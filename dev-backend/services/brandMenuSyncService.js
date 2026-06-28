@@ -177,9 +177,11 @@ async function syncBrandMenuToRestaurant({ brandMenuId, restaurantId, transactio
     // STILL carry over to the restaurant — merge the BG mirror groups with whatever
     // option groups the restaurant added on its own (own groups preserved). This is
     // why BG options now always appear on the linked product, even without a lock.
-    if (locks.options) {
-      updates.optionGroups = localOptionGroupIds;
-    } else {
+    // 2026-06-28 (1-3 Irene): 옵션 잠금 여부와 무관하게 항상 merge — 매장 자체 옵션그룹
+    // (brand_menu_option_group_id = null)은 보존하고 브랜드 미러는 항상 포함한다. 잠금일 때
+    // 매장 옵션을 통째로 지우던 기존 동작(=매장 추가분 소실)을 제거. "추가 허용 / 브랜드 보존"
+    // (superset). 잠금의 강제력(브랜드 미러 제거 금지)은 매장 편집 가드(routes/menu.js)에서 보장.
+    {
       const current = Array.isArray(product.optionGroups) ? product.optionGroups : [];
       // Identify which current groups are BG mirrors (linked by brand_menu_option_group_id)
       const mirrorRows = current.length ? await OptionGroup.findAll({

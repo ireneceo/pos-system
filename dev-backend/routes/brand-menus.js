@@ -262,8 +262,11 @@ router.put('/reorder/bulk', authenticateToken, requireBGScope, async (req, res) 
     if (!Array.isArray(order) || order.length === 0) {
       await t.rollback(); return res.status(400).json({ success: false, message: 'order array required' });
     }
+    // 1-based(i+1) 저장: 프론트 sortItems('custom')·매장 push 가 display_order 0 을 "미설정→맨뒤"로
+    // 취급한다(SortDropdown). 0-based 로 저장하면 1번 위치 메뉴가 sort_order 0 → 맨 뒤로 튕겨
+    // "드래그 재정렬이 안 되는" 버그(2026-06-28 수정). 재정렬된 메뉴는 1..N, 미정렬은 0(뒤).
     for (let i = 0; i < order.length; i++) {
-      await BrandMenu.update({ sort_order: i }, { where: { id: order[i], brand_id }, transaction: t });
+      await BrandMenu.update({ sort_order: i + 1 }, { where: { id: order[i], brand_id }, transaction: t });
     }
     await t.commit();
     res.json({ success: true, data: { updated: order.length } });

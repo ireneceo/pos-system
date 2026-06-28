@@ -1,4 +1,11 @@
 {
+  "cancelledOrders": {
+    "title": "已取消订单",
+    "badge": "已取消",
+    "empty": "今天没有已取消的订单。",
+    "clear": "清空列表",
+    "close": "关闭"
+  },
   "kitchenDisplayPage.takeaway": "外卖",
   "kitchenDisplayPage.delivery": "配送",
   "kitchenDisplayPage.serveAll": "全部上菜",

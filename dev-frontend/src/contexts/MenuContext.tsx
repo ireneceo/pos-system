@@ -67,6 +67,7 @@ export interface OptionGroup {
     id: string;
     name: string;
     price: number;
+    sold_out?: boolean; // 2026-06-28 (2-1) 옵션 품절 — 주문화면 선택불가/회색
   }>;
 }
 

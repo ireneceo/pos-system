@@ -1,4 +1,11 @@
 {
+  "cancelledOrders": {
+    "title": "Pesanan dibatalkan",
+    "badge": "Dibatalkan",
+    "empty": "Tiada pesanan dibatalkan hari ini.",
+    "clear": "Kosongkan senarai",
+    "close": "Tutup"
+  },
   "kitchenDisplayPage.takeaway": "Bungkus",
   "kitchenDisplayPage.delivery": "Penghantaran",
   "kitchenDisplayPage.serveAll": "Serve Semua",

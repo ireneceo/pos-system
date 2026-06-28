@@ -348,8 +348,8 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
   return (
     <LayoutContainer>
       <BrandTopBar>
-        <span className="slogan">Solving Real F&amp;B Problems</span>
-        <a href="https://purplehere.com" target="_blank" rel="noopener noreferrer">Purple Here ↗</a>
+        {/* 2026-06-28 (Irene): PWA 좌측 상단은 이 한 줄만 — 슬로건+브랜드 통합. */}
+        <a href="https://purplehere.com" target="_blank" rel="noopener noreferrer">Solving Real F&amp;B Problems - Purple here</a>
       </BrandTopBar>
       {title && (
         <Header>

@@ -1467,7 +1467,18 @@ const MenuManagementPage: React.FC = () => {
         optionGroups: selectedOptionGroups,
         directIngredients: !formData.recipe_id ? directIngredients : undefined
       } as any;
-      await updateMenuItem(updatedItem);
+      // 2026-06-28 (1-4): 저장 실패(예: 브랜드 잠금 필드 변경 시 백엔드 400)를 사용자에게 표시.
+      // 이전엔 updateMenuItem 의 throw 가 모달만 멈추고 안내가 없어 "저장이 안 된다"로 보였다.
+      try {
+        await updateMenuItem(updatedItem);
+      } catch (e: any) {
+        setInfoModal({
+          open: true,
+          title: t('menu:menuManagementPage.saveFailedTitle', { defaultValue: 'Could not save' }),
+          message: e?.message || t('menu:menuManagementPage.saveFailedMessage', { defaultValue: 'Failed to save menu item.' })
+        });
+        return;
+      }
       // #11c 크로스셀 — 매장분 추천(origin='restaurant')만 교체. 브랜드 잠금분은 백엔드가 보존.
       try {
         const restaurantId = getRestaurantIdFromPath();
@@ -1923,13 +1934,30 @@ const MenuManagementPage: React.FC = () => {
             />
           </UIFormGroup>
 
-          <ImageUploadDropzone
-            value={formData.image || ''}
-            onChange={(base64) => setFormData({ ...formData, image: base64 })}
-            label="Menu Item Image"
-            helpText="Upload an image for this menu item (PNG, JPG, GIF — phone photos OK, auto-compressed)"
-            showRemoveButton={true}
-          />
+          {/* 2026-06-28 (1-4): 브랜드가 이미지를 잠근 메뉴는 이미지 편집 불가 — 편집 가능한 것처럼
+              보이나 저장이 안 되던 혼동 수정. 잠금 시 읽기전용 미리보기 + 안내(name/price/category 와
+              동일 정책). 신규 추가 모달은 editingItem 이 없어 항상 업로드(else)로 동작. */}
+          {editingItem?.brand_menu_locks_snapshot?.image ? (
+            <UIFormGroup>
+              <FormLabel>{t('menu:menuManagementPage.menuItemImage', { defaultValue: 'Menu Item Image' })} · {t('menu:menuManagementPage.brandLockedTag', { defaultValue: 'Brand-locked' })}</FormLabel>
+              {formData.image ? (
+                <img src={formData.image} alt="" style={{ maxHeight: 120, borderRadius: 8, border: '1px solid #E6EBF1', objectFit: 'contain', background: '#F9FAFB' }} />
+              ) : (
+                <div style={{ fontSize: 13, color: '#6B7C93', padding: '16px', background: '#F9FAFB', borderRadius: 8, textAlign: 'center' }}>—</div>
+              )}
+              <div style={{ fontSize: '12px', color: '#6B7C93', marginTop: '4px' }}>
+                {t('menu:menuManagementPage.brandLockedImageHint', { defaultValue: 'Image is set by the brand and cannot be changed here.' })}
+              </div>
+            </UIFormGroup>
+          ) : (
+            <ImageUploadDropzone
+              value={formData.image || ''}
+              onChange={(base64) => setFormData({ ...formData, image: base64 })}
+              label="Menu Item Image"
+              helpText="Upload an image for this menu item (PNG, JPG, GIF — phone photos OK, auto-compressed)"
+              showRemoveButton={true}
+            />
+          )}
 
           <UIFormGroup style={{ marginTop: '24px' }}>
             <FormLabel>{t('menu:menuManagementPage.linkedRecipe')}</FormLabel>
@@ -2235,13 +2263,30 @@ const MenuManagementPage: React.FC = () => {
             />
           </UIFormGroup>
 
-          <ImageUploadDropzone
-            value={formData.image || ''}
-            onChange={(base64) => setFormData({ ...formData, image: base64 })}
-            label="Menu Item Image"
-            helpText="Upload an image for this menu item (PNG, JPG, GIF — phone photos OK, auto-compressed)"
-            showRemoveButton={true}
-          />
+          {/* 2026-06-28 (1-4): 브랜드가 이미지를 잠근 메뉴는 이미지 편집 불가 — 편집 가능한 것처럼
+              보이나 저장이 안 되던 혼동 수정. 잠금 시 읽기전용 미리보기 + 안내(name/price/category 와
+              동일 정책). 신규 추가 모달은 editingItem 이 없어 항상 업로드(else)로 동작. */}
+          {editingItem?.brand_menu_locks_snapshot?.image ? (
+            <UIFormGroup>
+              <FormLabel>{t('menu:menuManagementPage.menuItemImage', { defaultValue: 'Menu Item Image' })} · {t('menu:menuManagementPage.brandLockedTag', { defaultValue: 'Brand-locked' })}</FormLabel>
+              {formData.image ? (
+                <img src={formData.image} alt="" style={{ maxHeight: 120, borderRadius: 8, border: '1px solid #E6EBF1', objectFit: 'contain', background: '#F9FAFB' }} />
+              ) : (
+                <div style={{ fontSize: 13, color: '#6B7C93', padding: '16px', background: '#F9FAFB', borderRadius: 8, textAlign: 'center' }}>—</div>
+              )}
+              <div style={{ fontSize: '12px', color: '#6B7C93', marginTop: '4px' }}>
+                {t('menu:menuManagementPage.brandLockedImageHint', { defaultValue: 'Image is set by the brand and cannot be changed here.' })}
+              </div>
+            </UIFormGroup>
+          ) : (
+            <ImageUploadDropzone
+              value={formData.image || ''}
+              onChange={(base64) => setFormData({ ...formData, image: base64 })}
+              label="Menu Item Image"
+              helpText="Upload an image for this menu item (PNG, JPG, GIF — phone photos OK, auto-compressed)"
+              showRemoveButton={true}
+            />
+          )}
 
           <UIFormGroup style={{ marginTop: '24px' }}>
             <FormLabel>{t('menu:menuManagementPage.linkedRecipe')}</FormLabel>

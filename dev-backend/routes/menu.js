@@ -7,6 +7,7 @@ const { Recipe, RecipeIngredient, Ingredient } = require('../models');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const { validateSetGroups, resolveSetGroups, computeSetAvailability } = require('../utils/setMenu');
 const { OptionGroup, Option } = require('../models');
+const { Op } = require('sequelize');
 
 // products.category 는 categories.name 을 FK 로 참조한다. 그런데 프론트 드롭다운은 category **id**
 // 를 보낸다(읽기 API 는 name→categoryId 변환, 쓰기는 변환 없었음 → FK 깨짐). 여기서 양쪽 입력
@@ -559,19 +560,33 @@ router.put('/product/:id', checkProductTenant, async (req, res) => {
     if (product.brand_menu_id && product.brand_menu_locks_snapshot) {
       const locks = typeof product.brand_menu_locks_snapshot === 'string'
         ? JSON.parse(product.brand_menu_locks_snapshot) : product.brand_menu_locks_snapshot;
-      const fieldToLockKey = {
-        name: 'name', price: 'price', category: 'category', image: 'image',
-        optionGroups: 'options'
+      // 스칼라 잠금 필드 — 값이 바뀌면 차단(완전 보존).
+      const scalarFieldToLockKey = {
+        name: 'name', price: 'price', category: 'category', image: 'image'
       };
       const locked = [];
-      for (const [field, lockKey] of Object.entries(fieldToLockKey)) {
+      for (const [field, lockKey] of Object.entries(scalarFieldToLockKey)) {
         if (req.body[field] !== undefined && locks[lockKey] === true) {
-          const cur = product[field];
-          const next = req.body[field];
-          // optionGroups is an array — compare via JSON
-          const changed = JSON.stringify(cur ?? null) !== JSON.stringify(next ?? null);
+          const changed = JSON.stringify(product[field] ?? null) !== JSON.stringify(req.body[field] ?? null);
           if (changed) locked.push(field);
         }
+      }
+      // 옵션 잠금(2026-06-28, 1-3 Irene 결정 = superset): 잠겨 있어도 매장이 자기 옵션그룹 '추가'는
+      // 허용한다. 단 브랜드 미러 옵션그룹(OptionGroup.brand_menu_option_group_id != null)은 모두
+      // 유지해야 한다(하나라도 빠지면=브랜드 옵션 제거 → 차단). 매장 자체 옵션 추가/삭제는 자유.
+      if (req.body.optionGroups !== undefined && locks.options === true) {
+        const curIds = Array.isArray(product.optionGroups) ? product.optionGroups : [];
+        const nextSet = new Set((Array.isArray(req.body.optionGroups) ? req.body.optionGroups : []).map(String));
+        const brandRows = curIds.length ? await OptionGroup.findAll({
+          where: {
+            restaurant_id: product.restaurant_id || restaurantId,
+            id: { [Op.in]: curIds },
+            brand_menu_option_group_id: { [Op.ne]: null }
+          },
+          attributes: ['id']
+        }) : [];
+        const removedBrand = brandRows.map(r => r.id).filter(id => !nextSet.has(String(id)));
+        if (removedBrand.length > 0) locked.push('optionGroups');
       }
       if (locked.length > 0) {
         return res.status(400).json({
@@ -873,6 +888,41 @@ router.put('/product/:id/toggle-soldout', checkProductTenant, async (req, res) =
     res.json({
       success: true,
       data: { id: product.id, soldOut: newSoldOut },
+      message: newSoldOut ? 'Marked sold out' : 'Back in stock'
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 2026-06-28 (2-1): 옵션 품절(sold-out) 토글 — 상품 toggle-soldout 미러. Staff 허용(checkProductTenant).
+// is_active(메뉴 노출)와 별개로 운영 자율. 품절 옵션은 주문화면(POS/모바일)에서 선택 불가.
+// 소유권은 옵션의 OptionGroup.restaurant_id 로 확인(IDOR 방지). 소켓 option-soldout 로 실시간 반영.
+router.put('/option/:id/toggle-soldout', checkProductTenant, async (req, res) => {
+  try {
+    const restaurantId = req.query.restaurantId || req.user.restaurant_id;
+    const option = await Option.findByPk(req.params.id);
+    if (!option) {
+      return res.status(404).json({ success: false, error: { message: 'Option not found', code: 'NOT_FOUND' } });
+    }
+    const og = await OptionGroup.findByPk(option.option_group_id, { attributes: ['id', 'restaurant_id'] });
+    const ogRid = og && og.restaurant_id;
+    if (req.user.role !== 'System Admin' && restaurantId && ogRid && parseInt(ogRid) !== parseInt(restaurantId)) {
+      return res.status(403).json({ success: false, error: { message: 'Access denied to this restaurant', code: 'FORBIDDEN' } });
+    }
+    const newSoldOut = typeof req.body?.soldOut === 'boolean' ? req.body.soldOut : !option.sold_out;
+    await option.update({ sold_out: newSoldOut });
+
+    try {
+      const io = req.app.get('io');
+      if (io && ogRid) {
+        io.of('/orders').to(`restaurant_${ogRid}`).emit('option-soldout', { id: option.id, soldOut: newSoldOut });
+      }
+    } catch (e) { /* non-fatal */ }
+
+    res.json({
+      success: true,
+      data: { id: option.id, soldOut: newSoldOut },
       message: newSoldOut ? 'Marked sold out' : 'Back in stock'
     });
   } catch (error) {

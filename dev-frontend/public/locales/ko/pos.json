@@ -40,6 +40,7 @@
   "pOSTerminalPage.discount": "할인",
   "pOSTerminalPage.total": "합계",
   "terminal.categoryAll": "전체",
+  "terminal.soldOut": "품절",
   "terminal.simpleMode": "컴팩트",
   "terminal.photoMode": "이미지",
   "terminal.themeLight": "밝게",

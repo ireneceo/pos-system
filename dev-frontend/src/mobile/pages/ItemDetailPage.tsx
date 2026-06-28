@@ -738,38 +738,50 @@ const ItemDetailPage: React.FC = () => {
 
           {!group.multiple ? (
             <RadioGroup>
-              {group.options.map((option: any) => (
+              {group.options.map((option: any) => {
+                const so = !!option.sold_out; // 2026-06-28 (2-1) 품절 옵션 — 손님 선택 불가
+                return (
                 <RadioButton
                   key={option.id}
                   selected={selectedOptions.includes(option.id)}
-                  onClick={() => handleOptionToggle(option.id, group.id, group.multiple, group.required)}
+                  onClick={() => { if (so) return; handleOptionToggle(option.id, group.id, group.multiple, group.required); }}
+                  style={so ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
                 >
-                  <div>{option.name}</div>
-                  {option.price > 0 && (
+                  <div style={so ? { textDecoration: 'line-through' } : undefined}>{option.name}</div>
+                  {so ? (
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#B91C1C', marginTop: '2px' }}>{t('itemDetail.soldOut', { defaultValue: 'Sold out' })}</div>
+                  ) : option.price > 0 && (
                     <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '2px' }}>
                       +{formatCurrency(option.price, currency)}
                     </div>
                   )}
                 </RadioButton>
-              ))}
+                );
+              })}
             </RadioGroup>
           ) : (
             <CheckboxGroup>
-              {group.options.map((option: any) => (
-                <CheckboxLabel key={option.id}>
+              {group.options.map((option: any) => {
+                const so = !!option.sold_out; // 2026-06-28 (2-1) 품절 옵션 — 손님 선택 불가
+                return (
+                <CheckboxLabel key={option.id} style={so ? { opacity: 0.6 } : undefined}>
                   <div style={{ display: 'flex', alignItems: 'center' }}>
                     <CheckboxInput
                       type="checkbox"
                       checked={selectedOptions.includes(option.id)}
-                      onChange={() => handleOptionToggle(option.id, group.id, group.multiple, group.required)}
+                      disabled={so}
+                      onChange={() => { if (so) return; handleOptionToggle(option.id, group.id, group.multiple, group.required); }}
                     />
-                    <CheckboxText>{option.name}</CheckboxText>
+                    <CheckboxText style={so ? { textDecoration: 'line-through' } : undefined}>{option.name}</CheckboxText>
                   </div>
-                  {option.price > 0 && (
+                  {so ? (
+                    <CheckboxPrice style={{ color: '#B91C1C', fontWeight: 700 }}>{t('itemDetail.soldOut', { defaultValue: 'Sold out' })}</CheckboxPrice>
+                  ) : option.price > 0 && (
                     <CheckboxPrice>+{formatCurrency(option.price, currency)}</CheckboxPrice>
                   )}
                 </CheckboxLabel>
-              ))}
+                );
+              })}
             </CheckboxGroup>
           )}
         </OptionSection>

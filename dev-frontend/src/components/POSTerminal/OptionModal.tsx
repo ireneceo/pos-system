@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMenu } from '../../contexts/MenuContext';
+import { getAuthToken } from '../../utils/auth';
 import { Modal, ModalButton as Button, FormLabel as Label } from '../UI/Modal';
 import {
   RequiredStar,
@@ -97,6 +98,30 @@ const OptionModal: React.FC<OptionModalProps> = ({ isOpen, onClose, menuItem, on
       }
     }
   };
+
+  // 2026-06-28 (2-1): 옵션 품절 — 롱프레스(600ms)로 직원이 토글, 품절 옵션은 선택 불가/회색.
+  // 상품 솔드아웃(POSTerminalPage)과 동일 패턴. 데이터의 opt.sold_out + 낙관적 오버레이.
+  const [optSoldOut, setOptSoldOut] = useState<Record<string, boolean>>({});
+  const effOptSold = (opt: any) => optSoldOut[opt.id] ?? !!opt.sold_out;
+  const lpTimer = useRef<any>(null);
+  const lpFired = useRef(false);
+  const toggleOptSoldOut = async (opt: any) => {
+    const next = !effOptSold(opt);
+    setOptSoldOut(p => ({ ...p, [opt.id]: next }));
+    try {
+      const token = getAuthToken();
+      const parts = window.location.pathname.split('/');
+      const ridIdx = parts.indexOf('restaurant');
+      const rid = ridIdx >= 0 ? parts[ridIdx + 1] : null;
+      const res = await fetch(`/api/menu/option/${opt.id}/toggle-soldout${rid ? `?restaurantId=${rid}` : ''}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ soldOut: next })
+      });
+      if (!res.ok) throw new Error('fail');
+    } catch { setOptSoldOut(p => ({ ...p, [opt.id]: !next })); }
+  };
+  const startOptLongPress = (opt: any) => { lpFired.current = false; lpTimer.current = setTimeout(() => { lpFired.current = true; toggleOptSoldOut(opt); }, 600); };
+  const cancelOptLongPress = () => { if (lpTimer.current) { clearTimeout(lpTimer.current); lpTimer.current = null; } };
 
   const calculateTotal = () => {
     let total = menuItem.price * quantity;
@@ -196,43 +221,67 @@ const OptionModal: React.FC<OptionModalProps> = ({ isOpen, onClose, menuItem, on
           
           {!group.multiple ? (
             <RadioGroup>
-              {group.options.map(option => (
+              {group.options.map(option => {
+                const so = effOptSold(option);
+                return (
                 <RadioButton
                   key={option.id}
                   selected={selectedOptions.includes(option.id)}
-                  onClick={() => handleOptionToggle(option.id, group.id, group.multiple, group.required)}
-                  style={group.id === 'spice' && selectedOptions.includes(option.id) ? {
-                    borderColor: '#F97316',
-                    backgroundColor: 'rgba(249, 115, 22, 0.1)',
-                    color: '#EA580C'
-                  } : {}}
+                  onMouseDown={() => startOptLongPress(option)}
+                  onMouseUp={cancelOptLongPress}
+                  onMouseLeave={cancelOptLongPress}
+                  onTouchStart={() => startOptLongPress(option)}
+                  onTouchEnd={cancelOptLongPress}
+                  onClick={() => { if (lpFired.current) { lpFired.current = false; return; } if (so) return; handleOptionToggle(option.id, group.id, group.multiple, group.required); }}
+                  style={{
+                    ...(group.id === 'spice' && selectedOptions.includes(option.id) ? {
+                      borderColor: '#F97316', backgroundColor: 'rgba(249, 115, 22, 0.1)', color: '#EA580C'
+                    } : {}),
+                    ...(so ? { opacity: 0.55, cursor: 'not-allowed' } : {})
+                  }}
                 >
-                  <div>{option.name}</div>
-                  {option.price > 0 && (
+                  <div style={so ? { textDecoration: 'line-through' } : undefined}>{option.name}</div>
+                  {so ? (
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#B91C1C', marginTop: '2px' }}>{t('terminal.soldOut', { defaultValue: 'Sold out' })}</div>
+                  ) : option.price > 0 && (
                     <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '2px' }}>
                       +{formatCurrency(option.price, operationSettings.currency)}
                     </div>
                   )}
                 </RadioButton>
-              ))}
+                );
+              })}
             </RadioGroup>
           ) : (
             <CheckboxGroup>
-              {group.options.map(option => (
-                <CheckboxLabel key={option.id}>
+              {group.options.map(option => {
+                const so = effOptSold(option);
+                return (
+                <CheckboxLabel key={option.id}
+                  onMouseDown={() => startOptLongPress(option)}
+                  onMouseUp={cancelOptLongPress}
+                  onMouseLeave={cancelOptLongPress}
+                  onTouchStart={() => startOptLongPress(option)}
+                  onTouchEnd={cancelOptLongPress}
+                  style={so ? { opacity: 0.6 } : undefined}
+                >
                   <div style={{ display: 'flex', alignItems: 'center' }}>
                     <CheckboxInput
                       type="checkbox"
                       checked={selectedOptions.includes(option.id)}
-                      onChange={() => handleOptionToggle(option.id, group.id, group.multiple, group.required)}
+                      disabled={so}
+                      onChange={() => { if (lpFired.current) { lpFired.current = false; return; } if (so) return; handleOptionToggle(option.id, group.id, group.multiple, group.required); }}
                     />
-                    <CheckboxText>{option.name}</CheckboxText>
+                    <CheckboxText style={so ? { textDecoration: 'line-through' } : undefined}>{option.name}</CheckboxText>
                   </div>
-                  {option.price > 0 && (
+                  {so ? (
+                    <CheckboxPrice style={{ color: '#B91C1C', fontWeight: 700 }}>{t('terminal.soldOut', { defaultValue: 'Sold out' })}</CheckboxPrice>
+                  ) : option.price > 0 && (
                     <CheckboxPrice>+{formatCurrency(option.price, operationSettings.currency)}</CheckboxPrice>
                   )}
                 </CheckboxLabel>
-              ))}
+                );
+              })}
             </CheckboxGroup>
           )}
         </Section>

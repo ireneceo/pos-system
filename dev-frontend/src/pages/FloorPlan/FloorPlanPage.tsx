@@ -225,10 +225,12 @@ const MainContent = styled.div`
   position: relative; /* anchor for absolute-positioned overlay panels (e.g. takeaway detail) */
 `;
 
-const CanvasWrapper = styled.div`
+const CanvasWrapper = styled.div<{ $tight?: boolean }>`
   flex: 1;
-  /* 좌우 여백을 Header/ZoneFilterBar(24px) 와 통일 → 모든 행 좌우 정렬 일치(POS Terminal 본문과 동일 게터). */
-  padding: 8px 24px;
+  /* 2026-06-28 (table map): 테이블맵을 가장자리까지 더 크게(Irene "사방 여백없게").
+     floor 뷰는 $tight 로 여백을 거의 0 까지 줄이고, items/takeaway 카드뷰는
+     자체 내부여백이 있어 약간의 게터만 둔다. */
+  padding: ${p => (p.$tight ? '4px 6px' : '8px 16px')};
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -237,7 +239,7 @@ const CanvasWrapper = styled.div`
   background: var(--pos-surface, #FFFFFF);
 
   @media (max-width: 768px) {
-    padding: 6px 16px;
+    padding: ${p => (p.$tight ? '2px 4px' : '6px 12px')};
   }
 `;
 
@@ -347,18 +349,22 @@ const FloorPlanPage: React.FC = () => {
   // 좁은 화면(≤1280px, 10인치 단말)에서 Daily Settlement/Customer Display/Open Drawer 를
   // 설정(gear) 드롭다운으로 수납. CSS 미디어와 충돌 없게 JS 로 단일 판정.
   const [isNarrow, setIsNarrow] = useState(false);
-  // 2026-06-26 (item 10): collapse the header action row to reclaim vertical space
-  // on tablets. Remembered per-device in localStorage. ZoneFilterBar below stays.
-  const [headerCollapsed, setHeaderCollapsed] = useState<boolean>(() => {
-    try { return localStorage.getItem('floorplan_header_collapsed') === '1'; } catch { return false; }
+  // 2026-06-28 (5-1): Fullscreen mode for order-taking — hides the header action row
+  // AND the bottom stats bar to maximize the table map (Irene: "주문받을 땐 헤더 불필요").
+  // Replaces the older ▴ header-collapse arrow ("왜 안 없애"). Remembered per-device.
+  // ZoneFilterBar stays so zones/views remain switchable; exit lives there in fullscreen.
+  const [fullscreen, setFullscreen] = useState<boolean>(() => {
+    try { return localStorage.getItem('floorplan_fullscreen') === '1'; } catch { return false; }
   });
-  const toggleHeaderCollapsed = useCallback(() => {
-    setHeaderCollapsed(prev => {
+  const toggleFullscreen = useCallback(() => {
+    setFullscreen(prev => {
       const next = !prev;
-      try { localStorage.setItem('floorplan_header_collapsed', next ? '1' : '0'); } catch { /* ignore */ }
+      try { localStorage.setItem('floorplan_fullscreen', next ? '1' : '0'); } catch { /* ignore */ }
       return next;
     });
   }, []);
+  // 2026-06-28 (FloorPlan): 테이블 상세를 큰 팝업으로 보기 토글(측면패널 ↔ 중앙 모달).
+  const [detailExpanded, setDetailExpanded] = useState(false);
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 1440px)');
     const apply = () => setIsNarrow(mq.matches);
@@ -1780,18 +1786,20 @@ const FloorPlanPage: React.FC = () => {
         </div>
       )}
 
+      {!fullscreen && (
       <Header>
         <HeaderLeft>
           <HeaderTitle>{t('floorplan:floorPlanPage.floorPlan')}</HeaderTitle>
-          {/* 2026-06-26 (item 10): collapse/expand the header action row (persisted). */}
+          {/* 2026-06-28 (5-1): enter fullscreen — hides header + bottom stats bar to
+              maximize the table map while taking orders. Exit via the zone-bar button. */}
           <BackBtn
             type="button"
-            onClick={toggleHeaderCollapsed}
-            title={headerCollapsed ? t('floorplan:floorPlanPage.expandHeader', 'Expand header') : t('floorplan:floorPlanPage.collapseHeader', 'Collapse header')}
-            aria-label={headerCollapsed ? 'Expand header' : 'Collapse header'}
+            onClick={toggleFullscreen}
+            title={t('floorplan:floorPlanPage.fullscreen', 'Fullscreen')}
+            aria-label="Enter fullscreen"
             style={{ padding: '6px 10px' }}
           >
-            {headerCollapsed ? '▾' : '▴'}
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3m13-5v3a2 2 0 0 1-2 2h-3"/></svg>
           </BackBtn>
           <BackBtn onClick={() => navigate(`/restaurant/${restaurantId}/dashboard`)}>
             &larr; {t('nav.dashboard', 'Dashboard')}
@@ -1801,7 +1809,6 @@ const FloorPlanPage: React.FC = () => {
             {connected ? 'Live' : 'Offline'}
           </ConnectionStatus>
         </HeaderLeft>
-        {!headerCollapsed && (
         <HeaderRight>
           {/* 로그인 표시 = 사용자 아이콘 + 이름 (클릭 → PIN 전환). 역할 단정 "Cashier:" 라벨 없음
               — 로그인 주체가 관리자/오너일 수 있어 "Cashier" 가 부정확하던 문제. POS Terminal 과 동일. */}
@@ -1973,8 +1980,8 @@ const FloorPlanPage: React.FC = () => {
             );
           })()}
         </HeaderRight>
-        )}
       </Header>
+      )}
 
       {/* Single chip bar — zones on the left, view-mode chips on the right.
           - Zone chips (existing) switch the floor canvas filter.
@@ -2044,6 +2051,20 @@ const FloorPlanPage: React.FC = () => {
           >
             {t('floorplan:floorPlanPage.takeawayWalkIn', '+ Walk-in')}
           </ZoneChip>
+          {/* 2026-06-28 (5-1): exit-fullscreen lives in the zone bar (always visible) since the
+              header — which holds the enter-fullscreen control — is hidden in fullscreen mode. */}
+          {fullscreen && (
+            <ZoneChip
+              type="button"
+              active={false}
+              onClick={toggleFullscreen}
+              title={t('floorplan:floorPlanPage.exitFullscreen', 'Exit fullscreen')}
+              style={{ marginLeft: 'auto' }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ marginRight: 6 }}><path d="M4 14h6v6m10-10h-6V4M14 10l7-7M3 21l7-7"/></svg>
+              {t('floorplan:floorPlanPage.exitFullscreen', 'Exit fullscreen')}
+            </ZoneChip>
+          )}
         </ZoneFilterBar>
       )}
 
@@ -2051,7 +2072,7 @@ const FloorPlanPage: React.FC = () => {
 
       <MainContent>
         {/* Items 뷰는 바닥 전체를 회색으로(흰 카드 또렷) — 박스가 아니라 풀 배경. */}
-        <CanvasWrapper style={(activeView === 'items' || activeView === 'takeaway') ? { background: 'var(--pos-menu-bg, #E4E9EF)' } : undefined}>
+        <CanvasWrapper $tight={activeView === 'floor'} style={(activeView === 'items' || activeView === 'takeaway') ? { background: 'var(--pos-menu-bg, #E4E9EF)' } : undefined}>
           {activeView === 'items' ? (
             <ItemListView
               dineInOrders={applyServeOverrides(Object.entries(tableStatuses).flatMap(([fpti, o]: [string, any]) => {
@@ -2266,7 +2287,9 @@ const FloorPlanPage: React.FC = () => {
             currency={currency}
             timezone={timezone}
             restaurantId={Number(restaurantId)}
-            onClose={() => setSelectedTableId(null)}
+            expanded={detailExpanded}
+            onToggleExpand={() => setDetailExpanded(v => !v)}
+            onClose={() => { setSelectedTableId(null); setDetailExpanded(false); }}
             onNewOrder={handleNewOrder}
             onStatusChange={handleStatusChange}
             onPayment={handlePayment}
@@ -2349,7 +2372,9 @@ const FloorPlanPage: React.FC = () => {
               currency={currency}
               timezone={timezone}
               restaurantId={Number(restaurantId)}
-              onClose={() => setSelectedTakeawayOrderId(null)}
+              expanded={detailExpanded}
+              onToggleExpand={() => setDetailExpanded(v => !v)}
+              onClose={() => { setSelectedTakeawayOrderId(null); setDetailExpanded(false); }}
               onNewOrder={() => handleNewOrder({ takeaway: true })}
               onStatusChange={async (orderId, newStatus) => {
                 await handleStatusChange(orderId, newStatus);
@@ -2377,7 +2402,7 @@ const FloorPlanPage: React.FC = () => {
       {/* 2026-06-26 (item 10): serving-only staff (!canTakePayment) don't deal with
           revenue/occupancy stats — hide the bar so it doesn't eat ~2 rows of their
           table view. Payment-capable roles still see it. */}
-      {canTakePayment && (
+      {canTakePayment && !fullscreen && (
         <FloorPlanStatsBar
           tables={filteredFloorPlan.tables}
           tableStatuses={tableStatuses}

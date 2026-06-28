@@ -55,6 +55,7 @@ router.get('/', async (req, res) => {
         id: opt.id.toString(),
         name: opt.name,
         price: parseFloat(opt.price),
+        sold_out: !!opt.sold_out, // 2026-06-28 (2-1) 옵션 품절 — POS/RA 가 회색·선택불가 처리
         ingredient_id: opt.optionIngredients?.[0]?.ingredient_id || null,
         ingredient_name: opt.optionIngredients?.[0]?.ingredient?.name || null,
         ingredient_quantity: opt.optionIngredients?.[0]?.quantity ? parseFloat(opt.optionIngredients[0].quantity) : null,

@@ -35,6 +35,8 @@
   "floorPlanPage.dineIn": "Dine-In",
   "floorPlanPage.takeawayWalkIn": "+ Takeaway Walk-in",
   "floorPlanPage.takeawayWalkInHint": "Start a new walk-in takeaway order in POS Terminal",
+  "floorPlanPage.fullscreen": "Fullscreen",
+  "floorPlanPage.exitFullscreen": "Exit fullscreen",
   "floorPlanPage.takeawayView": "Takeaway",
   "floorPlanPage.offTableView": "Takeout",
   "floorPlanPage.offTableSearch": "Search order #, customer, item",

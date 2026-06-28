@@ -1074,6 +1074,8 @@
   "printer.workstations.allStations": "Full order",
   "operations.requireVoidPinLabel": "Require PIN approval to void / cancel",
   "operations.requireVoidPinDesc": "When on, deleting an item or cancelling an order needs an authorized PIN. The login account does not change.",
+  "operations.requirePinForCashMgmtLabel": "Require PIN for cash management",
+  "operations.requirePinForCashMgmtDesc": "When on, opening/closing the cash drawer, pay-in/out and adjustments need a payment-authorized PIN. The login account does not change.",
   "operations.managerApprovalsTitle": "Manager PIN Approvals",
   "operations.managerApprovalsDesc": "Require an authorized PIN before sensitive counter actions, to prevent and track misuse. The login account does not change — the PIN only confirms who approved.",
   "printer": {

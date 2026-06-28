@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import styled from 'styled-components';
 import { FloorTable, TableStatusInfo, ORDER_STATUS_COLORS, getOrderStatusColors } from './types';
 import { ItemStatusPill, toDisplayStatus } from './orderItemStatus';
@@ -74,18 +75,25 @@ interface TableDetailPanelProps {
   canTakePayment?: boolean;
   // 취소/void 권한(access_void). false(서버/홀 역할) → 주문취소·품목삭제 버튼 숨김. (2026-06-24)
   canVoid?: boolean;
+  // 2026-06-28 (FloorPlan): 큰 팝업으로 보기. expanded=true 면 패널을 화면 중앙 큰
+  // 모달(body portal)로 렌더 — 좁은 측면패널 대신 크게 보기(Irene). onToggleExpand 로 토글.
+  expanded?: boolean;
+  onToggleExpand?: () => void;
 }
 
 // ─── Styled Components ───
 
-const Panel = styled.div`
-  width: 380px;
-  min-width: 380px;
+const Panel = styled.div<{ $expanded?: boolean }>`
+  width: ${p => (p.$expanded ? 'min(900px, 94vw)' : '380px')};
+  min-width: ${p => (p.$expanded ? '0' : '380px')};
+  max-width: ${p => (p.$expanded ? '94vw' : 'none')};
+  height: ${p => (p.$expanded ? 'min(90vh, 920px)' : 'auto')};
   background: var(--pos-surface, white);
   /* 기본 글자색을 테마 토큰으로 — color 미지정 인라인 텍스트(상품명 등)가
      다크에서 검정으로 남아 안 보이던 문제 방지. 명시색은 각자 우선. */
   color: var(--pos-text, #0A2540);
-  border-left: 1px solid var(--pos-border, #C7CED6);
+  border-left: ${p => (p.$expanded ? 'none' : '1px solid var(--pos-border, #C7CED6)')};
+  ${p => (p.$expanded ? 'border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.32);' : '')}
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -93,10 +101,20 @@ const Panel = styled.div`
   @media (max-width: 768px) {
     width: 100%;
     min-width: 100%;
-    position: absolute;
-    inset: 0;
-    z-index: 20;
+    ${p => (p.$expanded ? '' : 'position: absolute; inset: 0; z-index: 20;')}
   }
+`;
+
+// 2026-06-28 (FloorPlan): "크게 보기" 팝업 백드롭 — Panel 을 body portal 로 중앙에 띄운다.
+const ModalOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
 `;
 
 const PanelHeader = styled.div`
@@ -627,7 +645,9 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
   onKitchenTicketSent,
   canOperatePOS = true,
   canTakePayment = true,
-  canVoid = true
+  canVoid = true,
+  expanded = false,
+  onToggleExpand
 }) => {
   const [loading, setLoading] = useState(false);
   // 우측 패널 접기 (#1): 테이블 작업(QR/프린트/Cancel/Leaved) 기본 접힘 → 주문내역 가독성 확보.
@@ -1375,8 +1395,8 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
   const paymentProof = getProofCurrent(rawProof);
   const proofHistory = getProofHistory(rawProof);
 
-  return (
-    <Panel>
+  const panelInner = (
+    <Panel $expanded={!!expanded}>
       {qrError && (
         <div style={{ padding: 12, background: '#FEE2E2', color: '#DC2626', borderRadius: 8, margin: '8px 12px', fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>{qrError}</span>
@@ -1511,7 +1531,24 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
             )}
           </HeaderMetaRow>
         </TableTitle>
-        <CloseBtn onClick={onClose}>&times;</CloseBtn>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+          {/* 2026-06-28 (FloorPlan): 큰 팝업 ↔ 측면패널 전환 */}
+          {onToggleExpand && (
+            <CloseBtn
+              type="button"
+              onClick={onToggleExpand}
+              title={expanded ? 'Shrink to side panel' : 'Open as large popup'}
+              aria-label={expanded ? 'Shrink panel' : 'Expand panel'}
+            >
+              {expanded ? (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 14h6v6m10-10h-6V4M14 10l7-7M3 21l7-7"/></svg>
+              ) : (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3m13-5v3a2 2 0 0 1-2 2h-3"/></svg>
+              )}
+            </CloseBtn>
+          )}
+          <CloseBtn onClick={onClose}>&times;</CloseBtn>
+        </div>
       </PanelHeader>
 
       {/* Multi-order tabs — 주문 여러 개거나, 빈 테이블이라도 오늘 완료 이력이 있으면 표시 */}
@@ -2435,6 +2472,17 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
       )}
     </Panel>
   );
+
+  // 큰 팝업 모드 — body portal 로 중앙 모달. 백드롭 클릭 시 측면패널로 축소.
+  if (expanded) {
+    return createPortal(
+      <ModalOverlay onClick={(e) => { if (e.target === e.currentTarget && onToggleExpand) onToggleExpand(); }}>
+        {panelInner}
+      </ModalOverlay>,
+      document.body
+    );
+  }
+  return panelInner;
 };
 
 export default TableDetailPanel;

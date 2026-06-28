@@ -289,7 +289,7 @@ router.get('/menu/:slug', async (req, res) => {
       include: [{
         model: Option,
         as: 'options',
-        attributes: ['id', 'name', 'price', 'isActive', 'displayOrder']
+        attributes: ['id', 'name', 'price', 'isActive', 'displayOrder', 'sold_out']
       }],
       order: [
         [{ model: Option, as: 'options' }, 'displayOrder', 'ASC']
@@ -363,7 +363,8 @@ router.get('/menu/:slug', async (req, res) => {
               .map(opt => ({
                 id: opt.id.toString(),
                 name: opt.name,
-                price: parseFloat(opt.price || 0)
+                price: parseFloat(opt.price || 0),
+                sold_out: !!opt.sold_out // 2026-06-28 (2-1) 옵션 품절 — 모바일 주문화면 선택불가
               }))
           };
         })
@@ -486,7 +487,7 @@ router.get('/menu/item/:itemId', async (req, res) => {
       include: [{
         model: Option,
         as: 'options',
-        attributes: ['id', 'name', 'price', 'isActive', 'displayOrder']
+        attributes: ['id', 'name', 'price', 'isActive', 'displayOrder', 'sold_out']
       }],
       order: [
         [{ model: Option, as: 'options' }, 'displayOrder', 'ASC']

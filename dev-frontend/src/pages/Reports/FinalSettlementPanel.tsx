@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../contexts/StoreContext';
+import CashPinModal from '../../components/CashManagement/CashPinModal';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency } from '../../utils/currency';
 import { formatDateTime } from '../../utils/timezone';
@@ -68,6 +69,20 @@ const FinalSettlementPanel: React.FC<Props> = ({ selectedDate, today }) => {
     }).then(r => r.json().then(j => ({ status: r.status, j })).catch(() => ({ status: r.status, j: null })));
   }, [restaurantId]);
 
+  // 2026-06-28 (3-1): 현금관리 PIN 게이트 (CashDrawerOps 와 동일). store.operationSettings 직접 참조
+  // (opSettings const 는 아래에 선언돼 TDZ 회피). reconcile/close 전 결제권한 PIN 1회.
+  const requireCashPin = !!(store?.operationSettings as any)?.requirePinForCashMgmt;
+  const cashPinRef = useRef<string>('');
+  const [showCashPin, setShowCashPin] = useState(false);
+  const pendingRef = useRef<((pin: string | undefined) => void) | null>(null);
+  const withCashPin = useCallback((fn: (pin: string | undefined) => void) => {
+    if (!requireCashPin) { fn(undefined); return; }
+    if (cashPinRef.current) { fn(cashPinRef.current); return; }
+    pendingRef.current = fn;
+    setShowCashPin(true);
+  }, [requireCashPin]);
+  const onCashError = (code?: string) => { if (code === 'CASH_PIN_INVALID' || code === 'CASH_PIN_REQUIRED') cashPinRef.current = ''; };
+
   const buildMethods = (methodKeys: any, registered: any[]): MethodRow[] => {
     const seen = new Set<string>();
     const rows: MethodRow[] = [];
@@ -105,9 +120,8 @@ const FinalSettlementPanel: React.FC<Props> = ({ selectedDate, today }) => {
 
   useEffect(() => { if (selectedDate === today) load(); else setLoaded(true); }, [selectedDate, today, load]);
 
-  const reconcile = async () => {
+  const reconcile = () => {
     if (!shift) return;
-    setBusy(true); setError('');
     const actual: any = { card: {}, other: {} };
     let cashCounted = 0;
     methods.forEach(m => {
@@ -116,16 +130,22 @@ const FinalSettlementPanel: React.FC<Props> = ({ selectedDate, today }) => {
       else if (m.group === 'card') actual.card[m.key.split(':')[1]] = v;
       else actual.other[m.key.split(':')[1]] = v;
     });
-    const { status, j } = await api(`/shift/${shift.id}/reconcile`, { method: 'POST', body: JSON.stringify({ cash_counted: cashCounted, actual, notes: note }) });
-    setBusy(false);
-    if (status === 200) { setRecon(j); setStep('reviewed'); }
-    else setError(j?.message || t('cash:reconcileFail', { defaultValue: 'Reconcile failed' }));
+    withCashPin(async (pin) => {
+      setBusy(true); setError('');
+      const body: any = { cash_counted: cashCounted, actual, notes: note };
+      if (pin) body.cash_pin = pin;
+      const { status, j } = await api(`/shift/${shift.id}/reconcile`, { method: 'POST', body: JSON.stringify(body) });
+      setBusy(false);
+      if (status === 200) { setRecon(j); setStep('reviewed'); }
+      else { onCashError(j?.code); setError(j?.message || t('cash:reconcileFail', { defaultValue: 'Reconcile failed' })); }
+    });
   };
 
-  const close = async () => {
+  const close = () => {
     if (!shift) return;
+    withCashPin(async (pin) => {
     setBusy(true); setError('');
-    const { status, j } = await api(`/shift/${shift.id}/close`, { method: 'POST', body: JSON.stringify({}) });
+    const { status, j } = await api(`/shift/${shift.id}/close`, { method: 'POST', body: JSON.stringify(pin ? { cash_pin: pin } : {}) });
     setBusy(false);
     if (status === 200) {
       const z = j?.data?.reconciliation?.zreport || null;
@@ -133,14 +153,15 @@ const FinalSettlementPanel: React.FC<Props> = ({ selectedDate, today }) => {
       // 마감 확정 즉시 Z-Report 빌프린트 자동 출력 (Daily Settlement 요약과 별개 — 확정된 최종 마감 문서).
       if (z) doPrintZ(z);
     }
-    else setError(j?.message || t('cash:closeFail', { defaultValue: 'Close failed' }));
+    else { onCashError(j?.code); setError(j?.message || t('cash:closeFail', { defaultValue: 'Close failed' })); }
+    });
   };
 
   const doPrintZ = async (z?: any) => {
     const zz = z || zreport;
     if (!zz) return;
     try { await printSettlementReport(buildZReportHTML(zz, fc, store?.getStoreInfo?.() || {}, t, store?.operationSettings)); } catch { /* 인쇄 실패 비치명 */ }
-    if (shift) api(`/shift/${shift.id}/zreport-printed`, { method: 'POST', body: JSON.stringify({}) }).catch(() => {});
+    if (shift) api(`/shift/${shift.id}/zreport-printed`, { method: 'POST', body: JSON.stringify(cashPinRef.current ? { cash_pin: cashPinRef.current } : {}) }).catch(() => {});
   };
   const printZ = () => doPrintZ();
 
@@ -202,6 +223,18 @@ const FinalSettlementPanel: React.FC<Props> = ({ selectedDate, today }) => {
 
   return (
     <Wrap>
+      {/* 2026-06-28 (3-1): 현금관리 PIN 게이트 모달 — 설정 ON 시 대조/마감 전 결제권한 PIN. */}
+      <CashPinModal
+        show={showCashPin}
+        restaurantId={restaurantId || ''}
+        onClose={() => { setShowCashPin(false); pendingRef.current = null; }}
+        onApproved={(_by, pin) => {
+          cashPinRef.current = pin;
+          setShowCashPin(false);
+          const fn = pendingRef.current; pendingRef.current = null;
+          if (fn) fn(pin);
+        }}
+      />
       <Muted>{t('cash:finalSettlementHint', { defaultValue: 'Check the card terminal batch, cash drawer and e-wallet apps, then enter the ACTUAL amount for each method. The system compares against expected and flags differences.' })}</Muted>
 
       {error && <ErrBox>{error}</ErrBox>}

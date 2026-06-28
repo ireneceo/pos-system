@@ -637,13 +637,22 @@ const BrandMenusPage: React.FC = () => {
   const persistBrandOrder = async (orderedIds: number[]) => {
     if (reorderBrandInFlight.current || !selectedBrandId) return;
     reorderBrandInFlight.current = true;
+    setError(null);
     try {
-      await fetch('/api/brand-menus/reorder/bulk', {
+      // 2026-06-28: r.ok 확인 + 에러 표면화 (기존 silent catch 가 실패를 삼켜 "드래그가 안 먹는다"로
+      // 보이던 것 — 저장 실패 시 사용자에게 알린다).
+      const r = await fetch('/api/brand-menus/reorder/bulk', {
         method: 'PUT', headers: authHeaders(),
         body: JSON.stringify({ brand_id: selectedBrandId, order: orderedIds })
       });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || j.success === false) {
+        setError(j.message || 'Failed to save menu order');
+      }
       await loadMenus();
-    } catch { /* silent */ }
+    } catch (e: any) {
+      setError(e?.message || 'Failed to save menu order');
+    }
     finally { reorderBrandInFlight.current = false; }
   };
 

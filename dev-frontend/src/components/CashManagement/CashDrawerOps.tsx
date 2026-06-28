@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../contexts/StoreContext';
+import CashPinModal from './CashPinModal';
 import { formatCurrency } from '../../utils/currency';
 import { formatDateTime } from '../../utils/timezone';
 import { FormInput } from '../UI';
@@ -33,6 +34,20 @@ const CashDrawerOps: React.FC<Props> = ({ restaurantId, onChange, compact }) => 
   const [error, setError] = useState('');
 
   const fc = (n: number) => formatCurrency(Number(n) || 0, currency);
+
+  // 2026-06-28 (3-1): 현금관리 PIN 게이트 — 설정 ON 이면 결제권한 PIN 1회 입력 후 세션 보유,
+  // 쓰기 body 에 cash_pin 동봉(백엔드 cashPinGuard 재검증). 백엔드 CASH_PIN_* 오류 시 보유 PIN 초기화.
+  const requireCashPin = !!(opSettings as any)?.requirePinForCashMgmt;
+  const cashPinRef = useRef<string>('');
+  const [showCashPin, setShowCashPin] = useState(false);
+  const pendingRef = useRef<((pin: string | undefined) => void) | null>(null);
+  const withCashPin = useCallback((fn: (pin: string | undefined) => void) => {
+    if (!requireCashPin) { fn(undefined); return; }
+    if (cashPinRef.current) { fn(cashPinRef.current); return; }
+    pendingRef.current = fn;
+    setShowCashPin(true);
+  }, [requireCashPin]);
+  const onCashError = (code?: string) => { if (code === 'CASH_PIN_INVALID' || code === 'CASH_PIN_REQUIRED') cashPinRef.current = ''; };
 
   const api = useCallback((path: string, opts?: RequestInit) =>
     fetch(`/api/cash/restaurant/${restaurantId}${path}`, {
@@ -67,26 +82,31 @@ const CashDrawerOps: React.FC<Props> = ({ restaurantId, onChange, compact }) => 
 
   useEffect(() => { load(); }, [load]);
 
-  const startShift = async () => {
+  const startShift = () => withCashPin(async (pin) => {
     setBusy(true); setError('');
     const body: any = {};
     if (openingFloat) body.opening_float = num(openingFloat);
+    if (pin) body.cash_pin = pin;
     const { status, j } = await api('/shift/open', { method: 'POST', body: JSON.stringify(body) });
     setBusy(false);
     if (status === 200) { setOpeningFloat(''); await load(); onChange?.(); }
-    else setError(j?.message || t('cash:startFail', { defaultValue: 'Could not start shift' }));
-  };
+    else { onCashError(j?.code); setError(j?.message || t('cash:startFail', { defaultValue: 'Could not start shift' })); }
+  });
 
   // 캐시인/아웃 — 버튼이 곧 저장(타입은 누른 버튼). 키패드 금액 + 이유.
-  const submit = async (type: 'in' | 'out') => {
+  const submit = (type: 'in' | 'out') => {
     if (!shift) return;
     const amount = num(amt);
     if (!(amount > 0)) { setError(t('cash:movementAmountError', { defaultValue: 'Enter an amount greater than 0' })); return; }
-    setBusy(true); setError('');
-    const { status, j } = await api(`/shift/${shift.id}/movement`, { method: 'POST', body: JSON.stringify({ type, amount, reason: reason || null }) });
-    setBusy(false);
-    if (status === 200) { setMovements(j?.movements || movements); setAmt(''); setReason(''); onChange?.(); loadTodayMoves(); }
-    else setError(j?.message || t('cash:movementFail', { defaultValue: 'Movement failed' }));
+    withCashPin(async (pin) => {
+      setBusy(true); setError('');
+      const body: any = { type, amount, reason: reason || null };
+      if (pin) body.cash_pin = pin;
+      const { status, j } = await api(`/shift/${shift.id}/movement`, { method: 'POST', body: JSON.stringify(body) });
+      setBusy(false);
+      if (status === 200) { setMovements(j?.movements || movements); setAmt(''); setReason(''); onChange?.(); loadTodayMoves(); }
+      else { onCashError(j?.code); setError(j?.message || t('cash:movementFail', { defaultValue: 'Movement failed' })); }
+    });
   };
 
   const handleOpenDrawer = async () => {
@@ -109,6 +129,18 @@ const CashDrawerOps: React.FC<Props> = ({ restaurantId, onChange, compact }) => 
 
   return (
     <div>
+      {/* 2026-06-28 (3-1): 현금관리 PIN 게이트 모달 — 설정 ON 시 첫 쓰기 전 결제권한 PIN 입력. */}
+      <CashPinModal
+        show={showCashPin}
+        restaurantId={restaurantId || ''}
+        onClose={() => { setShowCashPin(false); pendingRef.current = null; }}
+        onApproved={(_by, pin) => {
+          cashPinRef.current = pin;
+          setShowCashPin(false);
+          const fn = pendingRef.current; pendingRef.current = null;
+          if (fn) fn(pin);
+        }}
+      />
       {!compact && (
         <p style={{ fontSize: 13, color: C.subtle, margin: '0 0 16px', lineHeight: 1.5 }}>
           {t('cash:cashDrawerSubtitle', { defaultValue: 'Manage the cash drawer: opening float, cash in/out, and cash on hand.' })}

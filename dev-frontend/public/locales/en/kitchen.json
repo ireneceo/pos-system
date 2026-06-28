@@ -1,4 +1,11 @@
 {
+  "cancelledOrders": {
+    "title": "Cancelled orders",
+    "badge": "Cancelled",
+    "empty": "No cancelled orders today.",
+    "clear": "Clear list",
+    "close": "Close"
+  },
   "kitchenDisplayPage.takeaway": "TAKEAWAY",
   "kitchenDisplayPage.delivery": "DELIVERY",
   "kitchenDisplayPage.serveAll": "Serve All",

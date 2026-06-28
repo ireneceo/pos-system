@@ -6,12 +6,29 @@ const express = require('express');
 const router = express.Router();
 const { Op, fn, col, literal } = require('sequelize');
 const { CashierShift, CashReconciliation, CashMovement, PaymentMethodSetting, OrderPayment } = require('../models');
-const { authenticateToken, checkRestaurantAccess, requirePosCounter } = require('../middleware/auth');
+const { authenticateToken, checkRestaurantAccess, requirePosCounter, userCanTakePayment } = require('../middleware/auth');
 const { getRestaurantTimezone, getDateBounds } = require('../utils/dateTimeHelper');
 const { stripStaffNs } = require('../utils/staffName');
+const { enforceCashPin } = require('../utils/cashPinGuard');
 const Restaurant = require('../models/Restaurant');
 
 const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+
+// 2026-06-28 (3-1): 현금관리 쓰기 게이트 — ①결제권한(access_payment) 직원·관리자만(요구사항대로
+// 카운터 권한에서 좁힘) ②설정 requirePinForCashMgmt ON 이면 결제권한 PIN 강제(enforceCashPin).
+// 조회(GET)는 무게이트. requirePosCounter 를 대체. checkRestaurantAccess 뒤에 둬 rid 검증 후 동작.
+const cashWriteGate = async (req, res, next) => {
+  if (!userCanTakePayment(req.user)) {
+    return res.status(403).json({ success: false, error: 'Cash management requires payment permission.', code: 'PAYMENT_ACCESS_REQUIRED' });
+  }
+  try {
+    const gate = await enforceCashPin(req.params.restaurantId, req.body && req.body.cash_pin);
+    if (!gate.ok) return res.status(gate.status).json({ success: false, code: gate.code, message: gate.message });
+  } catch (e) {
+    return res.status(500).json({ success: false, message: 'Cash PIN check failed' });
+  }
+  return next();
+};
 
 // 매장 타임존 기준 영업일(YYYY-MM-DD)
 function businessDate(tz) {
@@ -104,7 +121,7 @@ router.get('/restaurant/:restaurantId/shift/current', authenticateToken, checkRe
 });
 
 // POST 교대 시작 — opening_float(미입력 시 직전 마감현금 자동)
-router.post('/restaurant/:restaurantId/shift/open', authenticateToken, checkRestaurantAccess, requirePosCounter, async (req, res) => {
+router.post('/restaurant/:restaurantId/shift/open', authenticateToken, checkRestaurantAccess, cashWriteGate, async (req, res) => {
   try {
     const restaurantId = parseInt(req.params.restaurantId, 10);
     const existing = await CashierShift.findOne({ where: { restaurant_id: restaurantId, status: 'open' } });
@@ -158,7 +175,7 @@ router.get('/restaurant/:restaurantId/shift/:id/expected', authenticateToken, ch
 });
 
 // POST 대조 — actual 입력 → variance 계산, closing_balance 확정
-router.post('/restaurant/:restaurantId/shift/:id/reconcile', authenticateToken, checkRestaurantAccess, requirePosCounter, async (req, res) => {
+router.post('/restaurant/:restaurantId/shift/:id/reconcile', authenticateToken, checkRestaurantAccess, cashWriteGate, async (req, res) => {
   try {
     const restaurantId = parseInt(req.params.restaurantId, 10);
     const shift = await CashierShift.findOne({ where: { id: req.params.id, restaurant_id: restaurantId } });
@@ -218,7 +235,7 @@ router.post('/restaurant/:restaurantId/shift/:id/reconcile', authenticateToken, 
 });
 
 // POST 교대 마감 (reconcile 후) — Z-Report 요약 생성·저장 + closing_balance 확정
-router.post('/restaurant/:restaurantId/shift/:id/close', authenticateToken, checkRestaurantAccess, requirePosCounter, async (req, res) => {
+router.post('/restaurant/:restaurantId/shift/:id/close', authenticateToken, checkRestaurantAccess, cashWriteGate, async (req, res) => {
   try {
     const restaurantId = parseInt(req.params.restaurantId, 10);
     const shift = await CashierShift.findOne({ where: { id: req.params.id, restaurant_id: restaurantId } });
@@ -310,7 +327,7 @@ router.get('/restaurant/:restaurantId/shift/history', authenticateToken, checkRe
 // ── Phase 2 ──────────────────────────────────────────────────────────────────
 
 // POST 인출/입금 (paid in/out) — open 교대에만
-router.post('/restaurant/:restaurantId/shift/:id/movement', authenticateToken, checkRestaurantAccess, requirePosCounter, async (req, res) => {
+router.post('/restaurant/:restaurantId/shift/:id/movement', authenticateToken, checkRestaurantAccess, cashWriteGate, async (req, res) => {
   try {
     const restaurantId = parseInt(req.params.restaurantId, 10);
     const shift = await CashierShift.findOne({ where: { id: req.params.id, restaurant_id: restaurantId } });
@@ -336,7 +353,7 @@ router.post('/restaurant/:restaurantId/shift/:id/movement', authenticateToken, c
 });
 
 // PUT 입출금 수정 (회계 정정 — 잘못 입력 수정). counter 권한.
-router.put('/restaurant/:restaurantId/movement/:movementId', authenticateToken, checkRestaurantAccess, requirePosCounter, async (req, res) => {
+router.put('/restaurant/:restaurantId/movement/:movementId', authenticateToken, checkRestaurantAccess, cashWriteGate, async (req, res) => {
   try {
     const restaurantId = parseInt(req.params.restaurantId, 10);
     const mv = await CashMovement.findOne({ where: { id: req.params.movementId, restaurant_id: restaurantId } });
@@ -352,7 +369,7 @@ router.put('/restaurant/:restaurantId/movement/:movementId', authenticateToken, 
 });
 
 // DELETE 입출금 삭제 (회계 정정). counter 권한.
-router.delete('/restaurant/:restaurantId/movement/:movementId', authenticateToken, checkRestaurantAccess, requirePosCounter, async (req, res) => {
+router.delete('/restaurant/:restaurantId/movement/:movementId', authenticateToken, checkRestaurantAccess, cashWriteGate, async (req, res) => {
   try {
     const restaurantId = parseInt(req.params.restaurantId, 10);
     const mv = await CashMovement.findOne({ where: { id: req.params.movementId, restaurant_id: restaurantId } });
@@ -411,7 +428,7 @@ router.get('/restaurant/:restaurantId/movements', authenticateToken, checkRestau
 });
 
 // POST Z-Report 인쇄 기록 (실제 인쇄는 프론트 billPrint 재사용 — 방식 무변경)
-router.post('/restaurant/:restaurantId/shift/:id/zreport-printed', authenticateToken, checkRestaurantAccess, requirePosCounter, async (req, res) => {
+router.post('/restaurant/:restaurantId/shift/:id/zreport-printed', authenticateToken, checkRestaurantAccess, cashWriteGate, async (req, res) => {
   try {
     const restaurantId = parseInt(req.params.restaurantId, 10);
     const recon = await CashReconciliation.findOne({ where: { shift_id: req.params.id, restaurant_id: restaurantId }, order: [['reconciled_at', 'DESC']] });
@@ -438,7 +455,7 @@ router.get('/restaurant/:restaurantId/payment-methods', authenticateToken, check
 });
 
 // PUT 결제수단 사전등록 (전체 교체 — 매장당 목록 관리). 빈/누락 키는 거부(소실 방지).
-router.put('/restaurant/:restaurantId/payment-methods', authenticateToken, checkRestaurantAccess, requirePosCounter, async (req, res) => {
+router.put('/restaurant/:restaurantId/payment-methods', authenticateToken, checkRestaurantAccess, cashWriteGate, async (req, res) => {
   try {
     const restaurantId = parseInt(req.params.restaurantId, 10);
     const items = Array.isArray(req.body.methods) ? req.body.methods : null;
