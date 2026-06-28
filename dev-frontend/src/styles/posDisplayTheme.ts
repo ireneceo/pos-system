@@ -102,10 +102,13 @@ const PALETTES: Record<PosThemeMode, Record<string, string>> = {
     'border': '#38465E',
     'border-strong': '#5A6A86',
     'brand': '#8B82E8',
-    'brand-tint': '#ECEAFF',
+    // 2026-06-28 (Irene "다크 보기 어렵다"): 선택 tint 가 #ECEAFF(흰색)이라 다크에서 선택박스가
+    // 번쩍이고, 그 위/standalone brand-text #635BFF(어두운 보라)는 다크 면에서 대비 2:1대로 안 보였다.
+    // tint=다크 위 반투명 보라, brand-text=밝은 보라 로 짝 교체 → 선택/강조 텍스트 가독성 확보.
+    'brand-tint': 'rgba(139, 128, 255, 0.22)',
     'brand-ghost': 'rgba(158, 149, 245, 0.16)',
     'option-bg': 'rgba(139, 128, 255, 0.10)',
-    'brand-text': '#635BFF',
+    'brand-text': '#C7C2FF',
     'control': '#2C3A56',
     'positive': '#10B981',
     'positive-tint': 'rgba(16, 185, 129, 0.16)',
