@@ -741,5 +741,7 @@
       "viewCart": "View cart"
     }
   },
-  "offlineQueued": "No connection — your order is saved and will be placed automatically once you are back online."
+  "offlineQueued": "No connection — your order is saved and will be placed automatically once you are back online.",
+  "save": "Save",
+  "cancel": "Cancel"
 }

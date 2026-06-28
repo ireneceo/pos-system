@@ -83,5 +83,10 @@
     }
   },
   "pOSTerminalPage.noteChips.noRice": "No rice",
-  "pOSTerminalPage.recentNote": "recent"
+  "pOSTerminalPage.recentNote": "recent",
+  "pOSTerminalPage.itemNoteTitle": "Item note",
+  "pOSTerminalPage.noteNoOnion": "No onion",
+  "pOSTerminalPage.noteLessSpicy": "Less spicy",
+  "pOSTerminalPage.noteExtraSpicy": "Extra spicy",
+  "pOSTerminalPage.noteNoVeg": "No veg"
 }

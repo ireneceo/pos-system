@@ -1515,5 +1515,8 @@
     "helpTitle": "What is this page?",
     "helpDesc": "These are events recorded automatically whenever an external carrier (Lalamove, GrabExpress, etc.) reports the delivery status of a PO (picked up, in transit, delivered, failed, etc.). Failed events can be reprocessed with the Retry button, and you can send a test event with \"Send Simulate Event\". The webhook URL and secret for each carrier are managed on the ",
     "helpDesc2": " page."
-  }
+  },
+  "invoicesPage.statusAll": "All",
+  "invoicesPage.statusUnpaid": "Unpaid",
+  "invoicesPage.statusPaid": "Paid"
 }

@@ -136,6 +136,8 @@ const InvoicesPage: React.FC = () => {
   const [generatingMissing, setGeneratingMissing] = useState(false);
   const [sortField, setSortField] = useState<'invoiceNumber' | 'companyName' | 'issueDate' | 'dueDate' | 'amount' | 'status'>('issueDate');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  // 2026-06-28 (Irene): 결제전/결제완료 분리 보기. 결제전=paid·cancelled 아닌 모든 상태(미결제/제출됨/연체 포함).
+  const [statusFilter, setStatusFilter] = useState<'all' | 'unpaid' | 'paid'>('all');
   const [newInvoice, setNewInvoice] = useState({
     managerId: '',
     managerName: '',
@@ -454,6 +456,7 @@ const InvoicesPage: React.FC = () => {
         const transformedRestaurants = data.map((restaurant: any) => ({
           id: restaurant.id.toString(),
           name: restaurant.name,
+          branch_name: restaurant.branch_name || null,  // 지점 구분(같은 이름 매장)
           admin_id: restaurant.admin_id?.toString() || restaurant.managerId?.toString() || '',
           status: restaurant.status,
           address: restaurant.address || '',
@@ -570,7 +573,7 @@ const InvoicesPage: React.FC = () => {
   const selectTarget = async (type: 'manager' | 'restaurant', data: Manager | Restaurant) => {
     setSelectedTarget({type, data});
     setShowSearchDropdown(false);
-    setSearchQuery(type === 'manager' ? (data as Manager).fullName : (data as Restaurant).name);
+    setSearchQuery(type === 'manager' ? (data as Manager).fullName : getRestaurantDisplayName(data as Restaurant));
     setPaymentMethodWarning(null);
 
     const token = getAuthToken();
@@ -646,10 +649,10 @@ const InvoicesPage: React.FC = () => {
       setNewInvoice({
         ...newInvoice,
         restaurantId: restaurant.id,
-        restaurantName: restaurant.name,
+        restaurantName: getRestaurantDisplayName(restaurant),
         managerId: restaurant.admin_id,
         managerName: manager ? manager.fullName : '',
-        companyName: restaurant.name,
+        companyName: getRestaurantDisplayName(restaurant),  // 같은 이름 매장 구분 — 인보이스에 "name (지점)" 저장
         currency
       });
       await checkPaymentMethodsForCurrency(currency);
@@ -1019,7 +1022,13 @@ const InvoicesPage: React.FC = () => {
       matchesDateRange = invoiceDate >= startDate && invoiceDate <= endDate;
     }
 
-    return matchesSearch && matchesDateRange;
+    // 결제전/결제완료 필터 — 결제전=paid·cancelled 제외 전부, 결제완료=paid 만.
+    const matchesStatus =
+      statusFilter === 'all' ? true
+      : statusFilter === 'paid' ? invoice.status === 'paid'
+      : !['paid', 'cancelled'].includes(invoice.status);
+
+    return matchesSearch && matchesDateRange && matchesStatus;
   }).sort((a, b) => {
     let comparison = 0;
     switch (sortField) {
@@ -1291,8 +1300,8 @@ const InvoicesPage: React.FC = () => {
         customerAddress = addressParts.join('\n');
       } else if (selectedTarget?.type === 'restaurant') {
         const restaurant = selectedTarget.data as Restaurant;
-        customerName = restaurant.name;
-        companyName = restaurant.name;
+        customerName = getRestaurantDisplayName(restaurant);
+        companyName = getRestaurantDisplayName(restaurant);  // 지점 구분 포함
         const addressParts = [];
         if (restaurant.address) addressParts.push(restaurant.address);
         if (restaurant.phone) addressParts.push(`Phone: ${restaurant.phone}`);
@@ -1557,6 +1566,29 @@ const InvoicesPage: React.FC = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
+
+            {/* 결제전 / 결제완료 분리 보기 (2026-06-28 Irene) */}
+            <div style={{ display: 'inline-flex', border: '1px solid #C7CED6', borderRadius: '6px', overflow: 'hidden' }}>
+              {([
+                { key: 'all', label: t('admin:invoicesPage.statusAll', 'All') },
+                { key: 'unpaid', label: t('admin:invoicesPage.statusUnpaid', 'Unpaid') },
+                { key: 'paid', label: t('admin:invoicesPage.statusPaid', 'Paid') },
+              ] as const).map(opt => (
+                <button
+                  key={opt.key}
+                  type="button"
+                  onClick={() => setStatusFilter(opt.key)}
+                  style={{
+                    padding: '7px 14px', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+                    border: 'none', borderLeft: opt.key !== 'all' ? '1px solid #C7CED6' : 'none',
+                    background: statusFilter === opt.key ? '#635BFF' : '#FFFFFF',
+                    color: statusFilter === opt.key ? '#FFFFFF' : '#0A2540',
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
 
             <DemoToggleLabel>
               <input

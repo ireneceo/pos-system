@@ -9,6 +9,8 @@ import POSSetModal from '../../components/POSTerminal/POSSetModal';
 import OrderCompleteModal from '../../components/POSTerminal/OrderCompleteModal';
 import CashierPinModal from '../../components/POSTerminal/CashierPinModal';
 import DiscountPinModal from '../../components/POSTerminal/DiscountPinModal';
+import OnScreenKeyboard from '../../components/POSTerminal/OnScreenKeyboard';
+import { Modal as UIModal, ModalButton as UIModalButton } from '../../components/UI/Modal';
 import ConfirmDialog from '../../components/Common/ConfirmDialog';
 import AlertDialog from '../../components/Common/AlertDialog';
 import NumberInputModal from '../../components/Common/NumberInputModal';
@@ -1429,12 +1431,49 @@ const POSTerminalPage: React.FC = () => {
     try { const a = JSON.parse(localStorage.getItem(`posOrderRemarkHistory_${restaurantId || 'x'}`) || '[]'); return Array.isArray(a) ? a : []; } catch { return []; }
   });
   const [remarkFocused, setRemarkFocused] = useState(false);
-  // 2026-06-28 (4-1): 품목별 메모 — 어느 품목의 메모 입력이 열렸는지(토글). 표준 input 이라
-  // 터치 단말은 OS 온스크린 키보드, 물리 키보드 매장은 그대로 타이핑(둘 다 지원, 별도 키보드 불필요).
-  const [itemMemoOpen, setItemMemoOpen] = useState<Record<string, boolean>>({});
+  // 2026-06-28 (4-1, Irene 재설계): 품목별 메모 = 버튼 → 팝업(온스크린 키보드). 작은 POS 가독 + 명시 저장.
+  const [memoModalItemId, setMemoModalItemId] = useState<string | null>(null);
+  const [memoDraft, setMemoDraft] = useState('');
   const setItemMemo = useCallback((id: string, text: string) => {
     setOrderItems(prev => prev.map(it => it.id === id ? { ...it, special_instructions: text } : it));
   }, []);
+  const saveMemoModal = useCallback(() => {
+    if (memoModalItemId) setItemMemo(memoModalItemId, memoDraft.trim());
+    setMemoModalItemId(null);
+    setMemoDraft('');
+  }, [memoModalItemId, memoDraft, setItemMemo]);
+  // 메모 textarea — 직접 타이핑(커서·물리키보드)과 온스크린 키보드를 함께 쓴다.
+  // 온스크린 키는 "커서 위치"에 삽입(append 아님). 삽입 후 커서 복원.
+  const memoTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const memoPendingCursor = useRef<number | null>(null);
+  useEffect(() => {
+    if (memoPendingCursor.current != null && memoTextareaRef.current) {
+      const pos = memoPendingCursor.current;
+      memoTextareaRef.current.focus();
+      try { memoTextareaRef.current.setSelectionRange(pos, pos); } catch { /* noop */ }
+      memoPendingCursor.current = null;
+    }
+  }, [memoDraft]);
+  const memoInsert = (text: string) => {
+    const el = memoTextareaRef.current;
+    const s = el ? (el.selectionStart ?? memoDraft.length) : memoDraft.length;
+    const e = el ? (el.selectionEnd ?? s) : memoDraft.length;
+    memoPendingCursor.current = s + text.length;
+    setMemoDraft(memoDraft.slice(0, s) + text + memoDraft.slice(e));
+  };
+  const memoBackspace = () => {
+    const el = memoTextareaRef.current;
+    const s = el ? (el.selectionStart ?? memoDraft.length) : memoDraft.length;
+    const e = el ? (el.selectionEnd ?? s) : memoDraft.length;
+    if (s === e) {
+      if (s === 0) return;
+      memoPendingCursor.current = s - 1;
+      setMemoDraft(memoDraft.slice(0, s - 1) + memoDraft.slice(e));
+    } else {
+      memoPendingCursor.current = s;
+      setMemoDraft(memoDraft.slice(0, s) + memoDraft.slice(e));
+    }
+  };
   // 발행된 리마크를 히스토리에 누적(중복 제거, 최신순, 최대 30). 콤마로 묶인 건 분해 저장.
   const pushRemarkHistory = useCallback((text: string) => {
     const parts = (text || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -3649,26 +3688,24 @@ const POSTerminalPage: React.FC = () => {
                           </>
                         );
                       })()}
-                      {/* 2026-06-28 (4-1): 품목별 메모 — 표준 input(터치=OS 키보드, 물리키보드 매장도 그대로).
-                          메모 있거나 열렸을 때만 입력칸, 아니면 "Add note" 텍스트 버튼(No-plus 규칙). */}
-                      {(itemMemoOpen[item.id] || item.special_instructions) ? (
-                        <input
-                          type="text"
-                          value={item.special_instructions || ''}
-                          onChange={(e) => setItemMemo(item.id, e.target.value)}
-                          placeholder={t('pos:pOSTerminalPage.itemNotePlaceholder', { defaultValue: 'Item note (e.g. no onion)' })}
-                          autoFocus={!!itemMemoOpen[item.id] && !item.special_instructions}
-                          style={{ marginTop: 6, width: '100%', maxWidth: 240, height: 34, boxSizing: 'border-box', padding: '0 10px', fontSize: 13, border: '1px solid var(--pos-border, #C7CED6)', borderRadius: 6, background: '#FFFFFF', color: '#1F2937' }}
-                        />
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setItemMemoOpen(p => ({ ...p, [item.id]: true }))}
-                          style={{ marginTop: 4, background: 'transparent', border: 'none', color: 'var(--pos-text-muted, #64748B)', fontSize: 12, fontWeight: 500, cursor: 'pointer', padding: 0, textAlign: 'left' }}
-                        >
-                          {t('pos:pOSTerminalPage.addItemNote', { defaultValue: 'Add note' })}
-                        </button>
-                      )}
+                      {/* 2026-06-28 (4-1, Irene 재설계): 품목별 메모 — 작은 POS에서 인라인은 어려워서
+                          버튼 → 팝업(온스크린 키보드)으로. 메모 있으면 내용 표시(터치=수정), 없으면 "Add note". */}
+                      <button
+                        type="button"
+                        onClick={() => { setMemoModalItemId(item.id); setMemoDraft(item.special_instructions || ''); }}
+                        style={{
+                          marginTop: 6, minHeight: 36, width: '100%', maxWidth: 280, boxSizing: 'border-box',
+                          padding: '8px 10px', textAlign: 'left', cursor: 'pointer', borderRadius: 6,
+                          fontSize: 13, fontWeight: item.special_instructions ? 600 : 500,
+                          background: item.special_instructions ? 'var(--pos-brand-tint, #EDE9FE)' : 'transparent',
+                          border: item.special_instructions ? '1px solid var(--pos-border, #C7CED6)' : '1px dashed var(--pos-border, #C7CED6)',
+                          color: item.special_instructions ? 'var(--pos-text, #0A2540)' : 'var(--pos-text-muted, #64748B)',
+                        }}
+                      >
+                        {item.special_instructions
+                          ? `✎ ${item.special_instructions}`
+                          : t('pos:pOSTerminalPage.addItemNote', { defaultValue: 'Add note' })}
+                      </button>
                     </ItemInfo>
                     <ItemControls>
                       <QuantityControl>
@@ -4074,6 +4111,66 @@ const POSTerminalPage: React.FC = () => {
       </MainLayout>
 
 
+      {/* 2026-06-28 (4-1, Irene): 품목별 메모 팝업 + 온스크린 키보드 (터치 POS). 명시 저장. */}
+      {memoModalItemId && (() => {
+        const memoItem = orderItems.find(o => o.id === memoModalItemId);
+        const closeMemo = () => { setMemoModalItemId(null); setMemoDraft(''); };
+        return (
+          <UIModal
+            isOpen={true}
+            onClose={closeMemo}
+            title={t('pos:pOSTerminalPage.itemNoteTitle', { defaultValue: 'Item note' })}
+            size="large"
+            footer={<>
+              <UIModalButton variant="secondary" onClick={closeMemo}>{t('common:cancel', { defaultValue: 'Cancel' })}</UIModalButton>
+              <UIModalButton variant="primary" onClick={saveMemoModal}>{t('common:save', { defaultValue: 'Save' })}</UIModalButton>
+            </>}
+          >
+            {memoItem && (
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#0A2540', marginBottom: 10 }}>
+                {memoItem.quantity} × {memoItem.menuItem?.name}
+              </div>
+            )}
+            {/* 편집 가능한 textarea — 직접 타이핑(커서·물리키보드 OK) + 아래 온스크린 키보드 둘 다 */}
+            <textarea
+              ref={memoTextareaRef}
+              value={memoDraft}
+              onChange={(e) => setMemoDraft(e.target.value)}
+              autoFocus
+              rows={2}
+              placeholder={t('pos:pOSTerminalPage.itemNotePlaceholder', { defaultValue: 'Item note (e.g. no onion)' })}
+              style={{
+                width: '100%', boxSizing: 'border-box', minHeight: 56, padding: '12px 14px', marginBottom: 12,
+                borderRadius: 8, border: '1px solid #C7CED6', background: '#FFFFFF', color: '#0A2540',
+                fontSize: 16, lineHeight: 1.4, resize: 'vertical', fontFamily: 'inherit'
+              }}
+            />
+            {/* 빠른 선택 — 자주 쓰는 메모(타이핑 줄이기) */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+              {[
+                t('pos:pOSTerminalPage.noteNoOnion', { defaultValue: 'No onion' }),
+                t('pos:pOSTerminalPage.noteLessSpicy', { defaultValue: 'Less spicy' }),
+                t('pos:pOSTerminalPage.noteExtraSpicy', { defaultValue: 'Extra spicy' }),
+                t('pos:pOSTerminalPage.noteNoVeg', { defaultValue: 'No veg' }),
+              ].map((chip, i) => (
+                <button key={i} type="button"
+                  onClick={() => setMemoDraft(d => d ? `${d}, ${chip}` : chip)}
+                  style={{ padding: '8px 12px', fontSize: 13, fontWeight: 500, cursor: 'pointer', borderRadius: 16, border: '1px solid #C7CED6', background: '#F4F6F9', color: '#0A2540' }}>
+                  {chip}
+                </button>
+              ))}
+              {memoDraft && (
+                <button type="button" onClick={() => setMemoDraft('')}
+                  style={{ padding: '8px 12px', fontSize: 13, fontWeight: 500, cursor: 'pointer', borderRadius: 16, border: '1px solid #FCA5A5', background: '#FEE2E2', color: '#DC2626' }}>
+                  {t('common:clear', { defaultValue: 'Clear' })}
+                </button>
+              )}
+            </div>
+            <OnScreenKeyboard onKey={memoInsert} onBackspace={memoBackspace} onSpace={() => memoInsert(' ')} onEnter={saveMemoModal} />
+          </UIModal>
+        );
+      })()}
+
       <PaymentModal
         isOpen={showPaymentModal}
         onClose={() => setShowPaymentModal(false)}
@@ -4096,6 +4193,7 @@ const POSTerminalPage: React.FC = () => {
         membershipSettings={membershipSettings}
         selectedCustomerId={selectedCustomerForOrder?.id}
         restaurantId={restaurantId as any}
+        orderItems={orderItems.map(it => ({ name: it.menuItem.name, quantity: it.quantity, price: it.menuItem.price }))}
       />
       
       {selectedMenuItem && (

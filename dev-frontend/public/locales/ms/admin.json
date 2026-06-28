@@ -1515,5 +1515,8 @@
     "helpTitle": "Apakah halaman ini?",
     "helpDesc": "Ini adalah peristiwa yang direkodkan secara automatik setiap kali pembawa luar (Lalamove, GrabExpress, dll.) melaporkan status penghantaran PO (telah diambil, dalam transit, telah dihantar, gagal, dll.). Peristiwa yang gagal boleh diproses semula dengan butang Retry, dan anda boleh menghantar peristiwa ujian dengan \"Send Simulate Event\". URL webhook dan secret bagi setiap pembawa diuruskan di halaman ",
     "helpDesc2": "."
-  }
+  },
+  "invoicesPage.statusAll": "Semua",
+  "invoicesPage.statusUnpaid": "Belum Bayar",
+  "invoicesPage.statusPaid": "Dibayar"
 }

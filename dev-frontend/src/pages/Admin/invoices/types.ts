@@ -105,6 +105,7 @@ export interface Manager {
 export interface Restaurant {
   id: string;
   name: string;
+  branch_name?: string | null;  // 같은 이름 매장(지점) 구분용 — getRestaurantDisplayName 으로 "name (branch)" 표시
   admin_id: string;
   status: string;
   address?: string;

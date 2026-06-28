@@ -1515,5 +1515,8 @@
     "helpTitle": "此页面是什么？",
     "helpDesc": "每当外部承运商（Lalamove、GrabExpress 等）报告采购单的配送状态（已取件、运送中、已送达、失败等）时，都会自动记录这些事件。失败的事件可使用 Retry 按钮重新处理，您也可以使用“Send Simulate Event”发送测试事件。每个承运商的 webhook URL 和 secret 设置在 ",
     "helpDesc2": " 页面中管理。"
-  }
+  },
+  "invoicesPage.statusAll": "全部",
+  "invoicesPage.statusUnpaid": "未付款",
+  "invoicesPage.statusPaid": "已付款"
 }

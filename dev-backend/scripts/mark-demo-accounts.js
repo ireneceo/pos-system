@@ -42,6 +42,12 @@ const DEMO_USERNAMES = [
 const REAL_BRAND_NAMES = ['with MIN', 'K-DINE with MIN'];
 const REAL_RESTAURANT_NAMES = ['K-Dine Korean Restaurant', 'K-DINE IPC Branch', 'with MIN Cafe', 'WOR-PRO FOOD'];
 
+// 이름이 다른 매장과 겹쳐 이름 화이트리스트로 못 거르는 실매장은 ID로 직접 지정.
+// The Fire 01/02/03 = 운영 restaurant id 16/24/25 — 같은 이름 "The Fire Korean Restaurant" 4개 중
+// 실매장 3개(#5 는 정체불명이라 제외, 2026-06-28 Irene 확정). 이게 없으면 매 배포 때 thefire 가
+// is_test=true 로 재마킹돼 공지/이메일/통계에서 빠진다(공지 미수신 재발 근본원인).
+const REAL_RESTAURANT_IDS = [16, 24, 25];
+
 async function main() {
   const seq = new Sequelize(process.env.DB_NAME, process.env.DB_USER, process.env.DB_PASSWORD, {
     host: process.env.DB_HOST,
@@ -55,16 +61,18 @@ async function main() {
 
     const realList = REAL_USERNAMES.map(u => `'${u}'`).join(',');
     const demoList = DEMO_USERNAMES.map(u => `'${u}'`).join(',');
+    // ID 화이트리스트(이름 겹침 회피). 비어 있으면 매칭 안 되게 0 으로.
+    const realRestIds = REAL_RESTAURANT_IDS.length ? REAL_RESTAURANT_IDS.join(',') : '0';
 
     // 1. Users
-    // REAL accounts
-    await seq.query(`UPDATE users SET is_demo = false, is_test = false WHERE username IN (${realList})`);
+    // REAL accounts — username 화이트리스트 OR 실매장(ID) 소속 직원
+    await seq.query(`UPDATE users SET is_demo = false, is_test = false WHERE username IN (${realList}) OR restaurant_id IN (${realRestIds})`);
     // DEMO accounts
     await seq.query(`UPDATE users SET is_demo = true, is_test = false WHERE username IN (${demoList})`);
-    // TEST accounts (not REAL and not DEMO)
-    await seq.query(`UPDATE users SET is_demo = false, is_test = true WHERE username NOT IN (${realList},${demoList}) AND is_demo = false AND is_test = false`);
+    // TEST accounts (not REAL and not DEMO) — 실매장 소속 직원은 제외(restaurant_id NULL 은 영향 없음)
+    await seq.query(`UPDATE users SET is_demo = false, is_test = true WHERE username NOT IN (${realList},${demoList}) AND (restaurant_id IS NULL OR restaurant_id NOT IN (${realRestIds})) AND is_demo = false AND is_test = false`);
     // Also fix any that were wrongly marked as demo but should be test
-    await seq.query(`UPDATE users SET is_demo = false, is_test = true WHERE username NOT IN (${realList},${demoList}) AND is_demo = true`);
+    await seq.query(`UPDATE users SET is_demo = false, is_test = true WHERE username NOT IN (${realList},${demoList}) AND (restaurant_id IS NULL OR restaurant_id NOT IN (${realRestIds})) AND is_demo = true`);
 
     const [userCounts] = await seq.query(`
       SELECT
@@ -77,11 +85,12 @@ async function main() {
 
     // 2. Restaurants
     const realRestList = REAL_RESTAURANT_NAMES.map(n => `'${n}'`).join(',');
-    await seq.query(`UPDATE restaurants SET is_demo = false, is_test = false WHERE name IN (${realRestList})`);
+    // REAL — 이름 화이트리스트 OR ID 화이트리스트(같은 이름 매장 구분용)
+    await seq.query(`UPDATE restaurants SET is_demo = false, is_test = false WHERE name IN (${realRestList}) OR id IN (${realRestIds})`);
     // Demo restaurants: owned by demo users
     await seq.query(`UPDATE restaurants SET is_demo = true, is_test = false WHERE admin_id IN (SELECT id FROM users WHERE is_demo = true)`);
-    // Test restaurants: not real and not demo
-    await seq.query(`UPDATE restaurants SET is_test = true WHERE name NOT IN (${realRestList}) AND is_demo = false AND is_test = false`);
+    // Test restaurants: not real (이름·ID 둘 다 아님) and not demo
+    await seq.query(`UPDATE restaurants SET is_test = true WHERE name NOT IN (${realRestList}) AND id NOT IN (${realRestIds}) AND is_demo = false AND is_test = false`);
 
     const [restCounts] = await seq.query(`
       SELECT

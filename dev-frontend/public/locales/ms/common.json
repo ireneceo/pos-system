@@ -741,5 +741,7 @@
       "viewCart": "Lihat troli"
     }
   },
-  "offlineQueued": "Tiada sambungan — pesanan anda disimpan dan akan dihantar secara automatik apabila anda dalam talian semula."
+  "offlineQueued": "Tiada sambungan — pesanan anda disimpan dan akan dihantar secara automatik apabila anda dalam talian semula.",
+  "save": "Simpan",
+  "cancel": "Batal"
 }
