@@ -140,8 +140,8 @@ for op in ops:
 ### 5-2. UI
 - **상단 배너**: 오프라인 시 "오프라인 — POS1 로컬 영업 중 (주문 N건 보관, 연결되면 자동 전송)". 색=경고. (`reference_session_state_stale_banner` 식.)
 - **동기화 중**: "연결 복구 — N건 전송 중…" → 완료 시 조용히 사라짐.
-- **degrade 표시**: 비-POS1 기기는 오프라인 시 "오프라인 — 이 기기에선 주문 불가, 카운터(POS1) 이용" (다기기 오프라인 비범위라 명확 차단).
-- **POS1 지정**: 설정에 "이 단말을 오프라인 인쇄·영업 허브로" 토글(hybrid print POS1 개념 재사용). 미지정 매장은 토글 안내.
+- **degrade 표시** ✅(구현 2026-06-29, dev): 비-메인POS 기기는 오프라인 시 **전체화면 잠금 오버레이**(`components/Offline/OfflineLockOverlay.tsx`, App 전역) "오프라인 — 주문은 메인 POS에서". **미지정 매장 lockout 방지 자가승격 버튼**("이 기기를 메인 POS로" → 즉시 해제+허브). 연결 복구 시 자동 해제.
+- **메인POS 지정** ✅(구현 2026-06-29, dev): 기기단위 localStorage(`utils/offlineMainPos.ts`: isOfflineMainPos/setOfflineMainPos/useOfflineMainPos). 설정 ▸ 프린터에 "오프라인 메인 POS(이 기기)" 토글 카드(평이한 말). 메인POS 오프라인 배너 = "이 기기가 모든 주문·인쇄 처리, 다른기기 잠김, 주방프린터 실패 시 비상모드 켜기" (= 프린트 모두 메인으로 안내 + 기존 emergencyMode 라우팅 재사용, **인쇄코드 0줄 변경**). OrderContext 오프라인 create 로컬기록·인쇄는 메인POS에서만(보조기기 고아데이터 방지). i18n 4언어. Playwright 8/8.
 
 ---
 

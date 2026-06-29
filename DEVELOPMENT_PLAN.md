@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-29 (**오프라인 모드(POS1 허브) 1~6단계 + KDS 보완 — dev 검증완료·미배포**. 끊겨도 ①주문 접수 ②주방 티켓 로컬 인쇄 ③복구 시 무손실·무중복 동기화 전 경로 구현·검증(IndexedDB op로그 + SyncEngine + 서버 opId 멱등가드 + 오프라인 보관 패널). + KDS 주문뷰 per-item 되돌리기(min-stage 파생)·프린트 미확정 표시/재인쇄. 잔여=6단계 실프린터 종이확인·7단계 데모전사이클·오프라인 편집액션. 상세 ↓.)
+> **최종 업데이트:** 2026-06-29 #2 (**오프라인 degrade — 메인POS 전용 + 보조기기 전체잠금 — dev 검증완료·미배포**. 오프라인 시 매장 지정 메인POS 1대만 주문접수·로컬인쇄, 보조기기는 전체화면 잠금 안내, 메인POS는 "모든 주문·인쇄 이 기기" 안내(기존 비상모드 재사용=인쇄코드 0줄), 미지정 매장 lockout 방지 자가승격 탈출구. Playwright 8/8. 보호파일 무접촉. 상세 ↓. **이전 동일일자: 오프라인 1~6단계 + KDS 보완**.)
 >
 > **이전:** 2026-06-27 #3 (**thefire02 라이브 인쇄 긴급대응 — 운영 배포**. 신규/추가주문 BAR 늦음·KQ 중복·통합 지연 근본수리. ①**QZ keepalive**(연결 idle 끊김→첫인쇄 16초 멈춤 해결, SW 4.33) ②**발송순서 = 주방 스테이션 먼저 → 통합(POS1→MASTER 맨뒤)**, 느린 통합 2장이 BAR 막던 것 해결(SW 4.34) ③**통합티켓 "정확히 1번" 가드**(POS1 통합 중복 제거) ④**아이템취소 = 취소품목의 그 회차(order_group) 오더티켓 기준** 재발행(API+DB 검증완료) ⑤backend station-printed PATCH + print-trace 로깅(안정 검증루트). 인쇄 발송 단일기준 정리. **다음 섹션 대기**: 머지(R8) served제외+"Table1+Table2"표시 / 자동발행기준·KDS 안내표시 검토.)
 >
@@ -38,6 +38,15 @@
 | 6 로컬인쇄 | 클라 QZ/RawBT 직접인쇄 + 백엔드 `printed_offline`→needs_print=false+printed_at(폴러 재인쇄0) | 🔶 코드완료 5/5·**실프린터 확인 필요** |
 | (부수) | LiveOrders 통계 `total_amount.toString()` null 미가드 잠재버그 → `parseFloat()||0` 방어 | ✅ |
 
+### degrade — 메인POS 전용 + 보조기기 전체잠금 (2026-06-29 #2, Irene 직접 지시, 인쇄코드 0줄·보호파일 무접촉)
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 메인POS 1대 지정 | 기기단위 localStorage(`utils/offlineMainPos.ts`) + 설정 ▸ 프린터 토글 카드 | ✅ |
+| 보조기기 전체잠금 | `components/Offline/OfflineLockOverlay.tsx`(App 전역). 오프라인+비메인=전체화면 잠금. 미지정 lockout 방지 자가승격 버튼 | ✅ |
+| 메인POS 안내 | OfflineBanner 변형 "모든 주문·인쇄 이 기기, 다른기기 잠김, 프린터 실패 시 비상모드" (기존 emergencyMode 재사용) | ✅ |
+| OrderContext 게이트 | 오프라인 로컬기록·인쇄는 메인POS에서만(보조기기 고아데이터·중복인쇄 방지) | ✅ |
+| 검증 | Playwright 8/8(mount3+degrade3+설정카드2)·build신규경고0·print-guard 신규0·design0·i18n 4언어16키0 | ✅ |
+
 ### 함께 진행한 KDS 보완 (Irene 직접 지시, 보호영역, 실프린터 대기)
 | 작업 | 설명 | 상태 |
 |------|------|:----:|
@@ -57,7 +66,7 @@
 
 ### 잔여 (다음)
 - 6단계 **실프린터 종이 확인**(매장) + 7단계 데모 전사이클(오프라인 시뮬→접수→로컬인쇄→복구동기화)
-- 4단계 오프라인 주문 **편집 액션** 배선(add/cancel/pay/stage on offline order — 백엔드 opId가드 준비완료, 패널 현재 읽기전용) + FloorPlan 반영 + degrade(POS1 허브 설정)
+- 4단계 오프라인 주문 **편집 액션** 배선(add/cancel/pay/stage on offline order — 백엔드 opId가드 준비완료, 패널 현재 읽기전용) + FloorPlan 반영 (degrade=메인POS전용+보조잠금은 위 표대로 ✅ 완료)
 
 ---
 

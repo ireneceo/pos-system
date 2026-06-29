@@ -865,7 +865,10 @@
       "Bash(python3 -c \"import PyPDF2; print\\('PyPDF2', PyPDF2.__version__\\)\")",
       "Bash(python3 -c \"import pdfminer; print\\('pdfminer ok'\\)\")",
       "Bash(which pdftotext *)",
-      "Bash(ls /var/www/dev-backend/node_modules/pdf-parse)"
+      "Bash(ls /var/www/dev-backend/node_modules/pdf-parse)",
+      "Bash(RA_TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjE2MywiaWF0IjoxNzgyNzMzNTc2LCJleHAiOjE3ODI3MzQ0NzZ9.0kCMOm0DV6rC07NrgbVS0PuTlG8Ashe3Esg9huqDUpw\" RA_RID=1 node /tmp/claude-1000/-var-www/da78dc64-0af4-4dc0-8e6c-9ca217efb039/scratchpad/offline-degrade-test.js)",
+      "Bash(NODE_PATH=/var/www/dev-frontend/node_modules RA_TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjE2MywiaWF0IjoxNzgyNzMzNTc2LCJleHAiOjE3ODI3MzQ0NzZ9.0kCMOm0DV6rC07NrgbVS0PuTlG8Ashe3Esg9huqDUpw\" RA_RID=1 node /tmp/claude-1000/-var-www/da78dc64-0af4-4dc0-8e6c-9ca217efb039/scratchpad/offline-degrade-test.js)",
+      "Bash(NODE_PATH=/var/www/dev-frontend/node_modules RA_TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjE2MywiaWF0IjoxNzgyNzMzNTc2LCJleHAiOjE3ODI3MzQ0NzZ9.0kCMOm0DV6rC07NrgbVS0PuTlG8Ashe3Esg9huqDUpw\" RA_RID=1 node /tmp/claude-1000/-var-www/da78dc64-0af4-4dc0-8e6c-9ca217efb039/scratchpad/offline-settings-card-test.js)"
     ],
     "deny": [],
     "ask": []

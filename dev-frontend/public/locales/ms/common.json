@@ -757,5 +757,7 @@
   "offlineBannerMainHeld": "Luar talian — {{count}} pesanan disimpan pada POS utama ini. Peranti ini mengendalikan semua pesanan dan cetakan; peranti lain dikunci. Jika pencetak dapur gagal, hidupkan Mod Kecemasan (Tetapan ▸ Pencetak) untuk mencetak setiap tiket di sini.",
   "offlineLockTitle": "Luar talian — pesanan dikendalikan oleh POS utama",
   "offlineLockBody": "Internet terputus. Semasa luar talian, sila ambil semua pesanan di kaunter POS utama. Peranti ini dijeda untuk mengelakkan pesanan hilang atau berganda.",
-  "offlineLockAuto": "Skrin ini akan dibuka secara automatik apabila sambungan pulih."
+  "offlineLockAuto": "Skrin ini akan dibuka secara automatik apabila sambungan pulih.",
+  "offlineLockMakeMain": "Guna peranti ini sebagai POS utama",
+  "offlineLockMakeMainHint": "Hanya pada POS kaunter yang disambung ke pencetak anda."
 }

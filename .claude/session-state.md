@@ -1,14 +1,12 @@
 # Purple POS — 개발 세션 상태
 
-<!-- AUTOSAVE-STALE-BANNER -->
-> **[AUTO-SAVE STALE] (2026-06-29 11:45, idle 1873s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
-> 변경된 작업 파일: common.json,settings.json common.json,settings.json common.json,settings.json common.json,settings.json App.tsx,OfflineBanner.tsx OfflineLockOverlay.tsx,OrderContext.tsx
-<!-- /AUTOSAVE-STALE-BANNER -->
-
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-06-29 (오프라인 1~6단계 + KDS per-item되돌리기/프린트미확정 — dev 검증완료·미배포)
+**마지막 업데이트:** 2026-06-29 #2 (오프라인 degrade=메인POS전용+보조기기 전체잠금 — dev 검증완료·미배포. Irene 매장에서 배포)
 **버전:** **v3.64 운영 배포 완료** (+ 스탭밀 수량별 이름 + 반응형 헤더 = 추가 배포 LIVE). SW 4.35(오프라인캐시).
-**작업 상태:** **오프라인 모드(POS1 허브) 1~6단계 코드 완료(dev, 미배포)** — 접수→로컬 주방인쇄→복구 동기화(무손실·무중복) 전 경로 구현·검증. 잔여=6단계 실프린터 종이확인(Irene 매장) + 7단계 데모 전사이클 + 4단계 잔여 UI(오프라인 중 주문관리·degrade, 비핵심). + 별건 KDS per-item 되돌리기/프린트 미확정 표시(검증완료, 실프린터 대기).
+**작업 상태:** **오프라인 모드(POS1 허브) 1~6단계 + degrade 코드 완료(dev, 미배포)** — 접수→로컬 주방인쇄→복구 동기화(무손실·무중복) + 오프라인 시 메인POS 1대 전용·보조기기 전체잠금·메인POS 모든인쇄 안내(비상모드 재사용)·미지정 매장 자가승격 탈출구. 전 경로 구현·검증(8/8). **잔여=6단계 실프린터 종이확인(Irene 매장) + 7단계 데모 전사이클 + 4단계 오프라인 주문'편집'액션(비핵심).** + 별건 KDS per-item 되돌리기/프린트 미확정 표시(검증완료, 실프린터 대기).
+
+### 진행 중인 작업
+- 없음 (오프라인 degrade까지 dev 완료·검증·미배포). **Irene 이동 중 — 매장에서 직접 배포 예정.**
 
 ### ▶ 다음 확정 작업 (A) — IOI Mall 매출 API 연동 **구현** (계약·결정 확정, 다음 섹션 착수)
 - **맥락**: thefire01 @ IOI Mall Damansara 입점. 몰 POS지원(Tangent/Synthesis)이 시간별 매출 전송 요청. 메모리 [[project_ioi_mall_sales_api]] / 계약·결정 `docs/MALL_SALES_API_INTEGRATION.md` / 발송문 `docs/IOI_MALL_API_inquiry.txt`.
@@ -25,7 +23,13 @@
   - ✅ 화면 반영(가시화): **OfflineBanner 에 로컬 보관 주문 건수**("오프라인 — 주문 N건 로컬 보관…", unsyncedOrderCount 폴링, 복구 시 "N건 전송 중…"). 어디서나 보임. i18n offlineBannerHeld/offlineReconnectingHeld 4언어.
   - ✅ **서버 opId 멱등 가드(§8) 완성**: 신규 모델 `ProcessedOp`(processed_ops 테이블, ProcessedOp.sync()로 생성·--alter 안 씀) + `utils/opIdGuard.js`(alreadyProcessed/recordProcessed). **비멱등 op만 가드**: add_items(orders-crud)·pay(orders-payment) — 진입부 early-return + 성공 시 기록. set_stage/move_table/cancel_order(DELETE)/cancel_item(전체배열 set)은 **본질 멱등이라 가드 불요**. **핵심 안전: op_id 는 SyncEngine 재생만 보냄 → 온라인 일반요청엔 없어 동작 100% 동일.** **API 실증: 같은 op_id 재전송→1회만 적용(add_items count·payment count 멱등), op_id 없는 온라인→정상.** SYNC_NONCREATE_ENABLED=true 활성화.
   - ✅ **화면 반영 완료(읽기전용)**: 신규 `components/Offline/OfflineOrdersPanel.tsx` — 미동기화 오프라인 주문을 LiveOrders 상단 **격리 패널**(자체 렌더·DbOrder 매핑 없음 → 라이브목록 크래시 위험 0)로 표시(OFF-번호·테이블·품목수·합계·held/sending). 동기화되면 자동 사라짐. i18n 5키. **실증 2/2(LiveOrders mount crash0 + 패널 렌더).** + 부수 발견·수정: LiveOrders 통계 `total_amount.toString()` null 미가드(잠재버그) → `parseFloat()||0` 방어(오프라인 동기화/이상데이터 크래시 방지).
-  - ⬜ 4단계 잔여(비핵심·다음): **오프라인 주문 '편집' 액션 배선** — add/cancel/move/pay/stage 핸들러가 오프라인 주문(localId)에 recordOfflineOp 분기(백엔드 opId 가드 준비완료, 패널은 현재 읽기전용) / FloorPlan 반영 / degrade(비-POS1 차단, POS1 허브 설정 신설). **핵심(신규 접수→로컬인쇄→동기화) 무영향.**
+  - ✅ **degrade(메인POS 전용 + 보조기기 전체잠금) 완료(dev, 2026-06-29 — Irene 직접 지시·확정)**: 인쇄 라우팅 0줄 변경(기존 검증된 emergencyMode 재사용), 보호파일 8개 전부 무접촉.
+    - **메인POS 지정** = 기기(브라우저)단위 localStorage(신규 `utils/offlineMainPos.ts`: isOfflineMainPos/setOfflineMainPos/useOfflineMainPos). 설정 ▸ 프린터에 "오프라인 메인 POS(이 기기)" 토글 카드(emergencyMode 카드 위, 평이한 말). 1대만 켬.
+    - **보조기기 전체잠금** = 신규 `components/Offline/OfflineLockOverlay.tsx`(App 전역 마운트). 오프라인 AND 비메인이면 전체화면 잠금 안내("주문은 메인 POS에서"). **안전 탈출구**: "이 기기를 메인 POS로" 버튼(미지정 매장 lockout 방지 — 카운터에서 즉시 승격→해제→허브). (버그수정: 오버레이 onClickCapture stopPropagation 이 내부버튼 클릭 막던 것 제거.)
+    - **메인POS 안내** = OfflineBanner 메인POS 변형("이 기기가 모든 주문·인쇄 처리, 다른기기 잠김, 주방프린터 실패 시 비상모드 켜기"). = "프린트 메인으로 모두 쏘기" 안내 + 이머전시 버튼 연결(Irene 지시).
+    - **OrderContext 게이트**: 오프라인 create 로컬기록·로컬인쇄는 isOfflineMainPos()에서만(보조기기 고아데이터·중복인쇄 방지).
+    - i18n 4언어(common offlineBannerMain/MainHeld/offlineLock* 7키 + settings printer.offlineMainPos.* 9키). **검증 8/8**(Playwright: settings/pos/live-orders mount crash0 + 보조오프라인=잠금 + 자가승격=해제 + 메인오프라인=무잠금+배너안내 + 설정카드 렌더·토글). build green(신규경고0)·print-guard 제작업 신규0(기존 2건=KDS/orders-crud 무관)·design신규0·i18n 0.
+  - ⬜ 4단계 잔여(비핵심·다음): **오프라인 주문 '편집' 액션 배선** — add/cancel/move/pay/stage 핸들러가 오프라인 주문(localId)에 recordOfflineOp 분기(백엔드 opId 가드 준비완료, 패널은 현재 읽기전용) / FloorPlan 반영. **핵심(신규 접수→로컬인쇄→동기화) 무영향.**
 - ✅ **5단계 SyncEngine 완료(dev)**: 신규 `utils/offlineSync.ts` — 복구 시 op로그 seq순 재생. create=idempotency_key(서버 기존 멱등), serverId/번호 매핑, 단일락, 401→재로그인 이벤트, 4xx 스킵·5xx/네트워크 STOP(순서보존). 비-create 전송은 서버 opId가드 전까지 게이트(SYNC_NONCREATE_ENABLED=false, 현재 비-create op 미기록이라 무해). OrderContext init + OfflineContext 복구 트리거. absorbLegacyQueue 흡수. **실증 6/6: 오프라인 생성→runSync→서버 1건+매핑, 재기록·재동기화해도 중복0(무손실·무중복).**
 - 🔶 **6단계 로컬 주방인쇄 코드완료(dev, 실프린터 확인 필요)**: ①프론트 `printOfflineKitchenTicket`(클라 QZ/RawBT 직접, 서버無, 스테이션맵·printerSettings·pos_store_info_cache[StoreContext 신규 캐시] 사용) — OrderContext 오프라인 catch에서 주문받은 기기가 즉시 인쇄→printedLocally. ②SyncEngine create가 printedLocally면 `printed_offline:true` 전달. ③**백엔드 orders-crud create가 printed_offline 수용→needs_print=false+item printed_at 스탬프**(폴러 재인쇄0, 보호파일=의도변경). **실증 5/5(printed_offline→서버 needs_print=false+printed_at). ⚠ 실제 종이출력은 매장 프린터 확인 필요(headless 불가).**
 - ⬜ **7단계**: 데모 전사이클(오프라인 시뮬→접수→로컬인쇄→복구동기화) + 운영검증.

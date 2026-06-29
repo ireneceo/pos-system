@@ -757,5 +757,7 @@
   "offlineBannerMainHeld": "Offline — {{count}} order(s) held on this main POS. This device handles all orders and printing; other devices are locked. If a kitchen printer fails, turn on Emergency Mode (Settings ▸ Printer) to print every ticket here.",
   "offlineLockTitle": "Offline — orders are handled by the main POS",
   "offlineLockBody": "The internet is down. While offline, please take all orders on the main POS counter. This device is paused to prevent lost or duplicated orders.",
-  "offlineLockAuto": "This screen unlocks automatically when the connection is back."
+  "offlineLockAuto": "This screen unlocks automatically when the connection is back.",
+  "offlineLockMakeMain": "Use this device as the main POS",
+  "offlineLockMakeMainHint": "Only on the counter POS connected to your printer."
 }

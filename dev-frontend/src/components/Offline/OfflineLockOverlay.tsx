@@ -12,7 +12,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useOffline } from '../../contexts/OfflineContext';
-import { useOfflineMainPos } from '../../utils/offlineMainPos';
+import { useOfflineMainPos, setOfflineMainPos } from '../../utils/offlineMainPos';
 
 const OfflineLockOverlay: React.FC = () => {
   const { isOffline } = useOffline();
@@ -33,8 +33,8 @@ const OfflineLockOverlay: React.FC = () => {
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: '24px', backdropFilter: 'blur(2px)',
       }}
-      // 모든 포인터/키 입력을 이 레이어에서 삼킨다(뒤 화면 조작 차단).
-      onClickCapture={(e) => { e.stopPropagation(); }}
+      // 전체화면 fixed 오버레이라 뒤 화면 포인터 입력은 자연히 차단된다(이 div 가 받음).
+      // capture 단계 stopPropagation 은 내부 버튼 클릭까지 막으므로 쓰지 않는다.
     >
       <div
         style={{
@@ -60,8 +60,24 @@ const OfflineLockOverlay: React.FC = () => {
             defaultValue: 'The internet is down. While offline, please take all orders on the main POS counter. This device is paused to prevent lost or duplicated orders.',
           })}
         </p>
-        <p style={{ margin: 0, fontSize: '13px', color: '#64748B' }}>
+        <p style={{ margin: '0 0 20px', fontSize: '13px', color: '#64748B' }}>
           {t('offlineLockAuto', { defaultValue: 'This screen unlocks automatically when the connection is back.' })}
+        </p>
+        {/* 안전 탈출구 — 매장이 메인 POS 를 미리 지정 안 했으면 모든 기기가 잠겨 아무도 못 받는다.
+            카운터 직원이 이 버튼으로 "이 기기가 메인 POS" 라고 지정하면 즉시 잠금 해제 + 허브가 된다. */}
+        <button
+          type="button"
+          onClick={() => setOfflineMainPos(true)}
+          style={{
+            width: '100%', padding: '12px 16px', fontSize: '14px', fontWeight: 700,
+            border: 'none', borderRadius: '10px', cursor: 'pointer',
+            background: '#10B981', color: '#fff',
+          }}
+        >
+          {t('offlineLockMakeMain', { defaultValue: 'Use this device as the main POS' })}
+        </button>
+        <p style={{ margin: '10px 0 0', fontSize: '12px', color: '#94A3B8' }}>
+          {t('offlineLockMakeMainHint', { defaultValue: 'Only on the counter POS connected to your printer.' })}
         </p>
       </div>
     </div>
