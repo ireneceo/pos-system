@@ -108,15 +108,15 @@ Content-Type: application/json
 - **visa/mastercard/amex = 스킴별 분리** (우리 card_type 그대로 OK).
 - **전송 = 매일 업로드, 하루 24 hour record. 최근 7일 함께 업로드 가능. 이미 있으면 update / 없으면 create**(upsert, batchid/일자 기준 멱등).
 - **REFUND/VOID = gto 에서 차감한 순매출 전송**(이미 위 gto 정의에 포함).
+- **타임존 = 매장 로컬(MYT, Asia/Kuala_Lumpur)** — 말레이시아 매장이니 자명. 우리 시스템은 모든 날짜/시간을 매장 설정 타임존으로 처리(CLAUDE.md 타임존 규칙) → **질문 불필요, 확정.**
 
 ### ⚠️ 아직 담당자 확인 필요 (후속 문의 = `docs/IOI_MALL_API_inquiry.txt`)
 1. **batchid 채번 규칙** — Z report closing number 인 건 알지만, 매장(machine)·일자별 증가/유일성 규칙(우리 일일 마감번호를 그대로 써도 되는지).
 2. **voucher 정의** — 무엇이 voucher 로 분류되는지.
 3. **othersamount 범위** — catch-all 인지(분류 못한 카드/이월렛/기타 수단).
 4. **전송 시점** — 매일 업로드 마감 시각(데드라인)이 있는지. hourly push 도 원하는지(우리 기본=마감 후 1회 + 최근 7일 재전송).
-5. **타임존** — date/hour = 매장 로컬(MYT) 확인(문서에 없음).
-6. **음수 허용** — 어떤 시각대의 REFUND/VOID 가 매출보다 크면 gto 가 음수일 수 있는데 허용되는지.
-7. **운영 전환** — 운영 URL·자격증명은 "별도 발송"이라 명시됨 → 수령 대기.
+5. **음수 허용** — 어떤 시각대의 REFUND/VOID 가 매출보다 크면 gto 가 음수일 수 있는데 허용되는지.
+6. **운영 전환** — 운영 URL·자격증명은 "별도 발송"이라 명시됨 → 수령 대기.
 
 ### 구현 영향(중요)
 - 집계 시 **gto 는 SST(세금) 제외 + service charge 포함 + void/refund 차감**. 세금은 별도 `gst` 필드. (우리 order: gto≈Σ(subtotal−discount+service_charge) − 취소/환불, tax 제외 / gst=Σ tax.)

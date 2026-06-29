@@ -22,14 +22,11 @@ points remain — could you please confirm:
      hourly records?
    - By what time should the data be submitted each day?
 
-5. Timezone
-   - Should the date/hour always be Malaysia Time (MYT)?
-
-6. Negative values
+5. Negative values
    - Since GTO is already net of voids and refunds, should any field ever contain
      negative values?
 
-7. Production
+6. Production
    - Please provide the production URL, credentials, and go-live procedure.
 
 Thank you.
