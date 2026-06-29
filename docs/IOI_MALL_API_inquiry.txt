@@ -1,27 +1,25 @@
 Hi,
 
-Thank you — we've reviewed the documentation and completed the staging test
-(token authentication + a full 24-hour SalesHourly submission both succeeded,
-24 records created). The documentation answered most of our questions. A few
-points remain — could you please confirm:
+We've completed the staging integration for SalesHourly — token authentication
+and full 24-hour submissions are working end-to-end (records created
+successfully), and we validated the field definitions against the documentation.
 
-1. batchid
-   - Is it a running Z-report number?
-   - Is it unique per machine?
-   - Does it increment daily?
-   - Any additional rules beyond numeric (max 12 digits)?
+We'll proceed on the following assumptions — please let us know only if any of
+these is incorrect (otherwise no reply needed):
 
-2. voucher
-   - What tender types should be reported as "voucher"?
+- batchid: our POS daily Z-report / closing number (numeric, up to 12 digits),
+  unique per machine per business day. Re-submissions of a day are accepted on
+  your side, so we re-send the last 7 days to keep corrections in sync.
+- Payment buckets: cash, tng (Touch 'n Go), visa / mastercard / amex (by card
+  scheme), voucher (mall/gift vouchers if used), othersamount (any other tender).
+- GTO: net of discount, before SST, including service charge, after deducting
+  voids and refunds. SST amount goes in the gst field. (An hour's GTO may rarely
+  be negative if refunds exceed sales — your API accepts this.)
+- Cadence: one daily upload of the 24 hourly records after closing, in Malaysia
+  time (MYT).
 
-3. othersamount
-   - Is this the catch-all for all remaining payment methods?
+The only thing we need from you to go live:
 
-4. Negative values
-   - Since GTO is already net of voids and refunds, should any field ever contain
-     negative values?
-
-5. Production
-   - Please provide the production URL, credentials, and go-live procedure.
+- Please provide the production URL, credentials, and the go-live procedure.
 
 Thank you.

@@ -111,12 +111,17 @@ Content-Type: application/json
 - **타임존 = 매장 로컬(MYT, Asia/Kuala_Lumpur)** — 말레이시아 매장이니 자명. 우리 시스템은 모든 날짜/시간을 매장 설정 타임존으로 처리(CLAUDE.md 타임존 규칙) → **질문 불필요, 확정.**
 - **전송 방식 = 매일 마감 후 24 hour record 업로드 + 최근 7일 재전송(upsert)** — 문서 명시(하루 24레코드·매일·7일·update/create)대로 확정. hourly push 불필요. (데드라인 시각은 비블로킹 — 마감 후 자동전송이라 명시 안 와도 무방.)
 
-### ⚠️ 아직 담당자 확인 필요 (후속 문의 = `docs/IOI_MALL_API_inquiry.txt`)
-1. **batchid 채번 규칙** — Z report closing number 인 건 알지만, 매장(machine)·일자별 증가/유일성 규칙(우리 일일 마감번호를 그대로 써도 되는지).
-2. **voucher 정의** — 무엇이 voucher 로 분류되는지.
-3. **othersamount 범위** — catch-all 인지(분류 못한 카드/이월렛/기타 수단).
-4. **음수 허용** — 어떤 시각대의 REFUND/VOID 가 매출보다 크면 gto 가 음수일 수 있는데 허용되는지.
-5. **운영 전환** — 운영 URL·자격증명은 "별도 발송"이라 명시됨 → 수령 대기.
+### ✅ 우리가 결정/검증으로 해소 (질문 불필요)
+- **batchid** = 우리 **일일 마감(Z-report)/settlement 번호** (숫자 ≤12, 매장별). 문서 "Z report closing number" + **staging 실측: 같은 날짜 다른 batchid 재전송도 200 수락**(그쪽 upsert) → 안전.
+- **음수 허용** — **staging 실측: gto `-50.00` 전송 200 수락.** 실제 순매출 그대로 전송(floor 불필요).
+- **othersamount** = 나머지 결제수단 catch-all (필드명·버킷 구조상 자명).
+- **voucher** = 우리에 voucher/기프트카드 tender 존재 시 매핑, 없으면 0 (기본값; 몰이 staging 데이터 검토 시 다르면 조정).
+- **전송 데드라인** = 마감 후 자동전송 + 최근 7일 재전송(비블로킹).
+
+### ⚠️ 외부 의존(그들이 제공해야 — 우리가 못 만듦)
+- **운영 URL · 자격증명 · go-live 절차** — 문서 "production URL will be sent separately" → **수령 대기**(유일한 블로커).
+
+> 결론: 막는 질문 없음. staging 으로 전체 구현·검증 → 몰이 staging 데이터 확인 → 운영 자격증명 받아 전환.
 
 ### 구현 영향(중요)
 - 집계 시 **gto 는 SST(세금) 제외 + service charge 포함 + void/refund 차감**. 세금은 별도 `gst` 필드. (우리 order: gto≈Σ(subtotal−discount+service_charge) − 취소/환불, tax 제외 / gst=Σ tax.)
