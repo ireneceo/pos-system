@@ -1,5 +1,10 @@
 # Purple POS — 개발 세션 상태
 
+<!-- AUTOSAVE-STALE-BANNER -->
+> **[AUTO-SAVE STALE] (2026-06-29 11:45, idle 1873s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
+> 변경된 작업 파일: common.json,settings.json common.json,settings.json common.json,settings.json common.json,settings.json App.tsx,OfflineBanner.tsx OfflineLockOverlay.tsx,OrderContext.tsx
+<!-- /AUTOSAVE-STALE-BANNER -->
+
 ## 현재 작업 상태
 **마지막 업데이트:** 2026-06-29 (오프라인 1~6단계 + KDS per-item되돌리기/프린트미확정 — dev 검증완료·미배포)
 **버전:** **v3.64 운영 배포 완료** (+ 스탭밀 수량별 이름 + 반응형 헤더 = 추가 배포 LIVE). SW 4.35(오프라인캐시).

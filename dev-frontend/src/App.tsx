@@ -17,6 +17,7 @@ import PosLayout from './components/Layout/PosLayout';
 import { PwaInstallProvider } from './contexts/PwaInstallContext';
 import { OfflineProvider } from './contexts/OfflineContext';
 import OfflineBanner from './components/Offline/OfflineBanner';
+import OfflineLockOverlay from './components/Offline/OfflineLockOverlay';
 import NotificationToaster from './components/Common/NotificationToaster';
 import PwaInstallBanner from './components/Common/PwaInstallBanner';
 // Login Page (keep static - frequently used, first contact)
@@ -488,6 +489,7 @@ function App() {
                         <NotificationToaster />
                         <PwaInstallBanner />
                         <OfflineBanner />
+                        <OfflineLockOverlay />
                       <Suspense fallback={<PageLoader />}>
                       <Routes>
                       {/* ===== PUBLIC ROUTES (No MainLayout) ===== */}

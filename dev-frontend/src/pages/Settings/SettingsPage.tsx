@@ -26,6 +26,7 @@ import { getRestaurantTimezone } from '../../utils/timezone';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
+import { isOfflineMainPos, setOfflineMainPos } from '../../utils/offlineMainPos';
 import { openCustomerDisplay, isAutoOpenEnabled, setAutoOpenEnabled, resetCustomerDisplayPosition } from '../../utils/customerDisplay';
 // 스타일 컴포넌트
 const SettingsContainer = styled.div`
@@ -811,6 +812,8 @@ const SettingsPage: React.FC = () => {
   const [printerGuideTab, setPrinterGuideTab] = useState<'browser' | 'qztray' | 'rawbt'>('browser');
   const [methodMatrixOpen, setMethodMatrixOpen] = useState(false);
   const [emergencyEffectOpen, setEmergencyEffectOpen] = useState(false);
+  // 오프라인 메인 POS 지정 — 기기(브라우저) 단위 localStorage(DB 아님). 오프라인 중 이 기기 1대만 주문 접수.
+  const [offlineMainPosOn, setOfflineMainPosOnState] = useState<boolean>(() => isOfflineMainPos());
   const [autoPrintPreviewOpen, setAutoPrintPreviewOpen] = useState(false);
   const [showPrinterTroubleshoot, setShowPrinterTroubleshoot] = useState(false);
   const [qzTrayPrinters, setQzTrayPrinters] = useState<string[]>([]);
@@ -5916,6 +5919,72 @@ const SettingsPage: React.FC = () => {
                   </button>
                 </div>
               )}
+              {/* ★ Offline Main POS — device-level designation (localStorage, not DB).
+                  When the internet is down, only the device marked here keeps taking
+                  orders + printing; every other device is locked (OfflineLockOverlay).
+                  No print-routing change — this only decides which one device is the
+                  hub while offline. Turn it ON for the counter POS wired to the printer. */}
+              {(() => {
+                const on = offlineMainPosOn;
+                const toggleMainPos = (next: boolean) => {
+                  setOfflineMainPos(next);
+                  setOfflineMainPosOnState(next);
+                  setInfoModal({
+                    open: true,
+                    title: next
+                      ? t('settings:printer.offlineMainPos.modalOnTitle', 'This device is now the Offline Main POS')
+                      : t('settings:printer.offlineMainPos.modalOffTitle', 'Offline Main POS turned off'),
+                    message: next
+                      ? t('settings:printer.offlineMainPos.modalOnMessage',
+                          'If the internet goes down, this device keeps taking orders and printing, and all other devices are paused so nothing is lost or duplicated. Set this ON for only ONE device — the counter POS connected to your printer.')
+                      : t('settings:printer.offlineMainPos.modalOffMessage',
+                          'This device will no longer act as the offline hub. Make sure another device is set as the Offline Main POS, or no device will take orders while offline.')
+                  });
+                };
+                return (
+                  <SettingsCard
+                    style={{
+                      marginBottom: '24px',
+                      background: on ? '#ECFDF5' : '#FFFFFF',
+                      border: on ? '2px solid #10B981' : '1px solid #C7CED6'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          width: '28px', height: '28px', borderRadius: '50%',
+                          background: on ? '#10B981' : '#9CA3AF', color: '#fff',
+                          fontSize: '15px', fontWeight: 700
+                        }} aria-hidden="true">●</span>
+                        <CardTitle style={{ margin: 0, color: on ? '#065F46' : '#0A2540' }}>
+                          {on
+                            ? t('settings:printer.offlineMainPos.titleOn', 'This device is the Offline Main POS')
+                            : t('settings:printer.offlineMainPos.titleOff', 'Offline Main POS (this device)')}
+                        </CardTitle>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => toggleMainPos(!on)}
+                        style={{
+                          padding: '10px 20px', fontSize: '14px', fontWeight: 700,
+                          border: 'none', borderRadius: '8px', cursor: 'pointer',
+                          background: on ? '#DC2626' : '#10B981', color: '#fff',
+                          minWidth: '140px'
+                        }}
+                      >
+                        {on
+                          ? t('settings:printer.offlineMainPos.turnOff', 'Turn OFF')
+                          : t('settings:printer.offlineMainPos.turnOn', 'Set this device')}
+                      </button>
+                    </div>
+                    <p style={{ fontSize: '13px', color: on ? '#065F46' : '#4B5563', lineHeight: 1.6, margin: 0 }}>
+                      {t('settings:printer.offlineMainPos.desc',
+                        'If the internet goes down, only ONE device — the Offline Main POS — keeps taking orders and printing all tickets; every other device is paused with an on-screen notice. Set this ON for the counter POS connected to your printer (one device only).')}
+                    </p>
+                  </SettingsCard>
+                );
+              })()}
               {/* ★ Emergency Routing Mode — top of the printer tab so it's the
                   first thing staff see when something breaks. Red when ON. The
                   flag is a single boolean; print routing checks it at runtime and

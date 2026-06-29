@@ -752,5 +752,10 @@
   "offlineHeldHint": "akan dihantar automatik apabila bersambung semula",
   "offlineHeldItems": "{{count}} item",
   "offlineHeldSyncing": "menghantar…",
-  "offlineHeldWaiting": "disimpan"
+  "offlineHeldWaiting": "disimpan",
+  "offlineBannerMain": "Luar talian — POS utama ini mengendalikan semua pesanan dan cetakan; peranti lain dikunci. Jika pencetak dapur gagal, hidupkan Mod Kecemasan (Tetapan ▸ Pencetak) untuk mencetak setiap tiket di sini.",
+  "offlineBannerMainHeld": "Luar talian — {{count}} pesanan disimpan pada POS utama ini. Peranti ini mengendalikan semua pesanan dan cetakan; peranti lain dikunci. Jika pencetak dapur gagal, hidupkan Mod Kecemasan (Tetapan ▸ Pencetak) untuk mencetak setiap tiket di sini.",
+  "offlineLockTitle": "Luar talian — pesanan dikendalikan oleh POS utama",
+  "offlineLockBody": "Internet terputus. Semasa luar talian, sila ambil semua pesanan di kaunter POS utama. Peranti ini dijeda untuk mengelakkan pesanan hilang atau berganda.",
+  "offlineLockAuto": "Skrin ini akan dibuka secara automatik apabila sambungan pulih."
 }

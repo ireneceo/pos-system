@@ -6,9 +6,11 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useOffline } from '../../contexts/OfflineContext';
+import { useOfflineMainPos } from '../../utils/offlineMainPos';
 
 const OfflineBanner: React.FC = () => {
   const { isOffline, isReconnecting } = useOffline();
+  const isMainPos = useOfflineMainPos();
   const { t } = useTranslation('common');
   const [held, setHeld] = useState(0);
 
@@ -31,13 +33,27 @@ const OfflineBanner: React.FC = () => {
 
   const reconnecting = !isOffline && isReconnecting;
   const bg = reconnecting ? '#0A7D57' : '#B45309'; // 복구=초록 / 오프라인=경고주황
-  const text = reconnecting
-    ? (held > 0
-        ? t('offlineReconnectingHeld', { defaultValue: 'Connection restored — sending {{count}} order(s)…', count: held })
-        : t('offlineReconnecting', { defaultValue: 'Connection restored — syncing…' }))
-    : (held > 0
-        ? t('offlineBannerHeld', { defaultValue: 'Offline — {{count}} order(s) held locally, will send automatically when reconnected.', count: held })
-        : t('offlineBanner', { defaultValue: 'Offline — internet disconnected. Will recover automatically when reconnected.' }));
+
+  let text: string;
+  if (reconnecting) {
+    text = held > 0
+      ? t('offlineReconnectingHeld', { defaultValue: 'Connection restored — sending {{count}} order(s)…', count: held })
+      : t('offlineReconnecting', { defaultValue: 'Connection restored — syncing…' });
+  } else if (isMainPos) {
+    // 메인 POS — 이 기기가 모든 주문·인쇄를 도맡는다는 점 + 주방 프린터 실패 시 비상 인쇄 안내.
+    text = held > 0
+      ? t('offlineBannerMainHeld', {
+          defaultValue: 'Offline — {{count}} order(s) held on this main POS. This device handles all orders and printing; other devices are locked. If a kitchen printer fails, turn on Emergency Mode (Settings ▸ Printer) to print every ticket here.',
+          count: held,
+        })
+      : t('offlineBannerMain', {
+          defaultValue: 'Offline — this main POS handles all orders and printing; other devices are locked. If a kitchen printer fails, turn on Emergency Mode (Settings ▸ Printer) to print every ticket here.',
+        });
+  } else {
+    text = held > 0
+      ? t('offlineBannerHeld', { defaultValue: 'Offline — {{count}} order(s) held locally, will send automatically when reconnected.', count: held })
+      : t('offlineBanner', { defaultValue: 'Offline — internet disconnected. Will recover automatically when reconnected.' });
+  }
 
   return (
     <div

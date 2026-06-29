@@ -752,5 +752,10 @@
   "offlineHeldHint": "연결되면 자동 전송됩니다",
   "offlineHeldItems": "{{count}}개 품목",
   "offlineHeldSyncing": "전송 중…",
-  "offlineHeldWaiting": "보관 중"
+  "offlineHeldWaiting": "보관 중",
+  "offlineBannerMain": "오프라인 — 이 메인 POS가 모든 주문과 인쇄를 처리합니다. 다른 기기는 잠깁니다. 주방 프린터가 안 되면 설정 ▸ 프린터에서 비상모드를 켜 모든 티켓을 이 프린터로 받으세요.",
+  "offlineBannerMainHeld": "오프라인 — 이 메인 POS에 주문 {{count}}건 보관 중. 이 기기가 모든 주문·인쇄를 처리하며 다른 기기는 잠깁니다. 주방 프린터가 안 되면 설정 ▸ 프린터에서 비상모드를 켜 모든 티켓을 이 프린터로 받으세요.",
+  "offlineLockTitle": "오프라인 — 주문은 메인 POS에서 받습니다",
+  "offlineLockBody": "인터넷이 끊겼습니다. 오프라인 동안에는 모든 주문을 메인 POS 카운터에서 받아주세요. 이 기기는 주문 누락·중복을 막기 위해 일시 잠금됩니다.",
+  "offlineLockAuto": "연결이 돌아오면 이 화면은 자동으로 풀립니다."
 }

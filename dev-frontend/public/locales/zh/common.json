@@ -752,5 +752,10 @@
   "offlineHeldHint": "重新连接后将自动发送",
   "offlineHeldItems": "{{count}} 项",
   "offlineHeldSyncing": "发送中…",
-  "offlineHeldWaiting": "保存中"
+  "offlineHeldWaiting": "保存中",
+  "offlineBannerMain": "离线 — 此主 POS 处理所有订单和打印；其他设备已锁定。若厨房打印机故障，请在 设置 ▸ 打印机 中开启紧急模式，将所有票据打印到此处。",
+  "offlineBannerMainHeld": "离线 — 此主 POS 暂存 {{count}} 笔订单。此设备处理所有订单和打印；其他设备已锁定。若厨房打印机故障，请在 设置 ▸ 打印机 中开启紧急模式，将所有票据打印到此处。",
+  "offlineLockTitle": "离线 — 订单由主 POS 处理",
+  "offlineLockBody": "网络已断开。离线期间请在主 POS 收银台接收所有订单。此设备已暂停，以防订单丢失或重复。",
+  "offlineLockAuto": "连接恢复后此画面将自动解锁。"
 }

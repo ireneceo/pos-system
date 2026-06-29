@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 
 import { getAuthToken } from '../utils/auth';
 import { ensureIdempotencyKey, enqueueOrder } from '../utils/offlineOrderQueue';
+import { isOfflineMainPos } from '../utils/offlineMainPos';
 export interface OrderItem {
   id: string;
   menuItem: {
@@ -202,7 +203,9 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
         enqueueOrder('/api/orders', backendOrder, getAuthToken());
         // 오프라인 4단계 — LocalStore(IndexedDB) op 로그에 create 기록 + 6단계 로컬 주방인쇄.
         // legacy 큐와 같은 idempotency_key 라 중복 전송돼도 서버 멱등으로 주문 1개. 기록 실패는 무시(legacy 가 안전망).
-        import('../utils/offlineOps').then(async ({ recordOfflineCreate, printOfflineKitchenTicket }) => {
+        // ★ 오프라인 허브 = 매장이 지정한 메인 POS 1대만. 보조 기기는 전체잠금으로 막히지만(OfflineLockOverlay),
+        //   레이스로 여기 도달하더라도 IndexedDB 로컬상태·로컬인쇄는 메인 POS 에서만(고아 데이터/중복 인쇄 방지).
+        if (isOfflineMainPos()) import('../utils/offlineOps').then(async ({ recordOfflineCreate, printOfflineKitchenTicket }) => {
           const rec = await recordOfflineCreate(backendOrder, { authToken: getAuthToken() }).catch(() => null);
           if (!rec || !rec.order) return;
           // 6단계: 주문받은 기기(카운터 POS=오프라인 허브)가 즉시 로컬로 주방티켓 인쇄. 성공 시 printedLocally
