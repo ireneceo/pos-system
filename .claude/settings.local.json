@@ -860,7 +860,12 @@
       "Bash(awk 'NR>=2237 && NR<=2340 && /res\\\\.\\(json|status\\)|success: true|return res|addItemsToOrder|await /' routes/orders-crud.js)",
       "Bash(awk 'NR>=2260 && NR<=2340{ if\\(/res\\\\.json\\\\\\(|success: true/\\) print NR\": \"$0 }' routes/orders-crud.js)",
       "Bash(awk 'NR>=392 && NR<=484 && /res\\\\.json\\\\\\(|success: true|return res\\\\.json/' routes/orders-payment.js)",
-      "Bash(awk -F: '$1>=392 && $1<=484')"
+      "Bash(awk -F: '$1>=392 && $1<=484')",
+      "Bash(python3 -c \"import pypdf; print\\('pypdf', pypdf.__version__\\)\")",
+      "Bash(python3 -c \"import PyPDF2; print\\('PyPDF2', PyPDF2.__version__\\)\")",
+      "Bash(python3 -c \"import pdfminer; print\\('pdfminer ok'\\)\")",
+      "Bash(which pdftotext *)",
+      "Bash(ls /var/www/dev-backend/node_modules/pdf-parse)"
     ],
     "deny": [],
     "ask": []

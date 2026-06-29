@@ -5,7 +5,13 @@
 **버전:** **v3.64 운영 배포 완료** (+ 스탭밀 수량별 이름 + 반응형 헤더 = 추가 배포 LIVE). SW 4.35(오프라인캐시).
 **작업 상태:** **오프라인 모드(POS1 허브) 1~6단계 코드 완료(dev, 미배포)** — 접수→로컬 주방인쇄→복구 동기화(무손실·무중복) 전 경로 구현·검증. 잔여=6단계 실프린터 종이확인(Irene 매장) + 7단계 데모 전사이클 + 4단계 잔여 UI(오프라인 중 주문관리·degrade, 비핵심). + 별건 KDS per-item 되돌리기/프린트 미확정 표시(검증완료, 실프린터 대기).
 
-### ▶ 다음 확정 작업 (다음 세션 재개점) — 오프라인 7단계(데모 전사이클) + 6단계 실프린터 확인
+### ▶ 다음 확정 작업 (A) — IOI Mall 매출 API 연동 (담당자 답변 대기 → 구현)
+- **맥락**: thefire01 @ IOI Mall Damansara 입점. 몰 POS지원팀이 시간별 매출을 Tangent/Synthesis API로 보내달라 요청(staging 자격증명 제공). 메모리 [[project_ioi_mall_sales_api]] / 설계·계약 `docs/MALL_SALES_API_INTEGRATION.md`.
+- ✅ **이번 세션: API 계약 전체 역해독 + staging 전송 성공**(PDF 이미지라 실호출로 해독). OAuth2 password grant 토큰 → POST /SalesHourly {sales:[{sale:{18필드 전부 string}}×24]}, date=YYYYMMDD·hour"00~23" 24개 필수·gstregistered Y/N. **HTTP200 "24 records created".** 우리 데이터로 전필드 생성 가능 확인(card_type=visa/master/amex 1:1, guest_count=noofpax).
+- ⏳ **대기**: 담당자에 문의 발송(`docs/IOI_MALL_API_inquiry.txt`, 7개 질문: gto/gst정의·batchid패턴·결제버킷·전송주기·타임존·환불·운영전환).
+- ⬜ **답변 후 구현**(`/기능설계`): 신규 `restaurant_sales_integrations` 모델(입점몰명+provider+자격증명 암호화+machineid+env+enabled) + 설정 UI + 시간별 집계·전송 스케줄러(SchedulerRun 패턴·재시도·batchid 멱등). 다른 입점몰 재사용 가능 구조.
+
+### ▶ 다음 확정 작업 (B) — 오프라인 7단계(데모 전사이클) + 6단계 실프린터 확인
 - 설계서: **`docs/OFFLINE_MODE_DESIGN.md`** / 메모리 [[project_offline_mode]] (진행상황·결정·재사용맵 전부 있음).
 - ✅ 1단계 OfflineContext(/api/health 핑·히스테리시스)+OfflineBanner+App 전역래핑 — 검증완료(배너 실동작 헤드리스 실증).
 - ✅ 2단계 sw.js network-first+오프라인 cache-fallback(셸·메뉴캐시, SW_VERSION 4.35) — 검증완료(오프라인 재로드 셸 렌더 실증).
