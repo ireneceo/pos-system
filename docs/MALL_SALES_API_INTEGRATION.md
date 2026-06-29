@@ -97,14 +97,30 @@ Content-Type: application/json
 
 ---
 
-## 4. 담당자 확인 필요 (구현 전)
-1. **gto/gst/servicecharge 정의** — gto는 세금·서비스차지 포함 총액인지 net인지. gst는 SST 시대에 0인지. gstregistered Y/N.
-2. **batchid 패턴/의미** — 러닝번호? 매장·일자별? 허용 형식.
-3. **결제 버킷 매핑** — tng=Touch'n Go만인지 전 이월렛인지, voucher 정의, othersamount 범위.
-4. **전송 주기/시점** — 매시 푸시 vs 매일 마감 후 24레코드 1회. 재전송/정정 가능 여부.
-5. **타임존** — date/hour = 매장 로컬(MYT) 확인.
-6. **환불/취소/할인 반영** — net 처리 / 음수 허용?
-7. **운영 전환** — staging 검증 후 운영 URL·자격증명·go-live 절차.
+## 4. 담당자 확인 결과 (2026-06-29 Irene 문서 검토)
+
+### ✅ 확정 (문서에 답 있음 — 구현 반영)
+- **gto = Net Sales after Discount, before SST.** F&B는 **Service Charge 포함**. **VOID·REFUND 차감 후**(순매출). 즉 `gto = (subtotal − discount + service_charge − void − refund)`, **세금(SST) 제외**.
+- **gst = GST/SST amount** → 말레이시아 현재 = **SST 금액**을 넣음(0 아님).
+- **gstregistered = "Y"/"N"** — GST or SST 등록 여부.
+- **batchid = Z report closing number** (마감 번호). **Numeric, 최대 12자리.**
+- **tng = Touch 'n Go 전용**(전 이월렛 아님).
+- **visa/mastercard/amex = 스킴별 분리** (우리 card_type 그대로 OK).
+- **전송 = 매일 업로드, 하루 24 hour record. 최근 7일 함께 업로드 가능. 이미 있으면 update / 없으면 create**(upsert, batchid/일자 기준 멱등).
+- **REFUND/VOID = gto 에서 차감한 순매출 전송**(이미 위 gto 정의에 포함).
+
+### ⚠️ 아직 담당자 확인 필요 (후속 문의 = `docs/IOI_MALL_API_inquiry.txt`)
+1. **batchid 채번 규칙** — Z report closing number 인 건 알지만, 매장(machine)·일자별 증가/유일성 규칙(우리 일일 마감번호를 그대로 써도 되는지).
+2. **voucher 정의** — 무엇이 voucher 로 분류되는지.
+3. **othersamount 범위** — catch-all 인지(분류 못한 카드/이월렛/기타 수단).
+4. **전송 시점** — 매일 업로드 마감 시각(데드라인)이 있는지. hourly push 도 원하는지(우리 기본=마감 후 1회 + 최근 7일 재전송).
+5. **타임존** — date/hour = 매장 로컬(MYT) 확인(문서에 없음).
+6. **음수 허용** — 어떤 시각대의 REFUND/VOID 가 매출보다 크면 gto 가 음수일 수 있는데 허용되는지.
+7. **운영 전환** — 운영 URL·자격증명은 "별도 발송"이라 명시됨 → 수령 대기.
+
+### 구현 영향(중요)
+- 집계 시 **gto 는 SST(세금) 제외 + service charge 포함 + void/refund 차감**. 세금은 별도 `gst` 필드. (우리 order: gto≈Σ(subtotal−discount+service_charge) − 취소/환불, tax 제외 / gst=Σ tax.)
+- batchid 는 **일일 마감(Z report) 번호** 로 채움(우리 settlement/마감 번호 매핑).
 
 ---
 

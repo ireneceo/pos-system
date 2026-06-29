@@ -1,45 +1,35 @@
 Hi,
 
-Thank you for the API documentation. We've completed the staging integration
-test — the token authentication and a full 24-hour SalesHourly submission both
-returned success (24 records created in Tangent).
+Thank you — we've reviewed the documentation and completed the staging test
+(token authentication + a full 24-hour SalesHourly submission both succeeded,
+24 records created). The documentation answered most of our questions. A few
+points remain — could you please confirm:
 
-Before we finalize, could you please confirm a few points so our data maps
-correctly?
+1. batchid
+   - Is it a running Z-report number?
+   - Is it unique per machine?
+   - Does it increment daily?
+   - Any additional rules beyond numeric (max 12 digits)?
 
-1. Field definitions
-   - For "gto", should it be gross (including GST/SST and service charge), or net?
-   - For "gst": since GST was replaced by SST in Malaysia, should this field be 0,
-     or the SST amount?
-   - What value of "gstregistered" do you expect for a non-GST merchant ("Y"/"N")?
+2. voucher
+   - What tender types should be reported as "voucher"?
 
-2. batchid
-   - What is the required format/pattern and its meaning? (In testing, "1" was
-     accepted but "20260629-14" was rejected by the pattern.)
-   - Is it a running sequence per machine, per day, or per submission?
-   - Any length or character restrictions?
-
-3. Payment buckets
-   - Is "tng" for Touch'n Go only, or for all e-wallets?
-   - What qualifies as "voucher"?
-   - Is "othersamount" the catch-all for any other tender type?
-   - We can split card payments into "visa" / "mastercard" / "amex" — please
-     confirm that is what you expect.
+3. othersamount
+   - Is this the catch-all for all remaining payment methods?
 
 4. Submission cadence
-   - Do you expect an hourly push, or one daily submission of the 24 hourly
-     records after closing?
-   - By what time should each day's data arrive?
-   - Can a day be re-submitted/corrected later (idempotency via batchid)?
+   - Do you expect hourly submissions, or one daily submission containing all 24
+     hourly records?
+   - By what time should the data be submitted each day?
 
 5. Timezone
-   - Please confirm "date" and "hour" should be the outlet's local time (MYT).
+   - Should the date/hour always be Malaysia Time (MYT)?
 
-6. Refunds / voids / discounts
-   - How should these be reflected — net of voids, or are negative values allowed?
+6. Negative values
+   - Since GTO is already net of voids and refunds, should any field ever contain
+     negative values?
 
-7. Production go-live
-   - After staging sign-off, please provide the production URL, credentials, and
-     the go-live steps.
+7. Production
+   - Please provide the production URL, credentials, and go-live procedure.
 
 Thank you.
