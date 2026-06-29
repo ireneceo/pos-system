@@ -845,7 +845,9 @@
       "Bash(awk '/return \\\\\\(/{f=1} f&&/<Header>/{p=1} p{print NR\": \"$0} p&&/<\\\\/Header>/{exit}' src/pages/POSTerminal/POSTerminalPage.tsx)",
       "Bash(ls node_modules/fake-indexeddb)",
       "Bash(ls node_modules/.bin/playwright)",
-      "Bash(./deploy-dev.sh)"
+      "Bash(./deploy-dev.sh)",
+      "Bash(echo \"RC=$?\")",
+      "Bash(NODE_PATH=/var/www/dev-frontend/node_modules timeout 90 node /tmp/claude-1000/-var-www/2269feb7-1800-4901-8896-1f35f0ba9880/scratchpad/mount-pos.js)"
     ],
     "deny": [],
     "ask": []

@@ -1,21 +1,17 @@
 # Purple POS — 개발 세션 상태
 
-<!-- AUTOSAVE-STALE-BANNER -->
-> **[AUTO-SAVE STALE] (2026-06-29 03:55, idle 1836s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
-> 변경된 작업 파일: OrderContext.tsx,offlineDb.ts offlineStore.ts,verify-offline-store.js
-<!-- /AUTOSAVE-STALE-BANNER -->
-
 ## 현재 작업 상태
 **마지막 업데이트:** 2026-06-28 (밤, 세션 종료)
 **버전:** **v3.64 운영 배포 완료** (+ 스탭밀 수량별 이름 + 반응형 헤더 = 추가 배포 LIVE). SW 4.35(오프라인캐시).
-**작업 상태:** **오프라인 모드(POS1 허브) 구현 중** — 1·2단계 dev 완료(미배포), 3단계부터 다음 세션.
+**작업 상태:** **오프라인 모드(POS1 허브) 구현 중** — 1·2·3단계 dev 완료(미배포), 4단계부터 다음 세션. (전체 완성=6단계 로컬인쇄까지 후 한 번에 배포)
 
-### ▶ 다음 확정 작업 (다음 세션 재개점) — 오프라인 모드 3단계
+### ▶ 다음 확정 작업 (다음 세션 재개점) — 오프라인 모드 4단계
 - 설계서: **`docs/OFFLINE_MODE_DESIGN.md`** / 메모리 [[project_offline_mode]] (진행상황·결정·재사용맵 전부 있음).
 - ✅ 1단계 OfflineContext(/api/health 핑·히스테리시스)+OfflineBanner+App 전역래핑 — 검증완료(배너 실동작 헤드리스 실증).
 - ✅ 2단계 sw.js network-first+오프라인 cache-fallback(셸·메뉴캐시, SW_VERSION 4.35) — 검증완료(오프라인 재로드 셸 렌더 실증).
-- ⬜ **3단계(여기부터)**: IndexedDB LocalStore + operation 로그(append-only), 기존 `utils/offlineOrderQueue.ts` 흡수.
-- ⬜ 4 오프라인 전 작업 기록 / 5 SyncEngine(순서재생·opId멱등·번호매핑·401복구)+서버 opId가드 / 6 로컬인쇄(🔒실프린터·bless) / 7 데모전사이클+운영검증.
+- ✅ **3단계 완료(dev, 미배포)**: IndexedDB LocalStore + append-only op 로그. 신규 `utils/offlineDb.ts`(저수준 IDB 래퍼: 스토어 offline_orders/offline_ops/offline_meta, 트랜잭션·genId·deleteOfflineDb) + `utils/offlineStore.ts`(LocalOrder/OfflineOp 타입 + 원자적 seq발급·createLocalOrderWithOp·appendOp·getUnsyncedOps·markOpSynced·patchOrder·markOrderSynced·pendingOpCount·absorbLegacyQueue). OrderContext에 `initOfflineStore()` 워밍 1줄(데이터 계층만; legacy 흡수/재생은 5단계까지 미호출=유실창 방지). dev 호스트네임 게이트 `window.__offlineStore` seam(운영 apex/www 미노출). **검증: Playwright 실브라우저 IndexedDB 31/31 PASS**(원자적 생성·단조 seq·op순서·markSynced제외·서버매핑·legacy흡수 one-time·**리로드 영속성=정전 재부팅**). build green(신규경고0)·print-guard 8/8(보호파일 무접촉)·health 107/107·POS mount crash0.
+- ⬜ **4단계(여기부터)**: 오프라인 시 POS 주문 전 작업(create/add/cancel/pay/stage)을 LocalStore에 로컬 기록 + 화면 반영. OfflineContext.isOffline 분기. **POSTerminalPage=보호파일 — 인쇄 라인 무접촉 주의.**
+- ⬜ 5 SyncEngine(순서재생·opId멱등·번호매핑·401복구)+서버 opId가드 / 6 로컬인쇄(🔒실프린터·bless) / 7 데모전사이클+운영검증.
 - **누적 dev, 미배포** — 로컬인쇄(6단계)까지 완성돼 "쓸만"해지면 한 번에 배포(반쪽 배포 금지).
 
 ### (이전) 진행 중인 작업 (2026-06-28 — v3.64로 운영 배포 완료분)

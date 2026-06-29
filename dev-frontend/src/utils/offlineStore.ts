@@ -329,6 +329,11 @@ export async function initOfflineStore(): Promise<void> {
   _inited = true;
   if (!isIDBAvailable()) return;
   try { await openDb(); } catch { /* IndexedDB 차단 환경(프라이빗모드 등) — 조용히 무시 */ }
+  // dev 호스트에서 offlineOps 의 테스트 seam 도 부착(검증용). 운영 게이트는 offlineOps 내부에서.
+  try {
+    const h = (window.location && window.location.hostname) || '';
+    if (/^(dev\.|localhost$|127\.|87\.106\.|192\.168\.|10\.)/.test(h)) { import('./offlineOps').catch(() => {}); }
+  } catch { /* ignore */ }
 }
 
 // ── dev 테스트 seam ──────────────────────────────────────────────────────────
