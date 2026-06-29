@@ -12,6 +12,7 @@ import { formatCurrency } from '../../utils/currency';
 import PhoneInput from '../components/common/PhoneInput';
 import { mobileFetch } from '../utils/mobileApi';
 import { ensureIdempotencyKey, enqueueOrder, genIdempotencyKey } from '../../utils/offlineOrderQueue';
+import { getActiveTable } from '../utils/tableSession';
 
 const Container = styled.div`
   padding-bottom: 100px;
@@ -1061,8 +1062,10 @@ const PaymentPage: React.FC = () => {
 
     loadTableSettings();
 
-    // Check if table was pre-selected from QR code
-    const preSelectedTable = localStorage.getItem('tableNumber');
+    // Check if table was pre-selected from QR code. Prefer THIS tab's scan
+    // (sessionStorage) over the shared durable value so a stale tab can't change
+    // which table this order submits to. See utils/tableSession.
+    const preSelectedTable = getActiveTable();
     if (preSelectedTable) {
       setSelectedTable(preSelectedTable);
     }

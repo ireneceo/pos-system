@@ -42,6 +42,8 @@
   "pOSTerminalPage.discount": "할인",
   "pOSTerminalPage.total": "합계",
   "terminal.categoryAll": "전체",
+  "terminal.allCategories": "카테고리 전체 보기",
+  "terminal.collapseCategories": "접기",
   "terminal.soldOut": "품절",
   "terminal.prevCategories": "이전 카테고리",
   "terminal.nextCategories": "다음 카테고리",

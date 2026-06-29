@@ -42,6 +42,8 @@
   "pOSTerminalPage.discount": "Discount",
   "pOSTerminalPage.total": "Total",
   "terminal.categoryAll": "All",
+  "terminal.allCategories": "Show all categories",
+  "terminal.collapseCategories": "Collapse",
   "terminal.soldOut": "Sold out",
   "terminal.prevCategories": "Previous categories",
   "terminal.nextCategories": "More categories",

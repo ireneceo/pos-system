@@ -60,8 +60,27 @@ export async function printOrderKitchenNow(ord: any, getStoreInfo: () => any): P
       // 2026-06-27 (Irene): 아이템취소 품목별 줄긋기 플래그 보존.
       _voided: !!it._voided
     });
+    // 2026-06-29 (Irene): 통합티켓 = "전체 주문 한 장"(재발행만). 스테이션은 라운드별 그대로, 통합만 전체.
+    // 안내(noticeHeader)·라벨은 상황별 그대로. 취소줄은 품목별 _voided 로: 이동/머지=없음, 주문취소=전체,
+    // 아이템취소=취소품목만(order_items 에서 제거됐으므로 data.items 의 취소품목을 줄긋기로 추가).
+    let _fullOrderItems: any[] | undefined;
+    if (ord.pending_reprint) {
+      const _allCancel = ord.pending_reprint.type === 'cancel';
+      _fullOrderItems = items.map((it: any) => mapItem({ ...it, _voided: _allCancel ? true : !!it._voided }));
+      if (ord.pending_reprint.type === 'void' && ord.pending_reprint.data && Array.isArray(ord.pending_reprint.data.items)) {
+        const _voidedOnly = ord.pending_reprint.data.items.filter((it: any) => it && it._voided);
+        _fullOrderItems = [..._fullOrderItems, ..._voidedOnly.map((it: any) => mapItem({ ...it, _voided: true }))];
+      }
+    } else {
+      // 2026-06-29 (Irene "2·3·4번째 추가주문 통합 안됨"): 신규/추가주문 통합티켓 = "이번에 찍는 전체 품목"
+      // 합본 1장. 스테이션은 회차(order_group)별로 쪼개 발행하지만, 통합은 bi===0 한 번만 발행하므로 내용을
+      // kitchenItemsRaw(이번에 안 찍힌 전체 = 신규는 주문 전체, 추가주문은 추가품목 전체)로 고정해야 회차
+      // 쪼개짐과 무관하게 추가품목 전체가 통합에 나온다. (이게 없으면 bi===0 배치 = 가장 옛 회차만 보임)
+      _fullOrderItems = kitchenItemsRaw.map(mapItem);
+    }
     const printData: any = {
       ...(ord.pending_reprint && ord.pending_reprint.notice ? { noticeHeader: ord.pending_reprint.notice } : {}),
+      ...(_fullOrderItems ? { fullOrderItems: _fullOrderItems } : {}),
       // 2026-06-27 (Irene): 취소선 복구 — 전체취소(type=cancel)면 모든 품목 줄긋기(voided), 아이템취소는 품목별 _voided.
       ...(ord.pending_reprint && ord.pending_reprint.type === 'cancel' ? { voided: true } : {}),
       orderNumber: ord.order_number,
@@ -84,6 +103,7 @@ export async function printOrderKitchenNow(ord: any, getStoreInfo: () => any): P
       cashierName: ord.source === 'mobile' ? 'Mobile Order' : 'POS',
       // 2026-06-27 (Irene): 통합티켓 "한 번만" 가드 신호 — 하이브리드(즉시) 발행분도 폴러 재실행과
       // 동일 클레임을 공유 → 통합 카피 라운드당 1회(중복 0). 수동/취소안내엔 없음(항상 발행).
+      // 2026-06-29: 아래 ATOMIC 선점 결과(win/lose)에 따라 claim 직후 재설정한다(여기선 placeholder).
       __consolidatedClaim: { orderId: ord.id, token: tok }
     };
 
@@ -92,11 +112,26 @@ export async function printOrderKitchenNow(ord: any, getStoreInfo: () => any): P
     if ((window as any).__autoPrintInflight[ord.id]) return false;
     (window as any).__autoPrintInflight[ord.id] = true;
     const _h = { Authorization: `Bearer ${tok}` };
+    let _hb: any = null;
     try {
       // ATOMIC CLAIM — 폴러/다른기기와 동일. 한쪽만 needs_print true→false 성공 → 중복 0.
       const _cr = await fetch(`/api/orders/${ord.id}/print-claim`, { method: 'PATCH', headers: _h });
       const _cj = await _cr.json().catch(() => null);
       if (!(_cj && _cj.claimed)) return false; // 이미 누가 claim → 즉시인쇄 skip(폴러가 처리했거나 중복방지)
+      // 2026-06-29 (Irene "추가주문 통합 안나옴" 근본): 통합 claim 을 "미리 선점"하지 않는다. 미리 선점하면
+      // claim 만 되고 발송이 끊겨 통합이 영영 안 나오는 orphan(claimed=true 인데 CLIENT 발송 없음 — 14819
+      // 추적로그로 확정). 통합 claim 은 발송 직전 sendUnifiedTickets 에서 ATOMIC(NULL→now)으로 1명만 win →
+      // claim+발송이 한 몸이라 orphan 0. 회차 여러 개면 통합은 아래 루프에서 bi===0 만 발행, 나머지 skip.
+      // (preStamped/early-stamp 제거 — printData.__consolidatedClaim 은 {orderId,token} 그대로 발송시 검사.)
+      // 2026-06-29 (Irene, thefire01 BAR 2장): 인쇄 진행 중 하트비트. BAR 프린터 첫 인쇄가 ~15초로 느려
+      // 죽은-claim 복구(10초)가 인쇄 도중 재무장 → 폴러가 같은 BAR 또 찍어 2장. 인쇄 루프 동안 4초마다
+      // print_claimed_at 을 NOW 로 갱신 → 그 동안 재무장 안 떠 폴러 재인쇄 0(중복 0). cap 40초: 진짜 끊긴
+      // 기기는 그 후 갱신 끊겨 10초 뒤 정상 복구(2026-06-26 hang 인쇄 사고 = cap 없는 하트비트였음).
+      const _hbStart = Date.now();
+      _hb = setInterval(() => {
+        if (Date.now() - _hbStart > 90000) { if (_hb) { clearInterval(_hb); _hb = null; } return; }
+        fetch(`/api/orders/${ord.id}/print-heartbeat`, { method: 'PATCH', headers: _h }).catch(() => {});
+      }, 4000);
       // 추가주문(+Round)은 회차(order_group)별 1장. 안내 재발행(pending_reprint)은 분할 안 함.
       // 신규 단일주문은 회차 1개=기존과 동일 1장. heartbeat 없음(분실 복구 안전망 보존 — 06:43 사고 교훈).
       const _isReprint = !!(ord.pending_reprint && ord.pending_reprint.data && Array.isArray(ord.pending_reprint.data.items) && ord.pending_reprint.data.items.length > 0);
@@ -112,6 +147,10 @@ export async function printOrderKitchenNow(ord: any, getStoreInfo: () => any): P
       for (let bi = 0; bi < _batches.length; bi++) {
         let r: any = true;
         try { r = await billPrintMod.printKitchenTicketViaRawBT({ ...printData, items: _batches[bi].map(mapItem),
+          // 2026-06-29 (Irene "테이블이동 통합 3장"): 통합티켓 = 전체주문 1장(회차별로 안 나뉨). 회차가 여러 개여도
+          // 통합은 첫 회차(bi===0)에서만 발행, 나머지 회차는 통합 억제(skip). 스테이션은 회차별 그대로 발행.
+          // preStamped 가 배치마다 통합을 발행해 회차 수만큼 N장 나오던 근본수정. (단일회차=종전과 동일 1장)
+          __consolidatedClaim: bi === 0 ? (printData as any).__consolidatedClaim : { skip: true },
           // 2026-06-27 (Irene): 추가주문 회차(order_group>0, 재발행 아님)면 +Added 표시.
           isAddedRound: !_isReprint && !!(_batches[bi][0] && Number(_batches[bi][0].order_group) > 0) }, printStoreInfo); }
         catch (e) { r = false; }
@@ -127,6 +166,7 @@ export async function printOrderKitchenNow(ord: any, getStoreInfo: () => any): P
       try { await fetch(`/api/orders/${ord.id}/printed`, { method: 'PATCH', headers: _h }); } catch {}
       return true;
     } finally {
+      if (_hb) { clearInterval(_hb); _hb = null; }
       delete (window as any).__autoPrintInflight[ord.id];
     }
   } catch (e) {

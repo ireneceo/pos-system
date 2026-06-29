@@ -7,6 +7,7 @@ import MobileLayout from '../components/common/MobileLayout';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { formatCurrency } from '../../utils/currency';
 import { getStoreOpenState } from '../utils/storeHours';
+import { getActiveTable } from '../utils/tableSession';
 
 interface MenuCategory {
   id: string;
@@ -532,8 +533,9 @@ const MenuPage: React.FC = () => {
   }, [cartQty]);
 
   // Preserve table number across the picker round-trip so dine-in QR stays sticky.
-  // localStorage (not sessionStorage) so it survives mobile tab eviction like the cart.
-  const tableNumber = typeof window !== 'undefined' ? localStorage.getItem('tableNumber') : null;
+  // Prefer this tab's scan (sessionStorage) over the durable value; falls back to
+  // localStorage so it survives mobile tab eviction like the cart. See utils/tableSession.
+  const tableNumber = getActiveTable();
 
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);

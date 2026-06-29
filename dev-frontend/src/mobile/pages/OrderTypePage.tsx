@@ -11,6 +11,7 @@ import { API_BASE_URL } from '../../config/api';
 import MobileAlertModal from '../components/common/MobileAlertModal';
 import OrderingBanner from '../components/OrderingBanner';
 import SearchableSelect from '../../components/Common/SearchableSelect';
+import { getActiveTable, setActiveTable } from '../utils/tableSession';
 
 const Container = styled.div`
   min-height: 100vh;
@@ -488,10 +489,10 @@ const OrderTypePage: React.FC = () => {
       // Only a genuinely table-less entry (takeaway/generic QR) has nothing to keep.
       if (currentOrderType && currentOrderType !== newOrderType) {
         console.log('Order type changed - clearing cart (preserving scanned table)');
-        const qrTable = tableFromQR || (typeof window !== 'undefined' ? localStorage.getItem('tableNumber') : null);
+        const qrTable = tableFromQR || getActiveTable();
         clearCart();
         if (qrTable) {
-          localStorage.setItem('tableNumber', qrTable);
+          setActiveTable(qrTable);
           setTableFromQR(qrTable);
         }
       }
@@ -507,7 +508,7 @@ const OrderTypePage: React.FC = () => {
       // representative QR (no table scanned). Force a table pick before the
       // menu so the order lands on the correct Floor Plan table instead of
       // showing up as a table-less "pickup N" order.
-      const currentTable = tableFromQR || (typeof window !== 'undefined' ? localStorage.getItem('tableNumber') : null);
+      const currentTable = tableFromQR || getActiveTable();
       if (newOrderType === 'dine-in' && storeData?.tableNumberRequired && !currentTable) {
         setShowTablePicker(true);
         setIsLoading(false);
@@ -535,7 +536,7 @@ const OrderTypePage: React.FC = () => {
   const handleTablePicked = (tableLabel: string) => {
     const label = (tableLabel || '').trim();
     if (!label) return;
-    localStorage.setItem('tableNumber', label);
+    setActiveTable(label);
     setTableFromQR(label);
     setShowTablePicker(false);
     setTableSearch('');
@@ -556,13 +557,22 @@ const OrderTypePage: React.FC = () => {
   useEffect(() => {
     const table = searchParams.get('table');
     if (table) {
-      // Table from URL parameter (QR code scan)
+      // Fresh QR scan. If it differs from the cached table, treat the scan as an
+      // ABSOLUTE reset: the old cart belongs to the old table, so wipe it before
+      // pinning the new one (stops the old table bleeding onto the new order — the
+      // A-4→A22 wrong-table bug). Same table = resume, no reset.
+      const prev = getActiveTable();
+      if (prev && prev.trim() !== table.trim()) {
+        clearCart();
+      }
       setTableFromQR(table);
-      localStorage.setItem('tableNumber', table);
+      // Pins both the durable (localStorage) and per-tab (sessionStorage) value so a
+      // stale tab can't clobber THIS tab's scan at order time. See utils/tableSession.
+      setActiveTable(table);
     } else {
-      // Check if table number exists in localStorage (returning from menu/cart, or
-      // resuming after a mobile tab eviction — shares the cart's persistent store)
-      const existingTable = localStorage.getItem('tableNumber');
+      // Check if table number exists (returning from menu/cart, or resuming after a
+      // mobile tab eviction — durable localStorage fallback).
+      const existingTable = getActiveTable();
       if (existingTable) {
         setTableFromQR(existingTable);
       }
@@ -571,7 +581,7 @@ const OrderTypePage: React.FC = () => {
     if (slug) {
       sessionStorage.setItem('restaurantSlug', slug);
     }
-  }, [searchParams, slug]);
+  }, [searchParams, slug, clearCart]);
 
   // Auto-skip the picker when the URL pins an order type (or implies one via ?table=).
   // Runs after storeData is loaded so we can validate against enabled order types.

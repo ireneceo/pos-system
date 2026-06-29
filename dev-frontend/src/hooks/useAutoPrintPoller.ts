@@ -133,10 +133,22 @@ export function useAutoPrintPoller(opts: {
               // 2026-06-27 (Irene): 아이템취소 품목별 줄긋기 플래그 보존(백엔드 pending_reprint.data.items 가 표시).
               _voided: !!it._voided
             });
+            // 2026-06-29 (Irene): 통합티켓 = "전체 주문 한 장"(재발행만). 스테이션은 라운드별 그대로.
+            // 안내·라벨 상황별 그대로, 취소줄은 품목별 _voided(이동/머지=없음, 주문취소=전체, 아이템취소=취소품목만).
+            let _fullOrderItems: any[] | undefined;
+            if (ord.pending_reprint) {
+              const _allCancel = ord.pending_reprint.type === 'cancel';
+              _fullOrderItems = (Array.isArray(items) ? items : []).map((it: any) => mapItem({ ...it, _voided: _allCancel ? true : !!it._voided }));
+              if (ord.pending_reprint.type === 'void' && ord.pending_reprint.data && Array.isArray(ord.pending_reprint.data.items)) {
+                const _voidedOnly = ord.pending_reprint.data.items.filter((it: any) => it && it._voided);
+                _fullOrderItems = [..._fullOrderItems, ..._voidedOnly.map((it: any) => mapItem({ ...it, _voided: true }))];
+              }
+            }
             const printData: any = {
               // 2026-06-24: 테이블이동 재발행이면 "TABLE CHANGED" 안내 헤더(주방이 옛 티켓 버리게).
               // backend 가 pending_reprint.notice 에 담아 보낸다. 일반 신규주문은 notice 없음.
               ...(ord.pending_reprint && ord.pending_reprint.notice ? { noticeHeader: ord.pending_reprint.notice } : {}),
+              ...(_fullOrderItems ? { fullOrderItems: _fullOrderItems } : {}),
               // 2026-06-27 (Irene): 취소선 복구 — 전체취소(type=cancel)면 모든 품목 줄긋기(voided), 아이템취소는
               // 품목별 _voided(백엔드가 해당 품목만 표시). 하이브리드 도입 후 voided 누락으로 줄이 안 그어지던 버그 수정.
               ...(ord.pending_reprint && ord.pending_reprint.type === 'cancel' ? { voided: true } : {}),
@@ -168,7 +180,7 @@ export function useAutoPrintPoller(opts: {
             // Bill — payment 완료된 주문만 polling 으로 인쇄 (모바일 QR 즉시
             // 결제 / staff 가 결제 버튼 누름 후 needs_bill set 등). counter
             // (나중 결제) = payment_status='pending' → bill 안 나옴.
-            const _isPaid = ord.payment_status === 'completed' || ord.payment_status === 'partial';
+            const _isPaid = ord.payment_status === 'completed' || (ord.payment_status as string) === 'partial';
             const _h = { Authorization: `Bearer ${tok}` };
             let billOk = true, billPrinted = false, kitchenPrinted = false;
             if (_isPaid && ord.needs_bill && activeBill?.enabled && activeBill?.autoPrint) {
@@ -223,6 +235,15 @@ export function useAutoPrintPoller(opts: {
                   _claimed = !!(_cj && _cj.claimed);
                 } catch (e: any) { _claimed = false; }
                 if (_claimed) {
+                  // 2026-06-29 (Irene, thefire01 BAR 2장): 인쇄 진행 중 하트비트 (cap 40초). 느린 BAR 인쇄
+                  // (~15초) 동안 죽은-claim 복구(10초)가 재무장→다음 폴 사이클이 같은 BAR 또 찍는 중복을
+                  // 막는다. 4초마다 print_claimed_at=NOW 갱신. cap 40초로 진짜 끊긴 기기는 그 후 갱신이
+                  // 끊겨 10초 뒤 정상 복구 → 2026-06-26 무한-하트비트(hang 분실) 사고와 다름.
+                  let _phb: any = null; const _phbStart = Date.now();
+                  _phb = setInterval(() => {
+                    if (Date.now() - _phbStart > 90000) { if (_phb) { clearInterval(_phb); _phb = null; } return; }
+                    fetch(`/api/orders/${ord.id}/print-heartbeat`, { method: 'PATCH', headers: _h }).catch(() => {});
+                  }, 4000);
                   // 추가주문(+Round)은 "그 회차(order_group) 품목만" 따로 1장씩 — 미인쇄분이 여러 회차
                   // 쌓여도(끊김 후 catch-up) 회차별로 쪼개 발행(누적/전체뭉치 0, 분실 0). 안내 재발행
                   // (pending_reprint: 취소/이동/void)은 분할 안 함. 신규 단일주문은 회차 1개=기존과 동일 1장.
@@ -256,6 +277,7 @@ export function useAutoPrintPoller(opts: {
                   } else {
                     kitchenPrinted = true;
                   }
+                  if (_phb) { clearInterval(_phb); _phb = null; }
                 }
                 // not claimed → another device already owns this ticket, skip silently
               } else if (_isBacklog) {

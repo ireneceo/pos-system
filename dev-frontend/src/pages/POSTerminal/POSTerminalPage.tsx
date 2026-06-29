@@ -327,14 +327,18 @@ const CategoryBar = styled.div`
 `;
 // 2026-06-28 (5-3): 카테고리는 한 줄 유지(nowrap) + ‹ › 페이지 이동. 스크롤바는 숨기고
 // 터치 스와이프는 허용. 펼치기(여러 줄 wrap) 방식 폐지 — 메뉴 영역을 안 가리도록.
-const CategoryTabs = styled.div`
+const CategoryTabs = styled.div<{ $expanded?: boolean }>`
+  position: relative; /* 자식 offsetLeft 기준 = ‹ › 스냅 측정용 */
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: ${props => props.$expanded ? 'wrap' : 'nowrap'};
   align-items: center;
+  align-content: flex-start;
   flex: 1;
   min-width: 0;
   gap: 6px;
-  overflow-x: auto;
+  /* 펼침: 그 자리에서 여러 줄로 완전히 펼침(메뉴를 밀어냄 — 토글로 다시 접음). 너무 많으면 자체 스크롤. */
+  overflow-x: ${props => props.$expanded ? 'visible' : 'auto'};
+  ${props => props.$expanded ? 'max-height: 42vh; overflow-y: auto; padding: 2px 0;' : ''}
   scroll-behavior: smooth;
   scrollbar-width: none;
   &::-webkit-scrollbar { height: 0; width: 0; }
@@ -359,14 +363,19 @@ const CategoryPageBtn = styled.button`
   &:hover:not(:disabled) { background: #F5F6F8; color: var(--pos-brand, #635BFF); }
   &:disabled { opacity: 0.3; cursor: default; }
 `;
-const CategoryPageInd = styled.span`
+// 2026-06-29: 카테고리 펼침/접힘 토글 버튼(▾/▴) — 그 자리에서 전체를 여러 줄로 펼침(팝업 아님).
+const CategoryAllBtn = styled.button`
   flex-shrink: 0;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--pos-text-muted, #6B7280);
-  min-width: 34px;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
+  width: 44px;
+  min-height: 44px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--pos-border-strong, #B9C2CC);
+  background: var(--pos-control, #FFFFFF);
+  color: var(--pos-text, #1F2937);
+  border-radius: 8px;
+  font-size: 16px; line-height: 1;
+  cursor: pointer; transition: all 0.15s;
+  &:hover { border-color: var(--pos-brand, #635BFF); color: var(--pos-brand-text, #635BFF); background: var(--pos-brand-ghost, #F5F3FF); }
 `;
 
 // 카테고리 = 중요한 선택 → 상품 옵션(RadioButton)과 동일 디자인. 선택 = 브랜드 테두리+틴트+글씨, 기본 = 흰 박스+또렷 테두리.
@@ -1331,29 +1340,55 @@ const POSTerminalPage: React.FC = () => {
     try { localStorage.setItem('pos_fullscreen', nv ? '1' : '0'); } catch { /* ignore */ }
     return nv;
   });
-  // 2026-06-28 (5-3): 카테고리 페이지네이션 — 한 줄 유지 + ‹ › 로 페이지 이동(세로로 안 길어져 메뉴 안 가림).
+  // 2026-06-29: 카테고리 = 기본 한 줄(스와이프 + ‹ › 스크롤). "펼침" 토글이면 그 자리에서 전체를
+  // 여러 줄(wrap)로 완전히 펼침(팝업 아님). 페이지번호는 없앰(Irene).
   const categoryTabsRef = useRef<HTMLDivElement>(null);
+  const catPageStartsRef = useRef<number[]>([0]); // 각 페이지 첫 칩의 scrollLeft (‹ › 스냅용)
   const [catPage, setCatPage] = useState<{ cur: number; total: number }>({ cur: 1, total: 1 });
+  const [catExpanded, setCatExpanded] = useState(false);
   const recomputeCatPage = useCallback(() => {
     const el = categoryTabsRef.current;
     if (!el) return;
-    const w = el.clientWidth || 1;
-    const total = Math.max(1, Math.ceil(el.scrollWidth / w));
-    const cur = Math.min(total, Math.round(el.scrollLeft / w) + 1);
+    const vw = el.clientWidth || 1;
+    const children = Array.from(el.children) as HTMLElement[];
+    const starts: number[] = [];
+    let pageStart = 0;
+    children.forEach((child, i) => {
+      const left = child.offsetLeft;
+      const right = left + child.offsetWidth;
+      if (i === 0) { pageStart = left; starts.push(left); return; }
+      // 이 칩이 현재 페이지 뷰포트를 넘치면 → 이 칩을 새 페이지 시작으로(칩 잘림 방지).
+      if (right - pageStart > vw + 1) { pageStart = left; starts.push(left); }
+    });
+    if (starts.length === 0) starts.push(0);
+    catPageStartsRef.current = starts;
+    const total = starts.length;
+    // 현재 페이지 = 스크롤 위치에 가장 가까운 시작점. (마지막 페이지 start 가 maxScroll 을 넘어
+    // 브라우저가 클램프해도 정확히 잡힘 — scrollLeft>=start 방식은 마지막 페이지를 못 잡았음.)
+    const sl = el.scrollLeft;
+    let cur = 1;
+    let best = Infinity;
+    for (let i = 0; i < starts.length; i++) {
+      const d = Math.abs(sl - starts[i]);
+      if (d <= best) { best = d; cur = i + 1; }
+    }
     setCatPage(prev => (prev.cur === cur && prev.total === total) ? prev : { cur, total });
   }, []);
-  const scrollCatPage = (dir: -1 | 1) => {
+  const goCatPage = useCallback((page: number) => {
     const el = categoryTabsRef.current;
     if (!el) return;
-    el.scrollBy({ left: dir * Math.max(1, el.clientWidth - 24), behavior: 'smooth' });
-  };
-  // 카테고리 페이지 표시 재계산 — 카테고리 변동/창 크기/풀스크린 토글(폭 변동) 시.
+    const starts = catPageStartsRef.current;
+    const idx = Math.max(0, Math.min(starts.length - 1, page - 1));
+    el.scrollTo({ left: starts[idx] || 0, behavior: 'smooth' });
+  }, []);
+  const scrollCatPage = (dir: -1 | 1) => goCatPage((catPage.cur || 1) + dir);
+  // 오버플로/페이지 재계산 — 카테고리 변동/창 크기/풀스크린/펼침 토글(폭·줄바꿈 변동) 시. (rAF=칩 폭 측정 보장)
   useEffect(() => {
-    recomputeCatPage();
+    const raf = requestAnimationFrame(() => recomputeCatPage());
     const onResize = () => recomputeCatPage();
     window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, [recomputeCatPage, categories.length, posFullscreen]);
+    return () => { cancelAnimationFrame(raf); window.removeEventListener('resize', onResize); };
+  }, [recomputeCatPage, categories.length, posFullscreen, catExpanded]);
   const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   const [previousCategory, setPreviousCategory] = useState<string | null>(null); // 검색 전 카테고리 저장
   const [searchQuery, setSearchQuery] = useState('');
@@ -1418,9 +1453,6 @@ const POSTerminalPage: React.FC = () => {
   const [orderRemark, setOrderRemark] = useState<string>(() => {
     try { return localStorage.getItem(`posOrderRemarkDraft_${restaurantId || 'x'}`) || ''; } catch { return ''; }
   });
-  const [showRemarkBox, setShowRemarkBox] = useState<boolean>(() => {
-    try { return !!localStorage.getItem(`posOrderRemarkDraft_${restaurantId || 'x'}`); } catch { return false; }
-  });
   useEffect(() => {
     try {
       if (orderRemark) localStorage.setItem(REMARK_DRAFT_KEY, orderRemark);
@@ -1441,18 +1473,26 @@ const POSTerminalPage: React.FC = () => {
   const [remarkHistory, setRemarkHistory] = useState<string[]>(() => {
     try { const a = JSON.parse(localStorage.getItem(`posOrderRemarkHistory_${restaurantId || 'x'}`) || '[]'); return Array.isArray(a) ? a : []; } catch { return []; }
   });
-  const [remarkFocused, setRemarkFocused] = useState(false);
   // 2026-06-28 (4-1, Irene 재설계): 품목별 메모 = 버튼 → 팝업(온스크린 키보드). 작은 POS 가독 + 명시 저장.
+  // 2026-06-29: 같은 팝업+키보드를 전체주문 메모(order mode)에도 재사용 (Irene 지시).
   const [memoModalItemId, setMemoModalItemId] = useState<string | null>(null);
+  const [memoModalOrder, setMemoModalOrder] = useState<boolean>(false);
   const [memoDraft, setMemoDraft] = useState('');
   const setItemMemo = useCallback((id: string, text: string) => {
     setOrderItems(prev => prev.map(it => it.id === id ? { ...it, special_instructions: text } : it));
   }, []);
   const saveMemoModal = useCallback(() => {
-    if (memoModalItemId) setItemMemo(memoModalItemId, memoDraft.trim());
+    if (memoModalOrder) {
+      // 전체주문 메모 — payload notes 로 발행, 오더티켓 "SPECIAL NOTES" 로 출력(billPrint).
+      const v = memoDraft.trim();
+      setOrderRemark(v);
+    } else if (memoModalItemId) {
+      setItemMemo(memoModalItemId, memoDraft.trim());
+    }
     setMemoModalItemId(null);
+    setMemoModalOrder(false);
     setMemoDraft('');
-  }, [memoModalItemId, memoDraft, setItemMemo]);
+  }, [memoModalOrder, memoModalItemId, memoDraft, setItemMemo]);
   // 메모 textarea — 직접 타이핑(커서·물리키보드)과 온스크린 키보드를 함께 쓴다.
   // 온스크린 키는 "커서 위치"에 삽입(append 아님). 삽입 후 커서 복원.
   const memoTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -2511,7 +2551,7 @@ const POSTerminalPage: React.FC = () => {
       setAppliedDiscountPolicy(null);
       setCouponCode('');
       if (orderRemark.trim()) pushRemarkHistory(orderRemark); // #11 발행된 리마크를 검색 히스토리에 저장
-      setOrderRemark(''); setShowRemarkBox(false);  // #11 리마크 발행 후 비움
+      setOrderRemark('');  // #11 리마크 발행 후 비움
       setTableNumber('');
       setGuestCount(0);
       setPagerNumber('');
@@ -2856,7 +2896,7 @@ const POSTerminalPage: React.FC = () => {
       setAppliedDiscountPolicy(null);
       setCouponCode('');
       if (orderRemark.trim()) pushRemarkHistory(orderRemark); // #11 발행된 리마크를 검색 히스토리에 저장
-      setOrderRemark(''); setShowRemarkBox(false);  // #11 리마크 발행 후 비움
+      setOrderRemark('');  // #11 리마크 발행 후 비움
       setTableNumber('');
       setGuestCount(0);
       setPagerNumber('');
@@ -3381,7 +3421,7 @@ const POSTerminalPage: React.FC = () => {
 
           <CategoryBar>
           <CategoryPager>
-            {catPage.total > 1 && (
+            {!catExpanded && catPage.total > 1 && (
               <CategoryPageBtn
                 type="button"
                 onClick={() => scrollCatPage(-1)}
@@ -3390,13 +3430,13 @@ const POSTerminalPage: React.FC = () => {
                 aria-label="Previous categories"
               >‹</CategoryPageBtn>
             )}
-            <CategoryTabs ref={categoryTabsRef} onScroll={recomputeCatPage}>
+            <CategoryTabs ref={categoryTabsRef} onScroll={recomputeCatPage} $expanded={catExpanded}>
               {/* "All" tab is only available in Simple mode — text rendering scales,
                   but loading every category's images at once is too slow for large menus. */}
               {displayMode === 'simple' && (
                 <CategoryTab
                   active={selectedCategory === 'all' && !isSearchMode}
-                  onClick={() => handleCategorySelect('all')}
+                  onClick={() => { handleCategorySelect('all'); setCatExpanded(false); }}
                 >
                   {t('pos:terminal.categoryAll', 'All')}
                 </CategoryTab>
@@ -3405,23 +3445,33 @@ const POSTerminalPage: React.FC = () => {
                 <CategoryTab
                   key={category.id}
                   active={selectedCategory === category.id && !isSearchMode}
-                  onClick={() => handleCategorySelect(category.id)}
+                  onClick={() => { handleCategorySelect(category.id); setCatExpanded(false); }}
                 >
                   {category.emoji} {category.name}
                 </CategoryTab>
               ))}
             </CategoryTabs>
-            {catPage.total > 1 && (
-              <>
-                <CategoryPageBtn
-                  type="button"
-                  onClick={() => scrollCatPage(1)}
-                  disabled={catPage.cur >= catPage.total}
-                  title={t('pos:terminal.nextCategories', { defaultValue: 'More categories' })}
-                  aria-label="More categories"
-                >›</CategoryPageBtn>
-                <CategoryPageInd>{catPage.cur}/{catPage.total}</CategoryPageInd>
-              </>
+            {!catExpanded && catPage.total > 1 && (
+              <CategoryPageBtn
+                type="button"
+                onClick={() => scrollCatPage(1)}
+                disabled={catPage.cur >= catPage.total}
+                title={t('pos:terminal.nextCategories', { defaultValue: 'More categories' })}
+                aria-label="More categories"
+              >›</CategoryPageBtn>
+            )}
+            {(catExpanded || catPage.total > 1) && (
+              <CategoryAllBtn
+                type="button"
+                onClick={() => setCatExpanded(v => !v)}
+                title={catExpanded
+                  ? t('pos:terminal.collapseCategories', { defaultValue: 'Collapse' })
+                  : t('pos:terminal.allCategories', { defaultValue: 'Show all categories' })}
+                aria-label={catExpanded
+                  ? t('pos:terminal.collapseCategories', { defaultValue: 'Collapse' })
+                  : t('pos:terminal.allCategories', { defaultValue: 'Show all categories' })}
+                aria-expanded={catExpanded}
+              >{catExpanded ? '▴' : '▾'}</CategoryAllBtn>
             )}
           </CategoryPager>
           </CategoryBar>
@@ -3618,8 +3668,9 @@ const POSTerminalPage: React.FC = () => {
 
           {/* Table input shown for BOTH dine-in AND takeaway (5-4: 검색창과 한 행).
               2026-05-27: takeaway can also pin to a table — the shop wants the
-              order to land on that table's open bill. Guest count stays dine-in-only.
-              라벨은 공간 절약 위해 제거하고 placeholder/aria-label 로 의미 전달. */}
+              order to land on that table's open bill.
+              2026-06-29 (Irene): 수동 게스트수 셀렉터 제거 — 우리 솔루션에 불필요한 입력.
+              인원수가 필요한 외부 연동(IOI Mall noofpax)은 전송 시점에 테이블 좌석수로 산출. */}
           {(orderType === 'dine-in' || orderType === 'takeaway') && availableTables.length > 0 && (
             <TableNumberSelect
               aria-label="Table Number"
@@ -3630,19 +3681,6 @@ const POSTerminalPage: React.FC = () => {
               <option value="">{orderType === 'takeaway' ? 'No table' : 'Free Seating'}</option>
               {availableTables.map(table => (
                 <option key={table} value={table}>{`Table ${table}`}</option>
-              ))}
-            </TableNumberSelect>
-          )}
-          {orderType === 'dine-in' && tableNumber && availableTables.length > 0 && (
-            <TableNumberSelect
-              aria-label="Guests"
-              value={guestCount}
-              onChange={(e) => setGuestCount(Number(e.target.value))}
-              style={{ width: 90, flexShrink: 0 }}
-            >
-              <option value={0}>Guests</option>
-              {[1,2,3,4,5,6,7,8,9,10,12,15,20].map(n => (
-                <option key={n} value={n}>{`${n} guests`}</option>
               ))}
             </TableNumberSelect>
           )}
@@ -3705,7 +3743,7 @@ const POSTerminalPage: React.FC = () => {
                         type="button"
                         onClick={() => { setMemoModalItemId(item.id); setMemoDraft(item.special_instructions || ''); }}
                         style={{
-                          marginTop: 6, minHeight: 36, width: '100%', maxWidth: 280, boxSizing: 'border-box',
+                          marginTop: 8, marginBottom: 4, minHeight: 36, width: '100%', maxWidth: 280, boxSizing: 'border-box',
                           padding: '8px 10px', textAlign: 'left', cursor: 'pointer', borderRadius: 6,
                           fontSize: 13, fontWeight: item.special_instructions ? 600 : 500,
                           background: item.special_instructions ? 'var(--pos-brand-tint, #EDE9FE)' : 'transparent',
@@ -3795,11 +3833,14 @@ const POSTerminalPage: React.FC = () => {
 
               {/* 2026-06-26 (#11 리마크): 주문 전체 메모. 빠른선택 칩 + 자유입력(자동저장).
                   품목별 메모와 별개. 터치 타겟 44px, 흰 입력 배경, POS 토큰. */}
-              <div style={{ marginTop: 12 }}>
-                {!showRemarkBox && !orderRemark ? (
+              {/* 2026-06-29 (Irene): 전체주문 메모 = 아이템 메모와 동일하게 버튼 → 팝업+온스크린 키보드.
+                  (인라인 입력 폐지) 저장된 메모는 표시 + 탭하면 같은 팝업으로 수정.
+                  좌우 16px 패딩 = OrderSummary/DiscountSection 과 정렬(패널 끝에 안 들러붙게). */}
+              <div style={{ padding: '0 16px', marginTop: 14, marginBottom: 4 }}>
+                {!orderRemark ? (
                   <button
                     type="button"
-                    onClick={() => setShowRemarkBox(true)}
+                    onClick={() => { setMemoDraft(''); setMemoModalOrder(true); }}
                     style={{
                       width: '100%', minHeight: 44, padding: '0 14px', borderRadius: 10, cursor: 'pointer',
                       background: 'var(--pos-surface-2, #F8FAFC)', color: 'var(--pos-text-muted, #64748B)',
@@ -3818,77 +3859,27 @@ const POSTerminalPage: React.FC = () => {
                       <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--pos-text, #0F172A)' }}>
                         {t('pos:pOSTerminalPage.orderNote', 'Order note')}
                       </span>
-                      {orderRemark && (
-                        <button
-                          type="button"
-                          onClick={() => setOrderRemark('')}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--pos-text-muted, #64748B)', padding: 4 }}
-                        >
-                          {t('common:clear', 'Clear')}
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => setOrderRemark('')}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--pos-text-muted, #64748B)', padding: 4 }}
+                      >
+                        {t('common:clear', 'Clear')}
+                      </button>
                     </div>
-                    {/* #11 리마크 — 입력란에 타이핑하면 프리셋 + 이전에 쓴 리마크가 검색돼 선택(자동완성).
-                        칩 나열 대신 검색식. 자유입력도 그대로 가능. (주소 State/City 검색입력과 동일 철학) */}
-                    <div style={{ position: 'relative' }}>
-                      <input
-                        type="text"
-                        value={orderRemark}
-                        onChange={(e) => setOrderRemark(e.target.value)}
-                        onFocus={() => setRemarkFocused(true)}
-                        onBlur={() => setTimeout(() => setRemarkFocused(false), 180)}
-                        placeholder={t('pos:pOSTerminalPage.orderNotePlaceholder', 'Type to search notes — e.g. No rice, allergy, birthday…') as string}
-                        maxLength={500}
-                        style={{
-                          width: '100%', minHeight: 48, padding: '12px 14px',
-                          borderRadius: 8, border: '1px solid var(--pos-border, #E2E8F0)',
-                          background: '#fff', color: 'var(--pos-text, #0F172A)', fontSize: 14,
-                          fontFamily: 'inherit', boxSizing: 'border-box',
-                        }}
-                      />
-                      {remarkFocused && (() => {
-                        const parts = orderRemark.split(',').map(s => s.trim());
-                        const activeTerm = (parts[parts.length - 1] || '').toLowerCase();
-                        const used = new Set(parts.filter(Boolean).map(s => s.toLowerCase()));
-                        const pool = [...REMARK_PRESETS, ...remarkHistory]
-                          .filter((v, i, a) => a.findIndex(x => x.toLowerCase() === v.toLowerCase()) === i);
-                        const matches = pool.filter(s => !used.has(s.toLowerCase()) && (activeTerm === '' || s.toLowerCase().includes(activeTerm))).slice(0, 8);
-                        if (!matches.length) return null;
-                        return (
-                          <div style={{
-                            position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 30,
-                            background: '#fff', border: '1px solid var(--pos-border, #E2E8F0)', borderRadius: 10,
-                            boxShadow: '0 8px 24px rgba(15,23,42,0.12)', overflow: 'hidden', maxHeight: 264, overflowY: 'auto',
-                          }}>
-                            {matches.map((s) => {
-                              const isHistory = !REMARK_PRESETS.some(p => p.toLowerCase() === s.toLowerCase());
-                              return (
-                                <button
-                                  key={s}
-                                  type="button"
-                                  onMouseDown={(e) => e.preventDefault()}
-                                  onClick={() => setOrderRemark(() => {
-                                    const ps = orderRemark.split(',').map(x => x.trim());
-                                    ps[ps.length - 1] = s;
-                                    return ps.filter(Boolean).join(', ');
-                                  })}
-                                  style={{
-                                    width: '100%', minHeight: 44, padding: '0 14px', cursor: 'pointer', textAlign: 'left',
-                                    background: '#fff', border: 'none', borderBottom: '1px solid var(--pos-surface-2, #F1F5F9)',
-                                    color: 'var(--pos-text, #0F172A)', fontSize: 14, fontWeight: 500,
-                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
-                                    WebkitTapHighlightColor: 'transparent',
-                                  }}
-                                >
-                                  <span>{s}</span>
-                                  {isHistory && <span style={{ fontSize: 11, color: 'var(--pos-text-muted, #94A3B8)' }}>{t('pos:pOSTerminalPage.recentNote', 'recent')}</span>}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        );
-                      })()}
-                    </div>
+                    {/* 저장된 메모 — 탭하면 동일 팝업(키보드)으로 수정 */}
+                    <button
+                      type="button"
+                      onClick={() => { setMemoDraft(orderRemark); setMemoModalOrder(true); }}
+                      style={{
+                        width: '100%', minHeight: 48, padding: '12px 14px', textAlign: 'left', cursor: 'pointer',
+                        borderRadius: 8, border: '1px solid var(--pos-border, #E2E8F0)',
+                        background: '#fff', color: 'var(--pos-text, #0F172A)', fontSize: 14,
+                        fontFamily: 'inherit', boxSizing: 'border-box', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                      }}
+                    >
+                      {orderRemark}
+                    </button>
                   </div>
                 )}
               </div>
@@ -4122,15 +4113,30 @@ const POSTerminalPage: React.FC = () => {
       </MainLayout>
 
 
-      {/* 2026-06-28 (4-1, Irene): 품목별 메모 팝업 + 온스크린 키보드 (터치 POS). 명시 저장. */}
-      {memoModalItemId && (() => {
-        const memoItem = orderItems.find(o => o.id === memoModalItemId);
-        const closeMemo = () => { setMemoModalItemId(null); setMemoDraft(''); };
+      {/* 2026-06-28 (4-1, Irene): 품목별 메모 팝업 + 온스크린 키보드 (터치 POS). 명시 저장.
+          2026-06-29 (Irene): 같은 팝업을 전체주문 메모(order mode)에도 재사용. */}
+      {(memoModalItemId || memoModalOrder) && (() => {
+        const isOrder = memoModalOrder;
+        const memoItem = !isOrder ? orderItems.find(o => o.id === memoModalItemId) : null;
+        const closeMemo = () => { setMemoModalItemId(null); setMemoModalOrder(false); setMemoDraft(''); };
+        // order mode 빠른칩 = 프리셋 + 이전에 쓴 리마크(중복 제거, 최대 8). item mode = 자주 쓰는 품목 메모.
+        const chips = isOrder
+          ? [...REMARK_PRESETS, ...remarkHistory]
+              .filter((v, i, a) => a.findIndex(x => x.toLowerCase() === v.toLowerCase()) === i)
+              .slice(0, 8)
+          : [
+              t('pos:pOSTerminalPage.noteNoOnion', { defaultValue: 'No onion' }),
+              t('pos:pOSTerminalPage.noteLessSpicy', { defaultValue: 'Less spicy' }),
+              t('pos:pOSTerminalPage.noteExtraSpicy', { defaultValue: 'Extra spicy' }),
+              t('pos:pOSTerminalPage.noteNoVeg', { defaultValue: 'No veg' }),
+            ];
         return (
           <UIModal
             isOpen={true}
             onClose={closeMemo}
-            title={t('pos:pOSTerminalPage.itemNoteTitle', { defaultValue: 'Item note' })}
+            title={isOrder
+              ? t('pos:pOSTerminalPage.orderNote', { defaultValue: 'Order note' })
+              : t('pos:pOSTerminalPage.itemNoteTitle', { defaultValue: 'Item note' })}
             size="large"
             footer={<>
               <UIModalButton variant="secondary" onClick={closeMemo}>{t('common:cancel', { defaultValue: 'Cancel' })}</UIModalButton>
@@ -4149,21 +4155,19 @@ const POSTerminalPage: React.FC = () => {
               onChange={(e) => setMemoDraft(e.target.value)}
               autoFocus
               rows={2}
-              placeholder={t('pos:pOSTerminalPage.itemNotePlaceholder', { defaultValue: 'Item note (e.g. no onion)' })}
+              maxLength={500}
+              placeholder={isOrder
+                ? t('pos:pOSTerminalPage.orderNotePlaceholder', { defaultValue: 'Order note — e.g. allergy, birthday…' })
+                : t('pos:pOSTerminalPage.itemNotePlaceholder', { defaultValue: 'Item note (e.g. no onion)' })}
               style={{
                 width: '100%', boxSizing: 'border-box', minHeight: 56, padding: '12px 14px', marginBottom: 12,
                 borderRadius: 8, border: '1px solid #C7CED6', background: '#FFFFFF', color: '#0A2540',
                 fontSize: 16, lineHeight: 1.4, resize: 'vertical', fontFamily: 'inherit'
               }}
             />
-            {/* 빠른 선택 — 자주 쓰는 메모(타이핑 줄이기) */}
+            {/* 빠른 선택 — 자주 쓰는 메모(타이핑 줄이기). order mode = 프리셋+이전 리마크. */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-              {[
-                t('pos:pOSTerminalPage.noteNoOnion', { defaultValue: 'No onion' }),
-                t('pos:pOSTerminalPage.noteLessSpicy', { defaultValue: 'Less spicy' }),
-                t('pos:pOSTerminalPage.noteExtraSpicy', { defaultValue: 'Extra spicy' }),
-                t('pos:pOSTerminalPage.noteNoVeg', { defaultValue: 'No veg' }),
-              ].map((chip, i) => (
+              {chips.map((chip, i) => (
                 <button key={i} type="button"
                   onClick={() => setMemoDraft(d => d ? `${d}, ${chip}` : chip)}
                   style={{ padding: '8px 12px', fontSize: 13, fontWeight: 500, cursor: 'pointer', borderRadius: 16, border: '1px solid #C7CED6', background: '#F4F6F9', color: '#0A2540' }}>

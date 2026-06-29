@@ -1,9 +1,80 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-06-29 #2 (오프라인 degrade=메인POS전용+보조기기 전체잠금 — dev 검증완료·미배포. Irene 매장에서 배포)
-**버전:** **v3.64 운영 배포 완료** (+ 스탭밀 수량별 이름 + 반응형 헤더 = 추가 배포 LIVE). SW 4.35(오프라인캐시).
-**작업 상태:** **오프라인 모드(POS1 허브) 1~6단계 + degrade 코드 완료(dev, 미배포)** — 접수→로컬 주방인쇄→복구 동기화(무손실·무중복) + 오프라인 시 메인POS 1대 전용·보조기기 전체잠금·메인POS 모든인쇄 안내(비상모드 재사용)·미지정 매장 자가승격 탈출구. 전 경로 구현·검증(8/8). **잔여=6단계 실프린터 종이확인(Irene 매장) + 7단계 데모 전사이클 + 4단계 오프라인 주문'편집'액션(비핵심).** + 별건 KDS per-item 되돌리기/프린트 미확정 표시(검증완료, 실프린터 대기).
+**마지막 업데이트:** 2026-06-29 #3 (thefire01 라이브 인쇄 종일 대응 — **자동인쇄 전부 해결·운영 배포 완료**)
+**버전:** SW **4.45 운영 배포**(통합티켓 통합수정 완료). Irene 확인 "자동인쇄 해결됐어".
+
+### ✅ 자동인쇄 종결 (2026-06-29 #3) — 통합수정 완료, 모든 매장 적용
+> 신규/추가/이동/취소/머지/아이템취소 **전부 통합 1장 + 스테이션 회차별**, 중복·누락·늦음 0. **매장 분기 없음**(주문데이터/설정 기준)=모든 매장 동일. 실프린터 확인됨 → print-guard **--bless 완료**.
+- **단일 진실 문서:** `docs/PRINT_RULES_MATRIX.md §8.8`(통합티켓 4규칙). **히스토리·진단절차:** `docs/PRINT_DEBUG_HISTORY_2026-06-29.md`. 메모리 [[reference_consolidated_ticket_unified_2026_06_29]].
+- **최종 수정(SW4.40→4.45):** ①세 폴러경로 하트비트(재무장 중복0) ②통합 회차당 1장(bi===0만) ③**통합 early-stamp 제거→발송직전 ATOMIC claim**(orphan 근본수정) ④추가주문 통합내용=kitchenItemsRaw(추가품목 전체).
+- **잔여(선택):** 진단 print-trace 로그(orders-crud/consolidated-print/billPrint)는 **다음 인쇄진단 도구로 보존 권장**(제거하려면 별도). 
+- **다음 섹션 대기:** (a) 모바일 QR 테이블 리셋 [[project_mobile_qr_table_reset]] — 진행 예정. (b) ✅ **POS 카테고리 네비게이션 = "포스 메뉴 탭" 정체였음** — 아래 완료.
+
+### ✅ POS 카테고리 재구성 — 인라인 완전펼침(2차 정정, Irene) (2026-06-29 #4, dev 검증·미배포)
+> 1차(페이지번호+▦팝업 오버레이) → Irene "팝업 아니라 제대로 완전 펼쳐지는 기능 / 페이지번호 없애, 이상해". **2차 정정**: 페이지번호·팝업 전부 제거. 기본=한 줄(스와이프+‹ ›), `▾` 토글=그 자리에서 전체를 여러 줄 wrap 으로 **인라인 완전 펼침**(메뉴 밀어냄, `▴`로 접음), 카테고리 선택 시 자동 접힘. createPortal/CatSheet/페이지번호 styled 전부 삭제. CategoryTabs `$expanded` prop. 검증 Playwright **8/8**(페이지번호0·인라인토글·팝업아님(dialog0)·1→2줄 펼침·접기·게스트제거·메모패딩). i18n collapseCategories 4언어.
+
+### ✅ POS 메모 박스 여백 + 게스트 셀렉터 제거 (2026-06-29 #4, dev 검증·미배포, Irene)
+- **메모 여백**: 주문메모 박스가 ScrollableOrderContent(좌우패딩0)에서 패널 끝에 들러붙던 것 → `padding:0 16px`(OrderSummary/DiscountSection 정렬) + 상하 마진. 아이템 Add note 버튼도 상하 마진 추가. (검증 paddingLeft=16px)
+- **게스트수 수동 셀렉터 제거**: "우리 솔루션에 불필요, API 때문에 안 만든다"(Irene). 예약 체크인 자동 prefill·payload guest_count 경로는 유지(자동만). **IOI Mall noofpax = 전송 시점에 테이블 좌석수로 산출**(POS에 plumbing 안 만듦) → [[project_ioi_mall_sales_api]] 구현 시 반영.
+
+### (1차, 정정됨 ↓) POS 카테고리 네비게이션 재구성 (2026-06-29 #4)
+> 6/28 dev 에 들어간 페이지네이션(한 줄 + ‹ › + 평문 "2/3")을 세계 수준으로 재구성. Irene 추가요청 = **카테고리 풀로 보기 + 페이지번호 클릭**. ("(b) 포스 메뉴 탭 — 기록 없음" 으로 빠졌던 그 항목 = 이것.)
+- **파일:** `POSTerminalPage.tsx`(보호파일, **레이아웃/카테고리 UI만 — 인쇄 라인 0-diff 증명**) + `public/locales/{en,ko,zh,ms}/pos.json`(terminal.allCategories 1키).
+- **구현 3가지:** ①이산 페이지네이션(칩 offsetLeft 측정→칩 잘림0, scrollLeft 추정 폐기) ②클릭 가능 페이지번호 `① ②`(active 브랜드 틴트, 탭→스냅 스크롤; 마지막페이지 maxScroll 클램프 대응=최근접 시작점 판정) ③`▦ 전체` 오버레이(createPortal body, 카테고리 바 아래 드롭다운, wrap 그리드, 선택/바깥클릭 닫힘 — 메뉴 안 가림. 예전 inline 펼치기 가림 문제 해결).
+- **검증:** Playwright 실브라우저 **6/6**(POS mount crash0·err0 / 페이지번호 클릭 active / ▦ 오버레이 open·select·click-outside close, 스크린샷 확인) · build green 신규경고0 · 인쇄코드 0줄(diff print/QZ/RawBT/claim 0) · design-guard 신규0 · i18n 4언어.
+- **별건 수정:** build:dev 인쇄 회귀 3건 실패 = 무관한 **rid5 테스트 데이터 오염**(E2E 잔재 카테고리 8개 station26 매핑→"Uncategorized→null" 불변식 깸) 정리 → 회귀 44/44 복원(dev DB, 운영무관).
+- **print-guard:** POSTerminalPage 지문 변경 떠있음(의도, 레이아웃만) — **bless 안 함**, 실프린터 확인 배치 때 일괄(6/28 미검증 핫픽스 묶임 주의).
+- **잔여:** 실프린터 확인 불요(인쇄 무관 UI). 운영 배포는 /배포 + 기존 대기분(인쇄 4.45 등)과 함께 SW bump.
+
+### ✅ 모바일 QR 테이블 리셋 (2026-06-29 #4, dev 검증·미배포) — [[project_mobile_qr_table_reset]]
+- 신규 `mobile/utils/tableSession.ts`: `getActiveTable`(sessionStorage.qrScanTable → localStorage.tableNumber) / `setActiveTable`(둘 다 기록) / `clearActiveTable`. **per-tab 스캔 권위**(다른 탭이 못 덮음) + 영속 폴백(탭 eviction 복구, 기존 [[reference_mobile_order_session_storage]] 보존).
+- OrderTypePage QR effect: `?table=`이 캐시와 다르면 `clearCart()` + 새 값 고정(**스캔=절대 리셋**). 3개 write 사이트 + Payment/Menu/MobileLayout read 를 helper 로 일관.
+- 검증 Playwright **6/6**(스캔 핀·mount clean·차등스캔 카트리셋·재핀·크로스탭 clobber 방어 T2·동일테이블 false-reset 없음) + hydration0·신규경고0·보호파일 무접촉·design0.
+
+### ✅ POS 전체주문 메모 = 아이템 메모처럼 팝업+온스크린 키보드 (2026-06-29 #4, dev 검증·미배포) — Irene 지시
+- **질문 답(검증완료): 아이템 메모(special_instructions)+전체주문 메모(notes) 둘 다 오더티켓에 들어감.** billPrint RawBT: 아이템마다 굵게 `** <메모>`(2139), 주문메모 `** SPECIAL NOTES **` 블록(2164). HTML pixel 경로도 동일(special 1587 / notesHtml 1699·2474). **API 왕복 PASS**(item special_instructions + order notes persist, demo rid38 order 6299 생성→조회→삭제).
+- 구현: 기존 아이템 메모 모달(UIModal+textarea+OnScreenKeyboard+saveMemoModal)을 **order mode 겸용**으로 일반화(`memoModalOrder`). 인라인 입력 폐지→버튼/저장값 탭 시 동일 팝업, order chips=프리셋+이전리마크. 미사용 `showRemarkBox`/`remarkFocused` 정리. notes payload(2572/2821) 무변경.
+- POSTerminalPage 보호파일 — **인쇄 라인 0-diff 증명**(diff에 print/QZ/billPrint 키워드 0). 검증 Playwright **5/5**(아이템담기→Add order note→팝업 textarea+제목+키보드26키→저장 표시→탭 재오픈 prefill) + mount clean·hydration0·신규경고0·design0·i18n Errors0·health106/107(=의도 print-guard).
+- **print-guard:** POSTerminalPage 누적 변경(카테고리 nav + 메모 팝업, 둘 다 레이아웃·인쇄0줄) — **bless 안 함**, 실프린터 확인 배치 때 일괄(6/28 미검증 핫픽스 묶임 주의).
+
+### (종결됨 ↓ 이전 #3 전반 기록 — 참고용)
+**(과거)**
+
+### ▶▶ thefire01 인쇄 라이브 대응 (2026-06-29 #3) — 종일 세션, 요청·상태 전부 ↓
+> 매장 thefire01(rid16) 라이브 인쇄 종일 디버그. Irene 매장에서 직접 테스트하며 진행. **인쇄=생명선, 추측 금지.** 핵심 메모리 [[reference_print_heartbeat_dup_fix]] [[reference_v364_no_clean_commit]].
+
+**Irene 요청사항 + 상태 (이 섹션 = 다음 세션 최우선 핸드오프):**
+1. **주방 인쇄 중복(BAR 2장·KQ +1)** → 근본=느린인쇄 vs 10초 재무장. **capped 하트비트(4초갱신,cap)+원자성 행잠금 스탬프** → **운영 배포완료(SW4.37)**. POS1·노트북·모바일 정상 1장 확인. (cap은 90초로 늘림=dev)
+2. **통합티켓 "POS1 먼저"(다이렉트 빨리)** → 시도했으나 **재발행(이동/취소) 통합 깨짐 → 되돌림(6/27 단일 sendUnifiedTickets 유지)**. POS1-먼저는 **금지**(메모리에 박음). 통합 순서는 스테이션 먼저→통합 그대로.
+3. **통합티켓 = 전체주문 한 장 + 상황별 취소줄** (이동/머지/아이템취소/주문취소 — 안내·스테이션 라운드별 **무변경**, 품목만 전체) → **dev 구현·검증완료(SW4.38), 미배포.** billPrint sendUnifiedTickets `fullOrderItems` + 하이브리드/폴러가 재발행시만 구성(이동/머지=줄없음, 주문취소=전체줄, 아이템취소=취소품목만 줄, type별 _voided). **실프린터 종이 확인 필요.**
+4. **추가주문 신규처럼 빠르게/안정** → 하트비트 cap 40→**90초**(느린인쇄 끝까지 커버, 재시도폭주0). QZ keepalive 코드 정상 → **느림 상당부분 BAR 프린터 flaky 하드웨어**(첫라운드 BAR 5초 vs 추가 BAR 32초). dev, 미배포.
+5. **옛 미인쇄 큐 정리** → 운영 DB **적용완료**(6/25 11건 needs_print=false, oldest-20 윈도우 막힘 해소).
+6. **자동 업데이트 안 됨(기기가 새 코드 안 받음)** → 서버 nginx no-cache·Cloudflare BYPASS·index.tsx 60초 reg.update+controllerchange reload **다 정상**인데 기기가 옛 번들 오래 붙듦. **결국 적용됨**(heartbeat 로그로 확인). 캐시 지우라 금지(Irene: 판매 못함). **후속 후보=포커스시 즉시 update**. + 진단용 [print-trace] heartbeat 로그 orders-crud에 임시 추가(운영 배포됨, 나중 제거).
+7. **모바일 테이블번호 A-4→A22** → 원인=**다중 탭 공유 localStorage('tableNumber') 덮어쓰기**(OrderTypePage). **미수정**(별도, sessionStorage는 탭종료 휘발이라 안됨→QR URL 기준 고정 필요). 메모리 [[reference_mobile_order_session_storage]].
+8. **KDS 미인쇄 개별표시 복원 + 재인쇄/자동트리거** → Irene "**중요하지 않아, 인쇄 먼저**" → **보류**. (팝업은 현재가 좋음 유지. 개별 주문/아이템뷰 미인쇄 배지만 빠짐.)
+
+**배포 상태:** 운영=SW4.37(1·5 + 6진단로그). **dev 미배포=SW4.38(3·4)** — /검증 통과(hydration0·timezone0·build green·health106/107=의도가드·mount전페이지클린). **인쇄 내용변경이라 실프린터 확인 후 print-guard --bless.**
+**배포완료(15:53):** SW4.38 운영 라이브(통합 전체주문+취소줄, 하트비트90초). 라이브 사이트 serving 확인(Cloudflare BYPASS, fullOrderItems 번들).
+
+### ★★★ 2026-06-29 #3 후반 진행 — 인쇄 라이브 (mobile 해결, 마지막 구멍=MainLayout 하트비트)
+- **상태(Irene 확인):** 신규·취소·POS1 이동 정상 / **모바일 신규+추가 해결됨** / SW 4.39 운영(통합 fullOrderItems + 하트비트90초 + 진단 print-debug 로그).
+- **★ 남은 마지막 구멍 = 신규주문 간헐 2장 중복:** 인쇄 폴러가 **2개**(`useAutoPrintPoller`(풀스크린) + `MainLayout._printPollFn`(앱셸, MainLayout.tsx:1224, print-claim 1368/printKitchenTicketViaRawBT 1375)). 하트비트를 **앞 1개에만** 넣고 **MainLayout 폴러엔 안 넣음** → 그 폴러가 인쇄 시 하트비트0 → 느린BAR중 재무장→2장(order 14806 실증: claim~16:27:10, heartbeat0, re-arm 16:27:20, BAR 16:27:21+16:27:24 중복). **수정=MainLayout._printPollFn 의 `if(_claimed)` 블록에 useAutoPrintPoller 와 동일 capped 하트비트(setInterval 4s, cap 90s, print-heartbeat) 추가.** Irene 승인 대기.
+- **Irene 하이브리드 규칙(확정):** 프린터 연결된 POS(POS1 등) = 다이렉트로 자기 프린터에 **1번씩** / 다른 기기 = 클라우드(POS1 폴러 경유). 중복=ONCE 위반, 통합누락=POS1 다이렉트가 통합도 찍어야.
+- **진단 로그(임시, 운영 4.39):** orders-crud `/print-debug` 엔드포인트 + billPrint sendUnifiedTickets 통합발송 ok/printer 보고 + heartbeat affected 로그. **다 제거 대상**(원인 다 잡은 뒤). CLIENT 로그로 "통합=POS-80C ok=true items=N" 확인됨(통합 발송 자체는 성공).
+- print-guard 변경누적(billPrint/poller/orders-crud/KitchenDisplay) — 실프린터 확인 후 일괄 --bless.
+
+### (참고, 일부 해소됨) +Round 초기 진단
+> **제 4.38 변경과 무관함 검증완료**: add-items(orders-crud 455-467)는 needs_print+consolidated_printed_at=null만 set, **pending_reprint 없음** → fullOrderItems(재발행 전용) 안 걸림. +Round 통합은 종전 "추가분만" 로직 그대로. 즉 아래는 **별개/기존 문제**.
+- **POS1 +Round → 통합오더티켓 안나옴**: 서버는 consolidated claim 함(예 order 14803 A-8, grp1=Kiwi 추가, consolidated_printed_at=15:55:16 set, BAR station-printed 15:55:16)인데 **종이 미전달**(claim만, 물리인쇄 실패 추정 = 통합 claim-without-paper / 또는 다중창 옛코드).
+- **모바일 +Round → 아무 오더티켓도 안나옴**: POS1 폴러가 모바일 추가분을 인쇄 안 함(픽업/처리 문제 추정).
+- **추정 원인 후보**: ①통합 claim 성공인데 QZ 물리인쇄 실패(POS-80C 미도달) ②POS1 다중 창 중 일부 옛코드 폴러 ③모바일 +Round 가 pending-print/폴러 경로에서 빠짐. **추측 금지 — print-trace + consolidated-print claim 로그 + 실기기 버전(heartbeat 로그)로 실측 후 고칠 것.**
+- **주의: 신규주문은 잘 됨(POS1/노트북/모바일 1장 정상). +Round만 문제. 신규 안 깨게 +Round 경로만.**
+
+**그 다음:** Table A-2 통합 전체주문/취소줄 실프린터 확인→bless / 7(모바일 테이블번호) / 6(자동update 포커스시 즉시 보강) / 진단 heartbeat 로그 제거.
+
+### (이전) 진행 중인 작업
+- 오프라인 모드(POS1 허브) 1~6단계 + degrade dev완료·미배포. 별건 KDS per-item 되돌리기/프린트 미확정. (인쇄 라이브대응에 묻힘 — 위 섹션 우선)
 
 ### 진행 중인 작업
 - 없음 (오프라인 degrade까지 dev 완료·검증·미배포). **Irene 이동 중 — 매장에서 직접 배포 예정.**

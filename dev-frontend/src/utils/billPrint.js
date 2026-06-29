@@ -4143,14 +4143,25 @@ function sendUnifiedTickets(orderData, storeInfo, settings, opts) {
         // (__consolidatedClaim 없음)는 항상 발행(무영향). 주방/스테이션 즉시인쇄는 이미 위에서 완료 → 속도 무영향.
         // 클레임 실패/네트워크오류는 분실 방지 위해 그냥 발행(기존 동작, 회귀 0).
         const _cc = (!voided && orderData && orderData.__consolidatedClaim) || null;
-        if (_cc && _cc.orderId && _cc.token) {
+        // 2026-06-29 (Irene "통합 다이렉트 1번" + "테이블이동 통합 2장"):
+        //  · skip=하이브리드가 통합 ATOMIC 선점에서 졌음(폴러가 먼저 win) → 여기선 발행 안 함(폴러가 찍음).
+        //    이게 없으면 preStamped 무조건 발행이 폴러 발행과 겹쳐 2장. (취소 voided 는 _cc=null 이라 무관·항상 발행)
+        //  · preStamped=하이브리드가 선점 win → 재claim 없이 다이렉트 발행(자기 stamp 에 막히는 자기충돌 회피).
+        //  · 폴러(preStamped/skip 없음)=종전대로 claim 검사 → 하이브리드 선점분이면 win 실패→skip.
+        if (_cc && _cc.skip) return; // 하이브리드 선점 패배 → 폴러가 발행
+        if (_cc && _cc.orderId && _cc.token && !_cc.preStamped) {
           try {
             const _r = await fetch(`/api/consolidated-print/${_cc.orderId}/claim`, { method: 'PATCH', headers: { Authorization: `Bearer ${_cc.token}` } });
             const _j = await _r.json().catch(() => null);
             if (_j && _j.claimed === false) return; // 이미 발행됨 → 중복 skip
           } catch (e) { /* 발행 진행 */ }
         }
-        const base = voided ? buildVoidTicketData(orderData, reason) : orderData;
+        // 2026-06-29 (Irene): 통합티켓(카운터 사본)은 "전체 주문 한 장"을 보여준다. 재발행(이동/머지/취소)
+        // 에서 호출부가 orderData.fullOrderItems(전체 order_items + 취소품목 줄긋기)를 넘기면 그걸로 채운다.
+        // 안내(noticeHeader)·취소줄(voided)·라벨은 상황별 그대로 — 품목 목록만 전체주문으로(스테이션 발송 무영향).
+        const _consOrderData = (orderData && Array.isArray(orderData.fullOrderItems) && orderData.fullOrderItems.length > 0)
+          ? { ...orderData, items: orderData.fullOrderItems } : orderData;
+        const base = voided ? buildVoidTicketData(_consOrderData, reason) : _consOrderData;
         // Tag each item with its station name so the counter copy shows inline
         // [KQ1] [KQ2] [BARPR] next to each item — cashier verifies routing at a glance.
         const tagged = tagTicketWithStations(base, 'COUNTER', settings);
@@ -4178,12 +4189,16 @@ function sendUnifiedTickets(orderData, storeInfo, settings, opts) {
           const ticket = { ...scoped, groupLabel: label, printedAt: label, noStationBox: true, showItemStations: true };
           const billAddr = tgt.address;
           const isLanIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(billAddr || '');
+          // 진단(임시): 통합 발송 결과를 서버로 보고(발송 동작 무변경). +Round 통합 미인쇄 실측.
+          const _dbgTok = (orderData && orderData.__consolidatedClaim && orderData.__consolidatedClaim.token) || null;
+          const _itemCnt = (ticket.items || []).length;
+          const _rep = (ok, info) => { if (!_dbgTok) return; try { fetch('/api/orders/print-debug', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${_dbgTok}` }, body: JSON.stringify({ type: 'consolidated', orderNumber: orderData.orderNumber, printer: billAddr, ok, info: (info||'') + ' items=' + _itemCnt }) }).catch(() => {}); } catch {} };
           if (isLanIP) {
             sendViaQZTray(generateKitchenTicketContent(ticket, storeInfo), billAddr)
-              .catch(e => console.warn('Unified ticket print failed:', e && e.message));
+              .then(() => _rep(true)).catch(e => { console.warn('Unified ticket print failed:', e && e.message); _rep(false, e && e.message); });
           } else {
             sendHTMLViaQZTray(generateHTMLKitchenTicket(ticket, storeInfo), billAddr)
-              .catch(e => console.warn('Unified ticket print failed:', e && e.message));
+              .then(() => _rep(true)).catch(e => { console.warn('Unified ticket print failed:', e && e.message); _rep(false, e && e.message); });
           }
         });
       } catch (e) {

@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { useMobileOrder } from '../../contexts/MobileOrderContext';
 import { setupMobileInputHandlers } from '../../utils/mobileInputFix';
+import { getActiveTable } from '../../utils/tableSession';
 
 const LayoutContainer = styled.div`
   min-height: 100vh;
@@ -325,9 +326,10 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
   // Get slug from currentStore or sessionStorage
   const slug = currentStore?.slug || sessionStorage.getItem('restaurantSlug') || 'default';
 
-  // Get table number from localStorage to maintain it across navigation AND across
-  // mobile tab eviction (cart is localStorage too — keep them on the same store).
-  const tableNumber = localStorage.getItem('tableNumber');
+  // Table number: prefer this tab's scan (sessionStorage) over the durable value,
+  // falling back to localStorage so it survives mobile tab eviction (cart is
+  // localStorage too — keep them aligned). See utils/tableSession.
+  const tableNumber = getActiveTable();
 
   const handleNavigation = (path: string) => {
     // Home from bottom nav: explicitly show the order-type picker. Previously we

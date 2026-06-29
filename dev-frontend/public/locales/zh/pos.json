@@ -42,6 +42,8 @@
   "pOSTerminalPage.discount": "折扣",
   "pOSTerminalPage.total": "总计",
   "terminal.categoryAll": "全部",
+  "terminal.allCategories": "显示全部分类",
+  "terminal.collapseCategories": "收起",
   "terminal.soldOut": "已售罄",
   "terminal.prevCategories": "上一组分类",
   "terminal.nextCategories": "更多分类",

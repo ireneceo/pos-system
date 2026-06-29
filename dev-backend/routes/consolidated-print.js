@@ -117,6 +117,8 @@ router.patch('/:id/claim', authenticateToken, async (req, res) => {
       { consolidated_printed_at: new Date() },
       { where: { id: o.id, consolidated_printed_at: null } }
     );
+    // 진단(임시, 2026-06-29 추가주문 통합 미인쇄): 통합 claim 시도 추적 — 누가 win/lose 하는지.
+    try { console.log(`[print-trace] consolidated-claim order=${o.id} rid=${o.restaurant_id} claimed=${affected > 0}`); } catch {}
     res.json({ success: true, claimed: affected > 0 });
   } catch (e) {
     console.error('[consolidated-print/claim] error:', e.message);

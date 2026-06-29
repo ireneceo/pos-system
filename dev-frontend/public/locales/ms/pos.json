@@ -42,6 +42,8 @@
   "pOSTerminalPage.discount": "Diskaun",
   "pOSTerminalPage.total": "Jumlah",
   "terminal.categoryAll": "Semua",
+  "terminal.allCategories": "Tunjuk semua kategori",
+  "terminal.collapseCategories": "Tutup",
   "terminal.soldOut": "Habis",
   "terminal.prevCategories": "Kategori sebelumnya",
   "terminal.nextCategories": "Lagi kategori",

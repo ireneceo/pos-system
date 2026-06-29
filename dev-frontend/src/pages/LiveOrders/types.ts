@@ -14,7 +14,7 @@ export interface DbOrder {
   order_type: 'dine_in' | 'takeaway' | 'pickup' | 'delivery';
   scheduled_pickup_time?: string | null;
   payment_method: string | null;
-  payment_status: 'pending' | 'completed' | 'failed' | 'payment_verification_pending' | 'paid';
+  payment_status: 'pending' | 'partial' | 'completed' | 'failed' | 'payment_verification_pending' | 'paid';
   kitchen_ready?: boolean;
   order_date: string;
   order_items: any;

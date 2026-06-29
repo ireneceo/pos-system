@@ -1324,7 +1324,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               cashierName: ord.source === 'mobile' ? 'Mobile Order' : 'POS'
             };
             // Bill — payment_status='completed' (모바일 QR 즉시 결제 / 결제 완료) + needs_bill 시
-            const _isPaid = ord.payment_status === 'completed' || ord.payment_status === 'partial';
+            const _isPaid = ord.payment_status === 'completed' || (ord.payment_status as string) === 'partial';
             const _h = { Authorization: `Bearer ${tok}` };
             let billOk = true, billPrinted = false, kitchenPrinted = false;
             if (_isPaid && ord.needs_bill && activeBill?.enabled && activeBill?.autoPrint) {
@@ -1370,6 +1370,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   _claimed = !!(_cj && _cj.claimed);
                 } catch (e: any) { _claimed = false; }
                 if (_claimed) {
+                  // 2026-06-29 (Irene): 이 폴러도 useAutoPrintPoller 와 동일 capped 하트비트. POS1 다이렉트(하이브리드)가
+                  // 찍은 주문이 느린 BAR 인쇄 중 재무장→이 폴러가 또 찍는 2장 방지. cap 90초(끊긴 기기는 정상 복구).
+                  let _mhb: any = null; const _mhbStart = Date.now();
+                  _mhb = setInterval(() => {
+                    if (Date.now() - _mhbStart > 90000) { if (_mhb) { clearInterval(_mhb); _mhb = null; } return; }
+                    fetch(`/api/orders/${ord.id}/print-heartbeat`, { method: 'PATCH', headers: _h }).catch(() => {});
+                  }, 4000);
                   const kitchenPrintData = { ...printData, items: kitchenItemsRaw.map(mapItem) };
                   let ok: any = true;
                   try { ok = await billPrintMod.printKitchenTicketViaRawBT(kitchenPrintData, printStoreInfo); }
@@ -1380,6 +1387,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   } else {
                     kitchenPrinted = true;
                   }
+                  if (_mhb) { clearInterval(_mhb); _mhb = null; }
                 }
                 // not claimed → another device already owns this ticket, skip silently
               } else if (_isBacklog) {

@@ -3001,6 +3001,38 @@ router.patch('/:id/print-rearm', authenticateToken, async (req, res) => {
   }
 });
 
+// 2026-06-29 (Irene, thefire01 BAR 2장): 인쇄 "진행 중" 하트비트. BAR 프린터처럼 첫 인쇄가
+// ~15초로 느린데 죽은-claim 복구(STALE_CLAIM_SEC=10초)가 인쇄 도중 재무장 → 폴러가 같은 BAR 를
+// 또 찍어 2장 나오던 근본. 인쇄 주체(하이브리드/폴러)가 인쇄 루프 동안 이 엔드포인트로 활성 claim 의
+// print_claimed_at 을 NOW 로 갱신 → 그 동안 재무장이 안 떠 중복 0. 단순 하트비트는 2026-06-26 에
+// hang 인쇄(끊긴 기기가 무한 갱신→복구불가)로 제거됐던 만큼, 프론트가 최대 ~40초까지만(cap) 보낸다
+// → 진짜 끊긴 기기는 cap 후 갱신이 끊겨 10초 뒤 정상 복구(분실 0). 활성 claim 만 갱신(이미 인쇄확인
+// /printed 로 print_claimed_at=NULL 됐거나 재무장된 주문은 건드리지 않음).
+router.patch('/:id/print-heartbeat', authenticateToken, async (req, res) => {
+  try {
+    const _hbRes = await Order.sequelize.query(
+      `UPDATE orders SET print_claimed_at = NOW()
+       WHERE id = :id AND restaurant_id = :rid AND needs_print = false AND print_claimed_at IS NOT NULL`,
+      { replacements: { id: req.params.id, rid: parseInt(req.user.restaurant_id) || -1 } }
+    );
+    // 진단(임시): 기기가 SW 4.37(하트비트) 로 도는지 + claim 갱신되는지 확인.
+    try { const _a = (_hbRes && _hbRes[0] && _hbRes[0].affectedRows); console.log(`[print-trace] heartbeat order=${req.params.id} rid=${parseInt(req.user.restaurant_id)} affected=${_a}`); } catch {}
+    res.json({ success: true });
+  } catch (e) {
+    console.error('[print-heartbeat] error:', e.message);
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// 진단(임시, 인쇄 무변경): 클라이언트가 실제 발송 결과를 서버 로그로 보고. +Round 통합/스테이션 미인쇄 원인 실측용.
+router.post('/print-debug', authenticateToken, async (req, res) => {
+  try {
+    const b = req.body || {};
+    console.log(`[print-trace] CLIENT type=${b.type} order=${b.orderNumber || b.orderId} rid=${parseInt(req.user.restaurant_id)} printer=${b.printer} ok=${b.ok} added=${b.added} info=${b.info || ''}`);
+    res.json({ success: true });
+  } catch (e) { res.status(200).json({ success: false }); }
+});
+
 // 2026-06-27 (Irene, thefire02 신규/추가 KQ 중복): 스테이션별 인쇄확인. 한 주방(KQ1/KQ2)이 찍히는
 // 즉시 "그 스테이션 품목만" printed_at 찍는다(needs_print/print_claimed_at 는 안 건드림 — 전체 인쇄는
 // 아직 진행 중, BAR 등 느린 스테이션 남음). 효과: BAR 가 hang 해 죽은-claim 복구(10초)가 재무장해도
@@ -3010,23 +3042,33 @@ router.patch('/:id/station-printed', authenticateToken, async (req, res) => {
   try {
     const stationId = req.body && req.body.stationId != null ? Number(req.body.stationId) : null;
     if (stationId == null || Number.isNaN(stationId)) return res.status(400).json({ success: false, message: 'stationId required' });
-    const o = await Order.findByPk(req.params.id);
-    if (!o) return res.status(404).json({ success: false, message: 'Order not found' });
-    if (req.user.role !== 'System Admin' && parseInt(req.user.restaurant_id) !== o.restaurant_id) {
-      return res.status(403).json({ success: false, message: 'Access denied' });
-    }
-    const items = Array.isArray(o.order_items)
-      ? o.order_items
-      : (typeof o.order_items === 'string' ? (() => { try { return JSON.parse(o.order_items); } catch { return []; } })() : []);
-    const now = new Date().toISOString();
-    let changed = false;
-    const stamped = items.map(it => {
-      if (it && !it.printed_at && Number(it.kitchen_station_id) === stationId) { changed = true; return { ...it, printed_at: now }; }
-      return it;
+    // 2026-06-29 (Irene, KQ 중복 근본수리): 스테이션별 printed_at 스탬프는 order_items
+    // 배열 전체를 read-modify-write 한다. 같은 주문의 여러 스테이션 스탬프(+ /printed)가
+    // fire-and-forget 로 동시에 오면 서로의 stamp 를 덮어써(lost update) "이미 찍은 스테이션"이
+    // 다시 안-찍힘으로 되살아나 → 죽은-claim 재무장 시 KQ 가 재인쇄(중복)됐다. 행 잠금
+    // 트랜잭션으로 직렬화 → 스탬프 분실 0 → 재무장은 정말 안 찍힌 스테이션(BAR)만 재시도.
+    // (인쇄 방식/라우팅/타이밍 무변경 — DB 일관성만 보강.)
+    let rid = null, changed = false;
+    let denied = false, notFound = false;
+    await Order.sequelize.transaction(async (t) => {
+      const o = await Order.findByPk(req.params.id, { lock: t.LOCK.UPDATE, transaction: t });
+      if (!o) { notFound = true; return; }
+      rid = o.restaurant_id;
+      if (req.user.role !== 'System Admin' && parseInt(req.user.restaurant_id) !== o.restaurant_id) { denied = true; return; }
+      const items = Array.isArray(o.order_items)
+        ? o.order_items
+        : (typeof o.order_items === 'string' ? (() => { try { return JSON.parse(o.order_items); } catch { return []; } })() : []);
+      const now = new Date().toISOString();
+      const stamped = items.map(it => {
+        if (it && !it.printed_at && Number(it.kitchen_station_id) === stationId) { changed = true; return { ...it, printed_at: now }; }
+        return it;
+      });
+      if (changed) await o.update({ order_items: stamped }, { transaction: t });
     });
-    if (changed) await o.update({ order_items: stamped });
+    if (notFound) return res.status(404).json({ success: false, message: 'Order not found' });
+    if (denied) return res.status(403).json({ success: false, message: 'Access denied' });
     // 인쇄 추적(검증 루트): 같은 주문·같은 station 이 두 번 찍히면 changed=true 한 번 + (재인쇄 시도)변화. 정상=station당 1회.
-    console.log(`[print-trace] station-printed order=${req.params.id} rid=${o.restaurant_id} station=${stationId} changed=${changed}`);
+    console.log(`[print-trace] station-printed order=${req.params.id} rid=${rid} station=${stationId} changed=${changed}`);
     res.json({ success: true, data: { stationId, changed } });
   } catch (e) {
     console.error('[station-printed] error:', e.message);
@@ -3036,34 +3078,39 @@ router.patch('/:id/station-printed', authenticateToken, async (req, res) => {
 
 router.patch('/:id/printed', authenticateToken, async (req, res) => {
   try {
-    const o = await Order.findByPk(req.params.id);
-    if (!o) return res.status(404).json({ success: false, message: 'Order not found' });
-    if (req.user.role !== 'System Admin' && parseInt(req.user.restaurant_id) !== o.restaurant_id) {
-      return res.status(403).json({ success: false, message: 'Access denied' });
-    }
     // 2026-05-29: stamp printed_at on every not-yet-printed item so the kitchen
     // auto-print history is persisted. pending-print's `kitchen_items` filters on
     // this flag, so a later +Round add reprints ONLY the new rows — already-sent
     // items are never re-emitted. Both the poller and the KDS socket path call
     // this endpoint after a successful print, keeping one shared history.
-    const items = Array.isArray(o.order_items)
-      ? o.order_items
-      : (typeof o.order_items === 'string' ? (() => { try { return JSON.parse(o.order_items); } catch { return []; } })() : []);
-    const now = new Date().toISOString();
-    let changed = false;
-    const stamped = items.map(it => {
-      if (it && !it.printed_at) { changed = true; return { ...it, printed_at: now }; }
-      return it;
+    // 2026-06-29 (Irene): /station-printed 와 동일하게 행 잠금 트랜잭션으로 직렬화 —
+    // 전체 스탬프(여기)와 스테이션별 스탬프가 동시에 order_items 를 덮어쓰는 lost-update 방지.
+    let denied = false, notFound = false;
+    await Order.sequelize.transaction(async (t) => {
+      const o = await Order.findByPk(req.params.id, { lock: t.LOCK.UPDATE, transaction: t });
+      if (!o) { notFound = true; return; }
+      if (req.user.role !== 'System Admin' && parseInt(req.user.restaurant_id) !== o.restaurant_id) { denied = true; return; }
+      const items = Array.isArray(o.order_items)
+        ? o.order_items
+        : (typeof o.order_items === 'string' ? (() => { try { return JSON.parse(o.order_items); } catch { return []; } })() : []);
+      const now = new Date().toISOString();
+      let changed = false;
+      const stamped = items.map(it => {
+        if (it && !it.printed_at) { changed = true; return { ...it, printed_at: now }; }
+        return it;
+      });
+      // 인쇄확인 = print_claimed_at NULL 로 지운다(불변식: NULL ⟺ 인쇄확인됨). → 자동복구 대상 아님.
+      // pending_reprint(테이블이동 "TABLE CHANGED" 안내 등)도 인쇄확인되면 비운다(1회 후 정리).
+      await o.update({
+        ...(changed ? { order_items: stamped } : {}),
+        needs_print: false,
+        needs_bill: false,
+        print_claimed_at: null,
+        pending_reprint: null
+      }, { transaction: t });
     });
-    // 인쇄확인 = print_claimed_at NULL 로 지운다(불변식: NULL ⟺ 인쇄확인됨). → 자동복구 대상 아님.
-    // pending_reprint(테이블이동 "TABLE CHANGED" 안내 등)도 인쇄확인되면 비운다(1회 후 정리).
-    await o.update({
-      ...(changed ? { order_items: stamped } : {}),
-      needs_print: false,
-      needs_bill: false,
-      print_claimed_at: null,
-      pending_reprint: null
-    });
+    if (notFound) return res.status(404).json({ success: false, message: 'Order not found' });
+    if (denied) return res.status(403).json({ success: false, message: 'Access denied' });
     res.json({ success: true });
   } catch (e) {
     console.error('[printed] error:', e.message);
