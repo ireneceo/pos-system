@@ -745,5 +745,12 @@
   "save": "저장",
   "cancel": "취소",
   "offlineBanner": "오프라인 — 인터넷 연결이 끊겼습니다. 연결되면 자동 복구됩니다.",
-  "offlineReconnecting": "연결 복구됨 — 동기화 중…"
+  "offlineReconnecting": "연결 복구됨 — 동기화 중…",
+  "offlineBannerHeld": "오프라인 — 주문 {{count}}건 로컬 보관, 연결되면 자동 전송됩니다.",
+  "offlineReconnectingHeld": "연결 복구 — {{count}}건 전송 중…",
+  "offlineHeldTitle": "오프라인 보관 주문",
+  "offlineHeldHint": "연결되면 자동 전송됩니다",
+  "offlineHeldItems": "{{count}}개 품목",
+  "offlineHeldSyncing": "전송 중…",
+  "offlineHeldWaiting": "보관 중"
 }

@@ -745,5 +745,12 @@
   "save": "保存",
   "cancel": "取消",
   "offlineBanner": "离线 — 网络已断开，恢复后将自动同步。",
-  "offlineReconnecting": "连接已恢复 — 同步中…"
+  "offlineReconnecting": "连接已恢复 — 同步中…",
+  "offlineBannerHeld": "离线 — 已本地保存 {{count}} 个订单，重新连接后将自动发送。",
+  "offlineReconnectingHeld": "连接已恢复 — 正在发送 {{count}} 个订单…",
+  "offlineHeldTitle": "本地保存的离线订单",
+  "offlineHeldHint": "重新连接后将自动发送",
+  "offlineHeldItems": "{{count}} 项",
+  "offlineHeldSyncing": "发送中…",
+  "offlineHeldWaiting": "保存中"
 }

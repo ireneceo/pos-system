@@ -54,7 +54,10 @@
   },
   "kitchenDisplayPage.printNotConfirmed": "Tidak dicetak — masalah cetakan",
   "kitchenDisplayPage.reprint": "Cetak semula",
-  "kitchenDisplayPage.printProblemTitle": "Cetakan tidak disahkan",
-  "kitchenDisplayPage.printProblemBody": "Pesanan ini mungkin tidak dicetak. Periksa pencetak, kemudian gunakan Cetak semula pada kad pesanan.",
-  "kitchenDisplayPage.ok": "OK"
+  "kitchenDisplayPage.printProblemTitle": "Tiket dapur tidak dicetak",
+  "kitchenDisplayPage.printProblemBody": "Periksa pencetak dapur (QZ Tray / sambungan), kemudian Cetak semula. Pesanan kekal di skrin.",
+  "kitchenDisplayPage.ok": "OK",
+  "kitchenDisplayPage.printProblemLine": "mungkin tidak dicetak ke dapur.",
+  "kitchenDisplayPage.notPrintedBadge": "Tidak dicetak",
+  "kitchenDisplayPage.itemNotPrinted": "Item ini belum dicetak"
 }

@@ -52,6 +52,7 @@ import {
 import OrderDetailModal from './OrderDetailModal';
 import BillPrintPortal from './BillPrintPortal';
 import PaymentVerificationModal from './PaymentVerificationModal';
+import OfflineOrdersPanel from '../../components/Offline/OfflineOrdersPanel';
 
 // PeriodType imported from DatePeriodFilter component
 
@@ -645,10 +646,11 @@ const LiveOrdersPage: React.FC = () => {
       return { totalSales: 0, avgOrderAmount: 0, maxOrderAmount: 0, ordersAbove20Percent: 0, avgServeTime: 0, maxServeTime: 0, minServeTime: 0 };
     }
 
-    const totalSales = ordersForStats.reduce((sum, order) => sum + parseFloat(order.total_amount.toString()), 0);
+    // total_amount null 방어(hydration 안전) — 오프라인 동기화/이상 데이터에서 null 이면 .toString() 크래시.
+    const totalSales = ordersForStats.reduce((sum, order) => sum + (parseFloat(order.total_amount as any) || 0), 0);
     const avgOrderAmount = totalSales / ordersForStats.length;
-    const maxOrderAmount = Math.max(...ordersForStats.map(o => parseFloat(o.total_amount.toString())));
-    const ordersAbove20 = ordersForStats.filter(o => parseFloat(o.total_amount.toString()) >= salesThreshold).length;
+    const maxOrderAmount = Math.max(...ordersForStats.map(o => parseFloat(o.total_amount as any) || 0));
+    const ordersAbove20 = ordersForStats.filter(o => (parseFloat(o.total_amount as any) || 0) >= salesThreshold).length;
     const ordersAbove20Percent = (ordersAbove20 / ordersForStats.length) * 100;
 
     const servedOrders = ordersForStats.filter(o => o.served_at && o.createdAt);
@@ -1682,6 +1684,9 @@ const LiveOrdersPage: React.FC = () => {
             <img src={audioEnabled ? '/speaker-on.svg' : '/speaker-off.svg'} alt={audioEnabled ? 'Sound ON' : 'Sound OFF'} />
           </AudioToggleButton>
         </PageHeader>
+
+        {/* 오프라인 4단계: 끊긴 동안 로컬 보관된 미동기화 주문(읽기전용, 격리 패널). 동기화되면 자동 사라짐. */}
+        <OfflineOrdersPanel />
 
         <Content>
           <FilterToolbar>

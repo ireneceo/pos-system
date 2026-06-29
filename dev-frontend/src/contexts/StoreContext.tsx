@@ -453,6 +453,13 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
     return { ...storeSettings, ...receiptInfo, slug: restaurantSlug, restaurantId: user?.restaurantId || '', timeZone: operationSettings.timeZone };
   };
 
+  // 오프라인 6단계: 매장정보(이름/주소/타임존)를 localStorage 에 캐시 → 오프라인 로컬 주방인쇄 시
+  // React 컨텍스트 밖(offlineOps)에서도 티켓 헤더/타임존을 쓸 수 있게. 인쇄 동작 무관(데이터 캐시).
+  useEffect(() => {
+    try { localStorage.setItem('pos_store_info_cache', JSON.stringify(getStoreInfo())); } catch { /* quota/ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storeSettings, receiptInfo, restaurantSlug, operationSettings.timeZone, user?.restaurantId]);
+
   const getTakeawayCharge = (
     menuItem?: { category?: string; takeaway_charge?: number | string | null } | string
   ): number => {

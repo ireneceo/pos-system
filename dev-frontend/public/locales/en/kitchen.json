@@ -54,7 +54,10 @@
   },
   "kitchenDisplayPage.printNotConfirmed": "Not printed — print problem",
   "kitchenDisplayPage.reprint": "Reprint",
-  "kitchenDisplayPage.printProblemTitle": "Print not confirmed",
-  "kitchenDisplayPage.printProblemBody": "These orders may not have printed. Check the printer, then use Reprint on the order card.",
-  "kitchenDisplayPage.ok": "OK"
+  "kitchenDisplayPage.printProblemTitle": "Kitchen ticket not printed",
+  "kitchenDisplayPage.printProblemBody": "Check the kitchen printer (QZ Tray / connection), then Reprint. The order stays on screen.",
+  "kitchenDisplayPage.ok": "OK",
+  "kitchenDisplayPage.printProblemLine": "may not have printed to the kitchen.",
+  "kitchenDisplayPage.notPrintedBadge": "Not printed",
+  "kitchenDisplayPage.itemNotPrinted": "This item has not printed yet"
 }

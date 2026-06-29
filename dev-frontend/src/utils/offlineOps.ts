@@ -116,6 +116,43 @@ export async function recordOfflineOp(
   }
 }
 
+/**
+ * 오프라인 6단계: 로컬(클라이언트) 주방 티켓 인쇄 — 서버 왕복 0.
+ * billPrint.printKitchenTicketViaRawBT 재사용(인쇄 방식/라우팅 무변경). 스테이션 라우팅·프린터 주소는
+ * localStorage 캐시(kitchenStationMenuMap·printerSettings)로 동작하므로 오프라인에서도 OK.
+ * 매장정보(헤더/타임존)는 StoreContext 가 캐시한 'pos_store_info_cache' 사용.
+ * @returns true=인쇄 성공(→ printedLocally). false=프린터 없음/실패(→ 동기화 후 서버가 정상 인쇄).
+ */
+export async function printOfflineKitchenTicket(order: LocalOrder): Promise<boolean> {
+  try {
+    const items = (order.items || []).map((it: any) => ({
+      name: it.name,
+      quantity: it.quantity,
+      options: Array.isArray(it.options) ? it.options : [],
+      special_instructions: it.special_instructions || '',
+      is_set_menu: !!it.is_set_menu,
+      set_items: it.set_items || it.set_components || [],
+      kitchen_station_id: it.kitchen_station_id ?? null,
+    }));
+    if (items.length === 0) return false;
+    let storeInfo: any = {};
+    try { storeInfo = JSON.parse(localStorage.getItem('pos_store_info_cache') || '{}'); } catch { storeInfo = {}; }
+    const orderData = {
+      orderNumber: order.provisionalNumber,
+      date: new Date(order.createdAt),
+      tableNumber: order.tableNumber,
+      customerName: 'Walk-in Customer',
+      orderSource: 'pos',
+      items,
+    };
+    const mod = await import('./billPrint');
+    const r = await mod.printKitchenTicketViaRawBT(orderData as any, storeInfo);
+    return r !== false;
+  } catch {
+    return false;
+  }
+}
+
 /** 화면 반영용 — 아직 서버 동기화 안 된 오프라인 주문 목록(최신순). */
 export async function listOfflineOrders(): Promise<LocalOrder[]> {
   if (!isIDBAvailable()) return [];
@@ -132,7 +169,7 @@ try {
     const h = window.location && window.location.hostname ? window.location.hostname : '';
     const isDevHost = /^(dev\.|localhost$|127\.|87\.106\.|192\.168\.|10\.)/.test(h);
     if (isDevHost) {
-      (window as any).__offlineOps = { recordOfflineCreate, recordOfflineOp, listOfflineOrders };
+      (window as any).__offlineOps = { recordOfflineCreate, recordOfflineOp, listOfflineOrders, printOfflineKitchenTicket };
     }
   }
 } catch { /* ignore */ }

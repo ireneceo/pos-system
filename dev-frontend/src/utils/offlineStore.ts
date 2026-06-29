@@ -292,12 +292,18 @@ export async function absorbLegacyQueue(): Promise<{ absorbed: number }> {
     items = [];
   }
 
+  // 이미 op 로그에 같은 idempotency_key 가 있으면(=recordOfflineCreate 가 이미 기록) 중복 생성 금지.
+  let existingKeys = new Set<string>();
+  try { existingKeys = new Set((await getAllOrders()).map((o) => o.idempotencyKey).filter(Boolean) as string[]); } catch { /* ignore */ }
+
   let absorbed = 0;
   for (const it of items) {
     try {
       if (!it || !it.body) continue;
+      const key = it.key || it.body?.idempotency_key;
+      if (key && existingKeys.has(key)) continue; // 중복 — 건너뜀
       await createLocalOrderWithOp({
-        idempotencyKey: it.key || it.body?.idempotency_key,
+        idempotencyKey: key,
         raw: it.body,
         payload: it.body,
         total: it.body?.total ?? it.body?.total_amount,
@@ -305,6 +311,7 @@ export async function absorbLegacyQueue(): Promise<{ absorbed: number }> {
         tableNumber: it.body?.table_number ?? null,
         restaurantId: it.body?.restaurant_id,
       });
+      if (key) existingKeys.add(key);
       absorbed++;
     } catch { /* 개별 실패는 건너뛰고 나머지 진행 */ }
   }

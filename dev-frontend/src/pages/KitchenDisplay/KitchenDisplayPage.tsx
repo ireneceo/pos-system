@@ -561,6 +561,9 @@ interface KitchenOrder {
     options?: string[];
     special_instructions?: string;
     status?: 'pending' | 'preparing' | 'ready' | 'served' | 'completed';
+    // 아이템 단위 인쇄 확인(printPerItem 모드에서 어느 품목이 안 찍혔는지). 백엔드 order_item.printed_at.
+    printed_at?: string | null;
+    printed?: boolean;
     is_set_menu?: boolean;
     set_items?: Array<{
       id?: string;
@@ -744,7 +747,7 @@ const KitchenDisplayPage: React.FC = () => {
   const [showCancelledModal, setShowCancelledModal] = useState(false);
   // 프린트 미확정 1회 팝업 — 같은 주문은 세션당 한 번만(리셋하면 배지로 계속 보임).
   const shownPrintProblemRef = useRef<Set<string>>(new Set());
-  const [printProblemPopup, setPrintProblemPopup] = useState<string[] | null>(null);
+  const [printProblemQueue, setPrintProblemQueue] = useState<Array<{ id: string; orderNumber: string }>>([]);
   // 같은 주문 취소가 order-updated 재방출로 중복 팝업되지 않도록 1회만.
   const cancelledNoticeRef = useRef<Set<string>>(new Set());
 
@@ -1565,15 +1568,28 @@ const KitchenDisplayPage: React.FC = () => {
   // 프린트 미확정 주문 수동 재인쇄. 성공 시 PATCH /printed 로 needs_print clear → 배지/팝업 해제.
   // 인쇄 발송 자체는 기존 printOrderTicket(=printKitchenTicketViaRawBT) 재사용(동작 무변경).
   const reprintForProblem = async (order: KitchenOrder) => {
-    const items = selectedStation === 'all'
-      ? order.items
-      : order.items.filter(it => isItemInSelectedStation(it.name));
+    // 인쇄 범위 = 현재 보고 있는 탭. station 탭이면 그 스테이션 품목만(다른 스테이션 중복 인쇄 방지),
+    // All 이면 주문 전체. billPrint(printOrderTicket→printKitchenTicketViaRawBT)가 printPerItem 모드면
+    // 내부에서 품목별로 분할 인쇄하므로 모드별 처리는 자동.
+    const onStation = selectedStation !== 'all';
+    const items = onStation ? order.items.filter(it => isItemInSelectedStation(it.name)) : order.items;
     try {
       const ok = await printOrderTicket(order, items);
-      if (ok !== false) {
+      if (ok === false) return; // 이 기기에 해당 프린터 없음 → 배지 유지(다른 기기/재시도)
+      if (onStation) {
+        // 스테이션 단위 stamp(기존 엔드포인트) — 그 스테이션 품목 printed_at 만 찍음.
+        await fetch(`/api/orders/${order.id}/station-printed`, { method: 'PATCH', headers: apiHeaders(), body: JSON.stringify({ stationId: selectedStation }) }).catch(() => {});
+      } else {
         await fetch(`/api/orders/${order.id}/printed`, { method: 'PATCH', headers: apiHeaders() }).catch(() => {});
-        setOrders(prev => prev.map(o => o.id === order.id ? { ...o, needsPrint: false } : o));
       }
+      // 낙관적 정밀 반영: 인쇄한 범위의 품목 printed_at 찍고, 남은 미인쇄 없으면 needsPrint 해제.
+      setOrders(prev => prev.map(o => {
+        if (o.id !== order.id) return o;
+        const stamp = (it: any) => (!onStation || isItemInSelectedStation(it.name)) ? { ...it, printed_at: it.printed_at || new Date().toISOString() } : it;
+        const nextItems = o.items.map((it: any) => it.is_set_menu && it.set_items ? { ...stamp(it), set_items: it.set_items.map(stamp) } : stamp(it));
+        const anyUnprinted = nextItems.some((it: any) => !(it.printed_at || it.printed));
+        return { ...o, items: nextItems, needsPrint: anyUnprinted };
+      }));
     } catch { /* 재인쇄 실패 — 배지 유지(다시 시도 가능) */ }
   };
 
@@ -1725,17 +1741,24 @@ const KitchenDisplayPage: React.FC = () => {
   // 후에도 남아있으면 = 그 주문 주방티켓이 확정 인쇄 안 됨. KDS 는 인쇄 주체가 아니라 표시 전용이므로
   // 백엔드 영속 신호(needs_print)만 리셋 후에도 보인다(transient autoprint-failed 이벤트로는 불가).
   const PRINT_GRACE_MS = 30000;
+  // 주문 단위(롤업): needs_print 가 유예 후에도 남음 = 그 주문 주방티켓이 확정 인쇄 안 됨.
   const hasPrintProblem = useCallback((o: KitchenOrder): boolean => {
     if (!o || !o.needsPrint) return false;
     return (Date.now() - (o.createdAtMs || 0)) > PRINT_GRACE_MS;
   }, []);
+  // 아이템 단위(정밀): 그 주문이 미확정이고 이 품목의 printed_at 이 아직 안 찍힘 = 이 품목이 안 나감.
+  // printPerItem(아이템단위 인쇄) 모드에서 "어느 품목이 실패했는지"를 정확히 가리킨다(데이터 그라운드트루스).
+  const itemNotPrinted = useCallback((o: KitchenOrder, it: { printed_at?: string | null; printed?: boolean }): boolean => {
+    if (!hasPrintProblem(o)) return false;
+    return !(it && (it.printed_at || it.printed));
+  }, [hasPrintProblem]);
 
-  // 프린트 미확정 주문이 새로 감지되면 1회 팝업(주문번호 나열). 같은 주문은 세션당 한 번.
+  // 프린트 미확정 주문이 새로 감지되면 강력 팝업(한 건씩 큐). 같은 주문은 세션당 한 번.
   useEffect(() => {
     const fresh = orders.filter(o => hasPrintProblem(o) && !shownPrintProblemRef.current.has(o.id));
     if (fresh.length === 0) return;
     fresh.forEach(o => shownPrintProblemRef.current.add(o.id));
-    setPrintProblemPopup(fresh.map(o => o.orderNumber || `#${o.pickupNumber}`));
+    setPrintProblemQueue(prev => [...prev, ...fresh.map(o => ({ id: o.id, orderNumber: o.orderNumber || `#${o.pickupNumber}` }))]);
   }, [orders, hasPrintProblem]);
 
   // 주방 범위로만 아이템 단계 이동. forward=미달분만 전진(Start/Done/Serve),
@@ -2255,8 +2278,8 @@ const KitchenDisplayPage: React.FC = () => {
               )}
               <ItemRow done={isItemDoneForColumn(cardStatus, item.status || 'pending') && cardStatus !== 'pending'}>
                 <ItemInfo>
-                  {hasPrintProblem(order) && (
-                    <span title="Print not confirmed for this order"
+                  {itemNotPrinted(order, item) && (
+                    <span title={t('kitchen:kitchenDisplayPage.itemNotPrinted', 'This item has not printed yet')}
                       style={{ color: '#EF4444', fontSize: 10, marginRight: 4, verticalAlign: 'middle' }}>●</span>
                   )}
                   {item.is_set_menu ? (
@@ -3071,6 +3094,21 @@ const KitchenDisplayPage: React.FC = () => {
             </OrderRight>
           </OrderHeader>
 
+          {/* 2026-06-29 (Irene 확정): 아이템뷰 Ready 카드(주문 단위)에도 미인쇄 배지 + 재인쇄. */}
+          {hasPrintProblem(order) && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 8px',
+              padding: '6px 10px', background: '#FEE2E2', border: '1px solid #EF4444',
+              borderRadius: 6, fontSize: 12, fontWeight: 700, color: '#B91C1C'
+            }}>
+              <span style={{ flex: 1 }}>{t('kitchen:kitchenDisplayPage.printNotConfirmed', 'Not printed — print problem')}</span>
+              <button type="button" onClick={(e) => { e.stopPropagation(); reprintForProblem(order); }}
+                style={{ border: 'none', background: '#EF4444', color: '#fff', borderRadius: 6, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                {t('kitchen:kitchenDisplayPage.reprint', 'Reprint')}
+              </button>
+            </div>
+          )}
+
           {/* Progress - 아이템 2개 이상일 때만 */}
           {totalItems > 1 && (
             <ProgressContainer>
@@ -3186,31 +3224,44 @@ const KitchenDisplayPage: React.FC = () => {
   return (
     <Container>
       {/* 2026-06-28 (#4) 취소 주문 확인 팝업 — 오늘 취소된 주문 목록(완료 전 검토). 표시 전용. */}
-      {/* 2026-06-29 (Irene 확정): 프린트 미확정 1회 팝업 — 주문번호 나열 + 확인. 배지는 카드에 계속 남음. */}
-      {printProblemPopup && printProblemPopup.length > 0 && (
-        <div
-          onClick={() => setPrintProblemPopup(null)}
-          style={{ position: 'fixed', inset: 0, zIndex: 1250, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
-        >
-          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 12, width: 'min(440px, 94vw)', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
-            <div style={{ padding: '14px 20px', borderBottom: '1px solid #E6EBF1', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ fontSize: 16, fontWeight: 700, color: '#B91C1C' }}>
-                {t('kitchen:kitchenDisplayPage.printProblemTitle', 'Print not confirmed')}
+      {/* 2026-06-29 (Irene 확정): 프린트 미확정 강력 팝업 — 취소 안내와 동일 스타일(빨강 강조), 한 건씩.
+          재인쇄/확인 버튼. 배지는 카드에 계속 남는다(리셋해도 보임). */}
+      {printProblemQueue.length > 0 && (() => {
+        const q = printProblemQueue[0];
+        const ord = orders.find(o => o.id === q.id);
+        const dismiss = () => setPrintProblemQueue(prev => prev.slice(1));
+        return (
+          <NoticeOverlay onClick={dismiss}>
+            <NoticeCard $kind="order-cancel" onClick={e => e.stopPropagation()}>
+              <NoticeHead $kind="order-cancel">
+                {t('kitchen:kitchenDisplayPage.printProblemTitle', 'Kitchen ticket not printed')}
+              </NoticeHead>
+              <NoticeBody>
+                <div>
+                  <strong>{t('kitchen:notice.order', { defaultValue: 'Order' })} {q.orderNumber}</strong>{' '}
+                  {t('kitchen:kitchenDisplayPage.printProblemLine', 'may not have printed to the kitchen.')}
+                </div>
+                <div className="sub">{t('kitchen:kitchenDisplayPage.printProblemBody', 'Check the kitchen printer (QZ Tray / connection), then Reprint. The order stays on screen.')}</div>
+              </NoticeBody>
+              <div style={{ display: 'flex', gap: 12, padding: '4px 24px 24px' }}>
+                {ord && (
+                  <button type="button" onClick={() => { reprintForProblem(ord); dismiss(); }}
+                    style={{ flex: 2, padding: '16px 20px', borderRadius: 12, border: 'none', background: '#FF6B6B', color: '#fff', fontSize: 17, fontWeight: 800, cursor: 'pointer' }}>
+                    {t('kitchen:kitchenDisplayPage.reprint', 'Reprint')}
+                  </button>
+                )}
+                <button type="button" onClick={dismiss}
+                  style={{ flex: 1, padding: '16px 20px', borderRadius: 12, border: '1px solid #C7CED6', background: '#fff', color: '#1F2937', fontSize: 16, fontWeight: 700, cursor: 'pointer' }}>
+                  {t('kitchen:notice.confirm', { defaultValue: 'OK, got it' })}
+                </button>
               </div>
-              <button type="button" onClick={() => setPrintProblemPopup(null)} aria-label="Close" style={{ border: 'none', background: 'transparent', fontSize: 20, cursor: 'pointer', color: '#6B7C93' }}>×</button>
-            </div>
-            <div style={{ padding: '16px 20px', fontSize: 14, color: '#1F2937' }}>
-              <div style={{ marginBottom: 8 }}>{t('kitchen:kitchenDisplayPage.printProblemBody', 'These orders may not have printed. Check the printer, then use Reprint on the order card.')}</div>
-              <div style={{ fontWeight: 700, color: '#0A2540' }}>{printProblemPopup.join(', ')}</div>
-            </div>
-            <div style={{ padding: '12px 20px', borderTop: '1px solid #E6EBF1', display: 'flex', justifyContent: 'flex-end' }}>
-              <button type="button" onClick={() => setPrintProblemPopup(null)} style={{ padding: '8px 14px', borderRadius: 6, border: 'none', background: '#635BFF', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                {t('kitchen:kitchenDisplayPage.ok', 'OK')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+              {printProblemQueue.length > 1 && (
+                <NoticeCount>{t('kitchen:notice.more', { defaultValue: '{{count}} more notice(s)', count: printProblemQueue.length - 1 })}</NoticeCount>
+              )}
+            </NoticeCard>
+          </NoticeOverlay>
+        );
+      })()}
       {showCancelledModal && (
         <div
           onClick={() => setShowCancelledModal(false)}
@@ -3411,6 +3462,28 @@ const KitchenDisplayPage: React.FC = () => {
               {t('kitchen:cancelledOrders.badge', { defaultValue: 'Cancelled' })} {cancelledOrders.length}
             </button>
           )}
+
+          {/* 2026-06-29 (Irene 확정): 미인쇄 주문 칩 — 두 뷰(주문/아이템) 공통 헤더라 아이템뷰에서도 보임.
+              클릭 시 미확정 주문들을 강력 팝업 큐로 열어 재인쇄/확인. (메뉴-그룹 아이템뷰에 주문배지 모호 → 헤더 칩으로 해결.) */}
+          {(() => {
+            const probs = orders.filter(hasPrintProblem);
+            if (probs.length === 0) return null;
+            return (
+              <button
+                type="button"
+                onClick={() => setPrintProblemQueue(probs.map(o => ({ id: o.id, orderNumber: o.orderNumber || `#${o.pickupNumber}` })))}
+                title={t('kitchen:kitchenDisplayPage.printProblemTitle', 'Kitchen ticket not printed')}
+                style={{
+                  minHeight: 36, padding: '0 12px', borderRadius: 8, border: 'none',
+                  background: '#FF6B6B', color: '#fff', fontWeight: 800, fontSize: 13,
+                  cursor: 'pointer', flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6,
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {t('kitchen:kitchenDisplayPage.notPrintedBadge', 'Not printed')} {probs.length}
+              </button>
+            );
+          })()}
 
           {/* 6) Live + Time — 끝쪽, Settings ⚙ 직전. 2줄 컴팩트. */}
           <div style={{

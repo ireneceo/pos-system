@@ -745,5 +745,12 @@
   "save": "Simpan",
   "cancel": "Batal",
   "offlineBanner": "Luar talian — internet terputus. Pulih automatik apabila disambung semula.",
-  "offlineReconnecting": "Sambungan dipulihkan — menyegerak…"
+  "offlineReconnecting": "Sambungan dipulihkan — menyegerak…",
+  "offlineBannerHeld": "Luar talian — {{count}} pesanan disimpan setempat, akan dihantar automatik apabila bersambung semula.",
+  "offlineReconnectingHeld": "Sambungan dipulihkan — menghantar {{count}} pesanan…",
+  "offlineHeldTitle": "Pesanan luar talian disimpan setempat",
+  "offlineHeldHint": "akan dihantar automatik apabila bersambung semula",
+  "offlineHeldItems": "{{count}} item",
+  "offlineHeldSyncing": "menghantar…",
+  "offlineHeldWaiting": "disimpan"
 }

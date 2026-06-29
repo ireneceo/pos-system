@@ -11,6 +11,7 @@ const Coupon = require('../models/Coupon');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
 const { stripStaffNs } = require('../utils/staffName');
+const { alreadyProcessed, recordProcessed } = require('../utils/opIdGuard');
 const { executeQuery, executeTransaction } = require('../utils/queryWrapper');
 const { deductInventoryForOrder } = require('../services/inventoryDeductionService');
 const { earnPointsForOrder, refundPointsForOrder, usePointsForOrder } = require('../services/pointService');
@@ -367,6 +368,12 @@ router.post('/:id/payments', authenticateToken, requirePaymentAccess, async (req
         && !['System Admin'].includes(req.user.role)) {
       return res.status(403).json({ success: false, message: 'Forbidden' });
     }
+    // 오프라인 5단계(§8) opId 멱등 — SyncEngine 재생 시 응답유실 재전송으로 결제가 중복 기록되는 것 방지.
+    // 완납체크보다 먼저(부분결제 재생도 정확히 no-op). op_id 는 재생 요청만 보냄 → 온라인 결제엔 없어 통과.
+    if (req.body.op_id && await alreadyProcessed(req.body.op_id)) {
+      return res.json({ success: true, deduped: true });
+    }
+
     if (order.payment_status === 'completed') {
       return res.status(400).json({ success: false, message: 'Order is already fully paid' });
     }
@@ -467,6 +474,9 @@ router.post('/:id/payments', authenticateToken, requirePaymentAccess, async (req
       }
       io.of('/orders').to(`restaurant_${order.restaurant_id}`).emit('order-updated', plain);
     }
+
+    // opId 멱등 기록(성공 시에만) — 재생 재전송 시 위 alreadyProcessed 가 no-op.
+    if (req.body.op_id) await recordProcessed(req.body.op_id, { order_id: order.id, type: 'pay', restaurant_id: order.restaurant_id });
 
     res.status(201).json({
       success: true,

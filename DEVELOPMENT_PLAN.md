@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-27 #3 (**thefire02 라이브 인쇄 긴급대응 — 운영 배포**. 신규/추가주문 BAR 늦음·KQ 중복·통합 지연 근본수리. ①**QZ keepalive**(연결 idle 끊김→첫인쇄 16초 멈춤 해결, SW 4.33) ②**발송순서 = 주방 스테이션 먼저 → 통합(POS1→MASTER 맨뒤)**, 느린 통합 2장이 BAR 막던 것 해결(SW 4.34) ③**통합티켓 "정확히 1번" 가드**(POS1 통합 중복 제거) ④**아이템취소 = 취소품목의 그 회차(order_group) 오더티켓 기준** 재발행(API+DB 검증완료) ⑤backend station-printed PATCH + print-trace 로깅(안정 검증루트). 인쇄 발송 단일기준 정리. **다음 섹션 대기**: 머지(R8) served제외+"Table1+Table2"표시 / 자동발행기준·KDS 안내표시 검토.)
+> **최종 업데이트:** 2026-06-29 (**오프라인 모드(POS1 허브) 1~6단계 + KDS 보완 — dev 검증완료·미배포**. 끊겨도 ①주문 접수 ②주방 티켓 로컬 인쇄 ③복구 시 무손실·무중복 동기화 전 경로 구현·검증(IndexedDB op로그 + SyncEngine + 서버 opId 멱등가드 + 오프라인 보관 패널). + KDS 주문뷰 per-item 되돌리기(min-stage 파생)·프린트 미확정 표시/재인쇄. 잔여=6단계 실프린터 종이확인·7단계 데모전사이클·오프라인 편집액션. 상세 ↓.)
+>
+> **이전:** 2026-06-27 #3 (**thefire02 라이브 인쇄 긴급대응 — 운영 배포**. 신규/추가주문 BAR 늦음·KQ 중복·통합 지연 근본수리. ①**QZ keepalive**(연결 idle 끊김→첫인쇄 16초 멈춤 해결, SW 4.33) ②**발송순서 = 주방 스테이션 먼저 → 통합(POS1→MASTER 맨뒤)**, 느린 통합 2장이 BAR 막던 것 해결(SW 4.34) ③**통합티켓 "정확히 1번" 가드**(POS1 통합 중복 제거) ④**아이템취소 = 취소품목의 그 회차(order_group) 오더티켓 기준** 재발행(API+DB 검증완료) ⑤backend station-printed PATCH + print-trace 로깅(안정 검증루트). 인쇄 발송 단일기준 정리. **다음 섹션 대기**: 머지(R8) served제외+"Table1+Table2"표시 / 자동발행기준·KDS 안내표시 검토.)
 >
 > **이전:** 2026-06-27 #2 (**thefire 브랜드메뉴 대청소 — 운영 데이터 작업, 코드 무수정**. ①126개 옵션·세트구성 thefire01/02/03 동일화 ②"수요일 세트 안나옴"=LUNCH MENU 카테고리 비활성→활성 + 요일 런치스케줄 3매장 동일 ③thefire02/03 메뉴 표시·카테고리 thefire01과 완전동일(rid24 124개 활성화) ④**브랜드메뉴/옵션/치킨윙 한글 전부 제거**(메뉴119+옵션96+상품363, 한글잔존0). 세트 전파 영구수정(brandMenuSyncService.js) /배포 대기. 신규 백로그 `docs/POS_MENU_IMPROVEMENT_BACKLOG.md`(13건).)
 >
@@ -19,6 +21,45 @@
 > **이전:** 2026-06-23 (**v3.62 운영 배포 완료** — thefire 실사용 준비 7건: 직원 PIN 전환 수정 · 시재 개시모드(이월/고정) · 마감 폰트 통일 · 통합오더티켓 'Full' 수동인쇄 · 로그인 직원 PIN 우선 · 설정 QR 인쇄버튼 · Windows 7/8 QZ 설치 수정. Backup 20260623_124849, Smoke 9/9, SW=3.95. /검증 통과: health 107/107·print-guard 8/8(billPrint 무수정)·hydration0·timezone0·design0·i18n0·mount(floor-plan/settings/cash-up/pos) crash0.)
 >
 > **이전:** v3.61 발주 UX 대정리 + 외부공급업체 + 플로어플랜 핫픽스. SW=3.90.
+
+## ✅ 완료: 오프라인 모드(POS1 허브) 1~6단계 + KDS 보완 (2026-06-29, dev 검증완료·미배포)
+
+> 끊겨도 카운터 영업이 멈추지 않게 — 설계 §0 핵심 보장(①주문 접수 ②주방 티켓 ③무손실 저장/동기화)을 전 경로 구현·검증. 설계 `docs/OFFLINE_MODE_DESIGN.md`.
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 3 LocalStore | IndexedDB 주문+append-only op로그(단조 seq·영속). `utils/offlineDb.ts`·`utils/offlineStore.ts` | ✅ 31/31 |
+| 4 기록·반영 | `utils/offlineOps.ts`(create/add/cancel/pay/stage 기록 + printOfflineKitchenTicket) + OrderContext 오프라인 catch create 배선(보호 POSTerminal 무접촉) | ✅ 18/18 |
+| 4 가시화 | OfflineBanner "보관 N건" + `components/Offline/OfflineOrdersPanel.tsx`(LiveOrders 상단 격리 패널, 동기화 시 자동 사라짐) | ✅ 2/2 |
+| 5 SyncEngine | `utils/offlineSync.ts` — 복구 시 op로그 seq순 재생, 번호매핑, 401복구, 무손실·무중복(create=idempotency_key) | ✅ 6/6 |
+| 5 opId 가드 | `models/ProcessedOp.js`+`utils/opIdGuard.js` — 비멱등 op(add_items·pay)만 가드, op_id는 재생만 보내 온라인 동작 100% 동일 | ✅ API 실증 |
+| 6 로컬인쇄 | 클라 QZ/RawBT 직접인쇄 + 백엔드 `printed_offline`→needs_print=false+printed_at(폴러 재인쇄0) | 🔶 코드완료 5/5·**실프린터 확인 필요** |
+| (부수) | LiveOrders 통계 `total_amount.toString()` null 미가드 잠재버그 → `parseFloat()||0` 방어 | ✅ |
+
+### 함께 진행한 KDS 보완 (Irene 직접 지시, 보호영역, 실프린터 대기)
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 주문뷰 per-item 되돌리기 | 진행된 아이템마다 ↺, 그 아이템만 한 단계↓ + 주문은 아이템 최저(min-stage) 파생(#1 설계 일치) | ✅ API 5/5 |
+| 프린트 미확정 표시 | needs_print 기반 주문/아이템 배지·헤더 "미인쇄 N" 칩(양뷰)·강력 팝업(취소안내 스타일)+수동 재인쇄(스테이션 stamp) | ✅ 실증 6/6 |
+
+### 수정/신규 파일
+- 프론트(신규): `utils/offlineDb.ts`·`utils/offlineStore.ts`·`utils/offlineOps.ts`·`utils/offlineSync.ts`·`components/Offline/OfflineOrdersPanel.tsx`
+- 프론트(수정): `contexts/OrderContext.tsx`·`contexts/OfflineContext.tsx`·`contexts/StoreContext.tsx`·`components/Offline/OfflineBanner.tsx`·`pages/KitchenDisplay/KitchenDisplayPage.tsx`(보호)·`pages/LiveOrders/LiveOrdersPage.tsx`·locales(kitchen·common ×4)
+- 백엔드(신규): `models/ProcessedOp.js`·`utils/opIdGuard.js`
+- 백엔드(수정): `routes/orders-crud.js`(보호: create printed_offline + add-items opId가드)·`routes/orders-payment.js`(payments opId가드)·`models/index.js`
+
+### 검증
+- build green(신규 경고0)·hydration0·timezone신규0·design신규0·i18n0·health 106/107(1=의도된 print-guard)
+- print-guard 2건(KitchenDisplayPage·orders-crud=의도·보호블록 무접촉) → **실프린터 종이확인 후 일괄 bless**
+- Playwright 실브라우저: IndexedDB 31/31 · 오프라인기록 18/18 · SyncEngine 6/6 · KDS 6/6 · 패널 2/2 · opId 멱등 API실증
+
+### 잔여 (다음)
+- 6단계 **실프린터 종이 확인**(매장) + 7단계 데모 전사이클(오프라인 시뮬→접수→로컬인쇄→복구동기화)
+- 4단계 오프라인 주문 **편집 액션** 배선(add/cancel/pay/stage on offline order — 백엔드 opId가드 준비완료, 패널 현재 읽기전용) + FloorPlan 반영 + degrade(POS1 허브 설정)
+
+---
 
 ## ✅ 완료: thefire02 라이브 인쇄 긴급대응 — 발송순서·QZ keepalive·아이템취소 회차 (2026-06-27 #3, 운영 배포)
 

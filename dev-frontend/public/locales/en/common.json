@@ -745,5 +745,12 @@
   "save": "Save",
   "cancel": "Cancel",
   "offlineBanner": "Offline — internet disconnected. Will recover automatically when reconnected.",
-  "offlineReconnecting": "Connection restored — syncing…"
+  "offlineReconnecting": "Connection restored — syncing…",
+  "offlineBannerHeld": "Offline — {{count}} order(s) held locally, will send automatically when reconnected.",
+  "offlineReconnectingHeld": "Connection restored — sending {{count}} order(s)…",
+  "offlineHeldTitle": "Offline orders held locally",
+  "offlineHeldHint": "will send automatically when reconnected",
+  "offlineHeldItems": "{{count}} item(s)",
+  "offlineHeldSyncing": "sending…",
+  "offlineHeldWaiting": "held"
 }

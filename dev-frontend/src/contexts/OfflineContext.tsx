@@ -49,9 +49,12 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
       failRef.current = 0;
       lastOnlineRef.current = Date.now();
       if (was) {
-        // 복구 순간 — 다음 단계(SyncEngine)가 여기서 큐 flush. 1단계는 짧게 reconnecting 표시 후 해제.
+        // 복구 순간(설계 §4-1) — SyncEngine 이 op 로그를 순서대로 서버에 재생(무손실·무중복).
         setIsReconnecting(true);
-        setTimeout(() => { if (alive) setIsReconnecting(false); }, 1500);
+        import('../utils/offlineSync')
+          .then(({ runSync }) => runSync())
+          .catch(() => {})
+          .finally(() => { if (alive) setIsReconnecting(false); });
       }
       setIsOffline(false);
     };

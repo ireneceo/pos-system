@@ -1,22 +1,33 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-06-28 (밤, 세션 종료)
+**마지막 업데이트:** 2026-06-29 (오프라인 1~6단계 + KDS per-item되돌리기/프린트미확정 — dev 검증완료·미배포)
 **버전:** **v3.64 운영 배포 완료** (+ 스탭밀 수량별 이름 + 반응형 헤더 = 추가 배포 LIVE). SW 4.35(오프라인캐시).
-**작업 상태:** **오프라인 모드(POS1 허브) 구현 중** — 1·2·3단계 dev 완료(미배포), 4단계부터 다음 세션. (전체 완성=6단계 로컬인쇄까지 후 한 번에 배포)
+**작업 상태:** **오프라인 모드(POS1 허브) 1~6단계 코드 완료(dev, 미배포)** — 접수→로컬 주방인쇄→복구 동기화(무손실·무중복) 전 경로 구현·검증. 잔여=6단계 실프린터 종이확인(Irene 매장) + 7단계 데모 전사이클 + 4단계 잔여 UI(오프라인 중 주문관리·degrade, 비핵심). + 별건 KDS per-item 되돌리기/프린트 미확정 표시(검증완료, 실프린터 대기).
 
-### ▶ 다음 확정 작업 (다음 세션 재개점) — 오프라인 모드 4단계
+### ▶ 다음 확정 작업 (다음 세션 재개점) — 오프라인 7단계(데모 전사이클) + 6단계 실프린터 확인
 - 설계서: **`docs/OFFLINE_MODE_DESIGN.md`** / 메모리 [[project_offline_mode]] (진행상황·결정·재사용맵 전부 있음).
 - ✅ 1단계 OfflineContext(/api/health 핑·히스테리시스)+OfflineBanner+App 전역래핑 — 검증완료(배너 실동작 헤드리스 실증).
 - ✅ 2단계 sw.js network-first+오프라인 cache-fallback(셸·메뉴캐시, SW_VERSION 4.35) — 검증완료(오프라인 재로드 셸 렌더 실증).
 - ✅ **3단계 완료(dev, 미배포)**: IndexedDB LocalStore + append-only op 로그. 신규 `utils/offlineDb.ts`(저수준 IDB 래퍼: 스토어 offline_orders/offline_ops/offline_meta, 트랜잭션·genId·deleteOfflineDb) + `utils/offlineStore.ts`(LocalOrder/OfflineOp 타입 + 원자적 seq발급·createLocalOrderWithOp·appendOp·getUnsyncedOps·markOpSynced·patchOrder·markOrderSynced·pendingOpCount·absorbLegacyQueue). OrderContext에 `initOfflineStore()` 워밍 1줄(데이터 계층만; legacy 흡수/재생은 5단계까지 미호출=유실창 방지). dev 호스트네임 게이트 `window.__offlineStore` seam(운영 apex/www 미노출). **검증: Playwright 실브라우저 IndexedDB 31/31 PASS**(원자적 생성·단조 seq·op순서·markSynced제외·서버매핑·legacy흡수 one-time·**리로드 영속성=정전 재부팅**). build green(신규경고0)·print-guard 8/8(보호파일 무접촉)·health 107/107·POS mount crash0.
-- 🔶 **4단계 진행중(dev, 미배포)**: operation-recording 레이어 완성 + create 배선 완료.
-  - ✅ 신규 `utils/offlineOps.ts`: `recordOfflineCreate`(서버 payload→op로그, idempotency_key 중복방지) / `recordOfflineOp`(add_items·cancel_item·cancel_order·move_table·set_stage·pay — 로컬주문이면 patchOrder로 상태/품목/결제 즉시반영, 서버주문 참조는 payload._serverId 보존) / `listOfflineOrders`(미동기화 표시용). dev seam `window.__offlineOps`.
-  - ✅ **create 배선 = OrderContext 오프라인 catch에 recordOfflineCreate 추가**(보호파일 POSTerminalPage 무접촉 — POS는 addOrder 경유, OFFLINE_QUEUED 계약·legacy 큐 유지, additive). 더블탭 dedup.
-  - ✅ 검증: **Playwright 실브라우저 18/18 PASS**(create 기록·item/특별요청/raw 매핑·idempotency dedup·add_items 합산·pay·set_stage·cancel·op로그 5건 seq 오름차순·serverId 참조 보존). build green(신규경고0)·print-guard 8/8·hydration0·POS mount crash0.
-  - ⬜ **남은 4단계(다음)**: ①화면 반영 — listOfflineOrders를 POS/LiveOrders/FloorPlan 목록에 머지 표시(임시번호 OFF-, 동기화전 배지) ②add/cancel/move/pay/stage **실제 호출부 배선**(FloorPlan/LiveOrders/TableDetailPanel — 비보호, 오프라인일 때 recordOfflineOp 분기) ③degrade(비-POS1 기기 오프라인 차단 안내).
-- ⬜ 5 SyncEngine(순서재생·opId멱등·번호매핑·401복구)+서버 opId가드 / 6 로컬인쇄(🔒실프린터·bless) / 7 데모전사이클+운영검증.
-- **누적 dev, 미배포** — 로컬인쇄(6단계)까지 완성돼 "쓸만"해지면 한 번에 배포(반쪽 배포 금지).
+- ✅ **4단계 핵심 완료(dev)**: operation-recording 레이어 + create 배선. `utils/offlineOps.ts`(recordOfflineCreate·recordOfflineOp·listOfflineOrders·**printOfflineKitchenTicket**). create=OrderContext 오프라인 catch(보호 POSTerminalPage 무접촉). **18/18 PASS.**
+  - ✅ 화면 반영(가시화): **OfflineBanner 에 로컬 보관 주문 건수**("오프라인 — 주문 N건 로컬 보관…", unsyncedOrderCount 폴링, 복구 시 "N건 전송 중…"). 어디서나 보임. i18n offlineBannerHeld/offlineReconnectingHeld 4언어.
+  - ✅ **서버 opId 멱등 가드(§8) 완성**: 신규 모델 `ProcessedOp`(processed_ops 테이블, ProcessedOp.sync()로 생성·--alter 안 씀) + `utils/opIdGuard.js`(alreadyProcessed/recordProcessed). **비멱등 op만 가드**: add_items(orders-crud)·pay(orders-payment) — 진입부 early-return + 성공 시 기록. set_stage/move_table/cancel_order(DELETE)/cancel_item(전체배열 set)은 **본질 멱등이라 가드 불요**. **핵심 안전: op_id 는 SyncEngine 재생만 보냄 → 온라인 일반요청엔 없어 동작 100% 동일.** **API 실증: 같은 op_id 재전송→1회만 적용(add_items count·payment count 멱등), op_id 없는 온라인→정상.** SYNC_NONCREATE_ENABLED=true 활성화.
+  - ✅ **화면 반영 완료(읽기전용)**: 신규 `components/Offline/OfflineOrdersPanel.tsx` — 미동기화 오프라인 주문을 LiveOrders 상단 **격리 패널**(자체 렌더·DbOrder 매핑 없음 → 라이브목록 크래시 위험 0)로 표시(OFF-번호·테이블·품목수·합계·held/sending). 동기화되면 자동 사라짐. i18n 5키. **실증 2/2(LiveOrders mount crash0 + 패널 렌더).** + 부수 발견·수정: LiveOrders 통계 `total_amount.toString()` null 미가드(잠재버그) → `parseFloat()||0` 방어(오프라인 동기화/이상데이터 크래시 방지).
+  - ⬜ 4단계 잔여(비핵심·다음): **오프라인 주문 '편집' 액션 배선** — add/cancel/move/pay/stage 핸들러가 오프라인 주문(localId)에 recordOfflineOp 분기(백엔드 opId 가드 준비완료, 패널은 현재 읽기전용) / FloorPlan 반영 / degrade(비-POS1 차단, POS1 허브 설정 신설). **핵심(신규 접수→로컬인쇄→동기화) 무영향.**
+- ✅ **5단계 SyncEngine 완료(dev)**: 신규 `utils/offlineSync.ts` — 복구 시 op로그 seq순 재생. create=idempotency_key(서버 기존 멱등), serverId/번호 매핑, 단일락, 401→재로그인 이벤트, 4xx 스킵·5xx/네트워크 STOP(순서보존). 비-create 전송은 서버 opId가드 전까지 게이트(SYNC_NONCREATE_ENABLED=false, 현재 비-create op 미기록이라 무해). OrderContext init + OfflineContext 복구 트리거. absorbLegacyQueue 흡수. **실증 6/6: 오프라인 생성→runSync→서버 1건+매핑, 재기록·재동기화해도 중복0(무손실·무중복).**
+- 🔶 **6단계 로컬 주방인쇄 코드완료(dev, 실프린터 확인 필요)**: ①프론트 `printOfflineKitchenTicket`(클라 QZ/RawBT 직접, 서버無, 스테이션맵·printerSettings·pos_store_info_cache[StoreContext 신규 캐시] 사용) — OrderContext 오프라인 catch에서 주문받은 기기가 즉시 인쇄→printedLocally. ②SyncEngine create가 printedLocally면 `printed_offline:true` 전달. ③**백엔드 orders-crud create가 printed_offline 수용→needs_print=false+item printed_at 스탬프**(폴러 재인쇄0, 보호파일=의도변경). **실증 5/5(printed_offline→서버 needs_print=false+printed_at). ⚠ 실제 종이출력은 매장 프린터 확인 필요(headless 불가).**
+- ⬜ **7단계**: 데모 전사이클(오프라인 시뮬→접수→로컬인쇄→복구동기화) + 운영검증.
+- 검증 누적: build green(신규경고0)·hydration0·design신규0·i18n0·health106/107(=의도 print-guard)·KDS/POS mount crash0. print-guard 2건(KitchenDisplayPage·orders-crud=의도, 보호블록 무접촉) — **실프린터 확인 후 일괄 bless**.
+- **배포 정책**: 6단계 실프린터 확인 + (선택)4단계 잔여까지 본 뒤 한 번에 배포(반쪽 금지).
+
+### [진행·dev 2026-06-29] KDS 주문뷰 per-item 되돌리기 + 프린트 미확정 표시 (보호파일, Irene 직접 지시·반복 iteration)
+- **A. 주문뷰 per-item 되돌리기**(확정: 아이템 최저 min-stage 파생): `revertItemStage`/`revertSetItemStage` 추가 — 진행된 아이템마다 ↺, 그 아이템만 한 단계↓ + `deriveOrderStatusLocal`로 주문 min 강등(allowItemRevert:true). 멀티품목 주문뷰에서 일괄만 되던 것 해소. **API 실증: both→preparing=preparing / revert one→pending(min)**.
+- **B. 프린트 미확정 표시**(확정: needs_print 기반, DB 무변경): KitchenOrder에 needsPrint/createdAtMs + item.printed_at 노출. `hasPrintProblem`(needs_print+grace 30s 롤업)·`itemNotPrinted`(item.printed_at 미스탬프=정밀). 주문뷰 빨강 배지+Reprint, 아이템 ● 마크, **헤더 "미인쇄 N" 칩(양뷰 공통=아이템뷰도 보임)**, 아이템뷰 Ready 카드 배지. **강력 팝업**(NoticeCard $kind=order-cancel 빨강, 한 건씩 큐 "N more", Reprint+OK, 버튼 여백 수정). 재인쇄=printOrderTicket(printPerItem 자동분할)+스테이션 stamp(/station-printed) 또는 /printed. **실증 6/6**(생성·needs_print·min-stage·칩·팝업+Reprint).
+- **설계 의견(Irene 질문 답)**: 인쇄 데이터가 2층(주문 needs_print + 아이템 printed_at)이라 표시도 2층. per-item ●=printPerItem 모드 정밀신호, 주문배지=롤업. 아이템뷰 pending/preparing은 메뉴그룹이라 주문배지 모호 → 헤더 칩으로 해결.
+- **라우팅 검증(Irene 요청)**: 코드 정상(item.kitchen_station_id→kitchenStationPrinters[id]→프린터, 미매핑=첫스테이션 병합, 스테이션별 재시도). **단 rid5 "Test3"=프린터 미설정**(method=browser·name/addr 빈값)·autoPrint OFF·30개중 7개만 스테이션매핑·station26 매핑0 → 실프린터로 안 감. 실라우팅 테스트는 kitchenStationPrinters 설정+아이템 매핑된 매장 필요.
+- 검증: build green(신규경고0)·print-guard=KDS 1건(의도, order-created/items-added 핸들러 무접촉)·hydration0·design신규0·i18n0·KDS mount(order/item) crash0. **bless 안 함**(실프린터 확인 후). i18n 키 추가(kitchen 6키×4언어).
+- ⚠ **실프린터 확인 필요**(재인쇄=인쇄 동작). 매장 종이확인 후 일괄 bless.
 
 ### (이전) 진행 중인 작업 (2026-06-28 — v3.64로 운영 배포 완료분)
 - **[배포완료]** 현장 레이아웃 묶음

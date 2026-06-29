@@ -91,8 +91,10 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
   useEffect(() => {
     let cancelled = false;
     import('../utils/offlineOrderQueue').then(({ initOfflineOrderFlush }) => { if (!cancelled) initOfflineOrderFlush(); });
-    // 오프라인 3단계 LocalStore(IndexedDB) 워밍 — 데이터 계층만 로드(흡수/재생은 5단계 SyncEngine).
+    // 오프라인 3단계 LocalStore(IndexedDB) 워밍.
     import('../utils/offlineStore').then(({ initOfflineStore }) => { if (!cancelled) initOfflineStore(); });
+    // 오프라인 5단계 SyncEngine — 복구 시 op 로그 재생(무손실·무중복). online 복귀/주기 재시도 등록.
+    import('../utils/offlineSync').then(({ initOfflineSync }) => { if (!cancelled) initOfflineSync(); });
     return () => { cancelled = true; };
   }, []);
 
@@ -198,10 +200,17 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
       } catch (netErr) {
         // #9 연결 끊김 — POS 주문을 잃지 않게 로컬 큐에 저장(재연결 시 자동 전송, 서버 멱등으로 중복 0).
         enqueueOrder('/api/orders', backendOrder, getAuthToken());
-        // 오프라인 4단계 — LocalStore(IndexedDB) op 로그에도 create 기록(화면 반영·5단계 SyncEngine 재생 입력).
+        // 오프라인 4단계 — LocalStore(IndexedDB) op 로그에 create 기록 + 6단계 로컬 주방인쇄.
         // legacy 큐와 같은 idempotency_key 라 중복 전송돼도 서버 멱등으로 주문 1개. 기록 실패는 무시(legacy 가 안전망).
-        import('../utils/offlineOps').then(({ recordOfflineCreate }) => {
-          recordOfflineCreate(backendOrder, { authToken: getAuthToken() }).catch(() => {});
+        import('../utils/offlineOps').then(async ({ recordOfflineCreate, printOfflineKitchenTicket }) => {
+          const rec = await recordOfflineCreate(backendOrder, { authToken: getAuthToken() }).catch(() => null);
+          if (!rec || !rec.order) return;
+          // 6단계: 주문받은 기기(카운터 POS=오프라인 허브)가 즉시 로컬로 주방티켓 인쇄. 성공 시 printedLocally
+          // → 동기화 때 printed_offline 로 서버가 printed_at 찍어 폴러 재인쇄 0. 프린터 없으면 false → 복구 후 서버 인쇄.
+          const printed = await printOfflineKitchenTicket(rec.order).catch(() => false);
+          if (printed) {
+            import('../utils/offlineStore').then(({ setPrintedLocally }) => setPrintedLocally(rec.order.localId, true).catch(() => {})).catch(() => {});
+          }
         }).catch(() => {});
         throw new Error('OFFLINE_QUEUED'); // 호출부가 "오프라인 저장됨" 처리
       }

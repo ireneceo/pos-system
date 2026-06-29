@@ -12,6 +12,7 @@ const OrderAction = require('../models/OrderAction');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
 const { executeQuery, executeTransaction } = require('../utils/queryWrapper');
+const { alreadyProcessed, recordProcessed } = require('../utils/opIdGuard');
 const { deductInventoryForOrder } = require('../services/inventoryDeductionService');
 const { earnPointsForOrder, refundPointsForOrder, usePointsForOrder } = require('../services/pointService');
 const { authenticateToken, optionalAuthenticateToken, requireRole, requirePosCounter, userCanOperatePosCounter, requireVoidAccess, userCanVoid } = require('../middleware/auth');
@@ -825,15 +826,25 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
             normalizedProof = { current: normalizedProof, history: [] };
           }
 
+          // 오프라인 6단계: printed_offline=true → POS1 이 오프라인 중 로컬(QZ/RawBT)로 이미 주방
+          // 티켓을 찍은 주문. 동기화 시 needs_print=false + 각 품목 printed_at 스탬프로 폴러/자동인쇄가
+          // 재인쇄하지 않게 한다(기존 printed_at 중복방지 메커니즘 재사용). 미설정 시 기존 동작(true).
+          const _printedOffline = orderData.printed_offline === true;
+          delete orderData.printed_offline; // 모델 컬럼 아님 — 영속 안 함
+          const _nowIso = new Date().toISOString();
+          const _itemsForCreate = (_printedOffline && itemsArray.length > 0)
+            ? itemsArray.map(it => (it && typeof it === 'object' && !it.printed_at) ? { ...it, printed_at: _nowIso } : it)
+            : itemsArray;
           return await Order.create({
             ...orderData,
             order_number: generatedOrderNumber,
-            order_items: itemsArray.length > 0 ? itemsArray : null,  // Pass array, not JSON string
+            order_items: _itemsForCreate.length > 0 ? _itemsForCreate : null,  // Pass array, not JSON string
             total_amount: calculatedTotal ?? 0,
             payment_proof: normalizedProof || orderData.payment_proof,
             // 2026-05-28: backend trigger for auto-print polling (POS direct trigger
             // still fires as fast path — this is the safety net for any device).
-            needs_print: true
+            // 오프라인 로컬인쇄분(printed_offline)은 이미 찍혔으니 needs_print=false.
+            needs_print: _printedOffline ? false : true
           }, {
             transaction: t,
             validate: false  // Skip validation since we're generating order_number
@@ -2229,6 +2240,12 @@ router.post('/:id/add-items', authenticateToken, async (req, res) => {
     const { items } = req.body;
     const orderId = req.params.id;
 
+    // 오프라인 5단계(§8) opId 멱등 — SyncEngine 재생 시 응답유실 재전송을 한 번만 적용.
+    // op_id 는 재생 요청만 보냄 → 온라인 일반 add-items 엔 없어 통과(동작 100% 동일).
+    if (req.body.op_id && await alreadyProcessed(req.body.op_id)) {
+      return res.json({ success: true, deduped: true });
+    }
+
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ success: false, error: { message: 'Items array is required', code: 'VALIDATION_ERROR' } });
     }
@@ -2314,6 +2331,9 @@ router.post('/:id/add-items', authenticateToken, async (req, res) => {
         new_total: newTotal
       }
     });
+
+    // opId 멱등 기록(성공 시에만) — 재생 재전송 시 위 alreadyProcessed 가 no-op 처리.
+    if (req.body.op_id) await recordProcessed(req.body.op_id, { order_id: order.id, type: 'add_items', restaurant_id: order.restaurant_id });
 
     res.json({
       success: true,

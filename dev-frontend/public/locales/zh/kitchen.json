@@ -54,7 +54,10 @@
   },
   "kitchenDisplayPage.printNotConfirmed": "未打印 — 打印问题",
   "kitchenDisplayPage.reprint": "重新打印",
-  "kitchenDisplayPage.printProblemTitle": "打印未确认",
-  "kitchenDisplayPage.printProblemBody": "这些订单可能未打印。请检查打印机，然后在订单卡片上点击“重新打印”。",
-  "kitchenDisplayPage.ok": "确定"
+  "kitchenDisplayPage.printProblemTitle": "厨房单未打印",
+  "kitchenDisplayPage.printProblemBody": "请检查厨房打印机（QZ Tray／连接），然后重新打印。订单仍显示在屏幕上。",
+  "kitchenDisplayPage.ok": "确定",
+  "kitchenDisplayPage.printProblemLine": "可能未打印到厨房。",
+  "kitchenDisplayPage.notPrintedBadge": "未打印",
+  "kitchenDisplayPage.itemNotPrinted": "此项目尚未打印"
 }
