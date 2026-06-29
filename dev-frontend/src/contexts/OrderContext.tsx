@@ -91,6 +91,8 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
   useEffect(() => {
     let cancelled = false;
     import('../utils/offlineOrderQueue').then(({ initOfflineOrderFlush }) => { if (!cancelled) initOfflineOrderFlush(); });
+    // 오프라인 3단계 LocalStore(IndexedDB) 워밍 — 데이터 계층만 로드(흡수/재생은 5단계 SyncEngine).
+    import('../utils/offlineStore').then(({ initOfflineStore }) => { if (!cancelled) initOfflineStore(); });
     return () => { cancelled = true; };
   }, []);
 
