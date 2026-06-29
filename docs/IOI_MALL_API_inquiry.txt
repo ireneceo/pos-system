@@ -17,16 +17,11 @@ points remain — could you please confirm:
 3. othersamount
    - Is this the catch-all for all remaining payment methods?
 
-4. Submission cadence
-   - Do you expect hourly submissions, or one daily submission containing all 24
-     hourly records?
-   - By what time should the data be submitted each day?
-
-5. Negative values
+4. Negative values
    - Since GTO is already net of voids and refunds, should any field ever contain
      negative values?
 
-6. Production
+5. Production
    - Please provide the production URL, credentials, and go-live procedure.
 
 Thank you.
