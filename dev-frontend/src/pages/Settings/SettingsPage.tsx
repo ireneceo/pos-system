@@ -26,6 +26,7 @@ import { getRestaurantTimezone } from '../../utils/timezone';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
+import MallSalesIntegrationSettings from './MallSalesIntegrationSettings';
 import { isOfflineMainPos, setOfflineMainPos } from '../../utils/offlineMainPos';
 import { openCustomerDisplay, isAutoOpenEnabled, setAutoOpenEnabled, resetCustomerDisplayPosition } from '../../utils/customerDisplay';
 // 스타일 컴포넌트
@@ -371,7 +372,7 @@ const ActionButton = styled.button`
 `;
 
 // 타입 정의
-type TabType = 'store' | 'operations' | 'tablesQr' | 'payment' | 'printer' | 'kitchenStations' | 'mobileOrder' | 'reservation' | 'company' | 'brands' | 'billing' | 'managers' | 'membership';
+type TabType = 'store' | 'operations' | 'tablesQr' | 'payment' | 'printer' | 'kitchenStations' | 'mobileOrder' | 'reservation' | 'company' | 'brands' | 'billing' | 'managers' | 'membership' | 'salesReporting';
 
 interface Table {
   id: string;
@@ -8373,6 +8374,13 @@ ${t('settings:settingsPage.qzDiagramBridge')}
               )}
 
             </div>
+          )}
+
+          {activeTab === 'salesReporting' && user?.restaurantId && (
+            <MallSalesIntegrationSettings
+              restaurantId={Number(user.restaurantId)}
+              timeZone={operationSettings.timeZone}
+            />
           )}
 
           {activeTab === 'membership' && (

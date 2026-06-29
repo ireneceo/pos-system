@@ -163,11 +163,20 @@ const StaffInfo = styled.div<{ clickable?: boolean }>`
   border-radius: ${props => props.clickable ? '8px' : '0'};
   transition: all 0.2s;
   color: var(--pos-text-muted, #4B5563);
+  white-space: nowrap;
 
   &:hover {
     background: ${props => props.clickable ? 'var(--pos-surface-2, #F4F6F9)' : 'transparent'};
     color: ${props => props.clickable ? 'var(--pos-text, #0A2540)' : 'var(--pos-text-muted, #4B5563)'};
   }
+
+  /* 10인치 태블릿: 직원명만 두고 ▼ 만 — 한 줄 유지 */
+  @media (max-width: 1280px) { padding: ${props => props.clickable ? '6px 8px' : '0'}; gap: 6px; }
+`;
+
+/* 좁은 화면(≤1280)에서 버튼 텍스트 라벨을 숨겨 아이콘만 남긴다 — 헤더 한 줄 유지. */
+const BtnLabel = styled.span`
+  @media (max-width: 1280px) { display: none; }
 `;
 
 const DateTime = styled.div`

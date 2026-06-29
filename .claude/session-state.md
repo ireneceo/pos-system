@@ -1,5 +1,10 @@
 # Purple POS — 개발 세션 상태
 
+<!-- AUTOSAVE-STALE-BANNER -->
+> **[AUTO-SAVE STALE] (2026-06-29 23:05, idle 1850s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
+> 변경된 작업 파일: RestaurantSalesIntegration.js,index.js sales-integrations.js,20260629_create_sales_integrations.js server.js,mallSalesScheduler.js mallSalesService.js,common.json settings.json,common.json settings.json,common.json
+<!-- /AUTOSAVE-STALE-BANNER -->
+
 ## 현재 작업 상태
 **마지막 업데이트:** 2026-06-29 #3 (thefire01 라이브 인쇄 종일 대응 — **자동인쇄 전부 해결·운영 배포 완료**)
 **버전:** SW **4.45 운영 배포**(통합티켓 통합수정 완료). Irene 확인 "자동인쇄 해결됐어".

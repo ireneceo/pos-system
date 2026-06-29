@@ -79,6 +79,7 @@ const invoiceScheduler = require('./services/invoiceScheduler');
 const subscriptionScheduler = require('./services/subscriptionScheduler');
 const demoResetScheduler = require('./services/demoResetScheduler');
 const dailyStatsScheduler = require('./services/dailyStatsScheduler');
+const mallSalesScheduler = require('./services/mallSalesScheduler');
 const invoiceOverdueScheduler = require('./services/invoiceOverdueScheduler');
 const reservationScheduler = require('./services/reservationScheduler');
 const base64ImageSweep = require('./services/base64ImageSweep');
@@ -297,6 +298,7 @@ const adminAnalyticsRouter = require('./routes/admin-analytics');
 const adminSettingsRouter = require('./routes/admin-settings');
 const addressSuggestionsRouter = require('./routes/address-suggestions');
 const schedulerRunsRouter = require('./routes/scheduler-runs');
+const salesIntegrationsRouter = require('./routes/sales-integrations');
 const adminPaymentSettingsRouter = require('./routes/admin-payment-settings');
 const paymentsRouter = require('./routes/payments');
 const supportTicketsRouter = require('./routes/support-tickets');
@@ -520,6 +522,7 @@ app.use('/api/comments', commentsRouter);  // Polymorphic comments (notices, tic
 app.use('/api/notices', noticesRouter);  // Notices (공지) system
 app.use('/api/inbox', inboxRouter);  // Unified inbox (Notice + Tickets)
 app.use('/api/admin/scheduler-runs', schedulerRunsRouter);  // Scheduler monitoring
+app.use('/api/sales-integrations', salesIntegrationsRouter);  // 입점몰 매출보고 API 연동 설정
 app.use('/api/work-manuals', workManualsRouter);  // Work Manuals (업무매뉴얼) system
 app.use('/api/badge-counts', badgeCountsRouter);  // Sidebar badge counts
 app.use('/api/kitchen-stations', kitchenStationsRouter);  // Kitchen station management
@@ -667,6 +670,10 @@ async function startServer() {
 
     // Start daily stats aggregation scheduler — runs daily at 00:30 SGT (UTC+8)
     dailyStatsScheduler.start();
+
+    // Start mall sales reporting scheduler — daily 02:00 MYT, uploads 24 hourly
+    // records per restaurant (last 7 days upsert) to the mall's POS sales API.
+    mallSalesScheduler.start();
 
     // Start invoice overdue scheduler — runs daily at 02:30 UTC, transitions
     // non-subscription invoices past due_date to 'overdue' status.

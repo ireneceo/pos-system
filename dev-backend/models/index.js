@@ -102,6 +102,7 @@ const RestaurantIngredientCost = require('./RestaurantIngredientCost');
 const SystemLog = require('./SystemLog');
 const SchedulerRun = require('./SchedulerRun');
 const ProcessedOp = require('./ProcessedOp');
+const RestaurantSalesIntegration = require('./RestaurantSalesIntegration');
 const Comment = require('./Comment');
 const CommentRead = require('./CommentRead');
 const Notice = require('./Notice');
@@ -962,6 +963,9 @@ CashReconciliation.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'res
 CashierShift.hasMany(CashMovement, { foreignKey: 'shift_id', as: 'movements' });
 CashMovement.belongsTo(CashierShift, { foreignKey: 'shift_id', as: 'shift' });
 CashMovement.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
+// 입점몰 매출보고 API 연동 설정 ↔ 매장 (보통 1:1, 모델은 1:N 허용)
+RestaurantSalesIntegration.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
+Restaurant.hasMany(RestaurantSalesIntegration, { foreignKey: 'restaurant_id', as: 'salesIntegrations' });
 PaymentMethodSetting.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
 Restaurant.hasMany(PaymentMethodSetting, { foreignKey: 'restaurant_id', as: 'paymentMethodSettings' });
 
@@ -1050,6 +1054,7 @@ module.exports = {
   SystemLog,
   SchedulerRun,
   ProcessedOp,
+  RestaurantSalesIntegration,
   Comment,
   CommentRead,
   Notice,

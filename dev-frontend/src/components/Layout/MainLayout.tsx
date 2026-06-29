@@ -2001,6 +2001,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           { path: `/restaurant/${rid}/settings?tab=mobileOrder`, label: t('nav.mobileOrder', 'Mobile Order'), visible: hasMenuPermission('settings') },
           { path: `/restaurant/${rid}/settings?tab=reservation`, label: t('nav.reservation', 'Reservation'), visible: hasMenuPermission('settings') },
           { path: `/restaurant/${rid}/settings?tab=membership`, label: t('nav.membership', 'Membership'), visible: hasMenuPermission('settings') },
+          { path: `/restaurant/${rid}/settings?tab=salesReporting`, label: t('nav.salesReporting', 'Mall Sales Reporting'), visible: hasMenuPermission('settings') },
           { path: `/restaurant/${rid}/notification-settings`, label: t('nav.systemSettings'), visible: hasMenuPermission('settings') },
           { path: `/restaurant/${rid}/history`, label: t('nav.changeHistory'), visible: hasMenuPermission('reports') && isRouteAllowed(`/restaurant/${rid}/history`) }
         ].filter(i => i.visible !== false),
