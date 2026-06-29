@@ -51,5 +51,10 @@
     "moveTitle": "Table Moved",
     "sameOrder": "Same order — do NOT make it again.",
     "mergedAtTable": "Combined with the order already at {{table}}"
-  }
+  },
+  "kitchenDisplayPage.printNotConfirmed": "Not printed — print problem",
+  "kitchenDisplayPage.reprint": "Reprint",
+  "kitchenDisplayPage.printProblemTitle": "Print not confirmed",
+  "kitchenDisplayPage.printProblemBody": "These orders may not have printed. Check the printer, then use Reprint on the order card.",
+  "kitchenDisplayPage.ok": "OK"
 }

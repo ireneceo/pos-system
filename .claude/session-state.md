@@ -10,7 +10,11 @@
 - ✅ 1단계 OfflineContext(/api/health 핑·히스테리시스)+OfflineBanner+App 전역래핑 — 검증완료(배너 실동작 헤드리스 실증).
 - ✅ 2단계 sw.js network-first+오프라인 cache-fallback(셸·메뉴캐시, SW_VERSION 4.35) — 검증완료(오프라인 재로드 셸 렌더 실증).
 - ✅ **3단계 완료(dev, 미배포)**: IndexedDB LocalStore + append-only op 로그. 신규 `utils/offlineDb.ts`(저수준 IDB 래퍼: 스토어 offline_orders/offline_ops/offline_meta, 트랜잭션·genId·deleteOfflineDb) + `utils/offlineStore.ts`(LocalOrder/OfflineOp 타입 + 원자적 seq발급·createLocalOrderWithOp·appendOp·getUnsyncedOps·markOpSynced·patchOrder·markOrderSynced·pendingOpCount·absorbLegacyQueue). OrderContext에 `initOfflineStore()` 워밍 1줄(데이터 계층만; legacy 흡수/재생은 5단계까지 미호출=유실창 방지). dev 호스트네임 게이트 `window.__offlineStore` seam(운영 apex/www 미노출). **검증: Playwright 실브라우저 IndexedDB 31/31 PASS**(원자적 생성·단조 seq·op순서·markSynced제외·서버매핑·legacy흡수 one-time·**리로드 영속성=정전 재부팅**). build green(신규경고0)·print-guard 8/8(보호파일 무접촉)·health 107/107·POS mount crash0.
-- ⬜ **4단계(여기부터)**: 오프라인 시 POS 주문 전 작업(create/add/cancel/pay/stage)을 LocalStore에 로컬 기록 + 화면 반영. OfflineContext.isOffline 분기. **POSTerminalPage=보호파일 — 인쇄 라인 무접촉 주의.**
+- 🔶 **4단계 진행중(dev, 미배포)**: operation-recording 레이어 완성 + create 배선 완료.
+  - ✅ 신규 `utils/offlineOps.ts`: `recordOfflineCreate`(서버 payload→op로그, idempotency_key 중복방지) / `recordOfflineOp`(add_items·cancel_item·cancel_order·move_table·set_stage·pay — 로컬주문이면 patchOrder로 상태/품목/결제 즉시반영, 서버주문 참조는 payload._serverId 보존) / `listOfflineOrders`(미동기화 표시용). dev seam `window.__offlineOps`.
+  - ✅ **create 배선 = OrderContext 오프라인 catch에 recordOfflineCreate 추가**(보호파일 POSTerminalPage 무접촉 — POS는 addOrder 경유, OFFLINE_QUEUED 계약·legacy 큐 유지, additive). 더블탭 dedup.
+  - ✅ 검증: **Playwright 실브라우저 18/18 PASS**(create 기록·item/특별요청/raw 매핑·idempotency dedup·add_items 합산·pay·set_stage·cancel·op로그 5건 seq 오름차순·serverId 참조 보존). build green(신규경고0)·print-guard 8/8·hydration0·POS mount crash0.
+  - ⬜ **남은 4단계(다음)**: ①화면 반영 — listOfflineOrders를 POS/LiveOrders/FloorPlan 목록에 머지 표시(임시번호 OFF-, 동기화전 배지) ②add/cancel/move/pay/stage **실제 호출부 배선**(FloorPlan/LiveOrders/TableDetailPanel — 비보호, 오프라인일 때 recordOfflineOp 분기) ③degrade(비-POS1 기기 오프라인 차단 안내).
 - ⬜ 5 SyncEngine(순서재생·opId멱등·번호매핑·401복구)+서버 opId가드 / 6 로컬인쇄(🔒실프린터·bless) / 7 데모전사이클+운영검증.
 - **누적 dev, 미배포** — 로컬인쇄(6단계)까지 완성돼 "쓸만"해지면 한 번에 배포(반쪽 배포 금지).
 

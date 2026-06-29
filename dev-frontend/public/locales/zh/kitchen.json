@@ -51,5 +51,10 @@
     "moveTitle": "餐桌已移动",
     "sameOrder": "同一订单 — 请勿重复制作。",
     "mergedAtTable": "已与 {{table}} 的现有订单合并"
-  }
+  },
+  "kitchenDisplayPage.printNotConfirmed": "未打印 — 打印问题",
+  "kitchenDisplayPage.reprint": "重新打印",
+  "kitchenDisplayPage.printProblemTitle": "打印未确认",
+  "kitchenDisplayPage.printProblemBody": "这些订单可能未打印。请检查打印机，然后在订单卡片上点击“重新打印”。",
+  "kitchenDisplayPage.ok": "确定"
 }

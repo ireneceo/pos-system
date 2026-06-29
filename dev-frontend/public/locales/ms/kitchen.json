@@ -51,5 +51,10 @@
     "moveTitle": "Meja Dipindahkan",
     "sameOrder": "Pesanan sama — JANGAN buat lagi.",
     "mergedAtTable": "Digabung dengan pesanan sedia ada di {{table}}"
-  }
+  },
+  "kitchenDisplayPage.printNotConfirmed": "Tidak dicetak — masalah cetakan",
+  "kitchenDisplayPage.reprint": "Cetak semula",
+  "kitchenDisplayPage.printProblemTitle": "Cetakan tidak disahkan",
+  "kitchenDisplayPage.printProblemBody": "Pesanan ini mungkin tidak dicetak. Periksa pencetak, kemudian gunakan Cetak semula pada kad pesanan.",
+  "kitchenDisplayPage.ok": "OK"
 }

@@ -847,7 +847,8 @@
       "Bash(ls node_modules/.bin/playwright)",
       "Bash(./deploy-dev.sh)",
       "Bash(echo \"RC=$?\")",
-      "Bash(NODE_PATH=/var/www/dev-frontend/node_modules timeout 90 node /tmp/claude-1000/-var-www/2269feb7-1800-4901-8896-1f35f0ba9880/scratchpad/mount-pos.js)"
+      "Bash(NODE_PATH=/var/www/dev-frontend/node_modules timeout 90 node /tmp/claude-1000/-var-www/2269feb7-1800-4901-8896-1f35f0ba9880/scratchpad/mount-pos.js)",
+      "Bash(awk '/router\\\\.get\\\\\\(.\\\\/restaurant\\\\/:restaurantId.,/{f=1} f&&/attributes|exclude|findAll|raw:|order_items|\\\\.json\\\\\\(/{print NR\": \"$0} f&&/^router\\\\.\\(get|post|put|patch|delete\\)/&&NR>1&&!/restaurantId./{c++; if\\(c>1\\)exit}' routes/orders-crud.js)"
     ],
     "deny": [],
     "ask": []

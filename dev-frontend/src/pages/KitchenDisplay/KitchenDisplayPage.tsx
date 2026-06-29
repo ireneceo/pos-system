@@ -577,6 +577,11 @@ interface KitchenOrder {
   orderType: 'dine-in' | 'takeaway' | 'delivery' | 'pickup';
   source?: 'pos' | 'mobile' | 'kiosk';
   scheduledPickupTime?: string | null;
+  // 프린트 실패/미확정 표시용(영속 신호). needs_print=true 가 자동인쇄 유예 후에도 남아있으면
+  // = 주방 티켓이 확정 인쇄 안 됨 → KDS 가 배지/팝업/수동 재인쇄로 알린다. KDS 는 인쇄 주체가
+  // 아니므로(표시 전용) 백엔드 needs_print 만이 리셋 후에도 보이는 신호다. (인쇄 동작 무변경.)
+  needsPrint?: boolean;
+  createdAtMs?: number;
 }
 
 interface PreparingBatch {
@@ -737,6 +742,9 @@ const KitchenDisplayPage: React.FC = () => {
   type CancelledEntry = { id: string; orderNumber: string; tableNumber?: string; items: string; at: number };
   const [cancelledOrders, setCancelledOrders] = useState<CancelledEntry[]>([]);
   const [showCancelledModal, setShowCancelledModal] = useState(false);
+  // 프린트 미확정 1회 팝업 — 같은 주문은 세션당 한 번만(리셋하면 배지로 계속 보임).
+  const shownPrintProblemRef = useRef<Set<string>>(new Set());
+  const [printProblemPopup, setPrintProblemPopup] = useState<string[] | null>(null);
   // 같은 주문 취소가 order-updated 재방출로 중복 팝업되지 않도록 1회만.
   const cancelledNoticeRef = useRef<Set<string>>(new Set());
 
@@ -812,7 +820,9 @@ const KitchenDisplayPage: React.FC = () => {
       tableNumber: order.table_number || undefined,
       orderType: (order.order_type || 'dine-in') as KitchenOrder['orderType'],
       source: order.source || 'pos',
-      scheduledPickupTime: order.scheduled_pickup_time || null
+      scheduledPickupTime: order.scheduled_pickup_time || null,
+      needsPrint: !!order.needs_print,
+      createdAtMs: new Date(order.createdAt || order.order_date || Date.now()).getTime()
     };
   };
 
@@ -1548,7 +1558,23 @@ const KitchenDisplayPage: React.FC = () => {
         set_items: item.set_items || []
       }))
     };
-    printKitchenTicketViaRawBT(orderData, getStoreInfo());
+    // 인쇄 동작/라우팅 무변경 — 호출만. 반환 promise 는 재인쇄 성공 확인용(기존 호출부는 무시).
+    return printKitchenTicketViaRawBT(orderData, getStoreInfo());
+  };
+
+  // 프린트 미확정 주문 수동 재인쇄. 성공 시 PATCH /printed 로 needs_print clear → 배지/팝업 해제.
+  // 인쇄 발송 자체는 기존 printOrderTicket(=printKitchenTicketViaRawBT) 재사용(동작 무변경).
+  const reprintForProblem = async (order: KitchenOrder) => {
+    const items = selectedStation === 'all'
+      ? order.items
+      : order.items.filter(it => isItemInSelectedStation(it.name));
+    try {
+      const ok = await printOrderTicket(order, items);
+      if (ok !== false) {
+        await fetch(`/api/orders/${order.id}/printed`, { method: 'PATCH', headers: apiHeaders() }).catch(() => {});
+        setOrders(prev => prev.map(o => o.id === order.id ? { ...o, needsPrint: false } : o));
+      }
+    } catch { /* 재인쇄 실패 — 배지 유지(다시 시도 가능) */ }
   };
 
   const updateOrderStatus = async (orderId: string, newStatus: KitchenOrder['status']) => {
@@ -1695,6 +1721,23 @@ const KitchenDisplayPage: React.FC = () => {
     return (LEVEL_STAGE[minLvl] || 'served') as KitchenOrder['status'];
   };
 
+  // 2026-06-29 (Irene 확정): 프린트 미확정/실패 표시. needs_print 가 자동인쇄 유예(PRINT_GRACE_MS)
+  // 후에도 남아있으면 = 그 주문 주방티켓이 확정 인쇄 안 됨. KDS 는 인쇄 주체가 아니라 표시 전용이므로
+  // 백엔드 영속 신호(needs_print)만 리셋 후에도 보인다(transient autoprint-failed 이벤트로는 불가).
+  const PRINT_GRACE_MS = 30000;
+  const hasPrintProblem = useCallback((o: KitchenOrder): boolean => {
+    if (!o || !o.needsPrint) return false;
+    return (Date.now() - (o.createdAtMs || 0)) > PRINT_GRACE_MS;
+  }, []);
+
+  // 프린트 미확정 주문이 새로 감지되면 1회 팝업(주문번호 나열). 같은 주문은 세션당 한 번.
+  useEffect(() => {
+    const fresh = orders.filter(o => hasPrintProblem(o) && !shownPrintProblemRef.current.has(o.id));
+    if (fresh.length === 0) return;
+    fresh.forEach(o => shownPrintProblemRef.current.add(o.id));
+    setPrintProblemPopup(fresh.map(o => o.orderNumber || `#${o.pickupNumber}`));
+  }, [orders, hasPrintProblem]);
+
   // 주방 범위로만 아이템 단계 이동. forward=미달분만 전진(Start/Done/Serve),
   // force=강제 세팅(Revert). order.status 는 전 주방 완료 시에만 승급(forward 한정).
   const setStationItemsStage = async (
@@ -1753,6 +1796,68 @@ const KitchenDisplayPage: React.FC = () => {
     } finally {
       endWrite(wKey);
     }
+  };
+
+  // 2026-06-29 (#1 후속, Irene 확정): 주문뷰 per-item 되돌리기.
+  // 단일 아이템을 한 단계 내리고(served→ready→preparing→pending) 주문 단계는 deriveOrderStatusLocal
+  // 로 아이템 최저(min)에 맞춘다 — "하나라도 되돌린 아이템이 있으면 주문이 그 최저로 따라감".
+  // 전진 승급(보호규칙)은 무변경. allowItemRevert:true 로 백엔드 forward-only 가드를 우회(되돌리기 한정).
+  const lowerOneStage = (cur?: string): ItemStatus =>
+    (LEVEL_STAGE[Math.max(0, (STAGE_LEVEL[cur || 'pending'] ?? 0) - 1)]) as ItemStatus;
+
+  const persistItemsRevert = async (orderId: string, updatedItems: any[]) => {
+    try {
+      const res = await fetch(`/api/orders/${orderId}/items`, {
+        method: 'PATCH', credentials: 'include', headers: apiHeaders(),
+        body: JSON.stringify(kdsBody({ order_items: updatedItems, allowItemRevert: true }))
+      });
+      const result = await res.json();
+      if (!result.success) { fetchOrders(); }
+    } catch {
+      fetchOrders();
+    }
+  };
+
+  const applyRevertOptimistic = (orderId: string, updatedItems: any[]) => {
+    setOrders(prev => prev.map(o => {
+      if (o.id !== orderId) return o;
+      const nextO = { ...o, items: updatedItems as any };
+      const d = deriveOrderStatusLocal(updatedItems as any, o.status);
+      if (d) nextO.status = d;
+      return nextO;
+    }));
+  };
+
+  const revertItemStage = async (orderId: string, itemId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+    const wKey = `revitem:${orderId}:${itemId}`;
+    if (!beginWrite(wKey)) return;
+    stopSound();
+    const updatedItems = order.items.map(item =>
+      item.id === itemId ? { ...item, status: lowerOneStage(item.status) } : item
+    );
+    applyRevertOptimistic(orderId, updatedItems);
+    try { await persistItemsRevert(orderId, updatedItems); } finally { endWrite(wKey); }
+  };
+
+  const revertSetItemStage = async (orderId: string, parentItemId: string, setItemId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+    const wKey = `revsetitem:${orderId}:${parentItemId}:${setItemId}`;
+    if (!beginWrite(wKey)) return;
+    stopSound();
+    const updatedItems = order.items.map(item => {
+      if (item.id === parentItemId && item.set_items) {
+        const newSet = item.set_items.map(si => si.id === setItemId ? { ...si, status: lowerOneStage(si.status) } : si);
+        // 부모(top-level) 단계 = 구성품 최저 — deriveOrderStatusLocal 가 top-level 기준이라 일치 필요.
+        const minLvl = Math.min(...newSet.map(si => STAGE_LEVEL[si.status || 'pending'] ?? 0));
+        return { ...item, set_items: newSet, status: (LEVEL_STAGE[minLvl] || 'pending') as ItemStatus };
+      }
+      return item;
+    });
+    applyRevertOptimistic(orderId, updatedItems);
+    try { await persistItemsRevert(orderId, updatedItems); } finally { endWrite(wKey); }
   };
 
   const updateItemStatus = async (orderId: string, itemId: string, stageOverride?: string) => {
@@ -2094,6 +2199,25 @@ const KitchenDisplayPage: React.FC = () => {
           </OrderRight>
         </OrderHeader>
 
+        {/* 2026-06-29 (Irene 확정): 프린트 미확정 표시 + 수동 재인쇄. needs_print 가 유예 후에도 남은 주문. */}
+        {hasPrintProblem(order) && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 8px',
+            padding: '6px 10px', background: '#FEE2E2', border: '1px solid #EF4444',
+            borderRadius: 6, fontSize: 12, fontWeight: 700, color: '#B91C1C'
+          }}>
+            <span style={{ flex: 1 }}>{t('kitchen:kitchenDisplayPage.printNotConfirmed', 'Not printed — print problem')}</span>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); reprintForProblem(order); }}
+              style={{
+                border: 'none', background: '#EF4444', color: '#fff', borderRadius: 6,
+                padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer'
+              }}
+            >{t('kitchen:kitchenDisplayPage.reprint', 'Reprint')}</button>
+          </div>
+        )}
+
         {/* Progress: visual bar + count */}
         {totalItems > 1 && <ProgressContainer>
           <ProgressBar>
@@ -2131,6 +2255,10 @@ const KitchenDisplayPage: React.FC = () => {
               )}
               <ItemRow done={isItemDoneForColumn(cardStatus, item.status || 'pending') && cardStatus !== 'pending'}>
                 <ItemInfo>
+                  {hasPrintProblem(order) && (
+                    <span title="Print not confirmed for this order"
+                      style={{ color: '#EF4444', fontSize: 10, marginRight: 4, verticalAlign: 'middle' }}>●</span>
+                  )}
                   {item.is_set_menu ? (
                     <div style={{ fontSize: '12px', fontWeight: 500, color: '#4B5563' }}>
                       {renderItemName(item.name)} {item.quantity > 1 && <ItemQty highlight done={isItemDoneForColumn(cardStatus, item.status || 'pending') && cardStatus !== 'pending'}>x {item.quantity}</ItemQty>}
@@ -2157,17 +2285,13 @@ const KitchenDisplayPage: React.FC = () => {
                     );
                   })()}
                 </ItemInfo>
-                {!item.is_set_menu && totalItems === 1 && cardStatus !== 'pending' && (
+                {/* 2026-06-29 (Irene 확정): 주문뷰 per-item 되돌리기 — 진행된(>pending) 아이템마다 ↺.
+                    단일 품목 제한 제거. 그 아이템만 한 단계 내리고 주문은 아이템 최저로 따라감. */}
+                {!item.is_set_menu && (STAGE_LEVEL[item.status || 'pending'] ?? 0) > 0 && (
                   <RevertBtn
                     style={{ padding: '6px 10px', fontSize: '12px', marginRight: 4 }}
-                    onClick={() => {
-                      const prevStatus = cardStatus === 'preparing' ? 'pending' : cardStatus === 'ready' ? 'preparing' : null;
-                      if (!prevStatus) return;
-                      // 2026-06-28 (#1): 되돌리기는 항상 아이템을 내리고 주문 단계는 아이템 최저로 파생.
-                      // (All 탭도 setStationItemsStage(force) 로 통일 — 기존 All 탭은 order.status 만
-                      // 내리고 item.status 는 그대로라 "아이템이 started 로 남는 모순"이 있었다.)
-                      setStationItemsStage(order.id, prevStatus as KitchenOrder['status'], { force: true });
-                    }}
+                    title="Revert this item one stage"
+                    onClick={() => revertItemStage(order.id, item.id!)}
                   >↺</RevertBtn>
                 )}
                 {!item.is_set_menu && totalItems === 1 && cardStatus === 'pending' && (
@@ -2218,6 +2342,13 @@ const KitchenDisplayPage: React.FC = () => {
                           </OptionTags>
                         )}
                       </div>
+                      {(STAGE_LEVEL[setItem.status || 'pending'] ?? 0) > 0 && (
+                        <RevertBtn
+                          style={{ padding: '4px 8px', fontSize: '11px', marginRight: 4 }}
+                          title="Revert this item one stage"
+                          onClick={() => revertSetItemStage(order.id, item.id!, setItem.id!)}
+                        >↺</RevertBtn>
+                      )}
                       <ItemActionButton
                         done={isItemDoneForColumn(cardStatus, setItem.status || 'pending')}
                         statusColor={statusColor}
@@ -3055,6 +3186,31 @@ const KitchenDisplayPage: React.FC = () => {
   return (
     <Container>
       {/* 2026-06-28 (#4) 취소 주문 확인 팝업 — 오늘 취소된 주문 목록(완료 전 검토). 표시 전용. */}
+      {/* 2026-06-29 (Irene 확정): 프린트 미확정 1회 팝업 — 주문번호 나열 + 확인. 배지는 카드에 계속 남음. */}
+      {printProblemPopup && printProblemPopup.length > 0 && (
+        <div
+          onClick={() => setPrintProblemPopup(null)}
+          style={{ position: 'fixed', inset: 0, zIndex: 1250, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+        >
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 12, width: 'min(440px, 94vw)', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
+            <div style={{ padding: '14px 20px', borderBottom: '1px solid #E6EBF1', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#B91C1C' }}>
+                {t('kitchen:kitchenDisplayPage.printProblemTitle', 'Print not confirmed')}
+              </div>
+              <button type="button" onClick={() => setPrintProblemPopup(null)} aria-label="Close" style={{ border: 'none', background: 'transparent', fontSize: 20, cursor: 'pointer', color: '#6B7C93' }}>×</button>
+            </div>
+            <div style={{ padding: '16px 20px', fontSize: 14, color: '#1F2937' }}>
+              <div style={{ marginBottom: 8 }}>{t('kitchen:kitchenDisplayPage.printProblemBody', 'These orders may not have printed. Check the printer, then use Reprint on the order card.')}</div>
+              <div style={{ fontWeight: 700, color: '#0A2540' }}>{printProblemPopup.join(', ')}</div>
+            </div>
+            <div style={{ padding: '12px 20px', borderTop: '1px solid #E6EBF1', display: 'flex', justifyContent: 'flex-end' }}>
+              <button type="button" onClick={() => setPrintProblemPopup(null)} style={{ padding: '8px 14px', borderRadius: 6, border: 'none', background: '#635BFF', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                {t('kitchen:kitchenDisplayPage.ok', 'OK')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {showCancelledModal && (
         <div
           onClick={() => setShowCancelledModal(false)}
