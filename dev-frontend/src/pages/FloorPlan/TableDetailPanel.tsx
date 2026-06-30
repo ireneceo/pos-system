@@ -375,7 +375,7 @@ const ActionBtn = styled.button<{ $variant: 'primary' | 'secondary' | 'success' 
   ${p => {
     switch (p.$variant) {
       case 'primary':
-        return `background: #635BFF; color: white; @media (hover: hover) { &:hover { background: #5A51E6; } }`;
+        return `background: var(--pos-brand, #635BFF); color: white; @media (hover: hover) { &:hover { background: #5A51E6; } }`;
       case 'success':
         return `background: #10B981; color: white; border: 1px solid #10B981; @media (hover: hover) { &:hover { background: #059669; } }`;
       case 'secondary':
@@ -512,7 +512,8 @@ const ConfirmOverlay = styled.div`
 `;
 
 const ConfirmBox = styled.div`
-  background: white;
+  background: var(--pos-surface, white);
+  color: var(--pos-text, #0A2540);
   border-radius: 12px;
   padding: 24px;
   width: 320px;
@@ -523,13 +524,13 @@ const ConfirmBox = styled.div`
 const ConfirmTitle = styled.div`
   font-size: 16px;
   font-weight: 700;
-  color: #0A2540;
+  color: var(--pos-text, #0A2540);
   margin-bottom: 8px;
 `;
 
 const ConfirmMessage = styled.div`
   font-size: 14px;
-  color: #4B5563;
+  color: var(--pos-text-muted, #4B5563);
   margin-bottom: 20px;
   line-height: 1.5;
 `;
@@ -553,7 +554,7 @@ const ConfirmBtn = styled.button<{ $danger?: boolean }>`
 
   ${p => p.$danger
     ? `background: #FEF2F2; color: #EF4444; border: 1px solid #EF4444; @media (hover: hover) { &:hover { background: #FEE2E2; } }`
-    : `background: #F1F4F8; color: #1F2937; @media (hover: hover) { &:hover { background: #C7CED6; } }`
+    : `background: var(--pos-surface-2, #F1F4F8); color: var(--pos-text, #1F2937); @media (hover: hover) { &:hover { background: var(--pos-border, #C7CED6); } }`
   }
   &:active { transform: scale(0.97); filter: brightness(0.94); }
   &:focus { outline: none; }
@@ -846,7 +847,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
       case 'failed': return { color: '#DC2626', bg: '#FEE2E2' };
       case 'rejected': return { color: '#DC2626', bg: '#FEE2E2' };
       case 'payment_verification_pending': return { color: '#D97706', bg: '#FEF3C7' };
-      default: return { color: '#4B5563', bg: '#F1F4F8' };
+      default: return { color: 'var(--pos-text-muted, #4B5563)', bg: '#F1F4F8' };
     }
   })();
 
@@ -1417,26 +1418,26 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
         ) : undefined}
       >
         <div style={{ marginBottom: '16px' }}>
-          <div style={{ fontSize: '14px', color: '#4B5563', marginBottom: '6px' }}>Order: <strong style={{ color: '#0A2540' }}>#{statusInfo?.orderNumber}</strong></div>
-          <div style={{ fontSize: '14px', color: '#4B5563', marginBottom: '6px' }}>Amount: <strong style={{ color: '#0A2540' }}>{getCurrencySymbol(currency)} {statusInfo?.totalAmount?.toFixed(2)}</strong></div>
-          <div style={{ fontSize: '14px', color: '#4B5563' }}>Method: <strong style={{ color: '#0A2540' }}>{statusInfo?.paymentMethod}</strong></div>
+          <div style={{ fontSize: '14px', color: 'var(--pos-text-muted, #4B5563)', marginBottom: '6px' }}>Order: <strong style={{ color: 'var(--pos-text, #0A2540)' }}>#{statusInfo?.orderNumber}</strong></div>
+          <div style={{ fontSize: '14px', color: 'var(--pos-text-muted, #4B5563)', marginBottom: '6px' }}>Amount: <strong style={{ color: 'var(--pos-text, #0A2540)' }}>{getCurrencySymbol(currency)} {statusInfo?.totalAmount?.toFixed(2)}</strong></div>
+          <div style={{ fontSize: '14px', color: 'var(--pos-text-muted, #4B5563)' }}>Method: <strong style={{ color: 'var(--pos-text, #0A2540)' }}>{statusInfo?.paymentMethod}</strong></div>
         </div>
 
-        <div style={{ borderTop: '1px solid #C7CED6', paddingTop: '16px' }}>
-          <div style={{ fontSize: '13px', fontWeight: 600, color: '#0A2540', marginBottom: '12px' }}>{'Customer Submitted Proof'}</div>
+        <div style={{ borderTop: '1px solid var(--pos-border, #C7CED6)', paddingTop: '16px' }}>
+          <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--pos-text, #0A2540)', marginBottom: '12px' }}>{'Customer Submitted Proof'}</div>
           {paymentProof ? (
             <>
               {paymentProof.reference && (
                 <div style={{ fontSize: '13px', marginBottom: '6px' }}>
-                  <span style={{ color: '#4B5563' }}>Reference: </span>
-                  <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#0A2540' }}>{paymentProof.reference}</span>
+                  <span style={{ color: 'var(--pos-text-muted, #4B5563)' }}>Reference: </span>
+                  <span style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--pos-text, #0A2540)' }}>{paymentProof.reference}</span>
                 </div>
               )}
               {paymentProof.file_name && (
-                <div style={{ fontSize: '13px', marginBottom: '6px', color: '#4B5563' }}>File: {paymentProof.file_name}</div>
+                <div style={{ fontSize: '13px', marginBottom: '6px', color: 'var(--pos-text-muted, #4B5563)' }}>File: {paymentProof.file_name}</div>
               )}
               {paymentProof.uploaded_at && (
-                <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '6px' }}>
+                <div style={{ fontSize: '12px', color: 'var(--pos-text-muted, #6B7280)', marginBottom: '6px' }}>
                   Submitted: {formatDateTime(paymentProof.uploaded_at, tzSettings)}
                 </div>
               )}
@@ -1450,7 +1451,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
               )}
             </>
           ) : (
-            <div style={{ fontSize: '13px', color: '#6B7280' }}>
+            <div style={{ fontSize: '13px', color: 'var(--pos-text-muted, #6B7280)' }}>
               {paymentStatus === 'rejected' ? 'Waiting for customer to resubmit.' : 'No payment proof submitted.'}
             </div>
           )}
@@ -1458,26 +1459,26 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
 
         {/* History Section */}
         {proofHistory.length > 0 && (
-          <div style={{ borderTop: '1px solid #C7CED6', paddingTop: '16px', marginTop: '16px' }}>
-            <div style={{ fontSize: '13px', fontWeight: 600, color: '#4B5563', marginBottom: '10px' }}>
+          <div style={{ borderTop: '1px solid var(--pos-border, #C7CED6)', paddingTop: '16px', marginTop: '16px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--pos-text-muted, #4B5563)', marginBottom: '10px' }}>
               Previous Attempts ({proofHistory.length})
             </div>
             {proofHistory.map((entry: any, idx: number) => (
               <div key={idx} style={{
                 padding: '10px',
-                background: '#F9FAFB',
+                background: 'var(--pos-surface-2, #F9FAFB)',
                 borderRadius: '6px',
                 marginBottom: idx < proofHistory.length - 1 ? '8px' : 0,
-                border: '1px solid #C7CED6'
+                border: '1px solid var(--pos-border, #C7CED6)'
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                   <span style={{ fontSize: '12px', color: '#DC2626', fontWeight: 600 }}>Rejected #{entry.reject_count || idx + 1}</span>
                   {entry.rejected_at && (
-                    <span style={{ fontSize: '11px', color: '#6B7280' }}>{formatDateTime(entry.rejected_at, tzSettings)}</span>
+                    <span style={{ fontSize: '11px', color: 'var(--pos-text-muted, #6B7280)' }}>{formatDateTime(entry.rejected_at, tzSettings)}</span>
                   )}
                 </div>
                 {entry.reference && (
-                  <div style={{ fontSize: '12px', color: '#4B5563' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--pos-text-muted, #4B5563)' }}>
                     Ref: <span style={{ fontFamily: 'monospace' }}>{entry.reference}</span>
                   </div>
                 )}
@@ -1674,7 +1675,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                             )}
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-                            <span style={{ color: '#635BFF', fontWeight: 500, fontSize: '13px' }}>
+                            <span style={{ color: 'var(--pos-brand, #635BFF)', fontWeight: 500, fontSize: '13px' }}>
                               {formatCurrency(parseFloat(item.price) || 0, currency)}
                             </span>
                             {hasOptions && (
@@ -1822,7 +1823,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                       <InfoValue>
                         <span
                           onClick={() => setShowPaymentProofModal('view')}
-                          style={{ color: '#635BFF', cursor: 'pointer', fontWeight: 500 }}
+                          style={{ color: 'var(--pos-brand, #635BFF)', cursor: 'pointer', fontWeight: 500 }}
                         >
                           View →
                         </span>
@@ -2048,7 +2049,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                   </SummaryRow>
                 )}
 
-                <SummaryRow $bold style={{ marginTop: '4px', paddingTop: '6px', borderTop: '1px solid #C7CED6' }}>
+                <SummaryRow $bold style={{ marginTop: '4px', paddingTop: '6px', borderTop: '1px solid var(--pos-border, #C7CED6)' }}>
                   <span>{'Total'}</span>
                   <span>{formatCurrency(statusInfo!.totalAmount, currency)}</span>
                 </SummaryRow>
@@ -2071,7 +2072,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                   style={
                     orderStatus === 'outstanding' ? { background: '#F59E0B', borderColor: '#F59E0B', color: 'white' } :
                     orderStatus === 'ready' ? { background: '#10B981', borderColor: '#10B981', color: 'white' } :
-                    nextAction.status === 'completed' ? { background: '#6B7280', borderColor: '#6B7280', color: 'white' } :
+                    nextAction.status === 'completed' ? { background: '#6B7280', borderColor: 'var(--pos-border, #6B7280)', color: 'white' } :
                     undefined
                   }
                 >
@@ -2227,7 +2228,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
               <div style={{ fontSize: 12, fontWeight: 600, color: '#1D4ED8', letterSpacing: 0.3 }}>
                 {(reservationInfo.reservedLabel || 'Reserved').toUpperCase()}
               </div>
-              <div style={{ marginTop: 4, fontSize: 14, fontWeight: 600, color: '#0A2540' }}>
+              <div style={{ marginTop: 4, fontSize: 14, fontWeight: 600, color: 'var(--pos-text, #0A2540)' }}>
                 {reservationInfo.customerName || 'Guest'}
                 {reservationInfo.guestCount ? ` · ${reservationInfo.guestCount} guests` : ''}
               </div>
@@ -2317,7 +2318,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
         return (
         <Modal isOpen onClose={() => setCancelReasonOpen(false)} title={t('orders:orderCancel.title', { defaultValue: 'Cancel Order' })} size="small">
           <div style={{ padding: '2px' }}>
-            <p style={{ margin: '0 0 14px', fontSize: 14, color: '#0A2540', lineHeight: 1.5 }}>
+            <p style={{ margin: '0 0 14px', fontSize: 14, color: 'var(--pos-text, #0A2540)', lineHeight: 1.5 }}>
               {t('orders:orderCancel.confirm', { defaultValue: 'Cancel this order? Choose a reason — it is saved to the void & cancel log. The order history is kept.' })}
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
@@ -2331,7 +2332,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                   key={r.key}
                   type="button"
                   onClick={() => beginCancelWithReason(r.label)}
-                  style={{ padding: '14px 8px', borderRadius: 8, border: '1px solid #E6EBF1', background: '#fff', color: '#0A2540', fontWeight: 600, fontSize: 14, cursor: 'pointer', minHeight: 52 }}
+                  style={{ padding: '14px 8px', borderRadius: 8, border: '1px solid var(--pos-border, #E6EBF1)', background: 'var(--pos-surface, #fff)', color: 'var(--pos-text, #0A2540)', fontWeight: 600, fontSize: 14, cursor: 'pointer', minHeight: 52 }}
                 >
                   {r.label}
                 </button>
@@ -2341,7 +2342,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
               <button
                 type="button"
                 onClick={() => setCancelReasonOpen(false)}
-                style={{ padding: '10px 18px', borderRadius: 8, border: '1px solid #E6EBF1', background: '#fff', color: '#6B7C93', fontWeight: 600, cursor: 'pointer' }}
+                style={{ padding: '10px 18px', borderRadius: 8, border: '1px solid var(--pos-border, #E6EBF1)', background: 'var(--pos-surface, #fff)', color: 'var(--pos-text-muted, #6B7C93)', fontWeight: 600, cursor: 'pointer' }}
               >
                 {t('orders:liveOrdersPage.noKeepOrder', { defaultValue: 'Keep order' })}
               </button>
@@ -2366,19 +2367,19 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
         return (
         <Modal isOpen onClose={() => setDeleteItemTarget(null)} title={t('orders:voidItem.title', { defaultValue: 'Remove Item' })} size="small">
           <div style={{ padding: '2px' }}>
-            <p style={{ margin: '0 0 14px', fontSize: 14, color: '#0A2540', lineHeight: 1.5 }}>
+            <p style={{ margin: '0 0 14px', fontSize: 14, color: 'var(--pos-text, #0A2540)', lineHeight: 1.5 }}>
               {t('orders:voidItem.confirm', { defaultValue: 'Remove "{{name}}"? Choose a reason — it prints on the kitchen void ticket.', name: deleteItemTarget.name })}
             </p>
             {/* #2 부분수량 취소 — 줄 수량 2개 이상이면 "몇 개 취소" 스텝퍼(기본 전량) */}
             {(deleteItemTarget.maxQty || 1) > 1 && (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 12px', marginBottom: 14, background: '#F6F8FB', border: '1px solid #E6EBF1', borderRadius: 8 }}>
-                <span style={{ fontSize: 14, fontWeight: 600, color: '#0A2540' }}>{t('orders:voidItem.cancelHowMany', { defaultValue: 'Cancel quantity' })}</span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 12px', marginBottom: 14, background: 'var(--pos-surface-2, #F6F8FB)', border: '1px solid var(--pos-border, #E6EBF1)', borderRadius: 8 }}>
+                <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--pos-text, #0A2540)' }}>{t('orders:voidItem.cancelHowMany', { defaultValue: 'Cancel quantity' })}</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   <button type="button" aria-label="decrease" onClick={() => setCancelQty(q => Math.max(1, q - 1))} disabled={cancelQty <= 1}
-                    style={{ width: 44, height: 44, borderRadius: 8, border: '1px solid #E6EBF1', background: '#fff', color: '#0A2540', fontSize: 22, fontWeight: 700, cursor: cancelQty <= 1 ? 'not-allowed' : 'pointer', opacity: cancelQty <= 1 ? 0.5 : 1 }}>−</button>
-                  <span style={{ minWidth: 56, textAlign: 'center', fontSize: 16, fontWeight: 700, color: '#0A2540' }}>{cancelQty} / {deleteItemTarget.maxQty}</span>
+                    style={{ width: 44, height: 44, borderRadius: 8, border: '1px solid var(--pos-border, #E6EBF1)', background: 'var(--pos-surface, #fff)', color: 'var(--pos-text, #0A2540)', fontSize: 22, fontWeight: 700, cursor: cancelQty <= 1 ? 'not-allowed' : 'pointer', opacity: cancelQty <= 1 ? 0.5 : 1 }}>−</button>
+                  <span style={{ minWidth: 56, textAlign: 'center', fontSize: 16, fontWeight: 700, color: 'var(--pos-text, #0A2540)' }}>{cancelQty} / {deleteItemTarget.maxQty}</span>
                   <button type="button" aria-label="increase" onClick={() => setCancelQty(q => Math.min(deleteItemTarget.maxQty || 1, q + 1))} disabled={cancelQty >= (deleteItemTarget.maxQty || 1)}
-                    style={{ width: 44, height: 44, borderRadius: 8, border: '1px solid #E6EBF1', background: '#fff', color: '#0A2540', fontSize: 22, fontWeight: 700, cursor: cancelQty >= (deleteItemTarget.maxQty || 1) ? 'not-allowed' : 'pointer', opacity: cancelQty >= (deleteItemTarget.maxQty || 1) ? 0.5 : 1 }}>+</button>
+                    style={{ width: 44, height: 44, borderRadius: 8, border: '1px solid var(--pos-border, #E6EBF1)', background: 'var(--pos-surface, #fff)', color: 'var(--pos-text, #0A2540)', fontSize: 22, fontWeight: 700, cursor: cancelQty >= (deleteItemTarget.maxQty || 1) ? 'not-allowed' : 'pointer', opacity: cancelQty >= (deleteItemTarget.maxQty || 1) ? 0.5 : 1 }}>+</button>
                 </div>
               </div>
             )}
@@ -2393,7 +2394,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                   key={r.key}
                   type="button"
                   onClick={() => beginDeleteItemWithReason(r.label)}
-                  style={{ padding: '14px 8px', borderRadius: 8, border: '1px solid #E6EBF1', background: '#fff', color: '#0A2540', fontWeight: 600, fontSize: 14, cursor: 'pointer', minHeight: 52 }}
+                  style={{ padding: '14px 8px', borderRadius: 8, border: '1px solid var(--pos-border, #E6EBF1)', background: 'var(--pos-surface, #fff)', color: 'var(--pos-text, #0A2540)', fontWeight: 600, fontSize: 14, cursor: 'pointer', minHeight: 52 }}
                 >
                   {r.label}
                 </button>
@@ -2403,7 +2404,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
               <button
                 type="button"
                 onClick={() => setDeleteItemTarget(null)}
-                style={{ padding: '10px 18px', borderRadius: 8, border: '1px solid #E6EBF1', background: '#fff', color: '#6B7C93', fontWeight: 600, cursor: 'pointer' }}
+                style={{ padding: '10px 18px', borderRadius: 8, border: '1px solid var(--pos-border, #E6EBF1)', background: 'var(--pos-surface, #fff)', color: 'var(--pos-text-muted, #6B7C93)', fontWeight: 600, cursor: 'pointer' }}
               >
                 {t('common:cancel', { defaultValue: 'Cancel' })}
               </button>
@@ -2445,21 +2446,21 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: '#fff', borderRadius: 12, padding: 24,
+              background: 'var(--pos-surface, #fff)', borderRadius: 12, padding: 24,
               width: 560, maxWidth: 'calc(100vw - 32px)',
               maxHeight: '80vh', overflow: 'auto',
               boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <div style={{ fontSize: 16, fontWeight: 700, color: '#0A2540' }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--pos-text, #0A2540)' }}>
                 {t('history.title', 'Order History')}
               </div>
               <button
                 type="button"
                 onClick={() => setShowHistory(false)}
                 style={{
-                  border: 'none', background: '#C7CED6', color: '#0A2540',
+                  border: 'none', background: 'var(--pos-surface-2, #C7CED6)', color: 'var(--pos-text, #0A2540)',
                   borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer'
                 }}
               >

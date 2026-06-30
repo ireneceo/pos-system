@@ -90,5 +90,12 @@
   "pOSTerminalPage.noteNoOnion": "不要洋葱",
   "pOSTerminalPage.noteLessSpicy": "少辣",
   "pOSTerminalPage.noteExtraSpicy": "加辣",
-  "pOSTerminalPage.noteNoVeg": "不要蔬菜"
+  "pOSTerminalPage.noteNoVeg": "不要蔬菜",
+  "terminal.posTerminal": "POS 终端",
+  "terminal.dashboard": "仪表板",
+  "terminal.customerDisplay": "顾客显示屏",
+  "terminal.customerDisplayTitle": "在副显示器上打开顾客显示屏",
+  "terminal.customerDisplayAuto": "顾客显示屏（已启用自动打开）",
+  "terminal.openDrawer": "打开钱箱",
+  "terminal.openDrawerTitle": "向账单打印机发送开钱箱脉冲"
 }

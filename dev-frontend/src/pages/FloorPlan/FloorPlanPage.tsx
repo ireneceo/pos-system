@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import styled from 'styled-components';
-import { PosDisplayThemeStyle, getPosTheme, setPosTheme, POS_THEME_MODES, PosThemeMode } from '../../styles/posDisplayTheme';
+import { PosDisplayThemeStyle, getPosTheme, setPosTheme, POS_THEME_MODES, PosThemeMode, usePosThemeOnBody } from '../../styles/posDisplayTheme';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { FloorPlanData, DEFAULT_FLOOR_PLAN, TableStatusInfo, ORDER_STATUS_COLORS, getOrderStatusColors, getTableNodeStatusColors, getOrderTypeColors } from './types';
@@ -356,6 +356,8 @@ const FloorPlanPage: React.FC = () => {
   // 보기 색상 테마 (밝게/고대비/어둡게) — POS 와 동일 토글, 기기별 공유(localStorage).
   const [posTheme, setPosThemeState] = useState<PosThemeMode>(getPosTheme);
   const selectPosTheme = (m: PosThemeMode) => { setPosThemeState(m); setPosTheme(m); };
+  // body-portal 모달도 같은 테마를 따라가게 (고대비/다크 팝업 일관성).
+  usePosThemeOnBody(posTheme);
   // 스탭 PIN 로그인 전환 (POS Terminal 과 동일 — switchUser/logout).
   const [showCashierPinModal, setShowCashierPinModal] = useState(false);
   // 좁은 화면(≤1280px, 10인치 단말)에서 Daily Settlement/Customer Display/Open Drawer 를

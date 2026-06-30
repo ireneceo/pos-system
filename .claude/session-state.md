@@ -1,11 +1,48 @@
 # Purple POS — 개발 세션 상태
 
-<!-- AUTOSAVE-STALE-BANNER -->
-> **[AUTO-SAVE STALE] (2026-06-29 23:05, idle 1850s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
-> 변경된 작업 파일: RestaurantSalesIntegration.js,index.js sales-integrations.js,20260629_create_sales_integrations.js server.js,mallSalesScheduler.js mallSalesService.js,common.json settings.json,common.json settings.json,common.json
-<!-- /AUTOSAVE-STALE-BANNER -->
+## 현재 작업 상태 — 2026-06-29 #5 (IOI Mall API + POS 헤더, dev 검증·미배포)
 
-## 현재 작업 상태
+### ✅ IOI Mall 매출 API 연동 — 구현 완료(dev, 검증, 미배포) — [[project_ioi_mall_sales_api]]
+> 계약·결정 전부 확정된 상태에서 구현. 운영 자격증명만 외부 대기(staging 동작 확인).
+- **백엔드 신규:** `models/RestaurantSalesIntegration.js`(restaurant_sales_integrations 테이블, password AES암호화) + `models/index.js`(require/assoc/export) + `scripts/20260629_create_sales_integrations.js`(멱등 마이그, **배포 목록 등록 필요**, dev 실행완료) + `services/mallSalesService.js`(시간별 집계 24레코드+토큰캐시+전송) + `services/mallSalesScheduler.js`(매일 18:00 UTC=02:00 MYT, 최근7일 upsert, SchedulerRun) + `routes/sales-integrations.js`(CRUD+test+send-now+preview, RA/SysAdmin, password 마스킹) + server.js(라우터+스케줄러).
+- **집계 규칙:** gto=total_amount−tax(할인후·SST전·SC포함, cancelled/voided 제외) / gst=Σtax / discount=Σ(discount+coupon+policy+point) / 결제버킷=OrderPayment 우선·없으면 주문레벨(cash/tng=TnG전용/visa/master/amex/voucher/othersamount catch-all) / noofpax=Σ테이블 좌석수(floor_plan tables.seats) / batchid=YYYYMMDD. 매장 tz(MYT) 시간버킷.
+- **프론트 신규:** `pages/Settings/MallSalesIntegrationSettings.tsx`(자체 폼, 공용 Button, 토글=styled.div) + SettingsPage 탭 'salesReporting' + MainLayout 사이드바 1줄(`?tab=salesReporting`) + i18n(common nav.salesReporting + settings mallSales 28키 ×4언어).
+- **검증:** API 실동작 **23/23 PASS**(CRUD·익명401·Staff403·타매장403·password 암호화/마스킹/미전송보존·preview 24레코드 전필드 string·실데이터 집계 rid38 2026-06-02 **219건 gto 11109.06**·연결테스트가 staging 실엔드포인트 도달 invalid_grant). build green·i18n0·design신규0·health106/107(=의도 print-guard).
+- **잔여:** 운영 URL/자격증명 수령 후 environment=production 전환. 배포 시 마이그 스크립트 배포목록 등록.
+
+### ✅ POS 터미널 상단 헤더 — 반응형 + 한글화 (dev, 측정검증, 미배포) — Irene 직접 지시
+> "버튼 반응형 정돈 안 됨" + "한글 어디가고 영어" = 같은 헤더. POSTerminalPage 보호파일 **인쇄 라인 0-diff 증명**.
+- **#1 한글화:** ← Dashboard/Customer Display/Open Drawer/POS Terminal 이 **하드코딩 영어**였음 → i18n 키(pos.json terminal.* 7키 ×4언어). 한글 서빙 확인(대시보드/고객 화면/금전함 열기/POS 단말).
+- **#2 반응형:** Playwright 실측 → **1024·1180에서 119px(액션 2줄)** 문제. 수정=DateTime min-width:200 제거+날짜 숨김(≤1280 시각만)·Customer Display 아이콘만(≤1280, 147→54px)·HeaderInfo gap 8·StaffInfo 컴팩트. **재측정: 전 폭(1024~1536) 80px 한 줄, overflow 0.**
+- print-guard: POSTerminalPage 지문 변경(레이아웃만, print/QZ/RawBT/claim 0-diff). MainLayout 1줄(nav, _printPollFn 무변경). **bless 안 함**, 실프린터 배치 때 일괄.
+
+### ✅ #3 FloorPlan·POS 팝업/모달 테마 (dev, 검증, 미배포) — Irene 지시
+> 증상: 고대비/다크일 때 팝업이 테마 안 따라가 "따로 놀아", 다크 흐릿. **근본=`--pos-*` 변수가 `[data-pos-theme]` 컨테이너에만 → body-portal 모달은 범위 밖**(표준 Modal=body portal+하드코딩 white). [[reference_pos_display_theme]] "모달 미완" 해소.
+- **수정:** ①신규 `usePosThemeOnBody(mode)` 훅(posDisplayTheme.ts) — POSTerminal/FloorPlan 마운트 동안 `document.body`에도 data-pos-theme 부여(언마운트 복원) → body-portal 모달이 `--pos-*` 상속 ②표준 `UI/Modal.tsx`+`ConfirmModal.tsx` 하드코딩색(white/#C7CED6/#0A2540/#4B5563/입력 bg·color)→`var(--pos-*, 기존색)`. **비-POS 페이지=body 속성 없음→fallback=기존색→무영향**(backward-compat).
+- **결정(Irene "다크도 고대비?" 답):** 팝업이 테마 따라감. **고대비=흰면+검정글씨+굵은테두리(또렷)**, **다크=또렷한 다크면(#1F2A40)+밝은글씨(#EAF0F8)+테두리(가독성)**. 라이트=기존 그대로.
+- **검증:** body-portal 요소 var 해석 실측 — light(white/#0A2540/#C7CED6=기존) / contrast(white/**검정**/**강한테두리**) / dark(**#1F2A40/밝은글씨**). POS·FloorPlan 다크 마운트 crash0·err0. print-guard=POSTerminalPage(훅 1줄, print 0-diff)·MainLayout만(의도). design신규0.
+- **제품모달도 테마 완료(Irene 추가지시):** `Common/Modal.tsx`(옵션 라디오/체크박스/수량/합계/제품정보)·`POSTerminal/POSSetModal.tsx`(세트선택, AddBtn 흰글씨 유지)·`OptionModal.tsx`(옵션가 muted)·FloorPlan `TableDetailPanel` ConfirmOverlay 전부 `var(--pos-*)` 변환. **검증(컨테이너 스코프 실측):** contrast=흰bg/검정글씨/강한테두리·선택=강한보라 / dark=#2C3A56 elevated/밝은글씨·선택=밝은보라. 이 4파일은 비보호. design신규0·build green.
+- **TableDetailPanel 사이드패널도 테마 완료(Irene 추가지시):** 루트 Panel 은 이미 themed(prior)였고, 잔여 **인라인 스타일 구조색**(color/background/border #0A2540·#4B5563·#6B7280·#6B7C93·#635BFF·#fff·#F9FAFB·#F1F4F8·#F6F8FB·#C7CED6·#E6EBF1)을 `var(--pos-*)` 변환. **의미색(빨강/초록/앰버/파랑 상태배지)·흰글씨(컬러버튼 위)는 보존**(text-on-tint 위험조합 0 사전확인). 검증: FloorPlan dark/contrast mount err0 + 패널 var세트 실측(dark=#1F2A40/밝은글씨, contrast=흰/검정/강한테두리). 비보호 파일. build green·design신규0.
+
+### ✅ POS 카테고리 펼침 상태 기억 (dev, 미배포) — Irene 지시
+> "펼침 해놨으면 재진입·선택 후에도 직접 바꾸기 전까지 유지." catExpanded 를 localStorage `pos_cat_expanded`(기기별)로 영속 — useState 초기값=storage 읽기, `toggleCatExpanded`(▾/▴)가 저장, **카테고리 선택 시 auto-collapse 제거**(setCatExpanded(false) 2곳 삭제). POSTerminalPage 보호파일, print 0-diff 증명. 검증: localStorage 영속(ls="1") + 번들 포함 확인. (POS 실렌더는 헤드리스 auth-race 로 미캡처, 코드·영속 검증으로 충분.)
+
+### IOI Mall 보고(담당자) — "다했다" 아님, 운영 자격증명 요청
+> 발송문 = `docs/IOI_MALL_API_inquiry.txt`(준비됨): staging 연동 완료+가정(batchid/결제버킷/gto/주기) 공유 + **운영 URL·자격증명·go-live 절차 요청**. 받으면 environment=production 전환+배포.
+
+### 🚀 배포 대기 묶음 (이번 세션 #5, 전부 dev·미배포)
+> IOI Mall API + POS 헤더 + 모달 테마. **프론트 변경=레이아웃/테마/i18n(인쇄 무관)**. 보호파일 POSTerminalPage(헤더+테마훅, print 0-diff)·MainLayout(nav 1줄) — **bless 안 함, 실프린터 배치 때 일괄**(인쇄 변경 아니므로 독립 배포도 가능). 백엔드 마이그 `20260629_create_sales_integrations.js` 배포목록 등록 필요. SW bump 필요.
+
+---
+
+## (이전) 작업 상태 — 2026-06-29 #3
+**마지막 업데이트:** 2026-06-29 #3 (thefire01 라이브 인쇄 종일 대응 — **자동인쇄 전부 해결·운영 배포 완료**)
+**버전:** SW **4.45 운영 배포**(통합티켓 통합수정 완료). Irene 확인 "자동인쇄 해결됐어".
+
+### ✅ 자동인쇄 종결 (2026-06-29 #3) — 통합수정 완료, 모든 매장 적용
+> 신규/추가/이동/취소/머지/아이템취소 **전부 통합 1장 + 스테이션 회차별**, 중복·누락·늦음 0. **매장 분기 없음**(주문데이터/설정 기준)=모든 매장 동일. 실프린터 확인됨 → print-guard **--bless 완료**.
+- **단일 진실 문서:** `docs/PRINT_RULES_MATRIX.md §8.8`(통합티켓 4규칙). **히스토리·진단절차:** `docs/PRINT_DEBUG_HISTORY_2026-06-29.md`. 메모리 [[reference_consolidated_ticket_unified_2026_06_29]].
+- **최종 수정(SW4.40→4.45):** ①세 폴러경로 하트비트(재무장 중복0) ②통합 회차당 1장(bi===0만) ③**통합 early-stamp 제거→발송직전 ATOMIC claim**(orphan 근본수정) ④추가주문 통합내용=kitchenItemsRaw(추가품목 전체).
 **마지막 업데이트:** 2026-06-29 #3 (thefire01 라이브 인쇄 종일 대응 — **자동인쇄 전부 해결·운영 배포 완료**)
 **버전:** SW **4.45 운영 배포**(통합티켓 통합수정 완료). Irene 확인 "자동인쇄 해결됐어".
 

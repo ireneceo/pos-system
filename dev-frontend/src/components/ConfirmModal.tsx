@@ -17,7 +17,8 @@ interface ConfirmModalProps {
 }
 
 const Modal = styled.div`
-  background: white;
+  background: var(--pos-surface, white);
+  color: var(--pos-text, #0A2540);
   border-radius: 12px;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   max-width: 400px;
@@ -28,19 +29,19 @@ const Modal = styled.div`
 
 const Header = styled.div`
   padding: 24px;
-  border-bottom: 1px solid #C7CED6;
+  border-bottom: 1px solid var(--pos-border, #C7CED6);
 `;
 
 const Title = styled.h2`
   font-size: 20px;
   font-weight: 600;
-  color: #0A2540;
+  color: var(--pos-text, #0A2540);
   margin: 0 0 8px 0;
 `;
 
 const Message = styled.p`
   font-size: 14px;
-  color: #4B5563;
+  color: var(--pos-text-muted, #4B5563);
   line-height: 1.5;
   margin: 0;
   white-space: pre-line;
@@ -49,7 +50,7 @@ const Message = styled.p`
 
 const Footer = styled.div`
   padding: 20px 24px;
-  border-top: 1px solid #C7CED6;
+  border-top: 1px solid var(--pos-border, #C7CED6);
   display: flex;
   justify-content: flex-end;
   gap: 12px;
@@ -65,7 +66,7 @@ const Button = styled.button<{ variant: 'primary' | 'secondary'; type?: string }
   border: ${props => {
     switch (props.variant) {
       case 'primary': return 'none';
-      default: return '1px solid #C7CED6';
+      default: return '1px solid var(--pos-border, #C7CED6)';
     }
   }};
   background: ${props => {
@@ -73,13 +74,13 @@ const Button = styled.button<{ variant: 'primary' | 'secondary'; type?: string }
       case 'primary':
         return props.type === 'danger' ? '#DC2626' :
                props.type === 'warning' ? '#D97706' : '#635BFF';
-      default: return 'white';
+      default: return 'var(--pos-surface, white)';
     }
   }};
   color: ${props => {
     switch (props.variant) {
       case 'primary': return 'white';
-      default: return '#4B5563';
+      default: return 'var(--pos-text-muted, #4B5563)';
     }
   }};
 
@@ -89,7 +90,7 @@ const Button = styled.button<{ variant: 'primary' | 'secondary'; type?: string }
         case 'primary':
           return props.type === 'danger' ? '#B91C1C' :
                  props.type === 'warning' ? '#B45309' : '#5A51E6';
-        default: return '#F1F4F8';
+        default: return 'var(--pos-surface-2, #F1F4F8)';
       }
     }};
     transform: translateY(-1px);

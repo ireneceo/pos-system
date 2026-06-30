@@ -90,5 +90,12 @@
   "pOSTerminalPage.noteNoOnion": "Tanpa bawang",
   "pOSTerminalPage.noteLessSpicy": "Kurang pedas",
   "pOSTerminalPage.noteExtraSpicy": "Lebih pedas",
-  "pOSTerminalPage.noteNoVeg": "Tanpa sayur"
+  "pOSTerminalPage.noteNoVeg": "Tanpa sayur",
+  "terminal.posTerminal": "Terminal POS",
+  "terminal.dashboard": "Papan Pemuka",
+  "terminal.customerDisplay": "Paparan Pelanggan",
+  "terminal.customerDisplayTitle": "Buka Paparan Pelanggan pada monitor kedua",
+  "terminal.customerDisplayAuto": "Paparan Pelanggan (auto-buka didayakan)",
+  "terminal.openDrawer": "Buka Laci",
+  "terminal.openDrawerTitle": "Hantar denyut buka-laci ke pencetak bil"
 }

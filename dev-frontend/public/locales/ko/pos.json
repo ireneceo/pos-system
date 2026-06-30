@@ -90,5 +90,12 @@
   "pOSTerminalPage.noteNoOnion": "양파 빼기",
   "pOSTerminalPage.noteLessSpicy": "덜 맵게",
   "pOSTerminalPage.noteExtraSpicy": "더 맵게",
-  "pOSTerminalPage.noteNoVeg": "야채 빼기"
+  "pOSTerminalPage.noteNoVeg": "야채 빼기",
+  "terminal.posTerminal": "POS 단말",
+  "terminal.dashboard": "대시보드",
+  "terminal.customerDisplay": "고객 화면",
+  "terminal.customerDisplayTitle": "보조 모니터에 고객 화면 열기",
+  "terminal.customerDisplayAuto": "고객 화면 (자동 열기 켜짐)",
+  "terminal.openDrawer": "금전함 열기",
+  "terminal.openDrawerTitle": "빌 프린터로 금전함 열기 신호 전송"
 }

@@ -90,5 +90,12 @@
   "pOSTerminalPage.noteNoOnion": "No onion",
   "pOSTerminalPage.noteLessSpicy": "Less spicy",
   "pOSTerminalPage.noteExtraSpicy": "Extra spicy",
-  "pOSTerminalPage.noteNoVeg": "No veg"
+  "pOSTerminalPage.noteNoVeg": "No veg",
+  "terminal.posTerminal": "POS Terminal",
+  "terminal.dashboard": "Dashboard",
+  "terminal.customerDisplay": "Customer Display",
+  "terminal.customerDisplayTitle": "Open Customer Display on secondary monitor",
+  "terminal.customerDisplayAuto": "Customer Display (auto-open enabled)",
+  "terminal.openDrawer": "Open Drawer",
+  "terminal.openDrawerTitle": "Send open-drawer pulse to the bill printer"
 }

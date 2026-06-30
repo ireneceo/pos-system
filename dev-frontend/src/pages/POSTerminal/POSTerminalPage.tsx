@@ -26,7 +26,7 @@ import CustomerModal from '../../components/Customer/CustomerModal';
 // StaffLoginModal removed - authentication handled by ProtectedRoute
 import { normalizeCustomerName } from '../../utils/orderUtils';
 import { getCurrencySymbol, formatCurrency } from '../../utils/currency';
-import { PosDisplayThemeStyle, getPosTheme, setPosTheme, POS_THEME_MODES, PosThemeMode } from '../../styles/posDisplayTheme';
+import { PosDisplayThemeStyle, getPosTheme, setPosTheme, POS_THEME_MODES, PosThemeMode, usePosThemeOnBody } from '../../styles/posDisplayTheme';
 import { formatDateTime, formatTime } from '../../utils/timezone';
 import { useRestaurantId } from '../../hooks/useRestaurantId';
 import { openCustomerDisplay, tryAutoReopen, isAutoOpenEnabled } from '../../utils/customerDisplay';
@@ -106,7 +106,7 @@ const HeaderInfo = styled.div`
   justify-content: flex-end;
 
   @media (max-width: 1280px) {
-    gap: 10px;
+    gap: 8px;
   }
 `;
 
@@ -184,12 +184,19 @@ const DateTime = styled.div`
   font-weight: 500;
   color: var(--pos-text-muted, #4B5563);
   font-variant-numeric: tabular-nums;
-  min-width: 200px;
   text-align: right;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+
+  /* 10인치 태블릿: 날짜는 숨기고 시각만 — 폭 절약해 한 줄 유지 */
+  @media (max-width: 1280px) {
+    font-size: 13px;
+    .pos-date { display: none; }
+  }
 
   @media (max-width: 768px) {
-    min-width: auto;
     text-align: left;
     font-size: 13px;
   }
@@ -1354,7 +1361,18 @@ const POSTerminalPage: React.FC = () => {
   const categoryTabsRef = useRef<HTMLDivElement>(null);
   const catPageStartsRef = useRef<number[]>([0]); // 각 페이지 첫 칩의 scrollLeft (‹ › 스냅용)
   const [catPage, setCatPage] = useState<{ cur: number; total: number }>({ cur: 1, total: 1 });
-  const [catExpanded, setCatExpanded] = useState(false);
+  // 카테고리 펼침 상태는 기기별로 기억(localStorage) — 한 번 펼치면 재진입·카테고리 선택 후에도
+  // 유지되고, 사용자가 ▾/▴ 로 직접 바꾸기 전까지 그대로. (Irene 2026-06-29)
+  const [catExpanded, setCatExpanded] = useState<boolean>(() => {
+    try { return localStorage.getItem('pos_cat_expanded') === '1'; } catch { return false; }
+  });
+  const toggleCatExpanded = useCallback(() => {
+    setCatExpanded(v => {
+      const next = !v;
+      try { localStorage.setItem('pos_cat_expanded', next ? '1' : '0'); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
   const recomputeCatPage = useCallback(() => {
     const el = categoryTabsRef.current;
     if (!el) return;
@@ -1584,6 +1602,8 @@ const POSTerminalPage: React.FC = () => {
   // 보기 색상 테마 (밝게/고대비/어둡게) — 기기별 저장. POS/FloorPlan/KDS 전용.
   const [posTheme, setPosThemeState] = useState<PosThemeMode>(getPosTheme);
   const selectPosTheme = (m: PosThemeMode) => { setPosThemeState(m); setPosTheme(m); };
+  // body-portal 모달도 같은 테마를 따라가게 (고대비/다크 팝업 일관성).
+  usePosThemeOnBody(posTheme);
 
 
   // Sort order applied to every category / mode / search result. Default = newest.
@@ -3128,7 +3148,7 @@ const POSTerminalPage: React.FC = () => {
       month: undefined,
       day: undefined
     });
-    return `${dateStr}  ${time}`;
+    return { dateStr, time };
   };
 
   // API-based customer search for real-time results
@@ -3226,16 +3246,17 @@ const POSTerminalPage: React.FC = () => {
             {brandLogo ? (
               <>
                 <LogoImage src={brandLogo} alt="Brand Logo" />
-                <span style={{ color: 'var(--pos-text-muted, #4B5563)', fontSize: '14px', fontWeight: 500 }}>{'POS Terminal'}</span>
+                <span style={{ color: 'var(--pos-text-muted, #4B5563)', fontSize: '14px', fontWeight: 500 }}>{t('pos:terminal.posTerminal', 'POS Terminal')}</span>
               </>
             ) : (
-              <span style={{ color: 'var(--pos-text-muted, #4B5563)', fontSize: '14px', fontWeight: 500 }}>{'POS Terminal'}</span>
+              <span style={{ color: 'var(--pos-text-muted, #4B5563)', fontSize: '14px', fontWeight: 500 }}>{t('pos:terminal.posTerminal', 'POS Terminal')}</span>
             )}
           </Logo>
           <HeaderActionBtn type="button"
             onClick={() => navigate(`/restaurant/${restaurantId}/dashboard`)}
+            title={t('pos:terminal.dashboard', 'Dashboard')}
           >
-            ← Dashboard
+            ← {t('pos:terminal.dashboard', 'Dashboard')}
           </HeaderActionBtn>
         </div>
         <HeaderInfo>
@@ -3248,7 +3269,9 @@ const POSTerminalPage: React.FC = () => {
             <span>{user?.name || 'Staff'}</span>
             <span style={{ fontSize: '11px', color: 'var(--pos-text-muted, #8898AA)', marginLeft: '4px' }}>▼</span>
           </StaffInfo>
-          <DateTime>{formatDateTimeLocal(currentDateTime)}</DateTime>
+          {(() => { const dt = formatDateTimeLocal(currentDateTime); return (
+            <DateTime><span className="pos-date">{dt.dateStr}</span><span>{dt.time}</span></DateTime>
+          ); })()}
           {/* Customer Display — always visible. Cashiers re-open the secondary
               monitor view often, keep one-click access regardless of width. */}
           <HeaderActionBtn type="button"
@@ -3258,10 +3281,13 @@ const POSTerminalPage: React.FC = () => {
                 setInfoModal({ open: true, title: result.title, message: result.message });
               }
             }}
-            title={isAutoOpenEnabled() ? 'Customer Display (auto-open enabled)' : 'Open Customer Display on secondary monitor'}
+            title={isAutoOpenEnabled() ? t('pos:terminal.customerDisplayAuto', 'Customer Display (auto-open enabled)') : t('pos:terminal.customerDisplayTitle', 'Open Customer Display on secondary monitor')}
           >
             {isAutoOpenEnabled() && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--pos-brand, #635BFF)', display: 'inline-block' }} />}
-            Customer Display
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" />
+            </svg>
+            <BtnLabel>{t('pos:terminal.customerDisplay', 'Customer Display')}</BtnLabel>
           </HeaderActionBtn>
 
           {/* Wide screens — full toolbar. Open Drawer manual button is here. */}
@@ -3282,9 +3308,9 @@ const POSTerminalPage: React.FC = () => {
                   setInfoModal({ open: true, title: 'Drawer error', message: e?.message || 'Unknown error' });
                 }
               }}
-              title="Send open-drawer pulse to the bill printer"
+              title={t('pos:terminal.openDrawerTitle', 'Send open-drawer pulse to the bill printer')}
             >
-              Open Drawer
+              {t('pos:terminal.openDrawer', 'Open Drawer')}
             </HeaderActionBtn>
           </HeaderDesktopActions>
 
@@ -3295,7 +3321,7 @@ const POSTerminalPage: React.FC = () => {
               items={[
                 {
                   id: 'open-drawer',
-                  label: 'Open Drawer',
+                  label: t('pos:terminal.openDrawer', 'Open Drawer'),
                   onClick: async () => {
                     try {
                       const { openCashDrawer } = await import('../../utils/billPrint');
@@ -3445,7 +3471,7 @@ const POSTerminalPage: React.FC = () => {
               {displayMode === 'simple' && (
                 <CategoryTab
                   active={selectedCategory === 'all' && !isSearchMode}
-                  onClick={() => { handleCategorySelect('all'); setCatExpanded(false); }}
+                  onClick={() => handleCategorySelect('all')}
                 >
                   {t('pos:terminal.categoryAll', 'All')}
                 </CategoryTab>
@@ -3454,7 +3480,7 @@ const POSTerminalPage: React.FC = () => {
                 <CategoryTab
                   key={category.id}
                   active={selectedCategory === category.id && !isSearchMode}
-                  onClick={() => { handleCategorySelect(category.id); setCatExpanded(false); }}
+                  onClick={() => handleCategorySelect(category.id)}
                 >
                   {category.emoji} {category.name}
                 </CategoryTab>
@@ -3472,7 +3498,7 @@ const POSTerminalPage: React.FC = () => {
             {(catExpanded || catPage.total > 1) && (
               <CategoryAllBtn
                 type="button"
-                onClick={() => setCatExpanded(v => !v)}
+                onClick={toggleCatExpanded}
                 title={catExpanded
                   ? t('pos:terminal.collapseCategories', { defaultValue: 'Collapse' })
                   : t('pos:terminal.allCategories', { defaultValue: 'Show all categories' })}

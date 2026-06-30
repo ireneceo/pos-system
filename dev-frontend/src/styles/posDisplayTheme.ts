@@ -10,6 +10,7 @@
  * 새 색을 추가할 땐 세 팔레트 모두에 같은 키를 넣을 것.
  */
 import { createGlobalStyle } from 'styled-components';
+import { useEffect } from 'react';
 
 export type PosThemeMode = 'light' | 'contrast' | 'dark';
 export const POS_THEME_MODES: PosThemeMode[] = ['light', 'contrast', 'dark'];
@@ -134,3 +135,21 @@ export const PosDisplayThemeStyle = createGlobalStyle`
   [data-pos-theme="contrast"] { ${vars('contrast')} }
   [data-pos-theme="dark"]     { ${vars('dark')} }
 `;
+
+/**
+ * 모달/팝업은 createPortal 로 document.body 에 렌더돼 컨테이너의 data-pos-theme
+ * 스코프를 벗어난다(→ --pos-* 변수가 안 닿아 라이트 기본색으로 "따로 놀던" 버그).
+ * 운영 페이지(POS Terminal / Floor Plan) 마운트 동안 body 에도 같은 테마 속성을 걸어
+ * body-portal 모달이 --pos-* 를 상속하게 한다. 언마운트/모드변경 시 복원.
+ * (관리자 등 비-POS 페이지는 body 속성이 없어 var(..., fallback) 의 fallback=기존색 → 무영향.)
+ */
+export function usePosThemeOnBody(mode: PosThemeMode): void {
+  useEffect(() => {
+    const prev = document.body.getAttribute('data-pos-theme');
+    document.body.setAttribute('data-pos-theme', mode);
+    return () => {
+      if (prev !== null) document.body.setAttribute('data-pos-theme', prev);
+      else document.body.removeAttribute('data-pos-theme');
+    };
+  }, [mode]);
+}

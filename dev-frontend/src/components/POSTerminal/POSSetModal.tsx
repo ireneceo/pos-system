@@ -29,56 +29,56 @@ const Body = styled.div`max-height: 60vh; overflow-y: auto; padding: 4px 2px;`;
 const Footer = styled.div`display: flex; gap: 10px; align-items: center; margin-top: 12px;`;
 const Stepper = styled.div`display: inline-flex; align-items: center; gap: 6px;`;
 const StepBtn = styled.button`
-  width: 44px; height: 44px; border: 1px solid #E6EBF1; border-radius: 8px; background: #FFF;
+  width: 44px; height: 44px; border: 1px solid var(--pos-border, #E6EBF1); border-radius: 8px; background: var(--pos-control, #FFF);
   font-size: 20px; cursor: pointer; &:disabled { opacity: 0.5; }
 `;
 const QtyVal = styled.span`min-width: 28px; text-align: center; font-weight: 600;`;
 const AddBtn = styled.button`
-  flex: 1; height: 48px; border: none; border-radius: 10px; background: #635BFF; color: #FFF;
+  flex: 1; height: 48px; border: none; border-radius: 10px; background: var(--pos-brand, #635BFF); color: #FFF;
   font-size: 15px; font-weight: 600; cursor: pointer;
-  &:disabled { background: #C7CED6; cursor: not-allowed; }
+  &:disabled { background: var(--pos-surface-2, #C7CED6); cursor: not-allowed; }
 `;
-const Loading = styled.div`padding: 30px; text-align: center; color: #6B7C93;`;
+const Loading = styled.div`padding: 30px; text-align: center; color: var(--pos-text-muted, #6B7C93);`;
 
 // 구성품(B) 슬롯 렌더 — POS 자체 스타일(옵션팝업과 동일 톤). MobileSetOrder 의존 제거.
 const GroupSection = styled.div`margin-bottom: 16px;`;
 const GroupHead = styled.div`display: flex; align-items: center; gap: 8px; margin-bottom: 8px;`;
-const GroupLabel = styled.div`font-size: 14px; font-weight: 700; color: #0A2540;`;
+const GroupLabel = styled.div`font-size: 14px; font-weight: 700; color: var(--pos-text, #0A2540);`;
 const ChooseHint = styled.span`
-  font-size: 11px; font-weight: 600; color: #635BFF;
-  background: #F0EFFF; border-radius: 999px; padding: 2px 10px;
+  font-size: 11px; font-weight: 600; color: var(--pos-brand, #635BFF);
+  background: var(--pos-brand-tint, #F0EFFF); border-radius: 999px; padding: 2px 10px;
 `;
 const FixedRow = styled.div`
   min-height: 40px; padding: 8px 14px; margin-bottom: 6px;
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  border: 1px solid #E6EBF1; border-radius: 8px; background: #F7F9FC; color: #0A2540; font-size: 13px;
+  border: 1px solid var(--pos-border, #E6EBF1); border-radius: 8px; background: var(--pos-surface-2, #F7F9FC); color: var(--pos-text, #0A2540); font-size: 13px;
 `;
 const PickRow = styled.div`display: flex; flex-wrap: wrap; gap: 8px;`;
 const PickBtn = styled.button<{ $sel: boolean; $disabled?: boolean }>`
   min-height: 40px; padding: 0 14px; border-radius: 8px; font-size: 13px; cursor: pointer;
-  border: 1px solid ${p => (p.$sel ? '#635BFF' : '#E6EBF1')};
-  background: ${p => (p.$sel ? '#F0EFFF' : '#FFF')};
-  color: ${p => (p.$sel ? '#635BFF' : '#0A2540')};
+  border: 1px solid ${p => (p.$sel ? 'var(--pos-brand, #635BFF)' : 'var(--pos-border, #E6EBF1)')};
+  background: ${p => (p.$sel ? 'var(--pos-brand-tint, #F0EFFF)' : 'var(--pos-control, #FFF)')};
+  color: ${p => (p.$sel ? 'var(--pos-brand, #635BFF)' : 'var(--pos-text, #0A2540)')};
   font-weight: ${p => (p.$sel ? 600 : 400)};
   opacity: ${p => (p.$disabled ? 0.5 : 1)};
 `;
-const InhWrap = styled.div`margin: 6px 0 4px 12px; padding-left: 12px; border-left: 2px solid #EEF1F6;`;
-const InhTitle = styled.div`font-size: 12px; font-weight: 600; color: #6B7C93; margin-bottom: 6px;`;
+const InhWrap = styled.div`margin: 6px 0 4px 12px; padding-left: 12px; border-left: 2px solid var(--pos-border, #EEF1F6);`;
+const InhTitle = styled.div`font-size: 12px; font-weight: 600; color: var(--pos-text-muted, #6B7C93); margin-bottom: 6px;`;
 const SoldTag = styled.span`font-size: 11px; font-weight: 600; color: #FF6B6B;`;
 
 // 세트 자체 옵션(A) 섹션 — 구성품과 별개로 세트 전체에 적용되는 옵션
 const SetOptSection = styled.div`
-  margin-top: 14px; padding-top: 12px; border-top: 1px dashed #E6EBF1;
+  margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--pos-border, #E6EBF1);
 `;
-const SetOptHead = styled.div`font-size: 13px; font-weight: 700; color: #0A2540; margin-bottom: 8px;`;
+const SetOptHead = styled.div`font-size: 13px; font-weight: 700; color: var(--pos-text, #0A2540); margin-bottom: 8px;`;
 const SetOptGroup = styled.div`margin-bottom: 12px;`;
-const SetOptLabel = styled.div`font-size: 12px; color: #6B7C93; margin-bottom: 6px;`;
+const SetOptLabel = styled.div`font-size: 12px; color: var(--pos-text-muted, #6B7C93); margin-bottom: 6px;`;
 const SetOptRow = styled.div`display: flex; flex-wrap: wrap; gap: 8px;`;
 const SetOptBtn = styled.button<{ $sel: boolean }>`
   min-height: 40px; padding: 0 14px; border-radius: 8px; cursor: pointer; font-size: 13px;
-  border: 1px solid ${p => p.$sel ? '#635BFF' : '#E6EBF1'};
-  background: ${p => p.$sel ? '#F0EFFF' : '#FFF'};
-  color: ${p => p.$sel ? '#635BFF' : '#0A2540'};
+  border: 1px solid ${p => p.$sel ? 'var(--pos-brand, #635BFF)' : 'var(--pos-border, #E6EBF1)'};
+  background: ${p => p.$sel ? 'var(--pos-brand-tint, #F0EFFF)' : 'var(--pos-control, #FFF)'};
+  color: ${p => p.$sel ? 'var(--pos-brand, #635BFF)' : 'var(--pos-text, #0A2540)'};
   font-weight: ${p => p.$sel ? 600 : 400};
 `;
 
@@ -283,7 +283,7 @@ const POSSetModal: React.FC<Props> = ({ isOpen, product, restaurantId, formatCur
                     ? (g.items || []).map((it: any) => (
                         <div key={it.product_id}>
                           <FixedRow>
-                            <span>{it.name}{it.qty && it.qty > 1 ? ` ×${it.qty}` : ''} <span style={{ color: '#6B7C93', fontSize: '12px', fontWeight: 400 }}>({t('menu:setOrder.included', { defaultValue: 'included' })})</span></span>
+                            <span>{it.name}{it.qty && it.qty > 1 ? ` ×${it.qty}` : ''} <span style={{ color: 'var(--pos-text-muted, #6B7C93)', fontSize: '12px', fontWeight: 400 }}>({t('menu:setOrder.included', { defaultValue: 'included' })})</span></span>
                             {it.soldOut && <SoldTag>{t('menu:setOrder.soldOut', { defaultValue: 'SOLD OUT' })}</SoldTag>}
                           </FixedRow>
                           {!it.soldOut && renderInherited(it)}

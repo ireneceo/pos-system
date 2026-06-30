@@ -24,7 +24,8 @@ export const ModalOverlay = styled.div`
 
 // 모달 컨텐츠
 export const ModalContent = styled.div`
-  background: white;
+  background: var(--pos-surface, white);
+  color: var(--pos-text, #0A2540);
   border-radius: 12px;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   max-width: 600px;
@@ -46,7 +47,7 @@ export const ModalContent = styled.div`
 // 모달 헤더
 export const ModalHeader = styled.div`
   padding: 24px;
-  border-bottom: 1px solid #C7CED6;
+  border-bottom: 1px solid var(--pos-border, #C7CED6);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -61,7 +62,7 @@ export const ModalHeader = styled.div`
 export const ModalTitle = styled.h2`
   font-size: 20px;
   font-weight: 600;
-  color: #0A2540;
+  color: var(--pos-text, #0A2540);
   margin: 0;
 `;
 
@@ -70,7 +71,7 @@ export const CloseButton = styled.button`
   background: none;
   border: none;
   font-size: 24px;
-  color: #4B5563;
+  color: var(--pos-text-muted, #4B5563);
   cursor: pointer;
   padding: 0;
   width: 32px;
@@ -81,7 +82,7 @@ export const CloseButton = styled.button`
   transition: all 0.15s;
 
   &:hover {
-    color: #0A2540;
+    color: var(--pos-text, #0A2540);
   }
 `;
 
@@ -100,7 +101,7 @@ export const ModalBody = styled.div`
 // 모달 푸터
 export const ModalFooter = styled.div`
   padding: 20px 24px;
-  border-top: 1px solid #C7CED6;
+  border-top: 1px solid var(--pos-border, #C7CED6);
   display: flex;
   justify-content: flex-end;
   gap: 12px;
@@ -133,7 +134,7 @@ export const FormLabel = styled.label`
   display: block;
   font-size: 13px;
   font-weight: 500;
-  color: #4B5563;
+  color: var(--pos-text-muted, #4B5563);
   margin-bottom: 8px;
 `;
 
@@ -143,9 +144,11 @@ export const FormInput = styled.input`
   max-width: 100%;
   box-sizing: border-box;
   padding: 8px 12px;
-  border: 1px solid #C7CED6;
+  border: 1px solid var(--pos-border, #C7CED6);
   border-radius: 6px;
   font-size: 14px;
+  background: var(--pos-control, white);
+  color: var(--pos-text, #0A2540);
   transition: all 0.15s;
 
   &:focus {
@@ -155,13 +158,13 @@ export const FormInput = styled.input`
   }
 
   &:disabled {
-    background: #F9FAFB;
-    color: #4B5563;
+    background: var(--pos-surface-2, #F9FAFB);
+    color: var(--pos-text-muted, #4B5563);
     cursor: not-allowed;
   }
 
   &::placeholder {
-    color: #6B7280;
+    color: var(--pos-text-muted, #6B7280);
   }
 `;
 
@@ -171,10 +174,11 @@ export const FormSelect = styled.select`
   max-width: 100%;
   box-sizing: border-box;
   padding: 8px 12px;
-  border: 1px solid #C7CED6;
+  border: 1px solid var(--pos-border, #C7CED6);
   border-radius: 6px;
   font-size: 14px;
-  background: white;
+  background: var(--pos-control, white);
+  color: var(--pos-text, #0A2540);
   transition: all 0.15s;
   cursor: pointer;
 
@@ -185,8 +189,8 @@ export const FormSelect = styled.select`
   }
 
   &:disabled {
-    background: #F9FAFB;
-    color: #4B5563;
+    background: var(--pos-surface-2, #F9FAFB);
+    color: var(--pos-text-muted, #4B5563);
     cursor: not-allowed;
   }
 `;
@@ -197,11 +201,13 @@ export const FormTextArea = styled.textarea`
   max-width: 100%;
   box-sizing: border-box;
   padding: 8px 12px;
-  border: 1px solid #C7CED6;
+  border: 1px solid var(--pos-border, #C7CED6);
   border-radius: 6px;
   font-size: 14px;
   min-height: 100px;
   resize: vertical;
+  background: var(--pos-control, white);
+  color: var(--pos-text, #0A2540);
   transition: all 0.15s;
 
   &:focus {
@@ -211,7 +217,7 @@ export const FormTextArea = styled.textarea`
   }
 
   &::placeholder {
-    color: #6B7280;
+    color: var(--pos-text-muted, #6B7280);
   }
 `;
 
@@ -240,7 +246,7 @@ export const ModalButton = styled.button<{ variant?: 'primary' | 'secondary' | '
     switch (props.variant) {
       case 'primary': return 'none';
       case 'danger': return 'none';
-      default: return '1px solid #C7CED6';
+      default: return '1px solid var(--pos-border, #C7CED6)';
     }
   }};
   background: ${props => {
@@ -254,7 +260,7 @@ export const ModalButton = styled.button<{ variant?: 'primary' | 'secondary' | '
     switch (props.variant) {
       case 'primary': return 'white';
       case 'danger': return 'white';
-      default: return '#4B5563';
+      default: return 'var(--pos-text-muted, #4B5563)';
     }
   }};
 

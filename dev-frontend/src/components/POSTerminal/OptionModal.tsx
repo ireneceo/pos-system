@@ -245,7 +245,7 @@ const OptionModal: React.FC<OptionModalProps> = ({ isOpen, onClose, menuItem, on
                   {so ? (
                     <div style={{ fontSize: '11px', fontWeight: 700, color: '#DC2626', marginTop: '2px' }}>{t('terminal.soldOut', { defaultValue: 'Sold out' })}</div>
                   ) : option.price > 0 && (
-                    <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '2px' }}>
+                    <div style={{ fontSize: '12px', color: 'var(--pos-text-muted, #4B5563)', marginTop: '2px' }}>
                       +{formatCurrency(option.price, operationSettings.currency)}
                     </div>
                   )}
