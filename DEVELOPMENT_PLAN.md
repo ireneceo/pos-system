@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-29 #2 (**오프라인 degrade — 메인POS 전용 + 보조기기 전체잠금 — dev 검증완료·미배포**. 오프라인 시 매장 지정 메인POS 1대만 주문접수·로컬인쇄, 보조기기는 전체화면 잠금 안내, 메인POS는 "모든 주문·인쇄 이 기기" 안내(기존 비상모드 재사용=인쇄코드 0줄), 미지정 매장 lockout 방지 자가승격 탈출구. Playwright 8/8. 보호파일 무접촉. 상세 ↓. **이전 동일일자: 오프라인 1~6단계 + KDS 보완**.)
+> **최종 업데이트:** 2026-06-30 #1 (**v3.65 운영 배포 (SW 4.46)** — 오프라인 모드(1~6단계) + IOI Mall 매출 API + POS 헤더 반응형/한글화 + 모달·팝업·TableDetailPanel 테마 + 카테고리 인라인펼침 + 모바일 QR 테이블 리셋 등 누적 dev분 **일괄 운영 배포**. 신규 마이그 3종(option_sold_out·sales_integrations·**processed_ops**) 운영 적용, Smoke 9/9, Backup 20260630_010745. **하이브리드/빌 인쇄 코드는 4.45 무변경**(print-guard 확인). 배포 메커니즘: deploy 스크립트 대화형 프롬프트는 `--auto` 로 통과. + **thefire01 인쇄테스트 주문 38건 소프트삭제**(전체백업 보관). 상세 ↓.)
+>
+> **이전:** 2026-06-29 #2 (**오프라인 degrade — 메인POS 전용 + 보조기기 전체잠금 — dev 검증완료·미배포**. 오프라인 시 매장 지정 메인POS 1대만 주문접수·로컬인쇄, 보조기기는 전체화면 잠금 안내, 메인POS는 "모든 주문·인쇄 이 기기" 안내(기존 비상모드 재사용=인쇄코드 0줄), 미지정 매장 lockout 방지 자가승격 탈출구. Playwright 8/8. 보호파일 무접촉. 상세 ↓. **이전 동일일자: 오프라인 1~6단계 + KDS 보완**.)
 >
 > **이전:** 2026-06-27 #3 (**thefire02 라이브 인쇄 긴급대응 — 운영 배포**. 신규/추가주문 BAR 늦음·KQ 중복·통합 지연 근본수리. ①**QZ keepalive**(연결 idle 끊김→첫인쇄 16초 멈춤 해결, SW 4.33) ②**발송순서 = 주방 스테이션 먼저 → 통합(POS1→MASTER 맨뒤)**, 느린 통합 2장이 BAR 막던 것 해결(SW 4.34) ③**통합티켓 "정확히 1번" 가드**(POS1 통합 중복 제거) ④**아이템취소 = 취소품목의 그 회차(order_group) 오더티켓 기준** 재발행(API+DB 검증완료) ⑤backend station-printed PATCH + print-trace 로깅(안정 검증루트). 인쇄 발송 단일기준 정리. **다음 섹션 대기**: 머지(R8) served제외+"Table1+Table2"표시 / 자동발행기준·KDS 안내표시 검토.)
 >
@@ -7547,6 +7549,33 @@ Brand General이 등록한 재료(Ingredient)의 표준 코스트(Brand Cost)에
 - `dev-frontend/src/components/Layout/MainLayout.tsx` (소켓 즉시폴링·getStoreInfo·backlog 예외·POS설정메뉴)
 - `dev-frontend/src/hooks/useAutoPrintPoller.ts`, `dev-frontend/src/utils/billPrint.js` (timeZone·이동 from→to)
 - `dev-frontend/src/pages/{FloorPlan,POSTerminal,Settings}/*`, `dev-frontend/public/sw.js` (4.10)
+
+---
+
+## ✅ 완료: v3.65 운영 배포 — 오프라인 모드 외 누적분 일괄 (2026-06-30, SW 4.46)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 오프라인 모드 1~6단계 | 끊겨도 카운터 주문접수·주방 로컬인쇄·복구 무손실/무중복 동기화 + degrade(메인POS 전용·보조기기 잠금) | ✅ 배포 |
+| IOI Mall 매출 API | 입점몰 시간별 매출 전송 연동(설정 UI·스케줄러·암호화). 운영 자격증명 수령 시 environment=production 전환 | ✅ 배포(코드) |
+| POS 헤더 반응형/한글화 | 1024~1536 전 폭 한 줄·overflow0 + ←대시보드/고객화면/금전함/POS단말 i18n | ✅ 배포 |
+| 모달·팝업 테마 | `--pos-*` 변수 body-portal 상속(usePosThemeOnBody) — 고대비/다크 팝업 또렷, 비-POS 무영향 | ✅ 배포 |
+| 카테고리 인라인 완전펼침 | ▾ 토글로 그 자리 멀티줄 wrap, 선택 시 자동 접힘 | ✅ 배포 |
+| 모바일 QR 테이블 리셋 | 스캔=절대 리셋(per-tab 권위 + 영속 폴백), 다른 탭 clobber 방어 | ✅ 배포 |
+| 신규 마이그 3종 | option_sold_out · sales_integrations · **processed_ops**(오프라인 멱등 가드, 신규 작성) | ✅ 운영 적용 |
+| thefire01 주문정리 | 인쇄 라이브테스트 주문 38건 소프트삭제(앱 표준), 전체 백업 보관 | ✅ 완료 |
+
+### 핵심 메모
+- **인쇄 안전:** dev 하이브리드/빌/폴러 인쇄 = 4.45 잠긴 버전과 동일(print-guard 무변경 확인). 유일 인쇄 delta=MainLayout `_printPollFn` capped 하트비트(배포된 useAutoPrintPoller 미러).
+- **마이그 함정:** sync-database는 `--alter` 없으면 신규 테이블을 만들지 않음 → processed_ops 전용 마이그 신규 작성·배포목록 등록.
+- **배포 메커니즘:** deploy 스크립트 스키마 diff/최종 확인 `read -p` 대화형 → 백그라운드 stdin이 ssh에 먹힘 → `--auto` 플래그로 완주.
+
+### 수정/신규 파일
+- `dev-frontend/public/sw.js` (4.45→4.46), `deploy-to-production.sh` (마이그 2종 등록)
+- `dev-backend/scripts/20260629_create_processed_ops.js` (신규), `dev-backend/scripts/print-guard.manifest.json` (bless)
+- 외 오프라인/IOI/테마/모바일 누적분 (이전 #4·#5 dev 작업분)
 
 ---
 

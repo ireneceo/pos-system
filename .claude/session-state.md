@@ -1,6 +1,42 @@
 # Purple POS — 개발 세션 상태
 
-## 현재 작업 상태 — 2026-06-29 #5 (IOI Mall API + POS 헤더, dev 검증·미배포)
+## 현재 작업 상태 — 2026-06-30 #1 (오프라인 모드 등 운영 배포 완료 + thefire01 주문정리)
+**마지막 업데이트:** 2026-06-30 #1
+**버전:** v3.65 운영 배포 (SW **4.46-offline-mode-20260630**)
+**작업 상태:** 완료
+
+### 진행 중인 작업
+- 없음
+
+### 완료된 작업 (이번 세션)
+- v3.65 운영 배포(SW 4.46): 오프라인 모드 1~6단계+degrade · IOI Mall 매출 API · POS 헤더 반응형/한글화 · 모달·팝업·TableDetailPanel 테마 · 카테고리 인라인펼침 · 모바일 QR 테이블 리셋 등 누적 dev분 일괄
+- 신규 마이그 `20260629_create_processed_ops.js` 작성·배포목록 등록(오프라인 멱등 가드) + sales_integrations 등록
+- thefire01(rid16) 인쇄테스트 주문 38건 소프트삭제(전체백업 보관)
+
+### 다음 확정 작업
+- 없음 — 지시 대기
+
+### 후속 후보 (아이디어 메모, 확정 X)
+> 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.
+- 오프라인 주문 '편집' 액션 배선(add/cancel/move/pay/stage on offline order — 백엔드 opId가드 준비완료, 패널 읽기전용)
+- IOI Mall 운영 URL/자격증명 수령 후 environment=production 전환 + go-live ([[project_ioi_mall_sales_api]])
+- POS 메뉴 개선 백로그 13건(`docs/POS_MENU_IMPROVEMENT_BACKLOG.md`)
+
+---
+
+### ✅ (상세) 운영 배포 완료 — SW **4.46-offline-mode-20260630** (2026-06-30 ~01:10 UTC / 09:10 KL)
+> 직전 배포 02:52 KL(4.45) 이후 누적분 일괄 배포. 스모크 9/9, 백엔드 헬스 정상, 백업 `/var/www/backups/20260630_010745`.
+- **올라간 것:** 오프라인 모드(1~6단계: OfflineContext/배너·SW network-first·IndexedDB op로그·로컬기록·SyncEngine·로컬 주방인쇄·degrade 메인POS잠금) + IOI Mall 매출 API + POS 헤더 반응형/한글화 + 모달·팝업·TableDetailPanel 테마(`--pos-*`) + 카테고리 인라인펼침 + 모바일 QR 테이블 리셋 + 옵션 솔드아웃 + 현금관리 PIN 등 누적 dev분.
+- **신규 마이그 3종 운영 적용:** `20260628_add_option_sold_out` / `20260629_create_sales_integrations`(IOI) / **`20260629_create_processed_ops`(오프라인 멱등 가드 — 신규 작성, sync-database가 --alter 없이 테이블 생성 안 해서 전용 마이그 필요했음)**. 운영 테이블 생성 확인.
+- **인쇄 안전:** dev의 하이브리드/빌/폴러 인쇄 코드 = 4.45 잠긴 버전과 **동일(무변경)** — print-guard가 hybridKitchenPrint/billPrint/useAutoPrintPoller 무변경 확인. 유일 인쇄 delta=MainLayout `_printPollFn` capped 하트비트(이미 배포된 useAutoPrintPoller 하트비트 미러). bless 후 배포.
+- **배포 메커니즘 메모:** deploy 스크립트 스키마 diff·최종 확인은 `read -p` 대화형 → 백그라운드 stdin이 ssh에 먹혀 멈춤. **`--auto` 플래그로 프롬프트 통과**해야 완주.
+
+### ✅ thefire01(rid16) 최근 2-3일 주문 정리 (2026-06-30, Irene 지시)
+> 인쇄 라이브테스트 주문 38건 소프트삭제(앱 표준 DELETE = is_deleted=true, 자식 보존). 활성 236→198. 전체백업 `/var/www/backups/thefire01-orders-backup-20260630.json`. 되돌리기=백업 id에 is_deleted=false.
+
+---
+
+## (이전) 작업 상태 — 2026-06-29 #5 (IOI Mall API + POS 헤더, dev 검증·미배포 → 위에서 배포됨)
 
 ### ✅ IOI Mall 매출 API 연동 — 구현 완료(dev, 검증, 미배포) — [[project_ioi_mall_sales_api]]
 > 계약·결정 전부 확정된 상태에서 구현. 운영 자격증명만 외부 대기(staging 동작 확인).
