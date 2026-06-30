@@ -22,7 +22,7 @@ import { getRestaurantTimezone } from '../../utils/timezone';
 import DailySettlementPrint from '../Reports/DailySettlementPrint';
 import SettlementMenu from '../../components/Settlement/SettlementMenu';
 import CashDrawerModal from '../../components/CashManagement/CashDrawerModal';
-import FinalSettlementModal from '../../components/CashManagement/FinalSettlementModal';
+import FinalReconcilePanel from '../Reports/FinalReconcilePanel';
 import io from 'socket.io-client';
 import { useTranslation } from 'react-i18next';
 
@@ -2543,7 +2543,7 @@ const FloorPlanPage: React.FC = () => {
         onClose={() => setShowSettlement(false)}
       />
       <CashDrawerModal restaurantId={user?.restaurantId || restaurantId} isOpen={showCashDrawer} onClose={() => setShowCashDrawer(false)} />
-      <FinalSettlementModal isOpen={showFinalSettlement} onClose={() => setShowFinalSettlement(false)} />
+      <FinalReconcilePanel isOpen={showFinalSettlement} onClose={() => setShowFinalSettlement(false)} />
 
       {/* 예약 임박 테이블 워크인 주문 경고 (매니저 강행 허용) */}
       {reserveWarn && (

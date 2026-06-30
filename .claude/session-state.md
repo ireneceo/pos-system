@@ -1,9 +1,46 @@
 # Purple POS — 개발 세션 상태
 
-<!-- AUTOSAVE-STALE-BANNER -->
-> **[AUTO-SAVE STALE] (2026-06-30 08:45, idle 1827s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
-> 변경된 작업 파일: sw.js,hybridKitchenPrint.ts
-<!-- /AUTOSAVE-STALE-BANNER -->
+## 현재 작업 상태 — 2026-06-30 #3 (매출 대조 마감 dev구현 + QZ/네이티브앱 논의 — 섹션마감)
+**마지막 업데이트:** 2026-06-30 #3
+**버전:** 운영=SW **4.50**(인쇄 단일경로). dev=**4.53**(매출대조마감, 미배포)
+**작업 상태:** 인쇄=배포완료·QZ이슈 잔존 / 매출대조마감=dev구현·검증중·미배포
+
+### 🔶 매출 대조 마감(파이널 마감 재정의) — dev 구현·미배포
+- **데일리(매출요약) ≠ 파이널(대조).** 신규 `pages/Reports/FinalReconcilePanel.tsx`: 결제수단별 [시스템기록(reports-summary)][실제입력][차이(0초록/≠빨강)] + 메모 + **[닫기][PDF다운로드][인쇄]**. 시재 없이 날짜기준. POS-카드기/QR 미연동 매장용. 설계 [[project_sales_based_reconcile_settlement]].
+- **연결:** Floor Plan(2546)·Live Orders(2365)의 Final 을 FinalSettlementModal→**FinalReconcilePanel** 로 교체 + SettlementMenu 내부 final 도. 데일리·주방인쇄 무변경. (시재 모달은 코드 잔존, Cash Drawer 경유.)
+- 인쇄=fire-and-forget(QZ 미연결 hang 방지·모달 안닫음). 다운로드=jsPDF+html2canvas(Daily 동일, 다운로드폴더 저장·팝업없음).
+- **검증:** hydration0·design신규0·**print-guard 8/8(주방인쇄 무접촉)**·i18n pass(인라인 영문기본값)·health107/107·build green. **잔여:** 10단계 실브라우저 mount(토큰 발급 막혀 미완 — JWT_SECRET .env 로딩 필요) / timezone 신규1건=`mallSalesService.js:289`(IOI Mall 기존·의도적, 마감 무관·별도검토).
+- **미배포.** 배포 전: mount검증 마무리 + (선택)한글 i18n + (v2)차이 DB기록.
+
+### ⚠ QZ Tray 인쇄 안정성 — 근본 이슈(코드 아님)
+- thefire01 T22 실패(14925/14926) 실측: **폴러 정상(claim+heartbeat)인데 station-printed 0건 = QZ에서 인쇄 hang.** 1시간 idle 후 QZ 웹소켓 끊김→첫인쇄 못붙음(재부팅 후 QZ Tray 재연결 안 된 듯). **코드·주문·세트 데이터 정상**(MON세트 구성품 station 12/13/14 정상).
+- 단기=POS1 QZ Tray 재시작+POS새로고침. **근본 = Windows 네이티브(Electron) 앱 전환 → QZ 제거 → 인쇄안정성**(Irene 직감·동의, 다음 큰 과제). 웹앱 재사용+인쇄레이어만 네이티브.
+
+### 다음 (Irene 우선순위)
+1. **매출 대조 마감** 배포 마무리(mount검증→/배포) + 한글 i18n + v2(차이 DB기록).
+2. **QZ 근본 = 네이티브앱 전환** 설계(인쇄 안정성: QZ 제거, 앱→OS/프린터 직접). **데스크탑 + Android 동시 개발** 고려: 웹앱(React) 1코드 공유 + 플랫폼별 네이티브 래퍼. 후보 **Capacitor**(웹앱→Android+데스크탑, 네이티브 인쇄/네트워크 플러그인) 또는 Tauri(데스크탑+모바일)/Electron(데스크탑). 둘 다 네트워크 프린터에 직접 인쇄(LAN-IP=TCP:9100 raw / OS이름프린터=OS print, 한글OK). 비용=플랫폼별 패키징·서명·스토어·자동업데이트(1회), 앱코드는 공유. (Irene 다음 섹션 업무 지정 2026-06-30.)
+3. 인쇄 회귀게이트("1장/경로") + 스탭밀 분리(테이블 점유 안묶이게).
+
+---
+
+## 현재 작업 상태 — 2026-06-30 #2 (★인쇄 단일경로 정석 — 운영 배포 SW 4.50, 섹션 닫음)
+**마지막 업데이트:** 2026-06-30 #2
+**버전:** SW **4.50-poller-single-path** 운영 배포
+**작업 상태:** 완료 (인쇄 섹션 닫음)
+
+### ✅ 완료·배포 — 주방인쇄 "POS1 폴러 단일경로" 정석
+- **하이브리드 다이렉트 폐지** → 모든 주방인쇄(POS주문·모바일·다른기기·재발행)를 **POS1 폴러 단일경로**로. "주문1개=주인1명, POS1만 찍음". 다이렉트vs폴러 다툼(claim/히트비트/통합arbitration) **구조 제거** → 이중·3장·누락 근본해결.
+- **변경(딱 1줄):** `hybridKitchenPrint.ts` printOrderKitchenNow 진입부 `if(!window.__ENABLE_HYBRID_DIRECT) return false`(다이렉트 비활성, 호출부 5곳 무접촉) + sw.js 4.50. billPrint/poller/orders-crud **무변경**.
+- **배포:** SW 4.50 운영, 스모크 9/9, 백업 `20260630_081118`. print-guard 8/8(hybridKitchenPrint은 보호8 외라 무영향). Irene 확인 "전체적으로 문제없음".
+- 정석 메모리 [[reference_print_single_poller_architecture]] (옛 하이브리드/히트비트/통합arbitration 메모리 **대체·재도입 금지**).
+- ⚠ 교훈: 라이브에 추측 시행착오 금지(번들 4.46↔4.45 왕복·히트비트제거→3장 = 내 오류 반복). **측정먼저·단순화**.
+
+### 다음 확정 작업 (Irene 우선순위)
+1. **★매출 대조 마감 (지금 중요)** — POS가 카드기/QR 미연동→실제 단말총액 vs POS기록 결제수단별 대조, **시재없이 날짜기준**. UI/UX 확정됨([[project_sales_based_reconcile_settlement]]: 결제수단별 [시스템기록][실제입력][차이] 모달+인쇄). 현금안받는 매장 시재패널 빈화면 UX도 정리.
+2. **인쇄 영구잠금** — CLAUDE.md 인쇄규칙 단일경로로 갱신(이번 세션) + **"1장/경로(POS1/POS2/모바일)" 회귀 게이트** 추가(미구현, health-check print).
+3. **스탭밀 분리** — 결제완료·테이블 점유에 안 묶이게 별도 입력(같은 테이블 몇 번이든 추가). Staff Meal Settlement 집계.
+
+---
 
 ## 현재 작업 상태 — 2026-06-30 #1 (오프라인 모드 등 운영 배포 완료 + thefire01 주문정리)
 **마지막 업데이트:** 2026-06-30 #1

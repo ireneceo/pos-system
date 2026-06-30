@@ -4,6 +4,14 @@
 
 **매장 인쇄는 영업 생명선. 인쇄 문제 = 매장 마비. 아래를 위반하면 안 됨.**
 
+### 🔒🔒 주방인쇄 구조 = "POS1 폴러 단일경로" (2026-06-30 확정·운영배포 SW4.50 — 최신·번복 금지)
+> 이전 하이브리드/히트비트/통합 claim 결정(2026-06-25 등 아래 블록)을 **대체**한다. 종일 고생한 근본 원인이 바로 그 복잡함(다이렉트+폴러+claim+히트비트=패치 위 패치)이었음. 해결은 단순화였다.
+- **주방티켓은 전부 POS1 폴러 한 길로 인쇄**(POS주문·모바일·다른기기·재발행 전부). **주문 1개 = 주인 1명** — autoPrint=true 워크스테이션(=POS1)만 찍고, POS2·다른기기는 안 찍는다. 주방프린터는 네트워크라 누가 보내도 주방서 나옴.
+- **하이브리드 다이렉트(`printOrderKitchenNow`)는 비활성** — `hybridKitchenPrint.ts` 진입부 `if(!window.__ENABLE_HYBRID_DIRECT) return false`. 호출부(POSTerminal/FloorPlan/LiveOrders/TableDetailPanel) 5곳은 false→폴러 위임(무접촉). 빌/영수증·마감인쇄는 별개.
+- ⛔ **하이브리드 다이렉트 · capped 히트비트 · 통합 claim arbitration 재도입 절대 금지.** 그게 다이렉트 vs 폴러가 같은 주문을 두고 다투던 = 이중·3장·누락의 뿌리였다.
+- 인쇄문제 발생 시: ①운영 로그/데이터로 **측정 먼저**(라이브에 추측·시행착오 금지) ②이 단일경로 모델에 대조 ③최소변경 1개 ④dev+실프린터 검증. **증상 패치 금지, 단순화가 답.**
+- 단일 진실: 메모리 [[reference_print_single_poller_architecture]]. (아래 2026-06-25 "확정된 인쇄 구조" 블록은 이 결정으로 대체됨 — 참고용으로만 둠.)
+
 ### 보호 대상 (이 파일/경로는 "현재 동작 = 정답". 함부로 변경 금지)
 - `dev-frontend/src/utils/billPrint.js` (특히 `sendHTMLViaQZTray` / `sendViaQZTray` / `printKitchenTicketViaRawBT` / `printBillViaRawBT` / `printKitchenTicketsByStation` / `sendToRawBTPrinter` / mirror 블록)
 - `dev-frontend/src/hooks/useAutoPrintPoller.ts`

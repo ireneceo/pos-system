@@ -895,7 +895,9 @@
       "Bash(awk '/§?8\\\\.8|8\\\\.8 /{f=1} f{print} /^## |^# /{if\\(f && !/8\\\\.8/\\) c++; if\\(c>1\\) exit}' docs/PRINT_RULES_MATRIX.md)",
       "Bash(awk '/_bucketItemsByStation = |function _bucketItemsByStation/{f=1} f{print NR\": \"$0} f&&/^}/{c++; if\\(c>=1\\)exit}' dev-frontend/src/utils/billPrint.js)",
       "Bash(xargs -I{} sh -c 'echo \"chunk: $\\(basename {}\\)  print-heartbeat 횟수: $\\(grep -o \"print-heartbeat\" {} | wc -l\\)\"')",
-      "Bash(awk 'NR<=1057 && /router\\\\.\\(get|post|put|patch|delete\\)/ {line=NR\": \"$0} END{print line}' dev-backend/routes/orders-crud.js)"
+      "Bash(awk 'NR<=1057 && /router\\\\.\\(get|post|put|patch|delete\\)/ {line=NR\": \"$0} END{print line}' dev-backend/routes/orders-crud.js)",
+      "Bash(awk '/export \\(async \\)?\\(const|function\\) printSettlementReport|printSettlementReport = async|printSettlementReport =/{f=1} f{print NR\": \"$0} f&&/^}/{exit}' dev-frontend/src/utils/billPrint.js)",
+      "Bash(sed -i \"s|const SW_VERSION = '4.52-final-reconcile-floorplan-liveorders-20260630';|const SW_VERSION = '4.53-reconcile-print-fix-20260630';|\" dev-frontend/public/sw.js)"
     ],
     "deny": [],
     "ask": []

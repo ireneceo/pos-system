@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import DailySettlementPrint from '../../pages/Reports/DailySettlementPrint';
 import StaffMealSettlementPrint from '../../pages/Reports/StaffMealSettlementPrint';
+import FinalReconcilePanel from '../../pages/Reports/FinalReconcilePanel';
 
 // 2026-06-28 (Irene): 통합 '마감 ▾' 드롭다운 — Daily / Final / Staff Meal Settlement.
 // Reports + Cash Management 헤더 양쪽에 같은 메뉴를 둔다(어디서든 마감 가능).
@@ -103,7 +104,7 @@ const SettlementMenu: React.FC<SettlementMenuProps> = ({ variant = 'light', onDa
       )}
 
       <DailySettlementPrint isOpen={modal === 'daily'} onClose={() => setModal(null)} mode="daily" />
-      <DailySettlementPrint isOpen={modal === 'final'} onClose={() => setModal(null)} mode="final" />
+      <FinalReconcilePanel isOpen={modal === 'final'} onClose={() => setModal(null)} />
       <StaffMealSettlementPrint isOpen={modal === 'staffMeal'} onClose={() => setModal(null)} />
     </div>
   );

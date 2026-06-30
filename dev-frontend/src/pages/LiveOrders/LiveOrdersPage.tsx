@@ -30,7 +30,7 @@ import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../co
 import DailySettlementPrint from '../Reports/DailySettlementPrint';
 import SettlementMenu from '../../components/Settlement/SettlementMenu';
 import CashDrawerModal from '../../components/CashManagement/CashDrawerModal';
-import FinalSettlementModal from '../../components/CashManagement/FinalSettlementModal';
+import FinalReconcilePanel from '../Reports/FinalReconcilePanel';
 import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
 
@@ -2362,7 +2362,7 @@ const LiveOrdersPage: React.FC = () => {
 
       <DailySettlementPrint isOpen={showSettlement} onClose={() => setShowSettlement(false)} />
       <CashDrawerModal restaurantId={user?.restaurantId} isOpen={showCashDrawer} onClose={() => setShowCashDrawer(false)} />
-      <FinalSettlementModal isOpen={showFinalSettlement} onClose={() => setShowFinalSettlement(false)} />
+      <FinalReconcilePanel isOpen={showFinalSettlement} onClose={() => setShowFinalSettlement(false)} />
     </>
   );
 };
