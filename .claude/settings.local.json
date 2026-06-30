@@ -890,7 +890,12 @@
       "Bash(sed -n '/^const DiscountSection = styled/,/^`;/p' src/pages/POSTerminal/POSTerminalPage.tsx)",
       "Bash(sed -i -e 's/#E6EBF1/var\\(--pos-border, #E6EBF1\\)/g' -e 's/#EEF1F6/var\\(--pos-border, #EEF1F6\\)/g' -e 's/#635BFF/var\\(--pos-brand, #635BFF\\)/g' -e 's/#0A2540/var\\(--pos-text, #0A2540\\)/g' -e 's/#6B7C93/var\\(--pos-text-muted, #6B7C93\\)/g' -e 's/#F0EFFF/var\\(--pos-brand-tint, #F0EFFF\\)/g' -e 's/#F7F9FC/var\\(--pos-surface-2, #F7F9FC\\)/g' -e 's/background: #C7CED6/background: var\\(--pos-surface-2, #C7CED6\\)/g' src/components/POSTerminal/POSSetModal.tsx)",
       "Bash(sed -i -e 's/background: #FFF;/background: var\\(--pos-control, #FFF\\);/g' -e 's/'\\\\''#FFF'\\\\''/'\\\\''var\\(--pos-control, #FFF\\)'\\\\''/g' src/components/POSTerminal/POSSetModal.tsx)",
-      "Bash(scp -q /tmp/claude-1000/-var-www/5bdf5d68-a432-42d1-9f35-1ec413e94ca7/scratchpad/delete-thefire01-orders.js irene@87.106.78.146:/var/www/production-backend/_del-thefire01.js)"
+      "Bash(scp -q /tmp/claude-1000/-var-www/5bdf5d68-a432-42d1-9f35-1ec413e94ca7/scratchpad/delete-thefire01-orders.js irene@87.106.78.146:/var/www/production-backend/_del-thefire01.js)",
+      "Bash(sort -k6,7)",
+      "Bash(awk '/§?8\\\\.8|8\\\\.8 /{f=1} f{print} /^## |^# /{if\\(f && !/8\\\\.8/\\) c++; if\\(c>1\\) exit}' docs/PRINT_RULES_MATRIX.md)",
+      "Bash(awk '/_bucketItemsByStation = |function _bucketItemsByStation/{f=1} f{print NR\": \"$0} f&&/^}/{c++; if\\(c>=1\\)exit}' dev-frontend/src/utils/billPrint.js)",
+      "Bash(xargs -I{} sh -c 'echo \"chunk: $\\(basename {}\\)  print-heartbeat 횟수: $\\(grep -o \"print-heartbeat\" {} | wc -l\\)\"')",
+      "Bash(awk 'NR<=1057 && /router\\\\.\\(get|post|put|patch|delete\\)/ {line=NR\": \"$0} END{print line}' dev-backend/routes/orders-crud.js)"
     ],
     "deny": [],
     "ask": []

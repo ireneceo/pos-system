@@ -14,6 +14,12 @@ import { getAuthToken } from './auth';
 
 export async function printOrderKitchenNow(ord: any, getStoreInfo: () => any): Promise<boolean> {
   try {
+    // 2026-06-30 (Irene 확정 — "주문 1개 = 주인 1명" 정석): 하이브리드 다이렉트 폐지.
+    //  주방 티켓은 네트워크 주방프린터로 가므로 어느 POS가 보내든 주방에서 나옴 → POS 자기 직접인쇄 불필요.
+    //  모든 주방인쇄를 검증된 폴러(POS1 단일 주체) 경로로 일원화 → 다이렉트 vs 폴러 다툼(claim/히트비트) 구조 제거.
+    //  호출부(POSTerminal/FloorPlan/LiveOrders/TableDetailPanel)는 false 반환 시 autoprint-poke 로 폴러 위임.
+    //  (재활성화: window.__ENABLE_HYBRID_DIRECT=true.) 모바일·POS·재발행 전부 동일 경로.
+    if (!(window as any).__ENABLE_HYBRID_DIRECT) return false;
     if (!ord || ord.id == null) return false;
     const tok = getAuthToken();
     if (!tok) return false;
