@@ -196,5 +196,6 @@
   "itemTag.takeaway": "TAKEAWAY",
   "itemTag.pickup": "PICKUP",
   "itemTag.delivery": "DELIVERY",
-  "itemTag.dine_in": "DINE-IN"
+  "itemTag.dine_in": "DINE-IN",
+  "tableDetailPanel.newSeparateOrder": "New Order"
 }

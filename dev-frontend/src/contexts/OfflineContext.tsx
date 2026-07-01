@@ -24,8 +24,11 @@ export function useOffline(): OfflineState {
 
 const PING_PATH = '/api/health';
 const PING_INTERVAL_MS = 8000;   // 8초마다 핑
-const PING_TIMEOUT_MS = 4000;    // 4초 내 응답 없으면 실패
-const FAIL_THRESHOLD = 2;        // 연속 2회 실패 → offline (단발 깜빡임 무시)
+// 2026-07-01 (Irene "온라인인데 갑자기 오프라인 배너+주문 가림"): degrade(기기잠금·주문가림)는 큰 동작이라
+// 보수적으로. 짧은 wifi 블립/느린 health 응답에 넘어가지 않게 타임아웃·연속실패 기준을 늘린다.
+// 실제 장애는 여전히 ~24초(8s×3) 안에 감지 → POS 영업 안전.
+const PING_TIMEOUT_MS = 6000;    // 6초 내 응답 없으면 실패 (부하 시 느린 health 오탐 방지)
+const FAIL_THRESHOLD = 3;        // 연속 3회 실패 → offline (단발/짧은 블립 무시)
 
 export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isOffline, setIsOffline] = useState(false);

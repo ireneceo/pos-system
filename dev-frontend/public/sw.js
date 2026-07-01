@@ -10,7 +10,7 @@
  *    캐시는 SW_VERSION 네임스페이스 → 새 배포(install)가 옛 캐시 전체 삭제로 stale-chunk 차단.
  */
 
-const SW_VERSION = '4.53-reconcile-print-fix-20260630';
+const SW_VERSION = '4.54-static-cache-first-20260701';
 const RUNTIME_CACHE = `pos-runtime-${SW_VERSION}`;
 // 오프라인에 캐시할 API GET (메뉴/설정/플로어플랜 — 끊겨도 주문화면이 뜨게). 그 외 API 는 캐시 안 함.
 const API_CACHE_PATTERNS = [/\/api\/menu(\b|\/|\?)/, /\/api\/mobile\/.*menu/, /\/restaurants\/\d+\/floor-plan/, /\/api\/.*\/operation-settings/, /\/api\/.*\/store/];
@@ -65,6 +65,29 @@ async function networkFirst(req, fallbackKey) {
   }
 }
 
+// 해시된 정적 자산(/static/*.[hash].js|css)은 immutable(내용-해시 파일명) → cache-first(즉시, 네트워크 왕복 0).
+// 새 빌드는 새 해시=새 URL 이라 stale 없음(옛 URL=옛 내용 항상 일치). 새 SW_VERSION 활성화 시 옛 캐시 삭제.
+// 2026-07-01 (Irene "뒤로가기 느림"): 오프라인 모드 도입 때 정적 자산까지 network-first 로 바꾼 것이
+// 매 청크/네비마다 네트워크 왕복을 유발(느린 매장 wifi 에서 체감 큼) → immutable 자산은 cache-first 로 환원.
+async function cacheFirst(req) {
+  let cache;
+  try { cache = await caches.open(RUNTIME_CACHE); } catch (_) { cache = null; }
+  if (cache) {
+    const hit = await cache.match(req);
+    if (hit) return hit;                       // 즉시 응답(네트워크 대기 없음)
+  }
+  try {
+    const res = await fetch(req);
+    if (cache && res && res.ok && res.type === 'basic') {
+      try { await cache.put(req, res.clone()); } catch (_) { /* quota */ }
+    }
+    return res;
+  } catch (_) {
+    if (cache) { const hit = await cache.match(req); if (hit) return hit; }
+    return Response.error();
+  }
+}
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
@@ -77,9 +100,13 @@ self.addEventListener('fetch', (event) => {
   const isApiCacheable = url.pathname.startsWith('/api/') && API_CACHE_PATTERNS.some((re) => re.test(url.pathname + url.search));
 
   if (isNav) {
-    // 네비게이션: 온라인=네트워크, 오프라인=캐시된 '/'(셸) 로 앱 부팅.
+    // 네비게이션(HTML): network-first — 새 빌드의 새 해시 참조를 항상 받도록(신선도). 오프라인=캐시된 '/'(셸).
     event.respondWith(networkFirst(req, '/'));
-  } else if (isStatic || isApiCacheable) {
+  } else if (isStatic) {
+    // immutable 해시 자산: cache-first(즉시) → 뒤로가기·라우트 전환 빠름.
+    event.respondWith(cacheFirst(req));
+  } else if (isApiCacheable) {
+    // 캐시가능 API(메뉴·설정): network-first(신선도), 오프라인만 캐시.
     event.respondWith(networkFirst(req));
   }
   // 그 외(쓰기·기타 API)는 가로채지 않음 — 평소대로 네트워크.

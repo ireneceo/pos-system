@@ -196,5 +196,6 @@
   "itemTag.takeaway": "포장",
   "itemTag.pickup": "픽업",
   "itemTag.delivery": "배달",
-  "itemTag.dine_in": "매장"
+  "itemTag.dine_in": "매장",
+  "tableDetailPanel.newSeparateOrder": "새 주문"
 }

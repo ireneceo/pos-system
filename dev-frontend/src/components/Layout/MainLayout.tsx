@@ -1292,12 +1292,14 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               menuItem: { name: it.menu_item_name || it.name || (it.menuItem && it.menuItem.name) || 'Item', price: parseFloat(it.price || (it.menuItem && it.menuItem.price) || '0') },
               quantity: it.quantity || 1,
               options: Array.isArray(it.options) ? it.options : [],
-              kitchen_station_id: it.kitchen_station_id || null,
-              added_at: it.added_at || null,
-              order_group: it.order_group || 0,
               // 세트 구성품(+옵션) 전달 — 없으면 빌/주방에 "SET" 만 찍히고 구성품 누락 + 주방분배 불가.
               is_set_menu: it.is_set_menu || false,
               set_components: Array.isArray(it.set_components) ? it.set_components : undefined,
+              // 2026-07-01 (Irene): 품목 메모(특별요청)를 주방티켓에 (useAutoPrintPoller mapItem 과 일치).
+              special_instructions: it.special_instructions || it.specialInstructions || '',
+              kitchen_station_id: it.kitchen_station_id || null,
+              added_at: it.added_at || null,
+              order_group: it.order_group || 0,
               stationName: it.stationName || null
             });
             const printData: any = {
@@ -1310,6 +1312,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               date: new Date(ord.order_date || ord.createdAt || Date.now()),
               orderType: ord.order_type === 'dine_in' ? 'dine-in' : (ord.order_type || 'takeaway'),
               orderSource: ord.source || 'mobile',
+              // 2026-07-01 (Irene): 주문 단위 메모(알러지/생일 등)를 주방티켓에 — billPrint 가 이미 렌더(1699).
+              notes: ord.notes || '',
               items: items.map(mapItem),
               subtotal: parseFloat(ord.subtotal || '0'),
               tax: parseFloat(ord.tax || '0'),

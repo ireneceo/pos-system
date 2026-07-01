@@ -209,6 +209,20 @@ export const OrdersRealtimeProvider: React.FC<{
   // 초기 동기화
   useEffect(() => { refetch(); }, [refetch]);
 
+  // 2026-07-01 (Irene "모든 곳 실시간, 특히 단계/상태 변경"): 화면이 다시 보이거나(탭 복귀·모니터 wake)
+  // 창이 포커스될 때 즉시 재동기화. 소켓이 disconnect 이벤트 없이 조용히 멈췄거나 blip 으로 emit 을
+  // 놓친 사이의 단계·상태 변경을 30초 폴링을 기다리지 않고 즉시 최신화한다(버전가드 merge 라 안전).
+  useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === 'visible') refetchRef.current(); };
+    const onFocus = () => refetchRef.current();
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, []);
+
   const value = useMemo<OrdersRealtimeValue>(() => ({
     orders, ordersReady, connected, refetch, applyOrder: upsert, removeOrder, subscribe,
   }), [orders, ordersReady, connected, refetch, upsert, removeOrder, subscribe]);

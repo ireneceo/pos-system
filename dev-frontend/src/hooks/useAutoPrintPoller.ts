@@ -159,6 +159,8 @@ export function useAutoPrintPoller(opts: {
               date: new Date(ord.order_date || ord.createdAt || Date.now()),
               orderType: ord.order_type === 'dine_in' ? 'dine-in' : (ord.order_type || 'takeaway'),
               orderSource: ord.source || 'mobile',
+              // 2026-07-01 (Irene): 주문 단위 메모를 주방티켓에 — billPrint 렌더(1699), MainLayout 폴러와 일치.
+              notes: ord.notes || '',
               items: items.map(mapItem),
               subtotal: parseFloat(ord.subtotal || '0'),
               tax: parseFloat(ord.tax || '0'),

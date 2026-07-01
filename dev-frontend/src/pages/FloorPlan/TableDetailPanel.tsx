@@ -1883,8 +1883,15 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                           : '';
 
                         // 세트 → 구성품 각각 단계 pill(주방·서빙 리스트와 동일). 구성품별 토글 + 부모 롤업.
-                        const setComps = (Array.isArray(item.set_components) && item.set_components.length) ? item.set_components
-                          : ((item.is_set_menu && Array.isArray(item.set_items) && item.set_items.length) ? item.set_items : null);
+                        // 2026-07-01 (Irene, KDS↔플로어플랜 세트 단계 불일치): 구성(이름/옵션)은 set_components 를
+                        // 쓰되, cooking 단계는 set_items[동일 index] 에서 폴백한다(KDS 가 단계를 set_items 에 쓰기 때문).
+                        // set_components 엔 단계가 없어 그대로 읽으면 부모 status(대개 pending)로 보여 KDS 와 어긋났다.
+                        // KDS processRawOrderItems(775) 와 동일 규칙으로 통일.
+                        const _compsRaw = (Array.isArray(item.set_components) && item.set_components.length) ? item.set_components : null;
+                        const _setItemsRaw = Array.isArray(item.set_items) ? item.set_items : [];
+                        const setComps = _compsRaw
+                          ? _compsRaw.map((c: any, ci: number) => ({ ...c, status: c.status ?? _setItemsRaw[ci]?.status }))
+                          : ((item.is_set_menu && _setItemsRaw.length) ? _setItemsRaw : null);
                         if (setComps) {
                           const servedN = setComps.filter((c: any) => toDisplayStatus(String(c.status || item.status)) === 'served').length;
                           return (
@@ -2094,6 +2101,14 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                 {paymentStatus === 'pending' && !['completed', 'cancelled'].includes(orderStatus) && (
                   <ActionBtn $variant="secondary" onClick={() => onNewOrder({ mergeOrderId: statusInfo!.orderId || undefined })}>
                     Add Items
+                  </ActionBtn>
+                )}
+                {/* 2026-07-01 (Irene): 같은 테이블에 별도 새 주문. "Add Items"(현재 주문에 머지)와 구분 —
+                    결제완료된 주문(스탭밀 등)이라 Add Items 가 숨어도 여기서 새 주문을 시작할 수 있다.
+                    각각 독립 결제/티켓. 패널이 다중주문 탭으로 전부 보여줌(orders/selectedOrderIndex). */}
+                {orderStatus !== 'cancelled' && (
+                  <ActionBtn $variant="secondary" onClick={() => onNewOrder()}>
+                    {t('floorplan:tableDetailPanel.newSeparateOrder', { defaultValue: 'New Order' })}
                   </ActionBtn>
                 )}
                 {/* Payment — LiveOrders와 동일: payment_status=pending (결제 권한 전용) */}

@@ -35,6 +35,10 @@ interface SettlementFinancials {
   cancelledAmount: number;
   outstandingOrders: number;
   outstandingAmount: number;
+  voidedItems?: number;
+  voidedAmount?: number;
+  voidedBilledItems?: number;
+  voidedBilledAmount?: number;
 }
 
 interface SettlementData {
@@ -566,6 +570,11 @@ const DailySettlementPrint: React.FC<DailySettlementPrintProps> = ({ isOpen, onC
     if (st.outstandingOrders > 0) {
       html += row('Outstanding Orders', fc(st.outstandingAmount), { negative: true, count: String(st.outstandingOrders) });
     }
+    // 아이템 void 요약(손실방지). after payment 는 발생 시에만(부분결제 등 red flag).
+    if ((st.voidedItems || 0) > 0) {
+      html += row('Voided Items', fc(st.voidedAmount || 0), { negative: true, count: String(st.voidedItems) });
+      if ((st.voidedBilledItems || 0) > 0) html += row('└ after payment', fc(st.voidedBilledAmount || 0), { negative: true, indent: true, count: String(st.voidedBilledItems) });
+    }
     html += divider('double');
 
     // 2. PAYMENT SETTLEMENT
@@ -923,6 +932,25 @@ const DailySettlementPrint: React.FC<DailySettlementPrintProps> = ({ isOpen, onC
                   <ReceiptRowCount>{s!.outstandingOrders}</ReceiptRowCount>
                   <ReceiptRowValue>{formatCurrency(s!.outstandingAmount, currency)}</ReceiptRowValue>
                 </ReceiptRow>
+              )}
+
+              {/* 아이템 void 요약(손실방지) — after payment 는 실제 발생 시에만 */}
+              {(s?.voidedItems || 0) > 0 && (
+                <>
+                  <ReceiptDivider style_type="dashed" />
+                  <ReceiptRow negative>
+                    <ReceiptRowLabel>{t('reports:dailySettlementPrint.voidedItems', { defaultValue: 'Voided Items' })}</ReceiptRowLabel>
+                    <ReceiptRowCount>{s!.voidedItems}</ReceiptRowCount>
+                    <ReceiptRowValue>{formatCurrency(s!.voidedAmount || 0, currency)}</ReceiptRowValue>
+                  </ReceiptRow>
+                  {(s?.voidedBilledItems || 0) > 0 && (
+                    <ReceiptRow negative indent>
+                      <ReceiptRowLabel>└ {t('reports:dailySettlementPrint.voidedAfterPay', { defaultValue: 'after payment' })}</ReceiptRowLabel>
+                      <ReceiptRowCount>{s!.voidedBilledItems}</ReceiptRowCount>
+                      <ReceiptRowValue>{formatCurrency(s!.voidedBilledAmount || 0, currency)}</ReceiptRowValue>
+                    </ReceiptRow>
+                  )}
+                </>
               )}
             </ReceiptSection>
 

@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-06-30 #1 (**v3.65 운영 배포 (SW 4.46)** — 오프라인 모드(1~6단계) + IOI Mall 매출 API + POS 헤더 반응형/한글화 + 모달·팝업·TableDetailPanel 테마 + 카테고리 인라인펼침 + 모바일 QR 테이블 리셋 등 누적 dev분 **일괄 운영 배포**. 신규 마이그 3종(option_sold_out·sales_integrations·**processed_ops**) 운영 적용, Smoke 9/9, Backup 20260630_010745. **하이브리드/빌 인쇄 코드는 4.45 무변경**(print-guard 확인). 배포 메커니즘: deploy 스크립트 대화형 프롬프트는 `--auto` 로 통과. + **thefire01 인쇄테스트 주문 38건 소프트삭제**(전체백업 보관). 상세 ↓.)
+> **최종 업데이트:** 2026-07-01 (**v3.66 운영 배포 (SW 4.54)** — Backup 20260701_201256, Smoke 9/9, 안전게이트 통과. **핵심: 세트 구성품 단계 KDS↔플로어플랜 불일치 근본수정**(플로어플랜 패널이 set_components[단계필드 없음]를 읽어 주문 pending으로 보이던 것 → KDS(processRawOrderItems:775)처럼 set_items[동일 index]에서 단계 폴백해 통일). + 마감(Final) 오늘요약+void요약(총·결제후) / 고객디스플레이 self-healing 하트비트(우측패널 열린 동안 재emit) / 같은 테이블 별도주문("New Order" 버튼, 스탭밀 등) / 오더노트 주방티켓(품목·주문 메모, 폴러 2곳 일치) / SW 정적자산 cache-first(뒤로가기·라우트 속도) / false-offline 완화(연속3회·6초) / KDS 취소리스트 상시버튼+서버조회 / KDS 스테이션별 소리 on/off(탭별 스피커+All 마스터) / KDS 전체되돌리기 제거·세트되돌리기 버튼 크기 / 실시간 견고화(visibility·focus 즉시 재조회, OrdersRealtime+KDS). 상세 ↓.)
+>
+> **이전:** 2026-06-30 #1 (**v3.65 운영 배포 (SW 4.46)** — 오프라인 모드(1~6단계) + IOI Mall 매출 API + POS 헤더 반응형/한글화 + 모달·팝업·TableDetailPanel 테마 + 카테고리 인라인펼침 + 모바일 QR 테이블 리셋 등 누적 dev분 **일괄 운영 배포**. 신규 마이그 3종(option_sold_out·sales_integrations·**processed_ops**) 운영 적용, Smoke 9/9, Backup 20260630_010745. **하이브리드/빌 인쇄 코드는 4.45 무변경**(print-guard 확인). 배포 메커니즘: deploy 스크립트 대화형 프롬프트는 `--auto` 로 통과. + **thefire01 인쇄테스트 주문 38건 소프트삭제**(전체백업 보관). 상세 ↓.)
 >
 > **이전:** 2026-06-29 #2 (**오프라인 degrade — 메인POS 전용 + 보조기기 전체잠금 — dev 검증완료·미배포**. 오프라인 시 매장 지정 메인POS 1대만 주문접수·로컬인쇄, 보조기기는 전체화면 잠금 안내, 메인POS는 "모든 주문·인쇄 이 기기" 안내(기존 비상모드 재사용=인쇄코드 0줄), 미지정 매장 lockout 방지 자가승격 탈출구. Playwright 8/8. 보호파일 무접촉. 상세 ↓. **이전 동일일자: 오프라인 1~6단계 + KDS 보완**.)
 >

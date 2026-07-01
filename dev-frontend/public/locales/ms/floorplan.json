@@ -196,5 +196,6 @@
   "itemTag.takeaway": "BUNGKUS",
   "itemTag.pickup": "AMBIL",
   "itemTag.delivery": "HANTAR",
-  "itemTag.dine_in": "MAKAN SINI"
+  "itemTag.dine_in": "MAKAN SINI",
+  "tableDetailPanel.newSeparateOrder": "Pesanan Baru"
 }

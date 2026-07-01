@@ -784,6 +784,29 @@ router.get('/restaurant/:restaurantId/reports-summary', authenticateToken, check
       attributes: ['id', 'total_amount']
     });
 
+    // 아이템 void 요약(손실방지 — 마감 리포트용). OrderAction item_removed 중 실제 void(삭제 경로:
+    // metadata.removed_item 존재)만. 편집으로 수량만 준 건(previous_item_count) 제외. billed = void 시점
+    // 결제완료(결제 후 취소) = 사장 감시 red flag. void 이벤트 시각(created_at) 기준 집계.
+    let voidedCount = 0, voidedAmount = 0, voidedBilledCount = 0, voidedBilledAmount = 0;
+    try {
+      const OrderAction = require('../models/OrderAction');
+      const voidActions = await OrderAction.findAll({
+        where: {
+          restaurant_id: restaurantId,
+          action_type: 'item_removed',
+          created_at: { [Op.gte]: startUTC, [Op.lte]: endUTC }
+        },
+        attributes: ['metadata']
+      });
+      voidActions.forEach(a => {
+        const m = a.metadata || {};
+        if (!m.removed_item) return; // 실제 void 만(편집 감소 제외)
+        const amt = Number(m.amount) || 0;
+        voidedCount += 1; voidedAmount += amt;
+        if (m.payment_status === 'completed') { voidedBilledCount += 1; voidedBilledAmount += amt; }
+      });
+    } catch (e) { /* non-fatal — void 요약은 optional */ }
+
     // Build product ID → category name mapping for order_items that lack category
     const products = await Product.findAll({
       where: { restaurant_id: restaurantId },
@@ -1073,7 +1096,12 @@ router.get('/restaurant/:restaurantId/reports-summary', authenticateToken, check
           cancelledOrders: cancelledCount,
           cancelledAmount,
           outstandingOrders: outstandingCount,
-          outstandingAmount
+          outstandingAmount,
+          // 아이템 void 요약(손실방지). billed = 결제 후 취소(red flag).
+          voidedItems: voidedCount,
+          voidedAmount,
+          voidedBilledItems: voidedBilledCount,
+          voidedBilledAmount
         },
         dailySales: dailySalesArray,
         hourlySales: hourlySalesArray,

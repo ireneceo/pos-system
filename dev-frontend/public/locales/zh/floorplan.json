@@ -196,5 +196,6 @@
   "itemTag.takeaway": "外带",
   "itemTag.pickup": "自取",
   "itemTag.delivery": "外送",
-  "itemTag.dine_in": "堂食"
+  "itemTag.dine_in": "堂食",
+  "tableDetailPanel.newSeparateOrder": "新订单"
 }

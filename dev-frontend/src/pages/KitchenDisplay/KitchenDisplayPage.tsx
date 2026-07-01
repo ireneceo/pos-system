@@ -724,6 +724,11 @@ const KitchenDisplayPage: React.FC = () => {
   // ─── Sound toggle ───
   // 사운드 mute 키 = KDS 전용(Live Orders 와 분리 — 더 이상 'sound_enabled' 공유 안 함). 종류=스테이션 alert_sound.
   const [audioEnabled, setAudioEnabled] = useState(() => localStorage.getItem('kds_sound_enabled') !== 'false');
+  // 2026-07-01 (Irene "스테이션별 소리 on/off"): 다른 주방 소리 혼동 방지 — 스테이션 탭에서 그 주방만 음소거.
+  // 전역 audioEnabled 는 마스터(All 탭에서 토글). 스테이션 탭에선 이 목록으로 그 스테이션만 켜고 끈다.
+  const [mutedStations, setMutedStations] = useState<number[]>(() => {
+    try { return JSON.parse(localStorage.getItem('kds_muted_stations') || '[]'); } catch { return []; }
+  });
 
   // ─── Kitchen Station Filter ───
   const [kitchenStations, setKitchenStations] = useState<Array<{ id: number; name: string; alert_sound?: string }>>([]);
@@ -898,6 +903,35 @@ const KitchenDisplayPage: React.FC = () => {
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
       }
+
+      // 2026-07-01 (Irene "취소 안보여"): 취소 리스트를 서버의 "오늘 취소된 주문"으로 상시 채운다.
+      // 기존엔 KDS 켜둔 사이 실시간 취소만 인메모리 → 새로고침/타기기 취소는 비어 안 보였다.
+      // 라이브 추가분과 id 기준 dedupe 병합(표시 전용 — 단계/인쇄 무관).
+      try {
+        const cres = await fetch(`/api/orders/restaurant/${user.restaurantId}?startDate=${today}&endDate=${today}&status=cancelled`, {
+          credentials: 'include', headers: apiHeaders()
+        });
+        const cjson = await cres.json();
+        if (cjson.success && Array.isArray(cjson.data)) {
+          const serverCancelled: CancelledEntry[] = cjson.data.map((o: any) => {
+            let its: any[] = [];
+            try { its = Array.isArray(o.order_items) ? o.order_items : (typeof o.order_items === 'string' ? JSON.parse(o.order_items) : []); } catch { its = []; }
+            const shown = its.slice(0, 4).map((it: any) => `${it.quantity || 1} × ${it.name || 'Item'}`).join(', ');
+            return {
+              id: String(o.id),
+              orderNumber: o.order_number || String(o.id),
+              tableNumber: o.table_number || undefined,
+              items: (shown + (its.length > 4 ? ` +${its.length - 4}` : '')) || '—',
+              at: new Date(o.updated_at || o.order_date || Date.now()).getTime()
+            };
+          });
+          setCancelledOrders(prev => {
+            const seen = new Set(serverCancelled.map(c => c.id));
+            const liveOnly = prev.filter(c => !seen.has(c.id)); // 라이브 추가분 보존
+            return [...liveOnly, ...serverCancelled].sort((a, b) => b.at - a.at).slice(0, 50);
+          });
+        }
+      } catch { /* 취소 조회 실패는 무시 — 표시 전용 */ }
     } catch (error) {
       console.error('Failed to fetch orders:', error);
     }
@@ -1009,6 +1043,18 @@ const KitchenDisplayPage: React.FC = () => {
     fetchOrders();
     const interval = setInterval(fetchOrders, 30000);
     return () => clearInterval(interval);
+  }, [fetchOrders]);
+
+  // 2026-07-01 (Irene "모든 곳 실시간, 특히 단계/상태 변경"): 화면 복귀·포커스 시 즉시 재조회.
+  // 소켓이 조용히 멈췄거나 blip 으로 놓친 단계변경을 30초 폴링 기다리지 않고 즉시 최신화.
+  useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === 'visible') fetchOrders(); };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+    };
   }, [fetchOrders]);
 
   // Socket.IO
@@ -1398,6 +1444,8 @@ const KitchenDisplayPage: React.FC = () => {
 
   const playNotificationSound = useCallback((orderItems?: any[]) => {
     if (!audioEnabled) return;
+    // 스테이션 탭에서 그 스테이션이 음소거면 소리 안 냄(스테이션별 on/off).
+    if (selectedStation !== 'all' && mutedStations.includes(selectedStation as number)) return;
     import('../../utils/notificationSound').then(({ startRepeatingSound }) => {
       let preset: any = 'bell';
 
@@ -1420,7 +1468,7 @@ const KitchenDisplayPage: React.FC = () => {
 
       startRepeatingSound(preset, 3000); // 3초마다 반복
     });
-  }, [audioEnabled, selectedStation, kitchenStations, menuStationMap]);
+  }, [audioEnabled, selectedStation, kitchenStations, menuStationMap, mutedStations]);
 
   // Stop repeating sound when any order status changes (Pending → Preparing etc.)
   const stopSound = useCallback(() => {
@@ -2367,7 +2415,7 @@ const KitchenDisplayPage: React.FC = () => {
                       </div>
                       {(STAGE_LEVEL[setItem.status || 'pending'] ?? 0) > 0 && (
                         <RevertBtn
-                          style={{ padding: '4px 8px', fontSize: '11px', marginRight: 4 }}
+                          style={{ padding: '6px 10px', fontSize: '12px', marginRight: 4 }}
                           title="Revert this item one stage"
                           onClick={() => revertSetItemStage(order.id, item.id!, setItem.id!)}
                         >↺</RevertBtn>
@@ -2409,7 +2457,8 @@ const KitchenDisplayPage: React.FC = () => {
         )}
         {cardStatus === 'preparing' && totalItems > 1 && (
           <ActionRow>
-            <RevertBtn onClick={() => setStationItemsStage(order.id, 'pending', { force: true })}>↺</RevertBtn>
+            {/* 2026-07-01 (Irene): 카드-레벨 "전체 되돌리기 ↺" 제거 — 되돌리기는 아이템 단위(↺)만.
+                전체 되돌리기는 주문 단계만 내리고 각 아이템 상태와 어긋나(order pending인데 items Started) 모순을 만들었다. */}
             <ActionBtn color="#3B82F6" onClick={() => selectedStation === 'all' ? markAllItemsCompletedAndReady(order.id) : setStationItemsStage(order.id, 'ready')}>
               Mark Ready
             </ActionBtn>
@@ -2417,7 +2466,7 @@ const KitchenDisplayPage: React.FC = () => {
         )}
         {cardStatus === 'ready' && totalItems > 1 && (
           <ActionRow>
-            <RevertBtn onClick={() => setStationItemsStage(order.id, 'preparing', { force: true })}>↺</RevertBtn>
+            {/* 2026-07-01 (Irene): 전체 되돌리기 ↺ 제거 — 되돌리기는 아이템 단위(↺)만. */}
             <ActionBtn color="#10B981" onClick={() => selectedStation === 'all' ? markAllServed(order.id) : setStationItemsStage(order.id, 'served')}>
               Serve All
             </ActionBtn>
@@ -3418,50 +3467,93 @@ const KitchenDisplayPage: React.FC = () => {
               overflowX: 'auto',
               flexWrap: 'nowrap'
             }}>
-              <ViewToggleBtn active={selectedStation === 'all'} onClick={() => { setSelectedStation('all'); setSearchParams({}); }}>{t('kitchen:kitchenDisplayPage.all')}</ViewToggleBtn>
-              {kitchenStations.map((s) => (
-                <ViewToggleBtn key={s.id} active={selectedStation === s.id} onClick={() => { setSelectedStation(s.id); setSearchParams({ station: String(s.id) }); }}>{s.name}</ViewToggleBtn>
-              ))}
+              {/* 2026-07-01 (Irene): All 탭에도 스피커 — 탭마다 일관. All 스피커=전체 on/off(마스터).
+                  독립 스피커 버튼은 제거(혼자 있는 아이콘 혼란). 디폴트 다 켜짐. */}
+              <ViewToggleBtn active={selectedStation === 'all'} onClick={() => { setSelectedStation('all'); setSearchParams({}); }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                {t('kitchen:kitchenDisplayPage.all')}
+                <span
+                  role="button"
+                  title={audioEnabled ? 'All: 소리 켜짐 (탭하면 전체 끔)' : 'All: 소리 꺼짐 (탭하면 전체 켬)'}
+                  onClick={(e) => {
+                    e.stopPropagation(); stopSound();
+                    setAudioEnabled(prev => {
+                      const next = !prev; localStorage.setItem('kds_sound_enabled', String(next));
+                      if (next) { setMutedStations([]); localStorage.setItem('kds_muted_stations', '[]'); } // 켤 때 전부 켜짐
+                      return next;
+                    });
+                  }}
+                  style={{ display: 'inline-flex', alignItems: 'center', padding: 2, borderRadius: 4, opacity: audioEnabled ? 1 : 0.4 }}
+                >
+                  <img src={audioEnabled ? '/speaker-on.svg' : '/speaker-off.svg'} alt="" style={{ width: 13, height: 13 }} />
+                </span>
+              </ViewToggleBtn>
+              {kitchenStations.map((s) => {
+                // 2026-07-01 (Irene): 탭마다 자기 스피커 — 어느 주방이 음소거인지 한눈에, 그 자리서 토글.
+                // span + stopPropagation 이라 탭 전환 없이 그 주방만 켜고 끈다. 음소거=흐린 off 아이콘.
+                const muted = mutedStations.includes(s.id);
+                const off = !audioEnabled || muted; // 마스터(All) 꺼졌거나 이 주방 음소거면 꺼진 표시(일관)
+                return (
+                  <ViewToggleBtn key={s.id} active={selectedStation === s.id}
+                    onClick={() => { setSelectedStation(s.id); setSearchParams({ station: String(s.id) }); }}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                    {s.name}
+                    <span
+                      role="button"
+                      title={off ? `${s.name}: 소리 꺼짐 (탭하면 켜짐)` : `${s.name}: 소리 켜짐 (탭하면 음소거)`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        stopSound();
+                        if (!audioEnabled) {
+                          // 마스터(All) 꺼진 상태에서 주방 스피커 클릭 = 이 주방을 켜는 의미 → 마스터 켜고 이 주방만 확실히 켬.
+                          setAudioEnabled(true); localStorage.setItem('kds_sound_enabled', 'true');
+                          setMutedStations(prev => { const next = prev.filter(x => x !== s.id); localStorage.setItem('kds_muted_stations', JSON.stringify(next)); return next; });
+                        } else {
+                          // 마스터 켜짐 → 이 주방만 토글(음소거/해제).
+                          setMutedStations(prev => {
+                            const next = prev.includes(s.id) ? prev.filter(x => x !== s.id) : [...prev, s.id];
+                            localStorage.setItem('kds_muted_stations', JSON.stringify(next));
+                            return next;
+                          });
+                        }
+                      }}
+                      style={{ display: 'inline-flex', alignItems: 'center', padding: 2, borderRadius: 4, opacity: off ? 0.4 : 1 }}
+                    >
+                      <img src={off ? '/speaker-off.svg' : '/speaker-on.svg'} alt="" style={{ width: 13, height: 13 }} />
+                    </span>
+                  </ViewToggleBtn>
+                );
+              })}
             </ViewToggle>
           )}
 
-          {/* 5) Sound toggle */}
-          <button
-            onClick={() => { setAudioEnabled(prev => { const next = !prev; localStorage.setItem('kds_sound_enabled', String(next)); return next; }); }}
-            title={audioEnabled ? 'Sound ON' : 'Sound OFF'}
-            style={{
-              width: 36, height: 36, borderRadius: 8, border: 'none', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
-              background: audioEnabled ? '#635BFF' : '#C7CED6',
-              transition: 'all 0.15s', flexShrink: 0
-            }}
-          >
-            <img
-              src={audioEnabled ? '/speaker-on.svg' : '/speaker-off.svg'}
-              alt={audioEnabled ? 'Sound ON' : 'Sound OFF'}
-              style={{
-                width: 16, height: 16,
-                filter: audioEnabled ? 'invert(1)' : 'opacity(0.4)'
-              }}
-            />
-          </button>
+          {/* 5) 독립 사운드 버튼 제거(2026-07-01 Irene) — 소리는 각 탭(All+스테이션)의 스피커 아이콘으로 통일. */}
 
-          {/* 2026-06-28 (#4) 취소 주문 확인 — 오늘 취소된 주문(완료 전 확인). 클릭 시 목록 팝업. */}
-          {cancelledOrders.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setShowCancelledModal(true)}
-              title={t('kitchen:cancelledOrders.title', { defaultValue: 'Cancelled orders' })}
-              style={{
-                minHeight: 36, padding: '0 12px', borderRadius: 8, border: '1px solid #FCA5A5',
-                background: '#FEF2F2', color: '#DC2626', fontWeight: 700, fontSize: 13,
-                cursor: 'pointer', flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6,
-                whiteSpace: 'nowrap'
-              }}
-            >
-              {t('kitchen:cancelledOrders.badge', { defaultValue: 'Cancelled' })} {cancelledOrders.length}
-            </button>
-          )}
+          {/* 2026-06-28 (#4) 취소 주문 확인 — 오늘 취소된 주문(완료 전 확인). 클릭 시 목록 팝업.
+              2026-07-01 (Irene "있다없다 금지"): 항상 그 자리 고정. 취소 0이면 회색 비활성, N건이면 빨강 활성. */}
+          {(() => {
+            const cancelCount = cancelledOrders.length;
+            const has = cancelCount > 0;
+            return (
+              <button
+                type="button"
+                onClick={() => { if (has) setShowCancelledModal(true); }}
+                disabled={!has}
+                title={t('kitchen:cancelledOrders.title', { defaultValue: 'Cancelled orders' })}
+                style={{
+                  minHeight: 36, padding: '0 12px', borderRadius: 8,
+                  border: has ? '1px solid #FCA5A5' : '1px solid #E6EBF1',
+                  background: has ? '#FEF2F2' : 'transparent',
+                  color: has ? '#DC2626' : '#9CA3AF', fontWeight: 700, fontSize: 13,
+                  cursor: has ? 'pointer' : 'default', flexShrink: 0,
+                  display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap',
+                  opacity: has ? 1 : 0.65
+                }}
+              >
+                {t('kitchen:cancelledOrders.badge', { defaultValue: 'Cancelled' })} {cancelCount}
+              </button>
+            );
+          })()}
 
           {/* 2026-06-29 (Irene 확정): 미인쇄 주문 칩 — 두 뷰(주문/아이템) 공통 헤더라 아이템뷰에서도 보임.
               클릭 시 미확정 주문들을 강력 팝업 큐로 열어 재인쇄/확인. (메뉴-그룹 아이템뷰에 주문배지 모호 → 헤더 칩으로 해결.) */}

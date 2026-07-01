@@ -571,6 +571,17 @@ const FloorPlanPage: React.FC = () => {
   }, []);
   const [posUrl, setPosUrl] = useState('');
 
+  // 2026-07-01 (Irene): 고객 디스플레이 self-healing 하트비트.
+  // 미러는 소켓 one-shot emit(의존성 변할 때만 재emit)이라 소켓 blip·CD창 재연결·팝업으로 한 번
+  // 놓치면 "재탭" 전까지 blank 였다(매장 보고: 자꾸 사라짐). 우측패널(테이블 선택)이 열려 있는 동안
+  // 주기적으로 재emit(cdNonce bump)해 CD 가 항상 현재 주문을 반영·자동복구 → 재탭 불필요.
+  // POS 오버레이(showPOS) 열렸을 땐 일시정지: 그땐 POS 카트가 미러 주체라 이중 emit 충돌 방지.
+  useEffect(() => {
+    if (!selectedTableId || showPOS) return;
+    const iv = setInterval(() => setCdNonce(n => n + 1), 2500);
+    return () => clearInterval(iv);
+  }, [selectedTableId, showPOS]);
+
   // Items added alert (like LiveOrders)
   const [itemsAddedAlert, setItemsAddedAlert] = useState<{
     isVisible: boolean;

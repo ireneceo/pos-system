@@ -20,6 +20,19 @@ import { getAuthToken } from '../../utils/auth';
 
 interface Props { isOpen: boolean; onClose: () => void; }
 interface PMRow { method: string; revenue: number; orders: number; }
+interface TypeRow { type?: string; source?: string; revenue: number; orders: number; }
+interface Settle {
+  grossSales: number; totalDiscount: number; totalCouponDiscount: number; totalPointDiscount: number;
+  totalTakeawayCharge: number; totalDeliveryFee: number; totalServiceCharge: number; totalTax: number;
+  netSales: number; cancelledOrders: number; cancelledAmount: number; outstandingOrders: number; outstandingAmount: number;
+  voidedItems?: number; voidedAmount?: number; voidedBilledItems?: number; voidedBilledAmount?: number;
+}
+
+// 데일리와 동일 라벨 (오늘 정보 표시용)
+const ORDER_TYPE_LABELS: Record<string, string> = {
+  dine_in: 'Dine In', 'dine-in': 'Dine In', takeaway: 'Takeaway', pickup: 'Pickup', delivery: 'Delivery',
+};
+const SOURCE_LABELS: Record<string, string> = { pos: 'POS', mobile: 'Mobile Order' };
 
 const getToday = (tz: string): string => {
   try { return new Date().toLocaleDateString('en-CA', { timeZone: tz }); } // YYYY-MM-DD
@@ -38,6 +51,11 @@ const FinalReconcilePanel: React.FC<Props> = ({ isOpen, onClose }) => {
   const [actuals, setActuals] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
+  // 오늘 필요한 정보(데일리에서 가져옴) — 같은 reports-summary 응답에서.
+  const [settle, setSettle] = useState<Settle | null>(null);
+  const [summary, setSummary] = useState<{ totalOrders: number; averageOrderValue: number } | null>(null);
+  const [orderTypes, setOrderTypes] = useState<TypeRow[]>([]);
+  const [sources, setSources] = useState<TypeRow[]>([]);
 
   const fetchData = useCallback(async (date: string) => {
     if (!user?.restaurantId) return;
@@ -58,6 +76,11 @@ const FinalReconcilePanel: React.FC<Props> = ({ isOpen, onClose }) => {
           setPmSales(pm);
           setActuals({});
           setNotes('');
+          // 오늘 정보(요약·주문유형·소스) — 데일리와 동일 소스.
+          setSettle(j.data.settlement || null);
+          setSummary(j.data.summary || null);
+          setOrderTypes((j.data.orderTypeSales || []).filter((o: TypeRow) => o.orders > 0).sort((a: TypeRow, b: TypeRow) => b.revenue - a.revenue));
+          setSources((j.data.sourceSales || []).filter((s: TypeRow) => s.orders > 0).sort((a: TypeRow, b: TypeRow) => b.revenue - a.revenue));
         }
       }
     } catch (e) { console.error('[FinalReconcile] fetch error:', e); }
@@ -68,6 +91,14 @@ const FinalReconcilePanel: React.FC<Props> = ({ isOpen, onClose }) => {
 
   const fc = (v: number) => formatCurrency(v, currency);
   const num = (s: string) => parseFloat(s) || 0;
+
+  // 화면용 요약 행 (오늘 정보)
+  const sumRow = (label: React.ReactNode, value: string, opts: { strong?: boolean; count?: number; danger?: boolean } = {}) => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '2px 0', fontSize: opts.strong ? 15 : 13, fontWeight: opts.strong ? 800 : 600, color: opts.danger ? '#B45309' : '#0A2540' }}>
+      <span>{label}{opts.count != null && <span style={{ color: '#6B7C93', fontWeight: 600 }}> ×{opts.count}</span>}</span>
+      <span style={{ fontVariantNumeric: 'tabular-nums' }}>{value}</span>
+    </div>
+  );
 
   const systemTotal = useMemo(() => pmSales.reduce((s, p) => s + p.revenue, 0), [pmSales]);
   const actualTotal = useMemo(() => pmSales.reduce((s, p) => s + num(actuals[p.method] || ''), 0), [pmSales, actuals]);
@@ -97,6 +128,36 @@ const FinalReconcilePanel: React.FC<Props> = ({ isOpen, onClose }) => {
     html += `<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:600;padding:2px 0"><span>${t('finalReconcile.date', 'Date')}:</span><span>${selectedDate}</span></div>`;
     html += `<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:600;padding:2px 0"><span>${t('finalReconcile.printed', 'Printed')}:</span><span>${ts}</span></div>`;
     html += `<div style="border-bottom:3px double #000;margin:8px 0"></div>`;
+
+    // ── 오늘 필요한 정보 (데일리 핵심) ──
+    const sRow = (label: string, value: string, o: { total?: boolean; count?: number | string } = {}) =>
+      `<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:${o.total ? '15px' : '13px'};font-weight:${o.total ? 800 : 600};padding:2px 0;${o.total ? 'border-top:1px solid #000;margin-top:4px;padding-top:5px' : ''}"><span style="flex:1;padding-right:8px">${label}${o.count != null ? ` <span style="color:#555;font-weight:600">x${o.count}</span>` : ''}</span><span style="font-variant-numeric:tabular-nums;white-space:nowrap">${value}</span></div>`;
+    const sTitle = (txt: string) => `<div style="font-weight:800;font-size:12px;margin:8px 0 3px;letter-spacing:1px">${txt}</div>`;
+    if (settle) {
+      html += sTitle(t('finalReconcile.salesSummary', 'SALES SUMMARY'));
+      html += sRow(t('finalReconcile.grossSales', 'Gross Sales'), fc(settle.grossSales));
+      if (settle.totalDiscount > 0) html += sRow(`(-) ${t('finalReconcile.discount', 'Discount')}`, fc(settle.totalDiscount));
+      if (settle.totalServiceCharge > 0) html += sRow(`(+) ${t('finalReconcile.serviceCharge', 'Service Charge')}`, fc(settle.totalServiceCharge));
+      if (settle.totalTax > 0) html += sRow(`(+) ${t('finalReconcile.tax', 'Tax')}`, fc(settle.totalTax));
+      html += sRow(t('finalReconcile.netSales', 'NET SALES'), fc(settle.netSales), { total: true });
+      html += sRow(t('finalReconcile.totalOrders', 'Total Orders'), String(summary?.totalOrders || 0));
+      html += sRow(t('finalReconcile.avgOrder', 'Avg Order Value'), fc(summary?.averageOrderValue || 0));
+      if (settle.cancelledOrders > 0) html += sRow(t('finalReconcile.cancelled', 'Cancelled'), fc(settle.cancelledAmount), { count: settle.cancelledOrders });
+      if (settle.outstandingOrders > 0) html += sRow(t('finalReconcile.openOrders', 'Open Orders'), fc(settle.outstandingAmount), { count: settle.outstandingOrders });
+      if ((settle.voidedItems || 0) > 0) html += sRow(t('finalReconcile.voidedItems', 'Voided Items'), fc(settle.voidedAmount || 0), { count: settle.voidedItems });
+      if ((settle.voidedBilledItems || 0) > 0) html += sRow(`└ ${t('finalReconcile.voidedAfterPay2', 'after payment')}`, fc(settle.voidedBilledAmount || 0), { count: settle.voidedBilledItems });
+    }
+    if (orderTypes.length > 0) {
+      html += sTitle(t('finalReconcile.orderType', 'ORDER TYPE'));
+      orderTypes.forEach(o => { html += sRow(ORDER_TYPE_LABELS[o.type || ''] || o.type || '', fc(o.revenue), { count: o.orders }); });
+    }
+    if (sources.length > 0) {
+      html += sTitle(t('finalReconcile.orderSource', 'ORDER SOURCE'));
+      sources.forEach(s => { html += sRow(SOURCE_LABELS[s.source || ''] || s.source || '', fc(s.revenue), { count: s.orders }); });
+    }
+    html += `<div style="border-bottom:3px double #000;margin:8px 0"></div>`;
+
+    html += `<div style="font-weight:800;font-size:12px;margin:4px 0 4px;letter-spacing:1px">${t('finalReconcile.reconcileTitle', 'PAYMENT RECONCILIATION')}</div>`;
     html += `<table style="width:100%;border-collapse:collapse;font-size:13px">${head}${rows}${tot}</table>`;
     if (notes.trim()) {
       html += `<div style="border-bottom:1px dashed #666;margin:8px 0"></div>`;
@@ -159,11 +220,40 @@ const FinalReconcilePanel: React.FC<Props> = ({ isOpen, onClose }) => {
           </div>
           <p style={{ fontSize: 13, color: '#6B7C93', margin: '0 0 12px' }}>{t('finalReconcile.help', 'Enter the actual amount received (card machine / QR totals) and compare with the system record.')}</p>
 
+          {/* 오늘 필요한 정보 (데일리 핵심) — 순매출·주문유형·소스·취소·미결 */}
+          {!loading && settle && (summary?.totalOrders || 0) > 0 && (
+            <div style={{ border: '1px solid #E6EBF1', borderRadius: 8, padding: '10px 12px', marginBottom: 14, background: '#F8FAFC' }}>
+              <div style={{ fontSize: 12, fontWeight: 800, color: '#6B7C93', letterSpacing: 1, marginBottom: 6 }}>{t('finalReconcile.todaySummary', 'TODAY — SALES SUMMARY')}</div>
+              {sumRow(t('finalReconcile.netSales', 'Net Sales'), fc(settle.netSales), { strong: true })}
+              {sumRow(t('finalReconcile.grossSales', 'Gross Sales'), fc(settle.grossSales))}
+              {sumRow(t('finalReconcile.totalOrders', 'Total Orders'), String(summary?.totalOrders || 0))}
+              {sumRow(t('finalReconcile.avgOrder', 'Avg Order Value'), fc(summary?.averageOrderValue || 0))}
+              {settle.cancelledOrders > 0 && sumRow(t('finalReconcile.cancelled', 'Cancelled'), fc(settle.cancelledAmount), { count: settle.cancelledOrders, danger: true })}
+              {settle.outstandingOrders > 0 && sumRow(t('finalReconcile.openOrders', 'Open Orders'), fc(settle.outstandingAmount), { count: settle.outstandingOrders, danger: true })}
+              {(settle.voidedItems || 0) > 0 && sumRow(t('finalReconcile.voidedItems', 'Voided Items'), fc(settle.voidedAmount || 0), { count: settle.voidedItems, danger: true })}
+              {(settle.voidedBilledItems || 0) > 0 && sumRow(<span style={{ paddingLeft: 12 }}>{t('finalReconcile.voidedAfterPay', '└ after payment')}</span>, fc(settle.voidedBilledAmount || 0), { count: settle.voidedBilledItems, danger: true })}
+              {orderTypes.length > 0 && (
+                <>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#8898AA', letterSpacing: 0.5, margin: '8px 0 2px' }}>{t('finalReconcile.orderType', 'Order Type')}</div>
+                  {orderTypes.map(o => <React.Fragment key={o.type}>{sumRow(ORDER_TYPE_LABELS[o.type || ''] || o.type, fc(o.revenue), { count: o.orders })}</React.Fragment>)}
+                </>
+              )}
+              {sources.length > 0 && (
+                <>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#8898AA', letterSpacing: 0.5, margin: '8px 0 2px' }}>{t('finalReconcile.orderSource', 'Order Source')}</div>
+                  {sources.map(s => <React.Fragment key={s.source}>{sumRow(SOURCE_LABELS[s.source || ''] || s.source, fc(s.revenue), { count: s.orders })}</React.Fragment>)}
+                </>
+              )}
+            </div>
+          )}
+
           {loading ? (
             <div style={{ padding: 24, textAlign: 'center', color: '#6B7C93' }}>…</div>
           ) : pmSales.length === 0 ? (
             <div style={{ padding: 24, textAlign: 'center', color: '#6B7C93' }}>{t('finalReconcile.noSales', 'No sales for this date.')}</div>
           ) : (
+            <>
+            <div style={{ fontSize: 12, fontWeight: 800, color: '#6B7C93', letterSpacing: 1, marginBottom: 4 }}>{t('finalReconcile.reconcileTitle', 'PAYMENT RECONCILIATION')}</div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
               <thead>
                 <tr style={{ textAlign: 'right', color: '#6B7C93', fontSize: 12 }}>
@@ -202,6 +292,7 @@ const FinalReconcilePanel: React.FC<Props> = ({ isOpen, onClose }) => {
                 </tr>
               </tbody>
             </table>
+            </>
           )}
 
           <div style={{ marginTop: 14 }}>
