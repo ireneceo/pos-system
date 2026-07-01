@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-07-01 (**v3.66 운영 배포 (SW 4.54)** — Backup 20260701_201256, Smoke 9/9, 안전게이트 통과. **핵심: 세트 구성품 단계 KDS↔플로어플랜 불일치 근본수정**(플로어플랜 패널이 set_components[단계필드 없음]를 읽어 주문 pending으로 보이던 것 → KDS(processRawOrderItems:775)처럼 set_items[동일 index]에서 단계 폴백해 통일). + 마감(Final) 오늘요약+void요약(총·결제후) / 고객디스플레이 self-healing 하트비트(우측패널 열린 동안 재emit) / 같은 테이블 별도주문("New Order" 버튼, 스탭밀 등) / 오더노트 주방티켓(품목·주문 메모, 폴러 2곳 일치) / SW 정적자산 cache-first(뒤로가기·라우트 속도) / false-offline 완화(연속3회·6초) / KDS 취소리스트 상시버튼+서버조회 / KDS 스테이션별 소리 on/off(탭별 스피커+All 마스터) / KDS 전체되돌리기 제거·세트되돌리기 버튼 크기 / 실시간 견고화(visibility·focus 즉시 재조회, OrdersRealtime+KDS). 상세 ↓.)
+> **최종 업데이트:** 2026-07-01 #2 (**데스크탑앱(Electron, QZ 대체) 사전 전체점검 + 설계 완료** — `docs/DESKTOP_APP_DESIGN.md`. 개발=Opus(노트북)/게이트 점검=Fable(서버) 역할 분담, CLAUDE.md에 "Fable 검증 게이트" 기준 신설. 상세 ↓.)
+>
+> **이전:** 2026-07-01 (**v3.66 운영 배포 (SW 4.54)** — Backup 20260701_201256, Smoke 9/9, 안전게이트 통과. **핵심: 세트 구성품 단계 KDS↔플로어플랜 불일치 근본수정**(플로어플랜 패널이 set_components[단계필드 없음]를 읽어 주문 pending으로 보이던 것 → KDS(processRawOrderItems:775)처럼 set_items[동일 index]에서 단계 폴백해 통일). + 마감(Final) 오늘요약+void요약(총·결제후) / 고객디스플레이 self-healing 하트비트(우측패널 열린 동안 재emit) / 같은 테이블 별도주문("New Order" 버튼, 스탭밀 등) / 오더노트 주방티켓(품목·주문 메모, 폴러 2곳 일치) / SW 정적자산 cache-first(뒤로가기·라우트 속도) / false-offline 완화(연속3회·6초) / KDS 취소리스트 상시버튼+서버조회 / KDS 스테이션별 소리 on/off(탭별 스피커+All 마스터) / KDS 전체되돌리기 제거·세트되돌리기 버튼 크기 / 실시간 견고화(visibility·focus 즉시 재조회, OrdersRealtime+KDS). 상세 ↓.)
 >
 > **이전:** 2026-06-30 #1 (**v3.65 운영 배포 (SW 4.46)** — 오프라인 모드(1~6단계) + IOI Mall 매출 API + POS 헤더 반응형/한글화 + 모달·팝업·TableDetailPanel 테마 + 카테고리 인라인펼침 + 모바일 QR 테이블 리셋 등 누적 dev분 **일괄 운영 배포**. 신규 마이그 3종(option_sold_out·sales_integrations·**processed_ops**) 운영 적용, Smoke 9/9, Backup 20260630_010745. **하이브리드/빌 인쇄 코드는 4.45 무변경**(print-guard 확인). 배포 메커니즘: deploy 스크립트 대화형 프롬프트는 `--auto` 로 통과. + **thefire01 인쇄테스트 주문 38건 소프트삭제**(전체백업 보관). 상세 ↓.)
 >
@@ -25,6 +27,32 @@
 > **이전:** 2026-06-23 (**v3.62 운영 배포 완료** — thefire 실사용 준비 7건: 직원 PIN 전환 수정 · 시재 개시모드(이월/고정) · 마감 폰트 통일 · 통합오더티켓 'Full' 수동인쇄 · 로그인 직원 PIN 우선 · 설정 QR 인쇄버튼 · Windows 7/8 QZ 설치 수정. Backup 20260623_124849, Smoke 9/9, SW=3.95. /검증 통과: health 107/107·print-guard 8/8(billPrint 무수정)·hydration0·timezone0·design0·i18n0·mount(floor-plan/settings/cash-up/pos) crash0.)
 >
 > **이전:** v3.61 발주 UX 대정리 + 외부공급업체 + 플로어플랜 핫픽스. SW=3.90.
+
+## ✅ 완료: 데스크탑앱(Electron, QZ 대체) 사전 점검 + 설계 (2026-07-01 #2, 문서 작업 — 코드 무수정)
+
+> Irene 지시 "네이티브 앱 개발 진행하자" → 착수 전 전체 점검(병렬 조사 3건) 후 Windows 데스크탑앱 설계 확정. **단일 진실 = `docs/DESKTOP_APP_DESIGN.md`** (Opus 킥오프 프롬프트 §11 포함). 코드 0줄 수정.
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 사전 전체 점검 | git clean·print-guard 8/8·health 107/107·서버 정상. QZ 접점 전수(송신=sendHTMLViaQZTray/sendViaQZTray 2함수+printTableQR raster, billPrint 93% 재사용) / 브라우저 의존성(origin 의존 다수→로컬 번들 불가 근거) / 문서·환경(Win7 실기기 존재, CORS·nginx 이슈 없음) | ✅ |
+| 설계 확정 D1~D5 | ①원격 URL 로드(로컬 번들 금지) ②QZ 계층 투명대체(`window.__NATIVE_PRINT` feature-detect, 설정 마이그 0, 웹 무영향) ③인쇄 구조(POS1 폴러 단일경로) 불변—전송만 대체 ④Win10/11 전용, Win7(thefire POS2)=웹+QZ 공존 ⑤Electron+NSIS | ✅ |
+| 브릿지 API·구현 스펙 | §4 API 계약(throw 금지·PRINTER_NOT_FOUND 명시 실패·조용한 폴백 금지·순서 보존 큐) + §6 구현(HTML=숨김창 silent print / LAN=net.Socket / OS raw=PowerShell winspool / 고객디스플레이 2모니터 / single-instance / backgroundThrottling:false) | ✅ |
+| billPrint 절단면 명세 | §5 — 8개 지점만 feature-detect 분기(sendHTML/sendVia/connect/is·disconnect/getPrinters/openCashDrawer/printTableQR/진단). 그 외 0줄 | ✅ |
+| 개발 플랜·역할 분담 | P0~P4 단계 + 완료기준(§7). 개발=Opus(노트북)/점검=Fable(서버). **P2는 Fable 게이트 통과 전 진행 금지**(§7-1 체크리스트) | ✅ |
+| Irene 결정 반영 | 코드사이닝=나중에(파일럿 미서명) / 파일럿=thefire POS1(P4 전 Win10/11 확인) / Win7 교체 시기 미정 | ✅ |
+| CLAUDE.md Fable 검증 게이트 | 중요·복잡 개발은 Fable 검증 1회 표준 — 대상 기준 5개(보호영역/돈·주문/DB마이그/신규시스템/보안경계)+검증내용+남발금지. 타 서버 공유용 정리본 전달 | ✅ |
+
+### 수정/신규 파일
+- `docs/DESKTOP_APP_DESIGN.md` (신규 — 설계 단일 진실)
+- `CLAUDE.md` (Fable 검증 게이트 섹션)
+- 메모리 `project_desktop_app_electron.md` (신규)
+
+### 다음
+- Opus 개발 착수 (노트북, 킥오프 = 설계문서 §11) → P2에서 Fable 게이트
+
+---
 
 ## ✅ 완료: 오프라인 모드(POS1 허브) 1~6단계 + KDS 보완 (2026-06-29, dev 검증완료·미배포)
 

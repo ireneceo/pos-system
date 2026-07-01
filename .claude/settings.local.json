@@ -911,7 +911,8 @@
       "Bash(awk '/const updateSetItemStatus = async/{f=1} f&&/fetch\\\\\\(|\\\\/api\\\\/|\\\\/items|method/{print NR\": \"$0} f&&/setLoading\\\\\\(false\\\\\\)|endWrite/{exit}' dev-frontend/src/pages/KitchenDisplay/KitchenDisplayPage.tsx)",
       "Bash(awk '/const processRawOrderItems|function processRawOrderItems/{f=1} f{print NR\": \"$0} f&&/^  \\\\}/{c++; if\\(c>=1\\)exit}' KitchenDisplayPage.tsx)",
       "Bash(awk '/const getNextItemStatus|function getNextItemStatus/{f=1} f{print NR\": \"$0} f&&/\\\\};/{c++;if\\(c>=1\\)exit}' KitchenDisplayPage.tsx)",
-      "Bash(awk '/const playNotificationSound = useCallback/{f=1} f{print NR\": \"$0} f&&/\\\\}, \\\\[audioEnabled/{exit}' KitchenDisplayPage.tsx)"
+      "Bash(awk '/const playNotificationSound = useCallback/{f=1} f{print NR\": \"$0} f&&/\\\\}, \\\\[audioEnabled/{exit}' KitchenDisplayPage.tsx)",
+      "Bash(xargs cat)"
     ],
     "deny": [],
     "ask": []
