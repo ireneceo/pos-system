@@ -21,7 +21,12 @@ interface PwaInstallState {
 // browser we offer it; when already running inside it, the preload sets
 // window.__PURPLE_DESKTOP so we don't offer it again. Same-origin path so it
 // resolves on whichever host (dev/prod) is serving it.
-const DESKTOP_APP_URL = '/desktop/PurplePOS-Setup.exe';
+// The ?v= version tag is a cache-buster: the CDN (Cloudflare) caches by full
+// URL, so bumping this on each installer release forces a fresh fetch instead
+// of serving a stale (or SPA-fallback HTML) response. The `download` attr keeps
+// the saved filename clean (query string is stripped). Bump on new installer.
+const DESKTOP_APP_VERSION = '0.1.0';
+const DESKTOP_APP_URL = `/desktop/PurplePOS-Setup.exe?v=${DESKTOP_APP_VERSION}`;
 
 function detectWindowsDesktop(): boolean {
   if (typeof navigator === 'undefined' || typeof window === 'undefined') return false;

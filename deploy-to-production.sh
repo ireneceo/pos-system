@@ -236,7 +236,10 @@ fi
 # 7. Sync frontend build to production
 # ──────────────────────────────────────────
 log "Syncing frontend build to production server..."
-FRONTEND_RSYNC_LOG=$(rsync -avz --delete \
+# NOTE: --delete would wipe build/desktop/ (the Windows installer .exe lives in
+# dev-frontend-build/desktop/, NOT in the fresh npm build). Exclude it here and
+# sync it separately below so the native app installer is never removed/regressed.
+FRONTEND_RSYNC_LOG=$(rsync -avz --delete --exclude 'desktop' \
     $LOCAL_DEV_FRONTEND/build/ $PROD_SERVER:$REMOTE_PROD_FRONTEND/build/ 2>&1)
 FRONTEND_RSYNC_EXIT=$?
 if [ $FRONTEND_RSYNC_EXIT -ne 0 ]; then
@@ -244,6 +247,25 @@ if [ $FRONTEND_RSYNC_EXIT -ne 0 ]; then
 fi
 FRONTEND_FILE_COUNT=$(echo "$FRONTEND_RSYNC_LOG" | grep -cE '^\S' 2>/dev/null || echo 0)
 success "Frontend synced ($FRONTEND_FILE_COUNT files transferred)"
+
+# 7a. Sync desktop app installer (Windows .exe) — served at /desktop/*.
+# Source is the nginx-served dev build dir (dev-frontend-build/desktop/), which
+# holds the wine-built PurplePOS-Setup.exe + blockmap + latest.yml (auto-updater).
+# No --delete: additive, keeps prior versions for electron-updater rollback.
+DESKTOP_SRC="/var/www/dev-frontend-build/desktop"
+if [ -d "$DESKTOP_SRC" ]; then
+    log "Syncing desktop app installer to production..."
+    DESKTOP_RSYNC_LOG=$(rsync -avz \
+        "$DESKTOP_SRC/" "$PROD_SERVER:$REMOTE_PROD_FRONTEND/build/desktop/" 2>&1)
+    if [ $? -ne 0 ]; then
+        warn "Desktop installer rsync failed — Windows app download may be stale"
+    else
+        DESKTOP_FILE_COUNT=$(echo "$DESKTOP_RSYNC_LOG" | grep -cE '^\S' 2>/dev/null || echo 0)
+        success "Desktop installer synced ($DESKTOP_FILE_COUNT files)"
+    fi
+else
+    log "No desktop installer dir ($DESKTOP_SRC) — skipping"
+fi
 
 # ──────────────────────────────────────────
 # 7b. Verify frontend build hash matches

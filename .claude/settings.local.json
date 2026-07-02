@@ -932,7 +932,8 @@
       "Read(//opt/**)",
       "Read(//opt/lingo/**)",
       "Bash(pm2 save *)",
-      "Bash(xargs -r sed -i 's#/var/www/lingo#/opt/lingo#g')"
+      "Bash(xargs -r sed -i 's#/var/www/lingo#/opt/lingo#g')",
+      "Bash(rsync -avz /var/www/dev-frontend-build/desktop/ irene@87.106.78.146:/var/www/production-frontend/build/desktop/)"
     ],
     "deny": [],
     "ask": []
