@@ -18,7 +18,7 @@
   - 헤드리스 런타임 스모크(Xvfb): 브릿지 7/7(printHtml 한글→PDF·PRINTER_NOT_FOUND·rawLan) / node유닛 6/6 / build green / health 106/107(1=print-guard 의도) / critical mount✓
   - 운영 배포 2회(--skip-safety=승인된 인쇄변경, dev-backend 무변경 no-op), 스모크 9/9
 - **안드로이드앱 착수(Capacitor)** — `/var/www/mobile-app/`(격리). 원격로드+`__NATIVE_PRINT` 네이티브 주입=billPrint 그대로(프론트 0줄). 스코프 확정=**WiFi+블투(USB 제외), 검증 라이브러리(DantSu 계열)**. 설계·스캐폴드·플러그인 스켈레톤 완비. `docs/ANDROID_APP_DESIGN.md`.
-- **영어 단어암기앱 "Lingo" 착수** — `/var/www/lingo/`(격리, 별도 repo). 백엔드 PM2 `lingo-backend`:3010 구동, DB lingo_dev_db, Claude Code 연결(CLAUDE.md+커맨드), 기획서 `docs/PRODUCT_SPEC.md`. 상세 설계는 Fable과.
+- **영어 단어암기앱 "Lingo" 착수** — **`/opt/lingo/`**(PlanQ `/opt/planq`처럼 완전 분리, 별도 repo, /var/www 밖). 백엔드 PM2 `lingo-backend`:3010 구동, DB lingo_dev_db, Claude Code 연결(CLAUDE.md+커맨드), 기획서 `docs/PRODUCT_SPEC.md`. 상세 설계는 Fable과. (초기 /var/www/lingo→2026-07-02 /opt/lingo 이동.)
 
 ### 다음 확정 작업 (Irene 지시)
 1. **안드로이드앱 제대로 완성** (Irene 명시) — JDK+Android SDK 설치(wine처럼) → NativePrintPlugin(WiFi socket + BT SPP, DantSu 라이브러리 래핑) → APK 빌드 → 사이드로드. 실기기(태블릿+프린터) 검증만 하드웨어 필요.

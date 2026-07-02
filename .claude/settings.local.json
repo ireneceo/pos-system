@@ -928,7 +928,11 @@
       "Bash(lpstat -v)",
       "Bash(echo \"NPM_EXIT=$?\")",
       "Bash(echo \"EXE_EXIT=$?\")",
-      "Bash(rsync -az PurplePOS-Setup-0.1.0.exe PurplePOS-Setup-0.1.0.exe.blockmap latest.yml irene@87.106.78.146:/var/www/production-frontend/build/desktop/)"
+      "Bash(rsync -az PurplePOS-Setup-0.1.0.exe PurplePOS-Setup-0.1.0.exe.blockmap latest.yml irene@87.106.78.146:/var/www/production-frontend/build/desktop/)",
+      "Read(//opt/**)",
+      "Read(//opt/lingo/**)",
+      "Bash(pm2 save *)",
+      "Bash(xargs -r sed -i 's#/var/www/lingo#/opt/lingo#g')"
     ],
     "deny": [],
     "ask": []

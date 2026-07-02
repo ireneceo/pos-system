@@ -82,7 +82,3 @@ public/uploads/
 .eslintcache
 backups/
 .claude/worktrees/
-
-# Lingo — separate product, its own git repo
-lingo/
-mobile-app/
