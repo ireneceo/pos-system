@@ -242,6 +242,19 @@ export async function openCashDrawer() {
     const pulse = '\x1B\x70\x00\x64\x64';
 
     if (method === 'qztray') {
+      // Native desktop: drawer pulse via the bridge to the bill printer (§5 #6).
+      const _np = (typeof window !== 'undefined') && window.__NATIVE_PRINT;
+      if (_np) {
+        let target;
+        if (bp.address && /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(bp.address)) {
+          const [host, port] = bp.address.split(':');
+          target = { kind: 'lan', host, port: parseInt(port || '9100', 10) };
+        } else {
+          target = { kind: 'os', printerName: bp.address || '' };
+        }
+        const r = await _np.openDrawer(target);
+        return !!(r && r.ok);
+      }
       return await sendViaQZTray(pulse, bp.address);
     }
     if (method === 'rawbt') {
@@ -371,6 +384,9 @@ function _startQZKeepalive() {
 }
 
 export async function connectQZTray() {
+  // Native desktop (Electron): no QZ websocket / keepalive — the app prints via
+  // the OS directly. `true` = "ready" so downstream send paths proceed. (§5 #3)
+  if (typeof window !== 'undefined' && window.__NATIVE_PRINT) return true;
   if (qzConnected && qz.websocket.isActive()) return true;
   if (qzConnecting) {
     // 이미 연결 시도 중이면 완료 대기
@@ -449,6 +465,36 @@ export async function runQZDiagnostic() {
     steps.push(step);
     return step;
   };
+
+  // Native desktop (Electron): report the bridge diagnostics instead of QZ (§5 #8).
+  const _np = (typeof window !== 'undefined') && window.__NATIVE_PRINT;
+  if (_np) {
+    try {
+      const d = await _np.diagnostics();
+      push('installed', 'Native desktop bridge loaded', 'ok', 'Electron ' + (d.electron || '?'));
+      push('connected', 'Printer service reachable', 'ok', 'No QZ Tray needed (native)');
+      push('printers', 'Printers detected', (d.printers && d.printers.length) ? 'ok' : 'failed',
+        (d.printers || []).join(', ') || 'none found');
+      return {
+        ok: true,
+        steps,
+        summary: {
+          qzVersion: 'native ' + (d.appVersion || ''),
+          connected: true,
+          certHandshake: 'n/a',
+          silentPrint: 'ready',
+          lastError: null,
+          method: 'native',
+          os: d.platform || 'unknown',
+          userAgent: (typeof navigator !== 'undefined' && navigator.userAgent) ? navigator.userAgent : 'unknown',
+          probedAt: new Date().toISOString()
+        }
+      };
+    } catch (e) {
+      push('installed', 'Native desktop bridge loaded', 'failed', (e && e.message) || String(e));
+      return { ok: false, steps, summary: { method: 'native', lastError: (e && e.message) || String(e) } };
+    }
+  }
   const summary = {
     qzVersion: null,
     connected: false,
@@ -583,6 +629,7 @@ export async function runQZDiagnostic() {
  * QZ Tray 연결 해제
  */
 export async function disconnectQZTray() {
+  if (typeof window !== 'undefined' && window.__NATIVE_PRINT) return; // no connection to drop (§5 #4)
   if (qz.websocket.isActive()) {
     await qz.websocket.disconnect();
   }
@@ -593,6 +640,7 @@ export async function disconnectQZTray() {
  * QZ Tray 연결 상태 확인
  */
 export function isQZTrayConnected() {
+  if (typeof window !== 'undefined' && window.__NATIVE_PRINT) return true; // always "ready" (§5 #4)
   return qzConnected && qz.websocket.isActive();
 }
 
@@ -601,6 +649,11 @@ export function isQZTrayConnected() {
  * OS에 등록된 프린터(USB, 네트워크 등) 목록을 반환한다.
  */
 export async function getQZTrayPrinters() {
+  // Native desktop: enumerate OS printers via the bridge (§5 #5).
+  const _np = (typeof window !== 'undefined') && window.__NATIVE_PRINT;
+  if (_np) {
+    try { return await _np.listPrinters(); } catch (_) { return []; }
+  }
   try {
     const connected = await connectQZTray();
     if (!connected) return [];
@@ -668,6 +721,22 @@ async function qzHasPrinter(name) {
  * @returns {Promise<boolean>} true on success
  */
 async function sendHTMLViaQZTray(htmlContent, printerName, opts) {
+  // Native desktop (Electron): delegate HTML-pixel printing to the bridge (§5 #1).
+  // Same contract: OS printer NAME only (LAN IP rejected), '' = OS default.
+  // Drawer pulse follows as a separate openDrawer() to the same printer.
+  const _np = (typeof window !== 'undefined') && window.__NATIVE_PRINT;
+  if (_np) {
+    const resolved = printerName || '';
+    if (resolved && /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(resolved)) {
+      console.error('Native HTML pixel requires an OS printer name, not a LAN IP. Got:', resolved);
+      return false;
+    }
+    const r = await _np.printHtml({ html: htmlContent, printerName: resolved, widthMm: 80, copies: 1 });
+    if (r && r.ok && opts && opts.drawerPulse) {
+      try { await _np.openDrawer({ kind: 'os', printerName: resolved }); } catch (_) { /* drawer non-fatal */ }
+    }
+    return !!(r && r.ok);
+  }
   try {
     const connected = await connectQZTray();
     if (!connected) {
@@ -722,6 +791,23 @@ async function sendHTMLViaQZTray(htmlContent, printerName, opts) {
 }
 
 async function sendViaQZTray(escposContent, printerAddress) {
+  // Native desktop (Electron): delegate RAW ESC/POS to the bridge (§5 #2).
+  // Same IP:port -> LAN socket / else OS name routing, and the SAME base64
+  // encoding QZ used (btoa(unescape(encodeURIComponent(...)))), so the printer
+  // receives byte-identical output. '' address -> OS default (kind:'os','').
+  const _np = (typeof window !== 'undefined') && window.__NATIVE_PRINT;
+  if (_np) {
+    const data = btoa(unescape(encodeURIComponent(escposContent)));
+    let target;
+    if (printerAddress && /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(printerAddress)) {
+      const [host, port] = printerAddress.split(':');
+      target = { kind: 'lan', host, port: parseInt(port || '9100', 10) };
+    } else {
+      target = { kind: 'os', printerName: printerAddress || '' };
+    }
+    const r = await _np.printRaw({ data, target });
+    return !!(r && r.ok);
+  }
   try {
     const connected = await connectQZTray();
     if (!connected) {
@@ -3161,6 +3247,37 @@ export function generateKitchenTicketPreview(orderData, storeInfo) {
   return lines.join('\n');
 }
 
+// Native desktop only: convert a QR canvas to an ESC/POS raster command
+// (GS v 0). Used by the LAN-QR native branch below (§5 #7) since a LAN raw
+// socket has no OS driver for HTML pixel. Verify QR scannability on a real
+// thermal printer (P4) — raster output can only be eyeballed on paper.
+function _qrCanvasToRasterBytes(canvas) {
+  const w = canvas.width, h = canvas.height;
+  const ctx = canvas.getContext('2d');
+  const img = ctx.getImageData(0, 0, w, h).data;
+  const bytesPerRow = Math.ceil(w / 8);
+  const raster = new Uint8Array(bytesPerRow * h);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      const alpha = img[i + 3];
+      const lum = img[i] * 0.299 + img[i + 1] * 0.587 + img[i + 2] * 0.114;
+      if (alpha > 128 && lum < 128) {
+        raster[y * bytesPerRow + (x >> 3)] |= (0x80 >> (x & 7)); // 1 = black dot
+      }
+    }
+  }
+  const head = new Uint8Array([
+    0x1d, 0x76, 0x30, 0x00,
+    bytesPerRow & 0xff, (bytesPerRow >> 8) & 0xff,
+    h & 0xff, (h >> 8) & 0xff
+  ]);
+  const out = new Uint8Array(head.length + raster.length);
+  out.set(head, 0);
+  out.set(raster, head.length);
+  return out;
+}
+
 /**
  * Print Table QR Code to thermal printer
  * @param {string} tableNumber - Table number (e.g., "T001")
@@ -3218,6 +3335,26 @@ export async function printTableQR(tableNumber, qrCanvas, storeName = 'Restauran
     }
     const isLanIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(address);
     if (isLanIP) {
+      // Native desktop: build header(UTF-8) + QR raster(GS v 0) + footer(UTF-8)
+      // as one byte payload and send over the LAN socket via the bridge (§5 #7).
+      const _np = (typeof window !== 'undefined') && window.__NATIVE_PRINT;
+      if (_np) {
+        const header = CMD.INIT + CMD.ALIGN_CENTER + CMD.TEXT_DOUBLE + storeName + CMD.LINE_FEED + CMD.TEXT_NORMAL + CMD.LINE_FEED + CMD.BOLD_ON + CMD.TEXT_DOUBLE + tableNumber + CMD.LINE_FEED + CMD.TEXT_NORMAL + CMD.BOLD_OFF + CMD.LINE_FEED;
+        const footer = CMD.ALIGN_CENTER + 'Scan to order' + CMD.LINE_FEED + CMD.LINE_FEED + cashlessEscpos + 'Printed: ' + printedTime + CMD.LINE_FEED + (expiryTime ? 'Orders accepted until ' + expiryTime + CMD.LINE_FEED : '') + CMD.LINE_FEED + CMD.LINE_FEED + CMD.CUT_PARTIAL;
+        const enc = new TextEncoder();
+        const headerBytes = enc.encode(header);
+        const footerBytes = enc.encode(footer);
+        const raster = _qrCanvasToRasterBytes(qrCanvas);
+        const total = new Uint8Array(headerBytes.length + raster.length + footerBytes.length);
+        total.set(headerBytes, 0);
+        total.set(raster, headerBytes.length);
+        total.set(footerBytes, headerBytes.length + raster.length);
+        let bin = '';
+        for (let i = 0; i < total.length; i++) bin += String.fromCharCode(total[i]);
+        const [nHost, nPort] = address.split(':');
+        const r = await _np.printRaw({ data: btoa(bin), target: { kind: 'lan', host: nHost, port: parseInt(nPort || '9100', 10) } });
+        return !!(r && r.ok);
+      }
       // LAN raw socket — keep raster path (no OS driver available).
       try {
         const connected = await connectQZTray();

@@ -1,6 +1,10 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-07-01 #2 (**데스크탑앱(Electron, QZ 대체) 사전 전체점검 + 설계 완료** — `docs/DESKTOP_APP_DESIGN.md`. 개발=Opus(노트북)/게이트 점검=Fable(서버) 역할 분담, CLAUDE.md에 "Fable 검증 게이트" 기준 신설. 상세 ↓.)
+> **최종 업데이트:** 2026-07-02 #3 (**데스크탑앱 P0~P3 + Fable게이트 PASS + 운영배포(SW4.56) + 안드로이드/Lingo 착수** — 서버 wine으로 `PurplePOS-Setup.exe`(oneClick 자동설치) 빌드→운영 호스팅 `purplehere.com/desktop/` + 윈도우 자동감지 다운로드 CTA(4언어, 로그인시 노출·앱내 숨김) + 앱 네이티브 프린터설정 UI("직접 인쇄 활성", QZ 설치잔재 숨김·브라우저는 QZ 유지). billPrint P2=QZ 투명대체(브라우저/USB/태블릿 dead-code=무영향). 운영배포 2회(--skip-safety, dev-backend no-op, 스모크9/9). **안드로이드앱**(`/var/www/mobile-app/` Capacitor·WiFi+블투·검증라이브러리·프론트0줄재사용) + **Lingo 단어앱**(`/var/www/lingo/` 격리 PM2 3010) 착수. 실프린터 종이확인=실고객 생길 때(bless 보류, print-guard 빨강=의도). 상세 ↓.)
+>
+> **이전:** 2026-07-02 #2 (**데스크탑앱(Electron) P0·P1·P2 코드 구현 + /검증** — 리포 `desktop-pos/` 신규 + billPrint.js 절단면. P0 스캐폴드(원격URL로드·single-instance·contextIsolation·backgroundThrottling:false·크래시복구·창상태복원) / P1 네이티브 브릿지 `__NATIVE_PRINT`(§4 계약)+Main인쇄(htmlPrinter 숨김창 silent·rawLan net.Socket·rawWindows winspool스텁·serialQueue 순서보존·진단창) / **P2 billPrint 8절단면 feature-detect 분기**(#1~#8, 기존 QZ블록 verbatim, SettingsPage 무수정). **검증**: build 성공+dev배포(billPrint 경고/에러0)·hydration0·print회귀 7/7·print-guard=billPrint만·critical mount 전부✓·P1 npm test 6/6. **주의: 이 세션=헤드리스 서버라 GUI/실프린터 스모크 불가**(Mac/Win 필요)·**bless 미실행**(실프린터 후). ⚠ **P2는 Fable 게이트(§7-1) 대상 — 통과 전 P3 금지.** 상세 ↓.)
+>
+> **이전:** 2026-07-01 #2 (**데스크탑앱(Electron, QZ 대체) 사전 전체점검 + 설계 완료** — `docs/DESKTOP_APP_DESIGN.md`. 개발=Opus(노트북)/게이트 점검=Fable(서버) 역할 분담, CLAUDE.md에 "Fable 검증 게이트" 기준 신설. 상세 ↓.)
 >
 > **이전:** 2026-07-01 (**v3.66 운영 배포 (SW 4.54)** — Backup 20260701_201256, Smoke 9/9, 안전게이트 통과. **핵심: 세트 구성품 단계 KDS↔플로어플랜 불일치 근본수정**(플로어플랜 패널이 set_components[단계필드 없음]를 읽어 주문 pending으로 보이던 것 → KDS(processRawOrderItems:775)처럼 set_items[동일 index]에서 단계 폴백해 통일). + 마감(Final) 오늘요약+void요약(총·결제후) / 고객디스플레이 self-healing 하트비트(우측패널 열린 동안 재emit) / 같은 테이블 별도주문("New Order" 버튼, 스탭밀 등) / 오더노트 주방티켓(품목·주문 메모, 폴러 2곳 일치) / SW 정적자산 cache-first(뒤로가기·라우트 속도) / false-offline 완화(연속3회·6초) / KDS 취소리스트 상시버튼+서버조회 / KDS 스테이션별 소리 on/off(탭별 스피커+All 마스터) / KDS 전체되돌리기 제거·세트되돌리기 버튼 크기 / 실시간 견고화(visibility·focus 즉시 재조회, OrdersRealtime+KDS). 상세 ↓.)
 >

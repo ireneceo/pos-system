@@ -1,0 +1,58 @@
+{
+  "name": "purple-pos-desktop",
+  "productName": "Purple POS",
+  "version": "0.1.0",
+  "description": "Purple POS Windows desktop shell (Electron) — QZ Tray replacement. Loads the remote web app and replaces only the print transport layer.",
+  "author": "PurpleHere",
+  "license": "UNLICENSED",
+  "private": true,
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "start:dev": "cross-env PURPLE_POS_ENV=dev electron .",
+    "test": "node test/print-units.js",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.purplehere.pos",
+    "productName": "Purple POS",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "node_modules/**/*"
+    ],
+    "publish": [
+      { "provider": "generic", "url": "https://purplehere.com/desktop/" }
+    ],
+    "win": {
+      "icon": "assets/icon.png",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "artifactName": "PurplePOS-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "perMachine": false,
+      "oneClick": true,
+      "runAfterFinish": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Purple POS"
+    }
+  }
+}

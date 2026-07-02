@@ -83,6 +83,11 @@
       "iosOldGuide": "푸시 알림은 iOS 16.4+ 에서만 지원됩니다. 그 이하 버전에서도 인앱 알림용으로 설치는 가능합니다.",
       "installButton": "설치",
       "dismissButton": "다음에"
+    },
+    "desktopApp": {
+      "title": "윈도우용 Purple POS",
+      "body": "안정적인 인쇄를 위한 Windows 앱 — QZ Tray·자바 설치 불필요.",
+      "button": "Windows용 다운로드"
     }
   },
   "empty": {

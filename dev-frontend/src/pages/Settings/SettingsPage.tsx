@@ -818,6 +818,9 @@ const SettingsPage: React.FC = () => {
   const [autoPrintPreviewOpen, setAutoPrintPreviewOpen] = useState(false);
   const [showPrinterTroubleshoot, setShowPrinterTroubleshoot] = useState(false);
   const [qzTrayPrinters, setQzTrayPrinters] = useState<string[]>([]);
+  // Native desktop app (Electron) prints directly — no QZ Tray to install. In the
+  // app we hide the QZ install/connect steps and show a clean "direct printing" note.
+  const isNativePrint = typeof window !== 'undefined' && !!(window as any).__NATIVE_PRINT;
   const [showQzGuide, setShowQzGuide] = useState(false);
   const [qzScenario, setQzScenario] = useState<'migration' | 'fresh'>('migration');
   const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
@@ -6455,6 +6458,13 @@ const SettingsPage: React.FC = () => {
                 {/* QZ Tray panel — clean 3-step setup: 1) Install  2) Check  3) Find printers */}
                 {printerGuideTab === 'qztray' && (
                   <div>
+                    {isNativePrint && (
+                      <div style={{ marginBottom: '16px', padding: '14px 16px', background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: '10px', fontSize: '13px', color: '#065F46', lineHeight: 1.6 }}>
+                        <strong>{t('settings:printer.methodGuide.nativeActiveTitle', '✓ Direct printing is active')}</strong><br />
+                        {t('settings:printer.methodGuide.nativeActiveDesc', 'This desktop app prints directly — no separate print app or setup to install. Just tap “Find Printers” below to load the printers connected to this PC.')}
+                      </div>
+                    )}
+                    {!isNativePrint && (<>
                     <p style={{ fontSize: '13px', color: '#1F2937', lineHeight: 1.6, marginBottom: '16px' }}>
                       {t('settings:printer.methodGuide.qzDesc')}
                     </p>
@@ -6596,6 +6606,7 @@ const SettingsPage: React.FC = () => {
                         </div>
                       )}
                     </div>
+                    </>)}
 
                     {/* ───── STEP 3 — Find printers (detect this device's printers) ───── */}
                     <div style={{ padding: '16px', background: '#FAFBFF', border: '1px solid #E2E8F0', borderRadius: '10px' }}>

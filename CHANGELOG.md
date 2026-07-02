@@ -6,6 +6,13 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+### 2026-07-02 (데스크탑앱 운영 인에이블 — 버전 미상승: 기존 매장엔 dead-code/opt-in)
+- Windows 데스크탑앱(Electron, QZ Tray 대체) P0~P3 구현 + Fable 게이트 PASS. 서버 wine 빌드 `PurplePOS-Setup.exe`(원클릭 자동설치) → 운영 호스팅 `purplehere.com/desktop/`.
+- 윈도우 브라우저 접속 시 "Download for Windows" 자동 안내(4언어, 로그인 시, 앱 안에선 숨김).
+- 앱 안 프린터 설정을 "직접 인쇄 활성(설치 불필요)"으로 정리 — 브라우저 QZ 흐름은 그대로.
+- billPrint 네이티브 절단면(P2): 브라우저/USB/태블릿 매장엔 dead-code = 무영향. 실프린터 종이확인 후 bless 예정.
+- (신규 별도) 안드로이드앱(`mobile-app/` Capacitor, WiFi+블투) + Lingo 단어앱(`lingo/`) 착수 — POS 무관.
+
 ### 2026-07-01 (내부 — 문서/설계, 배포·공지 무관)
 - Windows 데스크탑앱(Electron, QZ Tray 대체) 사전 점검 + 설계 완료 (`docs/DESKTOP_APP_DESIGN.md`, 코드 무수정)
 - CLAUDE.md "Fable 검증 게이트" 기준 신설 (중요·복잡 개발 검증 표준)

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Purple POS — Print Diagnostics</title>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 20px; color: #1f2937; }
+    h1 { font-size: 18px; margin: 0 0 16px; }
+    section { border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px; margin-bottom: 14px; }
+    h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: #6b7280; margin: 0 0 10px; }
+    button { background: #635BFF; color: #fff; border: none; border-radius: 6px; padding: 8px 14px; font-size: 13px; cursor: pointer; margin: 0 6px 6px 0; }
+    button:hover { background: #4f46e5; }
+    input { border: 1px solid #d1d5db; border-radius: 6px; padding: 7px 9px; font-size: 13px; margin: 0 6px 6px 0; }
+    pre { background: #0b1020; color: #d1fae5; padding: 12px; border-radius: 6px; font-size: 12px; white-space: pre-wrap; word-break: break-all; max-height: 220px; overflow: auto; }
+    label { font-size: 12px; color: #6b7280; }
+  </style>
+</head>
+<body>
+  <h1>Purple POS — Native Print Bridge Diagnostics</h1>
+
+  <section>
+    <h2>Environment</h2>
+    <button id="btnDiag">Run diagnostics()</button>
+    <button id="btnList">listPrinters()</button>
+    <button id="btnDefault">getDefaultPrinter()</button>
+  </section>
+
+  <section>
+    <h2>HTML pixel print (Korean glyph test)</h2>
+    <label>Printer name (blank = OS default)</label><br />
+    <input id="htmlPrinter" placeholder="e.g. KITCHEN or blank" size="30" />
+    <button id="btnHtml">printHtml()</button>
+  </section>
+
+  <section>
+    <h2>RAW ESC/POS — LAN</h2>
+    <input id="lanHost" placeholder="host e.g. 192.168.1.50" size="18" />
+    <input id="lanPort" placeholder="9100" size="6" value="9100" />
+    <button id="btnLan">printRaw() LAN</button>
+    <button id="btnDrawerLan">openDrawer() LAN</button>
+  </section>
+
+  <section>
+    <h2>RAW ESC/POS — OS printer (Windows only)</h2>
+    <input id="osPrinter" placeholder="printer name (blank = default)" size="26" />
+    <button id="btnOs">printRaw() OS</button>
+    <button id="btnDrawerOs">openDrawer() OS</button>
+  </section>
+
+  <section>
+    <h2>Output</h2>
+    <pre id="out">(ready)</pre>
+  </section>
+
+  <script src="./renderer.js"></script>
+</body>
+</html>

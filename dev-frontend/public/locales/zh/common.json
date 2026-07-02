@@ -83,6 +83,11 @@
       "iosOldGuide": "推送通知需要 iOS 16.4+ 系统。在更早版本上仍可安装应用并使用应用内通知。",
       "installButton": "安装",
       "dismissButton": "稍后"
+    },
+    "desktopApp": {
+      "title": "Purple POS Windows 版",
+      "body": "获取 Windows 应用以实现可靠打印 — 无需安装 QZ Tray 或 Java。",
+      "button": "下载 Windows 版"
     }
   },
   "empty": {

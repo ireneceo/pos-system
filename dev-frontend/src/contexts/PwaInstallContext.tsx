@@ -10,9 +10,25 @@ interface PwaInstallState {
   isStandalone: boolean;          // already running as installed PWA
   isIOS: boolean;
   iosVersion: number | null;
+  isWindowsDesktop: boolean;      // Windows browser, NOT already inside the native app
+  desktopAppUrl: string;          // native Windows installer download (same-origin)
   promptInstall: () => Promise<'accepted' | 'dismissed' | 'unavailable'>;
   dismissBanner: (days?: number) => void;
   shouldShowBanner: boolean;
+}
+
+// The native Windows desktop app (Electron) replaces QZ Tray. On a Windows
+// browser we offer it; when already running inside it, the preload sets
+// window.__PURPLE_DESKTOP so we don't offer it again. Same-origin path so it
+// resolves on whichever host (dev/prod) is serving it.
+const DESKTOP_APP_URL = '/desktop/PurplePOS-Setup.exe';
+
+function detectWindowsDesktop(): boolean {
+  if (typeof navigator === 'undefined' || typeof window === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  const isWin = /Windows NT/.test(ua) && !/Windows Phone/.test(ua);
+  const insideNativeApp = Boolean((window as any).__PURPLE_DESKTOP);
+  return isWin && !insideNativeApp;
 }
 
 const PwaInstallContext = createContext<PwaInstallState | null>(null);
@@ -39,6 +55,7 @@ export const PwaInstallProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [isStandalone, setIsStandalone] = useState<boolean>(isStandaloneNow());
   const [{ isIOS, version: iosVersion }] = useState(detectIOS());
+  const [isWindowsDesktop] = useState(detectWindowsDesktop());
 
   useEffect(() => {
     const onBefore = (e: Event) => {
@@ -83,7 +100,7 @@ export const PwaInstallProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, []);
 
   const isDismissed = Date.now() < dismissedUntil;
-  const shouldShowBanner = !isStandalone && !isDismissed && (Boolean(deferred) || isIOS);
+  const shouldShowBanner = !isStandalone && !isDismissed && (Boolean(deferred) || isIOS || isWindowsDesktop);
 
   return (
     <PwaInstallContext.Provider value={{
@@ -91,6 +108,8 @@ export const PwaInstallProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       isStandalone,
       isIOS,
       iosVersion,
+      isWindowsDesktop,
+      desktopAppUrl: DESKTOP_APP_URL,
       promptInstall,
       dismissBanner,
       shouldShowBanner

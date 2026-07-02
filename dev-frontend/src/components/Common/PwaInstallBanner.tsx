@@ -2,6 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { usePwaInstall } from '../../contexts/PwaInstallContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 /**
  * PWA Install Banner
@@ -13,12 +14,15 @@ import { usePwaInstall } from '../../contexts/PwaInstallContext';
 const PwaInstallBanner: React.FC = () => {
   const { t } = useTranslation();
   const location = useLocation();
-  const { canInstall, isIOS, iosVersion, promptInstall, dismissBanner, shouldShowBanner } = usePwaInstall();
+  const { canInstall, isIOS, iosVersion, isWindowsDesktop, desktopAppUrl, promptInstall, dismissBanner, shouldShowBanner } = usePwaInstall();
+  const { isAuthenticated } = useAuth();
 
-  // POS 시스템 안에서만 노출 (랜딩 / 블로그 / 공개 페이지 제외).
-  // 랜딩 사용자에겐 /install 페이지가 안내 역할이고, 가입 후 첫 진입 시 배너로 알림.
+  // PWA/iOS install banner stays scoped to /pos (as before). The Windows desktop
+  // app CTA, however, should greet a logged-in store user on ANY in-app screen
+  // (they land on /restaurant/:id/... not /pos) — so gate it on auth, not path.
   const isPosRoute = location.pathname.startsWith('/pos');
-  if (!isPosRoute) return null;
+  const showWindowsCta = isWindowsDesktop && isAuthenticated;
+  if (!isPosRoute && !showWindowsCta) return null;
   if (!shouldShowBanner) return null;
 
   const handleInstall = async () => {
@@ -61,17 +65,40 @@ const PwaInstallBanner: React.FC = () => {
         <img src="/logo192.png" alt="" width={40} height={40} style={{ borderRadius: 8 }} />
         <div style={{ flex: 1, minWidth: 0, paddingRight: 28 }}>
           <div style={{ fontSize: 15, fontWeight: 600, color: '#0A2540', marginBottom: 4 }}>
-            {t('common:pwa.installBanner.title')}
+            {isWindowsDesktop
+              ? t('common:pwa.desktopApp.title', 'Purple POS for Windows')
+              : t('common:pwa.installBanner.title')}
           </div>
           <div style={{ fontSize: 13, color: '#4B5563', lineHeight: 1.5 }}>
-            {isIOS
-              ? (oldIos
-                  ? t('common:pwa.installBanner.iosOldGuide')
-                  : t('common:pwa.installBanner.iosGuide'))
-              : t('common:pwa.installBanner.androidDesktopGuide')}
+            {isWindowsDesktop
+              ? t('common:pwa.desktopApp.body', 'Get the Windows app for reliable printing — no QZ Tray or Java to install.')
+              : isIOS
+                ? (oldIos
+                    ? t('common:pwa.installBanner.iosOldGuide')
+                    : t('common:pwa.installBanner.iosGuide'))
+                : t('common:pwa.installBanner.androidDesktopGuide')}
           </div>
 
-          {canInstall && !isIOS && (
+          {isWindowsDesktop && (
+            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+              <a
+                href={desktopAppUrl}
+                download
+                onClick={() => dismissBanner(365)}
+                style={{
+                  background: '#635BFF', color: '#fff', border: '1px solid #635BFF',
+                  padding: '8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+                  cursor: 'pointer', textDecoration: 'none', transition: 'opacity 0.15s'
+                }}
+                onMouseEnter={e => { e.currentTarget.style.opacity = '0.85'; }}
+                onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
+              >
+                {t('common:pwa.desktopApp.button', 'Download for Windows')}
+              </a>
+            </div>
+          )}
+
+          {!isWindowsDesktop && canInstall && !isIOS && (
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
               <button
                 type="button"

@@ -83,6 +83,11 @@
       "iosOldGuide": "iOS 16.4+ is required for push notifications. You can still install the app for in-app alerts.",
       "installButton": "Install",
       "dismissButton": "Not now"
+    },
+    "desktopApp": {
+      "title": "Purple POS for Windows",
+      "body": "Get the Windows app for reliable printing — no QZ Tray or Java to install.",
+      "button": "Download for Windows"
     }
   },
   "empty": {

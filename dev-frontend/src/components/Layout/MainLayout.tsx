@@ -739,7 +739,9 @@ const StaffRole = styled.div`
 
 const MobileContent = styled.div`
   @media (max-width: 768px) {
-    padding-top: 56px;
+    /* Must match MobileHeader height (80px fixed) — otherwise page content
+       slides under the fixed header and its top is clipped. */
+    padding-top: 80px;
   }
 `;
 
