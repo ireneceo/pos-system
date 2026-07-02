@@ -21,7 +21,7 @@
 - **영어 단어암기앱 "Lingo" 착수** — **`/opt/lingo/`**(PlanQ `/opt/planq`처럼 완전 분리, 별도 repo, /var/www 밖). 백엔드 PM2 `lingo-backend`:3010 구동, DB lingo_dev_db, Claude Code 연결(CLAUDE.md+커맨드), 기획서 `docs/PRODUCT_SPEC.md`. 상세 설계는 Fable과. (초기 /var/www/lingo→2026-07-02 /opt/lingo 이동.)
 
 ### 다음 확정 작업 (Irene 지시)
-1. **안드로이드앱 제대로 완성** (Irene 명시) — JDK+Android SDK 설치(wine처럼) → NativePrintPlugin(WiFi socket + BT SPP, DantSu 라이브러리 래핑) → APK 빌드 → 사이드로드. 실기기(태블릿+프린터) 검증만 하드웨어 필요.
+1. **[다음 세션] 안드로이드앱 제대로 완성** (Irene 2026-07-02 명시: "안드로이드 앱 이어서 제대로 다음섹션에") — 위치 `/var/www/mobile-app/`, 설계 `docs/ANDROID_APP_DESIGN.md`(스코프 확정: WiFi+블투, USB제외, DantSu 라이브러리). 순서: JDK+Android SDK 설치(wine처럼) → NativePrintPlugin(WiFi socket + BT SPP 라이브러리 래핑) → `cap add android`+APK 빌드 → 사이드로드. 실기기(태블릿+프린터) 검증만 하드웨어 필요. billPrint 프론트 0줄(§4 재사용).
 2. **윈도우앱 매장 확인** — Irene 오늘 매장서 실행·로그인·POS로드·프린터목록·UI 확인(**실프린터 종이 인쇄는 안 함 — 본인 매장 아님**).
 3. **윈도우앱 실프린터 종이 확인 = 실제 쓸 고객 생겼을 때** 그 프린터로 확인·보완 → 그 후 `check-print-guard.js --bless`. 그 전까진 print-guard 빨강(billPrint+MainLayout)=의도된 fail-closed.
 
