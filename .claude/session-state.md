@@ -1,10 +1,5 @@
 # Purple POS — 개발 세션 상태
 
-<!-- AUTOSAVE-STALE-BANNER -->
-> **[AUTO-SAVE STALE] (2026-07-02 13:10, idle 2017s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
-> 변경된 작업 파일: deploy-to-production.sh,sw.js PwaInstallContext.tsx
-<!-- /AUTOSAVE-STALE-BANNER -->
-
 ## 현재 작업 상태
 
 **마지막 업데이트:** 2026-07-02 (개발완료)
@@ -25,8 +20,12 @@
 - **안드로이드앱 착수(Capacitor)** — `/var/www/mobile-app/`(격리). 원격로드+`__NATIVE_PRINT` 네이티브 주입=billPrint 그대로(프론트 0줄). 스코프 확정=**WiFi+블투(USB 제외), 검증 라이브러리(DantSu 계열)**. 설계·스캐폴드·플러그인 스켈레톤 완비. `docs/ANDROID_APP_DESIGN.md`.
 - **영어 단어암기앱 "Lingo" 착수** — **`/opt/lingo/`**(PlanQ `/opt/planq`처럼 완전 분리, 별도 repo, /var/www 밖). 백엔드 PM2 `lingo-backend`:3010 구동, DB lingo_dev_db, Claude Code 연결(CLAUDE.md+커맨드), 기획서 `docs/PRODUCT_SPEC.md`. 상세 설계는 Fable과. (초기 /var/www/lingo→2026-07-02 /opt/lingo 이동.)
 
-### 다음 확정 작업 (Irene 지시)
-1. **[다음 세션] 안드로이드앱 제대로 완성** (Irene 2026-07-02 명시: "안드로이드 앱 이어서 제대로 다음섹션에") — 위치 `/var/www/mobile-app/`, 설계 `docs/ANDROID_APP_DESIGN.md`(스코프 확정: WiFi+블투, USB제외, DantSu 라이브러리). 순서: JDK+Android SDK 설치(wine처럼) → NativePrintPlugin(WiFi socket + BT SPP 라이브러리 래핑) → `cap add android`+APK 빌드 → 사이드로드. 실기기(태블릿+프린터) 검증만 하드웨어 필요. billPrint 프론트 0줄(§4 재사용).
+### 진행 중: 안드로이드앱 (Fable 리드 — 기본설계 잠금, Opus 구현 중)
+- **역할**: 기본설계+검증게이트 = **Fable**(리더, Irene 2026-07-03 지정) / 구현 = Opus.
+- **기본설계 잠금**: Fable이 `mobile-app/docs/ANDROID_APP_DESIGN.md` **§7 확정**(A1 구현의 단일 기준, 변경은 Fable 재확인). 갭3 해결 = 7-1 프린터 레지스트리(안드로이드엔 OS스풀러 없음→앱 자체목록, 미스=명시실패) / 7-2 printHtml=WebView 오프스크린→비트맵→ESC/POS 래스터(한글보존) / 7-3 직렬화(serialQueue 대칭) / 7-4 블투권한 / 7-5 플러그인 등록·브릿지 주입 / 7-6 하드웨어 없는 검증(에뮬+가짜프린터로 도착 바이트=브라우저와 동일 실증).
+- **Opus 구현 순서 (Fable 승인, 중간승인 불필요)**: ①JDK+Android SDK `/opt/android-sdk` 격리설치(2026-07-03 재개 허가) → ②프로젝트 생성+플러그인 배선·브릿지 주입 → ③WiFi(LAN)인쇄+드로어 → ④HTML→비트맵 인쇄(한글) → ⑤블투경로+프린터등록 화면 → ⑥APK빌드(dev/운영) → ⑦**Fable 검증게이트**(V1~V4+보호파일 무접촉) → ⑧A3 실기기.
+- **Irene 필요 = A3 하드웨어 1개**: 안드로이드 태블릿(가능하면 Android 10+) + 블투 프린터. ⑦ 통과 후 종이 확인 1회. 그전까진 불필요.
+- 위치 `/var/www/mobile-app/`(격리), billPrint 프론트 0줄(§4). 운영 웹/인쇄코드 무접촉(print-guard 자동감시).
 2. **윈도우앱 매장 확인** — Irene 오늘 매장서 실행·로그인·POS로드·프린터목록·UI 확인(**실프린터 종이 인쇄는 안 함 — 본인 매장 아님**).
 3. **윈도우앱 실프린터 종이 확인 = 실제 쓸 고객 생겼을 때** 그 프린터로 확인·보완 → 그 후 `check-print-guard.js --bless`. 그 전까진 print-guard 빨강(billPrint+MainLayout)=의도된 fail-closed.
 

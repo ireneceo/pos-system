@@ -60,3 +60,47 @@ Capacitor 플러그인(`NativePrintPlugin`)이 이 메서드를 JS↔Kotlin 브�
 - 인쇄 구조 불변(폴러/claim/발송순서 0접촉). billPrint P2 외 프론트 수정 금지.
 - POS 코드/운영과 격리(별도 repo, `/var/www/mobile-app/`).
 - 실기기 인쇄 확인 전 "완료" 금지.
+
+---
+
+## 7. 기본설계 확정 (Fable 2026-07-03 — 이 절이 A1 구현의 단일 기준. 변경은 Fable 재확인 필요)
+
+> billPrint P2 호출부 실측 완료(sendHTMLViaQZTray/sendViaQZTray/openCashDrawer/getQZTrayPrinters/connectQZTray/runQZDiagnostic/StaticQR 라스터). 프론트는 **0줄 변경** — 아래는 전부 앱(플러그인) 쪽 규격.
+
+### 7-1. 프린터 레지스트리 (Android에는 OS 스풀러가 없다 — 핵심 갭 해결)
+billPrint는 비-IP 주소를 `{kind:'os', printerName}` / `printHtml({printerName})` 로 보낸다(이름 기반). Windows는 OS 스풀러가 이름을 해석하지만 Android에는 없음. → 플러그인이 **자체 레지스트리**로 이름을 해석한다:
+- **목록 = 페어링된 블루투스 프린터(이름+MAC, bonded만·스캔 불필요) ∪ 앱에 등록한 네트워크 프린터(이름→IP:포트, SharedPreferences 저장)**. 데스크탑앱의 native 프린터설정 화면과 대칭인 **간단한 네이티브 설정 화면**(네트워크 프린터 이름+IP 추가/삭제, 기본 프린터 지정)을 앱에 둔다.
+- `listPrinters` = 레지스트리 이름 배열(→ billPrint 프린터 선택 UI 그대로 동작). `getDefaultPrinter` = 레지스트리의 기본 지정(없으면 null).
+- 이름 해석: 대소문자 무시 trim 매칭(이름 또는 BT MAC). **미스 = `PRINTER_NOT_FOUND` 명시 실패, 조용한 폴백 절대 금지**(§4 계약 동일). 빈 이름('') = 레지스트리 기본 프린터, 없으면 PRINTER_NOT_FOUND.
+- 매장 설정은 그대로: `printer_settings.address` = BT 프린터 이름/MAC **또는** 앱에 등록한 네트워크 프린터 이름 **또는** raw IP(이 경우 기존 LAN raw 경로 — Windows LAN과 동일 동작·한글 제약도 동일).
+
+### 7-2. printHtml = WebView 오프스크린 → 비트맵 → ESC/POS 래스터 (한글 보존 경로)
+1. 메인스레드 오프스크린 WebView에 티켓 HTML 로드(loadDataWithBaseURL, UTF-8) → body 높이 측정.
+2. 폭 = 576px(80mm@203dpi; 58mm이면 384px), 측정 높이로 Bitmap draw.
+3. DantSu `EscPosPrinterCommands.bitmapToBytes` 로 **≤256px 스트립 분할** 래스터 변환 → 대상 전송(BT 또는 LAN) → 컷.
+4. 타임아웃 20초 → `{ok:false,error:'TIMEOUT'}`. WebView 인스턴스는 재사용(생성비용).
+
+### 7-3. 전송·직렬화 (Windows serialQueue 대칭 — QZ 단일큐 교훈 유지)
+- 레인: `html` 단일 레인(스테이션→통합 발송순서 보존) / `lan:<host>` / `bt:<mac>` — 프린터끼리 병렬, 프린터 안에서는 직렬.
+- BT = DantSu BluetoothConnection(SPP), 잡 단위 connect→write→flush→close, 레인 직렬화로 겹침 방지. LAN = TcpConnection(IP:9100, 기존 스켈레톤 유지).
+- `openDrawer` = `1B 70 00 64 64` 5바이트를 printRaw와 동일 라우팅(kind:'os' 이름도 레지스트리 해석).
+- 모든 메서드 **throw 금지, {ok,error}** — 스켈레톤의 ok() 헬퍼 유지.
+
+### 7-4. 권한·매니페스트 (블투 유지보수 지점)
+- API 31+: `BLUETOOTH_CONNECT`(런타임 요청 — 첫 listPrinters/인쇄 시). API ≤30: `BLUETOOTH`/`BLUETOOTH_ADMIN`(maxSdkVersion=30). **스캔 안 함(bonded만) → 위치 권한 불필요.**
+- 거부 시 `{ok:false,error:'BT_PERMISSION'}`. `INTERNET` 기본. FLAG_KEEP_SCREEN_ON(태블릿 상시화면=폴러 유지), 배터리 최적화 제외 안내 1회.
+
+### 7-5. 플러그인 등록·브릿지 주입 (스캐폴드의 미배선 갭)
+- `cap add android` 후 NativePrintPlugin.kt → `android/app/src/main/java/com/purplehere/pos/mobile/` 이동, `MainActivity.onCreate`에서 `registerPlugin(NativePrintPlugin::class.java)` (super.onCreate 앞).
+- 원격 URL 로드 시 Capacitor 런타임은 자동 주입되지만 **nativePrintBridge.js(IIFE)는 자동 실행 안 됨** → 플러그인 `load()`에서 WebViewListener(onPageLoaded)로 `evaluateJavascript(브릿지JS)` 주입. IIFE는 멱등, billPrint는 인쇄 시점에 lazy feature-detect라 로드후 주입으로 충분. 네비게이션마다 재주입.
+- URL: **debug 빌드 = dev.purplehere.com/pos, release = purplehere.com/pos** (빌드타입 분기). 검증은 전부 dev로.
+
+### 7-6. 하드웨어 없는 검증 (Fable 게이트 — A3 전 서버에서 끝내는 범위)
+서버에 `/dev/kvm` 가용 확인(2026-07-03) → **헤드리스 에뮬레이터 실기동 가능**.
+- V1 툴체인: JDK17 + Android SDK(cmdline-tools, API 34) `/opt/android-sdk` 격리 설치(~5GB, 전역 env 오염 금지 — 빌드 스크립트 내 ANDROID_HOME만).
+- V2 빌드 게이트: debug+release APK 재현 빌드(Gradle wrapper) + 서명(사이드로드 키).
+- V3 **가짜 프린터 바이트 캡처**: dev서버 9100 TCP 리스너(node)로 수신 바이트 캡처, 에뮬레이터(10.0.2.2) →
+  ① printRaw(lan) 바이트 = 브라우저 QZ 경로와 **바이트 동일**(sendViaQZTray의 btoa 인코딩 왕복) ② printHtml = 래스터 헤더(GS v 0)+컷 존재·폭 576 ③ openDrawer = 정확히 5바이트 ④ 미등록 이름 = PRINTER_NOT_FOUND ⑤ 3잡 연속 발송순서 보존.
+- V4 **E2E(종이 없는 실배선)**: 에뮬레이터가 dev.purplehere.com/pos 로드 → `__NATIVE_PRINT` shape/diagnostics 확인 → 데모 매장 주문 → **폴러 → printRaw → 가짜 프린터 수신**까지 실증.
+- V5 BT 경로: 서버서 실검증 불가 — DantSu 위임 + 코드리뷰까지. **실검증은 A3**(이 부분만 하드웨어 블록).
+- 게이트 통과 기준: V1~V4 전부 + dev-frontend diff 0(print-guard 8/8 무접촉) + 계약 위반 0.

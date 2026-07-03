@@ -8,7 +8,10 @@ const config: CapacitorConfig = {
   appName: 'Purple POS',
   webDir: 'src',
   server: {
-    url: 'https://purplehere.com/pos',
+    // Default = dev, so a debug build can never accidentally hit production
+    // ("검증은 전부 dev", design §7-5). Release builds override to
+    // https://purplehere.com/pos in MainActivity via BuildConfig.DEBUG.
+    url: 'https://dev.purplehere.com/pos',
     cleartext: false,
     androidScheme: 'https'
   },
