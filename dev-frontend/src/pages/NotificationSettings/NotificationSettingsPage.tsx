@@ -440,7 +440,9 @@ const NotificationSettingsPage: React.FC = () => {
     } else if (user.role === 'System Admin') {
       return { entityType: 'admin', entityId: Number(user.id) || 1 };
     }
-    return { entityType: 'restaurant', entityId: Number(user.id) || 1 };
+    // Restaurant Owner (and any other role) → personal, self-owned entity keyed by
+    // user id — NOT a bogus restaurant/{user.id} that no email send would ever use.
+    return { entityType: 'admin', entityId: Number(user.id) || 1 };
   }, [user, urlRestaurantId]);
 
   const { entityType, entityId } = useMemo(() => getEntityInfo(), [getEntityInfo]);
@@ -481,7 +483,11 @@ const NotificationSettingsPage: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.data) {
-          setPreferences(data.data.preferences || {});
+          const loadedPrefs = data.data.preferences || {};
+          // Sync the ref too — save callbacks read preferencesRef.current. Without this
+          // the first toggle reads a stale empty ref (no-op / wipes other categories).
+          preferencesRef.current = loadedPrefs;
+          setPreferences(loadedPrefs);
           setCategories(data.data.categories || []);
         }
       }

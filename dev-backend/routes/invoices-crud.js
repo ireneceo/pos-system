@@ -21,7 +21,7 @@ const subscriptionScheduler = require('../services/subscriptionScheduler');
 
 const PAYMENT_SETTINGS_KEY = 'payment_settings';
 
-const { authenticateToken, checkRestaurantAccess, getManagerScope } = require('../middleware/auth');
+const { authenticateToken, checkRestaurantAccess, getManagerScope, userCanAccessRestaurant, userCanAccessEntity } = require('../middleware/auth');
 const InvoiceCategory = require('../models/InvoiceCategory');
 const { normalizeAdditionalCharges, getAvailablePaymentMethods } = require('../utils/paymentSettingsHelper');
 const { sendNotification, sendNotificationBatch, getSystemAdminIds, getBrandManagerIds, getFoodcourtManagerIds } = require('../utils/notificationService');
@@ -531,6 +531,21 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
     const invoice = await Invoice.findByPk(req.params.id);
     if (!invoice) {
       return res.status(404).json({ success: false, error: { message: 'Invoice not found', code: 'NOT_FOUND' } });
+    }
+
+    // Authorization: only the payer (invoice's restaurant), the issuer entity, or a
+    // System Admin may change an invoice's status (incl. marking it paid). Without
+    // this, any authenticated user could tamper with any invoice cross-tenant.
+    let canModify = req.user.role === 'System Admin';
+    if (!canModify && invoice.restaurant_id) {
+      canModify = await userCanAccessRestaurant(req.user, invoice.restaurant_id);
+    }
+    if (!canModify && invoice.issuer_type && invoice.issuer_id) {
+      const issuerEntity = invoice.issuer_type === 'system_admin' ? 'system' : invoice.issuer_type;
+      canModify = await userCanAccessEntity(req.user, issuerEntity, invoice.issuer_id);
+    }
+    if (!canModify) {
+      return res.status(403).json({ success: false, error: { message: 'Not authorized to modify this invoice', code: 'FORBIDDEN' } });
     }
 
     const previousStatus = invoice.status;

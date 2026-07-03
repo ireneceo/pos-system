@@ -2117,15 +2117,37 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
 router.get('/available/:managerId', authenticateToken, async (req, res) => {
   try {
     const { managerId } = req.params;
-    
-    // Get all restaurants that are either unassigned or inactive
+
+    // A manager may only query their own available list; System Admin may query any.
+    if (String(managerId) !== String(req.user.id) && req.user.role !== 'System Admin') {
+      return res.status(403).json({ success: false, error: { message: 'Not authorized', code: 'FORBIDDEN' } });
+    }
+
+    // Base availability filter (unassigned or inactive restaurants).
+    const availabilityWhere = {
+      [Op.or]: [
+        { admin_id: null },
+        { status: 'inactive' }
+      ]
+    };
+
+    // Scope to the manager's own brand/foodcourt restaurants — never leak other
+    // tenants' restaurants into the Add-Subscription dropdown. System Admin = all.
+    let where = availabilityWhere;
+    if (req.user.role !== 'System Admin') {
+      const [brands, foodcourts] = await Promise.all([
+        Brand.findAll({ where: { owner_id: req.user.id }, attributes: ['id'] }),
+        Foodcourt.findAll({ where: { owner_id: req.user.id }, attributes: ['id'] })
+      ]);
+      const scopeOr = [];
+      if (brands.length) scopeOr.push({ brand_id: brands.map(b => b.id) });
+      if (foodcourts.length) scopeOr.push({ foodcourt_id: foodcourts.map(f => f.id) });
+      if (!scopeOr.length) return res.json([]); // manages no brand/foodcourt → nothing available
+      where = { [Op.and]: [availabilityWhere, { [Op.or]: scopeOr }] };
+    }
+
     const availableRestaurants = await Restaurant.findAll({
-      where: {
-        [Op.or]: [
-          { admin_id: null },
-          { status: 'inactive' }
-        ]
-      },
+      where,
       attributes: ['id', 'name', 'address', 'status']
     });
     

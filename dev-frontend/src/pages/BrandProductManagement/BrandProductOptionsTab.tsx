@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { getErrorMessage } from '../../utils/apiError';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
@@ -408,7 +409,7 @@ const BrandProductOptionsTab: React.FC<Props> = ({ onCountChange }) => {
         fetchOptionGroups();
       } else {
         const data = await response.json();
-        alert(data.error || 'Failed to delete option group');
+        alert(getErrorMessage(data, 'Failed to delete option group'));
       }
     } catch (error) {
       console.error('Error deleting option group:', error);

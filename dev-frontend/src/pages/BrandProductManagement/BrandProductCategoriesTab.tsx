@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { getErrorMessage } from '../../utils/apiError';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
@@ -288,7 +289,7 @@ const BrandProductCategoriesTab: React.FC<BrandProductCategoriesTabProps> = ({
         fetchCategories();
         onCategoryChange?.();
       } else {
-        setInfoModal({ open: true, title: 'Save Failed', message: data.error || 'Failed to save. Please try again.' });
+        setInfoModal({ open: true, title: 'Save Failed', message: getErrorMessage(data, 'Failed to save. Please try again.') });
       }
     } catch (error) {
       console.error('Failed to save category:', error);
@@ -319,7 +320,7 @@ const BrandProductCategoriesTab: React.FC<BrandProductCategoriesTabProps> = ({
         fetchCategories();
         onCategoryChange?.();
       } else {
-        setInfoModal({ open: true, title: 'Delete Failed', message: data.error || 'Failed to delete. Please try again.' });
+        setInfoModal({ open: true, title: 'Delete Failed', message: getErrorMessage(data, 'Failed to delete. Please try again.') });
       }
     } catch (error) {
       console.error('Failed to delete category:', error);
@@ -344,7 +345,7 @@ const BrandProductCategoriesTab: React.FC<BrandProductCategoriesTabProps> = ({
       if (data.success) {
         fetchCategories();
       } else {
-        setInfoModal({ open: true, title: 'Reorder Failed', message: data.error || 'Failed to reorder. Please try again.' });
+        setInfoModal({ open: true, title: 'Reorder Failed', message: getErrorMessage(data, 'Failed to reorder. Please try again.') });
       }
     } catch (error) {
       console.error('Failed to reorder category:', error);

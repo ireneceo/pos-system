@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { sequelize } = require('../config/database');
 const { QueryTypes } = require('sequelize');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, userCanAccessEntity } = require('../middleware/auth');
 const { encrypt, decrypt } = require('../utils/encryption');
 const User = require('../models/User');
 
@@ -128,6 +128,12 @@ router.get('/:entityType/:entityId', authenticateToken, async (req, res) => {
   try {
     const { entityType, entityId } = req.params;
 
+    // Ownership: SMTP credentials are sensitive — only the entity's owner (or System
+    // Admin) may read them. Without this any logged-in user could read any entity's mail config.
+    if (!(await userCanAccessEntity(req.user, entityType, entityId))) {
+      return res.status(403).json({ success: false, error: { message: 'Not authorized for these notification settings', code: 'FORBIDDEN' } });
+    }
+
     const settings = await sequelize.query(
       `SELECT * FROM notification_settings
        WHERE entity_type = :entityType AND entity_id = :entityId`,
@@ -173,6 +179,12 @@ router.get('/:entityType/:entityId', authenticateToken, async (req, res) => {
 router.post('/:entityType/:entityId', authenticateToken, async (req, res) => {
   try {
     const { entityType, entityId } = req.params;
+
+    // Ownership: only the entity's owner (or System Admin) may overwrite mail config.
+    if (!(await userCanAccessEntity(req.user, entityType, entityId))) {
+      return res.status(403).json({ success: false, error: { message: 'Not authorized for these notification settings', code: 'FORBIDDEN' } });
+    }
+
     const {
       email_enabled,
       smtp_host,
@@ -294,6 +306,11 @@ router.post('/:entityType/:entityId/test-email', authenticateToken, async (req, 
   try {
     const { entityType, entityId } = req.params;
     const { testEmail } = req.body;
+
+    // Ownership: sending test email uses the entity's stored SMTP credentials.
+    if (!(await userCanAccessEntity(req.user, entityType, entityId))) {
+      return res.status(403).json({ success: false, error: { message: 'Not authorized for these notification settings', code: 'FORBIDDEN' } });
+    }
 
     if (!testEmail) {
       return res.status(400).json({ success: false, error: { message: 'Test email address is required', code: 'VALIDATION_ERROR' } });

@@ -423,6 +423,31 @@ const userCanAccessRestaurant = async (user, targetRestaurantId) => {
   return false;
 };
 
+// Generic entity-scope check used by settings/notification/report routes that key
+// on (entity_type, entity_id) rather than a plain restaurant_id. Restaurant scope
+// reuses userCanAccessRestaurant; brand/foodcourt scope = System Admin or the owner.
+// 'system'/'platform' are global settings → System Admin only. Unknown types deny.
+const userCanAccessEntity = async (user, entityType, entityId) => {
+  if (!user) return false;
+  if (user.role === 'System Admin') return true;
+  const type = String(entityType || '').toLowerCase();
+  if (type === 'system' || type === 'platform') return false; // System Admin already returned true above
+  if (type === 'restaurant') return userCanAccessRestaurant(user, entityId);
+  const id = parseInt(entityId);
+  if (!Number.isFinite(id)) return false;
+  // Personal, self-owned settings entity (owner/admin-level mail config keyed by user id).
+  if (type === 'admin' || type === 'manager') return id === parseInt(user.id);
+  if (type === 'brand') {
+    const owns = await Brand.findOne({ where: { id, owner_id: user.id }, attributes: ['id'] });
+    return !!owns;
+  }
+  if (type === 'foodcourt') {
+    const owns = await Foodcourt.findOne({ where: { id, owner_id: user.id }, attributes: ['id'] });
+    return !!owns;
+  }
+  return false;
+};
+
 module.exports = {
   authenticateToken,
   optionalAuthenticateToken,
@@ -435,6 +460,7 @@ module.exports = {
   userCanVoid,
   checkRestaurantAccess,
   userCanAccessRestaurant,
+  userCanAccessEntity,
   checkSubscriptionStatus,
   demoProtection,
   getManagerScope

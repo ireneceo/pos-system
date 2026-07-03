@@ -269,14 +269,17 @@ router.put('/:id', authenticateToken, async (req, res) => {
       return res.status(403).json({ success: false, error: { message: 'Access denied to this brand', code: 'FORBIDDEN' } });
     }
 
-    const { name, code, description, logo_url, email, phone, address, website, status, currency } = req.body;
+    const { name, code, description, logo_url, email, phone, address, website, status, currency,
+      address_line_2, city, state, postal_code, country } = req.body;
 
     // 로고 변경 시 이전 파일 삭제
     if (logo_url && brand.logo_url && logo_url !== brand.logo_url) {
       await deleteOldImages(brand.logo_url);
     }
 
-    await brand.update({
+    // Persist the FULL standard address set (line1/line2/city/state/postal/country),
+    // matching the Restaurant address standard — only overwrite fields the client sent.
+    const updatePayload = {
       name: name || brand.name,
       code: code || brand.code,
       description,
@@ -287,7 +290,14 @@ router.put('/:id', authenticateToken, async (req, res) => {
       website,
       currency: currency || brand.currency,
       status: status || brand.status
-    });
+    };
+    if (address_line_2 !== undefined) updatePayload.address_line_2 = address_line_2;
+    if (city !== undefined) updatePayload.city = city;
+    if (state !== undefined) updatePayload.state = state;
+    if (postal_code !== undefined) updatePayload.postal_code = postal_code;
+    if (country !== undefined) updatePayload.country = country;
+
+    await brand.update(updatePayload);
 
     console.log(`✓ Brand updated: ${brand.name}`);
 
@@ -551,14 +561,16 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     // Check if brand has restaurants
     if (brand.restaurants && brand.restaurants.length > 0) {
       return res.status(400).json({
-        error: `Cannot delete brand with ${brand.restaurants.length} restaurant(s). Please remove or reassign restaurants first.`
+        success: false,
+        message: `Cannot delete brand with ${brand.restaurants.length} restaurant(s). Please remove or reassign restaurants first.`,
+        code: 'HAS_RESTAURANTS'
       });
     }
 
     await brand.destroy();
     console.log(`✓ Brand deleted: ${brand.name}`);
 
-    res.json({ message: 'Brand deleted successfully' });
+    res.json({ success: true, message: 'Brand deleted successfully' });
   } catch (error) {
     console.error('Error deleting brand:', error);
     res.status(500).json({ success: false, error: { message: 'Failed to delete brand', code: 'INTERNAL_ERROR' } });

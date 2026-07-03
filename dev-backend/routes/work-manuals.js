@@ -312,7 +312,7 @@ router.post('/', authenticateToken, async (req, res) => {
       title: title.trim(),
       content: content.trim(),
       author_id: req.user.id,
-      author_name: req.user.full_name,
+      author_name: req.user.full_name || req.user.email || 'User',
       author_role: req.user.role,
       category_id: category_id || null,
       attachments: attachments || null,

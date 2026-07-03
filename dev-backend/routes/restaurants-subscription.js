@@ -17,7 +17,7 @@ const AddonModule = require('../models/AddonModule');
 const { Recipe, Ingredient, RecipeIngredient } = require('../models');
 const CompanySettings = require('../models/CompanySettings');
 const { Op } = require('sequelize');
-const { authenticateToken, checkRestaurantAccess, requireRole } = require('../middleware/auth');
+const { authenticateToken, checkRestaurantAccess, requireRole, userCanAccessRestaurant } = require('../middleware/auth');
 const { validateRestaurantCreation } = require('../middleware/validation');
 const jwt = require('jsonwebtoken');
 const { getTodayBounds, getRestaurantTimezone } = require('../utils/dateTimeHelper');
@@ -361,6 +361,16 @@ router.post('/subscriptions', authenticateToken, async (req, res) => {
     const manager = await User.findByPk(managerId);
     if (!manager) {
       return res.status(404).json({ success: false, error: { message: 'Manager not found', code: 'NOT_FOUND' } });
+    }
+
+    // Authorization: the caller must oversee the target restaurant, and (unless
+    // System Admin) may only assign themselves as the managing account. Without
+    // this a manager could attach a subscription to any tenant's restaurant.
+    if (req.user.role !== 'System Admin') {
+      const canManage = await userCanAccessRestaurant(req.user, restaurantId);
+      if (!canManage || String(managerId) !== String(req.user.id)) {
+        return res.status(403).json({ success: false, error: { message: 'Not authorized to add a subscription for this restaurant', code: 'FORBIDDEN' } });
+      }
     }
 
     // Plan pricing

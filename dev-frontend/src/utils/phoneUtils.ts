@@ -22,6 +22,16 @@ export const getCountryByDialCode = (dialCode: string) => {
   return COUNTRIES.find(c => c.dialCode === dialCode) || COUNTRIES[0];
 };
 
+// Detect the country of a stored international number by its dial-code prefix
+// (longest match wins). Returns null when the value has no recognizable + prefix,
+// so callers can fall back to a default country.
+export const detectCountryFromInternational = (value: string) => {
+  if (!value || !value.startsWith('+')) return null;
+  const matches = COUNTRIES.filter(c => value.startsWith(c.dialCode));
+  if (!matches.length) return null;
+  return matches.reduce((best, c) => (c.dialCode.length > best.dialCode.length ? c : best));
+};
+
 /**
  * 전화번호를 국제 형식으로 변환
  * @param phone - 입력된 전화번호

@@ -728,6 +728,35 @@ const BrandReportsPage: React.FC = () => {
     return result.length > 0 ? result : [{ name: 'No Data', value: 100, sales: 0 }];
   }, [filteredOrders, menuItems, categories]);
 
+  // Operations stats derived from real orders (previously fabricated with Math.random,
+  // which re-rolled on every render). Stable + real.
+  const operationsStats = useMemo(() => {
+    const total = filteredOrders.length;
+    const done = filteredOrders.filter((o: any) => o.status === 'completed' || o.status === 'served').length;
+    const fulfillment = total ? Math.round((done / total) * 100) : 0;
+    const served = filteredOrders.filter((o: any) => o.served_at && o.createdAt);
+    const avgWait = served.length
+      ? Math.round(served.reduce((s: number, o: any) => {
+          const d = (new Date(o.served_at).getTime() - new Date(o.createdAt).getTime()) / 60000;
+          return s + (d > 0 ? d : 0);
+        }, 0) / served.length)
+      : 0;
+    const hourCounts: Record<number, number> = {};
+    filteredOrders.forEach((o: any) => {
+      const h = new Date(o.order_date || o.createdAt).getHours();
+      hourCounts[h] = (hourCounts[h] || 0) + 1;
+    });
+    let peak = -1, peakC = -1;
+    Object.entries(hourCounts).forEach(([h, c]) => { if (c > peakC) { peakC = c; peak = +h; } });
+    const label = (h: number) => {
+      if (h < 0) return '—';
+      const to = (x: number) => `${x % 12 === 0 ? 12 : x % 12}`;
+      const nh = (h + 1) % 24;
+      return `${to(h)}-${to(nh)} ${nh < 12 ? 'AM' : 'PM'}`;
+    };
+    return { fulfillment, avgWait, peakHour: label(peak), totalOrders: total };
+  }, [filteredOrders]);
+
   // Calculate menu performance
   const allMenuData = useMemo(() => {
     if (filteredOrders.length === 0) return [];
@@ -750,12 +779,12 @@ const BrandReportsPage: React.FC = () => {
     filteredOrders.forEach(order => {
       if (order.order_items && Array.isArray(order.order_items)) {
         order.order_items.forEach((item: any) => {
-          const menuName = item.menu_name || item.name || 'Unknown';
+          const menuName = item.menu_name || item.name || item.menuItem?.name || 'Unknown';
           const menuItemId = item.menuItem?.id?.toString() || item.product_id?.toString();
           const category = menuItemId ? (productCategoryMap[menuItemId] || 'Other') : (item.category || 'Other');
 
           if (!menuStats[menuName]) {
-            menuStats[menuName] = { category, price: parseFloat(item.price || 0), orders: 0, revenue: 0 };
+            menuStats[menuName] = { category, price: parseFloat(item.price || item.menuItem?.price || 0), orders: 0, revenue: 0 };
           }
 
           const quantity = parseInt(item.quantity || 1);
@@ -1114,7 +1143,7 @@ const BrandReportsPage: React.FC = () => {
 
           {/* Sales Tab */}
           <div style={{ display: activeTab === 'sales' ? 'block' : 'none' }}>
-            <FilterComponent />
+            {FilterComponent()}
             {loading && filteredOrders.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px' }}>{t('brand:brandReportsPage.loading')}</div>
             ) : filteredOrders.length === 0 ? (
@@ -1189,7 +1218,7 @@ const BrandReportsPage: React.FC = () => {
 
           {/* Sales Details Tab */}
           <div style={{ display: activeTab === 'details' ? 'block' : 'none' }}>
-            <FilterComponent />
+            {FilterComponent()}
             {loading && filteredOrders.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px' }}>{t('brand:brandReportsPage.loading')}</div>
             ) : filteredOrders.length === 0 ? (
@@ -1293,7 +1322,7 @@ const BrandReportsPage: React.FC = () => {
 
           {/* Menu Tab */}
           <div style={{ display: activeTab === 'menu' ? 'block' : 'none' }}>
-            <FilterComponent />
+            {FilterComponent()}
             <StatsRow>
               <StatCard color="#F59E0B">
                 <StatLabel>{t('brand:brandReportsPage.bestSeller')}</StatLabel>
@@ -1360,7 +1389,7 @@ const BrandReportsPage: React.FC = () => {
 
           {/* Customers Tab */}
           <div style={{ display: activeTab === 'customers' ? 'block' : 'none' }}>
-            <FilterComponent />
+            {FilterComponent()}
             <StatsRow>
               <StatCard color="#635BFF">
                 <StatLabel>{t('brand:brandReportsPage.totalCustomers')}</StatLabel>
@@ -1391,27 +1420,27 @@ const BrandReportsPage: React.FC = () => {
 
           {/* Operations Tab */}
           <div style={{ display: activeTab === 'operations' ? 'block' : 'none' }}>
-            <FilterComponent />
+            {FilterComponent()}
             <StatsRow>
               <StatCard color="#10B981">
                 <StatLabel>{t('brand:brandReportsPage.orderFulfillment')}</StatLabel>
-                <StatValue>{Math.round(95 * (0.9 + Math.random() * 0.15))}%</StatValue>
+                <StatValue>{operationsStats.fulfillment}%</StatValue>
                 <StatDescription>{t('brand:brandReportsPage.ontimeCompletion')}</StatDescription>
               </StatCard>
               <StatCard color="#F59E0B">
                 <StatLabel>{t('brand:brandReportsPage.avgWaitTime')}</StatLabel>
-                <StatValue>{Math.round(8 * (0.7 + Math.random() * 0.6))} min</StatValue>
+                <StatValue>{operationsStats.avgWait} min</StatValue>
                 <StatDescription>{t('brand:brandReportsPage.estimated')}</StatDescription>
               </StatCard>
               <StatCard color="#EF4444">
                 <StatLabel>{t('brand:brandReportsPage.peakHour')}</StatLabel>
-                <StatValue>12-1 PM</StatValue>
+                <StatValue>{operationsStats.peakHour}</StatValue>
                 <StatDescription>{t('brand:brandReportsPage.busiestTime')}</StatDescription>
               </StatCard>
               <StatCard color="#6366F1">
-                <StatLabel>{t('brand:brandReportsPage.staffEfficiency')}</StatLabel>
-                <StatValue>{Math.round(87 * (0.85 + Math.random() * 0.25))}%</StatValue>
-                <StatDescription>{t('brand:brandReportsPage.estimated')}</StatDescription>
+                <StatLabel>{t('brand:brandReportsPage.totalOrders', 'Total Orders')}</StatLabel>
+                <StatValue>{operationsStats.totalOrders}</StatValue>
+                <StatDescription>{t('brand:brandReportsPage.inPeriod', 'In selected period')}</StatDescription>
               </StatCard>
             </StatsRow>
 

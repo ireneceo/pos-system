@@ -5,7 +5,8 @@ import {
   getPhoneErrorMessage,
   formatPhoneNumber,
   COUNTRIES,
-  getCountryByCode
+  getCountryByCode,
+  detectCountryFromInternational
 } from '../../utils/phoneUtils';
 
 interface PhoneInputProps {
@@ -219,15 +220,24 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // 초기값 설정
+  // 초기값 설정 — 저장된 국제번호의 실제 dial code로 국가를 판별해 맞춘다.
+  // (기존: 항상 selectedCountry(기본국가)로 strip → 다른 국가코드 번호는 표시가
+  //  깨지고 한 글자만 쳐도 잘못된 국가코드로 저장되던 버그)
   useEffect(() => {
-    if (value) {
-      // 국가코드 제거하고 표시
-      const local = value.replace(selectedCountry.dialCode, '');
-      setDisplayValue(formatPhoneInput(local, selectedCountry.code));
-    } else {
+    if (!value) {
       setDisplayValue('');
+      return;
     }
+    const detected = detectCountryFromInternational(value);
+    if (detected && detected.code !== selectedCountry.code) {
+      // 저장된 번호의 국가를 채택 (effect가 갱신된 selectedCountry로 재실행)
+      setSelectedCountry(detected);
+      return;
+    }
+    const country = detected || selectedCountry;
+    // dial code를 접두사로서만 제거 (문자열 어디서나 replace 하지 않음)
+    const local = value.startsWith(country.dialCode) ? value.slice(country.dialCode.length) : value;
+    setDisplayValue(formatPhoneInput(local, country.code));
   }, [value, selectedCountry]);
 
   // 외부 클릭 감지

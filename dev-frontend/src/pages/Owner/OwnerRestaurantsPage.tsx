@@ -848,12 +848,14 @@ const OwnerRestaurantsPage: React.FC = () => {
         name: newRestaurant.name,
         email: newRestaurant.email,
         phone: newRestaurant.phone,
-        address: newRestaurant.address,
+        // Normalize empty address fields to null (not '') so a no-change save doesn't
+        // rewrite stored null values into empty strings.
+        address: newRestaurant.address || null,
         address_line_2: newRestaurant.address_line_2 || null,
-        city: newRestaurant.city,
-        state: newRestaurant.state,
-        postal_code: newRestaurant.postalCode,
-        country: newRestaurant.country,
+        city: newRestaurant.city || null,
+        state: newRestaurant.state || null,
+        postal_code: newRestaurant.postalCode || null,
+        country: newRestaurant.country || null,
         business_registration: newRestaurant.businessRegistration || undefined,
         tax_id: newRestaurant.taxId || undefined,
         cuisine: newRestaurant.cuisine

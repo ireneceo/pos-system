@@ -84,9 +84,30 @@ router.get('/purchase-orders/pending-approval', authenticateToken, requireOwnerS
     const nameMap = {};
     restaurants.forEach(r => { nameMap[r.id] = r.name; });
 
+    // Seller name lookup (supplier/brand/foodcourt) so the approval queue's Seller
+    // column isn't always '-'. Batch per type to avoid N+1.
+    const SupplierCompany = require('../models/SupplierCompany');
+    const Brand = require('../models/Brand');
+    const Foodcourt = require('../models/Foodcourt');
+    const idsByType = { supplier: new Set(), brand: new Set(), foodcourt: new Set() };
+    rows.forEach(p => { if (p.seller_entity_id && idsByType[p.seller_type]) idsByType[p.seller_type].add(p.seller_entity_id); });
+    const sellerName = { supplier: {}, brand: {}, foodcourt: {} };
+    const loadNames = async (Model, type) => {
+      const ids = [...idsByType[type]];
+      if (!ids.length) return;
+      const found = await Model.findAll({ where: { id: { [Op.in]: ids } }, attributes: ['id', 'name'] }).catch(() => []);
+      found.forEach(x => { sellerName[type][x.id] = x.name; });
+    };
+    await Promise.all([
+      loadNames(SupplierCompany, 'supplier'),
+      loadNames(Brand, 'brand'),
+      loadNames(Foodcourt, 'foodcourt')
+    ]);
+
     const data = rows.map(p => {
       const o = p.toJSON();
       o.restaurant_name = nameMap[p.entity_id] || null;
+      o.seller_name = (sellerName[p.seller_type] && sellerName[p.seller_type][p.seller_entity_id]) || null;
       return o;
     });
     res.json({ success: true, data });

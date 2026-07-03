@@ -462,11 +462,13 @@ const BrandPerformance: React.FC = () => {
         return;
       }
 
-      // Fetch orders for all restaurants in the date range
+      // Fetch orders spanning the PREVIOUS period start → current end so growth can
+      // be computed, and limit=0 (no cap) so revenue isn't truncated at 50 rows.
+      const fetchStart = getPreviousPeriodRange.start || dateRange.start;
       const ordersPromises = restaurants.map(async (restaurant) => {
         try {
           const response = await fetch(
-            `/api/orders?restaurant_id=${restaurant.id}&start_date=${dateRange.start}&end_date=${dateRange.end}`,
+            `/api/orders?restaurant_id=${restaurant.id}&start_date=${fetchStart}&end_date=${dateRange.end}&limit=0`,
             {
               headers: {
                 'Authorization': `Bearer ${token}`
@@ -631,9 +633,11 @@ const BrandPerformance: React.FC = () => {
         return orderDate >= prevStartDate && orderDate <= prevEndDate;
       });
 
-      // Calculate metrics
-      const completedOrders = currentPeriodOrders.filter(o => o.status === 'completed');
-      const prevCompletedOrders = previousPeriodOrders.filter(o => o.status === 'completed');
+      // Calculate metrics. Revenue = completed OR served, matching the franchise-map
+      // endpoint (brands-core status IN ('completed','served')) so the two brand views agree.
+      const isRevenue = (o: Order) => o.status === 'completed' || o.status === 'served';
+      const completedOrders = currentPeriodOrders.filter(isRevenue);
+      const prevCompletedOrders = previousPeriodOrders.filter(isRevenue);
 
       console.log(`[Performance] Restaurant ${restaurant.id} completed:`, {
         completedOrders: completedOrders.length,
@@ -769,6 +773,20 @@ const BrandPerformance: React.FC = () => {
     ? `${dateRange.start} ~ ${dateRange.end}`
     : { today: 'Today', week: 'This Week', month: 'This Month', year: 'This Year', all: 'All Time' }[activePeriod] || activePeriod;
 
+  const handleExportReport = () => {
+    const esc = (v: any) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const header = ['Restaurant', 'Brand', 'Total Orders', 'Completed/Served', 'Sales', 'Growth %', 'Avg Order', 'Max Order', 'Unique Customers', 'Avg Service (min)'];
+    const rows = sortedRestaurants.map(r => [r.name, r.brandName, r.totalOrders, r.completedOrders, r.sales, r.growth, r.avgOrder, r.maxOrder, r.uniqueCustomers, r.avgServiceTime].map(esc).join(','));
+    const csv = [header.map(esc).join(','), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `performance-${dateRange.start}_${dateRange.end}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <>
       <Container>
@@ -777,7 +795,7 @@ const BrandPerformance: React.FC = () => {
             <Title>{t('brand:brandPerformance.performance')}</Title>
           </div>
           <ActionSection>
-            <Button variant="primary">{t('brand:brandPerformance.exportReport')}</Button>
+            <Button variant="primary" onClick={handleExportReport}>{t('brand:brandPerformance.exportReport')}</Button>
           </ActionSection>
         </Header>
 

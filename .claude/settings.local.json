@@ -960,7 +960,8 @@
       "Bash(awk '/§?7-6|7\\\\.6|V1|V2|V3|V4|hardware-free|검증게이트|무접촉/{p=1} p{print} /^## |^# /{if\\(p && !/7-6/\\)p=0}' docs/ANDROID_APP_DESIGN.md)",
       "Bash(echo \"fake-printer PID $!\")",
       "Bash(echo \"sdk exists: $?\")",
-      "Bash(awk '/router\\\\.get\\\\\\(.\\\\/./{f=1} f{print NR\": \"$0} /res.json|res.status.*json/{if\\(f\\)c++; if\\(c>=1 && f\\) exit}' routes/brands.js)"
+      "Bash(awk '/router\\\\.get\\\\\\(.\\\\/./{f=1} f{print NR\": \"$0} /res.json|res.status.*json/{if\\(f\\)c++; if\\(c>=1 && f\\) exit}' routes/brands.js)",
+      "Bash(node /tmp/claude-1000/-var-www/b33c5ff2-0e8a-422b-9ecb-b6831b317788/scratchpad/owner_mount.js)"
     ],
     "deny": [],
     "ask": []

@@ -166,7 +166,7 @@ router.post('/', authenticateToken, async (req, res) => {
       entity_type,
       entity_id,
       author_id: req.user.id,
-      author_name: req.user.full_name,
+      author_name: req.user.full_name || req.user.email || 'User',
       author_role: req.user.role,
       content: content || '',
       attachments: attachments || null,

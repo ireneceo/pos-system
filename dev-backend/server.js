@@ -518,6 +518,7 @@ app.use('/api', generalStockRouter);  // Company-wide general stock routes for B
 app.use('/api/product-ingredient-categories', productIngredientCategoriesRouter);
 app.use('/api/subscriptions', subscriptionsRouter);  // Subscriptions (dashboard)
 app.use('/api/owner', ownerRouter);  // Restaurant Owner routes
+app.use('/api/manager', require('./routes/manager-sales'));  // Manager (Brand/Foodcourt) real sales aggregation
 app.use('/api/comments', commentsRouter);  // Polymorphic comments (notices, tickets)
 app.use('/api/notices', noticesRouter);  // Notices (공지) system
 app.use('/api/inbox', inboxRouter);  // Unified inbox (Notice + Tickets)

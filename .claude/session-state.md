@@ -1,68 +1,49 @@
 # Purple POS — 개발 세션 상태
 
-<!-- AUTOSAVE-STALE-BANNER -->
-> **[AUTO-SAVE STALE] (2026-07-03 10:20, idle 1959s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
-> 변경된 작업 파일: _tmp_find_ra.js,repro-comment.js repro2.js,repro3.js repro4.js,repro5.js repro6.js,repro7.js repro8.js
-<!-- /AUTOSAVE-STALE-BANNER -->
-
-<!-- 2026-07-03 세션: Irene 이동 중, 자율진행+저장 지시. 아래 "다음 세션 최우선" 참조. -->
-
 ## 현재 작업 상태
 
-**마지막 업데이트:** 2026-07-03 (세션 중단 — Irene 이동, 자율진행 지시 후 저장/개발완료)
-**버전:** 운영=**v3.66 / SW 4.56** (2026-07-02 데스크탑앱 인에이블 배포 — 버전 미상승=기존 매장엔 dead-code/opt-in. Backup 20260702_065514)
-**작업 상태:** 진행 중 (미완료 — 아래 최우선 인계 참조)
+**마지막 업데이트:** 2026-07-03 #2 (BG/Owner 전수감사 32건 수정·검증·배포 + AI 음식인식 설계 + 개발순서 로드맵)
+**버전:** 운영=**v3.66 / SW 4.56** (dev SW=4.58, 미배포 — /배포 시에만 갱신)
+**작업 상태:** 완료 (체크포인트)
 
-## 🔴 다음 세션 최우선 — 데모 버그 4건 (Irene 재요청, 지난번 미반영분)
+### 진행 중인 작업
+- 없음
 
-> 2026-07-03 Irene가 "하던 일"로 지목한 실제 작업. (session-state가 안드로이드로 stale했었음 — 정정함.)
-> 데모 로그인: `POST /api/auth/demo-login {key}` → key: BG=`demo_brand_general`(user#22,brand10), Owner=`demo_multi_owner`(user#289). base=localhost:3001/api.
+### 완료된 작업 (이번 세션 — 2026-07-03)
+- **데모 버그 4건** — 전부 현재 dev 정상(원인=SW 캐시 옛 번들) 확인, dev SW 4.57→4.58 bump+재빌드 배포.
+- **BG/Owner 전수감사 — 32건 수정·검증·배포** (Fable 감사→적대검증→Opus 수정, 40건 중 32건). 단일진실 `docs/BG_OWNER_AUDIT_2026-07-03.md`:
+  - 보안 5(IDOR·인보이스 PATCH·SMTP·구독스코프·owner self-entity, userCanAccessEntity 신설, 크로스테넌트 403/정상 200 검증)
+  - 크래시·500 8(오너 댓글/매뉴얼 author_name·삭제 FK캐스케이드·React#31 공용 getErrorMessage)
+  - 주소 3(브랜드 전체필드 round-trip·삭제 응답표준·owner null 정규화 — 레스토랑 표준)
+  - 리포트/성능 7 + **#9 Manager Sales 실매출 엔드포인트**(`/api/manager/sales-summary` 신규·타임존정확·테스트주문 검증) + **#31 PhoneInput 크로스컨트리 오파싱**
+  - /검증: hydration0·design신규0·health106/107(1=의도된 desktopP2)·i18n통과·mount crash0
+- **AI 음식인식 서빙 설계 확정**(Fable) — `docs/AI_FOOD_RECOGNITION_DESIGN.md`. 결정 3개 잠금(사진보관X / 참조사진=메뉴+설정업로드 / RM179 Enterprise 게이팅). 메모리 [[project_ai_food_recognition]].
+- **개발순서 로드맵**(Fable 판단) 확정 — 아래 섹션.
 
-### Brand General 데모 — 재수정 3건 (나머지는 확인됨, 이 3개만 미반영)
-1. **franchise → Restaurant Admin [Deactivate] 안 됨** — 비활성화가 동작 안 함. is_active/userCanAccessRestaurant BG 스코프 의심.
-2. **Brand menu 생성 시 'Linked Recipe (optional)'에 등록한 ProductRecipe가 안 불러와짐** — 드롭다운 empty. BG=ProductRecipe(≠RA Recipe), brand_id snake_case/scope 의심. BrandMenusPage.tsx.
-3. **communication → notice 공지 댓글 달고 삭제 시 삭제 안 됨** — comments.js DELETE 권한/paranoid/validTypes(3곳) 의심.
-
-### Multi restaurant owner 데모 — "No Active Subscription" 로 로그인 불가 → 수정확인 못함
-4. **조사결과(2026-07-03): 백엔드는 이미 정상.** `/api/owner/allowed-routes` 를 owner 데모 토큰으로 호출 시 `plan_type=Owner Enterprise, subscription_status=active, routes 17, modules 13` 정상 반환(owner.js:932 `isDemo` 특수처리가 데모오너=Enterprise/active 부여). `/api/owner/restaurants` 도 data 반환. **→ 게이트(MainLayout.tsx:2308 needsSubscription)는 API가 맞으므로 통과해야 정상.** 남은 확인 = **dev-frontend 빌드가 현재 코드인지 / 실제 브라우저에서 owner 데모 로그인 재현.** 프론트 재빌드 후 재현 안 되면 이미 해결된 것일 수 있음. (백엔드 데이터/코드 수정 불필요 판단.)
-
-### ⚠️ 이 세션에서 띄운 백그라운드 에이전트 4개 (결과 미수집 — 다음 세션 반드시 확인)
-- 버그 1·2·3 각각 "조사+수정+검증" 에이전트 + BG 전수감사 에이전트 1개를 병렬 dispatch함.
-- **에이전트들이 dev-frontend/dev-backend에 수정을 편집했을 수 있으나 미검증·미빌드·미재시작 상태.** `git diff` 로 무슨 파일이 바뀌었는지 먼저 확인하고, 각 수정을 API/헤드리스로 검증 후 빌드+pm2 restart. 보호파일(print/KDS 8개)은 안 건드리게 지시했으니 `node dev-backend/scripts/check-print-guard.js`로 무결성 먼저 확인.
-- BG 전수감사 결과(task#6)는 다음 세션 버그 목록으로 사용.
-
-### 진행 중인 작업 (병행)
-- **안드로이드앱 구현** (아래 별도 섹션) — MainActivity.java 브릿지주입 편집 미커밋 상태.
-
-### 완료된 작업 (이번 세션 — 2026-07-02)
-- **데스크탑앱(Windows/Electron) P0~P3 구현 + Fable 게이트 PASS + 운영 배포**
-  - P0 스캐폴드 / P1 네이티브 브릿지(`__NATIVE_PRINT` §4)+Main인쇄(htmlPrinter·rawLan·rawWindows·serialQueue) / P2 billPrint 8절단면(QZ 투명대체) / P3 셸(2모니터 고객디스플레이·자동시작·powerSaveBlocker·electron-updater·아이콘)
-  - 서버서 wine으로 `PurplePOS-Setup-0.1.0.exe`(76MB, oneClick 자동설치) 빌드 → 운영 호스팅 `https://purplehere.com/desktop/PurplePOS-Setup.exe`
-  - 윈도우 접속 자동감지 → PwaInstallBanner "Download for Windows" CTA(4언어, 로그인 시 노출·앱내 숨김)
-  - 앱 프린터 설정 = "직접 인쇄 활성"(QZ 설치 잔재 숨김, 브라우저는 QZ 유지)
-  - 헤드리스 런타임 스모크(Xvfb): 브릿지 7/7(printHtml 한글→PDF·PRINTER_NOT_FOUND·rawLan) / node유닛 6/6 / build green / health 106/107(1=print-guard 의도) / critical mount✓
-  - 운영 배포 2회(--skip-safety=승인된 인쇄변경, dev-backend 무변경 no-op), 스모크 9/9
-- **안드로이드앱 착수(Capacitor)** — `/var/www/mobile-app/`(격리). 원격로드+`__NATIVE_PRINT` 네이티브 주입=billPrint 그대로(프론트 0줄). 스코프 확정=**WiFi+블투(USB 제외), 검증 라이브러리(DantSu 계열)**. 설계·스캐폴드·플러그인 스켈레톤 완비. `docs/ANDROID_APP_DESIGN.md`.
-- **영어 단어암기앱 "Lingo" 착수** — **`/opt/lingo/`**(PlanQ `/opt/planq`처럼 완전 분리, 별도 repo, /var/www 밖). 백엔드 PM2 `lingo-backend`:3010 구동, DB lingo_dev_db, Claude Code 연결(CLAUDE.md+커맨드), 기획서 `docs/PRODUCT_SPEC.md`. 상세 설계는 Fable과. (초기 /var/www/lingo→2026-07-02 /opt/lingo 이동.)
-
-### 진행 중: 안드로이드앱 (Fable 리드 — 기본설계 잠금, Opus 구현 중)
-- **역할**: 기본설계+검증게이트 = **Fable**(리더, Irene 2026-07-03 지정) / 구현 = Opus.
-- **기본설계 잠금**: Fable이 `mobile-app/docs/ANDROID_APP_DESIGN.md` **§7 확정**(A1 구현의 단일 기준, 변경은 Fable 재확인). 갭3 해결 = 7-1 프린터 레지스트리(안드로이드엔 OS스풀러 없음→앱 자체목록, 미스=명시실패) / 7-2 printHtml=WebView 오프스크린→비트맵→ESC/POS 래스터(한글보존) / 7-3 직렬화(serialQueue 대칭) / 7-4 블투권한 / 7-5 플러그인 등록·브릿지 주입 / 7-6 하드웨어 없는 검증(에뮬+가짜프린터로 도착 바이트=브라우저와 동일 실증).
-- **Opus 구현 순서 (Fable 승인, 중간승인 불필요)**: ①JDK+Android SDK `/opt/android-sdk` 격리설치(2026-07-03 재개 허가) → ②프로젝트 생성+플러그인 배선·브릿지 주입 → ③WiFi(LAN)인쇄+드로어 → ④HTML→비트맵 인쇄(한글) → ⑤블투경로+프린터등록 화면 → ⑥APK빌드(dev/운영) → ⑦**Fable 검증게이트**(V1~V4+보호파일 무접촉) → ⑧A3 실기기.
-- **Irene 필요 = A3 하드웨어 1개**: 안드로이드 태블릿(가능하면 Android 10+) + 블투 프린터. ⑦ 통과 후 종이 확인 1회. 그전까진 불필요.
-- 위치 `/var/www/mobile-app/`(격리), billPrint 프론트 0줄(§4). 운영 웹/인쇄코드 무접촉(print-guard 자동감시).
-2. **윈도우앱 매장 확인** — Irene 오늘 매장서 실행·로그인·POS로드·프린터목록·UI 확인(**실프린터 종이 인쇄는 안 함 — 본인 매장 아님**).
-3. **윈도우앱 실프린터 종이 확인 = 실제 쓸 고객 생겼을 때** 그 프린터로 확인·보완 → 그 후 `check-print-guard.js --bless`. 그 전까진 print-guard 빨강(billPrint+MainLayout)=의도된 fail-closed.
-
-### 다음 확정 작업 (Irene 명시 지시 — 이어서 할 것)
-1. **데모 버그 4건 마무리** (위 "🔴 다음 세션 최우선"): ①먼저 `git diff`로 백그라운드 에이전트가 남긴 수정 확인 → `check-print-guard.js` 무결성 → ②버그1·2·3 수정 검증(API 실호출)+프론트 빌드+pm2 restart → ③owner 데모는 프론트 재빌드 후 실브라우저 로그인 재현(백엔드 정상 확인됨) → ④BG 전수감사 결과 반영.
-2. **안드로이드앱 구현 계속**: MainActivity 브릿지주입 커밋 후 순서 ③~⑧ (WiFi인쇄→HTML비트맵→블투+등록화면→APK빌드→Fable게이트⑦→실기기⑧). SDK=`/opt/android-sdk`.
+### 다음 확정 작업 (Irene 지시 = 로드맵대로)
+- **P1: 브랜드-인벤토리 브랜드모드 클러스터 (#5/6/36/23/35)** — 스코핑 완료. 근본: 브랜드모드 액션 훅들이 레스토랑 경로 사용. 스톡목록은 정상(`useInventoryData:91` `/api/product-ingredients`=**BG Product기준 ProductIngredient**, 메뉴/레시피 아님 — Irene 확인). 수정=useSettingsModal/useOrderModal/useAlertResolver/InventoryManager를 mode-aware화 → 브랜드모드는 product-ingredient 엔드포인트 호출 + 없는 것 신설(brand-inventory.js 확장).
+- 이후 로드맵 순서: #24 구독(Fable 돈게이트) → AI Track A → #8+#38 analytics → AI Track B(Fable) → 안드로이드.
 
 ### 후속 후보 (아이디어 메모, 확정 X)
 > 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.
-- Lingo 상세 개발설계(Fable)·프론트 npm install·dev 서브도메인(브라우저 접속용).
-- 데스크탑앱 코드사이닝(여러 고객 셀프설치 확대 시 SmartScreen 제거용, 지금 불필요).
-- 오더노트 주방티켓 실프린터 눈확인(v3.66) / IOI Mall 매출 API 운영전환.
+- **AI Phase 0 (Irene 액션)**: ①GCP/Vertex 프로젝트+자격증명 ②안드로이드 태블릿1+BT프린터 ③#8 데이터소스 결정(직원/고객 지표 원천 없음 → 숨김 vs 추적기능 신설).
+- 앱 진입 UX(아래) — 안드로이드/윈도우 앱 완료기준.
+- Lingo 상세 개발설계(Fable)·dev 서브도메인. 오더노트 실프린터 눈확인. IOI Mall 매출 API 운영전환(+ mallSalesService.js:289 타임존 검토).
+
+---
+
+## 📌 앱 진입 UX 요구 (2026-07-03 Irene 지시) — 안드로이드/윈도우 앱 공통
+- **접속 즉시 바로 접근 가능한 "제대로 된 UI/UX"**여야 함. 앱(안드로이드·윈도우) 실행→로그인→POS 도달까지 매끄럽고 정돈된 진입경험 필수. 스플래시/로그인/기기설정 화면 품질 = 앱 작업 완료기준에 포함.
+
+## 🧭 개발 순서 로드맵 (2026-07-03, Fable 판단 · Irene 위임 · 정석대로)
+원리: ①살아있는 제품의 능동적 피해부터 멈춤 ②저위험 성과+미래자산 ③프리미엄 빌드 ④리드타임 항목은 Day0 병렬. 트랙 간 코드충돌 없음(FE/BE/네이티브), 인쇄 8파일 무접촉.
+- **P0(즉시 병렬, Irene 액션):** Vertex 세팅(→AI TrackB) · 안드로이드 하드웨어(→Track3 실기기) · #8 데이터소스 결정(→#8·#38).
+- **P1 라이브 정합성:** #31 PhoneInput ✅ → 브랜드-인벤토리 클러스터(#5/6/36/23/35, 5-for-1) → #24 구독 미저장(돈=Fable게이트).
+- **P2 빠른성과+B예열:** AI Track A(아이템 썸네일·탭상세, 순수FE·저위험, P1과 병렬 가능). 매장이 사진 채움→Track B 정확도 레퍼런스.
+- **P3:** #8 Manager Reports + #38 Customer Insights(실 analytics 엔드포인트).
+- **P4 프리미엄:** AI Track B(카메라 인식→Serve, Enterprise게이트, Fable게이트).
+- **P5:** 안드로이드 완성(에뮬 단계 P1~P4 병렬, 실기기 V1~V4는 하드웨어 후). ⚠️예외: 안드로이드 인쇄 막혀 영업지장 라이브 매장 생기면 즉시 P1급.
+- 한 줄: (P0 병렬)→#31✅→인벤토리클러스터→#24(Fable)→AI TrackA→#8+#38→AI TrackB(Fable)→안드로이드.
 
 ---
 

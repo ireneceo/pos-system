@@ -185,6 +185,7 @@ const BrandManagement: React.FC = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
+  const [deleteError, setDeleteError] = useState<string>('');
 
   useEffect(() => {
     fetchBrands();
@@ -269,6 +270,7 @@ const BrandManagement: React.FC = () => {
 
   const handleDeleteBrand = (brand: Brand) => {
     setSelectedBrand(brand);
+    setDeleteError('');
     setShowDeleteModal(true);
   };
 
@@ -294,7 +296,7 @@ const BrandManagement: React.FC = () => {
           fetchBrands();
         } else {
           const errorData = await response.json();
-          setError(errorData.error || 'Failed to update brand');
+          setError(errorData.error?.message || errorData.message || (typeof errorData.error === 'string' ? errorData.error : '') || 'Failed to update brand');
         }
       } else {
         const response = await fetch('/api/brands', {
@@ -314,7 +316,7 @@ const BrandManagement: React.FC = () => {
           fetchBrands();
         } else {
           const errorData = await response.json();
-          setError(errorData.error || 'Failed to create brand');
+          setError(errorData.error?.message || errorData.message || (typeof errorData.error === 'string' ? errorData.error : '') || 'Failed to create brand');
         }
       }
     } catch (error) {
@@ -336,13 +338,31 @@ const BrandManagement: React.FC = () => {
       });
 
       if (response.ok) {
+        setDeleteError('');
+        setShowDeleteModal(false);
         fetchBrands();
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        setDeleteError(errorData.message || errorData.error?.message || (typeof errorData.error === 'string' ? errorData.error : '') || 'Failed to delete brand.');
       }
     } catch (error) {
       console.error('Error deleting brand:', error);
+      setDeleteError('Failed to delete brand. Please try again.');
     }
+  };
 
-    setShowDeleteModal(false);
+  const handleExport = () => {
+    const esc = (v: any) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const header = ['Name', 'Code', 'Description', 'Email', 'Phone', 'Address', 'Status'];
+    const rows = brands.map(b => [b.name, (b as any).code, b.description, (b as any).email, (b as any).phone, (b as any).address, (b as any).status].map(esc).join(','));
+    const csv = [header.map(esc).join(','), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `brands-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleNavigateToRestaurants = (brand: Brand) => {
@@ -354,7 +374,7 @@ const BrandManagement: React.FC = () => {
         <Header>
           <Title>{t('brand:brandManagement.brands')}</Title>
           <ActionSection>
-            <Button variant="secondary">{t('brand:brandManagement.export')}</Button>
+            <Button variant="secondary" onClick={handleExport}>{t('brand:brandManagement.export')}</Button>
             <Button variant="primary" onClick={handleAddBrand}>{t('brand:brandManagement.addBrand')}</Button>
           </ActionSection>
         </Header>
@@ -570,9 +590,11 @@ const BrandManagement: React.FC = () => {
           <ConfirmModal
             isOpen={showDeleteModal}
             title="Delete Brand"
-            message={`Are you sure you want to delete '${selectedBrand?.name}' brand? This action cannot be undone.`}
+            message={deleteError
+              ? deleteError
+              : `Are you sure you want to delete '${selectedBrand?.name}' brand? This action cannot be undone.`}
             onConfirm={confirmDelete}
-            onCancel={() => setShowDeleteModal(false)}
+            onCancel={() => { setShowDeleteModal(false); setDeleteError(''); }}
             confirmText="Delete"
             cancelText="Cancel"
             type="danger"

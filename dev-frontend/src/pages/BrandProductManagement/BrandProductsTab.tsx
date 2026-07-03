@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { getErrorMessage } from '../../utils/apiError';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
@@ -651,7 +652,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         handleCloseModal();
         fetchProducts();
       } else {
-        setFormError(data.error || 'Failed to save product');
+        setFormError(getErrorMessage(data, 'Failed to save product'));
       }
     } catch (error) {
       console.error('Failed to save product:', error);
@@ -673,7 +674,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
       if (data.success) {
         fetchProducts();
       } else {
-        alert(data.error || data.message || 'Failed to copy product');
+        alert(getErrorMessage(data, 'Failed to copy product'));
       }
     } catch (error) {
       console.error('Failed to copy product:', error);
@@ -761,7 +762,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         setProductToDelete(null);
         fetchProducts();
       } else {
-        setInfoModal({ open: true, title: t('brand:brandProductsTab.deleteFailedTitle', 'Delete Failed'), message: data.error || t('brand:brandProductsTab.deleteFailedMessage', 'Failed to delete product.') });
+        setInfoModal({ open: true, title: t('brand:brandProductsTab.deleteFailedTitle', 'Delete Failed'), message: getErrorMessage(data, t('brand:brandProductsTab.deleteFailedMessage', 'Failed to delete product.')) });
       }
     } catch (error) {
       console.error('Failed to delete product:', error);

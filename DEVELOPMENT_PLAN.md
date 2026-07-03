@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-07-03 (**데모 버그 4건 조사 착수 + 안드로이드앱 브릿지주입 + 세션 중단 인계** — Irene 이동으로 자율진행+저장. ①BG 데모 재수정 3건(franchise RA Deactivate 무동작 / Brand menu 'Linked Recipe(optional)' 드롭다운 empty / notice 공지 댓글삭제 무동작) ②Multi restaurant owner 데모 로그인 "No Active Subscription" → **조사결과 백엔드는 정상**(owner.js:932 isDemo 특수처리로 `/api/owner/allowed-routes`가 plan=Owner Enterprise·active·routes17 반환, `/api/owner/restaurants` data 반환) → 남은 건 dev-frontend 재빌드 후 실브라우저 재현뿐(코드/데이터 수정 불필요 판단). ③버그1·2·3 조사·수정 에이전트 3개 + BG 전수감사 에이전트 1개 병렬 dispatch=**결과 미수집·미검증**(다음 세션 git diff로 확인+검증+빌드). ④안드로이드 MainActivity.java `__NATIVE_PRINT` 브릿지주입(onPageLoaded) 편집=미커밋. 상세=session-state "다음 세션 최우선".)
+> **최종 업데이트:** 2026-07-03 #2 (**BG/Owner 전수감사 32건 수정·검증·배포 + AI 음식인식 설계(Fable) + 개발순서 로드맵** — 데모버그4건은 전부 현재 dev 정상(원인=SW캐시)로 확인 후 SW4.58 배포. **Fable 감사→적대검증**으로 BG/Owner 결함 40건 발견, **32건 수정 완료**: 보안5(IDOR·인보이스PATCH·SMTP·구독스코프·owner self-entity, 크로스테넌트 403 검증)·크래시/500 8(오너 댓글/매뉴얼 author_name·삭제 FK캐스케이드·React#31)·주소3(브랜드 전체필드 round-trip·owner null정규화, 레스토랑 표준)·리포트/성능7(50건캡·served집계·성장률·Export死·Math.random·필터리마운트·BestSeller)·**#9 Manager Sales 실매출 엔드포인트 신규**(`/api/manager/sales-summary` 타임존정확, 테스트주문 주입검증)·**#31 PhoneInput 크로스컨트리 오파싱**(dial code로 국가판별)·기타. 잔여 8건=기능규모(인벤토리 브랜드모드=BG ProductIngredient기준·#8리포트 범위엔드포인트·#38고객분석·#24구독청구). **AI 음식인식 서빙** 설계확정(`docs/AI_FOOD_RECOGNITION_DESIGN.md`, 메뉴사진 임베딩+조리완료 제약매칭·RM179 Enterprise·모바일웹·인쇄무접촉·2테이블). 개발순서 로드맵 Fable판단 확정(session-state). /검증: hydration0·design신규0·health106/107(1=의도된 desktopP2)·i18n통과. 상세 ↓.)
+>
+> **이전:** 2026-07-03 #1 (데모 버그 4건 조사 → 전부 현재 dev 정상(SW캐시 원인) 확인, SW4.58 배포. 안드로이드 MainActivity 브릿지주입.)
 >
 > **이전:** 2026-07-02 #3 (**데스크탑앱 P0~P3 + Fable게이트 PASS + 운영배포(SW4.56) + 안드로이드/Lingo 착수** — 서버 wine으로 `PurplePOS-Setup.exe`(oneClick 자동설치) 빌드→운영 호스팅 `purplehere.com/desktop/` + 윈도우 자동감지 다운로드 CTA(4언어, 로그인시 노출·앱내 숨김) + 앱 네이티브 프린터설정 UI("직접 인쇄 활성", QZ 설치잔재 숨김·브라우저는 QZ 유지). billPrint P2=QZ 투명대체(브라우저/USB/태블릿 dead-code=무영향). 운영배포 2회(--skip-safety, dev-backend no-op, 스모크9/9). **안드로이드앱**(`/var/www/mobile-app/` Capacitor·WiFi+블투·검증라이브러리·프론트0줄재사용) + **Lingo 단어앱**(`/var/www/lingo/` 격리 PM2 3010) 착수. 실프린터 종이확인=실고객 생길 때(bless 보류, print-guard 빨강=의도). 상세 ↓.)
 >
@@ -33,6 +35,34 @@
 > **이전:** 2026-06-23 (**v3.62 운영 배포 완료** — thefire 실사용 준비 7건: 직원 PIN 전환 수정 · 시재 개시모드(이월/고정) · 마감 폰트 통일 · 통합오더티켓 'Full' 수동인쇄 · 로그인 직원 PIN 우선 · 설정 QR 인쇄버튼 · Windows 7/8 QZ 설치 수정. Backup 20260623_124849, Smoke 9/9, SW=3.95. /검증 통과: health 107/107·print-guard 8/8(billPrint 무수정)·hydration0·timezone0·design0·i18n0·mount(floor-plan/settings/cash-up/pos) crash0.)
 >
 > **이전:** v3.61 발주 UX 대정리 + 외부공급업체 + 플로어플랜 핫픽스. SW=3.90.
+
+## ✅ 완료: BG/Owner 전수감사 32건 수정 + AI 음식인식 설계 + 개발순서 로드맵 (2026-07-03 #2, dev 검증·배포 SW4.58)
+
+> Fable 감사(실브라우저+증거)→적대적 검증→Opus 수정. 40건 발견, 32건 수정 완료(잔여 8=기능규모). 단일 진실 = `docs/BG_OWNER_AUDIT_2026-07-03.md`.
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 보안 5건 | IDOR(activity-logs)·인보이스 PATCH 권한·SMTP 소유권·BG 구독 스코프·owner self-entity. userCanAccessEntity 신설. 크로스테넌트 403/정상 200 검증 | ✅ |
+| 크래시·500 8건 | 오너 댓글/업무매뉴얼 author_name 폴백·브랜드상품/옵션그룹 삭제 FK 캐스케이드·React #31(공용 getErrorMessage) | ✅ |
+| 주소 3건 | 브랜드 PUT 전체 주소필드 저장(round-trip 검증)·브랜드삭제 응답표준화·owner 매장 null 정규화. 레스토랑 표준 준수 | ✅ |
+| 리포트/성능 7건 | Performance 50건캡(limit=0)·served집계·성장률·Export死·Reports Math.random→실집계·필터 리마운트(FilterComponent() 인라인)·BestSeller·월필터 동적·ISO날짜·알림토글 wipe·오너 이메일엔티티 | ✅ |
+| #9 Manager Sales | 하드코딩0 제거 → `/api/manager/sales-summary` 신규(타임존정확·revenue=completed+served·topItems·hourly). 테스트주문 주입→집계 검증 후 삭제 | ✅ |
+| #31 PhoneInput | 저장번호 dial code로 국가 판별해 strip(크로스컨트리 오파싱·오염 수정). phoneUtils.detectCountryFromInternational. 유닛+mount 검증 | ✅ |
+| AI 음식인식 설계 | Fable: 메뉴사진 임베딩 유사도+조리완료 제약매칭, RM179 Enterprise 게이팅, 모바일웹, 2테이블, 인쇄무접촉. `docs/AI_FOOD_RECOGNITION_DESIGN.md` | ✅ |
+| 개발순서 로드맵 | Fable 판단: (P0병렬)→#31→인벤토리클러스터→#24→AI TrackA→#8+#38→AI TrackB→안드로이드. session-state 박제 | ✅ |
+
+### 수정/신규 파일
+- 백엔드: `middleware/auth.js`(userCanAccessEntity)·`routes/{activityLogs,invoices-crud,notification-settings,restaurants-crud,restaurants-subscription,comments,work-manuals,brand-menu-option-groups,brand-products,brands-core,purchase-orders-approval}.js`·`routes/manager-sales.js`(신규)·`server.js`
+- 프론트: `utils/apiError.ts`(신규)·`utils/phoneUtils.ts`·`components/Common/PhoneInput.tsx`·`components/Contract/ContractPipeline.tsx`·`pages/BrandGeneral/{BrandManagement,BrandPerformance,BrandReportsPage}.tsx`·`pages/BrandProductManagement/{BrandProductsTab,BrandProductCategoriesTab,BrandProductOptionsTab}.tsx`·`pages/Manager/{SalesPage,InvoicesPage}.tsx`·`pages/Owner/{OwnerReportsPage,OwnerRestaurantsPage}.tsx`·`pages/NotificationSettings/NotificationSettingsPage.tsx`·`public/sw.js`(4.58)
+- 문서: `docs/AI_FOOD_RECOGNITION_DESIGN.md`·`docs/BG_OWNER_AUDIT_2026-07-03.md`(신규)
+
+### 잔여 (다음, 기능규모)
+- 인벤토리 브랜드모드 #5/6/36/23/35(=BG ProductIngredient 기준, 액션 훅 mode-aware화) · #8 ManagerReports(범위 analytics 엔드포인트) · #38 고객분석 · #24 구독 청구흐름(Fable 돈게이트)
+- 보안 5건 = 배포 시 Fable 게이트(보안경계). 운영배포는 Irene /배포 지시만.
+
+---
 
 ## ✅ 완료: 데스크탑앱(Electron, QZ 대체) 사전 점검 + 설계 (2026-07-01 #2, 문서 작업 — 코드 무수정)
 

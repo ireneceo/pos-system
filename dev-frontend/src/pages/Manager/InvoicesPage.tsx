@@ -859,9 +859,9 @@ const ManagerInvoicesPage: React.FC = () => {
 
           <FilterSelect value={filterMonth} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterMonth(e.target.value)}>
             <option value="all">{t('admin:invoicesPage.allMonths')}</option>
-            <option value="2025-01">{t('admin:invoicesPage.january2025')}</option>
-            <option value="2024-12">{t('admin:invoicesPage.december2024')}</option>
-            <option value="2024-11">{t('admin:invoicesPage.november2024')}</option>
+            {Array.from(new Set(invoices.map(i => (i.issueDate || '').slice(0, 7)).filter(Boolean)))
+              .sort().reverse()
+              .map(m => <option key={m} value={m}>{m}</option>)}
           </FilterSelect>
         </FilterBar>
 

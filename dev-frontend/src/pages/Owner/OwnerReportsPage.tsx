@@ -948,7 +948,7 @@ const OwnerReportsPage: React.FC = () => {
 
           {/* Sales Tab */}
           <div style={{ display: activeTab === 'sales' ? 'block' : 'none' }}>
-            <FilterComponent />
+            {FilterComponent()}
             {loading && filteredOrders.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px' }}>{t('owner:ownerReportsPage.loading')}</div>
             ) : filteredOrders.length === 0 ? (
@@ -1023,7 +1023,7 @@ const OwnerReportsPage: React.FC = () => {
 
           {/* Sales Details Tab */}
           <div style={{ display: activeTab === 'details' ? 'block' : 'none' }}>
-            <FilterComponent />
+            {FilterComponent()}
             {loading && filteredOrders.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px' }}>{t('owner:ownerReportsPage.loading')}</div>
             ) : filteredOrders.length === 0 ? (
@@ -1127,7 +1127,7 @@ const OwnerReportsPage: React.FC = () => {
 
           {/* Menu Tab */}
           <div style={{ display: activeTab === 'menu' ? 'block' : 'none' }}>
-            <FilterComponent />
+            {FilterComponent()}
             <StatsRow>
               <StatCard color="#F59E0B">
                 <StatLabel>{t('owner:ownerReportsPage.bestSeller')}</StatLabel>
@@ -1194,7 +1194,7 @@ const OwnerReportsPage: React.FC = () => {
 
           {/* Customers Tab */}
           <div style={{ display: activeTab === 'customers' ? 'block' : 'none' }}>
-            <FilterComponent />
+            {FilterComponent()}
             <StatsRow>
               <StatCard color="#635BFF">
                 <StatLabel>{t('owner:ownerReportsPage.totalCustomers')}</StatLabel>
@@ -1225,7 +1225,7 @@ const OwnerReportsPage: React.FC = () => {
 
           {/* Operations Tab */}
           <div style={{ display: activeTab === 'operations' ? 'block' : 'none' }}>
-            <FilterComponent />
+            {FilterComponent()}
             <StatsRow>
               <StatCard color="#10B981">
                 <StatLabel>{t('owner:ownerReportsPage.orderFulfillment')}</StatLabel>

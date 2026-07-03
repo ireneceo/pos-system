@@ -333,30 +333,27 @@ const ManagerSalesPage: React.FC = () => {
   useEffect(() => {
     const fetchSalesData = async () => {
       try {
-        const restaurantsResponse = await fetch('/api/restaurants', { headers: getAuthHeaders() });
-        if (!restaurantsResponse.ok) {
-          console.error('Failed to fetch restaurants');
+        // Real per-restaurant sales aggregation (timezone-correct, revenue = completed+served).
+        const response = await fetch('/api/manager/sales-summary', { headers: getAuthHeaders() });
+        if (!response.ok) {
+          console.error('Failed to fetch sales summary');
           return;
         }
-
-        const restaurantsData = await restaurantsResponse.json();
-        const restaurants = restaurantsData.data || restaurantsData;
-
-        // For now, set empty data structure - would need orders API to calculate real sales
-        const salesData: RestaurantSales[] = restaurants.map((restaurant: any) => ({
-          id: restaurant.id.toString(),
-          name: restaurant.name,
-          location: restaurant.address || 'Unknown',
-          todaySales: 0, // Would calculate from orders API
-          yesterdaySales: 0, // Would calculate from orders API
-          weekSales: 0, // Would calculate from orders API
-          monthSales: 0, // Would calculate from orders API
-          todayOrders: 0, // Would calculate from orders API
-          averageOrderValue: 0, // Would calculate from orders API
-          topItems: [], // Would calculate from orders API
-          hourlyData: new Array(12).fill(0) // Would calculate from orders API
+        const json = await response.json();
+        const rows = json.data || [];
+        const salesData: RestaurantSales[] = rows.map((r: any) => ({
+          id: String(r.id),
+          name: r.name,
+          location: r.location || 'Unknown',
+          todaySales: r.todaySales || 0,
+          yesterdaySales: r.yesterdaySales || 0,
+          weekSales: r.weekSales || 0,
+          monthSales: r.monthSales || 0,
+          todayOrders: r.todayOrders || 0,
+          averageOrderValue: r.averageOrderValue || 0,
+          topItems: r.topItems || [],
+          hourlyData: r.hourlyData || new Array(12).fill(0)
         }));
-
         setRestaurantSales(salesData);
       } catch (error) {
         console.error('Error fetching sales data:', error);

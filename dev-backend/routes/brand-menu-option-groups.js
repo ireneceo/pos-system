@@ -169,6 +169,9 @@ router.delete('/:id', authenticateToken, requireBGScope, async (req, res) => {
     if (inUse > 0) {
       return res.status(400).json({ success: false, message: `Option group is used by ${inUse} menus. Remove from menus first.`, code: 'IN_USE' });
     }
+    // Remove child options first — the FK (brand_menu_options.group_id) blocks the
+    // group delete otherwise (was causing a 500 on every unused-group delete).
+    await BrandMenuOption.destroy({ where: { group_id: group.id } });
     await group.destroy();
     res.json({ success: true });
   } catch (e) {

@@ -3,7 +3,8 @@ const router = express.Router();
 const ActivityLog = require('../models/ActivityLog');
 const { sequelize } = require('../config/database');
 const { Op } = require('sequelize');
-const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
+const { authenticateToken, checkRestaurantAccess, userCanAccessRestaurant } = require('../middleware/auth');
+const User = require('../models/User');
 
 // All routes require authentication
 router.use(authenticateToken);
@@ -45,7 +46,11 @@ router.get('/restaurant/:restaurantId', checkRestaurantAccess, async (req, res) 
         where.created_at[Op.gte] = new Date(start_date);
       }
       if (end_date) {
-        where.created_at[Op.lte] = new Date(end_date);
+        // Date-only end_date must be inclusive of the whole day, else same-day logs
+        // (created after 00:00) are dropped.
+        where.created_at[Op.lte] = /^\d{4}-\d{2}-\d{2}$/.test(String(end_date))
+          ? new Date(end_date + 'T23:59:59.999Z')
+          : new Date(end_date);
       }
     }
 
@@ -83,6 +88,23 @@ router.get('/restaurant/:restaurantId', checkRestaurantAccess, async (req, res) 
 router.get('/user/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
+
+    // Authorization: a user may read only their OWN logs; System Admin any; a
+    // supervisor (Owner/BG/FG/Manager) may read logs of a user in a restaurant
+    // they oversee. Prevents IDOR (any user reading any other user's activity).
+    if (String(userId) !== String(req.user.id) && req.user.role !== 'System Admin') {
+      let allowed = false;
+      try {
+        const target = await User.findByPk(userId, { attributes: ['id', 'restaurant_id'] });
+        if (target && target.restaurant_id) {
+          allowed = await userCanAccessRestaurant(req.user, target.restaurant_id);
+        }
+      } catch { allowed = false; }
+      if (!allowed) {
+        return res.status(403).json({ success: false, message: 'Not authorized to view these activity logs' });
+      }
+    }
+
     const { page = 1, limit = 50, entity_type, action_type, start_date, end_date } = req.query;
     const offset = (page - 1) * limit;
 
@@ -92,7 +114,9 @@ router.get('/user/:userId', async (req, res) => {
     if (start_date || end_date) {
       where.created_at = {};
       if (start_date) where.created_at[Op.gte] = new Date(start_date);
-      if (end_date) where.created_at[Op.lte] = new Date(end_date);
+      if (end_date) where.created_at[Op.lte] = /^\d{4}-\d{2}-\d{2}$/.test(String(end_date))
+        ? new Date(end_date + 'T23:59:59.999Z')
+        : new Date(end_date);
     }
 
     const { count, rows } = await ActivityLog.findAndCountAll({

@@ -271,7 +271,7 @@ const ContractPipeline: React.FC<ContractPipelineProps> = ({ contracts, onCardCl
                     <CardTag>{c.contract_number}</CardTag>
                   )}
                   {c.start_date && c.end_date && (
-                    <CardTag>{c.start_date.substring(5)} ~ {c.end_date.substring(5)}</CardTag>
+                    <CardTag>{c.start_date.substring(0, 7)} ~ {c.end_date.substring(0, 7)}</CardTag>
                   )}
                   {c.stage === 'setup' && c.tasks && (
                     <CardTag bg="#F5F3FF" color="#6D28D9">

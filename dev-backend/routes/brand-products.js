@@ -493,6 +493,9 @@ router.delete('/brand-product-option-groups/:groupId', authenticateToken, requir
       });
     }
 
+    // Remove child options first — FK (brand_product_options.option_group_id) was
+    // causing a 500 on every delete of a group that had options.
+    await BrandProductOption.destroy({ where: { option_group_id: groupId } });
     await optionGroup.destroy();
 
     res.json({ success: true, message: 'Option group deleted' });
@@ -1031,8 +1034,12 @@ router.delete('/brand-products/:productId', authenticateToken, requireBGScope, a
     // Delete linked ingredients first
     await Ingredient.destroy({ where: { brand_product_id: productId } });
 
-    // Delete link tables
+    // Delete link tables — incl. distribution tables (brand_product_brands /
+    // brand_product_restaurants) whose FK previously blocked the delete with a 500.
     await BrandProductOptionGroupProduct.destroy({ where: { product_id: productId } });
+    const { BrandProductBrand, BrandProductRestaurant } = require('../models');
+    await BrandProductBrand.destroy({ where: { product_id: productId } });
+    await BrandProductRestaurant.destroy({ where: { product_id: productId } });
 
     await product.destroy();
 
@@ -1079,6 +1086,7 @@ router.post('/brand-products/:productId/copy', authenticateToken, requireBGScope
       set_items: original.set_items,
       set_display_order: original.set_display_order,
       sort_order: original.sort_order,
+      distribution_mode: original.distribution_mode,
       product_recipe_id: original.product_recipe_id
     });
 
@@ -1088,6 +1096,16 @@ router.post('/brand-products/:productId/copy', authenticateToken, requireBGScope
         await BrandProductOptionGroupProduct.create({ product_id: copy.id, option_group_id: og.id });
       }
     }
+
+    // Copy distribution links (brand + restaurant) so the duplicate is distributed
+    // to the same targets as the original instead of nowhere.
+    const { BrandProductBrand: BPB, BrandProductRestaurant: BPR } = require('../models');
+    const [brandLinks, restLinks] = await Promise.all([
+      BPB.findAll({ where: { product_id: productId }, attributes: ['brand_id'] }),
+      BPR.findAll({ where: { product_id: productId }, attributes: ['restaurant_id'] })
+    ]);
+    for (const bl of brandLinks) await BPB.create({ product_id: copy.id, brand_id: bl.brand_id });
+    for (const rl of restLinks) await BPR.create({ product_id: copy.id, restaurant_id: rl.restaurant_id });
 
     // Sync to ingredients
     await syncProductToIngredients(copy.id);
