@@ -955,7 +955,11 @@
       "Bash(nohup /opt/android-sdk/emulator/emulator -avd purplepos -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -port 5554)",
       "Bash(echo \"emulator launching pid=$!\")",
       "Bash(/opt/android-sdk/platform-tools/adb devices *)",
-      "Bash(sg kvm *)"
+      "Bash(sg kvm *)",
+      "Bash(awk '{print $2, $11, $12, $13, $14}')",
+      "Bash(awk '/§?7-6|7\\\\.6|V1|V2|V3|V4|hardware-free|검증게이트|무접촉/{p=1} p{print} /^## |^# /{if\\(p && !/7-6/\\)p=0}' docs/ANDROID_APP_DESIGN.md)",
+      "Bash(echo \"fake-printer PID $!\")",
+      "Bash(echo \"sdk exists: $?\")"
     ],
     "deny": [],
     "ask": []

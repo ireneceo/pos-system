@@ -1,18 +1,33 @@
 # Purple POS — 개발 세션 상태
 
-<!-- AUTOSAVE-STALE-BANNER -->
-> **[AUTO-SAVE STALE] (2026-07-03 08:25, idle 1783067101s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
-> 변경된 작업 파일: cdp-eval.js
-<!-- /AUTOSAVE-STALE-BANNER -->
+<!-- 2026-07-03 세션: Irene 이동 중, 자율진행+저장 지시. 아래 "다음 세션 최우선" 참조. -->
 
 ## 현재 작업 상태
 
-**마지막 업데이트:** 2026-07-02 (개발완료)
+**마지막 업데이트:** 2026-07-03 (세션 중단 — Irene 이동, 자율진행 지시 후 저장/개발완료)
 **버전:** 운영=**v3.66 / SW 4.56** (2026-07-02 데스크탑앱 인에이블 배포 — 버전 미상승=기존 매장엔 dead-code/opt-in. Backup 20260702_065514)
-**작업 상태:** 완료
+**작업 상태:** 진행 중 (미완료 — 아래 최우선 인계 참조)
 
-### 진행 중인 작업
-- 없음
+## 🔴 다음 세션 최우선 — 데모 버그 4건 (Irene 재요청, 지난번 미반영분)
+
+> 2026-07-03 Irene가 "하던 일"로 지목한 실제 작업. (session-state가 안드로이드로 stale했었음 — 정정함.)
+> 데모 로그인: `POST /api/auth/demo-login {key}` → key: BG=`demo_brand_general`(user#22,brand10), Owner=`demo_multi_owner`(user#289). base=localhost:3001/api.
+
+### Brand General 데모 — 재수정 3건 (나머지는 확인됨, 이 3개만 미반영)
+1. **franchise → Restaurant Admin [Deactivate] 안 됨** — 비활성화가 동작 안 함. is_active/userCanAccessRestaurant BG 스코프 의심.
+2. **Brand menu 생성 시 'Linked Recipe (optional)'에 등록한 ProductRecipe가 안 불러와짐** — 드롭다운 empty. BG=ProductRecipe(≠RA Recipe), brand_id snake_case/scope 의심. BrandMenusPage.tsx.
+3. **communication → notice 공지 댓글 달고 삭제 시 삭제 안 됨** — comments.js DELETE 권한/paranoid/validTypes(3곳) 의심.
+
+### Multi restaurant owner 데모 — "No Active Subscription" 로 로그인 불가 → 수정확인 못함
+4. **조사결과(2026-07-03): 백엔드는 이미 정상.** `/api/owner/allowed-routes` 를 owner 데모 토큰으로 호출 시 `plan_type=Owner Enterprise, subscription_status=active, routes 17, modules 13` 정상 반환(owner.js:932 `isDemo` 특수처리가 데모오너=Enterprise/active 부여). `/api/owner/restaurants` 도 data 반환. **→ 게이트(MainLayout.tsx:2308 needsSubscription)는 API가 맞으므로 통과해야 정상.** 남은 확인 = **dev-frontend 빌드가 현재 코드인지 / 실제 브라우저에서 owner 데모 로그인 재현.** 프론트 재빌드 후 재현 안 되면 이미 해결된 것일 수 있음. (백엔드 데이터/코드 수정 불필요 판단.)
+
+### ⚠️ 이 세션에서 띄운 백그라운드 에이전트 4개 (결과 미수집 — 다음 세션 반드시 확인)
+- 버그 1·2·3 각각 "조사+수정+검증" 에이전트 + BG 전수감사 에이전트 1개를 병렬 dispatch함.
+- **에이전트들이 dev-frontend/dev-backend에 수정을 편집했을 수 있으나 미검증·미빌드·미재시작 상태.** `git diff` 로 무슨 파일이 바뀌었는지 먼저 확인하고, 각 수정을 API/헤드리스로 검증 후 빌드+pm2 restart. 보호파일(print/KDS 8개)은 안 건드리게 지시했으니 `node dev-backend/scripts/check-print-guard.js`로 무결성 먼저 확인.
+- BG 전수감사 결과(task#6)는 다음 세션 버그 목록으로 사용.
+
+### 진행 중인 작업 (병행)
+- **안드로이드앱 구현** (아래 별도 섹션) — MainActivity.java 브릿지주입 편집 미커밋 상태.
 
 ### 완료된 작업 (이번 세션 — 2026-07-02)
 - **데스크탑앱(Windows/Electron) P0~P3 구현 + Fable 게이트 PASS + 운영 배포**
@@ -33,6 +48,10 @@
 - 위치 `/var/www/mobile-app/`(격리), billPrint 프론트 0줄(§4). 운영 웹/인쇄코드 무접촉(print-guard 자동감시).
 2. **윈도우앱 매장 확인** — Irene 오늘 매장서 실행·로그인·POS로드·프린터목록·UI 확인(**실프린터 종이 인쇄는 안 함 — 본인 매장 아님**).
 3. **윈도우앱 실프린터 종이 확인 = 실제 쓸 고객 생겼을 때** 그 프린터로 확인·보완 → 그 후 `check-print-guard.js --bless`. 그 전까진 print-guard 빨강(billPrint+MainLayout)=의도된 fail-closed.
+
+### 다음 확정 작업 (Irene 명시 지시 — 이어서 할 것)
+1. **데모 버그 4건 마무리** (위 "🔴 다음 세션 최우선"): ①먼저 `git diff`로 백그라운드 에이전트가 남긴 수정 확인 → `check-print-guard.js` 무결성 → ②버그1·2·3 수정 검증(API 실호출)+프론트 빌드+pm2 restart → ③owner 데모는 프론트 재빌드 후 실브라우저 로그인 재현(백엔드 정상 확인됨) → ④BG 전수감사 결과 반영.
+2. **안드로이드앱 구현 계속**: MainActivity 브릿지주입 커밋 후 순서 ③~⑧ (WiFi인쇄→HTML비트맵→블투+등록화면→APK빌드→Fable게이트⑦→실기기⑧). SDK=`/opt/android-sdk`.
 
 ### 후속 후보 (아이디어 메모, 확정 X)
 > 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.
