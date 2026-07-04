@@ -42,9 +42,12 @@ router.get('/', async (req, res) => {
     // include=sellers — 발주 화면용: 각 재고아이템의 공급업체상품 매핑(SellerOpt) 첨부
     let data = ingredients;
     if (String(req.query.include || '').includes('sellers') && ingredients.length) {
-      const { IngredientSellerProduct, SupplierCompany, Brand, Foodcourt } = require('../models');
+      const { IngredientSellerProduct, SupplierCompany, SupplierProduct, Brand, Foodcourt } = require('../models');
       const ids = ingredients.map(i => i.id);
       const maps = await IngredientSellerProduct.findAll({ where: { product_ingredient_id: ids, is_active: true } });
+      // 판매품목 정체성(name/sku) 해석 — 공급업체 판매품목을 내부 재고와 함께 표시(P0-1)
+      const spIds = [...new Set(maps.filter(m => m.seller_type === 'supplier' && m.seller_product_id).map(m => m.seller_product_id))];
+      const spMap = spIds.length ? Object.fromEntries((await SupplierProduct.findAll({ where: { id: spIds }, attributes: ['id', 'name', 'sku'], paranoid: false })).map(s => [s.id, s])) : {};
       // 판매자 이름 해석
       const supIds = [...new Set(maps.filter(m => m.seller_type === 'supplier' && m.seller_entity_id).map(m => m.seller_entity_id))];
       const brIds = [...new Set(maps.filter(m => m.seller_type === 'brand' && m.seller_entity_id).map(m => m.seller_entity_id))];
@@ -58,9 +61,11 @@ router.get('/', async (req, res) => {
           : m.seller_type === 'brand' ? (brMap[m.seller_entity_id] || 'Brand')
           : m.seller_type === 'foodcourt' ? (fcMap[m.seller_entity_id] || 'Foodcourt')
           : 'System';
+        const sp = m.seller_type === 'supplier' ? spMap[m.seller_product_id] : null;
         (byIng[m.product_ingredient_id] = byIng[m.product_ingredient_id] || []).push({
           id: m.id, seller_product_id: m.seller_product_id, seller_type: m.seller_type,
           seller_entity_id: m.seller_entity_id, seller_name: name,
+          seller_product_name: sp?.name || null, seller_product_sku: sp?.sku || null,
           unit_price: m.unit_price, unit_conversion: m.unit_conversion, is_preferred: m.is_preferred
         });
       }
@@ -77,6 +82,39 @@ router.get('/', async (req, res) => {
       success: false,
       error: error.message
     });
+  }
+});
+
+// ==================== 재고 거래내역 (History) ====================
+// GET /api/product-ingredients/transactions
+// BG 재고아이템(ProductIngredient)의 InventoryTransaction 목록. 브랜드모드 History 탭.
+// brandId 를 경로로 받지 않고 토큰(BGScope)로 소유 재고아이템을 좁힌 뒤 그 거래만 반환.
+// ⚠️ 반드시 '/:id' 라우트보다 먼저 등록 (안 그러면 id='transactions' 로 매칭됨).
+router.get('/transactions', async (req, res) => {
+  try {
+    const { InventoryTransaction } = require('../models');
+    const where = {};
+    applyBGFilter(where, req);
+    const owned = await ProductIngredient.findAll({ where, attributes: ['id'] });
+    const ids = owned.map(i => i.id);
+    if (!ids.length) return res.json({ success: true, data: [] });
+
+    const limit = Math.min(200, parseInt(req.query.limit, 10) || 50);
+    const rows = await InventoryTransaction.findAll({
+      where: { product_ingredient_id: ids },
+      include: [{ model: ProductIngredient, as: 'productIngredient', attributes: ['id', 'name', 'unit'] }],
+      order: [['created_at', 'DESC']],
+      limit
+    });
+    // Shape to match TransactionHistorySection (expects `ingredient.name`).
+    const data = rows.map(r => {
+      const j = r.toJSON();
+      return { ...j, ingredient: j.productIngredient || null };
+    });
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('Error fetching product ingredient transactions:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -448,18 +486,42 @@ router.post('/:id/adjust-stock', async (req, res) => {
     const ingredient = await ProductIngredient.findByPk(req.params.id);
     if (!assertBGOwnsRow(ingredient, req, res)) return;
 
-    const { adjustment, reason } = req.body;
-    const newStock = parseFloat(ingredient.current_stock) + parseFloat(adjustment);
+    const { adjustment, reason, transaction_type } = req.body;
+    const prevStock = parseFloat(ingredient.current_stock) || 0;
+    const adj = parseFloat(adjustment) || 0;
+    const newStock = Math.max(0, prevStock + adj);
 
-    await ingredient.update({
-      current_stock: Math.max(0, newStock)
-    });
+    await ingredient.update({ current_stock: newStock });
+
+    // Record history so the brand Inventory History tab reflects the movement. Audit #36.
+    // Filtered/displayed by product_ingredient_id, so a null entity_id (brand_id absent)
+    // never hides the row.
+    try {
+      const { InventoryTransaction } = require('../models');
+      const VALID_TYPES = ['initial', 'purchase', 'order_deduct', 'stock_take', 'waste', 'adjustment', 'return_in', 'return_out'];
+      const txType = VALID_TYPES.includes(transaction_type)
+        ? transaction_type
+        : (adj >= 0 ? 'adjustment' : 'waste');
+      await InventoryTransaction.create({
+        entity_type: 'brand',
+        entity_id: req.user?.brand_id || null,
+        product_ingredient_id: ingredient.id,
+        transaction_type: txType,
+        quantity_change: adj,
+        unit: ingredient.unit,
+        stock_after: newStock,
+        notes: reason || null,
+        created_by: req.user?.id || null
+      });
+    } catch (txErr) {
+      console.error('adjust-stock transaction record failed:', txErr.message);
+    }
 
     res.json({
       success: true,
       data: {
-        previous_stock: ingredient.current_stock,
-        adjustment,
+        previous_stock: prevStock,
+        adjustment: adj,
         new_stock: newStock,
         reason
       },
@@ -483,12 +545,24 @@ router.get('/:id/seller-sources', async (req, res) => {
   try {
     const ing = await ProductIngredient.findByPk(req.params.id);
     if (!assertBGOwnsRow(ing, req, res)) return;
-    const { IngredientSellerProduct } = require('../models');
+    const { IngredientSellerProduct, SupplierProduct } = require('../models');
     const rows = await IngredientSellerProduct.findAll({
       where: { product_ingredient_id: ing.id, is_active: true },
       order: [['is_preferred', 'DESC'], ['id', 'ASC']]
     });
-    res.json({ success: true, data: rows });
+    // Attach the supplier's own sale-product identity (name + SKU) so the UI can show
+    // it alongside our internal stock-item name/code. paranoid:false keeps historical
+    // (soft-deleted) products resolvable. Design P0-1.
+    const spIds = [...new Set(rows.filter(r => r.seller_type === 'supplier' && r.seller_product_id).map(r => r.seller_product_id))];
+    const spMap = spIds.length
+      ? Object.fromEntries((await SupplierProduct.findAll({ where: { id: spIds }, attributes: ['id', 'name', 'sku'], paranoid: false })).map(s => [s.id, s]))
+      : {};
+    const data = rows.map(r => {
+      const j = r.toJSON();
+      const sp = r.seller_type === 'supplier' ? spMap[r.seller_product_id] : null;
+      return { ...j, seller_product_name: sp?.name || null, seller_product_sku: sp?.sku || null };
+    });
+    res.json({ success: true, data });
   } catch (e) {
     console.error('Error listing seller-sources:', e);
     res.status(500).json({ success: false, message: e.message });

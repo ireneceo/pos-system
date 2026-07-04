@@ -49,6 +49,9 @@ interface Ingredient {
     seller_type: 'supplier' | 'brand' | 'foodcourt';
     seller_entity_id: number | null;
     seller_name?: string;
+    // 공급업체 자체 판매품목명·SKU (공급업체 타입만 값 있음; brand/foodcourt는 null)
+    seller_product_name?: string | null;
+    seller_product_sku?: string | null;
     unit_price?: number;
     is_preferred?: boolean;
   }>;
@@ -60,6 +63,9 @@ interface SellerSource {
   seller_type: 'supplier' | 'system_admin' | 'brand' | 'foodcourt';
   seller_entity_id: number | null;
   seller_product_id: number;
+  // 공급업체 자체 판매품목명·SKU (공급업체 타입만 값 있음; brand/system_admin는 null → 폴백)
+  seller_product_name?: string | null;
+  seller_product_sku?: string | null;
   unit_price: number;
   unit_conversion: number;
   min_order_quantity: number;
@@ -71,6 +77,7 @@ interface SellerSource {
 interface CatalogRow {
   id: number;
   name: string;
+  sku?: string | null;
   unit?: string | null;
   unit_price: number;
   category_name?: string | null;
@@ -850,6 +857,8 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
                           }}>
                             {s.seller_type === 'brand' ? 'BRAND' : s.seller_type === 'foodcourt' ? 'FC' : 'SUP'}
                             {s.seller_name ? ` · ${s.seller_name}` : ''}
+                            {s.seller_product_name ? ` · ${s.seller_product_name}` : ''}
+                            {s.seller_product_sku ? ` · SKU: ${s.seller_product_sku}` : ''}
                             {s.unit_price != null ? ` · ${formatCurrency(Number(s.unit_price), selectedCurrency)}` : ''}
                           </span>
                         ))}
@@ -1036,8 +1045,10 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
                             )}
                           </div>
                           <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>
-                            {cat?.name || `Product #${src.seller_product_id}`}
+                            {src.seller_product_name || cat?.name || `Product #${src.seller_product_id}`}
+                            {src.seller_product_sku ? ` · SKU: ${src.seller_product_sku}` : ''}
                             {' · '}{formatCurrency(Number(src.unit_price), selectedCurrency)}
+                            {Number(src.unit_conversion) && Number(src.unit_conversion) !== 1 ? ` · ×${Number(src.unit_conversion)}` : ''}
                           </div>
                         </div>
                         <IconButton
@@ -1066,7 +1077,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
                     options={catalog.map(c => ({
                       value: c.id,
                       label: c.name,
-                      subLabel: [c.supplier?.name, c.unit ? c.unit : null].filter(Boolean).join(' · ') || undefined
+                      subLabel: [c.supplier?.name, c.sku ? `SKU: ${c.sku}` : null, c.unit ? c.unit : null].filter(Boolean).join(' · ') || undefined
                     }))}
                     value={sourceForm.seller_product_id}
                     onChange={(val) => {

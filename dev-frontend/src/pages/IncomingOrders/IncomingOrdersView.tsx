@@ -153,7 +153,12 @@ interface IncomingOrderItem {
   description?: string | null;
   quantity_ordered: number | string;
   unit?: string | null;
+  unit_price?: number | string | null;
   ingredient?: { id: number; name: string; unit: string } | null;
+  // Supplier's own sale-product identity — shown to the seller so they recognise
+  // their product/code (buyer's internal name is only a reference). P0-3.
+  seller_product_name?: string | null;
+  seller_product_sku?: string | null;
 }
 
 interface IncomingOrderRow {
@@ -999,7 +1004,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                         <div style={{ fontSize: 13, color: '#0A2540', fontWeight: 600 }}>{items.length} {tNs('orders.table.itemsUnit', 'items')}</div>
                         {items.length > 0 && (
                           <div style={{ fontSize: 11, color: '#4B5563', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>
-                            {items.slice(0, 2).map(it => (it.ingredient?.name || it.description || `#${it.ingredient_id}`)).join(', ')}
+                            {items.slice(0, 2).map(it => (it.seller_product_name || it.ingredient?.name || it.description || `#${it.ingredient_id}`)).join(', ')}
                             {items.length > 2 && ` +${items.length - 2}`}
                           </div>
                         )}
@@ -1342,7 +1347,13 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                     fontSize: 13, color: '#0A2540', alignItems: 'center'
                   }}>
                     <div>
-                      <strong>{it.ingredient?.name || it.description || `#${it.ingredient_id}`}</strong>
+                      <strong>{it.seller_product_name || it.ingredient?.name || it.description || `#${it.ingredient_id}`}</strong>
+                      {(it.seller_product_sku || it.seller_product_name) && (
+                        <div style={{ fontSize: 11, color: '#6B7280' }}>
+                          {it.seller_product_sku ? `SKU: ${it.seller_product_sku}` : ''}
+                          {it.seller_product_name && (it.ingredient?.name || it.description) ? `${it.seller_product_sku ? ' · ' : ''}Buyer ref: ${it.ingredient?.name || it.description}` : ''}
+                        </div>
+                      )}
                       <div style={{ fontSize: 11, color: '#4B5563' }}>
                         {tNs('orders.detail.received', 'Received')}: {Number(it.quantity_received) || 0}
                       </div>

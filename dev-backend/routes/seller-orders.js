@@ -41,6 +41,30 @@ const { QueryTypes } = require('sequelize');
 router.use(authenticateToken);
 router.use(requireSellerRole);
 
+// Attach the supplier's own sale-product identity (name + SKU) to each PO item so the
+// seller sees THEIR product name/code, not just the buyer's internal item name. P0-3.
+// (Design: docs/STOCK_ITEM_VS_SUPPLIER_PRODUCT_DESIGN.md.)
+async function attachSellerProductInfo(pos) {
+  const list = Array.isArray(pos) ? pos : [pos];
+  const ispIds = [...new Set(list.flatMap(p => (p.items || []).map(it => it.ingredient_seller_product_id).filter(Boolean)))];
+  if (!ispIds.length) return;
+  const isps = await IngredientSellerProduct.findAll({ where: { id: ispIds }, attributes: ['id', 'seller_type', 'seller_product_id'] });
+  const spIds = [...new Set(isps.filter(m => m.seller_type === 'supplier' && m.seller_product_id).map(m => m.seller_product_id))];
+  const spRows = spIds.length ? await SupplierProduct.findAll({ where: { id: spIds }, attributes: ['id', 'name', 'sku'], paranoid: false }) : [];
+  const spMap = Object.fromEntries(spRows.map(s => [s.id, s]));
+  const ispMap = Object.fromEntries(isps.map(m => {
+    const sp = m.seller_type === 'supplier' ? spMap[m.seller_product_id] : null;
+    return [m.id, sp ? { name: sp.name, sku: sp.sku } : null];
+  }));
+  for (const p of list) {
+    for (const it of (p.items || [])) {
+      const sp = it.ingredient_seller_product_id ? ispMap[it.ingredient_seller_product_id] : null;
+      it.seller_product_name = sp ? sp.name : null;
+      it.seller_product_sku = sp ? sp.sku : null;
+    }
+  }
+}
+
 // ============================================
 // Helpers
 // ============================================
@@ -168,6 +192,7 @@ router.get('/', async (req, res) => {
       obj.buyer = await resolveBuyerInfo(po);
       return obj;
     }));
+    await attachSellerProductInfo(data);
 
     res.json({
       success: true,
@@ -259,6 +284,7 @@ router.get('/:id', async (req, res) => {
 
     const obj = po.toJSON();
     obj.buyer = await resolveBuyerInfo(po);
+    await attachSellerProductInfo(obj);
     res.json({ success: true, data: obj });
   } catch (err) {
     console.error('GET /api/seller-orders/:id error:', err);

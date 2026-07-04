@@ -76,6 +76,9 @@ interface Ingredient {
     seller_type: 'supplier' | 'brand' | 'foodcourt';
     seller_entity_id: number | null;
     seller_name?: string;
+    // 공급업체 자체 판매품목명·SKU (공급업체 타입만 값 있음; brand/foodcourt는 null)
+    seller_product_name?: string | null;
+    seller_product_sku?: string | null;
     unit_price?: number;
     is_preferred?: boolean;
   }>;
@@ -494,7 +497,8 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
   const [extTarget, setExtTarget] = useState<Ingredient | null>(null);
   const [extSuppliers, setExtSuppliers] = useState<Array<{ id: number; name: string }>>([]);
   // supplier_name = 입력/선택한 공급업체명. 저장 시 같은 이름이 있으면 재사용, 없으면 생성(중복 방지).
-  const [extForm, setExtForm] = useState<{ supplier_id: number | null; unit_price: string; min_order_quantity: string }>({ supplier_id: null, unit_price: '', min_order_quantity: '' });
+  // product_name(판매품목명) 기본값 = 내부 재고명이지만 수정 가능(공급업체가 파는 이름). sku = 공급업체 품번(선택).
+  const [extForm, setExtForm] = useState<{ supplier_id: number | null; product_name: string; sku: string; unit_price: string; min_order_quantity: string }>({ supplier_id: null, product_name: '', sku: '', unit_price: '', min_order_quantity: '' });
   const [extSaving, setExtSaving] = useState(false);
   const [extError, setExtError] = useState<string | null>(null);
   // Track Stock pending value (AutoSaveField onSave 가 onChange 직후 호출됨)
@@ -768,7 +772,8 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
   // 이 재고를 외부공급업체 상품으로 등록 — 내가 등록한 외부공급업체 목록 로드 + 모달 열기.
   const openExtRegister = async (ing: Ingredient) => {
     setExtTarget(ing);
-    setExtForm({ supplier_id: null, unit_price: '', min_order_quantity: '' });
+    // 판매품목명 기본값 = 내부 재고명(편의 프리필, 잠그지 않음). SKU 는 비워둠(선택).
+    setExtForm({ supplier_id: null, product_name: ing.name || '', sku: '', unit_price: '', min_order_quantity: '' });
     setExtError(null);
     let list: Array<{ id: number; name: string }> = [];
     try {
@@ -790,12 +795,14 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
     const supplierId = extForm.supplier_id;
     if (!supplierId) { setExtError('Select an external supplier.'); return; }
     if (!extForm.unit_price || parseFloat(extForm.unit_price) < 0) { setExtError('Enter a valid price.'); return; }
+    // 판매품목명은 공급업체가 파는 이름(기본=내부명). 비우면 내부명으로 폴백.
+    const productName = extForm.product_name.trim() || extTarget.name;
     setExtSaving(true);
     try {
       const token = getAuthToken();
       const cr = await fetch(`/api/external-suppliers/${supplierId}/products`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ name: extTarget.name, unit: extTarget.unit || 'kg', unit_price: parseFloat(extForm.unit_price), min_order_quantity: extForm.min_order_quantity ? parseInt(extForm.min_order_quantity, 10) : 1 })
+        body: JSON.stringify({ name: productName, sku: extForm.sku.trim() || undefined, unit: extTarget.unit || 'kg', unit_price: parseFloat(extForm.unit_price), min_order_quantity: extForm.min_order_quantity ? parseInt(extForm.min_order_quantity, 10) : 1 })
       });
       const cj = await cr.json().catch(() => null);
       if (!cr.ok || !cj?.success) { setExtError(cj?.message || 'Failed to create product.'); setExtSaving(false); return; }
@@ -1308,6 +1315,8 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                               }}>
                                 {s.seller_type === 'brand' ? 'BRAND' : s.seller_type === 'foodcourt' ? 'FC' : 'SUP'}
                                 {s.seller_name ? ` · ${s.seller_name}` : ''}
+                                {s.seller_product_name ? ` · ${s.seller_product_name}` : ''}
+                                {s.seller_product_sku ? ` · SKU: ${s.seller_product_sku}` : ''}
                                 {s.unit_price != null ? ` · RM${Number(s.unit_price).toFixed(2)}` : ''}
                               </span>
                             ))}
@@ -1468,7 +1477,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
               </FormSelect>
             </UIFormGroup>
             <UIFormGroup>
-              <FormLabel>{'Supplier'}</FormLabel>
+              <FormLabel>{'Default supplier'}</FormLabel>
               <SearchableSelect
                 options={suppliers.map(s => ({
                   value: s.id,
@@ -1480,6 +1489,9 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                 placeholder="Select supplier..."
                 noOptionsMessage="No suppliers found"
               />
+              <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>
+                Sets a single default supplier only. To order with the supplier's own product name, SKU and price, add a supplier source on the item after saving.
+              </div>
             </UIFormGroup>
           </UIFormRow>
 
@@ -1809,6 +1821,17 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
               </div>
             )}
           </UIFormGroup>
+          <UIFormRow>
+            <UIFormGroup>
+              <FormLabel>Product name *</FormLabel>
+              <FormInput type="text" value={extForm.product_name} onChange={(e) => setExtForm({ ...extForm, product_name: e.target.value })} placeholder={extTarget.name} />
+              <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>The supplier's own name for this product. Defaults to your item name — edit if theirs differs.</div>
+            </UIFormGroup>
+            <UIFormGroup>
+              <FormLabel>SKU</FormLabel>
+              <FormInput type="text" value={extForm.sku} onChange={(e) => setExtForm({ ...extForm, sku: e.target.value })} placeholder="Optional — supplier's product code" />
+            </UIFormGroup>
+          </UIFormRow>
           <UIFormRow>
             <UIFormGroup>
               <FormLabel>Unit price *</FormLabel>

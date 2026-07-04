@@ -1,9 +1,10 @@
 import { useState, useCallback } from 'react';
-import { IngredientStock, SettingsForm } from '../types';
+import { InventoryMode, IngredientStock, SettingsForm } from '../types';
 import { calculateStockStatus } from '../utils';
 import { AuthFetch } from './useAuthFetch';
 
 interface Params {
+  mode: InventoryMode;
   restaurantId?: number;
   authFetch: AuthFetch;
   setInventory: React.Dispatch<React.SetStateAction<IngredientStock[]>>;
@@ -19,7 +20,7 @@ const EMPTY_SETTINGS_FORM: SettingsForm = {
   adjustment_reason: '',
 };
 
-export function useSettingsModal({ restaurantId, authFetch, setInventory }: Params) {
+export function useSettingsModal({ mode, restaurantId, authFetch, setInventory }: Params) {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [settingsIngredient, setSettingsIngredient] = useState<IngredientStock | null>(null);
   const [settingsForm, setSettingsForm] = useState<SettingsForm>(EMPTY_SETTINGS_FORM);
@@ -46,8 +47,14 @@ export function useSettingsModal({ restaurantId, authFetch, setInventory }: Para
 
     try {
       setSavingSettings(true);
+      // Brand mode: ProductIngredient (owner-scoped) — PUT /product-ingredients/:id accepts
+      // the same settings fields. Restaurant mode: the per-restaurant settings endpoint.
+      // (Brand mode previously hit /restaurants/undefined/... → 404. Audit #5.)
+      const endpoint = mode === 'brand'
+        ? `/api/product-ingredients/${settingsIngredient.id}`
+        : `/api/restaurants/${restaurantId}/inventory/${settingsIngredient.id}/settings`;
       const response = await authFetch(
-        `/api/restaurants/${restaurantId}/inventory/${settingsIngredient.id}/settings`,
+        endpoint,
         {
           method: 'PUT',
           body: JSON.stringify({
@@ -87,7 +94,7 @@ export function useSettingsModal({ restaurantId, authFetch, setInventory }: Para
     } finally {
       setSavingSettings(false);
     }
-  }, [settingsIngredient, settingsForm, restaurantId, authFetch, setInventory]);
+  }, [settingsIngredient, settingsForm, mode, restaurantId, authFetch, setInventory]);
 
   return {
     showSettingsModal,

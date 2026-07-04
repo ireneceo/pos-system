@@ -64,6 +64,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
   });
 
   const settings = useSettingsModal({
+    mode,
     restaurantId,
     authFetch,
     setInventory: data.setInventory,
@@ -99,7 +100,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
     setGeneralStockInventory: data.setGeneralStockInventory,
   });
 
-  const order = useOrderModal();
+  const order = useOrderModal({ mode });
   const bulk = useBulkOrder();
 
   const deleteConfirm = useDeleteConfirm({

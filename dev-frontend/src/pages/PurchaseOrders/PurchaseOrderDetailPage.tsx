@@ -84,6 +84,7 @@ interface POItem {
   ingredient_unit?: string;
   seller_product_id?: number | null;
   seller_product_name?: string | null;
+  seller_product_sku?: string | null;
   quantity_ordered: number | string;
   quantity_received: number | string;
   unit_price: number | string;
@@ -1080,8 +1081,11 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
                           <DataTableRow key={it.id}>
                             <DataTableCell data-label={t('detail.items.ingredient') as string}>
                               <strong>{it.ingredient_name}</strong>
-                              {it.seller_product_name && (
-                                <div style={{ fontSize: 12, color: '#4B5563' }}>{it.seller_product_name}</div>
+                              {(it.seller_product_name || it.seller_product_sku) && (
+                                <div style={{ fontSize: 12, color: '#6B7280' }}>
+                                  {it.seller_product_name || ''}
+                                  {it.seller_product_sku ? `${it.seller_product_name ? ' · ' : ''}SKU: ${it.seller_product_sku}` : ''}
+                                </div>
                               )}
                             </DataTableCell>
                             <DataTableCell data-label={t('detail.items.qtyOrdered') as string} align="right">

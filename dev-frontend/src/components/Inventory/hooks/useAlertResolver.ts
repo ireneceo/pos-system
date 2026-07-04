@@ -11,7 +11,14 @@ interface Params {
 
 export function useAlertResolver({ mode, restaurantId, authFetch, setAlerts }: Params) {
   return useCallback(async (alertId: number) => {
-    if (mode === 'brand') return;
+    // Brand mode alerts are client-generated from low/out-of-stock items
+    // (useInventoryData → generatedAlerts, not persisted server-side). There is
+    // no server record to resolve, so Dismiss simply removes it from the local
+    // list. Previously this returned early → Dismiss was a no-op. Audit #35.
+    if (mode === 'brand') {
+      setAlerts(prev => prev.filter(alert => alert.id !== alertId));
+      return;
+    }
 
     try {
       const response = await authFetch(

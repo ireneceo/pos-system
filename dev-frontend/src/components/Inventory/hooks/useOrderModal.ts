@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { UnifiedStockItem } from '../types';
+import { InventoryMode, UnifiedStockItem } from '../types';
 import { getAuthToken } from '../../../utils/auth';
 
 interface SellerSource {
@@ -7,13 +7,16 @@ interface SellerSource {
   ingredient_id: number;
   seller_type: 'supplier' | 'brand' | 'foodcourt' | 'system_admin';
   seller_entity_id: number | null;
+  // 공급업체 자체 판매품목명·SKU (공급업체 타입만 값 있음; brand/foodcourt/system_admin는 null)
+  seller_product_name?: string | null;
+  seller_product_sku?: string | null;
   unit_price: number | string;
   unit_conversion: number | string;
   is_preferred: boolean;
   is_active: boolean;
 }
 
-export function useOrderModal() {
+export function useOrderModal({ mode }: { mode: InventoryMode }) {
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [orderItem, setOrderItem] = useState<UnifiedStockItem | null>(null);
   const [orderQuantity, setOrderQuantity] = useState('');
@@ -37,7 +40,13 @@ export function useOrderModal() {
     if ((item as any).item_type === 'ingredient' || !(item as any).item_type) {
       try {
         const token = getAuthToken();
-        const res = await fetch(`/api/ingredients/${item.id}/seller-sources`, {
+        // Brand mode items are ProductIngredient rows — their seller mappings live
+        // under /product-ingredients/:id/seller-sources. Restaurant items use
+        // /ingredients/:id/seller-sources. (Brand hit the restaurant path → 404. Audit #6.)
+        const sellerSourcesUrl = mode === 'brand'
+          ? `/api/product-ingredients/${item.id}/seller-sources`
+          : `/api/ingredients/${item.id}/seller-sources`;
+        const res = await fetch(sellerSourcesUrl, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
@@ -53,7 +62,7 @@ export function useOrderModal() {
         console.error('Failed to fetch seller-sources:', err);
       }
     }
-  }, []);
+  }, [mode]);
 
   const close = useCallback(() => {
     setShowOrderModal(false);
@@ -79,11 +88,18 @@ export function useOrderModal() {
     try {
       const token = getAuthToken();
       const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+      // The PO workflow distinguishes ingredient_id (Restaurant Ingredient) from
+      // product_ingredient_id (BG ProductIngredient). Brand items must send
+      // product_ingredient_id or the workflow looks them up in the wrong table and
+      // drops the line. Audit #6.
+      const itemRef = mode === 'brand'
+        ? { product_ingredient_id: orderItem.id }
+        : { ingredient_id: orderItem.id };
       const body = {
         seller_type: seller.seller_type,
         seller_entity_id: seller.seller_entity_id,
         items: [{
-          ingredient_id: orderItem.id,
+          ...itemRef,
           ingredient_seller_product_id: seller.id,
           quantity_ordered: qty,
           unit_price: parseFloat(String(seller.unit_price)) || 0
@@ -123,7 +139,7 @@ export function useOrderModal() {
     } finally {
       setOrderSubmitting(false);
     }
-  }, [orderItem, orderQuantity, orderSellers, selectedSellerId]);
+  }, [orderItem, orderQuantity, orderSellers, selectedSellerId, mode]);
 
   return {
     showOrderModal,

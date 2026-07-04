@@ -47,6 +47,10 @@ interface SellerOpt {
   is_preferred: boolean;
   option_groups?: SupplierOptionGroup[];
   has_options?: boolean;
+  // 공급업체 판매품목 정체성(공급업체 것) — 내부 재고명(우리 것)과 별개.
+  // 백엔드 ?include=sellers 가 SupplierProduct join 으로 채움(공급업체 타입만 값, 아니면 null).
+  seller_product_name?: string | null;
+  seller_product_sku?: string | null;
 }
 
 interface MyIngredientRow {
@@ -692,6 +696,8 @@ const NewPurchaseOrderPage: React.FC = () => {
                 min_order_quantity: Number(s.min_order_quantity) || 1,
                 lead_time_days: Number(s.lead_time_days) || 0,
                 is_preferred: !!s.is_preferred,
+                seller_product_name: s.seller_product_name ?? null,
+                seller_product_sku: s.seller_product_sku ?? null,
               })),
             }));
         } catch { /* BG stock-item fetch is additive; ignore failures */ }
@@ -998,7 +1004,10 @@ const NewPurchaseOrderPage: React.FC = () => {
         unit_conversion: parseFloat(map.unit_conversion) || 1,
         min_order_quantity: map.min_order_quantity || 1,
         lead_time_days: map.lead_time_days || 0,
-        is_preferred: !!map.is_preferred
+        is_preferred: !!map.is_preferred,
+        // CatalogRow 의 name/sku = 공급업체 판매품목명/SKU(공급업체 것). 카트 부라인 병기용.
+        seller_product_name: row.name ?? null,
+        seller_product_sku: row.sku ?? null
       };
       const optionIds = selectedOptions.map(o => o.option_id);
       // BG: ProductIngredient 패밀리 → mine-tab 과 동일하게 cart_key 를 pi-{id} 로 namespace + row 에 product_ingredient_id 부착.
@@ -1526,6 +1535,24 @@ const NewPurchaseOrderPage: React.FC = () => {
                       </div>
                       <RemoveX type="button" onClick={() => removeRow(row.cart_key)} aria-label="remove">×</RemoveX>
                     </CartLineHead>
+                    {(() => {
+                      // 공급업체 판매품목명 + SKU 를 작은 회색 부라인으로 병기(공급업체 것).
+                      // 내부명(주)과 판매품목명이 같으면 이름은 생략하고 SKU만. 값 없으면 조각 생략.
+                      const pieces: string[] = [];
+                      if (seller.seller_product_name && seller.seller_product_name !== row.ingredient_name) {
+                        pieces.push(seller.seller_product_name);
+                      }
+                      if (seller.seller_product_sku) pieces.push(seller.seller_product_sku);
+                      if (pieces.length === 0) return null;
+                      return (
+                        <div style={{
+                          fontSize: 11, color: '#9CA3AF',
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                        }}>
+                          {pieces.join(' · ')}
+                        </div>
+                      );
+                    })()}
                     {row.selected_options && row.selected_options.length > 0 && (
                       <div style={{ fontSize: 11, color: '#635BFF', display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                         {row.selected_options.map(o => (

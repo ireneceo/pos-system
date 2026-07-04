@@ -65,15 +65,20 @@ export function useIngredientAdjustModal({
           }),
         });
       } else {
-        const newStock = selectedIngredient.current_stock + parseFloat(quantity);
-        response = await authFetch(`/api/product-ingredients/${selectedIngredient.id}`, {
-          method: 'PUT',
-          body: JSON.stringify({ current_stock: newStock }),
+        // Brand mode: adjust-stock records an InventoryTransaction (history), unlike a
+        // bare PUT current_stock which left History empty. Audit #36.
+        response = await authFetch(`/api/product-ingredients/${selectedIngredient.id}/adjust-stock`, {
+          method: 'POST',
+          body: JSON.stringify({
+            adjustment: parseFloat(quantity),
+            transaction_type: 'purchase',
+            reason: notes || 'Received',
+          }),
         });
       }
 
       if (response.success) {
-        const newStock = response.data?.current_stock ??
+        const newStock = response.data?.new_stock ?? response.data?.current_stock ??
           (selectedIngredient.current_stock + parseFloat(quantity));
         const newStatus = calculateStockStatus(newStock, selectedIngredient.min_stock);
         const now = new Date().toISOString();
@@ -111,15 +116,19 @@ export function useIngredientAdjustModal({
           }),
         });
       } else {
-        const newStock = Math.max(0, selectedIngredient.current_stock - parseFloat(quantity));
-        response = await authFetch(`/api/product-ingredients/${selectedIngredient.id}`, {
-          method: 'PUT',
-          body: JSON.stringify({ current_stock: newStock }),
+        // Brand mode: adjust-stock (negative) records a 'waste' InventoryTransaction. Audit #36.
+        response = await authFetch(`/api/product-ingredients/${selectedIngredient.id}/adjust-stock`, {
+          method: 'POST',
+          body: JSON.stringify({
+            adjustment: -parseFloat(quantity),
+            transaction_type: 'waste',
+            reason: notes || 'Waste',
+          }),
         });
       }
 
       if (response.success) {
-        const newStock = response.data?.current_stock ??
+        const newStock = response.data?.new_stock ?? response.data?.current_stock ??
           Math.max(0, selectedIngredient.current_stock - parseFloat(quantity));
         const newStatus = calculateStockStatus(newStock, selectedIngredient.min_stock);
         const now = new Date().toISOString();

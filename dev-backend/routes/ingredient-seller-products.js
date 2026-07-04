@@ -78,7 +78,21 @@ router.get('/ingredients/:ingredientId/seller-sources', async (req, res) => {
       order: [['is_preferred', 'DESC'], ['unit_price', 'ASC']]
     });
 
-    res.json({ success: true, data: sources });
+    // Attach the supplier's own sale-product identity (name + SKU) alongside our
+    // internal ingredient name/code. paranoid:false keeps historical products
+    // resolvable. Design P0-1 (RA parallel to BG product-ingredients).
+    const SupplierProduct = require('../models/SupplierProduct');
+    const spIds = [...new Set(sources.filter(r => r.seller_type === 'supplier' && r.seller_product_id).map(r => r.seller_product_id))];
+    const spMap = spIds.length
+      ? Object.fromEntries((await SupplierProduct.findAll({ where: { id: spIds }, attributes: ['id', 'name', 'sku'], paranoid: false })).map(s => [s.id, s]))
+      : {};
+    const data = sources.map(r => {
+      const j = r.toJSON();
+      const sp = r.seller_type === 'supplier' ? spMap[r.seller_product_id] : null;
+      return { ...j, seller_product_name: sp?.name || null, seller_product_sku: sp?.sku || null };
+    });
+
+    res.json({ success: true, data });
   } catch (err) {
     console.error('GET /seller-sources error:', err);
     res.status(500).json({ success: false, message: 'Failed to load seller sources' });

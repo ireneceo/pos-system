@@ -115,6 +115,13 @@ router.get('/brands/:brandId/ingredients', authenticateToken, isBrandManager, as
           required: false
         }]
       });
+      // Supplier product identity (name + SKU) — surfaced so screens can show the
+      // supplier's own sale-product name/code alongside our internal ingredient
+      // name/code. Design: docs/STOCK_ITEM_VS_SUPPLIER_PRODUCT_DESIGN.md (P0-1).
+      const spInfoById = {};
+      for (const sp of supProds) {
+        spInfoById[sp.id] = { name: sp.name || null, sku: sp.sku || null };
+      }
       const optsBySpId = {};
       for (const sp of supProds) {
         optsBySpId[sp.id] = (sp.optionGroups || [])
@@ -137,12 +144,16 @@ router.get('/brands/:brandId/ingredients', authenticateToken, isBrandManager, as
         else if (m.seller_type === 'foodcourt') sellerName = foodcourtMap[m.seller_entity_id] || 'Foodcourt';
         else if (m.seller_type === 'system_admin') sellerName = 'PurpleHere';
         const groups = (m.seller_type === 'supplier' ? (optsBySpId[m.seller_product_id] || []) : []);
+        const spInfo = (m.seller_type === 'supplier' ? spInfoById[m.seller_product_id] : null) || {};
         arr.push({
           id: m.id,
           seller_product_id: m.seller_product_id,
           seller_type: m.seller_type,
           seller_entity_id: m.seller_entity_id,
           seller_name: sellerName,
+          // Supplier's own sale-product identity (P0-1). sku only meaningful for suppliers.
+          seller_product_name: spInfo.name || null,
+          seller_product_sku: spInfo.sku || null,
           unit_price: parseFloat(m.unit_price),
           unit_conversion: parseFloat(m.unit_conversion),
           min_order_quantity: m.min_order_quantity,
@@ -507,6 +518,11 @@ router.get('/restaurants/:restaurantId/ingredients', authenticateToken, checkRes
       const brandMap = Object.fromEntries(brands.map(b => [b.id, b.name]));
       const foodcourtMap = Object.fromEntries(foodcourts.map(f => [f.id, f.name]));
 
+      // Supplier sale-product identity (name + SKU) for display alongside internal name/code (P0-1).
+      const SupplierProduct = require('../models/SupplierProduct');
+      const spIds = [...new Set(mappings.filter(m => m.seller_type === 'supplier' && m.seller_product_id).map(m => m.seller_product_id))];
+      const spMap = spIds.length ? Object.fromEntries((await SupplierProduct.findAll({ where: { id: { [Op.in]: spIds } }, attributes: ['id', 'name', 'sku'], paranoid: false })).map(s => [s.id, s])) : {};
+
       const sellersByIngredient = {};
       for (const m of mappings) {
         const arr = sellersByIngredient[m.ingredient_id] || (sellersByIngredient[m.ingredient_id] = []);
@@ -515,12 +531,15 @@ router.get('/restaurants/:restaurantId/ingredients', authenticateToken, checkRes
         else if (m.seller_type === 'brand') sellerName = brandMap[m.seller_entity_id] || 'Brand';
         else if (m.seller_type === 'foodcourt') sellerName = foodcourtMap[m.seller_entity_id] || 'Foodcourt';
         else if (m.seller_type === 'system_admin') sellerName = 'PurpleHere';
+        const sp = m.seller_type === 'supplier' ? spMap[m.seller_product_id] : null;
         arr.push({
           id: m.id,
           seller_product_id: m.seller_product_id,
           seller_type: m.seller_type,
           seller_entity_id: m.seller_entity_id,
           seller_name: sellerName,
+          seller_product_name: sp?.name || null,
+          seller_product_sku: sp?.sku || null,
           unit_price: parseFloat(m.unit_price),
           unit_conversion: parseFloat(m.unit_conversion),
           min_order_quantity: m.min_order_quantity,

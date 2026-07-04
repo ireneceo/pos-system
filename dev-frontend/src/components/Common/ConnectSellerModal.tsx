@@ -82,6 +82,7 @@ const ConvRow = styled.div`
 interface CatalogItem {
   id: number;
   name: string;
+  sku?: string | null;
   unit?: string | null;
   unit_price: number;
   supplier?: { id?: number; name?: string; seller_type?: 'supplier' | 'brand' | 'foodcourt' } | null;
@@ -267,7 +268,7 @@ export default function ConnectSellerModal({ open, ingredient, buyerApiBase, onC
                       {it.name}
                     </div>
                     <div style={{ fontSize: 12, color: '#4B5563' }}>
-                      {it.supplier?.name || '—'}{it.category_name ? ` · ${it.category_name}` : ''} · {it.unit || '—'}
+                      {it.supplier?.name || '—'}{it.sku ? ` · SKU: ${it.sku}` : ''}{it.category_name ? ` · ${it.category_name}` : ''} · {it.unit || '—'}
                     </div>
                   </div>
                   <div style={{ fontSize: 14, fontWeight: 700, color: '#635BFF', whiteSpace: 'nowrap' }}>

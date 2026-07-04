@@ -8,6 +8,9 @@ interface SellerSource {
   id: number;
   seller_type: 'supplier' | 'brand' | 'foodcourt' | 'system_admin';
   seller_entity_id: number | null;
+  // 공급업체 자체 판매품목명·SKU (공급업체 타입만 값 있음; 나머지는 null → 폴백)
+  seller_product_name?: string | null;
+  seller_product_sku?: string | null;
   unit_price: number | string;
   is_preferred: boolean;
   is_active: boolean;
@@ -138,6 +141,8 @@ const OrderModal: React.FC<Props> = ({
                   <option key={s.id} value={s.id}>
                     {SELLER_TYPE_LABEL[s.seller_type] || s.seller_type}
                     {s.seller_entity_id ? ` #${s.seller_entity_id}` : ''}
+                    {s.seller_product_name ? ` · ${s.seller_product_name}` : ''}
+                    {s.seller_product_sku ? ` · SKU: ${s.seller_product_sku}` : ''}
                     {' — '}{getCurrencySymbol(currency)} {(parseFloat(String(s.unit_price)) || 0).toFixed(2)}
                     {s.is_preferred ? ' ⭐' : ''}
                   </option>

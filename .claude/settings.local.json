@@ -961,7 +961,8 @@
       "Bash(echo \"fake-printer PID $!\")",
       "Bash(echo \"sdk exists: $?\")",
       "Bash(awk '/router\\\\.get\\\\\\(.\\\\/./{f=1} f{print NR\": \"$0} /res.json|res.status.*json/{if\\(f\\)c++; if\\(c>=1 && f\\) exit}' routes/brands.js)",
-      "Bash(node /tmp/claude-1000/-var-www/b33c5ff2-0e8a-422b-9ecb-b6831b317788/scratchpad/owner_mount.js)"
+      "Bash(node /tmp/claude-1000/-var-www/b33c5ff2-0e8a-422b-9ecb-b6831b317788/scratchpad/owner_mount.js)",
+      "Bash(awk 'NR>=42 && NR<=1000 && \\(/router\\\\.\\(get|post\\)\\\\\\(/ || /includeSellers = req.query.include/ || /spInfoById/\\)' routes/ingredients.js)"
     ],
     "deny": [],
     "ask": []

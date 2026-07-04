@@ -223,18 +223,40 @@ router.get('/purchase-orders/:id/pdf', async (req, res) => {
       if (r) { buyerName = r.name; buyerAddress = r.address || ''; }
     }
 
-    // Ingredient 이름 lookup
-    const ingIds = (po.items || []).map(i => i.ingredient_id).filter(Boolean);
-    const ings = ingIds.length ? await Ingredient.findAll({ where: { id: { [Op.in]: ingIds } }, attributes: ['id', 'name', 'unit'] }) : [];
+    // Internal item names (RA Ingredient + BG ProductIngredient) and — for the
+    // supplier-facing document — the supplier's OWN sale-product name + SKU so the
+    // supplier can find it in their warehouse. Design P0-3.
+    const { ProductIngredient, IngredientSellerProduct, SupplierProduct } = require('../models');
+    const ingIds = [...new Set((po.items || []).map(i => i.ingredient_id).filter(Boolean))];
+    const pIngIds = [...new Set((po.items || []).map(i => i.product_ingredient_id).filter(Boolean))];
+    const ispIds = [...new Set((po.items || []).map(i => i.ingredient_seller_product_id).filter(Boolean))];
+    const [ings, pIngs, isps] = await Promise.all([
+      ingIds.length ? Ingredient.findAll({ where: { id: { [Op.in]: ingIds } }, attributes: ['id', 'name', 'unit'] }) : [],
+      pIngIds.length ? ProductIngredient.findAll({ where: { id: { [Op.in]: pIngIds } }, attributes: ['id', 'name', 'unit'] }) : [],
+      ispIds.length ? IngredientSellerProduct.findAll({ where: { id: { [Op.in]: ispIds } }, attributes: ['id', 'seller_type', 'seller_product_id'] }) : []
+    ]);
     const ingMap = Object.fromEntries(ings.map(i => [i.id, i]));
+    const pIngMap = Object.fromEntries(pIngs.map(i => [i.id, i]));
+    const spIds = [...new Set(isps.filter(m => m.seller_type === 'supplier' && m.seller_product_id).map(m => m.seller_product_id))];
+    const spMap = spIds.length ? Object.fromEntries((await SupplierProduct.findAll({ where: { id: { [Op.in]: spIds } }, attributes: ['id', 'name', 'sku'], paranoid: false })).map(s => [s.id, s])) : {};
+    const ispMap = Object.fromEntries(isps.map(m => {
+      const sp = m.seller_type === 'supplier' ? spMap[m.seller_product_id] : null;
+      return [m.id, sp ? { name: sp.name, sku: sp.sku } : null];
+    }));
 
     const items = (po.items || []).map(it => {
-      const ing = ingMap[it.ingredient_id];
+      const internal = ingMap[it.ingredient_id] || pIngMap[it.product_ingredient_id];
+      const internalName = internal?.name || it.description || `Item #${it.ingredient_id || it.product_ingredient_id || ''}`;
+      const sp = it.ingredient_seller_product_id ? ispMap[it.ingredient_seller_product_id] : null;
       const qty = parseFloat(it.quantity_ordered) || 0;
       const unitPrice = parseFloat(it.unit_price) || 0;
       return {
-        name: ing?.name || `Ingredient #${it.ingredient_id}`,
-        unit: ing?.unit || '',
+        // Supplier's own product name is primary (they receive this doc); our internal
+        // name is shown as a buyer reference only when it differs.
+        name: sp?.name || internalName,
+        sku: sp?.sku || '',
+        buyer_ref: sp?.name ? internalName : '',
+        unit: internal?.unit || it.unit || '',
         qty,
         unit_price: unitPrice,
         line_total: qty * unitPrice
@@ -290,10 +312,10 @@ td { padding: 10px 12px; border-bottom: 1px solid #F3F4F6; font-size: 13px; }
   </div>
 </div>
 <table>
-  <thead><tr><th>Item</th><th class="num">Qty</th><th>Unit</th><th class="num">Unit Price</th><th class="num">Total</th></tr></thead>
+  <thead><tr><th>Item</th><th>SKU</th><th class="num">Qty</th><th>Unit</th><th class="num">Unit Price</th><th class="num">Total</th></tr></thead>
   <tbody>
-    ${items.map(i => `<tr><td>${i.name}</td><td class="num">${i.qty}</td><td>${i.unit}</td><td class="num">${i.unit_price.toFixed(2)}</td><td class="num">${i.line_total.toFixed(2)}</td></tr>`).join('')}
-    <tr class="total-row"><td colspan="4" class="num">Total (${po.currency || 'MYR'})</td><td class="num">${subtotal.toFixed(2)}</td></tr>
+    ${items.map(i => `<tr><td>${i.name}${i.buyer_ref ? `<div style="font-size:11px;color:#9CA3AF;margin-top:2px;">Buyer ref: ${i.buyer_ref}</div>` : ''}</td><td>${i.sku || '—'}</td><td class="num">${i.qty}</td><td>${i.unit}</td><td class="num">${i.unit_price.toFixed(2)}</td><td class="num">${i.line_total.toFixed(2)}</td></tr>`).join('')}
+    <tr class="total-row"><td colspan="5" class="num">Total (${po.currency || 'MYR'})</td><td class="num">${subtotal.toFixed(2)}</td></tr>
   </tbody>
 </table>
 ${po.notes ? `<div class="notes"><h3>Notes</h3>${po.notes.replace(/\n/g, '<br>')}</div>` : ''}

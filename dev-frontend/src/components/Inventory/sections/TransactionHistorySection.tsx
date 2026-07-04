@@ -46,8 +46,11 @@ const TransactionHistorySection: React.FC<Props> = ({ restaurantId, isBrandGener
     const fetchTransactions = async () => {
       try {
         const token = getAuthToken();
+        // Brand mode: the Inventory tab lists ProductIngredient (brand stock item)
+        // movements, so History must read the product-ingredient transaction log —
+        // NOT /general-stock/transactions (that only covers general stock). Audit #23/#36.
         const endpoint = isBrandGeneralMode
-          ? '/api/general-stock/transactions?limit=50'
+          ? '/api/product-ingredients/transactions?limit=50'
           : `/api/restaurants/${restaurantId}/inventory/transactions?limit=50`;
         const res = await fetch(endpoint, {
           headers: { 'Authorization': `Bearer ${token}` },

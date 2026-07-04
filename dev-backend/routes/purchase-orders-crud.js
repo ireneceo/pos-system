@@ -530,6 +530,29 @@ router.get('/purchase-orders/:id', async (req, res) => {
       if (f) plain.seller_name = f.name;
     }
 
+    // Item-level identity flattening (P0-3): internal name (RA Ingredient or BG
+    // ProductIngredient or description) + supplier's own sale-product name/SKU via
+    // the sellerSource mapping. So the PO detail screen can show both.
+    const items = plain.items || [];
+    if (items.length) {
+      const { ProductIngredient, SupplierProduct } = require('../models');
+      const spIds = [...new Set(items.map(it => it.sellerSource).filter(ss => ss && ss.seller_type === 'supplier' && ss.seller_product_id).map(ss => ss.seller_product_id))];
+      const pIngIds = [...new Set(items.map(it => it.product_ingredient_id).filter(Boolean))];
+      const [spRows, pIngRows] = await Promise.all([
+        spIds.length ? SupplierProduct.findAll({ where: { id: spIds }, attributes: ['id', 'name', 'sku'], paranoid: false }) : [],
+        pIngIds.length ? ProductIngredient.findAll({ where: { id: pIngIds }, attributes: ['id', 'name', 'unit'] }) : []
+      ]);
+      const spMap = Object.fromEntries(spRows.map(s => [s.id, s]));
+      const pIngMap = Object.fromEntries(pIngRows.map(p => [p.id, p]));
+      for (const it of items) {
+        const ss = it.sellerSource;
+        const sp = ss && ss.seller_type === 'supplier' ? spMap[ss.seller_product_id] : null;
+        it.seller_product_name = sp ? sp.name : null;
+        it.seller_product_sku = sp ? sp.sku : null;
+        it.ingredient_name = (it.ingredient && it.ingredient.name) || (pIngMap[it.product_ingredient_id] && pIngMap[it.product_ingredient_id].name) || it.description || null;
+      }
+    }
+
     res.json({ success: true, data: plain });
   } catch (err) {
     console.error('GET /api/purchase-orders/:id error:', err);
