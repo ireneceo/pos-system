@@ -1,20 +1,26 @@
 # Purple POS — 개발 세션 상태
 
-<!-- AUTOSAVE-STALE-BANNER -->
-> **[AUTO-SAVE STALE] (2026-07-04 06:30, idle 1879s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
-> 변경된 작업 파일: ingredient-seller-products.js,ingredients.js product-ingredients.js,purchase-orders-crud.js purchase-orders-workflow.js,restaurants-ingredients.js seller-orders.js,ConnectSellerModal.tsx InventoryManager.tsx,useAlertResolver.ts useIngredientAdjustModal.ts,useOrderModal.ts
-<!-- /AUTOSAVE-STALE-BANNER -->
+<!-- 2026-07-04: P1 브랜드-인벤토리 클러스터 + P0 공급업체 판매품목 표시 = Fable게이트 PASS 후 운영 배포 완료. -->
 
 ## 현재 작업 상태
 
-**마지막 업데이트:** 2026-07-03 #2 (BG/Owner 전수감사 32건 수정·검증·배포 + AI 음식인식 설계 + 개발순서 로드맵)
-**버전:** 운영=**v3.66 / SW 4.56** (dev SW=4.58, 미배포 — /배포 시에만 갱신)
-**작업 상태:** 완료 (체크포인트)
+**마지막 업데이트:** 2026-07-04 (P1 브랜드-인벤토리 클러스터 + P0 공급업체 판매품목 이름/SKU 분리표시 — Fable게이트 PASS → **운영 배포 완료**)
+**버전:** 운영=**v3.66 / SW 4.58** (2026-07-04 배포 Backup 20260704_061942, Smoke 9/9. 마케팅 버전 넘버 bump + 공개 릴리즈 공지(블로그·전체공지)는 Irene 복귀 후 결정 — outward-facing이라 보류.)
+**작업 상태:** 완료 (배포됨)
 
 ### 진행 중인 작업
 - 없음
 
-### 완료된 작업 (이번 세션 — 2026-07-03)
+### 완료된 작업 (이번 세션 — 2026-07-04, 운영 배포됨)
+- **P1 브랜드-인벤토리 브랜드모드 클러스터 (#5/6/23/35/36)** — dev 검증완료. 브랜드모드 액션 훅 mode-aware화: useSettingsModal(brand→PUT /product-ingredients/:id) / useOrderModal(brand seller-sources 경로 + PO item=**product_ingredient_id**, 안 그러면 Ingredient 테이블 조회 실패로 발주 깨짐) / useAlertResolver(brand alert=클라생성이라 로컬 제거) / useIngredientAdjustModal(brand→adjust-stock, 히스토리 기록) / InventoryManager(mode 전달) / TransactionHistorySection(brand→신규 `/api/product-ingredients/transactions`, 기존 general-stock 오조회 수정=#23뿌리) / product-ingredients.js(GET /transactions [/:id보다 먼저 등록] + adjust-stock에 InventoryTransaction 기록=#36).
+- **P0 "재고아이템 vs 공급업체 판매품목" 이름/코드 분리표시** — 설계·판단 단일진실 `docs/STOCK_ITEM_VS_SUPPLIER_PRODUCT_DESIGN.md`(Fable). 내부 재고 name/code(내 것) + 공급업체 판매품목 name/sku(공급업체 것) 화면 병기, 스키마 변경 0. Irene 기준 = **copy-on-link(연결등록 시 판매품목명 기본=내부명·수정가능, SKU 별도) + 독립편집**.
+  - 백엔드: seller 응답 name/sku 추가(`ingredients.js`·**`restaurants-ingredients.js`=RA 실핸들러**·`product-ingredients.js`·`ingredient-seller-products.js`, SupplierProduct join paranoid:false) / PO PDF SKU열+판매품목명 주·내부명 buyer ref(`purchase-orders-workflow.js`) / PO 상세 아이템 플래튼(`purchase-orders-crud.js`) / 공급업체 수신함 name/sku(`seller-orders.js`).
+  - 프론트: 재고 seller목록·피커·주문드롭다운 / 장바구니(NewPurchaseOrderPage) / PO상세 / 공급업체수신함(IncomingOrdersView) / 외부등록폼 name+sku(IngredientsTab) / 레거시 supplier "Default supplier" 라벨 강등+안내.
+  - **교훈(실호출로 잡음)**: RA `?include=sellers` 실제 핸들러는 `ingredients.js`(468)가 아니라 **`restaurants-ingredients.js`** — 첫 편집이 죽은 경로였음. /검증 3단계 실호출로 발견·수정.
+  - /검증 10단계 전부 통과: hydration0 / timezone 신규0 / build TS에러0 / API 실호출(seller name/sku 왕복·익명401·Write→Read) / 헤드리스 70/70 mount0크래시 / print-guard 보호8 무접촉 / design-guard 신규0 / health 106/107(1=기존 데스크탑red). **Fable 게이트 VERDICT: PASS**(diff 절단면 준수·읽기전용 표시·발주 무결성·마이그0).
+- **후속(선택, 미착수)**: 레거시 `supplier_name`/`supplier_id` 쓰기중단+멱등 백필(설계 §④ 후속) / PO PDF·seller name HTML escape 헬퍼 일괄(Fable 비차단 메모) / P0-5 완전 read-only 전환.
+
+### (직전) 완료된 작업 (2026-07-03)
 - **데모 버그 4건** — 전부 현재 dev 정상(원인=SW 캐시 옛 번들) 확인, dev SW 4.57→4.58 bump+재빌드 배포.
 - **BG/Owner 전수감사 — 32건 수정·검증·배포** (Fable 감사→적대검증→Opus 수정, 40건 중 32건). 단일진실 `docs/BG_OWNER_AUDIT_2026-07-03.md`:
   - 보안 5(IDOR·인보이스 PATCH·SMTP·구독스코프·owner self-entity, userCanAccessEntity 신설, 크로스테넌트 403/정상 200 검증)
@@ -25,9 +31,12 @@
 - **AI 음식인식 서빙 설계 확정**(Fable) — `docs/AI_FOOD_RECOGNITION_DESIGN.md`. 결정 3개 잠금(사진보관X / 참조사진=메뉴+설정업로드 / RM179 Enterprise 게이팅). 메모리 [[project_ai_food_recognition]].
 - **개발순서 로드맵**(Fable 판단) 확정 — 아래 섹션.
 
-### 다음 확정 작업 (Irene 지시 = 로드맵대로)
-- **P1: 브랜드-인벤토리 브랜드모드 클러스터 (#5/6/36/23/35)** — 스코핑 완료. 근본: 브랜드모드 액션 훅들이 레스토랑 경로 사용. 스톡목록은 정상(`useInventoryData:91` `/api/product-ingredients`=**BG Product기준 ProductIngredient**, 메뉴/레시피 아님 — Irene 확인). 수정=useSettingsModal/useOrderModal/useAlertResolver/InventoryManager를 mode-aware화 → 브랜드모드는 product-ingredient 엔드포인트 호출 + 없는 것 신설(brand-inventory.js 확장).
-- 이후 로드맵 순서: #24 구독(Fable 돈게이트) → AI Track A → #8+#38 analytics → AI Track B(Fable) → 안드로이드.
+### 다음 확정 작업 (Irene 지시 = 로드맵대로) — P1 완료·배포됨, 다음은:
+- **P0/P1 공개 릴리즈 마무리**: 마케팅 버전 bump + 릴리즈노트 공개(블로그+전체공지) 여부 Irene 결정(현재 보류 — outward-facing). 원하면 CHANGELOG→create-release-post.js.
+- 로드맵 다음: **#24 구독 변경/취소 미저장(Manager, Fable 돈게이트)** → AI Track A(아이템 썸네일·순수FE) → #8 Manager Reports + #38 Customer Insights(실 analytics) → AI Track B(카메라 인식, Fable) → 안드로이드.
+
+### 후속 후보 (아이디어 메모, 확정 X) — 추가분
+- **PWA 설치 배너 문구 정리** (2026-07-04 Irene 질문): 현재 "Install Purple POS / Install this app for push notifications, a standalone window, and faster access / Install"은 **브라우저 기본 PWA 설치 프롬프트**(우리 문구 아님). "무엇이 설치/다운되는지" 명확히 하려면 커스텀 배너(PwaInstallContext/PwaInstallBanner)로 대체 필요. 윈도우 .exe 다운로드와 구분 표기도. Irene 문구 방향 결정 후 착수.
 
 ### 후속 후보 (아이디어 메모, 확정 X)
 > 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.
