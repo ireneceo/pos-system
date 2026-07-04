@@ -237,8 +237,10 @@ router.post('/:restaurantId/ingredients', authenticateToken, checkRestaurantAcce
       unit,
       base_quantity: base_quantity || 1,
       unit_cost,
-      supplier_name,
-      supplier_id: supplier_id || null,
+      // 레거시 단일공급 컬럼 쓰기 중단 (2026-07-04). 공급처는 seller-source 매핑(ingredient_seller_products)으로 관리.
+      // 신규 재고는 레거시 supplier_name/supplier_id 를 채우지 않는다(데이터 드리프트 방지). 표시는 매핑 기준.
+      supplier_name: null,
+      supplier_id: null,
       min_stock: min_stock || 0,
       current_stock: 0,
       track_stock: track_stock || false
@@ -463,7 +465,7 @@ router.put('/:restaurantId/ingredients/:ingredientId', authenticateToken, checkR
     if (category !== undefined) updateData.category = category;
     if (unit !== undefined) updateData.unit = unit;
     if (unit_cost !== undefined) updateData.unit_cost = unit_cost;
-    if (supplier_name !== undefined) updateData.supplier_name = supplier_name;
+    // 레거시 supplier_name/supplier_id 쓰기 중단 (2026-07-04) — 기존 값은 보존, API 로는 더는 수정하지 않음. 공급처=seller-source 매핑.
     if (min_stock !== undefined) updateData.min_stock = min_stock;
     if (image_url !== undefined) {
       const normalized = await normalizeIngredientImage(image_url, ingredient.restaurant_id);
@@ -474,7 +476,6 @@ router.put('/:restaurantId/ingredients/:ingredientId', authenticateToken, checkR
     }
     if (ingredient_category_id !== undefined) updateData.ingredient_category_id = ingredient_category_id;
     if (base_quantity !== undefined) updateData.base_quantity = base_quantity;
-    if (supplier_id !== undefined) updateData.supplier_id = supplier_id;
     if (track_stock !== undefined) updateData.track_stock = track_stock;
 
     await ingredient.update(updateData);

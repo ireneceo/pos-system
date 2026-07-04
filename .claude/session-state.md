@@ -1,15 +1,22 @@
 # Purple POS — 개발 세션 상태
 
-<!-- 2026-07-04: P1 브랜드-인벤토리 클러스터 + P0 공급업체 판매품목 표시 = Fable게이트 PASS 후 운영 배포 완료. -->
+<!-- 2026-07-04 #2: 레거시 supplier 쓰기중단 + P0-5 read-only = Fable게이트 PASS, dev 검증완료·미배포(운영 /배포 지시 대기). 백필=자연이관 결정으로 미실행. -->
 
 ## 현재 작업 상태
 
-**마지막 업데이트:** 2026-07-04 (P1 브랜드-인벤토리 클러스터 + P0 공급업체 판매품목 이름/SKU 분리표시 — Fable게이트 PASS → **운영 배포 완료**)
-**버전:** 운영=**v3.66 / SW 4.58** (2026-07-04 배포 Backup 20260704_061942, Smoke 9/9. 마케팅 버전 넘버 bump + 공개 릴리즈 공지(블로그·전체공지)는 Irene 복귀 후 결정 — outward-facing이라 보류.)
-**작업 상태:** 완료 (배포됨)
+**마지막 업데이트:** 2026-07-04 #2 (P0 후속 마무리 — 레거시 supplier 쓰기 중단 + P0-5 완전 read-only. dev 검증완료·**미배포**. 백필=Irene 결정 "자연 이관"으로 미실행.)
+**버전:** 운영=**v3.66 / SW 4.58** (2026-07-04 배포 Backup 20260704_061942, Smoke 9/9). dev 에 레거시 supplier 쓰기중단 미배포분 있음(운영배포는 /배포 지시 때).
 
 ### 진행 중인 작업
 - 없음
+
+### 완료된 작업 (이번 세션 — 2026-07-04 #2, dev 검증완료·미배포)
+- **레거시 `supplier_name`/`supplier_id` 쓰기 중단 (설계 ④ step2) + P0-5 완전 read-only** — "발주/재고 이름·코드 분리(유저 vs 공급업체)" P0 의 마지막 후속. 이걸로 해당 작업 **완전히 닫힘**.
+  - 백엔드 3라우트: `ingredients.js`(RA+BG create/update)·`restaurants-ingredients.js`(RA create/update)·`product-ingredients.js`(BG create/update) — create=레거시 컬럼 null 고정, update=목록 제외(기존값 보존, API 로 수정 불가). 별개 서브시스템(general-stock/inventory-*)·supplier 가입경로 **무접촉**(최소범위).
+  - 프론트: `RecipeManagement/IngredientsTab.tsx` "Default supplier" 쓰기 셀렉트 제거→레거시값 read-only 표시+seller-source 유도, create/edit/track-toggle 페이로드 supplier 미전송. `BrandProductRecipe/ProductIngredientsTab.tsx` track-toggle 정리.
+  - **백필 = 미실행 (Irene 결정 "자연 이관")**: 매핑은 seller_product_id(NOT NULL)+활성 SupplierContract 를 요구 → 레거시 12건(dev) 이관하려면 SupplierCompany+SupplierProduct+계약을 행마다 날조해야 함(데이터 품질↓). 쓰기중단으로 향후 드리프트 차단됐고 레거시값 read-only 유지되므로, 다음 주문 때 seller-source 1클릭으로 자연 이관(업계 표준 lazy migration). 설계 ④ 에 결정 명시.
+  - **검증**: 실 API 왕복(create/update 레거시 null 고정·비레거시 저장·seller 표시 shape 유지 25건) / build+dev배포(내 파일 에러0) / print-guard 보호8 **무접촉**(git 확인, 보고된 billPrint·MainLayout 델타=기존 데스크탑P2 미-bless) / design-guard 신규0 / health 106/107(1=기존 데스크탑 print 델타, 신규실패0).
+  - **Fable 게이트 = 실행완료·VERDICT PASS** (Fable 세션 독립검증): 절단면 정확 일치(범위외0)·인쇄 보호8 무접촉(git 교차확인)·쓰기중단/레거시값 보존 실증 25/25·발주 경로(`ingredient_seller_product_id` 기반) 무영향·마이그0·롤백 git revert 안전. 경미 비차단 1건=IngredientsTab `suppliers` fetch dead code(다음 정리). **운영 배포는 Irene /배포 지시만.**
 
 ### 완료된 작업 (이번 세션 — 2026-07-04, 운영 배포됨)
 - **P1 브랜드-인벤토리 브랜드모드 클러스터 (#5/6/23/35/36)** — dev 검증완료. 브랜드모드 액션 훅 mode-aware화: useSettingsModal(brand→PUT /product-ingredients/:id) / useOrderModal(brand seller-sources 경로 + PO item=**product_ingredient_id**, 안 그러면 Ingredient 테이블 조회 실패로 발주 깨짐) / useAlertResolver(brand alert=클라생성이라 로컬 제거) / useIngredientAdjustModal(brand→adjust-stock, 히스토리 기록) / InventoryManager(mode 전달) / TransactionHistorySection(brand→신규 `/api/product-ingredients/transactions`, 기존 general-stock 오조회 수정=#23뿌리) / product-ingredients.js(GET /transactions [/:id보다 먼저 등록] + adjust-stock에 InventoryTransaction 기록=#36).
@@ -18,7 +25,7 @@
   - 프론트: 재고 seller목록·피커·주문드롭다운 / 장바구니(NewPurchaseOrderPage) / PO상세 / 공급업체수신함(IncomingOrdersView) / 외부등록폼 name+sku(IngredientsTab) / 레거시 supplier "Default supplier" 라벨 강등+안내.
   - **교훈(실호출로 잡음)**: RA `?include=sellers` 실제 핸들러는 `ingredients.js`(468)가 아니라 **`restaurants-ingredients.js`** — 첫 편집이 죽은 경로였음. /검증 3단계 실호출로 발견·수정.
   - /검증 10단계 전부 통과: hydration0 / timezone 신규0 / build TS에러0 / API 실호출(seller name/sku 왕복·익명401·Write→Read) / 헤드리스 70/70 mount0크래시 / print-guard 보호8 무접촉 / design-guard 신규0 / health 106/107(1=기존 데스크탑red). **Fable 게이트 VERDICT: PASS**(diff 절단면 준수·읽기전용 표시·발주 무결성·마이그0).
-- **후속(선택, 미착수)**: 레거시 `supplier_name`/`supplier_id` 쓰기중단+멱등 백필(설계 §④ 후속) / PO PDF·seller name HTML escape 헬퍼 일괄(Fable 비차단 메모) / P0-5 완전 read-only 전환.
+- **후속**: ~~레거시 `supplier_name`/`supplier_id` 쓰기중단~~ ✅(2026-07-04 #2) / ~~P0-5 완전 read-only~~ ✅(2026-07-04 #2) / 멱등 백필=**미실행 결정(자연 이관)** / PO PDF·seller name HTML escape 헬퍼 일괄(Fable 비차단 메모, 미착수).
 
 ### (직전) 완료된 작업 (2026-07-03)
 - **데모 버그 4건** — 전부 현재 dev 정상(원인=SW 캐시 옛 번들) 확인, dev SW 4.57→4.58 bump+재빌드 배포.

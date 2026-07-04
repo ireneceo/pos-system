@@ -962,7 +962,10 @@
       "Bash(echo \"sdk exists: $?\")",
       "Bash(awk '/router\\\\.get\\\\\\(.\\\\/./{f=1} f{print NR\": \"$0} /res.json|res.status.*json/{if\\(f\\)c++; if\\(c>=1 && f\\) exit}' routes/brands.js)",
       "Bash(node /tmp/claude-1000/-var-www/b33c5ff2-0e8a-422b-9ecb-b6831b317788/scratchpad/owner_mount.js)",
-      "Bash(awk 'NR>=42 && NR<=1000 && \\(/router\\\\.\\(get|post\\)\\\\\\(/ || /includeSellers = req.query.include/ || /spInfoById/\\)' routes/ingredients.js)"
+      "Bash(awk 'NR>=42 && NR<=1000 && \\(/router\\\\.\\(get|post\\)\\\\\\(/ || /includeSellers = req.query.include/ || /spInfoById/\\)' routes/ingredients.js)",
+      "Bash(cp /tmp/claude-1000/-var-www/135a9cb0-c38a-447c-8776-5b7bcf7f3a64/scratchpad/check_legacy.js /var/www/dev-backend/_tmp_check_legacy.js)",
+      "Bash(rm -f /var/www/dev-backend/_tmp_check_legacy.js)",
+      "Bash(xargs stat -c '%y %n')"
     ],
     "deny": [],
     "ask": []

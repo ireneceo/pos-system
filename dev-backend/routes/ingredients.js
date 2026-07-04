@@ -360,8 +360,9 @@ router.post('/brands/:brandId/ingredients', authenticateToken, isBrandManager, a
       unit,
       base_quantity: base_quantity || 1,
       unit_cost,
-      supplier_name,
-      supplier_id: supplier_id || null,
+      // 레거시 단일공급 컬럼 쓰기 중단 (2026-07-04). 공급처=seller-source 매핑(ingredient_seller_products).
+      supplier_name: null,
+      supplier_id: null,
       min_stock: min_stock || 0,
       current_stock: 0,
       track_stock: track_stock || false
@@ -404,8 +405,7 @@ router.put('/brands/:brandId/ingredients/:ingredientId', authenticateToken, isBr
     if (unit !== undefined) updateData.unit = unit;
     if (base_quantity !== undefined) updateData.base_quantity = base_quantity;
     if (unit_cost !== undefined) updateData.unit_cost = unit_cost;
-    if (supplier_name !== undefined) updateData.supplier_name = supplier_name;
-    if (supplier_id !== undefined) updateData.supplier_id = supplier_id;
+    // 레거시 supplier_name/supplier_id 쓰기 중단 (2026-07-04) — 기존 값 보존, API 로 수정 안 함. 공급처=seller-source 매핑.
     if (min_stock !== undefined) updateData.min_stock = min_stock;
     if (track_stock !== undefined) updateData.track_stock = track_stock;
 
@@ -669,8 +669,9 @@ router.post('/restaurants/:restaurantId/ingredients', authenticateToken, checkRe
       unit,
       base_quantity: base_quantity || 1,
       unit_cost,
-      supplier_name,
-      supplier_id: supplier_id || null,
+      // 레거시 단일공급 컬럼 쓰기 중단 (2026-07-04). 공급처=seller-source 매핑(ingredient_seller_products).
+      supplier_name: null,
+      supplier_id: null,
       min_stock: min_stock || 0,
       current_stock: 0,
       track_stock: track_stock || false
@@ -714,8 +715,7 @@ router.put('/restaurants/:restaurantId/ingredients/:ingredientId', authenticateT
     if (unit !== undefined) updateData.unit = unit;
     if (base_quantity !== undefined) updateData.base_quantity = base_quantity;
     if (unit_cost !== undefined) updateData.unit_cost = unit_cost;
-    if (supplier_name !== undefined) updateData.supplier_name = supplier_name;
-    if (supplier_id !== undefined) updateData.supplier_id = supplier_id;
+    // 레거시 supplier_name/supplier_id 쓰기 중단 (2026-07-04) — 기존 값 보존, API 로 수정 안 함. 공급처=seller-source 매핑.
     if (min_stock !== undefined) updateData.min_stock = min_stock;
     if (track_stock !== undefined) updateData.track_stock = track_stock;
 

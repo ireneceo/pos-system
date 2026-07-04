@@ -997,10 +997,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
           image_url: formData.image_url || null,
           ingredient_category_id: formData.ingredient_category_id ? parseInt(formData.ingredient_category_id as string) : null,
           unit: formData.unit,
-          supplier_id: formData.supplier_id ? Number(formData.supplier_id) : null,
-          supplier_name: formData.supplier_id
-            ? suppliers.find(s => s.id === Number(formData.supplier_id))?.name || ''
-            : '',
+          // 레거시 supplier_id/supplier_name 미전송 (2026-07-04) — 공급처는 seller-source 매핑으로 관리. 백엔드도 쓰기 중단.
           base_quantity: parseFloat(formData.base_quantity) || 1,
           unit_cost: parseFloat(formData.unit_cost),
           min_stock: parseInt(formData.min_stock) || 0,
@@ -1055,8 +1052,6 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
           unit: ingredient.unit,
           base_quantity: ingredient.base_quantity,
           unit_cost: ingredient.unit_cost,
-          supplier_id: ingredient.supplier_id,
-          supplier_name: ingredient.supplier_name,
           min_stock: ingredient.min_stock,
           is_active: ingredient.is_active,
           track_stock: newValue
@@ -1477,20 +1472,15 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
               </FormSelect>
             </UIFormGroup>
             <UIFormGroup>
-              <FormLabel>{'Default supplier'}</FormLabel>
-              <SearchableSelect
-                options={suppliers.map(s => ({
-                  value: s.id,
-                  label: s.name,
-                  subLabel: s.owner_type === 'brand' ? 'Brand' : undefined
-                }))}
-                value={formData.supplier_id || null}
-                onChange={(val) => setFormData({ ...formData, supplier_id: val || '' })}
-                placeholder="Select supplier..."
-                noOptionsMessage="No suppliers found"
-              />
+              <FormLabel>{'Supplier source'}</FormLabel>
+              {(selectedIngredient?.supplier?.name || selectedIngredient?.supplier_name) && (
+                <div style={{ fontSize: 14, color: '#0A2540', padding: '2px 0' }}>
+                  {selectedIngredient?.supplier?.name || selectedIngredient?.supplier_name}
+                  <span style={{ fontSize: 12, color: '#9CA3AF', marginLeft: 6 }}>(legacy)</span>
+                </div>
+              )}
               <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>
-                Sets a single default supplier only. To order with the supplier's own product name, SKU and price, add a supplier source on the item after saving.
+                Add the supplier's own product name, SKU and price as a supplier source on the item (from the item's supplier sources).
               </div>
             </UIFormGroup>
           </UIFormRow>

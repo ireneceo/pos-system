@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-07-03 #2 (**BG/Owner 전수감사 32건 수정·검증·배포 + AI 음식인식 설계(Fable) + 개발순서 로드맵** — 데모버그4건은 전부 현재 dev 정상(원인=SW캐시)로 확인 후 SW4.58 배포. **Fable 감사→적대검증**으로 BG/Owner 결함 40건 발견, **32건 수정 완료**: 보안5(IDOR·인보이스PATCH·SMTP·구독스코프·owner self-entity, 크로스테넌트 403 검증)·크래시/500 8(오너 댓글/매뉴얼 author_name·삭제 FK캐스케이드·React#31)·주소3(브랜드 전체필드 round-trip·owner null정규화, 레스토랑 표준)·리포트/성능7(50건캡·served집계·성장률·Export死·Math.random·필터리마운트·BestSeller)·**#9 Manager Sales 실매출 엔드포인트 신규**(`/api/manager/sales-summary` 타임존정확, 테스트주문 주입검증)·**#31 PhoneInput 크로스컨트리 오파싱**(dial code로 국가판별)·기타. 잔여 8건=기능규모(인벤토리 브랜드모드=BG ProductIngredient기준·#8리포트 범위엔드포인트·#38고객분석·#24구독청구). **AI 음식인식 서빙** 설계확정(`docs/AI_FOOD_RECOGNITION_DESIGN.md`, 메뉴사진 임베딩+조리완료 제약매칭·RM179 Enterprise·모바일웹·인쇄무접촉·2테이블). 개발순서 로드맵 Fable판단 확정(session-state). /검증: hydration0·design신규0·health106/107(1=의도된 desktopP2)·i18n통과. 상세 ↓.)
+> **최종 업데이트:** 2026-07-04 #2 (**레거시 supplier 쓰기 중단 + P0-5 완전 read-only — Fable 게이트 PASS, dev 검증완료·미배포** — "발주/재고 이름·코드 분리(유저 내부 name/code vs 공급업체 name/sku)" P0 의 마지막 후속 마무리. 백엔드 3라우트(`ingredients.js`·`restaurants-ingredients.js`·`product-ingredients.js`) create=레거시 컬럼 null 고정·update=목록 제외(기존값 보존), 프론트 폼(IngredientsTab/ProductIngredientsTab) supplier 쓰기 제거→read-only 표시. **백필=미실행(Irene 결정 "자연 이관")** — 매핑이 SupplierProduct+활성 계약을 요구해 백필 시 공급망 데이터 날조 필요 → 쓰기중단으로 향후 드리프트 차단·레거시값 read-only 유지·다음 주문 시 seller-source 1클릭 자연 이관. **Fable 게이트 VERDICT: PASS**(절단면 정확·인쇄 보호8 무접촉·쓰기중단/보존 실증 25/25·발주 무영향·마이그0·롤백안전). 상세 ↓.)
+>
+> **이전:** 2026-07-03 #2 (**BG/Owner 전수감사 32건 수정·검증·배포 + AI 음식인식 설계(Fable) + 개발순서 로드맵** — 데모버그4건은 전부 현재 dev 정상(원인=SW캐시)로 확인 후 SW4.58 배포. **Fable 감사→적대검증**으로 BG/Owner 결함 40건 발견, **32건 수정 완료**: 보안5(IDOR·인보이스PATCH·SMTP·구독스코프·owner self-entity, 크로스테넌트 403 검증)·크래시/500 8(오너 댓글/매뉴얼 author_name·삭제 FK캐스케이드·React#31)·주소3(브랜드 전체필드 round-trip·owner null정규화, 레스토랑 표준)·리포트/성능7(50건캡·served집계·성장률·Export死·Math.random·필터리마운트·BestSeller)·**#9 Manager Sales 실매출 엔드포인트 신규**(`/api/manager/sales-summary` 타임존정확, 테스트주문 주입검증)·**#31 PhoneInput 크로스컨트리 오파싱**(dial code로 국가판별)·기타. 잔여 8건=기능규모(인벤토리 브랜드모드=BG ProductIngredient기준·#8리포트 범위엔드포인트·#38고객분석·#24구독청구). **AI 음식인식 서빙** 설계확정(`docs/AI_FOOD_RECOGNITION_DESIGN.md`, 메뉴사진 임베딩+조리완료 제약매칭·RM179 Enterprise·모바일웹·인쇄무접촉·2테이블). 개발순서 로드맵 Fable판단 확정(session-state). /검증: hydration0·design신규0·health106/107(1=의도된 desktopP2)·i18n통과. 상세 ↓.)
 >
 > **이전:** 2026-07-03 #1 (데모 버그 4건 조사 → 전부 현재 dev 정상(SW캐시 원인) 확인, SW4.58 배포. 안드로이드 MainActivity 브릿지주입.)
 >
@@ -35,6 +37,31 @@
 > **이전:** 2026-06-23 (**v3.62 운영 배포 완료** — thefire 실사용 준비 7건: 직원 PIN 전환 수정 · 시재 개시모드(이월/고정) · 마감 폰트 통일 · 통합오더티켓 'Full' 수동인쇄 · 로그인 직원 PIN 우선 · 설정 QR 인쇄버튼 · Windows 7/8 QZ 설치 수정. Backup 20260623_124849, Smoke 9/9, SW=3.95. /검증 통과: health 107/107·print-guard 8/8(billPrint 무수정)·hydration0·timezone0·design0·i18n0·mount(floor-plan/settings/cash-up/pos) crash0.)
 >
 > **이전:** v3.61 발주 UX 대정리 + 외부공급업체 + 플로어플랜 핫픽스. SW=3.90.
+
+## ✅ 완료: 레거시 supplier 쓰기 중단 + P0-5 완전 read-only (2026-07-04 #2, dev 검증완료·미배포, Fable 게이트 PASS)
+
+> "발주/재고에서 이름·코드를 유저용(내부 name/code) vs 공급업체용(SupplierProduct name/sku)으로 분리" P0 의 마지막 후속. 표시 분리는 이미 운영(v3.66). 이번엔 레거시 단일공급 컬럼 정리로 "공급처 합쳐진 느낌"의 근원 제거. 단일 진실 = `docs/STOCK_ITEM_VS_SUPPLIER_PRODUCT_DESIGN.md §④`.
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 백엔드 쓰기 중단 (3라우트) | `ingredients.js`(RA+BG create/update)·`restaurants-ingredients.js`(RA create/update)·`product-ingredients.js`(BG create/update): create=`supplier_name`/`supplier_id` null 고정, update=목록 제외(기존값 보존, API로 수정 불가). 별개 서브시스템(general-stock/inventory-*)·supplier 가입경로 무접촉(최소범위) | ✅ 완료 |
+| 프론트 P0-5 완전 read-only | `IngredientsTab.tsx` "Default supplier" 쓰기 셀렉트 제거→레거시값 read-only 표시+seller-source 유도, create/edit/track-toggle 페이로드 supplier 미전송. `ProductIngredientsTab.tsx` track-toggle 정리 | ✅ 완료 |
+| 백필 미실행 결정 | Irene "자연 이관" — 매핑=`seller_product_id`(NOT NULL)+활성 `SupplierContract` 요구 → 백필 시 SupplierCompany+Product+계약 날조 필요(데이터 품질↓). 쓰기중단으로 드리프트 차단·레거시값 read-only 유지·다음 주문 시 자연 이관(업계 표준 lazy migration) | ✅ 결정·문서화 |
+| 검증 | 실 API 왕복(create/update 레거시 null·비레거시 저장·레거시값 보존 실증) / build+dev배포 내 파일 에러0 / print-guard 보호8 무접촉(git) / design-guard 신규0 / health 106/107(1=기존 데스크탑 print 델타) | ✅ 완료 |
+| Fable 게이트 | VERDICT **PASS** — 절단면 정확 일치(범위외0)·인쇄 보호8 무접촉·쓰기중단/보존 실증 25/25·발주 경로(`ingredient_seller_product_id` 기반) 무영향·마이그0·롤백 git revert 안전 | ✅ PASS |
+
+### 수정된 파일
+- 백엔드: `dev-backend/routes/ingredients.js`·`dev-backend/routes/restaurants-ingredients.js`·`dev-backend/routes/product-ingredients.js`
+- 프론트: `dev-frontend/src/pages/RecipeManagement/IngredientsTab.tsx`·`dev-frontend/src/pages/BrandProductRecipe/ProductIngredientsTab.tsx`
+- 문서: `docs/STOCK_ITEM_VS_SUPPLIER_PRODUCT_DESIGN.md`(§④ 결정 블록)
+
+### 잔여 (비차단)
+- IngredientsTab `suppliers` state·fetch 이제 dead code(Fable 경미 지적) → 다음 정리 패스에서 제거
+- **미배포** — 운영 반영은 Irene `/배포` 지시 때
+
+---
 
 ## ✅ 완료: BG/Owner 전수감사 32건 수정 + AI 음식인식 설계 + 개발순서 로드맵 (2026-07-03 #2, dev 검증·배포 SW4.58)
 

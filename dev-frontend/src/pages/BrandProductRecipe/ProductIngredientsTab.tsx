@@ -665,8 +665,6 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
           unit: ingredient.unit,
           base_quantity: ingredient.base_quantity,
           unit_cost: ingredient.unit_cost,
-          supplier_name: ingredient.supplier_name,
-          supplier_id: ingredient.supplier_id,
           min_stock: ingredient.min_stock,
           min_order: ingredient.min_order,
           current_stock: ingredient.current_stock,

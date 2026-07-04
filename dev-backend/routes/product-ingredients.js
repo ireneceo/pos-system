@@ -376,8 +376,9 @@ router.post('/', async (req, res) => {
       unit,
       base_quantity: base_quantity || 1,
       unit_cost: unit_cost || 0,
-      supplier_name,
-      supplier_id,
+      // 레거시 단일공급 컬럼 쓰기 중단 (2026-07-04). 공급처=seller-source 매핑(ingredient_seller_products, product_ingredient_id).
+      supplier_name: null,
+      supplier_id: null,
       min_stock: min_stock || 0,
       min_order: min_order || 0,
       current_stock: current_stock || 0,
@@ -413,9 +414,10 @@ router.put('/:id', async (req, res) => {
     if (!assertBGOwnsRow(ingredient, req, res)) return;
 
     // 부분 업데이트 지원 - undefined가 아닌 필드만 업데이트
+    // 레거시 supplier_name/supplier_id 는 목록에서 제외 = API 로 더는 수정 안 함(기존 값 보존). 공급처=seller-source 매핑.
     const updateFields = [
       'name', 'category_id', 'image_url', 'unit', 'base_quantity',
-      'unit_cost', 'supplier_name', 'supplier_id',
+      'unit_cost',
       'min_stock', 'min_order', 'current_stock',
       'lead_time_days', 'safety_stock_percent',
       'manual_daily_usage', 'track_stock', 'is_active'

@@ -142,7 +142,8 @@ CREATE TABLE ingredients (
 
   -- 가격
   unit_cost DECIMAL(10, 4) NOT NULL DEFAULT 0,
-  supplier_name VARCHAR(100),
+  supplier_name VARCHAR(100),  -- ⚠️ DEPRECATED (2026-07-04): 쓰기 중단, read-only. 공급처=ingredient_seller_products 매핑(+SupplierProduct name/sku). 상세 docs/STOCK_ITEM_VS_SUPPLIER_PRODUCT_DESIGN.md §④
+  -- supplier_id 도 동일하게 deprecated (레거시 단일공급, 매핑으로 대체)
 
   -- 재고
   min_stock DECIMAL(10, 2) DEFAULT 0,

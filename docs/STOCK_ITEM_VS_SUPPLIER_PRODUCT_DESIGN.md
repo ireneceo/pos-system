@@ -91,6 +91,9 @@
 
 ## ④ 레거시 `supplier_name`/`supplier_id` 처리
 
+> **[결정·구현 2026-07-04 #2]** step1(read 강등)+step2(쓰기 중단) **완료**: 3라우트(`ingredients.js`·`restaurants-ingredients.js`·`product-ingredients.js`) create=null 고정·update=미수정, 프론트 폼 supplier 쓰기 제거(P0-5 read-only). **step3 백필=미실행(Irene 결정 "자연 이관")**: 매핑은 `seller_product_id`(NOT NULL)+활성 `SupplierContract` 를 요구하므로 백필하려면 레거시 행마다 SupplierCompany+SupplierProduct+계약을 날조해야 함 → 실재 않는 공급망 데이터 생성=혼동 재생산. 쓰기중단으로 향후 드리프트 차단됐고 레거시값은 read-only 유지되므로, **다음 주문 시 seller-source 1클릭 자연 이관(lazy migration, 업계 표준)** 으로 종료. 아래 원안은 참고용으로 보존.
+
+
 **권고: 새 표준은 매핑(`ingredient_seller_products`)으로 일원화. 레거시 컬럼은 즉시 drop 금지 — "표시 강등 → 쓰기 중단 → 백필 → deprecate" 단계.**
 
 - **하지 말 것**: 컬럼 즉시 삭제(운영 데이터·발주 이력·기존 RA 폼이 참조 → 회귀). `sync-database --alter`가 모델 미정의 컬럼을 드롭하는 사고 이력 있음([[reference_sync_alter_drops_columns]]) — 반대로 여기선 모델엔 남기고 **쓰기만 끊는** 방향.
