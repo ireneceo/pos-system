@@ -1,0 +1,2326 @@
+[
+  {
+    "key": "흑설탕시럽",
+    "ko": "흑설탕시럽",
+    "item": "Black Sugar Syrup",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "맥주타이거338ml 1박스",
+    "ko": "맥주타이거338ml 1박스",
+    "item": "Tiger Beer 338ml",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "소고기 (불고기용)",
+    "ko": "소고기 (불고기용)",
+    "item": "Sliced Beef(2mm) /Aust Midfield Brisket PEDO",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "복숭아 베이스",
+    "ko": "복숭아 베이스",
+    "item": "PEACH BASE",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "EN::Japanesse Cucumber",
+    "ko": "",
+    "item": "Japanesse Cucumber",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "EN::Cherry Tomato",
+    "ko": "",
+    "item": "Cherry Tomato",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "포도 베이스",
+    "ko": "포도 베이스",
+    "item": "GRAPE BASE",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "EN::Mesclun Mix",
+    "ko": "",
+    "item": "Mesclun Mix",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "녹차 파우더 (마차)",
+    "ko": "녹차 파우더 (마차)",
+    "item": "Premium Matcha Powder",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "레몬라임티",
+    "ko": "레몬라임티",
+    "item": "SCRIPPO LEMON LIME TEA",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "초코렛 파우더",
+    "ko": "초코렛 파우더",
+    "item": "Premium Chocolate Powder",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "커피원두 하우스커피/모닝펀치",
+    "ko": "커피원두 하우스커피/모닝펀치",
+    "item": "House coffee (morning punch)",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "MONIN 민트 시럽",
+    "ko": "MONIN 민트 시럽",
+    "item": "MONIN Premium Syrup Wild Mint",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "Chamomile Herbal",
+    "ko": "Chamomile Herbal",
+    "item": "Chamomile Herbal",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "Earl Grey",
+    "ko": "Earl Grey",
+    "item": "Earl Grey",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "English Breakfast",
+    "ko": "English Breakfast",
+    "item": "English Breakfast",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "MONIN 바닐라 시럽",
+    "ko": "MONIN 바닐라 시럽",
+    "item": "MONIN Premium Syrup Vanilla",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "Organic Peppermint Herbal",
+    "ko": "Organic Peppermint Herbal",
+    "item": "Organic Peppermint Herbal",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "EN::Yellow Onion",
+    "ko": "",
+    "item": "Yellow Onion",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "EN::Old Ginger",
+    "ko": "",
+    "item": "Old Ginger",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "감자",
+    "ko": "감자",
+    "item": "Potato",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "얼음",
+    "ko": "얼음",
+    "item": "Ice Cube",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "EN::Yaw Mak Tam",
+    "ko": "",
+    "item": "Yaw Mak Tam",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "EN::Mix Coral",
+    "ko": "",
+    "item": "Mix Coral",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "가스통",
+    "ko": "가스통",
+    "item": "Gas Cylinder (14kg)",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "EN::Green Capsicum",
+    "ko": "",
+    "item": "Green Capsicum",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "EN::Tomato",
+    "ko": "",
+    "item": "Tomato",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "코랄 샐러드",
+    "ko": "코랄 샐러드",
+    "item": "green(red) coral",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "믹스샐러드",
+    "ko": "믹스샐러드",
+    "item": "Mix Salad",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "블랙베리",
+    "ko": "블랙베리",
+    "item": "Dried Black Barry (Like small raisin)",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "EN::Snow Powder",
+    "ko": "",
+    "item": "Snow Powder",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "아몬드 슬라이스",
+    "ko": "아몬드 슬라이스",
+    "item": "Sliced Almond",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "포장PE봉투6*9cm",
+    "ko": "포장PE봉투6*9cm",
+    "item": "Apple Cinnamon Jam",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "참기름_Chee Seng",
+    "ko": "참기름_Chee Seng",
+    "item": "Sesame Oil*Chee Seng*",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "땅콩(아몬드)가루",
+    "ko": "땅콩(아몬드)가루",
+    "item": "Peanuts (Almond) Crumbs",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "초코릿 가루",
+    "ko": "초코릿 가루",
+    "item": "Chocolate Powder",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "건포도sunmaid",
+    "ko": "건포도sunmaid",
+    "item": "Dried Raisin",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "땅콩크림",
+    "ko": "땅콩크림",
+    "item": "Peanut butter",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "EN::Colander",
+    "ko": "",
+    "item": "Colander",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "EN::Hiro PP Cotton Water Filter",
+    "ko": "",
+    "item": "Hiro PP Cotton Water Filter",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "EN::Bottle",
+    "ko": "",
+    "item": "Bottle",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "EN::Towel Ganso Cleaning",
+    "ko": "",
+    "item": "Towel Ganso Cleaning",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "닭다리살",
+    "ko": "닭다리살",
+    "item": "Chicken Chop L(260~280g)",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "직원식",
+    "ko": "직원식",
+    "item": "Halal chicken 2kg (chunk cut)",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "닭다리",
+    "ko": "닭다리",
+    "item": "Chicken Drumstick (Medium)",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "간닭고기",
+    "ko": "간닭고기",
+    "item": "Minced Chicken",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "닭간",
+    "ko": "닭간",
+    "item": "Chicken Liver",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "닭가슴살",
+    "ko": "닭가슴살",
+    "item": "Chicken Breast",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "닭똥집",
+    "ko": "닭똥집",
+    "item": "Chicken Gizzards",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "통닭다리(오븐용)",
+    "ko": "통닭다리(오븐용)",
+    "item": "ChickenWholeLeg (Large/Cutting into Thigh & Drumstick)",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "식빵 10slices",
+    "ko": "식빵 10slices",
+    "item": "Hokkaido Breads",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "미네럴워터 550ml 1박스",
+    "ko": "미네럴워터 550ml 1박스",
+    "item": "Mineral water Spritzer 550ml",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "EN::King Oyster Mushroom",
+    "ko": "",
+    "item": "King Oyster Mushroom",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "EN::Holland Red & Green Coral Lettuce",
+    "ko": "",
+    "item": "Holland Red & Green Coral Lettuce",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "히말라야 소금",
+    "ko": "히말라야 소금",
+    "item": "Fine Salt",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "양파",
+    "ko": "양파",
+    "item": "Yellow Onion",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "초코시럽",
+    "ko": "초코시럽",
+    "item": "Hershey's Syrup Chocolate",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "쌀 다른 버전",
+    "ko": "쌀 다른 버전",
+    "item": "Sawah Mas (Staff Meal)",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "쌀-자스민",
+    "ko": "쌀-자스민",
+    "item": "Rice-Jasmin cal fresh 5kg",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "다목적 밀가루",
+    "ko": "다목적 밀가루",
+    "item": "Faiza Tepung Gandum",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "계란 B 사이즈",
+    "ko": "계란 B 사이즈",
+    "item": "Egg D",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "배터리",
+    "ko": "배터리",
+    "item": "Panasonic Battery AA",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "가루빨래세제",
+    "ko": "가루빨래세제",
+    "item": "KH Detergent Powder",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "아이스크림Nestle",
+    "ko": "아이스크림Nestle",
+    "item": "Nestle Vanilla Icecream",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "EN::CSR Sugar",
+    "ko": "",
+    "item": "CSR Sugar",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "라이터",
+    "ko": "라이터",
+    "item": "Lady's Choice Real Mayonaisse",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "EN::Grabbit B/Clips 25mm",
+    "ko": "",
+    "item": "Grabbit B/Clips 25mm",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "스폰지",
+    "ko": "스폰지",
+    "item": "Sponge",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "설거지 세제",
+    "ko": "설거지 세제",
+    "item": "Dishwashing Liquid Limau",
+    "level": "BG",
+    "buckets": "REST_ONLY+BG_SOLD"
+  },
+  {
+    "key": "옥수수전분",
+    "ko": "옥수수전분",
+    "item": "Corn Starch Pantai Tepung Jagung",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "사이다",
+    "ko": "사이다",
+    "item": "Sprite",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "자루",
+    "ko": "자루",
+    "item": "Broom/Mop Stick",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "클립",
+    "ko": "클립",
+    "item": "Paper Clip",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "적달(직원식)",
+    "ko": "적달(직원식)",
+    "item": "Staff_Red Dhall",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "큐민가루",
+    "ko": "큐민가루",
+    "item": "staff_Cumin powder",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "EN::Adabi Serbuk Ayam",
+    "ko": "",
+    "item": "Adabi Serbuk Ayam",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "치킨너겟",
+    "ko": "치킨너겟",
+    "item": "Ramly Chicken Nugget",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "EN::Garbamon L/Grass Garbage Bag",
+    "ko": "",
+    "item": "Garbamon L/Grass Garbage Bag",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "EN::Rice TSS Bird of Paradise",
+    "ko": "",
+    "item": "Rice TSS Bird of Paradise",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "초코아이스크림Nestle",
+    "ko": "초코아이스크림Nestle",
+    "item": "Nestle Chocolate Icecream",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "EN::Coca-Cola",
+    "ko": "",
+    "item": "Coca-Cola",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "카레가루(직원식)",
+    "ko": "카레가루(직원식)",
+    "item": "Baba's Meat Curry Powder",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "녹색달(직원식)",
+    "ko": "녹색달(직원식)",
+    "item": "Staff_Green Dhall",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "주방 쓰레기 봉투",
+    "ko": "주방 쓰레기 봉투",
+    "item": "GARBAGE BIN BAG (81cm*110cm) XL 10ea",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "금속 스폰지",
+    "ko": "금속 스폰지",
+    "item": "Metal Sponge",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "스파게티면",
+    "ko": "스파게티면",
+    "item": "Kimball Sphagetti",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "모기약",
+    "ko": "모기약",
+    "item": "Mosquito Liquid Refill (44ml)",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "EN::Mop Head",
+    "ko": "",
+    "item": "Mop Head",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "EN::Fumakilla Coil",
+    "ko": "",
+    "item": "Fumakilla Coil",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "EN::Yeepi Torch Lighter",
+    "ko": "",
+    "item": "Yeepi Torch Lighter",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "EN::Microfiber Mop",
+    "ko": "",
+    "item": "Microfiber Mop",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "소고기_호주_양지",
+    "ko": "소고기_호주_양지",
+    "item": "Aust Midfield Brisket PEDO",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "연어",
+    "ko": "연어",
+    "item": "Salmon Fillet with Skin-On WHOLE",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "프랑크소시지(닭)",
+    "ko": "프랑크소시지(닭)",
+    "item": "Lees Chicken Frank 32ea",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "슬라이스치즈",
+    "ko": "슬라이스치즈",
+    "item": "GUD Sandwich Slice Cheese",
+    "level": "BG",
+    "buckets": "BG_EXT+REST_ONLY"
+  },
+  {
+    "key": "오징어 몸통 링",
+    "ko": "오징어 몸통 링",
+    "item": "Frozen Squid Ring With Skin",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "깐새우",
+    "ko": "깐새우",
+    "item": "[IQF]PRAWN 31/40 PD(PeeledDeveined) PDTO(PD&Tail-on)",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "식용유(튀김용팜유)",
+    "ko": "식용유(튀김용팜유)",
+    "item": "Cooking Oil 清油 SAWIT EMAS - 5kg",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "카라멜 간장",
+    "ko": "카라멜 간장",
+    "item": "Dark Soy Sauce_Cheong Chan 740ml 1022-005",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "마른 편썬 표고버섯",
+    "ko": "마른 편썬 표고버섯",
+    "item": "Sliced Dried Mushroom(Shiitake) 1kg",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "칵테일 소시지",
+    "ko": "칵테일 소시지",
+    "item": "Chicken Sausage Cocktail_Gourmet Chef",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "망고시럽 Sunquick",
+    "ko": "망고시럽 Sunquick",
+    "item": "Mango Cordial 芒果汁 SUNQUICK - 700ml",
+    "level": "BG",
+    "buckets": "BG_EXT+REST_ONLY"
+  },
+  {
+    "key": "식용유",
+    "ko": "식용유",
+    "item": "High Oleic Sunflower & Canola Oil 高油酸葵花籽与菜籽油 CLEAR VALLEY- 3kg",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "주방세제",
+    "ko": "주방세제",
+    "item": "Dishwashing Liquid 3.3L",
+    "level": "BG",
+    "buckets": "BG_EXT+REST_ONLY"
+  },
+  {
+    "key": "진간장 LKK Light",
+    "ko": "진간장 LKK Light",
+    "item": "Light Soy Sauce (Plastic/胶桶) 鲜味生抽 李锦记 LKK - 1.9Litre",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "흰설탕",
+    "ko": "흰설탕",
+    "item": "Fine Sugar CSR - 1kg",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "빵가루",
+    "ko": "빵가루",
+    "item": "White Breadcrumbs 面包粉 白色 美天 ALL DAY - 1kg",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "MSG",
+    "ko": "MSG",
+    "item": "Monosodium Glutamate Ajinomoto 1kg",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "치킨스톡(파우더)_KNORR",
+    "ko": "치킨스톡(파우더)_KNORR",
+    "item": "Chicken Stock Powder 鸡精粉 家乐牌 KNORR - 1kg",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "VIT 인스턴트 면",
+    "ko": "VIT 인스턴트 면",
+    "item": "Cyber Fresh Cling Film (450mm)",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "굴소스_판다 이금기",
+    "ko": "굴소스_판다 이금기",
+    "item": "Oyster Sauce Panda (Tin/铁罐) 熊猫蚝油 李锦记 LKK - 2.2kg",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "고운 소금",
+    "ko": "고운 소금",
+    "item": "Extra Fine Salt_Double Swallow_450g",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "EN::Rubber Band",
+    "ko": "",
+    "item": "Rubber Band",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "EN::Maggi Chilli Sauce",
+    "ko": "",
+    "item": "Maggi Chilli Sauce",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "베이킹소다 Baking Soda",
+    "ko": "베이킹소다 Baking Soda",
+    "item": "Bicarbonate Soda King's 120g",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "소다수",
+    "ko": "소다수",
+    "item": "F&N Club Soda Water (Can)",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "양조식초",
+    "ko": "양조식초",
+    "item": "White Vinegar 白醋 美天 ALL DAY - 3.4kg",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "마요네즈",
+    "ko": "마요네즈",
+    "item": "Real Mayonnaise_Lady's Choice 3L",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "EN::Erawan Blended Rice Flour",
+    "ko": "",
+    "item": "Erawan Blended Rice Flour",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "코카콜라1박스",
+    "ko": "코카콜라1박스",
+    "item": "Coca-Cola ZERO",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "스프라이트캔 1박스",
+    "ko": "스프라이트캔 1박스",
+    "item": "Sprite (Can)",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "꿀",
+    "ko": "꿀",
+    "item": "Honey 蜜糖 美天 ALL DAY - 1kg",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "EN::Anchovies Seasoning Powder Knorr 1kg",
+    "ko": "",
+    "item": "Anchovies Seasoning Powder Knorr 1kg",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "마른 목이버섯",
+    "ko": "마른 목이버섯",
+    "item": "Black Fungus",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "순두부(튜브)",
+    "ko": "순두부(튜브)",
+    "item": "Tofu_Wai Food 130g",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "칼집 오징어몸통",
+    "ko": "칼집 오징어몸통",
+    "item": "Squid Flower(60%Water)",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "오징어몸통",
+    "ko": "오징어몸통",
+    "item": "[IQF]Squid Cube U10 6/8",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "게맛살",
+    "ko": "게맛살",
+    "item": "Crab Sticks_Kanika",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "관자",
+    "ko": "관자",
+    "item": "Hokkaido Scallop(20/30) 1kg",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "고운흑후추",
+    "ko": "고운흑후추",
+    "item": "Black Pepper Powder_McCormick",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "사과잼",
+    "ko": "사과잼",
+    "item": "Apple Jam Homefarm 450g",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "생강가루",
+    "ko": "생강가루",
+    "item": "Ginger Powder 400g",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "마늘파우더",
+    "ko": "마늘파우더",
+    "item": "Garlic Powder  Golden Chef 1kg",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "양파파우더",
+    "ko": "양파파우더",
+    "item": "Onion Powder Golden Chef 1kg",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "액젓",
+    "ko": "액젓",
+    "item": "Thailand Fish Sauce (Fish/苏昌) 鱼露 PANTAI - 880g",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "케찹",
+    "ko": "케찹",
+    "item": "Tomato Sauce Maggi 1.5kg",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "연유",
+    "ko": "연유",
+    "item": "Sweetened Milk 甜奶 TEAPOT PILIHAN - 500g",
+    "level": "BG",
+    "buckets": "BG_EXT+REST_ONLY"
+  },
+  {
+    "key": "아이스설탕가루",
+    "ko": "아이스설탕가루",
+    "item": "Icing Sugar PRAI 500g",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "쓰레기봉투_L",
+    "ko": "쓰레기봉투_L",
+    "item": "Heavy Duty Garbage Bag[XL Size]",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "쓰레기봉투_XL",
+    "ko": "쓰레기봉투_XL",
+    "item": "Heavy Duty Garbage Bag[L Size]",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "클로록스(락스)",
+    "ko": "클로록스(락스)",
+    "item": "Clorox Bleach 漂白水 POREX - 4Litre",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "부탄가스",
+    "ko": "부탄가스",
+    "item": "Gas Cartridge 小型煤气 YEEPI - 230g",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "EN::EzyWrap Catering Baking Paper (450mm X 100m/roll)",
+    "ko": "",
+    "item": "EzyWrap Catering Baking Paper (450mm X 100m/roll)",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "EN::All Day Corn Starch",
+    "ko": "",
+    "item": "All Day Corn Starch",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "달_직원식",
+    "ko": "달_직원식",
+    "item": "Dried India Dhal_All day 1kg",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "찹쌀가루",
+    "ko": "찹쌀가루",
+    "item": "Glutinous Rice Flour_Three Goats 500g",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "밀가루",
+    "ko": "밀가루",
+    "item": "Multipurpose Flour_Baker's Choice 1kg",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "EN::Tough Clean Scrub Sponge_Scotch Brite",
+    "ko": "",
+    "item": "Tough Clean Scrub Sponge_Scotch Brite",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "새우스낵",
+    "ko": "새우스낵",
+    "item": "Prawn Cracker_Jumbo_60*200g",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "감자튀김 프렌치프라이",
+    "ko": "감자튀김 프렌치프라이",
+    "item": "French Fries[Shoestring Cut 7mm]_Farm Frites",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "감자전분",
+    "ko": "감자전분",
+    "item": "Potato Starch All day 1kg",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "마가린(버터밥용)",
+    "ko": "마가린(버터밥용)",
+    "item": "Margarine_Planta 2.5kg",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "토마토 소스",
+    "ko": "토마토 소스",
+    "item": "Tomato Sauce All day 3.2kg",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "크로아상 (50gm)",
+    "ko": "크로아상 (50gm)",
+    "item": "ARYZTA Butter Croissant PPF - 50g",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "고추장_해찬들태양초알찬17kg",
+    "ko": "고추장_해찬들태양초알찬17kg",
+    "item": "Gochujang",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "미향 오뚜기18L",
+    "ko": "미향 오뚜기18L",
+    "item": "Cooking Vinegar",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "핫이슈 밀떡1kg",
+    "ko": "핫이슈 밀떡1kg",
+    "item": "Hot Issue Rice Cake",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "과일맛종합캔디-아리랑",
+    "ko": "과일맛종합캔디-아리랑",
+    "item": "Fruit Candy_Arirang",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "굵은 고춧가루1kg",
+    "ko": "굵은 고춧가루1kg",
+    "item": "Coarse Pepper Powder",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "고운 고춧가루1kg",
+    "ko": "고운 고춧가루1kg",
+    "item": "Fine Pepper Powder",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "백설튀김가루1kg",
+    "ko": "백설튀김가루1kg",
+    "item": "Frying Powder Mix_Beksul",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "포기김치 10kg",
+    "ko": "포기김치 10kg",
+    "item": "Kimchi",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "보리차",
+    "ko": "보리차",
+    "item": "BARLEY TEA Bag",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "볶은참깨오뚜기(팩)500g",
+    "ko": "볶은참깨오뚜기(팩)500g",
+    "item": "Roasted Sesame Seed",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "사골분말",
+    "ko": "사골분말",
+    "item": "Beef Bone Powder",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "대림부산어묵1kg",
+    "ko": "대림부산어묵1kg",
+    "item": "Fish Cake_Daerim Busan",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "진라면마일드1박스",
+    "ko": "진라면마일드1박스",
+    "item": "Jin Ramen(Mild)_Otoki",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "Emborg모짜렐라치즈",
+    "ko": "Emborg모짜렐라치즈",
+    "item": "Mozzarella Cheese_Emborg",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "물엿 청정원18kg",
+    "ko": "물엿 청정원18kg",
+    "item": "Corn Syrup",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "오뚜기 카레 순한맛 1kg",
+    "ko": "오뚜기 카레 순한맛 1kg",
+    "item": "Curry Powder Mild 1kg_Otoki",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "막걸리",
+    "ko": "막걸리",
+    "item": "Makgeolli Plain",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "멸치액젓 하선정 800g",
+    "ko": "멸치액젓 하선정 800g",
+    "item": "Anchovi Sauce 800g",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "백설부침가루1kg",
+    "ko": "백설부침가루1kg",
+    "item": "Korean Pancake Mix_Beksul",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "김밥 단무지2.8kg",
+    "ko": "김밥 단무지2.8kg",
+    "item": "Kimbob Yellow Pickled Radish",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "꿀대추청 꽃샘",
+    "ko": "꿀대추청 꽃샘",
+    "item": "Honey Jujube",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "김가루 1kg",
+    "ko": "김가루 1kg",
+    "item": "Crunch Seasoned Seaweed",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "EN::Hotteok",
+    "ko": "",
+    "item": "Hotteok",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "삼립미니꿀호떡",
+    "ko": "삼립미니꿀호떡",
+    "item": "Hotteok",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "꿀생강청 꽃샘",
+    "ko": "꿀생강청 꽃샘",
+    "item": "Honey ginger",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "소주 참이슬 (복숭아)",
+    "ko": "소주 참이슬 (복숭아)",
+    "item": "Soju (Peach Flavour)",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "갈아만든배 1박스",
+    "ko": "갈아만든배 1박스",
+    "item": "Crushed Pear",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "꿀유자차",
+    "ko": "꿀유자차",
+    "item": "Honey Citron Tea",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "식혜1박스",
+    "ko": "식혜1박스",
+    "item": "Sikhye",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "식당용 볶음참깨",
+    "ko": "식당용 볶음참깨",
+    "item": "Roasted Sesame Seed for the restaurant",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "소주 참이슬 패트병 1.8L",
+    "ko": "소주 참이슬 패트병 1.8L",
+    "item": "Soju PET bottle_1.8L",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "미른미역_해농",
+    "ko": "미른미역_해농",
+    "item": "Dry Seaweed_해농",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "진미짜장소스5kg",
+    "ko": "진미짜장소스5kg",
+    "item": "Jjajang Sauce(Jinmi)",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "멸치액젓 하선정 2.5kg",
+    "ko": "멸치액젓 하선정 2.5kg",
+    "item": "Anchovi Sauce 2.5kg",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "청수 우동다시1.8L",
+    "ko": "청수 우동다시1.8L",
+    "item": "Udon Sauce",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "K1 할랄김치",
+    "ko": "K1 할랄김치",
+    "item": "Kimchi",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "베트남 고운 고춧가루1kg",
+    "ko": "베트남 고운 고춧가루1kg",
+    "item": "Fine Spicy Pepper Powder",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "면사랑 멸치밑국물육수1.8L",
+    "ko": "면사랑 멸치밑국물육수1.8L",
+    "item": "",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "CJ해찬들 재래식된장 14kg",
+    "ko": "CJ해찬들 재래식된장 14kg",
+    "item": "Korean Traditional Soybean Paste_CJ",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "단팥",
+    "ko": "단팥",
+    "item": "Red beans for Bingsu",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "국순당 막걸리",
+    "ko": "국순당 막걸리",
+    "item": "Kuksundang Makgeolli Plain",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "소주 참이슬",
+    "ko": "소주 참이슬",
+    "item": "Soju (Plain Flavour)",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "소주 참이슬(딸기)",
+    "ko": "소주 참이슬(딸기)",
+    "item": "Soju (Strawberry Flavour)",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "불맛기름_시아스 500g",
+    "ko": "불맛기름_시아스 500g",
+    "item": "Smoke Flavor Oil",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "뉴슈가_담울 60g",
+    "ko": "뉴슈가_담울 60g",
+    "item": "New Sugar",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "소고기다시다 2kg",
+    "ko": "소고기다시다 2kg",
+    "item": "Beef Stock",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "백설빵가루1kg",
+    "ko": "백설빵가루1kg",
+    "item": "Bread crumbs",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "당면 14kg",
+    "ko": "당면 14kg",
+    "item": "Glass Noodle",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "중화면 면사랑",
+    "ko": "중화면 면사랑",
+    "item": "Chinese Style Noodle",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "김밥용김_100매",
+    "ko": "김밥용김_100매",
+    "item": "Dried seaweed sheet for KImbob",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "김밥용 김",
+    "ko": "김밥용 김",
+    "item": "Dried seaweed sheet for KImbob",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "당면 백설햇 1kg",
+    "ko": "당면 백설햇 1kg",
+    "item": "Glass Noodle",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "김밥 우엉 대용량",
+    "ko": "김밥 우엉 대용량",
+    "item": "Kimbob Burdock",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "오쉐프순후추450g",
+    "ko": "오쉐프순후추450g",
+    "item": "O'shef Block Pepper Powder_Otoki",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "소면 CJ/오뚜기900g",
+    "ko": "소면 CJ/오뚜기900g",
+    "item": "Plain Noodle",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "화유 500ml-Sias",
+    "ko": "화유 500ml-Sias",
+    "item": "Fire oil",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "조갯살",
+    "ko": "조갯살",
+    "item": "Cockle Meat(Blood Clam) 300/500 PCS_Crustacean 20% Glazing",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "낙지_큰사이즈손질된",
+    "ko": "낙지_큰사이즈손질된",
+    "item": "Octopus Long Leg Whole Clean Cut_Cephalopod",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "고등어",
+    "ko": "고등어",
+    "item": "SABA MACKEREL FILLET 鲭鱼片 2PCS",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "칠리소스(직원식)",
+    "ko": "칠리소스(직원식)",
+    "item": "Yakin Chilli Sauce",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "현지 딸기",
+    "ko": "현지 딸기",
+    "item": "Strawberry",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "올리브오일",
+    "ko": "올리브오일",
+    "item": "Olive Oil",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "소시지Ramly chicken Frankfurter",
+    "ko": "소시지Ramly chicken Frankfurter",
+    "item": "Ramly chicken Frankfurter sausage",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "우유",
+    "ko": "우유",
+    "item": "Milk Good Day UHT Full Cream",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "오트우유",
+    "ko": "오트우유",
+    "item": "Oat Milk(Oat Side) Farmerly",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "EN::Egg",
+    "ko": "",
+    "item": "Egg",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "메이플시럽",
+    "ko": "메이플시럽",
+    "item": "Maple Syrup_COTTEES",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "궁중약과",
+    "ko": "궁중약과",
+    "item": "Yakgwa",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "홍청양고추(칠리파디)",
+    "ko": "홍청양고추(칠리파디)",
+    "item": "Red Chilli Paddi (Small) Cili Api Merah",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "생강",
+    "ko": "생강",
+    "item": "Old ginger",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "EN::Broccoli",
+    "ko": "",
+    "item": "Broccoli",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "긴가지(직원식)",
+    "ko": "긴가지(직원식)",
+    "item": "Eggplant (Terung Panjang)",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "청양고추(칠리파디)",
+    "ko": "청양고추(칠리파디)",
+    "item": "Green Chilli Padi(Cili Api Hijau)",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "돼지호박",
+    "ko": "돼지호박",
+    "item": "Green Zucchini (Zucchini Hijau)",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "양배추",
+    "ko": "양배추",
+    "item": "Cabbage(Kobis China)",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "대파",
+    "ko": "대파",
+    "item": "Korean Leek",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "새송이버섯",
+    "ko": "새송이버섯",
+    "item": "KingOysterMushroom(Cendawan Kaki)",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "깐마늘",
+    "ko": "깐마늘",
+    "item": "Peeled Garlic(Bawang Putih Kopek)",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "토마토",
+    "ko": "토마토",
+    "item": "Tomato",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "홍고추",
+    "ko": "홍고추",
+    "item": "Red Chilli (Big) Cili Merah",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "숙주나물",
+    "ko": "숙주나물",
+    "item": "Bitter Melon (Peria Besar)",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "방울토마토",
+    "ko": "방울토마토",
+    "item": "Cherry Tomato",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "미니적양파(직원식)",
+    "ko": "미니적양파(직원식)",
+    "item": "Shallot Unpeeled(Small) Bawang Merah Kecil",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "팽이버섯",
+    "ko": "팽이버섯",
+    "item": "Enoki Mushroom",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "오이-일본",
+    "ko": "오이-일본",
+    "item": "Japanese Cucumber(Timun Jepun)",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "(직원식)",
+    "ko": "(직원식)",
+    "item": "Ladies finger (Bendi)",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "롱빈(직원식)",
+    "ko": "롱빈(직원식)",
+    "item": "Green Beans (Buncis)",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "EN::Water Spinach",
+    "ko": "",
+    "item": "Water Spinach",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "무",
+    "ko": "무",
+    "item": "Radish",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "당근",
+    "ko": "당근",
+    "item": "Carrot",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "홍파프리카",
+    "ko": "홍파프리카",
+    "item": "Red Capsicum(Cili Epal Merah)",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "청파프리카",
+    "ko": "청파프리카",
+    "item": "Green Capsicum(Cili Epal Hijau)",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "시금치",
+    "ko": "시금치",
+    "item": "Spinach (Bayam)",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "두부",
+    "ko": "두부",
+    "item": "Hard Tofu",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "레몬",
+    "ko": "레몬",
+    "item": "Lemon",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "청고추",
+    "ko": "청고추",
+    "item": "Green Chilli (Big) Cili Hijau",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "템페",
+    "ko": "템페",
+    "item": "Tempeh",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "라임",
+    "ko": "라임",
+    "item": "Lime",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "홍사과",
+    "ko": "홍사과",
+    "item": "Red Apple (PinkLady)",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "배추",
+    "ko": "배추",
+    "item": "Chinese(Long)Cabbage",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "스테플러 심",
+    "ko": "스테플러 심",
+    "item": "MSTA Mechanical Pencil",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "EN::Paper A4",
+    "ko": "",
+    "item": "Paper A4",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "투명테이프(박스포장용)",
+    "ko": "투명테이프(박스포장용)",
+    "item": "Tape Brown 48x40yrds",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "마스킹테이프",
+    "ko": "마스킹테이프",
+    "item": "Masking Tape 48mm x 40yrds",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "EN::Fancy Ring Note Book",
+    "ko": "",
+    "item": "Fancy Ring Note Book",
+    "level": "BG",
+    "buckets": "BG_EXT"
+  },
+  {
+    "key": "오미자 베이스",
+    "ko": "오미자 베이스",
+    "item": "OMIJA BASE",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "자몽 베이스",
+    "ko": "자몽 베이스",
+    "item": "GRAPEFRUIT BASE",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "키위 베이스",
+    "ko": "키위 베이스",
+    "item": "KIWI BASE",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "딸기 베이스",
+    "ko": "딸기 베이스",
+    "item": "STRAWBERRY BASE",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "영수증 페이퍼롤",
+    "ko": "영수증 페이퍼롤",
+    "item": "THERMAL ROLL 80MM X 60MM X 12MM (L) (10ROLLS X 10PKTS)",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "키친타올",
+    "ko": "키친타올",
+    "item": "KITCHEN TOWEL V/P 2PLY (70's x 6rolls x 6pkts)",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "비닐 롤백",
+    "ko": "비닐 롤백",
+    "item": "PLASTIC PERFORATED ROLL BAG",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "주방용 음식쓰레기 봉투",
+    "ko": "주방용 음식쓰레기 봉투",
+    "item": "JC PLASTIC SINGLET BAG 18\" X 22\" #48 WHITE (40PCS X 80PKTS)",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "소스판매용 사각 플라스틱통",
+    "ko": "소스판매용 사각 플라스틱통",
+    "item": "TK 1000 (A1000) CLEAR RECTANGULAR CONTAINER WITH LID (50SETS X 5PKTS/CTN)",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "갈색 종이 밥그릇 뚜껑",
+    "ko": "갈색 종이 밥그릇 뚜껑",
+    "item": "PP SHEET LID 8511 780/850/1000CC (50PCS X 12PKTS)",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "갈색 종이 밥그릇(M)",
+    "ko": "갈색 종이 밥그릇(M)",
+    "item": "SINGLE WALL PAPER BOWL PLAIN KRAFT 850CC (50PCS X 12PKTS)",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "일회용 검정스푼",
+    "ko": "일회용 검정스푼",
+    "item": "PLASTIC SPOON 180 HEAVY DUTY BLACK (50PCS X 40PKTS)",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "일회용 검정포크",
+    "ko": "일회용 검정포크",
+    "item": "PLASTIC Fork 180 HEAVY DUTY BLACK (50PCS X 40PKTS)",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "플라스틱 작은 밥그릇",
+    "ko": "플라스틱 작은 밥그릇",
+    "item": "MW R12 ROUND CONTAINER WITH LID (50SETS X 10PKTS)",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "비닐봉투(M) (기본)",
+    "ko": "비닐봉투(M) (기본)",
+    "item": "PE SINGLET BAG 15'' X 18'' (500GRAM X 60PKTS)",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "플라스틱 소스통(L)",
+    "ko": "플라스틱 소스통(L)",
+    "item": "3.25OZ PP ROUND SAUCE CONTAINER WITH HINGED LID (50PCS X 12PKTS)",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "설거지 세제 대형",
+    "ko": "설거지 세제 대형",
+    "item": "STANDARD DISH WASHING LIQUID Green | 10Liters",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "컵받침 / 2컵용",
+    "ko": "컵받침 / 2컵용",
+    "item": "PCK 2 CUP DRINKS EGG TRAY (100PCS X 6PKTS)",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "손세정제",
+    "ko": "손세정제",
+    "item": "GOODMAID CARE HAND CLEANSER 500ML Lemon | 500ml x 12btl/ ctn",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "도시락 박스(대형)",
+    "ko": "도시락 박스(대형)",
+    "item": "BT PAPER LUNCH BOX KRAFT (L) (50PCS X 8PKTS) 180mm(L) ×120mm(W) x 50mm(H)",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "투명비닐장갑 M",
+    "ko": "투명비닐장갑 M",
+    "item": "HDPE Plastic Glove / M (100pcs x 50boxes)",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "플라스틱 큰 그릇 R1000",
+    "ko": "플라스틱 큰 그릇 R1000",
+    "item": "MW R1000 ROUND CONTAINER WITH LID 850ml (50PCS X 6PKTS)",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "갈색 빙수컵 종이",
+    "ko": "갈색 빙수컵 종이",
+    "item": "DOUBLE WALL PAPER BOWL KRAFT 520CC (25PCS X 20PKTS/CTN)",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "갈색 빙수컵 플라스틱 뚜껑",
+    "ko": "갈색 빙수컵 플라스틱 뚜껑",
+    "item": "PAPERBOWLLDI 10MM Transparent 50pcs x 20pkts",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "갈색 종이 밥그릇 덮밥 뚜껑",
+    "ko": "갈색 종이 밥그릇 덮밥 뚜껑",
+    "item": "BL-140 INNER BOWL TRAY WITH LID (100PCS X 3PKTS)",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "갈색 종이 밥그릇(L)",
+    "ko": "갈색 종이 밥그릇(L)",
+    "item": "SINGLE WALL PAPER BOWL PLAIN KRAFT 1000CC (50PCS X 12PKTS)",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "갈색 종이 밥그릇(S)",
+    "ko": "갈색 종이 밥그릇(S)",
+    "item": "SINGLE WALL PAPER BOWL PLAIN KRAFT 780CC (50PCS X 12PKTS)",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "갈색 종이컵 작은 넙적 9OZ",
+    "ko": "갈색 종이컵 작은 넙적 9OZ",
+    "item": "9OZ/270ML DOUBLE WALL PAPER CUP Kraft (20PCS X 25PKTS)",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "갈색 천끈",
+    "ko": "갈색 천끈",
+    "item": "3-PLY NATURAL JUTE TWISTED TWINE RUSTIC CRAFTY STRING ROLL / 100M / Natural Brown",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "갈색 큰 종이컵 12OZ",
+    "ko": "갈색 큰 종이컵 12OZ",
+    "item": "12OZ DOUBLE WALL PAPER CUP Kraft (20PCS X 25PKTS)",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "갈색 흰 종이 음료컵(아이스용)",
+    "ko": "갈색 흰 종이 음료컵(아이스용)",
+    "item": "PAPER COLD CUP 12OZ 80mm x 117mm White 100pcs x 20pkts",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "검정 작은 종이컵 뚜껑",
+    "ko": "검정 작은 종이컵 뚜껑",
+    "item": "RECLOSABLE LID 8OZ BLACK (50PCS X 20PKTS)",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "검정 종이컵 뚜껑 큰",
+    "ko": "검정 종이컵 뚜껑 큰",
+    "item": "RECLOSABLE LID 12OZ BLACK (50PCS X 20PKTS)",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "구멍 손잡이 종이백",
+    "ko": "구멍 손잡이 종이백",
+    "item": "PCK DCUT #D BR BROWN (25PCS X 20PKTS)",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "깔개 및 컵 덮개",
+    "ko": "깔개 및 컵 덮개",
+    "item": "TAKE AWAY CUP LEAK PROOF PAPER 120MM (500PCS X 10PKTS)",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "냉장고용 플라스틱 봉투",
+    "ko": "냉장고용 플라스틱 봉투",
+    "item": "ZIP LOCK BAG 6\" X 9\" (100PCS X 80PKTS/BUNDLE)",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "도시락 박스(디저트) (기본)",
+    "ko": "도시락 박스(디저트) (기본)",
+    "item": "BT PAPER LUNCH BOX KRAFT (M) (50PCS X 10PKTS)",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "도시락박스(반반/샌드위치)",
+    "ko": "도시락박스(반반/샌드위치)",
+    "item": "BT PAPER TWO COMPARTMENT LUNCH BOX KRAFT (M) (50PCS X 8PKTS)",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "비닐봉투(L)",
+    "ko": "비닐봉투(L)",
+    "item": "PE SINGLET BAG 18'' X 20'' (500GRAM X 60PKTS)",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "비닐봉투(S) (작은거)",
+    "ko": "비닐봉투(S) (작은거)",
+    "item": "PE SINGLET BAG 12'' X 15'' (500GRAM X 60PKTS)",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "손잡이 종이백",
+    "ko": "손잡이 종이백",
+    "item": "SUN PAPER BAG TWISTED HANDLE BROWN 28CM X 15CM X 30CM (200PCS)",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "실리콘장갑 (M / 친환경)",
+    "ko": "실리콘장갑 (M / 친환경)",
+    "item": "DISPOSABLEVINYLGLOVE POWDER FREE / Semi-Transparent / M (100pcs x 10boxes)",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "오븐 세제 (주방기구)",
+    "ko": "오븐 세제 (주방기구)",
+    "item": "GOODMAID OVEN CLEANER 400ML Lemon | 400ml x 12btl/ ctn",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "오븐 세제 대형 (주방기구)",
+    "ko": "오븐 세제 대형 (주방기구)",
+    "item": "OVEN CLEANER HIGH GRADE Colorless | 10Liters",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "왁스",
+    "ko": "왁스",
+    "item": "GOODMAID COCOREX BLEACH 1KG Regular | 1kg x 12btl/ctn",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "유리창 세제",
+    "ko": "유리창 세제",
+    "item": "DISH WASH 900ML Lime PPT | 900ml x 12btl/ctn",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "작은 촛불",
+    "ko": "작은 촛불",
+    "item": "TEA TABLE CANDLE (100PCS X 20BOXES)",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "종이받침 (곶감용)",
+    "ko": "종이받침 (곶감용)",
+    "item": "NO 8 FLOWER CASES CUP CAKE PAPER LINER 41MM X 23MM (1000PCS/PKT)",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "주방 바닥 세제",
+    "ko": "주방 바닥 세제",
+    "item": "DEODEORIZER FRESH FLOOR KLEEN Lavender Purple | 10Liters",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "트위스트손잡이 종이백",
+    "ko": "트위스트손잡이 종이백",
+    "item": "PAPER BAG TWISTED HANDLE 270mm×210mm×140mm",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "플라스틱 소스통(M)",
+    "ko": "플라스틱 소스통(M)",
+    "item": "2OZ PP ROUND SAUCE CONTAINER WITH HINGED LID (50PCS X 20PKTS)",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "플라스틱 소스통(S)",
+    "ko": "플라스틱 소스통(S)",
+    "item": "1OZ PP ROUND SAUCE CONTAINER WITH HINGED LID (100PCS X 30PKTS)",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "플라스틱 음료컵(아이스용)",
+    "ko": "플라스틱 음료컵(아이스용)",
+    "item": "120Z I 360ML 95mm x 107mm I Transparent 50pcs x20pkts; 1,000pcs",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "휴지 (주방용)",
+    "ko": "휴지 (주방용)",
+    "item": "CILI SERVIETTE NAPKIN WHITE V/P 1PLY (100GRAM X 6PACK X 10PKTS)",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "흰색 빙수컵 종이 뚜껑",
+    "ko": "흰색 빙수컵 종이 뚜껑",
+    "item": "ICE CREAM TUB CUP 160Z 97mm(D) White 50pcs x20pkts",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "흰색 종이 빙수컵",
+    "ko": "흰색 종이 빙수컵",
+    "item": "PAPER ICE CREAM TUB CUP 160Z 480ml / 95mm x 101mm White 50pcs x20pkts",
+    "level": "BG",
+    "buckets": "BG_SOLD"
+  },
+  {
+    "key": "EN::Baby Lettuce Organic",
+    "ko": "",
+    "item": "Baby Lettuce Organic",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "EN::Lollo Bionda Lettuce",
+    "ko": "",
+    "item": "Lollo Bionda Lettuce",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "EN::Red/Green Coral Lettuce",
+    "ko": "",
+    "item": "Red/Green Coral Lettuce",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "EN::Kale",
+    "ko": "",
+    "item": "Kale",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "쌀알초콜릿",
+    "ko": "쌀알초콜릿",
+    "item": "Rice Chocolate Meriah",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "생크림",
+    "ko": "생크림",
+    "item": "Cooking Cream Emborg",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "라임주스",
+    "ko": "라임주스",
+    "item": "Lemon Juice Satang Thai Cooking",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "망고 큐브",
+    "ko": "망고 큐브",
+    "item": "Mango Golden Lily",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "냉동 껍질벗기고 내장제거안한 새우",
+    "ko": "냉동 껍질벗기고 내장제거안한 새우",
+    "item": "Frozen Pud Prawn",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "새우",
+    "ko": "새우",
+    "item": "Shrimp",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "라임쥬스",
+    "ko": "라임쥬스",
+    "item": "Lime Cordial",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "딸기막걸리",
+    "ko": "딸기막걸리",
+    "item": "Makgeolli Strawberry",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "바닐라시럽",
+    "ko": "바닐라시럽",
+    "item": "Vanilla Syrup",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "냉동 비닐백",
+    "ko": "냉동 비닐백",
+    "item": "Freezer Bag",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "지퍼팩",
+    "ko": "지퍼팩",
+    "item": "Freezer Bag Armada Sandwich B",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "일회용장갑",
+    "ko": "일회용장갑",
+    "item": "Mewah Cloves",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  },
+  {
+    "key": "베이킹소다",
+    "ko": "베이킹소다",
+    "item": "Baking Soda Meriah",
+    "level": "RESTAURANT",
+    "buckets": "REST_ONLY"
+  }
+]

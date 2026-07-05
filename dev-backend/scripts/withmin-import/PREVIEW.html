@@ -1,0 +1,2127 @@
+<title>With MIN 공급망 임포트 — 검토 프리뷰</title>
+<style>
+:root{
+  --bg:#fafafc; --panel:#ffffff; --ink:#1a1922; --ink-soft:#5b5966; --line:#e7e6ee;
+  --accent:#635BFF; --accent-soft:#efeeff; --bg-shared:#4f46e5; --bg-shared-bg:#eef0ff;
+  --rest:#b45309; --rest-bg:#fdf3e6; --sold:#0f766e; --sold-bg:#e6f6f3; --warn:#dc2626; --warn-bg:#fdeceb;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#131218; --panel:#1c1b23; --ink:#ecebf2; --ink-soft:#a3a1b0; --line:#2c2b36;
+  --accent:#8b84ff; --accent-soft:#26243a; --bg-shared:#a5a0ff; --bg-shared-bg:#242244;
+  --rest:#e0a355; --rest-bg:#332614; --sold:#5fd6c6; --sold-bg:#13322e; --warn:#f2726b; --warn-bg:#33191a;
+}}
+:root[data-theme="dark"]{--bg:#131218;--panel:#1c1b23;--ink:#ecebf2;--ink-soft:#a3a1b0;--line:#2c2b36;--accent:#8b84ff;--accent-soft:#26243a;--bg-shared:#a5a0ff;--bg-shared-bg:#242244;--rest:#e0a355;--rest-bg:#332614;--sold:#5fd6c6;--sold-bg:#13322e;--warn:#f2726b;--warn-bg:#33191a;}
+:root[data-theme="light"]{--bg:#fafafc;--panel:#ffffff;--ink:#1a1922;--ink-soft:#5b5966;--line:#e7e6ee;--accent:#635BFF;--accent-soft:#efeeff;--bg-shared:#4f46e5;--bg-shared-bg:#eef0ff;--rest:#b45309;--rest-bg:#fdf3e6;--sold:#0f766e;--sold-bg:#e6f6f3;--warn:#dc2626;--warn-bg:#fdeceb;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1120px;margin:0 auto;padding:32px 24px 80px}
+header h1{font-size:26px;font-weight:700;letter-spacing:-.02em;margin:0 0 4px;text-wrap:balance}
+header p{color:var(--ink-soft);margin:0 0 24px;font-size:14px}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--accent);margin-bottom:10px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:28px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.tile-n{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;font-family:var(--mono)}
+.tile-l{font-size:12px;color:var(--ink-soft);margin-top:2px}
+.tile-s{font-size:11px;color:var(--ink-soft);margin-top:4px;opacity:.8}
+section{margin-bottom:28px}
+h2{font-size:14px;font-weight:700;margin:0 0 12px;letter-spacing:-.01em}
+.bucket{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:10px}
+.bucket-head{font-size:12px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.dot{width:8px;height:8px;border-radius:50%}
+.dot-sold{background:var(--sold)}.dot-rest{background:var(--rest)}.dot-ext{background:var(--bg-shared)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:3px 4px 3px 10px;font-size:12px}
+.chip-n{font-family:var(--mono);font-size:11px;background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:1px 7px;font-variant-numeric:tabular-nums}
+.callout{background:var(--warn-bg);border:1px solid color-mix(in srgb,var(--warn) 30%,transparent);border-radius:12px;padding:14px 16px;font-size:13px}
+.callout b{color:var(--warn)}
+.callout ul{margin:8px 0 0;padding-left:18px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;position:sticky;top:0;background:var(--bg);padding:12px 0;z-index:5;border-bottom:1px solid var(--line)}
+.bar input{flex:1;min-width:180px;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:9px 12px;color:var(--ink);font-size:14px;font-family:var(--sans)}
+.bar input:focus{outline:2px solid var(--accent);outline-offset:1px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.seg button{background:var(--panel);border:0;color:var(--ink-soft);padding:8px 12px;font-size:13px;cursor:pointer;font-family:var(--sans)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
+.count{font-size:12px;color:var(--ink-soft);font-family:var(--mono)}
+.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;margin-top:12px}
+table{border-collapse:collapse;width:100%;font-size:13px;min-width:760px}
+th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);font-weight:700;padding:10px 12px;border-bottom:1px solid var(--line);position:sticky;top:57px;background:var(--panel)}
+td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+tr.row:hover td{background:var(--accent-soft)}
+.c-idx{color:var(--ink-soft);font-family:var(--mono);font-size:11px;text-align:right;width:38px}
+.c-name{font-weight:600;max-width:280px}
+.flag{display:block;font-size:11px;font-weight:600;color:var(--warn);margin-top:2px}
+.lvl{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.lvl-BG{background:var(--bg-shared-bg);color:var(--bg-shared)}
+.lvl-RESTAURANT{background:var(--rest-bg);color:var(--rest)}
+.c-unit{font-family:var(--mono);font-size:12px;color:var(--ink-soft)}
+.c-src{max-width:440px}
+.src{display:block;padding:2px 0;font-size:12px}
+.src-item{color:var(--ink-soft);margin-left:6px}
+.src-code{font-family:var(--mono);font-size:10px;color:var(--ink-soft);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:0 5px;margin-left:6px}
+.src-price{font-family:var(--mono);font-size:11px;margin-left:6px;color:var(--sold);font-variant-numeric:tabular-nums}
+.src-none{color:var(--ink-soft)}
+.src::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:7px;vertical-align:middle}
+.src-BG_SOLD::before{background:var(--sold)}.src-REST_ONLY::before{background:var(--rest)}.src-BG_EXT::before{background:var(--bg-shared)}
+.hidden{display:none}
+</style>
+
+<div class="wrap">
+<header>
+  <div class="eyebrow">운영 쓰기 전 검토 · 쓰기 0</div>
+  <h1>With MIN 공급망 임포트 프리뷰</h1>
+  <p>gitconsulting(BG) · with MIN Cafe — 원본 354행에서 파생된 재고 332개, 공급업체 29곳. 이름·분류를 확인하고 승인하시면 dev 실행 → 운영 백업 → 운영 반영으로 진행합니다.</p>
+</header>
+
+<div class="tiles">
+  <div class="tile"><div class="tile-n">332</div><div class="tile-l">재고 항목</div><div class="tile-s">BG 공유 270 · 전용 62</div></div>
+  <div class="tile"><div class="tile-n">29</div><div class="tile-l">공급업체</div><div class="tile-s">3개 버킷</div></div>
+  <div class="tile"><div class="tile-n">59</div><div class="tile-l">판매품목(BrandProduct)</div><div class="tile-s">UGS · Tourmanium</div></div>
+  <div class="tile"><div class="tile-n">354</div><div class="tile-l">셀러소스 연결</div><div class="tile-s">가격없음 45</div></div>
+</div>
+
+<section>
+  <h2>공급업체 분류</h2>
+  <div class="bucket"><div class="bucket-head"><span class="dot dot-sold"></span>판매품목 — GITconsulting이 파는 상품(BrandProduct, 전 브랜드 공유)</div><div class="chips"><span class="chip"><span class="chip-name">UGS</span><span class="chip-n">53</span></span><span class="chip"><span class="chip-name">Tourmanium(참존)</span><span class="chip-n">6</span></span></div></div>
+  <div class="bucket"><div class="bucket-head"><span class="dot dot-rest"></span>with MIN 전용 외부공급업체 — RA(withmin1) 등록, 브랜드 공유 안 함</div><div class="chips"><span class="chip"><span class="chip-name">KK Mart</span><span class="chip-n">31</span></span><span class="chip"><span class="chip-name">Village Grocer</span><span class="chip-n">21</span></span><span class="chip"><span class="chip-name">Direct</span><span class="chip-n">9</span></span><span class="chip"><span class="chip-name">Seven Eleven</span><span class="chip-n">3</span></span><span class="chip"><span class="chip-name">Cellar Eighteen</span><span class="chip-n">1</span></span><span class="chip"><span class="chip-name">Mak'Cik</span><span class="chip-n">1</span></span><span class="chip"><span class="chip-name">Shopee</span><span class="chip-n">1</span></span></div></div>
+  <div class="bucket"><div class="bucket-head"><span class="dot dot-ext"></span>BG 외부공급업체 — 브랜드 레벨 등록, 전 브랜드 공유</div><div class="chips"><span class="chip"><span class="chip-name">LSH</span><span class="chip-n">61</span></span><span class="chip"><span class="chip-name">New Seoul Mart</span><span class="chip-n">56</span></span><span class="chip"><span class="chip-name">TaiYangFresh</span><span class="chip-n">36</span></span><span class="chip"><span class="chip-name">AIM coffee</span><span class="chip-n">11</span></span><span class="chip"><span class="chip-name">Guan Kee Poultry</span><span class="chip-n">8</span></span><span class="chip"><span class="chip-name">Nikudo</span><span class="chip-n">7</span></span><span class="chip"><span class="chip-name">Bila Bila Mart</span><span class="chip-n">6</span></span><span class="chip"><span class="chip-name">Indus Grocers</span><span class="chip-n">6</span></span><span class="chip"><span class="chip-name">NSK</span><span class="chip-n">6</span></span><span class="chip"><span class="chip-name">Lee's Fandbee Frozen</span><span class="chip-n">5</span></span><span class="chip"><span class="chip-name">De Green Wholesale Enterprise</span><span class="chip-n">5</span></span><span class="chip"><span class="chip-name">The Paper Clip &amp; Co</span><span class="chip-n">5</span></span><span class="chip"><span class="chip-name">Eco Shop</span><span class="chip-n">4</span></span><span class="chip"><span class="chip-name">Seafood</span><span class="chip-n">4</span></span><span class="chip"><span class="chip-name">De Lettuce Bear</span><span class="chip-n">2</span></span><span class="chip"><span class="chip-name">JASMINE</span><span class="chip-n">2</span></span><span class="chip"><span class="chip-name">DamaiGasServices</span><span class="chip-n">1</span></span><span class="chip"><span class="chip-name">Hokkaido Bakery</span><span class="chip-n">1</span></span><span class="chip"><span class="chip-name">Jaya Grocer</span><span class="chip-n">1</span></span><span class="chip"><span class="chip-name">Sinsunmi Mart</span><span class="chip-n">1</span></span></div></div>
+</section>
+
+<section><div class="callout"><b>확인 필요 42건</b> — 소스 데이터 이슈(임포트는 진행되며 값만 비어있음):<ul><li>가격 없음 45행 → RM0으로 넣고 나중에 채움</li><li>‘Apple Cinnamon Jam (포장PE봉투…)’ 등 한글칸/품명 불일치 행 = 원본 표 밀림 의심 → 눈으로 확인</li></ul></div></section>
+
+<section>
+  <h2>재고 항목 · 셀러소스</h2>
+  <div class="bar">
+    <input id="q" type="search" placeholder="재고 이름 검색…" aria-label="검색">
+    <div class="seg" id="lvl">
+      <button data-v="all" aria-pressed="true">전체</button>
+      <button data-v="BG" aria-pressed="false">BG 공유</button>
+      <button data-v="RESTAURANT" aria-pressed="false">전용</button>
+    </div>
+    <span class="count" id="count"></span>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>#</th><th>재고 이름 (영문 + 한글)</th><th>레벨</th><th>단위</th><th>셀러소스 (공급업체 · 품명 · 가격)</th></tr></thead>
+      <tbody id="tb"><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="black sugar syrup (흑설탕시럽)">
+    <td class="c-idx">1</td>
+    <td class="c-name">Black Sugar Syrup (흑설탕시럽)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">AIM coffee<span class="src-item">Black Sugar Syrup</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="tiger beer (맥주타이거338ml 1박스)">
+    <td class="c-idx">2</td>
+    <td class="c-name">Tiger Beer (맥주타이거338ml 1박스)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">can</td>
+    <td class="c-src"><span class="src src-REST_ONLY">Cellar Eighteen<span class="src-item">Tiger Beer 338ml</span><span class="src-price">RM175.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="sliced beef for bulgogi (소고기 (불고기용))">
+    <td class="c-idx">3</td>
+    <td class="c-name">Sliced Beef for Bulgogi (소고기 (불고기용))</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">Lee's Fandbee Frozen<span class="src-item">Sliced Beef(2mm) /Aust Midfield Brisket PEDO</span><span class="src-price">RM43.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="peach base (복숭아 베이스)">
+    <td class="c-idx">4</td>
+    <td class="c-name">Peach Base (복숭아 베이스)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_SOLD">Tourmanium(참존)<span class="src-item">PEACH BASE</span><span class="src-price">RM38.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="japanesse cucumber">
+    <td class="c-idx">5</td>
+    <td class="c-name">Japanesse Cucumber</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">De Green Wholesale Enterprise<span class="src-item">Japanesse Cucumber</span><span class="src-price">RM6.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="cherry tomato">
+    <td class="c-idx">6</td>
+    <td class="c-name">Cherry Tomato</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">De Green Wholesale Enterprise<span class="src-item">Cherry Tomato</span><span class="src-price">RM14.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="grape base (포도 베이스)">
+    <td class="c-idx">7</td>
+    <td class="c-name">Grape Base (포도 베이스)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_SOLD">Tourmanium(참존)<span class="src-item">GRAPE BASE</span><span class="src-price">RM38.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="mesclun mix">
+    <td class="c-idx">8</td>
+    <td class="c-name">Mesclun Mix</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">De Green Wholesale Enterprise<span class="src-item">Mesclun Mix</span><span class="src-price">RM13.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="premium matcha powder (녹차 파우더 (마차))">
+    <td class="c-idx">9</td>
+    <td class="c-name">Premium Matcha Powder (녹차 파우더 (마차))</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">kg</td>
+    <td class="c-src"><span class="src src-BG_EXT">AIM coffee<span class="src-item">Premium Matcha Powder</span><span class="src-price">RM38.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="scrippo lemon lime tea (레몬라임티)">
+    <td class="c-idx">10</td>
+    <td class="c-name">Scrippo Lemon Lime Tea (레몬라임티)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">AIM coffee<span class="src-item">SCRIPPO LEMON LIME TEA</span><span class="src-price">RM29.30</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="premium chocolate powder (초코렛 파우더)">
+    <td class="c-idx">11</td>
+    <td class="c-name">Premium Chocolate Powder (초코렛 파우더)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">AIM coffee<span class="src-item">Premium Chocolate Powder</span><span class="src-price">RM40.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="house coffee beans (morning punch) (커피원두 하우스커피/모닝펀치)">
+    <td class="c-idx">12</td>
+    <td class="c-name">House Coffee Beans (Morning Punch) (커피원두 하우스커피/모닝펀치)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">AIM coffee<span class="src-item">House coffee (morning punch)</span><span class="src-price">RM70.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="monin premium syrup wild mint (monin 민트 시럽)">
+    <td class="c-idx">13</td>
+    <td class="c-name">Monin Premium Syrup Wild Mint (MONIN 민트 시럽)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">bottle</td>
+    <td class="c-src"><span class="src src-BG_EXT">AIM coffee<span class="src-item">MONIN Premium Syrup Wild Mint</span><span class="src-price">RM50.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="chamomile herbal">
+    <td class="c-idx">14</td>
+    <td class="c-name">Chamomile Herbal</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">AIM coffee<span class="src-item">Chamomile Herbal</span><span class="src-price">RM48.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="earl grey">
+    <td class="c-idx">15</td>
+    <td class="c-name">Earl Grey</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">AIM coffee<span class="src-item">Earl Grey</span><span class="src-price">RM48.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="english breakfast">
+    <td class="c-idx">16</td>
+    <td class="c-name">English Breakfast</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">AIM coffee<span class="src-item">English Breakfast</span><span class="src-price">RM48.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="monin premium syrup vanilla (monin 바닐라 시럽)">
+    <td class="c-idx">17</td>
+    <td class="c-name">Monin Premium Syrup Vanilla (MONIN 바닐라 시럽)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">bottle</td>
+    <td class="c-src"><span class="src src-BG_EXT">AIM coffee<span class="src-item">MONIN Premium Syrup Vanilla</span><span class="src-price">RM50.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="organic peppermint herbal">
+    <td class="c-idx">18</td>
+    <td class="c-name">Organic Peppermint Herbal</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">AIM coffee<span class="src-item">Organic Peppermint Herbal</span><span class="src-price">RM48.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="yellow onion">
+    <td class="c-idx">19</td>
+    <td class="c-name">Yellow Onion</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">Bila Bila Mart<span class="src-item">Yellow Onion</span><span class="src-price">RM9.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="old ginger">
+    <td class="c-idx">20</td>
+    <td class="c-name">Old Ginger</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">Bila Bila Mart<span class="src-item">Old Ginger</span><span class="src-price">RM3.90</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="potato (감자)">
+    <td class="c-idx">21</td>
+    <td class="c-name">Potato (감자)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">Bila Bila Mart<span class="src-item">Potato</span><span class="src-price">RM5.00</span></span><span class="src src-BG_EXT">TaiYangFresh<span class="src-item">Potato(Ubi Kentang)</span><span class="src-price">RM3.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="ice cube (얼음)">
+    <td class="c-idx">22</td>
+    <td class="c-name">Ice Cube (얼음)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">Bila Bila Mart<span class="src-item">Ice Cube</span><span class="src-price">RM3.20</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="yaw mak tam">
+    <td class="c-idx">23</td>
+    <td class="c-name">Yaw Mak Tam</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">Bila Bila Mart<span class="src-item">Yaw Mak Tam</span><span class="src-price">RM3.20</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="mix coral">
+    <td class="c-idx">24</td>
+    <td class="c-name">Mix Coral</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">Bila Bila Mart<span class="src-item">Mix Coral</span><span class="src-price">RM4.90</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="gas cylinder (14kg) (가스통)">
+    <td class="c-idx">25</td>
+    <td class="c-name">Gas Cylinder (14kg) (가스통)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">DamaiGasServices<span class="src-item">Gas Cylinder (14kg)</span><span class="src-price">RM35.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="green capsicum">
+    <td class="c-idx">26</td>
+    <td class="c-name">Green Capsicum</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">De Green Wholesale Enterprise<span class="src-item">Green Capsicum</span><span class="src-price">RM7.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="tomato">
+    <td class="c-idx">27</td>
+    <td class="c-name">Tomato</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">De Green Wholesale Enterprise<span class="src-item">Tomato</span><span class="src-price">RM7.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="green(red) coral (코랄 샐러드)">
+    <td class="c-idx">28</td>
+    <td class="c-name">green(red) coral (코랄 샐러드)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">De Lettuce Bear<span class="src-item">green(red) coral</span><span class="src-price">RM12.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="mix salad (믹스샐러드)">
+    <td class="c-idx">29</td>
+    <td class="c-name">Mix Salad (믹스샐러드)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">De Lettuce Bear<span class="src-item">Mix Salad</span><span class="src-price">RM10.00</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="dried black barry (like small raisin) (블랙베리)">
+    <td class="c-idx">30</td>
+    <td class="c-name">Dried Black Barry (Like small raisin) (블랙베리)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-REST_ONLY">Direct<span class="src-item">Dried Black Barry (Like small raisin)</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="snow powder">
+    <td class="c-idx">31</td>
+    <td class="c-name">Snow Powder</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-REST_ONLY">Direct<span class="src-item">Snow Powder</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="sliced almond (아몬드 슬라이스)">
+    <td class="c-idx">32</td>
+    <td class="c-name">Sliced Almond (아몬드 슬라이스)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-REST_ONLY">Direct<span class="src-item">Sliced Almond</span><span class="src-price">RM11.10</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="apple cinnamon jam (포장pe봉투6*9cm)">
+    <td class="c-idx">33</td>
+    <td class="c-name">Apple Cinnamon Jam (포장PE봉투6*9cm)<span class="flag">한글칸/품명 불일치(소스 밀림?)</span></td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">bottle</td>
+    <td class="c-src"><span class="src src-REST_ONLY">Direct<span class="src-item">Apple Cinnamon Jam</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="sesame oil*chee seng* (참기름_chee seng)">
+    <td class="c-idx">34</td>
+    <td class="c-name">Sesame Oil*Chee Seng* (참기름_Chee Seng)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-REST_ONLY">Direct<span class="src-item">Sesame Oil*Chee Seng*</span><span class="src-price">RM18.75</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="peanuts (almond) crumbs (땅콩(아몬드)가루)">
+    <td class="c-idx">35</td>
+    <td class="c-name">Peanuts (Almond) Crumbs (땅콩(아몬드)가루)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-REST_ONLY">Direct<span class="src-item">Peanuts (Almond) Crumbs</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="chocolate powder (초코릿 가루)">
+    <td class="c-idx">36</td>
+    <td class="c-name">Chocolate Powder (초코릿 가루)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-REST_ONLY">Direct<span class="src-item">Chocolate Powder</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="dried raisin (건포도sunmaid)">
+    <td class="c-idx">37</td>
+    <td class="c-name">Dried Raisin (건포도sunmaid)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-REST_ONLY">Direct<span class="src-item">Dried Raisin</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="peanut butter (땅콩크림)">
+    <td class="c-idx">38</td>
+    <td class="c-name">Peanut butter (땅콩크림)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-REST_ONLY">Direct<span class="src-item">Peanut butter</span><span class="src-price">RM17.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="colander">
+    <td class="c-idx">39</td>
+    <td class="c-name">Colander</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">Eco Shop<span class="src-item">Colander</span><span class="src-price">RM2.60</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="hiro pp cotton water filter">
+    <td class="c-idx">40</td>
+    <td class="c-name">Hiro PP Cotton Water Filter</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">Eco Shop<span class="src-item">Hiro PP Cotton Water Filter</span><span class="src-price">RM2.60</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="bottle">
+    <td class="c-idx">41</td>
+    <td class="c-name">Bottle</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">Eco Shop<span class="src-item">Bottle</span><span class="src-price">RM2.60</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="towel ganso cleaning">
+    <td class="c-idx">42</td>
+    <td class="c-name">Towel Ganso Cleaning</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">Eco Shop<span class="src-item">Towel Ganso Cleaning</span><span class="src-price">RM2.60</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="chicken chop l(260~280g) (닭다리살)">
+    <td class="c-idx">43</td>
+    <td class="c-name">Chicken Chop L(260~280g) (닭다리살)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">Guan Kee Poultry<span class="src-item">Chicken Chop L(260~280g)</span><span class="src-price">RM21.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="halal chicken (chunk cut) (직원식)">
+    <td class="c-idx">44</td>
+    <td class="c-name">Halal chicken (chunk cut) (직원식)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">Guan Kee Poultry<span class="src-item">Halal chicken 2kg (chunk cut)</span><span class="src-price">RM12.30</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="chicken drumstick (medium) (닭다리)">
+    <td class="c-idx">45</td>
+    <td class="c-name">Chicken Drumstick (Medium) (닭다리)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">Guan Kee Poultry<span class="src-item">Chicken Drumstick (Medium)</span><span class="src-price">RM18.50</span></span><span class="src src-BG_EXT">NSK<span class="src-item">Drumstick</span><span class="src-price">RM15.60</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="minced chicken (간닭고기)">
+    <td class="c-idx">46</td>
+    <td class="c-name">Minced Chicken (간닭고기)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">Guan Kee Poultry<span class="src-item">Minced Chicken</span><span class="src-price">RM17.00</span></span><span class="src src-BG_EXT">NSK<span class="src-item">Minced Chicken</span><span class="src-price">RM15.29</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="chicken liver (닭간)">
+    <td class="c-idx">47</td>
+    <td class="c-name">Chicken Liver (닭간)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">Guan Kee Poultry<span class="src-item">Chicken Liver</span><span class="src-price">RM7.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="chicken breast (닭가슴살)">
+    <td class="c-idx">48</td>
+    <td class="c-name">Chicken Breast (닭가슴살)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">Guan Kee Poultry<span class="src-item">Chicken Breast</span><span class="src-price">RM17.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="chicken gizzards (닭똥집)">
+    <td class="c-idx">49</td>
+    <td class="c-name">Chicken Gizzards (닭똥집)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">Guan Kee Poultry<span class="src-item">Chicken Gizzards</span><span class="src-price">RM7.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="chickenwholeleg (large / cutting into thigh &amp; drumstick) (통닭다리(오븐용))">
+    <td class="c-idx">50</td>
+    <td class="c-name">ChickenWholeLeg (Large / Cutting into Thigh &amp; Drumstick) (통닭다리(오븐용))</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">Guan Kee Poultry<span class="src-item">ChickenWholeLeg (Large/Cutting into Thigh &amp; Drumstick)</span><span class="src-price">RM18.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="hokkaido breads (식빵 10slices)">
+    <td class="c-idx">51</td>
+    <td class="c-name">Hokkaido Breads (식빵 10slices)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">Hokkaido Bakery<span class="src-item">Hokkaido Breads</span><span class="src-price">RM0.80</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="mineral water spritzer (미네럴워터 550ml 1박스)">
+    <td class="c-idx">52</td>
+    <td class="c-name">Mineral water Spritzer (미네럴워터 550ml 1박스)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">Indus Grocers<span class="src-item">Mineral water Spritzer 550ml</span><span class="src-price">RM30.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="king oyster mushroom">
+    <td class="c-idx">53</td>
+    <td class="c-name">King Oyster Mushroom</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">Indus Grocers<span class="src-item">King Oyster Mushroom</span><span class="src-price">RM2.25</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="holland red &amp; green coral lettuce">
+    <td class="c-idx">54</td>
+    <td class="c-name">Holland Red &amp; Green Coral Lettuce</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">Indus Grocers<span class="src-item">Holland Red &amp; Green Coral Lettuce</span><span class="src-price">RM6.99</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="fine salt (히말라야 소금)">
+    <td class="c-idx">55</td>
+    <td class="c-name">Fine Salt (히말라야 소금)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">Indus Grocers<span class="src-item">Fine Salt</span><span class="src-price">RM2.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="yellow onion (양파)">
+    <td class="c-idx">56</td>
+    <td class="c-name">Yellow Onion (양파)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">Indus Grocers<span class="src-item">Yellow Onion</span><span class="src-price">RM5.56</span></span><span class="src src-BG_EXT">TaiYangFresh<span class="src-item">Yellow Onion(Bawang Holland)</span><span class="src-price">RM3.20</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="hershey's syrup chocolate (초코시럽)">
+    <td class="c-idx">57</td>
+    <td class="c-name">Hershey's Syrup Chocolate (초코시럽)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">bottle</td>
+    <td class="c-src"><span class="src src-BG_EXT">Indus Grocers<span class="src-item">Hershey's Syrup Chocolate</span><span class="src-price">RM17.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="sawah mas (staff meal) (쌀 다른 버전)">
+    <td class="c-idx">58</td>
+    <td class="c-name">Sawah Mas (Staff Meal) (쌀 다른 버전)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">JASMINE<span class="src-item">Sawah Mas (Staff Meal)</span><span class="src-price">RM34.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="rice-jasmin cal fresh (쌀-자스민)">
+    <td class="c-idx">59</td>
+    <td class="c-name">Rice-Jasmin cal fresh (쌀-자스민)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">JASMINE<span class="src-item">Rice-Jasmin cal fresh 5kg</span><span class="src-price">RM27.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="faiza tepung gandum (다목적 밀가루)">
+    <td class="c-idx">60</td>
+    <td class="c-name">Faiza Tepung Gandum (다목적 밀가루)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">Jaya Grocer<span class="src-item">Faiza Tepung Gandum</span><span class="src-price">RM3.89</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="egg d (계란 b 사이즈)">
+    <td class="c-idx">61</td>
+    <td class="c-name">Egg D (계란 B 사이즈)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-REST_ONLY">KK Mart<span class="src-item">Egg D</span><span class="src-price">RM10.60</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="panasonic battery aa (배터리)">
+    <td class="c-idx">62</td>
+    <td class="c-name">Panasonic Battery AA (배터리)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-REST_ONLY">KK Mart<span class="src-item">Panasonic Battery AA</span><span class="src-price">RM9.90</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="kh detergent powder (가루빨래세제)">
+    <td class="c-idx">63</td>
+    <td class="c-name">KH Detergent Powder (가루빨래세제)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-REST_ONLY">KK Mart<span class="src-item">KH Detergent Powder</span><span class="src-price">RM12.90</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="nestle vanilla icecream (아이스크림nestle)">
+    <td class="c-idx">64</td>
+    <td class="c-name">Nestle Vanilla Icecream (아이스크림Nestle)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-REST_ONLY">KK Mart<span class="src-item">Nestle Vanilla Icecream</span><span class="src-price">RM14.50</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="csr sugar">
+    <td class="c-idx">65</td>
+    <td class="c-name">Csr Sugar</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-REST_ONLY">KK Mart<span class="src-item">CSR Sugar</span><span class="src-price">RM2.85</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="lighter (라이터)">
+    <td class="c-idx">66</td>
+    <td class="c-name">Lighter (라이터)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">bottle</td>
+    <td class="c-src"><span class="src src-REST_ONLY">KK Mart<span class="src-item">Lady's Choice Real Mayonaisse</span><span class="src-price">RM12.78</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="grabbit b / clips 25mm">
+    <td class="c-idx">67</td>
+    <td class="c-name">Grabbit B / Clips 25mm</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-REST_ONLY">KK Mart<span class="src-item">Grabbit B/Clips 25mm</span><span class="src-price">RM3.90</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="sponge (스폰지)">
+    <td class="c-idx">68</td>
+    <td class="c-name">Sponge (스폰지)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-REST_ONLY">KK Mart<span class="src-item">Sponge</span><span class="src-price">RM6.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="REST_ONLY BG_SOLD" data-name="dishwashing liquid limau (설거지 세제)">
+    <td class="c-idx">69</td>
+    <td class="c-name">Dishwashing Liquid Limau (설거지 세제)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">bottle</td>
+    <td class="c-src"><span class="src src-REST_ONLY">KK Mart<span class="src-item">Dishwashing Liquid Limau</span><span class="src-price">RM4.50</span></span><span class="src src-BG_SOLD">UGS<span class="src-item">GOODMAID DISH WASH 900ML Lime PPT | 900ml x 12btl/ctn</span><span class="src-price">RM6.50</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="corn starch pantai tepung jagung (옥수수전분)">
+    <td class="c-idx">70</td>
+    <td class="c-name">Corn Starch Pantai Tepung Jagung (옥수수전분)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-REST_ONLY">KK Mart<span class="src-item">Corn Starch Pantai Tepung Jagung</span><span class="src-price">RM1.80</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="sprite (사이다)">
+    <td class="c-idx">71</td>
+    <td class="c-name">Sprite (사이다)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">bottle</td>
+    <td class="c-src"><span class="src src-REST_ONLY">KK Mart<span class="src-item">Sprite</span><span class="src-price">RM5.50</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="broom / mop stick (자루)">
+    <td class="c-idx">72</td>
+    <td class="c-name">Broom / Mop Stick (자루)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-REST_ONLY">KK Mart<span class="src-item">Broom/Mop Stick</span><span class="src-price">RM2.00</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="paper clip (클립)">
+    <td class="c-idx">73</td>
+    <td class="c-name">Paper Clip (클립)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-REST_ONLY">KK Mart<span class="src-item">Paper Clip</span><span class="src-price">RM3.90</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="staff (적달(직원식))">
+    <td class="c-idx">74</td>
+    <td class="c-name">Staff (적달(직원식))</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-REST_ONLY">KK Mart<span class="src-item">Staff_Red Dhall</span><span class="src-price">RM3.50</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="staff (큐민가루)">
+    <td class="c-idx">75</td>
+    <td class="c-name">staff (큐민가루)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-REST_ONLY">KK Mart<span class="src-item">staff_Cumin powder</span><span class="src-price">RM5.50</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="adabi serbuk ayam">
+    <td class="c-idx">76</td>
+    <td class="c-name">Adabi Serbuk Ayam</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-REST_ONLY">KK Mart<span class="src-item">Adabi Serbuk Ayam</span><span class="src-price">RM7.50</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="ramly chicken nugget (치킨너겟)">
+    <td class="c-idx">77</td>
+    <td class="c-name">Ramly Chicken Nugget (치킨너겟)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-REST_ONLY">KK Mart<span class="src-item">Ramly Chicken Nugget</span><span class="src-price">RM10.90</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="garbamon l / grass garbage bag">
+    <td class="c-idx">78</td>
+    <td class="c-name">Garbamon L / Grass Garbage Bag</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-REST_ONLY">KK Mart<span class="src-item">Garbamon L/Grass Garbage Bag</span><span class="src-price">RM14.90</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="rice tss bird of paradise">
+    <td class="c-idx">79</td>
+    <td class="c-name">Rice Tss Bird of Paradise</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-REST_ONLY">KK Mart<span class="src-item">Rice TSS Bird of Paradise</span><span class="src-price">RM49.50</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="nestle chocolate icecream (초코아이스크림nestle)">
+    <td class="c-idx">80</td>
+    <td class="c-name">Nestle Chocolate Icecream (초코아이스크림Nestle)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-REST_ONLY">KK Mart<span class="src-item">Nestle Chocolate Icecream</span><span class="src-price">RM14.50</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="coca-cola">
+    <td class="c-idx">81</td>
+    <td class="c-name">Coca-Cola</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">can</td>
+    <td class="c-src"><span class="src src-REST_ONLY">KK Mart<span class="src-item">Coca-Cola</span><span class="src-price">RM1.88</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="baba's meat curry powder (카레가루(직원식))">
+    <td class="c-idx">82</td>
+    <td class="c-name">Baba's Meat Curry Powder (카레가루(직원식))</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-REST_ONLY">KK Mart<span class="src-item">Baba's Meat Curry Powder</span><span class="src-price">RM6.90</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="staff (녹색달(직원식))">
+    <td class="c-idx">83</td>
+    <td class="c-name">Staff (녹색달(직원식))</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-REST_ONLY">KK Mart<span class="src-item">Staff_Green Dhall</span><span class="src-price">RM5.90</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="garbage bin bag (81cm*110cm) xl 10ea (주방 쓰레기 봉투)">
+    <td class="c-idx">84</td>
+    <td class="c-name">Garbage Bin Bag (81cm*110cm) XL 10ea (주방 쓰레기 봉투)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-REST_ONLY">KK Mart<span class="src-item">GARBAGE BIN BAG (81cm*110cm) XL 10ea</span><span class="src-price">RM14.90</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="metal sponge (금속 스폰지)">
+    <td class="c-idx">85</td>
+    <td class="c-name">Metal Sponge (금속 스폰지)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-REST_ONLY">KK Mart<span class="src-item">Metal Sponge</span><span class="src-price">RM3.90</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="kimball sphagetti (스파게티면)">
+    <td class="c-idx">86</td>
+    <td class="c-name">Kimball Sphagetti (스파게티면)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-REST_ONLY">KK Mart<span class="src-item">Kimball Sphagetti</span><span class="src-price">RM4.50</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="mosquito liquid refill (모기약)">
+    <td class="c-idx">87</td>
+    <td class="c-name">Mosquito Liquid Refill (모기약)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-REST_ONLY">KK Mart<span class="src-item">Mosquito Liquid Refill (44ml)</span><span class="src-price">RM11.90</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="mop head">
+    <td class="c-idx">88</td>
+    <td class="c-name">Mop Head</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-REST_ONLY">KK Mart<span class="src-item">Mop Head</span><span class="src-price">RM8.90</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="fumakilla coil">
+    <td class="c-idx">89</td>
+    <td class="c-name">Fumakilla Coil</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-REST_ONLY">KK Mart<span class="src-item">Fumakilla Coil</span><span class="src-price">RM3.70</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="yeepi torch lighter">
+    <td class="c-idx">90</td>
+    <td class="c-name">Yeepi Torch Lighter</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-REST_ONLY">KK Mart<span class="src-item">Yeepi Torch Lighter</span><span class="src-price">RM3.30</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="microfiber mop">
+    <td class="c-idx">91</td>
+    <td class="c-name">Microfiber Mop</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-REST_ONLY">KK Mart<span class="src-item">Microfiber Mop</span><span class="src-price">RM9.90</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="aust midfield brisket pedo (소고기_호주_양지)">
+    <td class="c-idx">92</td>
+    <td class="c-name">Aust Midfield Brisket Pedo (소고기_호주_양지)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">Lee's Fandbee Frozen<span class="src-item">Aust Midfield Brisket PEDO</span><span class="src-price">RM40.15</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="salmon fillet with skin-on whole (연어)">
+    <td class="c-idx">93</td>
+    <td class="c-name">Salmon Fillet with Skin-On Whole (연어)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">Lee's Fandbee Frozen<span class="src-item">Salmon Fillet with Skin-On WHOLE</span><span class="src-price">RM57.95</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="lees chicken frank 32ea (프랑크소시지(닭))">
+    <td class="c-idx">94</td>
+    <td class="c-name">Lees Chicken Frank 32ea (프랑크소시지(닭))</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">Lee's Fandbee Frozen<span class="src-item">Lees Chicken Frank 32ea</span><span class="src-price">RM5.49</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT REST_ONLY" data-name="gud sandwich slice cheese (슬라이스치즈)">
+    <td class="c-idx">95</td>
+    <td class="c-name">Gud Sandwich Slice Cheese (슬라이스치즈)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">Lee's Fandbee Frozen<span class="src-item">GUD Sandwich Slice Cheese</span><span class="src-price src-none">—</span></span><span class="src src-REST_ONLY">Village Grocer<span class="src-item">Anchor Cheese</span><span class="src-price">RM10.80</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="frozen squid ring with skin (오징어 몸통 링)">
+    <td class="c-idx">96</td>
+    <td class="c-name">Frozen Squid Ring With Skin (오징어 몸통 링)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Frozen Squid Ring With Skin</span><span class="src-code">2017-013</span><span class="src-price">RM8.00</span></span><span class="src src-BG_EXT">Nikudo<span class="src-item">SQUID RING (NET:35%) 鱿鱼圈</span><span class="src-code">D-CN-SQ-RG-X-1.0</span><span class="src-price">RM0.30</span></span><span class="src src-BG_EXT">Seafood<span class="src-item">Squid Ring +-400g (premium grade 10% ice glazing )</span><span class="src-price">RM13.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="[iqf]prawn 31 / 40 pd(peeleddeveined) pdto(pd&amp;tail-on) (깐새우)">
+    <td class="c-idx">97</td>
+    <td class="c-name">[IQF]PRAWN 31 / 40 PD(PeeledDeveined) PDTO(PD&amp;Tail-on) (깐새우)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">[IQF]PRAWN 31/40 PD(PeeledDeveined) PDTO(PD&amp;Tail-on)</span><span class="src-code">2007-018</span><span class="src-price">RM13.90</span></span><span class="src src-BG_EXT">LSH<span class="src-item">Peeled Prawn(50/60)(Noodle Prawn) No Tail</span><span class="src-code">2007-005</span><span class="src-price">RM24.00</span></span><span class="src src-BG_EXT">Nikudo<span class="src-item">VANNAMEI PD IQF 31/40;10% GLAZING</span><span class="src-code">P-HB-V-PDQ-31/40-0.5</span><span class="src-price">RM30.00</span></span><span class="src src-BG_EXT">Nikudo<span class="src-item">VANNAMEI PD IQF 41/50;10% GLAZING</span><span class="src-price">RM28.00</span></span><span class="src src-BG_EXT">Seafood<span class="src-item">PRAWN 31/40 PD(PeeledDeveined) PDTO(PD&amp;Tail-on)</span><span class="src-price">RM33.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="cooking oil sawit emas (식용유(튀김용팜유))">
+    <td class="c-idx">98</td>
+    <td class="c-name">Cooking Oil Sawit Emas (식용유(튀김용팜유))</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Cooking Oil 清油 SAWIT EMAS - 5kg</span><span class="src-code">3001-006</span><span class="src-price">RM31.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="dark soy sauce (카라멜 간장)">
+    <td class="c-idx">99</td>
+    <td class="c-name">Dark Soy Sauce (카라멜 간장)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">bottle</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Dark Soy Sauce_Cheong Chan 740ml 1022-005</span><span class="src-code">1022-005</span><span class="src-price">RM12.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="sliced dried mushroom(shiitake) (마른 편썬 표고버섯)">
+    <td class="c-idx">100</td>
+    <td class="c-name">Sliced Dried Mushroom(Shiitake) (마른 편썬 표고버섯)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Sliced Dried Mushroom(Shiitake) 1kg</span><span class="src-code">1010-027</span><span class="src-price">RM43.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="chicken sausage cocktail (칵테일 소시지)">
+    <td class="c-idx">101</td>
+    <td class="c-name">Chicken Sausage Cocktail (칵테일 소시지)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Chicken Sausage Cocktail_Gourmet Chef</span><span class="src-code">2093-010</span><span class="src-price">RM12.90</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT REST_ONLY" data-name="mango cordial sunquick (망고시럽 sunquick)">
+    <td class="c-idx">102</td>
+    <td class="c-name">Mango Cordial Sunquick (망고시럽 Sunquick)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">bottle</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Mango Cordial 芒果汁 SUNQUICK - 700ml</span><span class="src-code">1080-014</span><span class="src-price">RM13.90</span></span><span class="src src-REST_ONLY">Village Grocer<span class="src-item">Mango Cordial_Sunquick</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="high oleic sunflower &amp; canola oil clear valley (식용유)">
+    <td class="c-idx">103</td>
+    <td class="c-name">High Oleic Sunflower &amp; Canola Oil Clear Valley (식용유)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">High Oleic Sunflower &amp; Canola Oil 高油酸葵花籽与菜籽油 CLEAR VALLEY- 3kg</span><span class="src-code">3001-011</span><span class="src-price">RM42.90</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT REST_ONLY" data-name="dishwashing liquid (주방세제)">
+    <td class="c-idx">104</td>
+    <td class="c-name">Dishwashing Liquid (주방세제)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Dishwashing Liquid 3.3L</span><span class="src-code">1013-001</span><span class="src-price">RM7.50</span></span><span class="src src-REST_ONLY">Village Grocer<span class="src-item">Dishwasher Liquid Sunlight</span><span class="src-price">RM4.70</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="light soy sauce (plastic / ) lkk (진간장 lkk light)">
+    <td class="c-idx">105</td>
+    <td class="c-name">Light Soy Sauce (Plastic / ) Lkk (진간장 LKK Light)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">bottle</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Light Soy Sauce (Plastic/胶桶) 鲜味生抽 李锦记 LKK - 1.9Litre</span><span class="src-code">1024-008</span><span class="src-price">RM13.60</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="fine sugar csr (흰설탕)">
+    <td class="c-idx">106</td>
+    <td class="c-name">Fine Sugar Csr (흰설탕)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Fine Sugar CSR - 1kg</span><span class="src-code">1085-007</span><span class="src-price">RM2.90</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="white breadcrumbs all day (빵가루)">
+    <td class="c-idx">107</td>
+    <td class="c-name">White Breadcrumbs All Day (빵가루)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">White Breadcrumbs 面包粉 白色 美天 ALL DAY - 1kg</span><span class="src-code">1056-048</span><span class="src-price">RM8.40</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="monosodium glutamate ajinomoto">
+    <td class="c-idx">108</td>
+    <td class="c-name">Monosodium Glutamate Ajinomoto</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Monosodium Glutamate Ajinomoto 1kg</span><span class="src-code">1003-008</span><span class="src-price">RM18.80</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="chicken stock powder knorr (치킨스톡(파우더)_knorr)">
+    <td class="c-idx">109</td>
+    <td class="c-name">Chicken Stock Powder Knorr (치킨스톡(파우더)_KNORR)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Chicken Stock Powder 鸡精粉 家乐牌 KNORR - 1kg</span><span class="src-code">1059-001</span><span class="src-price">RM19.80</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="cyber fresh cling film (vit 인스턴트 면)">
+    <td class="c-idx">110</td>
+    <td class="c-name">Cyber Fresh Cling Film (VIT 인스턴트 면)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Cyber Fresh Cling Film (450mm)</span><span class="src-code">1100-010</span><span class="src-price">RM38.90</span></span><span class="src src-BG_EXT">LSH<span class="src-item">Instant Noodle 唯一面 VIT'S - 840g</span><span class="src-code">1050-012</span><span class="src-price">RM6.40</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="oyster sauce panda (tin / ) lkk (굴소스_판다 이금기)">
+    <td class="c-idx">111</td>
+    <td class="c-name">Oyster Sauce Panda (Tin / ) Lkk (굴소스_판다 이금기)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Oyster Sauce Panda (Tin/铁罐) 熊猫蚝油 李锦记 LKK - 2.2kg</span><span class="src-code">1002-008</span><span class="src-price">RM22.80</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="extra fine salt_double swallow (고운 소금)">
+    <td class="c-idx">112</td>
+    <td class="c-name">Extra Fine Salt_Double Swallow (고운 소금)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Extra Fine Salt_Double Swallow_450g</span><span class="src-code">1067-002</span><span class="src-price">RM8.20</span></span><span class="src src-BG_EXT">LSH<span class="src-item">Fine Salt</span><span class="src-code">1067-005</span><span class="src-price">RM1.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="rubber band">
+    <td class="c-idx">113</td>
+    <td class="c-name">Rubber Band</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Rubber Band</span><span class="src-code">1150-003</span><span class="src-price">RM9.20</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="maggi chilli sauce">
+    <td class="c-idx">114</td>
+    <td class="c-name">Maggi Chilli Sauce</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">bottle</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Maggi Chilli Sauce</span><span class="src-code">1028-011</span><span class="src-price">RM10.40</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="bicarbonate soda king's (베이킹소다 baking soda)">
+    <td class="c-idx">115</td>
+    <td class="c-name">Bicarbonate Soda King's (베이킹소다 Baking Soda)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">bottle</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Bicarbonate Soda King's 120g</span><span class="src-price">RM2.30</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="f&amp;n club soda water (can) (소다수)">
+    <td class="c-idx">116</td>
+    <td class="c-name">F&amp;N Club Soda Water (Can) (소다수)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">can</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">F&amp;N Club Soda Water (Can)</span><span class="src-code">1080-046</span><span class="src-price">RM33.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="white vinegar all day (양조식초)">
+    <td class="c-idx">117</td>
+    <td class="c-name">White Vinegar All Day (양조식초)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">White Vinegar 白醋 美天 ALL DAY - 3.4kg</span><span class="src-code">1021-003</span><span class="src-price">RM9.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="real mayonnaise (마요네즈)">
+    <td class="c-idx">118</td>
+    <td class="c-name">Real Mayonnaise (마요네즈)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Real Mayonnaise_Lady's Choice 3L</span><span class="src-code">1089-002</span><span class="src-price">RM54.40</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="erawan blended rice flour">
+    <td class="c-idx">119</td>
+    <td class="c-name">Erawan Blended Rice Flour</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Erawan Blended Rice Flour</span><span class="src-code">1056-030</span><span class="src-price">RM4.80</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="coca-cola zero (코카콜라1박스)">
+    <td class="c-idx">120</td>
+    <td class="c-name">Coca-Cola Zero (코카콜라1박스)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">can</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Coca-Cola ZERO</span><span class="src-code">1080-044</span><span class="src-price">RM36.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="sprite (can) (스프라이트캔 1박스)">
+    <td class="c-idx">121</td>
+    <td class="c-name">Sprite (Can) (스프라이트캔 1박스)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">can</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Sprite (Can)</span><span class="src-code">1080-047</span><span class="src-price">RM1.58</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="honey all day (꿀)">
+    <td class="c-idx">122</td>
+    <td class="c-name">Honey All Day (꿀)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">bottle</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Honey 蜜糖 美天 ALL DAY - 1kg</span><span class="src-code">1085-001</span><span class="src-price">RM14.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="anchovies seasoning powder knorr">
+    <td class="c-idx">123</td>
+    <td class="c-name">Anchovies Seasoning Powder Knorr</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Anchovies Seasoning Powder Knorr 1kg</span><span class="src-code">1056-049</span><span class="src-price">RM27.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="black fungus (마른 목이버섯)">
+    <td class="c-idx">124</td>
+    <td class="c-name">Black Fungus (마른 목이버섯)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Black Fungus</span><span class="src-code">1027-001</span><span class="src-price">RM16.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="tofu (순두부(튜브))">
+    <td class="c-idx">125</td>
+    <td class="c-name">Tofu (순두부(튜브))</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Tofu_Wai Food 130g</span><span class="src-code">2012-001</span><span class="src-price src-none">—</span></span><span class="src src-BG_EXT">TaiYangFresh<span class="src-item">Soft Tofu Tube_Sakura 300g(Taufu)</span><span class="src-price">RM1.30</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="squid flower(60%water) (칼집 오징어몸통)">
+    <td class="c-idx">126</td>
+    <td class="c-name">Squid Flower(60%Water) (칼집 오징어몸통)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Squid Flower(60%Water)</span><span class="src-code">2020-002</span><span class="src-price">RM9.60</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="[iqf]squid cube u10 6 / 8 (오징어몸통)">
+    <td class="c-idx">127</td>
+    <td class="c-name">[IQF]Squid Cube U10 6 / 8 (오징어몸통)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">[IQF]Squid Cube U10 6/8</span><span class="src-code">2017-004</span><span class="src-price">RM9.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="crab sticks (게맛살)">
+    <td class="c-idx">128</td>
+    <td class="c-name">Crab Sticks (게맛살)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Crab Sticks_Kanika</span><span class="src-code">2018-001</span><span class="src-price">RM9.20</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="hokkaido scallop(20 / 30) (관자)">
+    <td class="c-idx">129</td>
+    <td class="c-name">Hokkaido Scallop(20 / 30) (관자)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Hokkaido Scallop(20/30) 1kg</span><span class="src-code">2028-010</span><span class="src-price">RM85.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="black pepper powder (고운흑후추)">
+    <td class="c-idx">130</td>
+    <td class="c-name">Black Pepper Powder (고운흑후추)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">bottle</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Black Pepper Powder_McCormick</span><span class="src-code">1005-010</span><span class="src-price">RM82.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="apple jam homefarm (사과잼)">
+    <td class="c-idx">131</td>
+    <td class="c-name">Apple Jam Homefarm (사과잼)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">bottle</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Apple Jam Homefarm 450g</span><span class="src-code">1080-006</span><span class="src-price">RM5.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="ginger powder (생강가루)">
+    <td class="c-idx">132</td>
+    <td class="c-name">Ginger Powder (생강가루)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Ginger Powder 400g</span><span class="src-code">1056-024</span><span class="src-price">RM15.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="garlic powder golden chef (마늘파우더)">
+    <td class="c-idx">133</td>
+    <td class="c-name">Garlic Powder Golden Chef (마늘파우더)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Garlic Powder  Golden Chef 1kg</span><span class="src-code">1056-071</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="onion powder golden chef (양파파우더)">
+    <td class="c-idx">134</td>
+    <td class="c-name">Onion Powder Golden Chef (양파파우더)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Onion Powder Golden Chef 1kg</span><span class="src-code">1056-072</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="thailand fish sauce (fish / ) pantai (액젓)">
+    <td class="c-idx">135</td>
+    <td class="c-name">Thailand Fish Sauce (Fish / ) Pantai (액젓)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">bottle</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Thailand Fish Sauce (Fish/苏昌) 鱼露 PANTAI - 880g</span><span class="src-code">1066-006</span><span class="src-price">RM2.85</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="tomato sauce maggi (케찹)">
+    <td class="c-idx">136</td>
+    <td class="c-name">Tomato Sauce Maggi (케찹)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Tomato Sauce Maggi 1.5kg</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT REST_ONLY" data-name="sweetened milk teapot pilihan (연유)">
+    <td class="c-idx">137</td>
+    <td class="c-name">Sweetened Milk Teapot Pilihan (연유)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">can</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Sweetened Milk 甜奶 TEAPOT PILIHAN - 500g</span><span class="src-code">1058-041</span><span class="src-price">RM3.20</span></span><span class="src src-REST_ONLY">Village Grocer<span class="src-item">Condensed Milk Gold Coin Kopi &amp; Teh</span><span class="src-price">RM3.95</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="icing sugar prai (아이스설탕가루)">
+    <td class="c-idx">138</td>
+    <td class="c-name">Icing Sugar Prai (아이스설탕가루)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Icing Sugar PRAI 500g</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="heavy duty garbage bag[xl size] (쓰레기봉투_l)">
+    <td class="c-idx">139</td>
+    <td class="c-name">Heavy Duty Garbage Bag[XL Size] (쓰레기봉투_L)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Heavy Duty Garbage Bag[XL Size]</span><span class="src-code">1139-021</span><span class="src-price">RM5.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="heavy duty garbage bag[l size] (쓰레기봉투_xl)">
+    <td class="c-idx">140</td>
+    <td class="c-name">Heavy Duty Garbage Bag[L Size] (쓰레기봉투_XL)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Heavy Duty Garbage Bag[L Size]</span><span class="src-code">1139-001</span><span class="src-price">RM4.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="clorox bleach porex (클로록스(락스))">
+    <td class="c-idx">141</td>
+    <td class="c-name">Clorox Bleach Porex (클로록스(락스))</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Clorox Bleach 漂白水 POREX - 4Litre</span><span class="src-code">1014-001</span><span class="src-price">RM7.30</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="gas cartridge yeepi (부탄가스)">
+    <td class="c-idx">142</td>
+    <td class="c-name">Gas Cartridge Yeepi (부탄가스)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Gas Cartridge 小型煤气 YEEPI - 230g</span><span class="src-code">1020-007</span><span class="src-price">RM4.40</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="ezywrap catering baking paper">
+    <td class="c-idx">143</td>
+    <td class="c-name">EzyWrap Catering Baking Paper</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">EzyWrap Catering Baking Paper (450mm X 100m/roll)</span><span class="src-code">1100-013</span><span class="src-price">RM47.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="all day corn starch">
+    <td class="c-idx">144</td>
+    <td class="c-name">All Day Corn Starch</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">All Day Corn Starch</span><span class="src-code">1056-004</span><span class="src-price">RM5.20</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="dried india dhal (달_직원식)">
+    <td class="c-idx">145</td>
+    <td class="c-name">Dried India Dhal (달_직원식)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Dried India Dhal_All day 1kg</span><span class="src-code">1016-014</span><span class="src-price">RM5.40</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="glutinous rice flour (찹쌀가루)">
+    <td class="c-idx">146</td>
+    <td class="c-name">Glutinous Rice Flour (찹쌀가루)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Glutinous Rice Flour_Three Goats 500g</span><span class="src-price">RM3.30</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="multipurpose flour (밀가루)">
+    <td class="c-idx">147</td>
+    <td class="c-name">Multipurpose Flour (밀가루)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Multipurpose Flour_Baker's Choice 1kg</span><span class="src-code">1056-036</span><span class="src-price">RM3.25</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="tough clean scrub sponge">
+    <td class="c-idx">148</td>
+    <td class="c-name">Tough Clean Scrub Sponge</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Tough Clean Scrub Sponge_Scotch Brite</span><span class="src-code">1163-002</span><span class="src-price">RM6.90</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="prawn cracker_jumbo (새우스낵)">
+    <td class="c-idx">149</td>
+    <td class="c-name">Prawn Cracker_Jumbo (새우스낵)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Prawn Cracker_Jumbo_60*200g</span><span class="src-code">1131-001</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="french fries[shoestring cut 7mm] (감자튀김 프렌치프라이)">
+    <td class="c-idx">150</td>
+    <td class="c-name">French Fries[Shoestring Cut 7mm] (감자튀김 프렌치프라이)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">French Fries[Shoestring Cut 7mm]_Farm Frites</span><span class="src-code">2013-002</span><span class="src-price">RM20.45</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="potato starch all day (감자전분)">
+    <td class="c-idx">151</td>
+    <td class="c-name">Potato Starch All day (감자전분)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Potato Starch All day 1kg</span><span class="src-code">1056-011</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="margarine (마가린(버터밥용))">
+    <td class="c-idx">152</td>
+    <td class="c-name">Margarine (마가린(버터밥용))</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Margarine_Planta 2.5kg</span><span class="src-code">1111-003</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="tomato sauce all day (토마토 소스)">
+    <td class="c-idx">153</td>
+    <td class="c-name">Tomato Sauce All day (토마토 소스)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">LSH<span class="src-item">Tomato Sauce All day 3.2kg</span><span class="src-code">1033-003</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="aryzta butter croissant ppf (크로아상 (50gm))">
+    <td class="c-idx">154</td>
+    <td class="c-name">Aryzta Butter Croissant Ppf (크로아상 (50gm))</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-REST_ONLY">Mak'Cik<span class="src-item">ARYZTA Butter Croissant PPF - 50g</span><span class="src-price">RM1.91</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="gochujang (korean chili paste) (고추장_해찬들태양초알찬17kg)">
+    <td class="c-idx">155</td>
+    <td class="c-name">Gochujang (Korean Chili Paste) (고추장_해찬들태양초알찬17kg)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Gochujang</span><span class="src-price">RM138.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="cooking vinegar (미향 오뚜기18l)">
+    <td class="c-idx">156</td>
+    <td class="c-name">Cooking Vinegar (미향 오뚜기18L)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Cooking Vinegar</span><span class="src-price">RM105.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="hot issue rice cake (핫이슈 밀떡1kg)">
+    <td class="c-idx">157</td>
+    <td class="c-name">Hot Issue Rice Cake (핫이슈 밀떡1kg)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Hot Issue Rice Cake</span><span class="src-price">RM13.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="fruit candy (과일맛종합캔디-아리랑)">
+    <td class="c-idx">158</td>
+    <td class="c-name">Fruit Candy (과일맛종합캔디-아리랑)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Fruit Candy_Arirang</span><span class="src-price">RM24.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="coarse pepper powder (굵은 고춧가루1kg)">
+    <td class="c-idx">159</td>
+    <td class="c-name">Coarse Pepper Powder (굵은 고춧가루1kg)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Coarse Pepper Powder</span><span class="src-price">RM28.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="fine pepper powder (고운 고춧가루1kg)">
+    <td class="c-idx">160</td>
+    <td class="c-name">Fine Pepper Powder (고운 고춧가루1kg)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Fine Pepper Powder</span><span class="src-price">RM29.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="frying powder mix (백설튀김가루1kg)">
+    <td class="c-idx">161</td>
+    <td class="c-name">Frying Powder Mix (백설튀김가루1kg)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Frying Powder Mix_Beksul</span><span class="src-price">RM10.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="kimchi (포기김치 10kg)">
+    <td class="c-idx">162</td>
+    <td class="c-name">Kimchi (포기김치 10kg)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Kimchi</span><span class="src-price">RM48.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="barley tea bag (보리차)">
+    <td class="c-idx">163</td>
+    <td class="c-name">Barley Tea Bag (보리차)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">BARLEY TEA Bag</span><span class="src-price">RM14.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="roasted sesame seed (볶은참깨오뚜기(팩)500g)">
+    <td class="c-idx">164</td>
+    <td class="c-name">Roasted Sesame Seed (볶은참깨오뚜기(팩)500g)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Roasted Sesame Seed</span><span class="src-price">RM39.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="beef bone powder (사골분말)">
+    <td class="c-idx">165</td>
+    <td class="c-name">Beef Bone Powder (사골분말)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Beef Bone Powder</span><span class="src-price">RM50.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="fish cake (대림부산어묵1kg)">
+    <td class="c-idx">166</td>
+    <td class="c-name">Fish Cake (대림부산어묵1kg)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Fish Cake_Daerim Busan</span><span class="src-price">RM22.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="jin ramen(mild) (진라면마일드1박스)">
+    <td class="c-idx">167</td>
+    <td class="c-name">Jin Ramen(Mild) (진라면마일드1박스)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Jin Ramen(Mild)_Otoki</span><span class="src-price">RM105.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="mozzarella cheese (emborg모짜렐라치즈)">
+    <td class="c-idx">168</td>
+    <td class="c-name">Mozzarella Cheese (Emborg모짜렐라치즈)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Mozzarella Cheese_Emborg</span><span class="src-price">RM93.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="corn syrup (물엿 청정원18kg)">
+    <td class="c-idx">169</td>
+    <td class="c-name">Corn Syrup (물엿 청정원18kg)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Corn Syrup</span><span class="src-price">RM133.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="curry powder mild 1kg (오뚜기 카레 순한맛 1kg)">
+    <td class="c-idx">170</td>
+    <td class="c-name">Curry Powder Mild 1kg (오뚜기 카레 순한맛 1kg)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Curry Powder Mild 1kg_Otoki</span><span class="src-price">RM25.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="makgeolli plain (막걸리)">
+    <td class="c-idx">171</td>
+    <td class="c-name">Makgeolli Plain (막걸리)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">bottle</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Makgeolli Plain</span><span class="src-price">RM16.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="anchovi sauce (멸치액젓 하선정 800g)">
+    <td class="c-idx">172</td>
+    <td class="c-name">Anchovi Sauce (멸치액젓 하선정 800g)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Anchovi Sauce 800g</span><span class="src-price">RM19.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="korean pancake mix (백설부침가루1kg)">
+    <td class="c-idx">173</td>
+    <td class="c-name">Korean Pancake Mix (백설부침가루1kg)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Korean Pancake Mix_Beksul</span><span class="src-price">RM10.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="kimbob yellow pickled radish (김밥 단무지2.8kg)">
+    <td class="c-idx">174</td>
+    <td class="c-name">Kimbob Yellow Pickled Radish (김밥 단무지2.8kg)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Kimbob Yellow Pickled Radish</span><span class="src-price">RM30.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="honey jujube (꿀대추청 꽃샘)">
+    <td class="c-idx">175</td>
+    <td class="c-name">Honey Jujube (꿀대추청 꽃샘)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Honey Jujube</span><span class="src-price">RM30.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="crunch seasoned seaweed (김가루 1kg)">
+    <td class="c-idx">176</td>
+    <td class="c-name">Crunch Seasoned Seaweed (김가루 1kg)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Crunch Seasoned Seaweed</span><span class="src-price">RM105.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="hotteok">
+    <td class="c-idx">177</td>
+    <td class="c-name">Hotteok</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">g</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Hotteok</span><span class="src-price">RM2.40</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="hotteok (삼립미니꿀호떡)">
+    <td class="c-idx">178</td>
+    <td class="c-name">Hotteok (삼립미니꿀호떡)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Hotteok</span><span class="src-price">RM15.90</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="honey ginger (꿀생강청 꽃샘)">
+    <td class="c-idx">179</td>
+    <td class="c-name">Honey ginger (꿀생강청 꽃샘)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Honey ginger</span><span class="src-price">RM29.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="soju (peach flavour) (소주 참이슬 (복숭아))">
+    <td class="c-idx">180</td>
+    <td class="c-name">Soju (Peach Flavour) (소주 참이슬 (복숭아))</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">bottle</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Soju (Peach Flavour)</span><span class="src-price">RM17.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="crushed pear (갈아만든배 1박스)">
+    <td class="c-idx">181</td>
+    <td class="c-name">Crushed Pear (갈아만든배 1박스)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Crushed Pear</span><span class="src-price">RM30.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="honey citron tea (꿀유자차)">
+    <td class="c-idx">182</td>
+    <td class="c-name">Honey Citron Tea (꿀유자차)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">bottle</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Honey Citron Tea</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="sikhye (식혜1박스)">
+    <td class="c-idx">183</td>
+    <td class="c-name">Sikhye (식혜1박스)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Sikhye</span><span class="src-price">RM60.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="roasted sesame seed for the restaurant (식당용 볶음참깨)">
+    <td class="c-idx">184</td>
+    <td class="c-name">Roasted Sesame Seed for the restaurant (식당용 볶음참깨)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Roasted Sesame Seed for the restaurant</span><span class="src-price">RM34.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="soju pet bottle (소주 참이슬 패트병 1.8l)">
+    <td class="c-idx">185</td>
+    <td class="c-name">Soju Pet bottle (소주 참이슬 패트병 1.8L)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">bottle</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Soju PET bottle_1.8L</span><span class="src-price">RM66.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="dry seaweed (미른미역_해농)">
+    <td class="c-idx">186</td>
+    <td class="c-name">Dry Seaweed (미른미역_해농)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Dry Seaweed_해농</span><span class="src-price">RM11.55</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="jjajang sauce (진미짜장소스5kg)">
+    <td class="c-idx">187</td>
+    <td class="c-name">Jjajang Sauce (진미짜장소스5kg)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Jjajang Sauce(Jinmi)</span><span class="src-price">RM66.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="anchovi sauce (멸치액젓 하선정 2.5kg)">
+    <td class="c-idx">188</td>
+    <td class="c-name">Anchovi Sauce (멸치액젓 하선정 2.5kg)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">bottle</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Anchovi Sauce 2.5kg</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="udon sauce (청수 우동다시1.8l)">
+    <td class="c-idx">189</td>
+    <td class="c-name">Udon Sauce (청수 우동다시1.8L)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">bottle</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Udon Sauce</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="kimchi (k1 할랄김치)">
+    <td class="c-idx">190</td>
+    <td class="c-name">Kimchi (K1 할랄김치)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Kimchi</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="fine spicy pepper powder (베트남 고운 고춧가루1kg)">
+    <td class="c-idx">191</td>
+    <td class="c-name">Fine Spicy Pepper Powder (베트남 고운 고춧가루1kg)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Fine Spicy Pepper Powder</span><span class="src-price">RM30.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="anchovy soup stock (면사랑 멸치밑국물육수1.8l)">
+    <td class="c-idx">192</td>
+    <td class="c-name">Anchovy Soup Stock (면사랑 멸치밑국물육수1.8L)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item"></span><span class="src-price">RM43.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="doenjang (korean soybean paste) (cj해찬들 재래식된장 14kg)">
+    <td class="c-idx">193</td>
+    <td class="c-name">Doenjang (Korean Soybean Paste) (CJ해찬들 재래식된장 14kg)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Korean Traditional Soybean Paste_CJ</span><span class="src-price">RM98.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="red beans for bingsu (단팥)">
+    <td class="c-idx">194</td>
+    <td class="c-name">Red beans for Bingsu (단팥)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Red beans for Bingsu</span><span class="src-price">RM47.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="kuksundang makgeolli plain (국순당 막걸리)">
+    <td class="c-idx">195</td>
+    <td class="c-name">Kuksundang Makgeolli Plain (국순당 막걸리)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">bottle</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Kuksundang Makgeolli Plain</span><span class="src-price">RM18.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="soju (plain flavour) (소주 참이슬)">
+    <td class="c-idx">196</td>
+    <td class="c-name">Soju (Plain Flavour) (소주 참이슬)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">bottle</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Soju (Plain Flavour)</span><span class="src-price">RM17.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="soju (strawberry flavour) (소주 참이슬(딸기))">
+    <td class="c-idx">197</td>
+    <td class="c-name">Soju (Strawberry Flavour) (소주 참이슬(딸기))</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">bottle</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Soju (Strawberry Flavour)</span><span class="src-price">RM17.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="smoke flavor oil (불맛기름_시아스 500g)">
+    <td class="c-idx">198</td>
+    <td class="c-name">Smoke Flavor Oil (불맛기름_시아스 500g)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Smoke Flavor Oil</span><span class="src-price">RM40.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="new sugar (뉴슈가_담울 60g)">
+    <td class="c-idx">199</td>
+    <td class="c-name">New Sugar (뉴슈가_담울 60g)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">New Sugar</span><span class="src-price">RM2.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="beef stock (소고기다시다 2kg)">
+    <td class="c-idx">200</td>
+    <td class="c-name">Beef Stock (소고기다시다 2kg)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Beef Stock</span><span class="src-price">RM42.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="bread crumbs (백설빵가루1kg)">
+    <td class="c-idx">201</td>
+    <td class="c-name">Bread crumbs (백설빵가루1kg)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Bread crumbs</span><span class="src-price">RM19.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="glass noodle (당면 14kg)">
+    <td class="c-idx">202</td>
+    <td class="c-name">Glass Noodle (당면 14kg)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Glass Noodle</span><span class="src-price">RM150.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="chinese style noodle (중화면 면사랑)">
+    <td class="c-idx">203</td>
+    <td class="c-name">Chinese Style Noodle (중화면 면사랑)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Chinese Style Noodle</span><span class="src-price">RM15.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="dried seaweed sheet for kimbob (김밥용김_100매)">
+    <td class="c-idx">204</td>
+    <td class="c-name">Dried seaweed sheet for KImbob (김밥용김_100매)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Dried seaweed sheet for KImbob</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="dried seaweed sheet for kimbob (김밥용 김)">
+    <td class="c-idx">205</td>
+    <td class="c-name">Dried seaweed sheet for KImbob (김밥용 김)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Dried seaweed sheet for KImbob</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="glass noodle (당면 백설햇 1kg)">
+    <td class="c-idx">206</td>
+    <td class="c-name">Glass Noodle (당면 백설햇 1kg)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Glass Noodle</span><span class="src-price">RM24.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="kimbob burdock (김밥 우엉 대용량)">
+    <td class="c-idx">207</td>
+    <td class="c-name">Kimbob Burdock (김밥 우엉 대용량)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Kimbob Burdock</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="ground white pepper (o'chef) (오쉐프순후추450g)">
+    <td class="c-idx">208</td>
+    <td class="c-name">Ground White Pepper (O'Chef) (오쉐프순후추450g)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">bottle</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">O'shef Block Pepper Powder_Otoki</span><span class="src-price">RM32.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="plain noodle (소면 cj/오뚜기900g)">
+    <td class="c-idx">209</td>
+    <td class="c-name">Plain Noodle (소면 CJ/오뚜기900g)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Plain Noodle</span><span class="src-price">RM13.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="fire oil (화유 500ml-sias)">
+    <td class="c-idx">210</td>
+    <td class="c-name">Fire oil (화유 500ml-Sias)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">New Seoul Mart<span class="src-item">Fire oil</span><span class="src-price">RM40.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="cockle meat(blood clam) 300 / 500 pcs (조갯살)">
+    <td class="c-idx">211</td>
+    <td class="c-name">Cockle Meat(Blood Clam) 300 / 500 Pcs (조갯살)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">Nikudo<span class="src-item">Cockle Meat(Blood Clam) 300/500 PCS_Crustacean 20% Glazing</span><span class="src-price">RM0.25</span></span><span class="src src-BG_EXT">Nikudo<span class="src-item">Clam Meat(Lala Meat)_Crustacean 200g</span><span class="src-code">N-AA-CLAMLL-MT-X-0.2</span><span class="src-price src-none">—</span></span><span class="src src-BG_EXT">Seafood<span class="src-item">Clam Meat without shell +-250g (premium grade 5% ice glazing )</span><span class="src-price">RM10.00</span></span><span class="src src-BG_EXT">Seafood<span class="src-item">LALA MEAT</span><span class="src-price">RM10.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="octopus long leg whole clean cut (낙지_큰사이즈손질된)">
+    <td class="c-idx">212</td>
+    <td class="c-name">Octopus Long Leg Whole Clean Cut (낙지_큰사이즈손질된)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">Nikudo<span class="src-item">Octopus Long Leg Whole Clean Cut_Cephalopod</span><span class="src-price">RM3.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="saba mackerel fillet (고등어)">
+    <td class="c-idx">213</td>
+    <td class="c-name">Saba Mackerel Fillet (고등어)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">Nikudo<span class="src-item">SABA MACKEREL FILLET 鲭鱼片 2PCS</span><span class="src-price">RM13.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="yakin chilli sauce (칠리소스(직원식))">
+    <td class="c-idx">214</td>
+    <td class="c-name">Yakin Chilli Sauce (칠리소스(직원식))</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">bottle</td>
+    <td class="c-src"><span class="src src-BG_EXT">NSK<span class="src-item">Yakin Chilli Sauce</span><span class="src-price">RM9.60</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="strawberry (현지 딸기)">
+    <td class="c-idx">215</td>
+    <td class="c-name">Strawberry (현지 딸기)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">NSK<span class="src-item">Strawberry</span><span class="src-price">RM12.99</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="olive oil (올리브오일)">
+    <td class="c-idx">216</td>
+    <td class="c-name">Olive Oil (올리브오일)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">NSK<span class="src-item">Olive Oil</span><span class="src-price">RM21.20</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="ramly chicken frankfurter sausage (소시지ramly chicken frankfurter)">
+    <td class="c-idx">217</td>
+    <td class="c-name">Ramly chicken Frankfurter sausage (소시지Ramly chicken Frankfurter)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">NSK<span class="src-item">Ramly chicken Frankfurter sausage</span><span class="src-price">RM8.40</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="milk good day uht full cream (우유)">
+    <td class="c-idx">218</td>
+    <td class="c-name">Milk Good Day Uht Full Cream (우유)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-REST_ONLY">Seven Eleven<span class="src-item">Milk Good Day UHT Full Cream</span><span class="src-price">RM6.50</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="oat milk(oat side) farmerly (오트우유)">
+    <td class="c-idx">219</td>
+    <td class="c-name">Oat Milk(Oat Side) Farmerly (오트우유)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-REST_ONLY">Seven Eleven<span class="src-item">Oat Milk(Oat Side) Farmerly</span><span class="src-price">RM9.90</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="egg">
+    <td class="c-idx">220</td>
+    <td class="c-name">Egg</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-REST_ONLY">Seven Eleven<span class="src-item">Egg</span><span class="src-price">RM3.90</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="maple syrup (메이플시럽)">
+    <td class="c-idx">221</td>
+    <td class="c-name">Maple Syrup (메이플시럽)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-REST_ONLY">Shopee<span class="src-item">Maple Syrup_COTTEES</span><span class="src-price">RM75.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="yakgwa (궁중약과)">
+    <td class="c-idx">222</td>
+    <td class="c-name">Yakgwa (궁중약과)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">Sinsunmi Mart<span class="src-item">Yakgwa</span><span class="src-price">RM13.90</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="red chilli paddi (small) cili api merah (홍청양고추(칠리파디))">
+    <td class="c-idx">223</td>
+    <td class="c-name">Red Chilli Paddi (Small) Cili Api Merah (홍청양고추(칠리파디))</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">TaiYangFresh<span class="src-item">Red Chilli Paddi (Small) Cili Api Merah</span><span class="src-price">RM18.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="old ginger (생강)">
+    <td class="c-idx">224</td>
+    <td class="c-name">Old ginger (생강)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">TaiYangFresh<span class="src-item">Old ginger</span><span class="src-price">RM9.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="broccoli">
+    <td class="c-idx">225</td>
+    <td class="c-name">Broccoli</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">TaiYangFresh<span class="src-item">Broccoli</span><span class="src-price">RM9.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="eggplant (terung panjang) (긴가지(직원식))">
+    <td class="c-idx">226</td>
+    <td class="c-name">Eggplant (Terung Panjang) (긴가지(직원식))</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">TaiYangFresh<span class="src-item">Eggplant (Terung Panjang)</span><span class="src-price">RM6.80</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="green chilli padi(cili api hijau) (청양고추(칠리파디))">
+    <td class="c-idx">227</td>
+    <td class="c-name">Green Chilli Padi(Cili Api Hijau) (청양고추(칠리파디))</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">TaiYangFresh<span class="src-item">Green Chilli Padi(Cili Api Hijau)</span><span class="src-price">RM12.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="green zucchini (돼지호박)">
+    <td class="c-idx">228</td>
+    <td class="c-name">Green Zucchini (돼지호박)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">TaiYangFresh<span class="src-item">Green Zucchini (Zucchini Hijau)</span><span class="src-price">RM5.80</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="cabbage(kobis china) (양배추)">
+    <td class="c-idx">229</td>
+    <td class="c-name">Cabbage(Kobis China) (양배추)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">TaiYangFresh<span class="src-item">Cabbage(Kobis China)</span><span class="src-price">RM3.30</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="korean leek (대파)">
+    <td class="c-idx">230</td>
+    <td class="c-name">Korean Leek (대파)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">TaiYangFresh<span class="src-item">Korean Leek</span><span class="src-price">RM10.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="kingoystermushroom(cendawan kaki) (새송이버섯)">
+    <td class="c-idx">231</td>
+    <td class="c-name">KingOysterMushroom(Cendawan Kaki) (새송이버섯)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">TaiYangFresh<span class="src-item">KingOysterMushroom(Cendawan Kaki)</span><span class="src-price">RM2.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="peeled garlic(bawang putih kopek) (깐마늘)">
+    <td class="c-idx">232</td>
+    <td class="c-name">Peeled Garlic(Bawang Putih Kopek) (깐마늘)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">TaiYangFresh<span class="src-item">Peeled Garlic(Bawang Putih Kopek)</span><span class="src-price">RM7.80</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="tomato (토마토)">
+    <td class="c-idx">233</td>
+    <td class="c-name">Tomato (토마토)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">TaiYangFresh<span class="src-item">Tomato</span><span class="src-price">RM5.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="red chilli (big) cili merah (홍고추)">
+    <td class="c-idx">234</td>
+    <td class="c-name">Red Chilli (Big) Cili Merah (홍고추)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">TaiYangFresh<span class="src-item">Red Chilli (Big) Cili Merah</span><span class="src-price">RM14.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="bitter melon (peria besar) (숙주나물)">
+    <td class="c-idx">235</td>
+    <td class="c-name">Bitter Melon (Peria Besar) (숙주나물)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">TaiYangFresh<span class="src-item">Bitter Melon (Peria Besar)</span><span class="src-price">RM4.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="cherry tomato (방울토마토)">
+    <td class="c-idx">236</td>
+    <td class="c-name">Cherry Tomato (방울토마토)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">TaiYangFresh<span class="src-item">Cherry Tomato</span><span class="src-price">RM16.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="shallot unpeeled(small) bawang merah kecil (미니적양파(직원식))">
+    <td class="c-idx">237</td>
+    <td class="c-name">Shallot Unpeeled(Small) Bawang Merah Kecil (미니적양파(직원식))</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">TaiYangFresh<span class="src-item">Shallot Unpeeled(Small) Bawang Merah Kecil</span><span class="src-price">RM3.80</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="enoki mushroom (팽이버섯)">
+    <td class="c-idx">238</td>
+    <td class="c-name">Enoki Mushroom (팽이버섯)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">TaiYangFresh<span class="src-item">Enoki Mushroom</span><span class="src-price">RM1.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="japanese cucumber(timun jepun) (오이-일본)">
+    <td class="c-idx">239</td>
+    <td class="c-name">Japanese Cucumber(Timun Jepun) (오이-일본)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">TaiYangFresh<span class="src-item">Japanese Cucumber(Timun Jepun)</span><span class="src-price">RM4.80</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="ladies finger (bendi) ((직원식))">
+    <td class="c-idx">240</td>
+    <td class="c-name">Ladies finger (Bendi) ((직원식))</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">TaiYangFresh<span class="src-item">Ladies finger (Bendi)</span><span class="src-price">RM6.80</span></span><span class="src src-BG_EXT">TaiYangFresh<span class="src-item">Long Bean</span><span class="src-price">RM6.80</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="green beans (buncis) (롱빈(직원식))">
+    <td class="c-idx">241</td>
+    <td class="c-name">Green Beans (Buncis) (롱빈(직원식))</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">TaiYangFresh<span class="src-item">Green Beans (Buncis)</span><span class="src-price">RM9.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="water spinach">
+    <td class="c-idx">242</td>
+    <td class="c-name">Water Spinach</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">TaiYangFresh<span class="src-item">Water Spinach</span><span class="src-price">RM4.80</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="radish (무)">
+    <td class="c-idx">243</td>
+    <td class="c-name">Radish (무)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">TaiYangFresh<span class="src-item">Radish</span><span class="src-price">RM4.80</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="carrot (당근)">
+    <td class="c-idx">244</td>
+    <td class="c-name">Carrot (당근)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">TaiYangFresh<span class="src-item">Carrot</span><span class="src-price">RM3.80</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="red capsicum(cili epal merah) (홍파프리카)">
+    <td class="c-idx">245</td>
+    <td class="c-name">Red Capsicum(Cili Epal Merah) (홍파프리카)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">TaiYangFresh<span class="src-item">Red Capsicum(Cili Epal Merah)</span><span class="src-price">RM13.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="green capsicum(cili epal hijau) (청파프리카)">
+    <td class="c-idx">246</td>
+    <td class="c-name">Green Capsicum(Cili Epal Hijau) (청파프리카)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">TaiYangFresh<span class="src-item">Green Capsicum(Cili Epal Hijau)</span><span class="src-price">RM13.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="spinach (bayam) (시금치)">
+    <td class="c-idx">247</td>
+    <td class="c-name">Spinach (Bayam) (시금치)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">TaiYangFresh<span class="src-item">Spinach (Bayam)</span><span class="src-price">RM4.80</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="hard tofu (두부)">
+    <td class="c-idx">248</td>
+    <td class="c-name">Hard Tofu (두부)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">TaiYangFresh<span class="src-item">Hard Tofu</span><span class="src-price">RM5.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="lemon (레몬)">
+    <td class="c-idx">249</td>
+    <td class="c-name">Lemon (레몬)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">TaiYangFresh<span class="src-item">Lemon</span><span class="src-price">RM1.90</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="green chilli (big) cili hijau (청고추)">
+    <td class="c-idx">250</td>
+    <td class="c-name">Green Chilli (Big) Cili Hijau (청고추)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">TaiYangFresh<span class="src-item">Green Chilli (Big) Cili Hijau</span><span class="src-price">RM10.80</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="tempeh (템페)">
+    <td class="c-idx">251</td>
+    <td class="c-name">Tempeh (템페)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">TaiYangFresh<span class="src-item">Tempeh</span><span class="src-price">RM0.80</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="lime (라임)">
+    <td class="c-idx">252</td>
+    <td class="c-name">Lime (라임)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">TaiYangFresh<span class="src-item">Lime</span><span class="src-price">RM7.80</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="red apple (pinklady) (홍사과)">
+    <td class="c-idx">253</td>
+    <td class="c-name">Red Apple (PinkLady) (홍사과)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">TaiYangFresh<span class="src-item">Red Apple (PinkLady)</span><span class="src-price">RM1.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="chinese(long)cabbage (배추)">
+    <td class="c-idx">254</td>
+    <td class="c-name">Chinese(Long)Cabbage (배추)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_EXT">TaiYangFresh<span class="src-item">Chinese(Long)Cabbage</span><span class="src-price">RM4.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="msta mechanical pencil (스테플러 심)">
+    <td class="c-idx">255</td>
+    <td class="c-name">Msta Mechanical Pencil (스테플러 심)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">The Paper Clip &amp; Co<span class="src-item">MSTA Mechanical Pencil</span><span class="src-price">RM5.90</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="paper a4">
+    <td class="c-idx">256</td>
+    <td class="c-name">Paper A4</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">The Paper Clip &amp; Co<span class="src-item">Paper A4</span><span class="src-price">RM15.90</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="tape brown 48x40yrds (투명테이프(박스포장용))">
+    <td class="c-idx">257</td>
+    <td class="c-name">Tape Brown 48x40yrds (투명테이프(박스포장용))</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">The Paper Clip &amp; Co<span class="src-item">Tape Brown 48x40yrds</span><span class="src-price">RM3.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="masking tape 48mm x 40yrds (마스킹테이프)">
+    <td class="c-idx">258</td>
+    <td class="c-name">Masking Tape 48mm x 40yrds (마스킹테이프)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">The Paper Clip &amp; Co<span class="src-item">Masking Tape 48mm x 40yrds</span><span class="src-price">RM3.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_EXT" data-name="fancy ring note book">
+    <td class="c-idx">259</td>
+    <td class="c-name">Fancy Ring Note Book</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_EXT">The Paper Clip &amp; Co<span class="src-item">Fancy Ring Note Book</span><span class="src-price">RM4.90</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="omija base (오미자 베이스)">
+    <td class="c-idx">260</td>
+    <td class="c-name">Omija Base (오미자 베이스)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_SOLD">Tourmanium(참존)<span class="src-item">OMIJA BASE</span><span class="src-price">RM38.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="grapefruit base (자몽 베이스)">
+    <td class="c-idx">261</td>
+    <td class="c-name">Grapefruit Base (자몽 베이스)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_SOLD">Tourmanium(참존)<span class="src-item">GRAPEFRUIT BASE</span><span class="src-price">RM38.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="kiwi base (키위 베이스)">
+    <td class="c-idx">262</td>
+    <td class="c-name">Kiwi Base (키위 베이스)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_SOLD">Tourmanium(참존)<span class="src-item">KIWI BASE</span><span class="src-price">RM38.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="strawberry base (딸기 베이스)">
+    <td class="c-idx">263</td>
+    <td class="c-name">Strawberry Base (딸기 베이스)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_SOLD">Tourmanium(참존)<span class="src-item">STRAWBERRY BASE</span><span class="src-price">RM38.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="thermal roll 80mm x 60mm x 12mm (l) (영수증 페이퍼롤)">
+    <td class="c-idx">264</td>
+    <td class="c-name">Thermal Roll 80MM X 60MM X 12MM (L) (영수증 페이퍼롤)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">THERMAL ROLL 80MM X 60MM X 12MM (L) (10ROLLS X 10PKTS)</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="kitchen towel v / p 2ply (키친타올)">
+    <td class="c-idx">265</td>
+    <td class="c-name">Kitchen Towel V / P 2PLY (키친타올)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">KITCHEN TOWEL V/P 2PLY (70's x 6rolls x 6pkts)</span><span class="src-price">RM14.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="plastic perforated roll bag (비닐 롤백)">
+    <td class="c-idx">266</td>
+    <td class="c-name">Plastic Perforated Roll Bag (비닐 롤백)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">PLASTIC PERFORATED ROLL BAG</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="jc plastic singlet bag 18&quot; x 22&quot; #48 white (주방용 음식쓰레기 봉투)">
+    <td class="c-idx">267</td>
+    <td class="c-name">JC Plastic Singlet Bag 18&quot; X 22&quot; #48 White (주방용 음식쓰레기 봉투)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">JC PLASTIC SINGLET BAG 18&quot; X 22&quot; #48 WHITE (40PCS X 80PKTS)</span><span class="src-price">RM4.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="tk 1000 (a1000) clear rectangular container with lid (소스판매용 사각 플라스틱통)">
+    <td class="c-idx">268</td>
+    <td class="c-name">TK 1000 (A1000) Clear Rectangular Container With Lid (소스판매용 사각 플라스틱통)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">TK 1000 (A1000) CLEAR RECTANGULAR CONTAINER WITH LID (50SETS X 5PKTS/CTN)</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="pp sheet lid 8511 780 / 850 / 1000cc (갈색 종이 밥그릇 뚜껑)">
+    <td class="c-idx">269</td>
+    <td class="c-name">PP Sheet Lid 8511 780 / 850 / 1000CC (갈색 종이 밥그릇 뚜껑)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">PP SHEET LID 8511 780/850/1000CC (50PCS X 12PKTS)</span><span class="src-price">RM7.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="single wall paper bowl plain kraft (갈색 종이 밥그릇(m))">
+    <td class="c-idx">270</td>
+    <td class="c-name">Single Wall Paper Bowl Plain Kraft (갈색 종이 밥그릇(M))</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">SINGLE WALL PAPER BOWL PLAIN KRAFT 850CC (50PCS X 12PKTS)</span><span class="src-price">RM15.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="plastic spoon 180 heavy duty black (일회용 검정스푼)">
+    <td class="c-idx">271</td>
+    <td class="c-name">Plastic Spoon 180 Heavy Duty Black (일회용 검정스푼)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">PLASTIC SPOON 180 HEAVY DUTY BLACK (50PCS X 40PKTS)</span><span class="src-price">RM3.30</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="plastic fork 180 heavy duty black (일회용 검정포크)">
+    <td class="c-idx">272</td>
+    <td class="c-name">Plastic Fork 180 Heavy Duty Black (일회용 검정포크)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">PLASTIC Fork 180 HEAVY DUTY BLACK (50PCS X 40PKTS)</span><span class="src-price">RM3.30</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="mw r12 round container with lid (플라스틱 작은 밥그릇)">
+    <td class="c-idx">273</td>
+    <td class="c-name">MW R12 Round Container With Lid (플라스틱 작은 밥그릇)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">MW R12 ROUND CONTAINER WITH LID (50SETS X 10PKTS)</span><span class="src-price">RM10.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="pe singlet bag 15'' x 18'' (비닐봉투(m) (기본))">
+    <td class="c-idx">274</td>
+    <td class="c-name">PE Singlet Bag 15'' X 18'' (비닐봉투(M) (기본))</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">PE SINGLET BAG 15'' X 18'' (500GRAM X 60PKTS)</span><span class="src-price">RM6.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="3.25oz pp round sauce container with hinged lid (플라스틱 소스통(l))">
+    <td class="c-idx">275</td>
+    <td class="c-name">3.25OZ PP Round Sauce Container With Hinged Lid (플라스틱 소스통(L))</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">3.25OZ PP ROUND SAUCE CONTAINER WITH HINGED LID (50PCS X 12PKTS)</span><span class="src-price">RM8.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="standard dish washing liquid green | 10liters (설거지 세제 대형)">
+    <td class="c-idx">276</td>
+    <td class="c-name">Standard Dish Washing Liquid Green | 10Liters (설거지 세제 대형)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">STANDARD DISH WASHING LIQUID Green | 10Liters</span><span class="src-price">RM13.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="pck 2 cup drinks egg tray (컵받침 / 2컵용)">
+    <td class="c-idx">277</td>
+    <td class="c-name">Pck 2 Cup Drinks Egg Tray (컵받침 / 2컵용)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">PCK 2 CUP DRINKS EGG TRAY (100PCS X 6PKTS)</span><span class="src-code">240mm x240mm</span><span class="src-price">RM18.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="goodmaid care hand cleanser lemon | x / ctn (손세정제)">
+    <td class="c-idx">278</td>
+    <td class="c-name">Goodmaid Care Hand Cleanser Lemon | x / ctn (손세정제)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">bottle</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">GOODMAID CARE HAND CLEANSER 500ML Lemon | 500ml x 12btl/ ctn</span><span class="src-price">RM7.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="bt paper lunch box kraft (l) 180mm(l) ×120mm(w) x 50mm(h) (도시락 박스(대형))">
+    <td class="c-idx">279</td>
+    <td class="c-name">BT Paper Lunch Box Kraft (L) 180mm(L) ×120mm(W) x 50mm(H) (도시락 박스(대형))</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">BT PAPER LUNCH BOX KRAFT (L) (50PCS X 8PKTS) 180mm(L) ×120mm(W) x 50mm(H)</span><span class="src-price">RM16.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="hdpe plastic glove / m (투명비닐장갑 m)">
+    <td class="c-idx">280</td>
+    <td class="c-name">Hdpe Plastic Glove / M (투명비닐장갑 M)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">HDPE Plastic Glove / M (100pcs x 50boxes)</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="mw r1000 round container with lid (플라스틱 큰 그릇 r1000)">
+    <td class="c-idx">281</td>
+    <td class="c-name">MW R1000 Round Container With Lid (플라스틱 큰 그릇 R1000)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">MW R1000 ROUND CONTAINER WITH LID 850ml (50PCS X 6PKTS)</span><span class="src-price">RM16.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="double wall paper bowl kraft (갈색 빙수컵 종이)">
+    <td class="c-idx">282</td>
+    <td class="c-name">Double Wall Paper Bowl Kraft (갈색 빙수컵 종이)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">DOUBLE WALL PAPER BOWL KRAFT 520CC (25PCS X 20PKTS/CTN)</span><span class="src-code">90mm x90mm</span><span class="src-price">RM9.90</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="paperbowlldi 10mm transparent x 20pkts (갈색 빙수컵 플라스틱 뚜껑)">
+    <td class="c-idx">283</td>
+    <td class="c-name">Paperbowlldi 10MM Transparent x 20pkts (갈색 빙수컵 플라스틱 뚜껑)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">PAPERBOWLLDI 10MM Transparent 50pcs x 20pkts</span><span class="src-code">90mm x90mm</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="bl-140 inner bowl tray with lid (갈색 종이 밥그릇 덮밥 뚜껑)">
+    <td class="c-idx">284</td>
+    <td class="c-name">Bl-140 Inner Bowl Tray With Lid (갈색 종이 밥그릇 덮밥 뚜껑)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">BL-140 INNER BOWL TRAY WITH LID (100PCS X 3PKTS)</span><span class="src-price">RM51.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="single wall paper bowl plain kraft (갈색 종이 밥그릇(l))">
+    <td class="c-idx">285</td>
+    <td class="c-name">Single Wall Paper Bowl Plain Kraft (갈색 종이 밥그릇(L))</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">SINGLE WALL PAPER BOWL PLAIN KRAFT 1000CC (50PCS X 12PKTS)</span><span class="src-price">RM23.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="single wall paper bowl plain kraft (갈색 종이 밥그릇(s))">
+    <td class="c-idx">286</td>
+    <td class="c-name">Single Wall Paper Bowl Plain Kraft (갈색 종이 밥그릇(S))</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">SINGLE WALL PAPER BOWL PLAIN KRAFT 780CC (50PCS X 12PKTS)</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="9oz / 270ml double wall paper cup kraft (갈색 종이컵 작은 넙적 9oz)">
+    <td class="c-idx">287</td>
+    <td class="c-name">9OZ / 270ML Double Wall Paper Cup Kraft (갈색 종이컵 작은 넙적 9OZ)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">9OZ/270ML DOUBLE WALL PAPER CUP Kraft (20PCS X 25PKTS)</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="3-ply natural jute twisted twine rustic crafty string roll / 100m / natural brown (갈색 천끈)">
+    <td class="c-idx">288</td>
+    <td class="c-name">3-PLY Natural Jute Twisted Twine Rustic Crafty String Roll / 100M / Natural Brown (갈색 천끈)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">3-PLY NATURAL JUTE TWISTED TWINE RUSTIC CRAFTY STRING ROLL / 100M / Natural Brown</span><span class="src-price">RM10.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="12oz double wall paper cup kraft (갈색 큰 종이컵 12oz)">
+    <td class="c-idx">289</td>
+    <td class="c-name">12OZ Double Wall Paper Cup Kraft (갈색 큰 종이컵 12OZ)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">12OZ DOUBLE WALL PAPER CUP Kraft (20PCS X 25PKTS)</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="paper cold cup 80mm x 117mm white x 20pkts (갈색 흰 종이 음료컵(아이스용))">
+    <td class="c-idx">290</td>
+    <td class="c-name">Paper Cold Cup 80mm x 117mm White x 20pkts (갈색 흰 종이 음료컵(아이스용))</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">PAPER COLD CUP 12OZ 80mm x 117mm White 100pcs x 20pkts</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="reclosable lid black (검정 작은 종이컵 뚜껑)">
+    <td class="c-idx">291</td>
+    <td class="c-name">Reclosable Lid Black (검정 작은 종이컵 뚜껑)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">RECLOSABLE LID 8OZ BLACK (50PCS X 20PKTS)</span><span class="src-price">RM6.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="reclosable lid black (검정 종이컵 뚜껑 큰)">
+    <td class="c-idx">292</td>
+    <td class="c-name">Reclosable Lid Black (검정 종이컵 뚜껑 큰)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">RECLOSABLE LID 12OZ BLACK (50PCS X 20PKTS)</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="pck dcut #d br brown (구멍 손잡이 종이백)">
+    <td class="c-idx">293</td>
+    <td class="c-name">Pck Dcut #D BR Brown (구멍 손잡이 종이백)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">PCK DCUT #D BR BROWN (25PCS X 20PKTS)</span><span class="src-price">RM12.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="take away cup leak proof paper 120mm (깔개 및 컵 덮개)">
+    <td class="c-idx">294</td>
+    <td class="c-name">Take Away Cup Leak Proof Paper 120MM (깔개 및 컵 덮개)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">TAKE AWAY CUP LEAK PROOF PAPER 120MM (500PCS X 10PKTS)</span><span class="src-price">RM9.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="zip lock bag 6&quot; x 9&quot; (냉장고용 플라스틱 봉투)">
+    <td class="c-idx">295</td>
+    <td class="c-name">Zip Lock Bag 6&quot; X 9&quot; (냉장고용 플라스틱 봉투)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">ZIP LOCK BAG 6&quot; X 9&quot; (100PCS X 80PKTS/BUNDLE)</span><span class="src-price">RM7.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="bt paper lunch box kraft (m) (도시락 박스(디저트) (기본))">
+    <td class="c-idx">296</td>
+    <td class="c-name">BT Paper Lunch Box Kraft (M) (도시락 박스(디저트) (기본))</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">BT PAPER LUNCH BOX KRAFT (M) (50PCS X 10PKTS)</span><span class="src-price">RM16.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="bt paper two compartment lunch box kraft (m) (도시락박스(반반/샌드위치))">
+    <td class="c-idx">297</td>
+    <td class="c-name">BT Paper Two Compartment Lunch Box Kraft (M) (도시락박스(반반/샌드위치))</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">BT PAPER TWO COMPARTMENT LUNCH BOX KRAFT (M) (50PCS X 8PKTS)</span><span class="src-price">RM23.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="pe singlet bag 18'' x 20'' (비닐봉투(l))">
+    <td class="c-idx">298</td>
+    <td class="c-name">PE Singlet Bag 18'' X 20'' (비닐봉투(L))</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">PE SINGLET BAG 18'' X 20'' (500GRAM X 60PKTS)</span><span class="src-price">RM6.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="pe singlet bag 12'' x 15'' (비닐봉투(s) (작은거))">
+    <td class="c-idx">299</td>
+    <td class="c-name">PE Singlet Bag 12'' X 15'' (비닐봉투(S) (작은거))</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">PE SINGLET BAG 12'' X 15'' (500GRAM X 60PKTS)</span><span class="src-price">RM6.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="sun paper bag twisted handle brown 28cm x 15cm x 30cm (손잡이 종이백)">
+    <td class="c-idx">300</td>
+    <td class="c-name">Sun Paper Bag Twisted Handle Brown 28CM X 15CM X 30CM (손잡이 종이백)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">SUN PAPER BAG TWISTED HANDLE BROWN 28CM X 15CM X 30CM (200PCS)</span><span class="src-price">RM150.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="disposablevinylglove powder free / semi-transparent / m (실리콘장갑 (m / 친환경))">
+    <td class="c-idx">301</td>
+    <td class="c-name">Disposablevinylglove Powder Free / Semi-Transparent / M (실리콘장갑 (M / 친환경))</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">DISPOSABLEVINYLGLOVE POWDER FREE / Semi-Transparent / M (100pcs x 10boxes)</span><span class="src-price">RM16.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="goodmaid oven cleaner lemon | x / ctn (오븐 세제 (주방기구))">
+    <td class="c-idx">302</td>
+    <td class="c-name">Goodmaid Oven Cleaner Lemon | x / ctn (오븐 세제 (주방기구))</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">bottle</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">GOODMAID OVEN CLEANER 400ML Lemon | 400ml x 12btl/ ctn</span><span class="src-price">RM19.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="oven cleaner high grade colorless | 10liters (오븐 세제 대형 (주방기구))">
+    <td class="c-idx">303</td>
+    <td class="c-name">Oven Cleaner High Grade Colorless | 10Liters (오븐 세제 대형 (주방기구))</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">OVEN CLEANER HIGH GRADE Colorless | 10Liters</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="goodmaid cocorex bleach regular | x / ctn (왁스)">
+    <td class="c-idx">304</td>
+    <td class="c-name">Goodmaid Cocorex Bleach Regular | x / ctn (왁스)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">bottle</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">GOODMAID COCOREX BLEACH 1KG Regular | 1kg x 12btl/ctn</span><span class="src-price">RM5.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="dish wash lime ppt | x / ctn (유리창 세제)">
+    <td class="c-idx">305</td>
+    <td class="c-name">Dish Wash Lime Ppt | x / ctn (유리창 세제)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">DISH WASH 900ML Lime PPT | 900ml x 12btl/ctn</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="tea table candle (작은 촛불)">
+    <td class="c-idx">306</td>
+    <td class="c-name">Tea Table Candle (작은 촛불)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">TEA TABLE CANDLE (100PCS X 20BOXES)</span><span class="src-price">RM21.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="no 8 flower cases cup cake paper liner 41mm x 23mm (종이받침 (곶감용))">
+    <td class="c-idx">307</td>
+    <td class="c-name">NO 8 Flower Cases Cup Cake Paper Liner 41MM X 23MM (종이받침 (곶감용))</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">NO 8 FLOWER CASES CUP CAKE PAPER LINER 41MM X 23MM (1000PCS/PKT)</span><span class="src-price">RM10.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="deodeorizer fresh floor kleen lavender purple | 10liters (주방 바닥 세제)">
+    <td class="c-idx">308</td>
+    <td class="c-name">Deodeorizer Fresh Floor Kleen Lavender Purple | 10Liters (주방 바닥 세제)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">DEODEORIZER FRESH FLOOR KLEEN Lavender Purple | 10Liters</span><span class="src-price">RM32.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="paper bag twisted handle 270mm×210mm×140mm (트위스트손잡이 종이백)">
+    <td class="c-idx">309</td>
+    <td class="c-name">Paper Bag Twisted Handle 270mm×210mm×140mm (트위스트손잡이 종이백)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">PAPER BAG TWISTED HANDLE 270mm×210mm×140mm</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="2oz pp round sauce container with hinged lid (플라스틱 소스통(m))">
+    <td class="c-idx">310</td>
+    <td class="c-name">2OZ PP Round Sauce Container With Hinged Lid (플라스틱 소스통(M))</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">2OZ PP ROUND SAUCE CONTAINER WITH HINGED LID (50PCS X 20PKTS)</span><span class="src-price">RM5.50</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="1oz pp round sauce container with hinged lid (플라스틱 소스통(s))">
+    <td class="c-idx">311</td>
+    <td class="c-name">1OZ PP Round Sauce Container With Hinged Lid (플라스틱 소스통(S))</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">1OZ PP ROUND SAUCE CONTAINER WITH HINGED LID (100PCS X 30PKTS)</span><span class="src-price">RM5.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="120z i 95mm x 107mm i transparent x20pkts; 1,000pcs (플라스틱 음료컵(아이스용))">
+    <td class="c-idx">312</td>
+    <td class="c-name">120Z I 95mm x 107mm I Transparent x20pkts; 1,000pcs (플라스틱 음료컵(아이스용))</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">120Z I 360ML 95mm x 107mm I Transparent 50pcs x20pkts; 1,000pcs</span><span class="src-price">RM12.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="cili serviette napkin white v / p 1ply (휴지 (주방용))">
+    <td class="c-idx">313</td>
+    <td class="c-name">Cili Serviette Napkin White V / P 1PLY (휴지 (주방용))</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">CILI SERVIETTE NAPKIN WHITE V/P 1PLY (100GRAM X 6PACK X 10PKTS)</span><span class="src-price">RM78.00</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="ice cream tub cup 160z 97mm(d) white x20pkts (흰색 빙수컵 종이 뚜껑)">
+    <td class="c-idx">314</td>
+    <td class="c-name">Ice Cream Tub Cup 160Z 97mm(D) White x20pkts (흰색 빙수컵 종이 뚜껑)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">ICE CREAM TUB CUP 160Z 97mm(D) White 50pcs x20pkts</span><span class="src-code">90mm x90mm</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="BG" data-buckets="BG_SOLD" data-name="paper ice cream tub cup 160z / 95mm x 101mm white x20pkts (흰색 종이 빙수컵)">
+    <td class="c-idx">315</td>
+    <td class="c-name">Paper Ice Cream Tub Cup 160Z / 95mm x 101mm White x20pkts (흰색 종이 빙수컵)</td>
+    <td class="c-lvl"><span class="lvl lvl-BG">BG 공유</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-BG_SOLD">UGS<span class="src-item">PAPER ICE CREAM TUB CUP 160Z 480ml / 95mm x 101mm White 50pcs x20pkts</span><span class="src-code">90mm x90mm</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="baby lettuce organic">
+    <td class="c-idx">316</td>
+    <td class="c-name">Baby Lettuce Organic</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-REST_ONLY">Village Grocer<span class="src-item">Baby Lettuce Organic</span><span class="src-price">RM4.90</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="lollo bionda lettuce">
+    <td class="c-idx">317</td>
+    <td class="c-name">Lollo Bionda Lettuce</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-REST_ONLY">Village Grocer<span class="src-item">Lollo Bionda Lettuce</span><span class="src-price">RM4.60</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="red / green coral lettuce">
+    <td class="c-idx">318</td>
+    <td class="c-name">Red / Green Coral Lettuce</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-REST_ONLY">Village Grocer<span class="src-item">Red/Green Coral Lettuce</span><span class="src-price">RM8.70</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="kale">
+    <td class="c-idx">319</td>
+    <td class="c-name">Kale</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-REST_ONLY">Village Grocer<span class="src-item">Kale</span><span class="src-price">RM5.90</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="rice chocolate meriah (쌀알초콜릿)">
+    <td class="c-idx">320</td>
+    <td class="c-name">Rice Chocolate Meriah (쌀알초콜릿)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-REST_ONLY">Village Grocer<span class="src-item">Rice Chocolate Meriah</span><span class="src-price">RM1.40</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="cooking cream emborg (생크림)">
+    <td class="c-idx">321</td>
+    <td class="c-name">Cooking Cream Emborg (생크림)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-REST_ONLY">Village Grocer<span class="src-item">Cooking Cream Emborg</span><span class="src-price">RM27.20</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="lemon juice satang thai cooking (라임주스)">
+    <td class="c-idx">322</td>
+    <td class="c-name">Lemon Juice Satang Thai Cooking (라임주스)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">bottle</td>
+    <td class="c-src"><span class="src src-REST_ONLY">Village Grocer<span class="src-item">Lemon Juice Satang Thai Cooking</span><span class="src-price">RM2.90</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="mango golden lily (망고 큐브)">
+    <td class="c-idx">323</td>
+    <td class="c-name">Mango Golden Lily (망고 큐브)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-REST_ONLY">Village Grocer<span class="src-item">Mango Golden Lily</span><span class="src-price">RM13.70</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="frozen pud prawn (냉동 껍질벗기고 내장제거안한 새우)">
+    <td class="c-idx">324</td>
+    <td class="c-name">Frozen Pud Prawn (냉동 껍질벗기고 내장제거안한 새우)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-REST_ONLY">Village Grocer<span class="src-item">Frozen Pud Prawn</span><span class="src-price">RM10.80</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="shrimp (새우)">
+    <td class="c-idx">325</td>
+    <td class="c-name">Shrimp (새우)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-REST_ONLY">Village Grocer<span class="src-item">Shrimp</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="lime cordial (라임쥬스)">
+    <td class="c-idx">326</td>
+    <td class="c-name">Lime Cordial (라임쥬스)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-REST_ONLY">Village Grocer<span class="src-item">Lime Cordial</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="makgeolli strawberry (딸기막걸리)">
+    <td class="c-idx">327</td>
+    <td class="c-name">Makgeolli Strawberry (딸기막걸리)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-REST_ONLY">Village Grocer<span class="src-item">Makgeolli Strawberry</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="vanilla syrup (바닐라시럽)">
+    <td class="c-idx">328</td>
+    <td class="c-name">Vanilla Syrup (바닐라시럽)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-REST_ONLY">Village Grocer<span class="src-item">Vanilla Syrup</span><span class="src-price src-none">—</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="freezer bag (냉동 비닐백)">
+    <td class="c-idx">329</td>
+    <td class="c-name">Freezer Bag (냉동 비닐백)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-REST_ONLY">Village Grocer<span class="src-item">Freezer Bag</span><span class="src-price">RM11.30</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="freezer bag armada sandwich b (지퍼팩)">
+    <td class="c-idx">330</td>
+    <td class="c-name">Freezer Bag Armada Sandwich B (지퍼팩)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-REST_ONLY">Village Grocer<span class="src-item">Freezer Bag Armada Sandwich B</span><span class="src-price">RM9.90</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="mewah cloves (일회용장갑)">
+    <td class="c-idx">331</td>
+    <td class="c-name">Mewah Cloves (일회용장갑)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">piece</td>
+    <td class="c-src"><span class="src src-REST_ONLY">Village Grocer<span class="src-item">Mewah Cloves</span><span class="src-price">RM7.50</span></span></td>
+  </tr><tr class="row" data-level="RESTAURANT" data-buckets="REST_ONLY" data-name="baking soda meriah (베이킹소다)">
+    <td class="c-idx">332</td>
+    <td class="c-name">Baking Soda Meriah (베이킹소다)</td>
+    <td class="c-lvl"><span class="lvl lvl-RESTAURANT">with MIN 전용</span></td>
+    <td class="c-unit">pack</td>
+    <td class="c-src"><span class="src src-REST_ONLY">Village Grocer<span class="src-item">Baking Soda Meriah</span><span class="src-price">RM5.20</span></span></td>
+  </tr></tbody>
+    </table>
+  </div>
+</section>
+</div>
+
+<script>
+(function(){
+  var q=document.getElementById('q'),tb=document.getElementById('tb'),count=document.getElementById('count');
+  var rows=[].slice.call(tb.querySelectorAll('.row')),lvl='all';
+  function apply(){
+    var term=(q.value||'').trim().toLowerCase(),shown=0;
+    rows.forEach(function(r){
+      var okL=lvl==='all'||r.getAttribute('data-level')===lvl;
+      var okQ=!term||r.getAttribute('data-name').indexOf(term)>-1;
+      var vis=okL&&okQ; r.classList.toggle('hidden',!vis); if(vis)shown++;
+    });
+    count.textContent=shown+' / '+rows.length;
+  }
+  q.addEventListener('input',apply);
+  document.getElementById('lvl').addEventListener('click',function(e){
+    var b=e.target.closest('button'); if(!b)return;
+    lvl=b.getAttribute('data-v');
+    [].forEach.call(this.querySelectorAll('button'),function(x){x.setAttribute('aria-pressed',x===b);});
+    apply();
+  });
+  apply();
+})();
+</script>

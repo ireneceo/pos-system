@@ -3,7 +3,15 @@
 ## 현재 작업 상태
 
 **마지막 업데이트:** 2026-07-05 (BG/Owner 데모버그 4건 + 이름/SKU분리 + 레거시supplier쓰기중단 **운영 배포 완료** Backup 20260705_120408 Smoke 9/9)
-**작업 상태:** 배포 완료 / 라운드2(카테고리 2건) 대기
+**작업 상태:** 배포 완료 (2배포). 라운드2까지 운영 반영 끝. 새 지시 대기.
+
+## 오늘(2026-07-05) 운영 배포 4건 (완료)
+- **배포1** Backup 20260705_120408 Smoke9/9: BG/Owner 데모버그 4건(#1 Deactivate·#4 Owner로그인·#3 공지댓글모더레이션·#2 데모레시피시딩) + 이름/SKU분리(P0) + 레거시supplier쓰기중단. Fable PASS.
+- **배포2** Backup 20260705_132555 Smoke9/9: 레스토랑 재료 카테고리·재료를 자기 브랜드로 한정 + 비활성 재료카테고리 숨김(ingredient-categories.js). Fable PASS(운영DB 교차참조 0/0).
+- **배포3** Backup 20260705_143424 Smoke9/9 (bundle main.de711fac): ①PO '내품목' 필터 제거(링크 안 된 BG 스톡아이템도 표시→링크가능·이름/SKU분리 자연노출) ②brand-ingredients is_active(비활성 브랜드재료 숨김, ingredients.js) ④'Ingredient Name'→'Stock Item Name' 네이밍 ⑤#7 IDOR(ingredient-categories 레스토랑라우트 checkRestaurantAccess) ⑥#8 mass-assignment(PUT /users/:id 비관리자 is_test/plan_type strip). + **리포트 캘린더 월라벨 타임존밀림 수정**(getMonthLabel 정적월이름, 6월→'May' 밀림 해소) + **Last Week/Month/Year 프리셋**. Fable PASS(보안경계 실API 증명).
+- **Stripe**: 운영 INV-260705001 생성(gitconsulting BG=user23, RM1.00 MYR, pending_payment). BG 로그인→Brand 인보이스 페이지 Stripe 카드결제 가능. (운영 SST rate0→정확히 RM1)
+- **미완 1건**: #2 레시피 시딩 스크립트는 배포됐으나 **운영 DB에서 미실행** → 운영 데모브랜드 Linked Recipe 아직 빈 상태. 원하면 `ssh irene@87.106.78.146 "cd /var/www/production-backend && node scripts/seed-demo-brand-recipes.js"`(멱등·데모전용).
+- **③ 이름/SKU 분리**: 배포는 됐고 supplier 링크 데이터가 0이라 안 보였던 것 → ①로 미연결 스톡아이템 노출되니, gitconsulting이 공급업체 연결하면 자연 표시.
 
 ---
 
@@ -56,6 +64,7 @@ session-state.md 읽고 이어서 개발해.
 
 ### 후속 후보 (아이디어 메모, 확정 X)
 > /개발시작 자동 추천 대상 아님. Irene 지시 기준.
+- **[2026-07-05 Fable 발견, 기존 결함·미착수]** ①`ingredient-categories.js` 레스토랑 라우트 5개(GET/POST/PUT/DELETE/reorder)가 `checkRestaurantAccess` 없음 → IDOR(타매장 카테고리 조회·수정 가능). 다음 IDOR sweep 포함 [[reference_idor_sweep]]. ②`PUT /users/:id`(users.js) self-update가 필드 화이트리스트 없이 `user.update` → 오너가 자기 row에 is_test/plan_type/subscription_* 직접 설정 가능(mass-assignment, 데모버그 무관 기존). 화이트리스트로 is_test/is_demo/plan_type/subscription_* 차단 권장. ③브랜드메뉴(상품) 비활성화도 레스토랑에서 숨김 통일(이번엔 재료 카테고리만 함, Irene 결정). ④recipe/general-stock 카테고리도 같은 "자기 브랜드 한정+비활성 숨김" 적용 여부(이번 범위 밖).
 - **이메일 스팸 = purplehere.com DNS(SPF/DKIM/DMARC) 발행 + smtp_user를 help@purplehere.com으로** (Irene/도메인관리자 액션, 런북 EMAIL_SYSTEM.md). 코드 P3=List-Unsubscribe 헤더·text/plain 항상.
 - PWA 설치 배너 문구 커스터마이징(브라우저 기본 문구). AI Phase0 Irene 액션. Lingo 상세설계. IOI Mall 매출 API 운영전환(mallSalesService.js:289 tz).
 **버전:** 운영=**v3.66 / SW 4.58** (2026-07-04 배포 Backup 20260704_061942, Smoke 9/9). dev 에 레거시 supplier 쓰기중단 미배포분 있음(운영배포는 /배포 지시 때).
