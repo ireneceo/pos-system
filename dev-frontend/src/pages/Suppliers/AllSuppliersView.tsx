@@ -138,7 +138,7 @@ function labelOf(source: SourceKey, t: any): string {
     case 'contract': return t('supplier:source.contract', 'CONTRACTED');
     case 'brand_shared': return t('supplier:source.brandShared', 'BRAND SHARED');
     case 'own': return t('supplier:source.own', 'OWN');
-    case 'external': return t('supplier:source.external', 'EXTERNAL');
+    case 'external': return t('supplier:source.external', 'DIRECT');
   }
 }
 function sourceNoteOf(source: SourceKey, t: any): string {
@@ -157,7 +157,7 @@ interface Props {
   sources?: SourceKey[];
 }
 
-const DEFAULT_SOURCES: SourceKey[] = ['own', 'brand_shared', 'contract', 'brand_parent', 'foodcourt_parent'];
+const DEFAULT_SOURCES: SourceKey[] = ['own', 'external', 'brand_shared', 'contract', 'brand_parent', 'foodcourt_parent'];
 
 export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
   const { t } = useTranslation(['supplier', 'suppliers', 'common']);
@@ -246,10 +246,13 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
 
       // 2026-06-22 (Irene): 내가 등록한 외부공급업체(supplier_companies) — Direct 탭에 노출.
       // id = supplier_company id → 카드 클릭 시 프로필(/pos/suppliers/directory/:id)에서 상품(Catalog) 등록.
-      if (enabled.has('external')) {
+      if (enabled.has('external') || enabled.has('brand_shared')) {
         const ext = await fetch(`/api/external-suppliers`, auth).then(r => r.json()).catch(() => ({}));
         (ext.data || []).forEach((s: any) => {
-          list.push({ key: `x-${s.id}`, id: s.id, name: s.name, source: 'external', email: s.email, phone: s.phone, raw: { ...s, product_count: s.product_count } });
+          // scope='brand' → registered by the parent brand, shown as "Brand"; else our own Direct supplier.
+          const src: SourceKey = s.scope === 'brand' ? 'brand_shared' : 'external';
+          if (!enabled.has(src)) return;
+          list.push({ key: `x-${s.id}`, id: s.id, name: s.name, source: src, email: s.email, phone: s.phone, raw: { ...s, product_count: s.product_count } });
         });
       }
 

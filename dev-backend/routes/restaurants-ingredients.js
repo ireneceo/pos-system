@@ -292,11 +292,9 @@ router.post('/:restaurantId/ingredients/from-catalog', authenticateToken, checkR
     if (Number.isFinite(supplierProductId)) {
       const sp = await SupplierProduct.findByPk(supplierProductId, { transaction: t });
       if (!sp) { await t.rollback(); return res.status(404).json({ success: false, message: 'Supplier product not found' }); }
-      // Active contract 검증
-      const contract = await SupplierContract.findOne({
-        where: { entity_type: 'restaurant', entity_id: rid, supplier_company_id: sp.supplier_company_id, status: 'active' },
-        transaction: t
-      });
+      // Active contract 검증 — 외부업체는 부모 브랜드 계약 상속 (Fable 2026-07-05)
+      const { findEffectiveContract } = require('../utils/supplierAccess');
+      const contract = await findEffectiveContract(sp.supplier_company_id, { type: 'restaurant', id: parseInt(rid, 10) });
       if (!contract) { await t.rollback(); return res.status(403).json({ success: false, message: 'No active contract with this supplier' }); }
       sellerType = 'supplier'; sellerProductRow = sp; sellerEntityId = sp.supplier_company_id;
       productName = sp.name; productUnit = sp.unit; productPrice = sp.unit_price; productMinQty = sp.min_order_quantity;

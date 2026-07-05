@@ -159,14 +159,9 @@ async function verifySellerRelation(sellerType, sellerEntityId, buyerEntity) {
   }
 
   if (sellerType === 'supplier') {
-    const contract = await SupplierContract.findOne({
-      where: {
-        supplier_company_id: sellerId,
-        entity_type: buyerEntity.type,
-        entity_id: buyerEntity.id,
-        status: 'active'
-      }
-    });
+    // 외부업체는 부모 브랜드 계약을 상속해 레스토랑이 발주 가능 (Fable 2026-07-05)
+    const { findEffectiveContract } = require('../utils/supplierAccess');
+    const contract = await findEffectiveContract(sellerId, buyerEntity);
     if (!contract) return { allowed: false, contractId: null, reason: 'NO_ACTIVE_CONTRACT' };
     return { allowed: true, contractId: contract.id };
   }

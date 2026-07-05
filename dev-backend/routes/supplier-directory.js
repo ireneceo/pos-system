@@ -336,7 +336,13 @@ router.get('/supplier-contracts', async (req, res) => {
       include: [{
         model: SupplierCompany,
         as: 'supplierCompany',
-        attributes: ['id', 'name', 'code', 'logo_url', 'city']
+        // Only real solution-member suppliers count as "Contracted". External suppliers
+        // (is_system_registered=false) get an auto-contract just so the buyer can order —
+        // they are Direct/External, not contracted members, so exclude them from this list.
+        // (Irene 2026-07-05: 솔루션 안 쓰는 외부업체가 "Contracted"로 뜨면 안 됨)
+        where: { is_system_registered: true },
+        required: true,
+        attributes: ['id', 'name', 'code', 'logo_url', 'city', 'is_system_registered']
       }],
       order: [['created_at', 'DESC']],
       limit,
@@ -1070,12 +1076,20 @@ function buildProductFields(body) {
 router.get('/external-suppliers', async (req, res) => {
   if (!req.buyerEntity) return res.status(400).json({ success: false, message: 'Buyer context required' });
   try {
+    // A restaurant also sees the external suppliers its PARENT BRAND registered — brand-added
+    // suppliers flow down to the brand's restaurants. (Irene 2026-07-05: 브랜드가 추가한 건
+    // 산하 레스토랑에 연결돼 나와야 함)
+    const scopes = [{ registered_by_entity_type: req.buyerEntity.type, registered_by_entity_id: req.buyerEntity.id }];
+    let parentBrandId = null;
+    if (req.buyerEntity.type === 'restaurant') {
+      const rest = await Restaurant.findByPk(req.buyerEntity.id, { attributes: ['brand_id'] });
+      if (rest?.brand_id) { parentBrandId = rest.brand_id; scopes.push({ registered_by_entity_type: 'brand', registered_by_entity_id: rest.brand_id }); }
+    }
     const companies = await SupplierCompany.findAll({
       where: {
         is_system_registered: false,
-        registered_by_entity_type: req.buyerEntity.type,
-        registered_by_entity_id: req.buyerEntity.id,
-        status: 'active'
+        status: 'active',
+        [Op.or]: scopes
       },
       order: [['name', 'ASC']]
     });
@@ -1084,7 +1098,12 @@ router.get('/external-suppliers', async (req, res) => {
       ? await SupplierProduct.findAll({ where: { supplier_company_id: { [Op.in]: ids } }, attributes: ['supplier_company_id', [fn('COUNT', col('id')), 'cnt']], group: ['supplier_company_id'], raw: true })
       : [];
     const cntMap = Object.fromEntries(counts.map(c => [c.supplier_company_id, Number(c.cnt)]));
-    res.json({ success: true, data: companies.map(c => ({ id: c.id, name: c.name, phone: c.phone, email: c.email, product_count: cntMap[c.id] || 0 })) });
+    // scope: 'own' = this buyer registered it (→ Direct), 'brand' = parent brand registered it
+    // (→ labeled "Brand" so the restaurant knows it flows down from the brand). (Fable 2026-07-05)
+    res.json({ success: true, data: companies.map(c => ({
+      id: c.id, name: c.name, phone: c.phone, email: c.email, product_count: cntMap[c.id] || 0,
+      scope: (parentBrandId && c.registered_by_entity_type === 'brand' && c.registered_by_entity_id === parentBrandId) ? 'brand' : 'own',
+    })) });
   } catch (err) {
     console.error('GET /api/external-suppliers error:', err);
     res.status(500).json({ success: false, message: 'Failed to load external suppliers' });

@@ -47,16 +47,11 @@ async function ingredientBelongsToBuyer(ingredientId, buyerEntity) {
   return null;
 }
 
+// Delegates to the shared effective-contract resolver so a restaurant can order from an
+// external supplier registered by its parent brand (brand contract inheritance). (Fable 2026-07-05)
+const { findEffectiveContract } = require('../utils/supplierAccess');
 async function findActiveSupplierContract(supplierCompanyId, buyerEntity) {
-  if (!buyerEntity) return null;
-  return SupplierContract.findOne({
-    where: {
-      supplier_company_id: supplierCompanyId,
-      entity_type: buyerEntity.type,
-      entity_id: buyerEntity.id,
-      status: 'active'
-    }
-  });
+  return findEffectiveContract(supplierCompanyId, buyerEntity);
 }
 
 // ============================================

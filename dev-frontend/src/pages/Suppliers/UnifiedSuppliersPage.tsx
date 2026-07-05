@@ -64,7 +64,7 @@ export default function UnifiedSuppliersPage() {
           {tab === 'all' && <div className="suppliers-direct-mount"><AllSuppliersView /></div>}
           {tab === 'direct' && (
             <div className="suppliers-direct-mount">
-              <AllSuppliersView sources={['own', 'brand_shared', 'brand_parent', 'foodcourt_parent']} />
+              <AllSuppliersView sources={['own', 'external', 'brand_shared', 'brand_parent', 'foodcourt_parent']} />
             </div>
           )}
           <div style={{ display: tab === 'contracts' ? 'block' : 'none' }}>

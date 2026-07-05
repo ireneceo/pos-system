@@ -48,25 +48,58 @@ async function syncProductToIngredients(productId) {
 
     if (!product) return;
 
+    const { Op } = require('sequelize');
+
     // If sync_to_ingredients is false, remove any existing linked ingredients
     if (!product.sync_to_ingredients) {
       await Ingredient.destroy({ where: { brand_product_id: productId } });
       return;
     }
 
-    if (!product.brands || product.brands.length === 0) {
+    // Resolve target brands by distribution mode. A 'all' product has NO brand_product_brands
+    // N:M rows, so the old `product.brands`-only loop mirrored 0 ingredients — that's why
+    // distribution_mode='all' products never appeared at restaurants. (Fable 2026-07-05)
+    let targetBrands = [];
+    if (product.distribution_mode === 'all') {
+      // owner_user_id null 이면 빈 배열 — where owner_id:null 은 owner 없는 brand 전체에 매칭돼
+      // 타 테넌트로 미러가 새는 구멍이 된다 (Fable gate 2026-07-05, 방어 가드)
+      targetBrands = product.owner_user_id
+        ? await Brand.findAll({ where: { owner_id: product.owner_user_id }, attributes: ['id'] })
+        : [];
+    } else if (product.distribution_mode === 'specific_restaurants') {
+      const BrandProductRestaurant = require('../models/BrandProductRestaurant');
+      const { Restaurant } = require('../models');
+      const links = await BrandProductRestaurant.findAll({ where: { product_id: productId }, attributes: ['restaurant_id'] });
+      if (links.length) {
+        const rests = await Restaurant.findAll({ where: { id: links.map(l => l.restaurant_id) }, attributes: ['brand_id'] });
+        const bids = [...new Set(rests.map(r => r.brand_id).filter(Boolean))];
+        targetBrands = bids.length ? await Brand.findAll({ where: { id: bids }, attributes: ['id'] }) : [];
+      }
+    } else {
+      targetBrands = product.brands || [];
+    }
+    if (!targetBrands.length) {
+      await Ingredient.destroy({ where: { brand_product_id: productId } });
       return;
     }
 
-    // For each linked brand, create or update ingredient
-    for (const brand of product.brands) {
-      let ingredient = await Ingredient.findOne({
-        where: {
-          brand_product_id: productId,
-          brand_id: brand.id
-        }
-      });
+    // Translate the product's BrandProductCategory into an IngredientCategory(brand) by name
+    // (find-or-create) so the mirrored restaurant ingredient isn't "Uncategorized". (Fable 2026-07-05)
+    let bpCat = null;
+    if (product.category_id) {
+      const BrandProductCategory = require('../models/BrandProductCategory');
+      const c = await BrandProductCategory.findByPk(product.category_id, { attributes: ['name', 'emoji'] });
+      if (c) bpCat = { name: c.name, emoji: c.emoji };
+    }
+    const IngredientCategory = require('../models/IngredientCategory');
 
+    for (const brand of targetBrands) {
+      let ingredientCategoryId = null;
+      if (bpCat) {
+        let ic = await IngredientCategory.findOne({ where: { owner_type: 'brand', brand_id: brand.id, name: bpCat.name } });
+        if (!ic) ic = await IngredientCategory.create({ owner_type: 'brand', brand_id: brand.id, name: bpCat.name, emoji: bpCat.emoji || null, is_active: true });
+        ingredientCategoryId = ic.id;
+      }
       const ingredientData = {
         owner_type: 'brand',
         brand_id: brand.id,
@@ -76,6 +109,7 @@ async function syncProductToIngredients(productId) {
         name: product.name,
         image_url: product.image_url || null,
         category: 'other',
+        ingredient_category_id: ingredientCategoryId,
         unit: product.unit || 'piece',
         base_quantity: product.base_quantity || 1,
         unit_cost: product.unit_price || 0,
@@ -84,20 +118,17 @@ async function syncProductToIngredients(productId) {
         current_stock: 0,
         is_active: product.is_active
       };
-
-      if (ingredient) {
-        await ingredient.update(ingredientData);
-      } else {
-        await Ingredient.create(ingredientData);
-      }
+      let ingredient = await Ingredient.findOne({ where: { brand_product_id: productId, brand_id: brand.id } });
+      if (ingredient) await ingredient.update(ingredientData);
+      else await Ingredient.create(ingredientData);
     }
 
-    // Remove ingredients for brands that are no longer linked
-    const linkedBrandIds = product.brands.map(b => b.id);
+    // Remove ingredients for brands that are no longer targeted
+    const linkedBrandIds = targetBrands.map(b => b.id);
     await Ingredient.destroy({
       where: {
         brand_product_id: productId,
-        brand_id: { [require('sequelize').Op.notIn]: linkedBrandIds }
+        brand_id: { [Op.notIn]: linkedBrandIds }
       }
     });
   } catch (error) {
@@ -1463,3 +1494,4 @@ router.put('/brand-products/:productId/recipe/ingredients', authenticateToken, r
 // Removed duplicate route that was limiting response fields
 
 module.exports = router;
+module.exports.syncProductToIngredients = syncProductToIngredients;
