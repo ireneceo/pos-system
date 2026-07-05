@@ -935,8 +935,11 @@ router.get('/allowed-routes', requireRole('Restaurant Owner'), async (req, res) 
     const AddonModule = require('../models/AddonModule');
 
     const owner = await User.findByPk(req.user.id);
-    // Demo owners: highest plan (enterprise) for full module access
-    const isDemo = owner?.is_demo;
+    // Demo/test owners: highest plan (enterprise) for full module access.
+    // Must mirror loginAsDemo's demo detection (is_demo OR is_test) — the prod demo
+    // owner account is is_test=1/is_demo=0, so an is_demo-only check left it with
+    // plan_type=null → "No Active Subscription" login block. (2026-07-05)
+    const isDemo = owner?.is_demo || owner?.is_test;
     const effectivePlanType = isDemo ? 'Owner Enterprise' : owner?.plan_type;
     const effectiveSubStatus = isDemo ? 'active' : owner?.subscription_status;
     if (!owner || !effectivePlanType) {

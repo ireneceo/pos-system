@@ -1,5 +1,10 @@
 # Purple POS — 개발 세션 상태
 
+<!-- AUTOSAVE-STALE-BANNER -->
+> **[AUTO-SAVE STALE] (2026-07-05 10:55, idle 1783248901s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
+> 변경된 작업 파일: owner.js,AdminManagementPage.tsx
+<!-- /AUTOSAVE-STALE-BANNER -->
+
 ## 현재 작업 상태
 
 **마지막 업데이트:** 2026-07-05 (이메일 감사=스팸원인+미인증 반복발송 진단·설계문서화 / 미배포 dev(레거시 supplier 쓰기중단) /검증 재통과 PASS)

@@ -461,7 +461,11 @@ const ManagerAdminManagementPage: React.FC = () => {
             role: u.role,
             restaurant_id: u.restaurant_id,
             restaurantName: restaurantMap[u.restaurant_id] || 'Unknown',
-            is_active: u.is_active !== false,
+            // API returns is_active as integer 0/1 (MySQL TINYINT), so a plain
+            // `!== false` check treats 0 as active (0 !== false === true) and the
+            // Deactivate toggle never appears to work. Coerce 0/'0'/false → inactive,
+            // while keeping null/undefined as active (column default).
+            is_active: u.is_active !== false && u.is_active !== 0 && u.is_active !== '0',
             pin_code: u.pin_code || null,
             createdAt: u.createdAt
           }));
