@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import styled from 'styled-components';
-import { getRestaurantTimezone } from '../../utils/timezone';
 
 // Types
 interface CalendarPickerProps {
@@ -45,10 +44,15 @@ const getDaysInMonth = (year: number, month: number): number =>
 const getFirstDayOfMonth = (year: number, month: number): number =>
   new Date(year, month, 1).getDay();
 
-const getMonthLabel = (year: number, month: number): string => {
-  const date = new Date(year, month);
-  return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: getRestaurantTimezone() });
-};
+// A calendar month label is an abstract (year, month) — NOT a timestamp. Formatting it via
+// toLocaleDateString with a timeZone shifted it by a month: `new Date(year, month)` is that
+// month's 1st at 00:00 in the BROWSER's zone, and converting that instant to a restaurant zone
+// that is BEHIND the browser (e.g. browser KST, restaurant MYT) rolls it back to the last day of
+// the previous month → June rendered as "May", July as "June", so the user clicked the wrong grid.
+// Label the month directly from its index — no Date, no zone. (Irene 2026-07-05)
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'];
+const getMonthLabel = (year: number, month: number): string => `${MONTH_NAMES[month]} ${year}`;
 
 // Component
 const CalendarPicker: React.FC<CalendarPickerProps> = ({
@@ -195,7 +199,7 @@ const CalendarPicker: React.FC<CalendarPickerProps> = ({
   const handlePreset = (preset: string) => {
     const now = new Date();
     let start: Date;
-    const end = now;
+    let end: Date = now;
 
     switch (preset) {
       case 'this_week': {
@@ -203,11 +207,28 @@ const CalendarPicker: React.FC<CalendarPickerProps> = ({
         start.setDate(now.getDate() - now.getDay());
         break;
       }
+      case 'last_week': {
+        const thisWeekStart = new Date(now);
+        thisWeekStart.setDate(now.getDate() - now.getDay());
+        start = new Date(thisWeekStart);
+        start.setDate(thisWeekStart.getDate() - 7);        // previous Sunday
+        end = new Date(thisWeekStart);
+        end.setDate(thisWeekStart.getDate() - 1);          // previous Saturday
+        break;
+      }
       case 'this_month':
         start = new Date(now.getFullYear(), now.getMonth(), 1);
         break;
+      case 'last_month':
+        start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        end = new Date(now.getFullYear(), now.getMonth(), 0); // last day of previous month
+        break;
       case 'this_year':
         start = new Date(now.getFullYear(), 0, 1);
+        break;
+      case 'last_year':
+        start = new Date(now.getFullYear() - 1, 0, 1);
+        end = new Date(now.getFullYear() - 1, 11, 31);
         break;
       default:
         return;
@@ -227,8 +248,11 @@ const CalendarPicker: React.FC<CalendarPickerProps> = ({
       <PickerLayout>
         <PresetSidebar>
           <PresetButton onClick={() => handlePreset('this_week')}>This Week</PresetButton>
+          <PresetButton onClick={() => handlePreset('last_week')}>Last Week</PresetButton>
           <PresetButton onClick={() => handlePreset('this_month')}>This Month</PresetButton>
+          <PresetButton onClick={() => handlePreset('last_month')}>Last Month</PresetButton>
           <PresetButton onClick={() => handlePreset('this_year')}>This Year</PresetButton>
+          <PresetButton onClick={() => handlePreset('last_year')}>Last Year</PresetButton>
         </PresetSidebar>
         <CalendarSection>
           <CalendarHeader>
