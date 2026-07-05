@@ -1185,6 +1185,7 @@ const NoticesPage: React.FC = () => {
                 entityType="notice"
                 entityId={String(viewNotice.id)}
                 currentUserId={user?.id}
+                canModerate={String(viewNotice.author_id) === String(user?.id)}
                 onMarkRead={() => setUnreadCounts(prev => { const next = { ...prev }; const key = String(viewNotice.id); if (next[key]) next[key] = { ...next[key], unread_count: 0 }; return next; })}
               />
         </CommonModal>

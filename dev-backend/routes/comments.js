@@ -253,7 +253,7 @@ router.post('/', authenticateToken, async (req, res) => {
   }
 });
 
-// DELETE /api/comments/:id - Delete a comment (author only)
+// DELETE /api/comments/:id - Delete a comment (author, entity owner, or System Admin)
 router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const comment = await Comment.findByPk(req.params.id);
@@ -261,7 +261,16 @@ router.delete('/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Comment not found' });
     }
 
-    if (comment.author_id !== req.user.id && req.user.role !== 'System Admin') {
+    // Deletable by: the comment's author, a System Admin, or the owner of the parent
+    // entity (moderation). For notices the owner is the notice author — a notice owner
+    // may remove any comment on their own notice. (Irene 2026-07-05: 공지 주인이 남의 댓글도 삭제)
+    let canModerate = false;
+    if (comment.entity_type === 'notice') {
+      const notice = await Notice.findByPk(comment.entity_id, { attributes: ['id', 'author_id'] });
+      if (notice && notice.author_id === req.user.id) canModerate = true;
+    }
+
+    if (comment.author_id !== req.user.id && req.user.role !== 'System Admin' && !canModerate) {
       return res.status(403).json({ success: false, message: 'Not authorized to delete this comment' });
     }
 

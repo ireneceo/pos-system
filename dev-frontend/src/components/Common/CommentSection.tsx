@@ -30,6 +30,9 @@ interface CommentSectionProps {
   entityType: 'support_ticket' | 'operation_ticket' | 'notice' | 'hardware_quote' | 'contract';
   entityId: string;
   currentUserId?: number | string;
+  // When true, the current user owns the parent entity (e.g. the notice author) and may
+  // delete any comment on it, not just their own. Mirrors the backend moderation gate.
+  canModerate?: boolean;
   onMarkRead?: () => void;
   titleText?: string;
 }
@@ -286,7 +289,7 @@ const InternalToggle = styled.label`
 
 const ALLOWED_EXTENSIONS = '.jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.zip';
 
-const CommentSection: React.FC<CommentSectionProps> = ({ entityType, entityId, currentUserId, onMarkRead, titleText }) => {
+const CommentSection: React.FC<CommentSectionProps> = ({ entityType, entityId, currentUserId, canModerate, onMarkRead, titleText }) => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [isInternal, setIsInternal] = useState(false);
@@ -471,7 +474,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ entityType, entityId, c
                     <InternalBadge>Internal</InternalBadge>
                   )}
                   <CommentDate>{formatDate(comment.createdAt)}</CommentDate>
-                  {currentUserId && comment.author_id === Number(currentUserId) && (
+                  {((currentUserId && comment.author_id === Number(currentUserId)) || canModerate) && (
                     <DeleteButton onClick={() => handleDelete(comment.id)}>Delete</DeleteButton>
                   )}
                 </CommentHeader>
