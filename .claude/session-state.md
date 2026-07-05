@@ -1,15 +1,53 @@
 # Purple POS — 개발 세션 상태
 
-<!-- AUTOSAVE-STALE-BANNER -->
-> **[AUTO-SAVE STALE] (2026-07-05 05:15, idle 2022s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
-> 변경된 작업 파일: EMAIL_SYSTEM.md
-<!-- /AUTOSAVE-STALE-BANNER -->
-
-<!-- 2026-07-04 #2: 레거시 supplier 쓰기중단 + P0-5 read-only = Fable게이트 PASS, dev 검증완료·미배포(운영 /배포 지시 대기). 백필=자연이관 결정으로 미실행. -->
-
 ## 현재 작업 상태
 
-**마지막 업데이트:** 2026-07-04 #2 (P0 후속 마무리 — 레거시 supplier 쓰기 중단 + P0-5 완전 read-only. dev 검증완료·**미배포**. 백필=Irene 결정 "자연 이관"으로 미실행.)
+**마지막 업데이트:** 2026-07-05 (이메일 감사=스팸원인+미인증 반복발송 진단·설계문서화 / 미배포 dev(레거시 supplier 쓰기중단) /검증 재통과 PASS)
+**작업 상태:** 중단 (이어서 재개 예정)
+
+---
+
+## ⚡ 빠른 재개 (새 세션에서 이것만 붙여넣기)
+```
+session-state.md 읽고 이어서 개발해.
+```
+
+---
+
+## 🔖 지금 중단 지점
+
+**마지막 작업:** 이메일 감사 2건 완료 — ①스팸=발신도메인 인증(SPF/DKIM/DMARC) 부재+From불일치(코드 아닌 DNS문제) ②"인증 안된 주소로 자꾸" = subscriptionScheduler/예약리마인더가 users에 없는 자유입력 주소로 반복발송. 둘 다 `docs/EMAIL_SYSTEM.md`에 진단+조치 박제. + 미배포 dev(레거시 supplier 쓰기중단) /검증 10단계 재통과(PASS, 배포준비완료).
+
+**바로 다음 작업 (Irene 선택 대기):** ①`/배포`(레거시 supplier 쓰기중단, Fable PASS+검증 PASS 완료분) / ②#24 Manager 구독 변경/취소 미저장(Fable 돈게이트) / ③미인증 suppress-list 구현(설계됨, 청구인접→Fable). + Irene 액션: purplehere.com DNS 3종(SPF/DKIM/DMARC) 발행.
+
+**맥락 유지:**
+- 이메일 코드/템플릿은 양호(멀티파트·CID로고·바운스가드). 스팸은 순수 DNS. `screenRecipients` 전역 차단으로 바꾸면 정당한 초대·비번재설정까지 막히므로 금지 — 반복 스케줄러에만 suppress.
+- 미배포 dev = 커밋 a0a9e616(운영 7bd7d3ed 이후). /배포 시 함께 나감.
+
+---
+
+## 📦 이번 세션 작업 요약
+- 이메일 미인증 발송 누수 전수 감사(누수=비-users 자유입력 주소, 반복 스케줄러 4곳)
+- 스팸/전달률 감사(SPF/DKIM/DMARC 실조회=purplehere.com 전무, From 불일치)
+- `docs/EMAIL_SYSTEM.md`에 DNS 런북 + suppress-list 설계 추가
+- 미배포 dev(레거시 supplier 쓰기중단) /검증 10단계 재통과 PASS
+
+**커밋:** bc9a295b (wip auto-save, 이메일 문서 포함). 미배포 코드=a0a9e616.
+
+---
+
+## 📋 작업계획 (단일 소스)
+
+### 진행 중인 작업
+- 없음 (이메일 감사·설계 완료, 구현은 Irene 선택 대기)
+
+### 다음 확정 작업 (Irene 지시 = 로드맵대로)
+- 아래 3택 대기: ①미배포 dev `/배포`(레거시 supplier 쓰기중단) ②#24 Manager 구독 변경/취소 미저장(Fable 돈게이트) ③미인증 suppress-list 구현(EMAIL_SYSTEM.md 설계, Fable). 로드맵 순서=#24→AI TrackA→#8/#38→AI TrackB→안드로이드.
+
+### 후속 후보 (아이디어 메모, 확정 X)
+> /개발시작 자동 추천 대상 아님. Irene 지시 기준.
+- **이메일 스팸 = purplehere.com DNS(SPF/DKIM/DMARC) 발행 + smtp_user를 help@purplehere.com으로** (Irene/도메인관리자 액션, 런북 EMAIL_SYSTEM.md). 코드 P3=List-Unsubscribe 헤더·text/plain 항상.
+- PWA 설치 배너 문구 커스터마이징(브라우저 기본 문구). AI Phase0 Irene 액션. Lingo 상세설계. IOI Mall 매출 API 운영전환(mallSalesService.js:289 tz).
 **버전:** 운영=**v3.66 / SW 4.58** (2026-07-04 배포 Backup 20260704_061942, Smoke 9/9). dev 에 레거시 supplier 쓰기중단 미배포분 있음(운영배포는 /배포 지시 때).
 
 ### 진행 중인 작업
