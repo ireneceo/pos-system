@@ -322,7 +322,8 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
   };
 
   const handleDelete = async (r: Row) => {
-    const url = ownEndpoint(r.id);
+    // external(Direct)은 외부공급업체 soft-delete, own 은 레거시 삭제 엔드포인트.
+    const url = r.source === 'external' ? `/api/external-suppliers/${r.id}` : ownEndpoint(r.id);
     if (!url) { setDeleting(null); return; }
     const token = getAuthToken();
     try {
@@ -414,9 +415,13 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
                   <ActionButton variant="primary" onClick={handleOpenContract}>{t('supplier:card.openContract', 'Open Contract')}</ActionButton>
                 )}
                 {r.source === 'external' && (
-                  <ActionButton variant="primary" onClick={() => navigate(`/pos/suppliers/directory/${r.id}`)}>
-                    {t('supplier:card.manageProducts', 'Products')}{r.raw?.product_count ? ` (${r.raw.product_count})` : ''}
-                  </ActionButton>
+                  <>
+                    <ActionButton variant="primary" onClick={() => navigate(`/pos/suppliers/directory/${r.id}`)}>
+                      {t('supplier:card.manageProducts', 'Products')}{r.raw?.product_count ? ` (${r.raw.product_count})` : ''}
+                    </ActionButton>
+                    <ActionButton onClick={() => navigate(`/pos/suppliers/directory/${r.id}`)}>{t('common:edit', 'Edit')}</ActionButton>
+                    <ActionButton variant="danger" onClick={() => setDeleting(r)}>{t('common:delete', 'Delete')}</ActionButton>
+                  </>
                 )}
               </CardActions>
             </Card>

@@ -1023,6 +1023,30 @@ router.put('/external-suppliers/:id', async (req, res) => {
   }
 });
 
+// DELETE /api/external-suppliers/:id — soft delete (status=inactive + 계약 terminate).
+// PO 이력 보존을 위해 물리삭제 안 함. 목록/카탈로그(active 필터)에서 자동으로 사라짐. (Fable 2026-07-05)
+router.delete('/external-suppliers/:id', async (req, res) => {
+  if (!req.buyerEntity) return res.status(400).json({ success: false, message: 'Buyer context required' });
+  try {
+    const id = parseInt(req.params.id, 10);
+    const sc = await SupplierCompany.findByPk(id);
+    if (!sc) return res.status(404).json({ success: false, message: 'Supplier not found' });
+    if (sc.is_system_registered) return res.status(403).json({ success: false, message: 'Only external suppliers can be removed here' });
+    if (sc.registered_by_entity_type !== req.buyerEntity.type || sc.registered_by_entity_id !== req.buyerEntity.id) {
+      return res.status(403).json({ success: false, message: 'Not your supplier' });
+    }
+    await sc.update({ status: 'inactive' });
+    await SupplierContract.update(
+      { status: 'terminated' },
+      { where: { supplier_company_id: id, entity_type: req.buyerEntity.type, entity_id: req.buyerEntity.id, status: 'active' } }
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('DELETE /api/external-suppliers/:id error:', err);
+    res.status(500).json({ success: false, message: 'Failed to remove external supplier' });
+  }
+});
+
 // ──────────────────────────────────────────────────────────────────────────────
 // 외부공급업체 상품 (External supplier products) — buyer 가 솔루션 미가입 공급업체의 상품을 직접 등록/관리.
 // SupplierProduct 생성은 원래 Supplier Admin 만 가능했으나, 외부공급업체는 로그인할 일이 없어
