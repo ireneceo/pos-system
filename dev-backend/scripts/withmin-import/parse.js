@@ -34,7 +34,9 @@ function canonSupplier(s) {
 }
 
 function bucketOf(canonSup) {
-  if (/^ugs$/i.test(canonSup) || /^tourmanium/i.test(canonSup)) return 'BG_SOLD';
+  // UGS·Tourmanium은 BG가 '사오는' 외부 공급업체(매입)다. 초기 임포트가 이들을 BG_SOLD(BG가
+  // 파는 판매품목)로 오분류해 59개 잘못된 BrandProduct + self-brand 매핑을 만들었다.
+  // (Fable 구조검토 2026-07-05) → BG_EXT(외부 공급업체 매입)로 정정.
   if (REST_ONLY.some(r => r.toLowerCase() === canonSup.toLowerCase())) return 'REST_ONLY';
   return 'BG_EXT';
 }

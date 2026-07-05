@@ -213,6 +213,7 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
         const own = await fetch(`/api/restaurants/${restaurantId}/all-suppliers`, auth).then(r => r.json()).catch(() => ({}));
         (own.data?.own_suppliers || []).forEach((s: any) => {
           if (!enabled.has('own')) return;
+          if (s.supplier_company_id) return; // 외부(DIRECT)로 이관·링크된 레거시는 external 카드로 뜨므로 중복 숨김
           list.push({ key: `s-${s.id}`, id: s.id, name: s.name, source: 'own', contact: s.contact_name, email: s.email, phone: s.phone, raw: s });
         });
         (own.data?.brand_suppliers || []).forEach((s: any) => {
@@ -222,9 +223,10 @@ export default function AllSuppliersView({ sources = DEFAULT_SOURCES }: Props) {
       } else if ((role === 'Brand General' || role === 'Brand Manager') && brandId) {
         if (enabled.has('own')) {
           const own = await fetch(`/api/brands/${brandId}/suppliers`, auth).then(r => r.json()).catch(() => ({}));
-          (own.data || []).forEach((s: any) => list.push({
-            key: `s-${s.id}`, id: s.id, name: s.name, source: 'own', contact: s.contact_name, email: s.email, phone: s.phone, raw: s,
-          }));
+          (own.data || []).forEach((s: any) => {
+            if (s.supplier_company_id) return; // 외부(DIRECT)로 링크된 레거시는 중복 숨김
+            list.push({ key: `s-${s.id}`, id: s.id, name: s.name, source: 'own', contact: s.contact_name, email: s.email, phone: s.phone, raw: s });
+          });
         }
       } else if ((role === 'Foodcourt General' || role === 'Foodcourt Manager') && foodcourtId) {
         if (enabled.has('own')) {

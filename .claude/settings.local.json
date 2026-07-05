@@ -1025,7 +1025,11 @@
       "Bash(/tmp/claude-1000/-var-www/56eb0d0d-42fe-4251-b97f-0774b0cd376d/scratchpad/prodsql.sh 'SELECT isp.product_ingredient_id, COUNT\\(*\\) pref_cnt FROM ingredient_seller_products isp JOIN product_ingredients pi ON pi.id=isp.product_ingredient_id WHERE pi.owner_user_id=23 AND isp.is_preferred=1 GROUP BY isp.product_ingredient_id HAVING COUNT\\(*\\)>1;')",
       "Bash(scp -q scripts/withmin-import/categorize-and-cleanup.js irene@87.106.78.146:/var/www/production-backend/scripts/withmin-import/)",
       "Bash(pkill -f \"^node -e\")",
-      "Bash(awk '{print $4, $12, $14}')"
+      "Bash(awk '{print $4, $12, $14}')",
+      "Bash(awk '/async function verifySellerRelation/,/^}/' /var/www/dev-backend/routes/purchase-orders-crud.js)",
+      "Bash(scp -q scripts/inspection/run.js irene@87.106.78.146:/var/www/production-backend/scripts/inspection/)",
+      "Bash(scp -q scripts/inspection/suites/supply-chain.js irene@87.106.78.146:/var/www/production-backend/scripts/inspection/suites/)",
+      "Bash(scp -q scripts/withmin-import/parse.js irene@87.106.78.146:/var/www/production-backend/scripts/withmin-import/)"
     ],
     "deny": [],
     "ask": []
