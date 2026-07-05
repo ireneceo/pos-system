@@ -239,17 +239,16 @@ router.get('/restaurants/:restaurantId/ingredient-categories', authenticateToken
       editable: true
     }));
 
-    // 브랜드 카테고리 (브랜드 소속인 경우 - owner의 모든 브랜드 통합)
+    // 브랜드 카테고리 — 레스토랑은 자기가 속한 브랜드(restaurant.brand_id) 것만, 그리고
+    // 활성(is_active) 카테고리만 본다. (Irene 2026-07-05)
+    //  · 이전엔 브랜드 오너가 소유한 '모든' 브랜드 카테고리를 통합해 내려줘서, 형제 브랜드
+    //    카테고리까지 한 레스토랑에 겹쳐 보였다 → 자기 브랜드 하나로 한정.
+    //  · BG가 비활성화한 브랜드 카테고리는 레스토랑에서 흐리게가 아니라 아예 안 보여야 한다
+    //    → is_active:true 로 서버에서 제외(프론트 노출을 원천 차단). own_categories(레스토랑
+    //    자체 카테고리)는 대상 아님 — 관리자가 자기 것을 껐다 켤 수 있어야 하므로 그대로 표시.
     if (restaurant.brand_id) {
-      const Brand = require('../models/Brand');
-      const brand = await Brand.findByPk(restaurant.brand_id);
-      let allBrandIds = [restaurant.brand_id];
-      if (brand?.owner_id) {
-        const ownerBrands = await Brand.findAll({ where: { owner_id: brand.owner_id }, attributes: ['id'] });
-        allBrandIds = ownerBrands.map(b => b.id);
-      }
       const brandCategories = await IngredientCategory.findAll({
-        where: { brand_id: { [Op.in]: allBrandIds } },
+        where: { brand_id: restaurant.brand_id, is_active: true },
         order: [['display_order', 'ASC'], ['name', 'ASC']],
         include: [{
           model: Ingredient,

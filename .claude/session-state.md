@@ -1,14 +1,9 @@
 # Purple POS — 개발 세션 상태
 
-<!-- AUTOSAVE-STALE-BANNER -->
-> **[AUTO-SAVE STALE] (2026-07-05 10:55, idle 1783248901s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
-> 변경된 작업 파일: owner.js,AdminManagementPage.tsx
-<!-- /AUTOSAVE-STALE-BANNER -->
-
 ## 현재 작업 상태
 
-**마지막 업데이트:** 2026-07-05 (이메일 감사=스팸원인+미인증 반복발송 진단·설계문서화 / 미배포 dev(레거시 supplier 쓰기중단) /검증 재통과 PASS)
-**작업 상태:** 중단 (이어서 재개 예정)
+**마지막 업데이트:** 2026-07-05 (BG/Owner 데모버그 4건 + 이름/SKU분리 + 레거시supplier쓰기중단 **운영 배포 완료** Backup 20260705_120408 Smoke 9/9)
+**작업 상태:** 배포 완료 / 라운드2(카테고리 2건) 대기
 
 ---
 
@@ -45,6 +40,16 @@ session-state.md 읽고 이어서 개발해.
 
 ### 진행 중인 작업
 - 없음 (이메일 감사·설계 완료, 구현은 Irene 선택 대기)
+
+### 🔧 진행 중: BG/Owner 데모버그 배치 (2026-07-05 재개) — 직전 세션 SSH끊김으로 중단됐던 것
+> STALE 배너 정정으로 발견. 직전 세션이 "BG/Owner 데모버그" todo를 고치다 Broken pipe로 중단. Fable 실측(코드+DB)으로 4건 전부 근본원인 규명 완료. 재개 순서=리스크 오름차순.
+- **#1 franchise RA Deactivate 토글 무반응** ✅dev수정완료·검증대기 — `AdminManagementPage.tsx:468`: `GET /api/users`가 raw SQL(모델 getter 우회)→TINYINT 0 정수 직렬화→`0!==false`=true로 비활성을 Active 오판. `!==0 && !=='0'` 추가로 정타. (실측: lua123@naver.com is_active=0 존재)
+- **#4 Owner 로그인 "No Active Subscription"** ✅dev수정완료·검증대기 — `owner.js:942` `/allowed-routes`: demo감지가 `is_demo`만 봐 loginAsDemo(`authService.js:835` is_demo||is_test)와 불일치→운영 데모오너(owner@purplehere.com id=154, is_test=1/is_demo=0/plan_type=NULL) 차단. `is_demo||is_test`로 정타.
+- **#2 BG Linked Recipe 안불러옴** ⏳미착수 — 코드버그 아님. 데모BG(id=22) 주브랜드(10 K-Taste) product_recipes 0행(재료는 owner_user_id 스코프라 보임, 레시피는 brand 스코프). seed-demo-data.js가 브랜드레벨 레시피 미시딩. **수정=seed-demo-data.js에 brand10 ProductRecipe 시딩 추가(프로덕션 로직 무변경, 일반 검증).**
+- **#3 공지 댓글 삭제 안됨** ⏳미착수 — 버그아니라 권한공백. `comments.js:264` 작성자본인+System Admin만 삭제. **Irene 확정: "공지 주인이 남의 댓글도 삭제"** → 엔티티 소유자 모더레이션 권한 부여(comments.js 게이트에 notice 소유자 예외 + CommentSection.tsx:474 버튼조건 확장). **권한 경계 변경=Fable 게이트 대상.**
+- **상태(2026-07-05 갱신):** 4건 전부 구현·실API검증 PASS. #2 seed=`scripts/seed-demo-brand-recipes.js`(멱등, brand10에 레시피3건). #3 backend `comments.js` DELETE 게이트+frontend `CommentSection.tsx` canModerate prop+4 NoticesPage 전달. 게이트: build0에러/design신규0/print-field-contract✓/health **107/107**(print-guard 재bless=billPrint·MainLayout이 v3.66와 byte-identical, Irene 승인). Fable게이트(#3·#4 권한/보안) 실행중. **Irene "지금 배포" 지시** → Fable PASS 확인 후 /배포.
+- **Irene 신규 결정(2026-07-05, 카테고리 후속작업):** ①브랜드 카테고리 범위=레스토랑은 **자기 brand_id 것만**(현재 오너 전브랜드 통합→겹침, `ingredient-categories.js:246-250` 수정) ②BG 비활성화=레스토랑에서 **완전 숨김**, 우선 **재료 카테고리만**(`ingredient-categories.js:251` where에 is_active + 프론트 IngredientCategoriesTab). 브랜드메뉴 숨김은 별건 보류. → 이번 배포 후 라운드2로 구현.
+- Fable 부수관찰(별건, 이번 범위밖): product-ingredients.js:292 GET /:id/usage recipe조인 brand필터 없음(교차브랜드 누출 소지) / is_active !==false 패턴 ~15곳(대부분 ORM경로라 무해).
 
 ### 다음 확정 작업 (Irene 지시 = 로드맵대로)
 - 아래 3택 대기: ①미배포 dev `/배포`(레거시 supplier 쓰기중단) ②#24 Manager 구독 변경/취소 미저장(Fable 돈게이트) ③미인증 suppress-list 구현(EMAIL_SYSTEM.md 설계, Fable). 로드맵 순서=#24→AI TrackA→#8/#38→AI TrackB→안드로이드.

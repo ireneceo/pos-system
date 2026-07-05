@@ -981,7 +981,10 @@
       "Bash(dig _dmarc.purplehere.com TXT +noall +answer)",
       "Bash(sed -i \"s#https://dev.purplehere.com/brand/notices#https://dev.purplehere.com/pos/brand/general/notices#g\" repro2.js)",
       "Bash(sed -i \"s#{ waitUntil:'load' }#{ waitUntil:'networkidle', timeout:30000 }#\" repro2.js)",
-      "Bash(BG_TOKEN=$\\(cat /tmp/claude-1000/-var-www/3d3968d1-8e3f-497e-93aa-7aee0ea31acf/scratchpad/bgtoken.txt\\) node /tmp/claude-1000/-var-www/3d3968d1-8e3f-497e-93aa-7aee0ea31acf/scratchpad/repro-deactivate.js)"
+      "Bash(BG_TOKEN=$\\(cat /tmp/claude-1000/-var-www/3d3968d1-8e3f-497e-93aa-7aee0ea31acf/scratchpad/bgtoken.txt\\) node /tmp/claude-1000/-var-www/3d3968d1-8e3f-497e-93aa-7aee0ea31acf/scratchpad/repro-deactivate.js)",
+      "Bash(sed -n '1,60p' models/ProductRecipe.js)",
+      "Bash(sed -n '1,60p' models/ProductRecipeIngredient.js)",
+      "Bash(awk 'NR>=596 && NR<=700' routes/ingredients.js)"
     ],
     "deny": [],
     "ask": []

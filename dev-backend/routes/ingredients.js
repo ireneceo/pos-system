@@ -587,17 +587,13 @@ router.get('/restaurants/:restaurantId/brand-ingredients', authenticateToken, ch
       return res.json({ success: true, data: [] });
     }
 
-    // 브랜드 owner의 모든 브랜드 재료 조회 (통합 사용)
-    const brand = await require('../models/Brand').findByPk(restaurant.brand_id);
-    let allBrandIds = [restaurant.brand_id];
-    if (brand?.owner_id) {
-      const ownerBrands = await require('../models/Brand').findAll({ where: { owner_id: brand.owner_id }, attributes: ['id'] });
-      allBrandIds = ownerBrands.map(b => b.id);
-    }
-
+    // 레스토랑은 자기가 속한 브랜드(restaurant.brand_id) 재료만 본다. (Irene 2026-07-05)
+    // 이전엔 오너가 소유한 '모든' 형제 브랜드 재료를 통합해 내려줘서, 카테고리를 자기 브랜드로
+    // 좁힌 뒤에도 형제 브랜드 재료가 '탭에 없는 카테고리'를 달고 남는 불일치가 생겼다.
+    // (재료 카테고리 브랜드 한정과 같은 절단면 — ingredient-categories.js 참고.)
     const brandIngredients = await Ingredient.findAll({
       where: {
-        brand_id: { [Op.in]: allBrandIds },
+        brand_id: restaurant.brand_id,
         owner_type: 'brand'
       },
       order: [['name', 'ASC']],
