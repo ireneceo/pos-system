@@ -62,7 +62,7 @@ module.exports = {
           JOIN brands b ON b.owner_id = s.owner_user_id
           WHERE sc.is_system_registered = 0 AND sc.status='active'
             AND sc.registered_by_entity_type='brand' AND sc.registered_by_entity_id = b.id
-            AND REPLACE(LOWER(sc.name),' ','') = REPLACE(LOWER(s.name),' ',''))`))[0].c;
+            AND REPLACE(LOWER(sc.name),' ','') = REPLACE(LOWER(s.name),' ','') COLLATE utf8mb4_general_ci)`))[0].c;
     add('R-SC-005 레거시↔외부 공급업체 중복 없음 (미링크)',
       Number(dupLegacy) === 0,
       Number(dupLegacy) ? `${dupLegacy}건 — 화면에 OWN·DIRECT 이중 표시 (supplier_company_id 백필 필요)` : '');
