@@ -334,10 +334,65 @@ PurpleHere 로고 + 링크 + 푸터 전부 기존과 동일.
 
 ---
 
+## 전달률 (Deliverability) — SPF/DKIM/DMARC + purplehere.com 통일 (2026-07-05 감사)
+
+> 2026-07-05 스팸함 원인 감사. **결론: 코드/템플릿은 양호**(멀티파트 text/plain·CID 로고·바운스가드·placeholder/미인증 차단 이미 구축). **스팸의 결정타는 발신 도메인 인증 부재 + From 도메인 불일치 = 순수 DNS/설정 문제.**
+
+### 현재 발신 설정 (notification_settings)
+- 인증 계정(smtp_user) = **`help@irenewp.com`** (Gmail/Workspace, smtp.gmail.com:587 STARTTLS)
+- 표시 발신(from_email) = **`help@purplehere.com`** → 실제 From 헤더 `"Purple Here" <help@purplehere.com>`
+- `emailService.js`: `from = from_email || smtp_user` (코드 로직 정상 — 문제는 DB 설정값·DNS)
+
+### 진단 (dig 실측)
+- **purplehere.com**: SPF 없음(`v=spf1` 부재, google-site-verification만) · DKIM 없음(`google._domainkey` 미발행) · DMARC 없음(`_dmarc` 빈 응답). MX=Google. → **From 도메인이 아무 인증도 못 받음 → SPF/DKIM/DMARC 정합 실패 → "발신자 위조"로 스팸 처리.**
+- irenewp.com: SPF는 있으나(`include:_spf.google.com ~all`) DKIM 셀렉터·DMARC 미발행.
+- 부수: 두 도메인 와일드카드 레코드가 `_domainkey`/`_dmarc` 조회에 비인증 TXT를 회신(명시 발행 시 우선하나 지저분한 신호).
+
+### 결정 (2026-07-05 Irene): **purplehere.com으로 통일** — 런북 (도메인 관리자 액션)
+1. **Google Workspace**: `help@purplehere.com`을 실제 사서함으로 만들고 그 계정으로 SMTP 인증(App Password). → `notification_settings.smtp_user`/`smtp_password`를 이 계정으로 변경(from_email과 도메인 정합). *(코드 변경 아님, DB 설정.)*
+2. **Cloudflare DNS (purplehere.com)** 3종 발행:
+   - SPF (TXT `@`): `v=spf1 include:_spf.google.com ~all`
+   - DKIM: Google Admin → Apps → Google Workspace → Gmail → **Authenticate email** → purplehere.com 선택 → 키 생성(2048) → 안내된 `google._domainkey.purplehere.com` TXT 발행 → **Start authentication**
+   - DMARC (TXT `_dmarc.purplehere.com`): `v=DMARC1; p=none; rua=mailto:dmarc@purplehere.com; fo=1` → 리포트 정상 확인 후 `p=quarantine` → `p=reject` 단계 상향
+3. 발행 후 **mail-tester.com / Google Postmaster Tools**로 SPF·DKIM·DMARC PASS 확인.
+4. 와일드카드가 `_domainkey`/`_dmarc`를 덮지 않는지 점검(명시 TXT가 우선하나 확인 권장).
+
+### 코드 개선(선택 P3, 근본 아님)
+- 반복성 메일(trial/인보이스/공지)에 `List-Unsubscribe` + `List-Unsubscribe-Post: List-Unsubscribe=One-Click` 헤더(`sendPlatformEmail`/notificationService `finalOptions.headers`).
+- notificationService 카테고리 알림에 text/plain 대체본 항상 포함(현재 caller 의존, HTML-only 시 소폭 감점).
+
+---
+
+## 미인증·자유입력 주소 반복발송 억제 설계 (2026-07-05, 승인대기·미구현)
+
+> "인증 안 된 이메일에 자꾸 메일이 간다" 감사 결과. **users 유저(미인증 27명) 경로는 이미 전부 차단**(`screenRecipients` email_verified + `sendNotification:179`). 새는 건 **users에 없는 자유입력 주소** — `screenRecipients`가 대응 유저 없음(row=null)을 통과시켜 email_verified 판정 자체가 안 됨.
+
+### 누수 경로 (반복 발송 = "자꾸"의 원인)
+| 위치 | 무엇 | 수신자(자유입력) | 성격 |
+|---|---|---|---|
+| `subscriptionScheduler.js:847` | 연체 인보이스 독촉(**매일**) | restaurant.email · payer_email | 🔴 반복 |
+| `subscriptionScheduler.js:756` | 구독 상태변경/독촉 | restaurant.email (dev 16건 불일치) | 🔴 반복 |
+| `subscriptionScheduler.js:1000` | 계약 만료 알림(임계일마다) | contract.applicant_email (dev 38건) | 🔴 반복 |
+| `reservationNotificationService.js:80/106/118` | 예약 확인·리마인더(24h/2h) | reservation.guest_email | 🔴 반복 |
+| `invoices-crud.js:944` / `public.js:82,354,592` | 인보이스 수동발송 / contact·견적 auto-reply·문의답변 | 자유입력 | 🟡 1회성·수동(정당성 有) |
+| `admin-supplier-invitations.js:71` / `customers-auth.js:532` / 인증메일 3곳 | 초대 / 고객 비번재설정 / 인증 | 자유입력·본인 | 🟢 정당(유지) |
+
+### 설계 원칙 (승인 시 구현)
+- **금지: `screenRecipients`를 "users에 없으면 차단"으로 전역 변경** → 정당한 초대·비번재설정·인보이스·auto-reply까지 막힘.
+- **채택: 반복 스케줄러 경로(🔴)에만 suppress-list**:
+  1. **바운스/실패 기반 suppress**: 임의 주소(비-users)의 하드바운스·연속 실패를 기록하는 `email_suppression`(address, reason, count, last_at) 테이블. 스케줄러 발송 직전 조회해 suppress면 skip. (현 `isEmailBlocked`는 `users.email_bounce_count` 기반이라 비-users 주소엔 미적용 → 이 갭을 메움.)
+  2. **리마인더 조건화**: 예약/인보이스 리마인더는 **최초 발송 성공(또는 컨펌) 후에만** 후속 재발송. 최초부터 실패하는 주소로 24h·2h 반복 금지.
+  3. (선택) 매장 설정 이메일(restaurant.email)에 "확인" 개념 도입 검토 — 과할 수 있어 후순위.
+- **범위**: 스케줄러 3파일 + 예약 서비스. sendEmail/sendPlatformEmail/screenRecipients 시그니처 무변경(하위호환). 
+- **검증**: 청구·독촉 인접(돈) → 구현 후 **Fable 게이트 권장**. 스케줄러라 dev에서 강제 실행 + suppress 동작 실측 필요.
+
+---
+
 ## 변경 이력
 
 | 날짜 | 변경 |
 |------|------|
+| 2026-07-05 | 전달률 감사(SPF/DKIM/DMARC 부재 진단 + purplehere.com 통일 런북) + 미인증 자유입력 주소 반복발송 억제 설계 추가 |
 | 2026-03-24 | 이메일 인증/MX 검증/바운스/템플릿 개선 설계 추가 |
 | 2026-03-23 | 문서 전면 재정리: SMTP 주체별 매트릭스, 스케줄러 발송, 미구현 목록, UI 개선 방향, 옛 템플릿 교체 목록 추가 |
 | 2026-03-23 | sendTestEmail() emailLayout 교체 완료 |
