@@ -1420,7 +1420,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
               variant="primary"
               disabled={!canSubmit}
             >
-              {isSubmitting ? 'Saving...' : (selectedIngredient ? 'Update Ingredient' : 'Create Ingredient')}
+              {isSubmitting ? 'Saving...' : (selectedIngredient ? 'Update Stock Item' : 'Create Stock Item')}
             </ModalButton>
           </>
         )}
@@ -1435,7 +1435,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
 
           <UIFormRow>
             <UIFormGroup>
-              <FormLabel>Ingredient Name *</FormLabel>
+              <FormLabel>Stock Item Name *</FormLabel>
               <FormInput
                 type="text"
                 value={formData.name}

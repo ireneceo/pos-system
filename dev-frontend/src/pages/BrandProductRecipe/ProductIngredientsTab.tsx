@@ -931,7 +931,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
 
           <UIFormRow>
             <UIFormGroup>
-              <FormLabel>Ingredient Name *</FormLabel>
+              <FormLabel>Stock Item Name *</FormLabel>
               <FormInput
                 type="text"
                 value={formData.name}
@@ -1146,7 +1146,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
               Cancel
             </ModalButton>
             <ModalButton type="submit" variant="primary" disabled={saving}>
-              {saving ? 'Saving...' : (editingIngredient ? 'Update Ingredient' : 'Create Ingredient')}
+              {saving ? 'Saving...' : (editingIngredient ? 'Update Stock Item' : 'Create Stock Item')}
             </ModalButton>
           </ButtonGroup>
         </form>

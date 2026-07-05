@@ -591,10 +591,13 @@ router.get('/restaurants/:restaurantId/brand-ingredients', authenticateToken, ch
     // 이전엔 오너가 소유한 '모든' 형제 브랜드 재료를 통합해 내려줘서, 카테고리를 자기 브랜드로
     // 좁힌 뒤에도 형제 브랜드 재료가 '탭에 없는 카테고리'를 달고 남는 불일치가 생겼다.
     // (재료 카테고리 브랜드 한정과 같은 절단면 — ingredient-categories.js 참고.)
+    // is_active:true — BG가 비활성화한 브랜드 재료는 레스토랑에서 흐리게가 아니라 아예 숨김
+    // (카테고리와 동일 원칙, Irene 2026-07-05). 레스토랑 자체 재료의 비활성 흐림은 별개(관리용).
     const brandIngredients = await Ingredient.findAll({
       where: {
         brand_id: restaurant.brand_id,
-        owner_type: 'brand'
+        owner_type: 'brand',
+        is_active: true
       },
       order: [['name', 'ASC']],
       include: [

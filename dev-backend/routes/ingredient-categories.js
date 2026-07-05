@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { IngredientCategory, Ingredient, Restaurant } = require('../models');
 const { Op } = require('sequelize');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const { isBrandManager } = require('../middleware/recipeAuth');
 
 // ============================================
@@ -207,7 +207,7 @@ router.put('/brands/:brandId/ingredient-categories/reorder', authenticateToken, 
  * GET /api/restaurants/:restaurantId/ingredient-categories
  * 레스토랑 재료 카테고리 목록 조회
  */
-router.get('/restaurants/:restaurantId/ingredient-categories', authenticateToken, async (req, res) => {
+router.get('/restaurants/:restaurantId/ingredient-categories', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId } = req.params;
     const restaurant_id = restaurantId; // DB 쿼리용
@@ -275,7 +275,7 @@ router.get('/restaurants/:restaurantId/ingredient-categories', authenticateToken
  * POST /api/restaurants/:restaurantId/ingredient-categories
  * 레스토랑 재료 카테고리 생성 (독립 레스토랑만)
  */
-router.post('/restaurants/:restaurantId/ingredient-categories', authenticateToken, async (req, res) => {
+router.post('/restaurants/:restaurantId/ingredient-categories', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId } = req.params;
     const restaurant_id = restaurantId; // DB 쿼리용
@@ -326,7 +326,7 @@ router.post('/restaurants/:restaurantId/ingredient-categories', authenticateToke
  * PUT /api/restaurants/:restaurantId/ingredient-categories/:categoryId
  * 레스토랑 재료 카테고리 수정
  */
-router.put('/restaurants/:restaurantId/ingredient-categories/:categoryId', authenticateToken, async (req, res) => {
+router.put('/restaurants/:restaurantId/ingredient-categories/:categoryId', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId, categoryId } = req.params;
     const restaurant_id = restaurantId; // DB 쿼리용
@@ -370,7 +370,7 @@ router.put('/restaurants/:restaurantId/ingredient-categories/:categoryId', authe
  * DELETE /api/restaurants/:restaurantId/ingredient-categories/:categoryId
  * 레스토랑 재료 카테고리 삭제
  */
-router.delete('/restaurants/:restaurantId/ingredient-categories/:categoryId', authenticateToken, async (req, res) => {
+router.delete('/restaurants/:restaurantId/ingredient-categories/:categoryId', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId, categoryId } = req.params;
     const restaurant_id = restaurantId; // DB 쿼리용

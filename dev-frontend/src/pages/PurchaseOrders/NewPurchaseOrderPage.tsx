@@ -675,8 +675,12 @@ const NewPurchaseOrderPage: React.FC = () => {
           );
           const piJson = await piRes.json();
           const piData: any[] = piRes.ok && piJson.success && Array.isArray(piJson.data) ? piJson.data : [];
+          // Show ALL of the BG's stock items — linked or not. Unlinked items must appear
+          // so the user can connect a supplier to them (the card renders a "Click to connect
+          // supplier" prompt for sellers.length === 0). Previously this filtered to linked-only,
+          // which hid every stock item until it already had a supplier — a chicken-and-egg that
+          // made "My Items" look empty. (Irene 2026-07-05)
           productIngredientRows = piData
-            .filter((item) => Array.isArray(item.sellers) && item.sellers.length > 0)
             .map((item): MyIngredientRow => ({
               id: 0,
               name: item.name,
@@ -685,7 +689,7 @@ const NewPurchaseOrderPage: React.FC = () => {
               is_product_ingredient: true,
               track_stock: true,
               created_at: item.created_at ?? null,
-              sellers: (item.sellers as any[]).map((s): SellerOpt => ({
+              sellers: (Array.isArray(item.sellers) ? item.sellers : []).map((s): SellerOpt => ({
                 id: s.id,
                 seller_product_id: s.seller_product_id,
                 seller_type: s.seller_type,

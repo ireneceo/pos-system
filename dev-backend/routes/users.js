@@ -746,6 +746,23 @@ router.put('/:id', authenticateToken, demoProtection, async (req, res) => {
 
     const { password, first_name, last_name, ...updateData } = req.body;
 
+    // Mass-assignment guard: account-classification and subscription/billing fields are
+    // System-Admin-only. A non-admin caller (a user editing their own account, or a
+    // Restaurant Admin / supervisor editing a sub-account) must never set these — otherwise
+    // a BG could self-grant is_test (→ Enterprise gate) or edit plan_type/subscription_status.
+    // A user also must not change their OWN role/permissions. (Fable 2026-07-05)
+    const isSysAdminCaller = req.user.role === 'System Admin';
+    const isSelfCaller = req.user.id.toString() === req.params.id;
+    if (!isSysAdminCaller) {
+      const ADMIN_ONLY_FIELDS = [
+        'is_test', 'is_demo', 'plan_type', 'subscription_status', 'subscription_start',
+        'subscription_end', 'plan_amount', 'pending_plan_type', 'pending_plan_amount',
+        'plan_change_date', 'plan_change_type', 'discount_type', 'discount_value', 'discount_reason'
+      ];
+      for (const f of ADMIN_ONLY_FIELDS) delete updateData[f];
+      if (isSelfCaller) { delete updateData.role; delete updateData.permissions; }
+    }
+
     // Prevent leaving restaurant-scoped roles without a restaurant.
     // Covers both direct restaurant_id clears and role promotions/demotions that
     // would result in a Restaurant Admin / Staff with no restaurant.
