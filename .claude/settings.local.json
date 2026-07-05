@@ -1029,7 +1029,10 @@
       "Bash(awk '/async function verifySellerRelation/,/^}/' /var/www/dev-backend/routes/purchase-orders-crud.js)",
       "Bash(scp -q scripts/inspection/run.js irene@87.106.78.146:/var/www/production-backend/scripts/inspection/)",
       "Bash(scp -q scripts/inspection/suites/supply-chain.js irene@87.106.78.146:/var/www/production-backend/scripts/inspection/suites/)",
-      "Bash(scp -q scripts/withmin-import/parse.js irene@87.106.78.146:/var/www/production-backend/scripts/withmin-import/)"
+      "Bash(scp -q scripts/withmin-import/parse.js irene@87.106.78.146:/var/www/production-backend/scripts/withmin-import/)",
+      "Bash(scp -o ConnectTimeout=8 /tmp/claude-1000/-var-www/56eb0d0d-42fe-4251-b97f-0774b0cd376d/scratchpad/prodq.js irene@87.106.78.146:/tmp/prodq.js)",
+      "Bash(scp -o ConnectTimeout=8 /tmp/claude-1000/-var-www/56eb0d0d-42fe-4251-b97f-0774b0cd376d/scratchpad/prodq.js irene@87.106.78.146:/var/www/production-backend/tmp-prodq.js)",
+      "Bash(scp -q scripts/withmin-import/make-sellable-products.js irene@87.106.78.146:/var/www/production-backend/scripts/withmin-import/)"
     ],
     "deny": [],
     "ask": []

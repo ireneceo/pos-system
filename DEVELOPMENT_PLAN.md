@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-07-04 #2 (**레거시 supplier 쓰기 중단 + P0-5 완전 read-only — Fable 게이트 PASS, dev 검증완료·미배포** — "발주/재고 이름·코드 분리(유저 내부 name/code vs 공급업체 name/sku)" P0 의 마지막 후속 마무리. 백엔드 3라우트(`ingredients.js`·`restaurants-ingredients.js`·`product-ingredients.js`) create=레거시 컬럼 null 고정·update=목록 제외(기존값 보존), 프론트 폼(IngredientsTab/ProductIngredientsTab) supplier 쓰기 제거→read-only 표시. **백필=미실행(Irene 결정 "자연 이관")** — 매핑이 SupplierProduct+활성 계약을 요구해 백필 시 공급망 데이터 날조 필요 → 쓰기중단으로 향후 드리프트 차단·레거시값 read-only 유지·다음 주문 시 seller-source 1클릭 자연 이관. **Fable 게이트 VERDICT: PASS**(절단면 정확·인쇄 보호8 무접촉·쓰기중단/보존 실증 25/25·발주 무영향·마이그0·롤백안전). 상세 ↓.)
+> **최종 업데이트:** 2026-07-05 (**with MIN 공급망 대량 임포트 + 구조 정리 + 인스펙션 하니스 + 공급업체 페이지 — 운영 배포** — gitconsulting(with MIN) 공급 리스트 355행을 재고/공급업체/판매품목으로 임포트 후, Fable 구조검토로 **근본원인=임포트 파서가 UGS/Tourmanium을 판매(BG_SOLD)로 오분류** 확정 → 매입 재모델링(UGS/Tourmanium=외부공급업체, BG 스톡 59개 매입매핑). self-brand dead 매핑 59+껍데기 BrandProduct 59+미러 118 제거, 레거시↔외부 중복 6+미링크 3 브리지(OWN→Direct 통일), 고아매핑·미분류 정리. **UGS/Tourmanium 59개를 판매품목(BrandProduct)으로 재고-다이렉트 연결**(레스토랑 Menu→재고 auto-recipe와 동형=BG 판매+매입 완결). 공급업체 페이지: buyer 모듈 시드(운영 브랜드플랜 누락→Products·발주 게이트 복구), 외부업체 Edit/Delete(soft-delete 라우트). **신규 인스펙션 하니스**(`scripts/inspection/`): 공급망 구조 불변식 6종(자기참조·고아·레거시중복·미러완결·카테고리) 자동검사+exit게이트, 이번 버그클래스를 회귀로 박제 — **운영 6/6 PASS**. 운영 배포 완료(Backup 20260705_211213, Smoke 9/9), health 107/107·print 8/8·design 0. Fable 게이트 PASS. 상세 ↓.)
+>
+> **이전:** 2026-07-04 #2 (**레거시 supplier 쓰기 중단 + P0-5 완전 read-only — Fable 게이트 PASS, dev 검증완료·미배포** — "발주/재고 이름·코드 분리(유저 내부 name/code vs 공급업체 name/sku)" P0 의 마지막 후속 마무리. 백엔드 3라우트(`ingredients.js`·`restaurants-ingredients.js`·`product-ingredients.js`) create=레거시 컬럼 null 고정·update=목록 제외(기존값 보존), 프론트 폼(IngredientsTab/ProductIngredientsTab) supplier 쓰기 제거→read-only 표시. **백필=미실행(Irene 결정 "자연 이관")** — 매핑이 SupplierProduct+활성 계약을 요구해 백필 시 공급망 데이터 날조 필요 → 쓰기중단으로 향후 드리프트 차단·레거시값 read-only 유지·다음 주문 시 seller-source 1클릭 자연 이관. **Fable 게이트 VERDICT: PASS**(절단면 정확·인쇄 보호8 무접촉·쓰기중단/보존 실증 25/25·발주 무영향·마이그0·롤백안전). 상세 ↓.)
 >
 > **이전:** 2026-07-03 #2 (**BG/Owner 전수감사 32건 수정·검증·배포 + AI 음식인식 설계(Fable) + 개발순서 로드맵** — 데모버그4건은 전부 현재 dev 정상(원인=SW캐시)로 확인 후 SW4.58 배포. **Fable 감사→적대검증**으로 BG/Owner 결함 40건 발견, **32건 수정 완료**: 보안5(IDOR·인보이스PATCH·SMTP·구독스코프·owner self-entity, 크로스테넌트 403 검증)·크래시/500 8(오너 댓글/매뉴얼 author_name·삭제 FK캐스케이드·React#31)·주소3(브랜드 전체필드 round-trip·owner null정규화, 레스토랑 표준)·리포트/성능7(50건캡·served집계·성장률·Export死·Math.random·필터리마운트·BestSeller)·**#9 Manager Sales 실매출 엔드포인트 신규**(`/api/manager/sales-summary` 타임존정확, 테스트주문 주입검증)·**#31 PhoneInput 크로스컨트리 오파싱**(dial code로 국가판별)·기타. 잔여 8건=기능규모(인벤토리 브랜드모드=BG ProductIngredient기준·#8리포트 범위엔드포인트·#38고객분석·#24구독청구). **AI 음식인식 서빙** 설계확정(`docs/AI_FOOD_RECOGNITION_DESIGN.md`, 메뉴사진 임베딩+조리완료 제약매칭·RM179 Enterprise·모바일웹·인쇄무접촉·2테이블). 개발순서 로드맵 Fable판단 확정(session-state). /검증: hydration0·design신규0·health106/107(1=의도된 desktopP2)·i18n통과. 상세 ↓.)
 >
@@ -37,6 +39,37 @@
 > **이전:** 2026-06-23 (**v3.62 운영 배포 완료** — thefire 실사용 준비 7건: 직원 PIN 전환 수정 · 시재 개시모드(이월/고정) · 마감 폰트 통일 · 통합오더티켓 'Full' 수동인쇄 · 로그인 직원 PIN 우선 · 설정 QR 인쇄버튼 · Windows 7/8 QZ 설치 수정. Backup 20260623_124849, Smoke 9/9, SW=3.95. /검증 통과: health 107/107·print-guard 8/8(billPrint 무수정)·hydration0·timezone0·design0·i18n0·mount(floor-plan/settings/cash-up/pos) crash0.)
 >
 > **이전:** v3.61 발주 UX 대정리 + 외부공급업체 + 플로어플랜 핫픽스. SW=3.90.
+
+## ✅ 완료: with MIN 공급망 구조정리 + 인스펙션 하니스 + 공급업체 페이지 (2026-07-05, 운영 배포, Fable 게이트 PASS)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| with MIN 공급 임포트 | 355행 TSV → 재고/공급업체/판매품목 (멱등 HTTP-API 임포터) | ✅ 완료 |
+| 근본원인 정정 | 파서가 UGS/Tourmanium을 판매(BG_SOLD) 오분류 → 매입(BG_EXT) 정정 | ✅ 완료 |
+| UGS/Tourmanium 매입 재모델링 | 외부공급업체 2개 + BG 스톡 59 매입매핑(seller_type=supplier) | ✅ 완료 |
+| dead 정리 | self-brand 매핑 59 + 껍데기 BrandProduct 59 + 미러 118 + 고아 1 삭제 | ✅ 완료 |
+| 레거시 dedup·브리지 | 중복 6 링크백필 + 미링크 3(GIT/Kraft/Vege) 외부이관 → OWN/Direct 통일 | ✅ 완료 |
+| 판매품목 재고연결 | UGS/Tourmanium 59개 BrandProduct + auto-recipe 재고-다이렉트(판매+매입 완결) | ✅ 완료 |
+| 공급업체 계약 상속 | 레스토랑이 부모 브랜드 외부업체 계약 상속(supplierAccess.findEffectiveContract) | ✅ 완료 |
+| buyer 모듈 시드 | 운영 브랜드플랜 3종에 buyer_supplier_directory/purchase_orders 추가(게이트 복구) | ✅ 완료 |
+| 외부업체 Edit/Delete | AllSuppliersView 카드 편집/삭제 + DELETE soft-delete 라우트 | ✅ 완료 |
+| 인스펙션 하니스 | scripts/inspection 신규 — 공급망 불변식 6종 자동검사+exit게이트(6/6 PASS) | ✅ 완료 |
+
+### 수정된 파일
+- `dev-backend/routes/brand-products.js` (syncProductToIngredients: distribution_mode='all' 전 브랜드 미러)
+- `dev-backend/utils/supplierAccess.js` (findEffectiveContract 계약 상속)
+- `dev-backend/routes/supplier-directory.js` (external 계약 제외 + DELETE soft-delete)
+- `dev-backend/routes/{ingredient-seller-products,restaurants-ingredients,purchase-orders-crud}.js` (계약 상속 적용)
+- `dev-backend/scripts/inspection/{run.js,suites/supply-chain.js}` (신규 하니스)
+- `dev-backend/scripts/withmin-import/*` (임포트 파이프라인 + make-sellable-products)
+- `dev-frontend/src/pages/Suppliers/{AllSuppliersView,UnifiedSuppliersPage}.tsx` (own-dedup + external Edit/Delete)
+
+### 인스펙션 하니스 (신규 안전망)
+`node scripts/inspection/run.js --suite supply-chain` — 빌드·API200 통과해도 유출되는 구조 결함을 DB 불변식으로 자동 감지(exit code 게이트). 이번 with MIN 버그 클래스(self-brand·고아·레거시중복·미러·카테고리)를 회귀로 박제. PlanQ INSPECTION_PLAYBOOK 방법론 이식. **"피드백 1건 = 불변식 1개"로 재발 차단.**
+
+---
 
 ## ✅ 완료: 레거시 supplier 쓰기 중단 + P0-5 완전 read-only (2026-07-04 #2, dev 검증완료·미배포, Fable 게이트 PASS)
 
