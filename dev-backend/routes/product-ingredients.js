@@ -42,12 +42,14 @@ router.get('/', async (req, res) => {
     // include=sellers — 발주 화면용: 각 재고아이템의 공급업체상품 매핑(SellerOpt) 첨부
     let data = ingredients;
     if (String(req.query.include || '').includes('sellers') && ingredients.length) {
-      const { IngredientSellerProduct, SupplierCompany, SupplierProduct, Brand, Foodcourt } = require('../models');
+      const { IngredientSellerProduct, SupplierCompany, SupplierProduct, BrandProduct, Brand, Foodcourt } = require('../models');
       const ids = ingredients.map(i => i.id);
       const maps = await IngredientSellerProduct.findAll({ where: { product_ingredient_id: ids, is_active: true } });
-      // 판매품목 정체성(name/sku) 해석 — 공급업체 판매품목을 내부 재고와 함께 표시(P0-1)
+      // 판매품목 정체성(name/sku) 해석 — 공급업체/브랜드 판매품목명·SKU를 내부 재고와 함께 표시(P0-1 + 브랜드 확장 2026-07-05)
       const spIds = [...new Set(maps.filter(m => m.seller_type === 'supplier' && m.seller_product_id).map(m => m.seller_product_id))];
       const spMap = spIds.length ? Object.fromEntries((await SupplierProduct.findAll({ where: { id: spIds }, attributes: ['id', 'name', 'sku'], paranoid: false })).map(s => [s.id, s])) : {};
+      const bpIds = [...new Set(maps.filter(m => m.seller_type === 'brand' && m.seller_product_id).map(m => m.seller_product_id))];
+      const bpMap = bpIds.length ? Object.fromEntries((await BrandProduct.findAll({ where: { id: bpIds }, attributes: ['id', 'name', 'sku'], paranoid: false })).map(b => [b.id, b])) : {};
       // 판매자 이름 해석
       const supIds = [...new Set(maps.filter(m => m.seller_type === 'supplier' && m.seller_entity_id).map(m => m.seller_entity_id))];
       const brIds = [...new Set(maps.filter(m => m.seller_type === 'brand' && m.seller_entity_id).map(m => m.seller_entity_id))];
@@ -61,7 +63,8 @@ router.get('/', async (req, res) => {
           : m.seller_type === 'brand' ? (brMap[m.seller_entity_id] || 'Brand')
           : m.seller_type === 'foodcourt' ? (fcMap[m.seller_entity_id] || 'Foodcourt')
           : 'System';
-        const sp = m.seller_type === 'supplier' ? spMap[m.seller_product_id] : null;
+        const sp = m.seller_type === 'supplier' ? spMap[m.seller_product_id]
+          : m.seller_type === 'brand' ? bpMap[m.seller_product_id] : null;
         (byIng[m.product_ingredient_id] = byIng[m.product_ingredient_id] || []).push({
           id: m.id, seller_product_id: m.seller_product_id, seller_type: m.seller_type,
           seller_entity_id: m.seller_entity_id, seller_name: name,

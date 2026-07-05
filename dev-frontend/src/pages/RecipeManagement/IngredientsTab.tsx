@@ -1560,6 +1560,8 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                       }}>
                         {s.seller_type === 'brand' ? 'BRAND' : s.seller_type === 'foodcourt' ? 'FC' : 'SUP'}
                         {s.seller_name ? ` · ${s.seller_name}` : ''}
+                        {s.seller_product_name ? ` · ${s.seller_product_name}` : ''}
+                        {s.seller_product_sku ? ` · SKU: ${s.seller_product_sku}` : ''}
                         {s.unit_price != null ? ` · ${formatCurrency(Number(s.unit_price), selectedCurrency)}` : ''}
                       </span>
                     ))}

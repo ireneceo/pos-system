@@ -122,6 +122,16 @@ router.get('/brands/:brandId/ingredients', authenticateToken, isBrandManager, as
       for (const sp of supProds) {
         spInfoById[sp.id] = { name: sp.name || null, sku: sp.sku || null };
       }
+      // Brand seller sources also carry the brand's own product name/SKU (different from our
+      // internal name) — resolve them so brand-linked items show the brand product identity too.
+      // (Irene 2026-07-05, ③ 브랜드 확장)
+      const BrandProduct = require('../models/BrandProduct');
+      const brandProductIds = [...new Set(mappings.filter(m => m.seller_type === 'brand').map(m => m.seller_product_id).filter(Boolean))];
+      const bpInfoById = {};
+      if (brandProductIds.length) {
+        const bps = await BrandProduct.findAll({ where: { id: { [Op.in]: brandProductIds } }, attributes: ['id', 'name', 'sku'], paranoid: false });
+        for (const bp of bps) bpInfoById[bp.id] = { name: bp.name || null, sku: bp.sku || null };
+      }
       const optsBySpId = {};
       for (const sp of supProds) {
         optsBySpId[sp.id] = (sp.optionGroups || [])
@@ -144,14 +154,16 @@ router.get('/brands/:brandId/ingredients', authenticateToken, isBrandManager, as
         else if (m.seller_type === 'foodcourt') sellerName = foodcourtMap[m.seller_entity_id] || 'Foodcourt';
         else if (m.seller_type === 'system_admin') sellerName = 'PurpleHere';
         const groups = (m.seller_type === 'supplier' ? (optsBySpId[m.seller_product_id] || []) : []);
-        const spInfo = (m.seller_type === 'supplier' ? spInfoById[m.seller_product_id] : null) || {};
+        const spInfo = (m.seller_type === 'supplier' ? spInfoById[m.seller_product_id]
+                      : m.seller_type === 'brand' ? bpInfoById[m.seller_product_id]
+                      : null) || {};
         arr.push({
           id: m.id,
           seller_product_id: m.seller_product_id,
           seller_type: m.seller_type,
           seller_entity_id: m.seller_entity_id,
           seller_name: sellerName,
-          // Supplier's own sale-product identity (P0-1). sku only meaningful for suppliers.
+          // Seller's own sale-product identity (P0-1 + brand extension): supplier or brand product name/SKU.
           seller_product_name: spInfo.name || null,
           seller_product_sku: spInfo.sku || null,
           unit_price: parseFloat(m.unit_price),

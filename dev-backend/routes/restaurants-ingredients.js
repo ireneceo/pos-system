@@ -131,6 +131,16 @@ router.get('/:restaurantId/ingredients', authenticateToken, checkRestaurantAcces
       const brandMap = Object.fromEntries(brands.map(b => [b.id, b.name]));
       const foodcourtMap = Object.fromEntries(foodcourts.map(f => [f.id, f.name]));
 
+      // Brand seller sources carry the brand's OWN product name/SKU — different from the
+      // restaurant's internal stock item name. Resolve them like supplier products so the
+      // item shows the brand's product name + code, not just "BRAND · <brand>". (Irene 2026-07-05, ③ 확장)
+      const BrandProduct = require('../models/BrandProduct');
+      const brandProductIds = [...new Set(mappings.filter(m => m.seller_type === 'brand').map(m => m.seller_product_id).filter(Boolean))];
+      const brandProds = brandProductIds.length
+        ? await BrandProduct.findAll({ where: { id: { [Op.in]: brandProductIds } }, attributes: ['id', 'name', 'sku'], paranoid: false })
+        : [];
+      const bpInfoById = Object.fromEntries(brandProds.map(b => [b.id, { name: b.name, sku: b.sku }]));
+
       const sellersByIngredient = {};
       for (const m of mappings) {
         const arr = sellersByIngredient[m.ingredient_id] || (sellersByIngredient[m.ingredient_id] = []);
@@ -140,7 +150,9 @@ router.get('/:restaurantId/ingredients', authenticateToken, checkRestaurantAcces
         else if (m.seller_type === 'foodcourt') sellerName = foodcourtMap[m.seller_entity_id] || 'Foodcourt';
         else if (m.seller_type === 'system_admin') sellerName = 'PurpleHere';
         const groups = (m.seller_type === 'supplier' ? (optsBySpId[m.seller_product_id] || []) : []);
-        const spInfo = (m.seller_type === 'supplier' ? spInfoById[m.seller_product_id] : null) || {};
+        const spInfo = (m.seller_type === 'supplier' ? spInfoById[m.seller_product_id]
+                      : m.seller_type === 'brand' ? bpInfoById[m.seller_product_id]
+                      : null) || {};
         arr.push({
           id: m.id,
           seller_product_id: m.seller_product_id,
