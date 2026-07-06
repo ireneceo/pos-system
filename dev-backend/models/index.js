@@ -102,6 +102,8 @@ const RestaurantIngredientCost = require('./RestaurantIngredientCost');
 const SystemLog = require('./SystemLog');
 const SchedulerRun = require('./SchedulerRun');
 const ProcessedOp = require('./ProcessedOp');
+const MenuReferencePhoto = require('./MenuReferencePhoto');
+const RecognitionLog = require('./RecognitionLog');
 const RestaurantSalesIntegration = require('./RestaurantSalesIntegration');
 const Comment = require('./Comment');
 const CommentRead = require('./CommentRead');
@@ -969,6 +971,14 @@ Restaurant.hasMany(RestaurantSalesIntegration, { foreignKey: 'restaurant_id', as
 PaymentMethodSetting.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
 Restaurant.hasMany(PaymentMethodSetting, { foreignKey: 'restaurant_id', as: 'paymentMethodSettings' });
 
+// AI Serve Camera (Track B) — 레퍼런스 사진 + 인식 로그
+Restaurant.hasMany(MenuReferencePhoto, { foreignKey: 'restaurant_id', as: 'menuReferencePhotos' });
+MenuReferencePhoto.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
+Product.hasMany(MenuReferencePhoto, { foreignKey: 'product_id', as: 'referencePhotos' });
+MenuReferencePhoto.belongsTo(Product, { foreignKey: 'product_id', as: 'product' });
+Restaurant.hasMany(RecognitionLog, { foreignKey: 'restaurant_id', as: 'recognitionLogs' });
+RecognitionLog.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
+
 module.exports = {
   User,
   Restaurant,
@@ -1054,6 +1064,8 @@ module.exports = {
   SystemLog,
   SchedulerRun,
   ProcessedOp,
+  MenuReferencePhoto,
+  RecognitionLog,
   RestaurantSalesIntegration,
   Comment,
   CommentRead,

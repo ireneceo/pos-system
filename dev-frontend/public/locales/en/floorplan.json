@@ -211,5 +211,20 @@
   "itemSheet.options": "Options",
   "itemSheet.qty": "Qty",
   "itemSheet.table": "Location",
-  "itemSheet.viewPhoto": "View photo"
+  "itemSheet.viewPhoto": "View photo",
+  "aiServe.open": "Serve Cam",
+  "aiServe.openHint": "AI camera serving",
+  "aiServe.pickManually": "Pick manually",
+  "aiServe.retake": "Retake",
+  "aiServe.analyzing": "Analyzing…",
+  "aiServe.noCandidates": "No dishes are ready right now.",
+  "aiServe.reshootHint": "Not sure — please retake or pick manually.",
+  "aiServe.pleaseConfirm": "please confirm",
+  "aiServe.readyMin": "ready {{n}}m",
+  "aiServe.seeding": "Preparing menu photos…",
+  "aiServe.justServed": "Served",
+  "aiServe.cameraDenied": "Camera unavailable. Take a photo or pick manually.",
+  "aiServe.takePhoto": "Take a photo",
+  "aiServe.referencePhotos": "Recognition photos",
+  "aiServe.addPhoto": "Add photo"
 }

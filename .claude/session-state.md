@@ -2,9 +2,24 @@
 
 ## 현재 작업 상태
 
-**마지막 업데이트:** 2026-07-06 #3 (**운영 배포 완료** — 모바일중복주문 수리 + 인스펙션 하니스 확장(돈·주문무결성+유저스코프+IDOR가드). Backup 20260706_134639, Smoke 9/9, 안전게이트 6/6. 운영 4흐름 실검증 PASS.)
-**버전:** 운영=**v3.67 / SW 4.58** (2026-07-06 배포, 모바일 중복주문 방지 + 하니스 확장)
-**작업 상태:** ✅ 배포·검증·버전상승·릴리즈노트 완료. 실물 프린터 종이확인만 Irene 매장 몫.
+**마지막 업데이트:** 2026-07-06 #5 (**전 영역 실측 + 할일 총정리 + 업무분담 확정**. 이번 세션 완료: v3.67 배포(모바일중복주문) + 인스펙션 하니스 확장(Fable PASS) + **비전AI Track A·B1 구현(Fable PASS, 미배포)**. 감사문서 stale 정정. **다음 세션: 추천순서 #8→#24→비전AI B2→오프라인편집** ↑위 "다음 확정 작업" 참조.)
+**버전:** 운영=**v3.67 / SW 4.58**. dev 미배포분: 비전AI TrackA/B1 + 하니스 + 인벤토리클러스터(전부 Fable PASS/검증, 다음 /배포 편승).
+**작업 상태:** ✅ 이번 세션분 완료. **다음 세션 시작점 = 위 "🎯 다음 확정 작업" 추천순서.** Irene 결정대기: 비전AI 프로바이더(Vertex/Claude)+키.
+
+### ✅ AI 음식인식 서빙 Track A + Track B(B1) — 구현·검증 완료 (2026-07-06 #4, dev·미배포)
+> Fable 설계 → Opus 구현 패턴. 설계 = `docs/AI_FOOD_RECOGNITION_DESIGN.md` §A(TrackA)·§B(TrackB). 🔒 인쇄 보호파일 8개 무접촉.
+
+**Track A (사진 표시, AI 없음) — dev 반영·미배포** (auto-save 5ce25bb4 포함):
+- 신규 `productImageMap.ts`·`MenuThumb.tsx`·`ItemPhotoSheet.tsx`·`MenuPhotoGallery.tsx` + FloorPlanPage/ItemListView/TableDetailPanel 썸네일 배선. 신규 API/DB 0(기존 /api/menu 재사용). 검증: mount 9/9+상호작용·print-guard8/8·health107·i18n·design bless. 실이미지 브라우저 표시는 dev 이미지데이터 없어 미캡처(표준 img+계약 검증됨, Irene 실매장 눈확인 권장).
+
+**Track B (AI 카메라 서빙, B1=로컬 프로바이더) — dev 반영·미배포·Fable PASS**:
+- 실환경 실측: **AI 프로바이더 키 0개** → B1(LocalColorProvider 색히스토그램 임베딩, 키0·비용0)/B2(Vertex, 키확보후 배선만) 분할.
+- 백엔드: `migrate-ai-serving.js`(테이블2+plan id=3 seed)·모델2·`services/ai/`(4파일+ranking)·`routes/ai-serving.js`(7엔드포인트)·server.js 마운트·settingsGuard `aiServing`·health-check `--category=ai`. 서빙전이=기존 `PATCH /orders/:id/items` 재사용(무수정).
+- 프론트: `AIServeCameraOverlay.tsx`(뷰파인더→촬영→recognize→모드별결과→서빙 연속) + FloorPlanPage 배선(hasModule('ai_serving') 게이트·[Serve Cam]칩) + MenuPhotoGallery RA 레퍼런스 스트립 + i18n 15키×4언어. SW 4.60.
+- **검증**: jest 19/19·health-check **110/110**(ai 3)·AI 계약 실API 전경로(recognize 색매칭→top1정확·무보존·outcome)·mount(Serve Cam칩·오버레이 크래시0)·print-guard8/8·design bless·i18n0·build0.
+- **Fable 게이트 PASS**: 모듈게이트(basic 403/enterprise 200)·IDOR(타매장 403/404)·무보존(디스크쓰기0·이미지컬럼0 라이브증명)·플랜마이그(멱등·id1/2 무접촉·id3 1회)·인쇄무접촉 전부 실측통과. 경미2건(i18n 2키→수정완료, AddBtn + 글리프=수용) 비차단.
+- **미결(B2, Irene 결정)**: ①Vertex 키/비용($1-7/월·매장) 언제 켤지 ②Enterprise 월가 RM99(dev실측) vs RM179 정정 ③파일럿(데모→실매장) 시점. B1은 어느 것도 안 막음(로컬 무비용 동작).
+- **배포**: Irene `/배포` 지시 시. (i18n 2키는 다음 build:dev 에 반영 — 현재 defaultValue 폴백.)
 
 ### ✅ 운영 배포 + 4흐름 검증 완료 (2026-07-06 #3)
 - **배포**: `deploy-to-production.sh --auto` — 안전게이트 6/6 통과(인쇄보호8·인쇄필드·디자인·**IDOR가드(신규)**·health107·**하니스22/24(신규)**), DB스키마 동일(마이그0), Backup 20260706_134639, Smoke 9/9. 포함분=모바일중복주문 수리(멱등키+ER_DUP catch)+하니스 확장(order-integrity/유저스코프FK/route-guard)+deploy게이트 5→6.
@@ -25,16 +40,28 @@
 - ✅ health-check 106/107 (1=orders-crud 보호파일 감지=승인됨) · order-totals 20/20 · 빌드 클린(경고는 기존부채 타파일)
 - ✅ orders-crud diff = 멱등 9줄만(16e73e1b→HEAD), pending-print/printed/print-claim/kitchen_items 무접촉
 
-### 다음 확정 작업 (Irene 지시 — 다음 세션서 실행)
-> Fable PASS + print-guard bless + 운영 컬럼확인 **모두 이 세션서 완료**. **남은 건 배포 한 줄.**
-1. **배포**: `bash /var/www/deploy-to-production.sh --auto` (안전게이트 5/5 자동통과 — print-guard 이미 bless됨). 커밋은 autosave(b6ff2545~)에 이미 있음.
-2. 배포 후: 운영서 동시-키 멱등 1회 재확인(같은 key 2요청→주문 1개) 권장.
+### 🎯 다음 확정 작업 — 추천 순서대로 (Irene 승인 2026-07-06, 다음 세션서 시작)
+> 2026-07-06 전 영역 실측 검증 후 확정한 할일 총정리. 감사문서·메모리 낡아서 여러 항목이 "후속"으로 잘못 남아있었음(아래 정정 반영). Irene "추천 순서대로 다음 세션서 시작".
 
-**Fable 게이트 결과:** ✅ **PASS — 배포 가능** (2026-07-06). 12 동시요청→주문 1개(신규 catch 11회 실증), 돈 무결성(조작 total 무시), 인쇄 계약 7/7·보호블록 무접촉, 오탐흡수 안전(카트라인 id=timestamp라 새 카트=새 키).
-- ✅ **print-guard bless 완료** (2026-07-06 07:21, 8파일 신규 기준) — 배포 안전게이트 통과함
-- ✅ **운영 orders.idempotency_key varchar(64) + uniq 인덱스 존재 확인** (catch 경로 유효)
-- **⇒ 남은 것: `bash /var/www/deploy-to-production.sh --auto` 배포 한 줄만.** 배포 후 운영서 동시-키 멱등 1회 재확인 권장.
-- ⚠️ Fable 발견 이슈#1(배포 비차단, **후속**): 모바일 dine-in 자동머지 경로(orders-crud.js:640-693)는 멱등 미적용 — 응답유실/20s abort 후 큐 재전송 시 같은 품목 재머지=계산서 품목 중복 가능(오프라인큐 도입때부터 있던 구멍). 후속: 머지 시 idem 키 기록 후 upfront 대조.
+**추천 실행 순서:**
+1. **[유료출시 필수] #8 매니저 리포트 가짜 매출 제거** — `ManagerReportsPage.tsx:266-267` `Math.round(baseSales*multiplier*(0.8+Math.random()*0.4))` = 새로고침마다 랜덤 매출/주문. 실주문 기반 엔드포인트로 교체(#9 `manager-sales.js` 패턴 재사용). *Opus 구현.*
+2. **[유료출시 필수·돈] #24 매니저 구독 변경/취소 배선** — `ManagerSubscriptionsPage.tsx:431-441` handleUpgradePlan/ManageSubscription/SuspendSubscription 전부 "Coming Soon"뿐, 실 API 0. `pending_plan_type` 인프라 있음→매니저 액션 배선. *Opus 구현 → 돈이라 Fable 검증.*
+3. **[비전AI B2] 색깔뇌→진짜AI뇌 교체** (Irene 확정 "다 붙일 거야") — 골격 완료, **파일1개+API키**만. ①Irene: Vertex(빠름0.3s) vs Claude비전(똑똑·새계정불필요) 결정+키발급 ②Opus: 프로바이더 어댑터 채우기(`services/ai/VertexEmbeddingProvider.js` 스켈레톤 있음 or 신규 ClaudeVisionProvider)+refresh-embeddings 재임베딩(반나절~1일) ③필수수정: confidence margin 캘리브레이션(색벡터 코사인과열, auto해금 전, Fable §5-⑧ 갭) ④thefire id=16 파일럿(recognition_logs 채택률). *비용 거의0(하루~16접시, 안쓰면 0원).*
+4. **[마무리] 오프라인 주문 편집 배선** — `OfflineOrdersPanel` 현재 읽기전용(생성만). 백엔드 opId 가드 준비됨→add/cancel/pay/stage 편집 배선. + 모바일 dine-in 자동머지 멱등 구멍(orders-crud.js:640-693, 비차단 후속).
+
+**미배포 dev분(다음 /배포 때 편승)**: 비전AI Track A+B1(Fable PASS) · 인스펙션 하니스 확장(Fable PASS) · 인벤토리 클러스터. 전부 working-tree(autosave)에 있음, 커밋 불필요.
+
+### 📊 전 영역 실측 상태 (2026-07-06, 두 조사 에이전트 검증)
+- **유료출시 감사**: 40건 중 **38건 완료·배포**(보안5·#9매니저매출·#31전화·인벤토리클러스터#5/6/23/35/36 전부 v3.67에 배포됨 — **감사문서·메모리가 stale해서 "후속"으로 잘못 남음, 정정필요**). 진짜 잔여=#8·#24(필수) + #38 고객분석스텁·Owner Operations Math.random(선택).
+- **오프라인 모드**: 코어6단계 **운영배포 완료(v3.65)**. 잔여=오프라인주문 편집배선·실프린터 종이확인(Irene 매장)·7단계 데모.
+- **안드로이드 앱**: 네이티브 플러그인 실구현+디버그APK 빌드됨(07-03 중단), **미배포**. 로드맵 최후순위. 잔여=A3 실기기검증(Irene)·V1~V4 게이트 실행·릴리즈서명APK·배포.
+- **백로그(기획/미구현, 확정X)**: 매출대조마감·운영시간+라스트오더·모바일QR테이블리셋·브랜드세트그룹검증·통합티켓MASTER.
+
+### 👥 업무 분담 (확정)
+- **Irene**: 사업·우선순위·결정(AI 프로바이더/키/가격 RM179)·`/배포` 명령·현장 실물확인(프린터종이·태블릿카메라).
+- **Fable**: 큰 기능 설계 + 위험영역(돈·주문·보안·신규시스템·DB마이그) 배포전 적대적 검증 + 사업 전략기획.
+- **Opus**: 구현·배선·테스트·`/검증`·상태추적·문서정리. 위험영역 만지면 Fable 게이트로 올림.
+- 흐름: Irene "이거 해" → (큰거면)Fable 설계 → Opus 구현 → (위험하면)Fable 검증 → Irene `/배포`.
 
 ### ✅ 인벤토리 브랜드모드 클러스터 #5/6/23/35/36 — 검증 완료 (2026-07-06, 코드 변경 0)
 > Irene 지시로 착수 → **조사 결과 이미 07-04 auto-save(272075de)에 프론트·백엔드 전부 구현돼 있었음**(session-state엔 "잔여"로만 남아 미검증·미보고 상태였음). 재작업 없이 실 API로 end-to-end 증명 후 기록.

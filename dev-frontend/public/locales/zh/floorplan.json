@@ -211,5 +211,20 @@
   "itemSheet.options": "选项",
   "itemSheet.qty": "数量",
   "itemSheet.table": "位置",
-  "itemSheet.viewPhoto": "查看照片"
+  "itemSheet.viewPhoto": "查看照片",
+  "aiServe.open": "相机上菜",
+  "aiServe.openHint": "AI 相机上菜",
+  "aiServe.pickManually": "手动选择",
+  "aiServe.retake": "重拍",
+  "aiServe.analyzing": "分析中…",
+  "aiServe.noCandidates": "目前没有已备好的菜品。",
+  "aiServe.reshootHint": "不确定 — 请重拍或手动选择。",
+  "aiServe.pleaseConfirm": "请确认",
+  "aiServe.readyMin": "已备好 {{n}} 分钟",
+  "aiServe.seeding": "正在准备菜单照片…",
+  "aiServe.justServed": "已上",
+  "aiServe.cameraDenied": "相机不可用。请拍照或手动选择。",
+  "aiServe.takePhoto": "拍照",
+  "aiServe.referencePhotos": "识别照片",
+  "aiServe.addPhoto": "添加照片"
 }

@@ -1,5 +1,7 @@
 # Brand General + Restaurant Owner 전수감사 (2026-07-03)
 
+> ⚠️ **상태 정정 (2026-07-06 실측)**: 이 문서의 "후속/잔여" 표기 다수가 **낡음(stale)**. 실측 결과 이미 완료·배포됨: **#9 매니저매출·#31 전화입력·인벤토리 클러스터 #5/6/23/35/36·보안 5건(#7/11/12/16/33)** = 전부 v3.67에 배포됨. **진짜 잔여는 2건뿐**: **#8 매니저 리포트 가짜매출(Math.random)** + **#24 매니저 구독 변경/취소 미배선("Coming Soon")** = 유료출시 필수. 선택: #38 고객분석 스텁·Owner Operations Math.random. 다음 세션 작업목록은 `.claude/session-state.md` "🎯 다음 확정 작업" 참조.
+
 Fable 감사(실브라우저+증거) → 적대적 검증 → Opus 수정. 데모: BG=`demo_brand_general`(user22, brand10&17), Owner=`demo_multi_owner`(user289).
 
 ## 결과: 40건 (HIGH 16 / MED 17 / LOW 7)

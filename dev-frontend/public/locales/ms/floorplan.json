@@ -211,5 +211,20 @@
   "itemSheet.options": "Pilihan",
   "itemSheet.qty": "Kuantiti",
   "itemSheet.table": "Lokasi",
-  "itemSheet.viewPhoto": "Lihat foto"
+  "itemSheet.viewPhoto": "Lihat foto",
+  "aiServe.open": "Kamera Hidang",
+  "aiServe.openHint": "Hidangan kamera AI",
+  "aiServe.pickManually": "Pilih sendiri",
+  "aiServe.retake": "Ambil semula",
+  "aiServe.analyzing": "Menganalisis…",
+  "aiServe.noCandidates": "Tiada hidangan siap sekarang.",
+  "aiServe.reshootHint": "Tidak pasti — ambil semula atau pilih sendiri.",
+  "aiServe.pleaseConfirm": "sila sahkan",
+  "aiServe.readyMin": "siap {{n}}m",
+  "aiServe.seeding": "Menyediakan foto menu…",
+  "aiServe.justServed": "Dihidang",
+  "aiServe.cameraDenied": "Kamera tidak tersedia. Ambil foto atau pilih sendiri.",
+  "aiServe.takePhoto": "Ambil foto",
+  "aiServe.referencePhotos": "Foto pengecaman",
+  "aiServe.addPhoto": "Tambah foto"
 }

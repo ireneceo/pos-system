@@ -1014,6 +1014,81 @@ function definePrintTests({ adminToken }) {
     ];
     throw new Error(`보호 파일 변경 ${lines.length}건 → ${lines.join(', ')} (의도한 인쇄 변경이면 --bless)`);
   });
+
+  // ── ai: AI 카메라 서빙(Track B) 계약 (데모 매장, 무보존·제약매칭·모듈게이트) ──
+  const AI_MARK = '__HC_AI__';
+  const AI_PIDS = [900011, 900012];
+  async function aiCleanup() {
+    const Order = require('../models/Order');
+    const { MenuReferencePhoto, RecognitionLog } = require('../models');
+    const rid = await demoRestaurantId();
+    await Order.destroy({ where: { customer_name: AI_MARK }, force: true }).catch(() => {});
+    await MenuReferencePhoto.destroy({ where: { product_id: AI_PIDS }, force: true }).catch(() => {});
+    if (rid) await RecognitionLog.destroy({ where: { restaurant_id: rid, provider: 'local-color-v1' } }).catch(() => {});
+  }
+
+  test('ai', '익명 ai-serving/ready-items → 401', async () => {
+    const rid = await demoRestaurantId(); if (!rid) return true;
+    return (await request('GET', `/ai-serving/${rid}/ready-items`)).status === 401;
+  });
+
+  test('ai', 'recognize: 색 임베딩 제약매칭 top1 + 무보존 + outcome', async () => {
+    const rid = await demoRestaurantId(); if (!rid) return true;
+    const sharp = require('sharp');
+    const { Order, MenuReferencePhoto, RecognitionLog } = require('../models');
+    const ai = require('../services/ai'); const prov = ai.getProvider();
+    await aiCleanup();
+    const fsm = require('fs');
+    let pass = false;
+    try {
+      const red = await sharp({ create: { width: 160, height: 160, channels: 3, background: { r: 220, g: 30, b: 30 } } }).jpeg().toBuffer();
+      const blue = await sharp({ create: { width: 160, height: 160, channels: 3, background: { r: 30, g: 30, b: 220 } } }).jpeg().toBuffer();
+      const redVec = await prov.embedImage(red), blueVec = await prov.embedImage(blue);
+      await MenuReferencePhoto.create({ restaurant_id: rid, product_id: AI_PIDS[0], image_url: '/uploads/test/hcred.jpg', source: 'menu_image', embedding: redVec, embedding_model: prov.model, embedding_dim: redVec.length, is_active: true });
+      await MenuReferencePhoto.create({ restaurant_id: rid, product_id: AI_PIDS[1], image_url: '/uploads/test/hcblue.jpg', source: 'menu_image', embedding: blueVec, embedding_model: prov.model, embedding_dim: blueVec.length, is_active: true });
+      const order = await Order.create({ restaurant_id: rid, customer_name: AI_MARK, table_number: '9', total_amount: 20, status: 'ready', order_type: 'dine_in', source: 'pos',
+        order_items: [{ id: 'a', product_id: AI_PIDS[0], name: 'HC Red', quantity: 1, price: 10, status: 'ready' }, { id: 'b', product_id: AI_PIDS[1], name: 'HC Blue', quantity: 1, price: 10, status: 'ready' }] });
+      const recogDirBefore = fsm.existsSync('/var/www/uploads/recognition');
+      const rec = await multipartRecognize(rid, red, adminAuth);
+      const top = rec.body?.data?.candidates?.[0];
+      const recogDirAfter = fsm.existsSync('/var/www/uploads/recognition');
+      const matched = top && top.product_id === AI_PIDS[0] && rec.body.data.mode !== 'no_candidates';
+      const noRetain = !recogDirBefore && !recogDirAfter;
+      // outcome
+      const oc = await request('POST', `/ai-serving/${rid}/logs/${rec.body?.data?.log_id}/outcome`, { decision: 'recommend_confirmed', chosen_order_id: order.id, chosen_item_index: 0, chosen_product_id: AI_PIDS[0] }, adminAuth);
+      const logRow = await RecognitionLog.findByPk(rec.body?.data?.log_id);
+      pass = !!matched && noRetain && oc.status === 200 && logRow?.was_top1_correct === true;
+    } finally { await aiCleanup(); }
+    return pass;
+  });
+
+  test('ai', 'ready 없으면 no_candidates', async () => {
+    const rid = await demoRestaurantId(); if (!rid) return true;
+    await aiCleanup();
+    const sharp = require('sharp');
+    const red = await sharp({ create: { width: 120, height: 120, channels: 3, background: { r: 200, g: 40, b: 40 } } }).jpeg().toBuffer();
+    const rec = await multipartRecognize(rid, red, adminAuth);
+    return rec.body?.data?.mode === 'no_candidates';
+  });
+}
+
+// multipart recognize 호출 헬퍼 (health-check 전용)
+function multipartRecognize(rid, buf, auth) {
+  return new Promise((resolve) => {
+    const http = require('http'); const https = require('https');
+    const url = new URL(`${BASE}/ai-serving/${rid}/recognize`);
+    const isHttps = url.protocol === 'https:'; const lib = isHttps ? https : http;
+    const boundary = '----hc' + Math.random().toString(16).slice(2);
+    const body = Buffer.concat([
+      Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="photo"; filename="p.jpg"\r\nContent-Type: image/jpeg\r\n\r\n`),
+      buf, Buffer.from(`\r\n--${boundary}--\r\n`),
+    ]);
+    const r = lib.request({ hostname: url.hostname, port: url.port || (isHttps ? 443 : 80), path: url.pathname, method: 'POST',
+      headers: { 'Content-Type': `multipart/form-data; boundary=${boundary}`, 'Content-Length': body.length, ...auth } }, res => {
+      let d = ''; res.on('data', c => d += c); res.on('end', () => { try { resolve({ status: res.statusCode, body: JSON.parse(d) }); } catch { resolve({ status: res.statusCode, body: d }); } });
+    });
+    r.on('error', e => resolve({ status: 0, body: e.message })); r.write(body); r.end();
+  });
 }
 
 // ============================================

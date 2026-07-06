@@ -537,6 +537,9 @@ app.use('/api/restaurants', tableQRRouter);  // Table QR session management
 const importRouter = require('./routes/import');
 app.use('/api/import', importRouter);  // CSV data import (migration)
 
+const aiServingRouter = require('./routes/ai-serving');
+app.use('/api/ai-serving', aiServingRouter);  // Track B: AI camera serving (recognize/ready-items/reference-photos)
+
 const contractsRouter = require('./routes/contracts');
 app.use('/api/contracts', contractsRouter);  // Franchise & Tenancy contract management
 const foodcourtUnitsRouter = require('./routes/foodcourt-units');

@@ -211,5 +211,20 @@
   "itemSheet.options": "옵션",
   "itemSheet.qty": "수량",
   "itemSheet.table": "위치",
-  "itemSheet.viewPhoto": "사진 보기"
+  "itemSheet.viewPhoto": "사진 보기",
+  "aiServe.open": "카메라 서빙",
+  "aiServe.openHint": "AI 카메라 서빙",
+  "aiServe.pickManually": "직접 고르기",
+  "aiServe.retake": "다시 찍기",
+  "aiServe.analyzing": "분석 중…",
+  "aiServe.noCandidates": "지금 조리 완료된 품목이 없어요.",
+  "aiServe.reshootHint": "애매해요 — 다시 찍거나 직접 골라주세요.",
+  "aiServe.pleaseConfirm": "확인해 주세요",
+  "aiServe.readyMin": "조리완료 {{n}}분",
+  "aiServe.seeding": "메뉴 사진 준비 중…",
+  "aiServe.justServed": "서빙",
+  "aiServe.cameraDenied": "카메라를 쓸 수 없어요. 사진을 찍거나 직접 골라주세요.",
+  "aiServe.takePhoto": "사진 찍기",
+  "aiServe.referencePhotos": "인식 사진",
+  "aiServe.addPhoto": "사진 추가"
 }

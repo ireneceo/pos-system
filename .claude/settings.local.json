@@ -1047,7 +1047,13 @@
       "Bash(pkill -f \"b2lzejhvc\\\\|b4grvxj9i\")",
       "Bash(pkill -f \"pcz.js\\\\|prod-cleanup\")",
       "Bash(awk '/## \\\\[Unreleased\\\\]/{f=1} f{print} /## \\\\[v?3\\\\.6/{if\\(f>1\\)exit; f++}' CHANGELOG.md)",
-      "Bash(echo \"EXIT_or_clean=$?\")"
+      "Bash(echo \"EXIT_or_clean=$?\")",
+      "Bash(xargs -I{} sed -n '{},{}p' models/index.js)",
+      "Bash(awk '/test\\\\\\(.print./{last=NR} END{print \"마지막 print test 라인:\", last}' scripts/health-check.js)",
+      "Skill(claude-api)",
+      "Bash(find / -iname \"project_paid_launch_audit*\")",
+      "Read(//home/**)",
+      "Bash(awk '/## .*2026-07-03 #1/{f=1} f{print} f && /^---$/{c++; if\\(c==1\\) exit}' DEVELOPMENT_PLAN.md)"
     ],
     "deny": [],
     "ask": []

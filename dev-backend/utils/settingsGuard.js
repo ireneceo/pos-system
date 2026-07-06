@@ -40,7 +40,10 @@ const OPERATION_SETTINGS_ALLOWED_KEYS = new Set([
   'cashFloat',
   // 모바일 애드온(크로스셀) 추천 마스터 토글(2026-06-26). false=모바일 주문에서 "함께 추천" 시트 비활성.
   // 화이트리스트 누락 시 저장 round-trip 에서 조용히 stripped → 토글이 저장 안 됨. 반드시 보존.
-  'crossSellEnabled'
+  'crossSellEnabled',
+  // AI 카메라 서빙(Track B, 2026-07-06). { enabled, retainEvalVectors }. 화이트리스트 누락 시
+  // 저장 round-trip 에서 조용히 stripped → 설정 무력화. 반드시 보존([[reference_model_getter_key_strip]]).
+  'aiServing'
 ]);
 
 function parseJsonSafe(v) {

@@ -8,7 +8,9 @@ import FloorPlanCanvas from './FloorPlanCanvas';
 import TableDetailPanel from './TableDetailPanel';
 import ItemListView from './ItemListView';
 import MenuPhotoGallery from './MenuPhotoGallery';
+import AIServeCameraOverlay from './AIServeCameraOverlay';
 import { buildProductPhotoMaps, lookupProductPhoto, ProductPhotoMaps } from './productImageMap';
+import { useAllowedRoutes } from '../../hooks/useAllowedRoutes';
 import FloorPlanStatsBar from './FloorPlanStatsBar';
 import PaymentModal from '../../components/POSTerminal/PaymentModal';
 import { Modal as CommonModal } from '../../components/UI';
@@ -486,6 +488,10 @@ const FloorPlanPage: React.FC = () => {
   // Track A: /api/menu 응답(이미 받던 것)에서 사진 lookup 을 만든다 — 신규 요청 0.
   const [photoMaps, setPhotoMaps] = useState<ProductPhotoMaps | null>(null);
   const [galleryOpen, setGalleryOpen] = useState(false);
+  // Track B: AI 카메라 서빙 — Enterprise 모듈 게이트(hasModule). 미포함 티어면 칩 자체 미렌더.
+  const { hasModule } = useAllowedRoutes({ role: user?.role || '', restaurantId: restaurantId ? Number(restaurantId) : null });
+  const [serveCamOpen, setServeCamOpen] = useState(false);
+  const aiServeEnabled = hasModule('ai_serving');
   useEffect(() => {
     if (!restaurantId) return;
     let alive = true;
@@ -2096,6 +2102,17 @@ const FloorPlanPage: React.FC = () => {
           >
             {t('floorplan:menuPhotos.open', 'Menu Photos')}
           </ZoneChip>
+          {aiServeEnabled && (
+            <ZoneChip
+              type="button"
+              active={false}
+              onClick={() => setServeCamOpen(true)}
+              disabled={typeof navigator !== 'undefined' && navigator.onLine === false}
+              title={t('floorplan:aiServe.openHint', 'AI camera serving')}
+            >
+              {t('floorplan:aiServe.open', 'Serve Cam')}
+            </ZoneChip>
+          )}
           {/* 2026-06-28 (5-1): exit-fullscreen lives in the zone bar (always visible) since the
               header — which holds the enter-fullscreen control — is hidden in fullscreen mode. */}
           {fullscreen && (
@@ -2113,7 +2130,19 @@ const FloorPlanPage: React.FC = () => {
         </ZoneFilterBar>
       )}
 
-      <MenuPhotoGallery open={galleryOpen} onClose={() => setGalleryOpen(false)} maps={photoMaps} currency={currency} />
+      <MenuPhotoGallery open={galleryOpen} onClose={() => setGalleryOpen(false)} maps={photoMaps} currency={currency}
+        restaurantId={restaurantId ? Number(restaurantId) : null}
+        canManageRefs={aiServeEnabled && (user?.role === 'Restaurant Admin' || user?.role === 'System Admin')} />
+
+      {serveCamOpen && restaurantId && (
+        <AIServeCameraOverlay
+          open={serveCamOpen}
+          onClose={() => setServeCamOpen(false)}
+          restaurantId={Number(restaurantId)}
+          productLookup={productLookup}
+          onServe={handleServeItem}
+        />
+      )}
 
       {/* 범례는 Irene 가 직접 추가 예정 — 제거 (#3 점 기능은 TableNode 빨강 점으로 유지) */}
 

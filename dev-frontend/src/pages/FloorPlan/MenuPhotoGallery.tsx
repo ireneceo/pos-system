@@ -1,10 +1,11 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { Modal } from '../../components/UI/Modal';
 import SearchableSelect from '../../components/Common/SearchableSelect';
 import MenuThumb from './MenuThumb';
 import { ProductPhotoMaps, ProductPhotoInfo } from './productImageMap';
+import { getAuthToken } from '../../utils/auth';
 
 /**
  * MenuPhotoGallery — 메뉴 사진 갤러리 (Track A). 표준 Modal size large.
@@ -77,9 +78,63 @@ interface Props {
   onClose: () => void;
   maps: ProductPhotoMaps | null;
   currency?: string;
+  // Track B: RA 레퍼런스 사진 관리 스트립(선택). aiServe 모듈 + RA 권한일 때만.
+  restaurantId?: number | null;
+  canManageRefs?: boolean;
 }
 
-const MenuPhotoGallery: React.FC<Props> = ({ open, onClose, maps, currency }) => {
+interface RefPhoto { id: number; product_id: number; thumbnail_url: string | null; image_url: string; source: string; }
+
+const StripWrap = styled.div` border-top: 1px solid var(--pos-border, #C7CED6); padding-top: 12px; margin-top: 4px; `;
+const StripTitle = styled.div` font-size: 13px; font-weight: 700; color: var(--pos-text-muted, #6B7C93); margin-bottom: 8px; `;
+const StripRow = styled.div` display: flex; gap: 8px; flex-wrap: wrap; align-items: center; `;
+const RefCell = styled.div` position: relative; ` ;
+const DelBtn = styled.button` position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 50%; border: none; background: #EF4444; color: #fff; font-size: 13px; line-height: 1; cursor: pointer; `;
+const AddBtn = styled.button` width: 60px; height: 60px; border: 1px dashed var(--pos-border, #C7CED6); border-radius: 8px; background: var(--pos-surface-2, #EDF1F5); color: var(--pos-text-muted, #6B7C93); font-size: 24px; cursor: pointer; font-family: inherit; `;
+
+const ReferenceStrip: React.FC<{ restaurantId: number; productId: number }> = ({ restaurantId, productId }) => {
+  const { t } = useTranslation(['floorplan']);
+  const [refs, setRefs] = useState<RefPhoto[]>([]);
+  const [busy, setBusy] = useState(false);
+  const fileRef = React.useRef<HTMLInputElement>(null);
+  const auth = () => { const tk = getAuthToken(); return tk ? { Authorization: `Bearer ${tk}` } : {}; };
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/ai-serving/${restaurantId}/reference-photos?product_id=${productId}`, { headers: { ...auth() } });
+      const j = await res.json().catch(() => ({})); setRefs(Array.isArray(j.data) ? j.data : []);
+    } catch { setRefs([]); }
+  }, [restaurantId, productId]);
+  useEffect(() => { load(); }, [load]);
+  const onPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]; if (!f) return; setBusy(true);
+    try { const fd = new FormData(); fd.append('photo', f); fd.append('product_id', String(productId));
+      await fetch(`/api/ai-serving/${restaurantId}/reference-photos`, { method: 'POST', headers: { ...auth() }, body: fd });
+      await load();
+    } catch { /* ignore */ } finally { setBusy(false); if (fileRef.current) fileRef.current.value = ''; }
+  };
+  const del = async (id: number) => {
+    setBusy(true);
+    try { await fetch(`/api/ai-serving/${restaurantId}/reference-photos/${id}`, { method: 'DELETE', headers: { ...auth() } }); await load(); }
+    catch { /* ignore */ } finally { setBusy(false); }
+  };
+  return (
+    <StripWrap>
+      <StripTitle>{t('floorplan:aiServe.referencePhotos', { defaultValue: 'Recognition photos' })} ({refs.length})</StripTitle>
+      <StripRow>
+        {refs.map(r => (
+          <RefCell key={r.id}>
+            <MenuThumb src={r.thumbnail_url || r.image_url} name="" size={60} />
+            {r.source === 'staff_upload' && <DelBtn type="button" onClick={() => del(r.id)} disabled={busy} title="delete">×</DelBtn>}
+          </RefCell>
+        ))}
+        <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onPick} />
+        <AddBtn type="button" onClick={() => fileRef.current?.click()} disabled={busy} title={t('floorplan:aiServe.addPhoto', { defaultValue: 'Add photo' })}>+</AddBtn>
+      </StripRow>
+    </StripWrap>
+  );
+};
+
+const MenuPhotoGallery: React.FC<Props> = ({ open, onClose, maps, currency, restaurantId, canManageRefs }) => {
   const { t } = useTranslation(['floorplan']);
   const [search, setSearch] = useState('');
   const [catFilter, setCatFilter] = useState('all');
@@ -130,6 +185,7 @@ const MenuPhotoGallery: React.FC<Props> = ({ open, onClose, maps, currency }) =>
               {(Array.isArray(g?.options) ? g.options : []).map((o: any) => (typeof o === 'string' ? o : (o?.name || ''))).filter(Boolean).join(' · ')}
             </OptGroup>
           ))}
+          {canManageRefs && restaurantId && <ReferenceStrip restaurantId={restaurantId} productId={selected.id} />}
         </Detail>
       ) : (
         <>

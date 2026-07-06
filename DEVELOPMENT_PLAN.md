@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-07-06 (**v3.67 운영 배포** — 모바일 중복주문(2번 주문) 방지[카트-안정 멱등키+ER_DUP catch, 동시8→주문1 운영실증] + 인스펙션 하니스 확장[order-integrity 6불변식·유저스코프 FK·IDOR route-guard, 배포게이트 5→6·Fable PASS]. Backup 20260706_134639, Smoke 9/9, 안전게이트 6/6, 운영 4흐름[주문관리·단계이동·결제·프린트] 실검증 PASS. SW 4.58.)
+> **최종 업데이트:** 2026-07-06 #2 (**비전AI 음식인식 TrackA+B1 + 인스펙션 하니스 확장(둘 다 Fable PASS·dev 미배포) + 전 영역 실측·할일총정리·업무분담 확정**. 다음 세션: #8 매니저리포트 가짜매출 → #24 구독변경 → 비전AI B2(진짜AI, Irene 키) → 오프라인 편집. 상세 아래·session-state.)
+>
+> **이전:** 2026-07-06 (**v3.67 운영 배포** — 모바일 중복주문(2번 주문) 방지[카트-안정 멱등키+ER_DUP catch, 동시8→주문1 운영실증] + 인스펙션 하니스 확장[order-integrity 6불변식·유저스코프 FK·IDOR route-guard, 배포게이트 5→6·Fable PASS]. Backup 20260706_134639, Smoke 9/9, 안전게이트 6/6, 운영 4흐름[주문관리·단계이동·결제·프린트] 실검증 PASS. SW 4.58.)
 >
 > **이전:** 2026-07-05 (**with MIN 공급망 대량 임포트 + 구조 정리 + 인스펙션 하니스 + 공급업체 페이지 — 운영 배포** — gitconsulting(with MIN) 공급 리스트 355행을 재고/공급업체/판매품목으로 임포트 후, Fable 구조검토로 **근본원인=임포트 파서가 UGS/Tourmanium을 판매(BG_SOLD)로 오분류** 확정 → 매입 재모델링(UGS/Tourmanium=외부공급업체, BG 스톡 59개 매입매핑). self-brand dead 매핑 59+껍데기 BrandProduct 59+미러 118 제거, 레거시↔외부 중복 6+미링크 3 브리지(OWN→Direct 통일), 고아매핑·미분류 정리. **UGS/Tourmanium 59개를 판매품목(BrandProduct)으로 재고-다이렉트 연결**(레스토랑 Menu→재고 auto-recipe와 동형=BG 판매+매입 완결). 공급업체 페이지: buyer 모듈 시드(운영 브랜드플랜 누락→Products·발주 게이트 복구), 외부업체 Edit/Delete(soft-delete 라우트). **신규 인스펙션 하니스**(`scripts/inspection/`): 공급망 구조 불변식 6종(자기참조·고아·레거시중복·미러완결·카테고리) 자동검사+exit게이트, 이번 버그클래스를 회귀로 박제 — **운영 6/6 PASS**. 운영 배포 완료(Backup 20260705_211213, Smoke 9/9), health 107/107·print 8/8·design 0. Fable 게이트 PASS. 상세 ↓.)
 >
@@ -41,6 +43,29 @@
 > **이전:** 2026-06-23 (**v3.62 운영 배포 완료** — thefire 실사용 준비 7건: 직원 PIN 전환 수정 · 시재 개시모드(이월/고정) · 마감 폰트 통일 · 통합오더티켓 'Full' 수동인쇄 · 로그인 직원 PIN 우선 · 설정 QR 인쇄버튼 · Windows 7/8 QZ 설치 수정. Backup 20260623_124849, Smoke 9/9, SW=3.95. /검증 통과: health 107/107·print-guard 8/8(billPrint 무수정)·hydration0·timezone0·design0·i18n0·mount(floor-plan/settings/cash-up/pos) crash0.)
 >
 > **이전:** v3.61 발주 UX 대정리 + 외부공급업체 + 플로어플랜 핫픽스. SW=3.90.
+
+## ✅ 완료: 비전AI 음식인식(TrackA+B1) + 인스펙션 하니스 확장 + 전 영역 실측·할일총정리 (2026-07-06 #2, dev·미배포·Fable PASS)
+
+### 완료된 작업
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 비전AI Track A(사진표시) | productImageMap/MenuThumb/ItemPhotoSheet/MenuPhotoGallery + FloorPlan 썸네일. 신규 API/DB 0(기존 /api/menu 재사용) | ✅ |
+| 비전AI Track B B1(로컬 색엔진) | 실측=AI키0 → B1(LocalColorProvider 색히스토그램)/B2(Vertex, 키후) 분할. 마이그+모델2+services/ai(4+ranking)+routes/ai-serving(7)+카메라오버레이+게이팅+health-check ai. 서빙=기존 PATCH 재사용, 🔒인쇄8 무접촉 | ✅ Fable PASS |
+| 인스펙션 하니스 확장 | order-integrity 6불변식(돈·주문무결성)+유저스코프 FK+IDOR route-guard. 배포게이트 5→6 | ✅ Fable PASS |
+| 사업 전략기획(Fable) | AI음식인식 조건부Go(차별화/데모), 모델=Vertex임베딩 권장, RM179 전용 포함, thefire id=16 파일럿 | ✅ 문서화 |
+| 전 영역 실측 + 할일 총정리 | 유료출시감사(진짜잔여 #8·#24만)·오프라인(배포완료)·안드로이드(APK빌드·중단) 실측. 감사문서 stale 정정 | ✅ |
+
+### 수정/신규 파일
+- 백엔드 신규: `models/{MenuReferencePhoto,RecognitionLog}.js`·`routes/ai-serving.js`·`scripts/migrate-ai-serving.js`·`services/ai/*`·`tests/ai-ranking.test.js`·`scripts/inspection/suites/order-integrity.js`·`scripts/check-route-guard.js`
+- 백엔드 수정: `models/index.js`·`server.js`·`utils/settingsGuard.js`·`scripts/health-check.js`·`scripts/inspection/suites/referential.js`
+- 프론트 신규: `pages/FloorPlan/{productImageMap.ts,MenuThumb,ItemPhotoSheet,MenuPhotoGallery,AIServeCameraOverlay}`
+- 프론트 수정: `pages/FloorPlan/{FloorPlanPage,ItemListView,TableDetailPanel}`·i18n floorplan×4·sw.js(4.60)
+- 문서: `docs/AI_FOOD_RECOGNITION_DESIGN.md`(§A TrackA·§B TrackB·§사업전략)
+
+### 잔여(다음 세션 — session-state "다음 확정 작업")
+- 유료출시 필수 2건(#8 매니저리포트 가짜매출·#24 구독변경배선) → 비전AI B2(진짜AI 붙이기, Irene 키) → 오프라인 편집배선. 미배포 dev분(AI TrackA/B1·하니스)은 다음 /배포 편승.
+
+---
 
 ## ✅ 완료: with MIN 공급망 구조정리 + 인스펙션 하니스 + 공급업체 페이지 (2026-07-05, 운영 배포, Fable 게이트 PASS)
 

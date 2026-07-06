@@ -700,3 +700,251 @@ en→ko→zh→ms 4언어 파일 (`public/locales/{en,ko,zh,ms}/floorplan.json`)
 3. 유저 흐름 실검증(데모 매장 id=38): 주문 생성 → Items 뷰 썸네일 표시 → 썸네일 탭 시트 → [Serve] → `PATCH /orders/:id/items` 실호출로 served 확인 → 리스트 반영. 사진 없는 메뉴/세트 구성품/레거시 라인 각 1건.
 4. `node scripts/check-print-guard.js` **변경 0건** + `node scripts/check-design-guard.js` + `npm run i18n:verify` + `node scripts/health-check.js` 88/88 무회귀. (신규 API/DB 0 이므로 백엔드 테스트 신규 불필요.)
 5. Fable 게이트: 본 건은 신규 시스템 아님·보호파일 무접촉·표시 전용이라 **일상 `/검증` 절차로 충분** — 단 TableDetailPanel/FloorPlanPage diff 에 인쇄 블록이 섞이지 않았는지 diff 육안 대조는 필수.
+
+---
+
+## Track B 구현 설계 (기능설계, 2026-07-06)
+
+> 작성: Fable 설계 세션. 범위 = **Track B (카메라 비전 AI 서빙)** — §0 Locked 결정 3건·§1.2 제약매칭 원리·§2~§11 아키텍처를 그대로 계승하되, **이 서버의 실환경 실측**으로 구현 가능한 형태(B1/B2 분할)로 확정한다. 구현은 Opus 세션이 이어받는다.
+> Track A 는 **구현 완료·재사용 토대** (productImageMap.ts / MenuThumb.tsx / ItemPhotoSheet.tsx / MenuPhotoGallery.tsx / ItemListView 썸네일 — 전부 실코드 확인).
+
+### B-0. 실환경 실측 → B1/B2 분할 (설계 전체를 지배하는 결정)
+
+**실측 결과 (2026-07-06, dev 서버):**
+
+| 항목 | 실측 | 결론 |
+|---|---|---|
+| 외부 AI 자격증명 | `dev-backend/.env` 키 14개 전수 확인 — **AI 관련 키 0개** (DB/JWT/VAPID/SITE_URL/ALLOWED_ORIGINS 뿐. OPENAI/VERTEX/GOOGLE/AZURE/ANTHROPIC 계열 전무) | **Vertex/OpenAI/Azure 는 지금 호출 불가** — 키 확보는 Irene 결정 사항 |
+| AI SDK 의존성 | node_modules 에 openai/@google/@azure/@anthropic/onnxruntime **없음**. `sharp@0.34.5` + `multer@2.0.2` 는 **있음** | 로컬 이미지 처리·업로드 토대는 즉시 사용 가능 |
+| 외부 네트워크 | `us-central1-aiplatform.googleapis.com` 404(0.78s)·`api.openai.com` 401(0.20s) — **아웃바운드 HTTPS 정상** | 키만 생기면 즉시 배선 가능 (방화벽 이슈 없음) |
+| 서버 자원 | dev 8GB RAM / 4 core. 운영은 자원부족 이력([[reference_prod_server_resource_constraint]]) | onnx CLIP 상주(수백 MB)는 운영에 위험 — LocalClip 은 Prod(§8 Phase3) 유보 유지 |
+
+**따라서 2단계 분할 (구현 가능성 최우선):**
+
+- **B1 (지금 착수 — 외부 키 0개로 완결)**: 파이프라인 전체(카메라→후보쿼리→유사도→랭킹→로그→서빙)를 **`LocalColorProvider`**(sharp 기반 색·공간 특징 벡터, 외부 호출 0·비용 0)로 완성. 프로바이더 인터페이스(§2.2)·DB·API·UI·게이팅·로그가 전부 실물로 돌아간다. **정직한 정확도 기대치**: 색·플레이팅이 뚜렷이 다른 메뉴 간 구분에 유효(제약매칭 §1.2 덕에 후보 3~8개 중 선별), 비슷하게 생긴 음식 구분은 약함 → **로컬 프로바이더는 `auto` 모드 금지(최대 `recommend`)**로 캡. B1 의 목적 = UX·파이프라인·수집(recognition_logs) 완결 + 파일럿 현장 데이터 확보.
+- **B2 (Irene 키 확보 후 — 배선만)**: `VertexEmbeddingProvider`(multimodalembedding@001, 1408-dim) 실배선 + 전 레퍼런스 재임베딩(`embedding_model` 태그 교체 — §2.2 의 교체 경로 그대로) + `auto` 모드 해금 + 확신도 재캘리브레이션. 코드 변화 = 프로바이더 어댑터 1파일 + env 2~3개 + `npm i google-auth-library` — **B1 인터페이스 무변경**.
+
+이 분할로 §2.2 의 "프로바이더 추상화" 가 종이 약속이 아니라 **B1→B2 전환으로 즉시 증명**된다.
+
+### B-1. 1단계 — 기능 정의
+
+- **기능명**: AI 카메라 서빙 (Track B — AI Serve Camera)
+- **목적**: 서빙 직원이 태블릿/폰 카메라로 접시를 비추고 한 번 탭 → ~1초 안에 메뉴명·매칭 주문·테이블·옵션 → [서빙]. 주방의 구두 인계("이거 A12 계란추가")를 제거. AI 는 **후보를 좁혀줄 뿐, 확정은 항상 사람 탭** (§1.2-3).
+- **핵심 사용자**: ① 서빙/홀 직원(Expo/Runner — Items 뷰 사용자와 동일) ② 신입 직원(메뉴를 몰라도 카메라가 알려줌) ③ RA(레퍼런스 사진 관리 + 정확도 개선).
+- **유스케이스**:
+  1. 러너가 패스에서 접시를 받아 [Serve Cam] 탭 → 촬영 → "불고기덮밥 · A12 · 계란추가 · 조리완료 3분 · 확신 91%" 카드 → [서빙] 탭 → 완료 토스트 → 뷰파인더 복귀(연속 서빙).
+  2. 동일 메뉴 3접시(A12/B03/C07 전부 불고기덮밥): 촬영 → 확신도와 무관하게 **후보 3개 전부** ready 오래된 순으로 표시 + 옵션 차이 굵게 → 직원이 탭으로 선택 (§5-⑧ pick 강등 — 조용히 하나 찍지 않음).
+  3. 확신 낮음/조명 나쁨: "다시 찍어주세요" + [직접 고르기] → ready 품목 리스트(= 기존 Items 뷰 수동 흐름과 동일 데이터)에서 탭.
+  4. 프로바이더 장애/오프라인 서버측 실패: `fallback` 모드 — ready 시간순 수동 리스트로 우아한 강등, 카메라 화면은 절대 죽지 않음 (§10).
+  5. RA 가 정확도 리포트 대신(B1) recognition_logs 기반 감으로 혼동 잦은 메뉴에 **레퍼런스 사진 추가**(갤러리 상세에서 각도·실플레이팅 업로드, §3.1b) → 즉시 재임베딩 → 다음 인식부터 반영.
+- **기존 시스템과의 관계**: Track A(사진 lookup·썸네일·갤러리) + 서빙 뷰(ItemListView·onServe) **위에 얹는 인식 레이어**. 서빙 전이 = 기존 `PATCH /api/orders/:id/items` (orders-crud.js:1788 실측 — IDOR 가드:1798·STALE_WRITE:1816·forward-only 가드:1849·단계 roll-up:1885 전부 내장) **무수정 재사용**. 후보 정의 = `toDisplayStatus`(orderItemStatus.tsx:49) 의 `ready` 와 동일 어휘.
+- **성공 기준 (B1)**: ① 촬영→후보 응답 p95 < 1.5s(로컬 프로바이더는 외부 호출 0 이라 실제 ~0.3–0.5s) ② 서빙 확정 100% 기존 PATCH 경로(신규 전이 0) ③ 사진 무보존 — 디스크·DB 어디에도 촬영 원본 0 바이트 ④ check-print-guard 변경 0 ⑤ 전 실패 모드(권한거부/미지원/오프라인/후보0/프로바이더 실패)에서 화면 생존 ⑥ recognition_logs 에 시도 전량 기록(정확도 루프 원료).
+- **비범위 (B1 에서 안 만듦)**: 실 외부 임베딩(Vertex/Azure — B2), OpenAI judge 폴백(B2+), `auto` 자동선택 모드(B2 해금), 정확도 리포트 API §4.7(Beta), 옵션 시각단서 optPrior(Beta), 야간 임베딩 cron(B2 — B1 은 수동/자동 리컨실만), LocalClip onnx(Prod), 플레이팅 검사·CCTV 류(§8 미래). **POSTerminalPage/MainLayout/KDS 무접촉**.
+- **§0 Locked 반영**: 사진 무보존(멀터 memoryStorage 만, 저장 경로 자체 없음) / 학습소스 = 레퍼런스 사진만(자동 시드 + RA 업로드, 손님 사진 승격 경로 없음) / Enterprise 전용(`ai_serving` 모듈, plan_templates id=3).
+
+### B-2. 2단계 — API
+
+신규 라우터 `dev-backend/routes/ai-serving.js`, `server.js` **경로 전용 마운트** `app.use('/api/ai-serving', require('./routes/ai-serving'))` (server.js:414-486 관례와 동일 — 블랭킷 router.use 인증 후 fall-through 함정 회피 [[reference_path_level_middleware]]). 응답 표준 `{success,data}/{success:false,message}`.
+
+**게이팅 3단 (실측 정정 포함)**: 공통 미들웨어 체인 = `authenticateToken` + `checkRestaurantAccess`(middleware/auth.js:148 — `:restaurantId` 불신뢰) + **`requireRestaurantModule('ai_serving', 'restaurantId')`** (middleware/requireModule.js:226 — 자기 플랜 ∪ 엔티티플랜 union:185, **데모 매장 bypass:247** → 파일럿(데모 id=38)은 플랜 마이그 전에도 동작, health-check 도 데모로 검증 가능).
+> ⚠️ 실측 정정: §3.3 의 "백엔드 MODULE_GATED_ROUTES" 는 존재하지 않는다 — `MODULE_GATED_ROUTES` 는 **프론트** ProtectedRoute.tsx:13 의 정적 URL prefix 목록이다. Track B 는 신규 App 라우트를 만들지 않으므로(카메라 = FloorPlan 오버레이, B-4.1) **이 목록 추가도 불필요**. 백엔드 강제 = requireRestaurantModule 이 전부이자 충분(inventory-routes.js:18 등 기존 관례와 동일).
+
+| # | METHOD path | 권한 | 용도 |
+|---|---|---|---|
+| 1 | `POST /api/ai-serving/:restaurantId/recognize` | 공통 3단 + 전용 rate limit **30/분/유저** | 촬영 → 후보 랭킹 (아래 상세) |
+| 2 | `GET /api/ai-serving/:restaurantId/ready-items` | 공통 3단 | ④후보쿼리 단독 노출 — [직접 고르기]·fallback 화면 |
+| 3 | `POST /api/ai-serving/:restaurantId/logs/:logId/outcome` | 공통 3단 (+ log.restaurant_id 일치 검증) | 결정 기록 (§4.4 그대로) |
+| 4 | `GET /api/ai-serving/:restaurantId/reference-photos?product_id=` | 공통 3단 | 레퍼런스 목록 (전 직원 열람) |
+| 5 | `POST /api/ai-serving/:restaurantId/reference-photos` | 공통 3단 + `requireRole('Restaurant Admin','System Admin')` | multipart 업로드(product_id 지정) → 디스크 저장 + 즉시 임베딩 |
+| 6 | `DELETE /api/ai-serving/:restaurantId/reference-photos/:id` | 5 와 동일 | soft delete (is_active=false, source='staff_upload' 만 — 자동시드 행은 리컨실 소관) |
+| 7 | `POST /api/ai-serving/:restaurantId/refresh-embeddings` | 5 와 동일 | 시드+임베딩 리컨실 배치 (멱등, 아래) |
+
+- **§4 대비 변경점**: outcome 경로에 `:restaurantId` 를 포함시켜 (§4.4 는 `/logs/:id/outcome`) 공통 3단 미들웨어를 같은 라우터 패턴으로 태운다(경로 파라미터 기반 checkRestaurantAccess 일관성). §4.7 리포트는 Beta 유보.
+- **recognize 상세 (§4.1·§5 계승 + B1 확정)**:
+  - 요청: multipart `photo` (multer **memoryStorage**, fileSize 3MB, jpeg/png 만 — import.js:17 관례). **디스크 기록 없음 — 결정 #1.**
+  - 처리: sharp EXIF 회전+512px 재정규화(메모리) → 후보쿼리(§5-④ SQL 그대로: `status IN ('pending','preparing','ready') AND is_deleted=0` → Node 에서 `order_items[i].status==='ready'`, 세트는 `set_items[i].status==='ready'` — set_components[i]↔set_items[i] 동일 인덱스 규칙 [[reference_set_component_stage_field]]) → `provider.embedImage(buffer)` → 메뉴당 max-pooling 코사인(§5-⑥, 서버 메모리 캐시) → 융합 랭킹 w_img 0.85 + w_time 0.15(§5-⑦) → 정책(§5-⑧ + **로컬 프로바이더 캡: auto→recommend 강등**) → recognition_logs INSERT → 응답(스키마 §4.1 JSON 그대로 + `seeding` 힌트 필드 추가).
+  - **candidates 의 `item_index`/`comp_index` 계약**: `item_index` = order_items 배열 인덱스, `comp_index` = 세트 구성품 인덱스(set_components/set_items 동일 인덱스이므로 프론트 FlatRow(ItemListView.tsx:96 `orderId/itemIndex/compIndex`)와 1:1 — [서빙] 이 기존 `handleServeItem(orderId,itemIndex,compIndex,true)`(FloorPlanPage.tsx:1105) 를 그대로 부를 수 있는 형태.
+  - **콜드스타트 자동 시드**: 매장의 활성 임베딩 레퍼런스가 0이면 recognize 는 즉시 `mode:'fallback', seeding:true` 반환(수동 리스트로 동작) + **백그라운드로 시드 킥오프**(매장당 in-flight 뮤텍스 1개, Product.image 있는 활성 상품 → menu_image 행 생성+임베딩). 로컬 임베딩이라 수 초 내 완료 — 두 번째 촬영부터 매칭. 별도 "활성화 버튼" 불필요(평이한 디바이스 설정 원칙 [[feedback_solution_standard_plain_device_setup]]).
+  - 프로바이더 실패/timeout 3s → `mode:'fallback'` (§10). 후보 0건 → `mode:'no_candidates'` (§4.1).
+- **refresh-embeddings = 시드 리컨실 단일 경로 (멱등)**: ① `Product.image` 있는 활성 상품 중 menu_image 행 없는 것 생성 (UNIQUE(product_id,image_url) 로 멱등) ② source='menu_image' 인데 image_url ≠ 현재 Product.image 인 행 is_active=false (이미지 교체 자연 반영 — **products 라우트 훅 불필요**, §3.1 의 훅 방식보다 단순) ③ `embedding IS NULL OR embedding_model != 현재` 재임베딩. B1 트리거 = 콜드스타트 자동 + RA 수동. SchedulerRun 야간 cron 은 B2([[reference_scheduler_run]] 패턴 명시 유지).
+- **reference-photos 업로드 저장**: multer memoryStorage → sharp 검증/리사이즈 → **`/var/www/uploads/reference-photos/`** + `/thumbnails/` 디스크 저장(imageProcessor.js:16-17 PRODUCTS_DIR 패턴 준용, base64 DB 인라인 금지 [[reference_image_storage_rule]], same-origin URL [[reference_upload_same_origin]]) → 행 INSERT + 즉시 임베딩. **레퍼런스는 매장이 의도 업로드한 자산이라 보존 — 무보존 대상은 손님/인식 스냅샷만** (결정 #1·#2 구분).
+- **프로바이더 인터페이스**: §2.2 `AIVisionProvider` 계약 그대로 `dev-backend/services/ai/` (services/ 디렉토리 실존 — dailyStatsScheduler.js 등과 동급). 팩토리 `services/ai/index.js`, env `AI_VISION_PROVIDER` 기본 **`local-color`** (B2 에서 `vertex` 로 전환). 구현체 추가 필드: `get maxMode()` — local-color 는 `'recommend'`, vertex 는 `'auto'` (정책 단계에서 min 적용).
+- **LocalColorProvider (`local-color-v1`) 스펙**: sharp 로 96×96 정규화 → 4×4 공간 그리드 × HSV 히스토그램(h8·s4·v4) + 그리드별 밝기/에지 통계 → **~288-dim float 벡터, L2 정규화** → 코사인. 결정적(같은 입력=같은 벡터)·외부 호출 0·<50ms. `embedding_model='local-color-v1'`, `embedding_dim=288`. 단위 테스트로 "동일 이미지 유사도 1.0 / 색 다른 이미지 < 임계" 계약 고정.
+- **VertexEmbeddingProvider (B2)**: REST `POST https://{loc}-aiplatform.googleapis.com/v1/projects/{p}/locations/{loc}/publishers/google/models/multimodalembedding@001:predict` + `google-auth-library` SA 토큰. env: `VERTEX_PROJECT_ID`/`VERTEX_LOCATION`/`GOOGLE_APPLICATION_CREDENTIALS`. B1 에서 어댑터 파일까지 작성해 두되(키 없으면 팩토리가 local-color 로 폴백 + 경고 로그 1회) 실검증은 B2.
+- **이미지 무보존 명문화**: recognize 경로에 `fs` 쓰기 코드 자체가 없어야 함(리뷰 체크포인트). `/var/www/uploads/recognition/` 류 디렉토리 생성 금지 (§10).
+
+### B-3. 3단계 — DB
+
+**신규 테이블 2 + plan_templates 시드 1 + operation_settings 키 1. 기존 테이블 ALTER 0 (orders/products 무접촉).**
+
+1. **`menu_reference_photos`** — §3.1 스키마 **그대로 채택** (컬럼 가감 없음: restaurant_id/product_id/image_url/thumbnail_url/source ENUM('menu_image','staff_upload')/embedding JSON/embedding_model/embedding_dim/is_active/created_by + UNIQUE(product_id,image_url)). 인덱스: (restaurant_id), (product_id). local-color-v1 벡터 288-dim ≈ 2.5KB/행 — 매장 100메뉴×5장=500행≈1.2MB, JSON+브루트포스로 충분(§2.1 — 벡터DB 불필요 재확인). Sequelize `models/MenuReferencePhoto.js` + models/index.js association(Restaurant.hasMany/Product.hasMany) + export 3점 세트.
+2. **`recognition_logs`** — §3.2 스키마 **그대로 채택** (이미지 컬럼 없음 — 결정 #1. query_embedding JSON 은 기본 NULL/OFF). 인덱스: (restaurant_id, created_at). `abandoned` 판정은 **쓰기 배치 없이 조회시 파생**(decision IS NULL AND created_at < NOW()-5min) — B1 은 정리 cron 을 만들지 않는다(가동부 최소화; §3.2 의 정리배치는 Beta 리포트와 함께). FK 는 restaurant_id 만 실제 constraint, order/product 참조는 soft(주문 삭제·상품 삭제에도 로그 생존 — 감사 데이터).
+3. **plan_templates 시드**: dev DB 실측 = id=3, name=`enterprise`, display_name=`Enterprise Plan`, plan_target=`restaurant`, **base_price_monthly=99.00**, included_modules 26개(advanced_inventory 등 상위 모듈이 여기에만 존재 — §3.3 실측 재확인). → `included_modules` 에 `ai_serving` append(이미 있으면 skip). **id=1 basic/id=2 professional 무접촉.** ⚠️ RM99 vs RM179 표기 불일치(§0-3)는 여전히 Irene 확인 대기 — 게이팅 구현과 무관.
+4. **`operation_settings.aiServing`** = `{ enabled: true, retainEvalVectors: false }` (§3.3). **필수: `settingsGuard.js:20 OPERATION_SETTINGS_ALLOWED_KEYS` 에 `'aiServing'` 추가** — 실측: crossSellEnabled 까지 등록된 화이트리스트에 미등록 키는 저장 round-trip 에서 조용히 wipe (requirePinForDiscount 잠복버그:29-31 주석의 그 함정). 저장→GET round-trip 검증 의무([[reference_model_getter_key_strip]]).
+5. **마이그레이션**: `dev-backend/scripts/migrate-ai-serving.js` 단일 멱등 스크립트 — CREATE TABLE IF NOT EXISTS ×2 + plan id=3 append + **말미 `process.exit(0)` 필수**([[reference_deploy_migration_must_exit]]). sync-database.js 는 신규 테이블/seed 를 못 다루므로([[reference_deploy_schema_drift]]) 이 스크립트가 단일 경로, 배포 체크리스트 등재. **롤백 = DROP TABLE 2개 + included_modules 에서 키 제거** — 주문/메뉴/설정 데이터 무영향.
+6. **cross-tenant 격리**: 모든 쿼리 restaurant_id 스코프(미들웨어가 :restaurantId 검증) + reference-photos/logs 의 :id 접근 시 소유 매장 재검증(IDOR — health-check 케이스로 고정, [[reference_idor_sweep]]).
+
+### B-4. 4단계 — UI
+
+#### B-4.1 구조 결정 — 신규 라우트가 아니라 **FloorPlan 풀스크린 오버레이** (§6.3 정정)
+
+§6.3 은 `/pos/serve-camera` 별도 lazy 페이지를 그렸으나 실측과 충돌: ① FloorPlan 실제 라우트는 `/restaurant/:restaurantId/floor-plan`(App.tsx:558) — 프론트 MODULE_GATED_ROUTES(ProtectedRoute.tsx:13)는 **정적 prefix startsWith 매칭**(:352)이라 `:restaurantId` 동적 경로를 게이트할 수 없음 ② FloorPlanPage 는 이미 **POS Terminal 풀스크린 오버레이 패턴**을 보유(:269, :582, :2566 — [[reference_floor_plan_pos_overlay]]) ③ 오버레이면 주문 상태·소켓·handleServeItem 컨텍스트를 그대로 공유(별도 페이지는 전부 재구축 필요). → **`AIServeCameraOverlay.tsx` (FloorPlan 하위, lazy import — POSTerminal 오버레이와 동일 방식, cross-chunk styled import 금지 TDZ 주의)**. App.tsx·라우트·MODULE_GATED_ROUTES **변경 0**.
+
+#### B-4.2 파일 계획 (프론트 신규 1 · 수정 2~3 / 백엔드 신규 6 · 수정 2)
+
+| 파일 | 신규/수정 | 내용 |
+|---|---|---|
+| `pages/FloorPlan/AIServeCameraOverlay.tsx` | 신규 (대) | 뷰파인더+셔터+결과카드+직접고르기 (아래 B-4.3) |
+| `pages/FloorPlan/FloorPlanPage.tsx` | 수정 (소) | hasModule 조회 + [Serve Cam] ZoneChip + 오버레이 state/렌더 + onServe 배선 |
+| `pages/FloorPlan/MenuPhotoGallery.tsx` | 수정 (소) | 카드 상세에 RA 전용 "인식 사진 N장 + 추가/삭제" 스트립 (B-4.5) |
+| `routes/ai-serving.js` | 신규 | B-2 엔드포인트 7개 |
+| `services/ai/{index,AIVisionProvider,LocalColorProvider,VertexEmbeddingProvider}.js` | 신규 4 | 팩토리+계약+구현체 |
+| `models/{MenuReferencePhoto,RecognitionLog}.js` (+index.js) | 신규 2+수정 | B-3 |
+| `scripts/migrate-ai-serving.js` | 신규 | B-3.5 |
+| `server.js` / `utils/settingsGuard.js` | 수정 (각 1~2줄) | 마운트 + aiServing 화이트리스트 |
+
+🔒 **무접촉 재확인**: 보호파일 8개 해당 0. FloorPlanPage 는 보호파일 아니나 인쇄 호출 블록(:347 useAutoPrintPoller, :996-1023, :1448-1450)이 있음 — **수정 지점은 chip row(:2091 부근)·오버레이 state·prop 배선뿐, 인쇄 블록 diff 0**. orders-crud.js/MainLayout/POSTerminalPage/KDS 는 열지 않는다. 구현 후 `check-print-guard.js` 변경 0건 필수.
+
+#### B-4.3 AIServeCameraOverlay — 화면 흐름 (§6.2 와이어프레임 계승 + B1 확정)
+
+```
+[진입] FloorPlan chip row 의 [Serve Cam] ZoneChip (Menu Photos 칩(:2091-2098) 옆, 모든 뷰 동일 위치)
+   │   hasModule('ai_serving') 미포함 → 칩 자체 미렌더(상위모듈 관례 §3.3; 미포함 매장에선 애초에 없는 기능이라
+   │   "자리 유지" 규칙 비적용 — 포함 매장에서는 항상 렌더, navigator.onLine=false 면 비활성+안내)
+   ▼
+[뷰파인더] getUserMedia({video:{facingMode:'environment'}}) 풀스크린 + 하단 셔터 1개 + [직접 고르기] 링크 + [닫기]
+   │   권한거부/미지원 → <input type=file accept=image/* capture=environment> 폴백 (§10)
+   │   열림과 동시에 fetchStatuses() 1회(후보 신선도) — 이후 기존 소켓이 최신화
+   ▼ 셔터 탭: canvas 512px JPEG 0.8 압축(§5-②) → POST recognize
+[분석 중] 촬영 스틸 + 스피너(로컬 ~0.3s) — 취소 가능
+   ▼
+[결과] mode 별 (§5-⑧ 표 그대로, B1 은 auto 없음):
+  recommend → 대형 카드 1: MenuThumb(Track A 재사용, 후보의 product_id lookup — productLookup prop) +
+              메뉴명 + loc 배지(ItemListView .loc 스타일) + 옵션 Tag + "조리완료 N분" + 확신도(% + 평이문구)
+              + [서빙 완료](대형) [재촬영]
+  pick      → 후보 카드 2~N 세로 나열(ready 오래된 순, 동일메뉴면 옵션 diff 굵게) — 탭=선택→[서빙] 확인
+  reshoot   → 안내 1줄 + [재촬영] [직접 고르기]
+  no_candidates → "지금 조리완료된 품목이 없어요" (빈 상태, 에러 아님)
+  fallback(+seeding) → ready 시간순 리스트 = 직접 고르기와 동일 화면 (+"메뉴 사진 준비 중" 1줄)
+   ▼ [서빙] 탭
+onServe(order_id, item_index, comp_index, true)  ← FloorPlanPage.handleServeItem(:1105) 그대로 — 낙관적
+   override·base_updated_at STALE_WRITE·roll-up 전부 기존 로직이 처리. 성공 후 outcome POST(비차단, §4.4)
+   ▼
+[완료 토스트 "A12 불고기덮밥 서빙"] → 뷰파인더 복귀 (연속 서빙)
+```
+
+- 소켓 무효화: 표시 중 후보가 order-updated 로 served/취소되면 카드에 "방금 서빙됨" 덮개 + 재조회 (§7 — FloorPlanPage 의 기존 상태 갱신을 props 로 받아 감지, 오버레이 자체 소켓 구독 신설 없음).
+- 스타일: posDisplayTheme CSS 변수만(신규 hex 최소), 터치 44px+([[feedback_touchscreen_no_keyboard]]), 버튼 최대 2개/화면(제로 트레이닝 §6.2), 이모지 금지. 확신도 이중 표기("91% · 확인해 주세요").
+- 카메라 스트림은 오버레이 unmount 시 `track.stop()` 필수(태블릿 배터리/LED).
+
+#### B-4.4 게이팅·권한
+
+- **UI**: FloorPlanPage 에 `useAllowedRoutes({ role: user.role, restaurantId })`(useAllowedRoutes.ts:59 — Restaurant Admin/Staff 지원 실측) → `hasModule('ai_serving')`. MainLayout 무접촉. 데모 매장은 백엔드 bypass 지만 UI 는 allowed-routes 응답 기준 — 데모 계정 응답이 Enterprise 상당(requireModule.js:14 데모=Enterprise 관례)임을 파일럿에서 확인, 아니면 데모 한정 표시 예외 1줄.
+- **역할**: 카메라 사용 = FloorPlan 접근 가능한 전 직원(서빙 직원 포함 — requirePosCounter 안 걺 §4 전문). 레퍼런스 사진 등록/삭제 = RA(§4.5 — 설정 wipe 계열 사고 예방 철학).
+- **백엔드가 진짜 게이트**(requireRestaurantModule) — UI 게이트는 cosmetic 이라는 원칙(requireModule.js:8-10 주석) 그대로.
+
+#### B-4.5 레퍼런스 사진 관리 UI — 신규 페이지 없이 MenuPhotoGallery 확장
+
+RA 로 로그인 시 갤러리 카드 상세 뷰(Track A 기존)에 "인식 사진" 스트립 추가: 현재 레퍼런스 N장 썸네일(menu_image/staff_upload 구분 배지) + [사진 추가](multipart 업로드 → API 5) + staff_upload 행 [삭제]. 신규 설정 페이지·라우트 0 — 사진이 이미 모여 있는 화면에 얹는 게 최소절단면이자 발견성 최고(러너가 "이 메뉴 자꾸 틀리네" → RA 가 같은 갤러리에서 바로 보강). RA 아닌 역할에는 스트립 미렌더(표시 전용 갤러리 그대로).
+
+#### B-4.6 i18n / 빈·로딩·에러·오프라인
+
+- `floorplan` ns 확장(Track A 의 menuPhotos.* 와 동일 관례, 신규 ns 안 만듦): `aiServe.open` "Serve Cam" / `aiServe.shoot` / `aiServe.analyzing` / `aiServe.confidence` / `aiServe.confirmServe` / `aiServe.retake` / `aiServe.pickManually` / `aiServe.noCandidates` / `aiServe.reshootHint` / `aiServe.justServed` / `aiServe.seeding` / `aiServe.offline` / `aiServe.cameraDenied` / `aiServe.referencePhotos` / `aiServe.addPhoto` 등 — **en→ko→zh→ms 4언어 전부** + `npm run i18n:verify`. 모듈 스코프 t() 금지.
+- 상태 전수: §10 표 전부 구현 대상(권한거부/미지원/오프라인/프로바이더실패/후보0/경합/3MB초과) — B1 추가분 = `seeding`(콜드스타트) 1건.
+- 시간 표시는 레스토랑 타임존(`operationSettings.timeZone`) — ItemListView.fmtTime(:141) 패턴.
+
+### B-5. 테스트·검증 (§11 계승 + B1 구체화)
+
+1. **jest `tests/ai-ranking.test.js`**: 코사인/max-pooling·융합점수·4구간 경계(0.80/0.90/0.95)·동일메뉴 pick 강등·**local-color maxMode 캡(auto 불가)**·후보 0/1건·LocalColorProvider 결정성 계약.
+2. **health-check 신규 `--category=ai`** (기존 카테고리 auth/security/pos/mobile/payment/referral 에 추가, 데모 매장 실측 조회 패턴:850 재사용): ready 품목 시드→recognize(고정 이미지)→후보 제약(preparing/served 제외·세트 set_items 규칙)→outcome→서빙 PATCH 후 후보 소멸→익명 401→타매장 403(IDOR)→**비 Enterprise 매장 403 MODULE_NOT_INCLUDED**→촬영 후 디스크에 신규 이미지 파일 0(무보존 계약). 멱등 정리.
+3. **UI mount**: headless-page-sweep 에 오버레이 open(Playwright `--use-fake-device-for-media-stream`) — 크래시 0·console.error 0. `/검증 --e2e` 대상(신규 UI 흐름).
+4. **가드**: check-print-guard **0건** + check-design-guard + i18n:verify + health-check 88/88 무회귀 + build:dev + SW_VERSION bump.
+5. **Fable 게이트 해당** (신규 시스템 + 플랜/과금 마이그 + 신규 외부연동 표면) — 구현 완료 후 Fable 점검, 그 후에만 배포.
+
+### B-6. 구현 순서 (Opus 착수용 — B1)
+
+1. **마이그+모델**: migrate-ai-serving.js(테이블 2+plan seed) → models 2+index.js → dev 실행·round-trip 확인.
+2. **AI 서비스층**: services/ai 4파일(계약/팩토리/LocalColorProvider 완성/Vertex 어댑터 스켈레톤) + jest ai-ranking 통과.
+3. **라우터**: routes/ai-serving.js 7 엔드포인트 + server.js 마운트 + rate limiter + 콜드스타트 시드 + settingsGuard 'aiServing' — curl 실호출로 recognize/outcome/ready-items 계약 검증(데모 id=38).
+4. **health-check ai 카테고리** 작성·통과 (백엔드 완결 증명 후 프론트 진입).
+5. **프론트**: FloorPlanPage 배선(hasModule/칩/오버레이) → AIServeCameraOverlay(뷰파인더→결과→서빙 연속 흐름) → i18n 4언어.
+6. **갤러리 레퍼런스 스트립**(RA 업로드/삭제) + refresh-embeddings 수동 버튼.
+7. **검증 전체**(B-5) → Fable 게이트 → Irene 실기기(태블릿 카메라) 확인 → 파일럿.
+
+B2(별도 세션, Irene 키 확보 후): google-auth-library + Vertex env + refresh-embeddings 전량 재임베딩 + auto 모드 해금 + 정확도 A/B(eval 하네스 §11.4).
+
+### B-7. Irene 결정 필요 (구현과 병행 가능 — B1 은 어느 결정도 블로킹 안 됨)
+
+1. **실 프로바이더 키**: Vertex(권장 — §2.2 근거 유지, GCP 프로젝트+서비스계정 필요, 원가 ~US$0.0001–0.0002/인식 = 매장 월 $1–7)를 **언제 켤지**. B1 로컬 매칭은 무비용이나 정확도 한계 명확 — 파일럿 데이터로 필요성 입증 후 결정해도 됨.
+2. **Enterprise 월가 RM99 vs RM179** (dev DB 실측 99.00 재확인 — §0-3 미결 그대로).
+3. **B1 파일럿 범위**: 데모(id=38) 검증 후 실매장 1곳(thefire 후보 §12) 투입 여부·시점.
+4. (선택) 레퍼런스 업로드 UI(B-4.5)를 B1 에 포함(권장, 소규모) vs B2 로 미룰지 — 기본 포함으로 진행.
+
+---
+
+## 사업 전략 + 개발 퀄리티 평가 (Fable, 2026-07-06)
+
+> 관점: 예스맨 금지 — 실데이터·실코드 기반 냉정 평가. 이 섹션의 모든 수치는 2026-07-06 실측 (dev DB / **운영 DB read-only 쿼리** / 구현 코드 전량 리딩).
+
+### 실측 사실 (평가 전체의 토대 — 설계 가정과 어긋나는 것 포함)
+
+| 항목 | 실측 | 설계/전달값과의 차이 |
+|---|---|---|
+| Enterprise 월가 | **운영 DB = RM99.00** (basic 29 / professional 59 / enterprise 99 — dev 와 동일) | **RM179 는 오류 확정** (§0-3 미결 → 해소). 메모리의 "basic 49/pro 99/ent 179"도 낡음 |
+| thefire 실주문량 | 운영 30일: id=16 **468 품목라인**(≈16접시/일), id=24 170, id=25 9, id=5(레거시) 135 | §9 비용모델의 "10k–35k 인식/월" 가정은 **현 플래그십 대비 20–70배 과대**. 전량 촬영+재촬영 3배로 잡아도 ≈1.5k/월 |
+| thefire 플랜 | id=5·16 = **Enterprise** / id=24·25 = **Professional** | Enterprise 게이팅이면 **thefire 3매장 중 1곳(최다 매출 id=16)만** 기능 획득 — 파일럿엔 오히려 적합 |
+| 메뉴사진 커버리지 | thefire(16/24/25) 활성상품 126 중 **122 사진 보유(97%)** | 자동시드 레퍼런스 데이터는 이미 충분 — Track A "사진 채우기 유도"는 thefire 에선 불필요했음 |
+| 실사용 | recognition_logs = **0건** (dev·미배포) | 수요는 아직 100% 가설 |
+
+### 1. 팔 만한가 — **조건부 Go (Enterprise 차별화 자산으로. 단독 수익 동력으로는 No)**
+
+- **정직한 페인 평가**: 제약매칭 원리(§1.2)가 역설을 품고 있다 — 후보가 3~8개로 좁기 **때문에** 정확도가 나오지만, 후보가 3~8개면 **Track A 의 Items 뷰(사진+테이블+옵션)에서 눈으로 고르는 데 2~3초**면 된다. 카메라가 절약하는 건 그 2~3초와 "메뉴 이름을 모르는 신입"의 인지 부담이다. thefire 규모(피크에 ready 1~3개)에서는 **운영 페인 자체가 작다**. 이 기능의 실질 가치는 ①메뉴 100+·회전 빠른 대형 매장/푸드코트(= 우리가 앞으로 잡을 고객) ②신입/외국인 직원 많은 매장 ③**세일즈 데모 임팩트**다.
+- **경쟁 포지셔닝**: 말레이시아 경쟁(StoreHub·Feedme·Slurp·Qashier)·글로벌(Toast/Square) 어디에도 "카메라로 접시→주문 매칭" 기능은 없다(2026-01 지식 기준). Toast 는 KDS·타이머까지, Square 는 KDS 뿐. **"AI가 서빙을 아는 POS"는 데모 30초짜리 차별화 스토리**이고, 모바일오더 정체성과도 충돌하지 않는다(모바일 주문일수록 카운터 직원이 주문을 못 봤으므로 서빙 인계 페인이 더 큼 — 오히려 정합).
+- **결론**: 매장이 이것 "때문에" 돈을 더 내진 않는다. 그러나 **RM99 Enterprise 번들의 체감 가치와 세일즈 전환율을 올리는 자산**으로서는 이미 지불한 개발비(B1 완료) 대비 유지비 ~0 이므로 버릴 이유가 없다. 추가 투자는 실사용 데이터가 정당화할 때만.
+
+### 2. 모델 전략 — **A(Vertex 임베딩) 유지. 단, B2 배선은 파일럿 사용량 확인 후. B1 은 골격으로 정확히 제 역할**
+
+- **실측 볼륨이 계산을 뒤집는다**: 실제 ~0.5–2k 인식/월/매장에서 — A(임베딩) ≈ **$0.1–0.4/월**, B(비전 LLM, Haiku 4.5 급) ≈ **$1–12/월**. "B는 월 $60–180라 불가"는 3만회 가정에서만 참이고 **실볼륨에선 B도 흡수 가능**하다. 그럼에도 A 를 추천하는 이유는 비용이 아니라: ①지연(0.3–0.5s vs 1–3s — "~1초" 제품 약속) ②결정성(같은 사진=같은 벡터, 캘리브레이션·평가 하네스 §11.4 성립) ③프롬프트 유지보수 0 ④레퍼런스 사진 추가=즉시 반영이라는 §0-2 학습 모델과의 정합. 비전 LLM 은 설계 §2.2 의 **judge 폴백/혼동페어 크로스체크 슬롯**(오프라인 평가용)으로만 — 실시간 경로 금지.
+- **B1(색)의 위치**: 실사용 엔진이 아니라 **파이프라인 증명 + 사용량 계측기**다. 갈색 덮밥 2개를 못 가르는 건 사실이고, 코드가 이를 정직하게 캡했다(`maxMode='recommend'`, ranking.js:50 — auto 금지). B1 성적표로 정확도를 논하지 말 것 — B1 이 측정하는 건 정확도가 아니라 **채택률**이다.
+- **운영 서버 부담**: A/B 모두 외부 API 라 상주 메모리 0 — 자원부족 서버([[reference_prod_server_resource_constraint]])에 안전. LocalCLIP(onnx 수백 MB 상주)을 Prod 유보한 §B-0 판단은 옳다. B1 sharp 임베딩은 요청당 <50ms·시드 시 122장 버스트뿐 — 허용 범위.
+- **공정사용 상한**: 30k 백스톱 유지(비용 아닌 남용 방지). 실볼륨에서 걸릴 일 없음 — 종량 과금 설계는 **불필요**(청구 복잡도만 늘림).
+
+### 3. 가격·패키징 — **Enterprise 포함 유지 (RM99 확정). 별도 애드온 금지**
+
+- **RM99 vs RM179 → 운영 DB 실측 RM99 로 종결.** basic 29/professional 59/enterprise 99 (dev=운영 동일). 랜딩·세일즈 자료·메모리의 RM179/49 표기는 전부 정정 대상.
+- 이 기능 단독으로 RM99 를 정당화하진 못한다(Professional 과의 RM40 갭은 advanced_inventory 등 26개 모듈 번들이 정당화). 그러나 원가 회수 계산은 무의미할 정도로 유리: **Enterprise 1매장의 월 갭 RM40 ≫ Vertex 원가 <RM2**. 즉 "몇 매장이 써야 회수되나"의 답 = **1매장, 첫 달**.
+- **별도 애드온 과금 반대**: 수요 미검증 기능에 과금 SKU·인보이스·게이팅 축을 추가하는 건 첫 유료출시 감사([[project_paid_launch_audit]])에서 확인한 청구 복잡도 리스크를 재생산한다. Enterprise 업셀 스토리("AI 서빙 포함")로만 쓰는 게 옳다.
+
+### 4. Go-to-market — **파일럿 = thefire id=16 (Enterprise·사진 97%·최다 볼륨). 성공지표는 정확도보다 채택률**
+
+1. **순서**: dev 배포 → 데모(id=38, 모듈 bypass 실측 확인됨) 스모크 → **thefire id=16** 실기기(태블릿 카메라) 투입. id=24/25 는 Professional 이라 게이팅상 제외 — 파일럿 통제군으로 오히려 유용.
+2. **성공지표 (4주)**: ①**채택률 — served 품목 중 Serve Cam 경유 ≥30%** (이게 본질 지표. 안 쓰면 정확도는 무의미) ②카메라 시도 중 top1 채택(picked_other 아님) ≥70%(B1 색기반 기준; B2 후 §12 의 85% 적용) ③reshoot+이탈 ≤20% ④서빙 소요·인계 구두설명 감소 체감(Irene 인터뷰).
+3. **B2 트리거**: 채택률 지표 통과 + "동일색 메뉴 혼동" 로그가 실제로 쌓일 때만 Vertex 키 발급. 그 전 GCP 프로젝트 만들 필요 없음.
+4. **접는 조건 (명시)**: 4주 채택률 <10% 이면 **B1 에서 동결** — 코드 유지(세일즈 데모 + Enterprise 번들 문구용), B2·Beta(리포트/optPrior) 개발 중단. 데모 자산으로서의 가치는 남으므로 제거는 안 함.
+5. 볼륨이 16접시/일인 매장에서 4주 = 시도 수백 건 — 통계적으론 얇다. 지표는 흐름 판단용이지 논문용이 아님을 전제.
+
+### 5. 개발 퀄리티 평가 — **판정: 프로덕션급 골격. B1-first 는 옳은 결정. 구조 재작업 불필요, B2 전 필수 작업 1건(확신도 캘리브레이션)**
+
+- **B1 을 먼저 지은 게 옳았나 — 옳았다.** 근거: 서버에 AI 키 0개(§B-0 실측)라 "처음부터 임베딩" = Irene 의 GCP 결정에 블로킹당한 채 대기였다. B1 은 키 없이 파이프라인·DB·API·UI·게이팅·로그·테스트를 전부 실물로 완성했고, 프로바이더 교체가 종이 약속이 아님을 팩토리 폴백(services/ai/index.js:14-22 — vertex 키 없으면 경고 1회 후 local-color)으로 증명했다. 유일한 위험은 "색깔 성적을 제품 성적으로 오독"하는 것 — §B-0 과 maxMode 캡이 이미 방어.
+- **코드 품질 (전량 리딩 근거)**: 설계→구현 충실도가 높다. ①추상화 실재(AIVisionProvider 계약 + LocalColor 완성 + Vertex 스켈레톤 `isConfigured()` 폴백) ②ranking.js 순수함수 + **동일메뉴 다중주문 무조건 pick 강등**(ranking.js:60-61 — "조용히 하나 찍지 않는다" §1.2-4 구현) ③무보존 계약 준수(recognize = memoryStorage 만, 디스크 쓰기 코드 0 — routes/ai-serving.js 검증, health-check 이 파일 0바이트까지 검사) ④게이팅 3단+IDOR+rate limit(30/분/유저·매장 복합키) ⑤콜드스타트 시드 뮤텍스+멱등 리컨실(UNIQUE(product_id,image_url)) ⑥오버레이 unmount 시 `track.stop()`(:73-75, 배터리/LED) ⑦서빙 전이 = 기존 onServe 재사용(신규 전이 API 0, 인쇄 8파일 무접촉). health-check ai 카테고리·jest 계약 테스트 실재.
+- **정직한 결함 목록 (치명 아님, 기록)**:
+  1. **[B2 전 필수] 확신도 = fused_score 원값** (routes/ai-serving.js:186 `confidence: r.fused_score`). §5-⑧ 의 margin 기반 sigmoid 보정 미구현. 색 히스토그램은 전 성분 양수 벡터라 코사인이 구조적으로 높게 몰림 → 0.90/0.80 밴드가 과잉 recommend 를 낳는다. B1 은 사람확정 캡이라 무해하나, **auto 해금(B2) 전 recognition_logs 기반 재캘리브레이션은 선택이 아니라 의무** (설계도 §5-⑧에 명시 — 알려진 갭이지 은닉 버그 아님).
+  2. seedFromProductImages 의 `fs.readFileSync` 루프(:127) — 122장 시드 시 이벤트루프 블로킹 버스트. 콜드스타트 1회성이라 허용하되 운영 투입 시 pm2 CPU 관찰 대상.
+  3. 오버레이 결과 화면에 소켓 무효화 부재(§B-4.3 의 "방금 서빙됨" 덮개 미구현) — 타 직원 선서빙 시 스테일 카드. 기존 PATCH forward-only 가드 덕에 무해한 no-op 이지만 UX 개선 여지.
+  4. 오버레이 하드코딩 hex(#10B981/#635BFF 등) — 풀스크린 카메라 다크 컨텍스트라 실용적이나 posDisplayTheme 변수 원칙과는 어긋남. 디자인가드 baseline 처리 확인 필요.
+  5. recognize 가 `req.file` 검증 전에 후보 쿼리 실행(:151→161) — 사진 누락 요청도 DB 왕복. 사소.
+- **진짜 모델 끼우면 프로덕션감인가 — 그렇다.** B2 = VertexEmbeddingProvider.embedImage 1개 구현 + env 3개 + `npm i google-auth-library` + refresh-embeddings 전량 재임베딩 + 캘리브레이션. 구조 재작업 0. `embedding_model` 태깅이 모델 혼용 비교를 이미 차단.
+- **개발 우선순위 — 여기서 멈추는 게 맞다.** 오프라인 모드(주문·인쇄 생명선 직결 [[project_offline_mode]])·안드로이드/데스크탑 앱·IOI 몰 API·유료출시 감사 잔여가 전부 **실매출·실운영**에 닿는 반면, 이 기능은 수요 가설 단계다. B1 완료 상태가 정확히 투자 적정선 — **파일럿은 개발이 아니라 관찰**(배포 1회 + 로그 열람)만 소모한다. B2 착수는 §4 트리거 충족 시에만.
+
+### 6. 최종 권고
+
+- **Go/No-Go: 조건부 Go** — Enterprise 차별화 자산으로 파일럿까지만 진행, 추가 개발(B2·Beta)은 채택률 데이터가 정당화할 때. 안 쓰이면 B1 동결(데모 자산화)이 손절선.
+- **다음 1개 액션**: dev 배포 + 데모(id=38) 스모크 → **thefire id=16 파일럿 투입**(실기기 카메라 확인 포함) → 4주 recognition_logs 관찰.
+- **Irene 결정사항**:
+  1. **Enterprise 월가 = RM99 확정 공표** (운영 DB 실측 — RM179 표기 전면 정정: 랜딩/세일즈 자료/메모리).
+  2. **파일럿 승인**: thefire id=16, 4주, 지표 = 채택률 ≥30% / top1 채택 ≥70% / reshoot ≤20%. (id=24/25 는 Professional — 게이팅상 제외 유지 동의 여부.)
+  3. **Vertex(GCP) 키**: 지금 만들지 **않고** 파일럿 채택률 통과 시 발급 — 동의 여부.
+  4. **접는 조건 합의**: 4주 채택률 <10% → B1 동결·B2/Beta 중단(코드는 데모용 유지).
+  5. (선택) 랜딩/Enterprise 소개에 "AI 카메라 서빙" 노출 시점 — 파일럿 후(권장) vs 즉시.
+- **리소스 배분**: 이 기능 신규 개발 0 (파일럿 관찰만). 개발 여력은 오프라인 모드·앱·유료출시 잔여로.
+
