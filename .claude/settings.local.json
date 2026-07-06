@@ -1038,7 +1038,16 @@
       "Bash(pkill -f \"ui-layout-sweep\")",
       "Bash(pkill -f \"chromium.*headless\")",
       "Bash(rm -f /tmp/uisweep.log /tmp/ra5.txt)",
-      "Bash(awk '/not assignable/{found=NR} found && NR>=found-15 && NR<=found {print}' /tmp/fbuild.log)"
+      "Bash(awk '/not assignable/{found=NR} found && NR>=found-15 && NR<=found {print}' /tmp/fbuild.log)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(rm -f /var/www/dev-backend/test-idem-hc.js)",
+      "Bash(echo \"EXIT_PLAIN: $?\")",
+      "Bash(echo \"EXIT_SUMMARY: $?\")",
+      "Bash(echo \"SSH_EXIT=$?\")",
+      "Bash(pkill -f \"b2lzejhvc\\\\|b4grvxj9i\")",
+      "Bash(pkill -f \"pcz.js\\\\|prod-cleanup\")",
+      "Bash(awk '/## \\\\[Unreleased\\\\]/{f=1} f{print} /## \\\\[v?3\\\\.6/{if\\(f>1\\)exit; f++}' CHANGELOG.md)",
+      "Bash(echo \"EXIT_or_clean=$?\")"
     ],
     "deny": [],
     "ask": []

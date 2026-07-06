@@ -197,5 +197,19 @@
   "itemTag.pickup": "픽업",
   "itemTag.delivery": "배달",
   "itemTag.dine_in": "매장",
-  "tableDetailPanel.newSeparateOrder": "새 주문"
+  "tableDetailPanel.newSeparateOrder": "새 주문",
+  "menuPhotos.open": "메뉴 사진",
+  "menuPhotos.openHint": "메뉴 사진 보기",
+  "menuPhotos.title": "메뉴 사진",
+  "menuPhotos.search": "메뉴 검색",
+  "menuPhotos.allCategories": "전체 카테고리",
+  "menuPhotos.empty": "메뉴 없음",
+  "menuPhotos.noPhoto": "사진 없음",
+  "menuPhotos.soldOut": "품절",
+  "menuPhotos.back": "뒤로",
+  "itemSheet.close": "닫기",
+  "itemSheet.options": "옵션",
+  "itemSheet.qty": "수량",
+  "itemSheet.table": "위치",
+  "itemSheet.viewPhoto": "사진 보기"
 }

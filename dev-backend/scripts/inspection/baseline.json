@@ -1,4 +1,7 @@
 {
+  "referential": [
+    "S-REF-006 유저 매장 스코프 참조 유효 (restaurant_id)"
+  ],
   "supply-chain": [
     "R-SC-006 재고 카테고리 연결 (카테고리 있는 오너)"
   ]

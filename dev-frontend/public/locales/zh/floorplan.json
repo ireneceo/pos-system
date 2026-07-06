@@ -197,5 +197,19 @@
   "itemTag.pickup": "自取",
   "itemTag.delivery": "外送",
   "itemTag.dine_in": "堂食",
-  "tableDetailPanel.newSeparateOrder": "新订单"
+  "tableDetailPanel.newSeparateOrder": "新订单",
+  "menuPhotos.open": "菜单照片",
+  "menuPhotos.openHint": "浏览菜单照片",
+  "menuPhotos.title": "菜单照片",
+  "menuPhotos.search": "搜索菜单",
+  "menuPhotos.allCategories": "所有类别",
+  "menuPhotos.empty": "无菜单项",
+  "menuPhotos.noPhoto": "无照片",
+  "menuPhotos.soldOut": "售罄",
+  "menuPhotos.back": "返回",
+  "itemSheet.close": "关闭",
+  "itemSheet.options": "选项",
+  "itemSheet.qty": "数量",
+  "itemSheet.table": "位置",
+  "itemSheet.viewPhoto": "查看照片"
 }

@@ -197,5 +197,19 @@
   "itemTag.pickup": "PICKUP",
   "itemTag.delivery": "DELIVERY",
   "itemTag.dine_in": "DINE-IN",
-  "tableDetailPanel.newSeparateOrder": "New Order"
+  "tableDetailPanel.newSeparateOrder": "New Order",
+  "menuPhotos.open": "Menu Photos",
+  "menuPhotos.openHint": "Browse menu photos",
+  "menuPhotos.title": "Menu Photos",
+  "menuPhotos.search": "Search menu",
+  "menuPhotos.allCategories": "All categories",
+  "menuPhotos.empty": "No menu items",
+  "menuPhotos.noPhoto": "No photo",
+  "menuPhotos.soldOut": "SOLD OUT",
+  "menuPhotos.back": "Back",
+  "itemSheet.close": "Close",
+  "itemSheet.options": "Options",
+  "itemSheet.qty": "Qty",
+  "itemSheet.table": "Location",
+  "itemSheet.viewPhoto": "View photo"
 }

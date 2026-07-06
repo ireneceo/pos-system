@@ -8,6 +8,9 @@ import SearchableSelect from '../../components/Common/SearchableSelect';
 import { computePrep, getServedDurationMin, PrepTimerChip } from '../../utils/prepTimer';
 import { useAuth } from '../../contexts/AuthContext';
 import { playPresetSound } from '../../utils/notificationSound';
+import MenuThumb from './MenuThumb';
+import ItemPhotoSheet from './ItemPhotoSheet';
+import { ProductPhotoInfo } from './productImageMap';
 
 /**
  * 아이템별 리스트 (Expo / Runner) — 서빙(홀) 직원용 (2026-06-03).
@@ -45,6 +48,12 @@ const Card = styled.div<{ $served?: boolean; $active?: boolean; $color: string }
   &:hover { border-color: ${p => (p.$active ? p.$color : 'var(--pos-brand, #C7D2FE)')}; }
 `;
 const PillCell = styled.div` display: flex; padding: 10px 0 10px 10px; flex-shrink: 0; width: 132px; box-sizing: border-box; `;
+const ThumbCell = styled.button`
+  display: flex; align-items: center; align-self: center; flex-shrink: 0;
+  padding: 0 0 0 8px; border: none; background: none; cursor: pointer; appearance: none;
+  &:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(99,91,255,0.35); border-radius: 8px; }
+  @media (max-width: 480px) { padding-left: 6px; }
+`;
 const Body = styled.div` flex: 1; min-width: 0; padding: 10px 14px; display: flex; flex-direction: column; gap: 5px; `;
 const Line1 = styled.div`
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
@@ -89,6 +98,7 @@ interface FlatRow {
   status: string; loc: string; isTakeaway: boolean; tableNumber: string | null; offType: string | null;
   orderTime: string | null; servedAt: string | null; category: string; stationId: string; stationName: string;
   servedCount: number; totalCount: number; setServed: number; setTotal: number;
+  productId: number | null;
 }
 
 interface ItemListViewProps {
@@ -109,17 +119,20 @@ interface ItemListViewProps {
   onServe: (orderId: number, itemIndex: number, compIndex: number | null, makeServed: boolean) => void;
   onOpenDineIn: (tableNumber: string, orderId: number) => void;
   onOpenTakeaway: (orderId: number) => void;
+  productLookup?: (productId?: number | null, name?: string) => ProductPhotoInfo | null;
 }
 
 const optList = (x: any): string[] => (Array.isArray(x.options) ? x.options : []).map((o: any) => typeof o === 'string' ? o : (o?.name || '')).filter(Boolean);
 
-const ItemListView: React.FC<ItemListViewProps> = ({ dineInOrders, takeawayOrders, activeOrderId, categoryByName = {}, stationById = {}, categories = [], stations = [], timezone, prepMinutes = 15, prepTracking = false, prepPerItem = 10, prepThreshold = 80, audioEnabled = true, soundType = 'bell', onServe, onOpenDineIn, onOpenTakeaway }) => {
+const ItemListView: React.FC<ItemListViewProps> = ({ dineInOrders, takeawayOrders, activeOrderId, categoryByName = {}, stationById = {}, categories = [], stations = [], timezone, prepMinutes = 15, prepTracking = false, prepPerItem = 10, prepThreshold = 80, audioEnabled = true, soundType = 'bell', onServe, onOpenDineIn, onOpenTakeaway, productLookup }) => {
   const { t } = useTranslation(['floorplan', 'common']);
   const { hasPermission } = useAuth();
   const [search, setSearch] = useState('');
   const [catFilter, setCatFilter] = useState('all');
   const [stationFilter, setStationFilter] = useState('all');
   const [sortBy, setSortBy] = useState<'time' | 'name' | 'stage'>('time');
+  // 사진 시트: 열린 row 를 key 로 추적 → 소켓 갱신으로 row 가 사라지면 자동 닫기(§A-4.4).
+  const [sheetKey, setSheetKey] = useState<string | null>(null);
 
   // 상대 시간("몇 분 전")이 살아 움직이도록 30초마다 갱신.
   const [now, setNow] = useState(() => Date.now());
@@ -175,14 +188,16 @@ const ItemListView: React.FC<ItemListViewProps> = ({ dineInOrders, takeawayOrder
             out.push({ key: `${oid}-${idx}-${ci}`, orderId: oid, itemIndex: idx, compIndex: ci,
               name: c.name || 'Item', qty: (c.qty || c.quantity || 1) * (item.quantity || 1), opt: optList(c), setName: baseName,
               status: String(c.status || item.status || status || 'pending'), loc, isTakeaway, tableNumber, offType,
-              orderTime, servedAt: c.served_at || null, ...m, servedCount, totalCount, setServed, setTotal });
+              orderTime, servedAt: c.served_at || null, ...m, servedCount, totalCount, setServed, setTotal,
+              productId: c.product_id ?? null });
           });
         } else {
           const m = meta(baseName, item);
           out.push({ key: `${oid}-${idx}`, orderId: oid, itemIndex: idx, compIndex: null,
             name: baseName, qty: item.quantity || 1, opt: optList(item), setName: null,
             status: String(item.status || status || 'pending'), loc, isTakeaway, tableNumber, offType,
-            orderTime, servedAt: item.served_at || null, ...m, servedCount, totalCount, setServed: 0, setTotal: 0 });
+            orderTime, servedAt: item.served_at || null, ...m, servedCount, totalCount, setServed: 0, setTotal: 0,
+            productId: item.product_id ?? item.menuItem?.id ?? null });
         }
       });
     };
@@ -243,6 +258,9 @@ const ItemListView: React.FC<ItemListViewProps> = ({ dineInOrders, takeawayOrder
   const activeCount = rows.filter(r => toDisplayStatus(r.status) !== 'served').length;
   const readyCount = rows.filter(r => toDisplayStatus(r.status) === 'ready').length;
   const openPanel = (r: FlatRow) => { if (r.isTakeaway) onOpenTakeaway(r.orderId); else if (r.tableNumber) onOpenDineIn(r.tableNumber, r.orderId); };
+  // 사진 시트 대상 row — 소켓 갱신으로 사라지면 자동 닫기.
+  const sheetRow = useMemo(() => (sheetKey ? rows.find(r => r.key === sheetKey) || null : null), [rows, sheetKey]);
+  useEffect(() => { if (sheetKey && !rows.some(r => r.key === sheetKey)) setSheetKey(null); }, [rows, sheetKey]);
 
   return (
     <Wrap>
@@ -316,6 +334,16 @@ const ItemListView: React.FC<ItemListViewProps> = ({ dineInOrders, takeawayOrder
                     </PillLines>
                   </ItemStatusPill>
                 </PillCell>
+                {productLookup && (() => {
+                  const ph = productLookup(r.productId, r.name);
+                  return (
+                    <ThumbCell type="button"
+                      onClick={(e) => { e.stopPropagation(); setSheetKey(r.key); }}
+                      title={t('floorplan:itemSheet.viewPhoto', { defaultValue: 'View photo' })}>
+                      <MenuThumb src={ph?.thumb} name={r.name} size={44} />
+                    </ThumbCell>
+                  );
+                })()}
                 <Body>
                   <Line1>
                     {r.offType ? (() => { const tc = getOrderTypeColors(r.offType); return <span className="loc" style={{ background: tc.bg, color: tc.text, border: `1px solid ${tc.border}` }}>{r.loc}</span>; })() : <span className="loc">{r.loc}</span>}
@@ -353,6 +381,14 @@ const ItemListView: React.FC<ItemListViewProps> = ({ dineInOrders, takeawayOrder
           })}
         </List>
       )}
+      <ItemPhotoSheet
+        open={!!sheetRow}
+        onClose={() => setSheetKey(null)}
+        row={sheetRow}
+        photo={sheetRow ? (productLookup?.(sheetRow.productId, sheetRow.name) || null) : null}
+        onServe={onServe}
+        timezone={timezone}
+      />
     </Wrap>
   );
 };

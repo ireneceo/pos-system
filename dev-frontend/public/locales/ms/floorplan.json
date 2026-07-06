@@ -197,5 +197,19 @@
   "itemTag.pickup": "AMBIL",
   "itemTag.delivery": "HANTAR",
   "itemTag.dine_in": "MAKAN SINI",
-  "tableDetailPanel.newSeparateOrder": "Pesanan Baru"
+  "tableDetailPanel.newSeparateOrder": "Pesanan Baru",
+  "menuPhotos.open": "Foto Menu",
+  "menuPhotos.openHint": "Lihat foto menu",
+  "menuPhotos.title": "Foto Menu",
+  "menuPhotos.search": "Cari menu",
+  "menuPhotos.allCategories": "Semua kategori",
+  "menuPhotos.empty": "Tiada item menu",
+  "menuPhotos.noPhoto": "Tiada foto",
+  "menuPhotos.soldOut": "HABIS DIJUAL",
+  "menuPhotos.back": "Kembali",
+  "itemSheet.close": "Tutup",
+  "itemSheet.options": "Pilihan",
+  "itemSheet.qty": "Kuantiti",
+  "itemSheet.table": "Lokasi",
+  "itemSheet.viewPhoto": "Lihat foto"
 }

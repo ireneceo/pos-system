@@ -517,3 +517,186 @@ recognition_logs INSERT (§3.2) → 응답. outcome 은 §4.4.
 - 파일럿 매장: 데모(dev id=38) → 실매장 1곳(thefire?). 성공 기준 제안: 2주, top1 정확률 ≥85% + reshoot 비율 ≤15% → 전 Enterprise 매장 오픈.
 
 — 기술 디테일(가중치·임계 초기값·프로바이더 기본 vertex·테이블 스키마)은 위 설계대로 진행하고 결과로 보고한다.
+
+---
+
+## Track A 구현 설계 (기능설계, 2026-07-06)
+
+> 작성: Fable 설계 세션. 범위 = **Track A 만** (AI/카메라/임베딩 전혀 없음 — §1.1 Track A 정의). 구현은 Opus 세션이 이어받는다.
+> 모든 판단은 실코드 실측 기반 — 근거 파일:라인을 각 항목에 병기.
+
+### A-1. 1단계 — 기능 정의
+
+- **기능명**: 서빙 메뉴 사진 표시 (Track A — Serving Menu Photos)
+- **목적**: 서빙/홀 직원이 접시를 들고 "이게 무슨 메뉴지? 옵션이 뭐지? 어느 테이블이지?"를 화면 한 번으로 해결. 기존 상품 이미지(`Product.image`/`image_thumbnail`)를 서빙 동선(Floor Plan)에 노출하는 **순수 표시 기능**.
+- **핵심 사용자**: ① 서빙/홀 직원(Expo/Runner — ItemListView 주 사용자, 태블릿) ② 신입 직원(메뉴 학습) ③ RA(부수효과 — 사진 없는 메뉴가 보이므로 사진 등록 유도).
+- **유스케이스**:
+  1. 러너가 아이템 리스트(Items 뷰)에서 ready 품목 행의 **썸네일**을 보고 접시와 대조 → 헷갈리면 썸네일 탭 → **큰 사진 + 옵션 + 테이블 + [서빙]** 시트에서 확인 후 그 자리에서 서빙 처리.
+  2. 홀 직원이 테이블 상세 패널(TableDetailPanel)에서 품목 줄의 **소형 썸네일**로 주문 구성을 시각 확인 (동작 변경 0 — 표시만).
+  3. 신입 직원이 FloorPlan 어느 뷰에서든 **[Menu Photos] 칩** 한 번 탭 → 전체 메뉴 사진 갤러리(검색+카테고리 필터) → 카드 탭 = 확대 + 가격/옵션그룹/설명.
+  4. RA가 갤러리에서 "No photo" 플레이스홀더가 많은 것을 보고 메뉴 관리에서 사진을 채움 → **Track B 레퍼런스 시드 데이터(§3.1a)가 저절로 쌓임**.
+  5. 세트 주문 서빙: 세트 구성품 행에도 구성품 단품의 사진이 뜸(이름 매칭) → "이 반찬이 세트 몫인가"를 사진으로 판별.
+- **기존 시스템과의 관계**: 검증 완료된 서빙 뷰(`docs/SERVING_VIEW_DESIGN.md`, ItemListView 2026-06-03) **위에 표시 레이어만 얹는다**. 단계 전이·주문 데이터·인쇄·KDS 로직 무변경.
+- **성공 기준**: ① Items 뷰/테이블 패널에 사진 있는 메뉴 100% 썸네일 표시(없으면 이니셜 플레이스홀더) ② 갤러리 1탭 진입(모든 FloorPlan 뷰) ③ 기존 서빙 토글·패널 열기 동작 회귀 0 ④ check-print-guard 변경 0.
+- **비범위 (Track B — 본 설계에서 만들지 않음)**: 카메라/촬영/getUserMedia, 임베딩·인식 API, `menu_reference_photos`·`recognition_logs` 테이블, 레퍼런스 사진 다중 업로드 설정 화면, `ai_serving` 모듈 게이팅 마이그레이션. **Track A가 놓는 토대 = 데이터가 아니라 행동**: 사진 등록률 상승(→ Track B 자동 시드 §3.1a 원료) + 품목↔상품 이미지 lookup 유틸(Track B 후보 카드가 재사용).
+- **게이팅 판단 (범위 결정 — 근거 명기)**: Track A 전체(썸네일·시트·갤러리)는 **모듈 게이트 없음(전 플랜 노출)** 으로 구현한다. 근거: ① 외부 비용 0(자기 매장 이미지 표시뿐 — 모바일 메뉴는 이미 전 플랜에서 같은 이미지를 손님에게 노출, `routes/mobile-public.js:399`) ② §6.1.5 의 전략(사진 등록 유도 → Track B 데이터)은 전 매장에 열려야 작동 ③ 게이트를 걸려면 `ai_serving` 플랜 마이그(§3.4)를 Track A 로 끌어와야 해 범위 오염. §3.3 이 MenuPhotoGallery 를 hasModule 게이트 목록에 넣었으나 그 문맥은 Track B 번들 — **Track B 배포 시점에 Irene 가 원하면 `hasModule('ai_serving')` 1줄 래핑으로 되돌릴 수 있음** (역행 비용 최소라 지금은 열어둠). Irene 이견 시 재조정.
+
+### A-2. 2단계 — API
+
+**신규 API 0개. 기존 `GET /api/menu?restaurant_id=` 전면 재사용.** (정직 실측 결론 — 새 엔드포인트를 만들 근거가 없음.)
+
+근거:
+- FloorPlanPage 는 **이미 마운트 시 `/api/menu?restaurant_id=` 를 호출**한다 (`FloorPlanPage.tsx:492`) — 현재는 name→category 만 남기고 응답을 버림 (`:497-500`).
+- 그 응답 items 에 Track A 가 필요한 전부가 이미 있음: `id / name / price / categoryId / image / imageThumbnail / optionGroups / is_set_menu / is_active / soldOut / set_only / description` (`routes/menu.js:216-259`). 썸네일 폴백(`image_thumbnail || image.replace('/products/','/products/thumbnails/')`)도 서버가 이미 처리 (`menu.js:196,212`). 레거시 base64/구 JSON 포맷도 서버 파싱 완료 (`menu.js:184-214`).
+- 인증: `/api/menu` 의 기존 인증·매장 스코프 그대로 (변경 0). 신규 권한 없음 — FloorPlan 접근 가능한 직원 전원 사용.
+- 서빙 전이: 기존 `PATCH /api/orders/:id/items` (사진 시트의 [서빙] = ItemListView `onServe` prop 그대로 → `FloorPlanPage.tsx:1120 handleServeItem` → 동일 PATCH). **새 전이 경로 없음** (§1.4·§4.3 준수).
+- 갤러리 데이터 신선도: 갤러리 열 때 동일 엔드포인트 1회 refetch (품절 상태 최신화). 새 API 아님 — 기존 로더 재호출.
+
+### A-3. 3단계 — DB
+
+**신규 테이블 0 · 신규 컬럼 0 · 마이그레이션 0.**
+
+근거: 표시 소스는 `Product.image`(TEXT medium, URL) + `Product.image_thumbnail` (`models/Product.js:41-50`) — 이미 존재·운영 중(썸네일 300×300 생성 = `utils/imageProcessor.js:21,141-149`, 무수정). 주문 품목↔상품 매핑 키는 order_items 라인의 `product_id` — dev DB 실측으로 최근 주문 라인에 존재 확인(주문 6543: `{"product_id":191,"name":"Kimchi Pancake",...}`; 세트 라인 6447: `set_components` 는 `{name, kitchen_station_id}` 만 → 이름 폴백 필요).
+
+**Track B 토대(`menu_reference_photos`) 를 Track A 에서 미리 만들지 않는다** (범위 판단): §3.1(a) 자동 시드는 Track B 활성화 시점에 `Product.image` 를 읽어 시드하므로 Track A 가 스키마를 선점할 이유가 없음. Track A 의 토대 기여 = 사진 등록률 상승(행동)이지 스키마가 아님. 과설계 금지 원칙 적용.
+
+### A-4. 4단계 — UI
+
+#### A-4.1 파일 계획 (신규 4 · 수정 3 — 전부 프론트, 백엔드 0)
+
+| 파일 | 신규/수정 | 내용 |
+|---|---|---|
+| `dev-frontend/src/pages/FloorPlan/productImageMap.ts` | 신규 (소) | `/api/menu` items → lookup 빌더 + 조회 함수 (아래 A-4.2) |
+| `dev-frontend/src/pages/FloorPlan/MenuThumb.tsx` | 신규 (소) | 공유 썸네일 컴포넌트 (img + onError/무사진 → 이니셜 플레이스홀더) |
+| `dev-frontend/src/pages/FloorPlan/ItemPhotoSheet.tsx` | 신규 (중) | 품목 사진 상세 시트 — 표준 `components/UI/Modal` |
+| `dev-frontend/src/pages/FloorPlan/MenuPhotoGallery.tsx` | 신규 (중) | 메뉴 사진 갤러리 — 표준 `components/UI/Modal` size large |
+| `dev-frontend/src/pages/FloorPlan/FloorPlanPage.tsx` | 수정 | itemMeta fetch 확장(제품 유지) + lookup 전달 + 갤러리 칩/상태 |
+| `dev-frontend/src/pages/FloorPlan/ItemListView.tsx` | 수정 | 행 44px 썸네일 + 썸네일 탭 → ItemPhotoSheet |
+| `dev-frontend/src/pages/FloorPlan/TableDetailPanel.tsx` | 수정 | 품목/구성품 줄 24px 썸네일 (표시만) |
+
+🔒 **무접촉 확인**: 위 7개 중 인쇄 보호파일 8개(check-print-guard.js `PROTECTED_FILES`, `scripts/check-print-guard.js:35-45`) 해당 **0개**. 단 FloorPlanPage(:996-1023)·TableDetailPanel(:977-982,:1096-1100,:1316) 에는 billPrint/hybridKitchenPrint 호출 블록이 있음 — **그 블록들은 한 줄도 건드리지 않는다** (수정 지점은 전부 다른 위치: itemMeta·ZoneFilterBar·ItemRow 렌더). POSTerminalPage·MainLayout·KitchenDisplayPage·orders-crud 는 아예 안 연다. 구현 후 `node scripts/check-print-guard.js` 변경 0건 필수.
+
+#### A-4.2 `productImageMap.ts` — 데이터 계약
+
+```ts
+export interface ProductPhotoInfo {
+  id: number; name: string; thumb: string | null; image: string | null;
+  category: string;           // categoryId(이름 매칭 결과) — 갤러리 필터용
+  price: number; description?: string | null;
+  optionGroups: any[]; soldOut: boolean; isSetMenu: boolean; setOnly: boolean;
+}
+export function buildProductPhotoMaps(items: any[]): {
+  byId: Map<number, ProductPhotoInfo>;
+  byName: Map<string, ProductPhotoInfo>;   // name.trim().toLowerCase() 키
+  list: ProductPhotoInfo[];                // 갤러리용 (is_active !== false 만)
+};
+export function lookupProductPhoto(maps, productId?: number | null, name?: string): ProductPhotoInfo | null;
+// 우선순위: byId(product_id) → byName(정규화 이름). 둘 다 miss → null (플레이스홀더).
+```
+
+- 매핑 소스: FlatRow/품목 라인의 `product_id`(실측: 최근 주문 라인에 존재) → 폴백 `menuItem?.id` → 폴백 이름. **세트 구성품은 이름 매칭만** (set_components 라인에 product_id 없음 — DB 실측). 이름 중복 시 byName 은 첫 항목 유지(단순·결정적).
+- 이미지 URL 은 `/uploads/...` 상대경로(=same-origin) 또는 레거시 base64 data-URI — 둘 다 `<img src>` 직결, 외부 도메인 없음 ([[reference_upload_same_origin]] 충족).
+
+#### A-4.3 `MenuThumb.tsx` — 공유 썸네일
+
+```
+props: { src?: string | null; name: string; size: number; radius?: number }
+동작: src 있으면 <img loading="lazy"> (object-fit: cover).
+      src 없음/로드 실패(onError) → 플레이스홀더: var(--pos-surface-2) 배경 +
+      1px var(--pos-border) 테두리 + name 첫 글자(대문자, 700, var(--pos-text-muted)).
+```
+- **이모지·아이콘 글리프 사용 금지** — 이니셜 텍스트만 (디자인 가드 통과). posDisplayTheme CSS 변수만 사용(라이트/고대비/다크 자동, 인라인 hex 신규 0).
+
+#### A-4.4 ItemListView — 행 썸네일 + 사진 시트 (와이어프레임)
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│ ┌────────┐ ┌────┐  TABLE A12  [SET 1/3] [KQ1]     3m ago · 12:01 │
+│ │ READY  │ │ 44 │  2 × Kimchi Pancake  [SET tag] [opt][opt]      │
+│ │ Serve  │ │ px │                                                │
+│ └────────┘ └────┘                                                │
+└──────────────────────────────────────────────────────────────┘
+  ↑PillCell(기존)  ↑MenuThumb — PillCell 과 Body 사이 삽입 (§6.1.1)
+```
+- 삽입 지점: `ItemListView.tsx:309-318` Card 내부, `<PillCell>` 다음. 새 styled `ThumbCell`(align-self:center, padding-left:8px). `@media(max-width:480px)` 36px 축소.
+- `FlatRow` 확장: `productId: number | null` (push 시 `item.product_id ?? item.menuItem?.id ?? null`; 구성품은 `c.product_id ?? null` — 사실상 null → 이름 폴백) (`ItemListView.tsx:167-186`).
+- **썸네일 탭** = `e.stopPropagation()` + ItemPhotoSheet 열기. **카드 몸통 탭 = 기존 openPanel 그대로, 좌측 pill 탭 = 기존 서빙 토글 그대로** (기존 UX 무변경 — 새 타깃 1개 추가만).
+- 새 props: `productLookup: (pid?: number|null, name?: string) => ProductPhotoInfo | null` (FloorPlanPage 에서 주입).
+
+**ItemPhotoSheet** (표준 Modal, maxWidth 520px — Modal.tsx:306 prop 사용, body portal 이라 스태킹 안전):
+```
+┌─ Kimchi Pancake ─────────────────────── × ┐
+│  [   큰 사진 (max-height 40vh, cover)   ] │   ← 사진 없으면 대형 플레이스홀더
+│  TABLE A12          [READY pill(기존)]    │
+│  SET: Lunch Set B   (세트 구성품일 때만)   │
+│  Options: Extra egg · Less spicy          │
+│  2 × · ordered 12:01 (3m ago)             │
+├───────────────────────────────────────────┤
+│              [ Close ]   [ Serve ]        │   ← Serve = onServe(orderId,itemIndex,compIndex,true) 후 닫기
+└───────────────────────────────────────────┘
+```
+- 단계 pill = 기존 `ItemStatusPill`/`toDisplayStatus` 재사용 (`orderItemStatus.tsx:49-62`, 색·의미 단일소스 유지). served 상태면 [Serve] 대신 [Unserve](기존 토글 의미 그대로) — 동작 = 기존 pill 과 동일 경로. 버튼은 Modal 의 `ModalButton` variant primary/secondary 재사용.
+- props: `{ open, onClose, row: FlatRow, photo: ProductPhotoInfo|null, onServe, timezone }`. 시트가 열린 채 소켓 갱신으로 rows 가 바뀌면 최신 row 재조회(키 매칭) — 사라졌으면 자동 닫기(타 직원 서빙 케이스, §10 표와 동일 철학).
+
+#### A-4.5 TableDetailPanel — 24px 썸네일 (표시만)
+
+- 일반 품목 줄: `ItemRow > ItemInfo` 앞에 `MenuThumb size=24` (`TableDetailPanel.tsx:1942-1978` 렌더 지점). 세트 구성품 줄(`:1913-1937`)에도 동일(이름 매칭).
+- 새 optional prop `productLookup?` — 없으면(다른 호출처가 있다면) 썸네일 미표시로 무해 폴백. **탭 동작 추가 없음** (패널 자체가 이미 상세 — 과설계 금지). 그 외 로직·인쇄 블록 무접촉.
+
+#### A-4.6 MenuPhotoGallery — 갤러리 (와이어프레임)
+
+진입: FloorPlanPage `ZoneFilterBar` 에 상시 칩 (`FloorPlanPage.tsx:2063-2071` "+ Walk-in" 칩 뒤, 모든 뷰에서 항상 같은 자리 — [[feedback_pos_ui_persistent_controls]], "+ " 접두사 금지 — [[feedback_no_plus_prefix]]). 라벨 = `t('floorplan:menuPhotos.open')` "Menu Photos". 기존 `ZoneChip` styled 재사용.
+
+```
+┌─ Menu Photos ────────────────────────────────────── × ┐
+│ [Search menu…            ] [All categories ▾(SearchableSelect)] │
+│ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐                    │
+│ │photo │ │photo │ │ K    │ │photo │  ← 사진無=이니셜     │
+│ │      │ │      │ │(회색)│ │SOLD  │  ← 품절=텍스트 배지  │
+│ ├──────┤ ├──────┤ ├──────┤ ├──────┤                    │
+│ │Name  │ │Name  │ │Name  │ │Name  │                    │
+│ │RM12.9│ │RM15  │ │No photo│ │RM8 │                    │
+│ └──────┘ └──────┘ └──────┘ └──────┘                    │
+│  (grid: repeat(auto-fill, minmax(140px,1fr)); gap 12px) │
+└─────────────────────────────────────────────────────────┘
+   카드 탭 → 같은 모달 안 상세 뷰 (← Back):
+   큰 사진 / 이름 / 가격 / 카테고리 / 설명 / 옵션그룹(그룹명 + 옵션들 텍스트 목록) / SET 구성(있으면)
+```
+- 표준 `components/UI/Modal` `size="large"`(필요 시 maxWidth "960px") — pos 테마 변수 내장이라 POS 화면과 조화 (`Modal.tsx:26-46` 실측). FloorPlanPage 는 이미 `Modal as CommonModal` 사용 중 (`FloorPlanPage.tsx:12`) — 동일 패턴.
+- 데이터: `maps.list` (is_active 만, **set_only 포함** — 러너가 나르는 실물이 곧 구성품이므로 표시 대상. 판단 근거: `set_only` 는 "주문 화면 숨김" 플래그지 "존재 숨김"이 아님, `Product.js:147-150` 주석). 카테고리 필터 = 기존 `SearchableSelect` 재사용(ItemListView:256-288 과 동일 패턴). 검색 = 이름 부분일치.
+- 열 때 menu 로더 1회 refetch(품절 최신화) + 로딩 중 텍스트("Loading…" — 스피너 신규 제작 금지, 기존 패턴). 빈 상태 = 순수 텍스트 `menuPhotos.empty` (이모지 금지). 이미지 전부 `loading="lazy"`.
+- 품절 배지 = 텍스트 "SOLD OUT" (기존 StationBadge 류 스타일 재사용, 색 신규 정의 최소).
+
+#### A-4.7 FloorPlanPage 배선
+
+1. **itemMeta fetch 확장** (`:483-507`): 응답 products 를 버리지 않고 `buildProductPhotoMaps(products)` 결과를 state 로 유지 (요청 수 증가 0 — 이미 받던 페이로드 활용). 로더를 `useCallback` 으로 승격해 갤러리 open 시 재호출.
+2. `productLookup` 를 `useMemo` 로 만들어 ItemListView(:2095)·TableDetailPanel(:2300, :2386 두 곳) 에 prop 전달.
+3. 갤러리 칩 + `const [galleryOpen, setGalleryOpen] = useState(false)` + `<MenuPhotoGallery>` 렌더. AI/모듈 게이트 없음(A-1 판단).
+
+#### A-4.8 i18n (floorplan ns, flat key — 기존 `itemList.*` 관례와 동일)
+
+en→ko→zh→ms 4언어 파일 (`public/locales/{en,ko,zh,ms}/floorplan.json`) 전부 + `npm run i18n:verify` 통과. 신규 키(안):
+`menuPhotos.open` "Menu Photos" / `menuPhotos.title` "Menu Photos" / `menuPhotos.search` "Search menu" / `menuPhotos.allCategories` "All categories" / `menuPhotos.empty` "No menu items" / `menuPhotos.noPhoto` "No photo" / `menuPhotos.soldOut` "SOLD OUT" / `menuPhotos.back` "Back" / `menuPhotos.loading` "Loading…" / `itemSheet.options` "Options" / `itemSheet.close` "Close". 서빙 라벨은 기존 `common:itemServe.serveHint`·`floorplan:tableDetailPanel.itemStatus.*` 재사용(신규 금지). 모듈 스코프 `t()` 호출 금지.
+
+#### A-4.9 엣지 케이스 (전수)
+
+| 케이스 | 동작 |
+|---|---|
+| 사진 없는 메뉴 | 이니셜 플레이스홀더 (리스트/패널/시트/갤러리 공통, MenuThumb 단일 구현) |
+| `image_thumbnail` 없고 `image` 만 | 서버가 thumb 폴백 제공(menu.js:196,212) + 클라도 `thumb ?? image` 이중 폴백 |
+| 레거시 base64 / 구 JSON 이미지 | 서버 파싱 완료(menu.js:199-213) — 클라 무처리, data-URI 도 same-origin |
+| 이미지 404 (파일 유실) | `<img onError>` → 플레이스홀더 전환 (빈 아이콘 X) |
+| 세트 구성품 | 이름 매칭만(라인에 product_id 없음 — DB 실측). miss → 플레이스홀더 |
+| 상품 개명/삭제 후의 옛 주문 | lookup miss → 플레이스홀더 (에러 없음) |
+| product_id 없는 레거시 주문 라인 | 이름 폴백 (🔒 stationEnrichment 는 재사용하지 않음 — 독립 구현, §5-④ 원칙) |
+| 메뉴 0건/menu API 실패 | 썸네일 전부 플레이스홀더 + 갤러리 빈 상태 텍스트 — 서빙 기능 자체는 기존 그대로 동작(표시 레이어라 실패 무해) |
+| 시트 열린 채 타 직원이 서빙 | rows 갱신 시 키 재매칭 — 사라지면 자동 닫기 |
+| 오프라인 | 이미지 로드 실패 → 플레이스홀더 (기능 차단 없음) |
+
+#### A-4.10 검증 계획 (구현 세션 의무)
+
+1. `npm run build:dev` (경고 0) + SW_VERSION bump(§6 전제 — PWA 캐시).
+2. **실브라우저 mount** (운영 critical — FloorPlan): headless sweep 에 Items 뷰 + 갤러리 open + 시트 open 시나리오 — 크래시 0, console.error 0.
+3. 유저 흐름 실검증(데모 매장 id=38): 주문 생성 → Items 뷰 썸네일 표시 → 썸네일 탭 시트 → [Serve] → `PATCH /orders/:id/items` 실호출로 served 확인 → 리스트 반영. 사진 없는 메뉴/세트 구성품/레거시 라인 각 1건.
+4. `node scripts/check-print-guard.js` **변경 0건** + `node scripts/check-design-guard.js` + `npm run i18n:verify` + `node scripts/health-check.js` 88/88 무회귀. (신규 API/DB 0 이므로 백엔드 테스트 신규 불필요.)
+5. Fable 게이트: 본 건은 신규 시스템 아님·보호파일 무접촉·표시 전용이라 **일상 `/검증` 절차로 충분** — 단 TableDetailPanel/FloorPlanPage diff 에 인쇄 블록이 섞이지 않았는지 diff 육안 대조는 필수.

@@ -7,6 +7,8 @@ import { FloorPlanData, DEFAULT_FLOOR_PLAN, TableStatusInfo, ORDER_STATUS_COLORS
 import FloorPlanCanvas from './FloorPlanCanvas';
 import TableDetailPanel from './TableDetailPanel';
 import ItemListView from './ItemListView';
+import MenuPhotoGallery from './MenuPhotoGallery';
+import { buildProductPhotoMaps, lookupProductPhoto, ProductPhotoMaps } from './productImageMap';
 import FloorPlanStatsBar from './FloorPlanStatsBar';
 import PaymentModal from '../../components/POSTerminal/PaymentModal';
 import { Modal as CommonModal } from '../../components/UI';
@@ -481,6 +483,9 @@ const FloorPlanPage: React.FC = () => {
   const [serveOverrides, setServeOverrides] = useState<Record<string, { status: string; ts: number }>>({});
   // Items 뷰 필터용 메타 — 카테고리(제품명→카테고리) + 주방 스테이션(id→이름).
   const [itemMeta, setItemMeta] = useState<{ catByName: Record<string, string>; stationById: Record<string, string>; categories: string[]; stations: { id: string; name: string }[] }>({ catByName: {}, stationById: {}, categories: [], stations: [] });
+  // Track A: /api/menu 응답(이미 받던 것)에서 사진 lookup 을 만든다 — 신규 요청 0.
+  const [photoMaps, setPhotoMaps] = useState<ProductPhotoMaps | null>(null);
+  const [galleryOpen, setGalleryOpen] = useState(false);
   useEffect(() => {
     if (!restaurantId) return;
     let alive = true;
@@ -504,10 +509,24 @@ const FloorPlanPage: React.FC = () => {
           : (Array.isArray(sj.data) ? sj.data : (Array.isArray(sj.stations) ? sj.stations : []));
         const stationById: Record<string, string> = {};
         const stations = (Array.isArray(stationsRaw) ? stationsRaw : []).map((s: any) => { stationById[String(s.id)] = s.name; return { id: String(s.id), name: s.name }; });
-        if (alive) setItemMeta({ catByName, stationById, categories: [...cats].sort(), stations });
+        if (alive) { setItemMeta({ catByName, stationById, categories: [...cats].sort(), stations }); setPhotoMaps(buildProductPhotoMaps(products)); }
       } catch { /* best-effort */ }
     })();
     return () => { alive = false; };
+  }, [restaurantId]);
+  // 품목 → 상품 사진 조회 (ItemListView·TableDetailPanel·시트 공용).
+  const productLookup = useCallback((productId?: number | null, name?: string) => lookupProductPhoto(photoMaps, productId, name), [photoMaps]);
+  // 갤러리 열 때 메뉴 1회 refetch(품절 최신화) — 신규 API 아님, 동일 엔드포인트.
+  const refreshMenuPhotos = useCallback(async () => {
+    if (!restaurantId) return;
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`/api/menu?restaurant_id=${restaurantId}`, { headers: { Authorization: `Bearer ${token}` } as any });
+      const pj = await res.json().catch(() => ({}));
+      const products = (pj.data && Array.isArray(pj.data.items)) ? pj.data.items
+        : (Array.isArray(pj.data) ? pj.data : (Array.isArray(pj.products) ? pj.products : []));
+      setPhotoMaps(buildProductPhotoMaps(products));
+    } catch { /* best-effort */ }
   }, [restaurantId]);
   // connected — 공용 OrdersRealtimeProvider 의 소켓 연결 상태 사용 (위에서 구조분해)
   const [clock, setClock] = useState('');
@@ -2069,6 +2088,14 @@ const FloorPlanPage: React.FC = () => {
           >
             {t('floorplan:floorPlanPage.takeawayWalkIn', '+ Walk-in')}
           </ZoneChip>
+          <ZoneChip
+            type="button"
+            active={false}
+            onClick={() => { setGalleryOpen(true); refreshMenuPhotos(); }}
+            title={t('floorplan:menuPhotos.openHint', 'Browse menu photos')}
+          >
+            {t('floorplan:menuPhotos.open', 'Menu Photos')}
+          </ZoneChip>
           {/* 2026-06-28 (5-1): exit-fullscreen lives in the zone bar (always visible) since the
               header — which holds the enter-fullscreen control — is hidden in fullscreen mode. */}
           {fullscreen && (
@@ -2085,6 +2112,8 @@ const FloorPlanPage: React.FC = () => {
           )}
         </ZoneFilterBar>
       )}
+
+      <MenuPhotoGallery open={galleryOpen} onClose={() => setGalleryOpen(false)} maps={photoMaps} currency={currency} />
 
       {/* 범례는 Irene 가 직접 추가 예정 — 제거 (#3 점 기능은 TableNode 빨강 점으로 유지) */}
 
@@ -2116,6 +2145,7 @@ const FloorPlanPage: React.FC = () => {
               onServe={handleServeItem}
               onOpenDineIn={handleOpenDineInFromItems}
               onOpenTakeaway={handleOpenTakeawayFromItems}
+              productLookup={productLookup}
             />
           ) : activeView === 'floor' ? (
             <FloorPlanCanvas
@@ -2305,6 +2335,7 @@ const FloorPlanPage: React.FC = () => {
             currency={currency}
             timezone={timezone}
             restaurantId={Number(restaurantId)}
+            productLookup={productLookup}
             expanded={detailExpanded}
             onToggleExpand={() => setDetailExpanded(v => !v)}
             onClose={() => { setSelectedTableId(null); setDetailExpanded(false); }}
@@ -2390,6 +2421,7 @@ const FloorPlanPage: React.FC = () => {
               currency={currency}
               timezone={timezone}
               restaurantId={Number(restaurantId)}
+              productLookup={productLookup}
               expanded={detailExpanded}
               onToggleExpand={() => setDetailExpanded(v => !v)}
               onClose={() => { setSelectedTakeawayOrderId(null); setDetailExpanded(false); }}

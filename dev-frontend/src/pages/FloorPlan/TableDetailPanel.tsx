@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import styled from 'styled-components';
 import { FloorTable, TableStatusInfo, ORDER_STATUS_COLORS, getOrderStatusColors } from './types';
 import { ItemStatusPill, toDisplayStatus } from './orderItemStatus';
+import MenuThumb from './MenuThumb';
+import { ProductPhotoInfo } from './productImageMap';
 import { getPosTheme } from '../../styles/posDisplayTheme';
 import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import { formatPaymentDisplay } from '../../constants';
@@ -43,6 +45,8 @@ interface TableDetailPanelProps {
   currency: string;
   timezone?: string;
   restaurantId: number;
+  // Track A: 품목 → 상품 사진 조회(표시 전용, 없으면 썸네일 미표시). 설계 §A-4.5.
+  productLookup?: (productId?: number | null, name?: string) => ProductPhotoInfo | null;
   onClose: () => void;
   onNewOrder: (opts?: { takeaway?: boolean; mergeOrderId?: number; guests?: number }) => void;
   onStatusChange: (orderId: number, newStatus: string) => Promise<void>;
@@ -627,6 +631,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
   currency,
   timezone,
   restaurantId,
+  productLookup,
   onClose,
   onNewOrder,
   onStatusChange,
@@ -1897,6 +1902,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                           return (
                             <div key={originalIndex} style={{ marginBottom: 4 }}>
                               <ItemRow $completed={false}>
+                                {productLookup && <span style={{ marginRight: 8, display: 'flex', flexShrink: 0 }}><MenuThumb src={productLookup(item.product_id, item.name)?.thumb} name={item.name} size={24} /></span>}
                                 <ItemInfo>
                                   <ItemName $completed={false}>
                                     {item.name} <ItemQty>x{item.quantity}</ItemQty>
@@ -1928,6 +1934,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                                         {clickable && !cServed ? ` · ${t('common:itemServe.serveHint')}` : ''}
                                       </ItemStatusPill>
                                     )}
+                                    {productLookup && <span style={{ marginRight: 8, display: 'flex', flexShrink: 0 }}><MenuThumb src={productLookup(c.product_id, c.name)?.thumb} name={c.name} size={24} /></span>}
                                     <ItemInfo>
                                       <ItemName $completed={cServed}>{c.name}{(c.qty || c.quantity) > 1 ? ` x${c.qty || c.quantity}` : ''}</ItemName>
                                       {copts && <ItemOptions>{copts}</ItemOptions>}
@@ -1957,6 +1964,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                                 {clickable && !isServed ? ` \u00b7 ${t('common:itemServe.serveHint')}` : ''}
                               </ItemStatusPill>
                             )}
+                            {productLookup && <span style={{ marginRight: 8, display: 'flex', flexShrink: 0 }}><MenuThumb src={productLookup(item.product_id, item.name)?.thumb} name={item.name} size={24} /></span>}
                             <ItemInfo>
                               <ItemName $completed={isServed}>
                                 {item.name} <ItemQty>x{item.quantity}</ItemQty>

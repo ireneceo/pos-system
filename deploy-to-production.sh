@@ -83,7 +83,7 @@ if [ "$SKIP_SAFETY" = true ]; then
 else
     cd $LOCAL_DEV_BACKEND
 
-    log "Safety gate (1/4): 🔒 인쇄/주문 보호 파일 무결성..."
+    log "Safety gate (1/6): 🔒 인쇄/주문 보호 파일 무결성..."
     if ! node scripts/check-print-guard.js --quiet; then
         error "🔒 인쇄/주문 보호 파일이 변경됨. 의도한 인쇄 변경이고 실프린터 확인까지 끝났으면
        'cd dev-backend && node scripts/check-print-guard.js --bless' 후 재배포.
@@ -91,27 +91,33 @@ else
     fi
     success "보호 파일 무결성 OK (생명선 안전)"
 
-    log "Safety gate (2/4): 🧾 인쇄 데이터 필드 계약 (세트 구성품 누락 방지)..."
+    log "Safety gate (2/6): 🧾 인쇄 데이터 필드 계약 (세트 구성품 누락 방지)..."
     if ! node scripts/check-print-field-contract.js; then
         error "인쇄 항목 변환에서 세트 구성품 필드(set_components) 누락 — 빌/주방에 'SET' 만 찍히는 회귀. 해당 mapItem 수정 후 재배포. (긴급 우회: --skip-safety)"
     fi
     success "인쇄 필드 계약 OK (세트 구성품 전 경로 통과)"
 
-    log "Safety gate (3/4): 🎨 디자인 단일 기준(RA=표준) — 신규 위반 차단..."
+    log "Safety gate (3/6): 🎨 디자인 단일 기준(RA=표준) — 신규 위반 차단..."
     if ! node scripts/check-design-guard.js --summary; then
         error "🎨 신규 디자인 위반 — 공용 컴포넌트(DataTable/Button/StatCard/Modal) 미사용·장식 이모지·일반 danger 에 #FF6B6B 등 CLAUDE.md '🎨 디자인 단일 기준' 위반. 공용/RA 기준으로 고칠 것. 정식 변경이면 'node scripts/check-design-guard.js --bless'. (긴급 우회: --skip-safety)"
     fi
     success "디자인 단일 기준 OK (신규 위반 0)"
 
-    log "Safety gate (4/5): 회귀 테스트 (health-check, 인쇄 계약 + 보안 + API 88건)..."
+    log "Safety gate (4/6): 🛡️ 라우트 가드 (IDOR — 신규 무방비 literal /restaurant/:param 차단, 마운트프리픽스 라우터는 배럴가드+health-check 담당)..."
+    if ! node scripts/check-route-guard.js --summary; then
+        error "🛡️ 신규 무방비 라우트 — /restaurant/:param 에 checkRestaurantAccess 또는 인라인 매장검사(req.user.restaurant_id≠param→403) 누락 = 타매장 데이터 유출(IDOR) 위험. 소유권 검사 추가 후 재배포. 정식/예외면 'node scripts/check-route-guard.js --bless'. (긴급 우회: --skip-safety)"
+    fi
+    success "라우트 가드 OK (무방비 /restaurant/:param 신규 0)"
+
+    log "Safety gate (5/6): 회귀 테스트 (health-check, 인쇄 계약 + 보안 + API 88건)..."
     if ! node scripts/health-check.js --quiet; then
         error "회귀 테스트 실패 — 인쇄/주문/보안 등 기능 회귀 감지. 위 실패 항목 수정 후 재배포. (긴급 우회: --skip-safety)"
     fi
     success "회귀 테스트 통과 — 인쇄/주문 계약 + 전체 기능 정상"
 
-    log "Safety gate (5/5): 인스펙션 하니스 (공급망·플랜모듈 구조 불변식)..."
+    log "Safety gate (6/6): 인스펙션 하니스 (공급망·플랜모듈·주문돈무결성 구조 불변식)..."
     if ! node scripts/inspection/run.js; then
-        error "🔎 신규 구조 위반 — 공급망(자기참조/고아/미러/카테고리)·플랜모듈(buyer 게이트) 불변식 위반 감지. scripts/inspection 참조. 정식/의도된 부채면 'node scripts/inspection/run.js --bless'. (긴급 우회: --skip-safety)"
+        error "🔎 신규 구조 위반 — 공급망(자기참조/고아/미러/카테고리)·플랜모듈(buyer 게이트)·주문돈무결성(금액재구성/멱등중복/고아결제/결제합) 불변식 위반 감지. scripts/inspection 참조. 정식/의도된 부채면 'node scripts/inspection/run.js --bless'. (긴급 우회: --skip-safety)"
     fi
     success "인스펙션 하니스 통과 — 구조 불변식 신규 위반 0"
 fi
