@@ -249,6 +249,8 @@ router.delete('/brands/:brandId/recipes/:recipeId', authenticateToken, canEditRe
       return res.status(404).json({ success: false, error: { message: 'Recipe not found', code: 'NOT_FOUND' } });
     }
 
+    // 삭제 전 이 레시피를 가리키던 메뉴의 recipe_id 를 정리 (대롱거리는 FK 방지 — S-REF-004 하니스)
+    await Product.update({ recipe_id: null }, { where: { recipe_id: recipe_id } });
     await recipe.destroy();
 
     res.json({ success: true, message: 'Recipe deleted successfully' });
@@ -585,6 +587,8 @@ router.delete('/restaurants/:restaurantId/recipes/:recipeId', authenticateToken,
       return res.status(403).json({ success: false, error: { message: 'You can only delete your own restaurant recipes', code: 'FORBIDDEN' } });
     }
 
+    // 삭제 전 이 레시피를 가리키던 메뉴의 recipe_id 를 정리 (대롱거리는 FK 방지 — S-REF-004 하니스)
+    await Product.update({ recipe_id: null }, { where: { recipe_id: recipeId } });
     await recipe.destroy();
 
     res.json({ success: true, message: 'Recipe deleted successfully' });
