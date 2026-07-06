@@ -11,7 +11,7 @@ import api from '../services/api';
 import { formatCurrency } from '../../utils/currency';
 import PhoneInput from '../components/common/PhoneInput';
 import { mobileFetch } from '../utils/mobileApi';
-import { ensureIdempotencyKey, enqueueOrder, genIdempotencyKey, getStableIdempotencyKey, cartSignature, clearStableIdempotencyKey, fetchWithTimeout } from '../../utils/offlineOrderQueue';
+import { enqueueOrder, getStableIdempotencyKey, cartSignature, clearStableIdempotencyKey, fetchWithTimeout } from '../../utils/offlineOrderQueue';
 import { getActiveTable } from '../utils/tableSession';
 
 const Container = styled.div`
@@ -198,8 +198,10 @@ const ItemName = styled.div`
 `;
 
 const ItemQuantity = styled.div`
-  font-size: 13px;
-  color: #4B5563;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1F2937;
+  font-variant-numeric: tabular-nums;
 `;
 
 const ItemSetItems = styled.div`
@@ -1541,6 +1543,7 @@ const PaymentPage: React.FC = () => {
               estimatedPickupTime: new Date(Date.now() + 30 * 60000), // 30 minutes from now
               paymentStatus: 'pending'
             });
+            clearStableIdempotencyKey(); // 주문 확정 → 다음 주문은 새 키
             clearCart();
 
             // Navigate to order tracking
@@ -1606,7 +1609,7 @@ const PaymentPage: React.FC = () => {
           // #9 오프라인 큐 — 멱등키를 미리 부여(QR/Bank 결제확인 페이지가 이 payload 를 그대로 전송 →
           // 재전송/더블탭 시 서버가 같은 key 로 중복생성 방지).
           const pendingOrderData = {
-            idempotency_key: genIdempotencyKey(),
+            idempotency_key: stableIdemKey,
             restaurant_id: resolvedRestaurantId,
             customer_name: orderCustomer ? orderCustomer.name : (orderGuestInfo ? orderGuestInfo.name || 'Guest' : 'Guest'),
             customer_phone: orderCustomer ? orderCustomer.phone : (orderGuestInfo ? orderGuestInfo.phone || null : null),
@@ -1765,13 +1768,13 @@ const PaymentPage: React.FC = () => {
             };
 
             console.log('💾 Creating order for online payment...');
-            // #9 오프라인 큐 — 멱등키 부여(재전송/더블탭 중복생성 방지).
-            ensureIdempotencyKey(dbOrderData);
-            const response = await fetch('/api/orders', {
+            // #9 오프라인 큐 — 카트-안정 멱등키(재전송/더블탭/새로고침 중복생성 방지).
+            dbOrderData.idempotency_key = stableIdemKey;
+            const response = await fetchWithTimeout('/api/orders', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(dbOrderData)
-            });
+            }, 20000);
 
             if (!response.ok) {
               throw new Error('Failed to create order');

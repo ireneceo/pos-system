@@ -275,7 +275,9 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({
   const { currentStore, orderType, cartItems } = useMobileOrder();
   // 장바구니 배지는 컨텍스트의 실제 카트 수로 표시 → 모든 페이지(상세 포함)에서 항상 정확.
   // prop cartItemCount 는 폴백.
-  const cartCount = (cartItems && cartItems.length) || cartItemCount || 0;
+  // 헤더 카트뱃지 = 총수량(하단바·수량과 일치). 예전엔 품목 줄 수(length)라 "3인데 담긴 건 7"
+  // 처럼 불일치해 고객이 "안 담긴 줄" 오인 → 재주문 유발. 총수량으로 통일.
+  const cartCount = (cartItems && cartItems.reduce((s: number, ci: any) => s + (ci.quantity || 0), 0)) || cartItemCount || 0;
 
   // iOS Safari input zoom 문제 해결 - 전역 핸들러 설정
   useEffect(() => {

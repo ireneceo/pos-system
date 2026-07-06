@@ -858,6 +858,15 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
         // Check if it's a duplicate key error
         if (error.name === 'SequelizeUniqueConstraintError' ||
             (error.parent && error.parent.code === 'ER_DUP_ENTRY')) {
+          // 멱등키 유니크 충돌 = 동시(concurrent) 요청이 같은 idempotency_key 로 이미 주문을 만든 경우.
+          // order_number 충돌(재시도로 해결)과 구분: 기존 주문을 조회해 그대로 돌려준다(중복 0, 500 방지).
+          // 이걸 안 하면 재시도 루프가 같은 키로 5회 재충돌 → 500 → 고객이 실패로 보고 재탭 → 진짜 중복.
+          if (_idemKey) {
+            const dupIdem = await Order.findOne({ where: { idempotency_key: _idemKey } });
+            if (dupIdem) {
+              return res.status(200).json({ success: true, data: dupIdem, idempotent: true, message: 'Order already created (concurrent idempotent replay)' });
+            }
+          }
           retryCount++;
           if (retryCount >= maxRetries) {
             throw new Error(`Failed to generate unique order number after ${maxRetries} attempts`);

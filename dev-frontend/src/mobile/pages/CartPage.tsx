@@ -95,11 +95,12 @@ const QuantityButton = styled.button`
 `;
 
 const QuantityValue = styled.span`
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 700;
   color: #1F2937;
-  min-width: 20px;
+  min-width: 32px;
   text-align: center;
+  font-variant-numeric: tabular-nums;
 `;
 
 const ItemPrice = styled.div`
