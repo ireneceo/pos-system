@@ -103,11 +103,17 @@ else
     fi
     success "디자인 단일 기준 OK (신규 위반 0)"
 
-    log "Safety gate (4/4): 회귀 테스트 (health-check, 인쇄 계약 + 보안 + API 88건)..."
+    log "Safety gate (4/5): 회귀 테스트 (health-check, 인쇄 계약 + 보안 + API 88건)..."
     if ! node scripts/health-check.js --quiet; then
         error "회귀 테스트 실패 — 인쇄/주문/보안 등 기능 회귀 감지. 위 실패 항목 수정 후 재배포. (긴급 우회: --skip-safety)"
     fi
     success "회귀 테스트 통과 — 인쇄/주문 계약 + 전체 기능 정상"
+
+    log "Safety gate (5/5): 인스펙션 하니스 (공급망·플랜모듈 구조 불변식)..."
+    if ! node scripts/inspection/run.js; then
+        error "🔎 신규 구조 위반 — 공급망(자기참조/고아/미러/카테고리)·플랜모듈(buyer 게이트) 불변식 위반 감지. scripts/inspection 참조. 정식/의도된 부채면 'node scripts/inspection/run.js --bless'. (긴급 우회: --skip-safety)"
+    fi
+    success "인스펙션 하니스 통과 — 구조 불변식 신규 위반 0"
 fi
 
 # ──────────────────────────────────────────
