@@ -29,11 +29,12 @@
 ### 후속 후보 (아이디어 메모, 확정 X)
 > 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.
 
-- brand-products 빈화면 근본대응: 스테일 lazy 청크(ChunkLoadError) — 하드새로고침이면 뜸. 근본=ChunkLoadError 자동 리커버리 + SW bump 표준화 (Fable 진단, 이번엔 미구현)
-- dev DB도 공급망 하니스 2/6(같은 클래스 결함 존재) — dev 정리 별도
-- 인스펙션 하니스 확장: dead-end 스캔, 크로스커팅(라벨 정합), 다른 도메인 불변식 + /검증 통합
-- 외부 SupplierCompany 스코프 중복(KK Mart 21/22, Village Grocer 23/33) 통합 검토
-- POS 인스펙션 하니스(PlanQ INSPECTION_PLAYBOOK 참고) 추가 스위트
+- (✅ 2026-07-06 완료) brand-products 빈화면 = 이미 견고(ChunkLoad 리커버리+SW cache-bust), mount 21/21 OK — 코드변경 불필요
+- (✅ 2026-07-06 완료) 하니스 확장: plan-modules 불변식 + baseline 게이트 + 배포 안전게이트 5/5 (bdfc24dc)
+- (✅ 2026-07-06 완료) 스코프 중복(KK Mart/Village Grocer) 정리 — 잉여 5매핑+SC2 제거, 레스토랑 뷰 각 1장
+- (✅ 2026-07-06 완료) dev 공급망 정리 — self-brand/고아/미러 3건, baseline 4→1(41375583)
+- POS 인스펙션 하니스 추가 스위트(PlanQ INSPECTION_PLAYBOOK 참고): dead-end 스캔, 크로스커팅 라벨정합 등 — 미착수
+- R-SC-006 미분류(dev owner6 10건) 테스트데이터 — baseline에 남음, 정리 선택
 
 ---
 
