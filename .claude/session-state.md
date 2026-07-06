@@ -33,8 +33,9 @@
 - (✅ 2026-07-06 완료) 하니스 확장: plan-modules 불변식 + baseline 게이트 + 배포 안전게이트 5/5 (bdfc24dc)
 - (✅ 2026-07-06 완료) 스코프 중복(KK Mart/Village Grocer) 정리 — 잉여 5매핑+SC2 제거, 레스토랑 뷰 각 1장
 - (✅ 2026-07-06 완료) dev 공급망 정리 — self-brand/고아/미러 3건, baseline 4→1(41375583)
-- POS 인스펙션 하니스 추가 스위트(PlanQ INSPECTION_PLAYBOOK 참고): dead-end 스캔, 크로스커팅 라벨정합 등 — 미착수
+- (✅ 2026-07-06 완료) 하니스 추가 스위트: suppliers(3)·referential(5) 신설 → 운영 실결함 발견(매장13 메뉴4개 대롱레시피) → 정리+근본수정(recipes.js 삭제 시 Product.recipe_id 정리). 운영 하니스 16/16, 배포 Backup 20260706_035825 (f1b4649f)
 - R-SC-006 미분류(dev owner6 10건) 테스트데이터 — baseline에 남음, 정리 선택
+- 하니스 더 확장 여지: 돈/주문 무결성(order totals·invoice), 보안경계, 인쇄설정 완결성 등 도메인 스위트 — 미착수
 
 ---
 
