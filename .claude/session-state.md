@@ -20,11 +20,15 @@
 - ✅ orders-crud diff = 멱등 9줄만(16e73e1b→HEAD), pending-print/printed/print-claim/kitchen_items 무접촉
 
 ### 다음 확정 작업 (Irene 지시 — 다음 세션서 실행)
-1. **Fable 게이트 결과 확인**: 아래 "Fable 게이트 결과" 줄 참고(이 세션이 기록). PASS 전제로 진행.
-2. **print-guard bless** (orders-crud 승인된 멱등 변경): `cd /var/www/dev-backend && node scripts/check-print-guard.js --bless`
-3. **배포**: `bash /var/www/deploy-to-production.sh --auto` (안전게이트 5/5 통과 확인). 배포 후 운영서 동시-키 멱등 1회 재확인 권장.
+> Fable PASS + print-guard bless + 운영 컬럼확인 **모두 이 세션서 완료**. **남은 건 배포 한 줄.**
+1. **배포**: `bash /var/www/deploy-to-production.sh --auto` (안전게이트 5/5 자동통과 — print-guard 이미 bless됨). 커밋은 autosave(b6ff2545~)에 이미 있음.
+2. 배포 후: 운영서 동시-키 멱등 1회 재확인(같은 key 2요청→주문 1개) 권장.
 
-**Fable 게이트 결과:** ⏳ 대기 중 (이 세션 결과 나오면 갱신)
+**Fable 게이트 결과:** ✅ **PASS — 배포 가능** (2026-07-06). 12 동시요청→주문 1개(신규 catch 11회 실증), 돈 무결성(조작 total 무시), 인쇄 계약 7/7·보호블록 무접촉, 오탐흡수 안전(카트라인 id=timestamp라 새 카트=새 키).
+- ✅ **print-guard bless 완료** (2026-07-06 07:21, 8파일 신규 기준) — 배포 안전게이트 통과함
+- ✅ **운영 orders.idempotency_key varchar(64) + uniq 인덱스 존재 확인** (catch 경로 유효)
+- **⇒ 남은 것: `bash /var/www/deploy-to-production.sh --auto` 배포 한 줄만.** 배포 후 운영서 동시-키 멱등 1회 재확인 권장.
+- ⚠️ Fable 발견 이슈#1(배포 비차단, **후속**): 모바일 dine-in 자동머지 경로(orders-crud.js:640-693)는 멱등 미적용 — 응답유실/20s abort 후 큐 재전송 시 같은 품목 재머지=계산서 품목 중복 가능(오프라인큐 도입때부터 있던 구멍). 후속: 머지 시 idem 키 기록 후 upfront 대조.
 
 ### 후속 후보 (아이디어 메모, 확정 X)
 > /개발시작 자동 추천 대상 아님.
