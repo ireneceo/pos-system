@@ -119,7 +119,8 @@
 - 문서: `docs/AI_FOOD_RECOGNITION_DESIGN.md`·`docs/BG_OWNER_AUDIT_2026-07-03.md`(신규)
 
 ### 잔여 (다음, 기능규모)
-- 인벤토리 브랜드모드 #5/6/36/23/35(=BG ProductIngredient 기준, 액션 훅 mode-aware화) · #8 ManagerReports(범위 analytics 엔드포인트) · #38 고객분석 · #24 구독 청구흐름(Fable 돈게이트)
+- ~~인벤토리 브랜드모드 #5/6/36/23/35~~ → **✅ 2026-07-06 완료·검증**(아래 참조). 이미 07-04 auto-save에 구현돼 있던 것 실 API로 5/5 증명·기록.
+- #8 ManagerReports(범위 analytics 엔드포인트) · #38 고객분석 · #24 구독 청구흐름(Fable 돈게이트)
 - 보안 5건 = 배포 시 Fable 게이트(보안경계). 운영배포는 Irene /배포 지시만.
 
 ---

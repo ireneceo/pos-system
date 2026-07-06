@@ -30,6 +30,16 @@
 - **⇒ 남은 것: `bash /var/www/deploy-to-production.sh --auto` 배포 한 줄만.** 배포 후 운영서 동시-키 멱등 1회 재확인 권장.
 - ⚠️ Fable 발견 이슈#1(배포 비차단, **후속**): 모바일 dine-in 자동머지 경로(orders-crud.js:640-693)는 멱등 미적용 — 응답유실/20s abort 후 큐 재전송 시 같은 품목 재머지=계산서 품목 중복 가능(오프라인큐 도입때부터 있던 구멍). 후속: 머지 시 idem 키 기록 후 upfront 대조.
 
+### ✅ 인벤토리 브랜드모드 클러스터 #5/6/23/35/36 — 검증 완료 (2026-07-06, 코드 변경 0)
+> Irene 지시로 착수 → **조사 결과 이미 07-04 auto-save(272075de)에 프론트·백엔드 전부 구현돼 있었음**(session-state엔 "잔여"로만 남아 미검증·미보고 상태였음). 재작업 없이 실 API로 end-to-end 증명 후 기록.
+- #5 설정 404: `useSettingsModal` 브랜드 분기 → `PUT /product-ingredients/:id`(settings 필드 수용). 실 API PUT+GET 왕복 저장확인 ✅
+- #6 발주 seller-sources 404: `useOrderModal` 브랜드 분기 → `GET /product-ingredients/:id/seller-sources`(200, 404 제거) + PO 전송은 `product_ingredient_id` 사용. 백엔드 purchase-orders-crud:731-757·workflow:424/758 처리확인 ✅
+- #36 History 미기록: `POST /product-ingredients/:id/adjust-stock`가 InventoryTransaction 기록 → `GET /product-ingredients/transactions`(History 탭)에 노출. 실 API 재고 100→105 이동+거래행 매칭 ✅
+- #23 route nav: `InventoryManager`·`TransactionHistorySection` 브랜드 경로(`/brand/product-recipe`·`/product-ingredients/transactions`) ✅(프론트)
+- #35 Dismiss no-op: `useAlertResolver` 브랜드=클라 생성 alert 로컬 제거 ✅(프론트)
+- **검증**: demo-brand(id=22,brand_id=10) 실 API 5/5 PASS(데이터 원복)·print-guard 8/8 무접촉·코드 변경 0. Fable 게이트 비대상(인쇄/KDS/돈·주문 무접촉).
+- **배포**: 이미 main(auto-save 조상)에 포함 → 다음 배포에 자연 편승. 별도 커밋 불필요.
+
 ### 후속 후보 (아이디어 메모, 확정 X)
 > /개발시작 자동 추천 대상 아님.
 

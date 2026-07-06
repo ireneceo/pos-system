@@ -527,9 +527,9 @@ const SupplierInventoryPage: React.FC = () => {
                   ) : transactions.map(tx => {
                     const positive = tx.quantity_change >= 0;
                     const typeLabel = t(`supplier:inventory.history.type.${tx.transaction_type}`, tx.transaction_type);
-                    const variant: 'success' | 'warning' | 'error' | 'neutral' = tx.transaction_type === 'waste' ? 'error'
+                    const variant: 'success' | 'warning' | 'error' | 'default' = tx.transaction_type === 'waste' ? 'error'
                       : tx.transaction_type === 'manual_adjust' ? 'warning'
-                      : tx.transaction_type === 'initial' ? 'neutral'
+                      : tx.transaction_type === 'initial' ? 'default'
                       : 'success';
                     return (
                       <DataTableRow key={tx.id}>
