@@ -1037,7 +1037,8 @@
       "Bash(scp -q scripts/inspection/suites/suppliers.js scripts/inspection/suites/referential.js irene@87.106.78.146:/var/www/production-backend/scripts/inspection/suites/)",
       "Bash(pkill -f \"ui-layout-sweep\")",
       "Bash(pkill -f \"chromium.*headless\")",
-      "Bash(rm -f /tmp/uisweep.log /tmp/ra5.txt)"
+      "Bash(rm -f /tmp/uisweep.log /tmp/ra5.txt)",
+      "Bash(awk '/not assignable/{found=NR} found && NR>=found-15 && NR<=found {print}' /tmp/fbuild.log)"
     ],
     "deny": [],
     "ask": []

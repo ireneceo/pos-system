@@ -1,46 +1,37 @@
 # Purple POS — 개발 세션 상태
 
-<!-- AUTOSAVE-STALE-BANNER -->
-> **[AUTO-SAVE STALE] (2026-07-06 06:40, idle 1892s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
-> 변경된 작업 파일: orders-crud.js,MobileLayout.tsx CartPage.tsx,PaymentPage.tsx
-<!-- /AUTOSAVE-STALE-BANNER -->
-
 ## 현재 작업 상태
 
-**마지막 업데이트:** 2026-07-05 (with MIN 공급망 구조정리 + 인스펙션 하니스 + 공급업체 페이지 — 운영 배포 완료 Backup 20260705_211213 Smoke 9/9)
-**버전:** 운영=**v3.66 / SW 4.58** (버전 미변경 — Irene "우선" 지시로 이번 배포는 버전 안 올림)
-**작업 상태:** 완료
+**마지막 업데이트:** 2026-07-06 (모바일 중복주문 수정 — 구현+검증 완료, Fable 게이트 결과 대기 → bless+배포 대기)
+**버전:** 운영=**v3.66 / SW 4.58**
+**작업 상태:** 진행 중 — 배포 직전 (Fable 게이트 → bless → 배포)
 
-### 진행 중인 작업
-- 없음
+### 진행 중인 작업 — 모바일 중복주문(2번 주문) 수정 [dev 반영·미배포]
 
-### 완료된 작업 (이번 세션, 2026-07-05)
-- with MIN(gitconsulting) 공급 리스트 355행 임포트 → 재고/공급업체/판매품목 (멱등 HTTP-API)
-- 근본원인 정정: 임포트 파서가 UGS/Tourmanium을 판매(BG_SOLD)로 오분류 → 매입(BG_EXT) 정정 (Fable 구조검토)
-- UGS/Tourmanium 매입 재모델링: 외부공급업체 2개(34 Tourmanium, 35 UGS) + BG 스톡 59개 매입매핑
-- dead 정리: self-brand 매핑 59 + 껍데기 BrandProduct 59 + 미러 118 + 고아 1 삭제
-- 레거시 dedup: 중복 6개 링크백필 + 미링크 3개(GIT Consult 37/Kraft Nation 38/Vege 39) 외부이관 → OWN/Direct 통일
-- 판매품목 재고연결: UGS/Tourmanium 59개 → BrandProduct + auto-recipe 재고-다이렉트 (BG 판매+매입 완결, 레스토랑 모델 동형)
-- 공급업체 계약 상속(supplierAccess.findEffectiveContract): 레스토랑이 부모 브랜드 외부업체 계약 상속
-- buyer 모듈 시드(운영 브랜드플랜 3종): buyer_supplier_directory/purchase_orders 추가 → Products·발주 게이트 복구
-- 외부업체 Edit/Delete: AllSuppliersView 카드 + DELETE soft-delete 라우트 (E2E 검증 create→edit→delete)
-- 인스펙션 하니스 신설(scripts/inspection/): 공급망 구조 불변식 6종 자동검사+exit게이트, 운영 6/6 PASS
-- 검증: state-hydration 0·health 107/107·print-guard 8/8·design 0·하니스 6/6·빌드 0경고
-- 운영 배포 완료(Backup 20260705_211213, Smoke 9/9)
+**구현 완료 (autosave 커밋 b6ff2545에 포함, HEAD 기준):**
+- `dev-frontend/src/utils/offlineOrderQueue.ts`: 카트-안정 멱등키(`getStableIdempotencyKey`/`cartSignature`/`clearStableIdempotencyKey`) + `fetchWithTimeout(20s)`
+- `dev-frontend/src/mobile/pages/PaymentPage.tsx`: handlePayment서 `stableIdemKey` 계산→counter/QR-Bank/online 3경로 사용, fetch→fetchWithTimeout, 성공 시 clear, 미사용 import 제거
+- `dev-backend/routes/orders-crud.js`(🔒보호파일): 재시도 catch서 ER_DUP_ENTRY→기존주문 조회 반환(동시요청 500 제거). **9줄, 인쇄 블록 무접촉 확인됨**
+- P3 가독성: MobileLayout 카트뱃지=총수량(reduce), CartPage 수량 18px bold, PaymentPage 요약수량 bold
 
-### 다음 확정 작업
-- 없음 — 지시 대기
+**검증 완료:**
+- ✅ 동시/순차 같은키 3요청 → 주문 1개(중복0), 동시 500 사라짐 (dev 실호출, 데모매장3)
+- ✅ health-check 106/107 (1=orders-crud 보호파일 감지=승인됨) · order-totals 20/20 · 빌드 클린(경고는 기존부채 타파일)
+- ✅ orders-crud diff = 멱등 9줄만(16e73e1b→HEAD), pending-print/printed/print-claim/kitchen_items 무접촉
+
+### 다음 확정 작업 (Irene 지시 — 다음 세션서 실행)
+1. **Fable 게이트 결과 확인**: 아래 "Fable 게이트 결과" 줄 참고(이 세션이 기록). PASS 전제로 진행.
+2. **print-guard bless** (orders-crud 승인된 멱등 변경): `cd /var/www/dev-backend && node scripts/check-print-guard.js --bless`
+3. **배포**: `bash /var/www/deploy-to-production.sh --auto` (안전게이트 5/5 통과 확인). 배포 후 운영서 동시-키 멱등 1회 재확인 권장.
+
+**Fable 게이트 결과:** ⏳ 대기 중 (이 세션 결과 나오면 갱신)
 
 ### 후속 후보 (아이디어 메모, 확정 X)
-> 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.
+> /개발시작 자동 추천 대상 아님.
 
-- (✅ 2026-07-06 완료) brand-products 빈화면 = 이미 견고(ChunkLoad 리커버리+SW cache-bust), mount 21/21 OK — 코드변경 불필요
-- (✅ 2026-07-06 완료) 하니스 확장: plan-modules 불변식 + baseline 게이트 + 배포 안전게이트 5/5 (bdfc24dc)
-- (✅ 2026-07-06 완료) 스코프 중복(KK Mart/Village Grocer) 정리 — 잉여 5매핑+SC2 제거, 레스토랑 뷰 각 1장
-- (✅ 2026-07-06 완료) dev 공급망 정리 — self-brand/고아/미러 3건, baseline 4→1(41375583)
-- (✅ 2026-07-06 완료) 하니스 추가 스위트: suppliers(3)·referential(5) 신설 → 운영 실결함 발견(매장13 메뉴4개 대롱레시피) → 정리+근본수정(recipes.js 삭제 시 Product.recipe_id 정리). 운영 하니스 16/16, 배포 Backup 20260706_035825 (f1b4649f)
-- R-SC-006 미분류(dev owner6 10건) 테스트데이터 — baseline에 남음, 정리 선택
-- 하니스 더 확장 여지: 돈/주문 무결성(order totals·invoice), 보안경계, 인쇄설정 완결성 등 도메인 스위트 — 미착수
+- 설정 operations 레이아웃: `SettingsGrid`에 `align-items:start`+`grid-auto-flow:dense` 적용(dev 반영). Irene 확인 대기 — 홀수/전폭 경계 빈칸 남으면 operations만 masonry(CSS columns, 전폭=column-span:all) 에스컬레이션. SettingsGrid 13곳 공유·전폭카드 12개라 전면변경은 눈검증 후.
+- `dev-frontend/scripts/ui-layout-sweep.js`: UI 반응형/레이아웃 스위트 — 헤드리스가 무거운 라이브 설정페이지 로드서 hang. 재접근: **localhost 빌드 대상 로드** 또는 더 가벼운 대기/평가.
+- 인스펙션 하니스 추가 스위트(돈/주문 무결성·보안경계 도메인), R-SC-006 dev 미분류 정리(선택)
 
 ---
 
