@@ -31,6 +31,57 @@ export function ensureIdempotencyKey(body: any): any {
   return body;
 }
 
+// ── 카트-안정 멱등키 (모바일 중복주문 방지 핵심) ─────────────────────────────
+// 문제: 시도마다 새 키를 만들면, 첫 요청이 서버에 도달했는데 응답이 유실된 경우(느린 wifi/504)
+// 고객이 재탭/새로고침하면 '새 키'라 서버가 새 주문을 또 만든다 → 중복.
+// 해결: 키를 '카트 내용'에 고정. 같은 카트면 재탭·새로고침·재시도 전부 같은 키 →
+// 서버가 idempotency_key 로 기존 주문을 반환(중복 0). 카트가 바뀌거나 성공하면 폐기.
+const STABLE_IDEM_KEY = 'mobile_order_idem_v1';
+
+// 카트 시그니처 — 항목(id·수량·옵션)+주문유형+총액. 순서 무관(정렬).
+export function cartSignature(items: any[], orderType: string, total: number | string): string {
+  try {
+    const norm = (items || [])
+      .map((it: any) => `${it.id ?? it.menu_item_id ?? it.product_id ?? it.menuItemId}:${it.quantity ?? it.qty ?? 1}:${it.selectedOptions ? JSON.stringify(it.selectedOptions) : (it.options ? JSON.stringify(it.options) : '')}`)
+      .sort()
+      .join('|');
+    return `${orderType || ''}#${norm}#${total}`;
+  } catch {
+    return `${orderType || ''}#${total}#${(items || []).length}`;
+  }
+}
+
+// 같은 시그니처면 같은 키. 다르면(카트 변경) 새 키 발급+저장.
+export function getStableIdempotencyKey(signature: string): string {
+  try {
+    const raw = localStorage.getItem(STABLE_IDEM_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.sig === signature && parsed.key) return parsed.key;
+    }
+  } catch { /* ignore */ }
+  const key = genIdempotencyKey();
+  try { localStorage.setItem(STABLE_IDEM_KEY, JSON.stringify({ key, sig: signature })); } catch { /* quota */ }
+  return key;
+}
+
+// 주문 성공(장바구니 비움) 시 호출 → 다음 주문은 새 키로 시작.
+export function clearStableIdempotencyKey(): void {
+  try { localStorage.removeItem(STABLE_IDEM_KEY); } catch { /* ignore */ }
+}
+
+// 타임아웃 있는 fetch — 느린 매장 wifi 에서 무한 대기 방지(고객이 실패로 오인해 재탭하는 것 차단).
+// 초과 시 AbortError → 호출부가 오프라인 큐로 넘김(같은 안정키라 재전송해도 중복 0).
+export async function fetchWithTimeout(url: string, opts: RequestInit = {}, timeoutMs = 20000): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...opts, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export function getQueue(): QueuedOrder[] {
   try {
     const raw = localStorage.getItem(QUEUE_KEY);

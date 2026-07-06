@@ -11,7 +11,7 @@ import api from '../services/api';
 import { formatCurrency } from '../../utils/currency';
 import PhoneInput from '../components/common/PhoneInput';
 import { mobileFetch } from '../utils/mobileApi';
-import { ensureIdempotencyKey, enqueueOrder, genIdempotencyKey } from '../../utils/offlineOrderQueue';
+import { ensureIdempotencyKey, enqueueOrder, genIdempotencyKey, getStableIdempotencyKey, cartSignature, clearStableIdempotencyKey, fetchWithTimeout } from '../../utils/offlineOrderQueue';
 import { getActiveTable } from '../utils/tableSession';
 
 const Container = styled.div`
@@ -1352,6 +1352,9 @@ const PaymentPage: React.FC = () => {
     }
 
     setIsProcessing(true);
+    // 카트-안정 멱등키 — 이 주문 시도 전체(재탭·새로고침·재시도)에서 같은 키를 써서 서버가
+    // 한 주문으로 합치게 한다(중복주문 방지 핵심). 카트가 바뀌면 다른 키.
+    const stableIdemKey = getStableIdempotencyKey(cartSignature(cartItems, orderType, total));
 
     try {
       // Validate cart
@@ -1483,15 +1486,15 @@ const PaymentPage: React.FC = () => {
             };
 
             console.log('💾 Saving order to DATABASE...');
-            // #9 오프라인 큐 — 멱등키 부여(재전송/더블탭 중복생성 방지) + 네트워크 끊김 시 큐잉.
-            ensureIdempotencyKey(dbOrderData);
+            // #9 오프라인 큐 — 카트-안정 멱등키(재전송/더블탭/새로고침 중복생성 방지) + 네트워크 끊김/타임아웃 시 큐잉.
+            dbOrderData.idempotency_key = stableIdemKey;
             let response: Response;
             try {
-              response = await fetch('/api/orders', {
+              response = await fetchWithTimeout('/api/orders', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(dbOrderData)
-              });
+              }, 20000);
             } catch (netErr) {
               // 연결 끊김 — 주문을 잃지 않게 로컬 큐에 저장. 재연결 시 자동 전송(서버 멱등으로 중복 0).
               enqueueOrder('/api/orders', dbOrderData);

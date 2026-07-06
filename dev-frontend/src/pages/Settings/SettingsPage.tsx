@@ -102,6 +102,8 @@ const SettingsGrid = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 24px;
+  align-items: start;      /* 카드가 행 높이에 늘어나 내부에 빈 공간 생기는 것 방지(높이 제각각 정렬) */
+  grid-auto-flow: row dense; /* 반폭 카드 사이 단일 셀 빈칸을 뒤 카드로 메움 */
 
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
