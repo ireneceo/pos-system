@@ -23,7 +23,9 @@ const CURRENCY_CONFIG = {
   VND: { symbol: '₫', name: 'Vietnamese Dong', decimals: 0 },
   IDR: { symbol: 'Rp', name: 'Indonesian Rupiah', decimals: 0 },
   TWD: { symbol: 'NT$', name: 'Taiwan Dollar', decimals: 0 },
-  HKD: { symbol: 'HK$', name: 'Hong Kong Dollar', decimals: 2 }
+  HKD: { symbol: 'HK$', name: 'Hong Kong Dollar', decimals: 2 },
+  AED: { symbol: 'د.إ', name: 'UAE Dirham', decimals: 2 },
+  SAR: { symbol: 'ر.س', name: 'Saudi Riyal', decimals: 2 }
 };
 
 // ============================================

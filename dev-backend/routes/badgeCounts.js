@@ -226,6 +226,48 @@ router.get('/', authenticateToken, async (req, res) => {
           status: { [Op.in]: ['pending_payment', 'overdue'] }
         }
       });
+    } else if (role === 'Brand General' || role === 'Brand Manager') {
+      // 2026-07-07: BG had NO invoice-badge branch → payable invoices never showed a
+      // sidebar dot. Mirror /api/invoices/to-pay's recipient logic so the badge matches
+      // the "To Pay" list exactly: direct brand_manager invoices + brand-pays-restaurant
+      // invoices, excluding ones this brand ISSUED.
+      const brand = await Brand.findOne({ where: { owner_id: userId }, attributes: ['id'] });
+      if (brand) {
+        const brandPay = await Restaurant.findAll({
+          where: { brand_id: brand.id, payment_model: 'brand_manager' }, attributes: ['id']
+        });
+        const brIds = brandPay.map(r => r.id);
+        const or = [{ payer_type: 'brand_manager', payer_id: userId }];
+        if (brIds.length) or.push({ restaurant_id: { [Op.in]: brIds } });
+        counts.invoices = await Invoice.count({
+          where: {
+            [Op.and]: [
+              { [Op.or]: or },
+              { [Op.not]: { issuer_type: 'brand', issuer_id: brand.id } },
+              { status: { [Op.in]: ['pending_payment', 'overdue'] } }
+            ]
+          }
+        });
+      }
+    } else if (role === 'Foodcourt General' || role === 'Foodcourt Manager') {
+      const foodcourt = await Foodcourt.findOne({ where: { owner_id: userId }, attributes: ['id'] });
+      if (foodcourt) {
+        const fcPay = await Restaurant.findAll({
+          where: { foodcourt_id: foodcourt.id, payment_model: 'foodcourt_manager' }, attributes: ['id']
+        });
+        const fcIds = fcPay.map(r => r.id);
+        const or = [{ payer_type: 'foodcourt_manager', payer_id: userId }];
+        if (fcIds.length) or.push({ restaurant_id: { [Op.in]: fcIds } });
+        counts.invoices = await Invoice.count({
+          where: {
+            [Op.and]: [
+              { [Op.or]: or },
+              { [Op.not]: { issuer_type: 'foodcourt', issuer_id: foodcourt.id } },
+              { status: { [Op.in]: ['pending_payment', 'overdue'] } }
+            ]
+          }
+        });
+      }
     }
 
     // --- Pending Orders (Restaurant Admin / Staff only) ---

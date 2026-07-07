@@ -1,3 +1,4 @@
+import React, { forwardRef, useRef, useState } from 'react';
 import { theme as t } from '../../styles/theme';
 import styled, { css } from 'styled-components';
 
@@ -17,7 +18,7 @@ import styled, { css } from 'styled-components';
 export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'danger-outline' | 'success' | 'cancel' | 'outline' | 'warning' | 'info';
 export type ButtonSize = 'small' | 'medium' | 'large';
 
-export const Button = styled.button<{
+const StyledButton = styled.button<{
   variant?: ButtonVariant;
   size?: ButtonSize;
   fullWidth?: boolean;
@@ -156,6 +157,53 @@ export const Button = styled.button<{
     }};
   }
 `;
+
+// ============================================================================
+// Async-guarded Button (2026-07-07, Irene: "버튼 반복클릭해서 3번 저장됨").
+// If onClick returns a Promise (async handler), the button auto-disables until it
+// settles — so a slow save/send/pay can't be fired 2~3x by impatient clicking
+// (duplicate invoices / duplicate payments). Backward compatible: sync handlers
+// (return undefined) behave exactly as before. A synchronous ref guard blocks
+// rapid clicks that land before React re-renders with disabled=true.
+// className/ref are forwarded so styled(Button) (ModalButton 등) keeps working.
+// ============================================================================
+export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  fullWidth?: boolean;
+};
+
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ onClick, disabled, ...rest }, ref) => {
+    const busyRef = useRef(false);
+    const [busy, setBusy] = useState(false);
+
+    const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+      if (busyRef.current || disabled) return;
+      if (!onClick) return;
+      const result = onClick(e) as unknown;
+      if (result && typeof (result as { then?: unknown }).then === 'function') {
+        busyRef.current = true;
+        setBusy(true);
+        Promise.resolve(result).finally(() => {
+          busyRef.current = false;
+          setBusy(false);
+        });
+      }
+    };
+
+    return (
+      <StyledButton
+        ref={ref}
+        onClick={onClick ? handleClick : undefined}
+        disabled={disabled || busy}
+        aria-busy={busy || undefined}
+        {...rest}
+      />
+    );
+  }
+);
+Button.displayName = 'Button';
 
 // Modal 전용 버튼 (disabled 시 색상 변경 포함 — 더 세밀한 비활성화 표현)
 export const ModalButton = styled(Button)`

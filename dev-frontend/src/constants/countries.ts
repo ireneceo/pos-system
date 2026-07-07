@@ -13,6 +13,8 @@ export const COUNTRIES = [
   { code: 'AU', name: 'Australia', timezone: 'Australia/Sydney', phoneCode: '+61' },
   { code: 'US', name: 'United States', timezone: 'America/New_York', phoneCode: '+1' },
   { code: 'GB', name: 'United Kingdom', timezone: 'Europe/London', phoneCode: '+44' },
+  { code: 'AE', name: 'United Arab Emirates', timezone: 'Asia/Dubai', phoneCode: '+971' },
+  { code: 'SA', name: 'Saudi Arabia', timezone: 'Asia/Riyadh', phoneCode: '+966' },
 ];
 
 // 국가 코드로 국가 정보 찾기

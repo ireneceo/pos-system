@@ -1310,9 +1310,10 @@ const InvoicesPage: React.FC = () => {
       } else if (selectedTarget?.type === 'manager') {
         const manager = selectedTarget.data as Manager;
         customerName = manager.fullName;
-        companyName = manager.companyName || manager.fullName;
+        const _mgrCompany = (manager.companyName && manager.companyName !== 'Unknown Company') ? manager.companyName : '';
+        companyName = _mgrCompany || manager.fullName;
         const addressParts = [];
-        if (manager.companyName) addressParts.push(manager.companyName);
+        if (_mgrCompany) addressParts.push(_mgrCompany);
         if (manager.email) addressParts.push(`Email: ${manager.email}`);
         customerAddress = addressParts.join('\n');
       }

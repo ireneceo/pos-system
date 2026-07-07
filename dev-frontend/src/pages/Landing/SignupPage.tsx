@@ -77,6 +77,7 @@ const countryToCurrency: Record<string, string> = {
   'TW': 'TWD', 'TH': 'THB', 'VN': 'VND', 'PH': 'PHP', 'ID': 'IDR',
   'IN': 'INR', 'AU': 'AUD', 'GB': 'GBP', 'DE': 'EUR', 'FR': 'EUR',
   'IT': 'EUR', 'ES': 'EUR', 'NL': 'EUR', 'US': 'USD', 'CA': 'CAD',
+  'AE': 'AED', 'SA': 'SAR',
 };
 
 // SVG line-style icons for role cards

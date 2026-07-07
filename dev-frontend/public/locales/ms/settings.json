@@ -1088,6 +1088,15 @@
   "operations.managerApprovalsTitle": "Kelulusan PIN Pengurus",
   "operations.managerApprovalsDesc": "Perlukan PIN yang dibenarkan sebelum tindakan kaunter sensitif, untuk mencegah dan menjejak penyalahgunaan. Akaun log masuk tidak berubah — PIN hanya mengesahkan siapa yang meluluskan.",
   "printer": {
+    "native": {
+      "printerLabel": "Pencetak",
+      "osDefault": "Pencetak lalai PC ini (automatik)",
+      "savedNotDetected": "disimpan (tidak dikesan sekarang)",
+      "networkIp": "Pencetak rangkaian (masukkan IP)…",
+      "autoPrintOffTitle": "Cetak automatik dimatikan",
+      "autoPrintOffDesc": "Tiket dapur tidak akan dicetak automatik apabila pesanan tiba. Hidupkan supaya pesanan baharu dicetak dengan sendiri.",
+      "autoPrintOnBtn": "Hidupkan cetak automatik"
+    },
     "adminOnlyNotice": "Tetapan pencetak hanya boleh diubah oleh Pentadbir Restoran.",
     "adminOnlyReadonly": "Tetapan pencetak hanya boleh diubah oleh Pentadbir Restoran. Perubahan di sini tidak akan disimpan — kecuali Mod Penghalaan Kecemasan yang boleh ditogol oleh mana-mana kakitangan.",
     "troubleshoot": {

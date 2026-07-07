@@ -81,6 +81,7 @@ const countryToCurrency: Record<string, string> = {
   'PH': 'PHP', 'ID': 'IDR', 'IN': 'INR', 'AU': 'AUD',
   'GB': 'GBP', 'DE': 'EUR', 'FR': 'EUR', 'IT': 'EUR',
   'ES': 'EUR', 'NL': 'EUR', 'US': 'USD', 'CA': 'CAD',
+  'AE': 'AED', 'SA': 'SAR',
 };
 
 const ZERO_DECIMAL_CURRENCIES = ['KRW', 'JPY', 'VND', 'IDR', 'TWD'];

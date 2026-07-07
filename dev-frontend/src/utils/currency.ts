@@ -35,7 +35,9 @@ export const CURRENCY_CONFIG: Record<string, CurrencyConfig> = {
   VND: { symbol: '₫', name: 'Vietnamese Dong', decimals: 0 },
   IDR: { symbol: 'Rp', name: 'Indonesian Rupiah', decimals: 0 },
   TWD: { symbol: 'NT$', name: 'Taiwan Dollar', decimals: 0 },
-  HKD: { symbol: 'HK$', name: 'Hong Kong Dollar', decimals: 2 }
+  HKD: { symbol: 'HK$', name: 'Hong Kong Dollar', decimals: 2 },
+  AED: { symbol: 'د.إ', name: 'UAE Dirham', decimals: 2 },
+  SAR: { symbol: 'ر.س', name: 'Saudi Riyal', decimals: 2 }
 };
 
 /**
@@ -209,7 +211,8 @@ export const PLAN_CURRENCIES = DEFAULT_PLAN_CURRENCIES;
 export const COUNTRY_TO_CURRENCY: Record<string, string> = {
   MY: 'MYR', US: 'USD', KR: 'KRW', SG: 'SGD', TH: 'THB',
   JP: 'JPY', CN: 'CNY', IN: 'INR', PH: 'PHP', VN: 'VND',
-  ID: 'IDR', TW: 'TWD', HK: 'HKD', AU: 'AUD', GB: 'GBP'
+  ID: 'IDR', TW: 'TWD', HK: 'HKD', AU: 'AUD', GB: 'GBP',
+  AE: 'AED', SA: 'SAR'
 };
 
 /**

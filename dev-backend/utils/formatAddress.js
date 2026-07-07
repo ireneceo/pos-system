@@ -93,7 +93,9 @@ const COUNTRY_ALIAS = {
   'UNITED KINGDOM': 'GB', 'UK': 'GB', 'GB': 'GB', 'ENGLAND': 'GB', '영국': 'GB',
   'AUSTRALIA': 'AU', 'AU': 'AU', '호주': 'AU',
   'CANADA': 'CA', 'CA': 'CA', '캐나다': 'CA',
-  'INDIA': 'IN', 'IN': 'IN', '인도': 'IN'
+  'INDIA': 'IN', 'IN': 'IN', '인도': 'IN',
+  'UNITED ARAB EMIRATES': 'AE', 'UAE': 'AE', 'AE': 'AE', 'EMIRATES': 'AE', '아랍에미리트': 'AE',
+  'SAUDI ARABIA': 'SA', 'SAUDI': 'SA', 'SA': 'SA', 'KSA': 'SA', '사우디아라비아': 'SA', '사우디': 'SA'
 };
 
 function normalizeCountry(input) {

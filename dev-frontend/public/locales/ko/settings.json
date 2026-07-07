@@ -1088,6 +1088,15 @@
   "operations.managerApprovalsTitle": "관리자 PIN 승인",
   "operations.managerApprovalsDesc": "민감한 카운터 동작 전에 권한 PIN을 요구해 오남용을 예방·추적합니다. 로그인 계정은 바뀌지 않으며, PIN은 누가 승인했는지만 확인합니다.",
   "printer": {
+    "native": {
+      "printerLabel": "프린터",
+      "osDefault": "이 PC 기본 프린터 (자동)",
+      "savedNotDetected": "저장됨 (현재 감지 안 됨)",
+      "networkIp": "네트워크 프린터 (IP 직접 입력)…",
+      "autoPrintOffTitle": "자동 인쇄가 꺼져 있습니다",
+      "autoPrintOffDesc": "주문이 들어와도 주방 티켓이 자동으로 인쇄되지 않습니다. 켜면 새 주문이 자동으로 인쇄됩니다.",
+      "autoPrintOnBtn": "자동 인쇄 켜기"
+    },
     "adminOnlyNotice": "프린터 설정은 레스토랑 관리자만 변경할 수 있습니다.",
     "adminOnlyReadonly": "프린터 설정은 레스토랑 관리자만 변경할 수 있습니다. 여기서의 변경은 저장되지 않습니다 — 단, 비상 라우팅 모드는 직원도 켤 수 있습니다.",
     "troubleshoot": {

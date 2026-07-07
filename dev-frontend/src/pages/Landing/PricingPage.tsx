@@ -559,6 +559,8 @@ const countryToCurrency: Record<string, string> = {
   'NL': 'EUR',  // 네덜란드
   'US': 'USD',  // 미국
   'CA': 'CAD',  // 캐나다
+  'AE': 'AED',  // 아랍에미리트
+  'SA': 'SAR',  // 사우디아라비아
 };
 
 const PricingPage: React.FC = () => {

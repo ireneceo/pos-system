@@ -187,7 +187,7 @@ const InvoiceCreateModal: React.FC<InvoiceCreateModalProps> = ({
                   </div>
                   <div style={{fontSize: '13px', color: '#4B5563'}}>
                     {selectedTarget.type === 'manager'
-                      ? `${(selectedTarget.data as Manager).companyName} • Manager`
+                      ? `${(() => { const m = selectedTarget.data as Manager; const c = m.companyName; return (c && c !== 'Unknown Company') ? c : (m.email || m.role || 'Manager'); })()} • Manager`
                       : `${(selectedTarget.data as Restaurant).address || 'No address'} • Restaurant`}
                   </div>
                 </div>
@@ -292,6 +292,7 @@ const InvoiceCreateModal: React.FC<InvoiceCreateModalProps> = ({
             onChange={(v) => setNewInvoice({...newInvoice, dueDate: v})}
             required
             min={new Date().toISOString().split('T')[0]}
+            dropdownPortal
           />
         </FormGroup>
       </FormRow>

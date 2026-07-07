@@ -1088,6 +1088,15 @@
   "operations.managerApprovalsTitle": "经理 PIN 批准",
   "operations.managerApprovalsDesc": "在敏感的柜台操作前要求授权 PIN，以预防和追踪滥用。登录账户不会更改，PIN 仅确认由谁批准。",
   "printer": {
+    "native": {
+      "printerLabel": "打印机",
+      "osDefault": "此电脑的默认打印机（自动）",
+      "savedNotDetected": "已保存（当前未检测到）",
+      "networkIp": "网络打印机（输入 IP）…",
+      "autoPrintOffTitle": "自动打印已关闭",
+      "autoPrintOffDesc": "订单到达时厨房小票不会自动打印。开启后新订单将自动打印。",
+      "autoPrintOnBtn": "开启自动打印"
+    },
     "adminOnlyNotice": "打印机设置只能由餐厅管理员更改。",
     "adminOnlyReadonly": "打印机设置只能由餐厅管理员更改。此处的更改不会被保存——但紧急路由模式任何员工都可切换。",
     "troubleshoot": {

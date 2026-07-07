@@ -49,6 +49,13 @@ const CheckoutForm: React.FC<{
 
   return (
     <Form onSubmit={handleSubmit}>
+      {/* 2026-07-07 (Irene): amounts below a card minimum (≈RM2 for MYR) make Stripe hide
+          card and show only e-wallets — users were confused by the shorter list. This note
+          explains the dynamic list so a missing card isn't mistaken for a bug. */}
+      <MethodNote>
+        Payment options adjust to the amount and currency. Card has a small minimum
+        (about RM2 for MYR); for smaller amounts only e-wallets may appear.
+      </MethodNote>
       <PaymentElement />
       <SubmitButton type="submit" disabled={!stripe || processing}>
         {processing ? 'Processing...' : 'Pay Now'}
@@ -132,6 +139,16 @@ const Form = styled.form`
   display: flex;
   flex-direction: column;
   gap: 16px;
+`;
+
+const MethodNote = styled.div`
+  padding: 10px 12px;
+  background: #F0F9FF;
+  border: 1px solid #BAE6FD;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #075985;
 `;
 
 const SubmitButton = styled.button`

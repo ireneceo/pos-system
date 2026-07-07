@@ -2,11 +2,53 @@
 
 ## 현재 작업 상태
 
-**마지막 업데이트:** 2026-07-07 #2 (**운영 배포 완료** — 데스크탑앱 5이슈+빌프린트 우측잘림+**주방 자동인쇄 네이티브 무인화**(Fable PASS x3, print-guard bless). SW 4.61, Backup 20260707_082835, 게이트6/6, health110/110, 스모크9/9, desktop 0.1.1 자동업데이트 동기화. **but 매장 실사용서 근본 UX 갭 드러남 → 다음 최우선 = 네이티브앱 프린터 선택 UX(아래).**)
-**버전:** 운영=**배포됨 / SW 4.61**. 이번 배포 편승분: 데스크탑앱5+빌여백+자동인쇄+비전AI TrackA/B1(신규2테이블)+하니스+인벤토리클러스터.
-**작업 상태:** ✅ 배포 완료. **Irene 복귀 후 실프린터 확인:** ①빌 우측숫자 ②자동인쇄 1장. **⚠️ 다음 최우선 확정작업 = 네이티브앱 프린터 선택 UX(라이브 매장 with MIN #10 블로커, Irene "다시 파악해서 저장" 지시 2026-07-07). 아래 상세.** 그 다음 #8→#24→비전AI B2.
+**마지막 업데이트:** 2026-07-07 #4 (**운영 배포 완료 + 세션 정리(저장)** — 네이티브 프린터UX+인쇄라우트가드+인보이스/버튼/배지 다수. Backup 20260707_170603, 게이트**7/7**(신규 라우트가드 포함), health110/110, 스모크9/9. Irene "다 해 — **모든 남은 건 다음 섹션에서**". 아래 "🎯 다음 세션 확정 작업" 참조.)
+**버전:** 운영=**배포됨**. **⚠️ 버전 미상승 — Irene 결정 대기**(방금 배포분=사용자체감 커서 릴리즈노트 권장). 배포 편승분: 네이티브프린터UX+인쇄라우트가드(배포게이트7)+버튼중복제출근본+PayPal빈공간+최소금액안내+캘린더+회사명+BG배지.
+**작업 상태:** ✅ 이번 세션 배포분 운영 반영. **미배포 dev분: #7 국가·통화 2개(UAE+Saudi, AED/SAR).** **Irene 여기서 세션 종료 — 남은 건 전부 다음 세션.**
 
-### 🎯🎯 다음 최우선 확정작업 — 네이티브앱 프린터 선택 UX (USB 다중 프린터) [2026-07-07, 라이브 매장 블로커]
+### 🎯🎯 다음 세션 확정 작업 (Irene "다 해, 모든 걸 다, 다음 섹션에서" — 2026-07-07 #4)
+> Irene가 이번 세션 끝에 "다 해. 모든 걸 다 하자. 그런데 다음 섹션에 할게" 지시. 아래 전부 = 다음 세션 확정 작업 큐. **/개발시작 시 이 목록으로 시작.**
+
+1. **네이티브앱 반응형 ①②** ([[project_native_app_floorplan_cashmgmt_backlog]], Irene 오늘 후순위→이제 착수 승인). ①Floor Plan 헤더 2줄+우측정렬 안 감(★먼저 **첫실행 최대화 배포본**으로 재확인 — 앱이 작게 떠서였을 수 있음) ②Cash-up UX→"캐시관리" 재구성(캐시드로우↔오픈드로우 너무 멂, 기본=캐시드로우+드롭, 오픈드로우 자동안하는 매장 옵션).
+2. **#2 결제 후 자동반영** — Stripe 결제성공 클라이언트 콜백이 **웹훅 마킹 전**에 목록 refetch→pending 보여 "안 바뀜"(새로고침해야 됨). 원인=웹훅 타이밍 경합. 수정=성공 후 paid될 때까지 폴링 or PaymentIntent 직접확인 후 즉시반영. **결제=Fable.** 위치: `StripePaymentForm`/`BrandInvoicesPage` onSuccess, `invoices-payment.js`.
+3. **#6 인보이스 페이지네이션** — 12 인보이스목록 중 SupplierInvoicesPage만 있고 **11페이지 무페이지네이션**(Brand/Foodcourt/Owner/Admin/Restaurant/Manager+Trade). 공용 Pagination 컴포넌트 신설→적용. + Paid탭 기본 'month'→'All'.
+4. **#7 국가·통화 배포** — UAE+Saudi(AED/SAR) dev 완료·미배포 → 다음 /배포 편승. (AED 플랜가격은 Irene 나중에 → 그때 DB `supported_countries`에 AE/SA 추가하면 랜딩 가격에도 노출.)
+5. **버전 상승 + 릴리즈노트** — 방금 배포분(버튼중복제출·PayPal·최소금액·BG배지 등 사용자체감) 버전업+CHANGELOG+공지/블로그 등록.
+6. **user23 "Unknown Company" DB 정리** — 운영 gitconsulting company_name=literal "Unknown Company"(코드 폴백은 이미 배포). 실회사명으로 교정 or null.
+7. (이전 큐 유지) **#8 매니저리포트 가짜매출**(ManagerReportsPage Math.random)·**#24 구독변경배선**(돈,Fable)·**비전AI B2**(Vertex/Claude 키)·**오프라인 편집배선**.
+
+### ✅ 이번 세션(2026-07-07 #4) 완료·배포 요약
+- **네이티브 프린터 선택 UX**(SettingsPage, 아래 상세) + **인쇄 라우트가드**(dev-frontend/scripts/print-route-guard, 배포게이트 7/7, [[reference_print_route_guard]]) + 21루트 자동프린팅 검증.
+- **버튼 중복제출 근본수정**: 공용 `Button`을 async onClick 진행중 자동비활성(동기 ref가드) → Create/Send/결제 등 전앱 중복제출 차단. 단위테스트 `Button.guard.test.tsx` 3/3(3연타→1회), mount sweep clean, `${Button}`인터폴레이션0·`as`0이라 안전. **Fable PASS.**
+- 인보이스 수정: PayPal 빈공간(브랜드결제창 렌더블록)·최소금액안내(StripePaymentForm, 카드 MYR≈RM2)·캘린더 잘림(DateField dropdownPortal)·회사명 폴백·**BG/FG 좌측 인보이스배지**(badgeCounts 분기, DB검증 brand_general 7).
+- **Stripe/PayPal 진단(코드무변경)**: GrabPay만 뜬 원인=**RM1 초소액**(카드 MYR 최소RM2, RM2+엔 카드 정상 — 라이브API 실증). PayPal 안뜬 건 **토글 off+sandbox**(플랫폼 payment_settings 행). 결제=주체별키(각 매장 자기 Stripe/PayPal로 손님결제 수금, 토글ON+live 필수).
+- **#7 국가·통화** UAE+Saudi(dev·미배포, 8소스).
+- **미결 잡무**: MEMORY.md 163줄 컴팩션 알림(비긴급).
+
+### ✅ 네이티브앱 프린터 선택 UX (USB 다중 프린터) — 구현·검증 완료 (2026-07-07 #3, dev·미배포·**Fable 게이트 대기**)
+> Irene with MIN Cafe(운영 #10) 네이티브 윈도우앱 블로커 해결. SettingsPage.tsx **단일 파일**, 🔒인쇄 protected 8파일·billPrint.js 디스패치 **무접촉**(print-guard 8/8).
+
+**핵심 실측 결론:** 디스패치(billPrint.js)는 이미 다중 프린터 지원 — method=`qztray`+address=OS프린터명이면 그 프린터로 라우팅(`sendHTMLViaQZTray`/`sendViaQZTray` 네이티브 `printHtml/printRaw`). 근본 갭은 **설정 UI**뿐이었음(IP 먼저·드롭다운 숨김·browser=기본1개).
+
+**구현(SettingsPage.tsx만):**
+- 신규 module-scope `NativePrinterSelect`(리마운트 방지) — 프린터 하나당 드롭다운: [이 PC 기본(자동)]+[감지된 OS프린터명들]+[네트워크 IP직접]. 선택→`address` 저장, **method 규칙 = `address ? 'qztray' : 'browser'`**(★중요: qztray+빈address는 bill 2024·kitchen 2705·station 3596 전부 `if(!address)return false`라 인쇄 안 됨 → 기본프린터는 browser=printTicketHTML=OS기본으로 라우팅).
+- mount 자동로드 useEffect: native면 `getQZTrayPrinters()`(listPrinters) 자동 호출, Find Printers 클릭 불필요.
+- 3곳 전부 `isNativePrint` 분기: 워크스테이션 빌·주방 스테이션·단일주방. **웹은 `!isNativePrint`로 100% 현행 유지**(회귀0 검증).
+- 마스터 autoPrint OFF 배너+원탭 켜기(기존 토글의 backlog-cutoff 로직 재사용), native 전용.
+- i18n `printer.native.*` 7키×4언어(en/ko/zh/ms).
+
+**검증 전부 PASS:** build:dev exit0(신규경고0, 5경고는 기존부채 타파일)·**print-guard 8/8 무접촉**·design 신규0·**health 110/110**(print8)·mount(Playwright, __NATIVE_PRINT 주입): **웹=크래시0+레거시UI유지+네이티브UI숨김 / 네이티브=크래시0+콘솔에러0+드롭다운3렌더+감지프린터(POS-80C)목록**, 정밀 leaf-probe로 native connMethod-leak=0 확증.
+
+**남은 것:** ①**Fable 게이트**(인쇄 인접+매장 블로커 — diff 절단면 대조[SettingsPage 1파일·웹경로 무변경·method규칙 correctness]) ②Irene `/배포`(print-guard 무변경이라 bless 불필요) ③실기기 확인: MIN Cafe 네이티브앱에서 주방1/2 서로 다른 USB 지정→자동인쇄 1장씩 + 마스터 autoPrint 켜기. **⚠ 현재 세션=Opus라 Fable 검증 대상 — Fable 세션 점검 후 배포 권장.**
+
+### ✅ 인쇄 라우트 가드 = 영구 회귀 게이트 신설 (2026-07-07 #4, Irene 지시)
+> "모든 인쇄방식 자동프린팅 문제없나 실제 다 시도" → 21루트 실증 통과 → Irene "영구 회귀 게이트로 승격".
+- 신규 `dev-frontend/scripts/print-route-guard/`(run.js+cases.js+qz-spy.js+README) — 진짜 billPrint.js 를 webpack 번들(qz-tray→기록스파이 alias)해 폴러 디스패치(printKitchenTicketViaRawBT/printBillViaRawBT)를 **21루트 실제 실행**, 트랜스포트 경계 관찰. 방식(browser/qztray-이름/qztray-LAN-IP/rawbt)×프린터(빌/단일주방/멀티스테이션)×native/웹×매수×비상모드×빈주소가드. 자체완결(로컬 origin서버+tmp번들, QZ/프린터/네트워크 불필요). **21/21, fail-closed 실증(고장주입→exit1, 복원→exit0).**
+- **배선:** 배포 게이트 **7/7**(`deploy-to-production.sh`, 라벨 6→7 갱신, fail-closed) + `/검증` 0-c단계. 단일진실 메모리 [[reference_print_route_guard]].
+- 종이 물리출력만 실기기 Irene 확인 남음(코드로 불가능한 유일 항목). print-guard 8/8 무접촉(게이트는 billPrint 읽기만).
+
+<details><summary>원래 요구/측정 (참고)</summary>
+
 > Irene with MIN Cafe(운영 #10) 네이티브 윈도우앱 실사용서 발견. "앱 다시 켜도 프린터 선택 없고 그냥 브라우저 출력, 어떻게 자동인쇄를 아는데? 주방 2번째는 왜 IP 넣으래? 첫번째는? 메인POS·주방1·주방2 다 다를 수 있는데." → **라이브 수정 말고 정확히 파악해 저장(Irene 지시)**. 설계 후 Fable 게이트.
 
 **측정된 현재 상태(운영 #10, 2026-07-07):**
@@ -24,6 +66,8 @@
 **이미 배포된 부분해결(2026-07-07 #2):** `printTicketHTML`(billPrint.js) — 네이티브앱에서 browser 방식이 **대화상자 대신 OS기본 프린터로 무인인쇄**. → **USB 1대를 Windows 기본으로 두면** browser 방식 스테이션 자동인쇄 동작. 단 ①마스터 autoPrint ON 필요(현재 OFF) ②다중 프린터는 OS기본 1개라 구분 못 함.
 
 **설계(다음 세션, Fable 게이트):** 네이티브앱(`__NATIVE_PRINT`)일 때 각 프린터(빌+각 주방스테이션)에 **listPrinters()로 채운 프린터명 드롭다운을 기본 노출**(mount 자동로드, Find Printers 클릭 불필요) → 선택명을 `address`에 저장 + 방식은 명명프린터 native dispatch(qztray 경로, `if(!address)return false` 가드 충족). **IP칸은 네이티브에서 숨김/고급토글.** 방식 라벨 네이티브용 정리("프린터 선택"). 마스터 autoPrint 게이트 명확화. 검증=스테이션별 다른 USB 라우팅+자동인쇄 1장. 🔒 SettingsPage는 인쇄 인접 → 절단면 최소·Fable.
+> 정정: 설계의 "빈 address라도 qztray가 `if(!address)return false` 가드 충족" 은 **틀림** — bill/kitchen/station 세 경로 다 빈 address면 인쇄 안 됨. 구현서 기본프린터=browser method로 라우팅(printTicketHTML=OS기본)해 해결. 위 완료 블록 참조.
+</details>
 
 
 ### ✅ 데스크탑앱 5이슈 + 빌프린트 우측잘림 수리 (2026-07-07, dev·미배포·Fable PASS 2회)

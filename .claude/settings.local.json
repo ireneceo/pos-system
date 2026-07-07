@@ -1070,7 +1070,13 @@
       "Bash(awk 'NR>=1230 && NR<=1420' src/utils/billPrint.js)",
       "Bash(scp -q /tmp/claude-1000/-var-www/0fbd569d-3119-4baf-bd23-ca5c7aaeb856/scratchpad/prodq.js irene@87.106.78.146:/var/www/production-backend/_prodq_tmp.js)",
       "Bash(echo \"WEB5_EXIT=$?\")",
-      "Bash(echo \"GUARD_EXIT=$?\")"
+      "Bash(echo \"GUARD_EXIT=$?\")",
+      "Bash(pkill -f \"craco build\")",
+      "Bash(echo \"BUILD2_DONE exit=$?\")",
+      "Bash(node_modules/.bin/esbuild --version)",
+      "Bash(node_modules/.bin/webpack --config /tmp/claude-1000/-var-www/2a28a17c-3eaf-4cfc-88a3-c8ff22e3dbaf/scratchpad/webpack.bp.config.js)",
+      "Bash(awk '/router\\\\.get\\\\\\(.\\\\/to-pay/,/^\\\\}\\\\\\);/' routes/invoices-list.js)",
+      "Bash(echo \"DONE exit=$?\")"
     ],
     "deny": [],
     "ask": []

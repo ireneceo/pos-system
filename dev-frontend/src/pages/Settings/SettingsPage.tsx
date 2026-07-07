@@ -413,6 +413,8 @@ const COUNTRIES = [
   { code: 'AU', name: 'Australia', timezone: 'Australia/Sydney' },
   { code: 'US', name: 'United States', timezone: 'America/New_York' },
   { code: 'GB', name: 'United Kingdom', timezone: 'Europe/London' },
+  { code: 'AE', name: 'United Arab Emirates', timezone: 'Asia/Dubai' },
+  { code: 'SA', name: 'Saudi Arabia', timezone: 'Asia/Riyadh' },
 ];
 
 interface CompanySettings {
@@ -624,6 +626,112 @@ const defaultMembershipSettings: MembershipSettings = {
   welcome_points: 0
 };
 
+// ─────────────────────────────────────────────────────────────────────────
+// Native desktop printer picker (2026-07-07, MIN Cafe live blocker).
+// In the Windows desktop app (window.__NATIVE_PRINT) the OS printer list is
+// available via listPrinters() with no QZ Tray / IP setup. This replaces the
+// confusing "method select + IP-first input" with ONE dropdown per printer:
+//   · This PC's default printer (automatic)   → method='qztray', address=''
+//   · <each detected OS printer name>          → method='qztray', address=name
+//   · Network printer (enter IP)…              → method='qztray', address=IP
+// A picked printer NAME or LAN IP saves method='qztray' (dispatch routes an OS
+// printer name or LAN socket). "OS default" (empty address) saves method='browser'
+// instead — because the qztray dispatch guards `if(!address) return false` (bill
+// 2024 / kitchen 2705 / station 3596), so empty+qztray would NOT print; browser
+// routes to the OS default via printTicketHTML. Callers apply this rule as
+// `method = address ? 'qztray' : 'browser'`. No dispatch change — a shop can point
+// bill / kitchen1 / kitchen2 at three different USB printers on one PC.
+// Defined at MODULE scope (not inside render) so it is a stable component type
+// and does not remount/lose focus on every parent re-render.
+const NATIVE_IP_RE = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/;
+
+interface NativePrinterSelectProps {
+  address: string;
+  printers: string[];
+  onChange: (address: string) => void; // caller sets method='qztray' + this address
+  onTest: () => void;
+  onAutoSave: () => void;              // = handleSave (persists printer_settings)
+  t: (k: string, o?: any) => string;
+  testLabel: string;
+  size?: 'sm' | 'md';
+}
+
+const NativePrinterSelect: React.FC<NativePrinterSelectProps> = ({ address, printers, onChange, onTest, onAutoSave, t, testLabel, size = 'md' }) => {
+  const addr = address || '';
+  const isIp = !!addr && NATIVE_IP_RE.test(addr);
+  const [netMode, setNetMode] = useState(isIp);
+  // Keep network mode in sync if the saved address is/becomes an IP (e.g. the
+  // DB value loads after first mount).
+  useEffect(() => { if (isIp) setNetMode(true); }, [isIp]);
+
+  const inList = !!addr && !isIp && printers.includes(addr);
+  const savedButUndetected = !!addr && !isIp && !inList; // named printer offline / list not yet loaded
+
+  let selValue: string;
+  if (netMode) selValue = '__NETWORK__';
+  else if (!addr) selValue = '__DEFAULT__';
+  else if (inList) selValue = addr;
+  else selValue = '__SAVED__';
+
+  const handleSelect = (v: string) => {
+    if (v === '__NETWORK__') {
+      setNetMode(true);
+      if (!NATIVE_IP_RE.test(addr)) onChange(''); // clear a named printer so the IP field starts empty
+    } else if (v === '__DEFAULT__') {
+      setNetMode(false);
+      onChange('');
+    } else if (v === '__SAVED__') {
+      setNetMode(false); // keep the current saved name unchanged
+    } else {
+      setNetMode(false);
+      onChange(v);
+    }
+  };
+
+  const sm = size === 'sm';
+  const fs = sm ? '13px' : '14px';
+  const pad = sm ? '7px 10px' : '8px 12px';
+
+  return (
+    <div>
+      <AutoSaveField onSave={onAutoSave} type="select">
+      <select
+        value={selValue}
+        onChange={(e) => handleSelect(e.target.value)}
+        style={{ width: '100%', padding: pad, border: '1px solid #6B7280', borderRadius: '6px', fontSize: fs, background: '#fff' }}
+      >
+        <option value="__DEFAULT__">{t('settings:printer.native.osDefault', { defaultValue: 'This PC’s default printer (automatic)' })}</option>
+        {savedButUndetected && (
+          <option value="__SAVED__">{addr} — {t('settings:printer.native.savedNotDetected', { defaultValue: 'saved (not detected now)' })}</option>
+        )}
+        {printers.map((p) => (<option key={p} value={p}>{p}</option>))}
+        <option value="__NETWORK__">{t('settings:printer.native.networkIp', { defaultValue: 'Network printer (enter IP)…' })}</option>
+      </select>
+      </AutoSaveField>
+
+      {netMode && (
+        <div style={{ marginTop: '6px' }}>
+          <AutoSaveField onSave={onAutoSave}>
+          <input
+            type="text"
+            value={addr}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="192.168.1.101:9100"
+            style={{ width: '100%', padding: pad, border: '1px solid #6B7280', borderRadius: '6px', fontSize: fs, fontFamily: 'monospace', boxSizing: 'border-box' }}
+          />
+          </AutoSaveField>
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={onTest}
+        style={{ marginTop: '8px', padding: sm ? '6px 12px' : '7px 14px', fontSize: sm ? '12px' : '13px', border: '1px solid #6B7280', borderRadius: '6px', background: '#fff', color: '#1F2937', cursor: 'pointer', whiteSpace: 'nowrap' }}
+      >{testLabel}</button>
+    </div>
+  );
+};
+
 const SettingsPage: React.FC = () => {
   const { t } = useTranslation('settings');
   const { user } = useAuth();
@@ -823,6 +931,20 @@ const SettingsPage: React.FC = () => {
   // Native desktop app (Electron) prints directly — no QZ Tray to install. In the
   // app we hide the QZ install/connect steps and show a clean "direct printing" note.
   const isNativePrint = typeof window !== 'undefined' && !!(window as any).__NATIVE_PRINT;
+  // Native desktop: auto-load the OS printer list on mount (listPrinters() via the
+  // bridge — no QZ Tray, no "Find Printers" click). Populates the per-printer
+  // dropdowns below so a shop just picks each USB printer by name.
+  useEffect(() => {
+    if (!isNativePrint) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const printers = await getQZTrayPrinters();
+        if (!cancelled && Array.isArray(printers) && printers.length) setQzTrayPrinters(printers);
+      } catch { /* non-fatal — dropdown still offers default + network options */ }
+    })();
+    return () => { cancelled = true; };
+  }, [isNativePrint]);
   const [showQzGuide, setShowQzGuide] = useState(false);
   const [qzScenario, setQzScenario] = useState<'migration' | 'fresh'>('migration');
   const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
@@ -6965,6 +7087,28 @@ ${t('settings:settingsPage.qzDiagramBridge')}
 
                           {ws.billPrinter?.enabled !== false && (
                             <>
+                              {/* Native desktop app: single printer dropdown (auto-loaded OS list). */}
+                              {isNativePrint && (
+                                <div style={{ marginBottom: '10px' }}>
+                                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#1F2937', marginBottom: '4px' }}>{t('settings:printer.native.printerLabel', { defaultValue: 'Printer' })}</label>
+                                  <NativePrinterSelect
+                                    address={wsBillAddr}
+                                    printers={qzTrayPrinters}
+                                    onChange={(address) => updateWs({ billPrinter: { method: address ? 'qztray' : 'browser', address } })}
+                                    onTest={async () => {
+                                      const ok = await qzTrayTestPrint(wsBillAddr || '');
+                                      setSaveStatus({ type: ok ? 'success' : 'error', message: ok ? `Test print sent to ${ws.name}!` : `Failed to send test print to ${ws.name}.` });
+                                      setTimeout(() => setSaveStatus(null), 3000);
+                                    }}
+                                    onAutoSave={handleSave}
+                                    t={t}
+                                    testLabel={t('settings:printer.stations.testBtn')}
+                                    size="sm"
+                                  />
+                                </div>
+                              )}
+                              {/* Web / QZ Tray path (unchanged) — method select + IP + detected dropdown. */}
+                              {!isNativePrint && (<>
                               {/* Method select */}
                               <div style={{ marginBottom: '10px' }}>
                                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#1F2937', marginBottom: '4px' }}>Connection Method</label>
@@ -7034,6 +7178,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                               {wsBillMethod === 'rawbt' && (
                                 <div style={{ fontSize: '11px', color: '#4B5563' }}>Prints to the default printer configured inside RawBT on this Android device.</div>
                               )}
+                              </>)}
 
                               {/* AutoPrint toggle */}
                               <AutoSaveField onSave={handleSave} type="toggle">
@@ -7224,9 +7369,48 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                       하나라도 있으면 토글과 무관하게 station 프린터 설정을 항상 표시한다. */}
                   {(printerSettings.kitchenPrinter.enabled || kitchenStations.length > 0) && (
                     <>
+                      {/* Native desktop: master auto-print gate visibility. When OFF, NOTHING
+                          auto-prints regardless of which printer is picked (measured MIN Cafe
+                          state, 2026-07-07). Surface it clearly with a one-tap enable that
+                          reuses the exact backlog-cutoff logic of the toggle below. */}
+                      {isNativePrint && !printerSettings.kitchenPrinter.autoPrint && (
+                        <div style={{ marginTop: '16px', padding: '12px 16px', background: '#FEF3C7', border: '1px solid #FCD34D', borderRadius: '8px', display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div style={{ fontSize: '13px', color: '#92400E', lineHeight: 1.5, flex: '1 1 240px' }}>
+                            <strong>{t('settings:printer.native.autoPrintOffTitle', { defaultValue: 'Auto-print is off' })}</strong><br />
+                            {t('settings:printer.native.autoPrintOffDesc', { defaultValue: 'Kitchen tickets will not print automatically when orders arrive. Turn it on so new orders print by themselves.' })}
+                          </div>
+                          <button type="button"
+                            onClick={() => {
+                              try { localStorage.setItem('kitchenAutoPrintEnabledAt', String(Date.now())); } catch { /* localStorage may be blocked */ }
+                              setPrinterSettings(prev => ({ ...prev, kitchenPrinter: { ...prev.kitchenPrinter, autoPrint: true } }));
+                              kitchenPrinterAutoPrintRef.current?.triggerSave();
+                            }}
+                            style={{ padding: '8px 16px', fontSize: '13px', fontWeight: 700, border: 'none', borderRadius: '8px', background: '#635BFF', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                          >{t('settings:printer.native.autoPrintOnBtn', { defaultValue: 'Turn on auto-print' })}</button>
+                        </div>
+                      )}
+                      {/* Native desktop app, no stations: single printer dropdown (auto-loaded OS list). */}
+                      {isNativePrint && kitchenStations.length === 0 && (
+                        <div style={{ marginTop: '16px' }}>
+                          <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#1F2937', marginBottom: '6px' }}>{t('settings:printer.native.printerLabel', { defaultValue: 'Printer' })}</label>
+                          <NativePrinterSelect
+                            address={printerSettings.kitchenPrinter.address || ''}
+                            printers={qzTrayPrinters}
+                            onChange={(address) => setPrinterSettings(prev => ({ ...prev, kitchenPrinter: { ...prev.kitchenPrinter, method: address ? 'qztray' : 'browser', address } }))}
+                            onTest={async () => {
+                              const ok = await qzTrayTestPrint(printerSettings.kitchenPrinter.address || '');
+                              setSaveStatus({ type: ok ? 'success' : 'error', message: ok ? 'Test print sent to kitchen printer!' : 'Failed to send test print.' });
+                              setTimeout(() => setSaveStatus(null), 3000);
+                            }}
+                            onAutoSave={handleSave}
+                            t={t}
+                            testLabel="Test Print"
+                          />
+                        </div>
+                      )}
                       {/* Per-printer method selector (default for kitchen + when no stations).
-                          Each station can override below. */}
-                      {kitchenStations.length === 0 && (
+                          Each station can override below. Web / QZ Tray path (unchanged). */}
+                      {kitchenStations.length === 0 && !isNativePrint && (
                         <div style={{ marginTop: '16px' }}>
                           <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#1F2937', marginBottom: '6px' }}>
                             Connection Method
@@ -7248,6 +7432,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                         </div>
                       )}
 
+                      {!(isNativePrint && kitchenStations.length === 0) && (
                       <div style={{ marginTop: '12px', padding: '12px 16px', background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: '6px', fontSize: '13px', color: '#075985', lineHeight: '1.5' }}>
                         {kitchenStations.length > 0 ? (
                           <>{t('settings:printer.stations.eachStationOwnMethod')}</>
@@ -7264,8 +7449,9 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                           </>
                         )}
                       </div>
+                      )}
 
-                      {(kitchenStations.length > 0 || printerSettings.kitchenPrinter.method === 'qztray') && (
+                      {(kitchenStations.length > 0 || (!isNativePrint && printerSettings.kitchenPrinter.method === 'qztray')) && (
                         <div style={{ marginTop: '16px' }}>
                           {kitchenStations.length > 0 ? (
                             /* Station별 프린터: 각 station 에 method select + IP/dropdown + Test */
@@ -7283,7 +7469,39 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                                         {station.name}
                                       </div>
 
-                                      {/* Method select */}
+                                      {/* Native desktop app: single printer dropdown (auto-loaded OS list). */}
+                                      {isNativePrint && (
+                                        <div style={{ marginBottom: '8px' }}>
+                                          <label style={{ display: 'block', fontSize: '12px', color: '#4B5563', marginBottom: '4px' }}>{t('settings:printer.native.printerLabel', { defaultValue: 'Printer' })}</label>
+                                          <NativePrinterSelect
+                                            address={sp.address || ''}
+                                            printers={qzTrayPrinters}
+                                            onChange={(address) => setPrinterSettings(prev => ({
+                                              ...prev,
+                                              kitchenStationPrinters: {
+                                                ...prev.kitchenStationPrinters,
+                                                [station.id]: {
+                                                  ...(prev.kitchenStationPrinters?.[station.id] || { name: '', autoPrint: true }),
+                                                  method: address ? 'qztray' : 'browser',
+                                                  address,
+                                                  stationName: station.name
+                                                } as any
+                                              }
+                                            }))}
+                                            onTest={async () => {
+                                              const ok = await qzTrayTestPrint(sp.address || '');
+                                              setSaveStatus({ type: ok ? 'success' : 'error', message: ok ? `Test print sent to ${station.name}!` : `Failed to send test print to ${station.name}.` });
+                                              setTimeout(() => setSaveStatus(null), 3000);
+                                            }}
+                                            onAutoSave={handleSave}
+                                            t={t}
+                                            testLabel="Test"
+                                            size="sm"
+                                          />
+                                        </div>
+                                      )}
+                                      {/* Web / QZ Tray path (unchanged) — method select. */}
+                                      {!isNativePrint && (
                                       <div style={{ marginBottom: '8px' }}>
                                         <label style={{ display: 'block', fontSize: '12px', color: '#4B5563', marginBottom: '4px' }}>Connection Method</label>
                                         <AutoSaveField onSave={handleSave} type="select">
@@ -7308,6 +7526,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                                         </select>
                                         </AutoSaveField>
                                       </div>
+                                      )}
 
                                       {/* #6 주방 스테이션 인쇄 매수 (1~3장) — 인쇄 방식/라우팅 무변경, 같은 ticket 을 N번 발행 */}
                                       <div style={{ marginBottom: '8px' }}>
@@ -7335,6 +7554,8 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                                         </AutoSaveField>
                                       </div>
 
+                                      {/* Web / QZ Tray path (unchanged): per-method IP / detected dropdown / info. */}
+                                      {!isNativePrint && (<>
                                       {/* QZ Tray: IP input + detected printer dropdown + Test */}
                                       {spMethod === 'qztray' && (
                                         <>
@@ -7421,6 +7642,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                                           RawBT prints to the default printer configured inside the RawBT Android app.
                                         </div>
                                       )}
+                                      </>)}
                                     </div>
                                   );
                                 })}

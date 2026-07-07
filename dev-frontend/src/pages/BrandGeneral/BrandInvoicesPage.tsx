@@ -36,6 +36,7 @@ import { SearchInput } from '../../components/Common/FilterComponents';
 import { Tabs, Tab as CommonTab, Badge as TabBadge } from '../../components/Common/TabComponents';
 import { renderIframeToPdf, INVOICE_PRINT_CSS } from '../../utils/invoicePdf';
 import StripePaymentForm from '../../components/Invoice/StripePaymentForm';
+import PayPalPaymentForm from '../../components/Invoice/PayPalPaymentForm';
 import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
 
@@ -1581,6 +1582,11 @@ const BrandInvoicesPage: React.FC = () => {
                 </div>
                 {paymentData.paymentMethod === 'stripe' && selectedInvoice && (
                   <StripePaymentForm invoiceId={selectedInvoice.id} onSuccess={() => { setShowPaymentSubmitModal(false); setSelectedInvoice(null); setPaymentData({ paymentMethod: 'bank_transfer', transactionId: '', notes: '', receiptImage: '' }); setSuccessMessage('Payment submitted successfully! The issuer will review and confirm your payment.'); setShowSuccessModal(true); fetchInvoicesToPay(); fetchPaidInvoices(); window.dispatchEvent(new Event('refreshBadgeCounts')); }} onError={() => {}} />
+                )}
+                {/* 2026-07-07: PayPal render block was missing — selecting PayPal showed a blank area.
+                    Mirrors the Stripe block so PayPal actually renders its checkout on this page. */}
+                {paymentData.paymentMethod === 'paypal' && selectedInvoice && (
+                  <PayPalPaymentForm invoiceId={selectedInvoice.id} onSuccess={() => { setShowPaymentSubmitModal(false); setSelectedInvoice(null); setPaymentData({ paymentMethod: 'bank_transfer', transactionId: '', notes: '', receiptImage: '' }); setSuccessMessage('Payment submitted successfully! The issuer will review and confirm your payment.'); setShowSuccessModal(true); fetchInvoicesToPay(); fetchPaidInvoices(); window.dispatchEvent(new Event('refreshBadgeCounts')); }} onError={() => {}} />
                 )}
                 {paymentData.paymentMethod === 'bank_transfer' && (() => { const m = availablePaymentMethods.find(m => m.id === 'bank_transfer'); return m ? (<div style={{ padding: '16px', background: '#EFF6FF', borderRadius: '8px', marginBottom: '16px', fontSize: '14px', lineHeight: '1.8' }}><h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600', color: '#1E40AF' }}>{t('brand:brandInvoicesPage.bankTransferDetails')}</h4><p style={{ margin: '0' }}><strong>Bank:</strong> {m.bankName}</p><p style={{ margin: '0' }}><strong>Account Number:</strong> {m.accountNumber}</p><p style={{ margin: '0' }}><strong>Account Name:</strong> {m.accountName}</p></div>) : null; })()}
                 {paymentData.paymentMethod === 'qr_payment' && (() => { const m = availablePaymentMethods.find(m => m.id === 'qr_payment'); return m ? (<div style={{ padding: '16px', background: '#EFF6FF', borderRadius: '8px', marginBottom: '16px', textAlign: 'center' }}><h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600', color: '#1E40AF' }}>{t('brand:brandInvoicesPage.qrPayment')}</h4>{m.qrImage && <img src={m.qrImage} alt="Payment QR Code" style={{ maxWidth: '200px', maxHeight: '200px', border: '1px solid #C7CED6', borderRadius: '8px' }} />}{m.qrDescription && <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#4B5563' }}>{m.qrDescription}</p>}</div>) : null; })()}
