@@ -18,6 +18,7 @@ import { useRoleDisplayName } from '../../utils/roleDisplay';
 import { useAllowedRoutes } from '../../hooks/useAllowedRoutes';
 
 import { getAuthToken } from '../../utils/auth';
+import { isNativeDesktop } from '../../utils/nativeDesktop';
 import { LayoutDashboard, Users, Truck, Briefcase, MessageSquare, CreditCard, Settings as SettingsIcon, ChevronsLeft, ChevronsRight, LogOut, Activity, Store, Package, ShoppingCart, FileText, Monitor, LayoutGrid, ChefHat, Tv, Smartphone, TrendingUp, Download, Building2, MapPin, Gift, Bell, Target } from 'lucide-react';
 import { usePwaInstall } from '../../contexts/PwaInstallContext';
 
@@ -984,12 +985,17 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const showInstallButton = !isStandalone && (canInstall || isIOS);
 
   // Fullscreen pages (POS Terminal / Floor Plan / Kitchen / Customer Display / Mobile Order)
-  // are sidebar entries marked openInNewTab. In a PWA standalone window,
-  // window.open(_, '_blank') pops out to the external browser by spec — which
-  // breaks the desktop-app experience. Branch: standalone → same-window navigate,
-  // browser → keep new tab (multi-monitor workflow).
+  // are sidebar entries marked openInNewTab. Inside our app shell — a PWA standalone
+  // window OR the native Windows desktop app — window.open(_, '_blank') spawns a
+  // detached OS window: in Electron that window has no preload, so it (a) shows the
+  // "install the desktop app" banner as if it were a plain browser, and (b) could run
+  // a SECOND auto-print poller = duplicate kitchen tickets. So in-app we navigate in
+  // the same window; only a plain browser keeps the new tab (multi-monitor workflow).
+  // Note: the customer display 2nd-monitor window is a separate mechanism
+  // (utils/customerDisplay.ts, frame 'PurpleHereCustomerDisplay') and is unaffected.
+  const inAppShell = isStandalone || isNativeDesktop();
   const openSecondaryWindow = (path: string) => {
-    if (isStandalone) {
+    if (inAppShell) {
       navigate(path);
     } else {
       window.open(path, '_blank');
@@ -2569,7 +2575,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                       // Browser mode: popup-blocker workaround — open blank window
                       // immediately then resolve URL via fetch and set location.
                       const fallbackUrl = `/mobile/restaurant-${user.restaurantId}`;
-                      const newWin = isStandalone ? null : window.open('about:blank', '_blank');
+                      const newWin = inAppShell ? null : window.open('about:blank', '_blank');
                       (async () => {
                         try {
                           const token = getAuthToken();
@@ -2583,10 +2589,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                             const data = result.success ? result.data : result;
                             if (data.slug) url = `/mobile/${data.slug}`;
                           }
-                          if (isStandalone) navigate(url);
+                          if (inAppShell) navigate(url);
                           else if (newWin) newWin.location.href = url;
                         } catch {
-                          if (isStandalone) navigate(fallbackUrl);
+                          if (inAppShell) navigate(fallbackUrl);
                           else if (newWin) newWin.location.href = fallbackUrl;
                         }
                       })();
@@ -3923,7 +3929,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   if (item.openInNewTab) {
                     e.preventDefault();
                     closeSidebar();
-                    window.open(item.path, '_blank');
+                    openSecondaryWindow(item.path);
                     return;
                   }
                   closeSidebar();
@@ -3957,7 +3963,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                     e.preventDefault();
                     setHoveredCatId(null);
                     closeSidebar();
-                    window.open(item.path, '_blank');
+                    openSecondaryWindow(item.path);
                     return;
                   }
                   setHoveredCatId(null);

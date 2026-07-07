@@ -1,7 +1,7 @@
 'use strict';
 
 const path = require('path');
-const { app, BrowserWindow, shell, ipcMain, globalShortcut, screen, powerSaveBlocker } = require('electron');
+const { app, BrowserWindow, Menu, shell, ipcMain, globalShortcut, screen, powerSaveBlocker } = require('electron');
 const { resolveAppUrl, allowedOrigins } = require('./config');
 const windowState = require('./windowState');
 const nativePrint = require('./print');
@@ -63,11 +63,15 @@ function isInternal(url) {
 }
 
 function createMainWindow() {
+  // First launch has no saved state → start maximized (POS standard is a
+  // full-screen workspace, not a small floating window). Later launches restore
+  // whatever size/maximized state the operator last left it at.
   const { bounds, maximized } = windowState.restoreBounds('main', {
     x: undefined,
     y: undefined,
     width: 1280,
-    height: 800
+    height: 800,
+    maximized: true
   });
 
   mainWindow = new BrowserWindow({
@@ -176,6 +180,12 @@ app.on('second-instance', () => {
 });
 
 app.whenReady().then(() => {
+  // No File/Edit/View/Window/Help menu bar — a POS is a kiosk-style app, not a
+  // browser. Removing it also kills the "this feels like a browser" impression.
+  // Clipboard shortcuts still work in inputs; our own shortcuts (F11, Ctrl+Shift+D)
+  // are registered as global accelerators below, independent of the menu.
+  Menu.setApplicationMenu(null);
+
   ipcMain.handle('desktop:version', () => app.getVersion());
 
   // Register the native print bridge (§4). Printer enumeration borrows the main

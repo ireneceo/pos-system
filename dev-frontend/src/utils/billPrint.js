@@ -1268,7 +1268,11 @@ body {
   font-family: 'Noto Sans KR', 'Noto Sans', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
   font-size: 12px;
   line-height: 1.3;
-  padding: 10px 8px 4px 8px;
+  /* Horizontal inset 16px (~4mm) so the right-aligned price/total column clears the
+     unprintable right margin of 80mm thermal printers (3-4mm, varies by model) —
+     was 8px (~2mm), which clipped the last digit(s) on some store printers.
+     Shared by receipts + kitchen tickets (single design-token source). */
+  padding: 10px 16px 4px 16px;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
 }
@@ -1935,6 +1939,35 @@ export function printHTMLContent(htmlContent, title) {
   return true;
 }
 
+/**
+ * Print an 80mm THERMAL TICKET (receipt / kitchen / order / cancellation).
+ *
+ * Native Windows app: the 'browser' ("USB / Browser print") method has no usable
+ * dialog for the auto-print poller — iframe.print() pops a preview the poller
+ * can't complete, so tickets never come out. In the app we print the ticket
+ * SILENTLY to the OS default printer (the operator's USB thermal = their mental
+ * model of "USB print"). Plain browser (no __NATIVE_PRINT) keeps the existing
+ * dialog path unchanged.
+ *
+ * TICKETS ONLY. Do NOT use for invoices / Table QR / settlement — those are A4
+ * documents that must keep the printer-picker dialog (silently rasterizing an A4
+ * invoice onto an 80mm roll would be a regression). Those callers stay on
+ * printHTMLContent().
+ */
+export function printTicketHTML(htmlContent, title) {
+  const _np = (typeof window !== 'undefined') && window.__NATIVE_PRINT;
+  if (_np && typeof _np.printHtml === 'function') {
+    try {
+      // Fire-and-forget to match the existing browser-path sync contract (the
+      // dialog path never detected failure either, so poller re-arm is unchanged).
+      _np.printHtml({ html: htmlContent, printerName: '', widthMm: 80, copies: 1 })
+        .catch(() => {});
+    } catch (_) { /* never throw from a print dispatch */ }
+    return true;
+  }
+  return printHTMLContent(htmlContent, title);
+}
+
 // ============================================
 // RawBT Integration
 // ============================================
@@ -2007,7 +2040,7 @@ export async function printBillViaRawBT(orderData, storeInfo, printerName) {
     if (shouldUseBrowserPrint('bill')) {
       console.log('🖥️ Bill via browser print');
       const htmlContent = generateHTMLBill(orderData, storeInfo);
-      return printHTMLContent(htmlContent, 'Bill');
+      return printTicketHTML(htmlContent, 'Bill');
     }
 
     // Default: Use RawBT (Android thermal printer)
@@ -2709,7 +2742,7 @@ export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerNa
         // Browser print mode: Generate all items as pages in one document
         console.log('🖥️ Kitchen via browser print (multi-page)');
         const htmlContent = generateHTMLMultiPageKitchenTickets(orderData, storeInfo);
-        return printHTMLContent(htmlContent, `Kitchen Tickets - ${orderData.orderNumber}`);
+        return printTicketHTML(htmlContent, `Kitchen Tickets - ${orderData.orderNumber}`);
       }
 
       // RawBT mode: Print each item separately with delay
@@ -2750,7 +2783,7 @@ export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerNa
     if (shouldUseBrowserPrint('kitchen')) {
       console.log('🖥️ Kitchen via browser print');
       const htmlContent = generateHTMLKitchenTicket(orderData, storeInfo);
-      return printHTMLContent(htmlContent, 'Kitchen Ticket');
+      return printTicketHTML(htmlContent, 'Kitchen Ticket');
     }
 
     // Fallback: RawBT Intent
@@ -2832,7 +2865,7 @@ export async function printOrderTicketToBillPrinter(orderData, storeInfo) {
     // Browser: open print dialog with the kitchen-style HTML
     if (method === 'browser') {
       const html = generateHTMLKitchenTicket(tagged, storeInfo);
-      return printHTMLContent(html, `Order Ticket - ${tagged.orderNumber || ''}`);
+      return printTicketHTML(html, `Order Ticket - ${tagged.orderNumber || ''}`);
     }
 
     // QZ Tray: unify with the AUTO-PRINT path (printKitchenTicketViaRawBT) so the
@@ -3095,7 +3128,7 @@ export async function printAdditionalItemsTicketViaRawBT(orderData, storeInfo, p
         console.log('No additional items to print');
         return true;
       }
-      return printHTMLContent(htmlContent, 'Additional Items Ticket');
+      return printTicketHTML(htmlContent, 'Additional Items Ticket');
     }
 
     // Mobile/Tablet: Use RawBT Intent
@@ -3601,7 +3634,7 @@ async function sendToRawBTPrinter(orderData, storeInfo, settings, printerName, s
 
       if (method === 'browser') {
         const htmlContent = generateHTMLKitchenTicket(perItemData, storeInfo);
-        printHTMLContent(htmlContent, `Kitchen - ${stationName || 'Ticket'} - ${item.name}`);
+        printTicketHTML(htmlContent, `Kitchen - ${stationName || 'Ticket'} - ${item.name}`);
       } else {
         const escposContent = generateKitchenTicketContent(perItemData, storeInfo);
         const base64Content = btoa(unescape(encodeURIComponent(escposContent)));
@@ -3623,7 +3656,7 @@ async function sendToRawBTPrinter(orderData, storeInfo, settings, printerName, s
 
     if (method === 'browser') {
       const htmlContent = generateHTMLKitchenTicket(ticketData, storeInfo);
-      printHTMLContent(htmlContent, `Kitchen - ${stationName || 'Ticket'}`);
+      printTicketHTML(htmlContent, `Kitchen - ${stationName || 'Ticket'}`);
     } else {
       const escposContent = generateKitchenTicketContent(ticketData, storeInfo);
       const base64Content = btoa(unescape(encodeURIComponent(escposContent)));
@@ -4402,7 +4435,7 @@ export async function printCancellationTicket(orderData, storeInfo, reason, prin
     // Browser print
     if (shouldUseBrowserPrint()) {
       const html = generateHTMLKitchenTicket(buildVoidTicketData(orderData, reason), storeInfo);
-      return printHTMLContent(html, 'CANCELLED - ' + (orderData.orderNumber || ''));
+      return printTicketHTML(html, 'CANCELLED - ' + (orderData.orderNumber || ''));
     }
 
     // RawBT (Android)
@@ -4503,7 +4536,7 @@ async function printCancellationToCounter(orderData, storeInfo, reason) {
 
   if (shouldUseBrowserPrint()) {
     const html = generateHTMLKitchenTicket(_voidData, storeInfo);
-    return printHTMLContent(html, 'CANCELLED (counter) - ' + (orderData.orderNumber || ''));
+    return printTicketHTML(html, 'CANCELLED (counter) - ' + (orderData.orderNumber || ''));
   }
 
   // RawBT — uses bill printer name

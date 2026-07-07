@@ -21,7 +21,14 @@ const PwaInstallBanner: React.FC = () => {
   // app CTA, however, should greet a logged-in store user on ANY in-app screen
   // (they land on /restaurant/:id/... not /pos) — so gate it on auth, not path.
   const isPosRoute = location.pathname.startsWith('/pos');
+  // Customer-facing display windows (2nd monitor / pickup screen) must never show
+  // the "install the desktop app" banner — that's a staff prompt sitting on the
+  // guest's screen. In the native app the customer-display child window has no
+  // preload (no __PURPLE_DESKTOP), so it would otherwise be treated as a plain
+  // Windows browser and offered the installer. Suppress by route.
+  const isCustomerDisplayRoute = /\/(checkout-display|display)(\/|\?|$)/.test(location.pathname);
   const showWindowsCta = isWindowsDesktop && isAuthenticated;
+  if (isCustomerDisplayRoute) return null;
   if (!isPosRoute && !showWindowsCta) return null;
   if (!shouldShowBanner) return null;
 

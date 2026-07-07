@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { isNativeDesktop } from '../utils/nativeDesktop';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -25,15 +26,16 @@ interface PwaInstallState {
 // URL, so bumping this on each installer release forces a fresh fetch instead
 // of serving a stale (or SPA-fallback HTML) response. The `download` attr keeps
 // the saved filename clean (query string is stripped). Bump on new installer.
-const DESKTOP_APP_VERSION = '0.1.0';
+const DESKTOP_APP_VERSION = '0.1.1';
 const DESKTOP_APP_URL = `/desktop/PurplePOS-Setup.exe?v=${DESKTOP_APP_VERSION}`;
 
 function detectWindowsDesktop(): boolean {
   if (typeof navigator === 'undefined' || typeof window === 'undefined') return false;
   const ua = navigator.userAgent || '';
   const isWin = /Windows NT/.test(ua) && !/Windows Phone/.test(ua);
-  const insideNativeApp = Boolean((window as any).__PURPLE_DESKTOP);
-  return isWin && !insideNativeApp;
+  // Already inside the native app (preload sets window.__PURPLE_DESKTOP) →
+  // never offer the installer again.
+  return isWin && !isNativeDesktop();
 }
 
 const PwaInstallContext = createContext<PwaInstallState | null>(null);

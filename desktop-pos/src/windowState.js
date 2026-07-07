@@ -32,9 +32,12 @@ function writeState(name, state) {
 // visible on some currently-connected display. Falls back to defaults if the
 // saved bounds are off-screen (e.g. a monitor was unplugged).
 function restoreBounds(name, defaults) {
+  // `maximized` is a default-state hint, not part of the geometry — pull it out
+  // so it doesn't leak into the BrowserWindow bounds fragment.
+  const { maximized: defaultMaximized = false, ...defaultBounds } = defaults;
   const saved = readState(name);
   if (!saved || !saved.bounds) {
-    return { bounds: { ...defaults }, maximized: false };
+    return { bounds: { ...defaultBounds }, maximized: defaultMaximized };
   }
 
   const b = saved.bounds;
@@ -50,7 +53,7 @@ function restoreBounds(name, defaults) {
   });
 
   if (!visible) {
-    return { bounds: { ...defaults }, maximized: false };
+    return { bounds: { ...defaultBounds }, maximized: defaultMaximized };
   }
   return { bounds: b, maximized: !!saved.maximized };
 }

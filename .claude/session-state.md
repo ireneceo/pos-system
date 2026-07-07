@@ -2,9 +2,47 @@
 
 ## 현재 작업 상태
 
-**마지막 업데이트:** 2026-07-06 #5 (**전 영역 실측 + 할일 총정리 + 업무분담 확정**. 이번 세션 완료: v3.67 배포(모바일중복주문) + 인스펙션 하니스 확장(Fable PASS) + **비전AI Track A·B1 구현(Fable PASS, 미배포)**. 감사문서 stale 정정. **다음 세션: 추천순서 #8→#24→비전AI B2→오프라인편집** ↑위 "다음 확정 작업" 참조.)
-**버전:** 운영=**v3.67 / SW 4.58**. dev 미배포분: 비전AI TrackA/B1 + 하니스 + 인벤토리클러스터(전부 Fable PASS/검증, 다음 /배포 편승).
-**작업 상태:** ✅ 이번 세션분 완료. **다음 세션 시작점 = 위 "🎯 다음 확정 작업" 추천순서.** Irene 결정대기: 비전AI 프로바이더(Vertex/Claude)+키.
+**마지막 업데이트:** 2026-07-07 #2 (**운영 배포 완료** — 데스크탑앱 5이슈+빌프린트 우측잘림+**주방 자동인쇄 네이티브 무인화**(Fable PASS x3, print-guard bless). SW 4.61, Backup 20260707_082835, 게이트6/6, health110/110, 스모크9/9, desktop 0.1.1 자동업데이트 동기화. **but 매장 실사용서 근본 UX 갭 드러남 → 다음 최우선 = 네이티브앱 프린터 선택 UX(아래).**)
+**버전:** 운영=**배포됨 / SW 4.61**. 이번 배포 편승분: 데스크탑앱5+빌여백+자동인쇄+비전AI TrackA/B1(신규2테이블)+하니스+인벤토리클러스터.
+**작업 상태:** ✅ 배포 완료. **Irene 복귀 후 실프린터 확인:** ①빌 우측숫자 ②자동인쇄 1장. **⚠️ 다음 최우선 확정작업 = 네이티브앱 프린터 선택 UX(라이브 매장 with MIN #10 블로커, Irene "다시 파악해서 저장" 지시 2026-07-07). 아래 상세.** 그 다음 #8→#24→비전AI B2.
+
+### 🎯🎯 다음 최우선 확정작업 — 네이티브앱 프린터 선택 UX (USB 다중 프린터) [2026-07-07, 라이브 매장 블로커]
+> Irene with MIN Cafe(운영 #10) 네이티브 윈도우앱 실사용서 발견. "앱 다시 켜도 프린터 선택 없고 그냥 브라우저 출력, 어떻게 자동인쇄를 아는데? 주방 2번째는 왜 IP 넣으래? 첫번째는? 메인POS·주방1·주방2 다 다를 수 있는데." → **라이브 수정 말고 정확히 파악해 저장(Irene 지시)**. 설계 후 Fable 게이트.
+
+**측정된 현재 상태(운영 #10, 2026-07-07):**
+- `kitchenPrinter`: enabled=t, **autoPrint=FALSE**(마스터게이트 OFF — 이거만으로도 자동인쇄 꺼짐), name="", method=browser
+- `billPrinter`: enabled=t, autoPrint=f, name="", method=browser
+- `kitchenStationPrinters`: **2개** — "9" Kitchen(method=browser,name="") + "22" BAR(method=qztray,address="")
+- workstations: Main POS(bp method=browser, name="")
+
+**근본 UX 갭 (SettingsPage.tsx 프린터 섹션, ~7229·7305·7338·7414):**
+1. **browser 방식** = 프린터 선택칸 아예 없음("OS 기본 프린터 씀" 안내만, 7414-7417). → 특정 프린터 지정 불가, 다중 프린터 구분 불가.
+2. **qztray 방식** = **IP 입력칸이 먼저**(7343, monospace placeholder=IP, USB엔 부적합) + 프린터명 드롭다운은 `qzTrayPrinters.length>0`일 때만(7384, "Or pick a detected printer" 보조), 그것도 "Find Printers"(getQZTrayPrinters→네이티브 listPrinters) 눌러야 채워짐.
+3. **스테이션마다 방식 달라 UI 불일치** → "주방 1번(browser)은 칸 없고 2번(qztray)은 IP 넣으래" 혼란.
+4. **다중 USB 프린터**(메인POS 빌 + 주방1 + 주방2 서로 다른 물리 USB) 스테이션별 지정 경로가 사실상 없음. browser=OS기본 1개뿐, qztray=IP지향.
+
+**이미 배포된 부분해결(2026-07-07 #2):** `printTicketHTML`(billPrint.js) — 네이티브앱에서 browser 방식이 **대화상자 대신 OS기본 프린터로 무인인쇄**. → **USB 1대를 Windows 기본으로 두면** browser 방식 스테이션 자동인쇄 동작. 단 ①마스터 autoPrint ON 필요(현재 OFF) ②다중 프린터는 OS기본 1개라 구분 못 함.
+
+**설계(다음 세션, Fable 게이트):** 네이티브앱(`__NATIVE_PRINT`)일 때 각 프린터(빌+각 주방스테이션)에 **listPrinters()로 채운 프린터명 드롭다운을 기본 노출**(mount 자동로드, Find Printers 클릭 불필요) → 선택명을 `address`에 저장 + 방식은 명명프린터 native dispatch(qztray 경로, `if(!address)return false` 가드 충족). **IP칸은 네이티브에서 숨김/고급토글.** 방식 라벨 네이티브용 정리("프린터 선택"). 마스터 autoPrint 게이트 명확화. 검증=스테이션별 다른 USB 라우팅+자동인쇄 1장. 🔒 SettingsPage는 인쇄 인접 → 절단면 최소·Fable.
+
+
+### ✅ 데스크탑앱 5이슈 + 빌프린트 우측잘림 수리 (2026-07-07, dev·미배포·Fable PASS 2회)
+> Irene 매장서 윈도우 데스크탑앱(Electron `desktop-pos/`, QZ대체) 실사용 점검 중 보고한 5건 + 빌프린트 우측 숫자 잘림. 🔒인쇄 폴러 무접촉(단일창=단일폴러 유지가 설계 핵심).
+
+**웹(dev-frontend, 즉시반영):**
+- **#3/#4팝업**: 풀스크린 POS페이지(POS터미널/플로어플랜/주방/디스플레이/모바일)가 앱 안에서 **새창 대신 같은창 전환**. 새창=preload없는 창→설치배너 오표시+2번째 폴러(주방티켓중복) 위험이라 navigate-in-place가 정답. 신규 `utils/nativeDesktop.ts`(`__PURPLE_DESKTOP` 감지)+`utils/appShell.ts`(`isInAppShell`/`openSecondaryPage`). 수정: `MainLayout.tsx`(🔒, 네비만 4hunk, `_printPollFn` 무접촉) + **`RestaurantDashboard.tsx` Quick Action 타일 5개**(Fable가 잡은 결함A=로그인 착지화면, 원인지점) + `FoodcourtFloorPlanPage.tsx` 에디터버튼 + `PwaInstallContext.tsx`(감지 헬퍼화, `?v=0.1.1`).
+- **결함C**(손님 디스플레이 창 설치배너): `PwaInstallBanner.tsx` `/display`·`/checkout-display` 경로 배너 억제(웹, exe 재빌드 불필요).
+- **빌프린트 우측잘림**(별건, Irene 요청): `billPrint.js`(🔒전용) `PRINT_STYLES` body `padding 8px→16px`(좌우 ~2mm→~4mm 안쪽). 80mm 감열 우측 비인쇄여백 3~4mm에 가격열이 물려 잘리던 것. **여백만, 파이프라인 함수 무접촉**. 영수증+주방티켓 공통(주방 station박스 테두리도 같이 안전해짐). ⚠Fable 주의: 이 CSS는 **HTML픽셀 경로(sendHTMLViaQZTray=OS/QZ명 프린터)만** — LAN-IP raw ESC/POS(`sendViaQZTray`)는 미적용. 빌프린터가 QZ HTML프린터인지 확인.
+
+**셸(desktop-pos, 새 설치파일 0.1.1):**
+- **#1 아이콘**: 보라 그라데이션 placeholder→실제 로고(`logo512.png`). (256단일 ico, 도구부재로 멀티사이즈는 후속)
+- **#2 창크기**: 첫실행 최대화(`main.js`+`windowState.js` maximized 기본힌트), 이후 마지막상태 복원.
+- **#4 메뉴바**: `Menu.setApplicationMenu(null)` — File/Window 메뉴 제거(=브라우저 느낌 제거).
+- **#5 업데이트**: 0.1.1 빌드+`latest.yml` 갱신, `dev-frontend-build/desktop/`에 스테이징(versioned+stable+blockmap). 이후 electron-updater 자동업데이트. 배포 스크립트가 desktop/ 를 운영 동기화.
+
+**검증(전부 PASS):** desktop 스모크6/6·웹빌드 exit0(내파일 경고0)·print-guard=의도한 2파일(billPrint+MainLayout, `_printPollFn` diff무접촉 증명)·design 신규0·health 109/110(1=동일 print-guard 지문플래그)·**mount sweep 49/49 OK**(대시보드 포함)·**Fable 게이트**: 데스크탑델타(A/C/E) PASS + billPrint 여백 merit PASS(8→16px 물리계산 정확·과인셋 아님·주방티켓 net positive).
+**남은 것(Irene):** ①`/배포`(print-guard 게이트는 승인된 인쇄변경이라 bless 또는 --skip-safety) ②데스크탑앱 0.1.1 재설치 or 자동업데이트 ③**실프린터 빌 우측 종이확인** ④확인되면 `check-print-guard.js --bless`(billPrint+MainLayout 신규기준 등록).
+**미결/후속:** 데스크탑 아이콘 멀티사이즈 ico(이미지툴 필요)·park한 폴러없는 페이지(디스플레이/픽업)선 자동인쇄 정지(기존 트레이드오프, POS1은 POS터미널 주차 전제).
 
 ### ✅ AI 음식인식 서빙 Track A + Track B(B1) — 구현·검증 완료 (2026-07-06 #4, dev·미배포)
 > Fable 설계 → Opus 구현 패턴. 설계 = `docs/AI_FOOD_RECOGNITION_DESIGN.md` §A(TrackA)·§B(TrackB). 🔒 인쇄 보호파일 8개 무접촉.

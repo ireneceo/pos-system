@@ -12,6 +12,7 @@ import FoodcourtUnitNode, { UnitDisplay, UnitDisplayStatus } from './FoodcourtUn
 import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
 import { getCurrencySymbol } from '../../utils/currency';
+import { openSecondaryPage } from '../../utils/appShell';
 import { Button } from '../../components/Button';
 import EmptyState from '../../components/Common/EmptyState';
 
@@ -600,7 +601,7 @@ const FoodcourtFloorPlanPage: React.FC = () => {
                   : t('floorPlan.emptyDescView', 'The branch admin has not laid out the floor plan yet. Check back later.')}
                 primaryAction={canEdit && selectedBranchId ? {
                   label: t('floorPlan.editLayout', 'Edit Layout'),
-                  onClick: () => window.open(`/pos/foodcourt/floor-plan-editor?branch=${selectedBranchId}`, '_blank')
+                  onClick: () => openSecondaryPage(`/pos/foodcourt/floor-plan-editor?branch=${selectedBranchId}`, navigate)
                 } : undefined}
               />
             </div>

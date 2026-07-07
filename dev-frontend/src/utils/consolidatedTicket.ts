@@ -22,7 +22,7 @@ import {
   getPrinterSettings,
   generateHTMLKitchenTicket,
   generateKitchenTicketContent,
-  printHTMLContent,
+  printTicketHTML,
 } from './billPrint';
 
 const isLanIP = (a: string) => /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(a || '');
@@ -72,7 +72,7 @@ export async function printConsolidatedTicket(orderData: any, storeInfo: any): P
     const addr = (cfg.address || '').trim();
 
     if (method === 'browser') {
-      try { printHTMLContent(generateHTMLKitchenTicket(unified, storeInfo), 'Order Ticket'); return true; }
+      try { printTicketHTML(generateHTMLKitchenTicket(unified, storeInfo), 'Order Ticket'); return true; }
       catch (e) { console.error('[consolidatedTicket] browser print failed:', e); return false; }
     }
 

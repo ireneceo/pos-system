@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { openSecondaryPage } from '../../utils/appShell';
 import styled from 'styled-components';
 import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
 import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
@@ -939,21 +940,21 @@ const RestaurantDashboard: React.FC = () => {
                 // System Access 항목 (새 창) — 사이드바와 동일 아이콘
                 const systemItems: { icon: string; title: string; desc: string; onClick: () => void }[] = [];
                 if (isRouteAllowed(`/restaurant/${restaurantId}/pos-terminal`))
-                  systemItems.push({ icon: '▦', title: t('common:nav.posTerminal'), desc: t('settings:restaurantDashboard.processOrders'), onClick: () => window.open(`/restaurant/${restaurantId}/pos-terminal`, '_blank') });
+                  systemItems.push({ icon: '▦', title: t('common:nav.posTerminal'), desc: t('settings:restaurantDashboard.processOrders'), onClick: () => openSecondaryPage(`/restaurant/${restaurantId}/pos-terminal`, navigate) });
                 if (isRouteAllowed(`/restaurant/${restaurantId}/floor-plan`))
-                  systemItems.push({ icon: '\u25A6', title: t('common:nav.floorPlan'), desc: t('settings:restaurantDashboard.tableLayout'), onClick: () => window.open(`/restaurant/${restaurantId}/floor-plan`, '_blank') });
+                  systemItems.push({ icon: '\u25A6', title: t('common:nav.floorPlan'), desc: t('settings:restaurantDashboard.tableLayout'), onClick: () => openSecondaryPage(`/restaurant/${restaurantId}/floor-plan`, navigate) });
                 if (isRouteAllowed(`/restaurant/${restaurantId}/kitchen`))
-                  systemItems.push({ icon: '◐', title: t('common:nav.kitchenDisplay'), desc: t('settings:restaurantDashboard.viewKitchenOrders'), onClick: () => window.open(`/restaurant/${restaurantId}/kitchen`, '_blank') });
+                  systemItems.push({ icon: '◐', title: t('common:nav.kitchenDisplay'), desc: t('settings:restaurantDashboard.viewKitchenOrders'), onClick: () => openSecondaryPage(`/restaurant/${restaurantId}/kitchen`, navigate) });
                 if (isRouteAllowed(`/restaurant/${restaurantId}/display`))
-                  systemItems.push({ icon: '□', title: t('settings:restaurantDashboard.customerDisplay'), desc: t('settings:restaurantDashboard.pickupNumber'), onClick: () => window.open(`/restaurant/${restaurantId}/display`, '_blank') });
+                  systemItems.push({ icon: '□', title: t('settings:restaurantDashboard.customerDisplay'), desc: t('settings:restaurantDashboard.pickupNumber'), onClick: () => openSecondaryPage(`/restaurant/${restaurantId}/display`, navigate) });
                 if (isRouteAllowed(`/mobile/:slug/menu`))
                   systemItems.push({ icon: '◯', title: t('common:nav.mobileOrder'), desc: t('settings:restaurantDashboard.customerOrdering'), onClick: async () => {
                     try {
                       const token = getAuthToken();
                       const res = await fetch(`/api/restaurants/${restaurantId}`, { headers: token ? { 'Authorization': `Bearer ${token}` } : {} });
-                      if (res.ok) { const d = await res.json(); window.open(`/mobile/${(d.data || d).slug || `restaurant-${restaurantId}`}`, '_blank'); }
-                      else window.open(`/mobile/restaurant-${restaurantId}`, '_blank');
-                    } catch { window.open(`/mobile/restaurant-${restaurantId}`, '_blank'); }
+                      if (res.ok) { const d = await res.json(); openSecondaryPage(`/mobile/${(d.data || d).slug || `restaurant-${restaurantId}`}`, navigate); }
+                      else openSecondaryPage(`/mobile/restaurant-${restaurantId}`, navigate);
+                    } catch { openSecondaryPage(`/mobile/restaurant-${restaurantId}`, navigate); }
                   }});
 
                 // 5개 이상이면 Customer Display 제외하여 4개로
