@@ -18,6 +18,9 @@ import { useStore } from './StoreContext';
 import { getAuthToken } from '../utils/auth';
 import { getRestaurantTimezone } from '../utils/timezone';
 import { calculatePeriodDateRange } from '../components/Common/DatePeriodFilter';
+import { overlayOrders, getPendingServerOps, PendingServerOp } from '../utils/offlineOverlay';
+import { setOrdersSnapshot, getOrdersSnapshot } from '../utils/offlineStore';
+import { isOfflineMainPos } from '../utils/offlineMainPos';
 
 export type OrdersRealtimeEvent =
   | 'order-created' | 'order-updated' | 'order-deleted'
@@ -63,6 +66,8 @@ export const OrdersRealtimeProvider: React.FC<{
   const [orders, setOrders] = useState<any[]>([]);
   const [ordersReady, setOrdersReady] = useState(false);
   const [connected, setConnected] = useState(false);
+  // §15-5 seam①: 오프라인 중 서버주문에 건 pending op. 온라인·0개면 오버레이 코드 경로가 죽어 평상시 위험 0.
+  const [pendingOps, setPendingOps] = useState<PendingServerOp[]>([]);
 
   // 단조 가드 — 주문별 마지막 적용 updatedAt(ms). 더 오래된 echo 는 버린다.
   const versionRef = useRef<Map<string, number>>(new Map());
@@ -134,9 +139,22 @@ export const OrdersRealtimeProvider: React.FC<{
           });
         });
         setOrdersReady(true);
+        // §15-5 ⑦ 스냅샷(재부팅 생존) — 성공 fetch 마다 서버 주문 저장. 정전 중 POS 재부팅 시 하이드레이트용.
+        try { setOrdersSnapshot(json.data); } catch { /* ignore */ }
       }
     } catch (err) {
       console.error('[OrdersRealtime] refetch failed:', err);
+      // §15-5 ⑦: 정전 중 재부팅 → 초기 fetch 실패 + 메인 POS → IDB 스냅샷으로 하이드레이트(기존 열린 테이블 표시).
+      // 이것 없으면 "정전 중 재부팅 → 기존 테이블 전부 안 보임 → A안 무의미". 서버 복구되면 다음 성공 fetch 가 덮음.
+      if (isOfflineMainPos()) {
+        try {
+          const snap = await getOrdersSnapshot();
+          if (snap.length) {
+            setOrders(prev => (prev.length ? prev : snap.map((o: any) => (typeof o === 'object' ? { ...o, __staleSnapshot: true } : o))));
+            setOrdersReady(true);
+          }
+        } catch { /* ignore */ }
+      }
     }
   }, [restaurantId]);
 
@@ -223,9 +241,26 @@ export const OrdersRealtimeProvider: React.FC<{
     };
   }, []);
 
+  // §15-5 seam①: pending server-op 로드 — 마운트 + 'offline-ops-changed'(record/replay). 갱신 시 refetch 1회
+  // (재생 후 서버 진실 조기 복귀). 온라인·0개면 아래 overlayOrders 가 입력을 그대로 반환 = 무비용.
+  useEffect(() => {
+    let alive = true;
+    const load = () => { getPendingServerOps().then(ops => { if (alive) setPendingOps(ops); }).catch(() => {}); };
+    load();
+    const onChanged = () => { load(); refetchRef.current(); };
+    window.addEventListener('offline-ops-changed', onChanged);
+    return () => { alive = false; window.removeEventListener('offline-ops-changed', onChanged); };
+  }, []);
+
+  // 화면에 내려줄 주문 = [서버 캐시 + pending-op 오버레이](읽기전용 파생, I4). op synced → 오버레이 자연 소멸.
+  const effectiveOrders = useMemo(
+    () => (pendingOps.length ? overlayOrders(orders, pendingOps) : orders),
+    [orders, pendingOps]
+  );
+
   const value = useMemo<OrdersRealtimeValue>(() => ({
-    orders, ordersReady, connected, refetch, applyOrder: upsert, removeOrder, subscribe,
-  }), [orders, ordersReady, connected, refetch, upsert, removeOrder, subscribe]);
+    orders: effectiveOrders, ordersReady, connected, refetch, applyOrder: upsert, removeOrder, subscribe,
+  }), [effectiveOrders, ordersReady, connected, refetch, upsert, removeOrder, subscribe]);
 
   return (
     <OrdersRealtimeContext.Provider value={value}>

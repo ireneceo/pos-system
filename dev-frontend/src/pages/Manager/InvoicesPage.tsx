@@ -19,7 +19,7 @@ import {
   DataTableActions,
   DataTableEmpty,
   DataTableAmount
-, Modal as CommonModal, StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
+, Modal as CommonModal, StatsGrid, StatCard, StatValue, StatLabel, Pagination, usePagination } from '../../components/UI';
 
 interface PaymentMethod {
   id: string;
@@ -482,6 +482,8 @@ const ManagerInvoicesPage: React.FC = () => {
     return matchesSearch && matchesStatus && matchesMonth;
   });
 
+  const pg = usePagination(filteredInvoices, 20);
+
   const totalInvoices = invoices.length;
   const paidInvoices = invoices.filter(i => i.status === 'paid').length;
   const overdueInvoices = invoices.filter(i => i.status === 'overdue').length;
@@ -890,7 +892,7 @@ const ManagerInvoicesPage: React.FC = () => {
                 </tr>
               </DataTableHead>
               <tbody>
-                {filteredInvoices.map(invoice => (
+                {pg.pageItems.map(invoice => (
                   <DataTableRow key={invoice.id}>
                     <DataTableCell data-label="Invoice" align="left">
                       <InvoiceInfo>
@@ -955,6 +957,7 @@ const ManagerInvoicesPage: React.FC = () => {
             </DataTable>
           )}
         </DataTableContainer>
+        <Pagination page={pg.page} totalPages={pg.totalPages} total={pg.total} pageSize={pg.pageSize} onChange={pg.setPage} label="invoices" />
 
         {/* Create Invoice Modal */}
         {showCreateInvoiceModal && (

@@ -30,6 +30,8 @@ import {
   ActionButtons,
   EmptyState,
   Modal as CommonModal,
+  Pagination,
+  usePagination,
 } from '../../components/UI';
 import { SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
@@ -975,6 +977,10 @@ const FoodcourtInvoicesPage: React.FC = () => {
     return matchesSearch && matchesDateRange;
   }).sort((a, b) => new Date(b.paidDate || b.issueDate).getTime() - new Date(a.paidDate || a.issueDate).getTime());
 
+  const issuedPg = usePagination(filteredInvoices, 20);
+  const toPayPg = usePagination(filteredInvoicesToPay, 20);
+  const paidPg = usePagination(filteredPaidInvoices, 20);
+
   const formatDate = (dateString: string) => {
     return formatDateTime(dateString, operationSettings, { year: 'numeric', month: '2-digit', day: '2-digit' });
   };
@@ -1328,7 +1334,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
             <span className="col-actions">{t('foodcourt:foodcourtInvoicesPage.actions')}</span>
           </InvoiceTableHeader>
 
-          {filteredInvoices.map(invoice => (
+          {issuedPg.pageItems.map(invoice => (
             <InvoiceTableRow columns="1.6fr 1.3fr 1.2fr 0.9fr 0.9fr 0.7fr 0.8fr 0.8fr minmax(180px, 220px)" key={invoice.id}>
               <MobileGrid>
                 <MobileValue className="col-invoice">
@@ -1365,6 +1371,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
             </EmptyState>
           )}
         </Table>
+          <Pagination page={issuedPg.page} totalPages={issuedPg.totalPages} total={issuedPg.total} pageSize={issuedPg.pageSize} onChange={issuedPg.setPage} label="invoices" />
           </>
         )}
 
@@ -1386,7 +1393,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                 <span>{t('foodcourt:foodcourtInvoicesPage.invoice')}</span><span>{t('foodcourt:foodcourtInvoicesPage.restaurant')}</span><span>{t('foodcourt:foodcourtInvoicesPage.period')}</span><span>{t('foodcourt:foodcourtInvoicesPage.issued')}</span><span>{t('foodcourt:foodcourtInvoicesPage.due')}</span><span>{t('foodcourt:foodcourtInvoicesPage.status')}</span><span className="col-amount">{t('foodcourt:foodcourtInvoicesPage.amount')}</span><span className="col-total">{t('foodcourt:foodcourtInvoicesPage.total')}</span><span>{t('foodcourt:foodcourtInvoicesPage.actions')}</span>
               </InvoiceTableHeader>
               {filteredInvoicesToPay.length > 0 ? (
-                filteredInvoicesToPay.map(invoice => (
+                toPayPg.pageItems.map(invoice => (
                   <InvoiceTableRow columns="1.5fr 1.2fr 1fr 0.8fr 0.8fr 0.7fr 0.8fr 0.8fr minmax(120px, 160px)" key={invoice.id}>
                     <MobileGrid>
                       <MobileValue className="col-invoice col-info"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.invoice')}</MobileLabel><InvoiceInfo><InvoiceNumber>{invoice.invoiceNumber}{invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>{t('foodcourt:foodcourtInvoicesPage.auto')}</AutoBadge>}</InvoiceNumber><CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName></InvoiceInfo></MobileValue>
@@ -1411,6 +1418,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                 <EmptyState>{toPaySearchTerm || toPayActivePeriod !== 'all' || toPayIsCustomDateRange ? 'No matching invoices found' : 'No invoices to pay'}</EmptyState>
               )}
             </Table>
+            <Pagination page={toPayPg.page} totalPages={toPayPg.totalPages} total={toPayPg.total} pageSize={toPayPg.pageSize} onChange={toPayPg.setPage} label="invoices" />
           </>
         )}
 
@@ -1425,7 +1433,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                 <span>{t('foodcourt:foodcourtInvoicesPage.invoice')}</span><span>{t('foodcourt:foodcourtInvoicesPage.restaurant')}</span><span>{t('foodcourt:foodcourtInvoicesPage.period')}</span><span>{t('foodcourt:foodcourtInvoicesPage.paidDate')}</span><span>{t('foodcourt:foodcourtInvoicesPage.status')}</span><span className="col-amount">{t('foodcourt:foodcourtInvoicesPage.amount')}</span><span className="col-total">{t('foodcourt:foodcourtInvoicesPage.total')}</span><span>{t('foodcourt:foodcourtInvoicesPage.actions')}</span>
               </InvoiceTableHeader>
               {filteredPaidInvoices.length > 0 ? (
-                filteredPaidInvoices.map(invoice => (
+                paidPg.pageItems.map(invoice => (
                   <InvoiceTableRow columns="1.5fr 1.2fr 1fr 0.8fr 0.7fr 0.8fr 0.8fr minmax(120px, 140px)" key={invoice.id}>
                     <MobileGrid>
                       <MobileValue className="col-invoice col-info"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.invoice')}</MobileLabel><InvoiceInfo><InvoiceNumber>{invoice.invoiceNumber}{invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>{t('foodcourt:foodcourtInvoicesPage.auto')}</AutoBadge>}</InvoiceNumber><CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName></InvoiceInfo></MobileValue>
@@ -1447,6 +1455,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                 <EmptyState>{paidSearchTerm || paidActivePeriod !== 'all' || paidIsCustomDateRange ? 'No matching invoices found' : 'No paid invoices yet'}</EmptyState>
               )}
             </Table>
+            <Pagination page={paidPg.page} totalPages={paidPg.totalPages} total={paidPg.total} pageSize={paidPg.pageSize} onChange={paidPg.setPage} label="invoices" />
           </>
         )}
 

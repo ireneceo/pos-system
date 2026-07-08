@@ -6,7 +6,7 @@ import {
   StatsGrid, StatCard, StatValue, StatLabel,
   DataTableContainer, DataTable, DataTableHead, DataTableRow, DataTableCell,
   DataTableHeaderCell, DataTableActions, DataTableEmpty, DataTableStatus,
-  Modal, ModalButton
+  Modal, ModalButton, Pagination, usePagination
 } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
@@ -149,6 +149,8 @@ const SupplierTradeInvoicesPage: React.FC = () => {
     });
   }, [rows, search]);
 
+  const pg = usePagination(filteredRows, 20);
+
   const stats = useMemo(() => {
     let outstanding = 0, paidThisMonth = 0, overdue = 0, totalIssued = rows.length;
     const now = new Date();
@@ -252,7 +254,7 @@ const SupplierTradeInvoicesPage: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                filteredRows.map(row => (
+                pg.pageItems.map(row => (
                   <DataTableRow
                     key={row.id}
                     onClick={() => setDetailRow(row)}
@@ -300,6 +302,7 @@ const SupplierTradeInvoicesPage: React.FC = () => {
             </tbody>
           </DataTable>
         </DataTableContainer>
+        <Pagination page={pg.page} totalPages={pg.totalPages} total={pg.total} pageSize={pg.pageSize} onChange={pg.setPage} label="invoices" />
       </Content>
 
       <Modal

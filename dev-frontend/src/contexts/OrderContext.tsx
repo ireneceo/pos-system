@@ -199,6 +199,19 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
           body: JSON.stringify(backendOrder),
         }));
       } catch (netErr) {
+        // §15-5 ①: forceMergeIntoOrderId(기존 서버주문에 "추가")는 오프라인에서 create 가 아니라 add_items op 로
+        // 번역한다 — 레거시 create 큐를 쓰면 그 op 와 이중 머지/이중 인쇄가 된다. 로컬 라운드 인쇄를 record 앞에
+        // 수행해 printed_offline 플래그를 payload 에 확정(create 경로의 사후 setPrintedLocally 패턴이 여기선 불가).
+        if ((backendOrder as any).forceMergeIntoOrderId && isOfflineMainPos()) {
+          import('../utils/offlineOps').then(async ({ recordOfflineOp, printOfflineAddedItemsTicket }) => {
+            const addItems = backendOrder.order_items || (backendOrder as any).items || [];
+            const printed = await printOfflineAddedItemsTicket({ table_number: backendOrder.table_number }, addItems).catch(() => false);
+            await recordOfflineOp('add_items', { serverId: Number((backendOrder as any).forceMergeIntoOrderId) }, {
+              items: addItems, order_type: backendOrder.order_type, takeaway_charge: (backendOrder as any).takeaway_charge, printed_offline: printed === true
+            }).catch(() => {});
+          }).catch(() => {});
+          throw new Error('OFFLINE_QUEUED');
+        }
         // #9 연결 끊김 — POS 주문을 잃지 않게 로컬 큐에 저장(재연결 시 자동 전송, 서버 멱등으로 중복 0).
         enqueueOrder('/api/orders', backendOrder, getAuthToken());
         // 오프라인 4단계 — LocalStore(IndexedDB) op 로그에 create 기록 + 6단계 로컬 주방인쇄.
@@ -254,10 +267,23 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
   const updateOrderStatus = async (orderId: string, status: Order['status']) => {
 
     try {
-      const response = await fetch(`/api/orders/${orderId}/status`, getFetchOptions({
-        method: 'PATCH',
-        body: JSON.stringify({ status }),
-      }));
+      let response: Response;
+      try {
+        response = await fetch(`/api/orders/${orderId}/status`, getFetchOptions({
+          method: 'PATCH',
+          body: JSON.stringify({ status }),
+        }));
+      } catch (netErr) {
+        // §15-5 ② 오프라인 — 서버주문 단계이동을 op 로그에 기록(재생 시 op_id 멱등). 메인 POS 만.
+        if (isOfflineMainPos()) {
+          await import('../utils/offlineOps').then(({ recordOfflineOp }) =>
+            recordOfflineOp('set_stage', { serverId: Number(orderId) }, { status })
+          ).catch(() => {});
+          setOrders(prev => prev.map(o => String(o.id) === String(orderId) ? { ...o, status } as any : o));
+          return;
+        }
+        throw netErr;
+      }
 
       const result = await response.json();
 

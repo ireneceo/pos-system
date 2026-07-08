@@ -65,3 +65,7 @@ export { OrderControls } from './OrderControls';
 // 통합 Button 컴포넌트 (신규 - Button.tsx)
 export { Button as ThemedButton, ModalButton as ThemedModalButton, BaseButton as ThemedBaseButton } from './Button';
 export type { ButtonVariant, ButtonSize } from './Button';
+
+// 공용 페이지네이션 (목록 페이지 표준 — 클라이언트 슬라이싱)
+export { default as Pagination, usePagination } from './Pagination';
+export type { PaginationProps, UsePaginationResult } from './Pagination';

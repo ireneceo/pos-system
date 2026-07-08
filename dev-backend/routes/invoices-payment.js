@@ -170,6 +170,30 @@ router.post('/:id/create-payment-intent', authenticateToken, async (req, res) =>
   }
 });
 
+// Read-only payment status — lets the client poll right after Stripe/PayPal
+// confirmation until the ASYNC webhook flips the invoice to 'paid'. Without this
+// the list refetches a beat before the webhook lands and still shows 'pending'
+// until a manual refresh (Irene 2026-07-08). No mutation; same access check as pay.
+router.get('/:id/payment-status', authenticateToken, async (req, res) => {
+  try {
+    const invoice = await Invoice.findByPk(req.params.id, {
+      include: [{ model: Restaurant, as: 'restaurant' }]
+    });
+    if (!invoice) return res.status(404).json({ success: false, error: 'Invoice not found' });
+    const canPay = await checkPaymentPermission(req.user, invoice);
+    if (!canPay) return res.status(403).json({ success: false, error: 'Permission denied' });
+    res.json({
+      success: true,
+      status: invoice.status,
+      paid: invoice.status === 'paid',
+      paid_at: invoice.paid_at || null
+    });
+  } catch (error) {
+    console.error('Error reading payment status:', error);
+    res.status(500).json({ success: false, error: 'Failed to load payment status' });
+  }
+});
+
 // Create PayPal order for an invoice (mirrors create-payment-intent)
 router.post('/:id/create-paypal-order', authenticateToken, async (req, res) => {
   try {

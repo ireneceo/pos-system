@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import ConfirmModal from '../../components/ConfirmModal';
+import { Modal as CommonModal } from '../../components/UI';
 import styled from 'styled-components';
 import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI/StatCard';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
 import { formatDateTime } from '../../utils/timezone';
+import { getAuthToken } from '../../utils/auth';
 import { useTranslation } from 'react-i18next';
 
 interface Subscription {
@@ -329,6 +331,134 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'danger' }>`
   `}
 `;
 
+const ModalSubtitle = styled.div`
+  font-size: 14px;
+  color: #4B5563;
+  margin-bottom: 20px;
+`;
+
+const PlanList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+`;
+
+const PlanOption = styled.button<{ selected?: boolean; disabled?: boolean }>`
+  text-align: left;
+  padding: 16px;
+  border-radius: 8px;
+  border: 2px solid ${props => props.selected ? '#635BFF' : '#C7CED6'};
+  background: ${props => props.selected ? '#F5F3FF' : 'white'};
+  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
+  opacity: ${props => props.disabled ? 0.6 : 1};
+  transition: all 0.15s;
+
+  &:hover {
+    border-color: ${props => props.disabled ? '#C7CED6' : '#635BFF'};
+  }
+`;
+
+const PlanOptionHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+`;
+
+const PlanOptionName = styled.div`
+  font-size: 15px;
+  font-weight: 600;
+  color: #0A2540;
+`;
+
+const PlanOptionPrice = styled.div`
+  font-size: 15px;
+  font-weight: 700;
+  color: #0A2540;
+`;
+
+const PlanOptionMeta = styled.div`
+  font-size: 12px;
+  color: #4B5563;
+  margin-top: 6px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+`;
+
+const ChangeTag = styled.span<{ kind?: string }>`
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: ${props => props.kind === 'upgrade' ? '#ECFDF5' : props.kind === 'downgrade' ? '#FEF3C7' : '#F1F4F8'};
+  color: ${props => props.kind === 'upgrade' ? '#059669' : props.kind === 'downgrade' ? '#D97706' : '#4B5563'};
+`;
+
+const CurrentTag = styled.span`
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #EEF2FF;
+  color: #635BFF;
+`;
+
+const CycleToggle = styled.div`
+  display: flex;
+  gap: 8px;
+  margin: 16px 0;
+`;
+
+const CycleButton = styled.button<{ active?: boolean }>`
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid ${props => props.active ? '#635BFF' : '#C7CED6'};
+  background: ${props => props.active ? '#635BFF' : 'white'};
+  color: ${props => props.active ? 'white' : '#4B5563'};
+`;
+
+const BlockedNote = styled.div`
+  padding: 16px;
+  background: #FEF3C7;
+  border-radius: 8px;
+  color: #92400E;
+  font-size: 14px;
+`;
+
+const ModalError = styled.div`
+  padding: 12px 16px;
+  background: #FEF2F2;
+  border-radius: 8px;
+  color: #DC2626;
+  font-size: 13px;
+  margin-bottom: 16px;
+`;
+
+interface PlanOptionData {
+  id: number;
+  name: string;
+  display_name: string;
+  monthly_price: number;
+  annual_price: number;
+  is_current: boolean;
+  change_type: 'upgrade' | 'downgrade' | null;
+  limits: { orders: number; staff: number; menu_items: number };
+}
+
+interface PlanOptionsCurrent {
+  plan_type: string;
+  billing_cycle: string;
+  currency: string;
+  can_change: boolean;
+  change_blocked_reason: string | null;
+}
+
 const ManagerSubscriptionsPage: React.FC = () => {
   const { t } = useTranslation('admin');
   const { user } = useAuth();
@@ -337,30 +467,36 @@ const ManagerSubscriptionsPage: React.FC = () => {
   const { defaultCurrency } = useBrandCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
 
+  // Plan-change modal state
+  const [planModal, setPlanModal] = useState<Subscription | null>(null);
+  const [planOptions, setPlanOptions] = useState<PlanOptionData[]>([]);
+  const [planCurrent, setPlanCurrent] = useState<PlanOptionsCurrent | null>(null);
+  const [planLoading, setPlanLoading] = useState(false);
+  const [planError, setPlanError] = useState<string | null>(null);
+  const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
+  const [selectedCycle, setSelectedCycle] = useState<'monthly' | 'annual'>('monthly');
+  const [submitting, setSubmitting] = useState(false);
+
   useEffect(() => {
     if (defaultCurrency) {
       setSelectedCurrency(defaultCurrency);
     }
   }, [defaultCurrency]);
 
-  useEffect(() => {
-    const fetchManagerSubscriptions = async () => {
-      try {
-        if (!user?.id) return;
-        
-        console.log('🔄 Fetching restaurants for manager:', user.id);
-        
-        // Fetch restaurants for this manager
-        const response = await fetch(`/api/restaurants/manager/${user.id}`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch restaurants');
-        }
-        
-        const restaurants = await response.json();
-        console.log('📝 Manager restaurants:', restaurants);
-        
-        // Transform restaurant data to subscription format
-        const subscriptionsData: Subscription[] = restaurants.map((restaurant: any) => {
+  const loadSubscriptions = useCallback(async () => {
+    try {
+      if (!user?.id) return;
+
+      // Fetch restaurants for this manager
+      const response = await fetch(`/api/restaurants/manager/${user.id}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch restaurants');
+      }
+
+      const restaurants = await response.json();
+
+      // Transform restaurant data to subscription format
+      const subscriptionsData: Subscription[] = restaurants.map((restaurant: any) => {
           const planType = restaurant.plan_type?.toLowerCase().replace(' plan', '') || 'basic';
           const isActive = restaurant.status === 'active';
           
@@ -402,17 +538,17 @@ const ManagerSubscriptionsPage: React.FC = () => {
           };
         });
         
-        console.log('✅ Transformed subscriptions:', subscriptionsData);
-        setSubscriptions(subscriptionsData);
-        
-      } catch (error) {
-        console.error('❌ Error fetching manager subscriptions:', error);
-        setSubscriptions([]);
-      }
-    };
-    
-    fetchManagerSubscriptions();
+      setSubscriptions(subscriptionsData);
+
+    } catch (error) {
+      console.error('Error fetching manager subscriptions:', error);
+      setSubscriptions([]);
+    }
   }, [user]);
+
+  useEffect(() => {
+    loadSubscriptions();
+  }, [loadSubscriptions]);
 
   const totalMonthlyFee = subscriptions.reduce((sum, sub) => sum + sub.monthlyFee, 0);
   const activeSubscriptions = subscriptions.filter(sub => sub.status === 'active').length;
@@ -428,16 +564,89 @@ const ManagerSubscriptionsPage: React.FC = () => {
     return Math.min((current / limit) * 100, 100);
   };
 
-  const handleUpgradePlan = (subscriptionId: string) => {
-    setInfoModal({ open: true, title: 'Coming Soon', message: `Upgrade plan functionality for ${subscriptionId} will be available in an upcoming release.` });
+  const openPlanModal = async (subscription: Subscription) => {
+    setPlanModal(subscription);
+    setPlanOptions([]);
+    setPlanCurrent(null);
+    setSelectedPlanId(null);
+    setPlanError(null);
+    setPlanLoading(true);
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`/api/subscriptions/manager/restaurant/${subscription.restaurantId}/plan-options`, {
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) }
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        setPlanError(json.message || 'Failed to load plan options.');
+        return;
+      }
+      const current: PlanOptionsCurrent = json.data.current;
+      const plans: PlanOptionData[] = json.data.available_plans || [];
+      setPlanCurrent(current);
+      setPlanOptions(plans);
+      setSelectedCycle(current.billing_cycle === 'annual' ? 'annual' : 'monthly');
+    } catch (err) {
+      console.error('Error loading plan options:', err);
+      setPlanError('Failed to load plan options.');
+    } finally {
+      setPlanLoading(false);
+    }
   };
 
-  const handleManageSubscription = (subscriptionId: string) => {
-    setInfoModal({ open: true, title: 'Coming Soon', message: `Manage subscription functionality for ${subscriptionId} will be available in an upcoming release.` });
+  const closePlanModal = () => {
+    setPlanModal(null);
+    setPlanOptions([]);
+    setPlanCurrent(null);
+    setSelectedPlanId(null);
+    setPlanError(null);
+    setSubmitting(false);
   };
 
-  const handleSuspendSubscription = (subscriptionId: string) => {
-    setInfoModal({ open: true, title: 'Coming Soon', message: `Suspend subscription functionality for ${subscriptionId} will be available in an upcoming release.` });
+  const handleUpgradePlan = (subscription: Subscription) => {
+    openPlanModal(subscription);
+  };
+
+  const handleManageSubscription = (subscription: Subscription) => {
+    openPlanModal(subscription);
+  };
+
+  const handleConfirmPlanChange = async () => {
+    if (!planModal || selectedPlanId == null) return;
+    setSubmitting(true);
+    setPlanError(null);
+    try {
+      const token = getAuthToken();
+      const res = await fetch('/api/subscriptions/change-plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({
+          restaurant_id: planModal.restaurantId,
+          new_plan_id: selectedPlanId,
+          new_billing_cycle: selectedCycle
+        })
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        setPlanError(json.message || 'Failed to change plan.');
+        setSubmitting(false);
+        return;
+      }
+      closePlanModal();
+      await loadSubscriptions();
+    } catch (err) {
+      console.error('Error changing plan:', err);
+      setPlanError('Failed to change plan.');
+      setSubmitting(false);
+    }
+  };
+
+  const handleSuspendSubscription = () => {
+    setInfoModal({
+      open: true,
+      title: 'Managed by System Admin',
+      message: 'Suspending or cancelling a subscription is handled by the System Admin. Managers can upgrade or downgrade the plan only.'
+    });
   };
 
   const handleExportData = () => {
@@ -574,14 +783,14 @@ const ManagerSubscriptionsPage: React.FC = () => {
                   </FeaturesSection>
 
                   <ActionButtons>
-                    <ActionButton onClick={() => handleManageSubscription(subscription.id)}>
+                    <ActionButton onClick={() => handleManageSubscription(subscription)}>
                       Manage
                     </ActionButton>
-                    <ActionButton variant="primary" onClick={() => handleUpgradePlan(subscription.id)}>
-                      Upgrade
+                    <ActionButton variant="primary" onClick={() => handleUpgradePlan(subscription)}>
+                      Change Plan
                     </ActionButton>
                     {subscription.status === 'active' && (
-                      <ActionButton variant="danger" onClick={() => handleSuspendSubscription(subscription.id)}>
+                      <ActionButton variant="danger" onClick={() => handleSuspendSubscription()}>
                         Suspend
                       </ActionButton>
                     )}
@@ -592,6 +801,96 @@ const ManagerSubscriptionsPage: React.FC = () => {
           </SubscriptionGrid>
         </Content>
       </Container>
+      {planModal && (
+        <CommonModal
+          isOpen={true}
+          onClose={closePlanModal}
+          title="Change Subscription Plan"
+          footer={
+            <>
+              <Button variant="secondary" onClick={closePlanModal}>Cancel</Button>
+              <Button
+                variant="primary"
+                onClick={handleConfirmPlanChange}
+                disabled={
+                  submitting ||
+                  planLoading ||
+                  !planCurrent?.can_change ||
+                  selectedPlanId == null ||
+                  planOptions.find(p => p.id === selectedPlanId)?.is_current
+                }
+              >
+                {submitting ? 'Changing...' : 'Confirm Change'}
+              </Button>
+            </>
+          }
+        >
+          <ModalSubtitle>
+            {planModal.restaurantName}
+            {planCurrent && <> &mdash; Current: {planCurrent.plan_type} ({planCurrent.billing_cycle})</>}
+          </ModalSubtitle>
+
+          {planError && <ModalError>{planError}</ModalError>}
+
+          {planLoading && <div style={{ padding: '24px 0', color: '#4B5563' }}>Loading plan options...</div>}
+
+          {!planLoading && planCurrent && !planCurrent.can_change && (
+            <BlockedNote>
+              {planCurrent.change_blocked_reason || 'This plan cannot be changed at the moment.'}
+            </BlockedNote>
+          )}
+
+          {!planLoading && planCurrent?.can_change && (
+            <>
+              <CycleToggle>
+                <CycleButton active={selectedCycle === 'monthly'} onClick={() => setSelectedCycle('monthly')}>
+                  Monthly
+                </CycleButton>
+                <CycleButton active={selectedCycle === 'annual'} onClick={() => setSelectedCycle('annual')}>
+                  Annual
+                </CycleButton>
+              </CycleToggle>
+
+              <PlanList>
+                {planOptions.map(plan => {
+                  const price = selectedCycle === 'annual' ? plan.annual_price : plan.monthly_price;
+                  const cur = planCurrent.currency;
+                  return (
+                    <PlanOption
+                      key={plan.id}
+                      selected={selectedPlanId === plan.id}
+                      disabled={plan.is_current}
+                      onClick={() => { if (!plan.is_current) setSelectedPlanId(plan.id); }}
+                    >
+                      <PlanOptionHeader>
+                        <PlanOptionName>{plan.display_name || plan.name}</PlanOptionName>
+                        <PlanOptionPrice>
+                          {formatCurrency(price, cur)}/{selectedCycle === 'annual' ? 'yr' : 'mo'}
+                        </PlanOptionPrice>
+                      </PlanOptionHeader>
+                      <PlanOptionMeta>
+                        {plan.is_current && <CurrentTag>Current</CurrentTag>}
+                        {plan.change_type === 'upgrade' && <ChangeTag kind="upgrade">Upgrade</ChangeTag>}
+                        {plan.change_type === 'downgrade' && <ChangeTag kind="downgrade">Downgrade</ChangeTag>}
+                        <span>
+                          {plan.limits.orders === -1 ? 'Unlimited' : `Up to ${plan.limits.orders?.toLocaleString?.() ?? plan.limits.orders}`} orders/mo
+                        </span>
+                        <span>
+                          {plan.limits.staff === -1 ? 'Unlimited' : plan.limits.staff} staff
+                        </span>
+                      </PlanOptionMeta>
+                    </PlanOption>
+                  );
+                })}
+              </PlanList>
+
+              <div style={{ marginTop: '16px', fontSize: '13px', color: '#4B5563' }}>
+                Upgrades apply immediately with prorated billing. Downgrades take effect at the next billing cycle.
+              </div>
+            </>
+          )}
+        </CommonModal>
+      )}
       <ConfirmModal
         isOpen={infoModal.open}
         title={infoModal.title}

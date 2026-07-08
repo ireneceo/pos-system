@@ -26,6 +26,7 @@
   "netMovement": "Net {{a}}",
   "paidIn": "Cash in",
   "paidOut": "Cash out",
+  "drop": "Drop (cash out)",
   "openDrawer": "Open drawer",
   "drawerSent": "Drawer pulse sent",
   "drawerFail": "Could not open drawer (check printer mode)",

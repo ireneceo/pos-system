@@ -26,6 +26,7 @@
   "netMovement": "净额 {{a}}",
   "paidIn": "现金存入",
   "paidOut": "现金取出",
+  "drop": "取现 (现金取出)",
   "openDrawer": "打开钱箱",
   "drawerSent": "已发送钱箱信号",
   "drawerFail": "无法打开钱箱（请检查打印机模式）",

@@ -12,7 +12,7 @@ const OrderAction = require('../models/OrderAction');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
 const { executeQuery, executeTransaction } = require('../utils/queryWrapper');
-const { alreadyProcessed, recordProcessed } = require('../utils/opIdGuard');
+const { alreadyProcessed, recordProcessed, getProcessed } = require('../utils/opIdGuard');
 const { deductInventoryForOrder } = require('../services/inventoryDeductionService');
 const { earnPointsForOrder, refundPointsForOrder, usePointsForOrder } = require('../services/pointService');
 const { authenticateToken, optionalAuthenticateToken, requireRole, requirePosCounter, userCanOperatePosCounter, requireVoidAccess, userCanVoid } = require('../middleware/auth');
@@ -351,8 +351,12 @@ async function findMergeableOrder(restaurantId, tableNumber, orderType, newOrder
 // Helper: Merge items into existing order
 // #3 합본 빌: incomingOrderType = 합쳐 들어오는 주문의 order_type. 그 품목을 item_order_type 으로
 // 태깅 → 혼합(테이크웨이+다인인) 시 서비스차지를 dine-in 품목에만 매긴다(computeOrderTotals dineInSubtotal).
-async function mergeItemsIntoOrder(existingOrder, newItems, transaction = null, incomingOrderType = null, incomingTakeawayCharge = 0) {
+async function mergeItemsIntoOrder(existingOrder, newItems, transaction = null, incomingOrderType = null, incomingTakeawayCharge = 0, opts = {}) {
   const now = new Date().toISOString();
+  // §15-3-E 🔒 (이 블루프린트의 유일한 인쇄 라이프사이클 변경): 오프라인 중 POS1 이 라운드 티켓을
+  // 로컬로 이미 찍었으면(printedOffline) 재생 시 폴러가 재인쇄하지 않게 한다. opts 미전달(기존 5개
+  // 호출부) = 정확히 기존 동작. printedOffline 은 /add-items 가 op_id+printed_offline 일 때만 세운다(I2).
+  const printedOffline = opts.printedOffline === true;
   // #3 합본 빌: 합쳐 들어오는 takeaway 주문의 포장비(프론트가 매장 설정 takeawayPricing 대로 계산해 보낸 값)를
   // 기존 주문 포장비에 더한다. 설정값을 그대로 적용 — 머지 때 버려지던 버그 수정.
   const combinedTakeawayCharge = (parseFloat(existingOrder.takeaway_charge) || 0) + (parseFloat(incomingTakeawayCharge) || 0);
@@ -390,6 +394,9 @@ async function mergeItemsIntoOrder(existingOrder, newItems, transaction = null, 
     status: 'pending',
     added_at: now,
     order_group: nextGroup,
+    // §15-3-E: 오프라인 로컬인쇄분은 printed_at 스탬프 → 폴러 kitchen_items(未printed) 에서 제외(재인쇄 0).
+    // create 경로(829~847)와 동일 메커니즘. printedOffline 아니면 스탬프 없음 = 기존 동작.
+    ...(printedOffline ? { printed_at: now } : {}),
     ...(incomingOrderType ? { item_order_type: item.item_order_type || incomingOrderType } : {})
   }));
 
@@ -461,9 +468,13 @@ async function mergeItemsIntoOrder(existingOrder, newItems, transaction = null, 
     // additional-items kitchen ticket regardless of which page each POS
     // device is on. Without this, only a device sitting on KDS would
     // receive the socket-based fast-path; everyone else missed the print.
-    needs_print: true,
+    // §15-3-E: printedOffline 이면 needs_print/consolidated_printed_at 을 기존 값 보존(강제 true/null 아님).
+    //   왜 보존이지 false 가 아닌가: 정전 중 서버에 도달한 모바일 라운드가 needs_print=true 로 대기 중일 수
+    //   있다 — false 로 덮으면 그 티켓이 증발(zero-ticket 사고). 보존이면 대기분 없으면 그대로(아무것도 안 찍힘),
+    //   대기분 있으면 폴러가 未printed 품목만(우리 스탬프분 제외) 찍는다 → 양쪽 모두 정확히 1장(I3).
+    needs_print: printedOffline ? existingOrder.needs_print : true,
     // +Round/merge = 새 라운드 → 통합 가드 리셋(추가분 통합 카피 재발행). 새주문 hybrid+poller 더블만 가드, 재인쇄는 단일 소스라 안전.
-    consolidated_printed_at: null
+    consolidated_printed_at: printedOffline ? existingOrder.consolidated_printed_at : null
   }, updateOptions);
 
   await existingOrder.reload(updateOptions);
@@ -601,6 +612,18 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
 
     // Force merge into a specific existing order (POS UI 의 "기존 주문에 추가" 선택)
     if (orderData.forceMergeIntoOrderId) {
+      // §15-3-D 멱등 봉합: forceMerge 분기는 idempotency_key 를 어디에도 영속하지 않아
+      // 응답 유실 후 재전송이 같은 품목을 두 번 머지 + 주방티켓 2장(온라인에서도 열린 구멍).
+      // ProcessedOp 재사용('idem:' 네임스페이스, op_id 와 충돌 방지) → 재전송이면 기존 주문 반환.
+      if (_idemKey) {
+        // §15-3-D 하드닝(Fable): 반환을 요청 body 가 아닌 **실제 처리된 대상**(기록 meta.order_id) 기준으로 —
+        // divergent replay(같은 key, 다른 target id)가 엉뚱한 주문을 반환하고 머지를 조용히 흘리는 것 방어.
+        const prior = await getProcessed('idem:' + _idemKey);
+        if (prior) {
+          const force0 = await Order.findByPk(prior.order_id || orderData.forceMergeIntoOrderId);
+          return res.status(200).json({ success: true, data: force0, merged: true, idempotent: true });
+        }
+      }
       const force = await Order.findByPk(orderData.forceMergeIntoOrderId);
       if (force && force.restaurant_id === orderData.restaurant_id) {
         const newItems = orderData.order_items || orderData.items || [];
@@ -619,6 +642,8 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
             addedItems: mergeResult.addedItems, itemCount: mergeResult.addedItems.length
           });
         }
+        // §15-3-D: 머지 성공을 idempotency_key 로 봉인 → 재전송 시 위 가드가 기존 주문 반환(이중 머지·이중인쇄 0).
+        if (_idemKey) await recordProcessed('idem:' + _idemKey, { order_id: force.id, type: 'force_merge', restaurant_id: force.restaurant_id });
         return res.status(200).json({
           success: true, data: mergeResult.order, merged: true,
           mergeInfo: { originalOrderId: force.id, orderGroup: mergeResult.orderGroup, forced: true }
@@ -1123,6 +1148,11 @@ router.post('/:id/move-table', authenticateToken, async (req, res) => {
       return res.status(400).json({ success: false, message: 'destinationTableNumber is required', code: 'DEST_REQUIRED' });
     }
 
+    // §15-3-C 오프라인 재생 멱등 (op_id 있을 때만 — 온라인 무접촉, I2).
+    if (req.body.op_id && await alreadyProcessed(req.body.op_id)) {
+      return res.json({ success: true, deduped: true });
+    }
+
     const outcome = await executeTransaction(async (t) => {
       const order = await Order.findByPk(req.params.id, { lock: t.LOCK.UPDATE, transaction: t });
       if (!order) { const e = new Error('Order not found'); e.code = 'NOT_FOUND'; throw e; }
@@ -1290,7 +1320,10 @@ router.post('/:id/move-table', authenticateToken, async (req, res) => {
       if (typeof _priorReprint === 'string') { try { _priorReprint = JSON.parse(_priorReprint); } catch { _priorReprint = null; } }
       const _priorMovePending = !!(order.needs_print && _priorReprint && _priorReprint.type === 'move');
       const _originFrom = (_priorMovePending && _priorReprint.fromTable != null) ? _priorReprint.fromTable : (sourceTableNumber || null);
-      if (printedItems.length > 0 || _priorMovePending) {
+      // §15-3-C 🔒: 오프라인 중 POS1 이 이동 안내표를 로컬로 이미 찍었으면(op_id+printed_offline) 재발행 큐 스킵
+      // (이동 자체는 위에서 항상 적용됨 — 여기선 재발행 큐잉만 스킵). 로컬인쇄 실패면 플래그 없음 → 폴러가 1장(I3).
+      const _skipMoveReprint = !!(req.body.op_id && req.body.printed_offline === true);
+      if ((printedItems.length > 0 || _priorMovePending) && !_skipMoveReprint) {
         const _reprintUpdate = {
           needs_print: true,
           print_claimed_at: null,
@@ -1396,6 +1429,9 @@ router.post('/:id/move-table', authenticateToken, async (req, res) => {
         mode: outcome.kind, merged_from_order_id: outcome.mergedFromOrderId || null
       }
     });
+
+    // §15-3-C: 재생 멱등 봉인(성공 시에만) — op_id 있을 때만.
+    if (req.body.op_id && outcome.order) await recordProcessed(req.body.op_id, { order_id: outcome.order.id, type: 'move_table', restaurant_id: outcome.order.restaurant_id });
 
     return res.json({
       success: true,
@@ -1539,6 +1575,18 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
       return res.status(403).json({ success: false, error: { message: 'Forbidden', code: 'FORBIDDEN' } });
     }
 
+    // §15-3-A 오프라인 재생 멱등 + 터미널 무후퇴 (op_id 있을 때만 — 온라인 트래픽 무접촉, I2).
+    // 재생 재전송은 한 번만 적용. 정전 중 타채널로 이미 종결(완료/취소)된 주문을 재생이 건드리지 않는다(§15-6).
+    if (req.body.op_id) {
+      if (await alreadyProcessed(req.body.op_id)) return res.json({ success: true, deduped: true });
+      // 주문이 이미 터미널(완료/취소)이면 — 다른 상태로든(충돌) 같은 상태로든(예: cancelled→cancelled 재생)
+      // 재실행 금지. 같은상태를 흘려보내면 취소표 큐(§15-3-B) 가 다시 돌아 취소표 중복(Fable 지적). 봉인 후 반환.
+      if (['completed', 'cancelled'].includes(order.status)) {
+        await recordProcessed(req.body.op_id, { order_id: order.id, type: 'set_stage', restaurant_id: order.restaurant_id });
+        return res.json({ success: true, skipped: status === order.status ? ('already-' + order.status) : 'terminal-state', data: order });
+      }
+    }
+
     // 주문 취소는 void 권한(access_void) 직원만 → 서버(홀)·서빙 전용 직원 차단
     // (2026-06-24 access_void 분리; 이전엔 access_pos 통합). 단계 이동(준비/서빙 등)은 허용.
     // docs/SERVING_VIEW_DESIGN.md §7. (이 PATCH 는 단계이동·취소 양쪽에 쓰이므로 status 로 분기.)
@@ -1618,7 +1666,10 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
     // 취소표 = 일반 오더티켓 + CANCELLED (PRINT_RULES_MATRIX §8.6). 이미 주방에 나간 품목이 있으면
     // needs_print 켜고 printed_at 비워(전체 CANCELLED 티켓) + pending_reprint notice. 누른 기기/계정 무관
     // (자동인쇄 계정차이 제거). 인쇄 방식(billPrint) 무변경 — 트리거를 기기→DB로 옮긴 것뿐.
-    if (finalStatus === 'cancelled') {
+    // §15-3-B 🔒: 오프라인 중 POS1 이 취소표를 로컬로 이미 찍었으면(op_id+printed_offline) 재생이 재발행 큐를
+    // 켜지 않는다 → 폴러 재발행 0(취소표 정확히 1장). 로컬인쇄 실패였으면 플래그 없음 → 아래 기존 경로로 폴러가
+    // 복구 후 1장(늦지만 정확히 1장, I3). 온라인 취소는 op_id 없어 그대로.
+    if (finalStatus === 'cancelled' && !(req.body.op_id && req.body.printed_offline === true)) {
       try {
         let citems = order.order_items; if (typeof citems === 'string') { try { citems = JSON.parse(citems); } catch { citems = []; } }
         // 2026-06-26 (Irene "이미 다 완료한 건 취소 갈 필요 없지"): 이미 served/completed(손님에게 이미
@@ -1778,6 +1829,9 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
       restaurant_id: order.restaurant_id
     });
 
+    // §15-3-A: 재생 멱등 봉인(성공 시에만) — op_id 있을 때만.
+    if (req.body.op_id) await recordProcessed(req.body.op_id, { order_id: order.id, type: 'set_stage', restaurant_id: order.restaurant_id });
+
     res.json({ success: true, data: order });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
@@ -1798,6 +1852,12 @@ router.patch('/:id/items', authenticateToken, async (req, res) => {
     if (req.user?.restaurant_id && Number(req.user.restaurant_id) !== Number(order.restaurant_id)
         && req.user.role !== 'System Admin') {
       return res.status(403).json({ success: false, error: { message: 'Forbidden', code: 'FORBIDDEN' } });
+    }
+
+    // §15-3-F 오프라인 재생 멱등 (op_id 있을 때만 — 온라인 무접촉, I2). STALE_WRITE/forward-only
+    // 가드는 그대로 아래에서 적용(재생도 동일 보호를 받는 것이 정답 — 정전 중 서버 드리프트 방어).
+    if (req.body.op_id && await alreadyProcessed(req.body.op_id)) {
+      return res.json({ success: true, deduped: true });
     }
 
     // ── STALE-WRITE GUARD (2026-06-26, item 5) — optimistic concurrency ───────
@@ -1948,6 +2008,9 @@ router.patch('/:id/items', authenticateToken, async (req, res) => {
         total_changed: !!recalculateTotal
       }
     });
+
+    // §15-3-F: 재생 멱등 봉인(성공 시에만) — op_id 있을 때만.
+    if (req.body.op_id) await recordProcessed(req.body.op_id, { order_id: order.id, type: 'cancel_item', restaurant_id: order.restaurant_id });
 
     res.json({ success: true, data: order });
   } catch (error) {
@@ -2293,7 +2356,9 @@ router.post('/:id/add-items', authenticateToken, async (req, res) => {
     // /add-items route had its own raw item-map without enrichment, so POS
     // 추가주문 (Live Orders 의 메뉴 추가 흐름) 에 station 라우팅이 빠지고
     // additional-items kitchen ticket 도 폴링 path 에서 누락됐다.
-    const mergeResult = await mergeItemsIntoOrder(order, items, null, req.body.order_type); // #3 혼합차지: 추가분 타입 태깅(다르면 혼합)
+    // §15-3-E-3: takeaway_charge 5번째 인자(forceMerge 분기와 등가 — 오프라인 takeaway 라운드 포장비 유실 방지;
+    // 온라인은 이 키를 안 보내 무접촉). printedOffline 6번째 = op_id+printed_offline 일 때만(재생 재인쇄 0, I2).
+    const mergeResult = await mergeItemsIntoOrder(order, items, null, req.body.order_type, req.body.takeaway_charge, { printedOffline: !!(req.body.op_id && req.body.printed_offline === true) }); // #3 혼합차지: 추가분 타입 태깅(다르면 혼합)
     const newItemsWithTimestamp = mergeResult.addedItems;
     const newTotal = mergeResult.newTotal;
 

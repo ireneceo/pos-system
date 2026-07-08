@@ -22,6 +22,9 @@ import { useTranslation } from 'react-i18next';
 import { getTableLabel } from '../../utils/tableLabel';
 
 import { getAuthToken } from '../../utils/auth';
+// 오프라인 편집 배선 (§15-5 ⑨⑩⑪⑫⑯) — 온라인 경로는 그대로, 메인POS 오프라인일 때만 로컬 op 기록.
+import { useOffline } from '../../contexts/OfflineContext';
+import { isOfflineMainPos } from '../../utils/offlineMainPos';
 // Helper: payment_proof 호환 — { current, history } 구조 또는 기존 단일 객체 모두 지원
 const getProofCurrent = (proof: any): any => {
   if (!proof) return null;
@@ -718,6 +721,12 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
     onConfirm: () => void;
   } | null>(null);
 
+  // 오프라인 편집 배선 — 서버 도달 판정(navigator.onLine 단독 금지). 메인POS 오프라인일 때만 로컬 op 기록.
+  const { isOffline } = useOffline();
+  // 오프라인 동작 안내(간단 notice — 기존 confirm 모달 재사용, 두 버튼 모두 닫기).
+  const offlineNotice = (title: string, message: string) =>
+    setConfirmModal({ title, message, onConfirm: () => setConfirmModal(null) });
+
   // 손실방지 PIN 게이트 — requireVoidPin 매장에서 삭제/취소 전 권한 PIN 확인.
   const [voidGate, setVoidGate] = useState<{ run: (pin: string) => void } | null>(null);
   const [cancelReasonOpen, setCancelReasonOpen] = useState(false);
@@ -811,6 +820,20 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
         options: item.selectedOptions?.map((opt: any) => ({ name: opt.name, price: opt.price || 0 })) || [],
         is_set_menu: item.is_set_menu, set_items: item.set_items
       }));
+      // §15-5 ⑨ 오프라인: 메인POS면 로컬 라운드 인쇄 → add_items op 기록(온라인 fetch 대체). 온라인 경로 무변경.
+      if (isOffline && isOfflineMainPos()) {
+        const { recordOfflineOp, printOfflineAddedItemsTicket } = await import('../../utils/offlineOps');
+        const printed = await printOfflineAddedItemsTicket(
+          { order_number: statusInfo.orderNumber, table_number: tableNumber }, mergeItems
+        ).catch(() => false);
+        await recordOfflineOp('add_items', { serverId: statusInfo.orderId as any }, { items: mergeItems, printed_offline: printed === true });
+        setShowAddItemsView(false);
+        setAddItemsCart([]);
+        setAddItemsSearchQuery('');
+        onOrderUpdated();
+        offlineNotice('오프라인 저장됨', '추가 주문이 로컬에 저장되어 연결 시 자동 전송됩니다.');
+        return;
+      }
       const res = await fetch(`/api/orders/${statusInfo.orderId}/merge-items`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -906,6 +929,16 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
 
       const token = getAuthToken();
       const _allowRevert = curStatus === 'served';
+      // §15-5 ⑩ 오프라인: cancel_item op(온라인과 동일 full-array body + base_updated_at). 온라인 경로 무변경.
+      if (isOffline && isOfflineMainPos()) {
+        const { recordOfflineOp } = await import('../../utils/offlineOps');
+        await recordOfflineOp('cancel_item', { serverId: statusInfo.orderId as any }, {
+          order_items: updatedItems, allowItemRevert: _allowRevert, base_updated_at: statusInfo.updatedAt || undefined
+        });
+        onOrderUpdated();
+        setLoading(false);
+        return;
+      }
       const res = await fetch(`/api/orders/${statusInfo.orderId}/items`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -1035,6 +1068,27 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
     if (!statusInfo?.orderId) return;
     setLoading(true);
     try {
+      // §15-5 ⑪ 오프라인: 상세 fetch(아래)가 오프라인 실패하므로 printed 판정은 캐시 주문(statusInfo.orderItems).
+      // printed 품목 있으면 로컬 취소표 인쇄 → cancel_order op 기록. 온라인 경로 무변경.
+      if (isOffline && isOfflineMainPos()) {
+        const { recordOfflineOp, printOfflineNoticeTicket } = await import('../../utils/offlineOps');
+        const cachedItems = (items || []).filter((it: any) => it && (it.printed_at || it.printed));
+        let printed = false;
+        if (cachedItems.length > 0) {
+          printed = await printOfflineNoticeTicket(
+            { order_number: statusInfo.orderNumber, table_number: tableNumber },
+            { title: '** ORDER CANCELLED **', lines: reason ? [`Reason: ${reason}`] : [] },
+            cachedItems
+          ).catch(() => false);
+        }
+        await recordOfflineOp('cancel_order', { serverId: statusInfo.orderId as any }, {
+          status: 'cancelled', reason: reason || undefined, void_pin: voidPin || undefined, printed_offline: printed === true
+        });
+        onOrderUpdated();
+        offlineNotice('오프라인 저장됨', '주문 취소가 로컬에 저장되어 연결 시 자동 전송됩니다.');
+        setLoading(false);
+        return;
+      }
       const token = getAuthToken();
       // 확정 스펙 v2 (2026-06-02): 취소표 station 라우팅을 위해 취소 전 주문 상세(발행된
       // 아이템의 kitchen_station_id/printed_at)를 가져온다. table-status 요약엔 없음.
@@ -1149,6 +1203,14 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
     if (!prevStatus) return;
     setLoading(true);
     try {
+      // §15-5 ⑫ 오프라인: set_stage op(updateData = { status }). 온라인 경로 무변경.
+      if (isOffline && isOfflineMainPos()) {
+        const { recordOfflineOp } = await import('../../utils/offlineOps');
+        await recordOfflineOp('set_stage', { serverId: statusInfo.orderId as any }, { status: prevStatus });
+        onOrderUpdated();
+        setLoading(false);
+        return;
+      }
       const token = getAuthToken();
       await fetch(`/api/orders/${statusInfo.orderId}/status`, {
         method: 'PATCH',
@@ -1169,6 +1231,11 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
 
   const handleConfirmPayment = async () => {
     if (!statusInfo?.orderId) return;
+    // §15-5 ⑯ 모바일 결제 증빙 검증은 서버 필요(비범위 §15-8) — 오프라인 비활성, op 미기록.
+    if (isOffline && isOfflineMainPos()) {
+      offlineNotice('오프라인', '모바일 결제 증빙 검증은 서버 연결이 필요합니다. 복구 후 처리하세요.');
+      return;
+    }
     setLoading(true);
     try {
       const token = getAuthToken();
@@ -1193,6 +1260,11 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
 
   const handleRejectPayment = async () => {
     if (!statusInfo?.orderId) return;
+    // §15-5 ⑯ 모바일 결제 증빙 거절도 서버 필요 — 오프라인 비활성, op 미기록.
+    if (isOffline && isOfflineMainPos()) {
+      offlineNotice('오프라인', '모바일 결제 증빙 검증은 서버 연결이 필요합니다. 복구 후 처리하세요.');
+      return;
+    }
     setLoading(true);
     try {
       const token = getAuthToken();

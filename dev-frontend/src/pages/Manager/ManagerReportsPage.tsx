@@ -7,6 +7,7 @@ import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
 import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell } from '../../components/UI/DataTable';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
+import { getAuthHeaders } from '../../utils/auth';
 import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import { useTranslation } from 'react-i18next';
@@ -22,18 +23,7 @@ interface ReportData {
   totalOrders: number;
   averageOrderValue: number;
   topItems: Array<{ name: string; quantity: number; revenue: number }>;
-  customerCount: number;
-  staffPerformance: Array<{ name: string; orders: number; efficiency: number }>;
   hourlyData: Array<{ hour: string; orders: number; revenue: number }>;
-  customerAnalysis: {
-    newCustomers: number;
-    returningCustomers: number;
-    satisfaction: number;
-    totalCustomers: number;
-    vipCustomers: number;
-    averageOrdersPerCustomer: number;
-    customerRetentionRate: number;
-  };
 }
 
 const Container = styled.div`
@@ -104,12 +94,6 @@ const Content = styled.div`
 
 
 
-const StatTrend = styled.div<{ trend?: 'up' | 'down' }>`
-  font-size: 12px;
-  color: ${props => props.trend === 'up' ? '#059669' : props.trend === 'down' ? '#DC2626' : '#4B5563'};
-  font-weight: 500;
-`;
-
 const ReportSection = styled.div`
   background: white;
   border-radius: 12px;
@@ -123,27 +107,6 @@ const SectionTitle = styled.h3`
   font-weight: 600;
   color: #0A2540;
   margin-bottom: 20px;
-`;
-
-const ReportGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-  gap: 24px;
-  margin-bottom: 24px;
-`;
-
-const ChartPlaceholder = styled.div`
-  height: 300px;
-  background: #F1F4F8;
-  border: 2px dashed #C7CED6;
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: #4B5563;
-  font-size: 14px;
-  text-align: center;
 `;
 
 const ProgressBar = styled.div<{ percentage: number }>`
@@ -183,14 +146,7 @@ const ManagerReportsPage: React.FC = () => {
     }
   }, [defaultCurrency]);
 
-  const [restaurants] = useState<Restaurant[]>([
-    { id: 'rest-001', name: 'Nasi Lemak Corner', location: 'KLCC' },
-    { id: 'rest-002', name: 'Char Kuey Teow King', location: 'Pavilion KL' },
-    { id: 'rest-003', name: 'Roti Canai House', location: 'Mid Valley' },
-    { id: 'rest-004', name: 'Satay House', location: 'Level 1, Unit 108' },
-    { id: 'rest-005', name: 'Japanese Sushi Bar', location: 'Level 2, Unit 208' },
-    { id: 'rest-006', name: 'Laksa Paradise', location: 'Level 2, Unit 210' }
-  ]);
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
 
   useEffect(() => {
     // Check if a specific restaurant was selected via URL parameter
@@ -214,58 +170,49 @@ const ManagerReportsPage: React.FC = () => {
   };
 
   const [reportData, setReportData] = useState<ReportData>({
-    totalRevenue: 13130,
-    totalOrders: 222,
-    averageOrderValue: 59.14,
-    topItems: [
-      { name: 'Nasi Lemak Special', quantity: 45, revenue: 450 },
-      { name: 'CKT Special', quantity: 38, revenue: 570 },
-      { name: 'Roti Canai', quantity: 85, revenue: 255 },
-      { name: 'Rendang Set', quantity: 32, revenue: 480 },
-      { name: 'Penang CKT', quantity: 29, revenue: 435 }
-    ],
-    customerCount: 856,
-    staffPerformance: [
-      { name: 'Ahmad Rahman', orders: 45, efficiency: 92 },
-      { name: 'Siti Nurhaliza', orders: 38, efficiency: 88 },
-      { name: 'Raj Kumar', orders: 42, efficiency: 90 },
-      { name: 'Li Wei', orders: 35, efficiency: 85 },
-      { name: 'Maria Santos', orders: 40, efficiency: 87 }
-    ],
-    hourlyData: [
-      { hour: '11AM', orders: 25, revenue: 680 },
-      { hour: '12PM', orders: 45, revenue: 1280 },
-      { hour: '1PM', orders: 38, revenue: 940 },
-      { hour: '2PM', orders: 22, revenue: 580 },
-      { hour: '3PM', orders: 18, revenue: 420 },
-      { hour: '4PM', orders: 15, revenue: 380 },
-      { hour: '5PM', orders: 25, revenue: 650 },
-      { hour: '6PM', orders: 42, revenue: 1120 },
-      { hour: '7PM', orders: 35, revenue: 890 },
-      { hour: '8PM', orders: 20, revenue: 520 }
-    ],
-    customerAnalysis: {
-      newCustomers: 284,
-      returningCustomers: 572,
-      satisfaction: 4.7,
-      totalCustomers: 856,
-      vipCustomers: 128,
-      averageOrdersPerCustomer: 4.2,
-      customerRetentionRate: 78.5
-    }
+    totalRevenue: 0,
+    totalOrders: 0,
+    averageOrderValue: 0,
+    topItems: [],
+    hourlyData: []
   });
+  const [loading, setLoading] = useState(true);
 
+  // Real aggregation from the manager's restaurants (revenue = completed + served),
+  // filtered by the selected restaurant + date range. No mock/random data.
   useEffect(() => {
-    // Simulate data loading based on selected restaurant and date range
-    const multiplier = selectedRestaurant === 'all' ? 1 : 0.33;
-    const baseSales = 13130;
-    const baseOrders = 222;
-
-    setReportData(prev => ({
-      ...prev,
-      totalRevenue: Math.round(baseSales * multiplier * (0.8 + Math.random() * 0.4)),
-      totalOrders: Math.round(baseOrders * multiplier * (0.8 + Math.random() * 0.4))
-    }));
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true);
+      try {
+        const qs = new URLSearchParams({
+          restaurantId: selectedRestaurant,
+          start: dateRange.start,
+          end: dateRange.end
+        });
+        const res = await fetch(`/api/manager/reports-summary?${qs.toString()}`, { headers: getAuthHeaders() });
+        const json = await res.json();
+        if (cancelled) return;
+        const d = (json && json.data) || {};
+        if (Array.isArray(d.restaurants)) setRestaurants(d.restaurants);
+        setReportData({
+          totalRevenue: d.totalRevenue || 0,
+          totalOrders: d.totalOrders || 0,
+          averageOrderValue: d.averageOrderValue || 0,
+          topItems: Array.isArray(d.topItems) ? d.topItems : [],
+          hourlyData: Array.isArray(d.hourlyData) ? d.hourlyData : []
+        });
+      } catch (e) {
+        if (!cancelled) {
+          console.error('Error loading manager reports:', e);
+          setReportData({ totalRevenue: 0, totalOrders: 0, averageOrderValue: 0, topItems: [], hourlyData: [] });
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
   }, [selectedRestaurant, dateRange.start, dateRange.end]);
 
 
@@ -307,117 +254,25 @@ const ManagerReportsPage: React.FC = () => {
             </FilterSelect>
           </FilterBar>
 
-          {/* Sales Summary */}
+          {/* Sales Summary — real aggregation (revenue = completed + served) */}
           <StatsGrid>
             <StatCard>
               <StatValue>{formatCurrency(reportData.totalRevenue, selectedCurrency)}</StatValue>
               <StatLabel>{t('admin:managerReportsPage.totalRevenue')}</StatLabel>
-              <StatTrend trend="up">+18% vs yesterday</StatTrend>
             </StatCard>
             <StatCard>
               <StatValue>{reportData.totalOrders}</StatValue>
               <StatLabel>{t('admin:managerReportsPage.totalOrders')}</StatLabel>
-              <StatTrend trend="up">+12% vs yesterday</StatTrend>
             </StatCard>
             <StatCard>
               <StatValue>{formatCurrency(reportData.averageOrderValue, selectedCurrency)}</StatValue>
               <StatLabel>{t('admin:managerReportsPage.averageOrderValue')}</StatLabel>
-              <StatTrend trend="up">+5.3% vs yesterday</StatTrend>
-            </StatCard>
-            <StatCard>
-              <StatValue>{reportData.customerCount}</StatValue>
-              <StatLabel>{t('admin:managerReportsPage.customerCount')}</StatLabel>
-              <StatTrend trend="up">+24% vs yesterday</StatTrend>
             </StatCard>
             <StatCard>
               <StatValue>{selectedRestaurant === 'all' ? restaurants.length : 1}</StatValue>
               <StatLabel>{t('admin:managerReportsPage.activeRestaurants')}</StatLabel>
-              <StatTrend>{t('admin:managerReportsPage.allOperational')}</StatTrend>
             </StatCard>
           </StatsGrid>
-
-          {/* Order Analysis */}
-          <ReportSection>
-            <SectionTitle>{t('admin:managerReportsPage.orderAnalysis')}</SectionTitle>
-            <ReportGrid>
-              <div>
-                <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#0A2540', marginBottom: '16px' }}>{t('admin:managerReportsPage.revenueTrend')}</h4>
-                <ChartPlaceholder>
-                  Revenue trend chart will be displayed here
-                  <div style={{ fontSize: '12px', marginTop: '8px', opacity: 0.7 }}>
-                    Line chart showing revenue over time
-                  </div>
-                </ChartPlaceholder>
-              </div>
-              <div>
-                <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#0A2540', marginBottom: '16px' }}>{t('admin:managerReportsPage.orderDistribution')}</h4>
-                <ChartPlaceholder>
-                  Order distribution pie chart
-                  <div style={{ fontSize: '12px', marginTop: '8px', opacity: 0.7 }}>
-                    Distribution by restaurant/category
-                  </div>
-                </ChartPlaceholder>
-              </div>
-            </ReportGrid>
-          </ReportSection>
-
-          {/* Customer Analysis - Enhanced */}
-          <ReportSection>
-            <SectionTitle>{t('admin:managerReportsPage.customerAnalysis')}</SectionTitle>
-            <StatsGrid style={{ marginBottom: '24px' }}>
-              <StatCard>
-                <StatValue>{reportData.customerAnalysis.totalCustomers}</StatValue>
-                <StatLabel>{t('admin:managerReportsPage.totalCustomers')}</StatLabel>
-                <StatTrend trend="up">{t('admin:managerReportsPage.activeAcrossAllRestaurants')}</StatTrend>
-              </StatCard>
-              <StatCard>
-                <StatValue>{reportData.customerAnalysis.newCustomers}</StatValue>
-                <StatLabel>{t('admin:managerReportsPage.newCustomers')}</StatLabel>
-                <StatTrend trend="up">+15% vs last period</StatTrend>
-              </StatCard>
-              <StatCard>
-                <StatValue>{reportData.customerAnalysis.vipCustomers}</StatValue>
-                <StatLabel>{t('admin:managerReportsPage.vipCustomers')}</StatLabel>
-                <StatTrend trend="up">{Math.round((reportData.customerAnalysis.vipCustomers/reportData.customerAnalysis.totalCustomers)*100)}% of total</StatTrend>
-              </StatCard>
-              <StatCard>
-                <StatValue>{reportData.customerAnalysis.averageOrdersPerCustomer}</StatValue>
-                <StatLabel>{t('admin:managerReportsPage.avgOrdersPerCustomer')}</StatLabel>
-                <StatTrend trend="up">+0.3 vs last period</StatTrend>
-              </StatCard>
-              <StatCard>
-                <StatValue>{reportData.customerAnalysis.customerRetentionRate}%</StatValue>
-                <StatLabel>{t('admin:managerReportsPage.customerRetention')}</StatLabel>
-                <StatTrend trend="up">+2.1% vs last period</StatTrend>
-              </StatCard>
-              <StatCard>
-                <StatValue>{reportData.customerAnalysis.satisfaction}/5.0</StatValue>
-                <StatLabel>{t('admin:managerReportsPage.satisfactionScore')}</StatLabel>
-                <StatTrend trend="up">+0.2 vs last period</StatTrend>
-              </StatCard>
-            </StatsGrid>
-            
-            <ReportGrid>
-              <div>
-                <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#0A2540', marginBottom: '16px' }}>{t('admin:managerReportsPage.customerSegmentation')}</h4>
-                <ChartPlaceholder>
-                  Customer tier distribution
-                  <div style={{ fontSize: '12px', marginTop: '8px', opacity: 0.7 }}>
-                    Bronze, Silver, Gold, VIP breakdown
-                  </div>
-                </ChartPlaceholder>
-              </div>
-              <div>
-                <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#0A2540', marginBottom: '16px' }}>{t('admin:managerReportsPage.customerGrowth')}</h4>
-                <ChartPlaceholder>
-                  Customer acquisition trend
-                  <div style={{ fontSize: '12px', marginTop: '8px', opacity: 0.7 }}>
-                    New vs returning customers over time
-                  </div>
-                </ChartPlaceholder>
-              </div>
-            </ReportGrid>
-          </ReportSection>
 
           {/* Popular Items */}
           <ReportSection>
@@ -433,6 +288,13 @@ const ManagerReportsPage: React.FC = () => {
                 </tr>
               </DataTableHead>
               <tbody>
+                {reportData.topItems.length === 0 && (
+                  <DataTableRow>
+                    <DataTableCell colSpan={5} style={{ textAlign: 'center', color: '#6B7280' }}>
+                      {loading ? t('admin:managerReportsPage.loading', 'Loading…') : t('admin:managerReportsPage.noData', 'No sales in this period')}
+                    </DataTableCell>
+                  </DataTableRow>
+                )}
                 {reportData.topItems.map((item, index) => {
                   const maxQuantity = reportData.topItems[0]?.quantity || 1;
                   return (
@@ -458,17 +320,9 @@ const ManagerReportsPage: React.FC = () => {
             </DataTable>
           </ReportSection>
 
-          {/* Hourly Analysis */}
+          {/* Hourly Analysis — real orders/revenue by hour-of-day */}
           <ReportSection>
             <SectionTitle>{t('admin:managerReportsPage.hourlyAnalysis')}</SectionTitle>
-            <div style={{ marginBottom: '20px' }}>
-              <ChartPlaceholder style={{ height: '250px' }}>
-                Hourly orders and revenue bar chart
-                <div style={{ fontSize: '12px', marginTop: '8px', opacity: 0.7 }}>
-                  Bar chart showing orders and revenue by hour
-                </div>
-              </ChartPlaceholder>
-            </div>
             <DataTable>
               <DataTableHead>
                 <tr>
@@ -479,44 +333,20 @@ const ManagerReportsPage: React.FC = () => {
                 </tr>
               </DataTableHead>
               <tbody>
-                {reportData.hourlyData.map((hourData, index) => (
+                {reportData.hourlyData.length > 0 ? reportData.hourlyData.map((hourData, index) => (
                   <DataTableRow key={index}>
                     <DataTableCell data-label={t('admin:managerReportsPage.timeSlot')} style={{ fontWeight: '600' }}>{hourData.hour}</DataTableCell>
                     <DataTableCell data-label={t('admin:managerReportsPage.orders')}>{hourData.orders}</DataTableCell>
                     <DataTableCell data-label={t('admin:managerReportsPage.revenue')}>{formatCurrency(hourData.revenue, selectedCurrency)}</DataTableCell>
-                    <DataTableCell data-label={t('admin:managerReportsPage.avgOrderValue')}>{formatCurrency(hourData.revenue / hourData.orders, selectedCurrency)}</DataTableCell>
+                    <DataTableCell data-label={t('admin:managerReportsPage.avgOrderValue')}>{formatCurrency(hourData.orders > 0 ? hourData.revenue / hourData.orders : 0, selectedCurrency)}</DataTableCell>
                   </DataTableRow>
-                ))}
-              </tbody>
-            </DataTable>
-          </ReportSection>
-
-          {/* Staff Performance */}
-          <ReportSection>
-            <SectionTitle>{t('admin:managerReportsPage.staffPerformance')}</SectionTitle>
-            <DataTable>
-              <DataTableHead>
-                <tr>
-                  <DataTableHeaderCell align="left">{t('admin:managerReportsPage.staffName')}</DataTableHeaderCell>
-                  <DataTableHeaderCell align="left">{t('admin:managerReportsPage.ordersHandled')}</DataTableHeaderCell>
-                  <DataTableHeaderCell align="left">{t('admin:managerReportsPage.efficiency')}</DataTableHeaderCell>
-                  <DataTableHeaderCell align="left">{t('admin:managerReportsPage.performance')}</DataTableHeaderCell>
-                </tr>
-              </DataTableHead>
-              <tbody>
-                {reportData.staffPerformance.map((staff, index) => (
-                  <DataTableRow key={index}>
-                    <DataTableCell data-label={t('admin:managerReportsPage.staffName')} style={{ fontWeight: '600' }}>{staff.name}</DataTableCell>
-                    <DataTableCell data-label={t('admin:managerReportsPage.ordersHandled')}>{staff.orders}</DataTableCell>
-                    <DataTableCell data-label={t('admin:managerReportsPage.efficiency')}>{staff.efficiency}%</DataTableCell>
-                    <DataTableCell data-label={t('admin:managerReportsPage.performance')}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <ProgressBar percentage={staff.efficiency} />
-                        <span style={{ fontSize: '12px', color: '#4B5563' }}>{staff.efficiency}%</span>
-                      </div>
+                )) : (
+                  <DataTableRow>
+                    <DataTableCell colSpan={4} style={{ textAlign: 'center', color: '#6B7280' }}>
+                      {loading ? t('admin:managerReportsPage.loading', 'Loading…') : t('admin:managerReportsPage.noData', 'No sales in this period')}
                     </DataTableCell>
                   </DataTableRow>
-                ))}
+                )}
               </tbody>
             </DataTable>
           </ReportSection>

@@ -2,9 +2,36 @@
 
 ## 현재 작업 상태
 
-**마지막 업데이트:** 2026-07-08 (**with MIN 인쇄 백지 긴급수정 + 데스크탑앱 0.1.2 — 운영 배포, Fable PASS ×2**. 웹 3회 배포 Backup 20260708_103055/110914/112x, 게이트 7/7, health 110/110, 스모크 9/9, 인쇄라우트가드 29/29. Irene "다음 섹션에서" — 아래 완료 블록 + 기존 🎯🎯 큐 유효.)
-**버전:** 운영=배포됨(웹 다회 + 데스크탑 0.1.2). 버전 미상승 유지 — Irene 결정 대기.
-**작업 상태:** ✅ 오늘 4건 배포 완료(아래 ✅ 블록). **미배포 dev분: #7 국가·통화(UAE/Saudi, AED/SAR).** 남은 확정 작업 큐(🎯🎯)는 그대로 유효.
+**마지막 업데이트:** 2026-07-08 #2 (**큐 대량 구현 세션 — dev 반영·미배포, 검증 완료. 결제·리포트·구독=Fable 게이트 대기**. 데스크탑 0.1.3 + 페이지네이션 8페이지 + 매니저리포트 실집계 + 결제 자동반영 + 캐시관리 재구성 + 구독변경 배선. health 110/110·print-guard 8/8·FE빌드 exit0. 아래 ✅블록 참조.)
+**버전:** 운영=배포됨(웹 다회 + 데스크탑 0.1.2). **미배포 dev: 데스크탑 0.1.3 스테이징됨 + 아래 6건.** 버전 미상승 — Irene 결정 대기.
+**작업 상태:** 🎯🎯 큐 대부분 구현 완료(아래). 잔여=오프라인 편집(Fable 설계 선행)·비전AI B2(Irene 키)·user23(회사명)·버전/릴리즈노트(배포 결정).
+
+### ✅ 2026-07-08 #2 세션 — 큐 대량 구현 (dev·미배포, 검증완료)
+> Irene "다 해, 순서대로 완성도 있게" + 윈도우앱 재설치 문제 추가지시. 순서대로 6건 구현·검증. **결제·리포트·구독=돈경로→배포 전 Fable 게이트.**
+
+1. **데스크탑앱 설치 견고화 (0.1.3)** — 재설치 시 좀비/기존 프로세스 강제종료(`build/installer.nsh` customInit taskkill + customCheckAppRunning 무팝업) + `deleteAppDataOnUninstall:false`. wine 재빌드·makensis 컴파일검증·dev 스테이징(`PurplePOS-Setup.exe`+latest.yml=0.1.3)·PwaInstallContext 0.1.3. 오늘 재설치 안 되던 근본(좀비 파일잠금) 해소. **배포하면 프로덕션 반영.**
+2. **인보이스 페이지네이션** — 신규 `components/UI/Pagination.tsx`(`usePagination` 훅+숫자네비, RA스타일) → Restaurant/Owner/Manager/Admin/Brand(+Trade)/Foodcourt/SupplierTrade 8페이지 적용(클라 슬라이싱, 백엔드 무변경). 빌드 exit0.
+3. **매니저 리포트 실집계 (#8)** — ManagerReportsPage Math.random·하드코딩매장·목업(고객분석/직원성과) 제거. 신규 `GET /api/manager/reports-summary`(기간·매장 실집계, revenue=completed+served). 실API 검증(매장5·매출257.8·주문7·AOV정확·시간대라벨). 소스없는 섹션 정직 제거.
+4. **결제 후 자동반영 (#2, 돈=Fable)** — StripePaymentForm: confirmPayment 성공 후 paid까지 폴링(신규 읽기전용 `GET /api/invoices/:id/payment-status`, IDOR안전) 후 onSuccess. 웹훅 경합 해소. 실테스트 200/403/404. PayPal은 capture inline이라 무변경.
+5. **캐시관리 재구성 (큐1)** — CashDrawerOps 운영화면 액션 클러스터 통합(캐시인/드롭/서랍열기) + Drop 라벨 + `cashDrawerAutoOpen` 설정(서랍 자동열림 매장→수동버튼 숨김). settingsGuard 화이트리스트 등록(silent-strip 함정 회피)·i18n 4언어. 검증 PASS.
+6. **구독 변경/취소 배선 (#24, 돈=Fable)** — Irene "업/다운그레이드만". 백엔드: `POST /change-plan`에 `restaurant_id` 타겟분기(신규 `managerCanManageRestaurant` authz + `buildRestaurantSubscription` 추출, billing엔진 재사용) + 신규 `GET /manager/restaurant/:id/plan-options`. 프론트: ManagerSubscriptionsPage 플랜픽커 모달 배선(Change Plan/Manage), suspend=System Admin 안내. 실테스트 IDOR403·자격게이트·plan-options200.
+
+**검증(전체):** health-check 110/110 · print-guard 8/8 무접촉 · i18n 0오류 · FE빌드 exit0(경고=기존 POStatus 부채) · 각 신규엔드포인트 실API.
+**Floor Plan 헤더(큐1①):** 실측 판단=의도된 태블릿 넘침보호(flex-wrap), 0.1.3 최대화 배포본서 사라졌을 것 → **Irene 최대화 앱 눈확인 대기**(반응패치 보류).
+**국가통화(#4):** UAE/Saudi(AED/SAR) dev 확인됨 → 다음 배포 편승.
+**✅ Fable 게이트 PASS(2026-07-08 #2):** 돈경로 A/B/D/E(구독변경·결제·프론트·settingsGuard) PASS — IDOR 라이브403·트랜잭션 무누수·webhook 유일 paid소스·인쇄8 무접촉. **Fable 발견 버그 1건 수정·실증**: reports-summary 날짜범위 UTC자정→tz 종일경계(getDateBounds) 미정규화로 "오늘"필터 8am이후 누락 → 수정(주문6345 KL13시 단일일필터 포함 실증). +self-service 안내문구 원복. 재검증 health110/print-guard8. **→ 배포 가능(Irene /배포).**
+### 🔧 오프라인 편집 A안 완전판 구현 착수 (2026-07-08 #2, Fable 설계 §15) — P0·P1 완료·검증
+> Irene "정석·완벽한 완전 솔루션 구현. fable에게 확인." → Fable 설계도 `docs/OFFLINE_MODE_DESIGN.md §15`(6페이즈). Fable 검증 중 잠복결함 3건 발견.
+- **P0 완료·검증**(§15-1): ①offlineSync serverId 'srv-' 해석버그(동기화 큐 영구정지 근본) 수정 ②add_items 키 items 정합 ③forceMerge 멱등봉합(orders-crud, 이중머지·이중인쇄 구멍). +offlineSync endpointFor(cancel_order→PATCH status)·_serverId strip·skipped처리·오버레이 이벤트. FE빌드 exit0.
+- **P1 완료·실증**(§15-3 A·C·F·G): /status(멱등+터미널 무후퇴 게이트)·/move-table·/items op_id 멱등 + /payments settle_full. **실증**: replay 2회→1회 적용·터미널 completed→preparing skipped(주문 유지)·**인쇄블록 diff접촉 0**(순수 op_id 가드). health 1건=orders-crud 플래그(P2 실프린터 후 bless#1).
+- **P0+P1 Fable 게이트 PASS**(적대검증: I2 증명·멱등 라이브14/14·인쇄무접촉확인·터미널게이트. 조건: 터미널 같은상태스킵·forceMerge meta반환→P2에 반영완료 / offlineStore 항목→P3전 / health --category=offline→P5). 별건정리: route-guard plan-options baseline(검증된 안전)·test-fable-gate.js 삭제.
+- **P2🔒 코드완성·검증**(§15-3-E printedOffline: printed_at스탬프+needs_print보존[zero-ticket 방지]·B취소표스킵·C이동스킵·D forceMerge meta하드닝). 실증: 온라인 add-items 불변(needs_print켜짐·printed_at없음)·오프라인 printed_at스탬프·**print-route-guard 29/29**(온라인 인쇄 무회귀). **bless#1+#2 + Irene 실프린터 종이확인(정확히 1장)이 배포게이트** — 코드로 종이 못 봄.
+- **P3 완료**(§15-5): 16 편집사이트 오프라인분기(OrderContext ①②·LiveOrders ③~⑦⑯·PaymentModal ⑧·TableDetail ⑨~⑫⑯·FloorPlan ⑫~⑮) 전부 additive·게이트(isOffline&&isOfflineMainPos) + 로컬인쇄 헬퍼 2개(printOfflineAddedItems/Notice, billPrint 재사용). 서브에이전트 4 + 직접(OrderContext).
+- **P4 완료**(§15-5): offlineOverlay.ts(순수 읽기전용, overlayOrders/overlayTableStatuses) + seam①(OrdersRealtimeContext effectiveOrders+pendingOps+refetch+스냅샷 하이드레이션 재부팅생존) + seam②(FloorPlan effectiveTableStatuses) + §15-6 실패/충돌 표면화(OfflineOrdersPanel getFailedOps+dismiss). Fable P3전 조건(offlineStore markOpSyncedKeepError·set_stage passthrough·방어스킵) 완료.
+- **검증**: 빌드 exit0·i18n 0오류·**print-route-guard 29/29(온라인 인쇄 무회귀)**·**mount sweep 배선페이지 크래시0**(live-orders/floor-plan/pos-terminal/cash-management)·print-guard orders-crud만(P0~P2 정식 인쇄변경).
+- **P5 진행중**: Fable 최종 게이트(전체 기능 적대검증) 실행. **잔여**: __offlinePending 배지(경미)·health --category=offline·**Irene 실프린터 종이확인(정확히 1장)+bless#1#2**(코드로 불가한 유일 항목)·오프라인 E2E.
+
+**이전 잔여:** 오프라인 편집배선=**정밀 설계 완성**(`docs/OFFLINE_MODE_DESIGN.md §14` — 실측: 큐/재생/op_id 인프라 완비, 갭=편집핸들러 오프라인분기+서버주문 낙관적오버레이. A안(오버레이) vs B안(편집비허용) Irene/Fable 결정 대기 + op_id 하드닝) · 비전AI B2(Irene 키) · user23 실회사명(Irene) · 버전상승/릴리즈노트(배포 결정).
 
 ### ✅ with MIN 인쇄 백지 긴급수정 + 데스크탑앱 0.1.2 (2026-07-08, 운영 배포, Fable PASS ×2)
 > with MIN Cafe(운영 #10, USB POS-80, 윈도우 네이티브앱) 실제 티켓 전부 백지(테스트만 나옴). 근본=이미지(HTML-pixel) 인쇄가 그 드라이버서 백지, raw ESC/POS 텍스트는 정상. 단일진실 = 메모리 [[reference_print_auto_text_image_format]].

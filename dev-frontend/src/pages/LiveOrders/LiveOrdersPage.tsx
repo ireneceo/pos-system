@@ -53,6 +53,8 @@ import OrderDetailModal from './OrderDetailModal';
 import BillPrintPortal from './BillPrintPortal';
 import PaymentVerificationModal from './PaymentVerificationModal';
 import OfflineOrdersPanel from '../../components/Offline/OfflineOrdersPanel';
+import { useOffline } from '../../contexts/OfflineContext';
+import { isOfflineMainPos } from '../../utils/offlineMainPos';
 
 // PeriodType imported from DatePeriodFilter component
 
@@ -60,6 +62,9 @@ const LiveOrdersPage: React.FC = () => {
   const { t } = useTranslation('orders');
   const { user, canTakePayment, canVoid } = useAuth();
   const { getStoreInfo, operationSettings, paymentSettings } = useStore();
+  // 오프라인 모드 — 서버 도달 불가 시 편집(단계/취소/추가/서빙/결제)을 로컬 op 로그에 기록(§15-5).
+  // 오프라인 분기는 전부 additive: isOffline && isOfflineMainPos() 일 때만 진입하고 온라인 경로는 무변경.
+  const { isOffline } = useOffline();
 
   // ── 공용 실시간 주문 스토어 (2026-06-12, 단일 소스) ─────────────────────────
   // 오늘(라이브) 범위는 OrdersRealtimeProvider 가 단일 fetch + 소켓 단일 reducer 로
@@ -705,6 +710,15 @@ const LiveOrdersPage: React.FC = () => {
         updateData.served_at = now;
       }
 
+      // ── 오프라인 분기 (③ §15-5) — additive. 온라인 PATCH 와 동일 body 를 set_stage op 로 기록.
+      if (isOffline && isOfflineMainPos()) {
+        const { recordOfflineOp } = await import('../../utils/offlineOps');
+        await recordOfflineOp('set_stage', { serverId: orderId }, updateData);
+        showToast('Status updated (offline - will sync)', 'success');
+        window.dispatchEvent(new Event('refreshBadgeCounts'));
+        return; // 온라인 fetch 미실행
+      }
+
       const response = await fetch(`/api/orders/${orderId}/status`, getFetchOptions({
         method: 'PATCH', body: JSON.stringify(updateData)
       }));
@@ -915,6 +929,24 @@ const LiveOrdersPage: React.FC = () => {
         options: item.selectedOptions?.map((opt: any) => ({ name: opt.name, price: opt.price || 0 })) || [],
         is_set_menu: item.is_set_menu, set_items: item.set_items
       }));
+
+      // ── 오프라인 분기 (⑤ §15-5) — additive. 로컬 라운드 인쇄를 record 앞에 수행해 printed_offline 플래그를 payload 에 확정.
+      if (isOffline && isOfflineMainPos()) {
+        const { recordOfflineOp, printOfflineAddedItemsTicket } = await import('../../utils/offlineOps');
+        const printed = await printOfflineAddedItemsTicket(selectedOrder, items);
+        await recordOfflineOp('add_items', { serverId: selectedOrder!.id }, {
+          items,
+          order_type: (selectedOrder as any).order_type,
+          takeaway_charge: (selectedOrder as any).takeaway_charge,
+          printed_offline: printed === true,
+        });
+        showToast('Items added (offline - will sync)', 'success');
+        setShowAddItemsView(false);
+        setAddItemsCart([]);
+        setAddItemsSearchQuery('');
+        handleCloseModal();
+        return; // 온라인 fetch 미실행 (finally 가 setIsAddingItems(false) 처리)
+      }
 
       const response = await fetch(`/api/orders/${selectedOrder?.id}/merge-items`, getFetchOptions({
         method: 'POST', body: JSON.stringify({ items, source: 'live_orders' })
@@ -1200,6 +1232,18 @@ const LiveOrdersPage: React.FC = () => {
         ? { ...it, status: (it.status === 'served' || it.status === 'completed') ? 'ready' : 'served' }
         : it
     );
+    // ── 오프라인 분기 (⑥ §15-5) — additive. 온라인 PATCH /items 와 동일 body 를 cancel_item op 로 기록.
+    if (isOffline && isOfflineMainPos()) {
+      const { recordOfflineOp } = await import('../../utils/offlineOps');
+      await recordOfflineOp('cancel_item', { serverId: selectedOrder.id }, {
+        order_items: updatedItems,
+        allowItemRevert: _allowRevert,
+        base_updated_at: (selectedOrder as any).updatedAt || (selectedOrder as any).updated_at,
+      });
+      setSelectedOrder({ ...selectedOrder, order_items: updatedItems } as any); // 낙관적 반영
+      showToast('Item updated (offline - will sync)', 'success');
+      return; // 온라인 fetch 미실행
+    }
     try {
       const res = await fetch(`/api/orders/${selectedOrder.id}/items`, {
         ...getFetchOptions({ method: 'PATCH' }),
@@ -1313,6 +1357,11 @@ const LiveOrdersPage: React.FC = () => {
   // Payment Verification Modal handlers
   const handleVerifyConfirm = async () => {
     if (!verifyOrder) return;
+    // ── 오프라인 (⑯ §15-5) — 모바일 결제 증빙 검증은 서버 필요. 오프라인 비활성 + 안내(op 미기록).
+    if (isOffline && isOfflineMainPos()) {
+      showToast('Payment verification needs a connection. Please retry when back online.', 'error');
+      return;
+    }
     setAudioEnabled(false);
     try {
       await fetch(`/api/orders/${verifyOrder.id}`, getFetchOptions({
@@ -1330,6 +1379,11 @@ const LiveOrdersPage: React.FC = () => {
 
   const handleVerifyReject = async () => {
     if (!verifyOrder) return;
+    // ── 오프라인 (⑯ §15-5) — 모바일 결제 증빙 거절은 서버 필요. 오프라인 비활성 + 안내(op 미기록).
+    if (isOffline && isOfflineMainPos()) {
+      showToast('Payment verification needs a connection. Please retry when back online.', 'error');
+      return;
+    }
     try {
       await fetch(`/api/orders/${verifyOrder.id}`, getFetchOptions({
         method: 'PATCH', body: JSON.stringify({ payment_status: 'rejected', status: 'outstanding' })
@@ -1377,6 +1431,28 @@ const LiveOrdersPage: React.FC = () => {
     setShowCancelConfirm(false);
     if (selectedOrder?.id === orderToCancel) handleCloseModal();
     try {
+      // ── 오프라인 분기 (④ §15-5) — additive. 로컬 취소 안내표(printed 품목 있을 때만)를 record 앞에 인쇄해 printed_offline 확정.
+      if (isOffline && isOfflineMainPos()) {
+        const { recordOfflineOp, printOfflineNoticeTicket } = await import('../../utils/offlineOps');
+        let printedTicket = false;
+        if (orderSnapshot) {
+          const _snapItems = ((orderSnapshot as any).items || (orderSnapshot as any).order_items || []);
+          printedTicket = await printOfflineNoticeTicket(
+            orderSnapshot,
+            { title: '** ORDER CANCELLED **', lines: reason ? ['Reason: ' + reason, 'Do NOT make this order.'] : ['Do NOT make this order.'] },
+            _snapItems
+          );
+        }
+        await recordOfflineOp('cancel_order', { serverId: orderToCancel }, {
+          status: 'cancelled',
+          reason: reason || undefined,
+          void_pin: voidPin || undefined,
+          printed_offline: printedTicket === true,
+        });
+        showToast('Order cancelled (offline - will sync)', 'success');
+        return; // 온라인 fetch 미실행 (finally 가 setOrderToCancel(null) 처리)
+      }
+
       const response = await fetch(`/api/orders/${orderToCancel}/status`, getFetchOptions({
         method: 'PATCH', body: JSON.stringify({ status: 'cancelled', void_pin: voidPin || undefined, reason: reason || undefined })
       }));
@@ -1485,6 +1561,32 @@ const LiveOrdersPage: React.FC = () => {
     stopSound();
 
     try {
+      // ── 오프라인 분기 (⑦ §15-5) — additive. pay op(전액 정산) + 온라인 단계전이 미러.
+      // 포인트 사용은 서버 검증이 필요하므로 오프라인에선 무시(포인트 UI 비활성은 PaymentModal ⑧ 범위).
+      if (isOffline && isOfflineMainPos()) {
+        const { recordOfflineOp } = await import('../../utils/offlineOps');
+        const _total = Number((orderForPayment as any).total_amount) || 0;
+        const _paid = Number((orderForPayment as any).amount_paid) || 0;
+        await recordOfflineOp('pay', { serverId: orderForPayment.id }, {
+          amount: _total - _paid,
+          payment_method: method,
+          card_type: method === 'card' ? (cardType || null) : null,
+          cashier_name: (orderForPayment as any).cashier_name || undefined,
+          settle_full: true,
+        });
+        // 온라인 로직 미러: served → completed, outstanding → pending (seq 순서로 재생).
+        if (orderForPayment.status === 'served') {
+          await recordOfflineOp('set_stage', { serverId: orderForPayment.id }, { status: 'completed' });
+        } else if (orderForPayment.status === 'outstanding') {
+          await recordOfflineOp('set_stage', { serverId: orderForPayment.id }, { status: 'pending' });
+        }
+        setShowPaymentModal(false);
+        setOrderForPayment(null);
+        if (isModalOpen) { setIsModalOpen(false); setSelectedOrder(null); }
+        showToast('Payment recorded (offline - will sync)', 'success');
+        return; // 온라인 fetch 미실행
+      }
+
       const updatePayload: any = {
         payment_status: 'completed', payment_method: method,
         card_type: method === 'card' ? (cardType || null) : null

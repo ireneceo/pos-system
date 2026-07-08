@@ -28,7 +28,9 @@ import {
   DataTableEmpty,
   DataTableAmount,
   ActionButtons,
-  Modal as CommonModal
+  Modal as CommonModal,
+  Pagination,
+  usePagination
 } from '../../components/UI';
 import { SearchInput } from '../../components/Common/FilterComponents';
 import { Tabs, Tab as CommonTab, Badge as TabBadge } from '../../components/Common/TabComponents';
@@ -670,6 +672,10 @@ const RestaurantInvoicesPage: React.FC = () => {
   const filteredAllInvoices = filterInvoices(allInvoices);
   const filteredInvoicesToPay = filterInvoices(invoicesToPay);
 
+  // Client-side pagination (long invoice lists were rendered unpaginated).
+  const allPg = usePagination(filteredAllInvoices, 20);
+  const toPayPg = usePagination(filteredInvoicesToPay, 20);
+
   // Calculate stats
   const stats = {
     total: allInvoices.length,
@@ -1234,8 +1240,14 @@ const RestaurantInvoicesPage: React.FC = () => {
 
           {/* Invoice Table — SOA child 는 자동 hide */}
           {/* SOA child invoices NOT hidden — all invoices shown. Pay button hidden on children when parent_soa_invoice_id exists (B1 재설계). */}
-          {activeTab === 'all' && renderInvoiceTable(filteredAllInvoices, true)}
-          {activeTab === 'to_pay' && renderInvoiceTable(filteredInvoicesToPay, true)}
+          {activeTab === 'all' && (<>
+            {renderInvoiceTable(allPg.pageItems, true)}
+            <Pagination page={allPg.page} totalPages={allPg.totalPages} total={allPg.total} pageSize={allPg.pageSize} onChange={allPg.setPage} label="invoices" />
+          </>)}
+          {activeTab === 'to_pay' && (<>
+            {renderInvoiceTable(toPayPg.pageItems, true)}
+            <Pagination page={toPayPg.page} totalPages={toPayPg.totalPages} total={toPayPg.total} pageSize={toPayPg.pageSize} onChange={toPayPg.setPage} label="invoices" />
+          </>)}
         </Content>
 
         {/* View Invoice Modal - BrandGeneral Style */}

@@ -72,6 +72,8 @@ export interface OfflineOp {
   at: number;
   synced: boolean;
   syncError?: string;
+  note?: string;               // 재생 결과 표면화용(예: 'skipped_terminal') — §15-6
+  acknowledged?: boolean;      // 사용자가 실패/스킵 안내를 확인함(패널에서 숨김)
 }
 
 // 저장형(IndexedDB) — synced 는 키 인덱싱 위해 0|1 숫자. 외부 노출은 boolean 으로 변환.
@@ -170,6 +172,61 @@ export async function markOpFailed(opId: string, err: string): Promise<void> {
   if (!s) return;
   s.syncError = err;
   await idbPut(STORE_OPS, s);
+}
+
+// 재생이 끝났지만(더 재시도 안 함) 에러/스킵을 보존해 사용자에게 표면화해야 하는 경우.
+// markOpSynced 는 syncError 를 지워버려 충돌(§15-6)이 조용히 사라지는 버그 → 이 함수로 보존(Fable).
+export async function markOpSyncedKeepError(opId: string, note?: string): Promise<void> {
+  const s = await idbGet<OpStored>(STORE_OPS, opId);
+  if (!s) return;
+  s.synced = 1;
+  if (note) s.note = note;
+  await idbPut(STORE_OPS, s);
+}
+
+export async function markOpNote(opId: string, note: string): Promise<void> {
+  const s = await idbGet<OpStored>(STORE_OPS, opId);
+  if (!s) return;
+  s.note = note;
+  await idbPut(STORE_OPS, s);
+}
+
+// syncError 또는 note(스킵) 가 있고 아직 확인 안 된 op — OfflineOrdersPanel "동기화 확인 필요" 섹션(§15-6).
+export async function getFailedOps(): Promise<OfflineOp[]> {
+  const rows = await idbGetAll<OpStored>(STORE_OPS);
+  return rows
+    .filter((o) => (o.syncError || o.note) && !o.acknowledged)
+    .sort((a, b) => a.seq - b.seq)
+    .map(toOp);
+}
+
+export async function dismissFailedOp(opId: string): Promise<void> {
+  const s = await idbGet<OpStored>(STORE_OPS, opId);
+  if (!s) return;
+  s.acknowledged = true;
+  await idbPut(STORE_OPS, s);
+}
+
+// 하우스키핑 — 동기화 완료·확인된 오래된 op 정리(초기화 시 1회).
+export async function pruneSyncedOps(olderThanDays = 7): Promise<void> {
+  try {
+    const cutoff = Date.now() - olderThanDays * 24 * 3600 * 1000;
+    const rows = await idbGetAll<OpStored>(STORE_OPS);
+    const db = await openDb();
+    const tx = db.transaction(STORE_OPS, 'readwrite');
+    const store = tx.objectStore(STORE_OPS);
+    for (const o of rows) {
+      if (o.synced === 1 && !(o.syncError || o.note) && o.at < cutoff) store.delete(o.opId);
+    }
+  } catch { /* best effort */ }
+}
+
+// 정전 중 재부팅 생존 — 마지막 성공 fetch 의 서버 주문 스냅샷(§15-5-⑦). 오버레이가 이 위에 pending-op 를 얹는다.
+export async function setOrdersSnapshot(orders: any[]): Promise<void> {
+  try { await idbPut(STORE_META, { key: 'orders_snapshot', value: { at: Date.now(), orders } }); } catch { /* ignore */ }
+}
+export async function getOrdersSnapshot(): Promise<any[]> {
+  try { const m = await idbGet<{ key: string; value: { at: number; orders: any[] } }>(STORE_META, 'orders_snapshot'); return (m && m.value && Array.isArray(m.value.orders)) ? m.value.orders : []; } catch { return []; }
 }
 
 // ── 합성: 주문 생성 + create op 원자적 ───────────────────────────────────────

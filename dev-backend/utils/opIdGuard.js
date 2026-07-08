@@ -36,4 +36,12 @@ async function recordProcessed(opId, meta = {}) {
   } catch { /* 비치명 — 기록 실패해도 처리 자체는 성공 */ }
 }
 
-module.exports = { alreadyProcessed, recordProcessed, normalizeOpId };
+// 기록된 처리 meta 조회(order_id 등). 재생 응답을 요청 body 가 아닌 실제 처리된 대상 기준으로
+// 반환할 때 사용(§15-3-D forceMerge 하드닝 — divergent replay 방어).
+async function getProcessed(opId) {
+  const id = normalizeOpId(opId);
+  if (!id) return null;
+  try { return await ProcessedOp.findByPk(id); } catch { return null; }
+}
+
+module.exports = { alreadyProcessed, recordProcessed, getProcessed, normalizeOpId };

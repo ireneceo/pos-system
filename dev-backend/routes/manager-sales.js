@@ -11,7 +11,7 @@ const { Op } = require('sequelize');
 const { authenticateToken } = require('../middleware/auth');
 const { Order, Restaurant, Brand } = require('../models');
 const User = require('../models/User');
-const { getRestaurantTimezone, getTodayBounds, getStartOfMonth } = require('../utils/dateTimeHelper');
+const { getRestaurantTimezone, getTodayBounds, getStartOfMonth, getDateBounds, getCurrentLocalDate } = require('../utils/dateTimeHelper');
 
 const REVENUE_STATUSES = ['completed', 'served'];
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -124,6 +124,102 @@ router.get('/sales-summary', authenticateToken, async (req, res) => {
   } catch (e) {
     console.error('[manager-sales] sales-summary error:', e);
     res.status(500).json({ success: false, message: 'Failed to load sales summary' });
+  }
+});
+
+// Reports summary — period + restaurant filtered real aggregation for the
+// Manager Reports page (replaces the fully mocked reportData / Math.random).
+// Query: ?restaurantId=all|<id>&start=<ISO>&end=<ISO>. Revenue = completed+served.
+// Only fields with a real data source are returned (revenue/orders/AOV/topItems/
+// hourly). Customer analytics & staff performance have no source yet → the page
+// omits those sections rather than showing fabricated numbers.
+router.get('/reports-summary', authenticateToken, async (req, res) => {
+  try {
+    const all = await resolveManagerRestaurants(req.user);
+    const restaurantsList = all.map(r => ({ id: String(r.id), name: r.name, location: r.address || 'Unknown' }));
+    if (!all.length) {
+      return res.json({ success: true, data: { restaurants: [], totalRevenue: 0, totalOrders: 0, averageOrderValue: 0, topItems: [], hourlyData: [] } });
+    }
+
+    // Restaurant scope: 'all' or a single owned restaurant (ignore ids outside scope).
+    const requested = String(req.query.restaurantId || 'all');
+    const scoped = requested === 'all' ? all : all.filter(r => String(r.id) === requested);
+    const useR = scoped.length ? scoped : all;
+    const rids = useR.map(r => r.id);
+    const tzById = {}; useR.forEach(r => { tzById[r.id] = getRestaurantTimezone(r); });
+    // Reference tz for interpreting the date-only range (managers usually oversee
+    // same-country restaurants). Per-order tz is still used for hourly bucketing.
+    const refTz = tzById[useR[0].id] || 'Asia/Kuala_Lumpur';
+
+    // Date range (inclusive), interpreted as FULL LOCAL DAYS in the reference tz.
+    // A 'YYYY-MM-DD' string parsed with `new Date()` is UTC-midnight — for +8h
+    // Malaysia that dropped everything after 08:00 local (a "Today" filter showed
+    // ~zero). getDateBounds gives tz-correct start/end-of-day (same as sales-summary).
+    // Default: last 30 days ending today (reference tz).
+    const endStr = (req.query.end ? String(req.query.end) : getCurrentLocalDate(refTz)).slice(0, 10);
+    const endBounds = getDateBounds(endStr, refTz);
+    const startStr = req.query.start
+      ? String(req.query.start).slice(0, 10)
+      : new Date(endBounds.startOfDay.getTime() - 29 * DAY_MS).toISOString().slice(0, 10);
+    const startBounds = getDateBounds(startStr, refTz);
+    const startMs = startBounds.startOfDay.getTime();
+    const endMs = endBounds.endOfDay.getTime();
+
+    const orders = await Order.findAll({
+      where: {
+        restaurant_id: { [Op.in]: rids },
+        status: { [Op.in]: REVENUE_STATUSES },
+        createdAt: { [Op.gte]: new Date(startMs), [Op.lte]: new Date(endMs) }
+      },
+      attributes: ['id', 'restaurant_id', 'total_amount', 'createdAt', 'order_items']
+    });
+
+    let totalRevenue = 0, totalOrders = 0;
+    const itemAgg = {};
+    const hourly = Array.from({ length: 24 }, () => ({ orders: 0, revenue: 0 }));
+
+    orders.forEach(o => {
+      const amt = parseFloat(o.total_amount) || 0;
+      totalRevenue += amt;
+      totalOrders += 1;
+      const tz = tzById[o.restaurant_id] || 'Asia/Kuala_Lumpur';
+      const h = parseInt(new Date(o.createdAt).toLocaleString('en-US', { timeZone: tz, hour: '2-digit', hour12: false }), 10);
+      const hi = Number.isFinite(h) ? Math.min(23, Math.max(0, h)) : 0;
+      hourly[hi].orders += 1;
+      hourly[hi].revenue += amt;
+
+      let items = o.order_items;
+      if (typeof items === 'string') { try { items = JSON.parse(items); } catch { items = []; } }
+      (items || []).forEach(it => {
+        const name = it.menu_name || it.name || (it.menuItem && it.menuItem.name) || 'Unknown';
+        const qty = parseInt(it.quantity || 1, 10) || 1;
+        const price = parseFloat(it.price || (it.menuItem && it.menuItem.price) || 0) || 0;
+        if (!itemAgg[name]) itemAgg[name] = { name, quantity: 0, revenue: 0 };
+        itemAgg[name].quantity += qty;
+        itemAgg[name].revenue += price * qty;
+      });
+    });
+
+    const label12 = (hr) => { const p = hr < 12 ? 'AM' : 'PM'; const h12 = hr % 12 === 0 ? 12 : hr % 12; return `${h12}${p}`; };
+    const hourlyData = hourly
+      .map((b, hr) => ({ hour: label12(hr), orders: b.orders, revenue: round2(b.revenue) }))
+      .filter(b => b.orders > 0);
+
+    res.json({
+      success: true,
+      data: {
+        restaurants: restaurantsList,
+        totalRevenue: round2(totalRevenue),
+        totalOrders,
+        averageOrderValue: totalOrders > 0 ? round2(totalRevenue / totalOrders) : 0,
+        topItems: Object.values(itemAgg).sort((a, b) => b.quantity - a.quantity).slice(0, 5)
+          .map(i => ({ name: i.name, quantity: i.quantity, revenue: round2(i.revenue) })),
+        hourlyData
+      }
+    });
+  } catch (e) {
+    console.error('[manager-sales] reports-summary error:', e);
+    res.status(500).json({ success: false, message: 'Failed to load reports summary' });
   }
 });
 

@@ -36,6 +36,10 @@ import { OrdersRealtimeProvider, useOrdersRealtime } from '../../contexts/Orders
 import { deriveTableStatusMaps, deriveReservedTableMap, filterOffTableOrders } from '../../utils/orderStage';
 import { useAutoPrintPoller } from '../../hooks/useAutoPrintPoller';
 import { openCustomerDisplay, isAutoOpenEnabled } from '../../utils/customerDisplay';
+// 오프라인 편집 배선(§15-5). 온라인 경로 무변경 — isOffline && isOfflineMainPos() 일 때만 로컬 op 기록.
+import { useOffline } from '../../contexts/OfflineContext';
+import { isOfflineMainPos } from '../../utils/offlineMainPos';
+import { getPendingServerOps, overlayTableStatuses } from '../../utils/offlineOverlay';
 
 // Prefetch POS Terminal chunk on Floor Plan mount — clicking a table to start
 // a new order triggers an immediate navigate to /pos-terminal. Pulling the chunk
@@ -334,6 +338,10 @@ const FloorPlanPage: React.FC = () => {
     refetch: refetchOrders,
     subscribe: subscribeOrders,
   } = useOrdersRealtime();
+  // 오프라인 상태(§5, health 핑 기반 — navigator.onLine 단독 아님). 편집 핸들러의 오프라인 분기 게이트.
+  const { isOffline } = useOffline();
+  // 낙관적 오버레이용 pending 서버-주문 op(§15-5 적용지점②). op 0개·온라인이면 오버레이 경로가 죽어 위험 0.
+  const [pendingOps, setPendingOps] = useState<any[]>([]);
   // 매장 설정 "결제 완료 시 테이블 비우기" — 점유맵 파생에 필요 (백엔드 table-status 와 동일 규칙)
   const [clearTableOnPayment, setClearTableOnPayment] = useState(false);
   // elapsedMinutes 표시 갱신용 30s tick (이전 폴링 주기와 동일)
@@ -456,6 +464,21 @@ const FloorPlanPage: React.FC = () => {
     () => deriveTableStatusMaps(rtOrders, { clearTableOnPayment, now: nowTick }),
     [rtOrders, clearTableOnPayment, nowTick]
   );
+  // §15-5 적용지점② — tableStatuses 는 rtOrders 에서 파생되므로 OrdersRealtime 오버레이가 아직
+  // 못 덮는다(현 시점 ① 미배선). 여기서 pending op 를 tableStatuses 위에 얹어(이동/취소/완납의
+  // 점유 효과) 오프라인 편집을 보드에 즉시 반영한다. pending op 로드 = mount + 'offline-ops-changed'
+  // 이벤트 + isOffline 전환 시 리로드. 온라인·op 0개면 overlayTableStatuses 가 입력 그대로 반환.
+  useEffect(() => {
+    let alive = true;
+    const load = () => { getPendingServerOps().then(ops => { if (alive) setPendingOps(ops); }).catch(() => {}); };
+    load();
+    window.addEventListener('offline-ops-changed', load);
+    return () => { alive = false; window.removeEventListener('offline-ops-changed', load); };
+  }, [isOffline]);
+  const effectiveTableStatuses = useMemo(
+    () => (pendingOps.length ? overlayTableStatuses(tableStatuses, pendingOps, rtOrders) : tableStatuses),
+    [tableStatuses, pendingOps, rtOrders]
+  );
   // 예약↔플로어플랜 (P2-6) — 오늘 confirmed/arrived 예약 + 리드타임(설정).
   const [reservations, setReservations] = useState<any[]>([]);
   const [reservationLeadMinutes, setReservationLeadMinutes] = useState(120);
@@ -477,8 +500,8 @@ const FloorPlanPage: React.FC = () => {
   );
   // 캔버스/패널용 병합맵 — 점유(활성 주문)가 예약을 덮어쓴다(occupied 우선).
   const canvasTableStatuses = useMemo(
-    () => ({ ...reservedMap, ...tableStatuses }),
-    [reservedMap, tableStatuses]
+    () => ({ ...reservedMap, ...effectiveTableStatuses }),
+    [reservedMap, effectiveTableStatuses]
   );
 
   // 서빙 토글 낙관적 override (orderId:itemIndex → {status, ts}) — stale poll 되돌림 방지.
@@ -1072,6 +1095,13 @@ const FloorPlanPage: React.FC = () => {
   // Status change handler
   const handleStatusChange = async (orderId: number, newStatus: string) => {
     try {
+      // ⑫ 오프라인 단계이동(§15-5) — 온라인 경로 무변경. 메인 POS 에서만 로컬 op 기록.
+      if (isOffline && isOfflineMainPos()) {
+        const { recordOfflineOp } = await import('../../utils/offlineOps');
+        await recordOfflineOp('set_stage', { serverId: orderId }, { status: newStatus });
+        setCdInfoModal({ open: true, title: 'Saved offline', message: 'Stage change saved on this main POS. It will sync automatically when you are back online.' });
+        return;
+      }
       const token = getAuthToken();
       const res = await fetch(`/api/orders/${orderId}/status`, {
         method: 'PATCH',
@@ -1140,6 +1170,13 @@ const FloorPlanPage: React.FC = () => {
     // 🔴 낙관적 override — stale poll 이 방금 서브한 상태를 되돌리는 사고 방지(서버 따라잡으면/60s 해제).
     const key = `${orderId}:${itemIndex}:${compIndex ?? 'i'}`;
     setServeOverrides(prev => ({ ...prev, [key]: { status: newStatus, ts: Date.now() } }));
+    // ⑬ 오프라인 서빙 토글(§15-5) — PATCH /items 와 동일 body 를 cancel_item op 로 기록(온라인 무변경).
+    // 낙관적 serveOverride 는 위에서 이미 걸었으므로 화면 즉시 반영. base_updated_at=캐시 주문 버전(재생 시 STALE_WRITE 보호).
+    if (isOffline && isOfflineMainPos()) {
+      const { recordOfflineOp } = await import('../../utils/offlineOps');
+      await recordOfflineOp('cancel_item', { serverId: orderId }, { order_items: updated, allowItemRevert: !makeServed, base_updated_at: src.updatedAt || src.updated_at });
+      return;
+    }
     try {
       const token = getAuthToken();
       const res = await fetch(`/api/orders/${orderId}/items`, {
@@ -1162,7 +1199,7 @@ const FloorPlanPage: React.FC = () => {
       console.error('Failed to toggle item served:', err);
       setServeOverrides(prev => { const n = { ...prev }; delete n[key]; return n; });
     }
-  }, [tableStatuses, takeawayOrders, fetchStatuses, fetchTakeawayOrders]);
+  }, [tableStatuses, takeawayOrders, fetchStatuses, fetchTakeawayOrders, isOffline]);
 
   // 서버가 override 상태로 따라잡았거나(일치) 60s 지난 항목은 override 해제.
   useEffect(() => {
@@ -1409,6 +1446,29 @@ const FloorPlanPage: React.FC = () => {
         ? (takeawayOrder?.order_number || takeawayOrder?.orderNumber || '')
         : ((dineInStatusInfo as any)?.orderNumber || '');
 
+      // ⑮ 오프라인 결제(§15-5, LiveOrders ⑦ 동형) — 온라인 경로 무변경. 메인 POS 에서만 pay op 기록.
+      // 받은 금액은 실수령(총액-기결제) 그대로, settle_full 로 완납 마감. 포인트 사용은 오프라인 비활성(서버 검증 필요) → op 미포함.
+      if (isOffline && isOfflineMainPos() && orderId) {
+        const { recordOfflineOp } = await import('../../utils/offlineOps');
+        const amountPaid = Number(paymentTakeawayOrderId ? (takeawayOrder?.amount_paid ?? 0) : ((dineInStatusInfo as any)?.amountPaid ?? 0)) || 0;
+        const dueAmount = Math.max(0, baseTotalAmount - amountPaid);
+        await recordOfflineOp('pay', { serverId: orderId }, {
+          amount: dueAmount,
+          payment_method: method,
+          card_type: method === 'card' ? (cardType || null) : null,
+          cashier_name: undefined,
+          settle_full: true,
+        });
+        // 서빙완료 주문이면 완료 단계로(온라인 로직 미러 — set_stage op, seq 로 재생순서 보장).
+        if (currentOrderStatus === 'served') {
+          await recordOfflineOp('set_stage', { serverId: orderId }, { status: 'completed' });
+        }
+        if (paymentTakeawayOrderId) { setPaymentTakeawayOrderId(null); }
+        else { setShowPaymentModal(false); setOrderForPayment(null); }
+        setCdInfoModal({ open: true, title: 'Payment saved offline', message: 'Payment recorded on this main POS. It will sync automatically when you are back online.' });
+        return;
+      }
+
       const res = await fetch(`/api/orders/${orderId}`, {
         method: 'PATCH',
         headers: {
@@ -1565,6 +1625,41 @@ const FloorPlanPage: React.FC = () => {
     if (!moveCtx) return;
     setMoveBusy(true);
     try {
+      // ⑭ 오프라인 테이블이동(§15-5) — 온라인 경로 무변경. 메인 POS 에서만.
+      if (isOffline && isOfflineMainPos()) {
+        // 오프라인 점유판정 = 오버레이 반영된 tableStatuses 로 클라 선차단(오프라인 머지 UI 금지 — 항상 block).
+        const destStatus: any = effectiveTableStatuses[destFpti] || effectiveTableStatuses[destTable];
+        if (destStatus && destStatus.status && destStatus.status !== 'available') {
+          setCdInfoModal({ open: true, title: 'Table occupied', message: 'That table already has an order. Table moves to an occupied table are not available while offline.' });
+          return;
+        }
+        // 대상 주문(캐시)에서 이미 주방에 발행된 품목이 있으면 TABLE CHANGED 안내표를 로컬 인쇄.
+        const order: any = rtOrders.find((o: any) => Number(o.id) === Number(moveCtx.orderId));
+        let oitems: any = order?.order_items;
+        if (typeof oitems === 'string') { try { oitems = JSON.parse(oitems); } catch { oitems = []; } }
+        if (!Array.isArray(oitems)) oitems = [];
+        const { recordOfflineOp, printOfflineNoticeTicket } = await import('../../utils/offlineOps');
+        const fromTable = moveCtx.sourceTableNumber || (order?.table_number ?? '');
+        // 로컬 인쇄 먼저(성공 시 printed_offline 로 재생이 재발행 스킵 — I3). 발행품목 없으면 false.
+        const printed = order
+          ? await printOfflineNoticeTicket(
+              order,
+              { title: '** TABLE CHANGED **', fromTable, toTable: destTable, lines: ['Discard the previous ticket.', 'Use THIS ticket.'] },
+              oitems
+            ).catch(() => false)
+          : false;
+        await recordOfflineOp('move_table', { serverId: moveCtx.orderId }, {
+          destinationTableNumber: destTable,
+          destinationFloorPlanTableId: destFpti,
+          onOccupied: 'block',
+          printed_offline: printed === true,
+        });
+        setSelectedTableId(destFpti || null);
+        setMoveCtx(null);
+        setMoveOccupied(null);
+        setCdInfoModal({ open: true, title: 'Table moved offline', message: 'Table change saved on this main POS. It will sync automatically when you are back online.' });
+        return;
+      }
       const token = getAuthToken();
       const res = await fetch(`/api/orders/${moveCtx.orderId}/move-table`, {
         method: 'POST',
@@ -1734,7 +1829,7 @@ const FloorPlanPage: React.FC = () => {
   // floor_plan_table_id is missing (legacy POS-direct entries).
   const selectedTable: string | null = (selectedTableInfo?.label || selectedTableInfo?.tableNumber) ?? null;
   const selectedTableData = selectedTableId
-    ? (tableStatuses[selectedTableId] || (selectedTable ? tableStatuses[selectedTable] : undefined))
+    ? (effectiveTableStatuses[selectedTableId] || (selectedTable ? effectiveTableStatuses[selectedTable] : undefined))
     : undefined;
   // 우측 패널 탭 = 오늘 per-table 전체 이력(완료 포함). 빈 테이블을 눌러도 오늘 주문을 다 본다.
   // 보드 점유는 tableStatuses(=data)가 그대로 담당 — 여기 history 는 패널 탭 표시용.
@@ -2484,7 +2579,7 @@ const FloorPlanPage: React.FC = () => {
       {canTakePayment && !fullscreen && (
         <FloorPlanStatsBar
           tables={filteredFloorPlan.tables}
-          tableStatuses={tableStatuses}
+          tableStatuses={effectiveTableStatuses}
           currency={currency}
           restaurantId={Number(restaurantId)}
         />
@@ -2715,7 +2810,7 @@ const FloorPlanPage: React.FC = () => {
                     return String(tb.label || '').toLowerCase().includes(q) || String(tb.tableNumber || '').toLowerCase().includes(q);
                   })
                   .map(tb => {
-                    const st = tableStatuses[tb.id] || tableStatuses[tb.label] || tableStatuses[tb.tableNumber];
+                    const st = effectiveTableStatuses[tb.id] || effectiveTableStatuses[tb.label] || effectiveTableStatuses[tb.tableNumber];
                     const occupied = st && st.status && st.status !== 'available';
                     return (
                       <button

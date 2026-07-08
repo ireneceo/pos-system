@@ -786,6 +786,7 @@ const SettingsPage: React.FC = () => {
   const requirePinForDiscountRef = useRef<AutoSaveHandle>(null);  // #5 할인 PIN 승인 토글
   const requireVoidPinRef = useRef<AutoSaveHandle>(null);  // 삭제/취소 PIN 승인 토글 (손실방지)
   const requirePinForCashMgmtRef = useRef<AutoSaveHandle>(null);  // 2026-06-28 (3-1) 현금관리 PIN 승인 토글
+  const cashDrawerAutoOpenRef = useRef<AutoSaveHandle>(null);  // 2026-07-08 서랍 자동열림 매장 → 수동 '서랍 열기' 버튼 숨김
   const cashFloatRef = useRef<AutoSaveHandle>(null);  // 개시 시재 모드 (이월/고정)
   const requireCancelReasonRef = useRef<AutoSaveHandle>(null);  // 취소/삭제 사유 off|optional|required
   const requirePoOwnerApprovalRef = useRef<AutoSaveHandle>(null);  // 발주 오너 승인 (오너 연결 시 기본 ON)
@@ -3938,6 +3939,31 @@ const SettingsPage: React.FC = () => {
                           const v = e.target.checked;
                           setOperationSettings(prev => ({ ...prev, requirePinForCashMgmt: v } as any));
                           requirePinForCashMgmtRef.current?.triggerSave();
+                        }}
+                      />
+                      <ToggleSlider />
+                    </ToggleSwitch>
+                  </AutoSaveField>
+                </Toggle>
+
+                {/* 2026-07-08: 캐시서랍 자동열림 매장 — 프린터가 인쇄 시 서랍을 자동으로 여는 매장이면
+                    현금관리 화면의 수동 '서랍 열기' 버튼을 숨긴다(중복 방지). 기본 OFF(수동 버튼 표시). */}
+                <Toggle>
+                  <div style={{ flex: 1 }}>
+                    <ToggleLabel style={{ marginBottom: '4px' }}>{t('settings:operations.cashDrawerAutoOpenLabel', { defaultValue: 'Cash drawer opens automatically' })}</ToggleLabel>
+                    <p style={{ fontSize: '12px', color: '#4B5563', margin: 0 }}>
+                      {t('settings:operations.cashDrawerAutoOpenDesc', { defaultValue: 'Turn on if your printer opens the cash drawer automatically on print. The manual “Open drawer” button in Cash Management is then hidden to avoid a redundant control.' })}
+                    </p>
+                  </div>
+                  <AutoSaveField ref={cashDrawerAutoOpenRef} onSave={handleSave} type="toggle">
+                    <ToggleSwitch>
+                      <ToggleInput
+                        type="checkbox"
+                        checked={!!(operationSettings as any).cashDrawerAutoOpen}
+                        onChange={(e) => {
+                          const v = e.target.checked;
+                          setOperationSettings(prev => ({ ...prev, cashDrawerAutoOpen: v } as any));
+                          cashDrawerAutoOpenRef.current?.triggerSave();
                         }}
                       />
                       <ToggleSlider />

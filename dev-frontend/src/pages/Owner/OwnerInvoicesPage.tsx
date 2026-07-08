@@ -27,7 +27,7 @@ import {
   DataTableEmpty,
   DataTableAmount,
   ActionButtons
-, Modal as CommonModal } from '../../components/UI';
+, Modal as CommonModal, Pagination, usePagination } from '../../components/UI';
 import { SearchInput } from '../../components/Common/FilterComponents';
 import { Tabs, Tab as CommonTab, Badge as TabBadge } from '../../components/Common/TabComponents';
 import { renderIframeToPdf, INVOICE_PRINT_CSS } from '../../utils/invoicePdf';
@@ -580,6 +580,9 @@ const OwnerInvoicesPage: React.FC = () => {
   const filteredAllInvoices = filterInvoices(allInvoices);
   const filteredInvoicesToPay = filterInvoices(invoicesToPay);
 
+  const pgAll = usePagination(filteredAllInvoices, 20);
+  const pgToPay = usePagination(filteredInvoicesToPay, 20);
+
   // Calculate stats
   const stats = {
     total: allInvoices.length,
@@ -1103,8 +1106,18 @@ const OwnerInvoicesPage: React.FC = () => {
           </DatePeriodFilter>
 
           {/* Invoice Table */}
-          {activeTab === 'all' && renderInvoiceTable(filteredAllInvoices, true)}
-          {activeTab === 'to_pay' && renderInvoiceTable(filteredInvoicesToPay, true)}
+          {activeTab === 'all' && (
+            <>
+              {renderInvoiceTable(pgAll.pageItems, true)}
+              <Pagination page={pgAll.page} totalPages={pgAll.totalPages} total={pgAll.total} pageSize={pgAll.pageSize} onChange={pgAll.setPage} label="invoices" />
+            </>
+          )}
+          {activeTab === 'to_pay' && (
+            <>
+              {renderInvoiceTable(pgToPay.pageItems, true)}
+              <Pagination page={pgToPay.page} totalPages={pgToPay.totalPages} total={pgToPay.total} pageSize={pgToPay.pageSize} onChange={pgToPay.setPage} label="invoices" />
+            </>
+          )}
         </Content>
 
         {/* View Invoice Modal */}

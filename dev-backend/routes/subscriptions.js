@@ -59,6 +59,108 @@ async function getDefaultCurrency() {
   return setting?.setting_value || 'MYR';
 }
 
+// Build a restaurant's subscription snapshot (billing-relevant fields + change
+// eligibility + usage). Extracted so both self-service (Restaurant Admin) and the
+// manager-targets-a-managed-restaurant path share ONE source of truth.
+async function buildRestaurantSubscription(restaurant, defaultCurrency) {
+  // Check payment_model
+  let billedToName = null;
+  let canChange = true;
+  let changeBlockedReason = null;
+
+  if (restaurant.payment_model && restaurant.payment_model !== 'restaurant') {
+    canChange = false;
+    if (restaurant.payment_model === 'brand_manager' && restaurant.brand_id) {
+      const brand = await Brand.findByPk(restaurant.brand_id, {
+        include: [{ model: User, as: 'owner', attributes: ['full_name'] }]
+      });
+      billedToName = brand ? `${brand.name} (${brand.owner?.full_name || 'Brand General'})` : 'Brand General';
+    } else if (restaurant.payment_model === 'foodcourt_manager' && restaurant.foodcourt_id) {
+      const fc = await Foodcourt.findByPk(restaurant.foodcourt_id, {
+        include: [{ model: User, as: 'owner', attributes: ['full_name'] }]
+      });
+      billedToName = fc ? `${fc.name} (${fc.owner?.full_name || 'Foodcourt General'})` : 'Foodcourt General';
+    } else if (restaurant.payment_model === 'restaurant_owner') {
+      const { RestaurantManager } = require('../models');
+      const ownerLink = await RestaurantManager.findOne({
+        where: { restaurant_id: restaurant.id, relationship_type: 'ownership' },
+        include: [{ model: User, as: 'manager', attributes: ['full_name'] }]
+      });
+      billedToName = ownerLink?.manager?.full_name || 'Restaurant Owner';
+    }
+    changeBlockedReason = `Your POS subscription is billed to ${billedToName}. Please contact them for plan changes.`;
+  }
+
+  // Check overdue/suspended
+  if (canChange && ['overdue', 'suspended'].includes(restaurant.status)) {
+    canChange = false;
+    changeBlockedReason = 'You have overdue invoices. Please settle them before changing your plan.';
+  }
+
+  // Get current usage for downgrade checks
+  const [staffCount, menuItemCount, orderCount] = await Promise.all([
+    User.count({ where: { restaurant_id: restaurant.id, role: 'Staff' } }),
+    Product.count({ where: { restaurant_id: restaurant.id, is_active: true } }),
+    sequelize.query(
+      `SELECT COUNT(*) as cnt FROM orders WHERE restaurant_id = :rid AND MONTH(createdAt) = MONTH(NOW()) AND YEAR(createdAt) = YEAR(NOW())`,
+      { replacements: { rid: restaurant.id }, type: QueryTypes.SELECT }
+    ).then(r => r[0]?.cnt || 0)
+  ]);
+
+  return {
+    entity_type: 'restaurant',
+    entity_id: restaurant.id,
+    plan_type: restaurant.plan_type,
+    plan_amount: parseFloat(restaurant.plan_amount) || 0,
+    billing_cycle: restaurant.billing_cycle || 'monthly',
+    currency: defaultCurrency,
+    status: restaurant.status,
+    subscription_start: restaurant.subscription_start,
+    subscription_end: restaurant.subscription_end,
+    discount_type: restaurant.discount_type,
+    discount_value: restaurant.discount_value ? parseFloat(restaurant.discount_value) : null,
+    pending_plan_type: restaurant.pending_plan_type,
+    pending_plan_amount: restaurant.pending_plan_amount ? parseFloat(restaurant.pending_plan_amount) : null,
+    pending_billing_cycle: restaurant.pending_billing_cycle,
+    plan_change_date: restaurant.plan_change_date,
+    plan_change_type: restaurant.plan_change_type,
+    can_change: canChange,
+    change_blocked_reason: changeBlockedReason,
+    current_usage: {
+      staff_count: staffCount,
+      menu_item_count: menuItemCount,
+      order_count: parseInt(orderCount)
+    }
+  };
+}
+
+// Authorize a manager (Brand/Foodcourt General, Restaurant Owner, or a linked
+// manager/admin) to act on a specific restaurant's subscription. Mirrors the
+// scope of GET /subscriptions/manager/:id. IDOR-safe: returns the restaurant only
+// when the caller genuinely oversees it, else null.
+async function managerCanManageRestaurant(user, restaurantId) {
+  const restaurant = await Restaurant.findByPk(restaurantId);
+  if (!restaurant) return null;
+  if (user.role === 'System Admin') return restaurant;
+  // Direct admin of the restaurant.
+  if (restaurant.admin_id && String(restaurant.admin_id) === String(user.id)) return restaurant;
+  // Brand General owns the brand this restaurant belongs to.
+  if (user.role === 'Brand General' && restaurant.brand_id) {
+    const brand = await Brand.findOne({ where: { id: restaurant.brand_id, owner_id: user.id }, attributes: ['id'] });
+    if (brand) return restaurant;
+  }
+  // Foodcourt General owns the foodcourt this restaurant belongs to.
+  if (user.role === 'Foodcourt General' && restaurant.foodcourt_id) {
+    const fc = await Foodcourt.findOne({ where: { id: restaurant.foodcourt_id, owner_id: user.id }, attributes: ['id'] });
+    if (fc) return restaurant;
+  }
+  // Linked manager / owner via the restaurant_managers junction.
+  const { RestaurantManager } = require('../models');
+  const link = await RestaurantManager.findOne({ where: { restaurant_id: restaurant.id, manager_id: user.id }, attributes: ['id'] });
+  if (link) return restaurant;
+  return null;
+}
+
 async function getCurrentSubscription(user) {
   const role = user.role;
   const defaultCurrency = await getDefaultCurrency();
@@ -66,76 +168,7 @@ async function getCurrentSubscription(user) {
   if (role === 'Restaurant Admin') {
     const restaurant = await Restaurant.findOne({ where: { admin_id: user.id } });
     if (!restaurant) return null;
-
-    // Check payment_model
-    let billedToName = null;
-    let canChange = true;
-    let changeBlockedReason = null;
-
-    if (restaurant.payment_model && restaurant.payment_model !== 'restaurant') {
-      canChange = false;
-      if (restaurant.payment_model === 'brand_manager' && restaurant.brand_id) {
-        const brand = await Brand.findByPk(restaurant.brand_id, {
-          include: [{ model: User, as: 'owner', attributes: ['full_name'] }]
-        });
-        billedToName = brand ? `${brand.name} (${brand.owner?.full_name || 'Brand General'})` : 'Brand General';
-      } else if (restaurant.payment_model === 'foodcourt_manager' && restaurant.foodcourt_id) {
-        const fc = await Foodcourt.findByPk(restaurant.foodcourt_id, {
-          include: [{ model: User, as: 'owner', attributes: ['full_name'] }]
-        });
-        billedToName = fc ? `${fc.name} (${fc.owner?.full_name || 'Foodcourt General'})` : 'Foodcourt General';
-      } else if (restaurant.payment_model === 'restaurant_owner') {
-        const { RestaurantManager } = require('../models');
-        const ownerLink = await RestaurantManager.findOne({
-          where: { restaurant_id: restaurant.id, relationship_type: 'ownership' },
-          include: [{ model: User, as: 'manager', attributes: ['full_name'] }]
-        });
-        billedToName = ownerLink?.manager?.full_name || 'Restaurant Owner';
-      }
-      changeBlockedReason = `Your POS subscription is billed to ${billedToName}. Please contact them for plan changes.`;
-    }
-
-    // Check overdue/suspended
-    if (canChange && ['overdue', 'suspended'].includes(restaurant.status)) {
-      canChange = false;
-      changeBlockedReason = 'You have overdue invoices. Please settle them before changing your plan.';
-    }
-
-    // Get current usage for downgrade checks
-    const [staffCount, menuItemCount, orderCount] = await Promise.all([
-      User.count({ where: { restaurant_id: restaurant.id, role: 'Staff' } }),
-      Product.count({ where: { restaurant_id: restaurant.id, is_active: true } }),
-      sequelize.query(
-        `SELECT COUNT(*) as cnt FROM orders WHERE restaurant_id = :rid AND MONTH(createdAt) = MONTH(NOW()) AND YEAR(createdAt) = YEAR(NOW())`,
-        { replacements: { rid: restaurant.id }, type: QueryTypes.SELECT }
-      ).then(r => r[0]?.cnt || 0)
-    ]);
-
-    return {
-      entity_type: 'restaurant',
-      entity_id: restaurant.id,
-      plan_type: restaurant.plan_type,
-      plan_amount: parseFloat(restaurant.plan_amount) || 0,
-      billing_cycle: restaurant.billing_cycle || 'monthly',
-      currency: defaultCurrency,
-      status: restaurant.status,
-      subscription_start: restaurant.subscription_start,
-      subscription_end: restaurant.subscription_end,
-      discount_type: restaurant.discount_type,
-      discount_value: restaurant.discount_value ? parseFloat(restaurant.discount_value) : null,
-      pending_plan_type: restaurant.pending_plan_type,
-      pending_plan_amount: restaurant.pending_plan_amount ? parseFloat(restaurant.pending_plan_amount) : null,
-      pending_billing_cycle: restaurant.pending_billing_cycle,
-      plan_change_date: restaurant.plan_change_date,
-      plan_change_type: restaurant.plan_change_type,
-      can_change: canChange,
-      change_blocked_reason: changeBlockedReason,
-      current_usage: {
-        staff_count: staffCount,
-        menu_item_count: menuItemCount,
-        order_count: parseInt(orderCount)
-      }
-    };
+    return buildRestaurantSubscription(restaurant, defaultCurrency);
   }
 
   // Brand General, Foodcourt General, Restaurant Owner, Supplier Admin → users table
@@ -381,6 +414,98 @@ router.get('/my-plan', authenticateToken, async (req, res) => {
 });
 
 // ============================================================
+// GET /api/subscriptions/manager/restaurant/:restaurantId/plan-options
+// Read-only: a manager views a managed restaurant's subscription + the plans
+// they can switch it to. Money mutation stays in POST /change-plan.
+// ============================================================
+router.get('/manager/restaurant/:restaurantId/plan-options', authenticateToken, async (req, res) => {
+  try {
+    const restaurant = await managerCanManageRestaurant(req.user, req.params.restaurantId);
+    if (!restaurant) {
+      return res.status(403).json({ success: false, message: 'You do not manage this restaurant.' });
+    }
+
+    const defaultCurrency = await getDefaultCurrency();
+    const current = await buildRestaurantSubscription(restaurant, defaultCurrency);
+
+    // Build available_plans exactly like GET /my-plan does, but for the restaurant
+    // plan_target and the restaurant's currency.
+    const plans = await PlanTemplate.findAll({
+      where: { plan_target: 'restaurant', is_active: true },
+      order: [['sort_order', 'ASC'], ['id', 'ASC']]
+    });
+
+    const availablePlans = await Promise.all(plans.map(async (plan) => {
+      const planData = plan.toJSON();
+      let features = planData.features;
+      if (typeof features === 'string') {
+        try { features = JSON.parse(features); } catch { features = []; }
+      }
+      let included_modules = planData.included_modules;
+      if (typeof included_modules === 'string') {
+        try { included_modules = JSON.parse(included_modules); } catch { included_modules = []; }
+      }
+
+      const prices = await PlanPrice.findAll({
+        where: { plan_id: plan.id, is_active: true },
+        attributes: ['currency', 'monthly_price', 'annual_price']
+      });
+      const currencyPrices = prices.reduce((acc, p) => {
+        acc[p.currency] = { monthly: parseFloat(p.monthly_price), annual: parseFloat(p.annual_price) };
+        return acc;
+      }, {});
+
+      const monthlyPrice = currencyPrices[current.currency]?.monthly ?? parseFloat(planData.base_price_monthly) ?? 0;
+      const annualPrice = currencyPrices[current.currency]?.annual ?? parseFloat(planData.base_price_annual) ?? 0;
+
+      const isCurrent = planData.display_name === current.plan_type || planData.name === current.plan_type;
+
+      let changeType = null;
+      if (!isCurrent) {
+        const currentPlanTemplate = plans.find(p => p.display_name === current.plan_type || p.name === current.plan_type);
+        const currentSortOrder = currentPlanTemplate ? currentPlanTemplate.sort_order : 0;
+        const newSortOrder = plan.sort_order || 0;
+        changeType = newSortOrder > currentSortOrder ? 'upgrade' : 'downgrade';
+      }
+
+      let prorationEstimate = null;
+      if (changeType === 'upgrade' && current.subscription_end && current.status !== 'trial') {
+        const newPrice = current.billing_cycle === 'annual' ? annualPrice : monthlyPrice;
+        prorationEstimate = calculateProration(current.plan_amount, newPrice, current.subscription_end, current.billing_cycle);
+      }
+
+      return {
+        id: planData.id,
+        name: planData.name,
+        display_name: planData.display_name,
+        description: planData.description,
+        monthly_price: monthlyPrice,
+        annual_price: annualPrice,
+        currency_prices: currencyPrices,
+        features: Array.isArray(features) ? features : [],
+        included_modules: Array.isArray(included_modules) ? included_modules : [],
+        limits: {
+          orders: planData.order_limit,
+          menu_items: planData.menu_item_limit,
+          staff: planData.staff_limit,
+          restaurants: planData.restaurant_limit,
+          managers: planData.manager_limit
+        },
+        sort_order: planData.sort_order || 0,
+        is_current: isCurrent,
+        change_type: changeType,
+        proration_estimate: prorationEstimate
+      };
+    }));
+
+    res.json({ success: true, data: { current, available_plans: availablePlans } });
+  } catch (error) {
+    console.error('Error fetching manager restaurant plan options:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch plan options.' });
+  }
+});
+
+// ============================================================
 // POST /api/subscriptions/change-plan
 // ============================================================
 router.post('/change-plan', authenticateToken, async (req, res) => {
@@ -388,21 +513,36 @@ router.post('/change-plan', authenticateToken, async (req, res) => {
 
   try {
     const user = req.user;
-    const { new_plan_id, new_billing_cycle } = req.body;
-    const planTarget = getPlanTarget(user.role);
-
-    if (!planTarget) {
-      await transaction.rollback();
-      return res.status(403).json({ success: false, message: 'Your role does not have a subscription plan.' });
-    }
+    const { new_plan_id, new_billing_cycle, restaurant_id } = req.body;
 
     if (!new_plan_id) {
       await transaction.rollback();
       return res.status(400).json({ success: false, message: 'new_plan_id is required.' });
     }
 
-    // Get current subscription
-    const current = await getCurrentSubscription(user);
+    // Two modes: (a) self-service — the caller changes their OWN plan; (b) manager
+    // — the caller changes a MANAGED restaurant's plan (restaurant_id provided).
+    // Manager mode is upgrade/downgrade only; suspend/cancel stays System-Admin-only.
+    let current;
+    let planTarget;
+    if (restaurant_id) {
+      const restaurant = await managerCanManageRestaurant(user, restaurant_id);
+      if (!restaurant) {
+        await transaction.rollback();
+        return res.status(403).json({ success: false, message: 'You do not manage this restaurant.' });
+      }
+      const defaultCurrency = await getDefaultCurrency();
+      current = await buildRestaurantSubscription(restaurant, defaultCurrency);
+      planTarget = 'restaurant';
+    } else {
+      planTarget = getPlanTarget(user.role);
+      if (!planTarget) {
+        await transaction.rollback();
+        return res.status(403).json({ success: false, message: 'Your role does not have a subscription plan.' });
+      }
+      current = await getCurrentSubscription(user);
+    }
+
     if (!current) {
       await transaction.rollback();
       return res.status(404).json({ success: false, message: 'Subscription data not found.' });

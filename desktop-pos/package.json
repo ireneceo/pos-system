@@ -1,7 +1,7 @@
 {
   "name": "purple-pos-desktop",
   "productName": "Purple POS",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Purple POS Windows desktop shell (Electron) — QZ Tray replacement. Loads the remote web app and replaces only the print transport layer.",
   "author": "PurpleHere",
   "license": "UNLICENSED",
@@ -52,7 +52,9 @@
       "runAfterFinish": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Purple POS"
+      "shortcutName": "Purple POS",
+      "deleteAppDataOnUninstall": false,
+      "include": "build/installer.nsh"
     }
   }
 }

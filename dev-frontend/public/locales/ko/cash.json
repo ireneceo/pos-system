@@ -26,6 +26,7 @@
   "netMovement": "순액 {{a}}",
   "paidIn": "현금 입금",
   "paidOut": "현금 출금",
+  "drop": "드롭 (현금 출금)",
   "openDrawer": "드로어 열기",
   "drawerSent": "드로어 신호 전송됨",
   "drawerFail": "드로어를 열 수 없습니다 (프린터 모드 확인)",

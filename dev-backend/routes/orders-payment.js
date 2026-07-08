@@ -416,7 +416,10 @@ router.post('/:id/payments', authenticateToken, requirePaymentAccess, async (req
 
     // Update order amount_paid + payment_status
     // newPaid 가 total 에 cap 되었으므로 (overpaid 도 total) — fullyPaid 판단 정확.
-    const fullyPaid = Math.abs(newPaid - total) < 0.01 || rawNewPaid >= total;
+    // §15-3-G: 오프라인 라운드 추가+완납 후 재생 시, 클라 근사총액과 서버 재계산총액이 수 센트
+    // 어긋나면 주문이 partial 로 붙박이가 된다. 받은 금액(amount)은 실수령 그대로 기록(회계 정확),
+    // 완납 마감만 명시 settle_full 로 보정 — 오프라인 "전액 결제" 버튼일 때만 op 에 실린다(op_id 스코프, 온라인 무접촉).
+    const fullyPaid = Math.abs(newPaid - total) < 0.01 || rawNewPaid >= total || (req.body.op_id && req.body.settle_full === true);
     const updateData = {
       amount_paid: newPaid,
       payment_status: fullyPaid ? 'completed' : 'partial'
@@ -458,6 +461,7 @@ router.post('/:id/payments', authenticateToken, requirePaymentAccess, async (req
         amount: parsedAmount,
         method: payment_method,
         partial: !fullyPaid,
+        ...(req.body.op_id && req.body.settle_full === true ? { settle_full: true } : {}), // §15-3-G 오프라인 완납 마감 흔적
         receipt_number: receiptNumber,
         items_paid: items_paid ? items_paid.length || 0 : 0,
         new_total_paid: newPaid,

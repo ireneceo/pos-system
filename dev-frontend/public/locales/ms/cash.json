@@ -26,6 +26,7 @@
   "netMovement": "Bersih {{a}}",
   "paidIn": "Tunai masuk",
   "paidOut": "Tunai keluar",
+  "drop": "Drop (tunai keluar)",
   "openDrawer": "Buka laci",
   "drawerSent": "Denyut laci dihantar",
   "drawerFail": "Tidak dapat buka laci (semak mod pencetak)",

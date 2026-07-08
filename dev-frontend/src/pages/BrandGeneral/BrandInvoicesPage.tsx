@@ -31,6 +31,8 @@ import {
   DataTableAmount,
   ActionButtons,
   Modal as CommonModal,
+  Pagination,
+  usePagination,
 } from '../../components/UI';
 import { SearchInput } from '../../components/Common/FilterComponents';
 import { Tabs, Tab as CommonTab, Badge as TabBadge } from '../../components/Common/TabComponents';
@@ -1139,6 +1141,10 @@ const BrandInvoicesPage: React.FC = () => {
     return matchesSearch && matchesDateRange;
   }).sort((a, b) => new Date(b.paidDate || b.issueDate).getTime() - new Date(a.paidDate || a.issueDate).getTime());
 
+  const issuedPg = usePagination(filteredInvoices, 20);
+  const toPayPg = usePagination(filteredInvoicesToPay, 20);
+  const paidPg = usePagination(filteredPaidInvoices, 20);
+
   const handleCreateInvoice = () => { resetInvoiceForm(); setShowCreateInvoiceModal(true); };
 
   const handleLinkSearch = (query: string) => {
@@ -1442,7 +1448,7 @@ const BrandInvoicesPage: React.FC = () => {
               <DataTableHeaderCell align="right">{t('brand:brandInvoicesPage.total')}</DataTableHeaderCell>
               <DataTableHeaderCell align="left">{t('brand:brandInvoicesPage.actions')}</DataTableHeaderCell>
             </tr></DataTableHead><tbody>
-              {filteredInvoices.map(invoice => (
+              {issuedPg.pageItems.map(invoice => (
                 <DataTableRow key={invoice.id}>
                   <DataTableCell data-label="Invoice" align="left"><InvoiceInfo><InvoiceNumber>{invoice.invoiceNumber}{invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>{t('brand:brandInvoicesPage.auto')}</AutoBadge>}</InvoiceNumber><CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName></InvoiceInfo></DataTableCell>
                   <DataTableCell data-label="Customer" align="left"><InvoiceInfo><InvoiceNumber>{invoice.externalPayerName || invoice.customerName || invoice.restaurantName || 'Unknown'}{invoice.payerType === 'external' && <span style={{ marginLeft: '6px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#7C3AED', background: '#EDE9FE', borderRadius: '4px', verticalAlign: 'middle' }}>{t('brand:brandInvoicesPage.nonmember')}</span>}</InvoiceNumber><CompanyName>{getPayerDisplay(invoice.payerType || 'restaurant')}</CompanyName></InvoiceInfo></DataTableCell>
@@ -1457,6 +1463,7 @@ const BrandInvoicesPage: React.FC = () => {
               ))}
               {filteredInvoices.length === 0 && (<DataTableRow><DataTableCell colSpan={9}><DataTableEmpty><div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px' }}>{t('brand:brandInvoicesPage.noInvoicesFound')}</div><div style={{ fontSize: '14px' }}>{invoices.length === 0 ? 'Create your first invoice to get started' : 'Try adjusting your filters'}</div></DataTableEmpty></DataTableCell></DataTableRow>)}
             </tbody></DataTable></DataTableContainer>
+            <Pagination page={issuedPg.page} totalPages={issuedPg.totalPages} total={issuedPg.total} pageSize={issuedPg.pageSize} onChange={issuedPg.setPage} label="invoices" />
           </>
         )}
 
@@ -1477,7 +1484,7 @@ const BrandInvoicesPage: React.FC = () => {
               <DataTableHeaderCell align="right">{t('brand:brandInvoicesPage.total')}</DataTableHeaderCell>
               <DataTableHeaderCell align="left">{t('brand:brandInvoicesPage.actions')}</DataTableHeaderCell>
             </tr></DataTableHead><tbody>
-              {filteredInvoicesToPay.length > 0 ? filteredInvoicesToPay.map(invoice => (
+              {filteredInvoicesToPay.length > 0 ? toPayPg.pageItems.map(invoice => (
                 <DataTableRow key={invoice.id}>
                   <DataTableCell data-label="Invoice" align="left"><InvoiceInfo><InvoiceNumber>{invoice.invoiceNumber}{invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>{t('brand:brandInvoicesPage.auto')}</AutoBadge>}</InvoiceNumber><CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName></InvoiceInfo></DataTableCell>
                   <DataTableCell data-label="Issuer" align="left"><InvoiceInfo><InvoiceNumber>{invoice.issuerName || (invoice.issuerType === 'system_admin' ? 'System Admin' : invoice.issuerType === 'brand' ? 'Brand' : 'Foodcourt')}</InvoiceNumber><CompanyName>{invoice.restaurantName && invoice.restaurantName !== 'Unknown' ? `For: ${invoice.restaurantName}` : ''}</CompanyName></InvoiceInfo></DataTableCell>
@@ -1491,6 +1498,7 @@ const BrandInvoicesPage: React.FC = () => {
                 </DataTableRow>
               )) : (<DataTableRow><DataTableCell colSpan={9}><DataTableEmpty>{t('brand:brandInvoicesPage.noInvoicesToPay')}</DataTableEmpty></DataTableCell></DataTableRow>)}
             </tbody></DataTable></DataTableContainer>
+            <Pagination page={toPayPg.page} totalPages={toPayPg.totalPages} total={toPayPg.total} pageSize={toPayPg.pageSize} onChange={toPayPg.setPage} label="invoices" />
           </>
         )}
 
@@ -1510,7 +1518,7 @@ const BrandInvoicesPage: React.FC = () => {
               <DataTableHeaderCell align="right">{t('brand:brandInvoicesPage.total')}</DataTableHeaderCell>
               <DataTableHeaderCell align="left">{t('brand:brandInvoicesPage.actions')}</DataTableHeaderCell>
             </tr></DataTableHead><tbody>
-              {filteredPaidInvoices.length > 0 ? filteredPaidInvoices.map(invoice => (
+              {filteredPaidInvoices.length > 0 ? paidPg.pageItems.map(invoice => (
                 <DataTableRow key={invoice.id}>
                   <DataTableCell data-label="Invoice" align="left"><InvoiceInfo><InvoiceNumber>{invoice.invoiceNumber}{invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>{t('brand:brandInvoicesPage.auto')}</AutoBadge>}</InvoiceNumber><CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName></InvoiceInfo></DataTableCell>
                   <DataTableCell data-label="Issuer" align="left"><InvoiceInfo><InvoiceNumber>{invoice.issuerName || (invoice.issuerType === 'system_admin' ? 'System Admin' : invoice.issuerType === 'brand' ? 'Brand' : 'Foodcourt')}</InvoiceNumber><CompanyName>{invoice.restaurantName && invoice.restaurantName !== 'Unknown' ? `For: ${invoice.restaurantName}` : ''}</CompanyName></InvoiceInfo></DataTableCell>
@@ -1529,6 +1537,7 @@ const BrandInvoicesPage: React.FC = () => {
                 </DataTableRow>
               )) : (<DataTableRow><DataTableCell colSpan={8}><DataTableEmpty>{t('brand:brandInvoicesPage.noPaidInvoicesYet')}</DataTableEmpty></DataTableCell></DataTableRow>)}
             </tbody></DataTable></DataTableContainer>
+            <Pagination page={paidPg.page} totalPages={paidPg.totalPages} total={paidPg.total} pageSize={paidPg.pageSize} onChange={paidPg.setPage} label="invoices" />
           </>
         )}
 

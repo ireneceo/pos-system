@@ -1085,6 +1085,8 @@
   "operations.requireVoidPinDesc": "Apabila dihidupkan, memadam item atau membatalkan pesanan memerlukan PIN yang dibenarkan. Akaun log masuk tidak berubah.",
   "operations.requirePinForCashMgmtLabel": "Perlukan PIN untuk pengurusan tunai",
   "operations.requirePinForCashMgmtDesc": "Apabila dihidupkan, buka/tutup laci tunai, masuk/keluar tunai dan pelarasan memerlukan PIN dibenarkan bayaran. Akaun log masuk tidak berubah.",
+  "operations.cashDrawerAutoOpenLabel": "Laci tunai buka automatik",
+  "operations.cashDrawerAutoOpenDesc": "Hidupkan jika pencetak membuka laci tunai secara automatik semasa cetak. Butang manual “Buka laci” dalam Pengurusan Tunai kemudian disembunyikan untuk elak kawalan berulang.",
   "operations.managerApprovalsTitle": "Kelulusan PIN Pengurus",
   "operations.managerApprovalsDesc": "Perlukan PIN yang dibenarkan sebelum tindakan kaunter sensitif, untuk mencegah dan menjejak penyalahgunaan. Akaun log masuk tidak berubah — PIN hanya mengesahkan siapa yang meluluskan.",
   "printer": {

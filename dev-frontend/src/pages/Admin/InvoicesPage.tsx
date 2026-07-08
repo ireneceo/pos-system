@@ -30,6 +30,8 @@ import {
   DataTableAmount,
   ActionButtons,
   Modal as CommonModal,
+  Pagination,
+  usePagination,
 } from '../../components/UI';
 import { SearchInput } from '../../components/Common/FilterComponents';
 import { Tabs, Tab as CommonTab, Badge as TabBadge } from '../../components/Common/TabComponents';
@@ -1043,6 +1045,10 @@ const InvoicesPage: React.FC = () => {
     return sortDirection === 'desc' ? -comparison : comparison;
   });
 
+  const invoicesPg = usePagination(filteredInvoices, 20);
+  const submittedInvoices = invoices.filter(i => i.status === 'payment_submitted');
+  const submittedPg = usePagination(submittedInvoices, 20);
+
   const handleSort = (field: 'invoiceNumber' | 'companyName' | 'issueDate' | 'dueDate' | 'amount' | 'status') => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -1621,7 +1627,7 @@ const InvoicesPage: React.FC = () => {
               </tr>
             </DataTableHead>
             <tbody>
-              {filteredInvoices.map(invoice => (
+              {invoicesPg.pageItems.map(invoice => (
                 <DataTableRow key={invoice.id}>
                   <DataTableCell data-label="Invoice" align="left">
                     <InvoiceInfo>
@@ -1738,6 +1744,7 @@ const InvoicesPage: React.FC = () => {
               </div>
             </DataTableEmpty>
           )}
+          <Pagination page={invoicesPg.page} totalPages={invoicesPg.totalPages} total={invoicesPg.total} pageSize={invoicesPg.pageSize} onChange={invoicesPg.setPage} label="invoices" />
         </DataTableContainer>
           </>
         )}
@@ -1766,7 +1773,7 @@ const InvoicesPage: React.FC = () => {
                   </tr>
                 </DataTableHead>
                 <tbody>
-                  {invoices.filter(i => i.status === 'payment_submitted').map(invoice => (
+                  {submittedPg.pageItems.map(invoice => (
                     <DataTableRow key={invoice.id}>
                       <DataTableCell data-label="Invoice" align="left">
                         <InvoiceInfo>
@@ -1805,7 +1812,7 @@ const InvoicesPage: React.FC = () => {
                   ))}
                 </tbody>
               </DataTable>
-              {invoices.filter(i => i.status === 'payment_submitted').length === 0 && (
+              {submittedInvoices.length === 0 && (
                 <DataTableEmpty>
                   <div style={{ fontSize: '18px', fontWeight: '600', color: '#1F2937', marginBottom: '8px' }}>
                     No Pending Confirmations
@@ -1815,6 +1822,7 @@ const InvoicesPage: React.FC = () => {
                   </div>
                 </DataTableEmpty>
               )}
+              <Pagination page={submittedPg.page} totalPages={submittedPg.totalPages} total={submittedPg.total} pageSize={submittedPg.pageSize} onChange={submittedPg.setPage} label="invoices" />
             </DataTableContainer>
           </>
         )}

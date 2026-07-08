@@ -11,6 +11,8 @@ import {
 import styled from 'styled-components';
 import { formatCurrency } from '../../utils/currency';
 import { useStore } from '../../contexts/StoreContext';
+import { useOffline } from '../../contexts/OfflineContext';
+import { isOfflineMainPos } from '../../utils/offlineMainPos';
 import DiscountPinModal from './DiscountPinModal';
 
 import { getAuthToken } from '../../utils/auth';
@@ -293,6 +295,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   onPartialPaymentComplete
 }) => {
   const { operationSettings } = useStore();
+  const { isOffline } = useOffline();
 
   // Internal state for fetched data (when customerId/restaurantId are provided)
   const [fetchedPoints, setFetchedPoints] = useState<number>(0);
@@ -707,6 +710,27 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
         body.change_amount = Math.max(0, body.amount_received - amount);
       }
       if (paymentMethod === 'card' && cardType) body.card_type = cardType;
+
+      // 오프라인(메인 POS) — 서버 왕복 없이 split 부분 결제를 op 로그에 기록(재생 시 동일 POST /orders/:id/payments).
+      // split = PARTIAL 결제 → settle_full 절대 설정 안 함(전액 결제 아님). 온라인 경로는 이 블록 아래로 무변경.
+      if (isOffline && isOfflineMainPos()) {
+        const { recordOfflineOp } = await import('../../utils/offlineOps');
+        await recordOfflineOp('pay', { serverId: orderId }, {
+          amount,
+          payment_method: paymentMethod,
+          items_paid: itemsPaid,
+          ...(body.amount_received != null ? { amount_received: body.amount_received } : {}),
+          ...(body.change_amount != null ? { change_amount: body.change_amount } : {}),
+          cashier_name: cashierName
+        });
+        const newRemaining = Math.max(0, remainingAmount - amount);
+        setLocalPaidExtra(prev => prev + amount);
+        setSplitSelected(new Set());
+        setCashAmount('');
+        onPartialPaymentComplete && onPartialPaymentComplete({ amount, payment_method: paymentMethod, offline: true }, newRemaining);
+        if (newRemaining <= 0.005) onClose();
+        return;
+      }
 
       const res = await fetch(`/api/orders/${orderId}/payments`, {
         method: 'POST',

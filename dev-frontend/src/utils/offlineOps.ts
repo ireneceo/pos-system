@@ -105,11 +105,18 @@ export async function recordOfflineOp(
         const cur = (await getAllOrders()).find((o) => o.localId === localOrderId);
         const payments = cur ? [...cur.payments, { method: payload.method || payload.payment_method || 'cash', amount: Number(payload.amount) || 0, info: payload.info }] : undefined;
         if (payments) await patchOrder(localOrderId, { payments });
-      } else if (type === 'add_items' && Array.isArray(payload?.order_items)) {
-        const cur = (await getAllOrders()).find((o) => o.localId === localOrderId);
-        if (cur) await patchOrder(localOrderId, { items: [...cur.items, ...mapItems(payload.order_items)] });
+      } else if (type === 'add_items') {
+        // Canonical key is `items` (§15-1 defect 2 — backend /add-items destructures `items`).
+        // Accept legacy `order_items` for safety.
+        const added = Array.isArray(payload?.items) ? payload.items : (Array.isArray(payload?.order_items) ? payload.order_items : null);
+        if (added) {
+          const cur = (await getAllOrders()).find((o) => o.localId === localOrderId);
+          if (cur) await patchOrder(localOrderId, { items: [...cur.items, ...mapItems(added)] });
+        }
       }
     }
+    // Optimistic overlay must reflect the new op immediately (§15-4 offlineOps step 1).
+    try { window.dispatchEvent(new CustomEvent('offline-ops-changed')); } catch { /* ignore */ }
     return op;
   } catch {
     return null;
@@ -151,6 +158,67 @@ export async function printOfflineKitchenTicket(order: LocalOrder): Promise<bool
   } catch {
     return false;
   }
+}
+
+// §15-4 offlineOps: 서버 주문(정전 중 편집)용 로컬 주방인쇄 헬퍼 2개.
+// 모두 billPrint.printKitchenTicketViaRawBT 재사용(billPrint 🔒 무수정 — printOfflineKitchenTicket 동일 패턴).
+// 성공 시 true → 호출부가 op 에 printed_offline=true 를 실어 재생이 재인쇄 안 함(I3). 실패 시 false → 플래그
+// 미첨부 → 복구 후 폴러가 정확히 1장 인쇄.
+
+function _storeInfoCache(): any {
+  try { return JSON.parse(localStorage.getItem('pos_store_info_cache') || '{}'); } catch { return {}; }
+}
+function _mapKitchenItems(list: any[]): any[] {
+  return (list || []).map((it: any) => ({
+    name: it.name,
+    quantity: it.quantity,
+    options: Array.isArray(it.options) ? it.options : [],
+    special_instructions: it.special_instructions || '',
+    is_set_menu: !!it.is_set_menu,
+    set_items: it.set_items || it.set_components || [],
+    kitchen_station_id: it.kitchen_station_id ?? null,
+  }));
+}
+
+/** 라운드 티켓(오프라인 서버주문 아이템 추가) — 추가분만 로컬 주방인쇄. */
+export async function printOfflineAddedItemsTicket(serverOrder: any, addedItems: any[]): Promise<boolean> {
+  try {
+    const items = _mapKitchenItems(addedItems);
+    if (items.length === 0) return false;
+    const orderData = {
+      orderNumber: serverOrder.order_number || serverOrder.orderNumber,
+      date: new Date(),
+      tableNumber: serverOrder.table_number ?? serverOrder.tableNumber,
+      customerName: 'Walk-in Customer',
+      orderSource: 'pos',
+      items,
+    };
+    const mod = await import('./billPrint');
+    const r = await mod.printKitchenTicketViaRawBT(orderData as any, _storeInfoCache());
+    return r !== false;
+  } catch { return false; }
+}
+
+/** 취소/이동 안내표(오프라인 서버주문 취소·테이블이동) — noticeHeader = 백엔드 pending_reprint.notice 포맷. */
+export async function printOfflineNoticeTicket(serverOrder: any, notice: any, printedItems: any[]): Promise<boolean> {
+  try {
+    // 취소/이동 안내표는 이미 주방에 나간(printed) 품목 기준(전부 served/completed 면 안 나감 — 백엔드 규칙과 동일).
+    const _notServed = (it: any) => it && it.status !== 'served' && it.status !== 'completed';
+    const src = (printedItems || []).filter((it: any) => it && (it.printed_at || it.printed) && _notServed(it));
+    if (src.length === 0) return false;
+    const orderData = {
+      orderNumber: serverOrder.order_number || serverOrder.orderNumber,
+      date: new Date(),
+      tableNumber: serverOrder.table_number ?? serverOrder.tableNumber,
+      customerName: 'Walk-in Customer',
+      orderSource: 'pos',
+      items: _mapKitchenItems(src),
+      noticeHeader: notice, // { title:'** ORDER CANCELLED **', lines } | { title:'** TABLE CHANGED **', fromTable, toTable, lines }
+    };
+    const mod = await import('./billPrint');
+    const r = await mod.printKitchenTicketViaRawBT(orderData as any, _storeInfoCache());
+    return r !== false;
+  } catch { return false; }
 }
 
 /** 화면 반영용 — 아직 서버 동기화 안 된 오프라인 주문 목록(최신순). */

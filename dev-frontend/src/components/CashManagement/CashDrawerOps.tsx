@@ -38,6 +38,8 @@ const CashDrawerOps: React.FC<Props> = ({ restaurantId, onChange, compact }) => 
   // 2026-06-28 (3-1): 현금관리 PIN 게이트 — 설정 ON 이면 결제권한 PIN 1회 입력 후 세션 보유,
   // 쓰기 body 에 cash_pin 동봉(백엔드 cashPinGuard 재검증). 백엔드 CASH_PIN_* 오류 시 보유 PIN 초기화.
   const requireCashPin = !!(opSettings as any)?.requirePinForCashMgmt;
+  // 서랍이 프린터로 자동 열리는 매장이면 수동 '서랍 열기' 버튼 숨김(중복 방지, 설정). 기본 OFF=버튼 표시.
+  const drawerAutoOpens = !!(opSettings as any)?.cashDrawerAutoOpen;
   const cashPinRef = useRef<string>('');
   const [showCashPin, setShowCashPin] = useState(false);
   const pendingRef = useRef<((pin: string | undefined) => void) | null>(null);
@@ -174,7 +176,8 @@ const CashDrawerOps: React.FC<Props> = ({ restaurantId, onChange, compact }) => 
             </div>
           </div>
 
-          {/* 캐시인/아웃 — 키패드(좌) + 금액·이유·버튼(우) */}
+          {/* 캐시인/드롭 — 키패드(좌) + 금액·이유·액션(우). 액션 클러스터: 캐시인·드롭·서랍열기를
+              한 곳에 묶어(아래로 안 멀어짐) 운영 동선을 짧게. 서랍열기는 자동열림 매장이면 숨김. */}
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
             <div style={{ flex: '1 1 240px', minWidth: 220 }}>
               <Pad onPress={amtPress} onBack={amtBack} />
@@ -182,15 +185,20 @@ const CashDrawerOps: React.FC<Props> = ({ restaurantId, onChange, compact }) => 
             <div style={{ flex: '1 1 240px', minWidth: 220, display: 'flex', flexDirection: 'column' }}>
               <div style={{ fontSize: 32, fontWeight: 700, color: C.text, textAlign: 'center', padding: '8px 0 12px', fontVariantNumeric: 'tabular-nums' }}>{fc(num(amt))}</div>
               <FormInput value={reason} onChange={e => setReason(e.target.value)} placeholder={t('cash:movementReason', { defaultValue: 'Reason (optional)' })} />
-              <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
-                <button type="button" disabled={!canSubmit} onClick={() => submit('in')}
-                  style={{ flex: 1, height: 56, borderRadius: 12, border: 'none', background: canSubmit ? C.match : '#C7CED6', color: '#fff', fontSize: 15, fontWeight: 700, cursor: canSubmit ? 'pointer' : 'not-allowed' }}>{t('cash:paidIn', { defaultValue: 'Cash in' })}</button>
-                <button type="button" disabled={!canSubmit} onClick={() => submit('out')}
-                  style={{ flex: 1, height: 56, borderRadius: 12, border: 'none', background: canSubmit ? C.bad : '#C7CED6', color: '#fff', fontSize: 15, fontWeight: 700, cursor: canSubmit ? 'pointer' : 'not-allowed' }}>{t('cash:paidOut', { defaultValue: 'Cash out' })}</button>
+              {/* 액션 클러스터 (캐시인 · 드롭 · 서랍열기) */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button type="button" disabled={!canSubmit} onClick={() => submit('in')}
+                    style={{ flex: 1, height: 56, borderRadius: 12, border: 'none', background: canSubmit ? C.match : '#C7CED6', color: '#fff', fontSize: 15, fontWeight: 700, cursor: canSubmit ? 'pointer' : 'not-allowed' }}>{t('cash:paidIn', { defaultValue: 'Cash in' })}</button>
+                  <button type="button" disabled={!canSubmit} onClick={() => submit('out')}
+                    style={{ flex: 1, height: 56, borderRadius: 12, border: 'none', background: canSubmit ? C.bad : '#C7CED6', color: '#fff', fontSize: 15, fontWeight: 700, cursor: canSubmit ? 'pointer' : 'not-allowed' }}>{t('cash:drop', { defaultValue: 'Drop (cash out)' })}</button>
+                </div>
+                {!drawerAutoOpens && (
+                  <button type="button" onClick={handleOpenDrawer}
+                    style={{ height: 48, borderRadius: 12, border: `1px solid ${C.border}`, background: '#fff', color: C.text, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('cash:openDrawer', { defaultValue: 'Open drawer' })}</button>
+                )}
+                {drawerMsg && <div style={{ fontSize: 12, color: C.subtle, textAlign: 'center' }}>{drawerMsg}</div>}
               </div>
-              <button type="button" onClick={handleOpenDrawer}
-                style={{ height: 48, marginTop: 10, borderRadius: 10, border: `1px solid ${C.border}`, background: '#fff', color: C.text, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('cash:openDrawer', { defaultValue: 'Open drawer' })}</button>
-              {drawerMsg && <div style={{ fontSize: 12, color: C.subtle, marginTop: 8, textAlign: 'center' }}>{drawerMsg}</div>}
             </div>
           </div>
 

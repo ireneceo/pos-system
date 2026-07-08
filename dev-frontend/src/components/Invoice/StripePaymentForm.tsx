@@ -13,11 +13,33 @@ interface StripePaymentFormProps {
   onError: (error: string) => void;
 }
 
+// Poll the invoice until the async Stripe webhook flips it to 'paid', so the
+// parent refetch reflects payment immediately instead of after a manual refresh.
+// Resolves on paid, or after the timeout (payment already succeeded client-side —
+// the webhook will finalize; we don't block the UI forever).
+async function waitForPaid(invoiceId: number | string, timeoutMs = 12000): Promise<void> {
+  const token = getAuthToken();
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    try {
+      const res = await axios.get(
+        `${API_BASE}/api/invoices/${invoiceId}/payment-status`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (res.data?.paid || res.data?.status === 'paid') return;
+    } catch {
+      /* transient — keep polling until timeout */
+    }
+    await new Promise(r => setTimeout(r, 1200));
+  }
+}
+
 // Inner form component (must be inside Elements provider)
 const CheckoutForm: React.FC<{
+  invoiceId: number | string;
   onSuccess: () => void;
   onError: (error: string) => void;
-}> = ({ onSuccess, onError }) => {
+}> = ({ invoiceId, onSuccess, onError }) => {
   const stripe = useStripe();
   const elements = useElements();
   const [processing, setProcessing] = useState(false);
@@ -43,6 +65,10 @@ const CheckoutForm: React.FC<{
       onError(error.message || 'Payment failed');
       setProcessing(false);
     } else {
+      // Payment succeeded client-side. Wait for the webhook to mark the invoice
+      // 'paid' so the list doesn't reappear as pending before onSuccess refetches.
+      setMessage('Confirming payment…');
+      await waitForPaid(invoiceId);
       onSuccess();
     }
   };
@@ -129,7 +155,7 @@ const StripePaymentForm: React.FC<StripePaymentFormProps> = ({ invoiceId, onSucc
         }
       }}
     >
-      <CheckoutForm onSuccess={onSuccess} onError={onError} />
+      <CheckoutForm invoiceId={invoiceId} onSuccess={onSuccess} onError={onError} />
     </Elements>
   );
 };

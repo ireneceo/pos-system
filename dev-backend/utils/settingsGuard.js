@@ -43,7 +43,10 @@ const OPERATION_SETTINGS_ALLOWED_KEYS = new Set([
   'crossSellEnabled',
   // AI 카메라 서빙(Track B, 2026-07-06). { enabled, retainEvalVectors }. 화이트리스트 누락 시
   // 저장 round-trip 에서 조용히 stripped → 설정 무력화. 반드시 보존([[reference_model_getter_key_strip]]).
-  'aiServing'
+  'aiServing',
+  // 캐시서랍 자동열림 매장(2026-07-08). true=프린터가 인쇄 시 서랍 자동 개방 → 현금관리 화면의
+  // 수동 '서랍 열기' 버튼 숨김. 화이트리스트 누락 시 저장 round-trip 에서 조용히 stripped → 토글이 저장 안 됨. 반드시 보존.
+  'cashDrawerAutoOpen'
 ]);
 
 function parseJsonSafe(v) {
