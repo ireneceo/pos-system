@@ -117,4 +117,12 @@ function printHtml(job) {
   );
 }
 
-module.exports = { printHtml };
+// Tear down the cached hidden print window so it can't keep the process alive after
+// the main window closes (single-instance-lock zombie → "app won't reopen"). Called on
+// app 'will-quit'. app.quit() also closes it, but this is an explicit backstop.
+function destroy() {
+  try { if (_win && !_win.isDestroyed()) _win.destroy(); } catch (_) { /* best effort */ }
+  _win = null;
+}
+
+module.exports = { printHtml, destroy };

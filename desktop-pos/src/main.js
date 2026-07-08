@@ -165,6 +165,13 @@ function createMainWindow() {
 
   mainWindow.on('closed', () => {
     mainWindow = null;
+    // Closing the POS window = exit intent. Force a full quit so the process really
+    // terminates — otherwise the cached hidden print window (htmlPrinter `_win`, kept
+    // alive for silent printing) leaves an INVISIBLE process running. That zombie holds
+    // the single-instance lock (§6-5), so the next launch silently quits and the app
+    // "won't reopen" until a reboot kills it (with MIN, 2026-07-08). app.quit() closes
+    // every window (incl. the hidden print window) and exits cleanly → relaunch works.
+    app.quit();
   });
 
   console.log(`[main] loading ${APP_URL}`);
@@ -227,4 +234,7 @@ app.on('window-all-closed', () => {
 
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();
+  // Explicitly destroy the cached hidden print window so nothing keeps the process
+  // alive past quit (zombie → single-instance lock → "won't reopen"). Backstop to app.quit().
+  try { nativePrint.destroyPrintWindow(); } catch (_) { /* best effort */ }
 });

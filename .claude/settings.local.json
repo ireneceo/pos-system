@@ -1076,7 +1076,14 @@
       "Bash(node_modules/.bin/esbuild --version)",
       "Bash(node_modules/.bin/webpack --config /tmp/claude-1000/-var-www/2a28a17c-3eaf-4cfc-88a3-c8ff22e3dbaf/scratchpad/webpack.bp.config.js)",
       "Bash(awk '/router\\\\.get\\\\\\(.\\\\/to-pay/,/^\\\\}\\\\\\);/' routes/invoices-list.js)",
-      "Bash(echo \"DONE exit=$?\")"
+      "Bash(echo \"DONE exit=$?\")",
+      "Bash(awk 'NR>=1460 && NR<=1635' src/utils/billPrint.js)",
+      "Bash(awk 'NR>=2440 && NR<=2470' src/utils/billPrint.js)",
+      "Bash(awk 'NR>=2560 && NR<=2600' src/utils/billPrint.js)",
+      "Bash(awk 'NR>=2470 && NR<=2495' src/utils/billPrint.js)",
+      "Bash(awk 'NR>=190 && NR<=207' src/utils/billPrint.js)",
+      "Bash(awk 'NR>=3140 && NR<=3230 && \\(/★|→|rawText|content \\\\+=.*option|content \\\\+=.*name/\\)' billPrint.js)",
+      "Bash(echo \"DIST_EXIT=$?\")"
     ],
     "deny": [],
     "ask": []

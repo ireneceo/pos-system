@@ -10,7 +10,7 @@
 
 const { app, ipcMain } = require('electron');
 const printers = require('./printers');
-const { printHtml } = require('./htmlPrinter');
+const { printHtml, destroy: destroyHtmlPrinter } = require('./htmlPrinter');
 const { printRawLan } = require('./rawLan');
 const { printRawWindows } = require('./rawWindows');
 
@@ -86,4 +86,4 @@ function register(getMainWebContents) {
   });
 }
 
-module.exports = { register };
+module.exports = { register, destroyPrintWindow: destroyHtmlPrinter };

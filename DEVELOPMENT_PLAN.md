@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-07-06 #2 (**비전AI 음식인식 TrackA+B1 + 인스펙션 하니스 확장(둘 다 Fable PASS·dev 미배포) + 전 영역 실측·할일총정리·업무분담 확정**. 다음 세션: #8 매니저리포트 가짜매출 → #24 구독변경 → 비전AI B2(진짜AI, Irene 키) → 오프라인 편집. 상세 아래·session-state.)
+> **최종 업데이트:** 2026-07-08 (**with MIN 인쇄 백지 긴급수정 + 데스크탑앱 0.1.2 — 운영 배포, Fable PASS ×2**. 인쇄 자동 텍스트/이미지 판정(billPrint 20곳, 라우트가드 29/29·Fable D1/D2 결함수정) + 데스크탑 좀비/메뉴/아이콘 수정(0.1.2, 자동업데이트 켜짐) + 앱내 PWA버튼 숨김 + 윈도우 브라우저 네이티브앱 다운로드. 웹 3회 배포·스모크 9/9·게이트 7/7. 상세 session-state + 아래.)
+>
+> **이전:** 2026-07-06 #2 (**비전AI 음식인식 TrackA+B1 + 인스펙션 하니스 확장(둘 다 Fable PASS·dev 미배포) + 전 영역 실측·할일총정리·업무분담 확정**. 다음 세션: #8 매니저리포트 가짜매출 → #24 구독변경 → 비전AI B2(진짜AI, Irene 키) → 오프라인 편집. 상세 아래·session-state.)
 >
 > **이전:** 2026-07-06 (**v3.67 운영 배포** — 모바일 중복주문(2번 주문) 방지[카트-안정 멱등키+ER_DUP catch, 동시8→주문1 운영실증] + 인스펙션 하니스 확장[order-integrity 6불변식·유저스코프 FK·IDOR route-guard, 배포게이트 5→6·Fable PASS]. Backup 20260706_134639, Smoke 9/9, 안전게이트 6/6, 운영 4흐름[주문관리·단계이동·결제·프린트] 실검증 PASS. SW 4.58.)
 >
@@ -43,6 +45,34 @@
 > **이전:** 2026-06-23 (**v3.62 운영 배포 완료** — thefire 실사용 준비 7건: 직원 PIN 전환 수정 · 시재 개시모드(이월/고정) · 마감 폰트 통일 · 통합오더티켓 'Full' 수동인쇄 · 로그인 직원 PIN 우선 · 설정 QR 인쇄버튼 · Windows 7/8 QZ 설치 수정. Backup 20260623_124849, Smoke 9/9, SW=3.95. /검증 통과: health 107/107·print-guard 8/8(billPrint 무수정)·hydration0·timezone0·design0·i18n0·mount(floor-plan/settings/cash-up/pos) crash0.)
 >
 > **이전:** v3.61 발주 UX 대정리 + 외부공급업체 + 플로어플랜 핫픽스. SW=3.90.
+
+## ✅ 완료: with MIN 인쇄 백지 긴급수정 + 데스크탑앱 0.1.2 (2026-07-08, 운영 배포, Fable PASS ×2)
+
+> with MIN Cafe(운영 #10, USB POS-80, 윈도우 네이티브앱) 실제 티켓 전부 백지(설정 테스트만 나옴). 근본 = 이미지(HTML-pixel) 인쇄가 그 드라이버서 백지 / raw ESC/POS 텍스트는 정상. 단일진실 = 메모리 `reference_print_auto_text_image_format`.
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 인쇄 자동 텍스트/이미지 (billPrint.js 🔒, 20곳) | OS드라이버 프린터: text-safe(순수ASCII·로고없음)→raw텍스트, 한글/로고→이미지. `_asciiFold`(é→e·★→*·→→>)+`_ticketIsTextSafe`=순수ASCII 게이트 | ✅ Fable PASS |
+| Fable D1/D2 결함 수정 | CJK만 걸러 é/★ 백지→글자깨짐 위험(with MIN 메뉴 Café·★ 24개) → ASCII-fold로 raw 유지 | ✅ |
+| print-route-guard 확장 | 29/29 (액센트→raw·한글→이미지·서랍·빈주소가드 실증), print-guard --bless | ✅ |
+| 데스크탑앱 0.1.2 좀비 수정 | 메인창 닫을 때 숨은 인쇄창(htmlPrinter._win) 정리→app.quit → 닫고 바로 재실행(단일인스턴스락 좀비 해소) | ✅ Fable PASS |
+| 데스크탑 0.1.2 배포 | +메뉴제거·실아이콘·최대화(0.1.1분), 자동업데이트 켜짐(latest.yml→0.1.2, purplehere.com/desktop/) | ✅ |
+| 앱내 PWA 설치버튼 숨김 | PwaInstallContext: 네이티브앱이면 canInstall=false → 사이드바 버튼·배너 숨김 | ✅ |
+| 윈도우 브라우저 네이티브 다운로드 | Install버튼이 윈도우면 .exe 다운로드(PWA 함정 방지), DESKTOP_APP_VERSION 0.1.1→0.1.2 | ✅ |
+
+### 수정된 파일
+- `dev-frontend/src/utils/billPrint.js` (🔒 자동 텍스트/이미지 20곳 + rawText ASCII-fold)
+- `dev-frontend/scripts/print-route-guard/cases.js` (29 케이스, 액센트/한글 분기)
+- `dev-frontend/src/contexts/PwaInstallContext.tsx` (앱내 버튼 숨김 + 윈도우 네이티브 다운로드)
+- `desktop-pos/src/main.js`·`src/print/htmlPrinter.js`·`src/print/index.js`·`package.json` (좀비 수정 + 0.1.2)
+
+### 미결 (범위 밖 — 아직 이미지=백지 가능, 필요 시 이어서)
+- 마감(Z)리포트 `escposContent=null` 콜러(FinalSettlementPanel/DailySettlementPrint) · `utils/consolidatedTicket.ts` 별도 미전환 경로
+- **Irene 실물확인 대기**: ①앱 새로고침→빌/티켓 텍스트 정상 ②0.1.2 설치→메뉴없음·재실행 ③윈도우 브라우저 Install→.exe
+
+---
 
 ## ✅ 완료: 비전AI 음식인식(TrackA+B1) + 인스펙션 하니스 확장 + 전 영역 실측·할일총정리 (2026-07-06 #2, dev·미배포·Fable PASS)
 

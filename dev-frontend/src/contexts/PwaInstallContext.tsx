@@ -26,7 +26,7 @@ interface PwaInstallState {
 // URL, so bumping this on each installer release forces a fresh fetch instead
 // of serving a stale (or SPA-fallback HTML) response. The `download` attr keeps
 // the saved filename clean (query string is stripped). Bump on new installer.
-const DESKTOP_APP_VERSION = '0.1.1';
+const DESKTOP_APP_VERSION = '0.1.2';
 const DESKTOP_APP_URL = `/desktop/PurplePOS-Setup.exe?v=${DESKTOP_APP_VERSION}`;
 
 function detectWindowsDesktop(): boolean {
@@ -86,12 +86,27 @@ export const PwaInstallProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, []);
 
   const promptInstall = useCallback(async (): Promise<'accepted' | 'dismissed' | 'unavailable'> => {
+    // Windows browser (not already inside the native app): the CORRECT install is the
+    // native Windows desktop app (.exe) — it has the print bridge. A PWA on Windows has
+    // no printer access → blank tickets, so never steer a Windows POS to the PWA.
+    // Download the installer instead of firing the browser's PWA prompt.
+    if (isWindowsDesktop) {
+      try {
+        const a = document.createElement('a');
+        a.href = DESKTOP_APP_URL;
+        a.download = '';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        return 'accepted';
+      } catch { return 'unavailable'; }
+    }
     if (!deferred) return 'unavailable';
     await deferred.prompt();
     const choice = await deferred.userChoice;
     setDeferred(null);
     return choice.outcome;
-  }, [deferred]);
+  }, [deferred, isWindowsDesktop]);
 
   const [dismissedUntil, setDismissedUntil] = useState<number>(() => {
     try {
@@ -107,11 +122,19 @@ export const PwaInstallProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, []);
 
   const isDismissed = Date.now() < dismissedUntil;
-  const shouldShowBanner = !isStandalone && !isDismissed && (Boolean(deferred) || isIOS || isWindowsDesktop);
+  // Inside the native Windows desktop app (Electron sets __PURPLE_DESKTOP) the shop
+  // already HAS the app — never offer a PWA install. Electron's Chromium still fires
+  // beforeinstallprompt (and the window isn't display-mode:standalone), so without this
+  // the "Install App" sidebar button + banner would wrongly appear and install a second,
+  // print-bridge-less PWA copy (with MIN, 2026-07-08).
+  const nativeApp = isNativeDesktop();
+  const shouldShowBanner = !isStandalone && !isDismissed && !nativeApp && (Boolean(deferred) || isIOS || isWindowsDesktop);
 
   return (
     <PwaInstallContext.Provider value={{
-      canInstall: Boolean(deferred),
+      // Windows browser → offer the native app even if the PWA prompt never fired;
+      // never inside the native app (already installed). Other OSes → PWA prompt.
+      canInstall: !nativeApp && (Boolean(deferred) || isWindowsDesktop),
       isStandalone,
       isIOS,
       iosVersion,

@@ -2,9 +2,21 @@
 
 ## 현재 작업 상태
 
-**마지막 업데이트:** 2026-07-07 #4 (**운영 배포 완료 + 세션 정리(저장)** — 네이티브 프린터UX+인쇄라우트가드+인보이스/버튼/배지 다수. Backup 20260707_170603, 게이트**7/7**(신규 라우트가드 포함), health110/110, 스모크9/9. Irene "다 해 — **모든 남은 건 다음 섹션에서**". 아래 "🎯 다음 세션 확정 작업" 참조.)
-**버전:** 운영=**배포됨**. **⚠️ 버전 미상승 — Irene 결정 대기**(방금 배포분=사용자체감 커서 릴리즈노트 권장). 배포 편승분: 네이티브프린터UX+인쇄라우트가드(배포게이트7)+버튼중복제출근본+PayPal빈공간+최소금액안내+캘린더+회사명+BG배지.
-**작업 상태:** ✅ 이번 세션 배포분 운영 반영. **미배포 dev분: #7 국가·통화 2개(UAE+Saudi, AED/SAR).** **Irene 여기서 세션 종료 — 남은 건 전부 다음 세션.**
+**마지막 업데이트:** 2026-07-08 (**with MIN 인쇄 백지 긴급수정 + 데스크탑앱 0.1.2 — 운영 배포, Fable PASS ×2**. 웹 3회 배포 Backup 20260708_103055/110914/112x, 게이트 7/7, health 110/110, 스모크 9/9, 인쇄라우트가드 29/29. Irene "다음 섹션에서" — 아래 완료 블록 + 기존 🎯🎯 큐 유효.)
+**버전:** 운영=배포됨(웹 다회 + 데스크탑 0.1.2). 버전 미상승 유지 — Irene 결정 대기.
+**작업 상태:** ✅ 오늘 4건 배포 완료(아래 ✅ 블록). **미배포 dev분: #7 국가·통화(UAE/Saudi, AED/SAR).** 남은 확정 작업 큐(🎯🎯)는 그대로 유효.
+
+### ✅ with MIN 인쇄 백지 긴급수정 + 데스크탑앱 0.1.2 (2026-07-08, 운영 배포, Fable PASS ×2)
+> with MIN Cafe(운영 #10, USB POS-80, 윈도우 네이티브앱) 실제 티켓 전부 백지(테스트만 나옴). 근본=이미지(HTML-pixel) 인쇄가 그 드라이버서 백지, raw ESC/POS 텍스트는 정상. 단일진실 = 메모리 [[reference_print_auto_text_image_format]].
+
+1. **인쇄 자동 텍스트/이미지 (`billPrint.js` 🔒, 디스패치 20곳)** — OS드라이버 프린터: text-safe(순수ASCII·로고없음)→raw텍스트, 한글/로고→이미지. `_asciiFold`(é→e·★→*·→→>)로 액센트/기호 fold + `_ticketIsTextSafe`=순수ASCII 게이트. **Fable D1/D2 결함(CJK만 걸러 é/★ 백지→글자깨짐 위험, with MIN 메뉴에 "Café Latte"·"★Joy Set" 24개) 발견→수정.** `print-route-guard` 29/29(액센트→raw 실증), print-guard `--bless`. 웹 배포=앱 즉시반영(재설치 불필요).
+2. **데스크탑앱 0.1.2 (`desktop-pos/`)** — 좀비 수정: 메인창 닫을 때 숨은 인쇄창(`htmlPrinter._win`)까지 정리(`destroy()`+`mainWindow.closed→app.quit`+`will-quit`) → 닫고 바로 재실행(재부팅 불필요, 단일인스턴스락 좀비 해소). +0.1.1분(메뉴제거·실로고아이콘·첫실행 최대화). 자동업데이트 켜짐(latest.yml→0.1.2, `purplehere.com/desktop/` 공개). Fable PASS. **with MIN 1회 수동 재설치 필요(먼저 좀비 종료/재부팅), 이후 전부 자동.**
+3. **앱 내 PWA 설치버튼/배너 숨김 (`PwaInstallContext`)** — 네이티브앱(`isNativeDesktop`)이면 canInstall=false → 사이드바 Install버튼·배너 숨김(중복 PWA=인쇄없는 함정 방지).
+4. **윈도우 브라우저 Install버튼=네이티브앱 다운로드 (`PwaInstallContext`)** — promptInstall이 isWindowsDesktop면 `.exe` 다운로드(PWA 아님), DESKTOP_APP_VERSION 0.1.1→0.1.2(낡은 캐시버전 수정).
+
+**검증:** 웹 3회 배포(스모크 9/9·게이트 7/7·health 110/110·라우트가드 29/29). 🔒MainLayout·인쇄폴러 무접촉(print-guard 8/8, PWA수정은 context 파일만).
+**미결(범위밖, 아직 이미지=백지 가능):** 마감(Z)리포트 `escposContent=null` 콜러(FinalSettlementPanel/DailySettlementPrint) · `utils/consolidatedTicket.ts` 별도 미전환 경로 — 필요 시 같은 방식 이어서.
+**⏳ Irene 실물확인 대기(코드로 불가):** ①with MIN 앱 새로고침→빌/오더티켓 **텍스트로 정상**(Café 등) ②0.1.2 설치→메뉴없음·아이콘정상·닫았다 바로 재실행 ③윈도우 브라우저 Install버튼→.exe 받아지는지.
 
 ### 🎯🎯 다음 세션 확정 작업 (Irene "다 해, 모든 걸 다, 다음 섹션에서" — 2026-07-07 #4)
 > Irene가 이번 세션 끝에 "다 해. 모든 걸 다 하자. 그런데 다음 섹션에 할게" 지시. 아래 전부 = 다음 세션 확정 작업 큐. **/개발시작 시 이 목록으로 시작.**

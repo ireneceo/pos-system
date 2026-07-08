@@ -1076,7 +1076,7 @@ export function generateBillContent(orderData, storeInfo) {
   content += CMD.DASHED_LINE + CMD.LINE_FEED;
 
   orderData.items.forEach(item => {
-    const itemName = item.menuItem.name;
+    const itemName = rawText(item.menuItem.name);
     const qty = item.quantity;
     const price = item.menuItem.price;
     const total = qty * price;
@@ -1091,12 +1091,12 @@ export function generateBillContent(orderData, storeInfo) {
     // 세트 v2(set_components) 우선 — 구성품명 + 선택옵션. 없으면 레거시 set_items.
     if (Array.isArray(item.set_components) && item.set_components.length > 0) {
       item.set_components.forEach(c => {
-        const cn = (c && c.name) || '';
-        if (cn) content += '    > ' + cn + (Array.isArray(c.options) && c.options.length ? ' (' + c.options.join(', ') + ')' : '') + CMD.LINE_FEED;
+        const cn = rawText((c && c.name) || '');
+        if (cn) content += '    > ' + cn + (Array.isArray(c.options) && c.options.length ? ' (' + rawText(c.options.join(', ')) + ')' : '') + CMD.LINE_FEED;
       });
     } else if (item.menuItem.is_set_menu && Array.isArray(item.menuItem.set_items) && item.menuItem.set_items.length > 0) {
       item.menuItem.set_items.forEach(si => {
-        const siName = typeof si === 'string' ? si : ((si && si.name) || '');
+        const siName = rawText(typeof si === 'string' ? si : ((si && si.name) || ''));
         if (siName) content += '    > ' + siName + CMD.LINE_FEED;
       });
     }
@@ -1104,7 +1104,7 @@ export function generateBillContent(orderData, storeInfo) {
     // Options — 세트 자체 옵션(A). 구성품(B)은 위 set_components 가 표기, A 는 여기서. (둘은 별개)
     if (item.options && item.options.length > 0) {
       item.options.forEach(option => {
-        content += '    + ' + option + CMD.LINE_FEED;
+        content += '    + ' + rawText(option) + CMD.LINE_FEED;
       });
     }
   });
@@ -1374,8 +1374,24 @@ function stripPrintEmoji(s) {
 // 메뉴명·옵션·구성품명을 원문 그대로 출력해 LAN IP 프린터에서 이모지가 깨지던 문제(2026-06-04).
 // HTML 경로(escapeHtmlForPrint)와 동일 기준. ⚠ 들여쓰기 prefix('  * ')는 감싸지 말 것 —
 // stripPrintEmoji 가 연속 공백을 1칸으로 줄여 레이아웃이 깨진다. 변수(사용자 콘텐츠)만 감쌀 것.
+// Fold accented Latin + common typographic symbols to ASCII so the RAW ESC/POS text
+// path prints them (é→e, ★→*, →→>, curly quotes/dashes→ASCII) instead of driver-
+// dependent garbage. Scripts that can't fold (Hangul/Kana/Thai/Arabic/CJK) stay as-is →
+// the ticket is then detected as non-ASCII and routed to the HTML-pixel (image) path
+// (_ticketIsTextSafe), never printed as raw mojibake.
+function _asciiFold(s) {
+  return String(s == null ? '' : s)
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')   // strip combining diacritics: e-acute -> e
+    .replace(/[★☆✦✧∗]/g, '*')
+    .replace(/[→➔➜↦↳↪⤷]/g, '>')
+    .replace(/[•·▪◦]/g, '*')
+    .replace(/[–—―]/g, '-')
+    .replace(/[''‚]/g, "'")
+    .replace(/[""„]/g, '"')
+    .replace(/…/g, '...');
+}
 function rawText(s) {
-  return stripPrintEmoji(String(s == null ? '' : s)).trim();
+  return _asciiFold(stripPrintEmoji(String(s == null ? '' : s))).trim();
 }
 
 function escapeHtmlForPrint(s) {
@@ -1969,6 +1985,63 @@ export function printTicketHTML(htmlContent, title) {
 }
 
 // ============================================
+// Auto-format ticket dispatch (2026-07-08, Irene — with MIN blank-print fix)
+// ============================================
+// Some cheap thermal drivers (e.g. with MIN's POS-80 on Windows) render our HTML-pixel
+// (image) print job as BLANK paper — while RAW ESC/POS TEXT prints fine on the very same
+// printer (that is exactly what the Settings "test print" uses). Since raw text can't
+// render CJK glyphs or a logo/QR image, we auto-choose per ticket:
+//   • text-safe (no CJK + no logo/QR)  → RAW ESC/POS text  (bulletproof on any driver)
+//   • needs CJK glyphs or a logo/QR    → HTML pixel (image) (previous look, Korean OK)
+// This is automatic — no per-store toggle. Latin-only menus (with MIN and most MY stores)
+// print reliably everywhere; Korean menus (thefire) keep the image path unchanged.
+// LAN-IP printers already use raw ESC/POS upstream and never reach these helpers.
+
+// True when the receipt would carry a logo / QR image that raw text can't reproduce.
+function _receiptHasImage(storeInfo) {
+  let rc = {};
+  try { rc = getReceiptSettings() || {}; } catch (_) { /* non-fatal */ }
+  const si = storeInfo || {};
+  const logo = si.receiptLogoDataUrl || si.receiptLogo || rc.receiptLogoDataUrl || rc.receiptLogo;
+  const customQr = si.customQrImage || rc.customQrImage;
+  const showMem = si.showMembership !== undefined ? si.showMembership : rc.showMembership;
+  const memQr = si.membershipQrDataUrl || rc.membershipQrDataUrl;
+  return !!(logo || customQr || (showMem && memQr));
+}
+
+// True when this ticket is safe to print as raw ESC/POS text = the generated content is
+// PURE ASCII (rawText already ASCII-folded accents + common symbols upstream). Any residual
+// non-ASCII (Hangul/Kana/Thai/Arabic/CJK/unmapped glyph) → HTML-pixel image path so it is
+// never printed as raw mojibake.
+function _ticketIsTextSafe(escposContent, opts) {
+  return !!escposContent && !/[^\x00-\x7F]/.test(escposContent) && !(opts && opts.hasImage);
+}
+
+// OS-driver (non-LAN-IP) QZ/native dispatch with auto format selection.
+async function sendTicketAutoFormat(escposContent, htmlContent, address, opts) {
+  if (_ticketIsTextSafe(escposContent, opts)) {
+    const ok = await sendViaQZTray(escposContent, address);
+    if (ok && opts && opts.drawerPulse) { try { await openCashDrawer(); } catch (_) { /* drawer non-fatal */ } }
+    return ok;
+  }
+  return await sendHTMLViaQZTray(htmlContent, address, opts);
+}
+
+// Browser-method dispatch. NATIVE desktop app: same text-safe rule, printing raw ESC/POS
+// to the OS default printer ('' address) so silent auto-print works even on drivers that
+// blank on image printing. PLAIN browser keeps the existing print-dialog path unchanged.
+async function printTicketAutoFormat(escposContent, htmlContent, title, opts) {
+  const _np = (typeof window !== 'undefined') && window.__NATIVE_PRINT;
+  if (_np && _ticketIsTextSafe(escposContent, opts)) {
+    // Browser method has no printer address → OS default ('' → printRaw OS default).
+    // Drawer parity: the old browser path (printTicketHTML) never opened the drawer, so
+    // we don't either here — the drawer follows the qztray bill path (sendTicketAutoFormat).
+    return await sendViaQZTray(escposContent, '');
+  }
+  return printTicketHTML(htmlContent, title);
+}
+
+// ============================================
 // RawBT Integration
 // ============================================
 
@@ -2030,17 +2103,16 @@ export async function printBillViaRawBT(orderData, storeInfo, printerName) {
         console.log('🖨️ Bill via QZ Tray (LAN ESC/POS — raw socket, IP printer)');
         return await sendViaQZTray(generateBillContent(orderData, storeInfo), address);
       }
-      console.log('🖨️ Bill via QZ Tray (HTML, OS driver — silent, browser-style design)');
+      console.log('🖨️ Bill via QZ Tray (OS driver — auto text/image, silent)');
       // `drawerPulse` opt-in via orderData — caller passes drawerPulse:true on
       // the LAST receipt copy so the cash drawer opens once (no garbage page).
-      return await sendHTMLViaQZTray(generateHTMLBill(orderData, storeInfo), address, { drawerPulse: !!orderData.__drawerPulse });
+      return await sendTicketAutoFormat(generateBillContent(orderData, storeInfo), generateHTMLBill(orderData, storeInfo), address, { drawerPulse: !!orderData.__drawerPulse, hasImage: _receiptHasImage(storeInfo) });
     }
 
-    // Browser method: open browser print dialog (uses OS default printer)
+    // Browser method: browser dialog (web) or silent OS-default (native app), auto text/image.
     if (shouldUseBrowserPrint('bill')) {
       console.log('🖥️ Bill via browser print');
-      const htmlContent = generateHTMLBill(orderData, storeInfo);
-      return printTicketHTML(htmlContent, 'Bill');
+      return await printTicketAutoFormat(generateBillContent(orderData, storeInfo), generateHTMLBill(orderData, storeInfo), 'Bill', { drawerPulse: !!orderData.__drawerPulse, hasImage: _receiptHasImage(storeInfo) });
     }
 
     // Default: Use RawBT (Android thermal printer)
@@ -2219,7 +2291,7 @@ export function generateKitchenTicketContent(orderData, storeInfo) {
     // 상단/그룹 라벨에 이미 스테이션이 있어 중복.
     if (_showStations && item.stationName) {
       content += CMD.BOLD_ON;
-      content += '  → ' + item.stationName.toUpperCase() + CMD.LINE_FEED;
+      content += '  > ' + rawText(item.stationName).toUpperCase() + CMD.LINE_FEED;
       content += CMD.BOLD_OFF;
     }
 
@@ -2237,7 +2309,7 @@ export function generateKitchenTicketContent(orderData, storeInfo) {
         // 구성품 각자 걸린 주방 (통합 티켓 전용).
         if (_showStations && c.stationName) {
           content += CMD.BOLD_ON;
-          content += '    → ' + c.stationName.toUpperCase() + CMD.LINE_FEED;
+          content += '    > ' + rawText(c.stationName).toUpperCase() + CMD.LINE_FEED;
           content += CMD.BOLD_OFF;
         }
         if (Array.isArray(c.options) && c.options.length > 0) {
@@ -2249,7 +2321,7 @@ export function generateKitchenTicketContent(orderData, storeInfo) {
     // Options with marker — 세트 자체 옵션(A). 구성품(B)은 위 set_components 가 표기, A 는 여기서 (별개).
     if (item.options && item.options.length > 0) {
       item.options.forEach(option => {
-        content += '  ★ ' + rawText(option) + CMD.LINE_FEED;
+        content += '  * ' + rawText(option) + CMD.LINE_FEED;
       });
     }
 
@@ -2714,7 +2786,7 @@ export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerNa
           if (isLanIP) {
             await sendViaQZTray(generateSingleItemKitchenTicket(orderData, item, i + 1, orderData.items.length, storeInfo), address);
           } else {
-            await sendHTMLViaQZTray(generateHTMLKitchenTicket({ ...orderData, items: [item] }, storeInfo), address);
+            await sendTicketAutoFormat(generateSingleItemKitchenTicket(orderData, item, i + 1, orderData.items.length, storeInfo), generateHTMLKitchenTicket({ ...orderData, items: [item] }, storeInfo), address);
           }
           if (i < orderData.items.length - 1) await new Promise(resolve => setTimeout(resolve, 300));
         }
@@ -2724,8 +2796,8 @@ export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerNa
         console.log('🖨️ Kitchen via QZ Tray (LAN ESC/POS — raw socket)');
         return await sendViaQZTray(generateKitchenTicketContent(orderData, storeInfo), address);
       }
-      console.log('🖨️ Kitchen via QZ Tray (HTML, OS driver)');
-      return await sendHTMLViaQZTray(generateHTMLKitchenTicket(orderData, storeInfo), address);
+      console.log('🖨️ Kitchen via QZ Tray (OS driver — auto text/image)');
+      return await sendTicketAutoFormat(generateKitchenTicketContent(orderData, storeInfo), generateHTMLKitchenTicket(orderData, storeInfo), address);
     }
 
     // Use provided printerName or get from settings
@@ -2742,7 +2814,11 @@ export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerNa
         // Browser print mode: Generate all items as pages in one document
         console.log('🖥️ Kitchen via browser print (multi-page)');
         const htmlContent = generateHTMLMultiPageKitchenTickets(orderData, storeInfo);
-        return printTicketHTML(htmlContent, `Kitchen Tickets - ${orderData.orderNumber}`);
+        // Native + text-safe: emit each per-item ticket as raw ESC/POS (all in one job,
+        // each with its own cut) so cheap drivers that blank on image printing still work.
+        const combinedEscpos = (orderData.items || []).map((it, i) =>
+          generateSingleItemKitchenTicket(orderData, it, i + 1, orderData.items.length, storeInfo)).join('');
+        return await printTicketAutoFormat(combinedEscpos, htmlContent, `Kitchen Tickets - ${orderData.orderNumber}`);
       }
 
       // RawBT mode: Print each item separately with delay
@@ -2782,8 +2858,7 @@ export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerNa
     // Default: Print combined ticket (original behavior)
     if (shouldUseBrowserPrint('kitchen')) {
       console.log('🖥️ Kitchen via browser print');
-      const htmlContent = generateHTMLKitchenTicket(orderData, storeInfo);
-      return printTicketHTML(htmlContent, 'Kitchen Ticket');
+      return await printTicketAutoFormat(generateKitchenTicketContent(orderData, storeInfo), generateHTMLKitchenTicket(orderData, storeInfo), 'Kitchen Ticket');
     }
 
     // Fallback: RawBT Intent
@@ -2864,8 +2939,7 @@ export async function printOrderTicketToBillPrinter(orderData, storeInfo) {
 
     // Browser: open print dialog with the kitchen-style HTML
     if (method === 'browser') {
-      const html = generateHTMLKitchenTicket(tagged, storeInfo);
-      return printTicketHTML(html, `Order Ticket - ${tagged.orderNumber || ''}`);
+      return await printTicketAutoFormat(generateKitchenTicketContent(tagged, storeInfo), generateHTMLKitchenTicket(tagged, storeInfo), `Order Ticket - ${tagged.orderNumber || ''}`);
     }
 
     // QZ Tray: unify with the AUTO-PRINT path (printKitchenTicketViaRawBT) so the
@@ -2883,7 +2957,7 @@ export async function printOrderTicketToBillPrinter(orderData, storeInfo) {
       if (isLanIP) {
         return await sendViaQZTray(generateKitchenTicketContent(tagged, storeInfo), address);
       }
-      return await sendHTMLViaQZTray(generateHTMLKitchenTicket(tagged, storeInfo), address);
+      return await sendTicketAutoFormat(generateKitchenTicketContent(tagged, storeInfo), generateHTMLKitchenTicket(tagged, storeInfo), address);
     }
 
     // RawBT (Android): fire intent with the bill printer name
@@ -3044,7 +3118,7 @@ export function generateAdditionalItemsTicketContent(orderData, storeInfo) {
     // Options with marker
     if (item.options && item.options.length > 0) {
       item.options.forEach(option => {
-        content += '  ★ ' + rawText(option) + CMD.LINE_FEED;
+        content += '  * ' + rawText(option) + CMD.LINE_FEED;
       });
     }
 
@@ -3117,7 +3191,7 @@ export async function printAdditionalItemsTicketViaRawBT(orderData, storeInfo, p
       if (newItems.length === 0) { console.log('No additional items to print'); return true; }
       const htmlContent = generateHTMLAdditionalItemsTicket(orderData, storeInfo);
       if (!htmlContent) { console.log('No additional items to print'); return true; }
-      return await sendHTMLViaQZTray(htmlContent, address);
+      return await sendTicketAutoFormat(generateAdditionalItemsTicketContent(orderData, storeInfo), htmlContent, address);
     }
 
     // PC: Use browser print dialog with HTML
@@ -3128,7 +3202,7 @@ export async function printAdditionalItemsTicketViaRawBT(orderData, storeInfo, p
         console.log('No additional items to print');
         return true;
       }
-      return printTicketHTML(htmlContent, 'Additional Items Ticket');
+      return await printTicketAutoFormat(generateAdditionalItemsTicketContent(orderData, storeInfo), htmlContent, 'Additional Items Ticket');
     }
 
     // Mobile/Tablet: Use RawBT Intent
@@ -3231,7 +3305,7 @@ export function generateKitchenTicketPreview(orderData, storeInfo) {
     // Options with STAR marker (same as Bill format)
     if (item.options && item.options.length > 0) {
       item.options.forEach(option => {
-        lines.push('  ★ ' + option);
+        lines.push('  * ' + rawText(option));
       });
     }
 
@@ -3516,7 +3590,7 @@ export async function printSettlementReport(htmlContent, escposContent) {
         if (isLanIP && escposContent) {
           return await sendViaQZTray(escposContent, address);
         }
-        return await sendHTMLViaQZTray(htmlContent, address);
+        return await sendTicketAutoFormat(escposContent, htmlContent, address);
       }
       // Fallback to browser print if no address
       return printHTMLContent(htmlContent, 'Daily Settlement');
@@ -3612,7 +3686,7 @@ async function sendToRawBTPrinter(orderData, storeInfo, settings, printerName, s
         const perItemData = { ...orderData, items: [item], groupLabel: stationName ? stationName.toUpperCase() : undefined, printedAt: stationName ? stationName.toUpperCase() : 'KITCHEN' };
         const r = isLanIP
           ? await sendViaQZTray(generateKitchenTicketContent(perItemData, storeInfo), address)
-          : await sendHTMLViaQZTray(generateHTMLKitchenTicket(perItemData, storeInfo), address);
+          : await sendTicketAutoFormat(generateKitchenTicketContent(perItemData, storeInfo), generateHTMLKitchenTicket(perItemData, storeInfo), address);
         if (r === false) allOk = false;
         if (i < items.length - 1) await new Promise(r => setTimeout(r, 300));
       }
@@ -3621,7 +3695,7 @@ async function sendToRawBTPrinter(orderData, storeInfo, settings, printerName, s
       const ticketData = { ...orderData, groupLabel: stationName ? stationName.toUpperCase() : undefined, printedAt: stationName ? stationName.toUpperCase() : 'KITCHEN' };
       const r = isLanIP
         ? await sendViaQZTray(generateKitchenTicketContent(ticketData, storeInfo), address)
-        : await sendHTMLViaQZTray(generateHTMLKitchenTicket(ticketData, storeInfo), address);
+        : await sendTicketAutoFormat(generateKitchenTicketContent(ticketData, storeInfo), generateHTMLKitchenTicket(ticketData, storeInfo), address);
       return r !== false;
     }
   }
@@ -3633,8 +3707,7 @@ async function sendToRawBTPrinter(orderData, storeInfo, settings, printerName, s
       const perItemData = { ...orderData, items: [item], groupLabel: stationName ? stationName.toUpperCase() : undefined, printedAt: stationName ? stationName.toUpperCase() : 'KITCHEN' };
 
       if (method === 'browser') {
-        const htmlContent = generateHTMLKitchenTicket(perItemData, storeInfo);
-        printTicketHTML(htmlContent, `Kitchen - ${stationName || 'Ticket'} - ${item.name}`);
+        await printTicketAutoFormat(generateKitchenTicketContent(perItemData, storeInfo), generateHTMLKitchenTicket(perItemData, storeInfo), `Kitchen - ${stationName || 'Ticket'} - ${item.name}`);
       } else {
         const escposContent = generateKitchenTicketContent(perItemData, storeInfo);
         const base64Content = btoa(unescape(encodeURIComponent(escposContent)));
@@ -3655,8 +3728,7 @@ async function sendToRawBTPrinter(orderData, storeInfo, settings, printerName, s
     const ticketData = { ...orderData, groupLabel: stationName ? stationName.toUpperCase() : undefined, printedAt: stationName ? stationName.toUpperCase() : 'KITCHEN' };
 
     if (method === 'browser') {
-      const htmlContent = generateHTMLKitchenTicket(ticketData, storeInfo);
-      printTicketHTML(htmlContent, `Kitchen - ${stationName || 'Ticket'}`);
+      await printTicketAutoFormat(generateKitchenTicketContent(ticketData, storeInfo), generateHTMLKitchenTicket(ticketData, storeInfo), `Kitchen - ${stationName || 'Ticket'}`);
     } else {
       const escposContent = generateKitchenTicketContent(ticketData, storeInfo);
       const base64Content = btoa(unescape(encodeURIComponent(escposContent)));
@@ -4367,7 +4439,7 @@ function sendUnifiedTickets(orderData, storeInfo, settings, opts) {
             sendViaQZTray(generateKitchenTicketContent(ticket, storeInfo), billAddr)
               .then(() => _rep(true)).catch(e => { console.warn('Unified ticket print failed:', e && e.message); _rep(false, e && e.message); });
           } else {
-            sendHTMLViaQZTray(generateHTMLKitchenTicket(ticket, storeInfo), billAddr)
+            sendTicketAutoFormat(generateKitchenTicketContent(ticket, storeInfo), generateHTMLKitchenTicket(ticket, storeInfo), billAddr)
               .then(() => _rep(true)).catch(e => { console.warn('Unified ticket print failed:', e && e.message); _rep(false, e && e.message); });
           }
         });
@@ -4429,13 +4501,12 @@ export async function printCancellationTicket(orderData, storeInfo, reason, prin
       // 프린터에만. 이전엔 항상 raw 라 취소표만 다른 폰트 + reverse-video(검정바탕)로 나왔다.
       const isLanIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(address);
       if (isLanIP) return await sendViaQZTray(escpos, address);
-      return await sendHTMLViaQZTray(generateHTMLKitchenTicket(buildVoidTicketData(orderData, reason), storeInfo), address);
+      return await sendTicketAutoFormat(escpos, generateHTMLKitchenTicket(buildVoidTicketData(orderData, reason), storeInfo), address);
     }
 
     // Browser print
     if (shouldUseBrowserPrint()) {
-      const html = generateHTMLKitchenTicket(buildVoidTicketData(orderData, reason), storeInfo);
-      return printTicketHTML(html, 'CANCELLED - ' + (orderData.orderNumber || ''));
+      return await printTicketAutoFormat(escpos, generateHTMLKitchenTicket(buildVoidTicketData(orderData, reason), storeInfo), 'CANCELLED - ' + (orderData.orderNumber || ''));
     }
 
     // RawBT (Android)
@@ -4531,12 +4602,11 @@ async function printCancellationToCounter(orderData, storeInfo, reason) {
     // raw ESC/POS 는 LAN IP 에만. (이전엔 항상 raw → 카운터 미러 취소표만 폰트 다름.)
     const isLanIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(address);
     if (isLanIP) return await sendViaQZTray(escpos, address);
-    return await sendHTMLViaQZTray(generateHTMLKitchenTicket(_voidData, storeInfo), address);
+    return await sendTicketAutoFormat(escpos, generateHTMLKitchenTicket(_voidData, storeInfo), address);
   }
 
   if (shouldUseBrowserPrint()) {
-    const html = generateHTMLKitchenTicket(_voidData, storeInfo);
-    return printTicketHTML(html, 'CANCELLED (counter) - ' + (orderData.orderNumber || ''));
+    return await printTicketAutoFormat(escpos, generateHTMLKitchenTicket(_voidData, storeInfo), 'CANCELLED (counter) - ' + (orderData.orderNumber || ''));
   }
 
   // RawBT — uses bill printer name
