@@ -18,7 +18,7 @@ const os = require('os');
 const { app, BrowserWindow } = require('electron');
 
 const printers = require(path.join(__dirname, '..', 'src', 'print', 'printers'));
-const { printHtml } = require(path.join(__dirname, '..', 'src', 'print', 'htmlPrinter'));
+const { printHtml, renderCheck } = require(path.join(__dirname, '..', 'src', 'print', 'htmlPrinter'));
 const { printRawLan } = require(path.join(__dirname, '..', 'src', 'print', 'rawLan'));
 
 let pass = 0, fail = 0;
@@ -62,6 +62,12 @@ async function run() {
     // No printer on this box — code path must still run without crashing.
     ok(rHtml && typeof rHtml.ok === 'boolean', 'printHtml returned {ok} without crash (no printer present)');
   }
+
+  log('\n[renderCheck] same pipeline -> PDF on disk with real (non-blank) content');
+  const rCheck = await renderCheck({ html });
+  ok(rCheck.ok === true && rCheck.bytes > 1000, 'renderCheck -> ' + JSON.stringify(rCheck));
+  ok(rCheck.ok && fs.existsSync(rCheck.path) && fs.statSync(rCheck.path).size === rCheck.bytes,
+    'render-check.pdf written (' + (rCheck.bytes || 0) + ' bytes)');
 
   log('\n[printHtml] bogus printer name -> PRINTER_NOT_FOUND (no silent fallback)');
   const rBogus = await printHtml({ html, printerName: 'NO_SUCH_PRINTER_XYZ', widthMm: 80 });

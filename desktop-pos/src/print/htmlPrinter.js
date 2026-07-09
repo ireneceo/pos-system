@@ -30,6 +30,11 @@ function getWindow() {
     width: 420,
     height: 900,
     paintWhenInitiallyHidden: true,
+    // 0.1.7: once doPrint() calls showInactive() the window is technically "shown"
+    // (far offscreen) — without these two flags Windows would list it in the taskbar
+    // and Alt-Tab as a ghost second "Purple POS" the operator can never close.
+    skipTaskbar: true,
+    focusable: false,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -46,6 +51,54 @@ function withTimeout(promise, ms, onTimeoutValue) {
     timer = setTimeout(() => resolve(onTimeoutValue), ms);
   });
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+// Shared render pipeline: write HTML to tmpFile, load it in the hidden window and
+// wait until it is actually PAINTED (images decoded + showInactive + 2×rAF). Used
+// byte-identically by doPrint (real ticket) and doRenderCheck (diagnostics printToPDF)
+// so the diagnostic exercises the exact pipeline a real bill goes through.
+async function loadAndPaint(win, tmpFile, html) {
+  const wc = win.webContents;
+  fs.writeFileSync(tmpFile, html, 'utf8');
+
+  const loaded = new Promise((resolve, reject) => {
+    const onFinish = () => { cleanup(); resolve(); };
+    const onFail = (_e, code, desc) => { cleanup(); reject(new Error(`load failed ${code} ${desc}`)); };
+    function cleanup() {
+      wc.removeListener('did-finish-load', onFinish);
+      wc.removeListener('did-fail-load', onFail);
+    }
+    wc.once('did-finish-load', onFinish);
+    wc.once('did-fail-load', onFail);
+  });
+
+  await wc.loadFile(tmpFile);
+  await loaded;
+
+  // Insurance: wait for any <img> (logo) to fully decode before printing. did-finish-load
+  // already waits for the window 'load' event (which includes images), but this double-
+  // guards a slow logo decode on the hidden window. Non-fatal, capped.
+  try {
+    await withTimeout(
+      wc.executeJavaScript(
+        'Promise.all(Array.from(document.images).map(i => (i.decode ? i.decode().catch(()=>{}) : 0))).then(()=>true)'
+      ),
+      5000,
+      true
+    );
+  } catch (_) { /* non-fatal */ }
+
+  // Force the offscreen window to actually PAINT the ticket before printing. A never-shown
+  // window can print a blank frame; showing it far offscreen (no focus, invisible) makes
+  // Chromium composite the page, and waiting two animation frames guarantees a painted frame.
+  try { if (!win.isVisible()) win.showInactive(); } catch (_) { /* non-fatal */ }
+  try {
+    await withTimeout(
+      wc.executeJavaScript('new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 120))))'),
+      3000,
+      true
+    );
+  } catch (_) { /* non-fatal */ }
 }
 
 async function doPrint({ html, printerName, widthMm, copies }) {
@@ -66,46 +119,7 @@ async function doPrint({ html, printerName, widthMm, copies }) {
   );
 
   try {
-    fs.writeFileSync(tmpFile, html, 'utf8');
-
-    const loaded = new Promise((resolve, reject) => {
-      const onFinish = () => { cleanup(); resolve(); };
-      const onFail = (_e, code, desc) => { cleanup(); reject(new Error(`load failed ${code} ${desc}`)); };
-      function cleanup() {
-        wc.removeListener('did-finish-load', onFinish);
-        wc.removeListener('did-fail-load', onFail);
-      }
-      wc.once('did-finish-load', onFinish);
-      wc.once('did-fail-load', onFail);
-    });
-
-    await wc.loadFile(tmpFile);
-    await loaded;
-
-    // Insurance: wait for any <img> (logo) to fully decode before printing. did-finish-load
-    // already waits for the window 'load' event (which includes images), but this double-
-    // guards a slow logo decode on the hidden window. Non-fatal, capped.
-    try {
-      await withTimeout(
-        wc.executeJavaScript(
-          'Promise.all(Array.from(document.images).map(i => (i.decode ? i.decode().catch(()=>{}) : 0))).then(()=>true)'
-        ),
-        5000,
-        true
-      );
-    } catch (_) { /* non-fatal */ }
-
-    // Force the offscreen window to actually PAINT the ticket before printing. A never-shown
-    // window can print a blank frame; showing it far offscreen (no focus, invisible) makes
-    // Chromium composite the page, and waiting two animation frames guarantees a painted frame.
-    try { if (!win.isVisible()) win.showInactive(); } catch (_) { /* non-fatal */ }
-    try {
-      await withTimeout(
-        wc.executeJavaScript('new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 120))))'),
-        3000,
-        true
-      );
-    } catch (_) { /* non-fatal */ }
+    await loadAndPaint(win, tmpFile, html);
 
     const printResult = await new Promise((resolve) => {
       wc.print(
@@ -143,6 +157,36 @@ function printHtml(job) {
   );
 }
 
+// 0.1.7 diagnostics: render the SAME pipeline a real bill uses, but capture the painted
+// page as a PDF on disk instead of spooling it. Purpose (with MIN blank-bill saga):
+// discriminate ON SCREEN, with zero paper, between
+//   • "hidden window rendered blank"  → PDF is empty  → render fix insufficient
+//   • "render fine, driver blanks it" → PDF shows the ticket → blame the spool/driver leg
+async function doRenderCheck({ html }) {
+  const win = getWindow();
+  const tmpFile = path.join(
+    app.getPath('temp'),
+    `pp-rendercheck-${process.pid}-${Date.now()}.html`
+  );
+  try {
+    await loadAndPaint(win, tmpFile, html);
+    const data = await win.webContents.printToPDF({ printBackground: true });
+    const outPath = path.join(app.getPath('userData'), 'render-check.pdf');
+    fs.writeFileSync(outPath, data);
+    return { ok: true, bytes: data.length, path: outPath };
+  } catch (err) {
+    return { ok: false, error: (err && err.message) || 'RENDER_CHECK_ERROR' };
+  } finally {
+    try { fs.unlinkSync(tmpFile); } catch (_) { /* best effort */ }
+  }
+}
+
+function renderCheck(job) {
+  return enqueue('html', () =>
+    withTimeout(doRenderCheck(job), RENDER_TIMEOUT_MS, { ok: false, error: 'TIMEOUT' })
+  );
+}
+
 // Tear down the cached hidden print window so it can't keep the process alive after
 // the main window closes (single-instance-lock zombie → "app won't reopen"). Called on
 // app 'will-quit'. app.quit() also closes it, but this is an explicit backstop.
@@ -151,4 +195,4 @@ function destroy() {
   _win = null;
 }
 
-module.exports = { printHtml, destroy };
+module.exports = { printHtml, renderCheck, destroy };

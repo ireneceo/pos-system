@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('diag', {
   getDefaultPrinter: () => ipcRenderer.invoke('native:getDefaultPrinter'),
   diagnostics: () => ipcRenderer.invoke('native:diagnostics'),
   printHtml: (job) => ipcRenderer.invoke('native:printHtml', job),
+  renderCheck: (job) => ipcRenderer.invoke('native:renderCheck', job),
   printRaw: (job) => ipcRenderer.invoke('native:printRaw', job),
   openDrawer: (target) => ipcRenderer.invoke('native:openDrawer', target)
 });

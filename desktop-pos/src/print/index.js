@@ -8,9 +8,9 @@
 // { ok, error? } (print/drawer) or a plain value (list/diagnostics). Printer
 // name mismatch is an explicit failure; there is NO silent default fallback.
 
-const { app, ipcMain } = require('electron');
+const { app, ipcMain, shell } = require('electron');
 const printers = require('./printers');
-const { printHtml, destroy: destroyHtmlPrinter } = require('./htmlPrinter');
+const { printHtml, renderCheck, destroy: destroyHtmlPrinter } = require('./htmlPrinter');
 const { printRawLan } = require('./rawLan');
 const { printRawWindows } = require('./rawWindows');
 
@@ -74,6 +74,20 @@ function register(getMainWebContents) {
   });
 
   ipcMain.handle('native:openDrawer', (_e, target) => routeRaw(DRAWER_PULSE, target));
+
+  // 0.1.7 diagnostics-only: run the real HTML render pipeline but save a PDF instead of
+  // printing, then open it on screen — a zero-paper discriminator for blank-bill reports
+  // (render problem vs printer-driver problem). Not used by any auto-print path.
+  ipcMain.handle('native:renderCheck', async (_e, job) => {
+    if (!job || typeof job.html !== 'string') {
+      return { ok: false, error: 'BAD_JOB' };
+    }
+    const r = await renderCheck({ html: job.html });
+    if (r && r.ok && r.path) {
+      try { shell.openPath(r.path); } catch (_) { /* viewer optional */ }
+    }
+    return r;
+  });
 
   ipcMain.handle('native:diagnostics', async () => {
     return {

@@ -56,6 +56,14 @@ document.getElementById('btnHtml').onclick = () => {
   run('printHtml()', () => window.diag.printHtml({ html: sampleHtml(), printerName, widthMm: 80, copies: 1 }));
 };
 
+// Zero-paper discriminator (with MIN blank-bill saga): runs the exact hidden-window
+// render pipeline a real bill uses, saves it as a PDF and opens it on screen.
+// PDF shows the ticket => rendering is fine, blame the driver/spool leg.
+// PDF is blank        => the hidden window still renders empty.
+document.getElementById('btnRender').onclick = () => {
+  run('renderCheck()', () => window.diag.renderCheck({ html: sampleHtml() }));
+};
+
 document.getElementById('btnLan').onclick = () => {
   const host = document.getElementById('lanHost').value.trim();
   const port = parseInt(document.getElementById('lanPort').value.trim() || '9100', 10);

@@ -1127,7 +1127,9 @@
       "Bash(rm -f /tmp/claude-1000/-var-www/fe003f71-71ee-4707-9e23-1074ae7dbb93/scratchpad/dist016.log)",
       "Bash(nohup npm run dist:win)",
       "Bash(echo \"0.1.6 build PID=$!\")",
-      "Bash(rm -f /tmp/claude-1000/-var-www/fe003f71-71ee-4707-9e23-1074ae7dbb93/scratchpad/buildW16.log)"
+      "Bash(rm -f /tmp/claude-1000/-var-www/fe003f71-71ee-4707-9e23-1074ae7dbb93/scratchpad/buildW16.log)",
+      "Bash(rm -f ~/PDF/*.pdf)",
+      "Bash(xvfb-run -a node_modules/.bin/electron test/smoke-main.js --no-sandbox)"
     ],
     "deny": [],
     "ask": []

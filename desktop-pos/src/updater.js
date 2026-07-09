@@ -22,8 +22,16 @@ function init() {
     // was ready (the download is background, so they'd quit before it finished or never restart).
     // Standard UX: when the update is downloaded, PROMPT to restart-and-install now. If they pick
     // Later, it still auto-installs on the next app quit (autoInstallOnAppQuit). No manual links.
+    // 0.1.7: electron-updater RE-EMITS 'update-downloaded' on every periodic re-check once
+    // the file is cached (every 30 min here). Without this guard the restart-modal would
+    // reappear over a live POS all day after one "Later". Prompt ONCE per version; after
+    // "Later" the update still auto-installs on the next app quit (autoInstallOnAppQuit).
+    const promptedVersions = new Set();
     autoUpdater.on('update-downloaded', (info) => {
       console.log('[updater] downloaded:', info && info.version);
+      const v = (info && info.version) || '';
+      if (v && promptedVersions.has(v)) return;
+      if (v) promptedVersions.add(v);
       try {
         const { dialog, BrowserWindow } = require('electron');
         const win = BrowserWindow.getFocusedWindow() || (BrowserWindow.getAllWindows() || [])[0] || null;
