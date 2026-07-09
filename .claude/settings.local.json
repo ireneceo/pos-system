@@ -1107,7 +1107,8 @@
       "Bash(awk 'NR>=419 && NR<=500{print NR\": \"$0}' routes/orders-payment.js)",
       "Bash(awk '/§15-5|15-5|15\\\\.5/{f=1} f' /var/www/docs/OFFLINE_MODE_DESIGN.md)",
       "Bash(RA_TOKEN=$\\(cat /tmp/claude-1000/-var-www/8a2555ab-4a3e-49b3-822c-fa116435eee9/scratchpad/ra_token.txt\\) RA_RID=38 node scripts/headless-page-sweep.js)",
-      "Bash(RA_TOKEN=__CMDSUB_OUTPUT__ node -e ' *)"
+      "Bash(RA_TOKEN=__CMDSUB_OUTPUT__ node -e ' *)",
+      "Bash(awk -F: '{n=$3; gsub\\(\"px\",\"\",n\\); if \\(n+0>=14\\) print $1\": \"$2$3}')"
     ],
     "deny": [],
     "ask": []

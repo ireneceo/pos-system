@@ -214,6 +214,14 @@ function guardPrinterSettings(incomingRaw, existingRaw, restaurantId = '?') {
     }
   }
 
+  // printFormat (2026-07-09) — top-level string ('auto'|'graphic'|'text'), the store print mode.
+  // If a stale / not-yet-loaded settings payload echoes printer_settings without this key,
+  // keep the existing value instead of dropping it (same wipe-lock pattern as the keys above).
+  if (existing.printFormat && incoming.printFormat === undefined) {
+    merged.printFormat = existing.printFormat;
+    preserved.push('printFormat');
+  }
+
   if (preserved.length > 0) {
     logAntiWipe('printer_settings', restaurantId, 'merged', `preserved ${preserved.join(', ')}`);
     return makeResult('merged', merged, `preserved ${preserved.join(', ')}`);

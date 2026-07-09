@@ -1266,7 +1266,10 @@ const PRINT_STYLES = `
 html, body { margin: 0; padding: 0; background: #fff; color: #000; }
 body {
   font-family: 'Noto Sans KR', 'Noto Sans', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
-  font-size: 12px;
+  /* 2026-07-09 (Irene): all print fonts trimmed ~1pt (ratio preserved, ≈×0.9) — the browser
+     HTML tickets read too large. Base 12→11px; every size below scaled to match. Raw ESC/POS
+     (app order ticket) is unchanged — its proportions were already right. */
+  font-size: 11px;
   line-height: 1.3;
   /* Horizontal inset 16px (~4mm) so the right-aligned price/total column clears the
      unprintable right margin of 80mm thermal printers (3-4mm, varies by model) —
@@ -1279,26 +1282,26 @@ body {
 .receipt { width: 100%; text-align: center; }
 
 /* Header */
-.store-name { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; line-height: 1.25; }
-.store-trade-name { font-size: 13px; font-weight: 500; margin-top: 2px; }
-.store-info { font-size: 11px; color: #111; margin-top: 4px; line-height: 1.45; }
+.store-name { font-size: 16px; font-weight: 700; letter-spacing: -0.3px; line-height: 1.25; }
+.store-trade-name { font-size: 12px; font-weight: 500; margin-top: 2px; }
+.store-info { font-size: 10px; color: #111; margin-top: 4px; line-height: 1.45; }
 .store-info-line { margin: 0; }
 
 /* Section banner (TAKEAWAY / PICKUP / DELIVERY / CANCELLED) */
-.banner { display: inline-block; padding: 4px 12px; margin: 6px 0; font-weight: 700; font-size: 14px; border: 2px solid #000; letter-spacing: 0.5px; }
-.banner-strong { font-size: 16px; }
+.banner { display: inline-block; padding: 4px 12px; margin: 6px 0; font-weight: 700; font-size: 13px; border: 2px solid #000; letter-spacing: 0.5px; }
+.banner-strong { font-size: 15px; }
 
 /* Dividers */
 .divider { border-top: 1px dashed #000; margin: 8px 0; }
 .divider-solid { border-top: 1px solid #000; margin: 8px 0; }
 
 /* Meta rows (Order/Table/Date/Cashier) */
-.meta { text-align: left; font-size: 12px; }
+.meta { text-align: left; font-size: 11px; }
 .meta-row { display: flex; justify-content: space-between; align-items: baseline; padding: 1px 0; }
 .meta-label { font-weight: 600; }
 
 /* Items */
-.items-header { display: flex; align-items: baseline; gap: 8px; font-weight: 700; font-size: 12px; padding: 4px 0; border-top: 1px solid #000; border-bottom: 1px solid #000; margin: 4px 0; }
+.items-header { display: flex; align-items: baseline; gap: 8px; font-weight: 700; font-size: 11px; padding: 4px 0; border-top: 1px solid #000; border-bottom: 1px solid #000; margin: 4px 0; }
 .items-header .ih-qty { width: 28px; text-align: left; }
 .items-header .ih-name { flex: 1; text-align: left; }
 .items-header .ih-price { width: 56px; text-align: right; white-space: nowrap; }
@@ -1308,33 +1311,33 @@ body {
 .item-row .ih-qty { width: 28px; text-align: left; font-weight: 600; }
 .item-name { flex: 1; font-weight: 600; word-break: break-word; }
 .item-price { width: 56px; text-align: right; white-space: nowrap; }
-.item-qty { font-size: 11px; color: #222; padding-left: 36px; margin-top: 1px; }
-.item-option { font-size: 11px; padding-left: 36px; color: #222; }
+.item-qty { font-size: 10px; color: #222; padding-left: 36px; margin-top: 1px; }
+.item-option { font-size: 10px; padding-left: 36px; color: #222; }
 .item-option::before { content: '+ '; }
 
 /* Totals */
 .totals { text-align: left; margin-top: 6px; }
 .totals .meta-row { padding: 1px 0; }
-.total-final { display: flex; justify-content: space-between; align-items: baseline; font-size: 16px; font-weight: 700; margin-top: 4px; padding-top: 4px; border-top: 1px solid #000; }
+.total-final { display: flex; justify-content: space-between; align-items: baseline; font-size: 15px; font-weight: 700; margin-top: 4px; padding-top: 4px; border-top: 1px solid #000; }
 
 /* Big numbers (table/pickup) */
-.big-number { font-size: 28px; font-weight: 700; letter-spacing: 1px; margin: 6px 0; }
-.medium-number { font-size: 20px; font-weight: 700; letter-spacing: 0.5px; margin: 4px 0; }
+.big-number { font-size: 25px; font-weight: 700; letter-spacing: 1px; margin: 6px 0; }
+.medium-number { font-size: 18px; font-weight: 700; letter-spacing: 0.5px; margin: 4px 0; }
 
 /* QR */
 .qr-container { display: flex; justify-content: center; margin: 8px 0 4px 0; }
 .qr-container img { display: block; image-rendering: pixelated; }
-.instruction { font-size: 13px; font-weight: 600; margin-top: 4px; }
+.instruction { font-size: 12px; font-weight: 600; margin-top: 4px; }
 
 /* Footer */
-.footer { margin-top: 10px; font-size: 11px; line-height: 1.45; }
-.footer-message { font-size: 12px; font-weight: 500; }
-.time-info { font-size: 10px; color: #333; margin-top: 2px; }
+.footer { margin-top: 10px; font-size: 10px; line-height: 1.45; }
+.footer-message { font-size: 11px; font-weight: 500; }
+.time-info { font-size: 9px; color: #333; margin-top: 2px; }
 
 /* Per-station header in kitchen tickets */
 /* 스테이션 헤더 = 사방 박스 (위/아래 2선이 만나 밀리거나 잘리는 문제 방지 — 안정 레이아웃) */
-.group-label { font-size: 16px; font-weight: 700; letter-spacing: 0.5px; text-align: center; padding: 6px 8px; margin: 8px 0; border: 2px solid #000; box-sizing: border-box; width: 100%; }
-.station-tag { display: inline-block; padding: 1px 6px; margin-left: 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.3px; border: 1px solid #000; vertical-align: middle; }
+.group-label { font-size: 15px; font-weight: 700; letter-spacing: 0.5px; text-align: center; padding: 6px 8px; margin: 8px 0; border: 2px solid #000; box-sizing: border-box; width: 100%; }
+.station-tag { display: inline-block; padding: 1px 6px; margin-left: 6px; font-size: 10px; font-weight: 700; letter-spacing: 0.3px; border: 1px solid #000; vertical-align: middle; }
 
 /* Multi-page (kitchen per-item) */
 @media print {
@@ -1685,14 +1688,14 @@ export function generateHTMLKitchenTicket(orderData, storeInfo) {
     // 2026-06-25 (Irene): 옵션을 별표 대신 "블랙배경 흰글씨 박스 + 15px"(제목 18px보단 작게)로 — 주방이
     // 옵션을 확 알아보게. 인쇄 방식 무변경, 콘텐츠 스타일만.
     // 2026-06-26 (Irene): 옵션 박스 사이 우측 간격 6px — 옵션 2~3개일 때 검정배경끼리 붙어 1개처럼 보이던 것 분리(개수 명확). 인쇄 방식 무변경, 간격만.
-    const _optBox = (txt) => `<div class="item-option" style="font-size:15px;font-weight:700;background:#000;color:#fff;padding:2px 7px;display:inline-block;border-radius:3px;margin:2px 6px 2px 0;">${escapeHtmlForPrint(txt)}</div>`;
+    const _optBox = (txt) => `<div class="item-option" style="font-size:14px;font-weight:700;background:#000;color:#fff;padding:2px 7px;display:inline-block;border-radius:3px;margin:2px 6px 2px 0;">${escapeHtmlForPrint(txt)}</div>`;
     const setLevelOptionsHtml = (item.options || []).map(opt =>
       _optBox(typeof opt === 'string' ? opt : (opt?.name || ''))
     ).join('');
     // Per-item special request (2026-05-31 Irene) — kitchen must see it.
     const _si = item.special_instructions || item.specialInstructions || '';
     const siHtml = (_si && String(_si).trim())
-      ? `<div class="item-option" style="font-size:14px;font-weight:700;color:#000;">** ${escapeHtmlForPrint(String(_si).trim())}</div>` : '';
+      ? `<div class="item-option" style="font-size:13px;font-weight:700;color:#000;">** ${escapeHtmlForPrint(String(_si).trim())}</div>` : '';
     if (hasSetComps) {
       // 세트: 주방은 구성품(=실제 만드는 메뉴)을 봐야 한다. 구성품을 18px 메뉴로 크게 + 옵션,
       // 세트명은 작은 라벨로(맥락만). 방식 무변경 콘텐츠/레이아웃만.
@@ -1703,11 +1706,11 @@ export function generateHTMLKitchenTicket(orderData, storeInfo) {
         const co = Array.isArray(c.options) && c.options.length
           ? _optBox(c.options.join(', ')) : '';
         // 구성품은 각자 걸린 주방을 표시(통합 티켓 전용). 부모 세트 태그 대신 구성품 자기 station.
-        return `<div class="item-name" style="font-size:18px;font-weight:700;">${_strike(`${cq} × ${cn}`, _iv)}${_stationTag(c.stationName)}</div>${co}`;
+        return `<div class="item-name" style="font-size:16px;font-weight:700;">${_strike(`${cq} × ${cn}`, _iv)}${_stationTag(c.stationName)}</div>${co}`;
       }).join('');
       return `
       <div class="item">
-        <div style="font-size:11px;font-weight:600;letter-spacing:0.3px;color:#000;">↳ ${_strike(itemName, _iv)}</div>
+        <div style="font-size:10px;font-weight:600;letter-spacing:0.3px;color:#000;">↳ ${_strike(itemName, _iv)}</div>
         ${compsHtml}
         ${setLevelOptionsHtml}
         ${siHtml}
@@ -1716,7 +1719,7 @@ export function generateHTMLKitchenTicket(orderData, storeInfo) {
     }
     return `
       <div class="item">
-        <div class="item-name" style="font-size:18px;font-weight:700;">${_strike(`${qty} × ${itemName}`, _iv)}${stationTagHtml}</div>
+        <div class="item-name" style="font-size:16px;font-weight:700;">${_strike(`${qty} × ${itemName}`, _iv)}${stationTagHtml}</div>
         ${setLevelOptionsHtml}
         ${siHtml}
       </div>
@@ -1734,7 +1737,7 @@ export function generateHTMLKitchenTicket(orderData, storeInfo) {
     const _nh = orderData.noticeHeader;
     const _nhTitle = escapeHtmlForPrint(typeof _nh === 'string' ? _nh : (_nh.title || ''));
     const _nhLines = (_nh && typeof _nh === 'object' && Array.isArray(_nh.lines)) ? _nh.lines : [];
-    const _sub = _nhLines.map(l => `<div style="font-size:13px;font-weight:600;">${escapeHtmlForPrint(String(l))}</div>`).join('');
+    const _sub = _nhLines.map(l => `<div style="font-size:12px;font-weight:600;">${escapeHtmlForPrint(String(l))}</div>`).join('');
     noticeHeaderHtml = `<div class="banner banner-strong" style="background:#000;color:#fff;border-color:#000;">${_nhTitle}</div>${_sub}`;
   }
 
@@ -1756,7 +1759,7 @@ export function generateHTMLKitchenTicket(orderData, storeInfo) {
       if (di.zoneName) lines.push(`<div>Zone: ${escapeHtmlForPrint(di.zoneName)}</div>`);
       if (di.notes) lines.push(`<div>Notes: ${escapeHtmlForPrint(di.notes)}</div>`);
       if (lines.length) {
-        bannerHtml += `<div style="margin:6px 0;padding:6px;border:1px dashed #000;text-align:left;font-size:12px;">
+        bannerHtml += `<div style="margin:6px 0;padding:6px;border:1px dashed #000;text-align:left;font-size:11px;">
           <div style="font-weight:700;">DELIVERY ADDRESS</div>${lines.join('')}
         </div>`;
       }
@@ -1805,7 +1808,7 @@ export function generateHTMLKitchenTicket(orderData, storeInfo) {
   const notesHtml = (orderData.notes && orderData.notes.trim()) ? `
     <div class="divider"></div>
     <div style="font-weight:700;text-align:left;">SPECIAL NOTES</div>
-    <div style="font-size:13px;text-align:left;">${escapeHtmlForPrint(orderData.notes)}</div>
+    <div style="font-size:12px;text-align:left;">${escapeHtmlForPrint(orderData.notes)}</div>
   ` : '';
 
   // 모든 주방 티켓 상단 station 이름 박스 (Irene 2026-06-02). station-routed 티켓은 items 가
@@ -1817,7 +1820,7 @@ export function generateHTMLKitchenTicket(orderData, storeInfo) {
     || (orderData.items || []).map(i => i && i.stationName).find(Boolean)
     || '').toString().trim());
   const stationBoxHtml = _ticketStation
-    ? `<div style="border:2px solid #000;border-radius:6px;padding:5px 0;text-align:center;font-size:17px;font-weight:800;letter-spacing:2px;margin-bottom:6px;">${escapeHtmlForPrint(_ticketStation.toUpperCase())}</div>`
+    ? `<div style="border:2px solid #000;border-radius:6px;padding:5px 0;text-align:center;font-size:16px;font-weight:800;letter-spacing:2px;margin-bottom:6px;">${escapeHtmlForPrint(_ticketStation.toUpperCase())}</div>`
     : '';
 
   return wrapPrintHTML(`Kitchen Ticket - ${orderData.orderNumber || ''}`, `
@@ -1826,7 +1829,7 @@ export function generateHTMLKitchenTicket(orderData, storeInfo) {
     ${groupLabelHtml}
     ${metaHtml}
     <div class="divider"></div>
-    <div style="font-size:14px;font-weight:700;text-align:left;margin:4px 0;">ORDER ITEMS</div>
+    <div style="font-size:13px;font-weight:700;text-align:left;margin:4px 0;">ORDER ITEMS</div>
     <div class="items">${itemsHtml}</div>${_void ? `<div class="banner banner-strong" style="background:#000;color:#fff;border-color:#000;">${escapeHtmlForPrint(orderData.cancelFooter || '>> STOP PREPARATION <<')}</div>` : ''}
     ${notesHtml}
     <div class="divider"></div>
@@ -1857,7 +1860,7 @@ function generateHTMLAdditionalItemsTicket(orderData, storeInfo) {
       ? item.set_components.map(c => {
           const cn = escapeHtmlForPrint((c && c.name) || '');
           const co = Array.isArray(c.options) && c.options.length ? `<div class="item-option" style="font-size:12px;">★ ${escapeHtmlForPrint(c.options.join(', '))}</div>` : '';
-          return cn ? `<div class="item-option" style="font-size:14px;font-weight:700;">› ${cn}</div>${co}` : '';
+          return cn ? `<div class="item-option" style="font-size:13px;font-weight:700;">› ${cn}</div>${co}` : '';
         }).join('')
       : '';
     // options = 세트 자체 옵션(A) — 구성품(B, set_components)과 별개라 둘 다 표기.
@@ -1866,7 +1869,7 @@ function generateHTMLAdditionalItemsTicket(orderData, storeInfo) {
     ).join('');
     return `
       <div class="item">
-        <div class="item-name" style="font-size:18px;font-weight:700;">${qty} × ${itemName}${stationTagHtml}</div>
+        <div class="item-name" style="font-size:16px;font-weight:700;">${qty} × ${itemName}${stationTagHtml}</div>
         ${setCompHtml}
         ${optionsHtml}
       </div>
@@ -1885,7 +1888,7 @@ function generateHTMLAdditionalItemsTicket(orderData, storeInfo) {
     || (orderData.items || []).map(i => i && i.stationName).find(Boolean)
     || '').toString().trim());
   const stationBoxHtml = _ticketStation
-    ? `<div style="border:2px solid #000;border-radius:6px;padding:5px 0;text-align:center;font-size:17px;font-weight:800;letter-spacing:2px;margin-bottom:6px;">${escapeHtmlForPrint(_ticketStation.toUpperCase())}</div>`
+    ? `<div style="border:2px solid #000;border-radius:6px;padding:5px 0;text-align:center;font-size:16px;font-weight:800;letter-spacing:2px;margin-bottom:6px;">${escapeHtmlForPrint(_ticketStation.toUpperCase())}</div>`
     : '';
 
   return wrapPrintHTML(`Additional Items - ${orderData.orderNumber || ''}`, `
@@ -1893,7 +1896,7 @@ function generateHTMLAdditionalItemsTicket(orderData, storeInfo) {
     <div class="group-label">ADDITIONAL ORDER</div>
     ${metaHtml}
     <div class="divider"></div>
-    <div style="font-size:14px;font-weight:700;text-align:left;margin:4px 0;">ADDED ITEMS</div>
+    <div style="font-size:13px;font-weight:700;text-align:left;margin:4px 0;">ADDED ITEMS</div>
     <div class="items">${itemsHtml}</div>
     <div class="divider"></div>
     <div class="footer" style="font-weight:600;">ADDED TO EXISTING ORDER</div>
@@ -1993,8 +1996,10 @@ export function printTicketHTML(htmlContent, title) {
 // render CJK glyphs or a logo/QR image, we auto-choose per ticket:
 //   • text-safe (no CJK + no logo/QR)  → RAW ESC/POS text  (bulletproof on any driver)
 //   • needs CJK glyphs or a logo/QR    → HTML pixel (image) (previous look, Korean OK)
-// This is automatic — no per-store toggle. Latin-only menus (with MIN and most MY stores)
-// print reliably everywhere; Korean menus (thefire) keep the image path unchanged.
+// This is automatic by default ('auto'). A store whose driver blanks on image jobs can set
+// the print format to 'text' in Settings (raw everywhere); an image-capable store can force
+// 'graphic'. See _getPrintFormat below. Latin-only menus (with MIN and most MY stores) print
+// reliably everywhere; Korean menus (thefire) keep the image path unchanged.
 // LAN-IP printers already use raw ESC/POS upstream and never reach these helpers.
 
 // True when the receipt would carry a logo / QR image that raw text can't reproduce.
@@ -2009,12 +2014,39 @@ function _receiptHasImage(storeInfo) {
   return !!(logo || customQr || (showMem && memQr));
 }
 
-// True when this ticket is safe to print as raw ESC/POS text = the generated content is
-// PURE ASCII (rawText already ASCII-folded accents + common symbols upstream). Any residual
-// non-ASCII (Hangul/Kana/Thai/Arabic/CJK/unmapped glyph) → HTML-pixel image path so it is
-// never printed as raw mojibake.
+// Store-level print format (2026-07-09, Irene — unified print rule + blank-receipt fix).
+// ONE setting for the whole store, resolved here so NO call site changes are needed
+// (minimal 🔒 surface — every dispatch already funnels through _ticketIsTextSafe):
+//   • 'auto'  (default) → LEGACY behaviour, byte-for-byte unchanged for every existing
+//                         store: raw ESC/POS only when pure-ASCII AND no logo/QR image.
+//   • 'graphic'         → ALWAYS HTML-pixel (logo + full design). For printers whose
+//                         driver renders images (most QZ / vendor raster drivers).
+//   • 'text'            → raw ESC/POS text whenever the content is ASCII (a logo/QR simply
+//                         drops to the plain text store-name header that generateBillContent
+//                         already emits). Fixes BLANK receipts on cheap text-only USB drivers
+//                         (Generic / Text-Only) that print image jobs as blank paper.
+//                         CJK content still falls back to HTML (raw can't render Hangul).
+// The mode is surfaced with guidance in Settings so any store self-selects — there is NO
+// per-store code or data handling. Default 'auto' = zero change for current browser/PWA/QZ
+// stores (verified by print-route-guard + check-print-guard).
+function _getPrintFormat() {
+  try {
+    const f = getPrinterSettings().printFormat;
+    if (f === 'text' || f === 'graphic' || f === 'auto') return f;
+  } catch (_) { /* non-fatal — fall through to auto */ }
+  return 'auto';
+}
+
+// True when this ticket is safe to print as raw ESC/POS text. Base rule: content is PURE
+// ASCII (rawText already ASCII-folded accents + common symbols upstream) — any residual
+// non-ASCII (Hangul/Kana/Thai/Arabic/CJK/unmapped glyph) is never printed as raw mojibake.
+// The store print-format setting then decides how ASCII/image tickets are routed.
 function _ticketIsTextSafe(escposContent, opts) {
-  return !!escposContent && !/[^\x00-\x7F]/.test(escposContent) && !(opts && opts.hasImage);
+  const asciiSafe = !!escposContent && !/[^\x00-\x7F]/.test(escposContent);
+  const fmt = _getPrintFormat();
+  if (fmt === 'graphic') return false;              // always HTML-pixel (logo/design)
+  if (fmt === 'text') return asciiSafe;             // raw whenever ASCII (image → text header)
+  return asciiSafe && !(opts && opts.hasImage);     // 'auto' (default): legacy — unchanged
 }
 
 // OS-driver (non-LAN-IP) QZ/native dispatch with auto format selection.
@@ -2665,7 +2697,7 @@ function generateHTMLMultiPageKitchenTickets(orderData, storeInfo) {
     const notesHtml = (itemIndex === 1 && orderData.notes && orderData.notes.trim()) ? `
       <div class="divider"></div>
       <div style="font-weight:700;text-align:left;">SPECIAL NOTES</div>
-      <div style="font-size:13px;text-align:left;">${escapeHtmlForPrint(orderData.notes)}</div>
+      <div style="font-size:12px;text-align:left;">${escapeHtmlForPrint(orderData.notes)}</div>
     ` : '';
     return `
       <div class="ticket-page${isLastPage ? '' : ' page-break'}">
