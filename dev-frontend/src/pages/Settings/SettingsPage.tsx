@@ -7564,6 +7564,16 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                                             testLabel="Test"
                                             size="sm"
                                           />
+                                          {/* 2026-07-09 (Irene, with MIN BAR): a station with NO printer picked is
+                                              SILENTLY SKIPPED by the kitchen router (billPrint sendToRawBTPrinter:
+                                              qztray + empty address → return false), so its tickets never print — the
+                                              exact reason BAR came out blank. Make the required action visible instead
+                                              of failing silently. Assigning a printer here writes address + method. */}
+                                          {!sp.address && (
+                                            <div style={{ marginTop: '6px', padding: '8px 10px', background: '#FEF3C7', border: '1px solid #FCD34D', borderRadius: '6px', fontSize: '12px', color: '#92400E', lineHeight: 1.45 }}>
+                                              {t('settings:printer.stations.noPrinterWarning', { defaultValue: 'No printer selected — this station will NOT print. Pick a printer above (e.g. your USB thermal) so its tickets come out.' })}
+                                            </div>
+                                          )}
                                         </div>
                                       )}
                                       {/* Web / QZ Tray path (unchanged) — method select. */}

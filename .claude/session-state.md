@@ -1,13 +1,45 @@
 # Purple POS — 개발 세션 상태
 
-<!-- AUTOSAVE-STALE-BANNER -->
-> **[AUTO-SAVE STALE] (2026-07-09 16:15, idle 1902s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
-> 변경된 작업 파일: package.json,index.html preload.js,renderer.js htmlPrinter.js,index.js updater.js,smoke-main.js
-<!-- /AUTOSAVE-STALE-BANNER -->
-
 ## 현재 작업 상태
 
-### 🔴🔴 with MIN(#10) 인쇄 문제 — 정리 + 검증 상태 (2026-07-09 저녁, Irene "오늘 그만". 다음세션 여기부터)
+### ✅🏪 with MIN(#10) 인쇄 — 앱 0.1.7 운영배포 완료 (2026-07-09 17:15). 내일 매장 1회 테스트 대기
+> **배포됨**: Backup 20260709_171254 · Smoke 9/9 · 안전게이트 fail-closed 통과. **운영 데스크탑 피드=0.1.7 확인**(sha512 일치, exe HTTP200) · 운영 프론트/백엔드 health ok. Fable **GO 판정**(전 게이트 직접 재실행: health 110/110·route-guard 34/34·print-guard 8/8·mount 50/50 크래시0·build exit0 + 적대적 diff 회귀0).
+> **회귀0 근거(Fable 실측)**: billPrint `auto` 기본값=구버전 **바이트 동일**(printFormat 미설정 기존매장 기능 무변경) · orders-crud 신규분기 전부 op_id 게이트(온라인주문 무접촉) · settingsGuard/opIdGuard additive graceful(prod에 processed_ops 없어도 크래시0) · 브라우저폴백/2.5초컷은 web&&!native 게이트(폴러/자동인쇄/앱 무영향).
+>
+> #### 🏪 내일 매장 1회 테스트 절차 (Irene, with MIN #10 — 이 순서대로)
+> 1. **앱 업데이트**: 0.1.5 앱 켜두고 수분~30분 → "지금 재시작" 뜨면 재시작(자동업데이트 실증). 안 뜨면 마지막 1회만 `purplehere.com/desktop/PurplePOS-Setup-0.1.7.exe` 수동설치 → **좌상단 배지 0.1.7 확인**.
+> 2. **스테이션 프린터 지정**: Settings→Printer→Kitchen Stations→각 스테이션(**BAR 포함**) 드롭다운에서 **POS-80 선택**(미지정 스테이션엔 노란 경고 표시됨) → 저장 → 주문→주방 티켓 나오는지.
+> 3. **빌 인쇄**: 영수증이 **디자인(백지 아님)**으로 나오는지.
+> 4. **오더티켓 디자인**: Settings→Printer→**printFormat='graphic'** 세팅 → 오더티켓이 raw텍스트 대신 디자인으로. (빌·오더티켓 같은 세션서 함께 확인 — 동일 물리 leg)
+> 5. **백지 나오면**: 재빌드 말고 **Ctrl+Shift+D → "Render check (PDF, no paper)"** → 화면 PDF에 내용있으면 드라이버문제(플랜B=printToPDF/SumatraPDF)/백지면 렌더문제. **결과를 Fable에 전달.**
+> #### 🔙 백지 시 원격 즉시복구(매장 재방문 불필요)
+> - **Settings→printFormat='auto'로 되돌리면** 오더/주방 티켓이 raw ESC/POS(현재 잘나오는 방식)로 복귀 → **인쇄 중단 없음**. 원격 설정 1회로 회복.
+> - 앱 전체 롤백: 0.1.6/0.1.5 설치본이 매장PC/release에 남아 재설치 가능.
+>
+> #### 앱 0.1.7 내용 (배포됨)
+> - htmlPrinter 숨은창 렌더수정(실크기+`paintWhenInitiallyHidden`+`showInactive`화면밖+rAF×2 대기, 커스텀 pageSize 제거) + `skipTaskbar`+`focusable:false`(유령창 방지) — **빌 백지 주범(숨은창 미렌더) 수정, 실기기 미검증**.
+> - **진단화면 "Render check (PDF, no paper)"**(`native:renderCheck` IPC) — 종이없이 렌더vs드라이버 판별 결정도구.
+> - updater 재시작프롬프트 버전당1회 + `<userData>/updater.log`(자동업데이트 증거). 0.1.2 실패근본=시작시1회체크·재확인전무→영업중 발행분 못봄(피드 인프라는 무결).
+> - **오더티켓 HTML화=제로코드**(기존 `printFormat=graphic` 레버, 🔒billPrint 무접촉). BAR=근본 `billPrint:3766` 빈주소 조용히스킵 → SettingsPage 경고배너로 표면화(순수 UI).
+> - 상세 히스토리=`docs/WITHMIN_PRINT_SAGA_2026-07-09.md`.
+> **후속(비차단)**: prod `node sync-database.js`로 processed_ops 확인(오프라인 멱등 완전활성, 없어도 무해) · i18n `settings:printer.stations.noPrinterWarning` 4언어파일 추가(현재 defaultValue폴백) · 버전상승/릴리즈노트(Irene 결정 — 이번 배포는 버전 미상승).
+
+### (이전 상태, 배포로 종료) 🟡 with MIN 앱 0.1.7 dev 검증완료 블록
+> **Irene 지시(2026-07-10): "네이티브앱 개발검증 + 인쇄문제 해결, 인쇄 주요작업은 Fable이." → Fable 세션이 주도 실행.** Opus는 보조·정리.
+> **Fable 산출물(전부 dev 검증완료, 실제파일 반영 확인):**
+> - **앱 0.1.7 빌드**(`desktop-pos/release/PurplePOS-Setup-0.1.7.exe`) + dev 피드 서빙(`dev.purplehere.com/desktop/latest.yml`=0.1.7, sha512 일치). **운영 피드=0.1.6(미반영, /배포 대기).**
+> - **빌 백지 판단**: Xvfb+실Electron으로 0.1.6 파이프라인 실행→CUPS PDF 출력물 pdftotext 검사=한글 실내용 인쇄 확인(백지아님). **렌더 파이프라인 건강 → 숨은창 접근 유지가 정답, printToPDF 전환 불필요**(드라이버 raster가 범인 확정 시에만 플랜B=SumatraPDF 동봉).
+> - **0.1.7 근거있는 수정 3건**(blind 아님): ①htmlPrinter 숨은창 `skipTaskbar`+`focusable:false`(첫인쇄후 작업표시줄 유령창 방지) ②**진단화면 "Render check (PDF, no paper)" 버튼**(실빌 동일 숨은창 파이프라인→PDF저장→자동오픈. 종이없이 "렌더실패 vs 드라이버raster실패" 판별 결정도구. `native:renderCheck` IPC) ③updater 재시작프롬프트 **버전당1회**(30분 재확인시 모달 반복 제거)+`<userData>/updater.log` 파일로그(증거확보).
+> - **자동업데이트 0.1.2 실패 근본규명**: 0.1.2 updater=시작시 1회만 체크·재확인 전무·UI 전무. 0.1.3+ 발행이 영업중이라 종일켠 POS는 못봄. **피드 인프라는 무결**(unsigned NSIS/generic provider 이슈 아님). 0.1.5+ 30분재확인+재시작프롬프트가 표준설계, 0.1.7 updater.log로 증거해소.
+> - **개발검증**: print-units 6/6 · 실Electron smoke(Xvfb) 9/9(renderCheck 2건 포함) · renderCheck PDF 한글실내용 · PRINTER_NOT_FOUND 명시실패계약 · 0.1.7 asar 내용물+app-update.yml 검증 · latest.yml sha512 일치 · **웹 🔒인쇄 보호파일 check-print-guard 8/8 무접촉**.
+> **⏳ Irene 실기기 확인(코드로 불가, 1회 방문):** ①0.1.5 앱 켜두고 자동업데이트→재시작→좌상단 배지 **0.1.7** ②앱 빌 인쇄=백지아닌 디자인(=숨은창 수정 성공) ③백지 지속시 **Ctrl+Shift+D→"Render check"** PDF에 내용있으면 드라이버raster문제(플랜B)/PDF도백지면 렌더문제 — **재빌드 왕복없이 원인확정** ④유령 작업표시줄창 없음.
+> **오더티켓 HTML화 + BAR (Irene 반론 "인쇄방식 아닌 디자인·설정 문제, 다 해" → Fable 재판단, 둘 다 완결):**
+> - **오더티켓 HTML화 = 제로 코드**(신규 스위치 아님). 기존 스토어설정 `printFormat='graphic'`이 이미 HTML경로(`billPrint _ticketIsTextSafe:2047 graphic→false→HTML`). native 강제HTML은 🔒billPrint 라우팅 절단면이라 안 넣음(정석=printFormat 레버). **단 정직: 오더티켓 HTML은 빌 백지와 동일 물리 leg(POS-80 드라이버 숨은창)를 탐 → 백지면 지금 잘나오는 raw 오더티켓이 백지로 망가짐(주방마비 회귀). 따라서 별도 미룸 불필요하되, 빌백지와 같은 1회 실기기 테스트로 동시판정**(별도 방문 X).
+> - **BAR = 완전 별개(설정+UI 갭), 지금 완결.** 근본=`billPrint:3766` qztray+빈주소→조용히 return false(스킵) + native 자동시드가 전 스테이션 address='' 심음 → 지정 전까지 스킵=BAR 백지. **수정: `SettingsPage.tsx`에 native 스테이션 미지정 경고배너**(`!sp.address` 조건부 앰버, 순수 UI, 라우팅·billPrint 무접촉). 지정위치=Settings→Printer→Kitchen Stations→BAR 드롭다운(NativePrinterSelect, 이미 존재)에서 POS-80 선택→address·method 기록.
+> - **검증**: dev build exit0·경고0 · **print-guard 8/8 무접촉**(billPrint·폴러 안전) · 코드지점 실측확정. i18n `settings:printer.stations.noPrinterWarning`=defaultValue폴백(4언어 파일 추가는 경미 후속).
+> **다음 실행:** 운영 반영은 **Irene `/배포` 후에만**(①데스크탑 0.1.7 피드: release/의 exe+blockmap+latest.yml→운영 desktop/ ②SettingsPage 경고배너=이번 dev빌드 포함, 다음 웹배포 편승). **Irene 실기기 1회 세션:** 0.1.7 설치→각 주방스테이션 드롭다운 POS-80 지정(BAR 포함)→`printFormat=graphic` 설정→**빌·오더티켓·BAR 한번에 확인**. 백지면 auto 복귀(오더티켓 raw 안전복귀) 후 플랜B(SumatraPDF). 상세=`docs/WITHMIN_PRINT_SAGA_2026-07-09.md §5.5`.
+
+### 🔴🔴 (이전) with MIN(#10) 인쇄 문제 — 정리 + 검증 상태 (2026-07-09 저녁, Irene "오늘 그만")
 > 📄 **전체 하루 히스토리(Fable 판단용, 정직 기록) = `docs/WITHMIN_PRINT_SAGA_2026-07-09.md`** — 증상·진단·시도·실패·검증상태·열린질문·Opus 실행실패까지 시간순 전부. Irene: "Fable이 제대로 판단 가능하게 공유, 그리고 검증할 것." **다음 실행은 Fable 지시로만.**
 > ⚠ **작업 방식(Irene 확정 2026-07-09)**: Opus는 **혼자 판단해 실행 금지**. **실행 지시는 Fable에게 받아 그대로만** 수행. 라이브 추측배포·왕복·미검증 "됐다" 금지. 매장별 특별처리 금지(=표준 서비스). 대체방법(브라우저) 들이밀지 말 것 — 목표는 **네이티브 앱 자동인쇄가 제대로**.
 
@@ -62,9 +94,27 @@
 - **수정파일**: `dev-frontend/src/utils/billPrint.js`(🔒), `dev-backend/utils/settingsGuard.js`, `dev-frontend/scripts/print-route-guard/{run.js,cases.js}`, `dev-frontend/src/pages/Settings/SettingsPage.tsx`, `public/locales/{en,ko,zh,ms}/settings.json`, `docs/PRINT_RULES_MATRIX.md`.
 - **남은 것(코드 아님)**: ①**Fable 게이트**(🔒 billPrint 코어 diff 적대검증 — 진행) ②**Irene 실프린터 종이확인**(with MIN 인쇄형식=텍스트 선택→빌 나옴·전 경로 동일디자인·글자 작아짐, 정확히 1장) ③`check-print-guard.js --bless`(billPrint 신규지문, 종이확인 후). print-guard 현재 2건(billPrint=이번건 / orders-crud=이전 오프라인작업). **BAR 미인쇄는 인쇄형식과 별개 = 프린터 이름 지정 필요**(텍스트모드로 빌 살린 뒤 스테이션 프린터명 지정 안내).
 
-**마지막 업데이트:** 2026-07-08 #2 (**큐 대량 구현 세션 — dev 반영·미배포, 검증 완료. 결제·리포트·구독=Fable 게이트 대기**. 데스크탑 0.1.3 + 페이지네이션 8페이지 + 매니저리포트 실집계 + 결제 자동반영 + 캐시관리 재구성 + 구독변경 배선. health 110/110·print-guard 8/8·FE빌드 exit0. 아래 ✅블록 참조.)
-**버전:** 운영=배포됨(웹 다회 + 데스크탑 0.1.2). **미배포 dev: 데스크탑 0.1.3 스테이징됨 + 아래 6건.** 버전 미상승 — Irene 결정 대기.
-**작업 상태:** 🎯🎯 큐 대부분 구현 완료(아래). 잔여=오프라인 편집(Fable 설계 선행)·비전AI B2(Irene 키)·user23(회사명)·버전/릴리즈노트(배포 결정).
+**마지막 업데이트:** 2026-07-09 (**with MIN 인쇄 데스크탑앱 0.1.7 운영배포 완료, Fable GO**. 최상단 ✅🏪 블록 참조 — 앱 빌 백지 수정+자동업데이트+오더티켓 HTML+BAR 경고배너. 내일 매장 1회 테스트 대기.)
+**버전:** 운영=배포됨(웹 + **데스크탑 0.1.7**). 버전 미상승(수정 위주 — Irene 릴리즈노트 결정 대기).
+**작업 상태:** 완료 — 운영배포+검증(Fable GO) 끝. 다음은 Irene 매장 실기기 테스트 결과 → Fable 판단.
+
+### 진행 중인 작업
+- 없음 (with MIN 0.1.7 배포 완료, 실기기 테스트는 Irene 몫)
+
+### 완료된 작업 (이번 세션 2026-07-09)
+- with MIN 데스크탑앱 **0.1.7** 운영배포: 앱 빌 백지 수정(htmlPrinter 숨은창 렌더) + 진단 Render check + 자동업데이트 근본규명·수정 + 오더티켓 HTML화(printFormat=graphic) + BAR 미지정 경고배너
+- Fable GO 판정(health 110/110·route-guard 34/34·print-guard 8/8·mount 50/50·회귀0) + /배포(Backup 20260709_171254, Smoke 9/9, prod feed 0.1.7)
+- 주문 회귀0 실증(POS API 12/12·billPrint auto 바이트동일·orders-crud op_id게이트)
+
+### 다음 확정 작업
+- **Irene 내일 매장 1회 테스트 결과 대기** → Render check/백지 결과를 **Fable가 판단**해 다음 실행 지시(printToPDF 플랜B 여부 등). Opus 단독 판단 실행 금지(2026-07-09 확정 방식 유지).
+
+### 후속 후보 (아이디어 메모, 확정 X)
+> 다음 사이클 결정은 Irene 지시 기준. /개발시작 자동 추천 대상 아님.
+- prod `node sync-database.js`로 processed_ops 확인(오프라인 멱등 완전활성, 없어도 무해)
+- i18n `settings:printer.stations.noPrinterWarning` 4언어 파일 추가(현재 defaultValue 폴백)
+- 버전 상승 + 릴리즈노트/공지(이번 배포분, Irene 결정)
+- native 스테이션 시드 기본값 '스킵'→'OS기본프린터'(다중프린터 회귀경로 있어 blind 금지, 옵션)
 
 ### ✅ 2026-07-08 #2 세션 — 큐 대량 구현 (dev·미배포, 검증완료)
 > Irene "다 해, 순서대로 완성도 있게" + 윈도우앱 재설치 문제 추가지시. 순서대로 6건 구현·검증. **결제·리포트·구독=돈경로→배포 전 Fable 게이트.**
@@ -208,7 +258,7 @@
 - **정리**: 검증 테스트주문 0(mysql FK-safe), 운영에 쌓여있던 좀비 `node -e` 33개 종료(DB연결 물던 것), 임시파일 0. 앱 정상(production-backend online, HTTP200).
 - **미결**: ①버전 상승 여부(모바일중복=사용자체감 → 릴리즈노트 대상 가능, Irene 확인) ②실물 프린터 종이확인(매장, Irene 눈) — 인쇄코드 무변경이라 회귀위험은 없음.
 
-### 진행 중인 작업 — 모바일 중복주문(2번 주문) 수정 [dev 반영·미배포]
+### ✅(배포완료 v3.67) 모바일 중복주문(2번 주문) 수정 [이력 — 진행중 아님]
 
 **구현 완료 (autosave 커밋 b6ff2545에 포함, HEAD 기준):**
 - `dev-frontend/src/utils/offlineOrderQueue.ts`: 카트-안정 멱등키(`getStableIdempotencyKey`/`cartSignature`/`clearStableIdempotencyKey`) + `fetchWithTimeout(20s)`

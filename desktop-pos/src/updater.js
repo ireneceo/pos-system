@@ -9,6 +9,23 @@
 let autoUpdater = null;
 try { autoUpdater = require('electron-updater').autoUpdater; } catch (_) { /* dep absent in dev */ }
 
+// 0.1.7: persistent updater log. The 0.1.2 "silently never updated" saga (with MIN) was
+// undebuggable because every updater event went to console.* — invisible in a packaged app.
+// Append events to <userData>/updater.log so a store machine carries its own evidence.
+// Best-effort only; logging must never break the updater. Truncates at ~256 KB.
+function ulog(msg) {
+  const line = new Date().toISOString() + ' ' + msg;
+  console.log('[updater] ' + msg);
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const { app } = require('electron');
+    const f = path.join(app.getPath('userData'), 'updater.log');
+    try { if (fs.existsSync(f) && fs.statSync(f).size > 256 * 1024) fs.truncateSync(f, 0); } catch (_) {}
+    fs.appendFileSync(f, line + '\n', 'utf8');
+  } catch (_) { /* best effort */ }
+}
+
 function init() {
   if (!autoUpdater) return;
   try {
@@ -16,8 +33,11 @@ function init() {
     if (feed) autoUpdater.setFeedURL({ provider: 'generic', url: feed });
     autoUpdater.autoDownload = true;
     autoUpdater.autoInstallOnAppQuit = true;
-    autoUpdater.on('error', (e) => console.warn('[updater] error:', e && e.message));
-    autoUpdater.on('update-available', (i) => console.log('[updater] update available:', i && i.version));
+    ulog('init v' + (function () { try { return require('electron').app.getVersion(); } catch (_) { return '?'; } })() + (feed ? ' feed=' + feed : ' feed=app-update.yml'));
+    autoUpdater.on('error', (e) => ulog('error: ' + (e && e.message)));
+    autoUpdater.on('checking-for-update', () => ulog('checking'));
+    autoUpdater.on('update-not-available', (i) => ulog('up-to-date (latest=' + ((i && i.version) || '?') + ')'));
+    autoUpdater.on('update-available', (i) => ulog('available: ' + (i && i.version)));
     // 2026-07-09 (Irene): the old silent "installs on quit" left users not knowing an update
     // was ready (the download is background, so they'd quit before it finished or never restart).
     // Standard UX: when the update is downloaded, PROMPT to restart-and-install now. If they pick
@@ -28,7 +48,7 @@ function init() {
     // "Later" the update still auto-installs on the next app quit (autoInstallOnAppQuit).
     const promptedVersions = new Set();
     autoUpdater.on('update-downloaded', (info) => {
-      console.log('[updater] downloaded:', info && info.version);
+      ulog('downloaded: ' + (info && info.version));
       const v = (info && info.version) || '';
       if (v && promptedVersions.has(v)) return;
       if (v) promptedVersions.add(v);

@@ -97,5 +97,41 @@
 3. **오더티켓/빌 디자인 통일**: 앱이 HTML로 낼 때 순서·조건(native면 항상 graphic?).
 4. printFormat/폰트축소 등 (2) 배포분이 실프린터에서 문제 없는지 검증 계획.
 
+## 5.5 Fable 개발검증 + 0.1.7 (2026-07-09 오후, Fable 직접 수행)
+
+**열린 질문 1 (숨은창 vs printToPDF) 판정: 숨은창 유지가 정답.**
+- 근거(실측): 이 서버에서 Xvfb + 실제 Electron으로 smoke-main.js 실행 → 0.1.6 htmlPrinter 파이프라인이 CUPS PDF 프린터로 **실내용(한글 포함) 인쇄 성공** — 출력 PDF를 pdftotext로 검사, 백지 아님. 렌더 파이프라인 자체는 건강함을 실출력물로 증명(단, Windows POS-80 드라이버 leg는 실기기만 증명 가능 → ⏳).
+- printToPDF로 "인쇄"하는 전환은 오히려 무거움: Windows에서 PDF를 무소음 인쇄할 표준 수단이 없음(SumatraPDF 동봉 필요). **드라이버 raster가 범인으로 확정될 때만 플랜B.**
+- 그 판정을 종이 없이 하도록 **0.1.7에 진단 Render check 추가**: 진단화면(Ctrl+Shift+D)에 "Render check (PDF, no paper)" 버튼 — 실제 빌과 동일한 숨은창 파이프라인으로 렌더 후 PDF 저장+화면에 자동 오픈. PDF에 내용 있는데 종이가 백지면 = 드라이버 raster 문제(플랜B), PDF도 비면 = 렌더 문제.
+
+**0.1.6 코드 실측에서 발견·수정한 결함 (→ 0.1.7):**
+1. `showInactive()`된 숨은창이 `skipTaskbar`/`focusable` 미설정 → 첫 인쇄 후 **Windows 작업표시줄/Alt-Tab에 유령 "Purple POS" 영구 노출**. → `skipTaskbar:true, focusable:false` 추가.
+2. 업데이트 재시작 프롬프트가 30분 재확인마다 재출현(electron-updater가 캐시 다운로드에 update-downloaded 재발화) → **버전당 1회만 프롬프트**, 이후는 종료 시 자동설치.
+3. updater 이벤트가 console에만 → 패키지 앱에서 증거 0 (0.1.2 규명 불가의 원인) → **`<userData>/updater.log` 파일 로그** 추가(체크/available/downloaded/error 전부).
+
+**자동업데이트 0.1.2 실패 근본원인 (규명 완료):**
+- 0.1.2 updater = **시작 시 1회만 체크, 재확인 없음, UI 없음** (git fe86f384 실측). 타임라인: 0.1.2 설치=7/8(피드도 0.1.2=정상 무동작) → 0.1.3+는 7/8 오후~7/9 영업 중 발행 → 종일 켜두는 POS는 **발행 시점 이후 재체크가 없어 영영 못 봄**. 재시작 타이밍이 맞아도 78MB 조용한 다운로드+종료시 설치라 사용자에겐 아무것도 안 보임. **피드/URL/sha512는 무결(실측: prod latest.yml·exe·blockmap·app-update.yml 전부 정상).**
+- 0.1.5+에서 이미 표준 설계로 수정됨(30분 재확인 + 다운로드 완료 시 "지금 재시작" 프롬프트 + 종료 시 자동설치). 0.1.5→0.1.7 자동업데이트가 성공하면 이 규명이 실증됨.
+
+**개발검증 결과**: print-units 6/6 ✓ / 실Electron smoke 9/9 ✓ (printHtml 실출력 내용검사 + renderCheck PDF 233KB 내용검사 + PRINTER_NOT_FOUND 계약) / 전 변경파일 syntax ✓ / 웹 🔒 인쇄 보호파일 무접촉(desktop-pos만 변경).
+
+## 5.6 오더티켓 HTML화 + BAR 스테이션 (Irene 반론 반영, Fable 2차)
+
+Irene: "이 둘은 디자인·실물표시 문제지 인쇄방식 문제가 아니다. 백지 뒤로 미루지 말고 다 하라." — 코드 실측으로 재판정:
+
+**오더티켓 HTML화 — 코드변경 0 (기존 표준설정으로 이미 가능), 백지와 같은 물리테스트로 동시검증.**
+- 현재: with MIN 오더티켓은 ASCII(영문) → `_ticketIsTextSafe` auto=true → **raw ESC/POS**(plain). HTML/디자인으로 내려면 `_ticketIsTextSafe`=false 경로 = `generateHTMLKitchenTicket` → `sendHTMLViaQZTray`/`printTicketHTML` → native `printHtml`(숨은창).
+- **전환 레버는 이미 존재**: 스토어 설정 `printFormat='graphic'` → 모든 티켓 HTML(디자인). billPrint 라우팅을 native전용으로 바꾸는 건 🔒보호파일 수정이라 금지 — 표준 설정이 정답 경로. **∴ 코드변경 불필요가 옳음.**
+- **회귀 시나리오(실재)**: 오더티켓 HTML은 빌 백지와 **동일한 htmlPrinter 숨은창 leg**를 탄다. POS-80 드라이버가 그 leg를 백지로 만들면(0.1.7이 고치려는 것, 실기기 미검증), `graphic`을 켜는 순간 **지금 잘 나오는 raw 주방/오더티켓이 백지**로 = 주방인쇄 마비(생명선). 그래서 leg 증명 전 blind로 켜면 안 됨.
+- **단, 별도 방문 불필요**: 그 증명 = 빌 백지와 **같은 1회 물리테스트**. 0.1.7 설치 후 `printFormat=graphic` 세팅 → 빌·오더티켓 둘 다 디자인으로 나오면 동시 해결, 백지면 auto로 되돌려(티켓 raw 안전) 플랜B. → Irene "다 하라"가 맞음. 정정: "빌 먼저 확인 후 나중"이 아니라 "같은 테스트로 함께".
+- dev검증: 라우팅 로직 재확인(graphic→false→HTML, billPrint 2044–2074), native printHtml 디자인 렌더 실증(smoke PDF 233KB, 한글+디자인 pdftotext 확인). 코드변경 없어 신규 빌드 불필요.
+
+**BAR 스테이션 — 즉시 처리(백지와 무관), SettingsPage 경고 추가.**
+- **근본원인 코드 확정**: `billPrint sendToRawBTPrinter` L3767 `if(!address) return false` — qztray 스테이션 주소 빈값이면 **조용히 스킵**. with MIN BAR는 시드(SettingsPage L1784–1790: method='qztray', address='')라 스킵 = 안 나온 정확한 이유. 빌 백지와 완전 무관(라우팅/설정 갭).
+- **고치는 걸 막는 코드갭 없음**: native 프린터 드롭다운(`NativePrinterSelect`, OS목록 자동로드)이 이미 있음 → BAR에 프린터 지정하면 address+method 기록되어 인쇄됨. 유일한 갭 = **조용한 실패(피드백 0)**.
+- **실행**: SettingsPage native 스테이션 블록에 "프린터 미지정 → 이 스테이션 인쇄 안 됨" **경고 추가**(`dev-frontend/src/pages/Settings/SettingsPage.tsx`, isNativePrint 스테이션 서브블록, ~L7567). 🔒 billPrint 무접촉. build:dev exit0/경고0, print-guard 8/8.
+- Irene 실기기: Settings→Printer→Kitchen Stations→각 스테이션(BAR 포함) 드롭다운에서 USB감열(POS-80) 선택. 단일프린터 카페면 이미 배포된 "Full 오더티켓"(전품목 1장)이 더 간단한 등가물.
+- (미실행·Irene 결정대기) native 시드 기본을 '스킵' 대신 'OS기본 프린터'로 바꾸는 라우팅 기본값 변경 — 다중프린터 native 매장 오라우팅 회귀경로 있어 blind 금지. 옵션으로만 제시.
+
 ## 6. Opus 실행 실패 (정직)
 - 미검증 앱빌드 반복 배포(pageSize 제거 밀어붙임), 브라우저 대체방법 반복 제시, printFormat=text 매장 직접세팅, 다운로드 배너로 혼란, 배포 waiter 자기매칭 버그로 지연, 버전 번갈아 올려 다운로드 혼선, "됐다" 조급. → **핵심: 라이브 추측·왕복·미검증. 분석(Fable)은 정확했으나 실행이 문제.**

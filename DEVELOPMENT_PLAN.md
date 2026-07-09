@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-07-08 (**with MIN 인쇄 백지 긴급수정 + 데스크탑앱 0.1.2 — 운영 배포, Fable PASS ×2**. 인쇄 자동 텍스트/이미지 판정(billPrint 20곳, 라우트가드 29/29·Fable D1/D2 결함수정) + 데스크탑 좀비/메뉴/아이콘 수정(0.1.2, 자동업데이트 켜짐) + 앱내 PWA버튼 숨김 + 윈도우 브라우저 네이티브앱 다운로드. 웹 3회 배포·스모크 9/9·게이트 7/7. 상세 session-state + 아래.)
+> **최종 업데이트:** 2026-07-09 (**with MIN 인쇄 데스크탑앱 0.1.7 — 운영 배포, Fable GO**. 앱 빌 백지 수정(htmlPrinter 숨은창 렌더: 실크기+paintWhenInitiallyHidden+showInactive+rAF대기, 커스텀 pageSize 제거, skipTaskbar/focusable) + 진단화면 "Render check(PDF,no paper)" 판별도구(native:renderCheck) + updater 재시작프롬프트 버전당1회+updater.log(자동업데이트 근본=시작시1회체크·재확인전무 규명) + 오더티켓 HTML화=기존 printFormat=graphic 레버(제로코드) + BAR 스테이션 미지정 경고배너(SettingsPage). 배포 Backup 20260709_171254·Smoke 9/9·prod feed 0.1.7. **Fable GO**: health 110/110·route-guard 34/34·print-guard 8/8·mount 50/50·회귀0(billPrint auto 바이트동일·orders-crud op_id게이트). **내일 매장 1회 테스트 대기**, 백지시 printFormat=auto 원격복구. 버전 미상승. 상세 session-state + 아래.)
+>
+> **이전:** 2026-07-08 (**with MIN 인쇄 백지 긴급수정 + 데스크탑앱 0.1.2 — 운영 배포, Fable PASS ×2**. 인쇄 자동 텍스트/이미지 판정(billPrint 20곳, 라우트가드 29/29·Fable D1/D2 결함수정) + 데스크탑 좀비/메뉴/아이콘 수정(0.1.2, 자동업데이트 켜짐) + 앱내 PWA버튼 숨김 + 윈도우 브라우저 네이티브앱 다운로드. 웹 3회 배포·스모크 9/9·게이트 7/7. 상세 session-state + 아래.)
 >
 > **이전:** 2026-07-06 #2 (**비전AI 음식인식 TrackA+B1 + 인스펙션 하니스 확장(둘 다 Fable PASS·dev 미배포) + 전 영역 실측·할일총정리·업무분담 확정**. 다음 세션: #8 매니저리포트 가짜매출 → #24 구독변경 → 비전AI B2(진짜AI, Irene 키) → 오프라인 편집. 상세 아래·session-state.)
 >
@@ -45,6 +47,36 @@
 > **이전:** 2026-06-23 (**v3.62 운영 배포 완료** — thefire 실사용 준비 7건: 직원 PIN 전환 수정 · 시재 개시모드(이월/고정) · 마감 폰트 통일 · 통합오더티켓 'Full' 수동인쇄 · 로그인 직원 PIN 우선 · 설정 QR 인쇄버튼 · Windows 7/8 QZ 설치 수정. Backup 20260623_124849, Smoke 9/9, SW=3.95. /검증 통과: health 107/107·print-guard 8/8(billPrint 무수정)·hydration0·timezone0·design0·i18n0·mount(floor-plan/settings/cash-up/pos) crash0.)
 >
 > **이전:** v3.61 발주 UX 대정리 + 외부공급업체 + 플로어플랜 핫픽스. SW=3.90.
+
+## ✅ 완료: with MIN 인쇄 데스크탑앱 0.1.7 (앱 빌 백지 + 자동업데이트 + 오더티켓 HTML + BAR) (2026-07-09, 운영 배포, Fable GO)
+
+> Irene "네이티브앱 개발검증 + 인쇄문제 해결, 인쇄 주요작업은 Fable이." → **Fable 세션이 주도 실행**, Opus 보조·검증·배포. 히스토리 = `docs/WITHMIN_PRINT_SAGA_2026-07-09.md`.
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 앱 빌 백지 수정 (0.1.7) | htmlPrinter 숨은창 미렌더(빈페이지 인쇄)가 주범 → 실크기+`paintWhenInitiallyHidden`+`showInactive`(화면밖)+rAF×2 대기로 실제 paint 후 인쇄, 커스텀 microns pageSize 제거(드라이버 기본용지) | ✅ 배포(실기기 미검증) |
+| 유령창 방지 | 숨은창 `skipTaskbar`+`focusable:false` — 첫 인쇄 후 작업표시줄/Alt-Tab 유령창 제거 | ✅ 완료 |
+| 진단 Render check | "Render check (PDF, no paper)" 버튼 + `native:renderCheck` IPC — 종이없이 렌더실패 vs 드라이버raster실패 판별 결정도구 | ✅ 완료 |
+| 자동업데이트 근본규명+수정 | 0.1.2 실패 근본=시작시 1회 체크·재확인 전무·UI 전무(피드 인프라는 무결). updater 재시작프롬프트 버전당1회 + `<userData>/updater.log` 증거 | ✅ 완료 |
+| 오더티켓 HTML화 | 제로 코드 — 기존 store 설정 `printFormat='graphic'` 레버가 이미 HTML경로(🔒 billPrint 무접촉). 단 빌 백지와 동일 물리 leg → 같은 1회 테스트로 판정 | ✅ 완료 |
+| BAR 스테이션 미인쇄 | 근본=`billPrint:3766` qztray+빈주소 조용히 스킵 + native 자동시드 address='' → SettingsPage 경고배너(`!sp.address` 조건부)로 표면화. 해결=드롭다운서 POS-80 지정 | ✅ 완료 |
+
+### 검증 (Fable GO)
+- health 110/110 · print-route-guard 34/34(pageerrors 0) · print-guard 8/8 무접촉 · mount sweep 50/50 크래시0(Settings printer/kitchenStations 탭 포함) · build:dev exit0 · IDOR route-guard 0 · POS 주문 API 12/12.
+- 적대적 diff 회귀0: billPrint `auto` 기본값 구버전 **바이트 동일**(printFormat 미설정 기존매장 무변경) · orders-crud 신규분기 전부 op_id 게이트(온라인주문 무접촉) · settingsGuard/opIdGuard additive graceful.
+- 배포: Backup 20260709_171254 · Smoke 9/9 · **운영 데스크탑 피드 0.1.7 확인**(sha512 일치).
+
+### 잔여 (물리만)
+- 내일 매장 1회 테스트: 0.1.7 자동업데이트→빌·오더티켓(graphic)·BAR(POS-80 지정) 인쇄, 백지시 Render check로 원인확정. **백지여도 printFormat=auto 원격복구(매장 재방문 불필요)**.
+
+### 수정된 파일
+- `desktop-pos/src/print/htmlPrinter.js`, `desktop-pos/src/print/index.js`, `desktop-pos/src/updater.js`, `desktop-pos/src/diagnostics/{index.html,renderer.js,preload.js}`, `desktop-pos/package.json`(0.1.7), `desktop-pos/test/smoke-main.js`
+- `dev-frontend/src/pages/Settings/SettingsPage.tsx` (BAR 경고배너)
+- `docs/WITHMIN_PRINT_SAGA_2026-07-09.md`
+
+---
 
 ## ✅ 완료: with MIN 인쇄 백지 긴급수정 + 데스크탑앱 0.1.2 (2026-07-08, 운영 배포, Fable PASS ×2)
 
