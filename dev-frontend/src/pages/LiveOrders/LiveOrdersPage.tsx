@@ -22,7 +22,7 @@ import {
   DataTableAmount,
   Modal as CommonModal
 } from '../../components/UI';
-import { printBillViaRawBT, printKitchenTicketViaRawBT, printCancellationTicket, printCancellationTicketsByStation } from '../../utils/billPrint';
+import { printBillViaRawBT, printKitchenTicketViaRawBT, printCancellationTicket, printCancellationTicketsByStation, getPrinterSettings, tagTicketWithStations, generateHTMLKitchenTicket, generateKitchenTicketContent, printSettlementReport, getActiveBillPrinter, getActiveWorkstationId } from '../../utils/billPrint';
 import KitchenTicketSendModal, { previewStationBuckets, KitchenTicketSendPrompt } from '../../components/Print/KitchenTicketSendModal';
 import { formatDateTime as formatDateTimeUtil } from '../../utils/timezone';
 import ConfirmModal from '../../components/ConfirmModal';
@@ -1024,7 +1024,7 @@ const LiveOrdersPage: React.FC = () => {
         change: parseFloat((selectedOrder as any).change || '0'),
         cashierName: (selectedOrder as any).cashier_name || null
       };
-      await printBillViaRawBT(orderData, storeInfo);
+      await printBillViaRawBT(orderData, storeInfo, undefined, true);
     }
   };
 
@@ -1073,52 +1073,79 @@ const LiveOrdersPage: React.FC = () => {
         change: parseFloat((orderToPrint as any).change || '0'),
         cashierName: (orderToPrint as any).cashier_name || null
       };
-      await printBillViaRawBT(orderData, storeInfo);
+      await printBillViaRawBT(orderData, storeInfo, undefined, true);
     }
+  };
+
+  // Build the kitchen-ticket orderData from a Db order — shared by the per-station kitchen
+  // ticket and the consolidated (Full) ticket so both render identically (single source).
+  const buildKitchenOrderData = (orderToPrint: DbOrder) => {
+    const orderItems = Array.isArray(orderToPrint.order_items) ? orderToPrint.order_items : [];
+    return {
+      orderNumber: orderToPrint.order_number,
+      pickupNumber: orderToPrint.order_number.split('-')[1],
+      date: new Date(orderToPrint.order_date || orderToPrint.createdAt),
+      orderType: orderToPrint.order_type,
+      orderSource: (orderToPrint as any).order_source || 'pos',
+      tableNumber: orderToPrint.table_number || null,
+      pagerNumber: orderToPrint.pager_number || null,
+      customerName: orderToPrint.customer_name || 'Walk-in Customer',
+      items: orderItems.map((item: any) => {
+        let itemOptions = item.options || [];
+        if (typeof itemOptions === 'string') { try { itemOptions = JSON.parse(itemOptions); } catch { itemOptions = []; } }
+        if (!Array.isArray(itemOptions)) itemOptions = [];
+        return {
+          menuItem: {
+            name: item.menu_item_name || item.name || (item.menuItem && item.menuItem.name) || 'Unknown Item',
+            price: parseFloat(item.price || (item.menuItem && item.menuItem.price) || '0'),
+            is_set_menu: item.is_set_menu || false, set_items: item.set_items || []
+          },
+          quantity: item.quantity || 1, options: itemOptions,
+          // 2026-06-04 (Irene): carry station + set components so the manual reprint
+          // routes to EACH kitchen station and renders set components/options exactly
+          // like the order-complete popup + auto-print (single content source).
+          kitchen_station_id: item.kitchen_station_id ?? (item.menuItem && item.menuItem.kitchen_station_id) ?? null,
+          stationName: item.stationName || item.station_name || undefined,
+          set_components: item.set_components
+        };
+      }),
+      notes: (orderToPrint as any).notes || '',
+      takeawayCharge: parseFloat((orderToPrint as any).takeaway_charge || '0')
+    };
   };
 
   const handlePrintKitchenTicket = async (order?: DbOrder) => {
     const orderToPrint = order || selectedOrder;
     if (orderToPrint) {
-      const storeInfo = getStoreInfo();
       const orderItems = Array.isArray(orderToPrint.order_items) ? orderToPrint.order_items : [];
       if (orderItems.length === 0) {
         showToast('Cannot print: Order has no items.', 'error');
         return;
       }
-      const orderData = {
-        orderNumber: orderToPrint.order_number,
-        pickupNumber: orderToPrint.order_number.split('-')[1],
-        date: new Date(orderToPrint.order_date || orderToPrint.createdAt),
-        orderType: orderToPrint.order_type,
-        orderSource: (orderToPrint as any).order_source || 'pos',
-        tableNumber: orderToPrint.table_number || null,
-        pagerNumber: orderToPrint.pager_number || null,
-        customerName: orderToPrint.customer_name || 'Walk-in Customer',
-        items: orderItems.map((item: any) => {
-          let itemOptions = item.options || [];
-          if (typeof itemOptions === 'string') { try { itemOptions = JSON.parse(itemOptions); } catch { itemOptions = []; } }
-          if (!Array.isArray(itemOptions)) itemOptions = [];
-          return {
-            menuItem: {
-              name: item.menu_item_name || item.name || (item.menuItem && item.menuItem.name) || 'Unknown Item',
-              price: parseFloat(item.price || (item.menuItem && item.menuItem.price) || '0'),
-              is_set_menu: item.is_set_menu || false, set_items: item.set_items || []
-            },
-            quantity: item.quantity || 1, options: itemOptions,
-            // 2026-06-04 (Irene): carry station + set components so the manual reprint
-            // routes to EACH kitchen station and renders set components/options exactly
-            // like the order-complete popup + auto-print (single content source).
-            kitchen_station_id: item.kitchen_station_id ?? (item.menuItem && item.menuItem.kitchen_station_id) ?? null,
-            stationName: item.stationName || item.station_name || undefined,
-            set_components: item.set_components
-          };
-        }),
-        notes: (orderToPrint as any).notes || '',
-        takeawayCharge: parseFloat((orderToPrint as any).takeaway_charge || '0')
-      };
-      await printKitchenTicketViaRawBT(orderData, storeInfo);
+      await printKitchenTicketViaRawBT(buildKitchenOrderData(orderToPrint), getStoreInfo(), undefined, true);
     }
+  };
+
+  // Full (consolidated) order ticket — the WHOLE order on one ticket to THIS POS's bill
+  // printer. Same pattern as FloorPlan TableDetailPanel.handlePrintConsolidatedTicket:
+  // 🔒 billPrint untouched — reuse the exported unified-ticket builders + printSettlementReport
+  // (bill scope, this device's active bill printer). Trigger only; routing/method unchanged.
+  const handlePrintConsolidatedTicket = async (order?: DbOrder) => {
+    const orderToPrint = order || selectedOrder;
+    if (!orderToPrint) return;
+    const orderItems = Array.isArray(orderToPrint.order_items) ? orderToPrint.order_items : [];
+    if (orderItems.length === 0) {
+      showToast('Cannot print: Order has no items.', 'error');
+      return;
+    }
+    const orderData = buildKitchenOrderData(orderToPrint);
+    const settings = getPrinterSettings();
+    const wsId = getActiveWorkstationId();
+    const ws = (settings.workstations || []).find((w: any) => w && w.id === wsId);
+    const label = String(ws?.name || getActiveBillPrinter()?.name || 'COUNTER').toUpperCase();
+    const tagged = tagTicketWithStations(orderData, label, settings);
+    const ticket = { ...tagged, groupLabel: label, printedAt: label, noStationBox: true, showItemStations: true };
+    await printSettlementReport(generateHTMLKitchenTicket(ticket, getStoreInfo()), generateKitchenTicketContent(ticket, getStoreInfo()));
   };
 
   // Delete item from order (only before payment)
@@ -1306,7 +1333,7 @@ const LiveOrdersPage: React.FC = () => {
       takeawayCharge: 0
     };
 
-    const success = await printKitchenTicketViaRawBT(orderData, storeInfo);
+    const success = await printKitchenTicketViaRawBT(orderData, storeInfo, undefined, true);
     if (success) {
       showToast(`Kitchen ticket for ${groupNum === 0 ? 'Original Order' : `+Order ${groupNum}`} printed`, 'success');
     }
@@ -1349,7 +1376,7 @@ const LiveOrdersPage: React.FC = () => {
       notes: '', takeawayCharge: 0
     };
 
-    const success = await printKitchenTicketViaRawBT(orderData, storeInfo);
+    const success = await printKitchenTicketViaRawBT(orderData, storeInfo, undefined, true);
     if (success) { showToast(`Kitchen ticket for +Order ${latestGroup} printed`, 'success'); }
   };
 
@@ -2038,6 +2065,14 @@ const LiveOrdersPage: React.FC = () => {
                         <IconButton onClick={(e) => { e.stopPropagation(); handlePrintKitchenTicket(order); }} title="Print Kitchen Ticket">
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                          </svg>
+                        </IconButton>
+                        <IconButton onClick={(e) => { e.stopPropagation(); handlePrintConsolidatedTicket(order); }} title="Print Full Order Ticket">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="4" y="3" width="16" height="18" rx="1"/>
+                            <line x1="8" y1="8" x2="16" y2="8"/>
+                            <line x1="8" y1="12" x2="16" y2="12"/>
+                            <line x1="8" y1="16" x2="13" y2="16"/>
                           </svg>
                         </IconButton>
                         {(() => {

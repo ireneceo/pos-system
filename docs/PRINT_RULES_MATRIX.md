@@ -667,3 +667,32 @@ cd /var/www/dev-backend && node tests/print-route-matrix.js
 
 ### 인쇄 주체 기기 = 프린터를 가진 기기 (전제)
 카운터 POS 기기의 QZ Tray 가 주방 station 프린터(예: `KITCHEN`/`KITCHEN 2`/`BAR`)와 빌프린터(`POS-80C`)를 **모두 인식**해야 한다. station address 는 그 기기 QZ Tray 의 실제 프린터명과 일치해야 무음 실패가 없다.
+
+---
+
+## 🔒 인쇄 형식(Print Format) — 통일 규칙 + 백지 방지 (2026-07-09, Irene 확정)
+
+> 배경: with MIN Cafe(운영 #10, 저가 USB POS-80 윈도우 드라이버)는 **이미지(HTML-pixel) 인쇄를 못 해 빌이 백지**로 나왔다. 로고가 있으면 빌이 무조건 이미지 경로로 강제(`_receiptHasImage`)되어 그 드라이버에서 백지. 반면 raw ESC/POS 텍스트는 정상. 이건 **매장 하드웨어(드라이버) 문제**이지 코드 결함이 아니다.
+>
+> **원칙: 매장별 별도 코드/데이터 처리 금지. 통일된 규칙 하나 + 설정 가이드로 어느 매장이든 스스로 맞춘다.** (우린 솔루션 = 제품이다.)
+
+### 규칙 = store 단위 `printerSettings.printFormat` (한 설정, 세 값)
+
+| 값 | 동작 | 대상 프린터 | 로고 |
+|----|------|-------------|------|
+| **`auto`** (기본) | **레거시 그대로** — 순수 ASCII + 로고/QR 없음이면 raw, 아니면 HTML-pixel(이미지). | 자동 판정 | 이미지 가능 시 로고 |
+| **`graphic`** | **항상 HTML-pixel(이미지)** — 로고·풀 디자인. | 이미지를 찍는 프린터(대부분 QZ/벤더 래스터) | 로고 유지 |
+| **`text`** | **ASCII면 항상 raw ESC/POS 텍스트** — 로고는 `generateBillContent`가 이미 찍는 **상호명 텍스트 헤더로 자동 대체**. CJK 콘텐츠는 여전히 HTML로 폴백(raw는 한글 못 찍음). | **텍스트 전용/저가 USB 드라이버**(영수증이 백지로 나오는 매장) | 텍스트 헤더 |
+
+- **단일 게이트**: 이 판정은 `billPrint.js`의 `_ticketIsTextSafe`(→ `_getPrintFormat` 읽음) 한 곳에서만 일어난다. **20+ 인쇄 호출처는 무변경** = 🔒 절단면 최소 = 회귀위험 최소.
+- **`auto`가 기본 = 기존 매장 무변경.** 브라우저/PWA/QZ 매장은 설정을 안 건드리면 오늘과 100% 동일. (print-route-guard 기존 29케이스 무회귀 = 증명.)
+- **가이드 안내**(설정 화면): "영수증이 백지로 나오면 프린터가 이미지를 못 찍는 텍스트 전용입니다 → **텍스트**를 선택하세요."
+- **wipe-lock**: 백엔드 `settingsGuard.guardPrinterSettings`가 stale payload에서 `printFormat` 유실을 방지(보존).
+
+### 글자 크기 (2026-07-09)
+- 브라우저 HTML 티켓(공유 `PRINT_STYLES` + 주방/추가/취소 인라인)의 **모든 폰트를 ~1pt(≈×0.9) 일괄 축소** — 기존 출력이 과하게 컸음. 비율 유지(각 값 비례 축소).
+- **raw ESC/POS(앱 오더티켓)는 무변경** — 비율이 이미 적정(고정폭·정수배수라 미세 축소 불가하기도 함).
+
+### 검증 (회귀 게이트)
+- `dev-frontend/scripts/print-route-guard/` **PRINT FORMAT** 그룹(34/34): `text`+로고→raw(FIX), `auto`+로고→image(백지위험 재현), `graphic`→강제 image, `text`+한글→여전히 image(CJK 안전). 기존 케이스 무회귀.
+- 🔒 `billPrint.js` 지문 변경 → Irene 실프린터 종이확인(정확히 1장·텍스트 정상) + `check-print-guard.js --bless` 후 정식화.

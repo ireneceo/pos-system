@@ -1,11 +1,61 @@
 # Purple POS — 개발 세션 상태
 
-<!-- AUTOSAVE-STALE-BANNER -->
-> **[AUTO-SAVE STALE] (2026-07-09 07:05, idle 1859s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
-> 변경된 작업 파일: settingsGuard.js,billPrint.js
-<!-- /AUTOSAVE-STALE-BANNER -->
-
 ## 현재 작업 상태
+
+### 🔴🔴 with MIN(#10) 인쇄 문제 — 정리 + 검증 상태 (2026-07-09 저녁, Irene "오늘 그만". 다음세션 여기부터)
+> 📄 **전체 하루 히스토리(Fable 판단용, 정직 기록) = `docs/WITHMIN_PRINT_SAGA_2026-07-09.md`** — 증상·진단·시도·실패·검증상태·열린질문·Opus 실행실패까지 시간순 전부. Irene: "Fable이 제대로 판단 가능하게 공유, 그리고 검증할 것." **다음 실행은 Fable 지시로만.**
+> ⚠ **작업 방식(Irene 확정 2026-07-09)**: Opus는 **혼자 판단해 실행 금지**. **실행 지시는 Fable에게 받아 그대로만** 수행. 라이브 추측배포·왕복·미검증 "됐다" 금지. 매장별 특별처리 금지(=표준 서비스). 대체방법(브라우저) 들이밀지 말 것 — 목표는 **네이티브 앱 자동인쇄가 제대로**.
+
+#### A. 문제 (증상)
+1. **앱 빌 = 흰 종이(백지)** — 종이는 나오는데 내용 없음.
+2. **앱 오더티켓 = 내용 O, 디자인 X** (raw 텍스트로 나옴).
+3. **브라우저 = 인쇄 안 됨 / 버튼 먹통 / 몇 분 지연**.
+4. **앱 자동업데이트 안 됨** — 0.1.2에 갇혀 있었음(수동설치로 겨우 0.1.5).
+5. (초기) 수동 오더티켓 **BAR 미인쇄** = 스테이션 프린터명 미지정(설정).
+
+#### B. 근본원인 (Fable 분석 — 정확)
+1. 앱 빌 백지 = `desktop-pos htmlPrinter.js`가 ⓐ드라이버에 **커스텀 용지크기(microns) 강제**(→cheap 드라이버 거부) + ⓑ**숨은 창이 영수증을 안 그린 채(빈 페이지) 인쇄**. 브라우저는 기본용지+보이는 창이라 정상.
+2. 오더티켓 raw = text-safe 판정이라 raw 경로. htmlPrinter 고쳐야 HTML(디자인)로 낼 수 있음.
+3. 브라우저 = 설정이 qztray인데 **QZ Tray 미설치** → 폴백 없어 무출력 + QZ 연결 16초 탐색×스테이션.
+4. 자동업데이트 = 0.1.2가 조용히 실패(피드·박힌URL·sha512는 정상 확인됨 → 원인 미확정).
+
+#### C. 시도 + 검증 상태 (정직: ✓검증 / ✗실패확정 / ⏳미검증)
+| 조치 | 위치 | 검증 상태 |
+|---|---|---|
+| 브라우저 대화상자 폴백 + QZ 2.5초 컷 | **운영배포** | ✓ route-guard 34/34(코드) + **Irene 실브라우저 인쇄 됨 확인** |
+| 앱 htmlPrinter 커스텀 pageSize 제거 (0.1.4/0.1.5) | feed | ✗ **실패확정** — 0.1.5 설치 후에도 빌 백지(Irene 확인). 2b만으론 부족. |
+| 앱 htmlPrinter 숨은창 `showInactive`+paint대기 (0.1.6) | feed(최신) | ⏳ **미검증** — Irene 실프린터 확인 전 종료. |
+| 앱 자동업데이트 "준비됨→재시작" 알림 (0.1.5 updater.js) | feed | ⏳ **미검증** — 0.1.2→0.1.5는 수동설치였음. 0.1.5→0.1.6 자동 여부 미확인. |
+| 버전 배지(App.tsx 좌상단 native버전) | 운영배포 | ✓ Irene 화면서 0.1.5 보임 |
+| 다운로드 버튼 버전화 / **다운로드 배너 제거** | 운영배포/cleanup진행 | ⏳ 배너제거 배포 게이트 통과 확인 중(미완) |
+
+#### D. 남은 검증 = "제대로 됐는지" 확인 방법 (실기기로만, 코드로 "됐다" 금지)
+1. **앱 빌 백지 해결?** → with MIN 앱 **0.1.6**에서 빌 인쇄 → 백지 아닌 **내용 나오면 = 숨은창 렌더수정 성공**. 여전히 백지면 → **printToPDF**(Fable 2c)로 전환. (앱 진단화면 `Ctrl+Shift+D`의 `printHtml()` 테스트로 실기기 에러 확보 가능.)
+2. **자동업데이트 제대로?** → 0.1.5 앱 켜두고 electron-updater가 0.1.6 **스스로 받아 "재시작" 알림 뜨는지**. 뜨고 눌러 0.1.6 되면 성공. 안 뜨면 → **자동업데이트 근본수정이 1순위**(다운로드 버튼 아님).
+3. **오더티켓 디자인?** → 위 1 성공 후, 앱이 오더티켓을 **HTML(디자인)**로 내게(웹: native→graphic). 순서: htmlPrinter 확인 먼저.
+4. **BAR 개별 오더티켓?** → 스테이션에 실제 프린터명 지정(설정) 또는 통합 경로.
+> 🔒 billPrint 변경분(폴백 param) bless 완료. 🔴 **미검증 blind 앱 재빌드 반복 절대 금지** — 실기기 에러/결과 받고 Fable 지시로만 고칠 것.
+
+### 🔴 2026-07-09 오후 — with MIN 인쇄 대응 (진행중·미해결, 몇시간 왕복·Irene 격앙). 다음 세션 최우선.
+> Irene가 with MIN(#10, 윈도우앱, USB POS-80, 로고영수증) 실사용서 인쇄 문제 계속 보고. **핵심 교훈: 매장별 특별처리 금지(솔루션=표준), 라이브에 추측배포 금지, Fable 체크 후 배포, 앱 자동업데이트가 사용자에게 매끄럽게(링크수동다운 금지).**
+- **확정 근본원인(Fable)**: ①앱 빌백지 = `desktop-pos htmlPrinter.js`가 드라이버에 **커스텀 용지크기(microns) 강제** → 싸구려 드라이버 백지(브라우저는 드라이버 기본용지라 정상). 07-08 "드라이버가 이미지 못찍음"은 **오진**. ②앱 오더티켓=raw텍스트라 디자인없음(HTML 아님). ③브라우저 무출력·먹통 = 설정 qztray인데 QZ미설치 → 폴백없어 무출력 + QZ 16초×스테이션 반복탐색으로 몇분지연.
+- **한 것(배포됨)**: 브라우저 대화상자 폴백 + **QZ 2.5초 빠른컷**(수동+웹만, 자동인쇄/QZ정상/타매장 무영향, route-guard 34/34, prod main.c74e0b1d.js). → **브라우저 인쇄는 2초만에 인쇄창 뜸=됨.** billPrint printBillViaRawBT/printKitchenTicketViaRawBT에 `allowBrowserFallback` 4th param(수동호출처만 true), printSettlementReport 무조건폴백.
+- **앱(desktop-pos)**: **0.1.5 빌드·feed 스테이징됨**(prod latest.yml=0.1.5, sha512일치확인) = htmlPrinter 커스텀pageSize제거(=브라우저처럼) + **updater.js "업데이트준비됨→재시작" 알림 추가**(0.1.5부터 매끄러움). **그러나 with MIN은 아직 0.1.2**(자동업데이트가 한번도 안됨=앱 오래 안켜둬 78MB 다운로드 미완+조용해서 인지불가). 앱 feed·박힌주소 다 정상 → 앱 10분켜두고 닫았다열면 0.1.5 되어야. 안되면 0.1.2 자체버그→1회재설치.
+- **버전 배지**: App.tsx에 네이티브앱 버전 좌측상단 표시(웹, 배포중) — Irene가 업데이트 됐는지 눈으로 확인용.
+- **되돌린 것**: printFormat=text를 with MIN에 직접 세팅했다가 Irene "매장별처리 하지마"로 **auto로 원복**(prod DB, 나머지설정 보존확인). text=디자인버리는 다운그레이드라 오답.
+- **표준 해법(Fable, 미완)**: 앱을 "브라우저처럼" 찍게=htmlPrinter수정(0.1.5), **실프린터 확인 필요**(pageSize제거로 백지 실제 해결되는지 or 드라이버 기본용지 안맞아 과피드→그럼 printToPDF 2c로). 확인후 앱이 오더티켓도 HTML로(웹변경, 순서: htmlPrinter확인 먼저). 브라우저 대화상자=비상용, 본선아님.
+- **미해결/다음**: ①with MIN 0.1.5로 업데이트(또는 자동업데이트 진짜 고장인지) ②0.1.5 앱 빌 실프린터 확인(백지해결? 절단길이?) ③되면 오더티켓 HTML화 ④앱 자동업데이트 신뢰성. **Irene 극도 피로 — 왕복 최소, 확인된것만 보고, 표준으로.**
+
+### ✅ 2026-07-09 인쇄 통일 규칙 + 빌 백지 수정 + LiveOrders Full버튼 (운영 배포 완료, Irene 종이확인 대기)
+> **배포됨** (Backup 20260709_081443, 게이트 7/7·health 110/110·route-guard 34/34·스모크 9/9, 번들 main.a91d41d6.js). Fable 게이트가 **D1(text 설정이 리로드시 증발) 잡아 수정**(StoreContext 미러에 printFormat 추가) + 런타임 실증(하이드레이션 후 localStorage 잔존). print-guard bless 완료(billPrint+orders-crud). LiveOrders에 Full 오더티켓 버튼 추가(TableDetailPanel printSettlementReport 재사용, 🔒무접촉). **Irene 실물확인 대기**: with MIN 앱 설정→프린터→인쇄형식=텍스트 선택→빌 종이 나옴(백지X)·전경로 동일디자인·글자 축소 확인 + BAR는 스테이션 프린터명 지정(별개). 배포 스키마드리프트 2테이블(menu_reference_photos/recognition_logs=비전AI, 게이트기능·core무영향, 활성화시 migrate-ai-serving.js).
+> Irene with MIN(#10) 네이티브앱 실사용: ①수동 오더티켓 BAR 안 나옴(Full은 됨) ②앱 빌프린트 백지 2장(디폴트/실프린터명 둘 다) ③오더티켓 앱≠브라우저 디자인 ④글자 너무 큼, 0.5~1pt 축소 ⑤"통일된 규칙+가이드, 매장별 별도처리 금지"(우린 솔루션). Fable 4라운드 원인규명 → 확정설계 → Opus 구현.
+- **근본**: with MIN USB 드라이버가 이미지(HTML-pixel) 인쇄 불가 → 로고 있는 빌이 이미지 강제(`_receiptHasImage`)→백지 / 오더티켓은 raw(text-safe)라 나오지만 앱=raw·브라우저=HTML 렌더러 달라 디자인 갈림. BAR 미인쇄(별건)=프린터 이름 미지정(설정) + 웹은 피커 네이티브전용 게이팅.
+- **통일 규칙(코드)**: store단위 `printerSettings.printFormat` = **auto(기본=레거시 무변경)/graphic(항상 이미지)/text(ASCII면 항상 raw, 로고→상호명 텍스트헤더=백지해결)**. 🔒`billPrint.js` `_ticketIsTextSafe`(→`_getPrintFormat`) **1곳만** 판정 → 20+ 호출처 무변경 = 절단면 최소·무회귀. CJK는 text모드여도 HTML 폴백(한글 안전).
+- **글자 축소**: HTML 전 경로(공유 `PRINT_STYLES` + 주방/추가/취소 인라인) 모든 폰트 ~1pt(≈×0.9) 일괄, 비율유지. raw(앱 오더티켓)는 무변경(비율 적정).
+- **설정 UI**: SettingsPage.tsx 인쇄형식 셀렉트+가이드(공용 Select/AutoSaveField, RA권한·로드게이트, additive) + i18n 4언어(`settings:printer.printFormat.*`). settingsGuard `printFormat` wipe-lock 보존.
+- **검증**: print-route-guard **34/34**(신규 PRINT FORMAT 5: text+로고→raw FIX·auto+로고→image 백지재현·graphic강제·text한글→여전히image·web / 기존 29 무회귀) · health print계약 7/7 · build:dev exit0(신규경고0, 기존 POStatus부채만) · **Settings/Printer 포함 전 페이지 mount clean** · i18n:verify 0 · 배포번들에 printFormat+16px폰트 확인. 설계문서=`docs/PRINT_RULES_MATRIX.md` 🔒 신규 섹션.
+- **수정파일**: `dev-frontend/src/utils/billPrint.js`(🔒), `dev-backend/utils/settingsGuard.js`, `dev-frontend/scripts/print-route-guard/{run.js,cases.js}`, `dev-frontend/src/pages/Settings/SettingsPage.tsx`, `public/locales/{en,ko,zh,ms}/settings.json`, `docs/PRINT_RULES_MATRIX.md`.
+- **남은 것(코드 아님)**: ①**Fable 게이트**(🔒 billPrint 코어 diff 적대검증 — 진행) ②**Irene 실프린터 종이확인**(with MIN 인쇄형식=텍스트 선택→빌 나옴·전 경로 동일디자인·글자 작아짐, 정확히 1장) ③`check-print-guard.js --bless`(billPrint 신규지문, 종이확인 후). print-guard 현재 2건(billPrint=이번건 / orders-crud=이전 오프라인작업). **BAR 미인쇄는 인쇄형식과 별개 = 프린터 이름 지정 필요**(텍스트모드로 빌 살린 뒤 스테이션 프린터명 지정 안내).
 
 **마지막 업데이트:** 2026-07-08 #2 (**큐 대량 구현 세션 — dev 반영·미배포, 검증 완료. 결제·리포트·구독=Fable 게이트 대기**. 데스크탑 0.1.3 + 페이지네이션 8페이지 + 매니저리포트 실집계 + 결제 자동반영 + 캐시관리 재구성 + 구독변경 배선. health 110/110·print-guard 8/8·FE빌드 exit0. 아래 ✅블록 참조.)
 **버전:** 운영=배포됨(웹 다회 + 데스크탑 0.1.2). **미배포 dev: 데스크탑 0.1.3 스테이징됨 + 아래 6건.** 버전 미상승 — Irene 결정 대기.

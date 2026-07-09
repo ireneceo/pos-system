@@ -1090,6 +1090,14 @@
   "operations.managerApprovalsTitle": "经理 PIN 批准",
   "operations.managerApprovalsDesc": "在敏感的柜台操作前要求授权 PIN，以预防和追踪滥用。登录账户不会更改，PIN 仅确认由谁批准。",
   "printer": {
+    "printFormat": {
+      "title": "打印格式",
+      "label": "打印格式",
+      "optionAuto": "自动（推荐）",
+      "optionGraphic": "图形",
+      "optionText": "文本",
+      "help": "自动：系统会为您的打印机自动选择最合适的格式 — 大多数情况下保持此项即可。图形：将您的标志和设计以图片方式打印（适用于可打印图片的打印机）。文本：以纯文本打印，不含标志 — 若小票打印为空白的纯文本/廉价 USB 打印机请选择此项；标志将以店名文字代替。"
+    },
     "native": {
       "printerLabel": "打印机",
       "osDefault": "此电脑的默认打印机（自动）",

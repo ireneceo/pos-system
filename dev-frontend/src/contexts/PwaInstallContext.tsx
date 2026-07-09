@@ -26,8 +26,10 @@ interface PwaInstallState {
 // URL, so bumping this on each installer release forces a fresh fetch instead
 // of serving a stale (or SPA-fallback HTML) response. The `download` attr keeps
 // the saved filename clean (query string is stripped). Bump on new installer.
-const DESKTOP_APP_VERSION = '0.1.3';
-const DESKTOP_APP_URL = `/desktop/PurplePOS-Setup.exe?v=${DESKTOP_APP_VERSION}`;
+export const DESKTOP_APP_VERSION = '0.1.6';
+// Versioned filename so the downloaded file itself shows the version (PurplePOS-Setup-0.1.5.exe)
+// — the shop can verify which version they're installing before running it. (Irene 2026-07-09)
+const DESKTOP_APP_URL = `/desktop/PurplePOS-Setup-${DESKTOP_APP_VERSION}.exe`;
 
 function detectWindowsDesktop(): boolean {
   if (typeof navigator === 'undefined' || typeof window === 'undefined') return false;

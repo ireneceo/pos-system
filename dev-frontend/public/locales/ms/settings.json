@@ -1090,6 +1090,14 @@
   "operations.managerApprovalsTitle": "Kelulusan PIN Pengurus",
   "operations.managerApprovalsDesc": "Perlukan PIN yang dibenarkan sebelum tindakan kaunter sensitif, untuk mencegah dan menjejak penyalahgunaan. Akaun log masuk tidak berubah — PIN hanya mengesahkan siapa yang meluluskan.",
   "printer": {
+    "printFormat": {
+      "title": "Format Cetakan",
+      "label": "Format cetakan",
+      "optionAuto": "Auto (disyorkan)",
+      "optionGraphic": "Grafik",
+      "optionText": "Teks",
+      "help": "Auto: sistem memilih format terbaik untuk pencetak anda — biarkan pada tetapan ini untuk kebanyakan kes. Grafik: mencetak logo dan reka bentuk anda sebagai imej (untuk pencetak yang boleh mencetak imej). Teks: mencetak sebagai teks biasa tanpa logo — pilih ini untuk pencetak USB teks sahaja / murah yang resitnya keluar kosong; logo akan digantikan dengan teks nama kedai anda."
+    },
     "native": {
       "printerLabel": "Pencetak",
       "osDefault": "Pencetak lalai PC ini (automatik)",

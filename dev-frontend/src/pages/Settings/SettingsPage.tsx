@@ -879,7 +879,12 @@ const SettingsPage: React.FC = () => {
     // (counter) printer. Toggle OFF instantly restores original routing because
     // we never mutated the kitchen routing data itself.
     emergencyMode: false,
-    emergencyEnabledAt: null as string | null
+    emergencyEnabledAt: null as string | null,
+    // 2026-07-09: Print Format — how tickets/receipts are rendered on the printer.
+    // 'auto' (default) = system auto-detects per printer; 'graphic' = logo/design as
+    // image; 'text' = plain text, logo replaced by store-name text (for text-only /
+    // cheap USB printers that print blank with graphic mode). Store-level.
+    printFormat: 'auto' as 'auto' | 'graphic' | 'text'
   });
 
   // Receipt customization state
@@ -1598,7 +1603,9 @@ const SettingsPage: React.FC = () => {
                 autoPrint: dbSettings.consolidatedOrderTicket?.autoPrint ?? false
               },
               emergencyMode: !!dbSettings.emergencyMode,
-              emergencyEnabledAt: dbSettings.emergencyEnabledAt || null
+              emergencyEnabledAt: dbSettings.emergencyEnabledAt || null,
+              // 2026-07-09: Print Format (store-level). Missing = 'auto'.
+              printFormat: dbSettings.printFormat || 'auto'
             } as any);
             // Load receipt customization settings (migrate legacy showQrCode/showPointsInfo → showMembership)
             if (dbSettings.receiptSettings) {
@@ -1622,7 +1629,9 @@ const SettingsPage: React.FC = () => {
               // 방문하면 localStorage 에서 consolidatedTicket/consolidatedStations 가 사라져
               // billPrint 가 레거시(풀오더 mirror) 폴백으로 떨어졌다. StoreContext 와 동일 구성 유지.
               ...(Array.isArray(dbSettings.workstations) ? { workstations: dbSettings.workstations } : {}),
-              ...(dbSettings.consolidatedOrderTicket ? { consolidatedOrderTicket: dbSettings.consolidatedOrderTicket } : {})
+              ...(dbSettings.consolidatedOrderTicket ? { consolidatedOrderTicket: dbSettings.consolidatedOrderTicket } : {}),
+              // 2026-07-09: printFormat mirrored so billPrint.js can read it. Missing = 'auto'.
+              printFormat: dbSettings.printFormat || 'auto'
             }));
           }
         }
@@ -2398,6 +2407,8 @@ const SettingsPage: React.FC = () => {
               consolidatedOrderTicket: (printerSettings as any).consolidatedOrderTicket || { enabled: false, method: 'qztray', address: '', autoPrint: false },
               emergencyMode: !!(printerSettings as any).emergencyMode,
               emergencyEnabledAt: (printerSettings as any).emergencyEnabledAt || null,
+              // 2026-07-09: Print Format (store-level). Missing = 'auto'.
+              printFormat: (printerSettings as any).printFormat || 'auto',
               receiptSettings: receiptSettings
             }
           })
@@ -6072,6 +6083,35 @@ const SettingsPage: React.FC = () => {
                     {t('common:retry', 'Retry')}
                   </button>
                 </div>
+              )}
+              {/* ★ Print Format — store-level. How tickets/receipts render on the
+                  printer. 'auto' works for most; 'text' rescues text-only / cheap USB
+                  printers that print blank with graphic mode. Additive setting saved
+                  through the normal printer_settings path (handleSave). */}
+              {!printerSettingsLoading && (
+                <SettingsCard style={{ marginBottom: '24px' }}>
+                  <CardTitle style={{ marginBottom: '10px' }}>
+                    {t('settings:printer.printFormat.title', 'Print Format')}
+                  </CardTitle>
+                  <FormGroup>
+                    <Label>{t('settings:printer.printFormat.label', 'Print format')}</Label>
+                    <AutoSaveField onSave={handleSave} type="select">
+                      <Select
+                        value={(printerSettings as any).printFormat || 'auto'}
+                        onChange={(e) => {
+                          const val = e.target.value as 'auto' | 'graphic' | 'text';
+                          setPrinterSettings(prev => ({ ...prev, printFormat: val } as any));
+                        }}
+                        disabled={!canEditPrinterSettings}
+                      >
+                        <option value="auto">{t('settings:printer.printFormat.optionAuto', 'Auto (recommended)')}</option>
+                        <option value="graphic">{t('settings:printer.printFormat.optionGraphic', 'Graphic')}</option>
+                        <option value="text">{t('settings:printer.printFormat.optionText', 'Text')}</option>
+                      </Select>
+                    </AutoSaveField>
+                    <HelpText>{t('settings:printer.printFormat.help', 'Auto: the system decides the best format for your printer — leave it here for most setups. Graphic: prints your logo and design as an image (for printers that can print images). Text: prints as plain text without a logo — choose this for text-only / cheap USB printers whose receipts come out blank; the logo is replaced by your store-name text.')}</HelpText>
+                  </FormGroup>
+                </SettingsCard>
               )}
               {/* ★ Offline Main POS — device-level designation (localStorage, not DB).
                   When the internet is down, only the device marked here keeps taking

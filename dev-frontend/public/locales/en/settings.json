@@ -1090,6 +1090,14 @@
   "operations.managerApprovalsTitle": "Manager PIN Approvals",
   "operations.managerApprovalsDesc": "Require an authorized PIN before sensitive counter actions, to prevent and track misuse. The login account does not change — the PIN only confirms who approved.",
   "printer": {
+    "printFormat": {
+      "title": "Print Format",
+      "label": "Print format",
+      "optionAuto": "Auto (recommended)",
+      "optionGraphic": "Graphic",
+      "optionText": "Text",
+      "help": "Auto: the system decides the best format for your printer — leave it here for most setups. Graphic: prints your logo and design as an image (for printers that can print images). Text: prints as plain text without a logo — choose this for text-only / cheap USB printers whose receipts come out blank; the logo is replaced by your store-name text."
+    },
     "native": {
       "printerLabel": "Printer",
       "osDefault": "This PC's default printer (automatic)",

@@ -322,7 +322,12 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
               // copiesAfterPayment / autoOpenDrawer from one consistent source
               // (was previously only in localStorage['receiptSettings'], which
               // led to stale reads when settings hadn't been re-saved).
-              ...(ps.receiptSettings ? { receiptSettings: ps.receiptSettings } : {})
+              ...(ps.receiptSettings ? { receiptSettings: ps.receiptSettings } : {}),
+              // Print format (auto/graphic/text) — MUST be mirrored here or every app
+              // reload/login rebuilds printerSettings without it → billPrint _getPrintFormat
+              // falls back to 'auto' → a store on 'text' silently reverts (blank receipts
+              // re-appear). Same wipe class as the 2026-06-12 workstations regression.
+              ...(ps.printFormat ? { printFormat: ps.printFormat } : {})
             }));
             // receiptSettings + 멤버십 QR을 state + localStorage에 저장
             if (ps.receiptSettings) {

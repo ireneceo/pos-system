@@ -1366,13 +1366,13 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
   const handlePrintBill = async () => {
     const orderData = buildOrderDataForPrint();
     if (!orderData || items.length === 0) return;
-    await printBillViaRawBT(orderData, getStoreInfo());
+    await printBillViaRawBT(orderData, getStoreInfo(), undefined, true);
   };
 
   const handlePrintKitchenTicket = async () => {
     const orderData = buildKitchenDataForPrint();
     if (!orderData || items.length === 0) return;
-    await printKitchenTicketViaRawBT(orderData, getStoreInfo());
+    await printKitchenTicketViaRawBT(orderData, getStoreInfo(), undefined, true);
   };
 
   const handlePrintLatestGroupTicket = async () => {
@@ -1386,7 +1386,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
     const latestGroupItems = items.filter((item: any) => (item.order_group || 0) === latestGroup);
     const orderData = buildKitchenDataForPrint(latestGroupItems, `+Order ${latestGroup}`);
     if (!orderData) return;
-    await printKitchenTicketViaRawBT(orderData, getStoreInfo());
+    await printKitchenTicketViaRawBT(orderData, getStoreInfo(), undefined, true);
   };
 
   // 통합 오더티켓 수동 인쇄 (Irene 2026-06-23) — 전체 주문 한 장을 "누른 이 포스"의 빌 프린터로.

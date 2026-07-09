@@ -12,8 +12,6 @@ const { app, BrowserWindow } = require('electron');
 const { enqueue } = require('./serialQueue');
 const printers = require('./printers');
 
-const MICRONS_PER_PX = 264.583; // 25400 microns/inch / 96 CSS px/inch
-const MICRONS_PER_MM = 1000;
 const RENDER_TIMEOUT_MS = 20000;
 
 let _win = null;
@@ -21,11 +19,22 @@ let _win = null;
 function getWindow() {
   if (_win && !_win.isDestroyed()) return _win;
   _win = new BrowserWindow({
+    // 2026-07-09 (Irene): the print window was `show:false` with no size. An offscreen/never-
+    // shown Chromium window may never PAINT its content, so webContents.print() captured a
+    // BLANK page → white paper (the print job fired fine, but the page was empty). Fix: give
+    // it a real size, force painting even while hidden, and position it far offscreen so it
+    // renders without ever being visible to the operator.
     show: false,
+    x: -32000,
+    y: -32000,
+    width: 420,
+    height: 900,
+    paintWhenInitiallyHidden: true,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
-      backgroundThrottling: false
+      backgroundThrottling: false,
+      offscreen: false
     }
   });
   return _win;
@@ -73,17 +82,30 @@ async function doPrint({ html, printerName, widthMm, copies }) {
     await wc.loadFile(tmpFile);
     await loaded;
 
-    // Measure rendered content height for roll paper (no fixed page height).
-    let heightPx = 0;
+    // Insurance: wait for any <img> (logo) to fully decode before printing. did-finish-load
+    // already waits for the window 'load' event (which includes images), but this double-
+    // guards a slow logo decode on the hidden window. Non-fatal, capped.
     try {
-      heightPx = await wc.executeJavaScript(
-        'Math.ceil(document.body.getBoundingClientRect().height)'
+      await withTimeout(
+        wc.executeJavaScript(
+          'Promise.all(Array.from(document.images).map(i => (i.decode ? i.decode().catch(()=>{}) : 0))).then(()=>true)'
+        ),
+        5000,
+        true
       );
-    } catch (_) { /* fall through to a sane default */ }
-    if (!heightPx || heightPx < 10) heightPx = 400;
+    } catch (_) { /* non-fatal */ }
 
-    const widthMicrons = Math.round((widthMm || 80) * MICRONS_PER_MM);
-    const heightMicrons = Math.round((heightPx + 16) * MICRONS_PER_PX);
+    // Force the offscreen window to actually PAINT the ticket before printing. A never-shown
+    // window can print a blank frame; showing it far offscreen (no focus, invisible) makes
+    // Chromium composite the page, and waiting two animation frames guarantees a painted frame.
+    try { if (!win.isVisible()) win.showInactive(); } catch (_) { /* non-fatal */ }
+    try {
+      await withTimeout(
+        wc.executeJavaScript('new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 120))))'),
+        3000,
+        true
+      );
+    } catch (_) { /* non-fatal */ }
 
     const printResult = await new Promise((resolve) => {
       wc.print(
@@ -91,9 +113,13 @@ async function doPrint({ html, printerName, widthMm, copies }) {
           silent: true,
           printBackground: true,
           deviceName,
-          color: false,
           margins: { marginType: 'none' },
-          pageSize: { width: widthMicrons, height: heightMicrons },
+          // NO custom pageSize. 2026-07-09 (Fable diag): a custom micron paper form (derived
+          // from a measured content height) is exactly what cheap POS-80 thermal drivers reject
+          // with BLANK paper — the very reason with MIN's app printed blank while the Chrome
+          // print dialog (same Chromium raster + same driver) rendered the full design fine.
+          // Using the driver's DEFAULT paper form = identical to that proven browser path.
+          // Ticket width is handled by the HTML itself (@page { size: 80mm auto; margin: 0 }).
           copies: Math.max(1, copies || 1)
         },
         (success, failureReason) => resolve({ success, failureReason })

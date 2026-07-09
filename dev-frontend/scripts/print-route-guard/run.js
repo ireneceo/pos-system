@@ -109,9 +109,13 @@ const norm = (a) => a.slice().sort().join(' | ');
     if (!ok) throw new Error('billPrint bundle did not expose BP dispatch fns');
 
     for (const c of CASES) {
-      const r = await page.evaluate(async ({ settings, fn, order, native }) => {
+      const r = await page.evaluate(async ({ settings, fn, order, native, receipt }) => {
         window.__setNative(native);
         localStorage.setItem('printerSettings', JSON.stringify(settings));
+        // receiptSettings (logo/QR) drives _receiptHasImage → lets a case exercise the
+        // logo→image vs print-format='text'→raw routing (2026-07-09).
+        if (receipt) localStorage.setItem('receiptSettings', JSON.stringify(receipt));
+        else localStorage.removeItem('receiptSettings');
         localStorage.removeItem('kitchenStationMenuMap');
         localStorage.removeItem('activeWorkstationId');
         window.__reset();

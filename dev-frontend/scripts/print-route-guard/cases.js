@@ -115,6 +115,30 @@ B('bill RawBT (web)', false, 'rawbt', 'POS-80C', ['rawbt:POS-80C']);
 B('bill qztray name KOREAN + drawer (native) → image', true,  'qztray', 'POS-80C', ['printHtml:POS-80C', 'openDrawer:POS-80C'], BORDER_KO);
 B('bill qztray name KOREAN + drawer (web) → image',   false, 'qztray', 'POS-80C', ['qzPixel:POS-80C', 'qzRaw(drawer):POS-80C'], BORDER_KO);
 
+// ── Store print-format modes (2026-07-09, Irene — unified rule + blank-receipt fix) ──
+// Root cause of with MIN's blank bill: a Latin receipt WITH A LOGO is forced to the HTML
+// image path in 'auto' mode → BLANK paper on cheap text-only USB drivers. The store-level
+// printFormat setting fixes it uniformly, no per-store code: 'text' routes the logo'd bill
+// to RAW ESC/POS (logo drops to the text store-name header) so it prints on any driver;
+// 'graphic' forces the image path for image-capable printers; 'auto' (default) is unchanged
+// (every other case in this file has no printFormat → proves auto = legacy = zero regression).
+const LOGO = { receiptLogo: '/uploads/products/logo.png', footerMessage: 'Thanks', showMembership: false };
+const BF = (label, native, method, address, fmt, receipt, expect, order) => CASES.push({ group: 'PRINT FORMAT', label, native,
+  settings: { printFormat: fmt, billPrinter: { enabled: true, autoPrint: true, method, name: address || '', address: address || '' },
+    kitchenPrinter: { enabled: false, autoPrint: false, method: 'qztray', address: '' }, kitchenStationPrinters: {},
+    workstations: [{ id: 'w1', name: 'Main POS', billPrinter: { enabled: true, autoPrint: true, method, name: address || '', address: address || '' } }] },
+  receipt, fn: 'printBillViaRawBT', order: order || BORDER, expect });
+
+// auto + logo (Latin) → image path = the pre-fix BLANK-risk behavior (documents the failure).
+BF('bill LOGO auto → image (blank risk on text-only)', true, 'qztray', 'POS-80C', 'auto', LOGO, ['printHtml:POS-80C', 'openDrawer:POS-80C']);
+// text + logo (Latin) → RAW (THE FIX: prints on text-only drivers, logo → text header).
+BF('bill LOGO text mode → raw (native, FIX)', true,  'qztray', 'POS-80C', 'text', LOGO, ['printRaw:os POS-80C', 'openDrawer:POS-80C']);
+BF('bill LOGO text mode → raw (web QZ, FIX)',  false, 'qztray', 'POS-80C', 'text', LOGO, ['qzRaw(drawer):POS-80C', 'qzRaw(drawer):POS-80C']);
+// graphic + no-logo Latin → forced image (image-capable printers keep the full design).
+BF('bill graphic mode Latin → forced image', true, 'qztray', 'POS-80C', 'graphic', null, ['printHtml:POS-80C', 'openDrawer:POS-80C']);
+// text + Korean → still image (CJK cannot be raw — safety fallback preserved even in text mode).
+BF('bill text mode KOREAN → still image (CJK safe)', true, 'qztray', 'POS-80C', 'text', LOGO, ['printHtml:POS-80C', 'openDrawer:POS-80C'], BORDER_KO);
+
 // Routing overrides
 CASES.push({ group: 'ROUTING override', label: 'emergency mode → kitchen routes to BILL printer (Latin=raw)', native: true,
   settings: { emergencyMode: true, billPrinter: { enabled: true, autoPrint: true, method: 'qztray', name: 'POS-80C', address: 'POS-80C' },

@@ -2104,7 +2104,7 @@ export function getPrinterSettings() {
  * @param {string} [printerName] - Optional printer name (overrides settings)
  * @returns {Promise<boolean>} Success status
  */
-export async function printBillViaRawBT(orderData, storeInfo, printerName) {
+export async function printBillViaRawBT(orderData, storeInfo, printerName, allowBrowserFallback) {
   // 현금박스는 현금결제일 때만 열린다 (Irene 2026-06-10). 폴러/POS 가 "현금결제 시 현금박스
   // 자동오픈" 설정이 켜져 있으면 마지막 영수증 copy 에 __drawerPulse 를 실어 보내는데, 여기서
   // 주문의 결제수단이 cash 일 때만 통과시킨다 → 카드/온라인/후불(counter) 결제는 박스 안 열림.
@@ -2138,7 +2138,28 @@ export async function printBillViaRawBT(orderData, storeInfo, printerName) {
       console.log('🖨️ Bill via QZ Tray (OS driver — auto text/image, silent)');
       // `drawerPulse` opt-in via orderData — caller passes drawerPulse:true on
       // the LAST receipt copy so the cash drawer opens once (no garbage page).
-      return await sendTicketAutoFormat(generateBillContent(orderData, storeInfo), generateHTMLBill(orderData, storeInfo), address, { drawerPulse: !!orderData.__drawerPulse, hasImage: _receiptHasImage(storeInfo) });
+      const __billWeb = !(typeof window !== 'undefined' && window.__NATIVE_PRINT);
+      let __qzOk = false;
+      try {
+        const __send = sendTicketAutoFormat(generateBillContent(orderData, storeInfo), generateHTMLBill(orderData, storeInfo), address, { drawerPulse: !!orderData.__drawerPulse, hasImage: _receiptHasImage(storeInfo) });
+        // Manual print on the WEB: don't sit through QZ Tray's ~16s connect hang when QZ isn't
+        // installed (see billPrint.js:369). Cap the wait at 2.5s so the browser-dialog fallback
+        // pops fast. Auto-print (no allowBrowserFallback) waits normally; native app unaffected.
+        __qzOk = (allowBrowserFallback && __billWeb)
+          ? await Promise.race([__send, new Promise(r => setTimeout(() => r(false), 2500))])
+          : await __send;
+      } catch (e) { console.warn('QZ bill print error:', e && e.message); }
+      if (__qzOk) return true;
+      // 2026-07-09 (Irene): a connected USB printer MUST print. On a PLAIN BROWSER with the
+      // method set to qztray but QZ Tray not installed/running, the QZ path returns false (or is
+      // capped above) and nothing came out. Fall back to the browser's native print dialog (the
+      // one that "normally pops") so the shop can pick the USB printer and print. Native app has
+      // its own OS print path (printHtml), so ONLY the web falls back here.
+      if (allowBrowserFallback && __billWeb) {
+        console.log('🖨️ QZ unavailable/slow → browser print dialog fallback (Bill)');
+        return printTicketHTML(generateHTMLBill(orderData, storeInfo), 'Bill');
+      }
+      return __qzOk;
     }
 
     // Browser method: browser dialog (web) or silent OS-default (native app), auto text/image.
@@ -2688,7 +2709,7 @@ function generateHTMLMultiPageKitchenTickets(orderData, storeInfo) {
       : '';
     const _pageStation = (item.stationName || orderData.stationName || '').toString().trim();
     const stationBoxHtml = _pageStation
-      ? `<div style="border:2px solid #000;border-radius:6px;padding:5px 0;text-align:center;font-size:17px;font-weight:800;letter-spacing:2px;margin-bottom:6px;">${escapeHtmlForPrint(_pageStation.toUpperCase())}</div>`
+      ? `<div style="border:2px solid #000;border-radius:6px;padding:5px 0;text-align:center;font-size:16px;font-weight:800;letter-spacing:2px;margin-bottom:6px;">${escapeHtmlForPrint(_pageStation.toUpperCase())}</div>`
       : '';
     const optionsHtml = (item.options || []).map(opt =>
       `<div class="item-option" style="font-size:13px;font-weight:600;">★ ${escapeHtmlForPrint(typeof opt === 'string' ? opt : (opt?.name || ''))}</div>`
@@ -2706,7 +2727,7 @@ function generateHTMLMultiPageKitchenTickets(orderData, storeInfo) {
         <div class="divider"></div>
         <div class="group-label">ITEM ${itemIndex} of ${totalItems}</div>
         <div class="item">
-          <div class="item-name" style="font-size:20px;font-weight:700;">${qty} × ${itemName}${stationTagHtml}</div>
+          <div class="item-name" style="font-size:18px;font-weight:700;">${qty} × ${itemName}${stationTagHtml}</div>
           ${optionsHtml}
         </div>
         ${notesHtml}
@@ -2728,7 +2749,7 @@ function generateHTMLMultiPageKitchenTickets(orderData, storeInfo) {
  * @param {string} [printerName] - Optional printer name (overrides settings)
  * @returns {Promise<boolean>} Success status
  */
-export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerName) {
+export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerName, allowBrowserFallback) {
   try {
     const settings = getPrinterSettings();
     console.log(`🖨️ printKitchenTicketViaRawBT: ${(orderData.items || []).length} items, printerMode=${getPrinterMode()}`);
@@ -2791,8 +2812,28 @@ export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerNa
     const stationPrinters = settings.kitchenStationPrinters;
     const hasStationPrinters = stationPrinters && Object.keys(stationPrinters).length > 0;
     if (hasStationPrinters && !printerName) {
+      const __kWeb = !(typeof window !== 'undefined' && window.__NATIVE_PRINT);
+      // 2026-07-09 (Irene): plain browser + qztray-method but QZ Tray not installed → each station
+      // would loop through QZ's ~16s connect hang (2 stations ≈ 32s) before printing nothing.
+      // On a MANUAL print, probe QZ ONCE (capped at 2.5s); if it isn't there, skip the station
+      // loop entirely and print the WHOLE order on one ticket via the browser dialog (station tags
+      // inline). A working QZ store connects fast → proceeds normally. Auto-print + native never here.
+      if (allowBrowserFallback && __kWeb && !isQZTrayConnected()) {
+        const __ready = await Promise.race([
+          connectQZTray().catch(() => false),
+          new Promise(r => setTimeout(() => r(false), 2500))
+        ]);
+        if (!__ready) {
+          console.log('🖨️ QZ unavailable/slow → browser print dialog fallback (Kitchen, all stations on one ticket)');
+          return printTicketHTML(generateHTMLKitchenTicket({ ...orderData, showItemStations: true, noStationBox: true }, storeInfo), 'Kitchen Ticket');
+        }
+      }
       const _stRes = await printKitchenTicketsByStation(orderData, storeInfo, settings);
       sendUnifiedTickets(orderData, storeInfo, settings, { voided: false }); // 스테이션 다 나간 뒤 통합(BAR 안 막힘)
+      if (allowBrowserFallback && __kWeb && !isQZTrayConnected()) {
+        console.log('🖨️ QZ unavailable → browser print dialog fallback (Kitchen, all stations on one ticket)');
+        return printTicketHTML(generateHTMLKitchenTicket({ ...orderData, showItemStations: true, noStationBox: true }, storeInfo), 'Kitchen Ticket');
+      }
       return _stRes;
     }
     sendUnifiedTickets(orderData, storeInfo, settings, { voided: false }); // 비-스테이션(레거시 단일 프린터)
@@ -2829,7 +2870,17 @@ export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerNa
         return await sendViaQZTray(generateKitchenTicketContent(orderData, storeInfo), address);
       }
       console.log('🖨️ Kitchen via QZ Tray (OS driver — auto text/image)');
-      return await sendTicketAutoFormat(generateKitchenTicketContent(orderData, storeInfo), generateHTMLKitchenTicket(orderData, storeInfo), address);
+      const __kWebS = !(typeof window !== 'undefined' && window.__NATIVE_PRINT);
+      const __kSend = sendTicketAutoFormat(generateKitchenTicketContent(orderData, storeInfo), generateHTMLKitchenTicket(orderData, storeInfo), address);
+      const __kOk = (allowBrowserFallback && __kWebS)
+        ? await Promise.race([__kSend, new Promise(r => setTimeout(() => r(false), 2500))])
+        : await __kSend;
+      if (__kOk) return true;
+      if (allowBrowserFallback && __kWebS) {
+        console.log('🖨️ QZ unavailable/slow → browser print dialog fallback (Kitchen)');
+        return printTicketHTML(generateHTMLKitchenTicket(orderData, storeInfo), 'Kitchen Ticket');
+      }
+      return __kOk;
     }
 
     // Use provided printerName or get from settings
@@ -3622,7 +3673,21 @@ export async function printSettlementReport(htmlContent, escposContent) {
         if (isLanIP && escposContent) {
           return await sendViaQZTray(escposContent, address);
         }
-        return await sendTicketAutoFormat(escposContent, htmlContent, address);
+        const __sWeb = !(typeof window !== 'undefined' && window.__NATIVE_PRINT);
+        const __sSend = sendTicketAutoFormat(escposContent, htmlContent, address);
+        // Always manual (Full button / Z-report). On the web, cap the QZ wait at 2.5s so the
+        // dialog fallback pops fast instead of hanging ~16s when QZ Tray isn't installed.
+        const __sOk = __sWeb
+          ? await Promise.race([__sSend, new Promise(r => setTimeout(() => r(false), 2500))])
+          : await __sSend;
+        if (__sOk) return true;
+        // 2026-07-09 (Irene): QZ unavailable on a plain browser → browser print dialog so the
+        // full/settlement ticket still prints to the connected USB printer. Native app keeps OS path.
+        if (__sWeb) {
+          console.log('🖨️ QZ unavailable/slow → browser print dialog fallback (Full/Settlement)');
+          return printHTMLContent(htmlContent, 'Full Order');
+        }
+        return __sOk;
       }
       // Fallback to browser print if no address
       return printHTMLContent(htmlContent, 'Daily Settlement');
@@ -4291,7 +4356,7 @@ function generateHTMLCancellationTicket(orderData, storeInfo, reason) {
   if (reason) metaRows.push(`<div class="meta-row"><span class="meta-label">Reason</span><span>${escapeHtmlForPrint(String(reason))}</span></div>`);
 
   return wrapPrintHTML(`Cancelled - ${orderNumber}`, `
-    ${orderData.stationLabel ? `<div style="border:2px solid #000;border-radius:6px;padding:5px 0;text-align:center;font-size:17px;font-weight:800;letter-spacing:2px;margin-bottom:6px;">${escapeHtmlForPrint(String(orderData.stationLabel).toUpperCase())}</div>` : ''}
+    ${orderData.stationLabel ? `<div style="border:2px solid #000;border-radius:6px;padding:5px 0;text-align:center;font-size:16px;font-weight:800;letter-spacing:2px;margin-bottom:6px;">${escapeHtmlForPrint(String(orderData.stationLabel).toUpperCase())}</div>` : ''}
     <div class="banner banner-strong" style="background:#000;color:#fff;border-color:#000;">${escapeHtmlForPrint(orderData.cancelTitle || '*** CANCELLED ***')}</div>
     <div class="medium-number">Order #${escapeHtmlForPrint(orderNumber)}</div>
     ${metaRows.length ? `<div class="meta">${metaRows.join('')}</div>` : ''}
