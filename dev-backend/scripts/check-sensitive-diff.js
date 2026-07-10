@@ -64,7 +64,8 @@ function gitChanges() {
   try {
     const out = execSync('git status --porcelain', { cwd: ROOT, encoding: 'utf8', timeout: 20000 });
     return out.split('\n').filter(Boolean).map((l) => l.slice(3).trim()).filter(Boolean)
-      .map((f) => (f.includes(' -> ') ? f.split(' -> ')[1] : f));
+      .map((f) => (f.includes(' -> ') ? f.split(' -> ')[1] : f))
+      .map((f) => (f.startsWith('"') && f.endsWith('"') ? f.slice(1, -1) : f)); // git 이 비ASCII 경로를 따옴표로 감싸는 경우
   } catch { return []; }
 }
 

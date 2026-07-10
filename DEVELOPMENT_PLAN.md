@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-07-09 (**with MIN 인쇄 데스크탑앱 0.1.7 — 운영 배포, Fable GO**. 앱 빌 백지 수정(htmlPrinter 숨은창 렌더: 실크기+paintWhenInitiallyHidden+showInactive+rAF대기, 커스텀 pageSize 제거, skipTaskbar/focusable) + 진단화면 "Render check(PDF,no paper)" 판별도구(native:renderCheck) + updater 재시작프롬프트 버전당1회+updater.log(자동업데이트 근본=시작시1회체크·재확인전무 규명) + 오더티켓 HTML화=기존 printFormat=graphic 레버(제로코드) + BAR 스테이션 미지정 경고배너(SettingsPage). 배포 Backup 20260709_171254·Smoke 9/9·prod feed 0.1.7. **Fable GO**: health 110/110·route-guard 34/34·print-guard 8/8·mount 50/50·회귀0(billPrint auto 바이트동일·orders-crud op_id게이트). **내일 매장 1회 테스트 대기**, 백지시 printFormat=auto 원격복구. 버전 미상승. 상세 session-state + 아래.)
+> **최종 업데이트:** 2026-07-10 (**모델 독립 안전개발 기반 구축 — dev 전용·미배포, Fable 구축·Opus 실측검증**. 강한 모델의 기억·판단 의존을 구조·자동화로 대체: verify-all 단일 러너(기계 게이트 12종 1명령, fail-closed) + check-sensitive-diff(Fable 게이트 5기준 경로패턴 기계판정, `--gate` fail-closed) + deploy-manifest(배포 소스 지문 앵커) + safety-guard 훅 규칙확장(보호파일/baseline/bless/skip-safety 편집시점 ask) + 배포 게이트 7→9(타임존·hydration) + post-build 실브라우저 mount sweep fail-closed + **마이그레이션 레지스트리화**(하드코딩 41목록→migrations.registry.json 단일소스, 미등록 마이그=스키마드리프트 fail-closed 차단) + roles-sweep mount 2→5역할 + E2E 뼈대(demo-guard rid=38 안전레일·시나리오 a flaky0) + AGENT_ONBOARDING.md 온보딩 입구. **검증**: verify-all 12/12·print-guard 8/8 무접촉·마이그 집합 41==41 독립대조(누락0)·훅/게이트 fail-closed 실증. 인쇄/KDS/돈 런타임 무접촉. 상세 session-state + 아래.)
+>
+> **이전:** 2026-07-09 (**with MIN 인쇄 데스크탑앱 0.1.7 — 운영 배포, Fable GO**. 앱 빌 백지 수정(htmlPrinter 숨은창 렌더: 실크기+paintWhenInitiallyHidden+showInactive+rAF대기, 커스텀 pageSize 제거, skipTaskbar/focusable) + 진단화면 "Render check(PDF,no paper)" 판별도구(native:renderCheck) + updater 재시작프롬프트 버전당1회+updater.log(자동업데이트 근본=시작시1회체크·재확인전무 규명) + 오더티켓 HTML화=기존 printFormat=graphic 레버(제로코드) + BAR 스테이션 미지정 경고배너(SettingsPage). 배포 Backup 20260709_171254·Smoke 9/9·prod feed 0.1.7. **Fable GO**: health 110/110·route-guard 34/34·print-guard 8/8·mount 50/50·회귀0(billPrint auto 바이트동일·orders-crud op_id게이트). **내일 매장 1회 테스트 대기**, 백지시 printFormat=auto 원격복구. 버전 미상승. 상세 session-state + 아래.)
 >
 > **이전:** 2026-07-08 (**with MIN 인쇄 백지 긴급수정 + 데스크탑앱 0.1.2 — 운영 배포, Fable PASS ×2**. 인쇄 자동 텍스트/이미지 판정(billPrint 20곳, 라우트가드 29/29·Fable D1/D2 결함수정) + 데스크탑 좀비/메뉴/아이콘 수정(0.1.2, 자동업데이트 켜짐) + 앱내 PWA버튼 숨김 + 윈도우 브라우저 네이티브앱 다운로드. 웹 3회 배포·스모크 9/9·게이트 7/7. 상세 session-state + 아래.)
 >
@@ -47,6 +49,40 @@
 > **이전:** 2026-06-23 (**v3.62 운영 배포 완료** — thefire 실사용 준비 7건: 직원 PIN 전환 수정 · 시재 개시모드(이월/고정) · 마감 폰트 통일 · 통합오더티켓 'Full' 수동인쇄 · 로그인 직원 PIN 우선 · 설정 QR 인쇄버튼 · Windows 7/8 QZ 설치 수정. Backup 20260623_124849, Smoke 9/9, SW=3.95. /검증 통과: health 107/107·print-guard 8/8(billPrint 무수정)·hydration0·timezone0·design0·i18n0·mount(floor-plan/settings/cash-up/pos) crash0.)
 >
 > **이전:** v3.61 발주 UX 대정리 + 외부공급업체 + 플로어플랜 핫픽스. SW=3.90.
+
+## ✅ 완료: 모델 독립 안전개발 기반 구축 (2026-07-10, dev 전용·미배포, Fable 구축·Opus 검증)
+
+> Irene "Fable에게 — 너(Opus)가 없어도 개발 문제없게 잘 확장해 나갈 수 있도록 안정적인 구조·아키텍처·필요한 스킬들 탁월하게 보완해 달라." → **Fable 세션이 진단→설계→구현**, Opus 실측 검증·조율. 목표 = 특정 모델 판단력에 의존하지 않는 model-agnostic 안전 개발 확장. 온보딩 입구 = `docs/AGENT_ONBOARDING.md`. 단일진실 메모리 = [[reference_model_independent_safety_scaffolding]].
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| verify-all 단일 러너 | `dev-backend/scripts/verify-all.js` — 기계 게이트 12종을 1명령으로(표준/`--full` mount/`--quick`/`--only`, fail-closed). 개별 스크립트 암기 불필요. /검증 0단계·배포 게이트가 호출 | ✅ |
+| check-sensitive-diff (Fable 게이트 기계판정) | CLAUDE.md Fable 5기준(🔒인쇄8/💰돈/🗄️마이그/🔐보안+⚠안전망)을 경로패턴 자동분류→"Fable 대상" 판정. `--gate` fail-closed. 앵커=deploy-manifest 배포 스냅샷+git 합집합 | ✅ |
+| deploy-manifest 배포 앵커 | 배포 성공 시 소스 1758파일 sha256 스냅샷(`.claude/deploy-manifest.json`) — "운영 대비 뭐가 바뀌었나"의 단일 진실(rsync 배포라 git으로 알 수 없던 것) | ✅ |
+| safety-guard 훅 규칙확장 | 기존 활성 훅에 인쇄8/KDS 보호파일·가드 baseline 편집·bless·skip-safety를 편집 **시점** ask 추가(배포 게이트는 사후 감지) | ✅ |
+| 배포 게이트 7→9 + mount sweep | deploy-to-production.sh: 타임존·hydration 게이트 + 빌드 직후 실브라우저 mount sweep을 fail-closed 게이트로 승격(build 통과≠runtime 안전, v3.37 TDZ 교훈) | ✅ |
+| **마이그레이션 레지스트리화** | 하드코딩 41목록 → `migrations.registry.json` 단일소스(deploy 41+manual 23 이유명시) + `check-migration-registry.js`(미분류/유령 fail-closed) + deploy 스크립트 레지스트리 소비. **미등록 마이그=스키마드리프트 구조적 차단** | ✅ |
+| roles-sweep verify-all 편입 | mount 커버 2역할(RA·BG)→5역할(+FG·Owner·Supplier, demo-login 토큰 자동조달). admin/manager는 demo계정 부재로 graceful skip(문서화 갭) | ✅ |
+| E2E 뼈대 | `dev-frontend/e2e/` — playwright.config + **demo-guard.js**(rid=38 강제+운영도메인 throw 안전레일) + auth-roles(시나리오 a, 3회 5/5 flaky0) + mobile-order(b 스텁). opt-in(배포 게이트 아님) | ✅ |
+| 온보딩 문서 | `docs/AGENT_ONBOARDING.md`(절대경계·verify-all·아키텍처 지도·과거사고 함정·"피드백1건=불변식1개" 확장 위치표) + CLAUDE.md/스킬/session-state 배선 | ✅ |
+
+### 검증 (전부 실제 실행)
+- **verify-all 표준 12/12 통과** · print-guard 8/8 무접촉(인쇄8·KDS 무변경) · deploy `bash -n` OK
+- **마이그 레지스트리 독립대조**: 구 하드코딩 41 == 레지스트리 41 **집합 완전 일치**(누락0·추가0, 차이 7개는 비-마이그 게이트/싱크 스크립트로 여전히 호출됨) + fail-closed 실증(미분류 마이그 주입→exit1→복원 exit0)
+- **fail-closed 실증**: check-sensitive-diff 돈경로 결함주입→gate exit1+"② 💰 Fable 대상"→복원clean / safety-guard 훅 보호파일→ask·PlanQ/build→deny·일반→통과
+- E2E demo-guard 운영도메인 throw + rid=38 강제 확인 · 5역할 mount 466s exit0
+
+### 수정/신규 파일
+- 신규: `dev-backend/scripts/{verify-all.js,check-sensitive-diff.js,deploy-manifest.js,check-migration-registry.js,migrations.registry.json}` · `dev-frontend/e2e/{playwright.config.js,auth-roles.spec.js,mobile-order.spec.js,fixtures/demo-guard.js}` · `dev-frontend/scripts/run-e2e.js` · `docs/AGENT_ONBOARDING.md`
+- 수정: `deploy-to-production.sh`(게이트 7→9+4b 마이그레지스트리+mount sweep+스냅샷) · `.claude/hooks/safety-guard.sh`(규칙확장) · `CLAUDE.md`(verify-all 0단계·Fable 게이트 기계판정·수치 de-hardcode) · `.claude/commands/{개발시작,개발완료,검증,배포}.md` · 메모리 신규 [[reference_model_independent_safety_scaffolding]]
+
+### 잔여 (증분성 — Irene 지시 대기)
+- E2E 시나리오 b~f 구현 · timezone(242)·design(310) baseline 부채 점진 소거 · admin/manager mount 커버(demo계정 부재 갭) · 다음 `/배포` 후 deploy-manifest 스냅샷 자동생성 확인(델타 앵커 활성화)
+- **미배포** — 운영 반영은 Irene `/배포` 때. deploy 스크립트·safety-guard 훅(안전망 파일) 변경 포함 → 배포 전 Irene 리뷰 권장
+
+---
 
 ## ✅ 완료: with MIN 인쇄 데스크탑앱 0.1.7 (앱 빌 백지 + 자동업데이트 + 오더티켓 HTML + BAR) (2026-07-09, 운영 배포, Fable GO)
 

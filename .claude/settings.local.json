@@ -1137,7 +1137,20 @@
       "Bash(node_modules/.bin/asar list *)",
       "Bash(echo \"TZ_EXIT:$?\")",
       "Bash(echo \"HYD_EXIT:$?\")",
-      "Bash(echo \"EXIT_A:$?\")"
+      "Bash(echo \"EXIT_A:$?\")",
+      "Bash(echo \"INJECT_EXIT:$?\")",
+      "Bash(echo \"RESTORED_EXIT:$?\")",
+      "Bash(node scripts/verify-all.js --only design-guard)",
+      "Bash(rm /var/www/dev-frontend/src/__guard_selftest_tmp.tsx)",
+      "Bash(echo \"MOUNT_EXIT:$?\")",
+      "Bash(echo \"GATE_EXIT:$?\")",
+      "Bash(echo \"RESTORED_GATE_EXIT:$?\")",
+      "Bash(node scripts/verify-all.js --quick)",
+      "Bash(echo \"FINAL_QUICK_EXIT:$?\")",
+      "Bash(echo \"gate exit=$?\")",
+      "Bash(echo \"UNCLASSIFIED_INJECT_EXIT:$? \\(기대 1\\)\")",
+      "Bash(echo \"LIST_DEPLOY_ON_FAIL_EXIT:$? \\(기대 1 — 빈목록 방지\\)\")",
+      "Bash(echo \"RESTORED_EXIT:$? \\(기대 0\\)\")"
     ],
     "deny": [],
     "ask": []

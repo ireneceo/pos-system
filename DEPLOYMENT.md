@@ -53,6 +53,7 @@ sudo /var/www/rollback-production.sh [타임스탬프]
 ## 배포 자동 검증 (스크립트 내장)
 
 배포 스크립트에 다음 검증이 포함되어 있음:
+0. **배포 전 안전 게이트 (9개, fail-closed)** - 인쇄 보호파일 무결성·필드계약·디자인·IDOR·타임존·hydration·health-check·인스펙션·인쇄 라우트가드 + 마이그레이션 레지스트리(4b) + 빌드 직후 **실브라우저 mount sweep**. 하나라도 실패하면 배포 중단(긴급 우회 `--skip-safety`). 개발 중 동일 검사 = `dev-backend/scripts/verify-all.js`
 1. **rsync 결과 검증** - 전송된 파일 수 + exit code 확인
 2. **백엔드 파일 크기 비교** - dev vs production 핵심 파일 (server.js, invoices.js 등) 크기 비교, 차이 > 50%면 경고
 3. **프론트엔드 JS hash 검증** - dev build의 main.js 해시와 production 배포본 일치 확인

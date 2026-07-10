@@ -4,6 +4,16 @@
 
 ---
 
+## ⚠️ 필수: 새 마이그레이션은 레지스트리에 등록 (2026-07-10 신설)
+
+`scripts/migrate-*.js`(또는 마이그 명명 파일)을 **새로 만들면 반드시** `dev-backend/scripts/migrations.registry.json` 에 등록한다.
+- `deploy` = 멱등·매 배포 재실행(순서=FK 의존성). 운영 스키마에 반영되어야 하는 마이그는 여기.
+- `manual` = 일회성/레거시/의도적 제외 — **이유를 반드시 명시**.
+- 등록 안 하면 `check-migration-registry.js` 가 **fail-closed 로 배포·`verify-all` 을 차단**(미분류=스키마 드리프트 위험). 배포 스크립트는 이 레지스트리의 `deploy` 목록을 소비한다(하드코딩 목록 아님).
+- 확인: `cd dev-backend && node scripts/check-migration-registry.js` (분류 검사) / `--list-deploy`(배포 목록 출력).
+
+---
+
 ## 🎯 현재 시스템 구조
 
 ```

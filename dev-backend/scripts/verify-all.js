@@ -40,6 +40,7 @@ const GATES = [
   { id: 'print-field-contract', tier: 'static', label: '🧾 인쇄 필드 계약 (세트 구성품 누락 방지)', cwd: BACKEND, cmd: ['node', 'scripts/check-print-field-contract.js'] },
   { id: 'design-guard', tier: 'static', label: '🎨 디자인 단일 기준 (RA=표준, 신규 위반 0)', cwd: BACKEND, cmd: ['node', 'scripts/check-design-guard.js', '--summary'] },
   { id: 'route-guard', tier: 'static', label: '🛡️ IDOR 라우트 가드 (신규 무방비 0)', cwd: BACKEND, cmd: ['node', 'scripts/check-route-guard.js', '--summary'] },
+  { id: 'migration-registry', tier: 'static', label: '🗄️ 마이그레이션 레지스트리 (배포목록 누락 = 스키마 드리프트 차단)', cwd: BACKEND, cmd: ['node', 'scripts/check-migration-registry.js'] },
   { id: 'timezone', tier: 'static', label: '🕐 타임존 가드 (신규 위반 0)', cwd: BACKEND, cmd: ['node', 'scripts/timezone-check.js'] },
   { id: 'hydration', tier: 'static', label: '💧 state hydration 안전 (warning 0)', cwd: FRONTEND, cmd: ['node', 'scripts/state-hydration-check.js'] },
   { id: 'sensitive-diff', tier: 'static', label: '🧭 민감영역 diff 분류 (Fable 게이트 판정, 정보성)', cwd: BACKEND, cmd: ['node', 'scripts/check-sensitive-diff.js'], advisory: true },
@@ -47,7 +48,7 @@ const GATES = [
   { id: 'health', tier: 'runtime', label: '❤️ health-check 전체 회귀 (인쇄 계약+보안+API)', cwd: BACKEND, cmd: ['node', 'scripts/health-check.js', '--quiet'], timeout: 300000 },
   { id: 'print-routes', tier: 'runtime', label: '🖨️ 인쇄 라우트 가드 (자동인쇄 전 루트 실제 실행)', cwd: FRONTEND, cmd: ['node', 'scripts/print-route-guard/run.js', '--quiet'], timeout: 300000 },
   { id: 'i18n', tier: 'runtime', label: '🌐 i18n 4언어 키 일치', cwd: FRONTEND, cmd: ['node', 'scripts/verify-translations.js'] },
-  { id: 'mount', tier: 'mount', label: '🖥️ 실브라우저 mount sweep (크래시0·console.error0)', cwd: FRONTEND, cmd: null /* 특수 처리: 토큰 자동조달 */, timeout: 600000 },
+  { id: 'mount', tier: 'mount', label: '🖥️ 실브라우저 mount sweep (RA·BG·FG·Owner·Supplier 크래시0)', cwd: FRONTEND, cmd: null /* 특수 처리: 토큰 자동조달 + 2개 sweep 병합 */, timeout: 900000 },
 ];
 
 function postJson(url, body) {
@@ -113,8 +114,22 @@ function runGate(gate, extraEnv) {
     let r;
     try {
       if (gate.id === 'mount') {
-        const [ra, bg] = await Promise.all([fetchDemoToken('test_restaurant_admin'), fetchDemoToken('test_brand_general')]);
-        r = runGate({ ...gate, cmd: ['node', 'scripts/headless-page-sweep.js'] }, { RA_TOKEN: ra, BG_TOKEN: bg });
+        // demo-login 으로 5역할 토큰 자동조달 후 2개 sweep 병합 실행.
+        // page-sweep = RA+BG, roles-sweep = FG+Owner+Supplier. (admin/manager 는 demo 계정이 없어
+        // roles-sweep 이 graceful skip — 알려진 커버리지 갭, docs/AGENT_ONBOARDING.md 참조.)
+        const [ra, bg, fg, owner, supplier] = await Promise.all([
+          fetchDemoToken('test_restaurant_admin'), fetchDemoToken('test_brand_general'),
+          fetchDemoToken('demo_foodcourt_general'), fetchDemoToken('test_restaurant_owner'),
+          fetchDemoToken('demo_supplier_admin'),
+        ]);
+        const started = Date.now();
+        const pageR = runGate({ ...gate, cmd: ['node', 'scripts/headless-page-sweep.js'] }, { RA_TOKEN: ra, BG_TOKEN: bg });
+        const rolesR = runGate({ ...gate, cmd: ['node', 'scripts/headless-roles-sweep.js'] }, { FG_TOKEN: fg, OWNER_TOKEN: owner, SUPPLIER_TOKEN: supplier });
+        r = {
+          ok: pageR.ok && rolesR.ok, code: pageR.ok && rolesR.ok ? 0 : 1,
+          out: '--- page-sweep (RA·BG) ---\n' + pageR.out + '\n--- roles-sweep (FG·Owner·Supplier) ---\n' + rolesR.out,
+          ms: Date.now() - started,
+        };
       } else {
         r = runGate(gate);
       }

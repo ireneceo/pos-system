@@ -59,7 +59,7 @@
    ```bash
    cd /var/www/dev-backend && node scripts/health-check.js --category=print
    ```
-   - health-check 전체(**88/88**)에 print 8건 포함 → 배포 전 의무 게이트가 인쇄 계약 + 보호파일 무결성을 자동 검사.
+   - health-check 전체(110+건 — 정확한 수는 스크립트 출력이 진실, 문서 수치 아님)에 print 계약 포함 → 배포 전 의무 게이트가 인쇄 계약 + 보호파일 무결성을 자동 검사.
    - 금액 공식 단위 테스트: `npx jest tests/order-totals.test.js` (11건)
 
 ---
@@ -114,6 +114,7 @@
 
 **검증 내용:** ①diff 범위 대조(설계 외 변경 0) ②가드 스크립트(print-guard/design-guard/timezone) ③실호출·회귀(health-check 포함) ④배포 안전성(마이그/SW bump/롤백 경로).
 **남발 금지:** 단일 페이지 UI, 텍스트, 소규모 버그픽스 등 일상 작업은 기존 `/검증` 절차로 충분 — 위 기준에 안 걸리면 Fable 게이트를 요구하지 않는다.
+**기계 판정 보조 (2026-07-10):** `cd /var/www/dev-backend && node scripts/check-sensitive-diff.js` — 운영 배포 스냅샷+git 대비 변경을 위 기준 ①②③⑤로 자동 분류해 "FABLE 게이트 대상" 여부를 판정한다(④신규 아키텍처만 자기평가). 완료 보고 전 1회 실행이 표준.
 
 ### 검증 단계 (필수 — 구현 후 반드시 실행)
 
@@ -122,6 +123,11 @@
 
 구현이 끝나면 아래 체크리스트를 순서대로 실행한다:
 
+0. **기계 게이트 일괄 (verify-all)**: `cd /var/www/dev-backend && node scripts/verify-all.js`
+   — print-guard·필드계약·디자인·IDOR·타임존·hydration·인스펙션·health-check·인쇄루트·i18n 을
+   명령 1개로 전부 실행(fail-closed). 프론트 변경 시 build:dev 후 `--full`(실브라우저 mount 포함).
+   개별 스크립트를 기억할 필요 없음 — 이게 기본. (판단 검증인 아래 1~7은 별도로 계속 수행.)
+   새 세션/모델 온보딩 = `docs/AGENT_ONBOARDING.md`.
 1. **빌드 확인**: `npm run build` 성공 (경고 0건) + dev 서버 배포
 2. **API 실동작 테스트** (코드 리뷰가 아닌 실제 호출):
    - 로그인 → 토큰 획득
@@ -348,7 +354,7 @@ date.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', timeZone:
 4. **아이콘/이모지:** 대시보드·시스템 진입 아이콘 = **미니멀 기하 유니코드 글리프**(`▦ ◐ □ ◯ ◉ ≡ ● ▬`) — 이게 RA 표준. **이모지도 lucide도 아님. 유지.** 일반 감사의 "☰→lucide" 권고는 **틀림**. / 장식 컬러 이모지(🔒🟢⚠📦🔍 등) **금지** → 텍스트/기하 글리프. 빈 상태 = `DataTableEmpty` 순수 텍스트. / 단, 상품·카테고리 아이콘 데이터·이모지 피커·국기·텍스트 글리프(✓✕↺)·인쇄 보호 주석은 **기능이라 건드리지 말 것**.
 5. **구현 전 1회 실측 의무:** 색·컴포넌트를 "바꾸기" 전, 반드시 **RA 페이지(또는 공용 컴포넌트 정의)가 실제로 뭘 쓰는지 grep으로 확인**하고 맞춘다. 추측·일반팔레트 맹신 금지(2026-06-21 danger 빨강 오변경 교훈).
 
-**자동 강제:** `cd dev-backend && node scripts/check-design-guard.js` — 신규 로컬 styled.button/table·로컬 StatCard·장식 이모지·일반 danger #FF6B6B 를 잡는다. 배포 게이트(3/4)가 fail-closed 로 자동 실행(신규 위반 시 배포 차단). 기존 부채는 baseline(점진 교체 대상). 정식 변경이면 `--bless`. timezone-check / print-guard 와 동일 모델.
+**자동 강제:** `cd dev-backend && node scripts/check-design-guard.js` — 신규 로컬 styled.button/table·로컬 StatCard·장식 이모지·일반 danger #FF6B6B 를 잡는다. 배포 안전 게이트가 fail-closed 로 자동 실행(신규 위반 시 배포 차단). 기존 부채는 baseline(점진 교체 대상). 정식 변경이면 `--bless`. timezone-check / print-guard 와 동일 모델.
 
 ---
 
@@ -382,6 +388,7 @@ date.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', timeZone:
 ### DB 스키마 변경
 - [ ] 모델 + DB 테이블 + `models/index.js` association + export 모두 확인
 - [ ] ENUM 추가 시 → 모델 파일 + ALTER TABLE 쿼리 모두 실행
+- [ ] **새 마이그레이션 스크립트**(seed INSERT·ENUM ALTER 등 sync-database 로 안 되는 것) → `scripts/migrate-*.js` 멱등 작성 + **`scripts/migrations.registry.json` 에 분류**(`deploy`=매 배포 재실행 / `manual`=일회성·이유명시). 배포는 레지스트리를 단일 소스로 읽음 — 등록 잊으면 `check-migration-registry.js` 가 배포 전 fail-closed 로 차단
 
 ### 프론트엔드 연동
 - [ ] 새 Admin 메뉴 → `MainLayout.tsx` 사이드바 + `App.tsx` 라우트 + lazy import

@@ -83,7 +83,7 @@ if [ "$SKIP_SAFETY" = true ]; then
 else
     cd $LOCAL_DEV_BACKEND
 
-    log "Safety gate (1/7): 🔒 인쇄/주문 보호 파일 무결성..."
+    log "Safety gate (1/9): 🔒 인쇄/주문 보호 파일 무결성..."
     if ! node scripts/check-print-guard.js --quiet; then
         error "🔒 인쇄/주문 보호 파일이 변경됨. 의도한 인쇄 변경이고 실프린터 확인까지 끝났으면
        'cd dev-backend && node scripts/check-print-guard.js --bless' 후 재배포.
@@ -91,43 +91,67 @@ else
     fi
     success "보호 파일 무결성 OK (생명선 안전)"
 
-    log "Safety gate (2/7): 🧾 인쇄 데이터 필드 계약 (세트 구성품 누락 방지)..."
+    log "Safety gate (2/9): 🧾 인쇄 데이터 필드 계약 (세트 구성품 누락 방지)..."
     if ! node scripts/check-print-field-contract.js; then
         error "인쇄 항목 변환에서 세트 구성품 필드(set_components) 누락 — 빌/주방에 'SET' 만 찍히는 회귀. 해당 mapItem 수정 후 재배포. (긴급 우회: --skip-safety)"
     fi
     success "인쇄 필드 계약 OK (세트 구성품 전 경로 통과)"
 
-    log "Safety gate (3/7): 🎨 디자인 단일 기준(RA=표준) — 신규 위반 차단..."
+    log "Safety gate (3/9): 🎨 디자인 단일 기준(RA=표준) — 신규 위반 차단..."
     if ! node scripts/check-design-guard.js --summary; then
         error "🎨 신규 디자인 위반 — 공용 컴포넌트(DataTable/Button/StatCard/Modal) 미사용·장식 이모지·일반 danger 에 #FF6B6B 등 CLAUDE.md '🎨 디자인 단일 기준' 위반. 공용/RA 기준으로 고칠 것. 정식 변경이면 'node scripts/check-design-guard.js --bless'. (긴급 우회: --skip-safety)"
     fi
     success "디자인 단일 기준 OK (신규 위반 0)"
 
-    log "Safety gate (4/7): 🛡️ 라우트 가드 (IDOR — 신규 무방비 literal /restaurant/:param 차단, 마운트프리픽스 라우터는 배럴가드+health-check 담당)..."
+    log "Safety gate (4/9): 🛡️ 라우트 가드 (IDOR — 신규 무방비 literal /restaurant/:param 차단, 마운트프리픽스 라우터는 배럴가드+health-check 담당)..."
     if ! node scripts/check-route-guard.js --summary; then
         error "🛡️ 신규 무방비 라우트 — /restaurant/:param 에 checkRestaurantAccess 또는 인라인 매장검사(req.user.restaurant_id≠param→403) 누락 = 타매장 데이터 유출(IDOR) 위험. 소유권 검사 추가 후 재배포. 정식/예외면 'node scripts/check-route-guard.js --bless'. (긴급 우회: --skip-safety)"
     fi
     success "라우트 가드 OK (무방비 /restaurant/:param 신규 0)"
 
-    log "Safety gate (5/7): 회귀 테스트 (health-check, 인쇄 계약 + 보안 + API 88건)..."
+    log "Safety gate (4b/9): 🗄️ 마이그레이션 레지스트리 (배포목록 누락 = 스키마 드리프트 차단)..."
+    if ! node scripts/check-migration-registry.js; then
+        error "🗄️ 미분류/유령 마이그레이션 — 새 migrate-*.js 를 만들고 목록 등록을 잊으면 운영 DB 스키마가 안 맞는다. scripts/migrations.registry.json 의 deploy(멱등·매배포) 또는 manual(일회성, 이유명시) 에 추가 후 재배포. (긴급 우회: --skip-safety)"
+    fi
+    success "마이그레이션 레지스트리 OK (전 마이그 분류됨 — 드리프트 안전)"
+
+    log "Safety gate (5/9): 🕐 타임존 가드 (신규 위반 0 — 매장 타임존 규칙)..."
+    if ! node scripts/timezone-check.js; then
+        error "🕐 신규 타임존 위반 — 브라우저 로컬시간 사용. getTodayBounds/formatDateTime 로 교체 후 재배포. 정식이면 'node scripts/timezone-check.js --bless'. (긴급 우회: --skip-safety)"
+    fi
+    success "타임존 가드 OK (신규 위반 0)"
+
+    log "Safety gate (6/9): 💧 state hydration 안전 (legacy 캐시 crash 방지)..."
+    if ! (cd $LOCAL_DEV_FRONTEND && node scripts/state-hydration-check.js); then
+        error "💧 hydration warning — 새 state field 의 defensive merge/accessor 누락 = legacy 사용자 runtime crash. /검증 0단계 가이드 참조. (긴급 우회: --skip-safety)"
+    fi
+    cd $LOCAL_DEV_BACKEND
+    success "state hydration 안전 OK (warning 0)"
+
+    log "Safety gate (7/9): 회귀 테스트 (health-check 전체 — 인쇄 계약 + 보안 + API)..."
     if ! node scripts/health-check.js --quiet; then
         error "회귀 테스트 실패 — 인쇄/주문/보안 등 기능 회귀 감지. 위 실패 항목 수정 후 재배포. (긴급 우회: --skip-safety)"
     fi
     success "회귀 테스트 통과 — 인쇄/주문 계약 + 전체 기능 정상"
 
-    log "Safety gate (6/7): 인스펙션 하니스 (공급망·플랜모듈·주문돈무결성 구조 불변식)..."
+    log "Safety gate (8/9): 인스펙션 하니스 (공급망·플랜모듈·주문돈무결성 구조 불변식)..."
     if ! node scripts/inspection/run.js; then
         error "🔎 신규 구조 위반 — 공급망(자기참조/고아/미러/카테고리)·플랜모듈(buyer 게이트)·주문돈무결성(금액재구성/멱등중복/고아결제/결제합) 불변식 위반 감지. scripts/inspection 참조. 정식/의도된 부채면 'node scripts/inspection/run.js --bless'. (긴급 우회: --skip-safety)"
     fi
     success "인스펙션 하니스 통과 — 구조 불변식 신규 위반 0"
 
-    log "Safety gate (7/7): 🖨️ 인쇄 라우트 가드 (자동인쇄 디스패치 21루트: 방식×프린터×native/web 실제 실행)..."
+    log "Safety gate (9/9): 🖨️ 인쇄 라우트 가드 (자동인쇄 디스패치 전 루트: 방식×프린터×native/web 실제 실행)..."
     cd $LOCAL_DEV_FRONTEND
     if ! node scripts/print-route-guard/run.js --quiet; then
         error "🖨️ 인쇄 라우트 회귀 — 자동인쇄 디스패치(utils/billPrint.js)가 어떤 방식/프린터 조합에서 잘못된 트랜스포트로 가거나 유령출력/누락 발생. 위 실패 루트 수정 후 재배포. 정식 라우팅 변경이면 scripts/print-route-guard/cases.js 기대값도 함께 갱신. (긴급 우회: --skip-safety)"
     fi
-    success "인쇄 라우트 가드 통과 — 21루트 전 방식 정상 (종이만 실기기 확인 남음)"
+    success "인쇄 라우트 가드 통과 — 전 자동인쇄 루트 정상 (종이만 실기기 확인 남음)"
     cd $LOCAL_DEV_BACKEND
+
+    # 1c. 배포 델타 분류 (정보성, fail 아님) — 이번 배포가 민감영역(인쇄/돈/보안/마이그레이션)에
+    # 닿는지 자동 분류해 표시. Fable 게이트 대상이면 여기서 눈으로 확인된다.
+    log "Classifying deploy delta (sensitive areas — Fable gate check)..."
+    node scripts/check-sensitive-diff.js || true
 fi
 
 # ──────────────────────────────────────────
@@ -211,6 +235,23 @@ else
         error "Frontend build failed. Check /tmp/build.log"
     }
     success "Frontend built successfully"
+fi
+
+# ──────────────────────────────────────────
+# 5b. POST-BUILD SAFETY GATE — 실브라우저 mount sweep (fail-closed)
+# build 통과 ≠ runtime 안전 (v3.37 TDZ 크래시 교훈 — CLAUDE.md CRITICAL).
+# 방금 dev 에 배포된 번들(build:dev = dev nginx 서빙)을 Playwright 로 실제 mount 해
+# 운영 critical 페이지 크래시/console.error/ErrorBoundary 를 잡는다. (~5분)
+# ──────────────────────────────────────────
+if [ "$SKIP_SAFETY" = true ]; then
+    warn "⚠️  mount sweep 건너뜀 (--skip-safety)"
+else
+    log "Post-build gate: 실브라우저 mount sweep (RA+BG 전 페이지 크래시 0)..."
+    cd $LOCAL_DEV_BACKEND
+    if ! node scripts/verify-all.js --only mount; then
+        error "실브라우저 mount 실패 — 운영 critical 페이지 크래시/console.error 감지 (build 는 통과했어도 runtime 사고). 수정 후 재배포. (긴급 우회: --skip-safety)"
+    fi
+    success "mount sweep 통과 — 실브라우저 크래시 0"
 fi
 
 # ──────────────────────────────────────────
@@ -349,77 +390,42 @@ if ssh $PROD_SERVER "test -f $REMOTE_PROD_BACKEND/$MIGRATE_FILE"; then
 fi
 
 # ──────────────────────────────────────────
-# 9a-2. Run Sprint migrations (idempotent)
-# Sprint 4: PO tracking_info JSON + trade_invoice_id FK + buyer_purchase_invoices module
-# Sprint 5: Carrier table + 5 default seeds (Lalamove, Grab, JNT, Ninja Van, Pos Laju)
-# Sprint 6: PO status enum +'delivered', purchase_order_returns table, Invoice status +'credit'
+# 9a-2. Run deploy-time migrations (idempotent)
 #
-# sync-database.js handles model→table column ALTER, but cannot:
-#   - INSERT seed rows (Sprint 5 needs 5 carriers seeded)
-#   - Change ENUM values via ALTER (Sprint 6 needs 'delivered' added)
-# So these scripts must run explicitly. They are all idempotent — safe to re-run.
+# 목록의 단일 소스 = scripts/migrations.registry.json 의 `deploy` 배열 (순서 = FK 의존성).
+# 예전엔 여기 하드코딩돼 있어, 새 migrate-*.js 를 만들고 목록 추가를 잊으면 운영 스키마 드리프트가
+# 났다([[reference_deploy_schema_drift]]). 이제 check-migration-registry.js 가 미분류 마이그를
+# 배포 전(안전 게이트)에 fail-closed 로 잡고, 실행 목록은 레지스트리에서 읽는다.
+#
+# sync-database.js 는 model→table 컬럼 ALTER 만 한다. 이 스크립트들은 그 밖의 것을 처리:
+#   - seed 행 INSERT (예: Sprint5 carrier 5개) · ENUM 값 ALTER (예: Sprint6 'delivered')
+# 전부 멱등(재실행 안전). manual(일회성/의도적 제외) 은 레지스트리 `manual` 에 이유와 함께 분리.
+#   예) migrate-staff-payment-void-perms.js = 재실행 시 직원 결제·취소 권한 재부여 문제로 제외.
 # ──────────────────────────────────────────
-for SPRINT_MIG in \
-    scripts/cleanup-users-duplicate-indexes.js \
-    scripts/cleanup-restaurants-duplicate-indexes.js \
-    scripts/cleanup-sequelize-duplicate-indexes.js \
-    scripts/sprint4-migration.js \
-    scripts/sprint5-migration.js \
-    scripts/sprint6-migration.js \
-    scripts/sprint7-migration.js \
-    scripts/migrate-supplier-staff.js \
-    scripts/migrate-soa-invoice.js \
-    scripts/migrate-referral.js \
-    scripts/migrate-brand-menu-system.js \
-    scripts/register-brand-menus-module.js \
-    scripts/migrate-brand-menu-settings.js \
-    scripts/promote-reservations-to-base.js \
-    scripts/migrate-add-partial-payment.js \
-    scripts/migrate-takeaway-charge-nullable.js \
-    scripts/migrate-brand-set-groups.js \
-    scripts/migrate-order-action-table-moved.js \
-    scripts/migrate-consolidated-print.js \
-    scripts/migrate-user-is-active.js \
-    scripts/migrate-currency-rm-to-myr.js \
-    scripts/migrate-qz-diagnostic-category.js \
-    scripts/migrate-cash-management-tables.js \
-    scripts/migrate-reservation-floor-plan-table.js \
-    scripts/migrate-cash-phase2.js \
-    scripts/migrate-cash-movement-source.js \
-    scripts/migrate-coupon-scope.js \
-    scripts/migrate-po-owner-approval.js \
-    scripts/migrate-bg-product-supply-chain.js \
-    scripts/migrate-supplier-company-bridge.js \
-    scripts/migrate-print-claim-recovery.js \
-    scripts/migrate-pending-reprint.js \
-    scripts/migrate-strip-cashier-namespace.js \
-    scripts/migrate-add-order-notes.js \
-    scripts/migrate-product-recommendations.js \
-    scripts/migrate-category-recommendation-flag.js \
-    scripts/migrate-add-order-idempotency.js \
-    scripts/20260628_add_option_sold_out.js \
-    scripts/20260629_create_sales_integrations.js \
-    scripts/20260629_create_processed_ops.js \
-    scripts/20260708_normalize_unknown_company.js; do
-    # 2026-06-24: migrate-staff-payment-void-perms.js 는 재실행 목록에서 제거함. 매 배포마다 돌면
-    # access_pos 직원 전원에게 결제·취소 권한을 다시 추가해서, 매장이 의도적으로 끈 권한(예: 서버
-    # 역할)을 도로 켜버린다. 최초 1회 백필은 이미 운영 적용됨. 직원 권한은 직원관리 UI 가 단일소스.
+cd $LOCAL_DEV_BACKEND
+DEPLOY_MIGRATIONS=$(node scripts/check-migration-registry.js --list-deploy)
+if [ $? -ne 0 ] || [ -z "$DEPLOY_MIGRATIONS" ]; then
+    error "마이그레이션 레지스트리 검사 실패 — 미분류/유령 마이그가 있어 배포 목록을 확정할 수 없음. 'node scripts/check-migration-registry.js' 로 확인 후 registry.json 정리. (안전 게이트에서 이미 걸렸어야 함)"
+fi
+while IFS= read -r MIG_NAME; do
+    [ -z "$MIG_NAME" ] && continue
+    SPRINT_MIG="scripts/$MIG_NAME"
     if ssh $PROD_SERVER "test -f $REMOTE_PROD_BACKEND/$SPRINT_MIG"; then
-        log "Running $(basename $SPRINT_MIG)..."
+        log "Running $MIG_NAME..."
         SPRINT_OUTPUT=$(ssh $PROD_SERVER "cd $REMOTE_PROD_BACKEND && node $SPRINT_MIG 2>&1") || true
         if echo "$SPRINT_OUTPUT" | grep -qiE "(complete|✓|done|migrated|seeded)"; then
-            success "$(basename $SPRINT_MIG) completed"
+            success "$MIG_NAME completed"
         else
-            warn "$(basename $SPRINT_MIG) output (review needed):"
+            warn "$MIG_NAME output (review needed):"
             echo "$SPRINT_OUTPUT" | tail -20
         fi
     else
-        warn "$(basename $SPRINT_MIG) not found on prod — copying from dev..."
-        scp -q "$LOCAL_DEV_BACKEND/$SPRINT_MIG" "$PROD_SERVER:$REMOTE_PROD_BACKEND/$SPRINT_MIG" || warn "scp failed for $SPRINT_MIG"
+        warn "$MIG_NAME not found on prod — copying from dev..."
+        scp -q "$LOCAL_DEV_BACKEND/$SPRINT_MIG" "$PROD_SERVER:$REMOTE_PROD_BACKEND/$SPRINT_MIG" || warn "scp failed for $MIG_NAME"
         SPRINT_OUTPUT=$(ssh $PROD_SERVER "cd $REMOTE_PROD_BACKEND && node $SPRINT_MIG 2>&1") || true
         echo "$SPRINT_OUTPUT" | tail -10
     fi
-done
+done <<< "$DEPLOY_MIGRATIONS"
 
 # ──────────────────────────────────────────
 # 9b. Sync seed data (addon_modules, plan_templates 등 시스템 설정 데이터)
@@ -687,6 +693,13 @@ if [ "$SYNC_CONTENT" = true ]; then
 else
     log "Skipping content sync (--no-sync-content set)"
 fi
+
+# ──────────────────────────────────────────
+# Deploy snapshot — 배포된 소스 지문 기록 (.claude/deploy-manifest.json)
+# 이후 세션에서 "운영 대비 무엇이 바뀌었나"를 check-sensitive-diff.js 가 기계로 판정하는 앵커.
+# ──────────────────────────────────────────
+log "Recording deploy manifest snapshot..."
+(cd $LOCAL_DEV_BACKEND && node scripts/deploy-manifest.js --snapshot) || warn "deploy manifest snapshot 실패 (비치명 — 다음 배포 때 재기록)"
 
 # ──────────────────────────────────────────
 # Cleanup temp files
