@@ -1134,7 +1134,10 @@
       "Bash(getfacl /var/www/dev-frontend-build/desktop)",
       "Bash(pkill -f \"node.*react-scripts.*build\")",
       "Bash(node_modules/.bin/asar extract-file *)",
-      "Bash(node_modules/.bin/asar list *)"
+      "Bash(node_modules/.bin/asar list *)",
+      "Bash(echo \"TZ_EXIT:$?\")",
+      "Bash(echo \"HYD_EXIT:$?\")",
+      "Bash(echo \"EXIT_A:$?\")"
     ],
     "deny": [],
     "ask": []
