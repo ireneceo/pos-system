@@ -855,8 +855,19 @@ function definePrintTests({ adminToken }) {
   // 마커 기반이라 운영 데이터는 절대 건드리지 않는다. (멱등성 보장)
   test('print', '테스트 주문 orphan sweep (멱등성 — 데모 매장 누적 방지)', async () => {
     const Order = require('../models/Order');
-    await Order.destroy({ where: { customer_name: TEST_MARKER }, force: true });
-    const remaining = await Order.count({ where: { customer_name: TEST_MARKER } });
+    const seq = Order.sequelize;
+    // 소프트삭제분까지 포함(paranoid:false). E2E 생애주기 주문은 단계이동/결제로 자식행
+    // (order_actions/order_payments/point_transactions)이 생겨 raw force-destroy 가 FK 로 막힌다
+    // → 자식을 먼저 cascade 삭제 후 주문 삭제. 마커 기반이라 운영 데이터는 절대 안 건드린다(멱등).
+    const ids = (await Order.findAll({ where: { customer_name: TEST_MARKER }, attributes: ['id'], raw: true, paranoid: false })).map((o) => o.id);
+    if (ids.length) {
+      const idList = ids.map(Number).filter(Number.isInteger).join(',');
+      for (const tbl of ['order_actions', 'order_payments', 'point_transactions']) {
+        try { await seq.query(`DELETE FROM \`${tbl}\` WHERE order_id IN (${idList})`); } catch (e) { /* 테이블 없거나 무참조 */ }
+      }
+      await Order.destroy({ where: { id: ids }, force: true });
+    }
+    const remaining = await Order.count({ where: { customer_name: TEST_MARKER }, paranoid: false });
     return remaining === 0;
   });
 

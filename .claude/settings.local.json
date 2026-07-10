@@ -1150,7 +1150,13 @@
       "Bash(echo \"gate exit=$?\")",
       "Bash(echo \"UNCLASSIFIED_INJECT_EXIT:$? \\(기대 1\\)\")",
       "Bash(echo \"LIST_DEPLOY_ON_FAIL_EXIT:$? \\(기대 1 — 빈목록 방지\\)\")",
-      "Bash(echo \"RESTORED_EXIT:$? \\(기대 0\\)\")"
+      "Bash(echo \"RESTORED_EXIT:$? \\(기대 0\\)\")",
+      "Bash([ -f \"$HOME/.claude.json\" ])",
+      "Bash(awk '/router\\\\.post\\\\\\(.\\\\/.,/{f=1} f&&/req\\\\.body/{print NR\": \"$0} f&&/order_items|order_type|restaurant_id|table_number|needs_print|kitchen/{print NR\": \"$0} /res\\\\.\\(json|status\\)/{if\\(f\\)c++} c>3{f=0}' routes/orders-crud.js)",
+      "Bash(sed -i \"s#path: path, method#XXX#g\" order_lifecycle_probe.js)",
+      "Bash(sed -i \"s#req\\('POST', '/orders'#req\\('POST', '/api/orders'#g\" order_lifecycle_probe.js)",
+      "Bash(sed -i \"s#\\\\`/orders/#\\\\`/api/orders/#g\" order_lifecycle_probe.js)",
+      "Bash(sed -i \"s#await require\\('/var/www/dev-backend/models'\\).sequelize.close\\(\\).catch\\(\\(\\) => {}\\);#try { const m = require\\('/var/www/dev-backend/models'\\); if \\(m.sequelize\\) await m.sequelize.close\\(\\); } catch {}#g\" order_lifecycle_probe.js)"
     ],
     "deny": [],
     "ask": []

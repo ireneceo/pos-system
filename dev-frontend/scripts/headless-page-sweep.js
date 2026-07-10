@@ -168,7 +168,15 @@ async function runFor(label, token, routes) {
 
   const results = [];
   for (const route of routes) {
-    const r = await visitRoute(context, route, label);
+    let r = await visitRoute(context, route, label);
+    // 2026-07-10: 전이적 flake(배포 빌드 직후 네비/네트워크 blip, SW 스왑 타이밍) 흡수 — 실패 시 1회 재검.
+    // 진짜 페이지 크래시는 재검도 실패 → 여전히 잡힌다(가드 약화 아님). e2e playwright retries:2 와 동일 원리.
+    if (r.status !== 'OK' || r.pageerrors.length > 0) {
+      await new Promise((res) => setTimeout(res, 1500));
+      const retry = await visitRoute(context, route, label);
+      if (retry.status === 'OK' && retry.pageerrors.length === 0) console.log(`  ↻ [${label}] ${route} 재검 통과(전이적 flake 흡수)`);
+      r = retry;
+    }
     const flag = r.status === 'OK' && r.pageerrors.length === 0 ? '✓' : '✗';
     console.log(`${flag} [${label}] ${route} → ${r.status}` + (r.pageerrors.length ? ` | ${r.pageerrors.length} pageerror(s)` : '') + (r.consoleErrors.length ? ` | ${r.consoleErrors.length} console err` : ''));
     if (r.pageerrors.length) r.pageerrors.slice(0, 2).forEach(e => console.log('    ⚠ ' + e.slice(0, 200)));

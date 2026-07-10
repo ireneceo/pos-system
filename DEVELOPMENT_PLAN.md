@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-07-10 (**모델 독립 안전개발 기반 구축 — dev 전용·미배포, Fable 구축·Opus 실측검증**. 강한 모델의 기억·판단 의존을 구조·자동화로 대체: verify-all 단일 러너(기계 게이트 12종 1명령, fail-closed) + check-sensitive-diff(Fable 게이트 5기준 경로패턴 기계판정, `--gate` fail-closed) + deploy-manifest(배포 소스 지문 앵커) + safety-guard 훅 규칙확장(보호파일/baseline/bless/skip-safety 편집시점 ask) + 배포 게이트 7→9(타임존·hydration) + post-build 실브라우저 mount sweep fail-closed + **마이그레이션 레지스트리화**(하드코딩 41목록→migrations.registry.json 단일소스, 미등록 마이그=스키마드리프트 fail-closed 차단) + roles-sweep mount 2→5역할 + E2E 뼈대(demo-guard rid=38 안전레일·시나리오 a flaky0) + AGENT_ONBOARDING.md 온보딩 입구. **검증**: verify-all 12/12·print-guard 8/8 무접촉·마이그 집합 41==41 독립대조(누락0)·훅/게이트 fail-closed 실증. 인쇄/KDS/돈 런타임 무접촉. 상세 session-state + 아래.)
+> **최종 업데이트:** 2026-07-10 #2 (**E2E b~f + 주문 생애주기 실증 + 셰이크다운 배포 — 운영 배포**. Irene "주문관리 확인은 너한테. 주문 다 넣어보고 결제·단계이동·프린트 다 테스트 → /검증 → /배포." demo rid=38에 실제 HTTP로 주문 전 생애주기 15/15 증명(생성→claim 경쟁 1/5→재인쇄0→+Round→pending→preparing→ready→served→결제 completed→삭제) + E2E 시나리오 b~f flaky-0(3회 연속 13/13, mutation은 결정적 request API·UI는 mount 무크래시) + health-check orphan-sweep cascade 보강. **셰이크다운 배포**: 런타임 무변경분(안전기반+e2e)+새 9게이트 첫 실전 통과, Backup 20260710_195933·Smoke 9/9·운영 health OK·deploy-manifest(1762파일) 앵커 활성화. **배포 중 mount sweep flake 근본수리**: 첫 시도 mount 게이트 fail-closed 중단(sweep 자체는 72/72·55/55 OK=실크래시 아닌 rebuild직후 전이적 pageerror)→CLAUDE.md 규칙대로 --skip-safety 금지, headless-page/roles-sweep에 실패 route 1회 재검 추가(진짜 크래시는 재검도 실패→여전히 차단)→재배포 mount 465s 크래시0 통과. 인쇄/KDS/돈 런타임 무접촉·버전 미상승. 상세 session-state + 아래.)
+>
+> **이전:** 2026-07-10 (**모델 독립 안전개발 기반 구축 — Fable 구축·Opus 실측검증**. verify-all 단일 러너(기계 게이트 12종 1명령, fail-closed) + check-sensitive-diff(Fable 게이트 기계판정) + deploy-manifest + safety-guard 훅 규칙확장 + 배포 게이트 7→9 + post-build mount sweep + 마이그레이션 레지스트리화 + roles-sweep mount 2→5역할 + E2E 뼈대 + AGENT_ONBOARDING.md. 인쇄/KDS/돈 런타임 무접촉. 상세 아래.)
 >
 > **이전:** 2026-07-09 (**with MIN 인쇄 데스크탑앱 0.1.7 — 운영 배포, Fable GO**. 앱 빌 백지 수정(htmlPrinter 숨은창 렌더: 실크기+paintWhenInitiallyHidden+showInactive+rAF대기, 커스텀 pageSize 제거, skipTaskbar/focusable) + 진단화면 "Render check(PDF,no paper)" 판별도구(native:renderCheck) + updater 재시작프롬프트 버전당1회+updater.log(자동업데이트 근본=시작시1회체크·재확인전무 규명) + 오더티켓 HTML화=기존 printFormat=graphic 레버(제로코드) + BAR 스테이션 미지정 경고배너(SettingsPage). 배포 Backup 20260709_171254·Smoke 9/9·prod feed 0.1.7. **Fable GO**: health 110/110·route-guard 34/34·print-guard 8/8·mount 50/50·회귀0(billPrint auto 바이트동일·orders-crud op_id게이트). **내일 매장 1회 테스트 대기**, 백지시 printFormat=auto 원격복구. 버전 미상승. 상세 session-state + 아래.)
 >
@@ -49,6 +51,24 @@
 > **이전:** 2026-06-23 (**v3.62 운영 배포 완료** — thefire 실사용 준비 7건: 직원 PIN 전환 수정 · 시재 개시모드(이월/고정) · 마감 폰트 통일 · 통합오더티켓 'Full' 수동인쇄 · 로그인 직원 PIN 우선 · 설정 QR 인쇄버튼 · Windows 7/8 QZ 설치 수정. Backup 20260623_124849, Smoke 9/9, SW=3.95. /검증 통과: health 107/107·print-guard 8/8(billPrint 무수정)·hydration0·timezone0·design0·i18n0·mount(floor-plan/settings/cash-up/pos) crash0.)
 >
 > **이전:** v3.61 발주 UX 대정리 + 외부공급업체 + 플로어플랜 핫픽스. SW=3.90.
+
+## ✅ 완료: E2E b~f + 주문 생애주기 실증 + 셰이크다운 배포 (2026-07-10 #2, 운영 배포)
+
+> Irene "주문관리 확인은 너한테. 주문 다 넣어보고 결제·단계이동·프린트 다 테스트 → /검증 → /배포." demo rid=38에 실제 주문을 넣어 전 생애주기를 HTTP 실호출로 증명하고, E2E 시나리오 b~f 를 flaky-0 로 완성 → **셰이크다운 배포**(런타임 무변경분+안전기반, Backup 20260710_195933, Smoke 9/9). 새 9게이트 첫 실전 통과 + deploy-manifest(1762파일) 앵커 활성화. **인쇄/KDS/돈 런타임 무접촉**. 배포 중 mount sweep flake 발견→sweep 재검 하드닝으로 근본수리(--skip-safety 우회 안 함).
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| E2E b (모바일주문) | 모바일 고객 메뉴 mount + 주문 생애주기 API(생성→인쇄 파이프라인→+Round→단계→결제→삭제) | ✅ |
+| E2E c (POS터미널) | POS mount(메뉴·결제 컨트롤) + POS 주문·결제(cash)·영수증 데이터·삭제 | ✅ |
+| E2E d (플로어플랜) | mount + 테이블 3개 렌더 + zone칩(Main) + 테이블 클릭→상세패널(읽기전용) | ✅ |
+| E2E e (설정) | Settings mount + 테이블 QR 세션 CRUD(생성 201→조회→삭제) | ✅ |
+| E2E f (KDS) | 주문 생성→KDS 자동 노출(품목명 검출)+단계 컬럼·스테이션 탭 | ✅ |
+| 주문 생애주기 실증 | HTTP 실호출 15/15: claim 경쟁 1/5·재인쇄0·+Round 새것만·단계 pending→served·결제 completed | ✅ |
+| health-check sweep cascade | 생애주기 주문 자식행(order_actions 등) FK → cascade 후 force-destroy. 데모 마커 한정·멱등 | ✅ |
+
+**검증**: verify-all 12/12 · health-check print 8/8(🔒보호파일 무결성 변경0) · e2e 3회 연속 13/13(flaky-0) · demo 청정 잔여0. **신규**: `e2e/{mobile-order,pos-terminal,floor-plan,settings-zones,kds}.spec.js` + `e2e/fixtures/demo-orders.js` + demo-guard 헬퍼. **인쇄 물리 경계**: 파이프라인 계약까지 헤드리스 증명, 실제 종이는 with MIN 매장 확인(별도).
+
+---
 
 ## ✅ 완료: 모델 독립 안전개발 기반 구축 (2026-07-10, dev 전용·미배포, Fable 구축·Opus 검증)
 

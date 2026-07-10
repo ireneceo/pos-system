@@ -67,4 +67,23 @@ function storageStateFor(baseURL, token, role) {
   };
 }
 
-module.exports = { DEMO_RESTAURANT_ID, DEMO_KEYS, demoLogin, assertDemoContext, assertDevBaseURL, storageStateFor };
+/** 브라우저 컨텍스트에 토큰 주입(mount 진입 전). 시나리오 a 의 inline 패턴을 공용화. */
+async function injectAuth(context, token, role) {
+  await context.addInitScript(([t, r]) => {
+    localStorage.setItem('auth_token', t);
+    localStorage.setItem('currentUserRole', r);
+  }, [token, role]);
+}
+
+/** API 인증 헤더 */
+function authHeaders(token) {
+  return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+}
+
+// ErrorBoundary/크래시 마커(시나리오 a 와 동일 기준) — mount 무크래시 판정 단일 소스.
+const CRASH_MARKERS = ['Something went wrong', 'ErrorBoundary', 'Application error', 'TypeError:'];
+function bodyLooksCrashed(text) {
+  return CRASH_MARKERS.some((m) => String(text || '').includes(m));
+}
+
+module.exports = { DEMO_RESTAURANT_ID, DEMO_KEYS, demoLogin, assertDemoContext, assertDevBaseURL, storageStateFor, apiBase, injectAuth, authHeaders, CRASH_MARKERS, bodyLooksCrashed };

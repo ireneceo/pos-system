@@ -1,9 +1,9 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-07-10 (모델 독립 안전개발 기반 구축 — dev 전용·미배포. Fable 구축·Opus 실측검증)
-**버전:** 운영=배포됨(웹 + 데스크탑 0.1.7). 이번 세션 dev분 미배포. 버전 미상승.
-**작업 상태:** 완료 (Irene "다음 섹션에서 계속" 지시 — 잔여 로드맵 이어감)
+**마지막 업데이트:** 2026-07-10 #2 (E2E b~f + 주문 생애주기 실증 + 셰이크다운 배포 — 운영 배포 완료)
+**버전:** 운영=배포됨(웹 + 데스크탑 0.1.7). 이번 세션분 **운영 배포됨(Backup 20260710_195933, Smoke 9/9)**. 버전 미상승(인프라/안전/테스트 전용).
+**작업 상태:** 완료 — 배포까지 끝, 지시 대기
 
 ### 진행 중인 작업
 - 없음
@@ -23,16 +23,28 @@
 
 **검증(전부 실행):** verify-all 12/12·print-guard 8/8 무접촉·마이그 집합 41==41 독립대조(누락0·차이7=비마이그 게이트/싱크 스크립트 여전히 호출)·fail-closed 실증(sensitive-diff 돈경로→exit1·훅 보호파일→ask·미분류마이그→exit1, 전부 복원clean)·5역할 mount 466s exit0. 인쇄/KDS/돈 런타임 무접촉.
 
+### 완료된 작업 (이번 세션 2026-07-10 #2 — E2E b~f + 주문 생애주기 실증)
+> Irene "주문관리 확인은 너한테. /검증하고 /배포하고 주문 다 넣어보고 결제·단계이동·프린트 다 테스트." → demo rid=38에 실제 주문 넣어 전 생애주기 실증 + E2E b~f 구현 + /검증. **인쇄/KDS/돈 런타임 무접촉**(e2e 테스트 파일 + health-check sweep 보강만).
+- **E2E 시나리오 b~f 전부 구현·flaky-0** (3회 연속 13/13): b 모바일주문(메뉴 mount + 주문 생애주기 API), c POS터미널(mount + 주문·결제·영수증), d 플로어플랜(mount + 테이블 렌더·클릭 패널), e 설정(mount + 테이블 QR CRUD), f KDS(주문→자동노출·단계·스테이션). mutation은 결정적 `request` API(demo-guard rid=38), UI는 mount·무크래시.
+- **주문 생애주기 실증(HTTP 실호출)**: 생성→pending-print(claim 경쟁 1/5)→printed(재인쇄0)→+Round(새것만)→단계이동(pending→preparing→ready→served)→결제(cash completed)→정식삭제. 15/15 통과.
+- **신규**: `e2e/{mobile-order,pos-terminal,floor-plan,settings-zones,kds}.spec.js` + `e2e/fixtures/demo-orders.js`(주문 생애주기 API 헬퍼) + demo-guard 헬퍼 추가(injectAuth/authHeaders/bodyLooksCrashed).
+- **health-check orphan-sweep cascade 보강**: 생애주기 주문의 자식행(order_actions/order_payments/point_transactions) FK로 force-destroy 실패 → 자식 먼저 cascade. 데모 마커 한정·멱등. (민감영역 분류기가 "안전망 자체"로 플래그 — 계약 로직 무변경, 근거 명시.)
+- **검증**: verify-all 12/12 · health-check print 8/8(보호파일 무결성 변경0) · e2e 3회 flaky-0 · demo 청정(잔여0).
+- **인쇄 물리 경계 명시**: 파이프라인 계약까지 헤드리스 증명, 실제 종이는 with MIN 매장 1회 확인(별도·미해소).
+
+### ✅ 셰이크다운 배포 완료 (2026-07-10 20:09, Backup 20260710_195933)
+- 런타임 무변경분(안전기반+e2e+health-check) 운영 배포. **새 9게이트 첫 실전 end-to-end 통과** + **`.claude/deploy-manifest.json`(1762파일) 앵커 생성** → check-sensitive-diff 델타 앵커 활성화(반쪽→완성).
+- 배포 중 발견·수리: **mount sweep flake** — 첫 시도 mount 게이트가 exit1(sweep 자체는 55/55·72/72 OK). 근본=rebuild 직후 전이적 pageerror(진짜 크래시 아님, 두 sweep 다 standalone 통과 확인). CLAUDE.md 규칙대로 `--skip-safety` 금지→**flake 자체 수리**: `headless-page-sweep.js`·`headless-roles-sweep.js`에 실패 route 1회 재검(진짜 크래시는 재검도 실패→여전히 차단). 재배포 mount 465s 크래시0 통과.
+- 신규 2테이블(menu_reference_photos·recognition_logs, 이전 AI인식 dev분) 운영 sync — 추가형·빈 테이블, 컬럼/타입 변경 0. Smoke 9/9 · 운영 health OK · nginx reload.
+- 버전 미상승(인프라/안전/테스트 전용, 매장 무접촉) — 릴리즈노트/블로그/공지 생략(Irene 확인).
+
 ### 다음 확정 작업
-- **Irene "다음 섹션에서 계속" 지시 → 안전기반 잔여 로드맵 이어감**:
-  1. E2E 시나리오 b~f 구현(demo-guard 안전레일 위에서 — b 모바일주문은 유일 mutation이라 우선)
-  2. timezone(242)·design(310) baseline 부채 점진 소거
-  3. admin/manager mount 커버(demo 계정 부재 갭 메우기)
-  4. 다음 `/배포` 후 `.claude/deploy-manifest.json` 자동생성 확인(델타 앵커 활성화)
-- **배포 시 주의**: 이번 dev분에 `deploy-to-production.sh`·`.claude/hooks/safety-guard.sh`(안전망 파일) 변경 포함 → 운영 반영은 Irene `/배포` + 배포 전 리뷰 권장. (Irene 지시 전 배포 금지.)
+- **없음 — 지시 대기.** (E2E b~f + 셰이크다운 배포 완료. Irene 새 지시 대기.)
+- 물리 대기(별개): with MIN 데스크탑앱 0.1.7 매장 1회 인쇄 확인 — 아래 절차, Irene 매장 방문 시.
 
 ### 후속 후보 (아이디어 메모, 확정 X)
 > 다음 사이클 결정은 Irene 지시 기준. /개발시작 자동 추천 대상 아님.
+- timezone(242)·design(310) baseline 부채 점진 소거 · admin/manager mount 커버(demo 계정 부재 갭) · E2E 시나리오 추가 확장(현 b~f 위)
 - (안전기반) inspection suites·verify-all GATES·sensitive-diff CLASSES 지속 확장("피드백 1건=불변식 1개")
 - prod `node sync-database.js`로 processed_ops 확인(오프라인 멱등, 없어도 무해)
 - i18n `settings:printer.stations.noPrinterWarning` 4언어 파일 추가(현재 defaultValue 폴백)

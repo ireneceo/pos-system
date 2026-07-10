@@ -145,7 +145,14 @@ async function runRole(label, cfg) {
   console.log(`\n=== ${label} (${cfg.role}, ${cfg.routes.length} routes) ===`);
   const out = [];
   for (const r of cfg.routes) {
-    const v = await visit(context, r);
+    let v = await visit(context, r);
+    // 2026-07-10: 전이적 flake(배포 빌드 직후 blip) 흡수 — 실패 시 1회 재검. 진짜 크래시는 재검도 실패 → 여전히 차단.
+    if (v.status !== 'OK' || v.pageerrors.length > 0) {
+      await new Promise((res) => setTimeout(res, 1500));
+      const retry = await visit(context, r);
+      if (retry.status === 'OK' && retry.pageerrors.length === 0) console.log(`  ↻ [${label}] ${r} 재검 통과(전이적 flake 흡수)`);
+      v = retry;
+    }
     const flag = v.status === 'OK' && v.pageerrors.length === 0 ? '✓' : '✗';
     console.log(`${flag} [${label}] ${r} → ${v.status}` +
       (v.pageerrors.length ? ` | ${v.pageerrors.length} pageerror` : '') +
