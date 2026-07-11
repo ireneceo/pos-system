@@ -62,9 +62,10 @@ async function getDefaultCurrency() {
 // Build a restaurant's subscription snapshot (billing-relevant fields + change
 // eligibility + usage). Extracted so both self-service (Restaurant Admin) and the
 // manager-targets-a-managed-restaurant path share ONE source of truth.
-async function buildRestaurantSubscription(restaurant, defaultCurrency) {
+async function buildRestaurantSubscription(restaurant, defaultCurrency, viewer = null) {
   // Check payment_model
   let billedToName = null;
+  let billedToUserId = null;
   let canChange = true;
   let changeBlockedReason = null;
 
@@ -72,23 +73,36 @@ async function buildRestaurantSubscription(restaurant, defaultCurrency) {
     canChange = false;
     if (restaurant.payment_model === 'brand_manager' && restaurant.brand_id) {
       const brand = await Brand.findByPk(restaurant.brand_id, {
-        include: [{ model: User, as: 'owner', attributes: ['full_name'] }]
+        include: [{ model: User, as: 'owner', attributes: ['id', 'full_name'] }]
       });
       billedToName = brand ? `${brand.name} (${brand.owner?.full_name || 'Brand General'})` : 'Brand General';
+      billedToUserId = brand?.owner_id ?? brand?.owner?.id ?? null;
     } else if (restaurant.payment_model === 'foodcourt_manager' && restaurant.foodcourt_id) {
       const fc = await Foodcourt.findByPk(restaurant.foodcourt_id, {
-        include: [{ model: User, as: 'owner', attributes: ['full_name'] }]
+        include: [{ model: User, as: 'owner', attributes: ['id', 'full_name'] }]
       });
       billedToName = fc ? `${fc.name} (${fc.owner?.full_name || 'Foodcourt General'})` : 'Foodcourt General';
+      billedToUserId = fc?.owner_id ?? fc?.owner?.id ?? null;
     } else if (restaurant.payment_model === 'restaurant_owner') {
       const { RestaurantManager } = require('../models');
       const ownerLink = await RestaurantManager.findOne({
         where: { restaurant_id: restaurant.id, relationship_type: 'ownership' },
-        include: [{ model: User, as: 'manager', attributes: ['full_name'] }]
+        include: [{ model: User, as: 'manager', attributes: ['id', 'full_name'] }]
       });
       billedToName = ownerLink?.manager?.full_name || 'Restaurant Owner';
+      billedToUserId = ownerLink?.manager_id ?? ownerLink?.manager?.id ?? null;
     }
     changeBlockedReason = `Your POS subscription is billed to ${billedToName}. Please contact them for plan changes.`;
+
+    // "Contact the payer" is the RESTAURANT's view. When the viewer IS the payer
+    // (the brand/foodcourt owner, the owning manager, or System Admin), they must be
+    // able to change the plan they are paying for — otherwise the manager
+    // subscription page blocks exactly the restaurants it exists to manage.
+    if (viewer && (viewer.role === 'System Admin' ||
+        (billedToUserId != null && String(viewer.id) === String(billedToUserId)))) {
+      canChange = true;
+      changeBlockedReason = null;
+    }
   }
 
   // Check overdue/suspended
@@ -124,6 +138,8 @@ async function buildRestaurantSubscription(restaurant, defaultCurrency) {
     pending_billing_cycle: restaurant.pending_billing_cycle,
     plan_change_date: restaurant.plan_change_date,
     plan_change_type: restaurant.plan_change_type,
+    payment_model: restaurant.payment_model || 'restaurant',
+    billed_to_name: billedToName,
     can_change: canChange,
     change_blocked_reason: changeBlockedReason,
     current_usage: {
@@ -210,21 +226,25 @@ async function getCurrentSubscription(user) {
  * Helper: Calculate next billing date from subscription_start + billing_cycle
  */
 function getNextBillingDate(subscriptionStart, subscriptionEnd, billingCycle) {
-  if (subscriptionEnd) {
-    return new Date(subscriptionEnd);
-  }
-  if (!subscriptionStart) return null;
-  const start = new Date(subscriptionStart);
   const now = new Date();
-  // Advance start until it's in the future
-  while (start <= now) {
+
+  // The next billing date must be in the FUTURE. A lapsed subscription_end (or none
+  // at all — 8 live restaurants have null/past) used to be returned verbatim, which
+  // scheduled a "pending" plan change in the past and gave upgrade invoices a due date
+  // that was already overdue the moment they were issued.
+  let next = subscriptionEnd ? new Date(subscriptionEnd)
+    : subscriptionStart ? new Date(subscriptionStart)
+    : null;
+  if (!next || isNaN(next.getTime())) next = new Date(now);
+
+  while (next <= now) {
     if (billingCycle === 'annual') {
-      start.setFullYear(start.getFullYear() + 1);
+      next.setFullYear(next.getFullYear() + 1);
     } else {
-      start.setMonth(start.getMonth() + 1);
+      next.setMonth(next.getMonth() + 1);
     }
   }
-  return start;
+  return next;
 }
 
 /**
@@ -426,7 +446,7 @@ router.get('/manager/restaurant/:restaurantId/plan-options', authenticateToken, 
     }
 
     const defaultCurrency = await getDefaultCurrency();
-    const current = await buildRestaurantSubscription(restaurant, defaultCurrency);
+    const current = await buildRestaurantSubscription(restaurant, defaultCurrency, req.user);
 
     // Build available_plans exactly like GET /my-plan does, but for the restaurant
     // plan_target and the restaurant's currency.
@@ -532,7 +552,7 @@ router.post('/change-plan', authenticateToken, async (req, res) => {
         return res.status(403).json({ success: false, message: 'You do not manage this restaurant.' });
       }
       const defaultCurrency = await getDefaultCurrency();
-      current = await buildRestaurantSubscription(restaurant, defaultCurrency);
+      current = await buildRestaurantSubscription(restaurant, defaultCurrency, req.user);
       planTarget = 'restaurant';
     } else {
       planTarget = getPlanTarget(user.role);
@@ -882,11 +902,10 @@ router.post('/change-plan', authenticateToken, async (req, res) => {
 router.delete('/change-plan', authenticateToken, async (req, res) => {
   try {
     const user = req.user;
-    const planTarget = getPlanTarget(user.role);
-
-    if (!planTarget) {
-      return res.status(403).json({ success: false, message: 'Your role does not have a subscription plan.' });
-    }
+    // Manager mode targets a restaurant. Take it from the QUERY (a body on DELETE is
+    // unreliable — a chunked DELETE body is rejected before it reaches this handler),
+    // still accepting a body for callers that send one.
+    const restaurant_id = req.query.restaurant_id || (req.body && req.body.restaurant_id);
 
     const clearData = {
       pending_plan_type: null,
@@ -897,6 +916,46 @@ router.delete('/change-plan', authenticateToken, async (req, res) => {
     };
 
     let currentPlanType;
+
+    // Manager mode — cancel the pending change of a MANAGED restaurant. Mirrors the
+    // manager branch of POST /change-plan: without this, a manager can schedule a
+    // downgrade but has no way to undo it (the self-service branch below would clear
+    // the manager's OWN user row instead of the restaurant's).
+    if (restaurant_id) {
+      const restaurant = await managerCanManageRestaurant(user, restaurant_id);
+      if (!restaurant) {
+        return res.status(403).json({ success: false, message: 'You do not manage this restaurant.' });
+      }
+      if (!restaurant.pending_plan_type) {
+        return res.status(400).json({ success: false, message: 'No pending plan change to cancel.' });
+      }
+      currentPlanType = restaurant.plan_type;
+      await Restaurant.update(clearData, { where: { id: restaurant.id } });
+
+      await ActivityLog.create({
+        restaurant_id: restaurant.id,
+        user_id: user.id,
+        username: user.username || user.email,
+        full_name: user.full_name || user.name || null,
+        action_type: 'update',
+        entity_type: 'subscription',
+        entity_id: String(restaurant.id),
+        entity_name: restaurant.plan_type,
+        description: `Plan change cancelled by manager: kept ${restaurant.plan_type}`,
+        ip_address: req.ip,
+        user_agent: req.get('User-Agent')
+      });
+
+      return res.json({
+        success: true,
+        message: `Scheduled change cancelled. ${restaurant.name} stays on ${currentPlanType}.`
+      });
+    }
+
+    const planTarget = getPlanTarget(user.role);
+    if (!planTarget) {
+      return res.status(403).json({ success: false, message: 'Your role does not have a subscription plan.' });
+    }
 
     if (user.role === 'Restaurant Admin') {
       const restaurant = await Restaurant.findOne({ where: { admin_id: user.id } });

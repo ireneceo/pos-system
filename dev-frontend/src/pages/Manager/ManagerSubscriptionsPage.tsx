@@ -18,15 +18,25 @@ interface Subscription {
   planType: 'basic' | 'professional' | 'enterprise';
   monthlyFee: number;
   status: 'active' | 'trial' | 'expired' | 'suspended' | 'cancelled';
-  nextBilling: string;
+  nextBilling: string | null;
   features: string[];
+  // Real usage from the subscription API (staff/menu/orders are the same counters the
+  // backend enforces on downgrade). Storage has no meter → not shown rather than faked.
   usage: {
-    currentMenuItems: number;
+    menuItems: number;
     menuItemLimit: number;
-    monthlyTransactions: number;
-    storageUsed: number;
-    storageLimit: number;
+    monthlyOrders: number;
+    orderLimit: number;
+    staff: number;
+    staffLimit: number;
   };
+  pending: {
+    planType: string;
+    changeDate: string | null;
+    changeType: string | null;
+  } | null;
+  paymentModel: string;      // 'restaurant' | 'brand_manager' | 'foodcourt_manager' | 'restaurant_owner'
+  billedToName: string | null;
 }
 
 const Container = styled.div`
@@ -440,12 +450,37 @@ const ModalError = styled.div`
   margin-bottom: 16px;
 `;
 
+const PendingNote = styled.div`
+  padding: 12px 16px;
+  background: #FFFBEB;
+  border: 1px solid #FDE68A;
+  border-radius: 8px;
+  color: #92400E;
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: 20px;
+`;
+
+const PendingCancelButton = styled.button`
+  display: block;
+  margin-top: 8px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: #B45309;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+`;
+
 interface PlanOptionData {
   id: number;
   name: string;
   display_name: string;
   monthly_price: number;
   annual_price: number;
+  features: string[];
   is_current: boolean;
   change_type: 'upgrade' | 'downgrade' | null;
   limits: { orders: number; staff: number; menu_items: number };
@@ -453,10 +488,19 @@ interface PlanOptionData {
 
 interface PlanOptionsCurrent {
   plan_type: string;
+  plan_amount: number;
   billing_cycle: string;
   currency: string;
+  status: string;
+  subscription_end: string | null;
   can_change: boolean;
   change_blocked_reason: string | null;
+  pending_plan_type: string | null;
+  plan_change_date: string | null;
+  plan_change_type: string | null;
+  payment_model: string;
+  billed_to_name: string | null;
+  current_usage: { staff_count: number; menu_item_count: number; order_count: number };
 }
 
 const ManagerSubscriptionsPage: React.FC = () => {
@@ -476,6 +520,14 @@ const ManagerSubscriptionsPage: React.FC = () => {
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
   const [selectedCycle, setSelectedCycle] = useState<'monthly' | 'annual'>('monthly');
   const [submitting, setSubmitting] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState<Subscription | null>(null);
+  const [payerTarget, setPayerTarget] = useState<Subscription | null>(null);
+
+  // Which "manager pays" model applies to this viewer — a Foodcourt manager bills via
+  // the foodcourt, a Brand manager via the brand.
+  const managerPaymentModel = (user?.role === 'Foodcourt General' || user?.role === 'Foodcourt Manager')
+    ? 'foodcourt_manager'
+    : 'brand_manager';
 
   useEffect(() => {
     if (defaultCurrency) {
@@ -486,60 +538,64 @@ const ManagerSubscriptionsPage: React.FC = () => {
   const loadSubscriptions = useCallback(async () => {
     try {
       if (!user?.id) return;
+      const token = getAuthToken();
+      const auth = { headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } };
 
-      // Fetch restaurants for this manager
-      const response = await fetch(`/api/restaurants/manager/${user.id}`);
+      const response = await fetch(`/api/restaurants/manager/${user.id}`, auth);
       if (!response.ok) {
         throw new Error('Failed to fetch restaurants');
       }
-
       const restaurants = await response.json();
 
-      // Transform restaurant data to subscription format
-      const subscriptionsData: Subscription[] = restaurants.map((restaurant: any) => {
-          const planType = restaurant.plan_type?.toLowerCase().replace(' plan', '') || 'basic';
-          const isActive = restaurant.status === 'active';
-          
-          // Define plan features and limits based on menu quantities
-          const planFeatures: { [key: string]: { features: string[], limits: { menuItems: number, storage: number } } } = {
-            basic: {
-              features: ['Up to 50 menu items', 'Basic POS features', 'Email support', '10GB storage', 'Monthly reports'],
-              limits: { menuItems: 50, storage: 10 }
-            },
-            professional: {
-              features: ['Up to 200 menu items', 'Advanced POS features', 'Priority support', '50GB storage', 'Real-time analytics'],
-              limits: { menuItems: 200, storage: 50 }
-            },
-            enterprise: {
-              features: ['Unlimited menu items', 'Full POS suite', '24/7 support', 'Unlimited storage', 'Custom integrations'],
-              limits: { menuItems: -1, storage: -1 }
-            }
-          };
-          
-          const plan = planFeatures[planType] || planFeatures.basic;
-          
+      // Per restaurant, read the subscription snapshot the backend actually bills on
+      // (plan, price, usage counters, pending change). No client-side plan tables —
+      // features/limits come from the PlanTemplate the plan is on.
+      const subscriptionsData = await Promise.all(
+        (restaurants || []).map(async (restaurant: any): Promise<Subscription | null> => {
+          const res = await fetch(`/api/subscriptions/manager/restaurant/${restaurant.id}/plan-options`, auth);
+          const json = await res.json().catch(() => ({}));
+          if (!res.ok || !json.success) return null;
+
+          const current: PlanOptionsCurrent = json.data.current;
+          const plans: PlanOptionData[] = json.data.available_plans || [];
+          const currentPlan = plans.find((p) => p.is_current);
+          const limits = currentPlan?.limits || { orders: -1, staff: -1, menu_items: -1 };
+          const shortType = (current.plan_type || '').toLowerCase().replace(' plan', '');
+
           return {
             id: `sub-${restaurant.id}`,
-            restaurantId: restaurant.id.toString(),
+            restaurantId: String(restaurant.id),
             restaurantName: restaurant.name,
-            planName: restaurant.plan_type || 'Basic Plan',
-            planType: planType as 'basic' | 'professional' | 'enterprise',
-            monthlyFee: parseFloat(restaurant.plan_amount) || 29,
-            status: isActive ? 'active' : (restaurant.status === 'cancelled' ? 'cancelled' : restaurant.status === 'suspended' ? 'suspended' : 'expired'),
-            nextBilling: restaurant.subscription_end ? new Date(restaurant.subscription_end).toISOString().split('T')[0] : new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
-            features: plan.features,
+            planName: current.plan_type || 'No plan',
+            planType: (['basic', 'professional', 'enterprise'].includes(shortType) ? shortType : 'basic') as Subscription['planType'],
+            monthlyFee: current.plan_amount || 0,
+            status: (['active', 'trial', 'expired', 'suspended', 'cancelled'].includes(current.status)
+              ? current.status
+              : 'expired') as Subscription['status'],
+            nextBilling: current.subscription_end || null,
+            features: currentPlan?.features || [],
             usage: {
-              currentMenuItems: Math.floor(Math.random() * (plan.limits.menuItems > 0 ? plan.limits.menuItems * 0.7 : 150)) + 10,
-              menuItemLimit: plan.limits.menuItems,
-              monthlyTransactions: Math.floor(Math.random() * 2000) + 500,
-              storageUsed: Math.floor(Math.random() * (plan.limits.storage > 0 ? plan.limits.storage * 0.8 : 100)) + 5,
-              storageLimit: plan.limits.storage
-            }
+              menuItems: current.current_usage?.menu_item_count ?? 0,
+              menuItemLimit: limits.menu_items ?? -1,
+              monthlyOrders: current.current_usage?.order_count ?? 0,
+              orderLimit: limits.orders ?? -1,
+              staff: current.current_usage?.staff_count ?? 0,
+              staffLimit: limits.staff ?? -1,
+            },
+            pending: current.pending_plan_type
+              ? {
+                  planType: current.pending_plan_type,
+                  changeDate: current.plan_change_date,
+                  changeType: current.plan_change_type,
+                }
+              : null,
+            paymentModel: current.payment_model || 'restaurant',
+            billedToName: current.billed_to_name || null,
           };
-        });
-        
-      setSubscriptions(subscriptionsData);
+        })
+      );
 
+      setSubscriptions(subscriptionsData.filter((s): s is Subscription => s !== null));
     } catch (error) {
       console.error('Error fetching manager subscriptions:', error);
       setSubscriptions([]);
@@ -607,10 +663,6 @@ const ManagerSubscriptionsPage: React.FC = () => {
     openPlanModal(subscription);
   };
 
-  const handleManageSubscription = (subscription: Subscription) => {
-    openPlanModal(subscription);
-  };
-
   const handleConfirmPlanChange = async () => {
     if (!planModal || selectedPlanId == null) return;
     setSubmitting(true);
@@ -647,6 +699,68 @@ const ManagerSubscriptionsPage: React.FC = () => {
       title: 'Managed by System Admin',
       message: 'Suspending or cancelling a subscription is handled by the System Admin. Managers can upgrade or downgrade the plan only.'
     });
+  };
+
+  // Who pays this restaurant's POS subscription — the manager (brand/foodcourt) or the
+  // restaurant itself. Switching also re-points the restaurant's unpaid invoices, so
+  // both calls must land; ported from the previous Manager subscriptions page.
+  const handlePaymentModelSwitch = async (subscription: Subscription) => {
+    const nextModel = subscription.paymentModel === 'restaurant' ? managerPaymentModel : 'restaurant';
+    setPayerTarget(null);
+    try {
+      const token = getAuthToken();
+      const headers = { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+
+      const res = await fetch(`/api/restaurants/${subscription.restaurantId}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ payment_model: nextModel })
+      });
+      if (!res.ok) {
+        setInfoModal({ open: true, title: t('admin:managerSubscriptionsPage.couldNotSwitchPayer'), message: t('admin:managerSubscriptionsPage.switchPayerFailed') });
+        return;
+      }
+
+      const invRes = await fetch(`/api/invoices/update-payer/${subscription.restaurantId}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ payment_model: nextModel })
+      });
+      if (!invRes.ok) {
+        setInfoModal({
+          open: true,
+          title: t('admin:managerSubscriptionsPage.payerSwitchedInvoicesUnchanged'),
+          message: t('admin:managerSubscriptionsPage.payerSwitchedInvoicesUnchangedMessage')
+        });
+      }
+
+      await loadSubscriptions();
+    } catch (err) {
+      console.error('Error switching payment model:', err);
+      setInfoModal({ open: true, title: t('admin:managerSubscriptionsPage.couldNotSwitchPayer'), message: t('admin:managerSubscriptionsPage.switchPayerFailed') });
+    }
+  };
+
+  // Cancel a scheduled (downgrade / cycle) change before it applies. Without this a
+  // manager could schedule a change and have no way to undo it.
+  const handleCancelPending = async (subscription: Subscription) => {
+    setCancelTarget(null);
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`/api/subscriptions/change-plan?restaurant_id=${encodeURIComponent(subscription.restaurantId)}`, {
+        method: 'DELETE',
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) }
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.success) {
+        setInfoModal({ open: true, title: t('admin:managerSubscriptionsPage.couldNotCancel'), message: json.message || t('admin:managerSubscriptionsPage.cancelScheduledFailed') });
+        return;
+      }
+      await loadSubscriptions();
+    } catch (err) {
+      console.error('Error cancelling scheduled plan change:', err);
+      setInfoModal({ open: true, title: t('admin:managerSubscriptionsPage.couldNotCancel'), message: t('admin:managerSubscriptionsPage.cancelScheduledFailed') });
+    }
   };
 
   const handleExportData = () => {
@@ -729,45 +843,72 @@ const ManagerSubscriptionsPage: React.FC = () => {
                       {subscription.status}
                     </StatusBadge>
                     <NextBilling>
-                      Next billing: {formatDateTime(subscription.nextBilling, null, { year: 'numeric', month: '2-digit', day: '2-digit' })}
+                      {t('admin:managerSubscriptionsPage.nextBilling')}: {subscription.nextBilling
+                        ? formatDateTime(subscription.nextBilling, null, { year: 'numeric', month: '2-digit', day: '2-digit' })
+                        : t('admin:managerSubscriptionsPage.notScheduled')}
                     </NextBilling>
                   </StatusSection>
+
+                  {subscription.pending && (
+                    <PendingNote>
+                      <strong>
+                        {subscription.pending.changeType === 'downgrade'
+                          ? t('admin:managerSubscriptionsPage.downgradeScheduled')
+                          : t('admin:managerSubscriptionsPage.changeScheduled')}
+                      </strong>
+                      {' '}&rarr; {subscription.pending.planType}
+                      {subscription.pending.changeDate && (
+                        <> on {formatDateTime(subscription.pending.changeDate, null, { year: 'numeric', month: '2-digit', day: '2-digit' })}</>
+                      )}
+                      <PendingCancelButton type="button" onClick={() => setCancelTarget(subscription)}>
+                        {t('admin:managerSubscriptionsPage.cancelScheduledChange')}
+                      </PendingCancelButton>
+                    </PendingNote>
+                  )}
 
                   <UsageSection>
                     <SectionTitle>{t('admin:managerSubscriptionsPage.currentUsage')}</SectionTitle>
                     <UsageItem>
                       <UsageLabel>{t('admin:managerSubscriptionsPage.menuItems')}</UsageLabel>
-                      <UsageValue warning={getUsagePercentage(subscription.usage.currentMenuItems, subscription.usage.menuItemLimit) >= 80}>
-                        {formatUsage(subscription.usage.currentMenuItems, subscription.usage.menuItemLimit)}
+                      <UsageValue warning={getUsagePercentage(subscription.usage.menuItems, subscription.usage.menuItemLimit) >= 80}>
+                        {formatUsage(subscription.usage.menuItems, subscription.usage.menuItemLimit)}
                       </UsageValue>
                     </UsageItem>
                     {subscription.usage.menuItemLimit !== -1 && (
                       <UsageBar>
-                        <UsageProgress 
-                          percentage={getUsagePercentage(subscription.usage.currentMenuItems, subscription.usage.menuItemLimit)}
-                          warning={getUsagePercentage(subscription.usage.currentMenuItems, subscription.usage.menuItemLimit) >= 80}
+                        <UsageProgress
+                          percentage={getUsagePercentage(subscription.usage.menuItems, subscription.usage.menuItemLimit)}
+                          warning={getUsagePercentage(subscription.usage.menuItems, subscription.usage.menuItemLimit) >= 80}
                         />
                       </UsageBar>
                     )}
 
                     <UsageItem style={{ marginTop: '12px' }}>
                       <UsageLabel>{t('admin:managerSubscriptionsPage.monthlyTransactions')}</UsageLabel>
-                      <UsageValue>
-                        {subscription.usage.monthlyTransactions.toLocaleString()}
+                      <UsageValue warning={getUsagePercentage(subscription.usage.monthlyOrders, subscription.usage.orderLimit) >= 80}>
+                        {formatUsage(subscription.usage.monthlyOrders, subscription.usage.orderLimit)}
                       </UsageValue>
                     </UsageItem>
+                    {subscription.usage.orderLimit !== -1 && (
+                      <UsageBar>
+                        <UsageProgress
+                          percentage={getUsagePercentage(subscription.usage.monthlyOrders, subscription.usage.orderLimit)}
+                          warning={getUsagePercentage(subscription.usage.monthlyOrders, subscription.usage.orderLimit) >= 80}
+                        />
+                      </UsageBar>
+                    )}
 
                     <UsageItem style={{ marginTop: '12px' }}>
-                      <UsageLabel>{t('admin:managerSubscriptionsPage.storage')}</UsageLabel>
-                      <UsageValue warning={getUsagePercentage(subscription.usage.storageUsed, subscription.usage.storageLimit) >= 80}>
-                        {subscription.usage.storageLimit === -1 ? `${subscription.usage.storageUsed}GB` : `${subscription.usage.storageUsed}GB / ${subscription.usage.storageLimit}GB`}
+                      <UsageLabel>{t('admin:managerSubscriptionsPage.staff')}</UsageLabel>
+                      <UsageValue warning={getUsagePercentage(subscription.usage.staff, subscription.usage.staffLimit) >= 80}>
+                        {formatUsage(subscription.usage.staff, subscription.usage.staffLimit)}
                       </UsageValue>
                     </UsageItem>
-                    {subscription.usage.storageLimit !== -1 && (
+                    {subscription.usage.staffLimit !== -1 && (
                       <UsageBar>
-                        <UsageProgress 
-                          percentage={getUsagePercentage(subscription.usage.storageUsed, subscription.usage.storageLimit)}
-                          warning={getUsagePercentage(subscription.usage.storageUsed, subscription.usage.storageLimit) >= 80}
+                        <UsageProgress
+                          percentage={getUsagePercentage(subscription.usage.staff, subscription.usage.staffLimit)}
+                          warning={getUsagePercentage(subscription.usage.staff, subscription.usage.staffLimit) >= 80}
                         />
                       </UsageBar>
                     )}
@@ -782,16 +923,27 @@ const ManagerSubscriptionsPage: React.FC = () => {
                     </FeaturesList>
                   </FeaturesSection>
 
+                  <UsageItem style={{ marginTop: '16px' }}>
+                    <UsageLabel>{t('admin:managerSubscriptionsPage.billedTo')}</UsageLabel>
+                    <UsageValue>
+                      {subscription.paymentModel === 'restaurant'
+                        ? t('admin:managerSubscriptionsPage.billedToRestaurant')
+                        : subscription.billedToName || '-'}
+                    </UsageValue>
+                  </UsageItem>
+
                   <ActionButtons>
-                    <ActionButton onClick={() => handleManageSubscription(subscription)}>
-                      Manage
-                    </ActionButton>
                     <ActionButton variant="primary" onClick={() => handleUpgradePlan(subscription)}>
-                      Change Plan
+                      {t('admin:managerSubscriptionsPage.changePlan')}
+                    </ActionButton>
+                    <ActionButton onClick={() => setPayerTarget(subscription)}>
+                      {subscription.paymentModel === 'restaurant'
+                        ? t('admin:managerSubscriptionsPage.billToMe')
+                        : t('admin:managerSubscriptionsPage.billToRestaurant')}
                     </ActionButton>
                     {subscription.status === 'active' && (
                       <ActionButton variant="danger" onClick={() => handleSuspendSubscription()}>
-                        Suspend
+                        {t('admin:managerSubscriptionsPage.suspend')}
                       </ActionButton>
                     )}
                   </ActionButtons>
@@ -900,6 +1052,31 @@ const ManagerSubscriptionsPage: React.FC = () => {
         confirmText="OK"
         type="info"
         singleButton
+      />
+      <ConfirmModal
+        isOpen={payerTarget !== null}
+        title={t('admin:managerSubscriptionsPage.changePayerTitle')}
+        message={payerTarget
+          ? (payerTarget.paymentModel === 'restaurant'
+              ? `You will be billed for ${payerTarget.restaurantName}'s POS subscription from now on. Its unpaid invoices move to you.`
+              : `${payerTarget.restaurantName} will be billed for its own POS subscription from now on. Its unpaid invoices move to the restaurant.`)
+          : ''}
+        onConfirm={() => { if (payerTarget) handlePaymentModelSwitch(payerTarget); }}
+        onCancel={() => setPayerTarget(null)}
+        confirmText="Confirm"
+        type="warning"
+      />
+      <ConfirmModal
+        isOpen={cancelTarget !== null}
+        title={t('admin:managerSubscriptionsPage.cancelScheduledTitle')}
+        message={cancelTarget
+          ? `${cancelTarget.restaurantName} will stay on ${cancelTarget.planName}. The scheduled change to ${cancelTarget.pending?.planType} will be removed.`
+          : ''}
+        onConfirm={() => { if (cancelTarget) handleCancelPending(cancelTarget); }}
+        onCancel={() => setCancelTarget(null)}
+        confirmText="Cancel change"
+        cancelText="Keep it"
+        type="warning"
       />
     </>
   );

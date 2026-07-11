@@ -147,18 +147,6 @@
   "foodcourtInvoicesPage.resendInvoice": "重新发送发票",
   "foodcourtInvoicesPage.cancelInvoice": "取消 发票",
   "foodcourtInvoicesPage.deleteInvoice": "删除 发票",
-  "foodcourtManagement.foodcourtManagement": "美食广场 管理",
-  "foodcourtManagement.integratedManagementAndOperationalOptimizationForEntireFoodcourtNetwork": "整个美食广场网络的综合管理和运营优化",
-  "foodcourtManagement.exportData": "导出 数据",
-  "foodcourtManagement.addFoodcourt": "添加 美食广场",
-  "foodcourtManagement.totalFoodcourts": "总美食广场",
-  "foodcourtManagement.totalTenants": "总计租户",
-  "foodcourtManagement.averageOccupancy": "平均入住率",
-  "foodcourtManagement.totalMonthlyRevenue": "总计 月度 收入",
-  "foodcourtManagement.foodcourtList": "美食广场列表",
-  "foodcourtManagement.foodcourtName": "美食广场 名称",
-  "foodcourtManagement.location": "Location",
-  "foodcourtManagement.manager": "经理",
   "foodcourtPaymentSettingsPage.loading": "加载中...",
   "foodcourtPaymentSettingsPage.currencySettings": "货币 设置",
   "foodcourtPaymentSettingsPage.defaultCurrency": "默认 货币",
@@ -383,5 +371,6 @@
   "branches": {
     "latitude": "纬度",
     "longitude": "经度"
-  }
+  },
+  "foodcourtReportsPage.inPeriod": "所选期间内"
 }

@@ -267,5 +267,6 @@
   "ownerSystemInquiryPage.status": "状态",
   "ownerSystemInquiryPage.save": "保存",
   "ownerSystemInquiryPage.subject": "主题",
-  "ownerSystemInquiryPage.description": "描述"
+  "ownerSystemInquiryPage.description": "描述",
+  "ownerReportsPage.inPeriod": "所选期间内"
 }

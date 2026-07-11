@@ -402,7 +402,7 @@ const RentManagement: React.FC = () => {
                 <EmptyState
                   title="No tenants yet"
                   description="Rent management lists each active tenant restaurant and their monthly billing status. Once you have tenants linked to your branch units, they will appear here."
-                  primaryAction={{ label: 'Manage Tenants', onClick: () => navigate('/pos/foodcourt/general/management') }}
+                  primaryAction={{ label: 'Manage Tenants', onClick: () => navigate('/pos/foodcourt/tenancy') }}
                   secondaryAction={{ label: 'Open Floor Plan', onClick: () => navigate('/pos/foodcourt/floor-plan') }}
                 />
               ) : (

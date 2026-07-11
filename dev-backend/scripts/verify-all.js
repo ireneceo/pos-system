@@ -23,6 +23,8 @@
 const { spawnSync } = require('child_process');
 const path = require('path');
 const http = require('http');
+// mount sweep 이 demo 계정 없는 역할(System Admin/Manager) 토큰을 직접 서명하므로 JWT_SECRET 필요.
+try { require('dotenv').config({ path: path.resolve(__dirname, '../.env'), quiet: true }); } catch { /* optional */ }
 
 const ROOT = path.resolve(__dirname, '../..');           // /var/www
 const BACKEND = path.join(ROOT, 'dev-backend');
@@ -48,7 +50,7 @@ const GATES = [
   { id: 'health', tier: 'runtime', label: '❤️ health-check 전체 회귀 (인쇄 계약+보안+API)', cwd: BACKEND, cmd: ['node', 'scripts/health-check.js', '--quiet'], timeout: 300000 },
   { id: 'print-routes', tier: 'runtime', label: '🖨️ 인쇄 라우트 가드 (자동인쇄 전 루트 실제 실행)', cwd: FRONTEND, cmd: ['node', 'scripts/print-route-guard/run.js', '--quiet'], timeout: 300000 },
   { id: 'i18n', tier: 'runtime', label: '🌐 i18n 4언어 키 일치', cwd: FRONTEND, cmd: ['node', 'scripts/verify-translations.js'] },
-  { id: 'mount', tier: 'mount', label: '🖥️ 실브라우저 mount sweep (RA·BG·FG·Owner·Supplier 크래시0)', cwd: FRONTEND, cmd: null /* 특수 처리: 토큰 자동조달 + 2개 sweep 병합 */, timeout: 900000 },
+  { id: 'mount', tier: 'mount', label: '🖥️ 실브라우저 mount sweep (8역할 + /pos/manager/*, 크래시0)', cwd: FRONTEND, cmd: null /* 특수 처리: 토큰 자동조달 + 2개 sweep 병합 */, timeout: 1200000 },
 ];
 
 function postJson(url, body) {
@@ -71,6 +73,26 @@ async function fetchDemoToken(key) {
   const token = r.token || (r.data && r.data.token);
   if (!token) throw new Error(`demo-login 실패 (${key}): ${JSON.stringify(r).slice(0, 120)}`);
   return token;
+}
+
+// demo-login 화이트리스트에 없는 역할(System Admin / Brand·Foodcourt Manager)의 mount 검증용 토큰.
+// DB 의 실제 계정을 찾아 서명한다(비밀번호 불필요·계정 무변경). 해당 역할 계정이 없으면 null →
+// roles-sweep 이 그 역할만 skip(나머지는 그대로 검사).
+async function signRoleToken(role) {
+  try {
+    const jwt = require('jsonwebtoken');
+    const { User } = require('../models');
+    if (!process.env.JWT_SECRET) return null;
+    const user = await User.findOne({ where: { role }, order: [['id', 'ASC']] });
+    if (!user) return null;
+    return jwt.sign({
+      userId: user.id, email: user.email, role: user.role, username: user.username,
+      brand_id: user.brand_id, foodcourt_id: user.foodcourt_id, restaurant_id: user.restaurant_id,
+      manager_id: user.manager_id,
+    }, process.env.JWT_SECRET, { expiresIn: '30m' });
+  } catch {
+    return null;
+  }
 }
 
 function runGate(gate, extraEnv) {
@@ -114,20 +136,28 @@ function runGate(gate, extraEnv) {
     let r;
     try {
       if (gate.id === 'mount') {
-        // demo-login 으로 5역할 토큰 자동조달 후 2개 sweep 병합 실행.
-        // page-sweep = RA+BG, roles-sweep = FG+Owner+Supplier. (admin/manager 는 demo 계정이 없어
-        // roles-sweep 이 graceful skip — 알려진 커버리지 갭, docs/AGENT_ONBOARDING.md 참조.)
+        // 토큰 자동조달 후 2개 sweep 병합 실행.
+        //   page-sweep  = RA + BG
+        //   roles-sweep = FG · Owner · Supplier · System Admin · Brand/Foodcourt Manager · /pos/manager/*
+        // System Admin / Brand Manager / Foodcourt Manager 는 demo-login 화이트리스트에 없어 예전엔
+        // graceful skip 됐다(커버리지 갭). 2026-07-11: DB 의 실제 계정으로 JWT 를 직접 발급해 커버.
+        // — 이 갭 때문에 ManagerDashboard 의 Math.random 가짜 매출이 어떤 게이트에도 안 걸렸다.
         const [ra, bg, fg, owner, supplier] = await Promise.all([
           fetchDemoToken('test_restaurant_admin'), fetchDemoToken('test_brand_general'),
           fetchDemoToken('demo_foodcourt_general'), fetchDemoToken('test_restaurant_owner'),
           fetchDemoToken('demo_supplier_admin'),
         ]);
+        const [admin, bm, fcm] = await Promise.all([
+          signRoleToken('System Admin'), signRoleToken('Brand Manager'), signRoleToken('Foodcourt Manager'),
+        ]);
         const started = Date.now();
         const pageR = runGate({ ...gate, cmd: ['node', 'scripts/headless-page-sweep.js'] }, { RA_TOKEN: ra, BG_TOKEN: bg });
-        const rolesR = runGate({ ...gate, cmd: ['node', 'scripts/headless-roles-sweep.js'] }, { FG_TOKEN: fg, OWNER_TOKEN: owner, SUPPLIER_TOKEN: supplier });
+        const rolesR = runGate({ ...gate, cmd: ['node', 'scripts/headless-roles-sweep.js'] },
+          { FG_TOKEN: fg, OWNER_TOKEN: owner, SUPPLIER_TOKEN: supplier, BG_TOKEN: bg,
+            ADMIN_TOKEN: admin || '', BM_TOKEN: bm || '', FCM_TOKEN: fcm || '' });
         r = {
           ok: pageR.ok && rolesR.ok, code: pageR.ok && rolesR.ok ? 0 : 1,
-          out: '--- page-sweep (RA·BG) ---\n' + pageR.out + '\n--- roles-sweep (FG·Owner·Supplier) ---\n' + rolesR.out,
+          out: '--- page-sweep (RA·BG) ---\n' + pageR.out + '\n--- roles-sweep (FG·Owner·Supplier·Admin·Manager) ---\n' + rolesR.out,
           ms: Date.now() - started,
         };
       } else {

@@ -5,6 +5,7 @@ import { RestaurantSubscription } from '../../interfaces/RestaurantSubscription'
 import { StatsGrid, StatCard, StatLabel, StatValue } from '../../components/UI';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
+import { getAuthHeaders } from '../../utils/auth';
 import { useTranslation } from 'react-i18next';
 
 // API base URL - replaced at build time
@@ -13,12 +14,12 @@ const API_BASE = process.env.REACT_APP_API_URL || '';
 interface Restaurant {
   id: string;
   name: string;
+  branchName: string;
   location: string;
   status: 'active' | 'inactive' | 'maintenance';
   todaySales: number;
   todayOrders: number;
   staffCount: number;
-  rating: number;
   subscription?: RestaurantSubscription;
 }
 
@@ -175,18 +176,6 @@ const RestaurantDashboardStatLabel = styled.div`
   color: #4B5563;
 `;
 
-const RatingContainer = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-top: 12px;
-`;
-
-const Star = styled.span<{ filled: boolean }>`
-  color: ${props => props.filled ? '#FFC107' : '#C7CED6'};
-  font-size: 16px;
-`;
-
 const ActionButton = styled.button`
   width: 100%;
   padding: 10px 16px;
@@ -268,45 +257,35 @@ const ManagerDashboard: React.FC = () => {
   useEffect(() => {
     const fetchRestaurantsData = async () => {
       try {
-        console.log('🔄 ManagerDashboard: Fetching restaurants from API...');
-        
-        // Fetch restaurants for this manager
-        const restaurantsResponse = await fetch(`${API_BASE}/api/restaurants`);
-        if (!restaurantsResponse.ok) {
-          throw new Error('Failed to fetch restaurants');
+        // Real per-restaurant data, scoped to the logged-in manager by the server
+        // (same source as the Manager Sales page). Sales/orders = completed+served
+        // in each restaurant's own timezone; staff = Restaurant Admin + Staff.
+        const response = await fetch(`${API_BASE}/api/manager/sales-summary`, { headers: getAuthHeaders() });
+        if (!response.ok) {
+          throw new Error('Failed to fetch sales summary');
         }
-        const allRestaurants = await restaurantsResponse.json();
-        
-        // Filter restaurants for current manager (admin_id = 2 for K-DINE manager)
-        const managerRestaurants = allRestaurants.filter((restaurant: any) =>
-          restaurant.admin_id === 2 // K-DINE manager ID
-        );
-        
-        console.log('🏪 Found manager restaurants:', managerRestaurants);
-        
-        // Transform API data to Restaurant interface
-        const restaurantsData: Restaurant[] = managerRestaurants.map((restaurant: any) => ({
-          id: restaurant.id.toString(),
-          name: restaurant.name,
-          branchName: restaurant.branch_name || '',
-          location: restaurant.address || restaurant.location || 'No address',
-          status: restaurant.status === 'active' ? 'active' : 
-                  restaurant.status === 'suspended' ? 'maintenance' : 'inactive',
-          todaySales: Math.floor(Math.random() * 5000) + 2000, // Random sales data
-          todayOrders: Math.floor(Math.random() * 150) + 50,   // Random orders data  
-          staffCount: Math.floor(Math.random() * 10) + 5,      // Random staff count
-          rating: Number((Math.random() * 1 + 4).toFixed(1))   // Random rating 4.0-5.0
+        const json = await response.json();
+        const rows = json.data || [];
+
+        const restaurantsData: Restaurant[] = rows.map((r: any) => ({
+          id: String(r.id),
+          name: r.name,
+          branchName: r.branchName || '',
+          location: r.location || 'No address',
+          status: r.status === 'active' ? 'active' :
+                  r.status === 'suspended' ? 'maintenance' : 'inactive',
+          todaySales: r.todaySales || 0,
+          todayOrders: r.todayOrders || 0,
+          staffCount: r.staffCount || 0
         }));
-        
-        console.log('✅ ManagerDashboard: Loaded restaurants data:', restaurantsData);
+
         setRestaurants(restaurantsData);
-        
       } catch (error) {
-        console.error('❌ ManagerDashboard: Error fetching restaurants:', error);
+        console.error('ManagerDashboard: Error fetching restaurants:', error);
         setRestaurants([]);
       }
     };
-    
+
     fetchRestaurantsData();
   }, []);
 
@@ -314,18 +293,6 @@ const ManagerDashboard: React.FC = () => {
   const totalSales = restaurants.reduce((sum, r) => sum + r.todaySales, 0);
   const totalOrders = restaurants.reduce((sum, r) => sum + r.todayOrders, 0);
   const totalStaff = restaurants.reduce((sum, r) => sum + r.staffCount, 0);
-
-  const renderStars = (rating: number) => {
-    const stars = [];
-    for (let i = 1; i <= 5; i++) {
-      stars.push(
-        <Star key={i} filled={i <= rating}>
-          ★
-        </Star>
-      );
-    }
-    return stars;
-  };
 
   const handleRestaurantClick = (restaurantId: string) => {
     // Navigate to restaurant reports
@@ -418,13 +385,6 @@ const ManagerDashboard: React.FC = () => {
                 </StatusBadge>
               </RestaurantHeader>
               
-              <RatingContainer>
-                {renderStars(restaurant.rating)}
-                <span style={{ fontSize: '14px', color: '#4B5563', marginLeft: '8px' }}>
-                  {restaurant.rating}
-                </span>
-              </RatingContainer>
-
               <RestaurantStats>
                 <RestaurantStat>
                   <RestaurantDashboardStatValue>

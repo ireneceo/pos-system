@@ -1504,6 +1504,16 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
       if (['active', 'trial'].includes(req.body.status) && ['suspended', 'overdue'].includes(restaurant.status)) {
         updateData.grace_period_start = null;
       }
+      // Suspending/cancelling drops any scheduled plan change — otherwise a downgrade
+      // booked before the suspension silently applies later (subscriptionScheduler does
+      // the same when it suspends for non-payment).
+      if (['suspended', 'cancelled'].includes(req.body.status) && restaurant.pending_plan_type) {
+        updateData.pending_plan_type = null;
+        updateData.pending_plan_amount = null;
+        updateData.pending_billing_cycle = null;
+        updateData.plan_change_date = null;
+        updateData.plan_change_type = null;
+      }
     }
     // Accept BOTH camelCase and snake_case (mirrors billing_cycle below + the create handler).
     const _putSubStart = req.body.subscriptionStart !== undefined ? req.body.subscriptionStart : req.body.subscription_start;

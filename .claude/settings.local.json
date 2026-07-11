@@ -1156,7 +1156,22 @@
       "Bash(sed -i \"s#path: path, method#XXX#g\" order_lifecycle_probe.js)",
       "Bash(sed -i \"s#req\\('POST', '/orders'#req\\('POST', '/api/orders'#g\" order_lifecycle_probe.js)",
       "Bash(sed -i \"s#\\\\`/orders/#\\\\`/api/orders/#g\" order_lifecycle_probe.js)",
-      "Bash(sed -i \"s#await require\\('/var/www/dev-backend/models'\\).sequelize.close\\(\\).catch\\(\\(\\) => {}\\);#try { const m = require\\('/var/www/dev-backend/models'\\); if \\(m.sequelize\\) await m.sequelize.close\\(\\); } catch {}#g\" order_lifecycle_probe.js)"
+      "Bash(sed -i \"s#await require\\('/var/www/dev-backend/models'\\).sequelize.close\\(\\).catch\\(\\(\\) => {}\\);#try { const m = require\\('/var/www/dev-backend/models'\\); if \\(m.sequelize\\) await m.sequelize.close\\(\\); } catch {}#g\" order_lifecycle_probe.js)",
+      "Bash(sed -i '0,/ createdAt: { \\\\[Op.gte\\\\]: earliest },\\\\n ...NOT_DELETED/s///' routes/manager-sales.js)",
+      "Bash(perl -0pi -e 's/createdAt: \\\\{ \\\\[Op\\\\.gte\\\\]: earliest \\\\},\\\\n \\\\.\\\\.\\\\.NOT_DELETED/createdAt: { [Op.gte]: earliest }/' routes/manager-sales.js)",
+      "Bash(perl -0pi -e 's/    const current = await buildRestaurantSubscription\\\\\\(restaurant, defaultCurrency\\\\\\);\\\\n/    const current = await buildRestaurantSubscription\\(restaurant, defaultCurrency, req.user\\);\\\\n/' routes/subscriptions.js)",
+      "Bash(perl -0pi -e 's/      current = await buildRestaurantSubscription\\\\\\(restaurant, defaultCurrency\\\\\\);\\\\n/      current = await buildRestaurantSubscription\\(restaurant, defaultCurrency, req.user\\);\\\\n/' routes/subscriptions.js)",
+      "Bash(perl -0pi -e \"s/      return scheduled && planUnchanged && futureDate && del\\\\.status === 200 && cleared;/      console.log\\('    [DEBUG] chg=', chg.status, 'scheduled=', scheduled, 'planUnchanged=', planUnchanged, 'futureDate=', futureDate, after.plan_change_date, 'del=', del.status, JSON.stringify\\(del.body\\).slice\\(0,80\\), 'cleared=', cleared\\);\\\\n      return scheduled && planUnchanged && futureDate && del.status === 200 && cleared;/\" scripts/health-check.js)",
+      "Bash(perl -0pi -e \"s|const del = await request\\\\\\('DELETE', '/subscriptions/change-plan', \\\\{ restaurant_id: String\\\\\\(demo\\\\.id\\\\\\) \\\\}, auth\\\\\\);|const del = await request\\('DELETE', \\\\`/subscriptions/change-plan?restaurant_id=\\\\\\\\\\\\${demo.id}\\\\`, null, auth\\);|\" scripts/health-check.js)",
+      "Bash(perl -0pi -e \"s/    const \\\\{ Op \\\\} = require\\\\\\('sequelize'\\\\\\);\\\\n    const PlanPrice = require\\\\\\('..\\\\/models\\\\/PlanPrice'\\\\\\);/    const PlanPrice = require\\('..\\\\/models\\\\/PlanPrice'\\);/\" routes/restaurants-subscription.js)",
+      "Bash(ADMIN_TOKEN=$\\(node -pe \"require\\('/tmp/claude-1000/-var-www/43f7295f-c3a1-454e-b34a-136df4ac9504/scratchpad/tokens.json'\\).admin\"\\) BM_TOKEN=$\\(node -pe \"require\\('/tmp/claude-1000/-var-www/43f7295f-c3a1-454e-b34a-136df4ac9504/scratchpad/tokens.json'\\).bm\"\\) FCM_TOKEN=$\\(node -pe \"require\\('/tmp/claude-1000/-var-www/43f7295f-c3a1-454e-b34a-136df4ac9504/scratchpad/tokens.json'\\).fcm\"\\) BG_TOKEN=$\\(node -pe \"require\\('/tmp/claude-1000/-var-www/43f7295f-c3a1-454e-b34a-136df4ac9504/scratchpad/tokens.json'\\).bg\"\\) node scripts/headless-roles-sweep.js)",
+      "Bash(sed 's/\\\\x1b\\\\[[0-9;]*m//g' /tmp/claude-1000/-var-www/43f7295f-c3a1-454e-b34a-136df4ac9504/scratchpad/sweep.log)",
+      "Bash(sed 's/\\\\x1b\\\\[[0-9;]*m//g')",
+      "Bash(echo \"build exit=$?\")",
+      "Bash(echo \"build_exit=$?\")",
+      "Bash(echo \"build=$?\")",
+      "Bash(pkill -f \"verify-all\")",
+      "Bash(awk '{print $6,$7,$8}')"
     ],
     "deny": [],
     "ask": []

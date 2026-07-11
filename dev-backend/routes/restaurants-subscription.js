@@ -218,21 +218,16 @@ router.get('/subscriptions/manager/:managerId', authenticateToken, async (req, r
       // Calculate current month orders
       const currentOrders = orders.filter(order => order.status === 'completed').length;
       
-      // Determine order limit based on plan
-      const orderLimits = {
-        'Basic Plan': 1000,
-        'Professional Plan': 10000,
-        'Enterprise Plan': -1 // Unlimited
+      // Fee + limit come from the restaurant's own columns — the amount actually billed
+      // (discounts included) and the limit actually enforced. A hardcoded plan-name→price
+      // table used to report list prices here, so a discounted tenant was shown the wrong
+      // fee and a custom plan was priced as "Basic".
+      const billedAmount = parseFloat(restaurant.plan_amount) || 0;
+      const isAnnual = restaurant.billing_cycle === 'annual';
+      const fees = {
+        monthly: isAnnual ? Math.round((billedAmount / 12) * 100) / 100 : billedAmount,
+        annual: isAnnual ? billedAmount : Math.round(billedAmount * 12 * 100) / 100
       };
-
-      // Calculate fees based on plan
-      const planFees = {
-        'Basic Plan': { monthly: 29, annual: 290 },
-        'Professional Plan': { monthly: 99, annual: 990 },
-        'Enterprise Plan': { monthly: 199, annual: 2190 }
-      };
-
-      const fees = planFees[restaurant.plan_type] || planFees['Basic Plan'];
 
       return {
         id: `sub-${restaurant.id}`,
@@ -252,7 +247,7 @@ router.get('/subscriptions/manager/:managerId', authenticateToken, async (req, r
                       restaurant.payment_model === 'restaurant' ? 'self' : 'manager',
         payerId: restaurant.payment_model === 'restaurant' ? restaurant.id.toString() : (restaurant.admin_id?.toString() || ''),
         payerName: restaurant.payment_model === 'restaurant' ? restaurant.name : (restaurant.admin_name || 'Unassigned'),
-        orderLimit: orderLimits[restaurant.plan_type] || 1000,
+        orderLimit: restaurant.order_limit ?? -1,
         currentOrders: currentOrders,
         features: [], // Will be filled by frontend based on plan
         lastPayment: lastPaidInvoice ? lastPaidInvoice.paid_at.toISOString().split('T')[0] : '-',
@@ -373,24 +368,57 @@ router.post('/subscriptions', authenticateToken, async (req, res) => {
       }
     }
 
-    // Plan pricing
-    const planPrices = {
-      'basic': { monthly: 29, annual: 290 },
-      'professional': { monthly: 99, annual: 990 },
-      'enterprise': { monthly: 199, annual: 2190 }
+    // Plan pricing — read from PlanTemplate/PlanPrice, never a hardcoded table. (Until
+    // 2026-07-11 this route billed a fixed basic 29 / pro 99 / ent 199 regardless of the
+    // real plan price, the restaurant's currency, or the requested billing cycle.)
+    const PlanPrice = require('../models/PlanPrice');
+    const plan = await PlanTemplate.findOne({
+      where: {
+        plan_target: 'restaurant',
+        is_active: true,
+        [Op.or]: [{ name: planType }, { display_name: planType }]
+      }
+    });
+    if (!plan) {
+      return res.status(400).json({ success: false, error: { message: `Unknown plan: ${planType}`, code: 'VALIDATION_ERROR' } });
+    }
+
+    const currency = restaurant.currency || 'MYR';
+    const price = await PlanPrice.findOne({ where: { plan_id: plan.id, currency, is_active: true } });
+    const fees = {
+      monthly: parseFloat(price?.monthly_price ?? plan.base_price_monthly) || 0,
+      annual: parseFloat(price?.annual_price ?? plan.base_price_annual) || 0
     };
 
-    const fees = planPrices[planType] || planPrices['basic'];
+    const cycle = billingCycle === 'annual' ? 'annual' : 'monthly';
+    const amount = cycle === 'annual' ? fees.annual : fees.monthly;
 
-    // Update restaurant with subscription info
+    // Subscription term follows the billing cycle (annual = +1y, monthly = +1mo).
+    const subStart = new Date();
+    const subEnd = new Date(subStart);
+    if (cycle === 'annual') subEnd.setFullYear(subEnd.getFullYear() + 1);
+    else subEnd.setMonth(subEnd.getMonth() + 1);
+
+    // Who gets billed: the restaurant itself, or the manager who onboarded it.
+    const managerModel = manager.role === 'Foodcourt General' || manager.role === 'Foodcourt Manager'
+      ? 'foodcourt_manager' : 'brand_manager';
+    const resolvedPaymentModel = paymentModel === 'manager' ? managerModel : 'restaurant';
+
+    // Update restaurant with subscription info (limits come from the plan, like every
+    // other plan change path — else the tenant keeps the previous plan's limits).
     await restaurant.update({
       admin_id: managerId,
       admin_name: manager.full_name || manager.username,
-      plan_type: `${planType.charAt(0).toUpperCase() + planType.slice(1)} Plan`,
-      plan_amount: fees.monthly,
+      plan_type: plan.display_name,
+      plan_amount: amount,
+      billing_cycle: cycle,
+      payment_model: resolvedPaymentModel,
+      order_limit: plan.order_limit,
+      menu_item_limit: plan.menu_item_limit,
+      staff_limit: plan.staff_limit,
       status: 'active',
-      subscription_start: new Date(),
-      subscription_end: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) // 1 year
+      subscription_start: subStart,
+      subscription_end: subEnd
     });
 
     // Create first invoice
@@ -406,7 +434,7 @@ router.post('/subscriptions', authenticateToken, async (req, res) => {
       due_date: dueDate,
       total_amount: billingCycle === 'annual' ? fees.annual * 1.06 : fees.monthly * 1.06, // Including 6% tax
       status: 'pending_payment',
-      notes: `${planType.charAt(0).toUpperCase() + planType.slice(1)} Plan - ${billingCycle} subscription`,
+      notes: `${plan.display_name} - ${cycle} subscription`,
       issued_by: managerId,
       issued_at: new Date()
     });
@@ -415,7 +443,7 @@ router.post('/subscriptions', authenticateToken, async (req, res) => {
     await require('../models/InvoiceItem').create({
       invoice_id: invoice.id,
       item_type: 'subscription',
-      description: `${planType.charAt(0).toUpperCase() + planType.slice(1)} Plan - ${billingCycle} Subscription`,
+      description: `${plan.display_name} - ${cycle} Subscription`,
       calculation_method: 'fixed',
       fixed_amount: billingCycle === 'annual' ? fees.annual : fees.monthly,
       calculated_amount: billingCycle === 'annual' ? fees.annual : fees.monthly,

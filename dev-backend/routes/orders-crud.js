@@ -78,13 +78,36 @@ router.get('/', authenticateToken, async (req, res) => {
       // Restaurant Admin/Staff: 본인 레스토랑만
       whereCondition.restaurant_id = req.user.restaurant_id;
     } else if (['Brand General', 'Brand Manager', 'Foodcourt General', 'Foodcourt Manager', 'Restaurant Owner'].includes(req.user.role)) {
-      // Manager 역할: 관리 하는 레스토랑만
+      // Manager 역할: 관리하는 레스토랑만.
+      // 매장 소유 경로는 3가지 — ①RestaurantManager 링크(Owner) ②브랜드 소유(Brand General)
+      // ③푸드코트 소속(Foodcourt General). 예전엔 ①만 봐서 **푸드코트 총괄은 주문이 0건**이었다
+      // (리포트가 통째로 비어 그 자리를 Math.random 가짜 지표가 채우고 있었다).
+      // 스코프 정의는 manager-sales.js 의 resolveManagerRestaurants 와 동일하게 유지한다.
       const RestaurantManager = require('../models/RestaurantManager');
+      const Brand = require('../models/Brand');
+      const ids = new Set();
+
       const managedRests = await RestaurantManager.findAll({
         where: { manager_id: req.user.id },
         attributes: ['restaurant_id']
       });
-      const allowedIds = managedRests.map(r => r.restaurant_id);
+      managedRests.forEach(r => ids.add(r.restaurant_id));
+
+      if (['Brand General', 'Brand Manager'].includes(req.user.role)) {
+        const brands = await Brand.findAll({ where: { owner_id: req.user.id }, attributes: ['id'] });
+        const brandIds = brands.map(b => b.id);
+        if (brandIds.length) {
+          const rs = await Restaurant.findAll({ where: { brand_id: { [Op.in]: brandIds } }, attributes: ['id'] });
+          rs.forEach(r => ids.add(r.id));
+        }
+      }
+
+      if (['Foodcourt General', 'Foodcourt Manager'].includes(req.user.role) && req.user.foodcourt_id) {
+        const rs = await Restaurant.findAll({ where: { foodcourt_id: req.user.foodcourt_id }, attributes: ['id'] });
+        rs.forEach(r => ids.add(r.id));
+      }
+
+      const allowedIds = [...ids];
       if (finalRestaurantId && allowedIds.includes(parseInt(finalRestaurantId))) {
         whereCondition.restaurant_id = parseInt(finalRestaurantId);
       } else {

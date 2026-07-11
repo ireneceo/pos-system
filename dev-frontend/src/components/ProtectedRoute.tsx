@@ -296,7 +296,6 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       '/pos/foodcourt/general',
       '/pos/foodcourt/dashboard',
       '/pos/foodcourt/rent-management',
-      '/pos/foodcourt/tenant-support',
       '/pos/brand/manager',
       '/pos/foodcourt/manager',
       '/pos/owner/dashboard',

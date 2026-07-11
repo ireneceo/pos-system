@@ -49,3 +49,53 @@ test.describe('a) auth roles — 역할별 로그인 + 권한 분기', () => {
     });
   }
 });
+
+/**
+ * 세션 복원력 (2026-07-11 회귀 박제).
+ * 부팅 시 /api/auth/me 는 네트워크 사정으로 실패할 수 있다(서비스워커 콜드 스타트, 매장 wifi 순단
+ * → fetch 가 TypeError 로 throw). 예전엔 그걸 "토큰 만료"로 오인해 즉시 폐기 → 멀쩡한 사용자가
+ * 로그인 화면으로 튕겼다. 계약: 네트워크 오류는 재시도하고 토큰을 유지, 401/403 일 때만 로그아웃.
+ */
+test.describe('a-2) 세션 복원력 — /auth/me 일시 실패에 로그아웃되지 않는다', () => {
+  test('네트워크 오류 1회 → 토큰 유지 + 재시도로 진입', async ({ page, request, baseURL }) => {
+    assertDevBaseURL(baseURL);
+    const { token } = await demoLogin(request, baseURL, 'test_brand_general');
+    await page.context().addInitScript((tok) => {
+      localStorage.setItem('auth_token', tok);
+      localStorage.setItem('currentUserRole', 'Brand General');
+    }, token);
+
+    let calls = 0;
+    await page.route('**/api/auth/me', async (route) => {
+      calls += 1;
+      if (calls === 1) return route.abort('failed'); // 첫 호출만 네트워크 오류
+      return route.continue();
+    });
+
+    await page.goto('/pos/brand/general/dashboard', { waitUntil: 'networkidle' });
+    await page.waitForTimeout(2500);
+
+    const kept = await page.evaluate(() => (localStorage.getItem('auth_token') || '').length > 0);
+    expect(kept, '네트워크 오류에 토큰을 지우면 안 됨').toBeTruthy();
+    expect(calls, '재시도가 실제로 일어남').toBeGreaterThan(1);
+    expect(page.url(), '로그인으로 튕기지 않음').not.toContain('/login');
+  });
+
+  test('401 → 토큰 폐기 (만료 세션은 여전히 로그아웃)', async ({ page, request, baseURL }) => {
+    assertDevBaseURL(baseURL);
+    const { token } = await demoLogin(request, baseURL, 'test_brand_general');
+    await page.context().addInitScript((tok) => {
+      localStorage.setItem('auth_token', tok);
+      localStorage.setItem('currentUserRole', 'Brand General');
+    }, token);
+
+    await page.route('**/api/auth/me', (route) =>
+      route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ success: false }) }));
+
+    await page.goto('/pos/brand/general/dashboard', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(4000);
+
+    const cleared = await page.evaluate(() => (localStorage.getItem('auth_token') || '').length === 0);
+    expect(cleared, '서버가 거부한 토큰은 폐기해야 함').toBeTruthy();
+  });
+});

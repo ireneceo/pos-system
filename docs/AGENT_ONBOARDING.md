@@ -55,7 +55,7 @@ node scripts/verify-all.js --list    # 게이트 목록 / --only <id> 단독 실
 | health | 전체 회귀 110+ (인증/보안/POS/모바일/결제/인쇄 계약) |
 | print-routes | 자동인쇄 전 루트 실제 실행 (방식×프린터×native/web) |
 | i18n | 4언어(en/ko/zh/ms) 키 일치 |
-| mount | 실브라우저 mount 크래시 0 — RA·BG(page-sweep)+FG·Owner·Supplier(roles-sweep), 5역할 (**build 통과 ≠ runtime 안전** — TDZ 교훈). admin/manager 는 demo 계정 없어 커버 갭 |
+| mount | 실브라우저 mount 크래시 0 — RA·BG(page-sweep) + FG·Owner·Supplier·**System Admin·Brand/Foodcourt Manager·`/pos/manager/*`**(roles-sweep), 8역할 (**build 통과 ≠ runtime 안전** — TDZ 교훈). demo 계정 없는 역할은 verify-all 이 DB 계정으로 JWT 직접 서명(`signRoleToken`) — 2026-07-11 커버 갭 해소 |
 
 **verify-all 통과 = 끝이 아니다.** 판단 검증은 별도: 기능의 실제 API Write→Read 왕복,
 유저 흐름(로그인→페이지→저장→재조회), 요구사항 대조표(✓/✗). `/검증` 스킬이 전체 절차.

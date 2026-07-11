@@ -147,18 +147,6 @@
   "foodcourtInvoicesPage.resendInvoice": "Resend Invois",
   "foodcourtInvoicesPage.cancelInvoice": "Batal Invois",
   "foodcourtInvoicesPage.deleteInvoice": "Padam Invois",
-  "foodcourtManagement.foodcourtManagement": "Medan Selera Pengurusan",
-  "foodcourtManagement.integratedManagementAndOperationalOptimizationForEntireFoodcourtNetwork": "Pengurusan bersepadu dan pengoptimuman operasi untuk keseluruhan rangkaian medan selera",
-  "foodcourtManagement.exportData": "Eksport Data",
-  "foodcourtManagement.addFoodcourt": "Tambah Medan Selera",
-  "foodcourtManagement.totalFoodcourts": "Jumlah Foodcourts",
-  "foodcourtManagement.totalTenants": "Jumlah Tenants",
-  "foodcourtManagement.averageOccupancy": "Purata Occupancy",
-  "foodcourtManagement.totalMonthlyRevenue": "Jumlah Bulanan Hasil",
-  "foodcourtManagement.foodcourtList": "Medan Selera List",
-  "foodcourtManagement.foodcourtName": "Medan Selera Nama",
-  "foodcourtManagement.location": "Location",
-  "foodcourtManagement.manager": "Pengurus",
   "foodcourtPaymentSettingsPage.loading": "Memuatkan...",
   "foodcourtPaymentSettingsPage.currencySettings": "Mata Wang Tetapan",
   "foodcourtPaymentSettingsPage.defaultCurrency": "Lalai Mata Wang",
@@ -383,5 +371,6 @@
   "branches": {
     "latitude": "Latitud",
     "longitude": "Longitud"
-  }
+  },
+  "foodcourtReportsPage.inPeriod": "Dalam tempoh dipilih"
 }

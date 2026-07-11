@@ -735,7 +735,7 @@ const FoodcourtGeneralDashboard: React.FC = () => {
       }
       const noOrderTenants = restaurantRevenues.filter((r: any) => (r.order_count || 0) === 0);
       if (noOrderTenants.length > 0) {
-        alertList.push({ type: 'info', title: 'No Orders', message: `${noOrderTenants.length} tenant(s) with no orders this month`, link: '/pos/foodcourt/general/management' });
+        alertList.push({ type: 'info', title: 'No Orders', message: `${noOrderTenants.length} tenant(s) with no orders this month`, link: '/pos/foodcourt/tenancy' });
       }
       if (badgeCounts.notices > 0) {
         alertList.push({ type: 'info', title: 'Unread Notices', message: `${badgeCounts.notices} unread notice(s)`, link: '/pos/foodcourt/notices' });
@@ -955,7 +955,7 @@ const FoodcourtGeneralDashboard: React.FC = () => {
         <QuickActionsSection>
           <h3>{t('foodcourt:foodcourtGeneralDashboard.quickActions')}</h3>
           <QuickActionsGrid>
-            <QuickActionCard onClick={() => navigate('/pos/foodcourt/general/management')}>
+            <QuickActionCard onClick={() => navigate('/pos/foodcourt/tenancy')}>
               <div className="icon">◉</div>
               <div className="title">{t('foodcourt:foodcourtGeneralDashboard.foodcourts')}</div>
               <div className="description">{t('foodcourt:foodcourtGeneralDashboard.foodcourtManagement')}</div>

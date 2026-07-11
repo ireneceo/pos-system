@@ -125,16 +125,13 @@ const ManagerSupportTicketsPage = React.lazy(() => import('./pages/Manager/Suppo
 const RestaurantSupportTicketsPage = React.lazy(() => import('./pages/Restaurant/SupportTicketsPage'));
 const OperationInquiryPage = React.lazy(() => import('./pages/Manager/OperationInquiryPage'));
 const RestaurantOperationInquiryPage = React.lazy(() => import('./pages/Restaurant/OperationInquiryPage'));
-const SystemConfigPage = React.lazy(() => import('./pages/Admin/SystemConfigPage'));
 const SystemProductManagementPage = React.lazy(() => import('./pages/Admin/SystemProductManagementPage'));
 const HardwareQuotesPage = React.lazy(() => import('./pages/Admin/HardwareQuotesPage'));
-const SecurityPage = React.lazy(() => import('./pages/Admin/SecurityPage'));
-const BackupRestorePage = React.lazy(() => import('./pages/Admin/BackupRestorePage'));
 const SystemLogsPage = React.lazy(() => import('./pages/Admin/SystemLogsPage'));
 const ContentManagementPage = React.lazy(() => import('./pages/Admin/ContentManagementPage'));
 const RestaurantSubscriptionsPage = React.lazy(() => import('./pages/Admin/RestaurantSubscriptionsPage'));
 const ManagerDashboard = React.lazy(() => import('./pages/Manager/ManagerDashboard'));
-const ManagerSubscriptionsPage = React.lazy(() => import('./pages/Manager/SubscriptionsPage'));
+const ManagerSubscriptionsPage = React.lazy(() => import('./pages/Manager/ManagerSubscriptionsPage'));
 const ManagerRestaurantsPage = React.lazy(() => import('./pages/Manager/RestaurantsPage'));
 const ManagerAdminManagementPage = React.lazy(() => import('./pages/Manager/AdminManagementPage'));
 const AdminStaffManagementPage = React.lazy(() => import('./pages/Admin/StaffManagementPage'));
@@ -194,7 +191,6 @@ const OwnerOperationInquiryPage = React.lazy(() => import('./pages/Owner/OwnerOp
 const OwnerPoApprovalsPage = React.lazy(() => import('./pages/Owner/OwnerPoApprovalsPage'));
 
 // Manager Role Specific Pages
-const FoodcourtManagement = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtManagement'));
 const FoodcourtReportsPage = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtReportsPage'));
 const FoodcourtSubscriptionsPage = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtSubscriptionsPage'));
 const FoodcourtInvoicesPage = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtInvoicesPage'));
@@ -220,7 +216,6 @@ const FoodcourtFloorPlanPage = React.lazy(() => import('./pages/FoodcourtGeneral
 const FoodcourtFloorPlanEditorPage = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtFloorPlanEditorPage'));
 const FoodcourtBranchesPage = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtBranchesPage'));
 const RentManagement = React.lazy(() => import('./pages/Foodcourt/RentManagement'));
-const TenantSupport = React.lazy(() => import('./pages/Foodcourt/TenantSupport'));
 // BrandReports, FranchiseSupport 삭제됨 (미사용 placeholder)
 
 // Brand General Inquiry Pages
@@ -652,11 +647,6 @@ function App() {
                           <AdminWorkManualsPage />
                         </ProtectedRoute>
                       } />
-                      <Route path="/pos/admin/system-config" element={
-                        <ProtectedRoute requiredRole={['System Admin']}>
-                          <SystemConfigPage />
-                        </ProtectedRoute>
-                      } />
                       <Route path="/pos/admin/system-products" element={
                         <ProtectedRoute requiredRole={['System Admin']}>
                           <SystemProductManagementPage />
@@ -665,16 +655,6 @@ function App() {
                       <Route path="/pos/admin/hardware-quotes" element={
                         <ProtectedRoute requiredRole={['System Admin']}>
                           <HardwareQuotesPage />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/pos/admin/security" element={
-                        <ProtectedRoute requiredRole={['System Admin']}>
-                          <SecurityPage />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/pos/admin/backup" element={
-                        <ProtectedRoute requiredRole={['System Admin']}>
-                          <BackupRestorePage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/admin/logs" element={
@@ -842,11 +822,6 @@ function App() {
                       <Route path="/pos/foodcourt/branches" element={
                         <ProtectedRoute requiredRole={['Foodcourt General']}>
                           <FoodcourtBranchesPage />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/pos/foodcourt/general/management" element={
-                        <ProtectedRoute requiredRole={['Foodcourt General', 'Foodcourt Manager']}>
-                          <FoodcourtManagement />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/foodcourt/general/reports" element={
@@ -1085,11 +1060,6 @@ function App() {
                       <Route path="/pos/foodcourt/rent-management" element={
                         <ProtectedRoute requiredRole={['Foodcourt Manager']}>
                           <RentManagement />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/pos/foodcourt/tenant-support" element={
-                        <ProtectedRoute requiredRole={['Foodcourt Manager']}>
-                          <TenantSupport />
                         </ProtectedRoute>
                       } />
 

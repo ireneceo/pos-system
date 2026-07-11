@@ -7,19 +7,24 @@
  */
 const express = require('express');
 const router = express.Router();
-const { Op } = require('sequelize');
+const { Op, fn, col } = require('sequelize');
 const { authenticateToken } = require('../middleware/auth');
 const { Order, Restaurant, Brand } = require('../models');
 const User = require('../models/User');
 const { getRestaurantTimezone, getTodayBounds, getStartOfMonth, getDateBounds, getCurrentLocalDate } = require('../utils/dateTimeHelper');
 
 const REVENUE_STATUSES = ['completed', 'served'];
+const STAFF_ROLES = ['Restaurant Admin', 'Staff'];
+// Deleted orders keep their 'completed'/'served' status (DELETE /orders/:id is a soft
+// delete: is_deleted=true), so revenue queries MUST exclude them or a removed order
+// keeps inflating sales. Same predicate the RA dashboard/orders list uses.
+const NOT_DELETED = { [Op.or]: [{ is_deleted: false }, { is_deleted: null }] };
 const DAY_MS = 24 * 60 * 60 * 1000;
 const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
 
 // Resolve the restaurants a given manager oversees (mirrors GET /restaurants/manager/:id scope).
 async function resolveManagerRestaurants(user) {
-  const attributes = ['id', 'name', 'address', 'currency', 'operation_settings', 'brand_id', 'foodcourt_id'];
+  const attributes = ['id', 'name', 'branch_name', 'address', 'status', 'currency', 'operation_settings', 'brand_id', 'foodcourt_id'];
   if ((user.role === 'Foodcourt General' || user.role === 'Foodcourt Manager') && user.foodcourt_id) {
     return Restaurant.findAll({ where: { foodcourt_id: user.foodcourt_id }, attributes });
   }
@@ -55,13 +60,26 @@ router.get('/sales-summary', authenticateToken, async (req, res) => {
       where: {
         restaurant_id: { [Op.in]: rids },
         status: { [Op.in]: REVENUE_STATUSES },
-        createdAt: { [Op.gte]: earliest }
+        createdAt: { [Op.gte]: earliest },
+        ...NOT_DELETED
       },
       attributes: ['id', 'restaurant_id', 'total_amount', 'createdAt', 'order_items']
     });
     const byR = {};
     rids.forEach(id => { byR[id] = []; });
     orders.forEach(o => { if (byR[o.restaurant_id]) byR[o.restaurant_id].push(o); });
+
+    // Staff head-count per restaurant — same definition as the Staff page list
+    // (GET /api/staff: role Restaurant Admin + Staff), so the dashboard number
+    // matches what the manager sees when opening a restaurant's Staff page.
+    const staffRows = await User.findAll({
+      where: { restaurant_id: { [Op.in]: rids }, role: { [Op.in]: STAFF_ROLES } },
+      attributes: ['restaurant_id', [fn('COUNT', col('id')), 'count']],
+      group: ['restaurant_id'],
+      raw: true
+    });
+    const staffByR = {};
+    staffRows.forEach(row => { staffByR[row.restaurant_id] = parseInt(row.count, 10) || 0; });
 
     const data = restaurants.map(r => {
       const tz = getRestaurantTimezone(r);
@@ -106,8 +124,11 @@ router.get('/sales-summary', authenticateToken, async (req, res) => {
       return {
         id: String(r.id),
         name: r.name,
+        branchName: r.branch_name || '',
         location: r.address || 'Unknown',
+        status: r.status,
         currency: r.currency,
+        staffCount: staffByR[r.id] || 0,
         todaySales: round2(todaySales),
         yesterdaySales: round2(yesterdaySales),
         weekSales: round2(weekSales),
@@ -169,7 +190,8 @@ router.get('/reports-summary', authenticateToken, async (req, res) => {
       where: {
         restaurant_id: { [Op.in]: rids },
         status: { [Op.in]: REVENUE_STATUSES },
-        createdAt: { [Op.gte]: new Date(startMs), [Op.lte]: new Date(endMs) }
+        createdAt: { [Op.gte]: new Date(startMs), [Op.lte]: new Date(endMs) },
+        ...NOT_DELETED
       },
       attributes: ['id', 'restaurant_id', 'total_amount', 'createdAt', 'order_items']
     });

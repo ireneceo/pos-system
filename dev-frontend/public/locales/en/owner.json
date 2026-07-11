@@ -267,5 +267,6 @@
   "ownerSystemInquiryPage.status": "Status",
   "ownerSystemInquiryPage.save": "Save",
   "ownerSystemInquiryPage.subject": "Subject",
-  "ownerSystemInquiryPage.description": "Description"
+  "ownerSystemInquiryPage.description": "Description",
+  "ownerReportsPage.inPeriod": "In selected period"
 }

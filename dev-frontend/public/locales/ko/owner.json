@@ -267,5 +267,6 @@
   "ownerSystemInquiryPage.status": "상태",
   "ownerSystemInquiryPage.save": "저장",
   "ownerSystemInquiryPage.subject": "제목",
-  "ownerSystemInquiryPage.description": "설명"
+  "ownerSystemInquiryPage.description": "설명",
+  "ownerReportsPage.inPeriod": "선택 기간 내"
 }

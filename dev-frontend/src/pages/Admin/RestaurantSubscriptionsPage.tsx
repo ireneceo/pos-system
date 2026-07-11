@@ -1,11 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import ConfirmModal from '../../components/ConfirmModal';
 import styled from 'styled-components';
 import { Modal as CommonModal, StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
 import { RestaurantSubscription } from '../../interfaces/RestaurantSubscription';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { formatCurrency } from '../../utils/currency';
+import { getAuthHeaders } from '../../utils/auth';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+
+interface PlanOption {
+  id: number;
+  name: string;
+  display_name: string;
+  monthly_price: number;
+  annual_price: number;
+  is_current: boolean;
+  change_type: 'upgrade' | 'downgrade' | null;
+}
 
 const Container = styled.div`
   min-height: 100vh;
@@ -398,6 +410,7 @@ const TextArea = styled.textarea`
 
 const RestaurantSubscriptionsPage: React.FC = () => {
   const { t } = useTranslation('admin');
+  const navigate = useNavigate();
   const [subscriptions, setSubscriptions] = useState<RestaurantSubscription[]>([]);
   const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
   const [searchTerm, setSearchTerm] = useState('');
@@ -411,27 +424,79 @@ const RestaurantSubscriptionsPage: React.FC = () => {
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showSuspendModal, setShowSuspendModal] = useState(false);
-  const [showAddRestaurantModal, setShowAddRestaurantModal] = useState(false);
   
   // Form states
   const [newPlan, setNewPlan] = useState('');
   const [newPaymentModel, setNewPaymentModel] = useState('');
   const [suspendReason, setSuspendReason] = useState('');
+
+  // Real plan data (server-owned pricing) + request states
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [planOptions, setPlanOptions] = useState<PlanOption[]>([]);
+  const [planLoading, setPlanLoading] = useState(false);
+  const [planError, setPlanError] = useState<string | null>(null);
+  const [planCycle, setPlanCycle] = useState<'monthly' | 'annual'>('monthly');
+  const [cancelTarget, setCancelTarget] = useState<RestaurantSubscription | null>(null);
   
-  // Add restaurant form states
-  const [newRestaurant, setNewRestaurant] = useState({
-    name: '',
-    managerId: '',
-    managerName: '',
-    planType: 'basic',
-    paymentModel: 'self' as 'self' | 'manager',
-    billingCycle: 'monthly' as 'monthly' | 'annual'
-  });
+  // Real subscription data: every restaurant's live plan/status/payer, straight from
+  // the tables billing runs on. (Until 2026-07-11 this page was a mock — the list was
+  // hardcoded to [] and the actions only mutated local state behind a success message.)
+  const loadSubscriptions = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/restaurants', { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error('Failed to fetch restaurants');
+      const json = await res.json();
+      const rows: any[] = Array.isArray(json) ? json : (json.data || []);
+
+      const mapped: RestaurantSubscription[] = rows.map((r: any) => {
+        const payerIsRestaurant = !r.payment_model || r.payment_model === 'restaurant';
+        const monthly = parseFloat(r.planAmount ?? r.plan_amount) || 0;
+        const cycle = (r.billing_cycle === 'annual' ? 'annual' : 'monthly') as 'monthly' | 'annual';
+        return {
+          id: `sub-${r.id}`,
+          restaurantId: String(r.id),
+          restaurantName: r.name,
+          branchName: r.branch_name || null,
+          currency: r.currency || 'MYR',
+          managerId: String(r.admin?.id || ''),
+          managerName: r.admin?.name || r.admin_name || '-',
+          planType: r.planType || r.plan_type || '-',
+          status: (['active', 'trial', 'expired', 'suspended', 'cancelled'].includes(r.status)
+            ? r.status : 'expired') as RestaurantSubscription['status'],
+          startDate: r.subscriptionStart || r.subscription_start || '',
+          endDate: r.subscriptionEnd || r.subscription_end || '',
+          monthlyFee: monthly,
+          annualFee: 0,          // 연간 금액은 플랜 변경 모달이 서버(PlanPrice)에서 직접 읽는다
+          billingCycle: cycle,
+          orderLimit: r.order_limit ?? -1,
+          currentOrders: 0,
+          usagePercentage: 0,
+          paymentModel: (payerIsRestaurant ? 'self' : 'manager') as 'self' | 'manager',
+          payerId: payerIsRestaurant ? String(r.id) : String(r.admin?.id || ''),
+          payerName: payerIsRestaurant ? r.name : (r.admin?.name || 'Manager'),
+          features: [],
+          lastPayment: '-',
+          nextPayment: r.subscriptionEnd || r.subscription_end || '-',
+          autoRenew: true,
+          createdAt: r.createdAt || '',
+          updatedAt: r.updatedAt || '',
+        } as RestaurantSubscription;
+      });
+
+      setSubscriptions(mapped);
+    } catch (error) {
+      console.error('Error loading restaurant subscriptions:', error);
+      setSubscriptions([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    // TODO: Implement API call to fetch restaurant subscriptions
-    setSubscriptions([]);
-  }, []);
+    loadSubscriptions();
+  }, [loadSubscriptions]);
 
   const filteredSubscriptions = subscriptions.filter(sub => {
     const matchesSearch = sub.restaurantName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -458,10 +523,30 @@ const RestaurantSubscriptionsPage: React.FC = () => {
     setShowDetailsModal(true);
   };
   
-  const handleChangePlan = (subscription: RestaurantSubscription) => {
+  const handleChangePlan = async (subscription: RestaurantSubscription) => {
     setSelectedSubscription(subscription);
-    setNewPlan(subscription.planType);
+    setNewPlan('');
+    setPlanOptions([]);
+    setPlanError(null);
     setShowPlanModal(true);
+    setPlanLoading(true);
+    try {
+      // Same source the tenant sees — plans + prices + upgrade/downgrade classification
+      // from PlanTemplate/PlanPrice (no client-side price table).
+      const res = await fetch(`/api/subscriptions/manager/restaurant/${subscription.restaurantId}/plan-options`, { headers: getAuthHeaders() });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        setPlanError(json.message || 'Failed to load plan options.');
+        return;
+      }
+      setPlanOptions(json.data.available_plans || []);
+      setPlanCycle(json.data.current?.billing_cycle === 'annual' ? 'annual' : 'monthly');
+    } catch (err) {
+      console.error('Error loading plan options:', err);
+      setPlanError('Failed to load plan options.');
+    } finally {
+      setPlanLoading(false);
+    }
   };
 
   // const handleSwitchPayment = (subscription: RestaurantSubscription) => {
@@ -476,75 +561,118 @@ const RestaurantSubscriptionsPage: React.FC = () => {
     setShowSuspendModal(true);
   };
   
-  const handleReactivate = (subscriptionId: string) => {
-    setSubscriptions(prev => prev.map(sub => 
-      sub.id === subscriptionId 
-        ? { ...sub, status: 'active', updatedAt: new Date().toISOString().split('T')[0] }
-        : sub
-    ));
-    setInfoModal({ open: true, title: 'Reactivated', message: 'Subscription reactivated successfully.' });
+  // Status changes hit the restaurant record billing/login checks actually read.
+  // Invoicing only runs for 'active' restaurants, so suspend/cancel also stops billing.
+  const setRestaurantStatus = async (subscription: RestaurantSubscription, status: 'active' | 'suspended' | 'cancelled') => {
+    const res = await fetch(`/api/restaurants/${subscription.restaurantId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+      body: JSON.stringify({ status })
+    });
+    if (!res.ok) throw new Error(`Failed to set status to ${status}`);
   };
-  
-  const confirmChangePlan = () => {
+
+  const handleReactivate = async (subscription: RestaurantSubscription) => {
+    try {
+      await setRestaurantStatus(subscription, 'active');
+      await loadSubscriptions();
+    } catch (err) {
+      console.error('Error reactivating subscription:', err);
+      setInfoModal({ open: true, title: 'Could not reactivate', message: 'Failed to reactivate this subscription.' });
+    }
+  };
+
+  // Terminating a subscription for good. Suspension is reversible; cancellation is the
+  // end state, so it is confirmed separately and stops invoicing.
+  const confirmCancelSubscription = async () => {
+    if (!cancelTarget) return;
+    const target = cancelTarget;
+    setCancelTarget(null);
+    try {
+      await setRestaurantStatus(target, 'cancelled');
+      await loadSubscriptions();
+    } catch (err) {
+      console.error('Error cancelling subscription:', err);
+      setInfoModal({ open: true, title: 'Could not cancel', message: 'Failed to cancel this subscription.' });
+    }
+  };
+
+  const confirmChangePlan = async () => {
+    if (!selectedSubscription || !newPlan) return;
+    setSubmitting(true);
+    setPlanError(null);
+    try {
+      // Server owns pricing, proration, limits and the invoice — never a local price table.
+      const res = await fetch('/api/subscriptions/change-plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({
+          restaurant_id: selectedSubscription.restaurantId,
+          new_plan_id: Number(newPlan),
+          new_billing_cycle: planCycle
+        })
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        setPlanError(json.message || 'Failed to change plan.');
+        return;
+      }
+      setShowPlanModal(false);
+      await loadSubscriptions();
+    } catch (err) {
+      console.error('Error changing plan:', err);
+      setPlanError('Failed to change plan.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const confirmSwitchPayment = async () => {
     if (!selectedSubscription) return;
-    
-    const planPricing = {
-      basic: { monthly: 29, annual: 290, orderLimit: 1000 },
-      professional: { monthly: 99, annual: 990, orderLimit: 10000 },
-      enterprise: { monthly: 199, annual: 2190, orderLimit: -1 }
-    };
-    
-    const pricing = planPricing[newPlan as keyof typeof planPricing];
-    
-    setSubscriptions(prev => prev.map(sub => 
-      sub.id === selectedSubscription.id 
-        ? {
-            ...sub,
-            planType: newPlan as 'basic' | 'professional' | 'enterprise',
-            monthlyFee: pricing.monthly,
-            annualFee: pricing.annual,
-            orderLimit: pricing.orderLimit,
-            updatedAt: new Date().toISOString().split('T')[0]
-          }
-        : sub
-    ));
-    
-    setShowPlanModal(false);
-    setInfoModal({ open: true, title: 'Plan Changed', message: 'Plan changed successfully.' });
+    const model = newPaymentModel === 'manager' ? 'brand_manager' : 'restaurant';
+    try {
+      const res = await fetch(`/api/restaurants/${selectedSubscription.restaurantId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ payment_model: model })
+      });
+      if (!res.ok) throw new Error('Failed to update payment model');
+
+      // Unpaid invoices must follow the payer, else they stay addressed to the old one.
+      const inv = await fetch(`/api/invoices/update-payer/${selectedSubscription.restaurantId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ payment_model: model })
+      });
+      if (!inv.ok) {
+        setInfoModal({
+          open: true,
+          title: 'Payer switched, invoices unchanged',
+          message: 'The payer was updated, but existing unpaid invoices could not be re-pointed. Please check the invoices page.'
+        });
+      }
+
+      setShowPaymentModal(false);
+      await loadSubscriptions();
+    } catch (err) {
+      console.error('Error switching payment model:', err);
+      setInfoModal({ open: true, title: 'Could not switch payer', message: 'Failed to update who is billed for this subscription.' });
+    }
   };
   
-  const confirmSwitchPayment = () => {
-    if (!selectedSubscription) return;
-    
-    setSubscriptions(prev => prev.map(sub => 
-      sub.id === selectedSubscription.id 
-        ? { 
-            ...sub, 
-            paymentModel: newPaymentModel as 'self' | 'manager',
-            updatedAt: new Date().toISOString().split('T')[0]
-          }
-        : sub
-    ));
-    
-    setShowPaymentModal(false);
-    setInfoModal({ open: true, title: 'Payment Updated', message: 'Payment method updated successfully.' });
-  };
-  
-  const confirmSuspend = () => {
+  const confirmSuspend = async () => {
     if (!selectedSubscription || !suspendReason) return;
-    
-    setSubscriptions(prev => prev.map(sub => 
-      sub.id === selectedSubscription.id 
-        ? { 
-            ...sub, 
-            status: 'suspended',
-            updatedAt: new Date().toISOString().split('T')[0]
-          }
-        : sub
-    ));
-    
-    setShowSuspendModal(false);
-    setInfoModal({ open: true, title: 'Suspended', message: 'Subscription suspended successfully.' });
+    setSubmitting(true);
+    try {
+      await setRestaurantStatus(selectedSubscription, 'suspended');
+      setShowSuspendModal(false);
+      await loadSubscriptions();
+    } catch (err) {
+      console.error('Error suspending subscription:', err);
+      setInfoModal({ open: true, title: 'Could not suspend', message: 'Failed to suspend this subscription.' });
+    } finally {
+      setSubmitting(false);
+    }
   };
   
   // Export functionality
@@ -575,68 +703,6 @@ const RestaurantSubscriptionsPage: React.FC = () => {
     URL.revokeObjectURL(url);
   };
   
-  // Add restaurant functionality
-  const handleAddRestaurant = () => {
-    setNewRestaurant({
-      name: '',
-      managerId: '',
-      managerName: '',
-      planType: 'basic',
-      paymentModel: 'self',
-      billingCycle: 'monthly'
-    });
-    setShowAddRestaurantModal(true);
-  };
-  
-  const confirmAddRestaurant = () => {
-    if (!newRestaurant.name || !newRestaurant.managerName) {
-      setInfoModal({ open: true, title: 'Required Fields', message: 'Please fill in all required fields.' });
-      return;
-    }
-    
-    const planPricing = {
-      basic: { monthly: 29, annual: 290, orderLimit: 1000 },
-      professional: { monthly: 99, annual: 990, orderLimit: 10000 },
-      enterprise: { monthly: 199, annual: 2190, orderLimit: -1 }
-    };
-    
-    const pricing = planPricing[newRestaurant.planType as keyof typeof planPricing];
-    
-    const newSubscription: RestaurantSubscription = {
-      id: `sub-rest-${Date.now()}`,
-      restaurantId: `rest-${Date.now()}`,
-      restaurantName: newRestaurant.name,
-      managerId: newRestaurant.managerId || `mgr-${Date.now()}`,
-      managerName: newRestaurant.managerName,
-      planType: newRestaurant.planType as 'basic' | 'professional' | 'enterprise',
-      status: 'trial',
-      startDate: new Date().toISOString().split('T')[0],
-      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days trial
-      monthlyFee: pricing.monthly,
-      annualFee: pricing.annual,
-      billingCycle: newRestaurant.billingCycle,
-      orderLimit: pricing.orderLimit,
-      currentOrders: 0,
-      usagePercentage: 0,
-      paymentModel: newRestaurant.paymentModel,
-      payerId: newRestaurant.paymentModel === 'self' ? `rest-${Date.now()}` : newRestaurant.managerId,
-      payerName: newRestaurant.paymentModel === 'self' ? newRestaurant.name : newRestaurant.managerName,
-      features: pricing.orderLimit === 1000 
-        ? ['Up to 1k orders/month', 'Basic analytics', 'Email support']
-        : pricing.orderLimit === 10000
-        ? ['Up to 10k orders/month', 'Advanced analytics', 'Priority support']
-        : ['Unlimited orders', 'Custom analytics', '24/7 support', 'Multi-location'],
-      lastPayment: '-',
-      nextPayment: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      autoRenew: false,
-      createdAt: new Date().toISOString().split('T')[0],
-      updatedAt: new Date().toISOString().split('T')[0]
-    };
-    
-    setSubscriptions(prev => [newSubscription, ...prev]);
-    setShowAddRestaurantModal(false);
-    setInfoModal({ open: true, title: 'Restaurant Added', message: 'Restaurant added successfully with 30-day trial.' });
-  };
   return (
     <>
       <Container>
@@ -644,7 +710,7 @@ const RestaurantSubscriptionsPage: React.FC = () => {
           <Title>{t('admin:restaurantSubscriptionsPage.restaurantSubscriptions')}</Title>
           <ActionSection>
             <Button variant="secondary" onClick={handleExportReport}>{t('admin:restaurantSubscriptionsPage.exportReport')}</Button>
-            <Button variant="primary" onClick={handleAddRestaurant}>{t('admin:restaurantSubscriptionsPage.addRestaurant')}</Button>
+            <Button variant="primary" onClick={() => navigate('/pos/admin/restaurants')}>{t('admin:restaurantSubscriptionsPage.addRestaurant')}</Button>
           </ActionSection>
         </Header>
         <Content>
@@ -775,10 +841,15 @@ const RestaurantSubscriptionsPage: React.FC = () => {
                   </>
                 ) : (
                   <ActionButton
-                    onClick={() => handleReactivate(subscription.id)}
+                    onClick={() => handleReactivate(subscription)}
                     disabled={subscription.status === 'cancelled'}
                   >
                     Reactivate
+                  </ActionButton>
+                )}
+                {subscription.status !== 'cancelled' && (
+                  <ActionButton onClick={() => setCancelTarget(subscription)}>
+                    Cancel
                   </ActionButton>
                 )}
               </ActionButtons>
@@ -863,17 +934,39 @@ const RestaurantSubscriptionsPage: React.FC = () => {
           </CommonModal>
         )}
 
-        {/* Change Plan Modal */}
+        {/* Change Plan Modal — plans/prices come from the server (PlanTemplate/PlanPrice) */}
         {showPlanModal && selectedSubscription && (
-          <CommonModal isOpen={true} onClose={() => setShowPlanModal(false)} title="Change Plan" footer={<><Button variant="secondary" onClick={() => setShowPlanModal(false)}>{t('admin:restaurantSubscriptionsPage.cancel')}</Button><Button variant="primary" onClick={confirmChangePlan}>{t('admin:restaurantSubscriptionsPage.changePlan')}</Button></>}>
+          <CommonModal isOpen={true} onClose={() => setShowPlanModal(false)} title="Change Plan" footer={<><Button variant="secondary" onClick={() => setShowPlanModal(false)}>{t('admin:restaurantSubscriptionsPage.cancel')}</Button><Button variant="primary" onClick={confirmChangePlan} disabled={submitting || planLoading || !newPlan}>{submitting ? '...' : t('admin:restaurantSubscriptionsPage.changePlan')}</Button></>}>
+                {planError && (
+                  <div style={{ padding: '12px 16px', background: '#FEF2F2', borderRadius: '8px', color: '#DC2626', fontSize: '13px', marginBottom: '16px' }}>
+                    {planError}
+                  </div>
+                )}
                 <FormGroup>
+                  <FormLabel>Restaurant: {selectedSubscription.restaurantName}</FormLabel>
                   <FormLabel>Current Plan: {selectedSubscription.planType}</FormLabel>
-                  <FormLabel>Select New Plan:</FormLabel>
-                  <FilterSelect value={newPlan} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setNewPlan(e.target.value)}>
-                    <option value="basic">{t('admin:restaurantSubscriptionsPage.basicRm29monthUpTo1kOrders')}</option>
-                    <option value="professional">{t('admin:restaurantSubscriptionsPage.professionalRm99monthUpTo10kOrders')}</option>
-                    <option value="enterprise">{t('admin:restaurantSubscriptionsPage.enterpriseRm199monthUnlimitedOrders')}</option>
+
+                  <FormLabel>Billing Cycle</FormLabel>
+                  <FilterSelect value={planCycle} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setPlanCycle(e.target.value as 'monthly' | 'annual')}>
+                    <option value="monthly">Monthly</option>
+                    <option value="annual">Annual</option>
                   </FilterSelect>
+
+                  <FormLabel>Select New Plan</FormLabel>
+                  <FilterSelect value={newPlan} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setNewPlan(e.target.value)} disabled={planLoading}>
+                    <option value="">{planLoading ? 'Loading plans...' : 'Select a plan'}</option>
+                    {planOptions.filter(p => !p.is_current).map(p => (
+                      <option key={p.id} value={String(p.id)}>
+                        {p.display_name || p.name} — {formatCurrency(planCycle === 'annual' ? p.annual_price : p.monthly_price, selectedSubscription.currency || 'MYR')}
+                        /{planCycle === 'annual' ? 'yr' : 'mo'}
+                        {p.change_type ? ` (${p.change_type})` : ''}
+                      </option>
+                    ))}
+                  </FilterSelect>
+
+                  <div style={{ fontSize: '13px', color: '#4B5563', marginTop: '12px' }}>
+                    Upgrades apply immediately with a prorated invoice. Downgrades take effect at the next billing cycle.
+                  </div>
                 </FormGroup>
           </CommonModal>
         )}
@@ -911,71 +1004,20 @@ const RestaurantSubscriptionsPage: React.FC = () => {
           </CommonModal>
         )}
 
-        {/* Add Restaurant Modal */}
-        {showAddRestaurantModal && (
-          <CommonModal isOpen={true} onClose={() => setShowAddRestaurantModal(false)} title="Add New Restaurant" footer={<><Button variant="secondary" onClick={() => setShowAddRestaurantModal(false)}>{t('admin:restaurantSubscriptionsPage.cancel')}</Button><Button variant="primary" onClick={confirmAddRestaurant} disabled={!newRestaurant.name || !newRestaurant.managerName}>{t('admin:restaurantSubscriptionsPage.addRestaurant')}</Button></>}>
-                <FormGroup>
-                  <FormLabel>Restaurant Name *</FormLabel>
-                  <SearchInput
-                    value={newRestaurant.name}
-                    onChange={(e) => setNewRestaurant(prev => ({...prev, name: e.target.value}))}
-                    placeholder="Enter restaurant name..."
-                  />
-                </FormGroup>
-                <FormGroup>
-                  <FormLabel>Manager Name *</FormLabel>
-                  <SearchInput
-                    value={newRestaurant.managerName}
-                    onChange={(e) => setNewRestaurant(prev => ({...prev, managerName: e.target.value}))}
-                    placeholder="Enter manager name..."
-                  />
-                </FormGroup>
-                <FormGroup>
-                  <FormLabel>{t('admin:restaurantSubscriptionsPage.managerIdOptional')}</FormLabel>
-                  <SearchInput
-                    value={newRestaurant.managerId}
-                    onChange={(e) => setNewRestaurant(prev => ({...prev, managerId: e.target.value}))}
-                    placeholder="Auto-generated if empty"
-                  />
-                </FormGroup>
-                <FormGroup>
-                  <FormLabel>{t('admin:restaurantSubscriptionsPage.initialPlan')}</FormLabel>
-                  <FilterSelect
-                    value={newRestaurant.planType}
-                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setNewRestaurant(prev => ({...prev, planType: e.target.value as 'basic' | 'professional' | 'enterprise'}))}
-                  >
-                    <option value="basic">{t('admin:restaurantSubscriptionsPage.basicRm29monthUpTo1kOrders')}</option>
-                    <option value="professional">{t('admin:restaurantSubscriptionsPage.professionalRm99monthUpTo10kOrders')}</option>
-                    <option value="enterprise">{t('admin:restaurantSubscriptionsPage.enterpriseRm199monthUnlimitedOrders')}</option>
-                  </FilterSelect>
-                </FormGroup>
-                <FormGroup>
-                  <FormLabel>{t('admin:restaurantSubscriptionsPage.paymentModel')}</FormLabel>
-                  <FilterSelect
-                    value={newRestaurant.paymentModel}
-                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setNewRestaurant(prev => ({...prev, paymentModel: e.target.value as 'self' | 'manager'}))}
-                  >
-                    <option value="self">{t('admin:restaurantSubscriptionsPage.selfpayingRestaurantPaysDirectly')}</option>
-                    <option value="manager">{t('admin:restaurantSubscriptionsPage.managerpaidManagerPaysOnBehalf')}</option>
-                  </FilterSelect>
-                </FormGroup>
-                <FormGroup>
-                  <FormLabel>{t('admin:restaurantSubscriptionsPage.billingCycle')}</FormLabel>
-                  <FilterSelect
-                    value={newRestaurant.billingCycle}
-                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setNewRestaurant(prev => ({...prev, billingCycle: e.target.value as 'monthly' | 'annual'}))}
-                  >
-                    <option value="monthly">{t('admin:restaurantSubscriptionsPage.monthly')}</option>
-                    <option value="annual">{t('admin:restaurantSubscriptionsPage.annual')}</option>
-                  </FilterSelect>
-                </FormGroup>
-                <div style={{color: '#059669', fontSize: '14px', padding: '12px', background: '#ECFDF5', borderRadius: '8px', marginTop: '16px'}}>
-                  New restaurants start with a 30-day free trial period
-                </div>
-          </CommonModal>
-        )}
         </Content>
       </Container>
+      <ConfirmModal
+        isOpen={cancelTarget !== null}
+        title="Cancel subscription"
+        message={cancelTarget
+          ? `${cancelTarget.restaurantName}'s subscription will be cancelled. Billing stops and any scheduled plan change is dropped. Use Suspend instead if this is temporary.`
+          : ''}
+        onConfirm={confirmCancelSubscription}
+        onCancel={() => setCancelTarget(null)}
+        confirmText="Cancel subscription"
+        cancelText="Keep it"
+        type="danger"
+      />
       <ConfirmModal
         isOpen={infoModal.open}
         title={infoModal.title}

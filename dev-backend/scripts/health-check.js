@@ -456,6 +456,178 @@ function definePosTests({ adminToken }) {
     const r = await request('GET', '/activity-logs/restaurant/1/stats', null, auth);
     return r.status === 200 && r.body?.success === true && r.body?.data?.byActionType !== undefined;
   });
+
+  test('pos', '익명 /manager/sales-summary → 401 (매출 노출 차단)', async () => {
+    return (await request('GET', '/manager/sales-summary')).status === 401;
+  });
+
+  // 주문 목록 스코프 계약 (2026-07-11 회귀 박제).
+  // 매장 소유 경로는 3가지 — 링크(Owner) / 브랜드 소유(BG) / 푸드코트 소속(FG). 예전엔 링크만 봐서
+  // **푸드코트 총괄이 주문 0건**이었고(리포트가 통째로 비어 Math.random 가짜 지표가 그 자리를 채웠다),
+  // 동시에 타 테넌트 주문이 새면 안 된다. 두 방향(누락 0 · 유출 0)을 함께 못 박는다.
+  test('pos', '주문 스코프: 푸드코트 총괄이 자기 푸드코트 주문을 본다 + 남의 것은 못 본다', async () => {
+    const { User, Restaurant } = require('../models');
+    const Order = require('../models/Order');
+    const jwtLib = require('jsonwebtoken');
+
+    const fc = await User.findOne({ where: { role: 'Foodcourt General', foodcourt_id: { [require('sequelize').Op.ne]: null } } });
+    if (!fc) return true; // 푸드코트 총괄 계정 없으면 검증 불가 → skip
+    const token = jwtLib.sign({ userId: fc.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const fcAuth = { Authorization: `Bearer ${token}` };
+
+    const RestaurantManager = require('../models/RestaurantManager');
+    const mine = await Restaurant.findAll({ where: { foodcourt_id: fc.foodcourt_id }, attributes: ['id'], raw: true });
+    const fcIds = mine.map((r) => r.id);
+    if (!fcIds.length) return true;
+
+    // 허용 범위 = 푸드코트 소속 ∪ 직접 관리 링크 (둘 다 정당한 소유 경로)
+    const links = await RestaurantManager.findAll({ where: { manager_id: fc.id }, attributes: ['restaurant_id'], raw: true });
+    const allowed = new Set([...fcIds, ...links.map((l) => l.restaurant_id)]);
+
+    const r = await request('GET', '/orders?limit=5000', null, fcAuth);
+    if (r.status !== 200) return false;
+    const rows = Array.isArray(r.body?.data) ? r.body.data : (Array.isArray(r.body) ? r.body : []);
+
+    // 유출 0: 허용 범위 밖 매장의 주문이 섞이면 안 된다
+    const noLeak = rows.every((o) => allowed.has(o.restaurant_id));
+
+    // 누락 0: 푸드코트 소속 매장에 주문이 있으면 목록에도 나와야 한다 (예전엔 0건이었다)
+    const fcOrderCount = await Order.count({ where: { restaurant_id: fcIds } });
+    const seesFcOrders = rows.some((o) => fcIds.includes(o.restaurant_id));
+    const noMiss = fcOrderCount === 0 || seesFcOrders;
+
+    return noLeak && noMiss;
+  });
+
+  // 구독 가격의 단일 소스 = 서버(PlanTemplate/PlanPrice). 프론트·라우트에 박아둔 가격표
+  // (basic29/pro99/ent199)는 실제 값(49/99/179)과 달랐다 — 다시 하드코딩되면 여기서 깨진다.
+  test('pos', '구독 플랜 가격 = 서버 PlanTemplate 기준 (하드코딩 가격표 금지)', async () => {
+    const { Restaurant } = require('../models');
+    const PlanTemplate = require('../models/PlanTemplate');
+    const demo = await Restaurant.findOne({ where: { is_demo: true } });
+    if (!demo) return true;
+
+    const r = await request('GET', `/subscriptions/manager/restaurant/${demo.id}/plan-options`, null, auth);
+    if (r.status !== 200) return false;
+    const plans = r.body?.data?.available_plans || [];
+    if (!plans.length) return false;
+
+    for (const p of plans) {
+      const tpl = await PlanTemplate.findByPk(p.id);
+      if (!tpl) return false;                 // 응답의 플랜이 DB 에 실재해야 함
+      if (!(p.monthly_price > 0)) return false; // 가격이 실수치(0/누락 아님)
+    }
+
+    // 플랜 목록 화면(/api/plans)과 구독 변경(plan-options)이 **같은 값**을 줘야 한다.
+    // 두 화면이 다른 가격을 보이면 사용자는 본 가격과 다른 금액으로 청구된다
+    // (2026-07-11 이전: 플랜 페이지에 29/99/199 하드코딩 ↔ 실제 청구 49/99/179).
+    const lp = await request('GET', '/plans');
+    if (lp.status !== 200) return false;
+    const listed = (Array.isArray(lp.body) ? lp.body : (lp.body?.data || []))
+      .filter((p) => p.plan_target === 'restaurant' && p.is_active);
+    if (!listed.length) return false;
+
+    const currency = r.body?.data?.current?.currency || 'MYR';  // 그 매장의 청구 통화 기준
+    for (const p of plans) {
+      const l = listed.find((x) => x.id === p.id);
+      if (!l) continue;                       // 목록에 없는 플랜은 대조 대상 아님
+      const listPrice = l.currency_prices?.[currency]?.monthly;
+      if (listPrice == null) continue;        // 해당 통화 가격 미설정 → 폴백(대조 생략)
+      if (Math.abs(Number(listPrice) - Number(p.monthly_price)) > 0.01) return false;
+    }
+    return true;
+  });
+
+  // 구독 계약 (2026-07-11 회귀 박제): 매니저 플랜 변경은 목업이 아니라 DB 에 저장돼야 하고,
+  // 다운그레이드는 즉시가 아니라 "미래 날짜" 예약이어야 한다. 과거엔 ① 화면이 목업 파일을
+  // 가리켜 저장이 아예 안 됐고 ② lapsed subscription_end 를 그대로 써서 예약일이 과거였다.
+  test('pos', '매니저 다운그레이드 = 미래 예약 저장 + 취소 가능 (목업/과거날짜 회귀)', async () => {
+    const { Restaurant } = require('../models');
+    const demo = await Restaurant.findOne({ where: { is_demo: true } });
+    if (!demo) return true;
+
+    const opts = async () => {
+      const r = await request('GET', `/subscriptions/manager/restaurant/${demo.id}/plan-options`, null, auth);
+      if (r.status !== 200) throw new Error(`plan-options ${r.status}`);
+      return r.body.data;
+    };
+
+    const start = await opts();
+    const before = start.current;
+    const downgrade = (start.available_plans || []).find((p) => p.change_type === 'downgrade');
+    if (!downgrade || !before.can_change) return true; // 데모 플랜 구성상 검증 불가 → skip
+
+    const snapshot = {
+      pending_plan_type: before.pending_plan_type,
+      pending_plan_amount: before.pending_plan_amount,
+      pending_billing_cycle: before.pending_billing_cycle,
+      plan_change_date: before.plan_change_date,
+      plan_change_type: before.plan_change_type,
+    };
+
+    try {
+      const chg = await request('POST', '/subscriptions/change-plan', {
+        restaurant_id: String(demo.id), new_plan_id: downgrade.id, new_billing_cycle: before.billing_cycle,
+      }, auth);
+      if (chg.status !== 200) return false;
+
+      const after = (await opts()).current;
+      const scheduled = after.pending_plan_type === downgrade.display_name;
+      const planUnchanged = after.plan_type === before.plan_type; // 다운그레이드는 즉시 반영 금지
+      const futureDate = !!after.plan_change_date && new Date(after.plan_change_date).getTime() > Date.now();
+
+      const del = await request('DELETE', `/subscriptions/change-plan?restaurant_id=${demo.id}`, null, auth);
+      const cleared = (await opts()).current.pending_plan_type === null;
+
+      return scheduled && planUnchanged && futureDate && del.status === 200 && cleared;
+    } finally {
+      await Restaurant.update(snapshot, { where: { id: demo.id } });
+    }
+  });
+
+  // 매니저 매출 계약 (2026-07-11 회귀 박제):
+  //  ① 대시보드/세일즈 숫자는 실제 주문 집계여야 한다 (과거 Math.random 이었음)
+  //  ② 주문 삭제는 소프트삭제(is_deleted=true)라 status 가 completed 로 남는다 →
+  //     매출 쿼리가 is_deleted 를 안 거르면 삭제한 주문이 계속 매출로 잡혔다.
+  // 데모 매장 + 인쇄 테스트와 동일 마커(orphan sweep 가 청소) → 멱등·운영 무영향.
+  test('pos', '매니저 매출 = 실주문 반영 + 삭제주문 제외 (is_deleted 회귀)', async () => {
+    const { Restaurant } = require('../models');
+    const Order = require('../models/Order');
+    const demo = await Restaurant.findOne({ where: { is_demo: true } });
+    if (!demo) return true; // 데모 매장 없으면 의미있는 검증 불가 → skip
+
+    const AMOUNT = 33.33;
+    const salesOf = async () => {
+      const r = await request('GET', '/manager/sales-summary', null, auth);
+      if (r.status !== 200) throw new Error(`sales-summary ${r.status}`);
+      const row = (r.body?.data || []).find((x) => String(x.id) === String(demo.id));
+      return { sales: row ? row.todaySales : 0, orders: row ? row.todayOrders : 0 };
+    };
+
+    const before = await salesOf();
+    const order = await Order.create({
+      restaurant_id: demo.id,
+      customer_name: '__HC_PRINT_TEST__',
+      table_number: 'HC-MGR',
+      order_type: 'dine_in',
+      status: 'completed',
+      total_amount: AMOUNT,
+      order_items: [{ id: 'hc-mgr-1', name: 'HC Manager Item', quantity: 1, price: AMOUNT }],
+    });
+
+    try {
+      const after = await salesOf();
+      const counted = Math.abs(after.sales - (before.sales + AMOUNT)) < 0.01 && after.orders === before.orders + 1;
+
+      await order.update({ is_deleted: true, deleted_at: new Date() });
+      const gone = await salesOf();
+      const excluded = Math.abs(gone.sales - before.sales) < 0.01 && gone.orders === before.orders;
+
+      return counted && excluded;
+    } finally {
+      await Order.destroy({ where: { id: order.id }, force: true });
+    }
+  });
 }
 
 // ============================================

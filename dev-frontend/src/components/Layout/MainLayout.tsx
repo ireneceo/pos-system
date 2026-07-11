@@ -1587,7 +1587,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         { path: '/pos/admin/settings', label: t('nav.companyInfo', 'Company Info') },
         { path: '/pos/admin/site-settings', label: t('nav.siteSettings', 'Site Settings') },
         { path: '/pos/admin/notification-settings', label: t('nav.notifications', 'Notifications') },
-        { path: '/pos/admin/system-config', label: t('nav.systemConfig', 'System Config') },
         { path: '/pos/admin/logs', label: t('nav.systemLogs', 'System Logs') },
         { path: '/pos/admin/history', label: t('nav.changeHistory', 'Change History') }
       ]
@@ -2940,7 +2939,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 )}
 
                 {hasManagerPermission('management') && (
-                  isRouteAllowed('/pos/foodcourt/general/management') ||
                   isRouteAllowed('/pos/manager/restaurants') ||
                   isRouteAllowed('/pos/manager/staff') ||
                   isRouteAllowed('/pos/foodcourt/manager') ||

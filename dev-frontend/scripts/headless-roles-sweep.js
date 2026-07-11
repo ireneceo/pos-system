@@ -16,7 +16,6 @@ const ROLES = {
       '/pos/admin/notices', '/pos/admin/work-manuals', '/pos/admin/support',
       '/pos/admin/contact-inquiries', '/pos/admin/hardware-quotes',
       '/pos/admin/content', '/pos/admin/site-settings',
-      '/pos/admin/system-products', '/pos/admin/system-config',
       '/pos/admin/notification-settings', '/pos/admin/referrals',
       '/pos/admin/carriers', '/pos/admin/carrier-webhooks',
       '/pos/admin/scheduler-monitor', '/pos/admin/logs',
@@ -96,6 +95,27 @@ const ROLES = {
       '/pos/brand/general/brand-menus',
       '/pos/brand/general/notices',
       '/pos/brand/general/system-inquiry',
+    ],
+  },
+  // /pos/manager/* — Foodcourt/Brand General·Manager 4역할 공용 화면. 2026-07-11 이전 어떤
+  // sweep 에도 없어(커버리지 갭) ManagerDashboard 의 Math.random 가짜 매출이 오래 살아남았다.
+  // BG 토큰으로 진입(ProtectedRoute requiredRole 에 Brand General 포함).
+  manager: {
+    token: process.env.BG_TOKEN,
+    role: 'Brand General',
+    routes: [
+      '/pos/manager/dashboard',
+      '/pos/manager/sales',
+      '/pos/manager/reports',
+      '/pos/manager/subscriptions',
+      '/pos/manager/restaurants',
+      '/pos/manager/admins',
+      '/pos/manager/invoices',
+      '/pos/manager/coupons',
+      '/pos/manager/plans',
+      '/pos/manager/support',
+      '/pos/manager/operation-inquiry',
+      '/pos/manager/notification-settings',
     ],
   },
 };

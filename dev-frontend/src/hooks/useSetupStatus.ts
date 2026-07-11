@@ -391,7 +391,7 @@ export function useSetupStatus(params: UseSetupStatusParams) {
               key: 'tenant_restaurants',
               label: 'Add Tenant Restaurants',
               description: 'Link restaurants to your foodcourt to manage them together',
-              path: '/pos/foodcourt/general/management',
+              path: '/pos/foodcourt/tenancy',
               completed: hasTenantRestaurants,
               dependsOn: ['first_branch']
             }

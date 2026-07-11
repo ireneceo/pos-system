@@ -267,5 +267,6 @@
   "ownerSystemInquiryPage.status": "Status",
   "ownerSystemInquiryPage.save": "Simpan",
   "ownerSystemInquiryPage.subject": "Subjek",
-  "ownerSystemInquiryPage.description": "Keterangan"
+  "ownerSystemInquiryPage.description": "Keterangan",
+  "ownerReportsPage.inPeriod": "Dalam tempoh dipilih"
 }

@@ -147,18 +147,6 @@
   "foodcourtInvoicesPage.resendInvoice": "Resend Invoice",
   "foodcourtInvoicesPage.cancelInvoice": "Cancel Invoice",
   "foodcourtInvoicesPage.deleteInvoice": "Delete Invoice",
-  "foodcourtManagement.foodcourtManagement": "Foodcourt Management",
-  "foodcourtManagement.integratedManagementAndOperationalOptimizationForEntireFoodcourtNetwork": "Integrated management and operational optimization for entire foodcourt network",
-  "foodcourtManagement.exportData": "Export Data",
-  "foodcourtManagement.addFoodcourt": "Add Foodcourt",
-  "foodcourtManagement.totalFoodcourts": "Total Foodcourts",
-  "foodcourtManagement.totalTenants": "Total Tenants",
-  "foodcourtManagement.averageOccupancy": "Average Occupancy",
-  "foodcourtManagement.totalMonthlyRevenue": "Total Monthly Revenue",
-  "foodcourtManagement.foodcourtList": "Foodcourt List",
-  "foodcourtManagement.foodcourtName": "Foodcourt Name",
-  "foodcourtManagement.location": "Location",
-  "foodcourtManagement.manager": "Manager",
   "foodcourtPaymentSettingsPage.loading": "Loading...",
   "foodcourtPaymentSettingsPage.currencySettings": "Currency Settings",
   "foodcourtPaymentSettingsPage.defaultCurrency": "Default Currency",
@@ -383,5 +371,6 @@
   "branches": {
     "latitude": "Latitude",
     "longitude": "Longitude"
-  }
+  },
+  "foodcourtReportsPage.inPeriod": "In selected period"
 }

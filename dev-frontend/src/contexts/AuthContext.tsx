@@ -481,11 +481,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           return;
         }
 
-        const response = await fetch('/api/auth/me', {
-          headers: {
-            'Authorization': `Bearer ${token}`
+        // 부팅 시 /auth/me 는 네트워크 사정으로 실패할 수 있다(서비스워커 콜드 스타트,
+        // 매장 wifi 순단 등 → fetch 가 TypeError 로 throw). 그걸 "토큰 만료"로 오인해
+        // 지워버리면 멀쩡히 로그인된 사용자가 로그인 화면으로 튕긴다.
+        // → 네트워크 오류는 재시도, 토큰 폐기는 서버가 401/403 으로 거부했을 때만.
+        const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
+        let response: Response | null = null;
+        let networkError: unknown = null;
+
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            response = await fetch('/api/auth/me', {
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            });
+            networkError = null;
+            break;
+          } catch (err) {
+            networkError = err;
+            response = null;
+            if (attempt < 2) await sleep(400 * (attempt + 1));
           }
-        });
+        }
+
+        if (!response) {
+          // 서버에 닿지 못함 — 토큰은 그대로 두고(재접속/새로고침 시 복구) 이번 부팅만 미인증 처리
+          console.warn('Auth check could not reach the server; keeping the session token.', networkError);
+          setIsLoading(false);
+          return;
+        }
 
         if (response.ok) {
           const result = await response.json();
@@ -523,14 +548,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             // StoreContext에 인증 완료 알림
             window.dispatchEvent(new Event('auth-ready'));
           }
-        } else {
-          // Token invalid or expired
-
+        } else if (response.status === 401 || response.status === 403) {
+          // 서버가 토큰을 거부 — 진짜 만료/무효
           clearAuthToken();
+        } else {
+          // 5xx 등 서버 장애: 토큰은 유지(다음 로드에서 복구), 이번 부팅만 미인증
+          console.warn(`Auth check failed with ${response.status}; keeping the session token.`);
         }
       } catch (error) {
-
-        clearAuthToken();
+        // 여기까지 오는 건 응답 파싱/후처리 오류 — 인증 실패가 아니므로 토큰을 지우지 않는다
+        console.error('Auth check error (token kept):', error);
       }
       setIsLoading(false);
     };

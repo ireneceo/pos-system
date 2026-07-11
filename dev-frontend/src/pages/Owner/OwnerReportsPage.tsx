@@ -534,12 +534,46 @@ const OwnerReportsPage: React.FC = () => {
       if (!orderDateValue) return false;
       const orderDate = new Date(orderDateValue);
       const isInRange = orderDate >= startDate && orderDate <= endDate;
-      const isValidOrder = order.payment_status === 'completed' || order.status === 'completed' || order.status === 'pending' || order.status === 'preparing' || order.status === 'ready';
-      return isInRange && isValidOrder;
+      // 'served' 는 완료 상태다 — 빼면 완료된 주문이 리포트에서 통째로 사라지고 이행률이 0% 로 찍힌다
+      // (백엔드 매출 정의도 completed + served). 삭제(소프트)된 주문은 어디서도 집계하지 않는다.
+      const isValidOrder = order.payment_status === 'completed' || order.status === 'completed'
+        || order.status === 'served' || order.status === 'pending'
+        || order.status === 'preparing' || order.status === 'ready';
+      const isDeleted = order.is_deleted === true || order.is_deleted === 1;
+      return isInRange && isValidOrder && !isDeleted;
     });
   }, [orders, dateRange.start, dateRange.end]);
 
   // Calculate sales data
+  // 운영 지표는 실주문에서 산출한다 (이전엔 Math.random 으로 렌더마다 다시 굴러가는 가짜 수치였다).
+  // BrandReportsPage 의 operationsStats 와 동일 정의 — 역할별로 숫자가 달라지지 않게.
+  const operationsStats = useMemo(() => {
+    const total = filteredOrders.length;
+    const done = filteredOrders.filter((o: any) => o.status === 'completed' || o.status === 'served').length;
+    const fulfillment = total ? Math.round((done / total) * 100) : 0;
+    const served = filteredOrders.filter((o: any) => o.served_at && o.createdAt);
+    const avgWait = served.length
+      ? Math.round(served.reduce((s: number, o: any) => {
+          const d = (new Date(o.served_at).getTime() - new Date(o.createdAt).getTime()) / 60000;
+          return s + (d > 0 ? d : 0);
+        }, 0) / served.length)
+      : 0;
+    const hourCounts: Record<number, number> = {};
+    filteredOrders.forEach((o: any) => {
+      const h = new Date(o.order_date || o.createdAt).getHours();
+      hourCounts[h] = (hourCounts[h] || 0) + 1;
+    });
+    let peak = -1, peakC = -1;
+    Object.entries(hourCounts).forEach(([h, c]) => { if (c > peakC) { peakC = c; peak = +h; } });
+    const label = (h: number) => {
+      if (h < 0) return '-';
+      const to = (x: number) => `${x % 12 === 0 ? 12 : x % 12}`;
+      const nh = (h + 1) % 24;
+      return `${to(h)}-${to(nh)} ${nh < 12 ? 'AM' : 'PM'}`;
+    };
+    return { fulfillment, avgWait, peakHour: label(peak), totalOrders: total };
+  }, [filteredOrders]);
+
   const salesData = useMemo(() => {
     if (filteredOrders.length === 0) return [];
 
@@ -1229,23 +1263,23 @@ const OwnerReportsPage: React.FC = () => {
             <StatsRow>
               <StatCard color="#10B981">
                 <StatLabel>{t('owner:ownerReportsPage.orderFulfillment')}</StatLabel>
-                <StatValue>{Math.round(95 * (0.9 + Math.random() * 0.15))}%</StatValue>
+                <StatValue>{operationsStats.fulfillment}%</StatValue>
                 <StatDescription>{t('owner:ownerReportsPage.ontimeCompletion')}</StatDescription>
               </StatCard>
               <StatCard color="#F59E0B">
                 <StatLabel>{t('owner:ownerReportsPage.avgWaitTime')}</StatLabel>
-                <StatValue>{Math.round(8 * (0.7 + Math.random() * 0.6))} min</StatValue>
+                <StatValue>{operationsStats.avgWait} min</StatValue>
                 <StatDescription>{t('owner:ownerReportsPage.estimated')}</StatDescription>
               </StatCard>
               <StatCard color="#EF4444">
                 <StatLabel>{t('owner:ownerReportsPage.peakHour')}</StatLabel>
-                <StatValue>12-1 PM</StatValue>
+                <StatValue>{operationsStats.peakHour}</StatValue>
                 <StatDescription>{t('owner:ownerReportsPage.busiestTime')}</StatDescription>
               </StatCard>
               <StatCard color="#6366F1">
-                <StatLabel>{t('owner:ownerReportsPage.staffEfficiency')}</StatLabel>
-                <StatValue>{Math.round(87 * (0.85 + Math.random() * 0.25))}%</StatValue>
-                <StatDescription>{t('owner:ownerReportsPage.estimated')}</StatDescription>
+                <StatLabel>{t('owner:ownerReportsPage.totalOrders')}</StatLabel>
+                <StatValue>{operationsStats.totalOrders}</StatValue>
+                <StatDescription>{t('owner:ownerReportsPage.inPeriod', 'In selected period')}</StatDescription>
               </StatCard>
             </StatsRow>
 

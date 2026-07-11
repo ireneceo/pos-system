@@ -627,8 +627,13 @@ const BrandReportsPage: React.FC = () => {
       if (!orderDateValue) return false;
       const orderDate = new Date(orderDateValue);
       const isInRange = orderDate >= startDate && orderDate <= endDate;
-      const isValidOrder = order.payment_status === 'completed' || order.status === 'completed' || order.status === 'pending' || order.status === 'preparing' || order.status === 'ready';
-      return isInRange && isValidOrder;
+      // 'served' 는 완료 상태다 — 빼면 완료된 주문이 리포트에서 통째로 사라지고 이행률이 0% 로 찍힌다
+      // (백엔드 매출 정의도 completed + served). 삭제(소프트)된 주문은 어디서도 집계하지 않는다.
+      const isValidOrder = order.payment_status === 'completed' || order.status === 'completed'
+        || order.status === 'served' || order.status === 'pending'
+        || order.status === 'preparing' || order.status === 'ready';
+      const isDeleted = order.is_deleted === true || order.is_deleted === 1;
+      return isInRange && isValidOrder && !isDeleted;
     });
   }, [orders, dateRange.start, dateRange.end]);
 

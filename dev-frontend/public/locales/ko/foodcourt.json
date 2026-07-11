@@ -147,18 +147,6 @@
   "foodcourtInvoicesPage.resendInvoice": "인보이스 재발송",
   "foodcourtInvoicesPage.cancelInvoice": "취소 인보이스",
   "foodcourtInvoicesPage.deleteInvoice": "삭제 인보이스",
-  "foodcourtManagement.foodcourtManagement": "푸드코트 관리",
-  "foodcourtManagement.integratedManagementAndOperationalOptimizationForEntireFoodcourtNetwork": "전체 푸드코트 네트워크 통합 관리 및 운영 최적화",
-  "foodcourtManagement.exportData": "내보내기 데이터",
-  "foodcourtManagement.addFoodcourt": "추가 푸드코트",
-  "foodcourtManagement.totalFoodcourts": "전체 푸드코트",
-  "foodcourtManagement.totalTenants": "합계 입점자",
-  "foodcourtManagement.averageOccupancy": "평균 점유율",
-  "foodcourtManagement.totalMonthlyRevenue": "합계 월간 매출",
-  "foodcourtManagement.foodcourtList": "푸드코트 목록",
-  "foodcourtManagement.foodcourtName": "푸드코트 이름",
-  "foodcourtManagement.location": "위치",
-  "foodcourtManagement.manager": "매니저",
   "foodcourtPaymentSettingsPage.loading": "불러오는 중...",
   "foodcourtPaymentSettingsPage.currencySettings": "통화 설정",
   "foodcourtPaymentSettingsPage.defaultCurrency": "기본값 통화",
@@ -383,5 +371,6 @@
   "branches": {
     "latitude": "위도",
     "longitude": "경도"
-  }
+  },
+  "foodcourtReportsPage.inPeriod": "선택 기간 내"
 }

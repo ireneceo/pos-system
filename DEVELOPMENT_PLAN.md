@@ -1,6 +1,8 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-07-10 #2 (**E2E b~f + 주문 생애주기 실증 + 셰이크다운 배포 — 운영 배포**. Irene "주문관리 확인은 너한테. 주문 다 넣어보고 결제·단계이동·프린트 다 테스트 → /검증 → /배포." demo rid=38에 실제 HTTP로 주문 전 생애주기 15/15 증명(생성→claim 경쟁 1/5→재인쇄0→+Round→pending→preparing→ready→served→결제 completed→삭제) + E2E 시나리오 b~f flaky-0(3회 연속 13/13, mutation은 결정적 request API·UI는 mount 무크래시) + health-check orphan-sweep cascade 보강. **셰이크다운 배포**: 런타임 무변경분(안전기반+e2e)+새 9게이트 첫 실전 통과, Backup 20260710_195933·Smoke 9/9·운영 health OK·deploy-manifest(1762파일) 앵커 활성화. **배포 중 mount sweep flake 근본수리**: 첫 시도 mount 게이트 fail-closed 중단(sweep 자체는 72/72·55/55 OK=실크래시 아닌 rebuild직후 전이적 pageerror)→CLAUDE.md 규칙대로 --skip-safety 금지, headless-page/roles-sweep에 실패 route 1회 재검 추가(진짜 크래시는 재검도 실패→여전히 차단)→재배포 mount 465s 크래시0 통과. 인쇄/KDS/돈 런타임 무접촉·버전 미상승. 상세 session-state + 아래.)
+> **최종 업데이트:** 2026-07-11 (**v3.68 운영 배포 — 리포트·구독 정확성 대청소**. Backup 20260711_170702 · Smoke 9/9 · 안전게이트 9/9 · 배포 전 주문 생애주기 14/14. #8 매니저 리포트 가짜매출 + #24 구독변경 배선 + 세션 복원력 + 죽은 페이지 정리 + 플랜 가격 단일소스. Irene "계속해" → 대기 큐(유료출시 필수 2건) 착수. **#8**: 문서가 stale(Manager Reports 는 이미 실집계 배포됨) — 진짜 잔여는 ManagerDashboard 의 `Math.random()` 매출/주문/직원/평점(4역할 라이브 노출) + 무인증 fetch + `admin_id===2` 하드코딩 필터 → `/api/manager/sales-summary` 실데이터로 교체, 평점은 실소스 없어 UI 제거. **덤으로 매출 부풀림 발견·수정**: manager-sales.js 매출쿼리에 `is_deleted` 필터 0건 → 소프트삭제된 주문이 계속 매출로 집계되던 것(RA dashboard 는 전부 필터함). **#24**: 운영 DB 실측 `subscriptions` 0행 → 게이트웨이 정기구독 테넌트 없음(이중청구 리스크 부존재). 진짜 결함 = **App.tsx 가 목업 파일을 import** (실배선 페이지는 죽은 코드) → 매니저 플랜변경이 아예 저장 안 되던 것 + **결제주체가 자기 대납 매장 플랜을 못 바꾸던 논리구멍** + **예약일이 과거로 잡히던 버그**(lapsed subscription_end, 운영 8매장 해당) + DELETE 매니저 모드 부재. 전부 수정·실호출 10/10. 회귀 3건 health-check 박제(15/15). 상세 session-state + 아래.)
+>
+> **이전:** 2026-07-10 #2 (**E2E b~f + 주문 생애주기 실증 + 셰이크다운 배포 — 운영 배포**. Irene "주문관리 확인은 너한테. 주문 다 넣어보고 결제·단계이동·프린트 다 테스트 → /검증 → /배포." demo rid=38에 실제 HTTP로 주문 전 생애주기 15/15 증명(생성→claim 경쟁 1/5→재인쇄0→+Round→pending→preparing→ready→served→결제 completed→삭제) + E2E 시나리오 b~f flaky-0(3회 연속 13/13, mutation은 결정적 request API·UI는 mount 무크래시) + health-check orphan-sweep cascade 보강. **셰이크다운 배포**: 런타임 무변경분(안전기반+e2e)+새 9게이트 첫 실전 통과, Backup 20260710_195933·Smoke 9/9·운영 health OK·deploy-manifest(1762파일) 앵커 활성화. **배포 중 mount sweep flake 근본수리**: 첫 시도 mount 게이트 fail-closed 중단(sweep 자체는 72/72·55/55 OK=실크래시 아닌 rebuild직후 전이적 pageerror)→CLAUDE.md 규칙대로 --skip-safety 금지, headless-page/roles-sweep에 실패 route 1회 재검 추가(진짜 크래시는 재검도 실패→여전히 차단)→재배포 mount 465s 크래시0 통과. 인쇄/KDS/돈 런타임 무접촉·버전 미상승. 상세 session-state + 아래.)
 >
 > **이전:** 2026-07-10 (**모델 독립 안전개발 기반 구축 — Fable 구축·Opus 실측검증**. verify-all 단일 러너(기계 게이트 12종 1명령, fail-closed) + check-sensitive-diff(Fable 게이트 기계판정) + deploy-manifest + safety-guard 훅 규칙확장 + 배포 게이트 7→9 + post-build mount sweep + 마이그레이션 레지스트리화 + roles-sweep mount 2→5역할 + E2E 뼈대 + AGENT_ONBOARDING.md. 인쇄/KDS/돈 런타임 무접촉. 상세 아래.)
 >
@@ -51,6 +53,122 @@
 > **이전:** 2026-06-23 (**v3.62 운영 배포 완료** — thefire 실사용 준비 7건: 직원 PIN 전환 수정 · 시재 개시모드(이월/고정) · 마감 폰트 통일 · 통합오더티켓 'Full' 수동인쇄 · 로그인 직원 PIN 우선 · 설정 QR 인쇄버튼 · Windows 7/8 QZ 설치 수정. Backup 20260623_124849, Smoke 9/9, SW=3.95. /검증 통과: health 107/107·print-guard 8/8(billPrint 무수정)·hydration0·timezone0·design0·i18n0·mount(floor-plan/settings/cash-up/pos) crash0.)
 >
 > **이전:** v3.61 발주 UX 대정리 + 외부공급업체 + 플로어플랜 핫픽스. SW=3.90.
+
+## ✅ 완료: #8 매니저 리포트 가짜매출 + #24 구독변경 배선 (2026-07-11, dev 검증완료·미배포·★Fable 게이트)
+
+> 대기 큐의 "유료출시 필수 2건" 착수. **착수 전 실측 원칙**대로 먼저 현재 상태를 코드/DB로 확인한 결과, 두 건 다 감사 문서가 stale 했고 **진짜 결함은 다른 곳**에 있었다.
+
+### #8 매니저 리포트 가짜매출
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 문서 stale 정정 | Manager **Reports** 는 이미 실집계(`reports-summary`, 2026-07-08 배포). 감사표의 "100% mock" 은 더 이상 사실 아님 | ✓ |
+| ManagerDashboard 실데이터화 | `Math.random()` 4줄(오늘매출/주문/직원/평점) 제거 → `/api/manager/sales-summary`. **4역할(FG/BG/FC매니저/브랜드매니저) 라이브 노출**이었음 | ✓ |
+| 보안·스코프 | 무인증 `/api/restaurants` 호출 → 인증 헤더 / `admin_id === 2` 하드코딩 필터 제거 → 서버가 역할별 스코프 결정 | ✓ |
+| **매출 부풀림 (신규 발견)** | manager-sales.js 매출쿼리에 `is_deleted` 필터 **0건** → 삭제(소프트)한 주문이 계속 매출로 집계. sales-summary + reports-summary 수정 | ✓ |
+| 평점(★) | 실소스 없음 → **UI 제거**(가짜를 다른 가짜로 대체 금지, reports-summary 방침과 동일) | ✓ |
+| staffCount/status/branchName | sales-summary 응답에 추가. 직원수 = `/api/staff` 목록과 동일 정의(Restaurant Admin+Staff) | ✓ |
+
+**실호출 증명**: demo rid=38 완료주문 RM42.50 생성 → todaySales 0→42.5·todayOrders 0→1 → 삭제 → 0 원복(**수정 전엔 42.5 잔존**). reports-summary RM77.70 동일 PASS. 직원수 = /api/staff 2명 일치. 익명 401.
+
+### #24 구독변경 배선 (돈)
+
+**운영 DB 실측 (결정적)**: `subscriptions` 테이블 **0행** → Stripe/PayPal **정기구독 쓰는 테넌트 없음**(청구=인보이스 기반). 감사가 우려한 "게이트웨이는 옛 금액 계속 청구" 이중청구 리스크는 **현재 부존재**. 운영 플랜 분포: 매장 22(Basic/Pro/Enterprise), pending 0, plan_upgrade 인보이스 0.
+
+| 결함 | 근본 | 수정 |
+|------|------|------|
+| **매니저 플랜변경이 저장 안 됨** | `App.tsx:137` 이 **목업 파일**(`Manager/SubscriptionsPage.tsx` 5/26: fetch 0건·로컬 state·다음청구일 `Date.now()+30일` 날조)을 import. 실배선된 `ManagerSubscriptionsPage.tsx`(7/8)는 **import 0건 = 죽은 코드** | import 교체 + 목업 삭제 |
+| **결제주체가 자기 대납매장 플랜 변경 불가** | `buildRestaurantSubscription` 의 "결제자에게 문의" 차단이 **결제자 본인에게도** 적용 (BG 가 자기가 낸 매장에 "K-Dine(Sarah Kim)에 문의하세요" — 본인이 Sarah Kim) | viewer 인자 → viewer==결제주체/SysAdmin 이면 차단 해제. 연체·정지 차단 유지. 셀프서비스(RA) 무변경 |
+| **예약일이 과거로 잡힘** | `getNextBillingDate` 가 lapsed `subscription_end` 를 그대로 반환 → pending 이 과거 날짜, 업그레이드 인보이스는 **발행 즉시 연체** (운영: subscription_end null인 active 7 + past 1 = **8매장 해당**) | 항상 미래 날짜가 되도록 수정 |
+| 매니저가 예약 취소 불가 | `DELETE /change-plan` 이 셀프 전용(POST 는 매니저 모드 지원 = 비대칭) | 매니저 모드 추가(IDOR 가드 재사용). **쿼리 파라미터** 방식 — chunked DELETE body 는 핸들러 도달 전 400(실측) |
+| 신 페이지 잔존 가짜 | 사용량(메뉴/거래/스토리지)이 `Math.random()` | 서버 실카운터(메뉴·주문·직원 = 백엔드가 다운그레이드 시 실제 검사하는 소스). 스토리지는 계측 없어 표시 제거 |
+| 기능 회귀 방지 | 구 페이지에만 있던 **청구주체 전환**(payment model) | 신 페이지로 이식(+ 인보이스 payer 재지정) |
+
+**실호출 증명 10/10**: 플랜변경 200 · 다운그레이드=즉시 아닌 **예약** · 현재플랜 유지(돈 즉시변동 없음) · 예약일 **미래**(2026-08-03, 수정 전 2025-01-31) · 재조회 영속(목업 회귀 방지) · 예약취소 200 → pending 소거 · IDOR 403 · 익명 401 · 결제주체 변경가능.
+
+### 회귀 박제 (health-check `pos` 15/15)
+- "매니저 매출 = 실주문 반영 + 삭제주문 제외(is_deleted)" — **수정을 되돌리면 정확히 이 1건만 실패** 실증(fail-closed)
+- "매니저 다운그레이드 = 미래 예약 저장 + 취소 가능(목업/과거날짜 회귀)"
+- "익명 /manager/sales-summary → 401"
+
+### #24 잔여 3건 — 후속 완료 (같은 날)
+
+| 결함 | 수정 |
+|------|------|
+| `Admin/RestaurantSubscriptionsPage.tsx` **전체 목업** (목록 항상 `[]` · 하드코딩 가격표 · 가짜 성공 토스트 · 가짜 "Add Restaurant"가 DB에 아무것도 안 만듦) | `GET /api/restaurants` 실데이터(33매장) + 플랜변경=`plan-options`/`POST change-plan`(서버 가격·프로레이션·한도·인보이스) + 정지/재활성/**해지**=`PUT /restaurants/:id {status}` + 청구주체 전환(+invoices/update-payer). 가짜 토스트·가짜 Add 흐름 제거(매장 생성은 Admin 매장 페이지로) |
+| `POST /restaurants/subscriptions` **가격 하드코딩**(29/99/199) + billingCycle·paymentModel 무시 + 플랜 한도 미적용 | PlanTemplate+PlanPrice(통화별) 조회 · 기간=주기 반영(+1y/+1mo) · payment_model 저장 · order/menu/staff 한도 적용. **실제 가격은 49/99/179** — 하드코딩 표가 전부 틀렸음(실증) |
+| `GET /restaurants/subscriptions/manager/:id` 정가 하드코딩(소비자 0인 레거시) | `plan_amount`(실청구액·할인반영) + `order_limit` 컬럼 사용 |
+| 구독 **해지** 부재로 보였던 것 | 실제로는 **UI 부재**. `cancelled` 는 이미 유효 상태이고 인보이스 생성은 `status='active'` 만 대상 → 해지 시 청구 자동 중단. Admin 에 해지 액션 추가 + **정지/해지 시 예약된 플랜변경 자동 정리**(스케줄러와 동일 규칙 — 안 하면 복귀 시 다운그레이드 부활) |
+
+**검증**: Admin 흐름 실호출 **10/10**(목록·플랜변경 금액=서버가격·정지·예약정리·재활성·해지·청구주체·익명401) · health-check `pos` **16/16**(가격 하드코딩 금지 계약 추가) · 실브라우저 mount 크래시0(실매장 렌더·해지 액션·가짜모달 제거) · i18n 신규 문구 4언어 키 등록.
+
+### 추가 완료: 매니저 플랜 페이지가 틀린 가격을 보여주고 있었다
+
+| 결함 | 실제 |
+|------|------|
+| `/pos/manager/plans`(라이브 라우트)가 **플랜·가격·비교표를 코드에 하드코딩** — basic 29 / pro 99 / ent 199 | **실제 청구가 MYR 49 / 99 / 179** → 매니저가 **틀린 가격을 보고 업그레이드 결정**. 비교표 한도(1,000/10,000)도 DB(1000/5000)와 불일치. 플랜 선택 버튼은 'Coming Soon' 스텁 |
+| **통화 코드 불일치** (근본) | 앱 통화는 기호 `RM`, 서버 `currency_prices` 키는 ISO `MYR` → 조회 실패 후 기본가(29/59/99) 폴백. 공용 유틸 `normalizeCurrencyCode`/`getPlanPrice` 로 통일 |
+
+**수정**: `/api/plans`(PlanTemplate + 통화별 PlanPrice) 단일 소스 · 비교표 = 서버 한도(주문/직원/메뉴) · 선택 버튼 → 매장별 구독 화면(서버가 프로레이션·한도·인보이스 처리).
+
+**커버리지 확장이 값을 증명**: 하드코딩을 걷어내다 헬퍼 3개를 같이 지워 `/pos/manager/plans` 가 ErrorBoundary 로 죽었는데, **오늘 추가한 `/pos/manager/*` mount sweep 이 즉시 검출**했다(추가 안 했으면 그대로 배포될 뻔).
+
+**회귀 박제 = E2E** (`e2e/plans-pricing.spec.js`): 백엔드끼리 대조로는 이 버그를 못 잡는다(두 API 가 같은 DB 를 읽어 항상 일치) → **브라우저에 렌더된 숫자 = 서버 가격**을 직접 검증. 하드코딩 주입 시 실패 · 복원 시 통과 실증. + health-check `pos` **17/17**(플랜목록↔구독변경 가격 일치 대조 추가).
+
+### 추가 완료: 죽은 관리자 페이지 6개 제거 + 끊긴 링크 4개 교정
+
+> Irene 선택 "미배선 관리자 페이지". 실측하니 **전부 백엔드 호출 0건 + `setState([])` 껍데기**였고 기능은 이미 다른 페이지에 존재 → 실배선이 아니라 **정직한 제거**가 정답이었다.
+
+| 삭제한 페이지 | 실제 기능이 있는 곳 |
+|---|---|
+| `Admin/SystemConfigPage` (사이드바 노출) | Site Settings + Payment Settings. **범용 key/value 편집기라 `payment_settings` JSON 을 통째로 덮어쓸 위험** — 설정 wipe 사고 이력이 있는 영역이라 제거가 안전 |
+| `Admin/SecurityPage` | Logs + Activity History |
+| `Admin/BackupRestorePage` | 서버 cron 백업(매일 4am). API 없음 |
+| `FoodcourtGeneral/FoodcourtManagement` (fetch 0건) | Tenancy(계약) + Branches |
+| `Foodcourt/TenantSupport` | System Inquiry + Operation Inquiry |
+| `InvoiceSettings/InvoiceSettingsPage` | 라우트 없음 = 완전 사장 |
+
+**끊긴 링크 4개 교정** — 죽은 페이지로 보내던 안내를 실제 입점(계약) 관리(`/pos/foodcourt/tenancy`)로: ①FC 온보딩 "Add Tenant Restaurants"(useSetupStatus) ②RentManagement 빈상태 "Manage Tenants" ③FC 대시보드 알림 링크 ④FC 대시보드 빠른실행 카드. **안내를 따라가면 빈 화면에 도착하던 흐름**이었다.
+
+**배선 정리**: App.tsx 라우트·lazy import 6개 · MainLayout 사이드바(System Config) · ProtectedRoute 허용목록(tenant-support) · roles-sweep 라우트 · 죽은 i18n 키 **492개**(4언어×3ns). 잔존 참조 0.
+
+### 추가 완료: 리포트 가짜지표 3종 + 그 밑의 진짜 원인 (푸드코트 주문 0건)
+
+> 가짜 지표를 걷어내니 **왜 가짜였는지**가 드러났다 — 데이터가 실제로 0건이라 난수로 채워놨던 것.
+
+| 결함 | 근본 | 수정 |
+|------|------|------|
+| Owner·Foodcourt 리포트 운영지표가 `Math.random()` | 이행률/대기시간/직원효율이 **렌더마다 재추첨**, 피크시간은 `12-1 PM` 하드코딩 | BrandReportsPage 의 `operationsStats`(실주문 기반)로 **3역할 통일**. 실소스 없는 "직원 효율" → **총 주문수**로 교체 |
+| **푸드코트 총괄 = 주문 0건** (`orders-crud.js` GET `/`) | 매장 소유를 **`RestaurantManager` 링크로만** 판정. 푸드코트 총괄은 `foodcourt_id`, 브랜드 총괄은 `brand_id` 로 매장을 갖는데 그 경로가 없었다 → **푸드코트 리포트 전체가 항상 빈 데이터**(그래서 난수로 채운 것) | `manager-sales.js` `resolveManagerRestaurants` 와 동일 규칙(링크 ∪ 브랜드소유 ∪ 푸드코트소속). FC **0 → 446건**, BG 791→869(자기 브랜드 매장). **IDOR: 타 푸드코트 매장 노출 0건** |
+| 리포트 필터가 **`served` 제외** (Owner·Foodcourt·Brand 3곳) | `served` 는 완료 상태인데 데이터셋에서 빼놓고 이행률은 `completed‖served` 로 계산 → **항상 0%** | 백엔드 매출 정의(completed+served)에 정렬 + **삭제(is_deleted) 주문 제외**(오늘 백엔드 수정과 동형) |
+
+**⚠ 인쇄 보호파일 접촉**: `orders-crud.js` — **Irene 승인 후 `--bless`**. 인쇄 로직 무접촉(diff 에 print/kitchen/pending/station **0줄**), **인쇄 계약 8/8 통과**(티켓1번·+Round·claim경쟁·금액공식·무결성).
+
+**회귀 박제**: health-check `pos` **17/17** — "주문 스코프: 푸드코트 총괄이 자기 주문을 본다 + 남의 것은 못 본다"(누락0·유출0 양방향). 푸드코트 경로를 제거하면 **정확히 이 1건만 실패** 실증.
+**결과**: 푸드코트 운영탭 실값(이행률 7% · 피크 1-2PM · 총주문 15) · 재로드 동일(난수 아님) · 크래시 0.
+
+### 추가 완료: mount 커버리지 갭 해소 (가짜매출이 오래 산 구조적 이유)
+
+> **왜 어떤 게이트도 `Math.random()` 매출을 못 잡았나** — `/pos/manager/*` 가 **어떤 sweep 에도 없었다**. roles-sweep 에 admin/bm/fcm 항목은 있었지만 demo-login 화이트리스트에 그 역할이 없어 토큰이 공급되지 않았고 → graceful skip(=사실상 미검사). 결함만 고치지 않고 **결함이 숨을 수 있던 구멍**을 닫았다.
+
+- `verify-all.js` **`signRoleToken(role)`** — demo 계정 없는 역할(System Admin / Brand Manager / Foodcourt Manager)은 DB 실계정으로 **JWT 직접 서명**(비밀번호 불필요·계정 무변경. 계정 없으면 null → 그 역할만 skip). mount 게이트에 ADMIN/BM/FCM/BG 토큰 공급.
+- `headless-roles-sweep.js` **`manager` 항목 신설** — `/pos/manager/*` **실존 12루트**(App.tsx 라우트와 대조해 유령 경로 배제 — 없는 경로는 빈 렌더를 OK 로 오판시킨다).
+- 결과: mount 커버 **5역할 → 8역할** (RA·BG + FG·Owner·Supplier + **System Admin·Brand Manager·Foodcourt Manager** + `/pos/manager/*`). 확장분 단독 실행 **52/52 크래시 0**.
+- 문서 정정: `docs/AGENT_ONBOARDING.md` mount 행에서 "admin/manager 커버 갭" 제거.
+
+### 추가 완료: 세션 복원력 (네트워크 순단 1회 = 로그아웃 버그)
+
+> 검증 중 발견 → Irene "그것도 고쳐줘".
+
+- **근본**: `AuthContext` 부팅 시 `/api/auth/me` fetch 가 네트워크 오류로 throw 되면 `catch { clearAuthToken() }` — 즉 **서버가 거부한 적도 없는데 세션을 지웠다.** 콜드 부팅(서비스워커 첫 설치)·매장 wifi 순단 한 번이면 로그인 화면으로 튕긴다. Playwright `serviceWorkers:'block'` 이면 즉시 정상 mount 되는 것으로 방아쇠 확인. 2026-07-10 mount sweep 에 재검 로직을 넣게 만든 "전이적 flake" 와 같은 뿌리.
+- **수정**: 네트워크 오류는 3회 재시도(400/800ms 백오프) → 그래도 실패면 **토큰 유지**(다음 로드에서 복구), 이번 부팅만 미인증. **토큰 폐기는 서버가 401/403 으로 거부했을 때만**(5xx 도 유지). `refreshUser` 는 이미 안전해 무변경.
+- **검증**: 실브라우저에 네트워크 오류 주입 → 토큰 유지 + 재시도 진입 / 401 주입 → 여전히 폐기·로그아웃. `e2e/auth-roles.spec.js` a-2 로 박제, **3회 연속 7/7 flaky-0**.
+
+### 수정된 파일
+- 백엔드: `routes/manager-sales.js`(is_deleted·staffCount·status), `routes/subscriptions.js`(viewer/can_change·getNextBillingDate·DELETE 매니저 모드·payment_model 노출), `scripts/health-check.js`(회귀 3건)
+- 프론트: `pages/Manager/ManagerDashboard.tsx`, `pages/Manager/ManagerSubscriptionsPage.tsx`, `App.tsx`(import 교체), **삭제**: `pages/Manager/SubscriptionsPage.tsx`(목업)
+
+---
 
 ## ✅ 완료: E2E b~f + 주문 생애주기 실증 + 셰이크다운 배포 (2026-07-10 #2, 운영 배포)
 
