@@ -463,7 +463,15 @@ financial_terms (JSON)
            marketing_fund_value, security_deposit, territory }
   Foodcourt: { base_rent, revenue_share_percent, min_guarantee,
                maintenance_fee, security_deposit, security_deposit_months,
-               fitout_responsibility, operating_hours, restoration_required }
+               fitout_responsibility, operating_hours, restoration_required,
+               billing_day (1~28), grace_days (0~60) }
+
+  ⚠ base_rent + billing_day 는 **실제 청구를 발생시킨다** (2026-07-11~).
+    stage='active' + base_rent > 0 인 계약은 매월 임대료 인보이스가 자동 발행된다
+    (금액 = base_rent + maintenance_fee, 납기 = billing_day + grace_days).
+    billing_day 는 1~28 만 허용 — 29~31 은 그런 날이 없는 달에서 발행 누락이 난다.
+    설계·구현 = docs/TENANT_RENT_BILLING.md, 발행 로직 = services/rentBilling.js
+    revenue_share_percent(매출연동) 은 아직 청구에 반영되지 않는다(입력만).
 
 -- Renewal
 renewal_type ('auto' / 'manual' / 'none')

@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-07-11 (**v3.68 운영 배포 — 리포트·구독 정확성 대청소**. Backup 20260711_170702 · Smoke 9/9 · 안전게이트 9/9 · 배포 전 주문 생애주기 14/14. #8 매니저 리포트 가짜매출 + #24 구독변경 배선 + 세션 복원력 + 죽은 페이지 정리 + 플랜 가격 단일소스. Irene "계속해" → 대기 큐(유료출시 필수 2건) 착수. **#8**: 문서가 stale(Manager Reports 는 이미 실집계 배포됨) — 진짜 잔여는 ManagerDashboard 의 `Math.random()` 매출/주문/직원/평점(4역할 라이브 노출) + 무인증 fetch + `admin_id===2` 하드코딩 필터 → `/api/manager/sales-summary` 실데이터로 교체, 평점은 실소스 없어 UI 제거. **덤으로 매출 부풀림 발견·수정**: manager-sales.js 매출쿼리에 `is_deleted` 필터 0건 → 소프트삭제된 주문이 계속 매출로 집계되던 것(RA dashboard 는 전부 필터함). **#24**: 운영 DB 실측 `subscriptions` 0행 → 게이트웨이 정기구독 테넌트 없음(이중청구 리스크 부존재). 진짜 결함 = **App.tsx 가 목업 파일을 import** (실배선 페이지는 죽은 코드) → 매니저 플랜변경이 아예 저장 안 되던 것 + **결제주체가 자기 대납 매장 플랜을 못 바꾸던 논리구멍** + **예약일이 과거로 잡히던 버그**(lapsed subscription_end, 운영 8매장 해당) + DELETE 매니저 모드 부재. 전부 수정·실호출 10/10. 회귀 3건 health-check 박제(15/15). 상세 session-state + 아래.)
+> **최종 업데이트:** 2026-07-11 #3 (**임차인 임대료 청구 신규 기능 운영 배포 + 설정 가짜탭 제거**. `/기능설계` 6단계로 임대료 청구 구축 — 계약의 임대조건으로 매월 임대료 인보이스 자동발행(멱등)·임차인별 납부/연체 현황·계약 종료 시 중단. **신규 테이블 0개**(계약·인보이스·유닛 재사용, invoice_categories 에 rent 1행). 실호출 13/13 + 유저흐름 11/11 + health-check pos 19/19. 이메일 알림·연체 전환은 기존 인보이스 파이프라인이 그대로 커버(실증). 운영 배포 Backup 20260711_194035 — **마이그레이션이 배포 중 실행되지 않아 수동 복구**(다음 배포 전 원인 규명 필요). 추가로 **설정의 매니저 Company/Brands/Billing 탭 전체가 하드코딩 가짜**("다음 청구일 January 15, 2025", 브랜드 목록 상수)이면서 **requireRestaurantMatch 로 아무도 도달 못 하는 죽은 코드**임을 확인 → 제거. 정리 중 RA 설정 크래시 회귀를 내고 실브라우저 검증에서 잡아 수정. verify-all 13/13.)
 >
 > **이전:** 2026-07-10 #2 (**E2E b~f + 주문 생애주기 실증 + 셰이크다운 배포 — 운영 배포**. Irene "주문관리 확인은 너한테. 주문 다 넣어보고 결제·단계이동·프린트 다 테스트 → /검증 → /배포." demo rid=38에 실제 HTTP로 주문 전 생애주기 15/15 증명(생성→claim 경쟁 1/5→재인쇄0→+Round→pending→preparing→ready→served→결제 completed→삭제) + E2E 시나리오 b~f flaky-0(3회 연속 13/13, mutation은 결정적 request API·UI는 mount 무크래시) + health-check orphan-sweep cascade 보강. **셰이크다운 배포**: 런타임 무변경분(안전기반+e2e)+새 9게이트 첫 실전 통과, Backup 20260710_195933·Smoke 9/9·운영 health OK·deploy-manifest(1762파일) 앵커 활성화. **배포 중 mount sweep flake 근본수리**: 첫 시도 mount 게이트 fail-closed 중단(sweep 자체는 72/72·55/55 OK=실크래시 아닌 rebuild직후 전이적 pageerror)→CLAUDE.md 규칙대로 --skip-safety 금지, headless-page/roles-sweep에 실패 route 1회 재검 추가(진짜 크래시는 재검도 실패→여전히 차단)→재배포 mount 465s 크래시0 통과. 인쇄/KDS/돈 런타임 무접촉·버전 미상승. 상세 session-state + 아래.)
 >
@@ -7966,6 +7966,44 @@ Brand General이 등록한 재료(Ingredient)의 표준 코스트(Brand Cost)에
 - `dev-frontend/public/sw.js` (4.45→4.46), `deploy-to-production.sh` (마이그 2종 등록)
 - `dev-backend/scripts/20260629_create_processed_ops.js` (신규), `dev-backend/scripts/print-guard.manifest.json` (bless)
 - 외 오프라인/IOI/테마/모바일 누적분 (이전 #4·#5 dev 작업분)
+
+---
+
+## ✅ 완료: 임차인 임대료 청구 (신규 기능) + 설정 가짜탭 제거 (2026-07-11 #3, 운영 배포)
+
+> Irene "푸드코트 임대관리 실배선" → 실측하니 **임대료 청구 기능 자체가 미구현**(invoice_categories 에 rent 코드 없음, 운영 임대료 인보이스 0건)이었다. `/기능설계` 6단계로 제대로 구축. 설계 = `docs/TENANT_RENT_BILLING.md`. **F&B 전용 제품이므로 푸드코트 명칭·역할·테이블은 무변경**(Irene 확정).
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 임대료 발행 로직 | `services/rentBilling.js` — 스케줄러와 수동 발행이 **이 함수 하나** 공유. 같은 달 중복 발행 0(멱등) | ✅ |
+| API 3개 | `routes/rent-billing.js` — 임차인 현황 / 요약 / 발행. 임대사업자 스코프(IDOR 0) | ✅ |
+| 스케줄러 합류 | `invoiceScheduler.generateRentInvoices()` — 일일 실행·SchedulerRun·에러집계에 편입 | ✅ |
+| 계약 검증 | `models/Contract.js` — base_rent/maintenance_fee 음수 거부 · **청구일 1~28**(29~31 은 그런 날 없는 달에서 발행 누락) · 유예일 0~60 | ✅ |
+| 마이그레이션 | `invoice_categories` 에 `rent` 1행(멱등, ALTER 0) + 레지스트리 등록 | ✅ |
+| 화면 | 임대 관리 페이지 실배선(가짜 "임대료 설정" 모달·"일괄 발송"·`+5% vs last month` 제거) · 계약 상세 청구일/유예일 · 사이드바 메뉴 | ✅ |
+| **발견·수정** | 임대 관리 라우트가 `Foodcourt Manager` 만 허용 → **정작 임대사업자인 총괄이 자기 화면에 못 들어갔다** | ✅ |
+| 이메일·연체 | 기존 인보이스 파이프라인이 그대로 커버 — 발행 시 임차인 알림(실증), 납기 경과 시 `overdue` 자동 전환(전환 1/1 실증) | ✅ |
+| **설정 가짜탭 제거** | 매니저용 Company/Brands/Billing 탭이 **전부 하드코딩**(회사명·브랜드 목록·"January 15, 2025")이고 저장 API 0건. 게다가 `requireRestaurantMatch` 로 **아무도 도달 못 하는 죽은 코드** → 제거. 실기능은 각 전용 페이지 | ✅ |
+| 매니저 구독 'Manage Billing' | 구독 청구서는 스케줄러가 자동 발행 → 일괄 청구 개념 불필요 → 제거 | ✅ |
+
+### 검증
+- 실호출 **13/13**(발행·금액·발행자/수취자·명세2·납기일·**멱등**·현황·요약·**IDOR 0**·임차인 403·종료 시 중단·청구일 거부) · 유저흐름 **11/11**(임대조건 저장→경계케이스→발행→현황→**임차인 수신**→결제→요약→기존 인보이스 무회귀)
+- health-check `pos` **19/19** — 멱등 검사를 빼면 정확히 그 1건만 실패 실증(fail-closed)
+- verify-all **13/13**(8역할 mount sweep 657초 크래시0) · 인쇄 계약 8/8 · 인쇄 라우트 34/34
+- **회귀 자수**: 설정 정리 중 변수 스코프 실수로 **RA 설정 페이지 크래시**(프린터 설정 포함 운영 critical) → 실브라우저 검증에서 잡아 수정. 현재 기본탭·프린터·주방스테이션 전부 정상
+
+### 배포 (2026-07-11)
+- Backup `20260711_194035` · 배포 스냅샷 1758파일 · 운영 health ok
+- ⚠ **마이그레이션이 배포 중 실행되지 않음** — 파일은 복사됐으나 실행 안 됨. 운영에서 수동 실행해 복구(`invoice_categories.rent` id=10). 배포 로그를 tail 로만 저장해 원인 구간이 잘려 진단 실패 → **다음 배포 때 전체 로깅 후 규명 필요**
+- ⚠ 배포 직후 Smoke 7/9 → 재현 시 전부 정상(재시작 순간 전이적 실패)
+- ⚠ **Fable 게이트 대상이었으나 Irene 지시로 배포** (돈·인쇄보호파일·DB·보안경계 접촉)
+
+### 수정된 파일
+- 백엔드: `services/rentBilling.js`(신규) · `routes/rent-billing.js`(신규) · `scripts/migrate-rent-category.js`(신규) · `services/invoiceScheduler.js` · `models/Contract.js` · `server.js` · `scripts/health-check.js` · `scripts/migrations.registry.json`
+- 프론트: `pages/Foodcourt/RentManagement.tsx` · `components/Contract/ContractDetail.tsx` · `components/Layout/MainLayout.tsx`(사이드바, bless) · `App.tsx`(라우트 역할) · `pages/Settings/SettingsPage.tsx` · `pages/Manager/ManagerSubscriptionsPage.tsx` · locales ×4
+- 문서: `docs/TENANT_RENT_BILLING.md`(신규)
 
 ---
 

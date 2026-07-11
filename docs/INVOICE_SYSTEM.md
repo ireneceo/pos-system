@@ -102,7 +102,27 @@ Restaurant: currency 설정 (System Admin 지원 범위 내)
 | consulting | Consulting | 컨설팅 비용 |
 | hardware | Hardware | 하드웨어/장비 |
 | training | Training | 교육/트레이닝 |
+| rent | Rent | 임차인 월 임대료 (기본 임대료 + 관리비) — 활성 계약에서 자동 발행. 설계 = `docs/TENANT_RENT_BILLING.md` |
 | others | Others | 기타 (custom_description 필수) |
+
+---
+
+### 2.1-b 임차인 임대료 자동 발행 (Tenant Rent Billing, 2026-07-11 신규)
+
+| 항목 | 내용 |
+|------|------|
+| **API** | `POST /api/rent/generate` (수동, System Admin) + `invoiceScheduler.generateRentInvoices()` (일일 자동) |
+| **발행 로직 단일 소스** | `services/rentBilling.js` — 스케줄러와 수동 발행이 같은 함수를 쓴다 |
+| **발행자** | 임대사업자 = 계약 발행 엔티티 (`issuer_type` = contract.entity_type, 예: foodcourt) |
+| **수취자** | 임차 매장 (`payer_type='restaurant'`, `payer_id` = contract.restaurant_id) |
+| **대상** | 계약 `stage='active'` + `financial_terms.base_rent > 0` |
+| **유형** | `type: 'automatic'`, `invoice_category: 'rent'`, `contract_id` 연결 |
+| **금액** | `base_rent + maintenance_fee` |
+| **납기일** | 청구일(`billing_day`, 1~28) + 유예일(`grace_days`, 0~60) |
+
+**멱등 (한 달 정확히 1장):** `contract_id + invoice_category='rent' + billing_period_start` 로 기존 인보이스를 찾아 있으면 skip. 스케줄러가 하루 여러 번 돌거나 수동 발행을 눌러도 중복 0.
+
+**계약 종료 시 자동 중단** (`stage` 가 active 가 아니면 대상 제외). 이메일 알림·연체 전환(D+3/D+7/D+14 리마인더 포함)은 기존 인보이스 파이프라인이 그대로 커버한다 — `invoiceOverdueScheduler` 는 `subscription` 만 제외하므로 `rent` 가 포함된다.
 
 ---
 

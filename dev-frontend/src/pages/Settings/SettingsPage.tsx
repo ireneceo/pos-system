@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import styled from 'styled-components';
-import EmptyState from '../../components/Common/EmptyState';
 import { QRCodeCanvas, QRCodeSVG } from 'qrcode.react';
 import { TabContainer, Tab, OrderControls } from '../../components/UI';
 import { Modal as CommonModal } from '../../components/UI/Modal';
@@ -746,9 +745,10 @@ const SettingsPage: React.FC = () => {
   // Use custom hook for tab URL parameter management
   const defaultTab: TabType = (['Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager'].includes(user?.role || '') ? 'company' : 'store') as TabType;
   const [activeTab, handleTabChange] = useTabParam<TabType>(defaultTab);
-  // 매니저 역할(브랜드/푸드코트 총괄·매니저)은 이 화면에서 매장 설정을 편집하지 않는다.
-  // 회사정보·브랜드·구독은 각자 전용 페이지가 있다 (예전엔 여기에 하드코딩된 가짜 탭이 떴다).
-  const isMgrRole = ['Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager'].includes(user?.role || '');
+  // 이 화면은 **매장 설정**이다. 매니저 역할(브랜드/푸드코트 총괄)은 자기 restaurantId 가 없어
+  // ProtectedRoute(requireRestaurantMatch)가 진입을 막는다 → 매니저 전용 분기는 존재할 이유가 없다.
+  // 2026-07-11 이전엔 여기에 하드코딩된 Company/Brands/Billing 탭(회사명·브랜드 목록·"다음 청구일
+  // January 15, 2025")이 있었지만 **아무도 볼 수 없는 죽은 코드**였다. 실기능은 각 전용 페이지에 있다.
 
   const [hasChanges, setHasChanges] = useState(false);
   const [, setSaveStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -2537,12 +2537,11 @@ const SettingsPage: React.FC = () => {
               entirely so each section looks like a standalone page. */}
           {(() => {
             const CORE_RA_TABS: TabType[] = ['store', 'operations', 'managers'];
-            const showTabs = isMgrRole || CORE_RA_TABS.includes(activeTab);
+            const showTabs = CORE_RA_TABS.includes(activeTab);
             if (!showTabs) return null;
             return (
               <TabContainer>
-                {isMgrRole ? null : (
-
+                {(
                   <>
                     <Tab active={activeTab === 'store'} onClick={() => handleTabChange('store')}>
                       Store Info
@@ -2871,25 +2870,6 @@ const SettingsPage: React.FC = () => {
 
             </SettingsCard>
             </>
-          )}
-
-          {/* 매니저 역할(브랜드/푸드코트 총괄·매니저)이 매장 설정에 들어오면 예전엔 하드코딩된
-              Company/Brands/Billing 탭이 떴다 — 회사명·브랜드 목록·"다음 청구일 January 15, 2025"
-              까지 전부 코드에 박힌 가짜였고, 편집해도 저장되지 않았다. 실제 기능은 각각 별도
-              페이지에 있으므로 거기로 보낸다(진실 2개 방지). */}
-          {isMgrRole && (
-            <EmptyState
-              title={t('settings:settingsPage.managerSettingsMoved', 'Manage these in their own pages')}
-              description={t('settings:settingsPage.managerSettingsMovedDesc', 'Company information, brands and subscription billing each have a dedicated page. This screen shows a restaurant\'s own settings.')}
-              primaryAction={{
-                label: t('settings:settingsPage.goCompanyInfo', 'Company Info'),
-                onClick: () => navigate(user?.role?.startsWith('Foodcourt') ? '/pos/foodcourt/company-info' : '/pos/brand/company-info'),
-              }}
-              secondaryAction={{
-                label: t('settings:settingsPage.goSubscriptions', 'Subscriptions'),
-                onClick: () => navigate('/pos/manager/subscriptions'),
-              }}
-            />
           )}
 
           {activeTab === 'store' && (

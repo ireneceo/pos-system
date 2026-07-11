@@ -1172,7 +1172,9 @@
       "Bash(echo \"build=$?\")",
       "Bash(pkill -f \"verify-all\")",
       "Bash(awk '{print $6,$7,$8}')",
-      "Bash(awk 'NR>=3271 && /activeTab === /{print NR\": \"$0}' src/pages/Settings/SettingsPage.tsx)"
+      "Bash(awk 'NR>=3271 && /activeTab === /{print NR\": \"$0}' src/pages/Settings/SettingsPage.tsx)",
+      "Bash(awk 'NR>=2700 && NR<=2880 && /activeTab|showTabs|isMgrRole|return|\\\\{\\\\/\\\\*/' src/pages/Settings/SettingsPage.tsx)",
+      "Bash(awk 'NR<2876 && \\(/if \\\\\\(loading/ || /if \\\\\\(!/ || /return \\\\\\(/ || /return null/ || /^  if \\\\\\(/\\)' src/pages/Settings/SettingsPage.tsx)"
     ],
     "deny": [],
     "ask": []
