@@ -1,10 +1,5 @@
 # Purple POS — 개발 세션 상태
 
-<!-- AUTOSAVE-STALE-BANNER -->
-> **[AUTO-SAVE STALE] (2026-07-11 18:50, idle 1987s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
-> 변경된 작업 파일: Contract.js,rent-billing.js migrate-rent-category.js,migrations.registry.json server.js,invoiceScheduler.js rentBilling.js,test-rent.js ContractDetail.tsx,MainLayout.tsx RentManagement.tsx,TENANT_RENT_BILLING.md
-<!-- /AUTOSAVE-STALE-BANNER -->
-
 ## 현재 작업 상태
 **마지막 업데이트:** 2026-07-11 (리포트·구독 정확성 대청소 — **v3.68 운영 배포 완료**)
 **버전:** **v3.68 운영 배포됨** (Backup 20260711_170702 · Smoke 9/9 · 안전게이트 9/9 · deploy-manifest 1755파일).
@@ -13,7 +8,16 @@
 > ⚠ 이 배포분은 check-sensitive-diff 기준 **Fable 게이트 대상**(돈·인쇄 보호파일 접촉)이었으나 **Irene 지시로 배포 진행**. 사후 Fable 점검 권장(아래 블록 유지).
 
 ### 진행 중인 작업
-- 없음. (v3.68 배포 완료 — 새 지시 대기)
+- 없음. **임차인 임대료 청구(신규 기능) dev 완료·검증 끝 — 미배포.**
+
+### 완료 (임차인 임대료 청구 — 신규 기능, 2026-07-11 후속, dev·미배포)
+> `/기능설계` 6단계. 설계 = `docs/TENANT_RENT_BILLING.md`. **F&B 전용 제품이므로 푸드코트 명칭·역할·테이블은 무변경**(Irene 확정) — 기능만 계약·유닛 기준이라 백화점 식품관에도 그대로 적용.
+- **왜 필요했나**: 계약에 임대 조건 스키마·입력 UI 가 **이미 있는데 청구가 한 번도 발생한 적 없음**(`invoice_categories` 에 `rent` 코드 자체가 없었음). 그래서 임대 관리 페이지가 `TODO: Implement API` → 항상 빈 데이터.
+- **신규 테이블 0개** — `contracts`(임대조건) + `invoices`(contract_id·issuer/payer 이미 존재) + `foodcourt_units` 재사용. `invoice_categories` 에 `rent` 1행(멱등 마이그 + 레지스트리 등록).
+- 백엔드: `services/rentBilling.js`(발행 단일 소스 — 스케줄러와 수동 발행 공유) · `routes/rent-billing.js`(tenants/summary/generate) · `invoiceScheduler.generateRentInvoices()` 일일 실행 합류 · Contract 모델 검증(**청구일 1~28** — 29~31 은 그런 날 없는 달에서 발행 누락).
+- 프론트: 임대 관리 페이지 실배선(가짜 "임대료 설정" 모달·"일괄 발송" 버튼·`+5% vs last month` 트렌드 제거) · 계약 상세에 청구일·유예일 · 사이드바 메뉴.
+- **🔴 발견·수정**: 임대 관리 라우트가 `Foodcourt Manager` 만 허용 → **정작 임대사업자인 Foodcourt General(총괄)이 자기 임대 화면에 못 들어갔다.**
+- 검증: 실호출 **13/13**(발행·금액·발행자/수취자·명세2·납기일·**멱등**·현황·요약·**IDOR 0**·임차인 403·종료 시 중단·청구일 거부) · health-check `pos` **19/19**(멱등 검사 제거 시 정확히 1건만 실패 실증) · 실브라우저 실데이터(RM 2,650) 크래시 0 · 인쇄 8/8·라우트 34/34(사이드바 추가로 MainLayout bless, Irene 승인).
 
 ---
 

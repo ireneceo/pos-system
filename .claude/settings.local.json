@@ -1171,7 +1171,8 @@
       "Bash(echo \"build_exit=$?\")",
       "Bash(echo \"build=$?\")",
       "Bash(pkill -f \"verify-all\")",
-      "Bash(awk '{print $6,$7,$8}')"
+      "Bash(awk '{print $6,$7,$8}')",
+      "Bash(awk 'NR>=3271 && /activeTab === /{print NR\": \"$0}' src/pages/Settings/SettingsPage.tsx)"
     ],
     "deny": [],
     "ask": []

@@ -791,10 +791,6 @@ const ManagerSubscriptionsPage: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
-  const handleBulkBilling = () => {
-    setInfoModal({ open: true, title: 'Coming Soon', message: 'Bulk billing management will be available in an upcoming release.' });
-  };
-
   return (
     <>
       <Container>
@@ -802,7 +798,6 @@ const ManagerSubscriptionsPage: React.FC = () => {
           <Title>{t('admin:managerSubscriptionsPage.subscriptions')}</Title>
           <ActionSection>
             <Button variant="secondary" onClick={handleExportData}>{t('admin:managerSubscriptionsPage.exportReport')}</Button>
-            <Button variant="primary" onClick={handleBulkBilling}>{t('admin:managerSubscriptionsPage.manageBilling')}</Button>
           </ActionSection>
         </Header>
         

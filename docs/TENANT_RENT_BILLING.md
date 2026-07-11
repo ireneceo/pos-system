@@ -104,3 +104,34 @@ WHERE contract_id = :cid AND invoice_category = 'rent' AND billing_period_start 
 - 계약에 월 임대료 입력 → 청구일에 인보이스 **실제 발행** → 임차인 인보이스 목록에 노출 → 운영자 화면에 납부/연체 실데이터 표시
 - 계약 종료 시 청구 중단 · 타 운영자 임차인 노출 0
 - **health-check 회귀**: ① 임대료 인보이스는 한 달에 정확히 1장(중복 발행 0) ② 임대 현황 API 는 자기 계약만 반환(누락 0 · 유출 0) ③ 청구일 29~31 거부
+
+
+---
+
+## 8. 구현 완료 (2026-07-11)
+
+### 구현된 것
+| 항목 | 파일 |
+|---|---|
+| 발행 로직 (단일 소스) | `dev-backend/services/rentBilling.js` — 스케줄러와 수동 발행이 **이 함수 하나**를 공유 |
+| API 3개 | `dev-backend/routes/rent-billing.js` (`/api/rent/tenants` · `/summary` · `/generate`) |
+| 스케줄러 합류 | `services/invoiceScheduler.js` `generateRentInvoices()` — 일일 실행에 포함(같은 SchedulerRun·에러 집계) |
+| 계약 검증 | `models/Contract.js` — `base_rent`/`maintenance_fee` 음수 거부 · `billing_day` 1~28 · `grace_days` 0~60 |
+| 마이그레이션 | `scripts/migrate-rent-category.js` (멱등) + `migrations.registry.json` `deploy` 등록 |
+| 화면 | `pages/Foodcourt/RentManagement.tsx` 실배선 · `components/Contract/ContractDetail.tsx` 청구일·유예일 · `MainLayout` 사이드바 메뉴 |
+
+### 구현 중 발견·수정한 결함
+- **임대 관리 라우트가 `Foodcourt Manager` 만 허용** → 정작 임대사업자인 **`Foodcourt General`(총괄)이 자기 임대 화면에 못 들어갔다.** `App.tsx` 라우트 가드에 총괄 추가.
+- 화면의 "임대료 설정" 모달·"일괄 청구서 발송" 버튼은 **로컬 state 만 바꾸는 가짜**였다 → 제거. 임대 조건의 단일 소스는 계약이므로 페이지에서 별도 입력받지 않고 계약으로 보낸다(진실 2개 방지).
+- 통계 카드의 `+5% vs last month` 가짜 트렌드 제거. 임차인 0명일 때 `NaN%` 나오던 것도 수정.
+
+### 검증
+- 실호출 **13/13**: 발행 · 금액(기본+관리비) · 발행자(임대사업자)/수취자(임차인) · 명세 2건 · 납기일=청구일+유예일 · **멱등(재발행 0)** · 현황 · 요약 · **IDOR 0** · 임차인 발행 불가 403 · 계약 종료 시 중단 · 청구일 29~31 거부
+- health-check `pos` **19/19** — 신규 계약 2건(임대료 한 달 1장+종료 시 중단 / 익명 401). **멱등 검사를 제거하면 정확히 그 1건만 실패**하는 것까지 실증(fail-closed)
+- 실브라우저: 임대 관리 화면 실데이터 렌더(RM 2,650 = 기본 2,500 + 관리비 150) · 크래시 0
+- 인쇄 계약 8/8 · 인쇄 라우트 34/34 (사이드바 메뉴 추가로 `MainLayout` 지문 변경 → Irene 승인 후 bless)
+
+### 남은 것 (다음 사이클 후보)
+- 임대료 인보이스 **이메일 발송**(기존 인보이스 이메일 파이프라인 재사용) · 연체 리마인더
+- `rent_schedule`(연차별 인상) 자동 적용 — 현재는 입력만 유지, 청구는 `base_rent` 기준
+- 매출연동 임대료(percentage rent) 정산

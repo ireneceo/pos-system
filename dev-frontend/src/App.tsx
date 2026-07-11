@@ -1058,7 +1058,7 @@ function App() {
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/foodcourt/rent-management" element={
-                        <ProtectedRoute requiredRole={['Foodcourt Manager']}>
+                        <ProtectedRoute requiredRole={['Foodcourt General', 'Foodcourt Manager']}>
                           <RentManagement />
                         </ProtectedRoute>
                       } />

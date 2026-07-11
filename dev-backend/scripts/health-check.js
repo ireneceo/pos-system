@@ -465,6 +465,62 @@ function definePosTests({ adminToken }) {
   // 매장 소유 경로는 3가지 — 링크(Owner) / 브랜드 소유(BG) / 푸드코트 소속(FG). 예전엔 링크만 봐서
   // **푸드코트 총괄이 주문 0건**이었고(리포트가 통째로 비어 Math.random 가짜 지표가 그 자리를 채웠다),
   // 동시에 타 테넌트 주문이 새면 안 된다. 두 방향(누락 0 · 유출 0)을 함께 못 박는다.
+  // 임대료 청구 계약 (2026-07-11 신규 기능, docs/TENANT_RENT_BILLING.md).
+  // ① 한 달에 정확히 1장(중복 발행 0 — 스케줄러가 하루에 여러 번 돌아도, 수동 발행을 눌러도)
+  // ② 임대사업자 스코프(누락 0 · 유출 0) ③ 계약 종료 시 청구 중단.
+  test('pos', '임대료 청구: 한 달 정확히 1장 + 계약 종료 시 중단 (중복발행 회귀)', async () => {
+    const { User, Contract, Invoice, InvoiceItem, Restaurant } = require('../models');
+    const { Op } = require('sequelize');
+    const rentBilling = require('../services/rentBilling');
+
+    const fc = await User.findOne({ where: { role: 'Foodcourt General', foodcourt_id: { [Op.ne]: null } } });
+    if (!fc) return true; // 푸드코트 총괄 계정 없으면 검증 불가 → skip
+    const tenant = await Restaurant.findOne({ where: { foodcourt_id: fc.foodcourt_id } });
+    if (!tenant) return true;
+
+    const contract = await Contract.create({
+      entity_type: 'foodcourt', entity_id: fc.foodcourt_id, restaurant_id: tenant.id,
+      stage: 'active', currency: 'MYR', applicant_company_name: '__HC_RENT_TEST__',
+      financial_terms: { base_rent: 1000, maintenance_fee: 100, billing_day: 1, grace_days: 5 },
+    });
+
+    try {
+      const month = rentBilling.currentMonth();
+
+      // 두 번 발행 → 인보이스는 1장이어야 한다 (멱등)
+      const first = await rentBilling.generateRentInvoices({ month, contractId: contract.id });
+      const second = await rentBilling.generateRentInvoices({ month, contractId: contract.id });
+      const count = await Invoice.count({ where: { contract_id: contract.id, invoice_category: 'rent' } });
+      const idempotent = first.generated === 1 && second.generated === 0 && count === 1;
+
+      // 금액 = 기본 임대료 + 관리비
+      const inv = await Invoice.findOne({ where: { contract_id: contract.id, invoice_category: 'rent' } });
+      const amountOk = inv && Math.abs(Number(inv.total_amount) - 1100) < 0.01;
+
+      // 임대사업자 스코프 — 발행자/수취자가 계약에서 도출돼야 한다
+      const partiesOk = inv && inv.issuer_type === 'foodcourt'
+        && String(inv.issuer_id) === String(fc.foodcourt_id)
+        && inv.payer_type === 'restaurant' && String(inv.payer_id) === String(tenant.id);
+
+      // 계약 종료 → 청구 중단
+      await contract.update({ stage: 'terminated' });
+      const nextMonth = `${month.slice(0, 4)}-${String(Math.min(12, Number(month.slice(5)) + 1)).padStart(2, '0')}`;
+      const afterEnd = await rentBilling.generateRentInvoices({ month: nextMonth, contractId: contract.id });
+      const stopped = afterEnd.generated === 0;
+
+      return idempotent && amountOk && partiesOk && stopped;
+    } finally {
+      const invs = await Invoice.findAll({ where: { contract_id: contract.id }, attributes: ['id'], raw: true });
+      if (invs.length) await InvoiceItem.destroy({ where: { invoice_id: invs.map((i) => i.id) } });
+      await Invoice.destroy({ where: { contract_id: contract.id }, force: true });
+      await Contract.destroy({ where: { id: contract.id }, force: true });
+    }
+  });
+
+  test('pos', '익명 /rent/tenants → 401 (임대 데이터 노출 차단)', async () => {
+    return (await request('GET', '/rent/tenants')).status === 401;
+  });
+
   test('pos', '주문 스코프: 푸드코트 총괄이 자기 푸드코트 주문을 본다 + 남의 것은 못 본다', async () => {
     const { User, Restaurant } = require('../models');
     const Order = require('../models/Order');

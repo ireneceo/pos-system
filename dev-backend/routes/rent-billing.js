@@ -160,7 +160,10 @@ router.get('/summary', authenticateToken, async (req, res) => {
 router.post('/generate', authenticateToken, requireRole('System Admin'), async (req, res) => {
   try {
     const { month, contractId } = req.body || {};
-    const result = await rentBilling.generateRentInvoices({ month, contractId });
+    // 수동 발행도 스케줄러와 같은 알림 경로를 탄다 — 두 경로가 달라지면 "발행됐는데 메일이 안 왔다"가 생긴다
+    const invoiceScheduler = require('../services/invoiceScheduler');
+    const notifier = invoiceScheduler.sendInvoiceEmail?.bind(invoiceScheduler);
+    const result = await rentBilling.generateRentInvoices({ month, contractId, notifier });
     res.json({ success: true, data: result });
   } catch (e) {
     if (e.code === 'INVALID_MONTH') {

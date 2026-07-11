@@ -78,7 +78,7 @@ async function nextInvoiceNumber(monthStr) {
  * 한 계약의 해당 월 임대료 인보이스를 만든다.
  * 이미 있으면 만들지 않는다(멱등) → { created: false }.
  */
-async function generateForContract(contract, monthStr) {
+async function generateForContract(contract, monthStr, notifier = null) {
   const terms = rentTermsOf(contract);
   if (!terms) return { created: false, reason: 'no_rent_terms' };
   if (!contract.restaurant_id) return { created: false, reason: 'no_tenant_restaurant' };
@@ -138,11 +138,18 @@ async function generateForContract(contract, monthStr) {
     });
   }
 
+  // 임차인에게 청구서 알림 — 발행만 하고 알리지 않으면 기능이 반쪽이다.
+  // 구독·엔티티플랜 인보이스와 같은 발송기(issuer SMTP + 수신자 알림)를 그대로 쓴다.
+  // 발송 실패는 청구 자체를 막지 않는다(never blocks — 스케줄러 계약).
+  if (restaurant && notifier) {
+    notifier(invoice, restaurant, contract.entity_type, contract.entity_id, invoice.invoice_number);
+  }
+
   return { created: true, invoiceId: invoice.id, amount: total };
 }
 
 /** 여러 계약 일괄 발행 (스케줄러 + 수동 발행 공용) */
-async function generateRentInvoices({ month, contractId, entityType, entityId } = {}) {
+async function generateRentInvoices({ month, contractId, entityType, entityId, notifier } = {}) {
   const monthStr = month || currentMonth();
   if (!/^\d{4}-\d{2}$/.test(monthStr)) {
     const err = new Error('month must be in YYYY-MM format');
@@ -155,7 +162,7 @@ async function generateRentInvoices({ month, contractId, entityType, entityId } 
 
   for (const c of contracts) {
     try {
-      const r = await generateForContract(c, monthStr);
+      const r = await generateForContract(c, monthStr, notifier);
       if (r.created) {
         result.generated += 1;
         result.invoices.push({ contractId: c.id, invoiceId: r.invoiceId, amount: r.amount });

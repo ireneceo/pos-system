@@ -728,5 +728,6 @@
   "offlineLockBody": "The internet is down. While offline, please take all orders on the main POS counter. This device is paused to prevent lost or duplicated orders.",
   "offlineLockAuto": "This screen unlocks automatically when the connection is back.",
   "offlineLockMakeMain": "Use this device as the main POS",
-  "offlineLockMakeMainHint": "Only on the counter POS connected to your printer."
+  "offlineLockMakeMainHint": "Only on the counter POS connected to your printer.",
+  "nav.rentManagement": "Rent Management"
 }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import styled from 'styled-components';
+import EmptyState from '../../components/Common/EmptyState';
 import { QRCodeCanvas, QRCodeSVG } from 'qrcode.react';
 import { TabContainer, Tab, OrderControls } from '../../components/UI';
 import { Modal as CommonModal } from '../../components/UI/Modal';
@@ -745,6 +746,9 @@ const SettingsPage: React.FC = () => {
   // Use custom hook for tab URL parameter management
   const defaultTab: TabType = (['Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager'].includes(user?.role || '') ? 'company' : 'store') as TabType;
   const [activeTab, handleTabChange] = useTabParam<TabType>(defaultTab);
+  // 매니저 역할(브랜드/푸드코트 총괄·매니저)은 이 화면에서 매장 설정을 편집하지 않는다.
+  // 회사정보·브랜드·구독은 각자 전용 페이지가 있다 (예전엔 여기에 하드코딩된 가짜 탭이 떴다).
+  const isMgrRole = ['Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager'].includes(user?.role || '');
 
   const [hasChanges, setHasChanges] = useState(false);
   const [, setSaveStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -1187,69 +1191,6 @@ const SettingsPage: React.FC = () => {
     currency: defaultOps.currency || 'MYR',
     cashRounding: defaultOps.cashRounding !== null && defaultOps.cashRounding !== undefined ? defaultOps.cashRounding : null,
     roundingApplyTo: defaultOps.roundingApplyTo || 'cash_only' as 'cash_only' | 'all'
-  });
-  const [companySettings, setCompanySettings] = useState<CompanySettings>({
-    name: 'Food Court Management Corp',
-    businessRegistration: '202301234567',
-    phone: '+60 3-2123-4567',
-    email: 'admin@foodcourtmanagement.com',
-    address: '123 Business District',
-    city: 'Kuala Lumpur',
-    state: 'Wilayah Persekutuan',
-    postalCode: '50450',
-    website: 'www.foodcourtmanagement.com',
-    logo: '',
-    taxId: '90-1234567',
-    industry: 'Food Service Management'
-  });
-  const [brandSettings, setBrandSettings] = useState<BrandSettings>({
-    brands: [
-      {
-        id: '1',
-        name: 'Local Delights',
-        description: 'Traditional Malaysian cuisine',
-        logo: '',
-        primaryColor: '#635BFF',
-        secondaryColor: '#F1F4F8',
-        accentColor: '#5A51E6',
-        isActive: true,
-        restaurantCount: 3,
-        restaurants: [
-          { id: 'rest-001', name: 'Local Delights', branchName: 'KLCC Branch', location: 'KLCC' },
-          { id: 'rest-002', name: 'Local Delights', branchName: 'Pavilion Branch', location: 'Pavilion KL' },
-          { id: 'rest-003', name: 'Local Delights', branchName: 'Mid Valley Branch', location: 'Mid Valley' }
-        ]
-      },
-      {
-        id: '2',
-        name: 'International Fusion',
-        description: 'Global flavors and modern cuisine',
-        logo: '',
-        primaryColor: '#059669',
-        secondaryColor: '#ECFDF5',
-        accentColor: '#047857',
-        isActive: true,
-        restaurantCount: 2,
-        restaurants: [
-          { id: 'rest-004', name: 'International Fusion', branchName: 'Sunway Branch', location: 'Sunway Pyramid' },
-          { id: 'rest-005', name: 'International Fusion', branchName: 'IOI Branch', location: 'IOI City Mall' }
-        ]
-      },
-      {
-        id: '3',
-        name: 'Quick Bites',
-        description: 'Fast casual dining experience',
-        logo: '',
-        primaryColor: '#DC2626',
-        secondaryColor: '#FEF2F2',
-        accentColor: '#B91C1C',
-        isActive: false,
-        restaurantCount: 1,
-        restaurants: [
-          { id: 'rest-006', name: 'Quick Bites', branchName: 'One Utama Branch', location: 'One Utama' }
-        ]
-      }
-    ]
   });
   
   // Table management state
@@ -2595,25 +2536,13 @@ const SettingsPage: React.FC = () => {
               are accessed via dedicated sidebar entries — when those URLs are active, the tab bar hides
               entirely so each section looks like a standalone page. */}
           {(() => {
-            const isMgrRole = ['Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager'].includes(user?.role || '');
             const CORE_RA_TABS: TabType[] = ['store', 'operations', 'managers'];
             const showTabs = isMgrRole || CORE_RA_TABS.includes(activeTab);
             if (!showTabs) return null;
             return (
               <TabContainer>
-                {isMgrRole ? (
-                  <>
-                    <Tab active={activeTab === 'company'} onClick={() => handleTabChange('company')}>
-                      Company Info
-                    </Tab>
-                    <Tab active={activeTab === 'brands'} onClick={() => handleTabChange('brands')}>
-                      Brand Management
-                    </Tab>
-                    <Tab active={activeTab === 'billing'} onClick={() => handleTabChange('billing')}>
-                      Billing & Subscriptions
-                    </Tab>
-                  </>
-                ) : (
+                {isMgrRole ? null : (
+
                   <>
                     <Tab active={activeTab === 'store'} onClick={() => handleTabChange('store')}>
                       Store Info
@@ -2944,387 +2873,25 @@ const SettingsPage: React.FC = () => {
             </>
           )}
 
-          {activeTab === 'company' && (
-            <>
-              <SettingsGrid>
-                <SettingsCard>
-                <CardTitle>{t('settings:settingsPage.companyInformation')}</CardTitle>
-                <FormGroup>
-                  <Label>{t('settings:settingsPage.companyName')}</Label>
-                  <AutoSaveField onSave={handleSave}>
-                  <Input
-                    type="text"
-                    value={companySettings.name}
-                    onChange={(e) => setCompanySettings(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="Food Court Management Corp"
-                  />
-                  </AutoSaveField>
-                </FormGroup>
-                <FormGroup>
-                  <Label>{t('settings:settingsPage.businessRegistration')}</Label>
-                  <AutoSaveField onSave={handleSave}>
-                  <Input
-                    type="text"
-                    value={companySettings.businessRegistration}
-                    onChange={(e) => setCompanySettings(prev => ({ ...prev, businessRegistration: e.target.value }))}
-                    placeholder="202301234567"
-                  />
-                  </AutoSaveField>
-                </FormGroup>
-                <FormGroup>
-                  <Label>{t('settings:settingsPage.taxId')}</Label>
-                  <AutoSaveField onSave={handleSave}>
-                  <Input
-                    type="text"
-                    value={companySettings.taxId}
-                    onChange={(e) => setCompanySettings(prev => ({ ...prev, taxId: e.target.value }))}
-                    placeholder="90-1234567"
-                  />
-                  </AutoSaveField>
-                </FormGroup>
-                <FormGroup>
-                  <Label>{t('settings:settingsPage.industry')}</Label>
-                  <AutoSaveField onSave={handleSave}>
-                  <Input
-                    type="text"
-                    value={companySettings.industry}
-                    onChange={(e) => setCompanySettings(prev => ({ ...prev, industry: e.target.value }))}
-                    placeholder="Food Service Management"
-                  />
-                  </AutoSaveField>
-                </FormGroup>
-
-                <AutoSaveField ref={companyLogoRef} onSave={handleSave} type="image">
-                <ImageUploadDropzone
-                  value={companySettings.logo}
-                  onChange={(base64) => { setCompanySettings(prev => ({ ...prev, logo: base64 })); companyLogoRef.current?.triggerSave(); }}
-                  label="Company Logo"
-                  helpText="Upload your company logo for branding and official documents"
-                  changeButtonText="Change Logo"
-                  removeButtonText="Remove Logo"
-                  imageAltText="Company Logo"
-                />
-                </AutoSaveField>
-              </SettingsCard>
-              <SettingsCard>
-                <CardTitle>{t('settings:settingsPage.contactInformation')}</CardTitle>
-                <FormGroup>
-                  <Label>{t('settings:settingsPage.phoneNumber')}</Label>
-                  <AutoSaveField onSave={handleSave}>
-                  <Input
-                    type="text"
-                    value={companySettings.phone}
-                    onChange={(e) => setCompanySettings(prev => ({ ...prev, phone: e.target.value }))}
-                    placeholder="+60 3-2123-4567"
-                  />
-                  </AutoSaveField>
-                </FormGroup>
-                <FormGroup>
-                  <Label>{t('settings:settingsPage.emailAddress')}</Label>
-                  <AutoSaveField onSave={handleSave}>
-                  <Input
-                    type="email"
-                    value={companySettings.email}
-                    onChange={(e) => setCompanySettings(prev => ({ ...prev, email: e.target.value }))}
-                    placeholder="admin@foodcourtmanagement.com"
-                  />
-                  </AutoSaveField>
-                </FormGroup>
-                <FormGroup>
-                  <Label>{t('settings:settingsPage.website')}</Label>
-                  <AutoSaveField onSave={handleSave}>
-                  <Input
-                    type="url"
-                    value={companySettings.website}
-                    onChange={(e) => setCompanySettings(prev => ({ ...prev, website: e.target.value }))}
-                    placeholder="www.foodcourtmanagement.com"
-                  />
-                  </AutoSaveField>
-                </FormGroup>
-                <FormGroup>
-                  <Label>{t('settings:settingsPage.address')}</Label>
-                  <AutoSaveField onSave={handleSave}>
-                  <Input
-                    type="text"
-                    value={companySettings.address}
-                    onChange={(e) => setCompanySettings(prev => ({ ...prev, address: e.target.value }))}
-                    placeholder="123 Business District"
-                  />
-                  </AutoSaveField>
-                </FormGroup>
-              </SettingsCard>
-              </SettingsGrid>
-            </>
+          {/* 매니저 역할(브랜드/푸드코트 총괄·매니저)이 매장 설정에 들어오면 예전엔 하드코딩된
+              Company/Brands/Billing 탭이 떴다 — 회사명·브랜드 목록·"다음 청구일 January 15, 2025"
+              까지 전부 코드에 박힌 가짜였고, 편집해도 저장되지 않았다. 실제 기능은 각각 별도
+              페이지에 있으므로 거기로 보낸다(진실 2개 방지). */}
+          {isMgrRole && (
+            <EmptyState
+              title={t('settings:settingsPage.managerSettingsMoved', 'Manage these in their own pages')}
+              description={t('settings:settingsPage.managerSettingsMovedDesc', 'Company information, brands and subscription billing each have a dedicated page. This screen shows a restaurant\'s own settings.')}
+              primaryAction={{
+                label: t('settings:settingsPage.goCompanyInfo', 'Company Info'),
+                onClick: () => navigate(user?.role?.startsWith('Foodcourt') ? '/pos/foodcourt/company-info' : '/pos/brand/company-info'),
+              }}
+              secondaryAction={{
+                label: t('settings:settingsPage.goSubscriptions', 'Subscriptions'),
+                onClick: () => navigate('/pos/manager/subscriptions'),
+              }}
+            />
           )}
-          {activeTab === 'brands' && (
-            <div>
-              <div style={{ marginBottom: '24px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#0A2540' }}>{t('settings:settingsPage.brandManagement')}</h3>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    {!isDefaultTheme && user?.role === 'Restaurant Admin' && (
-                      <ThemedButton variant="outline" size="small" onClick={resetTheme}>
-                        Reset Theme
-                      </ThemedButton>
-                    )}
-                    {user?.role === 'Restaurant Admin' ? (
-                      <ThemedButton onClick={() => setInfoModal({ open: true, title: t('settings:settingsPage.featureInDevelopmentTitle', 'Coming Soon'), message: t('settings:settingsPage.addBrandComingSoon', 'Add Brand functionality is currently in development and will be available in an upcoming release.') })}>
-                        Add Brand
-                      </ThemedButton>
-                    ) : (
-                      <Button onClick={() => setInfoModal({ open: true, title: t('settings:settingsPage.featureInDevelopmentTitle', 'Coming Soon'), message: t('settings:settingsPage.addBrandComingSoon', 'Add Brand functionality is currently in development and will be available in an upcoming release.') })}>
-                        Add Brand
-                      </Button>
-                    )}
-                  </div>
-                </div>
-                {!isDefaultTheme && user?.role === 'Restaurant Admin' && (
-                  <div style={{
-                    background: 'rgba(196, 181, 253, 0.2)',
-                    border: '1px solid var(--brand-primary, #8B5CF6)',
-                    borderRadius: '8px',
-                    padding: '12px 16px',
-                    fontSize: '14px',
-                    color: 'var(--brand-primary, #8B5CF6)'
-                  }}>
-                    🎨 Theme preview is active. Changes will apply to restaurant management pages.
-                  </div>
-                )}
-              </div>
-              {brandSettings.brands.map(brand => (
-                <SettingsCard key={brand.id} style={{ marginBottom: '24px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <CardTitle>{brand.name}</CardTitle>
-                      <span style={{ 
-                        padding: '4px 8px', 
-                        borderRadius: '4px', 
-                        fontSize: '12px', 
-                        fontWeight: '500',
-                        background: brand.isActive ? '#ECFDF5' : '#FEF2F2',
-                        color: brand.isActive ? '#059669' : '#DC2626'
-                      }}>
-                        {brand.isActive ? 'Active' : 'Inactive'}
-                      </span>
-                      <span style={{ 
-                        padding: '4px 8px', 
-                        borderRadius: '4px', 
-                        fontSize: '12px', 
-                        fontWeight: '500',
-                        background: '#F1F4F8',
-                        color: '#4B5563'
-                      }}>
-                        {brand.restaurantCount} Restaurant{brand.restaurantCount !== 1 ? 's' : ''}
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      {user?.role === 'Restaurant Admin' ? (
-                        <>
-                          <ThemedButton 
-                            variant="outline" 
-                            size="small"
-                            onClick={() => setTheme({
-                              primaryColor: brand.primaryColor,
-                              secondaryColor: brand.secondaryColor,
-                              accentColor: brand.accentColor,
-                              logo: brand.logo
-                            })}
-                          >
-                            Preview Theme
-                          </ThemedButton>
-                          <ThemedButton size="small">{t('settings:settingsPage.edit')}</ThemedButton>
-                        </>
-                      ) : (
-                        <>
-                          <Button 
-                            onClick={() => setTheme({
-                              primaryColor: brand.primaryColor,
-                              secondaryColor: brand.secondaryColor,
-                              accentColor: brand.accentColor,
-                              logo: brand.logo
-                            })}
-                          >
-                            Preview Theme
-                          </Button>
-                          <Button>{t('settings:settingsPage.edit')}</Button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <p style={{ color: '#4B5563', marginBottom: '20px', fontSize: '14px' }}>{brand.description}</p>
-                  
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '20px' }}>
-                    <FormGroup>
-                      <Label>{t('settings:settingsPage.primaryColor')}</Label>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <input 
-                          type="color" 
-                          value={brand.primaryColor} 
-                          style={{ width: '40px', height: '40px', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
-                          onChange={(e) => {
-                            const newBrands = brandSettings.brands.map(b => 
-                              b.id === brand.id ? { ...b, primaryColor: e.target.value } : b
-                            );
-                            setBrandSettings({ brands: newBrands });
-                            markChanged();
-                          }}
-                        />
-                        <Input value={brand.primaryColor} style={{ width: '100px' }} readOnly />
-                      </div>
-                    </FormGroup>
-                    <FormGroup>
-                      <Label>{t('settings:settingsPage.secondaryColor')}</Label>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <input 
-                          type="color" 
-                          value={brand.secondaryColor} 
-                          style={{ width: '40px', height: '40px', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
-                          onChange={(e) => {
-                            const newBrands = brandSettings.brands.map(b => 
-                              b.id === brand.id ? { ...b, secondaryColor: e.target.value } : b
-                            );
-                            setBrandSettings({ brands: newBrands });
-                            markChanged();
-                          }}
-                        />
-                        <Input value={brand.secondaryColor} style={{ width: '100px' }} readOnly />
-                      </div>
-                    </FormGroup>
-                    <FormGroup>
-                      <Label>{t('settings:settingsPage.accentColor')}</Label>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <input 
-                          type="color" 
-                          value={brand.accentColor} 
-                          style={{ width: '40px', height: '40px', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
-                          onChange={(e) => {
-                            const newBrands = brandSettings.brands.map(b => 
-                              b.id === brand.id ? { ...b, accentColor: e.target.value } : b
-                            );
-                            setBrandSettings({ brands: newBrands });
-                            markChanged();
-                          }}
-                        />
-                        <Input value={brand.accentColor} style={{ width: '100px' }} readOnly />
-                      </div>
-                    </FormGroup>
-                  </div>
 
-                  <ImageUploadDropzone
-                    value={brand.logo}
-                    onChange={(base64) => {
-                      const newBrands = brandSettings.brands.map(b =>
-                        b.id === brand.id ? { ...b, logo: base64 } : b
-                      );
-                      setBrandSettings({ brands: newBrands });
-                      markChanged();
-                    }}
-                    label="Brand Logo"
-                    helpText={`Upload logo for ${brand.name} brand`}
-                    changeButtonText="Change Brand Logo"
-                    removeButtonText="Remove Brand Logo"
-                    imageAltText="Brand Logo"
-                  />
-
-                  <div>
-                    <Label>Connected Restaurants ({brand.restaurants.length})</Label>
-                    <div style={{ background: '#F1F4F8', borderRadius: '8px', padding: '16px' }}>
-                      {brand.restaurants.length > 0 ? (
-                        <div style={{ display: 'grid', gap: '8px' }}>
-                          {brand.restaurants.map(restaurant => (
-                            <div key={restaurant.id} style={{ 
-                              display: 'flex', 
-                              justifyContent: 'space-between', 
-                              alignItems: 'center',
-                              padding: '8px 12px',
-                              background: 'white',
-                              borderRadius: '6px',
-                              border: `2px solid ${brand.primaryColor}20`
-                            }}>
-                              <div>
-                                <div style={{ fontWeight: '600', fontSize: '14px', color: '#0A2540' }}>
-                                  {restaurant.name}
-                                </div>
-                                <div style={{ fontSize: '13px', color: '#4B5563' }}>
-                                  {restaurant.branchName} • {restaurant.location}
-                                </div>
-                              </div>
-                              <div style={{ 
-                                width: '12px', 
-                                height: '12px', 
-                                borderRadius: '50%', 
-                                background: brand.primaryColor 
-                              }}></div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p style={{ color: '#4B5563', textAlign: 'center', margin: '20px 0' }}>{t('settings:settingsPage.noRestaurantsConnectedToThisBrand')}</p>
-                      )}
-                    </div>
-                  </div>
-                </SettingsCard>
-              ))}
-            </div>
-          )}
-          {activeTab === 'billing' && (
-            <>
-              <SettingsGrid>
-                <SettingsCard>
-                <CardTitle>{t('settings:settingsPage.subscriptionOverview')}</CardTitle>
-                <div style={{ marginBottom: '16px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <span style={{ fontWeight: '500' }}>{t('settings:settingsPage.currentPlan')}</span>
-                    <span style={{ 
-                      padding: '4px 12px', 
-                      background: '#ECFDF5', 
-                      color: '#059669', 
-                      borderRadius: '6px', 
-                      fontSize: '14px', 
-                      fontWeight: '600'
-                    }}>{t('settings:settingsPage.enterprise')}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <span style={{ color: '#4B5563' }}>{t('settings:settingsPage.monthlyFee')}</span>
-                    <span style={{ fontWeight: '600' }}>{t('settings:settingsPage.rm29900')}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <span style={{ color: '#4B5563' }}>{t('settings:settingsPage.nextBillingDate')}</span>
-                    <span>{t('settings:settingsPage.january152025')}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ color: '#4B5563' }}>{t('settings:settingsPage.activeRestaurants')}</span>
-                    <span>12 / 15</span>
-                  </div>
-                </div>
-                <Button onClick={() => setInfoModal({ open: true, title: t('settings:settingsPage.featureInDevelopmentTitle', 'Coming Soon'), message: t('settings:settingsPage.billingComingSoon', 'Billing management is currently in development and will be available in an upcoming release.') })}>{t('settings:settingsPage.manageBilling')}</Button>
-              </SettingsCard>
-              <SettingsCard>
-                <CardTitle>{t('settings:settingsPage.usageStatistics')}</CardTitle>
-                <div style={{ marginBottom: '16px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                    <span style={{ color: '#4B5563' }}>{t('settings:settingsPage.totalOrdersThisMonth')}</span>
-                    <span style={{ fontWeight: '600', fontSize: '18px' }}>8,945</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                    <span style={{ color: '#4B5563' }}>{t('settings:settingsPage.totalRevenueThisMonth')}</span>
-                    <span style={{ fontWeight: '600', fontSize: '18px' }}>{t('settings:settingsPage.rm145230')}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                    <span style={{ color: '#4B5563' }}>{t('settings:settingsPage.activeStaffMembers')}</span>
-                    <span style={{ fontWeight: '600' }}>87</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ color: '#4B5563' }}>{t('settings:settingsPage.storageUsed')}</span>
-                    <span style={{ fontWeight: '600' }}>2.4 GB / 10 GB</span>
-                  </div>
-                </div>
-              </SettingsCard>
-              </SettingsGrid>
-
-            </>
-          )}
           {activeTab === 'store' && (
             <>
               {/* Section banner — explains the Bill vs Invoice split so users know where each field lands. */}

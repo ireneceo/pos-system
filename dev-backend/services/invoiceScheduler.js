@@ -693,7 +693,8 @@ class InvoiceScheduler {
   async generateRentInvoices() {
     try {
       const rentBilling = require('./rentBilling');
-      const r = await rentBilling.generateRentInvoices({});
+      // 임차인에게도 청구서 알림이 가야 한다 — 구독 인보이스와 같은 발송기 재사용
+      const r = await rentBilling.generateRentInvoices({ notifier: this.sendInvoiceEmail.bind(this) });
       console.log(`🏢 [RENT SCHEDULER] ${r.month}: 발행 ${r.generated} · 스킵 ${r.skipped} · 오류 ${r.errors}`);
       return { generated: r.generated, skipped: r.skipped, errors: r.errors };
     } catch (e) {

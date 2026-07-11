@@ -728,5 +728,6 @@
   "offlineLockBody": "Internet terputus. Semasa luar talian, sila ambil semua pesanan di kaunter POS utama. Peranti ini dijeda untuk mengelakkan pesanan hilang atau berganda.",
   "offlineLockAuto": "Skrin ini akan dibuka secara automatik apabila sambungan pulih.",
   "offlineLockMakeMain": "Guna peranti ini sebagai POS utama",
-  "offlineLockMakeMainHint": "Hanya pada POS kaunter yang disambung ke pencetak anda."
+  "offlineLockMakeMainHint": "Hanya pada POS kaunter yang disambung ke pencetak anda.",
+  "nav.rentManagement": "Pengurusan Sewa"
 }
