@@ -1741,7 +1741,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       {
         id: 'tenancy', label: t('nav.section.tenancy', 'Tenancy'), icon: <Store />,
         items: [
-          { path: '/pos/foodcourt/tenancy', label: t('nav.tenancy'), visible: isRouteAllowed('/pos/foodcourt/tenancy') }
+          { path: '/pos/foodcourt/tenancy', label: t('nav.tenancy'), visible: isRouteAllowed('/pos/foodcourt/tenancy') },
+          { path: '/pos/foodcourt/rent-management', label: t('nav.rentManagement', 'Rent Management'), visible: isRouteAllowed('/pos/foodcourt/rent-management') }
         ].filter(i => i.visible !== false),
         visible: isRouteAllowed('/pos/foodcourt/tenancy')
       },

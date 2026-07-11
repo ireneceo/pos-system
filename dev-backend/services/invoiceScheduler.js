@@ -38,14 +38,18 @@ class InvoiceScheduler {
         const subResult = await this.generateSubscriptionInvoices();
         const entityResult = await this.generateEntityPlanInvoices();
         const entitySubResult = await this.generateEntitySubscriptionInvoices();
+        // 임차인 임대료 (docs/TENANT_RENT_BILLING.md) — 발행 로직은 services/rentBilling.js 하나만
+        // 쓴다(수동 발행 API 와 공유). 같은 달 중복 발행은 그 안에서 멱등으로 막힌다.
+        const rentResult = await this.generateRentInvoices();
 
         const summary = {
           pendingChanges: pendingResult || { applied: 0, errors: 0 },
           subscription: subResult || { generated: 0, skipped: 0, errors: 0 },
           entityPlan: entityResult || { generated: 0, skipped: 0, errors: 0 },
-          entitySubscription: entitySubResult || { generated: 0, skipped: 0, errors: 0 }
+          entitySubscription: entitySubResult || { generated: 0, skipped: 0, errors: 0 },
+          rent: rentResult || { generated: 0, skipped: 0, errors: 0 }
         };
-        const totalErrors = (pendingResult?.errors || 0) + (subResult?.errors || 0) + (entityResult?.errors || 0) + (entitySubResult?.errors || 0);
+        const totalErrors = (pendingResult?.errors || 0) + (subResult?.errors || 0) + (entityResult?.errors || 0) + (entitySubResult?.errors || 0) + (rentResult?.errors || 0);
 
         if (totalErrors > 0) {
           await systemLogger.error('payment', 'invoice-scheduler', `Daily run completed with ${totalErrors} error(s)`, summary);
@@ -681,6 +685,23 @@ class InvoiceScheduler {
    * Same advance-day logic as generateSubscriptionInvoices (for restaurants).
    * These are POS subscription fees charged by System Admin to these entities.
    */
+  /**
+   * 임차인 임대료 인보이스 (Tenant Rent Billing).
+   * 계약 stage='active' + financial_terms.base_rent > 0 인 계약만. 발행/멱등 규칙은
+   * services/rentBilling.js 가 단일 소스 — 수동 발행(POST /api/rent/generate)과 공유한다.
+   */
+  async generateRentInvoices() {
+    try {
+      const rentBilling = require('./rentBilling');
+      const r = await rentBilling.generateRentInvoices({});
+      console.log(`🏢 [RENT SCHEDULER] ${r.month}: 발행 ${r.generated} · 스킵 ${r.skipped} · 오류 ${r.errors}`);
+      return { generated: r.generated, skipped: r.skipped, errors: r.errors };
+    } catch (e) {
+      console.error('[RENT SCHEDULER] 실패:', e.message);
+      return { generated: 0, skipped: 0, errors: 1 };
+    }
+  }
+
   async generateEntitySubscriptionInvoices() {
     const result = { generated: 0, skipped: 0, errors: 0 };
     try {

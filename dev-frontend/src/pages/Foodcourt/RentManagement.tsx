@@ -1,10 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { ModalComponent, FormGroup, FormLabel, FormInput, Button, StatsGrid, StatCard, StatValue, StatLabel, StatTrend } from '../../components/UI';
+import { StatsGrid, StatCard, StatValue, StatLabel, StatTrend } from '../../components/UI';
 import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import ConfirmModal from '../../components/ConfirmModal';
+import { getAuthHeaders } from '../../utils/auth';
+import { formatCurrency } from '../../utils/currency';
+import { formatDate } from '../../utils/dateFormat';
 import DateField from '../../components/Common/DateField';
 import EmptyState from '../../components/Common/EmptyState';
 
@@ -190,25 +193,21 @@ const SmallButton = styled.button<{ variant: 'primary' | 'secondary' | 'danger' 
 `;
 
 interface RentData {
-  id: string;
+  contractId: number;
   storeName: string;
-  owner: string;
-  rentAmount: number;
-  dueDate: string;
+  restaurantId: number | null;
+  unit: string | null;
+  unitSize: string | null;
+  rentAmount: number;        // 기본 임대료
+  maintenanceFee: number;    // 관리비
+  totalMonthly: number;      // 청구 금액 = 기본 + 관리비
+  currency: string;
+  dueDate: string | null;
   status: 'paid' | 'pending' | 'overdue';
-  paymentDate: string | null;
-  area: string;
-  phone: string;
-  contractEndDate: string;
-}
-
-interface RentFormData {
-  storeName: string;
-  owner: string;
-  rentAmount: string;
-  area: string;
-  phone: string;
-  contractEndDate: string;
+  daysOverdue: number;
+  lastInvoice: { id: number; number: string; amount: number; status: string } | null;
+  contractEndDate: string | null;
+  phone: string | null;
 }
 
 interface Stats {
@@ -230,38 +229,69 @@ const RentManagement: React.FC = () => {
     overdueStores: 0,
     totalRevenue: 0
   });
-  const [showModal, setShowModal] = useState(false);
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [selectedRent, setSelectedRent] = useState<RentData | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState<RentFormData>({
-    storeName: '',
-    owner: '',
-    rentAmount: '',
-    area: '',
-    phone: '',
-    contractEndDate: ''
-  });
+  const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [currency, setCurrency] = useState('MYR');
+  const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
+
+  // 임대 현황 = 계약의 임대 조건 + 그 달의 임대료 인보이스. 화면이 자체 데이터를 들고 있지 않다.
+  // 임대 조건의 단일 소스는 계약이다 (docs/TENANT_RENT_BILLING.md).
+  const loadRent = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [tRes, sRes] = await Promise.all([
+        fetch('/api/rent/tenants', { headers: getAuthHeaders() }),
+        fetch('/api/rent/summary', { headers: getAuthHeaders() }),
+      ]);
+      if (!tRes.ok || !sRes.ok) throw new Error('Failed to load rent data');
+      const tJson = await tRes.json();
+      const sJson = await sRes.json();
+
+      setRentData(tJson.data || []);
+      const d = sJson.data || {};
+      setStats({
+        totalStores: d.totalTenants || 0,
+        paidStores: d.paid || 0,
+        pendingStores: d.pending || 0,
+        overdueStores: d.overdue || 0,
+        totalRevenue: d.monthlyRentTotal || 0,
+      });
+      setCurrency(d.currency || 'MYR');
+    } catch (err) {
+      console.error('Error fetching rent data:', err);
+      setRentData([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const fetchRentData = async () => {
-      try {
-        // TODO: Implement API call to fetch rent data
-        setRentData([]);
-        setStats({
-          totalStores: 0,
-          paidStores: 0,
-          pendingStores: 0,
-          overdueStores: 0,
-          totalRevenue: 0
-        });
-      } catch (error) {
-        console.error('Error fetching rent data:', error);
-      }
-    };
+    loadRent();
+  }, [loadRent]);
 
-    fetchRentData();
-  }, []);
+  // 이번 달 임대료 청구서 발행 (서버가 멱등 처리 — 이미 발행된 계약은 건너뛴다)
+  const handleGenerateInvoices = async () => {
+    setGenerating(true);
+    try {
+      const res = await fetch('/api/rent/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({}),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        setInfoModal({ open: true, title: 'Could not issue invoices', message: json.message || 'Failed to issue rent invoices.' });
+        return;
+      }
+      await loadRent();
+    } catch (err) {
+      console.error('Error generating rent invoices:', err);
+      setInfoModal({ open: true, title: 'Could not issue invoices', message: 'Failed to issue rent invoices.' });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
 
   const getStatusText = (status: string) => {
     switch (status) {
@@ -272,70 +302,10 @@ const RentManagement: React.FC = () => {
     }
   };
 
-  const handleAddRent = () => {
-    setIsEditing(false);
-    setSelectedRent(null);
-    setFormData({
-      storeName: '',
-      owner: '',
-      rentAmount: '',
-      area: '',
-      phone: '',
-      contractEndDate: ''
-    });
-    setShowModal(true);
-  };
-
-  const handleEditRent = (rent: RentData) => {
-    setIsEditing(true);
-    setSelectedRent(rent);
-    setFormData({
-      storeName: rent.storeName,
-      owner: rent.owner,
-      rentAmount: rent.rentAmount.toString(),
-      area: rent.area,
-      phone: rent.phone,
-      contractEndDate: rent.contractEndDate
-    });
-    setShowModal(true);
-  };
-
-  const handleSendReminder = (rent: RentData) => {
-    setSelectedRent(rent);
-    setShowConfirmModal(true);
-  };
-
-  const handleFormSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isEditing && selectedRent) {
-      setRentData(prev => prev.map(rent =>
-        rent.id === selectedRent.id
-          ? { ...rent, ...formData, rentAmount: parseInt(formData.rentAmount) }
-          : rent
-      ));
-    } else {
-      const newRent: RentData = {
-        id: (rentData.length + 1).toString(),
-        ...formData,
-        rentAmount: parseInt(formData.rentAmount),
-        dueDate: '2024-01-15',
-        status: 'pending',
-        paymentDate: null
-      };
-      setRentData(prev => [...prev, newRent]);
-    }
-    setShowModal(false);
-  };
-
-  const confirmSendReminder = () => {
-    console.log(`Sending reminder to ${selectedRent?.storeName}`);
-    setShowConfirmModal(false);
-  };
-
-  const filteredData = rentData.filter(item =>
-    item.storeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.owner.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredData = rentData.filter(item => {
+    const q = searchTerm.toLowerCase();
+    return (item.storeName || '').toLowerCase().includes(q) || (item.unit || '').toLowerCase().includes(q);
+  });
   return (
     <>
       <Container>
@@ -345,8 +315,12 @@ const RentManagement: React.FC = () => {
             <Subtitle>{'Foodcourt tenant rent status and payment management'}</Subtitle>
           </div>
           <ActionSection>
-            <ThemedButton variant="outline">{'Export Report'}</ThemedButton>
-            <ThemedButton variant="primary" onClick={handleAddRent}>{'Set Rent'}</ThemedButton>
+            <ThemedButton variant="outline" onClick={() => navigate('/pos/foodcourt/tenancy')}>
+              {'Manage Contracts'}
+            </ThemedButton>
+            <ThemedButton variant="primary" onClick={handleGenerateInvoices} disabled={generating}>
+              {generating ? 'Issuing...' : 'Issue This Month'}
+            </ThemedButton>
           </ActionSection>
         </Header>
 
@@ -360,7 +334,9 @@ const RentManagement: React.FC = () => {
             <StatCard>
               <StatValue>{stats.paidStores}</StatValue>
               <StatLabel>{'Paid'}</StatLabel>
-              <StatTrend trend="up">{Math.round((stats.paidStores/stats.totalStores)*100)}% payment rate</StatTrend>
+              <StatTrend trend="up">
+                {stats.totalStores > 0 ? `${Math.round((stats.paidStores / stats.totalStores) * 100)}% payment rate` : 'No tenants'}
+              </StatTrend>
             </StatCard>
             <StatCard>
               <StatValue>{stats.pendingStores}</StatValue>
@@ -373,25 +349,22 @@ const RentManagement: React.FC = () => {
               <StatTrend trend={stats.overdueStores > 0 ? "down" : "up"}>{'Requires attention'}</StatTrend>
             </StatCard>
             <StatCard>
-              <StatValue>RM {(stats.totalRevenue / 1000000).toFixed(0)}M</StatValue>
-              <StatLabel>{'This Month Revenue'}</StatLabel>
-              <StatTrend trend="up">+5% vs last month</StatTrend>
+              <StatValue>{formatCurrency(stats.totalRevenue, currency)}</StatValue>
+              <StatLabel>{'Monthly Rent Total'}</StatLabel>
+              <StatTrend trend="up">{'Base rent + maintenance'}</StatTrend>
             </StatCard>
           </StatsGrid>
 
           <ActionBar>
             <SearchInput
               type="text"
-              placeholder="Search by business name or owner name..."
+              placeholder="Search by tenant or unit..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
             <ButtonGroup>
-              <ThemedButton variant="primary" onClick={handleAddRent}>
-                Set Rent
-              </ThemedButton>
-              <ThemedButton variant="outline">
-                Send Bulk Invoices
+              <ThemedButton variant="outline" onClick={loadRent} disabled={loading}>
+                {loading ? 'Loading...' : 'Refresh'}
               </ThemedButton>
             </ButtonGroup>
           </ActionBar>
@@ -412,48 +385,61 @@ const RentManagement: React.FC = () => {
               <DataTable>
                 <DataTableHead>
                   <tr>
-                    <DataTableHeaderCell align="left">{'Business Name'}</DataTableHeaderCell>
-                    <DataTableHeaderCell align="left">{'Owner'}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{'Tenant'}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{'Unit'}</DataTableHeaderCell>
                     <DataTableHeaderCell align="left">{'Contact'}</DataTableHeaderCell>
-                    <DataTableHeaderCell align="left">{'Area'}</DataTableHeaderCell>
                     <DataTableHeaderCell align="right">{'Monthly Rent'}</DataTableHeaderCell>
                     <DataTableHeaderCell align="center">{'Due Date'}</DataTableHeaderCell>
                     <DataTableHeaderCell align="center">{'Status'}</DataTableHeaderCell>
-                    <DataTableHeaderCell align="center">{'Payment Date'}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">{'Invoice'}</DataTableHeaderCell>
                     <DataTableHeaderCell align="center">{'Contract End'}</DataTableHeaderCell>
                     <DataTableHeaderCell align="right">{'Actions'}</DataTableHeaderCell>
                   </tr>
                 </DataTableHead>
                 <tbody>
                   {filteredData.map((item) => (
-                    <DataTableRow key={item.id}>
-                      <DataTableCell data-label="Business Name">
+                    <DataTableRow key={item.contractId}>
+                      <DataTableCell data-label="Tenant">
                         <strong>{item.storeName}</strong>
                       </DataTableCell>
-                      <DataTableCell data-label="Owner">{item.owner}</DataTableCell>
-                      <DataTableCell data-label="Contact">{item.phone}</DataTableCell>
-                      <DataTableCell data-label="Area">{item.area}</DataTableCell>
-                      <DataTableCell data-label="Monthly Rent" align="right">
-                        <strong>RM {item.rentAmount.toLocaleString()}</strong>
+                      <DataTableCell data-label="Unit">
+                        {item.unit || '-'}{item.unitSize ? ` (${item.unitSize})` : ''}
                       </DataTableCell>
-                      <DataTableCell data-label="Due Date" align="center">{item.dueDate}</DataTableCell>
+                      <DataTableCell data-label="Contact">{item.phone || '-'}</DataTableCell>
+                      <DataTableCell data-label="Monthly Rent" align="right">
+                        <strong>{formatCurrency(item.totalMonthly, item.currency || currency)}</strong>
+                        {item.maintenanceFee > 0 && (
+                          <div style={{ fontSize: '11px', color: '#4B5563' }}>
+                            {`incl. maintenance ${formatCurrency(item.maintenanceFee, item.currency || currency)}`}
+                          </div>
+                        )}
+                      </DataTableCell>
+                      <DataTableCell data-label="Due Date" align="center">
+                        {item.dueDate ? formatDate(item.dueDate) : '-'}
+                      </DataTableCell>
                       <DataTableCell data-label="Status" align="center">
                         <StatusBadge status={item.status}>
                           {getStatusText(item.status)}
                         </StatusBadge>
+                        {item.status === 'overdue' && item.daysOverdue > 0 && (
+                          <div style={{ fontSize: '11px', color: '#DC2626' }}>{`${item.daysOverdue}d overdue`}</div>
+                        )}
                       </DataTableCell>
-                      <DataTableCell data-label="Payment Date" align="center">
-                        {item.paymentDate || '-'}
+                      <DataTableCell data-label="Invoice" align="center">
+                        {item.lastInvoice ? item.lastInvoice.number : 'Not issued'}
                       </DataTableCell>
-                      <DataTableCell data-label="Contract End" align="center">{item.contractEndDate}</DataTableCell>
+                      <DataTableCell data-label="Contract End" align="center">
+                        {item.contractEndDate ? formatDate(item.contractEndDate) : '-'}
+                      </DataTableCell>
                       <DataTableCell data-label="" align="right" mobileFullWidth>
                         <ActionButtons>
-                          <SmallButton variant="primary" onClick={() => handleEditRent(item)}>
-                            Edit
-                          </SmallButton>
-                          {item.status !== 'paid' && (
-                            <SmallButton variant="danger" onClick={() => handleSendReminder(item)}>
-                              Remind
+                          {item.lastInvoice ? (
+                            <SmallButton variant="primary" onClick={() => navigate('/pos/foodcourt/invoices')}>
+                              View Invoice
+                            </SmallButton>
+                          ) : (
+                            <SmallButton variant="primary" onClick={handleGenerateInvoices} disabled={generating}>
+                              Issue
                             </SmallButton>
                           )}
                         </ActionButtons>
@@ -465,97 +451,20 @@ const RentManagement: React.FC = () => {
             )}
           </TableContainer>
 
-          {/* Add/Edit Modal */}
-          <ModalComponent
-            isOpen={showModal}
-            onClose={() => setShowModal(false)}
-            title={isEditing ? 'Edit Rent Information' : 'Set New Rent'}
-          >
-            <form onSubmit={handleFormSubmit}>
-              <FormGroup>
-                <FormLabel>{'Business Name'}</FormLabel>
-                <FormInput
-                  type="text"
-                  value={formData.storeName}
-                  onChange={(e) => setFormData(prev => ({ ...prev, storeName: e.target.value }))}
-                  required
-                />
-              </FormGroup>
-
-              <FormGroup>
-                <FormLabel>{'Owner Name'}</FormLabel>
-                <FormInput
-                  type="text"
-                  value={formData.owner}
-                  onChange={(e) => setFormData(prev => ({ ...prev, owner: e.target.value }))}
-                  required
-                />
-              </FormGroup>
-
-              <FormGroup>
-                <FormLabel>{'Contact'}</FormLabel>
-                <FormInput
-                  type="text"
-                  value={formData.phone}
-                  onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                  required
-                />
-              </FormGroup>
-
-              <FormGroup>
-                <FormLabel>{'Area'}</FormLabel>
-                <FormInput
-                  type="text"
-                  value={formData.area}
-                  onChange={(e) => setFormData(prev => ({ ...prev, area: e.target.value }))}
-                  placeholder="e.g. 45㎡"
-                  required
-                />
-              </FormGroup>
-
-              <FormGroup>
-                <FormLabel>{'Monthly Rent (RM)'}</FormLabel>
-                <FormInput
-                  type="number"
-                  value={formData.rentAmount}
-                  onChange={(e) => setFormData(prev => ({ ...prev, rentAmount: e.target.value }))}
-                  required
-                />
-              </FormGroup>
-
-              <FormGroup>
-                <FormLabel>{'Contract End Date'}</FormLabel>
-                <DateField
-                  value={formData.contractEndDate}
-                  onChange={(v) => setFormData(prev => ({ ...prev, contractEndDate: v }))}
-                  required
-                />
-              </FormGroup>
-
-              <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-                <Button type="button" variant="secondary" onClick={() => setShowModal(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit">
-                  {isEditing ? 'Update' : 'Add'}
-                </Button>
-              </div>
-            </form>
-          </ModalComponent>
 
           {/* Reminder Confirmation Modal */}
-          <ConfirmModal
-            isOpen={showConfirmModal}
-            title="Payment Reminder"
-            message={`Send payment reminder to '${selectedRent?.storeName}'?`}
-            onConfirm={confirmSendReminder}
-            onCancel={() => setShowConfirmModal(false)}
-            confirmText="Send"
-            cancelText="Cancel"
-            type="warning"
-          />
         </Content>
       </Container>
+      <ConfirmModal
+        isOpen={infoModal.open}
+        title={infoModal.title}
+        message={infoModal.message}
+        onConfirm={() => setInfoModal({ open: false, title: '', message: '' })}
+        onCancel={() => setInfoModal({ open: false, title: '', message: '' })}
+        confirmText="OK"
+        type="info"
+        singleButton
+      />
     </>
   );
 };

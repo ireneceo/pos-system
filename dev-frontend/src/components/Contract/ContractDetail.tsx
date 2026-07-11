@@ -1725,6 +1725,35 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
                   <CurrencyInput currency={entityCurrency} value={form.financial_terms?.maintenance_fee} onChange={v => updateFinancialTerm('maintenance_fee', v)} disabled={!isEditable} />
                 </AutoSaveField>
               </FormGroup>
+              {/* 임대료 청구 (docs/TENANT_RENT_BILLING.md) — 기본 임대료가 있는 활성 계약은
+                  매월 청구일에 임대료 청구서가 자동 발행된다. 청구일 29~31 은 그런 날이 없는
+                  달에서 발행 누락이 나므로 1~28 만 허용(모델도 거부). */}
+              <FormGroup>
+                <Label>{t('detail.billingDay', 'Rent Billing Day (1-28)')}</Label>
+                <AutoSaveField onSave={handleAutoSave}>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={28}
+                    value={form.financial_terms?.billing_day ?? ''}
+                    onChange={e => updateFinancialTerm('billing_day', e.target.value === '' ? null : Number(e.target.value))}
+                    disabled={!isEditable}
+                  />
+                </AutoSaveField>
+              </FormGroup>
+              <FormGroup>
+                <Label>{t('detail.graceDays', 'Payment Grace Days (0-60)')}</Label>
+                <AutoSaveField onSave={handleAutoSave}>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={60}
+                    value={form.financial_terms?.grace_days ?? ''}
+                    onChange={e => updateFinancialTerm('grace_days', e.target.value === '' ? null : Number(e.target.value))}
+                    disabled={!isEditable}
+                  />
+                </AutoSaveField>
+              </FormGroup>
               <FormGroup>
                 <Label>{t('detail.operatingHours', 'Operating Hours')}</Label>
                 <AutoSaveField onSave={handleAutoSave}>

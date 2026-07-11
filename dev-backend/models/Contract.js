@@ -306,6 +306,30 @@ Contract.init({
         });
       }
 
+      // 임대료 청구 (Tenant Rent Billing) — base_rent 가 있으면 매월 rent 인보이스가 발행된다.
+      // docs/TENANT_RENT_BILLING.md. billing_day 는 29~31 금지: 그런 날이 없는 달에서
+      // 발행 누락/이중 발행이 생긴다.
+      ['base_rent', 'maintenance_fee'].forEach((k) => {
+        if (ft[k] != null && ft[k] !== '') {
+          const v = Number(ft[k]);
+          if (!Number.isFinite(v) || v < 0) {
+            throw new Error(`financial_terms.${k} must be a non-negative number`);
+          }
+        }
+      });
+      if (ft.billing_day != null && ft.billing_day !== '') {
+        const d = Number(ft.billing_day);
+        if (!Number.isInteger(d) || d < 1 || d > 28) {
+          throw new Error('financial_terms.billing_day must be an integer between 1 and 28');
+        }
+      }
+      if (ft.grace_days != null && ft.grace_days !== '') {
+        const g = Number(ft.grace_days);
+        if (!Number.isInteger(g) || g < 0 || g > 60) {
+          throw new Error('financial_terms.grace_days must be an integer between 0 and 60');
+        }
+      }
+
       // percentage_rent: {rate, compare_against, higher_applies}
       if (ft.percentage_rent != null) {
         const pr = ft.percentage_rent;
