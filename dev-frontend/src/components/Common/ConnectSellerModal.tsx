@@ -93,6 +93,9 @@ interface Props {
   open: boolean;
   ingredient: { id: number; name: string; unit?: string | null } | null;
   buyerApiBase: string; // e.g. '/api/restaurants/5'
+  /** BG 가 primary 가 아닌 자기 브랜드로 작업할 때 buyer 스코프를 명시 ('?entity_type=brand&entity_id=2').
+   *  없으면 서버가 primary 브랜드 카탈로그(=다른 계약)를 돌려준다. */
+  buyerScopeQS?: string;
   onClose: () => void;
   onConnected: () => void;
 }
@@ -113,7 +116,7 @@ function detectConversion(ingUnit: string, sellerUnit: string): { auto: number |
   return { auto: null, note: `${ingUnit} ↔ ${sellerUnit}: incompatible — please enter conversion (1 ${sellerUnit} = ? ${ingUnit})` };
 }
 
-export default function ConnectSellerModal({ open, ingredient, buyerApiBase, onClose, onConnected }: Props) {
+export default function ConnectSellerModal({ open, ingredient, buyerApiBase, buyerScopeQS = '', onClose, onConnected }: Props) {
   const { t } = useTranslation('purchaseOrders');
   const [items, setItems] = useState<CatalogItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -135,7 +138,9 @@ export default function ConnectSellerModal({ open, ingredient, buyerApiBase, onC
     if (!open) return;
     setLoading(true);
     const token = getAuthToken();
-    const url = `/api/supplier-catalog${search ? `?search=${encodeURIComponent(search)}` : ''}`;
+    const scopeParams = buyerScopeQS ? buyerScopeQS.replace(/^\?/, '') : '';
+    const qs = [search ? `search=${encodeURIComponent(search)}` : '', scopeParams].filter(Boolean).join('&');
+    const url = `/api/supplier-catalog${qs ? `?${qs}` : ''}`;
     fetch(url, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(j => {

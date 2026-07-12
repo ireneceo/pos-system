@@ -52,5 +52,7 @@
     "grandTotal": "Grand Total",
     "stockShort": "Current",
     "minShort": "Min"
-  }
+  },
+  "brandShared": "Brand",
+  "brandSharedHint": "Stock item defined by your brand"
 }

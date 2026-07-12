@@ -186,9 +186,17 @@ router.get('/:restaurantId/inventory/summary', async (req, res) => {
     let lowStockCount = 0;
     let outOfStockCount = 0;
 
+    // 브랜드 공유 재료의 재고는 매장 오버레이가 단일 소스 — 브랜드 행으로 집계하면 부족/품절 수가 왜곡된다
+    const summaryStockMap = await stockMapFor(
+      restaurantId,
+      ingredients.filter(i => i.owner_type === 'brand').map(i => i.id)
+    );
+
     ingredients.forEach(ing => {
       totalItems++;
-      const currentStock = parseFloat(ing.current_stock) || 0;
+      const currentStock = ing.owner_type === 'brand'
+        ? (summaryStockMap[ing.id] || 0)
+        : (parseFloat(ing.current_stock) || 0);
       const minStock = parseFloat(ing.min_stock) || 0;
 
       if (currentStock <= 0) {

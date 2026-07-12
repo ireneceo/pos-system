@@ -52,5 +52,7 @@
     "grandTotal": "Jumlah Besar",
     "stockShort": "Semasa",
     "minShort": "Min"
-  }
+  },
+  "brandShared": "Jenama",
+  "brandSharedHint": "Item stok yang ditakrifkan oleh jenama anda"
 }

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
@@ -478,6 +479,7 @@ const EmptyDescription = styled.p`
 
 
 const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: propsRestaurantId, onCountChange, categoryRefreshKey }) => {
+  const { t } = useTranslation(['purchaseOrders', 'common']);
   const { user } = useAuth();
   const { defaultCurrency } = useBrandCurrency();
   const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
@@ -771,6 +773,11 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
 
   // 발주처 연결 해제 — 연결은 되는데 끊을 수가 없어 잘못 연결하면 되돌릴 방법이 없었다.
   // 매핑만 지운다(공급업체 상품 자체는 그대로). 재고/발주 이력에는 영향 없음.
+  // BG 는 브랜드를 여러 개 소유할 수 있는데 buyer 스코프(requireBuyerRole)는 primary 브랜드에
+  // 고정된다 → 지금 보고 있는 브랜드를 명시해야 그 브랜드로 귀속된다(서버가 소유 검사).
+  // docs/BRAND_STOCK_SHARING_DESIGN.md §2
+  const buyerScopeQS = (isBrandRole && brandId) ? `?entity_type=brand&entity_id=${brandId}` : '';
+
   const [unlinkTarget, setUnlinkTarget] = useState<{ id: number; label: string } | null>(null);
 
   const confirmUnlinkSeller = async () => {
@@ -778,7 +785,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
     const target = unlinkTarget;
     setUnlinkTarget(null);
     try {
-      const res = await fetch(`/api/ingredient-seller-products/${target.id}`, {
+      const res = await fetch(`/api/ingredient-seller-products/${target.id}${buyerScopeQS}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${getAuthToken()}` },
       });
@@ -803,7 +810,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
     let list: Array<{ id: number; name: string }> = [];
     try {
       const token = getAuthToken();
-      const r = await fetch('/api/external-suppliers', { headers: { Authorization: `Bearer ${token}` } });
+      const r = await fetch(`/api/external-suppliers${buyerScopeQS}`, { headers: { Authorization: `Bearer ${token}` } });
       const j = await r.json().catch(() => null);
       list = Array.isArray(j?.data) ? j.data : [];
     } catch { list = []; }
@@ -825,7 +832,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
     setExtSaving(true);
     try {
       const token = getAuthToken();
-      const cr = await fetch(`/api/external-suppliers/${supplierId}/products`, {
+      const cr = await fetch(`/api/external-suppliers/${supplierId}/products${buyerScopeQS}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ name: productName, sku: extForm.sku.trim() || undefined, unit: extTarget.unit || 'kg', unit_price: parseFloat(extForm.unit_price), min_order_quantity: extForm.min_order_quantity ? parseInt(extForm.min_order_quantity, 10) : 1 })
       });
@@ -1347,7 +1354,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                         {isItemReadOnly(ingredient) ? (
                           sellers.length === 0 && (
                             <span style={{ fontSize: 12, color: '#92400E' }}>
-                              Your brand has not linked a supplier to this item yet
+                              {t('purchaseOrders:newPo.brandNeedsLink', 'Your brand has not linked a supplier to this item yet')}
                             </span>
                           )
                         ) : (
@@ -1806,6 +1813,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
             ? `/api/brands/${brandId}`
             : (isRestaurantAdmin && effectiveRestaurantId ? `/api/restaurants/${effectiveRestaurantId}` : '/api/restaurants/0')
         }
+        buyerScopeQS={buyerScopeQS}
         onClose={() => setConnectTarget(null)}
         onConnected={() => {
           // Inline reload — 카드 즉시 갱신. categoryRefreshKey 트릭으로 useEffect 재실행 유도.

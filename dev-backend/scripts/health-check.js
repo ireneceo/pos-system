@@ -631,6 +631,130 @@ function definePosTests({ adminToken }) {
     return !!row.seller_name && row.seller_name === d.seller_name;
   });
 
+  // ── 브랜드 재고 공유 (docs/BRAND_STOCK_SHARING_DESIGN.md) ──────────────────────
+  // 브랜드 재료(ingredients.owner_type='brand')는 프랜차이즈 표준 재료 마스터다:
+  // 매장은 읽고·발주하고·입고하지만 **정의는 못 고친다**. 재고는 매장별 오버레이가 단일 소스 —
+  // 브랜드 공유 행의 current_stock 을 매장이 갱신하면 형제 매장 재고가 오염된다.
+  test('pos', '브랜드 재고: 매장은 브랜드 재료를 읽기전용으로 본다 (수정/삭제 4xx)', async () => {
+    const { Restaurant, Ingredient, User } = require('../models');
+    const jwtLib = require('jsonwebtoken');
+    const ing = await Ingredient.findOne({ where: { owner_type: 'brand', is_active: true } });
+    if (!ing) return true;
+    const rest = await Restaurant.findOne({ where: { brand_id: ing.brand_id } });
+    if (!rest) return true;
+    const ra = await User.findOne({ where: { role: 'Restaurant Admin', restaurant_id: rest.id } });
+    if (!ra) return true;
+    const token = jwtLib.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const auth = { Authorization: `Bearer ${token}` };
+
+    const list = await request('GET', `/restaurants/${rest.id}/brand-ingredients?include=sellers`, null, auth);
+    if (list.status !== 200) return false;
+    const rows = list.body?.data || [];
+    if (!rows.length || !rows.every((r) => r.is_brand_shared && r.read_only && Array.isArray(r.sellerSources))) return false;
+
+    // 매장이 브랜드 재료를 고치거나 지우려 하면 막혀야 한다 (읽기전용)
+    const put = await request('PUT', `/restaurants/${rest.id}/ingredients/${ing.id}`, { name: 'REGRESSION' }, auth);
+    const del = await request('DELETE', `/restaurants/${rest.id}/ingredients/${ing.id}`, null, auth);
+    const par = await request('PUT', `/restaurants/${rest.id}/inventory/${ing.id}/settings`, { min_stock: 999 }, auth);
+    return put.status >= 400 && del.status >= 400 && par.status >= 400;
+  });
+
+  test('pos', '브랜드 재고: 공급처 연결은 브랜드만 (매장 쓰기 403, 읽기 200)', async () => {
+    const { Restaurant, Ingredient, User, IngredientSellerProduct } = require('../models');
+    const jwtLib = require('jsonwebtoken');
+    const ing = await Ingredient.findOne({ where: { owner_type: 'brand', is_active: true } });
+    if (!ing) return true;
+    const rest = await Restaurant.findOne({ where: { brand_id: ing.brand_id } });
+    if (!rest) return true;
+    const ra = await User.findOne({ where: { role: 'Restaurant Admin', restaurant_id: rest.id } });
+    if (!ra) return true;
+    const token = jwtLib.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const auth = { Authorization: `Bearer ${token}` };
+
+    const read = await request('GET', `/ingredients/${ing.id}/seller-sources`, null, auth);
+    if (read.status !== 200) return false; // 매장은 브랜드가 붙여둔 공급처를 읽어야 발주할 수 있다
+    const write = await request('POST', `/ingredients/${ing.id}/seller-sources`, {
+      seller_type: 'supplier', seller_entity_id: 1, seller_product_id: 1, unit_price: 1
+    }, auth);
+    return write.status === 403; // 매장이 브랜드 공급망을 바꾸면 형제 매장까지 바뀐다 → 금지
+  });
+
+  test('pos', '브랜드 재고: 매장 재고는 오버레이가 단일 소스 (브랜드 행 불변 + 형제 격리)', async () => {
+    const { Restaurant, Ingredient, User, RestaurantIngredientStock } = require('../models');
+    const jwtLib = require('jsonwebtoken');
+    const ing = await Ingredient.findOne({ where: { owner_type: 'brand', is_active: true, track_stock: true } })
+      || await Ingredient.findOne({ where: { owner_type: 'brand', is_active: true } });
+    if (!ing) return true;
+    const rest = await Restaurant.findOne({ where: { brand_id: ing.brand_id } });
+    if (!rest) return true;
+    const ra = await User.findOne({ where: { role: 'Restaurant Admin', restaurant_id: rest.id } });
+    if (!ra) return true;
+    const token = jwtLib.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const auth = { Authorization: `Bearer ${token}` };
+
+    const brandRowBefore = parseFloat((await Ingredient.findByPk(ing.id)).current_stock) || 0;
+    const before = await RestaurantIngredientStock.findOne({ where: { restaurant_id: rest.id, ingredient_id: ing.id } });
+    const qtyBefore = before ? parseFloat(before.current_stock) : 0;
+
+    const recv = await request('POST', `/restaurants/${rest.id}/inventory/receive`, { ingredient_id: ing.id, quantity: 3 }, auth);
+    if (recv.status !== 200) return false;
+
+    const after = await RestaurantIngredientStock.findOne({ where: { restaurant_id: rest.id, ingredient_id: ing.id } });
+    const qtyAfter = after ? parseFloat(after.current_stock) : 0;
+    const brandRowAfter = parseFloat((await Ingredient.findByPk(ing.id)).current_stock) || 0;
+
+    // 원복 (멱등 — 검증이 재고를 남기지 않는다)
+    await request('POST', `/restaurants/${rest.id}/inventory/adjust`, { ingredient_id: ing.id, new_quantity: qtyBefore }, auth);
+    if (!before) await RestaurantIngredientStock.destroy({ where: { restaurant_id: rest.id, ingredient_id: ing.id } });
+
+    return qtyAfter === qtyBefore + 3 && brandRowAfter === brandRowBefore;
+  });
+
+  test('pos', '브랜드 재고: 남의 재료 id 로 입고·차감 불가 (IDOR)', async () => {
+    const { Restaurant, Ingredient, User } = require('../models');
+    const { Op } = require('sequelize');
+    const jwtLib = require('jsonwebtoken');
+    const rest = await Restaurant.findOne({ where: { brand_id: { [Op.ne]: null } } });
+    if (!rest) return true;
+    const ra = await User.findOne({ where: { role: 'Restaurant Admin', restaurant_id: rest.id } });
+    if (!ra) return true;
+    // 이 매장 것도, 이 매장의 부모 브랜드 것도 아닌 재료
+    const foreign = await Ingredient.findOne({
+      where: {
+        [Op.and]: [
+          { [Op.or]: [{ restaurant_id: { [Op.ne]: rest.id } }, { restaurant_id: null }] },
+          { [Op.or]: [{ brand_id: { [Op.ne]: rest.brand_id } }, { brand_id: null }] }
+        ]
+      }
+    });
+    if (!foreign) return true;
+    const token = jwtLib.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const auth = { Authorization: `Bearer ${token}` };
+    const recv = await request('POST', `/restaurants/${rest.id}/inventory/receive`, { ingredient_id: foreign.id, quantity: 1 }, auth);
+    const ded = await request('POST', `/restaurants/${rest.id}/inventory/deduct`, { ingredient_id: foreign.id, quantity: 1 }, auth);
+    return recv.status === 404 && ded.status === 404;
+  });
+
+  test('pos', '브랜드 재고: 주문 차감도 오버레이를 깎는다 (브랜드 행 불변)', async () => {
+    const src = require('fs').readFileSync(require('path').join(__dirname, '../services/inventoryDeductionService.js'), 'utf8');
+    // 차감이 Ingredient.update({current_stock}) 로 돌아가면 입고(오버레이)와 장부가 갈라진다
+    const usesOverlay = /applyStock\(/.test(src) && /stockFor\(/.test(src);
+    const directWrite = /Ingredient\.update\(\s*\{\s*current_stock/.test(src);
+    // FIFO 배치도 매장 스코프여야 형제 매장 배치를 소진하지 않는다
+    const scopedFifo = /restaurant_id: restaurantId/.test(src);
+    return usesOverlay && !directWrite && scopedFifo;
+  });
+
+  test('pos', '브랜드 재고: 본사 구매 체인(product_ingredients) 무접촉', async () => {
+    const { ProductIngredient, IngredientSellerProduct } = require('../models');
+    const { Op } = require('sequelize');
+    // BG 본사 재고와 그 공급처 매핑은 이번 기능이 건드리지 않는다(평행 체인 유지).
+    // 스키마가 사라지면(=통합 시도) 여기서 깨진다.
+    const piCount = await ProductIngredient.count();
+    const piMappings = await IngredientSellerProduct.count({ where: { product_ingredient_id: { [Op.ne]: null } } });
+    return Number.isInteger(piCount) && Number.isInteger(piMappings);
+  });
+
   // 구독 가격의 단일 소스 = 서버(PlanTemplate/PlanPrice). 프론트·라우트에 박아둔 가격표
   // (basic29/pro99/ent199)는 실제 값(49/99/179)과 달랐다 — 다시 하드코딩되면 여기서 깨진다.
   test('pos', '구독 플랜 가격 = 서버 PlanTemplate 기준 (하드코딩 가격표 금지)', async () => {

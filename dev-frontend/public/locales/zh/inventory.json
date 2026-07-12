@@ -52,5 +52,7 @@
     "grandTotal": "总计",
     "stockShort": "当前",
     "minShort": "最低"
-  }
+  },
+  "brandShared": "品牌",
+  "brandSharedHint": "由品牌定义的库存项目"
 }

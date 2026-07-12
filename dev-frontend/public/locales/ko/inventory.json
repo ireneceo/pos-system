@@ -52,5 +52,7 @@
     "grandTotal": "총 합계",
     "stockShort": "현재",
     "minShort": "최소"
-  }
+  },
+  "brandShared": "브랜드",
+  "brandSharedHint": "브랜드가 정의한 재고 항목입니다"
 }

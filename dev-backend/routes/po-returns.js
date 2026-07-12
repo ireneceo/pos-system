@@ -20,6 +20,7 @@ const {
   InventoryTransaction, FoodcourtProduct,
   Invoice, InvoiceItem
 } = require('../models');
+const { stockFor, applyStock } = require('../utils/brandStockAccess');
 const { authenticateToken } = require('../middleware/auth');
 const { requireBuyerRole } = require('../middleware/buyerScope');
 const { requireSellerRole } = require('../middleware/sellerScope');
@@ -187,12 +188,14 @@ router.post('/seller-orders/:id/returns/:returnId/approve', async (req, res) => 
     }
 
     // 1. Reverse buyer-side ingredient stock (decrement)
+    //    입고가 매장 오버레이로 갔으니 그 역방향도 같아야 한다 — 브랜드 공유 재료의 브랜드 행을
+    //    직접 깎으면 형제 매장 재고가 오염된다. (docs/BRAND_STOCK_SHARING_DESIGN.md)
     if (po.entity_type === 'restaurant') {
       const ingredient = await Ingredient.findByPk(ret.ingredient_id, { lock: t.LOCK.UPDATE, transaction: t });
       if (ingredient) {
-        const cur = parseFloat(ingredient.current_stock) || 0;
+        const cur = await stockFor(ingredient, po.entity_id, t);
         const newStock = Math.max(0, Math.round((cur - parseFloat(ret.quantity)) * 100) / 100);
-        await ingredient.update({ current_stock: newStock }, { transaction: t });
+        await applyStock(ingredient, po.entity_id, newStock, t);
       }
     }
 

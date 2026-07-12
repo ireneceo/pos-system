@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { Ingredient, IngredientCategory, Restaurant, Supplier, RestaurantIngredientCost, IngredientSellerProduct, SupplierProduct } = require('../models');
 const { stockMapFor, readableIngredient, writableIngredient } = require('../utils/brandStockAccess');
+const { resolveSellers, getSellerName } = require('../utils/sellerNames');
 const { Op } = require('sequelize');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const { isBrandManager } = require('../middleware/recipeAuth');
@@ -656,12 +657,26 @@ router.get('/restaurants/:restaurantId/brand-ingredients', authenticateToken, ch
       const spMap = spIds.length
         ? Object.fromEntries((await SupplierProduct.findAll({ where: { id: spIds }, attributes: ['id', 'name', 'sku'], paranoid: false })).map(sp => [sp.id, sp]))
         : {};
+      // 판매자 표시 이름 — 발주와 같은 단일 해석기(utils/sellerNames)를 쓴다. 각자 조회를 짜면
+      // 목록만 brand/foodcourt 를 빠뜨려 이름이 비어 보이던 사고가 재발한다(2026-07-12).
+      const sellerMapResolved = await resolveSellers(
+        rows.map(r => ({ seller_type: r.seller_type, seller_entity_id: r.seller_entity_id }))
+      );
+      // 브랜드가 파는 상품은 BrandProduct 가 이름/코드를 갖는다(공급업체 상품과 동일 취급)
+      const BrandProduct = require('../models/BrandProduct');
+      const bpIds = [...new Set(rows.filter(r => r.seller_type === 'brand' && r.seller_product_id).map(r => r.seller_product_id))];
+      const bpMap = bpIds.length
+        ? Object.fromEntries((await BrandProduct.findAll({ where: { id: bpIds }, attributes: ['id', 'name', 'sku'], paranoid: false })).map(b => [b.id, b]))
+        : {};
       rows.forEach(r => {
-        const sp = r.seller_type === 'supplier' ? spMap[r.seller_product_id] : null;
+        const prod = r.seller_type === 'supplier' ? spMap[r.seller_product_id]
+                   : r.seller_type === 'brand' ? bpMap[r.seller_product_id]
+                   : null;
         (sellerMap[r.ingredient_id] = sellerMap[r.ingredient_id] || []).push({
           ...r.toJSON(),
-          seller_product_name: sp?.name || null,
-          seller_product_sku: sp?.sku || null
+          seller_name: getSellerName(sellerMapResolved, r.seller_type, r.seller_entity_id),
+          seller_product_name: prod?.name || null,
+          seller_product_sku: prod?.sku || null
         });
       });
     }

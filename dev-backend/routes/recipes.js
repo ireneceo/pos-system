@@ -229,14 +229,13 @@ router.put('/brands/:brandId/recipes/:recipeId', authenticateToken, canEditRecip
     if (instructions_detail !== undefined) updateData.instructions_detail = instructions_detail || null;
     if (suggested_price !== undefined) updateData.suggested_price = suggested_price ? parseFloat(suggested_price) : 0;
 
-    await recipe.update(updateData);
-
     // 재료 소유권 검증 — 이 브랜드 재료만 (타 브랜드/타 매장 재료 참조 차단)
     const badIng = await findDisallowedIngredientIds(ingredients, { brandId: brand_id });
     if (badIng.length) {
       return res.status(400).json({ success: false, message: `Ingredient not in this brand: ${badIng.join(', ')}` });
     }
 
+    await recipe.update(updateData);
     // 재료 업데이트 (기존 삭제 후 재생성)
     if (ingredients) {
       await RecipeIngredient.destroy({ where: { recipe_id } });
@@ -564,6 +563,12 @@ router.put('/restaurants/:restaurantId/recipes/:recipeId', authenticateToken, ch
     }
 
     // 기본 정보 업데이트
+    // 재료 소유권 검증 — 자기 매장 재료 ∪ 부모 브랜드 재료 (타 브랜드 재료 참조 차단)
+    const badIng = await findDisallowedIngredientIds(ingredients, { restaurantId: parseInt(restaurantId, 10) });
+    if (badIng.length) {
+      return res.status(400).json({ success: false, message: `Ingredient not available to this restaurant: ${badIng.join(', ')}` });
+    }
+
     await recipe.update({
       name,
       description,
@@ -581,11 +586,6 @@ router.put('/restaurants/:restaurantId/recipes/:recipeId', authenticateToken, ch
       suggested_price
     });
 
-    // 재료 소유권 검증 — 자기 매장 재료 ∪ 부모 브랜드 재료 (타 브랜드 재료 참조 차단)
-    const badIng = await findDisallowedIngredientIds(ingredients, { restaurantId: parseInt(restaurantId, 10) });
-    if (badIng.length) {
-      return res.status(400).json({ success: false, message: `Ingredient not available to this restaurant: ${badIng.join(', ')}` });
-    }
 
     // 재료 업데이트 (기존 삭제 후 재생성)
     if (ingredients) {

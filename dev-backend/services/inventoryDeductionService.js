@@ -5,6 +5,8 @@
 
 const { Op } = require('sequelize');
 const database = require('../config/database');
+// 브랜드 공유 재료의 재고는 매장별 오버레이가 단일 소스 (docs/BRAND_STOCK_SHARING_DESIGN.md)
+const { stockFor, applyStock } = require('../utils/brandStockAccess');
 const {
   Product,
   Recipe,
@@ -20,13 +22,16 @@ const {
 /**
  * FIFO deduction from inventory batches
  */
-async function deductStockFIFO(ingredientId, quantityToDeduct, transaction) {
+async function deductStockFIFO(ingredientId, quantityToDeduct, transaction, restaurantId = null) {
   let remainingToDeduct = parseFloat(quantityToDeduct);
   const deductedBatches = [];
 
   const batches = await InventoryBatch.findAll({
     where: {
       ingredient_id: ingredientId,
+      // 브랜드 공유 재료는 형제 매장이 같은 ingredient_id 로 배치를 만든다 → 매장 스코프 필수
+      // (안 걸면 남의 매장 배치를 소진한다)
+      ...(restaurantId ? { restaurant_id: restaurantId } : {}),
       status: 'active',
       remaining_quantity: { [Op.gt]: 0 }
     },
@@ -202,7 +207,8 @@ async function deductInventoryForOrder(restaurantId, orderItems, orderId) {
             continue;
           }
 
-          const currentStock = parseFloat(ingredient.current_stock) || 0;
+          // 브랜드 공유 재료면 이 매장의 오버레이 재고가 기준
+          const currentStock = await stockFor(ingredient, restaurantId, transaction);
 
           // Check if we have enough stock
           if (deductQty > currentStock) {
@@ -219,16 +225,13 @@ async function deductInventoryForOrder(restaurantId, orderItems, orderId) {
           const actualDeductQty = Math.min(deductQty, currentStock);
 
           if (actualDeductQty > 0) {
-            // FIFO deduction from batches
-            const fifoResult = await deductStockFIFO(ingredient.id, actualDeductQty, transaction);
+            // FIFO deduction from batches (매장 스코프)
+            const fifoResult = await deductStockFIFO(ingredient.id, actualDeductQty, transaction, restaurantId);
 
             const newStock = currentStock - fifoResult.deducted_quantity;
 
-            // Update ingredient stock
-            await Ingredient.update(
-              { current_stock: newStock },
-              { where: { id: ingredient.id }, transaction }
-            );
+            // 브랜드 공유 재료 → 매장 오버레이 / 매장 재료 → 재료 행
+            await applyStock(ingredient, restaurantId, newStock, transaction);
 
             // Create transaction record
             await InventoryTransaction.create({
@@ -277,17 +280,14 @@ async function deductInventoryForOrder(restaurantId, orderItems, orderId) {
         for (const oi of optIngredients) {
           if (!oi.ingredient) continue;
           const oiDeductQty = parseFloat(oi.quantity) * orderQty;
-          const oiCurrentStock = parseFloat(oi.ingredient.current_stock) || 0;
+          const oiCurrentStock = await stockFor(oi.ingredient, restaurantId, transaction);
           const oiActualDeduct = Math.min(oiDeductQty, oiCurrentStock);
 
           if (oiActualDeduct > 0) {
-            const oiFifo = await deductStockFIFO(oi.ingredient.id, oiActualDeduct, transaction);
+            const oiFifo = await deductStockFIFO(oi.ingredient.id, oiActualDeduct, transaction, restaurantId);
             const oiNewStock = oiCurrentStock - oiFifo.deducted_quantity;
 
-            await Ingredient.update(
-              { current_stock: oiNewStock },
-              { where: { id: oi.ingredient.id }, transaction }
-            );
+            await applyStock(oi.ingredient, restaurantId, oiNewStock, transaction);
 
             await InventoryTransaction.create({
               restaurant_id: restaurantId,
@@ -331,7 +331,9 @@ async function deductInventoryForOrder(restaurantId, orderItems, orderId) {
 /**
  * Calculate required ingredients for an order (preview without deducting)
  */
-async function calculateRequiredIngredients(orderItems) {
+async function calculateRequiredIngredients(orderItems, restaurantId = null) {
+  // restaurantId 를 주면 브랜드 공유 재료의 가용재고를 그 매장 오버레이로 본다.
+  // (안 주면 재료 행 값 — 매장 소유 재료만 다루던 옛 호출 호환)
   const ingredientMap = new Map();
 
   for (const item of orderItems) {
@@ -357,7 +359,9 @@ async function calculateRequiredIngredients(orderItems) {
             ingredient_name: ri.ingredient?.name,
             unit: ri.unit,
             required_quantity: requiredQty,
-            current_stock: parseFloat(ri.ingredient?.current_stock) || 0
+            current_stock: (restaurantId && ri.ingredient)
+              ? await stockFor(ri.ingredient, restaurantId)
+              : parseFloat(ri.ingredient?.current_stock) || 0
           });
         }
       }

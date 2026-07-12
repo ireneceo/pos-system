@@ -4,7 +4,7 @@ const { Op } = require('sequelize');
 const database = require('../config/database');
 const { Ingredient, InventoryTransaction, StockTake, StockTakeItem, StockAlert, Restaurant, InventoryBatch, GeneralStock, GeneralStockTransaction, Supplier, RestaurantIngredientCost } = require('../models');
 const { getStartOfMonth, getRestaurantTimezone } = require('../utils/dateTimeHelper');
-const { readableIngredient, writableIngredient } = require('../utils/brandStockAccess');
+const { readableIngredient, writableIngredient, stockFor, applyStock } = require('../utils/brandStockAccess');
 
 // 레스토랑의 코스트 오버라이드 맵 조회 헬퍼
 
@@ -353,7 +353,8 @@ router.get('/:restaurantId/inventory/:ingredientId/par-level', async (req, res) 
   try {
     const { restaurantId, ingredientId } = req.params;
 
-    const ingredient = await Ingredient.findByPk(ingredientId);
+    // 소유권 — 남의 매장 재료 수치를 조회할 수 없다
+    const ingredient = await readableIngredient(ingredientId, { type: 'restaurant', id: parseInt(restaurantId, 10) });
     if (!ingredient) {
       return res.status(404).json({ success: false, message: 'Ingredient not found' });
     }
@@ -372,7 +373,8 @@ router.get('/:restaurantId/inventory/:ingredientId/par-level', async (req, res) 
     const reorderPoint = parLevel;
 
     // Suggested Order Quantity = PAR Level - Current Stock (if current < PAR)
-    const currentStock = parseFloat(ingredient.current_stock) || 0;
+    // 브랜드 공유 재료면 이 매장 오버레이 재고 기준
+    const currentStock = await stockFor(ingredient, restaurantId);
     const suggestedOrderQty = Math.max(0, parLevel - currentStock);
 
     res.json({
@@ -534,10 +536,16 @@ router.post('/:restaurantId/inventory/calculate-usage', async (req, res) => {
 // GET /api/restaurants/:restaurantId/inventory/:ingredientId/batches - 배치 목록 조회
 router.get('/:restaurantId/inventory/:ingredientId/batches', async (req, res) => {
   try {
-    const { ingredientId } = req.params;
+    const { restaurantId, ingredientId } = req.params;
     const { status } = req.query;
 
-    const whereClause = { ingredient_id: ingredientId };
+    const owned = await readableIngredient(ingredientId, { type: 'restaurant', id: parseInt(restaurantId, 10) });
+    if (!owned) {
+      return res.status(404).json({ success: false, message: 'Ingredient not found' });
+    }
+
+    // 브랜드 공유 재료는 형제 매장도 같은 ingredient_id 로 배치를 만든다 → 매장 스코프 필수
+    const whereClause = { ingredient_id: ingredientId, restaurant_id: parseInt(restaurantId, 10) };
     if (status) {
       whereClause.status = status;
     }
@@ -561,7 +569,7 @@ router.get('/:restaurantId/inventory/:ingredientId/batches', async (req, res) =>
 });
 
 // FIFO 차감 함수 (내부 사용)
-async function deductStockFIFO(ingredientId, quantityToDeduct, transaction) {
+async function deductStockFIFO(ingredientId, quantityToDeduct, transaction, restaurantId = null) {
   let remainingToDeduct = parseFloat(quantityToDeduct);
   const deductedBatches = [];
 
@@ -569,6 +577,8 @@ async function deductStockFIFO(ingredientId, quantityToDeduct, transaction) {
   const batches = await InventoryBatch.findAll({
     where: {
       ingredient_id: ingredientId,
+      // 브랜드 공유 재료는 형제 매장이 같은 ingredient_id 로 배치를 만든다 → 매장 스코프 필수
+      ...(restaurantId ? { restaurant_id: restaurantId } : {}),
       status: 'active',
       remaining_quantity: { [Op.gt]: 0 }
     },
@@ -623,14 +633,18 @@ router.post('/:restaurantId/inventory/deduct', async (req, res) => {
     const { ingredient_id, quantity, reason, notes } = req.body;
     const userId = req.user.id;
 
-    const ingredient = await Ingredient.findByPk(ingredient_id);
+    // 소유권 — 자기 매장 재료 ∪ 부모 브랜드 재료 (예전엔 검사가 없어 남의 재료 id 로도 차감됐다)
+    const ingredient = await readableIngredient(
+      ingredient_id, { type: 'restaurant', id: parseInt(restaurantId, 10) }, transaction
+    );
     if (!ingredient) {
       await transaction.rollback();
       return res.status(404).json({ success: false, message: 'Ingredient not found' });
     }
 
     const deductQty = parseFloat(quantity) || 0;
-    const currentStock = parseFloat(ingredient.current_stock) || 0;
+    // 브랜드 공유 재료면 이 매장의 오버레이 재고가 기준
+    const currentStock = await stockFor(ingredient, restaurantId, transaction);
 
     if (deductQty > currentStock) {
       await transaction.rollback();
@@ -640,16 +654,12 @@ router.post('/:restaurantId/inventory/deduct', async (req, res) => {
       });
     }
 
-    // FIFO deduction from batches
-    const fifoResult = await deductStockFIFO(ingredient_id, deductQty, transaction);
+    // FIFO deduction from batches (매장 스코프)
+    const fifoResult = await deductStockFIFO(ingredient_id, deductQty, transaction, restaurantId);
 
     const newStock = currentStock - fifoResult.deducted_quantity;
 
-    // Update ingredient stock
-    await Ingredient.update(
-      { current_stock: newStock },
-      { where: { id: ingredient_id }, transaction }
-    );
+    await applyStock(ingredient, restaurantId, newStock, transaction);
 
     // Create transaction record
     await InventoryTransaction.create({
@@ -690,7 +700,10 @@ router.put('/:restaurantId/inventory/batches/:batchId/dispose', async (req, res)
     const { reason } = req.body;
     const userId = req.user.id;
 
-    const batch = await InventoryBatch.findByPk(batchId);
+    // 배치 소유권 — 남의 매장 배치를 폐기할 수 없다(브랜드 공유 재료는 형제 매장도 같은 재료 id)
+    const batch = await InventoryBatch.findOne({
+      where: { id: batchId, restaurant_id: parseInt(restaurantId, 10) }
+    });
     if (!batch) {
       await transaction.rollback();
       return res.status(404).json({ success: false, message: 'Batch not found' });
@@ -708,15 +721,12 @@ router.put('/:restaurantId/inventory/batches/:batchId/dispose', async (req, res)
       transaction
     });
 
-    // Update ingredient stock
-    const ingredient = await Ingredient.findByPk(batch.ingredient_id);
-    const currentStock = parseFloat(ingredient.current_stock) || 0;
+    // 재고 반영 — 브랜드 공유 재료면 매장 오버레이
+    const ingredient = await Ingredient.findByPk(batch.ingredient_id, { transaction });
+    const currentStock = await stockFor(ingredient, restaurantId, transaction);
     const newStock = Math.max(0, currentStock - disposedQty);
 
-    await Ingredient.update(
-      { current_stock: newStock },
-      { where: { id: batch.ingredient_id }, transaction }
-    );
+    await applyStock(ingredient, restaurantId, newStock, transaction);
 
     // Create transaction record
     await InventoryTransaction.create({

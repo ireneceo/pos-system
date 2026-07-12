@@ -1,8 +1,8 @@
 # Purple POS — 개발 세션 상태
 
 <!-- AUTOSAVE-STALE-BANNER -->
-> **[AUTO-SAVE STALE] (2026-07-12 17:25, idle 1839s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
-> 변경된 작업 파일: deploy-manifest.json,CHANGELOG.md buyerScope.js,RestaurantIngredientStock.js index.js,ingredient-seller-products.js ingredients.js,inventory-core.js inventory-extra.js,purchase-orders-crud.js purchase-orders-workflow.js,recipes.js
+> **[AUTO-SAVE STALE] (2026-07-12 19:15, idle 2023s)** — narrative 가 마지막 편집된 이후 작업 파일이 변경됐는데 narrative 가 미갱신 상태로 자동저장됨. /개발시작 진입 시 git HEAD 와 대조해 진행/완료를 정정하고 이 블록을 삭제할 것.
+> 변경된 작업 파일: ingredients.js,inventory-core.js inventory-extra.js,po-returns.js recipes.js,health-check.js inventoryDeductionService.js,test-brand-stock.js inventory.json,inventory.json inventory.json,inventory.json
 <!-- /AUTOSAVE-STALE-BANNER -->
 
 ## 현재 작업 상태

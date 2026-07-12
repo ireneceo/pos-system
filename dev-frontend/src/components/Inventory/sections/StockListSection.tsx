@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Button,
   Table,
@@ -126,6 +127,7 @@ const StockListSection: React.FC<Props> = ({
   selectedIds,
   onToggleSelect,
 }) => {
+  const { t } = useTranslation(['inventory', 'common']);
   const filteredInventory = inventory.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || item.stock_status === statusFilter;
@@ -213,7 +215,11 @@ const StockListSection: React.FC<Props> = ({
                         <StockItemDetails>
                           <IngredientName>
                             {item.name}
-                            {item.is_brand_shared && <BrandTag title="Stock item defined by your brand">Brand</BrandTag>}
+                            {item.is_brand_shared && (
+                              <BrandTag title={t('inventory:brandSharedHint', 'Stock item defined by your brand') as string}>
+                                {t('inventory:brandShared', 'Brand')}
+                              </BrandTag>
+                            )}
                           </IngredientName>
                           {item.code && <StockItemCode>{item.code}</StockItemCode>}
                           <IngredientMeta>{item.category}</IngredientMeta>
@@ -406,7 +412,11 @@ const StockListSection: React.FC<Props> = ({
                         <StockItemDetails>
                           <IngredientName>
                             {item.name}
-                            {item.is_brand_shared && <BrandTag title="Stock item defined by your brand">Brand</BrandTag>}
+                            {item.is_brand_shared && (
+                              <BrandTag title={t('inventory:brandSharedHint', 'Stock item defined by your brand') as string}>
+                                {t('inventory:brandShared', 'Brand')}
+                              </BrandTag>
+                            )}
                           </IngredientName>
                           {item.code && <StockItemCode>{item.code}</StockItemCode>}
                           <IngredientMeta>
