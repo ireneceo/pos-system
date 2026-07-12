@@ -385,5 +385,8 @@
     "approved": "Pesanan diluluskan dan dihantar kepada pembekal.",
     "rejected": "Pesanan ditolak.",
     "actionFailed": "Tindakan gagal. Sila cuba lagi."
-  }
+  },
+  "newPo.viewMode": "Mod paparan",
+  "newPo.viewCard": "Kad",
+  "newPo.viewList": "Senarai"
 }

@@ -385,5 +385,8 @@
     "approved": "Order approved and sent to the supplier.",
     "rejected": "Order rejected.",
     "actionFailed": "Action failed. Please try again."
-  }
+  },
+  "newPo.viewMode": "View mode",
+  "newPo.viewCard": "Card",
+  "newPo.viewList": "List"
 }

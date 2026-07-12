@@ -272,6 +272,96 @@ const Grid = styled.div`
   gap: 14px;
 `;
 
+// 보기 컨테이너 — 카드 그리드 / 리스트 중 하나. 행 요소(Card ↔ ListRow)만 갈아끼우고
+// 안의 내용(뱃지·이름·가격·옵션 버튼)은 그대로 재사용한다(두 벌 유지 금지).
+const ItemContainer = styled.div<{ $list: boolean }>`
+  ${p => (p.$list
+    ? `display: flex; flex-direction: column; border: 1px solid #E6EBF1; border-radius: 8px; overflow: hidden; background: #fff;`
+    : `display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px;`)}
+`;
+
+// 리스트(행) 보기 — 카드와 같은 데이터를 한 줄로. 많은 품목을 훑을 때 카드보다 빠르다.
+const List = styled.div`
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+`;
+
+const ListRow = styled.button<{ $disabled?: boolean }>`
+  display: grid;
+  grid-template-columns: 1fr 140px 110px auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  text-align: left;
+  background: #fff;
+  border: none;
+  border-bottom: 1px solid #F1F4F8;
+  cursor: ${p => (p.$disabled ? 'default' : 'pointer')};
+  opacity: ${p => (p.$disabled ? 0.55 : 1)};
+  transition: background 0.15s;
+
+  &:last-child { border-bottom: none; }
+  &:hover { background: ${p => (p.$disabled ? '#fff' : '#F8FAFF')}; }
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr auto;
+    row-gap: 4px;
+  }
+`;
+
+const ListName = styled.div`
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #0A2540;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+`;
+
+const ListMeta = styled.div`
+  font-size: 12px;
+  color: #6B7C93;
+`;
+
+const ListPrice = styled.div`
+  font-size: 13px;
+  font-weight: 700;
+  color: #0A2540;
+  text-align: right;
+`;
+
+const ListActions = styled.div`
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+`;
+
+// 보기 전환 토글 (카드 / 리스트) — 선택은 localStorage 에 남아 다시 들어와도 유지된다.
+const ViewToggle = styled.div`
+  display: inline-flex;
+  border: 1px solid #E6EBF1;
+  border-radius: 6px;
+  overflow: hidden;
+`;
+
+const ViewBtn = styled.button<{ $active: boolean }>`
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  background: ${p => (p.$active ? '#635BFF' : '#fff')};
+  color: ${p => (p.$active ? '#fff' : '#6B7C93')};
+  transition: background 0.15s;
+
+  &:hover { background: ${p => (p.$active ? '#5A51E6' : '#F1F4F8')}; }
+`;
+
 const Card = styled.button<{ $disabled?: boolean }>`
   background: white;
   border: 1px solid #C7CED6;
@@ -556,6 +646,33 @@ const NewPurchaseOrderPage: React.FC = () => {
   const cartStorageKey = buyerEntity ? `po-cart:${buyerEntity.type}:${buyerEntity.id}` : null;
 
   const [tab, setTab] = useTabParam<'mine' | 'catalog'>('mine');
+
+  // 보기 전환(카드/리스트). 탭마다 따로 기억하고 localStorage 에 남겨, 다시 들어와도 마지막
+  // 선택이 그대로 적용된다. 옛 캐시에 값이 없거나 깨져 있어도 'card' 로 안전하게 떨어진다.
+  const VIEW_KEY = 'po_view_mode';
+  const readViewModes = (): { mine: 'card' | 'list'; catalog: 'card' | 'list' } => {
+    const fallback = { mine: 'card' as const, catalog: 'card' as const };
+    try {
+      const raw = localStorage.getItem(VIEW_KEY);
+      if (!raw) return fallback;
+      const parsed = JSON.parse(raw);
+      return {
+        mine: parsed?.mine === 'list' ? 'list' : 'card',
+        catalog: parsed?.catalog === 'list' ? 'list' : 'card',
+      };
+    } catch {
+      return fallback;
+    }
+  };
+  const [viewModes, setViewModes] = useState<{ mine: 'card' | 'list'; catalog: 'card' | 'list' }>(readViewModes);
+  const viewMode = viewModes[tab];
+  const setViewMode = (mode: 'card' | 'list') => {
+    setViewModes(prev => {
+      const next = { ...prev, [tab]: mode };
+      try { localStorage.setItem(VIEW_KEY, JSON.stringify(next)); } catch { /* 저장 실패해도 화면은 동작 */ }
+      return next;
+    });
+  };
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [supplierFilter, setSupplierFilter] = useState<string>('all');
@@ -1260,6 +1377,27 @@ const NewPurchaseOrderPage: React.FC = () => {
                 {t('newPo.showUntracked', 'Show untracked')} ({untrackedCount})
               </label>
             )}
+            {/* 보기 전환 — 카드 / 리스트. 탭별로 기억하고 localStorage 에 남아 재진입 시 유지된다. */}
+            <ViewToggle role="group" aria-label={t('newPo.viewMode', 'View mode') as string}>
+              <ViewBtn
+                type="button"
+                $active={viewMode === 'card'}
+                aria-pressed={viewMode === 'card'}
+                title={t('newPo.viewCard', 'Card view') as string}
+                onClick={() => setViewMode('card')}
+              >
+                {t('newPo.viewCard', 'Card')}
+              </ViewBtn>
+              <ViewBtn
+                type="button"
+                $active={viewMode === 'list'}
+                aria-pressed={viewMode === 'list'}
+                title={t('newPo.viewList', 'List view') as string}
+                onClick={() => setViewMode('list')}
+              >
+                {t('newPo.viewList', 'List')}
+              </ViewBtn>
+            </ViewToggle>
           </FilterRow>
 
           {tab === 'catalog' && (
@@ -1291,7 +1429,7 @@ const NewPurchaseOrderPage: React.FC = () => {
                   </div>
                 </Empty>
               ) : (
-                <Grid>
+                <ItemContainer $list={viewMode === 'list'}>
                   {filteredMy.map(row => {
                     // BG Stock Item rows are identified by cart_key (`pi-${product_ingredient_id}`)
                     // since their ingredient_id is 0; normal rows keep the existing id-based lookup.
@@ -1302,8 +1440,9 @@ const NewPurchaseOrderPage: React.FC = () => {
                     const hasSeller = row.sellers && row.sellers.length > 0;
                     const minPrice = hasSeller ? Math.min(...row.sellers.map(s => s.unit_price)) : 0;
                     const cat = row.ingredientCategory;
+                    const ItemBox = viewMode === 'list' ? ListRow : Card;
                     return (
-                      <Card
+                      <ItemBox
                         key={reactKey}
                         type="button"
                         onClick={() => {
@@ -1382,10 +1521,10 @@ const NewPurchaseOrderPage: React.FC = () => {
                             {t('newPo.needLink', 'Link a supplier to order')}
                           </CardMeta>
                         )}
-                      </Card>
+                      </ItemBox>
                     );
                   })}
-                </Grid>
+                </ItemContainer>
               )
             ) : (
               loadingCatalog ? (
@@ -1413,12 +1552,13 @@ const NewPurchaseOrderPage: React.FC = () => {
                   </button>
                 </Empty>
               ) : (
-                <Grid>
+                <ItemContainer $list={viewMode === 'list'}>
                   {catalogList.map(p => {
                     const inCart = p.mapped_ingredient_id != null && cart.some(r => r.ingredient_id === p.mapped_ingredient_id);
                     const qInCart = p.mapped_ingredient_id ? cartQtyOf(p.mapped_ingredient_id) : 0;
+                    const ItemBox = viewMode === 'list' ? ListRow : Card;
                     return (
-                      <Card
+                      <ItemBox
                         key={p.id}
                         type="button"
                         onClick={() => addCatalogToCart(p)}
@@ -1483,10 +1623,10 @@ const NewPurchaseOrderPage: React.FC = () => {
                             </button>
                           )}
                         </div>
-                      </Card>
+                      </ItemBox>
                     );
                   })}
-                </Grid>
+                </ItemContainer>
               )
             )}
           </ScrollArea>

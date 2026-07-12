@@ -385,5 +385,8 @@
     "approved": "订单已批准并发送给供应商。",
     "rejected": "订单已拒绝。",
     "actionFailed": "操作失败，请重试。"
-  }
+  },
+  "newPo.viewMode": "显示方式",
+  "newPo.viewCard": "卡片",
+  "newPo.viewList": "列表"
 }

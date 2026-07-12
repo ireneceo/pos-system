@@ -385,5 +385,8 @@
     "approved": "발주가 승인되어 공급처로 전송되었습니다.",
     "rejected": "발주가 반려되었습니다.",
     "actionFailed": "작업에 실패했습니다. 다시 시도해주세요."
-  }
+  },
+  "newPo.viewMode": "보기 방식",
+  "newPo.viewCard": "카드",
+  "newPo.viewList": "리스트"
 }
