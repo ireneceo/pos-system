@@ -769,6 +769,31 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
       .catch(() => {});
   };
 
+  // 발주처 연결 해제 — 연결은 되는데 끊을 수가 없어 잘못 연결하면 되돌릴 방법이 없었다.
+  // 매핑만 지운다(공급업체 상품 자체는 그대로). 재고/발주 이력에는 영향 없음.
+  const [unlinkTarget, setUnlinkTarget] = useState<{ id: number; label: string } | null>(null);
+
+  const confirmUnlinkSeller = async () => {
+    if (!unlinkTarget) return;
+    const target = unlinkTarget;
+    setUnlinkTarget(null);
+    try {
+      const res = await fetch(`/api/ingredient-seller-products/${target.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${getAuthToken()}` },
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        setInfoModal({ open: true, title: 'Could not disconnect', message: j.message || 'Failed to disconnect the seller source.' });
+        return;
+      }
+      reloadWithSellers();
+    } catch (err) {
+      console.error('Error disconnecting seller source:', err);
+      setInfoModal({ open: true, title: 'Could not disconnect', message: 'Failed to disconnect the seller source.' });
+    }
+  };
+
   // 이 재고를 외부공급업체 상품으로 등록 — 내가 등록한 외부공급업체 목록 로드 + 모달 열기.
   const openExtRegister = async (ing: Ingredient) => {
     setExtTarget(ing);
@@ -1563,6 +1588,23 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                         {s.seller_product_name ? ` · ${s.seller_product_name}` : ''}
                         {s.seller_product_sku ? ` · SKU: ${s.seller_product_sku}` : ''}
                         {s.unit_price != null ? ` · ${formatCurrency(Number(s.unit_price), selectedCurrency)}` : ''}
+                        <button
+                          type="button"
+                          title="Disconnect this seller source"
+                          aria-label="Disconnect this seller source"
+                          onClick={() => setUnlinkTarget({
+                            id: s.id,
+                            label: [s.seller_name, s.seller_product_name].filter(Boolean).join(' · ') || 'this seller source',
+                          })}
+                          style={{
+                            marginLeft: 2, padding: 0, width: 16, height: 16, lineHeight: '14px',
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                            border: 'none', borderRadius: '50%', cursor: 'pointer',
+                            background: 'rgba(0,0,0,0.08)', color: 'inherit', fontSize: 11, fontWeight: 700,
+                          }}
+                        >
+                          ✕
+                        </button>
                       </span>
                     ))}
                   </div>
@@ -1837,6 +1879,18 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
         </Modal>
       )}
 
+      <ConfirmModal
+        isOpen={unlinkTarget !== null}
+        title="Disconnect seller source"
+        message={unlinkTarget
+          ? `${unlinkTarget.label} will no longer be linked to this stock item. The supplier product itself is not deleted — you can connect it again anytime.`
+          : ''}
+        onConfirm={confirmUnlinkSeller}
+        onCancel={() => setUnlinkTarget(null)}
+        confirmText="Disconnect"
+        cancelText="Keep"
+        type="warning"
+      />
       <ConfirmModal
         isOpen={infoModal.open}
         title={infoModal.title}

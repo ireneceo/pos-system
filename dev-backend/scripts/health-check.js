@@ -517,6 +517,47 @@ function definePosTests({ adminToken }) {
     }
   });
 
+  // 재료 ↔ 공급업체 제품 연결 해제 (2026-07-12 회귀 박제).
+  // 연결은 되는데 **끊을 수가 없어** 잘못 연결하면 되돌릴 방법이 없었다(백엔드 DELETE 는
+  // 있었고 UI 만 없었다). 해제는 **매핑만** 지우고 공급업체 상품 자체는 보존해야 한다.
+  test('pos', '재료-공급업체 연결 해제: 매핑만 삭제 + 상품 보존 + 익명 401', async () => {
+    const { Ingredient, IngredientSellerProduct, SupplierProduct, User } = require('../models');
+    const { Op } = require('sequelize');
+    const jwtLib = require('jsonwebtoken');
+
+    const ing = await Ingredient.findOne({ where: { restaurant_id: { [Op.ne]: null } } });
+    const sp = await SupplierProduct.findOne();
+    if (!ing || !sp) return true; // 검증 대상 데이터 없음 → skip
+
+    const owner = await User.findOne({ where: { restaurant_id: ing.restaurant_id, role: 'Restaurant Admin' } });
+    if (!owner) return true;
+
+    const mapping = await IngredientSellerProduct.create({
+      ingredient_id: ing.id,
+      seller_type: 'supplier',
+      seller_entity_id: sp.supplier_company_id || sp.supplier_id || 1,
+      seller_product_id: sp.id,
+      unit_price: sp.unit_price || 0,
+    });
+
+    try {
+      // 익명은 해제 불가
+      const anon = await request('DELETE', `/ingredient-seller-products/${mapping.id}`);
+      if (anon.status !== 401) return false;
+
+      const token = jwtLib.sign({ userId: owner.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+      const del = await request('DELETE', `/ingredient-seller-products/${mapping.id}`, null,
+        { Authorization: `Bearer ${token}` });
+      if (del.status !== 200) return false;
+
+      const gone = await IngredientSellerProduct.findByPk(mapping.id);
+      const productKept = await SupplierProduct.findByPk(sp.id);
+      return !gone && !!productKept;   // 매핑만 사라지고 상품은 남아야 한다
+    } finally {
+      await IngredientSellerProduct.destroy({ where: { id: mapping.id }, force: true }).catch(() => {});
+    }
+  });
+
   test('pos', '익명 /rent/tenants → 401 (임대 데이터 노출 차단)', async () => {
     return (await request('GET', '/rent/tenants')).status === 401;
   });
